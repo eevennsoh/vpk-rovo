@@ -1,60 +1,8 @@
 import { z } from "zod";
-import { defineCatalog, defineSchema, type SchemaType } from "@json-render/core";
+import { defineCatalog } from "@json-render/core";
+import { schema } from "@json-render/react";
 
-function optional<T extends SchemaType>(schemaType: T): T & { optional: true } {
-	return {
-		...schemaType,
-		optional: true,
-	};
-}
-
-export const schema = defineSchema(
-	(s) => ({
-		spec: s.object({
-			root: s.string(),
-			state: optional(s.any()),
-			elements: s.record(
-				s.object({
-					type: s.ref("catalog.components"),
-					props: s.propsOf("catalog.components"),
-					children: optional(s.array(s.string())),
-					visible: optional(s.any()),
-					on: optional(s.any()),
-					repeat: optional(s.any()),
-				}),
-			),
-		}),
-		catalog: s.object({
-			components: s.map({
-				props: s.zod(),
-				slots: optional(s.array(s.string())),
-				description: optional(s.string()),
-				example: optional(s.any()),
-			}),
-			actions: optional(
-				s.map({
-					params: optional(s.zod()),
-					description: optional(s.string()),
-				}),
-			),
-		}),
-	}),
-	{
-		defaultRules: [
-			"CRITICAL INTEGRITY CHECK: Every key listed in an element's children array must exist in /elements.",
-			"SELF-CHECK: Walk the tree from /root before finishing, and output any missing child elements.",
-			'CRITICAL: The "visible" field belongs on the element object, never inside props.',
-			'CRITICAL: The "on" field belongs on the element object, never inside props.',
-			'CRITICAL: The "repeat" field belongs on the element object, never inside props.',
-			"When using $state, $bindState, $bindItem, $item, $index, or repeat, include matching /state patches so bindings resolve.",
-			'For two-way form values, use { "$bindState": "/path" } or { "$bindItem": "field" } on the natural value prop (value, checked, pressed).',
-			"Calendar and meeting agendas should render as a single ordered timeline, not one Card per meeting.",
-			"Prefer Timeline for calendar event lists; if days are grouped, render one Timeline per day section/tab and keep meeting rows inside that Timeline.",
-			"Calendar timeline items should include the start time in the date field and keep location/status in description text.",
-			"Horizontal Stack defaults to nowrap; set wrap=true only for flowing layouts like tag groups or badge lists.",
-		],
-	},
-);
+export { schema };
 
 export const catalog = defineCatalog(schema, {
 	components: {
@@ -1181,28 +1129,6 @@ export const catalog = defineCatalog(schema, {
 		},
 	},
 	actions: {
-		setState: {
-			params: z.object({
-				statePath: z.string(),
-				value: z.unknown(),
-			}),
-			description: "Set a value in the state model at the given path",
-		},
-		pushState: {
-			params: z.object({
-				statePath: z.string(),
-				value: z.unknown(),
-				clearStatePath: z.string().optional(),
-			}),
-			description: "Append a value to a state array and optionally clear an input state path",
-		},
-		removeState: {
-			params: z.object({
-				statePath: z.string(),
-				index: z.number(),
-			}),
-			description: "Remove an item from a state array by index",
-		},
 		push: {
 			params: z.object({
 				screen: z.string(),

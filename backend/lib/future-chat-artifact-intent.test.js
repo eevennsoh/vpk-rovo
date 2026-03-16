@@ -6,6 +6,7 @@ const {
 	fallbackFutureChatArtifactIntent,
 	normalizeArtifactKind,
 	parseFutureChatArtifactIntent,
+	resolveFastFutureChatArtifactIntent,
 } = require("./future-chat-artifact-intent");
 
 test("parseFutureChatArtifactIntent normalizes createDocument payload", () => {
@@ -21,6 +22,7 @@ test("parseFutureChatArtifactIntent normalizes createDocument payload", () => {
 		action: "createDocument",
 		title: "Robot Gardening Memo",
 		kind: "text",
+		cancelStreaming: null,
 	});
 });
 
@@ -37,6 +39,7 @@ test("parseFutureChatArtifactIntent falls back to chat when update lacks active 
 		action: "chat",
 		title: null,
 		kind: null,
+		cancelStreaming: null,
 	});
 });
 
@@ -53,6 +56,7 @@ test("fallbackFutureChatArtifactIntent handles explicit artifact follow-up", () 
 	assert.equal(parsed.action, "updateDocument");
 	assert.equal(parsed.title, "Robot Gardening Memo");
 	assert.equal(parsed.kind, "text");
+	assert.equal(parsed.cancelStreaming, null);
 });
 
 test("fallbackFutureChatArtifactIntent biases voice steering toward updating the current artifact", () => {
@@ -166,6 +170,45 @@ test("fallbackFutureChatArtifactIntent classifies page requests as code artifact
 	assert.equal(parsed.kind, "code");
 });
 
+test("resolveFastFutureChatArtifactIntent bypasses model classification for obvious artifact requests", () => {
+	const parsed = resolveFastFutureChatArtifactIntent({
+		activeArtifact: null,
+		artifactSteering: null,
+		latestUserMessage: "Create a product brief about Watermelon",
+	});
+
+	assert.deepEqual(parsed, {
+		action: "createDocument",
+		title: null,
+		kind: "text",
+		cancelStreaming: null,
+	});
+});
+
+test("resolveFastFutureChatArtifactIntent leaves ambiguous questions for model classification", () => {
+	const parsed = resolveFastFutureChatArtifactIntent({
+		activeArtifact: {
+			id: "doc-1",
+			title: "Watermelon",
+			kind: "text",
+		},
+		artifactSteering: null,
+		latestUserMessage: "Should this be shorter?",
+	});
+
+	assert.equal(parsed, null);
+});
+
+test("resolveFastFutureChatArtifactIntent does not bypass model classification for how-to questions", () => {
+	const parsed = resolveFastFutureChatArtifactIntent({
+		activeArtifact: null,
+		artifactSteering: null,
+		latestUserMessage: "How do I create a page about Watermelon?",
+	});
+
+	assert.equal(parsed, null);
+});
+
 test("normalizeArtifactKind maps spreadsheet aliases", () => {
 	assert.equal(normalizeArtifactKind("spreadsheet"), "sheet");
 	assert.equal(normalizeArtifactKind("table"), "sheet");
@@ -182,4 +225,105 @@ test("buildFutureChatArtifactIntentPrompt includes current artifact context", ()
 	assert.match(prompt, /Current open artifact:/);
 	assert.match(prompt, /Voice steering context:/);
 	assert.match(prompt, /Latest user request:/);
+});
+
+test("buildFutureChatArtifactIntentPrompt includes streaming artifact context", () => {
+	const prompt = buildFutureChatArtifactIntentPrompt({
+		activeArtifact: null,
+		conversationHistory: [],
+		latestUserMessage: "Write a doc about Tesla",
+		streamingArtifact: { id: "doc-2", title: "Apple Overview", kind: "text" },
+	});
+
+	assert.match(prompt, /An artifact is currently being generated:/);
+	assert.match(prompt, /Apple Overview/);
+	assert.match(prompt, /cancelStreaming/);
+});
+
+test("resolveFastFutureChatArtifactIntent cancels streaming when pronoun references streaming artifact", () => {
+	const parsed = resolveFastFutureChatArtifactIntent({
+		activeArtifact: null,
+		artifactSteering: null,
+		latestUserMessage: "Make it shorter",
+		streamingArtifact: { id: "doc-1", title: "Apple Overview", kind: "text" },
+	});
+
+	assert.deepEqual(parsed, {
+		action: "updateDocument",
+		title: "Apple Overview",
+		kind: "text",
+		cancelStreaming: true,
+	});
+});
+
+test("resolveFastFutureChatArtifactIntent keeps streaming when creating a different artifact", () => {
+	const parsed = resolveFastFutureChatArtifactIntent({
+		activeArtifact: null,
+		artifactSteering: null,
+		latestUserMessage: "Write a document about Tesla",
+		streamingArtifact: { id: "doc-1", title: "Apple Overview", kind: "text" },
+	});
+
+	assert.deepEqual(parsed, {
+		action: "createDocument",
+		title: null,
+		kind: "text",
+		cancelStreaming: false,
+	});
+});
+
+test("parseFutureChatArtifactIntent extracts cancelStreaming from LLM response when streaming artifact is present", () => {
+	const parsed = parseFutureChatArtifactIntent(
+		JSON.stringify({
+			action: "updateDocument",
+			title: "Apple Overview",
+			kind: "text",
+			cancelStreaming: true,
+		}),
+		{
+			activeArtifact: null,
+			streamingArtifact: { id: "doc-1", title: "Apple Overview", kind: "text" },
+		},
+	);
+
+	assert.deepEqual(parsed, {
+		action: "updateDocument",
+		title: "Apple Overview",
+		kind: "text",
+		cancelStreaming: true,
+	});
+});
+
+test("parseFutureChatArtifactIntent ignores cancelStreaming when no streaming artifact", () => {
+	const parsed = parseFutureChatArtifactIntent(
+		JSON.stringify({
+			action: "updateDocument",
+			title: "Apple Overview",
+			kind: "text",
+			cancelStreaming: true,
+		}),
+		{
+			activeArtifact: { id: "doc-1", title: "Apple Overview", kind: "text" },
+		},
+	);
+
+	assert.deepEqual(parsed, {
+		action: "updateDocument",
+		title: "Apple Overview",
+		kind: "text",
+		cancelStreaming: null,
+	});
+});
+
+test("resolveFastFutureChatArtifactIntent returns chat for conversational messages", () => {
+	for (const message of ["hi", "hello", "hey there", "thanks", "ok", "sure", "good morning"]) {
+		const parsed = resolveFastFutureChatArtifactIntent({
+			activeArtifact: null,
+			artifactSteering: null,
+			latestUserMessage: message,
+			streamingArtifact: null,
+		});
+
+		assert.deepEqual(parsed, { action: "chat" }, `Expected chat for "${message}"`);
+	}
 });

@@ -1,7 +1,7 @@
 "use client";
 
-import type { ChatStatus } from "ai";
 import type { FileUIPart } from "ai";
+import type { ChatStatus } from "ai";
 import { DefaultChatTransport } from "ai";
 import { useChat } from "@ai-sdk/react";
 import { useRouter } from "next/navigation";
@@ -13,6 +13,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { toast } from "sonner";
 import {
 	appendFutureChatStreamingArtifactDelta,
 	getFutureChatStreamingArtifactCheckpoint,
@@ -21,8 +22,30 @@ import {
 import type { FutureChatPendingArtifactResult } from "@/components/projects/future-chat/lib/future-chat-message-artifacts";
 import {
 	buildFutureChatThreadPersistKey,
+	shouldReplacePendingFutureChatRoute,
 	shouldReplaceFutureChatRouteAfterPersistence,
 } from "@/components/projects/future-chat/lib/future-chat-thread-route-sync";
+import {
+	buildRecoverableFutureChatThreadInput,
+	shouldRecoverFutureChatThreadAfterPersistenceFailure,
+} from "@/components/projects/future-chat/lib/future-chat-thread-persistence";
+import {
+	createRealtimeTextMessage,
+	mergeFutureChatMessages,
+	updateRealtimeTextMessage,
+	upsertRealtimeMessage,
+} from "@/components/projects/future-chat/lib/future-chat-realtime-message-state";
+import {
+	getLatestFutureChatThinkingStatusLabel,
+	resolveFutureChatComposerSubmitState,
+	type FutureChatDirectDelegationPhase,
+} from "@/components/projects/future-chat/lib/future-chat-composer-submit-state";
+import type { FutureChatSmartWidthClass } from "@/components/projects/future-chat/lib/future-chat-smart-generation-layout";
+import {
+	isFutureChatDelegationAbortError,
+	readFutureChatDelegationResponseStream,
+} from "@/components/projects/future-chat/lib/future-chat-delegation-stream";
+import { shouldHydratePersistedRealtimeMessages } from "@/components/projects/future-chat/lib/future-chat-realtime-persistence";
 import {
 	filterDeletedFutureChatThreads,
 	upsertFutureChatThreadRecord,
@@ -37,6 +60,7 @@ import {
 	getFutureChatThread,
 	isFutureChatBackendUnavailableError,
 	listFutureChatDocuments,
+	upsertFutureChatRealtimeMessage,
 	listFutureChatThreads,
 	listFutureChatVotes,
 	saveFutureChatDocument,
@@ -49,8 +73,27 @@ import {
 	type FutureChatThread,
 	type FutureChatVisibility,
 	type FutureChatVote,
+	type FutureChatActiveArtifact,
+	type FutureChatRecentHistoryEntry,
 	createFutureChatId,
 } from "@/lib/future-chat-types";
+import {
+	buildClarificationDismissPrompt,
+	buildClarificationSummaryPrompt,
+	createClarificationSubmission,
+	type ClarificationAnswers,
+	type ParsedQuestionCardPayload,
+} from "@/components/projects/shared/lib/question-card-widget";
+import {
+	buildPlanApprovalPrompt,
+	createPlanApprovalSubmission,
+	type PlanApprovalSelection,
+} from "@/components/projects/shared/lib/plan-approval";
+import {
+	buildFutureChatAgentModeRequest,
+	getFutureChatPortRoutingPayload,
+} from "@/components/projects/future-chat/lib/future-chat-agent-mode";
+import type { ParsedPlanWidgetPayload } from "@/components/projects/shared/lib/plan-widget";
 import { markLastFutureChatAssistantMessageInterrupted } from "@/lib/future-chat-interruptions";
 import {
 	getLatestDataPart,
@@ -173,6 +216,66 @@ function waitForFutureChat(ms: number): Promise<void> {
 const EXPLICIT_CANCEL_DEBOUNCE_MS = 750;
 const ACTIVE_TURN_STOP_TIMEOUT_MS = 1_200;
 
+function areFutureChatMessagesEqual(
+	left: ReadonlyArray<RovoUIMessage>,
+	right: ReadonlyArray<RovoUIMessage>,
+): boolean {
+	return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function normalizeRovodevMessagesForMerge(
+	messages: ReadonlyArray<RovoUIMessage>,
+	previousMessages: ReadonlyArray<RovoUIMessage>,
+): {
+	changed: boolean;
+	messages: RovoUIMessage[];
+} {
+	const previousMessagesById = new Map(
+		previousMessages.map((message) => [message.id, message]),
+	);
+	let didChange = false;
+
+	const normalizedMessages = messages.map((message, index) => {
+		const previousMessage = previousMessagesById.get(message.id);
+		const previousText = previousMessage ? getMessageText(previousMessage) : "";
+		const nextText = getMessageText(message);
+		const existingCreatedAt = previousMessage?.metadata?.createdAt ?? message.metadata?.createdAt;
+		const createdAt =
+			existingCreatedAt ??
+			new Date(Date.now() + index).toISOString();
+		const updatedAt =
+			previousMessage && previousText !== nextText
+				? new Date().toISOString()
+				: previousMessage?.metadata?.updatedAt ??
+					message.metadata?.updatedAt ??
+					createdAt;
+		const metadata = {
+			...(message.metadata ?? {}),
+			origin: "rovodev" as const,
+			createdAt,
+			updatedAt,
+		};
+
+		if (
+			message.metadata?.origin !== "rovodev"
+			|| message.metadata?.createdAt !== createdAt
+			|| message.metadata?.updatedAt !== updatedAt
+		) {
+			didChange = true;
+		}
+
+		return {
+			...message,
+			metadata,
+		};
+	});
+
+	return {
+		changed: didChange,
+		messages: normalizedMessages,
+	};
+}
+
 interface FutureChatArtifactContextPayload {
 	content: string;
 	id: string;
@@ -212,9 +315,68 @@ function buildStreamingArtifactContextPayload(
 	};
 }
 
+function resolveActiveArtifactContext(
+	activeDocument: FutureChatDocument | null,
+	artifactDraftContent: string,
+	activeDocumentContent: string,
+	streamingArtifact: FutureChatStreamingArtifact | null,
+): FutureChatArtifactContextPayload | null {
+	if (activeDocument && artifactDraftContent.trim()) {
+		return buildArtifactContextPayload(activeDocument, artifactDraftContent);
+	}
+	if (activeDocument) {
+		return buildArtifactContextPayload(activeDocument, activeDocumentContent);
+	}
+	if (streamingArtifact) {
+		return buildStreamingArtifactContextPayload(streamingArtifact);
+	}
+	return null;
+}
+
+function buildActiveArtifactMetadata(
+	activeDocument: FutureChatDocument | null,
+): FutureChatActiveArtifact | undefined {
+	if (!activeDocument) {
+		return undefined;
+	}
+	return {
+		id: activeDocument.id,
+		title: activeDocument.title,
+		kind: activeDocument.kind,
+	};
+}
+
+function buildRecentHistory(
+	messages: ReadonlyArray<RovoUIMessage>,
+	limit = 5,
+): FutureChatRecentHistoryEntry[] {
+	const history: FutureChatRecentHistoryEntry[] = [];
+	for (let i = messages.length - 1; i >= 0 && history.length < limit; i--) {
+		const message = messages[i];
+		if (message.role !== "user" && message.role !== "assistant") {
+			continue;
+		}
+		const text = getMessageText(message);
+		if (!text.trim()) {
+			continue;
+		}
+		history.unshift({
+			role: message.role,
+			content: text.slice(0, 500),
+		});
+	}
+	return history;
+}
+
 export interface FutureChatHookOptions {
 	embedded?: boolean;
 	initialThreadId?: string | null;
+	portIndex?: number;
+	smartGenerationLayout?: {
+		containerWidthPx?: number;
+		viewportWidthPx?: number;
+		widthClass?: FutureChatSmartWidthClass;
+	};
 }
 
 export interface FutureChatHookResult {
@@ -239,6 +401,7 @@ export interface FutureChatHookResult {
 	}) => Promise<void>;
 	isArtifactOpen: boolean;
 	isStreaming: boolean;
+	isPlanMode: boolean;
 	isVoiceMode: boolean;
 	loadThread: (threadId: string) => Promise<void>;
 	messages: RovoUIMessage[];
@@ -256,11 +419,21 @@ export interface FutureChatHookResult {
 	setSelectedVersionId: (versionId: string | null) => void;
 	setSidebarOpen: (isOpen: boolean) => void;
 	setThreadVisibility: (visibility: FutureChatVisibility) => void;
+	setVoiceMode: (next: boolean) => void;
 	sidebarOpen: boolean;
+	backgroundArtifactLabel: string | null;
+	backgroundDelegationLabel: string | null;
+	composerStatus: ChatStatus;
+	hasBackgroundDelegation: boolean;
 	status: ChatStatus;
 	stop: () => Promise<void>;
+	submitClarification: (questionCard: ParsedQuestionCardPayload, answers: ClarificationAnswers) => Promise<void>;
+	submitClarificationDismiss: (questionCard: ParsedQuestionCardPayload) => Promise<void>;
+	submitPlanApproval: (planWidget: ParsedPlanWidgetPayload, selection: PlanApprovalSelection) => Promise<void>;
 	submitPrompt: (payload: { text: string; files: FileUIPart[]; contextDescription?: string }) => Promise<void>;
 	suggestedPrompt: (text: string) => Promise<void>;
+	togglePlanMode: () => Promise<void>;
+	resetPlanMode: () => void;
 	toggleVoiceMode: () => void;
 	pendingArtifactResult: FutureChatPendingArtifactResult | null;
 	hideArtifactPane: () => void;
@@ -272,6 +445,29 @@ export interface FutureChatHookResult {
 	threadVisibility: FutureChatVisibility;
 	votes: Record<string, "up" | "down">;
 	voteOnMessage: (messageId: string, value: "up" | "down" | null) => Promise<void>;
+	appendRealtimeMessage: (
+		role: "user" | "assistant",
+		content: string,
+		options?: {
+			createdAt?: string;
+			messageId?: string;
+			metadata?: RovoUIMessage["metadata"];
+			state?: "done" | "streaming";
+		},
+	) => Promise<string>;
+	delegateToRovodev: (
+		messageId: string,
+		options?: {
+			contextDescription?: string;
+			conversationSummary?: string;
+			intentType?: string;
+			prompt?: string;
+			referencedFiles?: string[];
+			urgency?: string;
+		},
+	) => Promise<void>;
+	setRealtimeMessageContent: (messageId: string, content: string) => void;
+	updateRealtimeMessage: (messageId: string, contentDelta: string) => void;
 }
 
 function meetsStreamingAutoOpenContentThreshold(
@@ -299,6 +495,8 @@ function meetsStreamingAutoOpenContentThreshold(
 export function useFutureChat({
 	embedded = false,
 	initialThreadId = null,
+	portIndex,
+	smartGenerationLayout,
 }: Readonly<FutureChatHookOptions>): FutureChatHookResult {
 	const router = useRouter();
 	const [draftThreadId, setDraftThreadId] = useState(() => initialThreadId ?? createFutureChatId());
@@ -322,13 +520,41 @@ export function useFutureChat({
 	const [inputError, setInputError] = useState<string | null>(null);
 	const [isLoadingThread, setIsLoadingThread] = useState(() => initialThreadId !== null);
 	const [isVoiceMode, setIsVoiceMode] = useState(false);
+	const [realtimeMessages, setRealtimeMessages] = useState<RovoUIMessage[]>([]);
+	const [delegationTurnStatus, setDelegationTurnStatus] =
+		useState<ChatStatus>("ready");
+	const [directDelegationPhase, setDirectDelegationPhase] =
+		useState<FutureChatDirectDelegationPhase>("idle");
+	const [backgroundDelegationMessageId, setBackgroundDelegationMessageId] =
+		useState<string | null>(null);
 	const toggleVoiceMode = useCallback(() => setIsVoiceMode((prev) => !prev), []);
+	const setVoiceMode = useCallback((next: boolean) => setIsVoiceMode(next), []);
+	const [isPlanMode, setIsPlanMode] = useState(false);
+	const clearDirectDelegationState = useCallback(() => {
+		setBackgroundDelegationMessageId(null);
+		setDelegationTurnStatus("ready");
+		setDirectDelegationPhase("idle");
+	}, []);
 	const activeDocument = useMemo(() => {
 		return documents.find((document) => document.id === activeDocumentId) ?? null;
 	}, [activeDocumentId, documents]);
 	const activeDocumentContent = useMemo(() => {
 		return getLatestDocumentContent(activeDocument);
 	}, [activeDocument]);
+	const smartGenerationRequest = useMemo(() => {
+		return {
+			enabled: true,
+			surface: embedded ? "future-chat-preview" : "future-chat",
+			containerWidthPx: smartGenerationLayout?.containerWidthPx,
+			viewportWidthPx: smartGenerationLayout?.viewportWidthPx,
+			widthClass: smartGenerationLayout?.widthClass,
+		};
+	}, [
+		embedded,
+		smartGenerationLayout?.containerWidthPx,
+		smartGenerationLayout?.viewportWidthPx,
+		smartGenerationLayout?.widthClass,
+	]);
 	const runtimeThreadId = activeThreadId ?? draftThreadId;
 	const lastPersistedKeyRef = useRef<string>("");
 	const isHydratingThreadRef = useRef(false);
@@ -336,15 +562,23 @@ export function useFutureChat({
 	const activeDocumentRef = useRef<FutureChatDocument | null>(null);
 	const pendingArtifactResultRef = useRef<FutureChatPendingArtifactResult | null>(null);
 	const streamingArtifactRef = useRef<FutureChatStreamingArtifact | null>(null);
+	const queuedStreamingArtifactDeltaRef = useRef("");
+	const queuedStreamingArtifactKindRef = useRef<FutureChatDocumentKind | null>(null);
+	const queuedStreamingArtifactFrameRef = useRef<number | null>(null);
 	const streamingArtifactMessageIdRef = useRef<string | null>(null);
 	const visibleArtifactDocumentIdRef = useRef<string | null>(null);
 	const lastCompletedArtifactDocumentIdRef = useRef<string | null>(null);
 	const suppressedStreamingAutoOpenDocumentIdRef = useRef<string | null>(null);
 	const isVoiceModeRef = useRef(isVoiceMode);
+	const rovodevMessagesRef = useRef<RovoUIMessage[]>([]);
+	const realtimeMessagesRef = useRef<RovoUIMessage[]>([]);
+	const realtimeMessagesVersionRef = useRef(0);
 	const statusRef = useRef<ChatStatus>("ready");
+	const delegationAbortControllerRef = useRef<AbortController | null>(null);
 	const interruptPromiseRef = useRef<Promise<void> | null>(null);
 	const lastExplicitCancelAtRef = useRef(0);
 	const pendingRouteThreadIdRef = useRef<string | null>(null);
+	const pendingThreadCreationRef = useRef<Promise<string> | null>(null);
 	const deletedThreadIdsRef = useRef<Set<string>>(new Set());
 
 	useEffect(() => {
@@ -363,6 +597,72 @@ export function useFutureChat({
 		streamingArtifactRef.current = streamingArtifact;
 	}, [streamingArtifact]);
 
+	const clearQueuedStreamingArtifactDelta = useCallback(() => {
+		if (queuedStreamingArtifactFrameRef.current !== null) {
+			window.cancelAnimationFrame(queuedStreamingArtifactFrameRef.current);
+			queuedStreamingArtifactFrameRef.current = null;
+		}
+
+		queuedStreamingArtifactDeltaRef.current = "";
+		queuedStreamingArtifactKindRef.current = null;
+	}, []);
+
+	const flushQueuedStreamingArtifactDelta = useCallback(() => {
+		const delta = queuedStreamingArtifactDeltaRef.current;
+		if (!delta) {
+			return;
+		}
+
+		const kind = queuedStreamingArtifactKindRef.current ?? undefined;
+		queuedStreamingArtifactDeltaRef.current = "";
+		queuedStreamingArtifactKindRef.current = null;
+
+		setStreamingArtifact((prev) =>
+			appendFutureChatStreamingArtifactDelta({
+				current: prev,
+				delta,
+				kind,
+				timestamp: new Date().toISOString(),
+			}),
+		);
+	}, []);
+
+	const flushQueuedStreamingArtifactDeltaNow = useCallback(() => {
+		if (queuedStreamingArtifactFrameRef.current !== null) {
+			window.cancelAnimationFrame(queuedStreamingArtifactFrameRef.current);
+			queuedStreamingArtifactFrameRef.current = null;
+		}
+
+		flushQueuedStreamingArtifactDelta();
+	}, [flushQueuedStreamingArtifactDelta]);
+
+	const queueStreamingArtifactDelta = useCallback(
+		(delta: string, kind?: FutureChatDocumentKind) => {
+			if (!delta) {
+				return;
+			}
+
+			queuedStreamingArtifactDeltaRef.current += delta;
+			if (kind) {
+				queuedStreamingArtifactKindRef.current = kind;
+			}
+			if (queuedStreamingArtifactFrameRef.current !== null) {
+				return;
+			}
+
+			queuedStreamingArtifactFrameRef.current = window.requestAnimationFrame(() => {
+				queuedStreamingArtifactFrameRef.current = null;
+				flushQueuedStreamingArtifactDelta();
+			});
+		},
+		[flushQueuedStreamingArtifactDelta],
+	);
+
+	const clearStreamingArtifactState = useCallback(() => {
+		clearQueuedStreamingArtifactDelta();
+		setStreamingArtifact(null);
+	}, [clearQueuedStreamingArtifactDelta]);
+
 	useEffect(() => {
 		streamingArtifactMessageIdRef.current = streamingArtifactMessageId;
 	}, [streamingArtifactMessageId]);
@@ -372,8 +672,56 @@ export function useFutureChat({
 	}, [visibleArtifactDocumentId]);
 
 	useEffect(() => {
+		return () => {
+			if (queuedStreamingArtifactFrameRef.current !== null) {
+				window.cancelAnimationFrame(queuedStreamingArtifactFrameRef.current);
+			}
+		};
+	}, []);
+
+	useEffect(() => {
 		isVoiceModeRef.current = isVoiceMode;
 	}, [isVoiceMode]);
+
+	useEffect(() => {
+		realtimeMessagesRef.current = realtimeMessages;
+	}, [realtimeMessages]);
+
+	const replaceRealtimeMessagesState = useCallback(
+		(
+			nextMessages: RovoUIMessage[],
+			{
+				incrementVersion = true,
+			}: {
+				incrementVersion?: boolean;
+			} = {},
+		): RovoUIMessage[] => {
+			realtimeMessagesRef.current = nextMessages;
+			if (incrementVersion) {
+				realtimeMessagesVersionRef.current += 1;
+			}
+			setRealtimeMessages(nextMessages);
+			return nextMessages;
+		},
+		[],
+	);
+
+	const mutateRealtimeMessagesState = useCallback(
+		(
+			updater: (currentMessages: RovoUIMessage[]) => RovoUIMessage[],
+			{
+				incrementVersion = true,
+			}: {
+				incrementVersion?: boolean;
+			} = {},
+		): RovoUIMessage[] => {
+			return replaceRealtimeMessagesState(
+				updater(realtimeMessagesRef.current),
+				{ incrementVersion },
+			);
+		},
+		[replaceRealtimeMessagesState],
+	);
 
 	const transport = useMemo(
 		() =>
@@ -397,14 +745,9 @@ export function useFutureChat({
 						"content" in body.artifactContext
 							? body.artifactContext
 							: null;
-					const activeArtifactContext =
-						activeDocument && artifactDraftContent.trim()
-							? buildArtifactContextPayload(activeDocument, artifactDraftContent)
-							: activeDocument
-								? buildArtifactContextPayload(activeDocument, activeDocumentContent)
-								: streamingArtifact
-									? buildStreamingArtifactContextPayload(streamingArtifact)
-									: null;
+					const activeArtifactContext = resolveActiveArtifactContext(
+						activeDocument, artifactDraftContent, activeDocumentContent, streamingArtifact,
+					);
 
 					const explicitThreadId =
 						typeof body?.id === "string" && body.id.trim()
@@ -427,10 +770,11 @@ export function useFutureChat({
 								artifactContextFromBody ??
 								activeArtifactContext ??
 								undefined,
-							smartGeneration: {
-								enabled: true,
-								surface: embedded ? "future-chat-preview" : "future-chat",
-							},
+							...getFutureChatPortRoutingPayload(portIndex),
+							smartGeneration: smartGenerationRequest,
+							activeArtifact: buildActiveArtifactMetadata(activeDocument),
+							origin: body?.origin === "voice" ? "voice" : "text",
+							recentHistory: buildRecentHistory(messages),
 						},
 					};
 				},
@@ -440,8 +784,9 @@ export function useFutureChat({
 			activeDocumentId,
 			artifactDraftContent,
 			activeDocumentContent,
-			embedded,
 			runtimeThreadId,
+			portIndex,
+			smartGenerationRequest,
 			streamingArtifact,
 			threadVisibility,
 		],
@@ -550,12 +895,12 @@ export function useFutureChat({
 	}, []);
 
 	const {
-		messages,
-		setMessages,
+		messages: rovodevMessages,
+		setMessages: setRovodevMessages,
 		sendMessage,
 		stop,
 		regenerate,
-		status,
+		status: useChatStatus,
 	} = useChat<RovoUIMessage>({
 		transport,
 		onData: (dataPart) => {
@@ -609,6 +954,7 @@ export function useFutureChat({
 					break;
 
 				case "data-clear":
+					clearQueuedStreamingArtifactDelta();
 					setStreamingArtifact((prev) =>
 						prev
 							? { ...prev, content: "", status: "streaming", updatedAt: new Date().toISOString() }
@@ -618,17 +964,14 @@ export function useFutureChat({
 
 				case "data-textDelta":
 				case "data-codeDelta":
-					setStreamingArtifact((prev) =>
-						appendFutureChatStreamingArtifactDelta({
-							current: prev,
-							delta: dataPart.data,
-							kind: dataPart.type === "data-codeDelta" ? "code" : undefined,
-							timestamp: new Date().toISOString(),
-						}),
+					queueStreamingArtifactDelta(
+						dataPart.data,
+						dataPart.type === "data-codeDelta" ? "code" : undefined,
 					);
 					break;
 
 				case "data-finish": {
+					flushQueuedStreamingArtifactDeltaNow();
 					const documentId = streamingArtifactRef.current?.documentId;
 					setStreamingArtifact((prev) =>
 						prev
@@ -666,13 +1009,22 @@ export function useFutureChat({
 					});
 					break;
 
+				case "data-cancel-streaming":
+					// Backend confirmed it saved the partial v1 and is starting a
+					// new version. The old stream was already interrupted by
+					// submitPrompt, so this is purely a confirmation signal.
+					toast("Previous version saved", {
+						description: "A partial version was saved before starting the new one.",
+					});
+					break;
+
 				default:
 					break;
 			}
 		},
 		onError: (error) => {
 			const streamingDocumentId = streamingArtifactRef.current?.documentId;
-			setStreamingArtifact(null);
+			clearStreamingArtifactState();
 			resetPendingArtifactAssociation();
 			if (!activeDocumentRef.current && streamingDocumentId) {
 				setActiveDocumentId(null);
@@ -686,6 +1038,55 @@ export function useFutureChat({
 		onFinish: () => {},
 	});
 
+	useEffect(() => {
+		rovodevMessagesRef.current = rovodevMessages;
+	}, [rovodevMessages]);
+
+	useEffect(() => {
+		const normalizedMessages = normalizeRovodevMessagesForMerge(
+			rovodevMessages,
+			rovodevMessagesRef.current,
+		);
+		if (!normalizedMessages.changed) {
+			return;
+		}
+
+		rovodevMessagesRef.current = normalizedMessages.messages;
+		setRovodevMessages(normalizedMessages.messages);
+	}, [rovodevMessages, setRovodevMessages]);
+
+	const messages = useMemo(() => {
+		return mergeFutureChatMessages({
+			realtimeMessages,
+			rovodevMessages,
+		});
+	}, [realtimeMessages, rovodevMessages]);
+	const latestThinkingStatusLabel = useMemo(() => {
+		if (!backgroundDelegationMessageId) {
+			return null;
+		}
+
+		const backgroundDelegationMessage = messages.find((message) => {
+			return message.id === backgroundDelegationMessageId;
+		});
+		if (!backgroundDelegationMessage) {
+			return null;
+		}
+
+		return getLatestFutureChatThinkingStatusLabel([backgroundDelegationMessage]);
+	}, [backgroundDelegationMessageId, messages]);
+	const composerState = useMemo(() => {
+		return resolveFutureChatComposerSubmitState({
+			useChatStatus,
+			delegationPhase: directDelegationPhase,
+			latestThinkingStatusLabel,
+			streamingArtifactStatus: streamingArtifact?.status ?? null,
+		});
+	}, [directDelegationPhase, latestThinkingStatusLabel, streamingArtifact?.status, useChatStatus]);
+	const status =
+		useChatStatus === "submitted" || useChatStatus === "streaming"
+			? useChatStatus
+			: delegationTurnStatus;
 	const isStreaming = status === "submitted" || status === "streaming";
 
 	useEffect(() => {
@@ -695,7 +1096,7 @@ export function useFutureChat({
 	useEffect(() => {
 		if (!pendingArtifactAssociationRef.current) return;
 		if (streamingArtifactMessageId) return;
-		const lastMessage = messages[messages.length - 1];
+		const lastMessage = rovodevMessages[rovodevMessages.length - 1];
 		if (lastMessage?.role === "assistant") {
 			pendingArtifactAssociationRef.current = false;
 			setStreamingArtifactMessageId(lastMessage.id);
@@ -712,14 +1113,14 @@ export function useFutureChat({
 				});
 			}
 		}
-	}, [messages, streamingArtifactMessageId]);
+	}, [rovodevMessages, streamingArtifactMessageId]);
 
 	useEffect(() => {
 		if (!streamingArtifactMessageId) {
 			return;
 		}
 
-		const associatedMessage = messages.find(
+		const associatedMessage = rovodevMessages.find(
 			(message) => message.id === streamingArtifactMessageId && message.role === "assistant",
 		);
 		if (!associatedMessage || !getMessageArtifactResult(associatedMessage)) {
@@ -727,7 +1128,7 @@ export function useFutureChat({
 		}
 
 		setPendingArtifactResult(null);
-	}, [messages, streamingArtifactMessageId]);
+	}, [rovodevMessages, streamingArtifactMessageId]);
 
 	useEffect(() => {
 		const currentStreamingArtifact = streamingArtifact;
@@ -823,10 +1224,15 @@ export function useFutureChat({
 	const hydrateThreadState = useCallback(
 		(thread: FutureChatThread, nextDocuments: FutureChatDocument[], nextVotes: FutureChatVote[]) => {
 			isHydratingThreadRef.current = true;
+			pendingThreadCreationRef.current = null;
 			activeThreadIdRef.current = thread.id;
 			setActiveThreadId(thread.id);
-			setMessages(thread.messages);
-			setStreamingArtifact(null);
+			setRovodevMessages(thread.messages);
+			replaceRealtimeMessagesState(thread.realtimeMessages ?? [], {
+				incrementVersion: false,
+			});
+			clearDirectDelegationState();
+			clearStreamingArtifactState();
 			resetPendingArtifactAssociation();
 			setThreadVisibility(thread.visibility);
 			setDocuments(nextDocuments);
@@ -840,6 +1246,7 @@ export function useFutureChat({
 			setVotes(buildVotesMap(nextVotes));
 			const persistedKey = buildFutureChatThreadPersistKey({
 				messages: thread.messages,
+				realtimeMessages: thread.realtimeMessages ?? [],
 				visibility: thread.visibility,
 				activeDocumentId: thread.activeDocumentId,
 				title: thread.title,
@@ -850,8 +1257,49 @@ export function useFutureChat({
 				isHydratingThreadRef.current = false;
 			}, 0);
 		},
-		[resetPendingArtifactAssociation, setMessages],
+		[
+			clearDirectDelegationState,
+			clearStreamingArtifactState,
+			replaceRealtimeMessagesState,
+			resetPendingArtifactAssociation,
+			setRovodevMessages,
+		],
 	);
+
+	const resetToBlankChatState = useCallback((nextDraftId: string) => {
+		isHydratingThreadRef.current = true;
+		pendingThreadCreationRef.current = null;
+		setDraftThreadId(nextDraftId);
+		activeThreadIdRef.current = null;
+		setActiveThreadId(null);
+		setRovodevMessages([]);
+		replaceRealtimeMessagesState([], {
+			incrementVersion: false,
+		});
+		clearDirectDelegationState();
+		clearStreamingArtifactState();
+		resetPendingArtifactAssociation();
+		setDocuments([]);
+		setActiveDocumentId(null);
+		setVisibleArtifactDocumentId(null);
+		setSelectedVersionId(null);
+		setVotes({});
+		setThreadVisibility("private");
+		setEditingMessageId(null);
+		setArtifactMode("preview");
+		setArtifactDraftContent("");
+		lastPersistedKeyRef.current = buildFutureChatThreadPersistKey({
+			messages: [],
+			realtimeMessages: [],
+			visibility: "private",
+			activeDocumentId: null,
+			title: "New chat",
+		});
+		pendingRouteThreadIdRef.current = null;
+		window.setTimeout(() => {
+			isHydratingThreadRef.current = false;
+		}, 0);
+	}, [clearDirectDelegationState, clearStreamingArtifactState, replaceRealtimeMessagesState, resetPendingArtifactAssociation, setRovodevMessages]);
 
 	const loadThread = useCallback(
 		async (threadId: string) => {
@@ -864,13 +1312,23 @@ export function useFutureChat({
 					listFutureChatVotes(threadId),
 				]);
 				if (!thread) {
-					throw new Error("Future Chat thread not found.");
+					const nextDraftId = createFutureChatId();
+					resetToBlankChatState(nextDraftId);
+					if (!embedded) {
+						startTransition(() => {
+							router.replace("/future-chat");
+						});
+					}
+					return;
 				}
 				if (deletedThreadIdsRef.current.has(thread.id)) {
 					return;
 				}
 
-				const referencedDocumentIds = getFutureChatArtifactDocumentIdsFromMessages(thread.messages);
+				const referencedDocumentIds = getFutureChatArtifactDocumentIdsFromMessages([
+					...thread.messages,
+					...(thread.realtimeMessages ?? []),
+				]);
 				const missingDocumentIds = referencedDocumentIds.filter(
 					(documentId) => !nextDocuments.some((document) => document.id === documentId),
 				);
@@ -894,7 +1352,7 @@ export function useFutureChat({
 				setIsLoadingThread(false);
 			}
 		},
-		[hydrateThreadState],
+		[embedded, hydrateThreadState, resetToBlankChatState, router],
 	);
 
 	useEffect(() => {
@@ -915,76 +1373,76 @@ export function useFutureChat({
 	const openNewChat = useCallback(async () => {
 		if (isStreaming) {
 			await stop();
+			delegationAbortControllerRef.current?.abort();
+			delegationAbortControllerRef.current = null;
+			clearDirectDelegationState();
 		}
 
 		const nextDraftId = createFutureChatId();
-		isHydratingThreadRef.current = true;
-		setDraftThreadId(nextDraftId);
-		activeThreadIdRef.current = null;
-		setActiveThreadId(null);
-		setMessages([]);
-		setStreamingArtifact(null);
-		resetPendingArtifactAssociation();
-		setDocuments([]);
-		setActiveDocumentId(null);
-		setVisibleArtifactDocumentId(null);
-		setSelectedVersionId(null);
-		setVotes({});
-		setThreadVisibility("private");
-		setEditingMessageId(null);
-		setArtifactMode("preview");
-		setArtifactDraftContent("");
-		lastPersistedKeyRef.current = buildFutureChatThreadPersistKey({
-			messages: [],
-			visibility: "private",
-			activeDocumentId: null,
-			title: "New chat",
-		});
-		pendingRouteThreadIdRef.current = null;
-		window.setTimeout(() => {
-			isHydratingThreadRef.current = false;
-		}, 0);
+		resetToBlankChatState(nextDraftId);
 		if (!embedded) {
 			startTransition(() => {
 				router.push("/future-chat");
 			});
 		}
-	}, [embedded, isStreaming, resetPendingArtifactAssociation, router, setMessages, stop]);
+	}, [
+		clearDirectDelegationState,
+		embedded,
+		isStreaming,
+		resetToBlankChatState,
+		router,
+		stop,
+	]);
 
 	const ensureThread = useCallback(
 		async (seedText: string) => {
-			if (activeThreadId) {
-				return activeThreadId;
+			if (activeThreadIdRef.current) {
+				return activeThreadIdRef.current;
 			}
 
-			const nextThread = await createFutureChatThread({
+			if (pendingThreadCreationRef.current) {
+				return pendingThreadCreationRef.current;
+			}
+
+			const threadCreationPromise = createFutureChatThread({
 				id: draftThreadId,
 				title: deriveThreadTitle(seedText),
 				messages: [],
+				realtimeMessages: [],
 				visibility: threadVisibility,
 				activeDocumentId,
-			});
-			activeThreadIdRef.current = nextThread.id;
-			setActiveThreadId(nextThread.id);
-			setThreads((previousThreads) =>
-				upsertFutureChatThreadRecord(previousThreads, nextThread, {
-					deletedThreadIds: deletedThreadIdsRef.current,
-				}),
-			);
-			lastPersistedKeyRef.current = buildFutureChatThreadPersistKey({
-				messages: nextThread.messages,
-				visibility: nextThread.visibility,
-				activeDocumentId: nextThread.activeDocumentId,
-				title: nextThread.title,
-			});
-			if (!embedded) {
-				pendingRouteThreadIdRef.current = nextThread.id;
-			}
-			return nextThread.id;
+			})
+				.then((nextThread) => {
+					activeThreadIdRef.current = nextThread.id;
+					setActiveThreadId(nextThread.id);
+					setThreads((previousThreads) =>
+						upsertFutureChatThreadRecord(previousThreads, nextThread, {
+							deletedThreadIds: deletedThreadIdsRef.current,
+						}),
+					);
+					lastPersistedKeyRef.current = buildFutureChatThreadPersistKey({
+						messages: nextThread.messages,
+						realtimeMessages: nextThread.realtimeMessages ?? [],
+						visibility: nextThread.visibility,
+						activeDocumentId: nextThread.activeDocumentId,
+						title: nextThread.title,
+					});
+					if (!embedded) {
+						pendingRouteThreadIdRef.current = nextThread.id;
+					}
+					return nextThread.id;
+				})
+				.finally(() => {
+					if (pendingThreadCreationRef.current === threadCreationPromise) {
+						pendingThreadCreationRef.current = null;
+					}
+				});
+
+			pendingThreadCreationRef.current = threadCreationPromise;
+			return threadCreationPromise;
 		},
 		[
 			activeDocumentId,
-			activeThreadId,
 			draftThreadId,
 			embedded,
 			threadVisibility,
@@ -1008,14 +1466,41 @@ export function useFutureChat({
 			}
 
 			try {
-				const resolvedArtifactContext =
-					activeDocument && artifactDraftContent.trim()
-						? buildArtifactContextPayload(activeDocument, artifactDraftContent)
-						: activeDocument
-							? buildArtifactContextPayload(activeDocument, activeDocumentContent)
-							: streamingArtifact
-								? buildStreamingArtifactContextPayload(streamingArtifact)
-								: null;
+				// When an artifact is actively streaming, interrupt the current
+				// turn, save a checkpoint, and re-submit with the streaming
+				// artifact context so the backend can classify the intent.
+				const currentStreamingArtifact = streamingArtifactRef.current;
+				const isArtifactStreaming =
+					currentStreamingArtifact?.status === "streaming" &&
+					currentStreamingArtifact.documentId;
+				let streamingArtifactPayload:
+					| { id: string; title: string; kind: string; content: string }
+					| undefined;
+
+				if (isArtifactStreaming) {
+					const savedTitle = currentStreamingArtifact.title;
+					flushQueuedStreamingArtifactDeltaNow();
+					const freshSnapshot = streamingArtifactRef.current;
+					streamingArtifactPayload = {
+						id: freshSnapshot?.documentId ?? currentStreamingArtifact.documentId!,
+						title: freshSnapshot?.title ?? savedTitle,
+						kind: freshSnapshot?.kind ?? currentStreamingArtifact.kind,
+						content: freshSnapshot?.content ?? currentStreamingArtifact.content,
+					};
+					clearStreamingArtifactState();
+					const hadUseChatTurn =
+						useChatStatus === "submitted" || useChatStatus === "streaming";
+					if (hadUseChatTurn) {
+						await stop();
+					}
+					delegationAbortControllerRef.current?.abort();
+					delegationAbortControllerRef.current = null;
+					clearDirectDelegationState();
+				}
+
+				const resolvedArtifactContext = resolveActiveArtifactContext(
+					activeDocument, artifactDraftContent, activeDocumentContent, streamingArtifact,
+				);
 				const threadId = await ensureThread(trimmedText || files[0]?.filename || "New chat");
 				resetPendingArtifactAssociation();
 				await sendMessage({
@@ -1026,6 +1511,7 @@ export function useFutureChat({
 						id: threadId,
 						artifactContext: resolvedArtifactContext ?? undefined,
 						contextDescription,
+						streamingArtifact: streamingArtifactPayload,
 					},
 				});
 			} catch (error) {
@@ -1037,10 +1523,15 @@ export function useFutureChat({
 			activeDocument,
 			activeDocumentContent,
 			artifactDraftContent,
+			clearStreamingArtifactState,
+			clearDirectDelegationState,
 			ensureThread,
+			flushQueuedStreamingArtifactDeltaNow,
 			resetPendingArtifactAssociation,
 			sendMessage,
+			stop,
 			streamingArtifact,
+			useChatStatus,
 		],
 	);
 
@@ -1053,6 +1544,398 @@ export function useFutureChat({
 			}
 		},
 		[submitPrompt],
+	);
+
+	const submitClarification = useCallback(
+		async (questionCard: ParsedQuestionCardPayload, answers: ClarificationAnswers) => {
+			const submission = createClarificationSubmission(questionCard, answers);
+			const promptText = buildClarificationSummaryPrompt(questionCard, answers);
+			const threadId = await ensureThread(promptText || "Clarification");
+			resetPendingArtifactAssociation();
+
+			const deferredToolCallId = questionCard.deferredToolCallId;
+			const body: Record<string, unknown> = { id: threadId };
+
+			if (deferredToolCallId) {
+				body.deferredToolResponse = {
+					tool_call_id: deferredToolCallId,
+					result: submission.answers,
+				};
+			} else {
+				body.clarification = submission;
+			}
+
+			await sendMessage({ text: promptText, files: [] }, { body });
+		},
+		[ensureThread, resetPendingArtifactAssociation, sendMessage],
+	);
+
+	const submitClarificationDismiss = useCallback(
+		async (questionCard: ParsedQuestionCardPayload) => {
+			const dismissPrompt = buildClarificationDismissPrompt(questionCard);
+			const threadId = await ensureThread(dismissPrompt || "Skipped clarification");
+			resetPendingArtifactAssociation();
+			await sendMessage({ text: dismissPrompt, files: [] }, { body: { id: threadId } });
+		},
+		[ensureThread, resetPendingArtifactAssociation, sendMessage],
+	);
+
+	const submitPlanApproval = useCallback(
+		async (planWidget: ParsedPlanWidgetPayload, selection: PlanApprovalSelection) => {
+			const submission = createPlanApprovalSubmission(selection, planWidget);
+			const promptText = buildPlanApprovalPrompt(submission);
+			const threadId = await ensureThread(promptText || "Plan approval");
+			resetPendingArtifactAssociation();
+
+			const deferredToolCallId = planWidget.deferredToolCallId;
+			const body: Record<string, unknown> = {
+				id: threadId,
+			};
+
+			if (deferredToolCallId) {
+				const approved = selection.decision === "auto-accept";
+				body.deferredToolResponse = {
+					tool_call_id: deferredToolCallId,
+					result: {
+						approved,
+						feedback: approved ? undefined : selection.customInstruction?.trim() || undefined,
+					},
+				};
+			}
+
+			await sendMessage({ text: promptText, files: [] }, { body });
+
+			if (selection.decision === "auto-accept") {
+				setIsPlanMode(false);
+			}
+		},
+		[ensureThread, resetPendingArtifactAssociation, sendMessage],
+	);
+
+	const togglePlanMode = useCallback(async () => {
+		const nextMode = isPlanMode ? "default" : "plan";
+		try {
+			const response = await fetch(API_ENDPOINTS.AGENT_MODE, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(
+					buildFutureChatAgentModeRequest({
+						mode: nextMode,
+						portIndex,
+					}),
+				),
+			});
+			if (!response.ok) {
+				throw new Error(`Agent mode request failed with status ${response.status}`);
+			}
+			setIsPlanMode((prev) => !prev);
+		} catch (error) {
+			console.warn("[FutureChat] Failed to toggle plan mode:", error);
+		}
+	}, [isPlanMode, portIndex]);
+
+	const resetPlanMode = useCallback(() => {
+		setIsPlanMode(false);
+	}, []);
+
+	const appendRealtimeMessage = useCallback(
+		async (
+			role: "user" | "assistant",
+			content: string,
+			options?: {
+				createdAt?: string;
+				messageId?: string;
+				metadata?: RovoUIMessage["metadata"];
+				state?: "done" | "streaming";
+			},
+		) => {
+			const createdAt = options?.createdAt ?? new Date().toISOString();
+			const messageId = options?.messageId ?? createFutureChatId("future-chat-realtime");
+			const threadId = await ensureThread(content || `${role} message`);
+			const message = createRealtimeTextMessage({
+				id: messageId,
+				role,
+				content,
+				createdAt,
+				state: options?.state ?? "done",
+				metadata: {
+					...(options?.metadata ?? {}),
+					realtimeMessageId: messageId,
+				},
+			});
+
+			const nextRealtimeMessages = mutateRealtimeMessagesState((previousMessages) => {
+				return upsertRealtimeMessage(previousMessages, message);
+			});
+			setThreads((previousThreads) =>
+				previousThreads.map((thread) => {
+					if (thread.id !== threadId) {
+						return thread;
+					}
+
+					return {
+						...thread,
+						realtimeMessages: upsertRealtimeMessage(
+							thread.realtimeMessages ?? [],
+							message,
+						),
+						updatedAt: new Date().toISOString(),
+					};
+				}),
+			);
+			void upsertFutureChatRealtimeMessage({
+				threadId,
+				message:
+					nextRealtimeMessages.find((existingMessage) => existingMessage.id === messageId)
+					?? message,
+			}).catch((error) => {
+				console.warn("[FutureChat] Failed to persist realtime message:", error);
+			});
+
+			return messageId;
+		},
+		[ensureThread, mutateRealtimeMessagesState],
+	);
+
+	const mutateRealtimeMessageContent = useCallback(
+		(messageId: string, content: string, options: { append: boolean; state: "done" | "streaming" }) => {
+			if (!messageId || (!content && options.append)) {
+				return;
+			}
+
+			const updatedAt = new Date().toISOString();
+			const threadId = activeThreadIdRef.current;
+			const nextRealtimeMessages = mutateRealtimeMessagesState((previousMessages) =>
+				updateRealtimeTextMessage(previousMessages, messageId, content, {
+					append: options.append,
+					metadata: { updatedAt },
+					state: options.state,
+				}),
+			);
+			if (threadId) {
+				const nextMessage = nextRealtimeMessages.find((message) => message.id === messageId);
+				if (nextMessage) {
+					void upsertFutureChatRealtimeMessage({
+						threadId,
+						message: nextMessage,
+					}).catch((error) => {
+						console.warn("[FutureChat] Failed to persist realtime message:", error);
+					});
+				}
+			}
+		},
+		[mutateRealtimeMessagesState],
+	);
+
+	const setRealtimeMessageContent = useCallback(
+		(messageId: string, content: string) => {
+			mutateRealtimeMessageContent(messageId, content, { append: false, state: "done" });
+		},
+		[mutateRealtimeMessageContent],
+	);
+
+	const updateRealtimeMessage = useCallback(
+		(messageId: string, contentDelta: string) => {
+			mutateRealtimeMessageContent(messageId, contentDelta, { append: true, state: "streaming" });
+		},
+		[mutateRealtimeMessageContent],
+	);
+
+	const delegateToRovodev = useCallback(
+		async (
+			messageId: string,
+			options?: {
+				contextDescription?: string;
+				conversationSummary?: string;
+				existingRealtimeMessageId?: string | null;
+				intentType?: string;
+				prompt?: string;
+				referencedFiles?: string[];
+				urgency?: string;
+			},
+		) => {
+			if (!messageId) {
+				return;
+			}
+
+			setInputError(null);
+			const delegatedMessage =
+				realtimeMessagesRef.current.find((message) => message.id === messageId)
+				?? messages.find((message) => message.id === messageId)
+				?? null;
+			const delegatedText =
+				options?.prompt?.trim()
+				|| (delegatedMessage ? getMessageText(delegatedMessage).trim() : "");
+			if (!delegatedText) {
+				return;
+			}
+
+			const hadActiveTurn =
+				statusRef.current === "submitted" || statusRef.current === "streaming";
+			const checkpointDocument = hadActiveTurn
+				? await saveStreamingArtifactCheckpoint()
+				: null;
+			if (hadActiveTurn) {
+				if (useChatStatus === "submitted" || useChatStatus === "streaming") {
+					await stop();
+				}
+				delegationAbortControllerRef.current?.abort();
+				delegationAbortControllerRef.current = null;
+				clearDirectDelegationState();
+			}
+
+			const resolvedArtifactContext = checkpointDocument
+				? buildArtifactContextPayload(checkpointDocument, getLatestDocumentContent(checkpointDocument))
+				: resolveActiveArtifactContext(
+					activeDocument, artifactDraftContent, activeDocumentContent, streamingArtifact,
+				);
+			const threadId = await ensureThread(delegatedText);
+			resetPendingArtifactAssociation();
+
+			const abortController = new AbortController();
+			delegationAbortControllerRef.current = abortController;
+			setDelegationTurnStatus("submitted");
+			setDirectDelegationPhase("requesting");
+
+			try {
+				const response = await fetch(API_ENDPOINTS.FUTURE_CHAT_CHAT, {
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify({
+						id: threadId,
+						messages: [
+							...rovodevMessagesRef.current,
+							...realtimeMessagesRef.current,
+						],
+						artifactContext: resolvedArtifactContext ?? undefined,
+						artifactSteering: checkpointDocument
+							? ({
+								preferCurrentArtifact: true,
+								source: "voice",
+							} satisfies FutureChatArtifactSteeringPayload)
+							: undefined,
+						contextDescription: options?.contextDescription,
+						conversationSummary: options?.conversationSummary,
+						delegatedMessageId: messageId,
+						smartGeneration: smartGenerationRequest,
+						activeArtifact: buildActiveArtifactMetadata(activeDocument),
+						origin: "voice" as const,
+						voiceMetadata: {
+							intentType: options?.intentType,
+							urgency: options?.urgency,
+							conversationSummary: options?.conversationSummary,
+						},
+						recentHistory: buildRecentHistory([
+							...rovodevMessagesRef.current,
+							...realtimeMessagesRef.current,
+						]),
+						visibility: threadVisibility,
+					}),
+					signal: abortController.signal,
+				});
+				if (!response.ok || !response.body) {
+					throw new Error((await response.text().catch(() => "")) || "Failed to stream delegated response");
+				}
+
+				setDelegationTurnStatus("streaming");
+				setDirectDelegationPhase("background");
+				const existingRealtimeMessageId = options?.existingRealtimeMessageId;
+				let mappedStreamedId: string | null = null;
+				for await (const streamedMessage of readFutureChatDelegationResponseStream({
+					stream: response.body,
+					onError: (error) => {
+						console.error("[FutureChat] Failed to read delegated UI message stream:", error);
+					},
+					terminateOnError: true,
+				})) {
+					let effectiveId = streamedMessage.id;
+					if (existingRealtimeMessageId) {
+						if (!mappedStreamedId || mappedStreamedId === streamedMessage.id) {
+							mappedStreamedId = streamedMessage.id;
+							effectiveId = existingRealtimeMessageId;
+						}
+					}
+
+					mutateRealtimeMessagesState((previousMessages) => {
+						// When an existing GPT interim message ID is provided, reuse it
+						// so the delegation response merges into the same bubble instead
+						// of creating a second one.
+						const existingMessage = previousMessages.find(
+							(message) => message.id === effectiveId,
+						);
+						const normalizedMessage: RovoUIMessage = {
+							...streamedMessage,
+							id: effectiveId,
+							metadata: {
+								...(streamedMessage.metadata ?? {}),
+								createdAt:
+									existingMessage?.metadata?.createdAt ??
+									streamedMessage.metadata?.createdAt ??
+									new Date().toISOString(),
+								delegatedFromId: messageId,
+								origin: "rovodev",
+								realtimeMessageId:
+									streamedMessage.metadata?.realtimeMessageId ??
+									existingMessage?.metadata?.realtimeMessageId ??
+									streamedMessage.id,
+								updatedAt: new Date().toISOString(),
+							},
+						};
+						void upsertFutureChatRealtimeMessage({
+							threadId,
+							message: normalizedMessage,
+						}).catch((error) => {
+							console.warn("[FutureChat] Failed to persist delegated realtime message:", error);
+						});
+						return upsertRealtimeMessage(previousMessages, normalizedMessage);
+					});
+					setBackgroundDelegationMessageId((currentId) => currentId ?? effectiveId);
+				}
+				clearDirectDelegationState();
+			} catch (error) {
+				if (
+					abortController.signal.aborted
+					|| isFutureChatDelegationAbortError(error)
+				) {
+					clearDirectDelegationState();
+					return;
+				}
+
+				const errorMessage = toFutureChatUserErrorMessage(error);
+				setInputError(errorMessage);
+				await appendRealtimeMessage("assistant", errorMessage, {
+					metadata: {
+						origin: "rovodev",
+						delegatedFromId: messageId,
+					},
+				});
+				clearDirectDelegationState();
+				throw error;
+			} finally {
+				if (delegationAbortControllerRef.current === abortController) {
+					delegationAbortControllerRef.current = null;
+				}
+			}
+		},
+		[
+			activeDocument,
+			activeDocumentContent,
+			appendRealtimeMessage,
+			artifactDraftContent,
+			clearDirectDelegationState,
+			ensureThread,
+			messages,
+			mutateRealtimeMessagesState,
+			resetPendingArtifactAssociation,
+			saveStreamingArtifactCheckpoint,
+			smartGenerationRequest,
+			stop,
+			streamingArtifact,
+			threadVisibility,
+			useChatStatus,
+		],
 	);
 
 	const requestExplicitCancel = useCallback(async () => {
@@ -1102,13 +1985,19 @@ export function useFutureChat({
 				const hadActiveTurn =
 					statusRef.current === "submitted" ||
 					statusRef.current === "streaming";
+				const hasUseChatTurn =
+					useChatStatus === "submitted" || useChatStatus === "streaming";
+				const directDelegationAbortController = delegationAbortControllerRef.current;
 
 				try {
 					if (hadActiveTurn) {
 						await Promise.allSettled([
-							stop(),
-							requestExplicitCancel(),
+							hasUseChatTurn ? stop() : Promise.resolve(),
+							hasUseChatTurn ? requestExplicitCancel() : Promise.resolve(),
 						]);
+						directDelegationAbortController?.abort();
+						clearDirectDelegationState();
+						delegationAbortControllerRef.current = null;
 
 						const stoppedInTime = await waitForActiveTurnToStop();
 						if (!stoppedInTime) {
@@ -1120,17 +2009,31 @@ export function useFutureChat({
 
 					const interruptedAt = new Date().toISOString();
 					let didMarkInterruptedReply = false;
-					setMessages((previousMessages) => {
-						const result = markLastFutureChatAssistantMessageInterrupted(
-							previousMessages,
-							{
-								interruptedAt,
-								source,
-							},
-						);
-						didMarkInterruptedReply = result.messageId !== null;
-						return didMarkInterruptedReply ? result.messages : previousMessages;
-					});
+					if (hasUseChatTurn) {
+						setRovodevMessages((previousMessages) => {
+							const result = markLastFutureChatAssistantMessageInterrupted(
+								previousMessages,
+								{
+									interruptedAt,
+									source,
+								},
+							);
+							didMarkInterruptedReply = result.messageId !== null;
+							return didMarkInterruptedReply ? result.messages : previousMessages;
+						});
+					} else {
+						mutateRealtimeMessagesState((previousMessages) => {
+							const result = markLastFutureChatAssistantMessageInterrupted(
+								previousMessages,
+								{
+									interruptedAt,
+									source,
+								},
+							);
+							didMarkInterruptedReply = result.messageId !== null;
+							return didMarkInterruptedReply ? result.messages : previousMessages;
+						});
+					}
 
 					if (didMarkInterruptedReply) {
 						await new Promise<void>((resolve) => {
@@ -1148,7 +2051,15 @@ export function useFutureChat({
 			interruptPromiseRef.current = interruptPromise;
 			return interruptPromise;
 		},
-		[requestExplicitCancel, setMessages, stop, waitForActiveTurnToStop],
+		[
+			clearDirectDelegationState,
+			mutateRealtimeMessagesState,
+			requestExplicitCancel,
+			setRovodevMessages,
+			stop,
+			useChatStatus,
+			waitForActiveTurnToStop,
+		],
 	);
 
 	const applyVoiceSteer = useCallback(
@@ -1187,6 +2098,7 @@ export function useFutureChat({
 						body: {
 							id: threadId,
 							contextDescription,
+							origin: "voice" as const,
 							artifactSteering: {
 								preferCurrentArtifact: true,
 								source: "voice",
@@ -1390,12 +2302,12 @@ export function useFutureChat({
 				return;
 			}
 
-			const messageIndex = messages.findIndex((message) => message.id === messageId);
+			const messageIndex = rovodevMessages.findIndex((message) => message.id === messageId);
 			if (messageIndex === -1) {
 				return;
 			}
 
-			const updatedMessages = messages
+			const updatedMessages = rovodevMessages
 				.slice(0, messageIndex + 1)
 				.map((message, index) => {
 					if (index !== messageIndex) {
@@ -1408,7 +2320,7 @@ export function useFutureChat({
 					};
 				});
 			isHydratingThreadRef.current = true;
-			setMessages(updatedMessages);
+			setRovodevMessages(updatedMessages);
 			window.setTimeout(() => {
 				isHydratingThreadRef.current = false;
 				resetPendingArtifactAssociation();
@@ -1416,7 +2328,7 @@ export function useFutureChat({
 			}, 0);
 			setEditingMessageId(null);
 		},
-		[messages, regenerate, resetPendingArtifactAssociation, setMessages],
+		[regenerate, resetPendingArtifactAssociation, rovodevMessages, setRovodevMessages],
 	);
 
 	const regenerateLatest = useCallback(() => {
@@ -1436,7 +2348,8 @@ export function useFutureChat({
 				? currentThread.title
 				: deriveThreadTitle(getMessageText(messages.find((message) => message.role === "user") ?? { parts: [] }));
 		const nextPersistKey = buildFutureChatThreadPersistKey({
-			messages,
+			messages: rovodevMessages,
+			realtimeMessages,
 			visibility: threadVisibility,
 			activeDocumentId,
 			title: nextTitle,
@@ -1446,9 +2359,11 @@ export function useFutureChat({
 		}
 
 		let cancelled = false;
+		const realtimeRequestVersion = realtimeMessagesVersionRef.current;
 		void updateFutureChatThread(activeThreadId, {
 			title: nextTitle,
-			messages,
+			messages: rovodevMessages,
+			realtimeMessages,
 			visibility: threadVisibility,
 			activeDocumentId,
 		})
@@ -1459,6 +2374,7 @@ export function useFutureChat({
 
 				const persistedKey = buildFutureChatThreadPersistKey({
 					messages: thread.messages,
+					realtimeMessages: thread.realtimeMessages ?? [],
 					visibility: thread.visibility,
 					activeDocumentId: thread.activeDocumentId,
 					title: thread.title,
@@ -1471,10 +2387,12 @@ export function useFutureChat({
 				);
 				if (
 					!embedded &&
+					!isVoiceMode &&
 					shouldReplaceFutureChatRouteAfterPersistence({
 						pendingThreadId: pendingRouteThreadIdRef.current,
 						thread,
-						messages,
+						messages: rovodevMessages,
+						realtimeMessages,
 						visibility: threadVisibility,
 						activeDocumentId,
 						title: nextTitle,
@@ -1485,18 +2403,93 @@ export function useFutureChat({
 						router.replace(`/future-chat/${encodeURIComponent(thread.id)}`);
 					});
 				}
-				if (JSON.stringify(thread.messages) !== JSON.stringify(messages)) {
+				if (!areFutureChatMessagesEqual(thread.messages, rovodevMessages)) {
 					isHydratingThreadRef.current = true;
-					setMessages(thread.messages);
+					setRovodevMessages(thread.messages);
+					window.setTimeout(() => {
+						isHydratingThreadRef.current = false;
+					}, 0);
+				}
+				if (
+					!areFutureChatMessagesEqual(
+						thread.realtimeMessages ?? [],
+						realtimeMessagesRef.current,
+					)
+					&& shouldHydratePersistedRealtimeMessages({
+						currentMessages: realtimeMessagesRef.current,
+						currentVersion: realtimeMessagesVersionRef.current,
+						requestVersion: realtimeRequestVersion,
+					})
+				) {
+					isHydratingThreadRef.current = true;
+					replaceRealtimeMessagesState(thread.realtimeMessages ?? [], {
+						incrementVersion: false,
+					});
 					window.setTimeout(() => {
 						isHydratingThreadRef.current = false;
 					}, 0);
 				}
 			})
 			.catch((error) => {
-				if (!cancelled) {
-					setInputError(toFutureChatUserErrorMessage(error));
+				if (cancelled) {
+					return;
 				}
+
+				const recoveryState = {
+					activeDocumentId,
+					messages: rovodevMessages,
+					realtimeMessages,
+					threadId: activeThreadId,
+					title: nextTitle,
+					visibility: threadVisibility,
+				};
+				if (
+					shouldRecoverFutureChatThreadAfterPersistenceFailure({
+						error,
+						state: recoveryState,
+					})
+				) {
+					const recoveryInput =
+						buildRecoverableFutureChatThreadInput(recoveryState);
+					void createFutureChatThread(recoveryInput)
+						.then((thread) => {
+							if (
+								cancelled ||
+								activeThreadIdRef.current !== recoveryInput.id
+							) {
+								return;
+							}
+
+							lastPersistedKeyRef.current = buildFutureChatThreadPersistKey({
+								messages: thread.messages,
+								realtimeMessages: thread.realtimeMessages ?? [],
+								visibility: thread.visibility,
+								activeDocumentId: thread.activeDocumentId,
+								title: thread.title,
+							});
+							setThreads((previousThreads) =>
+								upsertFutureChatThreadRecord(previousThreads, thread, {
+									deletedThreadIds: deletedThreadIdsRef.current,
+								}),
+							);
+							if (!embedded) {
+								pendingRouteThreadIdRef.current = thread.id;
+								if (!isVoiceMode) {
+									startTransition(() => {
+										router.replace(`/future-chat/${encodeURIComponent(thread.id)}`);
+									});
+								}
+							}
+						})
+						.catch((recoveryError) => {
+							if (!cancelled) {
+								setInputError(toFutureChatUserErrorMessage(recoveryError));
+							}
+						});
+					return;
+				}
+
+				setInputError(toFutureChatUserErrorMessage(error));
 			});
 
 		return () => {
@@ -1508,12 +2501,39 @@ export function useFutureChat({
 		embedded,
 		isLoadingThread,
 		isStreaming,
+		isVoiceMode,
 		messages,
+		realtimeMessages,
+		replaceRealtimeMessagesState,
+		resetToBlankChatState,
 		router,
-		setMessages,
+		rovodevMessages,
+		setRovodevMessages,
 		threadVisibility,
 		threads,
 	]);
+
+	useEffect(() => {
+		const resolvedActiveThreadId = activeThreadId;
+		if (!resolvedActiveThreadId) {
+			return;
+		}
+
+		if (!shouldReplacePendingFutureChatRoute({
+			activeThreadId: resolvedActiveThreadId,
+			embedded,
+			isStreaming,
+			isVoiceMode,
+			pendingThreadId: pendingRouteThreadIdRef.current,
+		})) {
+			return;
+		}
+
+		pendingRouteThreadIdRef.current = null;
+		startTransition(() => {
+			router.replace(`/future-chat/${encodeURIComponent(resolvedActiveThreadId)}`);
+		});
+	}, [activeThreadId, embedded, isStreaming, isVoiceMode, router]);
 
 	return {
 		activeDocument,
@@ -1522,6 +2542,9 @@ export function useFutureChat({
 		applyVoiceSteer,
 		artifactMode,
 		artifactDraftContent,
+		backgroundArtifactLabel: composerState.backgroundArtifactLabel,
+		backgroundDelegationLabel: composerState.backgroundDelegationLabel,
+		composerStatus: composerState.composerStatus,
 		deleteAllThreads,
 		deleteDocument,
 		deleteThread,
@@ -1529,9 +2552,11 @@ export function useFutureChat({
 		editMessage,
 		editingMessageId,
 		hideArtifactPane,
+		hasBackgroundDelegation: composerState.hasBackgroundDelegation,
 		inputError,
 		interruptActiveTurn,
 		isArtifactOpen: visibleArtifactDocumentId !== null,
+		isPlanMode,
 		isStreaming,
 		isVoiceMode,
 		loadThread,
@@ -1550,12 +2575,18 @@ export function useFutureChat({
 		setSelectedVersionId,
 		setSidebarOpen,
 		setThreadVisibility,
+		setVoiceMode,
 		sidebarOpen,
 		status,
 		stop,
+		submitClarification,
+		submitClarificationDismiss,
+		submitPlanApproval,
 		submitPrompt,
 		suggestedPrompt,
+		togglePlanMode,
 		toggleVoiceMode,
+		resetPlanMode,
 		pendingArtifactResult,
 		streamingArtifact,
 		streamingArtifactMessageId,
@@ -1565,5 +2596,9 @@ export function useFutureChat({
 		threadVisibility,
 		votes,
 		voteOnMessage,
+		appendRealtimeMessage,
+		delegateToRovodev,
+		setRealtimeMessageContent,
+		updateRealtimeMessage,
 	};
 }

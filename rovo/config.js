@@ -21,8 +21,6 @@ const REQUEST_USER_INPUT_INSTRUCTION = [
 	"When context explicitly marks the turn as the initial make interview, you MUST call `ask_user_questions` as the first tool call before any other tools.",
 	"After that initial make interview turn, do not call `ask_user_questions` again by default.",
 	"Only ask follow-up questions when a hard blocker prevents progress.",
-	"If explicit plan-mode context is present, proceed with create-plan and update_todo.",
-	"If plan-mode context is NOT present, do not call planning-only tools (create-plan, update_todo, enter/exit_plan_mode).",
 	"For short or open-ended action requests — such as creating, drafting, sending, translating, or searching — where the user has not specified essential details like the subject, content, recipients, target, or source material, you MUST use the tool to gather those details before attempting the task. Do not guess or proceed with fabricated inputs.",
 	"Skip the tool only for requests where all essential inputs are already present and the task can be completed deterministically (e.g. a rewrite with source text provided, a translation with both text and target language specified, or a specific search query).",
 	"When you call ask_user_questions, it will pause your execution. The user's answers will be returned as the tool result. Do NOT continue generating text or calling other tools after ask_user_questions — your turn ends when you call it. NEVER fall back to using bash/cat to output question JSON — always use ask_user_questions.",
@@ -36,6 +34,29 @@ const PLAN_DESCRIPTION_INSTRUCTION = [
 	"Good examples: \"IT asset management page\", \"Refactor auth to use JWT\", \"Add dark mode support\".",
 	"Bad examples: \"Build a new IT asset management page at /it-assets integrated into the existing sidebar navigation with full CRUD support\".",
 	"[End Plan Description Protocol]",
+].join("\n");
+
+const GENUI_SPEC_INSTRUCTION = [
+	"[Interactive Visual UI Protocol]",
+	"When answering knowledge or explanatory requests that would benefit from visual presentation (summaries, comparisons, status overviews, data displays, timelines, dashboards), emit a ```spec code fence with JSONL RFC 6902 JSON Patch lines to render an interactive UI card inline in the chat.",
+	"",
+	"Output format: first write 1-3 sentences of explanation, then emit one ```spec block:",
+	"```spec",
+	'{"op":"add","path":"/root","value":"main"}',
+	'{"op":"add","path":"/elements/main","value":{"type":"Stack","props":{"gap":"md"},"children":["heading","content"]}}',
+	'{"op":"add","path":"/elements/heading","value":{"type":"Heading","props":{"text":"Title","level":"h2"},"children":[]}}',
+	'{"op":"add","path":"/elements/content","value":{"type":"Text","props":{"content":"Body text"}}}',
+	"```",
+	"",
+	"Key components: Stack (layout), Card (container), Heading, Text, Metric (KPI), Table (data), BarChart/LineChart/PieChart (charts), Lozenge (status), Badge (priority), Tag (labels), Timeline (events), Tabs/TabContent (navigation), Avatar (people), Alert/SectionMessage (notices).",
+	"",
+	"Rules:",
+	"- First patch must set /root. Each child key in children arrays must have a matching /elements/<key> patch.",
+	"- Use Lozenge for workflow statuses: Done→success, In Progress→information, To Do→neutral, Blocked→danger.",
+	"- For Atlassian data (Jira work items, Confluence pages): ALWAYS emit a spec. Use Table for multiple items, Card for single items, Timeline for activity feeds.",
+	"- Say 'Work Items' not 'Issues'. Say 'Pages' not 'Confluence Pages'.",
+	"- Do NOT emit a spec for simple greetings, yes/no answers, or short factual replies. Only use specs when visual structure adds value.",
+	"[End Interactive Visual UI Protocol]",
 ].join("\n");
 
 const FIGMA_CLARIFICATION_INSTRUCTION = [
@@ -250,6 +271,7 @@ function buildUserMessage(message, conversationHistory, contextDescription) {
 	const instructions = [
 		REQUEST_USER_INPUT_INSTRUCTION,
 		PLAN_DESCRIPTION_INSTRUCTION,
+		GENUI_SPEC_INSTRUCTION,
 		FIGMA_CLARIFICATION_INSTRUCTION,
 		promptSpecificInstruction,
 	]

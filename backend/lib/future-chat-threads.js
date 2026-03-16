@@ -36,6 +36,23 @@ function buildThreadPaths(rootDir, threadId) {
 	};
 }
 
+function normalizeRealtimeMessages(rawMessages) {
+	if (!Array.isArray(rawMessages)) {
+		return [];
+	}
+
+	return rawMessages.filter((message) => {
+		return (
+			message &&
+			typeof message === "object" &&
+			typeof message.id === "string" &&
+			message.id.trim().length > 0 &&
+			(message.role === "user" || message.role === "assistant") &&
+			Array.isArray(message.parts)
+		);
+	});
+}
+
 function normalizeThreadRecord(rawThread) {
 	if (!rawThread || typeof rawThread !== "object") {
 		return null;
@@ -71,6 +88,7 @@ function normalizeThreadRecord(rawThread) {
 			typeof rawThread.provider === "string" && rawThread.provider.trim()
 				? rawThread.provider.trim()
 				: null,
+		realtimeMessages: normalizeRealtimeMessages(rawThread.realtimeMessages),
 		activeDocumentId:
 			typeof rawThread.activeDocumentId === "string" && rawThread.activeDocumentId.trim()
 				? rawThread.activeDocumentId.trim()
@@ -157,6 +175,7 @@ function createFutureChatThreadManager({ baseDir, logger }) {
 		id,
 		title,
 		messages,
+		realtimeMessages,
 		visibility,
 		modelId,
 		provider,
@@ -171,6 +190,7 @@ function createFutureChatThreadManager({ baseDir, logger }) {
 			id: threadId,
 			title,
 			messages,
+			realtimeMessages,
 			visibility,
 			modelId,
 			provider,
@@ -206,6 +226,53 @@ function createFutureChatThreadManager({ baseDir, logger }) {
 		return nextThread;
 	};
 
+	const getRealtimeMessages = async (threadId) => {
+		const thread = await readThread(threadId);
+		if (!thread) {
+			return null;
+		}
+
+		return normalizeRealtimeMessages(thread.realtimeMessages);
+	};
+
+	const replaceRealtimeMessages = async (threadId, realtimeMessages) => {
+		const currentThread = await readThread(threadId);
+		if (!currentThread) {
+			return null;
+		}
+
+		const nextRealtimeMessages = normalizeRealtimeMessages(realtimeMessages);
+		return updateThread(threadId, {
+			realtimeMessages: nextRealtimeMessages,
+		});
+	};
+
+	const upsertRealtimeMessage = async (threadId, realtimeMessage) => {
+		const currentThread = await readThread(threadId);
+		if (!currentThread) {
+			return null;
+		}
+
+		const [nextRealtimeMessage] = normalizeRealtimeMessages([realtimeMessage]);
+		if (!nextRealtimeMessage) {
+			return currentThread;
+		}
+
+		const existingMessages = normalizeRealtimeMessages(currentThread.realtimeMessages);
+		const existingIndex = existingMessages.findIndex(
+			(message) => message.id === nextRealtimeMessage.id,
+		);
+		if (existingIndex === -1) {
+			existingMessages.push(nextRealtimeMessage);
+		} else {
+			existingMessages.splice(existingIndex, 1, nextRealtimeMessage);
+		}
+
+		return updateThread(threadId, {
+			realtimeMessages: existingMessages,
+		});
+	};
+
 	const deleteThread = async (threadId) => {
 		const { threadDir } = buildThreadPaths(threadsRootDir, threadId);
 		await fs.rm(threadDir, { recursive: true, force: true });
@@ -218,7 +285,10 @@ function createFutureChatThreadManager({ baseDir, logger }) {
 	return {
 		listThreads,
 		getThread: readThread,
+		getRealtimeMessages,
 		createThread,
+		replaceRealtimeMessages,
+		upsertRealtimeMessage,
 		updateThread,
 		deleteThread,
 		deleteAllThreads,

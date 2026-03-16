@@ -262,7 +262,6 @@ async function synthesizeSound({
 		speechEndpointUrl,
 	};
 }
-
 module.exports = {
 	buildSpeechEndpointUrl,
 	synthesizeSound,

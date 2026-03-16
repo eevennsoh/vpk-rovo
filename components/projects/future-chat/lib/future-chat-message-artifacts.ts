@@ -27,6 +27,11 @@ export interface FutureChatMessageArtifactDisplay {
 	title: string;
 }
 
+export interface FutureChatOrphanArtifactDisplay
+	extends FutureChatMessageArtifactDisplay {
+	anchorMessageId: string;
+}
+
 function getLatestDocumentContent(document: FutureChatDocument | null): string {
 	if (!document || document.versions.length === 0) {
 		return "";
@@ -35,15 +40,57 @@ function getLatestDocumentContent(document: FutureChatDocument | null): string {
 	return document.versions[document.versions.length - 1]?.content ?? "";
 }
 
+function getMessageTimestamp(
+	message: Pick<RovoUIMessage, "metadata">,
+): number | null {
+	const createdAt = Date.parse(message.metadata?.createdAt ?? "");
+	if (Number.isFinite(createdAt)) {
+		return createdAt;
+	}
+
+	const updatedAt = Date.parse(message.metadata?.updatedAt ?? "");
+	if (Number.isFinite(updatedAt)) {
+		return updatedAt;
+	}
+
+	return null;
+}
+
+function getDocumentAnchorTimestamp(document: FutureChatDocument): number | null {
+	const latestVersion = document.versions.at(-1) ?? null;
+	const versionTimestamp = Date.parse(latestVersion?.createdAt ?? "");
+	if (Number.isFinite(versionTimestamp)) {
+		return versionTimestamp;
+	}
+
+	const updatedAt = Date.parse(document.updatedAt);
+	if (Number.isFinite(updatedAt)) {
+		return updatedAt;
+	}
+
+	const createdAt = Date.parse(document.createdAt);
+	if (Number.isFinite(createdAt)) {
+		return createdAt;
+	}
+
+	return null;
+}
+
+function sortDocumentsNewestFirst(
+	documents: ReadonlyArray<FutureChatDocument>,
+): FutureChatDocument[] {
+	return [...documents].sort((left, right) => {
+		return Date.parse(right.updatedAt) - Date.parse(left.updatedAt);
+	});
+}
+
 export function resolveFutureChatMessageArtifactDisplay({
-	visibleDocumentId,
 	documents,
 	message,
 	pendingArtifactResult,
 	streamingArtifact,
 	streamingArtifactMessageId,
 }: Readonly<{
-	visibleDocumentId: string | null;
 	documents: ReadonlyArray<FutureChatDocument>;
 	message: Pick<RovoUIMessage, "id" | "parts">;
 	pendingArtifactResult: FutureChatPendingArtifactResult | null;
@@ -64,30 +111,106 @@ export function resolveFutureChatMessageArtifactDisplay({
 	}
 
 	const document = documents.find((candidate) => candidate.id === documentId) ?? null;
-	const isStreaming =
+	const usesStreamingPreview =
 		streamingArtifactMessageId === message.id &&
 		streamingArtifact?.documentId === documentId;
+	const isStreaming =
+		usesStreamingPreview && streamingArtifact?.status === "streaming";
 
 	return {
 		action: messageArtifact?.action ?? pendingArtifact?.action ?? null,
-		displayMode: visibleDocumentId === documentId ? "chip" : "preview",
+		displayMode: "preview",
 		document,
 		documentId,
 		isStreaming,
 		kind:
-			(isStreaming ? streamingArtifact?.kind : null) ??
+			(usesStreamingPreview ? streamingArtifact?.kind : null) ??
 			messageArtifact?.kind ??
 			pendingArtifact?.kind ??
 			document?.kind ??
 			"text",
-		previewContent: isStreaming
+		previewContent: usesStreamingPreview
 			? streamingArtifact?.content ?? ""
 			: getLatestDocumentContent(document),
 		title:
-			(isStreaming ? streamingArtifact?.title : null) ??
+			(usesStreamingPreview ? streamingArtifact?.title : null) ??
 			messageArtifact?.title ??
 			pendingArtifact?.title ??
 			document?.title ??
 			"Artifact",
+	};
+}
+
+export function resolveFutureChatOrphanArtifactDisplay({
+	activeDocumentId,
+	documents,
+	messages,
+}: Readonly<{
+	activeDocumentId: string | null;
+	documents: ReadonlyArray<FutureChatDocument>;
+	messages: ReadonlyArray<Pick<RovoUIMessage, "id" | "metadata" | "parts" | "role">>;
+}>): FutureChatOrphanArtifactDisplay | null {
+	const anchoredDocumentIds = new Set(
+		messages
+			.map((message) => getMessageArtifactResult(message)?.documentId ?? null)
+			.filter((documentId): documentId is string => Boolean(documentId)),
+	);
+
+	const fallbackDocument = (() => {
+		if (activeDocumentId) {
+			const activeDocument =
+				documents.find((document) => document.id === activeDocumentId) ?? null;
+			if (activeDocument && !activeDocument.sourceMessageId && !anchoredDocumentIds.has(activeDocumentId)) {
+				return activeDocument;
+			}
+		}
+
+		return (
+			sortDocumentsNewestFirst(documents).find((document) => {
+				return !document.sourceMessageId && !anchoredDocumentIds.has(document.id);
+			}) ?? null
+		);
+	})();
+	if (!fallbackDocument) {
+		return null;
+	}
+
+	const targetTimestamp = getDocumentAnchorTimestamp(fallbackDocument);
+	const assistantMessages = messages.filter((message) => message.role === "assistant");
+	const anchorMessage = targetTimestamp === null
+		? [...assistantMessages].reverse()[0] ?? null
+		: assistantMessages.reduce<Pick<RovoUIMessage, "id" | "metadata" | "parts" | "role"> | null>((closestMessage, message) => {
+			const messageTimestamp = getMessageTimestamp(message);
+			if (messageTimestamp === null) {
+				return closestMessage;
+			}
+
+			if (!closestMessage) {
+				return message;
+			}
+
+			const closestTimestamp = getMessageTimestamp(closestMessage);
+			if (closestTimestamp === null) {
+				return message;
+			}
+
+			const currentDistance = Math.abs(messageTimestamp - targetTimestamp);
+			const closestDistance = Math.abs(closestTimestamp - targetTimestamp);
+			return currentDistance < closestDistance ? message : closestMessage;
+		}, null) ?? [...assistantMessages].reverse()[0] ?? null;
+	if (!anchorMessage) {
+		return null;
+	}
+
+	return {
+		action: null,
+		anchorMessageId: anchorMessage.id,
+		displayMode: "preview",
+		document: fallbackDocument,
+		documentId: fallbackDocument.id,
+		isStreaming: false,
+		kind: fallbackDocument.kind,
+		previewContent: getLatestDocumentContent(fallbackDocument),
+		title: fallbackDocument.title,
 	};
 }

@@ -12,6 +12,8 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
 	PromptInput,
+	PromptInputActionAddAttachments,
+	PromptInputActionAddScreenshot,
 	PromptInputActionMenu,
 	PromptInputActionMenuContent,
 	PromptInputActionMenuItem,
@@ -59,6 +61,7 @@ import ImageIcon from "@atlaskit/icon/core/image";
 import LinkIcon from "@atlaskit/icon/core/link";
 import MentionIcon from "@atlaskit/icon/core/mention";
 import PageIcon from "@atlaskit/icon/core/page";
+import ScreenIcon from "@atlaskit/icon/core/screen";
 import SearchIcon from "@atlaskit/icon/core/search";
 import UploadIcon from "@atlaskit/icon/core/upload";
 
@@ -124,12 +127,16 @@ export function PromptInputDemoChatComposer() {
 										<AddIcon label="" />
 									</PromptInputActionMenuTrigger>
 									<PromptInputActionMenuContent>
-										<PromptInputActionMenuItem
-											onSelect={() => setIsAddMenuOpen(false)}
+										<PromptInputActionAddAttachments
 											elemBefore={<UploadIcon label="" />}
 										>
 											Upload file
-										</PromptInputActionMenuItem>
+										</PromptInputActionAddAttachments>
+										<PromptInputActionAddScreenshot
+											elemBefore={<ScreenIcon label="" />}
+										>
+											Take screenshot
+										</PromptInputActionAddScreenshot>
 										<PromptInputActionMenuItem
 											onSelect={() => setIsAddMenuOpen(false)}
 											elemBefore={<LinkIcon label="" />}

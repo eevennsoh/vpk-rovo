@@ -14,7 +14,8 @@ import {
 	GenerativeCardContent,
 	GenerativeCardFooter,
 	GenerativeCardHeader,
-} from "@/components/ui-ai/generative-card";
+	type DistortionTintMode,
+} from "@/components/blocks/generative-card";
 import {
 	Dialog,
 	DialogClose,
@@ -38,7 +39,6 @@ import {
 } from "@/components/ui-ai/transcription";
 import { JsonRenderView } from "@/lib/json-render/renderer";
 import { useProgressiveSpec } from "@/lib/json-render/use-progressive-spec";
-import type { DistortionTintMode } from "@/components/ui-ai/generative-card-bulge-canvas";
 import {
 	type GenerativeWidgetActionItem,
 	type GenerativeWidgetPrimaryActionPayload,
@@ -760,7 +760,7 @@ export function GenerativeWidgetCard({
 			setGenuiState((previousState) => {
 				let state = previousState;
 				for (const { path, value } of changes) {
-					if (!path.startsWith("/")) continue;
+					if (typeof path !== "string" || !path.startsWith("/")) continue;
 					state = immutableSetByPath(state, path, value);
 				}
 				return state;

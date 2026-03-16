@@ -98,7 +98,7 @@ export const ChainOfThoughtHeader = memo(
 				</span>
 				<ChevronDownIcon
 					className={cn(
-						"size-4 transition-transform",
+						"size-4 shrink-0 transition-transform",
 						isOpen ? "rotate-180" : "rotate-0"
 					)}
 				/>

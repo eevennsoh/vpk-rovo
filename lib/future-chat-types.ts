@@ -7,6 +7,7 @@ export interface FutureChatThread {
 	id: string;
 	title: string;
 	messages: RovoUIMessage[];
+	realtimeMessages: RovoUIMessage[];
 	visibility: FutureChatVisibility;
 	modelId: string | null;
 	provider: string | null;
@@ -39,6 +40,31 @@ export interface FutureChatDocument {
 	createdAt: string;
 	updatedAt: string;
 	versions: FutureChatDocumentVersion[];
+}
+
+export interface FutureChatActiveArtifact {
+	id: string;
+	title: string;
+	kind: string;
+}
+
+export interface FutureChatVoiceMetadata {
+	intentType?: string;
+	urgency?: string;
+	conversationSummary?: string;
+}
+
+export interface FutureChatRecentHistoryEntry {
+	role: "user" | "assistant";
+	content: string;
+	intent?: string;
+}
+
+export interface FutureChatRoutingMetadata {
+	activeArtifact?: FutureChatActiveArtifact;
+	origin?: "text" | "voice";
+	voiceMetadata?: FutureChatVoiceMetadata;
+	recentHistory?: FutureChatRecentHistoryEntry[];
 }
 
 export function createFutureChatId(prefix = "future-chat"): string {

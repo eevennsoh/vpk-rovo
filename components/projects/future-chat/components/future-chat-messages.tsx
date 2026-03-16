@@ -1,5 +1,6 @@
 "use client";
 
+import type { RefObject } from "react";
 import {
 	Attachment,
 	AttachmentPreview,
@@ -7,29 +8,60 @@ import {
 } from "@/components/ui-ai/attachments";
 import {
 	Conversation,
+	ConversationContent,
 	ConversationScrollButton,
+	type ConversationFollowMode,
+	useConversationContext,
 } from "@/components/ui-ai/conversation";
 import { MessageResponse } from "@/components/ui-ai/message";
 import {
+	AdsReasoningTrigger,
 	Reasoning,
 	ReasoningContent,
-	ReasoningTrigger,
+	ReasoningSection,
+	ReasoningText,
 } from "@/components/ui-ai/reasoning";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { getFutureChatInterruptionLabel } from "@/lib/future-chat-interruptions";
 import {
 	resolveFutureChatMessageArtifactDisplay,
+	resolveFutureChatOrphanArtifactDisplay,
 	type FutureChatPendingArtifactResult,
 } from "@/components/projects/future-chat/lib/future-chat-message-artifacts";
+import {
+	sanitizeFutureChatAssistantText,
+	shouldRenderFutureChatWidget,
+} from "@/components/projects/future-chat/lib/future-chat-message-display";
+import { AssistantThinkingToolsSection } from "@/components/projects/shared/components/assistant-thinking-tools-section";
 import { GenerativeWidgetCard } from "@/components/projects/shared/components/generative-widget-card";
 import LoadingWidget from "@/components/projects/shared/components/loading-widget";
+import { useDynamicThinkingLabel } from "@/components/projects/shared/hooks/use-dynamic-thinking-label";
 import {
+	getReasoningPropsForPhase,
+	useReasoningPhase,
+} from "@/components/projects/shared/hooks/use-reasoning-phase";
+import {
+	getDefaultThinkingLabel,
+	getPreloadShimmerLabel,
+	getReasoningSectionTitle,
+} from "@/components/projects/shared/lib/reasoning-labels";
+import {
+	isThinkingStatusActive as checkThinkingStatusActive,
+	resolveThinkingStatusTriggerLabel,
+} from "@/components/projects/shared/thread-message/lib/thinking-status-state";
+import {
+	getAllDataParts,
 	getMessageInterruption,
 	getLatestDataPart,
+	getLatestRouteDecision,
 	getMessageReasoning,
 	getMessageSources,
 	getMessageText,
+	getThinkingToolCallSummaries,
+	hasTurnCompleteSignal,
+	isMessageTextStreaming,
+	type RoutingDecision,
 	type RovoUIMessage,
 } from "@/lib/rovo-ui-messages";
 import { cn } from "@/lib/utils";
@@ -45,11 +77,11 @@ import {
 	ThumbsUpIcon,
 } from "lucide-react";
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Heading from "@/components/blocks/shared-ui/heading";
 
 interface FutureChatMessagesProps {
-	visibleDocumentId: string | null;
+	activeDocumentId: string | null;
 	compact?: boolean;
 	documents: ReadonlyArray<FutureChatDocument>;
 	editingMessageId: string | null;
@@ -63,53 +95,86 @@ interface FutureChatMessagesProps {
 	onSetEditingMessageId: (messageId: string | null) => void;
 	onVote: (messageId: string, value: "up" | "down" | null) => Promise<void>;
 	pendingArtifactResult: FutureChatPendingArtifactResult | null;
+	scrollAnchorMessageId: string | null;
+	scrollFollowMode: ConversationFollowMode;
 	streamingArtifact: FutureChatStreamingArtifact | null;
 	streamingArtifactMessageId: string | null;
 	votes: Record<string, "up" | "down">;
 }
 
-const FUTURE_CHAT_ARTIFACT_INTENT_LEAK_FALLBACK =
-	"I had an internal routing issue while generating that response. Please try again.";
+const FUTURE_CHAT_SCROLL_ANCHOR_SELECTOR = "[data-future-chat-scroll-anchor='true']";
 
-function sanitizeFutureChatAssistantText(rawText: string): string {
-	const trimmedText = rawText.trim();
-	if (!trimmedText.startsWith("{") || !trimmedText.endsWith("}")) {
-		return rawText;
+function computeFutureChatAnchorScrollTop(
+	defaultTargetTop: number,
+	scrollElement: HTMLElement,
+	scrollSpacerRef: RefObject<HTMLDivElement | null>,
+): number {
+	const scrollAnchorElement = scrollElement.querySelector<HTMLElement>(
+		FUTURE_CHAT_SCROLL_ANCHOR_SELECTOR,
+	);
+	if (!scrollAnchorElement) {
+		if (scrollSpacerRef.current) {
+			scrollSpacerRef.current.style.height = "0px";
+		}
+		return defaultTargetTop;
 	}
 
-	try {
-		const parsed = JSON.parse(trimmedText) as {
-			action?: unknown;
-			title?: unknown;
-			kind?: unknown;
-		};
-		const allowedActions = new Set(["chat", "createDocument", "updateDocument"]);
-		const isArtifactIntentPayload =
-			typeof parsed === "object" &&
-			parsed !== null &&
-			allowedActions.has(String(parsed.action)) &&
-			(parsed.title === null || typeof parsed.title === "string") &&
-			(parsed.kind === null ||
-				parsed.kind === "text" ||
-				parsed.kind === "code" ||
-				parsed.kind === "image" ||
-				parsed.kind === "sheet");
+	const scrollRect = scrollElement.getBoundingClientRect();
+	const scrollAnchorRect = scrollAnchorElement.getBoundingClientRect();
+	const desiredTargetTop = Math.max(
+		0,
+		scrollElement.scrollTop + (scrollAnchorRect.top - scrollRect.top),
+	);
+	const availableScrollRange = scrollElement.scrollHeight - scrollElement.clientHeight;
+	const currentSpacerHeight = scrollSpacerRef.current?.offsetHeight ?? 0;
+	const availableScrollRangeWithoutSpacer = Math.max(
+		0,
+		availableScrollRange - currentSpacerHeight,
+	);
+	const requiredSpacerHeight = Math.max(
+		0,
+		desiredTargetTop - availableScrollRangeWithoutSpacer,
+	);
 
-		return isArtifactIntentPayload
-			? FUTURE_CHAT_ARTIFACT_INTENT_LEAK_FALLBACK
-			: rawText;
-	} catch {
-		return rawText;
+	if (scrollSpacerRef.current) {
+		scrollSpacerRef.current.style.height = `${requiredSpacerHeight}px`;
 	}
+
+	const maxScrollTop = Math.max(
+		0,
+		scrollElement.scrollHeight - scrollElement.clientHeight,
+	);
+
+	return Math.min(maxScrollTop, desiredTargetTop);
+}
+
+function FutureChatScrollAnchorSync({
+	scrollAnchorMessageId,
+}: Readonly<{
+	scrollAnchorMessageId: string | null;
+}>) {
+	const { scrollToBottom } = useConversationContext();
+
+	useEffect(() => {
+		if (!scrollAnchorMessageId) {
+			return;
+		}
+
+		void scrollToBottom({ animation: "instant", ignoreEscapes: true });
+	}, [scrollAnchorMessageId, scrollToBottom]);
+
+	return null;
 }
 
 function UserMessage({
 	isEditing,
+	isScrollAnchor,
 	message,
 	onEditMessage,
 	onSetEditingMessageId,
 }: Readonly<{
 	isEditing: boolean;
+	isScrollAnchor: boolean;
 	message: RovoUIMessage;
 	onEditMessage: (messageId: string, nextText: string) => Promise<void>;
 	onSetEditingMessageId: (messageId: string | null) => void;
@@ -124,6 +189,7 @@ function UserMessage({
 		<div
 			className="group/message fade-in w-full animate-in duration-200"
 			data-role="user"
+			data-future-chat-scroll-anchor={isScrollAnchor ? "true" : undefined}
 			data-testid="message-user"
 		>
 			<div className="flex w-full items-start justify-end gap-2 md:gap-3">
@@ -216,6 +282,7 @@ function AssistantMessage({
 	artifactCard,
 	isLastAssistant,
 	isStreaming,
+	isThinkingLifecycleStreaming,
 	message,
 	onRegenerate,
 	onSelectSuggestion,
@@ -225,6 +292,7 @@ function AssistantMessage({
 	artifactCard: React.ReactNode;
 	isLastAssistant: boolean;
 	isStreaming: boolean;
+	isThinkingLifecycleStreaming: boolean;
 	message: RovoUIMessage;
 	onRegenerate: () => void;
 	onSelectSuggestion: (suggestion: string) => Promise<void>;
@@ -240,6 +308,90 @@ function AssistantMessage({
 	const widgetError = getLatestDataPart(message, "data-widget-error");
 	const suggestions = getLatestDataPart(message, "data-suggested-questions")?.data.questions ?? [];
 	const sources = getMessageSources(message);
+	const routeDecision: RoutingDecision | null = getLatestRouteDecision(message);
+
+	// Widget type determines rendering path: "question-card" and "plan" widgets
+	// render regardless of routing presentation (they come from RovoDev tool calls
+	// during clarification flows where presentation is "text"). GenUI widgets
+	// only render when the routing decision says "genui_card".
+	const widgetType = widget?.data.type ?? null;
+	const shouldShowWidget = shouldRenderFutureChatWidget({
+		hasWidget: Boolean(widget),
+		routeDecision,
+		widgetType,
+	});
+	const isTextPresentation = routeDecision
+		? routeDecision.presentation === "text"
+		: !widget;
+	const isFallbackRoute = routeDecision !== null && routeDecision.confidence < 0.3;
+
+	// Thinking status extraction
+	const thinkingStatusParts = getAllDataParts(message, "data-thinking-status");
+	const thinkingEventParts = getAllDataParts(message, "data-thinking-event");
+	const thinkingToolCalls = getThinkingToolCallSummaries(message);
+	const hasThinkingStatusPart = thinkingStatusParts.length > 0;
+	const hasThinkingEvents = thinkingEventParts.length > 0;
+	const hasThinkingToolCalls = thinkingToolCalls.length > 0;
+	const hasTurnComplete = hasTurnCompleteSignal(message);
+
+	const thinkingActive = checkThinkingStatusActive({
+		hasThinkingStatusPart,
+		hasThinkingEvents,
+		isRetryThinkingStatus: false,
+		isStreaming: isThinkingLifecycleStreaming,
+	});
+
+	const hasBackendThinkingActivity =
+		hasThinkingStatusPart || hasThinkingEvents || hasThinkingToolCalls;
+	const isThinkingStreaming =
+		isThinkingLifecycleStreaming && thinkingActive && hasBackendThinkingActivity;
+
+	const accumulatedThinkingContent = thinkingStatusParts
+		.map((part) => part.data.content)
+		.filter(Boolean)
+		.join("\n\n");
+	const hasThinkingText = Boolean(accumulatedThinkingContent);
+	const hasThinkingDetails = hasThinkingText || hasThinkingToolCalls;
+
+	const lastThinkingStatusPart =
+		thinkingStatusParts[thinkingStatusParts.length - 1] ?? null;
+	const lastThinkingEventPart =
+		thinkingEventParts[thinkingEventParts.length - 1] ?? null;
+
+	const { phase: thinkingPhase, duration: thinkingDuration } = useReasoningPhase({
+		isStreaming: isThinkingStreaming,
+		hasMessageText: hasBackendThinkingActivity,
+		responseKey: message.id,
+		autoIdle: false,
+	});
+
+	const thinkingUpdateSignal = [
+		message.id,
+		`status-count:${thinkingStatusParts.length}`,
+		`status-id:${lastThinkingStatusPart?.id ?? ""}`,
+		`status-label:${lastThinkingStatusPart?.data.label ?? ""}`,
+		`event-count:${thinkingEventParts.length}`,
+		`event-id:${lastThinkingEventPart?.data.eventId ?? ""}`,
+	].join("|");
+
+	const { label: dynamicThinkingLabel } = useDynamicThinkingLabel({
+		baseLabel: lastThinkingStatusPart?.data.label ?? getDefaultThinkingLabel(),
+		isStreaming: isThinkingStreaming,
+		updateSignal: thinkingUpdateSignal,
+		fallbackLabel: getDefaultThinkingLabel(),
+	});
+
+	const thinkingTriggerLabel = resolveThinkingStatusTriggerLabel({
+		resolvedLabel: dynamicThinkingLabel,
+		reasoningPhase: thinkingPhase,
+		duration: thinkingDuration,
+	});
+
+	const thinkingPhaseProps = getReasoningPropsForPhase(
+		thinkingPhase,
+		undefined,
+		hasThinkingDetails,
+	);
 
 	return (
 		<div
@@ -253,12 +405,55 @@ function AssistantMessage({
 				</div>
 
 				<div className="flex min-w-0 flex-1 flex-col gap-3">
-					{reasoning?.text ? (
+					{thinkingActive ? (
+						<Reasoning
+							className="mb-0"
+							autoExpandOnDetails
+							hasDetails={hasThinkingDetails}
+							defaultOpen={thinkingPhaseProps.defaultOpen ?? hasThinkingDetails}
+							isStreaming={thinkingPhaseProps.isStreaming}
+							streamingWave={thinkingPhaseProps.streamingWave}
+							streamingWaveGradientColor={thinkingPhaseProps.streamingWaveGradientColor}
+							animatedDots={thinkingPhaseProps.animatedDots}
+							duration={thinkingPhase === "completed" ? thinkingDuration : undefined}
+							allowAutoCollapse={hasTurnComplete}
+						>
+							<AdsReasoningTrigger
+								label={thinkingTriggerLabel}
+								showChevron={hasThinkingDetails}
+								streaming={thinkingPhaseProps.triggerStreaming}
+							/>
+							{hasThinkingDetails ? (
+								<ReasoningContent>
+									<div className="space-y-4">
+										{hasThinkingText ? (
+											<ReasoningSection title={getReasoningSectionTitle("thinking")}>
+												<ReasoningText
+													maxVisibleTimelineItems={6}
+													text={accumulatedThinkingContent}
+													timelineMode="auto"
+												/>
+											</ReasoningSection>
+										) : null}
+										{hasThinkingToolCalls ? (
+											<ReasoningSection title={getReasoningSectionTitle("tools")}>
+												<AssistantThinkingToolsSection
+													defaultOpenMode="running"
+													idPrefix={message.id}
+													thinkingToolCalls={thinkingToolCalls}
+												/>
+											</ReasoningSection>
+										) : null}
+									</div>
+								</ReasoningContent>
+							) : null}
+						</Reasoning>
+					) : reasoning?.text ? (
 						<Reasoning
 							defaultOpen={reasoning.isStreaming}
 							isStreaming={isStreaming && reasoning.isStreaming}
 						>
-							<ReasoningTrigger />
+							<AdsReasoningTrigger />
 							<ReasoningContent>{reasoning.text}</ReasoningContent>
 						</Reasoning>
 					) : null}
@@ -269,7 +464,7 @@ function AssistantMessage({
 						</div>
 					) : null}
 
-					{widget ? (
+					{shouldShowWidget && widget ? (
 						<div className="max-w-[min(100%,560px)]">
 							<GenerativeWidgetCard
 								widgetData={widget.data.payload}
@@ -284,9 +479,9 @@ function AssistantMessage({
 						</div>
 					) : null}
 
-					{text ? (
+					{text && (isTextPresentation || isFallbackRoute || !widget) ? (
 						<div className="min-w-0 max-w-3xl">
-							<MessageResponse isAnimating={isStreaming && isLastAssistant}>
+							<MessageResponse isAnimating={(isStreaming && isLastAssistant) || isMessageTextStreaming(message)}>
 								{text}
 							</MessageResponse>
 						</div>
@@ -382,7 +577,7 @@ function AssistantMessage({
 							<ThumbsDownIcon className="size-4" />
 						</Button>
 
-						{isLastAssistant ? (
+						{isLastAssistant && !message.metadata?.realtimeMessageId ? (
 							<Button
 								aria-label="Regenerate response"
 								onClick={onRegenerate}
@@ -400,17 +595,29 @@ function AssistantMessage({
 	);
 }
 
-function ThinkingMessage() {
+function FutureChatThinkingIndicator() {
+	const preloadPhaseProps = getReasoningPropsForPhase("preload", undefined, false);
 	return (
 		<div className="w-full">
 			<div className="flex items-start gap-2 md:gap-3">
 				<div className="-mt-1 flex size-8 shrink-0 items-center justify-center rounded-full border border-border bg-surface-raised text-text-subtle">
 					<SparklesIcon className="size-4" />
 				</div>
-				<div className="flex h-8 items-center gap-1 text-text-subtle">
-					<span className="size-2 animate-pulse rounded-full bg-muted-foreground/60 [animation-delay:-200ms]" />
-					<span className="size-2 animate-pulse rounded-full bg-muted-foreground/60 [animation-delay:-100ms]" />
-					<span className="size-2 animate-pulse rounded-full bg-muted-foreground/60" />
+				<div className="flex min-w-0 flex-1 flex-col gap-3">
+					<Reasoning
+						className="mb-0"
+						defaultOpen={false}
+						isStreaming={preloadPhaseProps.isStreaming}
+						streamingWave={preloadPhaseProps.streamingWave}
+						streamingWaveGradientColor={preloadPhaseProps.streamingWaveGradientColor}
+						animatedDots={preloadPhaseProps.animatedDots}
+					>
+						<AdsReasoningTrigger
+							label={getPreloadShimmerLabel()}
+							showChevron={false}
+							streaming={preloadPhaseProps.triggerStreaming}
+						/>
+					</Reasoning>
 				</div>
 			</div>
 		</div>
@@ -462,7 +669,7 @@ function StreamingArtifactMessage({
 }
 
 export function FutureChatMessages({
-	visibleDocumentId,
+	activeDocumentId,
 	compact = false,
 	documents,
 	editingMessageId,
@@ -476,10 +683,13 @@ export function FutureChatMessages({
 	onSetEditingMessageId,
 	onVote,
 	pendingArtifactResult,
+	scrollAnchorMessageId,
+	scrollFollowMode,
 	streamingArtifact,
 	streamingArtifactMessageId,
 	votes,
 }: Readonly<FutureChatMessagesProps>) {
+	const scrollSpacerRef = useRef<HTMLDivElement | null>(null);
 	const visibleMessages = useMemo(
 		() => messages.filter((message) => message.role === "user" || message.role === "assistant"),
 		[messages],
@@ -489,15 +699,43 @@ export function FutureChatMessages({
 			.reverse()
 			.find((message) => message.role === "assistant")?.id ?? null;
 	}, [visibleMessages]);
-	const shouldShowThinkingMessage =
-		isStreaming && visibleMessages.at(-1)?.role === "user";
+	const orphanArtifactDisplay = useMemo(() => {
+		return resolveFutureChatOrphanArtifactDisplay({
+			activeDocumentId,
+			documents,
+			messages: visibleMessages,
+		});
+	}, [activeDocumentId, documents, visibleMessages]);
+	const streamingAssistantMessageId = useMemo(() => {
+		return [...visibleMessages]
+			.reverse()
+			.find((m) => m.role === "assistant" && !m.metadata?.realtimeMessageId)?.id ?? null;
+	}, [visibleMessages]);
+	const isUserMessageLast = visibleMessages.at(-1)?.role === "user";
+	const shouldShowPreloader = isStreaming && isUserMessageLast;
 	const shouldShowStreamingArtifactPreview =
-		shouldShowThinkingMessage &&
+		isStreaming &&
+		isUserMessageLast &&
 		Boolean(streamingArtifact?.documentId) &&
 		streamingArtifactMessageId === null;
+	const handleTargetScrollTop = useCallback(
+		(defaultTargetTop: number, { scrollElement }: { scrollElement: HTMLElement }) => {
+			return computeFutureChatAnchorScrollTop(
+				defaultTargetTop,
+				scrollElement,
+				scrollSpacerRef,
+			);
+		},
+		[],
+	);
 
 	return (
-		<Conversation className={cn("relative bg-background", visibleMessages.length === 0 && "!flex-none overflow-visible")}>
+		<Conversation
+			className={cn("relative bg-background", visibleMessages.length === 0 && "!flex-none overflow-visible")}
+			followMode={scrollFollowMode}
+			targetScrollTop={handleTargetScrollTop}
+		>
+			<FutureChatScrollAnchorSync scrollAnchorMessageId={scrollAnchorMessageId} />
 			{visibleMessages.length === 0 ? (
 				<div className="flex flex-col items-center gap-2 py-6">
 					<Image
@@ -520,7 +758,7 @@ export function FutureChatMessages({
 				</div>
 			) : null}
 
-			<div
+			<ConversationContent
 				className={cn(
 					"mx-auto flex min-w-0 flex-col gap-4 px-2 py-4 md:gap-6 md:px-4",
 					compact ? "max-w-none" : "max-w-4xl",
@@ -532,6 +770,7 @@ export function FutureChatMessages({
 							return (
 								<UserMessage
 									isEditing={editingMessageId === message.id}
+									isScrollAnchor={message.id === scrollAnchorMessageId}
 									key={message.id}
 									message={message}
 									onEditMessage={onEditMessage}
@@ -541,33 +780,39 @@ export function FutureChatMessages({
 						}
 
 						const artifactDisplay = resolveFutureChatMessageArtifactDisplay({
-							visibleDocumentId,
 							documents,
 							message,
 							pendingArtifactResult,
 							streamingArtifact,
 							streamingArtifactMessageId,
 						});
+						const fallbackArtifactDisplay =
+							orphanArtifactDisplay?.anchorMessageId === message.id
+								? orphanArtifactDisplay
+								: null;
+						const resolvedArtifactDisplay =
+							artifactDisplay ?? fallbackArtifactDisplay;
 
 						return (
 							<AssistantMessage
 								artifactCard={
-									artifactDisplay ? (
+									resolvedArtifactDisplay ? (
 										<FutureChatArtifactCard
-											action={artifactDisplay.action}
-											displayMode={artifactDisplay.displayMode}
-											documentId={artifactDisplay.documentId}
-											isStreaming={artifactDisplay.isStreaming}
-											kind={artifactDisplay.kind}
+											action={resolvedArtifactDisplay.action}
+											displayMode={resolvedArtifactDisplay.displayMode}
+											documentId={resolvedArtifactDisplay.documentId}
+											isStreaming={resolvedArtifactDisplay.isStreaming}
+											kind={resolvedArtifactDisplay.kind}
 											onOpen={onOpenArtifactFromCard}
 											onRegister={onRegisterArtifactCard}
-											previewContent={artifactDisplay.previewContent}
-											title={artifactDisplay.title}
+											previewContent={resolvedArtifactDisplay.previewContent}
+											title={resolvedArtifactDisplay.title}
 										/>
 									) : null
 								}
 								isLastAssistant={message.id === lastAssistantMessageId}
 								isStreaming={isStreaming}
+								isThinkingLifecycleStreaming={isStreaming && message.id === streamingAssistantMessageId}
 								key={message.id}
 								message={message}
 								onRegenerate={onRegenerate}
@@ -587,12 +832,13 @@ export function FutureChatMessages({
 						streamingArtifact={streamingArtifact}
 						title={streamingArtifact.title}
 					/>
-				) : shouldShowThinkingMessage ? (
-					<ThinkingMessage />
+				) : shouldShowPreloader ? (
+					<FutureChatThinkingIndicator />
 				) : null}
-			</div>
+				<div aria-hidden className="h-0 shrink-0" ref={scrollSpacerRef} />
+			</ConversationContent>
 
-			<ConversationScrollButton className="bottom-4 left-1/2 z-10 -translate-x-1/2 rounded-full border bg-background p-2 shadow-lg transition-all hover:bg-muted" />
+			<ConversationScrollButton className="z-10 transition-all" />
 		</Conversation>
 	);
 }

@@ -1,3 +1,5 @@
+const { createRouteDecisionPart } = require("./route-decision");
+
 const LOCAL_MODEL_PORT = parseInt(process.env.LOCAL_MODEL_PORT || "8800", 10);
 const LOCAL_MODEL_BASE_URL = process.env.LOCAL_MODEL_BASE_URL || `http://localhost:${LOCAL_MODEL_PORT}`;
 const LOCAL_MODEL_ID = "mlx-community/Qwen3-0.6B-MLX-8bit";
@@ -202,15 +204,11 @@ async function streamLocalModel({ userMessage, conversationHistory, writer }) {
 		writer.write({ type: "text-end", id: fallbackId });
 	}
 
-	writer.write({
-		type: "data-route-decision",
-		data: {
-			reason: "local_model",
-			experience: "text",
-			timestamp: new Date().toISOString(),
-			toolsDetected: false,
-		},
-	});
+	writer.write(createRouteDecisionPart({
+		intent: "chat",
+		origin: "text",
+		reason: "local_model",
+	}));
 	writer.write({
 		type: "data-turn-complete",
 		data: { timestamp: new Date().toISOString() },

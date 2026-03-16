@@ -148,7 +148,7 @@ export function FutureChatArtifactCard({
 		}
 
 		onRegister(documentId, cardRef.current);
-	}, [displayMode, documentId, isStreaming, onRegister, previewContent, title]);
+	}, [displayMode, documentId, onRegister]);
 
 	if (displayMode === "chip") {
 		return (

@@ -11,6 +11,7 @@ import {
 	useCallback,
 	use,
 	useEffect,
+	useLayoutEffect,
 	useMemo,
 	useRef,
 	useState,
@@ -20,8 +21,9 @@ import JsxParser from "react-jsx-parser";
 interface JSXPreviewContextValue {
 	jsx: string;
 	processedJsx: string;
+	isStreaming: boolean;
 	error: Error | null;
-	setError: (error: Error | null) => void;
+	setError: (error: Error | null, errorJsx?: string) => void;
 	components: JsxParserProps["components"];
 	bindings: JsxParserProps["bindings"];
 	onErrorProp?: (error: Error) => void;
@@ -30,6 +32,17 @@ interface JSXPreviewContextValue {
 const JSXPreviewContext = createContext<JSXPreviewContextValue | null>(null);
 
 const TAG_REGEX = /<\/?([a-zA-Z][a-zA-Z0-9]*)\s*([^>]*?)(\/)?>/;
+
+interface JSXPreviewErrorState {
+	error: Error;
+	jsx: string;
+}
+
+interface JSXPreviewQueuedError {
+	error: Error;
+	isStreaming: boolean;
+	jsx: string;
+}
 
 export function useJSXPreview() {
 	const context = use(JSXPreviewContext);
@@ -71,6 +84,22 @@ function matchJsxTag(code: string) {
 	};
 }
 
+function stripIncompleteTag(text: string) {
+	// Find the last '<' that isn't part of a complete tag
+	const lastOpen = text.lastIndexOf("<");
+	if (lastOpen === -1) {
+		return text;
+	}
+
+	const afterOpen = text.slice(lastOpen);
+	// If there's no closing '>' after the last '<', it's an incomplete tag
+	if (!afterOpen.includes(">")) {
+		return text.slice(0, lastOpen);
+	}
+
+	return text;
+}
+
 function completeJsxTag(code: string) {
 	const stack: string[] = [];
 	let result = "";
@@ -79,8 +108,8 @@ function completeJsxTag(code: string) {
 	while (currentPosition < code.length) {
 		const match = matchJsxTag(code.slice(currentPosition));
 		if (!match) {
-			// No more tags found, append remaining content
-			result += code.slice(currentPosition);
+			// No more tags found, strip any trailing incomplete tag
+			result += stripIncompleteTag(code.slice(currentPosition));
 			break;
 		}
 		const { tagName, type, endIndex } = match;
@@ -124,32 +153,54 @@ export const JSXPreview = memo(function JSXPreview({
 	children,
 	...props
 }: Readonly<JSXPreviewProps>) {
-	const [prevJsx, setPrevJsx] = useState(jsx);
-	const [error, setError] = useState<Error | null>(null);
-
-	// Clear error when jsx changes (derived state pattern)
-	if (jsx !== prevJsx) {
-		setPrevJsx(jsx);
-		setError(null);
-	}
+	const [errorState, setErrorState] = useState<JSXPreviewErrorState | null>(
+		null,
+	);
 
 	const processedJsx = useMemo(
 		() => (isStreaming ? completeJsxTag(jsx) : jsx),
 		[jsx, isStreaming],
 	);
+	const error = errorState?.jsx === processedJsx ? errorState.error : null;
+	const setError = useCallback(
+		(nextError: Error | null, errorJsx = processedJsx) => {
+			setErrorState(
+				nextError
+					? {
+							error: nextError,
+							jsx: errorJsx,
+						}
+					: null,
+			);
+		},
+		[processedJsx],
+	);
+
+	const contextValue = useMemo(
+		() => ({
+			bindings,
+			components,
+			error,
+			isStreaming,
+			jsx,
+			onErrorProp: onError,
+			processedJsx,
+			setError,
+		}),
+		[
+			bindings,
+			components,
+			error,
+			isStreaming,
+			jsx,
+			onError,
+			processedJsx,
+			setError,
+		],
+	);
 
 	return (
-		<JSXPreviewContext
-			value={{
-				bindings,
-				components,
-				error,
-				jsx,
-				onErrorProp: onError,
-				processedJsx,
-				setError,
-			}}
-		>
+		<JSXPreviewContext value={contextValue}>
 			<div className={cn("relative", className)} {...props}>
 				{children}
 			</div>
@@ -163,27 +214,42 @@ export const JSXPreviewContent = memo(function JSXPreviewContent({
 	className,
 	...props
 }: Readonly<JSXPreviewContentProps>) {
-	const { processedJsx, components, bindings, setError, onErrorProp } =
-		useJSXPreview();
+	const {
+		processedJsx,
+		isStreaming,
+		components,
+		bindings,
+		setError,
+		onErrorProp,
+	} = useJSXPreview();
 	const errorReportedRef = useRef<string | null>(null);
-	const pendingErrorRef = useRef<Error | null>(null);
+	const pendingErrorRef = useRef<JSXPreviewQueuedError | null>(null);
+	const [displayJsx, setDisplayJsx] = useState(processedJsx);
+	const [lastGoodJsx, setLastGoodJsx] = useState("");
 
-	// Reset error tracking when jsx changes
-	// biome-ignore lint/correctness/useExhaustiveDependencies: processedJsx change should reset tracking
-	useEffect(() => {
+	useLayoutEffect(() => {
 		errorReportedRef.current = null;
+		setDisplayJsx(processedJsx);
 	}, [processedJsx]);
 
-	// Flush pending error to state after mount/render — JsxParser calls
-	// onError synchronously during its own render, so we capture the error
-	// in a ref and apply it here to avoid setState-during-render warnings.
+	// JsxParser calls onError while it renders, so queue follow-up work here
+	// and commit it after render to avoid cross-component render updates.
+	// eslint-disable-next-line react-hooks/exhaustive-deps
 	useEffect(() => {
-		if (pendingErrorRef.current) {
-			const err = pendingErrorRef.current;
-			pendingErrorRef.current = null;
-			setError(err);
-			onErrorProp?.(err);
+		const pendingError = pendingErrorRef.current;
+		if (!pendingError) {
+			return;
 		}
+
+		pendingErrorRef.current = null;
+
+		if (pendingError.isStreaming) {
+			setDisplayJsx(lastGoodJsx);
+			return;
+		}
+
+		setError(pendingError.error, pendingError.jsx);
+		onErrorProp?.(pendingError.error);
 	});
 
 	const handleError = useCallback(
@@ -193,17 +259,38 @@ export const JSXPreviewContent = memo(function JSXPreviewContent({
 				return;
 			}
 			errorReportedRef.current = processedJsx;
-			pendingErrorRef.current = err;
+			pendingErrorRef.current = {
+				error: err,
+				isStreaming,
+				jsx: processedJsx,
+			};
 		},
-		[processedJsx],
+		[processedJsx, isStreaming],
 	);
+
+	// Track the last JSX that rendered without error
+	useEffect(() => {
+		if (displayJsx !== processedJsx) {
+			return;
+		}
+
+		if (pendingErrorRef.current?.jsx === processedJsx) {
+			return;
+		}
+
+		setLastGoodJsx((currentLastGoodJsx) =>
+			currentLastGoodJsx === processedJsx
+				? currentLastGoodJsx
+				: processedJsx,
+		);
+	}, [displayJsx, processedJsx]);
 
 	return (
 		<div className={cn("jsx-preview-content", className)} {...props}>
 			<JsxParser
 				bindings={bindings}
 				components={components}
-				jsx={processedJsx}
+				jsx={displayJsx}
 				onError={handleError}
 				renderInWrapper={false}
 			/>

@@ -35,10 +35,12 @@ export const API_ENDPOINTS = {
 	HEALTH: `${API_BASE_URL}/api/health`,
 	CHAT_THREADS: `${API_BASE_URL}/api/chat/threads`,
 	FUTURE_CHAT_CHAT: `${API_BASE_URL}/api/future-chat/chat`,
+	FUTURE_CHAT_MESSAGES: `${API_BASE_URL}/api/future-chat/messages`,
 	FUTURE_CHAT_THREADS: `${API_BASE_URL}/api/future-chat/threads`,
 	FUTURE_CHAT_VOTES: `${API_BASE_URL}/api/future-chat/votes`,
 	FUTURE_CHAT_DOCUMENTS: `${API_BASE_URL}/api/future-chat/documents`,
 	FUTURE_CHAT_FILE_UPLOAD: `${API_BASE_URL}/api/future-chat/files/upload`,
+	AGENT_MODE: `${API_BASE_URL}/api/agent-mode`,
 	chatThreads: (limit?: number) =>
 		`${API_BASE_URL}/api/chat/threads${
 			typeof limit === "number" ? `?limit=${encodeURIComponent(String(limit))}` : ""
@@ -49,6 +51,8 @@ export const API_ENDPOINTS = {
 		`${API_BASE_URL}/api/future-chat/threads${
 			typeof limit === "number" ? `?limit=${encodeURIComponent(String(limit))}` : ""
 		}`,
+	futureChatMessages: (threadId: string) =>
+		`${API_BASE_URL}/api/future-chat/messages?threadId=${encodeURIComponent(threadId)}`,
 	futureChatThread: (threadId: string) =>
 		`${API_BASE_URL}/api/future-chat/threads/${encodeURIComponent(threadId)}`,
 	futureChatFile: (fileId: string) =>

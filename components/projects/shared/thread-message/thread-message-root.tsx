@@ -7,6 +7,7 @@ import {
 	hasCreatePlanSkillSignal,
 	hasTurnCompleteSignal,
 	getLatestDataPart,
+	getLatestRouteDecision,
 	getMessageReasoning,
 	getMessageSources,
 	getMessageText,
@@ -15,7 +16,7 @@ import {
 	getMessageToolParts,
 	isMessageTextStreaming,
 	type RovoRenderableUIMessage,
-	type RouteDecisionMeta,
+	type RoutingDecision,
 } from "@/lib/rovo-ui-messages";
 import {
 	useReasoningPhase,
@@ -187,9 +188,8 @@ function useThreadMessageDerived(
 	const hasWidgetOutput = hasWidgetPayload && !isWidgetLoading;
 
 	// ---------- route decision ----------
-	const routeDecisionPart = getLatestDataPart(message, "data-route-decision");
-	const routeDecision: RouteDecisionMeta | null = routeDecisionPart?.data ?? null;
-	const isFallbackTextRoute = routeDecision?.reason === "fallback_ui_failed";
+	const routeDecision: RoutingDecision | null = getLatestRouteDecision(message);
+	const isFallbackTextRoute = routeDecision?.confidence !== undefined && routeDecision.confidence < 0.3;
 
 	// ---------- message text processing ----------
 	const normalizedWidgetText = widgetType

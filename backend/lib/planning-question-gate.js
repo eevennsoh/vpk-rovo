@@ -1,45 +1,3 @@
-function defaultParsePlanPayload(value) {
-	return value && typeof value === "object" ? value : null;
-}
-
-function hasCompletedPlanWidgetInMessages({
-	messages,
-	parsePlanPayload = defaultParsePlanPayload,
-}) {
-	if (!Array.isArray(messages)) {
-		return false;
-	}
-
-	for (const message of messages) {
-		if (!message || message.role !== "assistant" || !Array.isArray(message.parts)) {
-			continue;
-		}
-
-		for (const part of message.parts) {
-			if (part?.type !== "data-widget-data") {
-				continue;
-			}
-
-			const widgetType =
-				typeof part?.data?.type === "string" ? part.data.type.trim() : "";
-			if (widgetType !== "plan") {
-				continue;
-			}
-
-			const parsedPlanPayload = parsePlanPayload(part?.data?.payload);
-			if (
-				parsedPlanPayload &&
-				Array.isArray(parsedPlanPayload.tasks) &&
-				parsedPlanPayload.tasks.length > 0
-			) {
-				return true;
-			}
-		}
-	}
-
-	return false;
-}
-
 function hasGateSkipSource(source, planningGateSkipSources) {
 	if (typeof source !== "string" || source.trim().length === 0) {
 		return false;
@@ -56,15 +14,6 @@ function hasGateSkipSource(source, planningGateSkipSources) {
 	return false;
 }
 
-function hasVisibleUserMessage(value) {
-	return Boolean(
-		value &&
-			typeof value === "object" &&
-			typeof value.text === "string" &&
-			value.text.trim().length > 0
-	);
-}
-
 /**
  * Returns true when the entire trimmed message is a conversational greeting,
  * small-talk, or acknowledgement — i.e. something that should never trigger
@@ -78,13 +27,19 @@ const CONVERSATIONAL_MESSAGE_PATTERN = new RegExp(
 		// Greetings
 		"h(?:i|ey(?:\\s+there)?|ello|owdy|iya)" +
 		"|yo+|sup" +
-		"|good\\s+(?:morning|afternoon|evening|day)" +
-		"|what(?:'s|\\s+is)\\s+up" +
-		"|how(?:'s\\s+it\\s+going|\\s+are\\s+you)" +
 		// Acknowledgements
-		"|thanks?(?:\\s+you)?" +
-		"|ok(?:ay)?" +
-		"|sure|got\\s+it|cool|nice|great|awesome|sounds\\s+good" +
+		"|(?:ok(?:ay)?|sure|got\\s+it|sounds\\s+good|alright|right|cool|nice|great|perfect|awesome|wonderful|excellent|fantastic|amazing|brilliant|lovely|fine)" +
+		// Thanks
+		"|(?:thanks?(?:\\s+(?:a\\s+lot|so\\s+much|very\\s+much))?|ty|cheers|thx|thank\\s+you(?:\\s+(?:so\\s+much|very\\s+much))?)" +
+		// Farewells
+		"|(?:bye|goodbye|see\\s+(?:you|ya)|later|ciao|take\\s+care)" +
+		// Short affirmations / negations
+		"|(?:ye(?:s|ah?|p)?|nah?|no(?:pe)?|yup|nope|y|n)" +
+		// Pleasantries
+		"|(?:good\\s+(?:morning|afternoon|evening|night))" +
+		"|(?:how\\s+are\\s+you|what(?:'|')?s\\s+up)" +
+		"|(?:(?:i(?:'|')?m\\s+)?(?:doing\\s+)?(?:good|well|fine|great|okay))" +
+		"|sorry|my\\s+bad|apologies" +
 		"|no\\s+(?:worries|problem)" +
 		// Bot questions
 		"|who\\s+are\\s+you" +
@@ -140,68 +95,8 @@ function isTaskLikeMessage(text) {
 	return TASK_LIKE_MESSAGE_PATTERN.test(trimmed);
 }
 
-function shouldGatePlanningQuestionCard({
-	messages,
-	planMode,
-	latestVisibleUserMessage,
-	latestUserMessageSource,
-	planningGateSkipSources,
-	detectPlanningIntent,
-	parsePlanPayload = defaultParsePlanPayload,
-}) {
-	if (hasGateSkipSource(latestUserMessageSource, planningGateSkipSources)) {
-		return false;
-	}
-
-	if (!hasVisibleUserMessage(latestVisibleUserMessage)) {
-		return false;
-	}
-
-	if (
-		hasGateSkipSource(
-			latestVisibleUserMessage.source,
-			planningGateSkipSources
-		)
-	) {
-		return false;
-	}
-
-	const hasCompletedPlan = hasCompletedPlanWidgetInMessages({
-		messages,
-		parsePlanPayload,
-	});
-
-	if (planMode) {
-		if (isConversationalMessage(latestVisibleUserMessage.text)) {
-			return false;
-		}
-
-		if (typeof detectPlanningIntent !== "function") {
-			return false;
-		}
-
-		if (!detectPlanningIntent(latestVisibleUserMessage.text)) {
-			return false;
-		}
-
-		return !hasCompletedPlan;
-	}
-
-	if (typeof detectPlanningIntent !== "function") {
-		return false;
-	}
-
-	if (!detectPlanningIntent(latestVisibleUserMessage.text)) {
-		return false;
-	}
-
-	return !hasCompletedPlan;
-}
-
 module.exports = {
-	hasCompletedPlanWidgetInMessages,
 	hasGateSkipSource,
 	isConversationalMessage,
 	isTaskLikeMessage,
-	shouldGatePlanningQuestionCard,
 };

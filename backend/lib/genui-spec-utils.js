@@ -282,6 +282,37 @@ function pickBestSpec(analysis) {
 	return null;
 }
 
+/**
+ * Extract a renderable spec directly from text that contains a ```spec fence.
+ * Returns null if no valid spec fence is found or the spec is not renderable.
+ *
+ * @param {string} text - Raw text that may contain a ```spec code fence.
+ * @returns {{ spec: object, narrative: string } | null}
+ */
+function extractDirectSpec(text) {
+	if (typeof text !== "string" || text.length === 0) {
+		return null;
+	}
+
+	const specFenceMatch = text.match(/```spec\s*\n([\s\S]*?)```/i);
+	if (!specFenceMatch) {
+		return null;
+	}
+
+	const analysis = analyzeGeneratedText(specFenceMatch[0]);
+	const spec = pickBestSpec(analysis);
+	if (!spec) {
+		return null;
+	}
+
+	const narrative = text
+		.replace(/```spec[\s\S]*?```/gi, "")
+		.replace(/\n{3,}/g, "\n\n")
+		.trim();
+
+	return { spec, narrative };
+}
+
 module.exports = {
 	sanitizeSpec,
 	isRenderableSpec,
@@ -290,4 +321,5 @@ module.exports = {
 	synthesizeMissingChildren,
 	analyzeGeneratedText,
 	pickBestSpec,
+	extractDirectSpec,
 };

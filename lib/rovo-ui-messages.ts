@@ -11,48 +11,19 @@ import {
 } from "ai";
 
 // ---------------------------------------------------------------------------
-// FND-001: Canonical output experience enum and response envelope
+// Routing decision types (v2)
 // ---------------------------------------------------------------------------
 
-/**
- * Canonical output experience types for the output routing layer.
- * Each chat response is classified into exactly one experience.
- */
-export type OutputExperience =
-	| "generative_ui"
-	| "question_card"
-	| "image"
-	| "audio"
-	| "text";
+export type RoutingIntent = "chat" | "artifact_create" | "artifact_update" | "genui";
+export type RoutingPresentation = "text" | "genui_card" | "artifact_preview";
+export type RoutingOrigin = "text" | "voice";
 
-// ---------------------------------------------------------------------------
-// FND-003: Route-decision reason codes for observability
-// ---------------------------------------------------------------------------
-
-/**
- * Reason codes attached to every routed response for analytics and debugging.
- * Each code explains *why* a particular experience was selected.
- */
-export type RouteDecisionReason =
-	| "intent_media_image"
-	| "intent_media_audio"
-	| "intent_translation"
-	| "intent_task_toolable"
-	| "intent_text_default"
-	| "intent_clarification"
-	| "intent_clarification_skip"
-	| "fallback_ui_failed";
-
-/**
- * Metadata attached to the routing decision for observability/logging.
- */
-export interface RouteDecisionMeta {
-	readonly reason: RouteDecisionReason;
-	readonly experience: OutputExperience;
-	readonly timestamp: string;
-	readonly toolsDetected?: boolean;
-	readonly classifierIntent?: string;
-	readonly fallbackCause?: string;
+export interface RoutingDecision {
+	readonly intent: RoutingIntent;
+	readonly presentation: RoutingPresentation;
+	readonly confidence: number;
+	readonly reason: string;
+	readonly origin: RoutingOrigin;
 }
 
 export type AgentExecutionStatus = "working" | "completed" | "failed";
@@ -127,6 +98,7 @@ export interface ToolFirstWarningData {
 }
 
 export type RovoMessageInterruptionSource =
+	| "artifact-submission"
 	| "voice-barge-in"
 	| "user-stop";
 
@@ -148,6 +120,7 @@ export type RovoDataParts = {
 	};
 	clear: null;
 	finish: null;
+	"cancel-streaming": null;
 	textDelta: string;
 	codeDelta: string;
 	"widget-loading": {
@@ -178,7 +151,7 @@ export type RovoDataParts = {
 	"turn-complete": {
 		timestamp: string;
 	};
-	"route-decision": RouteDecisionMeta;
+	"route-decision": RoutingDecision;
 };
 
 export type RovoDataPart<KEY extends keyof RovoDataParts & string> = {
@@ -194,6 +167,15 @@ export interface RovoMessageMetadata {
 		| "plan-approval-submit"
 		| "agent-directive"
 		| "plan-retry";
+	/** Internal provenance for unified voice/chat routing */
+	origin?: "realtime" | "rovodev";
+	/** Stable timestamps for merging persisted realtime + RovoDev threads */
+	createdAt?: string;
+	updatedAt?: string;
+	/** OpenAI Realtime-side identifier for correlating client/server events */
+	realtimeMessageId?: string;
+	/** Existing user message reused when GPT-Realtime delegates to RovoDev */
+	delegatedFromId?: string;
 	planApprovalDecision?: "auto-accept" | "continue-planning" | "custom";
 	planApprovalPlanKey?: string;
 	/** Short label shown in the user bubble instead of the full prompt text */
@@ -217,6 +199,18 @@ export type RovoSourcePart = SourceUrlUIPart | SourceDocumentUIPart;
 const CREATE_PLAN_SIGNAL_REGEX = /\bcreate[-_\s]?plan\b/i;
 const REQUEST_USER_INPUT_TOOL_NAME_REGEX =
 	/(?:^|\.)(?:request_user_input|ask_user_questions|ask_user_question)$/i;
+const ROUTING_INTENTS = new Set<RoutingIntent>([
+	"chat",
+	"artifact_create",
+	"artifact_update",
+	"genui",
+]);
+const ROUTING_PRESENTATIONS = new Set<RoutingPresentation>([
+	"text",
+	"genui_card",
+	"artifact_preview",
+]);
+const ROUTING_ORIGINS = new Set<RoutingOrigin>(["text", "voice"]);
 
 function isRequestUserInputToolName(toolName: unknown): boolean {
 	if (typeof toolName !== "string") {
@@ -291,6 +285,63 @@ export function getLatestDataPart<KEY extends keyof RovoDataParts & string>(
 		const part = message.parts[index];
 		if (part.type === type) {
 			return part as RovoDataPart<KEY>;
+		}
+	}
+
+	return null;
+}
+
+function clampRoutingConfidence(value: unknown): number {
+	if (typeof value !== "number" || !Number.isFinite(value)) {
+		return 1;
+	}
+
+	return Math.max(0, Math.min(1, value));
+}
+
+export function isRoutingDecision(value: unknown): value is RoutingDecision {
+	if (!value || typeof value !== "object") {
+		return false;
+	}
+
+	const candidate = value as Partial<RoutingDecision>;
+	return (
+		ROUTING_INTENTS.has(candidate.intent as RoutingIntent) &&
+		ROUTING_PRESENTATIONS.has(candidate.presentation as RoutingPresentation) &&
+		typeof candidate.confidence === "number" &&
+		Number.isFinite(candidate.confidence) &&
+		typeof candidate.reason === "string" &&
+		candidate.reason.trim().length > 0 &&
+		ROUTING_ORIGINS.has(candidate.origin as RoutingOrigin)
+	);
+}
+
+function normalizeRoutingDecision(value: unknown): RoutingDecision | null {
+	if (!isRoutingDecision(value)) {
+		return null;
+	}
+
+	return {
+		intent: value.intent,
+		presentation: value.presentation,
+		confidence: clampRoutingConfidence(value.confidence),
+		reason: value.reason.trim(),
+		origin: value.origin,
+	};
+}
+
+export function getLatestRouteDecision(
+	message: Pick<RovoUIMessage, "parts">
+): RoutingDecision | null {
+	for (let index = message.parts.length - 1; index >= 0; index -= 1) {
+		const part = message.parts[index];
+		if (part.type !== "data-route-decision") {
+			continue;
+		}
+
+		const routeDecision = normalizeRoutingDecision(part.data);
+		if (routeDecision) {
+			return routeDecision;
 		}
 	}
 

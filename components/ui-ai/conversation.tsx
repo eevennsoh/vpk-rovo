@@ -2,12 +2,15 @@
 
 import type { ComponentProps, ReactNode, RefObject } from "react"
 import { createContext, use, useCallback, useEffect, useMemo, useRef, useState } from "react"
+import type { UIMessage } from "ai"
 import { ArrowDownIcon, DownloadIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { token } from "@/lib/tokens"
 import { cn } from "@/lib/utils"
 
 const DEFAULT_SCROLL_THRESHOLD_PX = 24
+const USER_SCROLL_INTENT_TIMEOUT_MS = 180
 
 type ScrollAnimation = boolean | ScrollBehavior | "instant" | {
 	damping: number
@@ -23,6 +26,8 @@ export interface ScrollToBottomOptions {
 export interface ConversationScrollTargetOptions {
 	scrollElement: HTMLElement
 }
+
+export type ConversationFollowMode = "bottom" | "target"
 
 export type GetTargetScrollTop = (
 	defaultTargetTop: number,
@@ -75,6 +80,7 @@ export function useConversationContext(): ConversationContextValue {
 
 export interface ConversationProps extends ComponentProps<"div"> {
 	contextRef?: { current: ConversationContextValue | null }
+	followMode?: ConversationFollowMode
 	initial?: ScrollAnimation
 	resize?: ScrollAnimation
 	targetScrollTop?: GetTargetScrollTop
@@ -84,6 +90,7 @@ export function Conversation({
 	children,
 	className,
 	contextRef,
+	followMode,
 	initial = "smooth",
 	resize = "smooth",
 	role = "log",
@@ -93,9 +100,31 @@ export function Conversation({
 	const scrollRef = useRef<HTMLDivElement>(null)
 	const contentRef = useRef<HTMLDivElement>(null)
 	const [isAtBottom, setIsAtBottom] = useState(true)
-	const isAtBottomRef = useRef(true)
 	const hasInitializedScrollRef = useRef(false)
 	const lastKnownScrollHeightRef = useRef(0)
+	const lastUserScrollIntentAtRef = useRef(0)
+	const isPointerScrollingRef = useRef(false)
+	const isFollowPausedRef = useRef(false)
+	const resolvedFollowMode = followMode ?? (targetScrollTop ? "target" : "bottom")
+
+	const getDefaultTargetTop = useCallback((scrollElement: HTMLElement) => {
+		return Math.max(0, scrollElement.scrollHeight - scrollElement.clientHeight)
+	}, [])
+
+	const getScrollTargetTop = useCallback((scrollElement: HTMLElement) => {
+		const defaultTargetTop = getDefaultTargetTop(scrollElement)
+		return targetScrollTop
+			? targetScrollTop(defaultTargetTop, { scrollElement })
+			: defaultTargetTop
+	}, [getDefaultTargetTop, targetScrollTop])
+
+	const getExpectedFollowTop = useCallback((scrollElement: HTMLElement) => {
+		if (resolvedFollowMode === "target" && targetScrollTop) {
+			return getScrollTargetTop(scrollElement)
+		}
+
+		return getDefaultTargetTop(scrollElement)
+	}, [getDefaultTargetTop, getScrollTargetTop, resolvedFollowMode, targetScrollTop])
 
 	const updateIsAtBottom = useCallback(() => {
 		const scrollElement = scrollRef.current
@@ -106,7 +135,6 @@ export function Conversation({
 		const distanceFromBottom =
 			scrollElement.scrollHeight - scrollElement.clientHeight - scrollElement.scrollTop
 		const nextIsAtBottom = distanceFromBottom <= DEFAULT_SCROLL_THRESHOLD_PX
-		isAtBottomRef.current = nextIsAtBottom
 		setIsAtBottom(nextIsAtBottom)
 		return nextIsAtBottom
 	}, [])
@@ -118,13 +146,13 @@ export function Conversation({
 				return
 			}
 
-			const defaultTargetTop = Math.max(
-				0,
-				scrollElement.scrollHeight - scrollElement.clientHeight
-			)
-			const targetTop = targetScrollTop
-				? targetScrollTop(defaultTargetTop, { scrollElement })
-				: defaultTargetTop
+			if (options?.ignoreEscapes) {
+				isFollowPausedRef.current = false
+				isPointerScrollingRef.current = false
+				lastUserScrollIntentAtRef.current = 0
+			}
+
+			const targetTop = getScrollTargetTop(scrollElement)
 
 			scrollElement.scrollTo({
 				top: Math.max(0, targetTop),
@@ -132,7 +160,7 @@ export function Conversation({
 			})
 			updateIsAtBottom()
 		},
-		[targetScrollTop, updateIsAtBottom]
+		[getScrollTargetTop, updateIsAtBottom]
 	)
 
 	const contextValue = useMemo<ConversationContextValue>(
@@ -158,8 +186,58 @@ export function Conversation({
 			return
 		}
 
+		const markUserScrollIntent = () => {
+			lastUserScrollIntentAtRef.current = Date.now()
+		}
+
+		const handlePointerDown = () => {
+			isPointerScrollingRef.current = true
+			markUserScrollIntent()
+		}
+
+		const handlePointerUp = () => {
+			isPointerScrollingRef.current = false
+		}
+
+		scrollElement.addEventListener("wheel", markUserScrollIntent, { passive: true })
+		scrollElement.addEventListener("touchmove", markUserScrollIntent, { passive: true })
+		scrollElement.addEventListener("pointerdown", handlePointerDown, { passive: true })
+		window.addEventListener("pointerup", handlePointerUp, { passive: true })
+		window.addEventListener("pointercancel", handlePointerUp, { passive: true })
+
+		return () => {
+			scrollElement.removeEventListener("wheel", markUserScrollIntent)
+			scrollElement.removeEventListener("touchmove", markUserScrollIntent)
+			scrollElement.removeEventListener("pointerdown", handlePointerDown)
+			window.removeEventListener("pointerup", handlePointerUp)
+			window.removeEventListener("pointercancel", handlePointerUp)
+		}
+	}, [])
+
+	useEffect(() => {
+		const scrollElement = scrollRef.current
+		if (!scrollElement) {
+			return
+		}
+
 		const handleScroll = () => {
 			updateIsAtBottom()
+
+			if (isFollowPausedRef.current || !hasInitializedScrollRef.current) {
+				return
+			}
+
+			const didUserInitiateScroll =
+				isPointerScrollingRef.current ||
+				Date.now() - lastUserScrollIntentAtRef.current <= USER_SCROLL_INTENT_TIMEOUT_MS
+			if (!didUserInitiateScroll) {
+				return
+			}
+
+			const expectedFollowTop = getExpectedFollowTop(scrollElement)
+			if (Math.abs(scrollElement.scrollTop - expectedFollowTop) > DEFAULT_SCROLL_THRESHOLD_PX) {
+				isFollowPausedRef.current = true
+			}
 		}
 
 		handleScroll()
@@ -168,7 +246,7 @@ export function Conversation({
 		return () => {
 			scrollElement.removeEventListener("scroll", handleScroll)
 		}
-	}, [updateIsAtBottom])
+	}, [getExpectedFollowTop, updateIsAtBottom])
 
 	useEffect(() => {
 		const scrollElement = scrollRef.current
@@ -202,13 +280,15 @@ export function Conversation({
 		const observer = new ResizeObserver(() => {
 			const previousScrollHeight = lastKnownScrollHeightRef.current
 			const nextScrollHeight = scrollElement.scrollHeight
-			const shouldStickToBottom =
-				isAtBottomRef.current || previousScrollHeight === 0 || !hasInitializedScrollRef.current
+			const shouldFollowContent =
+				!isFollowPausedRef.current ||
+				previousScrollHeight === 0 ||
+				!hasInitializedScrollRef.current
 
 			lastKnownScrollHeightRef.current = nextScrollHeight
 			updateIsAtBottom()
 
-			if (resize === false || !shouldStickToBottom) {
+			if (resize === false || !shouldFollowContent) {
 				return
 			}
 
@@ -229,7 +309,6 @@ export function Conversation({
 		<ConversationContext value={contextValue}>
 			<div
 				className={cn("relative flex-1 overflow-y-hidden", className)}
-				ref={scrollRef}
 				role={role}
 				{...props}
 			>
@@ -239,7 +318,7 @@ export function Conversation({
 	)
 }
 
-export interface ConversationContentProps extends ComponentProps<"div"> {}
+export type ConversationContentProps = ComponentProps<"div">
 
 export function ConversationContent({
 	className,
@@ -249,10 +328,18 @@ export function ConversationContent({
 
 	return (
 		<div
-			className={cn("flex flex-col gap-8 p-4", className)}
-			ref={context?.contentRef}
-			{...props}
-		/>
+			className="h-full w-full overflow-y-auto"
+			ref={context?.scrollRef}
+			style={{
+				scrollbarGutter: "stable both-edges",
+			}}
+		>
+			<div
+				className={cn("flex flex-col gap-8 p-4", className)}
+				ref={context?.contentRef}
+				{...props}
+			/>
+		</div>
 	)
 }
 
@@ -297,24 +384,31 @@ export type ConversationScrollButtonProps = ComponentProps<typeof Button>
 
 export function ConversationScrollButton({
 	className,
+	style,
+	"aria-label": ariaLabel = "Scroll to bottom",
 	...props
 }: Readonly<ConversationScrollButtonProps>) {
 	const { isAtBottom, scrollToBottom } = useConversationContext()
 
 	const handleScrollToBottom = useCallback(() => {
-		void scrollToBottom()
+		void scrollToBottom({ ignoreEscapes: true })
 	}, [scrollToBottom])
 
 	return !isAtBottom ? (
 		<Button
+			aria-label={ariaLabel}
 			className={cn(
-				"absolute bottom-4 left-[50%] translate-x-[-50%] rounded-full",
+				"absolute bottom-4 left-[50%] translate-x-[-50%] rounded-full border-0 bg-surface hover:bg-surface-hovered",
 				className
 			)}
 			onClick={handleScrollToBottom}
 			size="icon"
+			style={{
+				boxShadow: token("elevation.shadow.overlay"),
+				...style,
+			}}
 			type="button"
-			variant="outline"
+			variant="ghost"
 			{...props}
 		>
 			<ArrowDownIcon className="size-4" />
@@ -327,25 +421,35 @@ export interface ConversationMessage {
 	content: string
 }
 
+const getMessageText = (message: ConversationMessage | UIMessage): string => {
+	if ("parts" in message && Array.isArray(message.parts)) {
+		return message.parts
+			.filter((part): part is { type: "text"; text: string } => part.type === "text")
+			.map((part) => part.text)
+			.join("")
+	}
+	return (message as ConversationMessage).content
+}
+
 export type ConversationDownloadProps = Omit<
 	ComponentProps<typeof Button>,
 	"onClick"
 > & {
-	messages: ConversationMessage[]
+	messages: ConversationMessage[] | UIMessage[]
 	filename?: string
-	formatMessage?: (message: ConversationMessage, index: number) => string
+	formatMessage?: (message: ConversationMessage | UIMessage, index: number) => string
 }
 
-const defaultFormatMessage = (message: ConversationMessage): string => {
+const defaultFormatMessage = (message: ConversationMessage | UIMessage): string => {
 	const roleLabel =
 		message.role.charAt(0).toUpperCase() + message.role.slice(1)
-	return `**${roleLabel}:** ${message.content}`
+	return `**${roleLabel}:** ${getMessageText(message)}`
 }
 
 export const messagesToMarkdown = (
-	messages: ConversationMessage[],
+	messages: ConversationMessage[] | UIMessage[],
 	formatMessage: (
-		message: ConversationMessage,
+		message: ConversationMessage | UIMessage,
 		index: number
 	) => string = defaultFormatMessage
 ): string => messages.map((msg, index) => formatMessage(msg, index)).join("\n\n")
@@ -356,6 +460,7 @@ export function ConversationDownload({
 	formatMessage = defaultFormatMessage,
 	className,
 	children,
+	"aria-label": ariaLabel = "Download conversation",
 	...props
 }: Readonly<ConversationDownloadProps>) {
 	const handleDownload = useCallback(() => {
@@ -373,6 +478,7 @@ export function ConversationDownload({
 
 	return (
 		<Button
+			aria-label={ariaLabel}
 			className={cn("absolute top-4 right-4 rounded-full", className)}
 			onClick={handleDownload}
 			size="icon"

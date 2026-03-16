@@ -11,7 +11,6 @@ export const composerTextareaClassName =
 
 export const textareaCSS = `
 	.chat-composer-textarea:placeholder-shown {
-		field-sizing: fixed;
 		white-space: nowrap;
 		text-overflow: ellipsis;
 	}

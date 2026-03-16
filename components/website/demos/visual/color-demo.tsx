@@ -1,7 +1,24 @@
 "use client";
 
-import { type ReactNode } from "react";
+import { type ReactNode, useCallback, useRef, useState } from "react";
 import { token } from "@/lib/tokens";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+} from "@/components/ui/tooltip";
+
+function rgbToHex(rgb: string): string {
+	const match = rgb.match(/rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)(?:\s*[,/]\s*([\d.]+))?\s*\)/);
+	if (!match) return rgb;
+	const [, r, g, b, a] = match;
+	let hex = `#${[r, g, b].map((v) => Number(v).toString(16).padStart(2, "0")).join("")}`;
+	if (a !== undefined && Number(a) < 1) {
+		hex += Math.round(Number(a) * 255).toString(16).padStart(2, "0");
+	}
+	return hex;
+}
 
 interface SwatchProps {
 	label: string;
@@ -10,27 +27,77 @@ interface SwatchProps {
 }
 
 function Swatch({ label, className, type }: Readonly<SwatchProps>) {
+	const colorRef = useRef<HTMLDivElement & HTMLSpanElement>(null);
+	const [hex, setHex] = useState("");
+	const [copied, setCopied] = useState(false);
+	const [open, setOpen] = useState(false);
+	const lockedRef = useRef(false);
+
+	const resolveColor = useCallback(() => {
+		const el = colorRef.current;
+		if (!el) return;
+		const style = getComputedStyle(el);
+		const raw =
+			type === "text"
+				? style.color
+				: type === "border"
+					? style.borderTopColor
+					: style.backgroundColor;
+		setHex(rgbToHex(raw));
+	}, [type]);
+
+	const handleOpenChange = useCallback((nextOpen: boolean) => {
+		if (lockedRef.current && !nextOpen) return;
+		setOpen(nextOpen);
+	}, []);
+
+	const handlePointerDown = useCallback(() => {
+		if (!hex) return;
+		navigator.clipboard.writeText(hex);
+		lockedRef.current = true;
+		setCopied(true);
+		setOpen(true);
+		setTimeout(() => {
+			lockedRef.current = false;
+			setCopied(false);
+			setOpen(false);
+		}, 1500);
+	}, [hex]);
+
 	return (
-		<div className="flex flex-col items-center" style={{ gap: token("space.100") }}>
-			{type === "bg" && (
-				<div
-					className={`w-12 h-12 rounded-lg border border-border ${className}`}
-				/>
-			)}
-			{type === "text" && (
-				<div className="w-12 h-12 rounded-lg border border-border bg-surface flex items-center justify-center">
-					<span className={`text-lg font-bold ${className}`}>Aa</span>
-				</div>
-			)}
-			{type === "border" && (
-				<div
-					className={`w-12 h-12 rounded-lg border-2 bg-surface ${className}`}
-				/>
-			)}
-			<code className="text-text-subtlest text-[10px] font-mono text-center leading-tight max-w-16 break-all">
-				{label}
-			</code>
-		</div>
+		<Tooltip open={open} onOpenChange={handleOpenChange}>
+			<TooltipTrigger
+				render={<div />}
+				className="flex flex-col items-center cursor-pointer"
+				style={{ gap: token("space.100") }}
+				onMouseEnter={resolveColor}
+				onPointerDown={handlePointerDown}
+			>
+				{type === "bg" && (
+					<div
+						ref={colorRef}
+						className={`w-12 h-12 rounded-lg border border-border ${className}`}
+					/>
+				)}
+				{type === "text" && (
+					<div className="w-12 h-12 rounded-lg border border-border bg-surface flex items-center justify-center">
+						<span ref={colorRef} className={`text-lg font-bold ${className}`}>Aa</span>
+					</div>
+				)}
+				{type === "border" && (
+					<div
+						ref={colorRef}
+						className={`w-12 h-12 rounded-lg border-2 bg-surface ${className}`}
+					/>
+				)}
+				<code className="text-text-subtlest text-[10px] font-mono text-center leading-tight max-w-16 break-all">
+					{label}
+				</code>
+			</TooltipTrigger>
+			<TooltipContent>
+				{copied ? "Copied!" : hex || label}
+			</TooltipContent>
+		</Tooltip>
 	);
 }
 
@@ -65,18 +132,64 @@ interface ScaleRowProps {
 	swatches: string[];
 }
 
+function ScaleBlock({ bgClass, step }: Readonly<{ bgClass: string; step: string }>) {
+	const ref = useRef<HTMLDivElement>(null);
+	const [hex, setHex] = useState("");
+	const [copied, setCopied] = useState(false);
+	const [open, setOpen] = useState(false);
+	const lockedRef = useRef(false);
+
+	const resolveColor = useCallback(() => {
+		if (!ref.current) return;
+		setHex(rgbToHex(getComputedStyle(ref.current).backgroundColor));
+	}, []);
+
+	const handleOpenChange = useCallback((nextOpen: boolean) => {
+		if (lockedRef.current && !nextOpen) return;
+		setOpen(nextOpen);
+	}, []);
+
+	const handlePointerDown = useCallback(() => {
+		if (!hex) return;
+		navigator.clipboard.writeText(hex);
+		lockedRef.current = true;
+		setCopied(true);
+		setOpen(true);
+		setTimeout(() => {
+			lockedRef.current = false;
+			setCopied(false);
+			setOpen(false);
+		}, 1500);
+	}, [hex]);
+
+	return (
+		<Tooltip open={open} onOpenChange={handleOpenChange}>
+			<TooltipTrigger
+				render={<div />}
+				className="flex flex-col items-center cursor-pointer"
+				style={{ gap: token("space.050") }}
+				onMouseEnter={resolveColor}
+				onPointerDown={handlePointerDown}
+			>
+				<div ref={ref} className={`w-10 h-10 rounded-md border border-border ${bgClass}`} />
+				<code className="text-text-subtlest text-[10px] font-mono">
+					{step}
+				</code>
+			</TooltipTrigger>
+			<TooltipContent>
+				{copied ? "Copied!" : hex || bgClass}
+			</TooltipContent>
+		</Tooltip>
+	);
+}
+
 function ScaleRow({ title, swatches }: Readonly<ScaleRowProps>) {
 	return (
 		<div className="flex flex-col" style={{ gap: token("space.100") }}>
 			<span className="text-text text-xs font-medium">{title}</span>
 			<div className="flex flex-wrap" style={{ gap: token("space.100") }}>
 				{swatches.map((bgClass, i) => (
-					<div key={bgClass} className="flex flex-col items-center" style={{ gap: token("space.050") }}>
-						<div className={`w-10 h-10 rounded-md border border-border ${bgClass}`} />
-						<code className="text-text-subtlest text-[10px] font-mono">
-							{SCALE_STEPS[i]}
-						</code>
-					</div>
+					<ScaleBlock key={bgClass} bgClass={bgClass} step={SCALE_STEPS[i]} />
 				))}
 			</div>
 		</div>
@@ -85,6 +198,7 @@ function ScaleRow({ title, swatches }: Readonly<ScaleRowProps>) {
 
 export default function ColorDemo() {
 	return (
+		<TooltipProvider>
 		<div className="flex flex-col w-full" style={{ gap: token("space.500") }}>
 			{/* ── Semantic Colors (tailwind-theme.css + shadcn-theme.css) ── */}
 			<div className="flex flex-col" style={{ gap: token("space.400") }}>
@@ -414,5 +528,6 @@ export default function ColorDemo() {
 				</Section>
 			</div>
 		</div>
+		</TooltipProvider>
 	);
 }

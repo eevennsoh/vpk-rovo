@@ -171,6 +171,25 @@ const PersonaWithoutModel = memo(
 
 PersonaWithoutModel.displayName = "PersonaWithoutModel";
 
+/**
+ * Delays Rive initialization by one animation frame so React Strict Mode's
+ * throwaway mount never creates a WebGL2 context. Browsers limit active
+ * WebGL2 contexts to ~8-16; without this guard, double-mounting exhausts them.
+ */
+const useStrictModeSafeInit = () => {
+	const [ready, setReady] = useState(false);
+
+	useEffect(() => {
+		const id = requestAnimationFrame(() => setReady(true));
+		return () => {
+			cancelAnimationFrame(id);
+			setReady(false);
+		};
+	}, []);
+
+	return ready;
+};
+
 export const Persona: FC<PersonaProps> = memo(
   ({
     variant = "obsidian",
@@ -231,17 +250,23 @@ export const Persona: FC<PersonaProps> = memo(
       []
     );
 
-    const { rive, RiveComponent } = useRive({
-      autoplay: true,
-      onLoad: stableCallbacks.onLoad,
-      onLoadError: stableCallbacks.onLoadError,
-      onPause: stableCallbacks.onPause,
-      onPlay: stableCallbacks.onPlay,
-      onRiveReady: stableCallbacks.onReady,
-      onStop: stableCallbacks.onStop,
-      src: source.source,
-      stateMachines: stateMachine,
-    });
+    const ready = useStrictModeSafeInit();
+
+    const { rive, RiveComponent } = useRive(
+      ready
+        ? {
+            autoplay: true,
+            onLoad: stableCallbacks.onLoad,
+            onLoadError: stableCallbacks.onLoadError,
+            onPause: stableCallbacks.onPause,
+            onPlay: stableCallbacks.onPlay,
+            onRiveReady: stableCallbacks.onReady,
+            onStop: stableCallbacks.onStop,
+            src: source.source,
+            stateMachines: stateMachine,
+          }
+        : null
+    );
 
     const listeningInput = useStateMachineInput(
       rive,

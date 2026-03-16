@@ -378,7 +378,7 @@ export function CodeBlockActions({
 }: Readonly<HTMLAttributes<HTMLDivElement>>) {
   return (
     <div
-      className={cn("flex items-center gap-1", className)}
+      className={cn("-my-1 -mr-1 flex items-center gap-2", className)}
       {...props}
     >
       {children}
@@ -395,29 +395,41 @@ export function CodeBlockContent({
   language: BundledLanguage;
   showLineNumbers?: boolean;
 }>) {
-  // Memoized raw tokens for immediate display
   const rawTokens = useMemo(() => createRawTokens(code), [code]);
-
-  // Always initialize with raw tokens to match SSR output and avoid hydration mismatch
-  const [tokenized, setTokenized] = useState<TokenizedCode>(rawTokens);
+  const cacheKey = useMemo(
+    () => getTokensCacheKey(code, language),
+    [code, language]
+  );
+  const [highlightedTokens, setHighlightedTokens] = useState<{
+    key: string;
+    value: TokenizedCode;
+  } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-
-    // Reset to raw tokens when code changes (shows current code, not stale tokens)
-    setTokenized(highlightCode(code, language) ?? rawTokens);
-
-    // Subscribe to async highlighting result
-    highlightCode(code, language, (result) => {
+    const cached = highlightCode(code, language, (result) => {
       if (!cancelled) {
-        setTokenized(result);
+        setHighlightedTokens({
+          key: cacheKey,
+          value: result,
+        });
       }
     });
+
+    if (cached) {
+      setHighlightedTokens({
+        key: cacheKey,
+        value: cached,
+      });
+    }
 
     return () => {
       cancelled = true;
     };
-  }, [code, language, rawTokens]);
+  }, [cacheKey, code, language]);
+
+  const tokenized =
+    highlightedTokens?.key === cacheKey ? highlightedTokens.value : rawTokens;
 
   return (
     <div

@@ -19,6 +19,7 @@ export interface ParsedPlanWidgetPayload {
 	emoji?: string;
 	tasks: ParsedPlanTask[];
 	agents: string[];
+	deferredToolCallId?: string;
 }
 
 export interface PlanMermaidGraph {
@@ -162,12 +163,18 @@ export function parsePlanWidgetPayload(
 	}
 	const agents = Array.from(agentSet).sort();
 
+	const deferredToolCallId =
+		getNonEmptyString(record.deferredToolCallId) ??
+		getNonEmptyString(record.tool_call_id) ??
+		undefined;
+
 	return {
 		title,
 		description,
 		emoji,
 		tasks,
 		agents,
+		deferredToolCallId,
 	};
 }
 

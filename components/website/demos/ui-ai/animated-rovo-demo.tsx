@@ -56,7 +56,7 @@ export default function AnimatedRovoDemo() {
 					transition={transition}
 				/>
 			</div>
-			<GUI.Panel title="AnimatedRovo controls" values={config}>
+			<GUI.Panel title="Animated Rovo controls" values={config}>
 				<GUI.Control
 					id="rovo-size"
 					label="Size"

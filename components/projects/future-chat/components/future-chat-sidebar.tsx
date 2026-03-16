@@ -1,6 +1,8 @@
 "use client";
 
 import { formatDistanceToNowStrict, isToday, isYesterday, subMonths, subWeeks } from "date-fns";
+import Heading from "@/components/blocks/shared-ui/heading";
+import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -26,6 +28,7 @@ import { MoreHorizontalIcon, Trash2Icon } from "lucide-react";
 interface FutureChatSidebarProps {
 	activeThreadId: string | null;
 	onDeleteThread: (threadId: string) => Promise<void>;
+	onNewChat: () => void;
 	onSelectThread: (threadId: string) => Promise<void>;
 	threads: ReadonlyArray<FutureChatThread>;
 	topOffset?: boolean;
@@ -144,6 +147,7 @@ function FutureChatSidebarItem({
 export function FutureChatSidebar({
 	activeThreadId,
 	onDeleteThread,
+	onNewChat,
 	onSelectThread,
 	threads,
 	topOffset = false,
@@ -169,10 +173,25 @@ export function FutureChatSidebar({
 		>
 			<SidebarContent className="bg-sidebar/60">
 				{threads.length === 0 ? (
-					<SidebarGroup className="p-0">
+					<SidebarGroup className="flex flex-1 items-center justify-center p-0">
 						<SidebarGroupContent>
-							<div className="rounded-lg border border-dashed border-sidebar-border/80 bg-sidebar-accent/20 px-3 py-4 text-center text-sidebar-foreground/60 text-sm">
-								Your conversations will appear here once you start chatting.
+							<div className="flex w-full flex-col items-center gap-4 px-6 text-center">
+								<div className="stagger-fade-in flex w-full flex-col items-center gap-1">
+									<Heading as="h3" size="xsmall">
+										Get started
+									</Heading>
+									<p className="text-sm text-text-subtle">
+										Start a conversation to get going.
+									</p>
+								</div>
+								<div className="stagger-fade-in" style={{ animationDelay: "0.06s" }}>
+									<Button
+										onClick={onNewChat}
+										variant="outline"
+									>
+										Chat
+									</Button>
+								</div>
 							</div>
 						</SidebarGroupContent>
 					</SidebarGroup>

@@ -26,6 +26,7 @@ const {
 	buildFutureChatArtifactIntentPrompt,
 	normalizeArtifactKind,
 	parseFutureChatArtifactIntent,
+	resolveFastFutureChatArtifactIntent,
 } = require("./lib/future-chat-artifact-intent");
 const {
 	deriveFutureChatVersionChangeLabel,
@@ -60,7 +61,7 @@ const {
 const { createAIGatewayProvider } = require("./lib/ai-gateway-provider");
 const { isLocalModelRequest, streamLocalModel } = require("./lib/local-model-provider");
 const { getGenuiSystemPrompt } = require("./lib/genui-system-prompt");
-const { analyzeGeneratedText, pickBestSpec } = require("./lib/genui-spec-utils");
+const { analyzeGeneratedText, pickBestSpec, extractDirectSpec } = require("./lib/genui-spec-utils");
 const { buildFallbackGenuiSpecFromText, buildMinimalTextCardSpec } = require("./lib/genui-fallback-spec");
 const { buildToolObservationFallback } = require("./lib/genui-tool-observation-fallback");
 const { buildToolObservationStructuredFallback } = require("./lib/genui-tool-observation-structured-fallback");
@@ -68,10 +69,21 @@ const { buildGoogleStructuredFallback } = require("./lib/genui-google-tool-fallb
 const { buildFigmaStructuredFallback } = require("./lib/genui-figma-tool-fallback");
 const { assessToolFirstGenuiQuality } = require("./lib/tool-first-genui-quality");
 const { looksLikeInabilityResponse } = require("./lib/inability-response-detector");
-const { classifySmartGenerationIntent, preClassifyMediaIntent } = require("./lib/smart-generation-intent");
+const { classifySmartGenerationIntent } = require("./lib/smart-generation-intent");
+const {
+	resolveRoutingDecision,
+} = require("./lib/resolve-routing-decision");
+const {
+	buildRouteDecision,
+	createRouteDecisionPart,
+} = require("./lib/route-decision");
 const {
 	buildSmartGenerationGatewayOptions,
 } = require("./lib/smart-generation-gateway-options");
+const {
+	SMART_ROUTE_TARGET_SURFACES,
+	isSmartRouteTargetSurface,
+} = require("./lib/smart-generation-surface-gate");
 const {
 	resolveToolFirstPolicy,
 	TOOL_FIRST_ENFORCEMENT_MODE_SOFT_RETRY,
@@ -105,6 +117,11 @@ const {
 	isUnsupportedModalitiesError,
 } = require("./lib/image-generation-routing");
 const { healthCheck: rovoDevHealthCheck, cancelChat: rovoDevCancelChat } = require("./lib/rovodev-client");
+const { setAgentMode, getAgentMode } = require("./lib/rovodev-agent-mode");
+const {
+	splitDirectMediaTextForStreaming,
+	stripDirectMediaFences,
+} = require("./lib/direct-media-fence");
 const { createRovoDevPool } = require("./lib/rovodev-pool");
 const { createOrchestratorLog } = require("./lib/orchestrator-log");
 const {
@@ -134,10 +151,8 @@ const {
 	handleDeleteClaimTest,
 } = require("./lib/claim-test-handler");
 const {
-	isAudioRequestPrompt,
 	resolveSmartAudioVoiceInput,
 	stripConversationalFiller,
-	classifyVoiceIntent,
 } = require("./lib/smart-audio-routing");
 const { RealtimeSession } = require("./lib/openai-realtime");
 const {
@@ -176,15 +191,12 @@ const {
 const {
 	extractUpdateTodoPlanPayloadFromObservations,
 } = require("./lib/update-todo-plan-payload");
-const { detectPlanningIntent } = require("./lib/planning-intent");
 const { chromiumPreviewManager } = require("./lib/chromium-preview");
 const { browserWorkspaceManager } = require("./lib/browser-workspace-manager");
 const {
-	shouldGatePlanningQuestionCard,
-	isConversationalMessage,
-	isTaskLikeMessage,
-} = require("./lib/planning-question-gate");
-const { resolvePlanMode } = require("./lib/plan-mode-resolution");
+	classifyPromptIntent,
+	inferPromptIntent,
+} = require("./lib/prompt-intent");
 const {
 	extractQuestionCardDefinitionFromAssistantText,
 	resolveFallbackQuestionCardState,
@@ -446,16 +458,9 @@ const CLARIFICATION_CUSTOM_OPTION_PLACEHOLDER = "Tell Rovo what to do...";
 const QUESTION_CARD_TEXT_EXTRACTION_FALLBACK_ENABLED = isTruthyFlag(
 	process.env.ENABLE_LEGACY_TEXT_QUESTION_CARD_FALLBACK
 );
-const PLANNING_GATE_SKIP_SOURCES = new Set([
-	"clarification-submit",
-	"plan-approval-submit",
-	"plan-retry",
-]);
 const TOOL_FIRST_GATE_SKIP_SOURCES = new Set([
 	"clarification-submit",
 ]);
-const PLANNING_GATE_INTRO_TEXT =
-	"Before I draft the plan, answer these quick questions.";
 const DEFAULT_CONFLUENCE_BASE_URL = "https://venn-test.atlassian.net/wiki";
 const MAX_SLACK_SUMMARY_CHARS = 35000;
 const INTERACTIVE_CHAT_FALLBACK_ENABLED = false;
@@ -955,11 +960,6 @@ function mapUiMessagesToConversation(messages) {
 }
 
 const GENUI_META_PREFIX = "[genui-meta]";
-const SMART_ROUTE_TARGET_SURFACES = new Set([
-	"multiports",
-	"sidebar",
-	"fullscreen",
-]);
 const SMART_INTENT_TIMEOUT_MS = 1500;
 const SMART_WIDGET_TYPE_GENUI = "genui-preview";
 const SMART_WIDGET_TYPE_AUDIO = "audio-preview";
@@ -970,10 +970,6 @@ const SOUND_GENERATION_INPUT_MAX_CHARS = 4096;
 const CLASSIFIER_JSON_ALLOWED_KEYS = new Set(["intent", "confidence", "reason"]);
 const CLASSIFIER_JSON_BUFFER_MAX_CHARS = 320;
 const MAX_ASSISTANT_TEXT_WITH_TOOL_CALLS_CHARS = 1400;
-const SMART_IMAGE_REQUEST_PATTERN =
-	/\b(generate|create|draw|make|design|render|show)\b[\s\S]{0,80}\b(image|photo|picture|illustration|icon|logo|wallpaper|art)\b|\b(image|photo|picture|illustration|icon|logo)\b[\s\S]{0,80}\b(generate|create|draw|make|design|render|show)\b/i;
-const SMART_UI_REQUEST_PATTERN =
-	/\b(ui|interface|layout|component|page|dashboard|mockup|wireframe|widget|json\s*spec|json-render|chart|charts|graph|graphs|plot|plots|table|tables|kanban|board|timeline|roadmap|form|visuali[sz]e|infographic)\b/i;
 const GENUI_FALLBACK_ERROR_TEXT =
 	"I couldn't generate an interactive card right now. Please try again later.";
 const SMART_WIDTH_CLASS_VALUES = new Set(["compact", "regular", "wide"]);
@@ -1046,58 +1042,7 @@ function isSmartGenerationEnabled(value) {
 	return (
 		normalized.enabled &&
 		typeof normalized.surface === "string" &&
-		SMART_ROUTE_TARGET_SURFACES.has(normalized.surface)
-	);
-}
-
-function inferSmartIntentFromPrompt(prompt) {
-	const text = getNonEmptyString(prompt);
-	if (!text) {
-		return "normal";
-	}
-	if (isConversationalMessage(text)) {
-		return "normal";
-	}
-
-	const isTaskLikeRequest = isTaskLikeMessage(text);
-
-	const wantsImage = SMART_IMAGE_REQUEST_PATTERN.test(text);
-	if (wantsImage) {
-		return "image";
-	}
-
-	const wantsUi = SMART_UI_REQUEST_PATTERN.test(text);
-	const wantsAudio = isAudioRequestPrompt(text);
-	if (wantsUi && wantsAudio && isTaskLikeRequest) {
-		return "both";
-	}
-	if (wantsUi && isTaskLikeRequest) {
-		return "genui";
-	}
-	if (wantsAudio) {
-		return "audio";
-	}
-
-	return "normal";
-}
-
-function shouldPreferGenuiWhenPossible(prompt) {
-	const text = getNonEmptyString(prompt);
-	if (!text) {
-		return false;
-	}
-
-	return isTaskLikeMessage(text);
-}
-
-function isCreateIntentRequest(prompt) {
-	const text = getNonEmptyString(prompt);
-	if (!text) {
-		return false;
-	}
-
-	return /^\s*(?:please\s+)?(?:(?:can|could|would)\s+you\s+)?(?:create|build|generate|make|design|draft)\b/i.test(
-		text
+		isSmartRouteTargetSurface(normalized.surface)
 	);
 }
 
@@ -1264,6 +1209,78 @@ function getLatestUserMessageSource(messages) {
 	}
 
 	return null;
+}
+
+function createHiddenFutureChatUserMessage(messageId, text) {
+	const resolvedText = getNonEmptyString(text);
+	if (!resolvedText) {
+		return null;
+	}
+
+	return {
+		id:
+			typeof messageId === "string" && messageId.trim().length > 0
+				? messageId.trim()
+				: `future-chat-hidden-user-${Date.now()}`,
+		role: "user",
+		metadata: {
+			source: "agent-directive",
+			visibility: "hidden",
+		},
+		parts: [
+			{
+				type: "text",
+				text: resolvedText,
+				state: "done",
+			},
+		],
+	};
+}
+
+function findFutureChatMessageById(messages, messageId) {
+	if (!Array.isArray(messages) || typeof messageId !== "string" || !messageId.trim()) {
+		return null;
+	}
+
+	return (
+		messages.find((message) => {
+			return (
+				message &&
+				typeof message === "object" &&
+				typeof message.id === "string" &&
+				message.id === messageId
+			);
+		}) ?? null
+	);
+}
+
+function resolveFutureChatDelegatedPrompt({
+	delegatedMessageId,
+	requestMessages,
+	thread,
+}) {
+	const resolvedDelegatedMessageId = getNonEmptyString(delegatedMessageId);
+	if (!resolvedDelegatedMessageId) {
+		return null;
+	}
+
+	const candidateMessage =
+		findFutureChatMessageById(requestMessages, resolvedDelegatedMessageId) ||
+		findFutureChatMessageById(thread?.realtimeMessages, resolvedDelegatedMessageId) ||
+		findFutureChatMessageById(thread?.messages, resolvedDelegatedMessageId);
+	if (!candidateMessage) {
+		return null;
+	}
+
+	const text = extractTextFromUiParts(candidateMessage.parts);
+	if (!text) {
+		return null;
+	}
+
+	return {
+		messageId: resolvedDelegatedMessageId,
+		text,
+	};
 }
 
 function buildPlanningQuestionCardSessionId(planRequestId) {
@@ -1622,12 +1639,24 @@ async function resolveFutureChatArtifactDecision({
 	latestUserMessage,
 	provider,
 	signal,
+	streamingArtifact,
 }) {
+	const fastDecision = resolveFastFutureChatArtifactIntent({
+		activeArtifact,
+		artifactSteering,
+		latestUserMessage,
+		streamingArtifact,
+	});
+	if (fastDecision) {
+		return fastDecision;
+	}
+
 	const prompt = buildFutureChatArtifactIntentPrompt({
 		activeArtifact,
 		artifactSteering,
 		conversationHistory,
 		latestUserMessage,
+		streamingArtifact,
 	});
 	const sameArtifactVersionRequest = isSameFutureChatArtifactVersionRequest({
 		activeArtifact,
@@ -1648,6 +1677,7 @@ async function resolveFutureChatArtifactDecision({
 	});
 	const parsedDecision = parseFutureChatArtifactIntent(rawDecision, {
 		activeArtifact,
+		streamingArtifact,
 	});
 	if (!parsedDecision) {
 		throw new Error(
@@ -1661,6 +1691,7 @@ async function resolveFutureChatArtifactDecision({
 			title:
 				getNonEmptyString(parsedDecision.title) || getNonEmptyString(activeArtifact?.title),
 			kind: parsedDecision.kind || normalizeArtifactKind(activeArtifact?.kind),
+			cancelStreaming: streamingArtifact?.id ? true : null,
 		};
 	}
 
@@ -1670,10 +1701,12 @@ async function resolveFutureChatArtifactDecision({
 function streamFutureChatArtifactToolResponse({
 	artifactAction,
 	artifactDocument,
+	cancelStreaming,
 	changeLabel,
 	contextDescription,
 	conversationHistory,
 	latestUserMessage,
+	requestOrigin,
 	artifactThreadId,
 	previousActiveDocumentId,
 	provider,
@@ -1683,6 +1716,16 @@ function streamFutureChatArtifactToolResponse({
 }) {
 	const stream = createUIMessageStream({
 		execute: async ({ writer }) => {
+			// Emit cancel-streaming signal before artifact data so the frontend
+			// can abort the old stream before the new one starts
+			if (cancelStreaming === true) {
+				writer.write({
+					type: "data-cancel-streaming",
+					data: null,
+					transient: true,
+				});
+			}
+
 			writer.write({
 				type: "data-thinking-status",
 				data: {
@@ -1827,21 +1870,28 @@ function streamFutureChatArtifactToolResponse({
 			});
 			writer.write({ type: "text-end", id: textId });
 
+				writer.write(createRouteDecisionPart({
+					intent:
+						artifactAction === "updateDocument"
+							? "artifact_update"
+							: "artifact_create",
+					origin: requestOrigin,
+					reason: "intent_task_toolable",
+				}, { transient: true }));
+			writer.write({
+				type: "data-turn-complete",
+				data: { timestamp: new Date().toISOString() },
+				transient: true,
+			});
+
 			let resolvedSuggestedQuestions = suggestedQuestions;
 			if (!Array.isArray(resolvedSuggestedQuestions)) {
-				resolvedSuggestedQuestions = parseSuggestedQuestions(
-					await generateTextViaGateway({
-						system: "You generate exactly three short follow-up questions as a JSON array.",
-						prompt: createSuggestedQuestionsPrompt(
-							latestUserMessage,
-							conversationHistory,
-							contentToPersist,
-						),
-						maxOutputTokens: 120,
-						temperature: 0.5,
-						allowFallback: true,
-					}).catch(() => "[]")
-				);
+				resolvedSuggestedQuestions = await generateSuggestedQuestions({
+					message: latestUserMessage,
+					conversationHistory,
+					assistantResponse: contentToPersist,
+					signal,
+				}).catch(() => []);
 			}
 
 			if (Array.isArray(resolvedSuggestedQuestions) && resolvedSuggestedQuestions.length > 0) {
@@ -1852,26 +1902,6 @@ function streamFutureChatArtifactToolResponse({
 					},
 				});
 			}
-
-			writer.write({
-				type: "data-route-decision",
-				data: {
-					reason: "intent_task_toolable",
-					experience: "text",
-					timestamp: new Date().toISOString(),
-					toolsDetected: true,
-					classifierIntent:
-						artifactAction === "updateDocument"
-							? `artifact_update_${artifactDocument.kind}`
-							: `artifact_create_${artifactDocument.kind}`,
-				},
-				transient: true,
-			});
-			writer.write({
-				type: "data-turn-complete",
-				data: { timestamp: new Date().toISOString() },
-				transient: true,
-			});
 		},
 		onError: (error) =>
 			error instanceof Error ? error.message : "Failed to stream Future Chat artifact",
@@ -1885,9 +1915,11 @@ async function handleFutureChatArtifactToolRequest({
 	activeDocument,
 	artifactSteering,
 	contextDescription,
+	requestOrigin,
 	req,
 	requestBody,
 	res,
+	streamingArtifact,
 	threadId,
 }) {
 	const { message: latestUserMessage, conversationHistory } =
@@ -1905,6 +1937,7 @@ async function handleFutureChatArtifactToolRequest({
 					action: legacyArtifactMode === "update" ? "updateDocument" : "createDocument",
 					title: legacyArtifactTitle,
 					kind: normalizeArtifactKind(legacyArtifactKind),
+					cancelStreaming: null,
 				}
 			: await resolveFutureChatArtifactDecision({
 					activeArtifact,
@@ -1913,6 +1946,7 @@ async function handleFutureChatArtifactToolRequest({
 					latestUserMessage,
 					provider: getNonEmptyString(requestBody.provider),
 					signal: req.signal,
+					streamingArtifact,
 				});
 
 	if (decision.action === "chat") {
@@ -2008,13 +2042,35 @@ async function handleFutureChatArtifactToolRequest({
 		});
 	}
 
+	// When cancelStreaming is true, save partial v1 content before starting the new version
+	if (decision.cancelStreaming === true && streamingArtifact?.id) {
+		const partialContent = getNonEmptyString(streamingArtifact.content);
+		if (partialContent) {
+			try {
+				await futureChatDocumentManager.appendDocumentVersion(streamingArtifact.id, {
+					changeLabel: "Partial (replaced)",
+					title: streamingArtifact.title,
+					kind: streamingArtifact.kind,
+					content: partialContent,
+				});
+			} catch (error) {
+				console.warn(
+					"[FUTURE-CHAT] Failed to save partial artifact version:",
+					error instanceof Error ? error.message : error,
+				);
+			}
+		}
+	}
+
 	streamFutureChatArtifactToolResponse({
 		artifactAction: decision.action,
 		artifactDocument,
+		cancelStreaming: decision.cancelStreaming,
 		changeLabel,
 		contextDescription: resolvedContextDescription,
 		conversationHistory,
 		latestUserMessage,
+		requestOrigin,
 		provider: getNonEmptyString(requestBody.provider),
 		res,
 		signal: req.signal,
@@ -2033,49 +2089,205 @@ async function proxyFutureChatChatRequest(req, res) {
 		},
 	});
 	const threadId = getNonEmptyString(requestBody.id);
-	const {
-		activeArtifact,
-		activeDocument,
-	} = await resolveFutureChatActiveArtifact({
-		activeDocumentId: requestBody.activeDocumentId,
-		artifactContext: requestBody.artifactContext,
-		futureChatDocumentManager,
-		futureChatThreadManager,
-		threadId,
-	});
+	const delegatedMessageId = getNonEmptyString(requestBody.delegatedMessageId);
+	const conversationSummary = getNonEmptyString(requestBody.conversationSummary);
+	const requestMessages = Array.isArray(requestBody.messages)
+		? [...requestBody.messages]
+		: [];
+	const delegatedThread =
+		threadId && delegatedMessageId
+			? await futureChatThreadManager.getThread(threadId)
+			: null;
+	const delegatedPrompt = delegatedMessageId
+		? resolveFutureChatDelegatedPrompt({
+			delegatedMessageId,
+			requestMessages,
+			thread: delegatedThread,
+		})
+		: null;
+	if (delegatedMessageId && !delegatedPrompt) {
+		cleanup();
+		return res.status(400).json({
+			error: "delegatedMessageId did not resolve to a persisted user message",
+		});
+	}
+	if (delegatedPrompt && !requestMessages.some((message) => message?.id === delegatedPrompt.messageId)) {
+		const hiddenUserMessage = createHiddenFutureChatUserMessage(
+			delegatedPrompt.messageId,
+			delegatedPrompt.text,
+		);
+		if (hiddenUserMessage) {
+			requestMessages.push(hiddenUserMessage);
+		}
+	}
+	requestBody.messages = requestMessages;
+
+	// Accept new fields from the frontend
+	const requestOrigin = getNonEmptyString(requestBody.origin) || "text";
+	const requestVoiceMetadata =
+		requestBody.voiceMetadata && typeof requestBody.voiceMetadata === "object"
+			? requestBody.voiceMetadata
+			: undefined;
+	const requestActiveArtifact =
+		requestBody.activeArtifact && typeof requestBody.activeArtifact === "object"
+			? requestBody.activeArtifact
+			: undefined;
+
+	// Backward compatibility: if activeArtifact is NOT in the request body,
+	// fall back to the existing resolveFutureChatActiveArtifact() from activeDocumentId
+	let activeArtifact;
+	let activeDocument;
+	if (requestActiveArtifact?.id) {
+		activeArtifact = requestActiveArtifact;
+		activeDocument = null;
+	} else {
+		const resolved = await resolveFutureChatActiveArtifact({
+			activeDocumentId: requestBody.activeDocumentId,
+			artifactContext: requestBody.artifactContext,
+			futureChatDocumentManager,
+			futureChatThreadManager,
+			threadId,
+		});
+		activeArtifact = resolved.activeArtifact;
+		activeDocument = resolved.activeDocument;
+	}
+
 	const artifactSteering =
 		requestBody.artifactSteering &&
 		typeof requestBody.artifactSteering === "object"
 			? requestBody.artifactSteering
 			: null;
 	const baseContextDescription = getNonEmptyString(requestBody.contextDescription);
+	const delegationContextDescription = conversationSummary
+		? `[Voice delegation summary]\n${conversationSummary}`
+		: null;
+	const resolvedBaseContextDescription = [delegationContextDescription, baseContextDescription]
+		.filter(Boolean)
+		.join("\n\n");
+	const streamingArtifact =
+		requestBody.streamingArtifact &&
+		typeof requestBody.streamingArtifact === "object" &&
+		getNonEmptyString(requestBody.streamingArtifact.id)
+			? {
+				id: requestBody.streamingArtifact.id,
+				title: getNonEmptyString(requestBody.streamingArtifact.title) || "Untitled",
+				kind: getNonEmptyString(requestBody.streamingArtifact.kind) || "text",
+				content: getNonEmptyString(requestBody.streamingArtifact.content) || "",
+			}
+			: null;
+
+	const resolvedProvider = getNonEmptyString(requestBody.provider);
+
 	delete requestBody.activeDocumentId;
 	delete requestBody.artifactContext;
 	delete requestBody.artifactSteering;
+	delete requestBody.delegatedMessageId;
+	delete requestBody.conversationSummary;
+	delete requestBody.streamingArtifact;
+	delete requestBody.origin;
+	delete requestBody.voiceMetadata;
+	delete requestBody.activeArtifact;
 
-	if (
-		await handleFutureChatArtifactToolRequest({
+	// -----------------------------------------------------------------------
+	// Unified routing decision
+	// -----------------------------------------------------------------------
+	const { message: latestUserMessage, conversationHistory } =
+		mapUiMessagesToConversation(requestMessages);
+
+	const recentHistory = conversationHistory.slice(-5).map((msg) => ({
+		role: msg.type === "user" ? "user" : "assistant",
+		content: msg.content,
+	}));
+
+	let routingDecision;
+	try {
+		routingDecision = await resolveRoutingDecision(
+			{
+				prompt: latestUserMessage,
+				origin: requestOrigin,
+				activeArtifact: activeArtifact || undefined,
+				voiceMetadata: requestVoiceMetadata,
+				recentHistory,
+				threadId,
+				provider: resolvedProvider,
+				signal: abortController.signal,
+			},
+			{
+				classify: ({ system, prompt, signal }) =>
+					generateTextViaGateway({
+						system,
+						prompt,
+						maxOutputTokens: 220,
+						temperature: 0.1,
+						provider: resolvedProvider,
+						signal,
+						allowFallback: true,
+					}),
+				timeoutMs: 1500,
+			},
+		);
+	} catch {
+		// D3: never block the request — fallback to chat
+		routingDecision = {
+			intent: "chat",
+			presentation: "text",
+			confidence: 0,
+			reason: "classifier_error",
+			origin: requestOrigin,
+		};
+	}
+
+	console.log(
+		"[FUTURE-CHAT] Routing decision:",
+		JSON.stringify({
+			intent: routingDecision.intent,
+			confidence: routingDecision.confidence,
+			reason: routingDecision.reason,
+			origin: routingDecision.origin,
+		}),
+	);
+
+	// -----------------------------------------------------------------------
+	// Route: artifact_create or artifact_update → delegate to artifact handler
+	// -----------------------------------------------------------------------
+	if (routingDecision.intent === "artifact_create" || routingDecision.intent === "artifact_update") {
+		const handled = await handleFutureChatArtifactToolRequest({
 			activeArtifact,
 			activeDocument,
 			artifactSteering,
-			contextDescription: baseContextDescription,
+			contextDescription: resolvedBaseContextDescription || null,
+			requestOrigin,
 			req,
 			requestBody,
 			res,
+			streamingArtifact,
 			threadId,
-		})
-	) {
-		cleanup();
-		return;
+		});
+		if (handled) {
+			cleanup();
+			return;
+		}
+		// If artifact handler returned false (e.g. no active artifact for update),
+		// fall through to chat
 	}
 
+	// -----------------------------------------------------------------------
+	// Route: genui → proxy to /api/chat-sdk with genui surface hints
+	// -----------------------------------------------------------------------
+	// Route: chat (or fallthrough) → proxy to /api/chat-sdk
+	// -----------------------------------------------------------------------
 	const artifactContextBlock = buildFutureChatArtifactContext(activeArtifact);
 	if (artifactContextBlock) {
-		requestBody.contextDescription = baseContextDescription
-			? `${artifactContextBlock}\n\n${baseContextDescription}`
+		requestBody.contextDescription = resolvedBaseContextDescription
+			? `${artifactContextBlock}\n\n${resolvedBaseContextDescription}`
 			: artifactContextBlock;
-	} else if (baseContextDescription) {
-		requestBody.contextDescription = baseContextDescription;
+	} else if (resolvedBaseContextDescription) {
+		requestBody.contextDescription = resolvedBaseContextDescription;
+	}
+
+	// For genui intent, add surface hints so RovoDev can generate UI specs
+	if (routingDecision.intent === "genui") {
+		requestBody.genuiHint = true;
 	}
 
 	let response;
@@ -2113,6 +2325,10 @@ async function proxyFutureChatChatRequest(req, res) {
 				return;
 			}
 
+			// Prepend data-route-decision as the first SSE event
+			const routeDecisionEvent = formatRouteDecisionSSE(routingDecision);
+			res.write(routeDecisionEvent);
+
 			shouldKeepAbortListeners = true;
 			const responseStream = Readable.fromWeb(response.body);
 			const cleanupStream = () => {
@@ -2148,6 +2364,19 @@ async function proxyFutureChatChatRequest(req, res) {
 			cleanup();
 		}
 	}
+}
+
+/**
+ * Format a routing decision as an SSE event that can be prepended to the
+ * stream before the proxied /api/chat-sdk response.
+ * Matches the AI SDK UI message stream SSE format: `data: <json>\n\n`
+ */
+function formatRouteDecisionSSE(decision) {
+	const part = {
+		type: "data-route-decision",
+		data: buildRouteDecision(decision),
+	};
+	return `data: ${JSON.stringify(part)}\n\n`;
 }
 
 const forgePublishManager = createForgePublishManager({
@@ -2821,6 +3050,18 @@ function isRequestUserInputTool(toolName) {
 		normalizedToolName.endsWith(".request_user_input") ||
 		normalizedToolName.endsWith(".ask_user_questions") ||
 		normalizedToolName.endsWith(".ask_user_question")
+	);
+}
+
+function isExitPlanModeTool(toolName) {
+	const normalizedToolName = getNonEmptyString(toolName)?.toLowerCase();
+	if (!normalizedToolName) {
+		return false;
+	}
+
+	return (
+		normalizedToolName === "exit_plan_mode" ||
+		normalizedToolName.endsWith(".exit_plan_mode")
 	);
 }
 
@@ -3566,6 +3807,7 @@ async function generateSuggestedQuestions({
 	assistantResponse,
 	port,
 	portIndex,
+	signal,
 }) {
 	if (!assistantResponse || !assistantResponse.trim()) {
 		return [];
@@ -3600,6 +3842,7 @@ async function generateSuggestedQuestions({
 					prompt: promptText,
 					maxOutputTokens: 200,
 					temperature: 0.7,
+					signal,
 				});
 				console.info("[SUGGESTIONS] Generated via AI Gateway");
 				return parseSuggestedQuestions(text);
@@ -3628,6 +3871,7 @@ async function generateSuggestedQuestions({
 				prompt: promptText,
 				conflictPolicy: "wait-for-turn",
 				timeoutMs: WAIT_FOR_TURN_TIMEOUT_MS,
+				signal,
 				...portOpts,
 			});
 			console.info(
@@ -3760,15 +4004,16 @@ app.post("/api/chat-sdk", async (req, res) => {
 			clarification: rawClarification,
 			approval: rawApproval,
 			deferredToolResponse: rawDeferredToolResponse,
-			planMode: rawPlanMode,
-			planModeSource: rawPlanModeSource,
 			planRequestId,
 			creationMode,
 			smartGeneration: rawSmartGeneration,
 			hasQueuedPrompts: rawHasQueuedPrompts,
 			portIndex: rawPortIndex,
+			origin: rawOrigin,
 		} = req.body || {};
 		const clientTimeZone = normalizeClientTimeZone(rawClientTimeZone);
+		const requestOrigin =
+			getNonEmptyString(rawOrigin)?.toLowerCase() === "voice" ? "voice" : "text";
 		const portIndex = typeof rawPortIndex === "number" && Number.isInteger(rawPortIndex) && rawPortIndex >= 0
 			? rawPortIndex
 			: undefined;
@@ -3803,20 +4048,6 @@ app.post("/api/chat-sdk", async (req, res) => {
 		const requestTimestamp = Date.now();
 		if (typeof portIndex === "number") {
 			portIndexRequestTimestamps.set(portIndex, requestTimestamp);
-		}
-
-		const resolvedPlanMode = resolvePlanMode({
-			planMode: rawPlanMode,
-			planModeSource: rawPlanModeSource,
-		});
-		const planMode = resolvedPlanMode.enabled;
-		if (resolvedPlanMode.rejected) {
-			console.info(
-				"[PLAN-MODE] Rejected plan mode request without trusted source",
-				{
-					source: resolvedPlanMode.source,
-				}
-			);
 		}
 
 		// If creationMode is set, prepend generic creation guidance to contextDescription.
@@ -3971,15 +4202,11 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 								"Translation requires a valid GCP project ID before I can run the Google Translate tool.",
 						});
 						writer.write({ type: "text-end", id: textId });
-						writer.write({
-							type: "data-route-decision",
-							data: {
-								reason: "intent_translation_missing_project",
-								experience: "text",
-								timestamp: new Date().toISOString(),
-								toolsDetected: false,
-							},
-						});
+						writer.write(createRouteDecisionPart({
+							intent: "chat",
+							origin: requestOrigin,
+							reason: "intent_translation_missing_project",
+						}));
 						writer.write({
 							type: "data-turn-complete",
 							data: { timestamp: new Date().toISOString() },
@@ -4178,15 +4405,11 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 							}
 
 						writeAssistantText(failureText);
-						writer.write({
-							type: "data-route-decision",
-							data: {
-								reason: "intent_translation_tool_failed",
-								experience: "text",
-								timestamp: new Date().toISOString(),
-								toolsDetected: translationAttempt.sawRequiredToolCall,
-							},
-						});
+						writer.write(createRouteDecisionPart({
+							intent: "chat",
+							origin: requestOrigin,
+							reason: "intent_translation_tool_failed",
+						}));
 						writer.write({
 							type: "data-turn-complete",
 							data: { timestamp: new Date().toISOString() },
@@ -4223,15 +4446,11 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 					}
 
 					writeAssistantText(summaryText);
-					writer.write({
-						type: "data-route-decision",
-						data: {
-							reason: "intent_translation_tool_success",
-							experience: translationSpec ? "generative_ui" : "text",
-							timestamp: new Date().toISOString(),
-							toolsDetected: true,
-						},
-					});
+					writer.write(createRouteDecisionPart({
+						intent: translationSpec ? "genui" : "chat",
+						origin: requestOrigin,
+						reason: "intent_translation_tool_success",
+					}));
 					writer.write({
 						type: "data-turn-complete",
 						data: { timestamp: new Date().toISOString() },
@@ -4385,16 +4604,11 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 						});
 					}
 
-					writer.write({
-						type: "data-route-decision",
-						data: {
-							reason: "intent_media_audio",
-							experience: "audio",
-							timestamp: new Date().toISOString(),
-							toolsDetected: false,
-							classifierIntent: "audio",
-						},
-					});
+					writer.write(createRouteDecisionPart({
+						intent: "chat",
+						origin: requestOrigin,
+						reason: "intent_media_audio",
+					}));
 
 					writer.write({
 						type: "data-turn-complete",
@@ -4576,16 +4790,11 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 						});
 					}
 
-					writer.write({
-						type: "data-route-decision",
-						data: {
-							reason: "intent_media_image_clarification",
-							experience: "image",
-							timestamp: new Date().toISOString(),
-							toolsDetected: false,
-							classifierIntent: "image",
-						},
-					});
+					writer.write(createRouteDecisionPart({
+						intent: "chat",
+						origin: requestOrigin,
+						reason: "intent_media_image_clarification",
+					}));
 
 					writer.write({
 						type: "data-turn-complete",
@@ -4619,44 +4828,14 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 				domainLabels: toolFirstPolicy.domainLabels,
 			});
 		}
-		const inferredPromptIntent = inferSmartIntentFromPrompt(latestUserMessage);
-		const mediaPreClassification = preClassifyMediaIntent(latestUserMessage);
+		const promptIntent = classifyPromptIntent(latestUserMessage);
+		const inferredPromptIntent = promptIntent.inferredIntent;
+		const mediaPreClassification = promptIntent.mediaPreClassification;
 		const { isStrictToolFirstTurn } = resolveToolFirstRoutingFlags({
 			toolFirstMatched: toolFirstPolicy.matched,
 			inferredPromptIntent,
 			preClassifiedIntent: mediaPreClassification.intent,
 		});
-
-		if (
-			shouldGatePlanningQuestionCard({
-				messages,
-				planMode,
-				latestVisibleUserMessage,
-				latestUserMessageSource,
-				planningGateSkipSources: PLANNING_GATE_SKIP_SOURCES,
-				detectPlanningIntent,
-				parsePlanPayload: parsePlanWidgetPayload,
-			})
-		) {
-			const questionCardPayload = await generateClarificationQuestionCard({
-				latestUserMessage: latestVisibleUserMessage?.text || latestUserMessage,
-				conversationHistory,
-				previousQuestionCard: null,
-				submission: null,
-				round: 1,
-				maxRounds: CLARIFICATION_MAX_ROUNDS,
-				sessionId: buildPlanningQuestionCardSessionId(planRequestId),
-			});
-
-			if (questionCardPayload) {
-				streamQuestionCardWidget({
-					res,
-					payload: questionCardPayload,
-					introText: PLANNING_GATE_INTRO_TEXT,
-				});
-				return;
-			}
-		}
 
 		let toolFirstClarificationInstruction = null;
 		if (isStrictToolFirstTurn && !clarificationSubmission) {
@@ -4719,13 +4898,39 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 		}
 
 		if (approvalSubmission) {
-			const serialized = JSON.stringify({
-				decision: approvalSubmission.decision,
-				customInstruction: approvalSubmission.customInstruction,
-			});
-			enrichedContextDescription = enrichedContextDescription
-				? `${enrichedContextDescription}\n\nPlan approval: ${serialized}`
-				: `Plan approval: ${serialized}`;
+			// Check if this approval is for a native plan mode exit_plan_mode
+			// deferred tool. If so, build a deferred tool response instead of
+			// enriching the context description.
+			const approvalDeferredToolCallId = getNonEmptyString(
+				rawApproval?.deferredToolCallId
+			);
+			if (approvalDeferredToolCallId) {
+				const isApproved =
+					approvalSubmission.decision === "auto-accept" ||
+					approvalSubmission.decision === "approve" ||
+					approvalSubmission.decision === "accept";
+				deferredToolResponseForRovoDev = {
+					tool_call_id: approvalDeferredToolCallId,
+					result: isApproved
+						? { approved: true }
+						: {
+							approved: false,
+							feedback: approvalSubmission.customInstruction || "Plan rejected by user",
+						},
+				};
+				console.info("[EXIT-PLAN-MODE] Deferred tool response from plan approval", {
+					toolCallId: approvalDeferredToolCallId,
+					approved: isApproved,
+				});
+			} else {
+				const serialized = JSON.stringify({
+					decision: approvalSubmission.decision,
+					customInstruction: approvalSubmission.customInstruction,
+				});
+				enrichedContextDescription = enrichedContextDescription
+					? `${enrichedContextDescription}\n\nPlan approval: ${serialized}`
+					: `Plan approval: ${serialized}`;
+			}
 		}
 
 		const googleCalendarDateContext = isStrictToolFirstTurn
@@ -4772,11 +4977,11 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 				widthClass: smartGeneration.widthClass,
 			};
 			const smartGenerationActive = isSmartGenerationEnabled(smartGeneration);
-			const isTaskLikeRequest = isTaskLikeMessage(latestUserMessage);
+			const isTaskLikeRequest = promptIntent.isTaskLike;
 			const prefersGenuiCardExperience =
-				shouldPreferGenuiWhenPossible(latestUserMessage);
+				promptIntent.prefersGenuiCardExperience;
 			const isCreateIntentRequestPrompt =
-				isCreateIntentRequest(latestUserMessage);
+				promptIntent.isCreateIntentRequest;
 			const forceSmartAudioRoute =
 				!smartGenerationActive && inferredPromptIntent === "audio";
 			const smartRoutingActive = smartGenerationActive || forceSmartAudioRoute;
@@ -4828,6 +5033,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 						});
 						console.info("[SMART-GENERATION] Intent classification", {
 							intent: smartIntentResult.intent,
+							complexity: smartIntentResult.complexity,
 							confidence: smartIntentResult.confidence,
 							reason: smartIntentResult.reason,
 							latencyMs: Date.now() - classificationStartMs,
@@ -5160,15 +5366,11 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 										CLARIFICATION_WIDGET_TYPE,
 										false
 									);
-									writer.write({
-										type: "data-route-decision",
-										data: {
-											reason: "intent_clarification",
-											experience: "question_card",
-											timestamp: new Date().toISOString(),
-											toolsDetected: false,
-										},
-									});
+									writer.write(createRouteDecisionPart({
+										intent: "chat",
+										origin: requestOrigin,
+										reason: "intent_clarification",
+									}));
 									emittedImageClarificationCard = true;
 									emitTextDelta(
 										"I need one quick detail before generating the image."
@@ -5408,15 +5610,11 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 											false
 										);
 										emittedAudioClarificationCard = true;
-										writer.write({
-											type: "data-route-decision",
-											data: {
-												reason: "intent_clarification",
-												experience: "question_card",
-												timestamp: new Date().toISOString(),
-												toolsDetected: false,
-											},
-										});
+										writer.write(createRouteDecisionPart({
+											intent: "chat",
+											origin: requestOrigin,
+											reason: "intent_clarification",
+										}));
 										if (smartIntentResult.intent === "audio") {
 											emitTextDelta(
 												"I need one quick detail before generating the audio clip."
@@ -5694,16 +5892,11 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 						}
 
 						// Emit route-decision for observability
-						writer.write({
-							type: "data-route-decision",
-							data: {
-								reason: "intent_media_image",
-								experience: "image",
-								timestamp: new Date().toISOString(),
-								toolsDetected: false,
-								classifierIntent: "image",
-							},
-						});
+						writer.write(createRouteDecisionPart({
+							intent: "chat",
+							origin: requestOrigin,
+							reason: "intent_media_image",
+						}));
 
 						writer.write({
 							type: "data-turn-complete",
@@ -5859,16 +6052,11 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 						}
 
 						// Emit route-decision for observability
-						writer.write({
-							type: "data-route-decision",
-							data: {
-								reason: "intent_media_audio",
-								experience: "audio",
-								timestamp: new Date().toISOString(),
-								toolsDetected: false,
-								classifierIntent: "audio",
-							},
-						});
+						writer.write(createRouteDecisionPart({
+							intent: "chat",
+							origin: requestOrigin,
+							reason: "intent_media_audio",
+						}));
 
 						writer.write({
 							type: "data-turn-complete",
@@ -5888,7 +6076,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 			}
 		}
 
-		const directGoogleIntent = inferSmartIntentFromPrompt(latestUserMessage);
+		const directGoogleIntent = inferPromptIntent(latestUserMessage);
 		if (
 			provider === "google" &&
 			!isStrictToolFirstTurn &&
@@ -5912,7 +6100,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 					const textId = `text-${Date.now()}`;
 					let textStarted = false;
 					const prefersImageModalities =
-						inferSmartIntentFromPrompt(latestUserMessage) === "image";
+						directGoogleIntent === "image";
 
 					const emitTextDelta = (delta) => {
 						if (typeof delta !== "string" || delta.length === 0) {
@@ -6190,21 +6378,30 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 						return;
 					}
 
-					if (!force && isClassifierIntentLeakCandidate(bufferedAssistantText)) {
-						if (bufferedAssistantText.length <= CLASSIFIER_JSON_BUFFER_MAX_CHARS) {
+					const {
+						pendingText: pendingDirectMediaText,
+						visibleText: visibleAssistantText,
+					} = splitDirectMediaTextForStreaming(bufferedAssistantText);
+					if (!visibleAssistantText) {
+						bufferedAssistantText = force ? "" : pendingDirectMediaText;
+						return;
+					}
+
+					if (!force && isClassifierIntentLeakCandidate(visibleAssistantText)) {
+						if (visibleAssistantText.length <= CLASSIFIER_JSON_BUFFER_MAX_CHARS) {
 							return;
 						}
 
 						const parsedClassifierPayload = parseClassifierIntentPayload(
-							bufferedAssistantText
+							visibleAssistantText
 						);
 						if (parsedClassifierPayload) {
 							return;
 						}
 					}
 
-					const chunk = bufferedAssistantText;
-					bufferedAssistantText = "";
+					const chunk = visibleAssistantText;
+					bufferedAssistantText = force ? "" : pendingDirectMediaText;
 					emitTextDeltaRaw(chunk);
 				};
 
@@ -6991,15 +7188,11 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 					});
 
 					// BE-005 / BE-009: Emit route-decision for question card experience
-					writer.write({
-						type: "data-route-decision",
-						data: {
-							reason: "intent_clarification",
-							experience: "question_card",
-							timestamp: new Date().toISOString(),
-							toolsDetected: true,
-						},
-					});
+					writer.write(createRouteDecisionPart({
+						intent: "chat",
+						origin: requestOrigin,
+						reason: "intent_clarification",
+					}));
 
 					emittedQuestionCardToolCalls.set(resolvedDedupeKey, {
 						widgetId: questionCardWidgetId,
@@ -7431,6 +7624,28 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 						: 0;
 					const totalToolFirstAttempts = toolFirstRetryLimit + 1;
 					let currentToolFirstAttempt = 1;
+
+					// Auto-enter plan mode for complex artifact creation requests.
+					// This happens after port acquisition but before sending the message.
+					if (
+						smartIntentResult?.complexity === "complex" &&
+						smartIntentResult.intent !== "normal" &&
+						strictPortAssignment?.rovoPort
+					) {
+						try {
+							await setAgentMode(strictPortAssignment.rovoPort, "plan");
+							console.info("[AUTO-PLAN-MODE] Auto-entered plan mode for complex request", {
+								intent: smartIntentResult.intent,
+								complexity: smartIntentResult.complexity,
+								port: strictPortAssignment.rovoPort,
+							});
+						} catch (autoPlanError) {
+							console.warn("[AUTO-PLAN-MODE] Failed to auto-enter plan mode (continuing without)", {
+								error: autoPlanError instanceof Error ? autoPlanError.message : String(autoPlanError),
+							});
+						}
+					}
+
 					let activeAttemptMessage = deferredToolResponseForRovoDev || userMessageText;
 					let shouldContinueToolFirstRetry = true;
 					let forcePortRecoveryAttemptCount = 0;
@@ -7465,6 +7680,29 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 												questionInput: toolCall.toolInput,
 												source: "deferred_tool_request",
 											});
+										}
+
+										// Handle exit_plan_mode deferred tool — extract
+										// the markdown plan and emit a plan widget so the
+										// user can approve/reject before execution.
+										if (isExitPlanModeTool(toolCall.toolName) && toolCall.toolInput) {
+											const planMarkdown = typeof toolCall.toolInput === "object"
+												? toolCall.toolInput.plan
+												: toolCall.toolInput;
+											if (typeof planMarkdown === "string" && planMarkdown.trim()) {
+												const planPayload = extractPlanWidgetPayloadFromText(planMarkdown, { minTasks: 1 });
+												if (planPayload) {
+													// Include the deferred tool call ID so
+													// the frontend can send it back with
+													// the approval response.
+													planPayload.deferredToolCallId = toolCall.toolCallId;
+													emitPlanWidgetData(planPayload);
+													console.info("[EXIT-PLAN-MODE] Plan widget emitted from deferred tool", {
+														toolCallId: toolCall.toolCallId,
+														taskCount: planPayload.tasks?.length ?? 0,
+													});
+												}
+											}
 										}
 										return;
 									}
@@ -7926,6 +8164,211 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 					return;
 				}
 
+				// ── Phase 2: Direct RovoDev spec detection ──
+				// When enabled, check if RovoDev already emitted a valid
+				// ```spec fence in its text output. If found, emit it as a
+				// GenUI widget directly — skipping the second-pass GenUI
+				// LLM call entirely.
+				if (
+					!hasEmittedGenuiWidget &&
+					!hasEmittedQuestionCard &&
+					!hasEmittedPlanWidget
+				) {
+					const directSpecResult = extractDirectSpec(assistantText);
+					if (directSpecResult?.spec) {
+						const directSpecWidgetId = `widget-direct-spec-${Date.now()}`;
+						writer.write({
+							type: "data-widget-loading",
+							id: directSpecWidgetId,
+							data: { type: SMART_WIDGET_TYPE_GENUI, loading: true },
+						});
+						writer.write({
+							type: "data-widget-data",
+							id: directSpecWidgetId,
+							data: {
+								type: SMART_WIDGET_TYPE_GENUI,
+								payload: {
+									spec: directSpecResult.spec,
+									summary: directSpecResult.narrative || latestUserMessage,
+									source: "direct-rovodev-spec",
+								},
+							},
+						});
+						writer.write({
+							type: "data-widget-loading",
+							id: directSpecWidgetId,
+							data: { type: SMART_WIDGET_TYPE_GENUI, loading: false },
+						});
+						hasEmittedGenuiWidget = true;
+						console.info("[DIRECT-SPEC] Emitted GenUI widget from RovoDev spec fence", {
+							elementCount: Object.keys(directSpecResult.spec.elements || {}).length,
+							narrativeLength: (directSpecResult.narrative || "").length,
+						});
+					}
+
+					// ── Phase 3: Direct RovoDev media fence detection ──
+					// When enabled, check if RovoDev emitted ```image or
+					// ```audio fences. If found, emit them as artifact
+					// widgets so the backend can route to the appropriate
+					// generation service (AI Gateway / TTS).
+					const imageFenceMatch = assistantText.match(/```image\s*\n([\s\S]*?)```/i);
+					const audioFenceMatch = assistantText.match(/```audio\s*\n([\s\S]*?)```/i);
+
+					if (imageFenceMatch) {
+						try {
+							const imagePayload = JSON.parse(imageFenceMatch[1].trim());
+							const imageWidgetId = `widget-direct-image-${Date.now()}`;
+							writer.write({
+								type: "data-widget-loading",
+								id: imageWidgetId,
+								data: { type: SMART_WIDGET_TYPE_IMAGE, loading: true },
+							});
+							writer.write({
+								type: "data-thinking-status",
+								data: {
+									label: "Generating image",
+									activity: "image",
+									source: "backend",
+								},
+							});
+
+							try {
+								const imageGatewayConfig = resolveGoogleImageGatewayConfig({
+									envVars: getEnvVars(),
+									requestedModel: rawModel,
+									resolveGatewayUrl,
+									detectEndpointType,
+								});
+								if (imageGatewayConfig.ok) {
+									const generatedImages = [];
+									await streamGoogleGatewayManualSse({
+										gatewayUrl: imageGatewayConfig.gatewayUrl,
+										envVars: imageGatewayConfig.envVars,
+										model: imageGatewayConfig.model,
+										prompt: imagePayload.prompt || latestUserMessage,
+										maxOutputTokens: 1800,
+										temperature: 1,
+										responseModalities: ["image"],
+										signal: abortController.signal,
+										onFile: ({ mediaType, base64 }) => {
+											if (typeof base64 !== "string" || base64.length === 0) return;
+											const resolvedMediaType = typeof mediaType === "string" && mediaType.trim()
+												? mediaType : "image/png";
+											generatedImages.push({
+												url: `data:${resolvedMediaType};base64,${base64}`,
+												mimeType: resolvedMediaType,
+											});
+											writer.write({
+												type: "data-widget-data",
+												id: imageWidgetId,
+												data: {
+													type: SMART_WIDGET_TYPE_IMAGE,
+													payload: {
+														images: [...generatedImages],
+														prompt: imagePayload.prompt || latestUserMessage,
+														source: "direct-rovodev-image",
+													},
+												},
+											});
+										},
+									});
+								}
+							} catch (imageError) {
+								console.error("[DIRECT-IMAGE] Image generation failed:", imageError?.message || imageError);
+								writer.write({
+									type: "data-widget-error",
+									id: imageWidgetId,
+									data: {
+										type: SMART_WIDGET_TYPE_IMAGE,
+										message: "Image generation failed.",
+										canRetry: true,
+									},
+								});
+							}
+							writer.write({
+								type: "data-widget-loading",
+								id: imageWidgetId,
+								data: { type: SMART_WIDGET_TYPE_IMAGE, loading: false },
+							});
+							console.info("[DIRECT-IMAGE] Processed image fence from RovoDev", {
+								prompt: (imagePayload.prompt || "").slice(0, 80),
+							});
+						} catch (parseError) {
+							console.warn("[DIRECT-IMAGE] Failed to parse image fence JSON:", parseError?.message);
+						}
+					}
+
+					if (audioFenceMatch) {
+						try {
+							const audioPayload = JSON.parse(audioFenceMatch[1].trim());
+							const audioWidgetId = `widget-direct-audio-${Date.now()}`;
+							writer.write({
+								type: "data-widget-loading",
+								id: audioWidgetId,
+								data: { type: SMART_WIDGET_TYPE_AUDIO, loading: true },
+							});
+							writer.write({
+								type: "data-thinking-status",
+								data: {
+									label: "Generating audio",
+									activity: "audio",
+									source: "backend",
+								},
+							});
+
+							try {
+								const synthesisResult = await synthesizeSound({
+									input: audioPayload.text,
+									provider: "google",
+									model: "tts-latest",
+									responseFormat: "mp3",
+								});
+								writer.write({
+									type: "data-widget-data",
+									id: audioWidgetId,
+									data: {
+										type: SMART_WIDGET_TYPE_AUDIO,
+										payload: {
+											audioUrl: buildAudioDataUrl(
+												synthesisResult.audioBytes,
+												synthesisResult.contentType
+											),
+											mimeType: synthesisResult.contentType,
+											transcript: audioPayload.text,
+											source: "direct-rovodev-audio",
+										},
+									},
+								});
+							} catch (audioError) {
+								console.error("[DIRECT-AUDIO] Audio generation failed:", audioError?.message || audioError);
+								writer.write({
+									type: "data-widget-error",
+									id: audioWidgetId,
+									data: {
+										type: SMART_WIDGET_TYPE_AUDIO,
+										message: "Audio generation failed.",
+										canRetry: true,
+									},
+								});
+							}
+							writer.write({
+								type: "data-widget-loading",
+								id: audioWidgetId,
+								data: { type: SMART_WIDGET_TYPE_AUDIO, loading: false },
+							});
+							console.info("[DIRECT-AUDIO] Processed audio fence from RovoDev", {
+								textLength: (audioPayload.text || "").length,
+							});
+						} catch (parseError) {
+							console.warn("[DIRECT-AUDIO] Failed to parse audio fence JSON:", parseError?.message);
+						}
+					}
+
+					if (imageFenceMatch || audioFenceMatch) {
+						assistantText = stripDirectMediaFences(assistantText);
+					}
+				}
+
 				if (
 					QUESTION_CARD_TEXT_EXTRACTION_FALLBACK_ENABLED &&
 					!hasEmittedQuestionCard &&
@@ -7978,15 +8421,11 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 							});
 
 							// BE-005 / BE-009: Emit route-decision for fallback question card
-							writer.write({
-								type: "data-route-decision",
-								data: {
-									reason: "intent_clarification",
-									experience: "question_card",
-									timestamp: new Date().toISOString(),
-									toolsDetected: false,
-								},
-							});
+							writer.write(createRouteDecisionPart({
+								intent: "chat",
+								origin: requestOrigin,
+								reason: "intent_clarification",
+							}));
 
 							console.info("[OUTPUT-ROUTING] Question card emitted via fallback extraction", {
 								reason: "intent_clarification",
@@ -8139,8 +8578,6 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 					};
 					const emitTwoStepFallbackGenuiWidget = ({
 						widgetId,
-						fallbackCause,
-						observationFallbackCause = "tool_observation_fallback",
 					}) => {
 						const fallbackPayload = resolveDeterministicGenuiFallback({
 							text: assistantText,
@@ -8165,18 +8602,11 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 							},
 						});
 						hasEmittedGenuiWidget = true;
-						writer.write({
-						type: "data-route-decision",
-						data: {
+						writer.write(createRouteDecisionPart({
+							intent: "genui",
+							origin: requestOrigin,
 							reason: "intent_task_toolable",
-								experience: "generative_ui",
-								timestamp: new Date().toISOString(),
-								toolsDetected: getRouteToolsDetected(),
-								fallbackCause: fallbackPayload.observationUsed
-									? observationFallbackCause
-									: fallbackCause,
-							},
-						});
+						}));
 						return true;
 					};
 					if (!isStrictToolFirstTurn) {
@@ -8197,7 +8627,6 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 						!hasEmittedQuestionCard &&
 						!hasEmittedPlanWidget &&
 						!hasEmittedGenuiWidget &&
-						!planMode &&
 						!looksLikeClarification &&
 						!looksLikeInability &&
 							!abortController.signal.aborted &&
@@ -8257,15 +8686,11 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 								hasEmittedGenuiWidget = true;
 
 								// Emit route-decision: generative_ui experience
-								writer.write({
-									type: "data-route-decision",
-									data: {
-										reason: "intent_task_toolable",
-										experience: "generative_ui",
-										timestamp: new Date().toISOString(),
-										toolsDetected: getRouteToolsDetected(),
-									},
-								});
+								writer.write(createRouteDecisionPart({
+									intent: "genui",
+									origin: requestOrigin,
+									reason: "intent_task_toolable",
+								}));
 							} else {
 								console.warn("[OUTPUT-ROUTING] Two-step GenUI failed, using fallback card", {
 									error: genuiResult.error,
@@ -8277,36 +8702,22 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 											source: "create-intent-direct-genui-after-two-step-failure",
 										});
 									if (emittedCreateIntentWidget) {
-										writer.write({
-											type: "data-route-decision",
-											data: {
-												reason: "intent_task_toolable",
-												experience: "generative_ui",
-												timestamp: new Date().toISOString(),
-												toolsDetected: getRouteToolsDetected(),
-												fallbackCause:
-													"create_intent_direct_genui_after_two_step_failure",
-											},
-										});
+										writer.write(createRouteDecisionPart({
+											intent: "genui",
+											origin: requestOrigin,
+											reason: "intent_task_toolable",
+										}));
 									} else {
 									const emittedFallbackWidget = emitTwoStepFallbackGenuiWidget({
 										widgetId: twoStepGenuiWidgetId,
-										fallbackCause: genuiResult.error || "genui-generation-failed",
-										observationFallbackCause: "tool_observation_fallback",
 									});
 								if (!emittedFallbackWidget) {
 									emitGenuiErrorTextFallback();
-									writer.write({
-										type: "data-route-decision",
-										data: {
-											reason: "fallback_ui_failed",
-											experience: "text",
-											timestamp: new Date().toISOString(),
-											toolsDetected: getRouteToolsDetected(),
-											fallbackCause:
-												genuiResult.error || "genui-generation-failed",
-											},
-										});
+									writer.write(createRouteDecisionPart({
+										intent: "chat",
+										origin: requestOrigin,
+										reason: "fallback_ui_failed",
+									}));
 									}
 								}
 							}
@@ -8322,40 +8733,22 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 										source: "create-intent-direct-genui-after-two-step-exception",
 									});
 								if (emittedCreateIntentWidget) {
-									writer.write({
-										type: "data-route-decision",
-										data: {
-											reason: "intent_task_toolable",
-											experience: "generative_ui",
-											timestamp: new Date().toISOString(),
-											toolsDetected: getRouteToolsDetected(),
-											fallbackCause:
-												"create_intent_direct_genui_after_two_step_exception",
-										},
-									});
+									writer.write(createRouteDecisionPart({
+										intent: "genui",
+										origin: requestOrigin,
+										reason: "intent_task_toolable",
+									}));
 								} else {
 								const emittedFallbackWidget = emitTwoStepFallbackGenuiWidget({
 									widgetId: twoStepGenuiWidgetId,
-									fallbackCause: twoStepError instanceof Error
-										? twoStepError.message
-										: "genui-generation-exception",
-									observationFallbackCause:
-										"tool_observation_fallback_after_genui_exception",
 								});
 							if (!emittedFallbackWidget) {
 								emitGenuiErrorTextFallback();
-								writer.write({
-									type: "data-route-decision",
-									data: {
-										reason: "fallback_ui_failed",
-										experience: "text",
-										timestamp: new Date().toISOString(),
-										toolsDetected: getRouteToolsDetected(),
-										fallbackCause: twoStepError instanceof Error
-											? twoStepError.message
-											: "genui-generation-exception",
-										},
-									});
+								writer.write(createRouteDecisionPart({
+									intent: "chat",
+									origin: requestOrigin,
+									reason: "fallback_ui_failed",
+								}));
 								}
 								}
 						} finally {
@@ -8387,10 +8780,6 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 							});
 								const emittedFallbackWidget = emitTwoStepFallbackGenuiWidget({
 									widgetId: twoStepGenuiWidgetId,
-									fallbackCause: shouldEmitObservationFallback
-										? "tool_observation_fallback"
-										: "card-first-fallback",
-									observationFallbackCause: "tool_observation_fallback",
 								});
 							writer.write({
 								type: "data-widget-loading",
@@ -8402,31 +8791,20 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 							});
 							if (!emittedFallbackWidget) {
 								emitGenuiErrorTextFallback();
-								writer.write({
-									type: "data-route-decision",
-									data: {
-											reason: "fallback_ui_failed",
-											experience: "text",
-											timestamp: new Date().toISOString(),
-											toolsDetected: getRouteToolsDetected(),
-											fallbackCause: shouldEmitObservationFallback
-												? "tool_observation_fallback"
-												: "card-first-fallback",
-										},
-									});
+								writer.write(createRouteDecisionPart({
+									intent: "chat",
+									origin: requestOrigin,
+									reason: "fallback_ui_failed",
+								}));
 							}
 						} else {
 							// Short conversational reply or empty -> plain text route
 							emitBufferedAssistantTextForTextRoute();
-							writer.write({
-								type: "data-route-decision",
-								data: {
-									reason: "intent_text_default",
-									experience: "text",
-									timestamp: new Date().toISOString(),
-									toolsDetected: false,
-								},
-							});
+							writer.write(createRouteDecisionPart({
+								intent: "chat",
+								origin: requestOrigin,
+								reason: "intent_text_default",
+							}));
 						}
 					}
 					}
@@ -8445,7 +8823,6 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 
 					if (
 						isStrictToolFirstTurn &&
-						!planMode &&
 						!hasEmittedQuestionCard &&
 						!hasEmittedPlanWidget
 					) {
@@ -8591,15 +8968,11 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 										toolFirstFallbackCause = isLowConfidenceSpec
 											? "tool_first_low_confidence_genui_no_fallback"
 											: "missing_renderable_genui_spec";
-										writer.write({
-											type: "data-route-decision",
-											data: {
-												reason: "fallback_ui_failed",
-												experience: "text",
-												timestamp: new Date().toISOString(),
-												toolsDetected: true,
-											},
-										});
+										writer.write(createRouteDecisionPart({
+											intent: "chat",
+											origin: requestOrigin,
+											reason: "fallback_ui_failed",
+										}));
 										emitForcedTextDelta(
 											`${toolFirstSummaryPrefix}I couldn't produce a renderable interactive summary from tool output.`
 										);
@@ -8648,15 +9021,11 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 											toolFirstGenuiError instanceof Error
 												? toolFirstGenuiError.message
 												: "tool-first-genui-error";
-										writer.write({
-											type: "data-route-decision",
-											data: {
-												reason: "fallback_ui_failed",
-												experience: "text",
-												timestamp: new Date().toISOString(),
-												toolsDetected: true,
-											},
-										});
+										writer.write(createRouteDecisionPart({
+											intent: "chat",
+											origin: requestOrigin,
+											reason: "fallback_ui_failed",
+										}));
 										emitForcedTextDelta(
 											`${toolFirstSummaryPrefix}I couldn't produce a renderable interactive summary from tool output.`
 										);
@@ -8806,16 +9175,14 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 							return fallbackCause || "twg_to_jira_cql_fallback";
 						})();
 
-						writer.write({
-							type: "data-route-decision",
-							data: {
-								reason: toolFirstRouteReason,
-								experience: toolFirstRouteExperience,
-								timestamp: new Date().toISOString(),
-								toolsDetected: getRouteToolsDetected(),
-								fallbackCause: resolvedToolFirstFallbackCause || undefined,
-							},
-						});
+						writer.write(createRouteDecisionPart({
+							intent:
+								toolFirstRouteExperience === "generative_ui"
+									? "genui"
+									: "chat",
+							origin: requestOrigin,
+							reason: toolFirstRouteReason,
+						}));
 
 						console.info("[TOOL-FIRST] Execution summary", {
 							domains: toolFirstPolicy.domains,
@@ -8831,6 +9198,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 							lastRelevantErrorCategory:
 								toolFirstExecutionState.lastRelevantErrorCategory,
 							fallbackUsed: !hasRelevantToolSuccess(toolFirstExecutionState),
+							fallbackCause: resolvedToolFirstFallbackCause,
 						});
 					}
 
@@ -8874,26 +9242,6 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 				// 2. A newer request has arrived for the same portIndex since this one started
 				const isStaleRequest = typeof portIndex === "number" &&
 					portIndexRequestTimestamps.get(portIndex) !== requestTimestamp;
-				if (!hasQueuedPrompts && !isStaleRequest) {
-					try {
-						const suggestedQuestions = await generateSuggestedQuestions({
-							message: latestUserMessage,
-							conversationHistory,
-							assistantResponse: assistantText,
-							portIndex,
-						});
-
-						if (suggestedQuestions.length > 0) {
-							writer.write({
-								type: "data-suggested-questions",
-								data: { questions: suggestedQuestions },
-							});
-						}
-					} catch (error) {
-						// Suggestions are best-effort — log but don't fail the response
-						console.error("[SUGGESTIONS] Failed to generate:", error?.message || error);
-					}
-				}
 
 				// ── Output Routing: Routing telemetry summary (BE-009) ──
 				// Emit a structured summary log for every completed turn so
@@ -8919,14 +9267,38 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 				};
 				console.info("[OUTPUT-ROUTING] Turn routing summary", routingTelemetry);
 
-				// Signal that the entire turn (including post-stream work like
-				// suggestions) is complete. The frontend uses this sentinel to
-				// safely advance its prompt queue without racing the RovoDev
-				// port cooldown period.
+				// Signal that the main response is complete so the frontend
+				// can show the response immediately. Suggested questions
+				// follow as a best-effort bonus after the turn-complete
+				// sentinel, so they don't block the user from seeing the
+				// response or typing the next message.
 				writer.write({
 					type: "data-turn-complete",
 					data: { timestamp: new Date().toISOString() },
 				});
+
+				// Generate suggested follow-up questions AFTER turn-complete
+				// so the main response is visible immediately.
+				if (!hasQueuedPrompts && !isStaleRequest) {
+					try {
+						const suggestedQuestions = await generateSuggestedQuestions({
+							message: latestUserMessage,
+							conversationHistory,
+							assistantResponse: assistantText,
+							portIndex,
+						});
+
+						if (suggestedQuestions.length > 0) {
+							writer.write({
+								type: "data-suggested-questions",
+								data: { questions: suggestedQuestions },
+							});
+						}
+					} catch (error) {
+						// Suggestions are best-effort — log but don't fail the response
+						console.error("[SUGGESTIONS] Failed to generate:", error?.message || error);
+					}
+				}
 			},
 			onError: (error) => {
 				if (error instanceof Error) {
@@ -9008,6 +9380,111 @@ app.post("/api/chat-cancel", async (req, res) => {
 	} catch (error) {
 		console.error("[CHAT-CANCEL] Cancel error:", error.message || error);
 		return res.status(200).json({ cancelled: false, error: error.message });
+	}
+});
+
+// ── Agent Mode Toggle ──
+// Allows the frontend to get/set the agent mode on a specific RovoDev
+// session (plan, default, ask).
+app.post("/api/agent-mode", async (req, res) => {
+	try {
+		const { mode, portIndex: rawPortIndex } = req.body || {};
+		if (!mode || typeof mode !== "string") {
+			return res.status(400).json({ error: "mode is required (plan, default, or ask)" });
+		}
+		const validModes = ["plan", "default", "ask"];
+		if (!validModes.includes(mode)) {
+			return res.status(400).json({ error: `Invalid mode: ${mode}. Must be one of: ${validModes.join(", ")}` });
+		}
+
+		const portIndex = typeof rawPortIndex === "number" && Number.isInteger(rawPortIndex) && rawPortIndex >= 0
+			? rawPortIndex
+			: undefined;
+
+		let resolvedPort = null;
+		if (typeof portIndex === "number") {
+			try {
+				const poolStatus = _rovoDevPool?.getStatus?.();
+				const poolPorts = Array.isArray(poolStatus?.ports)
+					? poolStatus.ports
+							.map((entry) => entry?.port)
+							.filter((port) => typeof port === "number" && Number.isInteger(port) && port > 0)
+					: readRovoDevPorts();
+				const strictAssignment = resolveStrictRovoDevPortAssignment(portIndex, {
+					activePorts: poolPorts,
+					poolStatus,
+				});
+				resolvedPort =
+					typeof strictAssignment?.rovoPort === "number" &&
+					Number.isInteger(strictAssignment.rovoPort) &&
+					strictAssignment.rovoPort > 0
+						? strictAssignment.rovoPort
+						: null;
+			} catch (error) {
+				return res.status(400).json({
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+		}
+
+		const result = typeof resolvedPort === "number"
+			? await setAgentMode(resolvedPort, mode)
+			: await setAgentMode(undefined, mode);
+		console.info("[AGENT-MODE] Mode set", { mode, portIndex, resolvedPort });
+		return res.status(200).json(result);
+	} catch (error) {
+		console.error("[AGENT-MODE] Error:", error.message || error);
+		return res.status(500).json({ error: error.message || "Failed to set agent mode" });
+	}
+});
+
+app.get("/api/agent-mode", async (req, res) => {
+	try {
+		const rawPortIndex = Array.isArray(req.query?.portIndex)
+			? req.query.portIndex[0]
+			: req.query?.portIndex;
+		const hasPortIndex = rawPortIndex !== undefined;
+		const parsedPortIndex = hasPortIndex
+			? Number.parseInt(String(rawPortIndex), 10)
+			: null;
+
+		let resolvedPort = null;
+		if (hasPortIndex) {
+			if (!Number.isInteger(parsedPortIndex) || parsedPortIndex < 0) {
+				return res.status(400).json({ error: "portIndex must be a non-negative integer" });
+			}
+
+			try {
+				const poolStatus = _rovoDevPool?.getStatus?.();
+				const poolPorts = Array.isArray(poolStatus?.ports)
+					? poolStatus.ports
+							.map((entry) => entry?.port)
+							.filter((port) => typeof port === "number" && Number.isInteger(port) && port > 0)
+					: readRovoDevPorts();
+				const strictAssignment = resolveStrictRovoDevPortAssignment(parsedPortIndex, {
+					activePorts: poolPorts,
+					poolStatus,
+				});
+				resolvedPort =
+					typeof strictAssignment?.rovoPort === "number" &&
+					Number.isInteger(strictAssignment.rovoPort) &&
+					strictAssignment.rovoPort > 0
+						? strictAssignment.rovoPort
+						: null;
+			} catch (error) {
+				return res.status(400).json({
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+		}
+
+		const result = typeof resolvedPort === "number"
+			? await getAgentMode(resolvedPort)
+			: await getAgentMode();
+		return res.status(200).json(result);
+	} catch (error) {
+		console.error("[AGENT-MODE] Error:", error.message || error);
+		return res.status(500).json({ error: error.message || "Failed to get agent mode" });
 	}
 });
 
@@ -9143,15 +9620,11 @@ app.post("/api/chat-sdk/skip-question", async (req, res) => {
 				}
 
 				// Emit route-decision for skip
-				writer.write({
-					type: "data-route-decision",
-					data: {
-						reason: "intent_clarification_skip",
-						experience: "text",
-						timestamp: new Date().toISOString(),
-						toolsDetected: false,
-					},
-				});
+				writer.write(createRouteDecisionPart({
+					intent: "chat",
+					origin: requestOrigin,
+					reason: "intent_clarification_skip",
+				}));
 
 				writer.write({
 					type: "data-turn-complete",
@@ -9282,47 +9755,6 @@ app.post("/api/speech-transcription", async (req, res) => {
 		});
 	} finally {
 		cleanup();
-	}
-});
-
-app.post("/api/realtime/classify-intent", async (req, res) => {
-	console.warn("[REALTIME] DEPRECATED: /api/realtime/classify-intent — use delegate_to_rovo function calling instead");
-	try {
-		const {
-			transcript,
-			isGenerating,
-			currentGenerationContext,
-			recentThreadSummary,
-		} = req.body || {};
-
-		if (!transcript || typeof transcript !== "string" || !transcript.trim()) {
-			return res.status(400).json({ error: "A transcript string is required" });
-		}
-
-		debugLog("REALTIME", `Classifying voice intent: "${transcript.slice(0, 100)}"`);
-
-		const result = await classifyVoiceIntent({
-			transcript,
-			isGenerating: Boolean(isGenerating),
-			currentGenerationContext:
-				typeof currentGenerationContext === "string"
-					? currentGenerationContext
-					: undefined,
-			recentThreadSummary:
-				typeof recentThreadSummary === "string"
-					? recentThreadSummary
-					: undefined,
-			generateText: (opts) => aiGatewayProvider.generateText(opts),
-		});
-
-		debugLog("REALTIME", `Voice intent classified: ${result.intent}`);
-		return res.json(result);
-	} catch (error) {
-		console.error("[REALTIME] classify-intent error:", error);
-		return res.status(500).json({
-			error: "Failed to classify voice intent",
-			intent: "CHAT",
-		});
 	}
 });
 
@@ -10427,6 +10859,60 @@ app.post("/api/future-chat/chat", async (req, res) => {
 	}
 });
 
+app.get("/api/future-chat/messages", async (req, res) => {
+	try {
+		const rawThreadId = Array.isArray(req.query.threadId) ? req.query.threadId[0] : req.query.threadId;
+		const threadId = getNonEmptyString(rawThreadId);
+		if (!threadId) {
+			return res.status(400).json({ error: "threadId is required" });
+		}
+
+		const messages = await futureChatThreadManager.getRealtimeMessages(threadId);
+		return res.status(200).json({
+			messages: Array.isArray(messages) ? messages : [],
+		});
+	} catch (error) {
+		console.error("[FUTURE-CHAT] Failed to load realtime messages:", error);
+		return res.status(500).json({ error: "Failed to load Future Chat realtime messages" });
+	}
+});
+
+app.post("/api/future-chat/messages", async (req, res) => {
+	try {
+		const {
+			threadId: rawThreadId,
+			message,
+			messages,
+		} = req.body || {};
+		const threadId = getNonEmptyString(rawThreadId);
+		if (!threadId) {
+			return res.status(400).json({ error: "threadId is required" });
+		}
+
+		let thread = null;
+		if (message && typeof message === "object") {
+			thread = await futureChatThreadManager.upsertRealtimeMessage(threadId, message);
+		} else if (Array.isArray(messages)) {
+			thread = await futureChatThreadManager.replaceRealtimeMessages(threadId, messages);
+		} else {
+			return res.status(400).json({
+				error: "Provide either `message` or `messages` to persist realtime messages.",
+			});
+		}
+
+		if (!thread) {
+			return res.status(404).json({ error: "Thread not found" });
+		}
+
+		return res.status(200).json({
+			messages: Array.isArray(thread.realtimeMessages) ? thread.realtimeMessages : [],
+		});
+	} catch (error) {
+		console.error("[FUTURE-CHAT] Failed to persist realtime messages:", error);
+		return res.status(500).json({ error: "Failed to persist Future Chat realtime messages" });
+	}
+});
+
 app.get("/api/future-chat/threads", async (req, res) => {
 	try {
 		const rawLimit = Array.isArray(req.query.limit) ? req.query.limit[0] : req.query.limit;
@@ -10445,6 +10931,7 @@ app.post("/api/future-chat/threads", async (req, res) => {
 			id,
 			title,
 			messages,
+			realtimeMessages,
 			visibility,
 			modelId,
 			provider,
@@ -10457,6 +10944,7 @@ app.post("/api/future-chat/threads", async (req, res) => {
 			id,
 			title,
 			messages: persistedMessages,
+			realtimeMessages,
 			visibility,
 			modelId,
 			provider,
@@ -10525,7 +11013,16 @@ app.get("/api/future-chat/threads/:threadId", async (req, res) => {
 
 app.put("/api/future-chat/threads/:threadId", async (req, res) => {
 	try {
-		const { title, messages, visibility, modelId, provider, activeDocumentId, updatedAt } = req.body || {};
+		const {
+			title,
+			messages,
+			realtimeMessages,
+			visibility,
+			modelId,
+			provider,
+			activeDocumentId,
+			updatedAt,
+		} = req.body || {};
 		const persistedMessages =
 			messages !== undefined
 				? await persistFutureChatMessageFiles(messages)
@@ -10533,6 +11030,7 @@ app.put("/api/future-chat/threads/:threadId", async (req, res) => {
 		const thread = await futureChatThreadManager.updateThread(req.params.threadId, {
 			title,
 			messages: persistedMessages,
+			realtimeMessages,
 			visibility,
 			modelId,
 			provider,
