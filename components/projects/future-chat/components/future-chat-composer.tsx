@@ -26,7 +26,7 @@ import ArrowUpIcon from "@atlaskit/icon/core/arrow-up";
 import CrossIcon from "@atlaskit/icon/core/cross";
 import AudioWaveformIcon from "@atlaskit/icon-lab/core/audio-waveform";
 import AddIcon from "@atlaskit/icon/core/add";
-import RoadmapIcon from "@atlaskit/icon/core/roadmap";
+import ClipboardIcon from "@atlaskit/icon/core/clipboard";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { FutureChatComposerResponseGradient } from "./future-chat-composer-response-gradient";
@@ -409,6 +409,18 @@ function FutureChatComposerInner({
 
 						<PromptInputFooter className="mt-3 justify-between px-0 pb-0">
 							<PromptInputTools>
+								{onTogglePlanMode ? (
+									<PromptInputButton
+										aria-label="Plan mode"
+										aria-pressed={isPlanMode}
+										variant="outline"
+										disabled={isComposerBusy}
+										onClick={onTogglePlanMode}
+									>
+										<ClipboardIcon label="" size="small" />
+										<span>Plan</span>
+									</PromptInputButton>
+								) : null}
 								<PromptInputButton
 									aria-label="Add attachment"
 									className="size-8 text-icon-subtle transition-colors hover:bg-bg-neutral-hovered active:bg-bg-neutral-pressed"
@@ -419,23 +431,6 @@ function FutureChatComposerInner({
 								>
 									<AddIcon label="" color="currentColor" />
 								</PromptInputButton>
-								{onTogglePlanMode ? (
-									<PromptInputButton
-										aria-label="Plan mode"
-										aria-pressed={isPlanMode}
-										className={cn(
-											"h-7 gap-1 rounded-md px-2 text-xs font-medium transition-colors",
-											isPlanMode
-												? "bg-bg-selected text-text-selected border border-border-selected hover:bg-bg-selected-hovered"
-												: "text-icon-subtle hover:bg-bg-neutral-hovered active:bg-bg-neutral-pressed",
-										)}
-										disabled={isComposerBusy}
-										onClick={onTogglePlanMode}
-									>
-										<RoadmapIcon label="" size="small" />
-										<span>Plan</span>
-									</PromptInputButton>
-								) : null}
 							</PromptInputTools>
 
 							<div className="flex h-8 min-w-0 flex-1 items-center justify-end gap-1.5">

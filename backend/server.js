@@ -9478,10 +9478,20 @@ app.get("/api/agent-mode", async (req, res) => {
 			}
 		}
 
-		const result = typeof resolvedPort === "number"
-			? await getAgentMode(resolvedPort)
-			: await getAgentMode();
-		return res.status(200).json(result);
+		try {
+			const result = typeof resolvedPort === "number"
+				? await getAgentMode(resolvedPort)
+				: await getAgentMode();
+			return res.status(200).json(result);
+		} catch (agentModeError) {
+			const msg = agentModeError instanceof Error ? agentModeError.message : String(agentModeError);
+			if (msg.includes("status 404")) {
+				// RovoDev Serve version doesn't support agent mode — return default
+				console.info("[AGENT-MODE] Agent mode not supported by this RovoDev version, returning default");
+				return res.status(200).json({ mode: "default", message: "Agent mode not supported by this RovoDev version" });
+			}
+			throw agentModeError;
+		}
 	} catch (error) {
 		console.error("[AGENT-MODE] Error:", error.message || error);
 		return res.status(500).json({ error: error.message || "Failed to get agent mode" });

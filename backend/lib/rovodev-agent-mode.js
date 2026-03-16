@@ -2,12 +2,28 @@
  * RovoDev Serve agent-mode client.
  *
  * Provides access to the agent-mode endpoints:
- *   GET  /agent-mode      — get current agent mode
- *   PUT  /agent-mode      — set agent mode
- *   GET  /available-modes — list available modes
+ *   GET  /v3/agent-mode      — get current agent mode
+ *   PUT  /v3/agent-mode      — set agent mode
+ *   GET  /v3/available-modes — list available modes
  */
 
 const { request } = require("./rovodev-client");
+
+async function requestAgentModeJson({
+	method,
+	path,
+	body,
+	port,
+	errorLabel,
+}) {
+	const response = await request(method, path, body, 10000, port);
+
+	if (response.status !== 200) {
+		throw new Error(`${errorLabel} failed (status ${response.status}): ${response.data}`);
+	}
+
+	return JSON.parse(response.data);
+}
 
 /**
  * Get the current agent mode.
@@ -15,11 +31,12 @@ const { request } = require("./rovodev-client");
  * @returns {Promise<{ mode: "default"|"plan"|"ask", message: string }>}
  */
 async function getAgentMode(port) {
-	const { status, data } = await request("GET", "/agent-mode", undefined, 10000, port);
-	if (status !== 200) {
-		throw new Error(`Get agent mode failed (status ${status}): ${data}`);
-	}
-	return JSON.parse(data);
+	return requestAgentModeJson({
+		method: "GET",
+		path: "/v3/agent-mode",
+		port,
+		errorLabel: "Get agent mode",
+	});
 }
 
 /**
@@ -29,11 +46,13 @@ async function getAgentMode(port) {
  * @returns {Promise<{ mode: string, message: string }>}
  */
 async function setAgentMode(port, mode) {
-	const { status, data } = await request("PUT", "/agent-mode", { mode }, 10000, port);
-	if (status !== 200) {
-		throw new Error(`Set agent mode failed (status ${status}): ${data}`);
-	}
-	return JSON.parse(data);
+	return requestAgentModeJson({
+		method: "PUT",
+		path: "/v3/agent-mode",
+		body: { mode },
+		port,
+		errorLabel: "Set agent mode",
+	});
 }
 
 /**
@@ -42,11 +61,12 @@ async function setAgentMode(port, mode) {
  * @returns {Promise<{ modes: Array<{ name: string, description: string, tag?: string }> }>}
  */
 async function getAvailableModes(port) {
-	const { status, data } = await request("GET", "/available-modes", undefined, 10000, port);
-	if (status !== 200) {
-		throw new Error(`Get available modes failed (status ${status}): ${data}`);
-	}
-	return JSON.parse(data);
+	return requestAgentModeJson({
+		method: "GET",
+		path: "/v3/available-modes",
+		port,
+		errorLabel: "Get available modes",
+	});
 }
 
 module.exports = {

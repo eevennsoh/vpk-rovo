@@ -1614,6 +1614,7 @@ export function useFutureChat({
 
 	const togglePlanMode = useCallback(async () => {
 		const nextMode = isPlanMode ? "default" : "plan";
+		setIsPlanMode((prev) => !prev);
 		try {
 			const response = await fetch(API_ENDPOINTS.AGENT_MODE, {
 				method: "POST",
@@ -1626,9 +1627,8 @@ export function useFutureChat({
 				),
 			});
 			if (!response.ok) {
-				throw new Error(`Agent mode request failed with status ${response.status}`);
+				console.warn("[FutureChat] Agent mode request failed with status", response.status);
 			}
-			setIsPlanMode((prev) => !prev);
 		} catch (error) {
 			console.warn("[FutureChat] Failed to toggle plan mode:", error);
 		}

@@ -80,3 +80,8 @@ Mark promoted entries with `[Promoted]` prefix — see vpk-lesson skill for deta
 - **What happened:** A waveform change flattened `User Speaking` and `AI Speaking` when the request was to make `Idle` inherit their treatment.
 - **Why:** The implementation treated the shader as a shared rebalance problem instead of keeping the unchanged states as the visual source of truth.
 - **Rule:** When the user asks for one state to match another, leave the reference states untouched and scope the edit to the named target state unless they explicitly ask for a full rebalance.
+
+### 2026-03-17 - Probe versioned API endpoints before concluding a local service lacks support
+- **What happened:** Agent-mode support was declared unavailable after checking only the unversioned `/agent-mode` and `/available-modes` paths, even though the running RovoDev Serve exposed the supported endpoints under `/v3/agent-mode` and `/v3/available-modes`.
+- **Why:** The investigation anchored too early on one failing path and a backend compatibility response instead of doing endpoint discovery across likely versioned routes.
+- **Rule:** When diagnosing local service capability, do not stop at the first 404. Check likely versioned endpoints such as `/v3/*`, compare direct service responses with backend proxy behavior, and verify whether the running backend process may be stale relative to the file on disk.
