@@ -17,6 +17,10 @@ import { GUI } from "@/components/utils/gui";
 import { ColorInput } from "./color-input";
 import type { RGBAColor } from "./color-utils";
 import {
+	buildOrganicWaveformConfig,
+	buildSharedWaveformMotionParams,
+} from "./lib/waveform-config";
+import {
 	SmoothGradientWaveform,
 	DEFAULT_WAVEFORM_CONFIG,
 	type WaveformConfig,
@@ -433,7 +437,7 @@ export default function VisualWaveformPage() {
 		return () => clearTimeout(timeout);
 	}, [transitionPreviewPhase]);
 
-	const sharedMotionParams = {
+	const sharedMotionParams = buildSharedWaveformMotionParams({
 		timeSpeedIdle,
 		timeSpeedActive,
 		motionSpeedIdle,
@@ -478,7 +482,7 @@ export default function VisualWaveformPage() {
 		userColor2,
 		userColor3,
 		userColor4,
-	};
+	});
 
 	const idleWaveformConfig = useMemo<WaveformConfig>(
 		() => ({
@@ -544,26 +548,19 @@ export default function VisualWaveformPage() {
 		],
 	);
 
-	const organicWaveformConfig = useMemo<WaveformConfig>(
-		() => ({
-			...sharedMotionParams,
-			colorLerpRate: speakingColorLerpRate,
-			stateModeLerpRate: speakingStateModeLerpRate,
-			activeFadeRate: transitionAppearFadeRate,
-			disappearFadeRate: transitionDisappearFadeRate,
-			waveformWidthPercent: organicWaveformWidthPercent,
-			waveformHeightScale: organicWaveformHeightScale,
-			edgeFadeLeft: organicEdgeFadeLeft,
-			edgeFadeRight: organicEdgeFadeRight,
-			thicknessActive: organicThicknessActive,
-			thicknessSignalMul: organicThicknessSignalMul,
-		}),
-		[
-			speakingColorLerpRate, speakingStateModeLerpRate, transitionAppearFadeRate, transitionDisappearFadeRate,
-			organicWaveformWidthPercent, organicWaveformHeightScale, organicEdgeFadeLeft, organicEdgeFadeRight,
-			organicThicknessActive, organicThicknessSignalMul,
-		],
-	);
+	const organicWaveformConfig = buildOrganicWaveformConfig({
+		sharedMotionParams,
+		colorLerpRate: speakingColorLerpRate,
+		stateModeLerpRate: speakingStateModeLerpRate,
+		activeFadeRate: transitionAppearFadeRate,
+		disappearFadeRate: transitionDisappearFadeRate,
+		waveformWidthPercent: organicWaveformWidthPercent,
+		waveformHeightScale: organicWaveformHeightScale,
+		edgeFadeLeft: organicEdgeFadeLeft,
+		edgeFadeRight: organicEdgeFadeRight,
+		thicknessActive: organicThicknessActive,
+		thicknessSignalMul: organicThicknessSignalMul,
+	});
 
 	const guiValues = useMemo(
 		() => ({

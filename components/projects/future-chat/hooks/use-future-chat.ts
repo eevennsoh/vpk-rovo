@@ -89,6 +89,10 @@ import {
 	createPlanApprovalSubmission,
 	type PlanApprovalSelection,
 } from "@/components/projects/shared/lib/plan-approval";
+import {
+	buildFutureChatAgentModeRequest,
+	getFutureChatPortRoutingPayload,
+} from "@/components/projects/future-chat/lib/future-chat-agent-mode";
 import type { ParsedPlanWidgetPayload } from "@/components/projects/shared/lib/plan-widget";
 import { markLastFutureChatAssistantMessageInterrupted } from "@/lib/future-chat-interruptions";
 import {
@@ -367,6 +371,7 @@ function buildRecentHistory(
 export interface FutureChatHookOptions {
 	embedded?: boolean;
 	initialThreadId?: string | null;
+	portIndex?: number;
 	smartGenerationLayout?: {
 		containerWidthPx?: number;
 		viewportWidthPx?: number;
@@ -490,6 +495,7 @@ function meetsStreamingAutoOpenContentThreshold(
 export function useFutureChat({
 	embedded = false,
 	initialThreadId = null,
+	portIndex,
 	smartGenerationLayout,
 }: Readonly<FutureChatHookOptions>): FutureChatHookResult {
 	const router = useRouter();
@@ -764,6 +770,7 @@ export function useFutureChat({
 								artifactContextFromBody ??
 								activeArtifactContext ??
 								undefined,
+							...getFutureChatPortRoutingPayload(portIndex),
 							smartGeneration: smartGenerationRequest,
 							activeArtifact: buildActiveArtifactMetadata(activeDocument),
 							origin: body?.origin === "voice" ? "voice" : "text",
@@ -778,6 +785,7 @@ export function useFutureChat({
 			artifactDraftContent,
 			activeDocumentContent,
 			runtimeThreadId,
+			portIndex,
 			smartGenerationRequest,
 			streamingArtifact,
 			threadVisibility,
@@ -1606,18 +1614,25 @@ export function useFutureChat({
 
 	const togglePlanMode = useCallback(async () => {
 		const nextMode = isPlanMode ? "default" : "plan";
-		const threadId = activeThreadIdRef.current;
 		try {
-			await fetch(API_ENDPOINTS.AGENT_MODE, {
+			const response = await fetch(API_ENDPOINTS.AGENT_MODE, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ mode: nextMode, threadId }),
+				body: JSON.stringify(
+					buildFutureChatAgentModeRequest({
+						mode: nextMode,
+						portIndex,
+					}),
+				),
 			});
+			if (!response.ok) {
+				throw new Error(`Agent mode request failed with status ${response.status}`);
+			}
 			setIsPlanMode((prev) => !prev);
 		} catch (error) {
 			console.warn("[FutureChat] Failed to toggle plan mode:", error);
 		}
-	}, [isPlanMode]);
+	}, [isPlanMode, portIndex]);
 
 	const resetPlanMode = useCallback(() => {
 		setIsPlanMode(false);

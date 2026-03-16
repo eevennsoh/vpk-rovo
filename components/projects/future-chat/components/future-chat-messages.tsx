@@ -29,6 +29,10 @@ import {
 	resolveFutureChatOrphanArtifactDisplay,
 	type FutureChatPendingArtifactResult,
 } from "@/components/projects/future-chat/lib/future-chat-message-artifacts";
+import {
+	sanitizeFutureChatAssistantText,
+	shouldRenderFutureChatWidget,
+} from "@/components/projects/future-chat/lib/future-chat-message-display";
 import { AssistantThinkingToolsSection } from "@/components/projects/shared/components/assistant-thinking-tools-section";
 import { GenerativeWidgetCard } from "@/components/projects/shared/components/generative-widget-card";
 import LoadingWidget from "@/components/projects/shared/components/loading-widget";
@@ -98,8 +102,6 @@ interface FutureChatMessagesProps {
 	votes: Record<string, "up" | "down">;
 }
 
-const FUTURE_CHAT_ARTIFACT_INTENT_LEAK_FALLBACK =
-	"I had an internal routing issue while generating that response. Please try again.";
 const FUTURE_CHAT_SCROLL_ANCHOR_SELECTOR = "[data-future-chat-scroll-anchor='true']";
 
 function computeFutureChatAnchorScrollTop(
@@ -162,38 +164,6 @@ function FutureChatScrollAnchorSync({
 	}, [scrollAnchorMessageId, scrollToBottom]);
 
 	return null;
-}
-
-function sanitizeFutureChatAssistantText(rawText: string): string {
-	const trimmedText = rawText.trim();
-	if (!trimmedText.startsWith("{") || !trimmedText.endsWith("}")) {
-		return rawText;
-	}
-
-	try {
-		const parsed = JSON.parse(trimmedText) as {
-			action?: unknown;
-			title?: unknown;
-			kind?: unknown;
-		};
-		const allowedActions = new Set(["chat", "createDocument", "updateDocument"]);
-		const isArtifactIntentPayload =
-			typeof parsed === "object" &&
-			parsed !== null &&
-			allowedActions.has(String(parsed.action)) &&
-			(parsed.title === null || typeof parsed.title === "string") &&
-			(parsed.kind === null ||
-				parsed.kind === "text" ||
-				parsed.kind === "code" ||
-				parsed.kind === "image" ||
-				parsed.kind === "sheet");
-
-		return isArtifactIntentPayload
-			? FUTURE_CHAT_ARTIFACT_INTENT_LEAK_FALLBACK
-			: rawText;
-	} catch {
-		return rawText;
-	}
 }
 
 function UserMessage({
@@ -345,11 +315,11 @@ function AssistantMessage({
 	// during clarification flows where presentation is "text"). GenUI widgets
 	// only render when the routing decision says "genui_card".
 	const widgetType = widget?.data.type ?? null;
-	const isToolDrivenWidget = widgetType === "question-card" || widgetType === "plan";
-	const isGenuiCardPresentation = routeDecision
-		? routeDecision.presentation === "genui_card"
-		: Boolean(widget);
-	const shouldShowWidget = isToolDrivenWidget || isGenuiCardPresentation;
+	const shouldShowWidget = shouldRenderFutureChatWidget({
+		hasWidget: Boolean(widget),
+		routeDecision,
+		widgetType,
+	});
 	const isTextPresentation = routeDecision
 		? routeDecision.presentation === "text"
 		: !widget;

@@ -62,6 +62,7 @@ import { useDismissibleCards } from "@/components/projects/shared/hooks/use-dism
 interface FutureChatShellProps {
 	embedded?: boolean;
 	initialThreadId?: string | null;
+	portIndex?: number;
 }
 
 const FUTURE_CHAT_LEFT_NAV_PADDING_PX = 12;
@@ -306,6 +307,7 @@ function resolveRealtimeSessionIdentity(
 export function FutureChatShell({
 	embedded = false,
 	initialThreadId = null,
+	portIndex,
 }: Readonly<FutureChatShellProps>) {
 	const router = useRouter();
 	const nav = useTopNavigation();
@@ -320,6 +322,7 @@ export function FutureChatShell({
 	const chat = useFutureChat({
 		embedded,
 		initialThreadId,
+		portIndex,
 		smartGenerationLayout,
 	});
 	const chatRef = useRef(chat);

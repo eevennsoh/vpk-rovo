@@ -118,6 +118,10 @@ const {
 } = require("./lib/image-generation-routing");
 const { healthCheck: rovoDevHealthCheck, cancelChat: rovoDevCancelChat } = require("./lib/rovodev-client");
 const { setAgentMode, getAgentMode } = require("./lib/rovodev-agent-mode");
+const {
+	splitDirectMediaTextForStreaming,
+	stripDirectMediaFences,
+} = require("./lib/direct-media-fence");
 const { createRovoDevPool } = require("./lib/rovodev-pool");
 const { createOrchestratorLog } = require("./lib/orchestrator-log");
 const {
@@ -6373,21 +6377,30 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 						return;
 					}
 
-					if (!force && isClassifierIntentLeakCandidate(bufferedAssistantText)) {
-						if (bufferedAssistantText.length <= CLASSIFIER_JSON_BUFFER_MAX_CHARS) {
+					const {
+						pendingText: pendingDirectMediaText,
+						visibleText: visibleAssistantText,
+					} = splitDirectMediaTextForStreaming(bufferedAssistantText);
+					if (!visibleAssistantText) {
+						bufferedAssistantText = force ? "" : pendingDirectMediaText;
+						return;
+					}
+
+					if (!force && isClassifierIntentLeakCandidate(visibleAssistantText)) {
+						if (visibleAssistantText.length <= CLASSIFIER_JSON_BUFFER_MAX_CHARS) {
 							return;
 						}
 
 						const parsedClassifierPayload = parseClassifierIntentPayload(
-							bufferedAssistantText
+							visibleAssistantText
 						);
 						if (parsedClassifierPayload) {
 							return;
 						}
 					}
 
-					const chunk = bufferedAssistantText;
-					bufferedAssistantText = "";
+					const chunk = visibleAssistantText;
+					bufferedAssistantText = force ? "" : pendingDirectMediaText;
 					emitTextDeltaRaw(chunk);
 				};
 
@@ -8348,6 +8361,10 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 						} catch (parseError) {
 							console.warn("[DIRECT-AUDIO] Failed to parse audio fence JSON:", parseError?.message);
 						}
+					}
+
+					if (imageFenceMatch || audioFenceMatch) {
+						assistantText = stripDirectMediaFences(assistantText);
 					}
 				}
 
