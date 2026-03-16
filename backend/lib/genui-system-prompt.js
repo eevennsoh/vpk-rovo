@@ -1,9 +1,9 @@
 /**
- * System prompt for genui chat mode.
+ * System prompt for genui inline mode.
  *
- * Uses the auto-generated catalog prompt from `catalog.prompt({ mode: "chat" })`
+ * Uses the auto-generated catalog prompt from `catalog.prompt({ mode: "inline" })`
  * which includes all component types, Zod-derived props, slot info, and critical
- * defaultRules (integrity check, self-check, visible/on placement).
+ * defaultRules (integrity check, self-check, visible/on placement, data quality).
  *
  * VPK-specific rules and companion examples are layered on top.
  *
@@ -17,6 +17,18 @@ const generatedPrompt = require("./generated-catalog-prompt.json");
  * These cover domain knowledge the catalog schema cannot express.
  */
 const VPK_CUSTOM_RULES = [
+	// Dynamic expressions
+	"When using $state, $bindState, $bindItem, $item, $index, or repeat, include matching /state patches so bindings resolve.",
+	'For two-way form values, use { "$bindState": "/path" } or { "$bindItem": "field" } on the natural value prop (value, checked, pressed).',
+
+	// Calendar rendering
+	"Calendar and meeting agendas should render as a single ordered timeline, not one Card per meeting.",
+	"Prefer Timeline for calendar event lists; if days are grouped, render one Timeline per day section/tab and keep meeting rows inside that Timeline.",
+	"Calendar timeline items should include the start time in the date field and keep location/status in description text.",
+
+	// Layout
+	"Horizontal Stack defaults to nowrap; set wrap=true only for flowing layouts like tag groups or badge lists.",
+
 	// Map generation
 	"When the user asks for maps, locations, pins, routes, or directions, use MapWidget (backed by Leaflet/OSM, no API key). Props: center {lat,lng}, zoom, height, selectedMarkerId, markers [{id,lat,lng,title,description?}]. Do NOT invent component names like \"Map\", \"GoogleMap\", or \"MapboxMap\".",
 

@@ -36,11 +36,16 @@ resolve_rovodev_cmd() {
 	fi
 
 	if command -v acli >/dev/null 2>&1; then
-		echo "acli rovodev"
-		return
+		# Verify that acli actually supports "rovodev serve" — some versions
+		# only ship "auth" and silently ignore unknown subcommands until the
+		# rovodev plugin is downloaded.
+		if acli rovodev --help 2>&1 | grep serve >/dev/null; then
+			echo "acli rovodev"
+			return
+		fi
 	fi
 
-	echo "Neither 'rovodev' nor 'acli' is installed or on PATH."
+	echo "Neither 'rovodev' nor 'acli' (with rovodev plugin) is installed or on PATH."
 	exit 1
 }
 
@@ -77,26 +82,67 @@ prepare_port_files() {
 	node - <<'NODE' "$POOL_SIZE"
 const fs = require("node:fs");
 const { getRovodevBasePort } = require("./scripts/lib/worktree-ports");
+const { findAvailableRovodevPorts } = require("./scripts/lib/dev-tmux-ports");
 
 const poolSize = Number.parseInt(process.argv[2], 10);
 const basePort = getRovodevBasePort();
+const maxTries = Number.parseInt(process.env.PORT_SEARCH_MAX ?? "20", 10);
 
 if (!Number.isFinite(poolSize) || poolSize < 1) {
 	console.error(`Invalid ROVODEV_POOL_SIZE: ${process.argv[2]}`);
 	process.exit(1);
 }
 
-const ports = Array.from({ length: poolSize }, (_, index) => basePort + index);
+const run = async () => {
+	const ports = await findAvailableRovodevPorts({ basePort, poolSize, maxTries });
 
-fs.writeFileSync(".dev-rovodev-port", String(ports[0]));
-fs.writeFileSync(".dev-rovodev-ports", JSON.stringify(ports));
+	fs.writeFileSync(".dev-rovodev-port", String(ports[0]));
+	fs.writeFileSync(".dev-rovodev-ports", JSON.stringify(ports));
 
-console.log(`[tmux] RovoDev pool ports: ${ports.join(", ")}`);
+	if (ports.length === 1 && ports[0] !== basePort) {
+		console.log(`[tmux] Reserved RovoDev port ${basePort} is busy. Using ${ports[0]} instead.`);
+		return;
+	}
+
+	if (ports[0] !== basePort) {
+		console.log(`[tmux] Reserved RovoDev port ${basePort} is busy. Using: ${ports.join(", ")}`);
+		return;
+	}
+
+	console.log(`[tmux] RovoDev pool ports: ${ports.join(", ")}`);
+};
+
+run().catch((error) => {
+	console.error(error instanceof Error ? error.message : String(error));
+	process.exit(1);
+});
 NODE
 }
 
 cleanup_port_files() {
 	rm -f "$PORT_FILE" "$PORTS_FILE"
+}
+
+resolve_rovodev_ports() {
+	node - <<'NODE'
+const fs = require("node:fs");
+
+if (fs.existsSync(".dev-rovodev-ports")) {
+	try {
+		const parsed = JSON.parse(fs.readFileSync(".dev-rovodev-ports", "utf8").trim());
+		if (Array.isArray(parsed) && parsed.length > 0) {
+			process.stdout.write(parsed.join(" "));
+			process.exit(0);
+		}
+	} catch {
+		// fall through to single-port file
+	}
+}
+
+if (fs.existsSync(".dev-rovodev-port")) {
+	process.stdout.write(fs.readFileSync(".dev-rovodev-port", "utf8").trim());
+}
+NODE
 }
 
 resolve_frontend_backend_ports() {
@@ -130,14 +176,18 @@ apply_window_styling() {
 	tmux select-pane -t "$SESSION_NAME:$WINDOW_NAME.0" -T "frontend:${frontend_port}" 2>/dev/null || true
 	tmux select-pane -t "$SESSION_NAME:$WINDOW_NAME.1" -T "backend:${backend_port}" 2>/dev/null || true
 
-	if [[ -f "$PORT_FILE" ]]; then
-		local base_port
-		base_port="$(cat "$PORT_FILE")"
-		for index in $(seq 0 $((POOL_SIZE - 1))); do
+	if [[ -f "$PORTS_FILE" || -f "$PORT_FILE" ]]; then
+		local rovodev_ports_raw
+		local -a rovodev_ports
+		rovodev_ports_raw="$(resolve_rovodev_ports)"
+		if [[ -n "$rovodev_ports_raw" ]]; then
+			read -r -a rovodev_ports <<<"$rovodev_ports_raw"
+		fi
+		for index in "${!rovodev_ports[@]}"; do
 			local pane
 			local port
 			pane=$((index + 2))
-			port=$((base_port + index))
+			port="${rovodev_ports[$index]}"
 			tmux select-pane -t "$SESSION_NAME:$WINDOW_NAME.$pane" -T "$port" 2>/dev/null || true
 		done
 	fi
@@ -160,8 +210,18 @@ start_session() {
 
 	prepare_port_files
 
-	local base_port
-	base_port="$(cat "$PORT_FILE")"
+	local rovodev_ports_raw
+	local -a rovodev_ports
+	rovodev_ports_raw="$(resolve_rovodev_ports)"
+	if [[ -z "$rovodev_ports_raw" ]]; then
+		echo "No RovoDev ports were reserved."
+		exit 1
+	fi
+	read -r -a rovodev_ports <<<"$rovodev_ports_raw"
+	if [[ "${#rovodev_ports[@]}" -ne "$POOL_SIZE" ]]; then
+		echo "Expected $POOL_SIZE reserved RovoDev ports, found ${#rovodev_ports[@]}."
+		exit 1
+	fi
 
 	tmux new-session -d -s "$SESSION_NAME" -n "$WINDOW_NAME"
 
@@ -178,7 +238,7 @@ start_session() {
 
 	for index in $(seq 0 $((POOL_SIZE - 1))); do
 		pane=$((index + 2))
-		port=$((base_port + index))
+		port="${rovodev_ports[$index]}"
 		tmux select-pane -t "$SESSION_NAME:$WINDOW_NAME.$pane" -T "$port"
 		cmd="cd \"$(pwd)\" && $rovodev_cmd serve --disable-session-token --respect-configured-permissions --site-url \"$SITE_URL\" $port"
 		tmux send-keys -t "$SESSION_NAME:$WINDOW_NAME.$pane" "$cmd" C-m
@@ -258,7 +318,7 @@ status_session() {
 }
 
 usage() {
-	echo "Usage: $0 [start|stop|attach|status]"
+	echo "Usage: $0 [--] [start|stop|attach|style|status]"
 	echo ""
 	echo "Session resolution:"
 	echo "  ROVODEV_TMUX_SESSION          Exact tmux session name override"
@@ -271,6 +331,10 @@ usage() {
 	echo "  style   Apply pane styling to existing session"
 	echo "  status  Show tmux and port-file status"
 }
+
+if [[ "${1:-}" == "--" ]]; then
+	shift
+fi
 
 command="${1:-start}"
 

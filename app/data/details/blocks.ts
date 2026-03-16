@@ -1,6 +1,9 @@
 import type { ComponentDetail } from "@/app/data/component-detail-types";
 
 export const BLOCK_DETAILS: Record<string, ComponentDetail> = {
+	cursor: {
+		description: "AI-powered IDE layout with a file tree sidebar, syntax-highlighted code editor, integrated terminal, and an AI chat panel featuring plans, task queues, message streaming, and checkpoints.",
+	},
 	"agent-progress": {
 		description: "ADS-style agent progress tracker with expandable task status groups, live elapsed timer, and agent attribution.",
 		usage: `import AgentsProgress from "@/components/blocks/agent-progress/page";
@@ -188,6 +191,144 @@ const rows: AnswerCardRow[] = [
 	"data-table": {
 		description: "Data table with sortable columns, status indicators, and reviewer assignments.",
 	},
+	"generative-card": {
+		description:
+			"A collapsible AI result card with branded source media, summary metadata, preview content, and footer actions for generated artifacts.",
+		usage: `import {
+  GenerativeCard,
+  GenerativeCardHeader,
+  GenerativeCardBody,
+  GenerativeCardContent,
+  GenerativeCardPreview,
+  GenerativeCardFooter,
+} from "@/components/blocks/generative-card";
+import { Tile } from "@/components/ui/tile";
+import { Button } from "@/components/ui/button";
+
+<GenerativeCard className="max-w-[380px]">
+  <GenerativeCardHeader
+    title="Schedule meeting"
+    description="Google Calendar"
+    leading={<Tile label="Google Calendar" size="medium" variant="transparent" isInset={false} />}
+  />
+  <GenerativeCardBody>
+    <GenerativeCardContent>
+      <GenerativeCardPreview>Generated content preview</GenerativeCardPreview>
+    </GenerativeCardContent>
+    <GenerativeCardFooter>
+      <Button variant="outline">Open preview</Button>
+    </GenerativeCardFooter>
+  </GenerativeCardBody>
+</GenerativeCard>`,
+		demoLayout: {
+			previewContentWidth: "full",
+			examplesContentWidth: "full",
+		},
+		props: [
+			{
+				name: "defaultExpanded",
+				type: "boolean",
+				default: "true",
+				description: "Initial expanded state when used uncontrolled.",
+			},
+			{
+				name: "expanded",
+				type: "boolean",
+				description: "Controlled expanded state.",
+			},
+			{
+				name: "onExpandedChange",
+				type: "(expanded: boolean) => void",
+				description: "Callback fired when expand/collapse state changes.",
+			},
+			{
+				name: "animate",
+				type: "boolean",
+				default: "false",
+				description: "When true, plays a one-shot WebGL bulge distortion entrance animation with Rovo color fringe glow and shimmer border.",
+			},
+			{
+				name: "animateDuration",
+				type: "number",
+				default: "2000",
+				description: "Duration of the entrance animation in milliseconds.",
+			},
+			{
+				name: "animateDistortionScale",
+				type: "number",
+				default: "100",
+				description: "Maximum WebGL displacement scale used by the sweep effect. Increase for a stronger distortion.",
+			},
+			{
+				name: "animateBlur",
+				type: "number",
+				default: "8",
+				description: "Maximum blur amount applied inside the moving distortion band.",
+			},
+			{
+				name: "animateRadius",
+				type: "number",
+				default: "0.4",
+				description: "Distortion radius mapped to moving band height (0-1). Higher values distort a thicker region.",
+			},
+			{
+				name: "animateSpeed",
+				type: "number",
+				default: "1.35",
+				description: "Sweep playback speed multiplier. Higher values move the distortion band from top to bottom faster.",
+			},
+			{
+				name: "animateScaleSmoothing",
+				type: "number",
+				default: "0.5",
+				description: "Smoothing factor (0-1) for displacement scale changes. Higher values react faster.",
+			},
+			{
+				name: "animateSweepSmoothing",
+				type: "number",
+				default: "0.5",
+				description: "Smoothing factor (0-1) for vertical sweep movement. Higher values react faster.",
+			},
+			{
+				name: "className",
+				type: "string",
+				description: "Additional classes applied to the card root.",
+			},
+			{
+				name: "borderEffect",
+				type: '"shimmer" | "trace" | false',
+				default: "false",
+				description: "Border effect style: \"shimmer\" fills the border uniformly, \"trace\" shows a concentrated arc comet traveling the perimeter with an interior mesh gradient glow.",
+			},
+			{
+				name: "borderEffectDuration",
+				type: "number",
+				description: "Duration of the border effect cycle in milliseconds. Defaults to 1750 for shimmer, 2400 for trace.",
+			},
+			{
+				name: "borderEffectArcWidth",
+				type: "number",
+				default: "90",
+				description: "Trace only — angular width of the visible arc in degrees.",
+			},
+		],
+		subComponents: [
+			{ name: "GenerativeCardHeader", description: "Header row with leading media, title, description, and built-in collapse toggle." },
+			{ name: "GenerativeCardBody", description: "Animated collapsible container for card details." },
+			{ name: "GenerativeCardContent", description: "Body content section with default paddings for previews." },
+			{ name: "GenerativeCardPreview", description: "Preview placeholder surface for generated output." },
+			{ name: "GenerativeCardFooter", description: "Footer actions row aligned to the end. Accepts an optional `action` prop for a primary action button." },
+		],
+		examples: [
+			{ title: "3P source", description: "Generative card with third-party source branding.", demoSlug: "generative-card-demo-3p" },
+			{ title: "Atlassian source", description: "Generative card with Atlassian product branding.", demoSlug: "generative-card-demo-1p" },
+			{ title: "Icon source", description: "Generative card with a semantic icon tile source.", demoSlug: "generative-card-demo-icon" },
+			{ title: "With action", description: "Footer with a primary action button (e.g. Send) alongside the preview button.", demoSlug: "generative-card-demo-action" },
+			{ title: "Distortion effect", description: "One-shot WebGL bulge distortion entrance with Rovo color fringe glow and shimmer border.", demoSlug: "generative-card-demo-animated" },
+			{ title: "Border trace", description: "One-shot gradient comet tracing the card perimeter with a smooth fade-out and replay control.", demoSlug: "generative-card-demo-trace" },
+			{ title: "Inner glow", description: "Contained CSS mesh-like inner edge glow without the border trace effect.", demoSlug: "generative-card-demo-inner-glow" },
+		],
+	},
 	"top-navigation": {
 		description: "ADS-inspired top navigation bar with app switcher and contextual actions.",
 	},
@@ -226,6 +367,14 @@ const rows: AnswerCardRow[] = [
 	},
 	"work-item-detail": {
 		description: "Comprehensive work item detail view with description, comments, linked items, and activity history.",
+	},
+	"visual-waveform": {
+		description: "Standalone Future Chat live-voice demo using the exact composer, gradient waveform, and GPT Realtime hook without the thread-persistence backend dependency.",
+		importStatement: `import VisualWaveform from "@/components/blocks/visual-waveform/page";`,
+		usage: `import VisualWaveform from "@/components/blocks/visual-waveform/page";
+
+<VisualWaveform />`,
+		demoLayout: { previewHeight: "default" },
 	},
 	"question-card": {
 		description: "ADS-style question card with single-select (numbered) and multi-select (checkbox) options, keyboard navigation, question pagination, and free-form custom input.",

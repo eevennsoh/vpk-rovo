@@ -1574,145 +1574,6 @@ import { CodeBlock } from "@/components/ui-ai/code-block";
 		],
 	},
 
-	"generative-card": {
-		description:
-			"A collapsible AI result card with branded source media, summary metadata, preview content, and footer actions for generated artifacts.",
-		usage: `import {
-  GenerativeCard,
-  GenerativeCardHeader,
-  GenerativeCardBody,
-  GenerativeCardContent,
-  GenerativeCardPreview,
-  GenerativeCardFooter,
-} from "@/components/ui-ai/generative-card";
-import { Tile } from "@/components/ui/tile";
-import { Button } from "@/components/ui/button";
-
-<GenerativeCard className="max-w-[380px]">
-  <GenerativeCardHeader
-    title="Schedule meeting"
-    description="Google Calendar"
-    leading={<Tile label="Google Calendar" size="medium" variant="transparent" isInset={false} />}
-  />
-  <GenerativeCardBody>
-    <GenerativeCardContent>
-      <GenerativeCardPreview>Generated content preview</GenerativeCardPreview>
-    </GenerativeCardContent>
-    <GenerativeCardFooter>
-      <Button variant="outline">Open preview</Button>
-    </GenerativeCardFooter>
-  </GenerativeCardBody>
-</GenerativeCard>`,
-		demoLayout: {
-			previewContentWidth: "full",
-			examplesContentWidth: "full",
-		},
-		props: [
-			{
-				name: "defaultExpanded",
-				type: "boolean",
-				default: "true",
-				description: "Initial expanded state when used uncontrolled.",
-			},
-			{
-				name: "expanded",
-				type: "boolean",
-				description: "Controlled expanded state.",
-			},
-			{
-				name: "onExpandedChange",
-				type: "(expanded: boolean) => void",
-				description: "Callback fired when expand/collapse state changes.",
-			},
-			{
-				name: "animate",
-				type: "boolean",
-				default: "false",
-				description: "When true, plays a one-shot WebGL bulge distortion entrance animation with Rovo color fringe glow and shimmer border.",
-			},
-			{
-				name: "animateDuration",
-				type: "number",
-				default: "2000",
-				description: "Duration of the entrance animation in milliseconds.",
-			},
-			{
-				name: "animateDistortionScale",
-				type: "number",
-				default: "100",
-				description: "Maximum WebGL displacement scale used by the sweep effect. Increase for a stronger distortion.",
-			},
-			{
-				name: "animateBlur",
-				type: "number",
-				default: "8",
-				description: "Maximum blur amount applied inside the moving distortion band.",
-			},
-			{
-				name: "animateRadius",
-				type: "number",
-				default: "0.4",
-				description: "Distortion radius mapped to moving band height (0-1). Higher values distort a thicker region.",
-			},
-			{
-				name: "animateSpeed",
-				type: "number",
-				default: "1.35",
-				description: "Sweep playback speed multiplier. Higher values move the distortion band from top to bottom faster.",
-			},
-			{
-				name: "animateScaleSmoothing",
-				type: "number",
-				default: "0.5",
-				description: "Smoothing factor (0-1) for displacement scale changes. Higher values react faster.",
-			},
-			{
-				name: "animateSweepSmoothing",
-				type: "number",
-				default: "0.5",
-				description: "Smoothing factor (0-1) for vertical sweep movement. Higher values react faster.",
-			},
-			{
-				name: "className",
-				type: "string",
-				description: "Additional classes applied to the card root.",
-			},
-			{
-				name: "borderEffect",
-				type: '"shimmer" | "trace" | false',
-				default: "false",
-				description: "Border effect style: \"shimmer\" fills the border uniformly, \"trace\" shows a concentrated arc comet traveling the perimeter with an interior mesh gradient glow.",
-			},
-			{
-				name: "borderEffectDuration",
-				type: "number",
-				description: "Duration of the border effect cycle in milliseconds. Defaults to 1750 for shimmer, 2400 for trace.",
-			},
-			{
-				name: "borderEffectArcWidth",
-				type: "number",
-				default: "90",
-				description: "Trace only — angular width of the visible arc in degrees.",
-			},
-		],
-		subComponents: [
-			{ name: "GenerativeCardHeader", description: "Header row with leading media, title, description, and built-in collapse toggle." },
-			{ name: "GenerativeCardBody", description: "Animated collapsible container for card details." },
-			{ name: "GenerativeCardContent", description: "Body content section with default paddings for previews." },
-			{ name: "GenerativeCardPreview", description: "Preview placeholder surface for generated output." },
-			{ name: "GenerativeCardFooter", description: "Footer actions row aligned to the end. Accepts an optional `action` prop for a primary action button." },
-		],
-		examples: [
-			{ title: "3P source", description: "Generative card with third-party source branding.", demoSlug: "generative-card-demo-3p" },
-			{ title: "Atlassian source", description: "Generative card with Atlassian product branding.", demoSlug: "generative-card-demo-1p" },
-			{ title: "Icon source", description: "Generative card with a semantic icon tile source.", demoSlug: "generative-card-demo-icon" },
-			{ title: "With action", description: "Footer with a primary action button (e.g. Send) alongside the preview button.", demoSlug: "generative-card-demo-action" },
-			{ title: "Distortion effect", description: "One-shot WebGL bulge distortion entrance with Rovo color fringe glow and shimmer border.", demoSlug: "generative-card-demo-animated" },
-			{ title: "Border trace", description: "One-shot gradient comet tracing the card perimeter with a smooth fade-out and replay control.", demoSlug: "generative-card-demo-trace" },
-			{ title: "Inner glow", description: "Contained CSS mesh-like inner edge glow without the border trace effect.", demoSlug: "generative-card-demo-inner-glow" },
-		],
-	},
-
 	controls: {
 		description:
 			"Themed zoom and fit-view controls for React Flow canvases. Wraps @xyflow/react Controls with ADS-aligned card styling, rounded buttons, and hover states.",
@@ -1770,7 +1631,128 @@ import { Controls } from "@/components/ui-ai/controls";
 
 	conversation: {
 		description:
-			"A scrollable message container with stick-to-bottom behavior, scroll-to-bottom button, empty state, and conversation download. Built on use-stick-to-bottom for automatic scroll tracking.",
+			"A bounded conversation surface with follow-to-latest behavior, user escape detection, empty-state scaffolding, a scroll-to-bottom affordance, and markdown export for transcript-style interfaces.",
+		importStatement: `import {
+  Conversation,
+  ConversationContent,
+  ConversationDownload,
+  ConversationEmptyState,
+  ConversationScrollButton,
+  messagesToMarkdown,
+} from "@/components/ui-ai/conversation";`,
+		usage: `import {
+  Conversation,
+  ConversationContent,
+  ConversationDownload,
+  ConversationScrollButton,
+} from "@/components/ui-ai/conversation";
+import { Message, MessageContent } from "@/components/ui-ai/message";
+
+const messages = [
+  { role: "user", content: "Summarize the latest conversation changes." },
+  { role: "assistant", content: "I added the markdown export and updated the follow-to-bottom behavior." },
+];
+
+<Conversation className="h-80 rounded-xl border bg-background">
+  <ConversationContent className="min-h-full pr-20">
+    {messages.map((message) => (
+      <Message
+        key={\`\${message.role}-\${message.content}\`}
+        from={message.role}
+      >
+        <MessageContent>{message.content}</MessageContent>
+      </Message>
+    ))}
+  </ConversationContent>
+  <ConversationDownload messages={messages} />
+  <ConversationScrollButton />
+</Conversation>`,
+		props: [
+			{
+				name: "followMode",
+				type: '"bottom" | "target"',
+				default:
+					'"bottom" (or `"target"` when `targetScrollTop` is provided)',
+				description:
+					"Controls whether the surface follows the true bottom edge or a computed target scroll position.",
+			},
+			{
+				name: "initial",
+				type: 'boolean | ScrollBehavior | "instant" | { damping: number; stiffness: number; mass: number }',
+				default: '"smooth"',
+				description:
+					"Initial scroll behavior applied when the conversation mounts.",
+			},
+			{
+				name: "resize",
+				type: 'boolean | ScrollBehavior | "instant" | { damping: number; stiffness: number; mass: number }',
+				default: '"smooth"',
+				description:
+					"Follow behavior used when the transcript height changes.",
+			},
+			{
+				name: "targetScrollTop",
+				type: "(defaultTargetTop: number, options: ConversationScrollTargetOptions) => number",
+				description:
+					"Overrides the computed follow target used by auto-scroll and the scroll-to-bottom action.",
+			},
+			{
+				name: "messages",
+				type: "ConversationMessage[] | UIMessage[]",
+				description:
+					"Transcript entries serialized by ConversationDownload and messagesToMarkdown.",
+			},
+			{
+				name: "filename",
+				type: "string",
+				default: '"conversation.md"',
+				description: "Download filename used for the markdown export.",
+			},
+			{
+				name: "formatMessage",
+				type: "(message: ConversationMessage | UIMessage, index: number) => string",
+				description:
+					"Custom serializer used to turn each message into markdown output.",
+			},
+			{
+				name: "className",
+				type: "string",
+				description:
+					"Additional classes applied to the conversation root or action buttons.",
+			},
+		],
+		subComponents: [
+			{
+				name: "ConversationContent",
+				description:
+					"Scrollable inner viewport and message stack with stable scrollbar gutter handling.",
+			},
+			{
+				name: "ConversationEmptyState",
+				description:
+					"Centered placeholder for empty transcripts and first-run states.",
+			},
+			{
+				name: "ConversationScrollButton",
+				description:
+					"Floating jump-to-latest action that appears once the user scrolls away from the follow target.",
+			},
+			{
+				name: "ConversationDownload",
+				description:
+					"Floating export action that downloads the current transcript as markdown.",
+			},
+			{
+				name: "messagesToMarkdown",
+				description:
+					"Helper for generating markdown outside the built-in download button.",
+			},
+			{
+				name: "useConversationContext",
+				description:
+					"Hook exposing the scroll refs, current bottom state, and scrollToBottom() for custom controls.",
+			},
+		],
 		demoLayout: {
 			previewContentWidth: "full",
 		},

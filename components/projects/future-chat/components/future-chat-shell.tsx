@@ -1,15 +1,15 @@
 "use client";
 
+import type { FileUIPart } from "ai";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
-import { type CSSProperties, useCallback, useEffect, useRef, useState } from "react";
+import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FileTextIcon, MessageSquarePlusIcon } from "lucide-react";
 import { FutureChatArtifactPanel } from "@/components/projects/future-chat/components/future-chat-artifact-panel";
 import { FutureChatComposer } from "@/components/projects/future-chat/components/future-chat-composer";
 import { FutureChatMessages } from "@/components/projects/future-chat/components/future-chat-messages";
 import { FutureChatSidebar } from "@/components/projects/future-chat/components/future-chat-sidebar";
 import { type FutureChatSteeringPhase } from "@/components/projects/future-chat/components/future-chat-steering-lane";
-import { RealtimeVoiceBar } from "@/components/projects/future-chat/components/realtime-voice-bar";
 import { useArtifactAnnotations } from "@/components/projects/future-chat/hooks/use-artifact-annotations";
 import { useFutureChat } from "@/components/projects/future-chat/hooks/use-future-chat";
 import {
@@ -17,12 +17,14 @@ import {
 	sortFutureChatArtifacts,
 } from "@/components/projects/future-chat/lib/future-chat-artifacts";
 import { getFutureChatShellLayout } from "@/components/projects/future-chat/lib/future-chat-shell-layout";
+import { getFutureChatSmartGenerationLayoutContext } from "@/components/projects/future-chat/lib/future-chat-smart-generation-layout";
 import { useLiveVoice } from "@/components/projects/future-chat/hooks/use-live-voice";
 import {
 	type DelegationRequest,
 	useRealtimeVoice,
 } from "@/components/projects/future-chat/hooks/use-realtime-voice";
 import type { VoiceButtonState } from "@/components/ui-audio/voice-button";
+import type { ConversationFollowMode } from "@/components/ui-ai/conversation";
 import { useSidebar as useGlobalSidebar } from "@/app/contexts/context-sidebar";
 import PromptGallery from "@/components/blocks/prompt-gallery/page";
 import { DEFAULT_PROMPT_GALLERY_SUGGESTIONS } from "@/components/blocks/prompt-gallery/data/suggestions";
@@ -44,10 +46,18 @@ import { Footer } from "@/components/ui/footer";
 import { cn } from "@/lib/utils";
 import { token } from "@/lib/tokens";
 import {
+	getLatestUserMessageId,
 	getMessageArtifactResult,
 	getMessageInterruption,
 	getMessageText,
 } from "@/lib/rovo-ui-messages";
+import { ClarificationQuestionCard } from "@/components/projects/shared/components/clarification-question-card";
+import { QuestionCardShortcutsFooter } from "@/components/projects/shared/components/question-card-shortcuts-footer";
+import { getLatestQuestionCardPayload, type ClarificationAnswers } from "@/components/projects/shared/lib/question-card-widget";
+import { getLatestPlanWidgetPayload } from "@/components/projects/shared/lib/plan-widget";
+import type { PlanApprovalSelection } from "@/components/projects/shared/lib/plan-approval";
+import { ApprovalCard } from "@/components/blocks/approval-card/page";
+import { useDismissibleCards } from "@/components/projects/shared/hooks/use-dismissible-cards";
 
 interface FutureChatShellProps {
 	embedded?: boolean;
@@ -58,6 +68,8 @@ const FUTURE_CHAT_LEFT_NAV_PADDING_PX = 12;
 
 const HOME_SUGGESTIONS = DEFAULT_PROMPT_GALLERY_SUGGESTIONS.slice(0, 3);
 const DEFAULT_COMPOSER_PLACEHOLDER = "Ask, @mention, or / for skills";
+const REALTIME_THREAD_SUMMARY_MAX_MESSAGES = 10;
+const REALTIME_RESULT_SUMMARY_MAX_CHARS = 500;
 
 function mergeContextDescriptions(
 	...parts: Array<string | null | undefined>
@@ -69,13 +81,247 @@ function mergeContextDescriptions(
 	return mergedParts.length > 0 ? mergedParts.join("\n\n") : undefined;
 }
 
+type RealtimeInjectContextPayload = {
+	type: string;
+	content?: string;
+	role?: string;
+	summary?: string;
+	[key: string]: unknown;
+};
+
+type RealtimeMessageMutationResult =
+	| string
+	| {
+			id?: string | null;
+	  }
+	| void;
+
+type FutureChatRealtimeShellAdapter = ReturnType<typeof useFutureChat> & {
+	appendRealtimeMessage?: (
+		role: "user" | "assistant",
+		content: string,
+		options?: Record<string, unknown>,
+	) => Promise<RealtimeMessageMutationResult> | RealtimeMessageMutationResult;
+	delegateToRovodev?: (
+		messageId: string,
+		options?: Record<string, unknown>,
+	) => Promise<void>;
+	setRealtimeMessageContent?: (
+		messageId: string,
+		content: string,
+	) => Promise<void> | void;
+	submitRealtimeText?: (payload: {
+		contextDescription?: string;
+		files: FileUIPart[];
+		text: string;
+	}) => Promise<void>;
+	updateRealtimeMessage?: (
+		messageId: string,
+		contentDelta: string,
+	) => Promise<void> | void;
+	setVoiceMode?: (next: boolean) => void;
+};
+
+type ExtendedDelegationRequest = DelegationRequest & {
+	delegatedMessageId?: string;
+	messageId?: string;
+	realtimeMessageId?: string;
+};
+
+type RealtimeSpeechTranscriptPayload =
+	| string
+	| {
+			delta?: string;
+			messageId?: string;
+			text?: string;
+			transcript?: string;
+	  };
+
+type RealtimeAssistantTextPayload =
+	| string
+	| {
+			delta?: string;
+			messageId?: string;
+			text?: string;
+	  };
+
+type RealtimeAssistantTextCompletedPayload =
+	| string
+	| {
+			messageId?: string;
+			text?: string;
+	  };
+
+type RealtimeVoiceShellOptions = Parameters<typeof useRealtimeVoice>[0] & {
+	onAssistantTextCompleted?: (payload: string | { messageId?: string; text?: string }) => void;
+	onAssistantTextDelta?: (payload: string | { delta?: string; messageId?: string; text?: string }) => void;
+	onSpeechTranscriptCompleted?: (
+		payload: string | { messageId?: string; transcript?: string; text?: string },
+	) => void;
+	onSpeechTranscriptDelta?: (payload: string | { delta?: string; messageId?: string; text?: string }) => void;
+	onTextResponseStart?: (payload?: { messageId?: string }) => void;
+};
+
+type RealtimeVoiceShellResult = ReturnType<typeof useRealtimeVoice> & {
+	connectionState?: string;
+	connectionStatus?: string;
+	currentAssistantMessageId?: string | null;
+	currentUserMessageId?: string | null;
+	isReconnecting?: boolean;
+	sendTextInput?: (payload: {
+		contextDescription?: string;
+		messageId?: string;
+		text: string;
+	}) => Promise<void>;
+	sessionId?: string;
+	sessionKey?: string;
+	statusMessage?: string | null;
+};
+
+type TypedScrollAnchorSource = "none" | "standard" | "realtime";
+
+function resolveRealtimeMutationId(
+	result: RealtimeMessageMutationResult,
+): string | null {
+	if (typeof result === "string" && result.trim()) {
+		return result;
+	}
+
+	if (
+		result &&
+		typeof result === "object"
+		&& typeof result.id === "string"
+		&& result.id.trim()
+	) {
+		return result.id;
+	}
+
+	return null;
+}
+
+function buildRealtimeThreadSummary(messages: ReadonlyArray<ReturnType<typeof useFutureChat>["messages"][number]>): string {
+	const summary = messages
+		.filter((message) => message.role === "user" || message.role === "assistant")
+		.slice(-REALTIME_THREAD_SUMMARY_MAX_MESSAGES)
+		.map((message) => {
+			const text = getMessageText(message).trim();
+			const artifact = getMessageArtifactResult(message);
+			const fragments = [
+				text || null,
+				artifact
+					? `${artifact.action === "update" ? "Updated" : "Created"} artifact "${artifact.title}".`
+					: null,
+			].filter((fragment): fragment is string => Boolean(fragment));
+
+			if (fragments.length === 0) {
+				return null;
+			}
+
+			return `${message.role}: ${fragments.join(" ")}`.trim();
+		})
+		.filter((line): line is string => Boolean(line))
+		.join("\n");
+
+	return summary.slice(0, 2_000);
+}
+
+function buildRealtimeArtifactContextSummary(input: {
+	annotationContext: string | null;
+	document:
+		| {
+				id: string;
+				kind: string;
+				title: string;
+		  }
+		| null;
+}): string | null {
+	if (!input.document) {
+		return null;
+	}
+
+	return [
+		`Artifact open: ${input.document.title}`,
+		`Document ID: ${input.document.id}`,
+		`Kind: ${input.document.kind}`,
+		input.annotationContext ? input.annotationContext : null,
+	]
+		.filter((part): part is string => Boolean(part))
+		.join("\n");
+}
+
+function resolveRealtimeStatusMessage(
+	realtime: RealtimeVoiceShellResult,
+): string | null {
+	const directStatus =
+		typeof realtime.statusMessage === "string" && realtime.statusMessage.trim()
+			? realtime.statusMessage.trim()
+			: null;
+	if (directStatus) {
+		return directStatus;
+	}
+
+	const connectionState =
+		typeof realtime.connectionState === "string" && realtime.connectionState.trim()
+			? realtime.connectionState.trim().toLowerCase()
+			: typeof realtime.connectionStatus === "string" && realtime.connectionStatus.trim()
+				? realtime.connectionStatus.trim().toLowerCase()
+				: null;
+
+	if (connectionState === "reconnecting" || realtime.isReconnecting) {
+		return "Reconnecting voice...";
+	}
+
+	if (connectionState === "disconnected") {
+		return "Voice disconnected";
+	}
+
+	return null;
+}
+
+function resolveRealtimeSessionIdentity(
+	realtime: RealtimeVoiceShellResult,
+	activeThreadId: string | null,
+	runtimeThreadId: string,
+): string | null {
+	const candidates = [
+		realtime.sessionId,
+		realtime.sessionKey,
+		realtime.connectionState,
+		realtime.connectionStatus,
+	];
+
+	const explicitIdentity = candidates.find((candidate) => {
+		return typeof candidate === "string" && candidate.trim().length > 0;
+	});
+
+	if (explicitIdentity) {
+		return explicitIdentity;
+	}
+
+	return realtime.voiceState !== "idle"
+		? `${activeThreadId ?? runtimeThreadId}:${realtime.voiceState}`
+		: null;
+}
+
 export function FutureChatShell({
 	embedded = false,
 	initialThreadId = null,
 }: Readonly<FutureChatShellProps>) {
 	const router = useRouter();
 	const nav = useTopNavigation();
-	const chat = useFutureChat({ embedded, initialThreadId });
+	const [viewportWidthPx, setViewportWidthPx] = useState<number | null>(null);
+	const [shellSize, setShellSize] = useState({ width: 0, height: 0 });
+	const smartGenerationLayout = useMemo(() => {
+		return getFutureChatSmartGenerationLayoutContext({
+			shellWidth: shellSize.width,
+			viewportWidth: viewportWidthPx,
+		});
+	}, [shellSize.width, viewportWidthPx]);
+	const chat = useFutureChat({
+		embedded,
+		initialThreadId,
+		smartGenerationLayout,
+	});
 	const chatRef = useRef(chat);
 	chatRef.current = chat;
 
@@ -104,12 +350,7 @@ export function FutureChatShell({
 	const stopSpeakingRef = useRef<() => void>(() => {});
 	const skipNextAutoSpeakRef = useRef(false);
 	const annotationContextRef = useRef<string | null>(null);
-	const realtimeInjectContextRef = useRef<((payload: {
-		type: "thread_context" | "artifact_complete" | "thread_message" | "artifact_annotations";
-		summary?: string;
-		role?: string;
-		content?: string;
-	}) => void) | null>(null);
+	const realtimeInjectContextRef = useRef<((payload: RealtimeInjectContextPayload) => void) | null>(null);
 	const pendingVoiceTranscriptRef = useRef<{
 		id: number;
 		text: string;
@@ -131,6 +372,22 @@ export function FutureChatShell({
 	const [galleryExpanded, setGalleryExpanded] = useState(false);
 	const [previewPrompt, setPreviewPrompt] = useState<string | null>(null);
 	const [prefillText, setPrefillText] = useState<string | null>(null);
+	const [voiceTranscript, setVoiceTranscript] = useState<string | null>(null);
+	const [scrollAnchorMessageId, setScrollAnchorMessageId] = useState<string | null>(null);
+	const [scrollFollowMode, setScrollFollowMode] =
+		useState<ConversationFollowMode>("bottom");
+	const realtimeUserMessageIdRef = useRef<string | null>(null);
+	const realtimeAssistantMessageIdRef = useRef<string | null>(null);
+	const realtimeAssistantMessagePromiseRef = useRef<Promise<string | null> | null>(null);
+	const realtimeUserTranscriptHasDeltaRef = useRef(false);
+	const manualVoiceStopRef = useRef(false);
+	const injectedRealtimeThreadContextKeyRef = useRef<string | null>(null);
+	const injectedRealtimeArtifactContextKeyRef = useRef<string | null>(null);
+	const pendingTypedScrollAnchorRef = useRef(false);
+	const previousTypedAnchorUserMessageIdRef = useRef<string | null>(null);
+	const typedScrollAnchorSourceRef = useRef<TypedScrollAnchorSource>("none");
+	const realtimeTypedResponseStartedRef = useRef(false);
+	const speechStartedAtRef = useRef<string | null>(null);
 
 	const handleGalleryPreviewStart = useCallback((prompt: string) => {
 		setPreviewPrompt(prompt);
@@ -145,7 +402,186 @@ export function FutureChatShell({
 		setPreviewPrompt(null);
 	}, []);
 
+	// Question card / clarification support
+	const activeQuestionCard = useMemo(() => getLatestQuestionCardPayload(chat.messages), [chat.messages]);
+	const activePlanWidget = useMemo(() => getLatestPlanWidgetPayload(chat.messages), [chat.messages]);
+	const { submitClarification, submitClarificationDismiss, submitPlanApproval } = chat;
+	const handleClarificationDismiss = useCallback(
+		(questionCard: typeof activeQuestionCard & {}) => {
+			void submitClarificationDismiss(questionCard);
+		},
+		[submitClarificationDismiss],
+	);
+	const {
+		shouldShowQuestionCard: shouldShowQuestionCardRaw,
+		shouldShowApprovalCard: shouldShowApprovalCardRaw,
+		activeQuestionCardKey,
+		activePlanKey,
+		hideQuestionCard,
+		dismissQuestionCard,
+		dismissApprovalCard,
+	} = useDismissibleCards({
+		activeQuestionCard,
+		activePlanWidget,
+		messages: chat.messages,
+		onDismissQuestionCard: handleClarificationDismiss,
+	});
+	const shouldShowQuestionCard = !chat.isStreaming && shouldShowQuestionCardRaw;
+	const shouldShowApprovalCard = !chat.isStreaming && shouldShowApprovalCardRaw;
+	const handleClarificationSubmit = useCallback(
+		(answers: ClarificationAnswers) => {
+			if (!activeQuestionCard) return;
+			void submitClarification(activeQuestionCard, answers);
+		},
+		[activeQuestionCard, submitClarification],
+	);
+	const handleApprovalSubmit = useCallback(
+		(selection: PlanApprovalSelection) => {
+			if (!activePlanWidget) return;
+			void submitPlanApproval(activePlanWidget, selection);
+			dismissApprovalCard();
+		},
+		[activePlanWidget, dismissApprovalCard, submitPlanApproval],
+	);
+
 	const composerPlaceholder = previewPrompt ?? DEFAULT_COMPOSER_PLACEHOLDER;
+	const resetTypedScrollAnchorState = useCallback(() => {
+		pendingTypedScrollAnchorRef.current = false;
+		previousTypedAnchorUserMessageIdRef.current = null;
+		typedScrollAnchorSourceRef.current = "none";
+		realtimeTypedResponseStartedRef.current = false;
+	}, []);
+
+	const activateTailFollowMode = useCallback(() => {
+		resetTypedScrollAnchorState();
+		setScrollAnchorMessageId(null);
+		setScrollFollowMode("bottom");
+	}, [resetTypedScrollAnchorState]);
+
+	const queueTypedScrollAnchor = useCallback((
+		source: Exclude<TypedScrollAnchorSource, "none">,
+		latestUserMessageId: string | null,
+	) => {
+		pendingTypedScrollAnchorRef.current = true;
+		previousTypedAnchorUserMessageIdRef.current = latestUserMessageId;
+		typedScrollAnchorSourceRef.current = source;
+		realtimeTypedResponseStartedRef.current = false;
+	}, []);
+
+	const setChatVoiceMode = useCallback((next: boolean) => {
+		const realtimeChat = chatRef.current as FutureChatRealtimeShellAdapter;
+		if (typeof realtimeChat.setVoiceMode === "function") {
+			realtimeChat.setVoiceMode(next);
+			return;
+		}
+
+		if (realtimeChat.isVoiceMode !== next) {
+			realtimeChat.toggleVoiceMode();
+		}
+	}, []);
+
+	const injectRealtimeContext = useCallback((payload: RealtimeInjectContextPayload | null) => {
+		if (!payload) {
+			return;
+		}
+
+		realtimeInjectContextRef.current?.(payload);
+	}, []);
+
+	const appendRealtimeMessage = useCallback(
+		async (
+			role: "user" | "assistant",
+			content: string,
+			options?: Record<string, unknown>,
+		): Promise<string | null> => {
+			const realtimeChat = chatRef.current as FutureChatRealtimeShellAdapter;
+			if (typeof realtimeChat.appendRealtimeMessage !== "function") {
+				return null;
+			}
+
+			const result = await realtimeChat.appendRealtimeMessage(role, content, options);
+			return resolveRealtimeMutationId(result);
+		},
+		[],
+	);
+
+	const updateRealtimeMessage = useCallback(
+		async (
+			messageId: string | null,
+			content: string,
+			options?: { replace?: boolean },
+		) => {
+			if (!messageId || !content) {
+				return;
+			}
+
+			const realtimeChat = chatRef.current as FutureChatRealtimeShellAdapter;
+			if (options?.replace && typeof realtimeChat.setRealtimeMessageContent === "function") {
+				await realtimeChat.setRealtimeMessageContent(messageId, content);
+				return;
+			}
+
+			if (typeof realtimeChat.updateRealtimeMessage === "function") {
+				await realtimeChat.updateRealtimeMessage(messageId, content);
+			}
+		},
+		[],
+	);
+
+	const resetRealtimeAssistantMessageState = useCallback(() => {
+		realtimeAssistantMessageIdRef.current = null;
+		realtimeAssistantMessagePromiseRef.current = null;
+	}, []);
+
+	const ensureRealtimeAssistantMessage = useCallback(async (
+		preferredMessageId?: string | null,
+	): Promise<string | null> => {
+		// If we already have an active assistant message for this user turn,
+		// always reuse it. The ref is only cleared by onSpeechStarted (when
+		// the user speaks again), so all GPT responses within the same turn
+		// merge into one bubble.
+		if (realtimeAssistantMessageIdRef.current) {
+			return realtimeAssistantMessageIdRef.current;
+		}
+
+		if (realtimeAssistantMessagePromiseRef.current) {
+			return realtimeAssistantMessagePromiseRef.current;
+		}
+
+		const existingMessageId = preferredMessageId
+			&& chatRef.current.messages.some(
+				(message) =>
+					message.id === preferredMessageId
+					&& message.role === "assistant",
+			)
+				? preferredMessageId
+				: null;
+		if (existingMessageId) {
+			realtimeAssistantMessageIdRef.current = existingMessageId;
+			return existingMessageId;
+		}
+
+		const assistantCreatedAt = speechStartedAtRef.current
+			? new Date(new Date(speechStartedAtRef.current).getTime() + 1).toISOString()
+			: undefined;
+		const messageCreationPromise = appendRealtimeMessage("assistant", "", {
+			messageId: preferredMessageId ?? undefined,
+			createdAt: assistantCreatedAt,
+		})
+			.then((createdMessageId) => {
+				if (createdMessageId) {
+					realtimeAssistantMessageIdRef.current = createdMessageId;
+				}
+				return createdMessageId;
+			})
+			.finally(() => {
+				if (realtimeAssistantMessagePromiseRef.current === messageCreationPromise) {
+					realtimeAssistantMessagePromiseRef.current = null;
+				}
+			});
+		realtimeAssistantMessagePromiseRef.current = messageCreationPromise;
+		return messageCreationPromise;
+	}, [appendRealtimeMessage]);
 
 	const clearSteeringState = useCallback(() => {
 		setSteeringState({
@@ -299,14 +735,7 @@ export function FutureChatShell({
 	stopSpeakingRef.current = voice.stopSpeaking;
 	const wasStreamingRef = useRef(false);
 
-	// Sync voice mode state with the chat hook so contextDescription is injected
 	const isVoiceActive = voice.state !== "idle";
-	useEffect(() => {
-		if (isVoiceActive !== chat.isVoiceMode) {
-			chat.toggleVoiceMode();
-		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps -- only sync when isVoiceActive changes
-	}, [isVoiceActive]);
 
 	useEffect(() => {
 		setSteeringState((currentState) => {
@@ -431,54 +860,207 @@ export function FutureChatShell({
 	const realtime = useRealtimeVoice({
 		onDelegateToRovo: useCallback(
 			async (request: DelegationRequest) => {
-				const c = chatRef.current;
-				const contextDescription = mergeContextDescriptions(
-					request.conversationSummary
-						? `[Voice context] ${request.conversationSummary}`
-						: undefined,
-					annotationContextRef.current,
-				);
+				try {
+					const c = chatRef.current as FutureChatRealtimeShellAdapter;
+					const contextDescription = mergeContextDescriptions(
+						request.conversationSummary
+							? `[Voice context] ${request.conversationSummary}`
+							: undefined,
+						annotationContextRef.current,
+					);
+					const extendedRequest = request as ExtendedDelegationRequest;
+					const delegatedMessageId =
+						extendedRequest.delegatedMessageId ??
+						extendedRequest.realtimeMessageId ??
+						extendedRequest.messageId ??
+						realtimeUserMessageIdRef.current;
 
-				if (c.isStreaming && c.isArtifactOpen) {
-					// Steer active artifact generation
-					await c.applyVoiceSteer({
-						contextDescription,
-						text: request.prompt,
-					});
-				} else {
-					if (c.isStreaming) {
-						await c.interruptActiveTurn({ source: "voice-barge-in" });
+					if (
+						delegatedMessageId &&
+						typeof c.delegateToRovodev === "function"
+					) {
+						await c.delegateToRovodev(delegatedMessageId, {
+							contextDescription,
+							conversationSummary: request.conversationSummary,
+							existingRealtimeMessageId:
+								realtimeAssistantMessageIdRef.current ?? undefined,
+							intentType: request.intentType,
+							prompt: request.prompt,
+							referencedFiles: request.referencedFiles,
+							urgency: request.urgency,
+						});
+						return;
 					}
-					await c.submitPrompt({
-						text: request.prompt,
-						files: [],
-						contextDescription,
+
+					if (c.isStreaming && c.isArtifactOpen) {
+						await c.applyVoiceSteer({
+							contextDescription,
+							text: request.prompt,
+						});
+					} else {
+						if (c.isStreaming) {
+							await c.interruptActiveTurn({ source: "voice-barge-in" });
+						}
+						await c.submitPrompt({
+							text: request.prompt,
+							files: [],
+							contextDescription,
+						});
+					}
+				} catch (error) {
+					injectRealtimeContext({
+						type: "delegation_error",
+						content:
+							error instanceof Error
+								? error.message
+								: "RovoDev failed to process the delegated request.",
 					});
+					throw error;
 				}
 			},
-			[],
+			[injectRealtimeContext],
 		),
 		onSpeechStarted: useCallback(() => {
+			activateTailFollowMode();
+			speechStartedAtRef.current = new Date().toISOString();
+			realtimeUserTranscriptHasDeltaRef.current = false;
+			resetRealtimeAssistantMessageState();
+			realtimeUserMessageIdRef.current = null;
+			setVoiceTranscript("");
+
 			const annotationContext = annotationContextRef.current;
 			if (!annotationContext) {
 				return;
 			}
 
-			realtimeInjectContextRef.current?.({
+			injectRealtimeContext({
 				type: "artifact_annotations",
 				content: annotationContext,
 			});
-		}, []),
+			}, [activateTailFollowMode, injectRealtimeContext, resetRealtimeAssistantMessageState]),
+		onSpeechTranscriptDelta: useCallback(
+			(payload: RealtimeSpeechTranscriptPayload) => {
+				// Browser SpeechRecognition sends { text } (full replacement);
+				// OpenAI transcription deltas send { delta, text } (accumulated).
+				// In both cases, `text` is the complete current transcript — use SET, not APPEND.
+				const text =
+					typeof payload === "string"
+						? payload
+						: payload.text ?? payload.delta ?? "";
+				if (!text) {
+					return;
+				}
+
+				realtimeUserTranscriptHasDeltaRef.current = true;
+				setVoiceTranscript(text);
+			},
+			[],
+		),
+		onSpeechTranscriptCompleted: useCallback(
+			async (payload: RealtimeSpeechTranscriptPayload) => {
+				const transcript =
+					typeof payload === "string"
+						? payload
+						: payload.transcript ?? payload.text ?? "";
+
+				// If the user manually stopped voice, skip auto-submit and leave
+				// the transcribed text in the composer for manual review/submit
+				if (manualVoiceStopRef.current) {
+					manualVoiceStopRef.current = false;
+					if (transcript) {
+						setVoiceTranscript(transcript);
+					}
+					return;
+				}
+
+				if (!transcript) {
+					setVoiceTranscript(null);
+					return;
+				}
+
+				const messageId = await appendRealtimeMessage("user", transcript, {
+					createdAt: speechStartedAtRef.current ?? undefined,
+				});
+				if (messageId) {
+					realtimeUserMessageIdRef.current = messageId;
+				}
+				speechStartedAtRef.current = null;
+				realtimeUserTranscriptHasDeltaRef.current = false;
+				setVoiceTranscript(null);
+			},
+			[appendRealtimeMessage],
+		),
+		onTextResponseStart: useCallback(
+			async (payload?: { messageId?: string }) => {
+				if (typedScrollAnchorSourceRef.current === "realtime") {
+					realtimeTypedResponseStartedRef.current = true;
+				}
+				realtimeAssistantMessageIdRef.current =
+					await ensureRealtimeAssistantMessage(payload?.messageId ?? null);
+			},
+			[ensureRealtimeAssistantMessage],
+		),
+		onAssistantTextDelta: useCallback(
+			async (payload: RealtimeAssistantTextPayload) => {
+				const delta =
+					typeof payload === "string"
+						? payload
+						: payload.delta ?? payload.text ?? "";
+				if (!delta) {
+					return;
+				}
+
+				const messageId =
+					typeof payload === "string"
+						? await ensureRealtimeAssistantMessage()
+						: await ensureRealtimeAssistantMessage(payload.messageId ?? null);
+				await updateRealtimeMessage(messageId, delta);
+			},
+			[ensureRealtimeAssistantMessage, updateRealtimeMessage],
+		),
+		onAssistantTextCompleted: useCallback(
+			async (payload: RealtimeAssistantTextCompletedPayload) => {
+				const text =
+					typeof payload === "string"
+						? payload
+						: payload.text ?? "";
+				if (!text) {
+					return;
+				}
+
+				const messageId =
+					typeof payload === "string"
+						? await ensureRealtimeAssistantMessage()
+						: await ensureRealtimeAssistantMessage(payload.messageId ?? null);
+				await updateRealtimeMessage(messageId, text, {
+					replace: true,
+				});
+			},
+			[ensureRealtimeAssistantMessage, updateRealtimeMessage],
+		),
 		chatMessages: chat.messages,
 		isGenerating: chat.isStreaming,
-	});
+	} satisfies RealtimeVoiceShellOptions) as RealtimeVoiceShellResult;
 
 	const isRealtimeActive = realtime.voiceState !== "idle";
+	const realtimeStatusMessage = resolveRealtimeStatusMessage(realtime);
+	const shouldChatVoiceModeBeEnabled = isVoiceActive || isRealtimeActive;
+	const realtimeSessionIdentity = resolveRealtimeSessionIdentity(
+		realtime,
+		chat.activeThreadId,
+		chat.runtimeThreadId,
+	);
 	const wasRealtimeStreamingRef = useRef(false);
 
 	useEffect(() => {
-		realtimeInjectContextRef.current = realtime.injectContext;
+		realtimeInjectContextRef.current = realtime.injectContext as typeof realtimeInjectContextRef.current;
 	}, [realtime.injectContext]);
+
+	useEffect(() => {
+		if (shouldChatVoiceModeBeEnabled !== chat.isVoiceMode) {
+			setChatVoiceMode(shouldChatVoiceModeBeEnabled);
+		}
+	}, [chat.isVoiceMode, setChatVoiceMode, shouldChatVoiceModeBeEnabled]);
 
 	// Inject RovoDev results back into GPT session for context continuity
 	useEffect(() => {
@@ -492,22 +1074,42 @@ export function FutureChatShell({
 				const summary = artifact
 					? `RovoDev ${artifact.action === "update" ? "updated" : "created"} artifact "${artifact.title}". ${text || ""}`
 					: text || "RovoDev completed the task.";
-				realtime.injectContext({
+				injectRealtimeContext({
 					type: "thread_message",
-					content: summary.slice(0, 500),
+					content: summary.slice(0, REALTIME_RESULT_SUMMARY_MAX_CHARS),
 				});
 			}
 		}
 		wasRealtimeStreamingRef.current = chat.isStreaming;
-	}, [chat.isStreaming, chat.messages, isRealtimeActive, realtime]);
+	}, [chat.isStreaming, chat.messages, injectRealtimeContext, isRealtimeActive]);
 
-	// Sync realtime voice mode with the chat hook's voice mode flag
 	useEffect(() => {
-		if (isRealtimeActive !== chat.isVoiceMode && !isVoiceActive) {
-			chat.toggleVoiceMode();
+		if (!isRealtimeActive || !realtimeSessionIdentity) {
+			injectedRealtimeThreadContextKeyRef.current = null;
+			return;
 		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps -- only sync when isRealtimeActive changes
-	}, [isRealtimeActive]);
+
+		const contextKey = `${chat.activeThreadId ?? chat.runtimeThreadId}:${realtimeSessionIdentity}`;
+		if (injectedRealtimeThreadContextKeyRef.current === contextKey) {
+			return;
+		}
+
+		const summary = buildRealtimeThreadSummary(chat.messages);
+		if (summary) {
+			injectRealtimeContext({
+				type: "thread_context",
+				summary,
+			});
+		}
+		injectedRealtimeThreadContextKeyRef.current = contextKey;
+	}, [
+		chat.activeThreadId,
+		chat.messages,
+		chat.runtimeThreadId,
+		injectRealtimeContext,
+		isRealtimeActive,
+		realtimeSessionIdentity,
+	]);
 
 	const handleToggleRealtimeVoice = useCallback(() => {
 		if (realtime.voiceState === "idle") {
@@ -518,21 +1120,149 @@ export function FutureChatShell({
 				voice.stop();
 			}
 			clearSteeringState();
+			manualVoiceStopRef.current = false;
 			realtime.connect();
 		} else {
+			// Capture the hook's transcript before disconnect clears it.
+			// This covers the case where transcription_completed fired
+			// (setting currentTranscript) but no streaming deltas arrived
+			// (voiceTranscript would still be empty).
+			const transcriptToPreserve = realtime.currentTranscript;
 			pendingVoiceTranscriptRef.current = null;
 			clearSteeringState();
+			realtimeUserMessageIdRef.current = null;
+			resetRealtimeAssistantMessageState();
+			speechStartedAtRef.current = null;
+			// Set flag to prevent auto-submit race from a late transcription_completed
+			manualVoiceStopRef.current = true;
+			// Don't clear voiceTranscript — leave text in composer for manual review/submit
 			realtime.disconnect();
+			// If voiceTranscript is empty but the hook had a completed transcript,
+			// populate the composer so the user can review/submit
+			if (transcriptToPreserve.trim()) {
+				setVoiceTranscript(transcriptToPreserve);
+			}
 		}
-	}, [clearSteeringState, realtime, voice]);
+	}, [clearSteeringState, realtime, resetRealtimeAssistantMessageState, voice]);
 
-	const visibleMessages = chat.messages.filter((message) => {
-		return message.role === "user" || message.role === "assistant";
-	});
+	const handleComposerSubmit = useCallback(
+		async ({ files, text }: { files: FileUIPart[]; text: string }) => {
+			const realtimeChat = chatRef.current as FutureChatRealtimeShellAdapter;
+			const realtimeVoice = realtime as RealtimeVoiceShellResult;
+			const contextDescription = annotationContextRef.current ?? undefined;
+			const latestUserMessageIdBeforeSubmit = getLatestUserMessageId(chat.messages);
+
+			if (isRealtimeActive) {
+				if (typeof realtimeChat.submitRealtimeText === "function") {
+					queueTypedScrollAnchor("realtime", latestUserMessageIdBeforeSubmit);
+					try {
+						await realtimeChat.submitRealtimeText({
+							contextDescription,
+							files,
+							text,
+						});
+					} catch (error) {
+						resetTypedScrollAnchorState();
+						throw error;
+					}
+					return;
+				}
+
+				if (typeof realtimeVoice.sendTextInput === "function") {
+					queueTypedScrollAnchor("realtime", latestUserMessageIdBeforeSubmit);
+					resetRealtimeAssistantMessageState();
+					let messageId: string | null = null;
+					if (typeof realtimeChat.appendRealtimeMessage === "function") {
+						messageId = await appendRealtimeMessage("user", text, {
+							contextDescription,
+						});
+						if (messageId) {
+							realtimeUserMessageIdRef.current = messageId;
+						}
+					}
+
+					try {
+						await realtimeVoice.sendTextInput({
+							contextDescription,
+							messageId: messageId ?? undefined,
+							text,
+						});
+					} catch (error) {
+						resetTypedScrollAnchorState();
+						throw error;
+					}
+					return;
+				}
+			}
+
+			queueTypedScrollAnchor("standard", latestUserMessageIdBeforeSubmit);
+			try {
+				await realtimeChat.submitPrompt({
+					contextDescription,
+					files,
+					text,
+				});
+			} catch (error) {
+				resetTypedScrollAnchorState();
+				throw error;
+			}
+		},
+		[
+			appendRealtimeMessage,
+			chat.messages,
+			isRealtimeActive,
+			queueTypedScrollAnchor,
+			realtime,
+			resetRealtimeAssistantMessageState,
+			resetTypedScrollAnchorState,
+		],
+	);
+
+	const visibleMessages = useMemo(() => {
+		return chat.messages.filter((message) => {
+			return message.role === "user" || message.role === "assistant";
+		});
+	}, [chat.messages]);
+
+	useEffect(() => {
+		const latestUserMessageId = getLatestUserMessageId(chat.messages);
+		if (
+			pendingTypedScrollAnchorRef.current
+			&& latestUserMessageId
+			&& latestUserMessageId !== previousTypedAnchorUserMessageIdRef.current
+		) {
+			pendingTypedScrollAnchorRef.current = false;
+			previousTypedAnchorUserMessageIdRef.current = null;
+			setScrollAnchorMessageId(latestUserMessageId);
+			setScrollFollowMode("target");
+		}
+	}, [chat.messages]);
+
+	useEffect(() => {
+		activateTailFollowMode();
+	}, [activateTailFollowMode, chat.runtimeThreadId]);
+
+	useEffect(() => {
+		if (
+			typedScrollAnchorSourceRef.current !== "realtime" ||
+			!realtimeTypedResponseStartedRef.current
+		) {
+			return;
+		}
+
+		if (
+			realtime.generationState !== "complete" &&
+			realtime.generationState !== "idle"
+		) {
+			return;
+		}
+
+		activateTailFollowMode();
+	}, [activateTailFollowMode, realtime.generationState]);
 	const visibleWorkspaceDocumentId = chat.visibleArtifactDocumentId;
-	const workspaceDocument =
-		visibleWorkspaceDocumentId &&
-		chat.streamingArtifact?.documentId === visibleWorkspaceDocumentId
+	const workspaceDocument = useMemo(() => {
+		return visibleWorkspaceDocumentId &&
+			chat.streamingArtifact?.documentId === visibleWorkspaceDocumentId
 			? {
 					id: chat.streamingArtifact.documentId ?? "streaming-artifact",
 					threadId: chat.activeThreadId ?? chat.runtimeThreadId,
@@ -554,10 +1284,20 @@ export function FutureChatShell({
 			: visibleWorkspaceDocumentId
 				? chat.documents.find((document) => document.id === visibleWorkspaceDocumentId) ?? null
 				: null;
-	const selectedDocumentVersion =
-		workspaceDocument?.versions.find((version) => version.id === chat.selectedVersionId)
-		?? workspaceDocument?.versions.at(-1)
-		?? null;
+	}, [
+		chat.activeThreadId,
+		chat.documents,
+		chat.runtimeThreadId,
+		chat.streamingArtifact,
+		visibleWorkspaceDocumentId,
+	]);
+	const selectedDocumentVersion = useMemo(() => {
+		return (
+			workspaceDocument?.versions.find((version) => version.id === chat.selectedVersionId)
+			?? workspaceDocument?.versions.at(-1)
+			?? null
+		);
+	}, [chat.selectedVersionId, workspaceDocument]);
 	const isArtifactOpen = Boolean(workspaceDocument);
 	const canAnnotateWorkspaceDocument =
 		workspaceDocument?.kind === "text"
@@ -593,7 +1333,6 @@ export function FutureChatShell({
 	const composerDockRef = useRef<HTMLDivElement | null>(null);
 	const artifactCardOriginRef = useRef<DOMRect | null>(null);
 	const artifactPreviewOriginRef = useRef<Map<string, DOMRect>>(new Map());
-	const [shellSize, setShellSize] = useState({ width: 0, height: 0 });
 	const [artifactOrigin, setArtifactOrigin] = useState({
 		left: 0,
 		top: 0,
@@ -603,6 +1342,47 @@ export function FutureChatShell({
 	const artifactLayout = getFutureChatShellLayout(shellSize.width);
 	const shouldSplitArtifactPane =
 		isArtifactOpen && artifactLayout.mode === "split";
+
+	useEffect(() => {
+		if (!isRealtimeActive) {
+			injectedRealtimeArtifactContextKeyRef.current = null;
+			return;
+		}
+
+		const artifactContext = buildRealtimeArtifactContextSummary({
+			annotationContext: annotationContextRef.current,
+			document: workspaceDocument
+				? {
+						id: workspaceDocument.id,
+						kind: workspaceDocument.kind,
+						title: workspaceDocument.title,
+					}
+				: null,
+		});
+		if (!artifactContext) {
+			return;
+		}
+
+		const contextKey = [
+			workspaceDocument?.id ?? "none",
+			selectedDocumentVersion?.id ?? "latest",
+			annotationContextRef.current ?? "no-annotations",
+		].join(":");
+		if (injectedRealtimeArtifactContextKeyRef.current === contextKey) {
+			return;
+		}
+
+		injectRealtimeContext({
+			type: "artifact_context",
+			content: artifactContext,
+		});
+		injectedRealtimeArtifactContextKeyRef.current = contextKey;
+	}, [
+		injectRealtimeContext,
+		isRealtimeActive,
+		selectedDocumentVersion?.id,
+		workspaceDocument,
+	]);
 
 	useEffect(() => {
 		if (isArtifactOpen || visibleMessages.length > 0) {
@@ -647,6 +1427,21 @@ export function FutureChatShell({
 			clearAnnotations();
 		}
 	}, [chat.artifactMode, clearAnnotations]);
+
+	useEffect(() => {
+		const updateViewportWidth = () => {
+			if (typeof window === "undefined") {
+				return;
+			}
+
+			const width = Math.max(1, Math.round(window.innerWidth));
+			setViewportWidthPx((prev) => (prev === width ? prev : width));
+		};
+
+		updateViewportWidth();
+		window.addEventListener("resize", updateViewportWidth);
+		return () => window.removeEventListener("resize", updateViewportWidth);
+	}, []);
 
 	useEffect(() => {
 		const shellElement = shellRef.current;
@@ -785,11 +1580,12 @@ export function FutureChatShell({
 	const chatPane = (
 		<>
 			<FutureChatMessages
-				visibleDocumentId={chat.visibleArtifactDocumentId}
+				activeDocumentId={chat.activeDocument?.id ?? null}
 				compact={isArtifactOpen}
 				documents={chat.documents}
 				editingMessageId={chat.editingMessageId}
 				isStreaming={chat.isStreaming}
+				key={chat.runtimeThreadId}
 				messages={chat.messages}
 				onEditMessage={chat.editMessage}
 				onOpenArtifactFromCard={handleOpenArtifactFromCard}
@@ -799,6 +1595,8 @@ export function FutureChatShell({
 				onSetEditingMessageId={chat.setEditingMessageId}
 				onVote={chat.voteOnMessage}
 				pendingArtifactResult={chat.pendingArtifactResult}
+				scrollAnchorMessageId={scrollAnchorMessageId}
+				scrollFollowMode={scrollFollowMode}
 				streamingArtifact={chat.streamingArtifact}
 				streamingArtifactMessageId={chat.streamingArtifactMessageId}
 				votes={chat.votes}
@@ -811,49 +1609,67 @@ export function FutureChatShell({
 					visibleMessages.length > 0 && "sticky bottom-0 bg-background/90 backdrop-blur",
 					isArtifactOpen ? "max-w-none" : "max-w-[800px]",
 				)}
-			>
-				<AnimatePresence>
-					{isRealtimeActive ? (
-						<motion.div
-							animate={{ opacity: 1, height: "auto" }}
-							exit={{ opacity: 0, height: 0 }}
-							initial={{ opacity: 0, height: 0 }}
-							transition={{ type: "spring", stiffness: 400, damping: 30 }}
-						>
-							<RealtimeVoiceBar
-								annotationCount={artifactAnnotations.length}
-								annotationPreview={artifactAnnotations.slice(-2).map((annotation) => annotation.comment)}
-								currentTranscript={realtime.currentTranscript}
-								generationState={realtime.generationState}
-								micStream={realtime.micStream}
-								modelTranscript={realtime.modelTranscript}
-								onDisconnect={handleToggleRealtimeVoice}
-								voiceState={realtime.voiceState}
+				>
+					{realtimeStatusMessage ? (
+						<div className="px-1 text-text-subtle text-xs">
+							{realtimeStatusMessage}
+					</div>
+				) : null}
+				<div className="px-6">
+					{shouldShowQuestionCard && activeQuestionCard ? (
+						<>
+							<ClarificationQuestionCard
+								key={activeQuestionCardKey ?? undefined}
+								questionCard={activeQuestionCard}
+								onSubmit={(answers) => {
+									handleClarificationSubmit(answers);
+									hideQuestionCard();
+								}}
+								onDismiss={dismissQuestionCard}
 							/>
-						</motion.div>
-					) : null}
-				</AnimatePresence>
-				<div>
-					<FutureChatComposer
-						key={chat.runtimeThreadId}
-						artifactTitle={workspaceDocument?.title ?? null}
-						compact={isArtifactOpen}
-						errorMessage={chat.inputError}
-						galleryExpanded={galleryExpanded}
-						micStream={realtime.micStream}
-						onStop={handleStop}
-						onSubmit={chat.submitPrompt}
-						onToggleRealtimeVoice={handleToggleRealtimeVoice}
-						onToggleVoice={handleToggleVoice}
-						placeholder={composerPlaceholder}
-						prefillText={prefillText}
-						previewPrompt={previewPrompt}
-						realtimeVoiceActive={isRealtimeActive}
-						realtimeVoiceState={realtime.voiceState}
-						status={chat.status}
-						voiceState={voiceButtonState}
-					/>
-					{visibleMessages.length > 0 ? <Footer /> : null}
+							<QuestionCardShortcutsFooter />
+						</>
+					) : shouldShowApprovalCard && activePlanKey ? (
+						<div className="px-1">
+							<ApprovalCard
+								key={activePlanKey}
+								isSubmitting={chat.isStreaming}
+								onSubmit={handleApprovalSubmit}
+								onDismiss={dismissApprovalCard}
+							/>
+						</div>
+					) : (
+						<>
+							<FutureChatComposer
+								key={chat.runtimeThreadId}
+								artifactTitle={workspaceDocument?.title ?? null}
+								backgroundArtifactLabel={chat.backgroundArtifactLabel}
+								backgroundDelegationLabel={chat.backgroundDelegationLabel}
+								composerStatus={chat.composerStatus}
+								compact={isArtifactOpen}
+								errorMessage={chat.inputError}
+								galleryExpanded={galleryExpanded}
+								isPlanMode={chat.isPlanMode}
+								micStream={realtime.micStream}
+								onStop={handleStop}
+								onSubmit={handleComposerSubmit}
+								onTogglePlanMode={chat.togglePlanMode}
+								onToggleRealtimeVoice={handleToggleRealtimeVoice}
+								onToggleVoice={handleToggleVoice}
+								placeholder={composerPlaceholder}
+								prefillText={voiceTranscript ?? prefillText}
+								previewPrompt={previewPrompt}
+								realtimeGenerationState={realtime.generationState}
+								realtimeOutputWaveformBars={realtime.outputWaveformBars}
+								realtimeVoiceActive={isRealtimeActive}
+								realtimeVoiceState={realtime.voiceState}
+								showBackgroundStop={chat.hasBackgroundDelegation}
+								submitDisabled={chat.hasBackgroundDelegation}
+								voiceState={voiceButtonState}
+							/>
+							{visibleMessages.length > 0 ? <Footer className="relative z-10" /> : null}
+						</>
+					)}
 				</div>
 
 				{!isArtifactOpen && visibleMessages.length === 0 ? (
@@ -881,6 +1697,10 @@ export function FutureChatShell({
 			<FutureChatSidebar
 				activeThreadId={chat.activeThreadId}
 				onDeleteThread={(threadId) => chat.deleteThread(threadId)}
+				onNewChat={() => {
+					const textarea = document.querySelector<HTMLTextAreaElement>("[data-slot='input-group-control']");
+					textarea?.focus();
+				}}
 				onSelectThread={async (threadId) => {
 					await chat.loadThread(threadId);
 					if (embedded) {

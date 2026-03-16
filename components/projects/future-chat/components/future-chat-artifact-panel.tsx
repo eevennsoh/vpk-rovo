@@ -326,90 +326,86 @@ export function FutureChatArtifactPanel({
 				</div>
 			</div>
 
-			<div className="min-h-0 flex-1 overflow-auto bg-surface">
-				<div className="mx-auto flex h-full w-full max-w-[1280px] flex-col p-4 md:p-6">
-					<div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[24px] border border-border bg-background shadow-sm">
-						{mode === "edit" && !isStreamingArtifact ? (
-							<>
-								<Textarea
-									className="min-h-[50vh] flex-1 resize-none rounded-none border-0 p-4 shadow-none focus-visible:ring-0"
-									onChange={(event) => onDraftChange(event.currentTarget.value)}
-									value={draftContent}
+			<div className="min-h-0 flex-1 overflow-auto bg-background">
+				{mode === "edit" && !isStreamingArtifact ? (
+					<>
+						<Textarea
+							className="min-h-[50vh] flex-1 resize-none rounded-none border-0 p-4 shadow-none focus-visible:ring-0"
+							onChange={(event) => onDraftChange(event.currentTarget.value)}
+							value={draftContent}
+						/>
+						<div className="flex items-center justify-between border-border/70 border-t bg-bg-neutral/40 px-4 py-3">
+							<p className="text-text-subtle text-xs">
+								Saving creates a new local version for this artifact.
+							</p>
+							<Button onClick={() => void onSave()} size="sm" type="button">
+								<SaveIcon className="size-4" />
+								Save version
+							</Button>
+						</div>
+					</>
+				) : (
+					<div
+						ref={contentRef}
+						className="relative min-h-0 flex-1 overflow-auto p-4 md:p-6"
+					>
+						{document.kind === "code" ? (
+							<CodeBlock
+								code={previewContent}
+								language={inferFutureChatCodeLanguage(previewContent)}
+								showLineNumbers
+							/>
+						) : document.kind === "image" && /^https?:|^data:image\//u.test(previewContent) ? (
+							<div className="flex h-full min-h-[320px] items-center justify-center rounded-2xl border border-border bg-surface-raised p-4">
+								<Image
+									alt={selectedVersionTitle}
+									className="h-auto max-w-full rounded-md"
+									height={900}
+									src={previewContent}
+									unoptimized
+									width={1200}
 								/>
-								<div className="flex items-center justify-between border-border/70 border-t bg-bg-neutral/40 px-4 py-3">
-									<p className="text-text-subtle text-xs">
-										Saving creates a new local version for this artifact.
-									</p>
-									<Button onClick={() => void onSave()} size="sm" type="button">
-										<SaveIcon className="size-4" />
-										Save version
-									</Button>
-								</div>
-							</>
+							</div>
 						) : (
+							<MessageResponse isAnimating={isStreamingArtifact}>
+								{previewContent}
+							</MessageResponse>
+						)}
+
+						{mode === "preview" ? (
 							<div
-								ref={contentRef}
-								className="relative min-h-0 flex-1 overflow-auto p-4 md:p-6"
+								className="pointer-events-none absolute inset-0 z-10"
+								data-artifact-annotation-ui=""
 							>
-								{document.kind === "code" ? (
-									<CodeBlock
-										code={previewContent}
-										language={inferFutureChatCodeLanguage(previewContent)}
-										showLineNumbers
-									/>
-								) : document.kind === "image" && /^https?:|^data:image\//u.test(previewContent) ? (
-									<div className="flex h-full min-h-[320px] items-center justify-center rounded-2xl border border-border bg-surface-raised p-4">
-										<Image
-											alt={selectedVersionTitle}
-											className="h-auto max-w-full rounded-md"
-											height={900}
-											src={previewContent}
-											unoptimized
-											width={1200}
-										/>
-									</div>
-								) : (
-									<MessageResponse isAnimating={isStreamingArtifact}>
-										{previewContent}
-									</MessageResponse>
-								)}
-
-								{mode === "preview" ? (
-									<div
-										className="pointer-events-none absolute inset-0 z-10"
-										data-artifact-annotation-ui=""
+								{annotations.map((annotation) => (
+									<Button
+										key={annotation.id}
+										className={cn(
+											"pointer-events-auto absolute size-7 rounded-full border border-border-selected bg-background px-0 text-[11px] font-semibold text-text shadow-sm",
+										)}
+										onClick={() => onRemoveAnnotation?.(annotation.id)}
+										size="icon-sm"
+										style={getAnnotationPinStyle(annotation.position)}
+										title={`Remove annotation #${annotation.index}: ${annotation.comment}`}
+										type="button"
+										variant="outline"
 									>
-										{annotations.map((annotation) => (
-											<Button
-												key={annotation.id}
-												className={cn(
-													"pointer-events-auto absolute size-7 rounded-full border border-border-selected bg-background px-0 text-[11px] font-semibold text-text shadow-sm",
-												)}
-												onClick={() => onRemoveAnnotation?.(annotation.id)}
-												size="icon-sm"
-												style={getAnnotationPinStyle(annotation.position)}
-												title={`Remove annotation #${annotation.index}: ${annotation.comment}`}
-												type="button"
-												variant="outline"
-											>
-												{annotation.index}
-											</Button>
-										))}
+										{annotation.index}
+									</Button>
+								))}
 
-										{pendingSelection ? (
-											<PendingAnnotationPopover
-												key={`${pendingSelection.position.left}-${pendingSelection.position.top}-${pendingSelection.anchor.selector ?? "selection"}`}
-												onAddComment={onAddComment}
-												onDismissSelection={onDismissSelection}
-												pendingSelection={pendingSelection}
-											/>
-										) : null}
-									</div>
+								{pendingSelection ? (
+									<PendingAnnotationPopover
+										key={`${pendingSelection.position.left}-${pendingSelection.position.top}-${pendingSelection.anchor.selector ?? "selection"}`}
+										onAddComment={onAddComment}
+										onDismissSelection={onDismissSelection}
+										pendingSelection={pendingSelection}
+									/>
 								) : null}
 							</div>
-						)}
+						) : null}
 					</div>
-				</div>
+				)}
 			</div>
 		</div>
 	);

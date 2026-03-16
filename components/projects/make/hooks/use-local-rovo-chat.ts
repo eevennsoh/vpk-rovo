@@ -36,8 +36,6 @@ function buildSendMessageBody(
 		clarification: options?.clarification,
 		approval: options?.approval,
 		deferredToolResponse: options?.deferredToolResponse,
-		planMode: options?.planMode,
-		planModeSource: options?.planModeSource,
 		planRequestId: options?.planRequestId,
 		creationMode: options?.creationMode,
 		smartGeneration: options?.smartGeneration,

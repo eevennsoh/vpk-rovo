@@ -60,3 +60,18 @@ Mark promoted entries with `[Promoted]` prefix — see vpk-lesson skill for deta
 - **What happened:** A live-voice waveform entrance fix relied on a transient `processing` state, but the mic stream often became ready too quickly for the user to perceive the intro.
 - **Why:** The implementation assumed async setup latency would naturally create a visible animation window instead of enforcing one in the UI state.
 - **Rule:** When a first-appearance animation depends on async readiness, hold the intro state for a short minimum duration so the motion is visibly perceptible even on fast paths.
+
+### 2026-03-13 - Do not trade realtime voice latency for exact transcript timing without explicit approval
+- **What happened:** A transcription-highlight experiment replaced native GPT-Realtime assistant audio with a second-pass TTS pipeline, which made the voice response feel too slow and unstable.
+- **Why:** The implementation optimized for highlight precision before validating that conversational latency remained the primary UX requirement.
+- **Rule:** For live voice surfaces, keep the native low-latency audio path unless the user explicitly accepts slower playback for timing accuracy. Prefer approximate highlight on the realtime stream over adding a second synthesis pass by default.
+
+### 2026-03-16 - Do not replace real-agent latency with hardcoded replies when the user is debugging the agent path
+- **What happened:** A local fast path for greetings/acknowledgements was added to avoid RovoDev latency on `future-chat`.
+- **Why:** The optimization solved perceived slowness, but it bypassed the exact RovoDev path the user wanted to inspect and debug.
+- **Rule:** When the user is investigating latency or behavior in the real agent pipeline, do not short-circuit the request with hardcoded/local fallback behavior unless they explicitly ask for that tradeoff.
+
+### 2026-03-16 - Preserve the reference states when matching one visual state to another
+- **What happened:** A waveform change flattened `User Speaking` and `AI Speaking` when the request was to make `Idle` inherit their treatment.
+- **Why:** The implementation treated the shader as a shared rebalance problem instead of keeping the unchanged states as the visual source of truth.
+- **Rule:** When the user asks for one state to match another, leave the reference states untouched and scope the edit to the named target state unless they explicitly ask for a full rebalance.

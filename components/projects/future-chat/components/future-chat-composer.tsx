@@ -13,71 +13,89 @@ import {
 	usePromptInputAttachments,
 	usePromptInputController,
 } from "@/components/ui-ai/prompt-input";
-import {
-	composerPromptInputClassName,
-	composerTextareaClassName,
-	composerUpwardShadow,
-	textareaCSS,
-} from "@/components/blocks/shared-ui/composer-styles";
+import { composerPromptInputClassName, composerTextareaClassName, composerUpwardShadow, textareaCSS } from "@/components/blocks/shared-ui/composer-styles";
 import { Alert } from "@/components/ui/alert";
 import type { VoiceButtonState } from "@/components/ui-audio/voice-button";
 import { LiveWaveform } from "@/components/ui-audio/live-waveform";
 import { resolveFutureChatComposerWaveformState } from "@/components/projects/future-chat/lib/future-chat-composer-waveform-state";
+import { resolveFutureChatComposerResponseGradientState } from "@/components/projects/future-chat/lib/future-chat-composer-response-gradient-state";
+import type { RealtimeGenerationState } from "@/components/projects/future-chat/hooks/use-realtime-voice";
 import { cn } from "@/lib/utils";
 import { resolveFutureChatComposerPreviewHeight } from "@/components/projects/future-chat/lib/future-chat-composer-preview";
 import ArrowUpIcon from "@atlaskit/icon/core/arrow-up";
 import CrossIcon from "@atlaskit/icon/core/cross";
 import AudioWaveformIcon from "@atlaskit/icon-lab/core/audio-waveform";
 import AddIcon from "@atlaskit/icon/core/add";
+import RoadmapIcon from "@atlaskit/icon/core/roadmap";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { FutureChatComposerResponseGradient } from "./future-chat-composer-response-gradient";
 import { PendingAttachments } from "./pending-attachments";
 
-const FUTURE_CHAT_WAVEFORM_COLORS = [
-	"var(--color-blue-600)",
-	"var(--color-orange-300)",
-	"var(--color-purple-500)",
-	"var(--color-lime-400)",
-] as const;
+const FUTURE_CHAT_WAVEFORM_COLORS = ["var(--color-blue-600)", "var(--color-orange-300)", "var(--color-purple-500)", "var(--color-lime-400)"] as const;
 
 const FUTURE_CHAT_WAVEFORM_INTRO_MS = 500;
+const EMPTY_REALTIME_OUTPUT_WAVEFORM_BARS: number[] = [];
 
 interface FutureChatComposerProps {
 	artifactTitle?: string | null;
+	backgroundArtifactLabel?: string | null;
+	backgroundDelegationLabel?: string | null;
+	composerStatus: ChatStatus;
 	compact?: boolean;
 	errorMessage?: string | null;
+	isPlanMode?: boolean;
 	micStream?: MediaStream | null;
 	onStop: () => Promise<void>;
-	onSubmit: (payload: {
-		text: string;
-		files: FileUIPart[];
-	}) => Promise<void>;
+	onSubmit: (payload: { text: string; files: FileUIPart[] }) => Promise<void>;
+	onTogglePlanMode?: () => void;
 	onToggleRealtimeVoice?: () => void;
 	onToggleVoice?: () => void;
 	galleryExpanded?: boolean;
 	placeholder?: string;
 	prefillText?: string | null;
 	previewPrompt?: string | null;
+	realtimeGenerationState?: RealtimeGenerationState;
+	realtimeOutputWaveformBars?: number[];
 	realtimeVoiceActive?: boolean;
 	realtimeVoiceState?: "idle" | "connecting" | "listening" | "speaking";
-	status: ChatStatus;
+	renderResponseGradient?: (props: {
+		active: boolean;
+		phase: "warmup" | "speaking";
+		signal: number[];
+		voiceState: "idle" | "connecting" | "listening" | "speaking";
+		generationState: string;
+		micStream?: MediaStream | null;
+	}) => React.ReactNode;
+	showBackgroundStop?: boolean;
+	submitDisabled?: boolean;
 	voiceState?: VoiceButtonState;
 }
 
 function FutureChatComposerInner({
 	artifactTitle,
+	backgroundArtifactLabel,
+	backgroundDelegationLabel,
+	composerStatus,
 	compact = false,
 	errorMessage,
 	galleryExpanded = false,
+	isPlanMode = false,
 	micStream,
 	onStop,
 	onSubmit,
+	onTogglePlanMode,
 	onToggleRealtimeVoice,
 	placeholder = "Ask, @mention, or / for skills",
 	prefillText,
 	previewPrompt = null,
+	realtimeGenerationState = "idle",
+	realtimeOutputWaveformBars = EMPTY_REALTIME_OUTPUT_WAVEFORM_BARS,
 	realtimeVoiceActive = false,
-	status,
+	realtimeVoiceState = "idle",
+	renderResponseGradient,
+	showBackgroundStop = false,
+	submitDisabled = false,
 }: Readonly<FutureChatComposerProps>) {
 	const attachments = usePromptInputAttachments();
 	const controller = usePromptInputController();
@@ -94,26 +112,32 @@ function FutureChatComposerInner({
 	const [stableBaseHeight, setStableBaseHeight] = useState(0);
 	const [previewPromptHeight, setPreviewPromptHeight] = useState(0);
 	const [isRealtimeWaveformIntroActive, setIsRealtimeWaveformIntroActive] = useState(false);
-	const isPreviewPlaceholderActive =
-		Boolean(previewPrompt) && controller.textInput.value.trim().length === 0;
-	const canSubmit =
-		controller.textInput.value.trim().length > 0 || attachments.files.length > 0;
+	const isPreviewPlaceholderActive = Boolean(previewPrompt) && controller.textInput.value.trim().length === 0;
+	const canSubmit = controller.textInput.value.trim().length > 0 || attachments.files.length > 0;
+	const isComposerBusy = composerStatus === "submitted" || composerStatus === "streaming";
+	const showSubmitButton = !realtimeVoiceActive && !isComposerBusy && canSubmit;
+	const showVoiceStartButton = !realtimeVoiceActive && !isComposerBusy && !showBackgroundStop && Boolean(onToggleRealtimeVoice);
 	const realtimeWaveformState = resolveFutureChatComposerWaveformState({
 		hasMicStream: micStream !== null,
 		isIntroActive: isRealtimeWaveformIntroActive,
 		realtimeVoiceActive,
 	});
 	const isRealtimeWaveformProcessing = realtimeWaveformState.processing;
+	const realtimeResponseGradientState = resolveFutureChatComposerResponseGradientState({
+		realtimeGenerationState,
+		realtimeVoiceState,
+	});
 	const handlePromptSubmit = useCallback(
 		(payload: { text: string; files: FileUIPart[] }) => {
+			if (submitDisabled) {
+				return;
+			}
+
 			void onSubmit(payload);
 		},
-		[onSubmit],
+		[onSubmit, submitDisabled],
 	);
-	const supportsFieldSizing =
-		typeof window !== "undefined"
-		&& typeof window.CSS?.supports === "function"
-		&& window.CSS.supports("field-sizing", "content");
+	const supportsFieldSizing = typeof window !== "undefined" && typeof window.CSS?.supports === "function" && window.CSS.supports("field-sizing", "content");
 
 	useLayoutEffect(() => {
 		previewPromptRef.current = previewPrompt;
@@ -158,12 +182,7 @@ function FutureChatComposerInner({
 	const measurePreviewPromptHeight = useCallback((nextPreviewPrompt: string | null) => {
 		const textareaElement = textareaRef.current;
 		const previewMeasureElement = previewMeasureRef.current;
-		if (
-			!nextPreviewPrompt
-			|| !textareaElement
-			|| !previewMeasureElement
-			|| textInputValueRef.current.trim().length > 0
-		) {
+		if (!nextPreviewPrompt || !textareaElement || !previewMeasureElement || textInputValueRef.current.trim().length > 0) {
 			setPreviewPromptHeight(0);
 			return;
 		}
@@ -198,7 +217,7 @@ function FutureChatComposerInner({
 		setStableBaseHeight((prev) => (prev === 0 && height > 0 ? height : prev));
 	}, []);
 
-	// Apply prefilled text from gallery click and auto-resize the textarea
+	// Apply prefilled text from gallery click or voice transcript streaming
 	const appliedPrefillRef = useRef<string | null>(null);
 	useEffect(() => {
 		if (prefillText && prefillText !== appliedPrefillRef.current) {
@@ -227,10 +246,13 @@ function FutureChatComposerInner({
 					const maxHeight = Number.isFinite(maxH) ? maxH : 120;
 					const nextHeight = Math.min(maxHeight, el.scrollHeight);
 					el.style.height = `${nextHeight}px`;
-					el.style.overflowY =
-						el.scrollHeight > nextHeight ? "auto" : "hidden";
+					el.style.overflowY = el.scrollHeight > nextHeight ? "auto" : "hidden";
 				});
 			});
+		} else if (prefillText === null && appliedPrefillRef.current !== null) {
+			// Voice transcript cleared (auto-sent) — clear the input
+			appliedPrefillRef.current = null;
+			controller.textInput.clear();
 		}
 	}, [prefillText, controller.textInput, supportsFieldSizing]);
 
@@ -249,11 +271,7 @@ function FutureChatComposerInner({
 	}, [isPreviewPlaceholderActive, measurePreviewPromptHeight, previewPrompt]);
 
 	useEffect(() => {
-		if (
-			controller.textInput.value.trim().length > 0
-			|| previewPrompt
-			|| galleryExpanded
-		) {
+		if (controller.textInput.value.trim().length > 0 || previewPrompt || galleryExpanded) {
 			return;
 		}
 
@@ -272,10 +290,7 @@ function FutureChatComposerInner({
 				measurePreviewPromptHeight(previewPromptRef.current);
 				return;
 			}
-			if (
-				galleryExpandedRef.current
-				|| textInputValueRef.current.trim().length > 0
-			) {
+			if (galleryExpandedRef.current || textInputValueRef.current.trim().length > 0) {
 				return;
 			}
 
@@ -288,33 +303,32 @@ function FutureChatComposerInner({
 		return () => {
 			resizeObserver.disconnect();
 		};
-	}, [
-		captureBaseMeasurements,
-		measurePreviewPromptHeight,
-	]);
+	}, [captureBaseMeasurements, measurePreviewPromptHeight]);
 
 	const previewComposerHeight = isPreviewPlaceholderActive
 		? resolveFutureChatComposerPreviewHeight({
-			baseComposerHeight,
-			baseTextareaHeight,
-			previewPromptHeight,
-		})
+				baseComposerHeight,
+				baseTextareaHeight,
+				previewPromptHeight,
+			})
 		: null;
 	const expandedGalleryComposerHeight = galleryExpanded
 		? resolveFutureChatComposerPreviewHeight({
-			baseComposerHeight,
-			baseTextareaHeight,
-			previewPromptHeight: baseTextareaHeight * 2,
-		})
+				baseComposerHeight,
+				baseTextareaHeight,
+				previewPromptHeight: baseTextareaHeight * 2,
+			})
 		: null;
 	const composerHeight = (() => {
 		// When user has typed text, release the fixed height so the textarea auto-resizes
 		if (controller.textInput.value.trim().length > 0) return null;
 
-		const combined =
-			previewComposerHeight && expandedGalleryComposerHeight
-				? Math.max(previewComposerHeight, expandedGalleryComposerHeight)
-				: previewComposerHeight ?? expandedGalleryComposerHeight;
+		// When artifact context is shown, the stable base height (captured without
+		// the artifact pill) is stale. Let the composer auto-size instead — the
+		// gallery that needs the stable height isn't visible with artifacts open.
+		if (artifactTitle) return null;
+
+		const combined = previewComposerHeight && expandedGalleryComposerHeight ? Math.max(previewComposerHeight, expandedGalleryComposerHeight) : (previewComposerHeight ?? expandedGalleryComposerHeight);
 
 		if (combined) return combined;
 
@@ -322,50 +336,61 @@ function FutureChatComposerInner({
 		// when hovering across gallery pills (prevents snap on gap-crossing).
 		// Uses the once-captured stableBaseHeight to avoid feedback loops
 		// from the ResizeObserver reading mid-transition values.
-		return stableBaseHeight > 0 ? Math.ceil(stableBaseHeight) : null;
+		return stableBaseHeight > 0 ? stableBaseHeight : null;
 	})();
 
 	return (
-		<div className="relative">
+		<div className="relative isolate">
+			<div className="pointer-events-none absolute inset-0 overflow-visible">
+				{renderResponseGradient ? (
+					renderResponseGradient({
+						active: realtimeVoiceActive || realtimeResponseGradientState.visible,
+						phase: realtimeResponseGradientState.phase ?? "warmup",
+						signal: realtimeOutputWaveformBars,
+						voiceState: realtimeVoiceState,
+						generationState: realtimeGenerationState,
+						micStream,
+					})
+				) : (
+					<FutureChatComposerResponseGradient active={realtimeResponseGradientState.visible} phase={realtimeResponseGradientState.phase ?? "warmup"} signal={realtimeOutputWaveformBars} />
+				)}
+			</div>
 			<div className={cn("flex w-full flex-col gap-4", compact && "gap-3")}>
-				{errorMessage ? (
-					<Alert variant="danger">
-						{errorMessage}
-					</Alert>
+				{errorMessage ? <Alert variant="danger">{errorMessage}</Alert> : null}
+				{backgroundDelegationLabel ? (
+					<div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background/80 px-3 py-2 text-text-subtle text-xs">
+						<p className="min-w-0 flex-1">{backgroundDelegationLabel}</p>
+						{showBackgroundStop ? (
+							<PromptInputButton aria-label="Stop delegated work" className="shrink-0" onClick={() => void onStop()} size="sm" variant="outline">
+								<CrossIcon label="" size="small" />
+								<span>Stop</span>
+							</PromptInputButton>
+						) : null}
+					</div>
 				) : null}
+				{backgroundArtifactLabel ? <p className="px-1 text-text-subtlest text-xs">{backgroundArtifactLabel}</p> : null}
 
 				<div
 					ref={composerRef}
-					className={cn(
-						"relative z-10 rounded-xl border border-border bg-surface px-3 pb-3 pt-3",
-						composerHeight ? "flex flex-col" : undefined,
-						compact ? "px-3.5 pb-2.5 pt-3.5" : undefined,
-					)}
+					className={cn("relative z-10 rounded-xl border border-border bg-surface px-3 pb-3 pt-3", composerHeight ? "flex flex-col" : undefined, compact ? "px-3.5 pb-2.5 pt-3.5" : undefined)}
 					style={{
 						boxShadow: composerUpwardShadow,
 						...(composerHeight
 							? {
-								height: `${composerHeight}px`,
-								transition: "height var(--duration-normal) var(--ease-out)",
-							}
+									height: `${composerHeight}px`,
+									transition: "height var(--duration-normal) var(--ease-out)",
+								}
 							: {}),
 					}}
 				>
 					<PromptInput
 						allowOverflow
-						className={cn(
-							composerPromptInputClassName,
-							"relative z-10",
-							composerHeight
-								? "flex h-full flex-col [&>[data-slot=input-group]]:h-full"
-								: undefined,
-						)}
+						className={cn(composerPromptInputClassName, "relative z-10", composerHeight ? "flex h-full flex-col [&>[data-slot=input-group]]:h-full" : undefined)}
 						onSubmit={handlePromptSubmit}
 					>
 						{artifactTitle ? (
 							<div className="mb-3 rounded-xl border border-border bg-bg-neutral px-3 py-2 text-text-subtle text-xs">
-								Editing artifact context from{" "}
-								<span className="font-medium text-text">{artifactTitle}</span>
+								Editing artifact context from <span className="font-medium text-text">{artifactTitle}</span>
 							</div>
 						) : null}
 
@@ -374,14 +399,9 @@ function FutureChatComposerInner({
 						<PromptInputBody className={composerHeight ? "flex-1" : undefined}>
 							<PromptInputTextarea
 								ref={textareaRef}
+								autoFocus
 								autoResize={!composerHeight}
-								className={cn(
-									composerTextareaClassName,
-									composerHeight ? "h-full max-h-none min-h-0" : undefined,
-									isPreviewPlaceholderActive
-										? "chat-composer-textarea-preview-active"
-										: undefined,
-								)}
+								className={cn(composerTextareaClassName, composerHeight ? "h-full max-h-none min-h-0" : undefined, isPreviewPlaceholderActive ? "chat-composer-textarea-preview-active" : undefined)}
 								placeholder={placeholder}
 								rows={1}
 							/>
@@ -399,111 +419,87 @@ function FutureChatComposerInner({
 								>
 									<AddIcon label="" color="currentColor" />
 								</PromptInputButton>
+								{onTogglePlanMode ? (
+									<PromptInputButton
+										aria-label="Plan mode"
+										aria-pressed={isPlanMode}
+										className={cn(
+											"h-7 gap-1 rounded-md px-2 text-xs font-medium transition-colors",
+											isPlanMode
+												? "bg-bg-selected text-text-selected border border-border-selected hover:bg-bg-selected-hovered"
+												: "text-icon-subtle hover:bg-bg-neutral-hovered active:bg-bg-neutral-pressed",
+										)}
+										disabled={isComposerBusy}
+										onClick={onTogglePlanMode}
+									>
+										<RoadmapIcon label="" size="small" />
+										<span>Plan</span>
+									</PromptInputButton>
+								) : null}
 							</PromptInputTools>
 
-							<div className="flex min-w-0 flex-1 items-center justify-end">
-								<AnimatePresence mode="popLayout" initial={false}>
-									{status === "submitted" || status === "streaming" ? (
-										<motion.div
-											key="stop"
-											layoutId="composer-action"
-											style={{ willChange: "transform, opacity" }}
-											animate={{ opacity: 1 }}
-											exit={{ opacity: 0 }}
-											initial={{ opacity: 0 }}
-											transition={{ type: "spring", stiffness: 800, damping: 35, opacity: { duration: 0.08 } }}
-										>
-											<PromptInputSubmit
-												aria-label="Stop"
-												onStop={() => void onStop()}
-												size="icon-sm"
-												status={status}
+							<div className="flex h-8 min-w-0 flex-1 items-center justify-end gap-1.5">
+								<AnimatePresence mode="wait" initial={false}>
+									{realtimeVoiceActive ? (
+										<motion.div key="waveform" animate={{ opacity: 1 }} exit={{ opacity: 0 }} initial={{ opacity: 0 }} transition={{ duration: 0.08 }}>
+											<button
+												aria-label="Stop live voice"
+												className="flex h-8 w-20 cursor-pointer items-center gap-1.5 overflow-hidden rounded-md border border-border bg-background pl-2 pr-2 text-icon-subtle transition-colors hover:bg-bg-neutral-hovered active:bg-bg-neutral-pressed"
+												onClick={handleToggleRealtimeVoice}
+												type="button"
 											>
-												<ArrowUpIcon label="" />
-											</PromptInputSubmit>
-										</motion.div>
-									) : realtimeVoiceActive && !canSubmit ? (
-										<motion.div
-											key="waveform"
-											layoutId="composer-action"
-											style={{ willChange: "transform, opacity" }}
-											animate={{ opacity: 1 }}
-											exit={{ opacity: 0 }}
-											initial={{ opacity: 0 }}
-											transition={{ type: "spring", stiffness: 800, damping: 35, opacity: { duration: 0.08 } }}
-										>
-												<button
-													aria-label="Stop live voice"
-													className="inline-flex h-8 w-20 cursor-pointer items-center gap-1.5 overflow-hidden rounded-md border border-border bg-background pl-2 pr-2 text-icon-subtle transition-colors hover:bg-bg-neutral-hovered active:bg-bg-neutral-pressed"
-													onClick={handleToggleRealtimeVoice}
-													type="button"
-												>
-													<span className="flex h-full min-w-0 flex-1 items-center">
-														<LiveWaveform
-															active={realtimeWaveformState.active}
-															barColor="currentColor"
-															barColors={[...FUTURE_CHAT_WAVEFORM_COLORS]}
-															barGap={2}
-															barHeightScale={isRealtimeWaveformProcessing ? 1.15 : 1}
-															barOpacityMax={1}
-															barOpacityMin={1}
-															barWidth={2}
-															barRadius={0}
-															className="min-h-0 min-w-0 flex-1 animate-in fade-in duration-300"
-															entranceAnimation="stagger"
-															entranceDurationMs={180}
-															entranceStaggerMs={14}
-															fadeEdges={false}
-															height="100%"
-															mediaStream={micStream}
-															mode="static"
-															processing={isRealtimeWaveformProcessing}
-														/>
-													</span>
-													<span
-														aria-hidden="true"
-														className="flex shrink-0 items-center justify-center"
-													>
-														<CrossIcon label="" size="small" />
-													</span>
+												<span className="flex h-full min-w-0 flex-1 items-center">
+													<LiveWaveform
+														active={realtimeWaveformState.active}
+														barColor="currentColor"
+														barColors={[...FUTURE_CHAT_WAVEFORM_COLORS]}
+														barGap={2}
+														barHeightScale={isRealtimeWaveformProcessing ? 1.15 : 1}
+														barOpacityMax={1}
+														barOpacityMin={1}
+														barWidth={2}
+														barRadius={0}
+														className="min-h-0 min-w-0 flex-1 animate-in fade-in duration-300"
+														entranceAnimation="stagger"
+														entranceDurationMs={180}
+														entranceStaggerMs={14}
+														fadeEdges={false}
+														height="100%"
+														mediaStream={micStream}
+														mode="static"
+														processing={isRealtimeWaveformProcessing}
+													/>
+												</span>
+												<span aria-hidden="true" className="flex shrink-0 items-center justify-center">
+													<CrossIcon label="" size="small" />
+												</span>
 											</button>
 										</motion.div>
-									) : canSubmit ? (
-										<motion.div
-											key="submit"
-											layoutId="composer-action"
-											style={{ willChange: "transform, opacity" }}
-											animate={{ opacity: 1 }}
-											exit={{ opacity: 0 }}
-											initial={{ opacity: 0 }}
-											transition={{ type: "spring", stiffness: 800, damping: 35, opacity: { duration: 0.08 } }}
-										>
-											<PromptInputSubmit
-												aria-label="Submit"
-												onStop={() => void onStop()}
-												size="icon-sm"
-												status={status}
-											>
+									) : showSubmitButton ? (
+										<motion.div key="submit" animate={{ opacity: 1 }} exit={{ opacity: 0 }} initial={{ opacity: 0 }} transition={{ duration: 0.08 }}>
+											<PromptInputSubmit aria-label="Submit" disabled={submitDisabled || !canSubmit} onStop={() => void onStop()} size="icon-sm" status={composerStatus}>
 												<ArrowUpIcon label="" />
 											</PromptInputSubmit>
 										</motion.div>
-									) : onToggleRealtimeVoice ? (
-										<motion.div
-											key="voice-start"
-											layoutId="composer-action"
-											style={{ willChange: "transform, opacity" }}
-											animate={{ opacity: 1 }}
-											exit={{ opacity: 0 }}
-											initial={{ opacity: 0 }}
-											transition={{ type: "spring", stiffness: 800, damping: 35, opacity: { duration: 0.08 } }}
-										>
+									) : showVoiceStartButton ? (
+										<motion.div key="voice-start" animate={{ opacity: 1 }} exit={{ opacity: 0 }} initial={{ opacity: 0 }} transition={{ duration: 0.08 }}>
 											<PromptInputButton
 												aria-label="Start live voice"
 												className="size-8 bg-bg-selected-bold text-white transition-colors hover:bg-bg-selected-bold-hovered active:bg-bg-selected-bold-pressed [&_svg]:text-white"
 												onClick={handleToggleRealtimeVoice}
+												tooltip={{ content: "Live chat", delay: 0 }}
 											>
 												<AudioWaveformIcon label="" />
 											</PromptInputButton>
+										</motion.div>
+									) : null}
+								</AnimatePresence>
+								<AnimatePresence initial={false}>
+									{isComposerBusy ? (
+										<motion.div key="stop" animate={{ opacity: 1 }} exit={{ opacity: 0 }} initial={{ opacity: 0 }} transition={{ duration: 0.08 }}>
+											<PromptInputSubmit aria-label="Stop" onStop={() => void onStop()} size="icon-sm" status={composerStatus}>
+												<ArrowUpIcon label="" />
+											</PromptInputSubmit>
 										</motion.div>
 									) : null}
 								</AnimatePresence>

@@ -16,7 +16,7 @@ import { ChevronsUpDownIcon } from "lucide-react";
 import { motion } from "motion/react";
 import { createContext, use, useEffect, useMemo, useRef, useState } from "react";
 
-import { GenerativeCardFooter, GenerativeCardHeader } from "./generative-card";
+import { GenerativeCardFooter, GenerativeCardHeader } from "@/components/blocks/generative-card";
 import { MessageResponse } from "./message";
 import { Shimmer } from "./shimmer";
 

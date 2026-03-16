@@ -62,7 +62,6 @@ import {
 } from "../lib/thread-api";
 
 type PlanningPhase = "awaiting-plan" | "retrying-missing-plan";
-const MAKE_MODE_SOURCE = "plan-toggle" as const;
 
 interface ChatRuntime {
 	uiMessages: RovoUIMessage[];
@@ -676,8 +675,6 @@ export function useMakeChat(options: {
 
 				await sendPrompt(nextPrompt, {
 					contextDescription,
-					planMode: true,
-					planModeSource: MAKE_MODE_SOURCE,
 					planRequestId: requestId,
 					creationMode: activeCreationMode ?? undefined,
 				});
@@ -775,8 +772,6 @@ export function useMakeChat(options: {
 
 		void sendPrompt(MAKE_MODE_RETRY_PROMPT, {
 			contextDescription: MAKE_MODE_POST_CLARIFICATION_CONTEXT_DESCRIPTION,
-			planMode: true,
-			planModeSource: MAKE_MODE_SOURCE,
 			planRequestId: retryRequestId,
 			messageMetadata: {
 				visibility: "hidden",
@@ -822,10 +817,6 @@ export function useMakeChat(options: {
 					contextDescription: isPlanMode
 						? MAKE_MODE_POST_CLARIFICATION_CONTEXT_DESCRIPTION
 						: undefined,
-					planMode: isPlanMode || undefined,
-					planModeSource: isPlanMode
-						? MAKE_MODE_SOURCE
-						: undefined,
 					planRequestId: planningSession?.requestId,
 					deferredToolResponse: {
 						tool_call_id: deferredToolCallId,
@@ -838,10 +829,6 @@ export function useMakeChat(options: {
 				await sendPrompt(promptText, {
 					contextDescription: isPlanMode
 						? MAKE_MODE_POST_CLARIFICATION_CONTEXT_DESCRIPTION
-						: undefined,
-					planMode: isPlanMode || undefined,
-					planModeSource: isPlanMode
-						? MAKE_MODE_SOURCE
 						: undefined,
 					planRequestId: planningSession?.requestId,
 					clarification,
@@ -858,10 +845,6 @@ export function useMakeChat(options: {
 			await sendPrompt(dismissPrompt, {
 				contextDescription: isPlanMode
 					? MAKE_MODE_POST_CLARIFICATION_CONTEXT_DESCRIPTION
-					: undefined,
-				planMode: isPlanMode || undefined,
-				planModeSource: isPlanMode
-					? MAKE_MODE_SOURCE
 					: undefined,
 				planRequestId: planningSession?.requestId,
 				messageMetadata: {
@@ -1120,6 +1103,22 @@ export function useMakeChat(options: {
 			if (!next) {
 				setPlanningSession(null);
 			}
+
+			// Notify the backend of the mode change. This is fire-and-forget:
+			// local state updates immediately for responsiveness, while the API
+			// call ensures the RovoDev session is in the correct mode before the
+			// next message is sent.
+			const nextMode = next ? "plan" : "default";
+			void fetch(API_ENDPOINTS.AGENT_MODE, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ mode: nextMode }),
+			}).catch(() => {
+				// Silently ignore — the backend may not be ready yet (e.g. no
+				// active RovoDev session). The mode will be resolved when the
+				// first message is sent.
+			});
+
 			return next;
 		});
 	}, []);

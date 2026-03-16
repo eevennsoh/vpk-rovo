@@ -43,8 +43,6 @@ export interface SendPromptOptions {
 		tool_call_id: string;
 		result: Record<string, string | string[]>;
 	};
-	planMode?: boolean;
-	planModeSource?: "plan-toggle";
 	planRequestId?: string;
 	creationMode?: "skill" | "agent";
 	smartGeneration?: {
@@ -96,8 +94,6 @@ function buildSendMessageBody(
 		clarification: options?.clarification,
 		approval: options?.approval,
 		deferredToolResponse: options?.deferredToolResponse,
-		planMode: options?.planMode,
-		planModeSource: options?.planModeSource,
 		planRequestId: options?.planRequestId,
 		creationMode: options?.creationMode,
 		smartGeneration: options?.smartGeneration,

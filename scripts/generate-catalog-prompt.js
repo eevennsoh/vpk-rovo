@@ -1,7 +1,7 @@
 /**
- * Generates the catalog-based system prompt for genui chat mode.
+ * Generates the catalog-based system prompt for genui inline mode.
  *
- * Runs `catalog.prompt({ mode: "chat" })` which auto-generates:
+ * Runs `catalog.prompt({ mode: "inline" })` which auto-generates:
  * - All component types with props from Zod schemas
  * - Slot information (which components accept children)
  * - Critical defaultRules (integrity check, self-check, visible/on placement)
@@ -17,7 +17,7 @@ const path = require("node:path");
 
 const { catalog } = require("../lib/json-render/catalog.ts");
 
-const basePrompt = catalog.prompt({ mode: "chat" });
+const basePrompt = catalog.prompt({ mode: "inline" });
 
 const output = {
 	generatedAt: new Date().toISOString(),

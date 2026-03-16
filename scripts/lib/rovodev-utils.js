@@ -132,14 +132,31 @@ const resolveRovodevBin = () => {
 	}
 
 	// 2. Check PATH for `acli` (user-managed, typically more up-to-date)
+	//    Validate that `acli rovodev` actually supports the `serve` subcommand,
+	//    since some acli versions only ship `auth` and silently ignore unknown
+	//    subcommands (exit 0, no output).
 	try {
 		const acliBinPath = execSync("which acli", {
 			encoding: "utf8",
 			stdio: ["pipe", "pipe", "pipe"],
 		}).trim();
 		if (acliBinPath) {
-			console.log(`[rovodev] Using acli wrapper: ${acliBinPath}`);
-			return { bin: acliBinPath, servePrefix: ["rovodev"] };
+			let acliHasServe = false;
+			try {
+				const helpOutput = execSync(`${acliBinPath} rovodev --help`, {
+					encoding: "utf8",
+					stdio: ["pipe", "pipe", "pipe"],
+					timeout: 5000,
+				});
+				acliHasServe = helpOutput.includes("serve");
+			} catch {
+				// help failed — treat as unsupported
+			}
+			if (acliHasServe) {
+				console.log(`[rovodev] Using acli wrapper: ${acliBinPath}`);
+				return { bin: acliBinPath, servePrefix: ["rovodev"] };
+			}
+			console.log(`[rovodev] acli found at ${acliBinPath} but does not support "rovodev serve". Skipping.`);
 		}
 	} catch {
 		// not on PATH
@@ -147,9 +164,11 @@ const resolveRovodevBin = () => {
 
 	// 3. Check ~/.rovodev/bin as a common install location
 	const homeDir = require("node:os").homedir();
-	const homeBinPath = path.join(homeDir, ".rovodev", "bin", "rovodev");
-	if (fs.existsSync(homeBinPath)) {
-		return { bin: homeBinPath, servePrefix: [] };
+	for (const binName of ["rovodev", "atlassian_cli_rovodev"]) {
+		const homeBinPath = path.join(homeDir, ".rovodev", "bin", binName);
+		if (fs.existsSync(homeBinPath)) {
+			return { bin: homeBinPath, servePrefix: [] };
+		}
 	}
 
 	// 4. Search Atlascode extension paths (Cursor / VS Code)

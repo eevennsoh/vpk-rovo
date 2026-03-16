@@ -7,7 +7,7 @@ import type {
 	RovoRenderableUIMessage,
 	RovoSourcePart,
 	RovoToolPart,
-	RouteDecisionMeta,
+	RoutingDecision,
 	ThinkingToolCallSummary,
 	ToolFirstWarningData,
 } from "@/lib/rovo-ui-messages";
@@ -95,7 +95,7 @@ export interface ThreadMessageContextValue {
 
 	// ---------- route decision ----------
 	/** Route decision metadata from the output routing layer (null if not present). */
-	routeDecision: RouteDecisionMeta | null;
+	routeDecision: RoutingDecision | null;
 	/** Whether GenUI failed and the response fell back to text. */
 	isFallbackTextRoute: boolean;
 }

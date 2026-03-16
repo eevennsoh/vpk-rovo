@@ -9,7 +9,8 @@ import type {
 	WheelEvent,
 } from "react";
 
-import { Loader2Icon, TriangleAlertIcon } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
+import { TriangleAlertIcon } from "lucide-react";
 import {
 	useCallback,
 	useEffect,
@@ -605,7 +606,7 @@ export function ChromiumPreviewBody({
 				)}
 				{isBusy ? (
 					<div className="bg-surface/70 absolute inset-0 flex items-center justify-center backdrop-blur-sm">
-						<Loader2Icon className="text-text-subtle size-7 animate-spin" />
+						<Spinner className="size-7" />
 					</div>
 				) : null}
 				{error ? (

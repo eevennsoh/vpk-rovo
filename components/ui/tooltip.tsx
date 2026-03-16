@@ -4,7 +4,9 @@ import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip"
 
 import { cn } from "@/lib/utils"
 
-type TooltipProviderProps = TooltipPrimitive.Provider.Props
+type TooltipProviderProps = TooltipPrimitive.Provider.Props & {
+	delay?: number
+}
 
 function TooltipProvider({
 	delay = 0,

@@ -943,4 +943,5 @@ module.exports = {
 	cancelChat,
 	getRovoDevPort,
 	extractChunkFromEvent,
+	request,
 };

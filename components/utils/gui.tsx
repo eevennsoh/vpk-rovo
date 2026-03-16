@@ -1,6 +1,9 @@
 "use client";
 
-import { createContext, use, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, use, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import CheckIcon from "@atlaskit/icon/core/check-mark";
+import ChevronDownIcon from "@atlaskit/icon/core/chevron-down";
+import CopyIcon from "@atlaskit/icon/core/copy";
 import UndoIcon from "@atlaskit/icon/core/undo";
 
 import { Input } from "@/components/ui/input";
@@ -15,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 type GUIPanelContextValue = Readonly<{
@@ -181,21 +185,100 @@ function GUIControl({
 type GUIPanelProps = Readonly<{
 	title: string;
 	values: Record<string, unknown>;
+	defaultOpen?: boolean;
 	onPlay?: () => void;
 	children: React.ReactNode;
 }>;
 
-function GUIPanel({ children }: GUIPanelProps) {
+function GUIPanel({ title, values, defaultOpen = true, children }: GUIPanelProps) {
+	const [open, setOpen] = useState(defaultOpen);
+	const [copied, setCopied] = useState(false);
+	const [tooltipOpen, setTooltipOpen] = useState(false);
+	const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
 	const panelContext = useMemo<GUIPanelContextValue>(() => ({
 		registerKeys: () => {},
 		unregisterKeys: () => {},
 	}), []);
 
+	const handleCopy = useCallback(() => {
+		const text = JSON.stringify(values, null, "\t");
+		navigator.clipboard.writeText(text).then(() => {
+			setCopied(true);
+			setTooltipOpen(true);
+			if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+			copiedTimerRef.current = setTimeout(() => {
+				setCopied(false);
+				setTooltipOpen(false);
+			}, 1500);
+		});
+	}, [values]);
+
+	useEffect(() => {
+		return () => {
+			if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+		};
+	}, []);
+
 	return (
 		<GUIPanelContext value={panelContext}>
+			<TooltipProvider>
 			<div className="w-full space-y-4">
-				{children}
+				<div className="flex w-full items-center justify-between">
+					<span className="text-[11px] font-semibold uppercase tracking-wider text-text-subtlest">
+						{title}
+					</span>
+					<span className="flex items-center gap-2">
+						{open ? (
+							<Tooltip open={tooltipOpen} onOpenChange={(nextOpen) => {
+								if (!copied) setTooltipOpen(nextOpen);
+							}}>
+								<TooltipTrigger
+									render={
+										<button
+											type="button"
+											aria-label="Copy values as JSON"
+											onClick={handleCopy}
+											className={cn(
+												"flex items-center rounded p-0.5 transition-colors",
+												copied
+													? "text-success"
+													: "text-text-subtle hover:bg-bg-neutral hover:text-text",
+											)}
+										>
+											{copied ? (
+												<CheckIcon label="" size="small" />
+											) : (
+												<CopyIcon label="" size="small" />
+											)}
+										</button>
+									}
+								/>
+								<TooltipContent>
+									{copied ? "Copied!" : "Copy values"}
+								</TooltipContent>
+							</Tooltip>
+						) : null}
+						<button
+							type="button"
+							aria-label={open ? "Collapse controls" : "Expand controls"}
+							onClick={() => setOpen((prev) => !prev)}
+							className="flex items-center"
+						>
+							<span
+								className={cn(
+									"text-icon-subtle transition-transform duration-150",
+									open ? "rotate-0" : "-rotate-90",
+								)}
+							>
+								<ChevronDownIcon label="" size="small" />
+							</span>
+						</button>
+					</span>
+				</div>
+				{open ? children : null}
 			</div>
+			</TooltipProvider>
 		</GUIPanelContext>
 	);
 }
@@ -360,9 +443,49 @@ function GUITextInput({ id, label, description, placeholder, value, onChange, va
 	);
 }
 
+type GUISectionProps = Readonly<{
+	title: string;
+	defaultOpen?: boolean;
+	borderTop?: boolean;
+	children: React.ReactNode;
+}>;
+
+function GUISection({ title, defaultOpen = true, borderTop = true, children }: GUISectionProps) {
+	const [open, setOpen] = useState(defaultOpen);
+
+	return (
+		<div>
+			{borderTop ? <div className="border-t border-border pt-4" /> : null}
+			<button
+				type="button"
+				onClick={() => setOpen((prev) => !prev)}
+				className="flex w-full items-center justify-between pb-1"
+			>
+				<span className="text-[11px] font-semibold uppercase tracking-wider text-text-subtlest">
+					{title}
+				</span>
+				<span
+					className={cn(
+						"text-icon-subtle transition-transform duration-150",
+						open ? "rotate-0" : "-rotate-90",
+					)}
+				>
+					<ChevronDownIcon label="" size="small" />
+				</span>
+			</button>
+			{open ? (
+				<div className="space-y-4 pt-1">
+					{children}
+				</div>
+			) : null}
+		</div>
+	);
+}
+
 export const GUI = {
 	Control: GUIControl,
 	Panel: GUIPanel,
+	Section: GUISection,
 	Toggle: GUIToggle,
 	Select: GUISelect,
 	TextInput: GUITextInput,

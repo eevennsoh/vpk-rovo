@@ -30,23 +30,40 @@ const ROVO_SYSTEM_INSTRUCTIONS = `You are Rovo, a collaborative AI voice assista
 You are the voice interface. You handle casual conversation, brainstorming, and general knowledge directly. For anything requiring workspace access, data lookup, code changes, artifact creation, or Atlassian product queries, you delegate to RovoDev using the delegate_to_rovo function.
 
 ## When to delegate (call delegate_to_rovo)
+Only delegate when the user explicitly asks for a task that requires workspace access:
 - User asks about their tickets, projects, pages, or workspace data
 - User wants code changes, file creation, or artifact generation
-- User asks to build, create, design, or implement something
+- User asks to build, create, design, or implement something concrete
 - User references specific files, components, or Atlassian products
 - A brainstorming conversation converges and the user says "build that", "do it", "make it", etc.
 
-## When to handle locally (no delegation)
-- Casual chat, greetings, general knowledge questions
-- Brainstorming that hasn't converged into an actionable task
-- Clarifying questions before you have enough context to delegate
+These requests MUST delegate immediately:
+- "create me an artifact about Apple"
+- "make a document/report/memo/spec about X"
+- "build a component/page/app for Y"
+- "write code that does Z"
+- "check my Jira/Confluence/workspace data"
+- "create a card / generate a preview / make an inline artifact"
+
+## When to handle locally (NO delegation)
+Handle these yourself — do NOT call delegate_to_rovo:
+- Casual chat, greetings, small talk ("hello", "how are you", "thanks")
+- General knowledge questions ("what is React?", "explain closures")
+- Brainstorming and ideation that hasn't converged into an actionable task
+- Opinions, advice, or recommendations
+- Clarifying questions — ask follow-ups before delegating if the request is vague
 - Meta-questions about the voice interface itself
+- Simple yes/no or factual answers
+- Summarizing or explaining things you already know
+When in doubt, handle it locally.
+Exception: if the user asks to create/build/generate/write an artifact, document, code output, UI, page, card, or other concrete deliverable, you MUST delegate instead of replying conversationally.
 
 ## Delegation behavior
-1. Before delegating, briefly acknowledge what you're about to do ("I'll look that up", "Let me create that for you")
+1. When you decide to delegate, call delegate_to_rovo immediately — do not emit text tokens before the function call
 2. Synthesize the full conversation context into a clear prompt — don't just echo the last utterance
 3. After RovoDev returns results (injected as system context), narrate a concise summary
 4. Stay aware of prior results for follow-up questions
+5. Do not say things like "I'm putting that together" or ask a follow-up yourself for explicit artifact/build requests. Delegate first and let RovoDev decide whether a clarification card or artifact preview is needed.
 
 ## Steering active generation
 When results are being generated and the user gives modification instructions ("make it bigger", "add a chart", "change the color"), delegate those as well — RovoDev will apply them as steers to the active generation.
@@ -64,6 +81,8 @@ const SUPPORTED_CONTEXT_TYPES = new Set([
 	"artifact_complete",
 	"thread_message",
 	"artifact_annotations",
+	"artifact_context",
+	"delegation_error",
 ]);
 
 // ─── Tools ────────────────────────────────────────────────────────────────────
@@ -128,6 +147,9 @@ const SESSION_STATE = {
 	CLOSED: "closed",
 };
 
+const OPENAI_HEARTBEAT_INTERVAL_MS = 20_000;
+const REALTIME_SESSION_REFRESH_MS = 55 * 60 * 1_000;
+
 // ─── OpenAI Realtime event types ─────────────────────────────────────────────
 
 const OPENAI_EVENT = {
@@ -136,8 +158,10 @@ const OPENAI_EVENT = {
 	SESSION_UPDATED: "session.updated",
 	RESPONSE_AUDIO_DELTA: "response.audio.delta",
 	RESPONSE_AUDIO_DONE: "response.audio.done",
+	RESPONSE_CREATED: "response.created",
 	RESPONSE_TEXT_DELTA: "response.text.delta",
 	RESPONSE_TEXT_DONE: "response.text.done",
+	RESPONSE_DONE: "response.done",
 	RESPONSE_AUDIO_TRANSCRIPT_DELTA: "response.audio_transcript.delta",
 	RESPONSE_AUDIO_TRANSCRIPT_DONE: "response.audio_transcript.done",
 	CONVERSATION_ITEM_INPUT_AUDIO_TRANSCRIPTION_COMPLETED:
@@ -175,6 +199,10 @@ class RealtimeSession {
 		this._instructions = options.instructions || ROVO_SYSTEM_INSTRUCTIONS;
 		this._log = options.onLog || (() => {});
 		this._transcriptBuffer = "";
+		this._openaiHeartbeatInterval = null;
+		this._awaitingOpenAIPong = false;
+		this._sessionRefreshTimer = null;
+		this._plannedCloseReason = null;
 	}
 
 	get state() {
@@ -234,6 +262,8 @@ class RealtimeSession {
 
 		this._openaiWs.on("open", () => {
 			this._log("REALTIME", "Connected to OpenAI Realtime API");
+			this._startOpenAIHeartbeat();
+			this._scheduleSessionRefresh();
 			this._sendSessionUpdate(config);
 		});
 
@@ -241,13 +271,38 @@ class RealtimeSession {
 			this._handleOpenAIMessage(data);
 		});
 
+		this._openaiWs.on("pong", () => {
+			this._awaitingOpenAIPong = false;
+		});
+
 		this._openaiWs.on("close", (code, reason) => {
+			const plannedCloseReason = this._plannedCloseReason;
+			this._plannedCloseReason = null;
+			this._clearSessionMaintenanceTimers();
 			this._log("REALTIME", `OpenAI WS closed: ${code} ${reason}`);
 			this._state = SESSION_STATE.CLOSED;
-			this._sendToClient({
-				type: "error",
-				error: { message: "OpenAI connection closed", code: "connection_closed" },
-			});
+			if (plannedCloseReason === null) {
+				this._sendToClient({
+					type: "error",
+					error: { message: "OpenAI connection closed", code: "connection_closed" },
+				});
+			}
+			// Close the client WebSocket so the browser's onclose handler
+			// fires and triggers reconnection. Without this, the client
+			// stays connected to the backend but audio is silently dropped.
+			if (
+				this._clientWs &&
+				this._clientWs.readyState === WebSocket.OPEN
+			) {
+				this._clientWs.close(
+					1001,
+					plannedCloseReason === "session_refresh"
+						? "Realtime session refresh"
+						: plannedCloseReason === "heartbeat_timeout"
+							? "Realtime upstream heartbeat timeout"
+							: "OpenAI upstream closed"
+				);
+			}
 		});
 
 		this._openaiWs.on("error", (err) => {
@@ -264,6 +319,8 @@ class RealtimeSession {
 	 */
 	close() {
 		this._state = SESSION_STATE.CLOSED;
+		this._plannedCloseReason = null;
+		this._clearSessionMaintenanceTimers();
 		if (this._openaiWs) {
 			if (
 				this._openaiWs.readyState === WebSocket.OPEN ||
@@ -274,6 +331,62 @@ class RealtimeSession {
 			this._openaiWs = null;
 		}
 		this._log("REALTIME", "Session closed");
+	}
+
+	_clearSessionMaintenanceTimers() {
+		if (this._openaiHeartbeatInterval !== null) {
+			clearInterval(this._openaiHeartbeatInterval);
+			this._openaiHeartbeatInterval = null;
+		}
+		if (this._sessionRefreshTimer !== null) {
+			clearTimeout(this._sessionRefreshTimer);
+			this._sessionRefreshTimer = null;
+		}
+		this._awaitingOpenAIPong = false;
+	}
+
+	_startOpenAIHeartbeat() {
+		this._clearSessionMaintenanceTimers();
+		this._openaiHeartbeatInterval = setInterval(() => {
+			const ws = this._openaiWs;
+			if (!ws || ws.readyState !== WebSocket.OPEN) {
+				return;
+			}
+
+			if (this._awaitingOpenAIPong) {
+				this._plannedCloseReason = "heartbeat_timeout";
+				this._log("REALTIME", "OpenAI heartbeat timed out; reconnecting session");
+				ws.terminate();
+				return;
+			}
+
+			this._awaitingOpenAIPong = true;
+			try {
+				ws.ping();
+			} catch (error) {
+				this._plannedCloseReason = "heartbeat_timeout";
+				this._log("REALTIME", `Failed to ping OpenAI Realtime: ${error.message}`);
+				ws.terminate();
+			}
+		}, OPENAI_HEARTBEAT_INTERVAL_MS);
+	}
+
+	_scheduleSessionRefresh() {
+		this._sessionRefreshTimer = setTimeout(() => {
+			const ws = this._openaiWs;
+			if (!ws || this._state === SESSION_STATE.CLOSED) {
+				return;
+			}
+
+			this._plannedCloseReason = "session_refresh";
+			this._log("REALTIME", "Refreshing Realtime session before max lifetime");
+			if (
+				ws.readyState === WebSocket.OPEN ||
+				ws.readyState === WebSocket.CONNECTING
+			) {
+				ws.close(1000, "session refresh");
+			}
+		}, REALTIME_SESSION_REFRESH_MS);
 	}
 
 	// ── Client message handling ───────────────────────────────────────────
@@ -303,6 +416,9 @@ class RealtimeSession {
 				break;
 			case "context_inject":
 				this._handleContextInject(msg);
+				break;
+			case "text_message_from_user":
+				this._handleTextMessageFromUser(msg);
 				break;
 			case "response_create":
 				this._handleResponseCreate();
@@ -353,10 +469,8 @@ class RealtimeSession {
 					model: "gpt-4o-mini-transcribe",
 				},
 				turn_detection: {
-					type: "server_vad",
-					threshold: 0.5,
-					prefix_padding_ms: 300,
-					silence_duration_ms: 500,
+					type: "semantic_vad",
+					eagerness: "auto",
 					create_response: true,
 					interrupt_response: true,
 				},
@@ -382,10 +496,8 @@ class RealtimeSession {
 				model: "gpt-4o-mini-transcribe",
 			},
 			turn_detection: msg.turn_detection || {
-				type: "server_vad",
-				threshold: 0.5,
-				prefix_padding_ms: 300,
-				silence_duration_ms: 500,
+				type: "semantic_vad",
+				eagerness: "auto",
 				create_response: true,
 				interrupt_response: true,
 			},
@@ -449,6 +561,36 @@ class RealtimeSession {
 		this._log("REALTIME", "Response creation requested");
 	}
 
+	_handleTextMessageFromUser(msg) {
+		if (!this.isReady || !this._openaiWs) {
+			return;
+		}
+
+		const text = typeof msg.text === "string" ? msg.text.trim() : "";
+		if (!text) {
+			return;
+		}
+
+		this._sendToOpenAI({
+			type: OPENAI_EVENT.CONVERSATION_ITEM_CREATE,
+			item: {
+				type: "message",
+				role: "user",
+				content: [
+					{
+						type: "input_text",
+						text,
+					},
+				],
+			},
+		});
+		this._sendToOpenAI({
+			type: OPENAI_EVENT.RESPONSE_CREATE,
+			response: {},
+		});
+		this._log("REALTIME", "Text message received from user");
+	}
+
 	// ── OpenAI event handling ─────────────────────────────────────────────
 
 	_handleOpenAIMessage(data) {
@@ -478,6 +620,13 @@ class RealtimeSession {
 				});
 				break;
 
+			case OPENAI_EVENT.RESPONSE_CREATED:
+				this._sendToClient({
+					type: "response_created",
+					responseId: event.response?.id ?? event.response_id,
+				});
+				break;
+
 			case OPENAI_EVENT.RESPONSE_AUDIO_DONE:
 				// Audio stream for this response is complete — no client action needed
 				break;
@@ -486,6 +635,8 @@ class RealtimeSession {
 				this._sendToClient({
 					type: "text_delta",
 					delta: event.delta,
+					itemId: event.item_id,
+					responseId: event.response_id,
 				});
 				break;
 
@@ -494,10 +645,11 @@ class RealtimeSession {
 				break;
 
 			case OPENAI_EVENT.RESPONSE_AUDIO_TRANSCRIPT_DELTA:
-				// Transcript of audio output — forward as text_delta so the voice bar can display it
 				this._sendToClient({
-					type: "text_delta",
+					type: "audio_transcript_delta",
 					delta: event.delta,
+					itemId: event.item_id,
+					responseId: event.response_id,
 				});
 				break;
 
@@ -505,7 +657,15 @@ class RealtimeSession {
 				// Audio transcript complete
 				break;
 
+			case OPENAI_EVENT.RESPONSE_DONE:
+				this._sendToClient({
+					type: "response_done",
+					responseId: event.response?.id ?? event.response_id,
+				});
+				break;
+
 			case OPENAI_EVENT.CONVERSATION_ITEM_INPUT_AUDIO_TRANSCRIPTION_DELTA:
+				this._log("REALTIME", `Transcription delta: ${JSON.stringify(event.delta)}`);
 				this._sendToClient({
 					type: "transcription_delta",
 					delta: event.delta,
@@ -513,6 +673,7 @@ class RealtimeSession {
 				break;
 
 			case OPENAI_EVENT.CONVERSATION_ITEM_INPUT_AUDIO_TRANSCRIPTION_COMPLETED:
+				this._log("REALTIME", `Transcription completed: ${JSON.stringify(event.transcript)}`);
 				this._sendToClient({
 					type: "transcription_completed",
 					transcript: event.transcript,

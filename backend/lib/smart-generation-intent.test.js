@@ -65,7 +65,7 @@ test("classifySmartGenerationIntent returns parsed classifier output", async () 
 
 test("classifySmartGenerationIntent times out to normal", async () => {
 	const result = await classifySmartGenerationIntent({
-		latestUserMessage: "Read this in a voice",
+		latestUserMessage: "Create a kanban board",
 		conversationHistory: [],
 		classify: () => new Promise((resolve) => setTimeout(() => resolve('{"intent":"audio"}'), 30)),
 		timeoutMs: 5,

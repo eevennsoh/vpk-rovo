@@ -2,6 +2,7 @@ import {
 	getAllDataParts,
 	hasCreatePlanSkillSignal,
 	getLatestDataPart,
+	getLatestRouteDecision,
 	getMessageReasoning,
 	getMessageSources,
 	getMessageText,
@@ -11,7 +12,7 @@ import {
 	isMessageTextStreaming,
 	type RovoDataPart,
 	type RovoRenderableUIMessage,
-	type RouteDecisionMeta,
+	type RoutingDecision,
 } from "@/lib/rovo-ui-messages";
 import {
 	extractPlanRenderableText,
@@ -39,7 +40,7 @@ export interface MessageProcessingResult {
 	thinkingStatusPart: RovoDataPart<"thinking-status"> | null;
 	thinkingEventParts: RovoDataPart<"thinking-event">[];
 	widgetDataPart: RovoDataPart<"widget-data"> | null;
-	routeDecision: RouteDecisionMeta | null;
+	routeDecision: RoutingDecision | null;
 }
 
 export function processAssistantMessage(
@@ -54,8 +55,7 @@ export function processAssistantMessage(
 	const widgetDataPart = getLatestDataPart(message, "data-widget-data");
 	const widgetErrorPart = getLatestDataPart(message, "data-widget-error");
 	const suggestedQuestionsPart = getLatestDataPart(message, "data-suggested-questions");
-	const routeDecisionPart = getLatestDataPart(message, "data-route-decision");
-	const routeDecision = routeDecisionPart?.data ?? null;
+	const routeDecision = getLatestRouteDecision(message);
 
 	const widgetType =
 		widgetDataPart?.data.type ??

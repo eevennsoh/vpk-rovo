@@ -500,7 +500,8 @@ export const MessageResponse = memo(
 	},
 	(prevProps, nextProps) =>
 		prevProps.children === nextProps.children &&
-		prevProps.isAnimating === nextProps.isAnimating,
+		prevProps.isAnimating === nextProps.isAnimating &&
+		prevProps.className === nextProps.className,
 );
 
 export type MessageToolbarProps = ComponentProps<"div">;

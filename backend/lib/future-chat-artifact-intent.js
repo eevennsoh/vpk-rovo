@@ -8,9 +8,34 @@ const {
 	inferFutureChatArtifactKindFromRequest,
 	normalizeFutureChatArtifactKind,
 } = require("./future-chat-artifact-kind");
+const { isConversationalMessage } = require("./planning-question-gate");
 
 function normalizeArtifactKind(value) {
 	return normalizeFutureChatArtifactKind(value);
+}
+
+// Shared regex patterns used by both fallback and fast intent classifiers.
+const DOCUMENT_VERB_PATTERN =
+	/\b(write|draft|create|build|generate|make|compose|outline|summari[sz]e|plan|design|implement|refactor|turn|convert)\b/;
+const DOCUMENT_NOUN_PATTERN =
+	/\b(document|doc|plan|brief|proposal|spec|summary|memo|outline|report|email|copy|article|blog|code|component|app|page|ui|table|spreadsheet|sheet|artifact)\b/;
+const MODIFICATION_VERB_PATTERN =
+	/\b(update|edit|revise|rewrite|shorten|expand|polish|refine|change|format|convert|improve|fix)\b/;
+const PRONOUN_REFERENCE_PATTERN = /\b(it|this|that)\b/;
+
+function matchesDocumentRequest(lowerMessage) {
+	return DOCUMENT_VERB_PATTERN.test(lowerMessage) && DOCUMENT_NOUN_PATTERN.test(lowerMessage);
+}
+
+function matchesModificationRequest(lowerMessage, activeArtifact, streamingArtifact) {
+	return (
+		Boolean(activeArtifact?.id || streamingArtifact?.id) &&
+		MODIFICATION_VERB_PATTERN.test(lowerMessage)
+	);
+}
+
+function referencesPronoun(lowerMessage) {
+	return PRONOUN_REFERENCE_PATTERN.test(lowerMessage);
 }
 
 function parseJsonFromText(rawText) {
@@ -35,6 +60,7 @@ function buildFutureChatArtifactIntentPrompt({
 	artifactSteering,
 	conversationHistory,
 	latestUserMessage,
+	streamingArtifact,
 }) {
 	const activeArtifactBlock = activeArtifact
 		? [
@@ -44,6 +70,16 @@ function buildFutureChatArtifactIntentPrompt({
 				`- kind: ${activeArtifact.kind || "text"}`,
 			].join("\n")
 		: "No artifact is currently open.";
+
+	const streamingArtifactBlock = streamingArtifact
+		? [
+				"An artifact is currently being generated:",
+				`- id: ${streamingArtifact.id || "unknown"}`,
+				`- title: ${streamingArtifact.title || "Untitled artifact"}`,
+				`- kind: ${streamingArtifact.kind || "text"}`,
+				"Decide whether to cancel the current generation (cancelStreaming: true) to replace it, or keep it running in the background (cancelStreaming: false) and start a new artifact.",
+			].join("\n")
+		: null;
 
 	const conversationContext =
 		Array.isArray(conversationHistory) && conversationHistory.length > 0
@@ -66,7 +102,7 @@ Return ONLY valid JSON with this shape:
 {
   "action": "chat" | "createDocument" | "updateDocument",
   "title": "string | null",
-  "kind": "text" | "code" | "sheet" | "image" | null
+  "kind": "text" | "code" | "sheet" | "image" | null${streamingArtifact ? ',\n  "cancelStreaming": true | false' : ""}
 }
 
 Rules:
@@ -77,10 +113,11 @@ Rules:
 - Prefer "createDocument" for explicit mentions of "artifact", "document", "memo", "spec", "proposal", "code", "component", "table", or "sheet" unless the user is clearly only asking about them.
 - For "updateDocument", preserve the current artifact title unless the user clearly asks to rename it.
 - For generic follow-ups like "create an artifact about it", infer a sensible title from the previous conversation instead of echoing that phrase literally.
-- Choose kind "code" for coding artifacts, "sheet" for tables/spreadsheets, otherwise "text" unless image creation is explicitly requested.
+- Choose kind "code" for coding artifacts, "sheet" for tables/spreadsheets, otherwise "text" unless image creation is explicitly requested.${streamingArtifact ? '\n- When cancelStreaming is requested: set it to true if the user wants to modify/replace the currently generating artifact (e.g., "make it shorter", "change that", "rewrite it"). Set it to false if the user wants a completely separate new artifact (e.g., "write a doc about Tesla" while an Apple doc is generating).' : ""}
 
 ${activeArtifactBlock}
 
+${streamingArtifactBlock ? `${streamingArtifactBlock}\n` : ""}
 ${steeringContext ? `${steeringContext}\n` : ""}
 
 Conversation context:
@@ -90,7 +127,7 @@ Latest user request:
 ${latestUserMessage}`;
 }
 
-function parseFutureChatArtifactIntent(rawText, { activeArtifact } = {}) {
+function parseFutureChatArtifactIntent(rawText, { activeArtifact, streamingArtifact } = {}) {
 	const parsed = parseJsonFromText(rawText);
 	if (!parsed || typeof parsed !== "object") {
 		return null;
@@ -111,19 +148,25 @@ function parseFutureChatArtifactIntent(rawText, { activeArtifact } = {}) {
 
 	const title = getNonEmptyString(parsed.title);
 	const kind = parsed.kind == null ? null : normalizeArtifactKind(parsed.kind);
+	const cancelStreaming =
+		streamingArtifact && typeof parsed.cancelStreaming === "boolean"
+			? parsed.cancelStreaming
+			: null;
 
-	if (action === "updateDocument" && !activeArtifact?.id) {
+	if (action === "updateDocument" && !activeArtifact?.id && !streamingArtifact?.id) {
 		return {
 			action: "chat",
 			title: null,
 			kind: null,
+			cancelStreaming: null,
 		};
 	}
 
 	return {
 		action,
-		title: title || (action === "updateDocument" ? getNonEmptyString(activeArtifact?.title) : null),
+		title: title || (action === "updateDocument" ? getNonEmptyString(activeArtifact?.title) ?? getNonEmptyString(streamingArtifact?.title) : null),
 		kind,
+		cancelStreaming,
 	};
 }
 
@@ -131,6 +174,7 @@ function fallbackFutureChatArtifactIntent({
 	activeArtifact,
 	artifactSteering,
 	latestUserMessage,
+	streamingArtifact,
 }) {
 	const normalizedMessage = getNonEmptyString(latestUserMessage) || "";
 	const lowerMessage = normalizedMessage.toLowerCase();
@@ -141,45 +185,56 @@ function fallbackFutureChatArtifactIntent({
 		latestUserMessage,
 	});
 	const hasArtifactWord = /\bartifact\b/.test(lowerMessage);
-	const asksForDocument =
-		/\b(write|draft|create|build|generate|make|compose|outline|summari[sz]e|plan|design|implement|refactor|turn|convert)\b/.test(
-			lowerMessage,
-		) &&
-		/\b(document|doc|plan|brief|proposal|spec|summary|memo|outline|report|email|copy|article|blog|code|component|app|page|ui|table|spreadsheet|sheet|artifact)\b/.test(
-			lowerMessage,
-		);
-	const asksToModifyCurrentArtifact =
-		Boolean(activeArtifact?.id) &&
-		/\b(update|edit|revise|rewrite|shorten|expand|polish|refine|change|format|convert|improve|fix)\b/.test(
-			lowerMessage,
-		);
+	const asksForDocument = matchesDocumentRequest(lowerMessage);
+	const asksToModifyCurrentArtifact = matchesModificationRequest(lowerMessage, activeArtifact, streamingArtifact);
 	const requestedTitle = extractFutureChatRequestedTitle({
 		latestUserMessage,
 	});
 	const explicitlyRequestsNewArtifact = isExplicitNewFutureChatArtifactRequest({
 		latestUserMessage,
 	});
+	const hasReferencesPronoun = referencesPronoun(lowerMessage);
+
+	// Determine cancelStreaming when a streaming artifact is active
+	const resolveCancelStreaming = (action) => {
+		if (!streamingArtifact?.id) {
+			return null;
+		}
+
+		if (action === "updateDocument") {
+			return true;
+		}
+
+		if (action === "createDocument") {
+			return false;
+		}
+
+		return null;
+	};
 
 	if (asksToModifyCurrentArtifact || sameArtifactVersionRequest) {
+		const action = "updateDocument";
 		return {
-			action: "updateDocument",
-			title: requestedTitle || getNonEmptyString(activeArtifact?.title),
-			kind: normalizeArtifactKind(activeArtifact?.kind),
+			action,
+			title: requestedTitle || getNonEmptyString(activeArtifact?.title) || getNonEmptyString(streamingArtifact?.title),
+			kind: normalizeArtifactKind(activeArtifact?.kind || streamingArtifact?.kind),
+			cancelStreaming: resolveCancelStreaming(action),
 		};
 	}
 
 	if (hasArtifactWord || asksForDocument) {
 		const action =
-			activeArtifact?.id && hasArtifactWord && /\b(it|this|that)\b/.test(lowerMessage)
+			(activeArtifact?.id || streamingArtifact?.id) && hasArtifactWord && hasReferencesPronoun
 				? "updateDocument"
 				: "createDocument";
 		return {
 			action,
 			title:
 				action === "updateDocument"
-					? requestedTitle || getNonEmptyString(activeArtifact?.title)
+					? requestedTitle || getNonEmptyString(activeArtifact?.title) || getNonEmptyString(streamingArtifact?.title)
 					: null,
 			kind: inferFutureChatArtifactKindFromRequest(latestUserMessage),
+			cancelStreaming: resolveCancelStreaming(action),
 			};
 	}
 
@@ -189,10 +244,12 @@ function fallbackFutureChatArtifactIntent({
 		normalizedMessage &&
 		!/[?]\s*$/u.test(normalizedMessage)
 	) {
+		const action = "updateDocument";
 		return {
-			action: "updateDocument",
+			action,
 			title: requestedTitle || getNonEmptyString(activeArtifact?.title),
 			kind: normalizeArtifactKind(activeArtifact?.kind),
+			cancelStreaming: resolveCancelStreaming(action),
 		};
 	}
 
@@ -200,7 +257,84 @@ function fallbackFutureChatArtifactIntent({
 		action: "chat",
 		title: null,
 		kind: null,
+		cancelStreaming: null,
 	};
+}
+
+function resolveFastFutureChatArtifactIntent({
+	activeArtifact,
+	artifactSteering,
+	latestUserMessage,
+	streamingArtifact,
+}) {
+	const normalizedMessage = getNonEmptyString(latestUserMessage) || "";
+	if (!normalizedMessage) {
+		return null;
+	}
+
+	// Fast path: conversational messages (greetings, acknowledgements) are
+	// never artifact requests — skip the LLM classification round-trip.
+	if (isConversationalMessage(normalizedMessage)) {
+		return { action: "chat" };
+	}
+
+	const lowerMessage = normalizedMessage.toLowerCase();
+	const sameArtifactVersionRequest = isSameFutureChatArtifactVersionRequest({
+		activeArtifact,
+		latestUserMessage,
+	});
+	const asksForDocument = matchesDocumentRequest(lowerMessage);
+	const asksToModifyCurrentArtifact = matchesModificationRequest(lowerMessage, activeArtifact, streamingArtifact);
+	const explicitlyRequestsNewArtifact = isExplicitNewFutureChatArtifactRequest({
+		latestUserMessage,
+	});
+	const prefersCurrentArtifact =
+		Boolean(activeArtifact?.id) && artifactSteering?.preferCurrentArtifact === true;
+	const isQuestion = /[?]\s*$/u.test(normalizedMessage);
+	const isHowToQuestion = /^(?:how|what|why|when|where)\b/.test(lowerMessage);
+	const hasReferencesPronoun = referencesPronoun(lowerMessage);
+
+	// Fast path: streaming artifact + pronoun reference or edit verb → cancel streaming
+	if (streamingArtifact?.id && !explicitlyRequestsNewArtifact) {
+		if (hasReferencesPronoun || asksToModifyCurrentArtifact) {
+			return {
+				action: "updateDocument",
+				title: getNonEmptyString(streamingArtifact.title),
+				kind: normalizeArtifactKind(streamingArtifact.kind),
+				cancelStreaming: true,
+			};
+		}
+
+		if (asksForDocument) {
+			return {
+				action: "createDocument",
+				title: null,
+				kind: inferFutureChatArtifactKindFromRequest(latestUserMessage),
+				cancelStreaming: false,
+			};
+		}
+	}
+
+	if (isHowToQuestion) {
+		return null;
+	}
+
+	if (
+		sameArtifactVersionRequest ||
+		asksToModifyCurrentArtifact ||
+		asksForDocument ||
+		explicitlyRequestsNewArtifact ||
+		(prefersCurrentArtifact && !explicitlyRequestsNewArtifact && !isQuestion)
+	) {
+		return fallbackFutureChatArtifactIntent({
+			activeArtifact,
+			artifactSteering,
+			latestUserMessage,
+			streamingArtifact,
+		});
+	}
+
+	return null;
 }
 
 module.exports = {
@@ -208,4 +342,5 @@ module.exports = {
 	fallbackFutureChatArtifactIntent,
 	normalizeArtifactKind,
 	parseFutureChatArtifactIntent,
+	resolveFastFutureChatArtifactIntent,
 };

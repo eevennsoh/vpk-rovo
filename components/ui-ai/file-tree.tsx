@@ -39,7 +39,7 @@ const FileTreeContext = createContext<FileTreeContextType>({
   togglePath: noop,
 });
 
-export type FileTreeProps = HTMLAttributes<HTMLDivElement> & {
+export type FileTreeProps = Omit<HTMLAttributes<HTMLDivElement>, "onSelect"> & {
   expanded?: Set<string>;
   defaultExpanded?: Set<string>;
   selectedPath?: string;
@@ -146,21 +146,42 @@ export function FileTreeFolder({
           tabIndex={0}
           {...props}
         >
-          <CollapsibleTrigger render={<button className={cn(
-                                  "flex w-full items-center gap-1 rounded px-2 py-1 text-left transition-colors hover:bg-muted/50",
-                                  isSelected && "bg-muted"
-                                )} onClick={handleSelect} type="button" />}><ChevronRightIcon
-                                  className={cn(
-                                    "size-4 shrink-0 text-muted-foreground transition-transform",
-                                    isExpanded && "rotate-90"
-                                  )}
-                                /><FileTreeIcon>
-                                  {isExpanded ? (
-                                    <FolderOpenIcon className="size-4 text-blue-500" />
-                                  ) : (
-                                    <FolderIcon className="size-4 text-blue-500" />
-                                  )}
-                                </FileTreeIcon><FileTreeName>{name}</FileTreeName></CollapsibleTrigger>
+          <div
+            className={cn(
+              "flex w-full items-center gap-1 rounded px-2 py-1 text-left transition-colors hover:bg-muted/50",
+              isSelected && "bg-muted"
+            )}
+          >
+            <CollapsibleTrigger
+              render={
+                <button
+                  className="flex shrink-0 cursor-pointer items-center border-none bg-transparent p-0"
+                  type="button"
+                />
+              }
+            >
+              <ChevronRightIcon
+                className={cn(
+                  "size-4 shrink-0 text-muted-foreground transition-transform",
+                  isExpanded && "rotate-90"
+                )}
+              />
+            </CollapsibleTrigger>
+            <button
+              className="flex min-w-0 flex-1 cursor-pointer items-center gap-1 border-none bg-transparent p-0 text-left"
+              onClick={handleSelect}
+              type="button"
+            >
+              <FileTreeIcon>
+                {isExpanded ? (
+                  <FolderOpenIcon className="size-4 text-blue-500" />
+                ) : (
+                  <FolderIcon className="size-4 text-blue-500" />
+                )}
+              </FileTreeIcon>
+              <FileTreeName>{name}</FileTreeName>
+            </button>
+          </div>
           <CollapsibleContent>
             <div className="ml-4 border-l pl-2">{children}</div>
           </CollapsibleContent>
@@ -229,7 +250,7 @@ export function FileTreeFile({
         {children ?? (
           <>
             {/* Spacer for alignment */}
-            <span className="size-4" />
+            <span className="size-4 shrink-0" />
             <FileTreeIcon>
               {icon ?? <FileIcon className="size-4 text-muted-foreground" />}
             </FileTreeIcon>
@@ -279,8 +300,6 @@ export function FileTreeActions({
   ...props
 }: Readonly<FileTreeActionsProps>) {
   return (
-    // biome-ignore lint/a11y/noNoninteractiveElementInteractions: stopPropagation required for nested interactions
-    // biome-ignore lint/a11y/useSemanticElements: fieldset doesn't fit this UI pattern
     <div
       className={cn("ml-auto flex items-center gap-1", className)}
       onClick={stopPropagation}

@@ -1776,46 +1776,6 @@ export const { registry } = defineRegistry(catalog, {
 		),
 	},
 	actions: {
-		setState: async (params, setState) => {
-			if (!params) return;
-			setState((prev) => {
-				const next = cloneStateModel(prev);
-				setByPath(next, params.statePath, params.value);
-				return next;
-			});
-		},
-		pushState: async (params, setState) => {
-			if (!params) return;
-			setState((prev) => {
-				const currentValue = getByPath(prev, params.statePath);
-				const currentItems = Array.isArray(currentValue) ? currentValue : [];
-				const next = cloneStateModel(prev);
-				setByPath(next, params.statePath, [...currentItems, params.value]);
-				if (params.clearStatePath) {
-					setByPath(next, params.clearStatePath, "");
-				}
-				return next;
-			});
-		},
-		removeState: async (params, setState) => {
-			if (!params) return;
-			const index = Math.trunc(params.index);
-			if (!Number.isFinite(index) || index < 0) return;
-			setState((prev) => {
-				const currentValue = getByPath(prev, params.statePath);
-				if (!Array.isArray(currentValue) || index >= currentValue.length) {
-					return prev;
-				}
-
-				const next = cloneStateModel(prev);
-				setByPath(
-					next,
-					params.statePath,
-					currentValue.filter((_, itemIndex) => itemIndex !== index),
-				);
-				return next;
-			});
-		},
 		push: async (params, setState) => {
 			if (!params) return;
 			setState((prev) => {

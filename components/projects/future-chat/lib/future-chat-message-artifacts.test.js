@@ -3,6 +3,7 @@ const test = require("node:test");
 
 const {
 	resolveFutureChatMessageArtifactDisplay,
+	resolveFutureChatOrphanArtifactDisplay,
 } = require("./future-chat-message-artifacts.ts");
 
 function createAssistantMessage(id, artifactResult = null) {
@@ -84,7 +85,6 @@ test("keeps per-message artifact ownership across create, update, and new create
 
 	const resolvedDisplays = messages.map((message) =>
 		resolveFutureChatMessageArtifactDisplay({
-			visibleDocumentId: "doc-orange",
 			documents,
 			message,
 			pendingArtifactResult: null,
@@ -99,7 +99,7 @@ test("keeps per-message artifact ownership across create, update, and new create
 	);
 	assert.deepEqual(
 		resolvedDisplays.map((display) => display?.displayMode),
-		["preview", "preview", "chip"],
+		["preview", "preview", "preview"],
 	);
 	assert.deepEqual(
 		resolvedDisplays.map((display) => display?.title),
@@ -109,7 +109,6 @@ test("keeps per-message artifact ownership across create, update, and new create
 
 test("uses pending artifact state for the current streaming assistant turn", () => {
 	const display = resolveFutureChatMessageArtifactDisplay({
-		visibleDocumentId: null,
 		documents: [],
 		message: createAssistantMessage("assistant-streaming"),
 		pendingArtifactResult: {
@@ -136,9 +135,35 @@ test("uses pending artifact state for the current streaming assistant turn", () 
 	assert.equal(display?.displayMode, "preview");
 });
 
-test("collapses the open artifact message into chip mode", () => {
+test("keeps the streaming preview content after finish without showing a streaming state", () => {
 	const display = resolveFutureChatMessageArtifactDisplay({
-		visibleDocumentId: "doc-orange",
+		documents: [],
+		message: createAssistantMessage("assistant-finished"),
+		pendingArtifactResult: {
+			action: "create",
+			documentId: "doc-orange",
+			kind: "text",
+			title: "Orange",
+		},
+		streamingArtifact: {
+			content: "# Orange\n\nFinished draft",
+			documentId: "doc-orange",
+			createdAt: "2026-03-09T10:30:00.000Z",
+			kind: "text",
+			status: "idle",
+			title: "Orange",
+			updatedAt: "2026-03-09T10:30:10.000Z",
+		},
+		streamingArtifactMessageId: "assistant-finished",
+	});
+
+	assert.equal(display?.documentId, "doc-orange");
+	assert.equal(display?.isStreaming, false);
+	assert.equal(display?.previewContent, "# Orange\n\nFinished draft");
+});
+
+test("keeps the open artifact message as an inline preview", () => {
+	const display = resolveFutureChatMessageArtifactDisplay({
 		documents: [
 			createDocument({
 				id: "doc-orange",
@@ -158,6 +183,137 @@ test("collapses the open artifact message into chip mode", () => {
 		streamingArtifactMessageId: null,
 	});
 
-	assert.equal(display?.displayMode, "chip");
+	assert.equal(display?.displayMode, "preview");
 	assert.equal(display?.previewContent, "# Orange\n\nSaved content");
+});
+
+test("falls back to the last assistant message when the active document has no source message", () => {
+	const display = resolveFutureChatOrphanArtifactDisplay({
+		activeDocumentId: "doc-orange",
+		documents: [
+			createDocument({
+				id: "doc-orange",
+				title: "Orange",
+				content: "# Orange\n\nSaved content",
+				updatedAt: "2026-03-09T10:40:00.000Z",
+			}),
+		],
+		messages: [
+			{
+				id: "user-1",
+				role: "user",
+				parts: [{ type: "text", text: "Make me a document", state: "done" }],
+			},
+			{
+				id: "assistant-1",
+				role: "assistant",
+				parts: [{ type: "text", text: "Working on it", state: "done" }],
+			},
+		],
+	});
+
+	assert.equal(display?.anchorMessageId, "assistant-1");
+	assert.equal(display?.documentId, "doc-orange");
+	assert.equal(display?.displayMode, "preview");
+});
+
+test("falls back to the newest unanchored document when activeDocumentId is missing", () => {
+	const display = resolveFutureChatOrphanArtifactDisplay({
+		activeDocumentId: null,
+		documents: [
+			createDocument({
+				id: "doc-older",
+				title: "Older",
+				content: "# Older\n\nSaved content",
+				updatedAt: "2026-03-09T10:40:00.000Z",
+			}),
+			createDocument({
+				id: "doc-newer",
+				title: "Newer",
+				content: "# Newer\n\nLatest content",
+				updatedAt: "2026-03-09T10:50:00.000Z",
+			}),
+		],
+		messages: [
+			{
+				id: "assistant-1",
+				role: "assistant",
+				metadata: {
+					createdAt: "2026-03-09T10:39:00.000Z",
+				},
+				parts: [{ type: "text", text: "Your document is ready", state: "done" }],
+			},
+		],
+	});
+
+	assert.equal(display?.anchorMessageId, "assistant-1");
+	assert.equal(display?.documentId, "doc-newer");
+	assert.equal(display?.title, "Newer");
+});
+
+test("anchors orphaned artifacts to the assistant message closest to document completion time", () => {
+	const display = resolveFutureChatOrphanArtifactDisplay({
+		activeDocumentId: null,
+		documents: [
+			createDocument({
+				id: "doc-apple",
+				title: "Apple Overview",
+				content: "# Apple Overview",
+				updatedAt: "2026-03-09T10:50:00.000Z",
+			}),
+		],
+		messages: [
+			{
+				id: "assistant-early",
+				role: "assistant",
+				metadata: {
+					createdAt: "2026-03-09T10:40:00.000Z",
+				},
+				parts: [{ type: "text", text: "Creating the page now", state: "done" }],
+			},
+			{
+				id: "assistant-ready",
+				role: "assistant",
+				metadata: {
+					createdAt: "2026-03-09T10:50:20.000Z",
+				},
+				parts: [{ type: "text", text: "The page is ready", state: "done" }],
+			},
+			{
+				id: "assistant-late",
+				role: "assistant",
+				metadata: {
+					createdAt: "2026-03-09T11:10:00.000Z",
+				},
+				parts: [{ type: "text", text: "Anything else?", state: "done" }],
+			},
+		],
+	});
+
+	assert.equal(display?.anchorMessageId, "assistant-ready");
+	assert.equal(display?.documentId, "doc-apple");
+});
+
+test("does not create an orphan fallback when a message already owns the artifact", () => {
+	const display = resolveFutureChatOrphanArtifactDisplay({
+		activeDocumentId: "doc-orange",
+		documents: [
+			createDocument({
+				id: "doc-orange",
+				title: "Orange",
+				content: "# Orange\n\nSaved content",
+				updatedAt: "2026-03-09T10:40:00.000Z",
+			}),
+		],
+		messages: [
+			createAssistantMessage("assistant-orange", {
+				action: "create",
+				documentId: "doc-orange",
+				kind: "text",
+				title: "Orange",
+			}),
+		],
+	});
+
+	assert.equal(display, null);
 });

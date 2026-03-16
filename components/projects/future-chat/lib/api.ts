@@ -83,6 +83,7 @@ export async function createFutureChatThread(input: {
 	id: string;
 	title: string;
 	messages?: ReadonlyArray<RovoUIMessage>;
+	realtimeMessages?: ReadonlyArray<RovoUIMessage>;
 	visibility: FutureChatVisibility;
 	modelId?: string | null;
 	provider?: string | null;
@@ -105,6 +106,7 @@ export async function updateFutureChatThread(
 	input: {
 		title?: string;
 		messages?: ReadonlyArray<RovoUIMessage>;
+		realtimeMessages?: ReadonlyArray<RovoUIMessage>;
 		visibility?: FutureChatVisibility;
 		modelId?: string | null;
 		provider?: string | null;
@@ -135,6 +137,52 @@ export async function deleteAllFutureChatThreads(): Promise<void> {
 		method: "DELETE",
 	});
 	await parseJsonResponse<{ deleted?: boolean }>(response);
+}
+
+export async function listFutureChatRealtimeMessages(
+	threadId: string,
+): Promise<RovoUIMessage[]> {
+	const response = await fetch(API_ENDPOINTS.futureChatMessages(threadId), {
+		method: "GET",
+	});
+	const payload = assertFutureChatAvailable(
+		await parseJsonResponse<{ backendUnavailable?: boolean; messages?: RovoUIMessage[] }>(
+			response,
+		),
+	);
+	return Array.isArray(payload.messages) ? payload.messages : [];
+}
+
+export async function saveFutureChatRealtimeMessages(input: {
+	threadId: string;
+	messages: ReadonlyArray<RovoUIMessage>;
+}): Promise<RovoUIMessage[]> {
+	const response = await fetch(API_ENDPOINTS.FUTURE_CHAT_MESSAGES, {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(input),
+	});
+	const payload = await parseJsonResponse<{ messages?: RovoUIMessage[] }>(response);
+	if (!Array.isArray(payload.messages)) {
+		throw new Error("Future Chat realtime message response was missing messages.");
+	}
+	return payload.messages;
+}
+
+export async function upsertFutureChatRealtimeMessage(input: {
+	threadId: string;
+	message: RovoUIMessage;
+}): Promise<RovoUIMessage[]> {
+	const response = await fetch(API_ENDPOINTS.FUTURE_CHAT_MESSAGES, {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(input),
+	});
+	const payload = await parseJsonResponse<{ messages?: RovoUIMessage[] }>(response);
+	if (!Array.isArray(payload.messages)) {
+		throw new Error("Future Chat realtime upsert response was missing messages.");
+	}
+	return payload.messages;
 }
 
 export async function listFutureChatVotes(threadId: string): Promise<FutureChatVote[]> {
