@@ -85,3 +85,8 @@ Mark promoted entries with `[Promoted]` prefix — see vpk-lesson skill for deta
 - **What happened:** Agent-mode support was declared unavailable after checking only the unversioned `/agent-mode` and `/available-modes` paths, even though the running RovoDev Serve exposed the supported endpoints under `/v3/agent-mode` and `/v3/available-modes`.
 - **Why:** The investigation anchored too early on one failing path and a backend compatibility response instead of doing endpoint discovery across likely versioned routes.
 - **Rule:** When diagnosing local service capability, do not stop at the first 404. Check likely versioned endpoints such as `/v3/*`, compare direct service responses with backend proxy behavior, and verify whether the running backend process may be stale relative to the file on disk.
+
+### 2026-03-18 - Do not reserve action-button space when the user explicitly wants label truncation
+- **What happened:** A sidebar thread-row change kept `pr-10` on hover/active/open states to reserve room for the overflow button even after the user said the label should simply truncate under that button.
+- **Why:** The implementation optimized for preventing visual overlap instead of following the requested interaction model, which already relied on `truncate` to handle long labels.
+- **Rule:** When a user explicitly says an overlaid action is acceptable because text should ellipsize, remove reserved padding entirely and let the existing truncation behavior handle overflow instead of preserving hover or active gutters.

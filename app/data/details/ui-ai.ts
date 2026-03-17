@@ -2843,7 +2843,7 @@ const edgeTypes = {
 		],
 		examples: [
 			{ title: "Vertical", description: "Right-aligned vertical stack with icons, matching the plan follow-up suggestion pattern.", demoSlug: "suggestion-demo-vertical" },
-			{ title: "With icons", description: "Horizontal suggestions with leading icons and secondary variant.", demoSlug: "suggestion-demo-with-icons" },
+			{ title: "With icons", description: "Horizontal suggestions with leading icons using the same button styling as the vertical follow-up pattern.", demoSlug: "suggestion-demo-with-icons" },
 		],
 	},
 

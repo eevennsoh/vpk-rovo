@@ -3,6 +3,9 @@
 import type { ChatStatus, FileUIPart } from "ai";
 import {
 	PromptInput,
+	PromptInputActionMenu,
+	PromptInputActionMenuContent,
+	PromptInputActionMenuTrigger,
 	PromptInputBody,
 	PromptInputButton,
 	PromptInputFooter,
@@ -10,7 +13,6 @@ import {
 	PromptInputSubmit,
 	PromptInputTextarea,
 	PromptInputTools,
-	usePromptInputAttachments,
 	usePromptInputController,
 } from "@/components/ui-ai/prompt-input";
 import { composerPromptInputClassName, composerTextareaClassName, composerUpwardShadow, textareaCSS } from "@/components/blocks/shared-ui/composer-styles";
@@ -29,6 +31,7 @@ import AddIcon from "@atlaskit/icon/core/add";
 import ClipboardIcon from "@atlaskit/icon/core/clipboard";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { FutureChatComposerAddMenu } from "./future-chat-composer-add-menu";
 import { FutureChatComposerResponseGradient } from "./future-chat-composer-response-gradient";
 import { PendingAttachments } from "./pending-attachments";
 
@@ -45,7 +48,6 @@ const supportsFieldSizing =
 interface FutureChatComposerProps {
 	artifactTitle?: string | null;
 	backgroundArtifactLabel?: string | null;
-	backgroundDelegationLabel?: string | null;
 	composerStatus: ChatStatus;
 	compact?: boolean;
 	errorMessage?: string | null;
@@ -80,7 +82,6 @@ interface FutureChatComposerProps {
 function FutureChatComposerInner({
 	artifactTitle,
 	backgroundArtifactLabel,
-	backgroundDelegationLabel,
 	composerStatus,
 	compact = false,
 	errorMessage,
@@ -102,7 +103,6 @@ function FutureChatComposerInner({
 	showBackgroundStop = false,
 	submitDisabled = false,
 }: Readonly<FutureChatComposerProps>) {
-	const attachments = usePromptInputAttachments();
 	const controller = usePromptInputController();
 	const composerRef = useRef<HTMLDivElement | null>(null);
 	const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -116,9 +116,10 @@ function FutureChatComposerInner({
 	const [baseTextareaHeight, setBaseTextareaHeight] = useState(0);
 	const [stableBaseHeight, setStableBaseHeight] = useState(0);
 	const [previewPromptHeight, setPreviewPromptHeight] = useState(0);
+	const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
 	const [isRealtimeWaveformIntroActive, setIsRealtimeWaveformIntroActive] = useState(false);
 	const isPreviewPlaceholderActive = Boolean(previewPrompt) && controller.textInput.value.trim().length === 0;
-	const canSubmit = controller.textInput.value.trim().length > 0 || attachments.files.length > 0;
+	const canSubmit = controller.textInput.value.trim().length > 0 || controller.attachments.files.length > 0;
 	const isComposerBusy = composerStatus === "submitted" || composerStatus === "streaming";
 	const showSubmitButton = !realtimeVoiceActive && !isComposerBusy && canSubmit;
 	const showVoiceStartButton = !realtimeVoiceActive && !isComposerBusy && !showBackgroundStop && Boolean(onToggleRealtimeVoice);
@@ -361,17 +362,6 @@ function FutureChatComposerInner({
 			</div>
 			<div className={cn("flex w-full flex-col gap-4", compact && "gap-3")}>
 				{errorMessage ? <Alert variant="danger">{errorMessage}</Alert> : null}
-				{backgroundDelegationLabel ? (
-					<div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background/80 px-3 py-2 text-text-subtle text-xs">
-						<p className="min-w-0 flex-1">{backgroundDelegationLabel}</p>
-						{showBackgroundStop ? (
-							<PromptInputButton aria-label="Stop delegated work" className="shrink-0" onClick={() => void onStop()} size="sm" variant="outline">
-								<CrossIcon label="" size="small" />
-								<span>Stop</span>
-							</PromptInputButton>
-						) : null}
-					</div>
-				) : null}
 				{backgroundArtifactLabel ? <p className="px-1 text-text-subtlest text-xs">{backgroundArtifactLabel}</p> : null}
 
 				<div
@@ -425,16 +415,16 @@ function FutureChatComposerInner({
 										<span>Plan</span>
 									</PromptInputButton>
 								) : null}
-								<PromptInputButton
-									aria-label="Add attachment"
-									className="size-8 text-icon-subtle transition-colors hover:bg-bg-neutral-hovered active:bg-bg-neutral-pressed"
-									onClick={(event) => {
-										event.preventDefault();
-										attachments.openFileDialog();
-									}}
-								>
-									<AddIcon label="" color="currentColor" />
-								</PromptInputButton>
+								<PromptInputActionMenu open={isAddMenuOpen} onOpenChange={setIsAddMenuOpen}>
+									<PromptInputActionMenuTrigger aria-label="Add" size="icon-sm" variant="ghost">
+										<AddIcon label="" />
+									</PromptInputActionMenuTrigger>
+									<PromptInputActionMenuContent>
+										<FutureChatComposerAddMenu
+											onClose={() => setIsAddMenuOpen(false)}
+										/>
+									</PromptInputActionMenuContent>
+								</PromptInputActionMenu>
 							</PromptInputTools>
 
 							<div className="flex h-8 min-w-0 flex-1 items-center justify-end gap-1.5">

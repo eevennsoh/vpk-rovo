@@ -28,10 +28,9 @@ export function RightNavigation({
 		display: "flex",
 		alignItems: "center",
 		gap: token("space.050"),
-		flex: 1,
+		flexShrink: 0,
 		justifyContent: "flex-end",
 		marginLeft: "8px",
-		...(windowWidth >= 1028 && windowWidth < 1516 && { flex: "0 0 330px", width: "330px" }),
 	};
 
 	return (
@@ -75,11 +74,8 @@ export function RightNavigation({
 			{/* Profile */}
 			<div className="flex size-8 items-center justify-center">
 				<Avatar size="sm">
-					<AvatarImage
-						src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=32&h=32&fit=crop&crop=face"
-						alt="User Profile"
-					/>
-					<AvatarFallback>UP</AvatarFallback>
+					<AvatarImage src="/avatar-user/venn/venn.png" alt="Venn avatar" />
+					<AvatarFallback>VN</AvatarFallback>
 				</Avatar>
 			</div>
 		</div>

@@ -53,6 +53,58 @@ function normalizeRealtimeMessages(rawMessages) {
 	});
 }
 
+function normalizeActiveRun(rawActiveRun, updatedAtFallback) {
+	if (!rawActiveRun || typeof rawActiveRun !== "object") {
+		return null;
+	}
+
+	const id =
+		typeof rawActiveRun.id === "string" && rawActiveRun.id.trim()
+			? rawActiveRun.id.trim()
+			: null;
+	if (!id) {
+		return null;
+	}
+
+	const status =
+		rawActiveRun.status === "queued"
+		|| rawActiveRun.status === "streaming"
+		|| rawActiveRun.status === "background"
+			? rawActiveRun.status
+			: null;
+	if (!status) {
+		return null;
+	}
+
+	const startedAt =
+		typeof rawActiveRun.startedAt === "string" && rawActiveRun.startedAt.trim()
+			? rawActiveRun.startedAt.trim()
+			: updatedAtFallback;
+	const updatedAt =
+		typeof rawActiveRun.updatedAt === "string" && rawActiveRun.updatedAt.trim()
+			? rawActiveRun.updatedAt.trim()
+			: startedAt;
+
+	return {
+		id,
+		status,
+		portIndex:
+			typeof rawActiveRun.portIndex === "number"
+			&& Number.isInteger(rawActiveRun.portIndex)
+			&& rawActiveRun.portIndex >= 0
+				? rawActiveRun.portIndex
+				: null,
+		rovoPort:
+			typeof rawActiveRun.rovoPort === "number"
+			&& Number.isInteger(rawActiveRun.rovoPort)
+			&& rawActiveRun.rovoPort > 0
+				? rawActiveRun.rovoPort
+				: null,
+		startedAt,
+		updatedAt,
+	};
+}
+
 function normalizeThreadRecord(rawThread) {
 	if (!rawThread || typeof rawThread !== "object") {
 		return null;
@@ -93,6 +145,7 @@ function normalizeThreadRecord(rawThread) {
 			typeof rawThread.activeDocumentId === "string" && rawThread.activeDocumentId.trim()
 				? rawThread.activeDocumentId.trim()
 				: null,
+		activeRun: normalizeActiveRun(rawThread.activeRun, updatedAt),
 		createdAt,
 		updatedAt,
 	};
@@ -180,6 +233,7 @@ function createFutureChatThreadManager({ baseDir, logger }) {
 		modelId,
 		provider,
 		activeDocumentId,
+		activeRun,
 		createdAt,
 		updatedAt,
 	} = {}) => {
@@ -195,6 +249,7 @@ function createFutureChatThreadManager({ baseDir, logger }) {
 			modelId,
 			provider,
 			activeDocumentId,
+			activeRun,
 			createdAt: createdAt || now,
 			updatedAt: updatedAt || now,
 		});

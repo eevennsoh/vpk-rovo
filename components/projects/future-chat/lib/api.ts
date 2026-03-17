@@ -292,3 +292,46 @@ export async function deleteFutureChatDocument(documentId: string): Promise<void
 	});
 	await parseJsonResponse<{ deleted?: boolean }>(response);
 }
+
+export async function detachFutureChatStream(threadId: string): Promise<boolean> {
+	const response = await fetch(API_ENDPOINTS.FUTURE_CHAT_DETACH, {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({ threadId }),
+	});
+	if (response.status === 404) {
+		return false;
+	}
+	const payload = await parseJsonResponse<{ detached?: boolean }>(response);
+	return payload.detached === true;
+}
+
+export async function listFutureChatBackgroundStreams(): Promise<Array<{ threadId: string; status: string; startedAt: number }>> {
+	const response = await fetch(API_ENDPOINTS.FUTURE_CHAT_BACKGROUND_STREAMS, {
+		method: "GET",
+	});
+	const payload = await parseJsonResponse<{ streams?: Array<{ threadId: string; status: string; startedAt: number }> }>(response);
+	return Array.isArray(payload.streams) ? payload.streams : [];
+}
+
+export async function detachFutureChatRun(threadId: string): Promise<boolean> {
+	const response = await fetch(API_ENDPOINTS.futureChatRunDetach(threadId), {
+		method: "POST",
+	});
+	if (response.status === 404) {
+		return false;
+	}
+	const payload = await parseJsonResponse<{ detached?: boolean }>(response);
+	return payload.detached === true;
+}
+
+export async function cancelFutureChatRun(threadId: string): Promise<boolean> {
+	const response = await fetch(API_ENDPOINTS.futureChatRunCancel(threadId), {
+		method: "POST",
+	});
+	if (response.status === 404) {
+		return false;
+	}
+	const payload = await parseJsonResponse<{ cancelled?: boolean }>(response);
+	return payload.cancelled === true;
+}

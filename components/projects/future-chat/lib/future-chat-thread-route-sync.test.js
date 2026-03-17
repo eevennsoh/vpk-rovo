@@ -2,7 +2,10 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 
 const {
+	buildFutureChatThreadPath,
 	buildFutureChatThreadPersistKey,
+	getFutureChatThreadIdFromPath,
+	shouldSkipFutureChatThreadLoad,
 	shouldReplacePendingFutureChatRoute,
 	shouldReplaceFutureChatRouteAfterPersistence,
 } = require("./future-chat-thread-route-sync.ts");
@@ -88,11 +91,31 @@ test("buildFutureChatThreadPersistKey includes title and active artifact state",
 	assert.match(key, /"title":"Create a page about apple"/u);
 });
 
+test("buildFutureChatThreadPath encodes the thread id into the route path", () => {
+	assert.equal(
+		buildFutureChatThreadPath("thread/with spaces"),
+		"/future-chat/thread%2Fwith%20spaces",
+	);
+});
+
+test("getFutureChatThreadIdFromPath resolves a thread route id", () => {
+	assert.equal(
+		getFutureChatThreadIdFromPath("/future-chat/thread%2Fwith%20spaces"),
+		"thread/with spaces",
+	);
+});
+
+test("getFutureChatThreadIdFromPath returns null for the draft route", () => {
+	assert.equal(getFutureChatThreadIdFromPath("/future-chat"), null);
+	assert.equal(getFutureChatThreadIdFromPath("/future-chat/"), null);
+});
+
 test("does not replace the draft route while the first turn is still streaming after voice mode turns off", () => {
 	assert.equal(
 		shouldReplacePendingFutureChatRoute({
 			activeThreadId: "thread-1",
 			embedded: false,
+			hasPersistedThreadState: true,
 			isStreaming: true,
 			isVoiceMode: false,
 			pendingThreadId: "thread-1",
@@ -101,15 +124,52 @@ test("does not replace the draft route while the first turn is still streaming a
 	);
 });
 
-test("replaces the pending draft route once voice mode is off and the turn is idle", () => {
+test("does not replace the pending draft route until the persisted thread matches the chat state", () => {
 	assert.equal(
 		shouldReplacePendingFutureChatRoute({
 			activeThreadId: "thread-1",
 			embedded: false,
+			hasPersistedThreadState: false,
+			isStreaming: false,
+			isVoiceMode: false,
+			pendingThreadId: "thread-1",
+		}),
+		false,
+	);
+});
+
+test("replaces the pending draft route once voice mode is off and persistence is complete", () => {
+	assert.equal(
+		shouldReplacePendingFutureChatRoute({
+			activeThreadId: "thread-1",
+			embedded: false,
+			hasPersistedThreadState: true,
 			isStreaming: false,
 			isVoiceMode: false,
 			pendingThreadId: "thread-1",
 		}),
 		true,
+	);
+});
+
+test("skips reloading only when the active thread is already hydrated", () => {
+	assert.equal(
+		shouldSkipFutureChatThreadLoad({
+			activeThreadId: "thread-1",
+			hasHydratedThreadState: true,
+			requestedThreadId: "thread-1",
+		}),
+		true,
+	);
+});
+
+test("does not skip loading when the route mounts a thread that has not been hydrated yet", () => {
+	assert.equal(
+		shouldSkipFutureChatThreadLoad({
+			activeThreadId: "thread-1",
+			hasHydratedThreadState: false,
+			requestedThreadId: "thread-1",
+		}),
+		false,
 	);
 });

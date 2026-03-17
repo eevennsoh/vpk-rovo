@@ -72,6 +72,7 @@ export function LeftNavigation({
 			gap: TOP_NAV_CONTROL_GAP_PX,
 			flex: "0 0 auto" as const,
 			position: "relative" as const,
+			pointerEvents: "none" as const,
 			zIndex: 101,
 			height: "100%",
 		};
@@ -118,13 +119,14 @@ export function LeftNavigation({
 					display: "flex",
 					alignItems: "center",
 					height: "100%",
+					pointerEvents: "none",
 				}}
 			>
 				<Button
 					aria-label={`Open ${name}`}
 					variant="ghost"
 					className="flex items-center gap-1.5"
-					style={{ height: 32, padding: token("space.050") }}
+					style={{ height: 32, padding: token("space.050"), pointerEvents: "auto" }}
 					onClick={() => onNavigate("/")}
 				>
 					<span className="inline-flex shrink-0 [&_svg]:!size-6">
@@ -168,6 +170,7 @@ function SidebarToggle({
 				display: "flex",
 				alignItems: "center",
 				height: "100%",
+				pointerEvents: "none",
 			}}
 		>
 			<Button
@@ -177,6 +180,7 @@ function SidebarToggle({
 				onClick={onToggle}
 				onMouseEnter={onHoverEnter}
 				onMouseLeave={onHoverLeave}
+				style={{ pointerEvents: "auto" }}
 			>
 				{isVisible ? <SidebarCollapseIcon label="" color={token("color.icon.subtle")} /> : <SidebarExpandIcon label="" color={token("color.icon.subtle")} />}
 			</Button>
@@ -204,9 +208,10 @@ function AppSwitcher({ isOpen, isVisible, hideMenu = false, buttonRef, menuRef, 
 				display: "flex",
 				alignItems: "center",
 				height: "100%",
+				pointerEvents: "none",
 			}}
 		>
-			<div style={{ position: "relative" }}>
+			<div style={{ position: "relative", pointerEvents: "auto" }}>
 				<Button
 					ref={buttonRef}
 					aria-label="Switch apps"

@@ -1,5 +1,6 @@
 "use client";
 
+import { useReducedMotion } from "motion/react";
 import type { RefObject } from "react";
 import {
 	Attachment,
@@ -13,7 +14,16 @@ import {
 	type ConversationFollowMode,
 	useConversationContext,
 } from "@/components/ui-ai/conversation";
-import { MessageResponse } from "@/components/ui-ai/message";
+import {
+	Message,
+	MessageActions,
+	MessageContent,
+	MessageCopyAction,
+	MessageEditAction,
+	MessageRegenerateAction,
+	MessageResponse,
+	MessageVoteActions,
+} from "@/components/ui-ai/message";
 import {
 	AdsReasoningTrigger,
 	Reasoning,
@@ -33,9 +43,15 @@ import {
 	sanitizeFutureChatAssistantText,
 	shouldRenderFutureChatWidget,
 } from "@/components/projects/future-chat/lib/future-chat-message-display";
+import { resolveFutureChatStreamingAssistantMessageId } from "@/components/projects/future-chat/lib/future-chat-streaming-assistant";
+import { resolveFutureChatThinkingStatusPhase } from "@/components/projects/future-chat/lib/future-chat-thinking-status-phase";
+import {
+	resolveFutureChatScrollAnchorLayout,
+} from "@/components/projects/future-chat/lib/future-chat-scroll-anchor";
 import { AssistantThinkingToolsSection } from "@/components/projects/shared/components/assistant-thinking-tools-section";
 import { GenerativeWidgetCard } from "@/components/projects/shared/components/generative-widget-card";
 import LoadingWidget from "@/components/projects/shared/components/loading-widget";
+import { AssistantSuggestionsSection } from "@/components/projects/shared/components/assistant-suggestions-section";
 import { useDynamicThinkingLabel } from "@/components/projects/shared/hooks/use-dynamic-thinking-label";
 import {
 	getReasoningPropsForPhase,
@@ -68,14 +84,6 @@ import { cn } from "@/lib/utils";
 import { FutureChatArtifactCard } from "@/components/projects/future-chat/components/future-chat-artifact-card";
 import type { FutureChatDocument } from "@/lib/future-chat-types";
 import type { FutureChatStreamingArtifact } from "@/components/projects/future-chat/lib/future-chat-streaming-artifact";
-import {
-	CopyIcon,
-	PencilLineIcon,
-	RefreshCcwIcon,
-	SparklesIcon,
-	ThumbsDownIcon,
-	ThumbsUpIcon,
-} from "lucide-react";
 import Image from "next/image";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Heading from "@/components/blocks/shared-ui/heading";
@@ -97,6 +105,7 @@ interface FutureChatMessagesProps {
 	pendingArtifactResult: FutureChatPendingArtifactResult | null;
 	scrollAnchorMessageId: string | null;
 	scrollFollowMode: ConversationFollowMode;
+	showEmptyState?: boolean;
 	streamingArtifact: FutureChatStreamingArtifact | null;
 	streamingArtifactMessageId: string | null;
 	votes: Record<string, "up" | "down">;
@@ -121,31 +130,20 @@ function computeFutureChatAnchorScrollTop(
 
 	const scrollRect = scrollElement.getBoundingClientRect();
 	const scrollAnchorRect = scrollAnchorElement.getBoundingClientRect();
-	const desiredTargetTop = Math.max(
-		0,
-		scrollElement.scrollTop + (scrollAnchorRect.top - scrollRect.top),
-	);
-	const availableScrollRange = scrollElement.scrollHeight - scrollElement.clientHeight;
-	const currentSpacerHeight = scrollSpacerRef.current?.offsetHeight ?? 0;
-	const availableScrollRangeWithoutSpacer = Math.max(
-		0,
-		availableScrollRange - currentSpacerHeight,
-	);
-	const requiredSpacerHeight = Math.max(
-		0,
-		desiredTargetTop - availableScrollRangeWithoutSpacer,
-	);
+	const { spacerHeight, targetScrollTop } = resolveFutureChatScrollAnchorLayout({
+		anchorOffsetTop: scrollAnchorRect.top - scrollRect.top,
+		clientHeight: scrollElement.clientHeight,
+		currentSpacerHeight: scrollSpacerRef.current?.offsetHeight ?? 0,
+		defaultTargetTop,
+		scrollHeight: scrollElement.scrollHeight,
+		scrollTop: scrollElement.scrollTop,
+	});
 
 	if (scrollSpacerRef.current) {
-		scrollSpacerRef.current.style.height = `${requiredSpacerHeight}px`;
+		scrollSpacerRef.current.style.height = `${spacerHeight}px`;
 	}
 
-	const maxScrollTop = Math.max(
-		0,
-		scrollElement.scrollHeight - scrollElement.clientHeight,
-	);
-
-	return Math.min(maxScrollTop, desiredTargetTop);
+	return targetScrollTop;
 }
 
 function FutureChatScrollAnchorSync({
@@ -154,14 +152,18 @@ function FutureChatScrollAnchorSync({
 	scrollAnchorMessageId: string | null;
 }>) {
 	const { scrollToBottom } = useConversationContext();
+	const shouldReduceMotion = useReducedMotion();
 
 	useEffect(() => {
 		if (!scrollAnchorMessageId) {
 			return;
 		}
 
-		void scrollToBottom({ animation: "instant", ignoreEscapes: true });
-	}, [scrollAnchorMessageId, scrollToBottom]);
+		void scrollToBottom({
+			animation: shouldReduceMotion ? "instant" : "smooth",
+			ignoreEscapes: true,
+		});
+	}, [scrollAnchorMessageId, scrollToBottom, shouldReduceMotion]);
 
 	return null;
 }
@@ -186,95 +188,70 @@ function UserMessage({
 	);
 
 	return (
-		<div
-			className="group/message fade-in w-full animate-in duration-200"
-			data-role="user"
+		<Message
+			animate
+			className={isEditing ? "w-full max-w-full" : undefined}
 			data-future-chat-scroll-anchor={isScrollAnchor ? "true" : undefined}
+			data-role="user"
 			data-testid="message-user"
+			fitContent={!isEditing}
+			from="user"
 		>
-			<div className="flex w-full items-start justify-end gap-2 md:gap-3">
-				<div
-					className={cn("flex flex-col gap-2", {
-						"w-full": isEditing,
-						"max-w-[calc(100%-2.5rem)] sm:max-w-[min(fit-content,80%)]": !isEditing,
-					})}
-				>
-					{attachments.length > 0 ? (
-						<Attachments className="justify-end" variant="grid">
-							{attachments.map((attachment) => (
-								<Attachment
-									key={`${message.id}-${attachment.url}-${attachment.filename ?? "attachment"}`}
-									data={{
-										...attachment,
-										id: `${message.id}-${attachment.url}-${attachment.filename ?? "attachment"}`,
-									}}
-								>
-									<AttachmentPreview />
-								</Attachment>
-							))}
-						</Attachments>
-					) : null}
+			{attachments.length > 0 ? (
+				<Attachments className="justify-end" variant="grid">
+					{attachments.map((attachment) => (
+						<Attachment
+							key={`${message.id}-${attachment.url}-${attachment.filename ?? "attachment"}`}
+							data={{
+								...attachment,
+								id: `${message.id}-${attachment.url}-${attachment.filename ?? "attachment"}`,
+							}}
+						>
+							<AttachmentPreview />
+						</Attachment>
+					))}
+				</Attachments>
+			) : null}
 
-					{isEditing ? (
-						<div className="rounded-2xl border border-border bg-background p-3 shadow-xs">
-							<Textarea
-								className="min-h-[140px] resize-none border-0 bg-transparent px-0 py-0 shadow-none focus-visible:ring-0"
-								onChange={(event) => setDraft(event.currentTarget.value)}
-								value={draft}
-							/>
-							<div className="mt-3 flex justify-end gap-2">
-								<Button
-									onClick={() => onSetEditingMessageId(null)}
-									size="sm"
-									type="button"
-									variant="ghost"
-								>
-									Cancel
-								</Button>
-								<Button
-									onClick={() => void onEditMessage(message.id, draft)}
-									size="sm"
-									type="button"
-								>
-									Send
-								</Button>
-							</div>
-						</div>
-					) : (
-						<>
-							<div
-								className="ml-auto min-w-20 w-fit rounded-[22px] border border-primary bg-primary px-4 py-3 text-primary-foreground shadow-sm"
-							>
-								<MessageResponse className="font-medium text-inherit [&_*]:text-inherit">
-									{getMessageText(message)}
-								</MessageResponse>
-							</div>
-
-							<div className="flex justify-end gap-1 text-text-subtle opacity-100 transition-opacity md:opacity-0 md:group-hover/message:opacity-100">
-								<Button
-									aria-label="Copy message"
-									onClick={() => void navigator.clipboard.writeText(getMessageText(message))}
-									size="icon-sm"
-									type="button"
-									variant="ghost"
-								>
-									<CopyIcon className="size-4" />
-								</Button>
-								<Button
-									aria-label="Edit message"
-									onClick={() => onSetEditingMessageId(message.id)}
-									size="icon-sm"
-									type="button"
-									variant="ghost"
-								>
-									<PencilLineIcon className="size-4" />
-								</Button>
-							</div>
-						</>
-					)}
+			{isEditing ? (
+				<div className="rounded-2xl border border-border bg-background p-3 shadow-xs">
+					<Textarea
+						className="min-h-[140px] resize-none border-0 bg-transparent px-0 py-0 shadow-none focus-visible:ring-0"
+						onChange={(event) => setDraft(event.currentTarget.value)}
+						value={draft}
+					/>
+					<div className="mt-3 flex justify-end gap-2">
+						<Button
+							onClick={() => onSetEditingMessageId(null)}
+							size="sm"
+							type="button"
+							variant="ghost"
+						>
+							Cancel
+						</Button>
+						<Button
+							onClick={() => void onEditMessage(message.id, draft)}
+							size="sm"
+							type="button"
+						>
+							Send
+						</Button>
+					</div>
 				</div>
-			</div>
-		</div>
+			) : (
+				<>
+					<MessageContent>
+						<MessageResponse className="font-medium text-inherit [&_*]:text-inherit">
+							{getMessageText(message)}
+						</MessageResponse>
+					</MessageContent>
+					<MessageActions reveal="hover" className="justify-end text-text-subtle">
+						<MessageCopyAction text={getMessageText(message)} />
+						<MessageEditAction onClick={() => onSetEditingMessageId(message.id)} />
+					</MessageActions>
+				</>
+			)}
+		</Message>
 	);
 }
 
@@ -361,6 +338,13 @@ function AssistantMessage({
 		responseKey: message.id,
 		autoIdle: false,
 	});
+	const thinkingReasoningPhase = resolveFutureChatThinkingStatusPhase({
+		isThinkingActive: thinkingActive,
+		hasTurnComplete,
+		isThinkingLifecycleStreaming,
+		hasBackendThinkingActivity,
+		lifecyclePhase: thinkingPhase,
+	});
 
 	const thinkingUpdateSignal = [
 		message.id,
@@ -380,27 +364,25 @@ function AssistantMessage({
 
 	const thinkingTriggerLabel = resolveThinkingStatusTriggerLabel({
 		resolvedLabel: dynamicThinkingLabel,
-		reasoningPhase: thinkingPhase,
+		reasoningPhase: thinkingReasoningPhase,
 		duration: thinkingDuration,
 	});
 
 	const thinkingPhaseProps = getReasoningPropsForPhase(
-		thinkingPhase,
+		thinkingReasoningPhase,
 		undefined,
 		hasThinkingDetails,
 	);
 
 	return (
-		<div
-			className="group/message fade-in w-full animate-in duration-200"
+		<Message
+			animate
+			className="max-w-full"
 			data-role="assistant"
 			data-testid="message-assistant"
+			from="assistant"
 		>
 			<div className="flex w-full items-start gap-2 md:gap-3">
-				<div className="-mt-1 flex size-8 shrink-0 items-center justify-center rounded-full border border-border bg-surface-raised text-text-subtle">
-					<SparklesIcon className="size-4" />
-				</div>
-
 				<div className="flex min-w-0 flex-1 flex-col gap-3">
 					{thinkingActive ? (
 						<Reasoning
@@ -412,7 +394,7 @@ function AssistantMessage({
 							streamingWave={thinkingPhaseProps.streamingWave}
 							streamingWaveGradientColor={thinkingPhaseProps.streamingWaveGradientColor}
 							animatedDots={thinkingPhaseProps.animatedDots}
-							duration={thinkingPhase === "completed" ? thinkingDuration : undefined}
+							duration={thinkingReasoningPhase === "completed" ? thinkingDuration : undefined}
 							allowAutoCollapse={hasTurnComplete}
 						>
 							<AdsReasoningTrigger
@@ -477,11 +459,11 @@ function AssistantMessage({
 					) : null}
 
 					{text && (isTextPresentation || isFallbackRoute || !widget) ? (
-						<div className="min-w-0 max-w-3xl">
+						<MessageContent className="max-w-3xl">
 							<MessageResponse isAnimating={(isStreaming && isLastAssistant) || isMessageTextStreaming(message)}>
 								{text}
 							</MessageResponse>
-						</div>
+						</MessageContent>
 					) : null}
 
 					{artifactCard}
@@ -526,53 +508,19 @@ function AssistantMessage({
 						</div>
 					) : null}
 
-					<div className="flex flex-wrap items-center gap-1 text-text-subtle opacity-100 transition-opacity md:opacity-0 md:group-hover/message:opacity-100">
-						<Button
-							aria-label="Copy response"
-							onClick={() => void navigator.clipboard.writeText(text)}
-							size="icon-sm"
-							type="button"
-							variant="ghost"
-						>
-							<CopyIcon className="size-4" />
-						</Button>
-
-						<Button
-							aria-label="Like response"
-							className={cn(voteValue === "up" && "text-success")}
-							onClick={() => void onVote(message.id, voteValue === "up" ? null : "up")}
-							size="icon-sm"
-							type="button"
-							variant="ghost"
-						>
-							<ThumbsUpIcon className="size-4" />
-						</Button>
-						<Button
-							aria-label="Dislike response"
-							className={cn(voteValue === "down" && "text-danger")}
-							onClick={() => void onVote(message.id, voteValue === "down" ? null : "down")}
-							size="icon-sm"
-							type="button"
-							variant="ghost"
-						>
-							<ThumbsDownIcon className="size-4" />
-						</Button>
-
+					<MessageActions reveal="hover" className="flex-wrap text-text-subtle">
+						<MessageCopyAction text={text} />
+						<MessageVoteActions
+							onVote={(v) => void onVote(message.id, v)}
+							value={voteValue}
+						/>
 						{isLastAssistant && !message.metadata?.realtimeMessageId ? (
-							<Button
-								aria-label="Regenerate response"
-								onClick={onRegenerate}
-								size="icon-sm"
-								type="button"
-								variant="ghost"
-							>
-								<RefreshCcwIcon className="size-4" />
-							</Button>
+							<MessageRegenerateAction onClick={onRegenerate} />
 						) : null}
-					</div>
+					</MessageActions>
 				</div>
 			</div>
-		</div>
+		</Message>
 	);
 }
 
@@ -581,9 +529,6 @@ function FutureChatThinkingIndicator() {
 	return (
 		<div className="w-full">
 			<div className="flex items-start gap-2 md:gap-3">
-				<div className="-mt-1 flex size-8 shrink-0 items-center justify-center rounded-full border border-border bg-surface-raised text-text-subtle">
-					<SparklesIcon className="size-4" />
-				</div>
 				<div className="flex min-w-0 flex-1 flex-col gap-3">
 					<Reasoning
 						className="mb-0"
@@ -627,10 +572,6 @@ function StreamingArtifactMessage({
 			data-testid="message-assistant-streaming-artifact"
 		>
 			<div className="flex w-full items-start gap-2 md:gap-3">
-				<div className="-mt-1 flex size-8 shrink-0 items-center justify-center rounded-full border border-border bg-surface-raised text-text-subtle">
-					<SparklesIcon className="size-4" />
-				</div>
-
 				<div className="flex min-w-0 flex-1 flex-col gap-3">
 					<FutureChatArtifactCard
 						action={null}
@@ -664,25 +605,20 @@ function AssistantSuggestionPills({
 
 	return (
 		<div
-			className="fade-in w-full animate-in duration-200"
+			className="fade-in mb-6 w-full animate-in duration-200"
 			data-role="assistant-suggestions"
 		>
 			<div className="flex w-full items-start gap-2 md:gap-3">
 				<div aria-hidden className="size-8 shrink-0" />
-				<div className="flex min-w-0 flex-1">
-					<div className="flex max-w-3xl flex-wrap gap-2">
-						{suggestions.map((suggestion) => (
-							<Button
-								className="h-auto rounded-full border-border bg-surface px-3 py-1.5 text-left text-text shadow-none hover:bg-surface-hovered"
-								key={`${messageId}-${suggestion}`}
-								onClick={() => void onSelectSuggestion(suggestion)}
-								type="button"
-								variant="outline"
-							>
-								{suggestion}
-							</Button>
-						))}
-					</div>
+				<div className="flex min-w-0 flex-1 justify-end">
+					<AssistantSuggestionsSection
+						className="max-w-3xl py-0"
+						messageId={messageId}
+						onSuggestionClick={(suggestion) => {
+							void onSelectSuggestion(suggestion);
+						}}
+						suggestedQuestions={suggestions}
+					/>
 				</div>
 			</div>
 		</div>
@@ -706,6 +642,7 @@ export function FutureChatMessages({
 	pendingArtifactResult,
 	scrollAnchorMessageId,
 	scrollFollowMode,
+	showEmptyState = true,
 	streamingArtifact,
 	streamingArtifactMessageId,
 	votes,
@@ -728,9 +665,7 @@ export function FutureChatMessages({
 		});
 	}, [activeDocumentId, documents, visibleMessages]);
 	const streamingAssistantMessageId = useMemo(() => {
-		return [...visibleMessages]
-			.reverse()
-			.find((m) => m.role === "assistant" && !m.metadata?.realtimeMessageId)?.id ?? null;
+		return resolveFutureChatStreamingAssistantMessageId(visibleMessages);
 	}, [visibleMessages]);
 	const isUserMessageLast = visibleMessages.at(-1)?.role === "user";
 	const shouldShowPreloader = isStreaming && isUserMessageLast;
@@ -739,6 +674,8 @@ export function FutureChatMessages({
 		isUserMessageLast &&
 		Boolean(streamingArtifact?.documentId) &&
 		streamingArtifactMessageId === null;
+	const shouldShowEmptyConversationState =
+		showEmptyState && visibleMessages.length === 0;
 	const handleTargetScrollTop = useCallback(
 		(defaultTargetTop: number, { scrollElement }: { scrollElement: HTMLElement }) => {
 			return computeFutureChatAnchorScrollTop(
@@ -752,12 +689,15 @@ export function FutureChatMessages({
 
 	return (
 		<Conversation
-			className={cn("relative bg-background", visibleMessages.length === 0 && "!flex-none overflow-visible")}
+			className={cn(
+				"relative bg-background",
+				shouldShowEmptyConversationState && "!flex-none overflow-visible",
+			)}
 			followMode={scrollFollowMode}
 			targetScrollTop={handleTargetScrollTop}
 		>
 			<FutureChatScrollAnchorSync scrollAnchorMessageId={scrollAnchorMessageId} />
-			{visibleMessages.length === 0 ? (
+			{shouldShowEmptyConversationState ? (
 				<div className="flex flex-col items-center gap-2 py-6">
 					<Image
 						alt="Chat"
@@ -781,9 +721,9 @@ export function FutureChatMessages({
 
 			<ConversationContent
 				className={cn(
-					"mx-auto flex min-w-0 flex-col gap-4 px-2 py-4 md:gap-6 md:px-4",
-					compact ? "max-w-none" : "max-w-4xl",
-					visibleMessages.length === 0 && "hidden",
+					"mx-auto flex min-w-0 flex-col gap-4 px-3 py-6 md:gap-6",
+					compact ? "max-w-none" : "max-w-[800px]",
+					shouldShowEmptyConversationState && "hidden",
 				)}
 			>
 				{visibleMessages.map((message) => {

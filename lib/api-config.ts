@@ -40,6 +40,9 @@ export const API_ENDPOINTS = {
 	FUTURE_CHAT_THREADS: `${API_BASE_URL}/api/future-chat/threads`,
 	FUTURE_CHAT_VOTES: `${API_BASE_URL}/api/future-chat/votes`,
 	FUTURE_CHAT_DOCUMENTS: `${API_BASE_URL}/api/future-chat/documents`,
+	FUTURE_CHAT_DETACH: `${API_BASE_URL}/api/future-chat/detach`,
+	FUTURE_CHAT_BACKGROUND_STREAMS: `${API_BASE_URL}/api/future-chat/background-streams`,
+	FUTURE_CHAT_RUNS: `${API_BASE_URL}/api/future-chat/runs`,
 	FUTURE_CHAT_FILE_UPLOAD: `${API_BASE_URL}/api/future-chat/files/upload`,
 	AGENT_MODE: `${API_BASE_URL}/api/agent-mode`,
 	chatThreads: (limit?: number) =>
@@ -56,6 +59,12 @@ export const API_ENDPOINTS = {
 		`${API_BASE_URL}/api/future-chat/messages?threadId=${encodeURIComponent(threadId)}`,
 	futureChatThread: (threadId: string) =>
 		`${API_BASE_URL}/api/future-chat/threads/${encodeURIComponent(threadId)}`,
+	futureChatRunStream: (threadId: string) =>
+		`${API_BASE_URL}/api/future-chat/runs/${encodeURIComponent(threadId)}/stream`,
+	futureChatRunDetach: (threadId: string) =>
+		`${API_BASE_URL}/api/future-chat/runs/${encodeURIComponent(threadId)}/detach`,
+	futureChatRunCancel: (threadId: string) =>
+		`${API_BASE_URL}/api/future-chat/runs/${encodeURIComponent(threadId)}/cancel`,
 	futureChatFile: (fileId: string) =>
 		`${API_BASE_URL}/api/future-chat/files/${encodeURIComponent(fileId)}`,
 	MAKE_RUNS: `${API_BASE_URL}/api/make/runs`,

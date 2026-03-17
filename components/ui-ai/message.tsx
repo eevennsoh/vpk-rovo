@@ -21,6 +21,11 @@ import {
 } from "@/components/ui/tooltip";
 import { resolveImageRenderSrc } from "@/lib/image-proxy";
 import { cn } from "@/lib/utils";
+import CopyIcon from "@atlaskit/icon/core/copy";
+import EditIcon from "@atlaskit/icon/core/edit";
+import RetryIcon from "@atlaskit/icon/core/retry";
+import ThumbsDownIcon from "@atlaskit/icon/core/thumbs-down";
+import ThumbsUpIcon from "@atlaskit/icon/core/thumbs-up";
 import { cjk } from "@streamdown/cjk";
 import { code as baseCodePlugin } from "@streamdown/code";
 import { math } from "@streamdown/math";
@@ -47,17 +52,31 @@ const linkSafetyConfig: LinkSafetyConfig = {
 };
 
 export interface MessageProps extends HTMLAttributes<HTMLDivElement> {
+	animate?: boolean;
+	fitContent?: boolean;
 	from: UIMessage["role"];
 }
 
-export function Message({ className, from, ...props }: Readonly<MessageProps>) {
+export function Message({
+	animate,
+	className,
+	fitContent,
+	from,
+	...props
+}: Readonly<MessageProps>) {
 	return (
 		<div
 			className={cn(
-				"group flex flex-col gap-2",
+				"group group/message flex flex-col gap-2",
 				from === "user"
-					? "is-user ml-auto w-fit max-w-[80%] items-end justify-end"
+					? cn(
+							"is-user ml-auto w-fit items-end justify-end",
+							fitContent
+								? "max-w-[min(fit-content,80%)]"
+								: "max-w-[80%]",
+						)
 					: "is-assistant w-full max-w-[80%]",
+				animate && "fade-in animate-in duration-200",
 				className,
 			)}
 			{...props}
@@ -87,15 +106,26 @@ export function MessageContent({
 	);
 }
 
-export type MessageActionsProps = ComponentProps<"div">;
+export interface MessageActionsProps extends ComponentProps<"div"> {
+	reveal?: "hover" | "always";
+}
 
 export function MessageActions({
 	className,
 	children,
+	reveal = "always",
 	...props
 }: Readonly<MessageActionsProps>) {
 	return (
-		<div className={cn("flex items-center gap-1", className)} {...props}>
+		<div
+			className={cn(
+				"flex items-center gap-1",
+				reveal === "hover" &&
+					"opacity-100 transition-opacity md:opacity-0 md:group-hover/message:opacity-100",
+				className,
+			)}
+			{...props}
+		>
 			{children}
 		</div>
 	);
@@ -135,6 +165,82 @@ export function MessageAction({
 	}
 
 	return button;
+}
+
+export interface MessageCopyActionProps
+	extends Omit<MessageActionProps, "children"> {
+	text: string;
+}
+
+export function MessageCopyAction({
+	text,
+	...props
+}: Readonly<MessageCopyActionProps>) {
+	return (
+		<MessageAction
+			tooltip="Copy"
+			onClick={() => void navigator.clipboard.writeText(text)}
+			{...props}
+		>
+			<CopyIcon label="" size="small" />
+		</MessageAction>
+	);
+}
+
+export type MessageEditActionProps = Omit<MessageActionProps, "children">;
+
+export function MessageEditAction(
+	props: Readonly<MessageEditActionProps>,
+) {
+	return (
+		<MessageAction tooltip="Edit" {...props}>
+			<EditIcon label="" size="small" />
+		</MessageAction>
+	);
+}
+
+export interface MessageVoteActionsProps {
+	value?: "up" | "down" | null;
+	onVote: (value: "up" | "down" | null) => void;
+}
+
+export function MessageVoteActions({
+	value,
+	onVote,
+}: Readonly<MessageVoteActionsProps>) {
+	return (
+		<>
+			<MessageAction
+				className={cn(value === "up" && "text-success")}
+				onClick={() => onVote(value === "up" ? null : "up")}
+				tooltip="Like"
+			>
+				<ThumbsUpIcon label="" size="small" />
+			</MessageAction>
+			<MessageAction
+				className={cn(value === "down" && "text-danger")}
+				onClick={() => onVote(value === "down" ? null : "down")}
+				tooltip="Dislike"
+			>
+				<ThumbsDownIcon label="" size="small" />
+			</MessageAction>
+		</>
+	);
+}
+
+export type MessageRegenerateActionProps = Omit<
+	MessageActionProps,
+	"children"
+>;
+
+export function MessageRegenerateAction(
+	props: Readonly<MessageRegenerateActionProps>,
+) {
+	return (
+		<MessageAction tooltip="Regenerate" {...props}>
+			<RetryIcon label="" size="small" />
+		</MessageAction>
+	);
 }
 
 interface MessageBranchContextType {

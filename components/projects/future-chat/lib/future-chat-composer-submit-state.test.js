@@ -146,6 +146,42 @@ test("shows singular background artifact label for one artifact", () => {
 	);
 });
 
+test("shows queued background work when an active run is waiting for a free port", () => {
+	assert.deepEqual(
+		resolveFutureChatComposerSubmitState({
+			activeRunStatus: "queued",
+			backgroundDelegationLabelOverride:
+				"Queued. This thread will start when a RovoDev port is free.",
+			useChatStatus: "ready",
+			delegationPhase: "idle",
+		}),
+		{
+			backgroundArtifactLabel: null,
+			backgroundDelegationLabel:
+				"Queued. This thread will start when a RovoDev port is free.",
+			composerStatus: "ready",
+			hasBackgroundDelegation: true,
+		},
+	);
+});
+
+test("keeps the composer attached when the current thread has an attached active run", () => {
+	assert.deepEqual(
+		resolveFutureChatComposerSubmitState({
+			activeRunStatus: "streaming",
+			isAttachedActiveRun: true,
+			useChatStatus: "ready",
+			delegationPhase: "idle",
+		}),
+		{
+			backgroundArtifactLabel: null,
+			backgroundDelegationLabel: null,
+			composerStatus: "streaming",
+			hasBackgroundDelegation: false,
+		},
+	);
+});
+
 test("reads the latest assistant thinking status label from message history", () => {
 	assert.equal(
 		getLatestFutureChatThinkingStatusLabel([

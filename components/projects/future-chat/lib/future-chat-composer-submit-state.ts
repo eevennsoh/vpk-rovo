@@ -1,4 +1,5 @@
 import type { ChatStatus } from "ai";
+import type { FutureChatRunStatus } from "@/lib/future-chat-types";
 import type { RovoUIMessage } from "@/lib/rovo-ui-messages";
 
 export type FutureChatDirectDelegationPhase =
@@ -54,14 +55,20 @@ export function getLatestFutureChatThinkingStatusLabel(
 }
 
 export function resolveFutureChatComposerSubmitState({
+	activeRunStatus,
+	backgroundDelegationLabelOverride,
 	useChatStatus,
 	delegationPhase,
+	isAttachedActiveRun = false,
 	latestThinkingStatusLabel,
 	streamingArtifactStatus,
 	backgroundArtifactCount,
 }: Readonly<{
+	activeRunStatus?: FutureChatRunStatus | null;
+	backgroundDelegationLabelOverride?: string | null;
 	useChatStatus: ChatStatus;
 	delegationPhase: FutureChatDirectDelegationPhase;
+	isAttachedActiveRun?: boolean;
 	latestThinkingStatusLabel?: string | null;
 	streamingArtifactStatus?: "streaming" | "idle" | null;
 	backgroundArtifactCount?: number;
@@ -115,6 +122,30 @@ export function resolveFutureChatComposerSubmitState({
 			backgroundDelegationLabel: formatBackgroundDelegationLabel(
 				latestThinkingStatusLabel,
 			),
+			composerStatus: "ready",
+			hasBackgroundDelegation: true,
+		};
+	}
+
+	if (isAttachedActiveRun && activeRunStatus === "streaming") {
+		return {
+			backgroundArtifactLabel,
+			backgroundDelegationLabel: null,
+			composerStatus: "streaming",
+			hasBackgroundDelegation: false,
+		};
+	}
+
+	if (
+		activeRunStatus === "queued"
+		|| activeRunStatus === "background"
+		|| activeRunStatus === "streaming"
+	) {
+		return {
+			backgroundArtifactLabel,
+			backgroundDelegationLabel:
+				backgroundDelegationLabelOverride
+				|| formatBackgroundDelegationLabel(latestThinkingStatusLabel),
 			composerStatus: "ready",
 			hasBackgroundDelegation: true,
 		};

@@ -82,14 +82,25 @@ export function isFutureChatDelegationAbortError(error: unknown): boolean {
 }
 
 export function readFutureChatDelegationResponseStream({
+	onChunk,
 	onError,
 	stream,
 	terminateOnError = false,
 }: {
+	onChunk?: (chunk: UIMessageChunk) => void;
 	onError?: (error: unknown) => void;
 	stream: ReadableStream<Uint8Array<ArrayBufferLike>>;
 	terminateOnError?: boolean;
 }) {
+	const chunkStream = toUiMessageChunkStream(stream).pipeThrough(
+		new TransformStream<UIMessageChunk, UIMessageChunk>({
+			transform(chunk, controller) {
+				onChunk?.(chunk);
+				controller.enqueue(chunk);
+			},
+		}),
+	);
+
 	return readUIMessageStream<RovoUIMessage>({
 		onError: (error) => {
 			if (isFutureChatDelegationAbortError(error)) {
@@ -98,7 +109,7 @@ export function readFutureChatDelegationResponseStream({
 
 			onError?.(error);
 		},
-		stream: toUiMessageChunkStream(stream),
+		stream: chunkStream,
 		terminateOnError,
 	});
 }

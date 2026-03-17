@@ -1,11 +1,11 @@
 "use client";
 
 import type { FileUIPart } from "ai";
-import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FileTextIcon, MessageSquarePlusIcon } from "lucide-react";
-import { FutureChatArtifactPanel } from "@/components/projects/future-chat/components/future-chat-artifact-panel";
+import { CreateButton } from "@/components/blocks/top-navigation/components/create-button";
+import { FutureChatArtifactPanel} from "@/components/projects/future-chat/components/future-chat-artifact-panel";
 import { FutureChatComposer } from "@/components/projects/future-chat/components/future-chat-composer";
 import { FutureChatMessages } from "@/components/projects/future-chat/components/future-chat-messages";
 import { FutureChatSidebar } from "@/components/projects/future-chat/components/future-chat-sidebar";
@@ -18,6 +18,8 @@ import {
 } from "@/components/projects/future-chat/lib/future-chat-artifacts";
 import { getFutureChatShellLayout } from "@/components/projects/future-chat/lib/future-chat-shell-layout";
 import { getFutureChatSmartGenerationLayoutContext } from "@/components/projects/future-chat/lib/future-chat-smart-generation-layout";
+import { buildFutureChatThreadPath } from "@/components/projects/future-chat/lib/future-chat-thread-route-sync";
+import { createFutureChatUserMessage } from "@/components/projects/future-chat/lib/future-chat-user-message";
 import { useLiveVoice } from "@/components/projects/future-chat/hooks/use-live-voice";
 import {
 	type DelegationRequest,
@@ -30,8 +32,11 @@ import PromptGallery from "@/components/blocks/prompt-gallery/page";
 import { DEFAULT_PROMPT_GALLERY_SUGGESTIONS } from "@/components/blocks/prompt-gallery/data/suggestions";
 import { LeftNavigation } from "@/components/blocks/top-navigation/components/left-navigation";
 import { RightNavigation } from "@/components/blocks/top-navigation/components/right-navigation";
+import SearchSuggestionsPanel from "@/components/blocks/top-navigation/components/search-suggestions-panel";
 import { useTopNavigation } from "@/components/blocks/top-navigation/hooks/use-top-navigation";
 import { FUTURE_CHAT_SEPARATOR_LINE_OFFSET_PX } from "@/components/blocks/top-navigation/layout-constants";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import SearchIcon from "@atlaskit/icon/core/search";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import {
@@ -43,7 +48,7 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Footer } from "@/components/ui/footer";
-import { cn } from "@/lib/utils";
+import { cn, createId } from "@/lib/utils";
 import { token } from "@/lib/tokens";
 import {
 	getLatestUserMessageId,
@@ -66,11 +71,46 @@ interface FutureChatShellProps {
 }
 
 const FUTURE_CHAT_LEFT_NAV_PADDING_PX = 12;
+const FUTURE_CHAT_SIDEBAR_MOTION_DURATION_TOKEN = "--duration-medium";
+const FUTURE_CHAT_SIDEBAR_MOTION_FALLBACK_MS = 200;
 
 const HOME_SUGGESTIONS = DEFAULT_PROMPT_GALLERY_SUGGESTIONS.slice(0, 3);
 const DEFAULT_COMPOSER_PLACEHOLDER = "Ask, @mention, or / for skills";
 const REALTIME_THREAD_SUMMARY_MAX_MESSAGES = 10;
 const REALTIME_RESULT_SUMMARY_MAX_CHARS = 500;
+
+function parseCssDurationMs(value: string): number | null {
+	const trimmedValue = value.trim();
+
+	if (!trimmedValue) {
+		return null;
+	}
+
+	if (trimmedValue.endsWith("ms")) {
+		const durationMs = Number.parseFloat(trimmedValue.slice(0, -2));
+		return Number.isFinite(durationMs) ? durationMs : null;
+	}
+
+	if (trimmedValue.endsWith("s")) {
+		const durationSeconds = Number.parseFloat(trimmedValue.slice(0, -1));
+		return Number.isFinite(durationSeconds) ? durationSeconds * 1000 : null;
+	}
+
+	const numericDuration = Number.parseFloat(trimmedValue);
+	return Number.isFinite(numericDuration) ? numericDuration : null;
+}
+
+function getCssDurationTokenMs(tokenName: string, fallbackMs: number): number {
+	if (typeof window === "undefined") {
+		return fallbackMs;
+	}
+
+	const tokenValue = window
+		.getComputedStyle(document.documentElement)
+		.getPropertyValue(tokenName);
+
+	return parseCssDurationMs(tokenValue) ?? fallbackMs;
+}
 
 function mergeContextDescriptions(
 	...parts: Array<string | null | undefined>
@@ -309,7 +349,6 @@ export function FutureChatShell({
 	initialThreadId = null,
 	portIndex,
 }: Readonly<FutureChatShellProps>) {
-	const router = useRouter();
 	const nav = useTopNavigation();
 	const [viewportWidthPx, setViewportWidthPx] = useState<number | null>(null);
 	const [shellSize, setShellSize] = useState({ width: 0, height: 0 });
@@ -349,6 +388,52 @@ export function FutureChatShell({
 		// eslint-disable-next-line react-hooks/exhaustive-deps -- only react to local sidebar changes
 	}, [chat.sidebarOpen]);
 
+	// Hover-reveal: show sidebar temporarily when hovering the toggle button.
+	// Uses a debounced timer so the sidebar stays visible while the mouse
+	// transitions from the toggle button to the sidebar content area.
+	const [hoverRevealActive, setHoverRevealActive] = useState(false);
+	const hoverLeaveTimerRef = useRef<number | null>(null);
+
+	const clearHoverTimer = useCallback(() => {
+		if (hoverLeaveTimerRef.current) {
+			window.clearTimeout(hoverLeaveTimerRef.current);
+			hoverLeaveTimerRef.current = null;
+		}
+	}, []);
+
+	const scheduleSidebarHoverClose = useCallback(() => {
+		clearHoverTimer();
+		hoverLeaveTimerRef.current = window.setTimeout(() => {
+			setHoverRevealActive(false);
+		}, getCssDurationTokenMs(
+			FUTURE_CHAT_SIDEBAR_MOTION_DURATION_TOKEN,
+			FUTURE_CHAT_SIDEBAR_MOTION_FALLBACK_MS,
+		));
+	}, [clearHoverTimer]);
+
+	const handleSidebarHoverEnter = useCallback(() => {
+		clearHoverTimer();
+		setHoverRevealActive(true);
+	}, [clearHoverTimer]);
+
+	const handleSidebarHoverLeave = useCallback(() => {
+		scheduleSidebarHoverClose();
+	}, [scheduleSidebarHoverClose]);
+
+	const handleSidebarContentMouseEnter = useCallback(() => {
+		clearHoverTimer();
+	}, [clearHoverTimer]);
+
+	const handleSidebarContentMouseLeave = useCallback(() => {
+		scheduleSidebarHoverClose();
+	}, [scheduleSidebarHoverClose]);
+
+	useEffect(() => {
+		return () => clearHoverTimer();
+	}, [clearHoverTimer]);
+
+	const isHoverOpen = hoverRevealActive && !chat.sidebarOpen;
+
 	const artifactContentRef = useRef<HTMLDivElement | null>(null);
 	const stopSpeakingRef = useRef<() => void>(() => {});
 	const skipNextAutoSpeakRef = useRef(false);
@@ -379,6 +464,9 @@ export function FutureChatShell({
 	const [scrollAnchorMessageId, setScrollAnchorMessageId] = useState<string | null>(null);
 	const [scrollFollowMode, setScrollFollowMode] =
 		useState<ConversationFollowMode>("bottom");
+	const [optimisticUserMessage, setOptimisticUserMessage] = useState<ReturnType<
+		typeof createFutureChatUserMessage
+	> | null>(null);
 	const realtimeUserMessageIdRef = useRef<string | null>(null);
 	const realtimeAssistantMessageIdRef = useRef<string | null>(null);
 	const realtimeAssistantMessagePromiseRef = useRef<Promise<string | null> | null>(null);
@@ -1198,6 +1286,18 @@ export function FutureChatShell({
 				}
 			}
 
+			const trimmedText = text.trim();
+			if (trimmedText || files.length > 0) {
+				setOptimisticUserMessage(
+					createFutureChatUserMessage({
+						id: createId("future-chat-user"),
+						createdAt: new Date().toISOString(),
+						files,
+						text: trimmedText,
+					}),
+				);
+			}
+
 			queueTypedScrollAnchor("standard", latestUserMessageIdBeforeSubmit);
 			try {
 				await realtimeChat.submitPrompt({
@@ -1206,6 +1306,7 @@ export function FutureChatShell({
 					text,
 				});
 			} catch (error) {
+				setOptimisticUserMessage(null);
 				resetTypedScrollAnchorState();
 				throw error;
 			}
@@ -1218,14 +1319,57 @@ export function FutureChatShell({
 			realtime,
 			resetRealtimeAssistantMessageState,
 			resetTypedScrollAnchorState,
+			setOptimisticUserMessage,
 		],
 	);
 
+	const displayMessages = useMemo(() => {
+		if (!optimisticUserMessage) {
+			return chat.messages;
+		}
+
+		const optimisticText = getMessageText(optimisticUserMessage).trim();
+		const hasVisibleUserMessage = chat.messages.some((message) => {
+			if (message.role !== "user") {
+				return false;
+			}
+
+			if (message.id === optimisticUserMessage.id) {
+				return true;
+			}
+
+			return optimisticText.length > 0 && getMessageText(message).trim() === optimisticText;
+		});
+
+		return hasVisibleUserMessage ? chat.messages : [...chat.messages, optimisticUserMessage];
+	}, [chat.messages, optimisticUserMessage]);
+
 	const visibleMessages = useMemo(() => {
-		return chat.messages.filter((message) => {
+		return displayMessages.filter((message) => {
 			return message.role === "user" || message.role === "assistant";
 		});
-	}, [chat.messages]);
+	}, [displayMessages]);
+
+	useEffect(() => {
+		if (!optimisticUserMessage) {
+			return;
+		}
+
+		const hasVisibleUserMessage = chat.messages.some((message) => {
+			if (message.role !== "user") {
+				return false;
+			}
+
+			return (
+				message.id === optimisticUserMessage.id
+				|| getMessageText(message).trim() === getMessageText(optimisticUserMessage).trim()
+			);
+		});
+
+		if (hasVisibleUserMessage) {
+			setOptimisticUserMessage(null);
+		}
+	}, [chat.messages, optimisticUserMessage]);
 
 	useEffect(() => {
 		const latestUserMessageId = getLatestUserMessageId(chat.messages);
@@ -1302,6 +1446,14 @@ export function FutureChatShell({
 		);
 	}, [chat.selectedVersionId, workspaceDocument]);
 	const isArtifactOpen = Boolean(workspaceDocument);
+	const hasActiveThreadRun =
+		typeof chat.activeThreadId === "string"
+			&& chat.backgroundStreamThreadIds.has(chat.activeThreadId);
+	const showHomeState =
+		!chat.isLoadingThread &&
+		!isArtifactOpen &&
+		!hasActiveThreadRun &&
+		visibleMessages.length === 0;
 	const canAnnotateWorkspaceDocument =
 		workspaceDocument?.kind === "text"
 		|| workspaceDocument?.kind === "code"
@@ -1589,7 +1741,7 @@ export function FutureChatShell({
 				editingMessageId={chat.editingMessageId}
 				isStreaming={chat.isStreaming}
 				key={chat.runtimeThreadId}
-				messages={chat.messages}
+				messages={displayMessages}
 				onEditMessage={chat.editMessage}
 				onOpenArtifactFromCard={handleOpenArtifactFromCard}
 				onRegisterArtifactCard={handleRegisterArtifactCard}
@@ -1600,6 +1752,7 @@ export function FutureChatShell({
 				pendingArtifactResult={chat.pendingArtifactResult}
 				scrollAnchorMessageId={scrollAnchorMessageId}
 				scrollFollowMode={scrollFollowMode}
+				showEmptyState={showHomeState}
 				streamingArtifact={chat.streamingArtifact}
 				streamingArtifactMessageId={chat.streamingArtifactMessageId}
 				votes={chat.votes}
@@ -1618,7 +1771,7 @@ export function FutureChatShell({
 							{realtimeStatusMessage}
 					</div>
 				) : null}
-				<div className="px-6">
+				<div className={cn("px-6", !isArtifactOpen && "md:px-0")}>
 					{shouldShowQuestionCard && activeQuestionCard ? (
 						<>
 							<ClarificationQuestionCard
@@ -1647,7 +1800,6 @@ export function FutureChatShell({
 								key={chat.runtimeThreadId}
 								artifactTitle={workspaceDocument?.title ?? null}
 								backgroundArtifactLabel={chat.backgroundArtifactLabel}
-								backgroundDelegationLabel={chat.backgroundDelegationLabel}
 								composerStatus={chat.composerStatus}
 								compact={isArtifactOpen}
 								errorMessage={chat.inputError}
@@ -1675,7 +1827,7 @@ export function FutureChatShell({
 					)}
 				</div>
 
-				{!isArtifactOpen && visibleMessages.length === 0 ? (
+				{showHomeState ? (
 					<PromptGallery
 						className="mt-5"
 						items={HOME_SUGGESTIONS}
@@ -1699,29 +1851,38 @@ export function FutureChatShell({
 		>
 			<FutureChatSidebar
 				activeThreadId={chat.activeThreadId}
+				hoverOpen={isHoverOpen}
 				onDeleteThread={(threadId) => chat.deleteThread(threadId)}
 				onNewChat={() => {
-					const textarea = document.querySelector<HTMLTextAreaElement>("[data-slot='input-group-control']");
-					textarea?.focus();
+					setOptimisticUserMessage(null);
+					void chat.openNewChat();
 				}}
 				onSelectThread={async (threadId) => {
+					setOptimisticUserMessage(null);
 					await chat.loadThread(threadId);
 					if (embedded) {
 						return;
 					}
-					router.push(`/future-chat/${encodeURIComponent(threadId)}`);
+					window.history.pushState(
+						null,
+						"",
+						buildFutureChatThreadPath(threadId),
+					);
 				}}
+				onSidebarMouseEnter={handleSidebarContentMouseEnter}
+				onSidebarMouseLeave={handleSidebarContentMouseLeave}
 				threads={chat.threads}
+				threadsLoaded={chat.threadsLoaded}
 				topOffset={!embedded}
 			/>
 
 			{!embedded ? (
 				<div
 					className={cn(
-						"fixed top-0 left-0 z-20 flex h-12 items-center overflow-x-clip px-3 transition-[width,border-color] duration-medium ease-in-out",
+						"fixed top-0 left-0 z-20 flex h-12 items-center px-3 transition-[width,border-color] duration-medium ease-in-out",
 						chat.sidebarOpen
-							? "w-(--sidebar-width) border-r border-border"
-							: "w-auto border-b border-border",
+							? "w-(--sidebar-width) overflow-x-clip border-r border-border"
+							: "w-40 border-b border-border",
 					)}
 					style={{ backgroundColor: token("elevation.surface") }}
 				>
@@ -1730,7 +1891,6 @@ export function FutureChatShell({
 						windowWidth={nav.windowWidth}
 						isVisible={nav.isVisible}
 						isAppSwitcherOpen={nav.isAppSwitcherOpen}
-						hideAppSwitcher
 						separatorLineOffsetPx={
 							FUTURE_CHAT_SEPARATOR_LINE_OFFSET_PX - FUTURE_CHAT_LEFT_NAV_PADDING_PX
 						}
@@ -1738,31 +1898,42 @@ export function FutureChatShell({
 						onToggleAppSwitcher={nav.handleToggleAppSwitcher}
 						onCloseAppSwitcher={nav.handleCloseAppSwitcher}
 						onNavigate={(path) => nav.handleNavigate(path === "/" ? "/future-chat" : path)}
-						onHoverEnter={nav.handleHoverEnter}
-						onHoverLeave={nav.handleHoverLeave}
+						onHoverEnter={handleSidebarHoverEnter}
+						onHoverLeave={handleSidebarHoverLeave}
 					/>
+					{!chat.sidebarOpen ? (
+						<div className="absolute right-0 h-5 w-px bg-border" />
+					) : null}
 				</div>
 				) : null}
 
 				<div className="flex min-w-0 flex-1 flex-col">
 					{!embedded ? (
 						<div
-							className="flex h-12 shrink-0 items-center gap-2 border-b px-3"
+							className={cn(
+							"flex h-12 shrink-0 items-center gap-2 border-b px-3 transition-[padding] duration-medium ease-in-out",
+							!chat.sidebarOpen && "pl-44",
+						)}
 							style={{
 								borderColor: token("color.border"),
 								backgroundColor: token("elevation.surface"),
 							}}
 						>
 							<div className="mr-auto flex items-center gap-2">
-								<Button
-									className="h-8 gap-2 px-3"
-									onClick={() => void chat.openNewChat()}
-									type="button"
-									variant="outline"
-								>
-									<MessageSquarePlusIcon className="size-4" />
-									<span>New chat</span>
-								</Button>
+								{!chat.sidebarOpen ? (
+									<Button
+										className="h-8 gap-2 px-3"
+										onClick={() => {
+											setOptimisticUserMessage(null);
+											void chat.openNewChat();
+										}}
+										type="button"
+										variant="outline"
+									>
+										<MessageSquarePlusIcon className="size-4" />
+										<span>New chat</span>
+									</Button>
+								) : null}
 								{primaryArtifact || artifactMenuItems.length > 0 ? (
 									<DropdownMenu>
 										<DropdownMenuTrigger
@@ -1796,6 +1967,45 @@ export function FutureChatShell({
 									</DropdownMenu>
 								) : null}
 							</div>
+							<div className="relative flex min-w-0 flex-1 items-center justify-center gap-2 px-3">
+								<div
+									ref={nav.searchContainerRef}
+									className="relative w-full max-w-[480px]"
+								>
+									{!nav.isSearchFocused ? (
+										<InputGroup className="h-7 rounded-md bg-bg-input shadow-none hover:bg-bg-input-hovered">
+											<InputGroupAddon align="inline-start">
+												<span className="size-4 shrink-0 text-icon-subtle">
+													<SearchIcon label="" spacing="none" />
+												</span>
+											</InputGroupAddon>
+											<InputGroupInput
+												type="search"
+												aria-label="Search"
+												value={nav.searchValue}
+												onChange={(event) => nav.setSearchValue(event.currentTarget.value)}
+												onFocus={nav.handleFocusSearch}
+												onKeyDown={nav.handleSearchKeyDown}
+												placeholder="Search"
+												className="h-full text-sm placeholder:text-sm [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden [&::-webkit-search-results-button]:hidden [&::-webkit-search-results-decoration]:hidden"
+											/>
+										</InputGroup>
+									) : null}
+								</div>
+								<SearchSuggestionsPanel
+									ref={nav.searchPanelRef}
+									isVisible={nav.isSearchFocused}
+									searchValue={nav.searchValue}
+									onSearchChange={nav.setSearchValue}
+									onSearchKeyDown={nav.handleSearchKeyDown}
+									onClose={nav.handleCloseSearch}
+									onSearchAllApps={nav.handleSearchAllApps}
+									onRecentItemClick={nav.handleRecentItemClick}
+									onRecentSearchClick={nav.handleRecentSearchClick}
+								/>
+
+								<CreateButton windowWidth={nav.windowWidth} />
+							</div>
 							<RightNavigation
 								product="rovo"
 								windowWidth={nav.windowWidth}
@@ -1825,11 +2035,11 @@ export function FutureChatShell({
 								shouldSplitArtifactPane ? "w-full shrink-0 flex-none" : "flex-1",
 							)}
 						>
-							{visibleMessages.length === 0 && !shouldSplitArtifactPane ? (
+							{showHomeState && !shouldSplitArtifactPane ? (
 								<div className="min-h-[40px] flex-1 shrink" />
 							) : null}
 							{chatPane}
-							{visibleMessages.length === 0 && !shouldSplitArtifactPane ? (
+							{showHomeState && !shouldSplitArtifactPane ? (
 								<>
 									<div className="flex-1 shrink" />
 									<Footer className="shrink-0" />

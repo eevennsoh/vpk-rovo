@@ -24,11 +24,21 @@ test("future chat thread manager persists and lists thread metadata", async () =
 		visibility: "public",
 		modelId: "anthropic/claude-4.5-sonnet",
 		provider: "anthropic",
+		activeRun: {
+			id: "run-1",
+			status: "queued",
+			portIndex: 1,
+			rovoPort: 8001,
+			startedAt: "2026-03-18T00:00:00.000Z",
+			updatedAt: "2026-03-18T00:00:00.000Z",
+		},
 	});
 
 	assert.equal(createdThread.id, "thread-1");
 	assert.equal(createdThread.visibility, "public");
 	assert.equal(createdThread.modelId, "anthropic/claude-4.5-sonnet");
+	assert.equal(createdThread.activeRun?.status, "queued");
+	assert.equal(createdThread.activeRun?.rovoPort, 8001);
 
 	const updatedThread = await manager.updateThread("thread-1", {
 		title: "Updated launch plan",

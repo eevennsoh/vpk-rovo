@@ -15,13 +15,19 @@ const cors = require("cors");
 const path = require("path");
 const { Readable } = require("node:stream");
 const WebSocket = require("ws");
-const { createUIMessageStream, pipeUIMessageStreamToResponse } = require("ai");
+const {
+	createUIMessageStream,
+	createUIMessageStreamResponse,
+	pipeUIMessageStreamToResponse,
+} = require("ai");
 const { createRunManager: createMakeRunManager } = require("./make/make-runs");
 const { createFutureChatThreadManager } = require("./lib/future-chat-threads");
 const { createFutureChatVoteManager } = require("./lib/future-chat-votes");
 const { createFutureChatDocumentManager } = require("./lib/future-chat-documents");
 const { createFutureChatUploadManager } = require("./lib/future-chat-uploads");
 const { createAbortControllerFromRequest } = require("./lib/http-request-abort");
+const { createFutureChatRunManager } = require("./lib/future-chat-runs");
+const { collectUiMessagesFromResponseStream } = require("./lib/future-chat-ui-stream");
 const {
 	buildFutureChatArtifactIntentPrompt,
 	normalizeArtifactKind,
@@ -1306,6 +1312,9 @@ const futureChatDocumentManager = createFutureChatDocumentManager({
 const futureChatUploadManager = createFutureChatUploadManager({
 	baseDir: path.join(__dirname, "data"),
 });
+const futureChatRunManager = createFutureChatRunManager({
+	logger: console,
+});
 
 const makeConfigManager = makeFs.createConfigManagerCompat();
 const appRegistry = createAppRegistry({
@@ -1448,14 +1457,20 @@ function buildFutureChatArtifactContext(rawArtifactContext) {
 		.join("\n");
 }
 
-function buildFutureChatInternalUrl(req, pathname) {
-	const host = req.get("host");
-	if (!host) {
-		throw new Error("Cannot resolve backend host for Future Chat proxy.");
+function buildFutureChatInternalUrl(reqOrPathname, maybePathname) {
+	const pathname =
+		typeof maybePathname === "string" ? maybePathname : reqOrPathname;
+	const req = typeof maybePathname === "string" ? reqOrPathname : null;
+	if (req?.get) {
+		const host = req.get("host");
+		if (host) {
+			const protocol = req.protocol || "http";
+			return `${protocol}://${host}${pathname}`;
+		}
 	}
 
-	const protocol = req.protocol || "http";
-	return `${protocol}://${host}${pathname}`;
+	const port = getPositiveInteger(process.env.PORT) || 8080;
+	return `http://127.0.0.1:${port}${pathname}`;
 }
 
 function buildFutureChatArtifactSystemPrompt({
@@ -1497,6 +1512,7 @@ async function generateFutureChatArtifactText({
 	latestUserMessage,
 	conversationHistory,
 	contextDescription,
+	portIndex,
 	provider,
 	signal,
 	onTextDelta,
@@ -1528,6 +1544,7 @@ async function generateFutureChatArtifactText({
 			signal,
 			allowFallback: false,
 			onTextDelta,
+			portIndex,
 		});
 
 	try {
@@ -1680,11 +1697,11 @@ function streamFutureChatArtifactToolResponse({
 	contextDescription,
 	conversationHistory,
 	latestUserMessage,
+	portIndex,
 	requestOrigin,
 	artifactThreadId,
 	previousActiveDocumentId,
 	provider,
-	res,
 	signal,
 	suggestedQuestions,
 }) {
@@ -1751,6 +1768,7 @@ function streamFutureChatArtifactToolResponse({
 						latestUserMessage,
 						conversationHistory,
 						contextDescription,
+						portIndex,
 						provider,
 						signal,
 						onTextDelta: (delta) => {
@@ -1881,7 +1899,7 @@ function streamFutureChatArtifactToolResponse({
 			error instanceof Error ? error.message : "Failed to stream Future Chat artifact",
 	});
 
-	pipeUIMessageStreamToResponse({ response: res, stream });
+	return createUIMessageStreamResponse({ stream });
 }
 
 async function handleFutureChatArtifactToolRequest({
@@ -1890,9 +1908,8 @@ async function handleFutureChatArtifactToolRequest({
 	artifactSteering,
 	contextDescription,
 	requestOrigin,
-	req,
 	requestBody,
-	res,
+	signal,
 	streamingArtifact,
 	threadId,
 }) {
@@ -1913,13 +1930,13 @@ async function handleFutureChatArtifactToolRequest({
 					kind: normalizeArtifactKind(legacyArtifactKind),
 					cancelStreaming: null,
 				}
-			: await resolveFutureChatArtifactDecision({
+				: await resolveFutureChatArtifactDecision({
 					activeArtifact,
 					artifactSteering,
 					conversationHistory,
 					latestUserMessage,
 					provider: getNonEmptyString(requestBody.provider),
-					signal: req.signal,
+					signal,
 					streamingArtifact,
 				});
 
@@ -2036,7 +2053,7 @@ async function handleFutureChatArtifactToolRequest({
 		}
 	}
 
-	streamFutureChatArtifactToolResponse({
+	const response = streamFutureChatArtifactToolResponse({
 		artifactAction: decision.action,
 		artifactDocument,
 		cancelStreaming: decision.cancelStreaming,
@@ -2045,35 +2062,139 @@ async function handleFutureChatArtifactToolRequest({
 		conversationHistory,
 		latestUserMessage,
 		requestOrigin,
+		portIndex:
+			typeof requestBody.portIndex === "number" && requestBody.portIndex >= 0
+				? requestBody.portIndex
+				: undefined,
 		provider: getNonEmptyString(requestBody.provider),
-		res,
-		signal: req.signal,
+		signal,
 		artifactThreadId,
 		previousActiveDocumentId,
 	});
-	return true;
+	return {
+		handled: true,
+		response,
+	};
 }
 
-async function proxyFutureChatChatRequest(req, res) {
-	const requestBody =
-		req.body && typeof req.body === "object" ? { ...req.body } : {};
-	const requestOriginHint = getNonEmptyString(requestBody.origin) || "text";
-	const stageTrace = resolveStageTraceFromRequest(req, "future-chat", {
-		path: "/api/future-chat/chat",
-		origin: requestOriginHint,
+let isProcessingFutureChatRunQueue = false;
+
+async function finalizeFutureChatRun(threadId, run, messages) {
+	if (threadId && Array.isArray(messages)) {
+		await futureChatThreadManager.updateThread(threadId, {
+			activeRun: null,
+			messages,
+		});
+	} else {
+		await clearFutureChatRunState(threadId);
+	}
+	futureChatRunManager.clearRun(threadId);
+	void startNextQueuedFutureChatRun();
+}
+
+async function failFutureChatRun(threadId, error) {
+	const message = error instanceof Error ? error.message : String(error);
+	const isAbortLike =
+		typeof error === "object"
+		&& error !== null
+		&& (
+			("name" in error && error.name === "AbortError")
+			|| /abort/i.test(message)
+		);
+	const run = futureChatRunManager.getRun(threadId);
+	if (run) {
+		futureChatRunManager.setRunError(threadId, message);
+		if (!isAbortLike) {
+			futureChatRunManager.appendChunk(threadId, createSseErrorChunk(message));
+		}
+	}
+	await clearFutureChatRunState(threadId);
+	futureChatRunManager.clearRun(threadId);
+	void startNextQueuedFutureChatRun();
+}
+
+async function consumeFutureChatManagedResponse({
+	initialMessages,
+	prependChunk,
+	response,
+	run,
+	stageTrace,
+	threadId,
+}) {
+	const contentType = response.headers.get("content-type") || "";
+	if (!contentType.includes("text/event-stream") || !response.body) {
+		throw new Error("Future Chat expected an event stream response.");
+	}
+
+	const resolvedPort = getPositiveInteger(response.headers.get("x-vpk-rovo-port"));
+	if (
+		typeof resolvedPort === "number"
+		&& Number.isInteger(resolvedPort)
+		&& resolvedPort > 0
+		&& run.rovoPort !== resolvedPort
+	) {
+		run.rovoPort = resolvedPort;
+		run.updatedAt = new Date().toISOString();
+		await persistFutureChatRunState(threadId, run);
+	}
+
+	const [broadcastStream, parseStream] = response.body.tee();
+	if (prependChunk) {
+		futureChatRunManager.appendChunk(threadId, prependChunk);
+	}
+
+	const parsePromise = collectUiMessagesFromResponseStream({
+		initialMessages,
+		stream: parseStream,
 	});
-	res.setHeader(STAGE_TRACE_ID_HEADER, stageTrace.requestId);
+
+	await new Promise((resolve, reject) => {
+		const responseStream = Readable.fromWeb(broadcastStream);
+		let hasLoggedFirstChunk = false;
+		responseStream.on("data", (chunk) => {
+			if (!hasLoggedFirstChunk) {
+				hasLoggedFirstChunk = true;
+				stageTrace.mark("future_chat_first_chunk", {
+					bytes:
+						typeof chunk?.length === "number" && Number.isFinite(chunk.length)
+							? chunk.length
+							: null,
+				});
+			}
+			futureChatRunManager.appendChunk(threadId, chunk);
+		});
+		responseStream.once("end", resolve);
+		responseStream.once("error", reject);
+	});
+
+	const messages = await parsePromise;
+	await finalizeFutureChatRun(threadId, run, messages);
+}
+
+async function executeFutureChatManagedRun(run) {
+	const requestBody =
+		run.requestBody && typeof run.requestBody === "object"
+			? { ...run.requestBody }
+			: {};
+	const requestOriginHint = getNonEmptyString(requestBody.origin) || "text";
+	const stageTrace = createStageTrace({
+		scope: "future-chat-run",
+		logger: console,
+		baseMeta: {
+			path: "/api/future-chat/chat",
+			origin: requestOriginHint,
+			threadId: run.threadId,
+			runId: run.id,
+		},
+	});
 	stageTrace.mark("entry", {
 		messageCount: Array.isArray(requestBody.messages) ? requestBody.messages.length : 0,
 		hasDelegatedMessageId: Boolean(getNonEmptyString(requestBody.delegatedMessageId)),
 		hasActiveArtifact: Boolean(requestBody.activeArtifact?.id),
 	});
-	const { abortController, cleanup } = createAbortControllerFromRequest(req, res, {
-		onAbort: () => {
-			console.log("[FUTURE-CHAT] Client disconnected, aborting chat proxy");
-		},
-	});
+
 	const threadId = getNonEmptyString(requestBody.id);
+	const signal = run.abortController.signal;
 	const delegatedMessageId = getNonEmptyString(requestBody.delegatedMessageId);
 	const conversationSummary = getNonEmptyString(requestBody.conversationSummary);
 	const requestMessages = Array.isArray(requestBody.messages)
@@ -2091,10 +2212,7 @@ async function proxyFutureChatChatRequest(req, res) {
 		})
 		: null;
 	if (delegatedMessageId && !delegatedPrompt) {
-		cleanup();
-		return res.status(400).json({
-			error: "delegatedMessageId did not resolve to a persisted user message",
-		});
+		throw new Error("delegatedMessageId did not resolve to a persisted user message");
 	}
 	if (delegatedPrompt && !requestMessages.some((message) => message?.id === delegatedPrompt.messageId)) {
 		const hiddenUserMessage = createHiddenFutureChatUserMessage(
@@ -2107,7 +2225,6 @@ async function proxyFutureChatChatRequest(req, res) {
 	}
 	requestBody.messages = requestMessages;
 
-	// Accept new fields from the frontend
 	const requestOrigin = requestOriginHint;
 	const requestVoiceMetadata =
 		requestBody.voiceMetadata && typeof requestBody.voiceMetadata === "object"
@@ -2118,8 +2235,6 @@ async function proxyFutureChatChatRequest(req, res) {
 			? requestBody.activeArtifact
 			: undefined;
 
-	// Backward compatibility: if activeArtifact is NOT in the request body,
-	// fall back to the existing resolveFutureChatActiveArtifact() from activeDocumentId
 	let activeArtifact;
 	let activeDocument;
 	if (requestActiveArtifact?.id) {
@@ -2160,7 +2275,6 @@ async function proxyFutureChatChatRequest(req, res) {
 				content: getNonEmptyString(requestBody.streamingArtifact.content) || "",
 			}
 			: null;
-
 	const resolvedProvider = getNonEmptyString(requestBody.provider);
 
 	delete requestBody.activeDocumentId;
@@ -2173,14 +2287,10 @@ async function proxyFutureChatChatRequest(req, res) {
 	delete requestBody.voiceMetadata;
 	delete requestBody.activeArtifact;
 
-	// -----------------------------------------------------------------------
-	// Plan mode bypass — skip routing when plan mode is active
-	// -----------------------------------------------------------------------
 	const requestIsPlanMode = requestBody.isPlanMode === true;
 	delete requestBody.isPlanMode;
 
 	if (requestIsPlanMode) {
-		// Validate against RovoDev Serve state (non-blocking sanity check)
 		try {
 			const agentModeResult = await getAgentMode();
 			if (agentModeResult?.mode !== "plan") {
@@ -2195,12 +2305,8 @@ async function proxyFutureChatChatRequest(req, res) {
 		}
 	}
 
-	// -----------------------------------------------------------------------
-	// Unified routing decision
-	// -----------------------------------------------------------------------
 	const { message: latestUserMessage, conversationHistory } =
 		mapUiMessagesToConversation(requestMessages);
-
 	const recentHistory = conversationHistory.slice(-5).map((msg) => ({
 		role: msg.type === "user" ? "user" : "assistant",
 		content: msg.content,
@@ -2208,10 +2314,6 @@ async function proxyFutureChatChatRequest(req, res) {
 
 	let routingDecision;
 	const routeDecisionStartedAtMs = Date.now();
-
-	// -----------------------------------------------------------------------
-	// Auto-plan heuristic — enter plan mode for complex prompts
-	// -----------------------------------------------------------------------
 	let autoPlanTriggered = false;
 	if (!requestIsPlanMode && latestUserMessage) {
 		const complexity = assessPromptComplexityForPlanMode(latestUserMessage);
@@ -2225,7 +2327,6 @@ async function proxyFutureChatChatRequest(req, res) {
 				score: complexity.score,
 				reasons: complexity.reasons.join(","),
 			});
-			// Programmatically enter plan mode on RovoDev Serve
 			try {
 				await setAgentMode(undefined, "plan");
 				console.info("[FUTURE-CHAT] Auto-plan: set agent mode to plan on RovoDev Serve");
@@ -2237,9 +2338,6 @@ async function proxyFutureChatChatRequest(req, res) {
 	}
 
 	if (requestIsPlanMode || autoPlanTriggered) {
-		// Plan mode active — skip routing classifier entirely.
-		// All prompts go through the agent loop; RovoDev is already in plan
-		// mode and will emit exit_plan_mode when ready.
 		routingDecision = {
 			intent: "chat",
 			presentation: "text",
@@ -2253,69 +2351,50 @@ async function proxyFutureChatChatRequest(req, res) {
 			confidence: 1,
 			reason: "plan_mode_active",
 		});
-		console.log(
-			"[FUTURE-CHAT] Plan mode active — skipping routing classifier, forcing chat/text",
-		);
 	} else {
-
-	try {
-		routingDecision = await resolveRoutingDecision(
-			{
-				prompt: latestUserMessage,
+		try {
+			routingDecision = await resolveRoutingDecision(
+				{
+					prompt: latestUserMessage,
+					origin: requestOrigin,
+					activeArtifact: activeArtifact || undefined,
+					voiceMetadata: requestVoiceMetadata,
+					recentHistory,
+					threadId,
+					provider: resolvedProvider,
+					signal,
+				},
+				{
+					classify: ({ system, prompt, signal: classifySignal }) =>
+						generateTextViaGateway({
+							system,
+							prompt,
+							maxOutputTokens: 220,
+							temperature: 0.1,
+							provider: resolvedProvider,
+							signal: classifySignal,
+							allowFallback: true,
+						}),
+					timeoutMs: 1500,
+				},
+			);
+		} catch {
+			routingDecision = {
+				intent: "chat",
+				presentation: "text",
+				confidence: 0,
+				reason: "classifier_error",
 				origin: requestOrigin,
-				activeArtifact: activeArtifact || undefined,
-				voiceMetadata: requestVoiceMetadata,
-				recentHistory,
-				threadId,
-				provider: resolvedProvider,
-				signal: abortController.signal,
-			},
-			{
-				classify: ({ system, prompt, signal }) =>
-					generateTextViaGateway({
-						system,
-						prompt,
-						maxOutputTokens: 220,
-						temperature: 0.1,
-						provider: resolvedProvider,
-						signal,
-						allowFallback: true,
-					}),
-				timeoutMs: 1500,
-			},
-		);
-	} catch {
-		// D3: never block the request — fallback to chat
-		routingDecision = {
-			intent: "chat",
-			presentation: "text",
-			confidence: 0,
-			reason: "classifier_error",
-			origin: requestOrigin,
 			};
-	}
-	stageTrace.mark("route_decision_resolved", {
-		stageMs: Date.now() - routeDecisionStartedAtMs,
-		intent: routingDecision.intent,
-		confidence: routingDecision.confidence,
-		reason: routingDecision.reason,
-	});
-
-	} // end of else (non-plan-mode routing)
-
-	console.log(
-		"[FUTURE-CHAT] Routing decision:",
-		JSON.stringify({
+		}
+		stageTrace.mark("route_decision_resolved", {
+			stageMs: Date.now() - routeDecisionStartedAtMs,
 			intent: routingDecision.intent,
 			confidence: routingDecision.confidence,
 			reason: routingDecision.reason,
-			origin: routingDecision.origin,
-		}),
-	);
+		});
+	}
 
-	// -----------------------------------------------------------------------
-	// Route: artifact_create or artifact_update → delegate to artifact handler
-	// -----------------------------------------------------------------------
 	if (routingDecision.intent === "artifact_create" || routingDecision.intent === "artifact_update") {
 		const handled = await handleFutureChatArtifactToolRequest({
 			activeArtifact,
@@ -2323,29 +2402,27 @@ async function proxyFutureChatChatRequest(req, res) {
 			artifactSteering,
 			contextDescription: resolvedBaseContextDescription || null,
 			requestOrigin,
-			req,
 			requestBody,
-			res,
+			signal,
 			streamingArtifact,
 			threadId,
 		});
-		if (handled) {
+		if (handled?.handled && handled.response) {
 			stageTrace.mark("artifact_route_handled", {
 				intent: routingDecision.intent,
 				threadId,
 			});
-			cleanup();
+			await consumeFutureChatManagedResponse({
+				initialMessages: requestMessages,
+				response: handled.response,
+				run,
+				stageTrace,
+				threadId,
+			});
 			return;
 		}
-		// If artifact handler returned false (e.g. no active artifact for update),
-		// fall through to chat
 	}
 
-	// -----------------------------------------------------------------------
-	// Route: genui → proxy to /api/chat-sdk with genui surface hints
-	// -----------------------------------------------------------------------
-	// Route: chat (or fallthrough) → proxy to /api/chat-sdk
-	// -----------------------------------------------------------------------
 	const artifactContextBlock = buildFutureChatArtifactContext(activeArtifact);
 	if (artifactContextBlock) {
 		requestBody.contextDescription = resolvedBaseContextDescription
@@ -2354,144 +2431,136 @@ async function proxyFutureChatChatRequest(req, res) {
 	} else if (resolvedBaseContextDescription) {
 		requestBody.contextDescription = resolvedBaseContextDescription;
 	}
-
-	// For genui intent, add surface hints so RovoDev can generate UI specs
 	if (routingDecision.intent === "genui") {
 		requestBody.genuiHint = true;
 	}
 
-	let response;
-	let shouldKeepAbortListeners = false;
+	if (typeof run.assignedPortIndex === "number" && run.assignedPortIndex >= 0) {
+		requestBody.portIndex = run.assignedPortIndex;
+	}
 
-	try {
-		const internalProxyStartedAtMs = Date.now();
-		response = await fetch(buildFutureChatInternalUrl(req, "/api/chat-sdk"), {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-				...stageTrace.getHeaders(),
-			},
-			body: JSON.stringify(requestBody),
-			signal: abortController.signal,
-		});
-		stageTrace.mark("chat_sdk_response_headers", {
-			stageMs: Date.now() - internalProxyStartedAtMs,
-			status: response.status,
-			contentType: response.headers.get("content-type") || null,
-		});
+	const internalProxyStartedAtMs = Date.now();
+	const response = await fetch(buildFutureChatInternalUrl("/api/chat-sdk"), {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+			...stageTrace.getHeaders(),
+		},
+		body: JSON.stringify(requestBody),
+		signal,
+	});
+	stageTrace.mark("chat_sdk_response_headers", {
+		stageMs: Date.now() - internalProxyStartedAtMs,
+		status: response.status,
+		contentType: response.headers.get("content-type") || null,
+	});
 
-		if (!response.ok) {
-			const errorText = await response.text();
-			res.status(response.status);
-			res.setHeader(
-				"Content-Type",
-				response.headers.get("content-type") || "application/json; charset=utf-8"
-			);
-			res.send(errorText);
-			return;
+	if (!response.ok) {
+		const errorText = await response.text();
+		throw new Error(errorText || "Failed to stream Future Chat response");
+	}
+
+	await consumeFutureChatManagedResponse({
+		initialMessages: requestMessages,
+		prependChunk: formatRouteDecisionSSE(routingDecision),
+		response,
+		run,
+		stageTrace,
+		threadId,
+	});
+}
+
+async function startManagedFutureChatRun(run, assignment) {
+	const markedRun = futureChatRunManager.markRunStarted(run.threadId, {
+		portIndex: assignment?.portIndex ?? null,
+		rovoPort: assignment?.rovoPort ?? null,
+		status: futureChatRunManager.hasSubscribers(run.threadId) ? "streaming" : "background",
+	});
+	if (!markedRun) {
+		return;
+	}
+
+	await persistFutureChatRunState(run.threadId, markedRun);
+	void executeFutureChatManagedRun(markedRun).catch(async (error) => {
+		const wasAborted = markedRun.abortController.signal.aborted;
+		if (!wasAborted) {
+			console.error("[FUTURE-CHAT] Managed run failed:", error);
 		}
+		await failFutureChatRun(markedRun.threadId, error);
+	});
+}
 
-		const contentType = response.headers.get("content-type") || "";
-		if (contentType.includes("text/event-stream")) {
-			res.status(response.status);
-			res.setHeader("Content-Type", "text/event-stream");
-			res.setHeader("Cache-Control", "no-cache");
-			res.setHeader("Connection", "keep-alive");
-			if (!response.body) {
-				stageTrace.mark("chat_sdk_stream_missing_body", {
-					stageMs: Date.now() - internalProxyStartedAtMs,
-					status: response.status,
-				});
-				res.end();
-				return;
+async function startNextQueuedFutureChatRun() {
+	if (isProcessingFutureChatRunQueue) {
+		return;
+	}
+
+	isProcessingFutureChatRunQueue = true;
+	try {
+		const queuedThreadIds = futureChatRunManager.listQueuedThreadIds();
+		for (const threadId of queuedThreadIds) {
+			const run = futureChatRunManager.getRun(threadId);
+			if (!run) {
+				futureChatRunManager.removeQueuedRun(threadId);
+				continue;
 			}
 
-			// Prepend data-route-decision as the first SSE event
-			const routeDecisionEvent = formatRouteDecisionSSE(routingDecision);
-			res.write(routeDecisionEvent);
-			stageTrace.mark("first_sse_event_written", {
-				stageMs: Date.now() - internalProxyStartedAtMs,
-				source: "future-chat-route-decision",
-			});
+			const assignment = resolveFutureChatPortAssignment(run.requestedPortIndex);
+			if (!assignment) {
+				continue;
+			}
 
-			shouldKeepAbortListeners = true;
-			const responseStream = Readable.fromWeb(response.body);
-			let hasLoggedFirstProxyChunk = false;
-			let hasCleanedUpStream = false;
-			responseStream.once("data", (chunk) => {
-				if (hasLoggedFirstProxyChunk) {
-					return;
-				}
-				hasLoggedFirstProxyChunk = true;
-				stageTrace.mark("chat_sdk_first_proxy_chunk", {
-					stageMs: Date.now() - internalProxyStartedAtMs,
-					bytes:
-						typeof chunk?.length === "number" && Number.isFinite(chunk.length)
-							? chunk.length
-							: null,
-				});
-			});
-			const cleanupStream = (stage, details) => {
-				if (hasCleanedUpStream) {
-					return;
-				}
-				hasCleanedUpStream = true;
-				stageTrace.mark(stage, details);
-				cleanup();
-			};
-			responseStream.once("close", () => {
-				cleanupStream("proxy_stream_closed");
-			});
-			responseStream.once("end", () => {
-				cleanupStream("proxy_stream_complete");
-			});
-			responseStream.once("error", (streamError) => {
-				cleanupStream("proxy_stream_error", {
-					error:
-						streamError instanceof Error
-							? streamError.message
-							: String(streamError),
-				});
-			});
-			res.once("close", () => {
-				cleanupStream("client_response_closed");
-			});
-			responseStream.pipe(res);
-			return;
+			await startManagedFutureChatRun(run, assignment);
+			break;
 		}
-
-		const responseBuffer = Buffer.from(await response.arrayBuffer());
-		res.status(response.status);
-		if (contentType) {
-			res.setHeader("Content-Type", contentType);
-		}
-		stageTrace.mark("non_stream_response_complete", {
-			stageMs: Date.now() - internalProxyStartedAtMs,
-			status: response.status,
-			bytes: responseBuffer.length,
-			contentType: contentType || null,
-		});
-		res.send(responseBuffer);
-	} catch (error) {
-		const isAbortError =
-			typeof error === "object" &&
-			error !== null &&
-			"name" in error &&
-			error.name === "AbortError";
-		if (isAbortError && (abortController.signal.aborted || req.aborted || res.destroyed)) {
-			stageTrace.mark("proxy_aborted");
-			return;
-		}
-		stageTrace.mark("proxy_error", {
-			error: error instanceof Error ? error.message : String(error),
-		});
-
-		throw error;
 	} finally {
-		if (!shouldKeepAbortListeners) {
-			cleanup();
+		isProcessingFutureChatRunQueue = false;
+	}
+}
+
+async function proxyFutureChatChatRequest(req, res) {
+	const requestBody =
+		req.body && typeof req.body === "object" ? { ...req.body } : {};
+	const threadId = getNonEmptyString(requestBody.id);
+	if (!threadId) {
+		return res.status(400).json({ error: "threadId is required" });
+	}
+
+	const existingRun = futureChatRunManager.getRun(threadId);
+	const run =
+		existingRun
+		|| futureChatRunManager.createRun({
+			threadId,
+			requestBody,
+			requestedPortIndex:
+				typeof requestBody.portIndex === "number" && requestBody.portIndex >= 0
+					? requestBody.portIndex
+					: null,
+		});
+
+	const subscriberId = futureChatRunManager.attachSubscriber(threadId, res, {
+		onDetached: (detachedRun) => {
+			if (!detachedRun) {
+				return;
+			}
+			void persistFutureChatRunState(threadId, detachedRun);
+		},
+	});
+	if (!subscriberId) {
+		return res.status(404).json({ error: "No active Future Chat run for threadId" });
+	}
+
+	if (!existingRun) {
+		const assignment = resolveFutureChatPortAssignment(run.requestedPortIndex);
+		if (assignment) {
+			await startManagedFutureChatRun(run, assignment);
+		} else {
+			futureChatRunManager.enqueueRun(threadId);
+			await persistFutureChatRunState(threadId, futureChatRunManager.getRun(threadId));
 		}
 	}
+
+	await persistFutureChatRunState(threadId, futureChatRunManager.getRun(threadId));
 }
 
 /**
@@ -2515,6 +2584,148 @@ function resolveStageTraceFromRequest(req, scope, baseMeta) {
 		logger: console,
 		baseMeta,
 	});
+}
+
+function buildFutureChatActiveRunPayload(run) {
+	if (!run) {
+		return null;
+	}
+
+	return {
+		id: run.id,
+		status: run.status,
+		portIndex:
+			typeof run.assignedPortIndex === "number" && Number.isInteger(run.assignedPortIndex)
+				? run.assignedPortIndex
+				: typeof run.requestedPortIndex === "number" && Number.isInteger(run.requestedPortIndex)
+					? run.requestedPortIndex
+					: null,
+		rovoPort:
+			typeof run.rovoPort === "number" && Number.isInteger(run.rovoPort) && run.rovoPort > 0
+				? run.rovoPort
+				: null,
+		startedAt: run.startedAt,
+		updatedAt: run.updatedAt,
+	};
+}
+
+async function persistFutureChatRunState(threadId, run) {
+	if (!threadId) {
+		return null;
+	}
+
+	return futureChatThreadManager.updateThread(threadId, {
+		activeRun: buildFutureChatActiveRunPayload(run),
+	});
+}
+
+async function clearFutureChatRunState(threadId) {
+	if (!threadId) {
+		return null;
+	}
+
+	return futureChatThreadManager.updateThread(threadId, {
+		activeRun: null,
+	});
+}
+
+function buildPoolPortStatusMap(poolStatus) {
+	if (!poolStatus || typeof poolStatus !== "object" || !Array.isArray(poolStatus.ports)) {
+		return new Map();
+	}
+
+	return new Map(
+		poolStatus.ports
+			.filter((entry) => entry && typeof entry.port === "number")
+			.map((entry) => [entry.port, entry.status]),
+	);
+}
+
+function resolveFutureChatPortAssignment(requestedPortIndex) {
+	const poolStatus = _rovoDevPool?.getStatus?.();
+	const activePorts = Array.isArray(poolStatus?.ports)
+		? poolStatus.ports
+				.map((entry) => entry?.port)
+				.filter((port) => typeof port === "number" && Number.isInteger(port) && port > 0)
+		: readRovoDevPorts();
+	if (!_rovoDevPool || activePorts.length === 0) {
+		if (typeof requestedPortIndex === "number" && requestedPortIndex >= 0) {
+			try {
+				return resolveStrictRovoDevPortAssignment(requestedPortIndex, {
+					activePorts,
+					poolStatus,
+				});
+			} catch {
+				return null;
+			}
+		}
+
+		return {
+			portIndex: null,
+			rovoPort: null,
+			panelLabel: "auto",
+			candidatePorts: [],
+		};
+	}
+
+	const statusByPort = buildPoolPortStatusMap(poolStatus);
+	const hasAvailableCandidate = (assignment) => {
+		return assignment.candidatePorts.some((port) => statusByPort.get(port) === "available");
+	};
+
+	if (typeof requestedPortIndex === "number" && requestedPortIndex >= 0) {
+		const assignment = resolveStrictRovoDevPortAssignment(requestedPortIndex, {
+			activePorts,
+			poolStatus,
+		});
+		return hasAvailableCandidate(assignment) ? assignment : null;
+	}
+
+	const shardCount = Math.max(1, Math.min(activePorts.length, 3));
+	const candidates = [];
+	for (let index = 0; index < shardCount; index += 1) {
+		const assignment = resolveStrictRovoDevPortAssignment(index, {
+			activePorts,
+			poolStatus,
+		});
+		const availableCandidateCount = assignment.candidatePorts.filter(
+			(port) => statusByPort.get(port) === "available",
+		).length;
+		if (availableCandidateCount === 0) {
+			continue;
+		}
+
+		candidates.push({
+			...assignment,
+			availableCandidateCount,
+		});
+	}
+
+	candidates.sort((left, right) => {
+		if (left.availableCandidateCount !== right.availableCandidateCount) {
+			return right.availableCandidateCount - left.availableCandidateCount;
+		}
+		return left.portIndex - right.portIndex;
+	});
+
+	return candidates[0] ?? null;
+}
+
+async function reconcileOrphanedFutureChatThread(thread) {
+	if (!thread?.id || !thread.activeRun) {
+		return thread;
+	}
+
+	if (futureChatRunManager.hasRun(thread.id)) {
+		return thread;
+	}
+
+	return clearFutureChatRunState(thread.id);
+}
+
+function createSseErrorChunk(message) {
+	const text = typeof message === "string" && message.trim() ? message.trim() : "Future Chat run failed";
+	return `data: ${JSON.stringify({ type: "error", errorText: text })}\n\n`;
 }
 
 function getUtf8ByteLength(value) {
@@ -4146,6 +4357,12 @@ app.post("/api/chat-sdk", async (req, res) => {
 							: "INVALID_ROVODEV_PORT_INDEX",
 				});
 			}
+		}
+		if (typeof portIndex === "number") {
+			res.setHeader("x-vpk-rovo-port-index", String(portIndex));
+		}
+		if (typeof strictPortAssignment?.rovoPort === "number") {
+			res.setHeader("x-vpk-rovo-port", String(strictPortAssignment.rovoPort));
 		}
 		const hasQueuedPrompts = Boolean(rawHasQueuedPrompts);
 
@@ -11024,7 +11241,13 @@ app.get("/api/future-chat/threads", async (req, res) => {
 	try {
 		const rawLimit = Array.isArray(req.query.limit) ? req.query.limit[0] : req.query.limit;
 		const limit = rawLimit ? Number(rawLimit) : undefined;
-		const threads = await futureChatThreadManager.listThreads({ limit });
+		const threads = (
+			await Promise.all(
+				(await futureChatThreadManager.listThreads({ limit })).map((thread) =>
+					reconcileOrphanedFutureChatThread(thread),
+				),
+			)
+		).filter(Boolean);
 		return res.status(200).json({ threads });
 	} catch (error) {
 		console.error("[FUTURE-CHAT] Failed to list threads:", error);
@@ -11106,7 +11329,9 @@ app.delete("/api/future-chat/threads", async (req, res) => {
 
 app.get("/api/future-chat/threads/:threadId", async (req, res) => {
 	try {
-		const thread = await futureChatThreadManager.getThread(req.params.threadId);
+		const thread = await reconcileOrphanedFutureChatThread(
+			await futureChatThreadManager.getThread(req.params.threadId),
+		);
 		if (!thread) {
 			return res.status(404).json({ error: "Thread not found" });
 		}
@@ -11155,9 +11380,124 @@ app.put("/api/future-chat/threads/:threadId", async (req, res) => {
 	}
 });
 
+app.post("/api/future-chat/detach", async (req, res) => {
+	try {
+		const threadId = getNonEmptyString(req.body?.threadId);
+		if (!threadId) {
+			return res.status(400).json({ error: "threadId is required" });
+		}
+		const run = futureChatRunManager.getRun(threadId);
+		if (!run) {
+			return res.status(404).json({ error: "No active stream for threadId" });
+		}
+		futureChatRunManager.setRunStatus(
+			threadId,
+			run.status === "queued" ? "queued" : "background",
+		);
+		await persistFutureChatRunState(threadId, futureChatRunManager.getRun(threadId));
+		return res.status(200).json({ detached: true });
+	} catch (error) {
+		console.error("[FUTURE-CHAT] Failed to detach stream:", error);
+		return res.status(500).json({ error: "Failed to detach stream" });
+	}
+});
+
+app.get("/api/future-chat/background-streams", async (req, res) => {
+	try {
+		const streams = futureChatRunManager.listRuns();
+		return res.status(200).json({ streams });
+	} catch (error) {
+		console.error("[FUTURE-CHAT] Failed to list background streams:", error);
+		return res.status(500).json({ error: "Failed to list background streams" });
+	}
+});
+
+app.get("/api/future-chat/runs/:threadId/stream", async (req, res) => {
+	try {
+		const threadId = getNonEmptyString(req.params.threadId);
+		if (!threadId) {
+			return res.status(400).json({ error: "threadId is required" });
+		}
+
+		const subscriberId = futureChatRunManager.attachSubscriber(threadId, res, {
+			onDetached: (run) => {
+				if (!run) {
+					return;
+				}
+				void persistFutureChatRunState(threadId, run);
+			},
+		});
+		if (!subscriberId) {
+			return res.status(404).json({ error: "No active run for threadId" });
+		}
+
+		await persistFutureChatRunState(threadId, futureChatRunManager.getRun(threadId));
+	} catch (error) {
+		console.error("[FUTURE-CHAT] Failed to attach run stream:", error);
+		return res.status(500).json({ error: "Failed to attach Future Chat run stream" });
+	}
+});
+
+app.post("/api/future-chat/runs/:threadId/detach", async (req, res) => {
+	try {
+		const threadId = getNonEmptyString(req.params.threadId);
+		if (!threadId) {
+			return res.status(400).json({ error: "threadId is required" });
+		}
+
+		const run = futureChatRunManager.getRun(threadId);
+		if (!run) {
+			return res.status(404).json({ error: "No active run for threadId" });
+		}
+
+		futureChatRunManager.setRunStatus(
+			threadId,
+			run.status === "queued" ? "queued" : "background",
+		);
+		await persistFutureChatRunState(threadId, futureChatRunManager.getRun(threadId));
+		return res.status(200).json({ detached: true });
+	} catch (error) {
+		console.error("[FUTURE-CHAT] Failed to detach run:", error);
+		return res.status(500).json({ error: "Failed to detach Future Chat run" });
+	}
+});
+
+app.post("/api/future-chat/runs/:threadId/cancel", async (req, res) => {
+	try {
+		const threadId = getNonEmptyString(req.params.threadId);
+		if (!threadId) {
+			return res.status(400).json({ error: "threadId is required" });
+		}
+
+		const run = futureChatRunManager.getRun(threadId);
+		if (!run) {
+			return res.status(404).json({ error: "No active run for threadId" });
+		}
+
+		if (typeof run.rovoPort === "number" && run.rovoPort > 0) {
+			await rovoDevCancelChat(run.rovoPort).catch(() => {});
+		}
+
+		futureChatRunManager.cancelRun(threadId);
+		await clearFutureChatRunState(threadId);
+		void startNextQueuedFutureChatRun();
+		return res.status(200).json({ cancelled: true });
+	} catch (error) {
+		console.error("[FUTURE-CHAT] Failed to cancel run:", error);
+		return res.status(500).json({ error: "Failed to cancel Future Chat run" });
+	}
+});
+
 app.delete("/api/future-chat/threads/:threadId", async (req, res) => {
 	try {
 		const threadId = req.params.threadId;
+		const activeRun = futureChatRunManager.getRun(threadId);
+		if (activeRun) {
+			if (typeof activeRun.rovoPort === "number" && activeRun.rovoPort > 0) {
+				await rovoDevCancelChat(activeRun.rovoPort).catch(() => {});
+			}
+			futureChatRunManager.cancelRun(threadId);
+		}
 		const thread = await futureChatThreadManager.getThread(threadId);
 		const uploadIds = collectFutureChatUploadIdsFromMessages(thread?.messages);
 		await Promise.all(

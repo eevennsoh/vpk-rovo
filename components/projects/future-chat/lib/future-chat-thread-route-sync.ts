@@ -4,6 +4,8 @@ import type {
 } from "@/lib/future-chat-types";
 import type { RovoUIMessage } from "@/lib/rovo-ui-messages";
 
+export const FUTURE_CHAT_ROOT_PATH = "/future-chat";
+
 export function buildFutureChatThreadPersistKey(options: {
 	messages: ReadonlyArray<RovoUIMessage>;
 	realtimeMessages: ReadonlyArray<RovoUIMessage>;
@@ -18,6 +20,37 @@ export function buildFutureChatThreadPersistKey(options: {
 		activeDocumentId: options.activeDocumentId,
 		title: options.title,
 	});
+}
+
+export function buildFutureChatThreadPath(threadId: string): string {
+	return `${FUTURE_CHAT_ROOT_PATH}/${encodeURIComponent(threadId)}`;
+}
+
+export function getFutureChatThreadIdFromPath(pathname: string): string | null {
+	const normalizedPath =
+		pathname === `${FUTURE_CHAT_ROOT_PATH}/`
+			? FUTURE_CHAT_ROOT_PATH
+			: pathname;
+
+	if (normalizedPath === FUTURE_CHAT_ROOT_PATH) {
+		return null;
+	}
+
+	const threadPathPrefix = `${FUTURE_CHAT_ROOT_PATH}/`;
+	if (!normalizedPath.startsWith(threadPathPrefix)) {
+		return null;
+	}
+
+	const threadIdSegment = normalizedPath.slice(threadPathPrefix.length);
+	if (!threadIdSegment || threadIdSegment.includes("/")) {
+		return null;
+	}
+
+	try {
+		return decodeURIComponent(threadIdSegment);
+	} catch {
+		return null;
+	}
 }
 
 export function shouldReplaceFutureChatRouteAfterPersistence(options: {
@@ -51,9 +84,22 @@ export function shouldReplaceFutureChatRouteAfterPersistence(options: {
 	return persistedThreadKey === expectedPersistKey;
 }
 
+export function shouldSkipFutureChatThreadLoad(options: {
+	activeThreadId: string | null;
+	hasHydratedThreadState: boolean;
+	requestedThreadId: string;
+}): boolean {
+	if (!options.activeThreadId || !options.hasHydratedThreadState) {
+		return false;
+	}
+
+	return options.activeThreadId === options.requestedThreadId;
+}
+
 export function shouldReplacePendingFutureChatRoute(options: {
 	activeThreadId: string | null;
 	embedded: boolean;
+	hasPersistedThreadState: boolean;
 	isStreaming: boolean;
 	isVoiceMode: boolean;
 	pendingThreadId: string | null;
@@ -63,6 +109,10 @@ export function shouldReplacePendingFutureChatRoute(options: {
 	}
 
 	if (!options.activeThreadId || !options.pendingThreadId) {
+		return false;
+	}
+
+	if (!options.hasPersistedThreadState) {
 		return false;
 	}
 
