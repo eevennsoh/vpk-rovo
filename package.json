@@ -60,7 +60,7 @@
 		"@visual-json/core": "^0.3.1",
 		"@visual-json/react": "^0.3.1",
 		"@xyflow/react": "^12.10.1",
-		"agent-browser": "^0.20.7",
+		"agent-browser": "^0.20.14",
 		"agentation": "^2.3.0",
 		"agentation-mcp": "^1.2.0",
 		"ai": "^6.0.116",

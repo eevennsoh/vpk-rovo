@@ -77,7 +77,7 @@ import {
 	ThumbsUpIcon,
 } from "lucide-react";
 import Image from "next/image";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Heading from "@/components/blocks/shared-ui/heading";
 
 interface FutureChatMessagesProps {
@@ -285,7 +285,6 @@ function AssistantMessage({
 	isThinkingLifecycleStreaming,
 	message,
 	onRegenerate,
-	onSelectSuggestion,
 	onVote,
 	voteValue,
 }: Readonly<{
@@ -295,7 +294,6 @@ function AssistantMessage({
 	isThinkingLifecycleStreaming: boolean;
 	message: RovoUIMessage;
 	onRegenerate: () => void;
-	onSelectSuggestion: (suggestion: string) => Promise<void>;
 	onVote: (messageId: string, value: "up" | "down" | null) => Promise<void>;
 	voteValue?: "up" | "down";
 }>) {
@@ -306,7 +304,6 @@ function AssistantMessage({
 	const widget = getLatestDataPart(message, "data-widget-data");
 	const widgetLoading = getLatestDataPart(message, "data-widget-loading");
 	const widgetError = getLatestDataPart(message, "data-widget-error");
-	const suggestions = getLatestDataPart(message, "data-suggested-questions")?.data.questions ?? [];
 	const sources = getMessageSources(message);
 	const routeDecision: RoutingDecision | null = getLatestRouteDecision(message);
 
@@ -529,22 +526,6 @@ function AssistantMessage({
 						</div>
 					) : null}
 
-					{suggestions.length > 0 ? (
-						<div className="grid w-full gap-2 sm:grid-cols-2">
-							{suggestions.map((suggestion) => (
-								<Button
-									className="h-auto justify-start whitespace-normal rounded-2xl border-border bg-surface px-3 py-2 text-left text-text shadow-none hover:bg-surface-hovered"
-									key={`${message.id}-${suggestion}`}
-									onClick={() => void onSelectSuggestion(suggestion)}
-									type="button"
-									variant="outline"
-								>
-									{suggestion}
-								</Button>
-							))}
-						</div>
-					) : null}
-
 					<div className="flex flex-wrap items-center gap-1 text-text-subtle opacity-100 transition-opacity md:opacity-0 md:group-hover/message:opacity-100">
 						<Button
 							aria-label="Copy response"
@@ -662,6 +643,46 @@ function StreamingArtifactMessage({
 						previewContent={streamingArtifact.content}
 						title={title}
 					/>
+				</div>
+			</div>
+		</div>
+	);
+}
+
+function AssistantSuggestionPills({
+	messageId,
+	onSelectSuggestion,
+	suggestions,
+}: Readonly<{
+	messageId: string;
+	onSelectSuggestion: (suggestion: string) => Promise<void>;
+	suggestions: ReadonlyArray<string>;
+}>) {
+	if (suggestions.length === 0) {
+		return null;
+	}
+
+	return (
+		<div
+			className="fade-in w-full animate-in duration-200"
+			data-role="assistant-suggestions"
+		>
+			<div className="flex w-full items-start gap-2 md:gap-3">
+				<div aria-hidden className="size-8 shrink-0" />
+				<div className="flex min-w-0 flex-1">
+					<div className="flex max-w-3xl flex-wrap gap-2">
+						{suggestions.map((suggestion) => (
+							<Button
+								className="h-auto rounded-full border-border bg-surface px-3 py-1.5 text-left text-text shadow-none hover:bg-surface-hovered"
+								key={`${messageId}-${suggestion}`}
+								onClick={() => void onSelectSuggestion(suggestion)}
+								type="button"
+								variant="outline"
+							>
+								{suggestion}
+							</Button>
+						))}
+					</div>
 				</div>
 			</div>
 		</div>
@@ -792,34 +813,41 @@ export function FutureChatMessages({
 								: null;
 						const resolvedArtifactDisplay =
 							artifactDisplay ?? fallbackArtifactDisplay;
+						const suggestions =
+							getLatestDataPart(message, "data-suggested-questions")?.data.questions ?? [];
 
 						return (
-							<AssistantMessage
-								artifactCard={
-									resolvedArtifactDisplay ? (
-										<FutureChatArtifactCard
-											action={resolvedArtifactDisplay.action}
-											displayMode={resolvedArtifactDisplay.displayMode}
-											documentId={resolvedArtifactDisplay.documentId}
-											isStreaming={resolvedArtifactDisplay.isStreaming}
-											kind={resolvedArtifactDisplay.kind}
-											onOpen={onOpenArtifactFromCard}
-											onRegister={onRegisterArtifactCard}
-											previewContent={resolvedArtifactDisplay.previewContent}
-											title={resolvedArtifactDisplay.title}
-										/>
-									) : null
-								}
-								isLastAssistant={message.id === lastAssistantMessageId}
-								isStreaming={isStreaming}
-								isThinkingLifecycleStreaming={isStreaming && message.id === streamingAssistantMessageId}
-								key={message.id}
-								message={message}
-								onRegenerate={onRegenerate}
-								onSelectSuggestion={onSelectSuggestion}
-								onVote={onVote}
-								voteValue={votes[message.id]}
-							/>
+							<Fragment key={message.id}>
+								<AssistantMessage
+									artifactCard={
+										resolvedArtifactDisplay ? (
+											<FutureChatArtifactCard
+												action={resolvedArtifactDisplay.action}
+												displayMode={resolvedArtifactDisplay.displayMode}
+												documentId={resolvedArtifactDisplay.documentId}
+												isStreaming={resolvedArtifactDisplay.isStreaming}
+												kind={resolvedArtifactDisplay.kind}
+												onOpen={onOpenArtifactFromCard}
+												onRegister={onRegisterArtifactCard}
+												previewContent={resolvedArtifactDisplay.previewContent}
+												title={resolvedArtifactDisplay.title}
+											/>
+										) : null
+									}
+									isLastAssistant={message.id === lastAssistantMessageId}
+									isStreaming={isStreaming}
+									isThinkingLifecycleStreaming={isStreaming && message.id === streamingAssistantMessageId}
+									message={message}
+									onRegenerate={onRegenerate}
+									onVote={onVote}
+									voteValue={votes[message.id]}
+								/>
+								<AssistantSuggestionPills
+									messageId={message.id}
+									onSelectSuggestion={onSelectSuggestion}
+									suggestions={suggestions}
+								/>
+							</Fragment>
 						);
 					})}
 

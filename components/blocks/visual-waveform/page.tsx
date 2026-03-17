@@ -11,7 +11,7 @@ import {
 import {
 	useRealtimeVoice,
 } from "@/components/projects/future-chat/hooks/use-realtime-voice";
-import { createFutureChatId } from "@/lib/future-chat-types";
+import { createId } from "@/lib/utils";
 import type { RovoUIMessage } from "@/lib/rovo-ui-messages";
 import { GUI } from "@/components/utils/gui";
 import { ColorInput } from "./color-input";
@@ -199,7 +199,7 @@ export default function VisualWaveformPage() {
 		) => {
 			const createdAt = new Date().toISOString();
 			const messageId =
-				options?.messageId ?? createFutureChatId("future-chat-realtime");
+				options?.messageId ?? createId("future-chat-realtime");
 			const message = createRealtimeTextMessage({
 				id: messageId,
 				role,

@@ -570,6 +570,7 @@ async function getStatus(port) {
  * @param {object} [options]
  * @param {number} [options.firstEventTimeoutMs]
  * @param {number} [options.idleTimeoutMs]
+ * @param {function} [options.onTimingStage]
  * @returns {{ abort: () => void }}
  */
 function sendMessageStreaming(message, callbacks, port, options = {}) {
@@ -585,6 +586,10 @@ function sendMessageStreaming(message, callbacks, port, options = {}) {
 		typeof options.idleTimeoutMs === "number" && options.idleTimeoutMs > 0
 			? options.idleTimeoutMs
 			: DEFAULT_STREAM_IDLE_TIMEOUT_MS;
+	const onTimingStage =
+		typeof options.onTimingStage === "function"
+			? options.onTimingStage
+			: null;
 	let streamActivitySeen = false;
 	let streamSilenceTimer = null;
 	let streamSilenceTimedOut = false;
@@ -639,6 +644,7 @@ function sendMessageStreaming(message, callbacks, port, options = {}) {
 		try {
 			// Step 1: Queue the message
 			console.log("[rovodev] Queuing message via /v3/set_chat_message...");
+			const setChatMessageStartedAtMs = Date.now();
 
 			// Check if this is a DeferredToolResponse (has tool_call_id and result)
 			const isDeferredToolResponse = message && typeof message === "object" &&
@@ -665,6 +671,14 @@ function sendMessageStreaming(message, callbacks, port, options = {}) {
 				);
 			}
 			console.log("[rovodev] Message queued successfully.");
+			if (onTimingStage) {
+				onTimingStage("rovodev_set_chat_message_complete", {
+					stageMs: Date.now() - setChatMessageStartedAtMs,
+					status: setStatus,
+					port,
+					deferredToolResponse: isDeferredToolResponse,
+				});
+			}
 
 			if (aborted) return;
 
@@ -673,6 +687,9 @@ function sendMessageStreaming(message, callbacks, port, options = {}) {
 			url.searchParams.append("enable_deferred_tools", "true");
 			console.log("[rovodev] Opening SSE stream:", url.pathname + url.search);
 			let fullText = "";
+			const streamChatStartedAtMs = Date.now();
+			let hasReportedFirstSseEvent = false;
+			let hasReportedFirstTextDelta = false;
 
 			await new Promise((resolve, reject) => {
 				rejectActiveStream = reject;
@@ -709,9 +726,15 @@ function sendMessageStreaming(message, callbacks, port, options = {}) {
 							)
 						);
 						return;
-					}
-					console.log("[rovodev] SSE stream connected, waiting for events...");
-					armStreamSilenceTimer();
+						}
+						console.log("[rovodev] SSE stream connected, waiting for events...");
+						if (onTimingStage) {
+							onTimingStage("rovodev_stream_connected", {
+								stageMs: Date.now() - streamChatStartedAtMs,
+								port,
+							});
+						}
+						armStreamSilenceTimer();
 
 					let buffer = "";
 
@@ -725,36 +748,64 @@ function sendMessageStreaming(message, callbacks, port, options = {}) {
 						buffer = lines.pop() ?? "";
 
 						let currentEvent = "";
-						for (const line of lines) {
-							if (line.startsWith("event: ")) {
-								currentEvent = line.slice(7).trim();
-							} else if (line.startsWith("data: ")) {
-								const rawData = line.slice(6);
+							for (const line of lines) {
+								if (line.startsWith("event: ")) {
+									currentEvent = line.slice(7).trim();
+								} else if (line.startsWith("data: ")) {
+									const rawData = line.slice(6);
+									const currentEventName = currentEvent || "message";
 
-								if (callbacks.onEvent) {
-									callbacks.onEvent(currentEvent, rawData);
-								}
+									if (!hasReportedFirstSseEvent && onTimingStage) {
+										hasReportedFirstSseEvent = true;
+										onTimingStage("rovodev_first_sse_event", {
+											stageMs: Date.now() - streamChatStartedAtMs,
+											eventName: currentEventName,
+											port,
+										});
+									}
+
+									if (callbacks.onEvent) {
+										callbacks.onEvent(currentEvent, rawData);
+									}
 
 								try {
 									const parsed = JSON.parse(rawData);
-									const chunk = extractChunkFromEvent(currentEvent, parsed);
+										const chunk = extractChunkFromEvent(currentEvent, parsed);
 
-									if (chunk !== null) {
-										if (chunk.type === "text") {
-											fullText += chunk.text;
-										}
-										callbacks.onChunk(chunk);
-									} else if (currentEvent === "error" || currentEvent === "exception") {
-										reject(new Error(parsed.message ?? parsed.error ?? JSON.stringify(parsed)));
+										if (chunk !== null) {
+											if (chunk.type === "text") {
+												fullText += chunk.text;
+												if (!hasReportedFirstTextDelta && onTimingStage) {
+													hasReportedFirstTextDelta = true;
+													onTimingStage("rovodev_first_text_delta", {
+														stageMs: Date.now() - streamChatStartedAtMs,
+														eventName: currentEventName,
+														chars: chunk.text.length,
+														port,
+													});
+												}
+											}
+											callbacks.onChunk(chunk);
+										} else if (currentEvent === "error" || currentEvent === "exception") {
+											reject(new Error(parsed.message ?? parsed.error ?? JSON.stringify(parsed)));
 										return;
 									}
-								} catch {
-									// Not JSON — treat raw data as text for text-like events
-									if (rawData && (currentEvent === "text_delta" || currentEvent === "content_block_delta")) {
-										fullText += rawData;
-										callbacks.onChunk({ type: "text", text: rawData });
+									} catch {
+										// Not JSON — treat raw data as text for text-like events
+										if (rawData && (currentEvent === "text_delta" || currentEvent === "content_block_delta")) {
+											fullText += rawData;
+											if (!hasReportedFirstTextDelta && onTimingStage) {
+												hasReportedFirstTextDelta = true;
+												onTimingStage("rovodev_first_text_delta", {
+													stageMs: Date.now() - streamChatStartedAtMs,
+													eventName: currentEventName,
+													chars: rawData.length,
+													port,
+												});
+											}
+											callbacks.onChunk({ type: "text", text: rawData });
+										}
 									}
-								}
 								currentEvent = "";
 							} else if (line.trim() === "") {
 								currentEvent = "";
@@ -799,6 +850,13 @@ function sendMessageStreaming(message, callbacks, port, options = {}) {
 
 			if (!aborted) {
 				console.log(`[rovodev] Stream complete. Response length: ${fullText.length}`);
+				if (onTimingStage) {
+					onTimingStage("rovodev_stream_complete", {
+						stageMs: Date.now() - streamChatStartedAtMs,
+						responseChars: fullText.length,
+						port,
+					});
+				}
 				callbacks.onDone(fullText);
 			}
 		} catch (err) {

@@ -1,4 +1,5 @@
 import type { FutureChatDocumentKind } from "@/lib/future-chat-types";
+import { collapseWhitespace, createId } from "@/lib/utils";
 
 export type ArtifactAnnotationKind = Exclude<FutureChatDocumentKind, "sheet">;
 
@@ -62,17 +63,10 @@ const DEFAULT_RING_BUFFER_LIMIT = 20;
 const MAX_TEXT_LENGTH = 180;
 const MAX_HTML_LENGTH = 180;
 
-function createArtifactAnnotationId(prefix = "future-chat-annotation"): string {
-	if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-		return crypto.randomUUID();
-	}
-
-	return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+function createArtifactAnnotationId(): string {
+	return createId("future-chat-annotation");
 }
 
-function collapseWhitespace(value: string | null | undefined): string {
-	return (value ?? "").replace(/\s+/gu, " ").trim();
-}
 
 function truncate(value: string, maxLength: number): string {
 	if (value.length <= maxLength) {

@@ -35,6 +35,7 @@ export const API_ENDPOINTS = {
 	HEALTH: `${API_BASE_URL}/api/health`,
 	CHAT_THREADS: `${API_BASE_URL}/api/chat/threads`,
 	FUTURE_CHAT_CHAT: `${API_BASE_URL}/api/future-chat/chat`,
+	FUTURE_CHAT_SUGGESTIONS: `${API_BASE_URL}/api/future-chat/suggestions`,
 	FUTURE_CHAT_MESSAGES: `${API_BASE_URL}/api/future-chat/messages`,
 	FUTURE_CHAT_THREADS: `${API_BASE_URL}/api/future-chat/threads`,
 	FUTURE_CHAT_VOTES: `${API_BASE_URL}/api/future-chat/votes`,

@@ -899,6 +899,7 @@ function resolveToolCallInput({
  * @param {(port: number) => void} [params.onPortAcquired] - Called once with the resolved port after acquisition
  * @param {boolean} [params.cancelOnComplete] - Cancel lingering chat state before releasing the port after a successful stream
  * @param {boolean} [params.failOnError] - Reject on non-409 stream errors instead of writing inline warning text
+ * @param {(stage: string, details?: object) => void} [params.onTimingStage] - Optional callback for low-level timing milestones
  * @returns {Promise<void>}
  */
 async function streamViaRovoDev({
@@ -920,17 +921,19 @@ async function streamViaRovoDev({
 	onComplete,
 	cancelOnComplete = false,
 	failOnError = false,
+	onTimingStage,
 }) {
 	const waitForTurn = conflictPolicy === "wait-for-turn";
 	const resolvedTimeoutMs =
 		typeof timeoutMs === "number" && timeoutMs > 0
 			? timeoutMs
-			: waitForTurn
-				? WAIT_FOR_TURN_TIMEOUT_MS
-				: RETRY_TIMEOUT_MS;
+				: waitForTurn
+					? WAIT_FOR_TURN_TIMEOUT_MS
+					: RETRY_TIMEOUT_MS;
 	const hasPinnedPort =
 		(typeof port === "number" && port > 0) ||
 		(typeof portIndex === "number" && portIndex >= 0);
+	const acquireStartedAtMs = Date.now();
 	const handle = await acquirePort({
 		timeoutMs: hasPinnedPort
 			? PINNED_PORT_ACQUIRE_TIMEOUT_MS
@@ -941,6 +944,15 @@ async function streamViaRovoDev({
 		port,
 		portIndex,
 	});
+	if (typeof onTimingStage === "function") {
+		onTimingStage("stream_acquire_complete", {
+			stageMs: Date.now() - acquireStartedAtMs,
+			port: handle.port,
+			portIndex,
+			waitForTurn,
+			hasPinnedPort,
+		});
+	}
 
 	if (typeof onPortAcquired === "function") {
 		onPortAcquired(handle.port);
@@ -1369,7 +1381,7 @@ async function streamViaRovoDev({
 						}
 						resolve();
 					},
-					onError: (err) => {
+						onError: (err) => {
 						if (signal && onAbort) {
 							signal.removeEventListener("abort", onAbort);
 						}
@@ -1391,10 +1403,12 @@ async function streamViaRovoDev({
 							reject(streamError);
 							return;
 						}
-						onTextDelta(`\n\n⚠️ ${userFacingErrorMessage}`);
-						resolve();
-					},
-					}, port);
+							onTextDelta(`\n\n⚠️ ${userFacingErrorMessage}`);
+							resolve();
+						},
+						}, port, {
+							onTimingStage,
+						});
 
 				if (signal) {
 					onAbort = () => {

@@ -185,6 +185,36 @@ export async function upsertFutureChatRealtimeMessage(input: {
 	return payload.messages;
 }
 
+export async function fetchFutureChatSuggestedQuestions(input: {
+	message: string;
+	conversationHistory: Array<{
+		type: "user" | "assistant";
+		content: string;
+	}>;
+	assistantResponse: string;
+	signal?: AbortSignal;
+}): Promise<string[]> {
+	const { signal, ...body } = input;
+	const response = await fetch(API_ENDPOINTS.FUTURE_CHAT_SUGGESTIONS, {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(body),
+		signal,
+	});
+	const payload = assertFutureChatAvailable(
+		await parseJsonResponse<{
+			backendUnavailable?: boolean;
+			questions?: string[];
+		}>(response),
+	);
+	return Array.isArray(payload.questions)
+		? payload.questions.filter(
+			(question) =>
+				typeof question === "string" && question.trim().length > 0,
+		)
+		: [];
+}
+
 export async function listFutureChatVotes(threadId: string): Promise<FutureChatVote[]> {
 	const response = await fetch(`${API_ENDPOINTS.FUTURE_CHAT_VOTES}?threadId=${encodeURIComponent(threadId)}`, {
 		method: "GET",

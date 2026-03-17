@@ -1,7 +1,10 @@
 import type { RovoUIMessage } from "@/lib/rovo-ui-messages";
+import { createId } from "@/lib/utils";
 
 export type FutureChatVisibility = "private" | "public";
 export type FutureChatDocumentKind = "text" | "code" | "image" | "sheet";
+export type ArtifactMode = "preview" | "edit";
+export type VoteValue = "up" | "down";
 
 export interface FutureChatThread {
 	id: string;
@@ -67,10 +70,6 @@ export interface FutureChatRoutingMetadata {
 	recentHistory?: FutureChatRecentHistoryEntry[];
 }
 
-export function createFutureChatId(prefix = "future-chat"): string {
-	if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-		return crypto.randomUUID();
-	}
-
-	return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+export function createFutureChatId(): string {
+	return createId("future-chat");
 }

@@ -2,6 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 
 const {
+	buildFutureChatCancelUrl,
 	buildFutureChatAgentModeRequest,
 	getFutureChatPortRoutingPayload,
 } = require("./future-chat-agent-mode.ts");
@@ -20,4 +21,10 @@ test("buildFutureChatAgentModeRequest targets portIndex instead of threadId", ()
 	assert.deepEqual(buildFutureChatAgentModeRequest({ mode: "default" }), {
 		mode: "default",
 	});
+});
+
+test("buildFutureChatCancelUrl preserves the pinned portIndex when present", () => {
+	assert.equal(buildFutureChatCancelUrl(2), "/api/chat-cancel?portIndex=2");
+	assert.equal(buildFutureChatCancelUrl(), "/api/chat-cancel");
+	assert.equal(buildFutureChatCancelUrl(-1), "/api/chat-cancel");
 });

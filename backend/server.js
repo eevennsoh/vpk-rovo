@@ -69,7 +69,7 @@ const { buildGoogleStructuredFallback } = require("./lib/genui-google-tool-fallb
 const { buildFigmaStructuredFallback } = require("./lib/genui-figma-tool-fallback");
 const { assessToolFirstGenuiQuality } = require("./lib/tool-first-genui-quality");
 const { looksLikeInabilityResponse } = require("./lib/inability-response-detector");
-const { classifySmartGenerationIntent } = require("./lib/smart-generation-intent");
+const { assessPromptComplexityForPlanMode } = require("./lib/plan-mode-complexity-heuristic");
 const {
 	resolveRoutingDecision,
 } = require("./lib/resolve-routing-decision");
@@ -124,6 +124,9 @@ const {
 } = require("./lib/direct-media-fence");
 const { createRovoDevPool } = require("./lib/rovodev-pool");
 const { createOrchestratorLog } = require("./lib/orchestrator-log");
+const {
+	generateSuggestedQuestionsViaAIGateway,
+} = require("./lib/suggested-questions");
 const {
 	resolveStrictRovoDevPortAssignment,
 	buildRovoDevPortBindingInstruction,
@@ -225,6 +228,11 @@ const {
 	extractTextFromUiParts,
 	isPlainObject,
 } = require("./lib/shared-utils");
+const {
+	STAGE_TRACE_ID_HEADER,
+	STAGE_TRACE_START_HEADER,
+	createStageTrace,
+} = require("./lib/stage-trace");
 
 console.log("[STARTUP] Dependencies loaded");
 
@@ -480,8 +488,6 @@ const PINNED_PORT_COUNT = 3;
  */
 const portIndexRequestTimestamps = new Map();
 const AI_GATEWAY_ALLOWED_USE_CASES = ["image", "sound", "suggestions"];
-const SUGGESTIONS_BACKEND_DEFAULT = "ai-gateway";
-const SUGGESTIONS_BACKEND_VALUES = new Set(["ai-gateway", "rovodev", "dynamic"]);
 const getListeningPidsForPort = createListeningPidReader();
 
 function isTruthyFlag(value) {
@@ -494,37 +500,6 @@ function isTruthyFlag(value) {
 
 function isAIGatewayFallbackEnabled() {
 	return isTruthyFlag(process.env.AUTO_FALLBACK_TO_AI_GATEWAY);
-}
-
-function resolveSuggestionsBackendPreference() {
-	const rawValue = getNonEmptyString(process.env.SUGGESTIONS_BACKEND);
-	if (!rawValue) {
-		return SUGGESTIONS_BACKEND_DEFAULT;
-	}
-
-	const normalizedValue = rawValue.toLowerCase();
-	return SUGGESTIONS_BACKEND_VALUES.has(normalizedValue)
-		? normalizedValue
-		: SUGGESTIONS_BACKEND_DEFAULT;
-}
-
-function shouldPreferRovoDevForDynamicSuggestions() {
-	const poolStatus = _rovoDevPool?.getStatus?.();
-	if (!poolStatus || !Array.isArray(poolStatus.ports) || poolStatus.ports.length === 0) {
-		return false;
-	}
-
-	const totalPorts = poolStatus.ports.length;
-	const unhealthyCount = poolStatus.ports.filter((entry) => entry?.status === "unhealthy").length;
-	if (unhealthyCount > 0) {
-		return false;
-	}
-
-	const busyLikeCount = poolStatus.ports.filter(
-		(entry) => entry?.status === "busy" || entry?.status === "cooldown"
-	).length;
-	const utilization = busyLikeCount / totalPorts;
-	return utilization < 0.5;
 }
 
 function resolveGatewayUrlForProvider(envVars, preferredProvider, providedGatewayUrl) {
@@ -960,7 +935,6 @@ function mapUiMessagesToConversation(messages) {
 }
 
 const GENUI_META_PREFIX = "[genui-meta]";
-const SMART_INTENT_TIMEOUT_MS = 1500;
 const SMART_WIDGET_TYPE_GENUI = "genui-preview";
 const SMART_WIDGET_TYPE_AUDIO = "audio-preview";
 const SMART_WIDGET_TYPE_IMAGE = "image-preview";
@@ -2083,6 +2057,17 @@ async function handleFutureChatArtifactToolRequest({
 async function proxyFutureChatChatRequest(req, res) {
 	const requestBody =
 		req.body && typeof req.body === "object" ? { ...req.body } : {};
+	const requestOriginHint = getNonEmptyString(requestBody.origin) || "text";
+	const stageTrace = resolveStageTraceFromRequest(req, "future-chat", {
+		path: "/api/future-chat/chat",
+		origin: requestOriginHint,
+	});
+	res.setHeader(STAGE_TRACE_ID_HEADER, stageTrace.requestId);
+	stageTrace.mark("entry", {
+		messageCount: Array.isArray(requestBody.messages) ? requestBody.messages.length : 0,
+		hasDelegatedMessageId: Boolean(getNonEmptyString(requestBody.delegatedMessageId)),
+		hasActiveArtifact: Boolean(requestBody.activeArtifact?.id),
+	});
 	const { abortController, cleanup } = createAbortControllerFromRequest(req, res, {
 		onAbort: () => {
 			console.log("[FUTURE-CHAT] Client disconnected, aborting chat proxy");
@@ -2123,7 +2108,7 @@ async function proxyFutureChatChatRequest(req, res) {
 	requestBody.messages = requestMessages;
 
 	// Accept new fields from the frontend
-	const requestOrigin = getNonEmptyString(requestBody.origin) || "text";
+	const requestOrigin = requestOriginHint;
 	const requestVoiceMetadata =
 		requestBody.voiceMetadata && typeof requestBody.voiceMetadata === "object"
 			? requestBody.voiceMetadata
@@ -2189,6 +2174,28 @@ async function proxyFutureChatChatRequest(req, res) {
 	delete requestBody.activeArtifact;
 
 	// -----------------------------------------------------------------------
+	// Plan mode bypass — skip routing when plan mode is active
+	// -----------------------------------------------------------------------
+	const requestIsPlanMode = requestBody.isPlanMode === true;
+	delete requestBody.isPlanMode;
+
+	if (requestIsPlanMode) {
+		// Validate against RovoDev Serve state (non-blocking sanity check)
+		try {
+			const agentModeResult = await getAgentMode();
+			if (agentModeResult?.mode !== "plan") {
+				console.warn(
+					"[FUTURE-CHAT] Frontend isPlanMode=true but RovoDev agent mode is",
+					agentModeResult?.mode,
+					"— proceeding with plan mode bypass anyway",
+				);
+			}
+		} catch (error) {
+			console.warn("[FUTURE-CHAT] Could not validate agent mode with RovoDev:", error?.message || error);
+		}
+	}
+
+	// -----------------------------------------------------------------------
 	// Unified routing decision
 	// -----------------------------------------------------------------------
 	const { message: latestUserMessage, conversationHistory } =
@@ -2200,6 +2207,57 @@ async function proxyFutureChatChatRequest(req, res) {
 	}));
 
 	let routingDecision;
+	const routeDecisionStartedAtMs = Date.now();
+
+	// -----------------------------------------------------------------------
+	// Auto-plan heuristic — enter plan mode for complex prompts
+	// -----------------------------------------------------------------------
+	let autoPlanTriggered = false;
+	if (!requestIsPlanMode && latestUserMessage) {
+		const complexity = assessPromptComplexityForPlanMode(latestUserMessage);
+		if (complexity.shouldPlan) {
+			autoPlanTriggered = true;
+			console.info("[FUTURE-CHAT] Auto-plan heuristic triggered", {
+				score: complexity.score,
+				reasons: complexity.reasons,
+			});
+			stageTrace.mark("auto_plan_triggered", {
+				score: complexity.score,
+				reasons: complexity.reasons.join(","),
+			});
+			// Programmatically enter plan mode on RovoDev Serve
+			try {
+				await setAgentMode(undefined, "plan");
+				console.info("[FUTURE-CHAT] Auto-plan: set agent mode to plan on RovoDev Serve");
+			} catch (error) {
+				console.warn("[FUTURE-CHAT] Auto-plan: failed to set agent mode:", error?.message || error);
+				autoPlanTriggered = false;
+			}
+		}
+	}
+
+	if (requestIsPlanMode || autoPlanTriggered) {
+		// Plan mode active — skip routing classifier entirely.
+		// All prompts go through the agent loop; RovoDev is already in plan
+		// mode and will emit exit_plan_mode when ready.
+		routingDecision = {
+			intent: "chat",
+			presentation: "text",
+			confidence: 1,
+			reason: "plan_mode_active",
+			origin: requestOrigin,
+		};
+		stageTrace.mark("route_decision_resolved", {
+			stageMs: 0,
+			intent: "chat",
+			confidence: 1,
+			reason: "plan_mode_active",
+		});
+		console.log(
+			"[FUTURE-CHAT] Plan mode active — skipping routing classifier, forcing chat/text",
+		);
+	} else {
+
 	try {
 		routingDecision = await resolveRoutingDecision(
 			{
@@ -2234,8 +2292,16 @@ async function proxyFutureChatChatRequest(req, res) {
 			confidence: 0,
 			reason: "classifier_error",
 			origin: requestOrigin,
-		};
+			};
 	}
+	stageTrace.mark("route_decision_resolved", {
+		stageMs: Date.now() - routeDecisionStartedAtMs,
+		intent: routingDecision.intent,
+		confidence: routingDecision.confidence,
+		reason: routingDecision.reason,
+	});
+
+	} // end of else (non-plan-mode routing)
 
 	console.log(
 		"[FUTURE-CHAT] Routing decision:",
@@ -2264,6 +2330,10 @@ async function proxyFutureChatChatRequest(req, res) {
 			threadId,
 		});
 		if (handled) {
+			stageTrace.mark("artifact_route_handled", {
+				intent: routingDecision.intent,
+				threadId,
+			});
 			cleanup();
 			return;
 		}
@@ -2294,13 +2364,20 @@ async function proxyFutureChatChatRequest(req, res) {
 	let shouldKeepAbortListeners = false;
 
 	try {
+		const internalProxyStartedAtMs = Date.now();
 		response = await fetch(buildFutureChatInternalUrl(req, "/api/chat-sdk"), {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
+				...stageTrace.getHeaders(),
 			},
 			body: JSON.stringify(requestBody),
 			signal: abortController.signal,
+		});
+		stageTrace.mark("chat_sdk_response_headers", {
+			stageMs: Date.now() - internalProxyStartedAtMs,
+			status: response.status,
+			contentType: response.headers.get("content-type") || null,
 		});
 
 		if (!response.ok) {
@@ -2321,6 +2398,10 @@ async function proxyFutureChatChatRequest(req, res) {
 			res.setHeader("Cache-Control", "no-cache");
 			res.setHeader("Connection", "keep-alive");
 			if (!response.body) {
+				stageTrace.mark("chat_sdk_stream_missing_body", {
+					stageMs: Date.now() - internalProxyStartedAtMs,
+					status: response.status,
+				});
 				res.end();
 				return;
 			}
@@ -2328,16 +2409,53 @@ async function proxyFutureChatChatRequest(req, res) {
 			// Prepend data-route-decision as the first SSE event
 			const routeDecisionEvent = formatRouteDecisionSSE(routingDecision);
 			res.write(routeDecisionEvent);
+			stageTrace.mark("first_sse_event_written", {
+				stageMs: Date.now() - internalProxyStartedAtMs,
+				source: "future-chat-route-decision",
+			});
 
 			shouldKeepAbortListeners = true;
 			const responseStream = Readable.fromWeb(response.body);
-			const cleanupStream = () => {
+			let hasLoggedFirstProxyChunk = false;
+			let hasCleanedUpStream = false;
+			responseStream.once("data", (chunk) => {
+				if (hasLoggedFirstProxyChunk) {
+					return;
+				}
+				hasLoggedFirstProxyChunk = true;
+				stageTrace.mark("chat_sdk_first_proxy_chunk", {
+					stageMs: Date.now() - internalProxyStartedAtMs,
+					bytes:
+						typeof chunk?.length === "number" && Number.isFinite(chunk.length)
+							? chunk.length
+							: null,
+				});
+			});
+			const cleanupStream = (stage, details) => {
+				if (hasCleanedUpStream) {
+					return;
+				}
+				hasCleanedUpStream = true;
+				stageTrace.mark(stage, details);
 				cleanup();
 			};
-			responseStream.once("close", cleanupStream);
-			responseStream.once("end", cleanupStream);
-			responseStream.once("error", cleanupStream);
-			res.once("close", cleanupStream);
+			responseStream.once("close", () => {
+				cleanupStream("proxy_stream_closed");
+			});
+			responseStream.once("end", () => {
+				cleanupStream("proxy_stream_complete");
+			});
+			responseStream.once("error", (streamError) => {
+				cleanupStream("proxy_stream_error", {
+					error:
+						streamError instanceof Error
+							? streamError.message
+							: String(streamError),
+				});
+			});
+			res.once("close", () => {
+				cleanupStream("client_response_closed");
+			});
 			responseStream.pipe(res);
 			return;
 		}
@@ -2347,6 +2465,12 @@ async function proxyFutureChatChatRequest(req, res) {
 		if (contentType) {
 			res.setHeader("Content-Type", contentType);
 		}
+		stageTrace.mark("non_stream_response_complete", {
+			stageMs: Date.now() - internalProxyStartedAtMs,
+			status: response.status,
+			bytes: responseBuffer.length,
+			contentType: contentType || null,
+		});
 		res.send(responseBuffer);
 	} catch (error) {
 		const isAbortError =
@@ -2355,8 +2479,12 @@ async function proxyFutureChatChatRequest(req, res) {
 			"name" in error &&
 			error.name === "AbortError";
 		if (isAbortError && (abortController.signal.aborted || req.aborted || res.destroyed)) {
+			stageTrace.mark("proxy_aborted");
 			return;
 		}
+		stageTrace.mark("proxy_error", {
+			error: error instanceof Error ? error.message : String(error),
+		});
 
 		throw error;
 	} finally {
@@ -2379,6 +2507,22 @@ function formatRouteDecisionSSE(decision) {
 	return `data: ${JSON.stringify(part)}\n\n`;
 }
 
+function resolveStageTraceFromRequest(req, scope, baseMeta) {
+	return createStageTrace({
+		scope,
+		requestId: req.get(STAGE_TRACE_ID_HEADER),
+		startedAtMs: req.get(STAGE_TRACE_START_HEADER),
+		logger: console,
+		baseMeta,
+	});
+}
+
+function getUtf8ByteLength(value) {
+	return typeof value === "string" && value.length > 0
+		? Buffer.byteLength(value, "utf8")
+		: 0;
+}
+
 const forgePublishManager = createForgePublishManager({
 	appRegistry,
 	baseDir: path.join(__dirname, "data", "make"),
@@ -2389,57 +2533,6 @@ const orchestratorLog = createOrchestratorLog({
 	baseDir: path.join(__dirname, "data"),
 	logger: console,
 });
-
-function createSuggestedQuestionsPrompt(message, conversationHistory, assistantResponse) {
-	const conversationContext =
-		Array.isArray(conversationHistory) && conversationHistory.length > 0
-			? conversationHistory
-					.map((conversationMessage) =>
-						`${conversationMessage.type === "user" ? "User" : "Assistant"}: ${conversationMessage.content}`
-					)
-					.join("\\n")
-			: "No previous conversation.";
-
-	return `You are a helpful assistant. Based on this conversation, generate exactly 3 concise follow-up questions that the user might want to ask next.
-
-Previous conversation:
-${conversationContext}
-
-User's last message: ${message}
-
-Assistant's response: ${assistantResponse}
-
-Generate 3 short follow-up questions (20-40 characters each). Return ONLY a JSON array of strings, nothing else.
-Format: ["Question 1?", "Question 2?", "Question 3?"]`;
-}
-
-function parseSuggestedQuestions(rawText) {
-	const normalizeQuestions = (value) => {
-		if (!Array.isArray(value)) {
-			return [];
-		}
-
-		return value.filter(
-			(question) => typeof question === "string" && question.trim().length > 0
-		);
-	};
-
-	try {
-		return normalizeQuestions(JSON.parse(rawText));
-	} catch {
-		const jsonArrayMatch = rawText.match(/\[[\s\S]*\]/);
-		if (!jsonArrayMatch) {
-			return [];
-		}
-
-		try {
-			return normalizeQuestions(JSON.parse(jsonArrayMatch[0]));
-		} catch (error) {
-			console.error("[SUGGESTIONS] Failed to parse questions:", error);
-			return [];
-		}
-	}
-}
 
 // RovoDev-only mode - no local clarification/approval logic
 
@@ -3805,95 +3898,91 @@ async function generateSuggestedQuestions({
 	message,
 	conversationHistory,
 	assistantResponse,
-	port,
-	portIndex,
 	signal,
 }) {
 	if (!assistantResponse || !assistantResponse.trim()) {
 		return [];
 	}
 
-	const promptText = createSuggestedQuestionsPrompt(
-		message,
-		conversationHistory,
-		assistantResponse
-	);
-
-	const backendPreference = resolveSuggestionsBackendPreference();
-	const useRovoDevFirst =
-		backendPreference === "rovodev" ||
-		(backendPreference === "dynamic" &&
-			shouldPreferRovoDevForDynamicSuggestions());
-	const backendsToTry = useRovoDevFirst
-		? ["rovodev", "ai-gateway"]
-		: ["ai-gateway", "rovodev"];
-	let lastError = null;
-
-	for (const backend of backendsToTry) {
-		if (backend === "ai-gateway") {
-			if (!hasGatewayUrlConfigured()) {
-				console.info("[SUGGESTIONS] Skipping AI Gateway (not configured)");
-				continue;
-			}
-
-			try {
-				const text = await aiGatewayProvider.generateText({
-					system: "You are a helpful assistant that generates follow-up questions.",
-					prompt: promptText,
-					maxOutputTokens: 200,
-					temperature: 0.7,
-					signal,
-				});
-				console.info("[SUGGESTIONS] Generated via AI Gateway");
-				return parseSuggestedQuestions(text);
-			} catch (error) {
-				lastError = normalizeAIGatewayError(error);
-				console.warn(
-					"[SUGGESTIONS] AI Gateway attempt failed, falling back",
-					lastError?.message || lastError
-				);
-				continue;
-			}
-		}
-
-		try {
-			// When a portIndex is provided, use the panel's own pinned port
-			// (it will be available after the stream releases and cooldown).
-			// Otherwise use the background pool with excludePinnedPorts.
-			const portOpts =
-				typeof portIndex === "number" && portIndex >= 0
-					? { portIndex }
-					: typeof port === "number" && port > 0
-						? { port }
-						: { excludePinnedPorts: true };
-			const text = await generateTextViaRovoDev({
-				system: "You are a helpful assistant that generates follow-up questions.",
-				prompt: promptText,
-				conflictPolicy: "wait-for-turn",
-				timeoutMs: WAIT_FOR_TURN_TIMEOUT_MS,
-				signal,
-				...portOpts,
-			});
-			console.info(
-				typeof portIndex === "number"
-					? `[SUGGESTIONS] Generated via RovoDev on pinned port index ${portIndex}`
-					: typeof port === "number" && port > 0
-						? `[SUGGESTIONS] Generated via RovoDev on port ${port}`
-						: "[SUGGESTIONS] Generated via RovoDev background pool"
-			);
-			return parseSuggestedQuestions(text);
-		} catch (error) {
-			lastError = error;
-			console.warn(
-				"[SUGGESTIONS] RovoDev attempt failed",
-				error instanceof Error ? error.message : error
-			);
-		}
+	if (!hasGatewayUrlConfigured()) {
+		console.info("[SUGGESTIONS] Skipping AI Gateway (not configured)");
+		return [];
 	}
 
-	console.error("SUGGESTIONS generation failed on all backends:", lastError?.message || lastError);
-	return [];
+	return generateSuggestedQuestionsViaAIGateway({
+		message,
+		conversationHistory,
+		assistantResponse,
+		signal,
+		generateText: (options) => aiGatewayProvider.generateText(options),
+		logger: console,
+	});
 }
+
+app.post("/api/future-chat/suggestions", async (req, res) => {
+	const { abortController, cleanup } = createAbortControllerFromRequest(req, res);
+
+	try {
+		const {
+			message: rawMessage,
+			conversationHistory: rawConversationHistory,
+			assistantResponse: rawAssistantResponse,
+		} = req.body || {};
+		const message = getNonEmptyString(rawMessage);
+		const assistantResponse = getNonEmptyString(rawAssistantResponse);
+		const conversationHistory = Array.isArray(rawConversationHistory)
+			? rawConversationHistory
+					.flatMap((entry) => {
+						if (!entry || typeof entry !== "object") {
+							return [];
+						}
+
+						const type =
+							entry.type === "user" || entry.type === "assistant"
+								? entry.type
+								: null;
+						const content = getNonEmptyString(entry.content);
+						return type && content
+							? [
+								{
+									type,
+									content,
+								},
+							]
+							: [];
+					})
+			: [];
+
+		if (!message || !assistantResponse) {
+			return res.status(200).json({ questions: [] });
+		}
+
+		const questions = await generateSuggestedQuestions({
+			message,
+			conversationHistory,
+			assistantResponse,
+			signal: abortController.signal,
+		});
+
+		return res.status(200).json({
+			questions: Array.isArray(questions) ? questions : [],
+		});
+	} catch (error) {
+		const isAbortError =
+			typeof error === "object" &&
+			error !== null &&
+			"name" in error &&
+			error.name === "AbortError";
+		if (isAbortError && (abortController.signal.aborted || req.aborted || res.destroyed)) {
+			return;
+		}
+
+		console.error("[SUGGESTIONS] Future Chat suggestions request failed:", error);
+		return res.status(200).json({ questions: [] });
+	} finally {
+		cleanup();
+	}
+});
 
 app.post("/api/chat-title", async (req, res) => {
 	try {
@@ -3994,6 +4083,7 @@ Rules:
 });
 
 app.post("/api/chat-sdk", async (req, res) => {
+	let stageTrace = null;
 	try {
 		const {
 			messages,
@@ -4010,10 +4100,26 @@ app.post("/api/chat-sdk", async (req, res) => {
 			hasQueuedPrompts: rawHasQueuedPrompts,
 			portIndex: rawPortIndex,
 			origin: rawOrigin,
+			genuiHint: rawGenuiHint,
 		} = req.body || {};
 		const clientTimeZone = normalizeClientTimeZone(rawClientTimeZone);
+		const genuiHint = rawGenuiHint === true;
 		const requestOrigin =
 			getNonEmptyString(rawOrigin)?.toLowerCase() === "voice" ? "voice" : "text";
+			stageTrace = resolveStageTraceFromRequest(req, "chat-sdk", {
+				path: "/api/chat-sdk",
+				origin: requestOrigin,
+			});
+		res.setHeader(STAGE_TRACE_ID_HEADER, stageTrace.requestId);
+		const chatSdkEntryStartedAtMs = Date.now();
+		stageTrace.mark("entry", {
+			messageCount: Array.isArray(messages) ? messages.length : 0,
+			provider: getNonEmptyString(provider) || null,
+			model: getNonEmptyString(rawModel) || null,
+			hasClarification: Boolean(rawClarification),
+			hasApproval: Boolean(rawApproval),
+			hasDeferredToolResponse: Boolean(rawDeferredToolResponse),
+		});
 		const portIndex = typeof rawPortIndex === "number" && Number.isInteger(rawPortIndex) && rawPortIndex >= 0
 			? rawPortIndex
 			: undefined;
@@ -4957,19 +5063,12 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 					.join("\n\n")
 				: toolFirstPromptInstruction
 			: enrichedContextDescription;
-		const effectiveContextWithPortBinding = strictPortAssignment
-			? effectiveContextDescription
-				? `${effectiveContextDescription}\n\n${buildRovoDevPortBindingInstruction(strictPortAssignment)}`
-				: buildRovoDevPortBindingInstruction(strictPortAssignment)
-			: effectiveContextDescription;
-
-		const userMessageText = buildUserMessage(
-			latestUserMessage,
-			conversationHistory,
-			effectiveContextWithPortBinding
-		);
-
-		const smartGeneration = normalizeSmartGenerationOptions(rawSmartGeneration);
+			const effectiveContextWithPortBinding = strictPortAssignment
+				? effectiveContextDescription
+					? `${effectiveContextDescription}\n\n${buildRovoDevPortBindingInstruction(strictPortAssignment)}`
+					: buildRovoDevPortBindingInstruction(strictPortAssignment)
+				: effectiveContextDescription;
+			const smartGeneration = normalizeSmartGenerationOptions(rawSmartGeneration);
 			const smartLayoutContext = {
 				surface: smartGeneration.surface,
 				containerWidthPx: smartGeneration.containerWidthPx,
@@ -4977,6 +5076,33 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 				widthClass: smartGeneration.widthClass,
 			};
 			const smartGenerationActive = isSmartGenerationEnabled(smartGeneration);
+			const promptProfile =
+				promptIntent.isConversational &&
+				!isStrictToolFirstTurn &&
+				!smartGenerationActive &&
+				!clarificationSubmission &&
+				!approvalSubmission &&
+				!deferredToolResponseForRovoDev
+					? "plain-chat"
+					: "default";
+
+			const promptBuildStartedAtMs = Date.now();
+			const userMessageText = buildUserMessage(
+				latestUserMessage,
+				conversationHistory,
+				effectiveContextWithPortBinding,
+				{
+					profile: promptProfile,
+				}
+			);
+			stageTrace.mark("prompt_built", {
+				stageMs: Date.now() - promptBuildStartedAtMs,
+				promptProfile,
+				promptChars: userMessageText.length,
+				promptBytes: getUtf8ByteLength(userMessageText),
+				conversationHistoryCount: conversationHistory.length,
+				contextChars: effectiveContextWithPortBinding?.length ?? 0,
+			});
 			const isTaskLikeRequest = promptIntent.isTaskLike;
 			const prefersGenuiCardExperience =
 				promptIntent.prefersGenuiCardExperience;
@@ -5002,89 +5128,20 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 			}
 				let smartIntentResult = null;
 				if (smartRoutingActive && !isStrictToolFirstTurn) {
-					const heuristicIntent = inferredPromptIntent;
-					if (heuristicIntent !== "normal") {
+					// Honor Layer 1 routing decision for genui via genuiHint.
+					// Image/audio detection is handled by RovoDev via genui-media skill
+					// and backend fence interception — no pre-classification needed.
+					if (genuiHint) {
 						smartIntentResult = {
-							intent: heuristicIntent,
+							intent: "genui",
 							confidence: 1,
-							reason: "heuristic",
+							reason: "layer1-genui-hint",
 							rawOutput: null,
 							error: null,
 							timedOut: false,
 						};
-					} else {
-						const classificationStartMs = Date.now();
-						smartIntentResult = await classifySmartGenerationIntent({
-							latestUserMessage,
-							conversationHistory,
-							timeoutMs: SMART_INTENT_TIMEOUT_MS,
-							classify: ({ system, prompt, signal }) =>
-								generateTextViaGateway({
-									system,
-									prompt,
-									maxOutputTokens: 120,
-									temperature: 0,
-									...buildSmartGenerationGatewayOptions({
-										provider,
-										excludePinnedPorts: true,
-										signal,
-									}),
-								}),
-						});
-						console.info("[SMART-GENERATION] Intent classification", {
-							intent: smartIntentResult.intent,
-							complexity: smartIntentResult.complexity,
-							confidence: smartIntentResult.confidence,
-							reason: smartIntentResult.reason,
-							latencyMs: Date.now() - classificationStartMs,
-							timedOut: smartIntentResult.timedOut,
-							error: smartIntentResult.error,
-						});
+						console.info("[SMART-GENERATION] GenUI intent from Layer 1 routing hint");
 					}
-				}
-
-				if (
-					smartRoutingActive &&
-					!isStrictToolFirstTurn &&
-					smartIntentResult &&
-					smartIntentResult.intent === "normal" &&
-					prefersGenuiCardExperience
-				) {
-					const previousReason = getNonEmptyString(smartIntentResult.reason);
-					smartIntentResult = {
-						...smartIntentResult,
-						intent: "genui",
-						confidence:
-							typeof smartIntentResult.confidence === "number"
-								? smartIntentResult.confidence
-								: 0.51,
-						reason: previousReason
-							? `${previousReason}+auto-genui`
-							: "auto-genui",
-					};
-					console.info("[SMART-GENERATION] Auto-upgraded intent to genui", {
-						reason: smartIntentResult.reason,
-						confidence: smartIntentResult.confidence,
-					});
-				}
-
-				if (
-					smartRoutingActive &&
-					!isStrictToolFirstTurn &&
-					smartIntentResult &&
-					(smartIntentResult.intent === "genui" || smartIntentResult.intent === "both") &&
-					!isTaskLikeRequest
-				) {
-					smartIntentResult = {
-						...smartIntentResult,
-						intent: "normal",
-						reason: getNonEmptyString(smartIntentResult.reason)
-							? `${smartIntentResult.reason}+task-gate-text`
-							: "task-gate-text",
-					};
-					console.info("[SMART-GENERATION] Downgraded intent to normal due to non-task request", {
-						reason: smartIntentResult.reason,
-					});
 				}
 
 				if (smartRoutingActive && !isStrictToolFirstTurn) {
@@ -6255,21 +6312,64 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 			smartGenerationActive &&
 			prefersGenuiCardExperience &&
 			!isStrictToolFirstTurn;
+		stageTrace.mark("preprocessing_complete", {
+			stageMs: Date.now() - chatSdkEntryStartedAtMs,
+			backend: backendSelection.backend,
+			promptProfile,
+			portIndex: typeof portIndex === "number" ? portIndex : null,
+			rovoPort:
+				typeof strictPortAssignment?.rovoPort === "number"
+					? strictPortAssignment.rovoPort
+					: null,
+			smartGenerationActive,
+			isStrictToolFirstTurn,
+		});
 
-		const stream = createUIMessageStream({
-			execute: async ({ writer }) => {
-				const widgetLoadingPrefix = "WIDGET_LOADING:";
-				const widgetDataPrefix = "WIDGET_DATA:";
-				const thinkingStatusPrefix = "THINKING_STATUS:";
+			const stream = createUIMessageStream({
+				execute: async ({ writer }) => {
+					const widgetLoadingPrefix = "WIDGET_LOADING:";
+					const widgetDataPrefix = "WIDGET_DATA:";
+					const thinkingStatusPrefix = "THINKING_STATUS:";
 				const agentExecutionPrefix = "AGENT_EXECUTION:";
 				const partialMarkerBufferLength =
-					Math.max(
-						widgetLoadingPrefix.length,
-						widgetDataPrefix.length,
-						thinkingStatusPrefix.length,
-						agentExecutionPrefix.length
-					) - 1;
-				let textBuffer = "";
+						Math.max(
+							widgetLoadingPrefix.length,
+							widgetDataPrefix.length,
+							thinkingStatusPrefix.length,
+							agentExecutionPrefix.length
+						) - 1;
+					let hasMarkedFirstUiEvent = false;
+					let hasMarkedFirstWrittenTextDelta = false;
+					let hasMarkedTurnComplete = false;
+					let hasMarkedFirstRovoTextDelta = false;
+					const writeStreamPart = writer.write.bind(writer);
+					writer.write = (part) => {
+						const eventType = getNonEmptyString(part?.type) || "unknown";
+						if (!hasMarkedFirstUiEvent) {
+							hasMarkedFirstUiEvent = true;
+							stageTrace.mark("first_chat_sdk_sse_event", {
+								eventType,
+							});
+						}
+						if (
+							!hasMarkedFirstWrittenTextDelta &&
+							eventType === "text-delta" &&
+							typeof part?.delta === "string" &&
+							part.delta.length > 0
+						) {
+							hasMarkedFirstWrittenTextDelta = true;
+							stageTrace.mark("first_text_delta_written", {
+								chars: part.delta.length,
+								source: "chat-sdk-writer",
+							});
+						}
+						if (!hasMarkedTurnComplete && eventType === "data-turn-complete") {
+							hasMarkedTurnComplete = true;
+							stageTrace.mark("turn_complete_written");
+						}
+						return writeStreamPart(part);
+					};
+					let textBuffer = "";
 				const textId = `text-${Date.now()}`;
 				const widgetId = `widget-${Date.now()}`;
 				let textStarted = false;
@@ -7588,13 +7688,19 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 					}
 				};
 
-				const handleStreamTextDelta = (delta) => {
-					if (typeof delta !== "string" || delta.length === 0) {
-						return;
-					}
+					const handleStreamTextDelta = (delta) => {
+						if (typeof delta !== "string" || delta.length === 0) {
+							return;
+						}
+						if (!hasMarkedFirstRovoTextDelta) {
+							hasMarkedFirstRovoTextDelta = true;
+							stageTrace.mark("first_rovodev_text_delta", {
+								chars: delta.length,
+							});
+						}
 
-					emitLazyThinkingStatus();
-					textBuffer += delta;
+						emitLazyThinkingStatus();
+						textBuffer += delta;
 					processTextBuffer(false);
 					maybeEmitProgressivePlanUpdate();
 				};
@@ -7839,7 +7945,14 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 								onPortAcquired: (acquiredPort) => {
 									if (typeof acquiredPort === "number" && acquiredPort > 0) {
 										resolvedRovoDevPort = acquiredPort;
+										stageTrace.mark("stream_port_acquired", {
+											port: acquiredPort,
+											portIndex: typeof portIndex === "number" ? portIndex : null,
+										});
 									}
+								},
+								onTimingStage: (stage, details) => {
+									stageTrace.mark(stage, details);
 								},
 								onThinkingStatus: (statusUpdate) => {
 									if (!statusUpdate || typeof statusUpdate !== "object") {
@@ -9267,56 +9380,40 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 				};
 				console.info("[OUTPUT-ROUTING] Turn routing summary", routingTelemetry);
 
-				// Signal that the main response is complete so the frontend
-				// can show the response immediately. Suggested questions
-				// follow as a best-effort bonus after the turn-complete
-				// sentinel, so they don't block the user from seeing the
-				// response or typing the next message.
-				writer.write({
-					type: "data-turn-complete",
-					data: { timestamp: new Date().toISOString() },
-				});
-
-				// Generate suggested follow-up questions AFTER turn-complete
-				// so the main response is visible immediately.
-				if (!hasQueuedPrompts && !isStaleRequest) {
-					try {
-						const suggestedQuestions = await generateSuggestedQuestions({
-							message: latestUserMessage,
-							conversationHistory,
-							assistantResponse: assistantText,
-							portIndex,
-						});
-
-						if (suggestedQuestions.length > 0) {
-							writer.write({
-								type: "data-suggested-questions",
-								data: { questions: suggestedQuestions },
-							});
-						}
-					} catch (error) {
-						// Suggestions are best-effort — log but don't fail the response
-						console.error("[SUGGESTIONS] Failed to generate:", error?.message || error);
-					}
-				}
-			},
-			onError: (error) => {
-				if (error instanceof Error) {
-					return error.message;
+					// Signal that the main response is complete so the frontend
+					// can show the response immediately. Suggested questions
+					// are fetched on a separate best-effort request after the
+					// stream closes, so they never hold open the main SSE.
+					writer.write({
+						type: "data-turn-complete",
+						data: { timestamp: new Date().toISOString() },
+					});
+					stageTrace.mark("post_turn_work_complete", {
+						suggestionsDeferred: true,
+						isStaleRequest,
+						hasQueuedPrompts,
+					});
+				},
+				onError: (error) => {
+					if (error instanceof Error) {
+						return error.message;
 				}
 				return "Failed to stream AI response";
 			},
 		});
 
-		pipeUIMessageStreamToResponse({
-			response: res,
-			stream,
-		});
-	} catch (error) {
-		console.error("Chat SDK API error:", error);
-		return sendGatewayErrorResponse(res, error, "Failed to process chat request");
-	}
-});
+			pipeUIMessageStreamToResponse({
+				response: res,
+				stream,
+			});
+		} catch (error) {
+			stageTrace.mark("chat_sdk_error", {
+				error: error instanceof Error ? error.message : String(error),
+			});
+			console.error("Chat SDK API error:", error);
+			return sendGatewayErrorResponse(res, error, "Failed to process chat request");
+		}
+	});
 
 app.post("/api/chat-cancel", async (req, res) => {
 	try {

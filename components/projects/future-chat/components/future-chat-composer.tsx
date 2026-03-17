@@ -37,6 +37,11 @@ const FUTURE_CHAT_WAVEFORM_COLORS = ["var(--color-blue-600)", "var(--color-orang
 const FUTURE_CHAT_WAVEFORM_INTRO_MS = 500;
 const EMPTY_REALTIME_OUTPUT_WAVEFORM_BARS: number[] = [];
 
+const supportsFieldSizing =
+	typeof window !== "undefined" &&
+	typeof window.CSS?.supports === "function" &&
+	window.CSS.supports("field-sizing", "content");
+
 interface FutureChatComposerProps {
 	artifactTitle?: string | null;
 	backgroundArtifactLabel?: string | null;
@@ -137,7 +142,6 @@ function FutureChatComposerInner({
 		},
 		[onSubmit, submitDisabled],
 	);
-	const supportsFieldSizing = typeof window !== "undefined" && typeof window.CSS?.supports === "function" && window.CSS.supports("field-sizing", "content");
 
 	useLayoutEffect(() => {
 		previewPromptRef.current = previewPrompt;
@@ -254,7 +258,7 @@ function FutureChatComposerInner({
 			appliedPrefillRef.current = null;
 			controller.textInput.clear();
 		}
-	}, [prefillText, controller.textInput, supportsFieldSizing]);
+	}, [prefillText, controller.textInput]);
 
 	useEffect(() => {
 		if (!isPreviewPlaceholderActive) {

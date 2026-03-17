@@ -1,5 +1,6 @@
 "use client";
 
+import { getMessageTimestamp } from "@/components/projects/future-chat/lib/future-chat-message-artifacts";
 import type { RovoMessageMetadata, RovoUIMessage } from "@/lib/rovo-ui-messages";
 
 type RealtimeTextState = "done" | "streaming";
@@ -30,25 +31,6 @@ interface MergeFutureChatMessagesOptions {
 	rovodevMessages: ReadonlyArray<RovoUIMessage>;
 }
 
-const FUTURE_CHAT_REALTIME_MESSAGES_ENDPOINT = "/api/future-chat/messages";
-
-function getFutureChatRealtimeMessagesEndpoint(threadId: string): string {
-	return `${FUTURE_CHAT_REALTIME_MESSAGES_ENDPOINT}?threadId=${encodeURIComponent(threadId)}`;
-}
-
-function getMessageTimestamp(message: RovoUIMessage): number | null {
-	const createdAt = Date.parse(message.metadata?.createdAt ?? "");
-	if (Number.isFinite(createdAt)) {
-		return createdAt;
-	}
-
-	const updatedAt = Date.parse(message.metadata?.updatedAt ?? "");
-	if (Number.isFinite(updatedAt)) {
-		return updatedAt;
-	}
-
-	return null;
-}
 
 function applyMetadataPatch(
 	currentMetadata: RovoMessageMetadata | undefined,
@@ -227,39 +209,4 @@ export function mergeFutureChatMessages({
 			return left.index - right.index;
 		})
 		.map((entry) => entry.message);
-}
-
-export async function listFutureChatRealtimeMessages(
-	threadId: string,
-): Promise<RovoUIMessage[]> {
-	const response = await fetch(getFutureChatRealtimeMessagesEndpoint(threadId), {
-		method: "GET",
-	});
-
-	if (!response.ok) {
-		const errorText = await response.text().catch(() => "");
-		throw new Error(errorText || `Failed to load realtime messages (${response.status})`);
-	}
-
-	const payload = (await response.json()) as { messages?: RovoUIMessage[] };
-	return Array.isArray(payload.messages) ? payload.messages : [];
-}
-
-export async function persistFutureChatRealtimeMessages(options: {
-	threadId: string;
-	messages: ReadonlyArray<RovoUIMessage>;
-}): Promise<RovoUIMessage[]> {
-	const response = await fetch(FUTURE_CHAT_REALTIME_MESSAGES_ENDPOINT, {
-		method: "POST",
-		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify(options),
-	});
-
-	if (!response.ok) {
-		const errorText = await response.text().catch(() => "");
-		throw new Error(errorText || `Failed to persist realtime messages (${response.status})`);
-	}
-
-	const payload = (await response.json()) as { messages?: RovoUIMessage[] };
-	return Array.isArray(payload.messages) ? payload.messages : [];
 }

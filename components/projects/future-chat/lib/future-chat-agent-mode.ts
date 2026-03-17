@@ -6,6 +6,13 @@ export function getFutureChatPortRoutingPayload(portIndex?: number): {
 		: {};
 }
 
+export function buildFutureChatCancelUrl(portIndex?: number): string {
+	const payload = getFutureChatPortRoutingPayload(portIndex);
+	return typeof payload.portIndex === "number"
+		? `/api/chat-cancel?portIndex=${encodeURIComponent(String(payload.portIndex))}`
+		: "/api/chat-cancel";
+}
+
 export function buildFutureChatAgentModeRequest(input: {
 	mode: "ask" | "default" | "plan";
 	portIndex?: number;

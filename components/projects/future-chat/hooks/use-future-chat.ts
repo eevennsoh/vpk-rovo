@@ -13,6 +13,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { useLatestRef } from "@/lib/use-latest-ref";
 import { toast } from "sonner";
 import {
 	appendFutureChatStreamingArtifactDelta,
@@ -20,6 +21,7 @@ import {
 	type FutureChatStreamingArtifact,
 } from "@/components/projects/future-chat/lib/future-chat-streaming-artifact";
 import type { FutureChatPendingArtifactResult } from "@/components/projects/future-chat/lib/future-chat-message-artifacts";
+import { getLatestDocumentContent } from "@/components/projects/future-chat/lib/future-chat-message-artifacts";
 import {
 	buildFutureChatThreadPersistKey,
 	shouldReplacePendingFutureChatRoute,
@@ -35,6 +37,10 @@ import {
 	updateRealtimeTextMessage,
 	upsertRealtimeMessage,
 } from "@/components/projects/future-chat/lib/future-chat-realtime-message-state";
+import {
+	appendSuggestedQuestionsToAssistantMessage,
+	buildSuggestedQuestionsRequest,
+} from "@/components/projects/future-chat/lib/future-chat-suggestions";
 import {
 	getLatestFutureChatThinkingStatusLabel,
 	resolveFutureChatComposerSubmitState,
@@ -55,6 +61,7 @@ import {
 	deleteAllFutureChatThreads,
 	deleteFutureChatDocument,
 	deleteFutureChatThread,
+	fetchFutureChatSuggestedQuestions,
 	getFutureChatBackendUnavailableUserMessage,
 	getFutureChatDocument,
 	getFutureChatThread,
@@ -68,6 +75,7 @@ import {
 	updateFutureChatThread,
 } from "@/components/projects/future-chat/lib/api";
 import {
+	type ArtifactMode,
 	type FutureChatDocument,
 	type FutureChatDocumentKind,
 	type FutureChatThread,
@@ -75,6 +83,7 @@ import {
 	type FutureChatVote,
 	type FutureChatActiveArtifact,
 	type FutureChatRecentHistoryEntry,
+	type VoteValue,
 	createFutureChatId,
 } from "@/lib/future-chat-types";
 import {
@@ -91,18 +100,26 @@ import {
 } from "@/components/projects/shared/lib/plan-approval";
 import {
 	buildFutureChatAgentModeRequest,
+	buildFutureChatCancelUrl,
 	getFutureChatPortRoutingPayload,
 } from "@/components/projects/future-chat/lib/future-chat-agent-mode";
+import {
+	classifyFutureChatTurnMode,
+	getLatestVisibleFutureChatUserPrompt,
+	hasPendingFutureChatStructuredContinuation,
+} from "@/components/projects/future-chat/lib/future-chat-turn-mode";
 import type { ParsedPlanWidgetPayload } from "@/components/projects/shared/lib/plan-widget";
 import { markLastFutureChatAssistantMessageInterrupted } from "@/lib/future-chat-interruptions";
 import {
 	getLatestDataPart,
 	getMessageArtifactResult,
 	getMessageText,
+	hasTurnCompleteSignal,
 	type RovoMessageInterruptionSource,
 	type RovoUIMessage,
 } from "@/lib/rovo-ui-messages";
 import { API_ENDPOINTS } from "@/lib/api-config";
+import { createId, sortByUpdatedAtDesc } from "@/lib/utils";
 
 function deriveThreadTitle(promptText: string): string {
 	const firstLine = promptText
@@ -112,26 +129,16 @@ function deriveThreadTitle(promptText: string): string {
 	return firstLine?.slice(0, 80) || "New chat";
 }
 
-function getLatestDocumentContent(document: FutureChatDocument | null): string {
-	if (!document || document.versions.length === 0) {
-		return "";
-	}
-
-	return document.versions[document.versions.length - 1]?.content ?? "";
-}
-
 function upsertDocumentRecord(
 	documents: ReadonlyArray<FutureChatDocument>,
 	nextDocument: FutureChatDocument,
 ): FutureChatDocument[] {
 	const withoutPrevious = documents.filter((document) => document.id !== nextDocument.id);
-	return [nextDocument, ...withoutPrevious].sort((left, right) => {
-		return Date.parse(right.updatedAt) - Date.parse(left.updatedAt);
-	});
+	return sortByUpdatedAtDesc([nextDocument, ...withoutPrevious]);
 }
 
-function buildVotesMap(votes: ReadonlyArray<FutureChatVote>): Record<string, "up" | "down"> {
-	return votes.reduce<Record<string, "up" | "down">>((result, vote) => {
+function buildVotesMap(votes: ReadonlyArray<FutureChatVote>): Record<string, VoteValue> {
+	return votes.reduce<Record<string, VoteValue>>((result, vote) => {
 		if (vote.value === "up" || vote.value === "down") {
 			result[vote.messageId] = vote.value;
 		}
@@ -387,7 +394,7 @@ export interface FutureChatHookResult {
 		text: string;
 		contextDescription?: string;
 	}) => Promise<void>;
-	artifactMode: "preview" | "edit";
+	artifactMode: ArtifactMode;
 	artifactDraftContent: string;
 	deleteAllThreads: () => Promise<void>;
 	deleteDocument: (documentId: string) => Promise<void>;
@@ -414,7 +421,7 @@ export interface FutureChatHookResult {
 	selectedVersionId: string | null;
 	setActiveDocumentId: (documentId: string | null) => void;
 	setArtifactDraftContent: (value: string) => void;
-	setArtifactMode: (mode: "preview" | "edit") => void;
+	setArtifactMode: (mode: ArtifactMode) => void;
 	setEditingMessageId: (messageId: string | null) => void;
 	setSelectedVersionId: (versionId: string | null) => void;
 	setSidebarOpen: (isOpen: boolean) => void;
@@ -443,8 +450,8 @@ export interface FutureChatHookResult {
 	setVisibleArtifactDocumentId: (documentId: string | null) => void;
 	threads: FutureChatThread[];
 	threadVisibility: FutureChatVisibility;
-	votes: Record<string, "up" | "down">;
-	voteOnMessage: (messageId: string, value: "up" | "down" | null) => Promise<void>;
+	votes: Record<string, VoteValue>;
+	voteOnMessage: (messageId: string, value: VoteValue | null) => Promise<void>;
 	appendRealtimeMessage: (
 		role: "user" | "assistant",
 		content: string,
@@ -508,7 +515,7 @@ export function useFutureChat({
 	const [threadVisibility, setThreadVisibility] = useState<FutureChatVisibility>("private");
 	const [sidebarOpen, setSidebarOpen] = useState(() => !embedded);
 	const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
-	const [artifactMode, setArtifactMode] = useState<"preview" | "edit">("preview");
+	const [artifactMode, setArtifactMode] = useState<ArtifactMode>("preview");
 	const [artifactDraftContent, setArtifactDraftContent] = useState("");
 	const [visibleArtifactDocumentId, setVisibleArtifactDocumentId] = useState<string | null>(null);
 	const [pendingArtifactResult, setPendingArtifactResult] =
@@ -516,7 +523,7 @@ export function useFutureChat({
 	const [streamingArtifact, setStreamingArtifact] = useState<FutureChatStreamingArtifact | null>(null);
 	const [streamingArtifactMessageId, setStreamingArtifactMessageId] = useState<string | null>(null);
 	const pendingArtifactAssociationRef = useRef(false);
-	const [votes, setVotes] = useState<Record<string, "up" | "down">>({});
+	const [votes, setVotes] = useState<Record<string, VoteValue>>({});
 	const [inputError, setInputError] = useState<string | null>(null);
 	const [isLoadingThread, setIsLoadingThread] = useState(() => initialThreadId !== null);
 	const [isVoiceMode, setIsVoiceMode] = useState(false);
@@ -534,6 +541,20 @@ export function useFutureChat({
 		setBackgroundDelegationMessageId(null);
 		setDelegationTurnStatus("ready");
 		setDirectDelegationPhase("idle");
+	}, []);
+	const clearArtifactState = useCallback(() => {
+		setActiveDocumentId(null);
+		setVisibleArtifactDocumentId(null);
+		setSelectedVersionId(null);
+		setArtifactDraftContent("");
+		setArtifactMode("preview");
+	}, []);
+	const selectDocumentForDisplay = useCallback((document: FutureChatDocument) => {
+		setDocuments((previousDocuments) => upsertDocumentRecord(previousDocuments, document));
+		setActiveDocumentId(document.id);
+		setSelectedVersionId(document.versions.at(-1)?.id ?? null);
+		setArtifactDraftContent(getLatestDocumentContent(document));
+		setArtifactMode("preview");
 	}, []);
 	const activeDocument = useMemo(() => {
 		return documents.find((document) => document.id === activeDocumentId) ?? null;
@@ -559,17 +580,17 @@ export function useFutureChat({
 	const lastPersistedKeyRef = useRef<string>("");
 	const isHydratingThreadRef = useRef(false);
 	const activeThreadIdRef = useRef<string | null>(initialThreadId);
-	const activeDocumentRef = useRef<FutureChatDocument | null>(null);
-	const pendingArtifactResultRef = useRef<FutureChatPendingArtifactResult | null>(null);
-	const streamingArtifactRef = useRef<FutureChatStreamingArtifact | null>(null);
+	const activeDocumentRef = useLatestRef(activeDocument);
+	const streamingArtifactRef = useLatestRef(streamingArtifact);
 	const queuedStreamingArtifactDeltaRef = useRef("");
 	const queuedStreamingArtifactKindRef = useRef<FutureChatDocumentKind | null>(null);
 	const queuedStreamingArtifactFrameRef = useRef<number | null>(null);
 	const streamingArtifactMessageIdRef = useRef<string | null>(null);
-	const visibleArtifactDocumentIdRef = useRef<string | null>(null);
+	const visibleArtifactDocumentIdRef = useLatestRef(visibleArtifactDocumentId);
 	const lastCompletedArtifactDocumentIdRef = useRef<string | null>(null);
 	const suppressedStreamingAutoOpenDocumentIdRef = useRef<string | null>(null);
-	const isVoiceModeRef = useRef(isVoiceMode);
+	const isVoiceModeRef = useLatestRef(isVoiceMode);
+	const isPlanModeRef = useLatestRef(isPlanMode);
 	const rovodevMessagesRef = useRef<RovoUIMessage[]>([]);
 	const realtimeMessagesRef = useRef<RovoUIMessage[]>([]);
 	const realtimeMessagesVersionRef = useRef(0);
@@ -580,22 +601,11 @@ export function useFutureChat({
 	const pendingRouteThreadIdRef = useRef<string | null>(null);
 	const pendingThreadCreationRef = useRef<Promise<string> | null>(null);
 	const deletedThreadIdsRef = useRef<Set<string>>(new Set());
+	const requestedSuggestionMessageIdsRef = useRef<Set<string>>(new Set());
 
 	useEffect(() => {
 		activeThreadIdRef.current = activeThreadId;
 	}, [activeThreadId]);
-
-	useEffect(() => {
-		activeDocumentRef.current = activeDocument;
-	}, [activeDocument]);
-
-	useEffect(() => {
-		pendingArtifactResultRef.current = pendingArtifactResult;
-	}, [pendingArtifactResult]);
-
-	useEffect(() => {
-		streamingArtifactRef.current = streamingArtifact;
-	}, [streamingArtifact]);
 
 	const clearQueuedStreamingArtifactDelta = useCallback(() => {
 		if (queuedStreamingArtifactFrameRef.current !== null) {
@@ -668,20 +678,12 @@ export function useFutureChat({
 	}, [streamingArtifactMessageId]);
 
 	useEffect(() => {
-		visibleArtifactDocumentIdRef.current = visibleArtifactDocumentId;
-	}, [visibleArtifactDocumentId]);
-
-	useEffect(() => {
 		return () => {
 			if (queuedStreamingArtifactFrameRef.current !== null) {
 				window.cancelAnimationFrame(queuedStreamingArtifactFrameRef.current);
 			}
 		};
 	}, []);
-
-	useEffect(() => {
-		isVoiceModeRef.current = isVoiceMode;
-	}, [isVoiceMode]);
 
 	useEffect(() => {
 		realtimeMessagesRef.current = realtimeMessages;
@@ -753,6 +755,35 @@ export function useFutureChat({
 						typeof body?.id === "string" && body.id.trim()
 							? body.id.trim()
 							: null;
+					const latestVisibleUserPrompt =
+						getLatestVisibleFutureChatUserPrompt(messages);
+					const hasPendingStructuredContinuation =
+						hasPendingFutureChatStructuredContinuation(messages);
+					const isVoiceTurn =
+						body?.origin === "voice" || isVoiceModeRef.current;
+					const hasStructuredTurnBody = Boolean(
+						body?.clarification
+						|| body?.deferredToolResponse
+						|| body?.approval
+					);
+					const turnMode = classifyFutureChatTurnMode({
+						prompt: latestVisibleUserPrompt?.text ?? "",
+						hasActiveArtifact: Boolean(
+							activeArtifactContext?.id
+							|| artifactContextFromBody?.id
+							|| activeDocumentId
+						),
+						hasAttachments: latestVisibleUserPrompt?.hasAttachments ?? false,
+						hasPendingStructuredContinuation,
+						hasStreamingArtifact: Boolean(streamingArtifact?.documentId),
+						hasStructuredTurnBody,
+						isPlanMode: isPlanModeRef.current,
+						isVoiceTurn,
+					});
+					const resolvedSmartGenerationRequest =
+						turnMode === "plain_chat"
+							? undefined
+							: smartGenerationRequest;
 
 					return {
 						body: {
@@ -771,10 +802,11 @@ export function useFutureChat({
 								activeArtifactContext ??
 								undefined,
 							...getFutureChatPortRoutingPayload(portIndex),
-							smartGeneration: smartGenerationRequest,
+							smartGeneration: resolvedSmartGenerationRequest,
 							activeArtifact: buildActiveArtifactMetadata(activeDocument),
 							origin: body?.origin === "voice" ? "voice" : "text",
 							recentHistory: buildRecentHistory(messages),
+							isPlanMode: isPlanModeRef.current,
 						},
 					};
 				},
@@ -850,13 +882,9 @@ export function useFutureChat({
 			kind: checkpoint.kind,
 			content: checkpoint.content,
 		});
-		setDocuments((previousDocuments) => upsertDocumentRecord(previousDocuments, document));
-		setActiveDocumentId(document.id);
-		setSelectedVersionId(document.versions.at(-1)?.id ?? null);
-		setArtifactDraftContent(getLatestDocumentContent(document));
-		setArtifactMode("preview");
+		selectDocumentForDisplay(document);
 		return document;
-	}, []);
+	}, [selectDocumentForDisplay]);
 
 	const hydratePersistedArtifact = useCallback(async (documentId: string) => {
 		try {
@@ -871,17 +899,11 @@ export function useFutureChat({
 			}
 
 			if (!document) {
-				setActiveDocumentId(null);
-				setVisibleArtifactDocumentId(null);
-				setSelectedVersionId(null);
+				clearArtifactState();
 				return null;
 			}
 
-			setDocuments((previousDocuments) => upsertDocumentRecord(previousDocuments, document));
-			setActiveDocumentId(document.id);
-			setSelectedVersionId(document.versions.at(-1)?.id ?? null);
-			setArtifactDraftContent(getLatestDocumentContent(document));
-			setArtifactMode("preview");
+			selectDocumentForDisplay(document);
 			return document;
 		} catch (error) {
 			if (isFutureChatBackendUnavailableError(error)) {
@@ -892,7 +914,7 @@ export function useFutureChat({
 			console.error("[FutureChat] Failed to hydrate streamed artifact:", error);
 			return null;
 		}
-	}, []);
+	}, [clearArtifactState, selectDocumentForDisplay]);
 
 	const {
 		messages: rovodevMessages,
@@ -1027,11 +1049,7 @@ export function useFutureChat({
 			clearStreamingArtifactState();
 			resetPendingArtifactAssociation();
 			if (!activeDocumentRef.current && streamingDocumentId) {
-				setActiveDocumentId(null);
-				setVisibleArtifactDocumentId(null);
-				setSelectedVersionId(null);
-				setArtifactDraftContent("");
-				setArtifactMode("preview");
+				clearArtifactState();
 			}
 			setInputError(toFutureChatUserErrorMessage(error));
 		},
@@ -1092,6 +1110,72 @@ export function useFutureChat({
 	useEffect(() => {
 		statusRef.current = status;
 	}, [status]);
+
+	useEffect(() => {
+		if (isStreaming) {
+			return;
+		}
+
+		const latestAssistantMessage = [...rovodevMessages]
+			.reverse()
+			.find((message) => {
+				return (
+					message.role === "assistant" &&
+					hasTurnCompleteSignal(message) &&
+					getMessageText(message).trim().length > 0 &&
+					!getLatestDataPart(message, "data-suggested-questions")
+				);
+			});
+		if (!latestAssistantMessage?.id) {
+			return;
+		}
+
+		if (requestedSuggestionMessageIdsRef.current.has(latestAssistantMessage.id)) {
+			return;
+		}
+
+		const suggestionRequest = buildSuggestedQuestionsRequest(
+			rovodevMessages,
+			latestAssistantMessage.id,
+		);
+		if (!suggestionRequest) {
+			return;
+		}
+
+		requestedSuggestionMessageIdsRef.current.add(suggestionRequest.assistantMessageId);
+		const threadIdAtRequest = activeThreadIdRef.current;
+		void fetchFutureChatSuggestedQuestions(suggestionRequest)
+			.then((questions) => {
+				if (questions.length === 0) {
+					return;
+				}
+
+				if (activeThreadIdRef.current !== threadIdAtRequest) {
+					return;
+				}
+
+				setRovodevMessages((currentMessages) =>
+					appendSuggestedQuestionsToAssistantMessage(
+						currentMessages,
+						suggestionRequest.assistantMessageId,
+						questions,
+					),
+				);
+			})
+			.catch((error) => {
+				requestedSuggestionMessageIdsRef.current.delete(
+					suggestionRequest.assistantMessageId,
+				);
+				if (isFutureChatBackendUnavailableError(error)) {
+					return;
+				}
+
+				console.warn(
+					"[FutureChat] Failed to fetch suggested questions:",
+					error,
+				);
+			});
+	}, [isStreaming, rovodevMessages, setRovodevMessages]);
 
 	useEffect(() => {
 		if (!pendingArtifactAssociationRef.current) return;
@@ -1280,14 +1364,10 @@ export function useFutureChat({
 		clearStreamingArtifactState();
 		resetPendingArtifactAssociation();
 		setDocuments([]);
-		setActiveDocumentId(null);
-		setVisibleArtifactDocumentId(null);
-		setSelectedVersionId(null);
+		clearArtifactState();
 		setVotes({});
 		setThreadVisibility("private");
 		setEditingMessageId(null);
-		setArtifactMode("preview");
-		setArtifactDraftContent("");
 		lastPersistedKeyRef.current = buildFutureChatThreadPersistKey({
 			messages: [],
 			realtimeMessages: [],
@@ -1650,7 +1730,7 @@ export function useFutureChat({
 			},
 		) => {
 			const createdAt = options?.createdAt ?? new Date().toISOString();
-			const messageId = options?.messageId ?? createFutureChatId("future-chat-realtime");
+			const messageId = options?.messageId ?? createId("future-chat-realtime");
 			const threadId = await ensureThread(content || `${role} message`);
 			const message = createRealtimeTextMessage({
 				id: messageId,
@@ -1947,13 +2027,13 @@ export function useFutureChat({
 		lastExplicitCancelAtRef.current = now;
 
 		try {
-			await fetch(API_ENDPOINTS.CHAT_CANCEL, {
+			await fetch(buildFutureChatCancelUrl(portIndex), {
 				method: "POST",
 			});
 		} catch (error) {
 			console.warn("[FutureChat] Explicit cancel request failed:", error);
 		}
-	}, []);
+	}, [portIndex]);
 
 	const waitForActiveTurnToStop = useCallback(async () => {
 		const startedAt = Date.now();
@@ -2220,12 +2300,8 @@ export function useFutureChat({
 					content,
 					sourceMessageId: message.id,
 				});
-				setDocuments((previousDocuments) => [document, ...previousDocuments]);
-				setActiveDocumentId(document.id);
+				selectDocumentForDisplay(document);
 				setVisibleArtifactDocumentId(document.id);
-				setArtifactMode("preview");
-				setSelectedVersionId(document.versions.at(-1)?.id ?? null);
-				setArtifactDraftContent(getLatestDocumentContent(document));
 			} catch (error) {
 				setInputError(toFutureChatUserErrorMessage(error));
 			}
@@ -2237,11 +2313,8 @@ export function useFutureChat({
 		async (documentId: string) => {
 			const existingDocument = documents.find((document) => document.id === documentId) ?? null;
 			if (existingDocument) {
-				setActiveDocumentId(existingDocument.id);
+				selectDocumentForDisplay(existingDocument);
 				setVisibleArtifactDocumentId(existingDocument.id);
-				setSelectedVersionId(existingDocument.versions.at(-1)?.id ?? null);
-				setArtifactDraftContent(getLatestDocumentContent(existingDocument));
-				setArtifactMode("preview");
 				return;
 			}
 
@@ -2283,10 +2356,7 @@ export function useFutureChat({
 					previousDocuments.filter((document) => document.id !== documentId),
 				);
 				if (activeDocumentId === documentId) {
-					setActiveDocumentId(null);
-					setVisibleArtifactDocumentId(null);
-					setSelectedVersionId(null);
-					setArtifactDraftContent("");
+					clearArtifactState();
 				}
 			} catch (error) {
 				setInputError(toFutureChatUserErrorMessage(error));

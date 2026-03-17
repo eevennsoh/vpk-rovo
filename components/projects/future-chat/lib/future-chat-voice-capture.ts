@@ -1,3 +1,5 @@
+import { collapseWhitespace } from "@/lib/utils";
+
 export interface FutureChatVoiceCaptureAvailabilityInput {
 	hasFocus: boolean;
 	visibilityState: DocumentVisibilityState;
@@ -85,7 +87,7 @@ export function shouldProcessFutureChatVoiceTranscriptionDelta({
 }
 
 export function normalizeFutureChatVoiceTranscript(transcript: string): string {
-	return transcript.trim().replaceAll(/\s+/gu, " ");
+	return collapseWhitespace(transcript);
 }
 
 export function shouldStartNewFutureChatVoiceTurn({

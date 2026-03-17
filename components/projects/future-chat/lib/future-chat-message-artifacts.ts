@@ -8,6 +8,7 @@ import {
 	type RovoDataParts,
 	type RovoUIMessage,
 } from "@/lib/rovo-ui-messages";
+import { sortByUpdatedAtDesc } from "@/lib/utils";
 
 export interface FutureChatPendingArtifactResult {
 	action: RovoDataParts["artifact-result"]["action"] | null;
@@ -32,7 +33,7 @@ export interface FutureChatOrphanArtifactDisplay
 	anchorMessageId: string;
 }
 
-function getLatestDocumentContent(document: FutureChatDocument | null): string {
+export function getLatestDocumentContent(document: FutureChatDocument | null): string {
 	if (!document || document.versions.length === 0) {
 		return "";
 	}
@@ -40,7 +41,7 @@ function getLatestDocumentContent(document: FutureChatDocument | null): string {
 	return document.versions[document.versions.length - 1]?.content ?? "";
 }
 
-function getMessageTimestamp(
+export function getMessageTimestamp(
 	message: Pick<RovoUIMessage, "metadata">,
 ): number | null {
 	const createdAt = Date.parse(message.metadata?.createdAt ?? "");
@@ -79,9 +80,7 @@ function getDocumentAnchorTimestamp(document: FutureChatDocument): number | null
 function sortDocumentsNewestFirst(
 	documents: ReadonlyArray<FutureChatDocument>,
 ): FutureChatDocument[] {
-	return [...documents].sort((left, right) => {
-		return Date.parse(right.updatedAt) - Date.parse(left.updatedAt);
-	});
+	return sortByUpdatedAtDesc(documents);
 }
 
 export function resolveFutureChatMessageArtifactDisplay({

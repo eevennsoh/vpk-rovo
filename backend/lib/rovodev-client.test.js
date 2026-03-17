@@ -211,3 +211,75 @@ test("sendMessageStreaming aborts silent SSE streams and cancels the server turn
 		await close(server);
 	}
 });
+
+test("sendMessageStreaming reports timing milestones for queued and streamed turns", async () => {
+	const timingStages = [];
+
+	const server = http.createServer((req, res) => {
+		if (req.url === "/v3/set_chat_message" && req.method === "POST") {
+			req.resume();
+			res.writeHead(200, { "Content-Type": "application/json" });
+			res.end(JSON.stringify({ ok: true }));
+			return;
+		}
+
+		if (req.url?.startsWith("/v3/stream_chat") && req.method === "GET") {
+			res.writeHead(200, {
+				"Content-Type": "text/event-stream",
+				"Cache-Control": "no-cache",
+				Connection: "keep-alive",
+			});
+			res.write("event: content_block_delta\n");
+			res.write("data: Hello\n\n");
+			res.end();
+			return;
+		}
+
+		if (req.url === "/v3/cancel" && req.method === "POST") {
+			req.resume();
+			res.writeHead(200, { "Content-Type": "application/json" });
+			res.end(JSON.stringify({ cancelled: true }));
+			return;
+		}
+
+		res.writeHead(404);
+		res.end();
+	});
+
+	const port = await listen(server);
+
+	try {
+		await new Promise((resolve, reject) => {
+			sendMessageStreaming(
+				"hello",
+				{
+					onChunk: () => {},
+					onDone: resolve,
+					onError: reject,
+				},
+				port,
+				{
+					onTimingStage: (stage, details) => {
+						timingStages.push({ stage, details });
+					},
+				}
+			);
+		});
+
+		assert.deepEqual(
+			timingStages.map((entry) => entry.stage),
+			[
+				"rovodev_set_chat_message_complete",
+				"rovodev_stream_connected",
+				"rovodev_first_sse_event",
+				"rovodev_stream_complete",
+			]
+		);
+		for (const entry of timingStages) {
+			assert.equal(typeof entry.details?.stageMs, "number");
+			assert.ok(entry.details.stageMs >= 0);
+		}
+	} finally {
+		await close(server);
+	}
+});

@@ -69,6 +69,14 @@ const FIGMA_CLARIFICATION_INSTRUCTION = [
 	"[End Figma Tool Protocol]",
 ].join("\n");
 
+const PLAIN_CHAT_INSTRUCTION = [
+	"[Plain Chat Mode]",
+	"This is a simple conversational turn. Respond directly, briefly, and naturally.",
+	"Do not call tools unless the user explicitly asks for an action that requires them.",
+	"Do not emit plans, widgets, or specs for greetings, acknowledgements, or small talk.",
+	"[End Plain Chat Mode]",
+].join("\n");
+
 const rovodevSiteUrl = process.env.ROVODEV_SITE_URL || "https://hello.atlassian.net";
 
 const LAST_7_DAYS_WORK_INSTRUCTION = [
@@ -259,31 +267,64 @@ function buildQuestionCardSkipNotification(questionTitle) {
 	].join("\n");
 }
 
-/**
- * Formats user message with conversation history for RovoDev.
- * RovoDev handles all system prompts and widget protocol.
- */
-function buildUserMessage(message, conversationHistory, contextDescription) {
-	const promptSpecificInstruction = resolvePromptSpecificInstruction(
-		message,
-		contextDescription
-	);
-	const instructions = [
+function getInstructionBlocksForProfile(profile, promptSpecificInstruction) {
+	if (profile === "plain-chat") {
+		return [PLAIN_CHAT_INSTRUCTION, promptSpecificInstruction];
+	}
+
+	return [
 		REQUEST_USER_INPUT_INSTRUCTION,
 		PLAN_DESCRIPTION_INSTRUCTION,
 		GENUI_SPEC_INSTRUCTION,
 		FIGMA_CLARIFICATION_INSTRUCTION,
 		promptSpecificInstruction,
-	]
+	];
+}
+
+function getConversationHistoryForProfile(profile, conversationHistory) {
+	if (!Array.isArray(conversationHistory) || conversationHistory.length === 0) {
+		return [];
+	}
+
+	if (profile === "plain-chat") {
+		return conversationHistory.slice(-4);
+	}
+
+	return conversationHistory;
+}
+
+/**
+ * Formats user message with conversation history for RovoDev.
+ * RovoDev handles all system prompts and widget protocol.
+ */
+function buildUserMessage(
+	message,
+	conversationHistory,
+	contextDescription,
+	options = {},
+) {
+	const profile = options?.profile === "plain-chat" ? "plain-chat" : "default";
+	const promptSpecificInstruction = resolvePromptSpecificInstruction(
+		message,
+		contextDescription
+	);
+	const instructions = getInstructionBlocksForProfile(
+		profile,
+		promptSpecificInstruction
+	)
 		.filter((entry) => typeof entry === "string" && entry.trim().length > 0)
 		.join("\n\n");
 	const combinedContext = contextDescription
 		? `${contextDescription}\n\n${instructions}`
 		: instructions;
 	const baseMessage = `${combinedContext}\n\nUser question: ${message}`;
+	const resolvedConversationHistory = getConversationHistoryForProfile(
+		profile,
+		conversationHistory
+	);
 
-	if (conversationHistory && conversationHistory.length > 0) {
-		return `Previous conversation context:\n${conversationHistory.map((msg) => `${msg.type === "user" ? "User" : "Assistant"}: ${msg.content}`).join("\n")}\n\nCurrent question: ${baseMessage}`;
+	if (resolvedConversationHistory.length > 0) {
+		return `Previous conversation context:\n${resolvedConversationHistory.map((msg) => `${msg.type === "user" ? "User" : "Assistant"}: ${msg.content}`).join("\n")}\n\nCurrent question: ${baseMessage}`;
 	}
 
 	return baseMessage;

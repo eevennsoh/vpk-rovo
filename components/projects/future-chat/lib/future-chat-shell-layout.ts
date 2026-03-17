@@ -1,3 +1,5 @@
+import { clamp } from "@/lib/utils";
+
 const FUTURE_CHAT_MOBILE_BREAKPOINT = 768;
 const FUTURE_CHAT_MIN_CHAT_PANE_WIDTH = 360;
 const FUTURE_CHAT_MAX_CHAT_PANE_WIDTH = 560;
@@ -9,10 +11,6 @@ export interface FutureChatShellLayout {
 	artifactPaneX: number;
 	chatPaneWidth: number | null;
 	mode: "overlay" | "split";
-}
-
-function clamp(value: number, min: number, max: number): number {
-	return Math.min(Math.max(value, min), max);
 }
 
 export function getFutureChatShellLayout(shellWidth: number): FutureChatShellLayout {

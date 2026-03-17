@@ -1,11 +1,10 @@
 import type { FutureChatThread } from "@/lib/future-chat-types";
+import { sortByUpdatedAtDesc } from "@/lib/utils";
 
 export function sortFutureChatThreadsByUpdatedAtDesc(
 	threads: ReadonlyArray<FutureChatThread>,
 ): FutureChatThread[] {
-	return [...threads].sort((left, right) => {
-		return Date.parse(right.updatedAt) - Date.parse(left.updatedAt);
-	});
+	return sortByUpdatedAtDesc(threads);
 }
 
 export function filterDeletedFutureChatThreads(
