@@ -4154,6 +4154,7 @@ User message: ${message.trim()}`;
 			prompt: titlePrompt,
 			maxOutputTokens: 30,
 			temperature: 0.7,
+			backendPreference: "ai-gateway",
 		});
 
 		let title = text.trim().replace(/^["']|["']$/g, "").replace(/\.+$/, "").trim();
@@ -4164,8 +4165,8 @@ User message: ${message.trim()}`;
 
 		return res.json({ title });
 	} catch (error) {
-		console.error("Chat title API error:", error);
-		return sendGatewayErrorResponse(res, error, "Failed to generate chat title");
+		console.warn("[CHAT-TITLE] AI Gateway unavailable, skipping title generation:", error?.message || error);
+		return res.json({ title: null });
 	}
 });
 

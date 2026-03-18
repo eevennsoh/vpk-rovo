@@ -252,7 +252,6 @@ export function useMakeChat(options: {
 	}, [threads, replaceMessages, syncUrlThreadParam]);
 
 	const pendingTitleMessageRef = useRef<string | null>(null);
-	const hasStreamedOnceRef = useRef(false);
 
 	const chatHistory = useMemo<ChatHistoryItem[]>(
 		() =>
@@ -582,28 +581,15 @@ export function useMakeChat(options: {
 		setPendingTitleChatId(thread.id);
 		pendingTitleChatIdRef.current = thread.id;
 		pendingTitleMessageRef.current = firstMessage;
-		hasStreamedOnceRef.current = false;
 		persistThreadToServer(thread);
 		return thread.id;
 	}, []);
 
-	// Track when streaming has started at least once so we don't fire title
-	// generation before the stream begins (isStreaming may still be false on the
-	// first render after sendMessage is called).
+	// Generate title via AI Gateway immediately when the user sends a message.
+	// This runs in parallel with the RovoDev chat stream — no conflict since
+	// title generation uses AI Gateway only (backendPreference: "ai-gateway").
 	useEffect(() => {
-		if (isStreaming) {
-			hasStreamedOnceRef.current = true;
-		}
-	}, [isStreaming]);
-
-	// Generate title via API after streaming completes to avoid 409 race with RovoDev Serve
-	useEffect(() => {
-		if (isStreaming || !pendingTitleChatId || !pendingTitleMessageRef.current) {
-			return;
-		}
-
-		// Don't fire until streaming has started and finished at least once
-		if (!hasStreamedOnceRef.current) {
+		if (!pendingTitleChatId || !pendingTitleMessageRef.current) {
 			return;
 		}
 
@@ -614,30 +600,26 @@ export function useMakeChat(options: {
 
 		const chatId = pendingTitleChatId;
 		const message = pendingTitleMessageRef.current;
+		pendingTitleMessageRef.current = null;
 
-		const titleDelay = setTimeout(() => {
-			pendingTitleMessageRef.current = null;
-			void fetchAITitle(message).then((aiTitle) => {
-				if (aiTitle) {
-					resolveChatTitle(chatId, aiTitle);
-					return;
-				}
+		void fetchAITitle(message).then((aiTitle) => {
+			if (aiTitle) {
+				resolveChatTitle(chatId, aiTitle);
+				return;
+			}
 
-				if (resolveFallbackTitle(chatId)) {
-					return;
-				}
+			if (resolveFallbackTitle(chatId)) {
+				return;
+			}
 
-				// Clear generating state so the sidebar doesn't stay in skeleton loading
-				if (pendingTitleChatIdRef.current === chatId) {
-					pendingTitleChatIdRef.current = null;
-					setPendingTitleChatId(null);
-					setIsGeneratingTitle(false);
-				}
-			});
-		}, 2000);
-
-		return () => clearTimeout(titleDelay);
-	}, [isStreaming, pendingTitleChatId, resolveChatTitle, resolveFallbackTitle]);
+			// Clear generating state so the sidebar doesn't stay in skeleton loading
+			if (pendingTitleChatIdRef.current === chatId) {
+				pendingTitleChatIdRef.current = null;
+				setPendingTitleChatId(null);
+				setIsGeneratingTitle(false);
+			}
+		});
+	}, [pendingTitleChatId, resolveChatTitle, resolveFallbackTitle]);
 
 	const setPlanModeEnabled = useCallback((enabled: boolean) => {
 		setIsPlanMode(enabled);
@@ -967,7 +949,6 @@ export function useMakeChat(options: {
 		setPendingTitleChatId(null);
 		pendingTitleChatIdRef.current = null;
 		pendingTitleMessageRef.current = null;
-		hasStreamedOnceRef.current = false;
 	}, []);
 
 	const handleNewChat = useCallback((options?: { clearPrompt?: boolean }) => {

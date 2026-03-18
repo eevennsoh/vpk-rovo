@@ -590,7 +590,6 @@ export function useFutureChat({
 	const hasObservedTurnCompleteRef = useRef(false);
 	const pendingTitleThreadIdRef = useRef<string | null>(null);
 	const pendingTitleMessageRef = useRef<string | null>(null);
-	const hasStreamedOnceRef = useRef(false);
 	const planModeSyncRequestIdRef = useRef(0);
 	const resetObservedTurnComplete = useCallback(() => {
 		hasObservedTurnCompleteRef.current = false;
@@ -1528,23 +1527,11 @@ export function useFutureChat({
 		[messages, resolveChatTitle],
 	);
 
-	// Track when streaming has started at least once so we don't fire title
-	// generation before the stream begins (isStreaming may still be false on the
-	// first render after sendMessage is called).
+	// Generate title via AI Gateway immediately when the user sends a message.
+	// This runs in parallel with the RovoDev chat stream — no conflict since
+	// title generation uses AI Gateway only (backendPreference: "ai-gateway").
 	useEffect(() => {
-		if (isStreaming) {
-			hasStreamedOnceRef.current = true;
-		}
-	}, [isStreaming]);
-
-	// Generate title via API after streaming completes to avoid 409 race with RovoDev Serve
-	useEffect(() => {
-		if (isStreaming || !pendingTitleThreadId || !pendingTitleMessageRef.current) {
-			return;
-		}
-
-		// Don't fire until streaming has started and finished at least once
-		if (!hasStreamedOnceRef.current) {
+		if (!pendingTitleThreadId || !pendingTitleMessageRef.current) {
 			return;
 		}
 
@@ -1555,30 +1542,26 @@ export function useFutureChat({
 
 		const threadId = pendingTitleThreadId;
 		const message = pendingTitleMessageRef.current;
+		pendingTitleMessageRef.current = null;
 
-		const titleDelay = setTimeout(() => {
-			pendingTitleMessageRef.current = null;
-			void fetchFutureChatAITitle(message).then((aiTitle) => {
-				if (aiTitle) {
-					resolveChatTitle(threadId, aiTitle);
-					return;
-				}
+		void fetchFutureChatAITitle(message).then((aiTitle) => {
+			if (aiTitle) {
+				resolveChatTitle(threadId, aiTitle);
+				return;
+			}
 
-				if (resolveFallbackTitle()) {
-					return;
-				}
+			if (resolveFallbackTitle()) {
+				return;
+			}
 
-				// Clear generating state so the sidebar doesn't stay in shimmer
-				if (pendingTitleThreadIdRef.current === threadId) {
-					pendingTitleThreadIdRef.current = null;
-					setPendingTitleThreadId(null);
-					setIsGeneratingTitle(false);
-				}
-			});
-		}, 2000);
-
-		return () => clearTimeout(titleDelay);
-	}, [isStreaming, pendingTitleThreadId, resolveChatTitle, resolveFallbackTitle]);
+			// Clear generating state so the sidebar doesn't stay in shimmer
+			if (pendingTitleThreadIdRef.current === threadId) {
+				pendingTitleThreadIdRef.current = null;
+				setPendingTitleThreadId(null);
+				setIsGeneratingTitle(false);
+			}
+		});
+	}, [pendingTitleThreadId, resolveChatTitle, resolveFallbackTitle]);
 
 	useEffect(() => {
 		statusRef.current = status;
@@ -2277,7 +2260,6 @@ export function useFutureChat({
 					setPendingTitleThreadId(nextThread.id);
 					pendingTitleThreadIdRef.current = nextThread.id;
 					pendingTitleMessageRef.current = seedText;
-					hasStreamedOnceRef.current = false;
 					return nextThread.id;
 				})
 				.finally(() => {
