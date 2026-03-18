@@ -125,7 +125,6 @@ import {
 	buildFutureChatAgentModeRequest,
 	buildFutureChatCancelUrl,
 	fetchFutureChatAgentMode,
-	getFutureChatPortRoutingPayload,
 	parseFutureChatAgentMode,
 } from "@/components/projects/future-chat/lib/future-chat-agent-mode";
 import {
@@ -411,7 +410,6 @@ function buildRecentHistory(
 export interface FutureChatHookOptions {
 	embedded?: boolean;
 	initialThreadId?: string | null;
-	portIndex?: number;
 	smartGenerationLayout?: {
 		containerWidthPx?: number;
 		viewportWidthPx?: number;
@@ -543,7 +541,6 @@ function meetsStreamingAutoOpenContentThreshold(
 export function useFutureChat({
 	embedded = false,
 	initialThreadId = null,
-	portIndex,
 	smartGenerationLayout,
 }: Readonly<FutureChatHookOptions>): FutureChatHookResult {
 	const router = useRouter();
@@ -730,7 +727,7 @@ export function useFutureChat({
 		planModeSyncRequestIdRef.current = requestId;
 
 		try {
-			const mode = await fetchFutureChatAgentMode(fetch, portIndex);
+			const mode = await fetchFutureChatAgentMode(fetch);
 			if (
 				mode === null
 				|| planModeSyncRequestIdRef.current !== requestId
@@ -743,7 +740,7 @@ export function useFutureChat({
 		} catch {
 			return null;
 		}
-	}, [portIndex]);
+	}, []);
 
 	const appendQueuedPromptsForThread = useCallback(
 		(threadId: string, nextPrompts: ReadonlyArray<QueuedPromptItem>) => {
@@ -838,7 +835,6 @@ export function useFutureChat({
 			setLocalThreadActiveRun(threadId, {
 				id: `future-chat-run-local-${threadId}`,
 				status,
-				portIndex: null,
 				rovoPort: null,
 				startedAt: now,
 				updatedAt: now,
@@ -1043,7 +1039,6 @@ export function useFutureChat({
 								artifactContextFromBody ??
 								activeArtifactContext ??
 								undefined,
-							...getFutureChatPortRoutingPayload(portIndex),
 							smartGeneration: resolvedSmartGenerationRequest,
 							activeArtifact: buildActiveArtifactMetadata(activeDocument),
 							origin: body?.origin === "voice" ? "voice" : "text",
@@ -1059,7 +1054,6 @@ export function useFutureChat({
 			artifactDraftContent,
 			activeDocumentContent,
 			runtimeThreadId,
-			portIndex,
 			smartGenerationRequest,
 			streamingArtifact,
 			threadVisibility,
@@ -2056,7 +2050,6 @@ export function useFutureChat({
 					: {
 						id: `future-chat-run-local-${transitionPlan.threadId}`,
 						status: "background",
-						portIndex: null,
 						rovoPort: null,
 						startedAt: now,
 						updatedAt: now,
@@ -2417,19 +2410,27 @@ export function useFutureChat({
 				});
 				markLocalThreadRunPending(threadId);
 				resetPendingArtifactAssociation();
-				await sendMessage({
-					text: trimmedText,
-					files,
-					messageId,
-					metadata: message.metadata,
-				}, {
-					body: {
-						id: threadId,
-						artifactContext: resolvedArtifactContext ?? undefined,
-						contextDescription,
-						streamingArtifact: streamingArtifactPayload,
-					},
-				});
+				try {
+					await sendMessage({
+						text: trimmedText,
+						files,
+						messageId,
+						metadata: message.metadata,
+					}, {
+						body: {
+							id: threadId,
+							artifactContext: resolvedArtifactContext ?? undefined,
+							contextDescription,
+							streamingArtifact: streamingArtifactPayload,
+						},
+					});
+				} catch (sendError) {
+					// Pre-stream failure: roll back the optimistic user message
+					setRovodevMessages((prev) => prev.filter((m) => m.id !== messageId));
+					setLocalThreadActiveRun(threadId, null);
+					setAttachedRunStatus(null);
+					throw sendError;
+				}
 			} catch (error) {
 				setInputError(toFutureChatUserErrorMessage(error));
 				throw error;
@@ -2448,6 +2449,8 @@ export function useFutureChat({
 			releaseCompletedUseChatTurnIfNeeded,
 			resetPendingArtifactAssociation,
 			sendMessage,
+			setLocalThreadActiveRun,
+			setRovodevMessages,
 			stopUseChat,
 			streamingArtifact,
 			useChatStatus,
@@ -2671,7 +2674,6 @@ export function useFutureChat({
 				body: JSON.stringify(
 					buildFutureChatAgentModeRequest({
 						mode: nextMode,
-						portIndex,
 					}),
 				),
 			});
@@ -2693,7 +2695,7 @@ export function useFutureChat({
 			console.warn("[FutureChat] Failed to toggle plan mode:", error);
 			void syncPlanModeFromBackend();
 		}
-	}, [isPlanMode, portIndex, syncPlanModeFromBackend]);
+	}, [isPlanMode, syncPlanModeFromBackend]);
 
 	const resetPlanMode = useCallback(() => {
 		planModeSyncRequestIdRef.current += 1;
@@ -3032,13 +3034,13 @@ export function useFutureChat({
 				}
 			}
 
-			await fetch(buildFutureChatCancelUrl(portIndex), {
+			await fetch(buildFutureChatCancelUrl(activeThreadIdRef.current), {
 				method: "POST",
 			});
 		} catch (error) {
 			console.warn("[FutureChat] Explicit cancel request failed:", error);
 		}
-	}, [attachedRunStatus, currentThread?.activeRun, portIndex, setLocalThreadActiveRun]);
+	}, [attachedRunStatus, currentThread?.activeRun, setLocalThreadActiveRun]);
 
 	const cancelThreadRun = useCallback(
 		async (threadId: string) => {

@@ -3,28 +3,15 @@ const assert = require("node:assert/strict");
 
 const { createRovoDevPool } = require("./rovodev-pool");
 
-test("acquireByPort acquires the exact requested port", async () => {
+test("acquire returns first available port", async () => {
 	const pool = createRovoDevPool([8000, 8001, 8002], {
 		healthCheckIntervalMs: 0,
 	});
 
-	const handle = await pool.acquireByPort(8001);
-	assert.equal(handle.port, 8001);
+	const handle = await pool.acquire();
+	assert.equal(handle.port, 8000);
 
 	handle.release();
-	pool.shutdown();
-});
-
-test("acquireByPort rejects unknown ports", async () => {
-	const pool = createRovoDevPool([8000, 8001, 8002], {
-		healthCheckIntervalMs: 0,
-	});
-
-	await assert.rejects(
-		() => pool.acquireByPort(8999),
-		/not part of the active pool/
-	);
-
 	pool.shutdown();
 });
 
@@ -60,5 +47,25 @@ test("stale busy port is marked unhealthy after staleBusyTimeoutMs", async () =>
 	// The handle's release() should be safe even after force-eviction
 	handle.release();
 
+	pool.shutdown();
+});
+
+test("acquire times out with ROVODEV_BUSY code when all ports busy", async () => {
+	const pool = createRovoDevPool([19000], {
+		healthCheckIntervalMs: 0,
+	});
+
+	const handle = await pool.acquire();
+	assert.equal(handle.port, 19000);
+
+	await assert.rejects(
+		() => pool.acquire({ timeoutMs: 50 }),
+		(err) => {
+			assert.equal(err.code, "ROVODEV_BUSY");
+			return true;
+		}
+	);
+
+	handle.release();
 	pool.shutdown();
 });

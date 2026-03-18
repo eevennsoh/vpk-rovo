@@ -10,7 +10,6 @@ export type FutureChatRunStatus = "queued" | "streaming" | "background";
 export interface FutureChatActiveRun {
 	id: string;
 	status: FutureChatRunStatus;
-	portIndex: number | null;
 	rovoPort: number | null;
 	startedAt: string;
 	updatedAt: string;

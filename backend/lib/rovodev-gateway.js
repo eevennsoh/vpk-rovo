@@ -24,7 +24,6 @@ const RETRY_DELAY_STEP_MS = 250;
 const RETRY_MAX_DELAY_MS = 1_000;
 const RETRY_TIMEOUT_MS = 10_000;
 const RETRY_CANCEL_MIN_INTERVAL_MS = 2_000;
-const PINNED_PORT_ACQUIRE_TIMEOUT_MS = 30_000;
 const WAIT_FOR_TURN_TIMEOUT_MS = 600_000;
 
 // ─── Pool integration ───────────────────────────────────────────────────────
@@ -44,28 +43,15 @@ function initPool(pool) {
  * Acquire a port handle. When a pool is available, delegates to pool.acquire().
  * Otherwise returns a dummy handle using the single env-var port.
  *
- * If `port` is provided and a pool exists, acquires that exact port.
- * If `portIndex` is provided and a pool exists, acquires the specific port at
- * that index (sticky session assignment for multiport demos).
- *
  * @param {object} [opts]
  * @param {number} [opts.timeoutMs]
- * @param {number} [opts.port] - Explicit RovoDev port number for dedicated assignment
- * @param {number} [opts.portIndex] - Sticky port index (0-based) for dedicated assignment
  * @param {AbortSignal} [opts.signal]
  * @returns {Promise<{ port: number; release: () => void }>}
  */
-async function acquirePort({ timeoutMs = 30_000, port, portIndex, signal } = {}) {
+async function acquirePort({ timeoutMs = 30_000, signal } = {}) {
 	if (!_pool) {
-		const resolvedPort =
-			typeof port === "number" && port > 0 ? port : getRovoDevPort();
+		const resolvedPort = getRovoDevPort();
 		return { port: resolvedPort, release: () => {} };
-	}
-	if (typeof port === "number" && port > 0) {
-		return _pool.acquireByPort(port, { timeoutMs, signal });
-	}
-	if (typeof portIndex === "number" && portIndex >= 0) {
-		return _pool.acquireByIndex(portIndex, { timeoutMs, signal });
 	}
 	return _pool.acquire({ timeoutMs, signal });
 }
@@ -457,22 +443,14 @@ function createChatInProgressTimeoutError(timeoutMs, metadata = {}) {
 /**
  * Build a typed error for a stuck port that should be restarted immediately.
  * @param {number} port
- * @param {number} [portIndex]
  * @returns {Error}
  */
-function createPortStuckError(port, portIndex) {
-	const portLabel =
-		typeof portIndex === "number"
-			? `port index ${portIndex} (port ${port})`
-			: `port ${port}`;
+function createPortStuckError(port) {
 	const err = new Error(
-		`RovoDev ${portLabel} is stuck — a previous turn never completed. Port has been marked unhealthy and will be restarted.`
+		`RovoDev port ${port} is stuck — a previous turn never completed. Port has been marked unhealthy and will be restarted.`
 	);
 	err.code = "ROVODEV_PORT_STUCK";
 	err.port = port;
-	if (typeof portIndex === "number") {
-		err.portIndex = portIndex;
-	}
 	return err;
 }
 
@@ -870,8 +848,6 @@ function resolveToolCallInput({
  * @param {"cancel-and-retry" | "wait-for-turn"} [params.conflictPolicy] - Conflict resolution policy
  * @param {number} [params.timeoutMs] - Max time to wait for chat-turn acquisition before timeout
  * @param {AbortSignal} [params.signal] - Optional signal to abort the stream (e.g. on client disconnect)
- * @param {number} [params.port] - Explicit RovoDev port number for dedicated assignment
- * @param {number} [params.portIndex] - Sticky port index for dedicated assignment (e.g. multiports)
  * @param {(port: number) => void} [params.onPortAcquired] - Called once with the resolved port after acquisition
  * @param {boolean} [params.cancelOnComplete] - Cancel lingering chat state before releasing the port after a successful stream
  * @param {boolean} [params.failOnError] - Reject on non-409 stream errors instead of writing inline warning text
@@ -891,8 +867,6 @@ async function streamViaRovoDev({
 	conflictPolicy = "cancel-and-retry",
 	timeoutMs,
 	signal,
-	port,
-	portIndex,
 	onPortAcquired,
 	onComplete,
 	cancelOnComplete = false,
@@ -906,37 +880,25 @@ async function streamViaRovoDev({
 				: waitForTurn
 					? WAIT_FOR_TURN_TIMEOUT_MS
 					: RETRY_TIMEOUT_MS;
-	const hasPinnedPort =
-		(typeof port === "number" && port > 0) ||
-		(typeof portIndex === "number" && portIndex >= 0);
 	if (typeof onTimingStage === "function") {
 		onTimingStage("stream_acquire_start", {
 			conflictPolicy,
 			waitForTurn,
-			hasPinnedPort,
-			pinnedPort: typeof port === "number" && port > 0 ? port : null,
-			pinnedPortIndex: typeof portIndex === "number" && portIndex >= 0 ? portIndex : null,
 			timeoutMs: resolvedTimeoutMs,
 		});
 	}
 	const acquireStartedAtMs = Date.now();
 	const handle = await acquirePort({
-		timeoutMs: hasPinnedPort
-			? PINNED_PORT_ACQUIRE_TIMEOUT_MS
-			: waitForTurn
-				? WAIT_FOR_TURN_TIMEOUT_MS
-				: RETRY_TIMEOUT_MS,
+		timeoutMs: waitForTurn
+			? WAIT_FOR_TURN_TIMEOUT_MS
+			: RETRY_TIMEOUT_MS,
 		signal,
-		port,
-		portIndex,
 	});
 	if (typeof onTimingStage === "function") {
 		onTimingStage("stream_acquire_complete", {
 			stageMs: Date.now() - acquireStartedAtMs,
 			port: handle.port,
-			portIndex,
 			waitForTurn,
-			hasPinnedPort,
 		});
 	}
 
@@ -1431,30 +1393,17 @@ async function streamViaRovoDev({
 				if (isChatInProgressError(err)) {
 					portStuck = true;
 					console.error(
-						`[streamViaRovoDev] Port ${handle.port} stuck (409) — cancelling turn, draining queue, marking unhealthy`
+						`[streamViaRovoDev] Port ${handle.port} stuck (409) — cancelling turn, marking unhealthy`
 					);
 					try {
 						await cancelChat(handle.port, { timeoutMs: 3_000 });
 					} catch {}
-					if (
-						_pool &&
-						typeof _pool.drainIndexedWaiters === "function" &&
-						typeof portIndex === "number" &&
-						portIndex >= 0
-					) {
-						const drained = _pool.drainIndexedWaiters(portIndex);
-						if (drained > 0) {
-							console.info(
-								`[streamViaRovoDev] Drained ${drained} queued request(s) for port index ${portIndex}`
-							);
-						}
-					}
 					if (_pool) {
 						handle.releaseAsUnhealthy();
 					} else {
 						handle.release();
 					}
-					throw createPortStuckError(handle.port, portIndex);
+					throw createPortStuckError(handle.port);
 				}
 				throw err;
 			}
@@ -1553,8 +1502,6 @@ async function generateTextViaRovoDev({
 	conflictPolicy = "cancel-and-retry",
 	timeoutMs,
 	signal,
-	port,
-	portIndex,
 }) {
 	throwIfAborted(signal, "RovoDev text generation aborted");
 
@@ -1573,14 +1520,8 @@ async function generateTextViaRovoDev({
 	}
 	fullMessage += prompt;
 
-	const hasExplicitPort = typeof port === "number" && port > 0;
 	const handle = await acquirePort({
 		timeoutMs: waitForTurn ? WAIT_FOR_TURN_TIMEOUT_MS : RETRY_TIMEOUT_MS,
-		...(hasExplicitPort
-			? { port }
-			: typeof portIndex === "number"
-				? { portIndex }
-				: {}),
 		signal,
 	});
 
@@ -1613,19 +1554,7 @@ async function generateTextViaRovoDev({
 						console.error(
 							`[generateTextViaRovoDev] Port ${handle.port} stuck (409) — marking unhealthy`
 						);
-						if (
-							typeof portIndex === "number" &&
-							portIndex >= 0 &&
-							typeof _pool.drainIndexedWaiters === "function"
-						) {
-							const drained = _pool.drainIndexedWaiters(portIndex);
-							if (drained > 0) {
-								console.info(
-									`[generateTextViaRovoDev] Drained ${drained} queued request(s) for port index ${portIndex}`
-								);
-							}
-						}
-						throw createPortStuckError(handle.port, portIndex);
+						throw createPortStuckError(handle.port);
 					}
 					throw error;
 				}
@@ -1680,7 +1609,7 @@ async function generateTextViaRovoDev({
 					);
 				} catch (err) {
 					if (isChatInProgressError(err)) {
-						throw createPortStuckError(handle.port, portIndex);
+						throw createPortStuckError(handle.port);
 					}
 					throw err;
 				}

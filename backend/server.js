@@ -55,7 +55,7 @@ const {
 const makeFs = require("./make/make-filesystem");
 const { createAppRegistry } = require("./make/make-app-registry");
 const { createForgePublishManager } = require("./make/make-forge-publish");
-const { genuiChatHandler, generateGenuiFromRovodevResponse } = require("./lib/genui-chat-handler");
+const { genuiChatHandler } = require("./lib/genui-chat-handler");
 const {
 	streamViaRovoDev,
 	generateTextViaRovoDev,
@@ -98,12 +98,15 @@ const {
 	isToolNameRelevant,
 	hasRelevantToolSuccess,
 	hasRelevantToolObservation,
+	isWorkSummaryTurn,
 	getToolFirstRetryDelayMs,
 	buildToolFirstRetryInstruction,
 	buildToolContextForGenui,
 	buildToolFirstTextFallback,
 	shouldSuppressToolFirstIntentStatus,
 	stripToolFirstFailureNarrative,
+	buildZeroToolCallRecoverySpec,
+	buildWorkSummaryExecutionLog,
 } = require("./lib/tool-first-genui-policy");
 const {
 	resolveToolFirstWidgetContentType,
@@ -132,10 +135,6 @@ const { createOrchestratorLog } = require("./lib/orchestrator-log");
 const {
 	generateSuggestedQuestionsViaAIGateway,
 } = require("./lib/suggested-questions");
-const {
-	resolveStrictRovoDevPortAssignment,
-	buildRovoDevPortBindingInstruction,
-} = require("./lib/rovodev-port-assignment");
 const {
 	createListeningPidReader,
 	restartRovoDevPort,
@@ -488,12 +487,11 @@ const READY_PROBE_INTERVAL_MS = 100;
 const READY_PROBE_MAX_ATTEMPTS = 20; // 100ms × 20 = 2s max
 
 /**
- * Tracks the latest request timestamp per portIndex.
- * Used to detect when a newer request has arrived for the same panel,
- * so post-stream tasks (e.g. suggestions) can be skipped for stale requests.
- * Map<number, number> — portIndex → timestamp of most recent request.
+ * Tracks active requests by threadId for cancel routing.
+ * Maps threadId → { port, abortController }.
+ * @type {Map<string, { port: number; abortController: AbortController }>}
  */
-const portIndexRequestTimestamps = new Map();
+const activeRequests = new Map();
 const AI_GATEWAY_ALLOWED_USE_CASES = ["image", "sound", "suggestions"];
 const getListeningPidsForPort = createListeningPidReader();
 
@@ -576,30 +574,32 @@ function normalizeAIGatewayError(error) {
 	return normalizedError;
 }
 
-async function resolvePreferredBackend({ allowFallback = true } = {}) {
+/**
+ * Resolve which backend to use.
+ *
+ * @param {{ backendPreference?: "rovodev" | "ai-gateway" }} [opts]
+ * @returns {Promise<{ backend: "rovodev" | "ai-gateway" | null; rovoDevAvailable: boolean }>}
+ */
+async function resolvePreferredBackend({ backendPreference = "rovodev" } = {}) {
+	if (backendPreference === "ai-gateway") {
+		return {
+			backend: "ai-gateway",
+			rovoDevAvailable: false,
+		};
+	}
+
 	const rovoDevAvailable = await isRovoDevAvailable();
-	const fallbackEnabled = allowFallback && isAIGatewayFallbackEnabled();
 
 	if (rovoDevAvailable) {
 		return {
 			backend: "rovodev",
 			rovoDevAvailable,
-			fallbackEnabled,
-		};
-	}
-
-	if (fallbackEnabled) {
-		return {
-			backend: "ai-gateway",
-			rovoDevAvailable,
-			fallbackEnabled,
 		};
 	}
 
 	return {
 		backend: null,
 		rovoDevAvailable,
-		fallbackEnabled,
 	};
 }
 
@@ -751,10 +751,9 @@ async function generateTextViaGateway({
 	provider,
 	gatewayUrl,
 	signal,
-	allowFallback = false,
-	portIndex,
+	backendPreference = "rovodev",
 }) {
-	const backendSelection = await resolvePreferredBackend({ allowFallback });
+	const backendSelection = await resolvePreferredBackend({ backendPreference });
 	if (backendSelection.backend === "rovodev") {
 		debugLog("GENERATE", "Routing through RovoDev Serve");
 		try {
@@ -764,7 +763,6 @@ async function generateTextViaGateway({
 				conflictPolicy: "wait-for-turn",
 				timeoutMs: WAIT_FOR_TURN_TIMEOUT_MS,
 				signal,
-				portIndex,
 			});
 		} catch (rovoDevError) {
 			const is409Timeout =
@@ -772,8 +770,7 @@ async function generateTextViaGateway({
 				isChatInProgressError(rovoDevError);
 			const canFallback =
 				is409Timeout &&
-				allowFallback &&
-				isAIGatewayFallbackEnabled() &&
+				backendPreference === "ai-gateway" &&
 				hasGatewayUrlConfigured();
 			if (!canFallback) {
 				throw rovoDevError;
@@ -784,14 +781,11 @@ async function generateTextViaGateway({
 		}
 	}
 
-	if (backendSelection.backend !== "ai-gateway" && backendSelection.backend !== "rovodev") {
-		throw createRovoDevUnavailableError();
-	}
-	if (!allowFallback) {
+	if (backendSelection.backend !== "ai-gateway") {
 		throw createRovoDevUnavailableError();
 	}
 
-	debugLog("GENERATE", "Routing through AI Gateway fallback");
+	debugLog("GENERATE", "Routing through AI Gateway");
 	try {
 			return await aiGatewayProvider.generateText({
 				system,
@@ -826,11 +820,10 @@ async function streamTextViaGateway({
 	provider,
 	gatewayUrl,
 	signal,
-	allowFallback = false,
-	portIndex,
+	backendPreference = "rovodev",
 	onTextDelta,
 }) {
-	const backendSelection = await resolvePreferredBackend({ allowFallback });
+	const backendSelection = await resolvePreferredBackend({ backendPreference });
 	let bufferedText = "";
 	const handleTextDelta = (delta) => {
 		if (typeof delta !== "string" || delta.length === 0) {
@@ -852,7 +845,6 @@ async function streamTextViaGateway({
 				conflictPolicy: "wait-for-turn",
 				timeoutMs: WAIT_FOR_TURN_TIMEOUT_MS,
 				signal,
-				portIndex,
 			});
 			return bufferedText.trim();
 		} catch (rovoDevError) {
@@ -861,8 +853,7 @@ async function streamTextViaGateway({
 				isChatInProgressError(rovoDevError);
 			const canFallback =
 				is409Timeout &&
-				allowFallback &&
-				isAIGatewayFallbackEnabled() &&
+				backendPreference === "ai-gateway" &&
 				hasGatewayUrlConfigured();
 			if (!canFallback) {
 				throw rovoDevError;
@@ -873,14 +864,11 @@ async function streamTextViaGateway({
 		}
 	}
 
-	if (backendSelection.backend !== "ai-gateway" && backendSelection.backend !== "rovodev") {
-		throw createRovoDevUnavailableError();
-	}
-	if (!allowFallback) {
+	if (backendSelection.backend !== "ai-gateway") {
 		throw createRovoDevUnavailableError();
 	}
 
-	debugLog("STREAM_GENERATE", "Routing through AI Gateway fallback");
+	debugLog("STREAM_GENERATE", "Routing through AI Gateway");
 	try {
 		return await aiGatewayProvider.streamText({
 			system,
@@ -1109,7 +1097,7 @@ async function generateSmartGenuiResult({
 		maxOutputTokens: 3500,
 		temperature: 0.3,
 		signal,
-		allowFallback: true,
+		backendPreference: "ai-gateway",
 		...buildSmartGenerationGatewayOptions({
 			provider,
 		}),
@@ -1511,7 +1499,6 @@ async function generateFutureChatArtifactText({
 	latestUserMessage,
 	conversationHistory,
 	contextDescription,
-	portIndex,
 	provider,
 	signal,
 	onTextDelta,
@@ -1541,9 +1528,7 @@ async function generateFutureChatArtifactText({
 			temperature: 0.35,
 			provider,
 			signal,
-			allowFallback: false,
 			onTextDelta,
-			portIndex,
 		});
 
 	try {
@@ -1663,7 +1648,7 @@ async function resolveFutureChatArtifactDecision({
 		temperature: 0.1,
 		provider,
 		signal,
-		allowFallback: true,
+		backendPreference: "ai-gateway",
 	});
 	const parsedDecision = parseFutureChatArtifactIntent(rawDecision, {
 		activeArtifact,
@@ -1696,7 +1681,6 @@ function streamFutureChatArtifactToolResponse({
 	contextDescription,
 	conversationHistory,
 	latestUserMessage,
-	portIndex,
 	requestOrigin,
 	artifactThreadId,
 	previousActiveDocumentId,
@@ -1767,7 +1751,6 @@ function streamFutureChatArtifactToolResponse({
 						latestUserMessage,
 						conversationHistory,
 						contextDescription,
-						portIndex,
 						provider,
 						signal,
 						onTextDelta: (delta) => {
@@ -2060,10 +2043,6 @@ async function handleFutureChatArtifactToolRequest({
 		conversationHistory,
 		latestUserMessage,
 		requestOrigin,
-		portIndex:
-			typeof requestBody.portIndex === "number" && requestBody.portIndex >= 0
-				? requestBody.portIndex
-				: undefined,
 		provider: getNonEmptyString(requestBody.provider),
 		signal,
 		artifactThreadId,
@@ -2371,7 +2350,7 @@ async function executeFutureChatManagedRun(run) {
 							temperature: 0.1,
 							provider: resolvedProvider,
 							signal: classifySignal,
-							allowFallback: true,
+							backendPreference: "ai-gateway",
 						}),
 					timeoutMs: 1500,
 				},
@@ -2433,10 +2412,6 @@ async function executeFutureChatManagedRun(run) {
 		requestBody.genuiHint = true;
 	}
 
-	if (typeof run.assignedPortIndex === "number" && run.assignedPortIndex >= 0) {
-		requestBody.portIndex = run.assignedPortIndex;
-	}
-
 	const internalProxyStartedAtMs = Date.now();
 	const response = await fetch(buildFutureChatInternalUrl("/api/chat-sdk"), {
 		method: "POST",
@@ -2469,10 +2444,10 @@ async function executeFutureChatManagedRun(run) {
 	stageTrace.mark("run_complete");
 }
 
-async function startManagedFutureChatRun(run, assignment) {
+async function startManagedFutureChatRun(run) {
 	const markedRun = futureChatRunManager.markRunStarted(run.threadId, {
-		portIndex: assignment?.portIndex ?? null,
-		rovoPort: assignment?.rovoPort ?? null,
+		portIndex: null,
+		rovoPort: null,
 		status: futureChatRunManager.hasSubscribers(run.threadId) ? "streaming" : "background",
 	});
 	if (!markedRun) {
@@ -2504,12 +2479,12 @@ async function startNextQueuedFutureChatRun() {
 				continue;
 			}
 
-			const assignment = resolveFutureChatPortAssignment(run.requestedPortIndex);
+			const assignment = resolveFutureChatPortAvailability();
 			if (!assignment) {
 				continue;
 			}
 
-			await startManagedFutureChatRun(run, assignment);
+			await startManagedFutureChatRun(run);
 			break;
 		}
 	} finally {
@@ -2531,10 +2506,7 @@ async function proxyFutureChatChatRequest(req, res) {
 		|| futureChatRunManager.createRun({
 			threadId,
 			requestBody,
-			requestedPortIndex:
-				typeof requestBody.portIndex === "number" && requestBody.portIndex >= 0
-					? requestBody.portIndex
-					: null,
+			requestedPortIndex: null,
 		});
 
 	const subscriberId = futureChatRunManager.attachSubscriber(threadId, res, {
@@ -2559,17 +2531,14 @@ async function proxyFutureChatChatRequest(req, res) {
 			totalPorts: poolPorts.length,
 			available: availableCount,
 			busy: busyCount,
-			requestedPortIndex: run.requestedPortIndex ?? null,
 		});
 
-		const assignment = resolveFutureChatPortAssignment(run.requestedPortIndex);
+		const assignment = resolveFutureChatPortAvailability();
 		if (assignment) {
 			console.info("[TIMING][future-chat] port-assignment", {
 				threadId,
-				portIndex: assignment.portIndex,
-				rovoPort: assignment.rovoPort,
 			});
-			await startManagedFutureChatRun(run, assignment);
+			await startManagedFutureChatRun(run);
 		} else {
 			console.info("[TIMING][future-chat] port-assignment: null (run will be QUEUED)", {
 				threadId,
@@ -2613,12 +2582,7 @@ function buildFutureChatActiveRunPayload(run) {
 	return {
 		id: run.id,
 		status: run.status,
-		portIndex:
-			typeof run.assignedPortIndex === "number" && Number.isInteger(run.assignedPortIndex)
-				? run.assignedPortIndex
-				: typeof run.requestedPortIndex === "number" && Number.isInteger(run.requestedPortIndex)
-					? run.requestedPortIndex
-					: null,
+		portIndex: null,
 		rovoPort:
 			typeof run.rovoPort === "number" && Number.isInteger(run.rovoPort) && run.rovoPort > 0
 				? run.rovoPort
@@ -2648,86 +2612,15 @@ async function clearFutureChatRunState(threadId) {
 	});
 }
 
-function buildPoolPortStatusMap(poolStatus) {
-	if (!poolStatus || typeof poolStatus !== "object" || !Array.isArray(poolStatus.ports)) {
-		return new Map();
-	}
-
-	return new Map(
-		poolStatus.ports
-			.filter((entry) => entry && typeof entry.port === "number")
-			.map((entry) => [entry.port, entry.status]),
-	);
-}
-
-function resolveFutureChatPortAssignment(requestedPortIndex) {
+function resolveFutureChatPortAvailability() {
 	const poolStatus = _rovoDevPool?.getStatus?.();
-	const activePorts = Array.isArray(poolStatus?.ports)
-		? poolStatus.ports
-				.map((entry) => entry?.port)
-				.filter((port) => typeof port === "number" && Number.isInteger(port) && port > 0)
-		: readRovoDevPorts();
-	if (!_rovoDevPool || activePorts.length === 0) {
-		if (typeof requestedPortIndex === "number" && requestedPortIndex >= 0) {
-			try {
-				return resolveStrictRovoDevPortAssignment(requestedPortIndex, {
-					activePorts,
-					poolStatus,
-				});
-			} catch {
-				return null;
-			}
-		}
-
-		return {
-			portIndex: null,
-			rovoPort: null,
-			panelLabel: "auto",
-			candidatePorts: [],
-		};
+	if (!_rovoDevPool) {
+		return { available: false };
 	}
 
-	const statusByPort = buildPoolPortStatusMap(poolStatus);
-	const hasAvailableCandidate = (assignment) => {
-		return assignment.candidatePorts.some((port) => statusByPort.get(port) === "available");
-	};
-
-	if (typeof requestedPortIndex === "number" && requestedPortIndex >= 0) {
-		const assignment = resolveStrictRovoDevPortAssignment(requestedPortIndex, {
-			activePorts,
-			poolStatus,
-		});
-		return hasAvailableCandidate(assignment) ? assignment : null;
-	}
-
-	const shardCount = Math.max(1, Math.min(activePorts.length, 3));
-	const candidates = [];
-	for (let index = 0; index < shardCount; index += 1) {
-		const assignment = resolveStrictRovoDevPortAssignment(index, {
-			activePorts,
-			poolStatus,
-		});
-		const availableCandidateCount = assignment.candidatePorts.filter(
-			(port) => statusByPort.get(port) === "available",
-		).length;
-		if (availableCandidateCount === 0) {
-			continue;
-		}
-
-		candidates.push({
-			...assignment,
-			availableCandidateCount,
-		});
-	}
-
-	candidates.sort((left, right) => {
-		if (left.availableCandidateCount !== right.availableCandidateCount) {
-			return right.availableCandidateCount - left.availableCandidateCount;
-		}
-		return left.portIndex - right.portIndex;
-	});
-
-	return candidates[0] ?? null;
+	const poolPorts = Array.isArray(poolStatus?.ports) ? poolStatus.ports : [];
+	const hasAvailable = poolPorts.some((p) => p?.status === "available");
+	return hasAvailable ? { available: true } : null;
 }
 
 async function reconcileOrphanedFutureChatThread(thread) {
@@ -4309,7 +4202,7 @@ Rules:
 			prompt: enrichPrompt,
 			maxOutputTokens: 150,
 			temperature: 0.7,
-			allowFallback: true,
+			backendPreference: "ai-gateway",
 		});
 
 		const trimmed = text.trim();
@@ -4359,12 +4252,15 @@ app.post("/api/chat-sdk", async (req, res) => {
 			creationMode,
 			smartGeneration: rawSmartGeneration,
 			hasQueuedPrompts: rawHasQueuedPrompts,
-			portIndex: rawPortIndex,
 			origin: rawOrigin,
 			genuiHint: rawGenuiHint,
+			threadId: rawThreadId,
 		} = req.body || {};
 		const clientTimeZone = normalizeClientTimeZone(rawClientTimeZone);
 		const genuiHint = rawGenuiHint === true;
+		const threadId = typeof rawThreadId === "string" && rawThreadId.trim().length > 0
+			? rawThreadId.trim()
+			: null;
 		const requestOrigin =
 			getNonEmptyString(rawOrigin)?.toLowerCase() === "voice" ? "voice" : "text";
 			stageTrace = resolveStageTraceFromRequest(req, "chat-sdk", {
@@ -4381,52 +4277,7 @@ app.post("/api/chat-sdk", async (req, res) => {
 			hasApproval: Boolean(rawApproval),
 			hasDeferredToolResponse: Boolean(rawDeferredToolResponse),
 		});
-		const portIndex = typeof rawPortIndex === "number" && Number.isInteger(rawPortIndex) && rawPortIndex >= 0
-			? rawPortIndex
-			: undefined;
-		let strictPortAssignment = null;
-		if (typeof portIndex === "number") {
-			try {
-				const rovoDevAvailableStartedAtMs = Date.now();
-				await isRovoDevAvailable();
-				stageTrace.mark("rovodev_available_check", {
-					stageMs: Date.now() - rovoDevAvailableStartedAtMs,
-					portIndex,
-				});
-				const poolStatus = _rovoDevPool?.getStatus?.();
-				const poolPorts = Array.isArray(poolStatus?.ports)
-					? poolStatus.ports
-							.map((entry) => entry?.port)
-							.filter((port) => typeof port === "number" && Number.isInteger(port) && port > 0)
-					: readRovoDevPorts();
-				strictPortAssignment = resolveStrictRovoDevPortAssignment(portIndex, {
-					activePorts: poolPorts,
-					poolStatus,
-				});
-			} catch (portAssignmentError) {
-				return res.status(400).json({
-					error: portAssignmentError.message,
-					code:
-						typeof portAssignmentError?.code === "string"
-							? portAssignmentError.code
-							: "INVALID_ROVODEV_PORT_INDEX",
-				});
-			}
-		}
-		if (typeof portIndex === "number") {
-			res.setHeader("x-vpk-rovo-port-index", String(portIndex));
-		}
-		if (typeof strictPortAssignment?.rovoPort === "number") {
-			res.setHeader("x-vpk-rovo-port", String(strictPortAssignment.rovoPort));
-		}
 		const hasQueuedPrompts = Boolean(rawHasQueuedPrompts);
-
-		// Track the request timestamp for this portIndex so post-stream tasks
-		// (suggestions) can detect when a newer request has superseded this one.
-		const requestTimestamp = Date.now();
-		if (typeof portIndex === "number") {
-			portIndexRequestTimestamps.set(portIndex, requestTimestamp);
-		}
 
 		// If creationMode is set, prepend generic creation guidance to contextDescription.
 		let contextDescription = rawContextDescription;
@@ -4703,8 +4554,6 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 							},
 							conflictPolicy: "wait-for-turn",
 							timeoutMs: WAIT_FOR_TURN_TIMEOUT_MS,
-							port: strictPortAssignment?.rovoPort,
-							portIndex,
 						});
 
 						return {
@@ -5210,6 +5059,8 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 				domainLabels: toolFirstPolicy.domainLabels,
 			});
 		}
+		const isWorkSummary = isWorkSummaryTurn(toolFirstPolicy);
+		const workSummaryStartMs = isWorkSummary ? Date.now() : null;
 		const promptIntent = classifyPromptIntent(latestUserMessage);
 		const inferredPromptIntent = promptIntent.inferredIntent;
 		const mediaPreClassification = promptIntent.mediaPreClassification;
@@ -5339,11 +5190,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 					.join("\n\n")
 				: toolFirstPromptInstruction
 			: enrichedContextDescription;
-			const effectiveContextWithPortBinding = strictPortAssignment
-				? effectiveContextDescription
-					? `${effectiveContextDescription}\n\n${buildRovoDevPortBindingInstruction(strictPortAssignment)}`
-					: buildRovoDevPortBindingInstruction(strictPortAssignment)
-				: effectiveContextDescription;
+			const effectiveContextWithPortBinding = effectiveContextDescription;
 			const smartGeneration = normalizeSmartGenerationOptions(rawSmartGeneration);
 			const smartLayoutContext = {
 				surface: smartGeneration.surface,
@@ -5459,7 +5306,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 								prompt: smartClarificationClassifierPrompt,
 								maxOutputTokens: 120,
 								temperature: 0,
-								allowFallback: true,
+								backendPreference: "ai-gateway",
 								...buildSmartGenerationGatewayOptions({
 									provider,
 								}),
@@ -5500,7 +5347,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 								}),
 								intentHint: vagueVisualization ? "visualization" : undefined,
 								gatewayOptions: {
-									allowFallback: true,
+									backendPreference: "ai-gateway",
 									...buildSmartGenerationGatewayOptions({
 										provider,
 									}),
@@ -5533,11 +5380,6 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 					intent: smartIntentResult.intent,
 					forcedAudioRoute: forceSmartAudioRoute,
 					surface: smartGeneration.surface,
-					portIndex: typeof portIndex === "number" ? portIndex : null,
-					rovoPort:
-						typeof strictPortAssignment?.rovoPort === "number"
-							? strictPortAssignment.rovoPort
-							: null,
 				});
 				const roleMessages = mapUiMessagesToRoleContent(messages);
 				const smartRouteAbortController = new AbortController();
@@ -6511,9 +6353,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 			return;
 		}
 
-		const backendSelection = await resolvePreferredBackend({
-			allowFallback: INTERACTIVE_CHAT_FALLBACK_ENABLED,
-		});
+		const backendSelection = await resolvePreferredBackend();
 
 		if (backendSelection.backend !== "rovodev") {
 			return sendGatewayErrorResponse(
@@ -6521,58 +6361,6 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 				createRovoDevUnavailableError(),
 				"Failed to stream chat response"
 			);
-		}
-
-		if (strictPortAssignment) {
-			const poolStatus = _rovoDevPool?.getStatus?.();
-			if (!poolStatus) {
-				return res.status(503).json({
-					error:
-						"Strict multiport routing requires an active RovoDev pool. Restart with `pnpm run rovodev -- 6`.",
-					code: "ROVODEV_POOL_UNAVAILABLE",
-					portIndex: strictPortAssignment.portIndex,
-					requiredPort: strictPortAssignment.rovoPort,
-				});
-			}
-
-			let requiredEntry = poolStatus.ports.find(
-				(entry) => entry.port === strictPortAssignment.rovoPort
-			);
-			if (!requiredEntry && Array.isArray(poolStatus.ports) && poolStatus.ports.length > 0) {
-				try {
-					const resolvedFromPool = resolveStrictRovoDevPortAssignment(
-						strictPortAssignment.portIndex,
-						{
-							activePorts: poolStatus.ports.map((entry) => entry.port),
-							poolStatus,
-						}
-					);
-					strictPortAssignment = resolvedFromPool;
-					requiredEntry = poolStatus.ports.find(
-						(entry) => entry.port === strictPortAssignment.rovoPort
-					);
-				} catch {
-					// Keep the original assignment and fall through to the strict error response.
-				}
-			}
-			if (!requiredEntry) {
-				return res.status(503).json({
-					error: `Required RovoDev port ${strictPortAssignment.rovoPort} for chat panel index ${strictPortAssignment.portIndex} is not available in the current pool.`,
-					code: "ROVODEV_STRICT_PORT_MISSING",
-					portIndex: strictPortAssignment.portIndex,
-					requiredPort: strictPortAssignment.rovoPort,
-					availablePorts: poolStatus.ports.map((entry) => entry.port),
-				});
-			}
-
-			if (requiredEntry.status === "unhealthy") {
-				return res.status(503).json({
-					error: `Required RovoDev port ${strictPortAssignment.rovoPort} for chat panel index ${strictPortAssignment.portIndex} is unhealthy.`,
-					code: "ROVODEV_STRICT_PORT_UNHEALTHY",
-					portIndex: strictPortAssignment.portIndex,
-					requiredPort: strictPortAssignment.rovoPort,
-				});
-			}
 		}
 
 		const { abortController, cleanup } = createAbortControllerFromRequest(req, res, {
@@ -6607,11 +6395,6 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 			stageMs: Date.now() - chatSdkEntryStartedAtMs,
 			backend: backendSelection.backend,
 			promptProfile,
-			portIndex: typeof portIndex === "number" ? portIndex : null,
-			rovoPort:
-				typeof strictPortAssignment?.rovoPort === "number"
-					? strictPortAssignment.rovoPort
-					: null,
 			smartGenerationActive,
 			isStrictToolFirstTurn,
 		});
@@ -8015,8 +7798,6 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 					// RovoDev Serve: route through the local agent loop
 					console.log("[CHAT-SDK] Routing through RovoDev Serve");
 					stageTrace.mark("rovodev_stream_start", {
-						portIndex: typeof portIndex === "number" ? portIndex : null,
-						rovoPort: strictPortAssignment?.rovoPort ?? null,
 						conflictPolicy: "wait-for-turn",
 					});
 					// Emit data-thinking-status lazily — only when the LLM
@@ -8042,27 +7823,6 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 						: 0;
 					const totalToolFirstAttempts = toolFirstRetryLimit + 1;
 					let currentToolFirstAttempt = 1;
-
-					// Auto-enter plan mode for complex artifact creation requests.
-					// This happens after port acquisition but before sending the message.
-					if (
-						smartIntentResult?.complexity === "complex" &&
-						smartIntentResult.intent !== "normal" &&
-						strictPortAssignment?.rovoPort
-					) {
-						try {
-							await setAgentMode(strictPortAssignment.rovoPort, "plan");
-							console.info("[AUTO-PLAN-MODE] Auto-entered plan mode for complex request", {
-								intent: smartIntentResult.intent,
-								complexity: smartIntentResult.complexity,
-								port: strictPortAssignment.rovoPort,
-							});
-						} catch (autoPlanError) {
-							console.warn("[AUTO-PLAN-MODE] Failed to auto-enter plan mode (continuing without)", {
-								error: autoPlanError instanceof Error ? autoPlanError.message : String(autoPlanError),
-							});
-						}
-					}
 
 					let activeAttemptMessage = deferredToolResponseForRovoDev || userMessageText;
 					let shouldContinueToolFirstRetry = true;
@@ -8252,14 +8012,14 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 								},
 								signal: abortController.signal,
 								conflictPolicy: "wait-for-turn",
-								port: strictPortAssignment?.rovoPort,
-								portIndex,
 								onPortAcquired: (acquiredPort) => {
 									if (typeof acquiredPort === "number" && acquiredPort > 0) {
 										resolvedRovoDevPort = acquiredPort;
+										if (threadId) {
+											activeRequests.set(threadId, { port: acquiredPort, abortController });
+										}
 										stageTrace.mark("stream_port_acquired", {
 											port: acquiredPort,
-											portIndex: typeof portIndex === "number" ? portIndex : null,
 										});
 									}
 								},
@@ -8351,8 +8111,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 								// Port is stuck — inform user and restart immediately
 								const recoveryPort =
 									rovoDevStreamError.port ||
-									resolvedRovoDevPort ||
-									strictPortAssignment?.rovoPort;
+									resolvedRovoDevPort;
 
 								handleStreamTextDelta(
 									"\n\n⚠️ This request couldn't be completed — the RovoDev port is stuck. Please try again."
@@ -8390,10 +8149,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 								const resolvedRecoveryPort =
 									typeof resolvedRovoDevPort === "number" && resolvedRovoDevPort > 0
 										? resolvedRovoDevPort
-										: typeof strictPortAssignment?.rovoPort === "number" &&
-												strictPortAssignment.rovoPort > 0
-											? strictPortAssignment.rovoPort
-											: null;
+										: null;
 								const canForceRecoverPort =
 									typeof resolvedRecoveryPort === "number" &&
 									forcePortRecoveryAttemptCount <
@@ -9060,112 +8816,46 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 							);
 
 					if (shouldAttemptGenui) {
-						const twoStepGenuiWidgetId = `widget-two-step-genui-${Date.now()}`;
+						// Single-pass GenUI: RovoDev emits ```spec blocks directly.
+						// Phase 2 (direct spec detection above) already caught any
+						// spec fence in the response. If we reach here, no spec was
+						// emitted — use deterministic fallback instead of a second
+						// LLM call.
+						const genuiFallbackWidgetId = `widget-genui-fallback-${Date.now()}`;
 						writer.write({
 							type: "data-widget-loading",
-							id: twoStepGenuiWidgetId,
+							id: genuiFallbackWidgetId,
 							data: {
 								type: SMART_WIDGET_TYPE_GENUI,
 								loading: true,
 							},
 						});
 
+						console.info("[OUTPUT-ROUTING] Single-pass GenUI: no spec fence from RovoDev, using fallback", {
+							hasActionableTools: hasObservedActionableToolCall,
+							taskLikeRequest: isTaskLikeRequest,
+							rovodevTextLength: trimmedAssistantText.length,
+							toolObservationCount: toolObservationEntries.length,
+							forceCardFirst: shouldForceCardFirstGenui,
+						});
+
 						const roleMessages = mapUiMessagesToRoleContent(messages);
-						try {
-							console.info("[OUTPUT-ROUTING] Two-step GenUI flow triggered", {
-								hasActionableTools: hasObservedActionableToolCall,
-								taskLikeRequest: isTaskLikeRequest,
-								rovodevTextLength: trimmedAssistantText.length,
-								rovodevTextPreview: trimmedAssistantText.slice(0, 300),
-								toolObservationCount: toolObservationEntries.length,
-								forceCardFirst: shouldForceCardFirstGenui,
+						const emittedCreateIntentWidget =
+							await tryEmitCreateIntentDirectGenuiWidget({
+								widgetId: genuiFallbackWidgetId,
+								roleMessages,
+								source: "single-pass-genui-fallback",
 							});
-
-							const genuiResult = await generateGenuiFromRovodevResponse({
-								rovodevResponseText: assistantText,
-								conversationMessages: roleMessages,
-								layoutContext: smartLayoutContext,
-								rovoDevAvailable: true,
-								fallbackEnabled: false,
+						if (emittedCreateIntentWidget) {
+							writer.write(createRouteDecisionPart({
+								intent: "genui",
+								origin: requestOrigin,
+								reason: "intent_task_toolable",
+							}));
+						} else {
+							const emittedFallbackWidget = emitTwoStepFallbackGenuiWidget({
+								widgetId: genuiFallbackWidgetId,
 							});
-
-							if (genuiResult.success && genuiResult.spec) {
-								const summaryText = getNonEmptyString(genuiResult.narrative);
-								writer.write({
-									type: "data-widget-data",
-									id: twoStepGenuiWidgetId,
-									data: {
-										type: SMART_WIDGET_TYPE_GENUI,
-										payload: withRouteWidgetContentType({
-											spec: genuiResult.spec,
-											summary: summaryText
-												? summaryText.length > 280
-													? `${summaryText.slice(0, 279)}...`
-													: summaryText
-												: "Generated interactive view",
-											source: "two-step-genui",
-										}),
-									},
-								});
-								hasEmittedGenuiWidget = true;
-
-								// Emit route-decision: generative_ui experience
-								writer.write(createRouteDecisionPart({
-									intent: "genui",
-									origin: requestOrigin,
-									reason: "intent_task_toolable",
-								}));
-							} else {
-								console.warn("[OUTPUT-ROUTING] Two-step GenUI failed, using fallback card", {
-									error: genuiResult.error,
-								});
-									const emittedCreateIntentWidget =
-										await tryEmitCreateIntentDirectGenuiWidget({
-											widgetId: twoStepGenuiWidgetId,
-											roleMessages,
-											source: "create-intent-direct-genui-after-two-step-failure",
-										});
-									if (emittedCreateIntentWidget) {
-										writer.write(createRouteDecisionPart({
-											intent: "genui",
-											origin: requestOrigin,
-											reason: "intent_task_toolable",
-										}));
-									} else {
-									const emittedFallbackWidget = emitTwoStepFallbackGenuiWidget({
-										widgetId: twoStepGenuiWidgetId,
-									});
-								if (!emittedFallbackWidget) {
-									emitGenuiErrorTextFallback();
-									writer.write(createRouteDecisionPart({
-										intent: "chat",
-										origin: requestOrigin,
-										reason: "fallback_ui_failed",
-									}));
-									}
-								}
-							}
-						} catch (twoStepError) {
-							console.error(
-								"[OUTPUT-ROUTING] Two-step GenUI exception, using fallback card:",
-								twoStepError instanceof Error ? twoStepError.message : twoStepError
-							);
-								const emittedCreateIntentWidget =
-									await tryEmitCreateIntentDirectGenuiWidget({
-										widgetId: twoStepGenuiWidgetId,
-										roleMessages,
-										source: "create-intent-direct-genui-after-two-step-exception",
-									});
-								if (emittedCreateIntentWidget) {
-									writer.write(createRouteDecisionPart({
-										intent: "genui",
-										origin: requestOrigin,
-										reason: "intent_task_toolable",
-									}));
-								} else {
-								const emittedFallbackWidget = emitTwoStepFallbackGenuiWidget({
-									widgetId: twoStepGenuiWidgetId,
-								});
 							if (!emittedFallbackWidget) {
 								emitGenuiErrorTextFallback();
 								writer.write(createRouteDecisionPart({
@@ -9173,18 +8863,17 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 									origin: requestOrigin,
 									reason: "fallback_ui_failed",
 								}));
-								}
-								}
-						} finally {
-							writer.write({
-								type: "data-widget-loading",
-								id: twoStepGenuiWidgetId,
-								data: {
-									type: SMART_WIDGET_TYPE_GENUI,
-									loading: false,
-								},
-							});
+							}
 						}
+
+						writer.write({
+							type: "data-widget-loading",
+							id: genuiFallbackWidgetId,
+							data: {
+								type: SMART_WIDGET_TYPE_GENUI,
+								loading: false,
+							},
+						});
 						} else if (!hasEmittedQuestionCard) {
 							const shouldEmitCardFirstFallback =
 								shouldForceCardFirstGenui &&
@@ -9571,15 +9260,62 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 											? "tool_observation_fallback"
 											: "no_relevant_tool_success_fallback_card";
 									} else {
-										const warningText = buildToolFirstTextFallback({
-											policy: toolFirstPolicy,
-											execution: toolFirstExecutionState,
-											rovoDevFallback: false,
-										});
-										const toolFirstWarningPrefix =
-											assistantText.trim().length > 0 ? "\n\n" : "";
-										emitForcedTextDelta(`${toolFirstWarningPrefix}${warningText}`);
-										toolFirstFallbackCause = "no_relevant_tool_success";
+										if (isWorkSummary) {
+											const recoverySpec = buildZeroToolCallRecoverySpec(
+												toolFirstExecutionState,
+												{ policy: toolFirstPolicy }
+											);
+											if (recoverySpec) {
+												const recoveryWidgetId = `widget-work-summary-recovery-${Date.now()}`;
+												writer.write({
+													type: "data-widget-loading",
+													id: recoveryWidgetId,
+													data: {
+														type: SMART_WIDGET_TYPE_GENUI,
+														loading: true,
+													},
+												});
+												writer.write({
+													type: "data-widget-data",
+													id: recoveryWidgetId,
+													data: {
+														type: SMART_WIDGET_TYPE_GENUI,
+														payload: withRouteWidgetContentType({
+															spec: recoverySpec,
+															summary: recoverySpec.title,
+															source: "work-summary-zero-tool-recovery",
+														}),
+													},
+												});
+												writer.write({
+													type: "data-widget-loading",
+													id: recoveryWidgetId,
+													data: {
+														type: SMART_WIDGET_TYPE_GENUI,
+														loading: false,
+													},
+												});
+												hasEmittedGenuiWidget = true;
+												toolFirstRouteReason = "intent_task_toolable";
+												toolFirstRouteExperience = "generative_ui";
+												toolFirstFallbackCause = "work_summary_zero_tool_call_recovery";
+												console.info("[work-summary] Emitted zero-tool-call recovery spec", {
+													cause: recoverySpec.cause,
+													optionCount: recoverySpec.recoveryOptions.length,
+												});
+											}
+										}
+										if (!hasEmittedGenuiWidget) {
+											const warningText = buildToolFirstTextFallback({
+												policy: toolFirstPolicy,
+												execution: toolFirstExecutionState,
+												rovoDevFallback: false,
+											});
+											const toolFirstWarningPrefix =
+												assistantText.trim().length > 0 ? "\n\n" : "";
+											emitForcedTextDelta(`${toolFirstWarningPrefix}${warningText}`);
+											toolFirstFallbackCause = "no_relevant_tool_success";
+										}
 									}
 								}
 							}
@@ -9640,6 +9376,25 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 							fallbackUsed: !hasRelevantToolSuccess(toolFirstExecutionState),
 							fallbackCause: resolvedToolFirstFallbackCause,
 						});
+
+						if (isWorkSummary) {
+							const workSummaryDurationMs = workSummaryStartMs != null
+								? Date.now() - workSummaryStartMs
+								: null;
+							const workSummaryLog = buildWorkSummaryExecutionLog(
+								toolFirstExecutionState,
+								{
+									policy: toolFirstPolicy,
+									resolvedPort: typeof resolvedRovoDevPort === "number"
+										? resolvedRovoDevPort
+										: null,
+									durationMs: workSummaryDurationMs,
+								}
+							);
+							if (workSummaryLog) {
+								console.info("[work-summary] Execution log", workSummaryLog);
+							}
+						}
 					}
 
 					flushDeferredToolFirstText();
@@ -9660,28 +9415,10 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 					pendingQuestionCardLoadingWidgetId = null;
 				}
 
-				// Log to orchestrator for cross-panel visibility (sticky port sessions only)
-				if (typeof portIndex === "number") {
-					try {
-						orchestratorLog.append({
-							portIndex,
-							rovoPort:
-								typeof resolvedRovoDevPort === "number"
-									? resolvedRovoDevPort
-									: strictPortAssignment?.rovoPort,
-							userMessage: latestUserMessage,
-							assistantResponse: assistantText,
-						});
-					} catch (logError) {
-						console.warn("[ORCHESTRATOR] Failed to append log entry:", logError.message);
-					}
+				// Clean up activeRequests tracking
+				if (threadId) {
+					activeRequests.delete(threadId);
 				}
-
-				// Skip suggestions if:
-				// 1. The original request had queued prompts, OR
-				// 2. A newer request has arrived for the same portIndex since this one started
-				const isStaleRequest = typeof portIndex === "number" &&
-					portIndexRequestTimestamps.get(portIndex) !== requestTimestamp;
 
 				// ── Output Routing: Routing telemetry summary (BE-009) ──
 				// Emit a structured summary log for every completed turn so
@@ -9703,7 +9440,6 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 					toolFirstMatched: isStrictToolFirstTurn,
 					isPostClarification: isPostClarificationTurn,
 					assistantTextLength: assistantText.length,
-					portIndex,
 				};
 				console.info("[OUTPUT-ROUTING] Turn routing summary", routingTelemetry);
 
@@ -9717,7 +9453,6 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 					});
 					stageTrace.mark("post_turn_work_complete", {
 						suggestionsDeferred: true,
-						isStaleRequest,
 						hasQueuedPrompts,
 					});
 				},
@@ -9745,61 +9480,39 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 
 app.post("/api/chat-cancel", async (req, res) => {
 	try {
-		const rawQueryPortIndex = Array.isArray(req.query?.portIndex)
-			? req.query.portIndex[0]
-			: req.query?.portIndex;
-		const hasPortIndex = rawQueryPortIndex !== undefined;
-		const parsedPortIndex = hasPortIndex
-			? Number.parseInt(String(rawQueryPortIndex), 10)
+		const threadId = typeof req.query?.threadId === "string" && req.query.threadId.trim().length > 0
+			? req.query.threadId.trim()
 			: null;
 
-		let resolvedPort = null;
-		if (hasPortIndex) {
-			if (!Number.isInteger(parsedPortIndex) || parsedPortIndex < 0) {
-				return res.status(400).json({
-					cancelled: false,
-					error: "portIndex must be a non-negative integer",
-				});
-			}
-
-			try {
-				const poolStatus = _rovoDevPool?.getStatus?.();
-				const poolPorts = Array.isArray(poolStatus?.ports)
-					? poolStatus.ports
-							.map((entry) => entry?.port)
-							.filter((port) => typeof port === "number" && Number.isInteger(port) && port > 0)
-					: readRovoDevPorts();
-				const strictAssignment = resolveStrictRovoDevPortAssignment(parsedPortIndex, {
-					activePorts: poolPorts,
-					poolStatus,
-				});
-				resolvedPort =
-					typeof strictAssignment?.rovoPort === "number" &&
-					Number.isInteger(strictAssignment.rovoPort) &&
-					strictAssignment.rovoPort > 0
-						? strictAssignment.rovoPort
-						: null;
-			} catch (error) {
-				return res.status(400).json({
-					cancelled: false,
-					error: error instanceof Error ? error.message : String(error),
-				});
-			}
-		}
+		const activeRequest = threadId ? activeRequests.get(threadId) : null;
+		const resolvedPort = activeRequest?.port ?? null;
 
 		console.log(
-			typeof resolvedPort === "number"
-				? `[CHAT-CANCEL] Cancel requested for port ${resolvedPort}`
-				: "[CHAT-CANCEL] Cancel requested"
+			threadId
+				? `[CHAT-CANCEL] Cancel requested for thread ${threadId}${typeof resolvedPort === "number" ? ` (port ${resolvedPort})` : ""}`
+				: "[CHAT-CANCEL] Cancel requested (no threadId)"
 		);
+
+		// Abort the active request's signal if tracked
+		if (activeRequest?.abortController) {
+			try {
+				activeRequest.abortController.abort();
+			} catch {}
+		}
+
 		if (typeof resolvedPort === "number") {
 			await rovoDevCancelChat(resolvedPort);
 		} else {
 			await rovoDevCancelChat();
 		}
+
+		if (threadId) {
+			activeRequests.delete(threadId);
+		}
+
 		return res.status(200).json({
 			cancelled: true,
-			...(typeof parsedPortIndex === "number" ? { portIndex: parsedPortIndex } : {}),
+			...(threadId ? { threadId } : {}),
 			...(typeof resolvedPort === "number" ? { port: resolvedPort } : {}),
 		});
 	} catch (error) {
@@ -9813,7 +9526,7 @@ app.post("/api/chat-cancel", async (req, res) => {
 // session (plan, default, ask).
 app.post("/api/agent-mode", async (req, res) => {
 	try {
-		const { mode, portIndex: rawPortIndex } = req.body || {};
+		const { mode } = req.body || {};
 		if (!mode || typeof mode !== "string") {
 			return res.status(400).json({ error: "mode is required (plan, default, or ask)" });
 		}
@@ -9822,40 +9535,8 @@ app.post("/api/agent-mode", async (req, res) => {
 			return res.status(400).json({ error: `Invalid mode: ${mode}. Must be one of: ${validModes.join(", ")}` });
 		}
 
-		const portIndex = typeof rawPortIndex === "number" && Number.isInteger(rawPortIndex) && rawPortIndex >= 0
-			? rawPortIndex
-			: undefined;
-
-		let resolvedPort = null;
-		if (typeof portIndex === "number") {
-			try {
-				const poolStatus = _rovoDevPool?.getStatus?.();
-				const poolPorts = Array.isArray(poolStatus?.ports)
-					? poolStatus.ports
-							.map((entry) => entry?.port)
-							.filter((port) => typeof port === "number" && Number.isInteger(port) && port > 0)
-					: readRovoDevPorts();
-				const strictAssignment = resolveStrictRovoDevPortAssignment(portIndex, {
-					activePorts: poolPorts,
-					poolStatus,
-				});
-				resolvedPort =
-					typeof strictAssignment?.rovoPort === "number" &&
-					Number.isInteger(strictAssignment.rovoPort) &&
-					strictAssignment.rovoPort > 0
-						? strictAssignment.rovoPort
-						: null;
-			} catch (error) {
-				return res.status(400).json({
-					error: error instanceof Error ? error.message : String(error),
-				});
-			}
-		}
-
-		const result = typeof resolvedPort === "number"
-			? await setAgentMode(resolvedPort, mode)
-			: await setAgentMode(undefined, mode);
-		console.info("[AGENT-MODE] Mode set", { mode, portIndex, resolvedPort });
+		const result = await setAgentMode(undefined, mode);
+		console.info("[AGENT-MODE] Mode set", { mode });
 		return res.status(200).json(result);
 	} catch (error) {
 		console.error("[AGENT-MODE] Error:", error.message || error);
@@ -9865,48 +9546,8 @@ app.post("/api/agent-mode", async (req, res) => {
 
 app.get("/api/agent-mode", async (req, res) => {
 	try {
-		const rawPortIndex = Array.isArray(req.query?.portIndex)
-			? req.query.portIndex[0]
-			: req.query?.portIndex;
-		const hasPortIndex = rawPortIndex !== undefined;
-		const parsedPortIndex = hasPortIndex
-			? Number.parseInt(String(rawPortIndex), 10)
-			: null;
-
-		let resolvedPort = null;
-		if (hasPortIndex) {
-			if (!Number.isInteger(parsedPortIndex) || parsedPortIndex < 0) {
-				return res.status(400).json({ error: "portIndex must be a non-negative integer" });
-			}
-
-			try {
-				const poolStatus = _rovoDevPool?.getStatus?.();
-				const poolPorts = Array.isArray(poolStatus?.ports)
-					? poolStatus.ports
-							.map((entry) => entry?.port)
-							.filter((port) => typeof port === "number" && Number.isInteger(port) && port > 0)
-					: readRovoDevPorts();
-				const strictAssignment = resolveStrictRovoDevPortAssignment(parsedPortIndex, {
-					activePorts: poolPorts,
-					poolStatus,
-				});
-				resolvedPort =
-					typeof strictAssignment?.rovoPort === "number" &&
-					Number.isInteger(strictAssignment.rovoPort) &&
-					strictAssignment.rovoPort > 0
-						? strictAssignment.rovoPort
-						: null;
-			} catch (error) {
-				return res.status(400).json({
-					error: error instanceof Error ? error.message : String(error),
-				});
-			}
-		}
-
 		try {
-			const result = typeof resolvedPort === "number"
-				? await getAgentMode(resolvedPort)
-				: await getAgentMode();
+			const result = await getAgentMode();
 			return res.status(200).json(result);
 		} catch (agentModeError) {
 			const msg = agentModeError instanceof Error ? agentModeError.message : String(agentModeError);
@@ -9933,15 +9574,9 @@ app.post("/api/chat-sdk/skip-question", async (req, res) => {
 		const {
 			sessionId,
 			questionTitle,
-			portIndex: rawPortIndex,
 			messages: rawMessages,
 			contextDescription,
 		} = req.body || {};
-
-		const portIndex =
-			typeof rawPortIndex === "number" && Number.isInteger(rawPortIndex) && rawPortIndex >= 0
-				? rawPortIndex
-				: undefined;
 
 		const skipMessage = buildQuestionCardSkipNotification(
 			typeof questionTitle === "string" ? questionTitle.trim() : undefined
@@ -9971,38 +9606,11 @@ app.post("/api/chat-sdk/skip-question", async (req, res) => {
 			contextDescription || undefined
 		);
 
-		// Resolve the RovoDev port for this session
-		let resolvedPort = undefined;
-		if (typeof portIndex === "number") {
-			try {
-				const poolStatus = _rovoDevPool?.getStatus?.();
-				const poolPorts = Array.isArray(poolStatus?.ports)
-					? poolStatus.ports
-							.map((entry) => entry?.port)
-							.filter((port) => typeof port === "number" && Number.isInteger(port) && port > 0)
-					: readRovoDevPorts();
-				const strictAssignment = resolveStrictRovoDevPortAssignment(portIndex, {
-					activePorts: poolPorts,
-					poolStatus,
-				});
-				resolvedPort =
-					typeof strictAssignment?.rovoPort === "number" &&
-					Number.isInteger(strictAssignment.rovoPort) &&
-					strictAssignment.rovoPort > 0
-						? strictAssignment.rovoPort
-						: undefined;
-			} catch {
-				// Fall through to pool-based routing
-			}
-		}
-
 		console.info("[OUTPUT-ROUTING] Question card skip notification", {
 			reason: "intent_clarification_skip",
 			experience: "text",
 			sessionId: typeof sessionId === "string" ? sessionId : undefined,
 			questionTitle: typeof questionTitle === "string" ? questionTitle : undefined,
-			portIndex,
-			resolvedPort,
 		});
 
 		// Stream the skip notification to RovoDev and return RovoDev's response
@@ -10030,8 +9638,6 @@ app.post("/api/chat-sdk/skip-question", async (req, res) => {
 						onThinkingEvent: () => {},
 						onToolCallStart: () => {},
 						conflictPolicy: "wait-for-turn",
-						port: resolvedPort,
-						portIndex,
 					});
 				} catch (error) {
 					console.error(
@@ -11807,17 +11413,11 @@ app.get("/api/future-chat/files/:fileId", async (req, res) => {
 
 app.get("/api/orchestrator/log", (req, res) => {
 	try {
-		const portIndex = req.query.portIndex !== undefined
-			? parseInt(req.query.portIndex, 10)
-			: undefined;
 		const limit = req.query.limit !== undefined
 			? parseInt(req.query.limit, 10)
 			: undefined;
 
 		const filter = {};
-		if (typeof portIndex === "number" && !isNaN(portIndex) && portIndex >= 0) {
-			filter.portIndex = portIndex;
-		}
 		if (typeof limit === "number" && !isNaN(limit) && limit > 0) {
 			filter.limit = limit;
 		}
@@ -11836,17 +11436,11 @@ app.get("/api/orchestrator/log", (req, res) => {
 
 app.get("/api/orchestrator/timeline", (req, res) => {
 	try {
-		const portIndex = req.query.portIndex !== undefined
-			? parseInt(req.query.portIndex, 10)
-			: undefined;
 		const limit = req.query.limit !== undefined
 			? parseInt(req.query.limit, 10)
 			: undefined;
 
 		const filter = {};
-		if (typeof portIndex === "number" && !isNaN(portIndex) && portIndex >= 0) {
-			filter.portIndex = portIndex;
-		}
 		if (typeof limit === "number" && !isNaN(limit) && limit > 0) {
 			filter.limit = limit;
 		}

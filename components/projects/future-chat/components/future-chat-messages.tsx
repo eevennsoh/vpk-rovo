@@ -257,6 +257,64 @@ function UserMessage({
 	);
 }
 
+function WidgetErrorCard({
+	widgetError,
+	onRetry,
+}: Readonly<{
+	widgetError: { data: { code?: string; message: string; details?: string; canRetry?: boolean } };
+	onRetry: () => void;
+}>) {
+	const [showDetails, setShowDetails] = useState(false);
+	const code = widgetError.data.code;
+	const isUnavailable = code === "ROVODEV_UNAVAILABLE";
+	const isBusy = code === "ROVODEV_BUSY";
+
+	const friendlyMessage = isUnavailable
+		? "RovoDev is currently unavailable. Please try again later."
+		: isBusy
+			? "All RovoDev instances are busy. Your request will be retried shortly."
+			: widgetError.data.message;
+
+	const borderClass = isBusy ? "border-warning" : "border-danger";
+	const bgClass = isBusy ? "bg-warning/5" : "bg-danger/5";
+	const textClass = isBusy ? "text-warning" : "text-danger";
+
+	return (
+		<div className={cn("rounded-xl border px-3 py-2 text-sm", borderClass, bgClass)}>
+			<p className={textClass}>{friendlyMessage}</p>
+			{widgetError.data.canRetry ? (
+				<div className="mt-2">
+					<Button
+						onClick={onRetry}
+						size="sm"
+						type="button"
+						variant="outline"
+					>
+						Retry
+					</Button>
+				</div>
+			) : null}
+			{widgetError.data.details ? (
+				<div className="mt-2">
+					<button
+						className="text-text-subtlest text-xs underline"
+						onClick={() => setShowDetails((prev) => !prev)}
+						type="button"
+					>
+						{showDetails ? "Hide details" : "Show details"}
+					</button>
+					{showDetails ? (
+						<pre className="mt-1 whitespace-pre-wrap text-text-subtlest text-xs">
+							{widgetError.data.details}
+						</pre>
+					) : null}
+				</div>
+			) : null}
+		</div>
+	);
+}
+
+
 function AssistantMessage({
 	artifactCard,
 	isLastAssistant,
@@ -478,9 +536,10 @@ function AssistantMessage({
 					) : null}
 
 					{widgetError ? (
-						<div className="rounded-xl border border-danger bg-danger/5 px-3 py-2 text-danger text-sm">
-							{widgetError.data.message}
-						</div>
+						<WidgetErrorCard
+							widgetError={widgetError}
+							onRetry={onRegenerate}
+						/>
 					) : null}
 
 					{shouldRenderAssistantText ? (

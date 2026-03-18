@@ -7,29 +7,15 @@ function normalizeSmartGenerationProvider(value) {
 	return trimmed.length > 0 ? trimmed : undefined;
 }
 
-function normalizeSmartGenerationPortIndex(value) {
-	if (typeof value === "number" && Number.isInteger(value) && value >= 0) {
-		return value;
-	}
-
-	return undefined;
-}
-
 function buildSmartGenerationGatewayOptions({
 	provider,
-	portIndex,
 	signal,
 } = {}) {
 	const normalizedProvider = normalizeSmartGenerationProvider(provider);
-	const normalizedPortIndex = normalizeSmartGenerationPortIndex(portIndex);
 	const options = {};
 
 	if (normalizedProvider !== undefined) {
 		options.provider = normalizedProvider;
-	}
-
-	if (normalizedPortIndex !== undefined) {
-		options.portIndex = normalizedPortIndex;
 	}
 
 	if (signal) {
@@ -41,6 +27,5 @@ function buildSmartGenerationGatewayOptions({
 
 module.exports = {
 	normalizeSmartGenerationProvider,
-	normalizeSmartGenerationPortIndex,
 	buildSmartGenerationGatewayOptions,
 };

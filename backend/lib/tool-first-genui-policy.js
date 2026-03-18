@@ -1351,6 +1351,121 @@ function resolveUnsatisfiedContextHints({ prompt, domains } = {}) {
 	return unsatisfied;
 }
 
+function isWorkSummaryTurn(policy) {
+	return Boolean(policy?.teamworkGraphTimeWindow?.enabled);
+}
+
+function buildZeroToolCallRecoverySpec(state, { policy } = {}) {
+	if (!state || typeof state !== "object" || !state.matched) {
+		return null;
+	}
+
+	if (hasRelevantToolObservation(state)) {
+		return null;
+	}
+
+	const domainLabels = Array.isArray(policy?.domainLabels) && policy.domainLabels.length > 0
+		? policy.domainLabels
+		: getDomainLabels(state.domains);
+	const scopedDomains = domainLabels.length > 0
+		? domainLabels.join(", ")
+		: "the requested tool domain";
+
+	const timeWindow = policy?.teamworkGraphTimeWindow;
+	const windowDescription = timeWindow?.enabled && timeWindow?.windowDays
+		? ` for the last ${timeWindow.windowDays} day${timeWindow.windowDays === 1 ? "" : "s"}`
+		: "";
+
+	const causeDescription = state.relevantToolErrors > 0
+		? `Tool errors were reported (${state.relevantToolErrors} error${state.relevantToolErrors === 1 ? "" : "s"}).`
+		: "No relevant integration tool was called during this turn.";
+
+	const recoveryOptions = [
+		{
+			id: "jira-only",
+			label: "Show Jira work only",
+			description: "Search Jira issues using JQL for the requested time window.",
+		},
+		{
+			id: "confluence-only",
+			label: "Show Confluence work only",
+			description: "Search Confluence pages using CQL for the requested time window.",
+		},
+		{
+			id: "retry-with-identity",
+			label: "Retry with my Atlassian user/site ID",
+			description: "Re-run the work summary with explicit user and site identity context.",
+		},
+	];
+
+	return {
+		type: "zero-tool-call-recovery",
+		title: `Could not retrieve ${scopedDomains} results${windowDescription}`,
+		cause: causeDescription,
+		recoveryOptions,
+		metadata: {
+			domains: state.domains,
+			primaryDomains: state.primaryDomains,
+			attempts: state.attempts,
+			retriesUsed: state.retriesUsed,
+			relevantToolErrors: state.relevantToolErrors,
+			lastRelevantToolName: state.lastRelevantToolName || null,
+			lastRelevantErrorCategory: state.lastRelevantErrorCategory || null,
+		},
+	};
+}
+
+function buildWorkSummaryExecutionLog(state, { policy, resolvedPort, durationMs } = {}) {
+	if (!state || typeof state !== "object") {
+		return null;
+	}
+
+	const toolNamesAttempted = Array.isArray(state.events)
+		? [...new Set(
+			state.events
+				.filter((e) => e.phase === "start")
+				.map((e) => e.toolName)
+		)]
+		: [];
+
+	const zeroToolCallCause = (() => {
+		if (hasRelevantToolObservation(state)) {
+			return null;
+		}
+		if (state.relevantToolErrors > 0) {
+			return `tool_errors:${state.lastRelevantErrorCategory || "unknown"}`;
+		}
+		if (state.totalToolStarts === 0) {
+			return "no_tool_calls_at_all";
+		}
+		if (!state.hadRelevantToolStart) {
+			return "no_relevant_tool_calls";
+		}
+		return "relevant_tools_started_but_no_observation";
+	})();
+
+	return {
+		attempts: state.attempts,
+		retriesUsed: state.retriesUsed,
+		totalToolStarts: state.totalToolStarts,
+		totalToolResults: state.totalToolResults,
+		totalToolErrors: state.totalToolErrors,
+		relevantToolStarts: state.relevantToolStarts,
+		relevantToolResults: state.relevantToolResults,
+		relevantToolErrors: state.relevantToolErrors,
+		hadRelevantToolStart: state.hadRelevantToolStart,
+		lastRelevantToolName: state.lastRelevantToolName || null,
+		lastRelevantErrorCategory: state.lastRelevantErrorCategory || null,
+		toolNamesAttempted,
+		zeroToolCallCause,
+		resolvedPort: resolvedPort ?? null,
+		durationMs: typeof durationMs === "number" && Number.isFinite(durationMs) ? Math.round(durationMs) : null,
+		windowDays: policy?.teamworkGraphTimeWindow?.windowDays ?? null,
+		windowStart: policy?.teamworkGraphTimeWindow?.startIso ?? null,
+		windowEnd: policy?.teamworkGraphTimeWindow?.endIso ?? null,
+	};
+}
+
 function getPostClarificationDirective(domains) {
 	if (!Array.isArray(domains)) {
 		return null;
@@ -1378,6 +1493,7 @@ module.exports = {
 	recordToolThinkingEvent,
 	hasRelevantToolSuccess,
 	hasRelevantToolObservation,
+	isWorkSummaryTurn,
 	shouldSuppressToolFirstIntentStatus,
 	getToolFirstRetryDelayMs,
 	buildToolFirstRetryInstruction,
@@ -1386,4 +1502,6 @@ module.exports = {
 	buildToolFirstTextFallback,
 	stripToolFirstFailureNarrative,
 	buildToolFirstWarningPayload,
+	buildZeroToolCallRecoverySpec,
+	buildWorkSummaryExecutionLog,
 };

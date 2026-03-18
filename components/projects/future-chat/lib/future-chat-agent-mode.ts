@@ -1,38 +1,19 @@
 export type FutureChatAgentMode = "ask" | "default" | "plan";
 
-export function getFutureChatPortRoutingPayload(portIndex?: number): {
-	portIndex?: number;
-} {
-	return typeof portIndex === "number" && Number.isInteger(portIndex) && portIndex >= 0
-		? { portIndex }
-		: {};
-}
-
-export function buildFutureChatCancelUrl(portIndex?: number): string {
-	const payload = getFutureChatPortRoutingPayload(portIndex);
-	return typeof payload.portIndex === "number"
-		? `/api/chat-cancel?portIndex=${encodeURIComponent(String(payload.portIndex))}`
+export function buildFutureChatCancelUrl(threadId?: string | null): string {
+	return threadId
+		? `/api/chat-cancel?threadId=${encodeURIComponent(threadId)}`
 		: "/api/chat-cancel";
 }
 
 export function buildFutureChatAgentModeRequest(input: {
 	mode: FutureChatAgentMode;
-	portIndex?: number;
 }): {
 	mode: FutureChatAgentMode;
-	portIndex?: number;
 } {
 	return {
 		mode: input.mode,
-		...getFutureChatPortRoutingPayload(input.portIndex),
 	};
-}
-
-export function buildFutureChatAgentModeUrl(portIndex?: number): string {
-	const payload = getFutureChatPortRoutingPayload(portIndex);
-	return typeof payload.portIndex === "number"
-		? `/api/agent-mode?portIndex=${encodeURIComponent(String(payload.portIndex))}`
-		: "/api/agent-mode";
 }
 
 export function parseFutureChatAgentMode(
@@ -51,9 +32,8 @@ export function parseFutureChatAgentMode(
 
 export async function fetchFutureChatAgentMode(
 	fetchImpl: typeof fetch,
-	portIndex?: number,
 ): Promise<FutureChatAgentMode | null> {
-	const response = await fetchImpl(buildFutureChatAgentModeUrl(portIndex), {
+	const response = await fetchImpl("/api/agent-mode", {
 		method: "GET",
 	});
 	if (!response.ok) {

@@ -4,38 +4,23 @@ const assert = require("node:assert/strict");
 const {
 	buildFutureChatCancelUrl,
 	buildFutureChatAgentModeRequest,
-	buildFutureChatAgentModeUrl,
 	fetchFutureChatAgentMode,
-	getFutureChatPortRoutingPayload,
 	parseFutureChatAgentMode,
 } = require("./future-chat-agent-mode.ts");
 
-test("getFutureChatPortRoutingPayload includes valid port indices", () => {
-	assert.deepEqual(getFutureChatPortRoutingPayload(2), { portIndex: 2 });
-	assert.deepEqual(getFutureChatPortRoutingPayload(undefined), {});
-	assert.deepEqual(getFutureChatPortRoutingPayload(-1), {});
-});
-
-test("buildFutureChatAgentModeRequest targets portIndex instead of threadId", () => {
-	assert.deepEqual(buildFutureChatAgentModeRequest({ mode: "plan", portIndex: 1 }), {
+test("buildFutureChatAgentModeRequest returns only mode", () => {
+	assert.deepEqual(buildFutureChatAgentModeRequest({ mode: "plan" }), {
 		mode: "plan",
-		portIndex: 1,
 	});
 	assert.deepEqual(buildFutureChatAgentModeRequest({ mode: "default" }), {
 		mode: "default",
 	});
 });
 
-test("buildFutureChatCancelUrl preserves the pinned portIndex when present", () => {
-	assert.equal(buildFutureChatCancelUrl(2), "/api/chat-cancel?portIndex=2");
+test("buildFutureChatCancelUrl uses threadId query param", () => {
+	assert.equal(buildFutureChatCancelUrl("thread-abc"), "/api/chat-cancel?threadId=thread-abc");
 	assert.equal(buildFutureChatCancelUrl(), "/api/chat-cancel");
-	assert.equal(buildFutureChatCancelUrl(-1), "/api/chat-cancel");
-});
-
-test("buildFutureChatAgentModeUrl preserves the pinned portIndex when present", () => {
-	assert.equal(buildFutureChatAgentModeUrl(2), "/api/agent-mode?portIndex=2");
-	assert.equal(buildFutureChatAgentModeUrl(), "/api/agent-mode");
-	assert.equal(buildFutureChatAgentModeUrl(-1), "/api/agent-mode");
+	assert.equal(buildFutureChatCancelUrl(null), "/api/chat-cancel");
 });
 
 test("parseFutureChatAgentMode accepts only supported modes", () => {
@@ -46,7 +31,7 @@ test("parseFutureChatAgentMode accepts only supported modes", () => {
 	assert.equal(parseFutureChatAgentMode("unknown"), null);
 });
 
-test("fetchFutureChatAgentMode requests the pinned port mode and parses the response", async () => {
+test("fetchFutureChatAgentMode requests agent mode and parses the response", async () => {
 	const calls = [];
 	const fetchImpl = async (url, options) => {
 		calls.push({ url, options });
@@ -56,12 +41,12 @@ test("fetchFutureChatAgentMode requests the pinned port mode and parses the resp
 		};
 	};
 
-	const mode = await fetchFutureChatAgentMode(fetchImpl, 3);
+	const mode = await fetchFutureChatAgentMode(fetchImpl);
 
 	assert.equal(mode, "plan");
 	assert.deepEqual(calls, [
 		{
-			url: "/api/agent-mode?portIndex=3",
+			url: "/api/agent-mode",
 			options: { method: "GET" },
 		},
 	]);

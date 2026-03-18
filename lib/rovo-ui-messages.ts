@@ -133,7 +133,9 @@ export type RovoDataParts = {
 	};
 	"widget-error": {
 		type?: string;
+		code?: string;
 		message: string;
+		details?: string;
 		canRetry?: boolean;
 	};
 	"suggested-questions": {
