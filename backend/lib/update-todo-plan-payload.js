@@ -498,9 +498,9 @@ function extractTasksFromObservation(observation, maxTasks) {
 	return [];
 }
 
-function extractUpdateTodoPlanPayloadFromObservations(observations, options = {}) {
+function extractUpdateTodoTasksFromObservations(observations, options = {}) {
 	if (!Array.isArray(observations) || observations.length === 0) {
-		return null;
+		return [];
 	}
 
 	const minTasks =
@@ -531,16 +531,43 @@ function extractUpdateTodoPlanPayloadFromObservations(observations, options = {}
 			continue;
 		}
 
-		return {
-			type: "plan",
-			title: derivePlanTitle(tasks, options.title),
-			tasks,
-		};
+		return tasks;
 	}
 
-	return null;
+	return [];
+}
+
+function extractUpdateTodoPlanPayloadFromObservations(observations, options = {}) {
+	const tasks = extractUpdateTodoTasksFromObservations(observations, options);
+	if (tasks.length === 0) {
+		return null;
+	}
+
+	return {
+		type: "plan",
+		title: derivePlanTitle(tasks, options.title),
+		tasks,
+	};
+}
+
+function extractUpdateTodoQueuePayloadFromObservations(observations, options = {}) {
+	const tasks = extractUpdateTodoTasksFromObservations(observations, options);
+	if (tasks.length === 0) {
+		return null;
+	}
+
+	return {
+		type: "todo-queue",
+		items: tasks.map((task) => ({
+			id: task.id,
+			text: task.label,
+			blockedBy: Array.isArray(task.blockedBy) ? task.blockedBy : [],
+		})),
+	};
 }
 
 module.exports = {
+	extractUpdateTodoTasksFromObservations,
 	extractUpdateTodoPlanPayloadFromObservations,
+	extractUpdateTodoQueuePayloadFromObservations,
 };

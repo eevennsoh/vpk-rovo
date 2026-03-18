@@ -16,7 +16,6 @@ const {
 	parseToolCallArgsInput,
 	resolveToolCallInput,
 	initPool,
-	setPinnedPortCount,
 	WAIT_FOR_TURN_TIMEOUT_MS,
 } = require("./rovodev-gateway");
 
@@ -242,7 +241,6 @@ test("streamViaRovoDev uses wait-for-turn timeout while acquiring a non-pinned p
 			throw new Error("stop after acquire");
 		},
 	});
-	setPinnedPortCount(0);
 
 	await assert.rejects(
 		() =>

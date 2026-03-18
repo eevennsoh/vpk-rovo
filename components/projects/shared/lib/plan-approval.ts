@@ -74,6 +74,12 @@ export function createPlanApprovalSubmission(
 	};
 }
 
+export function planWidgetRequiresApproval(
+	planWidget: ParsedPlanWidgetPayload | null,
+): boolean {
+	return Boolean(planWidget?.deferredToolCallId);
+}
+
 export function getPlanApprovalKeyFromPlanWidget(
 	planWidget: ParsedPlanWidgetPayload | null,
 ): string | null {

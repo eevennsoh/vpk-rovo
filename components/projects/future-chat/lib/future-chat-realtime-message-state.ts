@@ -31,6 +31,12 @@ interface MergeFutureChatMessagesOptions {
 	rovodevMessages: ReadonlyArray<RovoUIMessage>;
 }
 
+interface FutureChatMessageEntry {
+	index: number;
+	message: RovoUIMessage;
+	timestamp: number | null;
+	type: "realtime" | "rovodev";
+}
 
 function applyMetadataPatch(
 	currentMetadata: RovoMessageMetadata | undefined,
@@ -173,11 +179,32 @@ export function upsertRealtimeMessage(
 	);
 }
 
+function isStreamingFutureChatMessage(message: RovoUIMessage): boolean {
+	return message.parts.some((part) => part.type === "text" && part.state === "streaming");
+}
+
+function shouldReplaceFutureChatMessageEntry(
+	existingEntry: FutureChatMessageEntry,
+	candidateEntry: FutureChatMessageEntry,
+): boolean {
+	const existingIsStreaming = isStreamingFutureChatMessage(existingEntry.message);
+	const candidateIsStreaming = isStreamingFutureChatMessage(candidateEntry.message);
+	if (existingIsStreaming !== candidateIsStreaming) {
+		return candidateIsStreaming;
+	}
+
+	if (existingEntry.type !== candidateEntry.type) {
+		return candidateEntry.type === "rovodev";
+	}
+
+	return true;
+}
+
 export function mergeFutureChatMessages({
 	realtimeMessages,
 	rovodevMessages,
 }: MergeFutureChatMessagesOptions): RovoUIMessage[] {
-	const entries = [
+	const entries: FutureChatMessageEntry[] = [
 		...rovodevMessages.map((message, index) => ({
 			index,
 			message,
@@ -192,21 +219,43 @@ export function mergeFutureChatMessages({
 		})),
 	];
 
-	return entries
-		.sort((left, right) => {
-			if (left.timestamp !== null && right.timestamp !== null && left.timestamp !== right.timestamp) {
-				return left.timestamp - right.timestamp;
-			}
-			if (left.timestamp !== null && right.timestamp === null) {
-				return -1;
-			}
-			if (left.timestamp === null && right.timestamp !== null) {
-				return 1;
-			}
-			if (left.type !== right.type) {
-				return left.type === "rovodev" ? -1 : 1;
-			}
-			return left.index - right.index;
-		})
-		.map((entry) => entry.message);
+	entries.sort((left, right) => {
+		if (left.timestamp !== null && right.timestamp !== null && left.timestamp !== right.timestamp) {
+			return left.timestamp - right.timestamp;
+		}
+		if (left.timestamp !== null && right.timestamp === null) {
+			return -1;
+		}
+		if (left.timestamp === null && right.timestamp !== null) {
+			return 1;
+		}
+		if (left.type !== right.type) {
+			return left.type === "rovodev" ? -1 : 1;
+		}
+		return left.index - right.index;
+	});
+
+	const dedupedEntries: FutureChatMessageEntry[] = [];
+	const dedupedEntriesById = new Map<string, number>();
+	for (const entry of entries) {
+		const existingEntryIndex = dedupedEntriesById.get(entry.message.id);
+		if (existingEntryIndex === undefined) {
+			dedupedEntriesById.set(entry.message.id, dedupedEntries.length);
+			dedupedEntries.push(entry);
+			continue;
+		}
+
+		const existingEntry = dedupedEntries[existingEntryIndex];
+		if (!existingEntry) {
+			dedupedEntriesById.set(entry.message.id, dedupedEntries.length);
+			dedupedEntries.push(entry);
+			continue;
+		}
+
+		if (shouldReplaceFutureChatMessageEntry(existingEntry, entry)) {
+			dedupedEntries[existingEntryIndex] = entry;
+		}
+	}
+
+	return dedupedEntries.map((entry) => entry.message);
 }

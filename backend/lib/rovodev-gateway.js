@@ -26,19 +26,11 @@ const RETRY_TIMEOUT_MS = 10_000;
 const RETRY_CANCEL_MIN_INTERVAL_MS = 2_000;
 const PINNED_PORT_ACQUIRE_TIMEOUT_MS = 30_000;
 const WAIT_FOR_TURN_TIMEOUT_MS = 600_000;
-/** Timeout for background text generation that falls back to a pinned port.
- *  Long enough for tasks like suggestions to complete patiently (they queue
- *  behind the panel's interactive turn), but bounded so they don't hold
- *  pinned ports indefinitely. */
-const BACKGROUND_ON_PINNED_PORT_TIMEOUT_MS = 120_000;
 
 // ─── Pool integration ───────────────────────────────────────────────────────
 
 /** @type {import("./rovodev-pool").Pool | null} */
 let _pool = null;
-
-/** Number of ports reserved for interactive chat panels (set by server.js). */
-let _pinnedPortCount = 0;
 
 /**
  * Inject the RovoDev port pool. Called once from server.js at startup.
@@ -49,33 +41,21 @@ function initPool(pool) {
 }
 
 /**
- * Set how many leading pool indices are reserved for interactive chat panels.
- * Background tasks (suggestions, question cards) will avoid these indices.
- * @param {number} count
- */
-function setPinnedPortCount(count) {
-	_pinnedPortCount = Math.max(0, count);
-}
-
-/**
  * Acquire a port handle. When a pool is available, delegates to pool.acquire().
  * Otherwise returns a dummy handle using the single env-var port.
  *
  * If `port` is provided and a pool exists, acquires that exact port.
  * If `portIndex` is provided and a pool exists, acquires the specific port at
  * that index (sticky session assignment for multiport demos).
- * If `excludePinnedPorts` is true and a pool exists, acquires a port that is
- * NOT in the first `_pinnedPortCount` indices (for background tasks).
  *
  * @param {object} [opts]
  * @param {number} [opts.timeoutMs]
  * @param {number} [opts.port] - Explicit RovoDev port number for dedicated assignment
  * @param {number} [opts.portIndex] - Sticky port index (0-based) for dedicated assignment
- * @param {boolean} [opts.excludePinnedPorts] - Avoid pinned panel ports (for background tasks)
  * @param {AbortSignal} [opts.signal]
  * @returns {Promise<{ port: number; release: () => void }>}
  */
-async function acquirePort({ timeoutMs = 30_000, port, portIndex, excludePinnedPorts, signal } = {}) {
+async function acquirePort({ timeoutMs = 30_000, port, portIndex, signal } = {}) {
 	if (!_pool) {
 		const resolvedPort =
 			typeof port === "number" && port > 0 ? port : getRovoDevPort();
@@ -86,10 +66,6 @@ async function acquirePort({ timeoutMs = 30_000, port, portIndex, excludePinnedP
 	}
 	if (typeof portIndex === "number" && portIndex >= 0) {
 		return _pool.acquireByIndex(portIndex, { timeoutMs, signal });
-	}
-	if (excludePinnedPorts && _pinnedPortCount > 0 && typeof _pool.acquireExcluding === "function") {
-		const excludedIndices = Array.from({ length: _pinnedPortCount }, (_, i) => i);
-		return _pool.acquireExcluding(excludedIndices, { timeoutMs, signal });
 	}
 	return _pool.acquire({ timeoutMs, signal });
 }
@@ -933,6 +909,16 @@ async function streamViaRovoDev({
 	const hasPinnedPort =
 		(typeof port === "number" && port > 0) ||
 		(typeof portIndex === "number" && portIndex >= 0);
+	if (typeof onTimingStage === "function") {
+		onTimingStage("stream_acquire_start", {
+			conflictPolicy,
+			waitForTurn,
+			hasPinnedPort,
+			pinnedPort: typeof port === "number" && port > 0 ? port : null,
+			pinnedPortIndex: typeof portIndex === "number" && portIndex >= 0 ? portIndex : null,
+			timeoutMs: resolvedTimeoutMs,
+		});
+	}
 	const acquireStartedAtMs = Date.now();
 	const handle = await acquirePort({
 		timeoutMs: hasPinnedPort
@@ -1569,7 +1555,6 @@ async function generateTextViaRovoDev({
 	signal,
 	port,
 	portIndex,
-	excludePinnedPorts,
 }) {
 	throwIfAborted(signal, "RovoDev text generation aborted");
 
@@ -1589,42 +1574,15 @@ async function generateTextViaRovoDev({
 	fullMessage += prompt;
 
 	const hasExplicitPort = typeof port === "number" && port > 0;
-	const shouldExcludePinned = !hasExplicitPort && (excludePinnedPorts === true || (typeof portIndex !== "number" && _pinnedPortCount > 0));
-	const wantsExcludePinned = shouldExcludePinned;
 	const handle = await acquirePort({
 		timeoutMs: waitForTurn ? WAIT_FOR_TURN_TIMEOUT_MS : RETRY_TIMEOUT_MS,
 		...(hasExplicitPort
 			? { port }
 			: typeof portIndex === "number"
 				? { portIndex }
-				: { excludePinnedPorts: shouldExcludePinned }),
+				: {}),
 		signal,
 	});
-
-	// Detect if this background task fell back to a pinned port (all non-pinned
-	// ports were busy/unhealthy). Use a shorter retry timeout so we don't block
-	// interactive chat panels for minutes.
-	const isBackgroundOnPinnedPort =
-		wantsExcludePinned &&
-		_pool &&
-		typeof handle.port === "number" &&
-		(() => {
-			const poolStatus = _pool.getStatus?.();
-			if (!poolStatus || !Array.isArray(poolStatus.ports)) {
-				return false;
-			}
-			const portIndex = poolStatus.ports.findIndex((p) => p.port === handle.port);
-			return portIndex >= 0 && portIndex < _pinnedPortCount;
-		})();
-	const effectiveRetryTimeoutMs = isBackgroundOnPinnedPort
-		? Math.min(retryTimeoutMs, BACKGROUND_ON_PINNED_PORT_TIMEOUT_MS)
-		: retryTimeoutMs;
-
-	if (isBackgroundOnPinnedPort) {
-		console.info(
-			`[generateTextViaRovoDev] Background task fell back to pinned port ${handle.port} — using ${Math.ceil(effectiveRetryTimeoutMs / 1000)}s timeout`
-		);
-	}
 
 	let portKnownStuck = false;
 
@@ -1687,7 +1645,7 @@ async function generateTextViaRovoDev({
 					{
 						signal,
 						logPrefix: "generateTextViaRovoDev",
-						timeoutMs: effectiveRetryTimeoutMs,
+						timeoutMs: retryTimeoutMs,
 						cancelOnConflict: true,
 						port: handle.port,
 					}
@@ -1831,6 +1789,5 @@ module.exports = {
 	parseToolCallArgsInput,
 	resolveToolCallInput,
 	initPool,
-	setPinnedPortCount,
 	WAIT_FOR_TURN_TIMEOUT_MS,
 };

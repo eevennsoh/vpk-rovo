@@ -1,6 +1,7 @@
 "use client";
 
 import type { ChatStatus, FileUIPart } from "ai";
+import type { QueuedPromptItem } from "@/app/contexts";
 import {
 	PromptInput,
 	PromptInputActionMenu,
@@ -15,8 +16,17 @@ import {
 	PromptInputTools,
 	usePromptInputController,
 } from "@/components/ui-ai/prompt-input";
+import {
+	Queue,
+	QueueItem,
+	QueueItemActions,
+	QueueItemContent,
+	QueueItemIndicator,
+	QueueList,
+} from "@/components/ui-ai/queue";
 import { composerPromptInputClassName, composerTextareaClassName, composerUpwardShadow, textareaCSS } from "@/components/blocks/shared-ui/composer-styles";
 import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import type { VoiceButtonState } from "@/components/ui-audio/voice-button";
 import { LiveWaveform } from "@/components/ui-audio/live-waveform";
 import { resolveFutureChatComposerWaveformState } from "@/components/projects/future-chat/lib/future-chat-composer-waveform-state";
@@ -29,6 +39,7 @@ import CrossIcon from "@atlaskit/icon/core/cross";
 import AudioWaveformIcon from "@atlaskit/icon-lab/core/audio-waveform";
 import AddIcon from "@atlaskit/icon/core/add";
 import ClipboardIcon from "@atlaskit/icon/core/clipboard";
+import DeleteIcon from "@atlaskit/icon/core/delete";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { FutureChatComposerAddMenu } from "./future-chat-composer-add-menu";
@@ -39,6 +50,7 @@ const FUTURE_CHAT_WAVEFORM_COLORS = ["var(--color-blue-600)", "var(--color-orang
 
 const FUTURE_CHAT_WAVEFORM_INTRO_MS = 500;
 const EMPTY_REALTIME_OUTPUT_WAVEFORM_BARS: number[] = [];
+const EMPTY_QUEUED_PROMPTS: ReadonlyArray<QueuedPromptItem> = [];
 
 const supportsFieldSizing =
 	typeof window !== "undefined" &&
@@ -53,7 +65,9 @@ interface FutureChatComposerProps {
 	errorMessage?: string | null;
 	isPlanMode?: boolean;
 	micStream?: MediaStream | null;
+	queuedPrompts?: ReadonlyArray<QueuedPromptItem>;
 	onStop: () => Promise<void>;
+	onRemoveQueuedPrompt?: (id: string) => void;
 	onSubmit: (payload: { text: string; files: FileUIPart[] }) => Promise<void>;
 	onTogglePlanMode?: () => void;
 	onToggleRealtimeVoice?: () => void;
@@ -88,7 +102,9 @@ function FutureChatComposerInner({
 	galleryExpanded = false,
 	isPlanMode = false,
 	micStream,
+	queuedPrompts = EMPTY_QUEUED_PROMPTS,
 	onStop,
+	onRemoveQueuedPrompt,
 	onSubmit,
 	onTogglePlanMode,
 	onToggleRealtimeVoice,
@@ -123,6 +139,7 @@ function FutureChatComposerInner({
 	const isComposerBusy = composerStatus === "submitted" || composerStatus === "streaming";
 	const showSubmitButton = !realtimeVoiceActive && !isComposerBusy && canSubmit;
 	const showVoiceStartButton = !realtimeVoiceActive && !isComposerBusy && !showBackgroundStop && Boolean(onToggleRealtimeVoice);
+	const hasQueuedPrompts = queuedPrompts.length > 0;
 	const realtimeWaveformState = resolveFutureChatComposerWaveformState({
 		hasMicStream: micStream !== null,
 		isIntroActive: isRealtimeWaveformIntroActive,
@@ -325,8 +342,9 @@ function FutureChatComposerInner({
 			})
 		: null;
 	const composerHeight = (() => {
-		// When user has typed text, release the fixed height so the textarea auto-resizes
+		// When user has typed text or attachments are present, release the fixed height so the composer auto-sizes
 		if (controller.textInput.value.trim().length > 0) return null;
+		if (controller.attachments.files.length > 0) return null;
 
 		// When artifact context is shown, the stable base height (captured without
 		// the artifact pill) is stale. Let the composer auto-size instead — the
@@ -360,9 +378,39 @@ function FutureChatComposerInner({
 					<FutureChatComposerResponseGradient active={realtimeResponseGradientState.visible} phase={realtimeResponseGradientState.phase ?? "warmup"} signal={realtimeOutputWaveformBars} />
 				)}
 			</div>
-			<div className={cn("flex w-full flex-col gap-4", compact && "gap-3")}>
+			<div className="flex w-full flex-col">
 				{errorMessage ? <Alert variant="danger">{errorMessage}</Alert> : null}
 				{backgroundArtifactLabel ? <p className="px-1 text-text-subtlest text-xs">{backgroundArtifactLabel}</p> : null}
+
+				{hasQueuedPrompts ? (
+					<div className="px-1">
+						<Queue className="rounded-b-none border-border border-b-0 bg-surface-raised px-2 pt-2 pb-2 shadow-none">
+							<QueueList className="mt-0 mb-0 w-full [&_[data-slot=scroll-area-viewport]>div]:max-h-28 [&_[data-slot=scroll-area-viewport]>div]:pr-0 [&_ul]:w-full">
+								{queuedPrompts.map((queuedPrompt) => (
+									<QueueItem key={queuedPrompt.id} className="w-full bg-surface py-2 hover:bg-surface-hovered">
+										<div className="flex items-center gap-2">
+											<QueueItemIndicator />
+											<QueueItemContent className="text-text-subtle">
+												{queuedPrompt.text}
+											</QueueItemContent>
+											<QueueItemActions>
+												<Button
+													aria-label="Remove queued message"
+													onClick={() => onRemoveQueuedPrompt?.(queuedPrompt.id)}
+													size="icon-sm"
+													variant="ghost"
+													className="size-7 cursor-pointer rounded-full text-icon-subtle opacity-0 transition-opacity group-hover:opacity-100"
+												>
+													<DeleteIcon label="" size="small" />
+												</Button>
+											</QueueItemActions>
+										</div>
+									</QueueItem>
+								))}
+							</QueueList>
+						</Queue>
+					</div>
+				) : null}
 
 				<div
 					ref={composerRef}

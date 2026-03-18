@@ -50,7 +50,7 @@ export default function AppLayout({
 				<div
 					style={{
 						marginLeft: sidebarWidth,
-						transition: "margin-left 0.15s cubic-bezier(0.4, 0, 0.2, 1)",
+						transition: "margin-left var(--duration-medium) var(--ease-in-out)",
 						flex: 1,
 						overflow: "auto",
 					}}

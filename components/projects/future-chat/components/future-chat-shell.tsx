@@ -60,7 +60,10 @@ import { ClarificationQuestionCard } from "@/components/projects/shared/componen
 import { QuestionCardShortcutsFooter } from "@/components/projects/shared/components/question-card-shortcuts-footer";
 import { getLatestQuestionCardPayload, type ClarificationAnswers } from "@/components/projects/shared/lib/question-card-widget";
 import { getLatestPlanWidgetPayload } from "@/components/projects/shared/lib/plan-widget";
-import type { PlanApprovalSelection } from "@/components/projects/shared/lib/plan-approval";
+import {
+	planWidgetRequiresApproval,
+	type PlanApprovalSelection,
+} from "@/components/projects/shared/lib/plan-approval";
 import { ApprovalCard } from "@/components/blocks/approval-card/page";
 import { useDismissibleCards } from "@/components/projects/shared/hooks/use-dismissible-cards";
 
@@ -518,7 +521,10 @@ export function FutureChatShell({
 		onDismissQuestionCard: handleClarificationDismiss,
 	});
 	const shouldShowQuestionCard = !chat.isStreaming && shouldShowQuestionCardRaw;
-	const shouldShowApprovalCard = !chat.isStreaming && shouldShowApprovalCardRaw;
+	const shouldShowApprovalCard =
+		!chat.isStreaming &&
+		shouldShowApprovalCardRaw &&
+		planWidgetRequiresApproval(activePlanWidget);
 	const handleClarificationSubmit = useCallback(
 		(answers: ClarificationAnswers) => {
 			if (!activeQuestionCard) return;
@@ -1761,7 +1767,7 @@ export function FutureChatShell({
 			<div
 				ref={composerDockRef}
 				className={cn(
-					"z-10 mx-auto flex w-full flex-col gap-3 pt-3",
+					"z-10 mx-auto flex w-full flex-col gap-3",
 					visibleMessages.length > 0 && "sticky bottom-0 bg-background/90 backdrop-blur",
 					isArtifactOpen ? "max-w-none" : "max-w-[800px]",
 				)}
@@ -1807,6 +1813,7 @@ export function FutureChatShell({
 								isPlanMode={chat.isPlanMode}
 								micStream={realtime.micStream}
 								onStop={handleStop}
+								onRemoveQueuedPrompt={chat.removeQueuedPrompt}
 								onSubmit={handleComposerSubmit}
 								onTogglePlanMode={chat.togglePlanMode}
 								onToggleRealtimeVoice={handleToggleRealtimeVoice}
@@ -1814,6 +1821,7 @@ export function FutureChatShell({
 								placeholder={composerPlaceholder}
 								prefillText={voiceTranscript ?? prefillText}
 								previewPrompt={previewPrompt}
+								queuedPrompts={chat.queuedPrompts}
 								realtimeGenerationState={realtime.generationState}
 								realtimeOutputWaveformBars={realtime.outputWaveformBars}
 								realtimeVoiceActive={isRealtimeActive}
@@ -1852,6 +1860,10 @@ export function FutureChatShell({
 			<FutureChatSidebar
 				activeThreadId={chat.activeThreadId}
 				hoverOpen={isHoverOpen}
+				isGeneratingTitle={chat.isGeneratingTitle}
+				onCancelThreadRun={async (threadId) => {
+					await chat.cancelThreadRun(threadId);
+				}}
 				onDeleteThread={(threadId) => chat.deleteThread(threadId)}
 				onNewChat={() => {
 					setOptimisticUserMessage(null);
@@ -1871,6 +1883,7 @@ export function FutureChatShell({
 				}}
 				onSidebarMouseEnter={handleSidebarContentMouseEnter}
 				onSidebarMouseLeave={handleSidebarContentMouseLeave}
+				pendingTitleThreadId={chat.pendingTitleThreadId}
 				threads={chat.threads}
 				threadsLoaded={chat.threadsLoaded}
 				topOffset={!embedded}
@@ -1879,7 +1892,7 @@ export function FutureChatShell({
 			{!embedded ? (
 				<div
 					className={cn(
-						"fixed top-0 left-0 z-20 flex h-12 items-center px-3 transition-[width,border-color] duration-medium ease-in-out",
+						"fixed top-0 left-0 z-50 flex h-12 items-center px-3 transition-[width,border-color] duration-medium ease-in-out",
 						chat.sidebarOpen
 							? "w-(--sidebar-width) overflow-x-clip border-r border-border"
 							: "w-40 border-b border-border",
@@ -1967,7 +1980,7 @@ export function FutureChatShell({
 									</DropdownMenu>
 								) : null}
 							</div>
-							<div className="relative flex min-w-0 flex-1 items-center justify-center gap-2 px-3">
+							<div className="relative flex min-w-0 flex-1 items-center justify-center gap-2">
 								<div
 									ref={nav.searchContainerRef}
 									className="relative w-full max-w-[480px]"
@@ -2031,7 +2044,7 @@ export function FutureChatShell({
 									: undefined
 							}
 							className={cn(
-								"overscroll-behavior-contain relative z-10 flex min-w-0 touch-pan-y flex-1 flex-col bg-background",
+								"overscroll-behavior-contain relative z-10 flex min-w-0 touch-pan-y flex-1 flex-col bg-background px-6",
 								shouldSplitArtifactPane ? "w-full shrink-0 flex-none" : "flex-1",
 							)}
 						>

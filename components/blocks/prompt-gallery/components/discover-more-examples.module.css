@@ -21,11 +21,11 @@
 }
 
 .animateIn {
-	animation: promptGalleryFadeSlideUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
+	animation: promptGalleryFadeSlideUp var(--duration-slower) var(--ease-out) var(--duration-medium) both;
 }
 
 .animateOut {
-	animation: promptGalleryFadeSlideDown 0.25s cubic-bezier(0.4, 0, 1, 1) forwards;
+	animation: promptGalleryFadeSlideDown var(--duration-slow) var(--ease-in) forwards;
 }
 
 @media (prefers-reduced-motion: reduce) {

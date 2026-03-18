@@ -5,6 +5,7 @@ const {
 	buildFutureChatThreadPath,
 	buildFutureChatThreadPersistKey,
 	getFutureChatThreadIdFromPath,
+	shouldLoadInitialFutureChatThread,
 	shouldSkipFutureChatThreadLoad,
 	shouldReplacePendingFutureChatRoute,
 	shouldReplaceFutureChatRouteAfterPersistence,
@@ -171,5 +172,31 @@ test("does not skip loading when the route mounts a thread that has not been hyd
 			requestedThreadId: "thread-1",
 		}),
 		false,
+	);
+});
+
+test("loads the initial route thread only once until the route param changes", () => {
+	assert.equal(
+		shouldLoadInitialFutureChatThread({
+			initialThreadId: "thread-1",
+			lastLoadedInitialThreadId: null,
+		}),
+		true,
+	);
+
+	assert.equal(
+		shouldLoadInitialFutureChatThread({
+			initialThreadId: "thread-1",
+			lastLoadedInitialThreadId: "thread-1",
+		}),
+		false,
+	);
+
+	assert.equal(
+		shouldLoadInitialFutureChatThread({
+			initialThreadId: "thread-2",
+			lastLoadedInitialThreadId: "thread-1",
+		}),
+		true,
 	);
 });

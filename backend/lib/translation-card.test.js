@@ -31,6 +31,22 @@ test("detectDirectTranslationRequest parses quoted text and target language", ()
 	assert.equal(parsed.needsTargetLanguage, false);
 });
 
+test("detectDirectTranslationRequest parses what-is translation prompts", () => {
+	const parsed = detectDirectTranslationRequest("What is hello in French?");
+
+	assert.equal(parsed.isTranslationRequest, true);
+	assert.equal(parsed.sourceText, "hello");
+	assert.equal(parsed.targetLanguage, "French");
+});
+
+test("detectDirectTranslationRequest does not treat topic questions as translation", () => {
+	const parsed = detectDirectTranslationRequest("What is state in React?");
+
+	assert.equal(parsed.isTranslationRequest, false);
+	assert.equal(parsed.sourceText, null);
+	assert.equal(parsed.targetLanguage, null);
+});
+
 test("createTranslationClarificationSessionId creates prefixed session id", () => {
 	const sessionId = createTranslationClarificationSessionId();
 	assert.equal(sessionId.startsWith(TRANSLATION_CLARIFICATION_SESSION_PREFIX), true);

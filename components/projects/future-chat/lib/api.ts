@@ -314,6 +314,22 @@ export async function listFutureChatBackgroundStreams(): Promise<Array<{ threadI
 	return Array.isArray(payload.streams) ? payload.streams : [];
 }
 
+export async function fetchFutureChatAITitle(message: string): Promise<string | null> {
+	try {
+		const response = await fetch(API_ENDPOINTS.CHAT_TITLE, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ message }),
+		});
+		if (!response.ok) return null;
+		const data = (await response.json()) as { title?: string };
+		const title = (data.title ?? "").trim().replace(/^["']|["']$/g, "").replace(/\.+$/, "").trim();
+		return title.length > 0 ? title : null;
+	} catch {
+		return null;
+	}
+}
+
 export async function detachFutureChatRun(threadId: string): Promise<boolean> {
 	const response = await fetch(API_ENDPOINTS.futureChatRunDetach(threadId), {
 		method: "POST",

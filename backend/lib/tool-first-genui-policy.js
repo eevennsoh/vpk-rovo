@@ -1,4 +1,5 @@
 const { getNonEmptyString } = require("./shared-utils");
+const { isGenericIntegrationWrapperToolName } = require("./rovodev-gateway");
 
 const TOOL_FIRST_DOMAIN_CONFIG = [
 	{
@@ -796,6 +797,13 @@ function isToolNameRelevant({ toolName, domains } = {}) {
 	if (!normalizedToolName || !Array.isArray(domains) || domains.length === 0) {
 		return false;
 	}
+
+	// Generic wrapper tools are always relevant — the actual tool they wrap
+	// could belong to any of the matched domains
+	if (isGenericIntegrationWrapperToolName(normalizedToolName)) {
+		return true;
+	}
+
 	const canonicalToolName = normalizedToolName
 		.toLowerCase()
 		.replace(/[_:/.-]+/g, " ")

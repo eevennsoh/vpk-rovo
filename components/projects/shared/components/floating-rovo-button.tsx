@@ -26,30 +26,6 @@ export default function FloatingRovoButton({
 			<style
 				dangerouslySetInnerHTML={{
 					__html: `
-          @keyframes growButton {
-            from {
-              width: 48px;
-              height: 48px;
-              border-radius: ${token("radius.xxlarge")};
-            }
-            to {
-              width: 54px;
-              height: 54px;
-              border-radius: ${token("radius.xxlarge")};
-            }
-          }
-
-          @keyframes growIcon {
-            from {
-              width: 24px;
-              height: 24px;
-            }
-            to {
-              width: 27px;
-              height: 27px;
-            }
-          }
-
           .floating-rovo-button {
             position: fixed;
             bottom: 24px;
@@ -63,28 +39,22 @@ export default function FloatingRovoButton({
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            transform-origin: center;
+            will-change: transform;
+            transition:
+              transform var(--duration-medium) var(--ease-out),
+              background-color var(--duration-medium) var(--ease-out);
             z-index: 500;
             box-shadow: ${token("elevation.shadow.overlay")};
           }
 
           .floating-rovo-button:hover {
-            width: 54px;
-            height: 54px;
-            border-radius: ${token("radius.xlarge")};
-            bottom: 21px;
-            right: 21px;
+            transform: scale(1.125);
           }
 
           .floating-rovo-button svg {
             width: 24px;
             height: 24px;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-          }
-
-          .floating-rovo-button:hover svg {
-            width: 27px;
-            height: 27px;
           }
 
           .floating-rovo-button svg path {

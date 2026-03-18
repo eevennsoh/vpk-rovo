@@ -242,7 +242,7 @@ export const ConversationBar = React.forwardRef<
                           height={20}
                           mode="static"
                           className={cn(
-                            "h-full w-full transition-opacity duration-300",
+                            "h-full w-full transition-opacity duration-slow",
                             agentState === "disconnected" && "opacity-0"
                           )}
                         />
@@ -278,7 +278,7 @@ export const ConversationBar = React.forwardRef<
                   >
                     <Keyboard
                       className={
-                        "h-5 w-5 transform-gpu transition-all duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] " +
+                        "h-5 w-5 transform-gpu transition-[transform,opacity] duration-medium ease-out " +
                         (keyboardOpen
                           ? "scale-75 opacity-0"
                           : "scale-100 opacity-100")
@@ -286,7 +286,7 @@ export const ConversationBar = React.forwardRef<
                     />
                     <ChevronDown
                       className={
-                        "absolute inset-0 m-auto h-5 w-5 transform-gpu transition-all delay-50 duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] " +
+                        "absolute inset-0 m-auto h-5 w-5 transform-gpu transition-[transform,opacity] delay-50 duration-medium ease-out " +
                         (keyboardOpen
                           ? "scale-100 opacity-100"
                           : "scale-75 opacity-0")
@@ -312,7 +312,7 @@ export const ConversationBar = React.forwardRef<
 
             <div
               className={cn(
-                "overflow-hidden transition-all duration-300 ease-out",
+                "overflow-hidden transition-[max-height] duration-slow ease-out",
                 keyboardOpen ? "max-h-[120px]" : "max-h-0"
               )}
             >

@@ -57,6 +57,7 @@ export function getLatestFutureChatThinkingStatusLabel(
 export function resolveFutureChatComposerSubmitState({
 	activeRunStatus,
 	backgroundDelegationLabelOverride,
+	hasObservedTurnComplete = false,
 	useChatStatus,
 	delegationPhase,
 	isAttachedActiveRun = false,
@@ -66,6 +67,7 @@ export function resolveFutureChatComposerSubmitState({
 }: Readonly<{
 	activeRunStatus?: FutureChatRunStatus | null;
 	backgroundDelegationLabelOverride?: string | null;
+	hasObservedTurnComplete?: boolean;
 	useChatStatus: ChatStatus;
 	delegationPhase: FutureChatDirectDelegationPhase;
 	isAttachedActiveRun?: boolean;
@@ -87,6 +89,15 @@ export function resolveFutureChatComposerSubmitState({
 			: null;
 
 	if (useChatStatus === "submitted" || useChatStatus === "streaming") {
+		if (hasObservedTurnComplete) {
+			return {
+				backgroundArtifactLabel,
+				backgroundDelegationLabel: null,
+				composerStatus: "ready",
+				hasBackgroundDelegation: false,
+			};
+		}
+
 		if (
 			useChatStatus === "streaming" &&
 			streamingArtifactStatus === "streaming"

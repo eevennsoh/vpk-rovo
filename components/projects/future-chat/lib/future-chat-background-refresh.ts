@@ -1,4 +1,18 @@
 import type { ChatStatus } from "ai";
+import type { FutureChatThread } from "@/lib/future-chat-types";
+
+export function getFutureChatBackgroundRefreshThreadIds({
+	activeThreadId,
+	threads,
+}: Readonly<{
+	activeThreadId: string | null;
+	threads: ReadonlyArray<Pick<FutureChatThread, "activeRun" | "id">>;
+}>): string[] {
+	return threads
+		.filter((thread) => thread.activeRun != null && thread.id !== activeThreadId)
+		.map((thread) => thread.id)
+		.sort();
+}
 
 export function shouldHydrateCompletedActiveBackgroundThread({
 	activeStreamThreadIds,

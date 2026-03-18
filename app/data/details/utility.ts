@@ -43,7 +43,7 @@ export const UTILITY_DETAILS: Record<string, ComponentDetail> = {
 		],
 	},
 	"streamdown": {
-		description: "A streaming-optimized React Markdown renderer with syntax highlighting, Mermaid diagrams, math rendering, and CJK support. Supports caret animation, interactive code controls, and both streaming and static rendering modes.",
+		description: "A streaming-optimized React Markdown renderer with syntax highlighting, Mermaid diagrams, math rendering, and CJK support. The demo showcases the current animated streaming API, line numbers, link-safety handling, custom HTML tags, normalized HTML indentation, and both streaming and static rendering modes.",
 	},
 	"multiports": {
 		description: "A concurrent chat testing surface that renders three independent Sidebar Chat panels side by side. Supports Tab key navigation between panels for multi-stream validation.",

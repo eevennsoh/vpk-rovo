@@ -11,6 +11,7 @@ import ScorecardIcon from "@atlaskit/icon/core/scorecard";
 import ShapesIcon from "@atlaskit/icon/core/shapes";
 import Heading from "@/components/blocks/shared-ui/heading";
 import { Button } from "@/components/ui/button";
+import { Shimmer } from "@/components/ui-ai/shimmer";
 import { Spinner } from "@/components/ui/spinner";
 import { token } from "@/lib/tokens";
 import {
@@ -35,16 +36,19 @@ import {
 import { shouldShowFutureChatSidebarRunIndicator } from "@/components/projects/future-chat/lib/future-chat-sidebar-run-indicator";
 import type { FutureChatRunStatus, FutureChatThread } from "@/lib/future-chat-types";
 import { cn } from "@/lib/utils";
-import { MoreHorizontalIcon, Trash2Icon } from "lucide-react";
+import { MoreHorizontalIcon, SquareIcon, Trash2Icon } from "lucide-react";
 
 interface FutureChatSidebarProps {
 	activeThreadId: string | null;
+	onCancelThreadRun: (threadId: string) => Promise<void>;
 	hoverOpen?: boolean;
+	isGeneratingTitle?: boolean;
 	onDeleteThread: (threadId: string) => Promise<void>;
 	onNewChat: () => void;
 	onSidebarMouseEnter?: () => void;
 	onSidebarMouseLeave?: () => void;
 	onSelectThread: (threadId: string) => Promise<void>;
+	pendingTitleThreadId?: string | null;
 	threads: ReadonlyArray<FutureChatThread>;
 	threadsLoaded?: boolean;
 	topOffset?: boolean;
@@ -90,12 +94,16 @@ function FutureChatSidebarNavItem({
 
 function FutureChatSidebarThreadItem({
 	isActive,
+	isPendingTitle = false,
+	onCancelThreadRun,
 	runStatus,
 	onDeleteThread,
 	onSelectThread,
 	thread,
 }: Readonly<{
 	isActive: boolean;
+	isPendingTitle?: boolean;
+	onCancelThreadRun: (threadId: string) => Promise<void>;
 	runStatus?: FutureChatRunStatus | null;
 	onDeleteThread: (threadId: string) => Promise<void>;
 	onSelectThread: (threadId: string) => Promise<void>;
@@ -108,8 +116,8 @@ function FutureChatSidebarThreadItem({
 		<SidebarMenuItem>
 			<SidebarMenuButton
 				className={cn(
-					"h-auto min-h-9 rounded-lg py-2 pl-3 group-hover/menu-item:bg-sidebar-accent group-hover/menu-item:text-sidebar-accent-foreground",
-					showRunIndicator ? "pr-16" : "pr-10",
+					"h-auto min-h-9 rounded-lg py-2 pl-3 transition-[padding] duration-150 ease-out group-hover/menu-item:bg-sidebar-accent group-hover/menu-item:text-sidebar-accent-foreground",
+					showRunIndicator ? "pr-10 group-hover/menu-item:pr-16" : "group-hover/menu-item:pr-10",
 				)}
 				isActive={isActive}
 				onClick={() => {
@@ -121,7 +129,23 @@ function FutureChatSidebarThreadItem({
 			>
 				<div className="min-w-0 flex-1">
 					<div className="truncate text-sm font-medium leading-5 text-text-subtle">
-						{thread.title}
+						{isPendingTitle ? (
+							<Shimmer
+								key={`${thread.id}:${thread.title}`}
+								as="span"
+								duration={1}
+								className="block max-w-full truncate motion-safe:animate-[sd-blurIn_160ms_ease-out_both] motion-reduce:animate-none"
+							>
+								{thread.title}
+							</Shimmer>
+						) : (
+							<span
+								key={`${thread.id}:${thread.title}`}
+								className="block truncate motion-safe:animate-[sd-blurIn_160ms_ease-out_both] motion-reduce:animate-none"
+							>
+								{thread.title}
+							</span>
+						)}
 					</div>
 					<div className="mt-0.5 flex items-center text-xs font-normal text-text-subtlest">
 						<span>
@@ -152,6 +176,14 @@ function FutureChatSidebarThreadItem({
 				</DropdownMenuTrigger>
 				<DropdownMenuContent align="end" side="bottom">
 					<DropdownMenuGroup>
+						{showRunIndicator ? (
+							<DropdownMenuItem
+								elemBefore={<SquareIcon />}
+								onClick={() => void onCancelThreadRun(thread.id)}
+							>
+								Cancel run
+							</DropdownMenuItem>
+						) : null}
 						<DropdownMenuItem
 							className="text-text-danger data-[highlighted]:text-text-danger"
 							elemBefore={<Trash2Icon className="text-icon-danger" />}
@@ -164,7 +196,7 @@ function FutureChatSidebarThreadItem({
 			</DropdownMenu>
 
 			{showRunIndicator ? (
-				<div className="pointer-events-none absolute inset-y-0 right-8 flex items-center justify-center group-data-[collapsible=icon]:hidden">
+				<div className="pointer-events-none absolute inset-y-0 right-1 flex items-center justify-center transition-[right] duration-150 ease-out group-hover/menu-item:right-8 group-data-[collapsible=icon]:hidden">
 					<div className="flex size-6 items-center justify-center">
 						<Spinner
 							size="xs"
@@ -180,12 +212,15 @@ function FutureChatSidebarThreadItem({
 
 export function FutureChatSidebar({
 	activeThreadId,
+	onCancelThreadRun,
 	hoverOpen = false,
+	isGeneratingTitle = false,
 	onDeleteThread,
 	onNewChat,
 	onSidebarMouseEnter,
 	onSidebarMouseLeave,
 	onSelectThread,
+	pendingTitleThreadId = null,
 	threads,
 	threadsLoaded = true,
 	topOffset = false,
@@ -196,16 +231,16 @@ export function FutureChatSidebar({
 		<Sidebar
 			aria-label="Future Chat navigation"
 			className={cn(
-				"px-3 group-data-[state=expanded]:group-data-[side=left]:border-r group-data-[state=expanded]:group-data-[side=left]:border-border",
+				"bg-sidebar px-3 group-data-[state=expanded]:group-data-[side=left]:border-r group-data-[state=expanded]:group-data-[side=left]:border-border",
 				topOffset && "!top-12 !h-[calc(100svh-3rem)]",
 			)}
 			onMouseEnter={onSidebarMouseEnter}
 			onMouseLeave={onSidebarMouseLeave}
 			role="complementary"
-			style={hoverOpen ? { left: 0, zIndex: 20, boxShadow: token("elevation.shadow.overlay") } : { zIndex: 20 }}
+			style={hoverOpen ? { left: 0, zIndex: 50, boxShadow: token("elevation.shadow.overlay") } : { zIndex: 50 }}
 			variant="inset"
 		>
-			<SidebarContent className="bg-sidebar/60">
+			<SidebarContent className="bg-sidebar">
 				{/* Top navigation items */}
 				<SidebarGroup className="p-0">
 					<SidebarGroupContent>
@@ -272,7 +307,7 @@ export function FutureChatSidebar({
 
 				{/* Chat threads list */}
 				{chatsExpanded ? (
-					threadsLoaded && threads.length === 0 ? (
+					threadsLoaded && threads.length === 0 && !isGeneratingTitle ? (
 						<SidebarGroup className="flex flex-1 items-center justify-center p-0">
 							<SidebarGroupContent>
 								<div className="flex w-full flex-col items-center gap-4 px-6 text-center">
@@ -299,12 +334,36 @@ export function FutureChatSidebar({
 						<SidebarGroup className="p-0">
 							<SidebarGroupContent>
 								<SidebarMenu>
-											{threads.map((thread) => (
-												<FutureChatSidebarThreadItem
-													isActive={thread.id === activeThreadId}
-													key={thread.id}
-													onDeleteThread={onDeleteThread}
-													onSelectThread={onSelectThread}
+								{isGeneratingTitle && threads.length === 0 ? (
+									<SidebarMenuItem>
+										<SidebarMenuButton
+											className="h-auto min-h-9 rounded-lg py-2 pl-3"
+											size="lg"
+											type="button"
+											aria-label="Generating chat title"
+										>
+											<div className="min-w-0 flex-1">
+												<div className="text-sm font-medium leading-5">
+													<Shimmer
+														as="span"
+														duration={1}
+														className="block max-w-full truncate motion-safe:animate-[sd-blurIn_160ms_ease-out_both] motion-reduce:animate-none"
+													>
+														Generating chat title
+													</Shimmer>
+												</div>
+											</div>
+										</SidebarMenuButton>
+									</SidebarMenuItem>
+								) : null}
+								{threads.map((thread) => (
+									<FutureChatSidebarThreadItem
+										isActive={thread.id === activeThreadId}
+										isPendingTitle={isGeneratingTitle && pendingTitleThreadId === thread.id}
+										onCancelThreadRun={onCancelThreadRun}
+										key={thread.id}
+										onDeleteThread={onDeleteThread}
+										onSelectThread={onSelectThread}
 													runStatus={thread.activeRun?.status ?? null}
 													thread={thread}
 												/>

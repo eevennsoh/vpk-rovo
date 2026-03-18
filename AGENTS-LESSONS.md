@@ -90,3 +90,8 @@ Mark promoted entries with `[Promoted]` prefix — see vpk-lesson skill for deta
 - **What happened:** A sidebar thread-row change kept `pr-10` on hover/active/open states to reserve room for the overflow button even after the user said the label should simply truncate under that button.
 - **Why:** The implementation optimized for preventing visual overlap instead of following the requested interaction model, which already relied on `truncate` to handle long labels.
 - **Rule:** When a user explicitly says an overlaid action is acceptable because text should ellipsize, remove reserved padding entirely and let the existing truncation behavior handle overflow instead of preserving hover or active gutters.
+
+### 2026-03-18 - Do not treat cross-site Atlassian work discovery as data bleed by default
+- **What happened:** Cross-site Confluence results were flagged as a likely bug in a last-7-days work summary even though the user expected work to be discoverable across multiple Atlassian sites.
+- **Why:** The analysis assumed the prompt should stay strictly site-local instead of checking whether the product intent allowed scattered work across connected sites.
+- **Rule:** For work-summary or activity-audit prompts, do not classify multi-site Atlassian results as incorrect by default. First confirm whether the surface is intended to aggregate work across sites, then judge the output against that scope.

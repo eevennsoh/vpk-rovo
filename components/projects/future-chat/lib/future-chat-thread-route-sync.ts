@@ -96,6 +96,20 @@ export function shouldSkipFutureChatThreadLoad(options: {
 	return options.activeThreadId === options.requestedThreadId;
 }
 
+export function shouldLoadInitialFutureChatThread(options: {
+	initialThreadId: string | null;
+	lastLoadedInitialThreadId: string | null;
+}): options is {
+	initialThreadId: string;
+	lastLoadedInitialThreadId: string | null;
+} {
+	if (!options.initialThreadId) {
+		return false;
+	}
+
+	return options.initialThreadId !== options.lastLoadedInitialThreadId;
+}
+
 export function shouldReplacePendingFutureChatRoute(options: {
 	activeThreadId: string | null;
 	embedded: boolean;

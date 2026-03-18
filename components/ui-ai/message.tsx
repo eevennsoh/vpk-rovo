@@ -597,6 +597,7 @@ export const MessageResponse = memo(
 					"size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
 					className,
 				)}
+				mode="streaming"
 				plugins={streamdownPlugins}
 				components={streamdownComponents}
 				linkSafety={linkSafetyConfig}
@@ -604,10 +605,6 @@ export const MessageResponse = memo(
 			/>
 		);
 	},
-	(prevProps, nextProps) =>
-		prevProps.children === nextProps.children &&
-		prevProps.isAnimating === nextProps.isAnimating &&
-		prevProps.className === nextProps.className,
 );
 
 export type MessageToolbarProps = ComponentProps<"div">;

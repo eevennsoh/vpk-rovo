@@ -52,6 +52,7 @@ import { AssistantThinkingToolsSection } from "@/components/projects/shared/comp
 import { GenerativeWidgetCard } from "@/components/projects/shared/components/generative-widget-card";
 import LoadingWidget from "@/components/projects/shared/components/loading-widget";
 import { AssistantSuggestionsSection } from "@/components/projects/shared/components/assistant-suggestions-section";
+import { PlanWidgetInlineCard } from "@/components/projects/shared/components/plan-widget-inline-card";
 import { useDynamicThinkingLabel } from "@/components/projects/shared/hooks/use-dynamic-thinking-label";
 import {
 	getReasoningPropsForPhase,
@@ -80,6 +81,7 @@ import {
 	type RoutingDecision,
 	type RovoUIMessage,
 } from "@/lib/rovo-ui-messages";
+import { parsePlanWidgetPayload } from "@/components/projects/shared/lib/plan-widget";
 import { cn } from "@/lib/utils";
 import { FutureChatArtifactCard } from "@/components/projects/future-chat/components/future-chat-artifact-card";
 import type { FutureChatDocument } from "@/lib/future-chat-types";
@@ -289,6 +291,9 @@ function AssistantMessage({
 	// during clarification flows where presentation is "text"). GenUI widgets
 	// only render when the routing decision says "genui_card".
 	const widgetType = widget?.data.type ?? null;
+	const parsedPlanWidget = widgetType === "plan"
+		? parsePlanWidgetPayload(widget?.data.payload)
+		: null;
 	const shouldShowWidget = shouldRenderFutureChatWidget({
 		hasWidget: Boolean(widget),
 		routeDecision,
@@ -373,6 +378,17 @@ function AssistantMessage({
 		undefined,
 		hasThinkingDetails,
 	);
+	const shouldRenderPlanWidget = shouldShowWidget && parsedPlanWidget !== null;
+	const shouldRenderAssistantText =
+		Boolean(text) &&
+		(isTextPresentation || isFallbackRoute || !widget) &&
+		!shouldRenderPlanWidget;
+	const isPlanWidgetStreaming =
+		widgetType === "plan" &&
+		(
+			(widgetLoading?.data.type === "plan" && widgetLoading.data.loading) ||
+			isMessageTextStreaming(message)
+		);
 
 	return (
 		<Message
@@ -438,13 +454,22 @@ function AssistantMessage({
 					) : null}
 
 					{widgetLoading?.data.loading ? (
-						<div className="max-w-[min(100%,450px)]">
+						<div className="w-full">
 							<LoadingWidget widgetType={widgetLoading.data.type} />
 						</div>
 					) : null}
 
-					{shouldShowWidget && widget ? (
-						<div className="max-w-[min(100%,560px)]">
+					{shouldRenderPlanWidget ? (
+						<div className="w-full pt-2">
+							<PlanWidgetInlineCard
+								title={parsedPlanWidget.title}
+								description={parsedPlanWidget.description}
+								tasks={parsedPlanWidget.tasks}
+								isStreaming={isPlanWidgetStreaming}
+							/>
+						</div>
+					) : shouldShowWidget && widget ? (
+						<div className="w-full">
 							<GenerativeWidgetCard
 								widgetData={widget.data.payload}
 								widgetType={widget.data.type ?? "message"}
@@ -458,7 +483,7 @@ function AssistantMessage({
 						</div>
 					) : null}
 
-					{text && (isTextPresentation || isFallbackRoute || !widget) ? (
+					{shouldRenderAssistantText ? (
 						<MessageContent className="max-w-3xl">
 							<MessageResponse isAnimating={(isStreaming && isLastAssistant) || isMessageTextStreaming(message)}>
 								{text}

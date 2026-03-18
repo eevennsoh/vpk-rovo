@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 
 const {
+	mergeFutureChatMessages,
 	updateRealtimeTextMessage,
 } = require("./future-chat-realtime-message-state.ts");
 
@@ -84,4 +85,76 @@ test("updateRealtimeTextMessage preserves non-text parts when appending text", (
 			},
 		},
 	]);
+});
+
+test("mergeFutureChatMessages dedupes colliding ids and prefers canonical RovoDev messages", () => {
+	const createdAt = "2026-03-13T00:00:00.000Z";
+	const mergedMessages = mergeFutureChatMessages({
+		rovodevMessages: [
+			{
+				id: "shared-message",
+				role: "assistant",
+				metadata: {
+					createdAt,
+					origin: "rovodev",
+					updatedAt: "2026-03-13T00:00:02.000Z",
+				},
+				parts: [{ type: "text", text: "Canonical response", state: "done" }],
+			},
+		],
+		realtimeMessages: [
+			{
+				id: "shared-message",
+				role: "assistant",
+				metadata: {
+					createdAt,
+					origin: "realtime",
+					realtimeMessageId: "realtime-shared-message",
+					updatedAt: "2026-03-13T00:00:01.000Z",
+				},
+				parts: [{ type: "text", text: "Interim response", state: "done" }],
+			},
+		],
+	});
+
+	assert.equal(mergedMessages.length, 1);
+	assert.equal(mergedMessages[0]?.id, "shared-message");
+	assert.equal(mergedMessages[0]?.metadata?.origin, "rovodev");
+	assert.equal(mergedMessages[0]?.parts[0]?.text, "Canonical response");
+});
+
+test("mergeFutureChatMessages keeps a streaming realtime message until the canonical one is ready", () => {
+	const createdAt = "2026-03-13T00:00:00.000Z";
+	const mergedMessages = mergeFutureChatMessages({
+		rovodevMessages: [
+			{
+				id: "shared-message",
+				role: "assistant",
+				metadata: {
+					createdAt,
+					origin: "rovodev",
+					updatedAt: "2026-03-13T00:00:02.000Z",
+				},
+				parts: [{ type: "text", text: "Canonical response", state: "done" }],
+			},
+		],
+		realtimeMessages: [
+			{
+				id: "shared-message",
+				role: "assistant",
+				metadata: {
+					createdAt,
+					origin: "realtime",
+					realtimeMessageId: "realtime-shared-message",
+					updatedAt: "2026-03-13T00:00:03.000Z",
+				},
+				parts: [{ type: "text", text: "Streaming response", state: "streaming" }],
+			},
+		],
+	});
+
+	assert.equal(mergedMessages.length, 1);
+	assert.equal(mergedMessages[0]?.id, "shared-message");
+	assert.equal(mergedMessages[0]?.metadata?.origin, "realtime");
+	assert.equal(mergedMessages[0]?.parts[0]?.text, "Streaming response");
 });

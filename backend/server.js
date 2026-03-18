@@ -61,7 +61,6 @@ const {
 	generateTextViaRovoDev,
 	isChatInProgressError,
 	initPool,
-	setPinnedPortCount,
 	WAIT_FOR_TURN_TIMEOUT_MS,
 } = require("./lib/rovodev-gateway");
 const { createAIGatewayProvider } = require("./lib/ai-gateway-provider");
@@ -195,10 +194,10 @@ const {
 const {
 	extractPlanWidgetPayloadFromText,
 	extractProgressivePlanWidgetPayloadFromText,
-	extractPlanWidgetPayloadFromStructuredText,
 } = require("./lib/plan-widget-fallback");
 const {
 	extractUpdateTodoPlanPayloadFromObservations,
+	extractUpdateTodoQueuePayloadFromObservations,
 } = require("./lib/update-todo-plan-payload");
 const { chromiumPreviewManager } = require("./lib/chromium-preview");
 const { browserWorkspaceManager } = require("./lib/browser-workspace-manager");
@@ -383,9 +382,12 @@ async function refreshRovoDevAvailability() {
 		} else {
 			_rovoDevPool = createRovoDevPool(healthyPorts, {
 				waitForReady: waitForPortReady,
+				onStaleBusyPort: (port) => {
+					console.warn(`[ROVODEV] Attempting cancel on stale busy port ${port}`);
+					rovoDevCancelChat(port, { timeoutMs: 5_000 }).catch(() => {});
+				},
 			});
 			initPool(_rovoDevPool);
-			setPinnedPortCount(PINNED_PORT_COUNT);
 		}
 
 		if (healthyPorts.length === 1) {
@@ -484,7 +486,6 @@ const INTERACTIVE_CHAT_FORCE_PORT_RECOVERY_TIMEOUT_MS =
 const POST_STREAM_COOLDOWN_MS = 500;
 const READY_PROBE_INTERVAL_MS = 100;
 const READY_PROBE_MAX_ATTEMPTS = 20; // 100ms × 20 = 2s max
-const PINNED_PORT_COUNT = 3;
 
 /**
  * Tracks the latest request timestamp per portIndex.
@@ -752,7 +753,6 @@ async function generateTextViaGateway({
 	signal,
 	allowFallback = false,
 	portIndex,
-	excludePinnedPorts,
 }) {
 	const backendSelection = await resolvePreferredBackend({ allowFallback });
 	if (backendSelection.backend === "rovodev") {
@@ -765,7 +765,6 @@ async function generateTextViaGateway({
 				timeoutMs: WAIT_FOR_TURN_TIMEOUT_MS,
 				signal,
 				portIndex,
-				excludePinnedPorts,
 			});
 		} catch (rovoDevError) {
 			const is409Timeout =
@@ -1110,9 +1109,9 @@ async function generateSmartGenuiResult({
 		maxOutputTokens: 3500,
 		temperature: 0.3,
 		signal,
+		allowFallback: true,
 		...buildSmartGenerationGatewayOptions({
 			provider,
-			excludePinnedPorts: true,
 		}),
 		gatewayUrl,
 	});
@@ -1862,18 +1861,17 @@ function streamFutureChatArtifactToolResponse({
 			});
 			writer.write({ type: "text-end", id: textId });
 
-				writer.write(createRouteDecisionPart({
-					intent:
-						artifactAction === "updateDocument"
-							? "artifact_update"
-							: "artifact_create",
-					origin: requestOrigin,
-					reason: "intent_task_toolable",
-				}, { transient: true }));
+			writer.write(createRouteDecisionPart({
+				intent:
+					artifactAction === "updateDocument"
+						? "artifact_update"
+						: "artifact_create",
+				origin: requestOrigin,
+				reason: "intent_task_toolable",
+			}, { transient: true }));
 			writer.write({
 				type: "data-turn-complete",
 				data: { timestamp: new Date().toISOString() },
-				transient: true,
 			});
 
 			let resolvedSuggestedQuestions = suggestedQuestions;
@@ -2468,6 +2466,7 @@ async function executeFutureChatManagedRun(run) {
 		stageTrace,
 		threadId,
 	});
+	stageTrace.mark("run_complete");
 }
 
 async function startManagedFutureChatRun(run, assignment) {
@@ -2551,10 +2550,30 @@ async function proxyFutureChatChatRequest(req, res) {
 	}
 
 	if (!existingRun) {
+		const poolStatus = _rovoDevPool?.getStatus?.();
+		const poolPorts = Array.isArray(poolStatus?.ports) ? poolStatus.ports : [];
+		const availableCount = poolPorts.filter((p) => p?.status === "available").length;
+		const busyCount = poolPorts.filter((p) => p?.status === "busy" || p?.status === "in-use").length;
+		console.info("[TIMING][future-chat] pool-status", {
+			threadId,
+			totalPorts: poolPorts.length,
+			available: availableCount,
+			busy: busyCount,
+			requestedPortIndex: run.requestedPortIndex ?? null,
+		});
+
 		const assignment = resolveFutureChatPortAssignment(run.requestedPortIndex);
 		if (assignment) {
+			console.info("[TIMING][future-chat] port-assignment", {
+				threadId,
+				portIndex: assignment.portIndex,
+				rovoPort: assignment.rovoPort,
+			});
 			await startManagedFutureChatRun(run, assignment);
 		} else {
+			console.info("[TIMING][future-chat] port-assignment: null (run will be QUEUED)", {
+				threadId,
+			});
 			futureChatRunManager.enqueueRun(threadId);
 			await persistFutureChatRunState(threadId, futureChatRunManager.getRun(threadId));
 		}
@@ -2896,7 +2915,7 @@ function buildGoogleCalendarDateContext(clientTimeZone) {
 const TOOL_OBSERVATION_RAW_MAX_DEPTH = 5;
 const TOOL_OBSERVATION_RAW_MAX_ARRAY_ITEMS = 40;
 const TOOL_OBSERVATION_RAW_MAX_OBJECT_KEYS = 60;
-const TOOL_OBSERVATION_RAW_MAX_STRING_CHARS = 4000;
+const TOOL_OBSERVATION_RAW_MAX_STRING_CHARS = 8000;
 
 function truncateObservationString(value) {
 	if (typeof value !== "string") {
@@ -3556,6 +3575,36 @@ function parsePlanWidgetPayload(value) {
 function getPlanWidgetTaskCount(value) {
 	const parsedPayload = parsePlanWidgetPayload(value);
 	return parsedPayload ? parsedPayload.tasks.length : 0;
+}
+
+function planWidgetRequiresApproval(value) {
+	const parsedPayload = parsePlanWidgetPayload(value);
+	return Boolean(parsedPayload?.deferredToolCallId);
+}
+
+function mergePlanWidgetPayloadTasks(basePayload, taskPayload) {
+	const parsedBasePayload = parsePlanWidgetPayload(basePayload);
+	const parsedTaskPayload = parsePlanWidgetPayload(taskPayload);
+	if (!parsedBasePayload || !parsedTaskPayload || parsedTaskPayload.tasks.length === 0) {
+		return null;
+	}
+
+	return {
+		title: parsedBasePayload.title,
+		description:
+			parsedBasePayload.description ||
+			parsedTaskPayload.description ||
+			undefined,
+		emoji: parsedBasePayload.emoji,
+		tasks: parsedTaskPayload.tasks.map((task) => ({
+			id: task.id,
+			label: task.label,
+			blockedBy: Array.isArray(task.blockedBy) ? [...task.blockedBy] : [],
+			agent: task.agent,
+		})),
+		agents: [...parsedTaskPayload.agents],
+		deferredToolCallId: parsedBasePayload.deferredToolCallId,
+	};
 }
 
 function sanitizeMermaidNodeId(value) {
@@ -4295,6 +4344,7 @@ Rules:
 
 app.post("/api/chat-sdk", async (req, res) => {
 	let stageTrace = null;
+	let cleanupChatSdkAbortTracking = null;
 	try {
 		const {
 			messages,
@@ -4337,7 +4387,12 @@ app.post("/api/chat-sdk", async (req, res) => {
 		let strictPortAssignment = null;
 		if (typeof portIndex === "number") {
 			try {
+				const rovoDevAvailableStartedAtMs = Date.now();
 				await isRovoDevAvailable();
+				stageTrace.mark("rovodev_available_check", {
+					stageMs: Date.now() - rovoDevAvailableStartedAtMs,
+					portIndex,
+				});
 				const poolStatus = _rovoDevPool?.getStatus?.();
 				const poolPorts = Array.isArray(poolStatus?.ports)
 					? poolStatus.ports
@@ -4454,6 +4509,10 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 			translationRequestState.isTranslationRequest ||
 			isTranslationClarificationTurn
 		) {
+			stageTrace.mark("pre_route_branch_entered", {
+				branch: "translation",
+				needsClarification: translationRequestState.needsClarification,
+			});
 			if (translationRequestState.needsClarification && !isTranslationSkipTurn) {
 				const translationQuestionCardPayload = sanitizeQuestionCardPayload(
 					buildTranslationClarificationPayload({
@@ -5400,9 +5459,9 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 								prompt: smartClarificationClassifierPrompt,
 								maxOutputTokens: 120,
 								temperature: 0,
+								allowFallback: true,
 								...buildSmartGenerationGatewayOptions({
 									provider,
-									excludePinnedPorts: true,
 								}),
 							});
 							smartClarificationDecision = parseSmartClarificationClassifierOutput(
@@ -5441,9 +5500,9 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 								}),
 								intentHint: vagueVisualization ? "visualization" : undefined,
 								gatewayOptions: {
+									allowFallback: true,
 									...buildSmartGenerationGatewayOptions({
 										provider,
-										excludePinnedPorts: true,
 									}),
 									signal: clarificationAbort.signal,
 								},
@@ -6516,15 +6575,30 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 			}
 		}
 
-		// Create an AbortController so we can cancel the RovoDev stream when
-		// the client disconnects (e.g. user clicks Stop).
-		const abortController = new AbortController();
-		req.on("close", () => {
-			if (!abortController.signal.aborted) {
+		const { abortController, cleanup } = createAbortControllerFromRequest(req, res, {
+			onAbort: () => {
 				console.log("[CHAT-SDK] Client disconnected, aborting RovoDev stream");
-				abortController.abort();
-			}
+			},
 		});
+		let didCleanupAbortTracking = false;
+		const cleanupAbortTracking = () => {
+			if (didCleanupAbortTracking) {
+				return;
+			}
+
+			didCleanupAbortTracking = true;
+			if (typeof res.off === "function") {
+				res.off("finish", cleanupAbortTracking);
+				res.off("close", cleanupAbortTracking);
+			} else if (typeof res.removeListener === "function") {
+				res.removeListener("finish", cleanupAbortTracking);
+				res.removeListener("close", cleanupAbortTracking);
+			}
+			cleanup();
+		};
+		cleanupChatSdkAbortTracking = cleanupAbortTracking;
+		res.once("finish", cleanupAbortTracking);
+		res.once("close", cleanupAbortTracking);
 		const shouldForceCardFirstGenui =
 			smartGenerationActive &&
 			prefersGenuiCardExperience &&
@@ -7287,58 +7361,74 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 
 						const emitPlanWidgetLoading = (loading) => {
 							writer.write({
-							type: "data-widget-loading",
-						id: widgetId,
-						data: {
-							type: "plan",
-							loading,
-						},
-					});
-					hasSeenPlanWidgetSignal = true;
-					hasEmittedPlanLoadingState = loading;
-				};
+								type: "data-widget-loading",
+								id: widgetId,
+								data: {
+									type: "plan",
+									loading,
+								},
+							});
+							hasSeenPlanWidgetSignal = true;
+							hasEmittedPlanLoadingState = loading;
+						};
 
-				const emitPlanWidgetData = (payload) => {
-					writer.write({
-						type: "data-widget-data",
-						id: widgetId,
-						data: {
-							type: "plan",
-							payload,
-						},
-					});
-					hasEmittedPlanWidget = true;
-					hasSeenPlanWidgetSignal = true;
-				};
+						const emitPlanWidgetData = (payload) => {
+							writer.write({
+								type: "data-widget-data",
+								id: widgetId,
+								data: {
+									type: "plan",
+									payload,
+								},
+							});
+							hasEmittedPlanWidget = true;
+							hasSeenPlanWidgetSignal = true;
+						};
 
-				const emitWidgetError = ({
-					type,
-					message,
-					canRetry = true,
-					id = widgetId,
-				}) => {
-					if (typeof type !== "string" || !type.trim()) {
-						return;
-					}
-					if (typeof message !== "string" || !message.trim()) {
-						return;
-					}
+						const emitTodoQueueData = (payload) => {
+							if (!payload || typeof payload !== "object") {
+								return;
+							}
 
-					writer.write({
-						type: "data-widget-error",
-						id,
-						data: {
+							writer.write({
+								type: "data-todo-queue",
+								id: `todo-queue-${Date.now()}`,
+								data: payload,
+							});
+						};
+
+						const emitWidgetError = ({
 							type,
-							message: message.trim(),
-							canRetry: Boolean(canRetry),
-						},
-					});
-				};
+							message,
+							canRetry = true,
+							id = widgetId,
+						}) => {
+							if (typeof type !== "string" || !type.trim()) {
+								return;
+							}
+							if (typeof message !== "string" || !message.trim()) {
+								return;
+							}
 
-					const maybeEmitProgressivePlanUpdate = () => {
-						if (hasExplicitPlanPayload) {
-							return;
-						}
+							writer.write({
+								type: "data-widget-error",
+								id,
+								data: {
+									type,
+									message: message.trim(),
+									canRetry: Boolean(canRetry),
+								},
+							});
+						};
+
+						const maybeEmitProgressivePlanUpdate = () => {
+							if (
+								hasExplicitPlanPayload ||
+								!hasSeenPlanWidgetSignal ||
+								latestPlanPayload !== null
+							) {
+								return;
+							}
 
 					const progressivePlanPayload = extractProgressivePlanWidgetPayloadFromText(
 						assistantText,
@@ -7924,6 +8014,11 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 
 					// RovoDev Serve: route through the local agent loop
 					console.log("[CHAT-SDK] Routing through RovoDev Serve");
+					stageTrace.mark("rovodev_stream_start", {
+						portIndex: typeof portIndex === "number" ? portIndex : null,
+						rovoPort: strictPortAssignment?.rovoPort ?? null,
+						conflictPolicy: "wait-for-turn",
+					});
 					// Emit data-thinking-status lazily — only when the LLM
 					// actually starts producing output (text or tool events).
 					// Until then the frontend shows the preload indicator
@@ -8772,40 +8867,36 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 				}
 
 					if (!hasExplicitPlanPayload) {
-						const fallbackPlanCandidates = [
-							extractUpdateTodoPlanPayloadFromObservations(toolObservationEntries),
-							extractPlanWidgetPayloadFromText(assistantText),
-							isPostClarificationTurn
-								? extractPlanWidgetPayloadFromStructuredText(assistantText)
-								: null,
-						];
+						const updateTodoPlanPayload =
+							extractUpdateTodoPlanPayloadFromObservations(toolObservationEntries);
 
-						let fallbackPlanPayload = null;
-						let fallbackPlanTaskCount = 0;
-						for (const candidate of fallbackPlanCandidates) {
-							if (!candidate) {
-								continue;
-							}
+						if (updateTodoPlanPayload) {
+							if (planWidgetRequiresApproval(latestPlanPayload)) {
+								const mergedPlanPayload = mergePlanWidgetPayloadTasks(
+									latestPlanPayload,
+									updateTodoPlanPayload
+								);
+								const existingPlanTaskCount = getPlanWidgetTaskCount(latestPlanPayload);
+								const mergedPlanTaskCount = getPlanWidgetTaskCount(mergedPlanPayload);
+								const shouldUpgradePlanPayload =
+									mergedPlanPayload &&
+									mergedPlanTaskCount > 0 &&
+									(
+										!hasEmittedPlanWidget ||
+										mergedPlanTaskCount >= existingPlanTaskCount
+									);
 
-							const candidateTaskCount = getPlanWidgetTaskCount(candidate);
-							if (candidateTaskCount <= fallbackPlanTaskCount) {
-								continue;
-							}
-
-							fallbackPlanPayload = candidate;
-							fallbackPlanTaskCount = candidateTaskCount;
-						}
-
-						if (fallbackPlanPayload) {
-							const existingPlanTaskCount = getPlanWidgetTaskCount(latestPlanPayload);
-							const shouldUpgradePlanPayload =
-								!hasEmittedPlanWidget ||
-								fallbackPlanTaskCount > existingPlanTaskCount;
-
-							if (shouldUpgradePlanPayload) {
-								latestPlanPayload = fallbackPlanPayload;
-								hasEmittedPlanWidget = true;
-								emitPlanWidgetData(fallbackPlanPayload);
+								if (shouldUpgradePlanPayload) {
+									latestPlanPayload = mergedPlanPayload;
+									hasEmittedPlanWidget = true;
+									emitPlanWidgetData(mergedPlanPayload);
+								}
+							} else {
+								const todoQueuePayload =
+									extractUpdateTodoQueuePayloadFromObservations(toolObservationEntries);
+								if (todoQueuePayload) {
+									emitTodoQueueData(todoQueuePayload);
+								}
 							}
 						}
 					}
@@ -8985,6 +9076,9 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 								hasActionableTools: hasObservedActionableToolCall,
 								taskLikeRequest: isTaskLikeRequest,
 								rovodevTextLength: trimmedAssistantText.length,
+								rovodevTextPreview: trimmedAssistantText.slice(0, 300),
+								toolObservationCount: toolObservationEntries.length,
+								forceCardFirst: shouldForceCardFirstGenui,
 							});
 
 							const genuiResult = await generateGenuiFromRovodevResponse({
@@ -9228,6 +9322,22 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 											observations: strictRelevantToolObservationEntries,
 											allowTextFallback: false,
 										});
+
+									console.info("[TOOL-FIRST] WorkSummary fallback extraction", {
+										observationCount: strictRelevantToolObservationEntries.length,
+										observationToolNames: strictRelevantToolObservationEntries.map(e => e.toolName),
+										observationHasRawOutput: strictRelevantToolObservationEntries.map(e => ({
+											toolName: e.toolName,
+											hasRawOutput: e.rawOutput !== null && e.rawOutput !== undefined,
+											rawOutputType: typeof e.rawOutput,
+											rawOutputIsArray: Array.isArray(e.rawOutput),
+											textLength: e.text?.length ?? 0,
+										})),
+										fallbackHasSpec: Boolean(toolFirstFallbackPayload?.spec),
+										fallbackSource: toolFirstFallbackPayload?.source ?? null,
+										fallbackObservationUsed: toolFirstFallbackPayload?.observationUsed ?? false,
+										fallbackResultCount: toolFirstFallbackPayload?.resultCount ?? 0,
+									});
 
 								if (hasRenderableSpec && !isLowConfidenceSpec) {
 									const renderedSummary =
@@ -9624,6 +9734,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 				stream,
 			});
 		} catch (error) {
+			cleanupChatSdkAbortTracking?.();
 			stageTrace.mark("chat_sdk_error", {
 				error: error instanceof Error ? error.message : String(error),
 			});

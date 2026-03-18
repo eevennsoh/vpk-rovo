@@ -28,6 +28,17 @@ test("createAbortControllerFromRequest aborts when the response closes early", (
 	assert.equal(abortController.signal.aborted, true);
 });
 
+test("createAbortControllerFromRequest ignores request close without an abort event", () => {
+	const req = new EventEmitter();
+	const res = new EventEmitter();
+	res.writableFinished = false;
+	const { abortController } = createAbortControllerFromRequest(req, res);
+
+	req.emit("close");
+
+	assert.equal(abortController.signal.aborted, false);
+});
+
 test("createAbortControllerFromRequest ignores response close after finish", () => {
 	const req = new EventEmitter();
 	const res = new EventEmitter();

@@ -18,7 +18,6 @@ function normalizeSmartGenerationPortIndex(value) {
 function buildSmartGenerationGatewayOptions({
 	provider,
 	portIndex,
-	excludePinnedPorts = false,
 	signal,
 } = {}) {
 	const normalizedProvider = normalizeSmartGenerationProvider(provider);
@@ -29,12 +28,7 @@ function buildSmartGenerationGatewayOptions({
 		options.provider = normalizedProvider;
 	}
 
-	// When excludePinnedPorts is true, background tasks deliberately avoid
-	// pinned ports so they don't interfere with interactive chat panels.
-	// portIndex is ignored in this case.
-	if (excludePinnedPorts) {
-		options.excludePinnedPorts = true;
-	} else if (normalizedPortIndex !== undefined) {
+	if (normalizedPortIndex !== undefined) {
 		options.portIndex = normalizedPortIndex;
 	}
 

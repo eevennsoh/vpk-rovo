@@ -336,6 +336,15 @@ if [[ "${1:-}" == "--" ]]; then
 	shift
 fi
 
+# Parse --N flag to override pool size (e.g. --1, --2, --3)
+for arg in "$@"; do
+	if [[ "$arg" =~ ^--([0-9]+)$ ]]; then
+		POOL_SIZE="${BASH_REMATCH[1]}"
+		shift
+		break
+	fi
+done
+
 command="${1:-start}"
 
 case "$command" in

@@ -907,6 +907,13 @@ async function generateGenuiFromRovodevResponse({
 		},
 	];
 
+	console.info("[GENUI-TWO-STEP] Starting GenUI LLM call", {
+		rovodevResponseLength: rovodevResponseText.length,
+		conversationMessageCount: messagesForGenui.length,
+		rovoDevAvailable,
+		fallbackEnabled,
+	});
+
 	try {
 		const rawText = await generateAssistantText({
 			systemPrompt,
@@ -916,8 +923,29 @@ async function generateGenuiFromRovodevResponse({
 			aiGatewayProvider: aiGatewayProvider || DEFAULT_AI_GATEWAY_PROVIDER,
 		});
 
+		console.info("[GENUI-TWO-STEP] GenUI LLM raw output received", {
+			rawTextLength: rawText.length,
+			rawTextPreview: rawText.slice(0, 500),
+			hasSpecFence: rawText.includes("```spec"),
+		});
+
 		const analysis = analyzeGeneratedText(rawText);
 		const bestSpec = pickBestSpec(analysis);
+
+		console.info("[GENUI-TWO-STEP] Spec analysis complete", {
+			patchCount: analysis.patchCount,
+			patchApplyErrors: analysis.patchApplyErrors,
+			renderable: analysis.renderable,
+			fixedRenderable: analysis.fixedRenderable,
+			synthesizedRenderable: analysis.synthesizedRenderable,
+			validationErrors: analysis.validation?.errors?.slice(0, 5),
+			fixedValidationErrors: analysis.fixedValidation?.errors?.slice(0, 5),
+			synthesizedChildCount: analysis.synthesizedChildCount,
+			missingChildKeys: analysis.missingChildKeys,
+			fixes: analysis.fixes?.slice(0, 5),
+			specRoot: analysis.spec?.root,
+			specElementCount: analysis.spec?.elements ? Object.keys(analysis.spec.elements).length : 0,
+		});
 
 		if (bestSpec) {
 			return {

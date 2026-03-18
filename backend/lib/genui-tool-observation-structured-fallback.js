@@ -67,6 +67,30 @@ function toStructuredPayload(value) {
 	return null;
 }
 
+/**
+ * Try to find a JSON object or array embedded within a plain-text string.
+ * Handles cases where tool output has text prefixes before the JSON payload.
+ */
+function extractEmbeddedJson(text) {
+	if (typeof text !== "string") return null;
+
+	// Find the first { or [ that could start JSON
+	const objStart = text.indexOf("{");
+	const arrStart = text.indexOf("[");
+	const start = objStart === -1 ? arrStart : arrStart === -1 ? objStart : Math.min(objStart, arrStart);
+	if (start === -1) return null;
+
+	// If it starts at 0, parseMaybeJson already tried and failed
+	if (start === 0) return null;
+
+	const candidate = text.slice(start).trim();
+	try {
+		return JSON.parse(candidate);
+	} catch {
+		return null;
+	}
+}
+
 function normalizeToolName(toolName) {
 	const normalized = getNonEmptyString(toolName);
 	if (!normalized) {
@@ -716,7 +740,7 @@ function resolveWorkSummaryStatusLabel(rawStatus, normalizedCategory) {
 	return "Unknown";
 }
 
-function normalizeToolDomainForWorkSummary(toolName) {
+function normalizeToolDomainForWorkSummary(toolName, rawOutput) {
 	const normalized = normalizeToolKey(toolName);
 	if (!normalized) {
 		return "other";
@@ -732,6 +756,27 @@ function normalizeToolDomainForWorkSummary(toolName) {
 		return "atlassian";
 	}
 
+	if (isGenericWrapperToolKey(normalized)) {
+		return inferDomainFromOutput(rawOutput);
+	}
+
+	return "other";
+}
+
+function isGenericWrapperToolKey(key) {
+	return key === "mcp_invoke_tool" ||
+		key.endsWith("invoke_tool") ||
+		key === "mcp_tool";
+}
+
+function inferDomainFromOutput(rawOutput) {
+	if (!rawOutput) return "other";
+	const text = typeof rawOutput === "string"
+		? rawOutput
+		: JSON.stringify(rawOutput);
+	if (/\b[A-Z]{2,10}-\d+\b/.test(text)) return "jira";
+	if (/\bJQL\b/.test(text) || /\bjira\b/i.test(text)) return "jira";
+	if (/\bCQL\b/.test(text) || /\bconfluence\b/i.test(text) || (/\bspace\b/i.test(text) && /\bpage\b/i.test(text))) return "confluence";
 	return "other";
 }
 
@@ -1008,7 +1053,29 @@ function collectWorkSummaryFromObservation(observation, limits) {
 	if (textPayload) {
 		observationPayloads.push(textPayload);
 	}
-	const domain = normalizeToolDomainForWorkSummary(observation?.toolName);
+	const domain = normalizeToolDomainForWorkSummary(observation?.toolName, observation?.rawOutput);
+
+	console.info("[WORK-SUMMARY] Collecting from observation", {
+		toolName: observation?.toolName,
+		domain,
+		hasRawOutput: observation?.rawOutput !== null && observation?.rawOutput !== undefined,
+		rawOutputType: typeof observation?.rawOutput,
+		rawPayloadParsed: rawOutputPayload !== null,
+		textPayloadParsed: textPayload !== null,
+		payloadCount: observationPayloads.length,
+		rawOutputPreview: typeof observation?.rawOutput === "string"
+			? observation.rawOutput.slice(0, 300)
+			: undefined,
+	});
+
+	// When structured parsing fails on a string rawOutput, try to find
+	// embedded JSON within the string (e.g., prefixed with metadata text)
+	if (observationPayloads.length === 0 && typeof observation?.rawOutput === "string") {
+		const embedded = extractEmbeddedJson(observation.rawOutput);
+		if (embedded) {
+			observationPayloads.push(embedded);
+		}
+	}
 
 	if (domain === "jira") {
 		for (const payload of observationPayloads) {
@@ -1041,6 +1108,13 @@ function collectWorkSummaryFromObservation(observation, limits) {
 			});
 		}
 	}
+
+	console.info("[WORK-SUMMARY] Extraction result", {
+		toolName: observation?.toolName,
+		domain,
+		jiraItemCount: jiraItems.length,
+		confluencePageCount: confluencePages.length,
+	});
 
 	return {
 		domain,

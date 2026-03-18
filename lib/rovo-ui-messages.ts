@@ -148,6 +148,14 @@ export type RovoDataParts = {
 	"thinking-event": ThinkingEventUpdate;
 	"tool-first-warning": ToolFirstWarningData;
 	"agent-execution": AgentExecutionUpdate;
+	"todo-queue": {
+		items: Array<{
+			id: string;
+			text: string;
+			blockedBy: string[];
+			agent?: string;
+		}>;
+	};
 	"turn-complete": {
 		timestamp: string;
 	};

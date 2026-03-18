@@ -1,7 +1,9 @@
 const { getNonEmptyString } = require("./shared-utils");
 
-const TRANSLATION_TRIGGER_PATTERN =
-	/\b(translate|translation|how\s+do\s+you\s+say|what(?:'s|\s+is)\s+.+\s+in\s+\S+)\b/i;
+const EXPLICIT_TRANSLATION_TRIGGER_PATTERN =
+	/\b(translate|translation|how\s+do\s+you\s+say)\b/i;
+const WHAT_IS_TRANSLATION_PATTERN =
+	/\bwhat(?:'s|\s+is)\s+.+\s+\b(?:in|to|into)\s+\S+\b/i;
 const EXPLICIT_TRANSLATION_TOOL_PATTERN =
 	/\b(google\s+translate|google\s+cloud\s+translate|cloud\s+translation|translation\s+api|use\s+google\s+translate)\b/i;
 const TARGET_LANGUAGE_PATTERN =
@@ -20,6 +22,59 @@ const DEFAULT_TRANSLATION_CLARIFICATION_DESCRIPTION =
 const DEFAULT_TRANSLATION_CLARIFICATION_MAX_ROUNDS = 2;
 const GOOGLE_TRANSLATE_REQUIRED_TOOL_NAME =
 	"google_gcp_atlassian_translate_translate_text";
+const COMMON_TRANSLATION_TARGET_LANGUAGES = new Set([
+	"arabic",
+	"bengali",
+	"brazilian portuguese",
+	"bulgarian",
+	"cantonese",
+	"catalan",
+	"chinese",
+	"croatian",
+	"czech",
+	"danish",
+	"dutch",
+	"english",
+	"estonian",
+	"filipino",
+	"finnish",
+	"french",
+	"german",
+	"greek",
+	"hebrew",
+	"hindi",
+	"hungarian",
+	"indonesian",
+	"italian",
+	"japanese",
+	"korean",
+	"latin american spanish",
+	"latvian",
+	"lithuanian",
+	"malay",
+	"mandarin",
+	"mandarin chinese",
+	"norwegian",
+	"polish",
+	"portuguese",
+	"portuguese brazil",
+	"romanian",
+	"russian",
+	"serbian",
+	"simplified chinese",
+	"slovak",
+	"slovenian",
+	"spanish",
+	"swedish",
+	"tamil",
+	"thai",
+	"traditional chinese",
+	"turkish",
+	"ukrainian",
+	"urdu",
+	"vietnamese",
+	"welsh",
+]);
 
 function createTranslationClarificationSessionId() {
 	return `${TRANSLATION_CLARIFICATION_SESSION_PREFIX}${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -39,6 +94,15 @@ function isTranslationClarificationSession(sessionId) {
 
 function normalizeWhitespace(value) {
 	return value.replace(/\s+/g, " ").trim();
+}
+
+function normalizeLanguageKey(value) {
+	return value
+		.toLowerCase()
+		.replace(/[()]/g, " ")
+		.replace(/[^a-z0-9]+/g, " ")
+		.trim()
+		.replace(/\s+/g, " ");
 }
 
 function getFirstAnswerString(value) {
@@ -130,6 +194,24 @@ function sanitizeLanguageCandidate(value) {
 	return clipText(normalized, 40);
 }
 
+function isLikelyHumanLanguage(value) {
+	const text = getNonEmptyString(value);
+	if (!text) {
+		return false;
+	}
+
+	const normalized = normalizeLanguageKey(text);
+	if (!normalized) {
+		return false;
+	}
+
+	if (COMMON_TRANSLATION_TARGET_LANGUAGES.has(normalized)) {
+		return true;
+	}
+
+	return /^[a-z]{2,3}(?:-[a-z0-9]{2,8})+$/i.test(text.trim());
+}
+
 function extractTargetLanguage(prompt) {
 	const match = prompt.match(TARGET_LANGUAGE_PATTERN);
 	if (!match || !match[1]) {
@@ -158,6 +240,10 @@ function extractSourceByPattern(prompt, targetLanguage) {
 	const patterns = [
 		new RegExp(
 			`\\bhow\\s+do\\s+you\\s+say\\s+([\\s\\S]{1,220}?)\\s+\\b(?:in|to|into)\\s+${targetPattern}\\b`,
+			"iu"
+		),
+		new RegExp(
+			`\\bwhat(?:'s|\\s+is)\\s+([\\s\\S]{1,220}?)\\s+\\b(?:in|to|into)\\s+${targetPattern}\\b`,
 			"iu"
 		),
 		new RegExp(
@@ -194,7 +280,14 @@ function detectDirectTranslationRequest(prompt) {
 	}
 
 	const normalizedPrompt = normalizeWhitespace(text);
-	const isTranslationRequest = TRANSLATION_TRIGGER_PATTERN.test(normalizedPrompt);
+	const targetLanguage = extractTargetLanguage(normalizedPrompt);
+	const hasExplicitTranslationTrigger =
+		EXPLICIT_TRANSLATION_TRIGGER_PATTERN.test(normalizedPrompt);
+	const hasWhatIsTranslationShape =
+		WHAT_IS_TRANSLATION_PATTERN.test(normalizedPrompt);
+	const isTranslationRequest =
+		hasExplicitTranslationTrigger ||
+		(hasWhatIsTranslationShape && isLikelyHumanLanguage(targetLanguage));
 	const explicitToolingPreference =
 		EXPLICIT_TRANSLATION_TOOL_PATTERN.test(normalizedPrompt);
 	if (!isTranslationRequest) {
@@ -207,7 +300,6 @@ function detectDirectTranslationRequest(prompt) {
 		};
 	}
 
-	const targetLanguage = extractTargetLanguage(normalizedPrompt);
 	const sourceText =
 		extractQuotedText(normalizedPrompt) ||
 		extractSourceByPattern(normalizedPrompt, targetLanguage);

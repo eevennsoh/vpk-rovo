@@ -1,0 +1,52 @@
+const test = require("node:test");
+const assert = require("node:assert/strict");
+
+const {
+	buildFutureChatQueuedPromptsFromTodoQueue,
+	normalizeFutureChatTodoQueuePayload,
+} = require("./future-chat-todo-queue.ts");
+
+test("normalizeFutureChatTodoQueuePayload keeps valid executable queue items", () => {
+	const result = normalizeFutureChatTodoQueuePayload({
+		items: [
+			{ id: "task-1", text: "Capture requirements", blockedBy: [] },
+			{ id: "task-2", text: "Build queue UX", blockedBy: ["task-1"] },
+			{ id: "", text: "   ", blockedBy: [] },
+		],
+	});
+
+	assert.deepEqual(result, {
+		items: [
+			{ id: "task-1", text: "Capture requirements", blockedBy: [], agent: undefined },
+			{ id: "task-2", text: "Build queue UX", blockedBy: ["task-1"], agent: undefined },
+		],
+	});
+});
+
+test("buildFutureChatQueuedPromptsFromTodoQueue creates runnable queue prompts", () => {
+	const result = buildFutureChatQueuedPromptsFromTodoQueue(
+		{
+			items: [
+				{ id: "task-1", text: "Capture requirements", blockedBy: [] },
+				{ id: "task-2", text: "Build queue UX", blockedBy: ["task-1"] },
+			],
+		},
+		(() => {
+			let count = 0;
+			return () => `queue-${++count}`;
+		})(),
+	);
+
+	assert.deepEqual(
+		result.map((item) => ({
+			id: item.id,
+			text: item.text,
+		})),
+		[
+			{ id: "queue-1", text: "Capture requirements" },
+			{ id: "queue-2", text: "Build queue UX" },
+		],
+	);
+	assert.equal(result.length, 2);
+	assert.equal(typeof result[0].createdAt, "number");
+});

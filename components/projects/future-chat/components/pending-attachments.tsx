@@ -17,7 +17,7 @@ export function PendingAttachments() {
 	}
 
 	return (
-		<Attachments variant="inline" className="mb-3">
+		<Attachments variant="inline" className="mb-3 justify-start">
 			{attachments.files.map((file) => (
 				<Attachment
 					key={file.id}
@@ -26,7 +26,7 @@ export function PendingAttachments() {
 				>
 					<AttachmentPreview />
 					<AttachmentInfo />
-					<AttachmentRemove />
+					<AttachmentRemove className="opacity-100" />
 				</Attachment>
 			))}
 		</Attachments>

@@ -114,6 +114,23 @@ test("keeps the composer busy when streaming but artifact is idle", () => {
 	);
 });
 
+test("releases the composer when the live turn has already emitted turn-complete", () => {
+	assert.deepEqual(
+		resolveFutureChatComposerSubmitState({
+			useChatStatus: "streaming",
+			delegationPhase: "idle",
+			hasObservedTurnComplete: true,
+			streamingArtifactStatus: "idle",
+		}),
+		{
+			backgroundArtifactLabel: null,
+			backgroundDelegationLabel: null,
+			composerStatus: "ready",
+			hasBackgroundDelegation: false,
+		},
+	);
+});
+
 test("shows background artifact count label when artifacts are generating", () => {
 	assert.deepEqual(
 		resolveFutureChatComposerSubmitState({
