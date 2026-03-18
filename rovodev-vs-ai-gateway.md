@@ -1,131 +1,198 @@
-# Simplify Backend Ownership for Future Chat Work-Summary + Pinned-Port Recovery
+# Backend Simplification: RovoDev-First Architecture
 
-## Summary
+## Context
 
-- The main fix should be architectural simplification, not more RovoDev-specific knobs.
-- The app should own exactly one backend decision per request:
-	- `sessionful` request -> route to RovoDev
-	- `stateless helper` request -> route to AI Gateway
-- Once a request is on the RovoDev path, RovoDev Serve should own the internal execution decisions for that turn: tool choice, agent behavior, model behavior, and retries inside the session.
-- The app must still own transport-level concerns that RovoDev does not know about:
-	- pinned `portIndex` / thread affinity
-	- health checks and recovery
-	- optimistic UI rollback
-	- user-facing fallback copy
-- The current bug is still two failures on one thread:
-	- the work-summary turn ended with `tool_first_no_relevant_result` because no relevant Teamwork Graph/Jira/Confluence tool activity was observed
-	- the resend kept `portIndex: 0` and then failed pre-stream with `ROVODEV_STRICT_PORT_UNHEALTHY`
-- Treat [fix-409-pinned-port.md](./fix-409-pinned-port.md) as only a partial fix:
-	- it removed old pinned-port avoidance plumbing
-	- it did not create a clear `AI Gateway only` path for helper generations
-	- `allowFallback: true` is still ambiguous because it means `try RovoDev first`
+The current backend has accumulated complexity from the multi-port pinning project and the two-pass GenUI pipeline. This creates fragile layering: `allowFallback` semantics are ambiguous, `portIndex` propagation threads through frontend → backend → pool → gateway, and a second LLM call generates json-render specs from RovoDev's text output. The goals are:
 
-## Key Changes
+1. **RovoDev owns interactive chat** — all tool orchestration, clarification, and UI spec generation
+2. **AI Gateway owns background helpers** — title generation, follow-up suggestion pills, route classifier
+3. **Simple port pool** — remove pinned-port assignment, just acquire any idle port
+4. **Single-pass GenUI** — RovoDev emits json-render specs directly, no second LLM call
+5. **Clean error UX** — inline error cards, optimistic message rollback
 
-- Backend routing contract in `backend/server.js`:
-	- Replace ambiguous helper semantics like `allowFallback: true` with an explicit backend selector, for example:
-		- `backendPreference: "rovodev-session" | "ai-gateway"`
-	- Default interactive chat turns to `"rovodev-session"`.
-	- When `"ai-gateway"` is selected, bypass `resolvePreferredBackend()` and never acquire or touch a RovoDev port.
-	- Limit `resolvePreferredBackend()` to top-level product behavior only, if the app still wants a global degrade mode when RovoDev is fully unavailable before a turn begins.
+GPT-realtime is out of scope — it's an independent WebSocket relay (`backend/lib/openai-realtime.js`) that doesn't interact with RovoDev port routing.
 
-- Sessionful vs stateless request split:
-	- Route these through `ai-gateway` only because they do not require live RovoDev session state:
-		- route classifier
-		- smart GenUI post-processing
-		- clarification classifier
-		- clarification question-card generation
-		- title generation
-		- suggested question generation
-		- other standalone summarizers/classifiers
-	- Route these through `rovodev-session` only because they depend on session continuity:
-		- interactive `/api/chat-sdk` main turns
-		- deferred tool responses
-		- plan-mode / agent-mode interactions
-		- pinned-port cancel/retry flows
-		- attached run streaming
+---
 
-- Remove helper-call RovoDev config from stateless paths:
-	- Stop passing `portIndex` into helper generations.
-	- Stop using `allowFallback` as the way to request AI Gateway helper execution.
-	- Do not reintroduce background-task pinned-port avoidance flags.
-	- Keep helper call sites simple: the app chooses AI Gateway and that is the whole decision.
+## 1. Backend Routing Cleanup
 
-- Keep minimal RovoDev config only where the app truly owns transport:
-	- strict `portIndex` binding for interactive Future Chat turns
-	- one-shot unhealthy-port recovery before returning a user-visible error
-	- cancel and agent-mode endpoints that resolve the exact pinned port
-	- no silent mid-thread failover from RovoDev to AI Gateway
+### 1a. Replace `allowFallback` with explicit `backendPreference`
 
-- Strict unhealthy-port recovery in `backend/server.js` and `backend/lib/rovodev-port-recovery.js`:
-	- In `/api/chat-sdk`, if the required pinned port is `unhealthy`, do not immediately return `503`.
-	- Attempt one synchronous `restartRovoDevPort({ port, refreshAvailability, cancelChat, healthCheck, getListeningPidsForPort })`.
-	- Recompute pool status and strict assignment once after recovery.
-	- If the port recovers, continue the turn normally on the same pinned port.
-	- If it does not recover, return a typed recoverable error payload:
-		- `code: "ROVODEV_STRICT_PORT_UNHEALTHY"`
-		- `portIndex`
-		- `requiredPort`
-		- `recoverable: true`
-		- `retryAfterMs: 3000`
-		- `userMessage: "RovoDev is recovering for this chat panel. Retry in a few seconds."`
+**Files:** `backend/server.js`, `backend/lib/rovodev-gateway.js`, `backend/lib/smart-generation-gateway-options.js`
 
-- Frontend resend/error handling in `components/projects/future-chat/hooks/use-future-chat.ts`:
-	- Track the optimistic user message id returned by `appendLocalUserMessage`.
-	- If `sendMessage()` fails before the backend accepts the turn or any assistant stream starts, remove that optimistic user message from local thread state.
-	- Clear pending run state on that pre-stream failure path.
-	- Use typed backend error metadata for `ROVODEV_STRICT_PORT_UNHEALTHY` instead of rendering the raw backend JSON/error string.
-	- Prevent failed optimistic sends from being persisted into the thread record.
+- Add a `backendPreference: "rovodev" | "ai-gateway"` field to request options
+- `"rovodev"` → acquire from pool, stream via RovoDev
+- `"ai-gateway"` → call AI Gateway directly, never touch pool
+- Remove `allowFallback`, `resolvePreferredBackend()`, and all ambiguous fallback logic
+- When RovoDev is fully down, return a hard error (no silent AI Gateway degradation for interactive chat)
 
-- Tool-first work-summary hardening:
-	- Keep RovoDev responsible for tool orchestration inside the interactive work-summary turn.
-	- When the turn completes with zero relevant Teamwork Graph/Jira/Confluence tool observations, emit a work-summary-specific failure path instead of the generic `retry with explicit resource identifiers` text.
-	- Replace the suggested-question set with targeted recovery actions:
-		- `Show Jira work only`
-		- `Show Confluence work only`
-		- `Retry with my Atlassian user/site ID`
-	- If the backend can infer likely site/user ambiguity, route into the existing clarification-card path instead of plain text.
-	- Expand execution logging for this path:
-		- attempts / retries
-		- relevant tool starts / results / errors
-		- last relevant tool / error category
-		- pinned `portIndex`
-		- resolved port
-		- zero-tool-call final cause
+### 1b. Route background tasks to AI Gateway
 
-- Documentation alignment:
-	- Update `fix-409-pinned-port.md` to reflect the new design principle:
-		- the app chooses `RovoDev session` vs `AI Gateway`
-		- RovoDev is no longer the default backend for helper generations
-		- pinned-port recovery remains an app responsibility
+**File:** `backend/server.js`
 
-## Test Plan
+These use `backendPreference: "ai-gateway"`:
+- Thread title generation
+- Suggested follow-up question pills
+- Route classifier
 
-- Backend tests:
-	- `generateTextViaGateway` and `streamTextViaGateway` honor explicit `"ai-gateway"` routing and never touch RovoDev when that mode is selected.
-	- Interactive `/api/chat-sdk` turns still use strict pinned-port routing.
-	- `/api/chat-sdk` retries one unhealthy pinned-port recovery before failing.
-	- Recovery failure returns the typed `ROVODEV_STRICT_PORT_UNHEALTHY` payload.
-	- Work-summary zero-tool-call failure emits the new targeted recovery suggestions and logs the correct cause.
+These stay on `backendPreference: "rovodev"`:
+- Interactive `/api/chat-sdk` main turns
+- Clarification (RovoDev uses `ask_user_questions` tool)
+- Plan-mode / agent-mode interactions
+- Cancel/retry flows
 
-- Frontend tests:
-	- Failed pre-stream send rolls back the optimistic user bubble.
-	- Failed pre-stream send does not persist duplicate user turns into the thread.
-	- `ROVODEV_STRICT_PORT_UNHEALTHY` renders friendly recoverable copy instead of raw backend error text.
+### 1c. Keep existing media routing
 
-- Validation:
-	- Run `node --test backend/lib/*.test.js`
-	- Run `pnpm run lint`
-	- Run `pnpm tsc --noEmit`
-	- Manual repro in single-port mode (`.dev-rovodev-ports = [8000]`):
-		- confirm stateless helpers do not touch RovoDev
-		- confirm interactive chat still uses the pinned port
-		- reproduce unhealthy pinned-port state and verify one-shot recovery
-		- verify resend no longer leaves orphaned duplicate user messages
-		- verify work-summary zero-tool-call path shows targeted recovery actions
+Image (`` ```image `` fence → Google AI Gateway) and audio (`` ```audio `` fence → Google TTS) markers are already clean. Translation uses MCP tool calls through RovoDev. No changes needed.
 
-## Assumptions
+---
 
-- The current local runtime is single-port (`[8000]`), so this plan must work without relying on a larger RovoDev pool.
-- The app should not try to let RovoDev choose between RovoDev and AI Gateway; that boundary belongs to the app because it owns thread affinity, UI state, and local transport health.
-- This iteration does not add a new direct Jira/Confluence backend executor for work summaries; it simplifies backend ownership and hardens the existing RovoDev-based path.
+## 2. Port Pool Simplification
+
+### 2a. Remove pinned-port system
+
+**Delete entirely:**
+- `backend/lib/rovodev-port-assignment.js` — sharding, strict assignment, candidate resolution
+
+**Remove from `backend/lib/rovodev-pool.js`:**
+- `acquireByIndex()` method
+- Strict port binding logic
+- Port candidate sharding
+
+**Simplify to:**
+- `pool.acquire()` → returns any idle port (first available)
+- `pool.release(port)` → cooldown → health check → available
+- Keep health check interval (30s) and stale-busy timeout (120s)
+
+### 2b. Request-to-port Map for cancel
+
+**File:** `backend/server.js`
+
+- Create `activeRequests = new Map()` — maps `threadId → { port, abortController }`
+- On stream start: `activeRequests.set(threadId, { port, abortController })`
+- On stream end/error: `activeRequests.delete(threadId)`
+- Cancel endpoint: look up `activeRequests.get(threadId)` to find the port, send cancel to that port
+- Replaces all `portIndex`-based cancel routing
+
+### 2c. Remove portIndex from frontend
+
+**Files:**
+- `components/projects/future-chat/hooks/use-future-chat.ts` — remove `portIndex` from request bodies
+- `components/projects/future-chat/components/future-chat-shell.tsx` — remove `portIndex` state
+- `components/projects/future-chat/page.tsx` — remove `portIndex` prop
+- `components/projects/future-chat/lib/api.ts` — remove `portIndex` from API calls
+
+### 2d. Prevent unhealthy ports at the source
+
+- Frontend: disable send button while a stream is active on the same thread (prevent double-send causing 409)
+- Backend: ensure `AbortSignal` propagation on client disconnect to free port promptly
+- Keep existing cooldown (500ms) + readiness probe (20 attempts × 100ms) after stream end
+- Keep background health check interval to detect crashed processes
+
+---
+
+## 3. Single-Pass GenUI (RovoDev Emits Specs Directly)
+
+### 3a. Inject json-render catalog into RovoDev system context
+
+**Files:** `backend/server.js`, `backend/lib/genui-system-prompt.js`
+
+- Load `generated-catalog-prompt.json` at startup
+- Prepend catalog prompt to RovoDev's system instructions for interactive chat turns
+- Add instruction: "When the response benefits from interactive UI, emit a json-render spec in a `` ```spec `` code fence block"
+- RovoDev naturally decides when plain text vs spec is appropriate
+
+### 3b. Detect and validate specs from RovoDev output
+
+**File:** `backend/server.js`
+
+- After RovoDev streams text, check for `` ```spec `` blocks using existing `analyzeGeneratedText()` from `backend/lib/genui-spec-utils.js`
+- If valid spec found → emit as `data-widget-data` with type `genui-preview`
+- If no spec found → stream as plain text (no fallback LLM call)
+- Use existing `validateSpec()` and `autoFixSpec()` for safety
+
+### 3c. Keep genui-chat-handler as standalone utility
+
+**File:** `backend/lib/genui-chat-handler.js`
+
+- Remove the automatic two-pass invocation from the main chat flow in `server.js`
+- Keep the file as a standalone utility — useful if the app runs without RovoDev (e.g., AI Gateway-only mode in the future)
+- Remove the call to `generateGenuiFromRovodevResponse()` from the main `/api/chat-sdk` handler
+
+---
+
+## 4. Frontend Error Handling
+
+### 4a. Optimistic message rollback
+
+**File:** `components/projects/future-chat/hooks/use-future-chat.ts`
+
+- Track the optimistic user message ID from `appendLocalUserMessage()`
+- If `sendMessage()` fails before any assistant stream starts (pre-stream failure):
+  - Remove the optimistic user message from local thread state
+  - Clear pending run state
+  - Do not persist the failed message to the thread record
+
+### 4b. Inline error card for RovoDev down
+
+**Files:** `components/projects/future-chat/components/future-chat-messages.tsx`, `lib/rovo-ui-messages.ts`
+
+- When backend returns a typed error (e.g., `code: "ROVODEV_UNAVAILABLE"`), render an inline error card in the chat thread
+- Card shows: friendly message, retry button, optional details toggle
+- Replace raw JSON/error string rendering with structured error widget
+- Remove `ROVODEV_STRICT_PORT_UNHEALTHY` error code (no longer applicable without pinned ports)
+- New error codes: `ROVODEV_UNAVAILABLE` (all ports down), `ROVODEV_BUSY` (all ports busy, retry)
+
+---
+
+## 5. Work-Summary Hardening
+
+### 5a. Zero-tool-call failure path
+
+**File:** `backend/lib/tool-first-genui-policy.js`
+
+- When a work-summary turn completes with zero relevant tool observations, emit a specific failure response instead of generic retry text
+- Suggested recovery actions (as question card options):
+  - "Show Jira work only"
+  - "Show Confluence work only"
+  - "Retry with my Atlassian user/site ID"
+
+### 5b. Execution logging
+
+**File:** `backend/server.js`
+
+- Log for work-summary turns: attempts, tool starts/results/errors, zero-tool-call cause
+- Include: resolved port, request duration, tool names attempted
+
+---
+
+## Key Files to Modify
+
+| File | Change |
+|------|--------|
+| `backend/server.js` | Routing cleanup, activeRequests Map, spec detection, remove GenUI two-pass, error codes |
+| `backend/lib/rovodev-gateway.js` | Remove pinned-port retry loops, simplify acquire, backendPreference |
+| `backend/lib/rovodev-pool.js` | Remove acquireByIndex, simplify to acquire-any |
+| `backend/lib/rovodev-port-assignment.js` | **DELETE** |
+| `backend/lib/smart-generation-gateway-options.js` | Remove allowFallback, use backendPreference |
+| `backend/lib/genui-chat-handler.js` | Keep as standalone, remove auto-invocation |
+| `backend/lib/tool-first-genui-policy.js` | Zero-tool-call failure path |
+| `components/projects/future-chat/hooks/use-future-chat.ts` | Remove portIndex, optimistic rollback |
+| `components/projects/future-chat/components/future-chat-shell.tsx` | Remove portIndex state |
+| `components/projects/future-chat/components/future-chat-messages.tsx` | Inline error card |
+| `components/projects/future-chat/lib/api.ts` | Remove portIndex from API calls |
+
+---
+
+## Verification
+
+1. `node --test backend/lib/*.test.js` — all backend tests pass
+2. `pnpm run lint` — no lint errors
+3. `pnpm tsc --noEmit` — no type errors
+4. Manual: start with `pnpm run rovodev`, send a chat message → verify RovoDev handles it on any port
+5. Manual: start with `pnpm run rovodev -- 3`, open multiple panels → verify each acquires an idle port
+6. Manual: cancel a running stream → verify cancel reaches the correct port via activeRequests Map
+7. Manual: kill the RovoDev process → verify inline error card appears (not raw JSON)
+8. Manual: trigger a work-summary with no tool results → verify targeted recovery suggestions appear
+9. Manual: verify title generation and follow-up pills still work via AI Gateway
+10. Manual: verify image/audio fence markers still route to Google AI Gateway
