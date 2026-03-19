@@ -158,20 +158,18 @@ In VPK feature code, use ADS semantic naming (`bg-surface-raised`, `text-text-su
 
 ## Architecture
 
-Architecture overview including runtime modes, key directories, component topology, provider composition, and route overview.
-
-@.agents/docs/architecture-overview.md
+See `.agents/docs/architecture-overview.md` for runtime modes, key directories, component topology, provider composition, and route overview. Read that file before making architectural changes.
 
 > API endpoints and chat architecture load as contextual rules when editing backend or chat files.
 > See `.agents/rules/api-surfaces.md` and `.agents/rules/chat-architecture.md`.
 
 ## Workflows (Extended)
 
-Build, deployment, and validation workflows.
-
-@.agents/docs/workflows-extended.md
+See `.agents/docs/workflows-extended.md` for build, deployment, and validation workflows. Read that file before deploying or setting up CI.
 
 ## Behavioral Rules
+
+### Code Quality
 
 - Verify exact file location before UI edits by searching for distinctive text/classes.
 - Use macOS/BSD-safe shell patterns (for example `sed -i ''`).
@@ -179,8 +177,11 @@ Build, deployment, and validation workflows.
 - When editing icons, check consistency across all icons in the component.
 - Prefer the simplest viable implementation before introducing abstractions.
 - If implementation gets unstable, stop and re-plan instead of patching repeatedly.
-- Before completion, perform a staff-level quality gate: root-cause fixes, clean architecture, no band-aids.
 - When fixing a bug, add a regression test that reproduces the original failure.
+- Before marking work complete, verify: root cause addressed (not symptoms), no leftover workarounds, no dead code introduced, lint + typecheck pass.
+
+### Agent Process
+
 - Maintain `AGENTS-LESSONS.md`: append after every user correction, record the prevention rule.
 
 > Skills, parallel work model, and agent teams reference loads automatically from `.claude/rules/` when editing skill/agent files.

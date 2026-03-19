@@ -6518,6 +6518,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 				const widgetId = `widget-${Date.now()}`;
 				let textStarted = false;
 				let assistantText = "";
+				let unsuppressedAssistantText = "";
 				let widgetType = null;
 				let latestPlanPayload = null;
 				let resolvedRovoDevPort = null;
@@ -6676,6 +6677,11 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 						return;
 					}
 
+					// Always accumulate the raw (unsuppressed) assistant text
+					// so GenUI generation can access the full tool output data
+					// even when the user-facing text has been suppressed.
+					unsuppressedAssistantText += delta;
+
 					if (hasSuppressedLargeAssistantJson) {
 						return;
 					}
@@ -6800,6 +6806,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 						}
 
 						assistantText += delta;
+						unsuppressedAssistantText += delta;
 						bufferedAssistantText += delta;
 						flushBufferedAssistantText({ force: true });
 					};
@@ -6821,6 +6828,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 					const resetAssistantTextForRetryAttempt = () => {
 						textBuffer = "";
 						assistantText = "";
+						unsuppressedAssistantText = "";
 						bufferedAssistantText = "";
 						hasSuppressedLargeAssistantJson = false;
 						if (shouldDeferToolFirstText) {
@@ -7050,6 +7058,45 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 								emittedWidget: false,
 								message,
 							};
+						};
+
+						/**
+						 * Build enriched assistant content for two-step GenUI when
+						 * the user-facing assistantText was suppressed. Uses the
+						 * unsuppressed text (capped) plus tool observation summaries
+						 * so the GenUI LLM has real data to work with.
+						 */
+						const buildGenuiAssistantContentWithToolContext = ({
+							fullText,
+							observations,
+							maxTextChars = 3000,
+							maxObservationItems = 6,
+						} = {}) => {
+							const lines = [];
+
+							const trimmedText = typeof fullText === "string" && fullText.length > 0
+								? fullText.length > maxTextChars
+									? `${fullText.slice(0, maxTextChars)}…`
+									: fullText
+								: null;
+							if (trimmedText) {
+								lines.push(trimmedText);
+							}
+
+							if (Array.isArray(observations) && observations.length > 0) {
+								const recent = observations.slice(-maxObservationItems);
+								lines.push("\nTool execution results:");
+								for (const entry of recent) {
+									const name = entry.toolName || "Tool";
+									const preview = entry.text || entry.rawOutput || "Result returned.";
+									const previewText = typeof preview === "string" && preview.length > 500
+										? `${preview.slice(0, 500)}…`
+										: preview;
+									lines.push(`- ${name}: ${previewText}`);
+								}
+							}
+
+							return lines.length > 0 ? lines.join("\n") : null;
 						};
 
 						const tryEmitCreateIntentDirectGenuiWidget = async ({
@@ -8764,8 +8811,15 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 
 							// SLOW PATH: LLM call to generate spec from catalog
 							const roleMessages = mapUiMessagesToRoleContent(messages);
+							const genuiAssistantContent = hasSuppressedLargeAssistantJson
+								? buildGenuiAssistantContentWithToolContext({
+									fullText: unsuppressedAssistantText,
+									observations: toolObservationEntries,
+									maxObservationItems: 6,
+								})
+								: assistantText;
 							const genuiResult = await generateSmartGenuiResult({
-								roleMessages: [...roleMessages, { role: "assistant", content: assistantText }],
+								roleMessages: [...roleMessages, { role: "assistant", content: genuiAssistantContent || assistantText }],
 								provider,
 								layoutContext: smartLayoutContext,
 								signal: abortController.signal,
