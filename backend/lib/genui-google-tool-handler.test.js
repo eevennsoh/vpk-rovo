@@ -2,8 +2,8 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 
 const {
-	buildGoogleStructuredFallback,
-} = require("./genui-google-tool-fallback");
+	buildGoogleStructuredSpec,
+} = require("./genui-google-tool-handler");
 
 function buildCalendarEvent(index) {
 	return {
@@ -30,8 +30,8 @@ function buildDriveFile(index) {
 	};
 }
 
-test("buildGoogleStructuredFallback renders top 10 Google Calendar events", () => {
-	const result = buildGoogleStructuredFallback({
+test("buildGoogleStructuredSpec renders top 10 Google Calendar events", () => {
+	const result = buildGoogleStructuredSpec({
 		prompt: "List Google Calendar events",
 		observations: [
 			{
@@ -60,8 +60,8 @@ test("buildGoogleStructuredFallback renders top 10 Google Calendar events", () =
 	);
 });
 
-test("buildGoogleStructuredFallback renders Google Calendar info when no events exist", () => {
-	const result = buildGoogleStructuredFallback({
+test("buildGoogleStructuredSpec renders Google Calendar info when no events exist", () => {
+	const result = buildGoogleStructuredSpec({
 		prompt: "Show my Google Calendar",
 		observations: [
 			{
@@ -85,8 +85,8 @@ test("buildGoogleStructuredFallback renders Google Calendar info when no events 
 	assert.match(serialized, /Time zone: Australia\/Sydney/);
 });
 
-test("buildGoogleStructuredFallback renders top 10 Google Drive files", () => {
-	const result = buildGoogleStructuredFallback({
+test("buildGoogleStructuredSpec renders top 10 Google Drive files", () => {
+	const result = buildGoogleStructuredSpec({
 		prompt: "List Google Drive files",
 		observations: [
 			{
@@ -106,8 +106,8 @@ test("buildGoogleStructuredFallback renders top 10 Google Drive files", () => {
 	assert.equal(result.spec.elements["drive-file-10"], undefined);
 });
 
-test("buildGoogleStructuredFallback renders Google Drive account info when no files exist", () => {
-	const result = buildGoogleStructuredFallback({
+test("buildGoogleStructuredSpec renders Google Drive account info when no files exist", () => {
+	const result = buildGoogleStructuredSpec({
 		prompt: "List Google Drive files",
 		observations: [
 			{
@@ -135,8 +135,8 @@ test("buildGoogleStructuredFallback renders Google Drive account info when no fi
 	assert.match(serialized, /Email: esoh@atlassian.com/);
 });
 
-test("buildGoogleStructuredFallback parses stringified JSON raw output", () => {
-	const result = buildGoogleStructuredFallback({
+test("buildGoogleStructuredSpec parses stringified JSON raw output", () => {
+	const result = buildGoogleStructuredSpec({
 		prompt: "List Google Calendar events",
 		observations: [
 			{
@@ -155,8 +155,8 @@ test("buildGoogleStructuredFallback parses stringified JSON raw output", () => {
 	assert.match(result.summary, /Rendered 1 Google Calendar event/);
 });
 
-test("buildGoogleStructuredFallback replaces generic tool metadata with Google Calendar defaults", () => {
-	const result = buildGoogleStructuredFallback({
+test("buildGoogleStructuredSpec replaces generic tool metadata with Google Calendar defaults", () => {
+	const result = buildGoogleStructuredSpec({
 		prompt: "List Google Calendar events",
 		title: "Tool results",
 		description: "Generated from tool execution results and errors.",
@@ -184,8 +184,8 @@ test("buildGoogleStructuredFallback replaces generic tool metadata with Google C
 	);
 });
 
-test("buildGoogleStructuredFallback replaces generic tool metadata with Google Drive defaults", () => {
-	const result = buildGoogleStructuredFallback({
+test("buildGoogleStructuredSpec replaces generic tool metadata with Google Drive defaults", () => {
+	const result = buildGoogleStructuredSpec({
 		prompt: "List Google Drive files",
 		title: "Tool results",
 		description: "Generated from successful integration tool calls.",

@@ -769,7 +769,7 @@ function resolveToolFirstPolicy({ prompt } = {}) {
 				? `${calendarWindow.startIso} to ${calendarWindow.endIso}`
 				: null;
 		instructionLines.push(
-			"- Google Calendar event listing calls must use `google_google_calendar_atlassian_calendar_get_events`.",
+			"- Google Calendar event listing calls must use the Google Calendar MCP tool for listing events.",
 			"- Always include required params: `calendarId`, `timeMin`, and `timeMax`.",
 			"- If the user does not specify a calendar, default to `calendarId: \"primary\"`.",
 			calendarRange
@@ -1067,7 +1067,7 @@ function buildToolFirstRetryInstruction({
 	if (hasGoogleCalendarDomain && execution?.lastRelevantErrorCategory === "validation") {
 		retryLines.push(
 			"- Google Calendar validation retry directive:",
-			"- Re-check the tool schema once, then retry `google_google_calendar_atlassian_calendar_get_events`.",
+			"- Re-check the Google Calendar tool schema once, then retry the calendar event listing call.",
 			"- Ensure `calendarId`, `timeMin`, and `timeMax` are present; use `calendarId: \"primary\"` when unspecified.",
 			"- `timeMin` and `timeMax` must be strict UTC ISO 8601 timestamps (`YYYY-MM-DDTHH:mm:ssZ`)."
 		);
@@ -1205,7 +1205,7 @@ function buildToolFirstTextFallback({
 		} else if (category === "validation") {
 			message += " The request failed due to query/date validation. Use strict ISO 8601 date-time values (YYYY-MM-DDTHH:mm:ssZ).";
 			if (hasGoogleCalendarDomain) {
-				message += " For Google Calendar list-events requests, call `google_google_calendar_atlassian_calendar_get_events` with `calendarId`, `timeMin`, and `timeMax` (UTC ISO 8601), defaulting `calendarId` to `primary` when missing.";
+				message += " For Google Calendar list-events requests, use the Google Calendar MCP tool with `calendarId`, `timeMin`, and `timeMax` (UTC ISO 8601), defaulting `calendarId` to `primary` when missing.";
 			}
 			if (policy?.teamworkGraphTimeWindow?.enabled) {
 				message += " Then fallback to Jira JQL and Confluence CQL for the same date window.";

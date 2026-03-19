@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import DiscoverMoreExamples from "./components/discover-more-examples";
@@ -48,11 +48,26 @@ export default function PromptGallery({
 	};
 
 	const handlePreviewEnd = () => {
+		if (previewEndTimer.current) {
+			clearTimeout(previewEndTimer.current);
+		}
+
 		previewEndTimer.current = setTimeout(() => {
 			onPreviewEnd?.();
 			previewEndTimer.current = null;
 		}, 150);
 	};
+
+	useEffect(() => {
+		return () => {
+			if (previewEndTimer.current) {
+				clearTimeout(previewEndTimer.current);
+				previewEndTimer.current = null;
+			}
+
+			onPreviewEnd?.();
+		};
+	}, [onPreviewEnd]);
 
 	const closeMoreSection = () => {
 		setIsClosingMore(true);

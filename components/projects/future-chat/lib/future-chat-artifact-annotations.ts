@@ -1,7 +1,7 @@
 import type { FutureChatDocumentKind } from "@/lib/future-chat-types";
 import { collapseWhitespace, createId } from "@/lib/utils";
 
-export type ArtifactAnnotationKind = Exclude<FutureChatDocumentKind, "sheet">;
+export type ArtifactAnnotationKind = FutureChatDocumentKind;
 
 export interface ArtifactAnnotationSource {
 	filePath: string | null;
@@ -126,12 +126,6 @@ function formatViewerAnchor(anchor: ArtifactAnnotationAnchor, kind: ArtifactAnno
 	}
 
 	return "viewer selection";
-}
-
-export function isArtifactAnnotationKind(
-	kind: FutureChatDocumentKind | null | undefined,
-): kind is ArtifactAnnotationKind {
-	return kind === "text" || kind === "code" || kind === "image";
 }
 
 export function createAnnotationFromSelection({

@@ -436,7 +436,7 @@ function buildFigmaDescription(data) {
 	return "Figma design context ready.";
 }
 
-function buildFigmaStructuredFallback({
+function buildFigmaStructuredSpec({
 	observations,
 	title,
 	description,
@@ -546,5 +546,5 @@ function buildFigmaStructuredFallback({
 }
 
 module.exports = {
-	buildFigmaStructuredFallback,
+	buildFigmaStructuredSpec,
 };

@@ -13,7 +13,6 @@ try {
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
-const { Readable } = require("node:stream");
 const WebSocket = require("ws");
 const {
 	createUIMessageStream,
@@ -26,8 +25,15 @@ const { createFutureChatVoteManager } = require("./lib/future-chat-votes");
 const { createFutureChatDocumentManager } = require("./lib/future-chat-documents");
 const { createFutureChatUploadManager } = require("./lib/future-chat-uploads");
 const { createAbortControllerFromRequest } = require("./lib/http-request-abort");
+const {
+	createCapturedResponse,
+	createInProcessRequest,
+} = require("./lib/in-process-http");
 const { createFutureChatRunManager } = require("./lib/future-chat-runs");
-const { collectUiMessagesFromResponseStream } = require("./lib/future-chat-ui-stream");
+const {
+	collectUiMessagesFromResponseStream,
+	createUiMessageChunkSseStream,
+} = require("./lib/future-chat-ui-stream");
 const {
 	buildFutureChatArtifactIntentPrompt,
 	normalizeArtifactKind,
@@ -67,12 +73,12 @@ const { createAIGatewayProvider } = require("./lib/ai-gateway-provider");
 const { isLocalModelRequest, streamLocalModel } = require("./lib/local-model-provider");
 const { getGenuiSystemPrompt } = require("./lib/genui-system-prompt");
 const { analyzeGeneratedText, pickBestSpec, extractDirectSpec } = require("./lib/genui-spec-utils");
-const { buildFallbackGenuiSpecFromText, buildMinimalTextCardSpec } = require("./lib/genui-fallback-spec");
-const { buildToolObservationFallback } = require("./lib/genui-tool-observation-fallback");
-const { buildToolObservationStructuredFallback } = require("./lib/genui-tool-observation-structured-fallback");
-const { buildGoogleStructuredFallback } = require("./lib/genui-google-tool-fallback");
-const { buildFigmaStructuredFallback } = require("./lib/genui-figma-tool-fallback");
+const { buildFallbackGenuiSpecFromText } = require("./lib/genui-fallback-spec");
+const { shouldAttemptPostToolGenui } = require("./lib/genui-post-tool-eligibility");
+const { buildDirectSpecWidgetParts } = require("./lib/direct-spec-widget-parts");
+const { resolveAutomaticGenuiOutcome } = require("./lib/automatic-genui-outcome");
 const { assessToolFirstGenuiQuality } = require("./lib/tool-first-genui-quality");
+const { dispatchBespokeGenuiHandler } = require("./lib/bespoke-genui-handler-dispatch");
 const { looksLikeInabilityResponse } = require("./lib/inability-response-detector");
 const { assessPromptComplexityForPlanMode } = require("./lib/plan-mode-complexity-heuristic");
 const {
@@ -191,8 +197,12 @@ const {
 	buildTranslationGenuiSpec,
 } = require("./lib/translation-card");
 const {
+	buildClarificationDirective,
+} = require("./lib/clarification-directive");
+const {
 	extractPlanWidgetPayloadFromText,
 	extractProgressivePlanWidgetPayloadFromText,
+	extractPlanWidgetPayloadFromStructuredText,
 } = require("./lib/plan-widget-fallback");
 const {
 	extractUpdateTodoPlanPayloadFromObservations,
@@ -223,6 +233,8 @@ const {
 	MAX_INLINE_ASSISTANT_JSON_CHARS,
 	ASSISTANT_JSON_SUPPRESSION_TEXT,
 	toPreview,
+	splitSpecFenceTextForStreaming,
+	hasPendingSpecFence,
 	isLikelyLargeJsonDump,
 	sanitizeAssistantNarrative,
 } = require("./lib/tool-output-sanitizer");
@@ -1110,6 +1122,7 @@ async function generateSmartGenuiResult({
 	const qualityAssessment = assessToolFirstGenuiQuality({
 		analysis,
 		spec: bestSpec,
+		prompt: conversationPrompt,
 	});
 	return {
 		rawText,
@@ -1442,22 +1455,6 @@ function buildFutureChatArtifactContext(rawArtifactContext) {
 	]
 		.filter((entry) => typeof entry === "string" && entry.length > 0)
 		.join("\n");
-}
-
-function buildFutureChatInternalUrl(reqOrPathname, maybePathname) {
-	const pathname =
-		typeof maybePathname === "string" ? maybePathname : reqOrPathname;
-	const req = typeof maybePathname === "string" ? reqOrPathname : null;
-	if (req?.get) {
-		const host = req.get("host");
-		if (host) {
-			const protocol = req.protocol || "http";
-			return `${protocol}://${host}${pathname}`;
-		}
-	}
-
-	const port = getPositiveInteger(process.env.PORT) || 8080;
-	return `http://127.0.0.1:${port}${pathname}`;
 }
 
 function buildFutureChatArtifactSystemPrompt({
@@ -2116,33 +2113,46 @@ async function consumeFutureChatManagedResponse({
 	}
 
 	const [broadcastStream, parseStream] = response.body.tee();
+	const routeDecisionToSuppress = parseRouteDecisionFromSseChunk(prependChunk);
 	if (prependChunk) {
 		futureChatRunManager.appendChunk(threadId, prependChunk);
 	}
 
 	const parsePromise = collectUiMessagesFromResponseStream({
 		initialMessages,
+		routeDecisionToSuppress,
 		stream: parseStream,
 	});
 
-	await new Promise((resolve, reject) => {
-		const responseStream = Readable.fromWeb(broadcastStream);
-		let hasLoggedFirstChunk = false;
-		responseStream.on("data", (chunk) => {
+	const filteredSseStream = createUiMessageChunkSseStream({
+		routeDecisionToSuppress,
+		stream: broadcastStream,
+	});
+	const filteredSseReader = filteredSseStream.getReader();
+	let hasLoggedFirstChunk = false;
+	try {
+		while (true) {
+			const { done, value } = await filteredSseReader.read();
+			if (done) {
+				break;
+			}
+
 			if (!hasLoggedFirstChunk) {
 				hasLoggedFirstChunk = true;
 				stageTrace.mark("future_chat_first_chunk", {
 					bytes:
-						typeof chunk?.length === "number" && Number.isFinite(chunk.length)
-							? chunk.length
-							: null,
+						typeof value === "string"
+							? Buffer.byteLength(value)
+							: typeof value?.length === "number" && Number.isFinite(value.length)
+								? value.length
+								: null,
 				});
 			}
-			futureChatRunManager.appendChunk(threadId, chunk);
-		});
-		responseStream.once("end", resolve);
-		responseStream.once("error", reject);
-	});
+			futureChatRunManager.appendChunk(threadId, value);
+		}
+	} finally {
+		filteredSseReader.releaseLock();
+	}
 
 	const messages = await parsePromise;
 	await finalizeFutureChatRun(threadId, run, messages);
@@ -2411,15 +2421,13 @@ async function executeFutureChatManagedRun(run) {
 	if (routingDecision.intent === "genui") {
 		requestBody.genuiHint = true;
 	}
+	requestBody.resolvedPlanModeActive = requestIsPlanMode || autoPlanTriggered;
+	requestBody.chatSdkSource = "future-chat";
 
 	const internalProxyStartedAtMs = Date.now();
-	const response = await fetch(buildFutureChatInternalUrl("/api/chat-sdk"), {
-		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
-			...stageTrace.getHeaders(),
-		},
-		body: JSON.stringify(requestBody),
+	const response = await dispatchChatSdkRequestInProcess({
+		body: requestBody,
+		headers: stageTrace.getHeaders(),
 		signal,
 	});
 	stageTrace.mark("chat_sdk_response_headers", {
@@ -2564,6 +2572,40 @@ function formatRouteDecisionSSE(decision) {
 	return `data: ${JSON.stringify(part)}\n\n`;
 }
 
+function parseRouteDecisionFromSseChunk(chunk) {
+	if (typeof chunk !== "string" || chunk.trim().length === 0) {
+		return null;
+	}
+
+	const trimmedChunk = chunk.trim();
+	if (!trimmedChunk.startsWith("data:")) {
+		return null;
+	}
+
+	const payloadText = trimmedChunk.replace(/^data:\s*/, "");
+	if (!payloadText || payloadText === "[DONE]") {
+		return null;
+	}
+
+	try {
+		const parsed = JSON.parse(payloadText);
+		if (
+			parsed &&
+			typeof parsed === "object" &&
+			parsed.type === "data-route-decision" &&
+			parsed.data &&
+			typeof parsed.data === "object" &&
+			!Array.isArray(parsed.data)
+		) {
+			return parsed.data;
+		}
+	} catch {
+		return null;
+	}
+
+	return null;
+}
+
 function resolveStageTraceFromRequest(req, scope, baseMeta) {
 	return createStageTrace({
 		scope,
@@ -2572,6 +2614,23 @@ function resolveStageTraceFromRequest(req, scope, baseMeta) {
 		logger: console,
 		baseMeta,
 	});
+}
+
+async function dispatchChatSdkRequestInProcess({
+	body,
+	headers,
+	protocol = "http",
+	signal,
+}) {
+	const req = createInProcessRequest({
+		body,
+		headers,
+		protocol,
+		signal,
+	});
+	const res = createCapturedResponse();
+	await handleChatSdkRequest(req, res);
+	return res.toWebResponse();
 }
 
 function buildFutureChatActiveRunPayload(run) {
@@ -3976,6 +4035,10 @@ async function generateClarificationQuestionCard({
 			round,
 			maxRounds,
 			widgetType: CLARIFICATION_WIDGET_TYPE,
+			directive: buildClarificationDirective({
+				latestUserMessage,
+				intentHint,
+			}),
 			maxPresetOptions: CLARIFICATION_MAX_PRESET_OPTIONS,
 			customOptionPlaceholder: CLARIFICATION_CUSTOM_OPTION_PLACEHOLDER,
 			maxLabelLength: CLARIFICATION_MAX_LABEL_LENGTH,
@@ -4236,7 +4299,7 @@ Rules:
 	}
 });
 
-app.post("/api/chat-sdk", async (req, res) => {
+async function handleChatSdkRequest(req, res) {
 	let stageTrace = null;
 	let cleanupChatSdkAbortTracking = null;
 	try {
@@ -4255,10 +4318,14 @@ app.post("/api/chat-sdk", async (req, res) => {
 			hasQueuedPrompts: rawHasQueuedPrompts,
 			origin: rawOrigin,
 			genuiHint: rawGenuiHint,
+			resolvedPlanModeActive: rawResolvedPlanModeActive,
+			chatSdkSource: rawChatSdkSource,
 			threadId: rawThreadId,
 		} = req.body || {};
 		const clientTimeZone = normalizeClientTimeZone(rawClientTimeZone);
 		const genuiHint = rawGenuiHint === true;
+		const resolvedPlanModeActive = rawResolvedPlanModeActive === true;
+		const chatSdkSource = getNonEmptyString(rawChatSdkSource) || "direct";
 		const threadId = typeof rawThreadId === "string" && rawThreadId.trim().length > 0
 			? rawThreadId.trim()
 			: null;
@@ -4267,6 +4334,7 @@ app.post("/api/chat-sdk", async (req, res) => {
 			stageTrace = resolveStageTraceFromRequest(req, "chat-sdk", {
 				path: "/api/chat-sdk",
 				origin: requestOrigin,
+				source: chatSdkSource,
 			});
 		res.setHeader(STAGE_TRACE_ID_HEADER, stageTrace.requestId);
 		const chatSdkEntryStartedAtMs = Date.now();
@@ -4277,6 +4345,7 @@ app.post("/api/chat-sdk", async (req, res) => {
 			hasClarification: Boolean(rawClarification),
 			hasApproval: Boolean(rawApproval),
 			hasDeferredToolResponse: Boolean(rawDeferredToolResponse),
+			resolvedPlanModeActive,
 		});
 		const hasQueuedPrompts = Boolean(rawHasQueuedPrompts);
 
@@ -6554,11 +6623,16 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 					}
 
 					const {
+						pendingText: pendingSpecText,
+						visibleText: textWithoutVisibleSpecFences,
+					} = splitSpecFenceTextForStreaming(bufferedAssistantText);
+					const {
 						pendingText: pendingDirectMediaText,
 						visibleText: visibleAssistantText,
-					} = splitDirectMediaTextForStreaming(bufferedAssistantText);
+					} = splitDirectMediaTextForStreaming(textWithoutVisibleSpecFences);
+					const pendingAssistantText = `${pendingDirectMediaText}${pendingSpecText}`;
 					if (!visibleAssistantText) {
-						bufferedAssistantText = force ? "" : pendingDirectMediaText;
+						bufferedAssistantText = force ? "" : pendingAssistantText;
 						return;
 					}
 
@@ -6576,7 +6650,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 					}
 
 					const chunk = visibleAssistantText;
-					bufferedAssistantText = force ? "" : pendingDirectMediaText;
+					bufferedAssistantText = force ? "" : pendingAssistantText;
 					emitTextDeltaRaw(chunk);
 				};
 
@@ -6607,8 +6681,10 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 					}
 
 					const nextAssistantText = assistantText + delta;
+					const pendingSpecFence = hasPendingSpecFence(nextAssistantText);
 					if (
 						hasObservedToolExecution &&
+						!pendingSpecFence &&
 						nextAssistantText.length > MAX_ASSISTANT_TEXT_WITH_TOOL_CALLS_CHARS
 					) {
 						hasSuppressedLargeAssistantJson = true;
@@ -6625,7 +6701,11 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 					// with a low threshold) and the substring starting at the
 					// first JSON-like character, since the JSON often follows a
 					// short natural-language preamble like "Here are your events."
-					if (hasObservedToolExecution && nextAssistantText.length >= 300) {
+					if (
+						hasObservedToolExecution &&
+						!pendingSpecFence &&
+						nextAssistantText.length >= 300
+					) {
 						let earlyJsonDetected = false;
 
 						// Fast path: check if assistant text contains a JSON
@@ -6676,20 +6756,22 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 							return;
 						}
 					}
-					const narrativeSuppression = sanitizeAssistantNarrative(
-						nextAssistantText,
-						{
-							maxChars: MAX_INLINE_ASSISTANT_JSON_CHARS,
-							replacement: ASSISTANT_JSON_SUPPRESSION_TEXT,
+					if (!pendingSpecFence) {
+						const narrativeSuppression = sanitizeAssistantNarrative(
+							nextAssistantText,
+							{
+								maxChars: MAX_INLINE_ASSISTANT_JSON_CHARS,
+								replacement: ASSISTANT_JSON_SUPPRESSION_TEXT,
+							}
+						);
+						if (narrativeSuppression.replaced) {
+							hasSuppressedLargeAssistantJson = true;
+							const suppressionNotice = `\n\n${ASSISTANT_JSON_SUPPRESSION_TEXT}`;
+							assistantText += suppressionNotice;
+							bufferedAssistantText += suppressionNotice;
+							flushBufferedAssistantText({ force: true });
+							return;
 						}
-					);
-					if (narrativeSuppression.replaced) {
-						hasSuppressedLargeAssistantJson = true;
-						const suppressionNotice = `\n\n${ASSISTANT_JSON_SUPPRESSION_TEXT}`;
-						assistantText += suppressionNotice;
-						bufferedAssistantText += suppressionNotice;
-						flushBufferedAssistantText({ force: true });
-						return;
 					}
 
 					assistantText = nextAssistantText;
@@ -6734,26 +6816,6 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 						writer.write({ type: "text-start", id: textId });
 						textStarted = true;
 						writer.write({ type: "text-delta", id: textId, delta: assistantText });
-					};
-
-					const emitGenuiErrorTextFallback = (message = GENUI_FALLBACK_ERROR_TEXT) => {
-						const normalizedMessage = getNonEmptyString(message);
-						if (!normalizedMessage) {
-							return;
-						}
-
-						if (!textStarted) {
-							writer.write({ type: "text-start", id: textId });
-							textStarted = true;
-						}
-
-						writer.write({
-							type: "text-delta",
-							id: textId,
-							delta: normalizedMessage,
-						});
-						assistantText = normalizedMessage;
-						bufferedAssistantText = "";
 					};
 
 					const resetAssistantTextForRetryAttempt = () => {
@@ -6968,123 +7030,25 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 
 						const hasToolObservationEntries = () => toolObservationEntries.length > 0;
 
-						const resolveDeterministicGenuiFallback = ({
-							text,
-							prompt,
-							title,
-							description,
-							defaultSummary = "Generated interactive summary from tool results.",
-							defaultSource = "genui-fallback",
-							observationSource = "tool-observation-fallback",
-							observations,
-							allowTextFallback = true,
+						const emitAutomaticGenuiFailure = ({
+							widgetId,
+							message = "I couldn't produce a renderable interactive summary from tool output.",
 						} = {}) => {
-							const resolvedObservations = Array.isArray(observations)
-								? observations
-								: toolObservationEntries;
-
-							const googleStructuredFallback = buildGoogleStructuredFallback({
-								observations: resolvedObservations,
-								prompt,
-								title,
-								description,
+							emitWidgetError({
+								id: widgetId,
+								type: SMART_WIDGET_TYPE_GENUI,
+								message,
+								canRetry: true,
 							});
-							if (googleStructuredFallback) {
-								return {
-									spec: googleStructuredFallback.spec,
-									summary: googleStructuredFallback.summary || defaultSummary,
-									source: googleStructuredFallback.source || observationSource,
-									observationUsed: true,
-									observationCount: googleStructuredFallback.observationCount ?? 0,
-									resultCount: googleStructuredFallback.resultCount ?? 0,
-									errorCount: googleStructuredFallback.errorCount ?? 0,
-								};
-							}
-
-							const figmaStructuredFallback = buildFigmaStructuredFallback({
-								observations: resolvedObservations,
-								prompt,
-								title,
-								description,
-							});
-							if (figmaStructuredFallback) {
-								return {
-									spec: figmaStructuredFallback.spec,
-									summary: figmaStructuredFallback.summary || defaultSummary,
-									source: figmaStructuredFallback.source || observationSource,
-									observationUsed: true,
-									observationCount: figmaStructuredFallback.observationCount ?? 0,
-									resultCount: figmaStructuredFallback.resultCount ?? 0,
-									errorCount: figmaStructuredFallback.errorCount ?? 0,
-								};
-							}
-
-							const structuredToolFallback = buildToolObservationStructuredFallback({
-								observations: resolvedObservations,
-								prompt,
-								title,
-								description,
-							});
-							if (structuredToolFallback) {
-								return {
-									spec: structuredToolFallback.spec,
-									summary: structuredToolFallback.summary || defaultSummary,
-									source: structuredToolFallback.source || observationSource,
-									observationUsed: true,
-									observationCount: structuredToolFallback.observationCount ?? 0,
-									resultCount: structuredToolFallback.resultCount ?? 0,
-									errorCount: structuredToolFallback.errorCount ?? 0,
-								};
-							}
-
-							const observationFallback = buildToolObservationFallback({
-								observations: resolvedObservations,
-							});
-							if (observationFallback.hasObservations) {
-								const observationSpec =
-									buildFallbackGenuiSpecFromText({
-										text: observationFallback.text,
-										prompt,
-										title: title || observationFallback.title,
-										description: description || observationFallback.description,
-									}) ||
-									buildMinimalTextCardSpec({
-										text: observationFallback.text,
-										title: title || observationFallback.title || "Tool results",
-									});
-								return {
-									spec: observationSpec,
-									summary: observationFallback.summary || defaultSummary,
-									source: observationSource,
-									observationUsed: true,
-									observationCount: observationFallback.observationCount,
-									resultCount: observationFallback.resultCount,
-									errorCount: observationFallback.errorCount,
-								};
-							}
-
-							if (!allowTextFallback) {
-								return null;
-							}
-
-							const fallbackSpec = buildFallbackGenuiSpecFromText({
-								text,
-								prompt,
-								title,
-								description,
-							});
-							if (!fallbackSpec) {
-								return null;
-							}
+							writer.write(createRouteDecisionPart({
+								intent: "chat",
+								origin: requestOrigin,
+								reason: "fallback_ui_failed",
+							}));
 
 							return {
-								spec: fallbackSpec,
-								summary: defaultSummary,
-								source: defaultSource,
-								observationUsed: false,
-								observationCount: 0,
-								resultCount: 0,
-								errorCount: 0,
+								emittedWidget: false,
+								message,
 							};
 						};
 
@@ -7594,6 +7558,11 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 									pendingQuestionCardLoadingWidgetId = widgetId;
 								}
 								if (resolvedWidgetType === SMART_WIDGET_TYPE_GENUI) {
+									if (hasEmittedPlanWidget) {
+										// Plan widget already emitted — don't let a
+										// genui widget override it in the data parts.
+										continue;
+									}
 									hasEmittedGenuiWidget = true;
 								}
 								if (resolvedWidgetType === "plan") {
@@ -7869,7 +7838,14 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 												? toolCall.toolInput.plan
 												: toolCall.toolInput;
 											if (typeof planMarkdown === "string" && planMarkdown.trim()) {
-												const planPayload = extractPlanWidgetPayloadFromText(planMarkdown, { minTasks: 1 });
+												const planPayload =
+													extractPlanWidgetPayloadFromText(planMarkdown, { minTasks: 1 })
+													|| extractPlanWidgetPayloadFromStructuredText(planMarkdown, { minTasks: 1 })
+													|| extractProgressivePlanWidgetPayloadFromText(planMarkdown, {
+														minTasks: 1,
+														requirePlanSignal: false,
+														requireActionItemsHeading: false,
+													});
 												if (planPayload) {
 													// Include the deferred tool call ID so
 													// the frontend can send it back with
@@ -7879,6 +7855,12 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 													console.info("[EXIT-PLAN-MODE] Plan widget emitted from deferred tool", {
 														toolCallId: toolCall.toolCallId,
 														taskCount: planPayload.tasks?.length ?? 0,
+													});
+												} else {
+													console.warn("[EXIT-PLAN-MODE] Plan widget extraction returned null from deferred tool", {
+														toolCallId: toolCall.toolCallId,
+														planMarkdownLength: planMarkdown.length,
+														planMarkdownPreview: planMarkdown.slice(0, 200),
 													});
 												}
 											}
@@ -8359,28 +8341,16 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 					const directSpecResult = extractDirectSpec(assistantText);
 					if (directSpecResult?.spec) {
 						const directSpecWidgetId = `widget-direct-spec-${Date.now()}`;
-						writer.write({
-							type: "data-widget-loading",
-							id: directSpecWidgetId,
-							data: { type: SMART_WIDGET_TYPE_GENUI, loading: true },
-						});
-						writer.write({
-							type: "data-widget-data",
-							id: directSpecWidgetId,
-							data: {
-								type: SMART_WIDGET_TYPE_GENUI,
-								payload: {
-									spec: directSpecResult.spec,
-									summary: directSpecResult.narrative || latestUserMessage,
-									source: "direct-rovodev-spec",
-								},
-							},
-						});
-						writer.write({
-							type: "data-widget-loading",
-							id: directSpecWidgetId,
-							data: { type: SMART_WIDGET_TYPE_GENUI, loading: false },
-						});
+						for (const part of buildDirectSpecWidgetParts({
+							latestUserMessage,
+							narrative: directSpecResult.narrative,
+							requestOrigin,
+							spec: directSpecResult.spec,
+							widgetId: directSpecWidgetId,
+							widgetType: SMART_WIDGET_TYPE_GENUI,
+						})) {
+							writer.write(part);
+						}
 						hasEmittedGenuiWidget = true;
 						console.info("[DIRECT-SPEC] Emitted GenUI widget from RovoDev spec fence", {
 							elementCount: Object.keys(directSpecResult.spec.elements || {}).length,
@@ -8754,38 +8724,110 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 							...nextPayload,
 						};
 					};
-					const emitTwoStepFallbackGenuiWidget = ({
+					const emitAutomaticPostToolGenuiWidget = async ({
 						widgetId,
 					}) => {
-						const fallbackPayload = resolveDeterministicGenuiFallback({
-							text: assistantText,
-							prompt: latestUserMessage,
-							defaultSummary: "Generated interactive summary from tool results.",
-							defaultSource: "two-step-genui-fallback",
-							observationSource: "tool-observation-fallback",
-						});
-						if (!fallbackPayload) {
-							return false;
-						}
-						writer.write({
-							type: "data-widget-data",
-							id: widgetId,
-							data: {
-								type: SMART_WIDGET_TYPE_GENUI,
-								payload: withRouteWidgetContentType({
-									spec: fallbackPayload.spec,
-									summary: fallbackPayload.summary,
-									source: fallbackPayload.source,
+						try {
+							// FAST PATH: try bespoke handlers before the LLM call
+							const bespokeResult = dispatchBespokeGenuiHandler({
+								observations: toolObservationEntries,
+								prompt: latestVisibleUserMessage?.text,
+							});
+							if (bespokeResult) {
+								console.info("[OUTPUT-ROUTING] Bespoke GenUI handler matched", {
+									source: bespokeResult.source,
+									observationCount: bespokeResult.observationCount,
+								});
+								writer.write({
+									type: "data-widget-data",
+									id: widgetId,
+									data: {
+										type: SMART_WIDGET_TYPE_GENUI,
+										payload: withRouteWidgetContentType({
+											spec: bespokeResult.spec,
+											summary: bespokeResult.summary,
+											source: bespokeResult.source,
+										}),
+									},
+								});
+								hasEmittedGenuiWidget = true;
+								writer.write(createRouteDecisionPart({
+									intent: "genui",
+									origin: requestOrigin,
+									reason: "intent_task_toolable",
+								}));
+								return {
+									emittedWidget: true,
+									failureCode: null,
+								};
+							}
+
+							// SLOW PATH: LLM call to generate spec from catalog
+							const roleMessages = mapUiMessagesToRoleContent(messages);
+							const genuiResult = await generateSmartGenuiResult({
+								roleMessages: [...roleMessages, { role: "assistant", content: assistantText }],
+								provider,
+								layoutContext: smartLayoutContext,
+								signal: abortController.signal,
+							});
+							const summaryText = getNonEmptyString(genuiResult?.narrative);
+							const conciseSummary = summaryText
+								? summaryText.length > 280
+									? `${summaryText.slice(0, 279)}...`
+									: summaryText
+								: "Generated interactive view";
+							const outcome = resolveAutomaticGenuiOutcome({
+								genuiResult,
+								successSource: "two-step-genui-llm-default",
+								successSummary: conciseSummary,
+							});
+
+							if (outcome.kind === "widget") {
+								writer.write({
+									type: "data-widget-data",
+									id: widgetId,
+									data: {
+										type: SMART_WIDGET_TYPE_GENUI,
+										payload: withRouteWidgetContentType({
+											spec: outcome.spec,
+											summary: outcome.summary,
+											source: outcome.source,
+										}),
+									},
+								});
+								hasEmittedGenuiWidget = true;
+								writer.write(createRouteDecisionPart({
+									intent: "genui",
+									origin: requestOrigin,
+									reason: "intent_task_toolable",
+								}));
+								return {
+									emittedWidget: true,
+									failureCode: null,
+								};
+							}
+
+							return {
+								...emitAutomaticGenuiFailure({
+									widgetId,
+									message: outcome.message,
 								}),
-							},
-						});
-						hasEmittedGenuiWidget = true;
-						writer.write(createRouteDecisionPart({
-							intent: "genui",
-							origin: requestOrigin,
-							reason: "intent_task_toolable",
-						}));
-						return true;
+								failureCode: outcome.code,
+							};
+						} catch (llmDefaultError) {
+							console.warn(
+								"[OUTPUT-ROUTING] Two-step LLM default GenUI generation failed:",
+								llmDefaultError
+							);
+							return {
+								...emitAutomaticGenuiFailure({
+									widgetId,
+									message:
+										"I couldn't render the interactive summary from tool output. Retry and I'll try again.",
+								}),
+								failureCode: "generic_genui_exception",
+							};
+						}
 					};
 					if (!isStrictToolFirstTurn) {
 						const hasToolObservationData = hasToolObservationEntries();
@@ -8801,27 +8843,26 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 								textLength: trimmedAssistantText.length,
 							});
 						}
-					const shouldAttemptGenui =
-						!hasEmittedQuestionCard &&
-						!hasEmittedPlanWidget &&
-						!hasEmittedGenuiWidget &&
-						!looksLikeClarification &&
-						!looksLikeInability &&
-							!abortController.signal.aborted &&
-							trimmedAssistantText.length > 0 &&
-							isTaskLikeRequest &&
-							(
-								shouldForceCardFirstGenui ||
-								hasObservedActionableToolCall ||
-								hasToolObservationData
-							);
+					const shouldAttemptGenui = shouldAttemptPostToolGenui({
+						assistantText: trimmedAssistantText,
+						hasEmittedQuestionCard,
+						hasEmittedPlanWidget,
+						hasEmittedGenuiWidget,
+						looksLikeClarification,
+						looksLikeInability,
+						resolvedPlanModeActive,
+						isAborted: abortController.signal.aborted,
+						isTaskLikeRequest,
+						shouldForceCardFirstGenui,
+						hasObservedActionableToolCall,
+						hasToolObservationData,
+					});
 
 					if (shouldAttemptGenui) {
 						// Single-pass GenUI: RovoDev emits ```spec blocks directly.
 						// Phase 2 (direct spec detection above) already caught any
 						// spec fence in the response. If we reach here, no spec was
-						// emitted — use deterministic fallback instead of a second
-						// LLM call.
+						// emitted — try the generic catalog-based GenUI path.
 						const genuiFallbackWidgetId = `widget-genui-fallback-${Date.now()}`;
 						writer.write({
 							type: "data-widget-loading",
@@ -8832,7 +8873,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 							},
 						});
 
-						console.info("[OUTPUT-ROUTING] Single-pass GenUI: no spec fence from RovoDev, using fallback", {
+						console.info("[OUTPUT-ROUTING] Single-pass GenUI: no spec fence from RovoDev, trying generic GenUI", {
 							hasActionableTools: hasObservedActionableToolCall,
 							taskLikeRequest: isTaskLikeRequest,
 							rovodevTextLength: trimmedAssistantText.length,
@@ -8854,17 +8895,9 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 								reason: "intent_task_toolable",
 							}));
 						} else {
-							const emittedFallbackWidget = emitTwoStepFallbackGenuiWidget({
+							await emitAutomaticPostToolGenuiWidget({
 								widgetId: genuiFallbackWidgetId,
 							});
-							if (!emittedFallbackWidget) {
-								emitGenuiErrorTextFallback();
-								writer.write(createRouteDecisionPart({
-									intent: "chat",
-									origin: requestOrigin,
-									reason: "fallback_ui_failed",
-								}));
-							}
 						}
 
 						writer.write({
@@ -8886,31 +8919,23 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 								const twoStepGenuiWidgetId = `widget-two-step-genui-${Date.now()}`;
 								writer.write({
 									type: "data-widget-loading",
-								id: twoStepGenuiWidgetId,
-								data: {
-									type: SMART_WIDGET_TYPE_GENUI,
-									loading: true,
-								},
-							});
-								const emittedFallbackWidget = emitTwoStepFallbackGenuiWidget({
+									id: twoStepGenuiWidgetId,
+									data: {
+										type: SMART_WIDGET_TYPE_GENUI,
+										loading: true,
+									},
+								});
+								await emitAutomaticPostToolGenuiWidget({
 									widgetId: twoStepGenuiWidgetId,
 								});
-							writer.write({
-								type: "data-widget-loading",
-								id: twoStepGenuiWidgetId,
-								data: {
-									type: SMART_WIDGET_TYPE_GENUI,
-									loading: false,
-								},
-							});
-							if (!emittedFallbackWidget) {
-								emitGenuiErrorTextFallback();
-								writer.write(createRouteDecisionPart({
-									intent: "chat",
-									origin: requestOrigin,
-									reason: "fallback_ui_failed",
-								}));
-							}
+								writer.write({
+									type: "data-widget-loading",
+									id: twoStepGenuiWidgetId,
+									data: {
+										type: SMART_WIDGET_TYPE_GENUI,
+										loading: false,
+									},
+								});
 						} else {
 							// Short conversational reply or empty -> plain text route
 							emitBufferedAssistantTextForTextRoute();
@@ -8958,6 +8983,36 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 							});
 
 							try {
+								// FAST PATH: try bespoke handlers before the LLM call
+								const bespokeResult = dispatchBespokeGenuiHandler({
+									observations: strictRelevantToolObservationEntries,
+									prompt: latestVisibleUserMessage?.text,
+								});
+								if (bespokeResult) {
+									console.info("[TOOL-FIRST] Bespoke GenUI handler matched", {
+										source: bespokeResult.source,
+										observationCount: bespokeResult.observationCount,
+									});
+									writer.write({
+										type: "data-widget-data",
+										id: toolFirstGenuiWidgetId,
+										data: {
+											type: SMART_WIDGET_TYPE_GENUI,
+											payload: withRouteWidgetContentType({
+												spec: bespokeResult.spec,
+												summary: bespokeResult.summary,
+												source: bespokeResult.source,
+											}),
+										},
+									});
+									hasEmittedGenuiWidget = true;
+									toolFirstRouteReason = "intent_task_toolable";
+									toolFirstRouteExperience = "generative_ui";
+									emitForcedTextDelta(
+										`${toolFirstSummaryPrefix}${bespokeResult.summary}`
+									);
+								} else {
+								// SLOW PATH: LLM call to generate spec from catalog
 								const roleMessages = mapUiMessagesToRoleContent(messages);
 								const toolContextForGenui = buildToolContextForGenui({
 									policy: toolFirstPolicy,
@@ -8990,48 +9045,25 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 										? `${narrativeSummary.slice(0, 319)}…`
 										: narrativeSummary
 									: null;
-									const hasRenderableSpec = Boolean(genuiResult.spec);
-									const isLowConfidenceSpec =
-										hasRenderableSpec && genuiResult.quality === "low_confidence";
-									const fallbackSummary =
-										conciseSummary ||
-										"Generated interactive summary from tool results.";
-									const toolFirstFallbackPayload = resolveDeterministicGenuiFallback({
-										text: toolContextForGenui || assistantText,
-										prompt: latestUserMessage,
-										title: "Tool results",
-										description:
-											"Generated from successful integration tool calls.",
-										defaultSummary: fallbackSummary,
-											defaultSource: isLowConfidenceSpec
-												? "tool-first-quality-fallback"
-												: "tool-first-genui-fallback",
-											observationSource: isLowConfidenceSpec
-												? "tool-observation-quality-fallback"
-												: "tool-observation-fallback",
-											observations: strictRelevantToolObservationEntries,
-											allowTextFallback: false,
-										});
+								const renderedSummary =
+									conciseSummary ||
+									"Generated a visual summary from tool context below.";
+								const outcome = resolveAutomaticGenuiOutcome({
+									genuiResult,
+									successSource: "tool-first-genui",
+									successSummary: renderedSummary,
+								});
 
-									console.info("[TOOL-FIRST] WorkSummary fallback extraction", {
-										observationCount: strictRelevantToolObservationEntries.length,
-										observationToolNames: strictRelevantToolObservationEntries.map(e => e.toolName),
-										observationHasRawOutput: strictRelevantToolObservationEntries.map(e => ({
-											toolName: e.toolName,
-											hasRawOutput: e.rawOutput !== null && e.rawOutput !== undefined,
-											rawOutputType: typeof e.rawOutput,
-											rawOutputIsArray: Array.isArray(e.rawOutput),
-											textLength: e.text?.length ?? 0,
-										})),
-										fallbackHasSpec: Boolean(toolFirstFallbackPayload?.spec),
-										fallbackSource: toolFirstFallbackPayload?.source ?? null,
-										fallbackObservationUsed: toolFirstFallbackPayload?.observationUsed ?? false,
-										fallbackResultCount: toolFirstFallbackPayload?.resultCount ?? 0,
-									});
+								console.info("[TOOL-FIRST] Generic GenUI result", {
+									observationCount: strictRelevantToolObservationEntries.length,
+									outcomeKind: outcome.kind,
+									outcomeCode: outcome.kind === "failure" ? outcome.code : null,
+									reasons: genuiResult.analysisSummary?.reasons ?? [],
+								});
 
-								if (hasRenderableSpec && !isLowConfidenceSpec) {
+								if (outcome.kind === "widget") {
 									const renderedSummary =
-										conciseSummary ||
+										outcome.summary ||
 										"Generated a visual summary from tool context below.";
 									writer.write({
 										type: "data-widget-data",
@@ -9039,9 +9071,9 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 										data: {
 											type: SMART_WIDGET_TYPE_GENUI,
 											payload: withRouteWidgetContentType({
-												spec: genuiResult.spec,
+												spec: outcome.spec,
 												summary: renderedSummary,
-												source: "tool-first-genui",
+												source: outcome.source,
 											}),
 										},
 									});
@@ -9052,114 +9084,36 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 									emitForcedTextDelta(
 										`${toolFirstSummaryPrefix}${renderedSummary}`
 									);
-									} else if (toolFirstFallbackPayload) {
-										if (isLowConfidenceSpec) {
-											console.warn(
-												"[TOOL-FIRST] Replacing low-confidence GenUI spec with deterministic fallback",
-											{
-												domains: toolFirstPolicy.domainLabels,
-												reasons: genuiResult.analysisSummary?.reasons,
-												synthesizedChildCount:
-													genuiResult.analysisSummary?.synthesizedChildCount ?? 0,
-												missingChildKeyCount:
-													genuiResult.analysisSummary?.missingChildKeyCount ?? 0,
-												relevantToolResults:
-													toolFirstExecutionState.relevantToolResults,
-											}
-										);
-									}
-
-										writer.write({
-											type: "data-widget-data",
-											id: toolFirstGenuiWidgetId,
-											data: {
-												type: SMART_WIDGET_TYPE_GENUI,
-												payload: withRouteWidgetContentType({
-													spec: toolFirstFallbackPayload.spec,
-													summary: toolFirstFallbackPayload.summary,
-													source: toolFirstFallbackPayload.source,
-												}),
-											},
-										});
-										hasEmittedGenuiWidget = true;
-										toolFirstRouteReason = "intent_task_toolable";
-										toolFirstRouteExperience = "generative_ui";
-										toolFirstFallbackCause = toolFirstFallbackPayload.observationUsed
-											? "tool_observation_fallback"
-											: isLowConfidenceSpec
-												? "tool_first_low_confidence_genui"
-												: "missing_renderable_genui_spec";
-
-										emitForcedTextDelta(
-											`${toolFirstSummaryPrefix}${toolFirstFallbackPayload.summary}`
-										);
 									} else {
 										toolFirstRouteReason = "tool_first_visual_fallback";
-										toolFirstFallbackCause = isLowConfidenceSpec
-											? "tool_first_low_confidence_genui_no_fallback"
-											: "missing_renderable_genui_spec";
-										writer.write(createRouteDecisionPart({
-											intent: "chat",
-											origin: requestOrigin,
-											reason: "fallback_ui_failed",
-										}));
+										toolFirstFallbackCause = outcome.code;
+										emitAutomaticGenuiFailure({
+											widgetId: toolFirstGenuiWidgetId,
+											message: outcome.message,
+										});
 										emitForcedTextDelta(
-											`${toolFirstSummaryPrefix}I couldn't produce a renderable interactive summary from tool output.`
+											`${toolFirstSummaryPrefix}${outcome.message}`
 										);
 									}
+								} // end of bespoke else → LLM path
 								} catch (toolFirstGenuiError) {
 									console.error(
 										"[TOOL-FIRST] Post-tool GenUI generation failed:",
 										toolFirstGenuiError
 									);
-									const catchFallbackPayload = resolveDeterministicGenuiFallback({
-										text: assistantText,
-										prompt: latestUserMessage,
-											defaultSummary:
-												"Generated interactive summary from tool results.",
-											defaultSource: "tool-first-error-fallback",
-											observationSource: "tool-observation-fallback",
-											observations: strictRelevantToolObservationEntries,
-											allowTextFallback: false,
-										});
-									if (catchFallbackPayload) {
-										writer.write({
-											type: "data-widget-data",
-											id: toolFirstGenuiWidgetId,
-											data: {
-												type: SMART_WIDGET_TYPE_GENUI,
-												payload: withRouteWidgetContentType({
-													spec: catchFallbackPayload.spec,
-													summary: catchFallbackPayload.summary,
-													source: catchFallbackPayload.source,
-												}),
-											},
-										});
-										hasEmittedGenuiWidget = true;
-										toolFirstRouteReason = "intent_task_toolable";
-										toolFirstRouteExperience = "generative_ui";
-										toolFirstFallbackCause = catchFallbackPayload.observationUsed
-											? "tool_observation_fallback_after_genui_exception"
-											: "tool_first_genui_exception_fallback";
-
-										emitForcedTextDelta(
-											`${toolFirstSummaryPrefix}${catchFallbackPayload.summary}`
-										);
-									} else {
-										toolFirstRouteReason = "tool_first_visual_fallback";
-										toolFirstFallbackCause =
-											toolFirstGenuiError instanceof Error
-												? toolFirstGenuiError.message
-												: "tool-first-genui-error";
-										writer.write(createRouteDecisionPart({
-											intent: "chat",
-											origin: requestOrigin,
-											reason: "fallback_ui_failed",
-										}));
-										emitForcedTextDelta(
-											`${toolFirstSummaryPrefix}I couldn't produce a renderable interactive summary from tool output.`
-										);
-									}
+									toolFirstRouteReason = "tool_first_visual_fallback";
+									toolFirstFallbackCause =
+										toolFirstGenuiError instanceof Error
+											? toolFirstGenuiError.message
+											: "tool-first-genui-error";
+									const failure = emitAutomaticGenuiFailure({
+										widgetId: toolFirstGenuiWidgetId,
+										message:
+											"I couldn't render the interactive summary from tool output. Retry and I'll try again.",
+									});
+									emitForcedTextDelta(
+										`${toolFirstSummaryPrefix}${failure.message}`
+									);
 								} finally {
 								writer.write({
 									type: "data-widget-loading",
@@ -9213,110 +9167,61 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 										"create_intent_direct_genui_without_relevant_tool_success";
 								} else {
 									removeToolFirstFailureNarrative();
-									const toolFirstTextFallbackPayload = resolveDeterministicGenuiFallback({
-										text: assistantText,
-										prompt: latestUserMessage,
-										defaultSummary:
-											"Generated interactive summary from tool results.",
-										defaultSource: "tool-first-genui-fallback",
-										observationSource: "tool-observation-fallback",
-										observations: strictRelevantToolObservationEntries,
-										allowTextFallback: false,
-									});
-
-									if (toolFirstTextFallbackPayload) {
-										const toolFirstFallbackWidgetId = `widget-tool-first-genui-${Date.now()}`;
-										writer.write({
-											type: "data-widget-loading",
-											id: toolFirstFallbackWidgetId,
-											data: {
-												type: SMART_WIDGET_TYPE_GENUI,
-												loading: true,
-											},
-										});
-										writer.write({
-											type: "data-widget-data",
-											id: toolFirstFallbackWidgetId,
-											data: {
-												type: SMART_WIDGET_TYPE_GENUI,
-												payload: withRouteWidgetContentType({
-													spec: toolFirstTextFallbackPayload.spec,
-													summary: toolFirstTextFallbackPayload.summary,
-													source: toolFirstTextFallbackPayload.source,
-												}),
-											},
-										});
-										writer.write({
-											type: "data-widget-loading",
-											id: toolFirstFallbackWidgetId,
-											data: {
-												type: SMART_WIDGET_TYPE_GENUI,
-												loading: false,
-											},
-										});
-										hasEmittedGenuiWidget = true;
-										toolFirstRouteReason = "intent_task_toolable";
-										toolFirstRouteExperience = "generative_ui";
-										toolFirstFallbackCause = toolFirstTextFallbackPayload.observationUsed
-											? "tool_observation_fallback"
-											: "no_relevant_tool_success_fallback_card";
-									} else {
-										if (isWorkSummary) {
-											const recoverySpec = buildZeroToolCallRecoverySpec(
-												toolFirstExecutionState,
-												{ policy: toolFirstPolicy }
-											);
-											if (recoverySpec) {
-												const recoveryWidgetId = `widget-work-summary-recovery-${Date.now()}`;
-												writer.write({
-													type: "data-widget-loading",
-													id: recoveryWidgetId,
-													data: {
-														type: SMART_WIDGET_TYPE_GENUI,
-														loading: true,
-													},
-												});
-												writer.write({
-													type: "data-widget-data",
-													id: recoveryWidgetId,
-													data: {
-														type: SMART_WIDGET_TYPE_GENUI,
-														payload: withRouteWidgetContentType({
-															spec: recoverySpec,
-															summary: recoverySpec.title,
-															source: "work-summary-zero-tool-recovery",
-														}),
-													},
-												});
-												writer.write({
-													type: "data-widget-loading",
-													id: recoveryWidgetId,
-													data: {
-														type: SMART_WIDGET_TYPE_GENUI,
-														loading: false,
-													},
-												});
-												hasEmittedGenuiWidget = true;
-												toolFirstRouteReason = "intent_task_toolable";
-												toolFirstRouteExperience = "generative_ui";
-												toolFirstFallbackCause = "work_summary_zero_tool_call_recovery";
-												console.info("[work-summary] Emitted zero-tool-call recovery spec", {
-													cause: recoverySpec.cause,
-													optionCount: recoverySpec.recoveryOptions.length,
-												});
-											}
-										}
-										if (!hasEmittedGenuiWidget) {
-											const warningText = buildToolFirstTextFallback({
-												policy: toolFirstPolicy,
-												execution: toolFirstExecutionState,
-												rovoDevFallback: false,
+									if (isWorkSummary) {
+										const recoverySpec = buildZeroToolCallRecoverySpec(
+											toolFirstExecutionState,
+											{ policy: toolFirstPolicy }
+										);
+										if (recoverySpec) {
+											const recoveryWidgetId = `widget-work-summary-recovery-${Date.now()}`;
+											writer.write({
+												type: "data-widget-loading",
+												id: recoveryWidgetId,
+												data: {
+													type: SMART_WIDGET_TYPE_GENUI,
+													loading: true,
+												},
 											});
-											const toolFirstWarningPrefix =
-												assistantText.trim().length > 0 ? "\n\n" : "";
-											emitForcedTextDelta(`${toolFirstWarningPrefix}${warningText}`);
-											toolFirstFallbackCause = "no_relevant_tool_success";
+											writer.write({
+												type: "data-widget-data",
+												id: recoveryWidgetId,
+												data: {
+													type: SMART_WIDGET_TYPE_GENUI,
+													payload: withRouteWidgetContentType({
+														spec: recoverySpec,
+														summary: recoverySpec.title,
+														source: "work-summary-zero-tool-recovery",
+													}),
+												},
+											});
+											writer.write({
+												type: "data-widget-loading",
+												id: recoveryWidgetId,
+												data: {
+													type: SMART_WIDGET_TYPE_GENUI,
+													loading: false,
+												},
+											});
+											hasEmittedGenuiWidget = true;
+											toolFirstRouteReason = "intent_task_toolable";
+											toolFirstRouteExperience = "generative_ui";
+											toolFirstFallbackCause = "work_summary_zero_tool_call_recovery";
+											console.info("[work-summary] Emitted zero-tool-call recovery spec", {
+												cause: recoverySpec.cause,
+												optionCount: recoverySpec.recoveryOptions.length,
+											});
 										}
+									}
+									if (!hasEmittedGenuiWidget) {
+										const warningText = buildToolFirstTextFallback({
+											policy: toolFirstPolicy,
+											execution: toolFirstExecutionState,
+											rovoDevFallback: false,
+										});
+										const toolFirstWarningPrefix =
+											assistantText.trim().length > 0 ? "\n\n" : "";
+										emitForcedTextDelta(`${toolFirstWarningPrefix}${warningText}`);
+										toolFirstFallbackCause = "no_relevant_tool_success";
 									}
 								}
 							}
@@ -9477,7 +9382,9 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 			console.error("Chat SDK API error:", error);
 			return sendGatewayErrorResponse(res, error, "Failed to process chat request");
 		}
-	});
+}
+
+app.post("/api/chat-sdk", handleChatSdkRequest);
 
 app.post("/api/chat-cancel", async (req, res) => {
 	try {

@@ -5,6 +5,8 @@ const {
 	FUTURE_CHAT_ARTIFACT_INTENT_LEAK_FALLBACK,
 	removeFutureChatDirectMediaFences,
 	sanitizeFutureChatAssistantText,
+	shouldRenderFutureChatAssistantActions,
+	shouldRenderFutureChatAssistantMessage,
 	shouldRenderFutureChatWidget,
 } = require("./future-chat-message-display.ts");
 
@@ -58,4 +60,83 @@ test("sanitizeFutureChatAssistantText falls back for artifact-intent leaks after
 	);
 
 	assert.equal(sanitizedText, FUTURE_CHAT_ARTIFACT_INTENT_LEAK_FALLBACK);
+});
+
+test("shouldRenderFutureChatAssistantActions hides actions for the active in-flight assistant placeholder", () => {
+	assert.equal(
+		shouldRenderFutureChatAssistantActions({
+			hasArtifactCard: false,
+			hasAssistantText: false,
+			hasInterruption: false,
+			hasReasoning: false,
+			hasSources: false,
+			hasWidget: false,
+			hasWidgetError: false,
+			isLastAssistant: true,
+			isResponseInFlight: true,
+		}),
+		false,
+	);
+});
+
+test("shouldRenderFutureChatAssistantActions shows actions for settled assistant output", () => {
+	assert.equal(
+		shouldRenderFutureChatAssistantActions({
+			hasArtifactCard: false,
+			hasAssistantText: true,
+			hasInterruption: false,
+			hasReasoning: false,
+			hasSources: false,
+			hasWidget: false,
+			hasWidgetError: false,
+			isLastAssistant: true,
+			isResponseInFlight: false,
+		}),
+		true,
+	);
+});
+
+test("shouldRenderFutureChatAssistantMessage hides the blank assistant placeholder shell", () => {
+	assert.equal(
+		shouldRenderFutureChatAssistantMessage({
+			hasArtifactCard: false,
+			hasAssistantText: false,
+			hasInterruption: false,
+			hasReasoning: false,
+			hasSources: false,
+			hasWidget: false,
+			hasWidgetError: false,
+			hasWidgetLoading: false,
+		}),
+		false,
+	);
+});
+
+test("shouldRenderFutureChatAssistantMessage keeps rendering once thinking or content exists", () => {
+	assert.equal(
+		shouldRenderFutureChatAssistantMessage({
+			hasArtifactCard: false,
+			hasAssistantText: false,
+			hasInterruption: false,
+			hasReasoning: true,
+			hasSources: false,
+			hasWidget: false,
+			hasWidgetError: false,
+			hasWidgetLoading: false,
+		}),
+		true,
+	);
+	assert.equal(
+		shouldRenderFutureChatAssistantMessage({
+			hasArtifactCard: false,
+			hasAssistantText: false,
+			hasInterruption: false,
+			hasReasoning: false,
+			hasSources: false,
+			hasWidget: false,
+			hasWidgetError: false,
+			hasWidgetLoading: true,
+		}),
+		true,
+	);
 });

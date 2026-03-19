@@ -1,0 +1,185 @@
+const { spawn } = require("node:child_process");
+
+const DEFAULT_RESTART_DELAY_MS = 1_500;
+
+function startSupervisedRovodevPorts({
+	ports,
+	rovodevBin,
+	buildSpawnArgsForPort,
+	logger = console,
+	env = process.env,
+	restartDelayMs = DEFAULT_RESTART_DELAY_MS,
+	spawnFn = spawn,
+	setTimeoutFn = setTimeout,
+	clearTimeoutFn = clearTimeout,
+	signalTarget = process,
+	exitFn = (code) => process.exit(code),
+	reemitSignalFn = (signal) => process.kill(process.pid, signal),
+	cleanup = () => {},
+} = {}) {
+	if (!Array.isArray(ports) || ports.length === 0) {
+		throw new Error("Expected at least one RovoDev port to supervise.");
+	}
+	if (typeof rovodevBin !== "string" || rovodevBin.trim().length === 0) {
+		throw new Error("Expected a resolved RovoDev binary path.");
+	}
+	if (typeof buildSpawnArgsForPort !== "function") {
+		throw new Error("Expected buildSpawnArgsForPort to be a function.");
+	}
+
+	const childrenByPort = new Map();
+	const restartTimersByPort = new Map();
+	let firstError = null;
+	let shuttingDown = false;
+
+	const removeSignalListeners = () => {
+		signalTarget.removeListener?.("SIGINT", handleSigint);
+		signalTarget.removeListener?.("SIGTERM", handleSigterm);
+	};
+
+	const finalizeShutdown = (code, signal) => {
+		removeSignalListeners();
+		cleanup();
+		if (signal) {
+			reemitSignalFn(signal);
+			return;
+		}
+		exitFn(code ?? 0);
+	};
+
+	const killAllChildren = (signal) => {
+		for (const child of childrenByPort.values()) {
+			try {
+				child.kill(signal);
+			} catch {
+				// Ignore kill failures; the child may already have exited.
+			}
+		}
+	};
+
+	const spawnChildForPort = (port, { isRestart = false } = {}) => {
+		const spawnArgs = buildSpawnArgsForPort(port);
+		if (isRestart) {
+			logger.log?.(`[rovodev] Restarting process on port ${port}...`);
+		}
+		logger.log?.(`[rovodev] Starting: ${rovodevBin} ${spawnArgs.join(" ")}`);
+
+		const child = spawnFn(rovodevBin, spawnArgs, {
+			stdio: "inherit",
+			env: {
+				...env,
+				ROVODEV_PORT: String(port),
+				// Pin the serve session token so it matches the token the backend
+				// sends via Authorization header (ROVODEV_SESSION_TOKEN in .env.local).
+				...(env.ROVODEV_SESSION_TOKEN
+					? { ROVODEV_SERVE_SESSION_TOKEN: env.ROVODEV_SESSION_TOKEN }
+					: {}),
+			},
+		});
+
+		child._rovodevPort = port;
+		childrenByPort.set(port, child);
+
+		child.on("error", (err) => {
+			if (firstError) {
+				return;
+			}
+
+			firstError = err;
+			shuttingDown = true;
+			removeSignalListeners();
+			cleanup();
+
+			if (err.code === "ENOENT") {
+				logger.error?.(
+					`\nError: "${rovodevBin}" command not found.\n` +
+						`Install the Rovo Dev CLI ("rovodev" or "acli") first, then try again.\n` +
+						`If it's already installed, make sure it's on your PATH.\n`
+				);
+			} else {
+				logger.error?.("Failed to start rovodev serve:", err.message);
+			}
+
+			killAllChildren("SIGTERM");
+			exitFn(1);
+		});
+
+		child.on("exit", (code, signal) => {
+			const currentChild = childrenByPort.get(port);
+			if (currentChild === child) {
+				childrenByPort.delete(port);
+			}
+
+			if (shuttingDown) {
+				if (childrenByPort.size === 0) {
+					finalizeShutdown(code, signal);
+				}
+				return;
+			}
+
+			if (childrenByPort.size > 0) {
+				logger.warn?.(
+					`[rovodev] Process on port ${child._rovodevPort} exited (code=${code}, signal=${signal}). ` +
+						`${childrenByPort.size} other port(s) still running.`
+				);
+			} else {
+				logger.warn?.(
+					`[rovodev] Process on port ${child._rovodevPort} exited (code=${code}, signal=${signal}). ` +
+						"No ports currently running."
+				);
+			}
+
+			if (restartTimersByPort.has(port)) {
+				clearTimeoutFn(restartTimersByPort.get(port));
+			}
+
+			const restartTimer = setTimeoutFn(() => {
+				restartTimersByPort.delete(port);
+				if (shuttingDown) {
+					return;
+				}
+				spawnChildForPort(port, { isRestart: true });
+			}, restartDelayMs);
+			restartTimersByPort.set(port, restartTimer);
+		});
+	};
+
+	const forwardSignal = (signal) => {
+		shuttingDown = true;
+
+		for (const timer of restartTimersByPort.values()) {
+			clearTimeoutFn(timer);
+		}
+		restartTimersByPort.clear();
+
+		killAllChildren(signal);
+		if (childrenByPort.size === 0) {
+			finalizeShutdown(0, signal);
+		}
+	};
+
+	const handleSigint = () => {
+		forwardSignal("SIGINT");
+	};
+	const handleSigterm = () => {
+		forwardSignal("SIGTERM");
+	};
+
+	signalTarget.on?.("SIGINT", handleSigint);
+	signalTarget.on?.("SIGTERM", handleSigterm);
+
+	for (const port of ports) {
+		spawnChildForPort(port);
+	}
+
+	return {
+		getPorts: () => [...ports],
+		stop: forwardSignal,
+		dispose: removeSignalListeners,
+	};
+}
+
+module.exports = {
+	DEFAULT_RESTART_DELAY_MS,
+	startSupervisedRovodevPorts,
+};

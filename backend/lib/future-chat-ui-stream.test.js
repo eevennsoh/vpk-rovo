@@ -31,6 +31,30 @@ async function collectMessagesWithTurnComplete({ transient }) {
 	});
 }
 
+async function collectMessagesWithRouteDecision({
+	routeDecision,
+	routeDecisionToSuppress,
+}) {
+	const stream = createUIMessageStream({
+		execute: ({ writer }) => {
+			writer.write({ type: "text-start", id: "text-1" });
+			writer.write({
+				type: "data-route-decision",
+				data: routeDecision,
+			});
+			writer.write({ type: "text-delta", id: "text-1", delta: "Hello there." });
+			writer.write({ type: "text-end", id: "text-1" });
+		},
+	});
+	const response = createUIMessageStreamResponse({ stream });
+
+	return collectUiMessagesFromResponseStream({
+		initialMessages: [],
+		routeDecisionToSuppress,
+		stream: response.body,
+	});
+}
+
 test("collectUiMessagesFromResponseStream persists non-transient turn-complete parts", async () => {
 	const messages = await collectMessagesWithTurnComplete({ transient: false });
 
@@ -42,4 +66,45 @@ test("collectUiMessagesFromResponseStream drops transient turn-complete parts", 
 	const messages = await collectMessagesWithTurnComplete({ transient: true });
 
 	assert.equal(messages[0]?.parts.some((part) => part.type === "data-turn-complete"), false);
+});
+
+test("collectUiMessagesFromResponseStream suppresses a duplicate route decision", async () => {
+	const routeDecision = {
+		intent: "chat",
+		presentation: "text",
+		confidence: 0.95,
+		reason: "conversational_pattern",
+		origin: "text",
+	};
+	const messages = await collectMessagesWithRouteDecision({
+		routeDecision,
+		routeDecisionToSuppress: routeDecision,
+	});
+
+	assert.equal(messages.length, 1);
+	assert.equal(messages[0]?.parts.some((part) => part.type === "data-route-decision"), false);
+});
+
+test("collectUiMessagesFromResponseStream keeps a changed route decision", async () => {
+	const suppressedRouteDecision = {
+		intent: "chat",
+		presentation: "text",
+		confidence: 0.95,
+		reason: "conversational_pattern",
+		origin: "text",
+	};
+	const emittedRouteDecision = {
+		intent: "chat",
+		presentation: "text",
+		confidence: 1,
+		reason: "intent_text_default",
+		origin: "text",
+	};
+	const messages = await collectMessagesWithRouteDecision({
+		routeDecision: emittedRouteDecision,
+		routeDecisionToSuppress: suppressedRouteDecision,
+	});
+
+	assert.equal(messages.length, 1);
+	assert.equal(messages[0]?.parts.some((part) => part.type === "data-route-decision"), true);
 });

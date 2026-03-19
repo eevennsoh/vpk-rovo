@@ -144,6 +144,31 @@ test("formatAnnotationsForVoiceContext includes kind-specific code anchor detail
 	assert.match(imageContext, /selected text: "Hero image"/u);
 });
 
+test("sheet artifacts are annotatable and use generic viewer anchors", () => {
+	const sheetContext = formatAnnotationsForVoiceContext([
+		reindexAnnotations([
+			createAnnotation({
+				comment: "Review this row",
+				kind: "sheet",
+				pendingSelection: {
+					anchor: {
+						selector: '[data-sheet-cell="A1"]',
+						textExcerpt: "Revenue",
+						htmlPreview: "<div>Revenue</div>",
+						codeLineNumber: null,
+						codeLineText: null,
+						imagePoint: null,
+					},
+				},
+			}),
+		])[0],
+	]);
+
+	assert.match(sheetContext, /Artifact kind: sheet/u);
+	assert.match(sheetContext, /viewer anchor: \[data-sheet-cell="A1"\]/u);
+	assert.match(sheetContext, /selected text: "Revenue"/u);
+});
+
 test("buildVoiceContextDescription appends annotation context to existing voice context", () => {
 	const merged = buildVoiceContextDescription(
 		"[Voice context] User wants to refine the current artifact.",

@@ -5,6 +5,15 @@ const MAX_TOOL_PREVIEW_LINES = 20;
 const MAX_INLINE_ASSISTANT_JSON_CHARS = 2000;
 const ASSISTANT_JSON_SUPPRESSION_TEXT =
 	"Tool results were large and are omitted for performance. Open Tools for details.";
+const COMPLETE_SPEC_FENCE_PATTERN = /```spec\s*\n[\s\S]*?```/giu;
+const PENDING_SPEC_FENCE_PATTERN = /```spec[\s\S]*$/iu;
+
+/**
+ * Matches a line that looks like an RFC 6902 JSON Patch targeting a spec tree.
+ * Catches unfenced JSONL patches that json-render emits inline (e.g. when
+ * RovoDev outputs patches without wrapping in a ```spec fence).
+ */
+const SPEC_PATCH_LINE_PATTERN = /^\s*\{"op"\s*:\s*"(?:add|replace|remove)"\s*,\s*"path"\s*:\s*"\/(?:root|elements|state)\b/;
 
 const MAX_SERIALIZE_DEPTH = 4;
 const MAX_SERIALIZE_ARRAY_ITEMS = 50;
@@ -144,6 +153,110 @@ function toPreview(
 	};
 }
 
+function collapseFenceNewlines(text) {
+	return text.replace(/\n{3,}/g, "\n\n");
+}
+
+/**
+ * Strip JSONL spec patch lines that appear outside ```spec fences.
+ * Returns the text with patch lines removed and collapsed whitespace.
+ */
+function stripUnfencedSpecPatchLines(text) {
+	if (typeof text !== "string" || text.length === 0) {
+		return text;
+	}
+
+	const lines = text.split("\n");
+	let hasPatches = false;
+
+	const filtered = lines.filter((line) => {
+		if (SPEC_PATCH_LINE_PATTERN.test(line)) {
+			hasPatches = true;
+			return false;
+		}
+		return true;
+	});
+
+	if (!hasPatches) {
+		return text;
+	}
+
+	return filtered.join("\n");
+}
+
+function splitSpecFenceTextForStreaming(text) {
+	if (typeof text !== "string" || text.length === 0) {
+		return {
+			pendingText: "",
+			visibleText: "",
+		};
+	}
+
+	// Step 1: Remove completed ```spec fences
+	const textWithCompletedSpecFencesRemoved = text.replace(
+		COMPLETE_SPEC_FENCE_PATTERN,
+		"\n\n"
+	);
+
+	// Step 2: Check for pending (still-open) ```spec fence
+	const pendingFenceMatch = textWithCompletedSpecFencesRemoved.match(
+		PENDING_SPEC_FENCE_PATTERN
+	);
+
+	if (!pendingFenceMatch || pendingFenceMatch.index === undefined) {
+		// Step 3: No pending fence — also strip unfenced JSONL patch lines
+		const withoutUnfencedPatches = stripUnfencedSpecPatchLines(
+			textWithCompletedSpecFencesRemoved
+		);
+		return {
+			pendingText: "",
+			visibleText: collapseFenceNewlines(withoutUnfencedPatches),
+		};
+	}
+
+	return {
+		pendingText: textWithCompletedSpecFencesRemoved.slice(pendingFenceMatch.index),
+		visibleText: collapseFenceNewlines(
+			textWithCompletedSpecFencesRemoved.slice(0, pendingFenceMatch.index)
+		),
+	};
+}
+
+function hasPendingSpecFence(text) {
+	if (typeof text !== "string" || text.length === 0) {
+		return false;
+	}
+
+	// Check for an open ```spec fence
+	if (splitSpecFenceTextForStreaming(text).pendingText.length > 0) {
+		return true;
+	}
+
+	// Also treat trailing unfenced JSONL patch lines as "pending" so the
+	// JSON dump detector doesn't suppress them before we can extract a spec.
+	const lines = text.split("\n");
+	const lastLine = lines[lines.length - 1] || "";
+	return SPEC_PATCH_LINE_PATTERN.test(lastLine);
+}
+
+function stripSpecFences(text) {
+	if (typeof text !== "string" || text.length === 0) {
+		return "";
+	}
+
+	const withoutCompletedFences = text.replace(
+		COMPLETE_SPEC_FENCE_PATTERN,
+		"\n\n"
+	);
+	const withoutPendingFence = withoutCompletedFences.replace(
+		PENDING_SPEC_FENCE_PATTERN,
+		"\n\n"
+	);
+	const withoutUnfencedPatches = stripUnfencedSpecPatchLines(withoutPendingFence);
+
+	return collapseFenceNewlines(withoutUnfencedPatches).trim();
+}
+
 function countMatches(value, regex) {
 	const matches = value.match(regex);
 	return Array.isArray(matches) ? matches.length : 0;
@@ -201,13 +314,17 @@ function sanitizeAssistantNarrative(
 		return { text: "", replaced: false };
 	}
 
-	if (!isLikelyLargeJsonDump(value, { minChars: maxChars })) {
+	const textWithoutSpecFences = stripSpecFences(value);
+	const textForDetection =
+		textWithoutSpecFences.length > 0 ? textWithoutSpecFences : value;
+
+	if (!isLikelyLargeJsonDump(textForDetection, { minChars: maxChars })) {
 		return { text: value, replaced: false };
 	}
 
-	const jsonStartIndex = getLikelyJsonStartIndex(value);
+	const jsonStartIndex = getLikelyJsonStartIndex(textForDetection);
 	const prefixCandidate =
-		jsonStartIndex > -1 ? value.slice(0, jsonStartIndex).trim() : "";
+		jsonStartIndex > -1 ? textForDetection.slice(0, jsonStartIndex).trim() : "";
 	const boundedPrefix =
 		prefixCandidate.length > 600
 			? `${prefixCandidate.slice(0, 599)}…`
@@ -229,6 +346,9 @@ module.exports = {
 	MAX_INLINE_ASSISTANT_JSON_CHARS,
 	ASSISTANT_JSON_SUPPRESSION_TEXT,
 	toPreview,
+	splitSpecFenceTextForStreaming,
+	hasPendingSpecFence,
+	stripSpecFences,
 	isLikelyLargeJsonDump,
 	sanitizeAssistantNarrative,
 	stripLargeJsonFromNarrative,

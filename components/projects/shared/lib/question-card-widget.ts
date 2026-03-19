@@ -407,9 +407,9 @@ export function buildClarificationSummaryPrompt(
 	}
 
 	const defaultDirective = [
-		"Use these details to generate the final plan tasks now.",
-		"Do not ask follow-up questions unless a hard blocker prevents planning.",
-		"Use the create-plan skill and return a plan widget with concrete tasks.",
+		"Use these details to continue the user's original request now.",
+		"Return the final answer in the format that best matches the request.",
+		"Do not ask follow-up questions unless a hard blocker prevents completion.",
 	].join("\n");
 
 	return [

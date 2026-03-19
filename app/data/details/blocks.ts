@@ -193,30 +193,34 @@ const rows: AnswerCardRow[] = [
 	},
 	"generative-card": {
 		description:
-			"A collapsible AI result card with branded source media, summary metadata, preview content, and footer actions for generated artifacts.",
+			"A collapsible AI result card for generated artifacts, with branded source media, summary metadata, preview content, dense collapsed companions, and footer actions.",
 		usage: `import {
   GenerativeCard,
   GenerativeCardHeader,
   GenerativeCardBody,
   GenerativeCardContent,
-  GenerativeCardPreview,
   GenerativeCardFooter,
 } from "@/components/blocks/generative-card";
 import { Tile } from "@/components/ui/tile";
 import { Button } from "@/components/ui/button";
+import { SheetIcon } from "lucide-react";
 
-<GenerativeCard className="max-w-[380px]">
+<GenerativeCard className="max-w-[420px]">
   <GenerativeCardHeader
-    title="Schedule meeting"
-    description="Google Calendar"
-    leading={<Tile label="Google Calendar" size="medium" variant="transparent" isInset={false} />}
+    title="Apple Inc.: A Comprehensive Overview"
+    description="Created sheet"
+    leading={(
+      <Tile label="Sheet" size="medium" variant="greenSubtle">
+        <SheetIcon className="size-4" />
+      </Tile>
+    )}
   />
   <GenerativeCardBody>
     <GenerativeCardContent>
-      <GenerativeCardPreview>Generated content preview</GenerativeCardPreview>
+      <div className="rounded-md bg-surface p-4">Artifact preview</div>
     </GenerativeCardContent>
     <GenerativeCardFooter>
-      <Button variant="outline">Open preview</Button>
+      <Button variant="outline">Open sheet</Button>
     </GenerativeCardFooter>
   </GenerativeCardBody>
 </GenerativeCard>`,
@@ -313,13 +317,15 @@ import { Button } from "@/components/ui/button";
 			},
 		],
 		subComponents: [
-			{ name: "GenerativeCardHeader", description: "Header row with leading media, title, description, and built-in collapse toggle." },
+			{ name: "GenerativeCardHeader", description: "Header row with leading media, title, description, optional action, and built-in collapse toggle." },
 			{ name: "GenerativeCardBody", description: "Animated collapsible container for card details." },
 			{ name: "GenerativeCardContent", description: "Body content section with default paddings for previews." },
 			{ name: "GenerativeCardPreview", description: "Preview placeholder surface for generated output." },
 			{ name: "GenerativeCardFooter", description: "Footer actions row aligned to the end. Accepts an optional `action` prop for a primary action button." },
 		],
 		examples: [
+			{ title: "Artifact preview", description: "Expanded inline artifact card with a content excerpt and explicit open CTA.", demoSlug: "generative-card-demo-artifact" },
+			{ title: "Artifact collapsed", description: "Dense collapsed companion state for the same artifact card, with a header CTA and expandable body.", demoSlug: "generative-card-demo-artifact-collapsed" },
 			{ title: "3P source", description: "Generative card with third-party source branding.", demoSlug: "generative-card-demo-3p" },
 			{ title: "Atlassian source", description: "Generative card with Atlassian product branding.", demoSlug: "generative-card-demo-1p" },
 			{ title: "Icon source", description: "Generative card with a semantic icon tile source.", demoSlug: "generative-card-demo-icon" },

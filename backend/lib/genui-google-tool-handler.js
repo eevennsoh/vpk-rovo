@@ -1133,7 +1133,7 @@ function collectStructuredPayloads(observations) {
 	return payloads;
 }
 
-function buildGoogleStructuredFallback({
+function buildGoogleStructuredSpec({
 	observations,
 	prompt,
 	title,
@@ -1195,5 +1195,5 @@ function buildGoogleStructuredFallback({
 }
 
 module.exports = {
-	buildGoogleStructuredFallback,
+	buildGoogleStructuredSpec,
 };

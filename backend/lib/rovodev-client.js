@@ -440,15 +440,20 @@ function request(method, path, body, timeoutMs = 10000, port, signal) {
 	return new Promise((resolve, reject) => {
 		const resolvedPort = typeof port === "number" && port > 0 ? port : getPort();
 		const url = new URL(path, `http://127.0.0.1:${resolvedPort}`);
+		const headers = {
+			"Content-Type": "application/json",
+			"Accept": "application/json",
+		};
+		const sessionToken = (process.env.ROVODEV_SESSION_TOKEN ?? "").trim();
+		if (sessionToken) {
+			headers["Authorization"] = `Bearer ${sessionToken}`;
+		}
 		const options = {
 			hostname: url.hostname,
 			port: url.port,
 			path: url.pathname,
 			method,
-			headers: {
-				"Content-Type": "application/json",
-				"Accept": "application/json",
-			},
+			headers,
 			timeout: timeoutMs,
 		};
 
@@ -693,16 +698,21 @@ function sendMessageStreaming(message, callbacks, port, options = {}) {
 
 			await new Promise((resolve, reject) => {
 				rejectActiveStream = reject;
+				const sseHeaders = {
+					"Accept": "text/event-stream",
+					"Cache-Control": "no-cache",
+					"Connection": "keep-alive",
+				};
+				const sseSessionToken = (process.env.ROVODEV_SESSION_TOKEN ?? "").trim();
+				if (sseSessionToken) {
+					sseHeaders["Authorization"] = `Bearer ${sseSessionToken}`;
+				}
 				const options = {
 					hostname: url.hostname,
 					port: url.port,
 					path: url.pathname + url.search,
 					method: "GET",
-					headers: {
-						"Accept": "text/event-stream",
-						"Cache-Control": "no-cache",
-						"Connection": "keep-alive",
-					},
+					headers: sseHeaders,
 				};
 
 				currentReq = http.request(options, (res) => {

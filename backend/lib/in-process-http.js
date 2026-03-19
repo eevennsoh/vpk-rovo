@@ -1,0 +1,183 @@
+const { EventEmitter } = require("node:events");
+const { PassThrough, Readable } = require("node:stream");
+
+function normalizeHeaderEntries(input) {
+	if (!input || typeof input !== "object") {
+		return [];
+	}
+
+	if (typeof input.entries === "function") {
+		return Array.from(input.entries());
+	}
+
+	return Object.entries(input);
+}
+
+function setHeaderValue(store, name, value) {
+	const normalizedName = String(name).toLowerCase();
+	if (Array.isArray(value)) {
+		store.set(normalizedName, value.map((entry) => String(entry)));
+		return;
+	}
+
+	store.set(normalizedName, String(value));
+}
+
+function appendHeaders(target, sourceMap) {
+	for (const [name, value] of sourceMap.entries()) {
+		if (Array.isArray(value)) {
+			for (const entry of value) {
+				target.append(name, entry);
+			}
+			continue;
+		}
+
+		target.set(name, value);
+	}
+}
+
+function createInProcessRequest({
+	body,
+	headers,
+	protocol = "http",
+	signal,
+} = {}) {
+	const request = new EventEmitter();
+	const headerMap = new Map();
+	for (const [name, value] of normalizeHeaderEntries(headers)) {
+		if (value === undefined || value === null) {
+			continue;
+		}
+		setHeaderValue(headerMap, name, value);
+	}
+
+	request.body = body;
+	request.protocol = protocol;
+	request.get = (name) => {
+		const value = headerMap.get(String(name).toLowerCase());
+		if (Array.isArray(value)) {
+			return value.join(", ");
+		}
+		return value;
+	};
+
+	if (signal && typeof signal.addEventListener === "function") {
+		const emitAbort = () => {
+			request.emit("aborted");
+			request.emit("close");
+		};
+
+		if (signal.aborted) {
+			queueMicrotask(emitAbort);
+		} else {
+			signal.addEventListener("abort", emitAbort, { once: true });
+		}
+	}
+
+	return request;
+}
+
+function createCapturedResponse() {
+	const response = new EventEmitter();
+	const bodyStream = new PassThrough();
+	const headers = new Map();
+
+	response.statusCode = 200;
+	response.statusMessage = undefined;
+	response.headersSent = false;
+	response.writableFinished = false;
+
+	bodyStream.on("drain", () => {
+		response.emit("drain");
+	});
+
+	bodyStream.on("error", (error) => {
+		response.emit("error", error);
+	});
+
+	response.status = (statusCode) => {
+		response.statusCode = statusCode;
+		return response;
+	};
+
+	response.setHeader = (name, value) => {
+		setHeaderValue(headers, name, value);
+		return response;
+	};
+
+	response.getHeader = (name) => headers.get(String(name).toLowerCase());
+
+	response.writeHead = (statusCode, statusTextOrHeaders, maybeHeaders) => {
+		response.statusCode = statusCode;
+
+		let headerValues = maybeHeaders;
+		if (
+			statusTextOrHeaders &&
+			typeof statusTextOrHeaders === "object" &&
+			!Array.isArray(statusTextOrHeaders)
+		) {
+			headerValues = statusTextOrHeaders;
+			response.statusMessage = undefined;
+		} else if (typeof statusTextOrHeaders === "string") {
+			response.statusMessage = statusTextOrHeaders;
+		}
+
+		for (const [name, value] of normalizeHeaderEntries(headerValues)) {
+			if (value === undefined || value === null) {
+				continue;
+			}
+			setHeaderValue(headers, name, value);
+		}
+
+		response.headersSent = true;
+		return response;
+	};
+
+	response.flushHeaders = () => {
+		response.headersSent = true;
+	};
+
+	response.write = (chunk) => {
+		response.headersSent = true;
+		return bodyStream.write(chunk);
+	};
+
+	response.end = (chunk) => {
+		if (chunk !== undefined) {
+			response.write(chunk);
+		}
+
+		if (!response.writableFinished) {
+			response.writableFinished = true;
+			bodyStream.end();
+			response.emit("finish");
+		}
+
+		return response;
+	};
+
+	response.json = (payload) => {
+		if (!headers.has("content-type")) {
+			response.setHeader("Content-Type", "application/json; charset=utf-8");
+		}
+		response.end(JSON.stringify(payload));
+		return response;
+	};
+
+	response.toWebResponse = () => {
+		const responseHeaders = new Headers();
+		appendHeaders(responseHeaders, headers);
+		return new Response(Readable.toWeb(bodyStream), {
+			status: response.statusCode,
+			statusText: response.statusMessage,
+			headers: responseHeaders,
+		});
+	};
+
+	return response;
+}
+
+module.exports = {
+	createCapturedResponse,
+	createInProcessRequest,
+};

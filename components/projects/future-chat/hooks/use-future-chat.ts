@@ -223,6 +223,16 @@ function getFutureChatArtifactDocumentIdsFromMessages(
 	return documentIds;
 }
 
+const PLAN_MODE_CONTEXT = [
+	"Plan mode is enabled.",
+	"Generate a comprehensive plan with clear, actionable tasks.",
+	"After generating the plan, call update_todo to organize tasks into a structured checklist.",
+	"Keep plan mode active until update_todo completes. Do not call exit_plan_mode before update_todo.",
+	"If update_todo fails, do not retry it repeatedly; continue by returning a concrete plan widget task list.",
+	"When writing update_todo task content, use strict dependency prefixes for blocked tasks: [needs <id[,id...]>] (example: [needs 1,2] Wire API). Leave independent tasks without a [needs] prefix.",
+	"Do not finish without generating a plan widget with a concrete task list.",
+].join(" ");
+
 const VOICE_MODE_CONTEXT = [
 	"The user is in voice mode — they are speaking to you and hearing your response read aloud.",
 	"Keep responses concise and conversational, suitable for text-to-speech.",
@@ -974,7 +984,9 @@ export function useFutureChat({
 							: null;
 
 					const resolvedContextDescription =
-						existingContextDescription ?? (isVoiceModeRef.current ? VOICE_MODE_CONTEXT : undefined);
+						existingContextDescription
+						?? (isPlanModeRef.current ? PLAN_MODE_CONTEXT : undefined)
+						?? (isVoiceModeRef.current ? VOICE_MODE_CONTEXT : undefined);
 					const artifactContextFromBody =
 						body?.artifactContext &&
 						typeof body.artifactContext === "object" &&

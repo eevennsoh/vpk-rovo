@@ -2,16 +2,16 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 
 const {
-	buildFigmaStructuredFallback,
-} = require("./genui-figma-tool-fallback");
+	buildFigmaStructuredSpec,
+} = require("./genui-figma-tool-handler");
 
 /** Helper to get the FigmaDesignContext element props from a result */
 function getFigmaProps(result) {
 	return result?.spec?.elements?.["figma-context"]?.props;
 }
 
-test("buildFigmaStructuredFallback uses file-aware byline when description is generic", () => {
-	const result = buildFigmaStructuredFallback({
+test("buildFigmaStructuredSpec uses file-aware byline when description is generic", () => {
+	const result = buildFigmaStructuredSpec({
 		description: "Design context extracted from Figma.",
 		observations: [
 			{
@@ -32,8 +32,8 @@ test("buildFigmaStructuredFallback uses file-aware byline when description is ge
 	assert.equal(props.description, "Frame Frame 2087 from Agents Team.");
 });
 
-test("buildFigmaStructuredFallback extracts file metadata from figma URLs", () => {
-	const result = buildFigmaStructuredFallback({
+test("buildFigmaStructuredSpec extracts file metadata from figma URLs", () => {
+	const result = buildFigmaStructuredSpec({
 		description: "Generated from tool execution results.",
 		observations: [
 			{
@@ -54,7 +54,7 @@ test("buildFigmaStructuredFallback extracts file metadata from figma URLs", () =
 });
 
 test("extracts code from array-of-strings rawOutput (get_design_context format)", () => {
-	const result = buildFigmaStructuredFallback({
+	const result = buildFigmaStructuredSpec({
 		observations: [
 			{
 				phase: "result",
@@ -80,7 +80,7 @@ test("extracts code from array-of-strings rawOutput (get_design_context format)"
 });
 
 test("extracts code from MCP content block objects", () => {
-	const result = buildFigmaStructuredFallback({
+	const result = buildFigmaStructuredSpec({
 		observations: [
 			{
 				phase: "result",
@@ -100,7 +100,7 @@ test("extracts code from MCP content block objects", () => {
 });
 
 test("renders card even without code when there are Figma results", () => {
-	const result = buildFigmaStructuredFallback({
+	const result = buildFigmaStructuredSpec({
 		observations: [
 			{
 				phase: "result",
@@ -123,7 +123,7 @@ test("renders card even without code when there are Figma results", () => {
 
 test("skips truncated JSON array texts in fallback code extraction", () => {
 	// Simulates the toPreview output: truncated pretty-printed JSON that fails JSON.parse
-	const result = buildFigmaStructuredFallback({
+	const result = buildFigmaStructuredSpec({
 		observations: [
 			{
 				phase: "result",
@@ -140,7 +140,7 @@ test("skips truncated JSON array texts in fallback code extraction", () => {
 });
 
 test("extracts code from wrapper object with nested content array", () => {
-	const result = buildFigmaStructuredFallback({
+	const result = buildFigmaStructuredSpec({
 		observations: [
 			{
 				phase: "result",
@@ -164,7 +164,7 @@ test("extracts code from wrapper object with nested content array", () => {
 
 test("extracts code from raw string rawOutput (plain code string)", () => {
 	// Simulates rawOutput being a plain code string that doesn't parse as JSON
-	const result = buildFigmaStructuredFallback({
+	const result = buildFigmaStructuredSpec({
 		observations: [
 			{
 				phase: "result",
@@ -186,7 +186,7 @@ test("extracts code from parseable JSON array text when rawOutput is missing", (
 		'export default function FromText() {\n  return <div className="w-full">Text</div>;\n}',
 		"SUPER CRITICAL: Must be converted.",
 	]);
-	const result = buildFigmaStructuredFallback({
+	const result = buildFigmaStructuredSpec({
 		observations: [
 			{
 				phase: "result",
@@ -202,7 +202,7 @@ test("extracts code from parseable JSON array text when rawOutput is missing", (
 });
 
 test("builds figmaUrl from extracted fileKey and nodeId", () => {
-	const result = buildFigmaStructuredFallback({
+	const result = buildFigmaStructuredSpec({
 		description: "Generated from tool execution results.",
 		observations: [
 			{
@@ -221,7 +221,7 @@ test("builds figmaUrl from extracted fileKey and nodeId", () => {
 });
 
 test("figmaUrl is null when no fileKey is available", () => {
-	const result = buildFigmaStructuredFallback({
+	const result = buildFigmaStructuredSpec({
 		observations: [
 			{
 				phase: "result",

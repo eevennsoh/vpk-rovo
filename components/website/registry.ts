@@ -6733,6 +6733,20 @@ const BLOCK_VARIANT_DEMOS: Record<string, ComponentType> = {
       })),
     { ssr: false },
   ),
+  "generative-card-demo-artifact": dynamic(
+    () =>
+      import("./demos/blocks/generative-card-demo").then((mod) => ({
+        default: mod.GenerativeCardDemoArtifact,
+      })),
+    { ssr: false },
+  ),
+  "generative-card-demo-artifact-collapsed": dynamic(
+    () =>
+      import("./demos/blocks/generative-card-demo").then((mod) => ({
+        default: mod.GenerativeCardDemoArtifactCollapsed,
+      })),
+    { ssr: false },
+  ),
   "generative-card-demo-animated": dynamic(
     () =>
       import("./demos/blocks/generative-card-demo").then((mod) => ({

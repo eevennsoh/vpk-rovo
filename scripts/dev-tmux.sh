@@ -2,6 +2,13 @@
 
 set -euo pipefail
 
+# Mirror the non-tmux launcher by seeding .env.local from the example when
+# needed before loading environment overrides.
+if [ ! -f .env.local ] && [ -f .env.local.example ]; then
+	cp .env.local.example .env.local
+	echo "[tmux] Created .env.local from .env.local.example"
+fi
+
 # Load .env.local if it exists
 if [ -f .env.local ]; then
 	set -a
@@ -12,7 +19,7 @@ fi
 
 WINDOW_NAME="ports"
 POOL_SIZE="${ROVODEV_POOL_SIZE:-6}"
-SITE_URL="${ROVODEV_BILLING_URL:?ROVODEV_BILLING_URL is not set in .env.local}"
+: "${ROVODEV_BILLING_URL:?ROVODEV_BILLING_URL is not set in .env.local}"
 
 PORT_FILE=".dev-rovodev-port"
 PORTS_FILE=".dev-rovodev-ports"
@@ -28,26 +35,6 @@ if [[ "$POOL_SIZE" -lt 1 ]]; then
 	echo "ROVODEV_POOL_SIZE must be >= 1 (current: $POOL_SIZE)"
 	exit 1
 fi
-
-resolve_rovodev_cmd() {
-	if command -v rovodev >/dev/null 2>&1; then
-		echo "rovodev"
-		return
-	fi
-
-	if command -v acli >/dev/null 2>&1; then
-		# Verify that acli actually supports "rovodev serve" — some versions
-		# only ship "auth" and silently ignore unknown subcommands until the
-		# rovodev plugin is downloaded.
-		if acli rovodev --help 2>&1 | grep serve >/dev/null; then
-			echo "acli rovodev"
-			return
-		fi
-	fi
-
-	echo "Neither 'rovodev' nor 'acli' (with rovodev plugin) is installed or on PATH."
-	exit 1
-}
 
 resolve_session_name() {
 	node - <<'NODE'
@@ -199,9 +186,6 @@ start_session() {
 		exit 1
 	fi
 
-	local rovodev_cmd
-	rovodev_cmd="$(resolve_rovodev_cmd)"
-
 	if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
 		apply_window_styling
 		echo "Session '$SESSION_NAME' already exists. Attaching..."
@@ -240,7 +224,7 @@ start_session() {
 		pane=$((index + 2))
 		port="${rovodev_ports[$index]}"
 		tmux select-pane -t "$SESSION_NAME:$WINDOW_NAME.$pane" -T "$port"
-		cmd="cd \"$(pwd)\" && $rovodev_cmd serve --disable-session-token --respect-configured-permissions --site-url \"$SITE_URL\" $port"
+		cmd="cd \"$(pwd)\" && node scripts/dev-rovodev-port.js \"$port\""
 		tmux send-keys -t "$SESSION_NAME:$WINDOW_NAME.$pane" "$cmd" C-m
 	done
 
@@ -251,7 +235,7 @@ start_session() {
 
 	tmux select-pane -t "$SESSION_NAME:$WINDOW_NAME.0" -T "frontend:${frontend_port}"
 	tmux select-pane -t "$SESSION_NAME:$WINDOW_NAME.1" -T "backend:${backend_port}"
-	tmux send-keys -t "$SESSION_NAME:$WINDOW_NAME.1" "cd \"$(pwd)\" && ROVODEV_SUPERVISOR=tmux pnpm run dev:backend" C-m
+	tmux send-keys -t "$SESSION_NAME:$WINDOW_NAME.1" "cd \"$(pwd)\" && pnpm run dev:backend" C-m
 	tmux send-keys -t "$SESSION_NAME:$WINDOW_NAME.0" "cd \"$(pwd)\" && pnpm run dev:frontend" C-m
 
 	tmux select-layout -t "$SESSION_NAME:$WINDOW_NAME" tiled

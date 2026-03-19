@@ -283,10 +283,20 @@ function pickBestSpec(analysis) {
 }
 
 /**
- * Extract a renderable spec directly from text that contains a ```spec fence.
- * Returns null if no valid spec fence is found or the spec is not renderable.
+ * Minimum JSONL patch lines required to consider unfenced content a valid spec.
+ * A valid spec needs at least /root + one /elements/<key> patch.
+ */
+const MIN_UNFENCED_PATCH_COUNT = 2;
+
+/**
+ * Extract a renderable spec directly from text that contains a ```spec fence
+ * or unfenced JSONL RFC 6902 patch lines.
  *
- * @param {string} text - Raw text that may contain a ```spec code fence.
+ * Tries fence-based extraction first (fast, specific). Falls back to
+ * json-render's `createMixedStreamParser` which reliably separates
+ * JSONL patch lines from narrative text regardless of fencing.
+ *
+ * @param {string} text - Raw text that may contain spec patches.
  * @returns {{ spec: object, narrative: string } | null}
  */
 function extractDirectSpec(text) {
@@ -294,23 +304,43 @@ function extractDirectSpec(text) {
 		return null;
 	}
 
+	// Fast path: fenced ```spec block
 	const specFenceMatch = text.match(/```spec\s*\n([\s\S]*?)```/i);
-	if (!specFenceMatch) {
-		return null;
+	if (specFenceMatch) {
+		const analysis = analyzeGeneratedText(specFenceMatch[0]);
+		const spec = pickBestSpec(analysis);
+		if (spec) {
+			const narrative = text
+				.replace(/```spec[\s\S]*?```/gi, "")
+				.replace(/\n{3,}/g, "\n\n")
+				.trim();
+			return { spec, narrative };
+		}
 	}
 
-	const analysis = analyzeGeneratedText(specFenceMatch[0]);
-	const spec = pickBestSpec(analysis);
-	if (!spec) {
-		return null;
+	// Fallback: unfenced JSONL patches mixed with text.
+	// Uses json-render's createMixedStreamParser to reliably separate
+	// RFC 6902 patch lines from narrative text without relying on fencing.
+	const analysis = analyzeGeneratedText(text);
+	if (analysis.patchCount >= MIN_UNFENCED_PATCH_COUNT) {
+		const spec = pickBestSpec(analysis);
+		if (spec) {
+			const narrativeParts = [];
+			const narrativeParser = createMixedStreamParser({
+				onPatch() { /* discard */ },
+				onText(t) { narrativeParts.push(t); },
+			});
+			narrativeParser.push(text);
+			narrativeParser.flush();
+			const narrative = narrativeParts
+				.join("")
+				.replace(/\n{3,}/g, "\n\n")
+				.trim();
+			return { spec, narrative };
+		}
 	}
 
-	const narrative = text
-		.replace(/```spec[\s\S]*?```/gi, "")
-		.replace(/\n{3,}/g, "\n\n")
-		.trim();
-
-	return { spec, narrative };
+	return null;
 }
 
 module.exports = {

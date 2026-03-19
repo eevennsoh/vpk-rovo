@@ -36,7 +36,8 @@ import {
 import { shouldShowFutureChatSidebarRunIndicator } from "@/components/projects/future-chat/lib/future-chat-sidebar-run-indicator";
 import type { FutureChatRunStatus, FutureChatThread } from "@/lib/future-chat-types";
 import { cn } from "@/lib/utils";
-import { MoreHorizontalIcon, SquareIcon, Trash2Icon } from "lucide-react";
+import ShowMoreHorizontalIcon from "@atlaskit/icon/core/show-more-horizontal";
+import { SquareIcon, Trash2Icon } from "lucide-react";
 
 interface FutureChatSidebarProps {
 	activeThreadId: string | null;
@@ -116,8 +117,8 @@ function FutureChatSidebarThreadItem({
 		<SidebarMenuItem>
 			<SidebarMenuButton
 				className={cn(
-					"h-auto min-h-9 rounded-lg py-2 pl-3 transition-[padding] duration-150 ease-out group-hover/menu-item:bg-sidebar-accent group-hover/menu-item:text-sidebar-accent-foreground",
-					showRunIndicator ? "pr-10 group-hover/menu-item:pr-16" : "group-hover/menu-item:pr-10",
+					"h-auto min-h-9 rounded-lg py-2 pl-3 transition-[padding] duration-150 ease-out group-hover/menu-item:bg-sidebar-accent group-hover/menu-item:text-sidebar-accent-foreground group-hover/menu-item:pr-10",
+					showRunIndicator && "pr-10",
 				)}
 				isActive={isActive}
 				onClick={() => {
@@ -160,7 +161,7 @@ function FutureChatSidebarThreadItem({
 					render={(
 						<SidebarMenuAction
 							showOnHover
-							className="!top-1/2 right-1 size-6 -translate-y-1/2 rounded-md text-icon-subtle hover:bg-sidebar-accent hover:text-sidebar-accent-foreground active:bg-sidebar-accent active:text-sidebar-accent-foreground aria-expanded:bg-sidebar-accent aria-expanded:text-sidebar-accent-foreground data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+							className="!top-1/2 right-1 size-6 -translate-y-1/2 rounded-md text-icon-subtle hover:bg-sidebar-accent hover:text-sidebar-accent-foreground active:bg-sidebar-accent active:text-sidebar-accent-foreground aria-expanded:bg-sidebar-accent aria-expanded:text-sidebar-accent-foreground data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground transition-[opacity,transform] duration-normal ease-[var(--ease-out)]"
 							onClick={(event) => {
 								event.stopPropagation();
 							}}
@@ -171,8 +172,7 @@ function FutureChatSidebarThreadItem({
 						/>
 					)}
 				>
-					<MoreHorizontalIcon className="size-3" />
-					<span className="sr-only">More</span>
+					<ShowMoreHorizontalIcon label="More" color="currentColor" size="small" />
 				</DropdownMenuTrigger>
 				<DropdownMenuContent align="end" side="bottom">
 					<DropdownMenuGroup>
@@ -196,7 +196,7 @@ function FutureChatSidebarThreadItem({
 			</DropdownMenu>
 
 			{showRunIndicator ? (
-				<div className="pointer-events-none absolute inset-y-0 right-1 flex items-center justify-center transition-[right] duration-150 ease-out group-hover/menu-item:right-8 group-data-[collapsible=icon]:hidden">
+				<div className="pointer-events-none absolute inset-y-0 right-1 flex items-center justify-center transition-opacity duration-normal ease-[var(--ease-out)] group-hover/menu-item:opacity-0 group-data-[collapsible=icon]:hidden">
 					<div className="flex size-6 items-center justify-center">
 						<Spinner
 							size="xs"
@@ -240,7 +240,7 @@ export function FutureChatSidebar({
 			style={hoverOpen ? { left: 0, zIndex: 50, boxShadow: token("elevation.shadow.overlay") } : { zIndex: 50 }}
 			variant="inset"
 		>
-			<SidebarContent className="bg-sidebar">
+			<SidebarContent className="bg-sidebar p-[2px]">
 				{/* Top navigation items */}
 				<SidebarGroup className="p-0">
 					<SidebarGroupContent>

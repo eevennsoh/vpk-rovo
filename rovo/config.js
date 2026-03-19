@@ -77,6 +77,14 @@ const FIGMA_CLARIFICATION_INSTRUCTION = [
 	"[End Figma Tool Protocol]",
 ].join("\n");
 
+const WEB_SEARCH_INSTRUCTION = [
+	"[Web Search Protocol]",
+	"You have access to web search and web browsing MCP tools that can fetch live, real-time information from the internet.",
+	"When the user asks about current data (stock prices, news, weather, live scores, recent events, release dates, current status of services, or any question where the answer changes over time), you MUST use your web search tools to look up the information instead of saying you cannot access real-time data.",
+	"Do not apologize or say you lack access — search the web and provide the answer.",
+	"[End Web Search Protocol]",
+].join("\n");
+
 const PLAIN_CHAT_INSTRUCTION = [
 	"[Plain Chat Mode]",
 	"This is a simple conversational turn. Respond directly, briefly, and naturally.",
@@ -285,6 +293,7 @@ function getInstructionBlocksForProfile(profile, promptSpecificInstruction) {
 		PLAN_DESCRIPTION_INSTRUCTION,
 		GENUI_SPEC_INSTRUCTION,
 		FIGMA_CLARIFICATION_INSTRUCTION,
+		WEB_SEARCH_INSTRUCTION,
 		promptSpecificInstruction,
 	];
 }

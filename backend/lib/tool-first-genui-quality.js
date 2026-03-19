@@ -1,4 +1,17 @@
 const { isObjectRecord } = require("./shared-utils");
+const VISUALIZATION_PROMPT_PATTERN =
+	/\b(chart|charts|graph|graphs|plot|plots|dashboard|dashboards|visuali[sz]ation|visuali[sz]e|visualisation|visualise|heatmap|histogram|treemap|candlestick|stock price)\b/i;
+const VISUALIZATION_COMPONENT_TYPES = new Set([
+	"AreaChart",
+	"BarChart",
+	"LineChart",
+	"PieChart",
+	"RadarChart",
+	"ScatterChart",
+	"Table",
+	"Metric",
+	"WorkSummary",
+]);
 
 function getNonNegativeInteger(value) {
 	if (typeof value !== "number" || !Number.isFinite(value)) {
@@ -46,7 +59,35 @@ function hasRecoveredPlaceholderSection(spec) {
 	return false;
 }
 
-function assessToolFirstGenuiQuality({ analysis, spec } = {}) {
+function getLatestUserPrompt(prompt) {
+	if (typeof prompt !== "string") {
+		return "";
+	}
+
+	const userBlocks = [...prompt.matchAll(/\[User\]\n([\s\S]*?)(?=\n\n\[(?:User|Assistant)\]\n|$)/g)];
+	if (userBlocks.length === 0) {
+		return prompt;
+	}
+
+	const latestBlock = userBlocks[userBlocks.length - 1]?.[1];
+	return typeof latestBlock === "string" ? latestBlock.trim() : "";
+}
+
+function hasVisualizationComponent(spec) {
+	for (const element of Object.values(getElements(spec))) {
+		if (!isObjectRecord(element) || typeof element.type !== "string") {
+			continue;
+		}
+
+		if (VISUALIZATION_COMPONENT_TYPES.has(element.type)) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+function assessToolFirstGenuiQuality({ analysis, spec, prompt } = {}) {
 	const missingChildKeys = Array.isArray(analysis?.missingChildKeys)
 		? analysis.missingChildKeys
 		: [];
@@ -74,6 +115,14 @@ function assessToolFirstGenuiQuality({ analysis, spec } = {}) {
 	if (hasPlaceholderSection) {
 		reasons.push("recovered_placeholder_sections");
 	}
+	const latestUserPrompt = getLatestUserPrompt(prompt);
+	if (
+		spec &&
+		VISUALIZATION_PROMPT_PATTERN.test(latestUserPrompt) &&
+		!hasVisualizationComponent(spec)
+	) {
+		reasons.push("missing_expected_visualization_component");
+	}
 
 	return {
 		quality: reasons.length > 0 ? "low_confidence" : "acceptable",
@@ -88,4 +137,5 @@ function assessToolFirstGenuiQuality({ analysis, spec } = {}) {
 module.exports = {
 	hasRecoveredPlaceholderSection,
 	assessToolFirstGenuiQuality,
+	hasVisualizationComponent,
 };

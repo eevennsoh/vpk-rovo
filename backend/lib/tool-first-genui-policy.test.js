@@ -39,7 +39,7 @@ test("resolveToolFirstPolicy adds Google Calendar required-args guidance", () =>
 
 	assert.equal(policy.matched, true);
 	assert.ok(policy.domains.includes("google-calendar"));
-	assert.match(policy.instruction, /google_google_calendar_atlassian_calendar_get_events/i);
+	assert.match(policy.instruction, /Google Calendar/i);
 	assert.match(policy.instruction, /calendarId/i);
 	assert.match(policy.instruction, /timeMin/i);
 	assert.match(policy.instruction, /timeMax/i);
@@ -290,7 +290,7 @@ test("buildToolFirstRetryInstruction adds Google Calendar validation retry guida
 	});
 
 	assert.match(instruction, /Google Calendar validation retry directive/i);
-	assert.match(instruction, /google_google_calendar_atlassian_calendar_get_events/i);
+	assert.match(instruction, /Google Calendar/i);
 	assert.match(instruction, /calendarId/i);
 	assert.match(instruction, /timeMin/i);
 	assert.match(instruction, /timeMax/i);
@@ -367,7 +367,7 @@ test("buildToolFirstTextFallback adds Google Calendar required-field validation 
 		rovoDevFallback: false,
 	});
 
-	assert.match(message, /google_google_calendar_atlassian_calendar_get_events/i);
+	assert.match(message, /Google Calendar/i);
 	assert.match(message, /calendarId/i);
 	assert.match(message, /timeMin/i);
 	assert.match(message, /timeMax/i);

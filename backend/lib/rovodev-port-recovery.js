@@ -91,7 +91,6 @@ async function restartRovoDevPort({
 	healthCheck,
 	getListeningPidsForPort,
 	refreshAvailability,
-	supervisorMode,
 	timeoutMs = DEFAULT_RECOVERY_TIMEOUT_MS,
 	pollIntervalMs = DEFAULT_POLL_INTERVAL_MS,
 	killGraceMs = DEFAULT_KILL_GRACE_MS,
@@ -106,10 +105,6 @@ async function restartRovoDevPort({
 		};
 	}
 
-	// Resolve supervisor mode from param or env var
-	const resolvedSupervisorMode =
-		supervisorMode ?? process.env.ROVODEV_SUPERVISOR ?? null;
-
 	let cancelError = null;
 	if (typeof cancelChat === "function") {
 		try {
@@ -120,48 +115,6 @@ async function restartRovoDevPort({
 				`[ROVODEV-RECOVERY] Cancel request failed for port ${port}: ${cancelError.message}`
 			);
 		}
-	}
-
-	// In tmux supervisor mode, killing the process leaves a dead pane that
-	// won't auto-restart. Skip the kill step and rely on cancel + health
-	// polling to recover the port.
-	if (resolvedSupervisorMode === "tmux") {
-		logger.info?.(
-			`[ROVODEV-RECOVERY] tmux supervisor mode — skipping process kill for port ${port}, waiting for health recovery`
-		);
-
-		// Wait at least one poll interval so cancel has time to take effect
-		await sleepFn(pollIntervalMs);
-
-		const startedAt = Date.now();
-		while (Date.now() - startedAt <= Math.max(0, timeoutMs)) {
-			try {
-				if (typeof healthCheck === "function") {
-					await healthCheck(port);
-				}
-				if (typeof refreshAvailability === "function") {
-					await refreshAvailability();
-				}
-				return {
-					recovered: true,
-					port,
-					killedPids: [],
-					activePids: [],
-					restarted: false,
-					cancelled: cancelError === null,
-				};
-			} catch {
-				await sleepFn(pollIntervalMs);
-			}
-		}
-
-		return {
-			recovered: false,
-			port,
-			killedPids: [],
-			cancelled: cancelError === null,
-			error: `Timed out waiting for RovoDev port ${port} to recover (tmux mode — process not killed)`,
-		};
 	}
 
 	const readPids =

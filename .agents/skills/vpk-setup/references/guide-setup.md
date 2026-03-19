@@ -121,12 +121,6 @@ rm -f .next/dev/lock
 pnpm install
 ```
 
-### Install Backend Dependencies
-
-```bash
-cd backend && npm install && cd ..
-```
-
 ### Generate ASAP Credentials for AI Gateway
 
 **Authentication: Use ASAP (Recommended)**
@@ -244,7 +238,7 @@ The current setup also writes a live-voice STT block into `.env.local`. Switch o
 Notes:
 
 - `STT_PRESET=google` uses `GOOGLE_STT_MODEL` for the actual Google model.
-- Qwen presets target an OpenAI-compatible transcription endpoint at `http://localhost:8801/v1`. Launch it with `pnpm run dev:stt`.
+- Qwen presets target an OpenAI-compatible transcription endpoint (defaults to `http://localhost:8801/v1`). Override with `OPENAI_COMPATIBLE_STT_BASE_URL`.
 - Whisper presets require the `whisper` CLI on PATH.
 
 **Default RovoDev billing site (recommended):**
@@ -254,6 +248,28 @@ ROVODEV_BILLING_URL=https://product-fabric.atlassian.net
 ```
 
 `scripts/dev-rovodev.js` passes this value as `--site-url` to `rovodev serve`. Override this value when you need a different billing site.
+
+**RovoDev Session Token (required, one-time setup):**
+
+RovoDev Serve requires a session token for authentication. The backend sends it as `Authorization: Bearer <token>` on every request to Serve.
+
+```
+ROVODEV_SESSION_TOKEN=<paste-token-from-rovodev-serve-output>
+```
+
+**How to get it:**
+
+1. Run `pnpm run rovodev` (or `acli rovodev`) for the first time
+2. RovoDev Serve prints a session token to the terminal output
+3. Copy the token and paste it into `.env.local` as `ROVODEV_SESSION_TOKEN=<token>`
+4. Restart the dev stack so the backend picks it up
+
+**Important notes:**
+
+- This is a **one-time setup** — the token does not expire or rotate
+- The supervisor passes this token to Serve as `ROVODEV_SERVE_SESSION_TOKEN` so both sides share the same secret
+- If `ROVODEV_SESSION_TOKEN` is missing, all `/v3/*` endpoints on Serve return `"Missing credentials"` (the `/healthcheck` endpoint is unauthenticated and still works)
+- If you see `"Missing credentials"` when curling port 8000 directly, remember that port 8000 is RovoDev Serve — not the VPK backend. The backend port is in `.dev-backend-port` (typically 8081)
 
 **Optional — TTS model verification (`tts-latest`):**
 

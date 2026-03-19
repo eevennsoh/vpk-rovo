@@ -95,3 +95,51 @@ export function shouldRenderFutureChatWidget(input: {
 
 	return input.routeDecision.presentation === "genui_card";
 }
+
+export function shouldRenderFutureChatAssistantActions(input: {
+	hasArtifactCard: boolean;
+	hasAssistantText: boolean;
+	hasInterruption: boolean;
+	hasReasoning: boolean;
+	hasSources: boolean;
+	hasWidget: boolean;
+	hasWidgetError: boolean;
+	isLastAssistant: boolean;
+	isResponseInFlight: boolean;
+}): boolean {
+	if (input.isLastAssistant && input.isResponseInFlight) {
+		return false;
+	}
+
+	return (
+		input.hasAssistantText ||
+		input.hasWidget ||
+		input.hasWidgetError ||
+		input.hasArtifactCard ||
+		input.hasSources ||
+		input.hasInterruption ||
+		input.hasReasoning
+	);
+}
+
+export function shouldRenderFutureChatAssistantMessage(input: {
+	hasArtifactCard: boolean;
+	hasAssistantText: boolean;
+	hasInterruption: boolean;
+	hasReasoning: boolean;
+	hasSources: boolean;
+	hasWidget: boolean;
+	hasWidgetError: boolean;
+	hasWidgetLoading: boolean;
+}): boolean {
+	return (
+		input.hasAssistantText ||
+		input.hasReasoning ||
+		input.hasWidgetLoading ||
+		input.hasWidget ||
+		input.hasWidgetError ||
+		input.hasArtifactCard ||
+		input.hasSources ||
+		input.hasInterruption
+	);
+}

@@ -185,6 +185,7 @@ export type GenerativeCardHeaderProps = Omit<ComponentProps<typeof CardHeader>, 
 	leading: ReactNode;
 	title: ReactNode;
 	description?: ReactNode;
+	action?: ReactNode;
 	expandLabel?: string;
 	collapseLabel?: string;
 	expanded?: boolean;
@@ -196,6 +197,7 @@ export const GenerativeCardHeader = memo(function GenerativeCardHeader({
 	title,
 	description,
 	leading,
+	action,
 	expandLabel = "Expand card details",
 	collapseLabel = "Collapse card details",
 	expanded,
@@ -205,6 +207,7 @@ export const GenerativeCardHeader = memo(function GenerativeCardHeader({
 	const context = useGenerativeCardContext(true);
 	const isExpanded = expanded ?? context?.expanded ?? true;
 	const setExpanded = onExpandedChange ?? context?.setExpanded;
+	const showToggle = typeof setExpanded === "function";
 
 	return (
 		<CardHeader className={cn("items-center gap-x-3 gap-y-0 px-4 py-3", isExpanded ? "border-b" : null, className)} {...props}>
@@ -219,23 +222,30 @@ export const GenerativeCardHeader = memo(function GenerativeCardHeader({
 					) : null}
 				</div>
 			</div>
-			<CardAction className="self-center">
-				<Button
-					variant="ghost"
-					size="icon"
-					className="text-text-subtle"
-					aria-label={isExpanded ? collapseLabel : expandLabel}
-					onClick={() => setExpanded?.(!isExpanded)}
-					disabled={!setExpanded}
-				>
-					<span
-						className="transition-transform duration-200 ease-in-out"
-						style={{ transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)" }}
-					>
-						<ChevronDownIcon label="" size="small" />
-					</span>
-				</Button>
-			</CardAction>
+			{action || showToggle ? (
+				<CardAction className="self-center">
+					<div className="flex items-center gap-1">
+						{action}
+						{showToggle ? (
+							<Button
+								variant="ghost"
+								size="icon"
+								type="button"
+								className="text-text-subtle"
+								aria-label={isExpanded ? collapseLabel : expandLabel}
+								onClick={() => setExpanded(!isExpanded)}
+							>
+								<span
+									className="transition-transform duration-200 ease-in-out"
+									style={{ transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)" }}
+								>
+									<ChevronDownIcon label="" size="small" />
+								</span>
+							</Button>
+						) : null}
+					</div>
+				</CardAction>
+			) : null}
 		</CardHeader>
 	);
 });

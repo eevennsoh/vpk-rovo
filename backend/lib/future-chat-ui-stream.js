@@ -1,4 +1,5 @@
 const {
+	JsonToSseTransformStream,
 	parseJsonEventStream,
 	readUIMessageStream,
 	uiMessageChunkSchema,
@@ -38,20 +39,90 @@ function toUiMessageChunkStream(stream) {
 	);
 }
 
-function createTappedChunkStream(stream, onChunk) {
-	const chunkStream = toUiMessageChunkStream(stream);
-	if (typeof onChunk !== "function") {
-		return chunkStream;
+function normalizeRoutingDecision(value) {
+	if (!value || typeof value !== "object" || Array.isArray(value)) {
+		return null;
 	}
+
+	const candidate = value;
+	const intent = typeof candidate.intent === "string" ? candidate.intent.trim() : "";
+	const presentation =
+		typeof candidate.presentation === "string"
+			? candidate.presentation.trim()
+			: "";
+	const confidence =
+		typeof candidate.confidence === "number" && Number.isFinite(candidate.confidence)
+			? Math.max(0, Math.min(1, candidate.confidence))
+			: null;
+	const reason = typeof candidate.reason === "string" ? candidate.reason.trim() : "";
+	const origin = typeof candidate.origin === "string" ? candidate.origin.trim() : "";
+	if (!intent || !presentation || confidence === null || !reason || !origin) {
+		return null;
+	}
+
+	return {
+		intent,
+		presentation,
+		confidence,
+		reason,
+		origin,
+	};
+}
+
+function shouldSuppressRouteDecisionChunk(chunk, routeDecisionToSuppress) {
+	if (!routeDecisionToSuppress || chunk?.type !== "data-route-decision") {
+		return false;
+	}
+
+	const normalizedChunkDecision = normalizeRoutingDecision(chunk.data);
+	const normalizedSuppressedDecision = normalizeRoutingDecision(routeDecisionToSuppress);
+	if (!normalizedChunkDecision || !normalizedSuppressedDecision) {
+		return false;
+	}
+
+	return (
+		normalizedChunkDecision.intent === normalizedSuppressedDecision.intent &&
+		normalizedChunkDecision.presentation === normalizedSuppressedDecision.presentation &&
+		normalizedChunkDecision.confidence === normalizedSuppressedDecision.confidence &&
+		normalizedChunkDecision.reason === normalizedSuppressedDecision.reason &&
+		normalizedChunkDecision.origin === normalizedSuppressedDecision.origin
+	);
+}
+
+function createTappedChunkStream(
+	stream,
+	{
+		onChunk,
+		routeDecisionToSuppress,
+	} = {},
+) {
+	const chunkStream = toUiMessageChunkStream(stream);
 
 	return chunkStream.pipeThrough(
 		new TransformStream({
 			transform(chunk, controller) {
-				onChunk(chunk);
+				if (shouldSuppressRouteDecisionChunk(chunk, routeDecisionToSuppress)) {
+					return;
+				}
+
+				if (typeof onChunk === "function") {
+					onChunk(chunk);
+				}
 				controller.enqueue(chunk);
 			},
 		}),
 	);
+}
+
+function createUiMessageChunkSseStream({
+	onChunk,
+	routeDecisionToSuppress,
+	stream,
+}) {
+	return createTappedChunkStream(stream, {
+		onChunk,
+		routeDecisionToSuppress,
+	}).pipeThrough(new JsonToSseTransformStream());
 }
 
 function upsertMessage(messages, nextMessage) {
@@ -68,12 +139,16 @@ function upsertMessage(messages, nextMessage) {
 async function collectUiMessagesFromResponseStream({
 	initialMessages = [],
 	onChunk,
+	routeDecisionToSuppress,
 	stream,
 }) {
 	const messages = Array.isArray(initialMessages) ? [...initialMessages] : [];
 
 	for await (const message of readUIMessageStream({
-		stream: createTappedChunkStream(stream, onChunk),
+		stream: createTappedChunkStream(stream, {
+			onChunk,
+			routeDecisionToSuppress,
+		}),
 	})) {
 		messages.splice(0, messages.length, ...upsertMessage(messages, message));
 	}
@@ -83,6 +158,7 @@ async function collectUiMessagesFromResponseStream({
 
 module.exports = {
 	collectUiMessagesFromResponseStream,
+	createUiMessageChunkSseStream,
 	createTappedChunkStream,
 	toUiMessageChunkStream,
 };

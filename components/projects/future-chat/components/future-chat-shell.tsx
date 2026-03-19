@@ -16,6 +16,7 @@ import {
 	getFutureChatPrimaryArtifact,
 	sortFutureChatArtifacts,
 } from "@/components/projects/future-chat/lib/future-chat-artifacts";
+import { resolveFutureChatComposerPlaceholder } from "@/components/projects/future-chat/lib/future-chat-composer-placeholder";
 import { getFutureChatShellLayout } from "@/components/projects/future-chat/lib/future-chat-shell-layout";
 import { getFutureChatSmartGenerationLayoutContext } from "@/components/projects/future-chat/lib/future-chat-smart-generation-layout";
 import { buildFutureChatThreadPath } from "@/components/projects/future-chat/lib/future-chat-thread-route-sync";
@@ -538,7 +539,6 @@ export function FutureChatShell({
 		[activePlanWidget, dismissApprovalCard, submitPlanApproval],
 	);
 
-	const composerPlaceholder = previewPrompt ?? DEFAULT_COMPOSER_PLACEHOLDER;
 	const resetTypedScrollAnchorState = useCallback(() => {
 		pendingTypedScrollAnchorRef.current = false;
 		previousTypedAnchorUserMessageIdRef.current = null;
@@ -1457,10 +1457,12 @@ export function FutureChatShell({
 		!isArtifactOpen &&
 		!hasActiveThreadRun &&
 		visibleMessages.length === 0;
-	const canAnnotateWorkspaceDocument =
-		workspaceDocument?.kind === "text"
-		|| workspaceDocument?.kind === "code"
-		|| workspaceDocument?.kind === "image";
+	const composerPreviewState = resolveFutureChatComposerPlaceholder({
+		defaultPlaceholder: DEFAULT_COMPOSER_PLACEHOLDER,
+		previewPrompt,
+		showHomeState,
+	});
+	const canAnnotateWorkspaceDocument = workspaceDocument !== null;
 	const annotationState = useArtifactAnnotations({
 		active:
 			cursorMode &&
@@ -1470,11 +1472,7 @@ export function FutureChatShell({
 			process.env.NODE_ENV === "development",
 		documentId: workspaceDocument?.id ?? null,
 		documentKind:
-			workspaceDocument?.kind === "text" ||
-			workspaceDocument?.kind === "code" ||
-			workspaceDocument?.kind === "image"
-				? workspaceDocument.kind
-				: null,
+			workspaceDocument?.kind ?? null,
 		documentVersionId: selectedDocumentVersion?.id ?? null,
 		containerRef: artifactContentRef,
 	});
@@ -1547,6 +1545,12 @@ export function FutureChatShell({
 			setGalleryExpanded(false);
 		}
 	}, [isArtifactOpen, visibleMessages.length]);
+
+	useEffect(() => {
+		if (!showHomeState && previewPrompt !== null) {
+			setPreviewPrompt(null);
+		}
+	}, [previewPrompt, showHomeState]);
 
 	useEffect(() => {
 		const nextContext = formatContextForVoice().trim();
@@ -1815,9 +1819,9 @@ export function FutureChatShell({
 								onTogglePlanMode={chat.togglePlanMode}
 								onToggleRealtimeVoice={handleToggleRealtimeVoice}
 								onToggleVoice={handleToggleVoice}
-								placeholder={composerPlaceholder}
+								placeholder={composerPreviewState.placeholder}
 								prefillText={voiceTranscript ?? prefillText}
-								previewPrompt={previewPrompt}
+								previewPrompt={composerPreviewState.activePreviewPrompt}
 								queuedPrompts={chat.queuedPrompts}
 								realtimeGenerationState={realtime.generationState}
 								realtimeOutputWaveformBars={realtime.outputWaveformBars}

@@ -54,7 +54,7 @@ const GOOGLE_CALENDAR_LIST_EVENTS_PROMPT =
 
 const GOOGLE_CALENDAR_LIST_EVENTS_CONTEXT = [
 	"[Tool Requirement]",
-	"For this request, use `google_google_calendar_atlassian_calendar_get_events`.",
+	"For this request, use the Google Calendar MCP tool to list events.",
 	"Always include required parameters: `calendarId`, `timeMin`, and `timeMax`.",
 	"If the user does not specify a calendar, use `calendarId: \"primary\"`.",
 	"`timeMin` and `timeMax` must be strict UTC ISO 8601 timestamps.",

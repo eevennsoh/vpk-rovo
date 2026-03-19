@@ -3,7 +3,10 @@ const assert = require("node:assert/strict");
 
 const {
 	ASSISTANT_JSON_SUPPRESSION_TEXT,
+	hasPendingSpecFence,
 	sanitizeAssistantNarrative,
+	splitSpecFenceTextForStreaming,
+	stripSpecFences,
 	toPreview,
 } = require("./tool-output-sanitizer");
 
@@ -70,4 +73,128 @@ test("sanitizeAssistantNarrative does not replace long non-JSON prose", () => {
 
 	assert.equal(sanitized.replaced, false);
 	assert.equal(sanitized.text, longProse);
+});
+
+test("sanitizeAssistantNarrative does not suppress valid spec fences", () => {
+	const specText = [
+		"Here is the latest info.",
+		"",
+		"```spec",
+		'{"op":"add","path":"/root","value":"main"}',
+		'{"op":"add","path":"/elements/main","value":{"type":"Card","props":{"title":"Atlassian stock"},"children":["details"]}}',
+		'{"op":"add","path":"/elements/details","value":{"type":"Text","props":{"content":"73.47 USD at close"},"children":[]}}',
+		"```",
+	].join("\n");
+
+	const sanitized = sanitizeAssistantNarrative(specText, { maxChars: 200 });
+
+	assert.equal(sanitized.replaced, false);
+	assert.equal(sanitized.text, specText);
+});
+
+test("splitSpecFenceTextForStreaming hides complete spec fences from visible output", () => {
+	const result = splitSpecFenceTextForStreaming(
+		[
+			"Intro paragraph.",
+			"",
+			"```spec",
+			'{"op":"add","path":"/root","value":"main"}',
+			"```",
+			"",
+			"Closing note.",
+		].join("\n")
+	);
+
+	assert.equal(result.pendingText, "");
+	assert.equal(result.visibleText, "Intro paragraph.\n\nClosing note.");
+});
+
+test("splitSpecFenceTextForStreaming buffers incomplete spec fences", () => {
+	const text = [
+		"Intro paragraph.",
+		"",
+		"```spec",
+		'{"op":"add","path":"/root","value":"main"}',
+	].join("\n");
+	const result = splitSpecFenceTextForStreaming(text);
+
+	assert.equal(result.visibleText, "Intro paragraph.\n\n");
+	assert.equal(result.pendingText, '```spec\n{"op":"add","path":"/root","value":"main"}');
+	assert.equal(hasPendingSpecFence(text), true);
+	assert.equal(stripSpecFences(text), "Intro paragraph.");
+});
+
+test("stripSpecFences removes the captured partial spec failure tail", () => {
+	const text = [
+		"Good idea! Let me try that.",
+		"",
+		"```spec",
+		'{"op":"add","path":"/root","value":"main"}',
+		'{"op":"add","path":"/elements/main","value":{"type":"Stack","props":{"gap":"md"},"children":["header"]}}',
+		'{"op":"add","path":"/',
+		"",
+		ASSISTANT_JSON_SUPPRESSION_TEXT,
+	].join("\n");
+
+	assert.equal(stripSpecFences(text), "Good idea! Let me try that.");
+});
+
+test("splitSpecFenceTextForStreaming strips unfenced JSONL spec patches from visible text", () => {
+	const text = [
+		"Here's the latest Atlassian share price data:",
+		'{"op":"add","path":"/root","value":"main"}',
+		'{"op":"add","path":"/elements/main","value":{"type":"Heading","props":{"text":"TEAM"},"children":[]}}',
+		"Let me know if you need more.",
+	].join("\n");
+
+	const result = splitSpecFenceTextForStreaming(text);
+	assert.equal(result.pendingText, "");
+	assert.ok(
+		result.visibleText.includes("share price"),
+		"Visible text should include narrative"
+	);
+	assert.ok(
+		result.visibleText.includes("more"),
+		"Visible text should include closing"
+	);
+	assert.ok(
+		!result.visibleText.includes('"op"'),
+		"Visible text should NOT include JSONL patches"
+	);
+	assert.ok(
+		!result.visibleText.includes("/elements/"),
+		"Visible text should NOT include patch paths"
+	);
+});
+
+test("hasPendingSpecFence detects trailing unfenced JSONL patch lines", () => {
+	const text = [
+		"Here is your data:",
+		'{"op":"add","path":"/root","value":"main"}',
+	].join("\n");
+
+	assert.equal(
+		hasPendingSpecFence(text),
+		true,
+		"Trailing unfenced patch line should be treated as pending spec content"
+	);
+});
+
+test("hasPendingSpecFence returns false when no spec content is present", () => {
+	assert.equal(hasPendingSpecFence("Just normal text"), false);
+	assert.equal(hasPendingSpecFence(""), false);
+});
+
+test("stripSpecFences removes unfenced JSONL patches", () => {
+	const text = [
+		"Introduction.",
+		'{"op":"add","path":"/root","value":"main"}',
+		'{"op":"add","path":"/elements/main","value":{"type":"Card","props":{"title":"Test"}}}',
+		"Conclusion.",
+	].join("\n");
+
+	const result = stripSpecFences(text);
+	assert.ok(result.includes("Introduction"), "Should keep intro text");
+	assert.ok(result.includes("Conclusion"), "Should keep closing text");
+	assert.ok(!result.includes('"op"'), "Should strip JSONL patches");
 });

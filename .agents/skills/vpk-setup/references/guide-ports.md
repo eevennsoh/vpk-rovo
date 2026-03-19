@@ -27,9 +27,9 @@ Each rovodev serve instance is single-threaded for chat — it handles one `set_
 
 **Problem:** `streamViaRovoDev()` releases the port handle in its `finally` block immediately when the SSE stream ends. But rovodev serve hasn't finished its internal turn cleanup yet. The next caller acquires the same port milliseconds later and hits 409.
 
-**Fix:** `cooldownMs: 200` on the pool. Released ports enter a `"cooldown"` status for 200ms before becoming `"available"`, giving rovodev serve time to clear its turn state.
+**Fix:** A readiness gate on the pool. Released ports enter a `"cooldown"` status, wait at least 500ms, then get probed until the health check passes. That prevents a blind immediate reacquire while rovodev serve is still clearing its turn state.
 
-**Files:** `rovodev-pool.js` (`cooldownMs` option, `cooldown` status in `createHandle`), `server.js` (`POST_STREAM_COOLDOWN_MS` constant passed to `createRovoDevPool`)
+**Files:** `rovodev-pool.js` (`waitForReady` option, `cooldown` status in `createHandle`), `server.js` (`waitForPortReady`, `POST_STREAM_COOLDOWN_MS`)
 
 ### 3. Pool-mode generateTextViaRovoDev had no 409 retry
 
@@ -54,32 +54,45 @@ if (_pool) {
 
 **Files:** `rovodev-pool.js` (`updatePorts` method), `server.js` (`refreshRovoDevAvailability` uses `updatePorts` instead of `shutdown` + `createRovoDevPool`)
 
-### 5. tmux mode has no process supervisor
+### 5. tmux mode must share the same supervisor semantics
 
-**Problem:** Port recovery (`restartRovoDevPort`) kills the rovodev serve process via `lsof` + SIGTERM/SIGKILL, then polls for a replacement PID. With `pnpm run rovodev` (non-tmux), `dev-rovodev.js` auto-restarts killed children. But with `pnpm run rovodev:tmux`, `remain-on-exit on` keeps dead panes visible without restarting — the port dies permanently.
+**Problem:** Port recovery (`restartRovoDevPort`) kills the rovodev
+serve process via `lsof` + SIGTERM/SIGKILL, then polls for a
+replacement PID. `pnpm run rovodev` already had a child-process
+supervisor in `dev-rovodev.js`, but `pnpm run rovodev:tmux` launched raw
+`rovodev serve` commands in panes. That meant tmux mode had different
+runtime semantics, and a recovered port could stay dead.
 
-**Fix:** Added `supervisorMode` param. When `ROVODEV_SUPERVISOR=tmux` (set via env var in `dev-tmux.sh`), recovery skips the process kill, sends a cancel request, waits a polling interval, then polls health until the turn clears or times out.
+**Fix:** Extracted a shared supervisor and made both launch paths use it.
+`dev-rovodev.js` now uses the reusable supervisor for pool mode, and
+`pnpm run rovodev:tmux` launches `node scripts/dev-rovodev-port.js
+<port>` in each RovoDev pane so each fixed port is supervised and
+auto-restarted in place. Backend recovery no longer needs a tmux-only
+branch.
 
-**Files:** `rovodev-port-recovery.js` (`supervisorMode` param, tmux guard), `dev-tmux.sh` (`ROVODEV_SUPERVISOR=tmux` env var on backend pane)
+**Files:** `scripts/lib/rovodev-supervisor.js`,
+`scripts/dev-rovodev.js`, `scripts/dev-rovodev-port.js`,
+`scripts/dev-tmux.sh`, `backend/lib/rovodev-port-recovery.js`
 
 ### 6. Startup ghost turns
 
 **Problem:** Fresh rovodev serve instances sometimes have an initialization phase (agent setup, MCP server connections) that looks like an active chat turn. Health checks pass, but the first `set_chat_message` hits 409.
 
-**Fix:** Mitigated by the combination of the 200ms cooldown (root cause 2) and the bounded 409 retry (root cause 3). No separate fix needed.
+**Fix:** Mitigated by the combination of the readiness gate (root cause
+2) and the bounded 409 retry (root cause 3). No separate fix needed.
 
 ## Key Constants
 
 | Constant | Value | Location | Purpose |
 |---|---|---|---|
-| `POST_STREAM_COOLDOWN_MS` | 200 | `server.js` | Delay before released port becomes available |
+| `POST_STREAM_COOLDOWN_MS` | 500 | `server.js` | Minimum delay before a released port is probed for readiness |
 | `PINNED_PORT_COUNT` | 3 | `server.js` | Number of leading pool indices reserved for panels |
 | Pool retry timeout | 5000ms | `rovodev-gateway.js` | Max 409 retry time for pool-mode background tasks |
 
 ## Pool Status Lifecycle
 
 ```text
-available → busy (acquired) → cooldown (released, 200ms timer) → available
+available → busy (acquired) → cooldown (released, readiness gate) → available
                              ↘ unhealthy (health check failed)
 ```
 
@@ -88,11 +101,13 @@ available → busy (acquired) → cooldown (released, 200ms timer) → available
 1. User types in Panel A
 2. `streamViaRovoDev` acquires port 8000 via `acquireByIndex(0)`
 3. Streams response on port 8000
-4. `finally` block releases handle → port 8000 enters 200ms cooldown
+4. `finally` block releases handle → port 8000 enters cooldown and waits
+   for readiness probes
 5. `generateSuggestedQuestions` calls `acquirePort({ excludePinnedPorts: true })`
 6. Pool skips indices 0-2, acquires port 8003
 7. If port 8003 has a transient 409 → retries for up to 5 seconds
-8. Port 8000 cooldown expires → available for Panel A's next message
+8. Port 8000 passes readiness probes → available for Panel A's next
+   message
 9. Panels B and C were never touched
 
 ## Debugging
@@ -108,5 +123,6 @@ If 409 errors persist:
 
 1. Check if all 6 ports are healthy — look for `[ROVODEV-POOL] Port XXXX is unhealthy` in logs
 2. Check if background tasks are using non-pinned ports — look for `generateTextViaRovoDev[pool]` log prefix
-3. In tmux mode, check that `ROVODEV_SUPERVISOR=tmux` is set — run `env | grep ROVODEV` in the backend pane
+3. In tmux mode, check the affected RovoDev pane for supervisor restart
+   logs such as `Restarting process on port ...`
 4. If a port is permanently stuck, restart `pnpm run rovodev:tmux` for a fresh session

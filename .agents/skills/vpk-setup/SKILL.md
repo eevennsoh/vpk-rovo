@@ -22,8 +22,9 @@ produces: [.env.local, .asap-config]
 2. **Install dependencies** → `pnpm install` (skip if `node_modules` already exists)
 3. **Collect AI Gateway credentials** → Ask for use case ID and Atlassian email
 4. **Configure AI Gateway + Voice STT** → Generate ASAP keys and create `.env.local` with fallback, Google endpoint values, and the current STT preset block
-5. **Start servers** → Ask permission, then `pnpm run rovodev` (single RovoDev Serve + backend + frontend by default)
-6. **Verify** → http://localhost:3000 (or the port shown in terminal output)
+5. **Set RovoDev Session Token** → First launch of `pnpm run rovodev` prints a session token; copy it to `ROVODEV_SESSION_TOKEN` in `.env.local` (one-time, does not expire)
+6. **Start servers** → Ask permission, then `pnpm run rovodev` (single RovoDev Serve + backend + frontend by default)
+7. **Verify** → http://localhost:3000 (or the port shown in terminal output)
 
 ## Preflight Cleanup (when node_modules exists)
 
@@ -43,25 +44,6 @@ This prevents common issues:
 - `Unable to acquire lock at .next/dev/lock`
 - `Failed to restore task data (corrupted database or bug)`
 - `ArrayLengthMismatch` Turbopack errors
-
-## Essential Commands
-
-```bash
-# Preflight cleanup (if node_modules exists)
-if [ -d "node_modules" ]; then
-  rm -f .next/dev/lock
-  rm -rf .next
-fi
-
-# Install dependencies (skip if node_modules exists)
-[ ! -d "node_modules" ] && pnpm install
-
-# Start everything: single RovoDev Serve + backend + frontend
-pnpm run rovodev
-
-# Verify backend health
-curl http://localhost:8080/api/health
-```
 
 **Important:** Always ask the user for permission before starting dev servers. Use `AskUserQuestion` to confirm they want to start, then run `pnpm run rovodev`. If the user needs the full pool (6 instances), they can use `pnpm run rovodev -- 6` instead.
 
@@ -95,7 +77,7 @@ Panel C → port 8002 (pinned)     ┘
 Background tasks → port 8003-8005  ─ Suggested questions, clarification cards
 ```
 
-Port isolation ensures background tasks (suggested questions, clarification cards) never use ports pinned to chat panels. A 200ms cooldown prevents released ports from being reacquired before rovodev serve clears its turn state. See [Port Isolation Guide](references/guide-ports.md) for details.
+Port isolation ensures background tasks (suggested questions, clarification cards) never use ports pinned to chat panels. A post-stream readiness gate prevents released ports from being reacquired before rovodev serve clears its turn state. See [Port Isolation Guide](references/guide-ports.md) for details.
 
 ### RovoDev Instance Reuse
 
@@ -103,7 +85,7 @@ Port isolation ensures background tasks (suggested questions, clarification card
 
 - **Healthy instances are reused** — if a previous pool is still running and healthy, it's kept as-is
 - **Only unhealthy instances are stopped** — stale/crashed processes are gracefully terminated (SIGTERM with SIGKILL fallback)
-- **`rovodev:setup` is a true one-off** — run it once to approve MCP servers; those approvals persist in `~/.rovodev/config.yaml` and are honored via `--respect-configured-permissions`
+- **`rovodev:setup` is a true one-off** — run it once to approve MCP servers; those approvals persist in `~/.rovodev/config.yaml`. In serve mode, all approved MCP tools auto-execute without per-call permission prompts
 - **Force clean start is opt-in** — set `ROVODEV_FORCE_CLEAN_START=true` only if you need to kill all instances and start fresh
 
 ## AI Gateway Credential Setup
@@ -196,6 +178,11 @@ AUTO_FALLBACK_TO_AI_GATEWAY=true
 # Default billing site for rovodev serve (override if needed)
 ROVODEV_BILLING_URL=https://product-fabric.atlassian.net
 
+# RovoDev Session Token (one-time setup — does not expire)
+# On first launch, RovoDev Serve prints a session token to the terminal.
+# Copy it here, then restart the dev stack.
+ROVODEV_SESSION_TOKEN=<paste-token-from-rovodev-serve-output>
+
 # RovoDev pool size (plan parallel runs, default: 1)
 # ROVODEV_POOL_SIZE=1
 
@@ -211,9 +198,9 @@ OPENAI_REALTIME_VOICE=alloy
 | -------- | -------- | ------- |
 | `AUTO_FALLBACK_TO_AI_GATEWAY` | Yes | Must be `true` to route to AI Gateway when RovoDev is unavailable |
 | `ROVODEV_BILLING_URL` | Yes | Billing site URL for `rovodev serve` (default: `https://product-fabric.atlassian.net`) |
+| `ROVODEV_SESSION_TOKEN` | Yes | Shared secret authenticating backend ↔ RovoDev Serve. One-time setup — does not expire or rotate. Copy from Serve's first-launch output. |
 | `ROVODEV_POOL_SIZE` | Optional | Concurrent RovoDev instances for agents team (default: 1) |
 | `ROVODEV_FORCE_CLEAN_START` | Optional | Set `true` to kill all RovoDev instances on startup (default: `false` — reuses healthy instances) |
-| `ROVODEV_SUPERVISOR` | Optional | Set to `tmux` when running via `pnpm run rovodev:tmux` — prevents port recovery from killing processes in tmux panes (auto-set by `dev-tmux.sh`) |
 | `ROVODEV_PORT` | Optional | Explicit RovoDev Serve port override (normally auto-managed via `.dev-rovodev-port`) |
 | `AI_GATEWAY_URL` | Yes | Default model endpoint (Bedrock/OpenAI/Google) |
 | `AI_GATEWAY_URL_GOOGLE` | Yes | Google endpoint for `provider: "google"` requests + TTS route |
@@ -225,19 +212,12 @@ OPENAI_REALTIME_VOICE=alloy
 | `GOOGLE_TTS_MODEL` | Yes | TTS model (default: `tts-latest`) |
 | `GOOGLE_STT_MODEL` | Yes | Google speech-to-text model used when `STT_PRESET=google` |
 | `STT_PRESET` | Yes | Active speech-to-text preset for live voice mode (`whisper-tiny`, `whisper-large-v3`, `google`, `qwen3-0.6b`, `qwen3-asr`) |
-| `STT_PRESET_GOOGLE_PROVIDER` | Yes | Provider marker for the Google STT preset (`google`) |
-| `STT_PRESET_WHISPER_TINY_PROVIDER` | Yes | Provider marker for the Whisper Tiny preset (`local-whisper`) |
-| `STT_PRESET_WHISPER_TINY_MODEL` | Yes | Whisper Tiny checkpoint (`tiny`) |
-| `STT_PRESET_WHISPER_LARGE_V3_PROVIDER` | Yes | Provider marker for the Whisper Large v3 preset (`local-whisper`) |
-| `STT_PRESET_WHISPER_LARGE_V3_MODEL` | Yes | Whisper Large v3 checkpoint (`large-v3`) |
-| `STT_PRESET_QWEN3_0_6B_PROVIDER` | Yes | Provider marker for the Qwen3 0.6B STT preset (`openai-compatible`) |
-| `STT_PRESET_QWEN3_0_6B_MODEL` | Yes | Model name sent to the OpenAI-compatible transcription endpoint for Qwen3 0.6B |
-| `STT_PRESET_QWEN3_ASR_PROVIDER` | Yes | Provider marker for the Qwen3 ASR preset (`openai-compatible`) |
-| `STT_PRESET_QWEN3_ASR_MODEL` | Yes | Model name sent to the OpenAI-compatible transcription endpoint for Qwen3 ASR |
-| `LOCAL_WHISPER_MODEL` | Yes | Default local Whisper checkpoint used by `local-whisper` presets |
-| `LOCAL_WHISPER_BIN` | Yes | Whisper CLI binary name/path (default: `whisper`) |
+| `STT_PRESET_*_PROVIDER` | Auto | Provider markers for each STT preset (auto-generated by `create-env-local.js`) |
+| `STT_PRESET_*_MODEL` | Auto | Model names for each STT preset (auto-generated by `create-env-local.js`) |
+| `LOCAL_WHISPER_MODEL` | Auto | Default local Whisper checkpoint (default: `tiny`, auto-generated) |
+| `LOCAL_WHISPER_BIN` | Auto | Whisper CLI binary name/path (default: `whisper`, auto-generated) |
 | `OPENAI_COMPATIBLE_STT_MODEL` | Optional | Fallback model if an openai-compatible preset omits a model |
-| `OPENAI_COMPATIBLE_STT_BASE_URL` | Optional | Base URL for OpenAI-compatible STT backends (defaults in code to `http://localhost:8001/v1`) |
+| `OPENAI_COMPATIBLE_STT_BASE_URL` | Optional | Base URL for OpenAI-compatible STT backends (defaults to `http://localhost:8801/v1`) |
 | `OPENAI_COMPATIBLE_STT_API_KEY` | Optional | Bearer token for OpenAI-compatible STT backends |
 | `ASAP_PRIVATE_KEY` | Yes | RSA private key (quoted, `\n` escaped) |
 | `ASAP_KID` | Yes | Key ID from ASAP config |
@@ -275,7 +255,7 @@ STT_PRESET=qwen3-asr
 Notes:
 
 - `STT_PRESET=google` uses `GOOGLE_STT_MODEL` for the actual Google model ID.
-- `STT_PRESET=qwen3-0.6b` and `STT_PRESET=qwen3-asr` target an OpenAI-compatible transcription endpoint. If `OPENAI_COMPATIBLE_STT_BASE_URL` is not set, the backend defaults to `http://localhost:8001/v1`.
+- `STT_PRESET=qwen3-0.6b` and `STT_PRESET=qwen3-asr` target an OpenAI-compatible transcription endpoint. If `OPENAI_COMPATIBLE_STT_BASE_URL` is not set, the backend defaults to `http://localhost:8801/v1`.
 - Whisper presets require the `whisper` CLI on PATH.
 - Restart the backend/dev stack after changing `STT_PRESET`.
 
@@ -304,6 +284,7 @@ For full model switching details, see [references/guide-model-switch.md](referen
 - [ ] `.env.local` created via `create-env-local.js`
 - [ ] `AUTO_FALLBACK_TO_AI_GATEWAY=true` enabled in `.env.local`
 - [ ] `ROVODEV_BILLING_URL` is set (default: `https://product-fabric.atlassian.net`)
+- [ ] `ROVODEV_SESSION_TOKEN` is set (copy from RovoDev Serve first-launch output — one-time setup)
 - [ ] Google endpoints enabled in `.env.local`
 - [ ] `GOOGLE_STT_MODEL` and `STT_PRESET` are set in `.env.local`
 - [ ] Dev servers started with `pnpm run rovodev`
@@ -323,17 +304,19 @@ For full model switching details, see [references/guide-model-switch.md](referen
 | Config keeps resetting (`~/.rovodev/config.yaml`) | Ensure you're using `pnpm run rovodev` (not `rovodev:setup`); setup is a one-off |
 | Frontend 500 (providers) | Ensure `components/providers.tsx` matches import casing |
 | "ASAP_PRIVATE_KEY: MISSING" | Check .env.local format - private key must be quoted and escaped |
+| "Missing credentials" from RovoDev Serve | `ROVODEV_SESSION_TOKEN` not set in `.env.local`. Copy the token from Serve's first-launch output (one-time setup, does not expire). Restart the dev stack after setting it. |
+| "Missing credentials" when curling port 8000 | Port 8000 is RovoDev Serve (not the VPK backend). Use `curl -H "Authorization: Bearer $ROVODEV_SESSION_TOKEN" http://localhost:8000/...` or use the backend port from `.dev-backend-port` instead. |
 | No AI response (RovoDev) | Verify `pnpm run rovodev` is running and RovoDev Serve started successfully |
 | No AI response (AI Gateway) | Verify health check passes and `AUTO_FALLBACK_TO_AI_GATEWAY=true` is set |
 | **Mismatched ASAP KID** | **You generated timestamp twice! Regenerate with single timestamp** |
 | "Model Id [X] not found" | Model not whitelisted. Run `atlas ml aigateway usecase view --id YOUR-USE-CASE-ID -e stg-west` |
 | Bedrock 403 while OpenAI works | Pull latest branch and confirm `backend/lib/ai-gateway-helpers.js` does **not** rewrite Bedrock URL; restart backend |
 | Want to switch models | See [Model Switching Guide](references/guide-model-switch.md) |
-| Future Chat voice mode 500 | Restart the backend so it picks up the latest `.env.local`. If using `STT_PRESET=qwen3-asr` or `qwen3-0.6b`, ensure an OpenAI-compatible transcription backend is available at `OPENAI_COMPATIBLE_STT_BASE_URL` (or the code default `http://localhost:8001/v1`) |
+| Future Chat voice mode 500 | Restart the backend so it picks up the latest `.env.local`. If using `STT_PRESET=qwen3-asr` or `qwen3-0.6b`, ensure an OpenAI-compatible transcription backend is available at `OPENAI_COMPATIBLE_STT_BASE_URL` (defaults to `http://localhost:8801/v1`) |
 | Stale AI context / wrong answers | RovoDev session may be corrupted — restart with `pnpm run rovodev` |
 | 409 "chat already in progress" | Background tasks may be using pinned panel ports — check that `PINNED_PORT_COUNT` matches your panel count. See [Port Isolation Guide](references/guide-ports.md) |
-| 409 on first prompt (tmux) | Ensure `ROVODEV_SUPERVISOR=tmux` is set in the backend pane — `dev-tmux.sh` sets this automatically |
-| Port dies after recovery (tmux) | tmux `remain-on-exit` doesn't auto-restart processes — `ROVODEV_SUPERVISOR=tmux` prevents process kill during recovery |
+| 409 on first prompt (tmux) | Watch the affected RovoDev pane. The fixed-port supervisor should restart the child automatically if recovery kills it. |
+| Port stays unhealthy after recovery (tmux) | Check the specific RovoDev pane for repeated restart failures, then restart `pnpm run rovodev:tmux` if the underlying `rovodev serve` command cannot come back healthy. |
 
 ### Port Auto-Discovery
 

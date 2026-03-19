@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import Image from "next/image";
 import CalendarIcon from "@atlaskit/icon/core/calendar";
+import { SheetIcon } from "lucide-react";
 
 import {
 	GenerativeCard,
@@ -35,6 +36,13 @@ const DEFAULT_DISTORTION_TINT_PRESET_INDEX = 0;
 const DEFAULT_DISTORTION_TINT_STRENGTH = 0.45;
 const DEFAULT_DISTORTION_TINT_GRADIENT = true;
 const DEFAULT_DISTORTION_EDGE_SAFE_X = 0;
+const ARTIFACT_SHEET_PREVIEW = `SHEET
+# Apple Inc.: A Comprehensive Overview
+
+- Company: Apple Inc.
+- Founded: 1976
+- Headquarter: Cupertino
+- Focus: Devices, services, ecosystem`;
 
 const INNER_GLOW_KEYFRAMES = `
 @property --gen-card-inner-angle {
@@ -218,6 +226,77 @@ export function GenerativeCardDemoIcon() {
 	);
 }
 
+function ArtifactSheetPreview() {
+	return (
+		<div className="rounded-md bg-surface p-4">
+			<div className="max-h-36 overflow-hidden whitespace-pre-wrap font-mono text-[12px] leading-5 text-text-subtle">
+				{ARTIFACT_SHEET_PREVIEW}
+			</div>
+		</div>
+	);
+}
+
+export function GenerativeCardDemoArtifact() {
+	return (
+		<GenerativeCard className="mx-auto w-full max-w-[420px]">
+			<GenerativeCardHeader
+				title="Apple Inc.: A Comprehensive Overview"
+				description="Created sheet"
+				leading={(
+					<Tile label="Sheet" size="medium" variant="greenSubtle">
+						<SheetIcon className="size-4" />
+					</Tile>
+				)}
+			/>
+			<GenerativeCardBody>
+				<GenerativeCardContent>
+					<ArtifactSheetPreview />
+				</GenerativeCardContent>
+				<GenerativeCardFooter>
+					<Button variant="outline" className="h-8 min-w-[117px]">
+						Open sheet
+					</Button>
+				</GenerativeCardFooter>
+			</GenerativeCardBody>
+		</GenerativeCard>
+	);
+}
+
+export function GenerativeCardDemoArtifactCollapsed() {
+	return (
+		<GenerativeCard
+			className="mx-auto w-full max-w-[420px]"
+			defaultExpanded={false}
+			size="sm"
+		>
+			<GenerativeCardHeader
+				action={(
+					<Button size="xs" type="button" variant="outline">
+						Open sheet
+					</Button>
+				)}
+				title="Apple Inc.: A Comprehensive Overview"
+				description="Created sheet"
+				leading={(
+					<Tile label="Sheet" size="small" variant="greenSubtle">
+						<SheetIcon className="size-3.5" />
+					</Tile>
+				)}
+			/>
+			<GenerativeCardBody>
+				<GenerativeCardContent>
+					<ArtifactSheetPreview />
+				</GenerativeCardContent>
+				<GenerativeCardFooter>
+					<Button variant="outline" className="h-8 min-w-[117px]">
+						Open sheet
+					</Button>
+				</GenerativeCardFooter>
+			</GenerativeCardBody>
+		</GenerativeCard>
+	);
+}
+
 export function GenerativeCardDemoAction() {
 	return (
 		<GenerativeCard className="mx-auto w-full max-w-[380px]">
@@ -359,7 +438,7 @@ export function GenerativeCardDemoAnimated() {
 	return (
 		<div className="w-full">
 			<div className="grid w-full gap-4 xl:grid-cols-[minmax(0,1fr)_380px] xl:items-start">
-				<div className="flex w-full justify-center">
+				<div className="flex min-h-[350px] w-full items-center justify-center rounded-lg bg-surface p-4 sm:p-6 lg:p-8">
 					<GenerativeCardInnerGlowShell
 						key={key}
 						enabled={innerGlow}
@@ -432,7 +511,8 @@ export function GenerativeCardDemoAnimated() {
 						</GenerativeCard>
 					</GenerativeCardInnerGlowShell>
 				</div>
-				<GUI.Panel title="Animation controls" values={animationValues} onPlay={handleRetry}>
+				<div className="w-full rounded-lg bg-surface p-4 sm:p-5 lg:p-6">
+					<GUI.Panel title="Animation controls" values={animationValues} onPlay={handleRetry}>
 					<GUI.Toggle
 						id="distortion"
 						label="Distortion"
@@ -717,7 +797,8 @@ export function GenerativeCardDemoAnimated() {
 							/>
 						</>
 					) : null}
-				</GUI.Panel>
+					</GUI.Panel>
+				</div>
 			</div>
 		</div>
 	);

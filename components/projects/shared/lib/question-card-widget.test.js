@@ -3,6 +3,7 @@ const assert = require("node:assert/strict");
 
 const {
 	buildClarificationSummaryDisplayLabel,
+	buildClarificationSummaryPrompt,
 	buildClarificationSummaryRows,
 	parseQuestionCardPayload,
 	getLatestQuestionCardPayload,
@@ -312,4 +313,60 @@ test("buildClarificationSummaryDisplayLabel reflects captured answer count", () 
 		buildClarificationSummaryDisplayLabel(parsedPayload, { "q-1": "a" }),
 		"Requirements captured (1 answer)."
 	);
+});
+
+test("buildClarificationSummaryPrompt uses explicit directive when present", () => {
+	const parsedPayload = parseQuestionCardPayload({
+		type: "question-card",
+		sessionId: "summary-directive",
+		title: "Atlassian Stock Price Chart",
+		directive: [
+			"Use these details to generate the requested visualization now.",
+			"Return a json-render UI widget that matches the requested chart or data view.",
+		].join("\n"),
+		questions: [
+			{
+				id: "chart-type",
+				label: "What chart type would you prefer?",
+				kind: "single-select",
+				options: [{ id: "line", label: "Line chart" }],
+			},
+		],
+	});
+	assert.ok(parsedPayload);
+
+	const prompt = buildClarificationSummaryPrompt(parsedPayload, {
+		"chart-type": "line",
+	});
+
+	assert.match(prompt, /Here are my clarification answers for "Atlassian Stock Price Chart":/);
+	assert.match(prompt, /Line chart/);
+	assert.match(prompt, /json-render UI widget/i);
+	assert.doesNotMatch(prompt, /create-plan skill/i);
+});
+
+test("buildClarificationSummaryPrompt falls back to neutral continuation directive", () => {
+	const parsedPayload = parseQuestionCardPayload({
+		type: "question-card",
+		sessionId: "summary-neutral",
+		title: "Clarify this request",
+		questions: [
+			{
+				id: "q-1",
+				label: "What outcome do you want?",
+				kind: "single-select",
+				options: [{ id: "answer", label: "A direct answer" }],
+			},
+		],
+	});
+	assert.ok(parsedPayload);
+
+	const prompt = buildClarificationSummaryPrompt(parsedPayload, {
+		"q-1": "answer",
+	});
+
+	assert.match(prompt, /continue the user's original request now/i);
+	assert.match(prompt, /format that best matches the request/i);
+	assert.doesNotMatch(prompt, /create-plan skill/i);
+	assert.doesNotMatch(prompt, /plan widget/i);
 });

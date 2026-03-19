@@ -82,29 +82,29 @@ test("buildToolObservationStructuredFallback renders sections for multiple tools
 	assert.match(serializedSpec, /jira search issues \(1\)/i);
 	assert.match(serializedSpec, /confluence search pages \(1\)/i);
 	assert.match(serializedSpec, /google calendar list events \(1\)/i);
-	assert.match(serializedSpec, /AIDOPS-101/);
+	// Rich rendering: Jira issues render as ObjectTile with summary as title
+	assert.match(serializedSpec, /Agent Logo Change/);
 	assert.match(serializedSpec, /Project Documentation - Draft/);
 	assert.match(serializedSpec, /Design Review/);
 });
 
-test("buildToolObservationStructuredFallback emits WorkSummary when prompt is a Jira/Confluence work summary", () => {
+test("buildToolObservationStructuredFallback still uses generic structured fallback when unrelated tools contribute results", () => {
 	const result = buildToolObservationStructuredFallback({
-		prompt: "Summarize my last 7 days of work from Jira and Confluence",
+		prompt: "show me what i worked on for the last 7 days",
 		observations: [
 			{
 				phase: "result",
-				toolName: "mcp__jira__search_issues",
+				toolName: "get atlassian site urls",
+				text: "Accessible Sites:\nhello.atlassian.net",
+			},
+			{
+				phase: "result",
+				toolName: "search jira using jql",
 				rawOutput: {
 					issues: [
 						{
-							key: "AIDOPS-101",
-							summary: "Agent Logo Change",
-							status: { name: "In Progress" },
-							statusCategory: { key: "in-progress" },
-							priority: { name: "High" },
-							issuetype: { name: "Task" },
-							self: "https://hello.atlassian.net/browse/AIDOPS-101",
-							updated: "2026-02-23T09:10:00.000Z",
+							key: "CTSC-35912",
+							summary: "Improve Trust Score for CrowdStrike Coverage",
 						},
 					],
 				},
@@ -112,60 +112,18 @@ test("buildToolObservationStructuredFallback emits WorkSummary when prompt is a 
 			},
 			{
 				phase: "result",
-				toolName: "mcp__confluence__search_pages",
+				toolName: "mcp__google_calendar__list_events",
 				rawOutput: {
-					results: [
-						{
-							title: "Project Documentation - Draft",
-							space: { name: "Playbook Sandbox" },
-							url: "https://hello.atlassian.net/wiki/spaces/PLAY/pages/1234",
-							lastModified: "2026-02-22T15:45:00.000Z",
-						},
-					],
+					events: [{ summary: "Design review" }],
 				},
-				text: "Returned 1 page",
+				text: "Returned 1 event",
 			},
 		],
 	});
 
 	assert.ok(result);
-	assert.equal(result.source, "tool-observation-work-summary");
-	const workSummaryElement = findFirstElementByType(result.spec, "WorkSummary");
-	assert.ok(workSummaryElement);
-	assert.equal(workSummaryElement.props.jiraItems.length, 1);
-	assert.equal(workSummaryElement.props.jiraItems[0].key, "AIDOPS-101");
-	assert.equal(workSummaryElement.props.confluencePages.length, 1);
-	assert.equal(
-		workSummaryElement.props.confluencePages[0].title,
-		"Project Documentation - Draft"
-	);
-});
-
-test("buildToolObservationStructuredFallback emits WorkSummary with empty arrays when work summary tools return no rows", () => {
-	const result = buildToolObservationStructuredFallback({
-		prompt: "Last 7 days of work from Jira and Confluence",
-		observations: [
-			{
-				phase: "result",
-				toolName: "mcp__jira__search_using_jql",
-				rawOutput: { issues: [] },
-				text: "No issues found for JQL query: assignee = currentUser() AND updated >= -7d",
-			},
-			{
-				phase: "result",
-				toolName: "mcp__confluence__search_pages",
-				rawOutput: { results: [] },
-				text: "No pages found for CQL query.",
-			},
-		],
-	});
-
-	assert.ok(result);
-	assert.equal(result.source, "tool-observation-work-summary");
-	const workSummaryElement = findFirstElementByType(result.spec, "WorkSummary");
-	assert.ok(workSummaryElement);
-	assert.deepEqual(workSummaryElement.props.jiraItems, []);
-	assert.deepEqual(workSummaryElement.props.confluencePages, []);
+	assert.equal(result.source, "tool-observation-structured");
+	assert.equal(findFirstElementByType(result.spec, "WorkSummary"), null);
 });
 
 test("buildToolObservationStructuredFallback falls back to text lines when payload is not JSON", () => {
@@ -369,4 +327,198 @@ test("buildToolObservationStructuredFallback returns null when no usable observa
 	});
 
 	assert.equal(result, null);
+});
+
+// ── Rich shape detection tests ──
+
+test("rich rendering: homogeneous array of objects renders as Table", () => {
+	const result = buildToolObservationStructuredFallback({
+		prompt: "list all users",
+		observations: [
+			{
+				phase: "result",
+				toolName: "api_users",
+				rawOutput: {
+					users: [
+						{ name: "Alice", email: "alice@test.com", role: "Admin" },
+						{ name: "Bob", email: "bob@test.com", role: "User" },
+						{ name: "Carol", email: "carol@test.com", role: "User" },
+					],
+				},
+				text: "3 users found",
+			},
+		],
+	});
+
+	assert.ok(result);
+	const serializedSpec = JSON.stringify(result.spec);
+	assert.match(serializedSpec, /"type":"Table"/);
+	assert.match(serializedSpec, /Alice/);
+	assert.match(serializedSpec, /Bob/);
+	assert.match(serializedSpec, /Carol/);
+});
+
+test("rich rendering: temporal array with single item renders as Timeline", () => {
+	const result = buildToolObservationStructuredFallback({
+		prompt: "show events",
+		observations: [
+			{
+				phase: "result",
+				toolName: "calendar_events",
+				rawOutput: [
+					{
+						title: "Morning standup",
+						description: "Daily sync",
+						startTime: "2026-03-19T09:00:00Z",
+					},
+				],
+				text: "1 event",
+			},
+		],
+	});
+
+	assert.ok(result);
+	const serializedSpec = JSON.stringify(result.spec);
+	assert.match(serializedSpec, /"type":"Timeline"/);
+	assert.match(serializedSpec, /Morning standup/);
+});
+
+test("rich rendering: single object with numeric value renders as Metric", () => {
+	const result = buildToolObservationStructuredFallback({
+		prompt: "count issues",
+		observations: [
+			{
+				phase: "result",
+				toolName: "counter_tool",
+				rawOutput: {
+					totalCount: 42,
+					unit: "issues",
+				},
+				text: "42 issues",
+			},
+		],
+	});
+
+	assert.ok(result);
+	const serializedSpec = JSON.stringify(result.spec);
+	assert.match(serializedSpec, /"type":"Metric"/);
+	assert.match(serializedSpec, /42/);
+	assert.match(serializedSpec, /Total Count/);
+});
+
+test("rich rendering: single object with mixed fields renders as field card with Lozenge for status", () => {
+	const result = buildToolObservationStructuredFallback({
+		prompt: "show ticket details",
+		observations: [
+			{
+				phase: "result",
+				toolName: "ticket_details",
+				rawOutput: {
+					title: "Fix login bug",
+					status: "In Progress",
+					priority: "High",
+					assignee: "Alice",
+					url: "https://jira.example.com/PROJ-123",
+				},
+				text: "Ticket PROJ-123",
+			},
+		],
+	});
+
+	assert.ok(result);
+	const serializedSpec = JSON.stringify(result.spec);
+	// Should have field layout with labels
+	assert.match(serializedSpec, /Fix login bug/);
+	// Status should render as Lozenge
+	assert.match(serializedSpec, /"type":"Lozenge"/);
+	assert.match(serializedSpec, /In Progress/);
+	// URL should render as Link
+	assert.match(serializedSpec, /"type":"Link"/);
+});
+
+test("rich rendering: array with title+url renders as Table with content and links", () => {
+	const result = buildToolObservationStructuredFallback({
+		prompt: "search results",
+		observations: [
+			{
+				phase: "result",
+				toolName: "search_api",
+				rawOutput: [
+					{
+						title: "Getting started guide",
+						description: "A comprehensive guide to getting started",
+						url: "https://docs.example.com/getting-started",
+					},
+					{
+						title: "API reference",
+						description: "Full API documentation",
+						url: "https://docs.example.com/api",
+					},
+				],
+				text: "2 search results",
+			},
+		],
+	});
+
+	assert.ok(result);
+	const serializedSpec = JSON.stringify(result.spec);
+	// Homogeneous arrays with 2+ items render as Table (higher priority than ObjectTile)
+	assert.match(serializedSpec, /"type":"Table"/);
+	assert.match(serializedSpec, /Getting started guide/);
+	assert.match(serializedSpec, /API reference/);
+});
+
+test("rich rendering: single-item array with title renders as ObjectTile", () => {
+	const result = buildToolObservationStructuredFallback({
+		prompt: "find page",
+		observations: [
+			{
+				phase: "result",
+				toolName: "search_api",
+				rawOutput: [
+					{
+						title: "Getting started guide",
+						description: "A comprehensive guide to getting started",
+						url: "https://docs.example.com/getting-started",
+					},
+				],
+				text: "1 result",
+			},
+		],
+	});
+
+	assert.ok(result);
+	const serializedSpec = JSON.stringify(result.spec);
+	assert.match(serializedSpec, /"type":"ObjectTile"/);
+	assert.match(serializedSpec, /Getting started guide/);
+	assert.match(serializedSpec, /https:\/\/docs\.example\.com\/getting-started/);
+});
+
+test("rich rendering: schema-shaped payload falls through to text lines", () => {
+	const result = buildToolObservationStructuredFallback({
+		prompt: "show schema",
+		observations: [
+			{
+				phase: "result",
+				toolName: "schema_tool",
+				rawOutput: {
+					type: "object",
+					properties: {
+						name: { type: "string" },
+						age: { type: "number" },
+					},
+					required: ["name"],
+				},
+				text: "Schema retrieved",
+			},
+		],
+	});
+
+	assert.ok(result);
+	const serializedSpec = JSON.stringify(result.spec);
+	// Schema payloads should NOT produce rich elements
+	assert.ok(!serializedSpec.includes('"type":"Table"'));
+	assert.ok(!serializedSpec.includes('"type":"Timeline"'));
+	assert.ok(!serializedSpec.includes('"type":"Metric"'));
+	assert.ok(!serializedSpec.includes('"type":"ObjectTile"'));
 });

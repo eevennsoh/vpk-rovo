@@ -89,6 +89,7 @@ const preservedLocalWhisperBin = getEnvValueFromText(existingEnvText, 'LOCAL_WHI
 const preservedOpenAiCompatibleSttModel = getEnvValueFromText(existingEnvText, 'OPENAI_COMPATIBLE_STT_MODEL');
 const preservedOpenAiCompatibleSttBaseUrl = getEnvValueFromText(existingEnvText, 'OPENAI_COMPATIBLE_STT_BASE_URL');
 const preservedOpenAiCompatibleSttApiKey = getEnvValueFromText(existingEnvText, 'OPENAI_COMPATIBLE_STT_API_KEY');
+const preservedSessionToken = getEnvValueFromText(existingEnvText, 'ROVODEV_SESSION_TOKEN');
 const preservedDebug = getEnvValueFromText(existingEnvText, 'DEBUG');
 const preservedPort = getEnvValueFromText(existingEnvText, 'PORT');
 const preservedBackendUrl = getEnvValueFromText(existingEnvText, 'BACKEND_URL');
@@ -170,6 +171,11 @@ AUTO_FALLBACK_TO_AI_GATEWAY=true
 # Default billing site for rovodev serve (override as needed)
 ROVODEV_BILLING_URL=${resolvedRovodevSiteUrl}
 
+# RovoDev Session Token (one-time setup — does not expire)
+# On first launch, RovoDev Serve prints a session token to the terminal.
+# Copy it here, then restart the dev stack.
+${preservedSessionToken ? `ROVODEV_SESSION_TOKEN=${preservedSessionToken}` : '# ROVODEV_SESSION_TOKEN=<paste-token-from-rovodev-serve-output>'}
+
 # RovoDev Serve pool size (number of concurrent RovoDev instances for agents team, default: 1)${preservedRovodevPoolSize ? `\nROVODEV_POOL_SIZE=${preservedRovodevPoolSize}` : '\n# ROVODEV_POOL_SIZE=1'}
 
 # OpenAI Realtime API (live voice conversation mode via AI Gateway)
@@ -189,6 +195,7 @@ console.log(`   AI_GATEWAY_USE_CASE_ID: ${useCaseId}`);
 console.log(`   AI_GATEWAY_USER_ID: ${email}`);
 console.log('   AUTO_FALLBACK_TO_AI_GATEWAY: enabled');
 console.log(`   ROVODEV_BILLING_URL: ${resolvedRovodevSiteUrl}`);
+console.log(`   ROVODEV_SESSION_TOKEN: ${preservedSessionToken ? 'preserved from existing .env.local' : '⚠️  NOT SET — copy from RovoDev Serve first-launch output'}`);
 console.log('   Google image + voice endpoints: enabled');
 console.log(`   STT_PRESET: ${preservedSttPreset || 'qwen3-asr'}`);
 console.log(`   OPENAI_REALTIME_WS_URL: ${preservedRealtimeWsUrl || 'wss://ai-gateway.us-east-1.staging.atl-paas.net/v1/openai/v1/realtime'} (via AI Gateway)`);

@@ -1,7 +1,7 @@
 "use client";
 
 import { useReducedMotion } from "motion/react";
-import type { RefObject } from "react";
+import type { ErrorInfo, ReactNode, RefObject } from "react";
 import {
 	Attachment,
 	AttachmentPreview,
@@ -41,10 +41,18 @@ import {
 } from "@/components/projects/future-chat/lib/future-chat-message-artifacts";
 import {
 	sanitizeFutureChatAssistantText,
+	shouldRenderFutureChatAssistantActions,
+	shouldRenderFutureChatAssistantMessage,
 	shouldRenderFutureChatWidget,
 } from "@/components/projects/future-chat/lib/future-chat-message-display";
-import { resolveFutureChatStreamingAssistantMessageId } from "@/components/projects/future-chat/lib/future-chat-streaming-assistant";
-import { resolveFutureChatThinkingStatusPhase } from "@/components/projects/future-chat/lib/future-chat-thinking-status-phase";
+import {
+	resolveFutureChatPendingAssistantDisplayState,
+	resolveFutureChatStreamingAssistantMessageId,
+} from "@/components/projects/future-chat/lib/future-chat-streaming-assistant";
+import {
+	resolveFutureChatThinkingStatusPhase,
+	resolveFutureChatThinkingVisibility,
+} from "@/components/projects/future-chat/lib/future-chat-thinking-status-phase";
 import {
 	resolveFutureChatScrollAnchorLayout,
 } from "@/components/projects/future-chat/lib/future-chat-scroll-anchor";
@@ -87,7 +95,7 @@ import { FutureChatArtifactCard } from "@/components/projects/future-chat/compon
 import type { FutureChatDocument } from "@/lib/future-chat-types";
 import type { FutureChatStreamingArtifact } from "@/components/projects/future-chat/lib/future-chat-streaming-artifact";
 import Image from "next/image";
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Component, Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Heading from "@/components/blocks/shared-ui/heading";
 
 interface FutureChatMessagesProps {
@@ -114,6 +122,65 @@ interface FutureChatMessagesProps {
 }
 
 const FUTURE_CHAT_SCROLL_ANCHOR_SELECTOR = "[data-future-chat-scroll-anchor='true']";
+
+class AssistantMessageRenderBoundary extends Component<
+	Readonly<{
+		children: ReactNode;
+		fallback: ReactNode;
+		messageId: string;
+		resetKey: string;
+	}>,
+	Readonly<{
+		hasError: boolean;
+	}>
+> {
+	state = {
+		hasError: false,
+	};
+
+	static getDerivedStateFromError() {
+		return {
+			hasError: true,
+		};
+	}
+
+	componentDidCatch(error: unknown, errorInfo: ErrorInfo) {
+		console.error("[FutureChat] Assistant message render failed", {
+			messageId: this.props.messageId,
+			error,
+			componentStack: errorInfo.componentStack,
+		});
+	}
+
+	componentDidUpdate(
+		prevProps: Readonly<{
+			children: ReactNode;
+			fallback: ReactNode;
+			messageId: string;
+			resetKey: string;
+		}>,
+	) {
+		if (
+			this.state.hasError &&
+			(
+				prevProps.messageId !== this.props.messageId ||
+				prevProps.resetKey !== this.props.resetKey
+			)
+		) {
+			this.setState({
+				hasError: false,
+			});
+		}
+	}
+
+	render() {
+		if (this.state.hasError) {
+			return this.props.fallback;
+		}
+
+		return this.props.children;
+	}
+}
 
 function computeFutureChatAnchorScrollTop(
 	defaultTargetTop: number,
@@ -371,12 +438,33 @@ function AssistantMessage({
 	const hasThinkingToolCalls = thinkingToolCalls.length > 0;
 	const hasTurnComplete = hasTurnCompleteSignal(message);
 
-	const thinkingActive = checkThinkingStatusActive({
+	const rawThinkingActive = checkThinkingStatusActive({
 		hasThinkingStatusPart,
 		hasThinkingEvents,
 		isRetryThinkingStatus: false,
 		isStreaming: isThinkingLifecycleStreaming,
 	});
+	const isResponseInFlight =
+		isMessageTextStreaming(message) || isThinkingLifecycleStreaming;
+	const [hasLatchedThinking, setHasLatchedThinking] = useState(false);
+	const { effectiveIsThinkingActive, nextLatched } =
+		resolveFutureChatThinkingVisibility({
+			isThinkingActive: rawThinkingActive,
+			isResponseInFlight,
+			wasLatched: hasLatchedThinking,
+		});
+	useEffect(() => {
+		if (hasLatchedThinking === nextLatched) {
+			return;
+		}
+
+		const timeoutId = window.setTimeout(() => {
+			setHasLatchedThinking(nextLatched);
+		}, 0);
+
+		return () => window.clearTimeout(timeoutId);
+	}, [hasLatchedThinking, nextLatched]);
+	const thinkingActive = effectiveIsThinkingActive;
 
 	const hasBackendThinkingActivity =
 		hasThinkingStatusPart || hasThinkingEvents || hasThinkingToolCalls;
@@ -441,12 +529,64 @@ function AssistantMessage({
 		Boolean(text) &&
 		(isTextPresentation || isFallbackRoute || !widget) &&
 		!shouldRenderPlanWidget;
+	const shouldRenderAssistantActions =
+		shouldRenderFutureChatAssistantActions({
+			hasArtifactCard: Boolean(artifactCard),
+			hasAssistantText: shouldRenderAssistantText,
+			hasInterruption: Boolean(interruptionLabel),
+			hasReasoning: Boolean(reasoning?.text) || thinkingActive,
+			hasSources: sources.length > 0,
+			hasWidget: shouldShowWidget,
+			hasWidgetError: Boolean(widgetError),
+			isLastAssistant,
+			isResponseInFlight,
+		});
+	const shouldRenderAssistantMessage =
+		shouldRenderFutureChatAssistantMessage({
+			hasArtifactCard: Boolean(artifactCard),
+			hasAssistantText: shouldRenderAssistantText,
+			hasInterruption: Boolean(interruptionLabel),
+			hasReasoning: Boolean(reasoning?.text) || thinkingActive,
+			hasSources: sources.length > 0,
+			hasWidget: shouldShowWidget,
+			hasWidgetError: Boolean(widgetError),
+			hasWidgetLoading: widgetLoading?.data.loading ?? false,
+		});
 	const isPlanWidgetStreaming =
 		widgetType === "plan" &&
 		(
 			(widgetLoading?.data.type === "plan" && widgetLoading.data.loading) ||
 			isMessageTextStreaming(message)
 		);
+
+	if (!shouldRenderAssistantMessage) {
+		return null;
+	}
+
+	const assistantRenderFallback = (
+		<div className="flex flex-col gap-3">
+			<div className="rounded-xl border border-border-warning/40 bg-bg-warning-subtler px-3 py-2 text-sm text-text-warning">
+				I couldn&apos;t render part of this response. Retry the message or continue the chat.
+			</div>
+			{shouldRenderAssistantText ? (
+				<MessageContent className="max-w-3xl">
+					<MessageResponse>{text}</MessageResponse>
+				</MessageContent>
+			) : null}
+			{isLastAssistant ? (
+				<div>
+					<Button
+						size="sm"
+						type="button"
+						variant="outline"
+						onClick={onRegenerate}
+					>
+						Retry
+					</Button>
+				</div>
+			) : null}
+		</div>
+	);
 
 	return (
 		<Message
@@ -458,150 +598,158 @@ function AssistantMessage({
 		>
 			<div className="flex w-full items-start gap-2 md:gap-3">
 				<div className="flex min-w-0 flex-1 flex-col gap-3">
-					{thinkingActive ? (
-						<Reasoning
-							className="mb-0"
-							autoExpandOnDetails
-							hasDetails={hasThinkingDetails}
-							defaultOpen={thinkingPhaseProps.defaultOpen ?? hasThinkingDetails}
-							isStreaming={thinkingPhaseProps.isStreaming}
-							streamingWave={thinkingPhaseProps.streamingWave}
-							streamingWaveGradientColor={thinkingPhaseProps.streamingWaveGradientColor}
-							animatedDots={thinkingPhaseProps.animatedDots}
-							duration={thinkingReasoningPhase === "completed" ? thinkingDuration : undefined}
-							allowAutoCollapse={hasTurnComplete}
-						>
-							<AdsReasoningTrigger
-								label={thinkingTriggerLabel}
-								showChevron={hasThinkingDetails}
-								streaming={thinkingPhaseProps.triggerStreaming}
-							/>
-							{hasThinkingDetails ? (
-								<ReasoningContent>
-									<div className="space-y-4">
-										{hasThinkingText ? (
-											<ReasoningSection title={getReasoningSectionTitle("thinking")}>
-												<ReasoningText
-													maxVisibleTimelineItems={6}
-													text={accumulatedThinkingContent}
-													timelineMode="auto"
-												/>
-											</ReasoningSection>
-										) : null}
-										{hasThinkingToolCalls ? (
-											<ReasoningSection title={getReasoningSectionTitle("tools")}>
-												<AssistantThinkingToolsSection
-													defaultOpenMode="running"
-													idPrefix={message.id}
-													thinkingToolCalls={thinkingToolCalls}
-												/>
-											</ReasoningSection>
-										) : null}
-									</div>
-								</ReasoningContent>
-							) : null}
-						</Reasoning>
-					) : reasoning?.text ? (
-						<Reasoning
-							defaultOpen={reasoning.isStreaming}
-							isStreaming={isStreaming && reasoning.isStreaming}
-						>
-							<AdsReasoningTrigger />
-							<ReasoningContent>{reasoning.text}</ReasoningContent>
-						</Reasoning>
-					) : null}
-
-					{widgetLoading?.data.loading ? (
-						<div className="w-full">
-							<LoadingWidget widgetType={widgetLoading.data.type} />
-						</div>
-					) : null}
-
-					{shouldRenderPlanWidget ? (
-						<div className="w-full pt-2">
-							<PlanWidgetInlineCard
-								title={parsedPlanWidget.title}
-								description={parsedPlanWidget.description}
-								tasks={parsedPlanWidget.tasks}
-								isStreaming={isPlanWidgetStreaming}
-							/>
-						</div>
-					) : shouldShowWidget && widget ? (
-						<div className="w-full">
-							<GenerativeWidgetCard
-								widgetData={widget.data.payload}
-								widgetType={widget.data.type ?? "message"}
-							/>
-						</div>
-					) : null}
-
-					{widgetError ? (
-						<WidgetErrorCard
-							widgetError={widgetError}
-							onRetry={onRegenerate}
-						/>
-					) : null}
-
-					{shouldRenderAssistantText ? (
-						<MessageContent className="max-w-3xl">
-							<MessageResponse isAnimating={(isStreaming && isLastAssistant) || isMessageTextStreaming(message)}>
-								{text}
-							</MessageResponse>
-						</MessageContent>
-					) : null}
-
-					{artifactCard}
-
-					{interruptionLabel ? (
-						<div className="inline-flex w-fit items-center rounded-full border border-border-warning/40 bg-bg-warning-subtler px-2.5 py-1 text-text-warning-bolder text-xs">
-							{interruptionLabel}
-						</div>
-					) : null}
-
-					{sources.length > 0 ? (
-						<div className="flex flex-wrap gap-2">
-							{sources.map((source) => (
-								source.type === "source-url" && source.url ? (
-									<Button
-										key={`${message.id}-${source.url}`}
-										nativeButton={false}
-										render={(
-											<a
-												href={source.url}
-												rel="noreferrer"
-												target="_blank"
-											/>
-										)}
-										size="sm"
-										type="button"
-										variant="outline"
-									>
-										{source.title || source.url}
-									</Button>
-								) : (
-									<Button
-										key={`${message.id}-${source.title ?? "source"}`}
-										size="sm"
-										type="button"
-										variant="outline"
-									>
-										{source.title || "Source"}
-									</Button>
-								)
-							))}
-						</div>
-					) : null}
-
-					<MessageActions reveal="hover" className="flex-wrap text-text-subtle">
-						<MessageCopyAction text={text} />
-						<MessageVoteActions
-							onVote={(v) => void onVote(message.id, v)}
-							value={voteValue}
-						/>
-						{isLastAssistant && !message.metadata?.realtimeMessageId ? (
-							<MessageRegenerateAction onClick={onRegenerate} />
+					<AssistantMessageRenderBoundary
+						fallback={assistantRenderFallback}
+						messageId={message.id}
+						resetKey={`${message.parts.length}:${isStreaming ? "streaming" : "done"}`}
+					>
+						{thinkingActive ? (
+							<Reasoning
+								className="mb-0"
+								autoExpandOnDetails
+								hasDetails={hasThinkingDetails}
+								defaultOpen={thinkingPhaseProps.defaultOpen ?? hasThinkingDetails}
+								isStreaming={thinkingPhaseProps.isStreaming}
+								streamingWave={thinkingPhaseProps.streamingWave}
+								streamingWaveGradientColor={thinkingPhaseProps.streamingWaveGradientColor}
+								animatedDots={thinkingPhaseProps.animatedDots}
+								duration={thinkingReasoningPhase === "completed" ? thinkingDuration : undefined}
+								allowAutoCollapse={hasTurnComplete}
+							>
+								<AdsReasoningTrigger
+									label={thinkingTriggerLabel}
+									showChevron={hasThinkingDetails}
+									streaming={thinkingPhaseProps.triggerStreaming}
+								/>
+								{hasThinkingDetails ? (
+									<ReasoningContent>
+										<div className="space-y-4">
+											{hasThinkingText ? (
+												<ReasoningSection title={getReasoningSectionTitle("thinking")}>
+													<ReasoningText
+														maxVisibleTimelineItems={6}
+														text={accumulatedThinkingContent}
+														timelineMode="auto"
+													/>
+												</ReasoningSection>
+											) : null}
+											{hasThinkingToolCalls ? (
+												<ReasoningSection title={getReasoningSectionTitle("tools")}>
+													<AssistantThinkingToolsSection
+														defaultOpenMode="running"
+														idPrefix={message.id}
+														thinkingToolCalls={thinkingToolCalls}
+													/>
+												</ReasoningSection>
+											) : null}
+										</div>
+									</ReasoningContent>
+								) : null}
+							</Reasoning>
+						) : reasoning?.text ? (
+							<Reasoning
+								defaultOpen={reasoning.isStreaming}
+								isStreaming={isStreaming && reasoning.isStreaming}
+							>
+								<AdsReasoningTrigger />
+								<ReasoningContent>{reasoning.text}</ReasoningContent>
+							</Reasoning>
 						) : null}
-					</MessageActions>
+
+						{widgetLoading?.data.loading ? (
+							<div className="w-full">
+								<LoadingWidget widgetType={widgetLoading.data.type} />
+							</div>
+						) : null}
+
+						{shouldRenderPlanWidget ? (
+							<div className="w-full pt-2">
+								<PlanWidgetInlineCard
+									title={parsedPlanWidget.title}
+									description={parsedPlanWidget.description}
+									tasks={parsedPlanWidget.tasks}
+									isStreaming={isPlanWidgetStreaming}
+								/>
+							</div>
+						) : shouldShowWidget && widget ? (
+							<div className="w-full">
+								<GenerativeWidgetCard
+									widgetData={widget.data.payload}
+									widgetType={widget.data.type ?? "message"}
+								/>
+							</div>
+						) : null}
+
+						{widgetError ? (
+							<WidgetErrorCard
+								widgetError={widgetError}
+								onRetry={onRegenerate}
+							/>
+						) : null}
+
+						{shouldRenderAssistantText ? (
+							<MessageContent className="max-w-3xl">
+								<MessageResponse isAnimating={(isStreaming && isLastAssistant) || isMessageTextStreaming(message)}>
+									{text}
+								</MessageResponse>
+							</MessageContent>
+						) : null}
+
+						{artifactCard}
+
+						{interruptionLabel ? (
+							<div className="inline-flex w-fit items-center rounded-full border border-border-warning/40 bg-bg-warning-subtler px-2.5 py-1 text-text-warning-bolder text-xs">
+								{interruptionLabel}
+							</div>
+						) : null}
+
+						{sources.length > 0 ? (
+							<div className="flex flex-wrap gap-2">
+								{sources.map((source) => (
+									source.type === "source-url" && source.url ? (
+										<Button
+											key={`${message.id}-${source.url}`}
+											nativeButton={false}
+											render={(
+												<a
+													href={source.url}
+													rel="noreferrer"
+													target="_blank"
+												/>
+											)}
+											size="sm"
+											type="button"
+											variant="outline"
+										>
+											{source.title || source.url}
+										</Button>
+									) : (
+										<Button
+											key={`${message.id}-${source.title ?? "source"}`}
+											size="sm"
+											type="button"
+											variant="outline"
+										>
+											{source.title || "Source"}
+										</Button>
+									)
+								))}
+							</div>
+						) : null}
+
+						{shouldRenderAssistantActions ? (
+							<MessageActions reveal="hover" className="flex-wrap text-text-subtle">
+								<MessageCopyAction text={text} />
+								<MessageVoteActions
+									onVote={(v) => void onVote(message.id, v)}
+									value={voteValue}
+								/>
+								{isLastAssistant && !message.metadata?.realtimeMessageId ? (
+									<MessageRegenerateAction onClick={onRegenerate} />
+								) : null}
+							</MessageActions>
+						) : null}
+					</AssistantMessageRenderBoundary>
 				</div>
 			</div>
 		</Message>
@@ -751,13 +899,20 @@ export function FutureChatMessages({
 	const streamingAssistantMessageId = useMemo(() => {
 		return resolveFutureChatStreamingAssistantMessageId(visibleMessages);
 	}, [visibleMessages]);
-	const isUserMessageLast = visibleMessages.at(-1)?.role === "user";
-	const shouldShowPreloader = isStreaming && isUserMessageLast;
+	const pendingAssistantDisplayState = useMemo(() => {
+		return resolveFutureChatPendingAssistantDisplayState({
+			isStreaming,
+			messages: visibleMessages,
+		});
+	}, [isStreaming, visibleMessages]);
+	const shouldShowPendingAssistantSurface =
+		pendingAssistantDisplayState !== "idle";
 	const shouldShowStreamingArtifactPreview =
-		isStreaming &&
-		isUserMessageLast &&
+		shouldShowPendingAssistantSurface &&
 		Boolean(streamingArtifact?.documentId) &&
 		streamingArtifactMessageId === null;
+	const shouldShowPreloader =
+		shouldShowPendingAssistantSurface && !shouldShowStreamingArtifactPreview;
 	const shouldShowEmptyConversationState =
 		showEmptyState && visibleMessages.length === 0;
 	const handleTargetScrollTop = useCallback(

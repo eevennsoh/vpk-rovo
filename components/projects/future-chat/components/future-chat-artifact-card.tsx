@@ -1,5 +1,14 @@
 "use client";
 
+import {
+	GenerativeCard,
+	GenerativeCardBody,
+	GenerativeCardContent,
+	GenerativeCardFooter,
+	GenerativeCardHeader,
+} from "@/components/blocks/generative-card";
+import { Button } from "@/components/ui/button";
+import { Tile } from "@/components/ui/tile";
 import type { FutureChatDocumentKind } from "@/lib/future-chat-types";
 import { cn } from "@/lib/utils";
 import {
@@ -45,7 +54,10 @@ function KindIcon({ kind }: Readonly<{ kind: FutureChatDocumentKind }>) {
 	}
 }
 
-function getArtifactActionLabel(action: "create" | "update" | null, isStreaming: boolean): string | null {
+function getArtifactActionLabel(
+	action: "create" | "update" | null,
+	isStreaming: boolean,
+): string | null {
 	if (isStreaming) {
 		return "Generating";
 	}
@@ -61,18 +73,45 @@ function getArtifactActionLabel(action: "create" | "update" | null, isStreaming:
 	return null;
 }
 
-function renderArtifactPreview({
+function getArtifactDescription(
+	actionLabel: string | null,
+	kind: FutureChatDocumentKind,
+): string {
+	const kindLabel = KIND_LABELS[kind].toLowerCase();
+	return actionLabel ? `${actionLabel} ${kindLabel}` : KIND_LABELS[kind];
+}
+
+function getOpenArtifactLabel(kind: FutureChatDocumentKind): string {
+	return `Open ${KIND_LABELS[kind].toLowerCase()}`;
+}
+
+function getKindTileVariant(kind: FutureChatDocumentKind) {
+	switch (kind) {
+		case "code":
+			return "blueSubtle";
+		case "image":
+			return "purpleSubtle";
+		case "sheet":
+			return "greenSubtle";
+		default:
+			return "graySubtle";
+	}
+}
+
+function FutureChatArtifactPreview({
 	isStreaming,
 	kind,
 	previewContent,
 	title,
-}: Readonly<Pick<
-	FutureChatArtifactCardProps,
-	"isStreaming" | "kind" | "previewContent" | "title"
->>) {
+}: Readonly<
+	Pick<
+		FutureChatArtifactCardProps,
+		"isStreaming" | "kind" | "previewContent" | "title"
+	>
+>) {
 	if (kind === "image" && /^https?:|^data:image\//u.test(previewContent)) {
 		return (
-			<div className="relative aspect-[16/10] overflow-hidden rounded-b-[20px] bg-surface-raised">
+			<div className="relative aspect-[16/10] w-full overflow-hidden rounded-md bg-surface">
 				<Image
 					alt={title}
 					className="h-full w-full object-cover"
@@ -81,14 +120,20 @@ function renderArtifactPreview({
 					unoptimized
 					width={1280}
 				/>
-				<div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/10 to-transparent" />
+				<div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/15 to-transparent" />
+				{isStreaming ? (
+					<div className="absolute bottom-3 left-3 inline-flex items-center gap-2 rounded-full border border-border/80 bg-background/95 px-2.5 py-1 text-[11px] text-text-subtle uppercase tracking-[0.16em] shadow-sm">
+						<LoaderCircleIcon className="size-3 animate-spin" />
+						Streaming
+					</div>
+				) : null}
 			</div>
 		);
 	}
 
 	if (!previewContent.trim()) {
 		return (
-			<div className="flex min-h-32 flex-col gap-3 rounded-b-[20px] bg-surface px-4 py-4">
+			<div className="flex min-h-32 flex-col gap-3 rounded-md bg-surface p-4">
 				<div className="h-4 w-2/3 animate-pulse rounded-full bg-surface-raised" />
 				<div className="h-3 w-full animate-pulse rounded-full bg-surface-raised" />
 				<div className="h-3 w-5/6 animate-pulse rounded-full bg-surface-raised" />
@@ -98,11 +143,13 @@ function renderArtifactPreview({
 	}
 
 	return (
-		<div className="rounded-b-[20px] bg-surface px-4 py-4">
+		<div className="rounded-md bg-surface p-4">
 			<div
 				className={cn(
 					"max-h-36 overflow-hidden whitespace-pre-wrap text-left text-sm text-text-subtle",
-					kind === "code" || kind === "sheet" ? "font-mono text-[12px] leading-5" : "leading-6",
+					kind === "code" || kind === "sheet"
+						? "font-mono text-[12px] leading-5"
+						: "leading-6",
 				)}
 			>
 				{previewContent}
@@ -128,13 +175,14 @@ export function FutureChatArtifactCard({
 	previewContent,
 	title,
 }: Readonly<FutureChatArtifactCardProps>) {
-	const cardRef = useRef<HTMLButtonElement>(null);
+	const cardRef = useRef<HTMLDivElement>(null);
 	const actionLabel = getArtifactActionLabel(action, isStreaming);
 	const openLabel = actionLabel
 		? `Open ${actionLabel.toLowerCase()} ${KIND_LABELS[kind].toLowerCase()} ${title}`
 		: `Open ${KIND_LABELS[kind].toLowerCase()} ${title}`;
+	const openCtaLabel = getOpenArtifactLabel(kind);
 
-	const handleClick = () => {
+	const handleOpen = () => {
 		if (!cardRef.current) {
 			return;
 		}
@@ -150,75 +198,79 @@ export function FutureChatArtifactCard({
 		onRegister(documentId, cardRef.current);
 	}, [displayMode, documentId, onRegister]);
 
-	if (displayMode === "chip") {
-		return (
-			<button
-				aria-label={openLabel}
-				ref={cardRef}
-				className="group/artifact-card flex w-fit max-w-full cursor-pointer items-center gap-2 rounded-2xl border border-border bg-surface-raised px-3 py-2 text-left transition-colors hover:bg-surface-raised-hovered"
-				onClick={handleClick}
-				type="button"
-			>
-				<div className="flex size-5 shrink-0 items-center justify-center text-text-subtle">
-					{isStreaming ? (
-						<LoaderCircleIcon className="size-4 animate-spin" />
-					) : (
-						<KindIcon kind={kind} />
-					)}
-				</div>
-				<span className="min-w-0 truncate text-sm font-medium text-text">
-					{actionLabel ? `${actionLabel} "${title}"` : title}
-				</span>
-				<span className="shrink-0 rounded-full border border-border/70 bg-background px-2 py-0.5 text-[11px] text-text-subtle uppercase tracking-[0.16em]">
-					{KIND_LABELS[kind]}
-				</span>
-			</button>
-		);
-	}
-
 	return (
-		<button
-			aria-label={openLabel}
+		<div
 			ref={cardRef}
-			className="group/artifact-card flex w-full max-w-[450px] cursor-pointer flex-col overflow-hidden rounded-3xl border border-border bg-background text-left shadow-xs transition-colors hover:bg-surface-raised"
-			onClick={handleClick}
-			type="button"
+			className={cn(
+				displayMode === "preview" ? "w-full max-w-[450px]" : "w-fit max-w-full",
+			)}
 		>
-			<div className="flex items-start justify-between gap-3 border-border/70 border-b px-4 py-3">
-				<div className="flex min-w-0 items-start gap-3">
-					<div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-xl bg-surface-raised text-text-subtle">
-						{isStreaming ? (
-							<LoaderCircleIcon className="size-4 animate-spin" />
-						) : (
-							<KindIcon kind={kind} />
-						)}
-					</div>
-					<div className="min-w-0">
-						<p className="truncate font-medium text-sm text-text">
-							{title}
-						</p>
-						<p className="truncate text-text-subtle text-xs">
-							{actionLabel ? `${actionLabel} ${KIND_LABELS[kind].toLowerCase()}` : KIND_LABELS[kind]}
-						</p>
-					</div>
-				</div>
-
-				<div className="flex items-center gap-2">
-					<span className="shrink-0 rounded-full border border-border/70 bg-surface px-2 py-0.5 text-[11px] text-text-subtle uppercase tracking-[0.16em]">
-						{KIND_LABELS[kind]}
-					</span>
-					<div className="shrink-0 rounded-md p-1 text-text-subtle transition-colors group-hover/artifact-card:bg-surface group-hover/artifact-card:text-text">
-						<ExpandIcon className="size-4" />
-					</div>
-				</div>
-			</div>
-
-			{renderArtifactPreview({
-				isStreaming,
-				kind,
-				previewContent,
-				title,
-			})}
-		</button>
+			<GenerativeCard
+				className={cn(
+					"border-border/80 bg-background shadow-xs transition-colors",
+					displayMode === "preview"
+						? "w-full hover:bg-surface-raised"
+						: "w-fit max-w-full",
+				)}
+				defaultExpanded={displayMode === "preview"}
+				size={displayMode === "chip" ? "sm" : "default"}
+			>
+				<GenerativeCardHeader
+					action={
+						displayMode === "chip" ? (
+							<Button
+								aria-label={openLabel}
+								onClick={handleOpen}
+								size="xs"
+								type="button"
+								variant="outline"
+							>
+								{openCtaLabel}
+							</Button>
+						) : null
+					}
+					collapseLabel="Collapse artifact details"
+					description={getArtifactDescription(actionLabel, kind)}
+					expandLabel="Expand artifact details"
+					leading={(
+						<Tile
+							label={KIND_LABELS[kind]}
+							size={displayMode === "chip" ? "small" : "medium"}
+							variant={getKindTileVariant(kind)}
+						>
+							{isStreaming ? (
+								<LoaderCircleIcon className="size-4 animate-spin" />
+							) : (
+								<KindIcon kind={kind} />
+							)}
+						</Tile>
+					)}
+					title={title}
+				/>
+				<GenerativeCardBody>
+					<GenerativeCardContent>
+						<FutureChatArtifactPreview
+							isStreaming={isStreaming}
+							kind={kind}
+							previewContent={previewContent}
+							title={title}
+						/>
+					</GenerativeCardContent>
+					<GenerativeCardFooter>
+						<Button
+							aria-label={openLabel}
+							className="h-8 min-w-0 px-3 sm:min-w-[117px]"
+							onClick={handleOpen}
+							size="sm"
+							type="button"
+							variant="outline"
+						>
+							{openCtaLabel}
+							<ExpandIcon className="size-3.5" />
+						</Button>
+					</GenerativeCardFooter>
+				</GenerativeCardBody>
+			</GenerativeCard>
+		</div>
 	);
 }

@@ -121,7 +121,7 @@ export function MessageActions({
 			className={cn(
 				"flex items-center gap-1",
 				reveal === "hover" &&
-					"opacity-100 transition-opacity md:opacity-0 md:group-hover/message:opacity-100",
+					"opacity-100 transition-opacity md:opacity-0 md:pointer-events-none md:group-hover/message:pointer-events-auto md:group-hover/message:opacity-100 md:focus-within:pointer-events-auto md:focus-within:opacity-100",
 				className,
 			)}
 			{...props}
