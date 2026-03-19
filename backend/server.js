@@ -8385,7 +8385,9 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 					!hasEmittedQuestionCard &&
 					!hasEmittedPlanWidget
 				) {
-					const directSpecResult = extractDirectSpec(assistantText);
+					const directSpecResult = extractDirectSpec(
+						hasSuppressedLargeAssistantJson ? unsuppressedAssistantText : assistantText
+					);
 					if (directSpecResult?.spec) {
 						const directSpecWidgetId = `widget-direct-spec-${Date.now()}`;
 						for (const part of buildDirectSpecWidgetParts({
@@ -8962,7 +8964,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 								loading: false,
 							},
 						});
-						} else if (!hasEmittedQuestionCard) {
+						} else if (!hasEmittedQuestionCard && !hasEmittedGenuiWidget) {
 							const shouldEmitCardFirstFallback =
 								shouldForceCardFirstGenui &&
 								trimmedAssistantText.length > 0 &&
