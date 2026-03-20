@@ -4807,6 +4807,148 @@ const config = {
     ],
   },
 
+  "sidebar-nav-item": {
+    description:
+      "A compact side navigation item with disclosure icons, selected and focus states, trailing actions, and optional numeric metadata.",
+    adsUrl: "https://atlassian.design/components/navigation-system/side-nav-items",
+    adsLinks: [
+      {
+        label: "Side nav items",
+        url: "https://atlassian.design/components/navigation-system/side-nav-items",
+      },
+      {
+        label: "Badge",
+        url: "https://atlassian.design/components/badge/",
+      },
+      {
+        label: "Icon button",
+        url: "https://atlassian.design/components/button/icon-button/",
+      },
+    ],
+    importStatement:
+      'import { SidebarNavItem, SidebarNavItemAction, SidebarNavItemCount } from "@/components/ui/sidebar-nav-item";',
+    usage: `import ChevronRightIcon from "@atlaskit/icon/core/chevron-right";
+import ShowMoreHorizontalIcon from "@atlaskit/icon/core/show-more-horizontal";
+import { SidebarNavItem, SidebarNavItemAction, SidebarNavItemCount } from "@/components/ui/sidebar-nav-item";
+
+<div className="w-[276px]">
+  <SidebarNavItem
+    label="Artifacts"
+    leading={<ChevronRightIcon label="" size="small" />}
+    meta={<SidebarNavItemCount>25</SidebarNavItemCount>}
+    actions={
+      <SidebarNavItemAction aria-label="Open artifacts">
+        <ShowMoreHorizontalIcon label="" size="small" />
+      </SidebarNavItemAction>
+    }
+  />
+</div>`,
+    props: [
+      {
+        name: "label",
+        type: "React.ReactNode",
+        required: true,
+        description: "Primary row label.",
+      },
+      {
+        name: "leading",
+        type: "React.ReactNode",
+        description: "Optional leading visual, typically a 12px chevron or 16px product icon.",
+      },
+      {
+        name: "leadingSize",
+        type: '"small" | "medium"',
+        default: '"small"',
+        description: "Size contract for the leading icon slot. Use `medium` for 16px product icons.",
+      },
+      {
+        name: "meta",
+        type: "React.ReactNode",
+        description: "Optional trailing metadata slot, typically a count badge.",
+      },
+      {
+        name: "actions",
+        type: "React.ReactNode",
+        description: "Optional trailing action area. Keep action buttons separately labelled for accessibility.",
+      },
+      {
+        name: "isSelected",
+        type: "boolean",
+        default: "false",
+        description: "Applies the selected background, text color, and left notch.",
+      },
+      {
+        name: "isExpanded",
+        type: "boolean",
+        description: "Mirrors disclosure state via `aria-expanded` on the primary action.",
+      },
+      {
+        name: "interactionState",
+        type: '"rest" | "hovered" | "focus-visible"',
+        default: '"rest"',
+        description: "Preview override for docs and static mocks.",
+      },
+      {
+        name: "onClick",
+        type: "(event: React.MouseEvent<HTMLButtonElement>) => void",
+        description: "Click handler for the primary label area.",
+      },
+      {
+        name: "disabled",
+        type: "boolean",
+        default: "false",
+        description: "Disables the primary action and dims the row.",
+      },
+    ],
+    subComponents: [
+      {
+        name: "SidebarNavItemAction",
+        description: "24px ghost icon button for trailing actions.",
+      },
+      {
+        name: "SidebarNavItemCount",
+        description: "Neutral 16px count badge tuned for sidebar metadata.",
+      },
+    ],
+    examples: [
+      {
+        title: "Default",
+        description: "Collapsed disclosure row with a single trailing action.",
+        demoSlug: "sidebar-nav-item-demo-default",
+      },
+      {
+        title: "Expanded",
+        description: "Expanded disclosure row with add and drill-in actions.",
+        demoSlug: "sidebar-nav-item-demo-expanded",
+      },
+      {
+        title: "Hovered",
+        description: "Hovered state from the Figma reference.",
+        demoSlug: "sidebar-nav-item-demo-hovered",
+      },
+      {
+        title: "Selected",
+        description: "Selected state with left notch and selected icon/text colors.",
+        demoSlug: "sidebar-nav-item-demo-selected",
+      },
+      {
+        title: "Focus visible",
+        description: "Focused state with the 2px ADS-style focus ring.",
+        demoSlug: "sidebar-nav-item-demo-focus-visible",
+      },
+      {
+        title: "With count",
+        description: "Trailing neutral count badge plus action slot.",
+        demoSlug: "sidebar-nav-item-demo-with-count",
+      },
+      {
+        title: "Project icon",
+        description: "Leading 16px project icon with the same count treatment.",
+        demoSlug: "sidebar-nav-item-demo-project-count",
+      },
+    ],
+  },
+
   sonner: {
     description:
       "A headless toast notification component wrapping Sonner with fully custom JSX. Maps to ADS Flag for transient notifications with auto-dismiss, actions, and semantic variants.",
@@ -5449,13 +5591,13 @@ const [date, setDate] = useState<Date>()
 
   lozenge: {
     description:
-      "A compact status indicator for labeling items with categorical status. Supports semantic and accent color variants with compact and spacious sizes.",
+      "A compact status indicator for categorical labels, statuses, and light metadata. Matches the latest ADS filled lozenge visuals with semantic and accent color variants plus compact and spacious sizes.",
     adsUrl: "https://atlassian.design/components/lozenge",
     usage: `import { Lozenge } from "@/components/ui/lozenge";
 
 <Lozenge>Neutral</Lozenge>
-<Lozenge variant="success">Done</Lozenge>
-<Lozenge variant="information" isBold>In progress</Lozenge>`,
+<Lozenge variant="information">In progress</Lozenge>
+<Lozenge variant="success" metric="0.8">Completed</Lozenge>`,
     props: [
       {
         name: "variant",
@@ -5474,7 +5616,7 @@ const [date, setDate] = useState<Date>()
         type: "boolean",
         default: "false",
         description:
-          "Whether to use bold background styling (semantic variants only).",
+          "Deprecated compatibility prop. ADS now renders the filled lozenge appearance by default.",
       },
       {
         name: "icon",
@@ -5490,25 +5632,24 @@ const [date, setDate] = useState<Date>()
         name: "metric",
         type: "string | number",
         description:
-          "Trailing metric displayed as a Badge inside the lozenge. Inherits the lozenge variant.",
+          "Trailing metric displayed inline inside the lozenge. Accent variants should avoid metrics to match ADS guidance.",
       },
     ],
     examples: [
       { title: "Default", demoSlug: "lozenge-demo-default" },
-      { title: "Variants", demoSlug: "lozenge-demo-appearances" },
-      { title: "Bold", demoSlug: "lozenge-demo-bold" },
+      { title: "Appearance", demoSlug: "lozenge-demo-appearances" },
       { title: "Accent colors", demoSlug: "lozenge-demo-accent-colors" },
-      { title: "Sizes", demoSlug: "lozenge-demo-spacing" },
       { title: "With icon", demoSlug: "lozenge-demo-with-icon" },
       {
         title: "Trailing metric",
-        description: "Display a numeric badge inside the lozenge.",
+        description: "Display inline metric text inside the lozenge.",
         demoSlug: "lozenge-demo-trailing-metric",
       },
+      { title: "Spacing", demoSlug: "lozenge-demo-spacing" },
       { title: "Max width", demoSlug: "lozenge-demo-max-width" },
       { title: "Dropdown trigger", demoSlug: "lozenge-demo-dropdown-trigger" },
       {
-        title: "Dropdown trigger variants",
+        title: "Dropdown trigger semantic colors",
         demoSlug: "lozenge-demo-dropdown-trigger-appearances",
       },
       { title: "Usage in context", demoSlug: "lozenge-demo-usage" },
@@ -5824,6 +5965,7 @@ const steps: ProgressTrackerStep[] = [
   },
 
   "split-button": {
+    adsUrl: "https://atlassian.design/components/button/split-button",
     description:
       "Button with a primary action and a dropdown for secondary actions. Maps to @atlaskit/button SplitButton.",
     usage: `import { SplitButton } from "@/components/ui/split-button"

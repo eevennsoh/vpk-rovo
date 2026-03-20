@@ -3,9 +3,10 @@
 import type { FileUIPart } from "ai";
 import { AnimatePresence, motion } from "motion/react";
 import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FileTextIcon, MessageSquarePlusIcon } from "lucide-react";
+import { FileTextIcon } from "lucide-react";
 import { CreateButton } from "@/components/blocks/top-navigation/components/create-button";
-import { FutureChatArtifactPanel} from "@/components/projects/future-chat/components/future-chat-artifact-panel";
+import { FutureChatArtifactPanel } from "@/components/projects/future-chat/components/future-chat-artifact-panel";
+import { FutureChatHeader } from "@/components/projects/future-chat/components/future-chat-header";
 import { FutureChatComposer } from "@/components/projects/future-chat/components/future-chat-composer";
 import { FutureChatMessages } from "@/components/projects/future-chat/components/future-chat-messages";
 import { FutureChatSidebar } from "@/components/projects/future-chat/components/future-chat-sidebar";
@@ -35,7 +36,10 @@ import { LeftNavigation } from "@/components/blocks/top-navigation/components/le
 import { RightNavigation } from "@/components/blocks/top-navigation/components/right-navigation";
 import SearchSuggestionsPanel from "@/components/blocks/top-navigation/components/search-suggestions-panel";
 import { useTopNavigation } from "@/components/blocks/top-navigation/hooks/use-top-navigation";
-import { FUTURE_CHAT_SEPARATOR_LINE_OFFSET_PX } from "@/components/blocks/top-navigation/layout-constants";
+import {
+	FUTURE_CHAT_SEPARATOR_LINE_OFFSET_PX,
+	TOP_NAV_PADDING_PX,
+} from "@/components/blocks/top-navigation/layout-constants";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import SearchIcon from "@atlaskit/icon/core/search";
 import { SidebarProvider } from "@/components/ui/sidebar";
@@ -73,7 +77,6 @@ interface FutureChatShellProps {
 	initialThreadId?: string | null;
 }
 
-const FUTURE_CHAT_LEFT_NAV_PADDING_PX = 12;
 const FUTURE_CHAT_SIDEBAR_MOTION_DURATION_TOKEN = "--duration-medium";
 const FUTURE_CHAT_SIDEBAR_MOTION_FALLBACK_MS = 200;
 
@@ -1908,9 +1911,7 @@ export function FutureChatShell({
 						windowWidth={nav.windowWidth}
 						isVisible={nav.isVisible}
 						isAppSwitcherOpen={nav.isAppSwitcherOpen}
-						separatorLineOffsetPx={
-							FUTURE_CHAT_SEPARATOR_LINE_OFFSET_PX - FUTURE_CHAT_LEFT_NAV_PADDING_PX
-						}
+						separatorLineOffsetPx={FUTURE_CHAT_SEPARATOR_LINE_OFFSET_PX - TOP_NAV_PADDING_PX}
 						onToggleSidebar={nav.toggleSidebar}
 						onToggleAppSwitcher={nav.handleToggleAppSwitcher}
 						onCloseAppSwitcher={nav.handleCloseAppSwitcher}
@@ -1918,9 +1919,6 @@ export function FutureChatShell({
 						onHoverEnter={handleSidebarHoverEnter}
 						onHoverLeave={handleSidebarHoverLeave}
 					/>
-					{!chat.sidebarOpen ? (
-						<div className="absolute right-0 h-5 w-px bg-border" />
-					) : null}
 				</div>
 				) : null}
 
@@ -1928,30 +1926,16 @@ export function FutureChatShell({
 					{!embedded ? (
 						<div
 							className={cn(
-							"flex h-12 shrink-0 items-center gap-2 border-b px-3 transition-[padding] duration-medium ease-in-out",
-							!chat.sidebarOpen && "pl-44",
-						)}
+								"flex h-12 shrink-0 items-center border-b px-3 transition-[padding] duration-medium ease-in-out",
+								!chat.sidebarOpen && "pl-44",
+							)}
 							style={{
 								borderColor: token("color.border"),
 								backgroundColor: token("elevation.surface"),
 							}}
 						>
-							<div className="mr-auto flex items-center gap-2">
-								{!chat.sidebarOpen ? (
-									<Button
-										className="h-8 gap-2 px-3"
-										onClick={() => {
-											setOptimisticUserMessage(null);
-											void chat.openNewChat();
-										}}
-										type="button"
-										variant="outline"
-									>
-										<MessageSquarePlusIcon className="size-4" />
-										<span>New chat</span>
-									</Button>
-								) : null}
-								{primaryArtifact || artifactMenuItems.length > 0 ? (
+							{primaryArtifact || artifactMenuItems.length > 0 ? (
+								<div className="flex shrink-0 items-center gap-2">
 									<DropdownMenu>
 										<DropdownMenuTrigger
 											render={(
@@ -1982,12 +1966,12 @@ export function FutureChatShell({
 											</DropdownMenuGroup>
 										</DropdownMenuContent>
 									</DropdownMenu>
-								) : null}
-							</div>
-							<div className="relative flex min-w-0 flex-1 items-center justify-center gap-2">
+								</div>
+							) : null}
+							<div className="relative flex min-w-0 flex-1 items-center justify-start gap-2">
 								<div
 									ref={nav.searchContainerRef}
-									className="relative w-full max-w-[480px]"
+									className="relative w-full max-w-[680px]"
 								>
 									{!nav.isSearchFocused ? (
 										<InputGroup className="h-7 rounded-md bg-bg-input shadow-none hover:bg-bg-input-hovered">
@@ -2031,6 +2015,12 @@ export function FutureChatShell({
 							/>
 						</div>
 					) : null}
+					<FutureChatHeader
+						onNewChat={() => {
+							setOptimisticUserMessage(null);
+							void chat.openNewChat();
+						}}
+					/>
 					<main
 						ref={shellRef}
 						className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden bg-background text-foreground"
@@ -2048,7 +2038,7 @@ export function FutureChatShell({
 									: undefined
 							}
 							className={cn(
-								"overscroll-behavior-contain relative z-10 flex min-w-0 touch-pan-y flex-1 flex-col bg-background px-6",
+								"overscroll-behavior-contain relative z-10 flex min-w-0 touch-pan-y flex-1 flex-col bg-background",
 								shouldSplitArtifactPane ? "w-full shrink-0 flex-none" : "flex-1",
 							)}
 						>

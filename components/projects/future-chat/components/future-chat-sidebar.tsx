@@ -1,16 +1,16 @@
 "use client";
 
-import { useState } from "react";
 import { formatDistanceToNowStrict } from "date-fns";
 import AddIcon from "@atlaskit/icon/core/add";
 import AiAgentIcon from "@atlaskit/icon/core/ai-agent";
-import AiChatIcon from "@atlaskit/icon/core/ai-chat";
-import ChevronDownIcon from "@atlaskit/icon/core/chevron-down";
 import ChevronRightIcon from "@atlaskit/icon/core/chevron-right";
+import ProjectIcon from "@atlaskit/icon/core/project";
 import ScorecardIcon from "@atlaskit/icon/core/scorecard";
 import ShapesIcon from "@atlaskit/icon/core/shapes";
+import SkillIcon from "@atlaskit/icon-lab/core/skill";
 import Heading from "@/components/blocks/shared-ui/heading";
 import { Button } from "@/components/ui/button";
+import { SidebarNavItem, SidebarNavItemAction, SidebarNavItemCount } from "@/components/ui/sidebar-nav-item";
 import { Shimmer } from "@/components/ui-ai/shimmer";
 import { Spinner } from "@/components/ui/spinner";
 import { token } from "@/lib/tokens";
@@ -27,7 +27,6 @@ import {
 	SidebarGroup,
 	SidebarGroupContent,
 	SidebarMenuAction,
-	SidebarMenuBadge,
 	SidebarMenu,
 	SidebarMenuButton,
 	SidebarMenuItem,
@@ -56,39 +55,38 @@ interface FutureChatSidebarProps {
 }
 
 function FutureChatSidebarNavItem({
-	hoverIcon,
 	icon,
 	label,
 	onClick,
+	selected = false,
+	showChevron = false,
 	trailing,
 }: Readonly<{
-	hoverIcon?: React.ReactNode;
 	icon: React.ReactNode;
 	label: string;
 	onClick?: () => void;
+	selected?: boolean;
+	showChevron?: boolean;
 	trailing?: React.ReactNode;
 }>) {
 	return (
-		<SidebarMenuItem>
-			<SidebarMenuButton
-				className="h-8 gap-1.5 rounded-md px-1"
+		<SidebarMenuItem className="relative">
+			<SidebarNavItem
+				className={cn(
+					selected && "[&_button]:text-text-selected",
+				)}
+				isSelected={selected}
+				label={label}
+				leading={icon}
+				leadingSize="medium"
+				meta={trailing}
 				onClick={onClick}
-				size="default"
-				type="button"
-			>
-				<span className="flex size-6 items-center justify-center">
-					{hoverIcon ? (
-						<>
-							<span className="flex items-center justify-center group-hover/menu-button:hidden">{icon}</span>
-							<span className="hidden items-center justify-center group-hover/menu-button:flex">{hoverIcon}</span>
-						</>
-					) : (
-						icon
-					)}
-				</span>
-				<span className="flex-1 truncate text-sm font-medium">{label}</span>
-			</SidebarMenuButton>
-			{trailing}
+				actions={showChevron ? (
+					<SidebarNavItemAction aria-label={`Open ${label}`}>
+						<ChevronRightIcon label="" />
+					</SidebarNavItemAction>
+				) : null}
+			/>
 		</SidebarMenuItem>
 	);
 }
@@ -228,13 +226,13 @@ export function FutureChatSidebar({
 	threadsLoaded = true,
 	topOffset = false,
 }: Readonly<FutureChatSidebarProps>) {
-	const [chatsExpanded, setChatsExpanded] = useState(true);
+	const isNewChatSelected = activeThreadId === null;
 
 	return (
 		<Sidebar
 			aria-label="Future Chat navigation"
 			className={cn(
-				"bg-sidebar px-3 group-data-[state=expanded]:group-data-[side=left]:border-r group-data-[state=expanded]:group-data-[side=left]:border-border",
+				"bg-sidebar !px-3 !pb-0 group-data-[state=expanded]:group-data-[side=left]:border-r group-data-[state=expanded]:group-data-[side=left]:border-border",
 				topOffset && "!top-12 !h-[calc(100svh-3rem)]",
 			)}
 			onMouseEnter={onSidebarMouseEnter}
@@ -243,100 +241,88 @@ export function FutureChatSidebar({
 			style={hoverOpen ? { left: 0, zIndex: 50, boxShadow: token("elevation.shadow.overlay") } : { zIndex: 50 }}
 			variant="inset"
 		>
-			<SidebarContent className="bg-sidebar p-[2px]">
+			<SidebarContent className="bg-sidebar">
 				{/* Top navigation items */}
 				<SidebarGroup className="p-0">
 					<SidebarGroupContent>
 						<SidebarMenu>
 							<FutureChatSidebarNavItem
 								icon={
-									<span className="flex size-5 items-center justify-center rounded-full bg-text text-text-inverse">
-										<AddIcon label="" size="small" />
+									<span
+										className={cn(
+											"flex size-5 items-center justify-center rounded-full text-text-inverse",
+											isNewChatSelected ? "bg-bg-selected-bold" : "bg-text",
+										)}
+									>
+										<AddIcon color="currentColor" label="" size="small" />
 									</span>
 								}
 								label="New chat"
 								onClick={onNewChat}
+								selected={isNewChatSelected}
 								trailing={
-									<SidebarMenuBadge className="rounded bg-bg-neutral leading-4">
-										⎇⌘N
-									</SidebarMenuBadge>
+										<SidebarNavItemCount className="pointer-events-auto min-w-0 rounded-xs px-1 font-normal text-text">
+											⌥⇧N
+										</SidebarNavItemCount>
 								}
 							/>
 							<FutureChatSidebarNavItem
 								icon={<ScorecardIcon label="" size="medium" />}
 								label="Tasks"
-								trailing={
-									<SidebarMenuBadge className="rounded bg-bg-neutral leading-4">
-										3
-									</SidebarMenuBadge>
-								}
+								showChevron
 							/>
 							<FutureChatSidebarNavItem
 								icon={<ShapesIcon label="" size="medium" />}
 								label="Artifacts"
+								showChevron
+							/>
+							<FutureChatSidebarNavItem
+								icon={<ProjectIcon label="" size="medium" />}
+								label="Projects"
+								showChevron
 							/>
 							<FutureChatSidebarNavItem
 								icon={<AiAgentIcon label="" size="medium" />}
 								label="Agents"
+								showChevron
 							/>
 							<FutureChatSidebarNavItem
-								hoverIcon={
-									chatsExpanded
-										? <ChevronDownIcon label="" size="small" />
-										: <ChevronRightIcon label="" size="small" />
-								}
-								icon={<AiChatIcon label="" size="medium" />}
-								label="Chats"
-								onClick={() => setChatsExpanded((prev) => !prev)}
-								trailing={
-									<SidebarMenuAction
-										className="top-1 right-1 size-6 rounded text-text-subtlest hover:bg-bg-neutral-hovered peer-data-[size=default]/menu-button:top-1"
-										onClick={(e) => {
-											e.stopPropagation();
-											onNewChat();
-										}}
-										onPointerDown={(e) => {
-											e.stopPropagation();
-										}}
-										type="button"
-									>
-										<AddIcon label="New chat" size="small" />
-									</SidebarMenuAction>
-								}
+								icon={<SkillIcon label="" size="medium" />}
+								label="Skills"
+								showChevron
 							/>
 						</SidebarMenu>
 					</SidebarGroupContent>
 				</SidebarGroup>
 
 				{/* Chat threads list */}
-				{chatsExpanded ? (
-					threadsLoaded && threads.length === 0 && !isGeneratingTitle ? (
-						<SidebarGroup className="flex flex-1 items-center justify-center p-0">
-							<SidebarGroupContent>
-								<div className="flex w-full flex-col items-center gap-4 px-6 text-center">
-									<div className="stagger-fade-in flex w-full flex-col items-center gap-1">
-										<Heading as="h3" size="xsmall">
-											Get started
-										</Heading>
-										<p className="text-sm text-text-subtle">
-											Start a conversation to get going.
-										</p>
-									</div>
-									<div className="stagger-fade-in" style={{ animationDelay: "0.06s" }}>
-										<Button
-											onClick={onNewChat}
-											variant="outline"
-										>
-											Chat
-										</Button>
-									</div>
+				{threadsLoaded && threads.length === 0 && !isGeneratingTitle ? (
+					<SidebarGroup className="flex flex-1 items-center justify-center p-0">
+						<SidebarGroupContent>
+							<div className="flex w-full flex-col items-center gap-4 px-6 text-center">
+								<div className="stagger-fade-in flex w-full flex-col items-center gap-1">
+									<Heading as="h3" size="xsmall">
+										Get started
+									</Heading>
+									<p className="text-sm text-text-subtle">
+										Start a conversation to get going.
+									</p>
 								</div>
-							</SidebarGroupContent>
-						</SidebarGroup>
-					) : (
-						<SidebarGroup className="p-0">
-							<SidebarGroupContent>
-								<SidebarMenu>
+								<div className="stagger-fade-in" style={{ animationDelay: "0.06s" }}>
+									<Button
+										onClick={onNewChat}
+										variant="outline"
+									>
+										Chat
+									</Button>
+								</div>
+							</div>
+						</SidebarGroupContent>
+					</SidebarGroup>
+				) : (
+					<SidebarGroup className="p-0">
+						<SidebarGroupContent>
+							<SidebarMenu>
 								{isGeneratingTitle && threads.length === 0 ? (
 									<SidebarMenuItem>
 										<SidebarMenuButton
@@ -367,15 +353,14 @@ export function FutureChatSidebar({
 										key={thread.id}
 										onDeleteThread={onDeleteThread}
 										onSelectThread={onSelectThread}
-													runStatus={thread.activeRun?.status ?? null}
-													thread={thread}
-												/>
-											))}
-								</SidebarMenu>
-							</SidebarGroupContent>
-						</SidebarGroup>
-					)
-				) : null}
+										runStatus={thread.activeRun?.status ?? null}
+										thread={thread}
+									/>
+								))}
+							</SidebarMenu>
+						</SidebarGroupContent>
+					</SidebarGroup>
+				)}
 			</SidebarContent>
 		</Sidebar>
 	);

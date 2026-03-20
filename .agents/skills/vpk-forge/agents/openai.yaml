@@ -1,4 +1,0 @@
-interface:
-  display_name: "VPK Forge"
-  short_description: "Create and deploy Atlassian Forge apps"
-  default_prompt: "Use $vpk-forge to scaffold and deploy a Forge app for Jira or Confluence."

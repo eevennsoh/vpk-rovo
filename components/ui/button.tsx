@@ -14,7 +14,7 @@ const buttonVariants = cva(
 				default:
 					"bg-primary text-primary-foreground hover:bg-primary-hovered active:bg-primary-pressed aria-pressed:bg-bg-selected aria-pressed:text-text-selected aria-pressed:border-border-selected aria-expanded:bg-bg-selected aria-expanded:text-text-selected aria-expanded:border-border-selected disabled:pointer-events-none disabled:bg-bg-disabled disabled:text-text-disabled",
 				outline:
-					"border-border bg-background text-text-subtle [&_svg]:text-icon-subtle hover:bg-surface-hovered active:bg-surface-pressed aria-pressed:bg-bg-selected aria-pressed:text-text-selected aria-pressed:border-border-selected aria-expanded:bg-bg-selected aria-expanded:text-text-selected aria-expanded:border-border-selected disabled:pointer-events-none disabled:opacity-(--opacity-disabled)",
+					"border-border bg-bg-neutral-subtle text-text-subtle [&_svg]:text-icon-subtle hover:bg-bg-neutral-subtle-hovered active:bg-bg-neutral-subtle-pressed aria-pressed:bg-bg-selected aria-pressed:text-text-selected aria-pressed:border-border-selected aria-expanded:bg-bg-selected aria-expanded:text-text-selected aria-expanded:border-border-selected disabled:pointer-events-none disabled:opacity-(--opacity-disabled)",
 				secondary:
 					"bg-secondary text-text-subtle [&_svg]:text-icon-subtle hover:bg-secondary/80 active:bg-secondary/70 aria-pressed:bg-bg-selected aria-pressed:text-text-selected aria-pressed:border-border-selected aria-expanded:bg-bg-selected aria-expanded:text-text-selected aria-expanded:border-border-selected disabled:pointer-events-none disabled:opacity-(--opacity-disabled)",
 				ghost:

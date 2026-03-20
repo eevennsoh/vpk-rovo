@@ -76,6 +76,9 @@ const UI_DEMO: Record<string, ComponentType> = {
   separator: dynamic(() => import("./demos/ui/separator-demo"), { ssr: false }),
   sheet: dynamic(() => import("./demos/ui/sheet-demo"), { ssr: false }),
   skeleton: dynamic(() => import("./demos/ui/skeleton-demo"), { ssr: false }),
+  "sidebar-nav-item": dynamic(() => import("./demos/ui/sidebar-nav-item-demo"), {
+    ssr: false,
+  }),
   slider: dynamic(() => import("./demos/ui/slider-demo"), { ssr: false }),
   sonner: dynamic(() => import("./demos/ui/sonner-demo"), { ssr: false }),
   spinner: dynamic(() => import("./demos/ui/spinner-demo"), { ssr: false }),
@@ -4248,6 +4251,55 @@ const UI_VARIANT_DEMOS: Record<string, ComponentType> = {
     () =>
       import("./demos/ui/sidebar-demo").then((mod) => ({
         default: mod.SidebarDemoCollapsed,
+      })),
+    { ssr: false },
+  ),
+  "sidebar-nav-item-demo-default": dynamic(
+    () =>
+      import("./demos/ui/sidebar-nav-item-demo").then((mod) => ({
+        default: mod.SidebarNavItemDemoDefault,
+      })),
+    { ssr: false },
+  ),
+  "sidebar-nav-item-demo-expanded": dynamic(
+    () =>
+      import("./demos/ui/sidebar-nav-item-demo").then((mod) => ({
+        default: mod.SidebarNavItemDemoExpanded,
+      })),
+    { ssr: false },
+  ),
+  "sidebar-nav-item-demo-hovered": dynamic(
+    () =>
+      import("./demos/ui/sidebar-nav-item-demo").then((mod) => ({
+        default: mod.SidebarNavItemDemoHovered,
+      })),
+    { ssr: false },
+  ),
+  "sidebar-nav-item-demo-selected": dynamic(
+    () =>
+      import("./demos/ui/sidebar-nav-item-demo").then((mod) => ({
+        default: mod.SidebarNavItemDemoSelected,
+      })),
+    { ssr: false },
+  ),
+  "sidebar-nav-item-demo-focus-visible": dynamic(
+    () =>
+      import("./demos/ui/sidebar-nav-item-demo").then((mod) => ({
+        default: mod.SidebarNavItemDemoFocusVisible,
+      })),
+    { ssr: false },
+  ),
+  "sidebar-nav-item-demo-with-count": dynamic(
+    () =>
+      import("./demos/ui/sidebar-nav-item-demo").then((mod) => ({
+        default: mod.SidebarNavItemDemoWithCount,
+      })),
+    { ssr: false },
+  ),
+  "sidebar-nav-item-demo-project-count": dynamic(
+    () =>
+      import("./demos/ui/sidebar-nav-item-demo").then((mod) => ({
+        default: mod.SidebarNavItemDemoProjectCount,
       })),
     { ssr: false },
   ),

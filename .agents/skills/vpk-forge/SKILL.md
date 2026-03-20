@@ -2,6 +2,7 @@
 name: vpk-forge
 description: Create, deploy, install, and troubleshoot Atlassian Forge apps with bundled helper scripts and current Forge documentation. Use when Codex needs to scaffold a Forge app, choose a Forge template or module, configure Forge CLI prerequisites, discover developer spaces, deploy or install on Jira or Confluence, or debug Forge create or deploy failures.
 ---
+
 # VPK Forge
 
 ## Apply These Rules
@@ -30,24 +31,30 @@ description: Create, deploy, install, and troubleshoot Atlassian Forge apps with
 
 2. Discover developer spaces.
    Run bundled scripts from this skill directory. Use `python3` on macOS if `python` is unavailable.
+
    ```bash
    python3 -m scripts.get_dev_spaces --json
    ```
+
    Ask the user to choose if multiple spaces are returned.
 
 3. Choose and validate the template.
    Use `list-forge-modules` plus `search-forge-docs` to map the requested module to a template.
    Validate the template before creation.
+
    ```bash
    python3 -m scripts.list_templates --validate <template>
    ```
+
    List all templates when the user has not picked one yet.
+
    ```bash
    python3 -m scripts.list_templates --list
    ```
 
 4. Create the app with `forge create`.
    Remember that `--directory` is the parent directory, not the final app directory.
+
    ```bash
    python3 -m scripts.create_forge_app \
      --template <template> \
@@ -61,26 +68,32 @@ description: Create, deploy, install, and troubleshoot Atlassian Forge apps with
 
 6. Enable theming for Custom UI.
    Add `view.theme.enable()` before rendering so Forge injects the current Atlassian theme tokens into the iframe.
+
    ```js
    import { view } from "@forge/bridge";
 
    view.theme.enable();
    ```
+
    Do not add this for UI Kit apps.
 
 7. Deploy and install.
    Ask for the Atlassian site URL before install.
+
    ```bash
    python3 -m scripts.deploy_forge_app \
      --app-dir <app-directory> \
      --site <site-url> \
      --product <jira|confluence>
    ```
+
    Manual fallback:
+
    ```bash
    forge deploy --non-interactive -e development
    forge install --site <site-url> --product <Jira|Confluence|Bitbucket> --environment development --confirm-scopes --non-interactive
    ```
+
    Add `--upgrade` when scopes changed on an existing install.
 
 8. Handle failures explicitly.
@@ -91,12 +104,12 @@ description: Create, deploy, install, and troubleshoot Atlassian Forge apps with
 
 ## Scripts
 
-| Script | Purpose |
-|--------|--------|
-- `scripts/get_dev_spaces.py` | Discover developer spaces via GraphQL API. |
-- `scripts/create_forge_app.py` | Create an app after template validation and developer space selection. |
-- `scripts/list_templates.py` | Fetch, list, and validate official Forge templates. |
-- `scripts/deploy_forge_app.py` | Run prerequisite checks, install dependencies, deploy, and install. |
+| Script                          | Purpose                                                                |
+| ------------------------------- | ---------------------------------------------------------------------- |
+| - `scripts/get_dev_spaces.py`   | Discover developer spaces via GraphQL API.                             |
+| - `scripts/create_forge_app.py` | Create an app after template validation and developer space selection. |
+| - `scripts/list_templates.py`   | Fetch, list, and validate official Forge templates.                    |
+| - `scripts/deploy_forge_app.py` | Run prerequisite checks, install dependencies, deploy, and install.    |
 
 ## Troubleshooting
 

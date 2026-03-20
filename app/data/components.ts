@@ -234,6 +234,7 @@ export const UI_COMPONENTS: ComponentEntry[] = [
 	uiComponent("separator"),
 	uiComponent("sheet"),
 	uiComponent("sidebar"),
+	uiComponent("sidebar-nav-item", "Sidebar Nav Item"),
 	uiComponent("skeleton"),
 	uiComponent("skill-card", "Skill Card"),
 	uiComponent("skill-tag", "Skill Tag"),
