@@ -1,6 +1,13 @@
 "use client";
 
-import { formatDistanceToNowStrict } from "date-fns";
+import * as React from "react";
+import {
+	differenceInCalendarDays,
+	formatDistanceToNowStrict,
+	isToday,
+	isYesterday,
+	parseISO,
+} from "date-fns";
 import AddIcon from "@atlaskit/icon/core/add";
 import AiAgentIcon from "@atlaskit/icon/core/ai-agent";
 import ChevronRightIcon from "@atlaskit/icon/core/chevron-right";
@@ -52,6 +59,72 @@ interface FutureChatSidebarProps {
 	threads: ReadonlyArray<FutureChatThread>;
 	threadsLoaded?: boolean;
 	topOffset?: boolean;
+}
+
+type FutureChatThreadSectionLabel =
+	| "Today"
+	| "Yesterday"
+	| "Previous 7 Days"
+	| "Previous 30 Days"
+	| "Older";
+
+const FUTURE_CHAT_THREAD_SECTION_ORDER: readonly FutureChatThreadSectionLabel[] = [
+	"Today",
+	"Yesterday",
+	"Previous 7 Days",
+	"Previous 30 Days",
+	"Older",
+];
+
+function getFutureChatThreadSectionLabel(updatedAt: string): FutureChatThreadSectionLabel {
+	const updatedAtDate = parseISO(updatedAt);
+	if (Number.isNaN(updatedAtDate.getTime())) {
+		return "Older";
+	}
+
+	if (isToday(updatedAtDate)) {
+		return "Today";
+	}
+
+	if (isYesterday(updatedAtDate)) {
+		return "Yesterday";
+	}
+
+	const dayDifference = differenceInCalendarDays(new Date(), updatedAtDate);
+	if (dayDifference <= 7) {
+		return "Previous 7 Days";
+	}
+
+	if (dayDifference <= 30) {
+		return "Previous 30 Days";
+	}
+
+	return "Older";
+}
+
+function groupFutureChatThreadsByDate(
+	threads: ReadonlyArray<FutureChatThread>,
+): ReadonlyArray<{
+	label: FutureChatThreadSectionLabel;
+	threads: ReadonlyArray<FutureChatThread>;
+}> {
+	const groupedThreads = new Map<
+		FutureChatThreadSectionLabel,
+		FutureChatThread[]
+	>(
+		FUTURE_CHAT_THREAD_SECTION_ORDER.map((label) => [label, []]),
+	);
+
+	for (const thread of threads) {
+		groupedThreads.get(getFutureChatThreadSectionLabel(thread.updatedAt))?.push(thread);
+	}
+
+	return FUTURE_CHAT_THREAD_SECTION_ORDER
+		.map((label) => ({
+			label,
+			threads: groupedThreads.get(label) ?? [],
+		}))
+		.filter((section) => section.threads.length > 0);
 }
 
 function FutureChatSidebarNavItem({
@@ -114,10 +187,7 @@ function FutureChatSidebarThreadItem({
 	return (
 		<SidebarMenuItem>
 			<SidebarMenuButton
-				className={cn(
-					"h-auto min-h-9 rounded-lg py-2 pl-3 transition-[padding] duration-150 ease-out group-hover/menu-item:bg-sidebar-accent group-hover/menu-item:text-sidebar-accent-foreground group-hover/menu-item:pr-10",
-					showRunIndicator && "pr-10",
-				)}
+				className="h-auto min-h-9 rounded-lg p-1.5 group-has-data-[sidebar=menu-action]/menu-item:pr-1.5 group-hover/menu-item:bg-sidebar-accent group-hover/menu-item:text-sidebar-accent-foreground"
 				isActive={isActive}
 				onClick={() => {
 					setOpenMobile(false);
@@ -211,6 +281,55 @@ function FutureChatSidebarThreadItem({
 	);
 }
 
+function FutureChatSidebarThreadSection({
+	activeThreadId,
+	isGeneratingTitle,
+	isFirst = false,
+	label,
+	onCancelThreadRun,
+	onDeleteThread,
+	onSelectThread,
+	pendingTitleThreadId,
+	threads,
+}: Readonly<{
+	activeThreadId: string | null;
+	isGeneratingTitle: boolean;
+	isFirst?: boolean;
+	label: string;
+	onCancelThreadRun: (threadId: string) => Promise<void>;
+	onDeleteThread: (threadId: string) => Promise<void>;
+	onSelectThread: (threadId: string) => Promise<void>;
+	pendingTitleThreadId: string | null;
+	threads: ReadonlyArray<FutureChatThread>;
+}>) {
+	return (
+		<section aria-label={label}>
+			<div
+				className={cn(
+					"px-1.5 py-2 text-xs font-bold leading-4 text-text-subtlest",
+					!isFirst && "pt-4",
+				)}
+			>
+				{label}
+			</div>
+			<SidebarMenu>
+				{threads.map((thread) => (
+					<FutureChatSidebarThreadItem
+						isActive={thread.id === activeThreadId}
+						isPendingTitle={isGeneratingTitle && pendingTitleThreadId === thread.id}
+						onCancelThreadRun={onCancelThreadRun}
+						key={thread.id}
+						onDeleteThread={onDeleteThread}
+						onSelectThread={onSelectThread}
+						runStatus={thread.activeRun?.status ?? null}
+						thread={thread}
+					/>
+				))}
+			</SidebarMenu>
+		</section>
+	);
+}
+
 export function FutureChatSidebar({
 	activeThreadId,
 	onCancelThreadRun,
@@ -227,6 +346,7 @@ export function FutureChatSidebar({
 	topOffset = false,
 }: Readonly<FutureChatSidebarProps>) {
 	const isNewChatSelected = activeThreadId === null;
+	const threadSections = React.useMemo(() => groupFutureChatThreadsByDate(threads), [threads]);
 
 	return (
 		<Sidebar
@@ -241,7 +361,7 @@ export function FutureChatSidebar({
 			style={hoverOpen ? { left: 0, zIndex: 50, boxShadow: token("elevation.shadow.overlay") } : { zIndex: 50 }}
 			variant="inset"
 		>
-			<SidebarContent className="bg-sidebar">
+			<SidebarContent className="bg-sidebar gap-3">
 				{/* Top navigation items */}
 				<SidebarGroup className="p-0">
 					<SidebarGroupContent>
@@ -322,11 +442,11 @@ export function FutureChatSidebar({
 				) : (
 					<SidebarGroup className="p-0">
 						<SidebarGroupContent>
-							<SidebarMenu>
-								{isGeneratingTitle && threads.length === 0 ? (
+							{isGeneratingTitle && threads.length === 0 ? (
+								<SidebarMenu>
 									<SidebarMenuItem>
 										<SidebarMenuButton
-											className="h-auto min-h-9 rounded-lg py-2 pl-3"
+											className="h-auto min-h-9 rounded-lg p-1.5"
 											size="lg"
 											type="button"
 											aria-label="Generating chat title"
@@ -344,20 +464,22 @@ export function FutureChatSidebar({
 											</div>
 										</SidebarMenuButton>
 									</SidebarMenuItem>
-								) : null}
-								{threads.map((thread) => (
-									<FutureChatSidebarThreadItem
-										isActive={thread.id === activeThreadId}
-										isPendingTitle={isGeneratingTitle && pendingTitleThreadId === thread.id}
-										onCancelThreadRun={onCancelThreadRun}
-										key={thread.id}
-										onDeleteThread={onDeleteThread}
-										onSelectThread={onSelectThread}
-										runStatus={thread.activeRun?.status ?? null}
-										thread={thread}
-									/>
-								))}
-							</SidebarMenu>
+								</SidebarMenu>
+							) : null}
+							{threadSections.map((section, index) => (
+								<FutureChatSidebarThreadSection
+									activeThreadId={activeThreadId}
+									isFirst={index === 0}
+									isGeneratingTitle={isGeneratingTitle}
+									key={section.label}
+									label={section.label}
+									onCancelThreadRun={onCancelThreadRun}
+									onDeleteThread={onDeleteThread}
+									onSelectThread={onSelectThread}
+									pendingTitleThreadId={pendingTitleThreadId}
+									threads={section.threads}
+								/>
+							))}
 						</SidebarGroupContent>
 					</SidebarGroup>
 				)}

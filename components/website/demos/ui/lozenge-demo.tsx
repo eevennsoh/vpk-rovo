@@ -86,7 +86,7 @@ export function LozengeDemoSpacing() {
 				size="spacious"
 				icon={
 					<Icon
-						render={<ImageIcon label="" />}
+						render={<ImageIcon label="" size="small" />}
 						aria-hidden
 					/>
 				}
@@ -125,7 +125,7 @@ export function LozengeDemoTrailingMetric() {
 				metric="0.3"
 				icon={
 					<Icon
-						render={<ArrowDownRightIcon label="" />}
+						render={<ArrowDownRightIcon label="" size="small" />}
 						aria-hidden
 					/>
 				}

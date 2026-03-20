@@ -1,4 +1,9 @@
-import type { ReactNode } from "react"
+import {
+	cloneElement,
+	isValidElement,
+	type ReactElement,
+	type ReactNode,
+} from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 import ChevronDownIcon from "@atlaskit/icon/core/chevron-down"
 
@@ -142,6 +147,28 @@ const lozengeTriggerVariants = cva(
 type LozengeVariant = NonNullable<VariantProps<typeof lozengeVariants>["variant"]>
 type LozengeSize = NonNullable<VariantProps<typeof lozengeVariants>["size"]>
 
+function renderLozengeIcon(icon: ReactNode) {
+	if (!isValidElement(icon)) {
+		return icon
+	}
+
+	const iconElement = icon as ReactElement<{ className?: string }>
+
+	if (iconElement.type === Icon) {
+		return cloneElement(iconElement as ReactElement<React.ComponentProps<typeof Icon>>, {
+			className: cn("leading-none", iconElement.props.className),
+		})
+	}
+
+	return (
+		<Icon
+			render={iconElement}
+			aria-hidden
+			className="leading-none"
+		/>
+	)
+}
+
 function LozengeContent({
 	variant,
 	size,
@@ -167,9 +194,12 @@ function LozengeContent({
 			{icon != null ? (
 				<span
 					data-slot="lozenge-leading-icon"
-					className={cn("shrink-0", lozengeLeadingIconToneClasses[variant])}
+					className={cn(
+						"inline-flex shrink-0 self-center items-center justify-center leading-none",
+						lozengeLeadingIconToneClasses[variant]
+					)}
 				>
-					{icon}
+					{renderLozengeIcon(icon)}
 				</span>
 			) : null}
 			{children != null ? <span className="truncate">{children}</span> : null}

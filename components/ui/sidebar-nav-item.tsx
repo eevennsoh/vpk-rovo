@@ -107,7 +107,7 @@ function SidebarNavItem({
 
 			<button
 				type={type}
-				className="peer/sidebar-nav-item-button flex min-w-0 flex-1 items-center gap-0.5 rounded-md text-left outline-none"
+				className="peer/sidebar-nav-item-button flex min-w-0 flex-1 items-center gap-1 rounded-md text-left outline-none"
 				onClick={onClick}
 				disabled={disabled}
 				aria-current={isSelected ? "page" : undefined}
