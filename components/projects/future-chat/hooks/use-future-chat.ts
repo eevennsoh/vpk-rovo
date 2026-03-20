@@ -13,7 +13,7 @@ import {
 	useRef,
 	useState,
 } from "react";
-import type { QueuedPromptItem } from "@/app/contexts";
+import { useFutureChatQueue } from "@/app/future-chat/future-chat-queue-provider";
 import { useLatestRef } from "@/lib/use-latest-ref";
 import { toast } from "sonner";
 import {
@@ -62,6 +62,10 @@ import {
 	buildFutureChatQueuedPromptsFromTodoQueue,
 	normalizeFutureChatTodoQueuePayload,
 } from "@/components/projects/future-chat/lib/future-chat-todo-queue";
+import {
+	hasQueuedFutureChatFollowUp,
+	isFutureChatThreadBusy,
+} from "@/components/projects/future-chat/lib/future-chat-queue-gate";
 import type { FutureChatSmartWidthClass } from "@/components/projects/future-chat/lib/future-chat-smart-generation-layout";
 import {
 	isFutureChatDelegationAbortError,
@@ -100,6 +104,9 @@ import {
 	type FutureChatActiveRun,
 	type FutureChatDocument,
 	type FutureChatDocumentKind,
+	type FutureChatQueuedAction,
+	type FutureChatQueuedDelegationAction,
+	type FutureChatQueuedPromptAction,
 	type FutureChatRunStatus,
 	type FutureChatThread,
 	type FutureChatVisibility,
@@ -151,6 +158,14 @@ function deriveThreadTitle(promptText: string): string {
 		.map((line) => line.trim())
 		.find((line) => line.length > 0);
 	return firstLine?.slice(0, 80) || "New chat";
+}
+
+function createFutureChatQueueItemId(): string {
+	if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+		return crypto.randomUUID();
+	}
+
+	return createId("future-chat-queue");
 }
 
 function upsertDocumentRecord(
@@ -264,6 +279,36 @@ function replaceFutureChatHistoryPath(path: string): void {
 
 const EXPLICIT_CANCEL_DEBOUNCE_MS = 750;
 const ACTIVE_TURN_STOP_TIMEOUT_MS = 1_200;
+const SEND_SETTLE_TIMEOUT_MS = 3_000;
+
+/**
+ * Wait for the AI SDK's internal `makeRequest` to fully settle.
+ *
+ * The SDK's `AbstractChat.makeRequest` uses a shared `activeResponse` field
+ * that is accessed in its `finally` block **without null-checking**.  When a
+ * new `sendMessage` call starts while a previous `makeRequest` is still
+ * processing its catch/finally blocks, the two calls race on that field and
+ * the losing call's finally block throws:
+ *
+ *     TypeError: Cannot read properties of undefined (reading 'state')
+ *
+ * Callers should `await` this helper right before every `sendMessage` call to
+ * avoid triggering the race.
+ */
+async function waitForChatSendSettled(
+	statusRef: React.RefObject<ChatStatus>,
+): Promise<void> {
+	const settleStart = Date.now();
+	while (
+		statusRef.current === "submitted"
+		|| statusRef.current === "streaming"
+	) {
+		if (Date.now() - settleStart > SEND_SETTLE_TIMEOUT_MS) {
+			throw new Error("Timed out waiting for previous turn to settle before sending.");
+		}
+		await waitForFutureChat(10);
+	}
+}
 
 function areFutureChatMessagesEqual(
 	left: ReadonlyArray<RovoUIMessage>,
@@ -490,7 +535,9 @@ export interface FutureChatHookResult {
 	resetPlanMode: () => void;
 	toggleVoiceMode: () => void;
 	pendingArtifactResult: FutureChatPendingArtifactResult | null;
-	queuedPrompts: ReadonlyArray<QueuedPromptItem>;
+	queuedPrompts: ReadonlyArray<FutureChatQueuedAction>;
+	shouldSuppressLatestAssistantSuggestions: boolean;
+	shouldQueueNextSubmission: boolean;
 	hideArtifactPane: () => void;
 	streamingArtifact: FutureChatStreamingArtifact | null;
 	streamingArtifactMessageId: string | null;
@@ -575,13 +622,12 @@ export function useFutureChat({
 	const [votes, setVotes] = useState<Record<string, VoteValue>>({});
 	const [inputError, setInputError] = useState<string | null>(null);
 	const [isLoadingThread, setIsLoadingThread] = useState(() => initialThreadId !== null);
-	const [queuedPromptsByThreadId, setQueuedPromptsByThreadId] = useState<
-		Record<string, QueuedPromptItem[]>
-	>({});
-	const [activeQueuedPrompt, setActiveQueuedPrompt] = useState<{
-		id: string;
-		threadId: string;
-	} | null>(null);
+	const [hasActiveDispatch, setHasActiveDispatch] = useState(false);
+	const queueProcessorRunningRef = useRef(false);
+	const processQueueRef = useRef<() => Promise<void>>(async () => {});
+	const kickQueue = useCallback(() => {
+		void processQueueRef.current();
+	}, []);
 	const [isVoiceMode, setIsVoiceMode] = useState(false);
 	const [realtimeMessages, setRealtimeMessages] = useState<RovoUIMessage[]>([]);
 	const [delegationTurnStatus, setDelegationTurnStatus] =
@@ -594,9 +640,18 @@ export function useFutureChat({
 	const setVoiceMode = useCallback((next: boolean) => setIsVoiceMode(next), []);
 	const [isPlanMode, setIsPlanMode] = useState(false);
 	const [attachedRunStatus, setAttachedRunStatus] = useState<FutureChatRunStatus | null>(null);
+	const attachedRunStatusRef = useRef<FutureChatRunStatus | null>(null);
 	const [hasObservedTurnComplete, setHasObservedTurnComplete] = useState(false);
 	const [isGeneratingTitle, setIsGeneratingTitle] = useState(false);
 	const [pendingTitleThreadId, setPendingTitleThreadId] = useState<string | null>(null);
+	const {
+		appendQueuedActionsForThread,
+		clearQueuedActionsForThread,
+		enqueueQueuedAction,
+		queuedActionsByThreadId,
+		removeQueuedAction,
+		shiftNextQueuedActionForThread,
+	} = useFutureChatQueue();
 	const hasObservedTurnCompleteRef = useRef(false);
 	const pendingTitleThreadIdRef = useRef<string | null>(null);
 	const pendingTitleMessageRef = useRef<string | null>(null);
@@ -697,8 +752,8 @@ export function useFutureChat({
 	]);
 	const runtimeThreadId = activeThreadId ?? draftThreadId;
 	const queuedPrompts = useMemo(
-		() => queuedPromptsByThreadId[runtimeThreadId] ?? [],
-		[queuedPromptsByThreadId, runtimeThreadId],
+		() => queuedActionsByThreadId[runtimeThreadId] ?? [],
+		[queuedActionsByThreadId, runtimeThreadId],
 	);
 	const lastPersistedKeyRef = useRef<string>("");
 	const isHydratingThreadRef = useRef(false);
@@ -730,7 +785,6 @@ export function useFutureChat({
 	const pendingThreadCreationRef = useRef<Promise<string> | null>(null);
 	const deletedThreadIdsRef = useRef<Set<string>>(new Set());
 	const requestedSuggestionMessageIdsRef = useRef<Set<string>>(new Set());
-
 	const syncPlanModeFromBackend = useCallback(async () => {
 		const requestId = planModeSyncRequestIdRef.current + 1;
 		planModeSyncRequestIdRef.current = requestId;
@@ -738,47 +792,17 @@ export function useFutureChat({
 		try {
 			const mode = await fetchFutureChatAgentMode(fetch);
 			if (
-				mode === null
-				|| planModeSyncRequestIdRef.current !== requestId
+				mode === null ||
+				planModeSyncRequestIdRef.current !== requestId
 			) {
 				return null;
 			}
 
-			setIsPlanMode(mode === "plan");
+			setIsPlanMode(mode === "ask");
 			return mode;
 		} catch {
 			return null;
 		}
-	}, []);
-
-	const appendQueuedPromptsForThread = useCallback(
-		(threadId: string, nextPrompts: ReadonlyArray<QueuedPromptItem>) => {
-			if (!threadId || nextPrompts.length === 0) {
-				return;
-			}
-
-			setQueuedPromptsByThreadId((previousState) => ({
-				...previousState,
-				[threadId]: [...(previousState[threadId] ?? []), ...nextPrompts],
-			}));
-		},
-		[],
-	);
-
-	const clearQueuedPromptsForThread = useCallback((threadId: string) => {
-		if (!threadId) {
-			return;
-		}
-
-		setQueuedPromptsByThreadId((previousState) => {
-			if (!(threadId in previousState)) {
-				return previousState;
-			}
-
-			const nextState = { ...previousState };
-			delete nextState[threadId];
-			return nextState;
-		});
 	}, []);
 
 	const removeQueuedPrompt = useCallback(
@@ -787,27 +811,9 @@ export function useFutureChat({
 				return;
 			}
 
-			setQueuedPromptsByThreadId((previousState) => {
-				const nextQueuedPrompts = (previousState[runtimeThreadId] ?? []).filter(
-					(prompt) => prompt.id !== id,
-				);
-				if (nextQueuedPrompts.length === (previousState[runtimeThreadId] ?? []).length) {
-					return previousState;
-				}
-
-				if (nextQueuedPrompts.length === 0) {
-					const nextState = { ...previousState };
-					delete nextState[runtimeThreadId];
-					return nextState;
-				}
-
-				return {
-					...previousState,
-					[runtimeThreadId]: nextQueuedPrompts,
-				};
-			});
+			removeQueuedAction(runtimeThreadId, id);
 		},
-		[runtimeThreadId],
+		[removeQueuedAction, runtimeThreadId],
 	);
 
 	useEffect(() => {
@@ -1331,13 +1337,15 @@ export function useFutureChat({
 						break;
 					}
 
-					appendQueuedPromptsForThread(
+					appendQueuedActionsForThread(
 						threadId,
 						buildFutureChatQueuedPromptsFromTodoQueue(
 							normalizedTodoQueuePayload,
-							() => createId("future-chat-queue"),
+							threadId,
+							createFutureChatQueueItemId,
 						),
 					);
+					kickQueue();
 					break;
 				}
 
@@ -1347,16 +1355,17 @@ export function useFutureChat({
 					});
 					break;
 
-				case "data-turn-complete": {
-					markObservedTurnComplete();
-					setAttachedRunStatus(null);
-					const threadId = activeThreadIdRef.current;
-					if (threadId) {
-						setLocalThreadActiveRun(threadId, null);
+					case "data-turn-complete": {
+						markObservedTurnComplete();
+						setAttachedRunStatus(null);
+						const threadId = activeThreadIdRef.current;
+						if (threadId) {
+							setLocalThreadActiveRun(threadId, null);
+						}
+						void syncPlanModeFromBackend();
+						kickQueue();
+						break;
 					}
-					void syncPlanModeFromBackend();
-					break;
-				}
 
 				default:
 					break;
@@ -1366,8 +1375,9 @@ export function useFutureChat({
 			clearQueuedStreamingArtifactDelta,
 			flushQueuedStreamingArtifactDeltaNow,
 			hydratePersistedArtifact,
+			kickQueue,
 			markObservedTurnComplete,
-			appendQueuedPromptsForThread,
+			appendQueuedActionsForThread,
 			persistActiveDocumentSelection,
 			queueStreamingArtifactDelta,
 			setLocalThreadActiveRun,
@@ -1386,7 +1396,7 @@ export function useFutureChat({
 	} = useChat<RovoUIMessage>({
 		transport,
 		onData: handleFutureChatDataPart,
-		onError: (error) => {
+			onError: (error) => {
 			const streamingDocumentId = streamingArtifactRef.current?.documentId;
 			clearStreamingArtifactState();
 			resetPendingArtifactAssociation();
@@ -1395,12 +1405,13 @@ export function useFutureChat({
 			}
 			setInputError(toFutureChatUserErrorMessage(error));
 		},
-		onFinish: () => {
-			if (activeThreadIdRef.current) {
-				setLocalThreadActiveRun(activeThreadIdRef.current, null);
-			}
-			setAttachedRunStatus(null);
-		},
+			onFinish: () => {
+				if (activeThreadIdRef.current) {
+					setLocalThreadActiveRun(activeThreadIdRef.current, null);
+				}
+				setAttachedRunStatus(null);
+				kickQueue();
+			},
 	});
 
 	const handleAttachedRunChunk = useCallback(
@@ -1440,29 +1451,23 @@ export function useFutureChat({
 		[attachedRunStatus, handleFutureChatDataPart],
 	);
 
-	useEffect(() => {
-		rovodevMessagesRef.current = rovodevMessages;
+	const normalizedRovodevMessages = useMemo(() => {
+		return normalizeRovodevMessagesForMerge(
+			rovodevMessages,
+			rovodevMessagesRef.current,
+		).messages;
 	}, [rovodevMessages]);
 
 	useEffect(() => {
-		const normalizedMessages = normalizeRovodevMessagesForMerge(
-			rovodevMessages,
-			rovodevMessagesRef.current,
-		);
-		if (!normalizedMessages.changed) {
-			return;
-		}
-
-		rovodevMessagesRef.current = normalizedMessages.messages;
-		setRovodevMessages(normalizedMessages.messages);
-	}, [rovodevMessages, setRovodevMessages]);
+		rovodevMessagesRef.current = normalizedRovodevMessages;
+	}, [normalizedRovodevMessages]);
 
 	const messages = useMemo(() => {
 		return mergeFutureChatMessages({
 			realtimeMessages,
-			rovodevMessages,
+			rovodevMessages: normalizedRovodevMessages,
 		});
-	}, [realtimeMessages, rovodevMessages]);
+	}, [normalizedRovodevMessages, realtimeMessages]);
 	const latestThinkingStatusLabel = useMemo(() => {
 		if (!backgroundDelegationMessageId) {
 			return null;
@@ -1514,6 +1519,22 @@ export function useFutureChat({
 					? "submitted"
 					: delegationTurnStatus;
 	const isStreaming = status === "submitted" || status === "streaming";
+	const isThreadBusy = useMemo(() => {
+		return isFutureChatThreadBusy({
+			activeRunStatus,
+			attachedRunStatus,
+			status,
+		});
+	}, [activeRunStatus, attachedRunStatus, status]);
+	const shouldQueueNextSubmission = useMemo(() => {
+		return hasActiveDispatch || isThreadBusy || queuedPrompts.length > 0;
+	}, [hasActiveDispatch, isThreadBusy, queuedPrompts.length]);
+	const shouldSuppressLatestAssistantSuggestions = useMemo(() => {
+		return hasQueuedFutureChatFollowUp({
+			hasActiveQueuedAction: hasActiveDispatch,
+			queuedCount: queuedPrompts.length,
+		});
+	}, [hasActiveDispatch, queuedPrompts.length]);
 
 	const resolveFallbackTitle = useCallback(
 		(): boolean => {
@@ -1580,11 +1601,19 @@ export function useFutureChat({
 	}, [status]);
 
 	useEffect(() => {
+		attachedRunStatusRef.current = attachedRunStatus;
+	}, [attachedRunStatus]);
+
+	useEffect(() => {
 		if (isStreaming) {
 			return;
 		}
 
-		const latestAssistantMessage = [...rovodevMessages]
+		if (shouldSuppressLatestAssistantSuggestions) {
+			return;
+		}
+
+		const latestAssistantMessage = [...normalizedRovodevMessages]
 			.reverse()
 			.find((message) => {
 				return (
@@ -1603,7 +1632,7 @@ export function useFutureChat({
 		}
 
 		const suggestionRequest = buildSuggestedQuestionsRequest(
-			rovodevMessages,
+			normalizedRovodevMessages,
 			latestAssistantMessage.id,
 		);
 		if (!suggestionRequest) {
@@ -1643,12 +1672,18 @@ export function useFutureChat({
 					error,
 				);
 			});
-	}, [isStreaming, rovodevMessages, setRovodevMessages]);
+	}, [
+		isStreaming,
+		normalizedRovodevMessages,
+		setRovodevMessages,
+		shouldSuppressLatestAssistantSuggestions,
+	]);
 
 	useEffect(() => {
 		if (!pendingArtifactAssociationRef.current) return;
 		if (streamingArtifactMessageId) return;
-		const lastMessage = rovodevMessages[rovodevMessages.length - 1];
+		const lastMessage =
+			normalizedRovodevMessages[normalizedRovodevMessages.length - 1];
 		if (lastMessage?.role === "assistant") {
 			pendingArtifactAssociationRef.current = false;
 			setStreamingArtifactMessageId(lastMessage.id);
@@ -1665,14 +1700,14 @@ export function useFutureChat({
 				});
 			}
 		}
-	}, [rovodevMessages, streamingArtifactMessageId]);
+	}, [normalizedRovodevMessages, streamingArtifactMessageId]);
 
 	useEffect(() => {
 		if (!streamingArtifactMessageId) {
 			return;
 		}
 
-		const associatedMessage = rovodevMessages.find(
+		const associatedMessage = normalizedRovodevMessages.find(
 			(message) => message.id === streamingArtifactMessageId && message.role === "assistant",
 		);
 		if (!associatedMessage || !getMessageArtifactResult(associatedMessage)) {
@@ -1680,7 +1715,7 @@ export function useFutureChat({
 		}
 
 		setPendingArtifactResult(null);
-	}, [rovodevMessages, streamingArtifactMessageId]);
+	}, [normalizedRovodevMessages, streamingArtifactMessageId]);
 
 	useEffect(() => {
 		const currentStreamingArtifact = streamingArtifact;
@@ -1790,6 +1825,8 @@ export function useFutureChat({
 			clearStreamingArtifactState();
 			resetPendingArtifactAssociation();
 			resetObservedTurnComplete();
+			queueProcessorRunningRef.current = false;
+			setHasActiveDispatch(false);
 			setAttachedRunStatus(thread.activeRun?.status ?? null);
 			setThreadVisibility(thread.visibility);
 			setDocuments(nextDocuments);
@@ -1944,7 +1981,6 @@ export function useFutureChat({
 	);
 
 	const resetToBlankChatState = useCallback((nextDraftId: string) => {
-		const previousThreadId = activeThreadIdRef.current ?? draftThreadId;
 		isHydratingThreadRef.current = true;
 		pendingThreadCreationRef.current = null;
 		setDraftThreadId(nextDraftId);
@@ -1958,15 +1994,15 @@ export function useFutureChat({
 		runSubscriptionAbortControllerRef.current?.abort();
 		runSubscriptionAbortControllerRef.current = null;
 		runSubscriptionThreadIdRef.current = null;
-		setAttachedRunStatus(null);
-		resetObservedTurnComplete();
-		clearDirectDelegationState();
+			setAttachedRunStatus(null);
+			resetObservedTurnComplete();
+			queueProcessorRunningRef.current = false;
+			setHasActiveDispatch(false);
+			clearDirectDelegationState();
 		clearStreamingArtifactState();
 		resetPendingArtifactAssociation();
 		setDocuments([]);
 		clearArtifactState();
-		clearQueuedPromptsForThread(previousThreadId);
-		setActiveQueuedPrompt(null);
 		setVotes({});
 		setThreadVisibility("private");
 		setEditingMessageId(null);
@@ -1982,7 +2018,7 @@ export function useFutureChat({
 		window.setTimeout(() => {
 			isHydratingThreadRef.current = false;
 		}, 0);
-	}, [clearDirectDelegationState, clearQueuedPromptsForThread, clearStreamingArtifactState, draftThreadId, replaceRealtimeMessagesState, resetObservedTurnComplete, resetPendingArtifactAssociation, setRovodevMessages]);
+	}, [clearDirectDelegationState, clearStreamingArtifactState, replaceRealtimeMessagesState, resetObservedTurnComplete, resetPendingArtifactAssociation, setRovodevMessages]);
 
 	const leaveActiveThreadForBackground = useCallback(async () => {
 		const threadId = activeThreadIdRef.current;
@@ -2343,7 +2379,7 @@ export function useFutureChat({
 		}
 	}, [setLocalThreadActiveRun, stopUseChat, useChatStatus]);
 
-	const submitPrompt = useCallback(
+	const dispatchPromptNow = useCallback(
 		async ({
 			text,
 			files,
@@ -2393,6 +2429,7 @@ export function useFutureChat({
 				}
 
 				await releaseCompletedUseChatTurnIfNeeded();
+				await waitForChatSendSettled(statusRef);
 
 				const resolvedArtifactContext = resolveActiveArtifactContext(
 					activeDocument, artifactDraftContent, activeDocumentContent, streamingArtifact,
@@ -2451,70 +2488,86 @@ export function useFutureChat({
 		],
 	);
 
-	useEffect(() => {
-		if (!activeQueuedPrompt) {
-			return;
-		}
-
-		if (isStreaming || !hasObservedTurnComplete) {
-			return;
-		}
-
-		setActiveQueuedPrompt((currentPrompt) => {
-			if (
-				currentPrompt?.id !== activeQueuedPrompt.id ||
-				currentPrompt?.threadId !== activeQueuedPrompt.threadId
-			) {
-				return currentPrompt;
-			}
-
-			return null;
-		});
-	}, [activeQueuedPrompt, hasObservedTurnComplete, isStreaming]);
-
-	useEffect(() => {
-		if (activeQueuedPrompt || isStreaming || queuedPrompts.length === 0) {
-			return;
-		}
-
-		const nextPrompt = queuedPrompts[0];
-		const dispatchThreadId = runtimeThreadId;
-		setQueuedPromptsByThreadId((previousState) => {
-			const nextQueuedPrompts = (previousState[dispatchThreadId] ?? []).slice(1);
-			if (nextQueuedPrompts.length === 0) {
-				const nextState = { ...previousState };
-				delete nextState[dispatchThreadId];
-				return nextState;
-			}
-
-			return {
-				...previousState,
-				[dispatchThreadId]: nextQueuedPrompts,
+	const enqueuePromptAction = useCallback(
+		({
+			contextDescription,
+			files,
+			text,
+			threadId,
+		}: {
+			contextDescription?: string;
+			files: ReadonlyArray<FileUIPart>;
+			text: string;
+			threadId: string;
+		}) => {
+			const queuedAction: FutureChatQueuedPromptAction = {
+				id: createFutureChatQueueItemId(),
+				threadId,
+				text,
+				createdAt: Date.now(),
+				kind: "prompt",
+				files: [...files],
+				contextDescription,
 			};
-		});
-		setActiveQueuedPrompt({
-			id: nextPrompt.id,
-			threadId: dispatchThreadId,
-		});
+			enqueueQueuedAction(queuedAction);
+		},
+		[enqueueQueuedAction],
+	);
 
-		void submitPrompt({
-			text: nextPrompt.text,
-			files: [],
-			contextDescription: nextPrompt.options?.contextDescription,
-		}).catch((error) => {
-			console.error("[FutureChat] Failed to send queued prompt:", error);
-			setActiveQueuedPrompt((currentPrompt) => {
-				if (
-					currentPrompt?.id !== nextPrompt.id ||
-					currentPrompt?.threadId !== dispatchThreadId
-				) {
-					return currentPrompt;
-				}
 
-				return null;
+	const submitPrompt = useCallback(
+		async ({
+			text,
+			files,
+			contextDescription,
+		}: {
+			text: string;
+			files: FileUIPart[];
+			contextDescription?: string;
+		}) => {
+			setInputError(null);
+			const trimmedText = text.trim();
+			if (!trimmedText && files.length === 0) {
+				return;
+			}
+
+			const resolvedThreadId = activeThreadIdRef.current ?? draftThreadId;
+			const shouldEnqueue =
+				queueProcessorRunningRef.current ||
+				isFutureChatThreadBusy({
+					activeRunStatus: currentThread?.activeRun?.status ?? null,
+					attachedRunStatus,
+					status: statusRef.current,
+				}) ||
+				(queuedActionsByThreadId[resolvedThreadId]?.length ?? 0) > 0;
+
+			if (shouldEnqueue) {
+				enqueuePromptAction({
+					contextDescription,
+					files,
+					text: trimmedText,
+					threadId: resolvedThreadId,
+				});
+				kickQueue();
+				return;
+			}
+
+			await dispatchPromptNow({
+				text: trimmedText,
+				files,
+				contextDescription,
 			});
-		});
-	}, [activeQueuedPrompt, isStreaming, queuedPrompts, runtimeThreadId, submitPrompt]);
+		},
+		[
+			attachedRunStatus,
+			currentThread?.activeRun?.status,
+			dispatchPromptNow,
+			draftThreadId,
+			enqueuePromptAction,
+			kickQueue,
+			queuedActionsByThreadId,
+		],
+	);
 
 	const suggestedPrompt = useCallback(
 		async (text: string) => {
@@ -2626,9 +2679,13 @@ export function useFutureChat({
 					tool_call_id: deferredToolCallId,
 					result: {
 						approved,
-						feedback: approved ? undefined : selection.customInstruction?.trim() || undefined,
+						feedback: approved
+							? undefined
+							: selection.customInstruction?.trim() || undefined,
 					},
 				};
+			} else {
+				body.approval = submission;
 			}
 
 			markLocalThreadRunPending(threadId);
@@ -2658,9 +2715,9 @@ export function useFutureChat({
 	);
 
 	const togglePlanMode = useCallback(async () => {
-		const nextMode = isPlanMode ? "default" : "plan";
+		const nextMode = isPlanMode ? "default" : "ask";
 		planModeSyncRequestIdRef.current += 1;
-		setIsPlanMode(nextMode === "plan");
+		setIsPlanMode(nextMode === "ask");
 		try {
 			const response = await fetch(API_ENDPOINTS.AGENT_MODE, {
 				method: "POST",
@@ -2680,7 +2737,7 @@ export function useFutureChat({
 			const payload = await response.json().catch(() => null);
 			const resolvedMode = parseFutureChatAgentMode(payload?.mode);
 			if (resolvedMode) {
-				setIsPlanMode(resolvedMode === "plan");
+				setIsPlanMode(resolvedMode === "ask");
 				return;
 			}
 
@@ -2799,7 +2856,7 @@ export function useFutureChat({
 		[mutateRealtimeMessageContent],
 	);
 
-	const delegateToRovodev = useCallback(
+	const dispatchDelegationNow = useCallback(
 		async (
 			messageId: string,
 			options?: {
@@ -3009,6 +3066,196 @@ export function useFutureChat({
 		],
 	);
 
+	const enqueueDelegationAction = useCallback(
+		(
+			delegatedMessageId: string,
+			options: {
+				contextDescription?: string;
+				conversationSummary?: string;
+				existingRealtimeMessageId?: string | null;
+				intentType?: string;
+				prompt: string;
+				referencedFiles?: string[];
+				threadId: string;
+				urgency?: string;
+			},
+		) => {
+			const queuedAction: FutureChatQueuedDelegationAction = {
+				id: createFutureChatQueueItemId(),
+				threadId: options.threadId,
+				text: options.prompt,
+				createdAt: Date.now(),
+				kind: "delegation",
+				contextDescription: options.contextDescription,
+				conversationSummary: options.conversationSummary,
+				delegatedMessageId,
+				existingRealtimeMessageId: options.existingRealtimeMessageId,
+				intentType: options.intentType,
+				referencedFiles: options.referencedFiles,
+				urgency: options.urgency,
+			};
+			enqueueQueuedAction(queuedAction);
+		},
+		[enqueueQueuedAction],
+	);
+	const processQueue = useCallback(async () => {
+		if (queueProcessorRunningRef.current) {
+			return;
+		}
+		queueProcessorRunningRef.current = true;
+		let dispatched = false;
+
+		try {
+			while (queueProcessorRunningRef.current) {
+				// Wait until the thread is idle before dispatching.
+				// activeRunStatus is tracked via attachedRunStatusRef once
+				// the run subscription is attached, so we pass null here.
+				while (
+					queueProcessorRunningRef.current &&
+					isFutureChatThreadBusy({
+						activeRunStatus: null,
+						attachedRunStatus: attachedRunStatusRef.current,
+						status: statusRef.current,
+					})
+				) {
+					await waitForFutureChat(50);
+				}
+
+				if (!queueProcessorRunningRef.current) {
+					break;
+				}
+
+				const threadId = activeThreadIdRef.current;
+				if (!threadId) {
+					break;
+				}
+
+				const nextAction = shiftNextQueuedActionForThread(threadId);
+				if (!nextAction) {
+					break;
+				}
+
+				// If cancelled between shift and dispatch, re-enqueue the action
+				if (!queueProcessorRunningRef.current) {
+					enqueueQueuedAction(nextAction);
+					break;
+				}
+
+				if (!dispatched) {
+					dispatched = true;
+					setHasActiveDispatch(true);
+				}
+
+				try {
+					if (nextAction.kind === "delegation") {
+						await dispatchDelegationNow(nextAction.delegatedMessageId, {
+							contextDescription: nextAction.contextDescription,
+							conversationSummary: nextAction.conversationSummary,
+							existingRealtimeMessageId:
+								nextAction.existingRealtimeMessageId ?? undefined,
+							intentType: nextAction.intentType,
+							prompt: nextAction.text,
+							referencedFiles: nextAction.referencedFiles,
+							urgency: nextAction.urgency,
+						});
+					} else {
+						await dispatchPromptNow({
+							text: nextAction.text,
+							files: [...nextAction.files],
+							contextDescription: nextAction.contextDescription,
+						});
+					}
+				} catch (error) {
+					console.error("[FutureChat] Failed to dispatch queued action:", error);
+					setInputError(toFutureChatUserErrorMessage(error));
+					break;
+				}
+			}
+		} finally {
+			queueProcessorRunningRef.current = false;
+			if (dispatched) {
+				setHasActiveDispatch(false);
+			}
+		}
+	}, [dispatchDelegationNow, dispatchPromptNow, enqueueQueuedAction, shiftNextQueuedActionForThread]);
+
+	processQueueRef.current = processQueue;
+
+
+
+	const delegateToRovodev = useCallback(
+		async (
+			messageId: string,
+			options?: {
+				contextDescription?: string;
+				conversationSummary?: string;
+				existingRealtimeMessageId?: string | null;
+				intentType?: string;
+				prompt?: string;
+				referencedFiles?: string[];
+				urgency?: string;
+			},
+		) => {
+			if (!messageId) {
+				return;
+			}
+
+			setInputError(null);
+			const delegatedMessage =
+				realtimeMessagesRef.current.find((message) => message.id === messageId)
+				?? messages.find((message) => message.id === messageId)
+				?? null;
+			const delegatedText =
+				options?.prompt?.trim()
+				|| (delegatedMessage ? getMessageText(delegatedMessage).trim() : "");
+			if (!delegatedText) {
+				return;
+			}
+
+			const resolvedThreadId = activeThreadIdRef.current ?? draftThreadId;
+			const shouldEnqueue =
+				queueProcessorRunningRef.current ||
+				isFutureChatThreadBusy({
+					activeRunStatus: currentThread?.activeRun?.status ?? null,
+					attachedRunStatus,
+					status: statusRef.current,
+				}) ||
+				(queuedActionsByThreadId[resolvedThreadId]?.length ?? 0) > 0;
+
+			if (shouldEnqueue) {
+				enqueueDelegationAction(messageId, {
+					contextDescription: options?.contextDescription,
+					conversationSummary: options?.conversationSummary,
+					existingRealtimeMessageId: options?.existingRealtimeMessageId,
+					intentType: options?.intentType,
+					prompt: delegatedText,
+					referencedFiles: options?.referencedFiles,
+					threadId: resolvedThreadId,
+					urgency: options?.urgency,
+				});
+				kickQueue();
+				return;
+			}
+
+			await dispatchDelegationNow(messageId, {
+				...options,
+				prompt: delegatedText,
+			});
+		},
+		[
+			attachedRunStatus,
+			currentThread?.activeRun?.status,
+			dispatchDelegationNow,
+			draftThreadId,
+			enqueueDelegationAction,
+			kickQueue,
+			messages,
+			queuedActionsByThreadId,
+		],
+	);
+
+
+
 	const requestExplicitCancel = useCallback(async () => {
 		const now = Date.now();
 		if (now - lastExplicitCancelAtRef.current < EXPLICIT_CANCEL_DEBOUNCE_MS) {
@@ -3019,22 +3266,26 @@ export function useFutureChat({
 
 		try {
 			const activeThreadId = activeThreadIdRef.current;
-			if (activeThreadId && (currentThread?.activeRun || attachedRunStatus !== null)) {
-				const cancelled = await cancelFutureChatRun(activeThreadId).catch(() => false);
-				if (cancelled) {
-					setLocalThreadActiveRun(activeThreadId, null);
-					setAttachedRunStatus(null);
-					return;
+				if (activeThreadId && (currentThread?.activeRun || attachedRunStatus !== null)) {
+					const cancelled = await cancelFutureChatRun(activeThreadId).catch(() => false);
+					if (cancelled) {
+						queueProcessorRunningRef.current = false;
+						setHasActiveDispatch(false);
+						setLocalThreadActiveRun(activeThreadId, null);
+						setAttachedRunStatus(null);
+						return;
 				}
 			}
 
 			await fetch(buildFutureChatCancelUrl(activeThreadIdRef.current), {
 				method: "POST",
 			});
-		} catch (error) {
-			console.warn("[FutureChat] Explicit cancel request failed:", error);
-		}
-	}, [attachedRunStatus, currentThread?.activeRun, setLocalThreadActiveRun]);
+			queueProcessorRunningRef.current = false;
+			setHasActiveDispatch(false);
+			} catch (error) {
+				console.warn("[FutureChat] Explicit cancel request failed:", error);
+			}
+		}, [attachedRunStatus, currentThread?.activeRun, setLocalThreadActiveRun]);
 
 	const cancelThreadRun = useCallback(
 		async (threadId: string) => {
@@ -3045,10 +3296,12 @@ export function useFutureChat({
 					return false;
 				}
 
-				setLocalThreadActiveRun(threadId, null);
-				if (activeThreadIdRef.current === threadId) {
-					runSubscriptionAbortControllerRef.current?.abort();
-					runSubscriptionAbortControllerRef.current = null;
+					setLocalThreadActiveRun(threadId, null);
+					if (activeThreadIdRef.current === threadId) {
+						queueProcessorRunningRef.current = false;
+						setHasActiveDispatch(false);
+						runSubscriptionAbortControllerRef.current?.abort();
+						runSubscriptionAbortControllerRef.current = null;
 					runSubscriptionThreadIdRef.current = null;
 					setAttachedRunStatus(null);
 				}
@@ -3058,8 +3311,8 @@ export function useFutureChat({
 				return false;
 			}
 		},
-		[refreshThreads, setLocalThreadActiveRun],
-	);
+			[refreshThreads, setLocalThreadActiveRun],
+		);
 
 	const waitForActiveTurnToStop = useCallback(async () => {
 		const startedAt = Date.now();
@@ -3261,7 +3514,7 @@ export function useFutureChat({
 	const deleteThread = useCallback(
 		async (threadId: string) => {
 			deletedThreadIdsRef.current.add(threadId);
-			clearQueuedPromptsForThread(threadId);
+			clearQueuedActionsForThread(threadId);
 			setThreads((previousThreads) =>
 				previousThreads.filter((thread) => thread.id !== threadId),
 			);
@@ -3281,14 +3534,14 @@ export function useFutureChat({
 				setInputError(toFutureChatUserErrorMessage(error));
 			}
 		},
-		[clearQueuedPromptsForThread, openNewChat, refreshThreads],
+		[clearQueuedActionsForThread, openNewChat, refreshThreads],
 	);
 
 	const deleteAllThreads = useCallback(async () => {
 		const previousThreadIds = threads.map((thread) => thread.id);
 		for (const threadId of previousThreadIds) {
 			deletedThreadIdsRef.current.add(threadId);
-			clearQueuedPromptsForThread(threadId);
+			clearQueuedActionsForThread(threadId);
 		}
 		setThreads([]);
 
@@ -3306,7 +3559,7 @@ export function useFutureChat({
 			void refreshThreads();
 			setInputError(toFutureChatUserErrorMessage(error));
 		}
-	}, [clearQueuedPromptsForThread, openNewChat, refreshThreads, threads]);
+	}, [clearQueuedActionsForThread, openNewChat, refreshThreads, threads]);
 
 	const voteOnMessage = useCallback(
 		async (messageId: string, value: "up" | "down" | null) => {
@@ -3432,12 +3685,12 @@ export function useFutureChat({
 				return;
 			}
 
-			const messageIndex = rovodevMessages.findIndex((message) => message.id === messageId);
+			const messageIndex = normalizedRovodevMessages.findIndex((message) => message.id === messageId);
 			if (messageIndex === -1) {
 				return;
 			}
 
-			const updatedMessages = rovodevMessages
+			const updatedMessages = normalizedRovodevMessages
 				.slice(0, messageIndex + 1)
 				.map((message, index) => {
 					if (index !== messageIndex) {
@@ -3459,7 +3712,7 @@ export function useFutureChat({
 			}, 0);
 			setEditingMessageId(null);
 		},
-		[regenerate, resetObservedTurnComplete, resetPendingArtifactAssociation, rovodevMessages, setRovodevMessages],
+		[regenerate, resetObservedTurnComplete, resetPendingArtifactAssociation, normalizedRovodevMessages, setRovodevMessages],
 	);
 
 	const regenerateLatest = useCallback(() => {
@@ -3479,8 +3732,8 @@ export function useFutureChat({
 			currentThread?.title && currentThread.title.trim() !== "New chat"
 				? currentThread.title
 				: deriveThreadTitle(getMessageText(messages.find((message) => message.role === "user") ?? { parts: [] }));
-		const nextPersistKey = buildFutureChatThreadPersistKey({
-			messages: rovodevMessages,
+			const nextPersistKey = buildFutureChatThreadPersistKey({
+				messages: normalizedRovodevMessages,
 			realtimeMessages,
 			visibility: threadVisibility,
 			activeDocumentId,
@@ -3492,9 +3745,9 @@ export function useFutureChat({
 
 		let cancelled = false;
 		const realtimeRequestVersion = realtimeMessagesVersionRef.current;
-		void updateFutureChatThread(activeThreadId, {
-			title: nextTitle,
-			messages: rovodevMessages,
+			void updateFutureChatThread(activeThreadId, {
+				title: nextTitle,
+				messages: normalizedRovodevMessages,
 			realtimeMessages,
 			visibility: threadVisibility,
 			activeDocumentId,
@@ -3521,7 +3774,7 @@ export function useFutureChat({
 					shouldReplaceFutureChatRouteAfterPersistence({
 						pendingThreadId: pendingRouteThreadIdRef.current,
 						thread,
-						messages: rovodevMessages,
+							messages: normalizedRovodevMessages,
 						realtimeMessages,
 						visibility: threadVisibility,
 						activeDocumentId,
@@ -3535,7 +3788,7 @@ export function useFutureChat({
 						replaceFutureChatHistoryPath(buildFutureChatThreadPath(thread.id));
 					}
 				}
-				if (!areFutureChatMessagesEqual(thread.messages, rovodevMessages)) {
+					if (!areFutureChatMessagesEqual(thread.messages, normalizedRovodevMessages)) {
 					isHydratingThreadRef.current = true;
 					setRovodevMessages(thread.messages);
 					window.setTimeout(() => {
@@ -3567,9 +3820,9 @@ export function useFutureChat({
 					return;
 				}
 
-				const recoveryState = {
-					activeDocumentId,
-					messages: rovodevMessages,
+					const recoveryState = {
+						activeDocumentId,
+						messages: normalizedRovodevMessages,
 					realtimeMessages,
 					threadId: activeThreadId,
 					title: nextTitle,
@@ -3638,7 +3891,7 @@ export function useFutureChat({
 		messages,
 		realtimeMessages,
 		replaceRealtimeMessagesState,
-		rovodevMessages,
+			normalizedRovodevMessages,
 		setRovodevMessages,
 		threadVisibility,
 		threads,
@@ -3759,6 +4012,8 @@ export function useFutureChat({
 		setSidebarOpen,
 		setThreadVisibility,
 		setVoiceMode,
+		shouldSuppressLatestAssistantSuggestions,
+		shouldQueueNextSubmission,
 		sidebarOpen,
 		status,
 		stop,

@@ -17,6 +17,7 @@ interface ParsedGenerativeWidgetBase {
 	actions?: GenerativeWidgetActionItem[];
 	source: ParsedGenerativeWidgetSource | null;
 	contentTypeHint?: string;
+	iconHint?: string;
 }
 
 export interface ParsedGenuiPreviewWidget extends ParsedGenerativeWidgetBase {
@@ -54,6 +55,7 @@ export interface GenerativeWidgetMetadata {
 	actions?: GenerativeWidgetActionItem[];
 	actionLabels?: string[];
 	source: ParsedGenerativeWidgetSource | null;
+	iconHint?: string;
 	iconHintText?: string;
 }
 
@@ -86,6 +88,7 @@ export type GenerativeContentType =
 	| "chart-radar"
 	| "chart-scatter"
 	| "chart"
+	| "feed"
 	| "sound"
 	| "video"
 	| "work-item"
@@ -123,6 +126,14 @@ const CONTENT_TYPE_HINT_MATCHERS: ReadonlyArray<{
 	{
 		pattern: /\b(scatter(?:\s|-)?plot|scatter(?:\s|-)?chart|bubble(?:\s|-)?chart|bubble\s*plot)\b/i,
 		contentType: "chart-scatter",
+	},
+	{
+		pattern: /\b(stock\s*(?:price|quote|ticker|data)|share\s*price|market\s*cap(?:italization)?|current\s*price|previous\s*close|day\s*range|52[\s-]*week|trading\s*(?:volume|data)|avg\s*volume)\b/i,
+		contentType: "chart",
+	},
+	{
+		pattern: /\b(news|headlines?|breaking\s*news|key\s*events?|market\s*(?:analysis|report|news)|analyst\s*sentiment)\b/i,
+		contentType: "feed",
 	},
 	{
 		pattern: /\b(chart|graph|plot|visuali[sz]ation)\b/i,
@@ -196,6 +207,8 @@ const EXACT_CONTENT_TYPE_HINT_MAP: ReadonlyMap<string, GenerativeContentType> = 
 	["radar chart", "chart-radar"],
 	["scatter chart", "chart-scatter"],
 	["chart", "chart"],
+	["feed", "feed"],
+	["news", "feed"],
 	["sound", "sound"],
 	["audio", "sound"],
 	["video", "video"],
@@ -833,6 +846,15 @@ function parseGenerativeWidgetBase(payload: Record<string, unknown>): ParsedGene
 		...GENERATIVE_CONTENT_TYPE_HINT_KEYS,
 	]);
 
+	const rawIconHint = readFirstNonEmptyString(payload, [
+		"iconHint",
+		"icon",
+		"iconName",
+	]);
+	const iconHint = rawIconHint
+		? rawIconHint.trim().replace(/\s+/g, "-").toLowerCase()
+		: undefined;
+
 	return {
 		...(title ? { title } : {}),
 		...(description ? { description } : {}),
@@ -841,6 +863,7 @@ function parseGenerativeWidgetBase(payload: Record<string, unknown>): ParsedGene
 			? { actions: resolvedActions }
 			: {}),
 		...(contentTypeHint ? { contentTypeHint } : {}),
+		...(iconHint ? { iconHint } : {}),
 		source: parseExplicitSource(payload),
 	};
 }
@@ -1734,6 +1757,7 @@ export function resolveGenerativeWidgetMetadata(
 		title: resolveTitle(widget, contentType, derivedGenuiTitle),
 		description: resolveDescription(widget, derivedGenuiDescription),
 		source: widget.source,
+		...(widget.iconHint ? { iconHint: widget.iconHint } : {}),
 		...(iconHintText ? { iconHintText } : {}),
 		...(primaryActionLabel ? { primaryActionLabel } : {}),
 		...(actions ? { actions } : {}),

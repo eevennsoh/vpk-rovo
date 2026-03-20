@@ -64,11 +64,16 @@ const { createForgePublishManager } = require("./make/make-forge-publish");
 const { genuiChatHandler } = require("./lib/genui-chat-handler");
 const {
 	streamViaRovoDev,
+	replayViaRovoDev,
 	generateTextViaRovoDev,
 	isChatInProgressError,
 	initPool,
 	WAIT_FOR_TURN_TIMEOUT_MS,
 } = require("./lib/rovodev-gateway");
+const { classifyRovoDevHealthCheck } = require("./lib/rovodev-health");
+const {
+	ensureRovoDevSession,
+} = require("./lib/rovodev-session");
 const { createAIGatewayProvider } = require("./lib/ai-gateway-provider");
 const { isLocalModelRequest, streamLocalModel } = require("./lib/local-model-provider");
 const { getGenuiSystemPrompt } = require("./lib/genui-system-prompt");
@@ -130,7 +135,11 @@ const {
 	toImageWidgetErrorMessage,
 	isUnsupportedModalitiesError,
 } = require("./lib/image-generation-routing");
-const { healthCheck: rovoDevHealthCheck, cancelChat: rovoDevCancelChat } = require("./lib/rovodev-client");
+const {
+	healthCheck: rovoDevHealthCheck,
+	cancelChat: rovoDevCancelChat,
+	resumeToolCalls: rovoDevResumeToolCalls,
+} = require("./lib/rovodev-client");
 const { setAgentMode, getAgentMode } = require("./lib/rovodev-agent-mode");
 const {
 	splitDirectMediaTextForStreaming,
@@ -322,10 +331,25 @@ async function waitForPortReady(port) {
 
 	for (let attempt = 0; attempt < READY_PROBE_MAX_ATTEMPTS; attempt++) {
 		try {
-			await rovoDevHealthCheck(port);
-			// Healthcheck passed — port is alive and ready
-			return;
-		} catch {
+			const health = await rovoDevHealthCheck(port);
+			const classifiedHealth = classifyRovoDevHealthCheck(health);
+			if (classifiedHealth.ready) {
+				return;
+			}
+
+			if (classifiedHealth.terminal) {
+				const terminalError = new Error(
+					`Port ${port} is not ready: ${classifiedHealth.message || classifiedHealth.status}`
+				);
+				terminalError.healthStatus = classifiedHealth.status;
+				terminalError.healthReason = classifiedHealth.reason;
+				terminalError.healthDetail = classifiedHealth.detail;
+				throw terminalError;
+			}
+		} catch (error) {
+			if (error?.healthReason) {
+				throw error;
+			}
 			// Healthcheck failed — port is still clearing or unreachable
 			await new Promise((resolve) => setTimeout(resolve, READY_PROBE_INTERVAL_MS));
 		}
@@ -358,18 +382,31 @@ async function refreshRovoDevAvailability() {
 		const healthyPorts = [];
 		for (const port of ports) {
 			try {
-				await rovoDevHealthCheck(port);
-				healthyPorts.push(port);
-			} catch (healthCheckErr) {
-				// 401/403 means the server is running but requires auth — still healthy
-				if (
-					healthCheckErr.message.includes("status 401") ||
-					healthCheckErr.message.includes("status 403")
-				) {
+				const health = await rovoDevHealthCheck(port);
+				const classifiedHealth = classifyRovoDevHealthCheck(health);
+				if (classifiedHealth.ready) {
 					healthyPorts.push(port);
-				} else {
-					debugLog("ROVODEV", `Port ${port} health check failed`, { error: healthCheckErr.message });
+					continue;
 				}
+
+				if (classifiedHealth.terminal) {
+					console.warn("[ROVODEV] Port health requires attention", {
+						port,
+						status: classifiedHealth.status,
+						reason: classifiedHealth.reason,
+						message: classifiedHealth.message,
+					});
+					continue;
+				}
+
+				debugLog("ROVODEV", `Port ${port} health check returned ${classifiedHealth.status || "unknown"}`, {
+					status: classifiedHealth.status,
+					reason: classifiedHealth.reason,
+				});
+			} catch (healthCheckErr) {
+				debugLog("ROVODEV", `Port ${port} health check failed`, {
+					error: healthCheckErr.message,
+				});
 			}
 		}
 
@@ -396,6 +433,9 @@ async function refreshRovoDevAvailability() {
 				onStaleBusyPort: (port) => {
 					console.warn(`[ROVODEV] Attempting cancel on stale busy port ${port}`);
 					rovoDevCancelChat(port, { timeoutMs: 5_000 }).catch(() => {});
+				},
+				onPortAvailable: () => {
+					void startNextQueuedFutureChatRun();
 				},
 			});
 			initPool(_rovoDevPool);
@@ -2066,6 +2106,49 @@ async function finalizeFutureChatRun(threadId, run, messages) {
 	void startNextQueuedFutureChatRun();
 }
 
+async function syncFutureChatThreadSession(threadId, rovoPort, { thread: providedThread } = {}) {
+	if (!threadId || !Number.isInteger(rovoPort) || rovoPort <= 0) {
+		return providedThread ?? null;
+	}
+
+	const currentThread = providedThread ?? await futureChatThreadManager.getThread(threadId);
+	if (!currentThread) {
+		return null;
+	}
+
+	const customTitle =
+		getNonEmptyString(currentThread.title) ||
+		"Future Chat";
+
+	const existingSessionId = getNonEmptyString(currentThread.sessionId);
+	const sessionRecord = await ensureRovoDevSession(rovoPort, {
+		sessionId: existingSessionId,
+		customTitle,
+		timeoutMs: 5_000,
+	});
+
+	const nextSessionId = getNonEmptyString(sessionRecord?.sessionId);
+	if (!nextSessionId) {
+		return currentThread;
+	}
+
+	const nextSessionMode = currentThread.sessionMode === "ephemeral"
+		? "ephemeral"
+		: "persistent";
+
+	if (
+		currentThread.sessionId === nextSessionId &&
+		currentThread.sessionMode === nextSessionMode
+	) {
+		return currentThread;
+	}
+
+	return futureChatThreadManager.updateThread(threadId, {
+		sessionId: nextSessionId,
+		sessionMode: nextSessionMode,
+	});
+}
+
 async function failFutureChatRun(threadId, error) {
 	const message = error instanceof Error ? error.message : String(error);
 	const isAbortLike =
@@ -2155,6 +2238,21 @@ async function consumeFutureChatManagedResponse({
 	}
 
 	const messages = await parsePromise;
+	try {
+		const synchronizedThread = await syncFutureChatThreadSession(threadId, run.rovoPort, {
+			thread: threadId ? await futureChatThreadManager.getThread(threadId) : null,
+		});
+		if (synchronizedThread?.sessionId) {
+			run.sessionId = synchronizedThread.sessionId;
+			run.sessionMode = synchronizedThread.sessionMode ?? "persistent";
+		}
+	} catch (error) {
+		console.warn("[FUTURE-CHAT] Failed to synchronize thread session:", {
+			threadId,
+			port: run.rovoPort,
+			error: error instanceof Error ? error.message : String(error),
+		});
+	}
 	await finalizeFutureChatRun(threadId, run, messages);
 }
 
@@ -2187,9 +2285,14 @@ async function executeFutureChatManagedRun(run) {
 	const requestMessages = Array.isArray(requestBody.messages)
 		? [...requestBody.messages]
 		: [];
+	const threadForSession = threadId ? await futureChatThreadManager.getThread(threadId) : null;
+	if (threadForSession?.sessionId) {
+		requestBody.sessionId = threadForSession.sessionId;
+		requestBody.sessionMode = threadForSession.sessionMode ?? "persistent";
+	}
 	const delegatedThread =
 		threadId && delegatedMessageId
-			? await futureChatThreadManager.getThread(threadId)
+			? threadForSession
 			: null;
 	const delegatedPrompt = delegatedMessageId
 		? resolveFutureChatDelegatedPrompt({
@@ -2277,21 +2380,6 @@ async function executeFutureChatManagedRun(run) {
 	const requestIsPlanMode = requestBody.isPlanMode === true;
 	delete requestBody.isPlanMode;
 
-	if (requestIsPlanMode) {
-		try {
-			const agentModeResult = await getAgentMode();
-			if (agentModeResult?.mode !== "plan") {
-				console.warn(
-					"[FUTURE-CHAT] Frontend isPlanMode=true but RovoDev agent mode is",
-					agentModeResult?.mode,
-					"— proceeding with plan mode bypass anyway",
-				);
-			}
-		} catch (error) {
-			console.warn("[FUTURE-CHAT] Could not validate agent mode with RovoDev:", error?.message || error);
-		}
-	}
-
 	const { message: latestUserMessage, conversationHistory } =
 		mapUiMessagesToConversation(requestMessages);
 	const recentHistory = conversationHistory.slice(-5).map((msg) => ({
@@ -2314,13 +2402,7 @@ async function executeFutureChatManagedRun(run) {
 				score: complexity.score,
 				reasons: complexity.reasons.join(","),
 			});
-			try {
-				await setAgentMode(undefined, "plan");
-				console.info("[FUTURE-CHAT] Auto-plan: set agent mode to plan on RovoDev Serve");
-			} catch (error) {
-				console.warn("[FUTURE-CHAT] Auto-plan: failed to set agent mode:", error?.message || error);
-				autoPlanTriggered = false;
-			}
+			console.info("[FUTURE-CHAT] Auto-plan: enabling local deep-plan request");
 		}
 	}
 
@@ -2633,10 +2715,18 @@ async function dispatchChatSdkRequestInProcess({
 	return res.toWebResponse();
 }
 
-function buildFutureChatActiveRunPayload(run) {
+function buildFutureChatActiveRunPayload(run, thread) {
 	if (!run) {
 		return null;
 	}
+
+	const sessionId = getNonEmptyString(thread?.sessionId);
+	const sessionMode =
+		thread?.sessionMode === "ephemeral"
+			? "ephemeral"
+			: sessionId
+				? thread?.sessionMode ?? "persistent"
+				: null;
 
 	return {
 		id: run.id,
@@ -2646,6 +2736,8 @@ function buildFutureChatActiveRunPayload(run) {
 			typeof run.rovoPort === "number" && Number.isInteger(run.rovoPort) && run.rovoPort > 0
 				? run.rovoPort
 				: null,
+		sessionId,
+		sessionMode,
 		startedAt: run.startedAt,
 		updatedAt: run.updatedAt,
 	};
@@ -2656,8 +2748,13 @@ async function persistFutureChatRunState(threadId, run) {
 		return null;
 	}
 
+	const thread = await futureChatThreadManager.getThread(threadId);
+	if (!thread) {
+		return null;
+	}
+
 	return futureChatThreadManager.updateThread(threadId, {
-		activeRun: buildFutureChatActiveRunPayload(run),
+		activeRun: buildFutureChatActiveRunPayload(run, thread),
 	});
 }
 
@@ -3398,6 +3495,14 @@ function normalizeClarificationSubmission(value) {
 		round,
 		completed: Boolean(value.completed),
 		answers: normalizeClarificationAnswers(value.answers),
+		toolCallId:
+			getNonEmptyString(value.toolCallId) ||
+			getNonEmptyString(value.deferredToolCallId) ||
+			undefined,
+		deferredToolCallId:
+			getNonEmptyString(value.deferredToolCallId) ||
+			getNonEmptyString(value.toolCallId) ||
+			undefined,
 	};
 }
 
@@ -3409,6 +3514,101 @@ const {
 // Populated during streaming, consumed during answer serialization.
 /** @type {Map<string, Array<{id: string, label: string}>>} */
 const _requestUserInputQuestionMetaStore = new Map();
+/** @type {Map<string, { toolCallId: string; port: number; handle: { port: number; release: () => void; releaseAsUnhealthy?: () => void }; threadId: string | null; sessionId: string | null; sessionMode: "persistent" | "ephemeral"; kind: "clarification" | "plan-approval"; createdAt: number; expiresAt: number; expiryTimer: NodeJS.Timeout | null; }>} */
+const _pausedRovoDevToolCallStore = new Map();
+const PAUSED_ROVODEV_TOOL_CALL_TTL_MS = 5 * 60_000;
+
+function clearPausedRovoDevToolCall(toolCallId, { cancel = false } = {}) {
+	const normalizedToolCallId = getNonEmptyString(toolCallId);
+	if (!normalizedToolCallId) {
+		return null;
+	}
+
+	const record = _pausedRovoDevToolCallStore.get(normalizedToolCallId) || null;
+	if (!record) {
+		return null;
+	}
+
+	_pausedRovoDevToolCallStore.delete(normalizedToolCallId);
+	if (record.expiryTimer) {
+		clearTimeout(record.expiryTimer);
+		record.expiryTimer = null;
+	}
+
+	const releaseHandle = () => {
+		try {
+			record.handle?.release?.();
+		} catch (error) {
+			console.warn("[ROVODEV-PAUSE] Failed to release reserved port handle:", error);
+		}
+	};
+
+	if (cancel) {
+		void rovoDevCancelChat(record.port, { timeoutMs: 3_000 })
+			.catch((error) => {
+				console.warn("[ROVODEV-PAUSE] Failed to cancel paused tool call:", {
+					toolCallId: normalizedToolCallId,
+					port: record.port,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			})
+			.finally(releaseHandle);
+	} else {
+		releaseHandle();
+	}
+
+	return record;
+}
+
+function registerPausedRovoDevToolCall({
+	toolCallId,
+	port,
+	handle,
+	threadId = null,
+	sessionId = null,
+	sessionMode = "persistent",
+	kind,
+}) {
+	const normalizedToolCallId = getNonEmptyString(toolCallId);
+	if (!normalizedToolCallId || !Number.isInteger(port) || port <= 0 || !handle) {
+		return null;
+	}
+
+	clearPausedRovoDevToolCall(normalizedToolCallId, { cancel: true });
+
+	const now = Date.now();
+	const record = {
+		toolCallId: normalizedToolCallId,
+		port,
+		handle,
+		threadId: getNonEmptyString(threadId),
+		sessionId: getNonEmptyString(sessionId),
+		sessionMode: sessionMode === "ephemeral" ? "ephemeral" : "persistent",
+		kind: kind === "plan-approval" ? "plan-approval" : "clarification",
+		createdAt: now,
+		expiresAt: now + PAUSED_ROVODEV_TOOL_CALL_TTL_MS,
+		expiryTimer: null,
+	};
+
+	record.expiryTimer = setTimeout(() => {
+		console.info("[ROVODEV-PAUSE] Expiring paused tool call reservation", {
+			toolCallId: normalizedToolCallId,
+			port,
+			kind: record.kind,
+		});
+		clearPausedRovoDevToolCall(normalizedToolCallId, { cancel: true });
+	}, PAUSED_ROVODEV_TOOL_CALL_TTL_MS);
+	if (typeof record.expiryTimer?.unref === "function") {
+		record.expiryTimer.unref();
+	}
+
+	_pausedRovoDevToolCallStore.set(normalizedToolCallId, record);
+	return record;
+}
+
+function takePausedRovoDevToolCall(toolCallId) {
+	return clearPausedRovoDevToolCall(toolCallId, { cancel: false });
+}
 
 /**
  * Adapts clarification answers for the ask_user_questions tool contract.
@@ -3692,6 +3892,14 @@ function normalizeApprovalSubmission(value) {
 			getNonEmptyString(value.title) ||
 			undefined,
 		planTasks: normalizePlanTasks(value.planTasks || value.tasks),
+		toolCallId:
+			getNonEmptyString(value.toolCallId) ||
+			getNonEmptyString(value.deferredToolCallId) ||
+			undefined,
+		deferredToolCallId:
+			getNonEmptyString(value.deferredToolCallId) ||
+			getNonEmptyString(value.toolCallId) ||
+			undefined,
 	};
 }
 
@@ -3740,6 +3948,78 @@ function buildApprovalSummary(approvalSubmission) {
 	);
 
 	return lines.join("\n");
+}
+
+function getToolCallIdFromClarificationSubmission(clarificationSubmission) {
+	const explicitToolCallId =
+		getNonEmptyString(clarificationSubmission?.toolCallId) ||
+		getNonEmptyString(clarificationSubmission?.deferredToolCallId);
+	if (explicitToolCallId) {
+		return explicitToolCallId;
+	}
+
+	const sessionId = getNonEmptyString(clarificationSubmission?.sessionId);
+	if (!sessionId) {
+		return null;
+	}
+
+	const requestUserInputMatch = /^request-user-input-(.+)$/u.exec(sessionId);
+	if (requestUserInputMatch?.[1]) {
+		return requestUserInputMatch[1];
+	}
+
+	return null;
+}
+
+function getToolCallIdFromApprovalSubmission(approvalSubmission, rawApproval) {
+	return (
+		getNonEmptyString(approvalSubmission?.toolCallId) ||
+		getNonEmptyString(approvalSubmission?.deferredToolCallId) ||
+		getNonEmptyString(rawApproval?.toolCallId) ||
+		getNonEmptyString(rawApproval?.deferredToolCallId) ||
+		null
+	);
+}
+
+function buildClarificationResumeDenyMessage(clarificationSubmission) {
+	if (!clarificationSubmission) {
+		return null;
+	}
+
+	const adaptedAnswers = adaptClarificationAnswersForToolContract(
+		clarificationSubmission.sessionId,
+		clarificationSubmission.answers,
+	);
+	const answerEntries = Object.entries(adaptedAnswers);
+	if (answerEntries.length === 0) {
+		return [
+			"The user skipped the clarification step.",
+			"Continue with the best context you already have.",
+		].join("\n");
+	}
+
+	const answerLines = answerEntries.map(([question, answers]) => {
+		const values = Array.isArray(answers) ? answers.filter(Boolean) : [];
+		return `- ${question}: ${values.join(", ")}`;
+	});
+
+	return [
+		"The user answered the clarification questions.",
+		"Use these answers instead of calling the clarification tool again:",
+		...answerLines,
+	].join("\n");
+}
+
+function buildApprovalResumeDecision(approvalSubmission) {
+	if (!approvalSubmission) {
+		return null;
+	}
+
+	if (approvalSubmission.decision === "auto-accept") {
+		return null;
+	}
+
+	return buildApprovalSummary(approvalSubmission);
 }
 
 function getLatestAssistantWidgetPayload(messages) {
@@ -4321,6 +4601,8 @@ async function handleChatSdkRequest(req, res) {
 			resolvedPlanModeActive: rawResolvedPlanModeActive,
 			chatSdkSource: rawChatSdkSource,
 			threadId: rawThreadId,
+			sessionId: rawSessionId,
+			sessionMode: rawSessionMode,
 		} = req.body || {};
 		const clientTimeZone = normalizeClientTimeZone(rawClientTimeZone);
 		const genuiHint = rawGenuiHint === true;
@@ -4328,6 +4610,13 @@ async function handleChatSdkRequest(req, res) {
 		const chatSdkSource = getNonEmptyString(rawChatSdkSource) || "direct";
 		const threadId = typeof rawThreadId === "string" && rawThreadId.trim().length > 0
 			? rawThreadId.trim()
+			: null;
+		const sessionId = typeof rawSessionId === "string" && rawSessionId.trim().length > 0
+			? rawSessionId.trim()
+			: null;
+		const sessionMode = rawSessionMode === "ephemeral" ? "ephemeral" : "persistent";
+		const rovoDevSessionId = sessionId && sessionMode !== "ephemeral"
+			? sessionId
 			: null;
 		const requestOrigin =
 			getNonEmptyString(rawOrigin)?.toLowerCase() === "voice" ? "voice" : "text";
@@ -4368,6 +4657,16 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 			latestUserMessageSource === "clarification-submit";
 		const clarificationSubmission = normalizeClarificationSubmission(rawClarification);
 		const approvalSubmission = normalizeApprovalSubmission(rawApproval);
+		const clarificationToolCallId =
+			getToolCallIdFromClarificationSubmission(clarificationSubmission);
+		const approvalToolCallId =
+			getToolCallIdFromApprovalSubmission(approvalSubmission, rawApproval);
+		const hasPausedClarificationToolCall =
+			Boolean(clarificationToolCallId) &&
+			_pausedRovoDevToolCallStore.has(clarificationToolCallId);
+		const hasPausedApprovalToolCall =
+			Boolean(approvalToolCallId) &&
+			_pausedRovoDevToolCallStore.has(approvalToolCallId);
 		const {
 			message: latestUserMessage,
 			conversationHistory,
@@ -5158,9 +5457,8 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 		}
 
 		let enrichedContextDescription = contextDescription;
-		let deferredToolResponseForRovoDev = null;
 
-		if (clarificationSubmission) {
+		if (clarificationSubmission && !hasPausedClarificationToolCall) {
 			const serialized = JSON.stringify(
 				adaptClarificationAnswersForToolContract(
 					clarificationSubmission.sessionId,
@@ -5173,68 +5471,47 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 				: answerBlock;
 		}
 
-		// Handle deferred tool response from RovoDev
 		if (rawDeferredToolResponse && typeof rawDeferredToolResponse === "object") {
 			const toolCallId = getNonEmptyString(rawDeferredToolResponse.tool_call_id);
 			const result = rawDeferredToolResponse.result;
 			if (toolCallId && result && typeof result === "object") {
-				// Adapt ID-keyed answers to label-keyed answers matching the
-				// ask_user_questions tool contract. Session ID follows the pattern
-				// set in emitRequestUserInputQuestionCard (line 5848).
 				const deferredSessionId = `request-user-input-${toolCallId}`;
 				const adaptedResult = adaptClarificationAnswersForToolContract(
 					deferredSessionId,
 					result
 				);
-				deferredToolResponseForRovoDev = {
-					tool_call_id: toolCallId,
-					result: adaptedResult,
-				};
-			}
-		}
-
-		if (deferredToolResponseForRovoDev) {
-			console.info("[CHAT-SDK] Deferred tool response prepared", {
-				toolCallId: deferredToolResponseForRovoDev.tool_call_id,
-				resultKeys: Object.keys(deferredToolResponseForRovoDev.result),
-			});
-		}
-
-		if (approvalSubmission) {
-			// Check if this approval is for a native plan mode exit_plan_mode
-			// deferred tool. If so, build a deferred tool response instead of
-			// enriching the context description.
-			const approvalDeferredToolCallId = getNonEmptyString(
-				rawApproval?.deferredToolCallId
-			);
-			if (approvalDeferredToolCallId) {
-				const isApproved =
-					approvalSubmission.decision === "auto-accept" ||
-					approvalSubmission.decision === "approve" ||
-					approvalSubmission.decision === "accept";
-				deferredToolResponseForRovoDev = {
-					tool_call_id: approvalDeferredToolCallId,
-					result: isApproved
-						? { approved: true }
-						: {
-							approved: false,
-							feedback: approvalSubmission.customInstruction || "Plan rejected by user",
-						},
-				};
-				console.info("[EXIT-PLAN-MODE] Deferred tool response from plan approval", {
-					toolCallId: approvalDeferredToolCallId,
-					approved: isApproved,
-				});
-			} else {
-				const serialized = JSON.stringify({
-					decision: approvalSubmission.decision,
-					customInstruction: approvalSubmission.customInstruction,
-				});
+				const serialized = JSON.stringify(adaptedResult);
+				const answerBlock = `[ask_user_questions Result]\nThe user answered your ask_user_questions tool call. Here are their answers:\n${serialized}\n[End ask_user_questions Result]`;
 				enrichedContextDescription = enrichedContextDescription
-					? `${enrichedContextDescription}\n\nPlan approval: ${serialized}`
-					: `Plan approval: ${serialized}`;
+					? `${enrichedContextDescription}\n\n${answerBlock}`
+					: answerBlock;
+
+				console.info("[CHAT-SDK] Normalized legacy deferred tool response into clarification context", {
+					toolCallId,
+					resultKeys: Object.keys(adaptedResult),
+				});
 			}
 		}
+
+		if (approvalSubmission && !hasPausedApprovalToolCall) {
+			const serialized = JSON.stringify({
+				decision: approvalSubmission.decision,
+				customInstruction: approvalSubmission.customInstruction,
+				toolCallId:
+					getNonEmptyString(rawApproval?.toolCallId) ||
+					getNonEmptyString(rawApproval?.deferredToolCallId) ||
+					undefined,
+			});
+			enrichedContextDescription = enrichedContextDescription
+				? `${enrichedContextDescription}\n\nPlan approval: ${serialized}`
+				: `Plan approval: ${serialized}`;
+		}
+
+		const pausedContinuationToolCallId = hasPausedClarificationToolCall
+			? clarificationToolCallId
+			: hasPausedApprovalToolCall
+				? approvalToolCallId
+				: null;
 
 		const googleCalendarDateContext = isStrictToolFirstTurn
 			&& Array.isArray(toolFirstPolicy.domains)
@@ -5274,8 +5551,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 				!isStrictToolFirstTurn &&
 				!smartGenerationActive &&
 				!clarificationSubmission &&
-				!approvalSubmission &&
-				!deferredToolResponseForRovoDev
+				!approvalSubmission
 					? "plain-chat"
 					: "default";
 
@@ -7768,12 +8044,15 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 
 							try {
 								const parsedExecution = JSON.parse(jsonPayload);
+								const taskId =
+									getNonEmptyString(parsedExecution.taskId) || "unknown";
 								writer.write({
 									type: "data-agent-execution",
+									id: `agent-execution-${taskId}`,
 									data: {
 										agentId: parsedExecution.agentId || "unknown",
 										agentName: parsedExecution.agentName || "Agent",
-										taskId: parsedExecution.taskId || "unknown",
+										taskId,
 										taskLabel: parsedExecution.taskLabel || "Task",
 										status: parsedExecution.status || "working",
 										content: parsedExecution.content,
@@ -7841,7 +8120,11 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 					const totalToolFirstAttempts = toolFirstRetryLimit + 1;
 					let currentToolFirstAttempt = 1;
 
-					let activeAttemptMessage = deferredToolResponseForRovoDev || userMessageText;
+					let activeAttemptMessage = {
+						message: userMessageText,
+						enableDeepPlan: resolvedPlanModeActive,
+					};
+					let pausedToolCallHandled = false;
 					let shouldContinueToolFirstRetry = true;
 					let forcePortRecoveryAttemptCount = 0;
 
@@ -7850,10 +8133,13 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 							isRetry: currentToolFirstAttempt > 1,
 						});
 
+						const pausedToolCallRecord =
+							pausedContinuationToolCallId && currentToolFirstAttempt === 1
+								? takePausedRovoDevToolCall(pausedContinuationToolCallId)
+								: null;
 						let streamTimedOut = false;
 						try {
-							await streamViaRovoDev({
-								message: activeAttemptMessage,
+							const streamCommonOptions = {
 								onTextDelta: handleStreamTextDelta,
 								// ── Output Routing: Track all tool calls (BE-001) ──
 								// Question-card tools are emitted from resolved tool input
@@ -8040,6 +8326,49 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 										}
 									}
 								},
+								onPausedToolCalls: async ({ rawEvent, control }) => {
+									const pausedParts = Array.isArray(rawEvent?.parts)
+										? rawEvent.parts
+										: [];
+									const interactivePart = pausedParts.find((part) => {
+										const toolName = getNonEmptyString(part?.tool_name);
+										return (
+											isRequestUserInputTool(toolName) ||
+											isExitPlanModeTool(toolName)
+										);
+									});
+
+									if (!interactivePart) {
+										const decisions = pausedParts
+											.map((part) => {
+												const toolCallId = getNonEmptyString(part?.tool_call_id);
+												return toolCallId
+													? { tool_call_id: toolCallId, deny_message: null }
+													: null;
+											})
+											.filter(Boolean);
+										if (decisions.length > 0) {
+											await control.resume({ decisions });
+										}
+										return { disconnect: false };
+									}
+
+									const reservedHandle = control.reservePort();
+									registerPausedRovoDevToolCall({
+										toolCallId: interactivePart.tool_call_id,
+										port: control.port,
+										handle: reservedHandle,
+										threadId,
+										sessionId: rovoDevSessionId,
+										sessionMode,
+										kind: isExitPlanModeTool(interactivePart.tool_name)
+											? "plan-approval"
+											: "clarification",
+									});
+									hasObservedDeferredToolRequest = true;
+									pausedToolCallHandled = true;
+									return { disconnect: true };
+								},
 								signal: abortController.signal,
 								conflictPolicy: "wait-for-turn",
 								onPortAcquired: (acquiredPort) => {
@@ -8135,7 +8464,107 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 										data: sanitizedEvent,
 									});
 								},
-							});
+							};
+
+							if (pausedToolCallRecord) {
+								const resumeDecisions =
+									hasPausedClarificationToolCall && clarificationSubmission
+										? [
+											{
+												tool_call_id: pausedToolCallRecord.toolCallId,
+												deny_message: buildClarificationResumeDenyMessage(
+													clarificationSubmission
+												),
+											},
+										]
+										: hasPausedApprovalToolCall && approvalSubmission
+											? [
+												{
+													tool_call_id: pausedToolCallRecord.toolCallId,
+													deny_message: buildApprovalResumeDecision(
+														approvalSubmission
+													),
+												},
+											]
+											: [];
+
+								if (resumeDecisions.length === 0) {
+									throw new Error(
+										`Paused tool continuation ${pausedToolCallRecord.toolCallId} is missing a resume decision.`,
+									);
+								}
+
+								let replayCompleted = false;
+								try {
+									await rovoDevResumeToolCalls(pausedToolCallRecord.port, {
+										decisions: resumeDecisions,
+									});
+
+									await replayViaRovoDev({
+										port: pausedToolCallRecord.port,
+										portHandle: pausedToolCallRecord.handle,
+										...streamCommonOptions,
+										onPausedToolCalls: async ({ rawEvent, control }) => {
+											const pausedParts = Array.isArray(rawEvent?.parts)
+												? rawEvent.parts
+												: [];
+											const interactivePart = pausedParts.find((part) => {
+												const toolName = getNonEmptyString(part?.tool_name);
+												return (
+													isRequestUserInputTool(toolName) ||
+													isExitPlanModeTool(toolName)
+												);
+											});
+
+											if (!interactivePart) {
+												const decisions = pausedParts
+													.map((part) => {
+														const toolCallId = getNonEmptyString(part?.tool_call_id);
+														return toolCallId
+															? { tool_call_id: toolCallId, deny_message: null }
+															: null;
+													})
+													.filter(Boolean);
+												if (decisions.length > 0) {
+													await control.resume({ decisions });
+												}
+												return { disconnect: false };
+											}
+
+											registerPausedRovoDevToolCall({
+												toolCallId: interactivePart.tool_call_id,
+												port: control.port,
+												handle: pausedToolCallRecord.handle,
+												threadId,
+												sessionId: rovoDevSessionId,
+												sessionMode,
+												kind: isExitPlanModeTool(interactivePart.tool_name)
+													? "plan-approval"
+													: "clarification",
+											});
+											hasObservedDeferredToolRequest = true;
+											pausedToolCallHandled = true;
+											return { disconnect: true };
+										},
+									});
+									replayCompleted = true;
+								} finally {
+									if (!pausedToolCallHandled) {
+										if (!replayCompleted) {
+											await rovoDevCancelChat(pausedToolCallRecord.port, {
+												timeoutMs: 3_000,
+											}).catch(() => {});
+										}
+										pausedToolCallRecord.handle?.release?.();
+									}
+								}
+							} else {
+								await streamViaRovoDev({
+									message: activeAttemptMessage,
+									sessionId: rovoDevSessionId || undefined,
+									...streamCommonOptions,
+								});
+							}
 						} catch (rovoDevStreamError) {
 							if (rovoDevStreamError?.code === "ROVODEV_PORT_STUCK") {
 								// Port is stuck — inform user and restart immediately
@@ -8309,14 +8738,17 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 							continue;
 						}
 
-						activeAttemptMessage = `${userMessageText}\n\n${buildToolFirstRetryInstruction(
-							{
-								policy: toolFirstPolicy,
-								attemptNumber: nextAttempt,
-								remainingRetries: retriesRemaining,
-								execution: toolFirstExecutionState,
-							}
-						)}`;
+						activeAttemptMessage = {
+							message: `${userMessageText}\n\n${buildToolFirstRetryInstruction(
+								{
+									policy: toolFirstPolicy,
+									attemptNumber: nextAttempt,
+									remainingRetries: retriesRemaining,
+									execution: toolFirstExecutionState,
+								}
+							)}`,
+							enableDeepPlan: resolvedPlanModeActive,
+						};
 						currentToolFirstAttempt = nextAttempt;
 					}
 
@@ -9487,14 +9919,14 @@ app.post("/api/chat-cancel", async (req, res) => {
 
 // ── Agent Mode Toggle ──
 // Allows the frontend to get/set the agent mode on a specific RovoDev
-// session (plan, default, ask).
+// session (default, ask).
 app.post("/api/agent-mode", async (req, res) => {
 	try {
 		const { mode } = req.body || {};
 		if (!mode || typeof mode !== "string") {
-			return res.status(400).json({ error: "mode is required (plan, default, or ask)" });
+			return res.status(400).json({ error: "mode is required (default or ask)" });
 		}
-		const validModes = ["plan", "default", "ask"];
+		const validModes = ["default", "ask"];
 		if (!validModes.includes(mode)) {
 			return res.status(400).json({ error: `Invalid mode: ${mode}. Must be one of: ${validModes.join(", ")}` });
 		}
@@ -9512,6 +9944,12 @@ app.get("/api/agent-mode", async (req, res) => {
 	try {
 		try {
 			const result = await getAgentMode();
+			if (result?.mode === "plan") {
+				return res.status(200).json({
+					mode: "default",
+					message: "Agent mode plan is no longer exposed by the backend contract",
+				});
+			}
 			return res.status(200).json(result);
 		} catch (agentModeError) {
 			const msg = agentModeError instanceof Error ? agentModeError.message : String(agentModeError);
@@ -9586,6 +10024,7 @@ app.post("/api/chat-sdk/skip-question", async (req, res) => {
 				try {
 					await streamViaRovoDev({
 						message: userMessageText,
+						sessionId: typeof sessionId === "string" ? sessionId : undefined,
 						onTextDelta: (delta) => {
 							if (!delta) return;
 							if (!textStarted) {
@@ -10947,6 +11386,8 @@ app.post("/api/future-chat/threads", async (req, res) => {
 			modelId,
 			provider,
 			activeDocumentId,
+			sessionId,
+			sessionMode,
 			createdAt,
 			updatedAt,
 		} = req.body || {};
@@ -10960,6 +11401,8 @@ app.post("/api/future-chat/threads", async (req, res) => {
 			modelId,
 			provider,
 			activeDocumentId,
+			sessionId,
+			sessionMode,
 			createdAt,
 			updatedAt,
 		});
@@ -11034,6 +11477,8 @@ app.put("/api/future-chat/threads/:threadId", async (req, res) => {
 			modelId,
 			provider,
 			activeDocumentId,
+			sessionId,
+			sessionMode,
 			updatedAt,
 		} = req.body || {};
 		const persistedMessages =
@@ -11048,6 +11493,8 @@ app.put("/api/future-chat/threads/:threadId", async (req, res) => {
 			modelId,
 			provider,
 			activeDocumentId,
+			sessionId,
+			sessionMode,
 			updatedAt,
 		});
 		if (!thread) {

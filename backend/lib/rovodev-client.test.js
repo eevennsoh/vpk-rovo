@@ -4,6 +4,12 @@ const http = require("node:http");
 
 const {
 	extractChunkFromEvent,
+	createSession,
+	getCurrentSession,
+	getSession,
+	listSessions,
+	restoreSession,
+	resumeToolCalls,
 	sendMessageStreaming,
 } = require("./rovodev-client");
 
@@ -62,6 +68,34 @@ test("extractChunkFromEvent bounds large retry-prompt payloads", () => {
 	assert.equal(typeof chunk.rawOutput, "object");
 	assert.equal(Array.isArray(chunk.rawOutput.events), true);
 	assert.equal(chunk.rawOutput.events.length, 140);
+});
+
+test("extractChunkFromEvent parses documented non-streaming text events", () => {
+	const chunk = extractChunkFromEvent("text", {
+		content: "Hello from Serve",
+		part_kind: "text",
+	});
+
+	assert.ok(chunk);
+	assert.equal(chunk.type, "text");
+	assert.equal(chunk.text, "Hello from Serve");
+});
+
+test("extractChunkFromEvent parses documented non-streaming tool-call events", () => {
+	const chunk = extractChunkFromEvent("tool-call", {
+		tool_name: "open_files",
+		args: { file_paths: ["README.md"] },
+		tool_call_id: "call-0",
+		part_kind: "tool-call",
+	});
+
+	assert.ok(chunk);
+	assert.equal(chunk.type, "tool_call_start");
+	assert.equal(chunk.toolName, "open_files");
+	assert.equal(chunk.toolCallId, "call-0");
+	assert.deepEqual(chunk.toolInput, {
+		file_paths: ["README.md"],
+	});
 });
 
 test("extractChunkFromEvent marks error payloads as tool_error", () => {
@@ -136,6 +170,20 @@ test("extractChunkFromEvent treats structured error JSON output as tool_error", 
 	assert.equal(chunk.toolName, "mcp__integrations__invoke_tool");
 	assert.equal(chunk.toolCallId, "call-5");
 	assert.match(chunk.outputPreview, /restricted_action/i);
+});
+
+test("extractChunkFromEvent parses warning events distinctly", () => {
+	const chunk = extractChunkFromEvent("warning", {
+		title: "Using fallback model",
+		message: "Using fallback model - trying the backup provider.",
+	});
+
+	assert.ok(chunk);
+	assert.equal(chunk.type, "warning");
+	assert.equal(chunk.text, "Using fallback model - trying the backup provider.");
+	assert.equal(chunk.warningTitle, "Using fallback model");
+	assert.equal(chunk.outputTruncated, false);
+	assert.equal(chunk.rawOutput.title, "Using fallback model");
 });
 
 test("sendMessageStreaming aborts silent SSE streams and cancels the server turn", async () => {
@@ -279,6 +327,298 @@ test("sendMessageStreaming reports timing milestones for queued and streamed tur
 			assert.equal(typeof entry.details?.stageMs, "number");
 			assert.ok(entry.details.stageMs >= 0);
 		}
+	} finally {
+		await close(server);
+	}
+});
+
+test("session helpers and resume_tool_calls use documented V3 endpoints", async () => {
+	const requests = [];
+
+	const server = http.createServer((req, res) => {
+		const chunks = [];
+		req.on("data", (chunk) => chunks.push(chunk));
+		req.on("end", () => {
+			const body = chunks.length > 0 ? Buffer.concat(chunks).toString("utf8") : "";
+			const parsedUrl = new URL(req.url, "http://127.0.0.1");
+			requests.push({
+				method: req.method,
+				url: req.url,
+				body,
+			});
+
+			if (
+				req.method === "GET" &&
+				parsedUrl.pathname === "/v3/sessions/list" &&
+				parsedUrl.searchParams.get("page") === "2" &&
+				parsedUrl.searchParams.get("page_size") === "5"
+			) {
+				res.writeHead(200, { "Content-Type": "application/json" });
+				res.end(JSON.stringify({
+					sessions: [
+						{
+							id: "session-1",
+							title: "One",
+							created: "2025-03-20T00:00:00.000Z",
+							context_limit: 200000,
+						},
+					],
+				}));
+				return;
+			}
+
+			if (req.method === "GET" && req.url === "/v3/sessions/current_session") {
+				res.writeHead(200, { "Content-Type": "application/json" });
+				res.end(JSON.stringify({
+					id: "session-current",
+					title: "Current",
+					created: "2025-03-20T00:00:00.000Z",
+					context_limit: 200000,
+				}));
+				return;
+			}
+
+			if (req.method === "GET" && req.url === "/v3/sessions/session-2") {
+				res.writeHead(200, { "Content-Type": "application/json" });
+				res.end(JSON.stringify({
+					id: "session-2",
+					title: "Session 2",
+					created: "2025-03-20T00:00:00.000Z",
+					context_limit: 200000,
+				}));
+				return;
+			}
+
+			if (req.method === "POST" && req.url === "/v3/sessions/create") {
+				res.writeHead(200, { "Content-Type": "application/json" });
+				res.end(JSON.stringify({
+					session_id: "session-created",
+					title: "Custom title",
+					message: "Session created successfully",
+				}));
+				return;
+			}
+
+			if (req.method === "POST" && req.url === "/v3/sessions/session-2/restore") {
+				res.writeHead(200, { "Content-Type": "application/json" });
+				res.end(JSON.stringify({
+					session_id: "session-2",
+					message: "Session restored successfully",
+				}));
+				return;
+			}
+
+			if (req.method === "POST" && req.url === "/v3/resume_tool_calls") {
+				res.writeHead(200, { "Content-Type": "application/json" });
+				res.end(JSON.stringify({ message: "resume_tool_calls done" }));
+				return;
+			}
+
+			res.writeHead(404, { "Content-Type": "application/json" });
+			res.end(JSON.stringify({ error: "unexpected route" }));
+		});
+	});
+
+	const port = await listen(server);
+
+	try {
+		const sessions = await listSessions(port, { page: 2, pageSize: 5 });
+		const currentSession = await getCurrentSession(port);
+		const session = await getSession(port, "session-2");
+		const createdSession = await createSession(port, { customTitle: "Custom title" });
+		const restoredSession = await restoreSession(port, "session-2");
+		const resumeResult = await resumeToolCalls(port, [
+			{ tool_call_id: "tool-1", deny_message: null },
+		]);
+
+		assert.equal(sessions.sessions.length, 1);
+		assert.equal(currentSession.id, "session-current");
+		assert.equal(session.id, "session-2");
+		assert.equal(createdSession.session_id, "session-created");
+		assert.equal(restoredSession.session_id, "session-2");
+		assert.equal(resumeResult.message, "resume_tool_calls done");
+
+		assert.deepEqual(
+			requests.map((entry) => `${entry.method} ${entry.url}`),
+			[
+				"GET /v3/sessions/list?page=2&page_size=5",
+				"GET /v3/sessions/current_session",
+				"GET /v3/sessions/session-2",
+				"POST /v3/sessions/create",
+				"POST /v3/sessions/session-2/restore",
+				"POST /v3/resume_tool_calls",
+			]
+		);
+		assert.deepEqual(JSON.parse(requests[3].body), { custom_title: "Custom title" });
+		assert.deepEqual(JSON.parse(requests[5].body), {
+			decisions: [{ tool_call_id: "tool-1", deny_message: null }],
+		});
+	} finally {
+		await close(server);
+	}
+});
+
+test("sendMessageStreaming restores the requested session, honors pause_on_call_tools_start, and surfaces warnings", async () => {
+	const requests = [];
+
+	const server = http.createServer((req, res) => {
+		const chunks = [];
+		req.on("data", (chunk) => chunks.push(chunk));
+		req.on("end", () => {
+			const body = chunks.length > 0 ? Buffer.concat(chunks).toString("utf8") : "";
+			requests.push({
+				method: req.method,
+				url: req.url,
+				body,
+			});
+
+			if (req.method === "POST" && req.url === "/v3/sessions/thread-1/restore") {
+				res.writeHead(200, { "Content-Type": "application/json" });
+				res.end(JSON.stringify({
+					session_id: "thread-1",
+					message: "Session restored successfully",
+				}));
+				return;
+			}
+
+			if (req.method === "POST" && req.url === "/v3/set_chat_message") {
+				res.writeHead(200, { "Content-Type": "application/json" });
+				res.end(JSON.stringify({ response: "Chat message set" }));
+				return;
+			}
+
+			if (req.method === "GET" && req.url === "/v3/stream_chat?pause_on_call_tools_start=true") {
+				res.writeHead(200, {
+					"Content-Type": "text/event-stream",
+					"Cache-Control": "no-cache",
+					Connection: "keep-alive",
+				});
+				res.write('event: warning\ndata: {"title":"Using fallback model","message":"Using fallback model - switching providers"}\n\n');
+				res.write('event: part_start\ndata: {"index":0,"part":{"content":"Hello","part_kind":"text"},"event_kind":"part_start"}\n\n');
+				res.end();
+				return;
+			}
+
+			if (req.method === "POST" && req.url === "/v3/cancel") {
+				res.writeHead(200, { "Content-Type": "application/json" });
+				res.end(JSON.stringify({ cancelled: true }));
+				return;
+			}
+
+			res.writeHead(404, { "Content-Type": "application/json" });
+			res.end(JSON.stringify({ error: "unexpected route" }));
+		});
+	});
+
+	const port = await listen(server);
+
+	try {
+		const chunks = [];
+		const warnings = [];
+
+		await new Promise((resolve, reject) => {
+			sendMessageStreaming(
+				{
+					message: "hello",
+					context: [{ type: "note", content: "remember the session" }],
+					enableDeepPlan: true,
+				},
+				{
+					onChunk: (chunk) => {
+						chunks.push(chunk);
+						if (chunk.type === "warning") {
+							warnings.push(chunk);
+						}
+					},
+					onDone: resolve,
+					onError: reject,
+				},
+				port,
+				{
+					sessionId: "thread-1",
+					pauseOnCallToolsStart: true,
+				}
+			);
+		});
+
+		assert.equal(chunks[0].type, "warning");
+		assert.equal(chunks[0].warningTitle, "Using fallback model");
+		assert.equal(chunks[1].type, "text");
+		assert.equal(warnings.length, 1);
+		assert.equal(
+			chunks
+				.filter((chunk) => chunk.type === "text")
+				.map((chunk) => chunk.text)
+				.join(""),
+			"Hello"
+		);
+		assert.deepEqual(
+			requests.map((entry) => `${entry.method} ${entry.url}`),
+			[
+				"POST /v3/sessions/thread-1/restore",
+				"POST /v3/set_chat_message",
+				"GET /v3/stream_chat?pause_on_call_tools_start=true",
+			]
+		);
+		assert.deepEqual(JSON.parse(requests[1].body), {
+			message: "hello",
+			context: [{ type: "note", content: "remember the session" }],
+			enable_deep_plan: true,
+		});
+	} finally {
+		await close(server);
+	}
+});
+
+test("sendMessageStreaming treats exception events as fatal", async () => {
+	const server = http.createServer((req, res) => {
+		const chunks = [];
+		req.on("data", (chunk) => chunks.push(chunk));
+		req.on("end", () => {
+			if (req.method === "POST" && req.url === "/v3/set_chat_message") {
+				res.writeHead(200, { "Content-Type": "application/json" });
+				res.end(JSON.stringify({ response: "Chat message set" }));
+				return;
+			}
+
+			if (req.method === "GET" && req.url === "/v3/stream_chat") {
+				res.writeHead(200, {
+					"Content-Type": "text/event-stream",
+					"Cache-Control": "no-cache",
+					Connection: "keep-alive",
+				});
+				res.write('event: exception\ndata: {"title":"Server error","message":"Model crashed"}\n\n');
+				res.end();
+				return;
+			}
+
+			if (req.method === "POST" && req.url === "/v3/cancel") {
+				res.writeHead(200, { "Content-Type": "application/json" });
+				res.end(JSON.stringify({ cancelled: true }));
+				return;
+			}
+
+			res.writeHead(404);
+			res.end();
+		});
+	});
+
+	const port = await listen(server);
+
+	try {
+		const error = await new Promise((resolve, reject) => {
+			sendMessageStreaming(
+				"hello",
+				{
+					onChunk: () => {},
+					onDone: () => reject(new Error("Expected exception stream to fail")),
+					onError: resolve,
+				},
+				port
+			);
+		});
+
+		assert.match(error.message, /Model crashed/i);
 	} finally {
 		await close(server);
 	}

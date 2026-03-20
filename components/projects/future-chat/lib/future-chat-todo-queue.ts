@@ -1,4 +1,4 @@
-import type { QueuedPromptItem } from "@/app/contexts";
+import type { FutureChatQueuedAction } from "@/lib/future-chat-types";
 
 interface FutureChatTodoQueueItem {
 	id: string;
@@ -71,11 +71,15 @@ export function normalizeFutureChatTodoQueuePayload(
 
 export function buildFutureChatQueuedPromptsFromTodoQueue(
 	payload: FutureChatTodoQueuePayload,
+	threadId: string,
 	createId: () => string,
-): QueuedPromptItem[] {
+): FutureChatQueuedAction[] {
 	return payload.items.map((item) => ({
 		id: createId(),
+		threadId,
 		text: item.text,
 		createdAt: Date.now(),
+		kind: "prompt",
+		files: [],
 	}));
 }

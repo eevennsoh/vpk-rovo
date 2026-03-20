@@ -65,7 +65,11 @@ export interface ThinkingEventUpdate {
 	permissionScenario?: string;
 }
 
-export type ThinkingToolState = "running" | "completed" | "error";
+export type ThinkingToolState =
+	| "approval-requested"
+	| "running"
+	| "completed"
+	| "error";
 
 export interface ThinkingToolCallSummary {
 	id: string;
@@ -82,6 +86,15 @@ export interface ThinkingToolCallSummary {
 	timestamp?: string;
 	mcpServer?: string;
 	permissionScenario?: string;
+}
+
+export interface AgentExecutionSummary {
+	agentId: string;
+	agentName: string;
+	taskId: string;
+	taskLabel: string;
+	status: AgentExecutionStatus;
+	content: string;
 }
 
 export interface ToolFirstWarningData {
@@ -235,9 +248,18 @@ function isRequestUserInputToolName(toolName: unknown): boolean {
 	return REQUEST_USER_INPUT_TOOL_NAME_REGEX.test(normalizedToolName);
 }
 
-function thinkingPhaseToState(phase: ThinkingEventPhase): ThinkingToolState {
+function thinkingPhaseToState(
+	phase: ThinkingEventPhase,
+	options: { permissionScenario?: string } = {}
+): ThinkingToolState {
 	if (phase === "error") return "error";
 	if (phase === "result") return "completed";
+	if (
+		typeof options.permissionScenario === "string" &&
+		options.permissionScenario.trim().length > 0
+	) {
+		return "approval-requested";
+	}
 	return "running";
 }
 
@@ -525,7 +547,9 @@ export function getThinkingToolCallSummaries(
 				id: key,
 				toolName,
 				toolCallId,
-				state: thinkingPhaseToState(event.phase),
+				state: thinkingPhaseToState(event.phase, {
+					permissionScenario: event.permissionScenario,
+				}),
 				input: event.input,
 				output: event.phase === "result" ? eventOutputPreview : undefined,
 				outputPreview: extractOutputPreview(event.phase, eventOutputPreview),
@@ -561,7 +585,9 @@ export function getThinkingToolCallSummaries(
 		}
 		if (event.phase === "start") {
 			if (summary.state !== "completed" && summary.state !== "error") {
-				summary.state = "running";
+				summary.state = thinkingPhaseToState(event.phase, {
+					permissionScenario: event.permissionScenario,
+				});
 			}
 			if (event.input !== undefined) {
 				summary.input = event.input;
@@ -610,7 +636,10 @@ export function getThinkingToolCallSummaries(
 
 	if (hasTurnCompleteSignal(message)) {
 		for (const summary of summaries) {
-			if (summary.state !== "running") {
+			if (
+				summary.state !== "running" &&
+				summary.state !== "approval-requested"
+			) {
 				continue;
 			}
 
@@ -628,6 +657,66 @@ export function getThinkingToolCallSummaries(
 	}
 
 	return summaries;
+}
+
+export function getAgentExecutionUpdates(
+	message: Pick<RovoUIMessage, "parts">
+): AgentExecutionUpdate[] {
+	return getAllDataParts(message, "data-agent-execution")
+		.map((part) => part.data)
+		.filter(
+			(update): update is AgentExecutionUpdate =>
+				typeof update?.agentId === "string" &&
+				update.agentId.trim().length > 0 &&
+				typeof update?.taskId === "string" &&
+				update.taskId.trim().length > 0
+		);
+}
+
+export function getAgentExecutionSummaries(
+	message: Pick<RovoUIMessage, "parts">
+): AgentExecutionSummary[] {
+	const updates = getAgentExecutionUpdates(message);
+	if (updates.length === 0) {
+		return [];
+	}
+
+	const summaries: AgentExecutionSummary[] = [];
+	const summaryIndexByTaskId = new Map<string, number>();
+
+	for (const update of updates) {
+		const summaryIndex = summaryIndexByTaskId.get(update.taskId);
+		if (summaryIndex === undefined) {
+			summaries.push({
+				agentId: update.agentId,
+				agentName: update.agentName,
+				taskId: update.taskId,
+				taskLabel: update.taskLabel,
+				status: update.status,
+				content: update.content ?? "",
+			});
+			summaryIndexByTaskId.set(update.taskId, summaries.length - 1);
+			continue;
+		}
+
+		const summary = summaries[summaryIndex];
+		summary.agentId = update.agentId;
+		summary.agentName = update.agentName;
+		summary.taskId = update.taskId;
+		summary.taskLabel = update.taskLabel;
+		summary.status = update.status;
+		if (update.content) {
+			summary.content = `${summary.content}${update.content}`;
+		}
+	}
+
+	return summaries;
+}
+
+export function getLatestTodoQueue(
+	message: Pick<RovoUIMessage, "parts">
+): RovoDataParts["todo-queue"] | null {
+	return getLatestDataPart(message, "data-todo-queue")?.data ?? null;
 }
 
 export function getToolPartName(toolPart: RovoToolPart): string {

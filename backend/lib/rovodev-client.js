@@ -7,6 +7,11 @@
  * Key endpoints used:
  *   POST /v3/set_chat_message  — queue a message for processing
  *   GET  /v3/stream_chat       — execute the queued message and stream response (SSE)
+ *   POST /v3/resume_tool_calls — resume paused tool calls
+ *   GET  /v3/sessions/current_session
+ *   POST /v3/sessions/create
+ *   GET  /v3/sessions/{session_id}
+ *   POST /v3/sessions/{session_id}/restore
  *   GET  /v3/status            — get agent status and session info
  *   GET  /healthcheck          — server health
  *   POST /v3/cancel            — cancel ongoing operation
@@ -223,6 +228,45 @@ function resolveToolResultIsError(payload, outputPreview, rawOutput) {
 	return /\b(error|errors|failed|failure|exception)\b/i.test(outputPreview);
 }
 
+function resolveWarningText(payload) {
+	if (!payload || typeof payload !== "object") {
+		return "";
+	}
+
+	const message =
+		typeof payload.message === "string" ? payload.message.trim() : "";
+	const title = typeof payload.title === "string" ? payload.title.trim() : "";
+	const detail =
+		typeof payload.detail === "string" ? payload.detail.trim() : "";
+
+	if (message) {
+		return message;
+	}
+	if (title) {
+		return detail ? `${title} - ${detail}` : title;
+	}
+	return detail;
+}
+
+function buildWarningChunk(parsed) {
+	const rawWarningText = resolveWarningText(parsed);
+	const preview = toPreview(rawWarningText || JSON.stringify(parsed ?? {}));
+	const warningTitle =
+		parsed && typeof parsed === "object" && typeof parsed.title === "string" && parsed.title.trim()
+			? parsed.title.trim()
+			: undefined;
+
+	return {
+		type: "warning",
+		text: preview.text,
+		warningTitle,
+		outputPreview: preview.text,
+		outputTruncated: preview.truncated,
+		outputBytes: preview.bytes,
+		rawOutput: parsed,
+	};
+}
+
 /**
  * Extract structured content from an SSE event, handling the Rovo Dev event format.
  *
@@ -254,7 +298,42 @@ function extractChunkFromEvent(eventName, parsed) {
 		return null;
 	}
 
+	if (eventName === "text") {
+		const text =
+			typeof parsed?.content === "string"
+				? parsed.content
+				: typeof parsed?.text === "string"
+					? parsed.text
+					: "";
+		return text ? { type: "text", text } : null;
+	}
+
 	// ── Tool call / tool result events ──────────────────────────────────
+
+	if (eventName === "tool-call") {
+		const toolInput = getToolCallInput(parsed);
+		const toolName =
+			getToolNameFromPayload(parsed) ||
+			(typeof toolInput?.tool_name === "string" ? toolInput.tool_name : "unknown");
+		const mcpServer =
+			typeof parsed?.mcp_server === "string" && parsed.mcp_server.trim()
+				? parsed.mcp_server.trim()
+				: undefined;
+
+		return {
+			type: "tool_call_start",
+			text:
+				typeof parsed?.args === "string"
+					? parsed.args
+					: toolInput
+						? JSON.stringify(toolInput, null, 2)
+						: "",
+			toolName,
+			toolCallId: getToolCallIdFromPayload(parsed),
+			toolInput,
+			mcpServer,
+		};
+	}
 
 	if (eventName === "on_call_tools_start") {
 		const parts = parsed?.parts || [];
@@ -325,6 +404,10 @@ function extractChunkFromEvent(eventName, parsed) {
 
 	if (eventName === "tool_use") {
 		return null;
+	}
+
+	if (eventName === "warning") {
+		return buildWarningChunk(parsed);
 	}
 
 	// ── Part start ──────────────────────────────────────────────────────
@@ -451,7 +534,7 @@ function request(method, path, body, timeoutMs = 10000, port, signal) {
 		const options = {
 			hostname: url.hostname,
 			port: url.port,
-			path: url.pathname,
+			path: `${url.pathname}${url.search}`,
 			method,
 			headers,
 			timeout: timeoutMs,
@@ -529,6 +612,100 @@ function createHttpStatusError(message, status, endpoint, data) {
 	return error;
 }
 
+function parseJsonResponseData(endpoint, data) {
+	if (typeof data !== "string" || !data.trim()) {
+		return null;
+	}
+
+	try {
+		return JSON.parse(data);
+	} catch {
+		throw new Error(`Failed to parse JSON response from ${endpoint}: ${data}`);
+	}
+}
+
+async function requestJson(method, path, body, timeoutMs = 10000, port, signal) {
+	const response = await request(method, path, body, timeoutMs, port, signal);
+	if (response.status < 200 || response.status >= 300) {
+		throw createHttpStatusError(
+			`${method} ${path} failed (status ${response.status}): ${response.data}`,
+			response.status,
+			path,
+			response.data
+		);
+	}
+
+	return parseJsonResponseData(path, response.data);
+}
+
+function buildSessionsListPath({ page, pageSize } = {}) {
+	const url = new URL("/v3/sessions/list", "http://127.0.0.1");
+	if (Number.isInteger(page) && page > 0) {
+		url.searchParams.set("page", String(page));
+	}
+	if (Number.isInteger(pageSize) && pageSize > 0) {
+		url.searchParams.set("page_size", String(pageSize));
+	}
+	return `${url.pathname}${url.search}`;
+}
+
+function normalizeChatRequestInput(input) {
+	if (typeof input === "string") {
+		return {
+			message: input,
+		};
+	}
+
+	if (!input || typeof input !== "object") {
+		throw new Error("RovoDev chat input must be a string or an object.");
+	}
+
+	const message = typeof input.message === "string" ? input.message : "";
+	if (!message.trim()) {
+		throw new Error("RovoDev chat input must include a non-empty message.");
+	}
+
+	const normalized = {
+		message,
+	};
+
+	if (Array.isArray(input.context)) {
+		normalized.context = input.context;
+	}
+
+	const enableDeepPlan =
+		typeof input.enableDeepPlan === "boolean"
+			? input.enableDeepPlan
+			: typeof input.enable_deep_plan === "boolean"
+				? input.enable_deep_plan
+				: undefined;
+	if (typeof enableDeepPlan === "boolean") {
+		normalized.enable_deep_plan = enableDeepPlan;
+	}
+
+	return normalized;
+}
+
+function normalizeResumeToolCallsInput(decisionsOrInput) {
+	if (Array.isArray(decisionsOrInput)) {
+		return { decisions: decisionsOrInput };
+	}
+
+	if (
+		decisionsOrInput &&
+		typeof decisionsOrInput === "object" &&
+		Array.isArray(decisionsOrInput.decisions)
+	) {
+		return { decisions: decisionsOrInput.decisions };
+	}
+
+	throw new Error("RovoDev resume_tool_calls requires a decisions array.");
+}
+
+function normalizeSessionId(sessionId) {
+	return typeof sessionId === "string" && sessionId.trim() ? sessionId.trim() : "";
+}
+
 // ─── Public API ──────────────────────────────────────────────────────────────
 
 /**
@@ -559,46 +736,112 @@ async function getStatus(port) {
 	return JSON.parse(data);
 }
 
-/**
- * Send a message and stream the response via SSE.
- *
- * Uses the V3 two-step pattern:
- *   1. POST /v3/set_chat_message to queue the message
- *   2. GET /v3/stream_chat to stream the response
- *
- * @param {string} message - The message to send
- * @param {object} callbacks
- * @param {function} callbacks.onChunk - Called for each structured chunk { type, text, toolName?, toolCallId? }
- * @param {function} callbacks.onDone - Called when complete with full text
- * @param {function} callbacks.onError - Called on error
- * @param {function} [callbacks.onEvent] - Optional raw SSE event callback
- * @param {object} [options]
- * @param {number} [options.firstEventTimeoutMs]
- * @param {number} [options.idleTimeoutMs]
- * @param {function} [options.onTimingStage]
- * @returns {{ abort: () => void }}
- */
-function sendMessageStreaming(message, callbacks, port, options = {}) {
+async function listSessions(port, options = {}) {
+	const path = buildSessionsListPath({
+		page: options.page,
+		pageSize: options.pageSize,
+	});
+	return requestJson("GET", path, undefined, options.timeoutMs ?? 10000, port, options.signal);
+}
+
+async function getCurrentSession(port, options = {}) {
+	return requestJson(
+		"GET",
+		"/v3/sessions/current_session",
+		undefined,
+		options.timeoutMs ?? 10000,
+		port,
+		options.signal
+	);
+}
+
+async function getSession(port, sessionId, options = {}) {
+	const normalizedSessionId = normalizeSessionId(sessionId);
+	if (!normalizedSessionId) {
+		throw new Error("RovoDev session ID is required.");
+	}
+
+	return requestJson(
+		"GET",
+		`/v3/sessions/${encodeURIComponent(normalizedSessionId)}`,
+		undefined,
+		options.timeoutMs ?? 10000,
+		port,
+		options.signal
+	);
+}
+
+async function createSession(port, options = {}) {
+	const body = {};
+	if (typeof options.customTitle === "string" && options.customTitle.trim()) {
+		body.custom_title = options.customTitle.trim();
+	}
+
+	return requestJson(
+		"POST",
+		"/v3/sessions/create",
+		Object.keys(body).length > 0 ? body : null,
+		options.timeoutMs ?? 10000,
+		port,
+		options.signal
+	);
+}
+
+async function restoreSession(port, sessionId, options = {}) {
+	const normalizedSessionId = normalizeSessionId(sessionId);
+	if (!normalizedSessionId) {
+		throw new Error("RovoDev session ID is required.");
+	}
+
+	return requestJson(
+		"POST",
+		`/v3/sessions/${encodeURIComponent(normalizedSessionId)}/restore`,
+		null,
+		options.timeoutMs ?? 10000,
+		port,
+		options.signal
+	);
+}
+
+async function resumeToolCalls(port, decisionsOrInput, options = {}) {
+	const body = normalizeResumeToolCallsInput(decisionsOrInput);
+	return requestJson(
+		"POST",
+		"/v3/resume_tool_calls",
+		body,
+		options.timeoutMs ?? 10000,
+		port,
+		options.signal
+	);
+}
+
+function openSseStream({
+	method = "GET",
+	path,
+	body,
+	callbacks,
+	port,
+	abortController,
+	firstEventTimeoutMs,
+	idleTimeoutMs,
+	onTimingStage,
+	timingPrefix,
+	firstSseStageName,
+	firstTextStageName,
+	manualDisconnectLabel,
+}) {
 	let aborted = false;
 	let currentReq = null;
 	let currentRes = null;
-	const abortController = new AbortController();
-	const firstEventTimeoutMs =
-		typeof options.firstEventTimeoutMs === "number" && options.firstEventTimeoutMs > 0
-			? options.firstEventTimeoutMs
-			: DEFAULT_STREAM_FIRST_EVENT_TIMEOUT_MS;
-	const idleTimeoutMs =
-		typeof options.idleTimeoutMs === "number" && options.idleTimeoutMs > 0
-			? options.idleTimeoutMs
-			: DEFAULT_STREAM_IDLE_TIMEOUT_MS;
-	const onTimingStage =
-		typeof options.onTimingStage === "function"
-			? options.onTimingStage
-			: null;
 	let streamActivitySeen = false;
 	let streamSilenceTimer = null;
 	let streamSilenceTimedOut = false;
 	let rejectActiveStream = null;
+	let resolveActiveStream = null;
+	let manuallyDisconnected = false;
+	const startedAtMs = Date.now();
+	let hasReportedFirstSseEvent = false;
+	let hasReportedFirstTextDelta = false;
 
 	const clearStreamSilenceTimer = () => {
 		if (streamSilenceTimer !== null) {
@@ -618,7 +861,7 @@ function sendMessageStreaming(message, callbacks, port, options = {}) {
 		clearStreamSilenceTimer();
 		const timeoutMs = streamActivitySeen ? idleTimeoutMs : firstEventTimeoutMs;
 		streamSilenceTimer = setTimeout(() => {
-			if (aborted || streamSilenceTimedOut) {
+			if (aborted || streamSilenceTimedOut || manuallyDisconnected) {
 				return;
 			}
 			streamSilenceTimedOut = true;
@@ -645,24 +888,329 @@ function sendMessageStreaming(message, callbacks, port, options = {}) {
 		armStreamSilenceTimer();
 	};
 
+	const disconnect = () => {
+		if (manuallyDisconnected) {
+			return;
+		}
+		manuallyDisconnected = true;
+		aborted = true;
+		clearStreamSilenceTimer();
+		if (currentRes && !currentRes.destroyed) {
+			currentRes.destroy();
+		}
+		if (currentReq) {
+			currentReq.destroy();
+		}
+		if (typeof resolveActiveStream === "function") {
+			resolveActiveStream();
+		}
+	};
+
+	const streamPromise = new Promise((resolve, reject) => {
+		rejectActiveStream = reject;
+		resolveActiveStream = resolve;
+
+		const url = new URL(path, getBaseUrlForPort(port));
+		const sseHeaders = {
+			Accept: "text/event-stream",
+			"Cache-Control": "no-cache",
+			Connection: "keep-alive",
+		};
+		const sseSessionToken = (process.env.ROVODEV_SESSION_TOKEN ?? "").trim();
+		if (sseSessionToken) {
+			sseHeaders.Authorization = `Bearer ${sseSessionToken}`;
+		}
+		const requestOptions = {
+			hostname: url.hostname,
+			port: url.port,
+			path: url.pathname + url.search,
+			method,
+			headers: sseHeaders,
+		};
+
+		currentReq = http.request(requestOptions, (res) => {
+			currentRes = res;
+			if (res.socket) {
+				res.socket.setTimeout(0);
+			}
+
+			if (res.statusCode !== 200) {
+				let errData = "";
+				res.on("data", (chunk) => (errData += chunk));
+				res.on("end", () =>
+					reject(
+						createHttpStatusError(
+							`${timingPrefix} failed (status ${res.statusCode}): ${errData}`,
+							typeof res.statusCode === "number" ? res.statusCode : 0,
+							path,
+							errData,
+						),
+					),
+				);
+				return;
+			}
+
+			if (onTimingStage) {
+				onTimingStage(`${timingPrefix}_connected`, {
+					stageMs: Date.now() - startedAtMs,
+					port,
+				});
+			}
+
+			console.log(`[rovodev] ${manualDisconnectLabel} connected, waiting for events...`);
+			armStreamSilenceTimer();
+
+			let buffer = "";
+
+			res.on("data", (chunk) => {
+				void (async () => {
+					if (aborted) {
+						return;
+					}
+					noteStreamActivity();
+
+					buffer += chunk.toString();
+
+					const lines = buffer.split("\n");
+					buffer = lines.pop() ?? "";
+
+					let currentEvent = "";
+					for (const line of lines) {
+						if (line.startsWith("event: ")) {
+							currentEvent = line.slice(7).trim();
+							continue;
+						}
+
+						if (line.startsWith("data: ")) {
+							const rawData = line.slice(6);
+							const currentEventName = currentEvent || "message";
+
+							if (!hasReportedFirstSseEvent && onTimingStage && firstSseStageName) {
+								hasReportedFirstSseEvent = true;
+								onTimingStage(firstSseStageName, {
+									stageMs: Date.now() - startedAtMs,
+									eventName: currentEventName,
+									port,
+								});
+							}
+
+							if (callbacks.onEvent) {
+								callbacks.onEvent(currentEvent, rawData);
+							}
+
+							try {
+								const parsed = JSON.parse(rawData);
+								const chunkPayload = extractChunkFromEvent(currentEvent, parsed);
+
+								if (chunkPayload !== null) {
+									if (
+										chunkPayload.type === "text" &&
+										!hasReportedFirstTextDelta &&
+										onTimingStage &&
+										firstTextStageName
+									) {
+										hasReportedFirstTextDelta = true;
+										onTimingStage(firstTextStageName, {
+											stageMs: Date.now() - startedAtMs,
+											eventName: currentEventName,
+											chars: chunkPayload.text.length,
+											port,
+										});
+									}
+									if (chunkPayload.type === "text") {
+										callbacks.onChunk(chunkPayload);
+									} else {
+										callbacks.onChunk(chunkPayload);
+									}
+
+									if (
+										currentEventName === "on_call_tools_start" &&
+										typeof callbacks.onPauseToolCalls === "function"
+									) {
+										const result = await callbacks.onPauseToolCalls(parsed, {
+											port,
+											chunk: chunkPayload,
+											disconnect,
+										});
+										if (result?.disconnect === true) {
+											disconnect();
+											return;
+										}
+									}
+									currentEvent = "";
+									continue;
+								}
+
+								if (currentEvent === "error" || currentEvent === "exception") {
+									reject(
+										new Error(parsed.message ?? parsed.error ?? JSON.stringify(parsed)),
+									);
+									return;
+								}
+							} catch {
+								if (
+									rawData &&
+									(currentEvent === "text_delta" || currentEvent === "content_block_delta")
+								) {
+									if (
+										!hasReportedFirstTextDelta &&
+										onTimingStage &&
+										firstTextStageName
+									) {
+										hasReportedFirstTextDelta = true;
+										onTimingStage(firstTextStageName, {
+											stageMs: Date.now() - startedAtMs,
+											eventName: currentEventName,
+											chars: rawData.length,
+											port,
+										});
+									}
+									callbacks.onChunk({ type: "text", text: rawData });
+								}
+							}
+
+							currentEvent = "";
+							continue;
+						}
+
+						if (line.trim() === "") {
+							currentEvent = "";
+						}
+					}
+				})().catch((error) => {
+					clearStreamSilenceTimer();
+					if (typeof rejectActiveStream === "function") {
+						rejectActiveStream(error instanceof Error ? error : new Error(String(error)));
+					}
+				});
+			});
+
+			res.on("end", () => {
+				clearStreamSilenceTimer();
+				rejectActiveStream = null;
+				resolve();
+			});
+
+			res.on("error", (err) => {
+				clearStreamSilenceTimer();
+				rejectActiveStream = null;
+				if (manuallyDisconnected) {
+					resolve();
+					return;
+				}
+				reject(err);
+			});
+		});
+
+		currentReq.setTimeout(0);
+
+		currentReq.on("error", (err) => {
+			clearStreamSilenceTimer();
+			rejectActiveStream = null;
+			if (manuallyDisconnected) {
+				resolve();
+				return;
+			}
+			if (err?.code === "ROVODEV_STREAM_IDLE_TIMEOUT") {
+				reject(err);
+				return;
+			}
+			if (err?.name === "AbortError" || err?.code === "ABORT_ERR") {
+				reject(createAbortError());
+				return;
+			}
+			reject(new Error(`SSE connection failed: ${err.message}`));
+		});
+
+		armStreamSilenceTimer();
+		if (body !== undefined) {
+			currentReq.write(JSON.stringify(body));
+		}
+		currentReq.end();
+	});
+
+	return {
+		streamPromise,
+		disconnect,
+		wasManuallyDisconnected: () => manuallyDisconnected,
+		abort: () => {
+			aborted = true;
+			clearStreamSilenceTimer();
+			abortController.abort();
+			if (currentRes && !currentRes.destroyed) {
+				currentRes.destroy();
+			}
+			if (currentReq) {
+				currentReq.destroy();
+			}
+			request("POST", "/v3/cancel", undefined, 10000, port).catch(() => {
+				// Ignore cancel errors
+			});
+		},
+	};
+}
+
+/**
+ * Send a message and stream the response via SSE.
+ *
+ * Uses the V3 two-step pattern:
+ *   1. POST /v3/set_chat_message to queue the message
+ *   2. GET /v3/stream_chat to stream the response
+ *
+ * @param {string|object} input - The chat message or documented request shape
+ * @param {object} callbacks
+ * @param {function} callbacks.onChunk - Called for each structured chunk { type, text, toolName?, toolCallId? }
+ * @param {function} callbacks.onDone - Called when complete with full text
+ * @param {function} callbacks.onError - Called on error
+ * @param {function} [callbacks.onEvent] - Optional raw SSE event callback
+ * @param {object} [options]
+ * @param {number} [options.firstEventTimeoutMs]
+ * @param {number} [options.idleTimeoutMs]
+ * @param {function} [options.onTimingStage]
+ * @param {string} [options.sessionId] - Restore this session before sending the message
+ * @param {boolean} [options.pauseOnCallToolsStart] - Pause tool execution via documented SSE query flag
+ * @returns {{ abort: () => void }}
+ */
+function sendMessageStreaming(input, callbacks, port, options = {}) {
+	const abortController = new AbortController();
+	let activeStreamHandle = null;
+	const firstEventTimeoutMs =
+		typeof options.firstEventTimeoutMs === "number" && options.firstEventTimeoutMs > 0
+			? options.firstEventTimeoutMs
+			: DEFAULT_STREAM_FIRST_EVENT_TIMEOUT_MS;
+	const idleTimeoutMs =
+		typeof options.idleTimeoutMs === "number" && options.idleTimeoutMs > 0
+			? options.idleTimeoutMs
+			: DEFAULT_STREAM_IDLE_TIMEOUT_MS;
+	const onTimingStage =
+		typeof options.onTimingStage === "function"
+			? options.onTimingStage
+			: null;
+	const sessionId = normalizeSessionId(options.sessionId);
+	const pauseOnCallToolsStart =
+		options.pauseOnCallToolsStart === true ||
+		options.pause_on_call_tools_start === true;
+
 	const run = async () => {
 		try {
+			if (sessionId) {
+				console.log(`[rovodev] Restoring session ${sessionId} before sending message...`);
+				await restoreSession(port, sessionId, {
+					timeoutMs: 30_000,
+					signal: abortController.signal,
+				});
+			}
+
 			// Step 1: Queue the message
 			console.log("[rovodev] Queuing message via /v3/set_chat_message...");
 			const setChatMessageStartedAtMs = Date.now();
 
-			// Check if this is a DeferredToolResponse (has tool_call_id and result)
-			const isDeferredToolResponse = message && typeof message === "object" &&
-				"tool_call_id" in message && "result" in message;
-
-			if (isDeferredToolResponse) {
-				console.log("[rovodev] Sending deferred tool response for tool_call_id:", message.tool_call_id);
-			}
+			const chatRequestBody = normalizeChatRequestInput(input);
 
 			const { status: setStatus, data: setData } = await request(
 				"POST",
 				"/v3/set_chat_message",
-				{ message },
+				chatRequestBody,
 				30000,
 				port,
 				abortController.signal
@@ -681,199 +1229,132 @@ function sendMessageStreaming(message, callbacks, port, options = {}) {
 					stageMs: Date.now() - setChatMessageStartedAtMs,
 					status: setStatus,
 					port,
-					deferredToolResponse: isDeferredToolResponse,
+					sessionId: sessionId || undefined,
+					requestShape: typeof input === "string" ? "string" : "structured",
 				});
 			}
-
-			if (aborted) return;
+			let fullText = "";
 
 			// Step 2: Stream the response via SSE
 			const url = new URL("/v3/stream_chat", getBaseUrlForPort(port));
-			url.searchParams.append("enable_deferred_tools", "true");
+			if (pauseOnCallToolsStart) {
+				url.searchParams.set("pause_on_call_tools_start", "true");
+			}
 			console.log("[rovodev] Opening SSE stream:", url.pathname + url.search);
-			let fullText = "";
-			const streamChatStartedAtMs = Date.now();
-			let hasReportedFirstSseEvent = false;
-			let hasReportedFirstTextDelta = false;
-
-			await new Promise((resolve, reject) => {
-				rejectActiveStream = reject;
-				const sseHeaders = {
-					"Accept": "text/event-stream",
-					"Cache-Control": "no-cache",
-					"Connection": "keep-alive",
-				};
-				const sseSessionToken = (process.env.ROVODEV_SESSION_TOKEN ?? "").trim();
-				if (sseSessionToken) {
-					sseHeaders["Authorization"] = `Bearer ${sseSessionToken}`;
-				}
-				const options = {
-					hostname: url.hostname,
-					port: url.port,
-					path: url.pathname + url.search,
-					method: "GET",
-					headers: sseHeaders,
-				};
-
-				currentReq = http.request(options, (res) => {
-					currentRes = res;
-					// Disable socket timeout for the SSE stream
-					if (res.socket) {
-						res.socket.setTimeout(0);
-					}
-
-					if (res.statusCode !== 200) {
-						let errData = "";
-						res.on("data", (chunk) => (errData += chunk));
-						res.on("end", () =>
-							reject(
-								createHttpStatusError(
-									`Stream failed (status ${res.statusCode}): ${errData}`,
-									typeof res.statusCode === "number" ? res.statusCode : 0,
-									"/v3/stream_chat",
-									errData
-								)
-							)
-						);
-						return;
+			activeStreamHandle = openSseStream({
+				method: "GET",
+				path: url.pathname + url.search,
+				callbacks: {
+					onChunk: (chunk) => {
+						if (chunk.type === "text") {
+							fullText += chunk.text;
 						}
-						console.log("[rovodev] SSE stream connected, waiting for events...");
-						if (onTimingStage) {
-							onTimingStage("rovodev_stream_connected", {
-								stageMs: Date.now() - streamChatStartedAtMs,
-								port,
-							});
-						}
-						armStreamSilenceTimer();
-
-					let buffer = "";
-
-					res.on("data", (chunk) => {
-						if (aborted) return;
-						noteStreamActivity();
-
-						buffer += chunk.toString();
-
-						const lines = buffer.split("\n");
-						buffer = lines.pop() ?? "";
-
-						let currentEvent = "";
-							for (const line of lines) {
-								if (line.startsWith("event: ")) {
-									currentEvent = line.slice(7).trim();
-								} else if (line.startsWith("data: ")) {
-									const rawData = line.slice(6);
-									const currentEventName = currentEvent || "message";
-
-									if (!hasReportedFirstSseEvent && onTimingStage) {
-										hasReportedFirstSseEvent = true;
-										onTimingStage("rovodev_first_sse_event", {
-											stageMs: Date.now() - streamChatStartedAtMs,
-											eventName: currentEventName,
-											port,
-										});
-									}
-
-									if (callbacks.onEvent) {
-										callbacks.onEvent(currentEvent, rawData);
-									}
-
-								try {
-									const parsed = JSON.parse(rawData);
-										const chunk = extractChunkFromEvent(currentEvent, parsed);
-
-										if (chunk !== null) {
-											if (chunk.type === "text") {
-												fullText += chunk.text;
-												if (!hasReportedFirstTextDelta && onTimingStage) {
-													hasReportedFirstTextDelta = true;
-													onTimingStage("rovodev_first_text_delta", {
-														stageMs: Date.now() - streamChatStartedAtMs,
-														eventName: currentEventName,
-														chars: chunk.text.length,
-														port,
-													});
-												}
-											}
-											callbacks.onChunk(chunk);
-										} else if (currentEvent === "error" || currentEvent === "exception") {
-											reject(new Error(parsed.message ?? parsed.error ?? JSON.stringify(parsed)));
-										return;
-									}
-									} catch {
-										// Not JSON — treat raw data as text for text-like events
-										if (rawData && (currentEvent === "text_delta" || currentEvent === "content_block_delta")) {
-											fullText += rawData;
-											if (!hasReportedFirstTextDelta && onTimingStage) {
-												hasReportedFirstTextDelta = true;
-												onTimingStage("rovodev_first_text_delta", {
-													stageMs: Date.now() - streamChatStartedAtMs,
-													eventName: currentEventName,
-													chars: rawData.length,
-													port,
-												});
-											}
-											callbacks.onChunk({ type: "text", text: rawData });
-										}
-									}
-								currentEvent = "";
-							} else if (line.trim() === "") {
-								currentEvent = "";
-							}
-						}
-					});
-
-					res.on("end", () => {
-						clearStreamSilenceTimer();
-						rejectActiveStream = null;
-						resolve();
-					});
-
-					res.on("error", (err) => {
-						clearStreamSilenceTimer();
-						rejectActiveStream = null;
-						reject(err);
-					});
-				});
-
-				// Disable request-level timeout for SSE
-				currentReq.setTimeout(0);
-
-				currentReq.on("error", (err) => {
-					clearStreamSilenceTimer();
-					rejectActiveStream = null;
-					if (err?.code === "ROVODEV_STREAM_IDLE_TIMEOUT") {
-						reject(err);
-						return;
-					}
-					if (err?.name === "AbortError" || err?.code === "ABORT_ERR") {
-						reject(createAbortError());
-						return;
-					}
-					reject(new Error(`SSE connection failed: ${err.message}`));
-				});
-
-				armStreamSilenceTimer();
-				currentReq.end();
+						callbacks.onChunk(chunk);
+					},
+					onEvent: callbacks.onEvent,
+					onPauseToolCalls: callbacks.onPauseToolCalls,
+				},
+				port,
+				abortController,
+				firstEventTimeoutMs,
+				idleTimeoutMs,
+				onTimingStage,
+				timingPrefix: "rovodev_stream",
+				firstSseStageName: "rovodev_first_sse_event",
+				firstTextStageName: "rovodev_first_text_delta",
+				manualDisconnectLabel: "SSE stream",
 			});
-			rejectActiveStream = null;
 
-			if (!aborted) {
+			await activeStreamHandle.streamPromise;
+
+			if (!abortController.signal.aborted && !activeStreamHandle.wasManuallyDisconnected()) {
 				console.log(`[rovodev] Stream complete. Response length: ${fullText.length}`);
 				if (onTimingStage) {
 					onTimingStage("rovodev_stream_complete", {
-						stageMs: Date.now() - streamChatStartedAtMs,
+						stageMs: 0,
 						responseChars: fullText.length,
 						port,
 					});
 				}
 				callbacks.onDone(fullText);
 			}
+			} catch (err) {
+				if (!abortController.signal.aborted) {
+					console.error("[rovodev] Stream error:", err);
+					callbacks.onError(err instanceof Error ? err : new Error(String(err)));
+				}
+			}
+	};
+
+	run();
+
+	return {
+		abort: () => {
+			if (activeStreamHandle) {
+				activeStreamHandle.abort();
+				return;
+			}
+			abortController.abort();
+		},
+		disconnect: () => {
+			if (activeStreamHandle) {
+				activeStreamHandle.disconnect();
+			}
+		},
+	};
+}
+
+function replayStreaming(callbacks, port, options = {}) {
+	const abortController = new AbortController();
+	let activeStreamHandle = null;
+	const firstEventTimeoutMs =
+		typeof options.firstEventTimeoutMs === "number" && options.firstEventTimeoutMs > 0
+			? options.firstEventTimeoutMs
+			: DEFAULT_STREAM_FIRST_EVENT_TIMEOUT_MS;
+	const idleTimeoutMs =
+		typeof options.idleTimeoutMs === "number" && options.idleTimeoutMs > 0
+			? options.idleTimeoutMs
+			: DEFAULT_STREAM_IDLE_TIMEOUT_MS;
+	const onTimingStage =
+		typeof options.onTimingStage === "function"
+			? options.onTimingStage
+			: null;
+
+	const run = async () => {
+		try {
+			let fullText = "";
+			console.log("[rovodev] Opening replay SSE stream: /v3/replay");
+			activeStreamHandle = openSseStream({
+				method: "POST",
+				path: "/v3/replay",
+				callbacks: {
+					onChunk: (chunk) => {
+						if (chunk.type === "text") {
+							fullText += chunk.text;
+						}
+						callbacks.onChunk(chunk);
+					},
+					onEvent: callbacks.onEvent,
+					onPauseToolCalls: callbacks.onPauseToolCalls,
+				},
+				port,
+				abortController,
+				firstEventTimeoutMs,
+				idleTimeoutMs,
+				onTimingStage,
+				timingPrefix: "rovodev_replay",
+				firstSseStageName: "rovodev_replay_first_sse_event",
+				firstTextStageName: "rovodev_replay_first_text_delta",
+				manualDisconnectLabel: "Replay stream",
+			});
+
+			await activeStreamHandle.streamPromise;
+
+			if (!abortController.signal.aborted && !activeStreamHandle.wasManuallyDisconnected()) {
+				callbacks.onDone(fullText);
+			}
 		} catch (err) {
-			rejectActiveStream = null;
-			clearStreamSilenceTimer();
-			if (!aborted) {
-				console.error("[rovodev] Stream error:", err);
+			if (!abortController.signal.aborted) {
 				callbacks.onError(err instanceof Error ? err : new Error(String(err)));
 			}
 		}
@@ -883,19 +1364,16 @@ function sendMessageStreaming(message, callbacks, port, options = {}) {
 
 	return {
 		abort: () => {
-			aborted = true;
-			clearStreamSilenceTimer();
+			if (activeStreamHandle) {
+				activeStreamHandle.abort();
+				return;
+			}
 			abortController.abort();
-			if (currentRes && !currentRes.destroyed) {
-				currentRes.destroy();
+		},
+		disconnect: () => {
+			if (activeStreamHandle) {
+				activeStreamHandle.disconnect();
 			}
-			if (currentReq) {
-				currentReq.destroy();
-			}
-			// Also try to cancel on the server side
-			request("POST", "/v3/cancel", undefined, 10000, port).catch(() => {
-				// Ignore cancel errors
-			});
 		},
 	};
 }
@@ -904,10 +1382,10 @@ function sendMessageStreaming(message, callbacks, port, options = {}) {
  * Send a message and collect the full response (non-streaming).
  * Useful for background tasks like title generation, suggested questions, etc.
  *
- * @param {string} message - The message to send
+ * @param {string|object} input - The chat message or documented request shape
  * @returns {Promise<string>} The full response text
  */
-function sendMessageSync(message, options = {}) {
+function sendMessageSync(input, options = {}) {
 	const timeoutMs =
 		typeof options.timeoutMs === "number" && options.timeoutMs > 0
 			? options.timeoutMs
@@ -942,7 +1420,7 @@ function sendMessageSync(message, options = {}) {
 		const resolveOnce = settleWith(resolve);
 		const rejectOnce = settleWith(reject);
 
-		const streamHandle = sendMessageStreaming(message, {
+		const streamHandle = sendMessageStreaming(input, {
 			onChunk: (chunk) => {
 				if (chunk.type === "text") {
 					fullText += chunk.text;
@@ -954,7 +1432,7 @@ function sendMessageSync(message, options = {}) {
 			onError: (err) => {
 				rejectOnce(err);
 			},
-		}, port);
+		}, port, options);
 
 		if (signal) {
 			abortHandler = () => {
@@ -1006,7 +1484,14 @@ function getRovoDevPort() {
 module.exports = {
 	healthCheck,
 	getStatus,
+	listSessions,
+	getCurrentSession,
+	getSession,
+	createSession,
+	restoreSession,
+	resumeToolCalls,
 	sendMessageStreaming,
+	replayStreaming,
 	sendMessageSync,
 	cancelChat,
 	getRovoDevPort,

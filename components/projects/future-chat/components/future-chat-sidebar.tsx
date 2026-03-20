@@ -161,7 +161,10 @@ function FutureChatSidebarThreadItem({
 					render={(
 						<SidebarMenuAction
 							showOnHover
-							className="!top-1/2 right-1 size-6 -translate-y-1/2 rounded-md text-icon-subtle hover:bg-sidebar-accent hover:text-sidebar-accent-foreground active:bg-sidebar-accent active:text-sidebar-accent-foreground aria-expanded:bg-sidebar-accent aria-expanded:text-sidebar-accent-foreground data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground transition-[opacity,transform] duration-normal ease-[var(--ease-out)]"
+							className={cn(
+								"!top-1/2 right-1 size-6 -translate-y-1/2 rounded-md text-icon-subtle hover:bg-sidebar-accent hover:text-sidebar-accent-foreground active:bg-sidebar-accent active:text-sidebar-accent-foreground aria-expanded:bg-sidebar-accent aria-expanded:text-sidebar-accent-foreground data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground transition-[opacity,transform] duration-normal ease-[var(--ease-out)]",
+								showRunIndicator && "group-focus-within/menu-item:opacity-0 aria-expanded:opacity-100 data-[state=open]:opacity-100",
+							)}
 							onClick={(event) => {
 								event.stopPropagation();
 							}}
@@ -196,7 +199,7 @@ function FutureChatSidebarThreadItem({
 			</DropdownMenu>
 
 			{showRunIndicator ? (
-				<div className="pointer-events-none absolute inset-y-0 right-1 flex items-center justify-center transition-opacity duration-normal ease-[var(--ease-out)] group-hover/menu-item:opacity-0 group-data-[collapsible=icon]:hidden">
+				<div className="pointer-events-none absolute inset-y-0 right-1 flex items-center justify-center group-hover/menu-item:hidden group-has-[[data-sidebar=menu-action][aria-expanded=true]]/menu-item:hidden group-has-[[data-sidebar=menu-action][data-state=open]]/menu-item:hidden group-data-[collapsible=icon]:hidden">
 					<div className="flex size-6 items-center justify-center">
 						<Spinner
 							size="xs"

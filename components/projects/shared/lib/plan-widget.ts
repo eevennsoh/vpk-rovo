@@ -19,6 +19,7 @@ export interface ParsedPlanWidgetPayload {
 	emoji?: string;
 	tasks: ParsedPlanTask[];
 	agents: string[];
+	toolCallId?: string;
 	deferredToolCallId?: string;
 }
 
@@ -174,6 +175,7 @@ export function parsePlanWidgetPayload(
 		emoji,
 		tasks,
 		agents,
+		toolCallId: getNonEmptyString(record.tool_call_id) ?? undefined,
 		deferredToolCallId,
 	};
 }

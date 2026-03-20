@@ -51,17 +51,17 @@ function readJson(req) {
 	});
 }
 
-test("setAgentMode targets the versioned v3 endpoint and supports plan mode", async () => {
+test("setAgentMode targets the versioned v3 endpoint and supports documented modes", async () => {
 	const requests = [];
 	const server = http.createServer(async (req, res) => {
 		requests.push(`${req.method} ${req.url}`);
 		if (req.method === "PUT" && req.url === "/v3/agent-mode") {
 			const body = await readJson(req);
-			assert.deepEqual(body, { mode: "plan" });
+			assert.deepEqual(body, { mode: "ask" });
 			res.writeHead(200, { "Content-Type": "application/json" });
 			res.end(JSON.stringify({
-				mode: "plan",
-				message: "Agent mode changed to plan",
+				mode: "ask",
+				message: "Agent mode changed to ask",
 			}));
 			return;
 		}
@@ -73,12 +73,33 @@ test("setAgentMode targets the versioned v3 endpoint and supports plan mode", as
 	const port = await listen(server);
 
 	try {
-		const result = await setAgentMode(port, "plan");
+		const result = await setAgentMode(port, "ask");
 		assert.deepEqual(result, {
-			mode: "plan",
-			message: "Agent mode changed to plan",
+			mode: "ask",
+			message: "Agent mode changed to ask",
 		});
 		assert.deepEqual(requests, ["PUT /v3/agent-mode"]);
+	} finally {
+		await close(server);
+	}
+});
+
+test("setAgentMode rejects unsupported modes without issuing a request", async () => {
+	const requests = [];
+	const server = http.createServer((req, res) => {
+		requests.push(`${req.method} ${req.url}`);
+		res.writeHead(404, { "Content-Type": "application/json" });
+		res.end(JSON.stringify({ detail: "Not Found" }));
+	});
+
+	const port = await listen(server);
+
+	try {
+		await assert.rejects(
+			() => setAgentMode(port, "plan"),
+			/Unsupported agent mode: plan/
+		);
+		assert.deepEqual(requests, []);
 	} finally {
 		await close(server);
 	}
@@ -105,7 +126,7 @@ test("agent-mode helpers fail immediately when the v3 endpoint is unavailable", 
 
 	try {
 		await assert.rejects(() => getAgentMode(port), /Get agent mode failed \(status 404\)/);
-		await assert.rejects(() => setAgentMode(port, "plan"), /Set agent mode failed \(status 404\)/);
+		await assert.rejects(() => setAgentMode(port, "ask"), /Set agent mode failed \(status 404\)/);
 		await assert.rejects(
 			() => getAvailableModes(port),
 			/Get available modes failed \(status 404\)/
@@ -115,6 +136,39 @@ test("agent-mode helpers fail immediately when the v3 endpoint is unavailable", 
 			"PUT /v3/agent-mode",
 			"GET /v3/available-modes",
 		]);
+	} finally {
+		await close(server);
+	}
+});
+
+test("getAvailableModes filters unsupported modes from the v3 payload", async () => {
+	const server = http.createServer(async (req, res) => {
+		if (req.method === "GET" && req.url === "/v3/available-modes") {
+			res.writeHead(200, { "Content-Type": "application/json" });
+			res.end(JSON.stringify({
+				modes: [
+					{ name: "default", description: "Full access" },
+					{ name: "plan", description: "Plan mode" },
+					{ mode: "ask", description: "Read only" },
+				],
+			}));
+			return;
+		}
+
+		res.writeHead(404, { "Content-Type": "application/json" });
+		res.end(JSON.stringify({ detail: "Not Found" }));
+	});
+
+	const port = await listen(server);
+
+	try {
+		const result = await getAvailableModes(port);
+		assert.deepEqual(result, {
+			modes: [
+				{ name: "default", description: "Full access" },
+				{ mode: "ask", description: "Read only" },
+			],
+		});
 	} finally {
 		await close(server);
 	}

@@ -20,6 +20,24 @@ function safeJsonParse(rawValue) {
 	}
 }
 
+function normalizeSessionId(rawSessionId) {
+	return typeof rawSessionId === "string" && rawSessionId.trim()
+		? rawSessionId.trim()
+		: null;
+}
+
+function normalizeSessionMode(rawSessionMode, hasSessionId = false) {
+	if (!hasSessionId) {
+		return null;
+	}
+
+	if (rawSessionMode === "persistent" || rawSessionMode === "ephemeral") {
+		return rawSessionMode;
+	}
+
+	return "persistent";
+}
+
 function getTimestamp(value) {
 	if (typeof value !== "string" || !value.trim()) {
 		return Number.NaN;
@@ -84,6 +102,9 @@ function normalizeActiveRun(rawActiveRun, updatedAtFallback) {
 		typeof rawActiveRun.updatedAt === "string" && rawActiveRun.updatedAt.trim()
 			? rawActiveRun.updatedAt.trim()
 			: startedAt;
+	const sessionId = normalizeSessionId(
+		rawActiveRun.sessionId ?? rawActiveRun.session_id,
+	);
 
 	return {
 		id,
@@ -100,6 +121,11 @@ function normalizeActiveRun(rawActiveRun, updatedAtFallback) {
 			&& rawActiveRun.rovoPort > 0
 				? rawActiveRun.rovoPort
 				: null,
+		sessionId,
+		sessionMode: normalizeSessionMode(
+			rawActiveRun.sessionMode ?? rawActiveRun.session_mode,
+			Boolean(sessionId),
+		),
 		startedAt,
 		updatedAt,
 	};
@@ -123,6 +149,7 @@ function normalizeThreadRecord(rawThread) {
 	const updatedAt = typeof rawThread.updatedAt === "string" && rawThread.updatedAt.trim()
 		? rawThread.updatedAt
 		: createdAt;
+	const sessionId = normalizeSessionId(rawThread.sessionId ?? rawThread.session_id);
 
 	return {
 		id,
@@ -145,6 +172,11 @@ function normalizeThreadRecord(rawThread) {
 			typeof rawThread.activeDocumentId === "string" && rawThread.activeDocumentId.trim()
 				? rawThread.activeDocumentId.trim()
 				: null,
+		sessionId,
+		sessionMode: normalizeSessionMode(
+			rawThread.sessionMode ?? rawThread.session_mode,
+			Boolean(sessionId),
+		),
 		activeRun: normalizeActiveRun(rawThread.activeRun, updatedAt),
 		createdAt,
 		updatedAt,
@@ -233,6 +265,8 @@ function createFutureChatThreadManager({ baseDir, logger }) {
 		modelId,
 		provider,
 		activeDocumentId,
+		sessionId,
+		sessionMode,
 		activeRun,
 		createdAt,
 		updatedAt,
@@ -249,6 +283,8 @@ function createFutureChatThreadManager({ baseDir, logger }) {
 			modelId,
 			provider,
 			activeDocumentId,
+			sessionId,
+			sessionMode,
 			activeRun,
 			createdAt: createdAt || now,
 			updatedAt: updatedAt || now,

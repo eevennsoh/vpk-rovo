@@ -55,6 +55,26 @@ test("does not recover missing thread failures when there is no local thread sta
 	);
 });
 
+test("does not recover unrelated persistence failures even when local state exists", () => {
+	const state = {
+		activeDocumentId: "doc-1",
+		messages: [createMessage("rovodev-1", "user", "Make a plan")],
+		realtimeMessages: [],
+		threadId: "thread-1",
+		title: "Make a plan",
+		visibility: "private",
+	};
+
+	assert.equal(hasRecoverableFutureChatThreadState(state), true);
+	assert.equal(
+		shouldRecoverFutureChatThreadAfterPersistenceFailure({
+			error: new Error("Database unavailable"),
+			state,
+		}),
+		false,
+	);
+});
+
 test("buildRecoverableFutureChatThreadInput preserves realtime messages and active document state", () => {
 	const realtimeMessages = [createMessage("realtime-1", "assistant", "Voice reply")];
 

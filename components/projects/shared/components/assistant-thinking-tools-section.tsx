@@ -33,12 +33,18 @@ function hasToolDetails(toolCall: ThinkingToolCallSummary): boolean {
 }
 
 function isToolRunning(toolCall: ThinkingToolCallSummary): boolean {
-	return toolCall.state === "running";
+	return (
+		toolCall.state === "running" ||
+		toolCall.state === "approval-requested"
+	);
 }
 
 function toToolUiState(
 	state: ThinkingToolCallSummary["state"]
 ): ToolPart["state"] {
+	if (state === "approval-requested") {
+		return "approval-requested";
+	}
 	if (state === "running") {
 		return "input-available";
 	}

@@ -1,3 +1,4 @@
+import type { FileUIPart } from "ai";
 import type { RovoUIMessage } from "@/lib/rovo-ui-messages";
 import { createId } from "@/lib/utils";
 
@@ -72,6 +73,36 @@ export interface FutureChatRecentHistoryEntry {
 	content: string;
 	intent?: string;
 }
+
+export interface FutureChatQueuedActionBase {
+	id: string;
+	threadId: string;
+	text: string;
+	createdAt: number;
+}
+
+export interface FutureChatQueuedPromptAction
+	extends FutureChatQueuedActionBase {
+	kind: "prompt";
+	files: ReadonlyArray<FileUIPart>;
+	contextDescription?: string;
+}
+
+export interface FutureChatQueuedDelegationAction
+	extends FutureChatQueuedActionBase {
+	kind: "delegation";
+	contextDescription?: string;
+	conversationSummary?: string;
+	delegatedMessageId: string;
+	existingRealtimeMessageId?: string | null;
+	intentType?: string;
+	referencedFiles?: string[];
+	urgency?: string;
+}
+
+export type FutureChatQueuedAction =
+	| FutureChatQueuedPromptAction
+	| FutureChatQueuedDelegationAction;
 
 export interface FutureChatRoutingMetadata {
 	activeArtifact?: FutureChatActiveArtifact;

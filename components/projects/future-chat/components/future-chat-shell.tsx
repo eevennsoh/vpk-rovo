@@ -1290,7 +1290,9 @@ export function FutureChatShell({
 			}
 
 			const trimmedText = text.trim();
-			if (trimmedText || files.length > 0) {
+			const shouldShowOptimisticPrompt =
+				!chat.shouldQueueNextSubmission && (trimmedText || files.length > 0);
+			if (shouldShowOptimisticPrompt) {
 				setOptimisticUserMessage(
 					createFutureChatUserMessage({
 						id: createId("future-chat-user"),
@@ -1323,6 +1325,7 @@ export function FutureChatShell({
 			resetRealtimeAssistantMessageState,
 			resetTypedScrollAnchorState,
 			setOptimisticUserMessage,
+			chat.shouldQueueNextSubmission,
 		],
 	);
 
@@ -1753,17 +1756,18 @@ export function FutureChatShell({
 				onOpenArtifactFromCard={handleOpenArtifactFromCard}
 				onRegisterArtifactCard={handleRegisterArtifactCard}
 				onRegenerate={chat.regenerateLatest}
-				onSelectSuggestion={chat.suggestedPrompt}
-				onSetEditingMessageId={chat.setEditingMessageId}
-				onVote={chat.voteOnMessage}
-				pendingArtifactResult={chat.pendingArtifactResult}
-				scrollAnchorMessageId={scrollAnchorMessageId}
-				scrollFollowMode={scrollFollowMode}
-				showEmptyState={showHomeState}
-				streamingArtifact={chat.streamingArtifact}
-				streamingArtifactMessageId={chat.streamingArtifactMessageId}
-				votes={chat.votes}
-			/>
+					onSelectSuggestion={chat.suggestedPrompt}
+					onSetEditingMessageId={chat.setEditingMessageId}
+					onVote={chat.voteOnMessage}
+					pendingArtifactResult={chat.pendingArtifactResult}
+					scrollAnchorMessageId={scrollAnchorMessageId}
+					scrollFollowMode={scrollFollowMode}
+					showEmptyState={showHomeState}
+					shouldSuppressLatestAssistantSuggestions={chat.shouldSuppressLatestAssistantSuggestions}
+					streamingArtifact={chat.streamingArtifact}
+					streamingArtifactMessageId={chat.streamingArtifactMessageId}
+					votes={chat.votes}
+				/>
 
 			<div
 				ref={composerDockRef}
@@ -1828,7 +1832,6 @@ export function FutureChatShell({
 								realtimeVoiceActive={isRealtimeActive}
 								realtimeVoiceState={realtime.voiceState}
 								showBackgroundStop={chat.hasBackgroundDelegation}
-								submitDisabled={chat.hasBackgroundDelegation}
 								voiceState={voiceButtonState}
 							/>
 							{visibleMessages.length > 0 ? <Footer className="relative z-10" /> : null}

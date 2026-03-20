@@ -14,6 +14,8 @@ export interface ClarificationSubmission {
 	round: number;
 	answers: ClarificationAnswers;
 	completed: boolean;
+	toolCallId?: string;
+	deferredToolCallId?: string;
 }
 
 export interface ParsedQuestionCardOption {
@@ -43,6 +45,7 @@ export interface ParsedQuestionCardPayload {
 	directive?: string;
 	requiredCount: number;
 	questions: ParsedQuestionCardQuestion[];
+	toolCallId?: string;
 	deferredToolCallId?: string;
 }
 
@@ -282,6 +285,7 @@ export function parseQuestionCardPayload(
 		directive: getNonEmptyString(record.directive) ?? undefined,
 		requiredCount,
 		questions,
+		toolCallId: getNonEmptyString(record.tool_call_id) ?? undefined,
 		deferredToolCallId: getNonEmptyString(record.tool_call_id) ?? undefined,
 	};
 }
@@ -384,12 +388,16 @@ export function createClarificationSubmission(
 	answers: ClarificationAnswers
 ): ClarificationSubmission {
 	const sanitizedAnswers = sanitizeClarificationAnswers(questionCard, answers);
+	const deferredToolCallId =
+		questionCard.deferredToolCallId ?? questionCard.toolCallId;
 
 	return {
 		sessionId: questionCard.sessionId,
 		round: questionCard.round,
 		answers: sanitizedAnswers,
 		completed: hasRequiredClarificationAnswers(questionCard, sanitizedAnswers),
+		toolCallId: deferredToolCallId,
+		deferredToolCallId,
 	};
 }
 

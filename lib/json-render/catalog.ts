@@ -18,7 +18,7 @@ export const catalog = defineCatalog(schema, {
 				className: z.string().nullable(),
 			}),
 			slots: ["default"],
-			description: "Flex layout container with direction, gap, and alignment. Horizontal Stack defaults to nowrap; set wrap=true only for flowing layouts like tag groups or badge lists.",
+			description: "Flex layout container with direction, gap, and alignment. Horizontal Stack defaults to nowrap; set wrap=true only for flowing layouts like tag groups or badge lists. Do not use horizontal Stack for equal-width board columns or kanban lanes.",
 			example: { direction: "vertical", gap: "md", align: null, justify: null, padding: null, wrap: null, className: null },
 		},
 		Card: {
@@ -39,7 +39,7 @@ export const catalog = defineCatalog(schema, {
 				className: z.string().nullable(),
 			}),
 			slots: ["default"],
-			description: "Responsive CSS grid layout container",
+			description: "Responsive CSS grid layout container. Use for equal-width multi-column layouts such as dashboard panels and kanban board columns.",
 			example: { columns: "3", gap: "md" },
 		},
 		AspectRatio: {

@@ -224,7 +224,9 @@ function useThreadMessageDerived(
 	const thinkingToolCalls = getThinkingToolCallSummaries(message);
 	const hasAnyThinkingToolCalls = thinkingToolCalls.length > 0;
 	const hasRunningThinkingToolCalls = thinkingToolCalls.some(
-		(toolCall) => toolCall.state === "running"
+		(toolCall) =>
+			toolCall.state === "running" ||
+			toolCall.state === "approval-requested"
 	);
 	const isPostToolsGenuiGeneration = resolvePostToolsGenuiGeneration({
 		widgetType,

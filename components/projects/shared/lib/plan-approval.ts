@@ -20,6 +20,8 @@ export interface PlanApprovalTaskInfo {
 export interface PlanApprovalSubmission extends PlanApprovalSelection {
 	planTitle?: string;
 	planTasks?: PlanApprovalTaskInfo[];
+	toolCallId?: string;
+	deferredToolCallId?: string;
 }
 
 function toNonEmptyString(value: unknown): string | null {
@@ -66,11 +68,16 @@ export function createPlanApprovalSubmission(
 	selection: PlanApprovalSelection,
 	planWidget: ParsedPlanWidgetPayload | null
 ): PlanApprovalSubmission {
+	const deferredToolCallId =
+		planWidget?.deferredToolCallId ?? planWidget?.toolCallId;
+
 	return {
 		decision: selection.decision,
 		customInstruction: selection.customInstruction?.trim() || undefined,
 		planTitle: planWidget?.title?.trim() || undefined,
 		planTasks: planWidget ? extractTaskInfo(planWidget.tasks) : [],
+		toolCallId: deferredToolCallId,
+		deferredToolCallId,
 	};
 }
 

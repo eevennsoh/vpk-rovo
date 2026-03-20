@@ -9,6 +9,8 @@ export const REASONING_LABELS = {
 	section: {
 		thinking: "Thinking",
 		stream: "Response",
+		steps: "Steps",
+		agents: "Agents",
 		tools: "Tools",
 	},
 	completed: {

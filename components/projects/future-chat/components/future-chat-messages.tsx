@@ -1,7 +1,7 @@
 "use client";
 
 import { useReducedMotion } from "motion/react";
-import type { ErrorInfo, ReactNode, RefObject } from "react";
+import type { ComponentProps, ErrorInfo, ReactNode, RefObject } from "react";
 import {
 	Attachment,
 	AttachmentPreview,
@@ -32,6 +32,7 @@ import {
 	ReasoningText,
 } from "@/components/ui-ai/reasoning";
 import { Button } from "@/components/ui/button";
+import { Lozenge } from "@/components/ui/lozenge";
 import { Textarea } from "@/components/ui/textarea";
 import { getFutureChatInterruptionLabel } from "@/lib/future-chat-interruptions";
 import {
@@ -76,9 +77,11 @@ import {
 	resolveThinkingStatusTriggerLabel,
 } from "@/components/projects/shared/thread-message/lib/thinking-status-state";
 import {
+	getAgentExecutionSummaries,
 	getAllDataParts,
 	getMessageInterruption,
 	getLatestDataPart,
+	getLatestTodoQueue,
 	getLatestRouteDecision,
 	getMessageReasoning,
 	getMessageSources,
@@ -86,6 +89,8 @@ import {
 	getThinkingToolCallSummaries,
 	hasTurnCompleteSignal,
 	isMessageTextStreaming,
+	type AgentExecutionStatus,
+	type AgentExecutionSummary,
 	type RoutingDecision,
 	type RovoUIMessage,
 } from "@/lib/rovo-ui-messages";
@@ -116,6 +121,7 @@ interface FutureChatMessagesProps {
 	scrollAnchorMessageId: string | null;
 	scrollFollowMode: ConversationFollowMode;
 	showEmptyState?: boolean;
+	shouldSuppressLatestAssistantSuggestions?: boolean;
 	streamingArtifact: FutureChatStreamingArtifact | null;
 	streamingArtifactMessageId: string | null;
 	votes: Record<string, "up" | "down">;
@@ -381,6 +387,110 @@ function WidgetErrorCard({
 	);
 }
 
+function getAgentExecutionVariant(
+	status: AgentExecutionStatus
+): ComponentProps<typeof Lozenge>["variant"] {
+	if (status === "completed") {
+		return "success";
+	}
+	if (status === "failed") {
+		return "danger";
+	}
+	return "information";
+}
+
+function getAgentExecutionLabel(status: AgentExecutionStatus): string {
+	if (status === "completed") {
+		return "Completed";
+	}
+	if (status === "failed") {
+		return "Failed";
+	}
+	return "Working";
+}
+
+function TraceStepsSection({
+	items,
+}: Readonly<{
+	items: ReadonlyArray<{
+		id: string;
+		text: string;
+		blockedBy: string[];
+		agent?: string;
+	}>;
+}>) {
+	return (
+		<div className="space-y-2">
+			{items.map((item) => {
+				const isBlocked = item.blockedBy.length > 0;
+
+				return (
+					<div
+						key={item.id}
+						className="rounded-lg border border-border/60 bg-background/60 px-3 py-2"
+					>
+						<div className="flex flex-wrap items-start gap-2">
+							<div className="min-w-0 flex-1">
+								<p className="text-sm font-medium text-text">{item.text}</p>
+								<div className="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-xs text-text-subtle">
+									<span>{item.id}</span>
+									{item.agent ? <span>{item.agent}</span> : null}
+									{isBlocked ? (
+										<span>Blocked by {item.blockedBy.join(", ")}</span>
+									) : (
+										<span>Ready to run</span>
+									)}
+								</div>
+							</div>
+							<Lozenge variant={isBlocked ? "warning" : "neutral"}>
+								{isBlocked ? "Blocked" : "Queued"}
+							</Lozenge>
+						</div>
+					</div>
+				);
+			})}
+		</div>
+	);
+}
+
+function TraceAgentExecutionSection({
+	executions,
+}: Readonly<{
+	executions: ReadonlyArray<AgentExecutionSummary>;
+}>) {
+	return (
+		<div className="space-y-2">
+			{executions.map((execution) => (
+				<div
+					key={execution.taskId}
+					className="rounded-lg border border-border/60 bg-background/60 px-3 py-2"
+				>
+					<div className="flex flex-wrap items-start gap-2">
+						<div className="min-w-0 flex-1">
+							<p className="text-sm font-medium text-text">
+								{execution.taskLabel}
+							</p>
+							<div className="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-xs text-text-subtle">
+								<span>{execution.agentName}</span>
+								<span>{execution.taskId}</span>
+							</div>
+						</div>
+						<Lozenge variant={getAgentExecutionVariant(execution.status)}>
+							{getAgentExecutionLabel(execution.status)}
+						</Lozenge>
+					</div>
+					{execution.content ? (
+						<div className="mt-2 rounded-md bg-muted/40 px-3 py-2">
+							<pre className="whitespace-pre-wrap break-words text-xs leading-5 text-text-subtle">
+								{execution.content}
+							</pre>
+						</div>
+					) : null}
+				</div>
+			))}
+		</div>
+	);
+}
 
 function AssistantMessage({
 	artifactCard,
@@ -433,14 +543,21 @@ function AssistantMessage({
 	const thinkingStatusParts = getAllDataParts(message, "data-thinking-status");
 	const thinkingEventParts = getAllDataParts(message, "data-thinking-event");
 	const thinkingToolCalls = getThinkingToolCallSummaries(message);
+	const latestTodoQueue = getLatestTodoQueue(message);
+	const todoQueueItems = latestTodoQueue?.items ?? [];
+	const agentExecutions = getAgentExecutionSummaries(message);
 	const hasThinkingStatusPart = thinkingStatusParts.length > 0;
 	const hasThinkingEvents = thinkingEventParts.length > 0;
 	const hasThinkingToolCalls = thinkingToolCalls.length > 0;
+	const hasTodoQueueItems = todoQueueItems.length > 0;
+	const hasAgentExecutions = agentExecutions.length > 0;
+	const hasTraceDataSignals =
+		hasThinkingEvents || hasTodoQueueItems || hasAgentExecutions;
 	const hasTurnComplete = hasTurnCompleteSignal(message);
 
 	const rawThinkingActive = checkThinkingStatusActive({
 		hasThinkingStatusPart,
-		hasThinkingEvents,
+		hasThinkingEvents: hasTraceDataSignals,
 		isRetryThinkingStatus: false,
 		isStreaming: isThinkingLifecycleStreaming,
 	});
@@ -467,7 +584,11 @@ function AssistantMessage({
 	const thinkingActive = effectiveIsThinkingActive;
 
 	const hasBackendThinkingActivity =
-		hasThinkingStatusPart || hasThinkingEvents || hasThinkingToolCalls;
+		hasThinkingStatusPart ||
+		hasThinkingEvents ||
+		hasThinkingToolCalls ||
+		hasTodoQueueItems ||
+		hasAgentExecutions;
 	const isThinkingStreaming =
 		isThinkingLifecycleStreaming && thinkingActive && hasBackendThinkingActivity;
 
@@ -476,7 +597,11 @@ function AssistantMessage({
 		.filter(Boolean)
 		.join("\n\n");
 	const hasThinkingText = Boolean(accumulatedThinkingContent);
-	const hasThinkingDetails = hasThinkingText || hasThinkingToolCalls;
+	const hasThinkingDetails =
+		hasThinkingText ||
+		hasTodoQueueItems ||
+		hasAgentExecutions ||
+		hasThinkingToolCalls;
 
 	const lastThinkingStatusPart =
 		thinkingStatusParts[thinkingStatusParts.length - 1] ?? null;
@@ -558,6 +683,8 @@ function AssistantMessage({
 			(widgetLoading?.data.type === "plan" && widgetLoading.data.loading) ||
 			isMessageTextStreaming(message)
 		);
+	const shouldAllowTraceAutoCollapse =
+		hasTurnComplete && widgetLoading?.data.loading !== true;
 
 	if (!shouldRenderAssistantMessage) {
 		return null;
@@ -614,7 +741,7 @@ function AssistantMessage({
 								streamingWaveGradientColor={thinkingPhaseProps.streamingWaveGradientColor}
 								animatedDots={thinkingPhaseProps.animatedDots}
 								duration={thinkingReasoningPhase === "completed" ? thinkingDuration : undefined}
-								allowAutoCollapse={hasTurnComplete}
+								allowAutoCollapse={shouldAllowTraceAutoCollapse}
 							>
 								<AdsReasoningTrigger
 									label={thinkingTriggerLabel}
@@ -631,6 +758,16 @@ function AssistantMessage({
 														text={accumulatedThinkingContent}
 														timelineMode="auto"
 													/>
+												</ReasoningSection>
+											) : null}
+											{hasTodoQueueItems ? (
+												<ReasoningSection title={getReasoningSectionTitle("steps")}>
+													<TraceStepsSection items={todoQueueItems} />
+												</ReasoningSection>
+											) : null}
+											{hasAgentExecutions ? (
+												<ReasoningSection title={getReasoningSectionTitle("agents")}>
+													<TraceAgentExecutionSection executions={agentExecutions} />
 												</ReasoningSection>
 											) : null}
 											{hasThinkingToolCalls ? (
@@ -875,6 +1012,7 @@ export function FutureChatMessages({
 	scrollAnchorMessageId,
 	scrollFollowMode,
 	showEmptyState = true,
+	shouldSuppressLatestAssistantSuggestions = false,
 	streamingArtifact,
 	streamingArtifactMessageId,
 	votes,
@@ -990,13 +1128,21 @@ export function FutureChatMessages({
 							orphanArtifactDisplay?.anchorMessageId === message.id
 								? orphanArtifactDisplay
 								: null;
-						const resolvedArtifactDisplay =
-							artifactDisplay ?? fallbackArtifactDisplay;
-						const suggestions =
-							getLatestDataPart(message, "data-suggested-questions")?.data.questions ?? [];
+							const resolvedArtifactDisplay =
+								artifactDisplay ?? fallbackArtifactDisplay;
+							const shouldHideSuggestions =
+								message.id !== lastAssistantMessageId ||
+								shouldSuppressLatestAssistantSuggestions;
+							const suggestions =
+								shouldHideSuggestions
+									? []
+									: (
+										getLatestDataPart(message, "data-suggested-questions")?.data
+											.questions ?? []
+									);
 
-						return (
-							<Fragment key={message.id}>
+							return (
+								<Fragment key={message.id}>
 								<AssistantMessage
 									artifactCard={
 										resolvedArtifactDisplay ? (

@@ -67,6 +67,16 @@ const GENUI_SPEC_INSTRUCTION = [
 	"[End Interactive Visual UI Protocol]",
 ].join("\n");
 
+const EXECUTION_TRACE_INSTRUCTION = [
+	"[Execution Trace Protocol]",
+	"For long-running implementation, UI generation, or delegated multi-step work, emit lightweight machine-readable progress markers so the host UI can show a live trace.",
+	"When you are delegating work, using `invoke_subagents`, or progressing through multiple meaningful tasks, emit a single line with the exact prefix `AGENT_EXECUTION:` followed by one JSON object.",
+	'Use this exact shape: {"agentId":"<stable-agent-id>","agentName":"<short agent name>","taskId":"<stable-task-id>","taskLabel":"<short task label>","status":"working|completed|failed","content":"<optional short update>"}.',
+	"Reuse the same `taskId` across updates for the same task. Keep `content` concise and cumulative-friendly. Do not wrap these marker lines in markdown fences.",
+	"When tool lifecycle events do not reflect the current phase of work, you may emit `THINKING_STATUS:` followed by a JSON object like {\"label\":\"Generating results\",\"content\":\"Assembling the UI card\"}. Use this sparingly for meaningful phase changes.",
+	"[End Execution Trace Protocol]",
+].join("\n");
+
 const FIGMA_CLARIFICATION_INSTRUCTION = [
 	"[Figma Tool Protocol]",
 	"When the user mentions Figma, design context, or asks about a Figma design, you MUST first use the `ask_user_questions` tool to gather the following before calling any Figma MCP tools:",
@@ -292,6 +302,7 @@ function getInstructionBlocksForProfile(profile, promptSpecificInstruction) {
 		REQUEST_USER_INPUT_INSTRUCTION,
 		PLAN_DESCRIPTION_INSTRUCTION,
 		GENUI_SPEC_INSTRUCTION,
+		EXECUTION_TRACE_INSTRUCTION,
 		FIGMA_CLARIFICATION_INSTRUCTION,
 		WEB_SEARCH_INSTRUCTION,
 		promptSpecificInstruction,

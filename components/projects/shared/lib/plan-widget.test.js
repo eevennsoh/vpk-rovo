@@ -4,6 +4,7 @@ const assert = require("node:assert/strict");
 const {
 	getLatestPlanWidgetPayload,
 	generateMermaidFromPlanTasks,
+	parsePlanWidgetPayload,
 } = require("./plan-widget.ts");
 
 function createAssistantMessage(parts) {
@@ -79,6 +80,19 @@ test("getLatestPlanWidgetPayload returns null when no valid plan widget exists",
 	];
 
 	assert.equal(getLatestPlanWidgetPayload(messages), null);
+});
+
+test("parsePlanWidgetPayload preserves both generic and legacy tool call ids", () => {
+	const payload = parsePlanWidgetPayload({
+		type: "plan",
+		tool_call_id: "tool-call-123",
+		title: "Sprint Board Plan",
+		tasks: [{ id: "task-1", label: "Create board shell" }],
+	});
+
+	assert.ok(payload);
+	assert.equal(payload.toolCallId, "tool-call-123");
+	assert.equal(payload.deferredToolCallId, "tool-call-123");
 });
 
 test("generateMermaidFromPlanTasks preserves explicit blockedBy dependencies", () => {

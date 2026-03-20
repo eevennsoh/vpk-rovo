@@ -642,6 +642,7 @@ function GenerativeWidgetCardShell({
 						description={metadata.description}
 						sourceName={metadata.source?.name}
 						sourceLogoSrc={metadata.source?.logoSrc}
+						iconHint={metadata.iconHint}
 						hintText={metadata.iconHintText}
 					/>
 				}
@@ -822,6 +823,7 @@ export function GenerativeWidgetCard({
 									description={metadata.description}
 									sourceName={metadata.source?.name}
 									sourceLogoSrc={metadata.source?.logoSrc}
+									iconHint={metadata.iconHint}
 									hintText={metadata.iconHintText}
 								/>
 							<div className="min-w-0 flex-1 space-y-1">

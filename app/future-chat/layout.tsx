@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { FutureChatQueueProvider } from "@/app/future-chat/future-chat-queue-provider";
 import { getProjectPageTitle } from "@/lib/project-page-title";
 
 export const metadata: Metadata = {
@@ -11,5 +12,5 @@ export const metadata: Metadata = {
 };
 
 export default function FutureChatLayout({ children }: { children: React.ReactNode }) {
-	return children;
+	return <FutureChatQueueProvider>{children}</FutureChatQueueProvider>;
 }

@@ -5,6 +5,7 @@ import { autoFixSpec, validateSpec } from "@json-render/core";
 import type { Spec } from "@json-render/react";
 import { JSONUIProvider, Renderer } from "@json-render/react";
 import { registry } from "./registry";
+import { normalizeBoardLayoutSpec } from "./spec-normalization";
 
 const ROOT_STACK_PADDING_UNITS = 0;
 
@@ -75,13 +76,17 @@ function normalizeRootStackPadding(spec: Spec): Spec {
 	};
 }
 
+function normalizeRenderableSpec(spec: Spec): Spec {
+	return normalizeBoardLayoutSpec(normalizeRootStackPadding(spec));
+}
+
 function toRenderableSpec(spec: Spec | null): Spec | null {
 	if (!hasRenderableShape(spec)) {
 		return null;
 	}
 
 	try {
-		const normalizedSpec = normalizeRootStackPadding(spec);
+		const normalizedSpec = normalizeRenderableSpec(spec);
 		const validation = validateSpec(normalizedSpec);
 		if (validation.valid) {
 			return normalizedSpec;
@@ -92,7 +97,7 @@ function toRenderableSpec(spec: Spec | null): Spec | null {
 			return null;
 		}
 
-		const normalizedFixedSpec = normalizeRootStackPadding(fixed.spec as Spec);
+		const normalizedFixedSpec = normalizeRenderableSpec(fixed.spec as Spec);
 		const fixedValidation = validateSpec(normalizedFixedSpec);
 		return fixedValidation.valid ? normalizedFixedSpec : null;
 	} catch {
@@ -121,7 +126,7 @@ export function JsonRenderView({
 	const renderableSpec = useMemo(() => {
 		if (skipValidation) {
 			return hasRenderableShape(spec)
-				? normalizeRootStackPadding(spec)
+				? normalizeRenderableSpec(spec)
 				: null;
 		}
 		return toRenderableSpec(spec);

@@ -208,24 +208,11 @@ export default function ChatPanel({
 				clarificationSummary,
 			};
 
-			const deferredToolCallId = activeQuestionCard.deferredToolCallId;
-
-			if (deferredToolCallId) {
-				void sendPrompt(clarificationPrompt, {
-					...resolvedSendPromptOptions,
-					deferredToolResponse: {
-						tool_call_id: deferredToolCallId,
-						result: clarificationSubmission.answers,
-					},
-					messageMetadata: clarificationMetadata,
-				});
-			} else {
-				void sendPrompt(clarificationPrompt, {
-					...resolvedSendPromptOptions,
-					messageMetadata: clarificationMetadata,
-					clarification: clarificationSubmission,
-				});
-			}
+			void sendPrompt(clarificationPrompt, {
+				...resolvedSendPromptOptions,
+				messageMetadata: clarificationMetadata,
+				clarification: clarificationSubmission,
+			});
 		},
 		[activeQuestionCard, resolvedSendPromptOptions, sendPrompt],
 	);

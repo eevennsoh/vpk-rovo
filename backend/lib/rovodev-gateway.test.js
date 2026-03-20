@@ -1,5 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const http = require("node:http");
 
 const {
 	isGenericIntegrationWrapperToolName,
@@ -7,10 +8,8 @@ const {
 	getThinkingActivityFromToolName,
 	buildThinkingStatusFromToolEvent,
 	isChatInProgressError,
-	isPendingDeferredToolRequestError,
 	streamViaRovoDev,
 	generateTextViaRovoDev,
-	recoverPendingDeferredToolRequest,
 	retryChatInProgress,
 	shouldCancelConflictingTurn,
 	parseToolCallArgsInput,
@@ -18,6 +17,31 @@ const {
 	initPool,
 	WAIT_FOR_TURN_TIMEOUT_MS,
 } = require("./rovodev-gateway");
+
+function listen(server) {
+	return new Promise((resolve, reject) => {
+		server.listen(0, "127.0.0.1", () => {
+			const address = server.address();
+			if (!address || typeof address !== "object") {
+				reject(new Error("Failed to read test server address"));
+				return;
+			}
+			resolve(address.port);
+		});
+	});
+}
+
+function close(server) {
+	return new Promise((resolve, reject) => {
+		server.close((error) => {
+			if (error) {
+				reject(error);
+				return;
+			}
+			resolve();
+		});
+	});
+}
 
 test("isGenericIntegrationWrapperToolName detects wrapper tool names", () => {
 	assert.equal(isGenericIntegrationWrapperToolName("mcp_invoke_tool"), true);
@@ -97,6 +121,19 @@ test("buildThinkingStatusFromToolEvent returns user-facing labels and metadata",
 	assert.equal(errorStatus.source, "backend");
 });
 
+test("buildThinkingStatusFromToolEvent marks paused tool approvals distinctly", () => {
+	const status = buildThinkingStatusFromToolEvent(
+		"open_files",
+		"start",
+		{ permissionScenario: "prompt" }
+	);
+
+	assert.equal(status.label, "Awaiting approval");
+	assert.equal(status.content, "Awaiting approval for open_files");
+	assert.equal(status.activity, "results");
+	assert.equal(status.source, "backend");
+});
+
 test("parseToolCallArgsInput returns object only when JSON args are complete", () => {
 	assert.deepEqual(
 		parseToolCallArgsInput('{"questions":[{"question":"Which space?","options":["Engineering"]}]}'),
@@ -166,57 +203,132 @@ test("isChatInProgressError does not match unrelated 409 responses", () => {
 	);
 });
 
-test("isPendingDeferredToolRequestError detects stale deferred-tool 404s", () => {
-	assert.equal(
-		isPendingDeferredToolRequestError({
-			message: "Stream failed (status 404): {\"detail\":\"Pending deferred tool request found\"}",
-			status: 404,
-			endpoint: "/v3/stream_chat",
-		}),
-		true
-	);
-});
-
-test("isPendingDeferredToolRequestError ignores unrelated 404 responses", () => {
-	assert.equal(
-		isPendingDeferredToolRequestError({
-			message: "Stream failed (status 404): {\"detail\":\"Not found\"}",
-			status: 404,
-			endpoint: "/v3/stream_chat",
-		}),
-		false
-	);
-});
-
-test("recoverPendingDeferredToolRequest cancels stale deferred state and retries once", async () => {
-	let attempts = 0;
-	let cancelCalls = 0;
-
-	const value = await recoverPendingDeferredToolRequest(
-		async () => {
-			attempts += 1;
-			if (attempts === 1) {
-				const deferredError = new Error(
-					"Stream failed (status 404): {\"detail\":\"Pending deferred tool request found\"}"
-				);
-				deferredError.status = 404;
-				deferredError.endpoint = "/v3/stream_chat";
-				throw deferredError;
-			}
-			return "ok";
-		},
-		{
-			cancelDeferredTurn: async () => {
-				cancelCalls += 1;
-			},
-			logPrefix: "recoverPendingDeferredToolRequest.test",
-			port: 8000,
+test("streamViaRovoDev propagates warning events without failing the turn", async () => {
+	const server = http.createServer((req, res) => {
+		if (req.url === "/v3/set_chat_message" && req.method === "POST") {
+			req.resume();
+			res.writeHead(200, { "Content-Type": "application/json" });
+			res.end(JSON.stringify({ response: "Chat message set" }));
+			return;
 		}
-	);
 
-	assert.equal(value, "ok");
-	assert.equal(attempts, 2);
-	assert.equal(cancelCalls, 1);
+		if (req.url === "/v3/stream_chat" && req.method === "GET") {
+			res.writeHead(200, {
+				"Content-Type": "text/event-stream",
+				"Cache-Control": "no-cache",
+				Connection: "keep-alive",
+			});
+			res.write('event: warning\ndata: {"title":"Using fallback model","message":"Using fallback model - Switching to a backup model."}\n\n');
+			res.write('event: part_start\ndata: {"index":0,"part":{"content":"Hello","part_kind":"text"},"event_kind":"part_start"}\n\n');
+			res.end();
+			return;
+		}
+
+		if (req.url === "/v3/cancel" && req.method === "POST") {
+			req.resume();
+			res.writeHead(200, { "Content-Type": "application/json" });
+			res.end(JSON.stringify({ cancelled: true }));
+			return;
+		}
+
+		res.writeHead(404, { "Content-Type": "application/json" });
+		res.end(JSON.stringify({ detail: "Not Found" }));
+	});
+
+	const port = await listen(server);
+	const previousPort = process.env.ROVODEV_PORT;
+	process.env.ROVODEV_PORT = String(port);
+
+	try {
+		const warningEvents = [];
+		let collectedText = "";
+
+		await streamViaRovoDev({
+			message: "hello",
+			onTextDelta: (delta) => {
+				collectedText += delta;
+			},
+			onWarning: (warningEvent) => {
+				warningEvents.push(warningEvent);
+			},
+		});
+
+		assert.equal(collectedText, "Hello");
+		assert.deepEqual(warningEvents, [
+			{
+				eventName: "warning",
+				message: "Using fallback model - Switching to a backup model.",
+				rawData: '{"title":"Using fallback model","message":"Using fallback model - Switching to a backup model."}',
+				title: "Using fallback model",
+				payload: {
+					title: "Using fallback model",
+					message: "Using fallback model - Switching to a backup model.",
+				},
+			},
+		]);
+	} finally {
+		if (previousPort === undefined) {
+			delete process.env.ROVODEV_PORT;
+		} else {
+			process.env.ROVODEV_PORT = previousPort;
+		}
+		await close(server);
+	}
+});
+
+test("streamViaRovoDev treats exception events as hard failures", async () => {
+	const server = http.createServer((req, res) => {
+		if (req.url === "/v3/set_chat_message" && req.method === "POST") {
+			req.resume();
+			res.writeHead(200, { "Content-Type": "application/json" });
+			res.end(JSON.stringify({ response: "Chat message set" }));
+			return;
+		}
+
+		if (req.url === "/v3/stream_chat" && req.method === "GET") {
+			res.writeHead(200, {
+				"Content-Type": "text/event-stream",
+				"Cache-Control": "no-cache",
+				Connection: "keep-alive",
+			});
+			res.write('event: exception\ndata: {"title":"Server error","message":"Something broke"}\n\n');
+			res.end();
+			return;
+		}
+
+		if (req.url === "/v3/cancel" && req.method === "POST") {
+			req.resume();
+			res.writeHead(200, { "Content-Type": "application/json" });
+			res.end(JSON.stringify({ cancelled: true }));
+			return;
+		}
+
+		res.writeHead(404, { "Content-Type": "application/json" });
+		res.end(JSON.stringify({ detail: "Not Found" }));
+	});
+
+	const port = await listen(server);
+	const previousPort = process.env.ROVODEV_PORT;
+	process.env.ROVODEV_PORT = String(port);
+
+	try {
+		await assert.rejects(
+			() =>
+				streamViaRovoDev({
+					message: "hello",
+					onTextDelta: () => {},
+					failOnError: true,
+				}),
+			/Something broke/
+		);
+	} finally {
+		if (previousPort === undefined) {
+			delete process.env.ROVODEV_PORT;
+		} else {
+			process.env.ROVODEV_PORT = previousPort;
+		}
+		await close(server);
+	}
 });
 
 test("generateTextViaRovoDev rejects immediately when signal is already aborted", async () => {

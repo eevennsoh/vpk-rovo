@@ -43,6 +43,7 @@ const DEFAULT_STALE_BUSY_TIMEOUT_MS = 120_000;
  * @param {number} [options.healthCheckIntervalMs] - Interval between health checks (default 30s)
  * @param {number} [options.staleBusyTimeoutMs] - Mark a busy port as unhealthy if it has been acquired for longer than this (default 120s). Catches hung RovoDev serve instances that never return a response.
  * @param {(port: number, durationMs: number) => void} [options.onStaleBusyPort] - Called when a stale busy port is detected, before marking it unhealthy. Use to attempt cleanup (e.g., cancel the chat).
+ * @param {() => void} [options.onPortAvailable] - Called when a port transitions to available (after cooldown/health check). Use to drain external run queues that are separate from the pool's internal waiter list.
  * @param {number} [options.cooldownMs] - Delay before marking a released port as available (default 0). Used as fallback if waitForReady is not provided.
  * @param {(port: number) => Promise<void>} [options.waitForReady] - Async function that resolves when a port is ready for new requests. Replaces the blind cooldownMs timer with a deterministic readiness check.
  * @returns {{
@@ -57,6 +58,7 @@ function createRovoDevPool(ports, options = {}) {
 		healthCheckIntervalMs = DEFAULT_HEALTH_CHECK_INTERVAL_MS,
 		staleBusyTimeoutMs = DEFAULT_STALE_BUSY_TIMEOUT_MS,
 		onStaleBusyPort,
+		onPortAvailable,
 		cooldownMs = 0,
 		waitForReady,
 	} = options;
@@ -108,6 +110,9 @@ function createRovoDevPool(ports, options = {}) {
 					entry.status = "available";
 					entry.acquiredAt = null;
 					tryNotifyWaiter();
+					if (typeof onPortAvailable === "function") {
+						try { onPortAvailable(); } catch {}
+					}
 				};
 
 				if (typeof waitForReady === "function") {
@@ -263,6 +268,10 @@ function createRovoDevPool(ports, options = {}) {
 					console.log(`[ROVODEV-POOL] Port ${entry.port} recovered`);
 				}
 				entry.status = "available";
+				tryNotifyWaiter();
+				if (typeof onPortAvailable === "function") {
+					try { onPortAvailable(); } catch {}
+				}
 			} catch {
 				if (entry.status !== "unhealthy") {
 					console.warn(`[ROVODEV-POOL] Port ${entry.port} is unhealthy`);

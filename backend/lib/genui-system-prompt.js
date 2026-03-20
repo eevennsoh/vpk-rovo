@@ -11,6 +11,7 @@
  */
 
 const generatedPrompt = require("./generated-catalog-prompt.json");
+const iconCatalog = require("./generated-icon-catalog.json");
 
 /**
  * VPK-specific rules appended after the catalog-generated rules.
@@ -28,12 +29,20 @@ const VPK_CUSTOM_RULES = [
 
 	// Layout
 	"Horizontal Stack defaults to nowrap; set wrap=true only for flowing layouts like tag groups or badge lists.",
+	"For kanban boards, sprint boards, and other equal-width board columns, use Grid with one Card per column instead of a horizontal Stack.",
 
 	// Map generation
 	"When the user asks for maps, locations, pins, routes, or directions, use MapWidget (backed by Leaflet/OSM, no API key). Props: center {lat,lng}, zoom, height, selectedMarkerId, markers [{id,lat,lng,title,description?}]. Do NOT invent component names like \"Map\", \"GoogleMap\", or \"MapboxMap\".",
 
 	// Chart placement
 	"Charts (BarChart, LineChart, PieChart, AreaChart, RadarChart) are leaf components — place directly as children of Stack or Grid, NOT inside Card children.",
+
+	// Data-to-chart selection heuristics
+	"When tool results or knowledge contain time-series or sequential numeric data (stock prices, metrics over days/weeks/months, historical trends), render a LineChart or AreaChart with the time dimension as xKey and the numeric measure as yKey. Include the raw data points in the chart data array.",
+	"When tool results contain categorical counts or comparisons (items by status, counts by team, scores by category), use BarChart with categories as xKey.",
+	"When tool results show proportional breakdowns (percentage splits, budget allocation, market share), use PieChart with nameKey for labels and valueKey for amounts.",
+	"When multiple numeric dimensions exist for the same entities (team performance across speed/quality/satisfaction), use RadarChart.",
+	"Prefer charts over plain Metric/Text when the data has 3+ data points that share a common dimension. A single current value (e.g. 'price is $73') still warrants a Metric, but any historical or comparative series should be charted.",
 
 	// Outer spacing control
 	"Avoid outer padding on the root container. Root Stack padding must be null or 0. Use internal Card/section spacing instead of global page padding.",
@@ -46,6 +55,9 @@ const VPK_CUSTOM_RULES = [
 
 	// Output quality
 	"Output exactly one ```spec block per response. Keep the ```spec block machine-parseable: no markdown bullets, no prose, no comments inside the fence.",
+
+	// Icon hints
+	`You may include an "iconHint" field in the widget payload (alongside the spec) to choose the card header icon. Valid values: ${iconCatalog.names.join(", ")}. If omitted, the icon is inferred from content.`,
 ];
 
 /**
@@ -104,6 +116,28 @@ const COMPANION_EXAMPLES = [
 {"op":"add","path":"/elements/tracker","value":{"type":"ProgressTracker","props":{"steps":[{"label":"Planning","state":"done"},{"label":"Development","state":"done"},{"label":"Testing","state":"current"},{"label":"Release","state":"todo"}]}}}
 \`\`\``,
 
+	// Kanban Board
+	`Example — sprint board with equal-width kanban columns:
+\`\`\`spec
+{"op":"add","path":"/root","value":"main"}
+{"op":"add","path":"/state","value":{"tasks":{"todo":[{"id":"1","title":"Design login screen","assignee":"Alice"},{"id":"2","title":"Setup database","assignee":"Bob"}],"inProgress":[{"id":"3","title":"Implement auth flow","assignee":"Charlie"}],"review":[{"id":"4","title":"QA regression pass","assignee":"Dana"}],"done":[{"id":"5","title":"Deploy to staging","assignee":"Eve"}]}}}
+{"op":"add","path":"/elements/main","value":{"type":"Stack","props":{"gap":"lg"},"children":["header","board"]}}
+{"op":"add","path":"/elements/header","value":{"type":"PageHeader","props":{"title":"Sprint Board","description":"Sprint 24 · Feb 24 to Mar 9"}}}
+{"op":"add","path":"/elements/board","value":{"type":"Grid","props":{"columns":"4","gap":"md"},"children":["todo-col","progress-col","review-col","done-col"]}}
+{"op":"add","path":"/elements/todo-col","value":{"type":"Card","props":{"title":"To Do","description":"2 tasks"},"children":["todo-list"]}}
+{"op":"add","path":"/elements/todo-list","value":{"type":"Stack","props":{"direction":"vertical","gap":"sm"},"repeat":{"statePath":"/tasks/todo","key":"id"},"children":["todo-card"]}}
+{"op":"add","path":"/elements/todo-card","value":{"type":"Card","props":{"title":{"$item":"title"},"description":{"$item":"assignee"}},"children":[]}}
+{"op":"add","path":"/elements/progress-col","value":{"type":"Card","props":{"title":"In Progress","description":"1 task"},"children":["progress-list"]}}
+{"op":"add","path":"/elements/progress-list","value":{"type":"Stack","props":{"direction":"vertical","gap":"sm"},"repeat":{"statePath":"/tasks/inProgress","key":"id"},"children":["progress-card"]}}
+{"op":"add","path":"/elements/progress-card","value":{"type":"Card","props":{"title":{"$item":"title"},"description":{"$item":"assignee"}},"children":[]}}
+{"op":"add","path":"/elements/review-col","value":{"type":"Card","props":{"title":"In Review","description":"1 task"},"children":["review-list"]}}
+{"op":"add","path":"/elements/review-list","value":{"type":"Stack","props":{"direction":"vertical","gap":"sm"},"repeat":{"statePath":"/tasks/review","key":"id"},"children":["review-card"]}}
+{"op":"add","path":"/elements/review-card","value":{"type":"Card","props":{"title":{"$item":"title"},"description":{"$item":"assignee"}},"children":[]}}
+{"op":"add","path":"/elements/done-col","value":{"type":"Card","props":{"title":"Done","description":"1 task"},"children":["done-list"]}}
+{"op":"add","path":"/elements/done-list","value":{"type":"Stack","props":{"direction":"vertical","gap":"sm"},"repeat":{"statePath":"/tasks/done","key":"id"},"children":["done-card"]}}
+{"op":"add","path":"/elements/done-card","value":{"type":"Card","props":{"title":{"$item":"title"},"description":{"$item":"assignee"}},"children":[]}}
+\`\`\``,
+
 	// Work Activity Summary
 	`Example — 7-day work summary with metrics, work items vs pages chart, work item cards, and activity timeline:
 \`\`\`spec
@@ -125,6 +159,20 @@ const COMPANION_EXAMPLES = [
 {"op":"add","path":"/elements/item1date","value":{"type":"Text","props":{"content":"Updated 2d ago","muted":true}}}
 {"op":"add","path":"/elements/tabActivity","value":{"type":"TabContent","props":{"value":"activity"},"children":["activityTimeline"]}}
 {"op":"add","path":"/elements/activityTimeline","value":{"type":"Timeline","props":{"items":[{"title":"Updated PROJ-101","description":"Moved to Done","date":"Feb 21"},{"title":"Edited Design Spec page","description":"Confluence · Design Space","date":"Feb 20"},{"title":"Merged PR #387","description":"Bitbucket · main branch","date":"Feb 19"}]}}}
+\`\`\``,
+
+	// Financial / time-series data
+	`Example — stock price with line chart and current price metric:
+\`\`\`spec
+{"op":"add","path":"/root","value":"main"}
+{"op":"add","path":"/elements/main","value":{"type":"Stack","props":{"gap":"md"},"children":["heading","metricsRow","priceChart","note"]}}
+{"op":"add","path":"/elements/heading","value":{"type":"Heading","props":{"level":"h2","text":"Atlassian Corporation (TEAM)"}}}
+{"op":"add","path":"/elements/metricsRow","value":{"type":"Grid","props":{"columns":"3","gap":"md"},"children":["mPrice","mChange","mVolume"]}}
+{"op":"add","path":"/elements/mPrice","value":{"type":"Metric","props":{"label":"Share Price","value":"$217.34","detail":"Close: Mar 18","trend":"neutral"}}}
+{"op":"add","path":"/elements/mChange","value":{"type":"Metric","props":{"label":"Daily Change","value":"+$3.12","detail":"+1.46%","trend":"up"}}}
+{"op":"add","path":"/elements/mVolume","value":{"type":"Metric","props":{"label":"Volume","value":"1.2M","detail":"Avg 1.5M","trend":"down"}}}
+{"op":"add","path":"/elements/priceChart","value":{"type":"LineChart","props":{"title":"Share Price (Last 30 Days)","data":[{"date":"Feb 17","price":205.20},{"date":"Feb 21","price":208.45},{"date":"Feb 28","price":211.80},{"date":"Mar 7","price":209.15},{"date":"Mar 14","price":214.60},{"date":"Mar 18","price":217.34}],"xKey":"date","yKey":"price","color":"#0052CC","height":280}}}
+{"op":"add","path":"/elements/note","value":{"type":"Text","props":{"content":"Data from web search. Prices may be delayed.","muted":true,"size":"xs"}}}
 \`\`\``,
 
 	// Notification Feed

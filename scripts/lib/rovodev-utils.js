@@ -143,10 +143,14 @@ const resolveRovodevBin = () => {
 		if (acliBinPath) {
 			let acliHasServe = false;
 			try {
+				// acli may auto-download a new rovodev binary on first run,
+				// which can take well over 5 seconds.  Even without a download
+				// the Python startup + CLI init routinely takes 2-3 s, so we
+				// use a generous timeout to avoid false negatives.
 				const helpOutput = execSync(`${acliBinPath} rovodev --help`, {
 					encoding: "utf8",
 					stdio: ["pipe", "pipe", "pipe"],
-					timeout: 5000,
+					timeout: 30000,
 				});
 				acliHasServe = helpOutput.includes("serve");
 			} catch {

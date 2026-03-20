@@ -24,11 +24,15 @@ test("future chat thread manager persists and lists thread metadata", async () =
 		visibility: "public",
 		modelId: "anthropic/claude-4.5-sonnet",
 		provider: "anthropic",
+		sessionId: "session-1",
+		sessionMode: "persistent",
 		activeRun: {
 			id: "run-1",
 			status: "queued",
 			portIndex: 1,
 			rovoPort: 8001,
+			sessionId: "session-1",
+			sessionMode: "persistent",
 			startedAt: "2026-03-18T00:00:00.000Z",
 			updatedAt: "2026-03-18T00:00:00.000Z",
 		},
@@ -37,16 +41,22 @@ test("future chat thread manager persists and lists thread metadata", async () =
 	assert.equal(createdThread.id, "thread-1");
 	assert.equal(createdThread.visibility, "public");
 	assert.equal(createdThread.modelId, "anthropic/claude-4.5-sonnet");
+	assert.equal(createdThread.sessionId, "session-1");
+	assert.equal(createdThread.sessionMode, "persistent");
 	assert.equal(createdThread.activeRun?.status, "queued");
 	assert.equal(createdThread.activeRun?.rovoPort, 8001);
+	assert.equal(createdThread.activeRun?.sessionId, "session-1");
+	assert.equal(createdThread.activeRun?.sessionMode, "persistent");
 
 	const updatedThread = await manager.updateThread("thread-1", {
 		title: "Updated launch plan",
 		activeDocumentId: "doc-1",
+		sessionMode: "ephemeral",
 	});
 
 	assert.equal(updatedThread?.title, "Updated launch plan");
 	assert.equal(updatedThread?.activeDocumentId, "doc-1");
+	assert.equal(updatedThread?.sessionMode, "ephemeral");
 
 	const listedThreads = await manager.listThreads();
 	assert.equal(listedThreads.length, 1);

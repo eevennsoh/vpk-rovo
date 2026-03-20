@@ -5,6 +5,7 @@ const {
 	buildClarificationSummaryDisplayLabel,
 	buildClarificationSummaryPrompt,
 	buildClarificationSummaryRows,
+	createClarificationSubmission,
 	parseQuestionCardPayload,
 	getLatestQuestionCardPayload,
 } = require("./question-card-widget.ts");
@@ -26,6 +27,47 @@ test("parseQuestionCardPayload preserves multi-select kind", () => {
 	assert.ok(payload);
 	assert.equal(payload.questions[0].kind, "multi-select");
 	assert.equal(payload.questions[0].options.length, 2);
+});
+
+test("parseQuestionCardPayload preserves both generic and legacy tool call ids", () => {
+	const payload = parseQuestionCardPayload({
+		type: "question-card",
+		sessionId: "widget-tool-call-id",
+		tool_call_id: "tool-call-123",
+		questions: [{ id: "q-1", label: "What should we do?" }],
+	});
+
+	assert.ok(payload);
+	assert.equal(payload.toolCallId, "tool-call-123");
+	assert.equal(payload.deferredToolCallId, "tool-call-123");
+});
+
+test("createClarificationSubmission preserves deferred tool call ids", () => {
+	const submission = createClarificationSubmission(
+		{
+			type: "question-card",
+			sessionId: "widget-tool-call-id",
+			round: 1,
+			maxRounds: 1,
+			title: "Answer these questions to continue",
+			requiredCount: 1,
+			toolCallId: "tool-call-123",
+			deferredToolCallId: "tool-call-123",
+			questions: [
+				{
+					id: "q-1",
+					label: "What should we do?",
+					required: true,
+					kind: "single-select",
+					options: [{ id: "approve", label: "Ship it" }],
+				},
+			],
+		},
+		{ "q-1": "Ship it" },
+	);
+
+	assert.equal(submission.toolCallId, "tool-call-123");
+	assert.equal(submission.deferredToolCallId, "tool-call-123");
 });
 
 test("parseQuestionCardPayload defaults invalid kinds to single-select", () => {

@@ -790,33 +790,14 @@ export function useMakeChat(options: {
 				clarificationSummary: summaryRows,
 			};
 
-			// Check if this is a deferred tool request from RovoDev
-			const deferredToolCallId = questionCard?.deferredToolCallId;
-
-			if (deferredToolCallId) {
-				// Send as DeferredToolResponse for RovoDev deferred tools
-				await sendPrompt(promptText, {
-					contextDescription: isPlanMode
-						? MAKE_MODE_POST_CLARIFICATION_CONTEXT_DESCRIPTION
-						: undefined,
-					planRequestId: planningSession?.requestId,
-					deferredToolResponse: {
-						tool_call_id: deferredToolCallId,
-						result: clarification.answers,
-					},
-					messageMetadata: clarificationMetadata,
-				});
-			} else {
-				// Regular clarification flow for non-deferred tools
-				await sendPrompt(promptText, {
-					contextDescription: isPlanMode
-						? MAKE_MODE_POST_CLARIFICATION_CONTEXT_DESCRIPTION
-						: undefined,
-					planRequestId: planningSession?.requestId,
-					clarification,
-					messageMetadata: clarificationMetadata,
-				});
-			}
+			await sendPrompt(promptText, {
+				contextDescription: isPlanMode
+					? MAKE_MODE_POST_CLARIFICATION_CONTEXT_DESCRIPTION
+					: undefined,
+				planRequestId: planningSession?.requestId,
+				clarification,
+				messageMetadata: clarificationMetadata,
+			});
 		},
 		[planningSession?.requestId, isPlanMode, sendPrompt],
 	);
@@ -1084,21 +1065,6 @@ export function useMakeChat(options: {
 			if (!next) {
 				setPlanningSession(null);
 			}
-
-			// Notify the backend of the mode change. This is fire-and-forget:
-			// local state updates immediately for responsiveness, while the API
-			// call ensures the RovoDev session is in the correct mode before the
-			// next message is sent.
-			const nextMode = next ? "plan" : "default";
-			void fetch(API_ENDPOINTS.AGENT_MODE, {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ mode: nextMode }),
-			}).catch(() => {
-				// Silently ignore — the backend may not be ready yet (e.g. no
-				// active RovoDev session). The mode will be resolved when the
-				// first message is sent.
-			});
 
 			return next;
 		});

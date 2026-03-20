@@ -31,6 +31,7 @@ test("buildFutureChatQueuedPromptsFromTodoQueue creates runnable queue prompts",
 				{ id: "task-2", text: "Build queue UX", blockedBy: ["task-1"] },
 			],
 		},
+		"thread-1",
 		(() => {
 			let count = 0;
 			return () => `queue-${++count}`;
@@ -40,11 +41,23 @@ test("buildFutureChatQueuedPromptsFromTodoQueue creates runnable queue prompts",
 	assert.deepEqual(
 		result.map((item) => ({
 			id: item.id,
+			kind: item.kind,
 			text: item.text,
+			threadId: item.threadId,
 		})),
 		[
-			{ id: "queue-1", text: "Capture requirements" },
-			{ id: "queue-2", text: "Build queue UX" },
+			{
+				id: "queue-1",
+				kind: "prompt",
+				text: "Capture requirements",
+				threadId: "thread-1",
+			},
+			{
+				id: "queue-2",
+				kind: "prompt",
+				text: "Build queue UX",
+				threadId: "thread-1",
+			},
 		],
 	);
 	assert.equal(result.length, 2);

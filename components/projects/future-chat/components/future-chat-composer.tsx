@@ -1,7 +1,6 @@
 "use client";
 
 import type { ChatStatus, FileUIPart } from "ai";
-import type { QueuedPromptItem } from "@/app/contexts";
 import {
 	PromptInput,
 	PromptInputActionMenu,
@@ -34,6 +33,7 @@ import { resolveFutureChatComposerResponseGradientState } from "@/components/pro
 import type { RealtimeGenerationState } from "@/components/projects/future-chat/hooks/use-realtime-voice";
 import { cn } from "@/lib/utils";
 import { resolveFutureChatComposerPreviewHeight } from "@/components/projects/future-chat/lib/future-chat-composer-preview";
+import type { FutureChatQueuedAction } from "@/lib/future-chat-types";
 import ArrowUpIcon from "@atlaskit/icon/core/arrow-up";
 import CrossIcon from "@atlaskit/icon/core/cross";
 import AudioWaveformIcon from "@atlaskit/icon-lab/core/audio-waveform";
@@ -50,7 +50,7 @@ const FUTURE_CHAT_WAVEFORM_COLORS = ["var(--color-blue-600)", "var(--color-orang
 
 const FUTURE_CHAT_WAVEFORM_INTRO_MS = 500;
 const EMPTY_REALTIME_OUTPUT_WAVEFORM_BARS: number[] = [];
-const EMPTY_QUEUED_PROMPTS: ReadonlyArray<QueuedPromptItem> = [];
+const EMPTY_QUEUED_PROMPTS: ReadonlyArray<FutureChatQueuedAction> = [];
 
 const supportsFieldSizing =
 	typeof window !== "undefined" &&
@@ -65,7 +65,7 @@ interface FutureChatComposerProps {
 	errorMessage?: string | null;
 	isPlanMode?: boolean;
 	micStream?: MediaStream | null;
-	queuedPrompts?: ReadonlyArray<QueuedPromptItem>;
+	queuedPrompts?: ReadonlyArray<FutureChatQueuedAction>;
 	onStop: () => Promise<void>;
 	onRemoveQueuedPrompt?: (id: string) => void;
 	onSubmit: (payload: { text: string; files: FileUIPart[] }) => Promise<void>;

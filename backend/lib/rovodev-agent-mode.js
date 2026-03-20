@@ -9,6 +9,12 @@
 
 const { request } = require("./rovodev-client");
 
+const SUPPORTED_AGENT_MODES = new Set(["default", "ask"]);
+
+function isSupportedAgentMode(mode) {
+	return typeof mode === "string" && SUPPORTED_AGENT_MODES.has(mode);
+}
+
 async function requestAgentModeJson({
 	method,
 	path,
@@ -28,24 +34,34 @@ async function requestAgentModeJson({
 /**
  * Get the current agent mode.
  * @param {number} [port]
- * @returns {Promise<{ mode: "default"|"plan"|"ask", message: string }>}
+ * @returns {Promise<{ mode: "default"|"ask"|null, message: string }>}
  */
 async function getAgentMode(port) {
-	return requestAgentModeJson({
+	const payload = await requestAgentModeJson({
 		method: "GET",
 		path: "/v3/agent-mode",
 		port,
 		errorLabel: "Get agent mode",
 	});
+
+	const mode = isSupportedAgentMode(payload.mode) ? payload.mode : null;
+	return {
+		...payload,
+		mode,
+	};
 }
 
 /**
  * Set the agent mode.
  * @param {number} [port]
- * @param {"plan"|"default"|"ask"} mode
+ * @param {"default"|"ask"} mode
  * @returns {Promise<{ mode: string, message: string }>}
  */
 async function setAgentMode(port, mode) {
+	if (!isSupportedAgentMode(mode)) {
+		throw new Error(`Unsupported agent mode: ${String(mode)}`);
+	}
+
 	return requestAgentModeJson({
 		method: "PUT",
 		path: "/v3/agent-mode",
@@ -61,12 +77,27 @@ async function setAgentMode(port, mode) {
  * @returns {Promise<{ modes: Array<{ name: string, description: string, tag?: string }> }>}
  */
 async function getAvailableModes(port) {
-	return requestAgentModeJson({
+	const payload = await requestAgentModeJson({
 		method: "GET",
 		path: "/v3/available-modes",
 		port,
 		errorLabel: "Get available modes",
 	});
+
+	return {
+		...payload,
+		modes: Array.isArray(payload.modes)
+			? payload.modes.filter((mode) => {
+				const modeName =
+					typeof mode?.mode === "string"
+						? mode.mode
+						: typeof mode?.name === "string"
+							? mode.name
+							: null;
+				return isSupportedAgentMode(modeName);
+			})
+			: [],
+	};
 }
 
 module.exports = {

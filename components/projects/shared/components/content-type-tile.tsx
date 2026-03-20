@@ -1,34 +1,46 @@
 import type { ReactNode } from "react";
 import Image from "next/image";
-import AngleBracketsIcon from "@atlaskit/icon/core/angle-brackets";
-import AudioIcon from "@atlaskit/icon/core/audio";
-import BoardIcon from "@atlaskit/icon/core/board";
-import CalendarIcon from "@atlaskit/icon/core/calendar";
-import ChartBarIcon from "@atlaskit/icon/core/chart-bar";
-import ChartBubbleIcon from "@atlaskit/icon/core/chart-bubble";
-import ChartMatrixIcon from "@atlaskit/icon/core/chart-matrix";
-import ChartPieIcon from "@atlaskit/icon/core/chart-pie";
-import ChartTrendIcon from "@atlaskit/icon/core/chart-trend";
-import CommentIcon from "@atlaskit/icon/core/comment";
-import FileIcon from "@atlaskit/icon/core/file";
-import ImageIcon from "@atlaskit/icon/core/image";
-import PageIcon from "@atlaskit/icon/core/page";
-import TableIcon from "@atlaskit/icon/core/table";
-import TextIcon from "@atlaskit/icon/core/text";
-import TranslateIcon from "@atlaskit/icon/core/translate";
-import VideoIcon from "@atlaskit/icon/core/video";
-import WorkItemIcon from "@atlaskit/icon/core/work-item";
-import GenerativeIndicatorIcon from "@atlaskit/icon-lab/core/generative-indicator";
 import { Tile } from "@/components/ui/tile";
 import { token } from "@/lib/tokens";
 import { defaultSuggestions, type RovoSuggestion } from "@/lib/rovo-suggestions";
 import type { GenerativeContentType } from "@/components/projects/shared/lib/generative-widget";
+import { ICON_REGISTRY } from "./icon-registry";
 
 const SUGGESTION_BY_ID: ReadonlyMap<string, RovoSuggestion> = new Map(
 	defaultSuggestions.map((suggestion) => [suggestion.id, suggestion])
 );
 
 const BLUE_ICON_SUGGESTION_IDS = new Set(["work-last-7-days", "draft-confluence-page"]);
+
+/**
+ * Maps contentType values to their icon registry key.
+ * Used as fallback when no iconHint is provided.
+ */
+const CONTENT_TYPE_TO_ICON: ReadonlyMap<GenerativeContentType, string> = new Map([
+	["image", "image"],
+	["text", "text"],
+	["translation", "translate"],
+	["message", "comment"],
+	["chart-bar", "chart-bar"],
+	["chart-line", "chart-trend"],
+	["chart-area", "chart-trend"],
+	["chart-pie", "chart-pie"],
+	["chart-radar", "chart-matrix"],
+	["chart-scatter", "chart-bubble"],
+	["chart", "chart-bar"],
+	["feed", "feed"],
+	["sound", "audio"],
+	["video", "video"],
+	["calendar", "calendar"],
+	["work-item", "work-item"],
+	["page", "page"],
+	["board", "board"],
+	["table", "table"],
+	["code", "angle-brackets"],
+	["ui", "file"],
+]);
+
+const DEFAULT_ICON_NAME = "lab/generative-indicator";
 
 function getSuggestionById(id: string): RovoSuggestion | null {
 	return SUGGESTION_BY_ID.get(id) ?? null;
@@ -118,30 +130,15 @@ function renderGreetingSuggestionIcon(suggestion: RovoSuggestion): ReactNode {
 	);
 }
 
+function renderRegistryIcon(iconName: string): ReactNode {
+	const IconComponent = ICON_REGISTRY.get(iconName);
+	if (!IconComponent) return null;
+	return <IconComponent label="" size="small" />;
+}
+
 function renderContentTypeIcon(contentType: GenerativeContentType): ReactNode {
-	switch (contentType) {
-		case "image": return <ImageIcon label="" size="small" />;
-		case "text": return <TextIcon label="" size="small" />;
-		case "translation": return <TranslateIcon label="" size="small" />;
-		case "message": return <CommentIcon label="" size="small" />;
-		case "chart-bar": return <ChartBarIcon label="" size="small" />;
-		case "chart-line":
-		case "chart-area": return <ChartTrendIcon label="" size="small" />;
-		case "chart-pie": return <ChartPieIcon label="" size="small" />;
-		case "chart-radar": return <ChartMatrixIcon label="" size="small" />;
-		case "chart-scatter": return <ChartBubbleIcon label="" size="small" />;
-		case "chart": return <ChartBarIcon label="" size="small" />;
-		case "sound": return <AudioIcon label="" size="small" />;
-		case "video": return <VideoIcon label="" size="small" />;
-		case "calendar": return <CalendarIcon label="" size="small" />;
-		case "work-item": return <WorkItemIcon label="" size="small" />;
-		case "page": return <PageIcon label="" size="small" />;
-		case "board": return <BoardIcon label="" size="small" />;
-		case "table": return <TableIcon label="" size="small" />;
-		case "code": return <AngleBracketsIcon label="" size="small" />;
-		case "ui": return <FileIcon label="" size="small" />;
-		default: return <GenerativeIndicatorIcon label="" size="small" />;
-	}
+	const iconName = CONTENT_TYPE_TO_ICON.get(contentType) ?? DEFAULT_ICON_NAME;
+	return renderRegistryIcon(iconName) ?? renderRegistryIcon(DEFAULT_ICON_NAME);
 }
 
 export function ContentTypeTile({
@@ -152,6 +149,7 @@ export function ContentTypeTile({
 	description,
 	sourceName,
 	sourceLogoSrc,
+	iconHint,
 	hintText,
 }: Readonly<{
 	contentType: GenerativeContentType;
@@ -161,6 +159,7 @@ export function ContentTypeTile({
 	description?: string;
 	sourceName?: string;
 	sourceLogoSrc?: string;
+	iconHint?: string;
 	hintText?: string;
 }>): ReactNode {
 	const normalizedSourceLogoSrc =
@@ -175,8 +174,16 @@ export function ContentTypeTile({
 		hintText,
 	});
 
-	const icon = normalizedSourceLogoSrc
-		? (
+	// Icon resolution priority:
+	// 1. sourceLogoSrc (explicit image)
+	// 2. iconHint from AI (looked up in ICON_REGISTRY)
+	// 3. Greeting suggestion match
+	// 4. contentType mapped to icon name via ICON_REGISTRY
+	// 5. Default generative-indicator sparkle
+	let icon: ReactNode = null;
+
+	if (normalizedSourceLogoSrc) {
+		icon = (
 			<Image
 				src={normalizedSourceLogoSrc}
 				alt={sourceName || label}
@@ -184,10 +191,14 @@ export function ContentTypeTile({
 				height={16}
 				className="size-4 object-contain"
 			/>
-		)
-		: matchedGreetingSuggestion
-			? renderGreetingSuggestionIcon(matchedGreetingSuggestion) ?? renderContentTypeIcon(contentType)
-			: renderContentTypeIcon(contentType);
+		);
+	} else if (iconHint && ICON_REGISTRY.has(iconHint)) {
+		icon = renderRegistryIcon(iconHint);
+	} else if (matchedGreetingSuggestion) {
+		icon = renderGreetingSuggestionIcon(matchedGreetingSuggestion) ?? renderContentTypeIcon(contentType);
+	} else {
+		icon = renderContentTypeIcon(contentType);
+	}
 
 	return (
 		<Tile label={label} size={size} variant="transparent" hasBorder className="text-icon-subtle [&_img]:!size-4 [&_span]:!size-4 [&_svg]:!size-4">
