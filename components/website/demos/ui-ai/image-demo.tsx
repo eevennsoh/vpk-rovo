@@ -71,12 +71,13 @@ export function ImageDemoInMessage() {
 			</Message>
 			<Message from="assistant">
 				<MessageContent>
-					<p>Here is a futuristic cityscape at sunset:</p>
-					<Image
-						{...sampleLandscape}
-						alt="AI-generated futuristic cityscape at sunset"
-						className="mt-2"
-					/>
+					<div className="flex flex-col gap-2">
+						<p>Here is a futuristic cityscape at sunset:</p>
+						<Image
+							{...sampleLandscape}
+							alt="AI-generated futuristic cityscape at sunset"
+						/>
+					</div>
 				</MessageContent>
 			</Message>
 		</div>

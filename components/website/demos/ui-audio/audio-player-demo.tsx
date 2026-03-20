@@ -87,7 +87,7 @@ function AudioPlayerPlaylistPreview() {
 				</div>
 
 				<div className="flex flex-1 items-center p-4 sm:p-6">
-					<div className="w-full max-w-2xl space-y-4">
+					<div className="flex w-full max-w-2xl flex-col gap-4">
 						<h3 className="text-base font-semibold tracking-tight text-text sm:text-lg">
 							{activeTrack?.name ?? "No track selected"}
 						</h3>
@@ -141,11 +141,11 @@ function AudioPlayerCompactPreview({
 						variant="outline"
 						className="h-12 w-12 shrink-0 rounded-2xl px-0 sm:h-10 sm:w-10 [&_svg]:size-5 sm:[&_svg]:size-4"
 					/>
-					<div className="min-w-0 flex-1">
+					<div className="flex min-w-0 flex-1 flex-col gap-3">
 						<p className="truncate text-base font-semibold tracking-tight text-text sm:text-lg">
 							{DEMO_TRACK_TITLE}
 						</p>
-						<AudioPlayerProgress className="mt-3" />
+						<AudioPlayerProgress />
 					</div>
 					<div className="flex shrink-0 items-center gap-2 text-xs text-text-subtle sm:text-sm">
 						<AudioPlayerTime className="text-xs sm:text-sm" />

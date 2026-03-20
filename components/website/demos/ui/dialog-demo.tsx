@@ -514,11 +514,11 @@ export function DialogDemoScrollableContent() {
 						This is a dialog with scrollable content.
 					</DialogDescription>
 				</DialogHeader>
-				<div className="style-nova:-mx-4 style-nova:px-4 no-scrollbar style-vega:px-6 style-mira:px-4 style-maia:px-6 style-vega:-mx-6 style-maia:-mx-6 style-mira:-mx-4 style-lyra:-mx-4 style-lyra:px-4 max-h-[70vh] overflow-y-auto">
+				<div className="style-nova:-mx-4 style-nova:px-4 no-scrollbar style-vega:px-6 style-mira:px-4 style-maia:px-6 style-vega:-mx-6 style-maia:-mx-6 style-mira:-mx-4 style-lyra:-mx-4 style-lyra:px-4 flex max-h-[70vh] flex-col gap-4 overflow-y-auto style-lyra:gap-2">
 					{Array.from({ length: 10 }).map((_, index) => (
 						<p
 							key={index}
-							className="style-lyra:mb-2 style-lyra:leading-relaxed mb-4 leading-normal"
+							className="style-lyra:leading-relaxed leading-normal"
 						>
 							Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do
 							eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut
@@ -589,11 +589,11 @@ export function DialogDemoWithStickyFooter() {
 						This is a dialog with scrollable content.
 					</DialogDescription>
 				</DialogHeader>
-				<div className="style-nova:-mx-4 style-nova:px-4 no-scrollbar style-vega:px-6 style-mira:px-4 style-maia:px-6 style-vega:-mx-6 style-maia:-mx-6 style-mira:-mx-4 style-lyra:-mx-4 style-lyra:px-4 max-h-[70vh] overflow-y-auto">
+				<div className="style-nova:-mx-4 style-nova:px-4 no-scrollbar style-vega:px-6 style-mira:px-4 style-maia:px-6 style-vega:-mx-6 style-maia:-mx-6 style-mira:-mx-4 style-lyra:-mx-4 style-lyra:px-4 flex max-h-[70vh] flex-col gap-4 overflow-y-auto style-lyra:gap-2">
 					{Array.from({ length: 10 }).map((_, index) => (
 						<p
 							key={index}
-							className="style-lyra:mb-2 style-lyra:leading-relaxed mb-4 leading-normal"
+							className="style-lyra:leading-relaxed leading-normal"
 						>
 							Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do
 							eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut

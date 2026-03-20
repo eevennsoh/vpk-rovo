@@ -15,8 +15,8 @@ export default function BlanketDemo() {
 			{visible && (
 				<Blanket onClick={() => setVisible(false)}>
 					<div className="flex h-full items-center justify-center">
-						<div className="bg-surface rounded-lg p-6 shadow-lg">
-							<p className="text-text mb-3">Click outside to dismiss</p>
+						<div className="bg-surface flex flex-col gap-3 rounded-lg p-6 shadow-lg">
+							<p className="text-text">Click outside to dismiss</p>
 							<Button onClick={() => setVisible(false)}>Close</Button>
 						</div>
 					</div>

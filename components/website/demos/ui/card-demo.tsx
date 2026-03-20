@@ -146,14 +146,16 @@ export function CardDemoLogin() {
 					</FieldGroup>
 				</form>
 			</CardContent>
-			<CardFooter className="flex-col gap-2">
-				<Button type="submit" className="w-full">
-					Login
-				</Button>
-				<Button variant="outline" className="w-full">
-					Login with Google
-				</Button>
-				<div className="mt-4 text-center">
+			<CardFooter className="flex-col gap-4">
+				<div className="flex w-full flex-col gap-2">
+					<Button type="submit" className="w-full">
+						Login
+					</Button>
+					<Button variant="outline" className="w-full">
+						Login with Google
+					</Button>
+				</div>
+				<div className="text-center">
 					Don&apos;t have an account?{" "}
 					<a href="#" className="underline underline-offset-4">
 						Sign up
@@ -177,9 +179,9 @@ export function CardDemoMeetingNotes() {
 					</Button>
 				</CardAction>
 			</CardHeader>
-			<CardContent>
+			<CardContent className="flex flex-col gap-4">
 				<p>Client requested dashboard redesign with focus on mobile responsiveness.</p>
-				<ol className="mt-4 flex list-decimal flex-col gap-2 pl-6">
+				<ol className="flex list-decimal flex-col gap-2 pl-6">
 					<li>New analytics widgets for daily/weekly metrics</li>
 					<li>Simplified navigation menu</li>
 					<li>Dark mode support</li>

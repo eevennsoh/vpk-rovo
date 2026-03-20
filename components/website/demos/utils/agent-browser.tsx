@@ -73,9 +73,9 @@ function AgentBrowserEmptyState({
 			>
 				<GlobeIcon label="" size="medium" color={token("color.icon.brand")} />
 			</div>
-			<div>
+			<div className="flex flex-col gap-1">
 				<p className="text-text text-lg font-semibold">Agent Browser</p>
-				<p className="text-text-subtlest mt-1 max-w-md text-sm">
+				<p className="text-text-subtlest max-w-md text-sm">
 					{isWorkspaceReady
 						? "Browse websites with AI assistance. The preview pane is bound to a dedicated browser workspace with real tabs and accessibility snapshots."
 						: "Launching a dedicated browser workspace…"}
@@ -288,7 +288,7 @@ function AgentBrowserView() {
 					</div>
 				)}
 
-				<div className="mx-auto w-full max-w-[800px] shrink-0 px-3 pb-3">
+				<div className="mx-auto flex w-full max-w-[800px] shrink-0 flex-col gap-2 px-3 pb-3">
 					<PromptInput onSubmit={handleSubmit}>
 						<PromptInputBody>
 							<PromptInputTextarea
@@ -316,7 +316,7 @@ function AgentBrowserView() {
 							</PromptInputSubmit>
 						</PromptInputFooter>
 					</PromptInput>
-					<Footer className="mt-2">
+					<Footer>
 						Rovo Dev may produce inaccurate information
 					</Footer>
 				</div>

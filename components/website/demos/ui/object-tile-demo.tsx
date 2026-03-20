@@ -12,7 +12,7 @@ const PRIMARY_AVATAR_SRC = "/avatar-user/venn/venn.png";
 
 export default function ObjectTileDemo() {
 	return (
-		<div className="max-w-md space-y-2">
+		<div className="flex max-w-md flex-col gap-2">
 			<ObjectTile
 				icon={<IconTile icon={<BugIcon label="" />} label="Bug" variant="blue" size="small" />}
 				title="PROJ-123: Add user authentication"
@@ -70,7 +70,7 @@ export function ObjectTileDemoLink() {
 
 export function ObjectTileDemoList() {
 	return (
-		<div className="max-w-md space-y-2">
+		<div className="flex max-w-md flex-col gap-2">
 			<ObjectTile
 				icon={<IconTile icon={<BugIcon label="" />} label="Bug" variant="blue" size="small" />}
 				title="PROJ-123: Add user authentication"

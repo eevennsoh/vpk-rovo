@@ -120,6 +120,17 @@ export function FutureChatQueueProvider({
 	);
 }
 
+export function FutureChatQueueBoundary({
+	children,
+}: Readonly<{ children: React.ReactNode }>) {
+	const value = use(FutureChatQueueContext);
+	if (value) {
+		return children;
+	}
+
+	return <FutureChatQueueProvider>{children}</FutureChatQueueProvider>;
+}
+
 export function useFutureChatQueue() {
 	const value = use(FutureChatQueueContext);
 	if (!value) {

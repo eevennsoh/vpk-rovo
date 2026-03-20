@@ -26,7 +26,7 @@ function LiveWaveformPreview({
 					Real-time microphone input visualization with audio reactivity.
 				</CardDescription>
 			</CardHeader>
-			<CardContent className="space-y-4 px-6">
+			<CardContent className="flex flex-col gap-4 px-6">
 				<LiveWaveform
 					active={active}
 					barGap={1}

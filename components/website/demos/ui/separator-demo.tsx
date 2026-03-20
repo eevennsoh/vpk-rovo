@@ -14,7 +14,7 @@ export default function SeparatorDemo() {
 
 export function SeparatorDemoDefault() {
 	return (
-		<div className="space-y-4">
+		<div className="flex flex-col gap-4">
 			<p className="text-sm">This is the first section of content.</p>
 			<Separator />
 			<p className="text-sm">This is the second section of content.</p>

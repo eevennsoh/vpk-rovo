@@ -59,6 +59,7 @@ const supportsFieldSizing =
 
 interface FutureChatComposerProps {
 	artifactTitle?: string | null;
+	autoFocus?: boolean;
 	backgroundArtifactLabel?: string | null;
 	composerStatus: ChatStatus;
 	compact?: boolean;
@@ -95,6 +96,7 @@ interface FutureChatComposerProps {
 
 function FutureChatComposerInner({
 	artifactTitle,
+	autoFocus = true,
 	backgroundArtifactLabel,
 	composerStatus,
 	compact = false,
@@ -441,7 +443,7 @@ function FutureChatComposerInner({
 						<PromptInputBody className={composerHeight ? "flex-1" : undefined}>
 							<PromptInputTextarea
 								ref={textareaRef}
-								autoFocus
+								autoFocus={autoFocus}
 								autoResize={!composerHeight}
 								className={cn(composerTextareaClassName, composerHeight ? "h-full max-h-none min-h-0" : undefined, isPreviewPlaceholderActive ? "chat-composer-textarea-preview-active" : undefined)}
 								placeholder={placeholder}

@@ -284,7 +284,6 @@ function FutureChatSidebarThreadItem({
 function FutureChatSidebarThreadSection({
 	activeThreadId,
 	isGeneratingTitle,
-	isFirst = false,
 	label,
 	onCancelThreadRun,
 	onDeleteThread,
@@ -294,7 +293,6 @@ function FutureChatSidebarThreadSection({
 }: Readonly<{
 	activeThreadId: string | null;
 	isGeneratingTitle: boolean;
-	isFirst?: boolean;
 	label: string;
 	onCancelThreadRun: (threadId: string) => Promise<void>;
 	onDeleteThread: (threadId: string) => Promise<void>;
@@ -304,12 +302,7 @@ function FutureChatSidebarThreadSection({
 }>) {
 	return (
 		<section aria-label={label}>
-			<div
-				className={cn(
-					"px-1.5 py-2 text-xs font-bold leading-4 text-text-subtlest",
-					!isFirst && "pt-4",
-				)}
-			>
+			<div className="flex h-8 items-center px-1.5 text-xs font-bold leading-4 text-text-subtlest">
 				{label}
 			</div>
 			<SidebarMenu>
@@ -441,7 +434,7 @@ export function FutureChatSidebar({
 					</SidebarGroup>
 				) : (
 					<SidebarGroup className="p-0">
-						<SidebarGroupContent>
+						<SidebarGroupContent className="flex flex-col gap-2">
 							{isGeneratingTitle && threads.length === 0 ? (
 								<SidebarMenu>
 									<SidebarMenuItem>
@@ -466,10 +459,9 @@ export function FutureChatSidebar({
 									</SidebarMenuItem>
 								</SidebarMenu>
 							) : null}
-							{threadSections.map((section, index) => (
+							{threadSections.map((section) => (
 								<FutureChatSidebarThreadSection
 									activeThreadId={activeThreadId}
-									isFirst={index === 0}
 									isGeneratingTitle={isGeneratingTitle}
 									key={section.label}
 									label={section.label}

@@ -1,94 +1,63 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useMemo, useState, type ReactNode } from "react";
+import ChevronDownIcon from "@atlaskit/icon/core/chevron-down";
 import { token } from "@/lib/tokens";
 import { WebsiteSidebarNav } from "@/components/website/website-sidebar-nav";
 import { WebsiteHeader } from "@/components/website/website-header";
 import { WebsiteGrid } from "@/components/website/website-grid";
 import { WebsiteCard } from "@/components/website/website-card";
 import { WebsitePreview } from "@/components/website/website-preview";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AUDIO_COMPONENTS, AI_COMPONENTS, UI_COMPONENTS, BLOCK_COMPONENTS, PROJECT_COMPONENTS, UTILITY_COMPONENTS, VISUAL_COMPONENTS } from "./data/components";
-import { buildNavItems, UI_GROUPS, BLOCK_GROUPS } from "./data/nav-utils";
-import { resolveAiAdsPackage, resolveBlockAdsPackage, resolveUiAdsPackage, resolveUiAdsTagVariant } from "./data/nav-ads";
+import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { CategoryTabs, type WebsiteCategoryTab } from "@/components/website/category-tabs";
+import { AUDIO_COMPONENTS, AI_COMPONENTS, UI_COMPONENTS, BLOCK_COMPONENTS, PROJECT_COMPONENTS, UTILITY_COMPONENTS, VISUAL_COMPONENTS, type ComponentEntry } from "./data/components";
+import { WEBSITE_STATIC_PAGES, WEBSITE_NAV_SECTIONS } from "./data/website-sidebar-nav";
 
-export type HomeCategory = "ui" | "ui-audio" | "ui-ai" | "blocks" | "projects" | "utility" | "visual";
-
-const staticPages = [{ name: "Home", href: "/" }];
-
-const sections = [
-	{
-		title: "UI",
-		defaultOpen: false,
-		items: buildNavItems(UI_COMPONENTS, "/components/ui/", UI_GROUPS, resolveUiAdsPackage, resolveUiAdsTagVariant),
-	},
-	{
-		title: "UI \u2014 Audio",
-		defaultOpen: false,
-		items: AUDIO_COMPONENTS.map((c) => ({
-			name: c.name,
-			href: `/components/ui-audio/${c.slug}`,
-		})),
-	},
-	{
-		title: "UI — AI",
-		defaultOpen: false,
-		items: AI_COMPONENTS.map((c) => ({
-			name: c.name,
-			href: `/components/ui-ai/${c.slug}`,
-			adsPackage: resolveAiAdsPackage(c.slug),
-		})),
-	},
-	{
-		title: "Blocks",
-		defaultOpen: false,
-		items: buildNavItems(BLOCK_COMPONENTS, "/components/blocks/", BLOCK_GROUPS, resolveBlockAdsPackage),
-	},
-	{
-		title: "Projects",
-		defaultOpen: false,
-		items: PROJECT_COMPONENTS.map((c) => ({ name: c.name, href: `/components/projects/${c.slug}`, adsPackage: "Atlassian Design System" })),
-	},
-	{
-		title: "Utils",
-		defaultOpen: false,
-		items: UTILITY_COMPONENTS.map((c) => ({ name: c.name, href: `/components/utility/${c.slug}` })),
-	},
-	{
-		title: "Visual",
-		defaultOpen: false,
-		items: VISUAL_COMPONENTS.map((c) => ({ name: c.name, href: `/components/visual/${c.slug}` })),
-	},
-];
-
-const CATEGORY_OPTIONS: ReadonlyArray<{ key: HomeCategory; title: string; count: number }> = [
-	{ key: "ui", title: "UI", count: UI_COMPONENTS.length },
-	{ key: "ui-audio", title: "UI — Audio", count: AUDIO_COMPONENTS.length },
-	{ key: "ui-ai", title: "UI — AI", count: AI_COMPONENTS.length },
-	{ key: "blocks", title: "Blocks", count: BLOCK_COMPONENTS.length },
-	{ key: "projects", title: "Projects", count: PROJECT_COMPONENTS.length },
-	{ key: "utility", title: "Utils", count: UTILITY_COMPONENTS.length },
-	{ key: "visual", title: "Visual", count: VISUAL_COMPONENTS.length },
-];
+export type HomeCategory = WebsiteCategoryTab;
+type ProjectSortOption = "last-updated" | "name";
+type ProjectListEntry = ComponentEntry & { updatedAt: string | null };
+const PROJECT_SORT_LABELS: Record<ProjectSortOption, string> = {
+	"last-updated": "Last updated",
+	name: "Name",
+};
 
 interface HomeContentProps {
 	category: HomeCategory;
+	lastUpdatedAt?: string | null;
+	projectComponents?: ReadonlyArray<ProjectListEntry>;
 }
 
-export function HomeContent({ category }: Readonly<HomeContentProps>) {
-	const router = useRouter();
+export function HomeContent({ category, lastUpdatedAt, projectComponents }: Readonly<HomeContentProps>) {
+	const [projectSort, setProjectSort] = useState<ProjectSortOption>("last-updated");
+	const sortedProjectComponents = useMemo(() => {
+		const source = projectComponents ?? PROJECT_COMPONENTS.map((component) => ({ ...component, updatedAt: null }));
 
-	function handleCategoryChange(value: string) {
-		if (value === "ui") {
-			router.push("/");
-		} else {
-			router.push(`/${value}`);
+		if (projectSort === "name") {
+			return [...source].sort((left, right) => left.name.localeCompare(right.name));
 		}
-	}
+
+		return [...source].sort((left, right) => {
+			const timeDelta = Date.parse(right.updatedAt ?? "") - Date.parse(left.updatedAt ?? "");
+			if (Number.isFinite(timeDelta) && timeDelta !== 0) {
+				return timeDelta;
+			}
+
+			if (right.updatedAt && !left.updatedAt) {
+				return 1;
+			}
+
+			if (left.updatedAt && !right.updatedAt) {
+				return -1;
+			}
+
+			return left.name.localeCompare(right.name);
+		});
+	}, [projectComponents, projectSort]);
 
 	return (
 		<>
-			<WebsiteSidebarNav staticPages={staticPages} sections={sections} logoText="VPK" />
+			<WebsiteSidebarNav staticPages={WEBSITE_STATIC_PAGES} sections={WEBSITE_NAV_SECTIONS} logoText="VPK" />
 
 			<div
 				className="website-main-content"
@@ -99,29 +68,8 @@ export function HomeContent({ category }: Readonly<HomeContentProps>) {
 			>
 				<WebsiteHeader
 					packageName="@vpk"
-					version="1.0.0"
-					leftContent={(
-						<div className="w-full overflow-x-auto">
-							<Tabs
-								value={category}
-								onValueChange={handleCategoryChange}
-							>
-								<TabsList className="min-w-max">
-									{CATEGORY_OPTIONS.map((cat) => (
-										<TabsTrigger
-											key={cat.key}
-											id={`home-category-tab-${cat.key}`}
-											value={cat.key}
-											className="gap-2 px-3"
-										>
-											<span>{cat.title}</span>
-											<span className="text-xs text-text-subtle">{cat.count}</span>
-										</TabsTrigger>
-									))}
-								</TabsList>
-							</Tabs>
-						</div>
-					)}
+					lastUpdatedAt={lastUpdatedAt}
+					leftContent={<CategoryTabs activeCategory={category} />}
 				/>
 
 				<main>
@@ -184,12 +132,37 @@ export function HomeContent({ category }: Readonly<HomeContentProps>) {
 
 					{category === "projects" && (
 						<>
-							<SectionHeading id="projects" title="Projects" count={PROJECT_COMPONENTS.length} />
+							<SectionHeading
+								id="projects"
+								title="Projects"
+								count={PROJECT_COMPONENTS.length}
+								actions={(
+									<DropdownMenu>
+										<DropdownMenuTrigger
+											render={<Button variant="outline" size="sm" className="w-fit gap-1.5" />}
+										>
+											Sort: {PROJECT_SORT_LABELS[projectSort]}
+											<ChevronDownIcon label="" size="small" />
+										</DropdownMenuTrigger>
+										<DropdownMenuContent align="end">
+											<DropdownMenuGroup>
+												<DropdownMenuRadioGroup
+													value={projectSort}
+													onValueChange={(value) => setProjectSort(value as ProjectSortOption)}
+												>
+													<DropdownMenuRadioItem value="last-updated">Last updated</DropdownMenuRadioItem>
+													<DropdownMenuRadioItem value="name">Name</DropdownMenuRadioItem>
+												</DropdownMenuRadioGroup>
+											</DropdownMenuGroup>
+										</DropdownMenuContent>
+									</DropdownMenu>
+								)}
+							/>
 							<ul className="grid grid-cols-1 list-none m-0 p-0">
-								{PROJECT_COMPONENTS.map((comp) => (
+								{sortedProjectComponents.map((comp) => (
 									<WebsiteCard key={comp.slug} name={comp.name} href={`/components/projects/${comp.slug}`} fullWidth>
 										<iframe
-											src={`/preview/projects/${comp.slug}`}
+											src={`/preview/projects/${comp.slug}?embedded=1`}
 											title={comp.name}
 											className="h-full w-full border-0"
 											loading="lazy"
@@ -240,39 +213,50 @@ interface SectionHeadingProps {
 	id: string;
 	title: string;
 	count: number;
+	actions?: ReactNode;
 }
 
-function SectionHeading({ id, title, count }: Readonly<SectionHeadingProps>) {
+function SectionHeading({ id, title, count, actions }: Readonly<SectionHeadingProps>) {
 	return (
 		<div
 			id={id}
 			style={{
 				display: "flex",
-				alignItems: "baseline",
-				gap: token("space.100"),
+				alignItems: "center",
+				justifyContent: "space-between",
+				gap: token("space.200"),
 				paddingBlock: token("space.300"),
 				paddingInline: token("space.300"),
 				borderBottom: `1px solid ${token("color.border")}`,
 			}}
 		>
-			<span
+			<div
 				style={{
-					fontSize: "20px",
-					fontWeight: 600,
-					color: token("color.text"),
+					display: "flex",
+					alignItems: "baseline",
+					gap: token("space.100"),
 				}}
 			>
-				{title}
-			</span>
-			<span
-				style={{
-					fontSize: "14px",
-					fontWeight: 500,
-					color: token("color.text.subtlest"),
-				}}
-			>
-				{count}
-			</span>
+				<span
+					style={{
+						fontSize: "20px",
+						fontWeight: 600,
+						color: token("color.text"),
+					}}
+				>
+					{title}
+				</span>
+				<span
+					style={{
+						fontSize: "14px",
+						fontWeight: 500,
+						color: token("color.text.subtlest"),
+					}}
+				>
+					{count}
+				</span>
+			</div>
+			{actions}
 		</div>
 	);
 }

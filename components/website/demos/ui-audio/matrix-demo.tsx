@@ -21,7 +21,7 @@ function MatrixPreview({
 	return animated ? (
 		<DemoCard
 			className="max-w-2xl"
-			contentClassName="space-y-0"
+			contentClassName="gap-0"
 			description="LED-style matrix gallery for digits, loaders, and status patterns."
 			title="Pixel Matrix"
 		>

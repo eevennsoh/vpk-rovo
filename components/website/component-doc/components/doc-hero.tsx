@@ -29,6 +29,9 @@ export function DocHero({ name, description, category, importPath, adsLinks, ads
 	return (
 		<div
 			style={{
+				display: "flex",
+				flexDirection: "column",
+				gap: token("space.200"),
 				paddingBlock: token("space.400"),
 				borderBottom: `1px solid ${token("color.border")}`,
 			}}
@@ -42,7 +45,6 @@ export function DocHero({ name, description, category, importPath, adsLinks, ads
 					gap: token("space.075"),
 					fontSize: "13px",
 					color: token("color.text.subtlest"),
-					marginBottom: token("space.200"),
 				}}
 			>
 				<Link
@@ -61,72 +63,80 @@ export function DocHero({ name, description, category, importPath, adsLinks, ads
 			</nav>
 
 			{/* Title row */}
-			<h1
-				style={{
-					fontSize: "28px",
-					fontWeight: 600,
-					color: token("color.text"),
-					letterSpacing: "-0.02em",
-					marginBottom: token("space.100"),
-				}}
-			>
-				{name}
-			</h1>
-
-			{/* Description */}
-			{description && (
-				<p
-					style={{
-						fontSize: "15px",
-						color: token("color.text.subtle"),
-						lineHeight: 1.6,
-						maxWidth: 640,
-						marginBottom: token("space.150"),
-					}}
-				>
-					{description}
-				</p>
-			)}
-
-			{/* Import path and ADS link */}
 			<div
 				style={{
 					display: "flex",
 					flexDirection: "column",
-					gap: token("space.075"),
+					gap: token("space.150"),
 				}}
 			>
-				{importPaths.map(path => (
-					<code
-						key={path}
+				<h1
+					style={{
+						fontSize: "28px",
+						fontWeight: 600,
+						color: token("color.text"),
+						letterSpacing: "-0.02em",
+						margin: 0,
+					}}
+				>
+					{name}
+				</h1>
+
+				{/* Description */}
+				{description && (
+					<p
 						style={{
-							fontSize: "13px",
-							color: token("color.text.subtlest"),
-							fontFamily: "monospace",
+							fontSize: "15px",
+							color: token("color.text.subtle"),
+							lineHeight: 1.6,
+							maxWidth: 640,
+							margin: 0,
 						}}
 					>
-						{path}
-					</code>
-				))}
-				{resolvedAdsLinks.map(link => (
-					<a
-						key={link.href}
-						href={link.href}
-						target="_blank"
-						rel="noopener noreferrer"
-						className="no-underline hover:underline decoration-text-subtlest w-fit"
-					>
+						{description}
+					</p>
+				)}
+
+				{/* Import path and ADS link */}
+				<div
+					style={{
+						display: "flex",
+						flexDirection: "column",
+						gap: token("space.075"),
+					}}
+				>
+					{importPaths.map(path => (
 						<code
+							key={path}
 							style={{
 								fontSize: "13px",
 								color: token("color.text.subtlest"),
 								fontFamily: "monospace",
 							}}
 						>
-							{link.label}
+							{path}
 						</code>
-					</a>
-				))}
+					))}
+					{resolvedAdsLinks.map(link => (
+						<a
+							key={link.href}
+							href={link.href}
+							target="_blank"
+							rel="noopener noreferrer"
+							className="no-underline hover:underline decoration-text-subtlest w-fit"
+						>
+							<code
+								style={{
+									fontSize: "13px",
+									color: token("color.text.subtlest"),
+									fontFamily: "monospace",
+								}}
+							>
+								{link.label}
+							</code>
+						</a>
+					))}
+				</div>
 			</div>
 		</div>
 	);

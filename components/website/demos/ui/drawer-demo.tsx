@@ -68,11 +68,11 @@ export function DrawerDemoScrollableContent() {
 					<DrawerTitle>Move Goal</DrawerTitle>
 					<DrawerDescription>Set your daily activity goal.</DrawerDescription>
 				</DrawerHeader>
-				<div className="no-scrollbar overflow-y-auto px-4">
+				<div className="no-scrollbar flex flex-col gap-4 overflow-y-auto px-4 style-lyra:gap-2">
 					{Array.from({ length: 10 }).map((_, index) => (
 						<p
 							key={index}
-							className="style-lyra:mb-2 style-lyra:leading-relaxed mb-4 leading-normal"
+							className="style-lyra:leading-relaxed leading-normal"
 						>
 							Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do
 							eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut
@@ -113,12 +113,12 @@ export function DrawerDemoSides() {
 								Set your daily activity goal.
 							</DrawerDescription>
 						</DrawerHeader>
-						<div className="no-scrollbar overflow-y-auto px-4">
-							{Array.from({ length: 10 }).map((_, index) => (
-								<p
-									key={index}
-									className="style-lyra:mb-2 style-lyra:leading-relaxed mb-4 leading-normal"
-								>
+				<div className="no-scrollbar flex flex-col gap-4 overflow-y-auto px-4 style-lyra:gap-2">
+					{Array.from({ length: 10 }).map((_, index) => (
+						<p
+							key={index}
+							className="style-lyra:leading-relaxed leading-normal"
+						>
 									Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed
 									do eiusmod tempor incididunt ut labore et dolore magna
 									aliqua. Ut enim ad minim veniam, quis nostrud exercitation

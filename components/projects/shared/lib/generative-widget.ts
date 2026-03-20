@@ -2078,6 +2078,13 @@ function collectActionButtonKeysFromSpec(spec: Spec): Set<string> {
 }
 
 export function createBodyOnlySpec(widget: ParsedGenuiPreviewWidget): Spec {
+	const specElements = isObjectRecord(widget.spec.elements)
+		? widget.spec.elements
+		: null;
+	if (!specElements) {
+		return widget.spec;
+	}
+
 	const titleSource = findTitleSourceInSpec(widget);
 	const descSource = findDescriptionSourceInSpec(widget);
 	const actionButtonKeys = collectActionButtonKeysFromSpec(widget.spec);
@@ -2098,7 +2105,7 @@ export function createBodyOnlySpec(widget: ParsedGenuiPreviewWidget): Spec {
 	const newElements: Record<string, unknown> = {};
 	const keysToRemove = new Set<string>();
 
-	for (const [key, element] of Object.entries(widget.spec.elements)) {
+	for (const [key, element] of Object.entries(specElements)) {
 		if (actionButtonKeys.has(key)) {
 			keysToRemove.add(key);
 			continue;

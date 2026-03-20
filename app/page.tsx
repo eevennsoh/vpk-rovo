@@ -1,5 +1,5 @@
-import { HomeContent } from "./home-content";
+import { redirect } from "next/navigation";
 
 export default function Home() {
-	return <HomeContent category="ui" />;
+	redirect("/projects");
 }

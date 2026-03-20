@@ -32,9 +32,11 @@ function TranscriptViewerPreview() {
 				className="w-full rounded-xl border border-border bg-card p-4"
 			>
 				<TranscriptViewerAudio className="sr-only" />
-				<div className="flex w-full flex-col gap-3">
-					<SkeletonLine className="w-full" />
-					<SkeletonLine className="mb-4 w-1/2" />
+				<div className="flex w-full flex-col gap-4">
+					<div className="flex flex-col gap-3">
+						<SkeletonLine className="w-full" />
+						<SkeletonLine className="w-1/2" />
+					</div>
 					<SkeletonLine className="h-2 w-full" />
 					<div className="-mt-1 flex items-center justify-between">
 						<SkeletonLine className="h-2 w-6" />

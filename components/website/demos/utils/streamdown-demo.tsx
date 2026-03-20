@@ -207,7 +207,7 @@ export default function StreamdownDemo(): ReactElement {
 	return (
 		<main className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 py-8">
 			<header className="flex flex-col gap-4">
-				<div className="space-y-2">
+				<div className="flex flex-col gap-2">
 					<h1 className="text-2xl font-semibold">Streamdown Latest API Demo</h1>
 					<p className="max-w-3xl text-sm text-muted-foreground">
 						This page now covers the current Streamdown surface:{" "}
@@ -244,8 +244,8 @@ export default function StreamdownDemo(): ReactElement {
 				</div>
 			</header>
 
-			<section className="rounded-xl border bg-card p-5">
-				<div className="mb-4 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+			<section className="flex flex-col gap-4 rounded-xl border bg-card p-5">
+				<div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
 					<span>Streaming state: {isAnimating ? "active" : "idle"}</span>
 					<span>Animation starts: {animationStarts}</span>
 					<span>Animation ends: {animationEnds}</span>
@@ -279,16 +279,18 @@ export default function StreamdownDemo(): ReactElement {
 			</section>
 
 			<div className="grid gap-6 xl:grid-cols-2">
-				<section className="rounded-xl border bg-card p-5">
-					<h2 className="mb-3 text-sm font-medium text-muted-foreground">
-						Custom tags + literal content
-					</h2>
-					<p className="mb-4 text-sm text-muted-foreground">
-						This card uses <code>allowedTags</code>,{" "}
-						<code>literalTagContent</code>, and keeps{" "}
-						<code>normalizeHtmlIndentation</code> enabled for AI-generated HTML
-						blocks.
-					</p>
+				<section className="flex flex-col gap-4 rounded-xl border bg-card p-5">
+					<div className="flex flex-col gap-3">
+						<h2 className="text-sm font-medium text-muted-foreground">
+							Custom tags + literal content
+						</h2>
+						<p className="text-sm text-muted-foreground">
+							This card uses <code>allowedTags</code>,{" "}
+							<code>literalTagContent</code>, and keeps{" "}
+							<code>normalizeHtmlIndentation</code> enabled for AI-generated HTML
+							blocks.
+						</p>
+					</div>
 					<Streamdown
 						allowedTags={{
 							mention: ["user_id"],
@@ -305,14 +307,16 @@ export default function StreamdownDemo(): ReactElement {
 					</Streamdown>
 				</section>
 
-				<section className="rounded-xl border bg-card p-5">
-					<h2 className="mb-3 text-sm font-medium text-muted-foreground">
-						Direction auto + link safety
-					</h2>
-					<p className="mb-4 text-sm text-muted-foreground">
-						This card uses <code>dir=&quot;auto&quot;</code> and the shared custom{" "}
-						<code>linkSafety</code> modal.
-					</p>
+				<section className="flex flex-col gap-4 rounded-xl border bg-card p-5">
+					<div className="flex flex-col gap-3">
+						<h2 className="text-sm font-medium text-muted-foreground">
+							Direction auto + link safety
+						</h2>
+						<p className="text-sm text-muted-foreground">
+							This card uses <code>dir=&quot;auto&quot;</code> and the shared custom{" "}
+							<code>linkSafety</code> modal.
+						</p>
+					</div>
 					<Streamdown
 						dir="auto"
 						linkSafety={linkSafetyConfig}

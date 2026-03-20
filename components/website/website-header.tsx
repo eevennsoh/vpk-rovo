@@ -1,15 +1,38 @@
 "use client";
 
-import { type ReactNode } from "react";
+import { useSyncExternalStore, type ReactNode } from "react";
 import { ThemeToggle } from "@/components/utils/theme-wrapper";
 
 export interface WebsiteHeaderProps {
 	/** Package name to display */
 	packageName?: string;
-	/** Version string */
-	version?: string;
+	/** Last updated ISO timestamp */
+	lastUpdatedAt?: string | null;
 	/** Optional content displayed on the left side of the header */
 	leftContent?: ReactNode;
+}
+
+function getLocalCityLabel(): string | null {
+	const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+	if (!timeZone.includes("/")) {
+		return null;
+	}
+	const segments = timeZone.split("/");
+	const city = segments[segments.length - 1];
+	return city ? city.replaceAll("_", " ") : null;
+}
+
+function formatLastUpdated(lastUpdatedAt: string): string | null {
+	const date = new Date(lastUpdatedAt);
+	if (Number.isNaN(date.getTime())) {
+		return null;
+	}
+	const formattedDate = new Intl.DateTimeFormat(undefined, {
+		dateStyle: "medium",
+		timeStyle: "short",
+	}).format(date);
+	const city = getLocalCityLabel();
+	return city ? `${formattedDate} ${city}` : formattedDate;
 }
 
 /**
@@ -18,23 +41,32 @@ export interface WebsiteHeaderProps {
  */
 export function WebsiteHeader({
 	packageName = "@vpk",
-	version = "1.0.0",
+	lastUpdatedAt,
 	leftContent,
 }: Readonly<WebsiteHeaderProps>) {
+	const mounted = useSyncExternalStore(
+		() => () => {},
+		() => true,
+		() => false,
+	);
+	const lastUpdatedLabel = mounted && lastUpdatedAt ? formatLastUpdated(lastUpdatedAt) : null;
+
 	return (
 		<header className="sticky top-0 z-10 flex h-14 items-center border-b border-border bg-surface">
 			<div className="flex min-w-0 flex-1 items-center px-4">
 				{leftContent}
 			</div>
-			{/* Right side - Package name, version, and theme toggle */}
+			{/* Right side - Package name, last updated, and theme toggle */}
 			<div className="flex items-center gap-2 px-4">
 				<div className="flex items-center gap-2 font-mono">
 					<span className="text-xs text-text-subtle">
 						{packageName}
 					</span>
-					<span className="rounded-md bg-bg-neutral py-0.5 px-2 text-xs font-medium text-text">
-						v{version}
-					</span>
+					{lastUpdatedLabel ? (
+						<span className="rounded-md bg-bg-neutral py-0.5 px-2 text-xs font-medium text-text" suppressHydrationWarning>
+							Updated {lastUpdatedLabel}
+						</span>
+					) : null}
 				</div>
 				<ThemeToggle />
 			</div>

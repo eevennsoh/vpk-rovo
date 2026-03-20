@@ -17,15 +17,27 @@ import { MakeFullscreenChat } from "./components/make-fullscreen-chat";
 import ChatTitleRow from "./components/chat-title-row";
 import { ConfigDialogs } from "./components/config-dialogs";
 
-export default function MakeView() {
+interface MakeViewProps {
+	embedded?: boolean;
+}
+
+export default function MakeView({
+	embedded = false,
+}: Readonly<MakeViewProps>) {
 	return (
 		<MakeProvider>
-			<MakeLayout />
+			<MakeLayout embedded={embedded} />
 		</MakeProvider>
 	);
 }
 
-function MakeLayout() {
+interface MakeLayoutProps {
+	embedded?: boolean;
+}
+
+function MakeLayout({
+	embedded = false,
+}: Readonly<MakeLayoutProps>) {
 	const {
 		sidebarOpen,
 		sidebarHovered,
@@ -150,7 +162,7 @@ function MakeLayout() {
 						onHoverLeave={handleHoverLeave}
 					/>
 					<div className="min-h-0 flex-1 overflow-hidden">
-						<MakeFullscreenChat />
+						<MakeFullscreenChat autoFocusComposer={!embedded} />
 					</div>
 				</div>
 			</SidebarInset>

@@ -34,7 +34,7 @@ export function DocSection({ id, title, action, children }: Readonly<DocSectionP
 	return (
 		<section
 			id={id}
-			className="border-b border-border last:border-b-0"
+			className="flex flex-col gap-4 border-b border-border last:border-b-0"
 			style={{
 				paddingBlock: token("space.400"),
 			}}
@@ -45,7 +45,6 @@ export function DocSection({ id, title, action, children }: Readonly<DocSectionP
 					display: "flex",
 					alignItems: "center",
 					justifyContent: "space-between",
-					marginBottom: token("space.200"),
 				}}
 			>
 				<div className="flex items-center gap-1">

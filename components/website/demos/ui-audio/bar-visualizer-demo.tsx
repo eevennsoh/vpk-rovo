@@ -53,7 +53,7 @@ function BarVisualizerPreview({
 					{description}
 				</CardDescription>
 			</CardHeader>
-			<CardContent className="space-y-4 px-6">
+			<CardContent className="flex flex-col gap-4 px-6">
 				<BarVisualizer
 					barCount={20}
 					centerAlign={centerAlign}

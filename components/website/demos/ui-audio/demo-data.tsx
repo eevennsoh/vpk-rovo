@@ -61,7 +61,7 @@ export function DemoCard({
 					</CardDescription>
 				) : null}
 			</CardHeader>
-			<CardContent className={cn("space-y-4 px-6", contentClassName)}>
+			<CardContent className={cn("flex flex-col gap-4 px-6", contentClassName)}>
 				{children}
 			</CardContent>
 		</Card>

@@ -157,7 +157,7 @@ export default function VisualJsonDemo() {
 				</p>
 			</header>
 
-			<Tabs defaultValue="editor">
+			<Tabs defaultValue="editor" className="flex flex-col gap-4">
 				<TabsList>
 					<TabsTrigger value="editor">Editor</TabsTrigger>
 					<TabsTrigger value="schema">Schema-aware</TabsTrigger>
@@ -166,7 +166,7 @@ export default function VisualJsonDemo() {
 					<TabsTrigger value="live-spec">Live Spec Editor</TabsTrigger>
 				</TabsList>
 
-				<TabsContent value="editor" className="mt-4">
+				<TabsContent value="editor">
 					<section className="flex flex-col gap-3">
 						<p className="text-sm text-muted-foreground">
 							Full editor with tree sidebar, form editing, drag-and-drop, and keyboard navigation.
@@ -181,7 +181,7 @@ export default function VisualJsonDemo() {
 					</section>
 				</TabsContent>
 
-				<TabsContent value="schema" className="mt-4">
+				<TabsContent value="schema">
 					<section className="flex flex-col gap-3">
 						<p className="text-sm text-muted-foreground">
 							With a JSON Schema attached, the editor validates input, shows descriptions, and provides enum dropdowns.
@@ -198,7 +198,7 @@ export default function VisualJsonDemo() {
 					</section>
 				</TabsContent>
 
-				<TabsContent value="diff" className="mt-4">
+				<TabsContent value="diff">
 					<section className="flex flex-col gap-3">
 						<p className="text-sm text-muted-foreground">
 							Side-by-side comparison of the original data vs. your edits. Make changes in the Editor tab to see diffs here.
@@ -212,7 +212,7 @@ export default function VisualJsonDemo() {
 					</section>
 				</TabsContent>
 
-				<TabsContent value="readonly" className="mt-4">
+				<TabsContent value="readonly">
 					<section className="flex flex-col gap-3">
 						<p className="text-sm text-muted-foreground">
 							Read-only mode for inspecting JSON without allowing edits.
@@ -229,7 +229,7 @@ export default function VisualJsonDemo() {
 					</section>
 				</TabsContent>
 
-				<TabsContent value="live-spec" className="mt-4">
+				<TabsContent value="live-spec">
 					<LiveSpecEditor />
 				</TabsContent>
 			</Tabs>

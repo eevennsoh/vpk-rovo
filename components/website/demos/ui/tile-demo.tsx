@@ -55,8 +55,8 @@ export function TileDemoSizes() {
 export function TileDemoAppearances() {
 	return (
 		<div className="flex flex-col gap-4">
-			<div>
-				<p className="mb-2 text-xs font-medium text-text-subtle">Semantic</p>
+			<div className="flex flex-col gap-2">
+				<p className="text-xs font-medium text-text-subtle">Semantic</p>
 				<div className="flex flex-wrap items-center gap-2">
 					<Tile label="neutral" variant="neutral">⚪</Tile>
 					<Tile label="brand" variant="brand">⭐</Tile>
@@ -67,8 +67,8 @@ export function TileDemoAppearances() {
 					<Tile label="information" variant="information">🔵</Tile>
 				</div>
 			</div>
-			<div>
-				<p className="mb-2 text-xs font-medium text-text-subtle">Accent subtle</p>
+			<div className="flex flex-col gap-2">
+				<p className="text-xs font-medium text-text-subtle">Accent subtle</p>
 				<div className="flex flex-wrap items-center gap-2">
 					<Tile label="blue" variant="blueSubtle">💧</Tile>
 					<Tile label="red" variant="redSubtle">🌹</Tile>
@@ -82,8 +82,8 @@ export function TileDemoAppearances() {
 					<Tile label="gray" variant="graySubtle">🪨</Tile>
 				</div>
 			</div>
-			<div>
-				<p className="mb-2 text-xs font-medium text-text-subtle">Accent bold</p>
+			<div className="flex flex-col gap-2">
+				<p className="text-xs font-medium text-text-subtle">Accent bold</p>
 				<div className="flex flex-wrap items-center gap-2">
 					<Tile label="blue" variant="blueBold">💧</Tile>
 					<Tile label="red" variant="redBold">🌹</Tile>

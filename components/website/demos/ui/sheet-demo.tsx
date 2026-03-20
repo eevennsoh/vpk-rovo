@@ -128,11 +128,11 @@ export function SheetDemoSides() {
 								done.
 							</SheetDescription>
 						</SheetHeader>
-						<div className="no-scrollbar style-vega:px-4 style-maia:px-6 style-mira:px-6 style-lyra:px-4 style-nova:px-4 overflow-y-auto">
+						<div className="no-scrollbar style-vega:px-4 style-maia:px-6 style-mira:px-6 style-lyra:px-4 style-nova:px-4 flex flex-col gap-4 overflow-y-auto style-lyra:gap-2">
 							{Array.from({ length: 10 }).map((_, index) => (
 								<p
 									key={index}
-									className="style-lyra:mb-2 style-lyra:leading-relaxed mb-4 leading-normal"
+									className="style-lyra:leading-relaxed leading-normal"
 								>
 									Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed
 									do eiusmod tempor incididunt ut labore et dolore magna

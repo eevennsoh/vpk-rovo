@@ -1,5 +1,6 @@
 "use client";
 
+import { FutureChatQueueBoundary } from "@/app/future-chat/future-chat-queue-provider";
 import { FutureChatShell } from "@/components/projects/future-chat/components/future-chat-shell";
 
 interface FutureChatPageProps {
@@ -12,9 +13,11 @@ export default function FutureChatPage({
 	initialThreadId = null,
 }: Readonly<FutureChatPageProps>) {
 	return (
-		<FutureChatShell
-			embedded={embedded}
-			initialThreadId={initialThreadId}
-		/>
+		<FutureChatQueueBoundary>
+			<FutureChatShell
+				embedded={embedded}
+				initialThreadId={initialThreadId}
+			/>
+		</FutureChatQueueBoundary>
 	);
 }

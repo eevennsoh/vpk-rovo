@@ -15,7 +15,7 @@ function SpeechInputPreviewDemo({
 }: Readonly<{ size?: "default" | "sm" | "lg" }>) {
 	return (
 		<DemoSurface className="p-0">
-			<div className="space-y-4 overflow-auto rounded-2xl p-6">
+			<div className="flex flex-col gap-4 overflow-auto rounded-2xl p-6">
 				<div className="relative">
 					<Textarea
 						className="min-h-[120px] rounded-2xl px-3.5 pt-3 pb-14"

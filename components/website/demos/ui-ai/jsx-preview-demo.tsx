@@ -57,7 +57,7 @@ export function JsxPreviewDemoStreaming() {
 	const restart = useCallback(() => setFrame(0), []);
 
 	return (
-		<div className="w-full space-y-3">
+		<div className="flex w-full flex-col gap-3">
 			<div className="flex items-center gap-2">
 				<Badge variant={isStreaming ? "default" : "secondary"}>
 					{isStreaming ? "Streaming" : "Complete"}

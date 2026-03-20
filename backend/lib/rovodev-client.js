@@ -1190,6 +1190,9 @@ function sendMessageStreaming(input, callbacks, port, options = {}) {
 	const pauseOnCallToolsStart =
 		options.pauseOnCallToolsStart === true ||
 		options.pause_on_call_tools_start === true;
+	const enableDeferredTools =
+		options.enableDeferredTools === true ||
+		options.enable_deferred_tools === true;
 
 	const run = async () => {
 		try {
@@ -1239,6 +1242,9 @@ function sendMessageStreaming(input, callbacks, port, options = {}) {
 			const url = new URL("/v3/stream_chat", getBaseUrlForPort(port));
 			if (pauseOnCallToolsStart) {
 				url.searchParams.set("pause_on_call_tools_start", "true");
+			}
+			if (enableDeferredTools) {
+				url.searchParams.set("enable_deferred_tools", "true");
 			}
 			console.log("[rovodev] Opening SSE stream:", url.pathname + url.search);
 			activeStreamHandle = openSseStream({

@@ -91,7 +91,7 @@ export default function PromptGalleryDemo() {
 									className={cn(composerTextareaClassName, "h-full max-h-none min-h-0")}
 								/>
 							</PromptInputBody>
-							<PromptInputFooter className="mt-3 justify-between px-0 pb-0">
+							<PromptInputFooter className="justify-between px-0 pb-0">
 								<PromptInputTools>
 									<PromptInputActionMenu open={isAddMenuOpen} onOpenChange={setIsAddMenuOpen}>
 										<PromptInputActionMenuTrigger aria-label="Add" size="icon-sm" variant="ghost">

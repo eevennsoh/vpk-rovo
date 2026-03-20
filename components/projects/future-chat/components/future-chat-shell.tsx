@@ -1813,6 +1813,7 @@ export function FutureChatShell({
 							<FutureChatComposer
 								key={chat.runtimeThreadId}
 								artifactTitle={workspaceDocument?.title ?? null}
+								autoFocus={!embedded}
 								backgroundArtifactLabel={chat.backgroundArtifactLabel}
 								composerStatus={chat.composerStatus}
 								compact={isArtifactOpen}

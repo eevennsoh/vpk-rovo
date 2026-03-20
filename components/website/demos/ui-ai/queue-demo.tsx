@@ -231,11 +231,11 @@ export function QueueDemoPromptQueue() {
 	return (
 		<div className="flex w-full max-w-sm flex-col gap-2">
 			<Queue className="border-border border-b-0 rounded-b-none bg-surface-raised px-2 pt-2 pb-2 shadow-none">
-				<QueueList className="mt-0 mb-0 w-full [&_[data-slot=scroll-area-viewport]>div]:max-h-28 [&_[data-slot=scroll-area-viewport]>div]:pr-0 [&_ul]:w-full">
+				<QueueList className="w-full [&_[data-slot=scroll-area-viewport]>div]:max-h-28 [&_[data-slot=scroll-area-viewport]>div]:pr-0 [&_ul]:w-full">
 					{prompts.map((prompt) => (
 						<QueueItem key={prompt.id} className="h-8 w-full justify-center gap-0 bg-surface hover:bg-surface-hovered">
 							<div className="flex items-center gap-2">
-								<QueueItemIndicator className="mt-0" />
+								<QueueItemIndicator />
 								<QueueItemContent className="text-text-subtle">{prompt.text}</QueueItemContent>
 								<QueueItemActions>
 									<Button

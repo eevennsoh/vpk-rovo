@@ -25,7 +25,7 @@ function VoicePickerPreview() {
 						Controlled voice selection with preview playback and searchable presets.
 					</CardDescription>
 				</CardHeader>
-				<CardContent className="space-y-4 px-6">
+				<CardContent className="flex flex-col gap-4 px-6">
 					<VoicePicker
 						className="w-full"
 						onOpenChange={setOpen}
@@ -35,12 +35,12 @@ function VoicePickerPreview() {
 						voices={MOCK_VOICES}
 					/>
 					{selectedVoice ? (
-						<div className="rounded-xl border border-border bg-bg-neutral-subtle p-4">
+						<div className="flex flex-col gap-3 rounded-xl border border-border bg-bg-neutral-subtle p-4">
 							<p className="text-sm font-medium text-text">{selectedVoice.name}</p>
-							<p className="mt-1 text-sm text-text-subtle">
+							<p className="text-sm text-text-subtle">
 								{selectedVoice.labels?.description ?? "Preset voice"}
 							</p>
-							<div className="mt-3 flex flex-wrap gap-2 text-xs text-text-subtle">
+							<div className="flex flex-wrap gap-2 text-xs text-text-subtle">
 								{selectedVoice.labels?.accent ? (
 									<span>{selectedVoice.labels.accent}</span>
 								) : null}

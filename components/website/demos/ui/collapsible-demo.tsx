@@ -13,7 +13,7 @@ export default function CollapsibleDemo() {
 	const [open, setOpen] = useState(false);
 
 	return (
-		<Collapsible open={open} onOpenChange={setOpen} className="w-56">
+		<Collapsible open={open} onOpenChange={setOpen} className="flex w-56 flex-col gap-2">
 			<div className="flex items-center justify-between">
 				<span className="text-sm font-medium">Collapsible</span>
 				<CollapsibleTrigger render={<Button variant="ghost" size="icon-sm" />}>
@@ -21,7 +21,7 @@ export default function CollapsibleDemo() {
 				</CollapsibleTrigger>
 			</div>
 			<CollapsibleContent>
-				<div className="mt-2 rounded-md border px-3 py-2 text-sm text-muted-foreground">
+				<div className="rounded-md border px-3 py-2 text-sm text-muted-foreground">
 					Hidden content revealed.
 				</div>
 			</CollapsibleContent>
@@ -31,10 +31,10 @@ export default function CollapsibleDemo() {
 
 export function CollapsibleDemoDefault() {
 	return (
-		<Collapsible className="w-[340px]">
+		<Collapsible className="flex w-[340px] flex-col gap-2">
 			<CollapsibleTrigger render={<Button variant="outline">Toggle content</Button>} />
 			<CollapsibleContent>
-				<p className="text-muted-foreground mt-2 text-sm">
+				<p className="text-muted-foreground text-sm">
 					This is the collapsible content. It can contain any elements and will
 					be shown or hidden when the trigger is clicked.
 				</p>
@@ -118,7 +118,7 @@ export function CollapsibleDemoFileTree() {
 						<FolderIcon />
 						{fileItem.name}
 					</CollapsibleTrigger>
-					<CollapsibleContent className="style-lyra:ml-4 mt-1 ml-5">
+					<CollapsibleContent className="style-lyra:ml-4 ml-5">
 						<div className="flex flex-col gap-1">
 							{fileItem.items.map((child) => renderItem(child))}
 						</div>
@@ -160,10 +160,10 @@ export function CollapsibleDemoFileTree() {
 
 export function CollapsibleDemoOpen() {
 	return (
-		<Collapsible defaultOpen className="w-[340px]">
+		<Collapsible defaultOpen className="flex w-[340px] flex-col gap-2">
 			<CollapsibleTrigger render={<Button variant="outline">Toggle content</Button>} />
 			<CollapsibleContent>
-				<p className="text-muted-foreground mt-2 text-sm">
+				<p className="text-muted-foreground text-sm">
 					This collapsible starts in the open state. Click the button above to
 					collapse this content.
 				</p>
@@ -230,13 +230,13 @@ export function CollapsibleDemoSettings() {
 
 export function CollapsibleDemoStyled() {
 	return (
-		<Collapsible className="w-[340px]">
+		<Collapsible className="flex w-[340px] flex-col gap-2">
 			<div className="flex items-center justify-between rounded-lg border p-4">
 				<h4 className="text-sm font-semibold">3 items available</h4>
 				<CollapsibleTrigger render={<Button variant="ghost" size="sm">Toggle</Button>} />
 			</div>
 			<CollapsibleContent>
-				<div className="mt-2 space-y-2">
+				<div className="flex flex-col gap-2">
 					<div className="rounded-md border px-4 py-2 text-sm">Item one</div>
 					<div className="rounded-md border px-4 py-2 text-sm">Item two</div>
 					<div className="rounded-md border px-4 py-2 text-sm">Item three</div>

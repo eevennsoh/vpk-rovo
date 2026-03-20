@@ -295,6 +295,23 @@ test("createBodyOnlySpec falls back to original spec when root would be removed"
 	assert.equal(result, spec);
 });
 
+test("createBodyOnlySpec falls back to original spec when widget elements are missing", () => {
+	const spec = {
+		root: "root",
+		elements: null,
+	};
+
+	const widget = {
+		type: "genui-preview",
+		spec,
+		source: null,
+	};
+
+	const result = createBodyOnlySpec(widget);
+
+	assert.equal(result, spec);
+});
+
 test("resolveGenerativeWidgetMetadata infers calendar content type from card text", () => {
 	const widget = parseGenerativeWidget("genui-preview", {
 		spec: {

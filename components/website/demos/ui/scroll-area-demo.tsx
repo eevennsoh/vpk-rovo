@@ -1,6 +1,4 @@
 "use client";
-
-import { Fragment } from "react";
 import Image from "next/image";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -45,7 +43,7 @@ const works = [
 export default function ScrollAreaDemo() {
 	return (
 		<ScrollArea className="h-32 w-48 rounded-md border p-3">
-			<div className="space-y-2 text-sm">
+			<div className="flex flex-col gap-2 text-sm">
 				{Array.from({ length: 12 }, (_, i) => (
 					<p key={i} className="text-muted-foreground">Item {i + 1}</p>
 				))}
@@ -57,12 +55,12 @@ export default function ScrollAreaDemo() {
 export function ScrollAreaDemoDefault() {
 	return (
 		<ScrollArea className="h-48 w-48 rounded-md border p-4">
-			<div className="space-y-2">
+			<div className="flex flex-col gap-2">
 				<h4 className="text-sm font-medium">Tags</h4>
 				{tags.map((tag) => (
-					<div key={tag}>
+					<div key={tag} className="flex flex-col gap-2">
 						<div className="text-sm">{tag}</div>
-						<Separator className="my-2" />
+						<Separator />
 					</div>
 				))}
 			</div>
@@ -102,13 +100,13 @@ export function ScrollAreaDemoHorizontal() {
 export function ScrollAreaDemoVertical() {
 	return (
 		<ScrollArea className="mx-auto h-72 w-48 rounded-md border">
-			<div className="p-4">
-				<h4 className="mb-4 text-sm leading-none font-medium">Tags</h4>
+			<div className="flex flex-col gap-4 p-4">
+				<h4 className="text-sm leading-none font-medium">Tags</h4>
 				{tags.map((tag) => (
-					<Fragment key={tag}>
+					<div key={tag} className="flex flex-col gap-2">
 						<div className="text-sm">{tag}</div>
-						<Separator className="my-2" />
-					</Fragment>
+						<Separator />
+					</div>
 				))}
 			</div>
 		</ScrollArea>

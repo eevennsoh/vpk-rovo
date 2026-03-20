@@ -100,7 +100,7 @@ export function WebPreviewDemoUrlChange() {
 	const [lastUrl, setLastUrl] = useState(EXAMPLE_URL);
 
 	return (
-		<div className="w-full space-y-3">
+		<div className="flex w-full flex-col gap-3">
 			<div className="text-sm text-muted-foreground">
 				Last navigated URL: <code className="rounded bg-muted px-1 py-0.5">{lastUrl}</code>
 			</div>

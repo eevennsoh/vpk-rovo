@@ -120,7 +120,7 @@ export function PromptInputDemoChatComposer() {
 							/>
 						</PromptInputBody>
 
-						<PromptInputFooter className="mt-3 justify-between px-0 pb-0">
+						<PromptInputFooter className="justify-between px-0 pb-0">
 							<PromptInputTools>
 								<PromptInputActionMenu open={isAddMenuOpen} onOpenChange={setIsAddMenuOpen}>
 									<PromptInputActionMenuTrigger aria-label="Add" size="icon-sm" variant="ghost">
@@ -410,7 +410,7 @@ export function PromptInputDemoCursorStyle() {
 								</PromptInputButton>
 							</PromptInputHoverCardTrigger>
 							<PromptInputHoverCardContent className="divide-y overflow-hidden p-0">
-								<div className="space-y-2 p-3">
+								<div className="flex flex-col gap-2 p-3">
 									<p className="text-sm font-medium text-text-subtle">
 										Attached Project Rules
 									</p>
@@ -431,7 +431,7 @@ export function PromptInputDemoCursorStyle() {
 									<span>1 Tab</span>
 								</PromptInputButton>
 							</PromptInputHoverCardTrigger>
-							<PromptInputHoverCardContent className="w-[300px] space-y-4 px-0 py-3">
+							<PromptInputHoverCardContent className="flex w-[300px] flex-col gap-4 px-0 py-3">
 								<PromptInputTab>
 									<PromptInputTabLabel>Active Tabs</PromptInputTabLabel>
 									<PromptInputTabBody>
@@ -470,7 +470,7 @@ export function PromptInputDemoCursorStyle() {
 						<PromptInputTextarea placeholder="Plan, search, build anything" />
 					</PromptInputBody>
 
-					<PromptInputFooter className="mt-2 justify-between border-t border-border px-1 pt-2">
+					<PromptInputFooter className="justify-between border-t border-border px-1 pt-2">
 						<PromptInputTools>
 							<PromptInputSelect
 								value={model}
@@ -632,8 +632,8 @@ export function PromptInputDemoSubmitStatus() {
 	const submitDisabled = status ? false : !prompt.trim();
 
 	return (
-		<DemoFrame>
-			<div className="mb-3 flex flex-wrap gap-1">
+		<DemoFrame className="flex flex-col gap-2">
+			<div className="flex flex-wrap gap-1">
 				<Button onClick={() => setStatus(undefined)} size="sm" variant="outline">Idle</Button>
 				<Button onClick={() => setStatus("submitted")} size="sm" variant="outline">Submitted</Button>
 				<Button onClick={() => setStatus("streaming")} size="sm" variant="outline">Streaming</Button>
@@ -664,7 +664,7 @@ export function PromptInputDemoSubmitStatus() {
 					</PromptInputSubmit>
 				</PromptInputFooter>
 			</PromptInput>
-			<p className="mt-2 text-xs text-text-subtle">
+			<p className="text-xs text-text-subtle">
 				Status: <span className="font-medium text-text">{status ?? "idle"}</span>
 			</p>
 		</DemoFrame>
@@ -692,7 +692,7 @@ export function PromptInputDemoModelSelect() {
 						value={prompt}
 					/>
 				</PromptInputBody>
-				<PromptInputFooter className="mt-2 justify-between px-1">
+				<PromptInputFooter className="justify-between px-1">
 					<PromptInputTools className="flex-wrap">
 						<PromptInputSelect value={model} onValueChange={(value) => setModel(String(value))}>
 							<PromptInputSelectTrigger aria-label="Model" className="h-8 w-[132px] text-xs">
@@ -718,7 +718,7 @@ export function PromptInputDemoModelSelect() {
 					<PromptInputSubmit aria-label="Submit" disabled={!prompt.trim()} />
 				</PromptInputFooter>
 			</PromptInput>
-			<p className="mt-2 text-xs text-text-subtle">
+			<p className="text-xs text-text-subtle">
 				Model <span className="font-medium text-text">{model}</span> · Style <span className="font-medium text-text">{verbosity}</span>
 			</p>
 		</DemoFrame>
@@ -739,8 +739,8 @@ function ProviderControlledPromptInput() {
 	const isSubmitDisabled = controller.textInput.value.trim().length === 0;
 
 	return (
-		<DemoFrame>
-			<div className="mb-3 flex flex-wrap items-center gap-1">
+		<DemoFrame className="flex flex-col gap-2">
+			<div className="flex flex-wrap items-center gap-1">
 				<Button
 					onClick={() => controller.textInput.setInput("Summarize the latest release highlights in 5 bullets.")}
 					size="sm"
@@ -786,7 +786,7 @@ function ProviderControlledPromptInput() {
 			</PromptInput>
 
 			{lastSubmittedPrompt ? (
-				<p className="mt-2 text-xs text-text-subtle">
+				<p className="text-xs text-text-subtle">
 					Last submitted: <span className="font-medium text-text">{lastSubmittedPrompt}</span>
 				</p>
 			) : null}

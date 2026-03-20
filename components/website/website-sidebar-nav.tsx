@@ -27,6 +27,7 @@ export interface NavItem {
 
 export interface NavSection {
 	title: string;
+	href?: string;
 	items: NavItem[];
 	defaultOpen?: boolean;
 }
@@ -42,6 +43,7 @@ export interface WebsiteSidebarNavProps {
 
 const RAIL_WIDTH = 48;
 const PANEL_WIDTH = 256;
+const VENN_SLACK_PROFILE_URL = "https://atlassian.enterprise.slack.com/user/@WEM1T2SLE";
 type AdsTagVariant = NonNullable<ComponentProps<typeof Lozenge>["variant"]>;
 
 export function WebsiteSidebarNav({
@@ -65,6 +67,11 @@ export function WebsiteSidebarNav({
 	});
 	const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
 		const initial: Record<string, boolean> = {};
+		for (const page of staticPages) {
+			if (page.children?.length) {
+				initial[page.href] = page.children.some((child) => child.href === pathname);
+			}
+		}
 		for (const section of sections) {
 			for (const item of section.items) {
 				if (item.children?.length) {
@@ -151,8 +158,13 @@ export function WebsiteSidebarNav({
 	const [lastAutoOpenedPath, setLastAutoOpenedPath] = useState(pathname);
 	if (lastAutoOpenedPath !== pathname) {
 		setLastAutoOpenedPath(pathname);
-		const sectionUpdates: Record<string, boolean> = {};
 		const groupUpdates: Record<string, boolean> = {};
+		for (const page of staticPages) {
+			if (page.children?.some((child) => child.href === pathname)) {
+				groupUpdates[page.href] = true;
+			}
+		}
+		const sectionUpdates: Record<string, boolean> = {};
 		for (const section of sections) {
 			for (const item of section.items) {
 				if (item.href === pathname) {
@@ -164,11 +176,11 @@ export function WebsiteSidebarNav({
 				}
 			}
 		}
-		if (Object.keys(sectionUpdates).length > 0) {
-			setOpenSections((prev) => ({ ...prev, ...sectionUpdates }));
-		}
 		if (Object.keys(groupUpdates).length > 0) {
 			setOpenGroups((prev) => ({ ...prev, ...groupUpdates }));
+		}
+		if (Object.keys(sectionUpdates).length > 0) {
+			setOpenSections((prev) => ({ ...prev, ...sectionUpdates }));
 		}
 	}
 
@@ -216,6 +228,8 @@ export function WebsiteSidebarNav({
 
 	const isActive = (href: string) => pathname === href;
 
+	const isSectionLinkActive = (href: string) => isActive(href);
+
 	return (
 		<>
 			{/* Rail - Always visible (48px) */}
@@ -227,8 +241,8 @@ export function WebsiteSidebarNav({
 			>
 				{/* Logo */}
 				<Link
-					href="/"
-					aria-label="Go to homepage"
+					href="/projects"
+					aria-label="Go to projects"
 					className="mb-4 text-text rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
 				>
 					<Image src="/website/vpk-logo-dark.svg" alt="" width={24} height={24} className="dark:hidden" />
@@ -261,11 +275,12 @@ export function WebsiteSidebarNav({
 				<header
 					className="flex h-14 items-center border-b border-border px-4"
 				>
-					<span
-						className="text-lg font-semibold text-text"
+					<Link
+						href="/projects"
+						className="text-lg font-semibold text-text no-underline hover:text-text"
 					>
 						{logoText}
-					</span>
+					</Link>
 				</header>
 
 				{/* Search */}
@@ -310,50 +325,73 @@ export function WebsiteSidebarNav({
 				<nav
 					aria-label="Component navigation"
 					ref={navRef}
-					className="flex-1 overflow-y-auto px-4 pb-4"
+					className="flex flex-1 flex-col gap-6 overflow-y-auto px-4 pb-4"
 				>
 
 					{/* Static pages */}
 					{!isSearching && !adsOnly && staticPages.length > 0 && (
-						<ul className="list-none m-0 p-0">
+						<ul className="m-0 flex list-none flex-col gap-1.5 p-0">
 							{staticPages.map((page) => (
-								<li key={page.href}>
-									<Link
-										href={page.href}
-										data-active={isActive(page.href)}
-										className="block rounded-md py-2 px-3 text-sm no-underline transition-colors text-text-subtle data-[active=true]:bg-bg-neutral data-[active=true]:font-semibold data-[active=true]:text-text"
-									>
-										{page.name}
-									</Link>
-								</li>
+								page.children?.length ? (
+									<NavGroupItem
+										key={page.href}
+										item={page}
+										isActive={isActive}
+										isFiltering={false}
+										isGroupOpen={isGroupOpen(page.href)}
+										onToggleGroup={() => toggleGroup(page.href)}
+										mounted={mounted}
+									/>
+								) : (
+									<NavFlatItem
+										key={page.href}
+										item={page}
+										isActive={isActive(page.href)}
+										mounted={mounted}
+									/>
+								)
 							))}
 						</ul>
 					)}
 
 					{/* Collapsible sections */}
-					{filteredSections.map((section, index) => {
+					{filteredSections.map((section) => {
 						const sectionOpen = isFiltering || isSectionOpen(section.title);
 						return (
-							<div key={section.title} className={isFiltering && index === 0 ? "" : "mt-6"}>
-								<button
-									onClick={() => toggleSection(section.title)}
-									className="flex w-full items-center justify-between py-2 px-3 text-[11px] font-medium uppercase tracking-wider text-text-subtle bg-transparent border-none cursor-pointer transition-colors hover:text-text"
-								>
-									{section.title}
-									{!isFiltering && (
-										<span
-											className="inline-flex transition-transform duration-200 ease-in-out"
-											style={{ transform: sectionOpen ? "rotate(0deg)" : "rotate(-90deg)" }}
+							<div key={section.title}>
+								<div className="flex items-center gap-1">
+									{section.href ? (
+										<Link
+											href={section.href}
+											data-active={isSectionLinkActive(section.href)}
+											className="flex flex-1 items-center rounded-md py-2 px-3 text-[11px] font-medium uppercase tracking-wider no-underline transition-colors text-text-subtle data-[active=true]:bg-bg-neutral data-[active=true]:font-semibold data-[active=true]:text-text hover:text-text"
 										>
-											<ChevronDownIcon label="" size="small" />
-										</span>
+											{section.title}
+										</Link>
+									) : (
+										<div className="flex flex-1 items-center rounded-md py-2 px-3 text-[11px] font-medium uppercase tracking-wider text-text-subtle">
+											{section.title}
+										</div>
 									)}
-								</button>
+									{!isFiltering && (
+										<button
+											onClick={() => toggleSection(section.title)}
+											aria-label={sectionOpen ? `Collapse ${section.title}` : `Expand ${section.title}`}
+											className="flex items-center justify-center rounded-md text-text-subtle bg-transparent border-none cursor-pointer transition-colors hover:bg-bg-neutral hover:text-text"
+											style={{ width: 36, height: 36 }}
+										>
+											<span
+												className="inline-flex transition-transform duration-200 ease-in-out"
+												style={{ transform: sectionOpen ? "rotate(0deg)" : "rotate(-90deg)" }}
+											>
+												<ChevronDownIcon label="" size="small" />
+											</span>
+										</button>
+									)}
+								</div>
 
 								{sectionOpen && (
-									<ul
-										className="list-none m-0 p-0 mt-1"
-									>
+									<ul className="m-0 flex list-none flex-col gap-1 p-0">
 										{section.items.map((item) =>
 											item.children?.length ? (
 												<NavGroupItem
@@ -393,7 +431,15 @@ export function WebsiteSidebarNav({
 					className="border-t border-border p-4"
 				>
 					<span className="text-xs text-text-subtlest">
-						Maintained by Ee Venn Soh
+						Maintained by{" "}
+						<a
+							href={VENN_SLACK_PROFILE_URL}
+							target="_blank"
+							rel="noreferrer"
+							className="rounded-sm text-text-subtle no-underline transition-colors hover:text-text hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+						>
+							@venn
+						</a>
 					</span>
 				</footer>
 			</aside>

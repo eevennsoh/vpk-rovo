@@ -1391,6 +1391,7 @@ async function streamViaRovoDev({
 						onTimingStage,
 						sessionId,
 						pauseOnCallToolsStart: typeof onPausedToolCalls === "function",
+						enableDeferredTools: typeof onPausedToolCalls === "function",
 					}
 				);
 

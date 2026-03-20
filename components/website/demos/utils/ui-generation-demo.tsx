@@ -141,7 +141,7 @@ function ChatView() {
 	return (
 		<div className="flex flex-col flex-1 min-h-0">
 			{/* Messages */}
-			<div className="flex-1 min-h-0 overflow-auto space-y-4 pb-4">
+			<div className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto pb-4">
 				{messages.length === 0 ? (
 					<div className="flex items-center justify-center h-full text-text-subtlest text-sm">
 						Describe a UI and watch it render live.
@@ -191,9 +191,9 @@ function ChatView() {
 								</div>
 							) : null}
 							{showSpecCard ? (
-								<div className="w-full rounded-lg border border-border bg-surface p-4">
+								<div className="flex w-full flex-col gap-2 rounded-lg border border-border bg-surface p-4">
 									{generationBadge ? (
-										<p className="mb-2 text-xs text-text-subtlest">
+										<p className="text-xs text-text-subtlest">
 											{generationBadge}
 										</p>
 									) : null}
@@ -320,11 +320,11 @@ export default function UIGenerationDemo(): ReactElement {
 	return (
 		<div className="flex flex-col gap-4 p-4 h-full">
 			{/* Header */}
-			<div>
+			<div className="flex flex-col gap-1">
 				<h1 className="text-2xl font-semibold text-text">
 					UI Generation
 				</h1>
-				<p className="text-sm text-text-subtle mt-1">
+				<p className="text-sm text-text-subtle">
 					Render structured JSON specs into live UIs with charts,
 					forms, and 3D scenes via json-render.
 				</p>
@@ -420,7 +420,7 @@ export default function UIGenerationDemo(): ReactElement {
 				{showEditor ? (
 					<>
 						{/* Editor pane */}
-						<div className="flex flex-col w-1/2 min-h-0">
+						<div className="flex w-1/2 min-h-0 flex-col gap-1">
 							<textarea
 								className="flex-1 min-h-0 rounded-lg border border-border bg-surface p-3 font-mono text-xs text-text resize-none focus:outline-none focus:ring-2 focus:ring-ring"
 								value={displayText}
@@ -430,7 +430,7 @@ export default function UIGenerationDemo(): ReactElement {
 								spellCheck={false}
 							/>
 							{parseError ? (
-								<p className="mt-1 text-xs text-text-danger">
+								<p className="text-xs text-text-danger">
 									{parseError}
 								</p>
 							) : null}

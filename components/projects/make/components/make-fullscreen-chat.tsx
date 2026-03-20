@@ -121,7 +121,13 @@ function ScrollToBottomButton({
 // Main component
 // ---------------------------------------------------------------------------
 
-export function MakeFullscreenChat() {
+interface MakeFullscreenChatProps {
+	autoFocusComposer?: boolean;
+}
+
+export function MakeFullscreenChat({
+	autoFocusComposer = true,
+}: Readonly<MakeFullscreenChatProps>) {
 	const {
 		chatTabPrompt,
 		chatTabIsStreaming,
@@ -462,6 +468,7 @@ export function MakeFullscreenChat() {
 
 	const composerProps = useMemo(
 		() => ({
+			autoFocus: autoFocusComposer,
 			prompt: chatTabPrompt,
 			placeholder: previewPrompt ?? modeCopy.placeholder,
 			isStreaming: isRequestInFlight,
@@ -479,6 +486,7 @@ export function MakeFullscreenChat() {
 			modeCopy.placeholder,
 			isRequestInFlight,
 			queuedPrompts,
+			autoFocusComposer,
 			setPrompt,
 			handleSubmit,
 			stopStreaming,

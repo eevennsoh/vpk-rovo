@@ -6,7 +6,7 @@ function DirectionDisplay() {
 	const direction = useDirection();
 
 	return (
-		<div className="space-y-2 rounded-lg border p-4">
+		<div className="flex flex-col gap-2 rounded-lg border p-4">
 			<p className="text-sm font-medium">
 				Direction: {direction === "ltr" ? "Left-to-Right" : "Right-to-Left"}
 			</p>
@@ -28,7 +28,7 @@ export default function DirectionDemo() {
 export function DirectionDemoDefault() {
 	return (
 		<DirectionProvider direction="ltr">
-			<div className="space-y-2 rounded-lg border p-4">
+			<div className="flex flex-col gap-2 rounded-lg border p-4">
 				<p className="text-sm font-medium">Left-to-Right</p>
 				<p className="text-sm text-muted-foreground">Content flows from left to right.</p>
 			</div>
@@ -39,7 +39,7 @@ export function DirectionDemoDefault() {
 export function DirectionDemoRtl() {
 	return (
 		<DirectionProvider direction="rtl">
-			<div className="space-y-2 rounded-lg border p-4" dir="rtl">
+			<div className="flex flex-col gap-2 rounded-lg border p-4" dir="rtl">
 				<p className="text-sm font-medium">Right-to-Left</p>
 				<p className="text-sm text-muted-foreground">Content flows from right to left.</p>
 			</div>
