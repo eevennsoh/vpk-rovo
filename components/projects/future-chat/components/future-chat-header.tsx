@@ -15,7 +15,7 @@ export function FutureChatHeader({
 	onNewChat,
 }: Readonly<FutureChatHeaderProps>) {
 	return (
-		<header className="flex items-center gap-3 px-3 py-4">
+		<header className="flex items-center gap-3 px-3 py-3">
 				<Button variant="ghost">
 					<Icon
 						aria-hidden

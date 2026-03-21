@@ -3,18 +3,18 @@ import { AUDIO_COMPONENTS, AI_COMPONENTS, UI_COMPONENTS, BLOCK_COMPONENTS, PROJE
 import { buildNavItems, UI_GROUPS, BLOCK_GROUPS } from "@/app/data/nav-utils";
 import { resolveAiAdsPackage, resolveBlockAdsPackage, resolveUiAdsPackage, resolveUiAdsTagVariant } from "@/app/data/nav-ads";
 
-export const WEBSITE_STATIC_PAGES: NavItem[] = [
+export const WEBSITE_STATIC_PAGES: NavItem[] = [];
+
+export const WEBSITE_NAV_SECTIONS: NavSection[] = [
 	{
-		name: "Projects",
+		title: "Projects",
 		href: "/projects",
-		children: PROJECT_COMPONENTS.map((component) => ({
+		defaultOpen: false,
+		items: PROJECT_COMPONENTS.map((component) => ({
 			name: component.name,
 			href: `/components/projects/${component.slug}`,
 		})),
 	},
-];
-
-export const WEBSITE_NAV_SECTIONS: NavSection[] = [
 	{
 		title: "UI",
 		href: "/ui",

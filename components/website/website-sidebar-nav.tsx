@@ -45,6 +45,10 @@ const RAIL_WIDTH = 48;
 const PANEL_WIDTH = 256;
 const VENN_SLACK_PROFILE_URL = "https://atlassian.enterprise.slack.com/user/@WEM1T2SLE";
 type AdsTagVariant = NonNullable<ComponentProps<typeof Lozenge>["variant"]>;
+const NAV_SECTION_LINK_CLASSNAME =
+	"flex flex-1 items-center rounded-md py-2 px-3 text-[11px] font-medium uppercase tracking-wider no-underline transition-colors text-text-subtle data-[active=true]:bg-bg-neutral data-[active=true]:font-semibold data-[active=true]:text-text hover:text-text";
+const NAV_SECTION_LABEL_CLASSNAME =
+	"flex flex-1 items-center rounded-md py-2 px-3 text-[11px] font-medium uppercase tracking-wider text-text-subtle";
 
 export function WebsiteSidebarNav({
 	staticPages = [],
@@ -364,12 +368,12 @@ export function WebsiteSidebarNav({
 										<Link
 											href={section.href}
 											data-active={isSectionLinkActive(section.href)}
-											className="flex flex-1 items-center rounded-md py-2 px-3 text-[11px] font-medium uppercase tracking-wider no-underline transition-colors text-text-subtle data-[active=true]:bg-bg-neutral data-[active=true]:font-semibold data-[active=true]:text-text hover:text-text"
+											className={NAV_SECTION_LINK_CLASSNAME}
 										>
 											{section.title}
 										</Link>
 									) : (
-										<div className="flex flex-1 items-center rounded-md py-2 px-3 text-[11px] font-medium uppercase tracking-wider text-text-subtle">
+										<div className={NAV_SECTION_LABEL_CLASSNAME}>
 											{section.title}
 										</div>
 									)}
@@ -438,7 +442,7 @@ export function WebsiteSidebarNav({
 							rel="noreferrer"
 							className="rounded-sm text-text-subtle no-underline transition-colors hover:text-text hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
 						>
-							@venn
+							@Venn ✌️
 						</a>
 					</span>
 				</footer>
@@ -514,7 +518,7 @@ function NavGroupItem({
 			<Collapsible open={isGroupOpen} onOpenChange={onToggleGroup}>
 				<div className="flex items-center gap-1">
 					{item.expandOnly ? (
-						<div className="flex flex-1 items-center gap-1.5 rounded-md py-2 px-3 text-sm transition-colors text-text-subtle">
+						<div className={cn(NAV_SECTION_LABEL_CLASSNAME, "gap-1.5")}>
 							<span className="truncate">{item.name}</span>
 							{item.adsPackage && (
 								<AdsTag adsPackage={item.adsPackage} mounted={mounted} variant={item.adsTagVariant} />
@@ -524,7 +528,7 @@ function NavGroupItem({
 						<Link
 							href={item.href}
 							data-active={isActive(item.href)}
-							className="flex flex-1 items-center gap-1.5 rounded-md py-2 px-3 text-sm no-underline transition-colors text-text-subtle data-[active=true]:bg-bg-neutral data-[active=true]:font-semibold data-[active=true]:text-text"
+							className={cn(NAV_SECTION_LINK_CLASSNAME, "gap-1.5")}
 						>
 							<span className="truncate">{item.name}</span>
 							{item.adsPackage && (

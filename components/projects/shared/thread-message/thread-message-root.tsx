@@ -156,7 +156,8 @@ function useThreadMessageDerived(
 					const candidateIsLoading =
 						isAnyWidgetLoading && loadingWidgetType === widgetDataPart.widgetType;
 					const shouldRenderCandidateWhileLoading =
-						widgetDataPart.widgetType === "genui-preview";
+						widgetDataPart.widgetType === "genui-preview" ||
+						widgetDataPart.widgetType === "question-card";
 					const shouldSkipCandidate =
 						(candidateIsLoading && !shouldRenderCandidateWhileLoading) ||
 						(widgetDataPart.widgetType === "plan" && isStreaming);
@@ -329,7 +330,8 @@ function useThreadMessageDerived(
 	// GenUI payload can arrive before the trailing loading=false event.
 	// Keep the card renderable when payload exists to avoid "stuck spinner" regressions.
 	const shouldRenderWidgetWhileLoading =
-		widgetType === "genui-preview" && hasWidgetPayload;
+		(widgetType === "genui-preview" || widgetType === "question-card") &&
+		hasWidgetPayload;
 	const renderedWidget =
 		shouldShowWidgetSections &&
 		widgetDataPart &&
@@ -344,7 +346,8 @@ function useThreadMessageDerived(
 				) ?? null
 			: null;
 	const shouldHideLoadingWidget =
-		widgetType === "genui-preview" && hasWidgetPayload;
+		(widgetType === "genui-preview" || widgetType === "question-card") &&
+		hasWidgetPayload;
 	const loadingWidgetNode =
 		shouldShowWidgetSections && isWidgetLoading && !shouldHideLoadingWidget
 			? renderLoadingWidget?.(widgetType) ?? null
