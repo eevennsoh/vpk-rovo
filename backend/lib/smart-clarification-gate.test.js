@@ -74,6 +74,34 @@ test("shouldGateSmartClarification skips after clarification-submit", () => {
 	);
 });
 
+test("shouldGateSmartClarification skips when explicit plan mode is active", () => {
+	assert.equal(
+		shouldGateSmartClarification({
+			latestUserMessage: "give me a chart",
+			latestUserMessageSource: null,
+			smartGenerationActive: true,
+			smartIntentResult: { intent: "genui" },
+			classifierResult: { needsClarification: true },
+			resolvedPlanModeActive: true,
+		}),
+		false
+	);
+});
+
+test("shouldGateSmartClarification skips when a plan session is active", () => {
+	assert.equal(
+		shouldGateSmartClarification({
+			latestUserMessage: "generate an image",
+			latestUserMessageSource: null,
+			smartGenerationActive: true,
+			smartIntentResult: { intent: "image" },
+			classifierResult: { needsClarification: true },
+			planSessionActive: true,
+		}),
+		false
+	);
+});
+
 test("shouldGateSmartClarification gates vague generative requests", () => {
 	// Vague chart request with genui intent + classifier says needs clarification
 	assert.equal(

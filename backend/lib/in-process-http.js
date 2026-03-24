@@ -81,6 +81,15 @@ function createCapturedResponse() {
 	const response = new EventEmitter();
 	const bodyStream = new PassThrough();
 	const headers = new Map();
+	let resolveHeadersReady;
+	const headersReadyPromise = new Promise((resolve) => {
+		resolveHeadersReady = resolve;
+	});
+
+	function markHeadersReady() {
+		resolveHeadersReady?.();
+		resolveHeadersReady = null;
+	}
 
 	response.statusCode = 200;
 	response.statusMessage = undefined;
@@ -130,15 +139,18 @@ function createCapturedResponse() {
 		}
 
 		response.headersSent = true;
+		markHeadersReady();
 		return response;
 	};
 
 	response.flushHeaders = () => {
 		response.headersSent = true;
+		markHeadersReady();
 	};
 
 	response.write = (chunk) => {
 		response.headersSent = true;
+		markHeadersReady();
 		return bodyStream.write(chunk);
 	};
 
@@ -150,6 +162,7 @@ function createCapturedResponse() {
 		if (!response.writableFinished) {
 			response.writableFinished = true;
 			bodyStream.end();
+			markHeadersReady();
 			response.emit("finish");
 		}
 
@@ -172,6 +185,15 @@ function createCapturedResponse() {
 			statusText: response.statusMessage,
 			headers: responseHeaders,
 		});
+	};
+
+	response.waitForHeaders = async () => {
+		if (response.headersSent || response.writableFinished) {
+			markHeadersReady();
+			return;
+		}
+
+		await headersReadyPromise;
 	};
 
 	return response;

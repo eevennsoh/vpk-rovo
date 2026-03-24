@@ -17,7 +17,7 @@
  *
  * @param {string} sessionId - The clarification session identifier
  * @param {Record<string, string | string[]>} answers - ID-keyed answers from the frontend
- * @param {Array<{id: string, label: string}>|null} questionMeta - Question metadata for ID→label mapping
+ * @param {Array<{id: string, label: string, options?: Array<{id: string, label: string}>}>|null} questionMeta - Question metadata for ID→label mapping
  * @returns {Record<string, string | string[]> | Record<string, string[]>} Adapted answers
  */
 function adaptClarificationAnswers(sessionId, answers, questionMeta) {
@@ -38,14 +38,24 @@ function adaptClarificationAnswers(sessionId, answers, questionMeta) {
 		}, {});
 	}
 
-	// Build ID → label lookup
-	const idToLabel = new Map(questionMeta.map((q) => [q.id, q.label]));
+	// Build question ID → metadata lookup
+	const questionMetaById = new Map(questionMeta.map((q) => [q.id, q]));
 
 	return Object.entries(answers).reduce((acc, [questionId, value]) => {
-		// Map question ID to question text (label), fall back to ID if not found
-		const questionText = idToLabel.get(questionId) || questionId;
+		const question = questionMetaById.get(questionId) || null;
+		const questionText = question?.label || questionId;
+		const optionLabelById = new Map(
+			Array.isArray(question?.options)
+				? question.options
+					.filter((option) => option && typeof option.id === "string" && typeof option.label === "string")
+					.map((option) => [option.id, option.label])
+				: []
+		);
+		const normalizedValues = (Array.isArray(value) ? value : [value]).map((entry) => {
+			return optionLabelById.get(entry) || entry;
+		});
 		// Always normalize to string[] for tool contract
-		acc[questionText] = Array.isArray(value) ? value : [value];
+		acc[questionText] = normalizedValues;
 		return acc;
 	}, {});
 }

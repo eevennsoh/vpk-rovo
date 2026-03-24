@@ -53,14 +53,21 @@ function initPool(pool) {
  * @param {object} [opts]
  * @param {number} [opts.timeoutMs]
  * @param {AbortSignal} [opts.signal]
+ * @param {number} [opts.preferredPort]
+ * @param {number[]} [opts.avoidPorts]
  * @returns {Promise<{ port: number; release: () => void }>}
  */
-async function acquirePort({ timeoutMs = 30_000, signal } = {}) {
+async function acquirePort({
+	timeoutMs = 30_000,
+	signal,
+	preferredPort,
+	avoidPorts,
+} = {}) {
 	if (!_pool) {
 		const resolvedPort = getRovoDevPort();
 		return { port: resolvedPort, release: () => {} };
 	}
-	return _pool.acquire({ timeoutMs, signal });
+	return _pool.acquire({ timeoutMs, signal, preferredPort, avoidPorts });
 }
 
 // ─── No-pool fallback helpers ───────────────────────────────────────────────
@@ -386,6 +393,20 @@ function createPortStuckError(port) {
 	err.code = "ROVODEV_PORT_STUCK";
 	err.port = port;
 	return err;
+}
+
+function createAbortCancelFailedError(port, cause) {
+	const detail =
+		cause instanceof Error && typeof cause.message === "string" && cause.message.trim().length > 0
+			? cause.message.trim()
+			: "RovoDev cancel cleanup failed";
+	const error = new Error(
+		`RovoDev port ${port} could not be cleared after abort: ${detail}`
+	);
+	error.code = "ROVODEV_ABORT_CANCEL_FAILED";
+	error.port = port;
+	error.cause = cause;
+	return error;
 }
 
 function parseSseEventPayload(rawData) {
@@ -729,6 +750,8 @@ function buildThinkingEventFromToolEvent({
 	errorText,
 	mcpServer,
 	permissionScenario,
+	subagentName,
+	subagentToolCallId,
 }) {
 	const resolvedToolName = normalizeToolName(toolName) ?? "Tool";
 	const resolvedToolCallId =
@@ -782,6 +805,12 @@ function buildThinkingEventFromToolEvent({
 	}
 	if (typeof permissionScenario === "string" && permissionScenario.trim()) {
 		event.permissionScenario = permissionScenario.trim();
+	}
+	if (typeof subagentName === "string" && subagentName.trim()) {
+		event.subagentName = subagentName.trim();
+	}
+	if (typeof subagentToolCallId === "string" && subagentToolCallId.trim()) {
+		event.subagentToolCallId = subagentToolCallId.trim();
 	}
 
 	return event;
@@ -852,6 +881,7 @@ function resolveToolCallInput({
  * @param {function} [params.onToolCallStart] - Called with structured tool-call details when a tool starts
  * @param {function} [params.onToolCallInputResolved] - Called with merged tool input once args deltas are complete or a start payload fallback is available
  * @param {function} [params.onToolCallResult] - Called with raw tool-result output (before preview truncation) for post-processing needs like question-card payload extraction
+ * @param {function} [params.onDeferredToolRequest] - Called when Serve emits a deferred tool request after all available text/tool stream events
  * @param {function} [params.onPausedToolCalls] - Called when `pause_on_call_tools_start=true` pauses Serve tool execution
  * @param {function} [params.onRetry] - Called when a 409 retry is about to happen (for UI indicators)
  * @param {function} [params.onRetryProgress] - Called for each 409 retry progress update
@@ -863,6 +893,8 @@ function resolveToolCallInput({
  * @param {boolean} [params.cancelOnComplete] - Cancel lingering chat state before releasing the port after a successful stream
  * @param {boolean} [params.failOnError] - Reject on non-409 stream errors instead of writing inline warning text
  * @param {(stage: string, details?: object) => void} [params.onTimingStage] - Optional callback for low-level timing milestones
+ * @param {number} [params.port] - Reuse an existing reserved port instead of acquiring one
+ * @param {{ port: number; release?: () => void; releaseAsUnhealthy?: () => void }} [params.portHandle] - Reserved handle paired with `port`
  * @returns {Promise<void>}
  */
 async function streamViaRovoDev({
@@ -874,11 +906,13 @@ async function streamViaRovoDev({
 	onToolCallStart,
 	onToolCallInputResolved,
 	onToolCallResult,
+	onDeferredToolRequest,
 	onPausedToolCalls,
 	onRetry,
 	onRetryProgress,
 	conflictPolicy = "cancel-and-retry",
 	timeoutMs,
+	idleTimeoutMs,
 	sessionId,
 	signal,
 	onPortAcquired,
@@ -886,6 +920,12 @@ async function streamViaRovoDev({
 	cancelOnComplete = false,
 	failOnError = false,
 	onTimingStage,
+	port: providedPort,
+	portHandle: providedPortHandle,
+	preferredPort,
+	avoidPorts,
+	skipSetChatMessage = false,
+	includeSubagentEvents = false,
 }) {
 	const waitForTurn = conflictPolicy === "wait-for-turn";
 	const resolvedTimeoutMs =
@@ -902,17 +942,37 @@ async function streamViaRovoDev({
 		});
 	}
 	const acquireStartedAtMs = Date.now();
-	const handle = await acquirePort({
-		timeoutMs: waitForTurn
-			? WAIT_FOR_TURN_TIMEOUT_MS
-			: RETRY_TIMEOUT_MS,
-		signal,
-	});
+	const usingProvidedPort =
+		Number.isInteger(providedPort) &&
+		providedPort > 0 &&
+		providedPortHandle &&
+		typeof providedPortHandle === "object";
+	const handle = usingProvidedPort
+		? {
+			port: providedPort,
+			release:
+				typeof providedPortHandle.release === "function"
+					? () => providedPortHandle.release()
+					: () => {},
+			releaseAsUnhealthy:
+				typeof providedPortHandle.releaseAsUnhealthy === "function"
+					? () => providedPortHandle.releaseAsUnhealthy()
+					: undefined,
+		}
+		: await acquirePort({
+			timeoutMs: waitForTurn
+				? WAIT_FOR_TURN_TIMEOUT_MS
+				: RETRY_TIMEOUT_MS,
+			signal,
+			preferredPort,
+			avoidPorts,
+		});
 	if (typeof onTimingStage === "function") {
 		onTimingStage("stream_acquire_complete", {
 			stageMs: Date.now() - acquireStartedAtMs,
 			port: handle.port,
 			waitForTurn,
+			reusedPort: usingProvidedPort,
 		});
 	}
 
@@ -922,11 +982,29 @@ async function streamViaRovoDev({
 
 	let portStuck = false;
 	let preservePortHandle = false;
+	let abortedBySignal = false;
+	let handleReleased = false;
+
+	const releaseHandleAsUnhealthy = (reason) => {
+		if (handleReleased || preservePortHandle) {
+			return;
+		}
+		handleReleased = true;
+		if (_pool && typeof handle.releaseAsUnhealthy === "function") {
+			if (typeof reason === "string" && reason.trim()) {
+				console.warn(`[streamViaRovoDev] Marking port ${handle.port} unhealthy: ${reason.trim()}`);
+			}
+			handle.releaseAsUnhealthy();
+			return;
+		}
+		handle.release();
+	};
 
 	try {
 		const attempt = (port) =>
 			new Promise((resolve, reject) => {
 				if (signal?.aborted) {
+					abortedBySignal = true;
 					resolve();
 					return;
 				}
@@ -1084,6 +1162,9 @@ async function streamViaRovoDev({
 
 				const streamHandle = sendMessageStreaming(message, {
 					onChunk: (chunk) => {
+						if (chunk.type === "text" && chunk.subagentName) {
+							return;
+						}
 						if (chunk.type === "text" && chunk.text) {
 							onTextDelta(chunk.text);
 							return;
@@ -1152,6 +1233,8 @@ async function streamViaRovoDev({
 									input: toolInputPreview,
 									mcpServer: chunk.mcpServer,
 									permissionScenario: chunk.permissionScenario,
+									subagentName: chunk.subagentName,
+									subagentToolCallId: chunk.subagentToolCallId,
 								});
 								if (thinkingEvent) {
 									onThinkingEvent(thinkingEvent);
@@ -1168,7 +1251,7 @@ async function streamViaRovoDev({
 							return;
 						}
 
-						if (chunk.type === "tool_call_args") {
+							if (chunk.type === "tool_call_args") {
 							const normalizedToolCallId =
 								typeof chunk.toolCallId === "string" && chunk.toolCallId.trim()
 									? chunk.toolCallId.trim()
@@ -1194,10 +1277,27 @@ async function streamViaRovoDev({
 								toolCallId: normalizedToolCallId,
 								reportedToolName: chunk.toolName,
 							});
-							return;
-						}
+								return;
+							}
 
-						if (chunk.type === "tool_result" || chunk.type === "tool_error") {
+							if (chunk.type === "deferred-tool-request") {
+								if (typeof onDeferredToolRequest === "function") {
+									onDeferredToolRequest({
+										toolName: normalizeToolName(chunk.toolName),
+										toolCallId:
+											typeof chunk.toolCallId === "string" && chunk.toolCallId.trim()
+												? chunk.toolCallId.trim()
+												: null,
+										toolInput:
+											chunk.toolInput && typeof chunk.toolInput === "object"
+												? chunk.toolInput
+												: null,
+									});
+								}
+								return;
+							}
+
+							if (chunk.type === "tool_result" || chunk.type === "tool_error") {
 							const correlatedToolCallId = resolveCorrelatedToolCallId({
 								toolCallId: chunk.toolCallId,
 								reportedToolName: chunk.toolName,
@@ -1286,6 +1386,8 @@ async function streamViaRovoDev({
 									outputBytes,
 									suppressedRawOutput: outputTruncated,
 									errorText: isToolError ? outputPreview : undefined,
+									subagentName: chunk.subagentName,
+									subagentToolCallId: chunk.subagentToolCallId,
 								});
 										if (thinkingEvent) {
 											onThinkingEvent(thinkingEvent);
@@ -1391,23 +1493,28 @@ async function streamViaRovoDev({
 						onTimingStage,
 						sessionId,
 						pauseOnCallToolsStart: typeof onPausedToolCalls === "function",
+						includeSubagentEvents,
 						enableDeferredTools: typeof onPausedToolCalls === "function",
+						skipSetChatMessage,
+						idleTimeoutMs,
 					}
 				);
 
 				if (signal) {
 					onAbort = () => {
-						streamHandle.abort();
-						// Cancel the RovoDev turn to prevent stale sessions
-						// that cause 409 for the next caller on this port
-						cancelChat(port, { timeoutMs: 3_000 }).catch(() => {});
-						resolve();
+						abortedBySignal = true;
+						Promise.resolve(streamHandle.abort()).then(
+							() => {
+								resolve();
+							},
+							(error) => {
+								reject(createAbortCancelFailedError(port, error));
+							}
+						);
 					};
 
 					if (signal.aborted) {
-						streamHandle.abort();
-						cancelChat(port, { timeoutMs: 3_000 }).catch(() => {});
-						resolve();
+						onAbort();
 					} else {
 						signal.addEventListener("abort", onAbort, { once: true });
 					}
@@ -1429,14 +1536,16 @@ async function streamViaRovoDev({
 					try {
 						await cancelChat(handle.port, { timeoutMs: 3_000 });
 					} catch {}
-					if (_pool) {
-						handle.releaseAsUnhealthy();
-					} else {
-						handle.release();
-					}
+					releaseHandleAsUnhealthy("chat in progress after wait-for-turn");
 					throw createPortStuckError(handle.port);
 				}
+				if (err?.code === "ROVODEV_ABORT_CANCEL_FAILED") {
+					releaseHandleAsUnhealthy(err.message);
+				}
 				throw err;
+			}
+			if (abortedBySignal || signal?.aborted) {
+				return;
 			}
 		} else {
 			// Cancel-and-retry mode for background tasks
@@ -1453,7 +1562,7 @@ async function streamViaRovoDev({
 						port: handle.port,
 					}
 				);
-				if (aborted) {
+				if (aborted || abortedBySignal || signal?.aborted) {
 					return;
 				}
 			} catch (err) {
@@ -1470,6 +1579,9 @@ async function streamViaRovoDev({
 								: undefined,
 					});
 				}
+				if (err?.code === "ROVODEV_ABORT_CANCEL_FAILED") {
+					releaseHandleAsUnhealthy(err.message);
+				}
 				throw err;
 			}
 		}
@@ -1477,7 +1589,13 @@ async function streamViaRovoDev({
 		// Run post-stream callback (e.g. suggestion generation) while
 		// we still hold the port handle — avoids re-acquisition contention.
 		// Skip if port is stuck — no point generating suggestions on a broken port.
-		if (!portStuck && !preservePortHandle && typeof onComplete === "function") {
+		if (
+			!portStuck &&
+			!preservePortHandle &&
+			!abortedBySignal &&
+			!signal?.aborted &&
+			typeof onComplete === "function"
+		) {
 			try {
 				await onComplete(handle.port);
 			} catch (onCompleteErr) {
@@ -1487,7 +1605,13 @@ async function streamViaRovoDev({
 				);
 			}
 		}
-		if (!portStuck && !preservePortHandle && cancelOnComplete) {
+		if (
+			!portStuck &&
+			!preservePortHandle &&
+			!abortedBySignal &&
+			!signal?.aborted &&
+			cancelOnComplete
+		) {
 			try {
 				await cancelChat(handle.port, { timeoutMs: 3_000 });
 			} catch (error) {
@@ -1496,9 +1620,12 @@ async function streamViaRovoDev({
 						error instanceof Error ? error.message : String(error)
 					}`
 				);
+				releaseHandleAsUnhealthy(
+					error instanceof Error ? error.message : String(error)
+				);
 			}
 		}
-		if (!preservePortHandle) {
+		if (!preservePortHandle && !handleReleased) {
 			handle.release();
 		}
 	}
@@ -1514,10 +1641,12 @@ async function replayViaRovoDev({
 	onToolCallStart,
 	onToolCallInputResolved,
 	onToolCallResult,
+	onDeferredToolRequest,
 	onPausedToolCalls,
 	signal,
 	failOnError = false,
 	onTimingStage,
+	skipReplayUntilToolCallId = null,
 }) {
 	return new Promise((resolve, reject) => {
 		if (signal?.aborted) {
@@ -1527,6 +1656,25 @@ async function replayViaRovoDev({
 
 		let onAbort = null;
 		let sawExceptionEvent = false;
+		const normalizedSkipReplayUntilToolCallId =
+			typeof skipReplayUntilToolCallId === "string" &&
+			skipReplayUntilToolCallId.trim().length > 0
+				? skipReplayUntilToolCallId.trim()
+				: null;
+		let hasCaughtUpToReplayBoundary = !normalizedSkipReplayUntilToolCallId;
+		const normalizePausedToolCallId = (toolCallId) =>
+			typeof toolCallId === "string" && toolCallId.trim()
+				? toolCallId.trim()
+				: null;
+		const buildResumeDecisions = (parts) =>
+			parts
+				.map((part) => {
+					const toolCallId = normalizePausedToolCallId(part?.tool_call_id);
+					return toolCallId
+						? { tool_call_id: toolCallId, deny_message: null }
+						: null;
+				})
+				.filter(Boolean);
 		const toolNameByCallId = new Map();
 		const toolInputByCallId = new Map();
 		const toolArgsBufferByCallId = new Map();
@@ -1678,6 +1826,10 @@ async function replayViaRovoDev({
 
 		const streamHandle = replayStreaming({
 			onChunk: (chunk) => {
+				if (!hasCaughtUpToReplayBoundary) {
+					return;
+				}
+
 				if (chunk.type === "text" && chunk.text) {
 					onTextDelta(chunk.text);
 					return;
@@ -1783,6 +1935,23 @@ async function replayViaRovoDev({
 						toolCallId: normalizedToolCallId,
 						reportedToolName: chunk.toolName,
 					});
+					return;
+				}
+
+				if (chunk.type === "deferred-tool-request") {
+					if (typeof onDeferredToolRequest === "function") {
+						onDeferredToolRequest({
+							toolName: normalizeToolName(chunk.toolName),
+							toolCallId:
+								typeof chunk.toolCallId === "string" && chunk.toolCallId.trim()
+									? chunk.toolCallId.trim()
+									: null,
+							toolInput:
+								chunk.toolInput && typeof chunk.toolInput === "object"
+									? chunk.toolInput
+									: null,
+						});
+					}
 					return;
 				}
 
@@ -1932,25 +2101,53 @@ async function replayViaRovoDev({
 				}
 			},
 			onPauseToolCalls: async (rawEvent, control) => {
+				const replayPausedParts = Array.isArray(rawEvent?.parts) ? rawEvent.parts : [];
+				if (!hasCaughtUpToReplayBoundary && normalizedSkipReplayUntilToolCallId) {
+					const matchedBoundary = replayPausedParts.some(
+						(part) =>
+							normalizePausedToolCallId(part?.tool_call_id) ===
+							normalizedSkipReplayUntilToolCallId
+					);
+
+					if (!matchedBoundary) {
+						const decisions = buildResumeDecisions(replayPausedParts);
+						if (decisions.length > 0) {
+							await resumeToolCalls(port, { decisions });
+						}
+						return { disconnect: false };
+					}
+
+					hasCaughtUpToReplayBoundary = true;
+				}
+
+				const pausedParts =
+					hasCaughtUpToReplayBoundary && normalizedSkipReplayUntilToolCallId
+						? replayPausedParts.filter(
+							(part) =>
+								normalizePausedToolCallId(part?.tool_call_id) !==
+								normalizedSkipReplayUntilToolCallId
+						)
+						: replayPausedParts;
+				if (pausedParts.length === 0) {
+					return { disconnect: false };
+				}
+				const filteredRawEvent =
+					pausedParts === replayPausedParts
+						? rawEvent
+						: {
+							...(rawEvent && typeof rawEvent === "object" ? rawEvent : {}),
+							parts: pausedParts,
+						};
+
 				if (typeof onPausedToolCalls !== "function") {
 					await resumeToolCalls(port, {
-						decisions: (Array.isArray(rawEvent?.parts) ? rawEvent.parts : [])
-							.map((part) => {
-								const toolCallId =
-									typeof part?.tool_call_id === "string" && part.tool_call_id.trim()
-										? part.tool_call_id.trim()
-										: null;
-								return toolCallId
-									? { tool_call_id: toolCallId, deny_message: null }
-									: null;
-							})
-							.filter(Boolean),
+						decisions: buildResumeDecisions(pausedParts),
 					});
 					return { disconnect: false };
 				}
 
 				return onPausedToolCalls({
-					rawEvent,
+					rawEvent: filteredRawEvent,
 					port,
 					control: {
 						port,
@@ -2004,6 +2201,8 @@ async function generateTextViaRovoDev({
 	conflictPolicy = "cancel-and-retry",
 	timeoutMs,
 	signal,
+	preferredPort,
+	avoidPorts,
 }) {
 	throwIfAborted(signal, "RovoDev text generation aborted");
 
@@ -2025,9 +2224,39 @@ async function generateTextViaRovoDev({
 	const handle = await acquirePort({
 		timeoutMs: waitForTurn ? WAIT_FOR_TURN_TIMEOUT_MS : RETRY_TIMEOUT_MS,
 		signal,
+		preferredPort,
+		avoidPorts,
 	});
 
 	let portKnownStuck = false;
+	let handleReleased = false;
+	let abortCleanupPromise = null;
+
+	const captureAbortCleanupPromise = (error) => {
+		if (
+			!abortCleanupPromise &&
+			error &&
+			typeof error === "object" &&
+			typeof error.cancelCleanupPromise?.then === "function"
+		) {
+			abortCleanupPromise = error.cancelCleanupPromise;
+		}
+	};
+
+	const releaseHandleAsUnhealthy = (reason) => {
+		if (handleReleased) {
+			return;
+		}
+		handleReleased = true;
+		if (_pool && typeof handle.releaseAsUnhealthy === "function") {
+			if (typeof reason === "string" && reason.trim()) {
+				console.warn(`[generateTextViaRovoDev] Marking port ${handle.port} unhealthy: ${reason.trim()}`);
+			}
+			handle.releaseAsUnhealthy();
+			return;
+		}
+		handle.release();
+	};
 
 	try {
 		const syncOptions = {
@@ -2045,6 +2274,7 @@ async function generateTextViaRovoDev({
 					const value = await sendMessageSync(fullMessage, syncOptions);
 					return typeof value === "string" ? value : "";
 				} catch (error) {
+					captureAbortCleanupPromise(error);
 					if (isChatInProgressError(error)) {
 						portKnownStuck = true;
 						console.error(
@@ -2075,6 +2305,7 @@ async function generateTextViaRovoDev({
 
 				return typeof value === "string" ? value : "";
 			} catch (error) {
+				captureAbortCleanupPromise(error);
 				if (isChatInProgressError(error)) {
 					portKnownStuck = true;
 				}
@@ -2091,6 +2322,7 @@ async function generateTextViaRovoDev({
 				try {
 					return await sendMessageSync(fullMessage, syncOptions);
 				} catch (err) {
+					captureAbortCleanupPromise(err);
 					if (isChatInProgressError(err)) {
 						throw createPortStuckError(handle.port);
 					}
@@ -2105,6 +2337,7 @@ async function generateTextViaRovoDev({
 		try {
 			return await sendMessageSync(fullMessage, syncOptions);
 		} catch (err) {
+			captureAbortCleanupPromise(err);
 			if (isChatInProgressError(err)) {
 				try {
 					const { value, aborted } = await retryChatInProgress(
@@ -2142,24 +2375,40 @@ async function generateTextViaRovoDev({
 				console.warn(
 					`[generateTextViaRovoDev] port ${stuckPort} got 409 — marking unhealthy`
 				);
-				handle.releaseAsUnhealthy();
+				releaseHandleAsUnhealthy("chat in progress conflict");
 
 				// Fire-and-forget cancel attempt — don't kill the process
 				cancelChat(stuckPort, { timeoutMs: 3_000 }).catch(() => {});
 			} else if (signal?.aborted) {
-				// Caller timed out (e.g., classifier 800ms deadline), but the
-				// RovoDev instance is likely still processing a normal LLM
-				// response — it's slow, not stuck. The abort handler in
-				// sendMessageSync already sent a fire-and-forget POST /v3/cancel,
-				// so don't send another one (double-cancel can cause the second
-				// to fail and unnecessarily mark the port unhealthy).
-				// Just release normally — if the session is still active,
-				// the next caller's conflict-policy retry handles it.
-				handle.release();
+				let cleanupError = null;
+				if (abortCleanupPromise) {
+					try {
+						await abortCleanupPromise;
+					} catch (error) {
+						cleanupError = error;
+					}
+				} else {
+					try {
+						await cancelChat(handle.port, { timeoutMs: 3_000 });
+					} catch (error) {
+						cleanupError = error;
+					}
+				}
+				if (cleanupError) {
+					releaseHandleAsUnhealthy(
+						cleanupError instanceof Error ? cleanupError.message : String(cleanupError)
+					);
+				} else if (!handleReleased) {
+					handleReleased = true;
+					handle.release();
+				}
 			} else if (waitForTurn) {
 				// In wait-for-turn mode the request completed naturally; avoid
 				// extra cancellation churn and release the port immediately.
-				handle.release();
+				if (!handleReleased) {
+					handleReleased = true;
+					handle.release();
+				}
 			} else {
 				// Normal completion — cancel any lingering session and release.
 				try {
@@ -2170,11 +2419,20 @@ async function generateTextViaRovoDev({
 							error instanceof Error ? error.message : String(error)
 						}`
 					);
+					releaseHandleAsUnhealthy(
+						error instanceof Error ? error.message : String(error)
+					);
 				}
-				handle.release();
+				if (!handleReleased) {
+					handleReleased = true;
+					handle.release();
+				}
 			}
 		} else {
-			handle.release();
+			if (!handleReleased) {
+				handleReleased = true;
+				handle.release();
+			}
 		}
 	}
 }

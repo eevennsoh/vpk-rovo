@@ -709,9 +709,9 @@ function createTaskPrompt(run, task, dependencyOutputs, directivesForAgent, skil
 		? [
 			"",
 			"## File placement rules",
-			`All source files you create for this app MUST be placed under components/generated-apps/${appSlug}/.`,
-			`The entry component must be at components/generated-apps/${appSlug}/page.tsx.`,
-			"Do NOT create files inside app/. The routing is handled automatically.",
+			`All source files you create for this app MUST be placed under app/apps/${appSlug}/.`,
+			`The entry component must be at app/apps/${appSlug}/page.tsx.`,
+			`Keep app-specific files contained to app/apps/${appSlug}/ so cleanup and previews work correctly.`,
 			"You may import shared code from @/components/ui/, @/lib/, etc.",
 			"",
 		].join("\n")

@@ -49,8 +49,15 @@ export function selectLatestRenderableWidgetPart(
 	if (typeof isRenderable === "function") {
 		for (let index = widgetDataParts.length - 1; index >= 0; index -= 1) {
 			const widgetDataPart = widgetDataParts[index];
-			if (isRenderable(widgetDataPart)) {
-				return widgetDataPart;
+			try {
+				if (isRenderable(widgetDataPart)) {
+					return widgetDataPart;
+				}
+			} catch (error) {
+				console.warn(
+					`[widget-selection] Skipping widget part at index ${index} (type: ${widgetDataPart.widgetType}) — isRenderable threw:`,
+					error,
+				);
 			}
 		}
 	}

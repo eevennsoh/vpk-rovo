@@ -1,7 +1,6 @@
 "use client";
 
-import type { LucideIcon } from "lucide-react";
-import type { ComponentProps, ReactNode } from "react";
+import type { ComponentProps, ComponentType, ReactNode } from "react";
 
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { Badge } from "@/components/ui/badge";
@@ -62,7 +61,7 @@ export const ChainOfThought = memo(
 			<ChainOfThoughtContext.Provider value={chainOfThoughtContext}>
 				<Collapsible
 					className={cn(
-						"not-prose w-full rounded-lg border border-border bg-surface p-3",
+						"not-prose w-full",
 						className
 					)}
 					onOpenChange={setIsOpen}
@@ -87,7 +86,7 @@ export const ChainOfThoughtHeader = memo(
 		return (
 			<CollapsibleTrigger
 				className={cn(
-					"flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-text-subtle transition-colors hover:bg-bg-neutral hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+					"flex w-full items-center gap-2 text-sm text-text-subtle transition-colors hover:text-text",
 					className
 				)}
 				{...props}
@@ -108,7 +107,7 @@ export const ChainOfThoughtHeader = memo(
 );
 
 export type ChainOfThoughtStepProps = ComponentProps<"div"> & {
-	icon?: LucideIcon;
+	icon?: ComponentType<{ className?: string }>;
 	label: ReactNode;
 	description?: ReactNode;
 	status?: "complete" | "active" | "pending";
@@ -133,7 +132,7 @@ export const ChainOfThoughtStep = memo(
 		<div
 			className={cn(
 				"fade-in-0 slide-in-from-top-2 animate-in",
-				"flex gap-2 text-sm leading-relaxed",
+				"flex gap-2 text-sm",
 				stepStatusStyles[status],
 				className
 			)}
@@ -190,7 +189,7 @@ export const ChainOfThoughtContent = memo(
 	({ className, children, ...props }: ChainOfThoughtContentProps) => (
 		<CollapsibleContent
 			className={cn(
-				"mt-2 space-y-3 border-border border-t pt-3 text-sm text-text-subtle",
+				"mt-2 space-y-3",
 				"data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 outline-none data-[state=closed]:animate-out data-[state=open]:animate-in",
 				className
 			)}
@@ -208,7 +207,7 @@ export type ChainOfThoughtImageProps = ComponentProps<"div"> & {
 export const ChainOfThoughtImage = memo(
 	({ className, children, caption, ...props }: ChainOfThoughtImageProps) => (
 		<div className={cn("mt-2 space-y-2", className)} {...props}>
-			<div className="relative flex max-h-[22rem] items-center justify-center overflow-hidden rounded-lg border border-border bg-surface-raised p-3">
+			<div className="relative flex max-h-[22rem] items-center justify-center overflow-hidden rounded-lg bg-surface-raised p-3">
 				{children}
 			</div>
 			{caption ? <p className="text-text-subtle text-xs">{caption}</p> : null}

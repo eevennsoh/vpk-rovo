@@ -82,6 +82,8 @@ export interface ThreadMessageContextValue {
 	widgetType: string | undefined;
 	/** Whether the widget is currently loading. */
 	isWidgetLoading: boolean;
+	/** Whether the widget loading indicator has timed out (30s with no renderable payload). */
+	widgetLoadingTimedOut: boolean;
 	/** Whether the plan widget should render before message content. */
 	shouldRenderPlanWidgetFirst: boolean;
 	/** Whether a widget was rendered (affects feedback/suggestion gating). */

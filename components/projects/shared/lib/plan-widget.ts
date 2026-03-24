@@ -16,6 +16,7 @@ export interface ParsedPlanTask {
 export interface ParsedPlanWidgetPayload {
 	title: string;
 	description?: string;
+	markdown: string;
 	emoji?: string;
 	tasks: ParsedPlanTask[];
 	agents: string[];
@@ -154,6 +155,11 @@ export function parsePlanWidgetPayload(
 		getNonEmptyString(record.summary) ??
 		getNonEmptyString(record.subtitle) ??
 		undefined;
+	const markdown =
+		getNonEmptyString(record.markdown) ??
+		getNonEmptyString(record.plan) ??
+		description ??
+		"";
 	const emoji = getNonEmptyString(record.emoji) ?? undefined;
 
 	const agentSet = new Set<string>();
@@ -172,6 +178,7 @@ export function parsePlanWidgetPayload(
 	return {
 		title,
 		description,
+		markdown,
 		emoji,
 		tasks,
 		agents,
@@ -296,16 +303,18 @@ export function generateMermaidFromPlanTasks(
 	};
 }
 
-export function getLatestPlanWidgetPayload(
+export function getAllPlanWidgetPayloads(
 	messages: ReadonlyArray<RovoUIMessage>
-): ParsedPlanWidgetPayload | null {
-	for (let messageIndex = messages.length - 1; messageIndex >= 0; messageIndex--) {
+): ParsedPlanWidgetPayload[] {
+	const results: ParsedPlanWidgetPayload[] = [];
+
+	for (let messageIndex = 0; messageIndex < messages.length; messageIndex++) {
 		const message = messages[messageIndex];
 		if (message.role !== "assistant") {
 			continue;
 		}
 
-		for (let partIndex = message.parts.length - 1; partIndex >= 0; partIndex--) {
+		for (let partIndex = 0; partIndex < message.parts.length; partIndex++) {
 			const part = message.parts[partIndex] as {
 				type?: string;
 				data?: {
@@ -324,12 +333,50 @@ export function getLatestPlanWidgetPayload(
 
 			const parsedPayload = parsePlanWidgetPayload(part.data?.payload);
 			if (parsedPayload) {
-				return parsedPayload;
+				results.push(parsedPayload);
 			}
 		}
 	}
 
-	return null;
+	return results;
+}
+
+export function getLatestPlanWidgetPayload(
+	messages: ReadonlyArray<RovoUIMessage>
+): ParsedPlanWidgetPayload | null {
+	const allPlans = getAllPlanWidgetPayloads(messages);
+	return allPlans.length > 0 ? allPlans[allPlans.length - 1] : null;
+}
+
+export interface PlanBuildableResult {
+	buildable: boolean;
+	reason?: string;
+}
+
+export function isPlanCardBuildable(
+	planPayload: ParsedPlanWidgetPayload,
+	allPlanPayloads: ReadonlyArray<ParsedPlanWidgetPayload>,
+	acceptedPlanKey: string | null,
+): PlanBuildableResult {
+	if (acceptedPlanKey !== null) {
+		return { buildable: false, reason: "A plan has already been accepted." };
+	}
+
+	if (allPlanPayloads.length === 0) {
+		return { buildable: false, reason: "No plans available." };
+	}
+
+	const latestPlan = allPlanPayloads[allPlanPayloads.length - 1];
+	const isLatest =
+		planPayload.title === latestPlan.title &&
+		planPayload.tasks.length === latestPlan.tasks.length &&
+		planPayload.tasks.every((task, index) => task.id === latestPlan.tasks[index]?.id);
+
+	if (!isLatest) {
+		return { buildable: false, reason: "A newer plan is available." };
+	}
+
+	return { buildable: true };
 }
 
 export async function fetchEnrichedPlanTitle(

@@ -140,7 +140,7 @@ In VPK feature code, use ADS semantic naming (`bg-surface-raised`, `text-text-su
 - Start frontend + backend only: `pnpm run dev` (requires rovodev serve already running)
 - Start frontend only: `pnpm run dev:frontend`
 - Start backend only: `pnpm run dev:backend`
-- Start with tmux (8 panes): `pnpm run rovodev:tmux`
+- Start with tmux (8 panes): `pnpm run rovodev:tmux:start`
 - Run backend tests: `node --test backend/lib/*.test.js`
 
 ### Testing

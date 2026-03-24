@@ -84,6 +84,15 @@ const checkRovodevHealth = async (port) => {
 				data += chunk;
 			});
 			res.on("end", () => {
+				if (res.statusCode === 401) {
+					resolve({
+						healthy: true,
+						status: "auth-required",
+						mcpServers: null,
+					});
+					return;
+				}
+
 				try {
 					const parsed = JSON.parse(data);
 					resolve({

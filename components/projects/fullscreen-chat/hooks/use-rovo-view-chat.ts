@@ -5,10 +5,9 @@ import { useRovoChat } from "@/app/contexts";
 import { useSpeechRecognition } from "./use-speech-recognition";
 import { useUrlParams } from "./use-url-params";
 import {
-	buildClarificationSummaryDisplayLabel,
+	buildClarificationMessageMetadata,
 	buildClarificationDismissPrompt,
 	buildClarificationSummaryPrompt,
-	buildClarificationSummaryRows,
 	createClarificationSubmission,
 	getLatestQuestionCardPayload,
 	type ClarificationAnswers,
@@ -116,22 +115,13 @@ export function useRovoViewChat() {
 				activeQuestionCard,
 				answers
 			);
-			const clarificationSummary = buildClarificationSummaryRows(
-				activeQuestionCard,
-				answers
-			);
-			const displayLabel = buildClarificationSummaryDisplayLabel(
-				activeQuestionCard,
-				answers
-			);
 
 			await sendPrompt(clarificationPrompt, {
 				...buildSendOptions(),
-				messageMetadata: {
-					source: "clarification-submit",
-					displayLabel,
-					clarificationSummary,
-				},
+				messageMetadata: buildClarificationMessageMetadata(activeQuestionCard, {
+					answers,
+					status: "answered",
+				}),
 				clarification: clarificationSubmission,
 			});
 		},
@@ -143,10 +133,10 @@ export function useRovoViewChat() {
 			const dismissPrompt = buildClarificationDismissPrompt(questionCard);
 			void sendPrompt(dismissPrompt, {
 				...buildSendOptions(),
-				messageMetadata: {
-					source: "clarification-submit",
+				messageMetadata: buildClarificationMessageMetadata(questionCard, {
+					status: "dismissed",
 					visibility: "hidden",
-				},
+				}),
 			});
 		},
 		[buildSendOptions, sendPrompt]

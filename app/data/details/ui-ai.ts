@@ -551,7 +551,9 @@ import { SearchIcon } from "lucide-react";
 			{ name: "ChainOfThoughtImage", description: "Image container with caption support for visual reasoning evidence." },
 		],
 		examples: [
-			{ title: "ADS workflow", description: "Canonical chain-of-thought flow from ai-elements: search, image evidence, summary, and active follow-up.", demoSlug: "chain-of-thought-demo-ads-workflow" },
+			{ title: "Preload", description: "Collapsed initial state before reasoning begins — header visible, content hidden.", demoSlug: "chain-of-thought-demo-preload" },
+			{ title: "Thinking", description: "Active processing — multiple steps with search results, image evidence, and one active step in progress.", demoSlug: "chain-of-thought-demo-thinking" },
+			{ title: "Completed", description: "All reasoning steps complete with full evidence chain visible.", demoSlug: "chain-of-thought-demo-completed" },
 			{ title: "Status variants", description: "Compare complete, active, and pending step states in one reasoning chain.", demoSlug: "chain-of-thought-demo-status-variants" },
 			{ title: "Search results", description: "Standalone source-chip usage for search and retrieval phases.", demoSlug: "chain-of-thought-demo-search-results" },
 			{ title: "Image step", description: "Reasoning step with image evidence and caption.", demoSlug: "chain-of-thought-demo-image-step" },
@@ -1002,45 +1004,40 @@ import AddIcon from "@atlaskit/icon/core/add";
 
 	artifact: {
 		description:
-			"A container for displaying AI-generated artifacts like code, documents, or other structured output with a title bar and optional actions.",
-		usage: `import {
-  Artifact,
-  ArtifactHeader,
-  ArtifactTitle,
-  ArtifactDescription,
-  ArtifactActions,
-  ArtifactAction,
-  ArtifactClose,
-  ArtifactContent,
-} from "@/components/ui-ai/artifact";
+			"A card for displaying AI-generated artifacts like code, documents, images, or sheets. The high-level ArtifactCard component provides kind-based icons, expand/collapse, streaming state, and preview rendering built on GenerativeCard. Low-level compound components (Artifact, ArtifactHeader, etc.) are also available for custom layouts.",
+		usage: `import { ArtifactCard } from "@/components/ui-ai/artifact";
 
-<Artifact>
-  <ArtifactHeader>
-    <div>
-      <ArtifactTitle>Algorithm Implementation</ArtifactTitle>
-      <ArtifactDescription>Updated 1 minute ago</ArtifactDescription>
-    </div>
-    <ArtifactActions>
-      <ArtifactAction icon={CopyIcon} label="Copy" tooltip="Copy to clipboard" />
-      <ArtifactAction icon={DownloadIcon} label="Download" tooltip="Download file" />
-    </ArtifactActions>
-  </ArtifactHeader>
-  <ArtifactContent>
-    {/* Your content here */}
-  </ArtifactContent>
-</Artifact>`,
+<ArtifactCard
+  kind="code"
+  title="Algorithm Implementation"
+  previewContent={codeString}
+  onOpen={() => openArtifact()}
+/>
+
+{/* Or use compound components for custom layouts: */}
+import {
+  Artifact, ArtifactHeader, ArtifactTitle,
+  ArtifactActions, ArtifactAction, ArtifactContent,
+} from "@/components/ui-ai/artifact";`,
 		demoLayout: {
 			previewContentWidth: "full",
 			examplesContentWidth: "full",
 		},
 		props: [
-			{
-				name: "className",
-				type: "string",
-				description: "Additional classes applied to the outer container.",
-			},
+			{ name: "kind", type: '"text" | "code" | "image" | "sheet"', description: "The artifact content type. Determines icon and color." },
+			{ name: "title", type: "string", description: "Artifact title text." },
+			{ name: "action", type: '"create" | "update" | null', description: "Optional action context for description text." },
+			{ name: "isStreaming", type: "boolean", description: "Whether the artifact is currently streaming." },
+			{ name: "displayMode", type: '"preview" | "chip"', description: 'Display mode. "preview" shows expanded card, "chip" shows compact inline card. Defaults to "preview".' },
+			{ name: "previewContent", type: "string", description: "Content string for the preview (code text, image URL, etc.)." },
+			{ name: "onOpen", type: "() => void", description: 'Callback when the "Open" button is clicked.' },
+			{ name: "children", type: "ReactNode", description: "Optional children rendered inside the card content (overrides previewContent)." },
+			{ name: "className", type: "string", description: "Additional classes for the outer wrapper." },
 		],
 		subComponents: [
+			{ name: "ArtifactCard", description: "High-level artifact card built on GenerativeCard with kind-based icons, expand/collapse, and preview rendering." },
+			{ name: "ArtifactPanel", description: "Full artifact viewer/editor panel with title, kind badge, edit/preview toggle, copy, and close. Renders code, images, or text." },
+			{ name: "Artifact", description: "Low-level root container for custom artifact layouts." },
 			{ name: "ArtifactHeader", description: "Header bar with title area and actions. Uses flexbox with justify-between." },
 			{ name: "ArtifactTitle", description: "Title text rendered as a paragraph with medium font weight." },
 			{ name: "ArtifactDescription", description: "Subtitle/description text in muted foreground color." },
@@ -1050,10 +1047,11 @@ import AddIcon from "@atlaskit/icon/core/add";
 			{ name: "ArtifactContent", description: "Scrollable content area with padding. Use className='p-0' for edge-to-edge content like CodeBlock." },
 		],
 		examples: [
-			{ title: "With code display", description: "Artifact displaying a syntax-highlighted code file with multiple action buttons.", demoSlug: "artifact-demo-with-code" },
-			{ title: "With close button", description: "Artifact with a close button alongside actions, showing a JSON response.", demoSlug: "artifact-demo-with-close" },
-			{ title: "Document", description: "Artifact containing a rich text document instead of code.", demoSlug: "artifact-demo-document" },
-			{ title: "Minimal", description: "Simple artifact with title and a single action.", demoSlug: "artifact-demo-minimal" },
+			{ title: "Code preview", description: "ArtifactCard displaying a code artifact with preview and expand/collapse.", demoSlug: "artifact-demo-code-preview" },
+			{ title: "Image preview", description: "ArtifactCard displaying an image artifact with gradient overlay.", demoSlug: "artifact-demo-image-preview" },
+			{ title: "Streaming", description: "ArtifactCard in streaming state showing skeleton loading and spinner.", demoSlug: "artifact-demo-streaming" },
+			{ title: "Chip mode", description: "Compact inline artifact card with 'Open' action button.", demoSlug: "artifact-demo-chip" },
+			{ title: "Compound (legacy)", description: "Custom layout using low-level compound components.", demoSlug: "artifact-demo-compound" },
 		],
 	},
 

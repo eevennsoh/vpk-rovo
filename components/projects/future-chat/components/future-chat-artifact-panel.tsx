@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type RefObject } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { CodeBlock } from "@/components/ui-ai/code-block";
 import { MessageResponse } from "@/components/ui-ai/message";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ import type {
 import { cn } from "@/lib/utils";
 import {
 	formatFutureChatVersionLabel,
+	getFutureChatVersionNumber,
 	getFutureChatVersionTitle,
 } from "@/components/projects/future-chat/lib/future-chat-version-labels";
 import type { FutureChatDocument } from "@/lib/future-chat-types";
@@ -220,15 +221,30 @@ export function FutureChatArtifactPanel({
 		|| isStreamingArtifact
 		|| mode !== "preview"
 		|| onCursorModeChange === undefined;
+	const outerScrollRef = useRef<HTMLDivElement>(null);
+
+	useEffect(() => {
+		const elements = [outerScrollRef.current, contentRef?.current].filter(Boolean) as HTMLElement[]
+		if (elements.length === 0) return
+		let timeout: ReturnType<typeof setTimeout>
+		function onScroll(this: HTMLElement) {
+			this.setAttribute("data-scrolling", "")
+			clearTimeout(timeout)
+			timeout = setTimeout(() => {
+				for (const el of elements) el.removeAttribute("data-scrolling")
+			}, 1000)
+		}
+		for (const el of elements) el.addEventListener("scroll", onScroll, { passive: true })
+		return () => {
+			for (const el of elements) el.removeEventListener("scroll", onScroll)
+			clearTimeout(timeout)
+		}
+	}, [contentRef])
 
 	return (
 		<div className="flex h-full min-h-0 w-full min-w-0 flex-col bg-background">
-			<div className="flex flex-wrap items-start justify-between gap-3 border-border/80 border-b bg-background/90 p-3 backdrop-blur">
-				<div className="flex min-w-0 items-start gap-2">
-					<Button onClick={onClose} size="icon-sm" type="button" variant="ghost">
-						<span className="sr-only">Close artifact</span>
-						<XIcon className="size-4" />
-					</Button>
+			<div className="flex flex-wrap items-center justify-between gap-3 border-border/80 border-b bg-background/90 p-3 backdrop-blur">
+				<div className="flex min-w-0 items-center gap-2">
 					<div className="min-w-0">
 						<div className="flex items-center gap-2">
 							<p className="truncate font-medium text-sm">{selectedVersionTitle}</p>
@@ -248,14 +264,11 @@ export function FutureChatArtifactPanel({
 						>
 							<SelectTrigger
 								aria-label="Artifact version"
-								className="h-8 min-w-[240px] max-w-[320px] bg-background"
+								className="h-8 w-auto bg-background"
 							>
 								<SelectValue placeholder="Choose a version">
 									{selectedVersion
-										? formatFutureChatVersionLabel({
-											document,
-											version: selectedVersion,
-										})
+										? `Version ${getFutureChatVersionNumber(document, selectedVersion.id)}`
 										: "Choose a version"}
 								</SelectValue>
 							</SelectTrigger>
@@ -323,10 +336,14 @@ export function FutureChatArtifactPanel({
 						<span className="sr-only">Delete artifact</span>
 						<Trash2Icon className="size-4" />
 					</Button>
+					<Button onClick={onClose} size="icon-sm" type="button" variant="ghost">
+						<span className="sr-only">Close artifact</span>
+						<XIcon className="size-4" />
+					</Button>
 				</div>
 			</div>
 
-			<div className="min-h-0 flex-1 overflow-auto bg-background">
+			<div ref={outerScrollRef} className="min-h-0 flex-1 overflow-auto scrollbar-auto-hide bg-background">
 				{mode === "edit" && !isStreamingArtifact ? (
 					<>
 						<Textarea
@@ -347,7 +364,7 @@ export function FutureChatArtifactPanel({
 				) : (
 					<div
 						ref={contentRef}
-						className="relative min-h-0 flex-1 overflow-auto p-4 md:p-6"
+						className="relative min-h-0 flex-1 overflow-auto scrollbar-auto-hide py-4 px-6 md:py-6 md:px-6"
 					>
 						{document.kind === "code" ? (
 							<CodeBlock

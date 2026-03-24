@@ -99,14 +99,14 @@ export default function BoardColumnsContainer({
 					minHeight: 0,
 				}}
 			>
-				<div className="flex items-stretch gap-2">
+				<div className="flex items-stretch gap-2" style={{ minWidth: "100%" }}>
 					{boardColumns.map((column) => (
 						<div
 							key={column.title}
 							onDragOver={handleColumnDragOver}
 							onDragLeave={handleColumnDragLeave}
 							onDrop={(event) => handleColumnDrop(event, column.title)}
-							style={{ borderRadius: token("radius.large") }}
+							style={{ flex: "1 1 0", minWidth: "168px", borderRadius: token("radius.large") }}
 						>
 							<BoardColumn title={column.title} count={column.count}>
 								{column.cards.map((card) => (
@@ -126,8 +126,6 @@ export default function BoardColumnsContainer({
 							</BoardColumn>
 						</div>
 					))}
-
-					<div style={{ minWidth: token("space.100"), width: token("space.100"), flexShrink: 0 }} />
 				</div>
 			</div>
 		</div>

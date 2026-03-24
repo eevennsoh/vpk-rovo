@@ -13,7 +13,6 @@ import type { FutureChatDocumentKind } from "@/lib/future-chat-types";
 import { cn } from "@/lib/utils";
 import {
 	CodeIcon,
-	ExpandIcon,
 	FileTextIcon,
 	ImageIcon,
 	LoaderCircleIcon,
@@ -78,7 +77,8 @@ function getArtifactDescription(
 	kind: FutureChatDocumentKind,
 ): string {
 	const kindLabel = KIND_LABELS[kind].toLowerCase();
-	return actionLabel ? `${actionLabel} ${kindLabel}` : KIND_LABELS[kind];
+	const detail = actionLabel ? `${actionLabel} ${kindLabel}` : KIND_LABELS[kind];
+	return `Artifact \u2022 ${detail}`;
 }
 
 function getOpenArtifactLabel(kind: FutureChatDocumentKind): string {
@@ -143,15 +143,8 @@ function FutureChatArtifactPreview({
 	}
 
 	return (
-		<div className="rounded-md bg-surface p-4">
-			<div
-				className={cn(
-					"max-h-36 overflow-hidden whitespace-pre-wrap text-left text-sm text-text-subtle",
-					kind === "code" || kind === "sheet"
-						? "font-mono text-[12px] leading-5"
-						: "leading-6",
-				)}
-			>
+		<div className="rounded-md bg-surface">
+			<div className="max-h-36 overflow-hidden whitespace-pre-wrap text-left font-mono text-[12px] leading-5 text-text">
 				{previewContent}
 			</div>
 			{isStreaming ? (
@@ -202,7 +195,7 @@ export function FutureChatArtifactCard({
 		<div
 			ref={cardRef}
 			className={cn(
-				displayMode === "preview" ? "w-full max-w-[450px]" : "w-fit max-w-full",
+				displayMode === "preview" ? "w-full" : "w-fit max-w-full",
 			)}
 		>
 			<GenerativeCard
@@ -259,14 +252,12 @@ export function FutureChatArtifactCard({
 					<GenerativeCardFooter>
 						<Button
 							aria-label={openLabel}
-							className="h-8 min-w-0 px-3 sm:min-w-[117px]"
+							className="min-w-0 sm:min-w-[117px]"
 							onClick={handleOpen}
-							size="sm"
 							type="button"
 							variant="outline"
 						>
 							{openCtaLabel}
-							<ExpandIcon className="size-3.5" />
 						</Button>
 					</GenerativeCardFooter>
 				</GenerativeCardBody>

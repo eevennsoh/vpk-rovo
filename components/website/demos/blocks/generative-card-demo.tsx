@@ -253,7 +253,7 @@ export function GenerativeCardDemoArtifact() {
 					<ArtifactSheetPreview />
 				</GenerativeCardContent>
 				<GenerativeCardFooter>
-					<Button variant="outline" className="h-8 min-w-[117px]">
+					<Button variant="outline">
 						Open sheet
 					</Button>
 				</GenerativeCardFooter>
@@ -288,7 +288,7 @@ export function GenerativeCardDemoArtifactCollapsed() {
 					<ArtifactSheetPreview />
 				</GenerativeCardContent>
 				<GenerativeCardFooter>
-					<Button variant="outline" className="h-8 min-w-[117px]">
+					<Button variant="outline">
 						Open sheet
 					</Button>
 				</GenerativeCardFooter>

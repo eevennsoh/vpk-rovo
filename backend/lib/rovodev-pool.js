@@ -13,6 +13,7 @@ const { healthCheck } = require("./rovodev-client");
 
 const DEFAULT_HEALTH_CHECK_INTERVAL_MS = 30_000;
 const DEFAULT_STALE_BUSY_TIMEOUT_MS = 120_000;
+const DEFAULT_UNHEALTHY_QUARANTINE_MS = 15_000;
 
 /**
  * @typedef {"available" | "busy" | "cooldown" | "unhealthy"} PortStatus
@@ -22,6 +23,8 @@ const DEFAULT_STALE_BUSY_TIMEOUT_MS = 120_000;
  * @property {PortStatus} status
  * @property {number} lastHealthCheck
  * @property {number | null} acquiredAt
+ * @property {number | null} quarantinedUntil
+ * @property {boolean} reserved
  *
  * @typedef {object} PortHandle
  * @property {number} port
@@ -46,8 +49,9 @@ const DEFAULT_STALE_BUSY_TIMEOUT_MS = 120_000;
  * @param {() => void} [options.onPortAvailable] - Called when a port transitions to available (after cooldown/health check). Use to drain external run queues that are separate from the pool's internal waiter list.
  * @param {number} [options.cooldownMs] - Delay before marking a released port as available (default 0). Used as fallback if waitForReady is not provided.
  * @param {(port: number) => Promise<void>} [options.waitForReady] - Async function that resolves when a port is ready for new requests. Replaces the blind cooldownMs timer with a deterministic readiness check.
+ * @param {number} [options.unhealthyQuarantineMs] - Delay before an unhealthy port is reconsidered for acquisition.
  * @returns {{
- *   acquire: (opts?: { timeoutMs?: number; signal?: AbortSignal }) => Promise<PortHandle>;
+ *   acquire: (opts?: { timeoutMs?: number; signal?: AbortSignal; preferredPort?: number; avoidPorts?: number[] }) => Promise<PortHandle>;
  *   updatePorts: (newPorts: number[]) => void;
  *   getStatus: () => PoolStatus;
  *   shutdown: () => void;
@@ -61,6 +65,7 @@ function createRovoDevPool(ports, options = {}) {
 		onPortAvailable,
 		cooldownMs = 0,
 		waitForReady,
+		unhealthyQuarantineMs = DEFAULT_UNHEALTHY_QUARANTINE_MS,
 	} = options;
 
 	/** @type {PortEntry[]} */
@@ -69,9 +74,11 @@ function createRovoDevPool(ports, options = {}) {
 		status: "available",
 		lastHealthCheck: Date.now(),
 		acquiredAt: null,
+		quarantinedUntil: null,
+		reserved: false,
 	}));
 
-	/** @type {Array<{ resolve: (handle: PortHandle) => void; reject: (err: Error) => void }>} */
+	/** @type {Array<{ resolve: (handle: PortHandle) => void; reject: (err: Error) => void; preferences?: { preferredPort?: number; avoidPorts?: number[] } }>} */
 	const waiters = [];
 
 	let healthCheckTimer = null;
@@ -79,20 +86,74 @@ function createRovoDevPool(ports, options = {}) {
 
 	// ── Notify pattern ──────────────────────────────────────────────────
 
+	function isEntryQuarantined(entry, now = Date.now()) {
+		return typeof entry.quarantinedUntil === "number" && entry.quarantinedUntil > now;
+	}
+
+	function releaseExpiredQuarantine(entry, now = Date.now()) {
+		if (!isEntryQuarantined(entry, now)) {
+			entry.quarantinedUntil = null;
+		}
+	}
+
+	function findAvailableEntry({ preferredPort, avoidPorts = [] } = {}) {
+		const now = Date.now();
+		const avoidSet = new Set(
+			Array.isArray(avoidPorts)
+				? avoidPorts.filter((port) => Number.isInteger(port) && port > 0)
+				: []
+		);
+
+		for (const entry of entries) {
+			releaseExpiredQuarantine(entry, now);
+		}
+
+		if (Number.isInteger(preferredPort) && preferredPort > 0) {
+			const preferredEntry = entries.find((entry) => entry.port === preferredPort);
+			if (
+				preferredEntry &&
+				preferredEntry.status === "available" &&
+				!isEntryQuarantined(preferredEntry, now)
+			) {
+				return preferredEntry;
+			}
+		}
+
+		for (const entry of entries) {
+			if (
+				entry.status === "available" &&
+				!avoidSet.has(entry.port) &&
+				!isEntryQuarantined(entry, now)
+			) {
+				return entry;
+			}
+		}
+
+		for (const entry of entries) {
+			if (entry.status === "available" && !isEntryQuarantined(entry, now)) {
+				return entry;
+			}
+		}
+
+		return null;
+	}
+
 	function tryNotifyWaiter() {
 		if (waiters.length === 0) {
 			return;
 		}
 
-		const entry = entries.find((e) => e.status === "available");
+		const waiter = waiters[0];
+		const entry = findAvailableEntry(waiter?.preferences);
 		if (!entry) {
 			return;
 		}
 
 		entry.status = "busy";
 		entry.acquiredAt = Date.now();
+		entry.quarantinedUntil = null;
 
-		const waiter = waiters.shift();
+		waiters.shift();
 		waiter.resolve(createHandle(entry));
 	}
 
@@ -100,15 +161,22 @@ function createRovoDevPool(ports, options = {}) {
 		let released = false;
 		return {
 			port: entry.port,
+			/** Mark this port as reserved for a deferred tool call (exempt from stale-busy detection). */
+			markReserved: () => {
+				entry.reserved = true;
+			},
 			release: () => {
 				if (released) {
 					return;
 				}
 				released = true;
+				entry.reserved = false;
 
 				const makeAvailable = () => {
 					entry.status = "available";
 					entry.acquiredAt = null;
+					entry.quarantinedUntil = null;
+					entry.reserved = false;
 					tryNotifyWaiter();
 					if (typeof onPortAvailable === "function") {
 						try { onPortAvailable(); } catch {}
@@ -122,6 +190,8 @@ function createRovoDevPool(ports, options = {}) {
 						// periodic health check recovers it later.
 						entry.status = "unhealthy";
 						entry.acquiredAt = null;
+						entry.quarantinedUntil =
+							entries.length > 1 ? Date.now() + unhealthyQuarantineMs : null;
 					});
 				} else if (cooldownMs > 0) {
 					entry.status = "cooldown";
@@ -130,13 +200,18 @@ function createRovoDevPool(ports, options = {}) {
 					makeAvailable();
 				}
 			},
-			releaseAsUnhealthy: () => {
+			releaseAsUnhealthy: ({ quarantineMs = unhealthyQuarantineMs } = {}) => {
 				if (released) {
 					return;
 				}
 				released = true;
 				entry.status = "unhealthy";
 				entry.acquiredAt = null;
+				entry.reserved = false;
+				entry.quarantinedUntil =
+					entries.length > 1
+						? Date.now() + Math.max(0, Number.isFinite(quarantineMs) ? quarantineMs : unhealthyQuarantineMs)
+						: null;
 				// Don't notify waiters — port is not available.
 				// The periodic health check will recover it.
 			},
@@ -153,21 +228,29 @@ function createRovoDevPool(ports, options = {}) {
 	 * @param {AbortSignal} [opts.signal] - Abort signal for early cancellation
 	 * @returns {Promise<PortHandle>}
 	 */
-	function acquire({ timeoutMs = 30_000, signal } = {}) {
+	function acquire({ timeoutMs = 30_000, signal, preferredPort, avoidPorts } = {}) {
 		if (shuttingDown) {
 			return Promise.reject(new Error("Pool is shutting down"));
 		}
 
-		const entry = entries.find((e) => e.status === "available");
+		const entry = findAvailableEntry({ preferredPort, avoidPorts });
 		if (entry) {
 			entry.status = "busy";
 			entry.acquiredAt = Date.now();
+			entry.quarantinedUntil = null;
 			return Promise.resolve(createHandle(entry));
 		}
 
 		// Slow path — wait for a release
 		return new Promise((resolve, reject) => {
-			const waiter = { resolve, reject };
+			const waiter = {
+				resolve,
+				reject,
+				preferences: {
+					preferredPort,
+					avoidPorts,
+				},
+			};
 			waiters.push(waiter);
 
 			const cleanup = () => {
@@ -238,6 +321,7 @@ function createRovoDevPool(ports, options = {}) {
 			for (const entry of entries) {
 				if (
 					entry.status === "busy" &&
+					!entry.reserved &&
 					entry.acquiredAt != null &&
 					now - entry.acquiredAt > staleBusyTimeoutMs
 				) {
@@ -252,6 +336,8 @@ function createRovoDevPool(ports, options = {}) {
 					}
 					entry.status = "unhealthy";
 					entry.acquiredAt = null;
+					entry.quarantinedUntil =
+						entries.length > 1 ? Date.now() + unhealthyQuarantineMs : null;
 				}
 			}
 		}
@@ -268,6 +354,7 @@ function createRovoDevPool(ports, options = {}) {
 					console.log(`[ROVODEV-POOL] Port ${entry.port} recovered`);
 				}
 				entry.status = "available";
+				entry.quarantinedUntil = null;
 				tryNotifyWaiter();
 				if (typeof onPortAvailable === "function") {
 					try { onPortAvailable(); } catch {}
@@ -277,6 +364,8 @@ function createRovoDevPool(ports, options = {}) {
 					console.warn(`[ROVODEV-POOL] Port ${entry.port} is unhealthy`);
 				}
 				entry.status = "unhealthy";
+				entry.quarantinedUntil =
+					entries.length > 1 ? Date.now() + unhealthyQuarantineMs : null;
 			}
 
 			entry.lastHealthCheck = Date.now();
@@ -321,6 +410,8 @@ function createRovoDevPool(ports, options = {}) {
 					status: "available",
 					lastHealthCheck: Date.now(),
 					acquiredAt: null,
+					quarantinedUntil: null,
+					reserved: false,
 				});
 			}
 		}
@@ -370,6 +461,8 @@ function createRovoDevPool(ports, options = {}) {
 		for (const entry of entries) {
 			entry.status = "available";
 			entry.acquiredAt = null;
+			entry.quarantinedUntil = null;
+			entry.reserved = false;
 		}
 	}
 

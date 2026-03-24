@@ -64,20 +64,19 @@ For the full pool (6 instances, needed for agent team parallel runs), use `pnpm 
 
 ### Multiport / tmux Mode
 
-`pnpm run rovodev:tmux` starts a tmux session with 8 panes: frontend, backend, and 6 rovodev serve ports.
+`pnpm run rovodev:tmux:start` starts a tmux session with 8 panes: frontend, backend, and 6 rovodev serve ports.
 
 Session naming is worktree-aware by default: `vpk-dev-<worktree>` (or `vpk-dev-main` in the main worktree), so multiple worktrees can run tmux mode in parallel without session-name collisions. You can override the name with `ROVODEV_TMUX_SESSION`, or change the prefix with `ROVODEV_TMUX_SESSION_PREFIX`.
 
-Port reservation is also worktree-unique across active git worktrees (no overlap). Each worktree receives a unique reserved slot; startup can still auto-increment by 1 when the reserved port is occupied.
+Port reservation is also worktree-unique across active git worktrees (no overlap). Each worktree receives a dedicated 20-port slot per service family, leaving room for port auto-increment and 6-port RovoDev pools without colliding with another worktree.
 
 ```text
-Panel A → port 8000 (pinned)     ┐
-Panel B → port 8001 (pinned)     ├─ Interactive chat (indices 0-2)
-Panel C → port 8002 (pinned)     ┘
-Background tasks → port 8003-8005  ─ Suggested questions, clarification cards
+Primary interactive thread → sticky preferred port
+On failure / stuck turn     → fail over to another healthy pool port
+Background helper turns     → avoid the active interactive port when alternatives exist
 ```
 
-Port isolation ensures background tasks (suggested questions, clarification cards) never use ports pinned to chat panels. A post-stream readiness gate prevents released ports from being reacquired before rovodev serve clears its turn state. See [Port Isolation Guide](references/guide-ports.md) for details.
+Multiport mode is sticky by default, not round-robin. Sequential turns usually reuse the same healthy port; extra ports are mainly for concurrency and failover. A post-stream readiness gate prevents immediate reacquire while rovodev serve clears its turn state. See [Port Isolation Guide](references/guide-ports.md) for details.
 
 ### RovoDev Instance Reuse
 
@@ -316,7 +315,7 @@ For full model switching details, see [references/guide-model-switch.md](referen
 | Stale AI context / wrong answers | RovoDev session may be corrupted — restart with `pnpm run rovodev` |
 | 409 "chat already in progress" | Background tasks may be using pinned panel ports — check that `PINNED_PORT_COUNT` matches your panel count. See [Port Isolation Guide](references/guide-ports.md) |
 | 409 on first prompt (tmux) | Watch the affected RovoDev pane. The fixed-port supervisor should restart the child automatically if recovery kills it. |
-| Port stays unhealthy after recovery (tmux) | Check the specific RovoDev pane for repeated restart failures, then restart `pnpm run rovodev:tmux` if the underlying `rovodev serve` command cannot come back healthy. |
+| Port stays unhealthy after recovery (tmux) | Check the specific RovoDev pane for repeated restart failures, then restart `pnpm run rovodev:tmux:start` if the underlying `rovodev serve` command cannot come back healthy. |
 
 ### Port Auto-Discovery
 

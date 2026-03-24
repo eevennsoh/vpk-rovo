@@ -6,6 +6,7 @@ function shouldAttemptPostToolGenui({
 	looksLikeClarification = false,
 	looksLikeInability = false,
 	resolvedPlanModeActive = false,
+	planSessionActive = false,
 	isAborted = false,
 	isTaskLikeRequest = false,
 	shouldForceCardFirstGenui = false,
@@ -22,6 +23,7 @@ function shouldAttemptPostToolGenui({
 		!looksLikeClarification &&
 		!looksLikeInability &&
 		!resolvedPlanModeActive &&
+		!planSessionActive &&
 		!isAborted &&
 		trimmedAssistantText.length > 0 &&
 		isTaskLikeRequest &&

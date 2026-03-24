@@ -35,6 +35,7 @@ function startSupervisedRovodevPorts({
 	const removeSignalListeners = () => {
 		signalTarget.removeListener?.("SIGINT", handleSigint);
 		signalTarget.removeListener?.("SIGTERM", handleSigterm);
+		signalTarget.removeListener?.("SIGHUP", handleSighup);
 	};
 
 	const finalizeShutdown = (code, signal) => {
@@ -146,6 +147,9 @@ function startSupervisedRovodevPorts({
 
 	const forwardSignal = (signal) => {
 		shuttingDown = true;
+		logger.warn?.(
+			`[rovodev] Supervisor received ${signal}; forwarding to ${childrenByPort.size} serve process(es).`
+		);
 
 		for (const timer of restartTimersByPort.values()) {
 			clearTimeoutFn(timer);
@@ -164,9 +168,13 @@ function startSupervisedRovodevPorts({
 	const handleSigterm = () => {
 		forwardSignal("SIGTERM");
 	};
+	const handleSighup = () => {
+		forwardSignal("SIGHUP");
+	};
 
 	signalTarget.on?.("SIGINT", handleSigint);
 	signalTarget.on?.("SIGTERM", handleSigterm);
+	signalTarget.on?.("SIGHUP", handleSighup);
 
 	for (const port of ports) {
 		spawnChildForPort(port);

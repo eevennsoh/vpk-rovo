@@ -25,12 +25,23 @@ import {
 	MessageVoteActions,
 } from "@/components/ui-ai/message";
 import {
+	ChainOfThought,
+	ChainOfThoughtContent,
+	ChainOfThoughtHeader,
+	ChainOfThoughtStep,
+} from "@/components/ui-ai/chain-of-thought";
+import {
 	AdsReasoningTrigger,
 	Reasoning,
 	ReasoningContent,
-	ReasoningSection,
-	ReasoningText,
+	isTimelineOnlyContent,
 } from "@/components/ui-ai/reasoning";
+import { ToolInput, ToolOutput } from "@/components/ui-ai/tool";
+import { Icon } from "@/components/ui/icon";
+import AiAgentIcon from "@atlaskit/icon/core/ai-agent";
+import ListChecklistIcon from "@atlaskit/icon/core/list-checklist";
+import PeopleGroupIcon from "@atlaskit/icon/core/people-group";
+import WrenchIcon from "@atlaskit/icon-lab/core/wrench";
 import { Button } from "@/components/ui/button";
 import { Lozenge } from "@/components/ui/lozenge";
 import { Textarea } from "@/components/ui/textarea";
@@ -44,6 +55,7 @@ import {
 	sanitizeFutureChatAssistantText,
 	shouldRenderFutureChatAssistantActions,
 	shouldRenderFutureChatAssistantMessage,
+	shouldRenderFutureChatVisibleWidget,
 	shouldRenderFutureChatWidget,
 } from "@/components/projects/future-chat/lib/future-chat-message-display";
 import {
@@ -57,7 +69,6 @@ import {
 import {
 	resolveFutureChatScrollAnchorLayout,
 } from "@/components/projects/future-chat/lib/future-chat-scroll-anchor";
-import { AssistantThinkingToolsSection } from "@/components/projects/shared/components/assistant-thinking-tools-section";
 import { GenerativeWidgetCard } from "@/components/projects/shared/components/generative-widget-card";
 import LoadingWidget from "@/components/projects/shared/components/loading-widget";
 import { AssistantSuggestionsSection } from "@/components/projects/shared/components/assistant-suggestions-section";
@@ -68,6 +79,7 @@ import {
 	useReasoningPhase,
 } from "@/components/projects/shared/hooks/use-reasoning-phase";
 import {
+	getAwaitingUserResponseLabel,
 	getDefaultThinkingLabel,
 	getPreloadShimmerLabel,
 	getReasoningSectionTitle,
@@ -94,13 +106,24 @@ import {
 	type RoutingDecision,
 	type RovoUIMessage,
 } from "@/lib/rovo-ui-messages";
-import { parsePlanWidgetPayload } from "@/components/projects/shared/lib/plan-widget";
+import {
+	getAllPlanWidgetPayloads,
+	isPlanCardBuildable,
+	parsePlanWidgetPayload,
+	type ParsedPlanWidgetPayload,
+} from "@/components/projects/shared/lib/plan-widget";
+import {
+	hasMatchingClarificationResponse,
+	parseQuestionCardPayload,
+} from "@/components/projects/shared/lib/question-card-widget";
+import { findAcceptedPlanKey } from "@/components/projects/shared/lib/plan-approval";
 import { cn } from "@/lib/utils";
 import { FutureChatArtifactCard } from "@/components/projects/future-chat/components/future-chat-artifact-card";
 import type { FutureChatDocument } from "@/lib/future-chat-types";
 import type { FutureChatStreamingArtifact } from "@/components/projects/future-chat/lib/future-chat-streaming-artifact";
 import Image from "next/image";
 import { Component, Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AnswerCard } from "@/components/blocks/answer-card/components/answer-card";
 import Heading from "@/components/blocks/shared-ui/heading";
 
 interface FutureChatMessagesProps {
@@ -110,6 +133,7 @@ interface FutureChatMessagesProps {
 	editingMessageId: string | null;
 	isStreaming: boolean;
 	messages: ReadonlyArray<RovoUIMessage>;
+	onBuildPlan?: (planWidget: ParsedPlanWidgetPayload) => void;
 	onEditMessage: (messageId: string, nextText: string) => Promise<void>;
 	onOpenArtifactFromCard: (documentId: string, element: HTMLElement) => void;
 	onRegisterArtifactCard: (documentId: string, element: HTMLElement) => void;
@@ -128,6 +152,32 @@ interface FutureChatMessagesProps {
 }
 
 const FUTURE_CHAT_SCROLL_ANCHOR_SELECTOR = "[data-future-chat-scroll-anchor='true']";
+
+const StepThinkingIcon = ({ className }: { className?: string }) => (
+	<Icon render={<AiAgentIcon label="" spacing="none" />} className={className} />
+);
+const StepChecklistIcon = ({ className }: { className?: string }) => (
+	<Icon render={<ListChecklistIcon label="" spacing="none" />} className={className} />
+);
+const StepAgentsIcon = ({ className }: { className?: string }) => (
+	<Icon render={<PeopleGroupIcon label="" spacing="none" />} className={className} />
+);
+const StepToolIcon = ({ className }: { className?: string }) => (
+	<Icon render={<WrenchIcon label="" spacing="none" />} className={className} />
+);
+
+function toolStateToCoTStatus(
+	state: string,
+): "complete" | "active" | "pending" {
+	if (
+		state === "running" ||
+		state === "awaiting-input" ||
+		state === "approval-requested"
+	) {
+		return "active";
+	}
+	return "complete";
+}
 
 class AssistantMessageRenderBoundary extends Component<
 	Readonly<{
@@ -257,6 +307,18 @@ function UserMessage({
 	onSetEditingMessageId: (messageId: string | null) => void;
 }>) {
 	const [draft, setDraft] = useState(() => getMessageText(message));
+	const clarificationSummaryRows = (() => {
+		const meta = message.metadata;
+		if (!meta || meta.source !== "clarification-submit") return [];
+		if (!Array.isArray(meta.clarificationSummary)) return [];
+		return meta.clarificationSummary.filter(
+			(row): row is { question: string; answer: string } =>
+				typeof row?.question === "string" &&
+				row.question.trim().length > 0 &&
+				typeof row?.answer === "string" &&
+				row.answer.trim().length > 0,
+		);
+	})();
 	const attachments = message.parts.filter(
 		(part): part is Extract<(typeof message.parts)[number], { type: "file" }> =>
 			part.type === "file",
@@ -313,6 +375,13 @@ function UserMessage({
 						</Button>
 					</div>
 				</div>
+			) : clarificationSummaryRows.length > 0 ? (
+				<>
+					<AnswerCard rows={clarificationSummaryRows} />
+					<MessageActions reveal="hover" className="justify-end text-text-subtle">
+						<MessageCopyAction text={getMessageText(message)} />
+					</MessageActions>
+				</>
 			) : (
 				<>
 					<MessageContent>
@@ -494,21 +563,29 @@ function TraceAgentExecutionSection({
 
 function AssistantMessage({
 	artifactCard,
+	isQuestionCardResolved,
 	isLastAssistant,
 	isStreaming,
 	isThinkingLifecycleStreaming,
 	message,
+	onBuildPlan,
 	onRegenerate,
 	onVote,
+	planBuildDisabled,
+	planBuildDisabledReason,
 	voteValue,
 }: Readonly<{
 	artifactCard: React.ReactNode;
+	isQuestionCardResolved: boolean;
 	isLastAssistant: boolean;
 	isStreaming: boolean;
 	isThinkingLifecycleStreaming: boolean;
 	message: RovoUIMessage;
+	onBuildPlan?: (planWidget: ParsedPlanWidgetPayload) => void;
 	onRegenerate: () => void;
 	onVote: (messageId: string, value: "up" | "down" | null) => Promise<void>;
+	planBuildDisabled?: boolean;
+	planBuildDisabledReason?: string;
 	voteValue?: "up" | "down";
 }>) {
 	const interruption = getMessageInterruption(message);
@@ -518,6 +595,29 @@ function AssistantMessage({
 	const widget = getLatestDataPart(message, "data-widget-data");
 	const widgetLoading = getLatestDataPart(message, "data-widget-loading");
 	const widgetError = getLatestDataPart(message, "data-widget-error");
+	const [questionWidgetLoadTimedOut, setQuestionWidgetLoadTimedOut] =
+		useState(false);
+
+	useEffect(() => {
+		const loading = widgetLoading?.data.loading ?? false;
+		const loadType = widgetLoading?.data.type;
+		if (!loading || loadType !== "question-card") {
+			const rafId = window.requestAnimationFrame(() => {
+				setQuestionWidgetLoadTimedOut(false);
+			});
+			return () => {
+				window.cancelAnimationFrame(rafId);
+			};
+		}
+
+		const timeoutId = window.setTimeout(() => {
+			setQuestionWidgetLoadTimedOut(true);
+		}, 30_000);
+
+		return () => {
+			window.clearTimeout(timeoutId);
+		};
+	}, [widgetLoading?.data.loading, widgetLoading?.data.type]);
 	const sources = getMessageSources(message);
 	const routeDecision: RoutingDecision | null = getLatestRouteDecision(message);
 
@@ -534,6 +634,12 @@ function AssistantMessage({
 		routeDecision,
 		widgetType,
 	});
+	const shouldHideResolvedQuestionCard =
+		widgetType === "question-card" && isQuestionCardResolved;
+	const hasVisibleWidget = shouldRenderFutureChatVisibleWidget({
+		hasWidget: shouldShowWidget,
+		shouldHideResolvedQuestionCard,
+	});
 	const isTextPresentation = routeDecision
 		? routeDecision.presentation === "text"
 		: !widget;
@@ -549,6 +655,9 @@ function AssistantMessage({
 	const hasThinkingStatusPart = thinkingStatusParts.length > 0;
 	const hasThinkingEvents = thinkingEventParts.length > 0;
 	const hasThinkingToolCalls = thinkingToolCalls.length > 0;
+	const hasAwaitingInputToolCalls = thinkingToolCalls.some(
+		(toolCall) => toolCall.state === "awaiting-input",
+	);
 	const hasTodoQueueItems = todoQueueItems.length > 0;
 	const hasAgentExecutions = agentExecutions.length > 0;
 	const hasTraceDataSignals =
@@ -562,7 +671,9 @@ function AssistantMessage({
 		isStreaming: isThinkingLifecycleStreaming,
 	});
 	const isResponseInFlight =
-		isMessageTextStreaming(message) || isThinkingLifecycleStreaming;
+		isMessageTextStreaming(message) ||
+		isThinkingLifecycleStreaming ||
+		widgetLoading?.data.loading === true;
 	const [hasLatchedThinking, setHasLatchedThinking] = useState(false);
 	const { effectiveIsThinkingActive, nextLatched } =
 		resolveFutureChatThinkingVisibility({
@@ -597,8 +708,11 @@ function AssistantMessage({
 		.filter(Boolean)
 		.join("\n\n");
 	const hasThinkingText = Boolean(accumulatedThinkingContent);
+	const shouldShowThinkingSection =
+		hasThinkingText &&
+		!(isTimelineOnlyContent(accumulatedThinkingContent) && hasThinkingToolCalls);
 	const hasThinkingDetails =
-		hasThinkingText ||
+		shouldShowThinkingSection ||
 		hasTodoQueueItems ||
 		hasAgentExecutions ||
 		hasThinkingToolCalls;
@@ -619,6 +733,7 @@ function AssistantMessage({
 		hasTurnComplete,
 		isThinkingLifecycleStreaming,
 		hasBackendThinkingActivity,
+		hasAwaitingInputToolCalls,
 		lifecyclePhase: thinkingPhase,
 	});
 
@@ -638,17 +753,14 @@ function AssistantMessage({
 		fallbackLabel: getDefaultThinkingLabel(),
 	});
 
-	const thinkingTriggerLabel = resolveThinkingStatusTriggerLabel({
-		resolvedLabel: dynamicThinkingLabel,
-		reasoningPhase: thinkingReasoningPhase,
-		duration: thinkingDuration,
+	const thinkingTriggerLabel = hasAwaitingInputToolCalls
+		? getAwaitingUserResponseLabel()
+		: resolveThinkingStatusTriggerLabel({
+				resolvedLabel: dynamicThinkingLabel,
+				reasoningPhase: thinkingReasoningPhase,
+				duration: thinkingDuration,
 	});
 
-	const thinkingPhaseProps = getReasoningPropsForPhase(
-		thinkingReasoningPhase,
-		undefined,
-		hasThinkingDetails,
-	);
 	const shouldRenderPlanWidget = shouldShowWidget && parsedPlanWidget !== null;
 	const shouldRenderAssistantText =
 		Boolean(text) &&
@@ -659,9 +771,8 @@ function AssistantMessage({
 			hasArtifactCard: Boolean(artifactCard),
 			hasAssistantText: shouldRenderAssistantText,
 			hasInterruption: Boolean(interruptionLabel),
-			hasReasoning: Boolean(reasoning?.text) || thinkingActive,
 			hasSources: sources.length > 0,
-			hasWidget: shouldShowWidget,
+			hasWidget: hasVisibleWidget,
 			hasWidgetError: Boolean(widgetError),
 			isLastAssistant,
 			isResponseInFlight,
@@ -673,7 +784,7 @@ function AssistantMessage({
 			hasInterruption: Boolean(interruptionLabel),
 			hasReasoning: Boolean(reasoning?.text) || thinkingActive,
 			hasSources: sources.length > 0,
-			hasWidget: shouldShowWidget,
+			hasWidget: hasVisibleWidget,
 			hasWidgetError: Boolean(widgetError),
 			hasWidgetLoading: widgetLoading?.data.loading ?? false,
 		});
@@ -683,8 +794,6 @@ function AssistantMessage({
 			(widgetLoading?.data.type === "plan" && widgetLoading.data.loading) ||
 			isMessageTextStreaming(message)
 		);
-	const shouldAllowTraceAutoCollapse =
-		hasTurnComplete && widgetLoading?.data.loading !== true;
 
 	if (!shouldRenderAssistantMessage) {
 		return null;
@@ -731,58 +840,64 @@ function AssistantMessage({
 						resetKey={`${message.parts.length}:${isStreaming ? "streaming" : "done"}`}
 					>
 						{thinkingActive ? (
-							<Reasoning
+							<ChainOfThought
 								className="mb-0"
-								autoExpandOnDetails
-								hasDetails={hasThinkingDetails}
-								defaultOpen={thinkingPhaseProps.defaultOpen ?? hasThinkingDetails}
-								isStreaming={thinkingPhaseProps.isStreaming}
-								streamingWave={thinkingPhaseProps.streamingWave}
-								streamingWaveGradientColor={thinkingPhaseProps.streamingWaveGradientColor}
-								animatedDots={thinkingPhaseProps.animatedDots}
-								duration={thinkingReasoningPhase === "completed" ? thinkingDuration : undefined}
-								allowAutoCollapse={shouldAllowTraceAutoCollapse}
+								defaultOpen={hasThinkingDetails}
 							>
-								<AdsReasoningTrigger
-									label={thinkingTriggerLabel}
-									showChevron={hasThinkingDetails}
-									streaming={thinkingPhaseProps.triggerStreaming}
-								/>
+								<ChainOfThoughtHeader>{thinkingTriggerLabel}</ChainOfThoughtHeader>
 								{hasThinkingDetails ? (
-									<ReasoningContent>
-										<div className="space-y-4">
-											{hasThinkingText ? (
-												<ReasoningSection title={getReasoningSectionTitle("thinking")}>
-													<ReasoningText
-														maxVisibleTimelineItems={6}
-														text={accumulatedThinkingContent}
-														timelineMode="auto"
-													/>
-												</ReasoningSection>
-											) : null}
-											{hasTodoQueueItems ? (
-												<ReasoningSection title={getReasoningSectionTitle("steps")}>
-													<TraceStepsSection items={todoQueueItems} />
-												</ReasoningSection>
-											) : null}
-											{hasAgentExecutions ? (
-												<ReasoningSection title={getReasoningSectionTitle("agents")}>
-													<TraceAgentExecutionSection executions={agentExecutions} />
-												</ReasoningSection>
-											) : null}
-											{hasThinkingToolCalls ? (
-												<ReasoningSection title={getReasoningSectionTitle("tools")}>
-													<AssistantThinkingToolsSection
-														defaultOpenMode="running"
-														idPrefix={message.id}
-														thinkingToolCalls={thinkingToolCalls}
-													/>
-												</ReasoningSection>
-											) : null}
-										</div>
-									</ReasoningContent>
+									<ChainOfThoughtContent>
+										{shouldShowThinkingSection ? (
+											<ChainOfThoughtStep
+												icon={StepThinkingIcon}
+												label={getReasoningSectionTitle("thinking")}
+												status={isThinkingStreaming ? "active" : "complete"}
+											>
+												<pre className="max-h-60 overflow-auto whitespace-pre-wrap text-xs">
+													{accumulatedThinkingContent}
+												</pre>
+											</ChainOfThoughtStep>
+										) : null}
+										{hasTodoQueueItems ? (
+											<ChainOfThoughtStep
+												icon={StepChecklistIcon}
+												label={getReasoningSectionTitle("steps")}
+												status={isThinkingStreaming ? "active" : "complete"}
+											>
+												<TraceStepsSection items={todoQueueItems} />
+											</ChainOfThoughtStep>
+										) : null}
+										{hasAgentExecutions ? (
+											<ChainOfThoughtStep
+												icon={StepAgentsIcon}
+												label={getReasoningSectionTitle("agents")}
+												status={isThinkingStreaming ? "active" : "complete"}
+											>
+												<TraceAgentExecutionSection executions={agentExecutions} />
+											</ChainOfThoughtStep>
+										) : null}
+										{thinkingToolCalls.map((toolCall, index) => (
+											<ChainOfThoughtStep
+												key={`${message.id}-cot-tool-${toolCall.id}-${index}`}
+												icon={StepToolIcon}
+												label={toolCall.toolName}
+												status={toolStateToCoTStatus(toolCall.state)}
+											>
+												{toolCall.input !== undefined ? (
+													<ToolInput input={toolCall.input} />
+												) : null}
+												<ToolOutput
+													errorText={toolCall.errorText}
+													output={toolCall.output}
+													outputBytes={toolCall.outputBytes}
+													outputTruncated={toolCall.outputTruncated}
+													suppressedRawOutput={toolCall.suppressedRawOutput}
+												/>
+											</ChainOfThoughtStep>
+										))}
+									</ChainOfThoughtContent>
 								) : null}
-							</Reasoning>
+							</ChainOfThought>
 						) : reasoning?.text ? (
 							<Reasoning
 								defaultOpen={reasoning.isStreaming}
@@ -793,22 +908,34 @@ function AssistantMessage({
 							</Reasoning>
 						) : null}
 
-						{widgetLoading?.data.loading ? (
+						{widgetLoading?.data.loading && !shouldHideResolvedQuestionCard ? (
 							<div className="w-full">
-								<LoadingWidget widgetType={widgetLoading.data.type} />
+								{questionWidgetLoadTimedOut &&
+								widgetLoading.data.type === "question-card" ? (
+									<div className="rounded-xl border border-border-warning/40 bg-bg-warning-subtler px-3 py-2 text-sm text-text-warning">
+										Clarification questions are taking longer than expected to load.
+										Use Stop and try again, or wait if the assistant is still
+										working.
+									</div>
+								) : (
+									<LoadingWidget widgetType={widgetLoading.data.type} />
+								)}
 							</div>
 						) : null}
 
-						{shouldRenderPlanWidget ? (
-							<div className="w-full pt-2">
-								<PlanWidgetInlineCard
-									title={parsedPlanWidget.title}
-									description={parsedPlanWidget.description}
-									tasks={parsedPlanWidget.tasks}
-									isStreaming={isPlanWidgetStreaming}
-								/>
-							</div>
-						) : shouldShowWidget && widget ? (
+					{shouldRenderPlanWidget ? (
+						<div className="w-full pt-2">
+							<PlanWidgetInlineCard
+								title={parsedPlanWidget.title}
+								description={parsedPlanWidget.description}
+								tasks={parsedPlanWidget.tasks}
+								isStreaming={isPlanWidgetStreaming}
+								onBuild={onBuildPlan ? () => onBuildPlan(parsedPlanWidget) : undefined}
+								isBuildDisabled={planBuildDisabled}
+								buildDisabledReason={planBuildDisabledReason}
+							/>
+						</div>
+					) : shouldShowWidget && widget && !shouldHideResolvedQuestionCard ? (
 							<div className="w-full">
 								<GenerativeWidgetCard
 									widgetData={widget.data.payload}
@@ -826,7 +953,7 @@ function AssistantMessage({
 
 						{shouldRenderAssistantText ? (
 							<MessageContent className="max-w-3xl">
-								<MessageResponse isAnimating={(isStreaming && isLastAssistant) || isMessageTextStreaming(message)}>
+								<MessageResponse isAnimating={isMessageTextStreaming(message)}>
 									{text}
 								</MessageResponse>
 							</MessageContent>
@@ -874,7 +1001,7 @@ function AssistantMessage({
 							</div>
 						) : null}
 
-						{shouldRenderAssistantActions ? (
+						{shouldRenderAssistantActions && shouldRenderAssistantText ? (
 							<MessageActions reveal="hover" className="flex-wrap text-text-subtle">
 								<MessageCopyAction text={text} />
 								<MessageVoteActions
@@ -1001,6 +1128,7 @@ export function FutureChatMessages({
 	editingMessageId,
 	isStreaming,
 	messages,
+	onBuildPlan,
 	onEditMessage,
 	onOpenArtifactFromCard,
 	onRegisterArtifactCard,
@@ -1019,7 +1147,10 @@ export function FutureChatMessages({
 }: Readonly<FutureChatMessagesProps>) {
 	const scrollSpacerRef = useRef<HTMLDivElement | null>(null);
 	const visibleMessages = useMemo(
-		() => messages.filter((message) => message.role === "user" || message.role === "assistant"),
+		() => messages.filter((message) =>
+			(message.role === "user" || message.role === "assistant")
+			&& message.metadata?.visibility !== "hidden"
+		),
 		[messages],
 	);
 	const lastAssistantMessageId = useMemo(() => {
@@ -1027,6 +1158,14 @@ export function FutureChatMessages({
 			.reverse()
 			.find((message) => message.role === "assistant")?.id ?? null;
 	}, [visibleMessages]);
+	const allPlanPayloads = useMemo(
+		() => getAllPlanWidgetPayloads(messages),
+		[messages],
+	);
+	const acceptedPlanKey = useMemo(
+		() => findAcceptedPlanKey(messages),
+		[messages],
+	);
 	const orphanArtifactDisplay = useMemo(() => {
 		return resolveFutureChatOrphanArtifactDisplay({
 			activeDocumentId,
@@ -1098,7 +1237,7 @@ export function FutureChatMessages({
 
 			<ConversationContent
 				className={cn(
-					"mx-auto flex min-w-0 flex-col gap-4 px-3 py-6 md:gap-6",
+					"mx-auto flex min-w-0 flex-col gap-4 px-6 py-6 md:gap-6",
 					compact ? "max-w-none" : "max-w-[800px]",
 					shouldShowEmptyConversationState && "hidden",
 				)}
@@ -1141,6 +1280,31 @@ export function FutureChatMessages({
 											.questions ?? []
 									);
 
+							const messagePlanWidget = (() => {
+								const widget = getLatestDataPart(message, "data-widget-data");
+								if (widget?.data.type !== "plan") return null;
+								return parsePlanWidgetPayload(widget.data.payload);
+							})();
+							const planBuildState = messagePlanWidget
+								? isPlanCardBuildable(messagePlanWidget, allPlanPayloads, acceptedPlanKey)
+								: null;
+							const isQuestionCardResolved = (() => {
+								const widget = getLatestDataPart(message, "data-widget-data");
+								if (widget?.data.type !== "question-card") {
+									return false;
+								}
+
+								const questionCard = parseQuestionCardPayload(widget.data.payload);
+								if (!questionCard) {
+									return false;
+								}
+
+								return hasMatchingClarificationResponse(messages, {
+									...questionCard,
+									sourceMessageId: message.id,
+								});
+							})();
+
 							return (
 								<Fragment key={message.id}>
 								<AssistantMessage
@@ -1160,11 +1324,15 @@ export function FutureChatMessages({
 										) : null
 									}
 									isLastAssistant={message.id === lastAssistantMessageId}
+									isQuestionCardResolved={isQuestionCardResolved}
 									isStreaming={isStreaming}
 									isThinkingLifecycleStreaming={isStreaming && message.id === streamingAssistantMessageId}
 									message={message}
+									onBuildPlan={onBuildPlan}
 									onRegenerate={onRegenerate}
 									onVote={onVote}
+									planBuildDisabled={planBuildState ? !planBuildState.buildable : undefined}
+									planBuildDisabledReason={planBuildState?.reason}
 									voteValue={votes[message.id]}
 								/>
 								<AssistantSuggestionPills

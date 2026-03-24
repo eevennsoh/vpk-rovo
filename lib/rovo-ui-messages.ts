@@ -68,6 +68,7 @@ export interface ThinkingEventUpdate {
 export type ThinkingToolState =
 	| "approval-requested"
 	| "running"
+	| "awaiting-input"
 	| "completed"
 	| "error";
 
@@ -208,6 +209,11 @@ export interface RovoMessageMetadata {
 		question: string;
 		answer: string;
 	}>;
+	/** Correlates clarification submits/dismissals with a specific deferred question card */
+	clarificationToolCallId?: string;
+	clarificationSessionId?: string;
+	clarificationRound?: number;
+	clarificationStatus?: "answered" | "dismissed";
 	/** Assistant turn status used for transcript rendering and persistence */
 	interruption?: RovoMessageInterruption;
 }
@@ -635,6 +641,7 @@ export function getThinkingToolCallSummaries(
 	}
 
 	if (hasTurnCompleteSignal(message)) {
+		const agentExecutionUpdates = getAgentExecutionUpdates(message);
 		for (const summary of summaries) {
 			if (
 				summary.state !== "running" &&
@@ -643,14 +650,20 @@ export function getThinkingToolCallSummaries(
 				continue;
 			}
 
-			summary.state = "completed";
+			const isRequestUserInput = isRequestUserInputToolName(summary.toolName);
+			summary.state = isRequestUserInput ? "awaiting-input" : "completed";
 			if (summary.output !== undefined || summary.outputPreview || summary.errorText) {
 				continue;
 			}
 
-			const completionNote = isRequestUserInputToolName(summary.toolName)
+			const hasSubagentExecution =
+				summary.toolName === "invoke_subagents" &&
+				agentExecutionUpdates.some((update) => update.taskId.trim().length > 0);
+			const completionNote = isRequestUserInput
 				? "Awaiting your answers in the question card."
-				: "Tool finished without an explicit result event.";
+				: hasSubagentExecution
+					? "Subagent exploration completed, but the parent tool did not emit a final result event."
+					: "Tool finished without an explicit result event.";
 			summary.output = completionNote;
 			summary.outputPreview = completionNote;
 		}

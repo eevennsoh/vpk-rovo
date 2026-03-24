@@ -51,6 +51,7 @@ const child = spawn(
 );
 
 const forwardSignal = (signal) => {
+	console.warn(`[rovodev-stack] Received ${signal}; forwarding to concurrently stack...`);
 	try {
 		child.kill(signal);
 	} catch {
@@ -73,6 +74,10 @@ child.on("error", (error) => {
 child.on("exit", (code, signal) => {
 	process.removeListener("SIGINT", forwardSignal);
 	process.removeListener("SIGTERM", forwardSignal);
+
+	console.warn(
+		`[rovodev-stack] concurrently exited (code=${code ?? "null"}, signal=${signal ?? "null"})`
+	);
 
 	if (signal) {
 		process.kill(process.pid, signal);

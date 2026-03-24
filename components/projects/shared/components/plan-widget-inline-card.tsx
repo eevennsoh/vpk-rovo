@@ -18,6 +18,8 @@ import {
 	sanitizePlanDescription,
 } from "@/components/projects/shared/lib/plan-identity";
 import { PlanTabContent } from "@/components/projects/shared/lib/plan-card-utils";
+import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { token } from "@/lib/tokens";
 
@@ -56,24 +58,32 @@ export interface PlanWidgetInlineCardProps {
 	title: string;
 	tasks: PlanTask[];
 	description?: string;
+	markdown?: string;
 	enrichedTitle?: string;
 	enrichedDescription?: string;
 	isStreaming?: boolean;
 	collapsed?: boolean;
 	footer?: ReactNode;
 	className?: string;
+	onBuild?: () => void;
+	isBuildDisabled?: boolean;
+	buildDisabledReason?: string;
 }
 
 export function PlanWidgetInlineCard({
 	title,
 	tasks,
 	description,
+	markdown,
 	enrichedTitle,
 	enrichedDescription,
 	isStreaming = false,
 	collapsed: controlledCollapsed,
 	footer = null,
 	className,
+	onBuild,
+	isBuildDisabled = false,
+	buildDisabledReason,
 }: Readonly<PlanWidgetInlineCardProps>): React.ReactElement | null {
 	const [isOpen, setIsOpen] = useState(true);
 	const [internalCollapsed, setInternalCollapsed] = useState(false);
@@ -134,14 +144,45 @@ export function PlanWidgetInlineCard({
 					description={<PlanDescription className="truncate text-xs leading-4 text-text-subtlest">{displayDescription}</PlanDescription>}
 				/>
 
-				<PlanContent className="px-0 pb-0 pt-4">
-					<PlanTabContent
-						description={description ?? ""}
-						tasks={visibleTasks}
-						revealedCount={revealedCount}
-					/>
-					{footer ? <PlanFooter className="border-t border-border px-4 py-3">{footer}</PlanFooter> : null}
-				</PlanContent>
+			<PlanContent className="px-0 pb-0 pt-4">
+				<PlanTabContent
+					description={description ?? ""}
+					markdown={markdown ?? ""}
+					tasks={visibleTasks}
+					revealedCount={revealedCount}
+				/>
+				{onBuild ? (
+					<PlanFooter className="border-t border-border px-4 py-3">
+						<div className="flex items-center justify-end gap-2">
+							{isBuildDisabled && buildDisabledReason ? (
+								<Tooltip>
+									<TooltipTrigger render={<span className="inline-flex" />}>
+										<Button
+											disabled
+											size="sm"
+											type="button"
+										>
+											Build
+										</Button>
+									</TooltipTrigger>
+									<TooltipContent>{buildDisabledReason}</TooltipContent>
+								</Tooltip>
+							) : (
+								<Button
+									disabled={isBuildDisabled || isStreaming}
+									onClick={onBuild}
+									size="sm"
+									type="button"
+								>
+									Build
+								</Button>
+							)}
+						</div>
+					</PlanFooter>
+				) : footer ? (
+					<PlanFooter className="border-t border-border px-4 py-3">{footer}</PlanFooter>
+				) : null}
+			</PlanContent>
 			</Plan>
 		</div>
 	);

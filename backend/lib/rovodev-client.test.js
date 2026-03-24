@@ -11,6 +11,7 @@ const {
 	restoreSession,
 	resumeToolCalls,
 	sendMessageStreaming,
+	cancelChat,
 } = require("./rovodev-client");
 
 function listen(server) {
@@ -95,6 +96,38 @@ test("extractChunkFromEvent parses documented non-streaming tool-call events", (
 	assert.equal(chunk.toolCallId, "call-0");
 	assert.deepEqual(chunk.toolInput, {
 		file_paths: ["README.md"],
+	});
+});
+
+test("extractChunkFromEvent parses deferred tool requests", () => {
+	const chunk = extractChunkFromEvent("deferred-request", {
+		calls: [
+			{
+				tool_name: "ask_user_questions",
+				args: JSON.stringify({
+					questions: [
+						{
+							question: "What kind of app?",
+							options: ["Dashboard", "Landing page"],
+						},
+					],
+				}),
+				tool_call_id: "call-deferred-1",
+			},
+		],
+	});
+
+	assert.ok(chunk);
+	assert.equal(chunk.type, "deferred-tool-request");
+	assert.equal(chunk.toolName, "ask_user_questions");
+	assert.equal(chunk.toolCallId, "call-deferred-1");
+	assert.deepEqual(chunk.toolInput, {
+		questions: [
+			{
+				question: "What kind of app?",
+				options: ["Dashboard", "Landing page"],
+			},
+		],
 	});
 });
 
@@ -255,6 +288,39 @@ test("sendMessageStreaming aborts silent SSE streams and cancels the server turn
 		assert.equal(error.code, "ROVODEV_STREAM_IDLE_TIMEOUT");
 		assert.match(error.message, /never produced any sse activity/i);
 		assert.equal(error.hadActivity, false);
+	} finally {
+		await close(server);
+	}
+});
+
+test("cancelChat rejects when RovoDev reports a timed out cancellation", async () => {
+	const server = http.createServer((req, res) => {
+		if (req.url === "/v3/cancel" && req.method === "POST") {
+			req.resume();
+			res.writeHead(200, { "Content-Type": "application/json" });
+			res.end(JSON.stringify({
+				message: "Chat cancellation timed out",
+				cancelled: false,
+			}));
+			return;
+		}
+
+		res.writeHead(404);
+		res.end();
+	});
+
+	const port = await listen(server);
+
+	try {
+		await assert.rejects(
+			() => cancelChat(port, { timeoutMs: 100 }),
+			(error) => {
+				assert.equal(error.code, "ROVODEV_CANCEL_TIMEOUT");
+				assert.equal(error.port, port);
+				assert.match(error.message, /timed out/i);
+				return true;
+			}
+		);
 	} finally {
 		await close(server);
 	}
@@ -564,6 +630,170 @@ test("sendMessageStreaming restores the requested session, honors pause_on_call_
 			message: "hello",
 			context: [{ type: "note", content: "remember the session" }],
 			enable_deep_plan: true,
+		});
+	} finally {
+		await close(server);
+	}
+});
+
+test("sendMessageStreaming resolves when pause_on_call_tools_start disconnects the stream intentionally", async () => {
+	const requests = [];
+
+	const server = http.createServer((req, res) => {
+		const chunks = [];
+		req.on("data", (chunk) => chunks.push(chunk));
+		req.on("end", () => {
+			const body = chunks.length > 0 ? Buffer.concat(chunks).toString("utf8") : "";
+			requests.push({
+				method: req.method,
+				url: req.url,
+				body,
+			});
+
+			if (req.method === "POST" && req.url === "/v3/set_chat_message") {
+				res.writeHead(200, { "Content-Type": "application/json" });
+				res.end(JSON.stringify({ response: "Chat message set" }));
+				return;
+			}
+
+			if (req.method === "GET" && req.url === "/v3/stream_chat?pause_on_call_tools_start=true") {
+				res.writeHead(200, {
+					"Content-Type": "text/event-stream",
+					"Cache-Control": "no-cache",
+					Connection: "keep-alive",
+				});
+				res.write('event: part_start\ndata: {"index":0,"part":{"content":"Need a bit more detail.","part_kind":"text"},"event_kind":"part_start"}\n\n');
+				res.write('event: on_call_tools_start\ndata: {"parts":[{"tool_name":"ask_user_questions","args":"{\\"questions\\":[{\\"question\\":\\"What feature?\\",\\"options\\":[\\"Page\\",\\"API\\"]}]}","tool_call_id":"tool-call-1"}],"part_kind":"on_call_tools_start"}\n\n');
+				// Keep the connection open; the client-side manual disconnect should resolve the turn.
+				return;
+			}
+
+			if (req.method === "POST" && req.url === "/v3/cancel") {
+				res.writeHead(200, { "Content-Type": "application/json" });
+				res.end(JSON.stringify({ cancelled: true }));
+				return;
+			}
+
+			res.writeHead(404, { "Content-Type": "application/json" });
+			res.end(JSON.stringify({ error: "unexpected route" }));
+		});
+	});
+
+	const port = await listen(server);
+
+	try {
+		const chunks = [];
+		let completionText = null;
+
+		await new Promise((resolve, reject) => {
+			sendMessageStreaming(
+				"help me plan a feature",
+				{
+					onChunk: (chunk) => {
+						chunks.push(chunk);
+					},
+					onPauseToolCalls: async () => ({ disconnect: true }),
+					onDone: (fullText) => {
+						completionText = fullText;
+						resolve();
+					},
+					onError: reject,
+				},
+				port,
+				{
+					pauseOnCallToolsStart: true,
+				}
+			);
+		});
+
+		assert.equal(completionText, "Need a bit more detail.");
+		assert.deepEqual(
+			chunks.map((chunk) => chunk.type),
+			["text", "tool_call_start"],
+		);
+		assert.deepEqual(
+			requests.map((entry) => `${entry.method} ${entry.url}`),
+			[
+				"POST /v3/set_chat_message",
+				"GET /v3/stream_chat?pause_on_call_tools_start=true",
+			]
+		);
+	} finally {
+		await close(server);
+	}
+});
+
+test("sendMessageStreaming accepts DeferredToolResponse messages", async () => {
+	const requests = [];
+
+	const server = http.createServer((req, res) => {
+		const chunks = [];
+		req.on("data", (chunk) => chunks.push(chunk));
+		req.on("end", () => {
+			const body = chunks.length > 0 ? Buffer.concat(chunks).toString("utf8") : "";
+			requests.push({
+				method: req.method,
+				url: req.url,
+				body,
+			});
+
+			if (req.method === "POST" && req.url === "/v3/set_chat_message") {
+				res.writeHead(200, { "Content-Type": "application/json" });
+				res.end(JSON.stringify({ response: "Chat message set" }));
+				return;
+			}
+
+			if (req.method === "GET" && req.url === "/v3/stream_chat") {
+				res.writeHead(200, {
+					"Content-Type": "text/event-stream",
+					"Cache-Control": "no-cache",
+					Connection: "keep-alive",
+				});
+				res.write('event: part_start\ndata: {"index":0,"part":{"content":"Thanks","part_kind":"text"},"event_kind":"part_start"}\n\n');
+				res.end();
+				return;
+			}
+
+			if (req.method === "POST" && req.url === "/v3/cancel") {
+				res.writeHead(200, { "Content-Type": "application/json" });
+				res.end(JSON.stringify({ cancelled: true }));
+				return;
+			}
+
+			res.writeHead(404);
+			res.end();
+		});
+	});
+
+	const port = await listen(server);
+
+	try {
+		await new Promise((resolve, reject) => {
+			sendMessageStreaming(
+				{
+					message: {
+						tool_call_id: "tool-call-123",
+						result: {
+							"What should we build?": ["Dashboard"],
+						},
+					},
+				},
+				{
+					onChunk: () => {},
+					onDone: resolve,
+					onError: reject,
+				},
+				port
+			);
+		});
+
+		assert.deepEqual(JSON.parse(requests[0].body), {
+			message: {
+				tool_call_id: "tool-call-123",
+				result: {
+					"What should we build?": ["Dashboard"],
+				},
+			},
 		});
 	} finally {
 		await close(server);

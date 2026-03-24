@@ -15,6 +15,7 @@ import {
 } from "react";
 import { useFutureChatQueue } from "@/app/future-chat/future-chat-queue-provider";
 import { useLatestRef } from "@/lib/use-latest-ref";
+import { shouldSendExplicitRovoDevCancel } from "@/lib/rovodev-cancel-strategy";
 import { toast } from "sonner";
 import {
 	appendFutureChatStreamingArtifactDelta,
@@ -37,6 +38,8 @@ import {
 	buildRecoverableFutureChatThreadInput,
 	shouldRecoverFutureChatThreadAfterPersistenceFailure,
 } from "@/components/projects/future-chat/lib/future-chat-thread-persistence";
+import { waitForChatSendSettled } from "@/components/projects/future-chat/lib/future-chat-send-guard";
+import { shouldSuppressFutureChatPlanRetry } from "@/components/projects/future-chat/lib/future-chat-plan-retry-guard";
 import { buildFutureChatActiveThreadTransitionPlan } from "@/components/projects/future-chat/lib/future-chat-active-thread-transition";
 import {
 	createRealtimeTextMessage,
@@ -117,29 +120,35 @@ import {
 	createFutureChatId,
 } from "@/lib/future-chat-types";
 import {
+	buildClarificationMessageMetadata,
+	buildDeferredToolResponse,
 	buildClarificationDismissPrompt,
 	buildClarificationSummaryPrompt,
 	createClarificationSubmission,
+	getLatestQuestionCardPayload,
 	type ClarificationAnswers,
 	type ParsedQuestionCardPayload,
 } from "@/components/projects/shared/lib/question-card-widget";
 import {
 	buildPlanApprovalPrompt,
 	createPlanApprovalSubmission,
+	getPlanApprovalKeyFromPlanWidget,
 	type PlanApprovalSelection,
 } from "@/components/projects/shared/lib/plan-approval";
 import {
-	buildFutureChatAgentModeRequest,
 	buildFutureChatCancelUrl,
-	fetchFutureChatAgentMode,
-	parseFutureChatAgentMode,
 } from "@/components/projects/future-chat/lib/future-chat-agent-mode";
+import { cancelDeferredToolCall } from "@/components/blocks/question-card/lib/cancel-deferred-tool";
+import { appendTurnCompleteToLastAssistantMessage, markClarificationToolResolved } from "@/components/projects/future-chat/lib/future-chat-streaming-assistant";
 import {
 	classifyFutureChatTurnMode,
 	getLatestVisibleFutureChatUserPrompt,
 	hasPendingFutureChatStructuredContinuation,
 } from "@/components/projects/future-chat/lib/future-chat-turn-mode";
-import type { ParsedPlanWidgetPayload } from "@/components/projects/shared/lib/plan-widget";
+import {
+	getLatestPlanWidgetPayload,
+	type ParsedPlanWidgetPayload,
+} from "@/components/projects/shared/lib/plan-widget";
 import { markLastFutureChatAssistantMessageInterrupted } from "@/lib/future-chat-interruptions";
 import {
 	getLatestDataPart,
@@ -240,13 +249,45 @@ function getFutureChatArtifactDocumentIdsFromMessages(
 
 const PLAN_MODE_CONTEXT = [
 	"Plan mode is enabled.",
-	"Generate a comprehensive plan with clear, actionable tasks.",
-	"After generating the plan, call update_todo to organize tasks into a structured checklist.",
-	"Keep plan mode active until update_todo completes. Do not call exit_plan_mode before update_todo.",
-	"If update_todo fails, do not retry it repeatedly; continue by returning a concrete plan widget task list.",
-	"When writing update_todo task content, use strict dependency prefixes for blocked tasks: [needs <id[,id...]>] (example: [needs 1,2] Wire API). Leave independent tasks without a [needs] prefix.",
-	"Do not finish without generating a plan widget with a concrete task list.",
+	"If the request is missing essential build details, ask clarifying questions with ask_user_questions before proposing a plan.",
+	"If you ask clarifying questions first, the next answer turn must end by calling exit_plan_mode unless a hard blocker still makes planning impossible.",
+	"For build-oriented requests, finish the planning turn by calling exit_plan_mode with a concise markdown plan.",
+	"Do not use free-form text, suggestion chips, invoke_subagents, or update_todo as a substitute for the exit_plan_mode handoff.",
 ].join(" ");
+
+const PLAN_MODE_POST_CLARIFICATION_CONTEXT = [
+	"[POST-CLARIFICATION — Plan Mode]",
+	"Plan mode is enabled. The user has already answered clarification questions for this planning request.",
+	"Do NOT call ask_user_questions again. Clarification is complete.",
+	"Proceed directly to plan generation now by calling exit_plan_mode with a concise markdown plan.",
+	"This answer turn MUST end by calling exit_plan_mode unless a hard blocker still makes planning impossible.",
+	"Use the answered clarification details to finish planning, not implementation.",
+	"Do not use free-form text, suggestion chips, invoke_subagents, or update_todo as a substitute for the exit_plan_mode handoff.",
+	"[End POST-CLARIFICATION]",
+].join(" ");
+
+const PLAN_MODE_RETRY_PROMPT = [
+	"The previous response did not include a plan widget with tasks.",
+	"Do not ask more clarification questions.",
+	"Generate the plan now by calling exit_plan_mode with a concise markdown plan.",
+	"Do not explore the codebase. Do not use workspace tools.",
+	"Your only action: call exit_plan_mode with the plan.",
+].join(" ");
+
+type FutureChatPlanningPhase = "awaiting-plan" | "retrying-missing-plan";
+
+interface FutureChatPlanningSession {
+	requestId: number;
+	phase: FutureChatPlanningPhase;
+	hasStreamStarted: boolean;
+	retryUsed: boolean;
+}
+
+type FutureChatPlanMode = "default" | "plan";
+
+function parseFutureChatPlanMode(value: unknown): FutureChatPlanMode | null {
+	return value === "default" || value === "plan" ? value : null;
+}
 
 const VOICE_MODE_CONTEXT = [
 	"The user is in voice mode — they are speaking to you and hearing your response read aloud.",
@@ -279,36 +320,6 @@ function replaceFutureChatHistoryPath(path: string): void {
 
 const EXPLICIT_CANCEL_DEBOUNCE_MS = 750;
 const ACTIVE_TURN_STOP_TIMEOUT_MS = 1_200;
-const SEND_SETTLE_TIMEOUT_MS = 3_000;
-
-/**
- * Wait for the AI SDK's internal `makeRequest` to fully settle.
- *
- * The SDK's `AbstractChat.makeRequest` uses a shared `activeResponse` field
- * that is accessed in its `finally` block **without null-checking**.  When a
- * new `sendMessage` call starts while a previous `makeRequest` is still
- * processing its catch/finally blocks, the two calls race on that field and
- * the losing call's finally block throws:
- *
- *     TypeError: Cannot read properties of undefined (reading 'state')
- *
- * Callers should `await` this helper right before every `sendMessage` call to
- * avoid triggering the race.
- */
-async function waitForChatSendSettled(
-	statusRef: React.RefObject<ChatStatus>,
-): Promise<void> {
-	const settleStart = Date.now();
-	while (
-		statusRef.current === "submitted"
-		|| statusRef.current === "streaming"
-	) {
-		if (Date.now() - settleStart > SEND_SETTLE_TIMEOUT_MS) {
-			throw new Error("Timed out waiting for previous turn to settle before sending.");
-		}
-		await waitForFutureChat(10);
-	}
-}
 
 function areFutureChatMessagesEqual(
 	left: ReadonlyArray<RovoUIMessage>,
@@ -526,6 +537,7 @@ export interface FutureChatHookResult {
 	hasBackgroundDelegation: boolean;
 	status: ChatStatus;
 	stop: () => Promise<void>;
+	cancelClarificationQuestionSet: (questionCard: ParsedQuestionCardPayload) => Promise<boolean>;
 	submitClarification: (questionCard: ParsedQuestionCardPayload, answers: ClarificationAnswers) => Promise<void>;
 	submitClarificationDismiss: (questionCard: ParsedQuestionCardPayload) => Promise<void>;
 	submitPlanApproval: (planWidget: ParsedPlanWidgetPayload, selection: PlanApprovalSelection) => Promise<void>;
@@ -639,6 +651,7 @@ export function useFutureChat({
 	const toggleVoiceMode = useCallback(() => setIsVoiceMode((prev) => !prev), []);
 	const setVoiceMode = useCallback((next: boolean) => setIsVoiceMode(next), []);
 	const [isPlanMode, setIsPlanMode] = useState(false);
+	const [planningSession, setPlanningSession] = useState<FutureChatPlanningSession | null>(null);
 	const [attachedRunStatus, setAttachedRunStatus] = useState<FutureChatRunStatus | null>(null);
 	const attachedRunStatusRef = useRef<FutureChatRunStatus | null>(null);
 	const [hasObservedTurnComplete, setHasObservedTurnComplete] = useState(false);
@@ -773,6 +786,8 @@ export function useFutureChat({
 	const realtimeMessagesRef = useRef<RovoUIMessage[]>([]);
 	const realtimeMessagesVersionRef = useRef(0);
 	const statusRef = useRef<ChatStatus>("ready");
+	const useChatStatusRef = useRef<ChatStatus>("ready");
+	const lastUseChatBusyAtRef = useRef(0);
 	const delegationAbortControllerRef = useRef<AbortController | null>(null);
 	const runSubscriptionAbortControllerRef = useRef<AbortController | null>(null);
 	const runSubscriptionThreadIdRef = useRef<string | null>(null);
@@ -785,12 +800,21 @@ export function useFutureChat({
 	const pendingThreadCreationRef = useRef<Promise<string> | null>(null);
 	const deletedThreadIdsRef = useRef<Set<string>>(new Set());
 	const requestedSuggestionMessageIdsRef = useRef<Set<string>>(new Set());
+	const suggestionsAbortControllerRef = useRef<AbortController | null>(null);
 	const syncPlanModeFromBackend = useCallback(async () => {
 		const requestId = planModeSyncRequestIdRef.current + 1;
 		planModeSyncRequestIdRef.current = requestId;
 
 		try {
-			const mode = await fetchFutureChatAgentMode(fetch);
+			const response = await fetch(API_ENDPOINTS.AGENT_MODE, {
+				method: "GET",
+			});
+			if (!response.ok) {
+				return null;
+			}
+
+			const payload = await response.json().catch(() => null);
+			const mode = parseFutureChatPlanMode(payload?.mode);
 			if (
 				mode === null ||
 				planModeSyncRequestIdRef.current !== requestId
@@ -798,7 +822,7 @@ export function useFutureChat({
 				return null;
 			}
 
-			setIsPlanMode(mode === "ask");
+			setIsPlanMode(mode === "plan");
 			return mode;
 		} catch {
 			return null;
@@ -983,6 +1007,10 @@ export function useFutureChat({
 			new DefaultChatTransport<RovoUIMessage>({
 				api: API_ENDPOINTS.FUTURE_CHAT_CHAT,
 				prepareSendMessagesRequest: ({ messages, body }) => {
+					const requestedPlanMode =
+						typeof body?.isPlanMode === "boolean"
+							? body.isPlanMode
+							: isPlanModeRef.current;
 					const existingContextDescription =
 						typeof body?.contextDescription === "string" &&
 						body.contextDescription.trim()
@@ -991,7 +1019,7 @@ export function useFutureChat({
 
 					const resolvedContextDescription =
 						existingContextDescription
-						?? (isPlanModeRef.current ? PLAN_MODE_CONTEXT : undefined)
+						?? (requestedPlanMode ? PLAN_MODE_CONTEXT : undefined)
 						?? (isVoiceModeRef.current ? VOICE_MODE_CONTEXT : undefined);
 					const artifactContextFromBody =
 						body?.artifactContext &&
@@ -1032,7 +1060,7 @@ export function useFutureChat({
 						hasPendingStructuredContinuation,
 						hasStreamingArtifact: Boolean(streamingArtifact?.documentId),
 						hasStructuredTurnBody,
-						isPlanMode: isPlanModeRef.current,
+						isPlanMode: requestedPlanMode,
 						isVoiceTurn,
 					});
 					const resolvedSmartGenerationRequest =
@@ -1060,7 +1088,7 @@ export function useFutureChat({
 							activeArtifact: buildActiveArtifactMetadata(activeDocument),
 							origin: body?.origin === "voice" ? "voice" : "text",
 							recentHistory: buildRecentHistory(messages),
-							isPlanMode: isPlanModeRef.current,
+							isPlanMode: requestedPlanMode,
 						},
 					};
 				},
@@ -1070,6 +1098,8 @@ export function useFutureChat({
 			activeDocumentId,
 			artifactDraftContent,
 			activeDocumentContent,
+			isPlanModeRef,
+			isVoiceModeRef,
 			runtimeThreadId,
 			smartGenerationRequest,
 			streamingArtifact,
@@ -1536,6 +1566,130 @@ export function useFutureChat({
 		});
 	}, [hasActiveDispatch, queuedPrompts.length]);
 
+	// ── Plan-mode planning session monitor ──
+	// Tracks the full plan-mode lifecycle: initial prompt → stream →
+	// plan detection → retry.  Modeled after Make's planningSession effect.
+	useEffect(() => {
+		if (!planningSession) {
+			return;
+		}
+
+		if (isStreaming) {
+			if (!planningSession.hasStreamStarted) {
+				queueMicrotask(() => {
+					setPlanningSession((prev) => {
+						if (!prev || prev.hasStreamStarted) {
+							return prev;
+						}
+						return { ...prev, hasStreamStarted: true };
+					});
+				});
+			}
+			return;
+		}
+
+		if (!planningSession.hasStreamStarted) {
+			return;
+		}
+
+		// Stream just finished — check for a plan widget.
+		const latestPlanWidget = getLatestPlanWidgetPayload(rovodevMessages);
+		const hasGeneratedPlan = Boolean(
+			latestPlanWidget && latestPlanWidget.tasks.length > 0,
+		);
+		const isAwaitingClarificationAnswers =
+			getLatestQuestionCardPayload(rovodevMessages) !== null;
+
+		if (hasGeneratedPlan) {
+			queueMicrotask(() => {
+				setPlanningSession(null);
+			});
+			return;
+		}
+
+		if (isAwaitingClarificationAnswers) {
+			return;
+		}
+
+		const latestAssistantMessage = [...rovodevMessages]
+			.reverse()
+			.find((message) => message.role === "assistant");
+		if (shouldSuppressFutureChatPlanRetry(latestAssistantMessage)) {
+			queueMicrotask(() => {
+				setPlanningSession(null);
+			});
+			return;
+		}
+
+		if (planningSession.retryUsed) {
+			queueMicrotask(() => {
+				setPlanningSession(null);
+			});
+			return;
+		}
+
+		// No plan widget — send a hidden retry.
+		queueMicrotask(() => {
+			setPlanningSession((prev) => {
+				if (!prev) {
+					return prev;
+				}
+				return {
+					...prev,
+					phase: "retrying-missing-plan",
+					retryUsed: true,
+					hasStreamStarted: false,
+				};
+			});
+		});
+
+		const retryAsync = async () => {
+			try {
+				await releaseCompletedUseChatTurnIfNeeded();
+				await waitForChatSendSettled({
+					statusRef: useChatStatusRef,
+					lastBusyAtRef: lastUseChatBusyAtRef,
+				});
+				const threadId = activeThreadIdRef.current;
+				if (!threadId) return;
+				const activeThread =
+					threads.find((thread) => thread.id === threadId) ?? null;
+				if (!activeThread?.sessionId) {
+					queueMicrotask(() => {
+						setPlanningSession(null);
+					});
+					return;
+				}
+				const { message, messageId } = appendLocalUserMessage({
+					files: [],
+					metadata: { visibility: "hidden", source: "plan-retry" },
+					text: PLAN_MODE_RETRY_PROMPT,
+				});
+				await sendMessage(
+					{
+						text: PLAN_MODE_RETRY_PROMPT,
+						files: [],
+						messageId,
+						metadata: message.metadata,
+					},
+					{
+						body: {
+							id: threadId,
+							isPlanMode: true,
+							contextDescription: PLAN_MODE_POST_CLARIFICATION_CONTEXT,
+							sessionId: activeThread.sessionId,
+							sessionMode: activeThread.sessionMode ?? "persistent",
+						},
+					},
+				);
+			} catch {
+				// Best-effort retry.
+			}
+		};
+		retryAsync();
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [isStreaming, planningSession, rovodevMessages, threads]);
+
 	const resolveFallbackTitle = useCallback(
 		(): boolean => {
 			const threadId = pendingTitleThreadIdRef.current;
@@ -1601,27 +1755,47 @@ export function useFutureChat({
 	}, [status]);
 
 	useEffect(() => {
+		useChatStatusRef.current = useChatStatus;
+		if (useChatStatus === "submitted" || useChatStatus === "streaming") {
+			lastUseChatBusyAtRef.current = Date.now();
+		}
+	}, [useChatStatus]);
+
+	useEffect(() => {
 		attachedRunStatusRef.current = attachedRunStatus;
 	}, [attachedRunStatus]);
 
 	useEffect(() => {
 		if (isStreaming) {
+			suggestionsAbortControllerRef.current?.abort();
+			suggestionsAbortControllerRef.current = null;
 			return;
 		}
 
 		if (shouldSuppressLatestAssistantSuggestions) {
+			suggestionsAbortControllerRef.current?.abort();
+			suggestionsAbortControllerRef.current = null;
 			return;
 		}
 
 		const latestAssistantMessage = [...normalizedRovodevMessages]
 			.reverse()
 			.find((message) => {
-				return (
-					message.role === "assistant" &&
-					hasTurnCompleteSignal(message) &&
-					getMessageText(message).trim().length > 0 &&
-					!getLatestDataPart(message, "data-suggested-questions")
-				);
+				if (
+					message.role !== "assistant" ||
+					!hasTurnCompleteSignal(message) ||
+					getMessageText(message).trim().length === 0 ||
+					getLatestDataPart(message, "data-suggested-questions")
+				) {
+					return false;
+				}
+
+				const widgetType = getLatestDataPart(message, "data-widget-data")?.data?.type;
+				if (widgetType === "question-card" || widgetType === "plan") {
+					return false;
+				}
+
+				return true;
 			});
 		if (!latestAssistantMessage?.id) {
 			return;
@@ -1639,9 +1813,17 @@ export function useFutureChat({
 			return;
 		}
 
+		// Abort any in-flight suggestion request before starting a new one
+		suggestionsAbortControllerRef.current?.abort();
+		const abortController = new AbortController();
+		suggestionsAbortControllerRef.current = abortController;
+
 		requestedSuggestionMessageIdsRef.current.add(suggestionRequest.assistantMessageId);
 		const threadIdAtRequest = activeThreadIdRef.current;
-		void fetchFutureChatSuggestedQuestions(suggestionRequest)
+		void fetchFutureChatSuggestedQuestions({
+			...suggestionRequest,
+			signal: abortController.signal,
+		})
 			.then((questions) => {
 				if (questions.length === 0) {
 					return;
@@ -1663,6 +1845,9 @@ export function useFutureChat({
 				requestedSuggestionMessageIdsRef.current.delete(
 					suggestionRequest.assistantMessageId,
 				);
+				if (abortController.signal.aborted) {
+					return;
+				}
 				if (isFutureChatBackendUnavailableError(error)) {
 					return;
 				}
@@ -2429,7 +2614,10 @@ export function useFutureChat({
 				}
 
 				await releaseCompletedUseChatTurnIfNeeded();
-				await waitForChatSendSettled(statusRef);
+				await waitForChatSendSettled({
+					statusRef: useChatStatusRef,
+					lastBusyAtRef: lastUseChatBusyAtRef,
+				});
 
 				const resolvedArtifactContext = resolveActiveArtifactContext(
 					activeDocument, artifactDraftContent, activeDocumentContent, streamingArtifact,
@@ -2441,6 +2629,14 @@ export function useFutureChat({
 				});
 				markLocalThreadRunPending(threadId);
 				resetPendingArtifactAssociation();
+				if (isPlanModeRef.current) {
+					setPlanningSession({
+						requestId: planModeSyncRequestIdRef.current,
+						phase: "awaiting-plan",
+						hasStreamStarted: false,
+						retryUsed: false,
+					});
+				}
 				try {
 					await sendMessage({
 						text: trimmedText,
@@ -2583,28 +2779,65 @@ export function useFutureChat({
 	const submitClarification = useCallback(
 		async (questionCard: ParsedQuestionCardPayload, answers: ClarificationAnswers) => {
 			const submission = createClarificationSubmission(questionCard, answers);
+			// Use isPlanModeRef as the primary signal, but also check whether
+			// the question card was emitted during a plan-mode turn (indicated
+			// by the presence of a deferredToolCallId, which only happens when
+			// ask_user_questions is called via the plan-mode deferred tool
+			// flow).  This protects against isPlanModeRef being transiently
+			// reset by syncPlanModeFromBackend after a port recovery.
+			const wasPlanModeActive =
+				isPlanModeRef.current || Boolean(questionCard.deferredToolCallId);
 			const promptText = buildClarificationSummaryPrompt(questionCard, answers);
+			hasObservedTurnCompleteRef.current = true;
+			setRovodevMessages((previousMessages) => {
+				const resolved = markClarificationToolResolved(previousMessages);
+				return appendTurnCompleteToLastAssistantMessage(resolved).messages;
+			});
 			await releaseCompletedUseChatTurnIfNeeded();
+			await waitForChatSendSettled({
+				statusRef: useChatStatusRef,
+				lastBusyAtRef: lastUseChatBusyAtRef,
+			});
 			const threadId = await ensureThread(promptText || "Clarification");
 			const { message, messageId } = appendLocalUserMessage({
 				files: [],
+				metadata: buildClarificationMessageMetadata(questionCard, {
+					answers,
+					status: "answered",
+				}),
 				text: promptText,
 			});
 			resetPendingArtifactAssociation();
 
 			const deferredToolCallId = questionCard.deferredToolCallId;
-			const body: Record<string, unknown> = { id: threadId };
-
-			if (deferredToolCallId) {
-				body.deferredToolResponse = {
-					tool_call_id: deferredToolCallId,
-					result: submission.answers,
-				};
-			} else {
-				body.clarification = submission;
-			}
+			const deferredToolResponse = buildDeferredToolResponse(questionCard, answers);
+			const body: Record<string, unknown> = {
+				id: threadId,
+				isPlanMode: wasPlanModeActive || undefined,
+				contextDescription: wasPlanModeActive
+					? PLAN_MODE_POST_CLARIFICATION_CONTEXT
+					: undefined,
+				clarification: {
+					...submission,
+					toolCallId: deferredToolCallId ?? submission.toolCallId,
+					deferredToolCallId: deferredToolCallId ?? submission.deferredToolCallId,
+				},
+				deferredToolResponse: deferredToolResponse ?? undefined,
+			};
 
 			markLocalThreadRunPending(threadId);
+			if (wasPlanModeActive) {
+				setPlanningSession((prev) =>
+					prev
+						? { ...prev, phase: "awaiting-plan", hasStreamStarted: false }
+						: {
+							requestId: planModeSyncRequestIdRef.current,
+							phase: "awaiting-plan",
+							hasStreamStarted: false,
+							retryUsed: false,
+						},
+				);
+			}
 			await sendMessage(
 				{
 					text: promptText,
@@ -2618,10 +2851,12 @@ export function useFutureChat({
 		[
 			appendLocalUserMessage,
 			ensureThread,
+			isPlanModeRef,
 			markLocalThreadRunPending,
 			releaseCompletedUseChatTurnIfNeeded,
 			resetPendingArtifactAssociation,
 			sendMessage,
+			setRovodevMessages,
 		],
 	);
 
@@ -2629,9 +2864,17 @@ export function useFutureChat({
 		async (questionCard: ParsedQuestionCardPayload) => {
 			const dismissPrompt = buildClarificationDismissPrompt(questionCard);
 			await releaseCompletedUseChatTurnIfNeeded();
+			await waitForChatSendSettled({
+				statusRef: useChatStatusRef,
+				lastBusyAtRef: lastUseChatBusyAtRef,
+			});
 			const threadId = await ensureThread(dismissPrompt || "Skipped clarification");
 			const { message, messageId } = appendLocalUserMessage({
 				files: [],
+				metadata: buildClarificationMessageMetadata(questionCard, {
+					status: "dismissed",
+					visibility: "hidden",
+				}),
 				text: dismissPrompt,
 			});
 			resetPendingArtifactAssociation();
@@ -2656,36 +2899,115 @@ export function useFutureChat({
 		],
 	);
 
+	const finalizeCancelledClarificationTurn = useCallback(async () => {
+		const threadId = activeThreadIdRef.current;
+		if (threadId) {
+			setLocalThreadActiveRun(threadId, null);
+		}
+
+		queueProcessorRunningRef.current = false;
+		setHasActiveDispatch(false);
+		runSubscriptionAbortControllerRef.current?.abort();
+		runSubscriptionAbortControllerRef.current = null;
+		runSubscriptionThreadIdRef.current = null;
+		setAttachedRunStatus(null);
+		hasObservedTurnCompleteRef.current = true;
+		setRovodevMessages((previousMessages) => {
+			const resolved = markClarificationToolResolved(previousMessages, "Clarification cancelled.");
+			return appendTurnCompleteToLastAssistantMessage(resolved).messages;
+		});
+
+		try {
+			await stopUseChat();
+		} catch (error) {
+			console.warn(
+				"[FutureChat] Failed to stop UI stream after clarification cancel:",
+				error,
+			);
+		}
+
+		planModeSyncRequestIdRef.current += 1;
+		setPlanningSession(null);
+		setIsPlanMode(false);
+		void syncPlanModeFromBackend();
+	}, [setLocalThreadActiveRun, setRovodevMessages, stopUseChat, syncPlanModeFromBackend]);
+
+	const cancelClarificationQuestionSet = useCallback(
+		async (questionCard: ParsedQuestionCardPayload) => {
+			const toolCallId =
+				questionCard.deferredToolCallId ?? questionCard.toolCallId ?? null;
+			if (!toolCallId) {
+				await submitClarificationDismiss(questionCard);
+				return true;
+			}
+
+			const didCancelDeferredTool = await cancelDeferredToolCall(toolCallId);
+			if (!didCancelDeferredTool) {
+				toast.error("Couldn't cancel the clarification step.", {
+					description: "The question card is still active. Try again.",
+				});
+				return false;
+			}
+
+			await finalizeCancelledClarificationTurn();
+			return true;
+		},
+		[
+			finalizeCancelledClarificationTurn,
+			submitClarificationDismiss,
+		],
+	);
+
 	const submitPlanApproval = useCallback(
 		async (planWidget: ParsedPlanWidgetPayload, selection: PlanApprovalSelection) => {
 			const submission = createPlanApprovalSubmission(selection, planWidget);
 			const promptText = buildPlanApprovalPrompt(submission);
+			const planKey = getPlanApprovalKeyFromPlanWidget(planWidget);
 			await releaseCompletedUseChatTurnIfNeeded();
+			await waitForChatSendSettled({
+				statusRef: useChatStatusRef,
+				lastBusyAtRef: lastUseChatBusyAtRef,
+			});
 			const threadId = await ensureThread(promptText || "Plan approval");
 			const { message, messageId } = appendLocalUserMessage({
 				files: [],
 				text: promptText,
+				metadata: {
+					source: "plan-approval-submit",
+					planApprovalDecision: selection.decision,
+					planApprovalPlanKey: planKey ?? undefined,
+				},
 			});
 			resetPendingArtifactAssociation();
 
 			const deferredToolCallId = planWidget.deferredToolCallId;
 			const body: Record<string, unknown> = {
 				id: threadId,
+				isPlanMode: selection.decision === "auto-accept" ? false : isPlanModeRef.current,
+				approval: {
+					...submission,
+					toolCallId: deferredToolCallId ?? submission.toolCallId,
+					deferredToolCallId: deferredToolCallId ?? submission.deferredToolCallId,
+				},
 			};
+			if (selection.decision === "auto-accept") {
+				body.planAccepted = true;
+				body.planId = planKey;
+			}
 
-			if (deferredToolCallId) {
-				const approved = selection.decision === "auto-accept";
-				body.deferredToolResponse = {
-					tool_call_id: deferredToolCallId,
-					result: {
-						approved,
-						feedback: approved
-							? undefined
-							: selection.customInstruction?.trim() || undefined,
-					},
-				};
-			} else {
-				body.approval = submission;
+			if (selection.decision === "auto-accept") {
+				planModeSyncRequestIdRef.current += 1;
+				setIsPlanMode(false);
+
+				try {
+					await fetch(API_ENDPOINTS.AGENT_MODE, {
+						method: "POST",
+						headers: { "Content-Type": "application/json" },
+						body: JSON.stringify({ mode: "default" }),
+					});
+				} catch (error) {
+					console.warn("[FutureChat] Failed to reset agent mode before build:", error);
+				}
 			}
 
 			markLocalThreadRunPending(threadId);
@@ -2699,14 +3021,11 @@ export function useFutureChat({
 				{ body },
 			);
 
-			if (selection.decision === "auto-accept") {
-				planModeSyncRequestIdRef.current += 1;
-				setIsPlanMode(false);
-			}
 		},
 		[
 			appendLocalUserMessage,
 			ensureThread,
+			isPlanModeRef,
 			markLocalThreadRunPending,
 			releaseCompletedUseChatTurnIfNeeded,
 			resetPendingArtifactAssociation,
@@ -2715,41 +3034,45 @@ export function useFutureChat({
 	);
 
 	const togglePlanMode = useCallback(async () => {
-		const nextMode = isPlanMode ? "default" : "ask";
+		const nextMode = isPlanMode ? "default" : "plan";
+		const threadId = activeThreadIdRef.current;
 		planModeSyncRequestIdRef.current += 1;
-		setIsPlanMode(nextMode === "ask");
+		setPlanningSession(null);
+		setIsPlanMode(nextMode === "plan");
 		try {
-			const response = await fetch(API_ENDPOINTS.AGENT_MODE, {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify(
-					buildFutureChatAgentModeRequest({
-						mode: nextMode,
-					}),
-				),
-			});
-			if (!response.ok) {
-				console.warn("[FutureChat] Agent mode request failed with status", response.status);
-				void syncPlanModeFromBackend();
-				return;
-			}
+			if (isPlanMode && threadId) {
+				const activeQuestionCard = getLatestQuestionCardPayload(
+					rovodevMessagesRef.current,
+				);
+				const didCancelDeferredQuestion =
+					activeQuestionCard
+					&& (activeQuestionCard.deferredToolCallId
+						|| activeQuestionCard.toolCallId)
+						? await cancelClarificationQuestionSet(activeQuestionCard)
+						: null;
 
-			const payload = await response.json().catch(() => null);
-			const resolvedMode = parseFutureChatAgentMode(payload?.mode);
-			if (resolvedMode) {
-				setIsPlanMode(resolvedMode === "ask");
-				return;
-			}
+				if (didCancelDeferredQuestion === false) {
+					setIsPlanMode(true);
+					return;
+				}
 
-			void syncPlanModeFromBackend();
+				if (didCancelDeferredQuestion === null) {
+					await fetch(buildFutureChatCancelUrl(threadId), {
+						method: "POST",
+					}).catch((error) => {
+						console.warn("[FutureChat] Failed to cancel pending plan turn:", error);
+					});
+				}
+			}
 		} catch (error) {
 			console.warn("[FutureChat] Failed to toggle plan mode:", error);
-			void syncPlanModeFromBackend();
+			setIsPlanMode(isPlanMode);
 		}
-	}, [isPlanMode, syncPlanModeFromBackend]);
+	}, [cancelClarificationQuestionSet, isPlanMode]);
 
 	const resetPlanMode = useCallback(() => {
 		planModeSyncRequestIdRef.current += 1;
+		setPlanningSession(null);
 		setIsPlanMode(false);
 	}, []);
 
@@ -3352,10 +3675,27 @@ export function useFutureChat({
 
 				try {
 					if (hadActiveTurn) {
-						await Promise.allSettled([
-							hasUseChatTurn ? stopUseChat() : Promise.resolve(),
-							hadActiveTurn ? requestExplicitCancel() : Promise.resolve(),
-						]);
+						let stoppedInTime = true;
+						if (hasUseChatTurn) {
+							await stopUseChat();
+							stoppedInTime = await waitForActiveTurnToStop();
+						}
+
+						if (
+							shouldSendExplicitRovoDevCancel({
+								hasUseChatTurn,
+								stopSettledInTime: stoppedInTime,
+							})
+						) {
+							if (hasUseChatTurn && !stoppedInTime) {
+								console.warn(
+									"[FutureChat] useChat turn did not stop within grace period; escalating to explicit cancel.",
+								);
+							}
+							await requestExplicitCancel();
+							stoppedInTime = await waitForActiveTurnToStop();
+						}
+
 						runSubscriptionAbortControllerRef.current?.abort();
 						runSubscriptionAbortControllerRef.current = null;
 						runSubscriptionThreadIdRef.current = null;
@@ -3364,7 +3704,6 @@ export function useFutureChat({
 						clearDirectDelegationState();
 						delegationAbortControllerRef.current = null;
 
-						const stoppedInTime = await waitForActiveTurnToStop();
 						if (!stoppedInTime) {
 							console.warn(
 								"[FutureChat] Proceeding after cancel timeout while interrupting active turn.",
@@ -4017,6 +4356,7 @@ export function useFutureChat({
 		sidebarOpen,
 		status,
 		stop,
+		cancelClarificationQuestionSet,
 		submitClarification,
 		submitClarificationDismiss,
 		submitPlanApproval,

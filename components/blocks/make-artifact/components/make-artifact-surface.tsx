@@ -1105,14 +1105,6 @@ function countSubstringMentions(source: string, needle: string): number {
 }
 
 function routeFromAppPageFilePath(filePath: string): string | null {
-	// Generated apps: components/generated-apps/<slug>/page.tsx → /apps/<slug>
-	const generatedAppMatch = filePath.match(
-		/^components\/generated-apps\/([^/]+)\/page\.tsx$/,
-	);
-	if (generatedAppMatch) {
-		return `/apps/${generatedAppMatch[1]}`;
-	}
-
 	if (filePath === "app/page.tsx") {
 		return "/";
 	}

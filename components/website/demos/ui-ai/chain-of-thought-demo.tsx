@@ -24,10 +24,25 @@ const RECENT_WORK_SOURCES = [
 const toHostname = (url: string) => new URL(url).hostname;
 
 export default function ChainOfThoughtDemo() {
-	return <ChainOfThoughtDemoAdsWorkflow />;
+	return <ChainOfThoughtDemoThinking />;
 }
 
-export function ChainOfThoughtDemoAdsWorkflow() {
+export function ChainOfThoughtDemoPreload() {
+	return (
+		<ChainOfThought className="w-full max-w-2xl">
+			<ChainOfThoughtHeader>Tracing model reasoning</ChainOfThoughtHeader>
+			<ChainOfThoughtContent>
+				<ChainOfThoughtStep
+					icon={SearchIcon}
+					label="Searching public profiles for Hayden Bleasel"
+					status="pending"
+				/>
+			</ChainOfThoughtContent>
+		</ChainOfThought>
+	);
+}
+
+export function ChainOfThoughtDemoThinking() {
 	return (
 		<ChainOfThought defaultOpen className="w-full max-w-2xl">
 			<ChainOfThoughtHeader>Tracing model reasoning</ChainOfThoughtHeader>
@@ -72,6 +87,65 @@ export function ChainOfThoughtDemoAdsWorkflow() {
 					icon={SearchIcon}
 					label="Checking for recent work updates..."
 					status="active"
+				>
+					<ChainOfThoughtSearchResults>
+						{RECENT_WORK_SOURCES.map((website) => (
+							<ChainOfThoughtSearchResult key={website}>
+								{toHostname(website)}
+							</ChainOfThoughtSearchResult>
+						))}
+					</ChainOfThoughtSearchResults>
+				</ChainOfThoughtStep>
+			</ChainOfThoughtContent>
+		</ChainOfThought>
+	);
+}
+
+export function ChainOfThoughtDemoCompleted() {
+	return (
+		<ChainOfThought defaultOpen className="w-full max-w-2xl">
+			<ChainOfThoughtHeader>Tracing model reasoning</ChainOfThoughtHeader>
+			<ChainOfThoughtContent>
+				<ChainOfThoughtStep
+					icon={SearchIcon}
+					label="Searching public profiles for Hayden Bleasel"
+					status="complete"
+				>
+					<ChainOfThoughtSearchResults>
+						{PROFILE_SOURCES.map((website) => (
+							<ChainOfThoughtSearchResult key={website}>
+								{toHostname(website)}
+							</ChainOfThoughtSearchResult>
+						))}
+					</ChainOfThoughtSearchResults>
+				</ChainOfThoughtStep>
+
+				<ChainOfThoughtStep
+					icon={ImageIcon}
+					label="Found a likely profile image from the source set"
+					status="complete"
+				>
+					<ChainOfThoughtImage caption="Public profile image selected from matched sources.">
+						<Image
+							alt="Profile image result"
+							className="h-40 w-40 rounded-md border border-border object-cover"
+							height={160}
+							src="/avatar-human/anthony-chen.png"
+							width={160}
+						/>
+					</ChainOfThoughtImage>
+				</ChainOfThoughtStep>
+
+				<ChainOfThoughtStep
+					icon={SparklesIcon}
+					label="Synthesizing a short profile summary from validated signals"
+					status="complete"
+				/>
+
+				<ChainOfThoughtStep
+					icon={SearchIcon}
+					label="Checked recent work updates"
+					status="complete"
 				>
 					<ChainOfThoughtSearchResults>
 						{RECENT_WORK_SOURCES.map((website) => (

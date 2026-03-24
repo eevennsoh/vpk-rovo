@@ -25,6 +25,7 @@ export function ClarificationQuestionCard({ questionCard, isSubmitting, onSubmit
 				maxVisibleOptions={MAX_VISIBLE_CLARIFICATION_OPTIONS}
 				onSubmit={onSubmit as (answers: QuestionCardAnswers) => void}
 				onDismiss={onDismiss}
+				toolCallId={questionCard.deferredToolCallId}
 			/>
 		</section>
 	);

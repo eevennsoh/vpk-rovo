@@ -47,3 +47,17 @@ export function shouldScheduleCompletionAutoCollapse({
 		!hasAutoCollapsedOnCompletion
 	);
 }
+
+interface ToolIdleAutoCollapseOptions {
+	toolsRunning: boolean;
+	prevToolsRunning: boolean;
+	isOpen: boolean;
+}
+
+export function shouldScheduleToolIdleAutoCollapse({
+	toolsRunning,
+	prevToolsRunning,
+	isOpen,
+}: Readonly<ToolIdleAutoCollapseOptions>): boolean {
+	return prevToolsRunning && !toolsRunning && isOpen;
+}

@@ -7,6 +7,7 @@ const { getBackendBasePort } = require("./lib/worktree-ports");
 const basePort = getBackendBasePort();
 const maxTries = Number.parseInt(process.env.PORT_SEARCH_MAX ?? "20", 10);
 const portFile = path.join(process.cwd(), ".dev-backend-port");
+const sessionOwned = process.env.VPK_TMUX_OWNED === "1";
 
 const unsupportedErrors = new Set([
 	"EADDRNOTAVAIL",
@@ -65,6 +66,11 @@ const findAvailablePort = async () => {
 	);
 };
 
+const isPortInWorktreeRange = (port) =>
+	Number.isInteger(port) &&
+	port >= basePort &&
+	port < basePort + maxTries;
+
 const writePortFile = (port) => {
 	fs.writeFileSync(portFile, String(port));
 };
@@ -97,8 +103,20 @@ const readRecordedPort = () => {
 const run = async () => {
 	const recordedPort = readRecordedPort();
 	if (recordedPort !== null) {
+		if (!isPortInWorktreeRange(recordedPort)) {
+			console.log(
+				`Ignoring stale backend port file (${recordedPort}); expected range ${basePort}-${basePort + maxTries - 1} for this worktree.`
+			);
+			cleanupPortFile();
+		} else {
 		const inUse = !(await isPortAvailable(recordedPort));
 		if (inUse) {
+			if (sessionOwned) {
+				throw new Error(
+					`Backend is already running for this worktree on port ${recordedPort}. ` +
+					"Stop the existing backend before starting a tmux-owned session."
+				);
+			}
 			writePortFile(recordedPort);
 			console.log(
 				`Backend dev server is already running for this worktree on port ${recordedPort}. Reusing existing process.`
@@ -106,6 +124,7 @@ const run = async () => {
 			return;
 		}
 		cleanupPortFile();
+		}
 	}
 
 	const port = await findAvailablePort();
@@ -131,8 +150,12 @@ const run = async () => {
 
 	process.on("SIGINT", forwardSignal);
 	process.on("SIGTERM", forwardSignal);
+	process.on("SIGHUP", forwardSignal);
 
 	child.on("exit", (code, signal) => {
+		console.warn(
+			`[dev-backend] Backend process exited (code=${code ?? "null"}, signal=${signal ?? "null"}, port=${port})`
+		);
 		cleanupPortFile();
 
 		if (signal) {

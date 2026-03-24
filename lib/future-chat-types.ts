@@ -25,6 +25,8 @@ export interface FutureChatThread {
 	modelId: string | null;
 	provider: string | null;
 	activeDocumentId: string | null;
+	sessionId: string | null;
+	sessionMode: "persistent" | "ephemeral" | null;
 	activeRun?: FutureChatActiveRun | null;
 	createdAt: string;
 	updatedAt: string;

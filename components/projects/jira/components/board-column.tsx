@@ -17,10 +17,7 @@ export default function BoardColumn({ title, count, children }: Readonly<BoardCo
 			style={{
 				display: "flex",
 				flexDirection: "column",
-				width: "clamp(168px, 12vw, 270px)",
-				minWidth: "clamp(168px, 12vw, 270px)",
-				maxWidth: "270px",
-				flexShrink: 0,
+				width: "100%",
 				height: "100%",
 				backgroundColor: token("elevation.surface.sunken"),
 				borderRadius: token("radius.large"),

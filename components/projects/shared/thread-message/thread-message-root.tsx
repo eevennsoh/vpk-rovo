@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useDynamicThinkingLabel } from "@/components/projects/shared/hooks/use-dynamic-thinking-label";
 import {
 	getAllDataParts,
@@ -41,6 +41,7 @@ import { parsePlanWidgetPayload } from "../lib/plan-widget";
 import { buildPlanDescriptionFallback } from "./lib/plan-description-fallback";
 import { resolveThinkingLabelForSurface } from "../lib/thinking-label-policy";
 import {
+	getAwaitingUserResponseLabel,
 	getDefaultThinkingLabel,
 	REASONING_LABELS,
 } from "../lib/reasoning-labels";
@@ -50,6 +51,7 @@ import {
 	getNormalizedWidgetDataParts,
 	selectLatestRenderableWidgetPart,
 } from "./lib/widget-selection";
+import { filterThinkingToolCallsForVisibleWidget } from "./lib/thinking-tool-visibility";
 import {
 	isPostToolsGenuiGeneration as resolvePostToolsGenuiGeneration,
 	isThinkingStatusActive as resolveThinkingStatusActive,
@@ -188,6 +190,20 @@ function useThreadMessageDerived(
 	const hasWidgetPayload = Boolean(widgetDataPart);
 	const hasWidgetOutput = hasWidgetPayload && !isWidgetLoading;
 
+	// ---------- widget loading timeout ----------
+	const [widgetLoadingTimedOut, setWidgetLoadingTimedOut] = useState(false);
+
+	useEffect(() => {
+		if (!isWidgetLoading) {
+			setWidgetLoadingTimedOut(false);
+			return;
+		}
+		const timer = setTimeout(() => {
+			setWidgetLoadingTimedOut(true);
+		}, 30_000);
+		return () => clearTimeout(timer);
+	}, [isWidgetLoading]);
+
 	// ---------- route decision ----------
 	const routeDecision: RoutingDecision | null = getLatestRouteDecision(message);
 	const isFallbackTextRoute = routeDecision?.confidence !== undefined && routeDecision.confidence < 0.3;
@@ -223,11 +239,18 @@ function useThreadMessageDerived(
 	const toolFirstWarning = getToolFirstWarning(message);
 	const toolParts = getMessageToolParts(message);
 	const thinkingToolCalls = getThinkingToolCallSummaries(message);
+	const visibleThinkingToolCalls = filterThinkingToolCallsForVisibleWidget({
+		thinkingToolCalls,
+		widgetType,
+	});
 	const hasAnyThinkingToolCalls = thinkingToolCalls.length > 0;
 	const hasRunningThinkingToolCalls = thinkingToolCalls.some(
 		(toolCall) =>
 			toolCall.state === "running" ||
 			toolCall.state === "approval-requested"
+	);
+	const hasAwaitingInputToolCalls = thinkingToolCalls.some(
+		(toolCall) => toolCall.state === "awaiting-input"
 	);
 	const isPostToolsGenuiGeneration = resolvePostToolsGenuiGeneration({
 		widgetType,
@@ -253,7 +276,7 @@ function useThreadMessageDerived(
 				})
 			: sanitizedMessageText;
 	const thinkingToolCallsForStatus =
-		toolParts.length > 0 ? [] : thinkingToolCalls;
+		toolParts.length > 0 ? [] : visibleThinkingToolCalls;
 	const hasBackendThinkingActivity =
 		Boolean(thinkingStatusPart) ||
 		thinkingEventParts.length > 0 ||
@@ -288,15 +311,18 @@ function useThreadMessageDerived(
 		assistantStreamingRenderMode !== "text-first";
 	const thinkingStatusReasoningPhase: ReasoningPhase = (() => {
 		if (!effectiveIsThinkingStatusActive) return "idle";
+		if (hasAwaitingInputToolCalls) return "thinking";
 		if (hasTurnComplete && !isThinkingLifecycleStreaming) return "completed";
 		if (!hasBackendThinkingActivity) return isStreaming ? "preload" : "idle";
 		if (isPostToolsGenuiGeneration) return "thinking";
 		if (hasWidgetOutput) return "completed";
 		return thinkingStatusLifecyclePhase;
 	})();
-	const baseThinkingStatusLabel = isPostToolsGenuiGeneration
-		? REASONING_LABELS.trigger.generatingResults
-		: dynamicThinkingStatusLabel;
+	const baseThinkingStatusLabel = hasAwaitingInputToolCalls
+		? getAwaitingUserResponseLabel()
+		: isPostToolsGenuiGeneration
+			? REASONING_LABELS.trigger.generatingResults
+			: dynamicThinkingStatusLabel;
 	const resolvedThinkingStatusLabel = resolveThinkingLabelForSurface({
 		baseLabel: baseThinkingStatusLabel,
 		surface,
@@ -350,7 +376,17 @@ function useThreadMessageDerived(
 		hasWidgetPayload;
 	const loadingWidgetNode =
 		shouldShowWidgetSections && isWidgetLoading && !shouldHideLoadingWidget
-			? renderLoadingWidget?.(widgetType) ?? null
+			? widgetLoadingTimedOut &&
+					(widgetType === "question-card" || widgetType === "genui-preview")
+				? (
+						<div className="rounded-xl border border-border-warning/40 bg-bg-warning-subtler px-3 py-2 text-sm text-text-warning">
+							This widget is taking longer than expected to load. Use Stop and try
+							again, or wait if the assistant is still generating.
+						</div>
+					)
+				: widgetLoadingTimedOut
+					? null
+					: renderLoadingWidget?.(widgetType) ?? null
 			: null;
 	const shouldRenderPlanWidgetFirst = widgetType === "plan";
 	const hasRenderedWidget =
@@ -411,6 +447,7 @@ function useThreadMessageDerived(
 			loadingWidgetNode,
 			widgetType,
 			isWidgetLoading,
+			widgetLoadingTimedOut,
 			shouldRenderPlanWidgetFirst,
 			hasRenderedWidget,
 			shouldRenderMessageText,
@@ -426,6 +463,7 @@ function useThreadMessageDerived(
 			questionCardMessageText,
 			widgetType,
 			isWidgetLoading,
+			widgetLoadingTimedOut,
 			effectiveIsThinkingStatusActive,
 			thinkingStatusReasoningPhase,
 			thinkingStatusDuration,

@@ -43,6 +43,14 @@ export function ThreadMessageThinkingStatus(): ReactNode {
 	const hasTools = hasToolParts || hasThinkingToolCalls;
 	const hasDetails = hasThinkingText || hasTools;
 	const allowAutoCollapse = hasTurnComplete || isPostToolsGenuiGeneration;
+	const areAnyToolsRunning = hasTools && (
+		thinkingToolCallsForStatus.some(tc =>
+			tc.state === "awaiting-input" || tc.state === "running" || tc.state === "approval-requested"
+		) ||
+		toolParts.some(tp =>
+			tp.state === "approval-requested" || tp.state === "input-streaming" || tp.state === "input-available"
+		)
+	);
 	const triggerLabel = resolveThinkingStatusTriggerLabel({
 		resolvedLabel: resolvedThinkingStatusLabel,
 		reasoningPhase: thinkingStatusReasoningPhase,
@@ -70,6 +78,7 @@ export function ThreadMessageThinkingStatus(): ReactNode {
 				animatedDots={phaseProps.animatedDots}
 				duration={thinkingStatusReasoningPhase === "completed" ? thinkingStatusDuration : undefined}
 				allowAutoCollapse={allowAutoCollapse}
+				toolsRunning={hasTools ? areAnyToolsRunning : undefined}
 			>
 				<AdsReasoningTrigger
 					label={triggerLabel}

@@ -1,4 +1,4 @@
-const { isPortAvailable } = require("./rovodev-utils");
+const { isPortAvailable, checkRovodevHealth } = require("./rovodev-utils");
 
 const findAvailableRovodevPorts = async ({
 	basePort,
@@ -33,6 +33,53 @@ const findAvailableRovodevPorts = async ({
 	return ports;
 };
 
+const waitForRovodevPortsHealthy = async ({
+	ports,
+	maxAttempts = 60,
+	intervalMs = 1000,
+	checkRovodevHealthFn = checkRovodevHealth,
+}) => {
+	if (!Array.isArray(ports) || ports.length === 0) {
+		throw new Error("At least one RovoDev port is required.");
+	}
+
+	if (!Number.isFinite(maxAttempts) || maxAttempts < 1) {
+		throw new Error(`Invalid max attempts: ${maxAttempts}`);
+	}
+
+	if (!Number.isFinite(intervalMs) || intervalMs < 0) {
+		throw new Error(`Invalid interval: ${intervalMs}`);
+	}
+
+	let lastResults = [];
+
+	for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+		lastResults = await Promise.all(
+			ports.map(async (port) => ({
+				port,
+				health: await checkRovodevHealthFn(port),
+			}))
+		);
+
+		if (lastResults.every((entry) => entry.health?.healthy)) {
+			return lastResults;
+		}
+
+		if (attempt < maxAttempts - 1 && intervalMs > 0) {
+			await new Promise((resolve) => setTimeout(resolve, intervalMs));
+		}
+	}
+
+	const statusSummary = lastResults
+		.map(({ port, health }) => `${port} (${health?.status || "unknown"})`)
+		.join(", ");
+
+	throw new Error(
+		`RovoDev ports did not become healthy in time: ${statusSummary}`
+	);
+};
+
 module.exports = {
 	findAvailableRovodevPorts,
+	waitForRovodevPortsHealthy,
 };

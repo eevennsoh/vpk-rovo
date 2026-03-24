@@ -425,6 +425,7 @@ function resolvePlanBlockedByLabels(task: PlanTask, allTasks: PlanTask[]): strin
 
 export interface PlanTabContentProps {
 	description: string;
+	markdown?: string;
 	tasks: PlanTask[];
 	revealedCount?: number;
 	defaultValue?: "summary" | "tasks";
@@ -439,6 +440,7 @@ export interface PlanTabContentProps {
 
 export const PlanTabContent = ({
 	description,
+	markdown = "",
 	tasks,
 	revealedCount,
 	defaultValue = "summary",
@@ -450,10 +452,11 @@ export const PlanTabContent = ({
 	summaryTabContentClassName,
 	tasksTabContentClassName,
 }: Readonly<PlanTabContentProps>) => {
-	const normalizedDescription = useMemo(() => {
-		const stripped = stripLeadingMarkdownRule(description);
+	const normalizedSummaryMarkdown = useMemo(() => {
+		const rawContent = markdown.trim().length > 0 ? markdown : description;
+		const stripped = stripLeadingMarkdownRule(rawContent);
 		return stripped && !stripped.endsWith("\n") ? `${stripped}\n` : stripped;
-	}, [description]);
+	}, [description, markdown]);
 	const visibleTasks = useMemo(
 		() => tasks.filter((task) => task.label.trim().length > 0),
 		[tasks]
@@ -473,7 +476,7 @@ export const PlanTabContent = ({
 
 			<TabsContent value="summary" className={cn("px-4 pb-4", summaryTabContentClassName)}>
 				<PlanSummary
-					summary={normalizedDescription}
+					summary={normalizedSummaryMarkdown}
 					emptyMessage={emptySummaryMessage}
 					showMoreLabel={summaryShowMoreLabel}
 				/>

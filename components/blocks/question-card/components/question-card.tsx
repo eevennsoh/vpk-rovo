@@ -27,8 +27,10 @@ export interface QuestionCardProps extends Omit<React.ComponentProps<"div">, "on
 	isSubmitting?: boolean;
 	/** Called with the collected answers when the user completes all questions or clicks Submit. */
 	onSubmit: (answers: QuestionCardAnswers) => void;
-	/** Called when the user dismisses the card (Escape or Skip on last question). When omitted, the dismiss button is hidden. */
+	/** Called when the user dismisses the card (Escape, Skip for deferred cards, or header close). When omitted, the dismiss button is hidden. */
 	onDismiss?: () => void;
+	/** When set, Skip closes the whole card (deferred clarification); parent should cancel the tool in `onDismiss`. */
+	toolCallId?: string;
 	/** Maximum number of pre-defined options to display per question. Additional options are truncated. @default 4 */
 	maxVisibleOptions?: number;
 	/** Placeholder text for the free-form custom input row. @default "Tell Rovo what to do..." */
@@ -220,6 +222,7 @@ function QuestionCard({
 	isSubmitting = false,
 	onSubmit,
 	onDismiss,
+	toolCallId,
 	maxVisibleOptions = DEFAULT_MAX_VISIBLE_OPTIONS,
 	customInputPlaceholder = DEFAULT_CUSTOM_INPUT_PLACEHOLDER,
 	showCustomInput = true,
@@ -255,6 +258,7 @@ function QuestionCard({
 		defaultAnswers,
 		onSubmit,
 		onDismiss,
+		toolCallId,
 	});
 
 	return (

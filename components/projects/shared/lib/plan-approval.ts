@@ -1,4 +1,5 @@
 import type { ParsedPlanTask, ParsedPlanWidgetPayload } from "@/components/projects/shared/lib/plan-widget";
+import type { RovoUIMessage } from "@/lib/rovo-ui-messages";
 
 export type PlanApprovalDecision =
 	| "auto-accept"
@@ -84,7 +85,41 @@ export function createPlanApprovalSubmission(
 export function planWidgetRequiresApproval(
 	planWidget: ParsedPlanWidgetPayload | null,
 ): boolean {
-	return Boolean(planWidget?.deferredToolCallId);
+	if (!planWidget) {
+		return false;
+	}
+
+	if (planWidget.deferredToolCallId) {
+		return true;
+	}
+
+	return planWidget.tasks.length > 0;
+}
+
+export function findAcceptedPlanKey(
+	messages: ReadonlyArray<RovoUIMessage>,
+): string | null {
+	for (let index = messages.length - 1; index >= 0; index -= 1) {
+		const message = messages[index];
+		if (message.role !== "user") {
+			continue;
+		}
+
+		if (message.metadata?.source !== "plan-approval-submit") {
+			continue;
+		}
+
+		if (message.metadata?.planApprovalDecision !== "auto-accept") {
+			continue;
+		}
+
+		const planKey = message.metadata?.planApprovalPlanKey;
+		if (typeof planKey === "string" && planKey.trim()) {
+			return planKey;
+		}
+	}
+
+	return null;
 }
 
 export function getPlanApprovalKeyFromPlanWidget(

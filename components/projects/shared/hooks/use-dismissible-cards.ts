@@ -4,7 +4,10 @@ import { useCallback, useMemo, useState } from "react";
 import type { RovoUIMessage } from "@/lib/rovo-ui-messages";
 import { parsePlanWidgetPayload } from "@/components/projects/shared/lib/plan-widget";
 import type { ParsedPlanWidgetPayload } from "@/components/projects/shared/lib/plan-widget";
-import type { ParsedQuestionCardPayload } from "@/components/projects/shared/lib/question-card-widget";
+import {
+	getQuestionCardResolutionKey,
+	type ParsedQuestionCardPayload,
+} from "@/components/projects/shared/lib/question-card-widget";
 import { getPlanApprovalKeyFromPlanWidget } from "@/components/projects/shared/lib/plan-approval";
 
 interface UseDismissibleCardsOptions {
@@ -12,8 +15,9 @@ interface UseDismissibleCardsOptions {
 	activePlanWidget: ParsedPlanWidgetPayload | null;
 	messages?: ReadonlyArray<RovoUIMessage>;
 	scopeKey?: string | null;
-	/** Called when a question card is dismissed/skipped. Use to notify the backend. */
-	onDismissQuestionCard?: (questionCard: ParsedQuestionCardPayload) => void;
+	onDismissQuestionCard?: (
+		questionCard: ParsedQuestionCardPayload,
+	) => boolean | Promise<boolean> | void;
 }
 
 interface UseDismissibleCardsReturn {
@@ -22,16 +26,13 @@ interface UseDismissibleCardsReturn {
 	hasBottomOverlayCard: boolean;
 	activeQuestionCardKey: string | null;
 	activePlanKey: string | null;
-	/** Hides the question card without triggering the dismiss callback (for submit — user answered). */
 	hideQuestionCard: () => void;
-	/** Dismisses the question card AND triggers the dismiss callback (for skip/escape — user did NOT answer). */
 	dismissQuestionCard: () => void;
 	dismissApprovalCard: () => void;
 }
 
 function deriveQuestionCardKey(card: ParsedQuestionCardPayload | null): string | null {
-	if (!card) return null;
-	return `${card.sessionId}-${card.round}`;
+	return getQuestionCardResolutionKey(card);
 }
 
 function derivePlanKey(plan: ParsedPlanWidgetPayload | null): string | null {
@@ -166,13 +167,30 @@ export function useDismissibleCards({
 	}, [activeQuestionCardKey, resolvedScopeKey]);
 
 	const dismissQuestionCard = useCallback(() => {
-		setDismissedQuestionCardByScope((previousState) => ({
-			...previousState,
-			[resolvedScopeKey]: activeQuestionCardKey,
-		}));
-		if (activeQuestionCard) {
-			onDismissQuestionCard?.(activeQuestionCard);
-		}
+		void (async () => {
+			let shouldDismiss = true;
+			if (activeQuestionCard) {
+				try {
+					const dismissResult = await onDismissQuestionCard?.(activeQuestionCard);
+					shouldDismiss = dismissResult !== false;
+				} catch (error) {
+					console.warn(
+						"[dismissible-cards] Failed to dismiss question card:",
+						error,
+					);
+					shouldDismiss = false;
+				}
+			}
+
+			if (!shouldDismiss) {
+				return;
+			}
+
+			setDismissedQuestionCardByScope((previousState) => ({
+				...previousState,
+				[resolvedScopeKey]: activeQuestionCardKey,
+			}));
+		})();
 	}, [
 		activeQuestionCardKey,
 		activeQuestionCard,

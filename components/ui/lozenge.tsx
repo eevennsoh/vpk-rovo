@@ -13,16 +13,11 @@ import { cn } from "@/lib/utils"
 
 const lozengeToneClasses = {
 	neutral: "border-border-bold bg-bg-neutral text-text-subtle",
-	success:
-		"border-border-success bg-bg-success text-text-success dark:border-lime-400 dark:bg-lime-900 dark:text-lime-100",
-	danger:
-		"border-border-danger bg-bg-danger text-text-danger dark:border-red-500 dark:bg-red-900 dark:text-red-100",
-	information:
-		"border-border-information bg-bg-information text-text-information dark:border-blue-500 dark:bg-blue-900 dark:text-blue-100",
-	discovery:
-		"border-border-discovery bg-bg-discovery text-text-discovery dark:border-purple-500 dark:bg-purple-900 dark:text-purple-100",
-	warning:
-		"border-border-warning bg-bg-warning text-text-warning dark:border-orange-400 dark:bg-orange-900 dark:text-orange-100",
+	success: "border-border-success bg-bg-success text-text-success",
+	danger: "border-border-danger bg-bg-danger text-text-danger",
+	information: "border-border-information bg-bg-information text-text-information",
+	discovery: "border-border-discovery bg-bg-discovery text-text-discovery",
+	warning: "border-border-warning bg-bg-warning text-text-warning",
 	"accent-red":
 		"border-red-200 bg-red-100 text-red-900 dark:border-red-500 dark:bg-red-900 dark:text-red-100",
 	"accent-orange":
@@ -47,11 +42,11 @@ const lozengeToneClasses = {
 
 const lozengeLeadingIconToneClasses = {
 	neutral: "text-icon-subtle",
-	success: "text-icon-success dark:text-lime-400",
-	danger: "text-icon-danger dark:text-red-400",
-	information: "text-icon-information dark:text-blue-400",
-	discovery: "text-icon-discovery dark:text-purple-400",
-	warning: "text-icon-warning dark:text-orange-400",
+	success: "text-icon-success",
+	danger: "text-icon-danger",
+	information: "text-icon-information",
+	discovery: "text-icon-discovery",
+	warning: "text-icon-warning",
 	"accent-red": "text-red-700 dark:text-red-400",
 	"accent-orange": "text-orange-700 dark:text-orange-400",
 	"accent-yellow": "text-yellow-700 dark:text-yellow-400",
@@ -68,15 +63,15 @@ const lozengeTriggerToneClasses = {
 	neutral:
 		"border-border-bold bg-bg-neutral text-text-subtle hover:bg-bg-neutral-hovered active:bg-bg-neutral-pressed data-[selected=true]:bg-bg-neutral-hovered",
 	success:
-		"border-border-success bg-bg-success text-text-success hover:bg-bg-success-hovered active:bg-bg-success-pressed data-[selected=true]:bg-bg-success-hovered dark:border-lime-400 dark:bg-lime-900 dark:text-lime-100 dark:hover:border-lime-300 dark:hover:bg-lime-700 dark:active:border-lime-200 dark:active:bg-lime-600 dark:data-[selected=true]:border-lime-200 dark:data-[selected=true]:bg-lime-600",
+		"border-border-success bg-bg-success text-text-success hover:bg-bg-success-hovered active:bg-bg-success-pressed data-[selected=true]:bg-bg-success-hovered",
 	danger:
-		"border-border-danger bg-bg-danger text-text-danger hover:bg-bg-danger-hovered active:bg-bg-danger-pressed data-[selected=true]:bg-bg-danger-hovered dark:border-red-500 dark:bg-red-900 dark:text-red-100 dark:hover:border-red-300 dark:hover:bg-red-700 dark:active:border-red-200 dark:active:bg-red-600 dark:data-[selected=true]:border-red-200 dark:data-[selected=true]:bg-red-600",
+		"border-border-danger bg-bg-danger text-text-danger hover:bg-bg-danger-hovered active:bg-bg-danger-pressed data-[selected=true]:bg-bg-danger-hovered",
 	information:
-		"border-border-information bg-bg-information text-text-information hover:bg-bg-information-hovered active:bg-bg-information-pressed data-[selected=true]:bg-bg-information-hovered dark:border-blue-500 dark:bg-blue-900 dark:text-blue-100 dark:hover:border-blue-300 dark:hover:bg-blue-700 dark:active:border-blue-200 dark:active:bg-blue-600 dark:data-[selected=true]:border-blue-200 dark:data-[selected=true]:bg-blue-600",
+		"border-border-information bg-bg-information text-text-information hover:bg-bg-information-hovered active:bg-bg-information-pressed data-[selected=true]:bg-bg-information-hovered",
 	discovery:
-		"border-border-discovery bg-bg-discovery text-text-discovery hover:bg-bg-discovery-hovered active:bg-bg-discovery-pressed data-[selected=true]:bg-bg-discovery-hovered dark:border-purple-500 dark:bg-purple-900 dark:text-purple-100 dark:hover:border-purple-300 dark:hover:bg-purple-700 dark:active:border-purple-200 dark:active:bg-purple-600 dark:data-[selected=true]:border-purple-200 dark:data-[selected=true]:bg-purple-600",
+		"border-border-discovery bg-bg-discovery text-text-discovery hover:bg-bg-discovery-hovered active:bg-bg-discovery-pressed data-[selected=true]:bg-bg-discovery-hovered",
 	warning:
-		"border-border-warning bg-bg-warning text-text-warning hover:bg-bg-warning-hovered active:bg-bg-warning-pressed data-[selected=true]:bg-bg-warning-hovered dark:border-orange-400 dark:bg-orange-900 dark:text-orange-100 dark:hover:border-orange-200 dark:hover:bg-orange-700 dark:active:border-orange-100 dark:active:bg-orange-600 dark:data-[selected=true]:border-orange-100 dark:data-[selected=true]:bg-orange-600",
+		"border-border-warning bg-bg-warning text-text-warning hover:bg-bg-warning-hovered active:bg-bg-warning-pressed data-[selected=true]:bg-bg-warning-hovered",
 	"accent-red":
 		"border-red-200 bg-red-100 text-red-900 hover:bg-red-200 active:bg-red-300 data-[selected=true]:bg-red-200 dark:border-red-500 dark:bg-red-900 dark:text-red-100 dark:hover:border-red-300 dark:hover:bg-red-700 dark:active:border-red-200 dark:active:bg-red-600 dark:data-[selected=true]:border-red-200 dark:data-[selected=true]:bg-red-600",
 	"accent-orange":

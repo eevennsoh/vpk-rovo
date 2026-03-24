@@ -2,10 +2,14 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 
 const {
+	buildClarificationMessageMetadata,
+	buildDeferredToolResponse,
 	buildClarificationSummaryDisplayLabel,
 	buildClarificationSummaryPrompt,
 	buildClarificationSummaryRows,
 	createClarificationSubmission,
+	getQuestionCardResolutionKey,
+	hasMatchingClarificationResponse,
 	parseQuestionCardPayload,
 	getLatestQuestionCardPayload,
 } = require("./question-card-widget.ts");
@@ -42,6 +46,20 @@ test("parseQuestionCardPayload preserves both generic and legacy tool call ids",
 	assert.equal(payload.deferredToolCallId, "tool-call-123");
 });
 
+test("parseQuestionCardPayload preserves camelCase deferred tool ids", () => {
+	const payload = parseQuestionCardPayload({
+		type: "question-card",
+		sessionId: "widget-deferred-tool-call-id",
+		toolCallId: "tool-call-456",
+		deferredToolCallId: "deferred-tool-call-456",
+		questions: [{ id: "q-1", label: "What should we do next?" }],
+	});
+
+	assert.ok(payload);
+	assert.equal(payload.toolCallId, "tool-call-456");
+	assert.equal(payload.deferredToolCallId, "deferred-tool-call-456");
+});
+
 test("createClarificationSubmission preserves deferred tool call ids", () => {
 	const submission = createClarificationSubmission(
 		{
@@ -68,6 +86,135 @@ test("createClarificationSubmission preserves deferred tool call ids", () => {
 
 	assert.equal(submission.toolCallId, "tool-call-123");
 	assert.equal(submission.deferredToolCallId, "tool-call-123");
+});
+
+test("getQuestionCardResolutionKey prefers tool call id over session round", () => {
+	const key = getQuestionCardResolutionKey({
+		sessionId: "request-user-input-tool-call-123",
+		round: 2,
+		toolCallId: "tool-call-123",
+		deferredToolCallId: "tool-call-123",
+	});
+
+	assert.equal(key, "tool:tool-call-123");
+});
+
+test("buildClarificationMessageMetadata stores stable clarification identifiers", () => {
+	const metadata = buildClarificationMessageMetadata(
+		{
+			type: "question-card",
+			sessionId: "request-user-input-tool-call-456",
+			round: 1,
+			maxRounds: 1,
+			title: "Answer these questions to continue",
+			requiredCount: 1,
+			deferredToolCallId: "tool-call-456",
+			questions: [
+				{
+					id: "q-1",
+					label: "What should we name it?",
+					required: true,
+					kind: "text",
+					options: [],
+				},
+			],
+		},
+		{
+			answers: { "q-1": "Northstar" },
+			status: "answered",
+		},
+	);
+
+	assert.equal(metadata.source, "clarification-submit");
+	assert.equal(metadata.clarificationToolCallId, "tool-call-456");
+	assert.equal(metadata.clarificationSessionId, "request-user-input-tool-call-456");
+	assert.equal(metadata.clarificationRound, 1);
+	assert.equal(metadata.clarificationStatus, "answered");
+	assert.deepEqual(metadata.clarificationSummary, [
+		{
+			question: "What should we name it?",
+			answer: "Northstar",
+		},
+	]);
+});
+
+test("buildDeferredToolResponse maps selected option ids back to labels", () => {
+	const response = buildDeferredToolResponse(
+		{
+			type: "question-card",
+			sessionId: "widget-tool-call-id",
+			round: 1,
+			maxRounds: 1,
+			title: "Answer these questions to continue",
+			requiredCount: 2,
+			deferredToolCallId: "tool-call-123",
+			questions: [
+				{
+					id: "q-1",
+					label: "What should we build?",
+					required: true,
+					kind: "single-select",
+					options: [
+						{ id: "dashboard", label: "Dashboard" },
+						{ id: "notes", label: "Notes App" },
+					],
+				},
+				{
+					id: "q-2",
+					label: "Which channels matter?",
+					required: true,
+					kind: "multi-select",
+					options: [
+						{ id: "slack", label: "Slack" },
+						{ id: "email", label: "Email" },
+					],
+				},
+			],
+		},
+		{
+			"q-1": "dashboard",
+			"q-2": ["slack", "email"],
+		},
+	);
+
+	assert.deepEqual(response, {
+		tool_call_id: "tool-call-123",
+		result: {
+			"What should we build?": ["Dashboard"],
+			"Which channels matter?": ["Slack", "Email"],
+		},
+	});
+});
+
+test("buildDeferredToolResponse preserves free-text answers", () => {
+	const response = buildDeferredToolResponse(
+		{
+			type: "question-card",
+			sessionId: "widget-free-text",
+			round: 1,
+			maxRounds: 1,
+			title: "Anything else?",
+			requiredCount: 1,
+			toolCallId: "tool-call-456",
+			questions: [
+				{
+					id: "q-1",
+					label: "What should we name it?",
+					required: true,
+					kind: "text",
+					options: [],
+				},
+			],
+		},
+		{ "q-1": "Northstar" },
+	);
+
+	assert.deepEqual(response, {
+		tool_call_id: "tool-call-456",
+		result: {
+			"What should we name it?": ["Northstar"],
+		},
+	});
 });
 
 test("parseQuestionCardPayload defaults invalid kinds to single-select", () => {
@@ -187,6 +334,7 @@ test("getLatestQuestionCardPayload finds a question card even if another widget 
 
 	assert.ok(payload);
 	assert.equal(payload.sessionId, "mixed-widget-order");
+	assert.equal(payload.sourceMessageId, "assistant-1");
 });
 
 test("getLatestQuestionCardPayload returns null after a newer user message", () => {
@@ -212,6 +360,199 @@ test("getLatestQuestionCardPayload returns null after a newer user message", () 
 			id: "user-2",
 			role: "user",
 			parts: [{ type: "text", text: "Here are my answers", state: "done" }],
+		},
+	]);
+
+	assert.equal(payload, null);
+});
+
+test("getLatestQuestionCardPayload ignores question cards on interrupted assistant turns", () => {
+	const payload = getLatestQuestionCardPayload([
+		{
+			id: "user-1",
+			role: "user",
+			parts: [{ type: "text", text: "Create a feature", state: "done" }],
+		},
+		{
+			id: "assistant-1",
+			role: "assistant",
+			metadata: {
+				interruption: {
+					status: "interrupted",
+					source: "user-stop",
+					interruptedAt: "2026-03-22T07:20:48.164Z",
+				},
+			},
+			parts: [
+				{
+					type: "data-widget-data",
+					data: {
+						type: "question-card",
+						payload: {
+							type: "question-card",
+							sessionId: "interrupted-card",
+							tool_call_id: "tool-call-999",
+							questions: [{ id: "q-1", label: "What kind of feature would you like to build?" }],
+						},
+					},
+				},
+			],
+		},
+	]);
+
+	assert.equal(payload, null);
+});
+
+test("getLatestQuestionCardPayload tags repeated tool-call cards with the latest assistant message id", () => {
+	const payload = getLatestQuestionCardPayload([
+		{
+			id: "assistant-1",
+			role: "assistant",
+			parts: [
+				{
+					type: "data-widget-data",
+					data: {
+						type: "question-card",
+						payload: {
+							type: "question-card",
+							sessionId: "same-session",
+							tool_call_id: "tool-call-123",
+							questions: [{ id: "q-1", label: "First round?" }],
+						},
+					},
+				},
+			],
+		},
+		{
+			id: "user-1",
+			role: "user",
+			parts: [{ type: "text", text: "Answer set one", state: "done" }],
+		},
+		{
+			id: "assistant-2",
+			role: "assistant",
+			parts: [
+				{
+					type: "data-widget-data",
+					data: {
+						type: "question-card",
+						payload: {
+							type: "question-card",
+							sessionId: "same-session",
+							tool_call_id: "tool-call-123",
+							questions: [{ id: "q-1", label: "Second round?" }],
+						},
+					},
+				},
+			],
+		},
+	]);
+
+	assert.ok(payload);
+	assert.equal(payload.toolCallId, "tool-call-123");
+	assert.equal(payload.sourceMessageId, "assistant-2");
+	assert.equal(payload.questions[0].label, "Second round?");
+});
+
+test("hasMatchingClarificationResponse matches exact tool call ids only", () => {
+	const questionCard = parseQuestionCardPayload({
+		type: "question-card",
+		sessionId: "request-user-input-tool-call-123",
+		tool_call_id: "tool-call-123",
+		questions: [{ id: "q-1", label: "What should we build?" }],
+	});
+	assert.ok(questionCard);
+
+	const messages = [
+		{
+			id: "assistant-1",
+			role: "assistant",
+			parts: [],
+		},
+		{
+			id: "user-1",
+			role: "user",
+			metadata: {
+				source: "clarification-submit",
+				clarificationToolCallId: "tool-call-999",
+				clarificationSessionId: "request-user-input-tool-call-999",
+				clarificationRound: 1,
+				clarificationStatus: "answered",
+			},
+			parts: [{ type: "text", text: "Wrong answer", state: "done" }],
+		},
+		{
+			id: "user-2",
+			role: "user",
+			metadata: {
+				source: "clarification-submit",
+				clarificationToolCallId: "tool-call-123",
+				clarificationSessionId: "request-user-input-tool-call-123",
+				clarificationRound: 1,
+				clarificationStatus: "answered",
+			},
+			parts: [{ type: "text", text: "Correct answer", state: "done" }],
+		},
+	];
+
+	assert.equal(
+		hasMatchingClarificationResponse(messages, {
+			...questionCard,
+			sourceMessageId: "assistant-1",
+		}),
+		true,
+	);
+});
+
+test("getLatestQuestionCardPayload ignores a replayed card once the matching clarification was already submitted", () => {
+	const payload = getLatestQuestionCardPayload([
+		{
+			id: "assistant-1",
+			role: "assistant",
+			parts: [
+				{
+					type: "data-widget-data",
+					data: {
+						type: "question-card",
+						payload: {
+							type: "question-card",
+							sessionId: "request-user-input-tool-call-123",
+							tool_call_id: "tool-call-123",
+							questions: [{ id: "q-1", label: "What should we build?" }],
+						},
+					},
+				},
+			],
+		},
+		{
+			id: "user-1",
+			role: "user",
+			metadata: {
+				source: "clarification-submit",
+				clarificationToolCallId: "tool-call-123",
+				clarificationSessionId: "request-user-input-tool-call-123",
+				clarificationRound: 1,
+				clarificationStatus: "answered",
+			},
+			parts: [{ type: "text", text: "Build a dashboard", state: "done" }],
+		},
+		{
+			id: "assistant-2",
+			role: "assistant",
+			parts: [
+				{
+					type: "data-widget-data",
+					data: {
+						type: "question-card",
+						payload: {
+							type: "question-card",
+							sessionId: "request-user-input-tool-call-123",
+							tool_call_id: "tool-call-123",
+							questions: [{ id: "q-1", label: "What should we build?" }],
+						},
+					},
+				},
+			],
 		},
 	]);
 
@@ -357,7 +698,7 @@ test("buildClarificationSummaryDisplayLabel reflects captured answer count", () 
 	);
 });
 
-test("buildClarificationSummaryPrompt uses explicit directive when present", () => {
+test("buildClarificationSummaryPrompt includes only answers without directives", () => {
 	const parsedPayload = parseQuestionCardPayload({
 		type: "question-card",
 		sessionId: "summary-directive",
@@ -383,11 +724,12 @@ test("buildClarificationSummaryPrompt uses explicit directive when present", () 
 
 	assert.match(prompt, /Here are my clarification answers for "Atlassian Stock Price Chart":/);
 	assert.match(prompt, /Line chart/);
-	assert.match(prompt, /json-render UI widget/i);
-	assert.doesNotMatch(prompt, /create-plan skill/i);
+	// Directives should not appear in the user-visible prompt
+	assert.doesNotMatch(prompt, /json-render UI widget/i);
+	assert.doesNotMatch(prompt, /continue the user's original request/i);
 });
 
-test("buildClarificationSummaryPrompt falls back to neutral continuation directive", () => {
+test("buildClarificationSummaryPrompt omits default directive", () => {
 	const parsedPayload = parseQuestionCardPayload({
 		type: "question-card",
 		sessionId: "summary-neutral",
@@ -407,8 +749,38 @@ test("buildClarificationSummaryPrompt falls back to neutral continuation directi
 		"q-1": "answer",
 	});
 
-	assert.match(prompt, /continue the user's original request now/i);
-	assert.match(prompt, /format that best matches the request/i);
-	assert.doesNotMatch(prompt, /create-plan skill/i);
+	assert.match(prompt, /Here are my clarification answers/);
+	assert.match(prompt, /A direct answer/);
+	// No directive text should be present
+	assert.doesNotMatch(prompt, /continue the user's original request now/i);
+	assert.doesNotMatch(prompt, /format that best matches the request/i);
 	assert.doesNotMatch(prompt, /plan widget/i);
+});
+
+test("buildClarificationSummaryPrompt contains only title and answers", () => {
+	const parsedPayload = parseQuestionCardPayload({
+		type: "question-card",
+		sessionId: "summary-plan-override",
+		title: "Clarify this plan request",
+		questions: [
+			{
+				id: "q-1",
+				label: "What outcome do you want?",
+				kind: "single-select",
+				options: [{ id: "task-manager", label: "Task Manager" }],
+			},
+		],
+	});
+	assert.ok(parsedPayload);
+
+	const prompt = buildClarificationSummaryPrompt(parsedPayload, {
+		"q-1": "task-manager",
+	});
+
+	assert.match(prompt, /Here are my clarification answers for "Clarify this plan request":/);
+	assert.match(prompt, /Task Manager/);
+	// No plan-mode directives should leak into the visible prompt
+	assert.doesNotMatch(prompt, /Plan mode is still active/i);
+	assert.doesNotMatch(prompt, /exit_plan_mode/i);
+	assert.doesNotMatch(prompt, /continue the user's original request/i);
 });

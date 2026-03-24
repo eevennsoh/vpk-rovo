@@ -95,6 +95,25 @@ const WEB_SEARCH_INSTRUCTION = [
 	"[End Web Search Protocol]",
 ].join("\n");
 
+const DEEP_PLAN_INSTRUCTION = [
+	"[Deep Plan Protocol]",
+	"When plan mode is active, you are in the serve planning workflow. Follow these rules strictly:",
+	"",
+	"1. Q&A BEFORE plan: If the user's request is ambiguous, under-specified, or missing essential build details, call `ask_user_questions` BEFORE `exit_plan_mode` to gather requirements. If the prompt is already specific enough, you may skip straight to `exit_plan_mode`. If you ask clarifying questions first, the very next turn after the user answers must call `exit_plan_mode` unless a hard blocker still makes planning impossible. IMPORTANT: If the context includes an `[ask_user_questions Result]` block, clarification has ALREADY been answered — do NOT call `ask_user_questions` again. Proceed directly to `exit_plan_mode`.",
+	"2. NEVER Q&A AFTER plan: Once you have called `exit_plan_mode` in a turn, do NOT call `ask_user_questions` in that same turn. Further iteration happens through subsequent messages.",
+	"3. MUST use `exit_plan_mode`: In plan mode, always present plans via `exit_plan_mode`. Never output plan content as free-form text, GenUI spec cards, update_todo output, or any other format — the planning UI depends on `exit_plan_mode` to render correctly.",
+	"4. Plan handoff is mandatory for build requests: Do quick exploration as needed, but finish the planning interaction by calling `exit_plan_mode`. Do not treat `invoke_subagents`, `get_skill`, or plain text as a substitute for the plan handoff.",
+	"4a. If you use `invoke_subagents` during plan mode, you must still continue the same planning turn until you call `exit_plan_mode`. Do not stop after subagent exploration. Do not end the turn with exploratory text alone.",
+	"5. Implementation happens after approval: After the user approves the plan, the host will switch you back to `default` mode before implementation. Do not start implementing while plan mode is still active.",
+	"5. Plan structure: The plan output passed to `exit_plan_mode` must include:",
+	"   - A clear overview of the approach",
+	"   - Numbered tasks, each with a name and description",
+	"   - Task dependencies (e.g. \"Task 3 depends on Task 1, 2\")",
+	"   - Each task should be independently executable",
+	"6. One plan per turn: Call `exit_plan_mode` at most once per turn.",
+	"[End Deep Plan Protocol]",
+].join("\n");
+
 const PLAIN_CHAT_INSTRUCTION = [
 	"[Plain Chat Mode]",
 	"This is a simple conversational turn. Respond directly, briefly, and naturally.",
@@ -293,15 +312,30 @@ function buildQuestionCardSkipNotification(questionTitle) {
 	].join("\n");
 }
 
-function getInstructionBlocksForProfile(profile, promptSpecificInstruction) {
+function isPlanModeContext(contextDescription) {
+	if (typeof contextDescription !== "string" || contextDescription.trim().length === 0) {
+		return false;
+	}
+
+	return (
+		contextDescription.includes("Plan mode is enabled.") ||
+		contextDescription.includes("[POST-CLARIFICATION — Plan Mode]") ||
+		contextDescription.includes("exit_plan_mode")
+	);
+}
+
+function getInstructionBlocksForProfile(profile, promptSpecificInstruction, contextDescription) {
 	if (profile === "plain-chat") {
 		return [PLAIN_CHAT_INSTRUCTION, promptSpecificInstruction];
 	}
 
+	const planModeContextActive = isPlanModeContext(contextDescription);
+
 	return [
 		REQUEST_USER_INPUT_INSTRUCTION,
 		PLAN_DESCRIPTION_INSTRUCTION,
-		GENUI_SPEC_INSTRUCTION,
+		DEEP_PLAN_INSTRUCTION,
+		planModeContextActive ? null : GENUI_SPEC_INSTRUCTION,
 		EXECUTION_TRACE_INSTRUCTION,
 		FIGMA_CLARIFICATION_INSTRUCTION,
 		WEB_SEARCH_INSTRUCTION,
@@ -338,7 +372,8 @@ function buildUserMessage(
 	);
 	const instructions = getInstructionBlocksForProfile(
 		profile,
-		promptSpecificInstruction
+		promptSpecificInstruction,
+		contextDescription,
 	)
 		.filter((entry) => typeof entry === "string" && entry.trim().length > 0)
 		.join("\n\n");
@@ -361,4 +396,5 @@ function buildUserMessage(
 module.exports = {
 	buildUserMessage,
 	buildQuestionCardSkipNotification,
+	DEEP_PLAN_INSTRUCTION,
 };

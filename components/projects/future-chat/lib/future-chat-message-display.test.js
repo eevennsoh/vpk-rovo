@@ -7,6 +7,7 @@ const {
 	sanitizeFutureChatAssistantText,
 	shouldRenderFutureChatAssistantActions,
 	shouldRenderFutureChatAssistantMessage,
+	shouldRenderFutureChatVisibleWidget,
 	shouldRenderFutureChatWidget,
 } = require("./future-chat-message-display.ts");
 
@@ -68,7 +69,6 @@ test("shouldRenderFutureChatAssistantActions hides actions for the active in-fli
 			hasArtifactCard: false,
 			hasAssistantText: false,
 			hasInterruption: false,
-			hasReasoning: false,
 			hasSources: false,
 			hasWidget: false,
 			hasWidgetError: false,
@@ -85,7 +85,6 @@ test("shouldRenderFutureChatAssistantActions shows actions for settled assistant
 			hasArtifactCard: false,
 			hasAssistantText: true,
 			hasInterruption: false,
-			hasReasoning: false,
 			hasSources: false,
 			hasWidget: false,
 			hasWidgetError: false,
@@ -93,6 +92,39 @@ test("shouldRenderFutureChatAssistantActions shows actions for settled assistant
 			isResponseInFlight: false,
 		}),
 		true,
+	);
+});
+
+test("shouldRenderFutureChatVisibleWidget hides resolved question cards", () => {
+	assert.equal(
+		shouldRenderFutureChatVisibleWidget({
+			hasWidget: true,
+			shouldHideResolvedQuestionCard: true,
+		}),
+		false,
+	);
+	assert.equal(
+		shouldRenderFutureChatVisibleWidget({
+			hasWidget: true,
+			shouldHideResolvedQuestionCard: false,
+		}),
+		true,
+	);
+});
+
+test("shouldRenderFutureChatAssistantActions hides actions for settled reasoning-only output", () => {
+	assert.equal(
+		shouldRenderFutureChatAssistantActions({
+			hasArtifactCard: false,
+			hasAssistantText: false,
+			hasInterruption: false,
+			hasSources: false,
+			hasWidget: false,
+			hasWidgetError: false,
+			isLastAssistant: true,
+			isResponseInFlight: false,
+		}),
+		false,
 	);
 });
 

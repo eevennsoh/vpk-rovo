@@ -76,6 +76,14 @@ test("resolveToolFirstPolicy matches explicit Google Translate prompts", () => {
 	assert.ok(policy.domains.includes("google-translate"));
 });
 
+test("resolveToolFirstPolicy does not match generic single-page app sizing language as Confluence", () => {
+	const policy = resolveToolFirstPolicy({
+		prompt: "Build a dashboard app for data visualization and start with a single page",
+	});
+
+	assert.equal(policy.domains.includes("confluence"), false);
+});
+
 test("resolveToolFirstPolicy matches figma design-context prompts", () => {
 	const policy = resolveToolFirstPolicy({
 		prompt: "Get Figma design context",
@@ -117,6 +125,15 @@ test("isToolNameRelevant matches Atlassian Google Drive URL bridge tools", () =>
 	const relevant = isToolNameRelevant({
 		toolName: "google_google_drive_atlassian_url_get_content",
 		domains: ["google-drive-docs"],
+	});
+
+	assert.equal(relevant, true);
+});
+
+test("planning-orchestration treats exit_plan_mode as a relevant tool", () => {
+	const relevant = isToolNameRelevant({
+		toolName: "exit_plan_mode",
+		domains: ["planning-orchestration"],
 	});
 
 	assert.equal(relevant, true);
@@ -198,6 +215,27 @@ test("fallback text explains text-only mode when tools fail", () => {
 	assert.match(message, /couldn't verify a successful/i);
 	assert.match(message, /Last relevant tool/i);
 	assert.match(message, /re-authenticate/i);
+});
+
+test("planning-orchestration fallback avoids URL-or-ID recovery instructions", () => {
+	const policy = {
+		matched: true,
+		domains: ["planning-orchestration"],
+		relevanceDomains: ["planning-orchestration"],
+		domainLabels: ["Planning & Orchestration"],
+	};
+	const state = createToolFirstExecutionState(policy);
+	recordToolFirstAttempt(state);
+
+	const message = buildToolFirstTextFallback({
+		policy,
+		execution: state,
+		rovoDevFallback: false,
+	});
+
+	assert.match(message, /planning handoff tool/i);
+	assert.match(message, /exit_plan_mode/i);
+	assert.doesNotMatch(message, /resource identifiers|URL\/ID/i);
 });
 
 test("buildToolContextForGenui includes relevant result summaries", () => {

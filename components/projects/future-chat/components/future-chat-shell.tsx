@@ -3,7 +3,6 @@
 import type { FileUIPart } from "ai";
 import { AnimatePresence, motion } from "motion/react";
 import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FileTextIcon } from "lucide-react";
 import { CreateButton } from "@/components/blocks/top-navigation/components/create-button";
 import { FutureChatArtifactPanel } from "@/components/projects/future-chat/components/future-chat-artifact-panel";
 import { FutureChatHeader } from "@/components/projects/future-chat/components/future-chat-header";
@@ -14,11 +13,15 @@ import { type FutureChatSteeringPhase } from "@/components/projects/future-chat/
 import { useArtifactAnnotations } from "@/components/projects/future-chat/hooks/use-artifact-annotations";
 import { useFutureChat } from "@/components/projects/future-chat/hooks/use-future-chat";
 import {
-	getFutureChatPrimaryArtifact,
 	sortFutureChatArtifacts,
 } from "@/components/projects/future-chat/lib/future-chat-artifacts";
 import { resolveFutureChatComposerPlaceholder } from "@/components/projects/future-chat/lib/future-chat-composer-placeholder";
-import { getFutureChatShellLayout } from "@/components/projects/future-chat/lib/future-chat-shell-layout";
+import {
+	FUTURE_CHAT_MAX_CHAT_PANE_WIDTH,
+	FUTURE_CHAT_MIN_ARTIFACT_PANE_WIDTH,
+	FUTURE_CHAT_MIN_CHAT_PANE_WIDTH,
+	getFutureChatShellLayout,
+} from "@/components/projects/future-chat/lib/future-chat-shell-layout";
 import { getFutureChatSmartGenerationLayoutContext } from "@/components/projects/future-chat/lib/future-chat-smart-generation-layout";
 import { buildFutureChatThreadPath } from "@/components/projects/future-chat/lib/future-chat-thread-route-sync";
 import { createFutureChatUserMessage } from "@/components/projects/future-chat/lib/future-chat-user-message";
@@ -41,19 +44,11 @@ import {
 	TOP_NAV_PADDING_PX,
 } from "@/components/blocks/top-navigation/layout-constants";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import SearchIcon from "@atlaskit/icon/core/search";
 import { SidebarProvider } from "@/components/ui/sidebar";
-import { Button } from "@/components/ui/button";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuGroup,
-	DropdownMenuItem,
-	DropdownMenuLabel,
-	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Footer } from "@/components/ui/footer";
-import { cn, createId } from "@/lib/utils";
+import { clamp, cn, createId } from "@/lib/utils";
 import { token } from "@/lib/tokens";
 import {
 	getLatestUserMessageId,
@@ -64,13 +59,10 @@ import {
 import { ClarificationQuestionCard } from "@/components/projects/shared/components/clarification-question-card";
 import { QuestionCardShortcutsFooter } from "@/components/projects/shared/components/question-card-shortcuts-footer";
 import { getLatestQuestionCardPayload, type ClarificationAnswers } from "@/components/projects/shared/lib/question-card-widget";
-import { getLatestPlanWidgetPayload } from "@/components/projects/shared/lib/plan-widget";
-import {
-	planWidgetRequiresApproval,
-	type PlanApprovalSelection,
-} from "@/components/projects/shared/lib/plan-approval";
-import { ApprovalCard } from "@/components/blocks/approval-card/page";
+import { getLatestPlanWidgetPayload, type ParsedPlanWidgetPayload } from "@/components/projects/shared/lib/plan-widget";
+import type { PlanApprovalSelection } from "@/components/projects/shared/lib/plan-approval";
 import { useDismissibleCards } from "@/components/projects/shared/hooks/use-dismissible-cards";
+import { ApprovalCard } from "@/components/blocks/approval-card/page";
 
 interface FutureChatShellProps {
 	embedded?: boolean;
@@ -84,6 +76,8 @@ const HOME_SUGGESTIONS = DEFAULT_PROMPT_GALLERY_SUGGESTIONS.slice(0, 3);
 const DEFAULT_COMPOSER_PLACEHOLDER = "Ask, @mention, or / for skills";
 const REALTIME_THREAD_SUMMARY_MAX_MESSAGES = 10;
 const REALTIME_RESULT_SUMMARY_MAX_CHARS = 500;
+const FUTURE_CHAT_SPLIT_CHAT_PANEL_ID = "future-chat-chat-pane";
+const FUTURE_CHAT_SPLIT_ARTIFACT_PANEL_ID = "future-chat-artifact-pane";
 
 function parseCssDurationMs(value: string): number | null {
 	const trimmedValue = value.trim();
@@ -387,7 +381,7 @@ export function FutureChatShell({
 	useEffect(() => {
 		if (chat.sidebarOpen !== globalSidebarVisibleRef.current) {
 			globalSidebarVisibleRef.current = chat.sidebarOpen;
-			globalSidebar.toggleSidebar();
+			globalSidebar.setSidebarVisible(chat.sidebarOpen);
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps -- only react to local sidebar changes
 	}, [chat.sidebarOpen]);
@@ -500,16 +494,10 @@ export function FutureChatShell({
 	// Question card / clarification support
 	const activeQuestionCard = useMemo(() => getLatestQuestionCardPayload(chat.messages), [chat.messages]);
 	const activePlanWidget = useMemo(() => getLatestPlanWidgetPayload(chat.messages), [chat.messages]);
-	const { submitClarification, submitClarificationDismiss, submitPlanApproval } = chat;
-	const handleClarificationDismiss = useCallback(
-		(questionCard: typeof activeQuestionCard & {}) => {
-			void submitClarificationDismiss(questionCard);
-		},
-		[submitClarificationDismiss],
-	);
+	const { submitClarification, submitPlanApproval } = chat;
 	const {
 		shouldShowQuestionCard: shouldShowQuestionCardRaw,
-		shouldShowApprovalCard: shouldShowApprovalCardRaw,
+		shouldShowApprovalCard,
 		activeQuestionCardKey,
 		activePlanKey,
 		hideQuestionCard,
@@ -519,13 +507,10 @@ export function FutureChatShell({
 		activeQuestionCard,
 		activePlanWidget,
 		messages: chat.messages,
-		onDismissQuestionCard: handleClarificationDismiss,
+		onDismissQuestionCard: chat.cancelClarificationQuestionSet,
 	});
-	const shouldShowQuestionCard = !chat.isStreaming && shouldShowQuestionCardRaw;
-	const shouldShowApprovalCard =
-		!chat.isStreaming &&
-		shouldShowApprovalCardRaw &&
-		planWidgetRequiresApproval(activePlanWidget);
+	const isDeferredQuestionCard = Boolean(activeQuestionCard?.deferredToolCallId);
+	const shouldShowQuestionCard = shouldShowQuestionCardRaw && (!chat.isStreaming || isDeferredQuestionCard);
 	const handleClarificationSubmit = useCallback(
 		(answers: ClarificationAnswers) => {
 			if (!activeQuestionCard) return;
@@ -533,11 +518,18 @@ export function FutureChatShell({
 		},
 		[activeQuestionCard, submitClarification],
 	);
+	const handleBuildPlan = useCallback(
+		(planWidget: ParsedPlanWidgetPayload) => {
+			void submitPlanApproval(planWidget, { decision: "auto-accept" });
+		},
+		[submitPlanApproval],
+	);
+	const gatedShouldShowApprovalCard = shouldShowApprovalCard && !chat.isStreaming;
 	const handleApprovalSubmit = useCallback(
 		(selection: PlanApprovalSelection) => {
 			if (!activePlanWidget) return;
-			void submitPlanApproval(activePlanWidget, selection);
 			dismissApprovalCard();
+			void submitPlanApproval(activePlanWidget, selection);
 		},
 		[activePlanWidget, dismissApprovalCard, submitPlanApproval],
 	);
@@ -1415,6 +1407,18 @@ export function FutureChatShell({
 
 		activateTailFollowMode();
 	}, [activateTailFollowMode, realtime.generationState]);
+
+	useEffect(() => {
+		if (
+			typedScrollAnchorSourceRef.current !== "standard" ||
+			chat.isStreaming
+		) {
+			return;
+		}
+
+		activateTailFollowMode();
+	}, [activateTailFollowMode, chat.isStreaming]);
+
 	const visibleWorkspaceDocumentId = chat.visibleArtifactDocumentId;
 	const workspaceDocument = useMemo(() => {
 		return visibleWorkspaceDocumentId &&
@@ -1501,9 +1505,34 @@ export function FutureChatShell({
 		width: 320,
 		height: 96,
 	});
+	const artifactSplitChatPaneWidthRef = useRef<number | null>(null);
 	const artifactLayout = getFutureChatShellLayout(shellSize.width);
 	const shouldSplitArtifactPane =
 		isArtifactOpen && artifactLayout.mode === "split";
+	const splitChatPaneMaxSize = shouldSplitArtifactPane
+		? Math.min(
+				FUTURE_CHAT_MAX_CHAT_PANE_WIDTH,
+				Math.max(
+					FUTURE_CHAT_MIN_CHAT_PANE_WIDTH,
+					shellSize.width - FUTURE_CHAT_MIN_ARTIFACT_PANE_WIDTH,
+				),
+			)
+		: FUTURE_CHAT_MAX_CHAT_PANE_WIDTH;
+	const splitChatPaneDefaultSize = shouldSplitArtifactPane
+		? clamp(
+				artifactSplitChatPaneWidthRef.current
+					?? artifactLayout.chatPaneWidth
+					?? FUTURE_CHAT_MIN_CHAT_PANE_WIDTH,
+				FUTURE_CHAT_MIN_CHAT_PANE_WIDTH,
+				splitChatPaneMaxSize,
+			)
+		: FUTURE_CHAT_MIN_CHAT_PANE_WIDTH;
+	const splitArtifactPaneDefaultSize = shouldSplitArtifactPane
+		? Math.max(
+				FUTURE_CHAT_MIN_ARTIFACT_PANE_WIDTH,
+				shellSize.width - splitChatPaneDefaultSize,
+			)
+		: FUTURE_CHAT_MIN_ARTIFACT_PANE_WIDTH;
 
 	useEffect(() => {
 		if (!isRealtimeActive) {
@@ -1618,9 +1647,12 @@ export function FutureChatShell({
 		}
 
 		const updateBounds = () => {
-			setShellSize({
-				width: shellElement.clientWidth,
-				height: shellElement.clientHeight,
+			setShellSize((prev) => {
+				const width = shellElement.clientWidth;
+				const height = shellElement.clientHeight;
+				return prev.width === width && prev.height === height
+					? prev
+					: { width, height };
 			});
 		};
 
@@ -1718,7 +1750,17 @@ export function FutureChatShell({
 		});
 	}, [isArtifactOpen, workspaceDocument?.id]);
 
-	const primaryArtifact = getFutureChatPrimaryArtifact(chat.documents, chat.activeDocument?.id ?? null);
+	const handleArtifactSplitLayoutChanged = useCallback((layout: Record<string, number>) => {
+		const nextChatPanePercentage = layout[FUTURE_CHAT_SPLIT_CHAT_PANEL_ID];
+		if (!Number.isFinite(nextChatPanePercentage) || shellSize.width <= 0) {
+			return;
+		}
+
+		artifactSplitChatPaneWidthRef.current = Math.round(
+			(shellSize.width * nextChatPanePercentage) / 100,
+		);
+	}, [shellSize.width]);
+
 	const sortedArtifacts = sortFutureChatArtifacts(chat.documents);
 	const artifactMenuItems = (() => {
 		const items = sortedArtifacts.map((artifact) => ({
@@ -1745,6 +1787,46 @@ export function FutureChatShell({
 		return items;
 	})();
 
+	const artifactPane = workspaceDocument ? (
+		<FutureChatArtifactPanel
+			annotations={artifactAnnotations}
+			contentRef={artifactContentRef}
+			cursorMode={cursorMode}
+			document={workspaceDocument}
+			draftContent={chat.streamingArtifact?.content ?? chat.artifactDraftContent}
+			isStreamingArtifact={Boolean(chat.streamingArtifact)}
+			mode={chat.artifactMode}
+			onAddComment={addArtifactAnnotationComment}
+			onClose={() => {
+				if (chat.streamingArtifact?.documentId === workspaceDocument.id) {
+					chat.hideArtifactPane();
+					return;
+				}
+
+				chat.hideArtifactPane();
+				chat.setActiveDocumentId(null);
+			}}
+			onCursorModeChange={
+				canAnnotateWorkspaceDocument ? setCursorMode : undefined
+			}
+			onDelete={() => chat.deleteDocument(workspaceDocument.id)}
+			onDraftChange={chat.setArtifactDraftContent}
+			onDismissSelection={dismissArtifactSelection}
+			onModeChange={chat.setArtifactMode}
+			onRemoveAnnotation={removeArtifactAnnotation}
+			onSave={chat.saveArtifactDraft}
+			onVersionChange={(versionId) => {
+				chat.setSelectedVersionId(versionId);
+				const nextVersion =
+					workspaceDocument?.versions.find((version) => version.id === versionId)
+					?? selectedDocumentVersion;
+				chat.setArtifactDraftContent(nextVersion?.content ?? "");
+			}}
+			pendingSelection={pendingArtifactSelection}
+			selectedVersionId={selectedDocumentVersion?.id ?? null}
+		/>
+	) : null;
+
 	const chatPane = (
 		<>
 			<FutureChatMessages
@@ -1755,6 +1837,7 @@ export function FutureChatShell({
 				isStreaming={chat.isStreaming}
 				key={chat.runtimeThreadId}
 				messages={displayMessages}
+				onBuildPlan={handleBuildPlan}
 				onEditMessage={chat.editMessage}
 				onOpenArtifactFromCard={handleOpenArtifactFromCard}
 				onRegisterArtifactCard={handleRegisterArtifactCard}
@@ -1775,7 +1858,7 @@ export function FutureChatShell({
 			<div
 				ref={composerDockRef}
 				className={cn(
-					"z-10 mx-auto flex w-full flex-col gap-3",
+					"z-10 mx-auto flex min-w-0 w-full flex-col gap-3",
 					visibleMessages.length > 0 && "sticky bottom-0 bg-background/90 backdrop-blur",
 					isArtifactOpen ? "max-w-none" : "max-w-[800px]",
 				)}
@@ -1799,16 +1882,14 @@ export function FutureChatShell({
 							/>
 							<QuestionCardShortcutsFooter />
 						</>
-					) : shouldShowApprovalCard && activePlanKey ? (
-						<div className="px-1">
-							<ApprovalCard
-								key={activePlanKey}
-								isSubmitting={chat.isStreaming}
-								onSubmit={handleApprovalSubmit}
-								onDismiss={dismissApprovalCard}
-							/>
-						</div>
-					) : (
+					) : gatedShouldShowApprovalCard && activePlanKey ? (
+						<ApprovalCard
+							key={activePlanKey}
+							isSubmitting={chat.isStreaming}
+							onSubmit={handleApprovalSubmit}
+							onDismiss={dismissApprovalCard}
+						/>
+				) : (
 						<>
 							<FutureChatComposer
 								key={chat.runtimeThreadId}
@@ -1855,6 +1936,21 @@ export function FutureChatShell({
 				) : null}
 			</div>
 		</>
+	);
+
+	const chatPaneContainer = (
+		<div className="overscroll-behavior-contain relative z-10 flex h-full min-w-0 flex-1 flex-col overflow-x-hidden touch-pan-y bg-background">
+			{showHomeState && !shouldSplitArtifactPane ? (
+				<div className="min-h-[40px] flex-1 shrink" />
+			) : null}
+			{chatPane}
+			{showHomeState && !shouldSplitArtifactPane ? (
+				<>
+					<div className="flex-1 shrink" />
+					<Footer className="shrink-0" />
+				</>
+			) : null}
+		</div>
 	);
 
 	return (
@@ -1935,40 +2031,6 @@ export function FutureChatShell({
 								backgroundColor: token("elevation.surface"),
 							}}
 						>
-							{primaryArtifact || artifactMenuItems.length > 0 ? (
-								<div className="flex shrink-0 items-center gap-2">
-									<DropdownMenu>
-										<DropdownMenuTrigger
-											render={(
-												<Button
-													className="h-8 max-w-[13rem] gap-2 px-2 sm:max-w-[16rem]"
-													type="button"
-													variant="outline"
-												/>
-											)}
-										>
-											<FileTextIcon className="size-4" />
-											<span className="truncate">Artifacts</span>
-										</DropdownMenuTrigger>
-										<DropdownMenuContent align="start">
-											<DropdownMenuGroup>
-												<DropdownMenuLabel>
-													{artifactMenuItems.length === 1 ? "Saved artifact" : `${artifactMenuItems.length} saved artifacts`}
-												</DropdownMenuLabel>
-												{artifactMenuItems.map((artifact) => (
-													<DropdownMenuItem
-														onClick={() => void chat.openDocument(artifact.id)}
-														description={artifact.kind}
-														key={artifact.id}
-													>
-														{artifact.title}
-													</DropdownMenuItem>
-												))}
-											</DropdownMenuGroup>
-										</DropdownMenuContent>
-									</DropdownMenu>
-								</div>
-							) : null}
 							<div className="relative flex min-w-0 flex-1 items-center justify-start gap-2">
 								<div
 									ref={nav.searchContainerRef}
@@ -2017,64 +2079,51 @@ export function FutureChatShell({
 						</div>
 					) : null}
 					<FutureChatHeader
+						artifactMenuItems={artifactMenuItems}
+						isArtifactOpen={isArtifactOpen}
 						onNewChat={() => {
 							setOptimisticUserMessage(null);
 							void chat.openNewChat();
 						}}
+						onOpenDocument={(documentId) => void chat.openDocument(documentId)}
 					/>
 					<main
 						ref={shellRef}
 						className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden bg-background text-foreground"
 					>
-						<motion.div
-							layout
-							transition={{
-								type: "spring",
-								stiffness: 300,
-								damping: 30,
-							}}
-							style={
-								shouldSplitArtifactPane
-									? { width: `${artifactLayout.chatPaneWidth ?? shellSize.width}px` }
-									: undefined
-							}
-							className={cn(
-								"overscroll-behavior-contain relative z-10 flex min-w-0 touch-pan-y flex-1 flex-col bg-background",
-								shouldSplitArtifactPane ? "w-full shrink-0 flex-none" : "flex-1",
-							)}
-						>
-							{showHomeState && !shouldSplitArtifactPane ? (
-								<div className="min-h-[40px] flex-1 shrink" />
-							) : null}
-							{chatPane}
-							{showHomeState && !shouldSplitArtifactPane ? (
-								<>
-									<div className="flex-1 shrink" />
-									<Footer className="shrink-0" />
-								</>
-							) : null}
-						</motion.div>
-
-				<AnimatePresence>
-					{workspaceDocument ? (
-						<>
-							{shouldSplitArtifactPane ? (
-								<motion.div
-									animate={{ width: shellSize.width, right: 0 }}
-									className="pointer-events-none absolute top-0 z-0 h-full bg-background"
-									exit={{
-										opacity: 0,
-										transition: { delay: 0.2 },
-									}}
-									initial={{ opacity: 1, width: shellSize.width, right: 0 }}
-									style={{ left: 0 }}
-								/>
-							) : null}
-
-							<motion.div
-								animate={
-									!shouldSplitArtifactPane
-										? {
+						{shouldSplitArtifactPane && artifactPane ? (
+							<ResizablePanelGroup
+								className="h-full w-full"
+								orientation="horizontal"
+								onLayoutChanged={handleArtifactSplitLayoutChanged}
+								resizeTargetMinimumSize={{ coarse: 36, fine: 16 }}
+							>
+								<ResizablePanel
+									defaultSize={splitChatPaneDefaultSize}
+									groupResizeBehavior="preserve-pixel-size"
+									id={FUTURE_CHAT_SPLIT_CHAT_PANEL_ID}
+									minSize={FUTURE_CHAT_MIN_CHAT_PANE_WIDTH}
+								>
+									{chatPaneContainer}
+								</ResizablePanel>
+								<ResizableHandle className="z-20" withHandle />
+								<ResizablePanel
+									defaultSize={splitArtifactPaneDefaultSize}
+									id={FUTURE_CHAT_SPLIT_ARTIFACT_PANEL_ID}
+									minSize={FUTURE_CHAT_MIN_ARTIFACT_PANE_WIDTH}
+								>
+									<div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-background">
+										{artifactPane}
+									</div>
+								</ResizablePanel>
+							</ResizablePanelGroup>
+						) : (
+							<>
+								{chatPaneContainer}
+								<AnimatePresence>
+									{artifactPane ? (
+										<motion.div
+											animate={{
 												opacity: 1,
 												x: 0,
 												y: 0,
@@ -2087,84 +2136,34 @@ export function FutureChatShell({
 													stiffness: 300,
 													damping: 30,
 												},
-										  }
-										: {
-												opacity: 1,
-												x: artifactLayout.artifactPaneX,
-												y: 0,
-												width: artifactLayout.artifactPaneWidth,
-												height: shellSize.height || "100%",
-												borderRadius: 0,
+											}}
+											className="absolute top-0 left-0 z-40 flex h-full flex-col overflow-hidden border-border bg-background md:border-l"
+											exit={{
+												opacity: 0,
+												scale: 0.5,
 												transition: {
-													delay: 0,
+													delay: 0.1,
 													type: "spring",
-													stiffness: 300,
+													stiffness: 600,
 													damping: 30,
 												},
-										  }
-								}
-								className="absolute top-0 left-0 z-40 flex h-full flex-col overflow-hidden border-border bg-background md:border-l"
-								exit={{
-									opacity: 0,
-									scale: 0.5,
-									transition: {
-										delay: 0.1,
-										type: "spring",
-										stiffness: 600,
-										damping: 30,
-									},
-								}}
-								initial={{
-									opacity: 1,
-									x: artifactOrigin.left,
-									y: artifactOrigin.top,
-									width: artifactOrigin.width,
-									height: artifactOrigin.height,
-									borderRadius: 32,
-								}}
-							>
-								<FutureChatArtifactPanel
-									annotations={artifactAnnotations}
-									contentRef={artifactContentRef}
-									cursorMode={cursorMode}
-									document={workspaceDocument}
-									draftContent={chat.streamingArtifact?.content ?? chat.artifactDraftContent}
-									isStreamingArtifact={Boolean(chat.streamingArtifact)}
-									mode={chat.artifactMode}
-									onAddComment={addArtifactAnnotationComment}
-									onClose={() => {
-										if (chat.streamingArtifact?.documentId === workspaceDocument.id) {
-											chat.hideArtifactPane();
-											return;
-										}
-
-										chat.hideArtifactPane();
-										chat.setActiveDocumentId(null);
-									}}
-									onCursorModeChange={
-										canAnnotateWorkspaceDocument ? setCursorMode : undefined
-									}
-									onDelete={() => chat.deleteDocument(workspaceDocument.id)}
-									onDraftChange={chat.setArtifactDraftContent}
-									onDismissSelection={dismissArtifactSelection}
-									onModeChange={chat.setArtifactMode}
-									onRemoveAnnotation={removeArtifactAnnotation}
-									onSave={chat.saveArtifactDraft}
-									onVersionChange={(versionId) => {
-										chat.setSelectedVersionId(versionId);
-										const nextVersion =
-											workspaceDocument?.versions.find((version) => version.id === versionId)
-											?? selectedDocumentVersion;
-										chat.setArtifactDraftContent(nextVersion?.content ?? "");
-									}}
-									pendingSelection={pendingArtifactSelection}
-									selectedVersionId={selectedDocumentVersion?.id ?? null}
-								/>
-							</motion.div>
-						</>
-					) : null}
-				</AnimatePresence>
-			</main>
+											}}
+											initial={{
+												opacity: 1,
+												x: artifactOrigin.left,
+												y: artifactOrigin.top,
+												width: artifactOrigin.width,
+												height: artifactOrigin.height,
+												borderRadius: 32,
+											}}
+										>
+											{artifactPane}
+										</motion.div>
+									) : null}
+								</AnimatePresence>
+							</>
+						)}
+					</main>
 			</div>
 		</SidebarProvider>
 	);

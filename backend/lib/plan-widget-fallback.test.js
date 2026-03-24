@@ -2,6 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 
 const {
+	extractPlanWidgetPayloadFromExitPlanToolInput,
 	extractPlanWidgetPayloadFromText,
 	extractProgressivePlanWidgetPayloadFromText,
 	extractPlanWidgetPayloadFromStructuredText,
@@ -17,6 +18,31 @@ test("extracts tasks from action items section", () => {
 	assert.deepEqual(
 		result.tasks.map((task) => task.label),
 		["Define event goals", "Secure venue", "Create agenda"]
+	);
+});
+
+test("extractPlanWidgetPayloadFromExitPlanToolInput parses JSON tool args", () => {
+	const input = JSON.stringify({
+		plan: [
+			"# Data Visualization Dashboard",
+			"",
+			"## Tasks",
+			"",
+			"### Task 1: Create dashboard page and layout",
+			"Set up the /dashboard route and layout.",
+			"",
+			"### Task 2: Build KPI metrics row",
+			"Add a top row of Metric cards.",
+		].join("\n"),
+	});
+
+	const result = extractPlanWidgetPayloadFromExitPlanToolInput(input, { minTasks: 1 });
+	assert.ok(result);
+	assert.equal(result.title, "Data Visualization Dashboard");
+	assert.match(result.markdown, /# Data Visualization Dashboard/);
+	assert.deepEqual(
+		result.tasks.map((task) => task.label),
+		["Create dashboard page and layout", "Build KPI metrics row"],
 	);
 });
 
@@ -326,4 +352,143 @@ test("flat tasks with no phase keywords remain independent after inference", () 
 	assert.deepEqual(result.tasks[0].blockedBy, []);
 	assert.deepEqual(result.tasks[1].blockedBy, []);
 	assert.deepEqual(result.tasks[2].blockedBy, []);
+});
+
+/* ---- Test Case 6: Plan widget structure (Plan tab + Tasks tab) ---- */
+
+test("exit_plan_mode payload has required structure for frontend PlanTabContent (Test Case 6)", () => {
+	const exitPlanModeMarkdown = [
+		"# React Dashboard Plan",
+		"",
+		"Build a dashboard with three components.",
+		"",
+		"## Action items",
+		"- [ ] Create stats overview card with key metrics",
+		"- [ ] Build recent activity feed with timestamps",
+		"- [ ] Implement notification bell dropdown",
+	].join("\n");
+
+	const payload = extractPlanWidgetPayloadFromText(exitPlanModeMarkdown);
+	assert.ok(payload, "Payload must not be null");
+	assert.strictEqual(payload.type, "plan");
+	assert.ok(typeof payload.title === "string" && payload.title.trim().length > 0,
+		"Plan must have a non-empty title for PlanTitle");
+	assert.equal(payload.description, "Build a dashboard with three components.");
+	assert.ok(Array.isArray(payload.tasks), "Tasks must be an array for PlanTaskList");
+	assert.strictEqual(payload.tasks.length, 3);
+
+	for (const task of payload.tasks) {
+		assert.ok(typeof task.id === "string" && task.id.length > 0,
+			"Each task must have an id for PlanTaskItem key");
+		assert.ok(typeof task.label === "string" && task.label.trim().length > 0,
+			"Each task must have a non-empty label for PlanTaskItem");
+		assert.ok(Array.isArray(task.blockedBy),
+			"Each task must have blockedBy array for dependency rendering");
+	}
+});
+
+test("extractPlanWidgetPayloadFromExitPlanToolInput preserves summary paragraph for plan card", () => {
+	const input = JSON.stringify({
+		plan: [
+			"# Customer CRUD App",
+			"",
+			"Build a customer-facing management app with searchable tables and inline editing.",
+			"",
+			"## Tasks",
+			"",
+			"### Task 1: Create app shell",
+			"Set up the page structure and navigation.",
+			"",
+			"### Task 2: Add data tables",
+			"Render sortable tables with filters.",
+		].join("\n"),
+	});
+
+	const payload = extractPlanWidgetPayloadFromExitPlanToolInput(input, { minTasks: 1 });
+	assert.ok(payload);
+	assert.equal(
+		payload.description,
+		"Build a customer-facing management app with searchable tables and inline editing.",
+	);
+});
+
+test("plan payload task ids are sequential for frontend rendering", () => {
+	const input = "Plan\n\n## Action items\n- [ ] Task A\n- [ ] Task B\n- [ ] Task C\n- [ ] Task D";
+	const payload = extractPlanWidgetPayloadFromText(input);
+	assert.ok(payload);
+	const ids = payload.tasks.map((t) => t.id);
+	assert.deepStrictEqual(ids, ["task-1", "task-2", "task-3", "task-4"]);
+});
+
+test("plan payload works with all three extraction strategies", () => {
+	const markdown = [
+		"# Dashboard Plan",
+		"",
+		"Action items",
+		"- [ ] Stats overview card",
+		"- [ ] Activity feed",
+		"- [ ] Notification dropdown",
+	].join("\n");
+
+	const primary = extractPlanWidgetPayloadFromText(markdown);
+	assert.ok(primary, "Primary extraction should succeed");
+	assert.strictEqual(primary.tasks.length, 3);
+
+	const progressive = extractProgressivePlanWidgetPayloadFromText(markdown, {
+		minTasks: 1,
+		requirePlanSignal: false,
+		requireActionItemsHeading: false,
+	});
+	assert.ok(progressive, "Progressive extraction should succeed as fallback");
+	assert.ok(progressive.tasks.length >= 3);
+});
+
+test("plan Build CTA is enabled when single plan exists and no acceptance", () => {
+	const input = "Plan\n\nAction items\n- [ ] Create component\n- [ ] Add styling\n- [ ] Write tests";
+	const payload = extractPlanWidgetPayloadFromText(input);
+	assert.ok(payload);
+
+	assert.strictEqual(payload.tasks.length, 3);
+	assert.ok(payload.tasks.every((t) => t.label.trim().length > 0),
+		"All tasks have non-empty labels — Build CTA should be enabled");
+});
+
+test("extracts plan after conversational preamble (free-form lead-in before action items)", () => {
+	const input = [
+		"I'll outline the work as a checklist you can track.",
+		"",
+		"# Sprint goals",
+		"",
+		"Action items",
+		"- [ ] Wire auth middleware",
+		"- [ ] Add session storage",
+		"- [ ] Ship smoke tests",
+	].join("\n");
+
+	const result = extractPlanWidgetPayloadFromText(input);
+	assert.ok(result);
+	assert.equal(result.type, "plan");
+	assert.equal(result.title, "Sprint goals");
+	assert.deepEqual(
+		result.tasks.map((task) => task.label),
+		["Wire auth middleware", "Add session storage", "Ship smoke tests"],
+	);
+});
+
+test("primary extractor still finds action items when GenUI-style heading precedes markdown plan", () => {
+	const input = [
+		"Interactive summary: quick overview before the structured plan below.",
+		"",
+		"# Rollout",
+		"",
+		"Action items",
+		"- [ ] Task one",
+		"- [ ] Task two",
+		"- [ ] Task three",
+	].join("\n");
+
+	const result = extractPlanWidgetPayloadFromText(input);
+	assert.ok(result);
+	assert.equal(result.title, "Rollout");
+	assert.strictEqual(result.tasks.length, 3);
 });

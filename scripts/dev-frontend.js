@@ -8,6 +8,7 @@ const basePort = getFrontendBasePort();
 const portFile = path.join(process.cwd(), ".dev-frontend-port");
 const lockFile = path.join(process.cwd(), ".next", "dev", "lock");
 const maxTries = Number.parseInt(process.env.PORT_SEARCH_MAX ?? "20", 10);
+const sessionOwned = process.env.VPK_TMUX_OWNED === "1";
 
 const unsupportedErrors = new Set([
 	"EADDRNOTAVAIL",
@@ -83,6 +84,11 @@ const findAvailablePort = async (minPort = basePort) => {
 	);
 };
 
+const isPortInWorktreeRange = (port) =>
+	Number.isInteger(port) &&
+	port >= basePort &&
+	port < basePort + maxTries;
+
 const writePortFile = (port) => {
 	fs.writeFileSync(portFile, String(port));
 };
@@ -109,6 +115,23 @@ const readRecordedPort = () => {
 		// Ignore read errors
 	}
 
+	return null;
+};
+
+const readValidatedRecordedPort = () => {
+	const recordedPort = readRecordedPort();
+	if (recordedPort === null) {
+		return null;
+	}
+
+	if (isPortInWorktreeRange(recordedPort)) {
+		return recordedPort;
+	}
+
+	console.log(
+		`Ignoring stale frontend port file (${recordedPort}); expected range ${basePort}-${basePort + maxTries - 1} for this worktree.`
+	);
+	cleanupPortFile();
 	return null;
 };
 
@@ -180,8 +203,12 @@ const startNext = async (port, attempt = 0, existingPortHint = null) => {
 
 	process.on("SIGINT", forwardSignal);
 	process.on("SIGTERM", forwardSignal);
+	process.on("SIGHUP", forwardSignal);
 
 	child.on("exit", async (code, signal) => {
+		console.warn(
+			`[dev-frontend] Frontend process exited (code=${code ?? "null"}, signal=${signal ?? "null"}, port=${port})`
+		);
 		if (signal) {
 			cleanupPortFile();
 			process.kill(process.pid, signal);
@@ -216,6 +243,15 @@ const startNext = async (port, attempt = 0, existingPortHint = null) => {
 			process.removeListener("SIGTERM", forwardSignal);
 			const runningPort = await resolveRunningFrontendPort(existingPortHint, port);
 			if (runningPort !== null) {
+				if (sessionOwned) {
+					cleanupPortFile();
+					console.error(
+						`Frontend is already running for this worktree on port ${runningPort}. ` +
+						"Stop the existing frontend before starting a tmux-owned session."
+					);
+					process.exit(1);
+					return;
+				}
 				writePortFile(runningPort);
 				console.log(
 					`Next.js dev is already running for this worktree on port ${runningPort}. Reusing existing process.`
@@ -247,7 +283,7 @@ const cleanStaleLock = async () => {
 
 	// Check which port to test - use recorded port if available, otherwise base port
 	let portToCheck = basePort;
-	const recordedPort = readRecordedPort();
+	const recordedPort = readValidatedRecordedPort();
 	if (recordedPort !== null) {
 		portToCheck = recordedPort;
 	}
@@ -279,12 +315,19 @@ const cleanStaleLock = async () => {
 };
 
 const run = async () => {
-	const existingPortHint = readRecordedPort();
+	const existingPortHint = readValidatedRecordedPort();
 	await cleanStaleLock();
 
 	if (fs.existsSync(lockFile)) {
 		const runningPort = await resolveRunningFrontendPort(existingPortHint, basePort);
 		if (runningPort !== null) {
+			if (sessionOwned) {
+				cleanupPortFile();
+				throw new Error(
+					`Frontend is already running for this worktree on port ${runningPort}. ` +
+					"Stop the existing frontend before starting a tmux-owned session."
+				);
+			}
 			writePortFile(runningPort);
 			console.log(
 				`Next.js dev is already running for this worktree on port ${runningPort}. Reusing existing process.`
