@@ -42,8 +42,8 @@ import {
 import { shouldShowFutureChatSidebarRunIndicator } from "@/components/projects/future-chat/lib/future-chat-sidebar-run-indicator";
 import type { FutureChatRunStatus, FutureChatThread } from "@/lib/future-chat-types";
 import { cn } from "@/lib/utils";
+import DeleteIcon from "@atlaskit/icon/core/delete";
 import ShowMoreHorizontalIcon from "@atlaskit/icon/core/show-more-horizontal";
-import { SquareIcon, Trash2Icon } from "lucide-react";
 
 interface FutureChatSidebarProps {
 	activeThreadId: string | null;
@@ -196,7 +196,7 @@ function FutureChatSidebarThreadItem({
 				size="lg"
 				type="button"
 			>
-				<div className="min-w-0 flex-1">
+				<div className="min-w-0 flex-1 group-hover/menu-item:mr-[28px] group-has-[[data-sidebar=menu-action][aria-expanded]]/menu-item:mr-[28px]">
 					<div className="truncate text-sm font-medium leading-5 text-text-subtle">
 						{isPendingTitle ? (
 							<Shimmer
@@ -249,15 +249,15 @@ function FutureChatSidebarThreadItem({
 					<DropdownMenuGroup>
 						{showRunIndicator ? (
 							<DropdownMenuItem
-								elemBefore={<SquareIcon />}
+								elemBefore={<svg aria-hidden="true" className="size-4" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="14" height="14" rx="2.5" /></svg>}
 								onClick={() => void onCancelThreadRun(thread.id)}
 							>
 								Cancel run
 							</DropdownMenuItem>
 						) : null}
 						<DropdownMenuItem
-							className="text-text-danger data-[highlighted]:text-text-danger"
-							elemBefore={<Trash2Icon className="text-icon-danger" />}
+							variant="destructive"
+							elemBefore={<DeleteIcon label="" />}
 							onClick={() => void onDeleteThread(thread.id)}
 						>
 							Delete

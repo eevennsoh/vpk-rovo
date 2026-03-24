@@ -445,14 +445,15 @@ export default function MakeChatView() {
 				title={previewModal.title}
 				description={previewModal.description}
 				tasks={previewModal.tasks}
-				onBuild={() => {
-					onBuildPlan({
-						title: previewModal.title,
-						description: previewModal.description,
-						tasks: previewModal.tasks,
-						agents: previewModal.agents,
-					});
-				}}
+					onBuild={() => {
+						onBuildPlan({
+							title: previewModal.title,
+							description: previewModal.description,
+							markdown: previewModal.description,
+							tasks: previewModal.tasks,
+							agents: previewModal.agents,
+						});
+					}}
 			/>
 		</div>
 	);

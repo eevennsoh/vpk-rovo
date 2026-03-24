@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, use, useState, type ReactNode } from "react";
+import { createContext, use, useCallback, useMemo, useState, type ReactNode } from "react";
 
 type Product = "home" | "jira" | "confluence" | "rovo" | "search";
 
@@ -18,6 +18,7 @@ export interface SidebarState {
  */
 export interface SidebarActions {
 	toggleSidebar: () => void;
+	setSidebarVisible: (visible: boolean) => void;
 	setHovered: (hovered: boolean) => void;
 	setCurrentRoute: (route: Product) => void;
 }
@@ -39,16 +40,24 @@ export function SidebarProvider({ children, defaultVisible = false }: Readonly<S
 	const [isHovered, setIsHovered] = useState(false);
 	const [currentRoute, setCurrentRoute] = useState<Product>("home");
 
-	const state: SidebarState = { isVisible, isHovered, currentRoute };
+	const state: SidebarState = useMemo(
+		() => ({ isVisible, isHovered, currentRoute }),
+		[isVisible, isHovered, currentRoute],
+	);
 
-	const actions: SidebarActions = {
-		toggleSidebar: () => setIsVisible((prev) => !prev),
-		setHovered: (hovered: boolean) => setIsHovered(hovered),
-		setCurrentRoute,
-	};
+	const toggleSidebar = useCallback(() => setIsVisible((prev) => !prev), []);
+	const setSidebarVisible = useCallback((visible: boolean) => setIsVisible(visible), []);
+	const setHovered = useCallback((hovered: boolean) => setIsHovered(hovered), []);
+
+	const actions: SidebarActions = useMemo(
+		() => ({ toggleSidebar, setSidebarVisible, setHovered, setCurrentRoute }),
+		[toggleSidebar, setSidebarVisible, setHovered, setCurrentRoute],
+	);
+
+	const value = useMemo(() => ({ state, actions }), [state, actions]);
 
 	return (
-		<SidebarContext value={{ state, actions }}>
+		<SidebarContext value={value}>
 			{children}
 		</SidebarContext>
 	);

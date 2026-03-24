@@ -58,6 +58,7 @@ export type ToolPart = ToolUIPart | DynamicToolUIPart;
 export type ToolHeaderProps = {
   title?: string;
   className?: string;
+  statusBadgeIcon?: ReactNode;
 } & (
   | { type: ToolUIPart["type"]; state: ToolUIPart["state"]; toolName?: never }
   | {
@@ -82,14 +83,14 @@ const statusIcons: Record<ToolPart["state"], ReactNode> = {
     <Icon
       render={<ClockIcon label="" size="small" />}
       label="Awaiting"
-      className="size-4 text-yellow-600"
+      className="size-4"
     />
   ),
   "approval-responded": (
     <Icon
       render={<CheckCircleIcon label="" size="small" />}
       label="Responded"
-      className="size-4 text-blue-600"
+      className="size-4"
     />
   ),
   "input-available": (
@@ -103,28 +104,28 @@ const statusIcons: Record<ToolPart["state"], ReactNode> = {
     <Icon
       render={<StatusInformationIcon label="" size="small" />}
       label="Pending"
-      className="size-4 text-icon-subtle"
+      className="size-4"
     />
   ),
   "output-available": (
     <Icon
       render={<CheckCircleIcon label="" size="small" />}
       label="Completed"
-      className="size-4 text-green-600"
+      className="size-4"
     />
   ),
   "output-denied": (
     <Icon
       render={<CrossCircleIcon label="" size="small" />}
       label="Denied"
-      className="size-4 text-orange-600"
+      className="size-4"
     />
   ),
   "output-error": (
     <Icon
       render={<CrossCircleIcon label="" size="small" />}
       label="Error"
-      className="size-4 text-red-600"
+      className="size-4"
     />
   ),
 };
@@ -281,14 +282,18 @@ const statusVariants: Record<ToolPart["state"], ComponentProps<typeof Lozenge>["
   "output-error": "danger",
 };
 
-export const getStatusBadge = (status: ToolPart["state"]) => (
-  <Lozenge variant={statusVariants[status]} icon={statusIcons[status]} maxWidth={110}>
+export const getStatusBadge = (
+  status: ToolPart["state"],
+  { icon }: { icon?: ReactNode } = {}
+) => (
+  <Lozenge variant={statusVariants[status]} icon={icon ?? statusIcons[status]} maxWidth={110}>
     {statusLabels[status]}
   </Lozenge>
 );
 
 export const ToolHeader = ({
   className,
+  statusBadgeIcon,
   title,
   type,
   state,
@@ -313,7 +318,7 @@ export const ToolHeader = ({
           className="size-4 shrink-0 text-muted-foreground"
         />
         <span className="truncate font-medium text-sm" title={title ?? derivedName}>{title ?? derivedName}</span>
-        {getStatusBadge(state)}
+        {getStatusBadge(state, { icon: statusBadgeIcon })}
       </div>
       <Icon
         render={<ChevronDownIcon label="" size="small" />}

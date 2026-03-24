@@ -416,7 +416,7 @@ function FutureChatComposerInner({
 
 				<div
 					ref={composerRef}
-					className={cn("relative z-10 rounded-xl border border-border bg-surface px-3 pb-3 pt-3", composerHeight ? "flex flex-col" : undefined, compact ? "px-3.5 pb-2.5 pt-3.5" : undefined)}
+					className={cn("relative z-10 rounded-xl border border-border bg-surface px-3 pb-3 pt-3", composerHeight ? "flex flex-col" : undefined, compact ? "pb-2.5 pt-3.5" : undefined)}
 					style={{
 						boxShadow: composerUpwardShadow,
 						...(composerHeight
@@ -448,6 +448,7 @@ function FutureChatComposerInner({
 								className={cn(composerTextareaClassName, composerHeight ? "h-full max-h-none min-h-0" : undefined, isPreviewPlaceholderActive ? "chat-composer-textarea-preview-active" : undefined)}
 								placeholder={placeholder}
 								rows={1}
+								suppressHydrationWarning
 							/>
 						</PromptInputBody>
 

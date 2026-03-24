@@ -172,8 +172,14 @@ function shouldGateSmartClarification({
 	smartGenerationActive,
 	smartIntentResult,
 	classifierResult,
+	resolvedPlanModeActive = false,
+	planSessionActive = false,
 }) {
 	if (!smartGenerationActive) {
+		return false;
+	}
+
+	if (resolvedPlanModeActive || planSessionActive) {
 		return false;
 	}
 

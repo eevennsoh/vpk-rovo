@@ -8,10 +8,9 @@ import { useUrlParams } from "./use-url-params";
 import { useScrollAnchoring } from "@/components/projects/shared/hooks/use-scroll-anchoring";
 import type { PanelVariant, Product } from "../types";
 import {
-	buildClarificationSummaryDisplayLabel,
+	buildClarificationMessageMetadata,
 	buildClarificationDismissPrompt,
 	buildClarificationSummaryPrompt,
-	buildClarificationSummaryRows,
 	createClarificationSubmission,
 	getLatestQuestionCardPayload,
 	type ClarificationAnswers,
@@ -127,22 +126,13 @@ export function useRovoChatPanel({ product }: Readonly<UseRovoChatPanelOptions>)
 				activeQuestionCard,
 				answers
 			);
-			const clarificationSummary = buildClarificationSummaryRows(
-				activeQuestionCard,
-				answers
-			);
-			const displayLabel = buildClarificationSummaryDisplayLabel(
-				activeQuestionCard,
-				answers
-			);
 
 			await sendPrompt(clarificationPrompt, {
 				...buildSendOptions(),
-				messageMetadata: {
-					source: "clarification-submit",
-					displayLabel,
-					clarificationSummary,
-				},
+				messageMetadata: buildClarificationMessageMetadata(activeQuestionCard, {
+					answers,
+					status: "answered",
+				}),
 				clarification: clarificationSubmission,
 			});
 		},
@@ -154,10 +144,10 @@ export function useRovoChatPanel({ product }: Readonly<UseRovoChatPanelOptions>)
 			const dismissPrompt = buildClarificationDismissPrompt(questionCard);
 			void sendPrompt(dismissPrompt, {
 				...buildSendOptions(),
-				messageMetadata: {
-					source: "clarification-submit",
+				messageMetadata: buildClarificationMessageMetadata(questionCard, {
+					status: "dismissed",
 					visibility: "hidden",
-				},
+				}),
 			});
 		},
 		[buildSendOptions, sendPrompt]

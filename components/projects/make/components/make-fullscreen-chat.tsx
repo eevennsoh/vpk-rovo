@@ -705,6 +705,7 @@ export function MakeFullscreenChat({
 						{
 							title: previewModal.title,
 							description: previewModal.description,
+							markdown: previewModal.description,
 							tasks: previewModal.tasks,
 							agents: previewModal.agents,
 						},

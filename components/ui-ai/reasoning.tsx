@@ -39,6 +39,7 @@ import { shouldAutoExpandReasoning } from "./reasoning-open-state";
 import {
 	shouldScheduleCompletionAutoCollapse,
 	shouldScheduleTimelineAutoCollapse,
+	shouldScheduleToolIdleAutoCollapse,
 } from "./lib/reasoning-auto-collapse";
 
 interface ReasoningContextValue {
@@ -82,6 +83,7 @@ export type ReasoningProps = ComponentProps<typeof Collapsible> & {
 	autoCollapseAtCount?: number;
 	collapseDelayMs?: number;
 	maxVisibleTimelineItems?: number;
+	toolsRunning?: boolean;
 };
 
 const AUTO_CLOSE_DELAY = 1000;
@@ -102,6 +104,10 @@ interface TimelineEntry {
 interface TimelineToolLabelParts {
 	prefix: string;
 	toolName: string;
+}
+
+export function isTimelineOnlyContent(value: string): boolean {
+	return parseTimelineEntries(value).length > 0;
 }
 
 function parseTimelineEntries(value: string): TimelineEntry[] {
@@ -193,6 +199,7 @@ export const Reasoning = memo(
 		autoCollapseAtCount = DEFAULT_MAX_VISIBLE_TIMELINE_ITEMS,
 		collapseDelayMs = AUTO_CLOSE_DELAY,
 		maxVisibleTimelineItems = DEFAULT_MAX_VISIBLE_TIMELINE_ITEMS,
+		toolsRunning,
 		children,
 		...props
 	}: Readonly<ReasoningProps>) => {
@@ -216,6 +223,7 @@ export const Reasoning = memo(
 		const hasAutoCollapsedAtCountRef = useRef(false);
 		const hasAutoCollapsedOnCompletionRef = useRef(false);
 		const prevStreamingRef = useRef(isStreaming);
+		const prevToolsRunningRef = useRef(toolsRunning ?? false);
 
 		useEffect(() => {
 			const isStartingStream = isStreaming && !prevStreamingRef.current;
@@ -322,6 +330,38 @@ export const Reasoning = memo(
 
 			return () => clearTimeout(timer);
 		}, [allowAutoCollapse, collapseDelayMs, isOpen, isStreaming, setIsOpen]);
+
+		useEffect(() => {
+			if (toolsRunning === undefined) {
+				return;
+			}
+
+			const wasRunning = prevToolsRunningRef.current;
+			prevToolsRunningRef.current = toolsRunning;
+
+			if (toolsRunning && !wasRunning) {
+				hasUserClosedRef.current = false;
+				if (!isOpen) {
+					setIsOpen(true);
+				}
+				return;
+			}
+
+			if (
+				shouldScheduleToolIdleAutoCollapse({
+					toolsRunning,
+					prevToolsRunning: wasRunning,
+					isOpen,
+				})
+			) {
+				const timer = setTimeout(() => {
+					setIsOpen(false);
+					hasUserClosedRef.current = true;
+				}, collapseDelayMs);
+
+				return () => clearTimeout(timer);
+			}
+		}, [toolsRunning, isOpen, collapseDelayMs, setIsOpen]);
 
 		const handleOpenChange = useCallback(
 			(newOpen: boolean) => {

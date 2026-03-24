@@ -1,4 +1,4 @@
-import type { RovoUIMessage } from "@/lib/rovo-ui-messages";
+import type { RovoMessageMetadata, RovoUIMessage } from "@/lib/rovo-ui-messages";
 
 interface StringRecord {
 	[key: string]: unknown;
@@ -45,6 +45,7 @@ export interface ParsedQuestionCardPayload {
 	directive?: string;
 	requiredCount: number;
 	questions: ParsedQuestionCardQuestion[];
+	sourceMessageId?: string;
 	toolCallId?: string;
 	deferredToolCallId?: string;
 }
@@ -54,12 +55,18 @@ export interface ClarificationSummaryRow {
 	answer: string;
 }
 
+export interface DeferredToolResponsePayload {
+	tool_call_id: string;
+	result: Record<string, string[]>;
+}
+
+type ClarificationStatus = "answered" | "dismissed";
+
 const DEFAULT_SESSION_ID = "clarification-session";
 const DEFAULT_MAX_ROUNDS = 3;
 const DEFAULT_TITLE = "Help me clarify this";
 const DEFAULT_PLACEHOLDER = "Tell Rovo what to do...";
 const MAX_GENERATED_OPTIONS = 8;
-const MAX_LABEL_LENGTH = 120;
 
 /**
  * Matches options that just say the user will type/enter/provide their own answer,
@@ -85,6 +92,10 @@ function getNonEmptyString(value: unknown): string | null {
 
 	const trimmedValue = value.trim();
 	return trimmedValue.length > 0 ? trimmedValue : null;
+}
+
+function isAssistantMessageInterrupted(message: Pick<RovoUIMessage, "metadata">): boolean {
+	return message.metadata?.interruption?.status === "interrupted";
 }
 
 function getPositiveInteger(value: unknown): number | null {
@@ -249,10 +260,7 @@ export function parseQuestionCardPayload(
 			getNonEmptyString(question.text);
 		if (!questionLabel) continue;
 
-		const truncatedLabel = questionLabel.length > MAX_LABEL_LENGTH
-			? questionLabel.slice(0, MAX_LABEL_LENGTH - 1) + "\u2026"
-			: questionLabel;
-		const normalizedLabel = truncatedLabel.toLowerCase();
+		const normalizedLabel = questionLabel.toLowerCase();
 		if (seenLabels.has(normalizedLabel)) continue;
 		seenLabels.add(normalizedLabel);
 
@@ -262,7 +270,7 @@ export function parseQuestionCardPayload(
 
 		questions.push({
 			id: questionId,
-			label: truncatedLabel,
+			label: questionLabel,
 			description: getNonEmptyString(question.description) ?? undefined,
 			required: question.required !== false,
 			kind: normalizeQuestionKind(question.kind),
@@ -285,8 +293,15 @@ export function parseQuestionCardPayload(
 		directive: getNonEmptyString(record.directive) ?? undefined,
 		requiredCount,
 		questions,
-		toolCallId: getNonEmptyString(record.tool_call_id) ?? undefined,
-		deferredToolCallId: getNonEmptyString(record.tool_call_id) ?? undefined,
+		toolCallId:
+			getNonEmptyString(record.toolCallId) ??
+			getNonEmptyString(record.tool_call_id) ??
+			undefined,
+		deferredToolCallId:
+			getNonEmptyString(record.deferredToolCallId) ??
+			getNonEmptyString(record.toolCallId) ??
+			getNonEmptyString(record.tool_call_id) ??
+			undefined,
 	};
 }
 
@@ -370,6 +385,138 @@ export function buildClarificationSummaryDisplayLabel(
 	return `Requirements captured (${answerCount} ${answerLabel}).`;
 }
 
+export function getQuestionCardResolutionKey(
+	questionCard: Pick<
+		ParsedQuestionCardPayload,
+		"sessionId" | "round" | "toolCallId" | "deferredToolCallId"
+	> | null
+): string | null {
+	if (!questionCard) {
+		return null;
+	}
+
+	const toolCallId =
+		getNonEmptyString(questionCard.deferredToolCallId) ??
+		getNonEmptyString(questionCard.toolCallId);
+	if (toolCallId) {
+		return `tool:${toolCallId}`;
+	}
+
+	const sessionId = getNonEmptyString(questionCard.sessionId);
+	const round = getPositiveInteger(questionCard.round);
+	if (!sessionId || !round) {
+		return null;
+	}
+
+	return `session:${sessionId}:round:${round}`;
+}
+
+function getClarificationResolutionKeyFromMetadata(
+	metadata: RovoMessageMetadata | undefined
+): string | null {
+	if (!metadata || metadata.source !== "clarification-submit") {
+		return null;
+	}
+
+	const toolCallId = getNonEmptyString(metadata.clarificationToolCallId);
+	if (toolCallId) {
+		return `tool:${toolCallId}`;
+	}
+
+	const sessionId = getNonEmptyString(metadata.clarificationSessionId);
+	const round = getPositiveInteger(metadata.clarificationRound);
+	if (!sessionId || !round) {
+		return null;
+	}
+
+	return `session:${sessionId}:round:${round}`;
+}
+
+function isClarificationSubmitMessage(
+	message: Pick<RovoUIMessage, "role" | "metadata">
+): boolean {
+	return (
+		message.role === "user" &&
+		message.metadata?.source === "clarification-submit"
+	);
+}
+
+export function buildClarificationMessageMetadata(
+	questionCard: ParsedQuestionCardPayload,
+	options: Readonly<{
+		answers?: ClarificationAnswers;
+		status?: ClarificationStatus;
+		visibility?: "visible" | "hidden";
+	}>
+): RovoMessageMetadata {
+	const metadata: RovoMessageMetadata = {
+		source: "clarification-submit",
+		clarificationToolCallId:
+			questionCard.deferredToolCallId ?? questionCard.toolCallId,
+		clarificationSessionId: questionCard.sessionId,
+		clarificationRound: questionCard.round,
+		clarificationStatus: options.status ?? "answered",
+	};
+
+	if (options.visibility) {
+		metadata.visibility = options.visibility;
+	}
+
+	if (options.answers) {
+		metadata.clarificationSummary = buildClarificationSummaryRows(
+			questionCard,
+			options.answers
+		);
+		metadata.displayLabel = buildClarificationSummaryDisplayLabel(
+			questionCard,
+			options.answers
+		);
+	}
+
+	return metadata;
+}
+
+export function hasMatchingClarificationResponse(
+	messages: ReadonlyArray<RovoUIMessage>,
+	questionCard: ParsedQuestionCardPayload
+): boolean {
+	const resolutionKey = getQuestionCardResolutionKey(questionCard);
+	let sawStructuredClarificationSubmit = false;
+
+	for (const message of messages) {
+		if (!isClarificationSubmitMessage(message)) {
+			continue;
+		}
+
+		const messageResolutionKey = getClarificationResolutionKeyFromMetadata(
+			message.metadata
+		);
+		if (!messageResolutionKey) {
+			continue;
+		}
+
+		sawStructuredClarificationSubmit = true;
+		if (resolutionKey && messageResolutionKey === resolutionKey) {
+			return true;
+		}
+	}
+
+	if (resolutionKey && sawStructuredClarificationSubmit) {
+		return false;
+	}
+
+	const sourceMessageIndex = questionCard.sourceMessageId
+		? messages.findIndex((message) => message.id === questionCard.sourceMessageId)
+		: -1;
+	if (sourceMessageIndex === -1) {
+		return false;
+	}
+
+	return messages
+		.slice(sourceMessageIndex + 1)
+		.some((message) => isClarificationSubmitMessage(message));
+}
+
 export function hasRequiredClarificationAnswers(
 	questionCard: ParsedQuestionCardPayload,
 	answers: ClarificationAnswers
@@ -403,7 +550,7 @@ export function createClarificationSubmission(
 
 export function buildClarificationSummaryPrompt(
 	questionCard: ParsedQuestionCardPayload,
-	answers: ClarificationAnswers
+	answers: ClarificationAnswers,
 ): string {
 	const summaryRows = buildClarificationSummaryRows(questionCard, answers);
 	const answerSummaryLines = summaryRows.map(
@@ -414,17 +561,10 @@ export function buildClarificationSummaryPrompt(
 		return `Please continue with a best-effort plan for "${questionCard.title}".`;
 	}
 
-	const defaultDirective = [
-		"Use these details to continue the user's original request now.",
-		"Return the final answer in the format that best matches the request.",
-		"Do not ask follow-up questions unless a hard blocker prevents completion.",
-	].join("\n");
-
 	return [
 		`Here are my clarification answers for "${questionCard.title}":`,
-		...answerSummaryLines,
 		"",
-		questionCard.directive || defaultDirective,
+		...answerSummaryLines,
 	].join("\n");
 }
 
@@ -455,6 +595,38 @@ export function adaptAnswersForToolContract(
 	);
 }
 
+export function buildDeferredToolResponse(
+	questionCard: ParsedQuestionCardPayload,
+	answers: ClarificationAnswers
+): DeferredToolResponsePayload | null {
+	const toolCallId = questionCard.deferredToolCallId ?? questionCard.toolCallId;
+	if (!toolCallId) {
+		return null;
+	}
+
+	const sanitizedAnswers = sanitizeClarificationAnswers(questionCard, answers);
+	const result = questionCard.questions.reduce<Record<string, string[]>>(
+		(acc, question) => {
+			const value = sanitizedAnswers[question.id];
+			if (!value) {
+				return acc;
+			}
+
+			const normalizedValues = Array.isArray(value)
+				? value.map((answer) => resolveAnswerOptionLabel(question, answer))
+				: [resolveAnswerOptionLabel(question, value)];
+			acc[question.label] = normalizedValues;
+			return acc;
+		},
+		{},
+	);
+
+	return {
+		tool_call_id: toolCallId,
+		result,
+	};
+}
+
 /**
  * Builds a system-level message to notify RovoDev that the user skipped/dismissed
  * a clarification question card. RovoDev can then decide how to respond (e.g.,
@@ -470,6 +642,53 @@ export function buildClarificationDismissPrompt(
 	].join(" ");
 }
 
+function findLatestQuestionCardInAssistantMessage(
+	message: RovoUIMessage,
+): ParsedQuestionCardPayload | null {
+	if (isAssistantMessageInterrupted(message)) {
+		return null;
+	}
+
+	for (let partIndex = message.parts.length - 1; partIndex >= 0; partIndex--) {
+		const part = message.parts[partIndex] as {
+			type?: string;
+			data?: {
+				type?: unknown;
+				payload?: unknown;
+			};
+		};
+
+		if (part.type !== "data-widget-data") {
+			continue;
+		}
+
+		if (getNonEmptyString(part.data?.type) !== "question-card") {
+			continue;
+		}
+
+		const parsedPayload = parseQuestionCardPayload(part.data?.payload);
+		if (parsedPayload) {
+			return {
+				...parsedPayload,
+				sourceMessageId: message.id,
+			};
+		}
+	}
+
+	return null;
+}
+
+/**
+ * Returns the active clarification question card for the docked overlay.
+ *
+ * On deferred resume turns, the new `ask_user_questions` payload often lands on a
+ * **new** assistant message after the user's answer. Older logic only inspected
+ * the latest assistant row, which could be empty mid-stream or miss cards that
+ * belong to the post-user assistant turn. We therefore prefer question-card
+ * widgets on assistant messages **after** the last user message, scanning
+ * newest-first; then fall back to the latest assistant message for first-turn
+ * edge cases.
+ */
 export function getLatestQuestionCardPayload(
 	messages: ReadonlyArray<RovoUIMessage>
 ): ParsedQuestionCardPayload | null {
@@ -511,31 +730,44 @@ export function getLatestQuestionCardPayload(
 		return null;
 	}
 
-	for (
-		let partIndex = latestAssistantMessage.parts.length - 1;
-		partIndex >= 0;
-		partIndex--
+	const minAssistantIndex =
+		latestUserMessageIndex === -1 ? 0 : latestUserMessageIndex + 1;
+
+	const assistantIndices: number[] = [];
+	for (let index = 0; index < messages.length; index += 1) {
+		if (messages[index]?.role === "assistant") {
+			assistantIndices.push(index);
+		}
+	}
+
+	for (let k = assistantIndices.length - 1; k >= 0; k -= 1) {
+		const messageIndex = assistantIndices[k] ?? -1;
+		if (messageIndex < minAssistantIndex) {
+			break;
+		}
+
+		const message = messages[messageIndex];
+		if (!message || message.role !== "assistant") {
+			continue;
+		}
+
+		if (isAssistantMessageInterrupted(message)) {
+			continue;
+		}
+
+		const found = findLatestQuestionCardInAssistantMessage(message);
+		if (found && !hasMatchingClarificationResponse(messages, found)) {
+			return found;
+		}
+	}
+
+	const fallbackQuestionCard =
+		findLatestQuestionCardInAssistantMessage(latestAssistantMessage);
+	if (
+		fallbackQuestionCard &&
+		!hasMatchingClarificationResponse(messages, fallbackQuestionCard)
 	) {
-		const part = latestAssistantMessage.parts[partIndex] as {
-			type?: string;
-			data?: {
-				type?: unknown;
-				payload?: unknown;
-			};
-		};
-
-		if (part.type !== "data-widget-data") {
-			continue;
-		}
-
-		if (getNonEmptyString(part.data?.type) !== "question-card") {
-			continue;
-		}
-
-		const parsedPayload = parseQuestionCardPayload(part.data?.payload);
-		if (parsedPayload) {
-			return parsedPayload;
-		}
+		return fallbackQuestionCard;
 	}
 
 	return null;

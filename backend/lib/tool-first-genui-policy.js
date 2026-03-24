@@ -269,8 +269,12 @@ const TOOL_FIRST_DOMAIN_CONFIG = [
 		promptPatterns: [
 			/\bconfluence\b/i,
 			/\bcql\b/i,
-			/\bpage(s)?\b/i,
+			/\bconfluence\s+page(s)?\b/i,
+			/\bpage(s)?\b[\s\S]{0,20}\bconfluence\b/i,
+			/\bconfluence\b[\s\S]{0,20}\bpage(s)?\b/i,
 			/\bspace(s)?\b/i,
+			/\bdoc(ument)?s?\b[\s\S]{0,20}\bconfluence\b/i,
+			/\bconfluence\b[\s\S]{0,20}\bdoc(ument)?s?\b/i,
 		],
 		toolPatterns: [
 			/\bconfluence\b/i,
@@ -346,6 +350,7 @@ const TOOL_FIRST_DOMAIN_CONFIG = [
 			/\bget[_\s-]*skill\b/i,
 			/\brequest[_\s-]*user[_\s-]*input\b/i,
 			/\bupdate[_\s-]*plan\b/i,
+			/\bexit[_\s-]*plan[_\s-]*mode\b/i,
 		],
 	},
 	{
@@ -1169,6 +1174,8 @@ function buildToolFirstTextFallback({
 		: "the requested tool domain";
 	const hasGoogleCalendarDomain = Array.isArray(policy?.domains)
 		&& policy.domains.includes(TOOL_FIRST_GOOGLE_CALENDAR_DOMAIN_ID);
+	const isPlanningOrchestrationDomain = Array.isArray(policy?.domains)
+		&& policy.domains.includes("planning-orchestration");
 
 	const attemptCount =
 		typeof execution?.attempts === "number" && execution.attempts > 0
@@ -1184,7 +1191,9 @@ function buildToolFirstTextFallback({
 	if (execution?.hadRelevantToolStart) {
 		message += " Relevant integration tools were called, but no successful result was returned.";
 	} else {
-		message += " No relevant integration tool call was observed in this response.";
+		message += isPlanningOrchestrationDomain
+			? " The planning handoff tool was not observed in this response."
+			: " No relevant integration tool call was observed in this response.";
 	}
 
 	if (execution?.relevantToolErrors > 0) {
@@ -1220,7 +1229,9 @@ function buildToolFirstTextFallback({
 			message += " Retry with exact resource identifiers (URL/ID) or re-authenticate the integration.";
 		}
 	} else if (!execution?.hadRelevantToolStart) {
-		message += " Retry with explicit resource identifiers (URL/ID) so I can target a relevant tool call.";
+		message += isPlanningOrchestrationDomain
+			? " Retry after ensuring the agent finishes the turn with exit_plan_mode instead of plain text."
+			: " Retry with explicit resource identifiers (URL/ID) so I can target a relevant tool call.";
 		if (policy?.teamworkGraphTimeWindow?.enabled) {
 			message += " For work summaries, use Jira JQL and Confluence CQL fallback if Teamwork Graph does not execute.";
 		}

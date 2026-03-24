@@ -1,5 +1,20 @@
-const assert = require("node:assert/strict");
 const test = require("node:test");
+const assert = require("node:assert/strict");
+
+const { createCapturedResponse } = require("./in-process-http");
+
+test("createCapturedResponse.waitForHeaders resolves after headers are flushed", async () => {
+	const response = createCapturedResponse();
+
+	const waitPromise = response.waitForHeaders();
+	response.setHeader("Content-Type", "text/event-stream");
+	response.flushHeaders();
+
+	await waitPromise;
+
+	assert.equal(response.headersSent, true);
+	assert.equal(response.getHeader("content-type"), "text/event-stream");
+});
 
 const {
 	createUIMessageStream,
@@ -7,7 +22,6 @@ const {
 } = require("ai");
 
 const {
-	createCapturedResponse,
 	createInProcessRequest,
 } = require("./in-process-http");
 

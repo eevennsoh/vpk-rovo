@@ -6,8 +6,8 @@
 # and provides them as context to Claude before browser-related tool calls.
 #
 # Port files:
-#   .dev-frontend-port - Contains the frontend port (e.g., 3000, 3002)
-#   .dev-backend-port  - Contains the backend port (e.g., 8080, 8082)
+#   .dev-frontend-port - Contains the frontend port (e.g., 3000, 3020)
+#   .dev-backend-port  - Contains the backend port (e.g., 8080, 8100)
 
 # Read the hook input from stdin (JSON with tool info)
 INPUT=$(cat)

@@ -27,8 +27,8 @@ export default function AppLayout({
 	const { isVisible } = useSidebar();
 	const { isOpen, closeChat } = useRovoChat();
 	const sidebarWidth = isVisible ? "230px" : "0px";
-	const shellViewportHeight = embedded ? "100%" : "100vh";
-	const shellContentHeight = embedded ? "calc(100% - 48px)" : "calc(100vh - 48px)";
+	const shellViewportHeight = embedded ? "100dvh" : "100vh";
+	const shellContentHeight = embedded ? "calc(100dvh - 48px)" : "calc(100vh - 48px)";
 	const shellStyle = {
 		minHeight: shellViewportHeight,
 		height: shellViewportHeight,

@@ -112,6 +112,30 @@ function getToolNameFromPayload(payload) {
 	);
 }
 
+function getSubagentMetadataFromPayload(payload) {
+	if (!payload || typeof payload !== "object") {
+		return {};
+	}
+
+	const subagentName =
+		typeof payload.subagent_name === "string" && payload.subagent_name.trim()
+			? payload.subagent_name.trim()
+			: typeof payload.subagentName === "string" && payload.subagentName.trim()
+				? payload.subagentName.trim()
+				: undefined;
+	const subagentToolCallId =
+		typeof payload.subagent_tool_call_id === "string" && payload.subagent_tool_call_id.trim()
+			? payload.subagent_tool_call_id.trim()
+			: typeof payload.subagentToolCallId === "string" && payload.subagentToolCallId.trim()
+				? payload.subagentToolCallId.trim()
+				: undefined;
+
+	return {
+		...(subagentName ? { subagentName } : {}),
+		...(subagentToolCallId ? { subagentToolCallId } : {}),
+	};
+}
+
 function resolveToolResultOutput(payload) {
 	if (!payload || typeof payload !== "object") {
 		return "";
@@ -284,6 +308,7 @@ function buildWarningChunk(parsed) {
  * or null if the event should be skipped.
  */
 function extractChunkFromEvent(eventName, parsed) {
+	const subagentMetadata = getSubagentMetadataFromPayload(parsed);
 	// Events to skip entirely
 	const skipEvents = [
 		"user-prompt", "request-usage", "close", "done", "end",
@@ -305,7 +330,7 @@ function extractChunkFromEvent(eventName, parsed) {
 				: typeof parsed?.text === "string"
 					? parsed.text
 					: "";
-		return text ? { type: "text", text } : null;
+		return text ? { type: "text", text, ...subagentMetadata } : null;
 	}
 
 	// ── Tool call / tool result events ──────────────────────────────────
@@ -332,6 +357,7 @@ function extractChunkFromEvent(eventName, parsed) {
 			toolCallId: getToolCallIdFromPayload(parsed),
 			toolInput,
 			mcpServer,
+			...subagentMetadata,
 		};
 	}
 
@@ -374,6 +400,7 @@ function extractChunkFromEvent(eventName, parsed) {
 				toolInput,
 				mcpServer,
 				permissionScenario,
+				...subagentMetadata,
 			};
 		}
 		return null;
@@ -399,6 +426,7 @@ function extractChunkFromEvent(eventName, parsed) {
 			outputTruncated: preview.truncated,
 			outputBytes: preview.bytes,
 			rawOutput: rawContent,
+			...subagentMetadata,
 		};
 	}
 
@@ -431,11 +459,12 @@ function extractChunkFromEvent(eventName, parsed) {
 				toolCallId: parsed?.part?.tool_call_id,
 				toolInput,
 				mcpServer,
+				...subagentMetadata,
 			};
 		}
 
 		const text = parsed?.part?.content ?? "";
-		return text ? { type: "text", text } : null;
+		return text ? { type: "text", text, ...subagentMetadata } : null;
 	}
 
 	// ── Part delta ──────────────────────────────────────────────────────
@@ -449,11 +478,12 @@ function extractChunkFromEvent(eventName, parsed) {
 				type: "tool_call_args",
 				text: argsDelta,
 				toolCallId: parsed?.delta?.tool_call_id,
+				...subagentMetadata,
 			} : null;
 		}
 
 		const text = parsed?.delta?.content_delta ?? "";
-		return text ? { type: "text", text } : null;
+		return text ? { type: "text", text, ...subagentMetadata } : null;
 	}
 
 	// ── Deferred tool request ───────────────────────────────────────────
@@ -472,6 +502,7 @@ function extractChunkFromEvent(eventName, parsed) {
 				toolName: firstCall.tool_name,
 				toolCallId: firstCall.tool_call_id,
 				toolInput,
+				...subagentMetadata,
 			};
 		}
 		return null;
@@ -490,7 +521,7 @@ function extractChunkFromEvent(eventName, parsed) {
 
 	const preview = toPreview(rawText);
 	const text = preview.text;
-	return text ? { type: "text", text } : null;
+	return text ? { type: "text", text, ...subagentMetadata } : null;
 }
 
 function createAbortError(message = "RovoDev request aborted") {
@@ -513,6 +544,28 @@ function createStreamSilenceTimeoutError({
 	error.code = "ROVODEV_STREAM_IDLE_TIMEOUT";
 	error.timeoutMs = timeoutMs;
 	error.hadActivity = hadActivity === true;
+	return error;
+}
+
+function createCancelCleanupError({ port, payload, rawData } = {}) {
+	const message =
+		typeof payload?.message === "string" && payload.message.trim().length > 0
+			? payload.message.trim()
+			: typeof rawData === "string" && rawData.trim().length > 0
+				? rawData.trim()
+				: "RovoDev chat cancellation failed";
+	const timedOut = /timed out/i.test(message);
+	const error = new Error(message);
+	error.code = timedOut ? "ROVODEV_CANCEL_TIMEOUT" : "ROVODEV_CANCEL_FAILED";
+	if (Number.isInteger(port) && port > 0) {
+		error.port = port;
+	}
+	if (payload && typeof payload === "object") {
+		error.cancelResponse = payload;
+	}
+	if (typeof rawData === "string" && rawData.length > 0) {
+		error.response = rawData;
+	}
 	return error;
 }
 
@@ -660,13 +713,28 @@ function normalizeChatRequestInput(input) {
 		throw new Error("RovoDev chat input must be a string or an object.");
 	}
 
-	const message = typeof input.message === "string" ? input.message : "";
-	if (!message.trim()) {
-		throw new Error("RovoDev chat input must include a non-empty message.");
+	const rawMessage = input.message;
+	const messageIsText =
+		typeof rawMessage === "string" && rawMessage.trim().length > 0;
+	const messageIsDeferredToolResponse =
+		rawMessage &&
+		typeof rawMessage === "object" &&
+		typeof rawMessage.tool_call_id === "string" &&
+		rawMessage.tool_call_id.trim().length > 0 &&
+		"result" in rawMessage;
+	if (!messageIsText && !messageIsDeferredToolResponse) {
+		throw new Error(
+			"RovoDev chat input must include a non-empty message string or DeferredToolResponse."
+		);
 	}
 
 	const normalized = {
-		message,
+		message: messageIsText
+			? rawMessage.trim()
+			: {
+				tool_call_id: rawMessage.tool_call_id.trim(),
+				result: rawMessage.result,
+			},
 	};
 
 	if (Array.isArray(input.context)) {
@@ -1033,6 +1101,15 @@ function openSseStream({
 											disconnect,
 										});
 										if (result?.disconnect === true) {
+											console.info(
+												"[rovodev] Intentionally disconnecting paused SSE stream after tool boundary",
+												{
+													port,
+													toolName: chunkPayload.toolName ?? null,
+													toolCallId: chunkPayload.toolCallId ?? null,
+													eventName: currentEventName,
+												},
+											);
 											disconnect();
 											return;
 										}
@@ -1143,9 +1220,6 @@ function openSseStream({
 			if (currentReq) {
 				currentReq.destroy();
 			}
-			request("POST", "/v3/cancel", undefined, 10000, port).catch(() => {
-				// Ignore cancel errors
-			});
 		},
 	};
 }
@@ -1153,9 +1227,13 @@ function openSseStream({
 /**
  * Send a message and stream the response via SSE.
  *
- * Uses the V3 two-step pattern:
+ * Uses the V3 two-step pattern by default:
  *   1. POST /v3/set_chat_message to queue the message
  *   2. GET /v3/stream_chat to stream the response
+ *
+ * For deferred-tool continuations, callers may set `skipSetChatMessage` to
+ * reuse the current queued turn and open a fresh `/v3/stream_chat` without
+ * queuing another user message first.
  *
  * @param {string|object} input - The chat message or documented request shape
  * @param {object} callbacks
@@ -1168,12 +1246,17 @@ function openSseStream({
  * @param {number} [options.idleTimeoutMs]
  * @param {function} [options.onTimingStage]
  * @param {string} [options.sessionId] - Restore this session before sending the message
+ * @param {boolean} [options.includeSubagentEvents] - Include Serve subagent events in SSE payloads
  * @param {boolean} [options.pauseOnCallToolsStart] - Pause tool execution via documented SSE query flag
+ * @param {boolean} [options.skipSetChatMessage] - Open `/v3/stream_chat` without calling `/v3/set_chat_message`
  * @returns {{ abort: () => void }}
  */
 function sendMessageStreaming(input, callbacks, port, options = {}) {
 	const abortController = new AbortController();
 	let activeStreamHandle = null;
+	const skipSetChatMessage = options.skipSetChatMessage === true;
+	let chatOperationActive = skipSetChatMessage;
+	let cancelPromise = null;
 	const firstEventTimeoutMs =
 		typeof options.firstEventTimeoutMs === "number" && options.firstEventTimeoutMs > 0
 			? options.firstEventTimeoutMs
@@ -1190,9 +1273,22 @@ function sendMessageStreaming(input, callbacks, port, options = {}) {
 	const pauseOnCallToolsStart =
 		options.pauseOnCallToolsStart === true ||
 		options.pause_on_call_tools_start === true;
+	const includeSubagentEvents =
+		options.includeSubagentEvents === true ||
+		options.include_subagent_events === true;
 	const enableDeferredTools =
 		options.enableDeferredTools === true ||
 		options.enable_deferred_tools === true;
+
+	const ensureCancellation = ({ timeoutMs = 10_000 } = {}) => {
+		if (!chatOperationActive) {
+			return Promise.resolve(null);
+		}
+		if (!cancelPromise) {
+			cancelPromise = cancelChat(port, { timeoutMs });
+		}
+		return cancelPromise;
+	};
 
 	const run = async () => {
 		try {
@@ -1204,37 +1300,43 @@ function sendMessageStreaming(input, callbacks, port, options = {}) {
 				});
 			}
 
-			// Step 1: Queue the message
-			console.log("[rovodev] Queuing message via /v3/set_chat_message...");
-			const setChatMessageStartedAtMs = Date.now();
+			// Step 1: Queue the message unless the caller is continuing an
+			// existing deferred-tool turn that is already queued on the server.
+			if (!skipSetChatMessage) {
+				console.log("[rovodev] Queuing message via /v3/set_chat_message...");
+				const setChatMessageStartedAtMs = Date.now();
 
-			const chatRequestBody = normalizeChatRequestInput(input);
+				const chatRequestBody = normalizeChatRequestInput(input);
 
-			const { status: setStatus, data: setData } = await request(
-				"POST",
-				"/v3/set_chat_message",
-				chatRequestBody,
-				30000,
-				port,
-				abortController.signal
-			);
-			if (setStatus !== 200) {
-				throw createHttpStatusError(
-					`Failed to queue message (status ${setStatus}): ${setData}`,
-					setStatus,
+				const { status: setStatus, data: setData } = await request(
+					"POST",
 					"/v3/set_chat_message",
-					setData
-				);
-			}
-			console.log("[rovodev] Message queued successfully.");
-			if (onTimingStage) {
-				onTimingStage("rovodev_set_chat_message_complete", {
-					stageMs: Date.now() - setChatMessageStartedAtMs,
-					status: setStatus,
+					chatRequestBody,
+					30000,
 					port,
-					sessionId: sessionId || undefined,
-					requestShape: typeof input === "string" ? "string" : "structured",
-				});
+					abortController.signal
+				);
+				if (setStatus !== 200) {
+					throw createHttpStatusError(
+						`Failed to queue message (status ${setStatus}): ${setData}`,
+						setStatus,
+						"/v3/set_chat_message",
+						setData
+					);
+				}
+				chatOperationActive = true;
+				console.log("[rovodev] Message queued successfully.");
+				if (onTimingStage) {
+					onTimingStage("rovodev_set_chat_message_complete", {
+						stageMs: Date.now() - setChatMessageStartedAtMs,
+						status: setStatus,
+						port,
+						sessionId: sessionId || undefined,
+						requestShape: typeof input === "string" ? "string" : "structured",
+					});
+				}
+			} else {
+				console.log("[rovodev] Reusing the current queued turn and opening /v3/stream_chat...");
 			}
 			let fullText = "";
 
@@ -1242,6 +1344,9 @@ function sendMessageStreaming(input, callbacks, port, options = {}) {
 			const url = new URL("/v3/stream_chat", getBaseUrlForPort(port));
 			if (pauseOnCallToolsStart) {
 				url.searchParams.set("pause_on_call_tools_start", "true");
+			}
+			if (includeSubagentEvents) {
+				url.searchParams.set("include_subagent_events", "true");
 			}
 			if (enableDeferredTools) {
 				url.searchParams.set("enable_deferred_tools", "true");
@@ -1273,7 +1378,19 @@ function sendMessageStreaming(input, callbacks, port, options = {}) {
 
 			await activeStreamHandle.streamPromise;
 
-			if (!abortController.signal.aborted && !activeStreamHandle.wasManuallyDisconnected()) {
+			if (abortController.signal.aborted) {
+				return;
+			}
+
+			if (activeStreamHandle.wasManuallyDisconnected()) {
+				console.log(
+					`[rovodev] Stream intentionally disconnected. Partial response length: ${fullText.length}`
+				);
+				callbacks.onDone(fullText);
+				return;
+			}
+
+			if (!abortController.signal.aborted) {
 				console.log(`[rovodev] Stream complete. Response length: ${fullText.length}`);
 				if (onTimingStage) {
 					onTimingStage("rovodev_stream_complete", {
@@ -1284,23 +1401,23 @@ function sendMessageStreaming(input, callbacks, port, options = {}) {
 				}
 				callbacks.onDone(fullText);
 			}
-			} catch (err) {
-				if (!abortController.signal.aborted) {
-					console.error("[rovodev] Stream error:", err);
-					callbacks.onError(err instanceof Error ? err : new Error(String(err)));
-				}
+		} catch (err) {
+			if (!abortController.signal.aborted) {
+				console.error("[rovodev] Stream error:", err);
+				callbacks.onError(err instanceof Error ? err : new Error(String(err)));
 			}
+		}
 	};
 
 	run();
 
 	return {
-		abort: () => {
+		abort: async () => {
+			abortController.abort();
 			if (activeStreamHandle) {
 				activeStreamHandle.abort();
-				return;
 			}
-			abortController.abort();
+			return ensureCancellation({ timeoutMs: 10_000 });
 		},
 		disconnect: () => {
 			if (activeStreamHandle) {
@@ -1440,11 +1557,12 @@ function sendMessageSync(input, options = {}) {
 			},
 		}, port, options);
 
-		if (signal) {
-			abortHandler = () => {
-				streamHandle.abort();
-				rejectOnce(createAbortError("RovoDev sync request aborted"));
-			};
+			if (signal) {
+				abortHandler = () => {
+					const abortError = createAbortError("RovoDev sync request aborted");
+					abortError.cancelCleanupPromise = Promise.resolve(streamHandle.abort());
+					rejectOnce(abortError);
+				};
 
 			if (signal.aborted) {
 				abortHandler();
@@ -1478,6 +1596,22 @@ async function cancelChat(port, { timeoutMs = 10000 } = {}) {
 			data
 		);
 	}
+
+	const payload = parseJsonResponseData("/v3/cancel", data);
+	if (
+		payload &&
+		typeof payload === "object" &&
+		"cancelled" in payload &&
+		payload.cancelled !== true
+	) {
+		throw createCancelCleanupError({
+			port,
+			payload,
+			rawData: data,
+		});
+	}
+
+	return payload ?? { cancelled: true };
 }
 
 /**

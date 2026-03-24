@@ -4,7 +4,7 @@
    Import order:
 	 1. @atlaskit/tokens + setGlobalTheme() = Defines all --ds- CSS variables at runtime
    2. tailwind-theme.css - Tailwind theme variables mapped to --ds- CSS variables
-   3. shadcn-theme.css   - shadcn/ui semantic color tokens
+   3. shadcn-theme.css   - shadcn/ui semantic color tokens (all other ADS semantic tokens that aren't covered in Tailwind default variables are mapped here)
    4. tailwindcss        - Generate utilities from collected themes
    ================================================================= */
 
@@ -98,6 +98,50 @@
 	[data-sonner-toast][data-styled="false"]:focus-visible {
 		box-shadow: none;
 	}
+}
+
+/* Translucent menu surface — frosted glass popup treatment.
+   Unlayered so it beats Tailwind utilities like bg-popover in the cascade.
+   Plain CSS to avoid Tailwind compilation indirection. */
+.cn-menu-translucent {
+	animation: none !important;
+	background-color: color-mix(in oklab, var(--ds-surface-overlay) 55%, transparent) !important;
+	-webkit-backdrop-filter: blur(16px) saturate(1.8);
+	backdrop-filter: blur(16px) saturate(1.8);
+}
+
+/* Translucent menu — descendant item/separator/trigger hover overrides */
+.cn-menu-translucent [data-slot$="-item"]:focus,
+.cn-menu-translucent [data-slot$="-item"][data-highlighted] {
+	background-color: color-mix(in oklab, var(--ds-text) 10%, transparent);
+}
+
+.cn-menu-translucent [data-slot$="-separator"] {
+	background-color: color-mix(in oklab, var(--ds-text) 5%, transparent);
+}
+
+.cn-menu-translucent [data-slot$="-trigger"]:focus {
+	background-color: color-mix(in oklab, var(--ds-text) 10%, transparent);
+}
+
+.cn-menu-translucent [data-slot$="-trigger"][aria-expanded="true"] {
+	background-color: color-mix(in oklab, var(--ds-text) 10%, transparent) !important;
+}
+
+.cn-menu-translucent [data-variant="destructive"]:focus {
+	background-color: color-mix(in oklab, var(--ds-text) 10%, transparent) !important;
+}
+
+.cn-menu-translucent [data-variant="destructive"] {
+	color: var(--ds-text-danger) !important;
+}
+
+.cn-menu-translucent [data-variant="destructive"] * {
+	color: var(--ds-text-danger) !important;
+}
+
+.cn-menu-translucent [data-variant="destructive"] svg {
+	color: var(--ds-icon-danger) !important;
 }
 
 /* -----------------------------------------------------------------
@@ -337,6 +381,27 @@ html.dark [data-slot="lozenge-dropdown-trigger"][data-variant="warning"] [data-s
 html.dark [data-slot="lozenge"][data-variant="accent-orange"] [data-slot="lozenge-leading-icon"],
 html.dark [data-slot="lozenge-dropdown-trigger"][data-variant="accent-orange"] [data-slot="lozenge-leading-icon"] {
 	color: rgb(252 200 40);
+}
+
+/* Scrollbar hidden by default, revealed while actively scrolling */
+.scrollbar-auto-hide {
+	scrollbar-width: thin;
+	scrollbar-gutter: stable both-edges;
+	scrollbar-color: transparent transparent;
+	&[data-scrolling] {
+		scrollbar-color: color-mix(in oklab, currentColor 20%, transparent) transparent;
+	}
+	&::-webkit-scrollbar {
+		width: 6px;
+		background: transparent;
+	}
+	&::-webkit-scrollbar-thumb {
+		background-color: transparent;
+		border-radius: 3px;
+	}
+	&[data-scrolling]::-webkit-scrollbar-thumb {
+		background-color: color-mix(in oklab, currentColor 20%, transparent);
+	}
 }
 
 /* Reduced motion — respects user preferences */

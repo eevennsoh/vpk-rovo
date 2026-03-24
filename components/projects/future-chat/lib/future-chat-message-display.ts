@@ -100,7 +100,6 @@ export function shouldRenderFutureChatAssistantActions(input: {
 	hasArtifactCard: boolean;
 	hasAssistantText: boolean;
 	hasInterruption: boolean;
-	hasReasoning: boolean;
 	hasSources: boolean;
 	hasWidget: boolean;
 	hasWidgetError: boolean;
@@ -117,9 +116,15 @@ export function shouldRenderFutureChatAssistantActions(input: {
 		input.hasWidgetError ||
 		input.hasArtifactCard ||
 		input.hasSources ||
-		input.hasInterruption ||
-		input.hasReasoning
+		input.hasInterruption
 	);
+}
+
+export function shouldRenderFutureChatVisibleWidget(input: {
+	hasWidget: boolean;
+	shouldHideResolvedQuestionCard: boolean;
+}): boolean {
+	return input.hasWidget && !input.shouldHideResolvedQuestionCard;
 }
 
 export function shouldRenderFutureChatAssistantMessage(input: {

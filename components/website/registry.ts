@@ -5418,31 +5418,38 @@ const UI_AI_VARIANT_DEMOS: Record<string, ComponentType> = {
       })),
     { ssr: false },
   ),
-  "artifact-demo-with-code": dynamic(
+  "artifact-demo-code-preview": dynamic(
     () =>
       import("./demos/ui-ai/artifact-demo").then((mod) => ({
-        default: mod.ArtifactDemoWithCode,
+        default: mod.ArtifactDemoCodePreview,
       })),
     { ssr: false },
   ),
-  "artifact-demo-with-close": dynamic(
+  "artifact-demo-image-preview": dynamic(
     () =>
       import("./demos/ui-ai/artifact-demo").then((mod) => ({
-        default: mod.ArtifactDemoWithClose,
+        default: mod.ArtifactDemoImagePreview,
       })),
     { ssr: false },
   ),
-  "artifact-demo-document": dynamic(
+  "artifact-demo-streaming": dynamic(
     () =>
       import("./demos/ui-ai/artifact-demo").then((mod) => ({
-        default: mod.ArtifactDemoDocument,
+        default: mod.ArtifactDemoStreaming,
       })),
     { ssr: false },
   ),
-  "artifact-demo-minimal": dynamic(
+  "artifact-demo-chip": dynamic(
     () =>
       import("./demos/ui-ai/artifact-demo").then((mod) => ({
-        default: mod.ArtifactDemoMinimal,
+        default: mod.ArtifactDemoChip,
+      })),
+    { ssr: false },
+  ),
+  "artifact-demo-compound": dynamic(
+    () =>
+      import("./demos/ui-ai/artifact-demo").then((mod) => ({
+        default: mod.ArtifactDemoCompound,
       })),
     { ssr: false },
   ),
@@ -5698,10 +5705,24 @@ const UI_AI_VARIANT_DEMOS: Record<string, ComponentType> = {
       })),
     { ssr: false },
   ),
-  "chain-of-thought-demo-ads-workflow": dynamic(
+  "chain-of-thought-demo-preload": dynamic(
     () =>
       import("./demos/ui-ai/chain-of-thought-demo").then((mod) => ({
-        default: mod.ChainOfThoughtDemoAdsWorkflow,
+        default: mod.ChainOfThoughtDemoPreload,
+      })),
+    { ssr: false },
+  ),
+  "chain-of-thought-demo-thinking": dynamic(
+    () =>
+      import("./demos/ui-ai/chain-of-thought-demo").then((mod) => ({
+        default: mod.ChainOfThoughtDemoThinking,
+      })),
+    { ssr: false },
+  ),
+  "chain-of-thought-demo-completed": dynamic(
+    () =>
+      import("./demos/ui-ai/chain-of-thought-demo").then((mod) => ({
+        default: mod.ChainOfThoughtDemoCompleted,
       })),
     { ssr: false },
   ),

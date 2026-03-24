@@ -169,6 +169,11 @@ const writePortFiles = (ports) => {
 	fs.writeFileSync(portsFile, JSON.stringify(ports));
 };
 
+const isPortInWorktreeRange = (port, maxTries) =>
+	Number.isInteger(port) &&
+	port >= basePort &&
+	port < basePort + maxTries;
+
 const cleanup = () => {
 	try {
 		fs.unlinkSync(portFile);
@@ -182,14 +187,22 @@ const cleanup = () => {
 	}
 };
 
-const readRecordedPorts = () => {
+const readRecordedPorts = (maxTries) => {
 	// Try the multi-port file first
 	if (fs.existsSync(portsFile)) {
 		try {
 			const parsed = JSON.parse(fs.readFileSync(portsFile, "utf8").trim());
-			if (Array.isArray(parsed) && parsed.length > 0 && parsed.every((p) => typeof p === "number" && p > 0)) {
+			if (
+				Array.isArray(parsed) &&
+				parsed.length > 0 &&
+				parsed.every((p) => isPortInWorktreeRange(p, maxTries))
+			) {
 				return parsed;
 			}
+			console.log(
+				`[rovodev] Ignoring stale port pool file; expected ports in range ${basePort}-${basePort + maxTries - 1}.`
+			);
+			cleanup();
 		} catch {
 			// Ignore parse errors
 		}
@@ -199,9 +212,13 @@ const readRecordedPorts = () => {
 	if (fs.existsSync(portFile)) {
 		try {
 			const port = Number.parseInt(fs.readFileSync(portFile, "utf8").trim(), 10);
-			if (!Number.isNaN(port) && port > 0) {
+			if (isPortInWorktreeRange(port, maxTries)) {
 				return [port];
 			}
+			console.log(
+				`[rovodev] Ignoring stale port file (${port}); expected range ${basePort}-${basePort + maxTries - 1}.`
+			);
+			cleanup();
 		} catch {
 			// Ignore read errors
 		}
@@ -231,7 +248,7 @@ const run = async () => {
 	}
 
 	// Check if existing pool processes are still running
-	const recordedPorts = readRecordedPorts();
+	const recordedPorts = readRecordedPorts(maxTries);
 	if (recordedPorts !== null) {
 		// Check if all recorded ports are in use (processes still running)
 		const allInUse = (

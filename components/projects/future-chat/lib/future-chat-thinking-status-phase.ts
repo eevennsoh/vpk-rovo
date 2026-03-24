@@ -11,6 +11,7 @@ interface ResolveFutureChatThinkingStatusPhaseOptions {
 	hasTurnComplete: boolean;
 	isThinkingLifecycleStreaming: boolean;
 	hasBackendThinkingActivity: boolean;
+	hasAwaitingInputToolCalls: boolean;
 	lifecyclePhase: ReasoningPhase;
 }
 
@@ -38,10 +39,15 @@ export function resolveFutureChatThinkingStatusPhase({
 	hasTurnComplete,
 	isThinkingLifecycleStreaming,
 	hasBackendThinkingActivity,
+	hasAwaitingInputToolCalls,
 	lifecyclePhase,
 }: Readonly<ResolveFutureChatThinkingStatusPhaseOptions>): ReasoningPhase {
 	if (!isThinkingActive) {
 		return "idle";
+	}
+
+	if (hasAwaitingInputToolCalls) {
+		return "thinking";
 	}
 
 	if (hasTurnComplete && !isThinkingLifecycleStreaming) {

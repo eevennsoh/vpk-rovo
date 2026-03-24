@@ -326,13 +326,28 @@ export function ConversationContent({
 }: Readonly<ConversationContentProps>) {
 	const context = use(ConversationContext)
 
+	useEffect(() => {
+		const el = context?.scrollRef?.current
+		if (!el) return
+		let timeout: ReturnType<typeof setTimeout>
+		function onScroll() {
+			el!.setAttribute("data-scrolling", "")
+			clearTimeout(timeout)
+			timeout = setTimeout(() => {
+				el!.removeAttribute("data-scrolling")
+			}, 1000)
+		}
+		el.addEventListener("scroll", onScroll, { passive: true })
+		return () => {
+			el.removeEventListener("scroll", onScroll)
+			clearTimeout(timeout)
+		}
+	}, [context?.scrollRef])
+
 	return (
 		<div
-			className="h-full w-full overflow-y-auto"
+			className="h-full w-full overflow-x-hidden overflow-y-auto scrollbar-auto-hide"
 			ref={context?.scrollRef}
-			style={{
-				scrollbarGutter: "stable both-edges",
-			}}
 		>
 			<div
 				className={cn("flex flex-col gap-8 p-4", className)}

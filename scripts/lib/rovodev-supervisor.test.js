@@ -104,3 +104,41 @@ test("startSupervisedRovodevPorts stops respawning after shutdown", () => {
 	assert.equal(reemittedSignal, "SIGTERM");
 	assert.equal(timers.length, 0);
 });
+
+test("startSupervisedRovodevPorts forwards SIGHUP to children during shutdown", () => {
+	const children = [];
+	const signalTarget = new EventEmitter();
+	let reemittedSignal = null;
+
+	startSupervisedRovodevPorts({
+		ports: [8008],
+		rovodevBin: "/tmp/rovodev",
+		buildSpawnArgsForPort: (port) => ["serve", String(port)],
+		spawnFn: () => {
+			const child = createFakeChild();
+			children.push(child);
+			return child;
+		},
+		setTimeoutFn: () => 1,
+		clearTimeoutFn: () => {},
+		signalTarget,
+		exitFn: () => {},
+		reemitSignalFn: (signal) => {
+			reemittedSignal = signal;
+		},
+		cleanup: () => {},
+		logger: {
+			log: () => {},
+			warn: () => {},
+			error: () => {},
+		},
+	});
+
+	signalTarget.emit("SIGHUP");
+
+	assert.deepEqual(children[0].killCalls, ["SIGHUP"]);
+
+	children[0].emit("exit", 0, "SIGHUP");
+
+	assert.equal(reemittedSignal, "SIGHUP");
+});

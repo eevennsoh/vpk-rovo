@@ -587,6 +587,7 @@ function InlineToolCard({ toolPart }: { toolPart: RovoToolPart }) {
 /* -------------------------------------------------------------------------- */
 
 function thinkingStateToDisplayState(state: ThinkingToolCallSummary["state"]): string {
+	if (state === "awaiting-input") return "input-streaming";
 	if (state === "running") return "input-available";
 	if (state === "error") return "output-error";
 	return "output-available";

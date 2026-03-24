@@ -8,10 +8,9 @@ import { Conversation, ConversationContent } from "@/components/ui-ai/conversati
 import { MessageTurns } from "@/components/projects/shared/message-turns";
 import { isRenderableRovoUIMessage } from "@/lib/rovo-ui-messages";
 import {
-	buildClarificationSummaryDisplayLabel,
+	buildClarificationMessageMetadata,
 	buildClarificationDismissPrompt,
 	buildClarificationSummaryPrompt,
-	buildClarificationSummaryRows,
 	createClarificationSubmission,
 	getLatestQuestionCardPayload,
 	type ClarificationAnswers,
@@ -159,8 +158,10 @@ export default function ChatPanel({
 				...resolvedSendPromptOptions,
 				messageMetadata: {
 					...(resolvedSendPromptOptions?.messageMetadata ?? {}),
-					source: "clarification-submit",
-					visibility: "hidden",
+					...buildClarificationMessageMetadata(questionCard, {
+						status: "dismissed",
+						visibility: "hidden",
+					}),
 				},
 			});
 		},
@@ -198,14 +199,13 @@ export default function ChatPanel({
 
 			const clarificationSubmission = createClarificationSubmission(activeQuestionCard, answers);
 			const clarificationPrompt = buildClarificationSummaryPrompt(activeQuestionCard, answers);
-			const clarificationSummary = buildClarificationSummaryRows(activeQuestionCard, answers);
-			const displayLabel = buildClarificationSummaryDisplayLabel(activeQuestionCard, answers);
 
 			const clarificationMetadata = {
 				...(resolvedSendPromptOptions?.messageMetadata ?? {}),
-				source: "clarification-submit" as const,
-				displayLabel,
-				clarificationSummary,
+				...buildClarificationMessageMetadata(activeQuestionCard, {
+					answers,
+					status: "answered",
+				}),
 			};
 
 			void sendPrompt(clarificationPrompt, {

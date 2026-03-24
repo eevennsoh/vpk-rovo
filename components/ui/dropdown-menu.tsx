@@ -35,8 +35,7 @@ export const dropdownStyles = {
 
 // Mirrors shadcn's current `default-translucent` menu treatment for live menus
 // in this repo, which predate the newer CLI marker classes.
-export const translucentMenuSurfaceClass =
-  "animate-none! relative bg-popover/70 before:pointer-events-none before:absolute before:inset-0 before:-z-1 before:rounded-[inherit] before:backdrop-blur-2xl before:backdrop-saturate-150 **:data-[slot$=-item]:focus:bg-foreground/10 **:data-[slot$=-item]:data-highlighted:bg-foreground/10 **:data-[slot$=-separator]:bg-foreground/5 **:data-[slot$=-trigger]:focus:bg-foreground/10 **:data-[slot$=-trigger]:aria-expanded:bg-foreground/10! **:data-[variant=destructive]:focus:bg-foreground/10! **:data-[variant=destructive]:text-accent-foreground! **:data-[variant=destructive]:**:text-accent-foreground!";
+export const translucentMenuSurfaceClass = "cn-menu-translucent";
 
 type DropdownMenuProps = MenuPrimitive.Root.Props;
 
@@ -92,7 +91,7 @@ function DropdownMenuContent({
   const inlinePortalContainerRef = React.useRef<HTMLSpanElement | null>(null);
   const content = (
     <MenuPrimitive.Positioner
-      className="isolate z-50 outline-none"
+      className="z-50 outline-none"
       align={align}
       alignOffset={alignOffset}
       side={side}
@@ -189,13 +188,13 @@ function DropdownMenuItem({
       data-inset={inset}
       data-variant={variant}
       className={cn(
-        "group/dropdown-menu-item data-[highlighted]:bg-bg-neutral-subtle-hovered data-[highlighted]:text-text data-[variant=destructive]:text-text-danger data-[variant=destructive]:data-[highlighted]:bg-bg-danger-subtler-hovered data-disabled:pointer-events-none data-disabled:text-text-disabled relative flex w-full cursor-default items-start gap-2 rounded-sm px-3 py-2 text-[13px] leading-5 outline-none select-none active:bg-bg-neutral-subtle-pressed data-[variant=destructive]:active:bg-bg-danger-subtler-pressed data-inset:pl-8 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+        "group/dropdown-menu-item data-[highlighted]:bg-bg-neutral-subtle-hovered data-[highlighted]:text-text data-[variant=destructive]:text-text-danger data-[variant=destructive]:data-[highlighted]:bg-bg-danger-subtler-hovered data-disabled:pointer-events-none data-disabled:text-text-disabled relative flex w-full cursor-default items-start gap-3 rounded-sm px-3 py-2 text-[13px] leading-5 outline-none select-none active:bg-bg-neutral-subtle-pressed data-[variant=destructive]:active:bg-bg-danger-subtler-pressed data-inset:pl-8 [&_svg]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg]:text-icon-subtle data-[variant=destructive]:[&_svg]:text-icon-danger",
         className,
       )}
       {...props}
     >
       {elemBefore ? (
-        <span className="text-icon-subtle mt-0.5 inline-flex shrink-0 items-center justify-center">
+        <span className={cn("inline-flex h-5 shrink-0 items-center justify-center", variant === "destructive" ? "text-icon-danger" : "text-icon-subtle")}>
           {elemBefore}
         </span>
       ) : null}
@@ -210,7 +209,7 @@ function DropdownMenuItem({
         ) : null}
       </span>
       {elemAfter ? (
-        <span className="text-icon-subtle ml-auto inline-flex shrink-0 items-center justify-center">
+        <span className={cn("ml-auto inline-flex h-5 shrink-0 items-center justify-center", variant === "destructive" ? "text-icon-danger" : "text-icon-subtle")}>
           {elemAfter}
         </span>
       ) : null}

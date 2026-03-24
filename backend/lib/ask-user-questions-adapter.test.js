@@ -75,6 +75,33 @@ test("falls back to question ID when metadata has no matching entry", () => {
 	});
 });
 
+test("maps selected option ids back to option labels when metadata includes options", () => {
+	const answers = { "q-1": "dashboard", "q-2": ["slack", "email"] };
+	const questionMeta = [
+		{
+			id: "q-1",
+			label: "What should we build?",
+			options: [
+				{ id: "dashboard", label: "Dashboard" },
+				{ id: "notes", label: "Notes App" },
+			],
+		},
+		{
+			id: "q-2",
+			label: "Which channels matter?",
+			options: [
+				{ id: "slack", label: "Slack" },
+				{ id: "email", label: "Email" },
+			],
+		},
+	];
+	const result = adaptClarificationAnswers("request-user-input-tc-777", answers, questionMeta);
+	assert.deepEqual(result, {
+		"What should we build?": ["Dashboard"],
+		"Which channels matter?": ["Slack", "Email"],
+	});
+});
+
 test("returns empty object for null/undefined answers", () => {
 	assert.deepEqual(adaptClarificationAnswers("request-user-input-tc-003", null, null), {});
 	assert.deepEqual(adaptClarificationAnswers("request-user-input-tc-003", undefined, null), {});

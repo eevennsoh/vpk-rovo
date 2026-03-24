@@ -10,10 +10,9 @@ import {
 	type RovoUIMessage,
 } from "@/lib/rovo-ui-messages";
 import {
-	buildClarificationSummaryDisplayLabel,
+	buildClarificationMessageMetadata,
 	getLatestQuestionCardPayload,
 	buildClarificationDismissPrompt,
-	buildClarificationSummaryRows,
 	type ClarificationSubmission,
 	type ParsedQuestionCardPayload,
 } from "@/components/projects/shared/lib/question-card-widget";
@@ -778,17 +777,14 @@ export function useMakeChat(options: {
 				return;
 			}
 
-			const summaryRows = questionCard
-				? buildClarificationSummaryRows(questionCard, clarification.answers)
-				: [];
-			const displayLabel = questionCard
-				? buildClarificationSummaryDisplayLabel(questionCard, clarification.answers)
-				: "Requirements captured.";
-			const clarificationMetadata = {
-				source: "clarification-submit" as const,
-				displayLabel,
-				clarificationSummary: summaryRows,
-			};
+			const clarificationMetadata = questionCard
+				? buildClarificationMessageMetadata(questionCard, {
+					answers: clarification.answers,
+					status: "answered",
+				})
+				: {
+					source: "clarification-submit" as const,
+				};
 
 			await sendPrompt(promptText, {
 				contextDescription: isPlanMode
@@ -810,10 +806,10 @@ export function useMakeChat(options: {
 					? MAKE_MODE_POST_CLARIFICATION_CONTEXT_DESCRIPTION
 					: undefined,
 				planRequestId: planningSession?.requestId,
-				messageMetadata: {
+				messageMetadata: buildClarificationMessageMetadata(questionCard, {
+					status: "dismissed",
 					visibility: "hidden",
-					source: "clarification-submit",
-				},
+				}),
 			});
 		},
 		[planningSession?.requestId, isPlanMode, sendPrompt],

@@ -210,7 +210,7 @@ async function discoverDevSpaces() {
 async function buildForgeApp(slug, forgeAppDir, logger = console) {
 	const esbuild = require("esbuild");
 
-	const sourceDir = path.resolve(VPK_ROOT, "components", "generated-apps", slug);
+	const sourceDir = path.resolve(VPK_ROOT, "app", "apps", slug);
 	const outputDir = path.join(forgeAppDir, "static", "default");
 
 	await fs.mkdir(outputDir, { recursive: true });
@@ -391,7 +391,7 @@ async function collectClassCandidates(slug) {
 	const candidates = new Set();
 
 	const dirsToScan = [
-		path.join(VPK_ROOT, "components", "generated-apps", slug),
+		path.join(VPK_ROOT, "app", "apps", slug),
 		path.join(VPK_ROOT, "components", "ui"),
 		path.join(VPK_ROOT, "lib"),
 	];

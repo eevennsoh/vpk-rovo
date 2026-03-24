@@ -55,7 +55,7 @@ type DemoIconProps = Readonly<{
 function DemoIcon({
   render,
   label,
-  className = "text-icon-subtle",
+  className,
 }: DemoIconProps) {
   return <Icon render={render} label={label} className={className} />;
 }
@@ -67,7 +67,7 @@ function DemoActionsContent() {
         <DropdownMenuItem
           elemBefore={
             <DemoIcon
-              render={<EditIcon label="" size="small" />}
+              render={<EditIcon label="" />}
               label="Edit"
             />
           }
@@ -77,7 +77,7 @@ function DemoActionsContent() {
         <DropdownMenuItem
           elemBefore={
             <DemoIcon
-              render={<CopyIcon label="" size="small" />}
+              render={<CopyIcon label="" />}
               label="Duplicate"
             />
           }
@@ -87,7 +87,7 @@ function DemoActionsContent() {
         <DropdownMenuItem
           elemBefore={
             <DemoIcon
-              render={<ShareIcon label="" size="small" />}
+              render={<ShareIcon label="" />}
               label="Share"
             />
           }
@@ -101,9 +101,8 @@ function DemoActionsContent() {
           variant="destructive"
           elemBefore={
             <DemoIcon
-              render={<DeleteIcon label="" size="small" />}
+              render={<DeleteIcon label="" />}
               label="Delete"
-              className="text-icon-danger"
             />
           }
         >
@@ -185,7 +184,7 @@ export function DropdownMenuDemoTranslucentImage() {
               <DropdownMenuItem
                 elemBefore={
                   <DemoIcon
-                    render={<SearchIcon label="" size="small" />}
+                    render={<SearchIcon label="" />}
                     label="Inspect"
                   />
                 }
@@ -196,7 +195,7 @@ export function DropdownMenuDemoTranslucentImage() {
               <DropdownMenuItem
                 elemBefore={
                   <DemoIcon
-                    render={<SettingsIcon label="" size="small" />}
+                    render={<SettingsIcon label="" />}
                     label="Adjust"
                   />
                 }
@@ -207,7 +206,7 @@ export function DropdownMenuDemoTranslucentImage() {
               <DropdownMenuItem
                 elemBefore={
                   <DemoIcon
-                    render={<ShareIcon label="" size="small" />}
+                    render={<ShareIcon label="" />}
                     label="Share"
                   />
                 }
@@ -307,7 +306,7 @@ export function DropdownMenuDemoCustomTriggers() {
           }
         >
           <DemoIcon
-            render={<ShowMoreHorizontalIcon label="" size="small" />}
+            render={<ShowMoreHorizontalIcon label="" />}
             label="More actions"
           />
         </DropdownMenuTrigger>
@@ -509,22 +508,22 @@ export function DropdownMenuDemoPlacement() {
     {
       side: "top" as const,
       label: "Top",
-      icon: <ArrowUpIcon label="" size="small" />,
+      icon: <ArrowUpIcon label="" />,
     },
     {
       side: "right" as const,
       label: "Right",
-      icon: <ArrowRightIcon label="" size="small" />,
+      icon: <ArrowRightIcon label="" />,
     },
     {
       side: "bottom" as const,
       label: "Bottom",
-      icon: <ArrowDownIcon label="" size="small" />,
+      icon: <ArrowDownIcon label="" />,
     },
     {
       side: "left" as const,
       label: "Left",
-      icon: <ArrowLeftIcon label="" size="small" />,
+      icon: <ArrowLeftIcon label="" />,
     },
   ];
 
@@ -662,7 +661,7 @@ export function DropdownMenuDemoAccessibleLabels() {
           }
         >
           <DemoIcon
-            render={<SettingsIcon label="" size="small" />}
+            render={<SettingsIcon label="" />}
             label="Settings"
           />
         </DropdownMenuTrigger>
@@ -685,7 +684,7 @@ export function DropdownMenuDemoAccessibleLabels() {
           }
         >
           <DemoIcon
-            render={<SearchIcon label="" size="small" />}
+            render={<SearchIcon label="" />}
             label="Search"
           />
         </DropdownMenuTrigger>
@@ -797,7 +796,7 @@ export function DropdownMenuDemoItemWithElements() {
           <DropdownMenuItem
             elemBefore={
               <DemoIcon
-                render={<PersonIcon label="" size="small" />}
+                render={<PersonIcon label="" />}
                 label="Profile"
               />
             }
@@ -808,7 +807,7 @@ export function DropdownMenuDemoItemWithElements() {
           <DropdownMenuItem
             elemBefore={
               <DemoIcon
-                render={<SettingsIcon label="" size="small" />}
+                render={<SettingsIcon label="" />}
                 label="Settings"
               />
             }
@@ -835,7 +834,7 @@ export function DropdownMenuDemoItemElemBefore() {
           <DropdownMenuItem
             elemBefore={
               <DemoIcon
-                render={<AddIcon label="" size="small" />}
+                render={<AddIcon label="" />}
                 label="Create"
               />
             }
@@ -845,7 +844,7 @@ export function DropdownMenuDemoItemElemBefore() {
           <DropdownMenuItem
             elemBefore={
               <DemoIcon
-                render={<CopyIcon label="" size="small" />}
+                render={<CopyIcon label="" />}
                 label="Duplicate"
               />
             }
@@ -898,7 +897,7 @@ export function DropdownMenuDemoItemCustomComponent() {
             render={<Link href="/components/ui/button" />}
             elemBefore={
               <DemoIcon
-                render={<LinkExternalIcon label="" size="small" />}
+                render={<LinkExternalIcon label="" />}
                 label="Open docs"
               />
             }

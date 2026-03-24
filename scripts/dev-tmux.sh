@@ -149,6 +149,45 @@ process.stdout.write(`${frontend} ${backend}`);
 NODE
 }
 
+wait_for_rovodev_health() {
+	node - <<'NODE' "$@"
+const { waitForRovodevPortsHealthy } = require("./scripts/lib/dev-tmux-ports");
+
+const ports = process.argv
+	.slice(2)
+	.map((value) => Number.parseInt(value, 10))
+	.filter((value) => Number.isFinite(value) && value > 0);
+
+if (ports.length === 0) {
+	process.exit(0);
+}
+
+const maxAttempts = Number.parseInt(
+	process.env.ROVODEV_HEALTHCHECK_MAX_ATTEMPTS ?? "60",
+	10
+);
+const intervalMs = Number.parseInt(
+	process.env.ROVODEV_HEALTHCHECK_INTERVAL_MS ?? "1000",
+	10
+);
+
+const run = async () => {
+	console.log(`[tmux] Waiting for RovoDev ports to become healthy: ${ports.join(", ")}`);
+	await waitForRovodevPortsHealthy({
+		ports,
+		maxAttempts,
+		intervalMs,
+	});
+	console.log(`[tmux] RovoDev ports healthy: ${ports.join(", ")}`);
+};
+
+run().catch((error) => {
+	console.error(error instanceof Error ? error.message : String(error));
+	process.exit(1);
+});
+NODE
+}
+
 apply_window_styling() {
 	local frontend_port backend_port ports_pair
 	ports_pair="$(resolve_frontend_backend_ports)"
@@ -207,6 +246,15 @@ start_session() {
 		exit 1
 	fi
 
+	local frontend_port backend_port ports_pair
+	ports_pair="$(resolve_frontend_backend_ports)"
+	frontend_port="${ports_pair%% *}"
+	backend_port="${ports_pair##* }"
+
+	echo "[tmux] Frontend port: ${frontend_port}"
+	echo "[tmux] Backend port: ${backend_port}"
+	echo "[tmux] RovoDev ports: ${rovodev_ports[*]}"
+
 	tmux new-session -d -s "$SESSION_NAME" -n "$WINDOW_NAME"
 
 	local total_panes
@@ -228,15 +276,12 @@ start_session() {
 		tmux send-keys -t "$SESSION_NAME:$WINDOW_NAME.$pane" "$cmd" C-m
 	done
 
-	local frontend_port backend_port ports_pair
-	ports_pair="$(resolve_frontend_backend_ports)"
-	frontend_port="${ports_pair%% *}"
-	backend_port="${ports_pair##* }"
+	wait_for_rovodev_health "${rovodev_ports[@]}"
 
 	tmux select-pane -t "$SESSION_NAME:$WINDOW_NAME.0" -T "frontend:${frontend_port}"
 	tmux select-pane -t "$SESSION_NAME:$WINDOW_NAME.1" -T "backend:${backend_port}"
-	tmux send-keys -t "$SESSION_NAME:$WINDOW_NAME.1" "cd \"$(pwd)\" && pnpm run dev:backend" C-m
-	tmux send-keys -t "$SESSION_NAME:$WINDOW_NAME.0" "cd \"$(pwd)\" && pnpm run dev:frontend" C-m
+	tmux send-keys -t "$SESSION_NAME:$WINDOW_NAME.1" "cd \"$(pwd)\" && VPK_TMUX_OWNED=1 pnpm run dev:backend" C-m
+	tmux send-keys -t "$SESSION_NAME:$WINDOW_NAME.0" "cd \"$(pwd)\" && VPK_TMUX_OWNED=1 pnpm run dev:frontend" C-m
 
 	tmux select-layout -t "$SESSION_NAME:$WINDOW_NAME" tiled
 	tmux select-pane -t "$SESSION_NAME:$WINDOW_NAME.0"
@@ -302,11 +347,16 @@ status_session() {
 }
 
 usage() {
-	echo "Usage: $0 [--] [start|stop|attach|style|status]"
+	echo "Usage: $0 [--] [start|stop|attach|style|status] [pool-size]"
 	echo ""
 	echo "Session resolution:"
 	echo "  ROVODEV_TMUX_SESSION          Exact tmux session name override"
 	echo "  ROVODEV_TMUX_SESSION_PREFIX   Prefix for auto-generated name (default: vpk-dev)"
+	echo ""
+	echo "Examples:"
+	echo "  pnpm run rovodev:tmux:start"
+	echo "  pnpm run rovodev:tmux:start -- 6"
+	echo "  pnpm run rovodev:tmux:stop"
 	echo ""
 	echo "Commands:"
 	echo "  start   Start or attach tmux 8-pane dev session (default)"
@@ -320,16 +370,34 @@ if [[ "${1:-}" == "--" ]]; then
 	shift
 fi
 
-# Parse --N flag to override pool size (e.g. --1, --2, --3)
-for arg in "$@"; do
-	if [[ "$arg" =~ ^--([0-9]+)$ ]]; then
-		POOL_SIZE="${BASH_REMATCH[1]}"
-		shift
-		break
-	fi
-done
+command="start"
+if [[ $# -gt 0 ]]; then
+	case "${1:-}" in
+		start|stop|attach|style|status|-h|--help|help)
+			command="$1"
+			shift
+			;;
+	esac
+fi
 
-command="${1:-start}"
+if [[ $# -gt 0 ]]; then
+	case "${1:-}" in
+		--[0-9]*)
+			POOL_SIZE="${1#--}"
+			shift
+			;;
+		[0-9]*)
+			POOL_SIZE="$1"
+			shift
+			;;
+	esac
+fi
+
+if [[ $# -gt 0 ]]; then
+	echo "Unknown extra arguments: $*"
+	usage
+	exit 1
+fi
 
 case "$command" in
 	start)

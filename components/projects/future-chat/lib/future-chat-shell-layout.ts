@@ -1,9 +1,9 @@
 import { clamp } from "@/lib/utils";
 
 const FUTURE_CHAT_MOBILE_BREAKPOINT = 768;
-const FUTURE_CHAT_MIN_CHAT_PANE_WIDTH = 360;
-const FUTURE_CHAT_MAX_CHAT_PANE_WIDTH = 560;
-const FUTURE_CHAT_MIN_ARTIFACT_PANE_WIDTH = 440;
+export const FUTURE_CHAT_MIN_CHAT_PANE_WIDTH = 360;
+export const FUTURE_CHAT_MAX_CHAT_PANE_WIDTH = 560;
+export const FUTURE_CHAT_MIN_ARTIFACT_PANE_WIDTH = 440;
 const FUTURE_CHAT_PREFERRED_CHAT_PANE_RATIO = 0.42;
 
 export interface FutureChatShellLayout {
@@ -50,4 +50,3 @@ export function getFutureChatShellLayout(shellWidth: number): FutureChatShellLay
 		mode: "split",
 	};
 }
-

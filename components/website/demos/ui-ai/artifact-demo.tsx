@@ -1,23 +1,29 @@
 "use client";
 
+import { useCallback, useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
+
 import {
 	Artifact,
 	ArtifactAction,
 	ArtifactActions,
+	ArtifactCard,
 	ArtifactClose,
 	ArtifactContent,
 	ArtifactDescription,
 	ArtifactHeader,
+	ArtifactPanel,
 	ArtifactTitle,
+	type ArtifactDocument,
 } from "@/components/ui-ai/artifact";
+import { useArtifactAnnotations } from "@/components/ui-ai/hooks/use-artifact-annotations";
 import { CodeBlock } from "@/components/ui-ai/code-block";
 import {
-	CopyIcon,
-	DownloadIcon,
-	PlayIcon,
-	RefreshCwIcon,
-	ShareIcon,
-} from "lucide-react";
+	ResizableHandle,
+	ResizablePanel,
+	ResizablePanelGroup,
+} from "@/components/ui/resizable";
+import { CopyIcon, DownloadIcon, PlayIcon, RefreshCwIcon, ShareIcon } from "lucide-react";
 
 const dijkstraCode = `# Dijkstra's Algorithm implementation
 import heapq
@@ -52,7 +58,479 @@ graph = {
 
 print(dijkstra(graph, "A"))`;
 
-export function ArtifactDemoWithCode() {
+const dijkstraCodeV2 = `# Dijkstra's Algorithm — optimized with early exit
+import heapq
+
+def dijkstra(graph, start, target=None):
+    distances = {node: float('inf') for node in graph}
+    distances[start] = 0
+    previous = {node: None for node in graph}
+    heap = [(0, start)]
+    visited = set()
+
+    while heap:
+        current_distance, current_node = heapq.heappop(heap)
+        if current_node in visited:
+            continue
+        visited.add(current_node)
+
+        # Early exit if we reached the target
+        if target and current_node == target:
+            break
+
+        for neighbor, weight in graph[current_node].items():
+            distance = current_distance + weight
+            if distance < distances[neighbor]:
+                distances[neighbor] = distance
+                previous[neighbor] = current_node
+                heapq.heappush(heap, (distance, neighbor))
+
+    return distances, previous
+
+def shortest_path(graph, start, target):
+    distances, previous = dijkstra(graph, start, target)
+    path = []
+    current = target
+    while current is not None:
+        path.append(current)
+        current = previous[current]
+    return list(reversed(path)), distances[target]
+
+graph = {
+    'A': {'B': 1, 'C': 4},
+    'B': {'A': 1, 'C': 2, 'D': 5},
+    'C': {'A': 4, 'B': 2, 'D': 1},
+    'D': {'B': 5, 'C': 1}
+}
+
+path, cost = shortest_path(graph, 'A', 'D')
+print(f"Shortest path: {' -> '.join(path)} (cost: {cost})")`;
+
+const now = new Date().toISOString();
+const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+
+function createMockDocument(): ArtifactDocument {
+	return {
+		id: "demo-artifact-1",
+		title: "Dijkstra's Algorithm",
+		kind: "code",
+		versions: [
+			{
+				id: "v1",
+				content: dijkstraCode,
+				title: "Dijkstra's Algorithm",
+				changeLabel: "Initial implementation",
+				createdAt: fiveMinAgo,
+			},
+			{
+				id: "v2",
+				content: dijkstraCodeV2,
+				title: "Dijkstra's Algorithm",
+				changeLabel: "Added early exit & path reconstruction",
+				createdAt: now,
+			},
+		],
+		createdAt: fiveMinAgo,
+		updatedAt: now,
+	};
+}
+
+const SPLIT_BREAKPOINT = 800;
+
+export function ArtifactDemoCodePreview() {
+	const [isOpen, setIsOpen] = useState(false);
+	const [document] = useState(createMockDocument);
+	const [draftContent, setDraftContent] = useState(document.versions[1]?.content ?? "");
+	const [mode, setMode] = useState<"preview" | "edit">("preview");
+	const [selectedVersionId, setSelectedVersionId] = useState<string | null>("v2");
+	const [cursorMode, setCursorMode] = useState(false);
+	const contentRef = useRef<HTMLDivElement>(null);
+	const shellRef = useRef<HTMLDivElement>(null);
+	const cardRef = useRef<HTMLDivElement>(null);
+	const [shellSize, setShellSize] = useState({ width: 0, height: 0 });
+	const [artifactOrigin, setArtifactOrigin] = useState({
+		left: 0,
+		top: 0,
+		width: 320,
+		height: 96,
+	});
+
+	const {
+		annotations,
+		pendingSelection,
+		addComment,
+		dismissSelection,
+		removeAnnotation,
+		clearAnnotations,
+		refreshPositions,
+	} = useArtifactAnnotations({
+		active: cursorMode && isOpen,
+		documentId: document.id,
+		documentKind: document.kind,
+		documentVersionId: selectedVersionId,
+		containerRef: contentRef,
+	});
+
+	useEffect(() => {
+		const shellElement = shellRef.current;
+		if (!shellElement || typeof ResizeObserver === "undefined") {
+			return;
+		}
+
+		const updateBounds = () => {
+			setShellSize((prev) => {
+				const width = shellElement.clientWidth;
+				const height = shellElement.clientHeight;
+				return prev.width === width && prev.height === height
+					? prev
+					: { width, height };
+			});
+		};
+
+		updateBounds();
+		const observer = new ResizeObserver(() => {
+			updateBounds();
+		});
+		observer.observe(shellElement);
+		return () => observer.disconnect();
+	}, []);
+
+	const shouldSplit = isOpen && shellSize.width >= SPLIT_BREAKPOINT;
+
+	const handleOpen = useCallback(() => {
+		const cardElement = cardRef.current;
+		const shellElement = shellRef.current;
+		if (cardElement && shellElement) {
+			const cardRect = cardElement.getBoundingClientRect();
+			const shellRect = shellElement.getBoundingClientRect();
+			setArtifactOrigin({
+				left: Math.max(cardRect.left - shellRect.left, 16),
+				top: Math.max(cardRect.top - shellRect.top, 16),
+				width: Math.min(Math.max(cardRect.width, 260), 420),
+				height: Math.min(Math.max(cardRect.height, 40), 140),
+			});
+		}
+		setIsOpen(true);
+	}, []);
+
+	const handleClose = useCallback(() => {
+		setIsOpen(false);
+		setCursorMode(false);
+		clearAnnotations();
+	}, [clearAnnotations]);
+
+	const handleVersionChange = useCallback((versionId: string | null) => {
+		setSelectedVersionId(versionId);
+		const version = document.versions.find((v) => v.id === versionId);
+		if (version) {
+			setDraftContent(version.content);
+		}
+		setMode("preview");
+		refreshPositions();
+	}, [document.versions, refreshPositions]);
+
+	const handleSave = useCallback(async () => {
+		setMode("preview");
+	}, []);
+
+	const handleDelete = useCallback(async () => {
+		handleClose();
+	}, [handleClose]);
+
+	const artifactPanel = (
+		<ArtifactPanel
+			annotations={annotations}
+			contentRef={contentRef}
+			cursorMode={cursorMode}
+			document={document}
+			draftContent={draftContent}
+			mode={mode}
+			onAddComment={addComment}
+			onClose={handleClose}
+			onCursorModeChange={setCursorMode}
+			onDelete={handleDelete}
+			onDismissSelection={dismissSelection}
+			onDraftChange={setDraftContent}
+			onModeChange={setMode}
+			onRemoveAnnotation={removeAnnotation}
+			onSave={handleSave}
+			onVersionChange={handleVersionChange}
+			pendingSelection={pendingSelection}
+			selectedVersionId={selectedVersionId}
+		/>
+	);
+
+	const cardPane = (
+		<div className="h-full overflow-auto p-4">
+			<div ref={cardRef}>
+				<ArtifactCard
+					kind="code"
+					onOpen={handleOpen}
+					previewContent={dijkstraCode}
+					title="Dijkstra's Algorithm"
+				/>
+			</div>
+		</div>
+	);
+
+	return (
+		<div ref={shellRef} className="relative h-[600px] w-full overflow-hidden rounded-lg border">
+			{shouldSplit ? (
+				<ResizablePanelGroup className="h-full w-full" orientation="horizontal">
+					<ResizablePanel defaultSize={400} id="demo-chat" minSize={250}>
+						{cardPane}
+					</ResizablePanel>
+					<ResizableHandle withHandle />
+					<ResizablePanel defaultSize={500} id="demo-artifact" minSize={300}>
+						{artifactPanel}
+					</ResizablePanel>
+				</ResizablePanelGroup>
+			) : (
+				<>
+					{cardPane}
+					<AnimatePresence>
+						{isOpen ? (
+							<motion.div
+								key="artifact-panel"
+								animate={{
+									opacity: 1,
+									x: 0,
+									y: 0,
+									width: shellSize.width || "100%",
+									height: shellSize.height || "100%",
+									borderRadius: 0,
+									transition: {
+										delay: 0,
+										type: "spring",
+										stiffness: 300,
+										damping: 30,
+									},
+								}}
+								className="absolute top-0 left-0 z-40 flex h-full flex-col overflow-hidden border-border bg-background md:border-l"
+								exit={{
+									opacity: 0,
+									scale: 0.5,
+									transition: {
+										delay: 0.1,
+										type: "spring",
+										stiffness: 600,
+										damping: 30,
+									},
+								}}
+								initial={{
+									opacity: 1,
+									x: artifactOrigin.left,
+									y: artifactOrigin.top,
+									width: artifactOrigin.width,
+									height: artifactOrigin.height,
+									borderRadius: 32,
+								}}
+							>
+								{artifactPanel}
+							</motion.div>
+						) : null}
+					</AnimatePresence>
+				</>
+			)}
+		</div>
+	);
+}
+
+export function ArtifactDemoImagePreview() {
+	const [isOpen, setIsOpen] = useState(false);
+	const imageUrl = "https://picsum.photos/seed/artifact/1280/800";
+	const contentRef = useRef<HTMLDivElement>(null);
+	const shellRef = useRef<HTMLDivElement>(null);
+	const cardRef = useRef<HTMLDivElement>(null);
+	const [shellSize, setShellSize] = useState({ width: 0, height: 0 });
+	const [artifactOrigin, setArtifactOrigin] = useState({
+		left: 0,
+		top: 0,
+		width: 320,
+		height: 96,
+	});
+
+	const imageDocument: ArtifactDocument = {
+		id: "demo-image-1",
+		title: "Generated Landscape",
+		kind: "image",
+		versions: [
+			{
+				id: "img-v1",
+				content: imageUrl,
+				title: "Generated Landscape",
+				changeLabel: "Generated image",
+				createdAt: now,
+			},
+		],
+		createdAt: now,
+		updatedAt: now,
+	};
+
+	const [draftContent, setDraftContent] = useState(imageUrl);
+	const [mode, setMode] = useState<"preview" | "edit">("preview");
+	const [selectedVersionId, setSelectedVersionId] = useState<string | null>("img-v1");
+
+	useEffect(() => {
+		const shellElement = shellRef.current;
+		if (!shellElement || typeof ResizeObserver === "undefined") {
+			return;
+		}
+
+		const updateBounds = () => {
+			setShellSize((prev) => {
+				const width = shellElement.clientWidth;
+				const height = shellElement.clientHeight;
+				return prev.width === width && prev.height === height
+					? prev
+					: { width, height };
+			});
+		};
+
+		updateBounds();
+		const observer = new ResizeObserver(() => {
+			updateBounds();
+		});
+		observer.observe(shellElement);
+		return () => observer.disconnect();
+	}, []);
+
+	const shouldSplit = isOpen && shellSize.width >= SPLIT_BREAKPOINT;
+
+	const handleOpen = useCallback(() => {
+		const cardElement = cardRef.current;
+		const shellElement = shellRef.current;
+		if (cardElement && shellElement) {
+			const cardRect = cardElement.getBoundingClientRect();
+			const shellRect = shellElement.getBoundingClientRect();
+			setArtifactOrigin({
+				left: Math.max(cardRect.left - shellRect.left, 16),
+				top: Math.max(cardRect.top - shellRect.top, 16),
+				width: Math.min(Math.max(cardRect.width, 260), 420),
+				height: Math.min(Math.max(cardRect.height, 40), 140),
+			});
+		}
+		setIsOpen(true);
+	}, []);
+
+	const artifactPanel = (
+		<ArtifactPanel
+			contentRef={contentRef}
+			document={imageDocument}
+			draftContent={draftContent}
+			mode={mode}
+			onClose={() => setIsOpen(false)}
+			onDelete={async () => setIsOpen(false)}
+			onDraftChange={setDraftContent}
+			onModeChange={setMode}
+			onSave={async () => setMode("preview")}
+			onVersionChange={setSelectedVersionId}
+			selectedVersionId={selectedVersionId}
+		/>
+	);
+
+	const cardPane = (
+		<div className="h-full overflow-auto p-4">
+			<div ref={cardRef}>
+				<ArtifactCard
+					kind="image"
+					onOpen={handleOpen}
+					previewContent={imageUrl}
+					title="Generated Landscape"
+				/>
+			</div>
+		</div>
+	);
+
+	return (
+		<div ref={shellRef} className="relative h-[500px] w-full overflow-hidden rounded-lg border">
+			{shouldSplit ? (
+				<ResizablePanelGroup className="h-full w-full" orientation="horizontal">
+					<ResizablePanel defaultSize={400} id="demo-img-chat" minSize={250}>
+						{cardPane}
+					</ResizablePanel>
+					<ResizableHandle withHandle />
+					<ResizablePanel defaultSize={500} id="demo-img-artifact" minSize={300}>
+						{artifactPanel}
+					</ResizablePanel>
+				</ResizablePanelGroup>
+			) : (
+				<>
+					{cardPane}
+					<AnimatePresence>
+						{isOpen ? (
+							<motion.div
+								key="image-artifact-panel"
+								animate={{
+									opacity: 1,
+									x: 0,
+									y: 0,
+									width: shellSize.width || "100%",
+									height: shellSize.height || "100%",
+									borderRadius: 0,
+									transition: {
+										delay: 0,
+										type: "spring",
+										stiffness: 300,
+										damping: 30,
+									},
+								}}
+								className="absolute top-0 left-0 z-40 flex h-full flex-col overflow-hidden border-border bg-background md:border-l"
+								exit={{
+									opacity: 0,
+									scale: 0.5,
+									transition: {
+										delay: 0.1,
+										type: "spring",
+										stiffness: 600,
+										damping: 30,
+									},
+								}}
+								initial={{
+									opacity: 1,
+									x: artifactOrigin.left,
+									y: artifactOrigin.top,
+									width: artifactOrigin.width,
+									height: artifactOrigin.height,
+									borderRadius: 32,
+								}}
+							>
+								{artifactPanel}
+							</motion.div>
+						) : null}
+					</AnimatePresence>
+				</>
+			)}
+		</div>
+	);
+}
+
+export function ArtifactDemoStreaming() {
+	return (
+		<ArtifactCard
+			action="create"
+			isStreaming
+			kind="text"
+			previewContent=""
+			title="Project README"
+		/>
+	);
+}
+
+export function ArtifactDemoChip() {
+	return (
+		<ArtifactCard
+			action="create"
+			displayMode="chip"
+			kind="sheet"
+			onOpen={() => console.log("Open sheet artifact")}
+			previewContent="| Name | Role | Status |\n|------|------|--------|\n| Alice | Engineer | Active |"
+			title="Team Roster"
+		/>
+	);
+}
+
+export function ArtifactDemoCompound() {
 	return (
 		<Artifact className="w-full">
 			<ArtifactHeader>
@@ -93,6 +571,7 @@ export function ArtifactDemoWithCode() {
 							tooltip="Share artifact"
 						/>
 					</ArtifactActions>
+					<ArtifactClose />
 				</div>
 			</ArtifactHeader>
 			<ArtifactContent className="p-0">
@@ -107,118 +586,6 @@ export function ArtifactDemoWithCode() {
 	);
 }
 
-export function ArtifactDemoWithClose() {
-	return (
-		<Artifact className="w-full">
-			<ArtifactHeader>
-				<div>
-					<ArtifactTitle>API Response</ArtifactTitle>
-					<ArtifactDescription>application/json</ArtifactDescription>
-				</div>
-				<div className="flex items-center gap-2">
-					<ArtifactActions>
-						<ArtifactAction
-							icon={CopyIcon}
-							label="Copy"
-							tooltip="Copy to clipboard"
-						/>
-					</ArtifactActions>
-					<ArtifactClose />
-				</div>
-			</ArtifactHeader>
-			<ArtifactContent>
-				<CodeBlock
-					className="border-none shadow-none"
-					code={`{
-  "status": "success",
-  "data": {
-    "shortest_paths": {
-      "A": 0,
-      "B": 1,
-      "C": 3,
-      "D": 4
-    }
-  }
-}`}
-					language="json"
-				/>
-			</ArtifactContent>
-		</Artifact>
-	);
-}
-
-export function ArtifactDemoDocument() {
-	return (
-		<Artifact className="w-full">
-			<ArtifactHeader>
-				<div>
-					<ArtifactTitle>Project README</ArtifactTitle>
-					<ArtifactDescription>Markdown document</ArtifactDescription>
-				</div>
-				<ArtifactActions>
-					<ArtifactAction
-						icon={CopyIcon}
-						label="Copy"
-						tooltip="Copy content"
-					/>
-					<ArtifactAction
-						icon={DownloadIcon}
-						label="Download"
-						tooltip="Download file"
-					/>
-				</ArtifactActions>
-			</ArtifactHeader>
-			<ArtifactContent className="prose prose-sm max-w-none text-foreground">
-				<h2 className="text-base font-semibold">Graph Algorithms Library</h2>
-				<p className="text-muted-foreground">
-					A collection of graph algorithm implementations in Python, including
-					Dijkstra&apos;s shortest path, BFS, DFS, and A* search.
-				</p>
-				<h3 className="text-sm font-medium">Features</h3>
-				<ul className="text-sm text-muted-foreground">
-					<li>Weighted and unweighted graph support</li>
-					<li>Adjacency list and matrix representations</li>
-					<li>Comprehensive test coverage</li>
-					<li>Type-annotated source code</li>
-				</ul>
-			</ArtifactContent>
-		</Artifact>
-	);
-}
-
-export function ArtifactDemoMinimal() {
-	return (
-		<Artifact className="w-full">
-			<ArtifactHeader>
-				<ArtifactTitle>Generated Component</ArtifactTitle>
-				<ArtifactActions>
-					<ArtifactAction
-						icon={CopyIcon}
-						label="Copy"
-						tooltip="Copy code"
-					/>
-				</ArtifactActions>
-			</ArtifactHeader>
-			<ArtifactContent>
-				<CodeBlock
-					className="border-none shadow-none"
-					code={`export function Button({ children, onClick }) {
-  return (
-    <button
-      className="px-4 py-2 rounded-md bg-primary text-white"
-      onClick={onClick}
-    >
-      {children}
-    </button>
-  );
-}`}
-					language="tsx"
-				/>
-			</ArtifactContent>
-		</Artifact>
-	);
-}
-
 export default function ArtifactDemo() {
-	return <ArtifactDemoWithCode />;
+	return <ArtifactDemoCodePreview />;
 }

@@ -26,9 +26,11 @@ import SmartLinkEmbedIcon from "@atlaskit/icon/core/smart-link-embed";
 interface ChatHeaderProps {
 	onClose?: () => void;
 	onNewChat?: () => void;
+	isStreaming?: boolean;
+	onStop?: () => void;
 }
 
-export default function ChatHeader({ onClose, onNewChat }: Readonly<ChatHeaderProps>) {
+export default function ChatHeader({ onClose, onNewChat, isStreaming, onStop }: Readonly<ChatHeaderProps>) {
 	const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
 
 	// No-op handlers for visual-only buttons
@@ -80,10 +82,18 @@ export default function ChatHeader({ onClose, onNewChat }: Readonly<ChatHeaderPr
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align="end" sideOffset={4}>
 							<DropdownMenuGroup>
+								{isStreaming ? (
+									<DropdownMenuItem
+										elemBefore={<span aria-hidden className="size-3 rounded-[2px] bg-current" />}
+										onClick={onStop}
+									>
+										Cancel
+									</DropdownMenuItem>
+								) : null}
 								<DropdownMenuItem elemBefore={<EditIcon label="" />}>
 									Rename
 								</DropdownMenuItem>
-								<DropdownMenuItem elemBefore={<DeleteIcon label="" />}>
+								<DropdownMenuItem variant="destructive" elemBefore={<DeleteIcon label="" />}>
 									Delete
 								</DropdownMenuItem>
 							</DropdownMenuGroup>

@@ -64,8 +64,8 @@ function main() {
 	}
 
 	console.log("\n" + "━".repeat(70));
-	console.log("\n💡 Each active worktree gets a unique reserved slot (no overlap).");
-	console.log("   If a reserved port is busy, startup can still auto-increment by 1.\n");
+	console.log("\n💡 Each active worktree gets a dedicated 20-port slot per service family.");
+	console.log("   That leaves room for auto-increment and 6-port RovoDev pools without overlap.\n");
 }
 
 main();

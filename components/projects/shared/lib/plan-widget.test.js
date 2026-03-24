@@ -87,12 +87,14 @@ test("parsePlanWidgetPayload preserves both generic and legacy tool call ids", (
 		type: "plan",
 		tool_call_id: "tool-call-123",
 		title: "Sprint Board Plan",
+		markdown: "# Sprint Board Plan\n\n1. Create board shell",
 		tasks: [{ id: "task-1", label: "Create board shell" }],
 	});
 
 	assert.ok(payload);
 	assert.equal(payload.toolCallId, "tool-call-123");
 	assert.equal(payload.deferredToolCallId, "tool-call-123");
+	assert.equal(payload.markdown, "# Sprint Board Plan\n\n1. Create board shell");
 });
 
 test("generateMermaidFromPlanTasks preserves explicit blockedBy dependencies", () => {

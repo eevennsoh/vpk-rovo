@@ -62,9 +62,11 @@ function createAppRegistry({ baseDir, logger = console }) {
 	const registerApp = async ({ slug, runId, title }) => {
 		const apps = await readRegistry();
 		const existing = apps.find((app) => app.slug === slug);
+		const entryFile = `app/apps/${slug}/page.tsx`;
 		if (existing) {
 			existing.runId = runId;
 			existing.title = title;
+			existing.entryFile = entryFile;
 			existing.updatedAt = new Date().toISOString();
 		} else {
 			apps.push({
@@ -72,7 +74,7 @@ function createAppRegistry({ baseDir, logger = console }) {
 				runId,
 				title,
 				createdAt: new Date().toISOString(),
-				entryFile: `components/generated-apps/${slug}/page.tsx`,
+				entryFile,
 			});
 		}
 		await writeRegistry(apps);

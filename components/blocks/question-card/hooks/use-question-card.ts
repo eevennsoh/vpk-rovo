@@ -18,6 +18,8 @@ interface UseQuestionCardOptions {
 	defaultAnswers?: QuestionCardAnswers;
 	onSubmit: (answers: QuestionCardAnswers) => void;
 	onDismiss?: () => void;
+	/** When set, Skip ends the whole card (deferred clarification); parent should cancel the tool in `onDismiss`. */
+	toolCallId?: string;
 }
 
 export function useQuestionCard({
@@ -28,6 +30,7 @@ export function useQuestionCard({
 	defaultAnswers,
 	onSubmit,
 	onDismiss,
+	toolCallId,
 }: Readonly<UseQuestionCardOptions>) {
 	const cardRef = useRef<HTMLDivElement>(null);
 	const customInputRef = useRef<HTMLInputElement>(null);
@@ -100,12 +103,19 @@ export function useQuestionCard({
 	const handleSkip = useCallback(() => {
 		if (isSubmitting) return;
 
+		// Deferred clarification: Skip ends the whole card; the shell dismiss
+		// handler cancels the deferred tool (spec §2.4). Do not advance questions.
+		if (toolCallId) {
+			onDismiss?.();
+			return;
+		}
+
 		if (canGoToNextQuestion) {
 			goToNextQuestion();
 		} else {
 			onDismiss?.();
 		}
-	}, [isSubmitting, canGoToNextQuestion, goToNextQuestion, onDismiss]);
+	}, [isSubmitting, canGoToNextQuestion, goToNextQuestion, toolCallId, onDismiss]);
 
 	const handleSelectOption = useCallback(
 		(optionId: string) => {

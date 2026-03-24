@@ -6,6 +6,7 @@ import {
 	ToolInput,
 	ToolOutput,
 } from "@/components/ui-ai/tool";
+import { Spinner } from "@/components/ui/spinner";
 import type { ThinkingToolCallSummary } from "@/lib/rovo-ui-messages";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -34,6 +35,7 @@ function hasToolDetails(toolCall: ThinkingToolCallSummary): boolean {
 
 function isToolRunning(toolCall: ThinkingToolCallSummary): boolean {
 	return (
+		toolCall.state === "awaiting-input" ||
 		toolCall.state === "running" ||
 		toolCall.state === "approval-requested"
 	);
@@ -45,6 +47,9 @@ function toToolUiState(
 	if (state === "approval-requested") {
 		return "approval-requested";
 	}
+	if (state === "awaiting-input") {
+		return "input-streaming";
+	}
 	if (state === "running") {
 		return "input-available";
 	}
@@ -52,6 +57,22 @@ function toToolUiState(
 		return "output-error";
 	}
 	return "output-available";
+}
+
+function getThinkingStatusBadgeIcon(
+	state: ThinkingToolCallSummary["state"]
+): React.ReactNode | undefined {
+	if (state !== "running") {
+		return undefined;
+	}
+
+	return (
+		<Spinner
+			size="xs"
+			label="Running"
+			className="text-current"
+		/>
+	);
 }
 
 function AssistantThinkingToolItem({
@@ -74,6 +95,7 @@ function AssistantThinkingToolItem({
 			<ToolHeader
 				title={toolCall.toolName}
 				state={toToolUiState(toolCall.state)}
+				statusBadgeIcon={getThinkingStatusBadgeIcon(toolCall.state)}
 				type="dynamic-tool"
 				toolName={toolCall.toolName}
 			/>

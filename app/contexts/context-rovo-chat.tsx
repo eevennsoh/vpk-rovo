@@ -17,6 +17,7 @@ import {
 	type RovoMessageMetadata,
 	type RovoUIMessage,
 } from "@/lib/rovo-ui-messages";
+import { shouldSendExplicitRovoDevCancel } from "@/lib/rovodev-cancel-strategy";
 import {
 	isRateLimitError,
 	isChatInProgressError,
@@ -66,6 +67,7 @@ const INLINE_DATA_PLACEHOLDER = "[inline data omitted]";
 const CHAT_REQUEST_MAX_BYTES = 4 * 1024 * 1024;
 const CHAT_REQUEST_MIN_MESSAGES = 8;
 const EXPLICIT_CANCEL_DEBOUNCE_MS = 2_000;
+const EXPLICIT_CANCEL_GRACE_MS = 1_200;
 const MEDIA_GENERATION_TIMEOUT_MS = 120_000;
 
 function resolveClientTimeZone(explicitTimeZone?: string): string | undefined {
@@ -1089,6 +1091,19 @@ export function RovoChatProvider({
 		setQueuedPrompts([]);
 	}, []);
 
+	const waitForStreamStop = useCallback(async () => {
+		const startedAt = Date.now();
+		while (isStreamingRef.current) {
+			if (Date.now() - startedAt > EXPLICIT_CANCEL_GRACE_MS) {
+				return false;
+			}
+			await new Promise<void>((resolve) => {
+				window.setTimeout(resolve, 25);
+			});
+		}
+		return true;
+	}, []);
+
 	const cancelCurrentStream = useCallback(async () => {
 		if (cancelStreamPromiseRef.current) {
 			await cancelStreamPromiseRef.current;
@@ -1111,9 +1126,20 @@ export function RovoChatProvider({
 				console.error("[RovoChatProvider] Failed to stop chat stream:", error);
 			}
 
+			const stoppedInTime = await waitForStreamStop();
+
 			// Belt-and-suspenders: explicitly tell the backend to cancel the RovoDev
-			// stream. The primary cancellation path is req.on("close") → AbortSignal,
-			// but this handles edge cases where the SSE close event is delayed.
+			// stream only if the primary req.on("close") → AbortSignal path did
+			// not settle the turn within a short grace period.
+			if (
+				!shouldSendExplicitRovoDevCancel({
+					hasUseChatTurn: true,
+					stopSettledInTime: stoppedInTime,
+				})
+			) {
+				return;
+			}
+
 			try {
 				const cancelKey =
 					typeof portIndex === "number" ? `port:${portIndex}` : "default";
@@ -1142,7 +1168,7 @@ export function RovoChatProvider({
 		} finally {
 			cancelStreamPromiseRef.current = null;
 		}
-	}, [portIndex, stop]);
+	}, [portIndex, stop, waitForStreamStop]);
 
 	const stopStreaming = useCallback(async () => {
 		if (activePromptRef.current) {

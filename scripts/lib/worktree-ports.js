@@ -7,21 +7,23 @@
  * Port allocation strategy:
  * - Main worktree: slot 0
  * - Other active worktrees: unique slots 1..99 (sorted by identifier)
- * - Offset = slot * 2
+ * - Offset = slot * SLOT_STRIDE
  * - Frontend: 3000 + offset
  * - Backend:  8080 + offset
  * - RovoDev:  8000 + offset
  *
- * The *2 stride leaves room for port-finding to increment by 1 if needed.
+ * Each worktree reserves a full 20-port window so port auto-increment
+ * and multi-port RovoDev pools do not overlap across worktrees.
  */
 
 const { execSync } = require("node:child_process");
+const fs = require("node:fs");
 const path = require("node:path");
 
 const FRONTEND_DEFAULT_BASE = 3000;
 const BACKEND_DEFAULT_BASE = 8080;
 const ROVODEV_DEFAULT_BASE = 8000;
-const SLOT_STRIDE = 2;
+const SLOT_STRIDE = 20;
 const WORKTREE_SLOT_CAPACITY = 100;
 
 /**
@@ -43,8 +45,26 @@ function execGit(command) {
 	}).trim();
 }
 
-function isMainWorktreePath(worktreePath) {
-	return !worktreePath.replace(/\\/g, "/").includes("/worktrees/");
+function inferWorktreeKind(worktreePath) {
+	const gitEntryPath = path.join(path.resolve(worktreePath), ".git");
+
+	try {
+		const stat = fs.lstatSync(gitEntryPath);
+		if (stat.isDirectory()) {
+			return "main";
+		}
+
+		if (stat.isFile()) {
+			const gitFile = fs.readFileSync(gitEntryPath, "utf8");
+			if (/gitdir:\s*.+\/\.git\/worktrees\//i.test(gitFile)) {
+				return "linked";
+			}
+		}
+	} catch {
+		// Fall back to path heuristics when git metadata is unavailable.
+	}
+
+	return worktreePath.replace(/\\/g, "/").includes("/worktrees/") ? "linked" : "main";
 }
 
 function resolveWorktreeIdentifier(worktree) {
@@ -94,7 +114,7 @@ function getGitWorktrees() {
 
 		return worktrees.map((worktree) => ({
 			...worktree,
-			isMain: isMainWorktreePath(worktree.path),
+			isMain: inferWorktreeKind(worktree.path) === "main",
 			identifier: resolveWorktreeIdentifier(worktree),
 		}));
 	} catch {
@@ -305,6 +325,7 @@ function getAllWorktreePortInfo() {
 }
 
 module.exports = {
+	inferWorktreeKind,
 	hashString,
 	getWorktreeName,
 	getWorktreePortOffset,

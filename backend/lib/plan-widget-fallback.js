@@ -164,6 +164,56 @@ function derivePlanTitle(lines, actionItemsHeadingIndex) {
 	return "Untitled task run";
 }
 
+function derivePlanDescription(lines, stopIndex) {
+	if (!Array.isArray(lines) || lines.length === 0) {
+		return undefined;
+	}
+
+	const upperBound =
+		typeof stopIndex === "number" && stopIndex >= 0
+			? Math.min(stopIndex, lines.length)
+			: lines.length;
+
+	const paragraphs = [];
+	let currentParagraph = [];
+
+	const flushParagraph = () => {
+		if (currentParagraph.length === 0) {
+			return;
+		}
+		paragraphs.push(normalizeWhitespace(currentParagraph.join(" ")));
+		currentParagraph = [];
+	};
+
+	for (let index = 0; index < upperBound; index += 1) {
+		const trimmedLine = lines[index].trim();
+		if (!trimmedLine) {
+			flushParagraph();
+			continue;
+		}
+
+		if (isLikelySectionHeading(trimmedLine) || parseListItemLabel(trimmedLine)) {
+			flushParagraph();
+			continue;
+		}
+
+		currentParagraph.push(stripMarkdownDecorators(trimmedLine));
+	}
+	flushParagraph();
+
+	for (const paragraph of paragraphs) {
+		if (!paragraph || isGenericPlanTitle(paragraph)) {
+			continue;
+		}
+		if (paragraph.length > 240) {
+			return paragraph.slice(0, 239).trimEnd() + "…";
+		}
+		return paragraph;
+	}
+
+	return undefined;
+}
+
 function deriveProgressivePlanTitle(lines, listStartIndex) {
 	for (let index = 0; index < listStartIndex; index += 1) {
 		const line = lines[index];
@@ -331,6 +381,38 @@ function deriveStructuredPlanTitle(lines, listStartIndex, tasks) {
 	}
 
 	return derivePlanTitleFromTasks(tasks);
+}
+
+function parseTaskHeadingLabel(line) {
+	const headingMatch = line.match(/^\s*#{1,6}\s*task\s+\d+\s*:\s*(.+)$/i);
+	if (!headingMatch?.[1]) {
+		return null;
+	}
+
+	const normalizedLabel = stripMarkdownDecorators(headingMatch[1]);
+	return normalizedLabel.length > 0 ? normalizedLabel : null;
+}
+
+function collectHeadingBasedPlanTasks(lines, maxTasks) {
+	const tasks = [];
+
+	for (let index = 0; index < lines.length; index += 1) {
+		const label = parseTaskHeadingLabel(lines[index]);
+		if (!label) {
+			continue;
+		}
+
+		tasks.push({
+			id: `task-${tasks.length + 1}`,
+			label,
+			blockedBy: [],
+		});
+		if (tasks.length >= maxTasks) {
+			break;
+		}
+	}
+
+	return tasks;
 }
 
 function findFirstListItemIndex(lines, startIndex = 0) {
@@ -606,10 +688,13 @@ function extractPlanWidgetPayloadFromText(rawText, options = {}) {
 	const title = isGenericPlanTitle(derivedTitle)
 		? derivePlanTitleFromTasks(tasks)
 		: derivedTitle;
+	const description = derivePlanDescription(lines, actionItemsHeadingIndex);
 
 	return {
 		type: "plan",
 		title,
+		description,
+		markdown: normalizedText,
 		tasks,
 	};
 }
@@ -672,10 +757,13 @@ function extractProgressivePlanWidgetPayloadFromText(rawText, options = {}) {
 	const title = isGenericPlanTitle(derivedTitle)
 		? derivePlanTitleFromTasks(tasks)
 		: derivedTitle;
+	const description = derivePlanDescription(lines, listStartIndex);
 
 	return {
 		type: "plan",
 		title,
+		description,
+		markdown: rawText,
 		tasks,
 	};
 }
@@ -726,15 +814,87 @@ function extractPlanWidgetPayloadFromStructuredText(rawText, options = {}) {
 		firstListItemIndex !== -1
 			? deriveStructuredPlanTitle(lines, firstListItemIndex, tasks)
 			: derivePlanTitleFromTasks(tasks);
+	const description = derivePlanDescription(lines, firstListItemIndex);
 
 	return {
 		type: "plan",
 		title,
+		description,
+		markdown: normalizedText,
+		tasks,
+	};
+}
+
+function extractPlanWidgetPayloadFromExitPlanToolInput(toolInput, options = {}) {
+	let planMarkdown = null;
+
+	if (toolInput && typeof toolInput === "object" && !Array.isArray(toolInput)) {
+		planMarkdown =
+			typeof toolInput.plan === "string" && toolInput.plan.trim()
+				? toolInput.plan
+				: null;
+	} else if (typeof toolInput === "string" && toolInput.trim()) {
+		const trimmedInput = toolInput.trim();
+		try {
+			const parsed = JSON.parse(trimmedInput);
+			if (parsed && typeof parsed === "object" && typeof parsed.plan === "string" && parsed.plan.trim()) {
+				planMarkdown = parsed.plan;
+			} else {
+				planMarkdown = trimmedInput;
+			}
+		} catch {
+			planMarkdown = trimmedInput;
+		}
+	}
+
+	if (!planMarkdown) {
+		return null;
+	}
+
+	const extractedPayload =
+		extractPlanWidgetPayloadFromText(planMarkdown, options) ||
+		extractPlanWidgetPayloadFromStructuredText(planMarkdown, options) ||
+		extractProgressivePlanWidgetPayloadFromText(planMarkdown, {
+			...options,
+			requirePlanSignal: false,
+			requireActionItemsHeading: false,
+		});
+	if (extractedPayload) {
+		return extractedPayload;
+	}
+
+	const lines = planMarkdown.trim().split(/\r?\n/);
+	const maxTasks =
+		typeof options.maxTasks === "number" && options.maxTasks > 0
+			? Math.floor(options.maxTasks)
+			: MAX_TASKS;
+	const minTasks =
+		typeof options.minTasks === "number" && options.minTasks > 0
+			? Math.floor(options.minTasks)
+			: DEFAULT_MIN_TASKS;
+	const tasks = inferTaskDependencies(collectHeadingBasedPlanTasks(lines, maxTasks));
+	if (tasks.length < minTasks) {
+		return null;
+	}
+
+	const headingIndex = lines.findIndex((line) => parseTaskHeadingLabel(line));
+	const title =
+		headingIndex > 0
+			? deriveStructuredPlanTitle(lines, headingIndex, tasks)
+			: derivePlanTitleFromTasks(tasks);
+	const description = derivePlanDescription(lines, headingIndex);
+
+	return {
+		type: "plan",
+		title,
+		description,
+		markdown: planMarkdown,
 		tasks,
 	};
 }
 
 module.exports = {
+	extractPlanWidgetPayloadFromExitPlanToolInput,
 	extractPlanWidgetPayloadFromText,
 	extractProgressivePlanWidgetPayloadFromText,
 	extractPlanWidgetPayloadFromStructuredText,

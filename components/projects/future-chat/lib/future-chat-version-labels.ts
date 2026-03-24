@@ -4,7 +4,7 @@ import type {
 	FutureChatDocumentVersion,
 } from "@/lib/future-chat-types";
 
-function getFutureChatVersionNumber(
+export function getFutureChatVersionNumber(
 	document: Pick<FutureChatDocument, "versions">,
 	versionId: string,
 ): number {

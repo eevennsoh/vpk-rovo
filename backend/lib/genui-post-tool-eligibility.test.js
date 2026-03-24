@@ -50,6 +50,83 @@ test("shouldAttemptPostToolGenui requires tool evidence or forced card-first mod
 	);
 });
 
+test("shouldAttemptPostToolGenui suppresses GenUI when planSessionActive is true (resume turn)", () => {
+	assert.equal(
+		shouldAttemptPostToolGenui({
+			...buildBaseInput(),
+			planSessionActive: true,
+		}),
+		false,
+	);
+});
+
+test("shouldAttemptPostToolGenui suppresses GenUI when both resolvedPlanModeActive and planSessionActive", () => {
+	assert.equal(
+		shouldAttemptPostToolGenui({
+			...buildBaseInput(),
+			resolvedPlanModeActive: true,
+			planSessionActive: true,
+		}),
+		false,
+	);
+});
+
+test("shouldAttemptPostToolGenui suppresses GenUI on resume even when card-first GenUI is forced", () => {
+	assert.equal(
+		shouldAttemptPostToolGenui({
+			...buildBaseInput(),
+			planSessionActive: true,
+			shouldForceCardFirstGenui: true,
+		}),
+		false,
+		"planSessionActive must hard-block post-tool GenUI (§5.2 resume turns)",
+	);
+});
+
+test("shouldAttemptPostToolGenui suppresses GenUI in explicit plan mode even with full tool evidence", () => {
+	assert.equal(
+		shouldAttemptPostToolGenui({
+			...buildBaseInput(),
+			resolvedPlanModeActive: true,
+			hasObservedActionableToolCall: true,
+			hasToolObservationData: true,
+			shouldForceCardFirstGenui: true,
+		}),
+		false,
+	);
+});
+
+test("shouldAttemptPostToolGenui does not allow GenUI when only planSessionActive blocks (orthogonal to resolved flag)", () => {
+	assert.equal(
+		shouldAttemptPostToolGenui({
+			...buildBaseInput(),
+			resolvedPlanModeActive: false,
+			planSessionActive: true,
+		}),
+		false,
+	);
+});
+
+test("shouldAttemptPostToolGenui suppresses GenUI when plan widget already emitted", () => {
+	assert.equal(
+		shouldAttemptPostToolGenui({
+			...buildBaseInput(),
+			hasEmittedPlanWidget: true,
+		}),
+		false,
+	);
+});
+
+test("shouldAttemptPostToolGenui suppresses GenUI when question card already emitted", () => {
+	assert.equal(
+		shouldAttemptPostToolGenui({
+			...buildBaseInput(),
+			hasEmittedQuestionCard: true,
+		}),
+		false,
+	);
+});
+
 test("shouldAttemptPostToolGenui does not throw for the original post-tool fallback shape", () => {
 	assert.doesNotThrow(() =>
 		shouldAttemptPostToolGenui({
