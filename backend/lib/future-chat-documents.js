@@ -142,20 +142,23 @@ function createFutureChatDocumentManager({ baseDir }) {
 			throw error;
 		}
 
-		const documents = [];
-		for (const entry of entries) {
-			if (!entry.isFile() || !entry.name.endsWith(".json")) {
-				continue;
-			}
-			const document = await readDocument(decodeURIComponent(entry.name.replace(/\.json$/u, "")));
+		const jsonEntries = entries.filter(
+			(entry) => entry.isFile() && entry.name.endsWith(".json"),
+		);
+		const documentResults = await Promise.all(
+			jsonEntries.map((entry) =>
+				readDocument(decodeURIComponent(entry.name.replace(/\.json$/u, ""))),
+			),
+		);
+		const documents = documentResults.filter((document) => {
 			if (!document) {
-				continue;
+				return false;
 			}
 			if (threadId && document.threadId !== threadId) {
-				continue;
+				return false;
 			}
-			documents.push(document);
-		}
+			return true;
+		});
 
 		documents.sort((left, right) => {
 			return Date.parse(right.updatedAt) - Date.parse(left.updatedAt);

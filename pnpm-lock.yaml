@@ -142,8 +142,8 @@ importers:
         specifier: ^0.20.14
         version: 0.20.14
       agentation:
-        specifier: ^2.3.0
-        version: 2.3.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        specifier: ^3.0.2
+        version: 3.0.2(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       agentation-mcp:
         specifier: ^1.2.0
         version: 1.2.0
@@ -1211,6 +1211,16 @@ packages:
 
   '@modelcontextprotocol/sdk@1.27.1':
     resolution: {integrity: sha512-sr6GbP+4edBwFndLbM60gf07z0FQ79gaExpnsjMGePXqFcSSb7t6iscpjk9DhFhwd+mTEQrzNafGP8/iGGFYaA==, tarball: https://packages.atlassian.com/api/npm/npm-remote/@modelcontextprotocol/sdk/-/sdk-1.27.1.tgz}
+    engines: {node: '>=18'}
+    peerDependencies:
+      '@cfworker/json-schema': ^4.1.1
+      zod: ^3.25 || ^4.0
+    peerDependenciesMeta:
+      '@cfworker/json-schema':
+        optional: true
+
+  '@modelcontextprotocol/sdk@1.28.0':
+    resolution: {integrity: sha512-gmloF+i+flI8ouQK7MWW4mOwuMh4RePBuPFAEPC6+pdqyWOUMDOixb6qZ69owLJpz6XmyllCouc4t8YWO+E2Nw==, tarball: https://packages.atlassian.com/api/npm/npm-remote/@modelcontextprotocol/sdk/-/sdk-1.28.0.tgz}
     engines: {node: '>=18'}
     peerDependencies:
       '@cfworker/json-schema': ^4.1.1
@@ -2596,8 +2606,8 @@ packages:
     engines: {node: '>=18.0.0'}
     hasBin: true
 
-  agentation@2.3.0:
-    resolution: {integrity: sha512-uGcDel78I5UAVSiWnsNv0pHj+ieuHyZ4GCsL6kqEralKeIW32869JlwfsKoy5S71jseyrI6O5duU+AacJs+CmQ==, tarball: https://packages.atlassian.com/api/npm/npm-remote/agentation/-/agentation-2.3.0.tgz}
+  agentation@3.0.2:
+    resolution: {integrity: sha512-iGzBxFVTuZEIKzLY6AExSLAQH6i6SwxV4pAu7v7m3X6bInZ7qlZXAwrEqyc4+EfP4gM7z2RXBF6SF4DeH0f2lA==, tarball: https://packages.atlassian.com/api/npm/npm-remote/agentation/-/agentation-3.0.2.tgz}
     peerDependencies:
       react: '>=18.0.0'
       react-dom: '>=18.0.0'
@@ -2748,8 +2758,8 @@ packages:
     engines: {node: '>=6.0.0'}
     hasBin: true
 
-  better-sqlite3@12.6.2:
-    resolution: {integrity: sha512-8VYKM3MjCa9WcaSAI3hzwhmyHVlH8tiGFwf0RlTsZPWJ1I5MkzjiudCo4KC4DxOaL/53A5B1sI/IbldNFDbsKA==, tarball: https://packages.atlassian.com/api/npm/npm-remote/better-sqlite3/-/better-sqlite3-12.6.2.tgz}
+  better-sqlite3@12.8.0:
+    resolution: {integrity: sha512-RxD2Vd96sQDjQr20kdP+F+dK/1OUNiVOl200vKBZY8u0vTwysfolF6Hq+3ZK2+h8My9YvZhHsF+RSGZW2VYrPQ==, tarball: https://packages.atlassian.com/api/npm/npm-remote/better-sqlite3/-/better-sqlite3-12.8.0.tgz}
     engines: {node: 20.x || 22.x || 23.x || 24.x || 25.x}
 
   bidi-js@1.0.3:
@@ -3991,6 +4001,10 @@ packages:
     resolution: {integrity: sha512-3qq+FUBtlTHhtYxbxheZgY8NIFnkkC/MR8u5TTsr7YZ3wixryQ3cCwn3iZbg8p8B88iDBBAYSfZDS75t8MN7Vg==, tarball: https://packages.atlassian.com/api/npm/npm-remote/hono/-/hono-4.12.5.tgz}
     engines: {node: '>=16.9.0'}
 
+  hono@4.12.9:
+    resolution: {integrity: sha512-wy3T8Zm2bsEvxKZM5w21VdHDDcwVS1yUFFY6i8UobSsKfFceT7TOwhbhfKsDyx7tYQlmRM5FLpIuYvNFyjctiA==, tarball: https://packages.atlassian.com/api/npm/npm-remote/hono/-/hono-4.12.9.tgz}
+    engines: {node: '>=16.9.0'}
+
   html-url-attributes@3.0.1:
     resolution: {integrity: sha512-ol6UPyBWqsrO6EJySPz2O7ZSr856WDrEzM5zMqp+FJJLGMW35cLYmmZnl0vztAZxRUoNZJFTCohfjuIJ8I4QBQ==, tarball: https://packages.atlassian.com/api/npm/npm-remote/html-url-attributes/-/html-url-attributes-3.0.1.tgz}
 
@@ -4316,6 +4330,9 @@ packages:
 
   jose@6.2.1:
     resolution: {integrity: sha512-jUaKr1yrbfaImV7R2TN/b3IcZzsw38/chqMpo2XJ7i2F8AfM/lA4G1goC3JVEwg0H7UldTmSt3P68nt31W7/mw==, tarball: https://packages.atlassian.com/api/npm/npm-remote/jose/-/jose-6.2.1.tgz}
+
+  jose@6.2.2:
+    resolution: {integrity: sha512-d7kPDd34KO/YnzaDOlikGpOurfF0ByC2sEV4cANCtdqLlTfBlw2p14O/5d/zv40gJPbIQxfES3nSx1/oYNyuZQ==, tarball: https://packages.atlassian.com/api/npm/npm-remote/jose/-/jose-6.2.2.tgz}
 
   jpeg-js@0.4.4:
     resolution: {integrity: sha512-WZzeDOEtTOBK4Mdsar0IqEU5sMr3vSV2RqkAIzUEV2BHnUfKGyswWFPFwK5EeDo93K3FohSHbLAjj0s1Wzd+dg==, tarball: https://packages.atlassian.com/api/npm/npm-remote/jpeg-js/-/jpeg-js-0.4.4.tgz}
@@ -4971,8 +4988,8 @@ packages:
       sass:
         optional: true
 
-  node-abi@3.87.0:
-    resolution: {integrity: sha512-+CGM1L1CgmtheLcBuleyYOn7NWPVu0s0EJH2C4puxgEZb9h8QpR9G2dBfZJOAUhi7VQxuBPMd0hiISWcTyiYyQ==, tarball: https://packages.atlassian.com/api/npm/npm-remote/node-abi/-/node-abi-3.87.0.tgz}
+  node-abi@3.89.0:
+    resolution: {integrity: sha512-6u9UwL0HlAl21+agMN3YAMXcKByMqwGx+pq+P76vii5f7hTPtKDp08/H9py6DY+cfDw7kQNTGEj/rly3IgbNQA==, tarball: https://packages.atlassian.com/api/npm/npm-remote/node-abi/-/node-abi-3.89.0.tgz}
     engines: {node: '>=10'}
 
   node-domexception@1.0.0:
@@ -7261,6 +7278,10 @@ snapshots:
     dependencies:
       hono: 4.12.5
 
+  '@hono/node-server@1.19.11(hono@4.12.9)':
+    dependencies:
+      hono: 4.12.9
+
   '@humanfs/core@0.19.1': {}
 
   '@humanfs/node@0.16.7':
@@ -7489,6 +7510,28 @@ snapshots:
       express-rate-limit: 8.3.1(express@5.2.1)
       hono: 4.12.5
       jose: 6.2.1
+      json-schema-typed: 8.0.2
+      pkce-challenge: 5.0.1
+      raw-body: 3.0.2
+      zod: 3.25.76
+      zod-to-json-schema: 3.25.1(zod@3.25.76)
+    transitivePeerDependencies:
+      - supports-color
+
+  '@modelcontextprotocol/sdk@1.28.0(zod@3.25.76)':
+    dependencies:
+      '@hono/node-server': 1.19.11(hono@4.12.9)
+      ajv: 8.18.0
+      ajv-formats: 3.0.1(ajv@8.18.0)
+      content-type: 1.0.5
+      cors: 2.8.6
+      cross-spawn: 7.0.6
+      eventsource: 3.0.7
+      eventsource-parser: 3.0.6
+      express: 5.2.1
+      express-rate-limit: 8.3.1(express@5.2.1)
+      hono: 4.12.9
+      jose: 6.2.2
       json-schema-typed: 8.0.2
       pkce-challenge: 5.0.1
       raw-body: 3.0.2
@@ -8874,14 +8917,14 @@ snapshots:
 
   agentation-mcp@1.2.0:
     dependencies:
-      '@modelcontextprotocol/sdk': 1.27.1(zod@3.25.76)
-      better-sqlite3: 12.6.2
+      '@modelcontextprotocol/sdk': 1.28.0(zod@3.25.76)
+      better-sqlite3: 12.8.0
       zod: 3.25.76
     transitivePeerDependencies:
       - '@cfworker/json-schema'
       - supports-color
 
-  agentation@2.3.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
+  agentation@3.0.2(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
     optionalDependencies:
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
@@ -9042,7 +9085,7 @@ snapshots:
 
   baseline-browser-mapping@2.10.0: {}
 
-  better-sqlite3@12.6.2:
+  better-sqlite3@12.8.0:
     dependencies:
       bindings: 1.5.0
       prebuild-install: 7.1.3
@@ -10583,6 +10626,8 @@ snapshots:
 
   hono@4.12.5: {}
 
+  hono@4.12.9: {}
+
   html-url-attributes@3.0.1: {}
 
   html-void-elements@3.0.0: {}
@@ -10865,6 +10910,8 @@ snapshots:
   jiti@2.6.1: {}
 
   jose@6.2.1: {}
+
+  jose@6.2.2: {}
 
   jpeg-js@0.4.4: {}
 
@@ -11721,7 +11768,7 @@ snapshots:
       - '@babel/core'
       - babel-plugin-macros
 
-  node-abi@3.87.0:
+  node-abi@3.89.0:
     dependencies:
       semver: 7.7.4
 
@@ -12035,7 +12082,7 @@ snapshots:
       minimist: 1.2.8
       mkdirp-classic: 0.5.3
       napi-build-utils: 2.0.0
-      node-abi: 3.87.0
+      node-abi: 3.89.0
       pump: 3.0.4
       rc: 1.2.8
       simple-get: 4.0.1

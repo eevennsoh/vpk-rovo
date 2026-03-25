@@ -251,6 +251,35 @@ test("falls back to the newest unanchored document when activeDocumentId is miss
 	assert.equal(display?.title, "Newer");
 });
 
+test("does not treat plan-preview documents with a source message as orphan artifacts", () => {
+	const display = resolveFutureChatOrphanArtifactDisplay({
+		activeDocumentId: "doc-plan",
+		documents: [
+			{
+				...createDocument({
+					id: "doc-plan",
+					title: "Plan preview",
+					content: "# Plan",
+					updatedAt: "2026-03-09T10:50:00.000Z",
+				}),
+				sourceMessageId: "assistant-1",
+			},
+		],
+		messages: [
+			{
+				id: "assistant-1",
+				role: "assistant",
+				metadata: {
+					createdAt: "2026-03-09T10:49:00.000Z",
+				},
+				parts: [{ type: "text", text: "Here is your plan", state: "done" }],
+			},
+		],
+	});
+
+	assert.equal(display, null);
+});
+
 test("anchors orphaned artifacts to the assistant message closest to document completion time", () => {
 	const display = resolveFutureChatOrphanArtifactDisplay({
 		activeDocumentId: null,

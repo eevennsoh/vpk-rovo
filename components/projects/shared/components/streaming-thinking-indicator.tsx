@@ -61,6 +61,7 @@ export function StreamingThinkingIndicator({
 					duration={phaseProps.duration}
 					defaultOpen={phaseProps.defaultOpen ?? hasDetails}
 					allowAutoCollapse={allowAutoCollapse}
+					toolsRunning={hasThinkingToolCalls}
 				>
 					<AdsReasoningTrigger
 						label={label}

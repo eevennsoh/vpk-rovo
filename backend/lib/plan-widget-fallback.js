@@ -3,9 +3,56 @@ const { inferTaskDependencies } = require("./dag-inference");
 const MAX_TASKS = 20;
 const DEFAULT_MIN_TASKS = 2;
 const DEFAULT_PROGRESSIVE_MIN_TASKS = 1;
+const NEEDS_PREFIX_PATTERN = /^\s*\[\s*needs\s+([^\]]+)\]\s*/i;
 
 function normalizeWhitespace(value) {
 	return value.replace(/\s+/g, " ").trim();
+}
+
+function normalizeTaskReference(raw) {
+	const trimmed = (raw || "").trim().toLowerCase();
+	if (!trimmed) {
+		return null;
+	}
+
+	if (/^\d+$/.test(trimmed)) {
+		return `task-${trimmed}`;
+	}
+
+	if (/^task-\d+$/.test(trimmed)) {
+		return trimmed;
+	}
+
+	return null;
+}
+
+function parseNeedsDependencies(label) {
+	if (typeof label !== "string" || !label.trim()) {
+		return { label: null, dependencies: [] };
+	}
+
+	const needsMatch = label.match(NEEDS_PREFIX_PATTERN);
+	if (!needsMatch?.[1]) {
+		return { label: normalizeWhitespace(label), dependencies: [] };
+	}
+
+	const dependencies = needsMatch[1]
+		.split(",")
+		.map((entry) => normalizeTaskReference(entry))
+		.filter(Boolean);
+
+	const strippedLabel = normalizeWhitespace(label.slice(needsMatch[0].length));
+	return {
+		label: strippedLabel || normalizeWhitespace(label),
+		dependencies,
+	};
+}
+
+function resolveTaskDependencies(tasks) {
+	const hasExplicitDeps = tasks.some(
+		(task) => Array.isArray(task.blockedBy) && task.blockedBy.length > 0
+	);
+	return hasExplicitDeps ? tasks : inferTaskDependencies(tasks);
 }
 
 function stripMarkdownDecorators(value) {
@@ -298,10 +345,11 @@ function collectStructuredPlanTasks(lines, maxTasks) {
 		const line = lines[index];
 		const numberedLabel = parseNumberedListItemLabel(line);
 		if (numberedLabel) {
+			const parsed = parseNeedsDependencies(numberedLabel);
 			tasks.push({
 				id: `task-${tasks.length + 1}`,
-				label: numberedLabel,
-				blockedBy: [],
+				label: parsed.label || numberedLabel,
+				blockedBy: parsed.dependencies,
 			});
 			activeTaskIndex = tasks.length - 1;
 			if (tasks.length >= maxTasks) {
@@ -402,10 +450,11 @@ function collectHeadingBasedPlanTasks(lines, maxTasks) {
 			continue;
 		}
 
+		const parsed = parseNeedsDependencies(label);
 		tasks.push({
 			id: `task-${tasks.length + 1}`,
-			label,
-			blockedBy: [],
+			label: parsed.label || label,
+			blockedBy: parsed.dependencies,
 		});
 		if (tasks.length >= maxTasks) {
 			break;
@@ -435,10 +484,11 @@ function collectPlanTasks(lines, startIndex, maxTasks) {
 		const listItemLabel = parseListItemLabel(line);
 		if (listItemLabel) {
 			hasSeenListItem = true;
+			const parsed = parseNeedsDependencies(listItemLabel);
 			tasks.push({
 				id: `task-${tasks.length + 1}`,
-				label: listItemLabel,
-				blockedBy: [],
+				label: parsed.label || listItemLabel,
+				blockedBy: parsed.dependencies,
 			});
 			activeTaskIndex = tasks.length - 1;
 			if (tasks.length >= maxTasks) {
@@ -624,7 +674,7 @@ function extractScopeBasedPlanPayload(lines, { minTasks, maxTasks }) {
 		return null;
 	}
 
-	const tasks = inferTaskDependencies(scopeTaskCollection.tasks);
+	const tasks = resolveTaskDependencies(scopeTaskCollection.tasks);
 	if (tasks.length < minTasks) {
 		return null;
 	}
@@ -676,7 +726,7 @@ function extractPlanWidgetPayloadFromText(rawText, options = {}) {
 		return extractScopeBasedPlanPayload(lines, { minTasks, maxTasks });
 	}
 
-	const tasks = inferTaskDependencies(
+	const tasks = resolveTaskDependencies(
 		collectPlanTasks(lines, actionItemsHeadingIndex + 1, maxTasks)
 	);
 
@@ -743,7 +793,7 @@ function extractProgressivePlanWidgetPayloadFromText(rawText, options = {}) {
 		return null;
 	}
 
-	const tasks = inferTaskDependencies(
+	const tasks = resolveTaskDependencies(
 		collectPlanTasks(lines, listStartIndex, maxTasks)
 	);
 	if (tasks.length < minTasks) {
@@ -795,7 +845,7 @@ function extractPlanWidgetPayloadFromStructuredText(rawText, options = {}) {
 	}
 
 	const numberedTasks = collectStructuredPlanTasks(lines, maxTasks);
-	const tasks = inferTaskDependencies(numberedTasks);
+	const tasks = resolveTaskDependencies(numberedTasks);
 	if (tasks.length < minTasks) {
 		return null;
 	}
@@ -872,7 +922,7 @@ function extractPlanWidgetPayloadFromExitPlanToolInput(toolInput, options = {}) 
 		typeof options.minTasks === "number" && options.minTasks > 0
 			? Math.floor(options.minTasks)
 			: DEFAULT_MIN_TASKS;
-	const tasks = inferTaskDependencies(collectHeadingBasedPlanTasks(lines, maxTasks));
+	const tasks = resolveTaskDependencies(collectHeadingBasedPlanTasks(lines, maxTasks));
 	if (tasks.length < minTasks) {
 		return null;
 	}

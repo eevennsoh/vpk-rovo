@@ -7,7 +7,7 @@ const {
 	createAnnotationFromSelection,
 	formatAnnotationsForVoiceContext,
 	reindexAnnotations,
-} = require("./future-chat-artifact-annotations.ts");
+} = require("./artifact-annotations.ts");
 
 function createAnnotation(overrides = {}) {
 	const {
@@ -37,10 +37,10 @@ function createAnnotation(overrides = {}) {
 				...anchorOverrides,
 			},
 			source: {
-				filePath: "components/projects/future-chat/components/future-chat-artifact-panel.tsx",
-				lineNumber: 190,
-				componentName: "FutureChatArtifactPanel",
-				stackString: "in FutureChatArtifactPanel",
+				filePath: "components/ui-ai/artifact.tsx",
+				lineNumber: 1,
+				componentName: "ArtifactPanel",
+				stackString: "in ArtifactPanel",
 				...sourceOverrides,
 			},
 			position: {
@@ -110,10 +110,7 @@ test("formatAnnotationsForVoiceContext includes kind-specific code anchor detail
 	assert.match(codeContext, /#1: "Make this heading larger"/u);
 	assert.match(codeContext, /viewer anchor: code line 12/u);
 	assert.match(codeContext, /selected text: "Welcome to Future Chat"/u);
-	assert.match(
-		codeContext,
-		/source: components\/projects\/future-chat\/components\/future-chat-artifact-panel\.tsx:190/u,
-	);
+	assert.match(codeContext, /source: components\/ui-ai\/artifact\.tsx:1/u);
 	assert.match(codeContext, /selector: pre code > span:nth-child\(12\)/u);
 
 	const imageContext = formatAnnotationsForVoiceContext([

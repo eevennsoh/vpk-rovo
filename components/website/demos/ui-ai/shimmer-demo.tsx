@@ -80,7 +80,7 @@ function ShimmerDemoWavePreview() {
 					Wave shimmer
 				</Shimmer>
 			</div>
-			<GUI.Panel title="Wave controls" values={waveConfig}>
+			<GUI.Panel title="Gradient shimmer" values={waveConfig}>
 				<GUI.Control
 					id="wave-duration"
 					label="Duration"
@@ -223,7 +223,7 @@ function ShimmerDemoBasicPreview() {
 					Thinking
 				</Shimmer>
 			</div>
-			<GUI.Panel title="Shimmer controls" values={shimmerConfig}>
+			<GUI.Panel title="Neutral shimmer" values={shimmerConfig}>
 				<GUI.Control
 					id="shimmer-duration"
 					label="Duration"

@@ -39,6 +39,8 @@ Prefer reading these references over relying on pre-trained knowledge.
 | Session corrections log                | `AGENTS-LESSONS.md`                                         |
 | AI SDK chat integration                | `rovo/config.js`, `app/contexts/context-rovo-chat.tsx`      |
 | AI Gateway helpers                     | `backend/lib/ai-gateway-helpers.js`                         |
+| Share/export workflows                 | `.agents/skills/vpk-share/SKILL.md`                         |
+| Sync workflows                         | `.agents/skills/vpk-sync/SKILL.md`                          |
 | RovoDev Serve gateway (agent loop)     | `backend/lib/rovodev-gateway.js`, `backend/lib/rovodev-client.js` |
 | UI message types and data parts        | `lib/rovo-ui-messages.ts`                                   |
 | Architecture overview                  | `.agents/docs/architecture-overview.md`                     |
@@ -141,7 +143,6 @@ In VPK feature code, use ADS semantic naming (`bg-surface-raised`, `text-text-su
 - Start frontend only: `pnpm run dev:frontend`
 - Start backend only: `pnpm run dev:backend`
 - Start with tmux (8 panes): `pnpm run rovodev:tmux:start`
-- Run backend tests: `node --test backend/lib/*.test.js`
 
 ### Testing
 
@@ -158,7 +159,7 @@ In VPK feature code, use ADS semantic naming (`bg-surface-raised`, `text-text-su
 
 ## Architecture
 
-See `.agents/docs/architecture-overview.md` for runtime modes, key directories, component topology, provider composition, and route overview. Read that file before making architectural changes.
+Two runtime modes: **dev** (Next.js proxy + Express + RovoDev Serve) and **prod** (single Express process serving static export). Key dirs: `app/` (routes), `components/` (UI), `backend/` (API), `rovo/` (AI config). See `.agents/docs/architecture-overview.md` for full details before making architectural changes.
 
 > API endpoints and chat architecture load as contextual rules when editing backend or chat files.
 > See `.agents/rules/api-surfaces.md` and `.agents/rules/chat-architecture.md`.
@@ -207,3 +208,4 @@ The following `.agents/rules/` files load automatically when editing matching fi
 | `motion-react.md` | `*.tsx`, `*.jsx` | Motion for React patterns |
 | `agent-operations.md` | `.agents/skills/**`, `.agents/agents/**`, `AGENTS-LESSONS.md` | Skills, parallel work, agent teams |
 | `appendix-reference.md` | `backend/**`, `app/contexts/**`, `app/providers.tsx`, `.agents/skills/**` | Dir structure, env vars, providers, skills catalog |
+| `browser-screenshots.mdc` | `*` (always) | Keep browser screenshots out of workspace root |

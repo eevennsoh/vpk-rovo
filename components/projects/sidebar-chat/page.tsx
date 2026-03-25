@@ -175,7 +175,6 @@ export default function ChatPanel({
 		dismissQuestionCard,
 	} = useDismissibleCards({
 		activeQuestionCard,
-		activePlanWidget: null,
 		onDismissQuestionCard: handleClarificationDismiss,
 	});
 	const shouldShowQuestionCard = !isRequestInFlight && shouldShowQuestionCardRaw;

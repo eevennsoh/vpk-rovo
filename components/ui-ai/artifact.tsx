@@ -36,6 +36,7 @@ import type {
 } from "@/components/ui-ai/lib/artifact-annotations";
 import {
 	formatArtifactVersionLabel,
+	formatArtifactVersionSummaryLabel,
 	getArtifactVersionNumber,
 	getArtifactVersionTitle,
 	type ArtifactDocument,
@@ -266,7 +267,7 @@ function ArtifactPreview({
 }>) {
 	if (kind === "image" && /^https?:|^data:image\//u.test(previewContent)) {
 		return (
-			<div className="relative aspect-[16/10] w-full overflow-hidden rounded-md bg-surface">
+			<div className="relative aspect-[16/10] w-full overflow-hidden rounded-md bg-card">
 				<Image
 					alt={title}
 					className="h-full w-full object-cover"
@@ -288,7 +289,7 @@ function ArtifactPreview({
 
 	if (!previewContent.trim()) {
 		return (
-			<div className="flex min-h-32 flex-col gap-3 rounded-md bg-surface p-4">
+			<div className="flex min-h-32 flex-col gap-3 rounded-md bg-card p-4">
 				<div className="h-4 w-2/3 animate-pulse rounded-full bg-surface-raised" />
 				<div className="h-3 w-full animate-pulse rounded-full bg-surface-raised" />
 				<div className="h-3 w-5/6 animate-pulse rounded-full bg-surface-raised" />
@@ -298,7 +299,7 @@ function ArtifactPreview({
 	}
 
 	return (
-		<div className="rounded-md bg-surface">
+		<div className="rounded-md">
 			<div className="max-h-36 overflow-hidden whitespace-pre-wrap text-left font-mono text-[12px] leading-5 text-text">
 				{previewContent}
 			</div>
@@ -325,8 +326,10 @@ export interface ArtifactCardProps {
 	displayMode?: "preview" | "chip";
 	/** Content string for the preview (code text, image URL, etc.). */
 	previewContent?: string;
-	/** Callback when the "Open" button is clicked. */
-	onOpen?: () => void;
+	/** Callback when the "Open" button is clicked. Receives the card root element. */
+	onOpen?: (element: HTMLDivElement) => void;
+	/** Callback when a preview-mode card mounts. Receives the card root element. */
+	onRegister?: (element: HTMLDivElement) => void;
 	/** Additional className for the outer wrapper. */
 	className?: string;
 	/** Optional children rendered inside GenerativeCardContent (overrides previewContent rendering). */
@@ -341,15 +344,37 @@ export function ArtifactCard({
 	displayMode = "preview",
 	previewContent = "",
 	onOpen,
+	onRegister,
 	className,
 	children,
 }: Readonly<ArtifactCardProps>) {
+	const cardRef = useRef<HTMLDivElement>(null);
 	const actionLabel = getArtifactActionLabel(action, isStreaming);
 	const kindLabel = ARTIFACT_KIND_LABELS[kind];
-	const openLabel = `Open ${kindLabel.toLowerCase()}`;
+	const openLabel = actionLabel
+		? `Open ${actionLabel.toLowerCase()} ${kindLabel.toLowerCase()} ${title}`
+		: `Open ${kindLabel.toLowerCase()} ${title}`;
+	const openCtaLabel = `Open ${kindLabel.toLowerCase()}`;
+
+	const handleOpen = () => {
+		if (!cardRef.current || !onOpen) {
+			return;
+		}
+
+		onOpen(cardRef.current);
+	};
+
+	useEffect(() => {
+		if (displayMode !== "preview" || !cardRef.current || !onRegister) {
+			return;
+		}
+
+		onRegister(cardRef.current);
+	}, [displayMode, onRegister]);
 
 	return (
 		<div
+			ref={cardRef}
 			className={cn(
 				displayMode === "preview" ? "w-full" : "w-fit max-w-full",
 				className,
@@ -357,9 +382,9 @@ export function ArtifactCard({
 		>
 			<GenerativeCard
 				className={cn(
-					"border-border/80 bg-background shadow-xs transition-colors",
+					"border-border/80 bg-surface-raised shadow-xs",
 					displayMode === "preview"
-						? "w-full hover:bg-surface-raised"
+						? "w-full"
 						: "w-fit max-w-full",
 				)}
 				defaultExpanded={displayMode === "preview"}
@@ -370,12 +395,12 @@ export function ArtifactCard({
 						displayMode === "chip" && onOpen ? (
 							<Button
 								aria-label={openLabel}
-								onClick={onOpen}
+								onClick={handleOpen}
 								size="xs"
 								type="button"
 								variant="outline"
 							>
-								{openLabel}
+								{openCtaLabel}
 							</Button>
 						) : null
 					}
@@ -413,11 +438,11 @@ export function ArtifactCard({
 							<Button
 								aria-label={openLabel}
 								className="min-w-0 sm:min-w-[117px]"
-								onClick={onOpen}
+								onClick={handleOpen}
 								type="button"
 								variant="outline"
 							>
-								{openLabel}
+								{openCtaLabel}
 							</Button>
 						</GenerativeCardFooter>
 					) : null}
@@ -634,12 +659,10 @@ export function ArtifactPanel({
 	const versionLabel = isStreaming
 		? "Generating artifact..."
 		: selectedVersion
-		? formatArtifactVersionLabel({
-			document,
+		? formatArtifactVersionSummaryLabel({
 			version: selectedVersion,
 		})
 		: `${document.kind} artifact`;
-	const kindLabel = ARTIFACT_KIND_LABELS[document.kind];
 	const showAnnotateToggle = process.env.NODE_ENV === "development";
 	const isAnnotateDisabled =
 		!showAnnotateToggle
@@ -671,13 +694,8 @@ export function ArtifactPanel({
 			<div className="flex flex-wrap items-center justify-between gap-3 border-border/80 border-b bg-background/90 p-3 backdrop-blur">
 				<div className="flex min-w-0 items-center gap-2">
 					<div className="min-w-0">
-						<div className="flex items-center gap-2">
-							<p className="truncate font-medium text-sm">{selectedVersionTitle}</p>
-							<span className="rounded-full bg-bg-neutral px-2 py-0.5 text-[11px] text-text-subtle uppercase">
-								{kindLabel}
-							</span>
-						</div>
-						<p className="truncate text-text-subtle text-sm">{versionLabel}</p>
+						<p className="truncate font-medium text-sm">{selectedVersionTitle}</p>
+						<p className="truncate text-xs leading-4 text-text-subtlest">{versionLabel}</p>
 					</div>
 				</div>
 
@@ -716,30 +734,25 @@ export function ArtifactPanel({
 					<Button
 						disabled={isStreaming}
 						onClick={() => onModeChange(mode === "preview" ? "edit" : "preview")}
-						size="sm"
+						size="icon-sm"
 						type="button"
-						variant="outline"
+						variant="ghost"
 					>
+						<span className="sr-only">{mode === "preview" ? "Edit artifact" : "Preview artifact"}</span>
 						<PencilLineIcon className="size-4" />
-						{mode === "preview" ? "Edit" : "Preview"}
 					</Button>
 					{showAnnotateToggle ? (
 						<Button
 							aria-pressed={cursorMode}
 							disabled={isAnnotateDisabled}
 							onClick={() => onCursorModeChange?.(!cursorMode)}
-							size="sm"
+							size="icon-sm"
 							title="Dev-only annotation mode for the current artifact viewer surface."
 							type="button"
-							variant={cursorMode ? "default" : "outline"}
+							variant="ghost"
 						>
+							<span className="sr-only">Annotate artifact</span>
 							<MessageSquarePlusIcon className="size-4" />
-							Annotate
-							{annotations.length > 0 ? (
-								<span className="rounded-full bg-bg-neutral px-1.5 py-0 text-[11px] leading-5 text-current">
-									{annotations.length}
-								</span>
-							) : null}
 						</Button>
 					) : null}
 					<Button

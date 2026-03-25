@@ -1,4 +1,10 @@
 import type { RovoUIMessage } from "../../../../lib/rovo-ui-messages";
+import {
+	getMessageInterruption,
+	getMessageText,
+	hasTurnCompleteSignal,
+	isRequestUserInputToolName,
+} from "../../../../lib/rovo-ui-messages";
 
 export type FutureChatPendingAssistantDisplayState =
 	| "idle"
@@ -48,9 +54,6 @@ export function appendTurnCompleteToLastAssistantMessage(
 	};
 }
 
-const REQUEST_USER_INPUT_TOOL_NAME_PATTERN =
-	/(?:^|\.)(?:request_user_input|ask_user_questions|ask_user_question)$/i;
-
 /**
  * Appends a synthetic `phase: "result"` thinking event for any
  * `ask_user_questions` tool call on the last assistant message that is
@@ -90,7 +93,7 @@ export function markClarificationToolResolved(
 			};
 			const toolName = typeof event.toolName === "string" ? event.toolName.trim() : "";
 			const toolCallId = typeof event.toolCallId === "string" ? event.toolCallId.trim() : "";
-			if (!toolCallId || !REQUEST_USER_INPUT_TOOL_NAME_PATTERN.test(toolName)) {
+			if (!toolCallId || !isRequestUserInputToolName(toolName)) {
 				continue;
 			}
 
@@ -137,28 +140,6 @@ export function markClarificationToolResolved(
 	return [...messages];
 }
 
-function hasTurnCompleteSignal(message: Pick<RovoUIMessage, "parts">): boolean {
-	for (let index = message.parts.length - 1; index >= 0; index -= 1) {
-		if (message.parts[index].type === "data-turn-complete") {
-			return true;
-		}
-	}
-
-	return false;
-}
-
-function hasInterruption(message: Pick<RovoUIMessage, "metadata">): boolean {
-	return message.metadata?.interruption?.status === "interrupted";
-}
-
-function getMessageText(message: Pick<RovoUIMessage, "parts">): string {
-	return message.parts
-		.filter((part) => part.type === "text")
-		.map((part) => part.text)
-		.join("\n\n")
-		.trim();
-}
-
 function hasDataPart<PartType extends string>(
 	message: Pick<RovoUIMessage, "parts">,
 	partType: PartType,
@@ -173,15 +154,20 @@ function hasThinkingToolCalls(message: Pick<RovoUIMessage, "parts">): boolean {
 export function resolveFutureChatStreamingAssistantMessageId(
 	messages: ReadonlyArray<RovoUIMessage>,
 ): string | null {
-	const latestAssistantMessage =
-		[...messages].reverse().find((message) => message.role === "assistant") ?? null;
+	let latestAssistantMessage: RovoUIMessage | null = null;
+	for (let i = messages.length - 1; i >= 0; i--) {
+		if (messages[i].role === "assistant") {
+			latestAssistantMessage = messages[i];
+			break;
+		}
+	}
 	if (!latestAssistantMessage) {
 		return null;
 	}
 
 	if (
 		hasTurnCompleteSignal(latestAssistantMessage)
-		|| hasInterruption(latestAssistantMessage)
+		|| getMessageInterruption(latestAssistantMessage) !== null
 	) {
 		return null;
 	}
@@ -200,10 +186,14 @@ export function resolveFutureChatPendingAssistantDisplayState({
 		return "idle";
 	}
 
-	const latestVisibleMessage =
-		[...messages].reverse().find(
-			(message) => message.role === "user" || message.role === "assistant",
-		) ?? null;
+	let latestVisibleMessage: RovoUIMessage | null = null;
+	for (let i = messages.length - 1; i >= 0; i--) {
+		const message = messages[i];
+		if (message.role === "user" || message.role === "assistant") {
+			latestVisibleMessage = message;
+			break;
+		}
+	}
 	if (!latestVisibleMessage) {
 		return "idle";
 	}

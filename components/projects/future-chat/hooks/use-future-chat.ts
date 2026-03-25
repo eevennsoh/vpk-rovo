@@ -110,6 +110,7 @@ import {
 	type FutureChatQueuedAction,
 	type FutureChatQueuedDelegationAction,
 	type FutureChatQueuedPromptAction,
+	type FutureChatPlanExecutionTask,
 	type FutureChatRunStatus,
 	type FutureChatThread,
 	type FutureChatVisibility,
@@ -258,9 +259,8 @@ const PLAN_MODE_CONTEXT = [
 const PLAN_MODE_POST_CLARIFICATION_CONTEXT = [
 	"[POST-CLARIFICATION — Plan Mode]",
 	"Plan mode is enabled. The user has already answered clarification questions for this planning request.",
-	"Do NOT call ask_user_questions again. Clarification is complete.",
-	"Proceed directly to plan generation now by calling exit_plan_mode with a concise markdown plan.",
-	"This answer turn MUST end by calling exit_plan_mode unless a hard blocker still makes planning impossible.",
+	"If the answers provide enough detail, proceed directly to plan generation now by calling exit_plan_mode with a concise markdown plan.",
+	"If essential details are still missing, you may call ask_user_questions again to gather what you need before planning.",
 	"Use the answered clarification details to finish planning, not implementation.",
 	"Do not use free-form text, suggestion chips, invoke_subagents, or update_todo as a substitute for the exit_plan_mode handoff.",
 	"[End POST-CLARIFICATION]",
@@ -268,7 +268,7 @@ const PLAN_MODE_POST_CLARIFICATION_CONTEXT = [
 
 const PLAN_MODE_RETRY_PROMPT = [
 	"The previous response did not include a plan widget with tasks.",
-	"Do not ask more clarification questions.",
+	"If you still need essential details, you may ask clarification questions. Otherwise, generate the plan.",
 	"Generate the plan now by calling exit_plan_mode with a concise markdown plan.",
 	"Do not explore the codebase. Do not use workspace tools.",
 	"Your only action: call exit_plan_mode with the plan.",
@@ -325,7 +325,21 @@ function areFutureChatMessagesEqual(
 	left: ReadonlyArray<RovoUIMessage>,
 	right: ReadonlyArray<RovoUIMessage>,
 ): boolean {
-	return JSON.stringify(left) === JSON.stringify(right);
+	if (left === right) {
+		return true;
+	}
+
+	if (left.length !== right.length) {
+		return false;
+	}
+
+	for (let i = 0; i < left.length; i++) {
+		if (left[i] !== right[i]) {
+			return false;
+		}
+	}
+
+	return true;
 }
 
 function normalizeRovodevMessagesForMerge(
@@ -515,6 +529,7 @@ export interface FutureChatHookResult {
 	messages: RovoUIMessage[];
 	pendingTitleThreadId: string | null;
 	openDocument: (documentId: string) => Promise<void>;
+	openPlanAsDocument: (plan: { title: string; markdown: string; sourceMessageId?: string | null }) => void;
 	openArtifactFromMessage: (message: RovoUIMessage) => Promise<void>;
 	openNewChat: () => Promise<void>;
 	regenerateLatest: () => void;
@@ -1126,7 +1141,7 @@ export function useFutureChat({
 		}
 
 		setVisibleArtifactDocumentId(null);
-	}, [visibleArtifactDocumentId]);
+	}, [streamingArtifactRef, visibleArtifactDocumentId]);
 
 	const persistActiveDocumentSelection = useCallback((documentId: string | null) => {
 		const threadId = activeThreadIdRef.current;
@@ -1167,7 +1182,7 @@ export function useFutureChat({
 		});
 		selectDocumentForDisplay(document);
 		return document;
-	}, [selectDocumentForDisplay]);
+	}, [selectDocumentForDisplay, streamingArtifactRef]);
 
 	const hydratePersistedArtifact = useCallback(async (documentId: string) => {
 		try {
@@ -1401,20 +1416,22 @@ export function useFutureChat({
 					break;
 			}
 		},
-		[
-			clearQueuedStreamingArtifactDelta,
-			flushQueuedStreamingArtifactDeltaNow,
-			hydratePersistedArtifact,
-			kickQueue,
-			markObservedTurnComplete,
-			appendQueuedActionsForThread,
-			persistActiveDocumentSelection,
-			queueStreamingArtifactDelta,
-			setLocalThreadActiveRun,
-			syncPlanModeFromBackend,
-			draftThreadId,
-		],
-	);
+			[
+				clearQueuedStreamingArtifactDelta,
+				flushQueuedStreamingArtifactDeltaNow,
+				hydratePersistedArtifact,
+				kickQueue,
+				markObservedTurnComplete,
+				appendQueuedActionsForThread,
+				persistActiveDocumentSelection,
+				queueStreamingArtifactDelta,
+				setLocalThreadActiveRun,
+				syncPlanModeFromBackend,
+				draftThreadId,
+				streamingArtifactRef,
+				visibleArtifactDocumentIdRef,
+			],
+		);
 
 	const {
 		messages: rovodevMessages,
@@ -1885,7 +1902,7 @@ export function useFutureChat({
 				});
 			}
 		}
-	}, [normalizedRovodevMessages, streamingArtifactMessageId]);
+		}, [normalizedRovodevMessages, streamingArtifactMessageId, streamingArtifactRef]);
 
 	useEffect(() => {
 		if (!streamingArtifactMessageId) {
@@ -1944,7 +1961,7 @@ export function useFutureChat({
 		return () => {
 			window.clearTimeout(timeoutId);
 		};
-	}, [streamingArtifact, visibleArtifactDocumentId]);
+		}, [streamingArtifact, streamingArtifactRef, visibleArtifactDocumentId]);
 
 	useEffect(() => {
 		const completedDocumentId = lastCompletedArtifactDocumentIdRef.current;
@@ -2203,7 +2220,7 @@ export function useFutureChat({
 		window.setTimeout(() => {
 			isHydratingThreadRef.current = false;
 		}, 0);
-	}, [clearDirectDelegationState, clearStreamingArtifactState, replaceRealtimeMessagesState, resetObservedTurnComplete, resetPendingArtifactAssociation, setRovodevMessages]);
+	}, [clearArtifactState, clearDirectDelegationState, clearStreamingArtifactState, replaceRealtimeMessagesState, resetObservedTurnComplete, resetPendingArtifactAssociation, setRovodevMessages]);
 
 	const leaveActiveThreadForBackground = useCallback(async () => {
 		const threadId = activeThreadIdRef.current;
@@ -2569,10 +2586,16 @@ export function useFutureChat({
 			text,
 			files,
 			contextDescription,
+			executionMode,
+			executionTask,
+			messageMetadata,
 		}: {
 			text: string;
 			files: FileUIPart[];
 			contextDescription?: string;
+			executionMode?: "plan-task";
+			executionTask?: FutureChatPlanExecutionTask;
+			messageMetadata?: RovoUIMessage["metadata"];
 		}) => {
 			setInputError(null);
 			const trimmedText = text.trim();
@@ -2625,6 +2648,7 @@ export function useFutureChat({
 				const threadId = await ensureThread(trimmedText || files[0]?.filename || "New chat");
 				const { message, messageId } = appendLocalUserMessage({
 					files,
+					metadata: messageMetadata,
 					text: trimmedText,
 				});
 				markLocalThreadRunPending(threadId);
@@ -2648,6 +2672,8 @@ export function useFutureChat({
 							id: threadId,
 							artifactContext: resolvedArtifactContext ?? undefined,
 							contextDescription,
+							executionMode,
+							executionTask,
 							streamingArtifact: streamingArtifactPayload,
 						},
 					});
@@ -2676,13 +2702,15 @@ export function useFutureChat({
 			releaseCompletedUseChatTurnIfNeeded,
 			resetPendingArtifactAssociation,
 			sendMessage,
-			setLocalThreadActiveRun,
-			setRovodevMessages,
-			stopUseChat,
-			streamingArtifact,
-			useChatStatus,
-		],
-	);
+				setLocalThreadActiveRun,
+				setRovodevMessages,
+				isPlanModeRef,
+				stopUseChat,
+				streamingArtifact,
+				streamingArtifactRef,
+				useChatStatus,
+			],
+		);
 
 	const enqueuePromptAction = useCallback(
 		({
@@ -3486,6 +3514,9 @@ export function useFutureChat({
 							text: nextAction.text,
 							files: [...nextAction.files],
 							contextDescription: nextAction.contextDescription,
+							executionMode: nextAction.executionMode,
+							executionTask: nextAction.executionTask,
+							messageMetadata: nextAction.messageMetadata,
 						});
 					}
 				} catch (error) {
@@ -3958,8 +3989,8 @@ export function useFutureChat({
 				setInputError(toFutureChatUserErrorMessage(error));
 			}
 		},
-		[documents, ensureThread],
-	);
+			[documents, ensureThread, selectDocumentForDisplay],
+		);
 
 	const openDocument = useCallback(
 		async (documentId: string) => {
@@ -3973,7 +4004,29 @@ export function useFutureChat({
 			await hydratePersistedArtifact(documentId);
 			setVisibleArtifactDocumentId(documentId);
 		},
-		[documents, hydratePersistedArtifact],
+			[documents, hydratePersistedArtifact, selectDocumentForDisplay],
+		);
+
+	const openPlanAsDocument = useCallback(
+		(plan: { title: string; markdown: string; sourceMessageId?: string | null }) => {
+			const now = new Date().toISOString();
+			const documentId = createId();
+			const versionId = createId();
+			const content = plan.markdown.trim() || plan.title;
+			const document: FutureChatDocument = {
+				id: documentId,
+				threadId: activeThreadId ?? "",
+				title: plan.title,
+				kind: "text",
+				sourceMessageId: plan.sourceMessageId ?? null,
+				createdAt: now,
+				updatedAt: now,
+				versions: [{ id: versionId, changeLabel: "Plan", content, createdAt: now, title: plan.title }],
+			};
+			selectDocumentForDisplay(document);
+			setVisibleArtifactDocumentId(documentId);
+		},
+		[activeThreadId, selectDocumentForDisplay],
 	);
 
 	const saveArtifactDraft = useCallback(async () => {
@@ -4014,8 +4067,8 @@ export function useFutureChat({
 				setInputError(toFutureChatUserErrorMessage(error));
 			}
 		},
-		[activeDocumentId],
-	);
+			[activeDocumentId, clearArtifactState],
+		);
 
 	const editMessage = useCallback(
 		async (messageId: string, nextText: string) => {
@@ -4276,7 +4329,20 @@ export function useFutureChat({
 					deletedThreadIdsRef.current,
 				);
 				if (cancelled) return;
-				setThreads(nextThreads);
+				setThreads((prevThreads) => {
+					if (
+						prevThreads.length === nextThreads.length
+						&& prevThreads.every(
+							(thread, index) =>
+								thread.id === nextThreads[index].id
+								&& thread.updatedAt === nextThreads[index].updatedAt,
+						)
+					) {
+						return prevThreads;
+					}
+
+					return nextThreads;
+				});
 
 				// If any completed threads include the active one, refresh it
 				for (const id of trackedThreadIds) {
@@ -4335,6 +4401,7 @@ export function useFutureChat({
 		messages,
 		pendingTitleThreadId,
 		openDocument,
+		openPlanAsDocument,
 		openArtifactFromMessage,
 		openNewChat,
 		queuedPrompts,

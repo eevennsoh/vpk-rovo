@@ -23,7 +23,7 @@ import ShowMoreHorizontalIcon from "@atlaskit/icon/core/show-more-horizontal";
 
 interface ArtifactMenuItem {
 	id: string;
-	kind: string;
+	typeLabel: string;
 	title: string;
 }
 
@@ -105,7 +105,7 @@ export function FutureChatHeader({
 								{artifactMenuItems.map((artifact) => (
 									<DropdownMenuItem
 										onClick={() => onOpenDocument?.(artifact.id)}
-										description={artifact.kind}
+										description={artifact.typeLabel}
 										key={artifact.id}
 									>
 										{artifact.title}

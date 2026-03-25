@@ -17,8 +17,8 @@ test("normalizeFutureChatTodoQueuePayload keeps valid executable queue items", (
 
 	assert.deepEqual(result, {
 		items: [
-			{ id: "task-1", text: "Capture requirements", blockedBy: [], agent: undefined },
-			{ id: "task-2", text: "Build queue UX", blockedBy: ["task-1"], agent: undefined },
+			{ id: "task-1", text: "Capture requirements", taskId: "task-1", blockedBy: [], agent: undefined },
+			{ id: "task-2", text: "Build queue UX", taskId: "task-2", blockedBy: ["task-1"], agent: undefined },
 		],
 	});
 });
@@ -62,4 +62,37 @@ test("buildFutureChatQueuedPromptsFromTodoQueue creates runnable queue prompts",
 	);
 	assert.equal(result.length, 2);
 	assert.equal(typeof result[0].createdAt, "number");
+});
+
+test("buildFutureChatQueuedPromptsFromTodoQueue marks internal plan tasks as hidden execution turns", () => {
+	const result = buildFutureChatQueuedPromptsFromTodoQueue(
+		{
+			source: "plan-execution",
+			planTitle: "Team tracker app",
+			planKey: "Team tracker app-task-1|task-2",
+			items: [
+				{ id: "task-1", taskId: "task-1", text: "Build filter bar", blockedBy: [] },
+			],
+		},
+		"thread-1",
+		(() => {
+			let count = 0;
+			return () => `queue-${++count}`;
+		})(),
+	);
+
+	assert.equal(result.length, 1);
+	assert.deepEqual(result[0].messageMetadata, {
+		visibility: "hidden",
+		source: "plan-task-dispatch",
+	});
+	assert.equal(result[0].executionMode, "plan-task");
+	assert.deepEqual(result[0].executionTask, {
+		planKey: "Team tracker app-task-1|task-2",
+		planTitle: "Team tracker app",
+		taskId: "task-1",
+		taskText: "Build filter bar",
+		blockedBy: [],
+	});
+	assert.match(result[0].contextDescription ?? "", /\[Plan task execution\]/);
 });

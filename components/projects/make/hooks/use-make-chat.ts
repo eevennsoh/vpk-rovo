@@ -17,10 +17,7 @@ import {
 	type ParsedQuestionCardPayload,
 } from "@/components/projects/shared/lib/question-card-widget";
 import {
-	buildPlanApprovalPrompt,
-	getPlanApprovalKeyFromSubmission,
 	type PlanApprovalDecision,
-	type PlanApprovalSubmission,
 } from "@/components/projects/shared/lib/plan-approval";
 import {
 	buildGenerativeWidgetSubmitPrompt,
@@ -109,7 +106,6 @@ interface UsePlanChatReturn {
 	dismissClarification: (
 		questionCard: ParsedQuestionCardPayload
 	) => Promise<void>;
-	submitPlanApproval: (approval: PlanApprovalSubmission) => Promise<void>;
 	sendAgentDirective: (agentName: string, message: string) => Promise<void>;
 	handleNewChat: (options?: { clearPrompt?: boolean }) => void;
 	handleSelectChat: (id: string) => void;
@@ -815,27 +811,6 @@ export function useMakeChat(options: {
 		[planningSession?.requestId, isPlanMode, sendPrompt],
 	);
 
-	const submitPlanApproval = useCallback(
-		async (approval: PlanApprovalSubmission) => {
-			const approvalPrompt = buildPlanApprovalPrompt(approval).trim();
-			if (!approvalPrompt) {
-				return;
-			}
-			const planApprovalPlanKey = getPlanApprovalKeyFromSubmission(approval);
-
-			await sendPrompt(approvalPrompt, {
-				approval,
-				messageMetadata: {
-					visibility: "hidden",
-					source: "plan-approval-submit",
-					planApprovalDecision: approval.decision,
-					planApprovalPlanKey: planApprovalPlanKey ?? undefined,
-				},
-			});
-		},
-		[sendPrompt],
-	);
-
 	const sendAgentDirective = useCallback(
 		async (agentName: string, message: string) => {
 			const trimmed = message.trim();
@@ -1275,13 +1250,12 @@ export function useMakeChat(options: {
 		chatHistory,
 		activeChatId,
 		handleSubmit,
-		handleSuggestedQuestionClick,
-		handleWidgetPrimaryAction,
-		submitClarification,
-		dismissClarification,
-		submitPlanApproval,
-		sendAgentDirective,
-		handleNewChat,
+			handleSuggestedQuestionClick,
+			handleWidgetPrimaryAction,
+			submitClarification,
+			dismissClarification,
+			sendAgentDirective,
+			handleNewChat,
 		handleSelectChat,
 		handleDeleteChat,
 		handleDeleteMessage,

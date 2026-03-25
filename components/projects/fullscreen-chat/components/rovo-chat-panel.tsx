@@ -48,12 +48,11 @@ export default function RovoChatPanel({
 		stopStreaming,
 	} = useRovoChatPanel({ product });
 	const isRequestInFlight = isStreaming || isSubmitPending;
-	const { shouldShowQuestionCard: shouldShowQuestionCardRaw, activeQuestionCardKey, hideQuestionCard, dismissQuestionCard } =
-		useDismissibleCards({
-			activeQuestionCard,
-			activePlanWidget: null,
-			onDismissQuestionCard: handleClarificationDismiss,
-		});
+		const { shouldShowQuestionCard: shouldShowQuestionCardRaw, activeQuestionCardKey, hideQuestionCard, dismissQuestionCard } =
+			useDismissibleCards({
+				activeQuestionCard,
+				onDismissQuestionCard: handleClarificationDismiss,
+			});
 	const shouldShowQuestionCard = !isRequestInFlight && shouldShowQuestionCardRaw;
 
 	const isFloating = variant === "floating";

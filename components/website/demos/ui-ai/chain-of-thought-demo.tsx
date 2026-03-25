@@ -7,7 +7,9 @@ import {
 	ChainOfThoughtSearchResults,
 	ChainOfThoughtStep,
 } from "@/components/ui-ai/chain-of-thought";
-import { ImageIcon, SearchIcon, SparklesIcon } from "lucide-react";
+import ImageIcon from "@atlaskit/icon/core/image";
+import SearchIcon from "@atlaskit/icon/core/search";
+import AiSparkleIcon from "@atlaskit/icon/core/ai-sparkle";
 import Image from "next/image";
 
 const PROFILE_SOURCES = [
@@ -30,7 +32,7 @@ export default function ChainOfThoughtDemo() {
 export function ChainOfThoughtDemoPreload() {
 	return (
 		<ChainOfThought className="w-full max-w-2xl">
-			<ChainOfThoughtHeader>Tracing model reasoning</ChainOfThoughtHeader>
+			<ChainOfThoughtHeader showChevron={false} shimmer>Tracing model reasoning</ChainOfThoughtHeader>
 			<ChainOfThoughtContent>
 				<ChainOfThoughtStep
 					icon={SearchIcon}
@@ -45,12 +47,13 @@ export function ChainOfThoughtDemoPreload() {
 export function ChainOfThoughtDemoThinking() {
 	return (
 		<ChainOfThought defaultOpen className="w-full max-w-2xl">
-			<ChainOfThoughtHeader>Tracing model reasoning</ChainOfThoughtHeader>
+			<ChainOfThoughtHeader shimmer>Tracing model reasoning</ChainOfThoughtHeader>
 			<ChainOfThoughtContent>
 				<ChainOfThoughtStep
 					icon={SearchIcon}
 					label="Searching public profiles for Hayden Bleasel"
 					status="complete"
+				collapsible
 				>
 					<ChainOfThoughtSearchResults>
 						{PROFILE_SOURCES.map((website) => (
@@ -65,6 +68,7 @@ export function ChainOfThoughtDemoThinking() {
 					icon={ImageIcon}
 					label="Found a likely profile image from the source set"
 					status="complete"
+				collapsible
 				>
 					<ChainOfThoughtImage caption="Public profile image selected from matched sources.">
 						<Image
@@ -78,7 +82,7 @@ export function ChainOfThoughtDemoThinking() {
 				</ChainOfThoughtStep>
 
 				<ChainOfThoughtStep
-					icon={SparklesIcon}
+					icon={AiSparkleIcon}
 					label="Synthesizing a short profile summary from validated signals"
 					status="complete"
 				/>
@@ -87,6 +91,7 @@ export function ChainOfThoughtDemoThinking() {
 					icon={SearchIcon}
 					label="Checking for recent work updates..."
 					status="active"
+				collapsible
 				>
 					<ChainOfThoughtSearchResults>
 						{RECENT_WORK_SOURCES.map((website) => (
@@ -110,6 +115,7 @@ export function ChainOfThoughtDemoCompleted() {
 					icon={SearchIcon}
 					label="Searching public profiles for Hayden Bleasel"
 					status="complete"
+				collapsible
 				>
 					<ChainOfThoughtSearchResults>
 						{PROFILE_SOURCES.map((website) => (
@@ -124,6 +130,7 @@ export function ChainOfThoughtDemoCompleted() {
 					icon={ImageIcon}
 					label="Found a likely profile image from the source set"
 					status="complete"
+				collapsible
 				>
 					<ChainOfThoughtImage caption="Public profile image selected from matched sources.">
 						<Image
@@ -137,7 +144,7 @@ export function ChainOfThoughtDemoCompleted() {
 				</ChainOfThoughtStep>
 
 				<ChainOfThoughtStep
-					icon={SparklesIcon}
+					icon={AiSparkleIcon}
 					label="Synthesizing a short profile summary from validated signals"
 					status="complete"
 				/>
@@ -146,6 +153,7 @@ export function ChainOfThoughtDemoCompleted() {
 					icon={SearchIcon}
 					label="Checked recent work updates"
 					status="complete"
+				collapsible
 				>
 					<ChainOfThoughtSearchResults>
 						{RECENT_WORK_SOURCES.map((website) => (
@@ -182,6 +190,7 @@ export function ChainOfThoughtDemoSearchResults() {
 					icon={SearchIcon}
 					label="Evaluating sources by recency and authority"
 					status="active"
+				collapsible
 				>
 					<ChainOfThoughtSearchResults>
 						{[
@@ -210,6 +219,7 @@ export function ChainOfThoughtDemoImageStep() {
 					icon={ImageIcon}
 					label="Attached visual evidence for reasoning context"
 					status="complete"
+				collapsible
 				>
 					<ChainOfThoughtImage caption="Image context included before summary generation.">
 						<Image

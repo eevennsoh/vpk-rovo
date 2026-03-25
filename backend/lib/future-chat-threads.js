@@ -218,13 +218,10 @@ function createFutureChatThreadManager({ baseDir, logger }) {
 			throw error;
 		}
 
-		const threads = [];
-		for (const entry of entries) {
-			const thread = await readThread(entry);
-			if (thread) {
-				threads.push(thread);
-			}
-		}
+		const threadResults = await Promise.all(
+			entries.map((entry) => readThread(entry)),
+		);
+		const threads = threadResults.filter(Boolean);
 
 		threads.sort((left, right) => {
 			const leftTime = getTimestamp(left.updatedAt);

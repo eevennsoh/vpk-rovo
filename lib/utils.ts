@@ -28,3 +28,20 @@ export function sortByUpdatedAtDesc<T extends { updatedAt: string }>(
 		(left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt),
 	);
 }
+
+export function sleep(ms: number): Promise<void> {
+	return new Promise<void>((resolve) => setTimeout(resolve, ms));
+}
+
+export function toNonEmptyString(value: unknown): string | null {
+	if (typeof value !== "string") {
+		return null;
+	}
+
+	const trimmedValue = value.trim();
+	return trimmedValue.length > 0 ? trimmedValue : null;
+}
+
+export function trimTitleText(text: string): string {
+	return text.trim().replace(/^["']|["']$/g, "").replace(/\.+$/, "").trim();
+}

@@ -71,10 +71,10 @@ describe("DEEP_PLAN_INSTRUCTION — Test Case 11: Q&A ordering rules", () => {
 		);
 	});
 
-	it("rule 1 also requires the first post-clarification turn to exit_plan_mode", () => {
+	it("rule 1 allows additional clarification rounds when details are still missing", () => {
 		assert.match(
 			DEEP_PLAN_INSTRUCTION,
-			/the very next turn after the user answers must call `exit_plan_mode`/i,
+			/you may call `ask_user_questions` again/i,
 		);
 	});
 

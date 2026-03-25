@@ -14,11 +14,9 @@ import DiscoveryGallery from "@/components/blocks/discovery-gallery/page";
 import { ChatMessages } from "@/components/projects/shared/components/chat-messages";
 import { useScrollAnchoring } from "@/components/projects/shared/hooks/use-scroll-anchoring";
 import { ClarificationQuestionCard } from "@/components/projects/shared/components/clarification-question-card";
-import { ApprovalCard } from "@/components/blocks/approval-card/page";
 import { GenerativeWidgetCard } from "@/components/projects/shared/components/generative-widget-card";
-import { getLatestPlanWidgetPayload, parsePlanWidgetPayload } from "@/components/projects/shared/lib/plan-widget";
+import { parsePlanWidgetPayload } from "@/components/projects/shared/lib/plan-widget";
 import type { ClarificationAnswers } from "@/components/projects/shared/lib/question-card-widget";
-import type { PlanApprovalSelection } from "@/components/projects/shared/lib/plan-approval";
 import {
 	getLatestDataPart,
 	isMessageTextStreaming,
@@ -52,10 +50,8 @@ const MODE_INITIAL_DOWN = { opacity: 0, y: 8 };
 
 function getAwaitingIndicatorLabel(
 	showQuestionCard: boolean,
-	showApprovalCard: boolean,
 ): string {
 	if (showQuestionCard) return "Waiting for your answers";
-	if (showApprovalCard) return "Waiting for your approval";
 	return "Awaiting user response";
 }
 
@@ -136,10 +132,8 @@ export function MakeFullscreenChat({
 		chatTabNormalizedMessages: streamingUiMessages,
 		chatTabActiveQuestionCard,
 		chatTabQueuedPrompts: queuedPrompts,
-		chatTabIsPlanMessageComplete,
 		isMakeToggleActive,
 		chatTabActiveChatId,
-		executedPlanKey,
 		enrichedPlanTitle,
 	} = useMakeState();
 
@@ -152,7 +146,6 @@ export function MakeFullscreenChat({
 		handleChatTabWidgetPrimaryAction: handleWidgetPrimaryAction,
 		handleChatTabClarificationSubmit,
 		handleChatTabClarificationDismiss,
-		handleChatTabApprovalSubmit,
 		handleBuild,
 		toggleMakeMode,
 	} = useMakeActions();
@@ -189,22 +182,13 @@ export function MakeFullscreenChat({
 	const { showScrollButton, scrollToBottom } = useScrollToBottom({
 		conversationContextRef,
 	});
-	const activePlanWidget = useMemo(
-		() => getLatestPlanWidgetPayload(streamingUiMessages),
-		[streamingUiMessages],
-	);
 	const {
 		shouldShowQuestionCard,
-		shouldShowApprovalCard,
 		activeQuestionCardKey,
-		activePlanKey,
 		hideQuestionCard,
 		dismissQuestionCard,
-		dismissApprovalCard,
 	} = useDismissibleCards({
 		activeQuestionCard: chatTabActiveQuestionCard,
-		activePlanWidget,
-		messages: streamingUiMessages,
 		scopeKey: chatTabActiveChatId,
 		onDismissQuestionCard: handleChatTabClarificationDismiss,
 	});
@@ -212,12 +196,8 @@ export function MakeFullscreenChat({
 	const isRequestInFlight = chatTabIsStreaming || chatTabIsSubmitPending;
 	const hasMessages = uiMessages.length > 0;
 	const gatedShouldShowQuestionCard = shouldShowQuestionCard && !isRequestInFlight;
-	const isPlanAlreadyExecuted = executedPlanKey !== null && executedPlanKey === activePlanKey;
-	const gatedShouldShowApprovalCard =
-		shouldShowApprovalCard && chatTabIsPlanMessageComplete && !isRequestInFlight && !isPlanAlreadyExecuted;
-	const showBottomOverlayCard =
-		gatedShouldShowQuestionCard || gatedShouldShowApprovalCard;
-	const isAwaitingUserInput = showBottomOverlayCard;
+	const showBottomOverlayCard = gatedShouldShowQuestionCard;
+	const isAwaitingUserInput = gatedShouldShowQuestionCard;
 	const chatComposerBottomPadding =
 		queuedPrompts.length > 0
 			? CHAT_COMPOSER_WITH_QUEUE_BOTTOM_PADDING
@@ -458,14 +438,6 @@ export function MakeFullscreenChat({
 		[handleChatTabClarificationSubmit, hideQuestionCard],
 	);
 
-	const handleApprovalSubmit = useCallback(
-		(selection: PlanApprovalSelection) => {
-			handleChatTabApprovalSubmit(selection);
-			dismissApprovalCard();
-		},
-		[handleChatTabApprovalSubmit, dismissApprovalCard],
-	);
-
 	const composerProps = useMemo(
 		() => ({
 			autoFocus: autoFocusComposer,
@@ -625,15 +597,12 @@ export function MakeFullscreenChat({
 						isStreaming={chatTabIsStreaming}
 						isSubmitPending={chatTabIsSubmitPending}
 						streamingIndicatorVariant="reasoning-expanded"
-						showFeedbackActions={false}
-						showFollowUpSuggestions={!isAwaitingUserInput}
-						showAwaitingIndicator={isAwaitingUserInput}
-						awaitingIndicatorLabel={getAwaitingIndicatorLabel(
-							gatedShouldShowQuestionCard,
-							gatedShouldShowApprovalCard,
-						)}
-						renderWidget={renderWidget}
-					/>
+							showFeedbackActions={false}
+							showFollowUpSuggestions={!isAwaitingUserInput}
+							showAwaitingIndicator={isAwaitingUserInput}
+							awaitingIndicatorLabel={getAwaitingIndicatorLabel(gatedShouldShowQuestionCard)}
+							renderWidget={renderWidget}
+						/>
 				</div>
 			</div>
 
@@ -651,34 +620,25 @@ export function MakeFullscreenChat({
 						visible={showScrollButton}
 						onClick={scrollToBottom}
 					/>
-					{gatedShouldShowQuestionCard &&
-					chatTabActiveQuestionCard &&
-					activeQuestionCardKey ? (
+						{gatedShouldShowQuestionCard &&
+						chatTabActiveQuestionCard &&
+						activeQuestionCardKey ? (
 						<ClarificationQuestionCard
 							key={activeQuestionCardKey}
 							questionCard={chatTabActiveQuestionCard}
 							isSubmitting={isRequestInFlight}
-							onSubmit={handleClarificationSubmit}
-							onDismiss={dismissQuestionCard}
-						/>
-					) : gatedShouldShowApprovalCard && activePlanKey ? (
-						<div className="px-1">
-							<ApprovalCard
-								key={activePlanKey}
-								isSubmitting={isRequestInFlight}
-								onSubmit={handleApprovalSubmit}
-								onDismiss={dismissApprovalCard}
+								onSubmit={handleClarificationSubmit}
+								onDismiss={dismissQuestionCard}
 							/>
-						</div>
-					) : (
-						<MakeComposer {...composerProps} />
-					)}
+						) : (
+							<MakeComposer {...composerProps} />
+						)}
 				</div>
 			</div>
 
-			<div className="absolute inset-x-0 bottom-0 z-20 flex justify-center">
-				{showBottomOverlayCard ? (
-					<Footer hideIcon>
+				<div className="absolute inset-x-0 bottom-0 z-20 flex justify-center">
+					{showBottomOverlayCard ? (
+						<Footer hideIcon>
 						<span>
 							<kbd className="font-sans">↑</kbd> <kbd className="font-sans">↓</kbd> to navigate
 						</span>

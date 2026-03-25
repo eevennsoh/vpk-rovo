@@ -320,6 +320,88 @@ describe("findAcceptedPlanKey (Test Case 7 + 13 — plan acceptance)", () => {
 		assert.equal(findAcceptedPlanKey(messages), null);
 	});
 
+	it("returns null when acceptance is followed by a widget error", () => {
+		const messages = [
+			{ role: "assistant", id: "a1", parts: [] },
+			{
+				role: "user",
+				id: "u1",
+				parts: [],
+				metadata: {
+					source: "plan-approval-submit",
+					planApprovalDecision: "auto-accept",
+					planApprovalPlanKey: "FailedPlan-task-1|task-2",
+				},
+			},
+			{
+				role: "assistant",
+				id: "a2",
+				parts: [
+					{ type: "data-widget-error", data: { code: "TOOL_FAILED", message: "Tool 'exit_plan_mode' exceeded max retries count of 1" } },
+				],
+			},
+		];
+
+		assert.equal(findAcceptedPlanKey(messages), null);
+	});
+
+	it("returns accepted key when assistant follows without error", () => {
+		const messages = [
+			{
+				role: "user",
+				id: "u1",
+				parts: [],
+				metadata: {
+					source: "plan-approval-submit",
+					planApprovalDecision: "auto-accept",
+					planApprovalPlanKey: "GoodPlan-task-1",
+				},
+			},
+			{
+				role: "assistant",
+				id: "a1",
+				parts: [{ type: "text", text: "Starting execution..." }],
+			},
+		];
+
+		assert.equal(findAcceptedPlanKey(messages), "GoodPlan-task-1");
+	});
+
+	it("falls back to earlier acceptance when latest has widget error", () => {
+		const messages = [
+			{
+				role: "user",
+				id: "u1",
+				parts: [],
+				metadata: {
+					source: "plan-approval-submit",
+					planApprovalDecision: "auto-accept",
+					planApprovalPlanKey: "FirstPlan-task-1",
+				},
+			},
+			{ role: "assistant", id: "a1", parts: [{ type: "text", text: "Building..." }] },
+			{
+				role: "user",
+				id: "u2",
+				parts: [],
+				metadata: {
+					source: "plan-approval-submit",
+					planApprovalDecision: "auto-accept",
+					planApprovalPlanKey: "SecondPlan-task-1",
+				},
+			},
+			{
+				role: "assistant",
+				id: "a2",
+				parts: [
+					{ type: "data-widget-error", data: { code: "TOOL_FAILED", message: "Error" } },
+				],
+			},
+		];
+
+		assert.equal(findAcceptedPlanKey(messages), "FirstPlan-task-1");
+	});
+
 	it("returns null when planApprovalPlanKey is empty or whitespace", () => {
 		const messages = [
 			{

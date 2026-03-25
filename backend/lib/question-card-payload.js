@@ -1,7 +1,7 @@
 const { getNonEmptyString, getPositiveInteger } = require("./shared-utils");
 
 const DEFAULT_WIDGET_TYPE = "question-card";
-const DEFAULT_MAX_ROUNDS = 3;
+const DEFAULT_MAX_ROUNDS = Number.MAX_SAFE_INTEGER;
 const DEFAULT_MAX_PRESET_OPTIONS = 4;
 const DEFAULT_CUSTOM_OPTION_PLACEHOLDER = "Tell Rovo what to do...";
 
@@ -323,6 +323,28 @@ function findRequestUserInputQuestionContainer(value) {
 	return null;
 }
 
+/**
+ * Returns true if the option label is a self-referential meta-option
+ * that points the user to the free-text input rather than providing
+ * a concrete pre-composed answer (e.g. "I'll describe it now").
+ *
+ * Does NOT match options with a concrete noun object like
+ * "I'll type the attendees" or "I'll type the channel".
+ */
+function isSelfReferentialFreeTextOption(label) {
+	if (typeof label !== "string") return false;
+	const s = label.trim().toLowerCase();
+	if (s.length === 0) return false;
+	// Direct mention of the free-text / input field
+	if (/\bfree[- ]?text\b/.test(s)) return true;
+	if (/\b(?:text|input)\s*(?:box|field|area)\b/.test(s)) return true;
+	// "I'll describe it…" / "I'll type it…" without a concrete noun object
+	if (/\b(?:i[''\u2019]ll|i will|let me)\s+(?:describe|type|write|provide|enter|explain|specify)\s+(?:it|that|this)\b/.test(s)) return true;
+	// "Describe it myself" / "Type it out" (imperative form)
+	if (/^(?:describe|type|write)\s+(?:it|that|this)\b/.test(s)) return true;
+	return false;
+}
+
 function normalizeRequestUserInputOptions(value) {
 	if (!Array.isArray(value)) {
 		return [];
@@ -358,7 +380,8 @@ function normalizeRequestUserInputOptions(value) {
 				recommended: Boolean(option.recommended) || isRecommendedByLabel,
 			};
 		})
-		.filter(Boolean);
+		.filter(Boolean)
+		.filter((option) => !isSelfReferentialFreeTextOption(option.label));
 }
 
 function getQuestionOptionSource(question) {
@@ -464,5 +487,6 @@ module.exports = {
 	buildQuestionCardPayloadFromRequestUserInput,
 	normalizeRequestUserInputQuestions,
 	normalizeRequestUserInputOptions,
+	isSelfReferentialFreeTextOption,
 	findRequestUserInputQuestionContainer,
 };

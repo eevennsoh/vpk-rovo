@@ -215,6 +215,44 @@ export const UI_AI_DETAILS: Record<string, ComponentDetail> = {
 		],
 	},
 
+	"morphing-rovo": {
+		description:
+			"A morphing shape indicator that smoothly transitions between circle, square, triangle, and hexagon. Uses Motion's native path interpolation with compatible cubic bezier paths — no external shape-morphing library needed.",
+		demoLayout: { previewContentWidth: "full" },
+		usage: `import { MorphingRovo } from "@/components/ui-ai/morphing-rovo";
+
+<MorphingRovo.Shape size={32} />
+<MorphingRovo.Shape size={64} duration={0.8} />`,
+		props: [
+			{
+				name: "size",
+				type: "number",
+				default: "32",
+				description: "Width and height of the shape in pixels.",
+			},
+			{
+				name: "duration",
+				type: "number",
+				default: "0.6",
+				description: "Duration of each morph step in seconds.",
+			},
+			{
+				name: "ease",
+				type: "string",
+				default: "backOut",
+				description: "Easing function for each morph transition (e.g. backOut, easeInOut, circOut, linear).",
+			},
+			{
+				name: "className",
+				type: "string",
+				description: "Additional CSS classes applied to the wrapper.",
+			},
+		],
+		examples: [
+			{ title: "Interactive", description: "Control size, duration, and easing with GUI sliders.", demoSlug: "morphing-rovo-demo" },
+		],
+	},
+
 	attachments: {
 		description:
 			"A compound attachment system for displaying file and source-document attachments in grid, inline, or list layouts with hover previews, remove buttons, and media-aware icons.",
@@ -1030,7 +1068,8 @@ import {
 			{ name: "isStreaming", type: "boolean", description: "Whether the artifact is currently streaming." },
 			{ name: "displayMode", type: '"preview" | "chip"', description: 'Display mode. "preview" shows expanded card, "chip" shows compact inline card. Defaults to "preview".' },
 			{ name: "previewContent", type: "string", description: "Content string for the preview (code text, image URL, etc.)." },
-			{ name: "onOpen", type: "() => void", description: 'Callback when the "Open" button is clicked.' },
+			{ name: "onOpen", type: "(element: HTMLDivElement) => void", description: 'Callback when the "Open" button is clicked. Receives the card root element.' },
+			{ name: "onRegister", type: "(element: HTMLDivElement) => void", description: "Optional callback fired when a preview-mode card mounts. Receives the card root element." },
 			{ name: "children", type: "ReactNode", description: "Optional children rendered inside the card content (overrides previewContent)." },
 			{ name: "className", type: "string", description: "Additional classes for the outer wrapper." },
 		],

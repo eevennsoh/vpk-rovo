@@ -1,5 +1,6 @@
 import type { ParsedPlanTask, ParsedPlanWidgetPayload } from "@/components/projects/shared/lib/plan-widget";
 import type { RovoUIMessage } from "@/lib/rovo-ui-messages";
+import { toNonEmptyString } from "@/lib/utils";
 
 export type PlanApprovalDecision =
 	| "auto-accept"
@@ -23,15 +24,6 @@ export interface PlanApprovalSubmission extends PlanApprovalSelection {
 	planTasks?: PlanApprovalTaskInfo[];
 	toolCallId?: string;
 	deferredToolCallId?: string;
-}
-
-function toNonEmptyString(value: unknown): string | null {
-	if (typeof value !== "string") {
-		return null;
-	}
-
-	const trimmedValue = value.trim();
-	return trimmedValue.length > 0 ? trimmedValue : null;
 }
 
 export function serializePlanApprovalKey(
@@ -115,11 +107,32 @@ export function findAcceptedPlanKey(
 
 		const planKey = message.metadata?.planApprovalPlanKey;
 		if (typeof planKey === "string" && planKey.trim()) {
+			// Check if the assistant response following this acceptance
+			// contains a widget error, indicating the execution failed.
+			// In that case, the acceptance is void — the user should be
+			// able to retry.
+			if (hasFollowUpWidgetError(messages, index)) {
+				continue;
+			}
 			return planKey;
 		}
 	}
 
 	return null;
+}
+
+function hasFollowUpWidgetError(
+	messages: ReadonlyArray<RovoUIMessage>,
+	acceptanceIndex: number,
+): boolean {
+	const nextMessage = messages[acceptanceIndex + 1];
+	if (!nextMessage || nextMessage.role !== "assistant") {
+		return false;
+	}
+
+	return nextMessage.parts.some(
+		(part) => part.type === "data-widget-error",
+	);
 }
 
 export function getPlanApprovalKeyFromPlanWidget(

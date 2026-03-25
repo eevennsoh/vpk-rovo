@@ -3,16 +3,18 @@
 import type { FileUIPart } from "ai";
 import { AnimatePresence, motion } from "motion/react";
 import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ArtifactPanel } from "@/components/ui-ai/artifact";
 import { CreateButton } from "@/components/blocks/top-navigation/components/create-button";
-import { FutureChatArtifactPanel } from "@/components/projects/future-chat/components/future-chat-artifact-panel";
 import { FutureChatHeader } from "@/components/projects/future-chat/components/future-chat-header";
 import { FutureChatComposer } from "@/components/projects/future-chat/components/future-chat-composer";
 import { FutureChatMessages } from "@/components/projects/future-chat/components/future-chat-messages";
 import { FutureChatSidebar } from "@/components/projects/future-chat/components/future-chat-sidebar";
 import { type FutureChatSteeringPhase } from "@/components/projects/future-chat/components/future-chat-steering-lane";
-import { useArtifactAnnotations } from "@/components/projects/future-chat/hooks/use-artifact-annotations";
+import { useArtifactAnnotations } from "@/components/ui-ai/hooks/use-artifact-annotations";
 import { useFutureChat } from "@/components/projects/future-chat/hooks/use-future-chat";
 import {
+	getFutureChatArtifactKindLabel,
+	getFutureChatArtifactTypeLabel,
 	sortFutureChatArtifacts,
 } from "@/components/projects/future-chat/lib/future-chat-artifacts";
 import { resolveFutureChatComposerPlaceholder } from "@/components/projects/future-chat/lib/future-chat-composer-placeholder";
@@ -59,10 +61,8 @@ import {
 import { ClarificationQuestionCard } from "@/components/projects/shared/components/clarification-question-card";
 import { QuestionCardShortcutsFooter } from "@/components/projects/shared/components/question-card-shortcuts-footer";
 import { getLatestQuestionCardPayload, type ClarificationAnswers } from "@/components/projects/shared/lib/question-card-widget";
-import { getLatestPlanWidgetPayload, type ParsedPlanWidgetPayload } from "@/components/projects/shared/lib/plan-widget";
-import type { PlanApprovalSelection } from "@/components/projects/shared/lib/plan-approval";
+import { type ParsedPlanWidgetPayload } from "@/components/projects/shared/lib/plan-widget";
 import { useDismissibleCards } from "@/components/projects/shared/hooks/use-dismissible-cards";
-import { ApprovalCard } from "@/components/blocks/approval-card/page";
 
 interface FutureChatShellProps {
 	embedded?: boolean;
@@ -493,20 +493,14 @@ export function FutureChatShell({
 
 	// Question card / clarification support
 	const activeQuestionCard = useMemo(() => getLatestQuestionCardPayload(chat.messages), [chat.messages]);
-	const activePlanWidget = useMemo(() => getLatestPlanWidgetPayload(chat.messages), [chat.messages]);
 	const { submitClarification, submitPlanApproval } = chat;
 	const {
 		shouldShowQuestionCard: shouldShowQuestionCardRaw,
-		shouldShowApprovalCard,
 		activeQuestionCardKey,
-		activePlanKey,
 		hideQuestionCard,
 		dismissQuestionCard,
-		dismissApprovalCard,
 	} = useDismissibleCards({
 		activeQuestionCard,
-		activePlanWidget,
-		messages: chat.messages,
 		onDismissQuestionCard: chat.cancelClarificationQuestionSet,
 	});
 	const isDeferredQuestionCard = Boolean(activeQuestionCard?.deferredToolCallId);
@@ -524,14 +518,15 @@ export function FutureChatShell({
 		},
 		[submitPlanApproval],
 	);
-	const gatedShouldShowApprovalCard = shouldShowApprovalCard && !chat.isStreaming;
-	const handleApprovalSubmit = useCallback(
-		(selection: PlanApprovalSelection) => {
-			if (!activePlanWidget) return;
-			dismissApprovalCard();
-			void submitPlanApproval(activePlanWidget, selection);
+	const handleOpenPlanPreview = useCallback(
+		(planWidget: ParsedPlanWidgetPayload, sourceMessageId?: string) => {
+			chat.openPlanAsDocument({
+				title: planWidget.title,
+				markdown: planWidget.markdown,
+				sourceMessageId: sourceMessageId ?? null,
+			});
 		},
-		[activePlanWidget, dismissApprovalCard, submitPlanApproval],
+		[chat],
 	);
 
 	const resetTypedScrollAnchorState = useCallback(() => {
@@ -1765,7 +1760,7 @@ export function FutureChatShell({
 	const artifactMenuItems = (() => {
 		const items = sortedArtifacts.map((artifact) => ({
 			id: artifact.id,
-			kind: artifact.kind,
+			typeLabel: getFutureChatArtifactTypeLabel(artifact),
 			title: artifact.title,
 		}));
 		const seenIds = new Set(items.map((item) => item.id));
@@ -1779,7 +1774,7 @@ export function FutureChatShell({
 			seenIds.add(artifactResult.documentId);
 			items.push({
 				id: artifactResult.documentId,
-				kind: artifactResult.kind,
+				typeLabel: getFutureChatArtifactKindLabel(artifactResult.kind),
 				title: artifactResult.title,
 			});
 		}
@@ -1788,13 +1783,13 @@ export function FutureChatShell({
 	})();
 
 	const artifactPane = workspaceDocument ? (
-		<FutureChatArtifactPanel
+		<ArtifactPanel
 			annotations={artifactAnnotations}
 			contentRef={artifactContentRef}
 			cursorMode={cursorMode}
 			document={workspaceDocument}
 			draftContent={chat.streamingArtifact?.content ?? chat.artifactDraftContent}
-			isStreamingArtifact={Boolean(chat.streamingArtifact)}
+			isStreaming={Boolean(chat.streamingArtifact)}
 			mode={chat.artifactMode}
 			onAddComment={addArtifactAnnotationComment}
 			onClose={() => {
@@ -1840,20 +1835,21 @@ export function FutureChatShell({
 				onBuildPlan={handleBuildPlan}
 				onEditMessage={chat.editMessage}
 				onOpenArtifactFromCard={handleOpenArtifactFromCard}
+				onOpenPlanPreview={handleOpenPlanPreview}
 				onRegisterArtifactCard={handleRegisterArtifactCard}
 				onRegenerate={chat.regenerateLatest}
-					onSelectSuggestion={chat.suggestedPrompt}
-					onSetEditingMessageId={chat.setEditingMessageId}
-					onVote={chat.voteOnMessage}
-					pendingArtifactResult={chat.pendingArtifactResult}
-					scrollAnchorMessageId={scrollAnchorMessageId}
-					scrollFollowMode={scrollFollowMode}
-					showEmptyState={showHomeState}
-					shouldSuppressLatestAssistantSuggestions={chat.shouldSuppressLatestAssistantSuggestions}
-					streamingArtifact={chat.streamingArtifact}
-					streamingArtifactMessageId={chat.streamingArtifactMessageId}
-					votes={chat.votes}
-				/>
+				onSelectSuggestion={chat.suggestedPrompt}
+				onSetEditingMessageId={chat.setEditingMessageId}
+				onVote={chat.voteOnMessage}
+				pendingArtifactResult={chat.pendingArtifactResult}
+				scrollAnchorMessageId={scrollAnchorMessageId}
+				scrollFollowMode={scrollFollowMode}
+				showEmptyState={showHomeState}
+				shouldSuppressLatestAssistantSuggestions={chat.shouldSuppressLatestAssistantSuggestions}
+				streamingArtifact={chat.streamingArtifact}
+				streamingArtifactMessageId={chat.streamingArtifactMessageId}
+				votes={chat.votes}
+			/>
 
 			<div
 				ref={composerDockRef}
@@ -1882,14 +1878,7 @@ export function FutureChatShell({
 							/>
 							<QuestionCardShortcutsFooter />
 						</>
-					) : gatedShouldShowApprovalCard && activePlanKey ? (
-						<ApprovalCard
-							key={activePlanKey}
-							isSubmitting={chat.isStreaming}
-							onSubmit={handleApprovalSubmit}
-							onDismiss={dismissApprovalCard}
-						/>
-				) : (
+					) : (
 						<>
 							<FutureChatComposer
 								key={chat.runtimeThreadId}

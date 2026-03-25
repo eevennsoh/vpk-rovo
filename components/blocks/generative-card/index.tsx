@@ -1,7 +1,7 @@
 "use client";
 
 import type { ComponentProps, ReactNode } from "react";
-import ChevronDownIcon from "@atlaskit/icon/core/chevron-down";
+import ChevronRightIcon from "@atlaskit/icon/core/chevron-right";
 import { createContext, memo, use, useCallback, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -237,9 +237,9 @@ export const GenerativeCardHeader = memo(function GenerativeCardHeader({
 							>
 								<span
 									className="transition-transform duration-200 ease-in-out"
-									style={{ transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)" }}
+									style={{ transform: isExpanded ? "rotate(90deg)" : "rotate(0deg)" }}
 								>
-									<ChevronDownIcon label="" size="small" />
+									<ChevronRightIcon label="" size="small" />
 								</span>
 							</Button>
 						) : null}

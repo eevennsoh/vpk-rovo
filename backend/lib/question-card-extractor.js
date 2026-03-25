@@ -11,7 +11,7 @@ const HEADER_ONLY_PATTERN =
 	/^(for example:?|example:?|for instance:?|could you tell me:?|please tell me:?)$/i;
 const DEFAULT_MAX_QUESTIONS = 4;
 const MIN_QUESTION_COUNT = 2;
-const DEFAULT_MAX_ROUNDS = 3;
+const DEFAULT_MAX_ROUNDS = Number.MAX_SAFE_INTEGER;
 const MAX_LABEL_LENGTH = 120;
 const URL_ONLY_PATTERN = /^https?:\/\/\S+$/i;
 

@@ -17,7 +17,7 @@ export const MAKE_MODE_CONTEXT_DESCRIPTION = [
 export const MAKE_MODE_POST_CLARIFICATION_CONTEXT_DESCRIPTION = [
 	"Plan mode is enabled.",
 	"The user has already answered clarification questions for this planning request.",
-	"Do NOT call ask_user_questions again unless a hard blocker makes planning impossible.",
+	"If essential details are still missing, you may call ask_user_questions again to gather what you need before planning.",
 	"Proceed directly to plan generation now.",
 	"Use the create-plan skill to produce the final plan markdown.",
 	"Then call update_todo so the plan tasks are captured in a structured checklist.",

@@ -11,7 +11,6 @@ import {
 import AddIcon from "@atlaskit/icon/core/add";
 import AiAgentIcon from "@atlaskit/icon/core/ai-agent";
 import ChevronRightIcon from "@atlaskit/icon/core/chevron-right";
-import ProjectIcon from "@atlaskit/icon/core/project";
 import ScorecardIcon from "@atlaskit/icon/core/scorecard";
 import ShapesIcon from "@atlaskit/icon/core/shapes";
 import SkillIcon from "@atlaskit/icon-lab/core/skill";
@@ -389,12 +388,7 @@ export function FutureChatSidebar({
 								label="Artifacts"
 								showChevron
 							/>
-							<FutureChatSidebarNavItem
-								icon={<ProjectIcon label="" size="medium" />}
-								label="Projects"
-								showChevron
-							/>
-							<FutureChatSidebarNavItem
+	<FutureChatSidebarNavItem
 								icon={<AiAgentIcon label="" size="medium" />}
 								label="Agents"
 								showChevron

@@ -118,6 +118,7 @@ export const AI_COMPONENTS: ComponentEntry[] = [
 	aiComponent("message"),
 	aiComponent("mic-selector", "Mic Selector"),
 	aiComponent("model-selector", "Model Selector"),
+	aiComponent("morphing-rovo", "Morphing Rovo"),
 	aiComponent("node"),
 	aiComponent("open-in-chat", "Open in Chat"),
 	aiComponent("package-info", "Package Info"),

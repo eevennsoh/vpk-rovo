@@ -1,6 +1,7 @@
 import type { ChatStatus } from "ai";
 import type { FutureChatRunStatus } from "@/lib/future-chat-types";
 import type { RovoUIMessage } from "@/lib/rovo-ui-messages";
+import { toNonEmptyString } from "@/lib/utils";
 
 export type FutureChatDirectDelegationPhase =
 	| "idle"
@@ -10,19 +11,10 @@ export type FutureChatDirectDelegationPhase =
 const DEFAULT_BACKGROUND_DELEGATION_LABEL =
 	"RovoDev is still working in the background.";
 
-function normalizeLabel(value: unknown): string | null {
-	if (typeof value !== "string") {
-		return null;
-	}
-
-	const trimmedValue = value.trim();
-	return trimmedValue.length > 0 ? trimmedValue : null;
-}
-
 function formatBackgroundDelegationLabel(
 	latestThinkingStatusLabel: string | null | undefined,
 ): string {
-	const normalizedLabel = normalizeLabel(latestThinkingStatusLabel);
+	const normalizedLabel = toNonEmptyString(latestThinkingStatusLabel);
 	if (!normalizedLabel) {
 		return DEFAULT_BACKGROUND_DELEGATION_LABEL;
 	}
@@ -47,7 +39,7 @@ export function getLatestFutureChatThinkingStatusLabel(
 				continue;
 			}
 
-			return normalizeLabel(part.data?.label);
+			return toNonEmptyString(part.data?.label);
 		}
 	}
 

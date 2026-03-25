@@ -317,6 +317,9 @@ const UI_AI_DEMO: Record<string, ComponentType> = {
   "animated-rovo": dynamic(() => import("./demos/ui-ai/animated-rovo-demo"), {
     ssr: false,
   }),
+  "morphing-rovo": dynamic(() => import("./demos/ui-ai/morphing-rovo-demo"), {
+    ssr: false,
+  }),
 };
 
 const UI_VARIANT_DEMOS: Record<string, ComponentType> = {

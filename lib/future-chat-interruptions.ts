@@ -3,37 +3,11 @@ import type {
 	RovoMessageInterruptionSource,
 	RovoUIMessage,
 } from "./rovo-ui-messages";
-
-function getMessageInterruption(
-	message: Pick<RovoUIMessage, "metadata">,
-): RovoMessageInterruption | null {
-	const interruption = message.metadata?.interruption;
-	if (interruption?.status !== "interrupted") {
-		return null;
-	}
-
-	return interruption;
-}
-
-function hasTurnCompleteSignal(
-	message: Pick<RovoUIMessage, "parts">,
-): boolean {
-	for (let index = message.parts.length - 1; index >= 0; index--) {
-		if (message.parts[index].type === "data-turn-complete") {
-			return true;
-		}
-	}
-
-	return false;
-}
-
-function getMessageText(message: Pick<RovoUIMessage, "parts">): string {
-	return message.parts
-		.filter((part) => part.type === "text")
-		.map((part) => part.text)
-		.join("\n\n")
-		.trim();
-}
+import {
+	getMessageInterruption,
+	getMessageText,
+	hasTurnCompleteSignal,
+} from "./rovo-ui-messages";
 
 export function getFutureChatInterruptionLabel(
 	interruption: RovoMessageInterruption | null,

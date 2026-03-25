@@ -63,7 +63,7 @@ export interface DeferredToolResponsePayload {
 type ClarificationStatus = "answered" | "dismissed";
 
 const DEFAULT_SESSION_ID = "clarification-session";
-const DEFAULT_MAX_ROUNDS = 3;
+const DEFAULT_MAX_ROUNDS = Number.MAX_SAFE_INTEGER;
 const DEFAULT_TITLE = "Help me clarify this";
 const DEFAULT_PLACEHOLDER = "Tell Rovo what to do...";
 const MAX_GENERATED_OPTIONS = 8;

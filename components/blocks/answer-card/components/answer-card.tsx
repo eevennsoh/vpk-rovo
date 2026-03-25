@@ -6,7 +6,7 @@ import type { ComponentProps } from "react";
 import { Button } from "@/components/ui/button";
 import { Tile } from "@/components/ui/tile";
 import QuestionCircleIcon from "@atlaskit/icon/core/question-circle";
-import ChevronDownIcon from "@atlaskit/icon/core/chevron-down";
+import ChevronRightIcon from "@atlaskit/icon/core/chevron-right";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -67,9 +67,9 @@ function AnswerCard({
 				>
 					<span
 						className="transition-transform duration-200 ease-in-out"
-						style={{ transform: collapsed ? "rotate(0deg)" : "rotate(180deg)" }}
+						style={{ transform: collapsed ? "rotate(0deg)" : "rotate(90deg)" }}
 					>
-						<ChevronDownIcon label="" size="small" />
+						<ChevronRightIcon label="" size="small" />
 					</span>
 				</Button>
 			</header>

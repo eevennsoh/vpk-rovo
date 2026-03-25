@@ -190,7 +190,8 @@ export interface RovoMessageMetadata {
 		| "clarification-submit"
 		| "plan-approval-submit"
 		| "agent-directive"
-		| "plan-retry";
+		| "plan-retry"
+		| "plan-task-dispatch";
 	/** Internal provenance for unified voice/chat routing */
 	origin?: "realtime" | "rovodev";
 	/** Stable timestamps for merging persisted realtime + RovoDev threads */
@@ -241,7 +242,7 @@ const ROUTING_PRESENTATIONS = new Set<RoutingPresentation>([
 ]);
 const ROUTING_ORIGINS = new Set<RoutingOrigin>(["text", "voice"]);
 
-function isRequestUserInputToolName(toolName: unknown): boolean {
+export function isRequestUserInputToolName(toolName: unknown): boolean {
 	if (typeof toolName !== "string") {
 		return false;
 	}

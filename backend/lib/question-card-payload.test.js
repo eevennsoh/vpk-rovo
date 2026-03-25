@@ -5,6 +5,7 @@ const {
 	sanitizeQuestionCardPayload,
 	buildQuestionCardPayloadFromRequestUserInput,
 	findRequestUserInputQuestionContainer,
+	isSelfReferentialFreeTextOption,
 } = require("./question-card-payload");
 
 test("keeps generated options even when questions share identical option sets", () => {
@@ -311,4 +312,82 @@ test("findRequestUserInputQuestionContainer accepts an array of questions direct
 
 	assert.ok(result);
 	assert.equal(result.questions.length, 2);
+});
+
+// ── isSelfReferentialFreeTextOption tests ──
+
+test("isSelfReferentialFreeTextOption returns true for meta-options pointing to free-text input", () => {
+	const selfReferential = [
+		"I'll describe it now",
+		"I'll type it out",
+		"Let me describe it myself",
+		"I'll describe it",
+		"I'll type it",
+		"I'll write it out",
+		"I will describe it now",
+		"Use the free-text field",
+		"Type it out",
+		"Describe it myself",
+		"I'll provide it myself",
+		"I'll explain it myself",
+		"Write it out",
+		"I'll enter it myself",
+		"Type this out",
+		"I'll specify it myself",
+	];
+
+	for (const label of selfReferential) {
+		assert.equal(
+			isSelfReferentialFreeTextOption(label),
+			true,
+			`Expected true for: "${label}"`
+		);
+	}
+});
+
+test("isSelfReferentialFreeTextOption returns false for concrete options", () => {
+	const concrete = [
+		"I'll type the attendees",
+		"I'll type the channel",
+		"I'll type the project key",
+		"I'll type the summary",
+		"I'll type the message",
+		"I'll type the time",
+		"I have a Jira ticket",
+		"I have a Figma design",
+		"React",
+		"Vue",
+		"Slack",
+		"#general",
+		"Marketing site",
+		"I'll describe the requirements",
+	];
+
+	for (const label of concrete) {
+		assert.equal(
+			isSelfReferentialFreeTextOption(label),
+			false,
+			`Expected false for: "${label}"`
+		);
+	}
+});
+
+test("isSelfReferentialFreeTextOption handles edge cases", () => {
+	assert.equal(isSelfReferentialFreeTextOption(null), false);
+	assert.equal(isSelfReferentialFreeTextOption(undefined), false);
+	assert.equal(isSelfReferentialFreeTextOption(""), false);
+	assert.equal(isSelfReferentialFreeTextOption(123), false);
+});
+
+test("normalizeRequestUserInputOptions strips self-referential options", () => {
+	const { normalizeRequestUserInputOptions } = require("./question-card-payload");
+	const result = normalizeRequestUserInputOptions([
+		{ label: "I have a Jira ticket", description: "I'll share the URL" },
+		{ label: "I have a Figma design", description: "I'll share a Figma link" },
+		{ label: "I'll describe it now", description: "I'll type out what I want in the free-text field" },
+	]);
+
+	assert.equal(result.length, 2);
+	assert.equal(result[0].label, "I have a Jira ticket");
+	assert.equal(result[1].label, "I have a Figma design");
 });

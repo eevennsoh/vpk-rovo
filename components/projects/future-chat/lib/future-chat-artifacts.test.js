@@ -2,6 +2,8 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 
 const {
+	getFutureChatArtifactKindLabel,
+	getFutureChatArtifactTypeLabel,
 	getFutureChatPrimaryArtifact,
 	sortFutureChatArtifacts,
 } = require("./future-chat-artifacts.ts");
@@ -107,5 +109,27 @@ test("sorts artifacts newest-first for the reopen menu", () => {
 	assert.deepEqual(
 		artifacts.map((artifact) => artifact.id),
 		["artifact-newest", "artifact-middle", "artifact-oldest"],
+	);
+});
+
+test("labels text artifacts as documents by default", () => {
+	assert.equal(getFutureChatArtifactKindLabel("text"), "Document");
+});
+
+test("labels plan preview documents as plans", () => {
+	assert.equal(
+		getFutureChatArtifactTypeLabel({
+			kind: "text",
+			versions: [
+				{
+					id: "version-1",
+					changeLabel: "Plan",
+					content: "# Plan",
+					createdAt: "2026-03-08T05:15:00.000Z",
+					title: "Confluence Workflow Automation Dashboard",
+				},
+			],
+		}),
+		"Plan",
 	);
 });

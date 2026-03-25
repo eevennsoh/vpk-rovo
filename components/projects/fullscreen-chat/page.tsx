@@ -40,12 +40,11 @@ export default function RovoView() {
 		uiMessages,
 		enabled: isChatMode,
 	});
-	const { shouldShowQuestionCard: shouldShowQuestionCardRaw, activeQuestionCardKey, hideQuestionCard, dismissQuestionCard } =
-		useDismissibleCards({
-			activeQuestionCard,
-			activePlanWidget: null,
-			onDismissQuestionCard: handleClarificationDismiss,
-		});
+		const { shouldShowQuestionCard: shouldShowQuestionCardRaw, activeQuestionCardKey, hideQuestionCard, dismissQuestionCard } =
+			useDismissibleCards({
+				activeQuestionCard,
+				onDismissQuestionCard: handleClarificationDismiss,
+			});
 	const shouldShowQuestionCard = !isRequestInFlight && shouldShowQuestionCardRaw;
 
 	return (

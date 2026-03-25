@@ -556,10 +556,21 @@ function extractUpdateTodoQueuePayloadFromObservations(observations, options = {
 		return null;
 	}
 
+	const source =
+		getNonEmptyString(options.source) === "plan-execution"
+			? "plan-execution"
+			: null;
+	const planTitle = getNonEmptyString(options.planTitle);
+	const planKey = getNonEmptyString(options.planKey);
+
 	return {
 		type: "todo-queue",
+		...(source ? { source } : {}),
+		...(planTitle ? { planTitle } : {}),
+		...(planKey ? { planKey } : {}),
 		items: tasks.map((task) => ({
 			id: task.id,
+			taskId: task.id,
 			text: task.label,
 			blockedBy: Array.isArray(task.blockedBy) ? task.blockedBy : [],
 		})),

@@ -1,5 +1,5 @@
 import type { FileUIPart } from "ai";
-import type { RovoUIMessage } from "@/lib/rovo-ui-messages";
+import type { RovoMessageMetadata, RovoUIMessage } from "@/lib/rovo-ui-messages";
 import { createId } from "@/lib/utils";
 
 export type FutureChatVisibility = "private" | "public";
@@ -83,11 +83,22 @@ export interface FutureChatQueuedActionBase {
 	createdAt: number;
 }
 
+export interface FutureChatPlanExecutionTask {
+	planKey: string;
+	planTitle?: string;
+	taskId: string;
+	taskText: string;
+	blockedBy?: string[];
+}
+
 export interface FutureChatQueuedPromptAction
 	extends FutureChatQueuedActionBase {
 	kind: "prompt";
 	files: ReadonlyArray<FileUIPart>;
 	contextDescription?: string;
+	executionMode?: "plan-task";
+	executionTask?: FutureChatPlanExecutionTask;
+	messageMetadata?: RovoMessageMetadata;
 }
 
 export interface FutureChatQueuedDelegationAction

@@ -1,5 +1,6 @@
 import type { ChatStatus } from "ai";
 import type React from "react";
+import { sleep as defaultSleep } from "@/lib/utils";
 
 const SEND_SETTLE_TIMEOUT_MS = 3_000;
 const USE_CHAT_IDLE_GRACE_MS = 75;
@@ -17,7 +18,7 @@ export async function waitForChatSendSettled({
 	sleep,
 	statusRef,
 }: WaitForChatSendSettledOptions): Promise<void> {
-	const wait = sleep ?? ((ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms)));
+	const wait = sleep ?? defaultSleep;
 	const settleStart = now();
 	while (
 		statusRef.current === "submitted"

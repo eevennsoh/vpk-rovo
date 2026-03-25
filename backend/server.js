@@ -91,6 +91,12 @@ const { dispatchBespokeGenuiHandler } = require("./lib/bespoke-genui-handler-dis
 const { looksLikeInabilityResponse } = require("./lib/inability-response-detector");
 const { assessPromptComplexityForPlanMode } = require("./lib/plan-mode-complexity-heuristic");
 const {
+	getPlanSession,
+	updatePlanSession,
+	clearPlanSession,
+	shouldRestorePlanModeOnResume,
+} = require("./lib/plan-session");
+const {
 	resolveRoutingDecision,
 } = require("./lib/resolve-routing-decision");
 const {
@@ -2351,6 +2357,7 @@ async function executeFutureChatManagedRun(run) {
 		messageCount: Array.isArray(requestBody.messages) ? requestBody.messages.length : 0,
 		hasDelegatedMessageId: Boolean(getNonEmptyString(requestBody.delegatedMessageId)),
 		hasActiveArtifact: Boolean(requestBody.activeArtifact?.id),
+		executionMode: getNonEmptyString(requestBody.executionMode),
 	});
 
 	const threadId = getNonEmptyString(requestBody.id);
@@ -2426,9 +2433,6 @@ async function executeFutureChatManagedRun(run) {
 	const delegationContextDescription = conversationSummary
 		? `[Voice delegation summary]\n${conversationSummary}`
 		: null;
-	const resolvedBaseContextDescription = [delegationContextDescription, baseContextDescription]
-		.filter(Boolean)
-		.join("\n\n");
 	const streamingArtifact =
 		requestBody.streamingArtifact &&
 		typeof requestBody.streamingArtifact === "object" &&
@@ -2441,6 +2445,21 @@ async function executeFutureChatManagedRun(run) {
 			}
 			: null;
 	const resolvedProvider = getNonEmptyString(requestBody.provider);
+	const requestExecutionMode = getNonEmptyString(requestBody.executionMode);
+	const requestExecutionTask =
+		requestExecutionMode === "plan-task"
+			? normalizeFutureChatPlanTaskExecution(requestBody.executionTask)
+			: null;
+	const executionContextDescription = buildFutureChatPlanTaskExecutionContext(
+		requestExecutionTask,
+	);
+	const effectiveBaseContextDescription = [
+		delegationContextDescription,
+		baseContextDescription,
+		executionContextDescription,
+	]
+		.filter(Boolean)
+		.join("\n\n");
 
 	delete requestBody.activeDocumentId;
 	delete requestBody.artifactContext;
@@ -2451,6 +2470,8 @@ async function executeFutureChatManagedRun(run) {
 	delete requestBody.origin;
 	delete requestBody.voiceMetadata;
 	delete requestBody.activeArtifact;
+	delete requestBody.executionMode;
+	delete requestBody.executionTask;
 
 	const requestIsPlanMode = requestBody.isPlanMode === true;
 	delete requestBody.isPlanMode;
@@ -2465,7 +2486,9 @@ async function executeFutureChatManagedRun(run) {
 	let routingDecision;
 	const routeDecisionStartedAtMs = Date.now();
 	let autoPlanTriggered = false;
-	if (!requestIsPlanMode && latestUserMessage) {
+	const isPlanTaskExecution =
+		requestExecutionMode === "plan-task" && Boolean(requestExecutionTask);
+	if (!requestIsPlanMode && !isPlanTaskExecution && latestUserMessage) {
 		const complexity = assessPromptComplexityForPlanMode(latestUserMessage);
 		if (complexity.shouldPlan) {
 			autoPlanTriggered = true;
@@ -2494,6 +2517,20 @@ async function executeFutureChatManagedRun(run) {
 			intent: "chat",
 			confidence: 1,
 			reason: "plan_mode_active",
+		});
+	} else if (isPlanTaskExecution) {
+		routingDecision = {
+			intent: "chat",
+			presentation: "text",
+			confidence: 1,
+			reason: "plan_task_execution",
+			origin: requestOrigin,
+		};
+		stageTrace.mark("route_decision_resolved", {
+			stageMs: 0,
+			intent: "chat",
+			confidence: 1,
+			reason: "plan_task_execution",
 		});
 	} else {
 		try {
@@ -2544,7 +2581,7 @@ async function executeFutureChatManagedRun(run) {
 			activeArtifact,
 			activeDocument,
 			artifactSteering,
-			contextDescription: resolvedBaseContextDescription || null,
+			contextDescription: effectiveBaseContextDescription || null,
 			requestOrigin,
 			requestBody,
 			signal,
@@ -2569,11 +2606,11 @@ async function executeFutureChatManagedRun(run) {
 
 	const artifactContextBlock = buildFutureChatArtifactContext(activeArtifact);
 	if (artifactContextBlock) {
-		requestBody.contextDescription = resolvedBaseContextDescription
-			? `${artifactContextBlock}\n\n${resolvedBaseContextDescription}`
+		requestBody.contextDescription = effectiveBaseContextDescription
+			? `${artifactContextBlock}\n\n${effectiveBaseContextDescription}`
 			: artifactContextBlock;
-	} else if (resolvedBaseContextDescription) {
-		requestBody.contextDescription = resolvedBaseContextDescription;
+	} else if (effectiveBaseContextDescription) {
+		requestBody.contextDescription = effectiveBaseContextDescription;
 	}
 	if (routingDecision.intent === "genui") {
 		requestBody.genuiHint = true;
@@ -3968,6 +4005,23 @@ function planWidgetRequiresApproval(value) {
 	return Boolean(parsedPayload?.deferredToolCallId);
 }
 
+function getPlanWidgetExecutionKey(value) {
+	const parsedPayload = parsePlanWidgetPayload(value);
+	if (!parsedPayload) {
+		return null;
+	}
+
+	const normalizedTitle = getNonEmptyString(parsedPayload.title);
+	const taskIds = parsedPayload.tasks
+		.map((task) => getNonEmptyString(task.id))
+		.filter(Boolean);
+	if (!normalizedTitle || taskIds.length === 0) {
+		return null;
+	}
+
+	return `${normalizedTitle}-${taskIds.join("|")}`;
+}
+
 function mergePlanWidgetPayloadTasks(basePayload, taskPayload) {
 	const parsedBasePayload = parsePlanWidgetPayload(basePayload);
 	const parsedTaskPayload = parsePlanWidgetPayload(taskPayload);
@@ -3991,6 +4045,44 @@ function mergePlanWidgetPayloadTasks(basePayload, taskPayload) {
 		agents: [...parsedTaskPayload.agents],
 		deferredToolCallId: parsedBasePayload.deferredToolCallId,
 	};
+}
+
+function normalizeFutureChatPlanTaskExecution(value) {
+	if (!value || typeof value !== "object") {
+		return null;
+	}
+
+	const planKey = getNonEmptyString(value.planKey);
+	const taskId = getNonEmptyString(value.taskId);
+	const taskText =
+		getNonEmptyString(value.taskText) ||
+		getNonEmptyString(value.text);
+	if (!planKey || !taskId || !taskText) {
+		return null;
+	}
+
+	return {
+		planKey,
+		planTitle: getNonEmptyString(value.planTitle) || null,
+		taskId,
+		taskText,
+	};
+}
+
+function buildFutureChatPlanTaskExecutionContext(executionTask) {
+	if (!executionTask) {
+		return null;
+	}
+
+	return [
+		"[Approved plan execution task]",
+		"This request is an internal execution step from an already-generated Future Chat plan.",
+		executionTask.planTitle ? `Plan: ${executionTask.planTitle}` : null,
+		`Plan key: ${executionTask.planKey}`,
+		`Task id: ${executionTask.taskId}`,
+		`Current task: ${executionTask.taskText}`,
+		"Continue implementation for this task. Do not switch into planning or GenUI generation unless the task explicitly requires it.",
+	].filter(Boolean).join("\n");
 }
 
 function sanitizeMermaidNodeId(value) {
@@ -4840,7 +4932,7 @@ async function handleChatSdkRequest(req, res) {
 		} = req.body || {};
 		const clientTimeZone = normalizeClientTimeZone(rawClientTimeZone);
 		const genuiHint = rawGenuiHint === true;
-		const resolvedPlanModeActive = rawResolvedPlanModeActive === true;
+		let resolvedPlanModeActive = rawResolvedPlanModeActive === true;
 		const chatSdkSource = getNonEmptyString(rawChatSdkSource) || "direct";
 		const threadId = typeof rawThreadId === "string" && rawThreadId.trim().length > 0
 			? rawThreadId.trim()
@@ -4901,6 +4993,38 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 		const hasPausedApprovalToolCall =
 			Boolean(approvalToolCallId) &&
 			_pausedRovoDevToolCallStore.has(approvalToolCallId);
+
+		// Restore plan mode on deferred tool resume turns where the frontend
+		// didn't send isPlanMode (e.g., clarification answer, plan approval).
+		if (!resolvedPlanModeActive && threadId && (hasPausedClarificationToolCall || hasPausedApprovalToolCall)) {
+			const restore = shouldRestorePlanModeOnResume({
+				pausedToolCallRecord: {
+					toolCallId: hasPausedClarificationToolCall
+						? clarificationToolCallId
+						: approvalToolCallId,
+				},
+				resolvedPlanModeActive,
+				threadId,
+			});
+			if (restore.shouldRestore) {
+				resolvedPlanModeActive = true;
+				console.info("[CHAT-SDK] Restored plan mode from plan session", {
+					threadId,
+					phase: restore.phase,
+				});
+			}
+		}
+
+		// Persist plan session state when entering plan mode.
+		if (resolvedPlanModeActive && threadId) {
+			const planSession = getPlanSession(threadId);
+			if (!planSession.isActive) {
+				updatePlanSession(threadId, { isActive: true, phase: "qa" });
+			}
+		} else if (!resolvedPlanModeActive && threadId && !hasPausedClarificationToolCall && !hasPausedApprovalToolCall) {
+			// Clear stale plan session on non-resume, non-plan turns.
+			clearPlanSession(threadId);
+		}
 		const {
 			message: latestUserMessage,
 			conversationHistory,
@@ -7763,6 +7887,16 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 								toolCallId,
 								source,
 								taskCount: planPayload.tasks?.length ?? 0,
+								hasMarkdown: Boolean(planPayload.markdown),
+								markdownLength: planPayload.markdown?.length ?? 0,
+								markdownPreview: (planPayload.markdown || "").slice(0, 300),
+								title: planPayload.title,
+								description: (planPayload.description || "").slice(0, 100),
+								rawToolInputType: typeof toolInput,
+								rawToolInputPreview:
+									typeof toolInput === "string"
+										? toolInput.slice(0, 300)
+										: JSON.stringify(toolInput).slice(0, 300),
 							});
 							return true;
 						};
@@ -8205,6 +8339,14 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 									hasSeenPlanWidgetSignal = true;
 									hasExplicitPlanPayload = true;
 									latestProgressivePlanFingerprint = null;
+									console.info("[PLAN-WIDGET-GENUI] Plan widget emitted from GenUI JSON path", {
+										hasMarkdown: Boolean(parsedWidget?.markdown),
+										markdownLength: (parsedWidget?.markdown || "").length,
+										markdownPreview: (parsedWidget?.markdown || "").slice(0, 300),
+										title: parsedWidget?.title,
+										taskCount: Array.isArray(parsedWidget?.tasks) ? parsedWidget.tasks.length : 0,
+										payloadPreview: JSON.stringify(parsedWidget).slice(0, 500),
+									});
 								}
 
 								writer.write({
@@ -8710,18 +8852,44 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 									}
 
 									if (isExitPlanModeTool(interactivePart.tool_name)) {
-										const decisions = pausedParts
-											.map((part) => {
-												const toolCallId = getNonEmptyString(part?.tool_call_id);
-												return toolCallId
-													? { tool_call_id: toolCallId, deny_message: null }
-													: null;
-											})
-											.filter(Boolean);
-										if (decisions.length > 0) {
-											await control.resume({ decisions });
+										const reservedHandle = control.reservePort();
+										let pausedSessionId = rovoDevSessionId;
+										let pausedSessionMode = sessionMode;
+										if (threadId) {
+											try {
+												const synchronizedThread =
+													await syncFutureChatThreadSessionFromCurrentPort(
+														threadId,
+														control.port,
+														{ sessionMode },
+													);
+												pausedSessionId =
+													getNonEmptyString(synchronizedThread?.sessionId)
+													|| pausedSessionId;
+												pausedSessionMode =
+													synchronizedThread?.sessionMode === "ephemeral"
+														? "ephemeral"
+														: pausedSessionMode;
+											} catch (error) {
+												console.warn("[FUTURE-CHAT] Failed to sync thread session on plan approval pause:", {
+													threadId,
+													port: control.port,
+													error: error instanceof Error ? error.message : String(error),
+												});
+											}
 										}
-										return { disconnect: false };
+										registerPausedRovoDevToolCall({
+											toolCallId: interactivePart.tool_call_id,
+											port: control.port,
+											handle: reservedHandle,
+											threadId,
+											sessionId: pausedSessionId,
+											sessionMode: pausedSessionMode,
+											kind: "plan-approval",
+										});
+										hasObservedDeferredToolRequest = true;
+										pausedToolCallHandled = true;
+										return { disconnect: true };
 									}
 
 									const reservedHandle = control.reservePort();
@@ -9645,8 +9813,21 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 									emitPlanWidgetData(mergedPlanPayload);
 								}
 							} else {
+								const activePlanPayload =
+									latestPlanPayload || updateTodoPlanPayload;
+								const parsedActivePlanPayload =
+									parsePlanWidgetPayload(activePlanPayload);
 								const todoQueuePayload =
-									extractUpdateTodoQueuePayloadFromObservations(toolObservationEntries);
+									extractUpdateTodoQueuePayloadFromObservations(
+										toolObservationEntries,
+										parsedActivePlanPayload
+											? {
+												source: "plan-execution",
+												planTitle: parsedActivePlanPayload.title,
+												planKey: getPlanWidgetExecutionKey(activePlanPayload),
+											}
+											: undefined,
+									);
 								if (todoQueuePayload) {
 									emitTodoQueueData(todoQueuePayload);
 								}

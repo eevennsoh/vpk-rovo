@@ -5,10 +5,12 @@ const ADS_UI_DISCOVERY_SLUGS = new Set(["skill-card", "sidebar-nav-item"]);
 const ADS_AI_SLUGS = new Set([
 	"animated-dots",
 	"animated-rovo",
+	"artifact",
 	"chain-of-thought",
 	"code-block",
 	"conversation",
 	"message",
+	"morphing-rovo",
 	"plan",
 	"prompt-input",
 	"queue",

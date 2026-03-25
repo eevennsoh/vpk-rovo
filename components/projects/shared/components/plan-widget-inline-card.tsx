@@ -23,6 +23,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { cn } from "@/lib/utils";
 import { token } from "@/lib/tokens";
 
+
 interface CollapsedPlanBubbleProps {
 	emoji: string;
 	onExpand: () => void;
@@ -66,6 +67,7 @@ export interface PlanWidgetInlineCardProps {
 	footer?: ReactNode;
 	className?: string;
 	onBuild?: () => void;
+	onOpenPreview?: () => void;
 	isBuildDisabled?: boolean;
 	buildDisabledReason?: string;
 }
@@ -82,6 +84,7 @@ export function PlanWidgetInlineCard({
 	footer = null,
 	className,
 	onBuild,
+	onOpenPreview,
 	isBuildDisabled = false,
 	buildDisabledReason,
 }: Readonly<PlanWidgetInlineCardProps>): React.ReactElement | null {
@@ -152,14 +155,23 @@ export function PlanWidgetInlineCard({
 					revealedCount={revealedCount}
 				/>
 				{onBuild ? (
-					<PlanFooter className="border-t border-border px-4 py-3">
+					<PlanFooter className="border-t border-border flex-wrap px-4 py-4">
 						<div className="flex items-center justify-end gap-2">
+							{onOpenPreview ? (
+								<Button
+									disabled={isStreaming}
+									onClick={onOpenPreview}
+									type="button"
+									variant="outline"
+								>
+									Open plan
+								</Button>
+							) : null}
 							{isBuildDisabled && buildDisabledReason ? (
 								<Tooltip>
 									<TooltipTrigger render={<span className="inline-flex" />}>
 										<Button
 											disabled
-											size="sm"
 											type="button"
 										>
 											Build
@@ -171,7 +183,6 @@ export function PlanWidgetInlineCard({
 								<Button
 									disabled={isBuildDisabled || isStreaming}
 									onClick={onBuild}
-									size="sm"
 									type="button"
 								>
 									Build

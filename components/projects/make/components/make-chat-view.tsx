@@ -6,11 +6,9 @@ import type { RovoUIMessage } from "@/lib/rovo-ui-messages";
 import { ChatMessages } from "@/components/projects/shared/components/chat-messages";
 import { useScrollAnchoring } from "@/components/projects/shared/hooks/use-scroll-anchoring";
 import { ClarificationQuestionCard } from "@/components/projects/shared/components/clarification-question-card";
-import { ApprovalCard } from "@/components/blocks/approval-card/page";
 import { parsePlanWidgetPayload } from "@/components/projects/shared/lib/plan-widget";
 import type { ParsedQuestionCardPayload } from "@/components/projects/shared/lib/question-card-widget";
 import type { ClarificationAnswers } from "@/components/projects/shared/lib/question-card-widget";
-import type { PlanApprovalSelection } from "@/components/projects/shared/lib/plan-approval";
 import type { QueuedPromptItem } from "@/app/contexts";
 import { Footer } from "@/components/ui/footer";
 import ArrowDownIcon from "@atlaskit/icon/core/arrow-down";
@@ -42,10 +40,8 @@ const OVERLAY_CARD_BOTTOM_PADDING = "520px";
 
 function getAwaitingIndicatorLabel(
 	showQuestionCard: boolean,
-	showApprovalCard: boolean,
 ): string {
 	if (showQuestionCard) return "Waiting for your answers";
-	if (showApprovalCard) return "Waiting for your approval";
 	return "Awaiting user response";
 }
 
@@ -107,17 +103,11 @@ function ScrollToBottomButton({ visible, onClick }: Readonly<ScrollToBottomButto
 
 interface BottomOverlayProps {
 	showQuestionCard: boolean;
-	showApprovalCard: boolean;
-	hasPendingResponseCard: boolean;
 	activeQuestionCard: ParsedQuestionCardPayload | null;
 	activeQuestionCardKey: string | null;
-	activePlanKey: string | null;
-	isRequestInFlight: boolean;
 	onClarificationSubmit: (answers: ClarificationAnswers) => void;
 	onHideQuestionCard: () => void;
 	onDismissQuestionCard: () => void;
-	onApprovalSubmit: (selection: PlanApprovalSelection) => void;
-	onDismissApprovalCard: () => void;
 	composerProps: {
 		prompt: string;
 		placeholder: string;
@@ -132,17 +122,11 @@ interface BottomOverlayProps {
 
 function BottomOverlay({
 	showQuestionCard,
-	showApprovalCard,
-	hasPendingResponseCard,
 	activeQuestionCard,
 	activeQuestionCardKey,
-	activePlanKey,
-	isRequestInFlight,
 	onClarificationSubmit,
 	onHideQuestionCard,
 	onDismissQuestionCard,
-	onApprovalSubmit,
-	onDismissApprovalCard,
 	composerProps,
 }: Readonly<BottomOverlayProps>) {
 	if (showQuestionCard && activeQuestionCard && activeQuestionCardKey) {
@@ -159,27 +143,7 @@ function BottomOverlay({
 		);
 	}
 
-	if (showApprovalCard && activePlanKey) {
-		return (
-			<div className="px-1">
-				<ApprovalCard
-					key={activePlanKey}
-					isSubmitting={isRequestInFlight}
-					onSubmit={(selection) => {
-						onApprovalSubmit(selection);
-						onDismissApprovalCard();
-					}}
-					onDismiss={onDismissApprovalCard}
-				/>
-			</div>
-		);
-	}
-
-	if (!hasPendingResponseCard) {
-		return <MakeComposer {...composerProps} />;
-	}
-
-	return null;
+	return <MakeComposer {...composerProps} />;
 }
 
 interface ChatFooterProps {
@@ -217,9 +181,7 @@ export default function MakeChatView() {
 		uiMessages,
 		normalizedUiMessages: streamingUiMessages,
 		activeQuestionCard,
-		activePlanWidget,
 		enrichedPlanTitle,
-		isPlanMessageComplete,
 		queuedPrompts,
 		activeChatId,
 	} = useMakeState();
@@ -231,7 +193,6 @@ export default function MakeChatView() {
 		removeQueuedPrompt,
 		handleClarificationSubmit,
 		handleClarificationDismiss,
-		handleApprovalSubmit,
 		handleBuild,
 		handleSuggestedQuestionClick,
 	} = useMakeActions();
@@ -252,32 +213,22 @@ export default function MakeChatView() {
 	});
 	const {
 		shouldShowQuestionCard,
-		shouldShowApprovalCard,
 		activeQuestionCardKey,
-		activePlanKey,
 		hideQuestionCard,
 		dismissQuestionCard,
-		dismissApprovalCard,
 	} = useDismissibleCards({
 		activeQuestionCard,
-		activePlanWidget,
-		messages: streamingUiMessages,
 		scopeKey: activeChatId,
 		onDismissQuestionCard: handleClarificationDismiss,
 	});
 
 	const isRequestInFlight = isStreaming || isSubmitPending;
 	const gatedShouldShowQuestionCard = shouldShowQuestionCard && !isWidgetLoading;
-	const gatedShouldShowApprovalCard =
-		shouldShowApprovalCard && isPlanMessageComplete && !isRequestInFlight;
-	const hasPendingResponseCard =
-		gatedShouldShowQuestionCard || gatedShouldShowApprovalCard;
-	const showBottomOverlayCard =
-		gatedShouldShowQuestionCard || gatedShouldShowApprovalCard;
-	const isAwaitingUserInput = hasPendingResponseCard;
+	const showBottomOverlayCard = gatedShouldShowQuestionCard;
+	const isAwaitingUserInput = gatedShouldShowQuestionCard;
 	const chatComposerBottomPadding = queuedPrompts.length > 0 ? CHAT_COMPOSER_WITH_QUEUE_BOTTOM_PADDING : CHAT_COMPOSER_BASE_BOTTOM_PADDING;
 	const contentBottomPadding = showBottomOverlayCard ? OVERLAY_CARD_BOTTOM_PADDING : chatComposerBottomPadding;
-	const shouldShowBottomGradient = showBottomOverlayCard || !hasPendingResponseCard;
+	const shouldShowBottomGradient = true;
 	const modeCopy = getPlanModeCopy();
 
 	// Determine which plan widget message is the latest (most recent) one.
@@ -388,15 +339,12 @@ export default function MakeChatView() {
 						isSubmitPending={isSubmitPending}
 						streamingIndicatorVariant="reasoning-expanded"
 						showFeedbackActions={false}
-						showFollowUpSuggestions={!isAwaitingUserInput}
-						showAwaitingIndicator={isAwaitingUserInput}
-						awaitingIndicatorLabel={getAwaitingIndicatorLabel(
-							gatedShouldShowQuestionCard,
-							gatedShouldShowApprovalCard,
-						)}
-						renderLoadingWidget={renderLoadingWidget}
-						renderWidget={renderWidget}
-					/>
+							showFollowUpSuggestions={!isAwaitingUserInput}
+							showAwaitingIndicator={isAwaitingUserInput}
+							awaitingIndicatorLabel={getAwaitingIndicatorLabel(gatedShouldShowQuestionCard)}
+							renderLoadingWidget={renderLoadingWidget}
+							renderWidget={renderWidget}
+						/>
 				</div>
 			</div>
 
@@ -415,29 +363,19 @@ export default function MakeChatView() {
 						<ScrollToBottomButton visible={showScrollButton} onClick={scrollToBottom} />
 						<BottomOverlay
 							showQuestionCard={gatedShouldShowQuestionCard}
-							showApprovalCard={gatedShouldShowApprovalCard}
-							hasPendingResponseCard={hasPendingResponseCard}
 							activeQuestionCard={activeQuestionCard}
 							activeQuestionCardKey={activeQuestionCardKey}
-							activePlanKey={activePlanKey}
-							isRequestInFlight={isRequestInFlight}
 							onClarificationSubmit={handleClarificationSubmit}
 							onHideQuestionCard={hideQuestionCard}
 							onDismissQuestionCard={dismissQuestionCard}
-							onApprovalSubmit={handleApprovalSubmit}
-							onDismissApprovalCard={dismissApprovalCard}
 							composerProps={composerProps}
 						/>
 					</div>
 				</div>
 
-			<div className="absolute inset-x-0 bottom-0 z-20 flex justify-center">
-				<ChatFooter
-					showOverlayHints={
-						gatedShouldShowQuestionCard || gatedShouldShowApprovalCard
-					}
-				/>
-			</div>
+				<div className="absolute inset-x-0 bottom-0 z-20 flex justify-center">
+					<ChatFooter showOverlayHints={gatedShouldShowQuestionCard} />
+				</div>
 
 			<PlanPreviewModal
 				open={previewModal.open}

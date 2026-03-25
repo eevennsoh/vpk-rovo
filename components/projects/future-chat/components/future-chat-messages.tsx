@@ -24,6 +24,7 @@ import {
 	MessageResponse,
 	MessageVoteActions,
 } from "@/components/ui-ai/message";
+import { ArtifactCard } from "@/components/ui-ai/artifact";
 import {
 	ChainOfThought,
 	ChainOfThoughtContent,
@@ -39,6 +40,7 @@ import {
 import { ToolInput, ToolOutput } from "@/components/ui-ai/tool";
 import { Icon } from "@/components/ui/icon";
 import AiAgentIcon from "@atlaskit/icon/core/ai-agent";
+import type { NewCoreIconProps } from "@atlaskit/icon/base-new";
 import ListChecklistIcon from "@atlaskit/icon/core/list-checklist";
 import PeopleGroupIcon from "@atlaskit/icon/core/people-group";
 import WrenchIcon from "@atlaskit/icon-lab/core/wrench";
@@ -118,7 +120,6 @@ import {
 } from "@/components/projects/shared/lib/question-card-widget";
 import { findAcceptedPlanKey } from "@/components/projects/shared/lib/plan-approval";
 import { cn } from "@/lib/utils";
-import { FutureChatArtifactCard } from "@/components/projects/future-chat/components/future-chat-artifact-card";
 import type { FutureChatDocument } from "@/lib/future-chat-types";
 import type { FutureChatStreamingArtifact } from "@/components/projects/future-chat/lib/future-chat-streaming-artifact";
 import Image from "next/image";
@@ -136,6 +137,7 @@ interface FutureChatMessagesProps {
 	onBuildPlan?: (planWidget: ParsedPlanWidgetPayload) => void;
 	onEditMessage: (messageId: string, nextText: string) => Promise<void>;
 	onOpenArtifactFromCard: (documentId: string, element: HTMLElement) => void;
+	onOpenPlanPreview?: (planWidget: ParsedPlanWidgetPayload, sourceMessageId?: string) => void;
 	onRegisterArtifactCard: (documentId: string, element: HTMLElement) => void;
 	onRegenerate: () => void;
 	onSelectSuggestion: (suggestion: string) => Promise<void>;
@@ -153,17 +155,17 @@ interface FutureChatMessagesProps {
 
 const FUTURE_CHAT_SCROLL_ANCHOR_SELECTOR = "[data-future-chat-scroll-anchor='true']";
 
-const StepThinkingIcon = ({ className }: { className?: string }) => (
-	<Icon render={<AiAgentIcon label="" spacing="none" />} className={className} />
+const StepThinkingIcon = ({ label = "", size = "small", spacing = "none", ...props }: NewCoreIconProps) => (
+	<Icon render={<AiAgentIcon label={label} size={size} spacing={spacing} {...props} />} />
 );
-const StepChecklistIcon = ({ className }: { className?: string }) => (
-	<Icon render={<ListChecklistIcon label="" spacing="none" />} className={className} />
+const StepChecklistIcon = ({ label = "", size = "small", spacing = "none", ...props }: NewCoreIconProps) => (
+	<Icon render={<ListChecklistIcon label={label} size={size} spacing={spacing} {...props} />} />
 );
-const StepAgentsIcon = ({ className }: { className?: string }) => (
-	<Icon render={<PeopleGroupIcon label="" spacing="none" />} className={className} />
+const StepAgentsIcon = ({ label = "", size = "small", spacing = "none", ...props }: NewCoreIconProps) => (
+	<Icon render={<PeopleGroupIcon label={label} size={size} spacing={spacing} {...props} />} />
 );
-const StepToolIcon = ({ className }: { className?: string }) => (
-	<Icon render={<WrenchIcon label="" spacing="none" />} className={className} />
+const StepToolIcon = ({ label = "", size = "small", spacing = "none", ...props }: NewCoreIconProps) => (
+	<Icon render={<WrenchIcon label={label} size={size} spacing={spacing} {...props} />} />
 );
 
 function toolStateToCoTStatus(
@@ -176,7 +178,20 @@ function toolStateToCoTStatus(
 	) {
 		return "active";
 	}
+	if (state === "pending") {
+		return "pending";
+	}
 	return "complete";
+}
+
+function isToolCallStepOpenByDefault(state: string): boolean {
+	return (
+		state === "running" ||
+		state === "awaiting-input" ||
+		state === "approval-requested" ||
+		state === "error" ||
+		state === "denied"
+	);
 }
 
 class AssistantMessageRenderBoundary extends Component<
@@ -549,10 +564,10 @@ function TraceAgentExecutionSection({
 						</Lozenge>
 					</div>
 					{execution.content ? (
-						<div className="mt-2 rounded-md bg-muted/40 px-3 py-2">
-							<pre className="whitespace-pre-wrap break-words text-xs leading-5 text-text-subtle">
-								{execution.content}
-							</pre>
+						<div className="mt-2 text-xs text-text-subtle [&_pre]:!text-xs">
+							<MessageContent>
+								<MessageResponse>{execution.content}</MessageResponse>
+							</MessageContent>
 						</div>
 					) : null}
 				</div>
@@ -569,6 +584,7 @@ function AssistantMessage({
 	isThinkingLifecycleStreaming,
 	message,
 	onBuildPlan,
+	onOpenPlanPreview,
 	onRegenerate,
 	onVote,
 	planBuildDisabled,
@@ -582,6 +598,7 @@ function AssistantMessage({
 	isThinkingLifecycleStreaming: boolean;
 	message: RovoUIMessage;
 	onBuildPlan?: (planWidget: ParsedPlanWidgetPayload) => void;
+	onOpenPlanPreview?: (planWidget: ParsedPlanWidgetPayload, sourceMessageId?: string) => void;
 	onRegenerate: () => void;
 	onVote: (messageId: string, value: "up" | "down" | null) => Promise<void>;
 	planBuildDisabled?: boolean;
@@ -716,6 +733,13 @@ function AssistantMessage({
 		hasTodoQueueItems ||
 		hasAgentExecutions ||
 		hasThinkingToolCalls;
+	const shouldOpenThinkingByDefault =
+		isThinkingStreaming ||
+		hasAwaitingInputToolCalls ||
+		thinkingToolCalls.some((toolCall) =>
+			toolCall.state === "running" ||
+			toolCall.state === "approval-requested"
+		);
 
 	const lastThinkingStatusPart =
 		thinkingStatusParts[thinkingStatusParts.length - 1] ?? null;
@@ -842,7 +866,7 @@ function AssistantMessage({
 						{thinkingActive ? (
 							<ChainOfThought
 								className="mb-0"
-								defaultOpen={hasThinkingDetails}
+								open={hasThinkingDetails && shouldOpenThinkingByDefault}
 							>
 								<ChainOfThoughtHeader>{thinkingTriggerLabel}</ChainOfThoughtHeader>
 								{hasThinkingDetails ? (
@@ -879,6 +903,8 @@ function AssistantMessage({
 										{thinkingToolCalls.map((toolCall, index) => (
 											<ChainOfThoughtStep
 												key={`${message.id}-cot-tool-${toolCall.id}-${index}`}
+												collapsible
+												defaultOpen={isToolCallStepOpenByDefault(toolCall.state)}
 												icon={StepToolIcon}
 												label={toolCall.toolName}
 												status={toolStateToCoTStatus(toolCall.state)}
@@ -928,9 +954,11 @@ function AssistantMessage({
 							<PlanWidgetInlineCard
 								title={parsedPlanWidget.title}
 								description={parsedPlanWidget.description}
+								markdown={parsedPlanWidget.markdown}
 								tasks={parsedPlanWidget.tasks}
 								isStreaming={isPlanWidgetStreaming}
 								onBuild={onBuildPlan ? () => onBuildPlan(parsedPlanWidget) : undefined}
+								onOpenPreview={onOpenPlanPreview ? () => onOpenPlanPreview(parsedPlanWidget, message.id) : undefined}
 								isBuildDisabled={planBuildDisabled}
 								buildDisabledReason={planBuildDisabledReason}
 							/>
@@ -1069,14 +1097,13 @@ function StreamingArtifactMessage({
 		>
 			<div className="flex w-full items-start gap-2 md:gap-3">
 				<div className="flex min-w-0 flex-1 flex-col gap-3">
-					<FutureChatArtifactCard
+					<ArtifactCard
 						action={null}
 						displayMode="preview"
-						documentId={documentId}
 						isStreaming={true}
 						kind={kind}
-						onOpen={onOpenArtifactFromCard}
-						onRegister={onRegisterArtifactCard}
+						onOpen={(element) => onOpenArtifactFromCard(documentId, element)}
+						onRegister={(element) => onRegisterArtifactCard(documentId, element)}
 						previewContent={streamingArtifact.content}
 						title={title}
 					/>
@@ -1131,6 +1158,7 @@ export function FutureChatMessages({
 	onBuildPlan,
 	onEditMessage,
 	onOpenArtifactFromCard,
+	onOpenPlanPreview,
 	onRegisterArtifactCard,
 	onRegenerate,
 	onSelectSuggestion,
@@ -1310,14 +1338,17 @@ export function FutureChatMessages({
 								<AssistantMessage
 									artifactCard={
 										resolvedArtifactDisplay ? (
-											<FutureChatArtifactCard
+											<ArtifactCard
 												action={resolvedArtifactDisplay.action}
 												displayMode={resolvedArtifactDisplay.displayMode}
-												documentId={resolvedArtifactDisplay.documentId}
 												isStreaming={resolvedArtifactDisplay.isStreaming}
 												kind={resolvedArtifactDisplay.kind}
-												onOpen={onOpenArtifactFromCard}
-												onRegister={onRegisterArtifactCard}
+												onOpen={(element) =>
+													onOpenArtifactFromCard(resolvedArtifactDisplay.documentId, element)
+												}
+												onRegister={(element) =>
+													onRegisterArtifactCard(resolvedArtifactDisplay.documentId, element)
+												}
 												previewContent={resolvedArtifactDisplay.previewContent}
 												title={resolvedArtifactDisplay.title}
 											/>
@@ -1329,6 +1360,7 @@ export function FutureChatMessages({
 									isThinkingLifecycleStreaming={isStreaming && message.id === streamingAssistantMessageId}
 									message={message}
 									onBuildPlan={onBuildPlan}
+									onOpenPlanPreview={onOpenPlanPreview}
 									onRegenerate={onRegenerate}
 									onVote={onVote}
 									planBuildDisabled={planBuildState ? !planBuildState.buildable : undefined}

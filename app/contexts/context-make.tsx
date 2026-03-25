@@ -22,7 +22,6 @@ import type { QueuedPromptItem } from "@/app/contexts";
 import type { MakeSkill, MakeAgent } from "@/lib/make-config-types";
 import type { ParsedQuestionCardPayload, ClarificationAnswers } from "@/components/projects/shared/lib/question-card-widget";
 import type { ParsedPlanWidgetPayload } from "@/components/projects/shared/lib/plan-widget";
-import type { PlanApprovalSelection } from "@/components/projects/shared/lib/plan-approval";
 import type { GenerativeWidgetPrimaryActionPayload } from "@/components/projects/shared/lib/generative-widget";
 import type { TaskExecution } from "@/components/projects/make/lib/execution-data";
 import type { ExecutionState } from "@/components/projects/make/hooks/use-execution-mode";
@@ -35,9 +34,7 @@ import {
 	getLatestQuestionCardPayload,
 } from "@/components/projects/shared/lib/question-card-widget";
 import {
-	createPlanApprovalSubmission,
 	getPlanApprovalKeyFromPlanWidget,
-	serializePlanApprovalKey,
 } from "@/components/projects/shared/lib/plan-approval";
 import { getLatestPlanWidgetPayload, fetchEnrichedPlanTitle } from "@/components/projects/shared/lib/plan-widget";
 import {
@@ -109,7 +106,6 @@ export interface MakeState {
 	runId: string | null;
 	taskExecutions: TaskExecution[];
 	run: AgentRun | null;
-	executedPlanKey: string | null;
 	agentCount: number;
 
 	// History
@@ -148,7 +144,6 @@ export interface MakeActions {
 	// Clarification
 	handleClarificationSubmit: (answers: ClarificationAnswers) => void;
 	handleClarificationDismiss: (questionCard: ParsedQuestionCardPayload) => void;
-	handleApprovalSubmit: (selection: PlanApprovalSelection) => void;
 
 	// Build
 	handleBuild: (
@@ -182,7 +177,6 @@ export interface MakeActions {
 	) => Promise<void> | void;
 	handleChatTabClarificationSubmit: (answers: ClarificationAnswers) => void;
 	handleChatTabClarificationDismiss: (questionCard: ParsedQuestionCardPayload) => void;
-	handleChatTabApprovalSubmit: (selection: PlanApprovalSelection) => void;
 
 	// Make toggle
 	toggleMakeMode: () => void;
@@ -336,7 +330,6 @@ export function MakeProvider({ children }: MakeProviderProps) {
 		handleWidgetPrimaryAction,
 		submitClarification,
 		dismissClarification,
-		submitPlanApproval,
 		appendPlanApprovalMarker: appendMakePlanApprovalMarker,
 	} = useMakeChat({
 		mode: "make",
@@ -365,7 +358,6 @@ export function MakeProvider({ children }: MakeProviderProps) {
 		handleDeleteChat: handleDeleteChatTabChat,
 		submitClarification: submitChatTabClarification,
 		dismissClarification: dismissChatTabClarification,
-		submitPlanApproval: submitChatTabPlanApproval,
 		appendPlanApprovalMarker: appendChatTabPlanApprovalMarker,
 		isPlanMode: chatTabIsPlanMode,
 		togglePlanMode: chatTabTogglePlanMode,
@@ -479,10 +471,6 @@ export function MakeProvider({ children }: MakeProviderProps) {
 		() => getLatestQuestionCardPayload(chatTabRawUiMessages),
 		[chatTabRawUiMessages],
 	);
-	const chatTabActivePlanWidget = useMemo(
-		() => getLatestPlanWidgetPayload(chatTabRawUiMessages),
-		[chatTabRawUiMessages],
-	);
 	const chatTabIsPlanMessageComplete = useMemo(
 		() => isPlanResponseComplete(chatTabRawUiMessages),
 		[chatTabRawUiMessages],
@@ -549,12 +537,6 @@ export function MakeProvider({ children }: MakeProviderProps) {
 	}, [run, runHistory]);
 
 	const isMakeInterviewActive = uiMessages.length > 0 && !isExecutionActive;
-
-	const executedPlanKey = useMemo(() => {
-		if (!run?.plan) return null;
-		const taskIds = run.plan.tasks.map((t) => t.id);
-		return serializePlanApprovalKey(run.plan.title, taskIds);
-	}, [run]);
 
 	// ---- Effects ----
 
@@ -712,114 +694,6 @@ export function MakeProvider({ children }: MakeProviderProps) {
 			void dismissChatTabClarification(questionCard);
 		},
 		[dismissChatTabClarification],
-	);
-
-	const handleApprovalSubmit = useCallback(
-		(selection: PlanApprovalSelection) => {
-			const approvalSubmission = createPlanApprovalSubmission(
-				selection,
-				activePlanWidget,
-			);
-			const shouldStartRun = selection.decision === "auto-accept";
-			const planApprovalPlanKey = getPlanApprovalKeyFromPlanWidget(activePlanWidget);
-
-			if (shouldStartRun && activePlanWidget) {
-				void appendMakePlanApprovalMarker({
-					decision: "auto-accept",
-					planApprovalPlanKey,
-				});
-				void (async () => {
-					try {
-						const { runId: nextRunId } = await startExecution({
-							plan: activePlanWidget,
-							userPrompt: latestUserPrompt,
-							conversation: conversationItems,
-							customInstruction: selection.customInstruction,
-							agentCount,
-						});
-						hasNavigatedToSummaryRef.current = true;
-						router.push(`/make/runs/${nextRunId}`);
-					} catch (error) {
-						console.error(
-							"[MAKE] Failed to start run:",
-							toErrorMessage(error),
-						);
-					}
-				})();
-				if (chatTabIsPlanMode) {
-					chatTabTogglePlanMode();
-				}
-				return;
-			}
-
-			void submitPlanApproval(approvalSubmission);
-		},
-		[
-			activePlanWidget,
-			agentCount,
-			chatTabIsPlanMode,
-			chatTabTogglePlanMode,
-			conversationItems,
-			latestUserPrompt,
-			router,
-			startExecution,
-			submitPlanApproval,
-			appendMakePlanApprovalMarker,
-		],
-	);
-
-	const handleChatTabApprovalSubmit = useCallback(
-		(selection: PlanApprovalSelection) => {
-			const approvalSubmission = createPlanApprovalSubmission(
-				selection,
-				chatTabActivePlanWidget,
-			);
-			const shouldStartRun = selection.decision === "auto-accept";
-			const planApprovalPlanKey = getPlanApprovalKeyFromPlanWidget(chatTabActivePlanWidget);
-
-			if (shouldStartRun && chatTabActivePlanWidget) {
-				void appendChatTabPlanApprovalMarker({
-					decision: "auto-accept",
-					planApprovalPlanKey,
-				});
-				void (async () => {
-					try {
-						const { runId: nextRunId } = await startExecution({
-							plan: chatTabActivePlanWidget,
-							userPrompt: latestChatTabUserPrompt,
-							conversation: chatTabConversationItems,
-							customInstruction: selection.customInstruction,
-							agentCount,
-						});
-						hasNavigatedToSummaryRef.current = true;
-						router.push(`/make/runs/${nextRunId}`);
-					} catch (error) {
-						console.error(
-							"[MAKE] Failed to start run:",
-							toErrorMessage(error),
-						);
-					}
-				})();
-				if (chatTabIsPlanMode) {
-					chatTabTogglePlanMode();
-				}
-				return;
-			}
-
-			void submitChatTabPlanApproval(approvalSubmission);
-		},
-		[
-			agentCount,
-			chatTabActivePlanWidget,
-			chatTabConversationItems,
-			chatTabIsPlanMode,
-			chatTabTogglePlanMode,
-			latestChatTabUserPrompt,
-			router,
-			startExecution,
-			submitChatTabPlanApproval,
-			appendChatTabPlanApprovalMarker,
-		],
 	);
 
 	const handleBuild = useCallback(
@@ -1054,17 +928,16 @@ export function MakeProvider({ children }: MakeProviderProps) {
 			executionState,
 			runId,
 			taskExecutions,
-				run,
-				executedPlanKey,
-				agentCount,
-				chatHistory: chatTabHistory,
-				activeChatId: chatTabActiveChatId,
-				sidebarRunHistory,
-				hasLoadedRunHistory,
-				activeChatTitle: activeChatTabTitle,
-				isActiveChatTitlePending: isActiveChatTabTitlePending,
-				isGeneratingTitle: chatTabIsGeneratingTitle,
-				pendingTitleChatId: chatTabPendingTitleChatId,
+			run,
+			agentCount,
+			chatHistory: chatTabHistory,
+			activeChatId: chatTabActiveChatId,
+			sidebarRunHistory,
+			hasLoadedRunHistory,
+			activeChatTitle: activeChatTabTitle,
+			isActiveChatTitlePending: isActiveChatTabTitlePending,
+			isGeneratingTitle: chatTabIsGeneratingTitle,
+			pendingTitleChatId: chatTabPendingTitleChatId,
 		}),
 		[
 			isOpen,
@@ -1097,17 +970,16 @@ export function MakeProvider({ children }: MakeProviderProps) {
 			isPlanMessageComplete,
 			isExecutionActive,
 			executionState,
-				runId,
-				taskExecutions,
-				run,
-				executedPlanKey,
-				agentCount,
-				sidebarRunHistory,
-				hasLoadedRunHistory,
-				activeChatTabTitle,
-				isActiveChatTabTitlePending,
-			],
-		);
+			runId,
+			taskExecutions,
+			run,
+			agentCount,
+			sidebarRunHistory,
+			hasLoadedRunHistory,
+			activeChatTabTitle,
+			isActiveChatTabTitlePending,
+		],
+	);
 
 	const actions: MakeActions = useMemo(
 		() => ({
@@ -1124,7 +996,6 @@ export function MakeProvider({ children }: MakeProviderProps) {
 			handleDeleteChat: handleDeleteChatTabChat,
 			handleClarificationSubmit,
 			handleClarificationDismiss,
-			handleApprovalSubmit,
 			handleBuild,
 			handleSuggestedQuestionClick,
 			handleWidgetPrimaryAction,
@@ -1145,7 +1016,6 @@ export function MakeProvider({ children }: MakeProviderProps) {
 			handleChatTabWidgetPrimaryAction,
 			handleChatTabClarificationSubmit,
 			handleChatTabClarificationDismiss,
-			handleChatTabApprovalSubmit,
 			toggleMakeMode: chatTabTogglePlanMode,
 			activateMakeMode,
 			deactivateMakeMode,
@@ -1164,10 +1034,8 @@ export function MakeProvider({ children }: MakeProviderProps) {
 			handleDeleteChatTabChat,
 			handleClarificationSubmit,
 			handleClarificationDismiss,
-			handleApprovalSubmit,
 			handleChatTabClarificationSubmit,
 			handleChatTabClarificationDismiss,
-			handleChatTabApprovalSubmit,
 			handleBuild,
 			handleSuggestedQuestionClick,
 			handleWidgetPrimaryAction,

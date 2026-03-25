@@ -54,3 +54,20 @@ export function formatArtifactVersionLabel(options: {
 
 	return `Version ${versionNumber} \u2022 ${options.version.changeLabel} \u2022 ${relativeTime}`;
 }
+
+export function formatArtifactVersionSummaryLabel(options: {
+	referenceDate?: Date;
+	version: Pick<ArtifactVersion, "changeLabel" | "createdAt">;
+}): string {
+	const relativeTime = formatDistanceToNow(
+		new Date(options.version.createdAt),
+		{
+			addSuffix: true,
+			...(options.referenceDate
+				? { now: options.referenceDate.getTime() }
+				: {}),
+		},
+	);
+
+	return `${options.version.changeLabel} \u2022 ${relativeTime}`;
+}

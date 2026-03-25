@@ -1,6 +1,6 @@
 "use client";
 
-import type { ComponentProps } from "react";
+import type { ComponentProps, CSSProperties } from "react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { Tag } from "@/components/ui/tag";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { token } from "@/lib/tokens";
 import { cn } from "@/lib/utils";
-import ChevronDownIcon from "@atlaskit/icon/core/chevron-down";
+import ChevronRightIcon from "@atlaskit/icon/core/chevron-right";
 import PeopleGroupIcon from "@atlaskit/icon/core/people-group";
 import { ChevronsUpDownIcon } from "lucide-react";
 import { motion } from "motion/react";
@@ -158,6 +158,11 @@ export const PlanContent = (props: Readonly<PlanContentProps>) => <CollapsibleCo
 
 const COLLAPSED_CONTENT_MAX_HEIGHT_PX = 240;
 const COLLAPSED_CONTENT_HEIGHT_CLASS = "max-h-[240px]";
+const COLLAPSED_CONTENT_FADE_HEIGHT_PX = 72;
+const collapsedContentFadeMask = {
+	WebkitMaskImage: `linear-gradient(to bottom, black calc(100% - ${COLLAPSED_CONTENT_FADE_HEIGHT_PX}px), transparent)`,
+	maskImage: `linear-gradient(to bottom, black calc(100% - ${COLLAPSED_CONTENT_FADE_HEIGHT_PX}px), transparent)`,
+} satisfies CSSProperties;
 
 type PlanShowMoreButtonProps = {
 	label: string;
@@ -224,7 +229,11 @@ export const PlanSummary = ({ summary, className, emptyMessage = "No summary pro
 
 	return (
 		<div className="relative" data-slot="plan-summary">
-			<div ref={contentRef} className={showCollapsedState ? `${COLLAPSED_CONTENT_HEIGHT_CLASS} overflow-hidden` : undefined}>
+			<div
+				ref={contentRef}
+				className={showCollapsedState ? `${COLLAPSED_CONTENT_HEIGHT_CLASS} overflow-hidden` : undefined}
+				style={showCollapsedControls ? collapsedContentFadeMask : undefined}
+			>
 				<MessageResponse
 					className={cn(
 						"size-full text-sm leading-5 text-text [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_h1]:mt-3 [&_h1]:mb-2 [&_h1]:text-2xl [&_h1]:leading-7 [&_h1]:font-semibold [&_h2]:mt-3 [&_h2]:mb-2 [&_h2]:text-xl [&_h2]:leading-6 [&_h2]:font-semibold [&_h3]:mt-3 [&_h3]:mb-2 [&_h3]:text-base [&_h3]:leading-5 [&_h3]:font-semibold [&_p]:my-0",
@@ -239,7 +248,6 @@ export const PlanSummary = ({ summary, className, emptyMessage = "No summary pro
 
 			{showCollapsedControls ? (
 				<>
-					<div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-surface via-surface/80 to-transparent" />
 					<div className="absolute inset-x-0 bottom-2 flex justify-center">
 						<PlanShowMoreButton label={showMoreLabel} onClick={() => setIsContentExpanded(true)} />
 					</div>
@@ -332,13 +340,17 @@ export const PlanTaskList = ({ children, className, showMoreLabel = "Show more",
 
 	return (
 		<div className="relative" data-slot="plan-task-list">
-			<ol ref={listRef} className={cn("flex flex-col gap-0", showCollapsedState ? `${COLLAPSED_CONTENT_HEIGHT_CLASS} overflow-hidden` : null, className)} {...props}>
+			<ol
+				ref={listRef}
+				className={cn("flex flex-col gap-0", showCollapsedState ? `${COLLAPSED_CONTENT_HEIGHT_CLASS} overflow-hidden` : null, className)}
+				style={showCollapsedControls ? collapsedContentFadeMask : undefined}
+				{...props}
+			>
 				{children}
 			</ol>
 
 			{showCollapsedControls ? (
 				<>
-					<div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-surface via-surface/80 to-transparent" />
 					<div className="absolute inset-x-0 bottom-2 flex justify-center">
 						<PlanShowMoreButton label={showMoreLabel} onClick={() => setIsContentExpanded(true)} />
 					</div>
@@ -365,7 +377,7 @@ export const PlanTaskItem = ({ index, label, blockedByLabels, blockedByText, age
 		initial={{ opacity: 0, y: 8 }}
 		animate={{ opacity: 1, y: 0 }}
 		transition={{ duration: 0.25, ease: "easeOut" }}
-		className={cn("flex min-h-8 shrink-0 items-center gap-4 rounded-lg bg-surface px-2 py-1.5", className)}
+		className={cn("flex min-h-8 shrink-0 items-center gap-4 rounded-lg px-2 py-1.5", className)}
 		data-slot="plan-task-item"
 	>
 		<span className="inline-flex size-5 shrink-0 items-center justify-center rounded-[4px] border border-border bg-surface text-sm leading-5 font-medium text-text">{index}</span>
@@ -511,10 +523,10 @@ export const PlanChevronTrigger = ({ isOpen = true, className, ...props }: Reado
 		aria-label={isOpen ? "Collapse plan" : "Expand plan"}
 		size="icon"
 		variant="ghost"
-		className={cn("rounded-full [&_svg]:transition-transform [&_svg]:duration-150", isOpen ? "[&_svg]:rotate-0" : "[&_svg]:-rotate-90", className)}
+		className={cn("rounded-full [&_svg]:transition-transform [&_svg]:duration-150", isOpen ? "[&_svg]:rotate-90" : "[&_svg]:rotate-0", className)}
 		data-slot="plan-chevron-trigger"
 		{...props}
 	>
-		<ChevronDownIcon label="" size="small" />
+		<ChevronRightIcon label="" size="small" />
 	</Button>
 );
