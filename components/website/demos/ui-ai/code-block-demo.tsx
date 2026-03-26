@@ -4,13 +4,13 @@ import {
 	CodeBlock,
 	CodeBlockActions,
 	CodeBlockCopyButton,
+	CodeBlockDownloadButton,
 	CodeBlockFilename,
 	CodeBlockHeader,
 	CodeBlockLanguageSelector,
 	CodeBlockLanguageSelectorContent,
 	CodeBlockLanguageSelectorItem,
 	CodeBlockLanguageSelectorTrigger,
-	CodeBlockLanguageSelectorValue,
 	CodeBlockTitle,
 } from "@/components/ui-ai/code-block";
 import { useState } from "react";
@@ -95,6 +95,7 @@ export function CodeBlockDemoAdsBasic() {
 					<CodeBlockFilename>status.ts</CodeBlockFilename>
 				</CodeBlockTitle>
 				<CodeBlockActions>
+					<CodeBlockDownloadButton />
 					<CodeBlockCopyButton />
 				</CodeBlockActions>
 			</CodeBlockHeader>
@@ -110,6 +111,7 @@ export function CodeBlockDemoAdsLineNumbers() {
 					<CodeBlockFilename>surface-card.tsx</CodeBlockFilename>
 				</CodeBlockTitle>
 				<CodeBlockActions>
+					<CodeBlockDownloadButton />
 					<CodeBlockCopyButton />
 				</CodeBlockActions>
 			</CodeBlockHeader>
@@ -125,6 +127,7 @@ export function CodeBlockDemoAdsShell() {
 					<CodeBlockFilename>commands.sh</CodeBlockFilename>
 				</CodeBlockTitle>
 				<CodeBlockActions>
+					<CodeBlockDownloadButton />
 					<CodeBlockCopyButton />
 				</CodeBlockActions>
 			</CodeBlockHeader>
@@ -145,7 +148,7 @@ export function CodeBlockDemoAdsLanguageSelector() {
 				<CodeBlockActions>
 					<CodeBlockLanguageSelector value={language} onValueChange={(value) => setLanguage(value as AdsLanguage)}>
 						<CodeBlockLanguageSelectorTrigger>
-							<CodeBlockLanguageSelectorValue />
+							{adsLanguageOptions.find((o) => o.value === language)?.label ?? language}
 						</CodeBlockLanguageSelectorTrigger>
 						<CodeBlockLanguageSelectorContent>
 							{adsLanguageOptions.map((option) => (
@@ -155,6 +158,7 @@ export function CodeBlockDemoAdsLanguageSelector() {
 							))}
 						</CodeBlockLanguageSelectorContent>
 					</CodeBlockLanguageSelector>
+					<CodeBlockDownloadButton />
 					<CodeBlockCopyButton />
 				</CodeBlockActions>
 			</CodeBlockHeader>

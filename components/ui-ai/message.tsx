@@ -594,7 +594,7 @@ export const MessageResponse = memo(
 					easing: "ease-out",
 				}}
 				className={cn(
-					"size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_[data-streamdown=mermaid-block]]:overflow-hidden [&_[data-streamdown=mermaid-block]>div:last-child]:max-h-[min(70vh,32rem)] [&_[data-streamdown=mermaid-block]>div:last-child]:overflow-auto [&_[data-streamdown=mermaid]_svg]:mx-auto [&_[data-streamdown=mermaid]_svg]:block",
+					"size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_[data-streamdown=mermaid-block]]:overflow-hidden",
 					className,
 				)}
 				mode="streaming"

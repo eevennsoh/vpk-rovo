@@ -93,6 +93,75 @@
 }
 
 @layer components {
+	/* Streamdown Mermaid blocks render the title row and actions row as separate siblings.
+	   Recompose them into a single visual 32px header so the label and buttons align. */
+	[data-streamdown="mermaid-block"] {
+		position: relative;
+	}
+
+	[data-streamdown="mermaid-block"] > div:first-child {
+		display: flex;
+		height: 2rem;
+		align-items: center;
+		padding-right: 7rem;
+	}
+
+	[data-streamdown="mermaid-block"] > div:first-child > span:first-child {
+		display: inline-flex;
+		align-items: center;
+		line-height: 1;
+	}
+
+	[data-streamdown="mermaid-block"] > div:nth-child(2) {
+		pointer-events: none;
+		position: absolute !important;
+		inset-block-start: 0.5rem !important;
+		inset-inline-end: 0.5rem !important;
+		top: 0.5rem !important;
+		right: 0.5rem !important;
+		z-index: 10;
+		display: flex;
+		height: 2rem;
+		align-items: center;
+		justify-content: flex-end;
+		margin-top: 0 !important;
+		transform: none !important;
+	}
+
+	[data-streamdown="mermaid-block"] > div:nth-child(2) > div {
+		pointer-events: auto;
+		display: flex;
+		height: 2rem;
+		align-items: center;
+		padding-top: 0;
+		padding-bottom: 0;
+	}
+
+	[data-streamdown="mermaid-block"] > div:nth-child(2) > div button {
+		display: inline-flex;
+		width: 1.5rem;
+		height: 1.5rem;
+		align-items: center;
+		justify-content: center;
+		align-self: center;
+		padding: 0;
+	}
+
+	[data-streamdown="mermaid-block"] > div:nth-child(2) > div button svg {
+		display: block;
+		flex-shrink: 0;
+	}
+
+	[data-streamdown="mermaid-block"] > div:last-child {
+		max-height: min(70vh, 32rem);
+		overflow: auto;
+	}
+
+	[data-streamdown="mermaid"] svg {
+		display: block;
+		margin-inline: auto;
+	}
+
 	/* Sonner headless mode still applies an outer focus-visible shadow on the wrapper <li>. */
 	/* Keep toast visuals controlled by the custom toast surface itself. */
 	[data-sonner-toast][data-styled="false"]:focus-visible {

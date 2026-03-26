@@ -31,6 +31,7 @@ import {
 	ChainOfThoughtHeader,
 	ChainOfThoughtStep,
 } from "@/components/ui-ai/chain-of-thought";
+import { CodeBlock } from "@/components/ui-ai/code-block";
 import {
 	AdsReasoningTrigger,
 	Reasoning,
@@ -130,6 +131,7 @@ import Heading from "@/components/blocks/shared-ui/heading";
 interface FutureChatMessagesProps {
 	activeDocumentId: string | null;
 	compact?: boolean;
+	extraHorizontalPaddingWhenCompact?: boolean;
 	documents: ReadonlyArray<FutureChatDocument>;
 	editingMessageId: string | null;
 	isStreaming: boolean;
@@ -877,9 +879,11 @@ function AssistantMessage({
 												label={getReasoningSectionTitle("thinking")}
 												status={isThinkingStreaming ? "active" : "complete"}
 											>
-												<pre className="max-h-60 overflow-auto whitespace-pre-wrap text-xs">
-													{accumulatedThinkingContent}
-												</pre>
+												<CodeBlock
+												className="text-xs"
+												code={accumulatedThinkingContent}
+												language="markdown"
+											/>
 											</ChainOfThoughtStep>
 										) : null}
 										{hasTodoQueueItems ? (
@@ -1151,6 +1155,7 @@ function AssistantSuggestionPills({
 export function FutureChatMessages({
 	activeDocumentId,
 	compact = false,
+	extraHorizontalPaddingWhenCompact = false,
 	documents,
 	editingMessageId,
 	isStreaming,
@@ -1265,7 +1270,8 @@ export function FutureChatMessages({
 
 			<ConversationContent
 				className={cn(
-					"mx-auto flex min-w-0 flex-col gap-4 px-6 py-6 md:gap-6",
+					"mx-auto flex min-w-0 flex-col gap-4 py-6 md:gap-6",
+					extraHorizontalPaddingWhenCompact && compact ? "px-9" : "px-3",
 					compact ? "max-w-none" : "max-w-[800px]",
 					shouldShowEmptyConversationState && "hidden",
 				)}

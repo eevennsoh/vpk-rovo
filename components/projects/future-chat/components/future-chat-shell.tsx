@@ -1827,6 +1827,7 @@ export function FutureChatShell({
 			<FutureChatMessages
 				activeDocumentId={chat.activeDocument?.id ?? null}
 				compact={isArtifactOpen}
+				extraHorizontalPaddingWhenCompact
 				documents={chat.documents}
 				editingMessageId={chat.editingMessageId}
 				isStreaming={chat.isStreaming}
@@ -2091,6 +2092,7 @@ export function FutureChatShell({
 									defaultSize={splitChatPaneDefaultSize}
 									groupResizeBehavior="preserve-pixel-size"
 									id={FUTURE_CHAT_SPLIT_CHAT_PANEL_ID}
+									maxSize={800}
 									minSize={FUTURE_CHAT_MIN_CHAT_PANE_WIDTH}
 								>
 									{chatPaneContainer}

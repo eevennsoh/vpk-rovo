@@ -5,6 +5,7 @@ import {
 	CodeBlockHeader,
 	CodeBlockTitle,
 	CodeBlockCopyButton,
+	CodeBlockDownloadButton,
 } from "@/components/ui-ai/code-block";
 import type { BundledLanguage } from "shiki";
 
@@ -19,7 +20,10 @@ export function DocCodeSnippet({ code, language = "tsx", title }: Readonly<DocCo
 		<CodeBlock code={code} language={language}>
 			<CodeBlockHeader>
 				<CodeBlockTitle>{title}</CodeBlockTitle>
-				<CodeBlockCopyButton />
+				<div className="flex items-center gap-2">
+					<CodeBlockDownloadButton />
+					<CodeBlockCopyButton />
+				</div>
 			</CodeBlockHeader>
 		</CodeBlock>
 	);

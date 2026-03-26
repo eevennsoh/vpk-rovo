@@ -355,13 +355,11 @@ export const ToolInput = ({ className, input, ...props }: ToolInputProps) => {
         Parameters
       </h4>
       <div className="rounded-md bg-muted/50">
-        {inputPreview.truncated ? (
-          <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words p-3 text-[12px] leading-5 text-text">
-            {inputPreview.text}
-          </pre>
-        ) : (
-          <CodeBlock code={inputPreview.text} language="json" />
-        )}
+        <CodeBlock
+          className="text-[12px] leading-5"
+          code={inputPreview.text}
+          language="json"
+        />
       </div>
       {inputPreview.truncated ? (
         <p className="text-[11px] leading-4 text-text-subtle">
@@ -408,21 +406,19 @@ export const ToolOutput = ({
 
   if (typeof output === "object" && !isValidElement(output)) {
     Output = (
-      outputPreview.truncated ? (
-        <pre className="max-h-72 overflow-auto whitespace-pre-wrap break-words p-3 text-[12px] leading-5 text-text">
-          {outputPreview.text}
-        </pre>
-      ) : (
-        <CodeBlock code={outputPreview.text} language="json" />
-      )
+      <CodeBlock
+        className="text-[12px] leading-5"
+        code={outputPreview.text}
+        language="json"
+      />
     );
   } else if (typeof output === "string") {
-    Output = outputPreview.truncated ? (
-      <pre className="max-h-72 overflow-auto whitespace-pre-wrap break-words p-3 text-[12px] leading-5 text-text">
-        {outputPreview.text}
-      </pre>
-    ) : (
-      <CodeBlock code={outputPreview.text} language="json" />
+    Output = (
+      <CodeBlock
+        className="text-[12px] leading-5"
+        code={outputPreview.text}
+        language="markdown"
+      />
     );
   }
 

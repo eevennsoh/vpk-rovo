@@ -1,6 +1,6 @@
 "use client";
 
-import type { ComponentProps, CSSProperties, HTMLAttributes } from "react";
+import type { ComponentProps, CSSProperties, HTMLAttributes, ReactNode } from "react";
 import type {
   BundledLanguage,
   BundledTheme,
@@ -10,14 +10,17 @@ import type {
 
 import { Button } from "@/components/ui/button";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  DropdownMenu,
+  DropdownMenuContent,
+  type DropdownMenuContentProps,
+  DropdownMenuGroup,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  type DropdownMenuRadioItemProps,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { CheckIcon, CopyIcon } from "lucide-react";
+import { CheckIcon, ChevronDown, CopyIcon, DownloadIcon } from "lucide-react";
 import {
   createContext,
   memo,
@@ -113,6 +116,7 @@ interface TokenizedCode {
 
 interface CodeBlockContextType {
   code: string;
+  language?: BundledLanguage;
 }
 
 // Context
@@ -276,7 +280,8 @@ const CodeBlockBody = memo(
     return (
       <pre
         className={cn(
-          "dark:!bg-[var(--shiki-dark-bg)] dark:!text-[var(--shiki-dark)] m-0 p-4 text-sm",
+          "dark:!bg-[var(--shiki-dark-bg)] dark:!text-[var(--shiki-dark)] m-0 text-sm",
+          showLineNumbers ? "py-4 pr-4 pl-0" : "p-4",
           className
         )}
         style={preStyle}
@@ -284,7 +289,9 @@ const CodeBlockBody = memo(
         <code
           className={cn(
             "font-mono text-sm",
-            showLineNumbers && "[counter-increment:line_0] [counter-reset:line]"
+            showLineNumbers
+              ? "[counter-increment:line_0] [counter-reset:line]"
+              : "block px-4"
           )}
         >
           {keyedLines.map((keyedLine) => (
@@ -451,7 +458,7 @@ export function CodeBlock({
   children,
   ...props
 }: Readonly<CodeBlockProps>) {
-  const contextValue = useMemo(() => ({ code }), [code]);
+  const contextValue = useMemo(() => ({ code, language }), [code, language]);
 
   return (
     <CodeBlockContext value={contextValue}>
@@ -472,6 +479,86 @@ export type CodeBlockCopyButtonProps = ComponentProps<typeof Button> & {
   onError?: (error: Error) => void;
   timeout?: number;
 };
+
+const CODE_BLOCK_DOWNLOAD_EXTENSION_MAP: Partial<Record<BundledLanguage, string>> = {
+  bash: "sh",
+  shell: "sh",
+  sh: "sh",
+  zsh: "sh",
+  javascript: "js",
+  jsx: "jsx",
+  typescript: "ts",
+  tsx: "tsx",
+  python: "py",
+  json: "json",
+  yaml: "yml",
+  yml: "yml",
+  markdown: "md",
+  md: "md",
+  html: "html",
+  css: "css",
+  scss: "scss",
+  sql: "sql",
+  xml: "xml",
+  log: "log",
+};
+
+const getCodeBlockDownloadFilename = (language?: BundledLanguage) => {
+  const extension = language ? (CODE_BLOCK_DOWNLOAD_EXTENSION_MAP[language] ?? language) : "txt";
+  return `snippet.${extension}`;
+};
+
+export type CodeBlockDownloadButtonProps = ComponentProps<typeof Button> & {
+  filename?: string;
+  onDownload?: () => void;
+  onError?: (error: Error) => void;
+};
+
+export function CodeBlockDownloadButton({
+  filename,
+  onDownload,
+  onError,
+  children,
+  className,
+  ...props
+}: Readonly<CodeBlockDownloadButtonProps>) {
+  const { code, language } = use(CodeBlockContext);
+
+  const downloadCode = useCallback(() => {
+    if (typeof window === "undefined") {
+      onError?.(new Error("Window is not available"));
+      return;
+    }
+
+    try {
+      const blob = new Blob([code], {
+        type: "text/plain;charset=utf-8",
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename ?? getCodeBlockDownloadFilename(language);
+      link.click();
+      window.URL.revokeObjectURL(url);
+      onDownload?.();
+    } catch (error) {
+      onError?.(error as Error);
+    }
+  }, [code, filename, language, onDownload, onError]);
+
+  return (
+    <Button
+      className={cn("shrink-0 text-text-subtle hover:text-text", className)}
+      onClick={downloadCode}
+      size="icon"
+      variant="ghost"
+      aria-label="Download code"
+      {...props}
+    >
+      {children ?? <DownloadIcon size={14} />}
+    </Button>
+  );
+}
 
 export function CodeBlockCopyButton({
   onCopy,
@@ -529,61 +616,113 @@ export function CodeBlockCopyButton({
   );
 }
 
-export type CodeBlockLanguageSelectorProps = ComponentProps<typeof Select>;
-
-export function CodeBlockLanguageSelector(
-  props: Readonly<CodeBlockLanguageSelectorProps>
-) {
-  return <Select {...props} />;
+// Language selector context for threading value/onValueChange through DropdownMenu
+interface LanguageSelectorContextType {
+  value: string;
+  onValueChange: (value: string) => void;
 }
 
-export type CodeBlockLanguageSelectorTriggerProps = ComponentProps<
-  typeof SelectTrigger
->;
+const LanguageSelectorContext = createContext<LanguageSelectorContextType>({
+  value: "",
+  onValueChange: () => {},
+});
 
-export function CodeBlockLanguageSelectorTrigger({
-  className,
-  ...props
-}: Readonly<CodeBlockLanguageSelectorTriggerProps>) {
+export interface CodeBlockLanguageSelectorProps {
+  value: string;
+  onValueChange: (value: string) => void;
+  children: ReactNode;
+}
+
+export function CodeBlockLanguageSelector({
+  value,
+  onValueChange,
+  children,
+}: Readonly<CodeBlockLanguageSelectorProps>) {
+  const contextValue = useMemo(
+    () => ({ value, onValueChange }),
+    [value, onValueChange]
+  );
   return (
-    <SelectTrigger
-      className={cn(
-        "h-7 border-none bg-transparent px-2 text-text-subtle text-xs shadow-none",
-        className
-      )}
-      size="sm"
-      {...props}
-    />
+    <LanguageSelectorContext value={contextValue}>
+      <DropdownMenu>{children}</DropdownMenu>
+    </LanguageSelectorContext>
   );
 }
 
-export type CodeBlockLanguageSelectorValueProps = ComponentProps<
-  typeof SelectValue
->;
+export type CodeBlockLanguageSelectorTriggerProps = ComponentProps<"button">;
 
-export function CodeBlockLanguageSelectorValue(
-  props: Readonly<CodeBlockLanguageSelectorValueProps>
-) {
-  return <SelectValue {...props} />;
+export function CodeBlockLanguageSelectorTrigger({
+  className,
+  children,
+  ...props
+}: Readonly<CodeBlockLanguageSelectorTriggerProps>) {
+  return (
+    <DropdownMenuTrigger
+      render={
+        <button
+          className={cn(
+            "inline-flex h-7 cursor-default items-center gap-1 rounded-sm bg-transparent px-2 text-text-subtle text-xs outline-none hover:bg-bg-neutral-subtle-hovered hover:text-text",
+            className
+          )}
+          {...props}
+        />
+      }
+    >
+      {children}
+      <ChevronDown size={12} />
+    </DropdownMenuTrigger>
+  );
 }
 
-export type CodeBlockLanguageSelectorContentProps = ComponentProps<
-  typeof SelectContent
->;
+export interface CodeBlockLanguageSelectorValueProps {
+  children?: ReactNode;
+  placeholder?: string;
+}
+
+export function CodeBlockLanguageSelectorValue({
+  children,
+  placeholder,
+}: Readonly<CodeBlockLanguageSelectorValueProps>) {
+  const { value } = use(LanguageSelectorContext);
+  return <>{children ?? value ?? placeholder}</>;
+}
+
+export type CodeBlockLanguageSelectorContentProps = Omit<
+  DropdownMenuContentProps,
+  "children"
+> & {
+  children: ReactNode;
+};
 
 export function CodeBlockLanguageSelectorContent({
   align = "end",
+  children,
+  className,
   ...props
 }: Readonly<CodeBlockLanguageSelectorContentProps>) {
-  return <SelectContent align={align} {...props} />;
+  const { value, onValueChange } = use(LanguageSelectorContext);
+  return (
+    <DropdownMenuContent
+      align={align}
+      className={className}
+      {...props}
+    >
+      <DropdownMenuGroup>
+        <DropdownMenuRadioGroup
+          value={value}
+          onValueChange={(newValue) => onValueChange(newValue)}
+        >
+          {children}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuGroup>
+    </DropdownMenuContent>
+  );
 }
 
-export type CodeBlockLanguageSelectorItemProps = ComponentProps<
-  typeof SelectItem
->;
+export type CodeBlockLanguageSelectorItemProps = DropdownMenuRadioItemProps;
 
 export function CodeBlockLanguageSelectorItem(
   props: Readonly<CodeBlockLanguageSelectorItemProps>
 ) {
-  return <SelectItem {...props} />;
+  return <DropdownMenuRadioItem {...props} />;
 }

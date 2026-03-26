@@ -4,7 +4,7 @@ const FUTURE_CHAT_MOBILE_BREAKPOINT = 768;
 export const FUTURE_CHAT_MIN_CHAT_PANE_WIDTH = 360;
 export const FUTURE_CHAT_MAX_CHAT_PANE_WIDTH = 560;
 export const FUTURE_CHAT_MIN_ARTIFACT_PANE_WIDTH = 440;
-const FUTURE_CHAT_PREFERRED_CHAT_PANE_RATIO = 0.42;
+const FUTURE_CHAT_PREFERRED_CHAT_PANE_RATIO = 0.45;
 
 export interface FutureChatShellLayout {
 	artifactPaneWidth: number;

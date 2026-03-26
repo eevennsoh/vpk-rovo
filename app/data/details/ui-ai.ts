@@ -465,7 +465,7 @@ export const UI_AI_DETAILS: Record<string, ComponentDetail> = {
 
 	"code-block": {
 		description:
-			"An ADS-aligned syntax-highlighted code block using Shiki with copy-to-clipboard, line numbers, and optional language selection.",
+			"An ADS-aligned syntax-highlighted code block using Shiki with copy-to-clipboard, download, line numbers, and optional language selection.",
 		adsUrl: "https://atlassian.design/components/code/code-block/",
 		usage: `import {
   CodeBlock,
@@ -473,6 +473,7 @@ export const UI_AI_DETAILS: Record<string, ComponentDetail> = {
   CodeBlockFilename,
   CodeBlockHeader,
   CodeBlockCopyButton,
+  CodeBlockDownloadButton,
   CodeBlockTitle,
 } from "@/components/ui-ai/code-block";
 
@@ -482,6 +483,7 @@ export const UI_AI_DETAILS: Record<string, ComponentDetail> = {
       <CodeBlockFilename>example.ts</CodeBlockFilename>
     </CodeBlockTitle>
     <CodeBlockActions>
+      <CodeBlockDownloadButton />
       <CodeBlockCopyButton />
     </CodeBlockActions>
   </CodeBlockHeader>
@@ -519,6 +521,7 @@ export const UI_AI_DETAILS: Record<string, ComponentDetail> = {
 			{ name: "CodeBlockActions", description: "Container for action buttons." },
 			{ name: "CodeBlockContent", description: "Syntax-highlighted code area." },
 			{ name: "CodeBlockCopyButton", description: "Copy to clipboard button." },
+			{ name: "CodeBlockDownloadButton", description: "Download raw code with a language-appropriate filename." },
 			{ name: "CodeBlockLanguageSelector", description: "Select wrapper for choosing code language." },
 		],
 		examples: [
