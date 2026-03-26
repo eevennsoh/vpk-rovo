@@ -76,6 +76,7 @@ import { GenerativeWidgetCard } from "@/components/projects/shared/components/ge
 import LoadingWidget from "@/components/projects/shared/components/loading-widget";
 import { AssistantSuggestionsSection } from "@/components/projects/shared/components/assistant-suggestions-section";
 import { PlanWidgetInlineCard } from "@/components/projects/shared/components/plan-widget-inline-card";
+import { PreloadThinkingIndicator } from "@/components/projects/shared/components/preload-thinking-indicator";
 import { useDynamicThinkingLabel } from "@/components/projects/shared/hooks/use-dynamic-thinking-label";
 import {
 	getReasoningPropsForPhase,
@@ -119,9 +120,9 @@ import {
 	hasMatchingClarificationResponse,
 	parseQuestionCardPayload,
 } from "@/components/projects/shared/lib/question-card-widget";
-import { findAcceptedPlanKey } from "@/components/projects/shared/lib/plan-approval";
+import { getPlanApprovalState } from "@/components/projects/shared/lib/plan-approval";
 import { cn } from "@/lib/utils";
-import type { FutureChatDocument } from "@/lib/future-chat-types";
+import type { FutureChatActiveRun, FutureChatDocument } from "@/lib/future-chat-types";
 import type { FutureChatStreamingArtifact } from "@/components/projects/future-chat/lib/future-chat-streaming-artifact";
 import Image from "next/image";
 import { Component, Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -130,6 +131,7 @@ import Heading from "@/components/blocks/shared-ui/heading";
 
 interface FutureChatMessagesProps {
 	activeDocumentId: string | null;
+	activeRun: FutureChatActiveRun | null;
 	compact?: boolean;
 	extraHorizontalPaddingWhenCompact?: boolean;
 	documents: ReadonlyArray<FutureChatDocument>;
@@ -547,10 +549,7 @@ function TraceAgentExecutionSection({
 	return (
 		<div className="space-y-2">
 			{executions.map((execution) => (
-				<div
-					key={execution.taskId}
-					className="rounded-lg border border-border/60 bg-background/60 px-3 py-2"
-				>
+				<div key={execution.taskId} className="space-y-2">
 					<div className="flex flex-wrap items-start gap-2">
 						<div className="min-w-0 flex-1">
 							<p className="text-sm font-medium text-text">
@@ -566,7 +565,7 @@ function TraceAgentExecutionSection({
 						</Lozenge>
 					</div>
 					{execution.content ? (
-						<div className="mt-2 text-xs text-text-subtle [&_pre]:!text-xs">
+						<div className="text-xs text-text-subtle">
 							<MessageContent>
 								<MessageResponse>{execution.content}</MessageResponse>
 							</MessageContent>
@@ -735,13 +734,27 @@ function AssistantMessage({
 		hasTodoQueueItems ||
 		hasAgentExecutions ||
 		hasThinkingToolCalls;
-	const shouldOpenThinkingByDefault =
+	const shouldAutoOpenThinking =
 		isThinkingStreaming ||
 		hasAwaitingInputToolCalls ||
 		thinkingToolCalls.some((toolCall) =>
 			toolCall.state === "running" ||
 			toolCall.state === "approval-requested"
 		);
+	const [thinkingUserOverride, setThinkingUserOverride] = useState<boolean | null>(null);
+	const prevAutoOpenRef = useRef(shouldAutoOpenThinking);
+	// Reset user override when streaming resumes (new turn / retry)
+	useEffect(() => {
+		if (shouldAutoOpenThinking && !prevAutoOpenRef.current) {
+			const timeoutId = window.setTimeout(() => {
+				setThinkingUserOverride(null);
+			}, 0);
+			prevAutoOpenRef.current = shouldAutoOpenThinking;
+			return () => window.clearTimeout(timeoutId);
+		}
+		prevAutoOpenRef.current = shouldAutoOpenThinking;
+	}, [shouldAutoOpenThinking]);
+	const isThinkingOpen = thinkingUserOverride ?? (hasThinkingDetails && shouldAutoOpenThinking);
 
 	const lastThinkingStatusPart =
 		thinkingStatusParts[thinkingStatusParts.length - 1] ?? null;
@@ -868,7 +881,8 @@ function AssistantMessage({
 						{thinkingActive ? (
 							<ChainOfThought
 								className="mb-0"
-								open={hasThinkingDetails && shouldOpenThinkingByDefault}
+								open={isThinkingOpen}
+								onOpenChange={setThinkingUserOverride}
 							>
 								<ChainOfThoughtHeader>{thinkingTriggerLabel}</ChainOfThoughtHeader>
 								{hasThinkingDetails ? (
@@ -1053,29 +1067,7 @@ function AssistantMessage({
 }
 
 function FutureChatThinkingIndicator() {
-	const preloadPhaseProps = getReasoningPropsForPhase("preload", undefined, false);
-	return (
-		<div className="w-full">
-			<div className="flex items-start gap-2 md:gap-3">
-				<div className="flex min-w-0 flex-1 flex-col gap-3">
-					<Reasoning
-						className="mb-0"
-						defaultOpen={false}
-						isStreaming={preloadPhaseProps.isStreaming}
-						streamingWave={preloadPhaseProps.streamingWave}
-						streamingWaveGradientColor={preloadPhaseProps.streamingWaveGradientColor}
-						animatedDots={preloadPhaseProps.animatedDots}
-					>
-						<AdsReasoningTrigger
-							label={getPreloadShimmerLabel()}
-							showChevron={false}
-							streaming={preloadPhaseProps.triggerStreaming}
-						/>
-					</Reasoning>
-				</div>
-			</div>
-		</div>
-	);
+	return <PreloadThinkingIndicator label={getPreloadShimmerLabel()} />;
 }
 
 function StreamingArtifactMessage({
@@ -1154,6 +1146,7 @@ function AssistantSuggestionPills({
 
 export function FutureChatMessages({
 	activeDocumentId,
+	activeRun,
 	compact = false,
 	extraHorizontalPaddingWhenCompact = false,
 	documents,
@@ -1195,9 +1188,9 @@ export function FutureChatMessages({
 		() => getAllPlanWidgetPayloads(messages),
 		[messages],
 	);
-	const acceptedPlanKey = useMemo(
-		() => findAcceptedPlanKey(messages),
-		[messages],
+	const approvalState = useMemo(
+		() => getPlanApprovalState(messages, activeRun),
+		[messages, activeRun],
 	);
 	const orphanArtifactDisplay = useMemo(() => {
 		return resolveFutureChatOrphanArtifactDisplay({
@@ -1320,7 +1313,7 @@ export function FutureChatMessages({
 								return parsePlanWidgetPayload(widget.data.payload);
 							})();
 							const planBuildState = messagePlanWidget
-								? isPlanCardBuildable(messagePlanWidget, allPlanPayloads, acceptedPlanKey)
+								? isPlanCardBuildable(messagePlanWidget, allPlanPayloads, approvalState)
 								: null;
 							const isQuestionCardResolved = (() => {
 								const widget = getLatestDataPart(message, "data-widget-data");

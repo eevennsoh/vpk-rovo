@@ -6502,8 +6502,8 @@ const UI_AI_VARIANT_DEMOS: Record<string, ComponentType> = {
 };
 
 const BLOCK_DEMOS: Record<string, ComponentType> = {
-  "agent-progress": dynamic(
-    () => import("./demos/blocks/agent-progress-demo"),
+  "task-progress": dynamic(
+    () => import("./demos/blocks/task-progress-demo"),
     { ssr: false },
   ),
   "answer-card": dynamic(() => import("./demos/blocks/answer-card-demo"), {
@@ -6513,6 +6513,9 @@ const BLOCK_DEMOS: Record<string, ComponentType> = {
     ssr: false,
   }),
   "make-artifact": dynamic(() => import("./demos/blocks/make-artifact-demo"), {
+    ssr: false,
+  }),
+  "mermaid-diagram": dynamic(() => import("./demos/blocks/mermaid-diagram-demo"), {
     ssr: false,
   }),
   dashboard: dynamic(() => import("./demos/blocks/dashboard-demo"), {
@@ -6673,67 +6676,67 @@ const BLOCK_DEMOS: Record<string, ComponentType> = {
 };
 
 const BLOCK_VARIANT_DEMOS: Record<string, ComponentType> = {
-  // Agent Progress
-  "agent-progress-demo-running": dynamic(
+  // Task Progress
+  "task-progress-demo-running": dynamic(
     () =>
-      import("./demos/blocks/agent-progress-demo").then((mod) => ({
-        default: mod.AgentProgressDemoRunning,
+      import("./demos/blocks/task-progress-demo").then((mod) => ({
+        default: mod.TaskProgressDemoRunning,
       })),
     { ssr: false },
   ),
-  "agent-progress-demo-completed": dynamic(
+  "task-progress-demo-completed": dynamic(
     () =>
-      import("./demos/blocks/agent-progress-demo").then((mod) => ({
-        default: mod.AgentProgressDemoCompleted,
+      import("./demos/blocks/task-progress-demo").then((mod) => ({
+        default: mod.TaskProgressDemoCompleted,
       })),
     { ssr: false },
   ),
-  "agent-progress-demo-failed": dynamic(
+  "task-progress-demo-failed": dynamic(
     () =>
-      import("./demos/blocks/agent-progress-demo").then((mod) => ({
-        default: mod.AgentProgressDemoFailed,
+      import("./demos/blocks/task-progress-demo").then((mod) => ({
+        default: mod.TaskProgressDemoFailed,
       })),
     { ssr: false },
   ),
-  "agent-progress-demo-collapsed": dynamic(
+  "task-progress-demo-collapsed": dynamic(
     () =>
-      import("./demos/blocks/agent-progress-demo").then((mod) => ({
-        default: mod.AgentProgressDemoCollapsed,
+      import("./demos/blocks/task-progress-demo").then((mod) => ({
+        default: mod.TaskProgressDemoCollapsed,
       })),
     { ssr: false },
   ),
-  "agent-progress-demo-collapsed-running": dynamic(
+  "task-progress-demo-collapsed-running": dynamic(
     () =>
-      import("./demos/blocks/agent-progress-demo").then((mod) => ({
-        default: mod.AgentProgressDemoCollapsedRunning,
+      import("./demos/blocks/task-progress-demo").then((mod) => ({
+        default: mod.TaskProgressDemoCollapsedRunning,
       })),
     { ssr: false },
   ),
-  "agent-progress-demo-with-agents": dynamic(
+  "task-progress-demo-with-agents": dynamic(
     () =>
-      import("./demos/blocks/agent-progress-demo").then((mod) => ({
-        default: mod.AgentProgressDemoWithAgents,
+      import("./demos/blocks/task-progress-demo").then((mod) => ({
+        default: mod.TaskProgressDemoWithAgents,
       })),
     { ssr: false },
   ),
-  "agent-progress-demo-early-progress": dynamic(
+  "task-progress-demo-early-progress": dynamic(
     () =>
-      import("./demos/blocks/agent-progress-demo").then((mod) => ({
-        default: mod.AgentProgressDemoEarlyProgress,
+      import("./demos/blocks/task-progress-demo").then((mod) => ({
+        default: mod.TaskProgressDemoEarlyProgress,
       })),
     { ssr: false },
   ),
-  "agent-progress-demo-multiple-runs": dynamic(
+  "task-progress-demo-multiple-runs": dynamic(
     () =>
-      import("./demos/blocks/agent-progress-demo").then((mod) => ({
-        default: mod.AgentProgressDemoMultipleRuns,
+      import("./demos/blocks/task-progress-demo").then((mod) => ({
+        default: mod.TaskProgressDemoMultipleRuns,
       })),
     { ssr: false },
   ),
-  "agent-progress-demo-all-states": dynamic(
+  "task-progress-demo-all-states": dynamic(
     () =>
-      import("./demos/blocks/agent-progress-demo").then((mod) => ({
-        default: mod.AgentProgressDemoAllStates,
+      import("./demos/blocks/task-progress-demo").then((mod) => ({
+        default: mod.TaskProgressDemoAllStates,
       })),
     { ssr: false },
   ),

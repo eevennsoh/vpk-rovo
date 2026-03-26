@@ -7,6 +7,7 @@ const {
 	serializePlanApprovalKey,
 	buildPlanApprovalPrompt,
 	findAcceptedPlanKey,
+	getPlanApprovalState,
 	getPlanApprovalKeyFromPlanWidget,
 	getPlanApprovalKeyFromSubmission,
 } = require("./plan-approval.ts");
@@ -367,6 +368,31 @@ describe("findAcceptedPlanKey (Test Case 7 + 13 — plan acceptance)", () => {
 		assert.equal(findAcceptedPlanKey(messages), "GoodPlan-task-1");
 	});
 
+	it("returns null when approval is still pending on an active run", () => {
+		const messages = [
+			{
+				role: "user",
+				id: "u1",
+				parts: [],
+				metadata: {
+					source: "plan-approval-submit",
+					planApprovalDecision: "auto-accept",
+					planApprovalPlanKey: "PendingPlan-task-1",
+				},
+			},
+			{
+				role: "assistant",
+				id: "a1",
+				parts: [{ type: "data-route-decision", data: { intent: "chat" } }],
+			},
+		];
+
+		assert.equal(
+			findAcceptedPlanKey(messages),
+			null,
+		);
+	});
+
 	it("falls back to earlier acceptance when latest has widget error", () => {
 		const messages = [
 			{
@@ -417,5 +443,88 @@ describe("findAcceptedPlanKey (Test Case 7 + 13 — plan acceptance)", () => {
 		];
 
 		assert.equal(findAcceptedPlanKey(messages), null);
+	});
+});
+
+describe("getPlanApprovalState", () => {
+	it("returns pending when the latest approval still has an active run", () => {
+		const messages = [
+			{
+				role: "user",
+				id: "u1",
+				parts: [],
+				metadata: {
+					source: "plan-approval-submit",
+					planApprovalDecision: "auto-accept",
+					planApprovalPlanKey: "Dashboard-task-1",
+				},
+			},
+			{
+				role: "assistant",
+				id: "a1",
+				parts: [{ type: "data-route-decision", data: { intent: "chat" } }],
+			},
+		];
+
+		assert.deepEqual(
+			getPlanApprovalState(messages, {
+				id: "run-1",
+				status: "background",
+				rovoPort: null,
+				startedAt: "2026-03-26T00:00:00.000Z",
+				updatedAt: "2026-03-26T00:00:10.000Z",
+			}),
+			{
+				status: "pending",
+				planKey: "Dashboard-task-1",
+			},
+		);
+	});
+
+	it("returns null for route-decision-only follow-up when no active run remains", () => {
+		const messages = [
+			{
+				role: "user",
+				id: "u1",
+				parts: [],
+				metadata: {
+					source: "plan-approval-submit",
+					planApprovalDecision: "auto-accept",
+					planApprovalPlanKey: "Dashboard-task-1",
+				},
+			},
+			{
+				role: "assistant",
+				id: "a1",
+				parts: [{ type: "data-route-decision", data: { intent: "chat" } }],
+			},
+		];
+
+		assert.equal(getPlanApprovalState(messages, null), null);
+	});
+
+	it("returns accepted for a substantive assistant follow-up after active run clears", () => {
+		const messages = [
+			{
+				role: "user",
+				id: "u1",
+				parts: [],
+				metadata: {
+					source: "plan-approval-submit",
+					planApprovalDecision: "auto-accept",
+					planApprovalPlanKey: "Dashboard-task-1",
+				},
+			},
+			{
+				role: "assistant",
+				id: "a1",
+				parts: [{ type: "text", text: "Starting execution..." }],
+			},
+		];
+
+		assert.deepEqual(getPlanApprovalState(messages, null), {
+			status: "accepted",
+			planKey: "Dashboard-task-1",
+		});
 	});
 });

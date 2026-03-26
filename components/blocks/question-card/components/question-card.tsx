@@ -2,14 +2,14 @@
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ProgressIndicator } from "@/components/ui/progress-indicator";
 import { cn } from "@/lib/utils";
 import CheckMarkIcon from "@atlaskit/icon/core/check-mark";
 import ChevronLeftIcon from "@atlaskit/icon/core/chevron-left";
 import ChevronRightIcon from "@atlaskit/icon/core/chevron-right";
 import CrossIcon from "@atlaskit/icon/core/cross";
+import ReturnIcon from "@atlaskit/icon-lab/core/return";
 import { getVisibleOptionCount } from "@/components/blocks/question-card/lib/option-slots";
-import { getCustomInputValue, getSelectedValues } from "@/components/blocks/question-card/lib/question-helpers";
+import { getSelectedValues } from "@/components/blocks/question-card/lib/question-helpers";
 import { useQuestionCard } from "@/components/blocks/question-card/hooks/use-question-card";
 import type { QuestionCardAnswerValue, QuestionCardAnswers, QuestionCardQuestion } from "../types";
 
@@ -87,7 +87,7 @@ function QuestionOptionRow({
 				onMouseEnter={onMouseEnter}
 				tabIndex={-1}
 				className={cn(
-					"flex w-full items-center gap-4 rounded-lg px-2 py-1.5 text-left disabled:cursor-not-allowed disabled:opacity-50",
+					"group/option flex w-full items-center gap-4 rounded-lg px-2 py-1.5 text-left disabled:cursor-not-allowed disabled:opacity-50",
 					selected ? "bg-bg-selected" : focused ? "bg-bg-neutral-subtle-hovered" : disabled ? "bg-surface" : "bg-surface hover:bg-bg-neutral-subtle-hovered",
 				)}
 			>
@@ -109,11 +109,22 @@ function QuestionOptionRow({
 						data-slot="question-card-option-checkbox"
 						aria-hidden="true"
 						className={cn(
-							"inline-flex size-4 shrink-0 items-center justify-center rounded-sm border transition-colors",
+							"inline-flex size-4 shrink-0 items-center justify-center rounded-sm border",
 							selected ? "border-primary bg-primary text-primary-foreground" : "border-input bg-bg-input",
 						)}
 					>
 						{selected ? <CheckMarkIcon label="" size="small" /> : null}
+					</span>
+				) : null}
+				{!isMultiSelect ? (
+					<span
+						aria-hidden="true"
+						className={cn(
+							"inline-flex size-6 shrink-0 items-center justify-center text-icon-disabled opacity-0 group-hover/option:opacity-100",
+							focused && "opacity-100",
+						)}
+					>
+						<ReturnIcon label="" />
 					</span>
 				) : null}
 			</button>
@@ -129,12 +140,8 @@ interface QuestionInputProps {
 	question: QuestionCardQuestion;
 	answerValue: QuestionCardAnswerValue | undefined;
 	focusedIndex: number;
-	customOptionIndex: number;
 	isSubmitting: boolean;
-	customInputRef: React.RefObject<HTMLInputElement | null>;
 	maxVisibleOptions: number;
-	customInputPlaceholder: string;
-	showCustomInput: boolean;
 	onFocusIndex: (index: number) => void;
 	onAnswerChange: (value: QuestionCardAnswerValue, options?: Readonly<{ autoAdvance?: boolean }>) => void;
 }
@@ -143,20 +150,18 @@ function QuestionInput({
 	question,
 	answerValue,
 	focusedIndex,
-	customOptionIndex,
 	isSubmitting,
-	customInputRef,
 	maxVisibleOptions,
-	customInputPlaceholder,
-	showCustomInput,
 	onFocusIndex,
 	onAnswerChange,
-}: Readonly<QuestionInputProps>): React.ReactElement {
+}: Readonly<QuestionInputProps>): React.ReactElement | null {
 	const selectedValues = getSelectedValues(answerValue);
 	const visibleOptionCount = getVisibleOptionCount(question.options.length, maxVisibleOptions);
 	const visibleOptions = question.options.slice(0, visibleOptionCount);
-	const customInputValue = getCustomInputValue(question, answerValue);
-	const isTextOnlyMode = visibleOptionCount === 0;
+
+	if (visibleOptionCount === 0) {
+		return null;
+	}
 
 	return (
 		<ul data-slot="question-card-options" className="m-0 flex list-none flex-col gap-1 p-0" role="group" aria-label={question.label}>
@@ -185,30 +190,6 @@ function QuestionInput({
 					/>
 				);
 			})}
-			{showCustomInput ? (
-				<li
-					data-slot="question-card-custom-input"
-					className={cn("flex h-8 items-center rounded-lg", isTextOnlyMode ? "px-1" : "gap-4 pl-2")}
-					onMouseEnter={() => {
-						onFocusIndex(customOptionIndex);
-						customInputRef.current?.focus();
-					}}
-				>
-					{isTextOnlyMode ? null : (
-						<span className="inline-flex size-5 shrink-0 items-center justify-center rounded-[4px] border border-border bg-surface text-sm leading-5 font-medium text-text">{customOptionIndex + 1}</span>
-					)}
-					<Input
-						ref={customInputRef}
-						aria-label={`${question.label} custom answer`}
-						value={customInputValue}
-						onChange={(event) => onAnswerChange((event.target as HTMLInputElement).value)}
-						onFocus={() => onFocusIndex(customOptionIndex)}
-						disabled={isSubmitting}
-						placeholder={question.placeholder ?? customInputPlaceholder}
-						className="h-8 border-input bg-bg-input text-sm leading-5"
-					/>
-				</li>
-			) : null}
 		</ul>
 	);
 }
@@ -242,8 +223,10 @@ function QuestionCard({
 		hasMultipleQuestions,
 		canGoToPreviousQuestion,
 		canGoToNextQuestion,
+		visibleOptionCount,
+		customInputValue,
 		customOptionIndex,
-		showSubmitButton,
+		primaryAction,
 		goToNextQuestion,
 		goToPreviousQuestion,
 		handleSkip,
@@ -274,73 +257,87 @@ function QuestionCard({
 			className={cn("mx-auto w-full overflow-hidden rounded-xl border border-border bg-surface shadow-[0_-2px_50px_8px_rgba(30,31,33,0.08)] outline-none", className)}
 			{...props}
 		>
-			<header data-slot="question-card-header" className="px-4 pb-4 pt-4">
-				<div className="flex items-center justify-between gap-2">
-					<div className="min-w-0">
-						<h2 className="text-sm leading-5 font-bold text-text">{currentQuestion.label}</h2>
-						{currentQuestion.description ? (
-							<p className="mt-0.5 text-sm font-normal text-text-subtle">{currentQuestion.description}</p>
+			<header data-slot="question-card-header" className="px-4 py-4">
+				<div className="flex h-8 items-center justify-between gap-2">
+					<h5 className="min-w-0 truncate text-text">{currentQuestion.label}</h5>
+					<div className="flex shrink-0 items-center gap-1">
+						{hasMultipleQuestions ? (
+							<div className="flex items-center gap-2">
+								<Button
+									type="button"
+									aria-label="Previous question"
+									size="icon"
+									variant="ghost"
+									disabled={!canGoToPreviousQuestion || isSubmitting}
+									onClick={goToPreviousQuestion}
+									tabIndex={-1}
+									className="shrink-0"
+								>
+									<ChevronLeftIcon label="" size="small" />
+								</Button>
+								<span className="text-sm text-text-subtlest">{safeQuestionIndex + 1} / {totalQuestions}</span>
+								<Button
+									type="button"
+									aria-label="Next question"
+									size="icon"
+									variant="ghost"
+									disabled={!canGoToNextQuestion || isSubmitting}
+									onClick={goToNextQuestion}
+									tabIndex={-1}
+									className="shrink-0"
+								>
+									<ChevronRightIcon label="" size="small" />
+								</Button>
+							</div>
+						) : null}
+						{onDismiss ? (
+							<Button aria-label="Dismiss questions" size="icon" variant="ghost" disabled={isSubmitting} className="-mr-1 shrink-0" onClick={onDismiss} tabIndex={-1}>
+								<CrossIcon label="" size="small" />
+							</Button>
 						) : null}
 					</div>
-					{onDismiss ? (
-						<Button aria-label="Dismiss questions" size="icon" variant="ghost" disabled={isSubmitting} className="-mr-1 -mt-1 shrink-0" onClick={onDismiss} tabIndex={-1}>
-							<CrossIcon label="" size="small" />
-						</Button>
-					) : null}
 				</div>
 			</header>
 
-			<div data-slot="question-card-body" className="px-3 pb-4">
+			<div data-slot="question-card-body" className={visibleOptionCount > 0 ? "px-3 pb-4" : undefined}>
 				<QuestionInput
 					question={currentQuestion}
 					answerValue={answers[currentQuestion.id]}
 					focusedIndex={focusedIndex}
-					customOptionIndex={customOptionIndex}
 					isSubmitting={isSubmitting}
-					customInputRef={customInputRef}
 					maxVisibleOptions={maxVisibleOptions}
-					customInputPlaceholder={customInputPlaceholder}
-					showCustomInput={showCustomInput}
 					onFocusIndex={setFocusedIndex}
 					onAnswerChange={handleAnswerChange}
 				/>
 			</div>
 
-			<footer data-slot="question-card-footer" className="flex h-16 items-center justify-between border-t border-border p-4">
-				{hasMultipleQuestions ? (
-					<div className="flex items-center gap-2">
-						<button
-							type="button"
-							aria-label="Previous question"
-							disabled={!canGoToPreviousQuestion || isSubmitting}
-							onClick={goToPreviousQuestion}
-							tabIndex={-1}
-							className="inline-flex size-5 items-center justify-center rounded text-icon-subtle hover:bg-bg-neutral-subtle-hovered disabled:cursor-not-allowed disabled:opacity-50"
-						>
-							<ChevronLeftIcon label="Previous question" size="small" />
-						</button>
-						<ProgressIndicator steps={totalQuestions} currentStep={safeQuestionIndex} size="md" />
-						<button
-							type="button"
-							aria-label="Next question"
-							disabled={!canGoToNextQuestion || isSubmitting}
-							onClick={goToNextQuestion}
-							tabIndex={-1}
-							className="inline-flex size-5 items-center justify-center rounded text-icon-subtle hover:bg-bg-neutral-subtle-hovered disabled:cursor-not-allowed disabled:opacity-50"
-						>
-							<ChevronRightIcon label="Next question" size="small" />
-						</button>
+			<footer data-slot="question-card-footer" className="flex items-center gap-2 border-t border-border px-3 py-3">
+				{showCustomInput ? (
+					<div className="flex min-w-0 flex-1 items-center gap-4 pl-2">
+						<span className="inline-flex size-5 shrink-0 items-center justify-center rounded-[4px] border border-border bg-surface text-sm leading-5 font-medium text-text">{customOptionIndex + 1}</span>
+						<Input
+							ref={customInputRef}
+							variant="none"
+							data-slot="question-card-custom-input"
+							aria-label={`${currentQuestion.label} custom answer`}
+							value={customInputValue ?? ""}
+							onChange={(event) => handleAnswerChange((event.target as HTMLInputElement).value)}
+							disabled={isSubmitting}
+							placeholder={currentQuestion.placeholder ?? customInputPlaceholder}
+							className="h-8 min-w-0 flex-1 px-0 text-sm leading-5 focus-visible:ring-0 focus-visible:border-transparent"
+						/>
 					</div>
-				) : (
-					<div aria-hidden />
-				)}
-
-				{showSubmitButton ? (
-					<Button disabled={isSubmitting} onClick={handleSubmit} tabIndex={-1}>
+				) : null}
+				{primaryAction === "submit" ? (
+					<Button disabled={isSubmitting} onClick={handleSubmit} tabIndex={-1} className="shrink-0">
 						{isSubmitting ? "Submitting..." : "Submit"}
 					</Button>
+				) : primaryAction === "next" ? (
+					<Button variant="outline" disabled={isSubmitting} onClick={handleSkip} tabIndex={-1} className="shrink-0">
+						Next
+					</Button>
 				) : (
-					<Button variant="outline" disabled={isSubmitting} onClick={handleSkip} tabIndex={-1}>
+					<Button variant="ghost" disabled={isSubmitting} onClick={handleSkip} tabIndex={-1} className="shrink-0">
 						Skip
 					</Button>
 				)}

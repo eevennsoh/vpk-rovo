@@ -10,6 +10,15 @@ import type {
 
 import { Button } from "@/components/ui/button";
 import {
+	CodeBlock,
+	CodeBlockActions,
+	CodeBlockCopyButton,
+	CodeBlockDownloadButton,
+	CodeBlockFilename,
+	CodeBlockHeader,
+	CodeBlockTitle,
+} from "@/components/ui-ai/code-block";
+import {
 	ButtonGroup,
 	ButtonGroupText,
 } from "@/components/ui/button-group";
@@ -45,6 +54,7 @@ import {
 } from "react";
 import type { LinkSafetyConfig } from "streamdown";
 import { Streamdown } from "streamdown";
+import type { BundledLanguage } from "shiki";
 
 const linkSafetyConfig: LinkSafetyConfig = {
 	enabled: true,
@@ -94,7 +104,8 @@ export function MessageContent({
 	return (
 		<div
 			className={cn(
-				"is-user:dark flex w-fit min-w-0 max-w-full break-words [overflow-wrap:break-word] flex-col gap-2 text-sm",
+				"is-user:dark flex w-full min-w-0 max-w-full break-words [overflow-wrap:break-word] flex-col gap-2 text-sm",
+				"group-[.is-user]:w-fit",
 				"group-[.is-user]:rounded-xl group-[.is-user]:rounded-br-sm group-[.is-user]:bg-primary group-[.is-user]:px-3 group-[.is-user]:py-2 group-[.is-user]:text-primary-foreground",
 				"group-[.is-assistant]:text-foreground",
 				className,
@@ -554,6 +565,114 @@ function MarkdownParagraph({
 
 type MarkdownImageProps = ComponentProps<"img"> & { node?: unknown };
 
+type MarkdownInlineCodeProps = ComponentProps<"code"> & { node?: unknown };
+
+type MarkdownCodeBlockProps = ComponentProps<"code"> & {
+	node?: {
+		properties?: {
+			metastring?: unknown;
+		};
+	};
+};
+
+const CODE_LANGUAGE_PATTERN = /language-([^\s]+)/u;
+const CODE_TITLE_PATTERN =
+	/(?:^|\s)(?:title|filename)=["']([^"']+)["']/u;
+const CODE_NO_LINE_NUMBERS_PATTERN = /(?:^|\s)noLineNumbers(?:\s|$)/u;
+
+const getCodeFenceLanguage = (className?: string) => {
+	const match = className?.match(CODE_LANGUAGE_PATTERN);
+	return match?.[1]?.toLowerCase() ?? "text";
+};
+
+const getCodeFenceTitle = (meta?: string) => {
+	const match = meta?.match(CODE_TITLE_PATTERN);
+	return match?.[1];
+};
+
+const getCodeFenceMeta = (node?: MarkdownCodeBlockProps["node"]) => {
+	const metastring = node?.properties?.metastring;
+	return typeof metastring === "string" ? metastring : undefined;
+};
+
+const toBundledLanguage = (language: string): BundledLanguage =>
+	safeCodePlugin.supportsLanguage(language as BundledLanguage)
+		? (language as BundledLanguage)
+		: "markdown";
+
+function MarkdownInlineCode({
+	className,
+	node,
+	...props
+}: Readonly<MarkdownInlineCodeProps>) {
+	void node;
+
+	return (
+		<code
+			className={cn(
+				"rounded bg-muted px-1.5 py-0.5 font-mono text-sm",
+				className,
+			)}
+			{...props}
+		/>
+	);
+}
+
+function MarkdownCodeBlock({
+	children,
+	className,
+	node,
+	...props
+}: Readonly<MarkdownCodeBlockProps>) {
+	const code = typeof children === "string" ? children : "";
+	const rawLanguage = getCodeFenceLanguage(className);
+	const meta = getCodeFenceMeta(node);
+
+	if (rawLanguage === "mermaid" || rawLanguage === "mmd") {
+		const mermaidMarkdown = ["```mermaid", code.trim(), "```"].join("\n");
+
+		return (
+			<Streamdown
+				className="text-sm [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_[data-streamdown=mermaid-block]]:overflow-hidden [&_p]:m-0"
+				components={{
+					img: MarkdownImage,
+					inlineCode: MarkdownInlineCode,
+					p: MarkdownParagraph,
+				}}
+				controls
+				linkSafety={linkSafetyConfig}
+				mode="static"
+				plugins={streamdownPlugins}
+			>
+				{mermaidMarkdown}
+			</Streamdown>
+		);
+	}
+
+	const language = toBundledLanguage(rawLanguage);
+	const title = getCodeFenceTitle(meta) ?? rawLanguage;
+	const showLineNumbers = meta ? !CODE_NO_LINE_NUMBERS_PATTERN.test(meta) : true;
+
+	return (
+		<CodeBlock
+			code={code}
+			language={language}
+			showLineNumbers={showLineNumbers}
+			{...props}
+		>
+			<CodeBlockHeader>
+				<CodeBlockTitle>
+					<CodeBlockFilename>{title}</CodeBlockFilename>
+				</CodeBlockTitle>
+				<CodeBlockActions>
+					<CodeBlockDownloadButton />
+					<CodeBlockCopyButton />
+				</CodeBlockActions>
+			</CodeBlockHeader>
+		</CodeBlock>
+	);
+}
+
 function MarkdownImage({
 	src,
 	alt,
@@ -580,6 +699,8 @@ function MarkdownImage({
 }
 
 const streamdownComponents = {
+	code: MarkdownCodeBlock,
+	inlineCode: MarkdownInlineCode,
 	p: MarkdownParagraph,
 	img: MarkdownImage,
 };

@@ -1,14 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { QuestionCardAnswerValue, QuestionCardAnswers, QuestionCardQuestion } from "../types";
 import {
-	getCustomOptionIndex,
 	getNextFocusedIndex,
-	getTotalOptionSlots,
 	getVisibleOptionCount,
 } from "../lib/option-slots";
 import { shouldAutoFocusCustomInputForQuestion } from "../lib/focus-policy";
 import { getQuestionCardPrimaryAction } from "../lib/footer-actions";
-import { isQuestionAnswered } from "../lib/question-helpers";
+import { getCustomInputValue, isQuestionAnswered } from "../lib/question-helpers";
 
 interface UseQuestionCardOptions {
 	questions: ReadonlyArray<QuestionCardQuestion>;
@@ -46,11 +44,12 @@ export function useQuestionCard({
 	const canGoToPreviousQuestion = safeQuestionIndex > 0;
 	const canGoToNextQuestion = safeQuestionIndex < totalQuestions - 1;
 	const visibleOptionCount = getVisibleOptionCount(currentQuestion.options.length, maxVisibleOptions);
-	const customOptionIndex = getCustomOptionIndex(visibleOptionCount);
-	const totalOptionSlots = showCustomInput ? getTotalOptionSlots(visibleOptionCount) : visibleOptionCount;
+	const customOptionIndex = visibleOptionCount;
+	const customInputValue = getCustomInputValue(currentQuestion, answers[currentQuestion.id]);
+	const hasCustomInputText = Boolean(customInputValue && customInputValue.trim().length > 0);
 
 	const allQuestionsAnswered = questions.every((question) => isQuestionAnswered(question, answers));
-	const showSubmitButton = getQuestionCardPrimaryAction(allQuestionsAnswered) === "submit";
+	const primaryAction = getQuestionCardPrimaryAction(allQuestionsAnswered, hasCustomInputText);
 
 	useEffect(() => {
 		cardRef.current?.focus();
@@ -79,12 +78,6 @@ export function useQuestionCard({
 			cardRef.current?.focus();
 		}
 	}, [safeQuestionIndex, currentQuestion, maxVisibleOptions, showCustomInput]);
-
-	useEffect(() => {
-		if (showCustomInput && focusedIndex === customOptionIndex) {
-			customInputRef.current?.focus();
-		}
-	}, [focusedIndex, customOptionIndex, showCustomInput]);
 
 	const resetFocusForNewQuestion = useCallback(() => {
 		setFocusedIndex(0);
@@ -191,8 +184,7 @@ export function useQuestionCard({
 			const isCustomInputFocused = document.activeElement === customInputRef.current;
 			switch (event.key) {
 				case "Tab": {
-					// Trap focus within the question card.
-					// Tab moves to the custom input if available; Shift+Tab moves back to the card.
+					// Tab moves to the footer custom input; Shift+Tab moves back to the card.
 					if (showCustomInput) {
 						if (event.shiftKey && isCustomInputFocused) {
 							event.preventDefault();
@@ -200,33 +192,28 @@ export function useQuestionCard({
 						} else if (!event.shiftKey && !isCustomInputFocused) {
 							event.preventDefault();
 							customInputRef.current?.focus();
-							setFocusedIndex(customOptionIndex);
 						} else if (!event.shiftKey && isCustomInputFocused) {
-							// Wrap around to the card itself
 							event.preventDefault();
 							cardRef.current?.focus();
 							setFocusedIndex(0);
 						}
 					} else {
-						// No custom input — keep focus on the card
 						event.preventDefault();
 					}
 					break;
 				}
 				case "ArrowUp": {
+					if (isCustomInputFocused) return;
+					if (visibleOptionCount === 0) return;
 					event.preventDefault();
-					if (isCustomInputFocused) {
-						cardRef.current?.focus();
-					}
-					setFocusedIndex((previous) => getNextFocusedIndex(previous, totalOptionSlots, "up"));
+					setFocusedIndex((previous) => getNextFocusedIndex(previous, visibleOptionCount, "up"));
 					break;
 				}
 				case "ArrowDown": {
+					if (isCustomInputFocused) return;
+					if (visibleOptionCount === 0) return;
 					event.preventDefault();
-					if (isCustomInputFocused) {
-						cardRef.current?.focus();
-					}
-					setFocusedIndex((previous) => getNextFocusedIndex(previous, totalOptionSlots, "down"));
+					setFocusedIndex((previous) => getNextFocusedIndex(previous, visibleOptionCount, "down"));
 					break;
 				}
 				case "Enter": {
@@ -243,8 +230,6 @@ export function useQuestionCard({
 						if (option) {
 							handleSelectOption(option.id);
 						}
-					} else if (focusedIndex === customOptionIndex) {
-						customInputRef.current?.focus();
 					}
 					break;
 				}
@@ -284,10 +269,6 @@ export function useQuestionCard({
 							if (option) {
 								handleSelectOption(option.id);
 							}
-						} else if (showCustomInput && index === customOptionIndex) {
-							event.preventDefault();
-							customInputRef.current?.focus();
-							setFocusedIndex(customOptionIndex);
 						}
 					}
 					break;
@@ -297,10 +278,8 @@ export function useQuestionCard({
 		[
 			isSubmitting,
 			showCustomInput,
-			totalOptionSlots,
 			focusedIndex,
 			visibleOptionCount,
-			customOptionIndex,
 			currentQuestion,
 			canGoToPreviousQuestion,
 			canGoToNextQuestion,
@@ -325,8 +304,9 @@ export function useQuestionCard({
 		canGoToPreviousQuestion,
 		canGoToNextQuestion,
 		visibleOptionCount,
+		customInputValue,
 		customOptionIndex,
-		showSubmitButton,
+		primaryAction,
 		goToNextQuestion,
 		goToPreviousQuestion,
 		handleSkip,

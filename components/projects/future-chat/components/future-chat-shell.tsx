@@ -1826,6 +1826,9 @@ export function FutureChatShell({
 		<>
 			<FutureChatMessages
 				activeDocumentId={chat.activeDocument?.id ?? null}
+				activeRun={
+					chat.threads.find((thread) => thread.id === chat.activeThreadId)?.activeRun ?? null
+				}
 				compact={isArtifactOpen}
 				extraHorizontalPaddingWhenCompact
 				documents={chat.documents}

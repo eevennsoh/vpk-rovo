@@ -9,13 +9,17 @@ const assert = require("node:assert/strict");
  * plan-widget.ts cannot be imported directly by node:test because it has
  * value imports from @/ path aliases. The function under test is a pure
  * 20-line predicate, so we inline its logic here as a contract test to
- * validate the spec requirements (Test Cases 8 + 13).
+ * validate the spec requirements.
  *
  * Source of truth: components/projects/shared/lib/plan-widget.ts
- * isPlanCardBuildable(planPayload, allPlanPayloads, acceptedPlanKey)
+ * isPlanCardBuildable(planPayload, allPlanPayloads, approvalState)
  */
-function isPlanCardBuildable(planPayload, allPlanPayloads, acceptedPlanKey) {
-	if (acceptedPlanKey !== null) {
+function isPlanCardBuildable(planPayload, allPlanPayloads, approvalState) {
+	if (approvalState?.status === "pending") {
+		return { buildable: false, reason: "Plan execution is already in progress." };
+	}
+
+	if (approvalState?.status === "accepted") {
 		return { buildable: false, reason: "A plan has already been accepted." };
 	}
 
@@ -104,47 +108,83 @@ describe("isPlanCardBuildable — Test Case 8: iterative CTA", () => {
 	});
 });
 
-describe("isPlanCardBuildable — Test Case 13: build disabled after acceptance", () => {
-	it("all plans become non-buildable after any plan is accepted", () => {
+describe("isPlanCardBuildable — approval state", () => {
+	it("all plans become non-buildable while execution is pending", () => {
 		const planA = makePlan("Plan A", ["t1", "t2"]);
 		const planB = makePlan("Plan B", ["t1", "t2", "t3"]);
-		const acceptedKey = "Plan B-t1|t2|t3";
+		const approvalState = {
+			status: "pending",
+			planKey: "Plan B-t1|t2|t3",
+		};
 
 		assert.strictEqual(
-			isPlanCardBuildable(planA, [planA, planB], acceptedKey).buildable,
+			isPlanCardBuildable(planA, [planA, planB], approvalState).buildable,
 			false,
 		);
 		assert.strictEqual(
-			isPlanCardBuildable(planA, [planA, planB], acceptedKey).reason,
+			isPlanCardBuildable(planA, [planA, planB], approvalState).reason,
+			"Plan execution is already in progress.",
+		);
+
+		assert.strictEqual(
+			isPlanCardBuildable(planB, [planA, planB], approvalState).buildable,
+			false,
+		);
+		assert.strictEqual(
+			isPlanCardBuildable(planB, [planA, planB], approvalState).reason,
+			"Plan execution is already in progress.",
+		);
+	});
+
+	it("all plans become non-buildable after any plan is accepted", () => {
+		const planA = makePlan("Plan A", ["t1", "t2"]);
+		const planB = makePlan("Plan B", ["t1", "t2", "t3"]);
+		const approvalState = {
+			status: "accepted",
+			planKey: "Plan B-t1|t2|t3",
+		};
+
+		assert.strictEqual(
+			isPlanCardBuildable(planA, [planA, planB], approvalState).buildable,
+			false,
+		);
+		assert.strictEqual(
+			isPlanCardBuildable(planA, [planA, planB], approvalState).reason,
 			"A plan has already been accepted.",
 		);
 
 		assert.strictEqual(
-			isPlanCardBuildable(planB, [planA, planB], acceptedKey).buildable,
+			isPlanCardBuildable(planB, [planA, planB], approvalState).buildable,
 			false,
 		);
 		assert.strictEqual(
-			isPlanCardBuildable(planB, [planA, planB], acceptedKey).reason,
+			isPlanCardBuildable(planB, [planA, planB], approvalState).reason,
 			"A plan has already been accepted.",
 		);
 	});
 
 	it("acceptance blocks even the latest plan", () => {
 		const plan = makePlan("Single Plan", ["t1"]);
-		const acceptedKey = "Single Plan-t1";
+		const approvalState = {
+			status: "accepted",
+			planKey: "Single Plan-t1",
+		};
 
-		const result = isPlanCardBuildable(plan, [plan], acceptedKey);
+		const result = isPlanCardBuildable(plan, [plan], approvalState);
 		assert.strictEqual(result.buildable, false);
 		assert.strictEqual(result.reason, "A plan has already been accepted.");
 	});
 
-	it("acceptance with any key value blocks all plans", () => {
+	it("approval state with any accepted plan key blocks all plans", () => {
 		const plan = makePlan("Plan", ["t1"]);
-		const result = isPlanCardBuildable(plan, [plan], "any-non-null-key");
+		const result = isPlanCardBuildable(plan, [plan], {
+			status: "accepted",
+			planKey: "any-non-null-key",
+		});
 		assert.strictEqual(result.buildable, false);
 	});
 
-	it("null acceptedPlanKey allows buildable check to proceed normally", () => {
+	it("null approvalState allows buildable check to proceed normally", () => {
 		const plan = makePlan("Plan", ["t1"]);
 		const result = isPlanCardBuildable(plan, [plan], null);
 		assert.strictEqual(result.buildable, true);

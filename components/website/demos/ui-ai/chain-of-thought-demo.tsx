@@ -108,7 +108,7 @@ export function ChainOfThoughtDemoThinking() {
 
 export function ChainOfThoughtDemoCompleted() {
 	return (
-		<ChainOfThought defaultOpen className="w-full max-w-2xl">
+		<ChainOfThought className="w-full max-w-2xl">
 			<ChainOfThoughtHeader>Tracing model reasoning</ChainOfThoughtHeader>
 			<ChainOfThoughtContent>
 				<ChainOfThoughtStep

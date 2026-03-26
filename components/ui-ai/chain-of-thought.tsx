@@ -192,17 +192,19 @@ export const ChainOfThoughtStep = memo(
 		const stepHeader = hasExpandableContent ? (
 			<button
 				type="button"
-				className="group/step flex w-full items-start gap-2 text-left transition-colors hover:text-text"
+				className="group/step flex w-full items-start text-left transition-colors hover:text-text"
 				onClick={() => handleOpenChange(!isOpen)}
 			>
-				<span className="flex-1">{label}</span>
-				<Icon
-					render={<ChevronDownIcon label="" size="small" spacing="none" />}
-					className={cn(
-						"mt-0.5 size-4 shrink-0 transition-[transform,opacity] opacity-0 group-hover/step:opacity-100 group-focus-visible/step:opacity-100",
-						isOpen ? "rotate-180" : "rotate-0"
-					)}
-				/>
+				<span className="inline-flex items-start gap-1.5">
+					<span>{label}</span>
+					<Icon
+						render={<ChevronDownIcon label="" size="small" spacing="none" />}
+						className={cn(
+							"mt-0.5 size-4 shrink-0 transition-[transform,opacity] opacity-0 group-hover/step:opacity-100 group-focus-visible/step:opacity-100",
+							isOpen ? "rotate-180" : "rotate-0"
+						)}
+					/>
+				</span>
 			</button>
 		) : (
 			<div>{label}</div>

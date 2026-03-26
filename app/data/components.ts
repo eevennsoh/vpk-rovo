@@ -257,6 +257,7 @@ export const UI_COMPONENTS: ComponentEntry[] = [
 
 export const BLOCK_COMPONENTS: ComponentEntry[] = [
 	blockComponent("agent-progress", "Agent Progress"),
+	blockComponent("task-progress", "Task Progress"),
 	blockComponent("answer-card", "Answer Card"),
 	blockComponent("approval-card", "Approval Card"),
 	blockComponent("chatbot", "Chatbot"),
@@ -272,6 +273,7 @@ export const BLOCK_COMPONENTS: ComponentEntry[] = [
 	blockComponent("make-grid", "Make Grid"),
 	blockComponent("make-item", "Make Item"),
 	blockComponent("make-page", "Make Page"),
+	blockComponent("mermaid-diagram", "Mermaid Diagram"),
 	{ name: "Login 01", slug: "login-01", importPath: "@/components/blocks/login/login-01", category: "blocks", detail: BLOCK_DETAILS["login-01"] },
 	{ name: "Login 02", slug: "login-02", importPath: "@/components/blocks/login/login-02", category: "blocks", detail: BLOCK_DETAILS["login-02"] },
 	{ name: "Login 03", slug: "login-03", importPath: "@/components/blocks/login/login-03", category: "blocks", detail: BLOCK_DETAILS["login-03"] },

@@ -25,6 +25,7 @@ const ADS_AI_SLUGS = new Set([
 
 const ADS_BLOCK_SLUGS = new Set([
 	"agent-progress",
+	"task-progress",
 	"answer-card",
 	"top-navigation",
 	"prompt-gallery",

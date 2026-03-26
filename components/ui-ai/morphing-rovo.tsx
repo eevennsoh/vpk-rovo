@@ -68,6 +68,8 @@ export interface MorphingRovoShapeProps {
 	duration?: number;
 	/** Easing function for each morph transition. @default "backOut" */
 	ease?: string;
+	/** Clockwise rotation in degrees applied during each morph step. @default 180 */
+	rotationPerStep?: number;
 	/** Max blur radius in pixels applied at transition midpoints. 0 disables. @default 2 */
 	blur?: number;
 	/** Additional CSS classes applied to the wrapper. */
@@ -83,6 +85,7 @@ export function MorphingRovoShape({
 	size = 32,
 	duration = 0.6,
 	ease = "backOut",
+	rotationPerStep = 180,
 	blur = 2,
 	className,
 }: Readonly<MorphingRovoShapeProps>) {
@@ -94,6 +97,7 @@ export function MorphingRovoShape({
 	});
 
 	const color = useTransform(progress, [0, 1, 2, 3, 4], colors);
+	const rotate = useTransform(progress, [0, 4], ["0deg", `${rotationPerStep * 4}deg`]);
 
 	// Blur peaks at each transition midpoint, clears when shape is fully formed
 	const blurFilter = useTransform(progress, (p) => {
@@ -142,7 +146,9 @@ export function MorphingRovoShape({
 				alignItems: "center",
 				justifyContent: "center",
 				flexShrink: 0,
+				rotate,
 				filter: blurFilter,
+				willChange: blur > 0 ? "transform, filter" : "transform",
 			}}
 		>
 			<svg

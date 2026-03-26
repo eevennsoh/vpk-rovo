@@ -1,11 +1,16 @@
-export type QuestionCardPrimaryAction = "skip" | "submit";
+export type QuestionCardPrimaryAction = "skip" | "next" | "submit";
 
 /**
- * Keep Skip as the primary CTA until every question has an answer.
- * Once complete, switch the primary CTA to Submit.
+ * Determine the footer primary CTA:
+ * - "submit" when every question has an answer
+ * - "next" when the current question has custom input text (advances to next question)
+ * - "skip" otherwise
  */
 export function getQuestionCardPrimaryAction(
-	allQuestionsAnswered: boolean
+	allQuestionsAnswered: boolean,
+	hasCustomInputText: boolean,
 ): QuestionCardPrimaryAction {
-	return allQuestionsAnswered ? "submit" : "skip";
+	if (allQuestionsAnswered) return "submit";
+	if (hasCustomInputText) return "next";
+	return "skip";
 }

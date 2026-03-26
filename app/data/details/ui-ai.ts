@@ -222,7 +222,7 @@ export const UI_AI_DETAILS: Record<string, ComponentDetail> = {
 		usage: `import { MorphingRovo } from "@/components/ui-ai/morphing-rovo";
 
 <MorphingRovo.Shape size={32} />
-<MorphingRovo.Shape size={64} duration={0.8} />`,
+<MorphingRovo.Shape size={64} duration={0.8} rotationPerStep={180} />`,
 		props: [
 			{
 				name: "size",
@@ -243,13 +243,19 @@ export const UI_AI_DETAILS: Record<string, ComponentDetail> = {
 				description: "Easing function for each morph transition (e.g. backOut, easeInOut, circOut, linear).",
 			},
 			{
+				name: "rotationPerStep",
+				type: "number",
+				default: "180",
+				description: "Clockwise rotation in degrees applied during each morph step.",
+			},
+			{
 				name: "className",
 				type: "string",
 				description: "Additional CSS classes applied to the wrapper.",
 			},
 		],
 		examples: [
-			{ title: "Interactive", description: "Control size, duration, and easing with GUI sliders.", demoSlug: "morphing-rovo-demo" },
+			{ title: "Interactive", description: "Control size, duration, easing, rotation, and blur with GUI sliders.", demoSlug: "morphing-rovo-demo" },
 		],
 	},
 
@@ -594,7 +600,7 @@ import { SearchIcon } from "lucide-react";
 		examples: [
 			{ title: "Preload", description: "Collapsed initial state before reasoning begins — header visible, content hidden.", demoSlug: "chain-of-thought-demo-preload" },
 			{ title: "Thinking", description: "Active processing — multiple steps with search results, image evidence, and one active step in progress.", demoSlug: "chain-of-thought-demo-thinking" },
-			{ title: "Completed", description: "All reasoning steps complete with full evidence chain visible.", demoSlug: "chain-of-thought-demo-completed" },
+			{ title: "Completed", description: "All reasoning steps complete, with the parent summary collapsed by default.", demoSlug: "chain-of-thought-demo-completed" },
 			{ title: "Status variants", description: "Compare complete, active, and pending step states in one reasoning chain.", demoSlug: "chain-of-thought-demo-status-variants" },
 			{ title: "Search results", description: "Standalone source-chip usage for search and retrieval phases.", demoSlug: "chain-of-thought-demo-search-results" },
 			{ title: "Image step", description: "Reasoning step with image evidence and caption.", demoSlug: "chain-of-thought-demo-image-step" },

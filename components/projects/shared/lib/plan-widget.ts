@@ -1,5 +1,6 @@
 import { API_ENDPOINTS } from "@/lib/api-config";
 import type { RovoUIMessage } from "@/lib/rovo-ui-messages";
+import type { PlanApprovalState } from "@/components/projects/shared/lib/plan-approval";
 import { resolvePlanDisplayTitle } from "@/components/projects/shared/lib/plan-identity";
 
 interface StringRecord {
@@ -356,9 +357,13 @@ export interface PlanBuildableResult {
 export function isPlanCardBuildable(
 	planPayload: ParsedPlanWidgetPayload,
 	allPlanPayloads: ReadonlyArray<ParsedPlanWidgetPayload>,
-	acceptedPlanKey: string | null,
+	approvalState: PlanApprovalState | null,
 ): PlanBuildableResult {
-	if (acceptedPlanKey !== null) {
+	if (approvalState?.status === "pending") {
+		return { buildable: false, reason: "Plan execution is already in progress." };
+	}
+
+	if (approvalState?.status === "accepted") {
 		return { buildable: false, reason: "A plan has already been accepted." };
 	}
 

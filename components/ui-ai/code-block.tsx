@@ -249,7 +249,7 @@ const LINE_NUMBER_CLASSES = cn(
   "before:w-8",
   "before:mr-4",
   "before:text-right",
-  "before:text-text-subtlest",
+  "before:text-text-disabled",
   "before:font-mono",
   "before:select-none"
 );
@@ -385,7 +385,7 @@ export function CodeBlockActions({
 }: Readonly<HTMLAttributes<HTMLDivElement>>) {
   return (
     <div
-      className={cn("-my-1 -mr-1 flex items-center gap-2", className)}
+      className={cn("-my-1 -mr-1 flex items-center gap-1", className)}
       {...props}
     >
       {children}

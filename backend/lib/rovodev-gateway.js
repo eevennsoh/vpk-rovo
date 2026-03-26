@@ -926,6 +926,7 @@ async function streamViaRovoDev({
 	avoidPorts,
 	skipSetChatMessage = false,
 	includeSubagentEvents = false,
+	cancelConflictTurn,
 }) {
 	const waitForTurn = conflictPolicy === "wait-for-turn";
 	const resolvedTimeoutMs =
@@ -1560,6 +1561,7 @@ async function streamViaRovoDev({
 						timeoutMs: resolvedTimeoutMs,
 						cancelOnConflict: true,
 						port: handle.port,
+						...(typeof cancelConflictTurn === "function" ? { cancelConflictTurn } : {}),
 					}
 				);
 				if (aborted || abortedBySignal || signal?.aborted) {

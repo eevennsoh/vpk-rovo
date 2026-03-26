@@ -1,4 +1,5 @@
 import type { ParsedPlanTask, ParsedPlanWidgetPayload } from "@/components/projects/shared/lib/plan-widget";
+import type { FutureChatActiveRun } from "@/lib/future-chat-types";
 import type { RovoUIMessage } from "@/lib/rovo-ui-messages";
 import { toNonEmptyString } from "@/lib/utils";
 
@@ -24,6 +25,11 @@ export interface PlanApprovalSubmission extends PlanApprovalSelection {
 	planTasks?: PlanApprovalTaskInfo[];
 	toolCallId?: string;
 	deferredToolCallId?: string;
+}
+
+export interface PlanApprovalState {
+	planKey: string;
+	status: "accepted" | "pending";
 }
 
 export function serializePlanApprovalKey(
@@ -91,6 +97,78 @@ export function planWidgetRequiresApproval(
 export function findAcceptedPlanKey(
 	messages: ReadonlyArray<RovoUIMessage>,
 ): string | null {
+	const state = getPlanApprovalState(messages, null);
+	return state?.status === "accepted" ? state.planKey : null;
+}
+
+function getNextAssistantMessage(
+	messages: ReadonlyArray<RovoUIMessage>,
+	acceptanceIndex: number,
+): RovoUIMessage | null {
+	for (let index = acceptanceIndex + 1; index < messages.length; index += 1) {
+		const nextMessage = messages[index];
+		if (nextMessage.role === "assistant") {
+			return nextMessage;
+		}
+		if (nextMessage.role === "user") {
+			return null;
+		}
+	}
+
+	return null;
+}
+
+function hasFollowUpWidgetError(
+	messages: ReadonlyArray<RovoUIMessage>,
+	acceptanceIndex: number,
+): boolean {
+	const nextMessage = getNextAssistantMessage(messages, acceptanceIndex);
+	if (!nextMessage) {
+		return false;
+	}
+
+	return nextMessage.parts.some(
+		(part) => part.type === "data-widget-error",
+	);
+}
+
+function isSubstantiveAssistantPart(
+	part: RovoUIMessage["parts"][number],
+): boolean {
+	if (part.type === "text") {
+		return typeof part.text === "string" && part.text.trim().length > 0;
+	}
+
+	if (
+		part.type === "data-route-decision" ||
+		part.type === "data-thinking-status" ||
+		part.type === "data-thinking-event" ||
+		part.type === "data-widget-loading" ||
+		part.type === "data-turn-complete" ||
+		part.type === "data-suggested-questions"
+	) {
+		return false;
+	}
+
+	return true;
+}
+
+function hasSubstantiveAssistantFollowUp(
+	messages: ReadonlyArray<RovoUIMessage>,
+	acceptanceIndex: number,
+): boolean {
+	const nextMessage = getNextAssistantMessage(messages, acceptanceIndex);
+	if (!nextMessage) {
+		return false;
+	}
+
+	return nextMessage.parts.some((part) => isSubstantiveAssistantPart(part));
+}
+
+export function getPlanApprovalState(
+	messages: ReadonlyArray<RovoUIMessage>,
+	activeRun: FutureChatActiveRun | null,
+): PlanApprovalState | null {
 	for (let index = messages.length - 1; index >= 0; index -= 1) {
 		const message = messages[index];
 		if (message.role !== "user") {
@@ -105,34 +183,27 @@ export function findAcceptedPlanKey(
 			continue;
 		}
 
-		const planKey = message.metadata?.planApprovalPlanKey;
-		if (typeof planKey === "string" && planKey.trim()) {
-			// Check if the assistant response following this acceptance
-			// contains a widget error, indicating the execution failed.
-			// In that case, the acceptance is void — the user should be
-			// able to retry.
-			if (hasFollowUpWidgetError(messages, index)) {
-				continue;
-			}
-			return planKey;
+		const planKey = toNonEmptyString(message.metadata?.planApprovalPlanKey);
+		if (!planKey) {
+			return null;
 		}
+
+		if (hasFollowUpWidgetError(messages, index)) {
+			continue;
+		}
+
+		if (activeRun !== null) {
+			return { status: "pending", planKey };
+		}
+
+		if (hasSubstantiveAssistantFollowUp(messages, index)) {
+			return { status: "accepted", planKey };
+		}
+
+		return null;
 	}
 
 	return null;
-}
-
-function hasFollowUpWidgetError(
-	messages: ReadonlyArray<RovoUIMessage>,
-	acceptanceIndex: number,
-): boolean {
-	const nextMessage = messages[acceptanceIndex + 1];
-	if (!nextMessage || nextMessage.role !== "assistant") {
-		return false;
-	}
-
-	return nextMessage.parts.some(
-		(part) => part.type === "data-widget-error",
-	);
 }
 
 export function getPlanApprovalKeyFromPlanWidget(

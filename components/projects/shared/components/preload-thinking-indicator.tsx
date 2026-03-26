@@ -2,8 +2,13 @@
 
 import type { ReactNode } from "react";
 import { Message } from "@/components/ui-ai/message";
-import { AdsReasoningTrigger, Reasoning } from "@/components/ui-ai/reasoning";
-import { getReasoningPropsForPhase } from "@/components/projects/shared/hooks/use-reasoning-phase";
+import {
+	ChainOfThought,
+	ChainOfThoughtContent,
+	ChainOfThoughtHeader,
+	ChainOfThoughtStep,
+} from "@/components/ui-ai/chain-of-thought";
+import SearchIcon from "@atlaskit/icon/core/search";
 import { getPreloadShimmerLabel } from "@/components/projects/shared/lib/reasoning-labels";
 
 interface PreloadThinkingIndicatorProps {
@@ -13,24 +18,20 @@ interface PreloadThinkingIndicatorProps {
 export function PreloadThinkingIndicator({
 	label = getPreloadShimmerLabel(),
 }: Readonly<PreloadThinkingIndicatorProps>): ReactNode {
-	const preloadPhaseProps = getReasoningPropsForPhase("preload", undefined, false);
-
 	return (
 		<Message from="assistant" className="max-w-full">
-			<Reasoning
-				className="mb-0"
-				defaultOpen={false}
-				isStreaming={preloadPhaseProps.isStreaming}
-				streamingWave={preloadPhaseProps.streamingWave}
-				streamingWaveGradientColor={preloadPhaseProps.streamingWaveGradientColor}
-				animatedDots={preloadPhaseProps.animatedDots}
-			>
-				<AdsReasoningTrigger
-					label={label}
-					showChevron={false}
-					streaming={preloadPhaseProps.triggerStreaming}
-				/>
-			</Reasoning>
+			<ChainOfThought className="w-full" defaultOpen={false}>
+				<ChainOfThoughtHeader showChevron={false} shimmer>
+					{label}
+				</ChainOfThoughtHeader>
+				<ChainOfThoughtContent>
+					<ChainOfThoughtStep
+						icon={SearchIcon}
+						label="Preparing reasoning trace"
+						status="pending"
+					/>
+				</ChainOfThoughtContent>
+			</ChainOfThought>
 		</Message>
 	);
 }

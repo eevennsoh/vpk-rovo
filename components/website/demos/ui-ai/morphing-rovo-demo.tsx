@@ -16,6 +16,7 @@ export default function MorphingRovoDemo() {
 	const [size, setSize] = useState(64);
 	const [duration, setDuration] = useState(0.6);
 	const [ease, setEase] = useState<string>("backOut");
+	const [rotationPerStep, setRotationPerStep] = useState(180);
 	const [blur, setBlur] = useState(2);
 
 	const config = useMemo(
@@ -23,15 +24,16 @@ export default function MorphingRovoDemo() {
 			size,
 			duration,
 			ease,
+			rotationPerStep,
 			blur,
 		}),
-		[size, duration, ease, blur],
+		[size, duration, ease, rotationPerStep, blur],
 	);
 
 	return (
 		<div className="grid h-full w-full gap-4 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-stretch">
 			<div className="flex h-full min-h-[350px] w-full items-center justify-center rounded-lg bg-surface p-12">
-				<MorphingRovo.Shape size={size} duration={duration} ease={ease} blur={blur} />
+				<MorphingRovo.Shape size={size} duration={duration} ease={ease} rotationPerStep={rotationPerStep} blur={blur} />
 			</div>
 			<GUI.Panel title="Morphing Rovo controls" values={config}>
 				<GUI.Control
@@ -65,6 +67,18 @@ export default function MorphingRovoDemo() {
 					value={ease}
 					options={EASE_OPTIONS}
 					onChange={setEase}
+				/>
+				<GUI.Control
+					id="morphing-rotation"
+					label="Rotation"
+					description="Clockwise rotation applied during each morph step."
+					value={rotationPerStep}
+					defaultValue={180}
+					min={0}
+					max={360}
+					step={15}
+					unit="deg"
+					onChange={setRotationPerStep}
 				/>
 				<GUI.Control
 					id="morphing-blur"

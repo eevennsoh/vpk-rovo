@@ -19,7 +19,15 @@ import StatusInformationIcon from "@atlaskit/icon/core/status-information";
 import ToolsIcon from "@atlaskit/icon/core/tools";
 import { isValidElement, useState } from "react";
 
-import { CodeBlock } from "./code-block";
+import {
+  CodeBlock,
+  CodeBlockActions,
+  CodeBlockCopyButton,
+  CodeBlockDownloadButton,
+  CodeBlockHeader,
+  CodeBlockTitle,
+  CodeBlockFilename,
+} from "./code-block";
 
 export type ToolProps = ComponentProps<typeof Collapsible>;
 
@@ -359,7 +367,17 @@ export const ToolInput = ({ className, input, ...props }: ToolInputProps) => {
           className="text-[12px] leading-5"
           code={inputPreview.text}
           language="json"
-        />
+        >
+          <CodeBlockHeader>
+            <CodeBlockTitle>
+              <CodeBlockFilename>json</CodeBlockFilename>
+            </CodeBlockTitle>
+            <CodeBlockActions>
+              <CodeBlockDownloadButton />
+              <CodeBlockCopyButton />
+            </CodeBlockActions>
+          </CodeBlockHeader>
+        </CodeBlock>
       </div>
       {inputPreview.truncated ? (
         <p className="text-[11px] leading-4 text-text-subtle">
@@ -402,25 +420,28 @@ export const ToolOutput = ({
   const formattedOutputBytes =
     typeof outputBytes === "number" ? formatByteSize(outputBytes) : null;
 
-  let Output = <div>{output as ReactNode}</div>;
+  const outputLanguage =
+    typeof output === "object" && !isValidElement(output) ? "json" : "markdown";
+  const outputLabel =
+    outputLanguage === "json" ? "json" : "result";
 
-  if (typeof output === "object" && !isValidElement(output)) {
-    Output = (
-      <CodeBlock
-        className="text-[12px] leading-5"
-        code={outputPreview.text}
-        language="json"
-      />
-    );
-  } else if (typeof output === "string") {
-    Output = (
-      <CodeBlock
-        className="text-[12px] leading-5"
-        code={outputPreview.text}
-        language="markdown"
-      />
-    );
-  }
+  const Output = (
+    <CodeBlock
+      className="text-[12px] leading-5"
+      code={outputPreview.text}
+      language={outputLanguage}
+    >
+      <CodeBlockHeader>
+        <CodeBlockTitle>
+          <CodeBlockFilename>{outputLabel}</CodeBlockFilename>
+        </CodeBlockTitle>
+        <CodeBlockActions>
+          <CodeBlockDownloadButton />
+          <CodeBlockCopyButton />
+        </CodeBlockActions>
+      </CodeBlockHeader>
+    </CodeBlock>
+  );
 
   return (
     <div className={cn("space-y-2", className)} {...props}>

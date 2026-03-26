@@ -517,7 +517,7 @@ function FutureChatComposerInner({
 										</motion.div>
 									) : showSubmitButton ? (
 										<motion.div key="submit" animate={{ opacity: 1 }} exit={{ opacity: 0 }} initial={{ opacity: 0 }} transition={{ duration: 0.08 }}>
-											<PromptInputSubmit aria-label="Submit" disabled={submitDisabled || !canSubmit} onStop={() => void onStop()} shape="circle" size="icon-sm" status={composerStatus}>
+											<PromptInputSubmit aria-label="Submit" className="bg-icon text-white hover:bg-icon hover:opacity-90 active:opacity-80 [&_svg]:text-white" disabled={submitDisabled || !canSubmit} onStop={() => void onStop()} shape="circle" size="icon-sm" status={composerStatus}>
 												<ArrowUpIcon label="" />
 											</PromptInputSubmit>
 										</motion.div>
@@ -525,7 +525,7 @@ function FutureChatComposerInner({
 										<motion.div key="voice-start" animate={{ opacity: 1 }} exit={{ opacity: 0 }} initial={{ opacity: 0 }} transition={{ duration: 0.08 }}>
 											<PromptInputButton
 												aria-label="Start live voice"
-												className="size-8 bg-[var(--ds-icon)] text-white transition-colors hover:bg-[var(--ds-icon)] hover:opacity-90 active:opacity-80 [&_svg]:text-white"
+												className="size-8 bg-icon text-white transition-colors hover:bg-icon hover:opacity-90 active:opacity-80 [&_svg]:text-white"
 												onClick={handleToggleRealtimeVoice}
 												shape="circle"
 												tooltip={{ content: "Live chat", delay: 0 }}
