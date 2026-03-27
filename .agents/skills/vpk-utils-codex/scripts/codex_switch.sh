@@ -12,7 +12,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SKILL_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 ASSETS_DIR="${SKILL_DIR}/assets"
 ROLLBACK_CONFIG_TEMPLATE="${ASSETS_DIR}/config-0.107.0.toml"
-MODERN_CONFIG_TEMPLATE="${ASSETS_DIR}/config-0.116.0-plus.toml"
+MODERN_CONFIG_TEMPLATE="${ASSETS_DIR}/config-latest.toml"
 
 usage() {
 	printf '%s\n' \

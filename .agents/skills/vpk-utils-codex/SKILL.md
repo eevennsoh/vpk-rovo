@@ -91,7 +91,7 @@ The bundled script:
 ## Bundled assets
 
 - `assets/config-0.107.0.toml`: rollback profile for OAuth + `openai-no-ws`
-- `assets/config-0.116.0-plus.toml`: modern profile for API key + `atlassian-proxy`
+- `assets/config-latest.toml`: modern profile for API key + `atlassian-proxy` (version-agnostic; update this file when upgrading)
 
 ## Guardrails
 
