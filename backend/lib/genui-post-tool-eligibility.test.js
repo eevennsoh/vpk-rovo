@@ -144,3 +144,18 @@ test("shouldAttemptPostToolGenui does not throw for the original post-tool fallb
 		})
 	);
 });
+
+test("shouldAttemptPostToolGenui suppresses GenUI during plan execution phase", () => {
+	assert.equal(
+		shouldAttemptPostToolGenui({
+			...buildBaseInput(),
+			planSessionActive: true,
+			resolvedPlanModeActive: true,
+			shouldForceCardFirstGenui: true,
+			hasObservedActionableToolCall: true,
+			hasToolObservationData: true,
+		}),
+		false,
+		"Plan execution phase must suppress all GenUI card emission",
+	);
+});

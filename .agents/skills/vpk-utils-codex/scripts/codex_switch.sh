@@ -3,6 +3,7 @@ set -euo pipefail
 
 DEFAULT_MODERN_VERSION="0.116.0"
 ROLLBACK_VERSION="0.107.0"
+MODERN_PROXY_BASE_URL_DEFAULT="http://localhost:29575/openai/v1"
 CODEX_HOME_DIR="${HOME}/.codex"
 AUTH_FILE="${CODEX_HOME_DIR}/auth.json"
 CONFIG_FILE="${CODEX_HOME_DIR}/config.toml"
@@ -46,6 +47,35 @@ auth_mode() {
 config_value() {
 	local key="$1"
 	node -e 'const fs=require("fs"); const key=process.argv[1]; const p=process.env.HOME+"/.codex/config.toml"; if (!fs.existsSync(p)) { console.log("missing"); process.exit(0); } const lines=fs.readFileSync(p,"utf8").split(/\r?\n/); const line=lines.find((entry)=>entry.startsWith(key+" = ")); if (!line) { console.log("missing"); process.exit(0); } const value=line.slice((key+" = ").length).trim().replace(/^"|"$/g, ""); console.log(value);' "$key"
+}
+
+config_value_in_table() {
+	local table="$1"
+	local key="$2"
+	local path="${3:-$CONFIG_FILE}"
+	node -e 'const fs=require("fs"); const [table,key,path]=process.argv.slice(1); if (!fs.existsSync(path)) { console.log("missing"); process.exit(0); } const lines=fs.readFileSync(path,"utf8").split(/\r?\n/); let inTable=false; for (const entry of lines) { const trimmed=entry.trim(); if (/^\[.*\]$/.test(trimmed)) { inTable = trimmed === `[${table}]`; continue; } if (inTable && trimmed.startsWith(key+" = ")) { const value=trimmed.slice((key+" = ").length).trim().replace(/^"|"$/g, ""); console.log(value); process.exit(0); } } console.log("missing");' "$table" "$key" "$path"
+}
+
+set_config_value_in_table() {
+	local table="$1"
+	local key="$2"
+	local value="$3"
+	local path="${4:-$CONFIG_FILE}"
+	node -e 'const fs=require("fs"); const [table,key,value,path]=process.argv.slice(1); const lines=fs.readFileSync(path,"utf8").split(/\r?\n/); let inTable=false; let replaced=false; const updated=lines.map((entry)=>{ const trimmed=entry.trim(); if (/^\[.*\]$/.test(trimmed)) { inTable = trimmed === `[${table}]`; return entry; } if (inTable && trimmed.startsWith(key+" = ")) { replaced=true; const indent=(entry.match(/^\s*/) || [""])[0]; return `${indent}${key} = "${value}"`; } return entry; }); if (!replaced) { console.error(`Missing ${key} in [${table}] within ${path}`); process.exit(1); } fs.writeFileSync(path, updated.join("\n"));' "$table" "$key" "$value" "$path"
+}
+
+resolve_modern_proxy_base_url() {
+	local configured_base_url
+	if [ -n "${CODEX_ATLASSIAN_PROXY_BASE_URL:-}" ]; then
+		printf '%s\n' "$CODEX_ATLASSIAN_PROXY_BASE_URL"
+		return 0
+	fi
+	configured_base_url="$(config_value_in_table "model_providers.atlassian-proxy" "base_url" "$CONFIG_FILE")"
+	if [ -n "$configured_base_url" ] && [ "$configured_base_url" != "missing" ]; then
+		printf '%s\n' "$configured_base_url"
+		return 0
+	fi
+	printf '%s\n' "$MODERN_PROXY_BASE_URL_DEFAULT"
 }
 
 ensure_templates() {
@@ -118,13 +148,14 @@ install_version() {
 
 apply_config_profile() {
 	local profile="$1"
-	local src
+	local src preserved_base_url
 	case "$profile" in
 		rollback)
 			src="$ROLLBACK_CONFIG_TEMPLATE"
 			;;
 		modern)
 			src="$MODERN_CONFIG_TEMPLATE"
+			preserved_base_url="$(resolve_modern_proxy_base_url)"
 			;;
 		*)
 			fail "Unknown config profile: $profile"
@@ -132,6 +163,11 @@ apply_config_profile() {
 	esac
 	backup_config
 	cp "$src" "$CONFIG_FILE"
+	if [ "$profile" = "modern" ] && [ -n "$preserved_base_url" ] && [ "$preserved_base_url" != "missing" ]; then
+		set_config_value_in_table "model_providers.atlassian-proxy" "base_url" "$preserved_base_url" "$CONFIG_FILE"
+		printf 'Applied config profile %s from %s (atlassian-proxy base_url: %s)\n' "$profile" "$src" "$preserved_base_url"
+		return 0
+	fi
 	printf 'Applied config profile %s from %s\n' "$profile" "$src"
 }
 
@@ -142,11 +178,16 @@ login_with_api_key() {
 }
 
 print_status() {
+	local provider
+	provider="$(config_value model_provider)"
 	printf 'codex path: %s\n' "$(command -v codex)"
 	printf 'codex version: %s\n' "$(codex_version)"
 	printf 'auth mode: %s\n' "$(auth_mode)"
-	printf 'model_provider: %s\n' "$(config_value model_provider)"
+	printf 'model_provider: %s\n' "$provider"
 	printf 'model: %s\n' "$(config_value model)"
+	if [ "$provider" = "atlassian-proxy" ]; then
+		printf 'atlassian-proxy base_url: %s\n' "$(config_value_in_table "model_providers.atlassian-proxy" "base_url" "$CONFIG_FILE")"
+	fi
 }
 
 switch_to_version() {

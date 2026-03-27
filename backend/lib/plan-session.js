@@ -61,6 +61,20 @@ function shouldRestorePlanModeOnResume({ pausedToolCallRecord, resolvedPlanModeA
 }
 
 /**
+ * Returns true when the plan session for `threadId` is in the execution
+ * phase. During execution, all GenUI card routing must be suppressed so
+ * that plan task outputs route to the artifact panel instead.
+ *
+ * @param {string} threadId
+ * @returns {boolean}
+ */
+function isPlanExecutionPhase(threadId) {
+	if (!threadId) return false;
+	const session = getPlanSession(threadId);
+	return session.isActive && session.phase === "execution";
+}
+
+/**
  * Reset the internal session store. Only for tests.
  */
 function _resetForTest() {
@@ -72,5 +86,6 @@ module.exports = {
 	updatePlanSession,
 	clearPlanSession,
 	shouldRestorePlanModeOnResume,
+	isPlanExecutionPhase,
 	_resetForTest,
 };

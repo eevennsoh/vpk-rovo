@@ -5750,6 +5750,13 @@ const UI_AI_VARIANT_DEMOS: Record<string, ComponentType> = {
       })),
     { ssr: false },
   ),
+  "chain-of-thought-demo-tool-icon-table": dynamic(
+    () =>
+      import("./demos/ui-ai/chain-of-thought-demo").then((mod) => ({
+        default: mod.ChainOfThoughtDemoToolIconTable,
+      })),
+    { ssr: false },
+  ),
   "canvas-demo-workflow": dynamic(
     () =>
       import("./demos/ui-ai/canvas-demo").then((mod) => ({

@@ -1,13 +1,13 @@
 export const REASONING_LABELS = {
 	trigger: {
-		thinking: "Thinking",
+		thinking: "Rovo is thinking",
 		preloadShimmer: "Rovo is cooking",
 		awaitingUserResponse: "Awaiting user response",
 		working: "Working",
 		generatingResults: "Generating results",
 	},
 	section: {
-		thinking: "Thinking",
+		thinking: "Rovo is thinking",
 		stream: "Response",
 		steps: "Steps",
 		agents: "Agents",
@@ -41,5 +41,5 @@ export function getReasoningCompletedLabel(duration?: number): string {
 		return REASONING_LABELS.completed.completed;
 	}
 
-	return `Thought for ${duration} ${duration === 1 ? "second" : "seconds"}`;
+	return `Thought for ${duration}s`;
 }

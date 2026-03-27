@@ -1,4 +1,4 @@
-export type FutureChatAgentMode = "ask" | "default";
+export type FutureChatAgentMode = "ask" | "default" | "plan";
 
 export function buildFutureChatCancelUrl(threadId?: string | null): string {
 	return threadId
@@ -22,6 +22,7 @@ export function parseFutureChatAgentMode(
 	if (
 		value === "ask"
 		|| value === "default"
+		|| value === "plan"
 	) {
 		return value;
 	}

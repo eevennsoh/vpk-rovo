@@ -1,5 +1,6 @@
 const { getNonEmptyString } = require("./shared-utils");
 const { isConversationalMessage, isTaskLikeMessage } = require("./planning-question-gate");
+const { isExplicitNewFutureChatArtifactRequest } = require("./future-chat-artifact-updates");
 
 // ---------------------------------------------------------------------------
 // Regex patterns — ported from existing classifiers
@@ -80,8 +81,18 @@ function resolveRoutingDecisionFastPath(context) {
 
 	const lower = prompt.toLowerCase();
 
-	// D1: Active artifact → artifact_update immediately
+	// D1: Active artifact → artifact_update unless user explicitly requests a new artifact
 	if (activeArtifact?.id) {
+		if (isExplicitNewFutureChatArtifactRequest({ latestUserMessage: prompt })) {
+			return {
+				intent: "artifact_create",
+				presentation: "artifact_preview",
+				confidence: 0.95,
+				reason: "explicit_new_artifact",
+				origin,
+			};
+		}
+
 		return {
 			intent: "artifact_update",
 			presentation: "artifact_preview",

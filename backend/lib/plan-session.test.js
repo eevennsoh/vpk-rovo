@@ -7,6 +7,7 @@ const {
 	updatePlanSession,
 	clearPlanSession,
 	shouldRestorePlanModeOnResume,
+	isPlanExecutionPhase,
 	_resetForTest,
 } = require("./plan-session");
 
@@ -414,6 +415,56 @@ describe("plan-session", () => {
 			updatePlanSession("t1", { isActive: true, phase: "qa" });
 			assert.strictEqual(getPlanSession("t1").isActive, true,
 				"New plan session can be created after cancel");
+		});
+	});
+
+	describe("isPlanExecutionPhase", () => {
+		it("returns false for unknown thread", () => {
+			assert.strictEqual(isPlanExecutionPhase("unknown-thread"), false);
+		});
+
+		it("returns false for null/undefined/empty threadId", () => {
+			assert.strictEqual(isPlanExecutionPhase(null), false);
+			assert.strictEqual(isPlanExecutionPhase(undefined), false);
+			assert.strictEqual(isPlanExecutionPhase(""), false);
+		});
+
+		it("returns false when session is in qa phase", () => {
+			updatePlanSession("t1", { isActive: true, phase: "qa" });
+			assert.strictEqual(isPlanExecutionPhase("t1"), false);
+		});
+
+		it("returns false when session is in plan phase", () => {
+			updatePlanSession("t1", { isActive: true, phase: "plan" });
+			assert.strictEqual(isPlanExecutionPhase("t1"), false);
+		});
+
+		it("returns true when session is in execution phase and active", () => {
+			updatePlanSession("t1", { isActive: true, phase: "execution" });
+			assert.strictEqual(isPlanExecutionPhase("t1"), true);
+		});
+
+		it("returns false when session is in execution phase but not active", () => {
+			updatePlanSession("t1", { isActive: false, phase: "execution" });
+			assert.strictEqual(isPlanExecutionPhase("t1"), false);
+		});
+
+		it("returns false after session is cleared", () => {
+			updatePlanSession("t1", { isActive: true, phase: "execution" });
+			assert.strictEqual(isPlanExecutionPhase("t1"), true);
+			clearPlanSession("t1");
+			assert.strictEqual(isPlanExecutionPhase("t1"), false);
+		});
+
+		it("transitions correctly through full lifecycle", () => {
+			updatePlanSession("t1", { isActive: true, phase: "qa" });
+			assert.strictEqual(isPlanExecutionPhase("t1"), false);
+
+			updatePlanSession("t1", { phase: "plan" });
+			assert.strictEqual(isPlanExecutionPhase("t1"), false);
+
+			updatePlanSession("t1", { phase: "execution" });
+			assert.strictEqual(isPlanExecutionPhase("t1"), true);
 		});
 	});
 });

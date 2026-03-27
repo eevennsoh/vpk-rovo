@@ -15,6 +15,9 @@ test("buildFutureChatAgentModeRequest returns only mode", () => {
 	assert.deepEqual(buildFutureChatAgentModeRequest({ mode: "ask" }), {
 		mode: "ask",
 	});
+	assert.deepEqual(buildFutureChatAgentModeRequest({ mode: "plan" }), {
+		mode: "plan",
+	});
 });
 
 test("buildFutureChatCancelUrl uses threadId query param", () => {
@@ -28,7 +31,7 @@ test("parseFutureChatAgentMode accepts only supported modes", () => {
 	assert.equal(parseFutureChatAgentMode("ask"), "ask");
 	assert.equal(parseFutureChatAgentMode(""), null);
 	assert.equal(parseFutureChatAgentMode("unknown"), null);
-	assert.equal(parseFutureChatAgentMode("plan"), null);
+	assert.equal(parseFutureChatAgentMode("plan"), "plan");
 });
 
 test("fetchFutureChatAgentMode requests agent mode and parses the response", async () => {

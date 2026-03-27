@@ -604,6 +604,7 @@ import { SearchIcon } from "lucide-react";
 			{ title: "Status variants", description: "Compare complete, active, and pending step states in one reasoning chain.", demoSlug: "chain-of-thought-demo-status-variants" },
 			{ title: "Search results", description: "Standalone source-chip usage for search and retrieval phases.", demoSlug: "chain-of-thought-demo-search-results" },
 			{ title: "Image step", description: "Reasoning step with image evidence and caption.", demoSlug: "chain-of-thought-demo-image-step" },
+			{ title: "Tool icon table", description: "Reference table showing the resolved icon or logo used for native tools, Atlassian/VPK servers, 3P MCP servers, and fallback cases.", demoSlug: "chain-of-thought-demo-tool-icon-table" },
 		],
 	},
 

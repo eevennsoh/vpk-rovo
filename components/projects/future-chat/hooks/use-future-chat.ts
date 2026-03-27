@@ -66,6 +66,9 @@ import {
 	normalizeFutureChatTodoQueuePayload,
 } from "@/components/projects/future-chat/lib/future-chat-todo-queue";
 import {
+	extractAgentExecutionUpdates,
+} from "@/components/projects/make/lib/execution-data";
+import {
 	hasQueuedFutureChatFollowUp,
 	isFutureChatThreadBusy,
 } from "@/components/projects/future-chat/lib/future-chat-queue-gate";
@@ -98,6 +101,8 @@ import {
 	upsertFutureChatRealtimeMessage,
 	listFutureChatThreads,
 	listFutureChatVotes,
+	createFutureChatMakeRun,
+	getFutureChatMakeRun,
 	saveFutureChatDocument,
 	setFutureChatVote,
 	updateFutureChatThread,
@@ -116,6 +121,8 @@ import {
 	type FutureChatVisibility,
 	type FutureChatVote,
 	type FutureChatActiveArtifact,
+	type FutureChatBuildSession,
+	type FutureChatPanelState,
 	type FutureChatRecentHistoryEntry,
 	type VoteValue,
 	createFutureChatId,
@@ -137,6 +144,7 @@ import {
 	type PlanApprovalSelection,
 } from "@/components/projects/shared/lib/plan-approval";
 import {
+	buildFutureChatAgentModeRequest,
 	buildFutureChatCancelUrl,
 } from "@/components/projects/future-chat/lib/future-chat-agent-mode";
 import { cancelDeferredToolCall } from "@/components/blocks/question-card/lib/cancel-deferred-tool";
@@ -158,9 +166,157 @@ import {
 	hasTurnCompleteSignal,
 	type RovoMessageInterruptionSource,
 	type RovoUIMessage,
+	type AgentExecutionUpdate,
 } from "@/lib/rovo-ui-messages";
 import { API_ENDPOINTS } from "@/lib/api-config";
+import type { AgentRun, AgentRunStreamEvent } from "@/lib/make-run-types";
+import { isAgentRunStreamEvent } from "@/lib/make-run-types";
+import { deriveTaskExecutionsFromRun } from "@/components/projects/make/lib/execution-data";
 import { createId, sortByUpdatedAtDesc } from "@/lib/utils";
+
+
+function createBuildSessionFromPlan(
+	planWidget: ParsedPlanWidgetPayload,
+): FutureChatBuildSession {
+	return {
+		planKey: getPlanApprovalKeyFromPlanWidget(planWidget),
+		planTitle: planWidget.title,
+		tasks: planWidget.tasks.map((task) => ({
+			id: task.id,
+			label: task.label,
+			blockedBy: [...task.blockedBy],
+			agent: task.agent,
+			status: task.blockedBy.length > 0 ? "blocked" : "todo",
+		})),
+		startedAt: new Date().toISOString(),
+		status: "active",
+	};
+}
+
+function applyTodoQueueToBuildSession(
+	buildSession: FutureChatBuildSession,
+	payload: ReturnType<typeof normalizeFutureChatTodoQueuePayload>,
+): FutureChatBuildSession {
+	if (!payload) {
+		return buildSession;
+	}
+
+	const todoItemsByTaskId = new Map(
+		payload.items.map((item) => [item.taskId ?? item.id, item] as const),
+	);
+		const inProgressTaskIds = new Set<string>();
+	for (const item of payload.items) {
+		const taskId = item.taskId ?? item.id;
+		if (!taskId) continue;
+		const normalizedBlockedBy = item.blockedBy ?? [];
+		if (normalizedBlockedBy.length === 0) {
+			inProgressTaskIds.add(taskId);
+		}
+	}
+
+	const tasks: FutureChatBuildSession["tasks"] = buildSession.tasks.map((task) => {
+		const todoItem = todoItemsByTaskId.get(task.id);
+		if (!todoItem) {
+			return {
+				...task,
+				status: task.status === "failed" ? "failed" : "completed",
+			};
+		}
+
+		const blockedDependencies = todoItem.blockedBy.filter((dependencyId) =>
+			todoItemsByTaskId.has(dependencyId),
+		);
+		return {
+			...task,
+			blockedBy: blockedDependencies,
+			agent: todoItem.agent ?? task.agent,
+			status:
+				blockedDependencies.length > 0
+					? "blocked"
+					: inProgressTaskIds.has(task.id)
+						? "in-progress"
+						: "todo",
+		};
+	});
+
+	const status = tasks.every((task) => task.status === "completed")
+		? "completed"
+		: buildSession.status;
+
+	return {
+		...buildSession,
+		tasks,
+		status,
+	};
+}
+
+function applyAgentExecutionsToBuildSession(
+	buildSession: FutureChatBuildSession,
+	messages: ReadonlyArray<RovoUIMessage>,
+): FutureChatBuildSession {
+	const executions = extractAgentExecutionUpdates(messages);
+	if (executions.length === 0) {
+		return buildSession;
+	}
+
+	const latestByTaskId = new Map<string, AgentExecutionUpdate>(executions.map((execution) => [execution.taskId, execution] as const));
+	const tasks: FutureChatBuildSession["tasks"] = buildSession.tasks.map((task) => {
+		const execution = latestByTaskId.get(task.id);
+		if (!execution) return task;
+		return {
+			...task,
+			agent: execution.agentName ?? task.agent,
+			content: execution.content ?? task.content,
+			status:
+				execution.status === "completed"
+					? "completed"
+					: execution.status === "failed"
+						? "failed"
+						: "in-progress",
+		};
+	});
+	return {
+		...buildSession,
+		tasks,
+		status: tasks.every((task) => task.status === "completed") ? "completed" : buildSession.status,
+	};
+}
+
+
+function applyMakeRunToBuildSession(
+	buildSession: FutureChatBuildSession,
+	run: AgentRun,
+): FutureChatBuildSession {
+	const tasksById = new Map(run.tasks.map((task) => [task.id, task] as const));
+	const tasks: FutureChatBuildSession["tasks"] = buildSession.tasks.map((task) => {
+		const runTask = tasksById.get(task.id);
+		if (!runTask) {
+			return task;
+		}
+		return {
+			...task,
+			agent: runTask.agentName ?? task.agent,
+			content: runTask.outputSummary ?? runTask.output ?? task.content,
+			status:
+				runTask.status === "done"
+					? "completed"
+					: runTask.status === "failed" || runTask.status === "blocked-failed"
+						? "failed"
+						: runTask.status === "in-progress"
+							? "in-progress"
+							: runTask.blockedBy.length > 0
+								? "blocked"
+								: "todo",
+		};
+	});
+	return {
+		...buildSession,
+		makeRunId: run.runId,
+		tasks,
+		status: run.status === "completed" ? "completed" : run.status === "failed" ? "interrupted" : buildSession.status,
+		errorMessage: run.error ?? buildSession.errorMessage,
+	};
+}
 
 function deriveThreadTitle(promptText: string): string {
 	const firstLine = promptText
@@ -527,6 +683,8 @@ export interface FutureChatHookResult {
 	isVoiceMode: boolean;
 	loadThread: (threadId: string) => Promise<void>;
 	messages: RovoUIMessage[];
+	panelState: FutureChatPanelState;
+	setPanelState: (state: FutureChatPanelState) => void;
 	pendingTitleThreadId: string | null;
 	openDocument: (documentId: string) => Promise<void>;
 	openPlanAsDocument: (plan: { title: string; markdown: string; sourceMessageId?: string | null }) => void;
@@ -546,6 +704,7 @@ export interface FutureChatHookResult {
 	setThreadVisibility: (visibility: FutureChatVisibility) => void;
 	setVoiceMode: (next: boolean) => void;
 	sidebarOpen: boolean;
+	buildSession: FutureChatBuildSession | null;
 	backgroundArtifactLabel: string | null;
 	backgroundDelegationLabel: string | null;
 	composerStatus: ChatStatus;
@@ -641,10 +800,12 @@ export function useFutureChat({
 	const [artifactMode, setArtifactMode] = useState<ArtifactMode>("preview");
 	const [artifactDraftContent, setArtifactDraftContent] = useState("");
 	const [visibleArtifactDocumentId, setVisibleArtifactDocumentId] = useState<string | null>(null);
+	const [panelState, setPanelState] = useState<FutureChatPanelState>("closed");
 	const [pendingArtifactResult, setPendingArtifactResult] =
 		useState<FutureChatPendingArtifactResult | null>(null);
 	const [streamingArtifact, setStreamingArtifact] = useState<FutureChatStreamingArtifact | null>(null);
 	const [streamingArtifactMessageId, setStreamingArtifactMessageId] = useState<string | null>(null);
+	const [buildSession, setBuildSession] = useState<FutureChatBuildSession | null>(null);
 	const pendingArtifactAssociationRef = useRef(false);
 	const [votes, setVotes] = useState<Record<string, VoteValue>>({});
 	const [inputError, setInputError] = useState<string | null>(null);
@@ -700,6 +861,8 @@ export function useFutureChat({
 	const clearArtifactState = useCallback(() => {
 		setActiveDocumentId(null);
 		setVisibleArtifactDocumentId(null);
+		setBuildSession(null);
+		setPanelState("closed");
 		setSelectedVersionId(null);
 		setArtifactDraftContent("");
 		setArtifactMode("preview");
@@ -794,6 +957,8 @@ export function useFutureChat({
 	const streamingArtifactMessageIdRef = useRef<string | null>(null);
 	const visibleArtifactDocumentIdRef = useLatestRef(visibleArtifactDocumentId);
 	const lastCompletedArtifactDocumentIdRef = useRef<string | null>(null);
+	const pendingArtifactCreationRetryRef = useRef(false);
+	const currentTurnIntentRef = useRef<string | null>(null);
 	const suppressedStreamingAutoOpenDocumentIdRef = useRef<string | null>(null);
 	const isVoiceModeRef = useLatestRef(isVoiceMode);
 	const isPlanModeRef = useLatestRef(isPlanMode);
@@ -806,6 +971,7 @@ export function useFutureChat({
 	const delegationAbortControllerRef = useRef<AbortController | null>(null);
 	const runSubscriptionAbortControllerRef = useRef<AbortController | null>(null);
 	const runSubscriptionThreadIdRef = useRef<string | null>(null);
+	const makeRunEventSourceRef = useRef<EventSource | null>(null);
 	const interruptPromiseRef = useRef<Promise<void> | null>(null);
 	const lastExplicitCancelAtRef = useRef(0);
 	const hasHydratedActiveThreadRef = useRef(false);
@@ -1101,6 +1267,7 @@ export function useFutureChat({
 								undefined,
 							smartGeneration: resolvedSmartGenerationRequest,
 							activeArtifact: buildActiveArtifactMetadata(activeDocument),
+							artifactCreationRetry: pendingArtifactCreationRetryRef.current || undefined,
 							origin: body?.origin === "voice" ? "voice" : "text",
 							recentHistory: buildRecentHistory(messages),
 							isPlanMode: requestedPlanMode,
@@ -1141,6 +1308,8 @@ export function useFutureChat({
 		}
 
 		setVisibleArtifactDocumentId(null);
+		setBuildSession(null);
+		setPanelState("closed");
 	}, [streamingArtifactRef, visibleArtifactDocumentId]);
 
 	const persistActiveDocumentSelection = useCallback((documentId: string | null) => {
@@ -1365,6 +1534,9 @@ export function useFutureChat({
 						title: string;
 					};
 					lastCompletedArtifactDocumentIdRef.current = artifactResult.documentId;
+					if (artifactResult.action === "create") {
+						pendingArtifactCreationRetryRef.current = false;
+					}
 					updatePendingArtifact({
 						action: artifactResult.action,
 						documentId: artifactResult.documentId,
@@ -1381,6 +1553,12 @@ export function useFutureChat({
 					if (!normalizedTodoQueuePayload || !threadId) {
 						break;
 					}
+
+					setBuildSession((previousBuildSession) =>
+						previousBuildSession
+							? applyTodoQueueToBuildSession(previousBuildSession, normalizedTodoQueuePayload)
+							: previousBuildSession,
+					);
 
 					appendQueuedActionsForThread(
 						threadId,
@@ -1407,10 +1585,19 @@ export function useFutureChat({
 						if (threadId) {
 							setLocalThreadActiveRun(threadId, null);
 						}
+						currentTurnIntentRef.current = null;
 						void syncPlanModeFromBackend();
 						kickQueue();
 						break;
 					}
+
+				case "data-route-decision": {
+					const routeData = dataPart.data as { intent?: string } | null;
+					if (routeData?.intent) {
+						currentTurnIntentRef.current = routeData.intent;
+					}
+					break;
+				}
 
 				default:
 					break;
@@ -1445,11 +1632,17 @@ export function useFutureChat({
 		onData: handleFutureChatDataPart,
 			onError: (error) => {
 			const streamingDocumentId = streamingArtifactRef.current?.documentId;
+			const turnIntent = currentTurnIntentRef.current;
 			clearStreamingArtifactState();
 			resetPendingArtifactAssociation();
 			if (!activeDocumentRef.current && streamingDocumentId) {
 				clearArtifactState();
 			}
+			// If artifact creation was in progress but failed, mark for retry on next turn
+			if (turnIntent === "artifact_create") {
+				pendingArtifactCreationRetryRef.current = true;
+			}
+			currentTurnIntentRef.current = null;
 			setInputError(toFutureChatUserErrorMessage(error));
 		},
 			onFinish: () => {
@@ -1945,6 +2138,9 @@ export function useFutureChat({
 
 		if (remainingDelay === 0) {
 			setVisibleArtifactDocumentId(streamingDocumentId);
+			if (panelState === "closed") {
+				setPanelState("preview");
+			}
 			return;
 		}
 
@@ -1955,13 +2151,14 @@ export function useFutureChat({
 				meetsStreamingAutoOpenContentThreshold(streamingArtifactRef.current)
 			) {
 				setVisibleArtifactDocumentId(streamingDocumentId);
+				setPanelState((prev) => prev === "closed" ? "preview" : prev);
 			}
 		}, remainingDelay);
 
 		return () => {
 			window.clearTimeout(timeoutId);
 		};
-		}, [streamingArtifact, streamingArtifactRef, visibleArtifactDocumentId]);
+		}, [panelState, streamingArtifact, streamingArtifactRef, visibleArtifactDocumentId]);
 
 	useEffect(() => {
 		const completedDocumentId = lastCompletedArtifactDocumentIdRef.current;
@@ -1983,6 +2180,7 @@ export function useFutureChat({
 
 		lastCompletedArtifactDocumentIdRef.current = null;
 		setVisibleArtifactDocumentId(completedDocumentId);
+		setPanelState((prev) => prev === "closed" ? "preview" : prev);
 	}, [documents, isStreaming, visibleArtifactDocumentId]);
 
 	const refreshThreads = useCallback(async () => {
@@ -2034,6 +2232,9 @@ export function useFutureChat({
 			setDocuments(nextDocuments);
 			setActiveDocumentId(thread.activeDocumentId);
 			setVisibleArtifactDocumentId(thread.activeDocumentId);
+			// Restore panel state: preview if thread has an active artifact, otherwise closed
+			setBuildSession(null);
+			setPanelState(thread.activeDocumentId ? "preview" : "closed");
 			setSelectedVersionId(
 				thread.activeDocumentId
 					? nextDocuments.find((document) => document.id === thread.activeDocumentId)?.versions.at(-1)?.id ?? null
@@ -2115,6 +2316,39 @@ export function useFutureChat({
 		useChatStatus,
 	]);
 
+	const subscribeToMakeRun = useCallback((runId: string) => {
+		makeRunEventSourceRef.current?.close();
+		const source = new EventSource(API_ENDPOINTS.makeRunStream(runId));
+		makeRunEventSourceRef.current = source;
+
+		source.onmessage = (messageEvent) => {
+			const parsed = (() => {
+				try {
+					return JSON.parse(messageEvent.data) as unknown;
+				} catch {
+					return null;
+				}
+			})();
+			if (!isAgentRunStreamEvent(parsed)) {
+				return;
+			}
+			const nextRun = parsed.type === "agent.update" ? null : parsed.run;
+			if (!nextRun) {
+				return;
+			}
+			setBuildSession((previousBuildSession) =>
+				previousBuildSession ? applyMakeRunToBuildSession(previousBuildSession, nextRun) : previousBuildSession,
+			);
+		};
+
+		source.onerror = () => {
+			source.close();
+			if (makeRunEventSourceRef.current === source) {
+				makeRunEventSourceRef.current = null;
+			}
+		};
+	}, []);
+
 	const subscribeToFutureChatRun = useCallback(
 		async (
 			threadId: string,
@@ -2135,6 +2369,10 @@ export function useFutureChat({
 					setAttachedRunStatus(null);
 					setLocalThreadActiveRun(threadId, null);
 					if (activeThreadIdRef.current === threadId) {
+						setPanelState((previousState) =>
+							previousState === "building" ? "closed" : previousState,
+						);
+						setInputError("The previous build session is no longer active. Please click Build again to restart it.");
 						void hydrateThreadById(threadId);
 					}
 					return;
@@ -2182,7 +2420,20 @@ export function useFutureChat({
 		[handleAttachedRunChunk, hydrateThreadById, setLocalThreadActiveRun, setRovodevMessages],
 	);
 
-	const resetToBlankChatState = useCallback((nextDraftId: string) => {
+	
+	useEffect(() => {
+		if (!buildSession) {
+			return;
+		}
+
+		setBuildSession((previousBuildSession) =>
+			previousBuildSession
+				? applyAgentExecutionsToBuildSession(previousBuildSession, rovodevMessagesRef.current)
+				: previousBuildSession,
+		);
+	}, [buildSession, messages]);
+
+const resetToBlankChatState = useCallback((nextDraftId: string) => {
 		isHydratingThreadRef.current = true;
 		pendingThreadCreationRef.current = null;
 		setDraftThreadId(nextDraftId);
@@ -2195,6 +2446,8 @@ export function useFutureChat({
 		});
 		runSubscriptionAbortControllerRef.current?.abort();
 		runSubscriptionAbortControllerRef.current = null;
+		makeRunEventSourceRef.current?.close();
+		makeRunEventSourceRef.current = null;
 		runSubscriptionThreadIdRef.current = null;
 			setAttachedRunStatus(null);
 			resetObservedTurnComplete();
@@ -2252,6 +2505,8 @@ export function useFutureChat({
 		await stopUseChat();
 		runSubscriptionAbortControllerRef.current?.abort();
 		runSubscriptionAbortControllerRef.current = null;
+		makeRunEventSourceRef.current?.close();
+		makeRunEventSourceRef.current = null;
 		runSubscriptionThreadIdRef.current = null;
 		setAttachedRunStatus(null);
 		delegationAbortControllerRef.current?.abort();
@@ -2937,6 +3192,8 @@ export function useFutureChat({
 		setHasActiveDispatch(false);
 		runSubscriptionAbortControllerRef.current?.abort();
 		runSubscriptionAbortControllerRef.current = null;
+		makeRunEventSourceRef.current?.close();
+		makeRunEventSourceRef.current = null;
 		runSubscriptionThreadIdRef.current = null;
 		setAttachedRunStatus(null);
 		hasObservedTurnCompleteRef.current = true;
@@ -3036,6 +3293,28 @@ export function useFutureChat({
 				} catch (error) {
 					console.warn("[FutureChat] Failed to reset agent mode before build:", error);
 				}
+
+				// Transition artifact panel: closed → building
+				const nextBuildSession = createBuildSessionFromPlan(planWidget);
+				setBuildSession(nextBuildSession);
+				setPanelState("building");
+
+				try {
+					const makeRun = await createFutureChatMakeRun({
+						plan: planWidget,
+						userPrompt: promptText,
+						conversation: buildRecentHistory(messages).map((item) => ({ role: item.role, content: item.content })),
+					});
+					setBuildSession(applyMakeRunToBuildSession({ ...nextBuildSession, makeRunId: makeRun.runId }, makeRun));
+					subscribeToMakeRun(makeRun.runId);
+				} catch (error) {
+					setBuildSession({
+						...nextBuildSession,
+						status: "interrupted",
+						errorMessage: toFutureChatUserErrorMessage(error),
+					});
+					setInputError(toFutureChatUserErrorMessage(error));
+				}
 			}
 
 			markLocalThreadRunPending(threadId);
@@ -3091,6 +3370,16 @@ export function useFutureChat({
 						console.warn("[FutureChat] Failed to cancel pending plan turn:", error);
 					});
 				}
+			}
+
+			const response = await fetch(API_ENDPOINTS.AGENT_MODE, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(buildFutureChatAgentModeRequest({ mode: nextMode })),
+			});
+
+			if (!response.ok) {
+				throw new Error(`Agent mode toggle failed with status ${response.status}`);
 			}
 		} catch (error) {
 			console.warn("[FutureChat] Failed to toggle plan mode:", error);
@@ -3972,6 +4261,7 @@ export function useFutureChat({
 				if (existingDocument) {
 					setActiveDocumentId(existingDocument.id);
 					setVisibleArtifactDocumentId(existingDocument.id);
+					setPanelState("preview");
 					setArtifactMode("preview");
 					return;
 				}
@@ -3985,6 +4275,7 @@ export function useFutureChat({
 				});
 				selectDocumentForDisplay(document);
 				setVisibleArtifactDocumentId(document.id);
+				setPanelState("preview");
 			} catch (error) {
 				setInputError(toFutureChatUserErrorMessage(error));
 			}
@@ -3998,11 +4289,13 @@ export function useFutureChat({
 			if (existingDocument) {
 				selectDocumentForDisplay(existingDocument);
 				setVisibleArtifactDocumentId(existingDocument.id);
+				setPanelState("preview");
 				return;
 			}
 
 			await hydratePersistedArtifact(documentId);
 			setVisibleArtifactDocumentId(documentId);
+			setPanelState("preview");
 		},
 			[documents, hydratePersistedArtifact, selectDocumentForDisplay],
 		);
@@ -4025,6 +4318,7 @@ export function useFutureChat({
 			};
 			selectDocumentForDisplay(document);
 			setVisibleArtifactDocumentId(documentId);
+			setPanelState("preview");
 		},
 		[activeThreadId, selectDocumentForDisplay],
 	);
@@ -4376,6 +4670,7 @@ export function useFutureChat({
 		applyVoiceSteer,
 		artifactMode,
 		artifactDraftContent,
+		buildSession,
 		backgroundArtifactLabel: composerState.backgroundArtifactLabel,
 		backgroundDelegationLabel: composerState.backgroundDelegationLabel,
 		backgroundStreamThreadIds,
@@ -4391,7 +4686,7 @@ export function useFutureChat({
 		hasBackgroundDelegation: composerState.hasBackgroundDelegation,
 		inputError,
 		interruptActiveTurn,
-		isArtifactOpen: visibleArtifactDocumentId !== null,
+		isArtifactOpen: panelState !== "closed",
 		isGeneratingTitle,
 		isLoadingThread,
 		isPlanMode,
@@ -4404,6 +4699,8 @@ export function useFutureChat({
 		openPlanAsDocument,
 		openArtifactFromMessage,
 		openNewChat,
+		panelState,
+		setPanelState,
 		queuedPrompts,
 		regenerateLatest,
 		removeQueuedPrompt,

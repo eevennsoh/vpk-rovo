@@ -7,6 +7,9 @@ import {
 	ToolInput,
 	ToolOutput,
 } from "@/components/ui-ai/tool";
+import { renderResolvedToolIcon, resolveToolIcon } from "@/components/projects/shared/lib/tool-icon-resolver";
+import { Icon } from "@/components/ui/icon";
+import SearchIcon from "@atlaskit/icon/core/search";
 
 const WEATHER_INPUT = {
 	location: "San Francisco, CA",
@@ -27,6 +30,7 @@ export default function ToolDemo() {
 			<ToolHeader
 				type="tool-invocation"
 				state="output-available"
+				leadingIcon={renderResolvedToolIcon(resolveToolIcon({ title: "fetch_weather_data" }), { className: "size-4 text-muted-foreground" })}
 				title="fetch_weather_data"
 			/>
 			<ToolContent>
@@ -43,6 +47,7 @@ export function ToolDemoRunning() {
 			<ToolHeader
 				type="tool-invocation"
 				state="input-available"
+				leadingIcon={<Icon render={<SearchIcon label="" size="small" spacing="none" />} className="size-4 text-muted-foreground" />}
 				title="search_documents"
 			/>
 			<ToolContent>
@@ -58,6 +63,7 @@ export function ToolDemoError() {
 			<ToolHeader
 				type="tool-invocation"
 				state="output-error"
+				leadingIcon={renderResolvedToolIcon(resolveToolIcon({ title: "fetch_api_data" }), { className: "size-4 text-muted-foreground" })}
 				title="fetch_api_data"
 			/>
 			<ToolContent>
@@ -77,6 +83,7 @@ export function ToolDemoCollapsed() {
 			<ToolHeader
 				type="tool-invocation"
 				state="output-available"
+				leadingIcon={renderResolvedToolIcon(resolveToolIcon({ title: "generate_chart" }), { className: "size-4 text-muted-foreground" })}
 				title="generate_chart"
 			/>
 			<ToolContent>
@@ -98,6 +105,7 @@ export function ToolDemoPending() {
 			<ToolHeader
 				type="tool-invocation"
 				state="input-streaming"
+				leadingIcon={renderResolvedToolIcon(resolveToolIcon({ title: "analyze_sentiment" }), { className: "size-4 text-muted-foreground" })}
 				title="analyze_sentiment"
 			/>
 		</Tool>
@@ -110,6 +118,7 @@ export function ToolDemoApproval() {
 			<ToolHeader
 				type="tool-invocation"
 				state="approval-requested"
+				leadingIcon={renderResolvedToolIcon(resolveToolIcon({ title: "delete_file" }), { className: "size-4 text-muted-foreground" })}
 				title="delete_file"
 			/>
 			<ToolContent>

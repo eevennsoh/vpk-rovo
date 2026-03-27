@@ -1,6 +1,7 @@
 "use client";
 
 import { type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type ReactElement, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { useRovoChat } from "@/app/contexts";
 import type { SendPromptOptions } from "@/app/contexts";
 import {
@@ -13,6 +14,7 @@ import {
 	type RovoToolPart,
 	type ThinkingToolCallSummary,
 } from "@/lib/rovo-ui-messages";
+import { getToolDisplayInfo, renderResolvedToolIcon, resolveToolIcon } from "@/components/projects/shared/lib/tool-icon-resolver";
 
 /* -------------------------------------------------------------------------- */
 /*  Constants                                                                 */
@@ -295,55 +297,6 @@ function ChatMessageBubble({
 /*  Ported from teamwork-agent ToolCallItem.tsx                               */
 /* -------------------------------------------------------------------------- */
 
-/** Known MCP wrapper tool names that wrap a nested tool invocation. */
-const MCP_WRAPPER_TOOLS = new Set([
-	"mcp_invoke_tool",
-	"mcp__atlassian__invoke_tool",
-	"mcp__atlassian__get_tool_schema",
-	"mcp__scout__invoke_tool",
-]);
-
-/**
- * Extract display name and server from a tool name + input args.
- *
- * Handles three cases:
- * 1. MCP wrapper tools (e.g. `mcp__atlassian__invoke_tool`) — extract nested
- *    `tool_name` / `server_name` from the input args.
- * 2. Direct MCP tools (e.g. `mcp__atlassian__search_jira_using_jql`) — extract
- *    server from the `mcp__<server>__` prefix.
- * 3. Plain tools (e.g. `create_file`) — no server info.
- */
-function getToolDisplayInfo(
-	toolName: string,
-	input: unknown,
-): { displayName: string; server: string | null } {
-	const args =
-		input !== null && typeof input === "object" ? (input as Record<string, unknown>) : null;
-
-	// 1. MCP wrapper tools — extract nested tool_name and server_name from args
-	if (MCP_WRAPPER_TOOLS.has(toolName)) {
-		const nestedName =
-			args && typeof args.tool_name === "string" ? args.tool_name : null;
-		let server: string | null = null;
-		if (args && typeof args.server_name === "string") {
-			server = args.server_name;
-		} else {
-			const match = /^mcp__([^_]+)__/.exec(toolName);
-			server = match ? match[1] : null;
-		}
-		return { displayName: nestedName ?? toolName, server };
-	}
-
-	// 2. Direct MCP tools — mcp__<server>__<tool_name>
-	const mcpMatch = /^mcp__([^_]+)__(.+)$/.exec(toolName);
-	if (mcpMatch) {
-		return { displayName: mcpMatch[2], server: mcpMatch[1] };
-	}
-
-	// 3. Plain tools
-	return { displayName: toolName, server: null };
-}
-
 function getRawToolName(toolPart: RovoToolPart): string {
 	if (toolPart.type === "dynamic-tool") return toolPart.toolName;
 	// AI SDK v5: tool name is encoded in type as `tool-${toolName}`
@@ -360,6 +313,14 @@ function getToolOutput(toolPart: RovoToolPart): unknown {
 
 function getToolError(toolPart: RovoToolPart): string | undefined {
 	return toolPart.errorText;
+}
+
+function getResolvedIconHtml(options: { toolName?: string | null; title?: string | null; input?: unknown; mcpServer?: string | null }) {
+	return renderToStaticMarkup(
+		<span style={{ display: "inline-flex", width: 16, height: 16, alignItems: "center", justifyContent: "center" }}>
+			{renderResolvedToolIcon(resolveToolIcon(options), { className: "size-4" })}
+		</span>
+	);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -480,7 +441,11 @@ function InlineToolCard({ toolPart }: { toolPart: RovoToolPart }) {
 	const input = getToolInput(toolPart);
 	const output = getToolOutput(toolPart);
 	const errorText = getToolError(toolPart);
-	const { displayName, server: serverName } = getToolDisplayInfo(rawToolName, input);
+	const displayInfo = getToolDisplayInfo(rawToolName, input);
+	const resolvedIcon = resolveToolIcon({ toolName: rawToolName, input });
+	const displayName = displayInfo.displayName;
+	const serverName = displayInfo.server;
+	const iconHtml = getResolvedIconHtml({ toolName: rawToolName, input });
 
 	const formattedInput =
 		input !== undefined && input !== null
@@ -507,7 +472,10 @@ function InlineToolCard({ toolPart }: { toolPart: RovoToolPart }) {
 			<div style={toolCardStyle}>
 				{/* Header row */}
 				<div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-					<span style={toolNameBadgeStyle}>{displayName}</span>
+					<span style={{ ...toolNameBadgeStyle, display: "inline-flex", alignItems: "center", gap: 6 }}>
+					<span dangerouslySetInnerHTML={{ __html: iconHtml }} />
+					<span>{displayName}</span>
+				</span>
 					{serverName ? <span style={serverBadgeStyle}>{serverName}</span> : null}
 					<StatusBadge state={toolPart.state} />
 					{formattedInput ? (
@@ -597,9 +565,11 @@ function ThinkingToolCard({ toolCall }: { toolCall: ThinkingToolCallSummary }) {
 	const [argsExpanded, setArgsExpanded] = useState(false);
 	const [resultExpanded, setResultExpanded] = useState(false);
 
-	const { displayName, server: parsedServer } = getToolDisplayInfo(toolCall.toolName, toolCall.input);
-	// Prefer real mcpServer from the backend over parsed-from-name fallback
-	const serverName = toolCall.mcpServer ?? parsedServer;
+	const displayInfo = getToolDisplayInfo(toolCall.toolName, toolCall.input, toolCall.mcpServer);
+	const resolvedIcon = resolveToolIcon({ toolName: toolCall.toolName, input: toolCall.input, mcpServer: toolCall.mcpServer });
+	const displayName = displayInfo.displayName;
+	const serverName = displayInfo.server;
+	const iconHtml = getResolvedIconHtml({ toolName: toolCall.toolName, input: toolCall.input, mcpServer: toolCall.mcpServer });
 	const displayState = thinkingStateToDisplayState(toolCall.state);
 
 	const formattedInput =
@@ -623,7 +593,10 @@ function ThinkingToolCard({ toolCall }: { toolCall: ThinkingToolCallSummary }) {
 			{/* Tool call card */}
 			<div style={toolCardStyle}>
 				<div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-					<span style={toolNameBadgeStyle}>{displayName}</span>
+					<span style={{ ...toolNameBadgeStyle, display: "inline-flex", alignItems: "center", gap: 6 }}>
+					<span dangerouslySetInnerHTML={{ __html: iconHtml }} />
+					<span>{displayName}</span>
+				</span>
 					{serverName ? <span style={serverBadgeStyle}>{serverName}</span> : null}
 					<PermissionBadge permissionScenario={toolCall.permissionScenario} />
 					<StatusBadge state={displayState} />

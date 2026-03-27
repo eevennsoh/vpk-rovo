@@ -9,7 +9,7 @@
 
 const { request } = require("./rovodev-client");
 
-const SUPPORTED_AGENT_MODES = new Set(["default", "ask"]);
+const SUPPORTED_AGENT_MODES = new Set(["default", "ask", "plan"]);
 
 function isSupportedAgentMode(mode) {
 	return typeof mode === "string" && SUPPORTED_AGENT_MODES.has(mode);
@@ -34,7 +34,7 @@ async function requestAgentModeJson({
 /**
  * Get the current agent mode.
  * @param {number} [port]
- * @returns {Promise<{ mode: "default"|"ask"|null, message: string }>}
+ * @returns {Promise<{ mode: "default"|"ask"|"plan"|null, message: string }>}
  */
 async function getAgentMode(port) {
 	const payload = await requestAgentModeJson({
@@ -54,7 +54,7 @@ async function getAgentMode(port) {
 /**
  * Set the agent mode.
  * @param {number} [port]
- * @param {"default"|"ask"} mode
+ * @param {"default"|"ask"|"plan"} mode
  * @returns {Promise<{ mode: string, message: string }>}
  */
 async function setAgentMode(port, mode) {

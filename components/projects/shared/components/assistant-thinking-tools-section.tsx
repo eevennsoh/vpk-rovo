@@ -10,6 +10,7 @@ import { Spinner } from "@/components/ui/spinner";
 import type { ThinkingToolCallSummary } from "@/lib/rovo-ui-messages";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+import { renderResolvedToolIcon, resolveToolIcon } from "@/components/projects/shared/lib/tool-icon-resolver";
 
 type AssistantThinkingToolsSectionDefaultOpenMode = "details" | "running";
 
@@ -90,9 +91,17 @@ function AssistantThinkingToolItem({
 		}
 	}
 
+	const resolvedIcon = resolveToolIcon({
+		toolName: toolCall.toolName,
+		title: toolCall.toolName,
+		input: toolCall.input,
+		mcpServer: toolCall.mcpServer,
+	});
+
 	return (
 		<Tool open={isOpen} onOpenChange={setIsOpen}>
 			<ToolHeader
+				leadingIcon={renderResolvedToolIcon(resolvedIcon, { className: "size-4 text-muted-foreground" })}
 				title={toolCall.toolName}
 				state={toToolUiState(toolCall.state)}
 				statusBadgeIcon={getThinkingStatusBadgeIcon(toolCall.state)}

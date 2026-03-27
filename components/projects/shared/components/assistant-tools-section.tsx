@@ -10,6 +10,7 @@ import {
 	ToolOutput,
 } from "@/components/ui-ai/tool";
 import { useState } from "react";
+import { renderResolvedToolIcon, resolveToolIcon } from "@/components/projects/shared/lib/tool-icon-resolver";
 
 type AssistantToolsSectionDefaultOpenMode = "details" | "running";
 
@@ -70,10 +71,17 @@ function AssistantToolItem({
 		}
 	}
 
+	const resolvedIcon = resolveToolIcon({
+		toolName: toolPart.type === "dynamic-tool" ? toolPart.toolName : undefined,
+		title: getToolPartName(toolPart),
+		input: toolPart.input,
+	});
+
 	return (
 		<Tool open={isOpen} onOpenChange={setIsOpen}>
 			{toolPart.type === "dynamic-tool" ? (
 				<ToolHeader
+					leadingIcon={renderResolvedToolIcon(resolvedIcon, { className: "size-4 text-muted-foreground" })}
 					title={getToolPartName(toolPart)}
 					state={toolPart.state}
 					toolName={toolPart.toolName}
@@ -81,6 +89,7 @@ function AssistantToolItem({
 				/>
 			) : (
 				<ToolHeader
+					leadingIcon={renderResolvedToolIcon(resolvedIcon, { className: "size-4 text-muted-foreground" })}
 					title={getToolPartName(toolPart)}
 					state={toolPart.state}
 					type={toolPart.type}

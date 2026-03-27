@@ -11,6 +11,8 @@ import { FutureChatMessages } from "@/components/projects/future-chat/components
 import { FutureChatSidebar } from "@/components/projects/future-chat/components/future-chat-sidebar";
 import { type FutureChatSteeringPhase } from "@/components/projects/future-chat/components/future-chat-steering-lane";
 import { useArtifactAnnotations } from "@/components/ui-ai/hooks/use-artifact-annotations";
+import { formatAnnotationsForVoiceContext } from "@/components/ui-ai/lib/artifact-annotations";
+import type { ArtifactAnnotation } from "@/components/ui-ai/lib/artifact-annotations";
 import { useFutureChat } from "@/components/projects/future-chat/hooks/use-future-chat";
 import {
 	getFutureChatArtifactKindLabel,
@@ -63,6 +65,12 @@ import { QuestionCardShortcutsFooter } from "@/components/projects/shared/compon
 import { getLatestQuestionCardPayload, type ClarificationAnswers } from "@/components/projects/shared/lib/question-card-widget";
 import { type ParsedPlanWidgetPayload } from "@/components/projects/shared/lib/plan-widget";
 import { useDismissibleCards } from "@/components/projects/shared/hooks/use-dismissible-cards";
+import { MakeGridSurface } from "@/components/blocks/make-grid/components/make-grid-surface";
+import {
+	extractAgentExecutionUpdates,
+	buildTaskExecutions,
+	type TaskExecution,
+} from "@/components/projects/make/lib/execution-data";
 
 interface FutureChatShellProps {
 	embedded?: boolean;
@@ -697,7 +705,7 @@ export function FutureChatShell({
 						return;
 					}
 
-					const shouldArtifactSteer = chatRef.current.isArtifactOpen;
+					const shouldArtifactSteer = chatRef.current.panelState === "preview";
 					if (!shouldArtifactSteer) {
 						await chatRef.current.interruptActiveTurn({
 							source: "voice-barge-in",
@@ -761,7 +769,7 @@ export function FutureChatShell({
 	const voice = useLiveVoice({
 		onBargeInStart: useCallback(() => {
 			stopSpeakingRef.current();
-			if (chatRef.current.isArtifactOpen) {
+			if (chatRef.current.panelState === "preview") {
 				if (chatRef.current.isStreaming) {
 					skipNextAutoSpeakRef.current = true;
 				}
@@ -800,7 +808,7 @@ export function FutureChatShell({
 					id: transcriptId,
 					text: trimmedText,
 				};
-				if (chatRef.current.isArtifactOpen) {
+				if (chatRef.current.panelState === "preview") {
 					setSteeringState({
 						phase: "pending",
 						text: trimmedText,
@@ -976,7 +984,7 @@ export function FutureChatShell({
 						return;
 					}
 
-					if (c.isStreaming && c.isArtifactOpen) {
+					if (c.isStreaming && c.panelState === "preview") {
 						await c.applyVoiceSteer({
 							contextDescription,
 							text: request.prompt,
@@ -1453,7 +1461,7 @@ export function FutureChatShell({
 			?? null
 		);
 	}, [chat.selectedVersionId, workspaceDocument]);
-	const isArtifactOpen = Boolean(workspaceDocument);
+	const isArtifactOpen = chat.panelState !== "closed";
 	const hasActiveThreadRun =
 		typeof chat.activeThreadId === "string"
 			&& chat.backgroundStreamThreadIds.has(chat.activeThreadId);
@@ -1490,6 +1498,28 @@ export function FutureChatShell({
 		pendingSelection: pendingArtifactSelection,
 		removeAnnotation: removeArtifactAnnotation,
 	} = annotationState;
+
+	const handleApplyAnnotations = useCallback(
+		(annotationsToApply: ArtifactAnnotation[]) => {
+			if (annotationsToApply.length === 0) {
+				return;
+			}
+
+			for (const annotation of annotationsToApply) {
+				const contextDescription = formatAnnotationsForVoiceContext([annotation]);
+				void chat.submitPrompt({
+					text: annotation.comment,
+					files: [],
+					contextDescription,
+				});
+			}
+
+			clearAnnotations();
+			setCursorMode(false);
+		},
+		[chat, clearAnnotations],
+	);
+
 	const shellRef = useRef<HTMLDivElement | null>(null);
 	const composerDockRef = useRef<HTMLDivElement | null>(null);
 	const artifactCardOriginRef = useRef<DOMRect | null>(null);
@@ -1782,45 +1812,171 @@ export function FutureChatShell({
 		return items;
 	})();
 
-	const artifactPane = workspaceDocument ? (
-		<ArtifactPanel
-			annotations={artifactAnnotations}
-			contentRef={artifactContentRef}
-			cursorMode={cursorMode}
-			document={workspaceDocument}
-			draftContent={chat.streamingArtifact?.content ?? chat.artifactDraftContent}
-			isStreaming={Boolean(chat.streamingArtifact)}
-			mode={chat.artifactMode}
-			onAddComment={addArtifactAnnotationComment}
-			onClose={() => {
-				if (chat.streamingArtifact?.documentId === workspaceDocument.id) {
-					chat.hideArtifactPane();
-					return;
-				}
+	// Derive task executions from approved plan tasks first, then enrich with agent execution updates.
+	const buildingTaskExecutions = useMemo(() => {
+		if (chat.panelState !== "building") {
+			return [];
+		}
 
-				chat.hideArtifactPane();
-				chat.setActiveDocumentId(null);
-			}}
-			onCursorModeChange={
-				canAnnotateWorkspaceDocument ? setCursorMode : undefined
+		const updates = extractAgentExecutionUpdates(chat.messages);
+		const enrichedExecutions = buildTaskExecutions(updates);
+		if (!chat.buildSession) {
+			return enrichedExecutions;
+		}
+
+		const executionsByTaskId = new Map(enrichedExecutions.map((execution) => [execution.taskId, execution] as const));
+		return chat.buildSession.tasks.map<TaskExecution>((task: (typeof chat.buildSession.tasks)[number], index: number) => {
+			const execution = executionsByTaskId.get(task.id);
+			if (execution) {
+				return execution;
 			}
-			onDelete={() => chat.deleteDocument(workspaceDocument.id)}
-			onDraftChange={chat.setArtifactDraftContent}
-			onDismissSelection={dismissArtifactSelection}
-			onModeChange={chat.setArtifactMode}
-			onRemoveAnnotation={removeArtifactAnnotation}
-			onSave={chat.saveArtifactDraft}
-			onVersionChange={(versionId) => {
-				chat.setSelectedVersionId(versionId);
-				const nextVersion =
-					workspaceDocument?.versions.find((version) => version.id === versionId)
-					?? selectedDocumentVersion;
-				chat.setArtifactDraftContent(nextVersion?.content ?? "");
-			}}
-			pendingSelection={pendingArtifactSelection}
-			selectedVersionId={selectedDocumentVersion?.id ?? null}
-		/>
-	) : null;
+
+			return {
+				taskId: task.id,
+				taskLabel: task.label,
+				agentId: `lane-${index + 1}`,
+				agentName: task.agent ?? `Task ${index + 1}`,
+				status:
+					task.status === "completed"
+						? "completed"
+						: task.status === "failed"
+							? "failed"
+							: "working",
+				content: task.content ?? "",
+				blockedBy: task.blockedBy,
+			};
+		});
+	}, [chat]);
+
+	// Detect build completion: all tasks done → transition building → preview
+	const isBuildComplete = useMemo(() => {
+		if (chat.panelState !== "building") {
+			return false;
+		}
+		if (buildingTaskExecutions.length === 0) {
+			return false;
+		}
+		return buildingTaskExecutions.every(
+			(execution: TaskExecution) => execution.status === "completed",
+		);
+	}, [chat.panelState, buildingTaskExecutions]);
+
+	useEffect(() => {
+		if (!isBuildComplete) {
+			return;
+		}
+		// Delay slightly to allow the streaming artifact / document to finalize
+		const timeoutId = window.setTimeout(() => {
+			chat.setPanelState("preview");
+		}, 800);
+		return () => {
+			window.clearTimeout(timeoutId);
+		};
+	}, [isBuildComplete, chat]);
+
+	const artifactPane = (() => {
+		if (chat.panelState === "building") {
+			return (
+				<AnimatePresence mode="wait">
+					{isBuildComplete ? (
+						<motion.div
+							key="build-complete"
+							className="flex h-full w-full items-center justify-center bg-surface"
+							initial={{ opacity: 0, scale: 0.95 }}
+							animate={{
+								opacity: 1,
+								scale: 1,
+								transition: {
+									type: "spring",
+									stiffness: 300,
+									damping: 25,
+								},
+							}}
+						>
+							<div className="text-sm text-text-subtle">
+								Preparing preview...
+							</div>
+						</motion.div>
+					) : (
+						<motion.div
+							key="build-grid"
+							className="flex h-full w-full flex-col overflow-hidden bg-surface"
+							exit={{
+								opacity: 0,
+								scale: 0.95,
+								transition: {
+									duration: 0.3,
+									ease: [0.4, 0, 0.2, 1],
+								},
+							}}
+						>
+							<div className="flex items-center justify-between border-b border-border px-4 py-2">
+								<span className="text-sm font-medium text-text">Building</span>
+								<button
+									type="button"
+									className="text-xs text-text-subtlest hover:text-text-subtle"
+									onClick={() => chat.hideArtifactPane()}
+								>
+									Minimize
+								</button>
+							</div>
+							<div className="min-h-0 flex-1">
+								<MakeGridSurface
+									taskExecutions={buildingTaskExecutions}
+									showGeneratingEmptyState={chat.isStreaming}
+								/>
+							</div>
+						</motion.div>
+					)}
+				</AnimatePresence>
+			);
+		}
+
+		if (!workspaceDocument) {
+			return null;
+		}
+
+		return (
+			<ArtifactPanel
+				annotations={artifactAnnotations}
+				contentRef={artifactContentRef}
+				cursorMode={cursorMode}
+				document={workspaceDocument}
+				draftContent={chat.streamingArtifact?.content ?? chat.artifactDraftContent}
+				isStreaming={Boolean(chat.streamingArtifact)}
+				mode={chat.artifactMode}
+				onAddComment={addArtifactAnnotationComment}
+				onApplyAnnotations={handleApplyAnnotations}
+				onClose={() => {
+					if (chat.streamingArtifact?.documentId === workspaceDocument.id) {
+						chat.hideArtifactPane();
+						return;
+					}
+
+					chat.hideArtifactPane();
+					chat.setActiveDocumentId(null);
+				}}
+				onCursorModeChange={
+					canAnnotateWorkspaceDocument ? setCursorMode : undefined
+				}
+				onDelete={() => chat.deleteDocument(workspaceDocument.id)}
+				onDraftChange={chat.setArtifactDraftContent}
+				onDismissSelection={dismissArtifactSelection}
+				onModeChange={chat.setArtifactMode}
+				onRemoveAnnotation={removeArtifactAnnotation}
+				onSave={chat.saveArtifactDraft}
+				onVersionChange={(versionId) => {
+					chat.setSelectedVersionId(versionId);
+					const nextVersion =
+						workspaceDocument?.versions.find((version) => version.id === versionId)
+						?? selectedDocumentVersion;
+					chat.setArtifactDraftContent(nextVersion?.content ?? "");
+				}}
+				pendingSelection={pendingArtifactSelection}
+				selectedVersionId={selectedDocumentVersion?.id ?? null}
+			/>
+		);
+	})();
 
 	const chatPane = (
 		<>

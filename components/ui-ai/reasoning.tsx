@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/collapsible";
 import { Lozenge } from "@/components/ui/lozenge";
 import { token } from "@/lib/tokens";
+import { Icon } from "@/components/ui/icon";
 import { cn } from "@/lib/utils";
 import {
 	getDefaultThinkingLabel,
@@ -169,10 +170,21 @@ function parseTimelineToolLabel(label: string): TimelineToolLabelParts | null {
 function ReasoningStatusIcon({
 	isCompleted = false,
 }: Readonly<{ isCompleted?: boolean }>): ReactNode {
-	return (
+	return isCompleted ? (
+		<Icon
+			render={
+				<RovoIconGlyph
+					color={token("color.icon.subtlest")}
+					label=""
+					size="small"
+				/>
+			}
+			className="size-4 shrink-0"
+		/>
+	) : (
 		<span className="inline-flex size-5 items-center justify-center">
 			<RovoIconGlyph
-				color={isCompleted ? token("color.icon.subtlest") : token("color.icon")}
+				color={token("color.icon")}
 				label=""
 				size="small"
 			/>
@@ -543,7 +555,10 @@ export const ReasoningTrigger = memo(
 		return (
 			<CollapsibleTrigger
 				className={cn(
-					"flex w-full items-center gap-2 text-muted-foreground text-sm transition-colors hover:text-foreground",
+					"flex w-full items-center gap-2 text-sm text-text-subtle transition-colors",
+					shouldShowCompletedState
+						? "hover:text-text"
+						: "text-muted-foreground hover:text-foreground",
 					className
 				)}
 				{...props}
@@ -553,7 +568,7 @@ export const ReasoningTrigger = memo(
 						{shouldShowCompletedState ? (
 							<>
 								<ReasoningStatusIcon isCompleted />
-								<span className="min-w-0 truncate">{completedStateLabel}</span>
+								<span className="min-w-0 truncate text-left">{completedStateLabel}</span>
 							</>
 						) : (
 							<StreamingReasoningLabel
@@ -626,7 +641,7 @@ export function ReasoningText({
 			<div className="relative pl-6">
 				<div
 					aria-hidden
-					className="absolute bottom-0 left-2.5 top-0 w-px bg-border"
+					className="absolute bottom-0 left-2 top-0 w-px bg-border"
 				/>
 				<div className="space-y-1">
 					<AnimatePresence initial={false}>
@@ -770,7 +785,10 @@ export const AdsReasoningTrigger = memo(
 		return (
 			<CollapsibleTrigger
 				className={cn(
-					"flex w-full items-center gap-2 text-muted-foreground text-sm transition-colors hover:text-foreground",
+					"flex w-full items-center gap-2 text-sm text-text-subtle transition-colors",
+					shouldShowCompletedState
+						? "hover:text-text"
+						: "text-muted-foreground hover:text-foreground",
 					className
 				)}
 				{...props}
@@ -778,7 +796,7 @@ export const AdsReasoningTrigger = memo(
 				{shouldShowCompletedState ? (
 					<>
 						<ReasoningStatusIcon isCompleted />
-						<span className="min-w-0 truncate">{completedStateLabel}</span>
+						<span className="min-w-0 truncate text-left">{completedStateLabel}</span>
 					</>
 				) : (
 					<StreamingReasoningLabel

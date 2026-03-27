@@ -103,13 +103,18 @@ export async function proxyToBackend(
 
 	const contentType = response.headers.get("content-type") || "";
 	if (options.expectEventStream || contentType.includes("text/event-stream")) {
+		const headers = new Headers();
+		headers.set("Content-Type", "text/event-stream");
+		headers.set("Cache-Control", response.headers.get("cache-control") || "no-cache, no-transform");
+		headers.set("Connection", response.headers.get("connection") || "keep-alive");
+		headers.set("X-Accel-Buffering", "no");
+		const transferEncoding = response.headers.get("transfer-encoding");
+		if (transferEncoding) {
+			headers.set("Transfer-Encoding", transferEncoding);
+		}
 		return new NextResponse(response.body, {
 			status: response.status,
-			headers: {
-				"Content-Type": "text/event-stream",
-				"Cache-Control": "no-cache",
-				Connection: "keep-alive",
-			},
+			headers,
 		});
 	}
 

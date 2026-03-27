@@ -4,6 +4,7 @@ import {
 	CodeBlock,
 	CodeBlockHeader,
 	CodeBlockTitle,
+	CodeBlockActions,
 	CodeBlockCopyButton,
 	CodeBlockDownloadButton,
 } from "@/components/ui-ai/code-block";
@@ -20,10 +21,10 @@ export function DocCodeSnippet({ code, language = "tsx", title }: Readonly<DocCo
 		<CodeBlock code={code} language={language}>
 			<CodeBlockHeader>
 				<CodeBlockTitle>{title}</CodeBlockTitle>
-				<div className="flex items-center gap-2">
+				<CodeBlockActions>
 					<CodeBlockDownloadButton />
 					<CodeBlockCopyButton />
-				</div>
+				</CodeBlockActions>
 			</CodeBlockHeader>
 		</CodeBlock>
 	);

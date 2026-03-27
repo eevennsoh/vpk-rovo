@@ -95,6 +95,7 @@ const {
 	updatePlanSession,
 	clearPlanSession,
 	shouldRestorePlanModeOnResume,
+	isPlanExecutionPhase,
 } = require("./lib/plan-session");
 const {
 	resolveRoutingDecision,
@@ -149,7 +150,6 @@ const {
 	healthCheck: rovoDevHealthCheck,
 	cancelChat: rovoDevCancelChat,
 	resumeToolCalls: rovoDevResumeToolCalls,
-	getRovoDevPort,
 } = require("./lib/rovodev-client");
 const { setAgentMode, getAgentMode } = require("./lib/rovodev-agent-mode");
 const {
@@ -2487,6 +2487,9 @@ async function executeFutureChatManagedRun(run) {
 	const requestIsPlanMode = requestBody.isPlanMode === true;
 	delete requestBody.isPlanMode;
 
+	const requestArtifactCreationRetry = requestBody.artifactCreationRetry === true;
+	delete requestBody.artifactCreationRetry;
+
 	const { message: latestUserMessage, conversationHistory } =
 		mapUiMessagesToConversation(requestMessages);
 	const recentHistory = conversationHistory.slice(-5).map((msg) => ({
@@ -2542,6 +2545,21 @@ async function executeFutureChatManagedRun(run) {
 			intent: "chat",
 			confidence: 1,
 			reason: "plan_task_execution",
+		});
+	} else if (requestArtifactCreationRetry && !activeArtifact?.id) {
+		// Previous artifact creation attempt failed — retry artifact_create
+		routingDecision = {
+			intent: "artifact_create",
+			presentation: "artifact_preview",
+			confidence: 1,
+			reason: "artifact_creation_retry",
+			origin: requestOrigin,
+		};
+		stageTrace.mark("route_decision_resolved", {
+			stageMs: 0,
+			intent: "artifact_create",
+			confidence: 1,
+			reason: "artifact_creation_retry",
 		});
 	} else {
 		try {
@@ -5024,49 +5042,17 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 			});
 		}
 
-		// Plan approval decisions always start a fresh turn — cancel any
-		// paused approval tool call to free the port instead of trying to
-		// resume a potentially stale session. The plan card already
-		// contains the full contract (title, tasks, summary).
+		// Plan approvals are handled via the deferred tool continuation path
+		// (lines ~9222+). The paused tool call is resumed with the approval
+		// result using /v3/resume_tool_calls + /v3/replay, which avoids the
+		// 409 "chat already in progress" race condition that occurs when
+		// trying to cancel and start a fresh turn via /v3/stream_chat.
 		//
-		// RovoDev Serve's cancel endpoint cannot clear a *paused* (deferred)
-		// tool call — the chat stays "in progress." The correct approach is
-		// to resume the paused tool call with a deny message first, which
-		// unblocks the agent, then cancel to stop it before it produces
-		// unwanted output.
-		if (approvalSubmission && approvalToolCallId) {
-			const pausedApprovalRecord = hasPausedApprovalToolCall
-				? clearPausedRovoDevToolCall(approvalToolCallId, { cancel: false })
-				: null;
-			const clearPort = pausedApprovalRecord?.port ?? getRovoDevPort();
-			if (typeof clearPort === "number" && clearPort > 0) {
-				console.info("[DEBUG-PLAN-APPROVAL] Clearing paused approval for fresh turn", {
-					approvalToolCallId,
-					decision: approvalSubmission.decision,
-					port: clearPort,
-					hadStoreRecord: Boolean(pausedApprovalRecord),
-				});
-				try {
-					// Resume the paused tool call to unblock the agent
-					await rovoDevResumeToolCalls(clearPort, {
-						decisions: [{
-							tool_call_id: approvalToolCallId,
-							deny_message: "Plan approval superseded — starting fresh build turn.",
-						}],
-					});
-					// Cancel immediately so the agent doesn't run further
-					await rovoDevCancelChat(clearPort, { timeoutMs: 5_000 });
-					await waitForPortReady(clearPort);
-				} catch (clearError) {
-					console.warn("[DEBUG-PLAN-APPROVAL] Failed to clear paused approval:", {
-						approvalToolCallId,
-						port: clearPort,
-						error: clearError instanceof Error ? clearError.message : String(clearError),
-					});
-				}
-			}
-			hasPausedApprovalToolCall = false;
-		}
+		// Previously this block cleared the paused approval (resume + cancel
+		// + waitForPortReady) to start a fresh turn. But the cancel often
+		// times out because the resumed agent starts processing immediately,
+		// leaving the port stuck. The continuation path is the correct
+		// mechanism — it continues the existing session naturally.
 
 		// Restore plan mode on deferred tool resume turns where the frontend
 		// didn't send isPlanMode (e.g., clarification answer, plan approval).
@@ -5094,6 +5080,38 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 			const planSession = getPlanSession(threadId);
 			if (!planSession.isActive) {
 				updatePlanSession(threadId, { isActive: true, phase: "qa" });
+			}
+			// Transition to execution phase on plan approval.
+			// This suppresses GenUI card routing so plan task outputs
+			// route to the artifact panel instead.
+			if (approvalSubmission && planSession.phase !== "execution") {
+				updatePlanSession(threadId, { phase: "execution" });
+				console.info("[PLAN-SESSION] Transitioned to execution phase on approval", {
+					threadId,
+					decision: approvalSubmission.decision,
+					previousPhase: planSession.phase,
+				});
+			}
+		} else if (approvalSubmission && threadId) {
+			// Auto-accept sends isPlanMode: false, but we still need to
+			// transition the plan session to execution phase so that
+			// GenUI card routing is suppressed during plan task execution
+			// and outputs route to the artifact panel instead.
+			const planSession = getPlanSession(threadId);
+			if (planSession.isActive) {
+				updatePlanSession(threadId, { phase: "execution" });
+				console.info("[PLAN-SESSION] Transitioned to execution phase on auto-accept approval", {
+					threadId,
+					decision: approvalSubmission.decision,
+					previousPhase: planSession.phase,
+				});
+			} else {
+				// Plan session was cleared or never started — create it in execution phase.
+				updatePlanSession(threadId, { isActive: true, phase: "execution" });
+				console.info("[PLAN-SESSION] Created execution-phase session for auto-accept approval", {
+					threadId,
+					decision: approvalSubmission.decision,
+				});
 			}
 		} else if (!resolvedPlanModeActive && threadId && !hasPausedClarificationToolCall && !hasPausedApprovalToolCall) {
 			// Clear stale plan session on non-resume, non-plan turns.
@@ -8652,11 +8670,11 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 						rawDeferredToolResponse && typeof rawDeferredToolResponse === "object"
 							? {
 								message: rawDeferredToolResponse,
-								enableDeepPlan: resolvedPlanModeActive,
+								enableDeepPlan: false,
 							}
 							: {
 								message: userMessageText,
-								enableDeepPlan: resolvedPlanModeActive,
+								enableDeepPlan: false,
 							};
 					let hasRetriedAsDeferredToolResponse = false;
 					let pausedToolCallHandled = false;
@@ -9501,7 +9519,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 										hasRetriedAsDeferredToolResponse = true;
 										activeAttemptMessage = {
 											message: deferredToolResponse,
-											enableDeepPlan: resolvedPlanModeActive,
+											enableDeepPlan: false,
 										};
 										console.warn(
 											"[CHAT-SDK] Clarification continuation hit pending deferred tool request; retrying with DeferredToolResponse",
@@ -9587,7 +9605,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 									execution: toolFirstExecutionState,
 								}
 							)}`,
-							enableDeepPlan: resolvedPlanModeActive,
+							enableDeepPlan: false,
 						};
 						currentToolFirstAttempt = nextAttempt;
 					}
@@ -9652,10 +9670,13 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 				// ```spec fence in its text output. If found, emit it as a
 				// GenUI widget directly — skipping the second-pass GenUI
 				// LLM call entirely.
+				// Suppressed during plan execution — outputs route to the
+				// artifact panel instead.
 				if (
 					!hasEmittedGenuiWidget &&
 					!hasEmittedQuestionCard &&
-					!hasEmittedPlanWidget
+					!hasEmittedPlanWidget &&
+					!isPlanExecutionPhase(threadId)
 				) {
 					const directSpecResult = extractDirectSpec(
 						hasSuppressedLargeAssistantJson ? unsuppressedAssistantText : assistantText
@@ -10184,6 +10205,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 								textLength: trimmedAssistantText.length,
 							});
 						}
+				const planExecutionActive = isPlanExecutionPhase(threadId);
 					const shouldAttemptGenui = shouldAttemptPostToolGenui({
 						assistantText: trimmedAssistantText,
 						hasEmittedQuestionCard,
@@ -10192,6 +10214,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 						looksLikeClarification,
 						looksLikeInability,
 						resolvedPlanModeActive,
+						planSessionActive: planExecutionActive,
 						isAborted: abortController.signal.aborted,
 						isTaskLikeRequest,
 						shouldForceCardFirstGenui,
@@ -10199,7 +10222,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 						hasToolObservationData,
 					});
 
-					if (!resolvedPlanModeActive && shouldAttemptGenui) {
+					if (!resolvedPlanModeActive && !planExecutionActive && shouldAttemptGenui) {
 						// Single-pass GenUI: RovoDev emits ```spec blocks directly.
 						// Phase 2 (direct spec detection above) already caught any
 						// spec fence in the response. If we reach here, no spec was
@@ -10251,6 +10274,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 						});
 						} else if (
 							!resolvedPlanModeActive &&
+							!planExecutionActive &&
 							!hasEmittedQuestionCard &&
 							!hasEmittedGenuiWidget
 						) {
@@ -10307,6 +10331,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 
 					if (
 						isStrictToolFirstTurn &&
+						!planExecutionActive &&
 						!hasEmittedQuestionCard &&
 						!hasEmittedPlanWidget
 					) {
@@ -10797,9 +10822,9 @@ app.post("/api/agent-mode", async (req, res) => {
 	try {
 		const { mode } = req.body || {};
 		if (!mode || typeof mode !== "string") {
-			return res.status(400).json({ error: "mode is required (default or ask)" });
+			return res.status(400).json({ error: "mode is required (default, ask, or plan)" });
 		}
-		const validModes = ["default", "ask"];
+		const validModes = ["default", "ask", "plan"];
 		if (!validModes.includes(mode)) {
 			return res.status(400).json({ error: `Invalid mode: ${mode}. Must be one of: ${validModes.join(", ")}` });
 		}
@@ -10834,12 +10859,6 @@ app.get("/api/agent-mode", async (req, res) => {
 
 		try {
 			const result = await getAgentMode();
-			if (result?.mode === "plan") {
-				return res.status(200).json({
-					mode: "default",
-					message: "Agent mode plan is no longer exposed by the backend contract",
-				});
-			}
 			return res.status(200).json(result);
 		} catch (agentModeError) {
 			const msg = agentModeError instanceof Error ? agentModeError.message : String(agentModeError);

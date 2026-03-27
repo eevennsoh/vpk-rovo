@@ -4,19 +4,23 @@ import type { ComponentProps, ComponentType, ReactNode } from "react";
 import type { NewCoreIconProps } from "@atlaskit/icon/base-new";
 
 import { useControllableState } from "@/hooks/use-controllable-state";
-import { Badge } from "@/components/ui/badge";
+import { Lozenge, type LozengeProps } from "@/components/ui/lozenge";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { MorphingRovo } from "@/components/ui-ai/morphing-rovo";
 import { Shimmer } from "@/components/ui-ai/shimmer";
+import { MorphingRovo } from "@/components/ui-ai/morphing-rovo";
+import RovoIconGlyph from "@atlaskit/icon-lab/core/rovo";
 import { Icon } from "@/components/ui/icon";
 import { cn } from "@/lib/utils";
 import ChevronDownIcon from "@atlaskit/icon/core/chevron-down";
 import NodeIcon from "@atlaskit/icon/core/node";
 import { createContext, memo, use, useEffect, useMemo, useState } from "react";
+
+import { getDefaultThinkingLabel, getPreloadShimmerLabel, getReasoningCompletedLabel } from "@/components/projects/shared/lib/reasoning-labels";
+import { token } from "@/lib/tokens";
 
 interface ChainOfThoughtContextValue {
 	isOpen: boolean;
@@ -85,12 +89,32 @@ export type ChainOfThoughtHeaderProps = ComponentProps<
 > & {
 	showChevron?: boolean;
 	shimmer?: boolean;
+	state?: "preload" | "thinking" | "completed";
+	duration?: number;
 };
 
 export const ChainOfThoughtHeader = memo(
-	({ className, children, showChevron = true, shimmer = false, ...props }: ChainOfThoughtHeaderProps) => {
+	({
+		className,
+		children,
+		showChevron = true,
+		shimmer = false,
+		state,
+		duration,
+		...props
+	}: ChainOfThoughtHeaderProps) => {
 		const { isOpen } = useChainOfThought();
-		const text = children ?? "Chain of Thought";
+		const resolvedState = state ?? (shimmer ? "preload" : undefined);
+		const text = children ?? (
+			resolvedState === "preload"
+				? getPreloadShimmerLabel()
+				: resolvedState === "thinking"
+					? getDefaultThinkingLabel()
+					: resolvedState === "completed"
+						? getReasoningCompletedLabel(duration)
+						: "Chain of Thought"
+		);
+		const isCompleted = resolvedState == "completed";
 
 		return (
 			<CollapsibleTrigger
@@ -102,8 +126,18 @@ export const ChainOfThoughtHeader = memo(
 				disabled={!showChevron}
 				{...props}
 			>
-				<MorphingRovo.Shape size={16} duration={0.8} blur={1.25} className="shrink-0" />
-				{shimmer && typeof text === "string" ? (
+				{isCompleted ? (
+					<span className="inline-flex size-4 shrink-0 items-center justify-center">
+						<RovoIconGlyph
+							color={token("color.icon.subtlest")}
+							label=""
+							size="small"
+						/>
+					</span>
+				) : (
+					<MorphingRovo.Shape size={16} duration={0.8} blur={1.25} className="shrink-0" />
+				)}
+				{(shimmer || resolvedState === "preload") && typeof text === "string" ? (
 					<Shimmer
 						as="span"
 						wave
@@ -122,9 +156,7 @@ export const ChainOfThoughtHeader = memo(
 						{text}
 					</Shimmer>
 				) : (
-					<span className="text-left">
-						{text}
-					</span>
+					<span className="text-left">{text}</span>
 				)}
 				{showChevron ? (
 					<Icon
@@ -142,6 +174,7 @@ export const ChainOfThoughtHeader = memo(
 
 export type ChainOfThoughtStepProps = ComponentProps<"div"> & {
 	icon?: ComponentType<NewCoreIconProps>;
+	iconRender?: ReactNode;
 	label: ReactNode;
 	description?: ReactNode;
 	status?: "complete" | "active" | "pending";
@@ -161,6 +194,7 @@ export const ChainOfThoughtStep = memo(
 	({
 		className,
 		icon: IconComponent = NodeIcon,
+		iconRender,
 		label,
 		description,
 		status = "complete",
@@ -200,8 +234,8 @@ export const ChainOfThoughtStep = memo(
 					<Icon
 						render={<ChevronDownIcon label="" size="small" spacing="none" />}
 						className={cn(
-							"mt-0.5 size-4 shrink-0 transition-[transform,opacity] opacity-0 group-hover/step:opacity-100 group-focus-visible/step:opacity-100",
-							isOpen ? "rotate-180" : "rotate-0"
+							"mt-0.5 size-4 shrink-0 transition-[transform,opacity] duration-200 ease-out opacity-0 group-hover/step:opacity-100 group-focus-visible/step:opacity-100",
+							isOpen ? "rotate-0" : "-rotate-90"
 						)}
 					/>
 				</span>
@@ -213,7 +247,7 @@ export const ChainOfThoughtStep = memo(
 		return (
 			<div
 				className={cn(
-					"fade-in-0 slide-in-from-top-2 animate-in",
+					"group/cot-step fade-in-0 slide-in-from-top-2 animate-in",
 					"flex gap-2 text-sm",
 					stepStatusStyles[status],
 					className
@@ -221,8 +255,15 @@ export const ChainOfThoughtStep = memo(
 				{...props}
 			>
 				<div className="relative mt-0.5">
-					<Icon render={<IconComponent label="" size="small" spacing="none" />} className="size-4" />
-					<div className="absolute top-7 bottom-0 left-1/2 -mx-px w-px bg-border" />
+					{iconRender ?? <Icon render={<IconComponent label="" size="small" spacing="none" />} className="size-4" />}
+					<div
+						className={cn(
+							"absolute top-5 left-1/2 -mx-px w-px bg-border",
+							hasExpandableContent && isOpen
+								? "-bottom-3"
+								: "-bottom-3 group-last/cot-step:hidden"
+						)}
+					/>
 				</div>
 				<div className="flex-1 space-y-2 overflow-hidden">
 					{stepHeader}
@@ -232,7 +273,7 @@ export const ChainOfThoughtStep = memo(
 					{hasExpandableContent ? (
 						<Collapsible onOpenChange={handleOpenChange} open={isOpen}>
 							<CollapsibleContent
-								className="space-y-2 overflow-hidden data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 data-[state=closed]:animate-out data-[state=open]:animate-in"
+								className="space-y-2 overflow-hidden h-(--collapsible-panel-height) transition-[height,opacity] ease-out duration-200 data-starting-style:h-0 data-starting-style:opacity-0 data-ending-style:h-0 data-ending-style:opacity-0"
 							>
 								{children}
 							</CollapsibleContent>
@@ -257,20 +298,17 @@ export const ChainOfThoughtSearchResults = memo(
 	)
 );
 
-export type ChainOfThoughtSearchResultProps = ComponentProps<typeof Badge>;
+export type ChainOfThoughtSearchResultProps = LozengeProps;
 
 export const ChainOfThoughtSearchResult = memo(
 	({ className, children, ...props }: ChainOfThoughtSearchResultProps) => (
-		<Badge
-			className={cn(
-				"gap-1 border border-border bg-bg-neutral px-2 py-0.5 font-normal text-text-subtle text-xs hover:bg-bg-neutral-hovered",
-				className
-			)}
-			variant="secondary"
+		<Lozenge
+			className={cn("max-w-none", className)}
+			variant="neutral"
 			{...props}
 		>
 			{children}
-		</Badge>
+		</Lozenge>
 	)
 );
 
@@ -283,7 +321,7 @@ export const ChainOfThoughtContent = memo(
 		<CollapsibleContent
 			className={cn(
 				"mt-2 space-y-3",
-				"data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 outline-none data-[state=closed]:animate-out data-[state=open]:animate-in",
+				"outline-none overflow-hidden h-(--collapsible-panel-height) transition-[height,opacity] ease-out duration-200 data-starting-style:h-0 data-starting-style:opacity-0 data-ending-style:h-0 data-ending-style:opacity-0",
 				className
 			)}
 			{...props}
@@ -300,7 +338,7 @@ export type ChainOfThoughtImageProps = ComponentProps<"div"> & {
 export const ChainOfThoughtImage = memo(
 	({ className, children, caption, ...props }: ChainOfThoughtImageProps) => (
 		<div className={cn("mt-2 space-y-2", className)} {...props}>
-			<div className="relative flex max-h-[22rem] items-center justify-center overflow-hidden rounded-lg bg-surface-raised p-3">
+			<div className="relative flex max-h-[22rem] items-center justify-start overflow-hidden rounded-lg bg-surface-raised">
 				{children}
 			</div>
 			{caption ? <p className="text-text-subtle text-xs">{caption}</p> : null}

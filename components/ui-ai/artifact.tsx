@@ -596,6 +596,8 @@ export interface ArtifactPanelProps {
 	mode: "preview" | "edit";
 	/** Callback to add an annotation comment. */
 	onAddComment?: (comment: string) => void;
+	/** Callback to apply all accumulated annotations as individual artifact-update tasks. */
+	onApplyAnnotations?: (annotations: ArtifactAnnotation[]) => void;
 	/** Callback to close the panel. */
 	onClose: () => void;
 	/** Callback to toggle annotation cursor mode. */
@@ -631,6 +633,7 @@ export function ArtifactPanel({
 	isStreaming = false,
 	mode,
 	onAddComment,
+	onApplyAnnotations,
 	onClose,
 	onCursorModeChange,
 	onDelete,
@@ -862,6 +865,22 @@ export function ArtifactPanel({
 					</div>
 				)}
 			</div>
+
+			{annotations.length > 0 && onApplyAnnotations ? (
+				<div className="flex items-center justify-between border-border/80 border-t bg-bg-neutral/40 px-4 py-2">
+					<p className="text-text-subtle text-xs">
+						{annotations.length} {annotations.length === 1 ? "annotation" : "annotations"}
+					</p>
+					<Button
+						disabled={isStreaming}
+						onClick={() => onApplyAnnotations(annotations)}
+						size="sm"
+						type="button"
+					>
+						Apply all
+					</Button>
+				</div>
+			) : null}
 		</div>
 	);
 }

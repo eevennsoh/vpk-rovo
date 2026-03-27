@@ -95,7 +95,7 @@ test("uses a deterministic completed label when phase is completed without durat
 			reasoningPhase: "completed",
 			duration: undefined,
 		}),
-		"Completed"
+		"Thought for 0s"
 	);
 });
 

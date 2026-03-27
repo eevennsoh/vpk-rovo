@@ -75,7 +75,7 @@ supports_websockets = false
 
 [model_providers.atlassian-proxy]
 name = "Atlassian Proxy"
-base_url = "http://localhost:29576/openai/v1"
+base_url = "http://localhost:29575/openai/v1"
 wire_api = "responses"
 requires_openai_auth = false
 supports_websockets = false

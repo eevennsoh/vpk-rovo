@@ -84,6 +84,39 @@ test("setAgentMode targets the versioned v3 endpoint and supports documented mod
 	}
 });
 
+test("setAgentMode supports plan mode", async () => {
+	const requests = [];
+	const server = http.createServer(async (req, res) => {
+		requests.push(`${req.method} ${req.url}`);
+		if (req.method === "PUT" && req.url === "/v3/agent-mode") {
+			const body = await readJson(req);
+			assert.deepEqual(body, { mode: "plan" });
+			res.writeHead(200, { "Content-Type": "application/json" });
+			res.end(JSON.stringify({
+				mode: "plan",
+				message: "Agent mode changed to plan",
+			}));
+			return;
+		}
+
+		res.writeHead(404, { "Content-Type": "application/json" });
+		res.end(JSON.stringify({ detail: "Not Found" }));
+	});
+
+	const port = await listen(server);
+
+	try {
+		const result = await setAgentMode(port, "plan");
+		assert.deepEqual(result, {
+			mode: "plan",
+			message: "Agent mode changed to plan",
+		});
+		assert.deepEqual(requests, ["PUT /v3/agent-mode"]);
+	} finally {
+		await close(server);
+	}
+});
+
 test("setAgentMode rejects unsupported modes without issuing a request", async () => {
 	const requests = [];
 	const server = http.createServer((req, res) => {
@@ -96,8 +129,8 @@ test("setAgentMode rejects unsupported modes without issuing a request", async (
 
 	try {
 		await assert.rejects(
-			() => setAgentMode(port, "plan"),
-			/Unsupported agent mode: plan/
+			() => setAgentMode(port, "bogus"),
+			/Unsupported agent mode: bogus/
 		);
 		assert.deepEqual(requests, []);
 	} finally {
@@ -150,6 +183,7 @@ test("getAvailableModes filters unsupported modes from the v3 payload", async ()
 					{ name: "default", description: "Full access" },
 					{ name: "plan", description: "Plan mode" },
 					{ mode: "ask", description: "Read only" },
+					{ name: "weird", description: "Unsupported" },
 				],
 			}));
 			return;
@@ -166,6 +200,7 @@ test("getAvailableModes filters unsupported modes from the v3 payload", async ()
 		assert.deepEqual(result, {
 			modes: [
 				{ name: "default", description: "Full access" },
+				{ name: "plan", description: "Plan mode" },
 				{ mode: "ask", description: "Read only" },
 			],
 		});

@@ -351,3 +351,32 @@ export async function cancelFutureChatRun(threadId: string): Promise<boolean> {
 	const payload = await parseJsonResponse<{ cancelled?: boolean }>(response);
 	return payload.cancelled === true;
 }
+
+
+export async function createFutureChatMakeRun(input: {
+	plan: unknown;
+	userPrompt?: string;
+	conversation?: Array<{ role: "user" | "assistant"; content: string }>;
+	customInstruction?: string;
+	agentCount?: number;
+}): Promise<import("@/lib/make-run-types").AgentRun> {
+	const response = await fetch(API_ENDPOINTS.MAKE_RUNS, {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(input),
+	});
+	const payload = await parseJsonResponse<{ run?: import("@/lib/make-run-types").AgentRun }>(response);
+	if (!payload.run) {
+		throw new Error("Make run response was missing run data.");
+	}
+	return payload.run;
+}
+
+export async function getFutureChatMakeRun(runId: string): Promise<import("@/lib/make-run-types").AgentRun | null> {
+	const response = await fetch(API_ENDPOINTS.makeRun(runId), { method: "GET" });
+	if (response.status === 404) {
+		return null;
+	}
+	const payload = await parseJsonResponse<{ run?: import("@/lib/make-run-types").AgentRun }>(response);
+	return payload.run ?? null;
+}

@@ -127,6 +127,36 @@ describe("resolveRoutingDecisionFastPath", () => {
 		assert.equal(result.presentation, "artifact_preview");
 	});
 
+	it("returns artifact_create for 'create a new app' when activeArtifact exists", () => {
+		const result = resolveRoutingDecisionFastPath({
+			prompt: "create a new app",
+			activeArtifact: { id: "doc_1", title: "Login", kind: "code" },
+		});
+		assert.equal(result.intent, "artifact_create");
+		assert.equal(result.presentation, "artifact_preview");
+		assert.equal(result.confidence, 0.95);
+		assert.equal(result.reason, "explicit_new_artifact");
+	});
+
+	it("returns artifact_create for 'build another page' when activeArtifact exists", () => {
+		const result = resolveRoutingDecisionFastPath({
+			prompt: "build another page",
+			activeArtifact: { id: "doc_1", title: "Login", kind: "code" },
+		});
+		assert.equal(result.intent, "artifact_create");
+		assert.equal(result.presentation, "artifact_preview");
+		assert.equal(result.reason, "explicit_new_artifact");
+	});
+
+	it("returns artifact_create for 'make a separate component' when activeArtifact exists", () => {
+		const result = resolveRoutingDecisionFastPath({
+			prompt: "make a separate component",
+			activeArtifact: { id: "doc_1", title: "Login", kind: "code" },
+		});
+		assert.equal(result.intent, "artifact_create");
+		assert.equal(result.reason, "explicit_new_artifact");
+	});
+
 	it("returns chat for conversational messages", () => {
 		const result = resolveRoutingDecisionFastPath({ prompt: "hello" });
 		assert.equal(result.intent, "chat");

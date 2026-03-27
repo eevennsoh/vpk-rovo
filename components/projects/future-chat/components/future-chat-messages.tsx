@@ -44,7 +44,6 @@ import AiAgentIcon from "@atlaskit/icon/core/ai-agent";
 import type { NewCoreIconProps } from "@atlaskit/icon/base-new";
 import ListChecklistIcon from "@atlaskit/icon/core/list-checklist";
 import PeopleGroupIcon from "@atlaskit/icon/core/people-group";
-import WrenchIcon from "@atlaskit/icon-lab/core/wrench";
 import { Button } from "@/components/ui/button";
 import { Lozenge } from "@/components/ui/lozenge";
 import { Textarea } from "@/components/ui/textarea";
@@ -79,7 +78,6 @@ import { PlanWidgetInlineCard } from "@/components/projects/shared/components/pl
 import { PreloadThinkingIndicator } from "@/components/projects/shared/components/preload-thinking-indicator";
 import { useDynamicThinkingLabel } from "@/components/projects/shared/hooks/use-dynamic-thinking-label";
 import {
-	getReasoningPropsForPhase,
 	useReasoningPhase,
 } from "@/components/projects/shared/hooks/use-reasoning-phase";
 import {
@@ -122,6 +120,7 @@ import {
 } from "@/components/projects/shared/lib/question-card-widget";
 import { getPlanApprovalState } from "@/components/projects/shared/lib/plan-approval";
 import { cn } from "@/lib/utils";
+import { renderResolvedToolIcon, resolveToolIcon } from "@/components/projects/shared/lib/tool-icon-resolver";
 import type { FutureChatActiveRun, FutureChatDocument } from "@/lib/future-chat-types";
 import type { FutureChatStreamingArtifact } from "@/components/projects/future-chat/lib/future-chat-streaming-artifact";
 import Image from "next/image";
@@ -168,10 +167,6 @@ const StepChecklistIcon = ({ label = "", size = "small", spacing = "none", ...pr
 const StepAgentsIcon = ({ label = "", size = "small", spacing = "none", ...props }: NewCoreIconProps) => (
 	<Icon render={<PeopleGroupIcon label={label} size={size} spacing={spacing} {...props} />} />
 );
-const StepToolIcon = ({ label = "", size = "small", spacing = "none", ...props }: NewCoreIconProps) => (
-	<Icon render={<WrenchIcon label={label} size={size} spacing={spacing} {...props} />} />
-);
-
 function toolStateToCoTStatus(
 	state: string,
 ): "complete" | "active" | "pending" {
@@ -884,7 +879,12 @@ function AssistantMessage({
 								open={isThinkingOpen}
 								onOpenChange={setThinkingUserOverride}
 							>
-								<ChainOfThoughtHeader>{thinkingTriggerLabel}</ChainOfThoughtHeader>
+								<ChainOfThoughtHeader
+								state={thinkingReasoningPhase === "completed" ? "completed" : thinkingReasoningPhase === "thinking" ? "thinking" : "preload"}
+								duration={thinkingReasoningPhase === "completed" ? thinkingDuration : undefined}
+							>
+								{thinkingTriggerLabel}
+							</ChainOfThoughtHeader>
 								{hasThinkingDetails ? (
 									<ChainOfThoughtContent>
 										{shouldShowThinkingSection ? (
@@ -923,7 +923,7 @@ function AssistantMessage({
 												key={`${message.id}-cot-tool-${toolCall.id}-${index}`}
 												collapsible
 												defaultOpen={isToolCallStepOpenByDefault(toolCall.state)}
-												icon={StepToolIcon}
+												iconRender={renderResolvedToolIcon(resolveToolIcon({ toolName: toolCall.toolName, title: toolCall.toolName, input: toolCall.input, mcpServer: toolCall.mcpServer }), { className: "size-4" })}
 												label={toolCall.toolName}
 												status={toolStateToCoTStatus(toolCall.state)}
 											>

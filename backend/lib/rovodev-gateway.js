@@ -900,6 +900,7 @@ function resolveToolCallInput({
 async function streamViaRovoDev({
 	message,
 	onTextDelta,
+	onSubagentTextDelta,
 	onThinkingStatus,
 	onThinkingEvent,
 	onWarning,
@@ -1164,6 +1165,12 @@ async function streamViaRovoDev({
 				const streamHandle = sendMessageStreaming(message, {
 					onChunk: (chunk) => {
 						if (chunk.type === "text" && chunk.subagentName) {
+							if (typeof onSubagentTextDelta === "function" && chunk.text) {
+								onSubagentTextDelta(chunk.text, {
+									subagentName: chunk.subagentName,
+									subagentToolCallId: chunk.subagentToolCallId,
+								});
+							}
 							return;
 						}
 						if (chunk.type === "text" && chunk.text) {

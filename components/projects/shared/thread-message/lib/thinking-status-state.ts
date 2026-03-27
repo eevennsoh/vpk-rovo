@@ -81,8 +81,8 @@ export function resolveThinkingStatusTriggerLabel({
 		Number.isFinite(duration) &&
 		duration > 0;
 
-	if (reasoningPhase === "completed" && !hasCompletedDuration) {
-		return getReasoningCompletedLabel(duration);
+	if (reasoningPhase === "completed") {
+		return getReasoningCompletedLabel(hasCompletedDuration ? duration : 0);
 	}
 
 	return resolvedLabel;
