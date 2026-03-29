@@ -31,6 +31,16 @@ export interface PlanMermaidGraph {
 	hasExplicitEdges: boolean;
 }
 
+export interface PendingPlanWidget {
+	planWidget: ParsedPlanWidgetPayload;
+	sourceMessageId: string;
+}
+
+export interface DeferredToolResponsePayload {
+	tool_call_id: string;
+	result: string;
+}
+
 const MERMAID_BLOCK_REGEX = /```mermaid\b[\s\S]*?```/gi;
 const MERMAID_EDGE_REGEX =
 	/\b[A-Za-z0-9_-]+\s*(?:-->|==>|-.->)\s*(?:\|[^|\n]+\|\s*)?[A-Za-z0-9_-]+\b/;
@@ -50,6 +60,36 @@ function getNonEmptyString(value: unknown): string | null {
 
 	const trimmedValue = value.trim();
 	return trimmedValue.length > 0 ? trimmedValue : null;
+}
+
+function isMessageVisibleInTranscript(message: Pick<RovoUIMessage, "metadata">): boolean {
+	return message.metadata?.visibility !== "hidden";
+}
+
+function getLatestPlanWidgetPart(message: Pick<RovoUIMessage, "parts">): {
+	type?: unknown;
+	payload?: unknown;
+} | null {
+	for (let index = message.parts.length - 1; index >= 0; index -= 1) {
+		const part = message.parts[index] as {
+			type?: string;
+			data?: {
+				type?: unknown;
+				payload?: unknown;
+			};
+		};
+		if (part?.type !== "data-widget-data" || !part.data) {
+			continue;
+		}
+
+		if (getNonEmptyString(part.data.type) !== "plan") {
+			continue;
+		}
+
+		return part.data;
+	}
+
+	return null;
 }
 
 function sanitizeMermaidNodeId(value: string): string {
@@ -347,6 +387,58 @@ export function getLatestPlanWidgetPayload(
 ): ParsedPlanWidgetPayload | null {
 	const allPlans = getAllPlanWidgetPayloads(messages);
 	return allPlans.length > 0 ? allPlans[allPlans.length - 1] : null;
+}
+
+export function getLatestPendingPlanWidget(
+	messages: ReadonlyArray<RovoUIMessage>
+): PendingPlanWidget | null {
+	for (let index = messages.length - 1; index >= 0; index -= 1) {
+		const message = messages[index];
+		if (!isMessageVisibleInTranscript(message)) {
+			continue;
+		}
+
+		if (message.role === "user") {
+			return null;
+		}
+
+		if (message.role !== "assistant") {
+			continue;
+		}
+
+		const widgetPart = getLatestPlanWidgetPart(message);
+		if (!widgetPart) {
+			continue;
+		}
+
+		const parsedPlanWidget = parsePlanWidgetPayload(widgetPart.payload);
+		if (!parsedPlanWidget?.deferredToolCallId) {
+			continue;
+		}
+
+		return {
+			planWidget: parsedPlanWidget,
+			sourceMessageId: message.id,
+		};
+	}
+
+	return null;
+}
+
+export function buildExitPlanModeDeferredToolResponse(
+	planWidget: ParsedPlanWidgetPayload | null,
+	result: string,
+): DeferredToolResponsePayload | null {
+	const toolCallId = getNonEmptyString(planWidget?.deferredToolCallId ?? planWidget?.toolCallId);
+	const normalizedResult = getNonEmptyString(result);
+	if (!toolCallId || !normalizedResult) {
+		return null;
+	}
+
+	return {
+		tool_call_id: toolCallId,
+		result: normalizedResult,
+	};
 }
 
 export interface PlanBuildableResult {

@@ -3797,9 +3797,66 @@ const {
 // Populated during streaming, consumed during answer serialization.
 /** @type {Map<string, Array<{id: string, label: string}>>} */
 const _requestUserInputQuestionMetaStore = new Map();
+/** @type {Map<string, { toolCallId: string; port: number; threadId: string | null; kind: "clarification" | "plan-approval"; createdAt: number; expiresAt: number; expiryTimer: NodeJS.Timeout | null; }>} */
+const _activeDeferredToolCallStore = new Map();
 /** @type {Map<string, { toolCallId: string; port: number; handle: { port: number; release: () => void; releaseAsUnhealthy?: () => void }; threadId: string | null; sessionId: string | null; sessionMode: "persistent" | "ephemeral"; kind: "clarification" | "plan-approval"; createdAt: number; expiresAt: number; expiryTimer: NodeJS.Timeout | null; }>} */
 const _pausedRovoDevToolCallStore = new Map();
 const PAUSED_ROVODEV_TOOL_CALL_TTL_MS = 15 * 60_000;
+
+function clearActiveDeferredToolCall(toolCallId) {
+	const normalizedToolCallId = getNonEmptyString(toolCallId);
+	if (!normalizedToolCallId) {
+		return null;
+	}
+
+	const record = _activeDeferredToolCallStore.get(normalizedToolCallId) || null;
+	if (!record) {
+		return null;
+	}
+
+	_activeDeferredToolCallStore.delete(normalizedToolCallId);
+	if (record.expiryTimer) {
+		clearTimeout(record.expiryTimer);
+		record.expiryTimer = null;
+	}
+
+	return record;
+}
+
+function registerActiveDeferredToolCall({
+	toolCallId,
+	port,
+	threadId = null,
+	kind,
+}) {
+	const normalizedToolCallId = getNonEmptyString(toolCallId);
+	if (!normalizedToolCallId || !Number.isInteger(port) || port <= 0) {
+		return null;
+	}
+
+	clearActiveDeferredToolCall(normalizedToolCallId);
+
+	const now = Date.now();
+	const record = {
+		toolCallId: normalizedToolCallId,
+		port,
+		threadId: getNonEmptyString(threadId),
+		kind: kind === "plan-approval" ? "plan-approval" : "clarification",
+		createdAt: now,
+		expiresAt: now + PAUSED_ROVODEV_TOOL_CALL_TTL_MS,
+		expiryTimer: null,
+	};
+
+	record.expiryTimer = setTimeout(() => {
+		clearActiveDeferredToolCall(normalizedToolCallId);
+	}, PAUSED_ROVODEV_TOOL_CALL_TTL_MS);
+	if (typeof record.expiryTimer?.unref === "function") {
+		record.expiryTimer.unref();
+	}
+
+	_activeDeferredToolCallStore.set(normalizedToolCallId, record);
+	return record;
+}
 
 function clearPausedRovoDevToolCall(toolCallId, { cancel = false } = {}) {
 	const normalizedToolCallId = getNonEmptyString(toolCallId);
@@ -5019,6 +5076,13 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 			latestUserMessageSource === "clarification-submit";
 		const clarificationSubmission = normalizeClarificationSubmission(rawClarification);
 		const approvalSubmission = normalizeApprovalSubmission(rawApproval);
+		const deferredToolResponseToolCallId =
+			rawDeferredToolResponse && typeof rawDeferredToolResponse === "object"
+				? getNonEmptyString(rawDeferredToolResponse.tool_call_id)
+				: null;
+		if (deferredToolResponseToolCallId) {
+			clearActiveDeferredToolCall(deferredToolResponseToolCallId);
+		}
 		const clarificationToolCallId =
 			getToolCallIdFromClarificationSubmission(clarificationSubmission);
 		const approvalToolCallId =
@@ -8715,14 +8779,6 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 										return;
 									}
 
-									if (isExitPlanModeTool(toolCall.toolName) && toolCall.toolCallId) {
-										maybeEmitExitPlanWidget({
-											toolCallId: toolCall.toolCallId,
-											toolInput: toolCall.toolInput ?? toolCall.text ?? null,
-											source: "tool_call_start",
-										});
-									}
-
 									// Handle deferred tool requests (e.g., ask_user_questions from RovoDev)
 									if (toolCall.isDeferredToolRequest === true) {
 										hasObservedDeferredToolRequest = true;
@@ -8784,14 +8840,6 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 									hasObservedActionableToolCall = true;
 								},
 								onToolCallInputResolved: (toolCall) => {
-									if (isExitPlanModeTool(toolCall?.toolName) && toolCall?.toolCallId) {
-										maybeEmitExitPlanWidget({
-											toolCallId: toolCall.toolCallId,
-											toolInput: toolCall.toolInput ?? null,
-											source: "tool_call_input_resolved",
-										});
-									}
-
 									if (!isRequestUserInputTool(toolCall?.toolName)) {
 										emitRequestUserInputQuestionCard({
 											toolName: toolCall?.toolName,
@@ -8879,6 +8927,20 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 									}
 
 									hasObservedDeferredToolRequest = true;
+									if (
+										toolCall.toolCallId &&
+										typeof resolvedRovoDevPort === "number" &&
+										resolvedRovoDevPort > 0
+									) {
+										registerActiveDeferredToolCall({
+											toolCallId: toolCall.toolCallId,
+											port: resolvedRovoDevPort,
+											threadId,
+											kind: isExitPlanModeTool(toolCall.toolName)
+												? "plan-approval"
+												: "clarification",
+										});
+									}
 									if (threadId && typeof resolvedRovoDevPort === "number" && resolvedRovoDevPort > 0) {
 										try {
 											await syncFutureChatThreadSessionFromCurrentPort(
@@ -8939,7 +9001,10 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 										return { disconnect: false };
 									}
 
-									if (isRequestUserInputTool(interactivePart.tool_name)) {
+									if (
+										isRequestUserInputTool(interactivePart.tool_name) ||
+										isExitPlanModeTool(interactivePart.tool_name)
+									) {
 										const decisions = pausedParts
 											.map((part) => {
 												const toolCallId = getNonEmptyString(part?.tool_call_id);
@@ -8953,88 +9018,6 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 										}
 										return { disconnect: false };
 									}
-
-									if (isExitPlanModeTool(interactivePart.tool_name)) {
-										const reservedHandle = control.reservePort();
-										let pausedSessionId = rovoDevSessionId;
-										let pausedSessionMode = sessionMode;
-										if (threadId) {
-											try {
-												const synchronizedThread =
-													await syncFutureChatThreadSessionFromCurrentPort(
-														threadId,
-														control.port,
-														{ sessionMode },
-													);
-												pausedSessionId =
-													getNonEmptyString(synchronizedThread?.sessionId)
-													|| pausedSessionId;
-												pausedSessionMode =
-													synchronizedThread?.sessionMode === "ephemeral"
-														? "ephemeral"
-														: pausedSessionMode;
-											} catch (error) {
-												console.warn("[FUTURE-CHAT] Failed to sync thread session on plan approval pause:", {
-													threadId,
-													port: control.port,
-													error: error instanceof Error ? error.message : String(error),
-												});
-											}
-										}
-										registerPausedRovoDevToolCall({
-											toolCallId: interactivePart.tool_call_id,
-											port: control.port,
-											handle: reservedHandle,
-											threadId,
-											sessionId: pausedSessionId,
-											sessionMode: pausedSessionMode,
-											kind: "plan-approval",
-										});
-										hasObservedDeferredToolRequest = true;
-										pausedToolCallHandled = true;
-										return { disconnect: true };
-									}
-
-									const reservedHandle = control.reservePort();
-									let pausedSessionId = rovoDevSessionId;
-									let pausedSessionMode = sessionMode;
-									if (threadId) {
-										try {
-											const synchronizedThread =
-												await syncFutureChatThreadSessionFromCurrentPort(
-													threadId,
-													control.port,
-													{ sessionMode },
-												);
-											pausedSessionId =
-												getNonEmptyString(synchronizedThread?.sessionId)
-												|| pausedSessionId;
-											pausedSessionMode =
-												synchronizedThread?.sessionMode === "ephemeral"
-													? "ephemeral"
-													: pausedSessionMode;
-										} catch (error) {
-											console.warn("[FUTURE-CHAT] Failed to sync thread session on deferred pause:", {
-												threadId,
-												port: control.port,
-												error: error instanceof Error ? error.message : String(error),
-											});
-										}
-									}
-									registerPausedRovoDevToolCall({
-										toolCallId: interactivePart.tool_call_id,
-										port: control.port,
-										handle: reservedHandle,
-										threadId,
-										sessionId: pausedSessionId,
-										sessionMode: pausedSessionMode,
-										kind: isExitPlanModeTool(interactivePart.tool_name)
-											? "plan-approval"
-											: "clarification",
-									});
-									hasObservedDeferredToolRequest = true;
-									pausedToolCallHandled = true;
-									return { disconnect: true };
 								},
 								idleTimeoutMs: WAIT_FOR_TURN_TIMEOUT_MS,
 								includeSubagentEvents: true,
@@ -10812,6 +10795,56 @@ app.post("/api/chat-cancel", async (req, res) => {
 	} catch (error) {
 		console.error("[CHAT-CANCEL] Cancel error:", error.message || error);
 		return res.status(200).json({ cancelled: false, error: error.message });
+	}
+});
+
+app.post("/api/future-chat/cancel-deferred-tool", async (req, res) => {
+	try {
+		const toolCallId = getNonEmptyString(req.body?.toolCallId);
+		if (!toolCallId) {
+			return res.status(400).json({ error: "toolCallId is required" });
+		}
+
+		const activeDeferredToolCall = clearActiveDeferredToolCall(toolCallId);
+		if (activeDeferredToolCall) {
+			await rovoDevCancelChat(activeDeferredToolCall.port, { timeoutMs: 3_000 });
+			if (activeDeferredToolCall.threadId) {
+				activeRequests.delete(activeDeferredToolCall.threadId);
+				if (activeDeferredToolCall.kind === "plan-approval") {
+					clearPlanSession(activeDeferredToolCall.threadId);
+				}
+			}
+
+			return res.status(200).json({
+				cancelled: true,
+				kind: activeDeferredToolCall.kind,
+				port: activeDeferredToolCall.port,
+				threadId: activeDeferredToolCall.threadId,
+				toolCallId,
+			});
+		}
+
+		const pausedToolCall = clearPausedRovoDevToolCall(toolCallId, { cancel: true });
+		if (pausedToolCall) {
+			if (pausedToolCall.threadId && pausedToolCall.kind === "plan-approval") {
+				clearPlanSession(pausedToolCall.threadId);
+			}
+
+			return res.status(200).json({
+				cancelled: true,
+				kind: pausedToolCall.kind,
+				port: pausedToolCall.port,
+				threadId: pausedToolCall.threadId,
+				toolCallId,
+			});
+		}
+
+		return res.status(404).json({ error: "Deferred tool call not found" });
+	} catch (error) {
+		console.error("[FUTURE-CHAT] Failed to cancel deferred tool call:", error);
+		return res.status(500).json({
+			error: error instanceof Error ? error.message : "Failed to cancel deferred tool call",
+		});
 	}
 });
 

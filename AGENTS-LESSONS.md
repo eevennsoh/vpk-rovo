@@ -119,10 +119,25 @@ Mark promoted entries with `[Promoted]` prefix — see vpk-lesson skill for deta
 - **Why:** Atlassian site defaults are split across Confluence and Jira contexts, and it is easy to carry the wrong site forward when making adjacent environment-specific edits.
 - **Rule:** When touching default Atlassian site values, verify Jira and Confluence separately. Use `https://product-fabric.atlassian.net/` for Jira defaults unless the local configuration explicitly says otherwise, and do not infer the Jira site from the Confluence site.
 
-### 2026-03-24 - Use the Serve-native deferred flow for `ask_user_questions`
-- **What happened:** Future Chat repeatedly broke the full planning chain from question card -> tool execution trace -> plan card -> approval by treating `ask_user_questions` like a paused generic tool call, mixing `resume_tool_calls`, `_suppress_tool_call`, replay, and synthetic `[ask_user_questions Result]` context. This caused 409 conflicts, schema validation failures, duplicate question cards, malformed tool history (`unexpected tool_use_id`), missing session continuity on plan retries, invisible subagent work, and plan cards that preserved only a short derived description instead of the exact `exit_plan_mode` markdown.
-- **Why:** `ask_user_questions` is a real deferred tool in RovoDev Serve with a strict `QuestionsInput` schema. It must be answered through the deferred-result contract, not the pause/suppress path used for generic tool approvals. Future Chat also needs the active RovoDev session persisted early so post-clarification, `invoke_subagents`, hidden plan-retry, and approval turns target the same session, and the plan card must preserve the raw `exit_plan_mode.plan` markdown rather than only a parsed summary.
-- **Rule:** For `ask_user_questions`, render the card from the actual deferred-tool request event and return answers through the Serve-native deferred result path only. Do not emit the card early from tool-call start/input-resolved hooks, do not use `_suppress_tool_call`, and do not duplicate the same answers in synthetic prompt context on the same resume turn. For Future Chat plan-mode continuations, persist the active `sessionId`/`sessionMode` before follow-up turns, enable subagent event visibility when `invoke_subagents` is allowed, and preserve 100% of the original `exit_plan_mode` markdown in the plan widget so the full plan body renders, not just a short description.
+### 2026-03-24 - Use the Serve-native deferred flow for plan-mode tools
+- **What happened:** Future Chat repeatedly broke the planning chain by
+  treating both `ask_user_questions` and `exit_plan_mode` like custom paused
+  approval flows, mixing `resume_tool_calls`, synthetic approval payloads,
+  manual agent-mode toggles, and a local make-grid build path. This caused
+  stuck or invalid plan reviews, duplicate question cards, malformed tool
+  history, and plan cards that drifted from the real `exit_plan_mode` payload.
+- **Why:** Both tools are real deferred tools in RovoDev Serve and must be
+  answered through the deferred-result contract instead of local approval
+  plumbing. `exit_plan_mode` in particular depends on exact result strings like
+  `"Accept."`, and plan rejection must cancel the pending deferred tool instead
+  of reusing the next prompt as synthetic feedback.
+- **Rule:** For `ask_user_questions` and `exit_plan_mode`, render UI from the
+  actual deferred-tool request event and return results through the
+  Serve-native deferred response path only. In Future Chat, map Build to
+  `"Accept."`, a normal reply to plan feedback, and Plan-off plus the next
+  prompt to cancel the pending deferred tool and send the new prompt in
+  default mode; do not route plan acceptance through custom approval or
+  make-grid logic.
 
 ### 2026-03-25 - Codex version switching here must update config profiles alongside version and auth
 

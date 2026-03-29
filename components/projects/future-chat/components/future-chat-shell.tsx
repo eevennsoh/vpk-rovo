@@ -65,12 +65,6 @@ import { QuestionCardShortcutsFooter } from "@/components/projects/shared/compon
 import { getLatestQuestionCardPayload, type ClarificationAnswers } from "@/components/projects/shared/lib/question-card-widget";
 import { type ParsedPlanWidgetPayload } from "@/components/projects/shared/lib/plan-widget";
 import { useDismissibleCards } from "@/components/projects/shared/hooks/use-dismissible-cards";
-import { MakeGridSurface } from "@/components/blocks/make-grid/components/make-grid-surface";
-import {
-	extractAgentExecutionUpdates,
-	buildTaskExecutions,
-	type TaskExecution,
-} from "@/components/projects/make/lib/execution-data";
 
 interface FutureChatShellProps {
 	embedded?: boolean;
@@ -501,7 +495,7 @@ export function FutureChatShell({
 
 	// Question card / clarification support
 	const activeQuestionCard = useMemo(() => getLatestQuestionCardPayload(chat.messages), [chat.messages]);
-	const { submitClarification, submitPlanApproval } = chat;
+	const { acceptPlanReview, submitClarification } = chat;
 	const {
 		shouldShowQuestionCard: shouldShowQuestionCardRaw,
 		activeQuestionCardKey,
@@ -522,9 +516,9 @@ export function FutureChatShell({
 	);
 	const handleBuildPlan = useCallback(
 		(planWidget: ParsedPlanWidgetPayload) => {
-			void submitPlanApproval(planWidget, { decision: "auto-accept" });
+			void acceptPlanReview(planWidget);
 		},
-		[submitPlanApproval],
+		[acceptPlanReview],
 	);
 	const handleOpenPlanPreview = useCallback(
 		(planWidget: ParsedPlanWidgetPayload, sourceMessageId?: string) => {
@@ -1812,126 +1806,7 @@ export function FutureChatShell({
 		return items;
 	})();
 
-	// Derive task executions from approved plan tasks first, then enrich with agent execution updates.
-	const buildingTaskExecutions = useMemo(() => {
-		if (chat.panelState !== "building") {
-			return [];
-		}
-
-		const updates = extractAgentExecutionUpdates(chat.messages);
-		const enrichedExecutions = buildTaskExecutions(updates);
-		if (!chat.buildSession) {
-			return enrichedExecutions;
-		}
-
-		const executionsByTaskId = new Map(enrichedExecutions.map((execution) => [execution.taskId, execution] as const));
-		return chat.buildSession.tasks.map<TaskExecution>((task: (typeof chat.buildSession.tasks)[number], index: number) => {
-			const execution = executionsByTaskId.get(task.id);
-			if (execution) {
-				return execution;
-			}
-
-			return {
-				taskId: task.id,
-				taskLabel: task.label,
-				agentId: `lane-${index + 1}`,
-				agentName: task.agent ?? `Task ${index + 1}`,
-				status:
-					task.status === "completed"
-						? "completed"
-						: task.status === "failed"
-							? "failed"
-							: "working",
-				content: task.content ?? "",
-				blockedBy: task.blockedBy,
-			};
-		});
-	}, [chat]);
-
-	// Detect build completion: all tasks done → transition building → preview
-	const isBuildComplete = useMemo(() => {
-		if (chat.panelState !== "building") {
-			return false;
-		}
-		if (buildingTaskExecutions.length === 0) {
-			return false;
-		}
-		return buildingTaskExecutions.every(
-			(execution: TaskExecution) => execution.status === "completed",
-		);
-	}, [chat.panelState, buildingTaskExecutions]);
-
-	useEffect(() => {
-		if (!isBuildComplete) {
-			return;
-		}
-		// Delay slightly to allow the streaming artifact / document to finalize
-		const timeoutId = window.setTimeout(() => {
-			chat.setPanelState("preview");
-		}, 800);
-		return () => {
-			window.clearTimeout(timeoutId);
-		};
-	}, [isBuildComplete, chat]);
-
 	const artifactPane = (() => {
-		if (chat.panelState === "building") {
-			return (
-				<AnimatePresence mode="wait">
-					{isBuildComplete ? (
-						<motion.div
-							key="build-complete"
-							className="flex h-full w-full items-center justify-center bg-surface"
-							initial={{ opacity: 0, scale: 0.95 }}
-							animate={{
-								opacity: 1,
-								scale: 1,
-								transition: {
-									type: "spring",
-									stiffness: 300,
-									damping: 25,
-								},
-							}}
-						>
-							<div className="text-sm text-text-subtle">
-								Preparing preview...
-							</div>
-						</motion.div>
-					) : (
-						<motion.div
-							key="build-grid"
-							className="flex h-full w-full flex-col overflow-hidden bg-surface"
-							exit={{
-								opacity: 0,
-								scale: 0.95,
-								transition: {
-									duration: 0.3,
-									ease: [0.4, 0, 0.2, 1],
-								},
-							}}
-						>
-							<div className="flex items-center justify-between border-b border-border px-4 py-2">
-								<span className="text-sm font-medium text-text">Building</span>
-								<button
-									type="button"
-									className="text-xs text-text-subtlest hover:text-text-subtle"
-									onClick={() => chat.hideArtifactPane()}
-								>
-									Minimize
-								</button>
-							</div>
-							<div className="min-h-0 flex-1">
-								<MakeGridSurface
-									taskExecutions={buildingTaskExecutions}
-									showGeneratingEmptyState={chat.isStreaming}
-								/>
-							</div>
-						</motion.div>
-					)}
-				</AnimatePresence>
-			);
-		}
-
 		if (!workspaceDocument) {
 			return null;
 		}
@@ -1982,9 +1857,6 @@ export function FutureChatShell({
 		<>
 			<FutureChatMessages
 				activeDocumentId={chat.activeDocument?.id ?? null}
-				activeRun={
-					chat.threads.find((thread) => thread.id === chat.activeThreadId)?.activeRun ?? null
-				}
 				compact={isArtifactOpen}
 				extraHorizontalPaddingWhenCompact
 				documents={chat.documents}

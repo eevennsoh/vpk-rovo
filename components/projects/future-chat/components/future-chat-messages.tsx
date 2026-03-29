@@ -109,8 +109,7 @@ import {
 	type RovoUIMessage,
 } from "@/lib/rovo-ui-messages";
 import {
-	getAllPlanWidgetPayloads,
-	isPlanCardBuildable,
+	getLatestPendingPlanWidget,
 	parsePlanWidgetPayload,
 	type ParsedPlanWidgetPayload,
 } from "@/components/projects/shared/lib/plan-widget";
@@ -118,10 +117,9 @@ import {
 	hasMatchingClarificationResponse,
 	parseQuestionCardPayload,
 } from "@/components/projects/shared/lib/question-card-widget";
-import { getPlanApprovalState } from "@/components/projects/shared/lib/plan-approval";
 import { cn } from "@/lib/utils";
 import { renderResolvedToolIcon, resolveToolIcon } from "@/components/projects/shared/lib/tool-icon-resolver";
-import type { FutureChatActiveRun, FutureChatDocument } from "@/lib/future-chat-types";
+import type { FutureChatDocument } from "@/lib/future-chat-types";
 import type { FutureChatStreamingArtifact } from "@/components/projects/future-chat/lib/future-chat-streaming-artifact";
 import Image from "next/image";
 import { Component, Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -130,7 +128,6 @@ import Heading from "@/components/blocks/shared-ui/heading";
 
 interface FutureChatMessagesProps {
 	activeDocumentId: string | null;
-	activeRun: FutureChatActiveRun | null;
 	compact?: boolean;
 	extraHorizontalPaddingWhenCompact?: boolean;
 	documents: ReadonlyArray<FutureChatDocument>;
@@ -1146,7 +1143,6 @@ function AssistantSuggestionPills({
 
 export function FutureChatMessages({
 	activeDocumentId,
-	activeRun,
 	compact = false,
 	extraHorizontalPaddingWhenCompact = false,
 	documents,
@@ -1184,13 +1180,9 @@ export function FutureChatMessages({
 			.reverse()
 			.find((message) => message.role === "assistant")?.id ?? null;
 	}, [visibleMessages]);
-	const allPlanPayloads = useMemo(
-		() => getAllPlanWidgetPayloads(messages),
+	const pendingPlanReview = useMemo(
+		() => getLatestPendingPlanWidget(messages),
 		[messages],
-	);
-	const approvalState = useMemo(
-		() => getPlanApprovalState(messages, activeRun),
-		[messages, activeRun],
 	);
 	const orphanArtifactDisplay = useMemo(() => {
 		return resolveFutureChatOrphanArtifactDisplay({
@@ -1312,9 +1304,16 @@ export function FutureChatMessages({
 								if (widget?.data.type !== "plan") return null;
 								return parsePlanWidgetPayload(widget.data.payload);
 							})();
-							const planBuildState = messagePlanWidget
-								? isPlanCardBuildable(messagePlanWidget, allPlanPayloads, approvalState)
-								: null;
+							const isActivePendingPlan =
+								Boolean(messagePlanWidget?.deferredToolCallId) &&
+								pendingPlanReview?.sourceMessageId === message.id;
+							const planBuildDisabledReason = messagePlanWidget
+								? isActivePendingPlan
+									? undefined
+									: pendingPlanReview
+										? "A newer reply superseded this plan."
+										: "This plan is no longer awaiting review."
+								: undefined;
 							const isQuestionCardResolved = (() => {
 								const widget = getLatestDataPart(message, "data-widget-data");
 								if (widget?.data.type !== "question-card") {
@@ -1362,8 +1361,8 @@ export function FutureChatMessages({
 									onOpenPlanPreview={onOpenPlanPreview}
 									onRegenerate={onRegenerate}
 									onVote={onVote}
-									planBuildDisabled={planBuildState ? !planBuildState.buildable : undefined}
-									planBuildDisabledReason={planBuildState?.reason}
+									planBuildDisabled={messagePlanWidget ? !isActivePendingPlan : undefined}
+									planBuildDisabledReason={planBuildDisabledReason}
 									voteValue={votes[message.id]}
 								/>
 								<AssistantSuggestionPills

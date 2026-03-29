@@ -9,12 +9,11 @@ export type VoteValue = "up" | "down";
 export type FutureChatRunStatus = "queued" | "streaming" | "background";
 
 /**
- * Artifact panel tri-state:
+ * Artifact panel state:
  * - `closed`: panel hidden, normal chat mode (GenUI cards)
- * - `building`: make grid visible, agents executing plan tasks
  * - `preview`: rendered artifact visible, chat input routes to artifact updates
  */
-export type FutureChatPanelState = "closed" | "building" | "preview";
+export type FutureChatPanelState = "closed" | "preview";
 
 export interface FutureChatActiveRun {
 	id: string;
@@ -124,25 +123,6 @@ export interface FutureChatQueuedDelegationAction
 export type FutureChatQueuedAction =
 	| FutureChatQueuedPromptAction
 	| FutureChatQueuedDelegationAction;
-
-export interface FutureChatBuildTask {
-	id: string;
-	label: string;
-	blockedBy: string[];
-	agent?: string;
-	status: "todo" | "in-progress" | "completed" | "blocked" | "failed";
-	content?: string;
-}
-
-export interface FutureChatBuildSession {
-	planKey: string | null;
-	planTitle: string;
-	makeRunId?: string | null;
-	tasks: FutureChatBuildTask[];
-	startedAt: string;
-	status: "active" | "interrupted" | "completed";
-	errorMessage?: string;
-}
 
 export interface FutureChatRoutingMetadata {
 	activeArtifact?: FutureChatActiveArtifact;
