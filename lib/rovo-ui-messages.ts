@@ -98,6 +98,25 @@ export interface AgentExecutionSummary {
 	content: string;
 }
 
+export interface ToolApprovalItem {
+	id: string;
+	toolCallId: string;
+	toolName: string;
+	title: string;
+	description: string;
+	targetPath?: string;
+	commandPreview?: string | null;
+	riskLevel?: "low" | "medium" | "high";
+	permissionScenario?: string;
+}
+
+export interface ToolApprovalPayload {
+	approvalId: string;
+	threadId?: string;
+	createdAt?: string;
+	items: ToolApprovalItem[];
+}
+
 export interface ToolFirstWarningData {
 	message: string;
 	domains: string[];
@@ -164,6 +183,7 @@ export type RovoDataParts = {
 	"thinking-event": ThinkingEventUpdate;
 	"tool-first-warning": ToolFirstWarningData;
 	"agent-execution": AgentExecutionUpdate;
+	"tool-approval": ToolApprovalPayload;
 	"todo-queue": {
 		items: Array<{
 			id: string;
@@ -189,6 +209,7 @@ export interface RovoMessageMetadata {
 	source?:
 		| "clarification-submit"
 		| "plan-approval-submit"
+		| "tool-approval-submit"
 		| "agent-directive"
 		| "plan-retry"
 		| "plan-task-dispatch";
@@ -215,6 +236,7 @@ export interface RovoMessageMetadata {
 	clarificationSessionId?: string;
 	clarificationRound?: number;
 	clarificationStatus?: "answered" | "dismissed";
+	toolApprovalId?: string;
 	/** Assistant turn status used for transcript rendering and persistence */
 	interruption?: RovoMessageInterruption;
 }
@@ -731,6 +753,126 @@ export function getLatestTodoQueue(
 	message: Pick<RovoUIMessage, "parts">
 ): RovoDataParts["todo-queue"] | null {
 	return getLatestDataPart(message, "data-todo-queue")?.data ?? null;
+}
+
+function normalizeToolApprovalItem(value: unknown): ToolApprovalItem | null {
+	if (!value || typeof value !== "object") {
+		return null;
+	}
+
+	const candidate = value as Partial<ToolApprovalItem>;
+	if (
+		typeof candidate.id !== "string" ||
+		candidate.id.trim().length === 0 ||
+		typeof candidate.toolCallId !== "string" ||
+		candidate.toolCallId.trim().length === 0 ||
+		typeof candidate.toolName !== "string" ||
+		candidate.toolName.trim().length === 0 ||
+		typeof candidate.title !== "string" ||
+		candidate.title.trim().length === 0 ||
+		typeof candidate.description !== "string" ||
+		candidate.description.trim().length === 0
+	) {
+		return null;
+	}
+
+	return {
+		id: candidate.id.trim(),
+		toolCallId: candidate.toolCallId.trim(),
+		toolName: candidate.toolName.trim(),
+		title: candidate.title.trim(),
+		description: candidate.description.trim(),
+		targetPath:
+			typeof candidate.targetPath === "string" && candidate.targetPath.trim()
+				? candidate.targetPath.trim()
+				: undefined,
+		commandPreview:
+			typeof candidate.commandPreview === "string" && candidate.commandPreview.trim()
+				? candidate.commandPreview.trim()
+				: undefined,
+		riskLevel:
+			candidate.riskLevel === "low" ||
+			candidate.riskLevel === "medium" ||
+			candidate.riskLevel === "high"
+				? candidate.riskLevel
+				: undefined,
+		permissionScenario:
+			typeof candidate.permissionScenario === "string" && candidate.permissionScenario.trim()
+				? candidate.permissionScenario.trim()
+				: undefined,
+	};
+}
+
+function normalizeToolApprovalPayload(value: unknown): ToolApprovalPayload | null {
+	if (!value || typeof value !== "object") {
+		return null;
+	}
+
+	const candidate = value as Partial<ToolApprovalPayload>;
+	if (
+		typeof candidate.approvalId !== "string" ||
+		candidate.approvalId.trim().length === 0 ||
+		!Array.isArray(candidate.items)
+	) {
+		return null;
+	}
+
+	const items = candidate.items
+		.map((item) => normalizeToolApprovalItem(item))
+		.filter((item): item is ToolApprovalItem => item !== null);
+	if (items.length === 0) {
+		return null;
+	}
+
+	return {
+		approvalId: candidate.approvalId.trim(),
+		threadId:
+			typeof candidate.threadId === "string" && candidate.threadId.trim()
+				? candidate.threadId.trim()
+				: undefined,
+		createdAt:
+			typeof candidate.createdAt === "string" && candidate.createdAt.trim()
+				? candidate.createdAt.trim()
+				: undefined,
+		items,
+	};
+}
+
+export function getLatestToolApproval(
+	message: Pick<RovoUIMessage, "parts">
+): ToolApprovalPayload | null {
+	return normalizeToolApprovalPayload(
+		getLatestDataPart(message, "data-tool-approval")?.data ?? null,
+	);
+}
+
+export function getLatestPendingToolApproval(
+	messages: ReadonlyArray<RovoUIMessage>,
+): ToolApprovalPayload | null {
+	for (let index = messages.length - 1; index >= 0; index -= 1) {
+		const message = messages[index];
+		if (!message || !Array.isArray(message.parts)) {
+			continue;
+		}
+
+		if (
+			message.role === "user" &&
+			message.metadata?.source === "tool-approval-submit"
+		) {
+			return null;
+		}
+
+		if (message.role !== "assistant") {
+			continue;
+		}
+
+		const approval = getLatestToolApproval(message);
+		if (approval) {
+			return approval;
+		}
+	}
+
+	return null;
 }
 
 export function getToolPartName(toolPart: RovoToolPart): string {

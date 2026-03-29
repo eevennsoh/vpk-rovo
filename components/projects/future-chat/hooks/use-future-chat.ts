@@ -67,6 +67,7 @@ import {
 } from "@/components/projects/future-chat/lib/future-chat-todo-queue";
 import { resolveFutureChatPlanReviewAction } from "@/components/projects/future-chat/lib/future-chat-plan-review";
 import {
+	canDispatchFutureChatQueuedAction,
 	hasQueuedFutureChatFollowUp,
 	isFutureChatThreadBusy,
 } from "@/components/projects/future-chat/lib/future-chat-queue-gate";
@@ -153,10 +154,12 @@ import {
 import { markLastFutureChatAssistantMessageInterrupted } from "@/lib/future-chat-interruptions";
 import {
 	getLatestDataPart,
+	getLatestPendingToolApproval,
 	getMessageArtifactResult,
 	getMessageText,
 	hasTurnCompleteSignal,
 	type RovoMessageInterruptionSource,
+	type ToolApprovalPayload,
 	type RovoUIMessage,
 } from "@/lib/rovo-ui-messages";
 import { API_ENDPOINTS } from "@/lib/api-config";
@@ -499,6 +502,7 @@ export interface FutureChatHookOptions {
 
 export interface FutureChatHookResult {
 	activeDocument: FutureChatDocument | null;
+	activeToolApproval: ToolApprovalPayload | null;
 	activeDocumentContent: string;
 	activeThreadId: string | null;
 	applyVoiceSteer: (payload: {
@@ -554,6 +558,10 @@ export interface FutureChatHookResult {
 	hasBackgroundDelegation: boolean;
 	status: ChatStatus;
 	stop: () => Promise<void>;
+	submitToolApproval: (
+		toolApproval: ToolApprovalPayload,
+		decisions: Array<{ toolCallId: string; approved: boolean; denyMessage?: string }>,
+	) => Promise<void>;
 	cancelClarificationQuestionSet: (questionCard: ParsedQuestionCardPayload) => Promise<boolean>;
 	submitClarification: (questionCard: ParsedQuestionCardPayload, answers: ClarificationAnswers) => Promise<void>;
 	submitClarificationDismiss: (questionCard: ParsedQuestionCardPayload) => Promise<void>;
@@ -679,6 +687,7 @@ export function useFutureChat({
 		appendQueuedActionsForThread,
 		clearQueuedActionsForThread,
 		enqueueQueuedAction,
+		peekNextQueuedActionForThread,
 		queuedActionsByThreadId,
 		removeQueuedAction,
 		shiftNextQueuedActionForThread,
@@ -1076,6 +1085,7 @@ export function useFutureChat({
 						body?.clarification
 						|| body?.deferredToolResponse
 						|| body?.approval
+						|| body?.toolApproval
 					);
 					const turnMode = classifyFutureChatTurnMode({
 						prompt: latestVisibleUserPrompt?.text ?? "",
@@ -1548,6 +1558,9 @@ export function useFutureChat({
 			rovodevMessages: normalizedRovodevMessages,
 		});
 	}, [normalizedRovodevMessages, realtimeMessages]);
+	const activeToolApproval = useMemo(() => {
+		return getLatestPendingToolApproval(normalizedRovodevMessages);
+	}, [normalizedRovodevMessages]);
 	const latestThinkingStatusLabel = useMemo(() => {
 		if (!backgroundDelegationMessageId) {
 			return null;
@@ -2736,6 +2749,113 @@ const resetToBlankChatState = useCallback((nextDraftId: string) => {
 		[],
 	);
 
+	const submitToolApproval = useCallback(
+		async (
+			toolApproval: ToolApprovalPayload,
+			decisions: Array<{
+				toolCallId: string;
+				approved: boolean;
+				denyMessage?: string;
+			}>,
+		) => {
+			if (!toolApproval?.approvalId || toolApproval.items.length === 0) {
+				throw new Error("The pending tool approval is missing approval data.");
+			}
+
+			const normalizedDecisions = decisions
+				.map((decision) => ({
+					toolCallId: decision.toolCallId?.trim(),
+					approved: decision.approved === true,
+					denyMessage: decision.denyMessage?.trim() || undefined,
+				}))
+				.filter((decision) => Boolean(decision.toolCallId));
+			if (normalizedDecisions.length !== toolApproval.items.length) {
+				throw new Error("Every paused tool requires an explicit Allow or Deny decision.");
+			}
+
+			hasObservedTurnCompleteRef.current = true;
+			setHasObservedTurnComplete(true);
+			const activeThreadId = activeThreadIdRef.current;
+			if (activeThreadId) {
+				setLocalThreadActiveRun(activeThreadId, null);
+			}
+			setAttachedRunStatus(null);
+			if (useChatStatusRef.current === "submitted" || useChatStatusRef.current === "streaming") {
+				try {
+					await stopUseChat();
+				} catch (error) {
+					console.warn(
+						"[FutureChat] Failed to stop UI stream before submitting tool approval:",
+						error,
+					);
+				}
+			}
+
+			await releaseCompletedUseChatTurnIfNeeded();
+			await waitForChatSendSettled({
+				statusRef: useChatStatusRef,
+				lastBusyAtRef: lastUseChatBusyAtRef,
+			});
+
+			const threadId = await ensureThread("Tool approval");
+			const approvedCount = normalizedDecisions.filter((decision) => decision.approved).length;
+			const deniedCount = normalizedDecisions.length - approvedCount;
+			const approvalSummaryText = [
+				`Submitted tool approvals for ${toolApproval.items.length} step${toolApproval.items.length === 1 ? "" : "s"}.`,
+				`${approvedCount} approved, ${deniedCount} denied.`,
+			].join(" ");
+			const { message, messageId } = appendLocalUserMessage({
+				files: [],
+				metadata: {
+					source: "tool-approval-submit",
+					toolApprovalId: toolApproval.approvalId,
+					visibility: "hidden",
+				},
+				text: approvalSummaryText,
+			});
+			resetPendingArtifactAssociation();
+			markLocalThreadRunPending(threadId);
+
+			try {
+				await sendMessage(
+					{
+						text: approvalSummaryText,
+						files: [],
+						messageId,
+						metadata: message.metadata,
+					},
+					{
+						body: {
+							id: threadId,
+							toolApproval: {
+								approvalId: toolApproval.approvalId,
+								decisions: normalizedDecisions,
+							},
+						},
+					},
+				);
+			} catch (sendError) {
+				setRovodevMessages((previousMessages) =>
+					previousMessages.filter((existingMessage) => existingMessage.id !== messageId),
+				);
+				setLocalThreadActiveRun(threadId, null);
+				setAttachedRunStatus(null);
+				throw sendError;
+			}
+		},
+		[
+			appendLocalUserMessage,
+			ensureThread,
+			markLocalThreadRunPending,
+			releaseCompletedUseChatTurnIfNeeded,
+			resetPendingArtifactAssociation,
+			sendMessage,
+			setLocalThreadActiveRun,
+			setRovodevMessages,
+			stopUseChat,
+		],
+	);
+
 	const dispatchPromptNow = useCallback(
 		async ({
 			text,
@@ -3632,6 +3752,20 @@ const resetToBlankChatState = useCallback((nextDraftId: string) => {
 					break;
 				}
 
+				const nextQueuedAction = peekNextQueuedActionForThread(threadId);
+				if (!nextQueuedAction) {
+					break;
+				}
+
+				if (
+					!canDispatchFutureChatQueuedAction({
+						action: nextQueuedAction,
+						hasPendingPlanReview: Boolean(getActivePendingPlanReview()),
+					})
+				) {
+					break;
+				}
+
 				const nextAction = shiftNextQueuedActionForThread(threadId);
 				if (!nextAction) {
 					break;
@@ -3682,7 +3816,14 @@ const resetToBlankChatState = useCallback((nextDraftId: string) => {
 				setHasActiveDispatch(false);
 			}
 		}
-	}, [dispatchDelegationNow, dispatchPromptNow, enqueueQueuedAction, shiftNextQueuedActionForThread]);
+	}, [
+		dispatchDelegationNow,
+		dispatchPromptNow,
+		enqueueQueuedAction,
+		getActivePendingPlanReview,
+		peekNextQueuedActionForThread,
+		shiftNextQueuedActionForThread,
+	]);
 
 	processQueueRef.current = processQueue;
 
@@ -4527,6 +4668,7 @@ const resetToBlankChatState = useCallback((nextDraftId: string) => {
 
 	return {
 		activeDocument,
+		activeToolApproval,
 		activeDocumentContent,
 		activeThreadId,
 		applyVoiceSteer,
@@ -4581,6 +4723,7 @@ const resetToBlankChatState = useCallback((nextDraftId: string) => {
 		sidebarOpen,
 		status,
 		stop,
+		submitToolApproval,
 		cancelClarificationQuestionSet,
 		submitClarification,
 		submitClarificationDismiss,

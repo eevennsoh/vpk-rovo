@@ -213,10 +213,6 @@ function useThreadMessageDerived(
 		? removeLeadingSingleCharacterFragment(rawMessageText)
 		: rawMessageText;
 	const isCreatePlanSkillFlow = hasCreatePlanSkillSignal(message);
-	const isPlanWidgetFlow =
-		widgetType === "plan" ||
-		widgetLoadingPart?.data.type === "plan" ||
-		widgetErrorPart?.data.type === "plan";
 	const planRenderableText =
 		widgetType === "plan"
 			? extractPlanRenderableText(normalizedWidgetText, {
@@ -303,6 +299,10 @@ function useThreadMessageDerived(
 		Boolean(toolFirstWarning?.message) && !isStreaming;
 
 	// ---------- widget rendering ----------
+	const isPlanWidgetFlow =
+		widgetType === "plan" ||
+		widgetLoadingPart?.data.type === "plan" ||
+		widgetErrorPart?.data.type === "plan";
 	const shouldSuppressStreamingText =
 		shouldShowWidgetSections &&
 		isStreaming &&

@@ -3,69 +3,56 @@ const assert = require("node:assert/strict");
 
 const {
 	appendFutureChatQueuedActions,
-	clearFutureChatQueuedActions,
-	removeFutureChatQueuedAction,
+	peekFutureChatQueuedAction,
 	shiftFutureChatQueuedAction,
 } = require("./future-chat-queue-state.ts");
 
-function createPromptAction(id, threadId, text) {
-	return {
-		id,
-		threadId,
-		text,
+test("peek returns the first queued action without mutating queue order", () => {
+	const actionA = {
+		id: "action-a",
+		threadId: "thread-1",
+		text: "First",
 		createdAt: 1,
 		kind: "prompt",
 		files: [],
 	};
-}
+	const actionB = {
+		id: "action-b",
+		threadId: "thread-1",
+		text: "Second",
+		createdAt: 2,
+		kind: "prompt",
+		files: [],
+	};
+	const state = appendFutureChatQueuedActions({}, "thread-1", [actionA, actionB]);
 
-test("keeps queued actions isolated per thread while switching views", () => {
-	const state = appendFutureChatQueuedActions(
-		appendFutureChatQueuedActions({}, "thread-a", [
-			createPromptAction("a-1", "thread-a", "First A"),
-			createPromptAction("a-2", "thread-a", "Second A"),
-		]),
-		"thread-b",
-		[createPromptAction("b-1", "thread-b", "Only B")],
-	);
-
-	const shifted = shiftFutureChatQueuedAction(state, "thread-a");
-
-	assert.equal(shifted.action?.id, "a-1");
-	assert.deepEqual(
-		shifted.state["thread-a"]?.map((action) => action.id),
-		["a-2"],
-	);
-	assert.deepEqual(
-		shifted.state["thread-b"]?.map((action) => action.id),
-		["b-1"],
-	);
+	assert.equal(peekFutureChatQueuedAction(state, "thread-1"), actionA);
+	assert.equal(peekFutureChatQueuedAction(state, "missing-thread"), null);
+	assert.deepEqual(state["thread-1"], [actionA, actionB]);
 });
 
-test("removes and clears queued actions without touching other threads", () => {
-	const initialState = appendFutureChatQueuedActions(
-		appendFutureChatQueuedActions({}, "thread-a", [
-			createPromptAction("a-1", "thread-a", "First A"),
-			createPromptAction("a-2", "thread-a", "Second A"),
-		]),
-		"thread-b",
-		[createPromptAction("b-1", "thread-b", "Only B")],
-	);
+test("shift still removes the first queued action after peek", () => {
+	const actionA = {
+		id: "action-a",
+		threadId: "thread-1",
+		text: "First",
+		createdAt: 1,
+		kind: "prompt",
+		files: [],
+	};
+	const actionB = {
+		id: "action-b",
+		threadId: "thread-1",
+		text: "Second",
+		createdAt: 2,
+		kind: "prompt",
+		files: [],
+	};
+	const state = appendFutureChatQueuedActions({}, "thread-1", [actionA, actionB]);
 
-	const removedState = removeFutureChatQueuedAction(
-		initialState,
-		"thread-a",
-		"a-1",
-	);
-	const clearedState = clearFutureChatQueuedActions(removedState, "thread-b");
+	assert.equal(peekFutureChatQueuedAction(state, "thread-1"), actionA);
 
-	assert.deepEqual(
-		removedState["thread-a"]?.map((action) => action.id),
-		["a-2"],
-	);
-	assert.deepEqual(
-		clearedState["thread-a"]?.map((action) => action.id),
-		["a-2"],
-	);
-	assert.equal("thread-b" in clearedState, false);
+	const shifted = shiftFutureChatQueuedAction(state, "thread-1");
+	assert.equal(shifted.action, actionA);
+	assert.deepEqual(shifted.state["thread-1"], [actionB]);
 });

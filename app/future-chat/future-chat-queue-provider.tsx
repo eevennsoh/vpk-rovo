@@ -6,6 +6,7 @@ import {
 	appendFutureChatQueuedActions,
 	clearFutureChatQueuedActions,
 	type FutureChatQueuedActionsByThreadId,
+	peekFutureChatQueuedAction,
 	removeFutureChatQueuedAction,
 	shiftFutureChatQueuedAction,
 } from "@/components/projects/future-chat/lib/future-chat-queue-state";
@@ -19,6 +20,9 @@ interface FutureChatQueueContextValue {
 	enqueueQueuedAction: (action: FutureChatQueuedAction) => void;
 	queuedActionsByThreadId: FutureChatQueuedActionsByThreadId;
 	removeQueuedAction: (threadId: string, actionId: string) => void;
+	peekNextQueuedActionForThread: (
+		threadId: string,
+	) => FutureChatQueuedAction | null;
 	shiftNextQueuedActionForThread: (
 		threadId: string,
 	) => FutureChatQueuedAction | null;
@@ -88,6 +92,10 @@ export function FutureChatQueueProvider({
 		[commitQueuedActions],
 	);
 
+	const peekNextQueuedActionForThread = useCallback((threadId: string) => {
+		return peekFutureChatQueuedAction(queuedActionsRef.current, threadId);
+	}, []);
+
 	const shiftNextQueuedActionForThread = useCallback((threadId: string) => {
 		const nextResult = shiftFutureChatQueuedAction(
 			queuedActionsRef.current,
@@ -101,6 +109,7 @@ export function FutureChatQueueProvider({
 		appendQueuedActionsForThread,
 		clearQueuedActionsForThread,
 		enqueueQueuedAction,
+		peekNextQueuedActionForThread,
 		queuedActionsByThreadId,
 		removeQueuedAction,
 		shiftNextQueuedActionForThread,
@@ -108,6 +117,7 @@ export function FutureChatQueueProvider({
 		appendQueuedActionsForThread,
 		clearQueuedActionsForThread,
 		enqueueQueuedAction,
+		peekNextQueuedActionForThread,
 		queuedActionsByThreadId,
 		removeQueuedAction,
 		shiftNextQueuedActionForThread,

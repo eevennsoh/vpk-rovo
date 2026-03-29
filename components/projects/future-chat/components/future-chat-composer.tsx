@@ -140,7 +140,12 @@ function FutureChatComposerInner({
 	const canSubmit = controller.textInput.value.trim().length > 0 || controller.attachments.files.length > 0;
 	const isComposerBusy = composerStatus === "submitted" || composerStatus === "streaming";
 	const showSubmitButton = !realtimeVoiceActive && !isComposerBusy && canSubmit;
-	const showVoiceStartButton = !realtimeVoiceActive && !isComposerBusy && !showBackgroundStop && Boolean(onToggleRealtimeVoice);
+	const showVoiceStartButton =
+		!realtimeVoiceActive &&
+		!isComposerBusy &&
+		!showBackgroundStop &&
+		!submitDisabled &&
+		Boolean(onToggleRealtimeVoice);
 	const hasQueuedPrompts = queuedPrompts.length > 0;
 	const realtimeWaveformState = resolveFutureChatComposerWaveformState({
 		hasMicStream: micStream !== null,
@@ -455,13 +460,13 @@ function FutureChatComposerInner({
 						<PromptInputFooter className="mt-3 justify-between px-0 pb-0">
 							<PromptInputTools>
 								{onTogglePlanMode ? (
-									<PromptInputButton
-										aria-label="Plan mode"
-										aria-pressed={isPlanMode}
-										variant="outline"
-										disabled={isComposerBusy}
-										onClick={onTogglePlanMode}
-									>
+								<PromptInputButton
+									aria-label="Plan mode"
+									aria-pressed={isPlanMode}
+									variant="outline"
+									disabled={isComposerBusy || submitDisabled}
+									onClick={onTogglePlanMode}
+								>
 										<ClipboardIcon label="" size="small" />
 										<span>Plan</span>
 									</PromptInputButton>

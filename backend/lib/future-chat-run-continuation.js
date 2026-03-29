@@ -8,6 +8,7 @@ function hasStructuredContinuationBody(requestBody) {
 	return Boolean(
 		requestBody.clarification ||
 		requestBody.approval ||
+		requestBody.toolApproval ||
 		requestBody.deferredToolResponse
 	);
 }

@@ -258,6 +258,11 @@ const {
 	findRequestUserInputQuestionContainer,
 } = require("./lib/question-card-payload");
 const {
+	buildPausedToolApprovalPayload,
+	buildToolApprovalResumeDecisions,
+	normalizeToolApprovalSubmission,
+} = require("./lib/paused-tool-approval");
+const {
 	shouldGateToolFirstQuestionCard,
 	buildToolFirstClarificationInstruction,
 } = require("./lib/tool-first-question-gate");
@@ -3801,7 +3806,152 @@ const _requestUserInputQuestionMetaStore = new Map();
 const _activeDeferredToolCallStore = new Map();
 /** @type {Map<string, { toolCallId: string; port: number; handle: { port: number; release: () => void; releaseAsUnhealthy?: () => void }; threadId: string | null; sessionId: string | null; sessionMode: "persistent" | "ephemeral"; kind: "clarification" | "plan-approval"; createdAt: number; expiresAt: number; expiryTimer: NodeJS.Timeout | null; }>} */
 const _pausedRovoDevToolCallStore = new Map();
+/** @type {Map<string, { approvalId: string; port: number; handle: { port: number; release: () => void; releaseAsUnhealthy?: () => void }; threadId: string | null; sessionId: string | null; sessionMode: "persistent" | "ephemeral"; parts: Array<object>; payload: object; createdAt: number; expiresAt: number; expiryTimer: NodeJS.Timeout | null; }>} */
+const _pausedRovoDevToolApprovalStore = new Map();
 const PAUSED_ROVODEV_TOOL_CALL_TTL_MS = 15 * 60_000;
+
+function createPausedToolApprovalId() {
+	return `tool-approval-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function clearPausedRovoDevToolApprovalBatch(approvalId, { cancel = false } = {}) {
+	const normalizedApprovalId = getNonEmptyString(approvalId);
+	if (!normalizedApprovalId) {
+		return null;
+	}
+
+	const record = _pausedRovoDevToolApprovalStore.get(normalizedApprovalId) || null;
+	if (!record) {
+		return null;
+	}
+
+	_pausedRovoDevToolApprovalStore.delete(normalizedApprovalId);
+	if (record.expiryTimer) {
+		clearTimeout(record.expiryTimer);
+		record.expiryTimer = null;
+	}
+
+	const releaseHandle = () => {
+		try {
+			record.handle?.release?.();
+		} catch (error) {
+			console.warn("[ROVODEV-PAUSE] Failed to release reserved tool-approval handle:", error);
+		}
+	};
+	const releaseHandleAsUnhealthy = () => {
+		try {
+			if (typeof record.handle?.releaseAsUnhealthy === "function") {
+				record.handle.releaseAsUnhealthy("paused tool approval cleanup failed");
+				return;
+			}
+			record.handle?.release?.();
+		} catch (error) {
+			console.warn("[ROVODEV-PAUSE] Failed to release unhealthy tool-approval handle:", error);
+		}
+	};
+
+	if (cancel) {
+		void (async () => {
+			let shouldReleaseAsUnhealthy = false;
+			try {
+				await rovoDevCancelChat(record.port, { timeoutMs: 3_000 });
+				await waitForPortReady(record.port);
+			} catch (error) {
+				shouldReleaseAsUnhealthy = true;
+				console.warn("[ROVODEV-PAUSE] Failed to cancel paused tool approval batch:", {
+					approvalId: normalizedApprovalId,
+					port: record.port,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			} finally {
+				if (shouldReleaseAsUnhealthy) {
+					releaseHandleAsUnhealthy();
+				} else {
+					releaseHandle();
+				}
+			}
+		})();
+	} else {
+		releaseHandle();
+	}
+
+	return record;
+}
+
+function registerPausedRovoDevToolApprovalBatch({
+	approvalId,
+	port,
+	handle,
+	threadId = null,
+	sessionId = null,
+	sessionMode = "persistent",
+	parts,
+	payload,
+}) {
+	const normalizedApprovalId = getNonEmptyString(approvalId);
+	if (
+		!normalizedApprovalId ||
+		!Number.isInteger(port) ||
+		port <= 0 ||
+		!handle ||
+		!Array.isArray(parts) ||
+		!payload ||
+		typeof payload !== "object"
+	) {
+		return null;
+	}
+
+	clearPausedRovoDevToolApprovalBatch(normalizedApprovalId, { cancel: true });
+
+	const now = Date.now();
+	const record = {
+		approvalId: normalizedApprovalId,
+		port,
+		handle,
+		threadId: getNonEmptyString(threadId),
+		sessionId: getNonEmptyString(sessionId),
+		sessionMode: sessionMode === "ephemeral" ? "ephemeral" : "persistent",
+		parts,
+		payload,
+		createdAt: now,
+		expiresAt: now + PAUSED_ROVODEV_TOOL_CALL_TTL_MS,
+		expiryTimer: null,
+	};
+
+	record.expiryTimer = setTimeout(() => {
+		console.info("[ROVODEV-PAUSE] Expiring paused tool approval batch", {
+			approvalId: normalizedApprovalId,
+			port,
+		});
+		clearPausedRovoDevToolApprovalBatch(normalizedApprovalId, { cancel: true });
+	}, PAUSED_ROVODEV_TOOL_CALL_TTL_MS);
+	if (typeof record.expiryTimer?.unref === "function") {
+		record.expiryTimer.unref();
+	}
+
+	_pausedRovoDevToolApprovalStore.set(normalizedApprovalId, record);
+	return record;
+}
+
+function takePausedRovoDevToolApprovalBatch(approvalId) {
+	const normalizedApprovalId = getNonEmptyString(approvalId);
+	if (!normalizedApprovalId) {
+		return null;
+	}
+
+	const record = _pausedRovoDevToolApprovalStore.get(normalizedApprovalId) || null;
+	if (!record) {
+		return null;
+	}
+
+	_pausedRovoDevToolApprovalStore.delete(normalizedApprovalId);
+	if (record.expiryTimer) {
+		clearTimeout(record.expiryTimer);
+		record.expiryTimer = null;
+	}
+
+	return record;
+}
 
 function clearActiveDeferredToolCall(toolCallId) {
 	const normalizedToolCallId = getNonEmptyString(toolCallId);
@@ -4174,6 +4324,27 @@ function buildFutureChatPlanTaskExecutionContext(executionTask) {
 		`Current task: ${executionTask.taskText}`,
 		"Continue implementation for this task. Do not switch into planning or GenUI generation unless the task explicitly requires it.",
 	].filter(Boolean).join("\n");
+}
+
+function isWorkspaceWriteToolName(toolName) {
+	const normalizedToolName = getNonEmptyString(toolName)?.toLowerCase();
+	return (
+		normalizedToolName === "create_file" ||
+		normalizedToolName === "find_and_replace_code" ||
+		normalizedToolName === "move_file" ||
+		normalizedToolName === "delete_file" ||
+		normalizedToolName === "bash" ||
+		normalizedToolName === "powershell"
+	);
+}
+
+function isReadonlyToolBlockMessage(value) {
+	const normalizedValue = getNonEmptyString(value);
+	if (!normalizedValue) {
+		return false;
+	}
+
+	return /blocked in readonly mode|operation is currently blocked/i.test(normalizedValue);
 }
 
 function sanitizeMermaidNodeId(value) {
@@ -5010,6 +5181,7 @@ async function handleChatSdkRequest(req, res) {
 			model: rawModel,
 			clarification: rawClarification,
 			approval: rawApproval,
+			toolApproval: rawToolApproval,
 			deferredToolResponse: rawDeferredToolResponse,
 			planRequestId,
 			creationMode,
@@ -5052,6 +5224,7 @@ async function handleChatSdkRequest(req, res) {
 			model: getNonEmptyString(rawModel) || null,
 			hasClarification: Boolean(rawClarification),
 			hasApproval: Boolean(rawApproval),
+			hasToolApproval: Boolean(rawToolApproval),
 			hasDeferredToolResponse: Boolean(rawDeferredToolResponse),
 			resolvedPlanModeActive,
 		});
@@ -5076,6 +5249,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 			latestUserMessageSource === "clarification-submit";
 		const clarificationSubmission = normalizeClarificationSubmission(rawClarification);
 		const approvalSubmission = normalizeApprovalSubmission(rawApproval);
+		const toolApprovalSubmission = normalizeToolApprovalSubmission(rawToolApproval);
 		const deferredToolResponseToolCallId =
 			rawDeferredToolResponse && typeof rawDeferredToolResponse === "object"
 				? getNonEmptyString(rawDeferredToolResponse.tool_call_id)
@@ -5093,6 +5267,9 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 		let hasPausedApprovalToolCall =
 			Boolean(approvalToolCallId) &&
 			_pausedRovoDevToolCallStore.has(approvalToolCallId);
+		const hasPausedToolApprovalBatch =
+			Boolean(toolApprovalSubmission?.approvalId) &&
+			_pausedRovoDevToolApprovalStore.has(toolApprovalSubmission.approvalId);
 
 		if (approvalSubmission) {
 			console.info("[DEBUG-PLAN-APPROVAL] Approval store lookup", {
@@ -7367,6 +7544,8 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 						/** @type {Set<string>} */
 						const bashQuestionCardWorkaroundCallIds = new Set();
 						let hasObservedDeferredToolRequest = false;
+						let hasToolApprovalReadonlyFailure = false;
+						let toolApprovalReadonlyFailureMessage = null;
 					// ── Output Routing: Two-step GenUI state ──
 					// Track whether non-question-card tool calls were observed during
 					// the RovoDev stream. When true, post-stream processing triggers
@@ -8037,8 +8216,22 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 								return false;
 							}
 
+							if (hasToolApprovalReadonlyFailure) {
+								console.info("[EXIT-PLAN-MODE] Suppressed plan widget after readonly write-tool failure", {
+									toolCallId,
+									source,
+								});
+								return false;
+							}
+
 							planPayload.deferredToolCallId = toolCallId;
+							latestPlanPayload = planPayload;
+							hasExplicitPlanPayload = true;
+							latestProgressivePlanFingerprint = null;
 							emitPlanWidgetData(planPayload);
+							if (hasEmittedPlanLoadingState) {
+								emitPlanWidgetLoading(false);
+							}
 							console.info("[EXIT-PLAN-MODE] Plan widget emitted from tool input", {
 								toolCallId,
 								source,
@@ -8067,6 +8260,120 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 								id: `todo-queue-${Date.now()}`,
 								data: payload,
 							});
+						};
+
+						const emitToolApprovalData = (payload) => {
+							if (!payload || typeof payload !== "object") {
+								return;
+							}
+
+							writer.write({
+								type: "data-tool-approval",
+								id: `tool-approval-${payload.approvalId}`,
+								data: payload,
+							});
+						};
+
+						const autoResumePausedParts = async (pausedParts, control) => {
+							const decisions = pausedParts
+								.map((part) => {
+									const toolCallId = getNonEmptyString(part?.tool_call_id);
+									return toolCallId
+										? { tool_call_id: toolCallId, deny_message: null }
+										: null;
+								})
+								.filter(Boolean);
+							if (decisions.length > 0) {
+								await control.resume({ decisions });
+							}
+							return { disconnect: false };
+						};
+
+						const handlePausedToolApprovalBatch = async ({
+							rawEvent,
+							control,
+						}) => {
+							const pausedParts = Array.isArray(rawEvent?.parts)
+								? rawEvent.parts
+								: [];
+							if (pausedParts.length === 0) {
+								return { disconnect: false };
+							}
+
+							const approvalParts = pausedParts.filter((part) =>
+								isWorkspaceWriteToolName(part?.tool_name),
+							);
+							if (
+								approvalParts.length === 0 ||
+								approvalParts.length !== pausedParts.length
+							) {
+								return autoResumePausedParts(pausedParts, control);
+							}
+
+							const reservedHandle = control.reservePort?.();
+							if (!reservedHandle) {
+								return autoResumePausedParts(pausedParts, control);
+							}
+
+							let pausedSessionId = rovoDevSessionId;
+							let pausedSessionMode = sessionMode;
+							if (threadId) {
+								try {
+									const synchronizedThread =
+										await syncFutureChatThreadSessionFromCurrentPort(
+											threadId,
+											control.port,
+											{ sessionMode },
+										);
+									pausedSessionId =
+										getNonEmptyString(synchronizedThread?.sessionId)
+										|| pausedSessionId;
+									pausedSessionMode =
+										synchronizedThread?.sessionMode === "ephemeral"
+											? "ephemeral"
+											: pausedSessionMode;
+								} catch (error) {
+									console.warn("[FUTURE-CHAT] Failed to sync thread session on paused tool approval:", {
+										threadId,
+										port: control.port,
+										error: error instanceof Error ? error.message : String(error),
+									});
+								}
+							}
+
+							const approvalId = createPausedToolApprovalId();
+							const payload = buildPausedToolApprovalPayload({
+								approvalId,
+								threadId,
+								parts: approvalParts,
+							});
+							if (!payload) {
+								return autoResumePausedParts(pausedParts, control);
+							}
+
+							const record = registerPausedRovoDevToolApprovalBatch({
+								approvalId,
+								port: control.port,
+								handle: reservedHandle,
+								threadId,
+								sessionId: pausedSessionId,
+								sessionMode: pausedSessionMode,
+								parts: approvalParts,
+								payload,
+							});
+							if (!record) {
+								return autoResumePausedParts(pausedParts, control);
+							}
+
+							console.info("[ROVODEV-PAUSE] Captured paused tool approval batch", {
+								approvalId,
+								threadId,
+								port: control.port,
+								toolCount: payload.items.length,
+								toolNames: payload.items.map((item) => item.toolName),
+							});
+							emitToolApprovalData(payload);
+							return { disconnect: true };
 						};
 
 						const emitWidgetError = ({
@@ -8754,6 +9061,10 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 							pausedContinuationToolCallId && currentToolFirstAttempt === 1
 								? takePausedRovoDevToolCall(pausedContinuationToolCallId)
 								: null;
+						const pausedToolApprovalBatchRecord =
+							toolApprovalSubmission?.approvalId && currentToolFirstAttempt === 1
+								? takePausedRovoDevToolApprovalBatch(toolApprovalSubmission.approvalId)
+								: null;
 						if (pausedContinuationToolCallId) {
 							console.info("[DEBUG-PLAN-APPROVAL] Paused tool call record", {
 								pausedContinuationToolCallId,
@@ -8763,6 +9074,18 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 								recordCreatedAt: pausedToolCallRecord?.createdAt,
 								recordExpiresAt: pausedToolCallRecord?.expiresAt,
 								ageMs: pausedToolCallRecord?.createdAt ? Date.now() - pausedToolCallRecord.createdAt : null,
+							});
+						}
+						if (toolApprovalSubmission?.approvalId) {
+							console.info("[DEBUG-TOOL-APPROVAL] Paused tool approval batch lookup", {
+								approvalId: toolApprovalSubmission.approvalId,
+								recordFound: Boolean(pausedToolApprovalBatchRecord),
+								recordPort: pausedToolApprovalBatchRecord?.port,
+								recordCreatedAt: pausedToolApprovalBatchRecord?.createdAt,
+								recordExpiresAt: pausedToolApprovalBatchRecord?.expiresAt,
+								ageMs: pausedToolApprovalBatchRecord?.createdAt
+									? Date.now() - pausedToolApprovalBatchRecord.createdAt
+									: null,
 							});
 						}
 						let streamTimedOut = false;
@@ -8906,6 +9229,16 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 											});
 										}
 
+										if (
+											toolApprovalSubmission &&
+											isWorkspaceWriteToolName(toolCallResult?.toolName) &&
+											isReadonlyToolBlockMessage(toolOutputPreview?.text)
+										) {
+											hasToolApprovalReadonlyFailure = true;
+											toolApprovalReadonlyFailureMessage =
+												"Write tools remained blocked after explicit approval. Check the RovoDev filesystem tool permission flow.";
+										}
+
 									if (toolFirstPolicy.matched && toolCallResult?.toolName) {
 											const isRelevant = isToolNameRelevant({
 												toolName: toolCallResult.toolName,
@@ -8987,18 +9320,10 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 									});
 
 									if (!interactivePart) {
-										const decisions = pausedParts
-											.map((part) => {
-												const toolCallId = getNonEmptyString(part?.tool_call_id);
-												return toolCallId
-													? { tool_call_id: toolCallId, deny_message: null }
-													: null;
-											})
-											.filter(Boolean);
-										if (decisions.length > 0) {
-											await control.resume({ decisions });
-										}
-										return { disconnect: false };
+										return handlePausedToolApprovalBatch({
+											rawEvent,
+											control,
+										});
 									}
 
 									if (
@@ -9164,6 +9489,19 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 								},
 							};
 
+							if (
+								toolApprovalSubmission &&
+								currentToolFirstAttempt === 1 &&
+								!pausedToolApprovalBatchRecord &&
+								!hasPausedToolApprovalBatch
+							) {
+								handleStreamTextDelta(
+									"\n\n⚠️ The pending tool approval expired before it could be resumed. Please retry the step."
+								);
+								shouldContinueToolFirstRetry = false;
+								continue;
+							}
+
 							if (pausedToolCallRecord) {
 								const resumeDecisions =
 									hasPausedClarificationToolCall && clarificationSubmission
@@ -9239,18 +9577,15 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 												});
 
 												if (!interactivePart) {
-													const decisions = pausedParts
-														.map((part) => {
-															const toolCallId = getNonEmptyString(part?.tool_call_id);
-															return toolCallId
-																? { tool_call_id: toolCallId, deny_message: null }
-																: null;
-														})
-														.filter(Boolean);
-													if (decisions.length > 0) {
-														await control.resume({ decisions });
+													const pausedApprovalResult =
+														await handlePausedToolApprovalBatch({
+															rawEvent,
+															control,
+														});
+													if (pausedApprovalResult?.disconnect) {
+														pausedToolCallHandled = true;
 													}
-													return { disconnect: false };
+													return pausedApprovalResult;
 												}
 
 												if (isRequestUserInputTool(interactivePart.tool_name)) {
@@ -9341,6 +9676,93 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 											}).catch(() => {});
 										}
 										pausedToolCallRecord.handle?.release?.();
+									}
+								}
+							} else if (pausedToolApprovalBatchRecord) {
+								const resumeDecisions = buildToolApprovalResumeDecisions(
+									toolApprovalSubmission,
+									pausedToolApprovalBatchRecord.parts,
+								);
+								const resumedToolCallId = getNonEmptyString(
+									pausedToolApprovalBatchRecord.parts[0]?.tool_call_id,
+								);
+								let replayCompleted = false;
+								let pausedToolApprovalHandled = false;
+								try {
+									console.info("[CHAT-SDK] Resuming paused tool approval batch", {
+										threadId,
+										runId: stageTrace.requestId,
+										approvalId: pausedToolApprovalBatchRecord.approvalId,
+										port: pausedToolApprovalBatchRecord.port,
+										decisionCount: resumeDecisions.length,
+									});
+									await rovoDevResumeToolCalls(pausedToolApprovalBatchRecord.port, {
+										decisions: resumeDecisions,
+									});
+
+									await Promise.race([
+										replayViaRovoDev({
+											port: pausedToolApprovalBatchRecord.port,
+											portHandle: pausedToolApprovalBatchRecord.handle,
+											onTextDelta: streamCommonOptions.onTextDelta,
+											onThinkingStatus: streamCommonOptions.onThinkingStatus,
+											onThinkingEvent: streamCommonOptions.onThinkingEvent,
+											onToolCallStart: streamCommonOptions.onToolCallStart,
+											onToolCallInputResolved: streamCommonOptions.onToolCallInputResolved,
+											onToolCallResult: streamCommonOptions.onToolCallResult,
+											onWarning: streamCommonOptions.onWarning,
+											onDeferredToolRequest: streamCommonOptions.onDeferredToolRequest,
+											signal: streamCommonOptions.signal,
+											onTimingStage: streamCommonOptions.onTimingStage,
+											skipReplayUntilToolCallId: resumedToolCallId,
+											onPausedToolCalls: async ({ rawEvent, control }) => {
+												const pausedParts = Array.isArray(rawEvent?.parts)
+													? rawEvent.parts
+													: [];
+												const interactivePart = pausedParts.find((part) => {
+													const toolName = getNonEmptyString(part?.tool_name);
+													return (
+														isRequestUserInputTool(toolName) ||
+														isExitPlanModeTool(toolName)
+													);
+												});
+
+												if (!interactivePart) {
+													const pausedApprovalResult =
+														await handlePausedToolApprovalBatch({
+															rawEvent,
+															control,
+														});
+													if (pausedApprovalResult?.disconnect) {
+														pausedToolApprovalHandled = true;
+													}
+													return pausedApprovalResult;
+												}
+
+												const decisions = pausedParts
+													.map((part) => {
+														const toolCallId = getNonEmptyString(part?.tool_call_id);
+														return toolCallId
+															? { tool_call_id: toolCallId, deny_message: null }
+															: null;
+													})
+													.filter(Boolean);
+												if (decisions.length > 0) {
+													await control.resume({ decisions });
+												}
+												return { disconnect: false };
+											},
+										}),
+									]);
+									replayCompleted = true;
+								} finally {
+									if (!pausedToolApprovalHandled) {
+										if (!replayCompleted) {
+											await rovoDevCancelChat(pausedToolApprovalBatchRecord.port, {
+												timeoutMs: 3_000,
+											}).catch(() => {});
+										}
+										pausedToolApprovalBatchRecord.handle?.release?.();
 									}
 								}
 							} else {
@@ -9948,22 +10370,41 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 									latestPlanPayload || updateTodoPlanPayload;
 								const parsedActivePlanPayload =
 									parsePlanWidgetPayload(activePlanPayload);
-								const todoQueuePayload =
-									extractUpdateTodoQueuePayloadFromObservations(
-										toolObservationEntries,
-										parsedActivePlanPayload
-											? {
-												source: "plan-execution",
-												planTitle: parsedActivePlanPayload.title,
-												planKey: getPlanWidgetExecutionKey(activePlanPayload),
-											}
-											: undefined,
-									);
-								if (todoQueuePayload) {
-									emitTodoQueueData(todoQueuePayload);
+								if (planWidgetRequiresApproval(activePlanPayload)) {
+									console.info("[EXIT-PLAN-MODE] Suppressed todo queue while plan approval is pending", {
+										deferredToolCallId:
+											parsedActivePlanPayload?.deferredToolCallId ?? null,
+										title: parsedActivePlanPayload?.title ?? null,
+										taskCount: parsedActivePlanPayload?.tasks?.length ?? 0,
+									});
+								} else {
+									const todoQueuePayload =
+										extractUpdateTodoQueuePayloadFromObservations(
+											toolObservationEntries,
+											parsedActivePlanPayload
+												? {
+													source: "plan-execution",
+													planTitle: parsedActivePlanPayload.title,
+													planKey: getPlanWidgetExecutionKey(activePlanPayload),
+												}
+												: undefined,
+										);
+									if (todoQueuePayload) {
+										emitTodoQueueData(todoQueuePayload);
+									}
 								}
 							}
 						}
+					}
+
+					if (hasToolApprovalReadonlyFailure) {
+						emitWidgetError({
+							type: "tool-approval",
+							message:
+								toolApprovalReadonlyFailureMessage ||
+								"Write tools remained blocked after approval. Check the RovoDev filesystem tool permissions.",
+							canRetry: true,
+						});
 					}
 
 					const shouldEmitPlanWidgetError =

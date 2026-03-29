@@ -36,6 +36,19 @@ test("hasStructuredContinuationBody returns true for deferred tool response requ
 	);
 });
 
+test("hasStructuredContinuationBody returns true for tool approval requests", () => {
+	assert.equal(
+		hasStructuredContinuationBody({
+			id: "thread-1",
+			toolApproval: {
+				approvalId: "approval-1",
+				decisions: [{ toolCallId: "tool-1", approved: true }],
+			},
+		}),
+		true,
+	);
+});
+
 test("hasStructuredContinuationBody returns false for plain prompt requests", () => {
 	assert.equal(
 		hasStructuredContinuationBody({

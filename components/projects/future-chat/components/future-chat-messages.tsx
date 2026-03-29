@@ -41,6 +41,7 @@ import {
 import { ToolInput, ToolOutput } from "@/components/ui-ai/tool";
 import { Icon } from "@/components/ui/icon";
 import AiAgentIcon from "@atlaskit/icon/core/ai-agent";
+import AiGenerativeTextSummaryIcon from "@atlaskit/icon/core/ai-generative-text-summary";
 import type { NewCoreIconProps } from "@atlaskit/icon/base-new";
 import ListChecklistIcon from "@atlaskit/icon/core/list-checklist";
 import PeopleGroupIcon from "@atlaskit/icon/core/people-group";
@@ -163,6 +164,9 @@ const StepChecklistIcon = ({ label = "", size = "small", spacing = "none", ...pr
 );
 const StepAgentsIcon = ({ label = "", size = "small", spacing = "none", ...props }: NewCoreIconProps) => (
 	<Icon render={<PeopleGroupIcon label={label} size={size} spacing={spacing} {...props} />} />
+);
+const StepStreamIcon = ({ label = "", size = "small", spacing = "none", ...props }: NewCoreIconProps) => (
+	<Icon render={<AiGenerativeTextSummaryIcon label={label} size={size} spacing={spacing} {...props} />} />
 );
 function toolStateToCoTStatus(
 	state: string,
@@ -721,11 +725,13 @@ function AssistantMessage({
 	const shouldShowThinkingSection =
 		hasThinkingText &&
 		!(isTimelineOnlyContent(accumulatedThinkingContent) && hasThinkingToolCalls);
+	const hasPlanNarrationText = shouldShowWidget && parsedPlanWidget !== null && Boolean(text);
 	const hasThinkingDetails =
 		shouldShowThinkingSection ||
 		hasTodoQueueItems ||
 		hasAgentExecutions ||
-		hasThinkingToolCalls;
+		hasThinkingToolCalls ||
+		hasPlanNarrationText;
 	const shouldAutoOpenThinking =
 		isThinkingStreaming ||
 		hasAwaitingInputToolCalls ||
@@ -936,6 +942,17 @@ function AssistantMessage({
 												/>
 											</ChainOfThoughtStep>
 										))}
+										{hasPlanNarrationText ? (
+											<ChainOfThoughtStep
+												icon={StepStreamIcon}
+												label={getReasoningSectionTitle("stream")}
+												status={isMessageTextStreaming(message) ? "active" : "complete"}
+											>
+												<div className="whitespace-pre-wrap text-xs text-text-subtle leading-5">
+													{text}
+												</div>
+											</ChainOfThoughtStep>
+										) : null}
 									</ChainOfThoughtContent>
 								) : null}
 							</ChainOfThought>

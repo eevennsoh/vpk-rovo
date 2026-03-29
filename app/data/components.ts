@@ -323,6 +323,7 @@ export const PROJECT_COMPONENTS: ComponentEntry[] = [
 	projectComponent("fullscreen-chat", "Fullscreen Chat"),
 	projectComponent("future-chat", "Future Chat"),
 	projectComponent("search", "Search Results"),
+	projectComponent("overview", "Overview"),
 ] as const;
 
 export const UTILITY_COMPONENTS: ComponentEntry[] = [

@@ -9,6 +9,7 @@ import { FutureChatHeader } from "@/components/projects/future-chat/components/f
 import { FutureChatComposer } from "@/components/projects/future-chat/components/future-chat-composer";
 import { FutureChatMessages } from "@/components/projects/future-chat/components/future-chat-messages";
 import { FutureChatSidebar } from "@/components/projects/future-chat/components/future-chat-sidebar";
+import { FutureChatToolApprovalBar } from "@/components/projects/future-chat/components/future-chat-tool-approval-bar";
 import { type FutureChatSteeringPhase } from "@/components/projects/future-chat/components/future-chat-steering-lane";
 import { useArtifactAnnotations } from "@/components/ui-ai/hooks/use-artifact-annotations";
 import { formatAnnotationsForVoiceContext } from "@/components/ui-ai/lib/artifact-annotations";
@@ -461,6 +462,7 @@ export function FutureChatShell({
 	const [previewPrompt, setPreviewPrompt] = useState<string | null>(null);
 	const [prefillText, setPrefillText] = useState<string | null>(null);
 	const [voiceTranscript, setVoiceTranscript] = useState<string | null>(null);
+	const [submittingToolApprovalId, setSubmittingToolApprovalId] = useState<string | null>(null);
 	const [scrollAnchorMessageId, setScrollAnchorMessageId] = useState<string | null>(null);
 	const [scrollFollowMode, setScrollFollowMode] =
 		useState<ConversationFollowMode>("bottom");
@@ -520,6 +522,32 @@ export function FutureChatShell({
 		},
 		[acceptPlanReview],
 	);
+	const handleToolApprovalSubmit = useCallback(
+		async (
+			toolApproval: NonNullable<ReturnType<typeof useFutureChat>["activeToolApproval"]>,
+			decisions: Array<{ toolCallId: string; approved: boolean; denyMessage?: string }>,
+		) => {
+			setSubmittingToolApprovalId(toolApproval.approvalId);
+			try {
+				await chat.submitToolApproval(toolApproval, decisions);
+			} finally {
+				setSubmittingToolApprovalId((currentId) =>
+					currentId === toolApproval.approvalId ? null : currentId,
+				);
+			}
+		},
+		[chat],
+	);
+	useEffect(() => {
+		if (!chat.activeToolApproval) {
+			setSubmittingToolApprovalId(null);
+			return;
+		}
+
+		if (submittingToolApprovalId && submittingToolApprovalId !== chat.activeToolApproval.approvalId) {
+			setSubmittingToolApprovalId(null);
+		}
+	}, [chat.activeToolApproval, submittingToolApprovalId]);
 	const handleOpenPlanPreview = useCallback(
 		(planWidget: ParsedPlanWidgetPayload, sourceMessageId?: string) => {
 			chat.openPlanAsDocument({
@@ -1912,6 +1940,16 @@ export function FutureChatShell({
 						</>
 					) : (
 						<>
+							{chat.activeToolApproval ? (
+								<div className="mb-3">
+									<FutureChatToolApprovalBar
+										key={chat.activeToolApproval.approvalId}
+										isSubmitting={submittingToolApprovalId === chat.activeToolApproval.approvalId}
+										onSubmit={handleToolApprovalSubmit}
+										toolApproval={chat.activeToolApproval}
+									/>
+								</div>
+							) : null}
 							<FutureChatComposer
 								key={chat.runtimeThreadId}
 								artifactTitle={workspaceDocument?.title ?? null}
@@ -1938,6 +1976,7 @@ export function FutureChatShell({
 								realtimeVoiceActive={isRealtimeActive}
 								realtimeVoiceState={realtime.voiceState}
 								showBackgroundStop={chat.hasBackgroundDelegation}
+								submitDisabled={Boolean(chat.activeToolApproval)}
 								voiceState={voiceButtonState}
 							/>
 							{visibleMessages.length > 0 ? <Footer className="relative z-10" /> : null}

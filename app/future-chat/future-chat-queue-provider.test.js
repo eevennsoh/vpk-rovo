@@ -16,8 +16,9 @@ async function loadQueueProviderHarness() {
 				} from "./app/future-chat/future-chat-queue-provider.tsx";
 
 				function QueueConsumer() {
-					useFutureChatQueue();
-					return React.createElement("div", null, "ready");
+					const queue = useFutureChatQueue();
+					const nextAction = queue.peekNextQueuedActionForThread("thread-1");
+					return React.createElement("div", null, nextAction ? nextAction.text : "ready");
 				}
 
 				export function renderWithoutProvider() {

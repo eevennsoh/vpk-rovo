@@ -60,6 +60,13 @@ export function clearFutureChatQueuedActions(
 	return nextState;
 }
 
+export function peekFutureChatQueuedAction(
+	state: Readonly<FutureChatQueuedActionsByThreadId>,
+	threadId: string,
+): FutureChatQueuedAction | null {
+	return state[threadId]?.[0] ?? null;
+}
+
 export function shiftFutureChatQueuedAction(
 	state: Readonly<FutureChatQueuedActionsByThreadId>,
 	threadId: string,
