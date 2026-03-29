@@ -883,6 +883,8 @@ function resolveToolCallInput({
  * @param {function} [params.onToolCallResult] - Called with raw tool-result output (before preview truncation) for post-processing needs like question-card payload extraction
  * @param {function} [params.onDeferredToolRequest] - Called when Serve emits a deferred tool request after all available text/tool stream events
  * @param {function} [params.onPausedToolCalls] - Called when `pause_on_call_tools_start=true` pauses Serve tool execution
+ * @param {boolean} [params.enableDeferredTools] - Enables Serve deferred-tool mode without pausing every tool start
+ * @param {boolean} [params.pauseOnCallToolsStart] - Explicitly enable Serve's paused tool-start approval mode
  * @param {function} [params.onRetry] - Called when a 409 retry is about to happen (for UI indicators)
  * @param {function} [params.onRetryProgress] - Called for each 409 retry progress update
  * @param {"cancel-and-retry" | "wait-for-turn"} [params.conflictPolicy] - Conflict resolution policy
@@ -909,6 +911,8 @@ async function streamViaRovoDev({
 	onToolCallResult,
 	onDeferredToolRequest,
 	onPausedToolCalls,
+	enableDeferredTools = false,
+	pauseOnCallToolsStart = false,
 	onRetry,
 	onRetryProgress,
 	conflictPolicy = "cancel-and-retry",
@@ -1500,9 +1504,9 @@ async function streamViaRovoDev({
 					{
 						onTimingStage,
 						sessionId,
-						pauseOnCallToolsStart: typeof onPausedToolCalls === "function",
+						pauseOnCallToolsStart,
 						includeSubagentEvents,
-						enableDeferredTools: typeof onPausedToolCalls === "function",
+						enableDeferredTools,
 						skipSetChatMessage,
 						idleTimeoutMs,
 					}

@@ -12,6 +12,10 @@ test("buildPausedToolApprovalPayload maps paused tool calls into approval items"
 		approvalId: "approval-1",
 		threadId: "thread-1",
 		createdAt: "2026-03-29T11:28:16.000Z",
+		permissions: {
+			"tool-1": "prompt",
+			"tool-2": "prompt",
+		},
 		parts: [
 			{
 				tool_call_id: "tool-1",
@@ -44,7 +48,7 @@ test("buildPausedToolApprovalPayload maps paused tool calls into approval items"
 				targetPath: "components/projects/team-chat/data/mock-threads.ts",
 				commandPreview: null,
 				riskLevel: "medium",
-				permissionScenario: "ASK",
+				permissionScenario: "prompt",
 			},
 			{
 				id: "tool-2-2",
@@ -55,7 +59,53 @@ test("buildPausedToolApprovalPayload maps paused tool calls into approval items"
 				targetPath: null,
 				commandPreview: "pnpm tsc --noEmit",
 				riskLevel: "high",
-				permissionScenario: "ASK",
+				permissionScenario: "prompt",
+			},
+		],
+	});
+});
+
+test("buildPausedToolApprovalPayload only includes tools Serve marked for approval", () => {
+	const payload = buildPausedToolApprovalPayload({
+		approvalId: "approval-1",
+		threadId: "thread-1",
+		createdAt: "2026-03-29T11:28:16.000Z",
+		permissions: {
+			"tool-2": "prompt",
+		},
+		parts: [
+			{
+				tool_call_id: "tool-1",
+				tool_name: "create_file",
+				args: JSON.stringify({
+					file_path: "components/projects/team-chat/data/mock-threads.ts",
+				}),
+			},
+			{
+				tool_call_id: "tool-2",
+				tool_name: "bash",
+				args: JSON.stringify({
+					command: "pnpm tsc --noEmit",
+				}),
+			},
+		],
+	});
+
+	assert.deepEqual(payload, {
+		approvalId: "approval-1",
+		threadId: "thread-1",
+		createdAt: "2026-03-29T11:28:16.000Z",
+		items: [
+			{
+				id: "tool-2-2",
+				toolCallId: "tool-2",
+				toolName: "bash",
+				title: "Run bash command",
+				description: "Run a shell command in the workspace.",
+				targetPath: null,
+				commandPreview: "pnpm tsc --noEmit",
+				riskLevel: "high",
+				permissionScenario: "prompt",
 			},
 		],
 	});
@@ -104,6 +154,42 @@ test("buildToolApprovalResumeDecisions converts approvals into resume_tool_calls
 				}),
 			},
 		],
+	);
+
+	assert.deepEqual(decisions, [
+		{ tool_call_id: "tool-1", deny_message: null },
+		{
+			tool_call_id: "tool-2",
+			deny_message: "Bash command was not approved: rm -rf components/projects/team-chat",
+		},
+	]);
+});
+
+test("buildToolApprovalResumeDecisions auto-approves paused tools omitted from the approval UI", () => {
+	const decisions = buildToolApprovalResumeDecisions(
+		{
+			approvalId: "approval-1",
+			decisions: [{ toolCallId: "tool-2", approved: false }],
+		},
+		[
+			{
+				tool_call_id: "tool-1",
+				tool_name: "open_files",
+				args: JSON.stringify({
+					file_paths: ["README.md"],
+				}),
+			},
+			{
+				tool_call_id: "tool-2",
+				tool_name: "bash",
+				args: JSON.stringify({
+					command: "rm -rf components/projects/team-chat",
+				}),
+			},
+		],
+		{
+			autoApproveToolCallIds: ["tool-1"],
+		},
 	);
 
 	assert.deepEqual(decisions, [

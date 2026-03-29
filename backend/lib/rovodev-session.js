@@ -8,15 +8,44 @@ function normalizeSessionId(rawValue) {
 	return null;
 }
 
-function normalizeSessionResponse(data) {
-	if (!data || typeof data !== "object") {
+function normalizeSessionHeaderSessionId(headers) {
+	if (!headers || typeof headers !== "object") {
 		return null;
+	}
+
+	const rawHeaderValue = headers["x-session-id"];
+	if (Array.isArray(rawHeaderValue)) {
+		for (const value of rawHeaderValue) {
+			const normalizedValue = normalizeSessionId(value);
+			if (normalizedValue) {
+				return normalizedValue;
+			}
+		}
+		return null;
+	}
+
+	return normalizeSessionId(rawHeaderValue);
+}
+
+function normalizeSessionResponse(data, headers) {
+	if (!data || typeof data !== "object") {
+		const headerSessionId = normalizeSessionHeaderSessionId(headers);
+		if (!headerSessionId) {
+			return null;
+		}
+
+		return {
+			sessionId: headerSessionId,
+			title: null,
+			raw: data,
+		};
 	}
 
 	const sessionId =
 		normalizeSessionId(data.session_id) ||
 		normalizeSessionId(data.sessionId) ||
-		normalizeSessionId(data.session_context?.id);
+		normalizeSessionId(data.session_context?.id) ||
+		normalizeSessionHeaderSessionId(headers);
 	if (!sessionId) {
 		return null;
 	}
@@ -43,7 +72,7 @@ function createHttpStatusError(message, status, endpoint, data) {
 }
 
 async function requestSessionJson(method, path, body, timeoutMs, port) {
-	const { status, data } = await request(method, path, body, timeoutMs, port);
+	const { status, data, headers } = await request(method, path, body, timeoutMs, port);
 	if (status !== 200) {
 		throw createHttpStatusError(
 			`${method} ${path} failed (status ${status}): ${data}`,
@@ -54,7 +83,7 @@ async function requestSessionJson(method, path, body, timeoutMs, port) {
 	}
 
 	const parsed = data ? JSON.parse(data) : null;
-	return normalizeSessionResponse(parsed);
+	return normalizeSessionResponse(parsed, headers);
 }
 
 async function createRovoDevSession(port, { customTitle, timeoutMs = 10_000 } = {}) {

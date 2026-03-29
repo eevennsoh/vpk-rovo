@@ -170,6 +170,43 @@ test("getCurrentRovoDevSession normalizes the current session payload", async ()
 	}
 });
 
+test("getCurrentRovoDevSession falls back to X-Session-ID response header", async () => {
+	const requests = [];
+	const server = http.createServer(async (req, res) => {
+		requests.push(`${req.method} ${req.url}`);
+		if (req.method === "GET" && req.url === "/v3/sessions/current_session") {
+			res.writeHead(200, {
+				"Content-Type": "application/json",
+				"X-Session-ID": "session-from-header",
+			});
+			res.end(JSON.stringify({
+				title: "Current session",
+			}));
+			return;
+		}
+
+		res.writeHead(404, { "Content-Type": "application/json" });
+		res.end(JSON.stringify({ detail: "Not Found" }));
+	});
+
+	const port = await listen(server);
+
+	try {
+		const result = await getCurrentRovoDevSession(port);
+
+		assert.deepEqual(result, {
+			sessionId: "session-from-header",
+			title: "Current session",
+			raw: {
+				title: "Current session",
+			},
+		});
+		assert.deepEqual(requests, ["GET /v3/sessions/current_session"]);
+	} finally {
+		await close(server);
+	}
+});
+
 test("ensureRovoDevSession falls back to session creation when restore returns 404", async () => {
 	const requests = [];
 	const server = http.createServer(async (req, res) => {

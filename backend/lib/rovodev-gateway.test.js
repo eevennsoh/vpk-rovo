@@ -422,15 +422,21 @@ test("streamViaRovoDev can continue a deferred turn without queuing another mess
 });
 
 test("streamViaRovoDev emits deferred tool requests after streamed text", async () => {
+	const requests = [];
 	const server = http.createServer((req, res) => {
+		req.resume();
+		requests.push({
+			method: req.method,
+			url: req.url,
+		});
+
 		if (req.url === "/v3/set_chat_message" && req.method === "POST") {
-			req.resume();
 			res.writeHead(200, { "Content-Type": "application/json" });
 			res.end(JSON.stringify({ response: "Chat message set" }));
 			return;
 		}
 
-		if (req.url === "/v3/stream_chat" && req.method === "GET") {
+		if (req.url === "/v3/stream_chat?enable_deferred_tools=true" && req.method === "GET") {
 			res.writeHead(200, {
 				"Content-Type": "text/event-stream",
 				"Cache-Control": "no-cache",
@@ -489,6 +495,7 @@ test("streamViaRovoDev emits deferred tool requests after streamed text", async 
 			onDeferredToolRequest: (toolCall) => {
 				events.push({ type: "deferred", toolCall });
 			},
+			enableDeferredTools: true,
 		});
 
 		assert.deepEqual(toolStarts, []);
@@ -512,6 +519,13 @@ test("streamViaRovoDev emits deferred tool requests after streamed text", async 
 				},
 			},
 		});
+		assert.deepEqual(
+			requests.map((request) => `${request.method} ${request.url}`),
+			[
+				"POST /v3/set_chat_message",
+				"GET /v3/stream_chat?enable_deferred_tools=true",
+			],
+		);
 	} finally {
 		if (previousPort === undefined) {
 			delete process.env.ROVODEV_PORT;

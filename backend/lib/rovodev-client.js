@@ -610,7 +610,13 @@ function request(method, path, body, timeoutMs = 10000, port, signal) {
 		const req = http.request(options, (res) => {
 			let data = "";
 			res.on("data", (chunk) => (data += chunk));
-			res.on("end", () => finish(resolve, { status: res.statusCode || 0, data }));
+			res.on("end", () =>
+				finish(resolve, {
+					status: res.statusCode || 0,
+					data,
+					headers: res.headers ?? {},
+				})
+			);
 		});
 
 		req.on("timeout", () => {
@@ -688,7 +694,10 @@ async function requestJson(method, path, body, timeoutMs = 10000, port, signal) 
 		);
 	}
 
-	return parseJsonResponseData(path, response.data);
+	return {
+		data: parseJsonResponseData(path, response.data),
+		headers: response.headers ?? {},
+	};
 }
 
 function buildSessionsListPath({ page, pageSize } = {}) {
@@ -809,11 +818,12 @@ async function listSessions(port, options = {}) {
 		page: options.page,
 		pageSize: options.pageSize,
 	});
-	return requestJson("GET", path, undefined, options.timeoutMs ?? 10000, port, options.signal);
+	const response = await requestJson("GET", path, undefined, options.timeoutMs ?? 10000, port, options.signal);
+	return response.data;
 }
 
 async function getCurrentSession(port, options = {}) {
-	return requestJson(
+	const response = await requestJson(
 		"GET",
 		"/v3/sessions/current_session",
 		undefined,
@@ -821,6 +831,7 @@ async function getCurrentSession(port, options = {}) {
 		port,
 		options.signal
 	);
+	return response.data;
 }
 
 async function getSession(port, sessionId, options = {}) {
@@ -829,7 +840,7 @@ async function getSession(port, sessionId, options = {}) {
 		throw new Error("RovoDev session ID is required.");
 	}
 
-	return requestJson(
+	const response = await requestJson(
 		"GET",
 		`/v3/sessions/${encodeURIComponent(normalizedSessionId)}`,
 		undefined,
@@ -837,6 +848,7 @@ async function getSession(port, sessionId, options = {}) {
 		port,
 		options.signal
 	);
+	return response.data;
 }
 
 async function createSession(port, options = {}) {
@@ -845,7 +857,7 @@ async function createSession(port, options = {}) {
 		body.custom_title = options.customTitle.trim();
 	}
 
-	return requestJson(
+	const response = await requestJson(
 		"POST",
 		"/v3/sessions/create",
 		Object.keys(body).length > 0 ? body : null,
@@ -853,6 +865,7 @@ async function createSession(port, options = {}) {
 		port,
 		options.signal
 	);
+	return response.data;
 }
 
 async function restoreSession(port, sessionId, options = {}) {
@@ -861,7 +874,7 @@ async function restoreSession(port, sessionId, options = {}) {
 		throw new Error("RovoDev session ID is required.");
 	}
 
-	return requestJson(
+	const response = await requestJson(
 		"POST",
 		`/v3/sessions/${encodeURIComponent(normalizedSessionId)}/restore`,
 		null,
@@ -869,11 +882,12 @@ async function restoreSession(port, sessionId, options = {}) {
 		port,
 		options.signal
 	);
+	return response.data;
 }
 
 async function resumeToolCalls(port, decisionsOrInput, options = {}) {
 	const body = normalizeResumeToolCallsInput(decisionsOrInput);
-	return requestJson(
+	const response = await requestJson(
 		"POST",
 		"/v3/resume_tool_calls",
 		body,
@@ -881,6 +895,7 @@ async function resumeToolCalls(port, decisionsOrInput, options = {}) {
 		port,
 		options.signal
 	);
+	return response.data;
 }
 
 function openSseStream({

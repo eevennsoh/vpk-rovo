@@ -238,8 +238,8 @@ const {
 } = require("./lib/plan-widget-fallback");
 const {
 	extractUpdateTodoPlanPayloadFromObservations,
-	extractUpdateTodoQueuePayloadFromObservations,
 } = require("./lib/update-todo-plan-payload");
+const { resolveChatSdkThreadId } = require("./lib/chat-sdk-thread-id");
 const { chromiumPreviewManager } = require("./lib/chromium-preview");
 const { browserWorkspaceManager } = require("./lib/browser-workspace-manager");
 const {
@@ -260,6 +260,7 @@ const {
 const {
 	buildPausedToolApprovalPayload,
 	buildToolApprovalResumeDecisions,
+	getPartPermissionScenario,
 	normalizeToolApprovalSubmission,
 } = require("./lib/paused-tool-approval");
 const {
@@ -2373,7 +2374,6 @@ async function executeFutureChatManagedRun(run) {
 		messageCount: Array.isArray(requestBody.messages) ? requestBody.messages.length : 0,
 		hasDelegatedMessageId: Boolean(getNonEmptyString(requestBody.delegatedMessageId)),
 		hasActiveArtifact: Boolean(requestBody.activeArtifact?.id),
-		executionMode: getNonEmptyString(requestBody.executionMode),
 	});
 
 	const threadId = getNonEmptyString(requestBody.id);
@@ -2461,18 +2461,9 @@ async function executeFutureChatManagedRun(run) {
 			}
 			: null;
 	const resolvedProvider = getNonEmptyString(requestBody.provider);
-	const requestExecutionMode = getNonEmptyString(requestBody.executionMode);
-	const requestExecutionTask =
-		requestExecutionMode === "plan-task"
-			? normalizeFutureChatPlanTaskExecution(requestBody.executionTask)
-			: null;
-	const executionContextDescription = buildFutureChatPlanTaskExecutionContext(
-		requestExecutionTask,
-	);
 	const effectiveBaseContextDescription = [
 		delegationContextDescription,
 		baseContextDescription,
-		executionContextDescription,
 	]
 		.filter(Boolean)
 		.join("\n\n");
@@ -2505,9 +2496,7 @@ async function executeFutureChatManagedRun(run) {
 	let routingDecision;
 	const routeDecisionStartedAtMs = Date.now();
 	let autoPlanTriggered = false;
-	const isPlanTaskExecution =
-		requestExecutionMode === "plan-task" && Boolean(requestExecutionTask);
-	if (!requestIsPlanMode && !isPlanTaskExecution && latestUserMessage) {
+	if (!requestIsPlanMode && latestUserMessage) {
 		const complexity = assessPromptComplexityForPlanMode(latestUserMessage);
 		if (complexity.shouldPlan) {
 			autoPlanTriggered = true;
@@ -2536,20 +2525,6 @@ async function executeFutureChatManagedRun(run) {
 			intent: "chat",
 			confidence: 1,
 			reason: "plan_mode_active",
-		});
-	} else if (isPlanTaskExecution) {
-		routingDecision = {
-			intent: "chat",
-			presentation: "text",
-			confidence: 1,
-			reason: "plan_task_execution",
-			origin: requestOrigin,
-		};
-		stageTrace.mark("route_decision_resolved", {
-			stageMs: 0,
-			intent: "chat",
-			confidence: 1,
-			reason: "plan_task_execution",
 		});
 	} else if (requestArtifactCreationRetry && !activeArtifact?.id) {
 		// Previous artifact creation attempt failed — retry artifact_create
@@ -2651,6 +2626,7 @@ async function executeFutureChatManagedRun(run) {
 	}
 	requestBody.resolvedPlanModeActive = requestIsPlanMode || autoPlanTriggered;
 	requestBody.chatSdkSource = "future-chat";
+	requestBody.threadId = threadId;
 
 	const internalProxyStartedAtMs = Date.now();
 	const response = await dispatchChatSdkRequestInProcess({
@@ -3806,7 +3782,7 @@ const _requestUserInputQuestionMetaStore = new Map();
 const _activeDeferredToolCallStore = new Map();
 /** @type {Map<string, { toolCallId: string; port: number; handle: { port: number; release: () => void; releaseAsUnhealthy?: () => void }; threadId: string | null; sessionId: string | null; sessionMode: "persistent" | "ephemeral"; kind: "clarification" | "plan-approval"; createdAt: number; expiresAt: number; expiryTimer: NodeJS.Timeout | null; }>} */
 const _pausedRovoDevToolCallStore = new Map();
-/** @type {Map<string, { approvalId: string; port: number; handle: { port: number; release: () => void; releaseAsUnhealthy?: () => void }; threadId: string | null; sessionId: string | null; sessionMode: "persistent" | "ephemeral"; parts: Array<object>; payload: object; createdAt: number; expiresAt: number; expiryTimer: NodeJS.Timeout | null; }>} */
+/** @type {Map<string, { approvalId: string; port: number; handle: { port: number; release: () => void; releaseAsUnhealthy?: () => void }; threadId: string | null; sessionId: string | null; sessionMode: "persistent" | "ephemeral"; parts: Array<object>; autoApproveToolCallIds: string[]; payload: object; createdAt: number; expiresAt: number; expiryTimer: NodeJS.Timeout | null; }>} */
 const _pausedRovoDevToolApprovalStore = new Map();
 const PAUSED_ROVODEV_TOOL_CALL_TTL_MS = 15 * 60_000;
 
@@ -3886,6 +3862,7 @@ function registerPausedRovoDevToolApprovalBatch({
 	sessionId = null,
 	sessionMode = "persistent",
 	parts,
+	autoApproveToolCallIds = [],
 	payload,
 }) {
 	const normalizedApprovalId = getNonEmptyString(approvalId);
@@ -3912,6 +3889,11 @@ function registerPausedRovoDevToolApprovalBatch({
 		sessionId: getNonEmptyString(sessionId),
 		sessionMode: sessionMode === "ephemeral" ? "ephemeral" : "persistent",
 		parts,
+		autoApproveToolCallIds: Array.isArray(autoApproveToolCallIds)
+			? autoApproveToolCallIds
+				.map((toolCallId) => getNonEmptyString(toolCallId))
+				.filter(Boolean)
+			: [],
 		payload,
 		createdAt: now,
 		expiresAt: now + PAUSED_ROVODEV_TOOL_CALL_TTL_MS,
@@ -4246,23 +4228,6 @@ function planWidgetRequiresApproval(value) {
 	return Boolean(parsedPayload?.deferredToolCallId);
 }
 
-function getPlanWidgetExecutionKey(value) {
-	const parsedPayload = parsePlanWidgetPayload(value);
-	if (!parsedPayload) {
-		return null;
-	}
-
-	const normalizedTitle = getNonEmptyString(parsedPayload.title);
-	const taskIds = parsedPayload.tasks
-		.map((task) => getNonEmptyString(task.id))
-		.filter(Boolean);
-	if (!normalizedTitle || taskIds.length === 0) {
-		return null;
-	}
-
-	return `${normalizedTitle}-${taskIds.join("|")}`;
-}
-
 function mergePlanWidgetPayloadTasks(basePayload, taskPayload) {
 	const parsedBasePayload = parsePlanWidgetPayload(basePayload);
 	const parsedTaskPayload = parsePlanWidgetPayload(taskPayload);
@@ -4286,44 +4251,6 @@ function mergePlanWidgetPayloadTasks(basePayload, taskPayload) {
 		agents: [...parsedTaskPayload.agents],
 		deferredToolCallId: parsedBasePayload.deferredToolCallId,
 	};
-}
-
-function normalizeFutureChatPlanTaskExecution(value) {
-	if (!value || typeof value !== "object") {
-		return null;
-	}
-
-	const planKey = getNonEmptyString(value.planKey);
-	const taskId = getNonEmptyString(value.taskId);
-	const taskText =
-		getNonEmptyString(value.taskText) ||
-		getNonEmptyString(value.text);
-	if (!planKey || !taskId || !taskText) {
-		return null;
-	}
-
-	return {
-		planKey,
-		planTitle: getNonEmptyString(value.planTitle) || null,
-		taskId,
-		taskText,
-	};
-}
-
-function buildFutureChatPlanTaskExecutionContext(executionTask) {
-	if (!executionTask) {
-		return null;
-	}
-
-	return [
-		"[Approved plan execution task]",
-		"This request is an internal execution step from an already-generated Future Chat plan.",
-		executionTask.planTitle ? `Plan: ${executionTask.planTitle}` : null,
-		`Plan key: ${executionTask.planKey}`,
-		`Task id: ${executionTask.taskId}`,
-		`Current task: ${executionTask.taskText}`,
-		"Continue implementation for this task. Do not switch into planning or GenUI generation unless the task explicitly requires it.",
-	].filter(Boolean).join("\n");
 }
 
 function isWorkspaceWriteToolName(toolName) {
@@ -4533,8 +4460,10 @@ function buildApprovalSummary(approvalSubmission) {
 
 	lines.push(
 		"This approval applies to the existing generated plan. Continue from it.",
+		"Stay in the current RovoDev Serve execution loop.",
+		"Maintain a single evolving update_todo list for implementation progress.",
 		"Do not ask clarification questions again unless the user explicitly requests a new plan.",
-		"Begin executing the plan now by emitting AGENT_EXECUTION: markers as described in the Widget Protocol."
+		"Do not restate the plan as a fresh request or generate a new preview unless the user explicitly asks for one."
 	);
 
 	return lines.join("\n");
@@ -5192,6 +5121,7 @@ async function handleChatSdkRequest(req, res) {
 			resolvedPlanModeActive: rawResolvedPlanModeActive,
 			chatSdkSource: rawChatSdkSource,
 			threadId: rawThreadId,
+			id: rawRequestId,
 			sessionId: rawSessionId,
 			sessionMode: rawSessionMode,
 		} = req.body || {};
@@ -5199,9 +5129,11 @@ async function handleChatSdkRequest(req, res) {
 		const genuiHint = rawGenuiHint === true;
 		let resolvedPlanModeActive = rawResolvedPlanModeActive === true;
 		const chatSdkSource = getNonEmptyString(rawChatSdkSource) || "direct";
-		const threadId = typeof rawThreadId === "string" && rawThreadId.trim().length > 0
-			? rawThreadId.trim()
-			: null;
+		const threadId = resolveChatSdkThreadId({
+			chatSdkSource,
+			threadId: rawThreadId,
+			id: rawRequestId,
+		});
 		const sessionId = typeof rawSessionId === "string" && rawSessionId.trim().length > 0
 			? rawSessionId.trim()
 			: null;
@@ -5355,8 +5287,17 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 				});
 			}
 		} else if (!resolvedPlanModeActive && threadId && !hasPausedClarificationToolCall && !hasPausedApprovalToolCall) {
-			// Clear stale plan session on non-resume, non-plan turns.
-			clearPlanSession(threadId);
+			// Keep the execution-phase session alive across Serve-driven
+			// continuations such as paused tool approvals. Only clear it when
+			// a new visible user prompt starts a fresh top-level request.
+			const planSession = getPlanSession(threadId);
+			const shouldKeepExecutionSession =
+				planSession.isActive &&
+				planSession.phase === "execution" &&
+				(approvalSubmission || toolApprovalSubmission);
+			if (!shouldKeepExecutionSession && latestVisibleUserMessage) {
+				clearPlanSession(threadId);
+			}
 		}
 		const {
 			message: latestUserMessage,
@@ -7530,6 +7471,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 				let hasEmittedQuestionCard = false;
 				let hasEmittedPlanWidget = false;
 				let hasEmittedGenuiWidget = false;
+					let hasPendingToolApprovalPrompt = false;
 					let hasSeenPlanWidgetSignal = false;
 					let hasEmittedPlanLoadingState = false;
 					let latestProgressivePlanFingerprint = null;
@@ -8250,23 +8192,12 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 							return true;
 						};
 
-						const emitTodoQueueData = (payload) => {
-							if (!payload || typeof payload !== "object") {
-								return;
-							}
-
-							writer.write({
-								type: "data-todo-queue",
-								id: `todo-queue-${Date.now()}`,
-								data: payload,
-							});
-						};
-
 						const emitToolApprovalData = (payload) => {
 							if (!payload || typeof payload !== "object") {
 								return;
 							}
 
+							hasPendingToolApprovalPrompt = true;
 							writer.write({
 								type: "data-tool-approval",
 								id: `tool-approval-${payload.approvalId}`,
@@ -8300,15 +8231,30 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 								return { disconnect: false };
 							}
 
+							const permissions =
+								rawEvent?.permissions &&
+								typeof rawEvent.permissions === "object" &&
+								!Array.isArray(rawEvent.permissions)
+									? rawEvent.permissions
+									: null;
 							const approvalParts = pausedParts.filter((part) =>
-								isWorkspaceWriteToolName(part?.tool_name),
+								Boolean(getPartPermissionScenario(part, permissions)),
 							);
-							if (
-								approvalParts.length === 0 ||
-								approvalParts.length !== pausedParts.length
-							) {
+							if (approvalParts.length === 0) {
 								return autoResumePausedParts(pausedParts, control);
 							}
+							const autoApproveToolCallIds = pausedParts
+								.map((part) => {
+									const toolCallId = getNonEmptyString(part?.tool_call_id);
+									if (!toolCallId) {
+										return null;
+									}
+
+									return getPartPermissionScenario(part, permissions)
+										? null
+										: toolCallId;
+								})
+								.filter(Boolean);
 
 							const reservedHandle = control.reservePort?.();
 							if (!reservedHandle) {
@@ -8346,10 +8292,12 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 								approvalId,
 								threadId,
 								parts: approvalParts,
+								permissions,
 							});
 							if (!payload) {
 								return autoResumePausedParts(pausedParts, control);
 							}
+							hasPendingToolApprovalPrompt = true;
 
 							const record = registerPausedRovoDevToolApprovalBatch({
 								approvalId,
@@ -8358,7 +8306,8 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 								threadId,
 								sessionId: pausedSessionId,
 								sessionMode: pausedSessionMode,
-								parts: approvalParts,
+								parts: pausedParts,
+								autoApproveToolCallIds,
 								payload,
 							});
 							if (!record) {
@@ -9307,43 +9256,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 										});
 									}
 								},
-								onPausedToolCalls: async ({ rawEvent, control }) => {
-									const pausedParts = Array.isArray(rawEvent?.parts)
-										? rawEvent.parts
-										: [];
-									const interactivePart = pausedParts.find((part) => {
-										const toolName = getNonEmptyString(part?.tool_name);
-										return (
-											isRequestUserInputTool(toolName) ||
-											isExitPlanModeTool(toolName)
-										);
-									});
-
-									if (!interactivePart) {
-										return handlePausedToolApprovalBatch({
-											rawEvent,
-											control,
-										});
-									}
-
-									if (
-										isRequestUserInputTool(interactivePart.tool_name) ||
-										isExitPlanModeTool(interactivePart.tool_name)
-									) {
-										const decisions = pausedParts
-											.map((part) => {
-												const toolCallId = getNonEmptyString(part?.tool_call_id);
-												return toolCallId
-													? { tool_call_id: toolCallId, deny_message: null }
-													: null;
-											})
-											.filter(Boolean);
-										if (decisions.length > 0) {
-											await control.resume({ decisions });
-										}
-										return { disconnect: false };
-									}
-								},
+								enableDeferredTools: true,
 								idleTimeoutMs: WAIT_FOR_TURN_TIMEOUT_MS,
 								includeSubagentEvents: true,
 								signal: abortController.signal,
@@ -9682,6 +9595,10 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 								const resumeDecisions = buildToolApprovalResumeDecisions(
 									toolApprovalSubmission,
 									pausedToolApprovalBatchRecord.parts,
+									{
+										autoApproveToolCallIds:
+											pausedToolApprovalBatchRecord.autoApproveToolCallIds,
+									},
 								);
 								const resumedToolCallId = getNonEmptyString(
 									pausedToolApprovalBatchRecord.parts[0]?.tool_call_id,
@@ -10365,34 +10282,6 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 									hasEmittedPlanWidget = true;
 									emitPlanWidgetData(mergedPlanPayload);
 								}
-							} else {
-								const activePlanPayload =
-									latestPlanPayload || updateTodoPlanPayload;
-								const parsedActivePlanPayload =
-									parsePlanWidgetPayload(activePlanPayload);
-								if (planWidgetRequiresApproval(activePlanPayload)) {
-									console.info("[EXIT-PLAN-MODE] Suppressed todo queue while plan approval is pending", {
-										deferredToolCallId:
-											parsedActivePlanPayload?.deferredToolCallId ?? null,
-										title: parsedActivePlanPayload?.title ?? null,
-										taskCount: parsedActivePlanPayload?.tasks?.length ?? 0,
-									});
-								} else {
-									const todoQueuePayload =
-										extractUpdateTodoQueuePayloadFromObservations(
-											toolObservationEntries,
-											parsedActivePlanPayload
-												? {
-													source: "plan-execution",
-													planTitle: parsedActivePlanPayload.title,
-													planKey: getPlanWidgetExecutionKey(activePlanPayload),
-												}
-												: undefined,
-										);
-									if (todoQueuePayload) {
-										emitTodoQueueData(todoQueuePayload);
-									}
-								}
 							}
 						}
 					}
@@ -10646,7 +10535,12 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 						hasToolObservationData,
 					});
 
-					if (!resolvedPlanModeActive && !planExecutionActive && shouldAttemptGenui) {
+					if (
+						!resolvedPlanModeActive &&
+						!planExecutionActive &&
+						!hasPendingToolApprovalPrompt &&
+						shouldAttemptGenui
+					) {
 						// Single-pass GenUI: RovoDev emits ```spec blocks directly.
 						// Phase 2 (direct spec detection above) already caught any
 						// spec fence in the response. If we reach here, no spec was
@@ -10699,6 +10593,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 						} else if (
 							!resolvedPlanModeActive &&
 							!planExecutionActive &&
+							!hasPendingToolApprovalPrompt &&
 							!hasEmittedQuestionCard &&
 							!hasEmittedGenuiWidget
 						) {

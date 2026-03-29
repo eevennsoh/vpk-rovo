@@ -64,7 +64,7 @@ test("buildFutureChatQueuedPromptsFromTodoQueue creates runnable queue prompts",
 	assert.equal(typeof result[0].createdAt, "number");
 });
 
-test("buildFutureChatQueuedPromptsFromTodoQueue marks internal plan tasks as hidden execution turns", () => {
+test("buildFutureChatQueuedPromptsFromTodoQueue ignores legacy plan metadata", () => {
 	const result = buildFutureChatQueuedPromptsFromTodoQueue(
 		{
 			source: "plan-execution",
@@ -82,17 +82,6 @@ test("buildFutureChatQueuedPromptsFromTodoQueue marks internal plan tasks as hid
 	);
 
 	assert.equal(result.length, 1);
-	assert.deepEqual(result[0].messageMetadata, {
-		visibility: "hidden",
-		source: "plan-task-dispatch",
-	});
-	assert.equal(result[0].executionMode, "plan-task");
-	assert.deepEqual(result[0].executionTask, {
-		planKey: "Team tracker app-task-1|task-2",
-		planTitle: "Team tracker app",
-		taskId: "task-1",
-		taskText: "Build filter bar",
-		blockedBy: [],
-	});
-	assert.match(result[0].contextDescription ?? "", /\[Plan task execution\]/);
+	assert.equal(result[0].messageMetadata, undefined);
+	assert.equal(result[0].contextDescription, undefined);
 });

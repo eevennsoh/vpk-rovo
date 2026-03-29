@@ -61,10 +61,6 @@ import {
 	resolveFutureChatComposerSubmitState,
 	type FutureChatDirectDelegationPhase,
 } from "@/components/projects/future-chat/lib/future-chat-composer-submit-state";
-import {
-	buildFutureChatQueuedPromptsFromTodoQueue,
-	normalizeFutureChatTodoQueuePayload,
-} from "@/components/projects/future-chat/lib/future-chat-todo-queue";
 import { resolveFutureChatPlanReviewAction } from "@/components/projects/future-chat/lib/future-chat-plan-review";
 import {
 	canDispatchFutureChatQueuedAction,
@@ -112,7 +108,6 @@ import {
 	type FutureChatQueuedAction,
 	type FutureChatQueuedDelegationAction,
 	type FutureChatQueuedPromptAction,
-	type FutureChatPlanExecutionTask,
 	type FutureChatRunStatus,
 	type FutureChatThread,
 	type FutureChatVisibility,
@@ -684,7 +679,6 @@ export function useFutureChat({
 	const [isGeneratingTitle, setIsGeneratingTitle] = useState(false);
 	const [pendingTitleThreadId, setPendingTitleThreadId] = useState<string | null>(null);
 	const {
-		appendQueuedActionsForThread,
 		clearQueuedActionsForThread,
 		enqueueQueuedAction,
 		peekNextQueuedActionForThread,
@@ -1402,26 +1396,6 @@ export function useFutureChat({
 					break;
 				}
 
-				case "data-todo-queue": {
-					const normalizedTodoQueuePayload =
-						normalizeFutureChatTodoQueuePayload(dataPart.data);
-					const threadId = activeThreadIdRef.current ?? draftThreadId;
-					if (!normalizedTodoQueuePayload || !threadId) {
-						break;
-					}
-
-					appendQueuedActionsForThread(
-						threadId,
-						buildFutureChatQueuedPromptsFromTodoQueue(
-							normalizedTodoQueuePayload,
-							threadId,
-							createFutureChatQueueItemId,
-						),
-					);
-					kickQueue();
-					break;
-				}
-
 				case "data-cancel-streaming":
 					toast("Previous version saved", {
 						description: "A partial version was saved before starting the new one.",
@@ -1459,12 +1433,10 @@ export function useFutureChat({
 				hydratePersistedArtifact,
 				kickQueue,
 				markObservedTurnComplete,
-				appendQueuedActionsForThread,
 				persistActiveDocumentSelection,
 				queueStreamingArtifactDelta,
 				setLocalThreadActiveRun,
 				syncPlanModeFromBackend,
-				draftThreadId,
 				streamingArtifactRef,
 				visibleArtifactDocumentIdRef,
 			],
@@ -2861,15 +2833,11 @@ const resetToBlankChatState = useCallback((nextDraftId: string) => {
 			text,
 			files,
 			contextDescription,
-			executionMode,
-			executionTask,
 			messageMetadata,
 		}: {
 			text: string;
 			files: FileUIPart[];
 			contextDescription?: string;
-			executionMode?: "plan-task";
-			executionTask?: FutureChatPlanExecutionTask;
 			messageMetadata?: RovoUIMessage["metadata"];
 		}) => {
 			setInputError(null);
@@ -2947,8 +2915,6 @@ const resetToBlankChatState = useCallback((nextDraftId: string) => {
 							id: threadId,
 							artifactContext: resolvedArtifactContext ?? undefined,
 							contextDescription,
-							executionMode,
-							executionTask,
 							streamingArtifact: streamingArtifactPayload,
 						},
 					});
@@ -3760,7 +3726,6 @@ const resetToBlankChatState = useCallback((nextDraftId: string) => {
 				if (
 					!canDispatchFutureChatQueuedAction({
 						action: nextQueuedAction,
-						hasPendingPlanReview: Boolean(getActivePendingPlanReview()),
 					})
 				) {
 					break;
@@ -3799,8 +3764,6 @@ const resetToBlankChatState = useCallback((nextDraftId: string) => {
 							text: nextAction.text,
 							files: [...nextAction.files],
 							contextDescription: nextAction.contextDescription,
-							executionMode: nextAction.executionMode,
-							executionTask: nextAction.executionTask,
 							messageMetadata: nextAction.messageMetadata,
 						});
 					}
@@ -3820,7 +3783,6 @@ const resetToBlankChatState = useCallback((nextDraftId: string) => {
 		dispatchDelegationNow,
 		dispatchPromptNow,
 		enqueueQueuedAction,
-		getActivePendingPlanReview,
 		peekNextQueuedActionForThread,
 		shiftNextQueuedActionForThread,
 	]);

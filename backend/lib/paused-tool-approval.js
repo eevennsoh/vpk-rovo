@@ -40,6 +40,28 @@ function getCommandPreview(args) {
 	);
 }
 
+function getPartPermissionScenario(part, permissions) {
+	const directScenario =
+		getNonEmptyString(part?.permissionScenario) ||
+		getNonEmptyString(part?.permission_scenario) ||
+		null;
+	if (directScenario) {
+		return directScenario;
+	}
+
+	const toolCallId = getNonEmptyString(part?.tool_call_id);
+	if (
+		!toolCallId ||
+		!permissions ||
+		typeof permissions !== "object" ||
+		Array.isArray(permissions)
+	) {
+		return null;
+	}
+
+	return getNonEmptyString(permissions[toolCallId]) || null;
+}
+
 function describePausedTool({ toolName, args }) {
 	const normalizedToolName = normalizeToolName(toolName);
 	const targetPath = getTargetPath(args);
@@ -119,7 +141,7 @@ function describePausedTool({ toolName, args }) {
 	}
 }
 
-function buildPausedToolApprovalItem(part, index = 0) {
+function buildPausedToolApprovalItem(part, index = 0, { permissions } = {}) {
 	if (!part || typeof part !== "object") {
 		return null;
 	}
@@ -127,6 +149,11 @@ function buildPausedToolApprovalItem(part, index = 0) {
 	const toolCallId = getNonEmptyString(part.tool_call_id);
 	const toolName = getNonEmptyString(part.tool_name);
 	if (!toolCallId || !toolName) {
+		return null;
+	}
+
+	const permissionScenario = getPartPermissionScenario(part, permissions);
+	if (!permissionScenario) {
 		return null;
 	}
 
@@ -142,7 +169,7 @@ function buildPausedToolApprovalItem(part, index = 0) {
 		targetPath: description.targetPath,
 		commandPreview: description.commandPreview,
 		riskLevel: description.riskLevel,
-		permissionScenario: "ASK",
+		permissionScenario,
 	};
 }
 
@@ -150,6 +177,7 @@ function buildPausedToolApprovalPayload({
 	approvalId,
 	threadId = null,
 	parts,
+	permissions,
 	createdAt = new Date().toISOString(),
 } = {}) {
 	const normalizedApprovalId = getNonEmptyString(approvalId);
@@ -158,7 +186,7 @@ function buildPausedToolApprovalPayload({
 	}
 
 	const items = parts
-		.map((part, index) => buildPausedToolApprovalItem(part, index))
+		.map((part, index) => buildPausedToolApprovalItem(part, index, { permissions }))
 		.filter(Boolean);
 	if (items.length === 0) {
 		return null;
@@ -248,13 +276,20 @@ function buildDefaultDenyMessage(part) {
 	}
 }
 
-function buildToolApprovalResumeDecisions(submission, parts) {
+function buildToolApprovalResumeDecisions(
+	submission,
+	parts,
+	{ autoApproveToolCallIds = [] } = {},
+) {
 	if (!submission || !Array.isArray(parts)) {
 		throw new Error("Tool approval resume decisions require a submission and paused parts.");
 	}
 
 	const decisionsByToolCallId = new Map(
 		submission.decisions.map((decision) => [decision.toolCallId, decision]),
+	);
+	const autoApproveToolCallIdSet = new Set(
+		Array.isArray(autoApproveToolCallIds) ? autoApproveToolCallIds : [],
 	);
 
 	return parts.map((part) => {
@@ -265,6 +300,12 @@ function buildToolApprovalResumeDecisions(submission, parts) {
 
 		const decision = decisionsByToolCallId.get(toolCallId);
 		if (!decision) {
+			if (autoApproveToolCallIdSet.has(toolCallId)) {
+				return {
+					tool_call_id: toolCallId,
+					deny_message: null,
+				};
+			}
 			throw new Error(`Missing approval decision for paused tool ${toolCallId}.`);
 		}
 
@@ -280,5 +321,6 @@ function buildToolApprovalResumeDecisions(submission, parts) {
 module.exports = {
 	buildPausedToolApprovalPayload,
 	buildToolApprovalResumeDecisions,
+	getPartPermissionScenario,
 	normalizeToolApprovalSubmission,
 };

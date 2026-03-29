@@ -30,22 +30,8 @@ export function hasQueuedFutureChatFollowUp({
 
 export function canDispatchFutureChatQueuedAction({
 	action,
-	hasPendingPlanReview = false,
 }: Readonly<{
 	action: FutureChatQueuedAction | null;
-	hasPendingPlanReview?: boolean;
 }>): boolean {
-	if (!action) {
-		return false;
-	}
-
-	if (action.kind !== "prompt") {
-		return true;
-	}
-
-	if (action.executionMode !== "plan-task") {
-		return true;
-	}
-
-	return !hasPendingPlanReview;
+	return action !== null;
 }

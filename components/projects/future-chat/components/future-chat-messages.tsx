@@ -110,6 +110,10 @@ import {
 	type RovoUIMessage,
 } from "@/lib/rovo-ui-messages";
 import {
+	getLatestFutureChatTodoProgress,
+	type FutureChatTodoProgressItem,
+} from "@/components/projects/future-chat/lib/future-chat-update-todo-progress";
+import {
 	getLatestPendingPlanWidget,
 	parsePlanWidgetPayload,
 	type ParsedPlanWidgetPayload,
@@ -537,6 +541,62 @@ function TraceStepsSection({
 	);
 }
 
+function getTodoProgressVariant(
+	status: FutureChatTodoProgressItem["status"],
+): ComponentProps<typeof Lozenge>["variant"] {
+	if (status === "completed") {
+		return "success";
+	}
+	if (status === "in_progress") {
+		return "information";
+	}
+	return "neutral";
+}
+
+function getTodoProgressLabel(
+	status: FutureChatTodoProgressItem["status"],
+): string {
+	if (status === "completed") {
+		return "Completed";
+	}
+	if (status === "in_progress") {
+		return "In progress";
+	}
+	return "Pending";
+}
+
+function TraceTodoProgressSection({
+	items,
+}: Readonly<{
+	items: ReadonlyArray<FutureChatTodoProgressItem>;
+}>) {
+	return (
+		<div className="space-y-2">
+			{items.map((item) => (
+				<div
+					key={item.id}
+					className="rounded-lg border border-border/60 bg-background/60 px-3 py-2"
+				>
+					<div className="flex flex-wrap items-start gap-2">
+						<div className="min-w-0 flex-1">
+							<p className="text-sm font-medium text-text">{item.label}</p>
+							<div className="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-xs text-text-subtle">
+								<span>{item.id}</span>
+								{item.activeForm && item.activeForm !== item.content ? (
+									<span>{item.content}</span>
+								) : null}
+							</div>
+						</div>
+						<Lozenge variant={getTodoProgressVariant(item.status)}>
+							{getTodoProgressLabel(item.status)}
+						</Lozenge>
+					</div>
+				</div>
+			))}
+		</div>
+	);
+}
+
 function TraceAgentExecutionSection({
 	executions,
 }: Readonly<{
@@ -663,6 +723,8 @@ function AssistantMessage({
 	const thinkingStatusParts = getAllDataParts(message, "data-thinking-status");
 	const thinkingEventParts = getAllDataParts(message, "data-thinking-event");
 	const thinkingToolCalls = getThinkingToolCallSummaries(message);
+	const latestTodoProgress = getLatestFutureChatTodoProgress(thinkingToolCalls);
+	const todoProgressItems = latestTodoProgress?.items ?? [];
 	const latestTodoQueue = getLatestTodoQueue(message);
 	const todoQueueItems = latestTodoQueue?.items ?? [];
 	const agentExecutions = getAgentExecutionSummaries(message);
@@ -672,10 +734,15 @@ function AssistantMessage({
 	const hasAwaitingInputToolCalls = thinkingToolCalls.some(
 		(toolCall) => toolCall.state === "awaiting-input",
 	);
-	const hasTodoQueueItems = todoQueueItems.length > 0;
+	const hasTodoProgressItems = todoProgressItems.length > 0;
+	const hasLegacyTodoQueueItems =
+		!hasTodoProgressItems && todoQueueItems.length > 0;
 	const hasAgentExecutions = agentExecutions.length > 0;
 	const hasTraceDataSignals =
-		hasThinkingEvents || hasTodoQueueItems || hasAgentExecutions;
+		hasThinkingEvents ||
+		hasTodoProgressItems ||
+		hasLegacyTodoQueueItems ||
+		hasAgentExecutions;
 	const hasTurnComplete = hasTurnCompleteSignal(message);
 
 	const rawThinkingActive = checkThinkingStatusActive({
@@ -712,7 +779,8 @@ function AssistantMessage({
 		hasThinkingStatusPart ||
 		hasThinkingEvents ||
 		hasThinkingToolCalls ||
-		hasTodoQueueItems ||
+		hasTodoProgressItems ||
+		hasLegacyTodoQueueItems ||
 		hasAgentExecutions;
 	const isThinkingStreaming =
 		isThinkingLifecycleStreaming && thinkingActive && hasBackendThinkingActivity;
@@ -728,7 +796,8 @@ function AssistantMessage({
 	const hasPlanNarrationText = shouldShowWidget && parsedPlanWidget !== null && Boolean(text);
 	const hasThinkingDetails =
 		shouldShowThinkingSection ||
-		hasTodoQueueItems ||
+		hasTodoProgressItems ||
+		hasLegacyTodoQueueItems ||
 		hasAgentExecutions ||
 		hasThinkingToolCalls ||
 		hasPlanNarrationText;
@@ -903,7 +972,16 @@ function AssistantMessage({
 											/>
 											</ChainOfThoughtStep>
 										) : null}
-										{hasTodoQueueItems ? (
+										{hasTodoProgressItems ? (
+											<ChainOfThoughtStep
+												icon={StepChecklistIcon}
+												label={getReasoningSectionTitle("steps")}
+												status={isThinkingStreaming ? "active" : "complete"}
+											>
+												<TraceTodoProgressSection items={todoProgressItems} />
+											</ChainOfThoughtStep>
+										) : null}
+										{hasLegacyTodoQueueItems ? (
 											<ChainOfThoughtStep
 												icon={StepChecklistIcon}
 												label={getReasoningSectionTitle("steps")}

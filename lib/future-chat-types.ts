@@ -90,21 +90,11 @@ export interface FutureChatQueuedActionBase {
 	createdAt: number;
 }
 
-export interface FutureChatPlanExecutionTask {
-	planKey: string;
-	planTitle?: string;
-	taskId: string;
-	taskText: string;
-	blockedBy?: string[];
-}
-
 export interface FutureChatQueuedPromptAction
 	extends FutureChatQueuedActionBase {
 	kind: "prompt";
 	files: ReadonlyArray<FileUIPart>;
 	contextDescription?: string;
-	executionMode?: "plan-task";
-	executionTask?: FutureChatPlanExecutionTask;
 	messageMetadata?: RovoMessageMetadata;
 }
 

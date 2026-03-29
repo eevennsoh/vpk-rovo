@@ -3,7 +3,6 @@ const assert = require("node:assert/strict");
 
 const {
 	extractUpdateTodoPlanPayloadFromObservations,
-	extractUpdateTodoQueuePayloadFromObservations,
 	extractUpdateTodoTasksFromObservations,
 } = require("./update-todo-plan-payload");
 
@@ -227,52 +226,4 @@ test("extractUpdateTodoTasksFromObservations canonicalizes todo tasks and depend
 		{ id: "task-2", label: "Wire backend endpoint", blockedBy: ["task-1"] },
 		{ id: "task-3", label: "Validate smoke tests", blockedBy: ["task-2"] },
 	]);
-});
-
-test("extractUpdateTodoQueuePayloadFromObservations returns executable queue items", () => {
-	const result = extractUpdateTodoQueuePayloadFromObservations([
-		createUpdateTodoObservation({
-			todos: [
-				{ id: "1", content: "Capture requirements" },
-				{ id: "2", content: "[needs 1] Build queue UX" },
-			],
-		}),
-	]);
-
-	assert.deepEqual(result, {
-		type: "todo-queue",
-		items: [
-			{ id: "task-1", taskId: "task-1", text: "Capture requirements", blockedBy: [] },
-			{ id: "task-2", taskId: "task-2", text: "Build queue UX", blockedBy: ["task-1"] },
-		],
-	});
-});
-
-test("extractUpdateTodoQueuePayloadFromObservations carries plan execution metadata when provided", () => {
-	const result = extractUpdateTodoQueuePayloadFromObservations(
-		[
-			createUpdateTodoObservation({
-				todos: [
-					{ id: "1", content: "Capture requirements" },
-					{ id: "2", content: "[needs 1] Build queue UX" },
-				],
-			}),
-		],
-		{
-			source: "plan-execution",
-			planTitle: "Team tracker app",
-			planKey: "Team tracker app-task-1|task-2",
-		},
-	);
-
-	assert.deepEqual(result, {
-		type: "todo-queue",
-		source: "plan-execution",
-		planTitle: "Team tracker app",
-		planKey: "Team tracker app-task-1|task-2",
-		items: [
-			{ id: "task-1", taskId: "task-1", text: "Capture requirements", blockedBy: [] },
-			{ id: "task-2", taskId: "task-2", text: "Build queue UX", blockedBy: ["task-1"] },
-		],
-	});
 });

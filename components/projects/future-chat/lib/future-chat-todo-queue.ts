@@ -1,5 +1,4 @@
 import type { FutureChatQueuedAction } from "@/lib/future-chat-types";
-import { toNonEmptyString } from "@/lib/utils";
 
 export interface FutureChatTodoQueueItem {
 	id: string;
@@ -16,25 +15,13 @@ export interface FutureChatTodoQueuePayload {
 	items: FutureChatTodoQueueItem[];
 }
 
-function buildPlanExecutionContextDescription(
-	payload: FutureChatTodoQueuePayload,
-	item: FutureChatTodoQueueItem,
-): string | undefined {
-	const planTitle = toNonEmptyString(payload.planTitle);
-	const planKey = toNonEmptyString(payload.planKey);
-	const taskId = toNonEmptyString(item.taskId) ?? toNonEmptyString(item.id);
-	if (!planTitle || !planKey || !taskId) {
-		return undefined;
+function toNonEmptyString(value: unknown): string | null {
+	if (typeof value !== "string") {
+		return null;
 	}
 
-	return [
-		"[Plan task execution]",
-		"This is an internal execution step from an already-generated plan.",
-		`Plan: ${planTitle}`,
-		`Plan key: ${planKey}`,
-		`Task: ${item.text}`,
-		"Continue implementation for this task. Do not treat this as a new user request or a GenUI generation request.",
-	].join("\n");
+	const trimmedValue = value.trim();
+	return trimmedValue.length > 0 ? trimmedValue : null;
 }
 
 export function normalizeFutureChatTodoQueuePayload(
@@ -90,9 +77,9 @@ export function normalizeFutureChatTodoQueuePayload(
 	}
 
 	return {
-		source,
-		planTitle,
-		planKey,
+		...(source ? { source } : {}),
+		...(planTitle ? { planTitle } : {}),
+		...(planKey ? { planKey } : {}),
 		items: normalizedItems,
 	};
 }
@@ -109,28 +96,5 @@ export function buildFutureChatQueuedPromptsFromTodoQueue(
 		createdAt: Date.now(),
 		kind: "prompt",
 		files: [],
-		contextDescription:
-			payload.source === "plan-execution"
-				? buildPlanExecutionContextDescription(payload, item)
-				: undefined,
-		executionMode:
-			payload.source === "plan-execution" ? "plan-task" : undefined,
-		executionTask:
-			payload.source === "plan-execution" && payload.planKey
-				? {
-					planKey: payload.planKey,
-					planTitle: payload.planTitle,
-					taskId: item.taskId ?? item.id,
-					taskText: item.text,
-					blockedBy: item.blockedBy,
-				}
-				: undefined,
-		messageMetadata:
-			payload.source === "plan-execution"
-				? {
-					visibility: "hidden",
-					source: "plan-task-dispatch",
-				}
-				: undefined,
 	}));
 }
