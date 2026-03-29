@@ -205,7 +205,7 @@ BACKEND_URL=http://localhost:8080       # Backend URL for dev proxy
 
 LLM routing behavior:
 
-- Default: RovoDev-first (`pnpm run rovodev` starts a single instance by default; use `pnpm run rovodev -- 6` for full pool)
+- Default: RovoDev-first (`pnpm run rovodev` starts a single instance by default; use `pnpm run rovodev --6` for full pool)
 - Fallback: if `AUTO_FALLBACK_TO_AI_GATEWAY=true`, chat endpoints switch to AI Gateway when RovoDev is down
 - Inspect current routing at `GET /api/health` under `llmRouting`
 

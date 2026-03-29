@@ -3,7 +3,7 @@ name: vpk-utils-codex
 description: Switch the Codex CLI between the pinned rollback version `0.107.0` and modern API-key-based versions such as `0.116.0+`, rewrite `~/.codex/config.toml` to the matching profile, and preserve reusable auth and config backups. Use when the user asks to upgrade or downgrade Codex, revert to pre-enterprise-web-policy Codex, move back to `0.107`, move to `0.116` or newer, switch between OAuth and API key login, or verify the installed Codex CLI version, auth mode, and config profile.
 ---
 
-# Codex Version Switcher
+# vpk-utils-codex
 
 Use the bundled script to switch the globally installed npm Codex CLI on machines where `codex` comes from a global `@openai/codex` install.
 

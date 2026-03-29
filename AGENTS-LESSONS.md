@@ -129,3 +129,9 @@ Mark promoted entries with `[Promoted]` prefix — see vpk-lesson skill for deta
 - **What happened:** A Codex-switching skill was created that handled version and auth changes but left `~/.codex/config.toml` implicit, even though this machine needs a distinct rollback profile for `0.107.0` and a different modern profile for `0.116.0+`.
 - **Why:** The first pass treated version switching as mainly an install and login problem, but the local runtime behavior also depends on version-specific model provider, reasoning, and proxy configuration.
 - **Rule:** When automating Codex version changes for this environment, always switch the matching `~/.codex/config.toml` profile too: `0.107.0` uses the rollback `openai-no-ws` OAuth config, and `0.116.0+` uses the modern `atlassian-proxy` API-key config.
+
+### 2026-03-29 - Preserve the repo's preferred compact `pnpm` passthrough form in user-facing examples
+
+- **What happened:** A revert restored the older spaced help example for `pnpm run rovodev:tmux:start`, even though this repo's intended user-facing invocation is `pnpm run rovodev:tmux:start --6`.
+- **Why:** The revert mechanically copied previous file content instead of preserving the corrected, preferred command form used in this environment.
+- **Rule:** When reverting or restoring command examples, keep the repo's preferred invocation style if the older text is known to be undesirable. For this repo, use `pnpm run rovodev:tmux:start --6` in help text and examples.

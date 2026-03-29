@@ -138,7 +138,7 @@ In VPK feature code, use ADS semantic naming (`bg-surface-raised`, `text-text-su
 
 - Install dependencies: `pnpm install`
 - First-time MCP setup: `acli rovodev` (interactive, approve MCP servers, then Ctrl+C)
-- Start everything: `pnpm run rovodev` (starts 1 rovodev serve instance + backend + frontend; use `pnpm run rovodev -- 6` for full pool)
+- Start everything: `pnpm run rovodev` (starts 1 rovodev serve instance + backend + frontend; use `pnpm run rovodev --6` for full pool)
 - Start frontend + backend only: `pnpm run dev` (requires rovodev serve already running)
 - Start frontend only: `pnpm run dev:frontend`
 - Start backend only: `pnpm run dev:backend`
@@ -148,6 +148,16 @@ In VPK feature code, use ADS semantic naming (`bg-surface-raised`, `text-text-su
 
 - Backend: `node --test backend/lib/*.test.js`
 - Frontend: No automated test framework — use observational validation (lint, typecheck, visual checks via `/agent-browser`, accessibility checks via `ads_analyze_a11y` / `ads_analyze_localhost_a11y`)
+
+### Debugging
+
+- When running inside cmux, use `/cmux` skill + `cmux read-screen` to scrape terminal output from dev server panes before guessing at errors.
+- Workflow:
+  1. `cmux list-panes` / `cmux list-pane-surfaces` — find the pane running the failing process (backend, frontend, rovodev serve).
+  2. `cmux read-screen --surface surface:N --scrollback --lines 200` — capture recent terminal output.
+  3. Analyze the captured logs to identify the actual error before proposing a fix.
+- Prefer this over re-running commands or reading log files — the terminal pane already has the live output.
+- Outside cmux, fall back to reading `.dev-frontend-port` / `.dev-backend-port` and checking process output manually.
 
 ## Gotchas
 

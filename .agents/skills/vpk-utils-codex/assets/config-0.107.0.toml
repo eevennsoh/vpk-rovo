@@ -2,10 +2,10 @@ model = "gpt-5.4"
 model_context_window = 1000000
 model_auto_compact_token_limit = 900000
 model_provider = "openai-no-ws"
-model_reasoning_effort = "medium"
-sandbox_mode = "danger-full-access"
-approval_policy = "never"
-web_search = "live"
+model_reasoning_effort = "high"
+sandbox_mode = "read-only"
+approval_policy = "on-request"
+web_search = "cached"
 check_for_update_on_startup = true
 personality = "pragmatic"
 plan_mode_reasoning_effort = "xhigh"
@@ -26,7 +26,7 @@ guardian_approval = true
 tui_app_server = false
 
 [sandbox_workspace_write]
-network_access = true
+network_access = false
 
 [mcp_servers.figma]
 url = "https://mcp.figma.com/mcp"
