@@ -124,7 +124,7 @@ import { DefaultChatTransport, type UIMessage } from "ai"; // transport + messag
 Selection priority:
 
 1. Semantic shadcn/ADS utility classes
-2. Accent Tailwind classes from `tailwind-theme.css`
+2. Accent Tailwind classes from `app/tailwind-theme.css`
 3. Raw `token()` or `var(--ds-...)` only when no mapped class exists
 
 In `components/ui/*`, use shadcn naming (`bg-card`, `text-foreground`).
@@ -146,7 +146,7 @@ In VPK feature code, use ADS semantic naming (`bg-surface-raised`, `text-text-su
 
 ### Testing
 
-- Backend: `node --test backend/lib/*.test.js`
+- Backend: `node --test backend/lib/*.test.js` (no package.json script — run directly)
 - Frontend: No automated test framework — use observational validation (lint, typecheck, visual checks via `/agent-browser`, accessibility checks via `ads_analyze_a11y` / `ads_analyze_localhost_a11y`)
 
 ### Debugging
@@ -186,8 +186,6 @@ See `.agents/docs/workflows-extended.md` for build, deployment, and validation w
 - Use macOS/BSD-safe shell patterns (for example `sed -i ''`).
 - For Figma work, front-load key specs: spacing, radius, width constraints, shadow token.
 - When editing icons, check consistency across all icons in the component.
-- Prefer the simplest viable implementation before introducing abstractions.
-- If implementation gets unstable, stop and re-plan instead of patching repeatedly.
 - When fixing a bug, add a regression test that reproduces the original failure.
 - Before marking work complete, verify: root cause addressed (not symptoms), no leftover workarounds, no dead code introduced, lint + typecheck pass.
 

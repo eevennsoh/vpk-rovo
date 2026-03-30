@@ -1,5 +1,14 @@
 const MIN_TEXT_LENGTH = 40;
 
+const WRITE_BLOCKED_PATTERNS = [
+	/write access disabled/i,
+	/write operations are currently blocked/i,
+	/all write operations[\s\S]{0,40}currently blocked/i,
+	/can['']t proceed with implementation until writes are unblocked/i,
+	/blocked in readonly mode/i,
+	/operation is currently blocked/i,
+];
+
 // Strong signals — any single match means inability response
 const STRONG_INABILITY_PATTERNS = [
 	/i apologize[\s\S]{0,60}(?:don['']t (?:include|have)|not (?:available|included))/i,
@@ -16,6 +25,7 @@ const STRONG_INABILITY_PATTERNS = [
 	/(?:isn['']t|is not) (?:something i can|within my (?:capabilities|scope))/i,
 	/lack (?:the )?(?:tools|access|capability|ability) to/i,
 	/not (?:equipped|configured|set up) to/i,
+	...WRITE_BLOCKED_PATTERNS,
 ];
 
 // Weak signals — need 2+ matches to trigger
@@ -87,6 +97,20 @@ function looksLikeInabilityResponse(text) {
 	return false;
 }
 
+function looksLikeWriteBlockedResponse(text) {
+	if (typeof text !== "string" || !text.trim()) {
+		return false;
+	}
+	const trimmed = text.trim();
+	for (const pattern of WRITE_BLOCKED_PATTERNS) {
+		if (pattern.test(trimmed)) {
+			return true;
+		}
+	}
+	return false;
+}
+
 module.exports = {
 	looksLikeInabilityResponse,
+	looksLikeWriteBlockedResponse,
 };

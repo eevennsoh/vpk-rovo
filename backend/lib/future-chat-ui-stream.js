@@ -139,6 +139,7 @@ function upsertMessage(messages, nextMessage) {
 async function collectUiMessagesFromResponseStream({
 	initialMessages = [],
 	onChunk,
+	onMessagesUpdated,
 	routeDecisionToSuppress,
 	stream,
 }) {
@@ -151,6 +152,9 @@ async function collectUiMessagesFromResponseStream({
 		}),
 	})) {
 		messages.splice(0, messages.length, ...upsertMessage(messages, message));
+		if (typeof onMessagesUpdated === "function") {
+			void Promise.resolve(onMessagesUpdated([...messages])).catch(() => {});
+		}
 	}
 
 	return messages;

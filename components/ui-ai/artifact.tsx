@@ -47,6 +47,7 @@ import {
 	CodeIcon,
 	CopyIcon,
 	FileTextIcon,
+	GlobeIcon,
 	ImageIcon,
 	LoaderCircleIcon,
 	MessageSquarePlusIcon,
@@ -198,11 +199,12 @@ export const ArtifactContent = ({
  * Mirrors the design from future-chat-artifact-card.tsx
  * --------------------------------------------------------------------------- */
 
-export type ArtifactKind = "text" | "code" | "image" | "sheet";
+export type ArtifactKind = "text" | "code" | "image" | "sheet" | "react";
 
 export const ARTIFACT_KIND_LABELS: Record<ArtifactKind, string> = {
 	code: "Code",
 	image: "Image",
+	react: "App",
 	sheet: "Sheet",
 	text: "Document",
 };
@@ -213,6 +215,8 @@ function ArtifactKindIcon({ kind }: Readonly<{ kind: ArtifactKind }>) {
 			return <CodeIcon className="size-4" />;
 		case "image":
 			return <ImageIcon className="size-4" />;
+		case "react":
+			return <GlobeIcon className="size-4" />;
 		case "sheet":
 			return <SheetIcon className="size-4" />;
 		default:
@@ -226,6 +230,8 @@ function getArtifactKindTileVariant(kind: ArtifactKind) {
 			return "blueSubtle" as const;
 		case "image":
 			return "purpleSubtle" as const;
+		case "react":
+			return "tealSubtle" as const;
 		case "sheet":
 			return "greenSubtle" as const;
 		default:
@@ -802,6 +808,15 @@ export function ArtifactPanel({
 							</Button>
 						</div>
 					</>
+				) : document.kind === "react" ? (
+					<div className="flex h-full w-full flex-col overflow-hidden">
+						<iframe
+							title={`Live app preview — ${selectedVersionTitle}`}
+							className="h-full min-h-0 w-full flex-1 border-0 bg-surface"
+							sandbox="allow-forms allow-modals allow-popups allow-same-origin allow-scripts"
+							src={previewContent}
+						/>
+					</div>
 				) : (
 					<div
 						ref={contentRef}

@@ -108,3 +108,33 @@ test("collectUiMessagesFromResponseStream keeps a changed route decision", async
 	assert.equal(messages.length, 1);
 	assert.equal(messages[0]?.parts.some((part) => part.type === "data-route-decision"), true);
 });
+
+test("collectUiMessagesFromResponseStream reports merged message snapshots while streaming", async () => {
+	const snapshots = [];
+	const stream = createUIMessageStream({
+		execute: ({ writer }) => {
+			writer.write({ type: "text-start", id: "text-1" });
+			writer.write({ type: "text-delta", id: "text-1", delta: "First message." });
+			writer.write({ type: "text-end", id: "text-1" });
+			writer.write({ type: "text-start", id: "text-2" });
+			writer.write({ type: "text-delta", id: "text-2", delta: "Second message." });
+			writer.write({ type: "text-end", id: "text-2" });
+		},
+	});
+	const response = createUIMessageStreamResponse({ stream });
+
+	const messages = await collectUiMessagesFromResponseStream({
+		initialMessages: [],
+		onMessagesUpdated: (nextMessages) => {
+			snapshots.push(nextMessages.map((message) => message.id));
+		},
+		stream: response.body,
+	});
+
+	assert.equal(messages.length >= 1, true);
+	assert.equal(snapshots.length >= 1, true);
+	assert.deepEqual(
+		snapshots.at(-1),
+		messages.map((message) => message.id),
+	);
+});

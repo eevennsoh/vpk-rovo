@@ -23,12 +23,18 @@ const DEFAULT_UNHEALTHY_QUARANTINE_MS = 15_000;
  * @property {PortStatus} status
  * @property {number} lastHealthCheck
  * @property {number | null} acquiredAt
+ * @property {number | null} lastBusyActivityAt
+ * @property {number | null} busyTimeoutMs
  * @property {number | null} quarantinedUntil
  * @property {boolean} reserved
  *
  * @typedef {object} PortHandle
  * @property {number} port
+ * @property {() => void} [markReserved]
+ * @property {() => void} [touch]
+ * @property {(timeoutMs: number) => void} [setBusyTimeoutMs]
  * @property {() => void} release
+ * @property {(options?: { quarantineMs?: number }) => void} [releaseAsUnhealthy]
  *
  * @typedef {object} PoolStatus
  * @property {number} total
@@ -44,8 +50,8 @@ const DEFAULT_UNHEALTHY_QUARANTINE_MS = 15_000;
  * @param {number[]} ports - Array of port numbers to manage
  * @param {object} [options]
  * @param {number} [options.healthCheckIntervalMs] - Interval between health checks (default 30s)
- * @param {number} [options.staleBusyTimeoutMs] - Mark a busy port as unhealthy if it has been acquired for longer than this (default 120s). Catches hung RovoDev serve instances that never return a response.
- * @param {(port: number, durationMs: number) => void} [options.onStaleBusyPort] - Called when a stale busy port is detected, before marking it unhealthy. Use to attempt cleanup (e.g., cancel the chat).
+ * @param {number} [options.staleBusyTimeoutMs] - Mark a busy port as unhealthy if it has been inactive for longer than this (default 120s). Catches hung RovoDev serve instances that never return a response.
+ * @param {(port: number, durationMs: number) => void} [options.onStaleBusyPort] - Called when a stale busy port is detected, before marking it unhealthy. The duration is measured from the last observed busy activity.
  * @param {() => void} [options.onPortAvailable] - Called when a port transitions to available (after cooldown/health check). Use to drain external run queues that are separate from the pool's internal waiter list.
  * @param {number} [options.cooldownMs] - Delay before marking a released port as available (default 0). Used as fallback if waitForReady is not provided.
  * @param {(port: number) => Promise<void>} [options.waitForReady] - Async function that resolves when a port is ready for new requests. Replaces the blind cooldownMs timer with a deterministic readiness check.
@@ -74,6 +80,8 @@ function createRovoDevPool(ports, options = {}) {
 		status: "available",
 		lastHealthCheck: Date.now(),
 		acquiredAt: null,
+		lastBusyActivityAt: null,
+		busyTimeoutMs: null,
 		quarantinedUntil: null,
 		reserved: false,
 	}));
@@ -149,12 +157,25 @@ function createRovoDevPool(ports, options = {}) {
 			return;
 		}
 
-		entry.status = "busy";
-		entry.acquiredAt = Date.now();
-		entry.quarantinedUntil = null;
+		markEntryBusy(entry);
 
 		waiters.shift();
 		waiter.resolve(createHandle(entry));
+	}
+
+	function markEntryBusy(entry) {
+		const now = Date.now();
+		entry.status = "busy";
+		entry.acquiredAt = now;
+		entry.lastBusyActivityAt = now;
+		entry.busyTimeoutMs = staleBusyTimeoutMs;
+		entry.quarantinedUntil = null;
+	}
+
+	function clearBusyLease(entry) {
+		entry.acquiredAt = null;
+		entry.lastBusyActivityAt = null;
+		entry.busyTimeoutMs = null;
 	}
 
 	function createHandle(entry) {
@@ -165,6 +186,21 @@ function createRovoDevPool(ports, options = {}) {
 			markReserved: () => {
 				entry.reserved = true;
 			},
+			touch: () => {
+				if (released || entry.status !== "busy") {
+					return;
+				}
+				entry.lastBusyActivityAt = Date.now();
+			},
+			setBusyTimeoutMs: (timeoutMs) => {
+				if (released || entry.status !== "busy") {
+					return;
+				}
+				entry.busyTimeoutMs =
+					Number.isFinite(timeoutMs) && timeoutMs > 0
+						? timeoutMs
+						: staleBusyTimeoutMs;
+			},
 			release: () => {
 				if (released) {
 					return;
@@ -174,7 +210,7 @@ function createRovoDevPool(ports, options = {}) {
 
 				const makeAvailable = () => {
 					entry.status = "available";
-					entry.acquiredAt = null;
+					clearBusyLease(entry);
 					entry.quarantinedUntil = null;
 					entry.reserved = false;
 					tryNotifyWaiter();
@@ -185,16 +221,18 @@ function createRovoDevPool(ports, options = {}) {
 
 				if (typeof waitForReady === "function") {
 					entry.status = "cooldown";
+					clearBusyLease(entry);
 					waitForReady(entry.port).then(makeAvailable, () => {
 						// Readiness check failed — mark unhealthy so the
 						// periodic health check recovers it later.
 						entry.status = "unhealthy";
-						entry.acquiredAt = null;
+						clearBusyLease(entry);
 						entry.quarantinedUntil =
 							entries.length > 1 ? Date.now() + unhealthyQuarantineMs : null;
 					});
 				} else if (cooldownMs > 0) {
 					entry.status = "cooldown";
+					clearBusyLease(entry);
 					setTimeout(makeAvailable, cooldownMs);
 				} else {
 					makeAvailable();
@@ -206,7 +244,7 @@ function createRovoDevPool(ports, options = {}) {
 				}
 				released = true;
 				entry.status = "unhealthy";
-				entry.acquiredAt = null;
+				clearBusyLease(entry);
 				entry.reserved = false;
 				entry.quarantinedUntil =
 					entries.length > 1
@@ -235,9 +273,7 @@ function createRovoDevPool(ports, options = {}) {
 
 		const entry = findAvailableEntry({ preferredPort, avoidPorts });
 		if (entry) {
-			entry.status = "busy";
-			entry.acquiredAt = Date.now();
-			entry.quarantinedUntil = null;
+			markEntryBusy(entry);
 			return Promise.resolve(createHandle(entry));
 		}
 
@@ -312,22 +348,28 @@ function createRovoDevPool(ports, options = {}) {
 
 	async function runHealthChecks() {
 		// ── Stale busy port detection ────────────────────────────────────
-		// If a port has been acquired longer than staleBusyTimeoutMs, the
-		// holder is likely hung (e.g., RovoDev serve stopped responding).
+		// If a busy port has not shown activity for longer than its current
+		// watchdog timeout, the holder is likely hung (e.g., RovoDev serve
+		// stopped responding).
 		// Force-mark it unhealthy so the next health-check cycle can probe
 		// and potentially recover it, and other requests stop waiting.
 		if (staleBusyTimeoutMs > 0) {
 			const now = Date.now();
 			for (const entry of entries) {
+				const busyTimeoutMs =
+					Number.isFinite(entry.busyTimeoutMs) && entry.busyTimeoutMs > 0
+						? entry.busyTimeoutMs
+						: staleBusyTimeoutMs;
 				if (
 					entry.status === "busy" &&
 					!entry.reserved &&
-					entry.acquiredAt != null &&
-					now - entry.acquiredAt > staleBusyTimeoutMs
+					entry.lastBusyActivityAt != null &&
+					busyTimeoutMs > 0 &&
+					now - entry.lastBusyActivityAt > busyTimeoutMs
 				) {
-					const durationMs = now - entry.acquiredAt;
+					const durationMs = now - entry.lastBusyActivityAt;
 					console.warn(
-						`[ROVODEV-POOL] Port ${entry.port} has been busy for ${Math.ceil(durationMs / 1000)}s — marking unhealthy (stale)`
+						`[ROVODEV-POOL] Port ${entry.port} has been inactive while busy for ${Math.ceil(durationMs / 1000)}s — marking unhealthy (stale)`
 					);
 					if (typeof onStaleBusyPort === "function") {
 						try {
@@ -335,7 +377,7 @@ function createRovoDevPool(ports, options = {}) {
 						} catch {}
 					}
 					entry.status = "unhealthy";
-					entry.acquiredAt = null;
+					clearBusyLease(entry);
 					entry.quarantinedUntil =
 						entries.length > 1 ? Date.now() + unhealthyQuarantineMs : null;
 				}
@@ -410,6 +452,8 @@ function createRovoDevPool(ports, options = {}) {
 					status: "available",
 					lastHealthCheck: Date.now(),
 					acquiredAt: null,
+					lastBusyActivityAt: null,
+					busyTimeoutMs: null,
 					quarantinedUntil: null,
 					reserved: false,
 				});
@@ -460,7 +504,7 @@ function createRovoDevPool(ports, options = {}) {
 		// Release all busy entries
 		for (const entry of entries) {
 			entry.status = "available";
-			entry.acquiredAt = null;
+			clearBusyLease(entry);
 			entry.quarantinedUntil = null;
 			entry.reserved = false;
 		}

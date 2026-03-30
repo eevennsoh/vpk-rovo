@@ -5,6 +5,7 @@ import { API_ENDPOINTS } from "@/lib/api-config";
 import type { AgentExecutionUpdate } from "@/lib/rovo-ui-messages";
 import type {
 	AgentRun,
+	AgentRunSourceSurface,
 	AgentRunStreamEvent,
 } from "@/lib/make-run-types";
 import { isAgentRunStreamEvent } from "@/lib/make-run-types";
@@ -35,6 +36,7 @@ interface StartExecutionOptions {
 	conversation?: ConversationItem[];
 	customInstruction?: string;
 	agentCount?: number;
+	sourceSurface?: AgentRunSourceSurface;
 }
 
 export interface StartExecutionResult {
@@ -340,6 +342,7 @@ export function useExecutionMode(): UseExecutionModeReturn {
 					conversation: options.conversation,
 					customInstruction: options.customInstruction,
 					agentCount: options.agentCount,
+					sourceSurface: options.sourceSurface,
 				}),
 			});
 			if (!response.ok) {

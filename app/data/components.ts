@@ -260,6 +260,7 @@ export const BLOCK_COMPONENTS: ComponentEntry[] = [
 	blockComponent("task-progress", "Task Progress"),
 	blockComponent("answer-card", "Answer Card"),
 	blockComponent("approval-card", "Approval Card"),
+	blockComponent("tool-approval", "Tool Approval"),
 	blockComponent("chatbot", "Chatbot"),
 	blockComponent("chatgpt", "ChatGPT"),
 	blockComponent("cursor", "Cursor"),

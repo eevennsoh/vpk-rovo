@@ -31,7 +31,6 @@ import {
 	removeLeadingSingleCharacterFragment,
 	removeTrailingSingleCharacterLine,
 	sanitizeMarkdownArtifactMarkers,
-	suppressToolJsonTrace,
 } from "../lib/message-text-utils";
 import {
 	sanitizeQuestionCardMessageText,
@@ -254,13 +253,7 @@ function useThreadMessageDerived(
 		hasAnyToolCalls: hasAnyThinkingToolCalls,
 		hasRunningToolCalls: hasRunningThinkingToolCalls,
 	});
-	const hasToolExecutionEvidence =
-		Boolean(thinkingStatusPart) ||
-		toolParts.length > 0 ||
-		thinkingToolCalls.length > 0;
-	const messageTextBeforeSanitization = hasToolExecutionEvidence
-		? suppressToolJsonTrace(baseMessageText).text
-		: baseMessageText;
+	const messageTextBeforeSanitization = baseMessageText;
 	const sanitizedMessageText = sanitizeMarkdownArtifactMarkers(
 		messageTextBeforeSanitization
 	);

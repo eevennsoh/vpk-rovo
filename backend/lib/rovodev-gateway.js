@@ -55,7 +55,13 @@ function initPool(pool) {
  * @param {AbortSignal} [opts.signal]
  * @param {number} [opts.preferredPort]
  * @param {number[]} [opts.avoidPorts]
- * @returns {Promise<{ port: number; release: () => void }>}
+ * @returns {Promise<{
+ *   port: number;
+ *   release: () => void;
+ *   touch?: () => void;
+ *   setBusyTimeoutMs?: (timeoutMs: number) => void;
+ *   releaseAsUnhealthy?: (options?: { quarantineMs?: number }) => void;
+ * }>}
  */
 async function acquirePort({
 	timeoutMs = 30_000,
@@ -65,7 +71,12 @@ async function acquirePort({
 } = {}) {
 	if (!_pool) {
 		const resolvedPort = getRovoDevPort();
-		return { port: resolvedPort, release: () => {} };
+		return {
+			port: resolvedPort,
+			release: () => {},
+			touch: () => {},
+			setBusyTimeoutMs: () => {},
+		};
 	}
 	return _pool.acquire({ timeoutMs, signal, preferredPort, avoidPorts });
 }
@@ -960,6 +971,14 @@ async function streamViaRovoDev({
 				typeof providedPortHandle.release === "function"
 					? () => providedPortHandle.release()
 					: () => {},
+			touch:
+				typeof providedPortHandle.touch === "function"
+					? () => providedPortHandle.touch()
+					: () => {},
+			setBusyTimeoutMs:
+				typeof providedPortHandle.setBusyTimeoutMs === "function"
+					? (timeoutMs) => providedPortHandle.setBusyTimeoutMs(timeoutMs)
+					: () => {},
 			releaseAsUnhealthy:
 				typeof providedPortHandle.releaseAsUnhealthy === "function"
 					? () => providedPortHandle.releaseAsUnhealthy()
@@ -986,10 +1005,23 @@ async function streamViaRovoDev({
 		onPortAcquired(handle.port);
 	}
 
+	if (waitForTurn && typeof handle.setBusyTimeoutMs === "function") {
+		handle.setBusyTimeoutMs(
+			typeof idleTimeoutMs === "number" && idleTimeoutMs > 0
+				? idleTimeoutMs
+				: WAIT_FOR_TURN_TIMEOUT_MS
+		);
+	}
+
 	let portStuck = false;
 	let preservePortHandle = false;
 	let abortedBySignal = false;
 	let handleReleased = false;
+	const noteHandleActivity = () => {
+		if (typeof handle.touch === "function") {
+			handle.touch();
+		}
+	};
 
 	const releaseHandleAsUnhealthy = (reason) => {
 		if (handleReleased || preservePortHandle) {
@@ -1168,6 +1200,7 @@ async function streamViaRovoDev({
 
 				const streamHandle = sendMessageStreaming(message, {
 					onChunk: (chunk) => {
+						noteHandleActivity();
 						if (chunk.type === "text" && chunk.subagentName) {
 							if (typeof onSubagentTextDelta === "function" && chunk.text) {
 								onSubagentTextDelta(chunk.text, {
@@ -1408,6 +1441,7 @@ async function streamViaRovoDev({
 						}
 					},
 					onPauseToolCalls: async (rawEvent, control) => {
+						noteHandleActivity();
 						if (typeof onPausedToolCalls !== "function") {
 							await resumeToolCalls(port, {
 								decisions: (Array.isArray(rawEvent?.parts) ? rawEvent.parts : [])
@@ -1471,6 +1505,7 @@ async function streamViaRovoDev({
 							resolve();
 						},
 						onEvent: (eventName, rawData) => {
+							noteHandleActivity();
 							const normalizedEventName =
 								typeof eventName === "string" ? eventName.trim() : "";
 							if (!normalizedEventName) {
@@ -2240,6 +2275,10 @@ async function generateTextViaRovoDev({
 		preferredPort,
 		avoidPorts,
 	});
+
+	if (waitForTurn && typeof handle.setBusyTimeoutMs === "function") {
+		handle.setBusyTimeoutMs(retryTimeoutMs);
+	}
 
 	let portKnownStuck = false;
 	let handleReleased = false;

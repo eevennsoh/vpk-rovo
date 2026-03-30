@@ -1961,6 +1961,7 @@ export function FutureChatShell({
 								galleryExpanded={galleryExpanded}
 								isPlanMode={chat.isPlanMode}
 								micStream={realtime.micStream}
+								onDismissPlanExecutionTracker={chat.dismissPlanExecutionTracker}
 								onStop={handleStop}
 								onRemoveQueuedPrompt={chat.removeQueuedPrompt}
 								onSubmit={handleComposerSubmit}
@@ -1970,6 +1971,7 @@ export function FutureChatShell({
 								placeholder={composerPreviewState.placeholder}
 								prefillText={voiceTranscript ?? prefillText}
 								previewPrompt={composerPreviewState.activePreviewPrompt}
+								planExecutionTracker={chat.planExecutionTracker}
 								queuedPrompts={chat.queuedPrompts}
 								realtimeGenerationState={realtime.generationState}
 								realtimeOutputWaveformBars={realtime.outputWaveformBars}

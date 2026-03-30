@@ -524,6 +524,57 @@ export function getThinkingEvents(
 	return getAllDataParts(message, "data-thinking-event").map((part) => part.data);
 }
 
+export interface ThinkingNarrationMap {
+	/** Narration texts keyed by toolCallId */
+	byToolCallId: Map<string, string[]>;
+	/** Narration texts that don't precede any tool call */
+	unassociated: string[];
+}
+
+/**
+ * Walk `message.parts` in chronological order to associate narration
+ * (`data-thinking-status` content) with the tool call it precedes.
+ *
+ * Buffer consecutive status parts. When a `data-thinking-event` with
+ * `phase === "start"` appears, flush the buffer into that event's
+ * `toolCallId` bucket. Any leftover narration that doesn't precede a
+ * tool call is returned as `unassociated`.
+ */
+export function buildThinkingNarrationMap(
+	message: Pick<RovoUIMessage, "parts">,
+): ThinkingNarrationMap {
+	const byToolCallId = new Map<string, string[]>();
+	let buffer: string[] = [];
+
+	for (const part of message.parts) {
+		if (part.type === "data-thinking-status") {
+			const data = (part as RovoDataPart<"thinking-status">).data;
+			if (typeof data.content === "string" && data.content.trim()) {
+				buffer.push(data.content.trim());
+			}
+			continue;
+		}
+
+		if (part.type === "data-thinking-event") {
+			const data = (part as RovoDataPart<"thinking-event">).data;
+			if (data.phase === "start" && buffer.length > 0) {
+				const toolCallId =
+					typeof data.toolCallId === "string" && data.toolCallId.trim()
+						? data.toolCallId.trim()
+						: undefined;
+				if (toolCallId) {
+					const existing = byToolCallId.get(toolCallId) ?? [];
+					existing.push(...buffer);
+					byToolCallId.set(toolCallId, existing);
+					buffer = [];
+				}
+			}
+		}
+	}
+
+	return { byToolCallId, unassociated: buffer };
+}
+
 export function getToolFirstWarning(
 	message: RovoUIMessage
 ): ToolFirstWarningData | null {

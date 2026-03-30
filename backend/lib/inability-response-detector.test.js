@@ -52,6 +52,21 @@ test("detects 'there is no tool' pattern (strong signal)", () => {
 	assert.equal(looksLikeInabilityResponse(text), true);
 });
 
+test("detects readonly write-block response from Serve", () => {
+	const text =
+		"It looks like all write operations — both `create_file` and `bash` — are currently blocked. " +
+		"This typically happens when the agent host has write access disabled. " +
+		"I can't proceed with implementation until writes are unblocked.";
+	assert.equal(looksLikeInabilityResponse(text), true);
+});
+
+test("detects explicit readonly mode operation block", () => {
+	const text =
+		"The create step failed because this operation is currently blocked in readonly mode. " +
+		"Please switch back to full execution before trying to write files again.";
+	assert.equal(looksLikeInabilityResponse(text), true);
+});
+
 // ---------- Weak signal accumulation ----------
 
 test("detects response with 2+ weak signals", () => {

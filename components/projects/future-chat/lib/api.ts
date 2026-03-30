@@ -363,7 +363,10 @@ export async function createFutureChatMakeRun(input: {
 	const response = await fetch(API_ENDPOINTS.MAKE_RUNS, {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify(input),
+		body: JSON.stringify({
+			...input,
+			sourceSurface: "future-chat",
+		}),
 	});
 	const payload = await parseJsonResponse<{ run?: import("@/lib/make-run-types").AgentRun }>(response);
 	if (!payload.run) {

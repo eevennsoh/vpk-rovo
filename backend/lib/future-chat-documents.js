@@ -1,6 +1,14 @@
 const fs = require("node:fs/promises");
 const path = require("node:path");
 
+const {
+	buildFutureChatThreadPaths,
+	getFutureChatLegacyDocumentsDir,
+	getFutureChatThreadsRootDir,
+	normalizeThreadId,
+} = require("./future-chat-storage-paths");
+const { getNonEmptyString } = require("./shared-utils");
+
 function createId(prefix) {
 	return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -18,8 +26,16 @@ function safeJsonParse(rawValue) {
 	}
 }
 
-function getNonEmptyString(value) {
-	return typeof value === "string" && value.trim() ? value.trim() : null;
+function normalizeDocumentKind(value, fallbackKind = "text") {
+	return (
+		value === "code" ||
+		value === "image" ||
+		value === "sheet" ||
+		value === "text" ||
+		value === "react"
+	)
+		? value
+		: fallbackKind;
 }
 
 function normalizeDocumentVersion(rawVersion, options) {
@@ -83,12 +99,7 @@ function normalizeDocument(rawDocument) {
 		id,
 		threadId,
 		title: normalizedTitle,
-		kind:
-			rawDocument.kind === "code" ||
-			rawDocument.kind === "image" ||
-			rawDocument.kind === "sheet"
-				? rawDocument.kind
-				: "text",
+		kind: normalizeDocumentKind(rawDocument.kind),
 		sourceMessageId:
 			typeof rawDocument.sourceMessageId === "string" && rawDocument.sourceMessageId.trim()
 				? rawDocument.sourceMessageId.trim()
@@ -103,23 +114,30 @@ function normalizeDocument(rawDocument) {
 }
 
 function createFutureChatDocumentManager({ baseDir }) {
-	const documentsRootDir = path.join(baseDir, "future-chat", "documents");
+	const threadsRootDir = getFutureChatThreadsRootDir(baseDir);
+	const legacyDocumentsRootDir = getFutureChatLegacyDocumentsDir(baseDir);
+	let initializationPromise = null;
 
-	const getDocumentPath = (documentId) =>
-		path.join(documentsRootDir, `${encodeURIComponent(documentId)}.json`);
+	const getDocumentPath = (threadId, documentId) =>
+		path.join(
+			buildFutureChatThreadPaths(baseDir, threadId).documentsDir,
+			`${encodeURIComponent(documentId)}.json`,
+		);
 
 	const writeDocument = async (document) => {
-		await fs.mkdir(documentsRootDir, { recursive: true });
+		await fs.mkdir(buildFutureChatThreadPaths(baseDir, document.threadId).documentsDir, {
+			recursive: true,
+		});
 		await fs.writeFile(
-			getDocumentPath(document.id),
+			getDocumentPath(document.threadId, document.id),
 			`${JSON.stringify(document, null, 2)}\n`,
 			"utf8",
 		);
 	};
 
-	const readDocument = async (documentId) => {
+	const readDocumentFromPath = async (filePath) => {
 		try {
-			const raw = await fs.readFile(getDocumentPath(documentId), "utf8");
+			const raw = await fs.readFile(filePath, "utf8");
 			return normalizeDocument(safeJsonParse(raw));
 		} catch (error) {
 			if (error && error.code === "ENOENT") {
@@ -130,10 +148,101 @@ function createFutureChatDocumentManager({ baseDir }) {
 		}
 	};
 
-	const listDocuments = async ({ threadId } = {}) => {
+	const listThreadIds = async () => {
+		try {
+			const entries = await fs.readdir(threadsRootDir, { withFileTypes: true });
+			return entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name);
+		} catch (error) {
+			if (error && error.code === "ENOENT") {
+				return [];
+			}
+
+			throw error;
+		}
+	};
+
+	const locateDocument = async (documentId) => {
+		const normalizedDocumentId = getNonEmptyString(documentId);
+		if (!normalizedDocumentId) {
+			return null;
+		}
+
+		const threadIds = await listThreadIds();
+		for (const threadId of threadIds) {
+			const documentPath = getDocumentPath(threadId, normalizedDocumentId);
+			const document = await readDocumentFromPath(documentPath);
+			if (document) {
+				return {
+					document,
+					documentPath,
+				};
+			}
+		}
+
+		return null;
+	};
+
+	const ensureInitialized = async () => {
+		if (initializationPromise) {
+			return initializationPromise;
+		}
+
+		initializationPromise = (async () => {
+			let legacyEntries;
+			try {
+				legacyEntries = await fs.readdir(legacyDocumentsRootDir, { withFileTypes: true });
+			} catch (error) {
+				if (error && error.code === "ENOENT") {
+					return;
+				}
+
+				throw error;
+			}
+
+			for (const entry of legacyEntries) {
+				if (!entry.isFile() || !entry.name.endsWith(".json")) {
+					continue;
+				}
+
+				const legacyDocumentPath = path.join(legacyDocumentsRootDir, entry.name);
+				const legacyDocument = await readDocumentFromPath(legacyDocumentPath);
+				if (!legacyDocument || !normalizeThreadId(legacyDocument.threadId)) {
+					continue;
+				}
+
+				const existingDocumentRecord = await locateDocument(legacyDocument.id);
+				if (!existingDocumentRecord) {
+					await writeDocument(legacyDocument);
+				} else {
+					const existingTimestamp = Date.parse(existingDocumentRecord.document.updatedAt);
+					const legacyTimestamp = Date.parse(legacyDocument.updatedAt);
+					if (
+						Number.isFinite(legacyTimestamp)
+						&& (!Number.isFinite(existingTimestamp) || legacyTimestamp > existingTimestamp)
+					) {
+						await writeDocument(legacyDocument);
+					}
+				}
+
+				await fs.rm(legacyDocumentPath, { force: true });
+			}
+
+			await fs.rm(legacyDocumentsRootDir, { recursive: true, force: true });
+		})();
+
+		return initializationPromise;
+	};
+
+	const readDocumentsForThread = async (threadId) => {
+		const normalizedThreadId = normalizeThreadId(threadId);
+		if (!normalizedThreadId) {
+			return [];
+		}
+
+		const documentsDir = buildFutureChatThreadPaths(baseDir, normalizedThreadId).documentsDir;
 		let entries;
 		try {
-			entries = await fs.readdir(documentsRootDir, { withFileTypes: true });
+			entries = await fs.readdir(documentsDir, { withFileTypes: true });
 		} catch (error) {
 			if (error && error.code === "ENOENT") {
 				return [];
@@ -142,28 +251,32 @@ function createFutureChatDocumentManager({ baseDir }) {
 			throw error;
 		}
 
-		const jsonEntries = entries.filter(
-			(entry) => entry.isFile() && entry.name.endsWith(".json"),
+		const documents = await Promise.all(
+			entries
+				.filter((entry) => entry.isFile() && entry.name.endsWith(".json"))
+				.map((entry) => readDocumentFromPath(path.join(documentsDir, entry.name))),
 		);
-		const documentResults = await Promise.all(
-			jsonEntries.map((entry) =>
-				readDocument(decodeURIComponent(entry.name.replace(/\.json$/u, ""))),
-			),
-		);
-		const documents = documentResults.filter((document) => {
-			if (!document) {
-				return false;
-			}
-			if (threadId && document.threadId !== threadId) {
-				return false;
-			}
-			return true;
-		});
+		return documents.filter(Boolean);
+	};
+
+	const listDocuments = async ({ threadId } = {}) => {
+		await ensureInitialized();
+		const normalizedThreadId = normalizeThreadId(threadId);
+		const documents = normalizedThreadId
+			? await readDocumentsForThread(normalizedThreadId)
+			: (
+				await Promise.all((await listThreadIds()).map((id) => readDocumentsForThread(id)))
+			).flat();
 
 		documents.sort((left, right) => {
 			return Date.parse(right.updatedAt) - Date.parse(left.updatedAt);
 		});
 		return documents;
+	};
+
+	const readDocument = async (documentId) => {
+		await ensureInitialized();
+		return (await locateDocument(documentId))?.document ?? null;
 	};
 
 	const createDocument = async ({
@@ -174,6 +287,7 @@ function createFutureChatDocumentManager({ baseDir }) {
 		content,
 		sourceMessageId,
 	}) => {
+		await ensureInitialized();
 		const now = toIsoDate();
 		const nextDocument = normalizeDocument({
 			id: createId("doc"),
@@ -202,6 +316,7 @@ function createFutureChatDocumentManager({ baseDir }) {
 		kind,
 		sourceMessageId,
 	}) => {
+		await ensureInitialized();
 		const now = toIsoDate();
 		const nextDocument = normalizeDocument({
 			id: typeof documentId === "string" && documentId.trim() ? documentId.trim() : createId("doc"),
@@ -223,6 +338,7 @@ function createFutureChatDocumentManager({ baseDir }) {
 		content,
 		kind,
 	}) => {
+		await ensureInitialized();
 		const currentDocument = await readDocument(documentId);
 		if (!currentDocument) {
 			return null;
@@ -234,10 +350,7 @@ function createFutureChatDocumentManager({ baseDir }) {
 		const nextDocument = normalizeDocument({
 			...currentDocument,
 			title: nextTitle,
-			kind:
-				kind === "code" || kind === "image" || kind === "sheet" || kind === "text"
-					? kind
-					: currentDocument.kind,
+			kind: normalizeDocumentKind(kind, currentDocument.kind),
 			updatedAt: now,
 			versions: [
 				...currentDocument.versions,
@@ -260,6 +373,7 @@ function createFutureChatDocumentManager({ baseDir }) {
 		content,
 		kind,
 	}) => {
+		await ensureInitialized();
 		const currentDocument = await readDocument(documentId);
 		if (!currentDocument) {
 			return null;
@@ -293,10 +407,7 @@ function createFutureChatDocumentManager({ baseDir }) {
 		const nextDocument = normalizeDocument({
 			...currentDocument,
 			title: nextTitle,
-			kind:
-				kind === "code" || kind === "image" || kind === "sheet" || kind === "text"
-					? kind
-					: currentDocument.kind,
+			kind: normalizeDocumentKind(kind, currentDocument.kind),
 			updatedAt: now,
 			versions: nextVersions,
 		});
@@ -305,6 +416,7 @@ function createFutureChatDocumentManager({ baseDir }) {
 	};
 
 	const patchDocumentMetadata = async (documentId, patch) => {
+		await ensureInitialized();
 		const currentDocument = await readDocument(documentId);
 		if (!currentDocument) {
 			return null;
@@ -319,16 +431,39 @@ function createFutureChatDocumentManager({ baseDir }) {
 	};
 
 	const deleteDocument = async (documentId) => {
-		await fs.rm(getDocumentPath(documentId), { force: true });
+		await ensureInitialized();
+		const existingDocument = await locateDocument(documentId);
+		if (!existingDocument) {
+			return;
+		}
+
+		await fs.rm(existingDocument.documentPath, { force: true });
 	};
 
 	const deleteDocumentsByThread = async (threadId) => {
-		const documents = await listDocuments({ threadId });
-		await Promise.all(documents.map((document) => deleteDocument(document.id)));
+		await ensureInitialized();
+		const normalizedThreadId = normalizeThreadId(threadId);
+		if (!normalizedThreadId) {
+			return;
+		}
+
+		await fs.rm(
+			buildFutureChatThreadPaths(baseDir, normalizedThreadId).documentsDir,
+			{ recursive: true, force: true },
+		);
 	};
 
 	const deleteAllDocuments = async () => {
-		await fs.rm(documentsRootDir, { recursive: true, force: true });
+		await ensureInitialized();
+		await Promise.all(
+			(await listThreadIds()).map((threadId) =>
+				fs.rm(buildFutureChatThreadPaths(baseDir, threadId).documentsDir, {
+					recursive: true,
+					force: true,
+				}),
+			),
+		);
+		await fs.rm(legacyDocumentsRootDir, { recursive: true, force: true });
 	};
 
 	return {

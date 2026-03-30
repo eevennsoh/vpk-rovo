@@ -100,6 +100,94 @@ test("stale busy port is marked unhealthy after staleBusyTimeoutMs", async () =>
 	pool.shutdown();
 });
 
+test("touch refreshes busy activity and prevents stale eviction", async () => {
+	const stalePorts = [];
+	const pool = createRovoDevPool([19010, 19011], {
+		healthCheckIntervalMs: 25,
+		staleBusyTimeoutMs: 80,
+		onStaleBusyPort: (port, durationMs) => {
+			stalePorts.push({ port, durationMs });
+		},
+	});
+
+	const handle = await pool.acquire();
+	assert.equal(handle.port, 19010);
+
+	await new Promise((resolve) => setTimeout(resolve, 50));
+	handle.touch();
+	await new Promise((resolve) => setTimeout(resolve, 50));
+	handle.touch();
+	await new Promise((resolve) => setTimeout(resolve, 40));
+
+	const status = pool.getStatus();
+	const leasedEntry = status.ports.find((entry) => entry.port === handle.port);
+	assert.equal(status.busy, 1, "touched busy port should remain leased");
+	assert.equal(leasedEntry?.status, "busy", "touched busy port should not be marked unhealthy");
+	assert.equal(stalePorts.length, 0, "touch should prevent stale callback firing");
+
+	handle.release();
+	pool.shutdown();
+});
+
+test("setBusyTimeoutMs overrides the stale watchdog for the current lease", async () => {
+	const stalePorts = [];
+	const pool = createRovoDevPool([19020, 19021], {
+		healthCheckIntervalMs: 25,
+		staleBusyTimeoutMs: 80,
+		onStaleBusyPort: (port, durationMs) => {
+			stalePorts.push({ port, durationMs });
+		},
+	});
+
+	const handle = await pool.acquire();
+	assert.equal(handle.port, 19020);
+	handle.setBusyTimeoutMs(220);
+
+	await new Promise((resolve) => setTimeout(resolve, 130));
+
+	let status = pool.getStatus();
+	assert.equal(status.busy, 1, "lease should survive beyond the default timeout");
+	assert.equal(stalePorts.length, 0, "override should delay stale detection");
+
+	await new Promise((resolve) => setTimeout(resolve, 140));
+
+	status = pool.getStatus();
+	assert.equal(status.unhealthy >= 1, true, "lease should expire once the override timeout elapses");
+	assert.equal(stalePorts.length, 1, "stale callback should still fire after the override window");
+	assert.ok(stalePorts[0].durationMs >= 220, "reported inactivity should honor the override timeout");
+
+	handle.release();
+	pool.shutdown();
+});
+
+test("release clears busy activity metadata before the next lease", async () => {
+	const pool = createRovoDevPool([19030], {
+		healthCheckIntervalMs: 0,
+		staleBusyTimeoutMs: 80,
+	});
+
+	const firstHandle = await pool.acquire();
+	firstHandle.setBusyTimeoutMs(220);
+	firstHandle.touch();
+	firstHandle.release();
+
+	let status = pool.getStatus();
+	let entry = status.ports[0];
+	assert.equal(entry.status, "available");
+	assert.equal(entry.acquiredAt, null);
+	assert.equal(entry.lastBusyActivityAt, null);
+	assert.equal(entry.busyTimeoutMs, null);
+
+	const secondHandle = await pool.acquire();
+	status = pool.getStatus();
+	entry = status.ports[0];
+	assert.equal(entry.status, "busy");
+	assert.equal(entry.busyTimeoutMs, 80, "new lease should revert to the default stale timeout");
+
+	secondHandle.release();
+	pool.shutdown();
+});
+
 test("acquire times out with ROVODEV_BUSY code when all ports busy", async () => {
 	const pool = createRovoDevPool([19000], {
 		healthCheckIntervalMs: 0,

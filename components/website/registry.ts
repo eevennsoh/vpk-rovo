@@ -6642,6 +6642,9 @@ const BLOCK_DEMOS: Record<string, ComponentType> = {
   "approval-card": dynamic(() => import("./demos/blocks/approval-card-demo"), {
     ssr: false,
   }),
+  "tool-approval": dynamic(() => import("./demos/blocks/tool-approval-demo"), {
+    ssr: false,
+  }),
   "terminal-switch": dynamic(
     () => import("./demos/blocks/terminal-switch-demo"),
     { ssr: false },
@@ -6795,6 +6798,20 @@ const BLOCK_VARIANT_DEMOS: Record<string, ComponentType> = {
     () =>
       import("./demos/blocks/question-card-demo").then((mod) => ({
         default: mod.QuestionCardDemoPrePopulated,
+      })),
+    { ssr: false },
+  ),
+  "tool-approval-demo-batch": dynamic(
+    () =>
+      import("./demos/blocks/tool-approval-demo").then((mod) => ({
+        default: mod.ToolApprovalDemoBatch,
+      })),
+    { ssr: false },
+  ),
+  "tool-approval-demo-submitting": dynamic(
+    () =>
+      import("./demos/blocks/tool-approval-demo").then((mod) => ({
+        default: mod.ToolApprovalDemoSubmitting,
       })),
     { ssr: false },
   ),

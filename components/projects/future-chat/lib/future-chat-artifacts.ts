@@ -3,6 +3,7 @@ import type { FutureChatDocument } from "@/lib/future-chat-types";
 const FUTURE_CHAT_ARTIFACT_KIND_LABELS = {
 	code: "Code",
 	image: "Image",
+	react: "App",
 	sheet: "Sheet",
 	text: "Document",
 } as const;

@@ -42,10 +42,37 @@ export interface ParsedImagePreviewWidget extends ParsedGenerativeWidgetBase {
 	prompt?: string;
 }
 
+export interface ParsedVideoPreviewWidget extends ParsedGenerativeWidgetBase {
+	type: "video-preview";
+	composition: {
+		id: string;
+		fps: number;
+		width: number;
+		height: number;
+		durationInFrames: number;
+	};
+	tracks: Array<{
+		id: string;
+		name: string;
+		type: string;
+		enabled: boolean;
+	}>;
+	clips: Array<{
+		id: string;
+		trackId: string;
+		component: string;
+		props: Record<string, unknown>;
+		from: number;
+		durationInFrames: number;
+	}>;
+	audio?: { tracks: unknown[] };
+}
+
 export type ParsedGenerativeWidget =
 	| ParsedGenuiPreviewWidget
 	| ParsedAudioPreviewWidget
-	| ParsedImagePreviewWidget;
+	| ParsedImagePreviewWidget
+	| ParsedVideoPreviewWidget;
 
 export interface GenerativeWidgetMetadata {
 	contentType: GenerativeContentType;
@@ -947,6 +974,29 @@ function parseImagePreviewWidgetData(value: unknown): ParsedImagePreviewWidget |
 	};
 }
 
+function parseVideoPreviewWidgetData(value: unknown): ParsedVideoPreviewWidget | null {
+	if (!isObjectRecord(value)) return null;
+
+	const composition = value.composition;
+	if (!isObjectRecord(composition)) return null;
+	if (typeof composition.fps !== "number" || typeof composition.durationInFrames !== "number") return null;
+
+	return {
+		type: "video-preview",
+		composition: {
+			id: typeof composition.id === "string" ? composition.id : "main",
+			fps: composition.fps,
+			width: typeof composition.width === "number" ? composition.width : 1920,
+			height: typeof composition.height === "number" ? composition.height : 1080,
+			durationInFrames: composition.durationInFrames,
+		},
+		tracks: Array.isArray(value.tracks) ? value.tracks as ParsedVideoPreviewWidget["tracks"] : [],
+		clips: Array.isArray(value.clips) ? value.clips as ParsedVideoPreviewWidget["clips"] : [],
+		...(isObjectRecord(value.audio) ? { audio: value.audio as { tracks: unknown[] } } : {}),
+		...parseGenerativeWidgetBase(value),
+	};
+}
+
 export function parseGenerativeWidget(
 	widgetType: string,
 	widgetData: unknown
@@ -961,6 +1011,10 @@ export function parseGenerativeWidget(
 
 	if (widgetType === "image-preview") {
 		return parseImagePreviewWidgetData(widgetData);
+	}
+
+	if (widgetType === "video-preview") {
+		return parseVideoPreviewWidgetData(widgetData);
 	}
 
 	return null;

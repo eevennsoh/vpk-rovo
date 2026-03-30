@@ -5,7 +5,7 @@ import OverviewView from "@/components/projects/overview/page";
 
 export default function OverviewPage() {
 	return (
-		<AppLayout product="overview">
+		<AppLayout product="home">
 			<OverviewView />
 		</AppLayout>
 	);

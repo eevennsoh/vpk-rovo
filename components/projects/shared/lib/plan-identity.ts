@@ -103,7 +103,7 @@ function isUsableTitle(value: string): boolean {
 	return words.length >= 2;
 }
 
-function extractTaskHeadingFromLabel(label: string): string {
+export function extractTaskHeadingFromLabel(label: string): string {
 	const normalized = normalizePlanTitleCandidate(stripTaskPrefix(label));
 	if (!normalized) {
 		return "";

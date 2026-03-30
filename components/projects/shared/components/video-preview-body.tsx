@@ -1,0 +1,66 @@
+"use client";
+
+import { lazy, Suspense } from "react";
+import type { ParsedVideoPreviewWidget } from "@/components/projects/shared/lib/generative-widget";
+import { cn } from "@/lib/utils";
+
+const Player = lazy(() =>
+	import("@remotion/player").then((mod) => ({ default: mod.Player }))
+);
+
+interface VideoPreviewBodyProps {
+	readonly widget: ParsedVideoPreviewWidget;
+	readonly withContainer?: boolean;
+}
+
+function VideoComposition(props: Record<string, unknown>) {
+	const clips = (props.clips ?? []) as ParsedVideoPreviewWidget["clips"];
+
+	return (
+		<div className="flex h-full w-full items-center justify-center bg-bg-neutral-bold text-text-inverse">
+			<div className="text-center">
+				<p className="text-lg font-semibold">Video Timeline</p>
+				<p className="text-sm text-text-subtlest">
+					{clips.length} clip{clips.length === 1 ? "" : "s"}
+				</p>
+			</div>
+		</div>
+	);
+}
+
+export function VideoPreviewBody({ widget, withContainer = true }: VideoPreviewBodyProps) {
+	const { composition, clips } = widget;
+
+	return (
+		<div className={cn(withContainer && "overflow-hidden rounded-md")}>
+			<Suspense
+				fallback={
+					<div
+						className="flex items-center justify-center bg-bg-neutral"
+						style={{
+							aspectRatio: `${composition.width}/${composition.height}`,
+							maxHeight: 360,
+						}}
+					>
+						<p className="text-sm text-text-subtle">Loading video player...</p>
+					</div>
+				}
+			>
+				<Player
+					component={VideoComposition}
+					inputProps={{ clips }}
+					durationInFrames={composition.durationInFrames}
+					fps={composition.fps}
+					compositionWidth={composition.width}
+					compositionHeight={composition.height}
+					controls
+					style={{
+						width: "100%",
+						maxHeight: 360,
+						aspectRatio: `${composition.width}/${composition.height}`,
+					}}
+				/>
+			</Suspense>
+		</div>
+	);
+}

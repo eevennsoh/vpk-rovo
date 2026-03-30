@@ -33,6 +33,7 @@ import { resolveFutureChatComposerResponseGradientState } from "@/components/pro
 import type { RealtimeGenerationState } from "@/components/projects/future-chat/hooks/use-realtime-voice";
 import { cn } from "@/lib/utils";
 import { resolveFutureChatComposerPreviewHeight } from "@/components/projects/future-chat/lib/future-chat-composer-preview";
+import type { FutureChatPlanExecutionTrackerViewModel } from "@/components/projects/future-chat/lib/future-chat-plan-execution-tracker";
 import type { FutureChatQueuedAction } from "@/lib/future-chat-types";
 import ArrowUpIcon from "@atlaskit/icon/core/arrow-up";
 import CrossIcon from "@atlaskit/icon/core/cross";
@@ -43,6 +44,7 @@ import DeleteIcon from "@atlaskit/icon/core/delete";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { FutureChatComposerAddMenu } from "./future-chat-composer-add-menu";
+import { FutureChatPlanExecutionTracker } from "./future-chat-plan-execution-tracker";
 import { FutureChatComposerResponseGradient } from "./future-chat-composer-response-gradient";
 import { PendingAttachments } from "./pending-attachments";
 
@@ -68,6 +70,7 @@ interface FutureChatComposerProps {
 	micStream?: MediaStream | null;
 	queuedPrompts?: ReadonlyArray<FutureChatQueuedAction>;
 	onStop: () => Promise<void>;
+	onDismissPlanExecutionTracker?: () => void;
 	onRemoveQueuedPrompt?: (id: string) => void;
 	onSubmit: (payload: { text: string; files: FileUIPart[] }) => Promise<void>;
 	onTogglePlanMode?: () => void;
@@ -75,6 +78,7 @@ interface FutureChatComposerProps {
 	onToggleVoice?: () => void;
 	galleryExpanded?: boolean;
 	placeholder?: string;
+	planExecutionTracker?: FutureChatPlanExecutionTrackerViewModel | null;
 	prefillText?: string | null;
 	previewPrompt?: string | null;
 	realtimeGenerationState?: RealtimeGenerationState;
@@ -104,6 +108,7 @@ function FutureChatComposerInner({
 	galleryExpanded = false,
 	isPlanMode = false,
 	micStream,
+	onDismissPlanExecutionTracker,
 	queuedPrompts = EMPTY_QUEUED_PROMPTS,
 	onStop,
 	onRemoveQueuedPrompt,
@@ -111,6 +116,7 @@ function FutureChatComposerInner({
 	onTogglePlanMode,
 	onToggleRealtimeVoice,
 	placeholder = "Ask, @mention, or / for skills",
+	planExecutionTracker = null,
 	prefillText,
 	previewPrompt = null,
 	realtimeGenerationState = "idle",
@@ -416,6 +422,15 @@ function FutureChatComposerInner({
 								))}
 							</QueueList>
 						</Queue>
+					</div>
+				) : null}
+
+				{planExecutionTracker ? (
+					<div className="px-1 pb-3">
+						<FutureChatPlanExecutionTracker
+							onDismiss={onDismissPlanExecutionTracker}
+							tracker={planExecutionTracker}
+						/>
 					</div>
 				) : null}
 

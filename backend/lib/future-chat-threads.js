@@ -1,6 +1,11 @@
 const fs = require("node:fs/promises");
 const path = require("node:path");
 
+const {
+	buildFutureChatThreadPaths,
+	getFutureChatThreadsRootDir,
+} = require("./future-chat-storage-paths");
+
 const RETENTION_LIMIT = 40;
 
 function createId() {
@@ -44,14 +49,6 @@ function getTimestamp(value) {
 	}
 
 	return Date.parse(value);
-}
-
-function buildThreadPaths(rootDir, threadId) {
-	const threadDir = path.join(rootDir, threadId);
-	return {
-		threadDir,
-		threadFilePath: path.join(threadDir, "thread.json"),
-	};
 }
 
 function normalizeRealtimeMessages(rawMessages) {
@@ -184,7 +181,7 @@ function normalizeThreadRecord(rawThread) {
 }
 
 function createFutureChatThreadManager({ baseDir, logger }) {
-	const threadsRootDir = path.join(baseDir, "future-chat", "threads");
+	const threadsRootDir = getFutureChatThreadsRootDir(baseDir);
 
 	const writeJsonFile = async (filePath, payload) => {
 		await fs.mkdir(path.dirname(filePath), { recursive: true });
@@ -192,7 +189,7 @@ function createFutureChatThreadManager({ baseDir, logger }) {
 	};
 
 	const readThread = async (threadId) => {
-		const { threadFilePath } = buildThreadPaths(threadsRootDir, threadId);
+		const { threadFilePath } = buildFutureChatThreadPaths(baseDir, threadId);
 
 		try {
 			const raw = await fs.readFile(threadFilePath, "utf8");
@@ -245,7 +242,7 @@ function createFutureChatThreadManager({ baseDir, logger }) {
 		const staleThreads = threads.slice(RETENTION_LIMIT);
 		for (const thread of staleThreads) {
 			try {
-				const { threadDir } = buildThreadPaths(threadsRootDir, thread.id);
+				const { threadDir } = buildFutureChatThreadPaths(baseDir, thread.id);
 				await fs.rm(threadDir, { recursive: true, force: true });
 			} catch (error) {
 				logger.error?.(`[FUTURE-CHAT] Failed to prune thread ${thread.id}:`, error);
@@ -287,7 +284,7 @@ function createFutureChatThreadManager({ baseDir, logger }) {
 			updatedAt: updatedAt || now,
 		});
 
-		const { threadFilePath } = buildThreadPaths(threadsRootDir, threadId);
+		const { threadFilePath } = buildFutureChatThreadPaths(baseDir, threadId);
 		await writeJsonFile(threadFilePath, nextThread);
 		await pruneOldThreads();
 		return nextThread;
@@ -309,7 +306,7 @@ function createFutureChatThreadManager({ baseDir, logger }) {
 					? fields.updatedAt
 					: toIsoDate(),
 		});
-		const { threadFilePath } = buildThreadPaths(threadsRootDir, threadId);
+		const { threadFilePath } = buildFutureChatThreadPaths(baseDir, threadId);
 		await writeJsonFile(threadFilePath, nextThread);
 		return nextThread;
 	};
@@ -362,7 +359,7 @@ function createFutureChatThreadManager({ baseDir, logger }) {
 	};
 
 	const deleteThread = async (threadId) => {
-		const { threadDir } = buildThreadPaths(threadsRootDir, threadId);
+		const { threadDir } = buildFutureChatThreadPaths(baseDir, threadId);
 		await fs.rm(threadDir, { recursive: true, force: true });
 	};
 

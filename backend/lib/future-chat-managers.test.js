@@ -92,6 +92,16 @@ test("future chat vote manager stores one vote per message", async () => {
 	votes = await manager.listVotes("thread-1");
 	assert.equal(votes.length, 1);
 	assert.equal(votes[0].messageId, "assistant-2");
+
+	const storedVotesPath = path.join(
+		baseDir,
+		"future-chat",
+		"threads",
+		"thread-1",
+		"votes.json",
+	);
+	const storedVotes = JSON.parse(await fs.readFile(storedVotesPath, "utf8"));
+	assert.equal(storedVotes["assistant-2"], "down");
 });
 
 test("future chat document manager versions artifacts over time", async () => {
@@ -107,6 +117,15 @@ test("future chat document manager versions artifacts over time", async () => {
 	});
 
 	assert.equal(createdDocument.versions.length, 1);
+	const storedDocumentPath = path.join(
+		baseDir,
+		"future-chat",
+		"threads",
+		"thread-1",
+		"documents",
+		`${createdDocument.id}.json`,
+	);
+	await fs.access(storedDocumentPath);
 
 	const updatedDocument = await manager.appendDocumentVersion(createdDocument.id, {
 		changeLabel: "Renamed title",
@@ -149,6 +168,47 @@ test("future chat document manager can create and finalize streaming document sh
 	assert.equal(finalizedDocument?.versions[0].title, "Streaming draft");
 });
 
+test("future chat document manager preserves react app artifacts", async () => {
+	const baseDir = await createTempBaseDir();
+	const manager = createFutureChatDocumentManager({ baseDir });
+
+	const createdDocument = await manager.createDocument({
+		threadId: "thread-1",
+		title: "Analytics",
+		kind: "react",
+		content: "/analytics",
+		sourceMessageId: "assistant-1",
+	});
+
+	assert.equal(createdDocument.kind, "react");
+
+	const updatedDocument = await manager.appendDocumentVersion(createdDocument.id, {
+		changeLabel: "Updated route",
+		content: "/analytics-v2",
+		kind: "react",
+	});
+
+	assert.equal(updatedDocument?.kind, "react");
+	assert.equal(updatedDocument?.versions.at(-1)?.content, "/analytics-v2");
+
+	const shellDocument = await manager.createDocumentShell({
+		documentId: "doc-react-shell",
+		threadId: "thread-1",
+		title: "Dashboard",
+		kind: "react",
+	});
+
+	assert.equal(shellDocument.kind, "react");
+
+	const finalizedShell = await manager.finalizeDocumentShell(shellDocument.id, {
+		content: "/dashboard",
+		kind: "react",
+	});
+
+	assert.equal(finalizedShell?.kind, "react");
+	assert.equal(finalizedShell?.versions[0].content, "/dashboard");
+});
+
 test("future chat document manager backfills legacy versions without title snapshots", async () => {
 	const baseDir = await createTempBaseDir();
 	const documentsDir = path.join(baseDir, "future-chat", "documents");
@@ -178,6 +238,16 @@ test("future chat document manager backfills legacy versions without title snaps
 
 	assert.equal(document?.versions[0].title, "Legacy artifact");
 	assert.equal(document?.versions[0].changeLabel, "Created");
+	await fs.access(
+		path.join(
+			baseDir,
+			"future-chat",
+			"threads",
+			"thread-1",
+			"documents",
+			"legacy-doc.json",
+		),
+	);
 });
 
 test("future chat upload manager writes and reads data-url files", async () => {
@@ -185,6 +255,7 @@ test("future chat upload manager writes and reads data-url files", async () => {
 	const manager = createFutureChatUploadManager({ baseDir });
 
 	const createdUpload = await manager.createUploadFromDataUrl({
+		threadId: "thread-1",
 		filename: "note.txt",
 		mediaType: "text/plain",
 		dataUrl: "data:text/plain;base64,SGVsbG8gRnV0dXJlIENoYXQ=",
@@ -196,4 +267,26 @@ test("future chat upload manager writes and reads data-url files", async () => {
 	const loadedUpload = await manager.getUpload(createdUpload.id);
 	assert.ok(loadedUpload);
 	assert.equal(loadedUpload?.buffer.toString("utf8"), "Hello Future Chat");
+	await fs.access(
+		path.join(
+			baseDir,
+			"future-chat",
+			"threads",
+			"thread-1",
+			"uploads",
+			createdUpload.id,
+			"metadata.json",
+		),
+	);
+	await fs.access(
+		path.join(
+			baseDir,
+			"future-chat",
+			"threads",
+			"thread-1",
+			"uploads",
+			createdUpload.id,
+			"blob",
+		),
+	);
 });

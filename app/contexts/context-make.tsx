@@ -725,6 +725,7 @@ export function MakeProvider({ children }: MakeProviderProps) {
 						userPrompt: runUserPrompt,
 						conversation: runConversation,
 						agentCount,
+						sourceSurface: "make",
 					});
 					hasNavigatedToSummaryRef.current = true;
 					router.push(`/make/runs/${nextRunId}`);

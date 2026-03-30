@@ -50,6 +50,8 @@ import {
 } from "@/components/projects/shared/lib/generative-widget";
 import { formatContentTypeLabel } from "@/components/projects/shared/lib/generative-widget-branding";
 import { ContentTypeTile } from "./content-type-tile";
+import { GenuiExportMenu } from "./genui-export-menu";
+import { VideoPreviewBody } from "./video-preview-body";
 
 /* -------------------------------------------------------------------------- */
 /*  Props                                                                     */
@@ -589,6 +591,15 @@ function renderWidgetBody(
 		);
 	}
 
+	if (widget.type === "video-preview") {
+		return (
+			<VideoPreviewBody
+				widget={widget}
+				withContainer={withContainer}
+			/>
+		);
+	}
+
 	return null;
 }
 
@@ -669,6 +680,13 @@ function GenerativeWidgetCardShell({
 					>
 						Open preview
 					</Button>
+					{bodyWidget.type === "genui-preview" ? (
+						<GenuiExportMenu
+							spec={bodyWidget.spec}
+							title={metadata.title}
+							contentType={metadata.contentType}
+						/>
+					) : null}
 					{actions.map((actionItem, index) => (
 						actionItem.href ? (
 							<a

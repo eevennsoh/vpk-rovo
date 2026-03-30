@@ -2,6 +2,8 @@ import type { AgentExecutionUpdate } from "@/lib/rovo-ui-messages";
 import type { Spec } from "@json-render/react";
 
 export type AgentRunStatus = "running" | "completed" | "failed";
+export type AgentRunSourceSurface = "future-chat" | "make";
+export type AgentRunAppShellPolicy = "embedded_feature" | "standalone_app";
 
 export type AgentRunTaskStatus =
 	| "todo"
@@ -120,6 +122,8 @@ export interface AgentRun {
 	customInstruction?: string;
 	agentCount?: number;
 	conversationContext: Array<{ type: "user" | "assistant"; content: string }>;
+	sourceSurface?: AgentRunSourceSurface;
+	appShellPolicy?: AgentRunAppShellPolicy;
 	iteration: number;
 	activeBatchId: string | null;
 	createdFiles?: string[];

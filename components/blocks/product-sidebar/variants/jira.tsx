@@ -10,6 +10,7 @@ import { SectionHeading } from "../components/section-heading";
 import { STARRED_PROJECTS, JIRA_EXTERNAL_LINKS } from "../data/jira-navigation";
 import AlignTextLeftIcon from "@atlaskit/icon/core/align-text-left";
 import AppsIcon from "@atlaskit/icon/core/apps";
+import ChartTrendIcon from "@atlaskit/icon/core/chart-trend";
 import ClockIcon from "@atlaskit/icon/core/clock";
 import DashboardIcon from "@atlaskit/icon/core/dashboard";
 import PersonAvatarIcon from "@atlaskit/icon/core/person-avatar";
@@ -56,6 +57,13 @@ export function JiraSidebar({
 				href="/sprint-board"
 				isSelected={selectedItem === "Sprint Board"}
 				onClick={() => onSelectItem("Sprint Board")}
+			/>
+			<NavigationItem
+				icon={ChartTrendIcon}
+				label="Analytics"
+				href="/analytics"
+				isSelected={selectedItem === "Analytics"}
+				onClick={() => onSelectItem("Analytics")}
 			/>
 
 			<NavigationItemWithHoverChevron

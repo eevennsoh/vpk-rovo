@@ -145,6 +145,16 @@ test("shouldAttemptPostToolGenui does not throw for the original post-tool fallb
 	);
 });
 
+test("shouldAttemptPostToolGenui suppresses GenUI when inability is detected", () => {
+	assert.equal(
+		shouldAttemptPostToolGenui({
+			...buildBaseInput(),
+			looksLikeInability: true,
+		}),
+		false,
+	);
+});
+
 test("shouldAttemptPostToolGenui suppresses GenUI during plan execution phase", () => {
 	assert.equal(
 		shouldAttemptPostToolGenui({

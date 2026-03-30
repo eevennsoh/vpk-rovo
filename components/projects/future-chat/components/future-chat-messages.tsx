@@ -24,7 +24,7 @@ import {
 	MessageResponse,
 	MessageVoteActions,
 } from "@/components/ui-ai/message";
-import { ArtifactCard } from "@/components/ui-ai/artifact";
+import { ArtifactCard, type ArtifactKind } from "@/components/ui-ai/artifact";
 import {
 	ChainOfThought,
 	ChainOfThoughtContent,
@@ -102,6 +102,7 @@ import {
 	getMessageSources,
 	getMessageText,
 	getThinkingToolCallSummaries,
+	buildThinkingNarrationMap,
 	hasTurnCompleteSignal,
 	isMessageTextStreaming,
 	type AgentExecutionStatus,
@@ -723,6 +724,7 @@ function AssistantMessage({
 	const thinkingStatusParts = getAllDataParts(message, "data-thinking-status");
 	const thinkingEventParts = getAllDataParts(message, "data-thinking-event");
 	const thinkingToolCalls = getThinkingToolCallSummaries(message);
+	const thinkingNarrationMap = buildThinkingNarrationMap(message);
 	const latestTodoProgress = getLatestFutureChatTodoProgress(thinkingToolCalls);
 	const todoProgressItems = latestTodoProgress?.items ?? [];
 	const latestTodoQueue = getLatestTodoQueue(message);
@@ -785,9 +787,7 @@ function AssistantMessage({
 	const isThinkingStreaming =
 		isThinkingLifecycleStreaming && thinkingActive && hasBackendThinkingActivity;
 
-	const accumulatedThinkingContent = thinkingStatusParts
-		.map((part) => part.data.content)
-		.filter(Boolean)
+	const accumulatedThinkingContent = thinkingNarrationMap.unassociated
 		.join("\n\n");
 	const hasThinkingText = Boolean(accumulatedThinkingContent);
 	const shouldShowThinkingSection =
@@ -999,27 +999,37 @@ function AssistantMessage({
 												<TraceAgentExecutionSection executions={agentExecutions} />
 											</ChainOfThoughtStep>
 										) : null}
-										{thinkingToolCalls.map((toolCall, index) => (
-											<ChainOfThoughtStep
-												key={`${message.id}-cot-tool-${toolCall.id}-${index}`}
-												collapsible
-												defaultOpen={isToolCallStepOpenByDefault(toolCall.state)}
-												iconRender={renderResolvedToolIcon(resolveToolIcon({ toolName: toolCall.toolName, title: toolCall.toolName, input: toolCall.input, mcpServer: toolCall.mcpServer }), { className: "size-4" })}
-												label={toolCall.toolName}
-												status={toolStateToCoTStatus(toolCall.state)}
-											>
-												{toolCall.input !== undefined ? (
-													<ToolInput input={toolCall.input} />
-												) : null}
-												<ToolOutput
-													errorText={toolCall.errorText}
-													output={toolCall.output}
-													outputBytes={toolCall.outputBytes}
-													outputTruncated={toolCall.outputTruncated}
-													suppressedRawOutput={toolCall.suppressedRawOutput}
-												/>
-											</ChainOfThoughtStep>
-										))}
+										{thinkingToolCalls.map((toolCall, index) => {
+											const narration = toolCall.toolCallId
+												? thinkingNarrationMap.byToolCallId.get(toolCall.toolCallId)
+												: undefined;
+											return (
+												<ChainOfThoughtStep
+													key={`${message.id}-cot-tool-${toolCall.id}-${index}`}
+													collapsible
+													defaultOpen={isToolCallStepOpenByDefault(toolCall.state)}
+													iconRender={renderResolvedToolIcon(resolveToolIcon({ toolName: toolCall.toolName, title: toolCall.toolName, input: toolCall.input, mcpServer: toolCall.mcpServer }), { className: "size-4" })}
+													label={toolCall.toolName}
+													status={toolStateToCoTStatus(toolCall.state)}
+												>
+													{narration && narration.length > 0 ? (
+														<div className="whitespace-pre-wrap text-xs text-text-subtle leading-5">
+															{narration.join("\n\n")}
+														</div>
+													) : null}
+													{toolCall.input !== undefined ? (
+														<ToolInput input={toolCall.input} />
+													) : null}
+													<ToolOutput
+														errorText={toolCall.errorText}
+														output={toolCall.output}
+														outputBytes={toolCall.outputBytes}
+														outputTruncated={toolCall.outputTruncated}
+														suppressedRawOutput={toolCall.suppressedRawOutput}
+													/>
+												</ChainOfThoughtStep>
+											);
+										})}
 										{hasPlanNarrationText ? (
 											<ChainOfThoughtStep
 												icon={StepStreamIcon}
@@ -1171,7 +1181,7 @@ function StreamingArtifactMessage({
 	title,
 }: Readonly<{
 	documentId: string;
-	kind: "text" | "code" | "image" | "sheet";
+	kind: ArtifactKind;
 	onOpenArtifactFromCard: (documentId: string, element: HTMLElement) => void;
 	onRegisterArtifactCard: (documentId: string, element: HTMLElement) => void;
 	streamingArtifact: FutureChatStreamingArtifact;

@@ -24,6 +24,9 @@ const { createFutureChatThreadManager } = require("./lib/future-chat-threads");
 const { createFutureChatVoteManager } = require("./lib/future-chat-votes");
 const { createFutureChatDocumentManager } = require("./lib/future-chat-documents");
 const { createFutureChatUploadManager } = require("./lib/future-chat-uploads");
+const {
+	createFutureChatGeneratedFilesManager,
+} = require("./lib/future-chat-generated-files");
 const { createAbortControllerFromRequest } = require("./lib/http-request-abort");
 const {
 	createCapturedResponse,
@@ -88,7 +91,7 @@ const { buildDirectSpecWidgetParts } = require("./lib/direct-spec-widget-parts")
 const { resolveAutomaticGenuiOutcome } = require("./lib/automatic-genui-outcome");
 const { assessToolFirstGenuiQuality } = require("./lib/tool-first-genui-quality");
 const { dispatchBespokeGenuiHandler } = require("./lib/bespoke-genui-handler-dispatch");
-const { looksLikeInabilityResponse } = require("./lib/inability-response-detector");
+const { looksLikeInabilityResponse, looksLikeWriteBlockedResponse } = require("./lib/inability-response-detector");
 const { assessPromptComplexityForPlanMode } = require("./lib/plan-mode-complexity-heuristic");
 const {
 	getPlanSession,
@@ -239,6 +242,10 @@ const {
 const {
 	extractUpdateTodoPlanPayloadFromObservations,
 } = require("./lib/update-todo-plan-payload");
+const {
+	extractAppRoutesFromObservations,
+	areAllPlanTasksCompleted,
+} = require("./lib/app-route-resolver");
 const { resolveChatSdkThreadId } = require("./lib/chat-sdk-thread-id");
 const { chromiumPreviewManager } = require("./lib/chromium-preview");
 const { browserWorkspaceManager } = require("./lib/browser-workspace-manager");
@@ -268,13 +275,8 @@ const {
 	buildToolFirstClarificationInstruction,
 } = require("./lib/tool-first-question-gate");
 const {
-	MAX_INLINE_ASSISTANT_JSON_CHARS,
-	ASSISTANT_JSON_SUPPRESSION_TEXT,
 	toPreview,
 	splitSpecFenceTextForStreaming,
-	hasPendingSpecFence,
-	isLikelyLargeJsonDump,
-	sanitizeAssistantNarrative,
 } = require("./lib/tool-output-sanitizer");
 const {
 	getNonEmptyString,
@@ -1022,7 +1024,6 @@ const SMART_IMAGE_PROMPT_MAX_CHARS = 4000;
 const SOUND_GENERATION_INPUT_MAX_CHARS = 4096;
 const CLASSIFIER_JSON_ALLOWED_KEYS = new Set(["intent", "confidence", "reason"]);
 const CLASSIFIER_JSON_BUFFER_MAX_CHARS = 320;
-const MAX_ASSISTANT_TEXT_WITH_TOOL_CALLS_CHARS = 1400;
 const GENUI_FALLBACK_ERROR_TEXT =
 	"I couldn't generate an interactive card right now. Please try again later.";
 const SMART_WIDTH_CLASS_VALUES = new Set(["compact", "regular", "wide"]);
@@ -1386,6 +1387,11 @@ const futureChatDocumentManager = createFutureChatDocumentManager({
 const futureChatUploadManager = createFutureChatUploadManager({
 	baseDir: path.join(__dirname, "data"),
 });
+const futureChatGeneratedFilesManager = createFutureChatGeneratedFilesManager({
+	baseDir: path.join(__dirname, "data"),
+	projectRoot: path.join(__dirname, ".."),
+	logger: console,
+});
 const futureChatRunManager = createFutureChatRunManager({
 	logger: console,
 });
@@ -1408,6 +1414,10 @@ const makeRunManager = createMakeRunManager({
 
 function buildFutureChatFileUrl(uploadId) {
 	return `/api/future-chat/files/${encodeURIComponent(uploadId)}`;
+}
+
+function createFutureChatThreadId() {
+	return `future-chat-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 function extractFutureChatUploadIdFromUrl(rawUrl) {
@@ -1453,7 +1463,7 @@ function collectFutureChatUploadIdsFromMessages(messages) {
 	return [...uploadIds];
 }
 
-async function persistFutureChatMessageFiles(messages) {
+async function persistFutureChatMessageFiles(threadId, messages) {
 	if (!Array.isArray(messages)) {
 		return [];
 	}
@@ -1474,6 +1484,7 @@ async function persistFutureChatMessageFiles(messages) {
 
 			if (typeof part.url === "string" && part.url.startsWith("data:")) {
 				const upload = await futureChatUploadManager.createUploadFromDataUrl({
+					threadId,
 					filename:
 						typeof part.filename === "string" && part.filename.trim()
 							? part.filename
@@ -1504,6 +1515,16 @@ async function persistFutureChatMessageFiles(messages) {
 	}
 
 	return nextMessages;
+}
+
+async function synchronizeFutureChatThreadGeneratedFiles(thread) {
+	if (!thread?.id) {
+		return thread;
+	}
+
+	await futureChatGeneratedFilesManager.backfillFromThread(thread);
+	await futureChatGeneratedFilesManager.captureRootFilesToWorkspace(thread.id);
+	return thread;
 }
 
 function buildFutureChatArtifactContext(rawArtifactContext) {
@@ -2129,10 +2150,11 @@ let isProcessingFutureChatRunQueue = false;
 
 async function finalizeFutureChatRun(threadId, run, messages) {
 	if (threadId && Array.isArray(messages)) {
-		await futureChatThreadManager.updateThread(threadId, {
+		const updatedThread = await futureChatThreadManager.updateThread(threadId, {
 			activeRun: null,
 			messages,
 		});
+		await synchronizeFutureChatThreadGeneratedFiles(updatedThread);
 	} else {
 		await clearFutureChatRunState(threadId);
 	}
@@ -2268,6 +2290,8 @@ async function failFutureChatRun(threadId, error) {
 	void startNextQueuedFutureChatRun();
 }
 
+const FUTURE_CHAT_MESSAGE_PERSIST_DEBOUNCE_MS = 450;
+
 async function consumeFutureChatManagedResponse({
 	initialMessages,
 	prependChunk,
@@ -2299,8 +2323,68 @@ async function consumeFutureChatManagedResponse({
 		futureChatRunManager.appendChunk(threadId, prependChunk);
 	}
 
+	let latestMessagesSnapshot = Array.isArray(initialMessages) ? [...initialMessages] : [];
+	let scheduledPersistTimeout = null;
+	let persistInFlight = null;
+	let hasPendingPersist = false;
+
+	const clearScheduledPersist = () => {
+		if (scheduledPersistTimeout !== null) {
+			clearTimeout(scheduledPersistTimeout);
+			scheduledPersistTimeout = null;
+		}
+	};
+
+	const flushPersistedMessages = async () => {
+		clearScheduledPersist();
+		if (!threadId) {
+			return;
+		}
+		if (persistInFlight) {
+			hasPendingPersist = true;
+			await persistInFlight;
+			return;
+		}
+
+		const snapshotToPersist = latestMessagesSnapshot;
+		persistInFlight = persistFutureChatRunMessagesSnapshot(
+			threadId,
+			snapshotToPersist,
+		)
+			.catch((error) => {
+				console.warn("[FUTURE-CHAT] Failed to persist in-flight thread messages:", {
+					threadId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			})
+			.finally(() => {
+				persistInFlight = null;
+			});
+		await persistInFlight;
+
+		if (hasPendingPersist && latestMessagesSnapshot !== snapshotToPersist) {
+			hasPendingPersist = false;
+			await flushPersistedMessages();
+			return;
+		}
+
+		hasPendingPersist = false;
+	};
+
+	const schedulePersistedMessages = (messages) => {
+		latestMessagesSnapshot = Array.isArray(messages) ? [...messages] : [];
+		if (!threadId || scheduledPersistTimeout !== null) {
+			return;
+		}
+
+		scheduledPersistTimeout = setTimeout(() => {
+			void flushPersistedMessages();
+		}, FUTURE_CHAT_MESSAGE_PERSIST_DEBOUNCE_MS);
+	};
+
 	const parsePromise = collectUiMessagesFromResponseStream({
 		initialMessages,
+		onMessagesUpdated: schedulePersistedMessages,
 		routeDecisionToSuppress,
 		stream: parseStream,
 	});
@@ -2336,6 +2420,8 @@ async function consumeFutureChatManagedResponse({
 	}
 
 	const messages = await parsePromise;
+	latestMessagesSnapshot = Array.isArray(messages) ? [...messages] : [];
+	await flushPersistedMessages();
 	try {
 		const synchronizedThread = await syncFutureChatThreadSession(threadId, run.rovoPort, {
 			thread: threadId ? await futureChatThreadManager.getThread(threadId) : null,
@@ -2921,6 +3007,21 @@ async function clearFutureChatRunState(threadId) {
 
 	return futureChatThreadManager.updateThread(threadId, {
 		activeRun: null,
+	});
+}
+
+async function persistFutureChatRunMessagesSnapshot(threadId, messages) {
+	if (!threadId || !Array.isArray(messages)) {
+		return null;
+	}
+
+	const thread = await futureChatThreadManager.getThread(threadId);
+	if (!thread) {
+		return null;
+	}
+
+	return futureChatThreadManager.updateThread(threadId, {
+		messages,
 	});
 }
 
@@ -4274,6 +4375,32 @@ function isReadonlyToolBlockMessage(value) {
 	return /blocked in readonly mode|operation is currently blocked/i.test(normalizedValue);
 }
 
+function getReadonlyBlockedWriteToolNames(toolObservationEntries) {
+	if (!Array.isArray(toolObservationEntries) || toolObservationEntries.length === 0) {
+		return [];
+	}
+
+	return [
+		...new Set(
+			toolObservationEntries
+				.filter((entry) =>
+					isWorkspaceWriteToolName(entry?.toolName) &&
+					isReadonlyToolBlockMessage(entry?.text)
+				)
+				.map((entry) => getNonEmptyString(entry?.toolName))
+				.filter(Boolean),
+		),
+	];
+}
+
+function looksLikeWriteBlockedTurn({ assistantText, toolObservationEntries } = {}) {
+	if (getReadonlyBlockedWriteToolNames(toolObservationEntries).length > 0) {
+		return true;
+	}
+
+	return looksLikeWriteBlockedResponse(assistantText);
+}
+
 function sanitizeMermaidNodeId(value) {
 	const normalizedValue = (value || "").toLowerCase().replace(/[^a-z0-9_]/g, "_");
 	if (!normalizedValue) {
@@ -5291,12 +5418,28 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 			// continuations such as paused tool approvals. Only clear it when
 			// a new visible user prompt starts a fresh top-level request.
 			const planSession = getPlanSession(threadId);
-			const shouldKeepExecutionSession =
+			// Transition to execution phase when the "Build" button sends a
+			// deferredToolResponse for exit_plan_mode with isPlanMode: false.
+			// This mirrors the approvalSubmission path below but for the
+			// deferred tool response mechanism used by the frontend.
+			if (
+				deferredToolResponseToolCallId &&
 				planSession.isActive &&
-				planSession.phase === "execution" &&
-				(approvalSubmission || toolApprovalSubmission);
-			if (!shouldKeepExecutionSession && latestVisibleUserMessage) {
-				clearPlanSession(threadId);
+				planSession.phase !== "execution"
+			) {
+				updatePlanSession(threadId, { phase: "execution" });
+				console.info("[PLAN-SESSION] Transitioned to execution phase on deferred tool acceptance", {
+					threadId,
+					deferredToolCallId: deferredToolResponseToolCallId,
+					previousPhase: planSession.phase,
+				});
+			} else {
+				const shouldKeepExecutionSession =
+					planSession.isActive &&
+					planSession.phase === "execution";
+				if (!shouldKeepExecutionSession && latestVisibleUserMessage) {
+					clearPlanSession(threadId);
+				}
 			}
 		}
 		const {
@@ -7636,98 +7779,6 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 					}
 
 					const nextAssistantText = assistantText + delta;
-					const pendingSpecFence = hasPendingSpecFence(nextAssistantText);
-					if (
-						hasObservedToolExecution &&
-						!pendingSpecFence &&
-						nextAssistantText.length > MAX_ASSISTANT_TEXT_WITH_TOOL_CALLS_CHARS
-					) {
-						hasSuppressedLargeAssistantJson = true;
-						const suppressionNotice = `\n\n${ASSISTANT_JSON_SUPPRESSION_TEXT}`;
-						assistantText += suppressionNotice;
-						bufferedAssistantText += suppressionNotice;
-						flushBufferedAssistantText({ force: true });
-						return;
-					}
-					// When a tool has been executed, check with a much lower
-					// threshold so that the LLM echoing raw tool-result JSON
-					// is caught early — before hundreds of chars are streamed.
-					// We check both the full text (via sanitizeAssistantNarrative
-					// with a low threshold) and the substring starting at the
-					// first JSON-like character, since the JSON often follows a
-					// short natural-language preamble like "Here are your events."
-					if (
-						hasObservedToolExecution &&
-						!pendingSpecFence &&
-						nextAssistantText.length >= 300
-					) {
-						let earlyJsonDetected = false;
-
-						// Fast path: check if assistant text contains a JSON
-						// blob after a natural-language prefix
-						const jsonObjectIdx = nextAssistantText.indexOf("{");
-						if (jsonObjectIdx > -1) {
-							const jsonPortion = nextAssistantText.slice(jsonObjectIdx);
-							if (jsonPortion.length >= 200 && isLikelyLargeJsonDump(jsonPortion, { minChars: 200 })) {
-								earlyJsonDetected = true;
-							}
-						}
-
-						// Also try the full-text sanitizer with a lower threshold
-						if (!earlyJsonDetected) {
-							const earlyNarrativeSuppression = sanitizeAssistantNarrative(
-								nextAssistantText,
-								{
-									maxChars: 400,
-									replacement: ASSISTANT_JSON_SUPPRESSION_TEXT,
-								}
-							);
-							if (earlyNarrativeSuppression.replaced) {
-								earlyJsonDetected = true;
-							}
-						}
-
-						if (earlyJsonDetected) {
-							hasSuppressedLargeAssistantJson = true;
-							if (textStarted) {
-								// We already emitted some text — just append
-								// the suppression notice for the remaining part
-								const suppressionNotice = `\n\n${ASSISTANT_JSON_SUPPRESSION_TEXT}`;
-								assistantText += suppressionNotice;
-								bufferedAssistantText += suppressionNotice;
-							} else {
-								// Nothing emitted yet — emit any natural-language
-								// prefix before the JSON, plus the suppression notice
-								const prefix = jsonObjectIdx > -1
-									? nextAssistantText.slice(0, jsonObjectIdx).trim()
-									: "";
-								const sanitizedOutput = prefix
-									? `${prefix}\n\n${ASSISTANT_JSON_SUPPRESSION_TEXT}`
-									: ASSISTANT_JSON_SUPPRESSION_TEXT;
-								assistantText = sanitizedOutput;
-								bufferedAssistantText = sanitizedOutput;
-							}
-							flushBufferedAssistantText({ force: true });
-							return;
-						}
-					}
-					if (!pendingSpecFence) {
-						const narrativeSuppression = sanitizeAssistantNarrative(
-							nextAssistantText,
-							{
-								maxChars: MAX_INLINE_ASSISTANT_JSON_CHARS,
-								replacement: ASSISTANT_JSON_SUPPRESSION_TEXT,
-							}
-						);
-						if (narrativeSuppression.replaced) {
-							hasSuppressedLargeAssistantJson = true;
-							const suppressionNotice = `\n\n${ASSISTANT_JSON_SUPPRESSION_TEXT}`;
-							assistantText += suppressionNotice;
-							bufferedAssistantText += suppressionNotice;
-							flushBufferedAssistantText({ force: true });
-							return;
-						}
-					}
 
 					assistantText = nextAssistantText;
 					bufferedAssistantText += delta;
@@ -10508,6 +10559,12 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 						const hasToolObservationData = hasToolObservationEntries();
 						const looksLikeClarification = looksLikeClarificationResponse(trimmedAssistantText);
 						const looksLikeInability = looksLikeInabilityResponse(trimmedAssistantText);
+						const readonlyBlockedWriteToolNames =
+							getReadonlyBlockedWriteToolNames(toolObservationEntries);
+						const looksLikeWriteBlockedFailure = looksLikeWriteBlockedTurn({
+							assistantText: trimmedAssistantText,
+							toolObservationEntries,
+						});
 						if (looksLikeClarification && !hasEmittedQuestionCard) {
 							console.info("[OUTPUT-ROUTING] Clarification-like response detected, skipping GenUI", {
 								textLength: trimmedAssistantText.length,
@@ -10518,6 +10575,13 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 								textLength: trimmedAssistantText.length,
 							});
 						}
+						if (looksLikeWriteBlockedFailure) {
+							console.info("[OUTPUT-ROUTING] Write-blocked turn detected, skipping GenUI", {
+								threadId,
+								toolNames: readonlyBlockedWriteToolNames,
+								textLength: trimmedAssistantText.length,
+							});
+						}
 				const planExecutionActive = isPlanExecutionPhase(threadId);
 					const shouldAttemptGenui = shouldAttemptPostToolGenui({
 						assistantText: trimmedAssistantText,
@@ -10525,7 +10589,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 						hasEmittedPlanWidget,
 						hasEmittedGenuiWidget,
 						looksLikeClarification,
-						looksLikeInability,
+						looksLikeInability: looksLikeInability || looksLikeWriteBlockedFailure,
 						resolvedPlanModeActive,
 						planSessionActive: planExecutionActive,
 						isAborted: abortController.signal.aborted,
@@ -10597,43 +10661,52 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 							!hasEmittedQuestionCard &&
 							!hasEmittedGenuiWidget
 						) {
-							const shouldEmitCardFirstFallback =
-								shouldForceCardFirstGenui &&
-								trimmedAssistantText.length > 0 &&
-								!looksLikeClarification &&
-								!looksLikeInability;
-							const shouldEmitObservationFallback = hasToolObservationData;
-							if (shouldEmitCardFirstFallback || shouldEmitObservationFallback) {
-								const twoStepGenuiWidgetId = `widget-two-step-genui-${Date.now()}`;
-								writer.write({
-									type: "data-widget-loading",
-									id: twoStepGenuiWidgetId,
-									data: {
-										type: SMART_WIDGET_TYPE_GENUI,
-										loading: true,
-									},
-								});
-								await emitAutomaticPostToolGenuiWidget({
-									widgetId: twoStepGenuiWidgetId,
-								});
-								writer.write({
-									type: "data-widget-loading",
-									id: twoStepGenuiWidgetId,
-									data: {
-										type: SMART_WIDGET_TYPE_GENUI,
-										loading: false,
-									},
-								});
-						} else {
-							// Short conversational reply or empty -> plain text route
-							emitBufferedAssistantTextForTextRoute();
-							writer.write(createRouteDecisionPart({
-								intent: "chat",
-								origin: requestOrigin,
-								reason: "intent_text_default",
-							}));
+							if (looksLikeWriteBlockedFailure) {
+								emitBufferedAssistantTextForTextRoute();
+								writer.write(createRouteDecisionPart({
+									intent: "chat",
+									origin: requestOrigin,
+									reason: "tool_blocked_text_only",
+								}));
+							} else {
+								const shouldEmitCardFirstFallback =
+									shouldForceCardFirstGenui &&
+									trimmedAssistantText.length > 0 &&
+									!looksLikeClarification &&
+									!looksLikeInability;
+								const shouldEmitObservationFallback = hasToolObservationData;
+								if (shouldEmitCardFirstFallback || shouldEmitObservationFallback) {
+									const twoStepGenuiWidgetId = `widget-two-step-genui-${Date.now()}`;
+									writer.write({
+										type: "data-widget-loading",
+										id: twoStepGenuiWidgetId,
+										data: {
+											type: SMART_WIDGET_TYPE_GENUI,
+											loading: true,
+										},
+									});
+									await emitAutomaticPostToolGenuiWidget({
+										widgetId: twoStepGenuiWidgetId,
+									});
+									writer.write({
+										type: "data-widget-loading",
+										id: twoStepGenuiWidgetId,
+										data: {
+											type: SMART_WIDGET_TYPE_GENUI,
+											loading: false,
+										},
+									});
+								} else {
+									// Short conversational reply or empty -> plain text route
+									emitBufferedAssistantTextForTextRoute();
+									writer.write(createRouteDecisionPart({
+										intent: "chat",
+										origin: requestOrigin,
+										reason: "intent_text_default",
+									}));
+								}
+							}
 						}
-					}
 					}
 					// Question card route-decision is emitted at the point of
 					// emission (emitRequestUserInputQuestionCard or fallback
@@ -11054,6 +11127,85 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 				};
 				console.info("[OUTPUT-ROUTING] Turn routing summary", routingTelemetry);
 
+					// ── Plan Execution: post-execution artifact generation ──
+					// When the plan execution phase completes (all update_todo
+					// tasks done), generate an inline artifact card for the
+					// built app and auto-open the artifact panel.
+					const planExecutionActiveAtFinish = isPlanExecutionPhase(threadId);
+					if (planExecutionActiveAtFinish && threadId) {
+						const allTasksDone = areAllPlanTasksCompleted(toolObservationEntries);
+						if (allTasksDone) {
+							const appRoutes = extractAppRoutesFromObservations(toolObservationEntries);
+							const appRoute = appRoutes.length > 0 ? appRoutes[0] : null;
+							console.info("[PLAN-EXECUTION] All tasks completed, generating artifact", {
+								threadId,
+								appRoute,
+								routeCandidates: appRoutes,
+							});
+
+							if (appRoute) {
+								try {
+									const artifactTitle =
+										appRoute === "/"
+											? "App"
+											: appRoute
+												.split("/")
+												.filter(Boolean)
+												.map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+												.join(" ");
+
+									const artifactDocument = await futureChatDocumentManager.createDocument({
+										threadId,
+										title: artifactTitle,
+										kind: "react",
+										content: appRoute,
+										changeLabel: "Plan execution complete",
+										sourceMessageId: null,
+									});
+									await futureChatThreadManager.updateThread(threadId, {
+										activeDocumentId: artifactDocument.id,
+									});
+
+									writer.write({
+										type: "data-artifact-result",
+										data: {
+											documentId: artifactDocument.id,
+											title: artifactDocument.title,
+											kind: "react",
+											action: "create",
+										},
+									});
+
+									const summaryTextId = `plan-exec-artifact-${Date.now()}`;
+									writer.write({ type: "text-start", id: summaryTextId });
+									writer.write({
+										type: "text-delta",
+										id: summaryTextId,
+										delta: `Your app is ready — open **${artifactTitle}** to see it live.`,
+									});
+									writer.write({ type: "text-end", id: summaryTextId });
+
+									writer.write(createRouteDecisionPart({
+										intent: "artifact_create",
+										origin: requestOrigin,
+										reason: "plan_execution_complete",
+									}));
+
+									console.info("[PLAN-EXECUTION] Artifact created", {
+										documentId: artifactDocument.id,
+										route: appRoute,
+										title: artifactTitle,
+									});
+								} catch (artifactError) {
+									console.warn("[PLAN-EXECUTION] Failed to create artifact document:", artifactError);
+								}
+							}
+
+							clearPlanSession(threadId);
+							console.info("[PLAN-EXECUTION] Plan session cleared after execution complete", { threadId });
+						}
+					}
+
 					// Signal that the main response is complete so the frontend
 					// can show the response immediately. Suggested questions
 					// are fetched on a separate best-effort request after the
@@ -11388,6 +11540,34 @@ app.post("/api/genui-chat", (req, res) =>
 		aiGatewayProvider,
 	})
 );
+
+// ── GenUI Export (PDF/PNG/SVG/Email/Code) ─────────────────────────
+const { exportSpec, EXPORT_FORMATS } = require("./lib/genui-export");
+
+app.post("/api/genui-export", async (req, res) => {
+	try {
+		const { spec, format, title, state, componentName } = req.body ?? {};
+
+		if (!spec || typeof spec !== "object" || !spec.root || !spec.elements) {
+			return res.status(400).json({ error: "Missing or invalid spec (requires root + elements)" });
+		}
+		if (!format || !EXPORT_FORMATS.includes(format)) {
+			return res.status(400).json({ error: `Invalid format. Supported: ${EXPORT_FORMATS.join(", ")}` });
+		}
+
+		const result = await exportSpec(spec, format, { title, state, componentName });
+
+		res.set("Content-Type", result.contentType);
+		res.set("Content-Disposition", `attachment; filename="${result.filename}"`);
+		res.send(result.data);
+	} catch (error) {
+		console.error("[genui-export] Export failed:", error);
+		res.status(500).json({
+			error: "Export failed",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
 
 app.post("/api/sound-generation", async (req, res) => {
 	try {
@@ -12663,7 +12843,7 @@ app.get("/api/future-chat/threads", async (req, res) => {
 app.post("/api/future-chat/threads", async (req, res) => {
 	try {
 		const {
-			id,
+			id: rawThreadId,
 			title,
 			messages,
 			realtimeMessages,
@@ -12676,9 +12856,10 @@ app.post("/api/future-chat/threads", async (req, res) => {
 			createdAt,
 			updatedAt,
 		} = req.body || {};
-		const persistedMessages = await persistFutureChatMessageFiles(messages);
+		const threadId = getNonEmptyString(rawThreadId) || createFutureChatThreadId();
+		const persistedMessages = await persistFutureChatMessageFiles(threadId, messages);
 		const thread = await futureChatThreadManager.createThread({
-			id,
+			id: threadId,
 			title,
 			messages: persistedMessages,
 			realtimeMessages,
@@ -12706,28 +12887,17 @@ app.delete("/api/future-chat/threads", async (req, res) => {
 			return res.status(400).json({ error: "Use ?all=true to delete all threads." });
 		}
 
+		const threads = await futureChatThreadManager.listThreads({ limit: Number.MAX_SAFE_INTEGER });
+		await Promise.all(
+			threads.map(async (thread) => {
+				await futureChatGeneratedFilesManager.deleteLegacyRootFiles(thread.id);
+			}),
+		);
+
 		await futureChatThreadManager.deleteAllThreads();
 		await futureChatVoteManager.deleteAllVotes();
 		await futureChatDocumentManager.deleteAllDocuments();
 		await futureChatUploadManager.deleteAllUploads();
-
-		// Also clean up generated apps (files + registry)
-		try {
-			const fsPromises = require("node:fs/promises");
-			const generatedAppsDir = path.resolve(__dirname, "..", "components", "generated-apps");
-			const entries = await fsPromises.readdir(generatedAppsDir, { withFileTypes: true }).catch(() => []);
-			const deletions = entries
-				.filter((entry) => entry.isDirectory() && entry.name !== "_placeholder")
-				.map((entry) =>
-					fsPromises.rm(path.join(generatedAppsDir, entry.name), { recursive: true, force: true })
-						.then(() => console.log(`[FUTURE-CHAT] Deleted generated app: ${entry.name}`))
-						.catch((dirError) => console.warn(`[FUTURE-CHAT] Failed to delete generated app ${entry.name}:`, dirError.message))
-				);
-			await Promise.all(deletions);
-			await appRegistry.unregisterAllApps();
-		} catch (cleanupError) {
-			console.warn("[FUTURE-CHAT] Failed to clean up generated apps:", cleanupError.message);
-		}
 
 		return res.status(200).json({ deleted: true });
 	} catch (error) {
@@ -12768,7 +12938,7 @@ app.put("/api/future-chat/threads/:threadId", async (req, res) => {
 		} = req.body || {};
 		const persistedMessages =
 			messages !== undefined
-				? await persistFutureChatMessageFiles(messages)
+				? await persistFutureChatMessageFiles(req.params.threadId, messages)
 				: undefined;
 		const thread = await futureChatThreadManager.updateThread(req.params.threadId, {
 			title,
@@ -12913,6 +13083,10 @@ app.delete("/api/future-chat/threads/:threadId", async (req, res) => {
 		}
 		const thread = await futureChatThreadManager.getThread(threadId);
 		const uploadIds = collectFutureChatUploadIdsFromMessages(thread?.messages);
+		if (thread) {
+			await futureChatGeneratedFilesManager.backfillFromThread(thread);
+			await futureChatGeneratedFilesManager.deleteLegacyRootFiles(threadId);
+		}
 		await Promise.all(
 			uploadIds.map((uploadId) =>
 				futureChatUploadManager.deleteUpload(uploadId).catch(() => {})
@@ -13059,12 +13233,13 @@ app.delete("/api/future-chat/documents", async (req, res) => {
 
 app.post("/api/future-chat/files/upload", async (req, res) => {
 	try {
-		const { name, mediaType, dataUrl } = req.body || {};
+		const { name, mediaType, dataUrl, threadId } = req.body || {};
 		if (typeof dataUrl !== "string" || !dataUrl.trim()) {
 			return res.status(400).json({ error: "dataUrl is required" });
 		}
 
 		const upload = await futureChatUploadManager.createUploadFromDataUrl({
+			threadId: getNonEmptyString(threadId) || undefined,
 			filename: typeof name === "string" && name.trim() ? name : "attachment.bin",
 			mediaType: typeof mediaType === "string" && mediaType.trim() ? mediaType : undefined,
 			dataUrl,
@@ -13174,6 +13349,7 @@ app.post("/api/make/runs", async (req, res) => {
 			conversation,
 			customInstruction,
 			agentCount,
+			sourceSurface,
 		} = req.body || {};
 
 		const run = await makeRunManager.createRun({
@@ -13182,6 +13358,7 @@ app.post("/api/make/runs", async (req, res) => {
 			conversation,
 			customInstruction,
 			agentCount,
+			sourceSurface,
 		});
 		return res.status(201).json({ run });
 	} catch (error) {

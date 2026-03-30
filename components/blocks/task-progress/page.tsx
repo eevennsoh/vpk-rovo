@@ -297,6 +297,7 @@ interface TaskProgressProps {
 	isCollapsible?: boolean;
 	onCardClick?: () => void;
 	onDelete?: () => void;
+	showRunningStopButton?: boolean;
 	onRetryGroup?: (
 		groupKey: RetryableStatusGroupKey,
 		taskIds: string[]
@@ -319,6 +320,7 @@ export default function TaskProgress({
 	isCollapsible = true,
 	onCardClick,
 	onDelete,
+	showRunningStopButton = true,
 	onRetryGroup,
 	className,
 }: Readonly<TaskProgressProps>) {
@@ -337,6 +339,10 @@ export default function TaskProgress({
 	const shouldReduceMotion = useReducedMotion();
 	const prevDoneCountRef = useRef(taskStatusGroups.done.length);
 	const [celebratingEmoji, setCelebratingEmoji] = useState<string | null>(null);
+
+	useEffect(() => {
+		setCollapsed(defaultCollapsed);
+	}, [defaultCollapsed]);
 
 	useEffect(() => {
 		const currentCount = taskStatusGroups.done.length;
@@ -468,7 +474,7 @@ export default function TaskProgress({
 							<span className="text-xs leading-4 text-text-subtlest">Time taken {formatElapsedTime(elapsedSeconds)}</span>
 						</div>
 					</div>
-					{runStatus === "running" && !collapsed ? (
+					{runStatus === "running" && !collapsed && showRunningStopButton ? (
 						<Button aria-label="Stop execution" size="icon" variant="outline" className="rounded-full text-icon-danger" onClick={(e) => e.stopPropagation()}>
 							<VideoStopOverlayIcon label="" size="small" />
 						</Button>

@@ -46,6 +46,15 @@ const STREAMING_UPDATE_MAX_CONTENT_CHARS = 8000;
 const STREAMING_UPDATE_FLUSH_MS = 1000;
 const MAKE_EXECUTION_CONFLICT_CODE = "MAKE_EXECUTION_CONFLICT";
 const GENUI_WIDGET_COUNT = 1;
+const SOURCE_SURFACE_FUTURE_CHAT = "future-chat";
+const SOURCE_SURFACE_MAKE = "make";
+const APP_SHELL_POLICY_EMBEDDED_FEATURE = "embedded_feature";
+const APP_SHELL_POLICY_STANDALONE_APP = "standalone_app";
+const FUTURE_CHAT_SHELL_OVERRIDE_PATTERNS = [
+	/\b(?:prototype|mock|recreate|rebuild|include|show|design|generate|add|create)\b[\s\S]{0,120}\b(?:top\s+nav(?:igation)?|app\s+shell|product\s+shell|shell\s+chrome|app\s+chrome|global\s+chrome|global\s+header|product\s+sidebar|floating\s+rovo(?:\s+button)?|app\s+switcher)\b/i,
+	/\b(?:top\s+nav(?:igation)?|app\s+shell|product\s+shell|shell\s+chrome|app\s+chrome|global\s+chrome|global\s+header|product\s+sidebar|floating\s+rovo(?:\s+button)?|app\s+switcher)\b[\s\S]{0,120}\b(?:prototype|mock|recreate|rebuild|include|show|design|generate|add|create)\b/i,
+	/\b(?:sidebar\s+and\s+app\s+chrome|header\s+and\s+sidebar)\b/i,
+];
 const GENUI_WIDGET_BLUEPRINTS = [
 	{
 		id: "primary-overview-widget",
@@ -561,6 +570,9 @@ function ensureRunDefaults(rawRun) {
 		customInstruction: getNonEmptyString(rawRun.customInstruction) || undefined,
 		agentCount: normalizeAgentCount(rawRun.agentCount),
 		conversationContext: buildConversationContext(rawRun.conversationContext),
+		sourceSurface: normalizeSourceSurface(rawRun.sourceSurface),
+		appShellPolicy: normalizeAppShellPolicy(rawRun.appShellPolicy, rawRun.sourceSurface),
+		appSlug: getNonEmptyString(rawRun.appSlug) || null,
 		iteration,
 		activeBatchId: getNonEmptyString(rawRun.activeBatchId) || null,
 		createdFiles: Array.isArray(rawRun.createdFiles) ? rawRun.createdFiles : [],
@@ -574,6 +586,101 @@ function normalizeAgentCount(value) {
 	return normalizeTeamAgentCount(value, 1);
 }
 
+function normalizeSourceSurface(value) {
+	const normalizedValue = getNonEmptyString(value)?.toLowerCase();
+	return normalizedValue === SOURCE_SURFACE_FUTURE_CHAT
+		? SOURCE_SURFACE_FUTURE_CHAT
+		: SOURCE_SURFACE_MAKE;
+}
+
+function normalizeAppShellPolicy(value, sourceSurface = SOURCE_SURFACE_MAKE) {
+	const normalizedValue = getNonEmptyString(value)?.toLowerCase();
+	if (normalizedValue === APP_SHELL_POLICY_EMBEDDED_FEATURE) {
+		return APP_SHELL_POLICY_EMBEDDED_FEATURE;
+	}
+	if (normalizedValue === APP_SHELL_POLICY_STANDALONE_APP) {
+		return APP_SHELL_POLICY_STANDALONE_APP;
+	}
+	return sourceSurface === SOURCE_SURFACE_FUTURE_CHAT
+		? APP_SHELL_POLICY_EMBEDDED_FEATURE
+		: APP_SHELL_POLICY_STANDALONE_APP;
+}
+
+function collectUserPromptTexts({ userPrompt, conversationContext, customInstruction }) {
+	const promptTexts = [];
+	const normalizedUserPrompt = getNonEmptyString(userPrompt);
+	if (normalizedUserPrompt) {
+		promptTexts.push(normalizedUserPrompt);
+	}
+
+	if (Array.isArray(conversationContext)) {
+		for (const message of conversationContext.slice(-12)) {
+			if (!message || typeof message !== "object") {
+				continue;
+			}
+
+			const role =
+				getNonEmptyString(message.type)?.toLowerCase()
+				|| getNonEmptyString(message.role)?.toLowerCase();
+			if (role !== "user") {
+				continue;
+			}
+
+			const content = getNonEmptyString(message.content);
+			if (content) {
+				promptTexts.push(content);
+			}
+		}
+	}
+
+	const normalizedCustomInstruction = getNonEmptyString(customInstruction);
+	if (normalizedCustomInstruction) {
+		promptTexts.push(normalizedCustomInstruction);
+	}
+
+	return promptTexts;
+}
+
+function hasExplicitFutureChatShellChromeRequest(input = {}) {
+	const promptTexts = collectUserPromptTexts(input);
+	return promptTexts.some((text) =>
+		FUTURE_CHAT_SHELL_OVERRIDE_PATTERNS.some((pattern) => pattern.test(text))
+	);
+}
+
+function resolveAppShellPolicy({
+	sourceSurface,
+	userPrompt,
+	conversationContext,
+	customInstruction,
+} = {}) {
+	const normalizedSourceSurface = normalizeSourceSurface(sourceSurface);
+	if (normalizedSourceSurface !== SOURCE_SURFACE_FUTURE_CHAT) {
+		return {
+			sourceSurface: normalizedSourceSurface,
+			appShellPolicy: APP_SHELL_POLICY_STANDALONE_APP,
+		};
+	}
+
+	if (
+		hasExplicitFutureChatShellChromeRequest({
+			userPrompt,
+			conversationContext,
+			customInstruction,
+		})
+	) {
+		return {
+			sourceSurface: normalizedSourceSurface,
+			appShellPolicy: APP_SHELL_POLICY_STANDALONE_APP,
+		};
+	}
+
+	return {
+		sourceSurface: normalizedSourceSurface,
+		appShellPolicy: APP_SHELL_POLICY_EMBEDDED_FEATURE,
+	};
+}
+
 function createGeneralPurposeLaneDefinitions(agentCount, tasks) {
 	const normalizedAgentCount = normalizeAgentCount(agentCount);
 
@@ -583,7 +690,17 @@ function createGeneralPurposeLaneDefinitions(agentCount, tasks) {
 	});
 }
 
-function createInitialRun({ runId, plan, userPrompt, conversationContext, customInstruction, agentCount }) {
+function createInitialRun({
+	runId,
+	plan,
+	userPrompt,
+	conversationContext,
+	customInstruction,
+	agentCount,
+	sourceSurface,
+	appShellPolicy,
+	appSlug,
+}) {
 	const now = toIsoDate();
 	const batchId = createId("batch");
 	const iteration = 1;
@@ -645,6 +762,9 @@ function createInitialRun({ runId, plan, userPrompt, conversationContext, custom
 		customInstruction: customInstruction || undefined,
 		agentCount: normalizedAgentCount,
 		conversationContext,
+		sourceSurface: normalizeSourceSurface(sourceSurface),
+		appShellPolicy: normalizeAppShellPolicy(appShellPolicy, sourceSurface),
+		appSlug: getNonEmptyString(appSlug) || null,
 		iteration,
 		activeBatchId: batchId,
 		createdFiles: [],
@@ -672,6 +792,9 @@ function toSerializableRun(run) {
 		customInstruction: run.customInstruction,
 		agentCount: run.agentCount,
 		conversationContext: run.conversationContext,
+		sourceSurface: run.sourceSurface,
+		appShellPolicy: run.appShellPolicy,
+		appSlug: run.appSlug || null,
 		iteration: run.iteration,
 		activeBatchId: run.activeBatchId,
 		createdFiles: run.createdFiles || [],
@@ -718,6 +841,49 @@ function createSkillSection(skillContents) {
 		: null;
 }
 
+function buildGeneratedAppInstructions(run) {
+	const appSlug = getNonEmptyString(run?.appSlug);
+	if (!appSlug) {
+		return null;
+	}
+
+	const lines = [
+		"## Generated app rules",
+		`All source files you create for this app MUST be placed under app/apps/${appSlug}/.`,
+		`The entry component must be at app/apps/${appSlug}/page.tsx.`,
+		`Keep app-specific files contained to app/apps/${appSlug}/ so cleanup and previews work correctly.`,
+		"You may import shared code from @/components/ui/, @/lib/, etc.",
+	];
+
+	if (run?.appShellPolicy === APP_SHELL_POLICY_EMBEDDED_FEATURE) {
+		lines.push(
+			"",
+			"## Future Chat preview shell policy",
+			"This app will be rendered inside an existing Future Chat preview surface.",
+			"Treat it as a mini feature or app widget, not a full product shell.",
+			"Build only the feature content area for the page entry. Do not recreate host shell chrome that already exists around the preview.",
+			"Do NOT import or wrap with @/components/projects/page (AppLayout).",
+			"Do NOT import these host-shell components:",
+			"- @/components/blocks/top-navigation/page (TopNavigation)",
+			"- @/components/blocks/product-sidebar/page (product sidebar)",
+			"- @/components/projects/shared/components/floating-rovo-button (floating Rovo button)",
+			"- @/components/projects/fullscreen-chat (global Rovo chat panel)",
+			"Do NOT add equivalents of global product chrome such as app switchers, global search headers, notifications, help/settings/profile menus, theme toggles, or floating chat launchers unless the user explicitly requested shell UI.",
+			"Feature-local headers, filters, tabs, toolbars, split panes, and section navigation are allowed when they belong to the generated feature itself.",
+			"Prefer focused feature surfaces such as dashboards, forms, boards, tables, inspectors, and narrow task flows that assume the surrounding host chrome already exists.",
+		);
+	} else if (run?.sourceSurface === SOURCE_SURFACE_FUTURE_CHAT) {
+		lines.push(
+			"",
+			"## Future Chat preview shell policy",
+			"This Future Chat request explicitly asked to prototype shell chrome, so host shell elements are allowed for this run.",
+			"Only include top navigation, sidebar, floating launchers, or other global chrome when they are directly relevant to the requested shell prototype.",
+		);
+	}
+
+	return lines.join("\n");
+}
+
 function createTaskPrompt(run, task, dependencyOutputs, directivesForAgent, skillContents) {
 	const skillSection = createSkillSection(skillContents);
 	const dependencySection =
@@ -730,20 +896,7 @@ function createTaskPrompt(run, task, dependencyOutputs, directivesForAgent, skil
 		directivesForAgent.length > 0
 			? directivesForAgent.map((directive) => `- ${directive.message}`).join("\n")
 			: "- None";
-
-	// File placement instructions for generated apps
-	const appSlug = run.appSlug;
-	const filePlacementSection = appSlug
-		? [
-			"",
-			"## File placement rules",
-			`All source files you create for this app MUST be placed under app/apps/${appSlug}/.`,
-			`The entry component must be at app/apps/${appSlug}/page.tsx.`,
-			`Keep app-specific files contained to app/apps/${appSlug}/ so cleanup and previews work correctly.`,
-			"You may import shared code from @/components/ui/, @/lib/, etc.",
-			"",
-		].join("\n")
-		: null;
+	const generatedAppInstructions = buildGeneratedAppInstructions(run);
 
 	return [
 		`You are ${task.agentName}, an expert contributor in a multi-agent plan.`,
@@ -755,7 +908,8 @@ function createTaskPrompt(run, task, dependencyOutputs, directivesForAgent, skil
 		skillSection ? "## Equipped Skills\n" : null,
 		skillSection,
 		skillSection ? "" : null,
-		filePlacementSection,
+		generatedAppInstructions,
+		generatedAppInstructions ? "" : null,
 		"Dependency outputs:",
 		dependencySection,
 		"",
@@ -800,18 +954,7 @@ function buildBatchOrchestrationPrompt(run, batchTasks, laneAssignments, skillCo
 		].join("\n");
 	});
 
-	const appSlug = run.appSlug;
-	const filePlacementSection = appSlug
-		? [
-			"",
-			"## File placement rules",
-			`All source files for this app MUST be placed under app/apps/${appSlug}/.`,
-			`The entry component must be at app/apps/${appSlug}/page.tsx.`,
-			`Keep app-specific files contained to app/apps/${appSlug}/ so cleanup and previews work correctly.`,
-			"You may import shared code from @/components/ui/, @/lib/, etc.",
-			"",
-		].join("\n")
-		: null;
+	const generatedAppInstructions = buildGeneratedAppInstructions(run);
 
 	const skillsSectionLines = [];
 	if (skillContentsByAgentName && skillContentsByAgentName.size > 0) {
@@ -830,7 +973,8 @@ function buildBatchOrchestrationPrompt(run, batchTasks, laneAssignments, skillCo
 		`Plan: ${run.plan.title}`,
 		run.plan.description ? `Plan description: ${run.plan.description}` : null,
 		"",
-		filePlacementSection,
+		generatedAppInstructions,
+		generatedAppInstructions ? "" : null,
 		"## Batch tasks to execute in parallel",
 		"",
 		"Execute ALL of the following tasks concurrently using `invoke_subagents`.",
@@ -2552,6 +2696,7 @@ function createRunManager(options) {
 		conversation,
 		customInstruction,
 		agentCount,
+		sourceSurface,
 	}) => {
 		const normalizedPlan = normalizePlan(plan);
 		if (!normalizedPlan) {
@@ -2576,6 +2721,12 @@ function createRunManager(options) {
 			}
 		}
 
+		const shellPolicy = resolveAppShellPolicy({
+			sourceSurface,
+			userPrompt,
+			conversationContext: conversation,
+			customInstruction,
+		});
 		const run = createInitialRun({
 			runId,
 			plan: normalizedPlan,
@@ -2583,8 +2734,10 @@ function createRunManager(options) {
 			conversationContext: buildConversationContext(conversation),
 			customInstruction: getNonEmptyString(customInstruction) || undefined,
 			agentCount: normalizeAgentCount(agentCount),
+			sourceSurface: shellPolicy.sourceSurface,
+			appShellPolicy: shellPolicy.appShellPolicy,
+			appSlug,
 		});
-		run.appSlug = appSlug;
 		runsById.set(runId, run);
 		await persistIntermediateSnapshot(run);
 		emitRunStateEvent(run, "run.started", {});
@@ -2940,6 +3093,9 @@ function createRunManager(options) {
 
 module.exports = {
 	createRunManager,
+	createTaskPrompt,
+	buildGeneratedAppInstructions,
 	buildBatchOrchestrationPrompt,
+	resolveAppShellPolicy,
 	parseBatchResults,
 };

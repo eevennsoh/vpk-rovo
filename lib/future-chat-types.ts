@@ -3,7 +3,7 @@ import type { RovoMessageMetadata, RovoUIMessage } from "@/lib/rovo-ui-messages"
 import { createId } from "@/lib/utils";
 
 export type FutureChatVisibility = "private" | "public";
-export type FutureChatDocumentKind = "text" | "code" | "image" | "sheet";
+export type FutureChatDocumentKind = "text" | "code" | "image" | "sheet" | "react";
 export type ArtifactMode = "preview" | "edit";
 export type VoteValue = "up" | "down";
 export type FutureChatRunStatus = "queued" | "streaming" | "background";

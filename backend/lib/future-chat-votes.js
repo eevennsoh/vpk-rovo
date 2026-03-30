@@ -1,5 +1,11 @@
 const fs = require("node:fs/promises");
-const path = require("node:path");
+
+const {
+	buildFutureChatThreadPaths,
+	getFutureChatLegacyVotesDir,
+	getFutureChatThreadsRootDir,
+	normalizeThreadId,
+} = require("./future-chat-storage-paths");
 
 function safeJsonParse(rawValue) {
 	try {
@@ -10,12 +16,73 @@ function safeJsonParse(rawValue) {
 }
 
 function createFutureChatVoteManager({ baseDir }) {
-	const votesRootDir = path.join(baseDir, "future-chat", "votes");
+	const threadsRootDir = getFutureChatThreadsRootDir(baseDir);
+	const legacyVotesRootDir = getFutureChatLegacyVotesDir(baseDir);
+	let initializationPromise = null;
 
 	const getThreadVotePath = (threadId) =>
-		path.join(votesRootDir, `${encodeURIComponent(threadId)}.json`);
+		buildFutureChatThreadPaths(baseDir, threadId).votesFilePath;
+
+	const ensureInitialized = async () => {
+		if (initializationPromise) {
+			return initializationPromise;
+		}
+
+		initializationPromise = (async () => {
+			let legacyEntries;
+			try {
+				legacyEntries = await fs.readdir(legacyVotesRootDir, { withFileTypes: true });
+			} catch (error) {
+				if (error && error.code === "ENOENT") {
+					return;
+				}
+				throw error;
+			}
+
+			for (const entry of legacyEntries) {
+				if (!entry.isFile() || !entry.name.endsWith(".json")) {
+					continue;
+				}
+
+				const threadId = normalizeThreadId(
+					decodeURIComponent(entry.name.replace(/\.json$/u, "")),
+				);
+				if (!threadId) {
+					continue;
+				}
+
+				const legacyPath = `${legacyVotesRootDir}/${entry.name}`;
+				try {
+					const legacyRaw = await fs.readFile(legacyPath, "utf8");
+					const legacyVoteMap = safeJsonParse(legacyRaw);
+					const currentVoteMap = await readVoteMap(threadId);
+					const nextVoteMap = {
+						...(legacyVoteMap && typeof legacyVoteMap === "object" ? legacyVoteMap : {}),
+						...currentVoteMap,
+					};
+					if (Object.keys(nextVoteMap).length > 0) {
+						await writeVoteMap(threadId, nextVoteMap);
+					}
+					await fs.rm(legacyPath, { force: true });
+				} catch (error) {
+					if (error?.code !== "ENOENT") {
+						throw error;
+					}
+				}
+			}
+
+			await fs.rm(legacyVotesRootDir, { recursive: true, force: true });
+		})();
+
+		return initializationPromise;
+	};
 
 	const readVoteMap = async (threadId) => {
+		const normalizedThreadId = normalizeThreadId(threadId);
+		if (!normalizedThreadId) {
+			return {};
+		}
+
 		const filePath = getThreadVotePath(threadId);
 		try {
 			const raw = await fs.readFile(filePath, "utf8");
@@ -31,15 +98,23 @@ function createFutureChatVoteManager({ baseDir }) {
 	};
 
 	const writeVoteMap = async (threadId, voteMap) => {
-		await fs.mkdir(votesRootDir, { recursive: true });
+		const normalizedThreadId = normalizeThreadId(threadId);
+		if (!normalizedThreadId) {
+			throw new Error("threadId is required");
+		}
+
+		await fs.mkdir(buildFutureChatThreadPaths(baseDir, normalizedThreadId).threadDir, {
+			recursive: true,
+		});
 		await fs.writeFile(
-			getThreadVotePath(threadId),
+			getThreadVotePath(normalizedThreadId),
 			`${JSON.stringify(voteMap, null, 2)}\n`,
 			"utf8",
 		);
 	};
 
 	const listVotes = async (threadId) => {
+		await ensureInitialized();
 		const voteMap = await readVoteMap(threadId);
 		return Object.entries(voteMap).flatMap(([messageId, direction]) => {
 			if (direction !== "up" && direction !== "down") {
@@ -56,7 +131,13 @@ function createFutureChatVoteManager({ baseDir }) {
 	};
 
 	const setVote = async ({ threadId, messageId, value }) => {
-		const voteMap = await readVoteMap(threadId);
+		await ensureInitialized();
+		const normalizedThreadId = normalizeThreadId(threadId);
+		if (!normalizedThreadId) {
+			throw new Error("threadId is required");
+		}
+
+		const voteMap = await readVoteMap(normalizedThreadId);
 
 		if (value !== "up" && value !== "down") {
 			delete voteMap[messageId];
@@ -66,13 +147,13 @@ function createFutureChatVoteManager({ baseDir }) {
 
 		const hasVotes = Object.keys(voteMap).length > 0;
 		if (!hasVotes) {
-			await fs.rm(getThreadVotePath(threadId), { force: true });
-			return { threadId, messageId, value: null, isUpvoted: null };
+			await fs.rm(getThreadVotePath(normalizedThreadId), { force: true });
+			return { threadId: normalizedThreadId, messageId, value: null, isUpvoted: null };
 		}
 
-		await writeVoteMap(threadId, voteMap);
+		await writeVoteMap(normalizedThreadId, voteMap);
 		return {
-			threadId,
+			threadId: normalizedThreadId,
 			messageId,
 			value: value === "up" || value === "down" ? value : null,
 			isUpvoted: value === "up" ? true : value === "down" ? false : null,
@@ -80,11 +161,33 @@ function createFutureChatVoteManager({ baseDir }) {
 	};
 
 	const deleteVotesForThread = async (threadId) => {
-		await fs.rm(getThreadVotePath(threadId), { force: true });
+		await ensureInitialized();
+		const normalizedThreadId = normalizeThreadId(threadId);
+		if (!normalizedThreadId) {
+			return;
+		}
+
+		await fs.rm(getThreadVotePath(normalizedThreadId), { force: true });
 	};
 
 	const deleteAllVotes = async () => {
-		await fs.rm(votesRootDir, { recursive: true, force: true });
+		await ensureInitialized();
+		let threadEntries;
+		try {
+			threadEntries = await fs.readdir(threadsRootDir, { withFileTypes: true });
+		} catch (error) {
+			if (error?.code !== "ENOENT") {
+				throw error;
+			}
+			threadEntries = [];
+		}
+
+		await Promise.all(
+			threadEntries
+				.filter((entry) => entry.isDirectory())
+				.map((entry) => fs.rm(getThreadVotePath(entry.name), { force: true })),
+		);
+		await fs.rm(legacyVotesRootDir, { recursive: true, force: true });
 	};
 
 	return {

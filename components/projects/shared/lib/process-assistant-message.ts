@@ -20,7 +20,6 @@ import {
 	removeLeadingSingleCharacterFragment,
 	removeTrailingSingleCharacterLine,
 	sanitizeMarkdownArtifactMarkers,
-	suppressToolJsonTrace,
 } from "../lib/message-text-utils";
 
 export interface MessageProcessingResult {
@@ -86,13 +85,7 @@ export function processAssistantMessage(
 
 	const toolParts = getMessageToolParts(message);
 	const thinkingToolCalls = getThinkingToolCallSummaries(message);
-	const hasToolExecutionEvidence =
-		Boolean(thinkingStatusPart) ||
-		toolParts.length > 0 ||
-		thinkingToolCalls.length > 0;
-	const messageTextBeforeMarkdownSanitization = hasToolExecutionEvidence
-		? suppressToolJsonTrace(baseMessageText).text
-		: baseMessageText;
+	const messageTextBeforeMarkdownSanitization = baseMessageText;
 	const messageText = sanitizeMarkdownArtifactMarkers(
 		messageTextBeforeMarkdownSanitization
 	);

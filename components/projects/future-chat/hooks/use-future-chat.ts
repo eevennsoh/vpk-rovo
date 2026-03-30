@@ -146,6 +146,10 @@ import {
 	getLatestPlanWidgetPayload,
 	type ParsedPlanWidgetPayload,
 } from "@/components/projects/shared/lib/plan-widget";
+import {
+	createPlanApprovalSubmission,
+	getPlanApprovalKeyFromSubmission,
+} from "@/components/projects/shared/lib/plan-approval";
 import { markLastFutureChatAssistantMessageInterrupted } from "@/lib/future-chat-interruptions";
 import {
 	getLatestDataPart,
@@ -159,6 +163,12 @@ import {
 } from "@/lib/rovo-ui-messages";
 import { API_ENDPOINTS } from "@/lib/api-config";
 import { createId, sortByUpdatedAtDesc } from "@/lib/utils";
+import {
+	buildFutureChatPlanExecutionDismissKey,
+	clearFutureChatPlanExecutionDismissalsForThread,
+	resolveFutureChatPlanExecutionTracker,
+	type FutureChatPlanExecutionTrackerViewModel,
+} from "@/components/projects/future-chat/lib/future-chat-plan-execution-tracker";
 
 function deriveThreadTitle(promptText: string): string {
 	const firstLine = promptText
@@ -551,6 +561,7 @@ export interface FutureChatHookResult {
 	backgroundDelegationLabel: string | null;
 	composerStatus: ChatStatus;
 	hasBackgroundDelegation: boolean;
+	planExecutionTracker: FutureChatPlanExecutionTrackerViewModel | null;
 	status: ChatStatus;
 	stop: () => Promise<void>;
 	submitToolApproval: (
@@ -566,6 +577,7 @@ export interface FutureChatHookResult {
 	togglePlanMode: () => Promise<void>;
 	resetPlanMode: () => void;
 	toggleVoiceMode: () => void;
+	dismissPlanExecutionTracker: () => void;
 	pendingArtifactResult: FutureChatPendingArtifactResult | null;
 	queuedPrompts: ReadonlyArray<FutureChatQueuedAction>;
 	shouldSuppressLatestAssistantSuggestions: boolean;
@@ -672,6 +684,8 @@ export function useFutureChat({
 	const toggleVoiceMode = useCallback(() => setIsVoiceMode((prev) => !prev), []);
 	const setVoiceMode = useCallback((next: boolean) => setIsVoiceMode(next), []);
 	const [isPlanMode, setIsPlanMode] = useState(false);
+	const [dismissedPlanExecutionTrackerKeys, setDismissedPlanExecutionTrackerKeys] =
+		useState<Set<string>>(() => new Set());
 	const [planningSession, setPlanningSession] = useState<FutureChatPlanningSession | null>(null);
 	const [attachedRunStatus, setAttachedRunStatus] = useState<FutureChatRunStatus | null>(null);
 	const attachedRunStatusRef = useRef<FutureChatRunStatus | null>(null);
@@ -1547,6 +1561,46 @@ export function useFutureChat({
 
 		return getLatestFutureChatThinkingStatusLabel([backgroundDelegationMessage]);
 	}, [backgroundDelegationMessageId, messages]);
+	const resolvedPlanExecutionTracker = useMemo(() => {
+		return resolveFutureChatPlanExecutionTracker({
+			activeRun: currentThread?.activeRun ?? null,
+			messages,
+			threadId: activeThreadId,
+			threadUpdatedAt: currentThread?.updatedAt ?? null,
+		});
+	}, [activeThreadId, currentThread?.activeRun, currentThread?.updatedAt, messages]);
+	const planExecutionTracker = useMemo(() => {
+		if (!activeThreadId || !resolvedPlanExecutionTracker) {
+			return null;
+		}
+
+		const dismissKey = buildFutureChatPlanExecutionDismissKey(
+			activeThreadId,
+			resolvedPlanExecutionTracker.planKey,
+		);
+		return dismissedPlanExecutionTrackerKeys.has(dismissKey)
+			? null
+			: resolvedPlanExecutionTracker;
+	}, [
+		activeThreadId,
+		dismissedPlanExecutionTrackerKeys,
+		resolvedPlanExecutionTracker,
+	]);
+	const dismissPlanExecutionTracker = useCallback(() => {
+		if (!activeThreadId || !resolvedPlanExecutionTracker) {
+			return;
+		}
+
+		const dismissKey = buildFutureChatPlanExecutionDismissKey(
+			activeThreadId,
+			resolvedPlanExecutionTracker.planKey,
+		);
+		setDismissedPlanExecutionTrackerKeys((previousKeys) => {
+			const nextKeys = new Set(previousKeys);
+			nextKeys.add(dismissKey);
+			return nextKeys;
+		});
+	}, [activeThreadId, resolvedPlanExecutionTracker]);
 	const activeRunStatus = currentThread?.activeRun?.status ?? null;
 	const isAttachedActiveRun =
 		activeThreadId !== null && runSubscriptionThreadIdRef.current === activeThreadId;
@@ -2614,11 +2668,13 @@ const resetToBlankChatState = useCallback((nextDraftId: string) => {
 	const sendPlanReviewResult = useCallback(
 		async ({
 			isPlanMode,
+			messageMetadata,
 			planWidget,
 			result,
 			userMessageText,
 		}: {
 			isPlanMode: boolean;
+			messageMetadata?: RovoUIMessage["metadata"];
 			planWidget: ParsedPlanWidgetPayload;
 			result: string;
 			userMessageText: string;
@@ -2638,10 +2694,30 @@ const resetToBlankChatState = useCallback((nextDraftId: string) => {
 			});
 
 			const threadId = await ensureThread(userMessageText || "Plan review");
+			if (!isPlanMode) {
+				const response = await fetch(API_ENDPOINTS.AGENT_MODE, {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify(
+						buildFutureChatAgentModeRequest({
+							mode: "default",
+						}),
+					),
+				});
+				if (!response.ok) {
+					throw new Error(
+						`Failed to restore agent mode before execution (status ${response.status})`,
+					);
+				}
+			}
 			const { message, messageId } = appendLocalUserMessage({
 				files: [],
+				metadata: messageMetadata,
 				text: userMessageText,
 			});
+			setDismissedPlanExecutionTrackerKeys((previousKeys) =>
+				clearFutureChatPlanExecutionDismissalsForThread(previousKeys, threadId),
+			);
 			resetPendingArtifactAssociation();
 			pendingPlanModeOverrideRef.current = null;
 			planModeSyncRequestIdRef.current += 1;
@@ -2889,6 +2965,9 @@ const resetToBlankChatState = useCallback((nextDraftId: string) => {
 					activeDocument, artifactDraftContent, activeDocumentContent, streamingArtifact,
 				);
 				const threadId = await ensureThread(trimmedText || files[0]?.filename || "New chat");
+				setDismissedPlanExecutionTrackerKeys((previousKeys) =>
+					clearFutureChatPlanExecutionDismissalsForThread(previousKeys, threadId),
+				);
 				const { message, messageId } = appendLocalUserMessage({
 					files,
 					metadata: messageMetadata,
@@ -3259,8 +3338,19 @@ const resetToBlankChatState = useCallback((nextDraftId: string) => {
 
 	const acceptPlanReview = useCallback(
 		async (planWidget: ParsedPlanWidgetPayload) => {
+			const approvalSubmission = createPlanApprovalSubmission(
+				{ decision: "auto-accept" },
+				planWidget,
+			);
+			const planApprovalPlanKey =
+				getPlanApprovalKeyFromSubmission(approvalSubmission) ?? undefined;
 			await sendPlanReviewResult({
 				isPlanMode: false,
+				messageMetadata: {
+					source: "plan-approval-submit",
+					planApprovalDecision: "auto-accept",
+					planApprovalPlanKey,
+				},
 				planWidget,
 				result: "Accept.",
 				userMessageText: "Accepted the plan.",
@@ -4672,6 +4762,7 @@ const resetToBlankChatState = useCallback((nextDraftId: string) => {
 		runtimeThreadId,
 		saveArtifactDraft,
 		selectedVersionId,
+		planExecutionTracker,
 		setActiveDocumentId,
 		setArtifactDraftContent,
 		setArtifactMode,
@@ -4690,6 +4781,7 @@ const resetToBlankChatState = useCallback((nextDraftId: string) => {
 		submitClarification,
 		submitClarificationDismiss,
 		acceptPlanReview,
+		dismissPlanExecutionTracker,
 		submitPrompt,
 		suggestedPrompt,
 		togglePlanMode,

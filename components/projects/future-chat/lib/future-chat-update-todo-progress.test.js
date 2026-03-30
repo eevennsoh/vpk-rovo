@@ -27,6 +27,7 @@ test("parseFutureChatTodoProgressFromText parses update_todo blocks", () => {
 				activeForm: undefined,
 				label: "Audit current flow",
 				status: "completed",
+				blockedBy: [],
 			},
 			{
 				id: "2",
@@ -34,6 +35,7 @@ test("parseFutureChatTodoProgressFromText parses update_todo blocks", () => {
 				activeForm: "Refactoring orchestration",
 				label: "Refactoring orchestration",
 				status: "in_progress",
+				blockedBy: [],
 			},
 			{
 				id: "3",
@@ -41,6 +43,7 @@ test("parseFutureChatTodoProgressFromText parses update_todo blocks", () => {
 				activeForm: undefined,
 				label: "Run validation",
 				status: "pending",
+				blockedBy: [],
 			},
 		],
 	});
@@ -82,6 +85,60 @@ test("getLatestFutureChatTodoProgress prefers the latest update_todo result", ()
 				activeForm: "Doing latest task",
 				label: "Doing latest task",
 				status: "in_progress",
+				blockedBy: [],
+			},
+		],
+	});
+});
+
+test("parseFutureChatTodoProgressFromText parses raw todo arrays and dependencies", () => {
+	const result = parseFutureChatTodoProgressFromText({
+		todos: [
+			{
+				id: "task-1",
+				content: "Audit current flow",
+				status: "completed",
+			},
+			{
+				id: "task-2",
+				content: "Refactor orchestration",
+				active_form: "Refactoring orchestration",
+				status: "in_progress",
+				blockedBy: ["task-1"],
+			},
+			{
+				id: "task-3",
+				content: "[needs task-2] Run validation",
+				status: "pending",
+			},
+		],
+	});
+
+	assert.deepEqual(result, {
+		items: [
+			{
+				id: "task-1",
+				content: "Audit current flow",
+				activeForm: undefined,
+				label: "Audit current flow",
+				status: "completed",
+				blockedBy: [],
+			},
+			{
+				id: "task-2",
+				content: "Refactor orchestration",
+				activeForm: "Refactoring orchestration",
+				label: "Refactoring orchestration",
+				status: "in_progress",
+				blockedBy: ["task-1"],
+			},
+			{
+				id: "task-3",
+				content: "Run validation",
+				activeForm: undefined,
+				label: "Run validation",
+				status: "pending",
+				blockedBy: ["task-2"],
 			},
 		],
 	});
