@@ -230,6 +230,7 @@ export interface RovoMessageMetadata {
 	clarificationSummary?: Array<{
 		question: string;
 		answer: string;
+		status?: "skipped";
 	}>;
 	/** Correlates clarification submits/dismissals with a specific deferred question card */
 	clarificationToolCallId?: string;

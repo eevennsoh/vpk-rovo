@@ -53,7 +53,7 @@ import {
 	useState,
 } from "react";
 import type { LinkSafetyConfig } from "streamdown";
-import { Streamdown } from "streamdown";
+import { Streamdown, StreamdownContext } from "streamdown";
 import type { BundledLanguage } from "shiki";
 
 const linkSafetyConfig: LinkSafetyConfig = {
@@ -579,6 +579,7 @@ const CODE_LANGUAGE_PATTERN = /language-([^\s]+)/u;
 const CODE_TITLE_PATTERN =
 	/(?:^|\s)(?:title|filename)=["']([^"']+)["']/u;
 const CODE_NO_LINE_NUMBERS_PATTERN = /(?:^|\s)noLineNumbers(?:\s|$)/u;
+const INLINE_CODE_BACKTICK_PATTERN = /`+/gu;
 
 const getCodeFenceLanguage = (className?: string) => {
 	const match = className?.match(CODE_LANGUAGE_PATTERN);
@@ -595,17 +596,59 @@ const getCodeFenceMeta = (node?: MarkdownCodeBlockProps["node"]) => {
 	return typeof metastring === "string" ? metastring : undefined;
 };
 
+const getInlineCodeText = (children: ReactNode) =>
+	Children.toArray(children)
+		.map((child) => {
+			if (typeof child === "string" || typeof child === "number") {
+				return String(child);
+			}
+
+			return "";
+		})
+		.join("");
+
+const getInlineCodeFence = (content: string) => {
+	let longestBacktickRun = 0;
+
+	for (const match of content.matchAll(INLINE_CODE_BACKTICK_PATTERN)) {
+		longestBacktickRun = Math.max(longestBacktickRun, match[0].length);
+	}
+
+	return "`".repeat(longestBacktickRun + 1);
+};
+
 const toBundledLanguage = (language: string): BundledLanguage =>
 	safeCodePlugin.supportsLanguage(language as BundledLanguage)
 		? (language as BundledLanguage)
 		: "markdown";
 
 function MarkdownInlineCode({
+	children,
 	className,
 	node,
 	...props
 }: Readonly<MarkdownInlineCodeProps>) {
 	void node;
+	const { isAnimating, mode } = use(StreamdownContext);
+	const isStreamingInlineCode = mode === "streaming" && isAnimating;
+
+	if (isStreamingInlineCode) {
+		const inlineCodeText = getInlineCodeText(children);
+		const inlineCodeFence = getInlineCodeFence(inlineCodeText);
+
+		return (
+			<code
+				className={cn(
+					"rounded-none bg-transparent px-0 py-0 font-mono text-inherit",
+					className,
+				)}
+				data-inline-code-state="streaming"
+				{...props}
+			>
+				{`${inlineCodeFence}${inlineCodeText}${inlineCodeFence}`}
+			</code>
+		);
+	}
 
 	return (
 		<code
@@ -613,8 +656,11 @@ function MarkdownInlineCode({
 				"rounded bg-muted px-1.5 py-0.5 font-mono text-sm",
 				className,
 			)}
+			data-inline-code-state="complete"
 			{...props}
-		/>
+		>
+			{children}
+		</code>
 	);
 }
 

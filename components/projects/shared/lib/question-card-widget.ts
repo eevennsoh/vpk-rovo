@@ -53,6 +53,7 @@ export interface ParsedQuestionCardPayload {
 export interface ClarificationSummaryRow {
 	question: string;
 	answer: string;
+	status?: "skipped";
 }
 
 export interface DeferredToolResponsePayload {
@@ -67,6 +68,9 @@ const DEFAULT_MAX_ROUNDS = Number.MAX_SAFE_INTEGER;
 const DEFAULT_TITLE = "Help me clarify this";
 const DEFAULT_PLACEHOLDER = "Tell Rovo what to do...";
 const MAX_GENERATED_OPTIONS = 8;
+const QUESTION_CARD_SKIPPED_VALUE = "Skipped";
+const CLARIFICATION_DISMISS_SUMMARY_QUESTION = "Clarification status";
+const CLARIFICATION_DISMISS_SUMMARY_ANSWER = "User dismissed";
 
 /**
  * Matches options that just say the user will type/enter/provide their own answer,
@@ -74,7 +78,7 @@ const MAX_GENERATED_OPTIONS = 8;
  * These are redundant when the custom input field is shown.
  */
 const SELF_TYPE_OPTION_PATTERN =
-	/^i('ll| will) (type|enter|specify|provide|write|input)\b|^(type|enter|specify|provide|write) (my own|it myself|manually)/i;
+	/^i('ll| will) (type|enter|specify|provide|write|input|paste|share|send)\b|^(type|enter|specify|provide|write|paste|share|send) (my own|it myself|manually)|(?:next|following) (message|reply|response|turn)/i;
 const QUESTION_KINDS: ReadonlySet<QuestionKind> = new Set([
 	"single-select",
 	"multi-select",
@@ -275,7 +279,7 @@ export function parseQuestionCardPayload(
 			required: question.required !== false,
 			kind: normalizeQuestionKind(question.kind),
 			options,
-			placeholder: DEFAULT_PLACEHOLDER,
+			placeholder: getNonEmptyString(question.placeholder) ?? DEFAULT_PLACEHOLDER,
 		});
 	}
 	if (questions.length === 0) {
@@ -363,9 +367,18 @@ export function buildClarificationSummaryRows(
 				return null;
 			}
 
+			const formattedAnswer = formatAnswerForSummary(question, answerValue);
+			if (formattedAnswer === QUESTION_CARD_SKIPPED_VALUE) {
+				return {
+					question: question.label,
+					answer: formattedAnswer,
+					status: "skipped" as const,
+				};
+			}
+
 			return {
 				question: question.label,
-				answer: formatAnswerForSummary(question, answerValue),
+				answer: formattedAnswer,
 			};
 		})
 		.filter((row): row is ClarificationSummaryRow => row !== null);
@@ -383,6 +396,15 @@ export function buildClarificationSummaryDisplayLabel(
 	const answerCount = summaryRows.length;
 	const answerLabel = answerCount === 1 ? "answer" : "answers";
 	return `Requirements captured (${answerCount} ${answerLabel}).`;
+}
+
+function buildClarificationDismissSummaryRows(): ClarificationSummaryRow[] {
+	return [
+		{
+			question: CLARIFICATION_DISMISS_SUMMARY_QUESTION,
+			answer: CLARIFICATION_DISMISS_SUMMARY_ANSWER,
+		},
+	];
 }
 
 export function getQuestionCardResolutionKey(
@@ -462,10 +484,16 @@ export function buildClarificationMessageMetadata(
 		metadata.visibility = options.visibility;
 	}
 
+	if (options.status === "dismissed") {
+		metadata.clarificationSummary = buildClarificationDismissSummaryRows();
+		metadata.displayLabel = "User dismissed clarification questions.";
+		return metadata;
+	}
+
 	if (options.answers) {
 		metadata.clarificationSummary = buildClarificationSummaryRows(
 			questionCard,
-			options.answers
+			options.answers,
 		);
 		metadata.displayLabel = buildClarificationSummaryDisplayLabel(
 			questionCard,
@@ -628,17 +656,18 @@ export function buildDeferredToolResponse(
 }
 
 /**
- * Builds a system-level message to notify RovoDev that the user skipped/dismissed
- * a clarification question card. RovoDev can then decide how to respond (e.g.,
- * "I need more context" or proceed with caveats).
+ * Builds a system-level message to notify RovoDev that the user dismissed
+ * a clarification question card and that execution should pause until the
+ * user provides a new instruction.
  */
 export function buildClarificationDismissPrompt(
 	questionCard: ParsedQuestionCardPayload
 ): string {
 	return [
-		`The user skipped the clarification questions for "${questionCard.title}".`,
-		"They chose not to answer. Please proceed with whatever context you have,",
-		"or let them know what information you still need.",
+		`The user dismissed the clarification questions for "${questionCard.title}".`,
+		"This is an explicit response: they dismissed the whole question set.",
+		"Do not proceed.",
+		"Wait for the user's next instructions.",
 	].join(" ");
 }
 

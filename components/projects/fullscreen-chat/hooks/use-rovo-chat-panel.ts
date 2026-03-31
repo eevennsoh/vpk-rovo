@@ -146,7 +146,6 @@ export function useRovoChatPanel({ product }: Readonly<UseRovoChatPanelOptions>)
 				...buildSendOptions(),
 				messageMetadata: buildClarificationMessageMetadata(questionCard, {
 					status: "dismissed",
-					visibility: "hidden",
 				}),
 			});
 		},

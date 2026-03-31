@@ -384,7 +384,7 @@ export const PlanTaskItem = ({ index, label, blockedByLabels, blockedByText, age
 		<div className="flex min-w-0 flex-1 flex-col gap-0.5">
 			<span className="text-sm leading-5 font-medium text-text">{label}</span>
 			{blockedByText ? <span className="text-xs leading-4 text-text-subtlest">{blockedByText}</span> : null}
-			{!blockedByText && blockedByLabels && blockedByLabels.length > 0 ? <span className="text-xs leading-4 text-text-subtlest">Blocked by: {blockedByLabels.join(", ")}</span> : null}
+			{!blockedByText && blockedByLabels && blockedByLabels.length > 0 ? <span className="text-xs leading-4 text-text-subtlest">Blocked by: Step {blockedByLabels.join(", ")}</span> : null}
 		</div>
 		{agent ? (
 			<Tag
@@ -430,7 +430,7 @@ function resolvePlanBlockedByLabels(task: PlanTask, allTasks: PlanTask[]): strin
 	return task.blockedBy
 		.map((blockedById) => {
 			const taskIndex = allTasks.findIndex((candidate) => candidate.id === blockedById);
-			return taskIndex >= 0 ? `Task ${taskIndex + 1}` : null;
+			return taskIndex >= 0 ? `${taskIndex + 1}` : null;
 		})
 		.filter((label): label is string => label !== null);
 }
@@ -482,7 +482,7 @@ export const PlanTabContent = ({
 					Summary
 				</TabsTrigger>
 				<TabsTrigger value="tasks" className="flex-none">
-					Tasks ({visibleTasks.length})
+					Steps ({visibleTasks.length})
 				</TabsTrigger>
 			</TabsList>
 

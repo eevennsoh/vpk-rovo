@@ -334,6 +334,14 @@ test("isSelfReferentialFreeTextOption returns true for meta-options pointing to 
 		"I'll enter it myself",
 		"Type this out",
 		"I'll specify it myself",
+		// paste/share/send + pronoun
+		"I'll paste it in",
+		"I'll share it with you",
+		"I'll send it next",
+		"Let me paste it here",
+		"Paste it in the next message",
+		"Share it with you",
+		"Send it over",
 	];
 
 	for (const label of selfReferential) {
@@ -361,6 +369,11 @@ test("isSelfReferentialFreeTextOption returns false for concrete options", () =>
 		"#general",
 		"Marketing site",
 		"I'll describe the requirements",
+		// paste/share/send + concrete noun (no deferral)
+		"I'll share the Figma URL",
+		"I'll paste the Jira link",
+		"I'll send the project details",
+		"I'll paste the error log",
 	];
 
 	for (const label of concrete) {
@@ -377,6 +390,68 @@ test("isSelfReferentialFreeTextOption handles edge cases", () => {
 	assert.equal(isSelfReferentialFreeTextOption(undefined), false);
 	assert.equal(isSelfReferentialFreeTextOption(""), false);
 	assert.equal(isSelfReferentialFreeTextOption(123), false);
+});
+
+test("isSelfReferentialFreeTextOption catches deferral patterns", () => {
+	const deferrals = [
+		"I'll paste it in the next message",
+		"I'll share the URL in the next reply",
+		"I'll send it in my next response",
+		"I'll provide the details in the following message",
+		"Paste it in the next message",
+	];
+
+	for (const label of deferrals) {
+		assert.equal(
+			isSelfReferentialFreeTextOption(label),
+			true,
+			`Expected true for: "${label}"`
+		);
+	}
+});
+
+// ── extractSelfReferentialPlaceholder tests ──
+
+test("extractSelfReferentialPlaceholder returns description from filtered option", () => {
+	const { extractSelfReferentialPlaceholder } = require("./question-card-payload");
+	const result = extractSelfReferentialPlaceholder([
+		{ label: "I'll paste it in the next message", description: "Share the Figma URL so I can extract specs" },
+	]);
+	assert.equal(result, "Share the Figma URL so I can extract specs");
+});
+
+test("extractSelfReferentialPlaceholder returns label when no description", () => {
+	const { extractSelfReferentialPlaceholder } = require("./question-card-payload");
+	const result = extractSelfReferentialPlaceholder([
+		{ label: "I'll paste it in the next message" },
+	]);
+	assert.equal(result, "I'll paste it in the next message");
+});
+
+test("extractSelfReferentialPlaceholder returns null for all concrete options", () => {
+	const { extractSelfReferentialPlaceholder } = require("./question-card-payload");
+	const result = extractSelfReferentialPlaceholder([
+		{ label: "React", description: "Use React framework" },
+		{ label: "Vue", description: "Use Vue framework" },
+	]);
+	assert.equal(result, null);
+});
+
+test("extractSelfReferentialPlaceholder picks first self-referential from mixed options", () => {
+	const { extractSelfReferentialPlaceholder } = require("./question-card-payload");
+	const result = extractSelfReferentialPlaceholder([
+		{ label: "Use design system" },
+		{ label: "Start from scratch" },
+		{ label: "I'll paste it next", description: "Paste a Figma URL" },
+	]);
+	assert.equal(result, "Paste a Figma URL");
+});
+
+test("extractSelfReferentialPlaceholder returns null for empty/invalid input", () => {
+	const { extractSelfReferentialPlaceholder } = require("./question-card-payload");
+	assert.equal(extractSelfReferentialPlaceholder(null), null);
+	assert.equal(extractSelfReferentialPlaceholder([]), null);
+	assert.equal(extractSelfReferentialPlaceholder([null, undefined]), null);
 });
 
 test("normalizeRequestUserInputOptions strips self-referential options", () => {

@@ -6,7 +6,11 @@ import {
 } from "../lib/option-slots";
 import { shouldAutoFocusCustomInputForQuestion } from "../lib/focus-policy";
 import { getQuestionCardPrimaryAction } from "../lib/footer-actions";
-import { getCustomInputValue, isQuestionAnswered } from "../lib/question-helpers";
+import {
+	getCustomInputValue,
+	isQuestionAnswered,
+} from "../lib/question-helpers";
+import { QUESTION_CARD_SKIPPED_VALUE } from "../lib/skipped-answer";
 
 interface UseQuestionCardOptions {
 	questions: ReadonlyArray<QuestionCardQuestion>;
@@ -16,8 +20,6 @@ interface UseQuestionCardOptions {
 	defaultAnswers?: QuestionCardAnswers;
 	onSubmit: (answers: QuestionCardAnswers) => void;
 	onDismiss?: () => void;
-	/** Deferred clarification tool-call ID. Currently unused by the hook but kept for callers. */
-	toolCallId?: string;
 }
 
 export function useQuestionCard({
@@ -28,12 +30,12 @@ export function useQuestionCard({
 	defaultAnswers,
 	onSubmit,
 	onDismiss,
-	toolCallId: _toolCallId,
 }: Readonly<UseQuestionCardOptions>) {
 	const cardRef = useRef<HTMLDivElement>(null);
 	const customInputRef = useRef<HTMLInputElement>(null);
 	const footerButtonRef = useRef<HTMLButtonElement>(null);
 	const previousQuestionIndexRef = useRef<number | null>(null);
+	const [navigationDirection, setNavigationDirection] = useState<"forward" | "backward">("forward");
 	const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
 	const [answers, setAnswers] = useState<QuestionCardAnswers>(defaultAnswers ?? {});
 	const [focusedIndex, setFocusedIndex] = useState(0);
@@ -85,11 +87,13 @@ export function useQuestionCard({
 	}, []);
 
 	const goToNextQuestion = useCallback(() => {
+		setNavigationDirection("forward");
 		resetFocusForNewQuestion();
 		setCurrentQuestionIndex((previous) => Math.min(totalQuestions - 1, previous + 1));
 	}, [totalQuestions, resetFocusForNewQuestion]);
 
 	const goToPreviousQuestion = useCallback(() => {
+		setNavigationDirection("backward");
 		resetFocusForNewQuestion();
 		setCurrentQuestionIndex((previous) => Math.max(0, previous - 1));
 	}, [resetFocusForNewQuestion]);
@@ -97,18 +101,27 @@ export function useQuestionCard({
 	const handleSkip = useCallback(() => {
 		if (isSubmitting) return;
 
+		const nextAnswers = {
+			...answers,
+			[currentQuestion.id]: QUESTION_CARD_SKIPPED_VALUE,
+		};
+
 		if (canGoToNextQuestion) {
+			setAnswers(nextAnswers);
 			goToNextQuestion();
 		} else {
-			// Last question skipped — submit if any answers were collected, otherwise dismiss.
-			const hasAnyAnswer = questions.some((question) => isQuestionAnswered(question, answers));
-			if (hasAnyAnswer) {
-				onSubmit(answers);
+			const hasAnyRealAnswer = questions.some((question) =>
+				isQuestionAnswered(question, nextAnswers) &&
+				nextAnswers[question.id] !== QUESTION_CARD_SKIPPED_VALUE
+			);
+			if (hasAnyRealAnswer) {
+				setAnswers(nextAnswers);
+				onSubmit(nextAnswers);
 			} else {
 				onDismiss?.();
 			}
 		}
-	}, [isSubmitting, canGoToNextQuestion, goToNextQuestion, questions, answers, onSubmit, onDismiss]);
+	}, [isSubmitting, currentQuestion, canGoToNextQuestion, goToNextQuestion, questions, answers, onSubmit, onDismiss]);
 
 	const handleSelectOption = useCallback(
 		(optionId: string) => {
@@ -247,12 +260,8 @@ export function useQuestionCard({
 						break;
 					}
 					if (visibleOptionCount === 0) break;
-					// If at first option and custom input exists, wrap to custom input
-					if (showCustomInput && focusedIndex === 0) {
-						setFocusedIndex(-1);
-						customInputRef.current?.focus();
-						break;
-					}
+					// Stop at first option — do not wrap around
+					if (focusedIndex === 0) break;
 					setFocusedIndex((previous) => getNextFocusedIndex(previous, visibleOptionCount, "up"));
 					break;
 				}
@@ -275,6 +284,11 @@ export function useQuestionCard({
 						const inputValue = customInputRef.current?.value ?? "";
 						handleCustomInputSubmit(inputValue);
 						return;
+					}
+
+					// Allow native button activation when footer button (Skip/Next/Submit) is focused
+					if (document.activeElement === footerButtonRef.current) {
+						break;
 					}
 
 					event.preventDefault();
@@ -353,6 +367,7 @@ export function useQuestionCard({
 		cardRef,
 		customInputRef,
 		footerButtonRef,
+		navigationDirection,
 		answers,
 		focusedIndex,
 		setFocusedIndex,

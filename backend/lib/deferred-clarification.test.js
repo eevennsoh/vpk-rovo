@@ -6,6 +6,7 @@ const {
 	isExplicitDeferredToolContinuation,
 	shouldRejectExpiredDeferredClarification,
 	buildClarificationResumeDecision,
+	buildClarificationResumeDenyMessage,
 	synthesiseDeferredToolResponseFromClarification,
 } = require("./deferred-clarification");
 
@@ -230,4 +231,37 @@ test("buildClarificationResumeDecision falls back to deny_message when deferred 
 		tool_call_id: "tc-123",
 		deny_message: "Use the answered clarification instead.",
 	});
+});
+
+test("buildClarificationResumeDenyMessage instructs the agent to wait after a dismissal", () => {
+	const result = buildClarificationResumeDenyMessage(
+		{
+			sessionId: "request-user-input-tc-dismissed",
+			status: "dismissed",
+			answers: {},
+		},
+		() => {
+			throw new Error("dismissals should not adapt answers");
+		},
+	);
+
+	assert.match(result, /dismissed the clarification questions/i);
+	assert.match(result, /do not proceed/i);
+	assert.match(result, /wait for the user's next instructions/i);
+});
+
+test("buildClarificationResumeDenyMessage formats adapted answers for answered submissions", () => {
+	const result = buildClarificationResumeDenyMessage(
+		{
+			sessionId: "request-user-input-tc-answers",
+			status: "answered",
+			answers: { "q-1": "dashboard" },
+		},
+		() => ({
+			"What kind of app?": ["Dashboard"],
+		}),
+	);
+
+	assert.match(result, /answered the clarification questions/i);
+	assert.match(result, /What kind of app\?: Dashboard/u);
 });

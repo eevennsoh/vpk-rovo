@@ -20,8 +20,11 @@ test("always counts the custom input as an additional focusable slot", () => {
 	assert.equal(getTotalOptionSlots(getVisibleOptionCount(3, 3)), 4);
 });
 
-test("wraps keyboard focus across dynamic option counts", () => {
+test("clamps keyboard focus at boundaries instead of wrapping", () => {
 	const slotsForTwoGeneratedOptions = getTotalOptionSlots(getVisibleOptionCount(2, 3));
-	assert.equal(getNextFocusedIndex(0, slotsForTwoGeneratedOptions, "up"), 2);
-	assert.equal(getNextFocusedIndex(2, slotsForTwoGeneratedOptions, "down"), 0);
+	assert.equal(getNextFocusedIndex(0, slotsForTwoGeneratedOptions, "up"), 0);
+	assert.equal(getNextFocusedIndex(2, slotsForTwoGeneratedOptions, "down"), 2);
+	// Normal movement within bounds still works
+	assert.equal(getNextFocusedIndex(0, slotsForTwoGeneratedOptions, "down"), 1);
+	assert.equal(getNextFocusedIndex(2, slotsForTwoGeneratedOptions, "up"), 1);
 });

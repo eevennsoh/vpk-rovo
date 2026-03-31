@@ -122,10 +122,58 @@ function buildClarificationResumeDecision({
 	};
 }
 
+function buildClarificationResumeDenyMessage(
+	clarificationSubmission,
+	adaptAnswersFn,
+) {
+	if (!clarificationSubmission) {
+		return null;
+	}
+
+	if (clarificationSubmission.status === "dismissed") {
+		return [
+			"The user dismissed the clarification questions.",
+			"This is an explicit response: they dismissed the whole question set.",
+			"Do not proceed.",
+			"Wait for the user's next instructions.",
+		].join("\n");
+	}
+
+	if (typeof adaptAnswersFn !== "function") {
+		throw new TypeError(
+			"buildClarificationResumeDenyMessage requires an adaptAnswersFn function.",
+		);
+	}
+
+	const adaptedAnswers = adaptAnswersFn(
+		clarificationSubmission.sessionId,
+		clarificationSubmission.answers,
+	);
+	const answerEntries = Object.entries(adaptedAnswers);
+	if (answerEntries.length === 0) {
+		return [
+			"The user skipped the clarification step.",
+			"Continue with the best context you already have.",
+		].join("\n");
+	}
+
+	const answerLines = answerEntries.map(([question, answers]) => {
+		const values = Array.isArray(answers) ? answers.filter(Boolean) : [];
+		return `- ${question}: ${values.join(", ")}`;
+	});
+
+	return [
+		"The user answered the clarification questions.",
+		"Use these answers instead of calling the clarification tool again:",
+		...answerLines,
+	].join("\n");
+}
+
 module.exports = {
 	buildExpiredDeferredClarificationResponse,
 	isExplicitDeferredToolContinuation,
 	shouldRejectExpiredDeferredClarification,
 	synthesiseDeferredToolResponseFromClarification,
 	buildClarificationResumeDecision,
+	buildClarificationResumeDenyMessage,
 };

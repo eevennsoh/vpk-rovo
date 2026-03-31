@@ -29,8 +29,8 @@ export function getNextFocusedIndex(currentIndex: number, totalOptionSlots: numb
 	const normalizedCurrentIndex = Math.min(maxIndex, normalizeNonNegativeInteger(currentIndex));
 
 	if (direction === "up") {
-		return normalizedCurrentIndex <= 0 ? maxIndex : normalizedCurrentIndex - 1;
+		return normalizedCurrentIndex <= 0 ? 0 : normalizedCurrentIndex - 1;
 	}
 
-	return normalizedCurrentIndex >= maxIndex ? 0 : normalizedCurrentIndex + 1;
+	return normalizedCurrentIndex >= maxIndex ? maxIndex : normalizedCurrentIndex + 1;
 }

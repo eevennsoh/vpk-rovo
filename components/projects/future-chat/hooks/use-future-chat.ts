@@ -3251,6 +3251,7 @@ const resetToBlankChatState = useCallback((nextDraftId: string) => {
 					: undefined,
 				clarification: {
 					...submission,
+					status: "answered",
 					toolCallId: deferredToolCallId ?? submission.toolCallId,
 					deferredToolCallId: deferredToolCallId ?? submission.deferredToolCallId,
 				},
@@ -3300,12 +3301,11 @@ const resetToBlankChatState = useCallback((nextDraftId: string) => {
 				statusRef: useChatStatusRef,
 				lastBusyAtRef: lastUseChatBusyAtRef,
 			});
-			const threadId = await ensureThread(dismissPrompt || "Skipped clarification");
+			const threadId = await ensureThread(dismissPrompt || "Dismissed clarification");
 			const { message, messageId } = appendLocalUserMessage({
 				files: [],
 				metadata: buildClarificationMessageMetadata(questionCard, {
 					status: "dismissed",
-					visibility: "hidden",
 				}),
 				text: dismissPrompt,
 			});
@@ -3333,9 +3333,10 @@ const resetToBlankChatState = useCallback((nextDraftId: string) => {
 
 	/**
 	 * Dismiss a deferred-tool-backed clarification by resuming the paused tool
-	 * call with a "user did not respond" result instead of cancelling the
-	 * session. This mirrors {@link submitClarification} but with empty answers
-	 * and dismiss semantics so the agent can proceed on its own.
+	 * call with an explicit dismissal result instead of cancelling the session.
+	 * This mirrors {@link submitClarification} but with empty answers and
+	 * dismissal semantics so the paused tool receives a concrete "wait for the
+	 * user's next instructions" response.
 	 */
 	const submitDeferredClarificationDismiss = useCallback(
 		async (questionCard: ParsedQuestionCardPayload) => {
@@ -3358,12 +3359,11 @@ const resetToBlankChatState = useCallback((nextDraftId: string) => {
 				statusRef: useChatStatusRef,
 				lastBusyAtRef: lastUseChatBusyAtRef,
 			});
-			const threadId = await ensureThread(dismissPrompt || "Skipped clarification");
+			const threadId = await ensureThread(dismissPrompt || "Dismissed clarification");
 			const { message, messageId } = appendLocalUserMessage({
 				files: [],
 				metadata: buildClarificationMessageMetadata(questionCard, {
 					status: "dismissed",
-					visibility: "hidden",
 				}),
 				text: dismissPrompt,
 			});
@@ -3380,13 +3380,14 @@ const resetToBlankChatState = useCallback((nextDraftId: string) => {
 					: undefined,
 				clarification: {
 					...submission,
+					status: "dismissed",
 					toolCallId: deferredToolCallId ?? submission.toolCallId,
 					deferredToolCallId: deferredToolCallId ?? submission.deferredToolCallId,
 				},
 				deferredToolResponse: toolCallId
 					? {
 						tool_call_id: toolCallId,
-						result: "User did not respond to questions",
+						result: dismissPrompt,
 					}
 					: undefined,
 			};
@@ -3435,9 +3436,9 @@ const resetToBlankChatState = useCallback((nextDraftId: string) => {
 				return true;
 			}
 
-			// Resume the deferred tool call with a dismiss result instead of
-			// cancelling. This lets the agent continue rather than leaving a
-			// dangling pending deferred tool request on RovoDev Serve.
+			// Resume the deferred tool call with an explicit dismiss result so the
+			// paused ask_user_questions call resolves cleanly without implying the
+			// user wants best-effort execution to continue.
 			await submitDeferredClarificationDismiss(questionCard);
 			return true;
 		},
@@ -4088,6 +4089,10 @@ const resetToBlankChatState = useCallback((nextDraftId: string) => {
 			});
 			queueProcessorRunningRef.current = false;
 			setHasActiveDispatch(false);
+			if (activeThreadId) {
+				setLocalThreadActiveRun(activeThreadId, null);
+			}
+			setAttachedRunStatus(null);
 			} catch (error) {
 				console.warn("[FutureChat] Explicit cancel request failed:", error);
 			}
@@ -4168,7 +4173,7 @@ const resetToBlankChatState = useCallback((nextDraftId: string) => {
 							shouldSendExplicitRovoDevCancel({
 								hasUseChatTurn,
 								stopSettledInTime: stoppedInTime,
-							})
+							}) || hasAttachedRun
 						) {
 							if (hasUseChatTurn && !stoppedInTime) {
 								console.warn(
@@ -4186,6 +4191,11 @@ const resetToBlankChatState = useCallback((nextDraftId: string) => {
 						directDelegationAbortController?.abort();
 						clearDirectDelegationState();
 						delegationAbortControllerRef.current = null;
+
+						const threadIdForCleanup = activeThreadIdRef.current;
+						if (threadIdForCleanup && hasAttachedRun) {
+							setLocalThreadActiveRun(threadIdForCleanup, null);
+						}
 
 						if (!stoppedInTime) {
 							console.warn(
@@ -4244,6 +4254,7 @@ const resetToBlankChatState = useCallback((nextDraftId: string) => {
 			currentThread?.activeRun,
 			mutateRealtimeMessagesState,
 			requestExplicitCancel,
+			setLocalThreadActiveRun,
 			setRovodevMessages,
 			stopUseChat,
 			useChatStatus,

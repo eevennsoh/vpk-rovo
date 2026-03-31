@@ -8,6 +8,7 @@ const {
 	prepareRovodevRuntime,
 } = require("./lib/rovodev-runtime");
 const { startSupervisedRovodevPorts } = require("./lib/rovodev-supervisor");
+const { getRecordedPoolDecision } = require("./lib/rovodev-recorded-pool");
 
 const basePort = getRovodevBasePort();
 const portFile = path.join(process.cwd(), ".dev-rovodev-port");
@@ -250,35 +251,44 @@ const run = async () => {
 	// Check if existing pool processes are still running
 	const recordedPorts = readRecordedPorts(maxTries);
 	if (recordedPorts !== null) {
-		// Check if all recorded ports are in use (processes still running)
 		const allInUse = (
 			await Promise.all(recordedPorts.map(async (p) => !(await isPortAvailable(p))))
 		).every(Boolean);
-
-		if (allInUse) {
-			// Verify they're actually healthy, not just in use
-			const healthChecks = await Promise.all(
+		const healthChecks = allInUse
+			? await Promise.all(
 				recordedPorts.map(async (p) => {
 					const health = await checkRovodevHealth(p);
 					return { port: p, healthy: health.healthy };
 				})
+			)
+			: [];
+		const recordedPoolDecision = getRecordedPoolDecision({
+			recordedPorts,
+			requestedPoolSize: poolSize,
+			allInUse,
+			healthChecks,
+		});
+
+		if (recordedPoolDecision.action === "reuse") {
+			writePortFiles(recordedPorts);
+			console.log(
+				`RovoDev serve pool already running on ports ${recordedPorts.join(", ")}. Reusing existing processes.`
 			);
-
-			const allHealthy = healthChecks.every((h) => h.healthy);
-			if (allHealthy) {
-				writePortFiles(recordedPorts);
-				console.log(
-					`RovoDev serve pool already running on ports ${recordedPorts.join(", ")}. Reusing existing processes.`
-				);
-				return;
-			}
-
-			// Some are unhealthy, clean up and restart
-			console.log(`[rovodev] Some existing instances are unhealthy. Restarting...`);
-			cleanup();
-		} else {
-			cleanup();
+			return;
 		}
+
+		if (recordedPoolDecision.reason === "pool-size-mismatch") {
+			console.log(
+				`[rovodev] Existing pool size (${recordedPoolDecision.recordedPoolSize}) does not match requested pool size (${recordedPoolDecision.requestedPoolSize}). Restarting...`
+			);
+			await cleanupAllInstances(basePort, scanMax);
+		} else if (recordedPoolDecision.reason === "recorded-pool-unhealthy") {
+			console.log("[rovodev] Some existing instances are unhealthy. Restarting...");
+		} else if (recordedPoolDecision.reason === "recorded-ports-not-running") {
+			console.log("[rovodev] Recorded RovoDev ports are no longer running. Restarting...");
+		}
+
+		cleanup();
 	}
 
 	const ports = await findAvailablePorts(poolSize, maxTries);

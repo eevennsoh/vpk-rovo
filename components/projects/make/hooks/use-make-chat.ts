@@ -804,7 +804,6 @@ export function useMakeChat(options: {
 				planRequestId: planningSession?.requestId,
 				messageMetadata: buildClarificationMessageMetadata(questionCard, {
 					status: "dismissed",
-					visibility: "hidden",
 				}),
 			});
 		},

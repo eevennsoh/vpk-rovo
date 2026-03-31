@@ -2,6 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 
 const {
+	buildClarificationDismissPrompt,
 	buildClarificationMessageMetadata,
 	buildDeferredToolResponse,
 	buildClarificationSummaryDisplayLabel,
@@ -88,6 +89,34 @@ test("createClarificationSubmission preserves deferred tool call ids", () => {
 	assert.equal(submission.deferredToolCallId, "tool-call-123");
 });
 
+test("createClarificationSubmission treats explicit 'Skipped' answers as completed answers", () => {
+	const submission = createClarificationSubmission(
+		{
+			type: "question-card",
+			sessionId: "widget-skipped-answer",
+			round: 1,
+			maxRounds: 1,
+			title: "Answer these questions to continue",
+			requiredCount: 1,
+			toolCallId: "tool-call-skipped",
+			deferredToolCallId: "tool-call-skipped",
+			questions: [
+				{
+					id: "q-1",
+					label: "What should we do?",
+					required: true,
+					kind: "single-select",
+					options: [{ id: "approve", label: "Ship it" }],
+				},
+			],
+		},
+		{ "q-1": "Skipped" },
+	);
+
+	assert.equal(submission.completed, true);
+	assert.deepEqual(submission.answers, { "q-1": "Skipped" });
+});
+
 test("getQuestionCardResolutionKey prefers tool call id over session round", () => {
 	const key = getQuestionCardResolutionKey({
 		sessionId: "request-user-input-tool-call-123",
@@ -136,6 +165,104 @@ test("buildClarificationMessageMetadata stores stable clarification identifiers"
 			answer: "Northstar",
 		},
 	]);
+});
+
+test("buildClarificationMessageMetadata includes skipped rows when answers explicitly contain 'Skipped'", () => {
+	const metadata = buildClarificationMessageMetadata(
+		{
+			type: "question-card",
+			sessionId: "request-user-input-tool-call-789",
+			round: 1,
+			maxRounds: 1,
+			title: "Answer these questions to continue",
+			requiredCount: 1,
+			deferredToolCallId: "tool-call-789",
+			questions: [
+				{
+					id: "q-1",
+					label: "What should we name it?",
+					required: true,
+					kind: "text",
+					options: [],
+				},
+				{
+					id: "q-2",
+					label: "Any optional notes?",
+					required: false,
+					kind: "text",
+					options: [],
+				},
+			],
+		},
+		{
+			answers: { "q-1": "Northstar", "q-2": "Skipped" },
+			status: "answered",
+		},
+	);
+
+	assert.deepEqual(metadata.clarificationSummary, [
+		{
+			question: "What should we name it?",
+			answer: "Northstar",
+		},
+		{
+			question: "Any optional notes?",
+			answer: "Skipped",
+			status: "skipped",
+		},
+	]);
+});
+
+test("buildClarificationMessageMetadata renders dismissals as a visible answer card summary", () => {
+	const metadata = buildClarificationMessageMetadata(
+		{
+			type: "question-card",
+			sessionId: "request-user-input-dismissed",
+			round: 1,
+			maxRounds: 1,
+			title: "Answer these questions to continue",
+			requiredCount: 1,
+			deferredToolCallId: "tool-call-dismissed",
+			questions: [
+				{
+					id: "q-1",
+					label: "What should we name it?",
+					required: true,
+					kind: "text",
+					options: [],
+				},
+			],
+		},
+		{
+			status: "dismissed",
+		},
+	);
+
+	assert.equal(metadata.clarificationStatus, "dismissed");
+	assert.equal(metadata.visibility, undefined);
+	assert.equal(metadata.displayLabel, "User dismissed clarification questions.");
+	assert.deepEqual(metadata.clarificationSummary, [
+		{
+			question: "Clarification status",
+			answer: "User dismissed",
+		},
+	]);
+});
+
+test("buildClarificationDismissPrompt tells the agent to wait for next instructions", () => {
+	const prompt = buildClarificationDismissPrompt({
+		type: "question-card",
+		sessionId: "request-user-input-dismiss-prompt",
+		round: 1,
+		maxRounds: 1,
+		title: "Answer these questions to continue",
+		requiredCount: 1,
+		questions: [{ id: "q-1", label: "What should we name it?", required: true, kind: "text", options: [] }],
+	});
+
+	assert.match(prompt, /dismissed the clarification questions/i);
+	assert.match(prompt, /do not proceed/i);
+	assert.match(prompt, /wait for the user's next instructions/i);
 });
 
 test("buildDeferredToolResponse maps selected option ids back to labels", () => {
@@ -668,6 +795,50 @@ test("buildClarificationSummaryRows joins multi-select answers and falls back fo
 		{
 			question: "Priority outcomes",
 			answer: "Speed, custom-outcome",
+		},
+	]);
+});
+
+test("buildClarificationSummaryRows marks explicit 'Skipped' answers for badge rendering", () => {
+	const parsedPayload = parseQuestionCardPayload({
+		type: "question-card",
+		sessionId: "summary-skipped",
+		questions: [
+			{
+				id: "q-1",
+				label: "What assets should we track?",
+				required: true,
+				kind: "single-select",
+				options: [
+					{ id: "hardware", label: "Hardware only" },
+					{ id: "full", label: "Hardware + Software" },
+				],
+			},
+			{
+				id: "q-2",
+				label: "Any optional notes?",
+				required: false,
+				kind: "text",
+				options: [],
+			},
+		],
+	});
+	assert.ok(parsedPayload);
+
+	const rows = buildClarificationSummaryRows(parsedPayload, {
+		"q-1": "full",
+		"q-2": "Skipped",
+	});
+
+	assert.deepEqual(rows, [
+		{
+			question: "What assets should we track?",
+			answer: "Hardware + Software",
+		},
+		{
+			question: "Any optional notes?",
+			answer: "Skipped",
+			status: "skipped",
 		},
 	]);
 });

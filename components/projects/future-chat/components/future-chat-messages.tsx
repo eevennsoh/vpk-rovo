@@ -326,12 +326,14 @@ function UserMessage({
 	onSetEditingMessageId: (messageId: string | null) => void;
 }>) {
 	const [draft, setDraft] = useState(() => getMessageText(message));
+	const isDismissed = message.metadata?.clarificationStatus === "dismissed";
 	const clarificationSummaryRows = (() => {
+		if (isDismissed) return [];
 		const meta = message.metadata;
 		if (!meta || meta.source !== "clarification-submit") return [];
 		if (!Array.isArray(meta.clarificationSummary)) return [];
 		return meta.clarificationSummary.filter(
-			(row): row is { question: string; answer: string } =>
+			(row): row is { question: string; answer: string; status?: "skipped" } =>
 				typeof row?.question === "string" &&
 				row.question.trim().length > 0 &&
 				typeof row?.answer === "string" &&
@@ -394,6 +396,8 @@ function UserMessage({
 						</Button>
 					</div>
 				</div>
+			) : isDismissed ? (
+				<AnswerCard label="Questions dismissed" rows={[]} />
 			) : clarificationSummaryRows.length > 0 ? (
 				<>
 					<AnswerCard rows={clarificationSummaryRows} />

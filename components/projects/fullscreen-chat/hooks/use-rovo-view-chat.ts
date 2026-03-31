@@ -135,7 +135,6 @@ export function useRovoViewChat() {
 				...buildSendOptions(),
 				messageMetadata: buildClarificationMessageMetadata(questionCard, {
 					status: "dismissed",
-					visibility: "hidden",
 				}),
 			});
 		},

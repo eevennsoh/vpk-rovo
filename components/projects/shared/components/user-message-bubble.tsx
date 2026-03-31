@@ -12,7 +12,7 @@ interface UserMessageBubbleProps {
 
 function getClarificationSummaryRows(
 	metadata: RovoMessageMetadata | undefined
-): Array<{ question: string; answer: string }> {
+): Array<{ question: string; answer: string; status?: "skipped" }> {
 	if (!metadata || metadata.source !== "clarification-submit") {
 		return [];
 	}
@@ -36,8 +36,9 @@ export function UserMessageBubble({
 	metadata,
 	onDelete,
 }: Readonly<UserMessageBubbleProps>): React.ReactElement {
-	const clarificationSummaryRows = getClarificationSummaryRows(metadata);
-	const showClarificationSummary = clarificationSummaryRows.length > 0;
+	const isDismissed = metadata?.clarificationStatus === "dismissed";
+	const clarificationSummaryRows = isDismissed ? [] : getClarificationSummaryRows(metadata);
+	const showClarificationSummary = isDismissed || clarificationSummaryRows.length > 0;
 
 	return (
 		<div className="group/user-msg relative w-full">
@@ -56,7 +57,10 @@ export function UserMessageBubble({
 			) : null}
 			<UiMessage from="user">
 				{showClarificationSummary ? (
-					<AnswerCard rows={clarificationSummaryRows} />
+					<AnswerCard
+						label={isDismissed ? "Questions dismissed" : undefined}
+						rows={clarificationSummaryRows}
+					/>
 				) : (
 					<MessageContent>{messageText}</MessageContent>
 				)}

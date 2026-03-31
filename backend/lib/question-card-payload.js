@@ -329,7 +329,7 @@ function findRequestUserInputQuestionContainer(value) {
  * a concrete pre-composed answer (e.g. "I'll describe it now").
  *
  * Does NOT match options with a concrete noun object like
- * "I'll type the attendees" or "I'll type the channel".
+ * "I'll type the attendees" or "I'll paste the Figma URL".
  */
 function isSelfReferentialFreeTextOption(label) {
 	if (typeof label !== "string") return false;
@@ -338,11 +338,32 @@ function isSelfReferentialFreeTextOption(label) {
 	// Direct mention of the free-text / input field
 	if (/\bfree[- ]?text\b/.test(s)) return true;
 	if (/\b(?:text|input)\s*(?:box|field|area)\b/.test(s)) return true;
-	// "I'll describe it…" / "I'll type it…" without a concrete noun object
-	if (/\b(?:i[''\u2019]ll|i will|let me)\s+(?:describe|type|write|provide|enter|explain|specify)\s+(?:it|that|this)\b/.test(s)) return true;
-	// "Describe it myself" / "Type it out" (imperative form)
-	if (/^(?:describe|type|write)\s+(?:it|that|this)\b/.test(s)) return true;
+	// "I'll describe it…" / "I'll paste it…" without a concrete noun object
+	if (/\b(?:i[''\u2019]ll|i will|let me)\s+(?:describe|type|write|provide|enter|explain|specify|paste|share|send)\s+(?:it|that|this)\b/.test(s)) return true;
+	// "Describe it myself" / "Paste it in" (imperative form)
+	if (/^(?:describe|type|write|paste|share|send)\s+(?:it|that|this)\b/.test(s)) return true;
+	// Deferral to next message/reply — always self-referential
+	if (/\b(?:next|following)\s+(?:message|reply|response|turn)\b/.test(s)) return true;
 	return false;
+}
+
+/**
+ * Scans raw options for self-referential entries and returns a placeholder
+ * string from the first match (prefers description over label).
+ * Used to replace "Tell Rovo what to do..." with a contextual hint.
+ */
+function extractSelfReferentialPlaceholder(rawOptions) {
+	if (!Array.isArray(rawOptions)) return null;
+	for (const option of rawOptions) {
+		if (!option || typeof option !== "object") continue;
+		const label =
+			getNonEmptyString(option.label) ||
+			getNonEmptyString(option.title) ||
+			getNonEmptyString(option.text);
+		if (!label || !isSelfReferentialFreeTextOption(label)) continue;
+		return getNonEmptyString(option.description) || label;
+	}
+	return null;
 }
 
 function normalizeRequestUserInputOptions(value) {
@@ -433,15 +454,16 @@ function normalizeRequestUserInputQuestions(value) {
 				return null;
 			}
 
+			const rawOptions = getQuestionOptionSource(question);
+			const selfReferentialPlaceholder = extractSelfReferentialPlaceholder(rawOptions);
 			return {
 				id: getNonEmptyString(question.id) || `q-${index + 1}`,
 				label,
 				description: getNonEmptyString(question.description) || undefined,
 				required: question.required !== false,
 				kind: normalizeQuestionKind(question.kind),
-				options: normalizeRequestUserInputOptions(
-					getQuestionOptionSource(question)
-				),
+				options: normalizeRequestUserInputOptions(rawOptions),
+				placeholder: selfReferentialPlaceholder || undefined,
 			};
 		})
 		.filter(Boolean);
@@ -488,5 +510,6 @@ module.exports = {
 	normalizeRequestUserInputQuestions,
 	normalizeRequestUserInputOptions,
 	isSelfReferentialFreeTextOption,
+	extractSelfReferentialPlaceholder,
 	findRequestUserInputQuestionContainer,
 };

@@ -162,9 +162,17 @@ const {
 const {
 	buildExpiredDeferredClarificationResponse,
 	buildClarificationResumeDecision,
+	buildClarificationResumeDenyMessage,
 	synthesiseDeferredToolResponseFromClarification,
 	shouldRejectExpiredDeferredClarification,
 } = require("./lib/deferred-clarification");
+const {
+	cancelActiveDeferredToolCallRecord,
+	cancelPausedDeferredToolCallRecord,
+} = require("./lib/deferred-tool-cancel");
+const {
+	handleReplayDeferredToolRequest,
+} = require("./lib/replay-deferred-tool");
 const {
 	getFutureChatRunFailurePayload,
 } = require("./lib/future-chat-run-failure");
@@ -3864,6 +3872,12 @@ function normalizeClarificationSubmission(value) {
 		sessionId,
 		round,
 		completed: Boolean(value.completed),
+		status:
+			value.status === "dismissed"
+				? "dismissed"
+				: value.status === "answered"
+					? "answered"
+					: undefined,
 		answers: normalizeClarificationAnswers(value.answers),
 		toolCallId:
 			getNonEmptyString(value.toolCallId) ||
@@ -4096,7 +4110,7 @@ function registerActiveDeferredToolCall({
 	return record;
 }
 
-function clearPausedRovoDevToolCall(toolCallId, { cancel = false } = {}) {
+function detachPausedRovoDevToolCall(toolCallId) {
 	const normalizedToolCallId = getNonEmptyString(toolCallId);
 	if (!normalizedToolCallId) {
 		return null;
@@ -4113,6 +4127,13 @@ function clearPausedRovoDevToolCall(toolCallId, { cancel = false } = {}) {
 		record.expiryTimer = null;
 	}
 
+	return record;
+}
+
+function releasePausedRovoDevToolCallHandle(record, {
+	unhealthy = false,
+	unhealthyReason = "paused tool cleanup failed",
+} = {}) {
 	const releaseHandle = () => {
 		try {
 			record.handle?.release?.();
@@ -4123,7 +4144,7 @@ function clearPausedRovoDevToolCall(toolCallId, { cancel = false } = {}) {
 	const releaseHandleAsUnhealthy = () => {
 		try {
 			if (typeof record.handle?.releaseAsUnhealthy === "function") {
-				record.handle.releaseAsUnhealthy("paused tool cleanup failed");
+				record.handle.releaseAsUnhealthy(unhealthyReason);
 				return;
 			}
 			record.handle?.release?.();
@@ -4132,29 +4153,37 @@ function clearPausedRovoDevToolCall(toolCallId, { cancel = false } = {}) {
 		}
 	};
 
+	if (unhealthy) {
+		releaseHandleAsUnhealthy();
+		return;
+	}
+
+	releaseHandle();
+}
+
+function clearPausedRovoDevToolCall(toolCallId, { cancel = false } = {}) {
+	const normalizedToolCallId = getNonEmptyString(toolCallId);
+	const record = detachPausedRovoDevToolCall(normalizedToolCallId);
+	if (!record) {
+		return null;
+	}
+
 	if (cancel) {
-		void (async () => {
-			let shouldReleaseAsUnhealthy = false;
-			try {
-				await rovoDevCancelChat(record.port, { timeoutMs: 3_000 });
-				await waitForPortReady(record.port);
-			} catch (error) {
-				shouldReleaseAsUnhealthy = true;
-				console.warn("[ROVODEV-PAUSE] Failed to cancel paused tool call:", {
-					toolCallId: normalizedToolCallId,
-					port: record.port,
-					error: error instanceof Error ? error.message : String(error),
-				});
-			} finally {
-				if (shouldReleaseAsUnhealthy) {
-					releaseHandleAsUnhealthy();
-				} else {
-					releaseHandle();
-				}
-			}
-		})();
+		void cancelPausedDeferredToolCallRecord(record, {
+			cancelChat: rovoDevCancelChat,
+			waitForReady: waitForPortReady,
+			onReleaseError: (error) => {
+				console.warn("[ROVODEV-PAUSE] Failed to release reserved port handle:", error);
+			},
+		}).catch((error) => {
+			console.warn("[ROVODEV-PAUSE] Failed to cancel paused tool call:", {
+				toolCallId: normalizedToolCallId,
+				port: record.port,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		});
 	} else {
-		releaseHandle();
+		releasePausedRovoDevToolCallHandle(record);
 	}
 
 	return record;
@@ -4207,7 +4236,7 @@ function registerPausedRovoDevToolCall({
 }
 
 function takePausedRovoDevToolCall(toolCallId) {
-	return clearPausedRovoDevToolCall(toolCallId, { cancel: false });
+	return detachPausedRovoDevToolCall(toolCallId);
 }
 
 /**
@@ -4630,35 +4659,6 @@ function getToolCallIdFromApprovalSubmission(approvalSubmission, rawApproval) {
 		getNonEmptyString(rawApproval?.deferredToolCallId) ||
 		null
 	);
-}
-
-function buildClarificationResumeDenyMessage(clarificationSubmission) {
-	if (!clarificationSubmission) {
-		return null;
-	}
-
-	const adaptedAnswers = adaptClarificationAnswersForToolContract(
-		clarificationSubmission.sessionId,
-		clarificationSubmission.answers,
-	);
-	const answerEntries = Object.entries(adaptedAnswers);
-	if (answerEntries.length === 0) {
-		return [
-			"The user skipped the clarification step.",
-			"Continue with the best context you already have.",
-		].join("\n");
-	}
-
-	const answerLines = answerEntries.map(([question, answers]) => {
-		const values = Array.isArray(answers) ? answers.filter(Boolean) : [];
-		return `- ${question}: ${values.join(", ")}`;
-	});
-
-	return [
-		"The user answered the clarification questions.",
-		"Use these answers instead of calling the clarification tool again:",
-		...answerLines,
-	].join("\n");
 }
 
 function buildApprovalResumeDecision(approvalSubmission) {
@@ -9480,7 +9480,11 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 												clarificationSubmission,
 												clarificationToolCallId: pausedToolCallRecord.toolCallId,
 												setChatAccepted: false,
-												buildDenyMessageFn: buildClarificationResumeDenyMessage,
+												buildDenyMessageFn: (submission) =>
+													buildClarificationResumeDenyMessage(
+														submission,
+														adaptClarificationAnswersForToolContract,
+													),
 											}),
 										].filter(Boolean)
 										: hasPausedApprovalToolCall && approvalSubmission
@@ -9558,75 +9562,48 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 													return pausedApprovalResult;
 												}
 
-												if (isRequestUserInputTool(interactivePart.tool_name)) {
-													const decisions = pausedParts
-														.map((part) => {
-															const toolCallId = getNonEmptyString(part?.tool_call_id);
-															return toolCallId
-																? { tool_call_id: toolCallId, deny_message: null }
-																: null;
-														})
-														.filter(Boolean);
-													if (decisions.length > 0) {
-														await control.resume({ decisions });
+												const replayDeferredToolResult =
+													await handleReplayDeferredToolRequest({
+														rawEvent,
+														control,
+														threadId,
+														sessionId: rovoDevSessionId,
+														sessionMode,
+														isRequestUserInputTool,
+														isExitPlanModeTool,
+														syncThreadSessionFromPort:
+															syncFutureChatThreadSessionFromCurrentPort,
+														emitRequestUserInputQuestionCard,
+														emitExitPlanWidget: maybeEmitExitPlanWidget,
+														registerPausedToolCall: registerPausedRovoDevToolCall,
+													});
+												if (replayDeferredToolResult.handled) {
+													if (
+														replayDeferredToolResult.hasObservedDeferredToolRequest
+													) {
+														hasObservedDeferredToolRequest = true;
 													}
-													return { disconnect: false };
+													if (replayDeferredToolResult.pausedToolCallHandled) {
+														pausedToolCallHandled = true;
+													}
+													return {
+														disconnect:
+															replayDeferredToolResult.disconnect === true,
+													};
 												}
 
-												if (isExitPlanModeTool(interactivePart.tool_name)) {
-													const decisions = pausedParts
-														.map((part) => {
-															const toolCallId = getNonEmptyString(part?.tool_call_id);
-															return toolCallId
-																? { tool_call_id: toolCallId, deny_message: null }
-																: null;
-														})
-														.filter(Boolean);
-													if (decisions.length > 0) {
-														await control.resume({ decisions });
-													}
-													return { disconnect: false };
+												const decisions = pausedParts
+													.map((part) => {
+														const toolCallId = getNonEmptyString(part?.tool_call_id);
+														return toolCallId
+															? { tool_call_id: toolCallId, deny_message: null }
+															: null;
+													})
+													.filter(Boolean);
+												if (decisions.length > 0) {
+													await control.resume({ decisions });
 												}
-
-												let pausedSessionId = rovoDevSessionId;
-												let pausedSessionMode = sessionMode;
-												if (threadId) {
-													try {
-														const synchronizedThread =
-															await syncFutureChatThreadSessionFromCurrentPort(
-																threadId,
-																control.port,
-																{ sessionMode },
-															);
-														pausedSessionId =
-															getNonEmptyString(synchronizedThread?.sessionId)
-															|| pausedSessionId;
-														pausedSessionMode =
-															synchronizedThread?.sessionMode === "ephemeral"
-																? "ephemeral"
-																: pausedSessionMode;
-													} catch (error) {
-														console.warn("[FUTURE-CHAT] Failed to sync thread session on deferred replay pause:", {
-															threadId,
-															port: control.port,
-															error: error instanceof Error ? error.message : String(error),
-														});
-													}
-												}
-												registerPausedRovoDevToolCall({
-													toolCallId: interactivePart.tool_call_id,
-													port: control.port,
-													handle: pausedToolCallRecord.handle,
-													threadId,
-													sessionId: pausedSessionId,
-													sessionMode: pausedSessionMode,
-													kind: isExitPlanModeTool(interactivePart.tool_name)
-														? "plan-approval"
-														: "clarification",
-												});
-												hasObservedDeferredToolRequest = true;
-												pausedToolCallHandled = true;
-												return { disconnect: true };
+												return { disconnect: false };
 											},
 										}),
 									]);
@@ -9711,6 +9688,36 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 														pausedToolApprovalHandled = true;
 													}
 													return pausedApprovalResult;
+												}
+
+												const replayDeferredToolResult =
+													await handleReplayDeferredToolRequest({
+														rawEvent,
+														control,
+														threadId,
+														sessionId: rovoDevSessionId,
+														sessionMode,
+														isRequestUserInputTool,
+														isExitPlanModeTool,
+														syncThreadSessionFromPort:
+															syncFutureChatThreadSessionFromCurrentPort,
+														emitRequestUserInputQuestionCard,
+														emitExitPlanWidget: maybeEmitExitPlanWidget,
+														registerPausedToolCall: registerPausedRovoDevToolCall,
+													});
+												if (replayDeferredToolResult.handled) {
+													if (
+														replayDeferredToolResult.hasObservedDeferredToolRequest
+													) {
+														hasObservedDeferredToolRequest = true;
+													}
+													if (replayDeferredToolResult.pausedToolCallHandled) {
+														pausedToolApprovalHandled = true;
+													}
+													return {
+														disconnect:
+															replayDeferredToolResult.disconnect === true,
+													};
 												}
 
 												const decisions = pausedParts
@@ -11354,7 +11361,10 @@ app.post("/api/future-chat/cancel-deferred-tool", async (req, res) => {
 
 		const activeDeferredToolCall = clearActiveDeferredToolCall(toolCallId);
 		if (activeDeferredToolCall) {
-			await rovoDevCancelChat(activeDeferredToolCall.port, { timeoutMs: 3_000 });
+			await cancelActiveDeferredToolCallRecord(activeDeferredToolCall, {
+				cancelChat: rovoDevCancelChat,
+				waitForReady: waitForPortReady,
+			});
 			if (activeDeferredToolCall.threadId) {
 				activeRequests.delete(activeDeferredToolCall.threadId);
 				if (activeDeferredToolCall.kind === "plan-approval") {
@@ -11371,8 +11381,15 @@ app.post("/api/future-chat/cancel-deferred-tool", async (req, res) => {
 			});
 		}
 
-		const pausedToolCall = clearPausedRovoDevToolCall(toolCallId, { cancel: true });
+		const pausedToolCall = detachPausedRovoDevToolCall(toolCallId);
 		if (pausedToolCall) {
+			await cancelPausedDeferredToolCallRecord(pausedToolCall, {
+				cancelChat: rovoDevCancelChat,
+				waitForReady: waitForPortReady,
+				onReleaseError: (error) => {
+					console.warn("[ROVODEV-PAUSE] Failed to release reserved port handle:", error);
+				},
+			});
 			if (pausedToolCall.threadId && pausedToolCall.kind === "plan-approval") {
 				clearPlanSession(pausedToolCall.threadId);
 			}

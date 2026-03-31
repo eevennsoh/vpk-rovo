@@ -160,7 +160,6 @@ export default function ChatPanel({
 					...(resolvedSendPromptOptions?.messageMetadata ?? {}),
 					...buildClarificationMessageMetadata(questionCard, {
 						status: "dismissed",
-						visibility: "hidden",
 					}),
 				},
 			});

@@ -1,5 +1,6 @@
 "use client";
 
+import { MessageResponse } from "@/components/ui-ai/message";
 import { Button } from "@/components/ui/button";
 import { renderLinkSafetyModal } from "@/components/ui-ai/link-safety-dialog";
 import { cn } from "@/lib/utils";
@@ -125,6 +126,8 @@ This first paragraph starts in Arabic, so \`dir="auto"\` should resolve this blo
 The next paragraph starts in English, so it should resolve LTR while still keeping [external links](https://streamdown.ai/docs) behind the custom link-safety modal.
 `;
 
+const MESSAGE_RESPONSE_MARKDOWN = `The shared renderer should keep \`animated\` in literal backticks while the rest of this paragraph continues streaming forward, preventing the inline-code lozenge from punching a visual hole into the unfinished sentence while more words are still arriving from the model.`;
+
 const STREAM_INTERVAL_MS = 24;
 const STREAM_STEP_CHARS = 20;
 
@@ -158,6 +161,7 @@ function Mention({
 
 export default function StreamdownDemo(): ReactElement {
 	const [streamedMarkdown, setStreamedMarkdown] = useState("");
+	const [streamedMessageResponseMarkdown, setStreamedMessageResponseMarkdown] = useState("");
 	const [isAnimating, setIsAnimating] = useState(false);
 	const [lineNumbers, setLineNumbers] = useState(true);
 	const [animationStarts, setAnimationStarts] = useState(0);
@@ -175,14 +179,29 @@ export default function StreamdownDemo(): ReactElement {
 	const runStreamingDemo = useCallback(() => {
 		stopStreaming();
 		setStreamedMarkdown("");
+		setStreamedMessageResponseMarkdown("");
 		setIsAnimating(true);
 
-		let cursor = 0;
+		let featureCursor = 0;
+		let messageResponseCursor = 0;
 		intervalRef.current = window.setInterval(() => {
-			cursor = Math.min(FEATURE_MARKDOWN.length, cursor + STREAM_STEP_CHARS);
-			setStreamedMarkdown(FEATURE_MARKDOWN.slice(0, cursor));
+			featureCursor = Math.min(
+				FEATURE_MARKDOWN.length,
+				featureCursor + STREAM_STEP_CHARS,
+			);
+			messageResponseCursor = Math.min(
+				MESSAGE_RESPONSE_MARKDOWN.length,
+				messageResponseCursor + STREAM_STEP_CHARS,
+			);
+			setStreamedMarkdown(FEATURE_MARKDOWN.slice(0, featureCursor));
+			setStreamedMessageResponseMarkdown(
+				MESSAGE_RESPONSE_MARKDOWN.slice(0, messageResponseCursor),
+			);
 
-			if (cursor >= FEATURE_MARKDOWN.length) {
+			if (
+				featureCursor >= FEATURE_MARKDOWN.length
+				&& messageResponseCursor >= MESSAGE_RESPONSE_MARKDOWN.length
+			) {
 				stopStreaming();
 				setIsAnimating(false);
 			}
@@ -226,6 +245,9 @@ export default function StreamdownDemo(): ReactElement {
 							stopStreaming();
 							setIsAnimating(false);
 							setStreamedMarkdown(FEATURE_MARKDOWN);
+							setStreamedMessageResponseMarkdown(
+								MESSAGE_RESPONSE_MARKDOWN,
+							);
 						}}
 						type="button"
 						variant="outline"
@@ -276,6 +298,26 @@ export default function StreamdownDemo(): ReactElement {
 				>
 					{streamedMarkdown}
 				</Streamdown>
+			</section>
+
+			<section
+				className="flex flex-col gap-4 rounded-xl border bg-card p-5"
+				data-testid="message-response-streaming-demo"
+			>
+				<div className="flex flex-col gap-2">
+					<h2 className="text-sm font-medium text-muted-foreground">
+						Shared MessageResponse streaming harness
+					</h2>
+					<p className="max-w-3xl text-sm text-muted-foreground">
+						This section exercises the shared assistant markdown renderer. While
+						the current block is still streaming, inline code stays in literal
+						backticks before settling into the final lozenge styling.
+					</p>
+				</div>
+
+				<MessageResponse caret="block" isAnimating={isAnimating} lineNumbers={lineNumbers}>
+					{streamedMessageResponseMarkdown}
+				</MessageResponse>
 			</section>
 
 			<div className="grid gap-6 xl:grid-cols-2">

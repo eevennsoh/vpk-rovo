@@ -8,6 +8,7 @@ import ChevronLeftIcon from "@atlaskit/icon/core/chevron-left";
 import ChevronRightIcon from "@atlaskit/icon/core/chevron-right";
 import CrossIcon from "@atlaskit/icon/core/cross";
 import ReturnIcon from "@atlaskit/icon-lab/core/return";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { getVisibleOptionCount } from "@/components/blocks/question-card/lib/option-slots";
 import { getSelectedValues } from "@/components/blocks/question-card/lib/question-helpers";
 import { useQuestionCard } from "@/components/blocks/question-card/hooks/use-question-card";
@@ -49,6 +50,25 @@ const DEFAULT_MAX_VISIBLE_OPTIONS = 4;
 const DEFAULT_CUSTOM_INPUT_PLACEHOLDER = "Tell Rovo what to do...";
 
 // ---------------------------------------------------------------------------
+// Question transition animation
+// ---------------------------------------------------------------------------
+
+const SLIDE_OFFSET = 12;
+const SLIDE_TRANSITION = { duration: 0.2, ease: [0.4, 0, 0, 1] } as const; // --duration-medium (200ms), --ease-in-out
+
+type SlideDirection = "forward" | "backward";
+
+const slideVariants = {
+	enter: (d: SlideDirection) => ({ x: d === "forward" ? SLIDE_OFFSET : -SLIDE_OFFSET, opacity: 0 }),
+	center: { x: 0, opacity: 1 },
+};
+
+const noMotionVariants = {
+	enter: { x: 0, opacity: 1 },
+	center: { x: 0, opacity: 1 },
+};
+
+// ---------------------------------------------------------------------------
 // QuestionOptionRow (internal)
 // ---------------------------------------------------------------------------
 
@@ -88,7 +108,7 @@ function QuestionOptionRow({
 				tabIndex={-1}
 				className={cn(
 					"group/option flex w-full items-center gap-4 rounded-lg px-2 py-1.5 text-left disabled:cursor-not-allowed disabled:opacity-50",
-					selected ? "bg-bg-selected" : focused ? "bg-bg-neutral-subtle-hovered" : disabled ? "bg-surface" : "bg-surface hover:bg-bg-neutral-subtle-hovered",
+					selected ? "bg-bg-selected" : focused ? "bg-bg-neutral-subtle-hovered" : "bg-surface",
 				)}
 			>
 				<span
@@ -120,7 +140,7 @@ function QuestionOptionRow({
 					<span
 						aria-hidden="true"
 						className={cn(
-							"inline-flex size-6 shrink-0 items-center justify-center text-icon-disabled opacity-0 group-hover/option:opacity-100",
+							"inline-flex size-6 shrink-0 items-center justify-center text-icon-disabled opacity-0",
 							focused && "opacity-100",
 						)}
 					>
@@ -203,7 +223,7 @@ function QuestionCard({
 	isSubmitting = false,
 	onSubmit,
 	onDismiss,
-	toolCallId,
+	toolCallId: _toolCallId,
 	maxVisibleOptions = DEFAULT_MAX_VISIBLE_OPTIONS,
 	customInputPlaceholder = DEFAULT_CUSTOM_INPUT_PLACEHOLDER,
 	showCustomInput = true,
@@ -211,10 +231,13 @@ function QuestionCard({
 	className,
 	...props
 }: Readonly<QuestionCardProps>): React.ReactElement {
+	void _toolCallId;
+
 	const {
 		cardRef,
 		customInputRef,
 		footerButtonRef,
+		navigationDirection,
 		answers,
 		focusedIndex,
 		setFocusedIndex,
@@ -243,8 +266,15 @@ function QuestionCard({
 		defaultAnswers,
 		onSubmit,
 		onDismiss,
-		toolCallId,
 	});
+	const shouldReduceMotion = useReducedMotion();
+	const direction = navigationDirection;
+	const variants = shouldReduceMotion ? noMotionVariants : slideVariants;
+	const footerActionLabel = primaryAction === "submit"
+		? (isSubmitting ? "Submitting..." : "Submit")
+		: primaryAction === "next"
+			? "Next"
+			: "Skip";
 
 	return (
 		<div
@@ -301,17 +331,29 @@ function QuestionCard({
 				</div>
 			</header>
 
-			<div data-slot="question-card-body" className={visibleOptionCount > 0 ? "px-3 pb-4" : undefined}>
-				<QuestionInput
-					question={currentQuestion}
-					answerValue={answers[currentQuestion.id]}
-					focusedIndex={focusedIndex}
-					isSubmitting={isSubmitting}
-					maxVisibleOptions={maxVisibleOptions}
-					onFocusIndex={setFocusedIndex}
-					onAnswerChange={handleAnswerChange}
-				/>
-			</div>
+			<AnimatePresence initial={false} custom={direction}>
+				<motion.div
+					key={currentQuestion.id}
+					custom={direction}
+					variants={variants}
+					initial="enter"
+					animate="center"
+					exit="exit"
+					transition={SLIDE_TRANSITION}
+					data-slot="question-card-body"
+					className={visibleOptionCount > 0 ? "px-3 pb-4" : undefined}
+				>
+					<QuestionInput
+						question={currentQuestion}
+						answerValue={answers[currentQuestion.id]}
+						focusedIndex={focusedIndex}
+						isSubmitting={isSubmitting}
+						maxVisibleOptions={maxVisibleOptions}
+						onFocusIndex={setFocusedIndex}
+						onAnswerChange={handleAnswerChange}
+					/>
+				</motion.div>
+			</AnimatePresence>
 
 			<footer data-slot="question-card-footer" className="flex items-center gap-2 border-t border-border px-3 py-3">
 				{showCustomInput ? (
@@ -333,15 +375,15 @@ function QuestionCard({
 				) : null}
 				{primaryAction === "submit" ? (
 					<Button ref={footerButtonRef} disabled={isSubmitting} onClick={handleSubmit} tabIndex={-1} className="shrink-0">
-						{isSubmitting ? "Submitting..." : "Submit"}
+						{footerActionLabel}
 					</Button>
 				) : primaryAction === "next" ? (
 					<Button ref={footerButtonRef} variant="outline" disabled={isSubmitting} onClick={handleSkip} tabIndex={-1} className="shrink-0">
-						Next
+						{footerActionLabel}
 					</Button>
 				) : (
 					<Button ref={footerButtonRef} variant="ghost" disabled={isSubmitting} onClick={handleSkip} tabIndex={-1} className="shrink-0">
-						Skip
+						{footerActionLabel}
 					</Button>
 				)}
 			</footer>

@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { Lozenge } from "@/components/ui/lozenge";
+import { IconTile } from "@/components/ui/icon-tile";
 import { cn } from "@/lib/utils";
 import type { ComponentProps } from "react";
 import { Button } from "@/components/ui/button";
-import { Tile } from "@/components/ui/tile";
 import QuestionCircleIcon from "@atlaskit/icon/core/question-circle";
 import ChevronRightIcon from "@atlaskit/icon/core/chevron-right";
 
@@ -15,6 +16,7 @@ import ChevronRightIcon from "@atlaskit/icon/core/chevron-right";
 export interface AnswerCardRow {
 	question: string;
 	answer: string;
+	status?: "skipped";
 }
 
 export interface AnswerCardProps extends Omit<ComponentProps<"section">, "children"> {
@@ -49,32 +51,34 @@ function AnswerCard({
 			{...props}
 		>
 			<header className="flex items-center gap-3 px-4 py-3">
-				<Tile label="Answers" variant="transparent" size="medium" hasBorder className="text-icon-subtle">
-					<QuestionCircleIcon label="" />
-				</Tile>
+				<IconTile icon={<QuestionCircleIcon label="" />} label="Answers" variant="gray" size="medium" />
 				<span className="min-w-0 flex-1">
 					<span className="block text-sm leading-5 font-bold text-text">{label}</span>
-					<span className="block text-xs leading-4 text-text-subtle">
-						{rows.length} {rows.length === 1 ? "question" : "questions"}
-					</span>
+					{rows.length > 0 ? (
+						<span className="block text-xs leading-4 text-text-subtle">
+							{rows.length} {rows.length === 1 ? "question" : "questions"}
+						</span>
+					) : null}
 				</span>
-				<Button
-					variant="ghost"
-					size="icon"
-					className="text-text-subtle"
-					aria-label={collapsed ? "Expand answers" : "Collapse answers"}
-					onClick={() => setCollapsed((prev) => !prev)}
-				>
-					<span
-						className="transition-transform duration-200 ease-in-out"
-						style={{ transform: collapsed ? "rotate(0deg)" : "rotate(90deg)" }}
+				{rows.length > 0 ? (
+					<Button
+						variant="ghost"
+						size="icon"
+						className="text-text-subtle"
+						aria-label={collapsed ? "Expand answers" : "Collapse answers"}
+						onClick={() => setCollapsed((prev) => !prev)}
 					>
-						<ChevronRightIcon label="" size="small" />
-					</span>
-				</Button>
+						<span
+							className="transition-transform duration-200 ease-in-out"
+							style={{ transform: collapsed ? "rotate(0deg)" : "rotate(90deg)" }}
+						>
+							<ChevronRightIcon label="" size="small" />
+						</span>
+					</Button>
+				) : null}
 			</header>
 
-			{collapsed ? null : (
+			{collapsed || rows.length === 0 ? null : (
 				<div className="px-4 pb-3">
 					<ul className="m-0 flex list-none flex-col gap-1 p-0">
 						{rows.map((row, index) => (
@@ -89,7 +93,13 @@ function AnswerCard({
 								</span>
 								<div className="min-w-0 flex-1">
 									<p className="text-sm leading-5 font-medium text-text">{row.question}</p>
-									<p className="mt-0.5 text-sm leading-5 text-text-subtle">{row.answer}</p>
+									{row.status === "skipped" ? (
+										<Lozenge variant="neutral" className="mt-1">
+											No preferences
+										</Lozenge>
+									) : (
+										<p className="mt-0.5 text-sm leading-5 text-text-subtle">{row.answer}</p>
+									)}
 								</div>
 							</li>
 						))}
