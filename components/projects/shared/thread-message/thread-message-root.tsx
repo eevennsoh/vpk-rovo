@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useMemo, useRef, type ReactNode } from "react";
 import { useDynamicThinkingLabel } from "@/components/projects/shared/hooks/use-dynamic-thinking-label";
 import {
 	getAllDataParts,
@@ -67,7 +67,6 @@ interface ThreadMessageRootProps {
 		widget: { type: string; data: unknown },
 		message: RovoRenderableUIMessage
 	) => ReactNode;
-	renderLoadingWidget?: (widgetType?: string) => ReactNode;
 	children: ReactNode;
 }
 
@@ -77,7 +76,6 @@ function useThreadMessageDerived(
 	isThinkingLifecycleStreaming: boolean,
 	assistantStreamingRenderMode: "rich" | "text-first",
 	renderWidget: ThreadMessageRootProps["renderWidget"],
-	renderLoadingWidget: ThreadMessageRootProps["renderLoadingWidget"],
 ): ThreadMessageContextValue {
 	const rawMessageText = getMessageText(message);
 	const isStreaming = isMessageTextStreaming(message);
@@ -149,7 +147,7 @@ function useThreadMessageDerived(
 		message,
 		"data-suggested-questions"
 	);
-	const shouldShowWidgetSections = Boolean(renderWidget) || Boolean(renderLoadingWidget);
+	const shouldShowWidgetSections = Boolean(renderWidget);
 	const selectedWidgetDataEntry = selectLatestRenderableWidgetPart(
 		widgetDataParts,
 		shouldShowWidgetSections && typeof renderWidget === "function"
@@ -188,20 +186,6 @@ function useThreadMessageDerived(
 		isAnyWidgetLoading && (widgetType ? loadingWidgetType === widgetType : true);
 	const hasWidgetPayload = Boolean(widgetDataPart);
 	const hasWidgetOutput = hasWidgetPayload && !isWidgetLoading;
-
-	// ---------- widget loading timeout ----------
-	const [widgetLoadingTimedOut, setWidgetLoadingTimedOut] = useState(false);
-
-	useEffect(() => {
-		if (!isWidgetLoading) {
-			setWidgetLoadingTimedOut(false);
-			return;
-		}
-		const timer = setTimeout(() => {
-			setWidgetLoadingTimedOut(true);
-		}, 30_000);
-		return () => clearTimeout(timer);
-	}, [isWidgetLoading]);
 
 	// ---------- route decision ----------
 	const routeDecision: RoutingDecision | null = getLatestRouteDecision(message);
@@ -364,23 +348,6 @@ function useThreadMessageDerived(
 					message
 				) ?? null
 			: null;
-	const shouldHideLoadingWidget =
-		(widgetType === "genui-preview" || widgetType === "question-card") &&
-		hasWidgetPayload;
-	const loadingWidgetNode =
-		shouldShowWidgetSections && isWidgetLoading && !shouldHideLoadingWidget
-			? widgetLoadingTimedOut &&
-					(widgetType === "question-card" || widgetType === "genui-preview")
-				? (
-						<div className="rounded-xl border border-border-warning/40 bg-bg-warning-subtler px-3 py-2 text-sm text-text-warning">
-							This widget is taking longer than expected to load. Use Stop and try
-							again, or wait if the assistant is still generating.
-						</div>
-					)
-				: widgetLoadingTimedOut
-					? null
-					: renderLoadingWidget?.(widgetType) ?? null
-			: null;
 	const shouldRenderPlanWidgetFirst = widgetType === "plan";
 	const hasRenderedWidget =
 		renderedWidget !== null && renderedWidget !== undefined;
@@ -437,10 +404,8 @@ function useThreadMessageDerived(
 			hasToolFirstWarning,
 			suggestedQuestions,
 			renderedWidget,
-			loadingWidgetNode,
 			widgetType,
 			isWidgetLoading,
-			widgetLoadingTimedOut,
 			shouldRenderPlanWidgetFirst,
 			hasRenderedWidget,
 			shouldRenderMessageText,
@@ -456,7 +421,6 @@ function useThreadMessageDerived(
 			questionCardMessageText,
 			widgetType,
 			isWidgetLoading,
-			widgetLoadingTimedOut,
 			effectiveIsThinkingStatusActive,
 			thinkingStatusReasoningPhase,
 			thinkingStatusDuration,
@@ -479,7 +443,6 @@ export function ThreadMessageRoot({
 	assistantStreamingRenderMode = "rich",
 	onDeleteMessage,
 	renderWidget,
-	renderLoadingWidget,
 	children,
 }: Readonly<ThreadMessageRootProps>): ReactNode {
 	const contextValue = useThreadMessageDerived(
@@ -488,7 +451,6 @@ export function ThreadMessageRoot({
 		isThinkingLifecycleStreaming,
 		assistantStreamingRenderMode,
 		renderWidget,
-		renderLoadingWidget,
 	);
 
 	if (message.role === "user") {
@@ -516,9 +478,6 @@ export function ThreadMessageRoot({
 		!contextValue.isStreaming &&
 		contextValue.suggestedQuestions.length > 0 &&
 		!contextValue.hasRenderedWidget;
-	const hasRenderableWidget =
-		Boolean(contextValue.loadingWidgetNode) ||
-		contextValue.hasRenderedWidget;
 	const hasRenderableContent =
 		contextValue.shouldRenderMessageText ||
 		hasRenderableReasoning ||
@@ -527,7 +486,7 @@ export function ThreadMessageRoot({
 		hasRenderableTools ||
 		contextValue.sources.length > 0 ||
 		hasRenderableSuggestions ||
-		hasRenderableWidget;
+		contextValue.hasRenderedWidget;
 
 	if (!hasRenderableContent) {
 		return null;

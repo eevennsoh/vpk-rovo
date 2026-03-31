@@ -1,0 +1,36 @@
+@keyframes chatGalleryFadeSlideUp {
+	from {
+		opacity: 0;
+		transform: translateY(40px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@keyframes chatGalleryFadeSlideDown {
+	from {
+		opacity: 1;
+		transform: translateY(0);
+	}
+	to {
+		opacity: 0;
+		transform: translateY(40px);
+	}
+}
+
+.animateIn {
+	animation: chatGalleryFadeSlideUp var(--duration-slower) var(--ease-out) var(--duration-medium) both;
+}
+
+.animateOut {
+	animation: chatGalleryFadeSlideDown var(--duration-slow) var(--ease-in) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.animateIn,
+	.animateOut {
+		animation: none;
+	}
+}

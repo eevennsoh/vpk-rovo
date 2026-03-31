@@ -214,6 +214,7 @@ function QuestionCard({
 	const {
 		cardRef,
 		customInputRef,
+		footerButtonRef,
 		answers,
 		focusedIndex,
 		setFocusedIndex,
@@ -231,6 +232,7 @@ function QuestionCard({
 		goToPreviousQuestion,
 		handleSkip,
 		handleAnswerChange,
+		handleCustomInputFocus,
 		handleKeyDown,
 		onSubmit: handleSubmit,
 	} = useQuestionCard({
@@ -322,6 +324,7 @@ function QuestionCard({
 							aria-label={`${currentQuestion.label} custom answer`}
 							value={customInputValue ?? ""}
 							onChange={(event) => handleAnswerChange((event.target as HTMLInputElement).value)}
+							onFocus={handleCustomInputFocus}
 							disabled={isSubmitting}
 							placeholder={currentQuestion.placeholder ?? customInputPlaceholder}
 							className="h-8 min-w-0 flex-1 px-0 text-sm leading-5 focus-visible:ring-0 focus-visible:border-transparent"
@@ -329,15 +332,15 @@ function QuestionCard({
 					</div>
 				) : null}
 				{primaryAction === "submit" ? (
-					<Button disabled={isSubmitting} onClick={handleSubmit} tabIndex={-1} className="shrink-0">
+					<Button ref={footerButtonRef} disabled={isSubmitting} onClick={handleSubmit} tabIndex={-1} className="shrink-0">
 						{isSubmitting ? "Submitting..." : "Submit"}
 					</Button>
 				) : primaryAction === "next" ? (
-					<Button variant="outline" disabled={isSubmitting} onClick={handleSkip} tabIndex={-1} className="shrink-0">
+					<Button ref={footerButtonRef} variant="outline" disabled={isSubmitting} onClick={handleSkip} tabIndex={-1} className="shrink-0">
 						Next
 					</Button>
 				) : (
-					<Button variant="ghost" disabled={isSubmitting} onClick={handleSkip} tabIndex={-1} className="shrink-0">
+					<Button ref={footerButtonRef} variant="ghost" disabled={isSubmitting} onClick={handleSkip} tabIndex={-1} className="shrink-0">
 						Skip
 					</Button>
 				)}

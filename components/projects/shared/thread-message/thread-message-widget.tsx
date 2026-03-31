@@ -22,7 +22,6 @@ export function ThreadMessageWidget({
 }: Readonly<ThreadMessageWidgetProps>): ReactNode {
 	const {
 		renderedWidget,
-		loadingWidgetNode,
 		shouldRenderPlanWidgetFirst,
 	} = use(ThreadMessageContext)!;
 
@@ -34,15 +33,9 @@ export function ThreadMessageWidget({
 		return null;
 	}
 
-	const hasContent = Boolean(loadingWidgetNode) || Boolean(renderedWidget);
-	if (!hasContent) {
+	if (!renderedWidget) {
 		return null;
 	}
 
-	return (
-		<>
-			{loadingWidgetNode}
-			{renderedWidget}
-		</>
-	);
+	return renderedWidget;
 }

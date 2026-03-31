@@ -135,12 +135,10 @@ export function shouldRenderFutureChatAssistantMessage(input: {
 	hasSources: boolean;
 	hasWidget: boolean;
 	hasWidgetError: boolean;
-	hasWidgetLoading: boolean;
 }): boolean {
 	return (
 		input.hasAssistantText ||
 		input.hasReasoning ||
-		input.hasWidgetLoading ||
 		input.hasWidget ||
 		input.hasWidgetError ||
 		input.hasArtifactCard ||

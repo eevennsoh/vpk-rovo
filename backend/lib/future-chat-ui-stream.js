@@ -33,7 +33,11 @@ function toUiMessageChunkStream(stream) {
 	}).pipeThrough(
 		new TransformStream({
 			transform(result, controller) {
-				controller.enqueue(unwrapUiMessageChunk(result));
+				try {
+					controller.enqueue(unwrapUiMessageChunk(result));
+				} catch {
+					// Stream was closed (e.g. consumer aborted) — drop the chunk.
+				}
 			},
 		}),
 	);
@@ -108,7 +112,11 @@ function createTappedChunkStream(
 				if (typeof onChunk === "function") {
 					onChunk(chunk);
 				}
-				controller.enqueue(chunk);
+				try {
+					controller.enqueue(chunk);
+				} catch {
+					// Stream was closed (e.g. consumer aborted) — drop the chunk.
+				}
 			},
 		}),
 	);

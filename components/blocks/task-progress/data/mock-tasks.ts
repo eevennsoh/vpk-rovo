@@ -19,18 +19,18 @@ export const MOCK_TASKS: ProgressStatusGroups = {
 	inReview: [
 		{
 			id: "task-1",
-			label: "Task 1",
-			description: "Description",
+			label: "#1 Set up project scaffolding",
+			description: "Monorepo structure with shared configs",
 		},
 		{
 			id: "task-2",
-			label: "Task 1",
-			description: "Description",
+			label: "#2 Configure authentication flow",
+			description: "OAuth 2.0 with refresh token rotation",
 		},
 		{
 			id: "task-3",
-			label: "Task 1",
-			description: "Description",
+			label: "#3 Build user dashboard layout",
+			description: "Responsive grid with sidebar navigation",
 			agentName: "Agent name",
 			agentAvatarSrc: "/avatar-agent/teamwork-agents/progress-tracker.svg",
 		},
@@ -38,18 +38,18 @@ export const MOCK_TASKS: ProgressStatusGroups = {
 	inProgress: [
 		{
 			id: "task-4",
-			label: "Task 4",
-			description: "Implement search indexing",
+			label: "#4 Implement search indexing",
+			description: "Full-text search with Elasticsearch",
 		},
 		{
 			id: "task-5",
-			label: "Task 5",
-			description: "Update API endpoints",
+			label: "#5 Update API endpoints",
+			description: "REST v2 with pagination support",
 		},
 		{
 			id: "task-6",
-			label: "Task 6",
-			description: "Add error handling",
+			label: "#6 Add error handling",
+			description: "Retry logic and structured error responses",
 			agentName: "Backend Agent",
 			agentAvatarSrc: "/avatar-agent/dev-agents/code-reviewer.svg",
 		},
@@ -64,18 +64,18 @@ export const MOCK_TASKS: ProgressStatusGroups = {
 	todo: [
 		{
 			id: "task-7",
-			label: "Task 7",
-			description: "Write integration tests",
+			label: "#7 Write integration tests",
+			description: "API and E2E coverage for critical paths",
 		},
 		{
 			id: "task-8",
-			label: "Task 8",
-			description: "Update documentation",
+			label: "#8 Update documentation",
+			description: "README and API reference refresh",
 		},
 		{
 			id: "task-9",
-			label: "Task 9",
-			description: "Deploy to staging",
+			label: "#9 Deploy to staging",
+			description: "Canary rollout with health checks",
 		},
 	],
 };

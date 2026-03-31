@@ -64,6 +64,9 @@ export function LeftNavigation({
 		TOP_NAV_SIDEBAR_TOGGLE_SEPARATOR_GAP_PX -
 		TOP_NAV_ICON_BUTTON_SIZE_PX;
 	const expandedNavMinWidthPx = sidebarToggleOffsetPx + TOP_NAV_ICON_BUTTON_SIZE_PX;
+	const productButtonLeftPx =
+		(hideAppSwitcher ? 0 : TOP_NAV_COLLAPSED_CONTROL_STEP_PX) +
+		(isVisible ? 0 : TOP_NAV_COLLAPSED_CONTROL_STEP_PX);
 
 	const containerStyle = useMemo(() => {
 		const base = {
@@ -99,22 +102,21 @@ export function LeftNavigation({
 				onHoverLeave={onHoverLeave}
 			/>
 
-			<AppSwitcher
-				isOpen={isAppSwitcherOpen}
-				isVisible={isVisible}
-				hideMenu={hideAppSwitcher}
-				buttonRef={appSwitcherButtonRef}
-				menuRef={appSwitcherMenuRef}
-				onToggle={onToggleAppSwitcher}
-				onNavigate={onNavigate}
-			/>
+			{hideAppSwitcher ? null : (
+				<AppSwitcher
+					isOpen={isAppSwitcherOpen}
+					isVisible={isVisible}
+					buttonRef={appSwitcherButtonRef}
+					menuRef={appSwitcherMenuRef}
+					onToggle={onToggleAppSwitcher}
+					onNavigate={onNavigate}
+				/>
+			)}
 
 			<div
 				style={{
 					position: "absolute",
-					left: isVisible
-						? `${TOP_NAV_COLLAPSED_CONTROL_STEP_PX}px`
-						: `${TOP_NAV_COLLAPSED_CONTROL_STEP_PX * 2}px`,
+					left: `${productButtonLeftPx}px`,
 					transition: "left var(--duration-medium) var(--ease-in-out)",
 					display: "flex",
 					alignItems: "center",
@@ -191,14 +193,20 @@ function SidebarToggle({
 interface AppSwitcherProps {
 	isOpen: boolean;
 	isVisible: boolean;
-	hideMenu?: boolean;
 	buttonRef: React.RefObject<HTMLButtonElement | null>;
 	menuRef: React.RefObject<HTMLDivElement | null>;
 	onToggle: () => void;
 	onNavigate: (path: string) => void;
 }
 
-function AppSwitcher({ isOpen, isVisible, hideMenu = false, buttonRef, menuRef, onToggle, onNavigate }: Readonly<AppSwitcherProps>) {
+function AppSwitcher({
+	isOpen,
+	isVisible,
+	buttonRef,
+	menuRef,
+	onToggle,
+	onNavigate,
+}: Readonly<AppSwitcherProps>) {
 	return (
 		<div
 			style={{
@@ -221,7 +229,7 @@ function AppSwitcher({ isOpen, isVisible, hideMenu = false, buttonRef, menuRef, 
 				>
 					<AppSwitcherIcon label="" color={token("color.icon.subtle")} />
 				</Button>
-				{isOpen && !hideMenu ? (
+				{isOpen ? (
 					<div
 						ref={menuRef}
 						style={{

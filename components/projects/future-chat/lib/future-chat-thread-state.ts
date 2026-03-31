@@ -20,6 +20,50 @@ export function filterDeletedFutureChatThreads(
 	);
 }
 
+export function updateFutureChatThreadTitleRecord(
+	threads: ReadonlyArray<FutureChatThread>,
+	options: {
+		threadId: string;
+		title: string;
+		updatedAt: string;
+	},
+	updateOptions?: {
+		deletedThreadIds?: ReadonlySet<string>;
+	},
+): {
+	didUpdate: boolean;
+	threads: FutureChatThread[];
+} {
+	const deletedThreadIds = updateOptions?.deletedThreadIds;
+	if (deletedThreadIds?.has(options.threadId)) {
+		return {
+			didUpdate: false,
+			threads: filterDeletedFutureChatThreads(threads, deletedThreadIds),
+		};
+	}
+
+	const existingThread = threads.find((thread) => thread.id === options.threadId);
+	if (!existingThread) {
+		return {
+			didUpdate: false,
+			threads: [...threads],
+		};
+	}
+
+	return {
+		didUpdate: true,
+		threads: upsertFutureChatThreadRecord(
+			threads,
+			{
+				...existingThread,
+				title: options.title,
+				updatedAt: options.updatedAt,
+			},
+			updateOptions,
+		),
+	};
+}
+
 export function upsertFutureChatThreadRecord(
 	threads: ReadonlyArray<FutureChatThread>,
 	nextThread: FutureChatThread,

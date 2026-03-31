@@ -50,7 +50,11 @@ function toUiMessageChunkStream(
 	}).pipeThrough(
 		new TransformStream<unknown, UIMessageChunk>({
 			transform(result, controller) {
-				controller.enqueue(unwrapUiMessageChunk(result));
+				try {
+					controller.enqueue(unwrapUiMessageChunk(result));
+				} catch {
+					// Stream was closed (e.g. consumer aborted) — drop the chunk.
+				}
 			},
 		}),
 	);
@@ -96,7 +100,11 @@ export function readFutureChatDelegationResponseStream({
 		new TransformStream<UIMessageChunk, UIMessageChunk>({
 			transform(chunk, controller) {
 				onChunk?.(chunk);
-				controller.enqueue(chunk);
+				try {
+					controller.enqueue(chunk);
+				} catch {
+					// Stream was closed (e.g. consumer aborted) — drop the chunk.
+				}
 			},
 		}),
 	);

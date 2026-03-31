@@ -11,6 +11,7 @@ import { FutureChatMessages } from "@/components/projects/future-chat/components
 import { FutureChatSidebar } from "@/components/projects/future-chat/components/future-chat-sidebar";
 import { FutureChatToolApprovalBar } from "@/components/projects/future-chat/components/future-chat-tool-approval-bar";
 import { type FutureChatSteeringPhase } from "@/components/projects/future-chat/components/future-chat-steering-lane";
+import { SmoothGradientWaveform } from "@/components/blocks/visual-waveform/smooth-gradient-waveform";
 import { useArtifactAnnotations } from "@/components/ui-ai/hooks/use-artifact-annotations";
 import { formatAnnotationsForVoiceContext } from "@/components/ui-ai/lib/artifact-annotations";
 import type { ArtifactAnnotation } from "@/components/ui-ai/lib/artifact-annotations";
@@ -1934,7 +1935,10 @@ export function FutureChatShell({
 									handleClarificationSubmit(answers);
 									hideQuestionCard();
 								}}
-								onDismiss={dismissQuestionCard}
+								onDismiss={() => {
+									dismissQuestionCard();
+									hideQuestionCard();
+								}}
 							/>
 							<QuestionCardShortcutsFooter />
 						</>
@@ -1977,6 +1981,9 @@ export function FutureChatShell({
 								realtimeOutputWaveformBars={realtime.outputWaveformBars}
 								realtimeVoiceActive={isRealtimeActive}
 								realtimeVoiceState={realtime.voiceState}
+								renderResponseGradient={(props) => (
+									<SmoothGradientWaveform {...props} />
+								)}
 								showBackgroundStop={chat.hasBackgroundDelegation}
 								submitDisabled={Boolean(chat.activeToolApproval)}
 								voiceState={voiceButtonState}
@@ -2070,6 +2077,7 @@ export function FutureChatShell({
 						windowWidth={nav.windowWidth}
 						isVisible={nav.isVisible}
 						isAppSwitcherOpen={nav.isAppSwitcherOpen}
+						hideAppSwitcher
 						separatorLineOffsetPx={FUTURE_CHAT_SEPARATOR_LINE_OFFSET_PX - TOP_NAV_PADDING_PX}
 						onToggleSidebar={nav.toggleSidebar}
 						onToggleAppSwitcher={nav.handleToggleAppSwitcher}

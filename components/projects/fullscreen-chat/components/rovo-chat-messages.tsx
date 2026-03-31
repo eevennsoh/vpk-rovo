@@ -6,7 +6,6 @@ import { ChatMessages } from "@/components/projects/shared/components/chat-messa
 import { GenerativeWidgetCard } from "@/components/projects/shared/components/generative-widget-card";
 import type { GenerativeWidgetPrimaryActionPayload } from "@/components/projects/shared/lib/generative-widget";
 import ChatEmptyState from "./chat-empty-state";
-import LoadingWidget from "@/components/projects/shared/components/loading-widget";
 import type { PanelVariant } from "../types";
 
 interface RovoChatMessagesProps {
@@ -67,8 +66,6 @@ export default function RovoChatMessages({
 			renderEmptyState={() => (
 				<ChatEmptyState variant={variant} userName={userName} />
 			)}
-			renderLoadingWidget={(widgetType) =>
-				enableSmartWidgets ? <LoadingWidget widgetType={widgetType} /> : null}
 			renderWidget={(widget) => {
 				if (!enableSmartWidgets) {
 					return null;

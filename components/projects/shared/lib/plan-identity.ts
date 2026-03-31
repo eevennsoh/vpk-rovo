@@ -7,6 +7,11 @@ const DEFAULT_EMOJI = "📋";
 const TITLE_MAX_WORDS = 6;
 const FALLBACK_EMOJI_POOL = ["📋", "🧭", "🛠️", "⚙️", "🧠", "🧩", "📌", "🗂️"];
 
+/** Collapse runs of whitespace to a single space and trim. */
+function collapseWhitespace(value: string): string {
+	return value.replace(/\s+/gu, " ").trim();
+}
+
 const GENERIC_PLAN_TITLE_SET = new Set([
 	"plan",
 	"execution plan",
@@ -28,9 +33,6 @@ const TITLE_EMOJI_RULES: Array<{ pattern: RegExp; emoji: string }> = [
 	{ pattern: /\b(test|qa|validate|verification|a11y|accessibility)\b/i, emoji: "✅" },
 ];
 
-function normalizeWhitespace(value: string): string {
-	return value.replace(/\s+/g, " ").trim();
-}
 
 /** Words that produce broken-looking titles when they appear at the end after truncation. */
 const DANGLING_TAIL_WORDS = new Set([
@@ -39,7 +41,7 @@ const DANGLING_TAIL_WORDS = new Set([
 ]);
 
 function truncateWords(value: string, maxWords: number = TITLE_MAX_WORDS): string {
-	const words = normalizeWhitespace(value).split(" ").filter(Boolean);
+	const words = collapseWhitespace(value).split(" ").filter(Boolean);
 	if (words.length === 0) {
 		return "";
 	}
@@ -69,7 +71,7 @@ function stripTaskPrefix(value: string): string {
 }
 
 function normalizePlanTitleCandidate(value: string): string {
-	return normalizeWhitespace(
+	return collapseWhitespace(
 		stripMarkdownDecorators(
 			value
 				.replace(/^#{1,6}\s*/, "")
@@ -91,6 +93,8 @@ function stripCodeArtifacts(value: string): string {
 			.replace(/\b[\w.-]+\.(?:tsx?|jsx?|mjs|cjs|css|html|json|ya?ml|md|sh|py|rs|go)\b/g, "")
 			// Remove words that look like code identifiers (camelCase, snake_case with 2+ segments)
 			.replace(/\b[a-z]+(?:[A-Z][a-z]+){2,}\b/g, "")
+			// Remove punctuation shells left behind after stripping code artifacts
+			.replace(/\s*\(\s*(?:,\s*)*\)\s*/g, " ")
 			// Remove leftover "in" preposition when its object was stripped
 			.replace(/\bin\s*$/i, "")
 			.trim()
@@ -98,7 +102,7 @@ function stripCodeArtifacts(value: string): string {
 }
 
 function isUsableTitle(value: string): boolean {
-	const words = normalizeWhitespace(value).split(" ").filter(Boolean);
+	const words = collapseWhitespace(value).split(" ").filter(Boolean);
 	// Need at least 2 meaningful words for a title
 	return words.length >= 2;
 }
@@ -117,7 +121,7 @@ export function extractTaskHeadingFromLabel(label: string): string {
 				normalized;
 
 	// Strip code artifacts for a cleaner display title
-	const cleaned = normalizeWhitespace(stripCodeArtifacts(raw));
+	const cleaned = collapseWhitespace(stripCodeArtifacts(raw));
 	return isUsableTitle(cleaned) ? cleaned : raw;
 }
 
@@ -168,7 +172,7 @@ export function resolvePlanDisplayTitle(
 	const normalizedTitle = rawTitle ? normalizePlanTitleCandidate(rawTitle) : "";
 	if (normalizedTitle && !isGenericPlanTitle(normalizedTitle)) {
 		// Clean code artifacts and truncate even raw titles
-		const cleaned = normalizeWhitespace(stripCodeArtifacts(normalizedTitle));
+		const cleaned = collapseWhitespace(stripCodeArtifacts(normalizedTitle));
 		const candidate = isUsableTitle(cleaned) ? cleaned : normalizedTitle;
 		return truncateWords(candidate, maxWords);
 	}

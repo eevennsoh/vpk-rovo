@@ -5,33 +5,33 @@ import type { ProgressStatusGroups } from "@/components/blocks/task-progress/dat
 
 const TASKS_MIXED: ProgressStatusGroups = {
 	done: [
-		{ id: "d1", label: "Task 1", description: "Set up CI pipeline" },
-		{ id: "d2", label: "Task 2", description: "Configure linting rules" },
+		{ id: "d1", label: "#1 Set up CI pipeline", description: "GitHub Actions workflow configured" },
+		{ id: "d2", label: "#2 Configure linting rules", description: "" },
 	],
 	inReview: [
-		{ id: "r1", label: "Task 3", description: "Implement search API", agentName: "Backend Agent" },
-		{ id: "r2", label: "Task 4", description: "Add pagination component" },
+		{ id: "r1", label: "#3 Implement search API", description: "Full-text search with Elasticsearch", agentName: "Backend Agent" },
+		{ id: "r2", label: "#4 Add pagination component", description: "" },
 	],
 	inProgress: [
-		{ id: "p1", label: "Task 5", description: "Build dashboard widgets", agentName: "Frontend Agent" },
-		{ id: "p2", label: "Task 6", description: "Integrate analytics SDK" },
+		{ id: "p1", label: "#5 Build dashboard widgets", description: "Charts, stats cards, and activity feed", agentName: "Frontend Agent" },
+		{ id: "p2", label: "#6 Integrate analytics SDK", description: "" },
 	],
 	failed: [
-		{ id: "f1", label: "Task 6b", description: "Recover failed analytics migration" },
+		{ id: "f1", label: "#7 Recover failed analytics migration", description: "Schema conflict on events table" },
 	],
 	todo: [
-		{ id: "t1", label: "Task 7", description: "Write integration tests" },
-		{ id: "t2", label: "Task 8", description: "Update documentation" },
-		{ id: "t3", label: "Task 9", description: "Deploy to staging" },
+		{ id: "t1", label: "#8 Write integration tests", description: "API and E2E coverage" },
+		{ id: "t2", label: "#9 Update documentation", description: "" },
+		{ id: "t3", label: "#10 Deploy to staging", description: "" },
 	],
 };
 
 const TASKS_ALL_DONE: ProgressStatusGroups = {
 	done: [
-		{ id: "d1", label: "Task 1", description: "Set up CI pipeline" },
-		{ id: "d2", label: "Task 2", description: "Configure linting rules" },
-		{ id: "d3", label: "Task 3", description: "Implement search API", agentName: "Backend Agent" },
-		{ id: "d4", label: "Task 4", description: "Write integration tests" },
+		{ id: "d1", label: "#1 Set up CI pipeline", description: "" },
+		{ id: "d2", label: "#2 Configure linting rules", description: "" },
+		{ id: "d3", label: "#3 Implement search API", description: "", agentName: "Backend Agent" },
+		{ id: "d4", label: "#4 Write integration tests", description: "" },
 	],
 	inReview: [],
 	inProgress: [],
@@ -42,36 +42,36 @@ const TASKS_ALL_DONE: ProgressStatusGroups = {
 const TASKS_EARLY: ProgressStatusGroups = {
 	done: [],
 	inReview: [],
-	inProgress: [{ id: "p1", label: "Task 1", description: "Analyze codebase structure", agentName: "Explorer Agent" }],
+	inProgress: [{ id: "p1", label: "#1 Analyze codebase structure", description: "Mapping dependencies and conventions", agentName: "Explorer Agent" }],
 	failed: [],
 	todo: [
-		{ id: "t1", label: "Task 2", description: "Set up CI pipeline" },
-		{ id: "t2", label: "Task 3", description: "Configure linting rules" },
-		{ id: "t3", label: "Task 4", description: "Implement search API" },
-		{ id: "t4", label: "Task 5", description: "Write integration tests" },
-		{ id: "t5", label: "Task 6", description: "Update documentation" },
+		{ id: "t1", label: "#2 Set up CI pipeline", description: "" },
+		{ id: "t2", label: "#3 Configure linting rules", description: "ESLint + Prettier" },
+		{ id: "t3", label: "#4 Implement search API", description: "" },
+		{ id: "t4", label: "#5 Write integration tests", description: "" },
+		{ id: "t5", label: "#6 Update documentation", description: "README and API reference" },
 	],
 };
 
 const TASKS_WITH_AGENTS: ProgressStatusGroups = {
-	done: [{ id: "d1", label: "Task 1", description: "Set up CI pipeline", agentName: "DevOps Agent" }],
+	done: [{ id: "d1", label: "#1 Set up CI pipeline", description: "", agentName: "DevOps Agent" }],
 	inReview: [
-		{ id: "r1", label: "Task 2", description: "Implement search API", agentName: "Backend Agent" },
-		{ id: "r2", label: "Task 3", description: "Build search UI", agentName: "Frontend Agent" },
+		{ id: "r1", label: "#2 Implement search API", description: "", agentName: "Backend Agent" },
+		{ id: "r2", label: "#3 Build search UI", description: "", agentName: "Frontend Agent" },
 	],
-	inProgress: [{ id: "p1", label: "Task 4", description: "Write integration tests", agentName: "QA Agent" }],
+	inProgress: [{ id: "p1", label: "#4 Write integration tests", description: "", agentName: "QA Agent" }],
 	failed: [],
-	todo: [{ id: "t1", label: "Task 5", description: "Deploy to staging", agentName: "DevOps Agent" }],
+	todo: [{ id: "t1", label: "#5 Deploy to staging", description: "", agentName: "DevOps Agent" }],
 };
 
 export default function TaskProgressDemo() {
 	return (
 		<div className="flex flex-col items-center gap-8 p-8">
-			<div className="flex w-full max-w-sm flex-col gap-2">
+			<div className="flex w-full max-w-[800px] flex-col gap-2">
 				<span className="text-xs font-medium text-text-subtlest">Running</span>
 				<TaskProgress taskStatusGroups={TASKS_MIXED} />
 			</div>
-			<div className="flex w-full max-w-sm flex-col gap-2">
+			<div className="flex w-full max-w-[800px] flex-col gap-2">
 				<span className="text-xs font-medium text-text-subtlest">Completed (collapsed — click to expand)</span>
 				<TaskProgress runStatus="completed" runCompletedAt="2025-01-15T10:10:51Z" runCreatedAt="2025-01-15T10:00:00Z" defaultCollapsed />
 			</div>
@@ -110,15 +110,15 @@ export function TaskProgressDemoFailed() {
 				planTitle="Deploy Pipeline"
 				planEmoji="❌"
 				taskStatusGroups={{
-					done: [{ id: "d1", label: "Task 1", description: "Build artifacts" }],
+					done: [{ id: "d1", label: "#1 Build artifacts", description: "Docker image pushed to registry" }],
 					inReview: [],
 					inProgress: [],
 					failed: [
-						{ id: "f1", label: "Task 2", description: "Run smoke tests" },
-						{ id: "f2", label: "Task 3", description: "Deploy to production" },
+						{ id: "f1", label: "#2 Run smoke tests", description: "Timeout on health check endpoint" },
+						{ id: "f2", label: "#3 Deploy to production", description: "" },
 					],
 					todo: [
-						{ id: "t1", label: "Task 4", description: "Prepare rollback plan" },
+						{ id: "t1", label: "#4 Prepare rollback plan", description: "" },
 					],
 				}}
 				runStatus="failed"

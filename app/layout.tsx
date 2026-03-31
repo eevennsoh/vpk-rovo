@@ -7,7 +7,6 @@ import { getSSRAutoScript, getThemeStyles } from "@atlaskit/tokens";
 import { Providers } from "@/app/providers";
 import { DevTurbopackCssChunkGuard } from "@/components/utils/dev-turbopack-css-chunk-guard";
 import { DevReactGrabMount } from "@/components/utils/dev-react-grab-mount";
-import { DevAgentationMount } from "@/components/utils/dev-agentation-mount";
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
 
@@ -180,7 +179,6 @@ export default async function RootLayout({
 			<body suppressHydrationWarning className="antialiased">
 				<Providers>{children}</Providers>
 				<DevReactGrabMount />
-				<DevAgentationMount />
 				<DevTurbopackCssChunkGuard />
 			</body>
 		</html>

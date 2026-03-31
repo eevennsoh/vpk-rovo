@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { token } from "@/lib/tokens";
 import { cn } from "@/lib/utils";
@@ -158,18 +158,36 @@ function TaskStatusIcon({
 	return <NodeIcon label="" size="small" color={token("color.icon.subtlest")} />;
 }
 
-function TaskItem({ task }: Readonly<{ task: ProgressTask }>) {
+const TASK_ID_PREFIX_PATTERN = /^(#\d+)\s+(.+)$/u;
+
+function parseTaskIdPrefix(label: string): { idPrefix: string; rest: string } | null {
+	const match = label.match(TASK_ID_PREFIX_PATTERN);
+	if (match?.[1] && match[2]) {
+		return { idPrefix: match[1], rest: match[2] };
+	}
+	return null;
+}
+
+const TaskItem = memo(function TaskItem({ task }: Readonly<{ task: ProgressTask }>) {
+	const parsed = parseTaskIdPrefix(task.label);
 	return (
 		<div className="flex flex-col px-1">
 			<span className="whitespace-normal break-words text-xs leading-4 text-text">
-				{task.label}
+				{parsed ? (
+					<>
+						<span className="text-text-subtlest">{parsed.idPrefix}</span>{" "}
+						{parsed.rest}
+					</>
+				) : (
+					task.label
+				)}
 			</span>
 			{task.description.trim().length > 0 ? (
 				<span className="text-xs leading-4 text-text-subtlest">{task.description}</span>
 			) : null}
 		</div>
 	);
-}
+});
 
 interface TaskGroupRowProps {
 	label: string;
@@ -433,7 +451,7 @@ export default function TaskProgress({
 	return (
 		<div
 			className={cn(
-				"group/card w-full max-w-sm overflow-hidden rounded-2xl bg-surface-raised shadow-sm transition-shadow duration-200 hover:shadow-xl",
+				"group/card w-full max-w-[800px] overflow-hidden rounded-2xl bg-surface-raised shadow-sm transition-shadow duration-200 hover:shadow-xl",
 				isInteractive ? "cursor-pointer" : "cursor-default",
 				className
 			)}

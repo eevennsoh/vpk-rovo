@@ -4,6 +4,8 @@ const test = require("node:test");
 const {
 	buildRecoverableFutureChatThreadInput,
 	hasRecoverableFutureChatThreadState,
+	isFutureChatThreadNotFoundError,
+	shouldPersistResolvedFutureChatTitle,
 	shouldRecoverFutureChatThreadAfterPersistenceFailure,
 } = require("./future-chat-thread-persistence.ts");
 
@@ -12,6 +14,23 @@ function createMessage(id, role, text) {
 		id,
 		role,
 		parts: [{ type: "text", text }],
+	};
+}
+
+function createThread(overrides = {}) {
+	return {
+		id: "thread-1",
+		title: "New chat",
+		messages: [],
+		realtimeMessages: [],
+		visibility: "private",
+		modelId: null,
+		provider: null,
+		activeDocumentId: null,
+		activeRun: null,
+		createdAt: "2026-03-31T00:00:00.000Z",
+		updatedAt: "2026-03-31T00:00:00.000Z",
+		...overrides,
 	};
 }
 
@@ -95,5 +114,32 @@ test("buildRecoverableFutureChatThreadInput preserves realtime messages and acti
 			title: "Make a plan",
 			visibility: "public",
 		},
+	);
+});
+
+test("identifies thread-not-found persistence errors", () => {
+	assert.equal(isFutureChatThreadNotFoundError(new Error("Thread not found")), true);
+	assert.equal(isFutureChatThreadNotFoundError(new Error("Different error")), false);
+});
+
+test("does not persist a resolved title for a deleted thread", () => {
+	assert.equal(
+		shouldPersistResolvedFutureChatTitle({
+			deletedThreadIds: new Set(["thread-1"]),
+			threadId: "thread-1",
+			threads: [createThread()],
+		}),
+		false,
+	);
+});
+
+test("persists a resolved title while the thread still exists locally", () => {
+	assert.equal(
+		shouldPersistResolvedFutureChatTitle({
+			deletedThreadIds: new Set(),
+			threadId: "thread-1",
+			threads: [createThread()],
+		}),
+		true,
 	);
 });

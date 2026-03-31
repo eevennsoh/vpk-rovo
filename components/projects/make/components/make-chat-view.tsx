@@ -24,7 +24,6 @@ import { MakeCardWidgetInline } from "./make-card-widget-inline";
 import { PlanPreviewModal } from "./plan-preview-modal";
 import { useScrollToBottom } from "../hooks/use-scroll-to-bottom";
 import { useDismissibleCards } from "../hooks/use-dismissible-cards";
-import LoadingWidget from "@/components/projects/shared/components/loading-widget";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -303,11 +302,6 @@ export default function MakeChatView() {
 		[renderPlanWidget],
 	);
 
-	const renderLoadingWidget = useCallback(
-		(widgetType?: string) => <LoadingWidget widgetType={widgetType} />,
-		[],
-	);
-
 	const composerProps = useMemo(
 		() => ({
 			prompt,
@@ -342,7 +336,6 @@ export default function MakeChatView() {
 							showFollowUpSuggestions={!isAwaitingUserInput}
 							showAwaitingIndicator={isAwaitingUserInput}
 							awaitingIndicatorLabel={getAwaitingIndicatorLabel(gatedShouldShowQuestionCard)}
-							renderLoadingWidget={renderLoadingWidget}
 							renderWidget={renderWidget}
 						/>
 				</div>

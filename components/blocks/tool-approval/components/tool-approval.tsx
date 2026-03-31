@@ -3,25 +3,26 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Lozenge } from "@/components/ui/lozenge";
+import {
+	type ToolApprovalDecisionState,
+	getToolApprovalDecisionTransition,
+	getToolApprovalProgressLabel,
+	type ToolApprovalProgressMode,
+	type ToolApprovalSubmissionMode,
+	type ToolApprovalSubmitDecision,
+} from "@/components/blocks/tool-approval/lib/tool-approval-utils";
 import type { ToolApprovalPayload } from "@/lib/rovo-ui-messages";
 import { cn } from "@/lib/utils";
 import type { ComponentProps, ReactElement } from "react";
 import { useId, useState } from "react";
 
-interface ToolApprovalDecisionState {
-	approved: boolean;
-	denyMessage?: string;
-}
-
-export interface ToolApprovalSubmitDecision {
-	toolCallId: string;
-	approved: boolean;
-	denyMessage?: string;
-}
+export type { ToolApprovalSubmitDecision } from "@/components/blocks/tool-approval/lib/tool-approval-utils";
 
 export interface ToolApprovalProps extends Omit<ComponentProps<"section">, "onSubmit"> {
 	toolApproval: ToolApprovalPayload;
 	isSubmitting?: boolean;
+	progressMode?: ToolApprovalProgressMode;
+	submissionMode?: ToolApprovalSubmissionMode;
 	onSubmit: (
 		toolApproval: ToolApprovalPayload,
 		decisions: ToolApprovalSubmitDecision[],
@@ -50,48 +51,6 @@ function getRiskVariant(riskLevel?: "low" | "medium" | "high"): "success" | "war
 	}
 
 	return "warning";
-}
-
-function buildSubmissionPayload(
-	items: ToolApprovalPayload["items"],
-	decisionsByToolCallId: Record<string, ToolApprovalDecisionState>,
-): ToolApprovalSubmitDecision[] {
-	const submission: ToolApprovalSubmitDecision[] = [];
-
-	for (const item of items) {
-		const decision = decisionsByToolCallId[item.toolCallId];
-		if (!decision) {
-			continue;
-		}
-
-		submission.push({
-			toolCallId: item.toolCallId,
-			approved: decision.approved,
-			denyMessage: decision.denyMessage,
-		});
-	}
-
-	return submission;
-}
-
-function findNextUndecidedIndex(
-	items: ToolApprovalPayload["items"],
-	activeIndex: number,
-	decisionsByToolCallId: Record<string, ToolApprovalDecisionState>,
-): number {
-	for (let index = activeIndex + 1; index < items.length; index += 1) {
-		if (!decisionsByToolCallId[items[index]?.toolCallId]) {
-			return index;
-		}
-	}
-
-	for (let index = 0; index < items.length; index += 1) {
-		if (!decisionsByToolCallId[items[index]?.toolCallId]) {
-			return index;
-		}
-	}
-
-	return activeIndex;
 }
 
 interface MetadataChipProps {
@@ -123,6 +82,8 @@ export function ToolApproval({
 function ToolApprovalStateful({
 	toolApproval,
 	isSubmitting = false,
+	progressMode = "position",
+	submissionMode = "batch",
 	onSubmit,
 	className,
 	...props
@@ -135,6 +96,12 @@ function ToolApprovalStateful({
 	const activeItem = items[activeIndex] ?? items[0] ?? null;
 	const activeDecision = activeItem ? decisionsByToolCallId[activeItem.toolCallId] ?? null : null;
 	const hasMultipleItems = items.length > 1;
+	const progressLabel = getToolApprovalProgressLabel({
+		items,
+		activeIndex,
+		decisionsByToolCallId,
+		progressMode,
+	});
 
 	if (!activeItem) {
 		return null;
@@ -145,21 +112,24 @@ function ToolApprovalStateful({
 			return;
 		}
 
-		const nextDecisionsByToolCallId = {
-			...decisionsByToolCallId,
-			[activeItem.toolCallId]: {
-				approved,
-			},
-		};
-		setDecisionsByToolCallId(nextDecisionsByToolCallId);
+		const transition = getToolApprovalDecisionTransition({
+			items,
+			activeIndex,
+			decisionsByToolCallId,
+			toolCallId: activeItem.toolCallId,
+			approved,
+			submissionMode,
+		});
+		setDecisionsByToolCallId(transition.nextDecisionsByToolCallId);
 
-		const submission = buildSubmissionPayload(items, nextDecisionsByToolCallId);
-		if (submission.length === items.length) {
-			await onSubmit(toolApproval, submission);
-			return;
+		if (transition.shouldSubmit) {
+			await onSubmit(toolApproval, transition.submission);
+			if (transition.isComplete) {
+				return;
+			}
 		}
 
-		setActiveIndex(findNextUndecidedIndex(items, activeIndex, nextDecisionsByToolCallId));
+		setActiveIndex(transition.nextActiveIndex);
 	}
 
 	return (
@@ -189,9 +159,9 @@ function ToolApprovalStateful({
 								{activeItem.description}
 							</p>
 						</div>
-						{hasMultipleItems ? (
+						{progressLabel ? (
 							<div className="shrink-0 rounded-full border border-border bg-surface px-2.5 py-1 text-[11px] font-medium text-text-subtle">
-								{activeIndex + 1} / {items.length}
+								{progressLabel}
 							</div>
 						) : null}
 					</div>
@@ -232,7 +202,7 @@ function ToolApprovalStateful({
 						Deny
 					</Button>
 
-					{hasMultipleItems ? (
+					{hasMultipleItems && submissionMode !== "per-decision" ? (
 						<div className="ml-auto flex items-center gap-2">
 							<Button
 								disabled={isSubmitting || activeIndex === 0}

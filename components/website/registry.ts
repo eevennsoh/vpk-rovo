@@ -6509,11 +6509,18 @@ const UI_AI_VARIANT_DEMOS: Record<string, ComponentType> = {
 };
 
 const BLOCK_DEMOS: Record<string, ComponentType> = {
+  "agent-progress": dynamic(
+    () => import("./demos/blocks/agent-progress-demo"),
+    { ssr: false },
+  ),
   "task-progress": dynamic(
     () => import("./demos/blocks/task-progress-demo"),
     { ssr: false },
   ),
   "answer-card": dynamic(() => import("./demos/blocks/answer-card-demo"), {
+    ssr: false,
+  }),
+  "chat-timeline": dynamic(() => import("./demos/blocks/chat-timeline-demo"), {
     ssr: false,
   }),
   "app-sidebar": dynamic(() => import("./demos/blocks/app-sidebar-demo"), {
@@ -6592,6 +6599,10 @@ const BLOCK_DEMOS: Record<string, ComponentType> = {
     ssr: false,
   }),
   chatgpt: dynamic(() => import("./demos/blocks/chatgpt-demo"), { ssr: false }),
+  "chat-gallery": dynamic(
+    () => import("./demos/blocks/chat-gallery-demo"),
+    { ssr: false },
+  ),
   "data-table": dynamic(() => import("./demos/blocks/data-table-demo"), {
     ssr: false,
   }),
@@ -6686,6 +6697,71 @@ const BLOCK_DEMOS: Record<string, ComponentType> = {
 };
 
 const BLOCK_VARIANT_DEMOS: Record<string, ComponentType> = {
+  // Agent Progress
+  "agent-progress-demo-running": dynamic(
+    () =>
+      import("./demos/blocks/agent-progress-demo").then((mod) => ({
+        default: mod.AgentProgressDemoRunning,
+      })),
+    { ssr: false },
+  ),
+  "agent-progress-demo-completed": dynamic(
+    () =>
+      import("./demos/blocks/agent-progress-demo").then((mod) => ({
+        default: mod.AgentProgressDemoCompleted,
+      })),
+    { ssr: false },
+  ),
+  "agent-progress-demo-failed": dynamic(
+    () =>
+      import("./demos/blocks/agent-progress-demo").then((mod) => ({
+        default: mod.AgentProgressDemoFailed,
+      })),
+    { ssr: false },
+  ),
+  "agent-progress-demo-collapsed": dynamic(
+    () =>
+      import("./demos/blocks/agent-progress-demo").then((mod) => ({
+        default: mod.AgentProgressDemoCollapsed,
+      })),
+    { ssr: false },
+  ),
+  "agent-progress-demo-collapsed-running": dynamic(
+    () =>
+      import("./demos/blocks/agent-progress-demo").then((mod) => ({
+        default: mod.AgentProgressDemoCollapsedRunning,
+      })),
+    { ssr: false },
+  ),
+  "agent-progress-demo-with-agents": dynamic(
+    () =>
+      import("./demos/blocks/agent-progress-demo").then((mod) => ({
+        default: mod.AgentProgressDemoWithAgents,
+      })),
+    { ssr: false },
+  ),
+  "agent-progress-demo-early-progress": dynamic(
+    () =>
+      import("./demos/blocks/agent-progress-demo").then((mod) => ({
+        default: mod.AgentProgressDemoEarlyProgress,
+      })),
+    { ssr: false },
+  ),
+  "agent-progress-demo-multiple-runs": dynamic(
+    () =>
+      import("./demos/blocks/agent-progress-demo").then((mod) => ({
+        default: mod.AgentProgressDemoMultipleRuns,
+      })),
+    { ssr: false },
+  ),
+  "agent-progress-demo-all-states": dynamic(
+    () =>
+      import("./demos/blocks/agent-progress-demo").then((mod) => ({
+        default: mod.AgentProgressDemoAllStates,
+      })),
+    { ssr: false },
+  ),
+
   // Task Progress
   "task-progress-demo-running": dynamic(
     () =>

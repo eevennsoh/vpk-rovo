@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { token } from "@/lib/tokens";
 import TopNavigation from "@/components/blocks/top-navigation/page";
 import Sidebar from "@/components/blocks/product-sidebar/page";
@@ -18,39 +18,56 @@ interface AppLayoutProps {
 	hideFloatingRovo?: boolean;
 }
 
+/**
+ * Detect iframe context so generated apps rendered inside the artifact
+ * panel's iframe automatically hide all shell chrome (TopNavigation,
+ * Sidebar, FloatingRovoButton, RovoChatPanel).
+ */
+function useIsEmbedded(explicit: boolean): boolean {
+	const [auto] = useState(() => {
+		if (typeof window === "undefined") return false;
+		try {
+			return window.self !== window.top;
+		} catch {
+			return true; // cross-origin iframe
+		}
+	});
+	return explicit || auto;
+}
+
 export default function AppLayout({
 	product,
 	children,
 	embedded = false,
 	hideFloatingRovo,
 }: Readonly<AppLayoutProps>) {
+	const isEmbedded = useIsEmbedded(embedded);
 	const { isVisible } = useSidebar();
 	const { isOpen, closeChat } = useRovoChat();
-	const sidebarWidth = isVisible ? "230px" : "0px";
-	const shellViewportHeight = embedded ? "100dvh" : "100vh";
-	const shellContentHeight = embedded ? "calc(100dvh - 48px)" : "calc(100vh - 48px)";
+	const sidebarWidth = isEmbedded || !isVisible ? "0px" : "230px";
+	const shellViewportHeight = isEmbedded ? "100dvh" : "100vh";
+	const shellContentHeight = isEmbedded ? "100dvh" : "calc(100vh - 48px)";
 	const shellStyle = {
 		minHeight: shellViewportHeight,
 		height: shellViewportHeight,
 		backgroundColor: token("color.background.neutral.subtle"),
 		overflow: "hidden",
 		"--vpk-project-shell-content-height": shellContentHeight,
-		"--vpk-project-shell-top-offset": embedded ? "0px" : "48px",
+		"--vpk-project-shell-top-offset": isEmbedded ? "0px" : "48px",
 	} as React.CSSProperties;
 
 	return (
 		<div style={shellStyle}>
-			<TopNavigation product={product} />
+			{!isEmbedded && <TopNavigation product={product} />}
 
 			<div style={{ display: "flex", height: shellContentHeight, position: "relative" }}>
-				{/* Sidebar */}
-				<Sidebar product={product} embedded={embedded} />
+				{!isEmbedded && <Sidebar product={product} embedded={isEmbedded} />}
 
 				{/* Main Content Area */}
 				<div
 					style={{
 						marginLeft: sidebarWidth,
-						transition: "margin-left var(--duration-medium) var(--ease-in-out)",
+						transition: isEmbedded ? undefined : "margin-left var(--duration-medium) var(--ease-in-out)",
 						flex: 1,
 						overflow: "auto",
 					}}
@@ -59,11 +76,11 @@ export default function AppLayout({
 				</div>
 
 				{/* Rovo Chat Panel */}
-				{isOpen && <RovoChatPanel onClose={closeChat} product={product} embedded={embedded} />}
+				{!isEmbedded && isOpen && <RovoChatPanel onClose={closeChat} product={product} embedded={isEmbedded} />}
 			</div>
 
 			{/* Floating Rovo Button */}
-			{!hideFloatingRovo && <FloatingRovoButton product={product} embedded={embedded} />}
+			{!isEmbedded && !hideFloatingRovo && <FloatingRovoButton product={product} embedded={isEmbedded} />}
 		</div>
 	);
 }

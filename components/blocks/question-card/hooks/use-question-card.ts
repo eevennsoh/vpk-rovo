@@ -16,7 +16,7 @@ interface UseQuestionCardOptions {
 	defaultAnswers?: QuestionCardAnswers;
 	onSubmit: (answers: QuestionCardAnswers) => void;
 	onDismiss?: () => void;
-	/** When set, Skip ends the whole card (deferred clarification); parent should cancel the tool in `onDismiss`. */
+	/** Deferred clarification tool-call ID. Currently unused by the hook but kept for callers. */
 	toolCallId?: string;
 }
 
@@ -28,10 +28,11 @@ export function useQuestionCard({
 	defaultAnswers,
 	onSubmit,
 	onDismiss,
-	toolCallId,
+	toolCallId: _toolCallId,
 }: Readonly<UseQuestionCardOptions>) {
 	const cardRef = useRef<HTMLDivElement>(null);
 	const customInputRef = useRef<HTMLInputElement>(null);
+	const footerButtonRef = useRef<HTMLButtonElement>(null);
 	const previousQuestionIndexRef = useRef<number | null>(null);
 	const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
 	const [answers, setAnswers] = useState<QuestionCardAnswers>(defaultAnswers ?? {});
@@ -96,19 +97,18 @@ export function useQuestionCard({
 	const handleSkip = useCallback(() => {
 		if (isSubmitting) return;
 
-		// Deferred clarification: Skip ends the whole card; the shell dismiss
-		// handler cancels the deferred tool (spec §2.4). Do not advance questions.
-		if (toolCallId) {
-			onDismiss?.();
-			return;
-		}
-
 		if (canGoToNextQuestion) {
 			goToNextQuestion();
 		} else {
-			onDismiss?.();
+			// Last question skipped — submit if any answers were collected, otherwise dismiss.
+			const hasAnyAnswer = questions.some((question) => isQuestionAnswered(question, answers));
+			if (hasAnyAnswer) {
+				onSubmit(answers);
+			} else {
+				onDismiss?.();
+			}
 		}
-	}, [isSubmitting, canGoToNextQuestion, goToNextQuestion, toolCallId, onDismiss]);
+	}, [isSubmitting, canGoToNextQuestion, goToNextQuestion, questions, answers, onSubmit, onDismiss]);
 
 	const handleSelectOption = useCallback(
 		(optionId: string) => {
@@ -177,6 +177,10 @@ export function useQuestionCard({
 		[isSubmitting, currentQuestion, canGoToNextQuestion, goToNextQuestion, answers, questions, onSubmit],
 	);
 
+	const handleCustomInputFocus = useCallback(() => {
+		setFocusedIndex(-1);
+	}, []);
+
 	const handleKeyDown = useCallback(
 		(event: React.KeyboardEvent) => {
 			if (isSubmitting) return;
@@ -184,35 +188,84 @@ export function useQuestionCard({
 			const isCustomInputFocused = document.activeElement === customInputRef.current;
 			switch (event.key) {
 				case "Tab": {
-					// Tab moves to the footer custom input; Shift+Tab moves back to the card.
+					// Focus cycle: card options → custom input → footer button → card options
+					const isFooterButtonFocused = document.activeElement === footerButtonRef.current;
 					if (showCustomInput) {
-						if (event.shiftKey && isCustomInputFocused) {
+						if (event.shiftKey) {
+							if (isFooterButtonFocused) {
+								event.preventDefault();
+								customInputRef.current?.focus();
+								setFocusedIndex(-1);
+							} else if (isCustomInputFocused) {
+								event.preventDefault();
+								cardRef.current?.focus();
+								if (visibleOptionCount > 0) {
+									setFocusedIndex(visibleOptionCount - 1);
+								}
+							}
+						} else {
+							if (isCustomInputFocused) {
+								event.preventDefault();
+								footerButtonRef.current?.focus();
+							} else if (isFooterButtonFocused) {
+								event.preventDefault();
+								cardRef.current?.focus();
+								setFocusedIndex(0);
+							} else {
+								event.preventDefault();
+								setFocusedIndex(-1);
+								customInputRef.current?.focus();
+							}
+						}
+					} else {
+						// No custom input: card options → footer button → card options
+						if (event.shiftKey && isFooterButtonFocused) {
 							event.preventDefault();
 							cardRef.current?.focus();
-						} else if (!event.shiftKey && !isCustomInputFocused) {
+							if (visibleOptionCount > 0) {
+								setFocusedIndex(visibleOptionCount - 1);
+							}
+						} else if (!event.shiftKey && !isFooterButtonFocused) {
 							event.preventDefault();
-							customInputRef.current?.focus();
-						} else if (!event.shiftKey && isCustomInputFocused) {
+							footerButtonRef.current?.focus();
+						} else if (!event.shiftKey && isFooterButtonFocused) {
 							event.preventDefault();
 							cardRef.current?.focus();
 							setFocusedIndex(0);
 						}
-					} else {
-						event.preventDefault();
 					}
 					break;
 				}
 				case "ArrowUp": {
-					if (isCustomInputFocused) return;
-					if (visibleOptionCount === 0) return;
 					event.preventDefault();
+					if (isCustomInputFocused) {
+						// Move from custom input back to the last visible option
+						cardRef.current?.focus();
+						if (visibleOptionCount > 0) {
+							setFocusedIndex(visibleOptionCount - 1);
+						}
+						break;
+					}
+					if (visibleOptionCount === 0) break;
+					// If at first option and custom input exists, wrap to custom input
+					if (showCustomInput && focusedIndex === 0) {
+						setFocusedIndex(-1);
+						customInputRef.current?.focus();
+						break;
+					}
 					setFocusedIndex((previous) => getNextFocusedIndex(previous, visibleOptionCount, "up"));
 					break;
 				}
 				case "ArrowDown": {
-					if (isCustomInputFocused) return;
-					if (visibleOptionCount === 0) return;
 					event.preventDefault();
+					if (isCustomInputFocused) break;
+					if (visibleOptionCount === 0) break;
+					// If at last option and custom input exists, move focus there
+					if (showCustomInput && focusedIndex === visibleOptionCount - 1) {
+						setFocusedIndex(-1);
+						customInputRef.current?.focus();
+						break;
+					}
 					setFocusedIndex((previous) => getNextFocusedIndex(previous, visibleOptionCount, "down"));
 					break;
 				}
@@ -255,7 +308,7 @@ export function useQuestionCard({
 						cardRef.current?.focus();
 						return;
 					}
-					onDismiss?.();
+					handleSkip();
 					break;
 				}
 				default: {
@@ -269,6 +322,10 @@ export function useQuestionCard({
 							if (option) {
 								handleSelectOption(option.id);
 							}
+						} else if (showCustomInput && index === customOptionIndex) {
+							event.preventDefault();
+							setFocusedIndex(-1);
+							customInputRef.current?.focus();
 						}
 					}
 					break;
@@ -280,6 +337,7 @@ export function useQuestionCard({
 			showCustomInput,
 			focusedIndex,
 			visibleOptionCount,
+			customOptionIndex,
 			currentQuestion,
 			canGoToPreviousQuestion,
 			canGoToNextQuestion,
@@ -287,13 +345,14 @@ export function useQuestionCard({
 			goToNextQuestion,
 			handleSelectOption,
 			handleCustomInputSubmit,
-			onDismiss,
+			handleSkip,
 		],
 	);
 
 	return {
 		cardRef,
 		customInputRef,
+		footerButtonRef,
 		answers,
 		focusedIndex,
 		setFocusedIndex,
@@ -311,6 +370,7 @@ export function useQuestionCard({
 		goToPreviousQuestion,
 		handleSkip,
 		handleAnswerChange,
+		handleCustomInputFocus,
 		handleKeyDown,
 		onSubmit: () => onSubmit(answers),
 	};

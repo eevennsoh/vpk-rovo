@@ -264,7 +264,8 @@ class RealtimeSession {
 			this._log("REALTIME", "Connected to OpenAI Realtime API");
 			this._startOpenAIHeartbeat();
 			this._scheduleSessionRefresh();
-			this._sendSessionUpdate(config);
+			// Session update (with tools) is deferred to session.created
+			// to avoid a race where OpenAI's application layer isn't ready yet.
 		});
 
 		this._openaiWs.on("message", (data) => {
@@ -492,6 +493,7 @@ class RealtimeSession {
 			output_audio_format: "pcm16",
 			temperature: typeof msg.temperature === "number" ? msg.temperature : 0.6,
 			max_response_output_tokens: "inf",
+			tools: SESSION_TOOLS,
 			input_audio_transcription: {
 				model: "gpt-4o-mini-transcribe",
 			},
@@ -606,11 +608,12 @@ class RealtimeSession {
 			case OPENAI_EVENT.SESSION_CREATED:
 				this._state = SESSION_STATE.READY;
 				this._log("REALTIME", `Session created: ${event.session?.id || "unknown"}`);
+				this._sendSessionUpdate(getRealtimeConfig());
 				this._sendToClient({ type: "session_ready", sessionId: event.session?.id });
 				break;
 
 			case OPENAI_EVENT.SESSION_UPDATED:
-				this._log("REALTIME", "Session updated");
+				this._log("REALTIME", `Session updated — tools: ${event.session?.tools?.length ?? 0}`);
 				break;
 
 			case OPENAI_EVENT.RESPONSE_AUDIO_DELTA:

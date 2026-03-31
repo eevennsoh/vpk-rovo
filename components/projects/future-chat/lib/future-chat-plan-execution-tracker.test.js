@@ -143,7 +143,7 @@ test("resolveFutureChatPlanExecutionTracker falls back to accepted plan tasks wh
 	assert.equal(tracker?.agentCount, 2);
 	assert.deepEqual(
 		tracker?.taskStatusGroups.todo.map((task) => task.description),
-		["Ready to start", "Blocked by task-1", "Blocked by task-2"],
+		["Ready to start", "Blocked by #1", "Blocked by #2"],
 	);
 });
 
@@ -181,7 +181,7 @@ test("resolveFutureChatPlanExecutionTracker maps update_todo snapshot into task 
 	assert.equal(tracker?.taskStatusGroups.todo.length, 1);
 	assert.equal(
 		tracker?.taskStatusGroups.inProgress[0]?.label,
-		"Refactor orchestration",
+		"#2 Refactoring orchestration",
 	);
 	assert.equal(
 		tracker?.taskStatusGroups.inProgress[0]?.description,
@@ -252,11 +252,11 @@ test("resolveFutureChatPlanExecutionTracker aliases numeric todo ids to the orig
 	);
 	assert.deepEqual(
 		tracker?.taskStatusGroups.done.map((task) => task.label),
-		["Audit current flow", "Refactor orchestration", "Run validation"],
+		["#1 Audit current flow", "#2 Refactor orchestration", "#3 Run validation"],
 	);
 });
 
-test("resolveFutureChatPlanExecutionTracker uses the same concise headings as the plan card", () => {
+test("resolveFutureChatPlanExecutionTracker prefers update_todo labels over plan headings", () => {
 	const planWidget = createVerbosePlanWidgetPayload();
 	const planKey = getPlanApprovalKeyFromPlanWidget(planWidget);
 	const tracker = resolveFutureChatPlanExecutionTracker({
@@ -281,7 +281,10 @@ test("resolveFutureChatPlanExecutionTracker uses the same concise headings as th
 
 	assert.deepEqual(
 		tracker?.taskStatusGroups.done.map((task) => task.label),
-		["Create mock contacts data", "Build contacts table component"],
+		[
+			"#1 Create mock contacts data and TypeScript interface",
+			"#2 Build contacts table component with sorting/filtering",
+		],
 	);
 });
 

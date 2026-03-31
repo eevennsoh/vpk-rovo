@@ -1,9 +1,19 @@
 import type { NavItem } from "@/components/website/website-sidebar-nav";
 import { getAdsDisplayInfo } from "@/app/data/ads-equivalents";
+import { compareByNameNatural } from "@/lib/utils";
 
 export interface ComponentLike {
 	name: string;
 	slug: string;
+}
+
+function sortNavItemsByName(items: readonly NavItem[]): NavItem[] {
+	return [...items]
+		.map((item) => ({
+			...item,
+			children: item.children ? sortNavItemsByName(item.children) : undefined,
+		}))
+		.sort(compareByNameNatural);
 }
 
 /**
@@ -126,5 +136,5 @@ export function buildNavItems(
 		items.push(item);
 	}
 
-	return items;
+	return sortNavItemsByName(items);
 }

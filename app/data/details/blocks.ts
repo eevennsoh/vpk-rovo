@@ -263,6 +263,43 @@ const rows: AnswerCardRow[] = [
 	chatgpt: {
 		description: "ChatGPT-style prompt form with model selector, group chat dialog, and project creation.",
 	},
+	"chat-timeline": {
+		description: "A dark chat transcript demo with a Notion-inspired floating prompt navigator that previews earlier user messages and jumps to them in place.",
+		usage: `import ChatTimeline, { type ChatTimelineMessage } from "@/components/blocks/chat-timeline/page";
+
+const messages: ChatTimelineMessage[] = [
+  { id: "u1", role: "user", timestamp: "9:14 AM", text: "Can you summarize the handoff?" },
+  { id: "a1", role: "assistant", timestamp: "9:15 AM", text: "Here is the condensed handoff..." },
+];
+
+<ChatTimeline messages={messages} />
+<ChatTimeline title="Migration prompts" description="Jump between the most important user prompts." />`,
+		props: [
+			{
+				name: "messages",
+				type: "ReadonlyArray<ChatTimelineMessage>",
+				default: "CHAT_TIMELINE_DEMO_MESSAGES",
+				description: "Ordered transcript used for the message thread and navigator snippets.",
+			},
+			{
+				name: "title",
+				type: "string",
+				default: '"Chat Timeline"',
+				description: "Heading rendered above the transcript.",
+			},
+			{
+				name: "description",
+				type: "string",
+				default: '"Hover the navigator on the right to reopen earlier prompts without breaking your place in the thread."',
+				description: "Supporting copy that frames the navigator interaction.",
+			},
+			{
+				name: "className",
+				type: "string",
+				description: "Optional className applied to the outer block container.",
+			},
+		],
+	},
 	"terminal-switch": {
 		description: "A switchable interface that toggles between Rovo Chat and a RovoDev CLI terminal, demonstrating dual-mode AI interaction.",
 	},
@@ -415,6 +452,9 @@ import { SheetIcon } from "lucide-react";
 	},
 	"top-navigation": {
 		description: "ADS-inspired top navigation bar with app switcher and contextual actions.",
+	},
+	"chat-gallery": {
+		description: "Standalone clone of the prompt gallery block for separate chat-focused iteration with quick chips, hover previews, and discover-more examples.",
 	},
 	"prompt-gallery": {
 		description: "ADS prompt gallery block with quick chips, hover previews, and discover-more examples.",

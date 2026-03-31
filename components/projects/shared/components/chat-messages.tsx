@@ -53,7 +53,6 @@ export interface ChatMessagesProps {
 	showWidgetSections?: boolean;
 	assistantStreamingRenderMode?: "rich" | "text-first";
 	renderEmptyState?: () => ReactNode;
-	renderLoadingWidget?: (widgetType?: string) => ReactNode;
 	renderWidget?: (
 		widget: { type: string; data: unknown },
 		message: RovoRenderableUIMessage
@@ -132,7 +131,6 @@ export function ChatMessages({
 	showWidgetSections: showWidgetSectionsProp,
 	assistantStreamingRenderMode = "rich",
 	renderEmptyState,
-	renderLoadingWidget,
 	renderWidget,
 }: Readonly<ChatMessagesProps>): ReactNode {
 	const renderableMessages = useMemo(
@@ -222,7 +220,6 @@ export function ChatMessages({
 									assistantStreamingRenderMode={assistantStreamingRenderMode}
 									onDeleteMessage={onDeleteMessage}
 									renderWidget={shouldShowWidgetSections ? renderWidget : undefined}
-									renderLoadingWidget={shouldShowWidgetSections ? renderLoadingWidget : undefined}
 								>
 									<ThreadMessage.Reasoning />
 									<ThreadMessage.ThinkingStatus />

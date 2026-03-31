@@ -169,6 +169,10 @@ const {
 	getFutureChatRunFailurePayload,
 } = require("./lib/future-chat-run-failure");
 const {
+	buildInteractiveStuckPortFailureMessage,
+	shouldRetryInteractiveStuckPortRecovery,
+} = require("./lib/interactive-chat-port-recovery");
+const {
 	hasStructuredContinuationBody,
 	shouldReplaceActiveRunForRequest,
 } = require("./lib/future-chat-run-continuation");
@@ -562,6 +566,7 @@ const TOOL_FIRST_GATE_SKIP_SOURCES = new Set([
 const DEFAULT_CONFLUENCE_BASE_URL = "https://venn-test.atlassian.net/wiki";
 const MAX_SLACK_SUMMARY_CHARS = 35000;
 const INTERACTIVE_CHAT_FALLBACK_ENABLED = false;
+const INTERACTIVE_CHAT_STUCK_PORT_RECOVERY_RETRY_ATTEMPTS = 1;
 const INTERACTIVE_CHAT_FORCE_PORT_RECOVERY_MAX_ATTEMPTS = 2;
 const INTERACTIVE_CHAT_FORCE_PORT_RECOVERY_TIMEOUT_MS =
 	DEFAULT_ROVODEV_PORT_RECOVERY_TIMEOUT_MS;
@@ -9051,6 +9056,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 					let pausedToolCallHandled = false;
 					let shouldContinueToolFirstRetry = true;
 					let forcePortRecoveryAttemptCount = 0;
+					let stuckPortRecoveryRetryCount = 0;
 
 					while (shouldContinueToolFirstRetry) {
 						recordToolFirstAttempt(toolFirstExecutionState, {
@@ -9763,18 +9769,18 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 							}
 						} catch (rovoDevStreamError) {
 							if (rovoDevStreamError?.code === "ROVODEV_PORT_STUCK") {
-								// Port is stuck — inform user and restart immediately
+								// Port is stuck — try a single in-place restart and rerun
+								// the exact request once before surfacing a user-facing
+								// failure. This keeps rapid retry/new-thread flows from
+								// dying before ask_user_questions can run.
 								const recoveryPort =
 									rovoDevStreamError.port ||
 									resolvedRovoDevPort;
-
-								handleStreamTextDelta(
-									"\n\n⚠️ This request couldn't be completed — the RovoDev port is stuck. Please try again."
-								);
+								let recoveryResult = null;
 
 								if (typeof recoveryPort === "number" && recoveryPort > 0) {
 									try {
-										const recoveryResult = await restartRovoDevPort({
+										recoveryResult = await restartRovoDevPort({
 											port: recoveryPort,
 											cancelChat: rovoDevCancelChat,
 											healthCheck: rovoDevHealthCheck,
@@ -9794,10 +9800,63 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 											"[CHAT-SDK] Port restart failed:",
 											recoveryErr?.message || recoveryErr
 										);
+										recoveryResult = {
+											recovered: false,
+											error:
+												recoveryErr instanceof Error
+													? recoveryErr.message
+													: String(recoveryErr ?? "Port restart failed"),
+										};
 									}
 								}
 
-								// Exit the tool-first loop — no retry for stuck ports
+								const recovered = recoveryResult?.recovered === true;
+								const shouldRetryRecoveredPort =
+									shouldRetryInteractiveStuckPortRecovery({
+										aborted: abortController.signal.aborted,
+										attemptCount: stuckPortRecoveryRetryCount,
+										maxAttempts:
+											INTERACTIVE_CHAT_STUCK_PORT_RECOVERY_RETRY_ATTEMPTS,
+										recovered,
+									});
+								if (shouldRetryRecoveredPort) {
+									stuckPortRecoveryRetryCount += 1;
+									writer.write({
+										type: "data-thinking-status",
+										data: {
+											label: "Recovered stuck port, retrying",
+											content: `RovoDev port ${recoveryPort} restarted successfully.`,
+											activity: "results",
+											source: "backend",
+										},
+									});
+									resetAssistantTextForRetryAttempt();
+									continue;
+								}
+
+								const recoveryError =
+									typeof recoveryResult?.error === "string" &&
+									recoveryResult.error.trim().length > 0
+										? recoveryResult.error.trim()
+										: null;
+								if (recoveryError) {
+									writer.write({
+										type: "data-thinking-status",
+										data: {
+											label: "Port recovery failed",
+											content: recoveryError,
+											activity: "results",
+											source: "backend",
+										},
+									});
+								}
+
+								emitForcedTextDelta(
+									`\n\n⚠️ ${buildInteractiveStuckPortFailureMessage({
+										recoveryError,
+										retriedRecovery: recovered,
+									})}`
+								);
 								shouldContinueToolFirstRetry = false;
 							} else if (rovoDevStreamError?.code === "ROVODEV_CHAT_IN_PROGRESS_TIMEOUT") {
 								streamTimedOut = true;

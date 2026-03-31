@@ -140,12 +140,17 @@ function getLatestFutureChatTodoProgressFromMessages(
 	return null;
 }
 
+function formatBlockedByTaskId(taskId: string): string {
+	const numericId = extractNumericTaskId(taskId);
+	return numericId !== null ? `#${numericId}` : taskId;
+}
+
 function buildBlockedByDescription(blockedBy: ReadonlyArray<string>): string {
 	if (blockedBy.length === 0) {
 		return "Ready to start";
 	}
 
-	return `Blocked by ${blockedBy.join(", ")}`;
+	return `Blocked by ${blockedBy.map(formatBlockedByTaskId).join(", ")}`;
 }
 
 function buildPlanTaskRecord(task: ParsedPlanTask): FutureChatTodoProgressItem {
@@ -197,14 +202,14 @@ function mergeTodoItemsWithPlanTasks(
 		if (snapshotItem) {
 			matchedSnapshotIds.add(snapshotItem.id);
 		}
+		const fallbackHeading =
+			extractTaskHeadingFromLabel(planTask.label) || planTask.label;
 
 		mergedItems.push({
 			...(snapshotItem ?? buildPlanTaskRecord(planTask)),
 			id: planTask.id,
-			content:
-				extractTaskHeadingFromLabel(planTask.label) || planTask.label,
-			label:
-				extractTaskHeadingFromLabel(planTask.label) || planTask.label,
+			content: snapshotItem?.content ?? fallbackHeading,
+			label: snapshotItem?.label ?? fallbackHeading,
 			blockedBy:
 				snapshotItem && snapshotItem.blockedBy.length > 0
 					? [...snapshotItem.blockedBy]
@@ -223,6 +228,22 @@ function mergeTodoItemsWithPlanTasks(
 	return mergedItems;
 }
 
+const PREFIXED_TASK_ID_PATTERN = /^task-(\d+)$/iu;
+const NUMERIC_ID_PATTERN = /^\d+$/u;
+const LABEL_ALREADY_PREFIXED_PATTERN = /^#\d+\s/u;
+
+function extractNumericTaskId(taskId: string): string | null {
+	const trimmed = taskId.trim();
+	const prefixedMatch = trimmed.match(PREFIXED_TASK_ID_PATTERN);
+	if (prefixedMatch?.[1]) {
+		return prefixedMatch[1];
+	}
+	if (NUMERIC_ID_PATTERN.test(trimmed)) {
+		return trimmed;
+	}
+	return null;
+}
+
 function toProgressTask(
 	item: FutureChatTodoProgressItem & { agentName?: string },
 ): FutureChatPlanExecutionProgressTask {
@@ -231,9 +252,16 @@ function toProgressTask(
 			? buildBlockedByDescription(item.blockedBy)
 			: "";
 
+	const numericId = extractNumericTaskId(item.id);
+	const alreadyPrefixed = LABEL_ALREADY_PREFIXED_PATTERN.test(item.label);
+	const label =
+		numericId !== null && !alreadyPrefixed
+			? `#${numericId} ${item.label}`
+			: item.label;
+
 	return {
 		id: item.id,
-		label: item.label,
+		label,
 		description,
 		agentName: item.agentName,
 	};

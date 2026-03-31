@@ -39,7 +39,7 @@ import ArrowUpIcon from "@atlaskit/icon/core/arrow-up";
 import CrossIcon from "@atlaskit/icon/core/cross";
 import AudioWaveformIcon from "@atlaskit/icon-lab/core/audio-waveform";
 import AddIcon from "@atlaskit/icon/core/add";
-import ClipboardIcon from "@atlaskit/icon/core/clipboard";
+import ScorecardIcon from "@atlaskit/icon/core/scorecard";
 import DeleteIcon from "@atlaskit/icon/core/delete";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -426,7 +426,7 @@ function FutureChatComposerInner({
 				) : null}
 
 				{planExecutionTracker ? (
-					<div className="px-1 pb-3">
+					<div className="pb-3">
 						<FutureChatPlanExecutionTracker
 							onDismiss={onDismissPlanExecutionTracker}
 							tracker={planExecutionTracker}
@@ -476,14 +476,14 @@ function FutureChatComposerInner({
 							<PromptInputTools>
 								{onTogglePlanMode ? (
 								<PromptInputButton
-									aria-label="Plan mode"
+									aria-label="Task mode"
 									aria-pressed={isPlanMode}
 									variant="outline"
 									disabled={isComposerBusy || submitDisabled}
 									onClick={onTogglePlanMode}
 								>
-										<ClipboardIcon label="" size="small" />
-										<span>Plan</span>
+										<ScorecardIcon label="" size="small" />
+										<span>Task</span>
 									</PromptInputButton>
 								) : null}
 								<PromptInputActionMenu open={isAddMenuOpen} onOpenChange={setIsAddMenuOpen}>

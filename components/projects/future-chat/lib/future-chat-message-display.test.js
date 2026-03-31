@@ -138,7 +138,6 @@ test("shouldRenderFutureChatAssistantMessage hides the blank assistant placehold
 			hasSources: false,
 			hasWidget: false,
 			hasWidgetError: false,
-			hasWidgetLoading: false,
 		}),
 		false,
 	);
@@ -154,10 +153,12 @@ test("shouldRenderFutureChatAssistantMessage keeps rendering once thinking or co
 			hasSources: false,
 			hasWidget: false,
 			hasWidgetError: false,
-			hasWidgetLoading: false,
 		}),
 		true,
 	);
+});
+
+test("shouldRenderFutureChatAssistantMessage does not keep a blank shell for loading-only widget state", () => {
 	assert.equal(
 		shouldRenderFutureChatAssistantMessage({
 			hasArtifactCard: false,
@@ -167,8 +168,7 @@ test("shouldRenderFutureChatAssistantMessage keeps rendering once thinking or co
 			hasSources: false,
 			hasWidget: false,
 			hasWidgetError: false,
-			hasWidgetLoading: true,
 		}),
-		true,
+		false,
 	);
 });

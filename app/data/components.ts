@@ -6,6 +6,7 @@ import { PROJECT_DETAILS } from "./details/projects";
 import { UI_DETAILS } from "./details/ui";
 import { UTILITY_DETAILS } from "./details/utility";
 import { VISUAL_DETAILS } from "./details/visual";
+import { compareByNameNatural } from "@/lib/utils";
 
 export interface ComponentEntry {
 	name: string;
@@ -13,6 +14,10 @@ export interface ComponentEntry {
 	importPath: string;
 	category: "ui-audio" | "ui-ai" | "ui" | "blocks" | "projects" | "utility" | "visual";
 	detail?: ComponentDetail;
+}
+
+function sortEntriesByName<T extends { name: string }>(entries: readonly T[]): T[] {
+	return [...entries].sort(compareByNameNatural);
 }
 
 function toTitleCase(slug: string): string {
@@ -92,7 +97,7 @@ function visualComponent(slug: string, name: string, importPath: string): Compon
 	};
 }
 
-export const AI_COMPONENTS: ComponentEntry[] = [
+export const AI_COMPONENTS: ComponentEntry[] = sortEntriesByName([
 	aiComponent("agent"),
 	aiComponent("animated-dots", "Animated Dots"),
 	aiComponent("animated-rovo", "Animated Rovo"),
@@ -144,9 +149,9 @@ export const AI_COMPONENTS: ComponentEntry[] = [
 	aiComponent("transcription"),
 	aiComponent("voice-selector", "Voice Selector"),
 	aiComponent("web-preview", "Web Preview"),
-] as const;
+]);
 
-export const AUDIO_COMPONENTS: ComponentEntry[] = [
+export const AUDIO_COMPONENTS: ComponentEntry[] = sortEntriesByName([
 	audioComponent("audio-player", "Audio Player"),
 	audioComponent("bar-visualizer", "Bar Visualizer"),
 	audioComponent("conversation"),
@@ -164,9 +169,9 @@ export const AUDIO_COMPONENTS: ComponentEntry[] = [
 	audioComponent("voice-button", "Voice Button"),
 	audioComponent("voice-picker", "Voice Picker"),
 	audioComponent("waveform", "Waveform"),
-] as const;
+]);
 
-export const UI_COMPONENTS: ComponentEntry[] = [
+export const UI_COMPONENTS: ComponentEntry[] = sortEntriesByName([
 	uiComponent("accordion"),
 	uiComponent("alert"),
 	uiComponent("alert-dialog", "Alert Dialog"),
@@ -253,14 +258,16 @@ export const UI_COMPONENTS: ComponentEntry[] = [
 	uiComponent("toggle"),
 	uiComponent("toggle-group", "Toggle Group"),
 	uiComponent("tooltip"),
-] as const;
+]);
 
-export const BLOCK_COMPONENTS: ComponentEntry[] = [
+export const BLOCK_COMPONENTS: ComponentEntry[] = sortEntriesByName([
 	blockComponent("agent-progress", "Agent Progress"),
 	blockComponent("task-progress", "Task Progress"),
 	blockComponent("answer-card", "Answer Card"),
 	blockComponent("approval-card", "Approval Card"),
+	blockComponent("chat-timeline", "Chat Timeline"),
 	blockComponent("tool-approval", "Tool Approval"),
+	blockComponent("chat-gallery", "Chat gallery"),
 	blockComponent("chatbot", "Chatbot"),
 	blockComponent("chatgpt", "ChatGPT"),
 	blockComponent("cursor", "Cursor"),
@@ -314,9 +321,9 @@ export const BLOCK_COMPONENTS: ComponentEntry[] = [
 	blockComponent("work-item-widget", "Work Item Widget"),
 	blockComponent("work-item-detail", "Work Item Detail"),
 	blockComponent("workflow", "Workflow"),
-] as const;
+]);
 
-export const PROJECT_COMPONENTS: ComponentEntry[] = [
+export const PROJECT_COMPONENTS: ComponentEntry[] = sortEntriesByName([
 	{ ...projectComponent("make", "Make"), importPath: "@/components/projects/make" },
 	projectComponent("sidebar-chat", "Sidebar Chat"),
 	projectComponent("confluence", "Confluence Editor"),
@@ -325,9 +332,9 @@ export const PROJECT_COMPONENTS: ComponentEntry[] = [
 	projectComponent("future-chat", "Future Chat"),
 	projectComponent("search", "Search Results"),
 	projectComponent("overview", "Overview"),
-] as const;
+]);
 
-export const UTILITY_COMPONENTS: ComponentEntry[] = [
+export const UTILITY_COMPONENTS: ComponentEntry[] = sortEntriesByName([
 	{ name: "Agent Browser", slug: "agent-browser", importPath: "@/components/website/demos/utils/agent-browser", category: "utility", detail: UTILITY_DETAILS["agent-browser"] },
 	utilityComponent("gui", "GUI"),
 	utilityComponent("image-generation", "Image Generation"),
@@ -337,13 +344,13 @@ export const UTILITY_COMPONENTS: ComponentEntry[] = [
 	utilityComponent("tools-invocation", "Tools Invocation"),
 	utilityComponent("ui-generation", "UI Generation"),
 	utilityComponent("visual-json", "Visual JSON"),
-] as const;
+]);
 
-export const VISUAL_COMPONENTS: ComponentEntry[] = [
+export const VISUAL_COMPONENTS: ComponentEntry[] = sortEntriesByName([
 	visualComponent("typography", "Typography", "@/lib/tokens"),
 	visualComponent("color", "Color", "@/app/tailwind-theme.css\n@/app/shadcn-theme.css"),
 	visualComponent("shadow", "Shadow", "@/lib/tokens"),
-] as const;
+]);
 
 const ALL_COMPONENTS = [...AUDIO_COMPONENTS, ...AI_COMPONENTS, ...UI_COMPONENTS, ...BLOCK_COMPONENTS, ...PROJECT_COMPONENTS, ...UTILITY_COMPONENTS, ...VISUAL_COMPONENTS];
 

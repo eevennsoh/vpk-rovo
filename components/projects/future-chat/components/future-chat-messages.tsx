@@ -73,7 +73,6 @@ import {
 	resolveFutureChatScrollAnchorLayout,
 } from "@/components/projects/future-chat/lib/future-chat-scroll-anchor";
 import { GenerativeWidgetCard } from "@/components/projects/shared/components/generative-widget-card";
-import LoadingWidget from "@/components/projects/shared/components/loading-widget";
 import { AssistantSuggestionsSection } from "@/components/projects/shared/components/assistant-suggestions-section";
 import { PlanWidgetInlineCard } from "@/components/projects/shared/components/plan-widget-inline-card";
 import { PreloadThinkingIndicator } from "@/components/projects/shared/components/preload-thinking-indicator";
@@ -670,29 +669,6 @@ function AssistantMessage({
 	const widget = getLatestDataPart(message, "data-widget-data");
 	const widgetLoading = getLatestDataPart(message, "data-widget-loading");
 	const widgetError = getLatestDataPart(message, "data-widget-error");
-	const [questionWidgetLoadTimedOut, setQuestionWidgetLoadTimedOut] =
-		useState(false);
-
-	useEffect(() => {
-		const loading = widgetLoading?.data.loading ?? false;
-		const loadType = widgetLoading?.data.type;
-		if (!loading || loadType !== "question-card") {
-			const rafId = window.requestAnimationFrame(() => {
-				setQuestionWidgetLoadTimedOut(false);
-			});
-			return () => {
-				window.cancelAnimationFrame(rafId);
-			};
-		}
-
-		const timeoutId = window.setTimeout(() => {
-			setQuestionWidgetLoadTimedOut(true);
-		}, 30_000);
-
-		return () => {
-			window.clearTimeout(timeoutId);
-		};
-	}, [widgetLoading?.data.loading, widgetLoading?.data.type]);
 	const sources = getMessageSources(message);
 	const routeDecision: RoutingDecision | null = getLatestRouteDecision(message);
 
@@ -892,7 +868,6 @@ function AssistantMessage({
 			hasSources: sources.length > 0,
 			hasWidget: hasVisibleWidget,
 			hasWidgetError: Boolean(widgetError),
-			hasWidgetLoading: widgetLoading?.data.loading ?? false,
 		});
 	const isPlanWidgetStreaming =
 		widgetType === "plan" &&
@@ -1052,21 +1027,6 @@ function AssistantMessage({
 								<AdsReasoningTrigger />
 								<ReasoningContent>{reasoning.text}</ReasoningContent>
 							</Reasoning>
-						) : null}
-
-						{widgetLoading?.data.loading && !shouldHideResolvedQuestionCard ? (
-							<div className="w-full">
-								{questionWidgetLoadTimedOut &&
-								widgetLoading.data.type === "question-card" ? (
-									<div className="rounded-xl border border-border-warning/40 bg-bg-warning-subtler px-3 py-2 text-sm text-text-warning">
-										Clarification questions are taking longer than expected to load.
-										Use Stop and try again, or wait if the assistant is still
-										working.
-									</div>
-								) : (
-									<LoadingWidget widgetType={widgetLoading.data.type} />
-								)}
-							</div>
 						) : null}
 
 					{shouldRenderPlanWidget ? (

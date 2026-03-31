@@ -152,6 +152,21 @@ const DEEP_PLAN_INSTRUCTION = [
 	"[End Deep Plan Protocol]",
 ].join("\n");
 
+const SHELL_CHROME_AVOIDANCE_INSTRUCTION = [
+	"[Shell Chrome Policy]",
+	"When generating or writing React page/app code, do NOT wrap with host-shell chrome.",
+	"Do NOT import or use @/components/projects/page (AppLayout).",
+	"Do NOT import these host-shell components:",
+	"- @/components/blocks/top-navigation/page (TopNavigation)",
+	"- @/components/blocks/product-sidebar/page (product sidebar)",
+	"- @/components/projects/shared/components/floating-rovo-button (FloatingRovoButton)",
+	"- @/components/projects/fullscreen-chat (global Rovo chat panel)",
+	"Do NOT add equivalents of global product chrome such as app switchers, global search headers, notifications, help/settings/profile menus, theme toggles, or floating chat launchers unless the user explicitly requested shell UI.",
+	"Build only the feature content area. The surrounding host shell already exists.",
+	"Feature-local headers, filters, tabs, toolbars, and section navigation are fine when they belong to the generated feature itself.",
+	"[End Shell Chrome Policy]",
+].join("\n");
+
 const PLAIN_CHAT_INSTRUCTION = [
 	"[Plain Chat Mode]",
 	"This is a simple conversational turn. Respond directly, briefly, and naturally.",
@@ -375,6 +390,7 @@ function getInstructionBlocksForProfile(profile, promptSpecificInstruction, cont
 		DEEP_PLAN_INSTRUCTION,
 		planModeContextActive ? null : GENUI_SPEC_INSTRUCTION,
 		EXECUTION_TRACE_INSTRUCTION,
+		SHELL_CHROME_AVOIDANCE_INSTRUCTION,
 		FIGMA_CLARIFICATION_INSTRUCTION,
 		WEB_SEARCH_INSTRUCTION,
 		promptSpecificInstruction,

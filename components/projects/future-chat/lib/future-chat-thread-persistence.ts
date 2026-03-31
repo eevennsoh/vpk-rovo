@@ -24,13 +24,28 @@ export function hasRecoverableFutureChatThreadState(
 	);
 }
 
+export function isFutureChatThreadNotFoundError(error: unknown): boolean {
+	return error instanceof Error && error.message === "Thread not found";
+}
+
+export function shouldPersistResolvedFutureChatTitle(input: {
+	deletedThreadIds: ReadonlySet<string>;
+	threadId: string;
+	threads: ReadonlyArray<{ id: string }>;
+}): boolean {
+	if (input.deletedThreadIds.has(input.threadId)) {
+		return false;
+	}
+
+	return input.threads.some((thread) => thread.id === input.threadId);
+}
+
 export function shouldRecoverFutureChatThreadAfterPersistenceFailure(input: {
 	error: unknown;
 	state: Readonly<RecoverableFutureChatThreadState>;
 }): boolean {
 	return (
-		input.error instanceof Error &&
-		input.error.message === "Thread not found" &&
+		isFutureChatThreadNotFoundError(input.error) &&
 		hasRecoverableFutureChatThreadState(input.state)
 	);
 }

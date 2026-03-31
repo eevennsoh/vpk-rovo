@@ -36,6 +36,8 @@ import {
 } from "@/components/projects/future-chat/lib/future-chat-thread-route-sync";
 import {
 	buildRecoverableFutureChatThreadInput,
+	isFutureChatThreadNotFoundError,
+	shouldPersistResolvedFutureChatTitle,
 	shouldRecoverFutureChatThreadAfterPersistenceFailure,
 } from "@/components/projects/future-chat/lib/future-chat-thread-persistence";
 import { waitForChatSendSettled } from "@/components/projects/future-chat/lib/future-chat-send-guard";
@@ -75,6 +77,7 @@ import {
 import { shouldHydratePersistedRealtimeMessages } from "@/components/projects/future-chat/lib/future-chat-realtime-persistence";
 import {
 	filterDeletedFutureChatThreads,
+	updateFutureChatThreadTitleRecord,
 	upsertFutureChatThreadRecord,
 } from "@/components/projects/future-chat/lib/future-chat-thread-state";
 import {
@@ -648,6 +651,8 @@ export function useFutureChat({
 	const [draftThreadId, setDraftThreadId] = useState(() => initialThreadId ?? createFutureChatId());
 	const [activeThreadId, setActiveThreadId] = useState<string | null>(initialThreadId);
 	const [threads, setThreads] = useState<FutureChatThread[]>([]);
+	const threadsRef = useRef(threads);
+	threadsRef.current = threads;
 	const [threadsLoaded, setThreadsLoaded] = useState(false);
 	const [documents, setDocuments] = useState<FutureChatDocument[]>([]);
 	const [activeDocumentId, setActiveDocumentId] = useState<string | null>(null);
@@ -726,32 +731,64 @@ export function useFutureChat({
 		setArtifactDraftContent("");
 		setArtifactMode("preview");
 	}, []);
+	const clearPendingTitleGeneration = useCallback((threadId?: string | null) => {
+		if (
+			threadId
+			&& pendingTitleThreadIdRef.current !== null
+			&& pendingTitleThreadIdRef.current !== threadId
+		) {
+			return;
+		}
+
+		pendingTitleThreadIdRef.current = null;
+		pendingTitleMessageRef.current = null;
+		setPendingTitleThreadId(null);
+		setIsGeneratingTitle(false);
+	}, []);
 	const resolveChatTitle = useCallback(
 		(threadId: string, title: string) => {
 			const normalizedTitle = title.trim().replace(/^["']|["']$/g, "").replace(/\.+$/, "").trim();
-			if (!normalizedTitle) return;
+			if (!normalizedTitle) {
+				clearPendingTitleGeneration(threadId);
+				return;
+			}
 
+			if (!shouldPersistResolvedFutureChatTitle({
+				deletedThreadIds: deletedThreadIdsRef.current,
+				threadId,
+				threads: threadsRef.current,
+			})) {
+				clearPendingTitleGeneration(threadId);
+				return;
+			}
+
+			const updatedAt = new Date().toISOString();
 			setThreads((previousThreads) =>
-				upsertFutureChatThreadRecord(
+				updateFutureChatThreadTitleRecord(
 					previousThreads,
 					{
-						...previousThreads.find((t) => t.id === threadId)!,
+						threadId,
 						title: normalizedTitle,
-						updatedAt: new Date().toISOString(),
+						updatedAt,
 					},
 					{ deletedThreadIds: deletedThreadIdsRef.current },
-				),
+				).threads,
 			);
 
-			void updateFutureChatThread(threadId, { title: normalizedTitle });
+			void updateFutureChatThread(threadId, { title: normalizedTitle }).catch((error) => {
+				if (isFutureChatThreadNotFoundError(error)) {
+					deletedThreadIdsRef.current.add(threadId);
+					setThreads((previousThreads) =>
+						previousThreads.filter((thread) => thread.id !== threadId),
+					);
+					return;
+				}
 
-			if (pendingTitleThreadIdRef.current === threadId) {
-				pendingTitleThreadIdRef.current = null;
-				setPendingTitleThreadId(null);
-				setIsGeneratingTitle(false);
-			}
+				console.warn("[FutureChat] Failed to persist generated chat title:", error);
+			});
+			clearPendingTitleGeneration(threadId);
 		},
-		[],
+		[clearPendingTitleGeneration],
 	);
 
 	const selectDocumentForDisplay = useCallback((document: FutureChatDocument) => {
@@ -1232,6 +1269,11 @@ export function useFutureChat({
 			if (!document) {
 				clearArtifactState();
 				return null;
+			}
+
+			// Skip display update if the thread was rehydrated while we were fetching
+			if (isHydratingThreadRef.current) {
+				return document;
 			}
 
 			selectDocumentForDisplay(document);
@@ -1830,14 +1872,9 @@ export function useFutureChat({
 				return;
 			}
 
-			// Clear generating state so the sidebar doesn't stay in shimmer
-			if (pendingTitleThreadIdRef.current === threadId) {
-				pendingTitleThreadIdRef.current = null;
-				setPendingTitleThreadId(null);
-				setIsGeneratingTitle(false);
-			}
+			clearPendingTitleGeneration(threadId);
 		});
-	}, [pendingTitleThreadId, resolveChatTitle, resolveFallbackTitle]);
+	}, [clearPendingTitleGeneration, pendingTitleThreadId, resolveChatTitle, resolveFallbackTitle]);
 
 	useEffect(() => {
 		statusRef.current = status;
@@ -1992,6 +2029,10 @@ export function useFutureChat({
 	}, [normalizedRovodevMessages, streamingArtifactMessageId]);
 
 	useEffect(() => {
+		if (isHydratingThreadRef.current) {
+			return;
+		}
+
 		const currentStreamingArtifact = streamingArtifact;
 		if (!currentStreamingArtifact || !currentStreamingArtifact.documentId) {
 			return;
@@ -2040,6 +2081,10 @@ export function useFutureChat({
 		}, [panelState, streamingArtifact, streamingArtifactRef, visibleArtifactDocumentId]);
 
 	useEffect(() => {
+		if (isHydratingThreadRef.current) {
+			return;
+		}
+
 		const completedDocumentId = lastCompletedArtifactDocumentIdRef.current;
 		if (
 			!completedDocumentId ||
@@ -2493,8 +2538,17 @@ const resetToBlankChatState = useCallback((nextDraftId: string) => {
 	}, [initialThreadId, loadThreadRef]);
 
 	useEffect(() => {
-		setArtifactDraftContent(activeDocumentContent);
-		setSelectedVersionId(activeDocument?.versions.at(-1)?.id ?? null);
+		if (!activeDocument) {
+			return;
+		}
+
+		setArtifactDraftContent((prev) =>
+			prev !== activeDocumentContent ? activeDocumentContent : prev,
+		);
+		setSelectedVersionId((prev) => {
+			const nextId = activeDocument.versions.at(-1)?.id ?? null;
+			return prev !== nextId ? nextId : prev;
+		});
 	}, [activeDocument, activeDocumentContent]);
 
 	const activateBlankChatState = useCallback(
@@ -3277,38 +3331,100 @@ const resetToBlankChatState = useCallback((nextDraftId: string) => {
 		],
 	);
 
-	const finalizeCancelledClarificationTurn = useCallback(async () => {
-		const threadId = activeThreadIdRef.current;
-		if (threadId) {
-			setLocalThreadActiveRun(threadId, null);
-		}
+	/**
+	 * Dismiss a deferred-tool-backed clarification by resuming the paused tool
+	 * call with a "user did not respond" result instead of cancelling the
+	 * session. This mirrors {@link submitClarification} but with empty answers
+	 * and dismiss semantics so the agent can proceed on its own.
+	 */
+	const submitDeferredClarificationDismiss = useCallback(
+		async (questionCard: ParsedQuestionCardPayload) => {
+			const emptyAnswers: ClarificationAnswers = {};
+			const submission = createClarificationSubmission(questionCard, emptyAnswers);
+			const wasPlanModeActive =
+				isPlanModeRef.current || Boolean(questionCard.deferredToolCallId);
+			const dismissPrompt = buildClarificationDismissPrompt(questionCard);
 
-		queueProcessorRunningRef.current = false;
-		setHasActiveDispatch(false);
-		runSubscriptionAbortControllerRef.current?.abort();
-		runSubscriptionAbortControllerRef.current = null;
-		runSubscriptionThreadIdRef.current = null;
-		setAttachedRunStatus(null);
-		hasObservedTurnCompleteRef.current = true;
-		setRovodevMessages((previousMessages) => {
-			const resolved = markClarificationToolResolved(previousMessages, "Clarification cancelled.");
-			return appendTurnCompleteToLastAssistantMessage(resolved).messages;
-		});
+			hasObservedTurnCompleteRef.current = true;
+			setRovodevMessages((previousMessages) => {
+				const resolved = markClarificationToolResolved(
+					previousMessages,
+					"Clarification dismissed.",
+				);
+				return appendTurnCompleteToLastAssistantMessage(resolved).messages;
+			});
+			await releaseCompletedUseChatTurnIfNeeded();
+			await waitForChatSendSettled({
+				statusRef: useChatStatusRef,
+				lastBusyAtRef: lastUseChatBusyAtRef,
+			});
+			const threadId = await ensureThread(dismissPrompt || "Skipped clarification");
+			const { message, messageId } = appendLocalUserMessage({
+				files: [],
+				metadata: buildClarificationMessageMetadata(questionCard, {
+					status: "dismissed",
+					visibility: "hidden",
+				}),
+				text: dismissPrompt,
+			});
+			resetPendingArtifactAssociation();
 
-		try {
-			await stopUseChat();
-		} catch (error) {
-			console.warn(
-				"[FutureChat] Failed to stop UI stream after clarification cancel:",
-				error,
+			const deferredToolCallId = questionCard.deferredToolCallId;
+			const toolCallId =
+				deferredToolCallId ?? questionCard.toolCallId ?? submission.toolCallId;
+			const body: Record<string, unknown> = {
+				id: threadId,
+				isPlanMode: wasPlanModeActive || undefined,
+				contextDescription: wasPlanModeActive
+					? PLAN_MODE_POST_CLARIFICATION_CONTEXT
+					: undefined,
+				clarification: {
+					...submission,
+					toolCallId: deferredToolCallId ?? submission.toolCallId,
+					deferredToolCallId: deferredToolCallId ?? submission.deferredToolCallId,
+				},
+				deferredToolResponse: toolCallId
+					? {
+						tool_call_id: toolCallId,
+						result: "User did not respond to questions",
+					}
+					: undefined,
+			};
+
+			markLocalThreadRunPending(threadId);
+			if (wasPlanModeActive) {
+				setPlanningSession((prev) =>
+					prev
+						? { ...prev, phase: "awaiting-plan", hasStreamStarted: false }
+						: {
+							requestId: planModeSyncRequestIdRef.current,
+							phase: "awaiting-plan",
+							hasStreamStarted: false,
+							retryUsed: false,
+						},
+				);
+			}
+			await sendMessage(
+				{
+					text: dismissPrompt,
+					files: [],
+					messageId,
+					metadata: message.metadata,
+				},
+				{ body },
 			);
-		}
-
-		planModeSyncRequestIdRef.current += 1;
-		setPlanningSession(null);
-		setIsPlanMode(false);
-		void syncPlanModeFromBackend();
-	}, [setLocalThreadActiveRun, setRovodevMessages, stopUseChat, syncPlanModeFromBackend]);
+		},
+		[
+			appendLocalUserMessage,
+			ensureThread,
+			isPlanModeRef,
+			markLocalThreadRunPending,
+			releaseCompletedUseChatTurnIfNeeded,
+			resetPendingArtifactAssociation,
+			sendMessage,
+			setRovodevMessages,
+		],
+	);
 
 	const cancelClarificationQuestionSet = useCallback(
 		async (questionCard: ParsedQuestionCardPayload) => {
@@ -3319,21 +3435,13 @@ const resetToBlankChatState = useCallback((nextDraftId: string) => {
 				return true;
 			}
 
-			const didCancelDeferredTool = await cancelDeferredToolCall(toolCallId);
-			if (!didCancelDeferredTool) {
-				toast.error("Couldn't cancel the clarification step.", {
-					description: "The question card is still active. Try again.",
-				});
-				return false;
-			}
-
-			await finalizeCancelledClarificationTurn();
+			// Resume the deferred tool call with a dismiss result instead of
+			// cancelling. This lets the agent continue rather than leaving a
+			// dangling pending deferred tool request on RovoDev Serve.
+			await submitDeferredClarificationDismiss(questionCard);
 			return true;
 		},
-		[
-			finalizeCancelledClarificationTurn,
-			submitClarificationDismiss,
-		],
+		[submitClarificationDismiss, submitDeferredClarificationDismiss],
 	);
 
 	const acceptPlanReview = useCallback(
@@ -4227,6 +4335,7 @@ const resetToBlankChatState = useCallback((nextDraftId: string) => {
 
 	const deleteThread = useCallback(
 		async (threadId: string) => {
+			clearPendingTitleGeneration(threadId);
 			deletedThreadIdsRef.current.add(threadId);
 			clearQueuedActionsForThread(threadId);
 			setThreads((previousThreads) =>
@@ -4248,11 +4357,12 @@ const resetToBlankChatState = useCallback((nextDraftId: string) => {
 				setInputError(toFutureChatUserErrorMessage(error));
 			}
 		},
-		[clearQueuedActionsForThread, openNewChat, refreshThreads],
+		[clearPendingTitleGeneration, clearQueuedActionsForThread, openNewChat, refreshThreads],
 	);
 
 	const deleteAllThreads = useCallback(async () => {
-		const previousThreadIds = threads.map((thread) => thread.id);
+		clearPendingTitleGeneration();
+		const previousThreadIds = threadsRef.current.map((thread) => thread.id);
 		for (const threadId of previousThreadIds) {
 			deletedThreadIdsRef.current.add(threadId);
 			clearQueuedActionsForThread(threadId);
@@ -4273,7 +4383,7 @@ const resetToBlankChatState = useCallback((nextDraftId: string) => {
 			void refreshThreads();
 			setInputError(toFutureChatUserErrorMessage(error));
 		}
-	}, [clearQueuedActionsForThread, openNewChat, refreshThreads, threads]);
+	}, [clearPendingTitleGeneration, clearQueuedActionsForThread, openNewChat, refreshThreads]);
 
 	const voteOnMessage = useCallback(
 		async (messageId: string, value: "up" | "down" | null) => {

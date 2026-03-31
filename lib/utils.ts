@@ -21,6 +21,16 @@ export function createId(prefix = "id"): string {
 	return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+export function compareByNameNatural(
+	left: { name: string },
+	right: { name: string },
+): number {
+	return left.name.localeCompare(right.name, undefined, {
+		numeric: true,
+		sensitivity: "base",
+	});
+}
+
 export function sortByUpdatedAtDesc<T extends { updatedAt: string }>(
 	items: ReadonlyArray<T>,
 ): T[] {
