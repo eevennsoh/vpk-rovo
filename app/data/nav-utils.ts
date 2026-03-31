@@ -24,6 +24,10 @@ export const UI_GROUPS: Record<string, string[]> = {
 	// Intentionally flat: expose all UI components directly in the sidebar.
 };
 
+export const VISUAL_GROUPS: Record<string, string[]> = {
+	shaders: ["particles", "wave-gradient", "liquid-gradient", "bands", "rings", "blockify", "pixels", "truchet", "fluted-glass", "mesh", "mesh-02", "chromatic-aberration"],
+};
+
 export const BLOCK_GROUPS: Record<string, string[]> = {
 	sidebar: [
 		"app-sidebar",

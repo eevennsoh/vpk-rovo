@@ -66,7 +66,7 @@ const TASKS_WITH_AGENTS: ProgressStatusGroups = {
 
 export default function TaskProgressDemo() {
 	return (
-		<div className="flex flex-col items-center gap-8 p-8">
+		<div className="flex w-full flex-col items-center gap-8 p-8">
 			<div className="flex w-full max-w-[800px] flex-col gap-2">
 				<span className="text-xs font-medium text-text-subtlest">Running</span>
 				<TaskProgress taskStatusGroups={TASKS_MIXED} />
@@ -81,7 +81,7 @@ export default function TaskProgressDemo() {
 
 export function TaskProgressDemoRunning() {
 	return (
-		<div className="flex items-center justify-center p-6">
+		<div className="flex w-full items-center justify-center p-6">
 			<TaskProgress planTitle="Sprint Planning" planEmoji="🚀" taskStatusGroups={TASKS_MIXED} runStatus="running" agentCount={6} />
 		</div>
 	);
@@ -89,7 +89,7 @@ export function TaskProgressDemoRunning() {
 
 export function TaskProgressDemoCompleted() {
 	return (
-		<div className="flex items-center justify-center p-6">
+		<div className="flex w-full items-center justify-center p-6">
 			<TaskProgress
 				planTitle="Code Review Sweep"
 				planEmoji="✅"
@@ -105,7 +105,7 @@ export function TaskProgressDemoCompleted() {
 
 export function TaskProgressDemoFailed() {
 	return (
-		<div className="flex items-center justify-center p-6">
+		<div className="flex w-full items-center justify-center p-6">
 			<TaskProgress
 				planTitle="Deploy Pipeline"
 				planEmoji="❌"
@@ -132,7 +132,7 @@ export function TaskProgressDemoFailed() {
 
 export function TaskProgressDemoCollapsed() {
 	return (
-		<div className="flex items-center justify-center p-6">
+		<div className="flex w-full items-center justify-center p-6">
 			<TaskProgress planTitle="Flexible Friday Plan" planEmoji="🔥" runStatus="completed" runCreatedAt="2025-01-15T10:00:00Z" runCompletedAt="2025-01-15T10:10:51Z" defaultCollapsed />
 		</div>
 	);
@@ -140,7 +140,7 @@ export function TaskProgressDemoCollapsed() {
 
 export function TaskProgressDemoCollapsedRunning() {
 	return (
-		<div className="flex items-center justify-center p-6">
+		<div className="flex w-full items-center justify-center p-6">
 			<TaskProgress planTitle="Background Tasks" planEmoji="⏳" runStatus="running" agentCount={8} defaultCollapsed />
 		</div>
 	);
@@ -148,7 +148,7 @@ export function TaskProgressDemoCollapsedRunning() {
 
 export function TaskProgressDemoWithAgents() {
 	return (
-		<div className="flex items-center justify-center p-6">
+		<div className="flex w-full items-center justify-center p-6">
 			<TaskProgress planTitle="Multi-Agent Sprint" planEmoji="🤖" taskStatusGroups={TASKS_WITH_AGENTS} runStatus="running" agentCount={4} />
 		</div>
 	);
@@ -156,7 +156,7 @@ export function TaskProgressDemoWithAgents() {
 
 export function TaskProgressDemoEarlyProgress() {
 	return (
-		<div className="flex items-center justify-center p-6">
+		<div className="flex w-full items-center justify-center p-6">
 			<TaskProgress planTitle="New Feature Build" planEmoji="🏗️" taskStatusGroups={TASKS_EARLY} runStatus="running" agentCount={1} />
 		</div>
 	);
@@ -164,7 +164,7 @@ export function TaskProgressDemoEarlyProgress() {
 
 export function TaskProgressDemoMultipleRuns() {
 	return (
-		<div className="flex items-center justify-center p-6">
+		<div className="flex w-full items-center justify-center p-6">
 			<TaskProgress planTitle="Iterative Refinement" planEmoji="🔄" taskStatusGroups={TASKS_MIXED} runStatus="running" runCount={3} agentCount={5} />
 		</div>
 	);
@@ -172,7 +172,7 @@ export function TaskProgressDemoMultipleRuns() {
 
 export function TaskProgressDemoAllStates() {
 	return (
-		<div className="flex flex-col items-center gap-6 p-6">
+		<div className="flex w-full flex-col items-center gap-6 p-6">
 			<TaskProgress planTitle="Running Plan" planEmoji="🚀" taskStatusGroups={TASKS_MIXED} runStatus="running" agentCount={6} />
 			<TaskProgress
 				planTitle="Completed Plan"

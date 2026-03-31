@@ -443,7 +443,7 @@ export function ArtifactCard({
 						<GenerativeCardFooter>
 							<Button
 								aria-label={openLabel}
-								className="min-w-0 sm:min-w-[117px]"
+								className="min-w-0"
 								onClick={handleOpen}
 								type="button"
 								variant="outline"

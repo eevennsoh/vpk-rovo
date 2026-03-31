@@ -163,6 +163,13 @@ function FutureChatComposerInner({
 		realtimeGenerationState,
 		realtimeVoiceState,
 	});
+	const handleTogglePlanMode = useCallback(() => {
+		onTogglePlanMode?.();
+		requestAnimationFrame(() => {
+			textareaRef.current?.focus();
+		});
+	}, [onTogglePlanMode]);
+
 	const handlePromptSubmit = useCallback(
 		(payload: { text: string; files: FileUIPart[] }) => {
 			if (submitDisabled) {
@@ -213,6 +220,20 @@ function FutureChatComposerInner({
 			clearRealtimeWaveformIntro();
 		};
 	}, [clearRealtimeWaveformIntro]);
+
+	useEffect(() => {
+		if (!onTogglePlanMode) return;
+
+		const handleKeyDown = (e: KeyboardEvent) => {
+			if (e.altKey && e.key === "Tab") {
+				e.preventDefault();
+				handleTogglePlanMode();
+			}
+		};
+
+		document.addEventListener("keydown", handleKeyDown);
+		return () => document.removeEventListener("keydown", handleKeyDown);
+	}, [handleTogglePlanMode, onTogglePlanMode]);
 
 	const measurePreviewPromptHeight = useCallback((nextPreviewPrompt: string | null) => {
 		const textareaElement = textareaRef.current;
@@ -480,7 +501,8 @@ function FutureChatComposerInner({
 									aria-pressed={isPlanMode}
 									variant="outline"
 									disabled={isComposerBusy || submitDisabled}
-									onClick={onTogglePlanMode}
+									onClick={handleTogglePlanMode}
+									tooltip={{ content: "⌥ Tab", delay: 0 }}
 								>
 										<ScorecardIcon label="" size="small" />
 										<span>Task</span>

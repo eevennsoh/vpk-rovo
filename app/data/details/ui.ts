@@ -4946,6 +4946,11 @@ import { SidebarNavItem, SidebarNavItemAction, SidebarNavItemCount } from "@/com
         description: "Leading 16px project icon with the same count treatment.",
         demoSlug: "sidebar-nav-item-demo-project-count",
       },
+      {
+        title: "With description",
+        description: "Secondary description text below the label, useful for metadata like timestamps.",
+        demoSlug: "sidebar-nav-item-demo-with-description",
+      },
     ],
   },
 

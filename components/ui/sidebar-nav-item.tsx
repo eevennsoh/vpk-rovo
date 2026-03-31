@@ -31,6 +31,8 @@ const sidebarNavItemVariants = cva(
 export interface SidebarNavItemProps
 	extends Omit<React.ComponentProps<"div">, "onClick" | "title"> {
 	actions?: React.ReactNode
+	/** Optional secondary text rendered below the label (e.g. timestamps, metadata). */
+	description?: React.ReactNode
 	disabled?: boolean
 	interactionState?: "rest" | "hovered" | "focus-visible"
 	isExpanded?: boolean
@@ -63,6 +65,7 @@ function normalizeIconNode(
 function SidebarNavItem({
 	actions,
 	className,
+	description,
 	disabled = false,
 	interactionState = "rest",
 	isExpanded,
@@ -127,14 +130,24 @@ function SidebarNavItem({
 					/>
 				) : null}
 
-				<span
-					data-slot="sidebar-nav-item-label"
-					className={cn(
-						"min-w-0 flex-1 truncate pl-0.5 text-sm leading-5 font-medium",
-						isSelected ? "text-text-selected" : "text-text-subtle"
-					)}
-				>
-					{label}
+				<span className="min-w-0 flex-1 pl-0.5">
+					<span
+						data-slot="sidebar-nav-item-label"
+						className={cn(
+							"block truncate text-sm leading-5 font-medium",
+							isSelected ? "text-text-selected" : "text-text-subtle"
+						)}
+					>
+						{label}
+					</span>
+					{description ? (
+						<span
+							data-slot="sidebar-nav-item-description"
+							className="block truncate text-xs text-text-subtlest"
+						>
+							{description}
+						</span>
+					) : null}
 				</span>
 			</button>
 
@@ -203,7 +216,7 @@ function SidebarNavItemCount({
 			variant="neutral"
 			max={false}
 			className={cn(
-				"pointer-events-none tabular-nums group-data-[selected=true]/sidebar-nav-item:hidden",
+				"pointer-events-none tabular-nums transition-opacity duration-fast ease-out group-data-[selected=true]/sidebar-nav-item:opacity-0 group-hover/sidebar-nav-item:!opacity-100",
 				className,
 				"h-4 min-h-4 max-h-4 leading-4"
 			)}

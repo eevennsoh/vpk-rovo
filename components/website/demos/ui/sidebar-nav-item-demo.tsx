@@ -39,6 +39,7 @@ export default function SidebarNavItemDemo() {
 				<SidebarNavItemDemoFocusVisible />
 				<SidebarNavItemDemoWithCount />
 				<SidebarNavItemDemoProjectCount />
+				<SidebarNavItemDemoWithDescription />
 			</div>
 		</div>
 	);
@@ -146,6 +147,18 @@ export function SidebarNavItemDemoProjectCount() {
 				leading={<ProjectIcon label="" />}
 				leadingSize="medium"
 				meta={<SidebarNavItemCount>25</SidebarNavItemCount>}
+				actions={<ChevronAction />}
+			/>
+		</DemoFrame>
+	);
+}
+
+export function SidebarNavItemDemoWithDescription() {
+	return (
+		<DemoFrame>
+			<SidebarNavItem
+				label="Building a New App Concept"
+				description="1 hour ago"
 				actions={<ChevronAction />}
 			/>
 		</DemoFrame>

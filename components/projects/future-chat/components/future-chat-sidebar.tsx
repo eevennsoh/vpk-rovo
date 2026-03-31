@@ -185,43 +185,34 @@ function FutureChatSidebarThreadItem({
 
 	return (
 		<SidebarMenuItem>
-			<SidebarMenuButton
-				className="h-auto min-h-9 rounded-lg p-1.5 group-has-data-[sidebar=menu-action]/menu-item:pr-1.5 group-hover/menu-item:bg-sidebar-accent group-hover/menu-item:text-sidebar-accent-foreground"
-				isActive={isActive}
+			<SidebarNavItem
+				className="rounded-lg p-1.5"
+				isSelected={isActive}
 				onClick={() => {
 					setOpenMobile(false);
 					void onSelectThread(thread.id);
 				}}
-				size="lg"
-				type="button"
-			>
-				<div className="min-w-0 flex-1 group-hover/menu-item:mr-[28px] group-has-[[data-sidebar=menu-action][aria-expanded]]/menu-item:mr-[28px]">
-					<div className="truncate text-sm font-medium leading-5 text-text-subtle">
-						{isPendingTitle ? (
-							<Shimmer
-								key={`${thread.id}:${thread.title}`}
-								as="span"
-								duration={1}
-								className="block max-w-full truncate motion-safe:animate-[sd-blurIn_160ms_ease-out_both] motion-reduce:animate-none"
-							>
-								{thread.title}
-							</Shimmer>
-						) : (
-							<span
-								key={`${thread.id}:${thread.title}`}
-								className="block truncate motion-safe:animate-[sd-blurIn_160ms_ease-out_both] motion-reduce:animate-none"
-							>
-								{thread.title}
-							</span>
-						)}
-					</div>
-					<div className="mt-0.5 flex items-center text-xs font-normal text-text-subtlest">
-						<span>
-							{formatDistanceToNowStrict(new Date(thread.updatedAt), { addSuffix: true })}
+				label={
+					isPendingTitle ? (
+						<Shimmer
+							key={`${thread.id}:${thread.title}`}
+							as="span"
+							duration={1}
+							className="block max-w-full truncate motion-safe:animate-[sd-blurIn_160ms_ease-out_both] motion-reduce:animate-none"
+						>
+							{thread.title}
+						</Shimmer>
+					) : (
+						<span
+							key={`${thread.id}:${thread.title}`}
+							className="block truncate motion-safe:animate-[sd-blurIn_160ms_ease-out_both] motion-reduce:animate-none"
+						>
+							{thread.title}
 						</span>
-					</div>
-				</div>
-			</SidebarMenuButton>
+					)
+				}
+				description={formatDistanceToNowStrict(new Date(thread.updatedAt), { addSuffix: true })}
+			/>
 
 			<DropdownMenu modal={true}>
 				<DropdownMenuTrigger
@@ -373,7 +364,7 @@ export function FutureChatSidebar({
 								onClick={onNewChat}
 								selected={isNewChatSelected}
 								trailing={
-										<SidebarNavItemCount className="pointer-events-auto min-w-0 rounded-xs px-1 font-normal text-text">
+										<SidebarNavItemCount className="pointer-events-auto min-w-0 rounded-xs px-1 font-normal text-text hover:bg-bg-neutral active:bg-bg-neutral group-data-[selected=true]/sidebar-nav-item:bg-transparent">
 											⌥⇧N
 										</SidebarNavItemCount>
 								}

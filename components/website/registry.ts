@@ -7503,6 +7503,35 @@ const VISUAL_DEMOS: Record<string, ComponentType> = {
   }),
   color: dynamic(() => import("./demos/visual/color-demo"), { ssr: false }),
   shadow: dynamic(() => import("./demos/visual/shadow-demo"), { ssr: false }),
+  particles: dynamic(() => import("./demos/visual/particles-demo"), {
+    ssr: false,
+  }),
+  "wave-gradient": dynamic(() => import("./demos/visual/wave-gradient-demo"), {
+    ssr: false,
+  }),
+  "liquid-gradient": dynamic(
+    () => import("./demos/visual/liquid-gradient-demo"),
+    { ssr: false },
+  ),
+  bands: dynamic(() => import("./demos/visual/bands-demo"), { ssr: false }),
+  rings: dynamic(() => import("./demos/visual/rings-demo"), { ssr: false }),
+  blockify: dynamic(() => import("./demos/visual/blockify-demo"), {
+    ssr: false,
+  }),
+  pixels: dynamic(() => import("./demos/visual/pixels-demo"), { ssr: false }),
+  truchet: dynamic(() => import("./demos/visual/truchet-demo"), { ssr: false }),
+  "fluted-glass": dynamic(
+    () => import("./demos/visual/fluted-glass-demo"),
+    { ssr: false },
+  ),
+  mesh: dynamic(() => import("./demos/visual/mesh-demo"), { ssr: false }),
+  "mesh-02": dynamic(() => import("./demos/visual/mesh-02-demo"), {
+    ssr: false,
+  }),
+  "chromatic-aberration": dynamic(
+    () => import("./demos/visual/chromatic-aberration-demo"),
+    { ssr: false },
+  ),
 };
 
 const CATEGORY_REGISTRIES: Record<string, Record<string, ComponentType>> = {

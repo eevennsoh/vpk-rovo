@@ -15,6 +15,7 @@ import RetryIcon from "@atlaskit/icon/core/retry";
 import VideoStopOverlayIcon from "@atlaskit/icon/core/video-stop-overlay";
 import DeleteIcon from "@atlaskit/icon/core/delete";
 import { MOCK_TASKS, type ProgressStatusGroups, type ProgressTask } from "./data/mock-tasks";
+import { Tile } from "@/components/ui/tile";
 import { AnimatedDots } from "@/components/ui-ai/animated-dots";
 
 const SUMMARY_RING_SEGMENTED_GRADIENT =
@@ -399,8 +400,7 @@ export default function TaskProgress({
 	const statusGroups = useMemo(() => buildStatusGroups(taskStatusGroups), [taskStatusGroups]);
 	const runStatusLabel = getRunStatusLabel(runStatus);
 	const runStatusToneClass = getRunStatusToneClass(runStatus);
-	const showRunProgressBar = runStatus === "running";
-	const statusText = showRunProgressBar ? `${agentCount} ${agentCount === 1 ? "agent" : "agents"} cooking` : runStatusLabel;
+	const statusText = runStatus === "running" ? `${agentCount} ${agentCount === 1 ? "agent" : "agents"} cooking` : runStatusLabel;
 	const progressValue = useMemo(() => {
 		const totalTaskCount =
 			taskStatusGroups.done.length +
@@ -468,12 +468,12 @@ export default function TaskProgress({
 			<style dangerouslySetInnerHTML={{ __html: CARD_ANIMATION_STYLES }} />
 			<div className="flex flex-col gap-3 px-4 py-3">
 				<div className="flex items-center justify-between gap-3">
-					<div className="flex min-w-0 items-center gap-3">
-						<div className="relative flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-bg-neutral">
+					<div className="flex min-w-0 flex-1 items-center gap-3">
+						<Tile label={planTitle} size="medium" variant="neutral" className="relative shrink-0">
 							{showSummaryRainbow ? (
 								<span
 									aria-hidden="true"
-									className="pointer-events-none absolute inset-0 rounded-full motion-reduce:hidden"
+									className="pointer-events-none absolute inset-0 rounded-tile motion-reduce:hidden"
 									style={{
 										background: SUMMARY_RING_SEGMENTED_GRADIENT,
 										mask: SUMMARY_RING_MASK,
@@ -483,13 +483,21 @@ export default function TaskProgress({
 									}}
 								/>
 							) : null}
-							<span className="relative z-10 text-base leading-5 text-text-subtle">{planEmoji}</span>
-						</div>
-						<div className="min-w-0">
-							<span style={{ font: token("font.heading.xsmall") }} className="block truncate text-text">
-								{planTitle}
-							</span>
-							<span className="text-xs leading-4 text-text-subtlest">Time taken {formatElapsedTime(elapsedSeconds)}</span>
+							<span className="relative z-10">{planEmoji}</span>
+						</Tile>
+						<div className="flex min-w-0 flex-1 flex-col gap-1.5">
+							<div className="flex min-w-0 items-center gap-2">
+								<span style={{ font: token("font.heading.xsmall") }} className="truncate text-text">
+									{planTitle}
+								</span>
+								<span className="shrink-0 text-xs leading-4 text-text-subtlest">{formatElapsedTime(elapsedSeconds)}</span>
+							</div>
+							<Progress
+								aria-label="Run progress"
+								value={progressValue}
+								variant="inverse"
+								className="w-full"
+							/>
 						</div>
 					</div>
 					{runStatus === "running" && !collapsed && showRunningStopButton ? (
@@ -512,53 +520,22 @@ export default function TaskProgress({
 				</div>
 
 					{!collapsed ? (
-						<>
-							<div
-								className={cn(
-									"relative w-full overflow-hidden transition-[height] duration-[var(--duration-normal)] ease-[var(--ease-in-out)]",
-									showRunProgressBar ? "h-1.5" : "h-px"
-								)}
-							>
-								<div
-									aria-hidden={!showRunProgressBar}
-									className={cn(
-										"absolute inset-0 transition-opacity duration-[var(--duration-normal)] ease-[var(--ease-in-out)]",
-										showRunProgressBar ? "opacity-100" : "pointer-events-none opacity-0"
-									)}
-								>
-									<Progress
-										aria-label="Run progress"
-										value={progressValue}
-										variant="inverse"
-										className="w-full"
-									/>
-								</div>
-								<div
-									aria-hidden="true"
-									className={cn(
-										"absolute inset-0 bg-border transition-opacity duration-[var(--duration-normal)] ease-[var(--ease-in-out)]",
-										showRunProgressBar ? "opacity-0" : "opacity-100"
-									)}
-								/>
-							</div>
-
-							<div className="flex items-center gap-1">
-								<span className="text-xs leading-4 text-text-subtlest">
-									{runCount} {runCount === 1 ? "task" : "tasks"}
-								</span>
-								<span className="text-xs leading-4 text-text-subtlest">•</span>
-								{runStatus === "running" ? (
-									<>
-										<span className="inline-flex items-baseline text-xs leading-4 text-text-subtlest">
-											{statusText}
-											<AnimatedDots className="[&>span]:text-xs" />
-										</span>
-									</>
-								) : (
-									<span className={cn("text-xs leading-4", runStatusToneClass)}>{runStatusLabel}</span>
-								)}
-							</div>
-						</>
+						<div className="flex items-center gap-1">
+							<span className="text-xs leading-4 text-text-subtlest">
+								{runCount} {runCount === 1 ? "task" : "tasks"}
+							</span>
+							<span className="text-xs leading-4 text-text-subtlest">•</span>
+							{runStatus === "running" ? (
+								<>
+									<span className="inline-flex items-baseline text-xs leading-4 text-text-subtlest">
+										{statusText}
+										<AnimatedDots className="[&>span]:text-xs" />
+									</span>
+								</>
+							) : (
+								<span className={cn("text-xs leading-4", runStatusToneClass)}>{runStatusLabel}</span>
+							)}
+						</div>
 					) : null}
 			</div>
 

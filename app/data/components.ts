@@ -350,6 +350,18 @@ export const VISUAL_COMPONENTS: ComponentEntry[] = sortEntriesByName([
 	visualComponent("typography", "Typography", "@/lib/tokens"),
 	visualComponent("color", "Color", "@/app/tailwind-theme.css\n@/app/shadcn-theme.css"),
 	visualComponent("shadow", "Shadow", "@/lib/tokens"),
+	visualComponent("particles", "Particles", "@/components/website/demos/visual/shaders/particles"),
+	visualComponent("wave-gradient", "Wave Gradient", "@/components/website/demos/visual/shaders/wave-gradient"),
+	visualComponent("liquid-gradient", "Liquid Gradient", "@/components/website/demos/visual/shaders/liquid-gradient"),
+	visualComponent("bands", "Bands", "@/components/website/demos/visual/shaders/bands"),
+	visualComponent("rings", "Rings", "@/components/website/demos/visual/shaders/rings"),
+	visualComponent("blockify", "Blockify", "@/components/website/demos/visual/shaders/blockify"),
+	visualComponent("pixels", "Pixels", "@/components/website/demos/visual/shaders/pixels"),
+	visualComponent("truchet", "Truchet", "@/components/website/demos/visual/shaders/truchet"),
+	visualComponent("fluted-glass", "Fluted Glass", "@/components/website/demos/visual/shaders/fluted-glass"),
+	visualComponent("mesh", "Mesh SVG", "@/components/website/demos/visual/shaders/mesh"),
+	visualComponent("mesh-02", "Mesh", "@/components/website/demos/visual/shaders/mesh2"),
+	visualComponent("chromatic-aberration", "Chromatic Aberration", "@/components/website/demos/visual/shaders/chromatic-aberration"),
 ]);
 
 const ALL_COMPONENTS = [...AUDIO_COMPONENTS, ...AI_COMPONENTS, ...UI_COMPONENTS, ...BLOCK_COMPONENTS, ...PROJECT_COMPONENTS, ...UTILITY_COMPONENTS, ...VISUAL_COMPONENTS];
