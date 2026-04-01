@@ -19,7 +19,7 @@ Frontend pattern:
 - `DefaultChatTransport` from `ai` points to `/api/chat-sdk`
 - Messages use the `UIMessage` type from `ai`
 
-Custom data parts sent by the backend:
+Custom data parts sent by the backend (`data-` prefix in SSE, stripped in frontend):
 
 - `widget-loading` — signals widget loading state
 - `widget-data` — delivers widget payload to the frontend
@@ -27,8 +27,17 @@ Custom data parts sent by the backend:
 - `suggested-questions` — provides follow-up question suggestions
 - `thinking-status` — thinking visualization state
 - `thinking-event` — tool call lifecycle events (start/result/error phases)
-- `tool-first-warning` — warnings about tool relevance
 - `agent-execution` — agent task execution updates
+- `artifact-result` — artifact system output
+- `cancel-streaming` — cancel signal to frontend
+- `clear` — clear message content
+- `finish` — stream completion marker
+- `id` — message/stream identity
+- `kind` — message kind metadata
+- `title` — thread/artifact title update
+- `route-decision` — routing metadata
+- `tool-approval` — tool approval request (file/bash permissions)
+- `turn-complete` — turn boundary signal
 
 Backend streaming (`backend/server.js`):
 

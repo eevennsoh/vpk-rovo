@@ -264,7 +264,7 @@ const rows: AnswerCardRow[] = [
 		description: "ChatGPT-style prompt form with model selector, group chat dialog, and project creation.",
 	},
 	"chat-timeline": {
-		description: "A dark chat transcript demo with a Notion-inspired floating prompt navigator that previews earlier user messages and jumps to them in place.",
+		description: "Chat transcript with a floating prompt navigator that previews earlier user messages and jumps to them in place.",
 		usage: `import ChatTimeline, { type ChatTimelineMessage } from "@/components/blocks/chat-timeline/page";
 
 const messages: ChatTimelineMessage[] = [
@@ -272,26 +272,13 @@ const messages: ChatTimelineMessage[] = [
   { id: "a1", role: "assistant", timestamp: "9:15 AM", text: "Here is the condensed handoff..." },
 ];
 
-<ChatTimeline messages={messages} />
-<ChatTimeline title="Migration prompts" description="Jump between the most important user prompts." />`,
+<ChatTimeline messages={messages} />`,
 		props: [
 			{
 				name: "messages",
 				type: "ReadonlyArray<ChatTimelineMessage>",
 				default: "CHAT_TIMELINE_DEMO_MESSAGES",
 				description: "Ordered transcript used for the message thread and navigator snippets.",
-			},
-			{
-				name: "title",
-				type: "string",
-				default: '"Chat Timeline"',
-				description: "Heading rendered above the transcript.",
-			},
-			{
-				name: "description",
-				type: "string",
-				default: '"Hover the navigator on the right to reopen earlier prompts without breaking your place in the thread."',
-				description: "Supporting copy that frames the navigator interaction.",
 			},
 			{
 				name: "className",

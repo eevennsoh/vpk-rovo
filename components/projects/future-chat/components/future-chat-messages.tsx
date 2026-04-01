@@ -47,7 +47,7 @@ import ListChecklistIcon from "@atlaskit/icon/core/list-checklist";
 import PeopleGroupIcon from "@atlaskit/icon/core/people-group";
 import { Button } from "@/components/ui/button";
 import { Lozenge } from "@/components/ui/lozenge";
-import { Textarea } from "@/components/ui/textarea";
+import { InlineEdit } from "@/components/ui/inline-edit";
 import { getFutureChatInterruptionLabel } from "@/lib/future-chat-interruptions";
 import {
 	resolveFutureChatMessageArtifactDisplay,
@@ -373,7 +373,6 @@ function UserMessage({
 	onEditMessage: (messageId: string, nextText: string) => Promise<void>;
 	onSetEditingMessageId: (messageId: string | null) => void;
 }>) {
-	const [draft, setDraft] = useState(() => getMessageText(message));
 	const isDismissed = message.metadata?.clarificationStatus === "dismissed";
 	const clarificationSummaryRows = (() => {
 		if (isDismissed) return [];
@@ -421,30 +420,14 @@ function UserMessage({
 			) : null}
 
 			{isEditing ? (
-				<div className="rounded-2xl border border-border bg-background p-3 shadow-xs">
-					<Textarea
-						className="min-h-[140px] resize-none border-0 bg-transparent px-0 py-0 shadow-none focus-visible:ring-0"
-						onChange={(event) => setDraft(event.currentTarget.value)}
-						value={draft}
-					/>
-					<div className="mt-3 flex justify-end gap-2">
-						<Button
-							onClick={() => onSetEditingMessageId(null)}
-							size="sm"
-							type="button"
-							variant="ghost"
-						>
-							Cancel
-						</Button>
-						<Button
-							onClick={() => void onEditMessage(message.id, draft)}
-							size="sm"
-							type="button"
-						>
-							Send
-						</Button>
-					</div>
-				</div>
+				<InlineEdit
+					value={getMessageText(message)}
+					multiline
+					startWithEditViewOpen
+					keepEditViewOpenOnBlur
+					onConfirm={(nextValue) => void onEditMessage(message.id, nextValue)}
+					onCancel={() => onSetEditingMessageId(null)}
+				/>
 			) : isDismissed ? (
 				<AnswerCard label="Questions dismissed" rows={[]} />
 			) : clarificationSummaryRows.length > 0 ? (

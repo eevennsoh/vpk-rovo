@@ -2100,7 +2100,7 @@ export function FutureChatShell({
 			{shouldShowTimelineNavigator ? (
 				<ChatTimelineNavigator
 					activeItemId={activeTimelineMessageId}
-					className="absolute right-4 top-5 z-20 hidden md:block"
+					className="absolute right-3 top-5 z-20 hidden md:block"
 					items={timelineItems}
 					onSelectItem={(messageId) => {
 						setScrollAnchorMessageId(messageId);

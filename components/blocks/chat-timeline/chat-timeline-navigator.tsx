@@ -2,7 +2,6 @@
 
 import { useMemo, useId, useState, type FocusEvent } from "react";
 import { useReducedMotion } from "motion/react";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { token } from "@/lib/tokens";
 import { cn } from "@/lib/utils";
 
@@ -24,17 +23,18 @@ interface ChatTimelineNavigatorProps {
 const BAR_HEIGHT_PX = 2;
 const BAR_GAP_PX = 12;
 const MINIMAP_PADDING_Y_PX = 12;
-const MINIMAP_PADDING_X_PX = 8;
-const MINIMAP_WIDTH_PX = 40;
+const MINIMAP_PADDING_X_PX = 4;
+const MINIMAP_WIDTH_PX = 32;
+const MINIMAP_MAX_BAR_WIDTH_PX = 24;
 
 const TIMELINE_OPEN_HEIGHT_PX = 492;
-const TIMELINE_OPEN_WIDTH_PX = 320;
+const TIMELINE_OPEN_WIDTH_PX = 240;
 
 function getBarWidth(text: string): number {
 	const length = text.length;
 	if (length < 40) return 8;
 	if (length <= 120) return 16;
-	return 24;
+	return MINIMAP_MAX_BAR_WIDTH_PX;
 }
 
 function toSnippet(text: string, maxLength = 78): string {
@@ -60,10 +60,9 @@ export function ChatTimelineNavigator({
 
 	const chronologicalItems = useMemo(() => [...items].reverse(), [items]);
 	const closedHeight =
-		2 + // 1px border top + bottom (border-box)
-		MINIMAP_PADDING_Y_PX * 2 +
-		items.length * BAR_HEIGHT_PX +
-		Math.max(0, items.length - 1) * BAR_GAP_PX;
+		2 * MINIMAP_PADDING_Y_PX +
+		chronologicalItems.length * BAR_HEIGHT_PX +
+		Math.max(0, chronologicalItems.length - 1) * BAR_GAP_PX;
 
 	if (items.length <= 1) {
 		return null;
@@ -77,9 +76,6 @@ export function ChatTimelineNavigator({
 		setIsNavigatorOpen(false);
 	}
 
-	const shellBorderColor = isNavigatorOpen
-		? (isInverseAppearance ? "rgba(255,255,255,0.10)" : "var(--ds-border)")
-		: (isInverseAppearance ? "rgba(255,255,255,0.06)" : "var(--ds-border)");
 	const shellBackgroundColor = isNavigatorOpen
 		? (isInverseAppearance ? "rgba(42,37,36,0.95)" : "var(--ds-surface-overlay)")
 		: (isInverseAppearance ? "rgba(255,255,255,0.02)" : "var(--ds-background-neutral-subtle)");
@@ -94,7 +90,6 @@ export function ChatTimelineNavigator({
 				"height 220ms cubic-bezier(0.22, 1, 0.36, 1)",
 				"border-radius 220ms cubic-bezier(0.22, 1, 0.36, 1)",
 				"background-color 180ms ease-out",
-				"border-color 180ms ease-out",
 				"box-shadow 220ms ease-out",
 			].join(", ")
 			: [
@@ -102,7 +97,6 @@ export function ChatTimelineNavigator({
 				"height var(--duration-medium) var(--ease-in-out)",
 				"border-radius var(--duration-medium) var(--ease-in-out)",
 				"background-color var(--duration-normal) var(--ease-out)",
-				"border-color var(--duration-normal) var(--ease-out)",
 				"box-shadow var(--duration-medium) var(--ease-out)",
 			].join(", ");
 
@@ -123,11 +117,12 @@ export function ChatTimelineNavigator({
 						? TIMELINE_OPEN_WIDTH_PX
 						: MINIMAP_WIDTH_PX,
 					height: isNavigatorOpen
-						? TIMELINE_OPEN_HEIGHT_PX
+						? Math.min(
+							16 + items.length * 32 + Math.max(0, items.length - 1) * 2,
+							TIMELINE_OPEN_HEIGHT_PX,
+						)
 						: closedHeight,
-					borderRadius: isNavigatorOpen ? 28 : 14,
-					border: "1px solid",
-					borderColor: isNavigatorOpen ? shellBorderColor : "transparent",
+					borderRadius: isNavigatorOpen ? 12 : 14,
 					backgroundColor: isNavigatorOpen ? shellBackgroundColor : "transparent",
 					boxShadow: shellBoxShadow,
 					transition: shellTransition,
@@ -190,73 +185,48 @@ export function ChatTimelineNavigator({
 						isInverseAppearance ? "transition-opacity duration-150" : "transition-opacity duration-normal",
 					)}
 				>
-					<div className="px-3 pb-2 pt-2">
-						<div
-							className={cn(
-								"uppercase",
-								isInverseAppearance
-									? "text-[11px] tracking-[0.22em] text-white/42"
-									: "text-xs tracking-widest text-text-subtlest",
-							)}
-						>
-							Prompt timeline
-						</div>
-						<p
-							className={cn(
-								"mt-2 text-sm leading-5",
-								isInverseAppearance ? "text-white/72" : "text-text-subtle",
-							)}
-						>
-							Jump to an earlier user prompt in the current thread.
-						</p>
-					</div>
-
-					<ScrollArea className="min-h-0 flex-1">
-						<div className="space-y-1 pr-1">
-							{items.map((item) => {
+					<div className="min-h-0 flex-1 overflow-y-auto">
+						<div className="flex flex-col gap-0.5">
+							{chronologicalItems.map((item, index) => {
 								const isActive = item.id === activeItemId;
+								const isFirst = index === 0;
+								const isLast = index === chronologicalItems.length - 1;
 								return (
 									<button
 										className={cn(
-											"flex w-full flex-col border px-3 py-3 text-left transition-colors ease-out",
-											isInverseAppearance
-												? "rounded-[18px] duration-150"
-												: "rounded-2xl duration-normal",
+											"flex w-full items-center p-2 text-left transition-colors ease-out",
+											isInverseAppearance ? "duration-150" : "duration-normal",
 											isActive
 												? (
 													isInverseAppearance
-														? "border-white/16 bg-white/[0.09] text-white"
-														: "border-border-selected bg-bg-selected text-foreground"
+														? "bg-white/[0.09] text-white"
+														: "bg-bg-selected text-text-selected"
 												)
 												: (
 													isInverseAppearance
-														? "border-transparent bg-transparent text-white/72 hover:border-white/10 hover:bg-white/[0.06]"
-														: "border-transparent bg-transparent text-text-subtle hover:border-border hover:bg-bg-neutral-subtle-hovered"
+														? "bg-transparent text-white/72 hover:bg-white/[0.06]"
+														: "bg-surface text-text-subtle hover:bg-surface-hovered"
 												),
 										)}
 										key={item.id}
 										onClick={() => onSelectItem(item.id)}
+										style={{
+											borderRadius: isFirst
+												? "8px 8px 4px 4px"
+												: isLast
+													? "4px 4px 8px 8px"
+													: "4px",
+										}}
 										type="button"
 									>
-										<div
-											className={cn(
-												"flex items-center justify-between gap-3 uppercase",
-												isInverseAppearance
-													? "text-[11px] tracking-[0.18em] text-white/38"
-													: "text-xs tracking-widest text-text-subtlest",
-											)}
-										>
-											<span>{item.label}</span>
-											{item.timestampLabel ? <span>{item.timestampLabel}</span> : null}
-										</div>
-										<span className="mt-2 line-clamp-1 text-base leading-6">
+										<span className="truncate text-xs leading-4">
 											{toSnippet(item.text)}
 										</span>
 									</button>
 								);
 							})}
 						</div>
-					</ScrollArea>
+					</div>
 				</div>
 			</div>
 		</div>
