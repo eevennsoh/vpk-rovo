@@ -8,15 +8,15 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import ChevronDownIcon from "@atlaskit/icon/core/chevron-down";
 import ChevronRightIcon from "@atlaskit/icon/core/chevron-right";
-import CheckCircleIcon from "@atlaskit/icon/core/check-circle";
 import CrossCircleIcon from "@atlaskit/icon/core/cross-circle";
-import NodeIcon from "@atlaskit/icon/core/node";
+import { ProgressCircle } from "@/components/ui/progress-circle";
 import RetryIcon from "@atlaskit/icon/core/retry";
 import VideoStopOverlayIcon from "@atlaskit/icon/core/video-stop-overlay";
 import DeleteIcon from "@atlaskit/icon/core/delete";
 import { MOCK_TASKS, type ProgressStatusGroups, type ProgressTask } from "./data/mock-tasks";
 import { Tile } from "@/components/ui/tile";
 import { AnimatedDots } from "@/components/ui-ai/animated-dots";
+import { formatElapsedTime, getElapsedSeconds, resolveInitialNowMs } from "@/components/blocks/shared/elapsed-time";
 
 const SUMMARY_RING_SEGMENTED_GRADIENT =
 	"conic-gradient(from 220deg, transparent 0deg 252deg, #8d63ff 252deg 266deg, #7fbb44 266deg 280deg, #3b66e0 280deg 294deg, #e5a126 294deg 308deg, transparent 308deg 360deg)";
@@ -31,6 +31,7 @@ const CARD_ANIMATION_STYLES = `
 }
 `;
 
+const CARD_ANIMATION_INNER_HTML = { __html: CARD_ANIMATION_STYLES };
 const CELEBRATORY_EMOJIS = ["🎉", "🥳", "🎊", "🪅", "🥂", "🎈", "🏆", "✨", "💪", "🙌"] as const;
 const EMOJI_ENTER_TRANSITION = { duration: 0.25, ease: [0.175, 0.885, 0.32, 1.275] as const };
 const ICON_TRANSITION = { duration: 0.2, ease: "easeOut" as const };
@@ -61,47 +62,6 @@ function getRunStatusToneClass(status: RunStatus): string {
 	if (status === "completed") return "text-text";
 	if (status === "failed") return "text-text-danger";
 	return "text-text-subtle";
-}
-
-function formatElapsedTime(totalSeconds: number): string {
-	const minutes = Math.floor(totalSeconds / 60);
-	const seconds = totalSeconds % 60;
-	return `${minutes}m ${seconds.toString().padStart(2, "0")}s`;
-}
-
-function getElapsedSeconds(runCreatedAt: string | null, runCompletedAt: string | null, nowMs: number): number {
-	if (!runCreatedAt) return 0;
-	const startTime = Date.parse(runCreatedAt);
-	if (!Number.isFinite(startTime)) return 0;
-	const completedTime = runCompletedAt ? Date.parse(runCompletedAt) : Number.NaN;
-	const endTime = Number.isFinite(completedTime) ? completedTime : nowMs;
-	return Math.max(0, Math.floor((endTime - startTime) / 1000));
-}
-
-function resolveInitialNowMs({
-	initialNowMs,
-	runCreatedAt,
-	runCompletedAt,
-}: Readonly<{
-	initialNowMs?: number;
-	runCreatedAt: string | null;
-	runCompletedAt: string | null;
-}>): number {
-	if (typeof initialNowMs === "number" && Number.isFinite(initialNowMs)) {
-		return initialNowMs;
-	}
-
-	const completedTime = runCompletedAt ? Date.parse(runCompletedAt) : Number.NaN;
-	if (Number.isFinite(completedTime)) {
-		return completedTime;
-	}
-
-	const createdTime = runCreatedAt ? Date.parse(runCreatedAt) : Number.NaN;
-	if (Number.isFinite(createdTime)) {
-		return createdTime;
-	}
-
-	return 0;
 }
 
 function TaskStatusIcon({
@@ -137,7 +97,7 @@ function TaskStatusIcon({
 						transition={shouldReduceMotion ? undefined : ICON_TRANSITION}
 						className="flex items-center justify-center"
 					>
-						<CheckCircleIcon label="" size="small" color={token("color.icon.success")} />
+						<ProgressCircle value={100} size="sm" variant="filled" label="Complete" />
 					</motion.span>
 				)}
 			</AnimatePresence>
@@ -145,18 +105,14 @@ function TaskStatusIcon({
 	}
 
 	if (status === "in-progress") {
-		return (
-			<div className="flex size-3 items-center justify-center">
-				<div className="size-3 animate-spin rounded-full border border-border border-t-text-subtle" />
-			</div>
-		);
+		return <ProgressCircle value={null} size="sm" variant="filled" label="In progress" />;
 	}
 
 	if (status === "failed") {
 		return <CrossCircleIcon label="" size="small" color={token("color.icon.danger")} />;
 	}
 
-	return <NodeIcon label="" size="small" color={token("color.icon.subtlest")} />;
+	return <ProgressCircle value={0} size="sm" variant="filled" label="Not started" />;
 }
 
 function TaskItem({ task }: Readonly<{ task: ProgressTask }>) {
@@ -441,7 +397,7 @@ export default function AgentsProgress({
 			role={isInteractive ? "button" : undefined}
 			tabIndex={isInteractive ? 0 : undefined}
 		>
-			<style dangerouslySetInnerHTML={{ __html: CARD_ANIMATION_STYLES }} />
+			<style dangerouslySetInnerHTML={CARD_ANIMATION_INNER_HTML} />
 			<div className="flex flex-col gap-3 px-4 py-3">
 				<div className="flex items-center justify-between gap-3">
 					<div className="flex min-w-0 flex-1 items-center gap-3">
@@ -461,11 +417,12 @@ export default function AgentsProgress({
 							) : null}
 							<span className="relative z-10">{planEmoji}</span>
 						</Tile>
-						<div className="flex min-w-0 flex-1 flex-col gap-1.5">
-							<div className="flex min-w-0 items-center gap-2">
+						<div className="flex min-w-0 flex-1 flex-col gap-1">
+							<div className="flex min-w-0 items-center gap-1">
 								<span style={{ font: token("font.heading.xsmall") }} className="truncate text-text">
 									{planTitle}
 								</span>
+								<span className="shrink-0 text-xs leading-4 text-text-subtlest">•</span>
 								<span className="shrink-0 text-xs leading-4 text-text-subtlest">{formatElapsedTime(elapsedSeconds)}</span>
 							</div>
 							<Progress
@@ -476,7 +433,7 @@ export default function AgentsProgress({
 							/>
 						</div>
 					</div>
-					{runStatus === "running" && !collapsed ? (
+					{runStatus === "running" ? (
 						<Button aria-label="Stop execution" size="icon" variant="outline" className="rounded-full text-icon-danger" onClick={(e) => e.stopPropagation()}>
 							<VideoStopOverlayIcon label="" size="small" />
 						</Button>

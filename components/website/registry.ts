@@ -65,6 +65,9 @@ const UI_DEMO: Record<string, ComponentType> = {
   }),
   popover: dynamic(() => import("./demos/ui/popover-demo"), { ssr: false }),
   progress: dynamic(() => import("./demos/ui/progress-demo"), { ssr: false }),
+  "progress-circle": dynamic(() => import("./demos/ui/progress-circle-demo"), {
+    ssr: false,
+  }),
   "radio-group": dynamic(() => import("./demos/ui/radio-group-demo"), {
     ssr: false,
   }),
@@ -2213,6 +2216,70 @@ const UI_VARIANT_DEMOS: Record<string, ComponentType> = {
     () =>
       import("./demos/ui/progress-demo").then((mod) => ({
         default: mod.ProgressDemoZero,
+      })),
+    { ssr: false },
+  ),
+  // Progress Circle
+  "progress-circle-demo-default": dynamic(
+    () =>
+      import("./demos/ui/progress-circle-demo").then((mod) => ({
+        default: mod.ProgressCircleDemoDefault,
+      })),
+    { ssr: false },
+  ),
+  "progress-circle-demo-indeterminate": dynamic(
+    () =>
+      import("./demos/ui/progress-circle-demo").then((mod) => ({
+        default: mod.ProgressCircleDemoIndeterminate,
+      })),
+    { ssr: false },
+  ),
+  "progress-circle-demo-values": dynamic(
+    () =>
+      import("./demos/ui/progress-circle-demo").then((mod) => ({
+        default: mod.ProgressCircleDemoValues,
+      })),
+    { ssr: false },
+  ),
+  "progress-circle-demo-complete": dynamic(
+    () =>
+      import("./demos/ui/progress-circle-demo").then((mod) => ({
+        default: mod.ProgressCircleDemoComplete,
+      })),
+    { ssr: false },
+  ),
+  "progress-circle-demo-sizes": dynamic(
+    () =>
+      import("./demos/ui/progress-circle-demo").then((mod) => ({
+        default: mod.ProgressCircleDemoSizes,
+      })),
+    { ssr: false },
+  ),
+  "progress-circle-demo-controlled": dynamic(
+    () =>
+      import("./demos/ui/progress-circle-demo").then((mod) => ({
+        default: mod.ProgressCircleDemoControlled,
+      })),
+    { ssr: false },
+  ),
+  "progress-circle-demo-filled": dynamic(
+    () =>
+      import("./demos/ui/progress-circle-demo").then((mod) => ({
+        default: mod.ProgressCircleDemoFilled,
+      })),
+    { ssr: false },
+  ),
+  "progress-circle-demo-filled-controlled": dynamic(
+    () =>
+      import("./demos/ui/progress-circle-demo").then((mod) => ({
+        default: mod.ProgressCircleDemoFilledControlled,
+      })),
+    { ssr: false },
+  ),
+  "progress-circle-demo-status": dynamic(
+    () =>
+      import("./demos/ui/progress-circle-demo").then((mod) => ({
+        default: mod.ProgressCircleDemoStatus,
       })),
     { ssr: false },
   ),

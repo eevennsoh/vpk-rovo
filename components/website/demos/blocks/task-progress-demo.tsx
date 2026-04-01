@@ -73,7 +73,7 @@ export default function TaskProgressDemo() {
 			</div>
 			<div className="flex w-full max-w-[800px] flex-col gap-2">
 				<span className="text-xs font-medium text-text-subtlest">Completed (collapsed — click to expand)</span>
-				<TaskProgress runStatus="completed" runCompletedAt="2025-01-15T10:10:51Z" runCreatedAt="2025-01-15T10:00:00Z" defaultCollapsed />
+				<TaskProgress taskStatusGroups={TASKS_ALL_DONE} runStatus="completed" runCompletedAt="2025-01-15T10:10:51Z" runCreatedAt="2025-01-15T10:00:00Z" defaultCollapsed onDelete={() => {}} />
 			</div>
 		</div>
 	);
@@ -98,6 +98,7 @@ export function TaskProgressDemoCompleted() {
 				runCreatedAt="2025-01-15T10:00:00Z"
 				runCompletedAt="2025-01-15T10:10:51Z"
 				agentCount={4}
+				onDelete={() => {}}
 			/>
 		</div>
 	);
@@ -125,6 +126,7 @@ export function TaskProgressDemoFailed() {
 				runCreatedAt="2025-01-15T10:00:00Z"
 				runCompletedAt="2025-01-15T10:03:22Z"
 				agentCount={3}
+				onDelete={() => {}}
 			/>
 		</div>
 	);
@@ -133,7 +135,7 @@ export function TaskProgressDemoFailed() {
 export function TaskProgressDemoCollapsed() {
 	return (
 		<div className="flex w-full items-center justify-center p-6">
-			<TaskProgress planTitle="Flexible Friday Plan" planEmoji="🔥" runStatus="completed" runCreatedAt="2025-01-15T10:00:00Z" runCompletedAt="2025-01-15T10:10:51Z" defaultCollapsed />
+			<TaskProgress planTitle="Flexible Friday Plan" planEmoji="🔥" taskStatusGroups={TASKS_ALL_DONE} runStatus="completed" runCreatedAt="2025-01-15T10:00:00Z" runCompletedAt="2025-01-15T10:10:51Z" defaultCollapsed onDelete={() => {}} />
 		</div>
 	);
 }
@@ -182,6 +184,7 @@ export function TaskProgressDemoAllStates() {
 				runCreatedAt="2025-01-15T10:00:00Z"
 				runCompletedAt="2025-01-15T10:10:51Z"
 				agentCount={4}
+				onDelete={() => {}}
 			/>
 			<TaskProgress
 				planTitle="Failed Plan"
@@ -191,6 +194,7 @@ export function TaskProgressDemoAllStates() {
 				runCreatedAt="2025-01-15T10:00:00Z"
 				runCompletedAt="2025-01-15T10:03:22Z"
 				agentCount={3}
+				onDelete={() => {}}
 			/>
 		</div>
 	);

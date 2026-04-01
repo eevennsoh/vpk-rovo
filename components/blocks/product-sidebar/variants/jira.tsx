@@ -19,6 +19,7 @@ import ShowMoreHorizontalIcon from "@atlaskit/icon/core/show-more-horizontal";
 import SpacesIcon from "@atlaskit/icon-lab/core/spaces";
 import StarUnstarredIcon from "@atlaskit/icon/core/star-unstarred";
 import BoardIcon from "@atlaskit/icon/core/board";
+import FolderIcon from "@atlaskit/icon/core/folder-closed";
 import TaskIcon from "@atlaskit/icon/core/task";
 
 interface JiraSidebarProps {
@@ -58,6 +59,13 @@ export function JiraSidebar({
 				href="/sprint-board"
 				isSelected={selectedItem === "Sprint Board"}
 				onClick={() => onSelectItem("Sprint Board")}
+			/>
+			<NavigationItem
+				icon={FolderIcon}
+				label="Projects"
+				href="/projects"
+				isSelected={selectedItem === "Projects"}
+				onClick={() => onSelectItem("Projects")}
 			/>
 			<NavigationItem
 				icon={ChartTrendIcon}

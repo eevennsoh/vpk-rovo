@@ -2,9 +2,11 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 
 const {
+	fetchEnrichedPlanTitle,
 	getLatestPlanWidgetPayload,
 	generateMermaidFromPlanTasks,
 	parsePlanWidgetPayload,
+	updatePlanWidgetMetadataInMessages,
 } = require("./plan-widget.ts");
 
 function createAssistantMessage(parts) {
@@ -95,6 +97,69 @@ test("parsePlanWidgetPayload preserves both generic and legacy tool call ids", (
 	assert.equal(payload.toolCallId, "tool-call-123");
 	assert.equal(payload.deferredToolCallId, "tool-call-123");
 	assert.equal(payload.markdown, "# Sprint Board Plan\n\n1. Create board shell");
+});
+
+test("parsePlanWidgetPayload preserves shortDescription when present", () => {
+	const payload = parsePlanWidgetPayload({
+		title: "Sprint Board Plan",
+		shortDescription: "Kanban board for sprint work",
+		description: "Build a sprint board with drag-and-drop planning.",
+		tasks: [{ id: "task-1", label: "Create board shell" }],
+	});
+
+	assert.ok(payload);
+	assert.equal(payload.shortDescription, "Kanban board for sprint work");
+	assert.equal(payload.description, "Build a sprint board with drag-and-drop planning.");
+});
+
+test("updatePlanWidgetMetadataInMessages patches the targeted plan widget payload", () => {
+	const untouchedMessage = createAssistantMessage([createPlanWidgetPart({ title: "Older plan" })]);
+	const targetMessage = createAssistantMessage([createPlanWidgetPart()]);
+	const messages = [untouchedMessage, targetMessage];
+
+	const updatedMessages = updatePlanWidgetMetadataInMessages(messages, {
+		sourceMessageId: targetMessage.id,
+		title: "Sprint Tracking App",
+		shortDescription: "Track sprint work on a board",
+	});
+
+	assert.notEqual(updatedMessages, messages);
+	assert.equal(updatedMessages[0], untouchedMessage);
+	assert.notEqual(updatedMessages[1], targetMessage);
+
+	const updatedPayload = updatedMessages[1].parts[0].data.payload;
+	assert.equal(updatedPayload.title, "Sprint Tracking App");
+	assert.equal(updatedPayload.shortDescription, "Track sprint work on a board");
+	assert.equal(updatedMessages[0].parts[0].data.payload.title, "Older plan");
+});
+
+test("fetchEnrichedPlanTitle reads shortDescription from the API response", async () => {
+	const originalFetch = global.fetch;
+	global.fetch = async () => ({
+		ok: true,
+		json: async () => ({
+			title: "Sprint Tracking App",
+			shortDescription: "Track sprint work on a board",
+		}),
+	});
+
+	try {
+		const result = await fetchEnrichedPlanTitle({
+			title: "Plan",
+			description: "Build a board",
+			shortDescription: undefined,
+			markdown: "Build a board",
+			tasks: [{ id: "task-1", label: "Create board shell", blockedBy: [] }],
+			agents: [],
+		});
+
+		assert.deepEqual(result, {
+			title: "Sprint Tracking App",
+			shortDescription: "Track sprint work on a board",
+		});
+	} finally {
+		global.fetch = originalFetch;
+	}
 });
 
 test("generateMermaidFromPlanTasks preserves explicit blockedBy dependencies", () => {

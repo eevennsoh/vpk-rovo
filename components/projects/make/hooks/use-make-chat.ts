@@ -23,7 +23,10 @@ import {
 	buildGenerativeWidgetSubmitPrompt,
 	type GenerativeWidgetPrimaryActionPayload,
 } from "@/components/projects/shared/lib/generative-widget";
-import { getLatestPlanWidgetPayload } from "@/components/projects/shared/lib/plan-widget";
+import {
+	getLatestPlanWidgetPayload,
+	updatePlanWidgetMetadataInMessages,
+} from "@/components/projects/shared/lib/plan-widget";
 import {
 	MAKE_INTERVIEW_CONTEXT_DESCRIPTION,
 	MAKE_INTERVIEW_FOLLOW_UP_CONTEXT_DESCRIPTION,
@@ -127,6 +130,12 @@ interface UsePlanChatReturn {
 	appendPlanApprovalMarker: (options: {
 		decision: PlanApprovalDecision;
 		planApprovalPlanKey?: string | null;
+		threadId?: string | null;
+	}) => Promise<void>;
+	persistPlanWidgetMetadata: (options: {
+		sourceMessageId?: string | null;
+		title?: string;
+		shortDescription?: string;
 		threadId?: string | null;
 	}) => Promise<void>;
 }
@@ -1232,6 +1241,63 @@ export function useMakeChat(options: {
 		[replaceMessages],
 	);
 
+	const persistPlanWidgetMetadata = useCallback(
+		async (options: {
+			sourceMessageId?: string | null;
+			title?: string;
+			shortDescription?: string;
+			threadId?: string | null;
+		}) => {
+			const targetThreadId = options.threadId ?? activeChatIdRef.current;
+			if (!targetThreadId) {
+				return;
+			}
+
+			let nextMessages: RovoUIMessage[] | null = null;
+			setThreads((previousThreads) => {
+				const thread = getThreadById({
+					threads: previousThreads,
+					chatId: targetThreadId,
+				});
+				if (!thread) {
+					return previousThreads;
+				}
+
+				const updatedMessages = updatePlanWidgetMetadataInMessages(thread.messages, {
+					sourceMessageId: options.sourceMessageId,
+					title: options.title,
+					shortDescription: options.shortDescription,
+				});
+				if (areMessageArraysShallowEqual(thread.messages, updatedMessages)) {
+					return previousThreads;
+				}
+
+				nextMessages = updatedMessages;
+				return updateThreadMessages({
+					threads: previousThreads,
+					chatId: targetThreadId,
+					messages: updatedMessages,
+					updatedAt: Date.now(),
+					maxThreads: MAKE_THREAD_RETENTION_LIMIT,
+				});
+			});
+
+			if (!nextMessages) {
+				return;
+			}
+
+			if (activeChatIdRef.current === targetThreadId) {
+				replaceMessages(nextMessages);
+			}
+
+			updateThreadOnServer(targetThreadId, {
+				messages: nextMessages,
+				updatedAt: new Date().toISOString(),
+			});
+		},
+		[replaceMessages],
+	);
+
 	return {
 		prompt,
 		setPrompt,
@@ -1261,5 +1327,6 @@ export function useMakeChat(options: {
 		createThreadWithMessages,
 		appendAssistantTextMessage,
 		appendPlanApprovalMarker,
+		persistPlanWidgetMetadata,
 	};
 }

@@ -7,6 +7,7 @@ import { defineRegistry, useBoundProp } from "@json-render/react";
 import { getByPath, setByPath } from "@json-render/core";
 import { catalog } from "./catalog";
 import type { MapWidgetCanvasProps } from "./map-widget-canvas";
+import { getWorkflowLozengeVariant } from "@/lib/workflow-status";
 
 /** Convert null to undefined for React component props that expect optional values */
 function nu<T>(v: T | null | undefined): T | undefined {
@@ -281,6 +282,25 @@ const LOZENGE_VARIANT_ALIASES: Record<string, LozengeProps["variant"]> = {
 	info: "information",
 };
 
+const LOZENGE_VARIANTS = new Set<NonNullable<LozengeProps["variant"]>>([
+	"neutral",
+	"success",
+	"danger",
+	"information",
+	"discovery",
+	"warning",
+	"accent-red",
+	"accent-orange",
+	"accent-yellow",
+	"accent-lime",
+	"accent-green",
+	"accent-teal",
+	"accent-blue",
+	"accent-purple",
+	"accent-magenta",
+	"accent-gray",
+]);
+
 // ── Grid column class mapping ─────────────────────────────────
 const GRID_COL_CLASSES: Record<string, string> = {
 	"1": "grid-cols-1",
@@ -504,9 +524,9 @@ export const { registry } = defineRegistry(catalog, {
 			const trendColor = trend === "up" ? token("color.icon.success") : trend === "down" ? token("color.icon.danger") : undefined;
 			return (
 				<Card>
-					<CardContent className="flex flex-col gap-1">
+					<CardContent className="flex flex-col items-center gap-1 text-center">
 						<p className="text-xs text-text-subtlest">{label}</p>
-						<div className="flex items-center gap-2">
+						<div className="flex items-center justify-center gap-2">
 							<p className="text-2xl font-semibold text-text">{value}</p>
 							{trend === "up" ? <ChartTrendUpIcon label="" size="small" color={trendColor} /> : null}
 							{trend === "down" ? <ChartTrendDownIcon label="" size="small" color={trendColor} /> : null}
@@ -676,19 +696,19 @@ export const { registry } = defineRegistry(catalog, {
 					<div className="@container/grid">
 						<div className="grid grid-cols-1 gap-3 @[480px]/grid:grid-cols-3">
 							<Card>
-								<CardContent className="flex flex-col gap-1">
+								<CardContent className="flex flex-col items-center gap-1 text-center">
 									<p className="text-xs text-text-subtlest">Work Items</p>
 									<p className="text-2xl font-semibold text-text">{workItemsCount}</p>
 								</CardContent>
 							</Card>
 							<Card>
-								<CardContent className="flex flex-col gap-1">
+								<CardContent className="flex flex-col items-center gap-1 text-center">
 									<p className="text-xs text-text-subtlest">Pages</p>
 									<p className="text-2xl font-semibold text-text">{pagesCount}</p>
 								</CardContent>
 							</Card>
 							<Card>
-								<CardContent className="flex flex-col gap-1">
+								<CardContent className="flex flex-col items-center gap-1 text-center">
 									<p className="text-xs text-text-subtlest">Total Activity</p>
 									<p className="text-2xl font-semibold text-text">{totalCount}</p>
 								</CardContent>
@@ -1147,9 +1167,14 @@ export const { registry } = defineRegistry(catalog, {
 		},
 
 		Lozenge: ({ props }) => {
-			const { text, variant = "neutral", isBold = false } = props;
-			const variantKey = typeof variant === "string" ? variant.toLowerCase() : "neutral";
-			const normalizedVariant = LOZENGE_VARIANT_ALIASES[variantKey] ?? (variant as LozengeProps["variant"]) ?? "neutral";
+			const { text, variant, isBold = false } = props;
+			const variantKey = typeof variant === "string" ? variant.toLowerCase() : "";
+			const normalizedVariant =
+				(variantKey ? LOZENGE_VARIANT_ALIASES[variantKey] : undefined) ??
+				(variantKey && LOZENGE_VARIANTS.has(variant as NonNullable<LozengeProps["variant"]>)
+					? (variant as NonNullable<LozengeProps["variant"]>)
+					: undefined) ??
+				getWorkflowLozengeVariant(text);
 			return (
 				<Lozenge variant={normalizedVariant} isBold={isBold}>
 					{toSafeText(text)}

@@ -1,4 +1,5 @@
 import type { FutureChatThread } from "@/lib/future-chat-types";
+import type { RovoUIMessage } from "@/lib/rovo-ui-messages";
 import { sortByUpdatedAtDesc } from "@/lib/utils";
 
 export function sortFutureChatThreadsByUpdatedAtDesc(
@@ -57,6 +58,50 @@ export function updateFutureChatThreadTitleRecord(
 			{
 				...existingThread,
 				title: options.title,
+				updatedAt: options.updatedAt,
+			},
+			updateOptions,
+		),
+	};
+}
+
+export function updateFutureChatThreadMessagesRecord(
+	threads: ReadonlyArray<FutureChatThread>,
+	options: {
+		threadId: string;
+		messages: ReadonlyArray<RovoUIMessage>;
+		updatedAt: string;
+	},
+	updateOptions?: {
+		deletedThreadIds?: ReadonlySet<string>;
+	},
+): {
+	didUpdate: boolean;
+	threads: FutureChatThread[];
+} {
+	const deletedThreadIds = updateOptions?.deletedThreadIds;
+	if (deletedThreadIds?.has(options.threadId)) {
+		return {
+			didUpdate: false,
+			threads: filterDeletedFutureChatThreads(threads, deletedThreadIds),
+		};
+	}
+
+	const existingThread = threads.find((thread) => thread.id === options.threadId);
+	if (!existingThread) {
+		return {
+			didUpdate: false,
+			threads: [...threads],
+		};
+	}
+
+	return {
+		didUpdate: true,
+		threads: upsertFutureChatThreadRecord(
+			threads,
+			{
+				...existingThread,
+				messages: [...options.messages],
 				updatedAt: options.updatedAt,
 			},
 			updateOptions,

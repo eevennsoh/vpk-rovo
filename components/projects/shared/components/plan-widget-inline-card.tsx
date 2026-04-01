@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
 	Plan,
 	PlanAvatar,
@@ -17,8 +17,10 @@ import {
 	resolvePlanDisplayTitle,
 	sanitizePlanDescription,
 } from "@/components/projects/shared/lib/plan-identity";
+import { runPlanBuildAndCollapse } from "@/components/projects/shared/lib/plan-widget-build-action";
 import { PlanTabContent } from "@/components/projects/shared/lib/plan-card-utils";
 import { Button } from "@/components/ui/button";
+import { Shimmer } from "@/components/ui-ai/shimmer";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { token } from "@/lib/tokens";
@@ -60,13 +62,13 @@ export interface PlanWidgetInlineCardProps {
 	tasks: PlanTask[];
 	description?: string;
 	markdown?: string;
-	enrichedTitle?: string;
-	enrichedDescription?: string;
+	shortDescription?: string;
 	isStreaming?: boolean;
+	isMetadataPending?: boolean;
 	collapsed?: boolean;
 	footer?: ReactNode;
 	className?: string;
-	onBuild?: () => void;
+	onBuild?: () => void | Promise<void>;
 	onOpenPreview?: () => void;
 	isBuildDisabled?: boolean;
 	buildDisabledReason?: string;
@@ -77,9 +79,9 @@ export function PlanWidgetInlineCard({
 	tasks,
 	description,
 	markdown,
-	enrichedTitle,
-	enrichedDescription,
+	shortDescription,
 	isStreaming = false,
+	isMetadataPending = false,
 	collapsed: controlledCollapsed,
 	footer = null,
 	className,
@@ -96,10 +98,46 @@ export function PlanWidgetInlineCard({
 		() => tasks.filter((task) => task.label.trim().length > 0),
 		[tasks],
 	);
-	const displayTitle = enrichedTitle || resolvePlanDisplayTitle(title, visibleTasks);
+	const displayTitle = resolvePlanDisplayTitle(title, visibleTasks);
+	const taskCountPrefix = `${visibleTasks.length} task${visibleTasks.length === 1 ? "" : "s"}`;
+	const rawDescription =
+		shortDescription?.trim() || sanitizePlanDescription(description, visibleTasks.length);
 	const displayDescription =
-		enrichedDescription || sanitizePlanDescription(description, visibleTasks.length);
+		rawDescription.startsWith(taskCountPrefix) ? rawDescription : `${taskCountPrefix} • ${rawDescription}`;
 	const displayEmoji = derivePlanEmojiFromTitle(displayTitle);
+	const displayTitleNode = isMetadataPending ? (
+		<Shimmer
+			key={displayTitle}
+			as="span"
+			duration={1}
+			className="block max-w-full truncate motion-safe:animate-[sd-blurIn_160ms_ease-out_both] motion-reduce:animate-none"
+		>
+			{displayTitle}
+		</Shimmer>
+	) : (
+		displayTitle
+	);
+	const displayDescriptionNode = isMetadataPending ? (
+		<Shimmer
+			key={displayDescription}
+			as="span"
+			duration={1}
+			className="block max-w-full truncate motion-safe:animate-[sd-blurIn_160ms_ease-out_both] motion-reduce:animate-none"
+		>
+			{displayDescription}
+		</Shimmer>
+	) : (
+		displayDescription
+	);
+	const handleBuild = useCallback(async () => {
+		try {
+			await runPlanBuildAndCollapse(onBuild, () => {
+				setInternalCollapsed(true);
+			});
+		} catch (error) {
+			console.error("[PlanWidgetInlineCard] Failed to start build:", error);
+		}
+	}, [onBuild]);
 
 	useEffect(() => {
 		if (!isStreaming || streamRevealCount >= visibleTasks.length) {
@@ -143,8 +181,8 @@ export function PlanWidgetInlineCard({
 			>
 				<PlanHeader
 					leading={<PlanAvatar emoji={displayEmoji} />}
-					title={<PlanTitle className="truncate text-sm leading-5 font-semibold text-text">{displayTitle}</PlanTitle>}
-					description={<PlanDescription className="truncate text-xs leading-4 text-text-subtlest">{displayDescription}</PlanDescription>}
+					title={<PlanTitle className="truncate text-sm leading-5 font-semibold text-text">{displayTitleNode}</PlanTitle>}
+					description={<PlanDescription className="truncate text-xs leading-4 text-text-subtlest">{displayDescriptionNode}</PlanDescription>}
 				/>
 
 			<PlanContent className="px-0 pb-0 pt-4">
@@ -182,7 +220,9 @@ export function PlanWidgetInlineCard({
 							) : (
 								<Button
 									disabled={isBuildDisabled || isStreaming}
-									onClick={onBuild}
+									onClick={() => {
+										void handleBuild();
+									}}
 									type="button"
 								>
 									Build

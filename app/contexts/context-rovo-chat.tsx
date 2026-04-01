@@ -1133,6 +1133,7 @@ export function RovoChatProvider({
 			// not settle the turn within a short grace period.
 			if (
 				!shouldSendExplicitRovoDevCancel({
+					hasBackgroundCancelableWork: false,
 					hasUseChatTurn: true,
 					stopSettledInTime: stoppedInTime,
 				})

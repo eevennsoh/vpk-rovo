@@ -1,13 +1,13 @@
 "use client";
 
 import type { FileUIPart } from "ai";
-import { AnimatePresence, motion } from "motion/react";
 import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArtifactPanel } from "@/components/ui-ai/artifact";
 import { CreateButton } from "@/components/blocks/top-navigation/components/create-button";
 import { FutureChatHeader } from "@/components/projects/future-chat/components/future-chat-header";
 import { FutureChatComposer } from "@/components/projects/future-chat/components/future-chat-composer";
 import { FutureChatMessages } from "@/components/projects/future-chat/components/future-chat-messages";
+import { FutureChatShellPaneLayout } from "@/components/projects/future-chat/components/future-chat-shell-pane-layout";
 import { FutureChatSidebar } from "@/components/projects/future-chat/components/future-chat-sidebar";
 import { FutureChatToolApprovalBar } from "@/components/projects/future-chat/components/future-chat-tool-approval-bar";
 import { type FutureChatSteeringPhase } from "@/components/projects/future-chat/components/future-chat-steering-lane";
@@ -16,6 +16,7 @@ import { useArtifactAnnotations } from "@/components/ui-ai/hooks/use-artifact-an
 import { formatAnnotationsForVoiceContext } from "@/components/ui-ai/lib/artifact-annotations";
 import type { ArtifactAnnotation } from "@/components/ui-ai/lib/artifact-annotations";
 import { useFutureChat } from "@/components/projects/future-chat/hooks/use-future-chat";
+import { useHmrReloadSuppression } from "@/components/projects/future-chat/hooks/use-hmr-reload-suppression";
 import {
 	getFutureChatArtifactKindLabel,
 	getFutureChatArtifactTypeLabel,
@@ -50,7 +51,6 @@ import {
 	TOP_NAV_PADDING_PX,
 } from "@/components/blocks/top-navigation/layout-constants";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
-import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import SearchIcon from "@atlaskit/icon/core/search";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { Footer } from "@/components/ui/footer";
@@ -366,6 +366,7 @@ export function FutureChatShell({
 		initialThreadId,
 		smartGenerationLayout,
 	});
+	useHmrReloadSuppression(chat.isStreaming);
 	const chatRef = useRef(chat);
 	chatRef.current = chat;
 
@@ -519,7 +520,7 @@ export function FutureChatShell({
 	);
 	const handleBuildPlan = useCallback(
 		(planWidget: ParsedPlanWidgetPayload) => {
-			void acceptPlanReview(planWidget);
+			return acceptPlanReview(planWidget);
 		},
 		[acceptPlanReview],
 	);
@@ -1835,6 +1836,17 @@ export function FutureChatShell({
 		return items;
 	})();
 
+	const handleCloseArtifactPane = useCallback(() => {
+		if (!workspaceDocument) {
+			return;
+		}
+
+		if (chat.streamingArtifact?.documentId !== workspaceDocument.id) {
+			chat.setActiveDocumentId(null);
+		}
+		chat.hideArtifactPane();
+	}, [workspaceDocument, chat]);
+
 	const artifactPane = (() => {
 		if (!workspaceDocument) {
 			return null;
@@ -1851,15 +1863,7 @@ export function FutureChatShell({
 				mode={chat.artifactMode}
 				onAddComment={addArtifactAnnotationComment}
 				onApplyAnnotations={handleApplyAnnotations}
-				onClose={() => {
-					if (chat.streamingArtifact?.documentId === workspaceDocument.id) {
-						chat.hideArtifactPane();
-						return;
-					}
-
-					chat.hideArtifactPane();
-					chat.setActiveDocumentId(null);
-				}}
+				onClose={handleCloseArtifactPane}
 				onCursorModeChange={
 					canAnnotateWorkspaceDocument ? setCursorMode : undefined
 				}
@@ -1902,6 +1906,7 @@ export function FutureChatShell({
 				onSelectSuggestion={chat.suggestedPrompt}
 				onSetEditingMessageId={chat.setEditingMessageId}
 				onVote={chat.voteOnMessage}
+				pendingPlanMetadataMessageIds={chat.pendingPlanMetadataMessageIds}
 				pendingArtifactResult={chat.pendingArtifactResult}
 				scrollAnchorMessageId={scrollAnchorMessageId}
 				scrollFollowMode={scrollFollowMode}
@@ -1965,6 +1970,7 @@ export function FutureChatShell({
 								galleryExpanded={galleryExpanded}
 								isPlanMode={chat.isPlanMode}
 								micStream={realtime.micStream}
+								onDismissArtifactContext={handleCloseArtifactPane}
 								onDismissPlanExecutionTracker={chat.dismissPlanExecutionTracker}
 								onStop={handleStop}
 								onRemoveQueuedPrompt={chat.removeQueuedPrompt}
@@ -2089,7 +2095,7 @@ export function FutureChatShell({
 				</div>
 				) : null}
 
-				<div className="flex min-w-0 flex-1 flex-col">
+				<div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
 					{!embedded ? (
 						<div
 							className={cn(
@@ -2161,79 +2167,21 @@ export function FutureChatShell({
 						ref={shellRef}
 						className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden bg-background text-foreground"
 					>
-						{shouldSplitArtifactPane && artifactPane ? (
-							<ResizablePanelGroup
-								className="h-full w-full"
-								orientation="horizontal"
-								onLayoutChanged={handleArtifactSplitLayoutChanged}
-								resizeTargetMinimumSize={{ coarse: 36, fine: 16 }}
-							>
-								<ResizablePanel
-									defaultSize={splitChatPaneDefaultSize}
-									groupResizeBehavior="preserve-pixel-size"
-									id={FUTURE_CHAT_SPLIT_CHAT_PANEL_ID}
-									maxSize={800}
-									minSize={FUTURE_CHAT_MIN_CHAT_PANE_WIDTH}
-								>
-									{chatPaneContainer}
-								</ResizablePanel>
-								<ResizableHandle className="z-20" withHandle />
-								<ResizablePanel
-									defaultSize={splitArtifactPaneDefaultSize}
-									id={FUTURE_CHAT_SPLIT_ARTIFACT_PANEL_ID}
-									minSize={FUTURE_CHAT_MIN_ARTIFACT_PANE_WIDTH}
-								>
-									<div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-background">
-										{artifactPane}
-									</div>
-								</ResizablePanel>
-							</ResizablePanelGroup>
-						) : (
-							<>
-								{chatPaneContainer}
-								<AnimatePresence>
-									{artifactPane ? (
-										<motion.div
-											animate={{
-												opacity: 1,
-												x: 0,
-												y: 0,
-												width: shellSize.width || "100%",
-												height: shellSize.height || "100%",
-												borderRadius: 0,
-												transition: {
-													delay: 0,
-													type: "spring",
-													stiffness: 300,
-													damping: 30,
-												},
-											}}
-											className="absolute top-0 left-0 z-40 flex h-full flex-col overflow-hidden border-border bg-background md:border-l"
-											exit={{
-												opacity: 0,
-												scale: 0.5,
-												transition: {
-													delay: 0.1,
-													type: "spring",
-													stiffness: 600,
-													damping: 30,
-												},
-											}}
-											initial={{
-												opacity: 1,
-												x: artifactOrigin.left,
-												y: artifactOrigin.top,
-												width: artifactOrigin.width,
-												height: artifactOrigin.height,
-												borderRadius: 32,
-											}}
-										>
-											{artifactPane}
-										</motion.div>
-									) : null}
-								</AnimatePresence>
-							</>
-						)}
+						<FutureChatShellPaneLayout
+							artifactOrigin={artifactOrigin}
+							artifactPane={artifactPane}
+							artifactPanelId={FUTURE_CHAT_SPLIT_ARTIFACT_PANEL_ID}
+							chatPane={chatPaneContainer}
+							chatPanelId={FUTURE_CHAT_SPLIT_CHAT_PANEL_ID}
+							minArtifactPaneWidth={FUTURE_CHAT_MIN_ARTIFACT_PANE_WIDTH}
+							minChatPaneWidth={FUTURE_CHAT_MIN_CHAT_PANE_WIDTH}
+							onArtifactSplitLayoutChanged={handleArtifactSplitLayoutChanged}
+							shouldSplitArtifactPane={shouldSplitArtifactPane}
+							shellSize={shellSize}
+							splitArtifactPaneDefaultSize={splitArtifactPaneDefaultSize}
+							splitChatPaneDefaultSize={splitChatPaneDefaultSize}
+							splitChatPaneMaxSize={splitChatPaneMaxSize}
+						/>
 					</main>
 			</div>
 		</SidebarProvider>

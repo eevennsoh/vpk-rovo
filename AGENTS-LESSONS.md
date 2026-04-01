@@ -74,3 +74,14 @@ Mark promoted entries with `[Promoted]` prefix — see vpk-lesson skill for deta
      Key files: `plan-widget.ts`, `plan-approval.ts`, `use-future-chat.ts`,
      `server.js`, `rovodev-client.js`, `future-chat-update-todo-progress.ts`,
      `future-chat-plan-execution-tracker.ts/.tsx`.
+
+### 2026-04-01 - Match the user’s UI composition before embellishing
+
+- **What happened:** A rough UI mock for the Future Chat artifact context was
+  translated into a centered decorative callout instead of the full-width top
+  strip the user had shown.
+- **Why:** The design pass added extra hierarchy and ornamental framing before
+  matching the core layout and composition from the provided screenshot.
+- **Rule:** When a user supplies a UI mock, match the primary composition
+  literally first (placement, width, alignment, and chrome) before adding any
+  styling interpretation or extra visual detail.

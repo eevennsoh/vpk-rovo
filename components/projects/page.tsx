@@ -26,6 +26,8 @@ interface AppLayoutProps {
 function useIsEmbedded(explicit: boolean): boolean {
 	const [auto] = useState(() => {
 		if (typeof window === "undefined") return false;
+		// Check pre-hydration attribute first (set by layout.tsx head script)
+		if (document.documentElement.dataset.embedded !== undefined) return true;
 		try {
 			return window.self !== window.top;
 		} catch {
@@ -58,10 +60,14 @@ export default function AppLayout({
 
 	return (
 		<div style={shellStyle}>
-			{!isEmbedded && <TopNavigation product={product} />}
+			<div data-shell-chrome="">
+				{!isEmbedded ? <TopNavigation product={product} /> : null}
+			</div>
 
 			<div style={{ display: "flex", height: shellContentHeight, position: "relative" }}>
-				{!isEmbedded && <Sidebar product={product} embedded={isEmbedded} />}
+				<div data-shell-chrome="">
+					{!isEmbedded ? <Sidebar product={product} embedded={isEmbedded} /> : null}
+				</div>
 
 				{/* Main Content Area */}
 				<div
@@ -76,11 +82,15 @@ export default function AppLayout({
 				</div>
 
 				{/* Rovo Chat Panel */}
-				{!isEmbedded && isOpen && <RovoChatPanel onClose={closeChat} product={product} embedded={isEmbedded} />}
+				<div data-shell-chrome="">
+					{!isEmbedded && isOpen ? <RovoChatPanel onClose={closeChat} product={product} embedded={isEmbedded} /> : null}
+				</div>
 			</div>
 
 			{/* Floating Rovo Button */}
-			{!isEmbedded && !hideFloatingRovo && <FloatingRovoButton product={product} embedded={isEmbedded} />}
+			<div data-shell-chrome="">
+				{!isEmbedded && !hideFloatingRovo ? <FloatingRovoButton product={product} embedded={isEmbedded} /> : null}
+			</div>
 		</div>
 	);
 }

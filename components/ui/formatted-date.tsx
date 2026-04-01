@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import {
 	formatDateForDisplay,
 	getHydrationSafeDateFallback,
-} from "./date-format";
+} from "@/lib/date-format";
+import { useHasHydrated } from "@/lib/use-hydrated";
 
 interface FormattedDateProps {
 	dateStr: string;
@@ -15,13 +15,10 @@ export default function FormattedDate({
 	dateStr,
 	dateStyle,
 }: Readonly<FormattedDateProps>) {
-	const [formattedDate, setFormattedDate] = useState(() =>
-		getHydrationSafeDateFallback(dateStr)
-	);
-
-	useEffect(() => {
-		setFormattedDate(formatDateForDisplay(dateStr, dateStyle));
-	}, [dateStr, dateStyle]);
+	const hasHydrated = useHasHydrated();
+	const formattedDate = hasHydrated
+		? formatDateForDisplay(dateStr, dateStyle)
+		: getHydrationSafeDateFallback(dateStr);
 
 	return <span suppressHydrationWarning>{formattedDate}</span>;
 }

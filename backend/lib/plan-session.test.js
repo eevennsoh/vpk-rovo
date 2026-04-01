@@ -5,6 +5,7 @@ const assert = require("node:assert/strict");
 const {
 	getPlanSession,
 	updatePlanSession,
+	recordPlanWidgetEmission,
 	clearPlanSession,
 	shouldRestorePlanModeOnResume,
 	isPlanExecutionPhase,
@@ -91,6 +92,35 @@ describe("plan-session", () => {
 			updatePlanSession(undefined, { isActive: true });
 			updatePlanSession("", { isActive: true });
 			assert.strictEqual(getPlanSession("any").isActive, false);
+		});
+	});
+
+	describe("recordPlanWidgetEmission", () => {
+		it("activates the session, transitions to plan, and records plan metadata", () => {
+			const session = recordPlanWidgetEmission("t1", {
+				deferredToolCallId: "tool-plan-1",
+				planCardId: "plan-card-1",
+			});
+
+			assert.strictEqual(session.isActive, true);
+			assert.strictEqual(session.phase, "plan");
+			assert.strictEqual(session.deferredToolCallId, "tool-plan-1");
+			assert.deepStrictEqual(session.planCardIds, ["plan-card-1"]);
+		});
+
+		it("deduplicates repeated plan card ids while refreshing the deferred tool call", () => {
+			recordPlanWidgetEmission("t1", {
+				deferredToolCallId: "tool-plan-1",
+				planCardId: "plan-card-1",
+			});
+			const session = recordPlanWidgetEmission("t1", {
+				deferredToolCallId: "tool-plan-2",
+				planCardId: "plan-card-1",
+			});
+
+			assert.strictEqual(session.phase, "plan");
+			assert.strictEqual(session.deferredToolCallId, "tool-plan-2");
+			assert.deepStrictEqual(session.planCardIds, ["plan-card-1"]);
 		});
 	});
 

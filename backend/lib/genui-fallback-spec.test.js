@@ -64,3 +64,19 @@ test("buildFallbackGenuiSpecFromText still creates card for non-question task ou
 	assert.equal(spec.root, "root");
 	assert.equal(spec.elements["summary-card"].type, "Card");
 });
+
+test("buildFallbackGenuiSpecFromText maps In Review to an information lozenge", () => {
+	const spec = buildFallbackGenuiSpecFromText({
+		text: [
+			"PROJ-111: Add keyboard shortcuts guide",
+			"Status: In Review",
+			"Priority: Low",
+		].join("\n"),
+		prompt: "Show the Jira work item",
+	});
+
+	assert.ok(spec);
+	assert.equal(spec.elements["issue-0-status"].type, "Lozenge");
+	assert.equal(spec.elements["issue-0-status"].props.text, "In Review");
+	assert.equal(spec.elements["issue-0-status"].props.variant, "information");
+});

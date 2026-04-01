@@ -181,11 +181,11 @@ test("resolveFutureChatPlanExecutionTracker maps update_todo snapshot into task 
 	assert.equal(tracker?.taskStatusGroups.todo.length, 1);
 	assert.equal(
 		tracker?.taskStatusGroups.inProgress[0]?.label,
-		"#2 Refactoring orchestration",
+		"#2 Refactor orchestration",
 	);
 	assert.equal(
 		tracker?.taskStatusGroups.inProgress[0]?.description,
-		"",
+		"Refactoring orchestration",
 	);
 });
 
@@ -315,6 +315,70 @@ test("resolveFutureChatPlanExecutionTracker marks failed runs when work remains 
 	assert.equal(tracker?.runStatus, "failed");
 	assert.equal(tracker?.taskStatusGroups.done.length, 1);
 	assert.equal(tracker?.taskStatusGroups.todo.length, 2);
+});
+
+test("resolveFutureChatPlanExecutionTracker marks all tasks completed when artifact was generated", () => {
+	const planWidget = createPlanWidgetPayload();
+	const planKey = getPlanApprovalKeyFromPlanWidget(planWidget);
+	const tracker = resolveFutureChatPlanExecutionTracker({
+		activeRun: null,
+		messages: [
+			createPlanAssistantMessage(planWidget),
+			createApprovalUserMessage(planKey),
+			{
+				id: "assistant-execution",
+				role: "assistant",
+				metadata: {
+					updatedAt: "2026-03-30T10:05:00.000Z",
+				},
+				parts: [
+					{
+						type: "data-thinking-event",
+						data: {
+							eventId: "event-update-todo",
+							phase: "result",
+							toolName: "update_todo",
+							outputPreview: [
+								"<todo>",
+								'{"id":"task-1","content":"Audit current flow","status":"completed"}',
+								'{"id":"task-2","content":"Refactor orchestration","status":"completed"}',
+								'{"id":"task-3","content":"Run validation","status":"pending"}',
+								"</todo>",
+							].join("\n"),
+							timestamp: "2026-03-30T10:04:00.000Z",
+						},
+					},
+					{
+						type: "data-artifact-result",
+						data: {
+							action: "create",
+							documentId: "doc-1",
+							kind: "nextjs-app",
+							title: "Dashboard",
+						},
+					},
+					{
+						type: "text",
+						text: "Your app is ready.",
+						state: "done",
+					},
+					{
+						type: "data-turn-complete",
+						data: {
+							timestamp: "2026-03-30T10:05:00.000Z",
+						},
+					},
+				],
+			},
+		],
+		threadId: "thread-1",
+		threadUpdatedAt: "2026-03-30T10:05:00.000Z",
+	});
+
+	assert.equal(tracker?.runStatus, "completed");
+	assert.equal(tracker?.taskStatusGroups.done.length, 3);
+	assert.equal(tracker?.taskStatusGroups.todo.length, 0);
+	assert.equal(tracker?.taskStatusGroups.inProgress.length, 0);
 });
 
 test("clearFutureChatPlanExecutionDismissalsForThread removes only matching thread keys", () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import type { ComponentProps, CSSProperties } from "react";
+import type { ComponentProps, CSSProperties, ReactNode } from "react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -107,7 +107,7 @@ export type PlanAvatarProps = ComponentProps<"div"> & {
 };
 
 export const PlanAvatar = ({ emoji = "✌️", className, ...props }: Readonly<PlanAvatarProps>) => (
-	<div className={cn("flex size-8 shrink-0 items-center justify-center rounded-full bg-bg-neutral", className)} data-slot="plan-avatar" {...props}>
+	<div className={cn("flex size-8 shrink-0 items-center justify-center rounded-tile bg-bg-neutral", className)} data-slot="plan-avatar" {...props}>
 		<span className="text-base leading-5 text-text-subtle">{emoji}</span>
 	</div>
 );
@@ -115,7 +115,7 @@ export const PlanAvatar = ({ emoji = "✌️", className, ...props }: Readonly<P
 /* ----- PlanTitle ----- */
 
 export type PlanTitleProps = Omit<ComponentProps<typeof CardTitle>, "children"> & {
-	children: string;
+	children: ReactNode;
 };
 
 export const PlanTitle = ({ children, ...props }: Readonly<PlanTitleProps>) => {
@@ -123,7 +123,7 @@ export const PlanTitle = ({ children, ...props }: Readonly<PlanTitleProps>) => {
 
 	return (
 		<CardTitle data-slot="plan-title" {...props}>
-			{isStreaming ? <Shimmer>{children}</Shimmer> : children}
+			{isStreaming && typeof children === "string" ? <Shimmer>{children}</Shimmer> : children}
 		</CardTitle>
 	);
 };
@@ -131,7 +131,7 @@ export const PlanTitle = ({ children, ...props }: Readonly<PlanTitleProps>) => {
 /* ----- PlanDescription ----- */
 
 export type PlanDescriptionProps = Omit<ComponentProps<typeof CardDescription>, "children"> & {
-	children: string;
+	children: ReactNode;
 };
 
 export const PlanDescription = ({ className, children, ...props }: Readonly<PlanDescriptionProps>) => {
@@ -139,7 +139,7 @@ export const PlanDescription = ({ className, children, ...props }: Readonly<Plan
 
 	return (
 		<CardDescription className={className} data-slot="plan-description" {...props}>
-			{isStreaming ? <Shimmer>{children}</Shimmer> : children}
+			{isStreaming && typeof children === "string" ? <Shimmer>{children}</Shimmer> : children}
 		</CardDescription>
 	);
 };
@@ -380,7 +380,7 @@ export const PlanTaskItem = ({ index, label, blockedByLabels, blockedByText, age
 		className={cn("flex min-h-8 shrink-0 items-center gap-4 rounded-lg px-2 py-1.5", className)}
 		data-slot="plan-task-item"
 	>
-		<span className="inline-flex size-5 shrink-0 items-center justify-center rounded-[4px] border border-border bg-surface text-sm leading-5 font-medium text-text">{index}</span>
+		<span className="inline-flex size-5 shrink-0 items-center justify-center rounded-[4px] bg-surface text-sm leading-5 font-medium text-text">{index}.</span>
 		<div className="flex min-w-0 flex-1 flex-col gap-0.5">
 			<span className="text-sm leading-5 font-medium text-text">{label}</span>
 			{blockedByText ? <span className="text-xs leading-4 text-text-subtlest">{blockedByText}</span> : null}

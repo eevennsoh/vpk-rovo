@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import FormattedDate from "@/components/ui/formatted-date";
 import {
 	Select,
 	SelectContent,
@@ -22,7 +23,6 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import type { Contact } from "./data";
-import FormattedDate from "./formatted-date";
 
 import ArrowUpIcon from "@atlaskit/icon/core/arrow-up";
 import ArrowDownIcon from "@atlaskit/icon/core/arrow-down";

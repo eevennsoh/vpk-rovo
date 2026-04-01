@@ -115,6 +115,7 @@ import {
 } from "@/components/projects/future-chat/lib/future-chat-update-todo-progress";
 import {
 	getLatestPendingPlanWidget,
+	getLatestPlanWidgetPayload,
 	parsePlanWidgetPayload,
 	type ParsedPlanWidgetPayload,
 } from "@/components/projects/shared/lib/plan-widget";
@@ -122,6 +123,7 @@ import {
 	hasMatchingClarificationResponse,
 	parseQuestionCardPayload,
 } from "@/components/projects/shared/lib/question-card-widget";
+import { derivePlanEmojiFromTitle } from "@/components/projects/shared/lib/plan-identity";
 import { cn } from "@/lib/utils";
 import { renderResolvedToolIcon, resolveToolIcon } from "@/components/projects/shared/lib/tool-icon-resolver";
 import type { FutureChatDocument } from "@/lib/future-chat-types";
@@ -139,7 +141,7 @@ interface FutureChatMessagesProps {
 	editingMessageId: string | null;
 	isStreaming: boolean;
 	messages: ReadonlyArray<RovoUIMessage>;
-	onBuildPlan?: (planWidget: ParsedPlanWidgetPayload) => void;
+	onBuildPlan?: (planWidget: ParsedPlanWidgetPayload) => void | Promise<void>;
 	onEditMessage: (messageId: string, nextText: string) => Promise<void>;
 	onOpenArtifactFromCard: (documentId: string, element: HTMLElement) => void;
 	onOpenPlanPreview?: (planWidget: ParsedPlanWidgetPayload, sourceMessageId?: string) => void;
@@ -148,6 +150,7 @@ interface FutureChatMessagesProps {
 	onSelectSuggestion: (suggestion: string) => Promise<void>;
 	onSetEditingMessageId: (messageId: string | null) => void;
 	onVote: (messageId: string, value: "up" | "down" | null) => Promise<void>;
+	pendingPlanMetadataMessageIds: ReadonlySet<string>;
 	pendingArtifactResult: FutureChatPendingArtifactResult | null;
 	scrollAnchorMessageId: string | null;
 	scrollFollowMode: ConversationFollowMode;
@@ -641,6 +644,7 @@ function AssistantMessage({
 	artifactCard,
 	isQuestionCardResolved,
 	isLastAssistant,
+	isPlanMetadataPending,
 	isStreaming,
 	isThinkingLifecycleStreaming,
 	message,
@@ -655,10 +659,11 @@ function AssistantMessage({
 	artifactCard: React.ReactNode;
 	isQuestionCardResolved: boolean;
 	isLastAssistant: boolean;
+	isPlanMetadataPending: boolean;
 	isStreaming: boolean;
 	isThinkingLifecycleStreaming: boolean;
 	message: RovoUIMessage;
-	onBuildPlan?: (planWidget: ParsedPlanWidgetPayload) => void;
+	onBuildPlan?: (planWidget: ParsedPlanWidgetPayload) => void | Promise<void>;
 	onOpenPlanPreview?: (planWidget: ParsedPlanWidgetPayload, sourceMessageId?: string) => void;
 	onRegenerate: () => void;
 	onVote: (messageId: string, value: "up" | "down" | null) => Promise<void>;
@@ -1038,9 +1043,11 @@ function AssistantMessage({
 							<PlanWidgetInlineCard
 								title={parsedPlanWidget.title}
 								description={parsedPlanWidget.description}
+								shortDescription={parsedPlanWidget.shortDescription}
 								markdown={parsedPlanWidget.markdown}
 								tasks={parsedPlanWidget.tasks}
 								isStreaming={isPlanWidgetStreaming}
+								isMetadataPending={isPlanMetadataPending}
 								onBuild={onBuildPlan ? () => onBuildPlan(parsedPlanWidget) : undefined}
 								onOpenPreview={onOpenPlanPreview ? () => onOpenPlanPreview(parsedPlanWidget, message.id) : undefined}
 								isBuildDisabled={planBuildDisabled}
@@ -1138,18 +1145,22 @@ function FutureChatThinkingIndicator() {
 
 function StreamingArtifactMessage({
 	documentId,
+	emoji,
 	kind,
 	onOpenArtifactFromCard,
 	onRegisterArtifactCard,
 	streamingArtifact,
 	title,
+	versionNumber = 1,
 }: Readonly<{
 	documentId: string;
+	emoji?: string;
 	kind: ArtifactKind;
 	onOpenArtifactFromCard: (documentId: string, element: HTMLElement) => void;
 	onRegisterArtifactCard: (documentId: string, element: HTMLElement) => void;
 	streamingArtifact: FutureChatStreamingArtifact;
 	title: string;
+	versionNumber?: number;
 }>) {
 	return (
 		<div
@@ -1162,12 +1173,14 @@ function StreamingArtifactMessage({
 					<ArtifactCard
 						action={null}
 						displayMode="preview"
+						emoji={emoji}
 						isStreaming={true}
 						kind={kind}
 						onOpen={(element) => onOpenArtifactFromCard(documentId, element)}
 						onRegister={(element) => onRegisterArtifactCard(documentId, element)}
 						previewContent={streamingArtifact.content}
 						title={title}
+						versionNumber={versionNumber}
 					/>
 				</div>
 			</div>
@@ -1227,6 +1240,7 @@ export function FutureChatMessages({
 	onSelectSuggestion,
 	onSetEditingMessageId,
 	onVote,
+	pendingPlanMetadataMessageIds,
 	pendingArtifactResult,
 	scrollAnchorMessageId,
 	scrollFollowMode,
@@ -1253,6 +1267,11 @@ export function FutureChatMessages({
 		() => getLatestPendingPlanWidget(messages),
 		[messages],
 	);
+	const latestPlanEmoji = useMemo(() => {
+		const latestPlan = getLatestPlanWidgetPayload(messages);
+		if (!latestPlan) return undefined;
+		return latestPlan.emoji ?? derivePlanEmojiFromTitle(latestPlan.title);
+	}, [messages]);
 	const orphanArtifactDisplay = useMemo(() => {
 		return resolveFutureChatOrphanArtifactDisplay({
 			activeDocumentId,
@@ -1400,57 +1419,65 @@ export function FutureChatMessages({
 								});
 							})();
 
-							return (
-								<Fragment key={message.id}>
-								<AssistantMessage
-									artifactCard={
-										resolvedArtifactDisplay ? (
-											<ArtifactCard
-												action={resolvedArtifactDisplay.action}
-												displayMode={resolvedArtifactDisplay.displayMode}
-												isStreaming={resolvedArtifactDisplay.isStreaming}
-												kind={resolvedArtifactDisplay.kind}
-												onOpen={(element) =>
-													onOpenArtifactFromCard(resolvedArtifactDisplay.documentId, element)
-												}
-												onRegister={(element) =>
-													onRegisterArtifactCard(resolvedArtifactDisplay.documentId, element)
-												}
-												previewContent={resolvedArtifactDisplay.previewContent}
-												title={resolvedArtifactDisplay.title}
-											/>
-										) : null
-									}
-									isLastAssistant={message.id === lastAssistantMessageId}
-									isQuestionCardResolved={isQuestionCardResolved}
-									isStreaming={isStreaming}
-									isThinkingLifecycleStreaming={isStreaming && message.id === streamingAssistantMessageId}
-									message={message}
-									onBuildPlan={onBuildPlan}
-									onOpenPlanPreview={onOpenPlanPreview}
-									onRegenerate={onRegenerate}
-									onVote={onVote}
-									planBuildDisabled={messagePlanWidget ? !isActivePendingPlan : undefined}
-									planBuildDisabledReason={planBuildDisabledReason}
-									voteValue={votes[message.id]}
-								/>
-								<AssistantSuggestionPills
-									messageId={message.id}
-									onSelectSuggestion={onSelectSuggestion}
-									suggestions={suggestions}
-								/>
-							</Fragment>
-						);
+								return (
+									<Fragment key={message.id}>
+										<AssistantMessage
+											artifactCard={
+												resolvedArtifactDisplay ? (
+													<ArtifactCard
+														action={resolvedArtifactDisplay.action}
+														displayMode={resolvedArtifactDisplay.displayMode}
+														emoji={latestPlanEmoji}
+														isStreaming={resolvedArtifactDisplay.isStreaming}
+														kind={resolvedArtifactDisplay.kind}
+														onOpen={(element) =>
+															onOpenArtifactFromCard(resolvedArtifactDisplay.documentId, element)
+														}
+														onRegister={(element) =>
+															onRegisterArtifactCard(resolvedArtifactDisplay.documentId, element)
+														}
+														previewContent={resolvedArtifactDisplay.previewContent}
+														title={resolvedArtifactDisplay.title}
+														versionNumber={resolvedArtifactDisplay.document?.versions.length ?? 1}
+													/>
+												) : null
+											}
+											isLastAssistant={message.id === lastAssistantMessageId}
+											isPlanMetadataPending={pendingPlanMetadataMessageIds.has(message.id)}
+											isQuestionCardResolved={isQuestionCardResolved}
+											isStreaming={isStreaming}
+											isThinkingLifecycleStreaming={isStreaming && message.id === streamingAssistantMessageId}
+											message={message}
+											onBuildPlan={onBuildPlan}
+											onOpenPlanPreview={onOpenPlanPreview}
+											onRegenerate={onRegenerate}
+											onVote={onVote}
+											planBuildDisabled={messagePlanWidget ? !isActivePendingPlan : undefined}
+											planBuildDisabledReason={planBuildDisabledReason}
+											voteValue={votes[message.id]}
+										/>
+										<AssistantSuggestionPills
+											messageId={message.id}
+											onSelectSuggestion={onSelectSuggestion}
+											suggestions={suggestions}
+										/>
+									</Fragment>
+								);
 					})}
 
 				{shouldShowStreamingArtifactPreview && streamingArtifact?.documentId ? (
 					<StreamingArtifactMessage
 						documentId={streamingArtifact.documentId}
+						emoji={latestPlanEmoji}
 						kind={streamingArtifact.kind}
 						onOpenArtifactFromCard={onOpenArtifactFromCard}
 						onRegisterArtifactCard={onRegisterArtifactCard}
 						streamingArtifact={streamingArtifact}
 						title={streamingArtifact.title}
+						versionNumber={
+							documents.find((document) => document.id === streamingArtifact.documentId)?.versions.length
+							?? 1
+						}
 					/>
 				) : shouldShowPreloader ? (
 					<FutureChatThinkingIndicator />

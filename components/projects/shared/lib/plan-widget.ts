@@ -1,5 +1,6 @@
 import { API_ENDPOINTS } from "@/lib/api-config";
-import type { RovoUIMessage } from "@/lib/rovo-ui-messages";
+import { isMessageVisibleInTranscript, type RovoUIMessage } from "@/lib/rovo-ui-messages";
+import { toNonEmptyString } from "@/lib/utils";
 import type { PlanApprovalState } from "@/components/projects/shared/lib/plan-approval";
 import { resolvePlanDisplayTitle } from "@/components/projects/shared/lib/plan-identity";
 
@@ -17,12 +18,18 @@ export interface ParsedPlanTask {
 export interface ParsedPlanWidgetPayload {
 	title: string;
 	description?: string;
+	shortDescription?: string;
 	markdown: string;
 	emoji?: string;
 	tasks: ParsedPlanTask[];
 	agents: string[];
 	toolCallId?: string;
 	deferredToolCallId?: string;
+}
+
+export interface SourcedPlanWidget {
+	planWidget: ParsedPlanWidgetPayload;
+	sourceMessageId: string;
 }
 
 export interface PlanMermaidGraph {
@@ -34,6 +41,11 @@ export interface PlanMermaidGraph {
 export interface PendingPlanWidget {
 	planWidget: ParsedPlanWidgetPayload;
 	sourceMessageId: string;
+}
+
+export interface EnrichedPlanMetadata {
+	title: string;
+	shortDescription: string;
 }
 
 export interface DeferredToolResponsePayload {
@@ -53,19 +65,6 @@ function isStringRecord(value: unknown): value is StringRecord {
 	return typeof value === "object" && value !== null;
 }
 
-function getNonEmptyString(value: unknown): string | null {
-	if (typeof value !== "string") {
-		return null;
-	}
-
-	const trimmedValue = value.trim();
-	return trimmedValue.length > 0 ? trimmedValue : null;
-}
-
-function isMessageVisibleInTranscript(message: Pick<RovoUIMessage, "metadata">): boolean {
-	return message.metadata?.visibility !== "hidden";
-}
-
 function getLatestPlanWidgetPart(message: Pick<RovoUIMessage, "parts">): {
 	type?: unknown;
 	payload?: unknown;
@@ -82,7 +81,7 @@ function getLatestPlanWidgetPart(message: Pick<RovoUIMessage, "parts">): {
 			continue;
 		}
 
-		if (getNonEmptyString(part.data.type) !== "plan") {
+		if (toNonEmptyString(part.data.type) !== "plan") {
 			continue;
 		}
 
@@ -132,7 +131,7 @@ function parseTaskItem(
 	fallbackId: string
 ): ParsedPlanTask | null {
 	if (typeof taskItem === "string") {
-		const label = getNonEmptyString(taskItem);
+		const label = toNonEmptyString(taskItem);
 		if (!label) return null;
 		return { id: fallbackId, label, blockedBy: [] };
 	}
@@ -142,19 +141,19 @@ function parseTaskItem(
 	}
 
 	const label =
-		getNonEmptyString(taskItem.label) ??
-		getNonEmptyString(taskItem.title) ??
-		getNonEmptyString(taskItem.task) ??
-		getNonEmptyString(taskItem.text);
+		toNonEmptyString(taskItem.label) ??
+		toNonEmptyString(taskItem.title) ??
+		toNonEmptyString(taskItem.task) ??
+		toNonEmptyString(taskItem.text);
 	if (!label) return null;
 
-	const id = getNonEmptyString(taskItem.id) ?? fallbackId;
+	const id = toNonEmptyString(taskItem.id) ?? fallbackId;
 	const blockedBy = Array.isArray(taskItem.blockedBy)
 		? (taskItem.blockedBy.filter(
 				(item) => typeof item === "string" && item.trim().length > 0
 			) as string[])
 		: [];
-	const agent = getNonEmptyString(taskItem.agent) ?? undefined;
+	const agent = toNonEmptyString(taskItem.agent) ?? undefined;
 
 	return { id, label, blockedBy, agent };
 }
@@ -184,24 +183,28 @@ export function parsePlanWidgetPayload(
 		return null;
 	}
 	const title = resolvePlanDisplayTitle(
-		getNonEmptyString(record.title) ??
-			getNonEmptyString(record.name) ??
-			getNonEmptyString(record.planTitle) ??
+		toNonEmptyString(record.title) ??
+			toNonEmptyString(record.name) ??
+			toNonEmptyString(record.planTitle) ??
 			undefined,
 		tasks
 	);
 
 	const description =
-		getNonEmptyString(record.description) ??
-		getNonEmptyString(record.summary) ??
-		getNonEmptyString(record.subtitle) ??
+		toNonEmptyString(record.description) ??
+		toNonEmptyString(record.summary) ??
+		toNonEmptyString(record.subtitle) ??
+		undefined;
+	const shortDescription =
+		toNonEmptyString(record.shortDescription) ??
+		toNonEmptyString(record.short_description) ??
 		undefined;
 	const markdown =
-		getNonEmptyString(record.markdown) ??
-		getNonEmptyString(record.plan) ??
+		toNonEmptyString(record.markdown) ??
+		toNonEmptyString(record.plan) ??
 		description ??
 		"";
-	const emoji = getNonEmptyString(record.emoji) ?? undefined;
+	const emoji = toNonEmptyString(record.emoji) ?? undefined;
 
 	const agentSet = new Set<string>();
 	for (const task of tasks) {
@@ -212,18 +215,19 @@ export function parsePlanWidgetPayload(
 	const agents = Array.from(agentSet).sort();
 
 	const deferredToolCallId =
-		getNonEmptyString(record.deferredToolCallId) ??
-		getNonEmptyString(record.tool_call_id) ??
+		toNonEmptyString(record.deferredToolCallId) ??
+		toNonEmptyString(record.tool_call_id) ??
 		undefined;
 
 	return {
 		title,
 		description,
+		shortDescription,
 		markdown,
 		emoji,
 		tasks,
 		agents,
-		toolCallId: getNonEmptyString(record.tool_call_id) ?? undefined,
+		toolCallId: toNonEmptyString(record.tool_call_id) ?? undefined,
 		deferredToolCallId,
 	};
 }
@@ -269,7 +273,7 @@ export function generateMermaidFromPlanTasks(
 	const usedNodeIds = new Set<string>();
 	const taskIdToNodeId = new Map<string, string>();
 	const nodeEntries = tasks.map((task, index) => {
-		const taskId = getNonEmptyString(task.id) ?? `task-${index + 1}`;
+		const taskId = toNonEmptyString(task.id) ?? `task-${index + 1}`;
 		const nodeId = createUniqueMermaidNodeId(
 			sanitizeMermaidNodeId(taskId),
 			usedNodeIds
@@ -280,7 +284,7 @@ export function generateMermaidFromPlanTasks(
 
 		return {
 			nodeId,
-			label: getNonEmptyString(task.label) ?? `Task ${index + 1}`,
+			label: toNonEmptyString(task.label) ?? `Task ${index + 1}`,
 			blockedBy: Array.isArray(task.blockedBy) ? task.blockedBy : [],
 		};
 	});
@@ -289,7 +293,7 @@ export function generateMermaidFromPlanTasks(
 	const seenEdges = new Set<string>();
 	for (const node of nodeEntries) {
 		for (const blockedByTaskId of node.blockedBy) {
-			const dependencyTaskId = getNonEmptyString(blockedByTaskId);
+			const dependencyTaskId = toNonEmptyString(blockedByTaskId);
 			if (!dependencyTaskId) {
 				continue;
 			}
@@ -368,7 +372,7 @@ export function getAllPlanWidgetPayloads(
 				continue;
 			}
 
-			if (getNonEmptyString(part.data?.type) !== "plan") {
+			if (toNonEmptyString(part.data?.type) !== "plan") {
 				continue;
 			}
 
@@ -385,8 +389,52 @@ export function getAllPlanWidgetPayloads(
 export function getLatestPlanWidgetPayload(
 	messages: ReadonlyArray<RovoUIMessage>
 ): ParsedPlanWidgetPayload | null {
-	const allPlans = getAllPlanWidgetPayloads(messages);
-	return allPlans.length > 0 ? allPlans[allPlans.length - 1] : null;
+	for (let index = messages.length - 1; index >= 0; index -= 1) {
+		const message = messages[index];
+		if (message.role !== "assistant") {
+			continue;
+		}
+
+		const widgetPart = getLatestPlanWidgetPart(message);
+		if (!widgetPart) {
+			continue;
+		}
+
+		const parsed = parsePlanWidgetPayload(widgetPart.payload);
+		if (parsed) {
+			return parsed;
+		}
+	}
+
+	return null;
+}
+
+export function getLatestSourcedPlanWidget(
+	messages: ReadonlyArray<RovoUIMessage>
+): SourcedPlanWidget | null {
+	for (let index = messages.length - 1; index >= 0; index -= 1) {
+		const message = messages[index];
+		if (!isMessageVisibleInTranscript(message) || message.role !== "assistant") {
+			continue;
+		}
+
+		const widgetPart = getLatestPlanWidgetPart(message);
+		if (!widgetPart) {
+			continue;
+		}
+
+		const parsedPlanWidget = parsePlanWidgetPayload(widgetPart.payload);
+		if (!parsedPlanWidget) {
+			continue;
+		}
+
+		return {
+			planWidget: parsedPlanWidget,
+			sourceMessageId: message.id,
+		};
+	}
+
+	return null;
 }
 
 export function getLatestPendingPlanWidget(
@@ -429,8 +477,8 @@ export function buildExitPlanModeDeferredToolResponse(
 	planWidget: ParsedPlanWidgetPayload | null,
 	result: string,
 ): DeferredToolResponsePayload | null {
-	const toolCallId = getNonEmptyString(planWidget?.deferredToolCallId ?? planWidget?.toolCallId);
-	const normalizedResult = getNonEmptyString(result);
+	const toolCallId = toNonEmptyString(planWidget?.deferredToolCallId ?? planWidget?.toolCallId);
+	const normalizedResult = toNonEmptyString(result);
 	if (!toolCallId || !normalizedResult) {
 		return null;
 	}
@@ -478,7 +526,7 @@ export function isPlanCardBuildable(
 
 export async function fetchEnrichedPlanTitle(
 	plan: ParsedPlanWidgetPayload,
-): Promise<{ title: string; description: string } | null> {
+): Promise<EnrichedPlanMetadata | null> {
 	try {
 		const response = await fetch(API_ENDPOINTS.PLAN_TITLE, {
 			method: "POST",
@@ -490,12 +538,111 @@ export async function fetchEnrichedPlanTitle(
 			}),
 		});
 		if (!response.ok) return null;
-		const data = (await response.json()) as { title?: string; description?: string };
+		const data = (await response.json()) as {
+			title?: string;
+			shortDescription?: string;
+			description?: string;
+		};
 		const title = data.title?.trim();
-		const description = data.description?.trim();
+		const shortDescription = data.shortDescription?.trim() || data.description?.trim();
 		if (!title) return null;
-		return { title, description: description ?? "" };
+		return { title, shortDescription: shortDescription ?? "" };
 	} catch {
 		return null;
 	}
+}
+
+export function updatePlanWidgetMetadataInMessages(
+	messages: ReadonlyArray<RovoUIMessage>,
+	options: Readonly<{
+		sourceMessageId?: string | null;
+		title?: string;
+		shortDescription?: string;
+	}>
+): RovoUIMessage[] {
+	const normalizedTitle = toNonEmptyString(options.title);
+	const normalizedShortDescription = toNonEmptyString(options.shortDescription);
+	if (!normalizedTitle && !normalizedShortDescription) {
+		return messages as RovoUIMessage[];
+	}
+
+	const targetMessageIndex =
+		typeof options.sourceMessageId === "string" && options.sourceMessageId.trim().length > 0
+			? messages.findIndex((message) => message.id === options.sourceMessageId)
+			: (() => {
+					for (let index = messages.length - 1; index >= 0; index -= 1) {
+						const message = messages[index];
+						if (!isMessageVisibleInTranscript(message) || message.role !== "assistant") {
+							continue;
+						}
+
+						if (getLatestPlanWidgetPart(message)) {
+							return index;
+						}
+					}
+					return -1;
+				})();
+	if (targetMessageIndex === -1) {
+		return messages as RovoUIMessage[];
+	}
+
+	let didUpdate = false;
+	const nextMessages = messages.map((message, messageIndex) => {
+		if (messageIndex !== targetMessageIndex) {
+			return message;
+		}
+
+		const nextParts = [...message.parts];
+		for (let partIndex = nextParts.length - 1; partIndex >= 0; partIndex -= 1) {
+			const part = nextParts[partIndex] as {
+				type?: string;
+				data?: {
+					type?: unknown;
+					payload?: unknown;
+				};
+			};
+			if (part.type !== "data-widget-data" || toNonEmptyString(part.data?.type) !== "plan") {
+				continue;
+			}
+
+			if (!isStringRecord(part.data?.payload)) {
+				break;
+			}
+
+			const payload = part.data.payload;
+			const nextPayload = { ...payload };
+			let didUpdatePayload = false;
+
+			if (normalizedTitle && normalizedTitle !== toNonEmptyString(payload.title)) {
+				nextPayload.title = normalizedTitle;
+				didUpdatePayload = true;
+			}
+
+			if (
+				normalizedShortDescription &&
+				normalizedShortDescription !== toNonEmptyString(payload.shortDescription)
+			) {
+				nextPayload.shortDescription = normalizedShortDescription;
+				didUpdatePayload = true;
+			}
+
+			if (!didUpdatePayload) {
+				break;
+			}
+
+			nextParts[partIndex] = {
+				...part,
+				data: {
+					...part.data,
+					payload: nextPayload,
+				},
+			} as (typeof nextParts)[number];
+			didUpdate = true;
+			break;
+		}
+
+		return didUpdate ? { ...message, parts: nextParts } : message;
+	});
+
+	return didUpdate ? nextMessages : messages as RovoUIMessage[];
 }

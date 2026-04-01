@@ -79,6 +79,42 @@ test("switches to the thread route once the persisted thread matches the current
 	);
 });
 
+test("keeps the draft route while a matching persisted thread is still streaming", () => {
+	const messages = [
+		createMessage("user-1", "user", "Create a page about apple"),
+		createMessage("assistant-1", "assistant", 'Created artifact "apple".'),
+	];
+
+	assert.equal(
+		shouldReplaceFutureChatRouteAfterPersistence({
+			pendingThreadId: "thread-1",
+			thread: createThread({
+				messages,
+				realtimeMessages: [],
+				activeDocumentId: "doc-1",
+			}),
+			messages,
+			realtimeMessages: [],
+			visibility: "private",
+			activeDocumentId: "doc-1",
+			title: "Create a page about apple",
+		}),
+		true,
+	);
+
+	assert.equal(
+		shouldReplacePendingFutureChatRoute({
+			activeThreadId: "thread-1",
+			embedded: false,
+			hasPersistedThreadState: true,
+			isStreaming: true,
+			isVoiceMode: false,
+			pendingThreadId: "thread-1",
+		}),
+		false,
+	);
+});
+
 test("buildFutureChatThreadPersistKey includes title and active artifact state", () => {
 	const key = buildFutureChatThreadPersistKey({
 		messages: [createMessage("user-1", "user", "Create a page about apple")],
@@ -148,6 +184,32 @@ test("replaces the pending draft route once voice mode is off and persistence is
 			isStreaming: false,
 			isVoiceMode: false,
 			pendingThreadId: "thread-1",
+		}),
+		true,
+	);
+});
+
+test("recovered threads use the same deferred route replacement gate", () => {
+	assert.equal(
+		shouldReplacePendingFutureChatRoute({
+			activeThreadId: "thread-recovered",
+			embedded: false,
+			hasPersistedThreadState: true,
+			isStreaming: true,
+			isVoiceMode: false,
+			pendingThreadId: "thread-recovered",
+		}),
+		false,
+	);
+
+	assert.equal(
+		shouldReplacePendingFutureChatRoute({
+			activeThreadId: "thread-recovered",
+			embedded: false,
+			hasPersistedThreadState: true,
+			isStreaming: false,
+			isVoiceMode: false,
+			pendingThreadId: "thread-recovered",
 		}),
 		true,
 	);

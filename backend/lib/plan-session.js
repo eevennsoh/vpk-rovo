@@ -11,6 +11,15 @@ const DEFAULT_SESSION = Object.freeze({
 	acceptedPlanId: null,
 });
 
+function normalizeNonEmptyString(value) {
+	if (typeof value !== "string") {
+		return null;
+	}
+
+	const trimmedValue = value.trim();
+	return trimmedValue.length > 0 ? trimmedValue : null;
+}
+
 function getPlanSession(threadId) {
 	if (!threadId) {
 		return { ...DEFAULT_SESSION };
@@ -31,6 +40,30 @@ function updatePlanSession(threadId, updates) {
 	if (!threadId) return;
 	const session = getPlanSession(threadId);
 	Object.assign(session, updates);
+}
+
+function recordPlanWidgetEmission(threadId, { deferredToolCallId, planCardId } = {}) {
+	if (!threadId) {
+		return { ...DEFAULT_SESSION };
+	}
+
+	const session = getPlanSession(threadId);
+	const normalizedDeferredToolCallId = normalizeNonEmptyString(deferredToolCallId);
+	const normalizedPlanCardId = normalizeNonEmptyString(planCardId);
+
+	session.isActive = true;
+	session.phase = "plan";
+	if (normalizedDeferredToolCallId) {
+		session.deferredToolCallId = normalizedDeferredToolCallId;
+	}
+	if (
+		normalizedPlanCardId &&
+		!session.planCardIds.includes(normalizedPlanCardId)
+	) {
+		session.planCardIds = [...session.planCardIds, normalizedPlanCardId];
+	}
+
+	return session;
 }
 
 function clearPlanSession(threadId) {
@@ -84,6 +117,7 @@ function _resetForTest() {
 module.exports = {
 	getPlanSession,
 	updatePlanSession,
+	recordPlanWidgetEmission,
 	clearPlanSession,
 	shouldRestorePlanModeOnResume,
 	isPlanExecutionPhase,

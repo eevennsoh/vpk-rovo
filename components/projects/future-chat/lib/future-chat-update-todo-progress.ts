@@ -225,7 +225,7 @@ function normalizeTodoRecord(
 		id,
 		content,
 		activeForm,
-		label: status === "in_progress" && activeForm ? activeForm : content,
+		label: content,
 		status,
 		blockedBy,
 	};

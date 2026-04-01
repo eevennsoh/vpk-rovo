@@ -1,5 +1,7 @@
 import type { FutureChatActiveRun } from "@/lib/future-chat-types";
 import {
+	getAllDataParts,
+	getMessageArtifactResult,
 	getThinkingToolCallSummaries,
 	isMessageVisibleInTranscript,
 	type RovoUIMessage,
@@ -101,6 +103,12 @@ function findAcceptedPlanWidget(
 	}
 
 	return null;
+}
+
+function hasArtifactResultInMessages(
+	messages: ReadonlyArray<RovoUIMessage>,
+): boolean {
+	return messages.some((message) => getMessageArtifactResult(message) !== null);
 }
 
 function resolveExecutionWindowMessages(
@@ -246,11 +254,14 @@ function extractNumericTaskId(taskId: string): string | null {
 
 function toProgressTask(
 	item: FutureChatTodoProgressItem & { agentName?: string },
+	thinkingStatusContent: string | null,
 ): FutureChatPlanExecutionProgressTask {
 	const description =
 		item.status === "pending"
 			? buildBlockedByDescription(item.blockedBy)
-			: "";
+			: item.status === "in_progress"
+				? (item.activeForm ?? thinkingStatusContent ?? "")
+				: "";
 
 	const numericId = extractNumericTaskId(item.id);
 	const alreadyPrefixed = LABEL_ALREADY_PREFIXED_PATTERN.test(item.label);
@@ -269,10 +280,11 @@ function toProgressTask(
 
 function buildStatusGroups(
 	items: ReadonlyArray<FutureChatTodoProgressItem & { agentName?: string }>,
+	thinkingStatusContent: string | null,
 ): FutureChatPlanExecutionStatusGroups {
 	return items.reduce<FutureChatPlanExecutionStatusGroups>(
 		(result, item) => {
-			const progressTask = toProgressTask(item);
+			const progressTask = toProgressTask(item, thinkingStatusContent);
 			if (item.status === "completed") {
 				result.done.push(progressTask);
 				return result;
@@ -293,6 +305,27 @@ function buildStatusGroups(
 			todo: [],
 		},
 	);
+}
+
+function getLatestThinkingStatusContent(
+	messages: ReadonlyArray<RovoUIMessage>,
+): string | null {
+	for (let i = messages.length - 1; i >= 0; i -= 1) {
+		const message = messages[i];
+		if (message.role !== "assistant") {
+			continue;
+		}
+
+		const thinkingParts = getAllDataParts(message, "data-thinking-status");
+		for (let j = thinkingParts.length - 1; j >= 0; j -= 1) {
+			const content = thinkingParts[j].data?.content;
+			if (typeof content === "string" && content.trim().length > 0) {
+				return content.trim();
+			}
+		}
+	}
+
+	return null;
 }
 
 function resolveRunCompletedAt(
@@ -379,11 +412,17 @@ export function resolveFutureChatPlanExecutionTracker(input: {
 
 	const executionMessages = resolveExecutionWindowMessages(messages, approvalIndex);
 	const latestSnapshot = getLatestFutureChatTodoProgressFromMessages(executionMessages);
-	const mergedItems = mergeTodoItemsWithPlanTasks(
+	const thinkingStatusContent = getLatestThinkingStatusContent(executionMessages);
+	const rawMergedItems = mergeTodoItemsWithPlanTasks(
 		acceptedPlanWidget.tasks,
 		latestSnapshot,
 	);
-	const taskStatusGroups = buildStatusGroups(mergedItems);
+	const artifactGenerated =
+		activeRun === null && hasArtifactResultInMessages(executionMessages);
+	const mergedItems = artifactGenerated
+		? rawMergedItems.map((item) => ({ ...item, status: "completed" as const }))
+		: rawMergedItems;
+	const taskStatusGroups = buildStatusGroups(mergedItems, thinkingStatusContent);
 	const runStatus =
 		activeRun !== null
 			? "running"

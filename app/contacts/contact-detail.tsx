@@ -8,9 +8,9 @@ import {
 } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import FormattedDate from "@/components/ui/formatted-date";
 import { Separator } from "@/components/ui/separator";
 import type { Contact } from "./data";
-import FormattedDate from "./formatted-date";
 
 import EmailIcon from "@atlaskit/icon/core/email";
 import PhoneIcon from "@atlaskit/icon/core/phone";

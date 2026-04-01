@@ -29,6 +29,7 @@ import { Button } from "@/components/ui/button";
 import type { VoiceButtonState } from "@/components/ui-audio/voice-button";
 import { LiveWaveform } from "@/components/ui-audio/live-waveform";
 import { resolveFutureChatComposerWaveformState } from "@/components/projects/future-chat/lib/future-chat-composer-waveform-state";
+import { resolveFutureChatComposerIdleAction } from "@/components/projects/future-chat/lib/future-chat-composer-idle-action";
 import { resolveFutureChatComposerResponseGradientState } from "@/components/projects/future-chat/lib/future-chat-composer-response-gradient-state";
 import type { RealtimeGenerationState } from "@/components/projects/future-chat/hooks/use-realtime-voice";
 import { cn } from "@/lib/utils";
@@ -71,6 +72,7 @@ interface FutureChatComposerProps {
 	queuedPrompts?: ReadonlyArray<FutureChatQueuedAction>;
 	onStop: () => Promise<void>;
 	onDismissPlanExecutionTracker?: () => void;
+	onDismissArtifactContext?: () => void;
 	onRemoveQueuedPrompt?: (id: string) => void;
 	onSubmit: (payload: { text: string; files: FileUIPart[] }) => Promise<void>;
 	onTogglePlanMode?: () => void;
@@ -109,6 +111,7 @@ function FutureChatComposerInner({
 	isPlanMode = false,
 	micStream,
 	onDismissPlanExecutionTracker,
+	onDismissArtifactContext,
 	queuedPrompts = EMPTY_QUEUED_PROMPTS,
 	onStop,
 	onRemoveQueuedPrompt,
@@ -145,13 +148,14 @@ function FutureChatComposerInner({
 	const isPreviewPlaceholderActive = Boolean(previewPrompt) && controller.textInput.value.trim().length === 0;
 	const canSubmit = controller.textInput.value.trim().length > 0 || controller.attachments.files.length > 0;
 	const isComposerBusy = composerStatus === "submitted" || composerStatus === "streaming";
-	const showSubmitButton = !realtimeVoiceActive && !isComposerBusy && canSubmit;
-	const showVoiceStartButton =
-		!realtimeVoiceActive &&
-		!isComposerBusy &&
-		!showBackgroundStop &&
-		!submitDisabled &&
-		Boolean(onToggleRealtimeVoice);
+	const idleAction = resolveFutureChatComposerIdleAction({
+		canStartRealtimeVoice: Boolean(onToggleRealtimeVoice),
+		canSubmit,
+		isComposerBusy,
+		realtimeVoiceActive,
+		showBackgroundStop,
+		submitDisabled,
+	});
 	const hasQueuedPrompts = queuedPrompts.length > 0;
 	const realtimeWaveformState = resolveFutureChatComposerWaveformState({
 		hasMicStream: micStream !== null,
@@ -446,14 +450,24 @@ function FutureChatComposerInner({
 					</div>
 				) : null}
 
-				{planExecutionTracker ? (
-					<div className="pb-3">
-						<FutureChatPlanExecutionTracker
-							onDismiss={onDismissPlanExecutionTracker}
-							tracker={planExecutionTracker}
-						/>
-					</div>
-				) : null}
+				<AnimatePresence>
+					{planExecutionTracker ? (
+						<motion.div
+							key="plan-execution-tracker"
+							initial={{ opacity: 0, y: 24 }}
+							animate={{ opacity: 1, y: 0 }}
+							exit={{ opacity: 0, y: 24 }}
+							transition={{ type: "spring", bounce: 0, visualDuration: 0.35 }}
+							className="pb-3"
+							style={{ willChange: "transform, opacity" }}
+						>
+							<FutureChatPlanExecutionTracker
+								onDismiss={onDismissPlanExecutionTracker}
+								tracker={planExecutionTracker}
+							/>
+						</motion.div>
+					) : null}
+				</AnimatePresence>
 
 				<div
 					ref={composerRef}
@@ -468,17 +482,43 @@ function FutureChatComposerInner({
 							: {}),
 					}}
 				>
+					{artifactTitle ? (
+							<div
+								className={cn(
+									"-mx-3 mb-3 overflow-hidden rounded-t-[inherit] bg-bg-neutral/70",
+									compact ? "-mt-3.5" : "-mt-3",
+								)}
+							>
+								<div className="flex items-center gap-3 px-4 py-2">
+								<p className="min-w-0 flex-1 truncate text-sm leading-tight text-text">
+									<span className="font-normal text-text-subtle">
+										Editing:
+									</span>{" "}
+									<span className="font-semibold text-text">
+										{artifactTitle}
+									</span>
+								</p>
+								{onDismissArtifactContext ? (
+									<Button
+										aria-label="Close artifact context"
+										className="-mr-1 rounded-full"
+										onClick={onDismissArtifactContext}
+										size="icon-sm"
+										type="button"
+										variant="ghost"
+									>
+										<CrossIcon label="" size="small" />
+									</Button>
+								) : null}
+							</div>
+						</div>
+					) : null}
+
 					<PromptInput
 						allowOverflow
 						className={cn(composerPromptInputClassName, "relative z-10", composerHeight ? "flex h-full flex-col [&>[data-slot=input-group]]:h-full" : undefined)}
 						onSubmit={handlePromptSubmit}
 					>
-						{artifactTitle ? (
-							<div className="mb-3 rounded-xl border border-border bg-bg-neutral px-3 py-2 text-text-subtle text-xs">
-								Editing artifact context from <span className="font-medium text-text">{artifactTitle}</span>
-							</div>
-						) : null}
-
 						<PendingAttachments />
 
 						<PromptInputBody className={composerHeight ? "flex-1" : undefined}>
@@ -557,13 +597,25 @@ function FutureChatComposerInner({
 												</span>
 											</button>
 										</motion.div>
-									) : showSubmitButton ? (
+									) : idleAction === "submit" ? (
 										<motion.div key="submit" animate={{ opacity: 1 }} exit={{ opacity: 0 }} initial={{ opacity: 0 }} transition={{ duration: 0.08 }}>
 											<PromptInputSubmit aria-label="Submit" className="bg-icon text-white hover:bg-icon hover:opacity-90 active:opacity-80 [&_svg]:text-white" disabled={submitDisabled || !canSubmit} onStop={() => void onStop()} shape="circle" size="icon-sm" status={composerStatus}>
 												<ArrowUpIcon label="" />
 											</PromptInputSubmit>
 										</motion.div>
-									) : showVoiceStartButton ? (
+									) : idleAction === "background-stop" ? (
+										<motion.div key="background-stop" animate={{ opacity: 1 }} exit={{ opacity: 0 }} initial={{ opacity: 0 }} transition={{ duration: 0.08 }}>
+											<PromptInputSubmit
+												aria-label="Stop background work"
+												onStop={() => void onStop()}
+												shape="circle"
+												size="icon-sm"
+												status="streaming"
+											>
+												<ArrowUpIcon label="" />
+											</PromptInputSubmit>
+										</motion.div>
+									) : idleAction === "voice-start" ? (
 										<motion.div key="voice-start" animate={{ opacity: 1 }} exit={{ opacity: 0 }} initial={{ opacity: 0 }} transition={{ duration: 0.08 }}>
 											<PromptInputButton
 												aria-label="Start live voice"

@@ -17,8 +17,7 @@ interface MakeCardWidgetInlineProps {
 	title: string;
 	tasks: PlanTask[];
 	description?: string;
-	enrichedTitle?: string;
-	enrichedDescription?: string;
+	shortDescription?: string;
 	isStreaming?: boolean;
 	collapsed?: boolean;
 	onBuild?: () => void;
@@ -29,8 +28,7 @@ export function MakeCardWidgetInline({
 	title,
 	tasks,
 	description,
-	enrichedTitle,
-	enrichedDescription,
+	shortDescription,
 	isStreaming = false,
 	collapsed: controlledCollapsed,
 	onBuild,
@@ -56,9 +54,8 @@ export function MakeCardWidgetInline({
 		<PlanWidgetInlineCard
 			title={title}
 			description={description}
+			shortDescription={shortDescription}
 			tasks={tasks}
-			enrichedTitle={enrichedTitle}
-			enrichedDescription={enrichedDescription}
 			isStreaming={isStreaming}
 			collapsed={controlledCollapsed}
 			className="transition-[height] duration-300 ease-out"

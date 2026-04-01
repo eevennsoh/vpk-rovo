@@ -249,15 +249,14 @@ function getArtifactActionLabel(
 	return null;
 }
 
-function getArtifactDescription(
-	actionLabel: string | null,
-	kind: ArtifactKind,
-): string {
-	const kindLabel = ARTIFACT_KIND_LABELS[kind].toLowerCase();
-	const detail = actionLabel
-		? `${actionLabel} ${kindLabel}`
-		: ARTIFACT_KIND_LABELS[kind];
-	return `Artifact \u2022 ${detail}`;
+function getArtifactDescription({
+	kind,
+	versionNumber,
+}: Readonly<{
+	kind: ArtifactKind;
+	versionNumber: number;
+}>): string {
+	return `${ARTIFACT_KIND_LABELS[kind]} \u2022 Version ${versionNumber}`;
 }
 
 function ArtifactPreview({
@@ -322,6 +321,8 @@ function ArtifactPreview({
 export interface ArtifactCardProps {
 	/** The artifact content type. Determines icon and color. */
 	kind: ArtifactKind;
+	/** Optional artifact version number displayed in the card metadata. @default 1 */
+	versionNumber?: number;
 	/** Artifact title text. */
 	title: string;
 	/** Optional action context. Used for description text. */
@@ -330,6 +331,8 @@ export interface ArtifactCardProps {
 	isStreaming?: boolean;
 	/** Display mode. "preview" shows expanded card. "chip" shows compact inline card. @default "preview" */
 	displayMode?: "preview" | "chip";
+	/** Optional emoji to display in the tile instead of the kind-based icon. */
+	emoji?: string;
 	/** Content string for the preview (code text, image URL, etc.). */
 	previewContent?: string;
 	/** Callback when the "Open" button is clicked. Receives the card root element. */
@@ -344,10 +347,12 @@ export interface ArtifactCardProps {
 
 export function ArtifactCard({
 	kind,
+	versionNumber = 1,
 	title,
 	action,
 	isStreaming = false,
 	displayMode = "preview",
+	emoji,
 	previewContent = "",
 	onOpen,
 	onRegister,
@@ -411,16 +416,19 @@ export function ArtifactCard({
 						) : null
 					}
 					collapseLabel="Collapse artifact details"
-					description={getArtifactDescription(actionLabel, kind)}
+					description={getArtifactDescription({ kind, versionNumber })}
 					expandLabel="Expand artifact details"
 					leading={
 						<Tile
 							label={kindLabel}
 							size={displayMode === "chip" ? "small" : "medium"}
-							variant={getArtifactKindTileVariant(kind)}
+							variant={emoji ? "neutral" : getArtifactKindTileVariant(kind)}
+							isInset={!emoji}
 						>
 							{isStreaming ? (
 								<LoaderCircleIcon className="size-4 animate-spin" />
+							) : emoji ? (
+								<span>{emoji}</span>
 							) : (
 								<ArtifactKindIcon kind={kind} />
 							)}

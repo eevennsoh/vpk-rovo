@@ -36,7 +36,11 @@ import {
 import {
 	getPlanApprovalKeyFromPlanWidget,
 } from "@/components/projects/shared/lib/plan-approval";
-import { getLatestPlanWidgetPayload, fetchEnrichedPlanTitle } from "@/components/projects/shared/lib/plan-widget";
+import {
+	fetchEnrichedPlanTitle,
+	getLatestPlanWidgetPayload,
+	getLatestSourcedPlanWidget,
+} from "@/components/projects/shared/lib/plan-widget";
 import {
 	selectRetryTasks,
 } from "@/components/projects/make/lib/retry-task-groups";
@@ -95,7 +99,6 @@ export interface MakeState {
 	// Derived
 	activeQuestionCard: ParsedQuestionCardPayload | null;
 	activePlanWidget: ParsedPlanWidgetPayload | null;
-	enrichedPlanTitle: { title: string; description: string } | null;
 	isWidgetLoading: boolean;
 	loadingWidgetType: string | null;
 	isPlanMessageComplete: boolean;
@@ -304,7 +307,6 @@ export function MakeProvider({ children }: MakeProviderProps) {
 
 	// ---- Navigation tab ----
 	const [agentCount, setAgentCount] = useState(4);
-	const [enrichedPlanTitle, setEnrichedPlanTitle] = useState<{ title: string; description: string } | null>(null);
 
 	// ---- Run history ----
 	const [runHistory, setRunHistory] = useState<AgentRunListItem[]>([]);
@@ -324,6 +326,7 @@ export function MakeProvider({ children }: MakeProviderProps) {
 		uiMessages: rawUiMessages,
 		queuedPrompts,
 		removeQueuedPrompt,
+		activeChatId: makeActiveChatId,
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		handleSubmit: _handleMakeSubmit,
 		handleSuggestedQuestionClick,
@@ -331,6 +334,7 @@ export function MakeProvider({ children }: MakeProviderProps) {
 		submitClarification,
 		dismissClarification,
 		appendPlanApprovalMarker: appendMakePlanApprovalMarker,
+		persistPlanWidgetMetadata: persistMakePlanWidgetMetadata,
 	} = useMakeChat({
 		mode: "make",
 		syncUrlThreadParam: false,
@@ -447,6 +451,10 @@ export function MakeProvider({ children }: MakeProviderProps) {
 		() => getLatestPlanWidgetPayload(rawUiMessages),
 		[rawUiMessages],
 	);
+	const activeSourcedPlanWidget = useMemo(
+		() => getLatestSourcedPlanWidget(rawUiMessages),
+		[rawUiMessages],
+	);
 	const isWidgetLoading = useMemo(
 		() => isAnyWidgetCurrentlyLoading(rawUiMessages),
 		[rawUiMessages],
@@ -484,37 +492,54 @@ export function MakeProvider({ children }: MakeProviderProps) {
 		[chatTabMessages],
 	);
 
-	// Reset enriched title when the active plan widget changes
-	const enrichedPlanWidgetKeyRef = useRef<string | null>(null);
-	const currentPlanWidgetKey = activePlanWidget
-		? `${activePlanWidget.title}::${activePlanWidget.tasks.length}`
-		: null;
-	if (enrichedPlanWidgetKeyRef.current !== currentPlanWidgetKey) {
-		enrichedPlanWidgetKeyRef.current = currentPlanWidgetKey;
-		if (enrichedPlanTitle !== null) {
-			setEnrichedPlanTitle(null);
-		}
-	}
+	const attemptedPlanMetadataMessageIdsRef = useRef<Set<string>>(new Set());
 
-	// Enrich plan title via AI after streaming completes
+	// Enrich plan card metadata via AI after streaming completes
 	useEffect(() => {
-		if (!isPlanMessageComplete || !activePlanWidget || isExecutionActive || isStreaming) {
+		const sourceMessageId = activeSourcedPlanWidget?.sourceMessageId ?? null;
+		const planWidget = activeSourcedPlanWidget?.planWidget ?? null;
+		if (
+			!isPlanMessageComplete ||
+			!makeActiveChatId ||
+			!sourceMessageId ||
+			!planWidget ||
+			isExecutionActive ||
+			isStreaming
+		) {
 			return;
 		}
-		if (enrichedPlanTitle !== null) {
+		if (planWidget.shortDescription?.trim()) {
 			return;
 		}
+		if (attemptedPlanMetadataMessageIdsRef.current.has(sourceMessageId)) {
+			return;
+		}
+		attemptedPlanMetadataMessageIdsRef.current.add(sourceMessageId);
 
 		const enrichDelay = setTimeout(() => {
-			void fetchEnrichedPlanTitle(activePlanWidget).then((result) => {
-				if (result) {
-					setEnrichedPlanTitle(result);
+			void fetchEnrichedPlanTitle(planWidget).then((result) => {
+				if (!result) {
+					attemptedPlanMetadataMessageIdsRef.current.delete(sourceMessageId);
+					return;
 				}
+				void persistMakePlanWidgetMetadata({
+					threadId: makeActiveChatId,
+					sourceMessageId,
+					title: result.title,
+					shortDescription: result.shortDescription,
+				});
 			});
 		}, 2000);
 
 		return () => clearTimeout(enrichDelay);
-	}, [activePlanWidget, enrichedPlanTitle, isExecutionActive, isPlanMessageComplete, isStreaming]);
+	}, [
+		activeSourcedPlanWidget,
+		isExecutionActive,
+		isPlanMessageComplete,
+		isStreaming,
+		makeActiveChatId,
+		persistMakePlanWidgetMetadata,
+	]);
 
 	const activeChatTabTitle =
 		chatTabActiveChatId !== null
@@ -921,7 +946,6 @@ export function MakeProvider({ children }: MakeProviderProps) {
 			queuedPrompts,
 			activeQuestionCard,
 			activePlanWidget,
-			enrichedPlanTitle,
 			isWidgetLoading,
 			loadingWidgetType,
 			isPlanMessageComplete,
@@ -965,7 +989,6 @@ export function MakeProvider({ children }: MakeProviderProps) {
 			queuedPrompts,
 			activeQuestionCard,
 			activePlanWidget,
-			enrichedPlanTitle,
 			isWidgetLoading,
 			loadingWidgetType,
 			isPlanMessageComplete,

@@ -16,7 +16,7 @@ Next.js 16 (React 19, Tailwind CSS v4) + Express backend with AI SDK (Vercel) an
 - Primary frontend edits are in `components/projects/`, `components/blocks/`, and `app/` route files.
 - Backend API edits are in `backend/server.js` and `app/api/*/route.ts` (dev proxy).
 - Validate every change with `pnpm run lint` and `pnpm tsc --noEmit`.
-- For UI changes, also run visual + accessibility checks (see `## Workflows (Extended) -> Validation`).
+- For UI changes, also run visual + accessibility checks (see `.agents/docs/workflows-extended.md`).
 - Browser automation uses `/agent-browser` (`npx agent-browser`) — not direct Playwright MCP tools.
 
 ## Documentation Index
@@ -173,10 +173,6 @@ Two runtime modes: **dev** (Next.js proxy + Express + RovoDev Serve) and **prod*
 
 > API endpoints and chat architecture load as contextual rules when editing backend or chat files.
 > See `.agents/rules/api-surfaces.md` and `.agents/rules/chat-architecture.md`.
-
-## Workflows (Extended)
-
-See `.agents/docs/workflows-extended.md` for build, deployment, and validation workflows. Read that file before deploying or setting up CI.
 
 ## Behavioral Rules
 

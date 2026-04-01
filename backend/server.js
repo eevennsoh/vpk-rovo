@@ -96,10 +96,14 @@ const { assessPromptComplexityForPlanMode } = require("./lib/plan-mode-complexit
 const {
 	getPlanSession,
 	updatePlanSession,
+	recordPlanWidgetEmission,
 	clearPlanSession,
 	shouldRestorePlanModeOnResume,
 	isPlanExecutionPhase,
 } = require("./lib/plan-session");
+const {
+	getPlanFeedbackToolGuard,
+} = require("./lib/plan-feedback-tool-guard");
 const {
 	resolveRoutingDecision,
 } = require("./lib/resolve-routing-decision");
@@ -5184,25 +5188,28 @@ app.post("/api/plan-title", async (req, res) => {
 			? `\nCurrent description: ${description.trim()}`
 			: "";
 
-		const enrichPrompt = `Name the app or product this plan will build, and describe it in plain language.
+		const enrichPrompt = `Name the app or product this plan will build, and write a terse plan-card header description.
 
 Current title: ${title.trim()}${descriptionContext}${taskContext}
 
 Rules:
 - Title: 2-5 words, name the final app/product/feature being built (e.g. "Time Tracking Dashboard", "Sprint Board", "Team Chat App"), no code/file references, no verbs like "Create" or "Build"
-- Description: 1-2 sentences, explain what the finished product does for the user, no code references`;
+- Short description: 4-10 words, terse and user-facing, suitable for a narrow card header
+- Do not mention file paths, routes, implementation steps, or technical details
+- Do not copy the full summary verbatim
+- Respond with JSON only`;
 
 		const text = await generateTextViaGateway({
-			system: 'You name apps and products based on their technical plans. Given task details, identify what is being built and give it a clear product name. Respond with JSON only: {"title":"...","description":"..."}',
+			system: 'You name apps and products based on technical plans. Identify what is being built, give it a clear product name, and write a terse header description. Respond with JSON only: {"title":"...","shortDescription":"..."}',
 			prompt: enrichPrompt,
-			maxOutputTokens: 150,
-			temperature: 0.7,
+			maxOutputTokens: 120,
+			temperature: 0.4,
 			backendPreference: "ai-gateway",
 		});
 
 		const trimmed = text.trim();
 		let enrichedTitle = title.trim();
-		let enrichedDescription = (description || "").trim();
+		let enrichedShortDescription = "";
 
 		try {
 			const jsonMatch = trimmed.match(/\{[\s\S]*\}/);
@@ -5211,8 +5218,14 @@ Rules:
 				if (typeof parsed.title === "string" && parsed.title.trim()) {
 					enrichedTitle = parsed.title.trim().replace(/^["']|["']$/g, "").replace(/\.+$/, "").trim();
 				}
-				if (typeof parsed.description === "string" && parsed.description.trim()) {
-					enrichedDescription = parsed.description.trim().replace(/^["']|["']$/g, "").replace(/\.+$/, "").trim();
+				const rawShortDescription =
+					(typeof parsed.shortDescription === "string" && parsed.shortDescription.trim())
+						? parsed.shortDescription
+						: (typeof parsed.description === "string" && parsed.description.trim())
+							? parsed.description
+							: null;
+				if (rawShortDescription) {
+					enrichedShortDescription = rawShortDescription.trim().replace(/^["']|["']$/g, "").replace(/\.+$/, "").trim();
 				}
 			}
 		} catch {
@@ -5223,7 +5236,7 @@ Rules:
 			return res.status(500).json({ error: "Empty title generated" });
 		}
 
-		return res.json({ title: enrichedTitle, description: enrichedDescription });
+		return res.json({ title: enrichedTitle, shortDescription: enrichedShortDescription });
 	} catch (error) {
 		console.error("Plan title API error:", error);
 		return sendGatewayErrorResponse(res, error, "Failed to generate plan title");
@@ -5447,6 +5460,15 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 				}
 			}
 		}
+		const currentPlanSession = threadId ? getPlanSession(threadId) : null;
+		const isPlanFeedbackDeferredResumeTurn = Boolean(
+			rawDeferredToolResponse &&
+			resolvedPlanModeActive &&
+			deferredToolResponseToolCallId &&
+			currentPlanSession?.isActive &&
+			currentPlanSession.phase === "plan" &&
+			currentPlanSession.deferredToolCallId === deferredToolResponseToolCallId
+		);
 		const {
 			message: latestUserMessage,
 			conversationHistory,
@@ -8226,6 +8248,12 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 							latestPlanPayload = planPayload;
 							hasExplicitPlanPayload = true;
 							latestProgressivePlanFingerprint = null;
+							if (threadId) {
+								recordPlanWidgetEmission(threadId, {
+									deferredToolCallId: toolCallId,
+									planCardId: widgetId,
+								});
+							}
 							emitPlanWidgetData(planPayload);
 							if (hasEmittedPlanLoadingState) {
 								emitPlanWidgetLoading(false);
@@ -9057,6 +9085,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 					let shouldContinueToolFirstRetry = true;
 					let forcePortRecoveryAttemptCount = 0;
 					let stuckPortRecoveryRetryCount = 0;
+					let hasBlockedPlanFeedbackExecutionTool = false;
 
 					while (shouldContinueToolFirstRetry) {
 						recordToolFirstAttempt(toolFirstExecutionState, {
@@ -9096,6 +9125,45 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 						}
 						let streamTimedOut = false;
 						try {
+							const maybeGuardPlanFeedbackTool = ({
+								toolCallId,
+								toolName,
+							}) => {
+								const toolGuard = getPlanFeedbackToolGuard({
+									isPlanFeedbackDeferredResumeTurn,
+									isExitPlanModeTool,
+									isRequestUserInputTool,
+									resumedToolCallId: deferredToolResponseToolCallId,
+									toolCallId,
+									toolName,
+								});
+								if (toolGuard.ignore) {
+									return { ignore: true, block: false };
+								}
+
+								if (toolGuard.block && !hasBlockedPlanFeedbackExecutionTool) {
+									hasBlockedPlanFeedbackExecutionTool = true;
+									console.warn("[PLAN-FEEDBACK] Blocking non-interactive tool during plan feedback turn", {
+										threadId,
+										toolCallId,
+										toolName,
+									});
+									if (
+										typeof resolvedRovoDevPort === "number" &&
+										resolvedRovoDevPort > 0
+									) {
+										void rovoDevCancelChat(resolvedRovoDevPort, {
+											timeoutMs: 3_000,
+										}).catch(() => {});
+									}
+									if (!abortController.signal.aborted) {
+										abortController.abort();
+									}
+								}
+
+								return toolGuard;
+							};
+
 							const streamCommonOptions = {
 								onTextDelta: handleStreamTextDelta,
 								// ── Output Routing: Track all tool calls (BE-001) ──
@@ -9105,6 +9173,14 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 								// two-step GenUI flow.
 								onToolCallStart: (toolCall) => {
 									if (!toolCall || typeof toolCall !== "object") {
+										return;
+									}
+
+									const toolGuard = maybeGuardPlanFeedbackTool({
+										toolCallId: toolCall.toolCallId,
+										toolName: toolCall.toolName,
+									});
+									if (toolGuard.ignore || toolGuard.block) {
 										return;
 									}
 
@@ -9192,6 +9268,14 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 									}
 								},
 									onToolCallResult: (toolCallResult) => {
+										const toolGuard = maybeGuardPlanFeedbackTool({
+											toolCallId: toolCallResult?.toolCallId,
+											toolName: toolCallResult?.toolName,
+										});
+										if (toolGuard.ignore || toolGuard.block) {
+											return;
+										}
+
 										emitRequestUserInputQuestionCardFromResult(toolCallResult);
 
 										// Detect bash workaround in tool result output

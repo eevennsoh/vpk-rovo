@@ -46,7 +46,7 @@ function extractArrowFunctionExpression(startMarker, endMarker, constName) {
 
 const MAYBE_EMIT_EXIT_PLAN_WIDGET_SOURCE = extractArrowFunctionExpression(
 	"const maybeEmitExitPlanWidget = ({",
-	"const emitTodoQueueData = (payload) => {",
+	"const emitToolApprovalData = (payload) => {",
 	"maybeEmitExitPlanWidget",
 );
 
@@ -68,6 +68,7 @@ function evaluateFunctionSource(functionSource, context) {
 function createHarness({ hasEmittedPlanLoadingState = false } = {}) {
 	const emittedPlanPayloads = [];
 	const emittedLoadingStates = [];
+	const recordedPlanWidgets = [];
 	const context = {
 		console: createConsoleStub(),
 		extractPlanWidgetPayloadFromExitPlanToolInput,
@@ -76,6 +77,11 @@ function createHarness({ hasEmittedPlanLoadingState = false } = {}) {
 		hasToolApprovalReadonlyFailure: false,
 		latestProgressivePlanFingerprint: "progressive-plan-fingerprint",
 		hasEmittedPlanLoadingState,
+		threadId: "thread-123",
+		widgetId: "widget-plan-1",
+		recordPlanWidgetEmission: (threadId, payload) => {
+			recordedPlanWidgets.push({ threadId, payload });
+		},
 		emitPlanWidgetData: (payload) => {
 			emittedPlanPayloads.push(payload);
 		},
@@ -89,6 +95,7 @@ function createHarness({ hasEmittedPlanLoadingState = false } = {}) {
 		context,
 		emittedLoadingStates,
 		emittedPlanPayloads,
+		recordedPlanWidgets,
 		maybeEmitExitPlanWidget: evaluateFunctionSource(
 			MAYBE_EMIT_EXIT_PLAN_WIDGET_SOURCE,
 			context,
@@ -123,6 +130,16 @@ test("maybeEmitExitPlanWidget marks deferred exit-plan payloads as explicit plan
 	assert.equal(
 		harness.emittedPlanPayloads[0]?.deferredToolCallId,
 		"tool-call-123",
+	);
+	assert.equal(harness.recordedPlanWidgets.length, 1);
+	assert.equal(harness.recordedPlanWidgets[0]?.threadId, "thread-123");
+	assert.equal(
+		harness.recordedPlanWidgets[0]?.payload?.deferredToolCallId,
+		"tool-call-123",
+	);
+	assert.equal(
+		harness.recordedPlanWidgets[0]?.payload?.planCardId,
+		"widget-plan-1",
 	);
 	assert.deepEqual(harness.emittedLoadingStates, [false]);
 });

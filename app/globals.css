@@ -222,6 +222,12 @@
    unlayered guarantees they always win regardless of chunk order.
    ----------------------------------------------------------------- */
 
+/* Embedded iframe — hide shell chrome before React hydration to prevent flash.
+   Pre-hydration script sets data-embedded on <html> inside iframes. */
+html[data-embedded] [data-shell-chrome] {
+	display: none !important;
+}
+
 /* Website sidebar layout — push main content to clear the fixed sidebar */
 @media (min-width: 768px) {
 	body:has(aside[data-sidebar-open="true"]) .website-main-content {
