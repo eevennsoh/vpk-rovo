@@ -365,7 +365,7 @@ export function FutureChatSidebar({
 								selected={isNewChatSelected}
 								trailing={
 										<SidebarNavItemCount className="pointer-events-auto min-w-0 rounded-xs px-1 font-normal text-text hover:bg-bg-neutral active:bg-bg-neutral group-data-[selected=true]/sidebar-nav-item:bg-transparent">
-											⌥⇧N
+											⌘⇧N
 										</SidebarNavItemCount>
 								}
 							/>

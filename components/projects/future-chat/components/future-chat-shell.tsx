@@ -435,6 +435,19 @@ export function FutureChatShell({
 		return () => clearHoverTimer();
 	}, [clearHoverTimer]);
 
+	// ⌘⇧N — create a new chat
+	useEffect(() => {
+		const handleNewChatShortcut = (e: KeyboardEvent) => {
+			if (e.metaKey && e.shiftKey && e.key.toLowerCase() === "n") {
+				e.preventDefault();
+				chatRef.current.openNewChat();
+			}
+		};
+
+		document.addEventListener("keydown", handleNewChatShortcut);
+		return () => document.removeEventListener("keydown", handleNewChatShortcut);
+	}, []);
+
 	const isHoverOpen = hoverRevealActive && !chat.sidebarOpen;
 
 	const artifactContentRef = useRef<HTMLDivElement | null>(null);
