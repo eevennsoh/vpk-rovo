@@ -16,11 +16,35 @@ interface UseReasoningPhaseOptions {
 	autoIdle?: boolean;
 	autoIdleDelayMs?: number;
 	minPreloadMs?: number;
+	persistedStartTime?: string;
+	persistedEndTime?: string;
 }
 
 interface UseReasoningPhaseResult {
 	phase: ReasoningPhase;
 	duration: number | undefined;
+}
+
+function getTimestampMs(value: string | undefined): number | null {
+	if (typeof value !== "string") {
+		return null;
+	}
+
+	const timestamp = Date.parse(value);
+	return Number.isFinite(timestamp) ? timestamp : null;
+}
+
+export function getPersistedReasoningDuration(
+	startTime: string | undefined,
+	endTime: string | undefined
+): number | undefined {
+	const startMs = getTimestampMs(startTime);
+	const endMs = getTimestampMs(endTime);
+	if (startMs === null || endMs === null || endMs < startMs) {
+		return undefined;
+	}
+
+	return Math.ceil((endMs - startMs) / MS_IN_S);
 }
 
 /**
@@ -38,10 +62,23 @@ export function useReasoningPhase({
 	autoIdle = false,
 	autoIdleDelayMs = DEFAULT_AUTO_IDLE_DELAY_MS,
 	minPreloadMs = DEFAULT_MIN_PRELOAD_MS,
+	persistedStartTime,
+	persistedEndTime,
 }: Readonly<UseReasoningPhaseOptions>): UseReasoningPhaseResult {
-	const startTimeRef = useRef<number | null>(null);
-	const completedDurationRef = useRef<number | undefined>(undefined);
-	const isCompletedRef = useRef(false);
+	const persistedStartTimeMs = getTimestampMs(persistedStartTime);
+	const persistedDuration = getPersistedReasoningDuration(
+		persistedStartTime,
+		persistedEndTime
+	);
+	const startTimeRef = useRef<number | null>(
+		isStreaming ? persistedStartTimeMs : null
+	);
+	const completedDurationRef = useRef<number | undefined>(
+		isStreaming ? undefined : persistedDuration
+	);
+	const isCompletedRef = useRef(
+		!isStreaming && persistedDuration !== undefined
+	);
 	const prevStreamingRef = useRef(false);
 	const prevResponseKeyRef = useRef(responseKey);
 	const preloadLockedUntilRef = useRef<number>(0);
@@ -56,9 +93,11 @@ export function useReasoningPhase({
 		prevResponseKeyRef.current = responseKey;
 
 		if (isNewResponse) {
-			startTimeRef.current = isStreaming ? Date.now() : null;
-			completedDurationRef.current = undefined;
-			isCompletedRef.current = false;
+			startTimeRef.current = isStreaming
+				? (persistedStartTimeMs ?? Date.now())
+				: null;
+			completedDurationRef.current = isStreaming ? undefined : persistedDuration;
+			isCompletedRef.current = !isStreaming && persistedDuration !== undefined;
 			preloadLockedUntilRef.current = isStreaming && minPreloadMs > 0
 				? Date.now() + minPreloadMs
 				: 0;
@@ -71,7 +110,7 @@ export function useReasoningPhase({
 		prevStreamingRef.current = isStreaming;
 
 		if (isStreaming && !wasStreaming) {
-			startTimeRef.current = Date.now();
+			startTimeRef.current = persistedStartTimeMs ?? Date.now();
 			completedDurationRef.current = undefined;
 			isCompletedRef.current = false;
 			preloadLockedUntilRef.current = minPreloadMs > 0
@@ -94,8 +133,29 @@ export function useReasoningPhase({
 			return () => clearTimeout(id);
 		}
 
+		if (
+			!isStreaming &&
+			persistedDuration !== undefined &&
+			(
+				completedDurationRef.current !== persistedDuration ||
+				!isCompletedRef.current
+			)
+		) {
+			completedDurationRef.current = persistedDuration;
+			isCompletedRef.current = true;
+			startTimeRef.current = null;
+			const id = setTimeout(bumpTick, 0);
+			return () => clearTimeout(id);
+		}
+
 		return undefined;
-	}, [isStreaming, responseKey, minPreloadMs]);
+	}, [
+		isStreaming,
+		minPreloadMs,
+		persistedDuration,
+		persistedStartTimeMs,
+		responseKey,
+	]);
 
 	// Auto-idle: dismiss completed display after a delay
 	useEffect(() => {

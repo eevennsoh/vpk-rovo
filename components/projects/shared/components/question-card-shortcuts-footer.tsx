@@ -9,7 +9,11 @@ import { Footer } from "@/components/ui/footer";
 
 const iconColor = token("color.icon.subtlest");
 
-export function QuestionCardShortcutsFooter(): React.ReactElement {
+interface QuestionCardShortcutsFooterProps {
+	escLabel?: string;
+}
+
+export function QuestionCardShortcutsFooter({ escLabel = "skip" }: Readonly<QuestionCardShortcutsFooterProps>): React.ReactElement {
 	return (
 		<Footer hideIcon>
 			<span className="inline-flex items-center gap-1">
@@ -25,7 +29,7 @@ export function QuestionCardShortcutsFooter(): React.ReactElement {
 				Enter to select
 			</span>
 			<span aria-hidden>•</span>
-			<span>Esc to skip</span>
+			<span>Esc to {escLabel}</span>
 		</Footer>
 	);
 }

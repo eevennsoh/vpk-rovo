@@ -3,6 +3,7 @@
 import type { FileUIPart } from "ai";
 import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArtifactPanel } from "@/components/ui-ai/artifact";
+import { ChatTimelineNavigator } from "@/components/blocks/chat-timeline/chat-timeline-navigator";
 import { CreateButton } from "@/components/blocks/top-navigation/components/create-button";
 import { FutureChatHeader } from "@/components/projects/future-chat/components/future-chat-header";
 import { FutureChatComposer } from "@/components/projects/future-chat/components/future-chat-composer";
@@ -30,6 +31,7 @@ import {
 	getFutureChatShellLayout,
 } from "@/components/projects/future-chat/lib/future-chat-shell-layout";
 import { getFutureChatSmartGenerationLayoutContext } from "@/components/projects/future-chat/lib/future-chat-smart-generation-layout";
+import { deriveFutureChatTimelineItems } from "@/components/projects/future-chat/lib/future-chat-timeline";
 import { buildFutureChatThreadPath } from "@/components/projects/future-chat/lib/future-chat-thread-route-sync";
 import { createFutureChatUserMessage } from "@/components/projects/future-chat/lib/future-chat-user-message";
 import { useLiveVoice } from "@/components/projects/future-chat/hooks/use-live-voice";
@@ -62,10 +64,12 @@ import {
 	getMessageInterruption,
 	getMessageText,
 } from "@/lib/rovo-ui-messages";
+import { ApprovalCard } from "@/components/blocks/approval-card/page";
 import { ClarificationQuestionCard } from "@/components/projects/shared/components/clarification-question-card";
 import { QuestionCardShortcutsFooter } from "@/components/projects/shared/components/question-card-shortcuts-footer";
 import { getLatestQuestionCardPayload, type ClarificationAnswers } from "@/components/projects/shared/lib/question-card-widget";
-import { type ParsedPlanWidgetPayload } from "@/components/projects/shared/lib/plan-widget";
+import type { PlanApprovalSelection } from "@/components/projects/shared/lib/plan-approval";
+import { getLatestPendingPlanWidget, type ParsedPlanWidgetPayload } from "@/components/projects/shared/lib/plan-widget";
 import { useDismissibleCards } from "@/components/projects/shared/hooks/use-dismissible-cards";
 
 interface FutureChatShellProps {
@@ -477,6 +481,7 @@ export function FutureChatShell({
 	const [previewPrompt, setPreviewPrompt] = useState<string | null>(null);
 	const [prefillText, setPrefillText] = useState<string | null>(null);
 	const [voiceTranscript, setVoiceTranscript] = useState<string | null>(null);
+	const [scrollActiveTimelineId, setScrollActiveTimelineId] = useState<string | null>(null);
 	const [submittingToolApprovalId, setSubmittingToolApprovalId] = useState<string | null>(null);
 	const [scrollAnchorMessageId, setScrollAnchorMessageId] = useState<string | null>(null);
 	const [scrollFollowMode, setScrollFollowMode] =
@@ -537,6 +542,46 @@ export function FutureChatShell({
 		},
 		[acceptPlanReview],
 	);
+
+	// Plan approval card support
+	const activePendingPlan = useMemo(
+		() => getLatestPendingPlanWidget(chat.messages),
+		[chat.messages],
+	);
+	const [dismissedApprovalCardKey, setDismissedApprovalCardKey] = useState<string | null>(null);
+	const [isSubmittingPlanApproval, setIsSubmittingPlanApproval] = useState(false);
+	const pendingPlanKey = activePendingPlan?.planWidget.deferredToolCallId ?? null;
+	const shouldShowApprovalCard =
+		activePendingPlan !== null
+		&& pendingPlanKey !== dismissedApprovalCardKey
+		&& !shouldShowQuestionCard
+		&& !chat.isStreaming;
+
+	// Reset dismissed state on thread change
+	useEffect(() => {
+		setDismissedApprovalCardKey(null);
+		setIsSubmittingPlanApproval(false);
+	}, [chat.runtimeThreadId]);
+
+	const handlePlanApprovalSubmit = useCallback(
+		(selection: PlanApprovalSelection) => {
+			if (!activePendingPlan) return;
+			setIsSubmittingPlanApproval(true);
+			void (async () => {
+				try {
+					await chat.submitPlanApproval(activePendingPlan.planWidget, selection);
+				} finally {
+					setIsSubmittingPlanApproval(false);
+				}
+			})();
+		},
+		[activePendingPlan, chat],
+	);
+
+	const handleDismissApprovalCard = useCallback(() => {
+		setDismissedApprovalCardKey(pendingPlanKey);
+	}, [pendingPlanKey]);
+
 	const handleToolApprovalSubmit = useCallback(
 		async (
 			toolApproval: NonNullable<ReturnType<typeof useFutureChat>["activeToolApproval"]>,
@@ -1390,6 +1435,11 @@ export function FutureChatShell({
 			return message.role === "user" || message.role === "assistant";
 		});
 	}, [displayMessages]);
+	const timelineItems = useMemo(() => {
+		return deriveFutureChatTimelineItems(displayMessages);
+	}, [displayMessages]);
+	const latestTimelineMessageId = timelineItems[0]?.id ?? null;
+	const activeTimelineMessageId = scrollActiveTimelineId ?? latestTimelineMessageId;
 
 	useEffect(() => {
 		if (!optimisticUserMessage) {
@@ -1429,6 +1479,10 @@ export function FutureChatShell({
 	useEffect(() => {
 		activateTailFollowMode();
 	}, [activateTailFollowMode, chat.runtimeThreadId]);
+
+	useEffect(() => {
+		setScrollActiveTimelineId(null);
+	}, [chat.runtimeThreadId, latestTimelineMessageId]);
 
 	useEffect(() => {
 		if (
@@ -1507,6 +1561,10 @@ export function FutureChatShell({
 		!isArtifactOpen &&
 		!hasActiveThreadRun &&
 		visibleMessages.length === 0;
+	const shouldShowTimelineNavigator =
+		!showHomeState &&
+		!isArtifactOpen &&
+		timelineItems.length > 1;
 	const composerPreviewState = resolveFutureChatComposerPlaceholder({
 		defaultPlaceholder: DEFAULT_COMPOSER_PLACEHOLDER,
 		previewPrompt,
@@ -1916,6 +1974,7 @@ export function FutureChatShell({
 				onOpenPlanPreview={handleOpenPlanPreview}
 				onRegisterArtifactCard={handleRegisterArtifactCard}
 				onRegenerate={chat.regenerateLatest}
+				onScrollActiveUserMessageChange={setScrollActiveTimelineId}
 				onSelectSuggestion={chat.suggestedPrompt}
 				onSetEditingMessageId={chat.setEditingMessageId}
 				onVote={chat.voteOnMessage}
@@ -1934,7 +1993,7 @@ export function FutureChatShell({
 				ref={composerDockRef}
 				className={cn(
 					"z-10 mx-auto flex min-w-0 w-full flex-col gap-3",
-					visibleMessages.length > 0 && "sticky bottom-0 bg-background/90 backdrop-blur",
+					!showHomeState && "sticky bottom-0 bg-background/90 backdrop-blur",
 					isArtifactOpen ? "max-w-none" : "max-w-[800px]",
 				)}
 				>
@@ -1959,6 +2018,16 @@ export function FutureChatShell({
 								}}
 							/>
 							<QuestionCardShortcutsFooter />
+						</>
+					) : shouldShowApprovalCard && activePendingPlan ? (
+						<>
+							<ApprovalCard
+								key={pendingPlanKey ?? undefined}
+								onSelect={handlePlanApprovalSubmit}
+								onDismiss={handleDismissApprovalCard}
+								isSubmitting={isSubmittingPlanApproval}
+							/>
+							<QuestionCardShortcutsFooter escLabel="cancel" />
 						</>
 					) : (
 						<>
@@ -2007,7 +2076,7 @@ export function FutureChatShell({
 								submitDisabled={Boolean(chat.activeToolApproval)}
 								voiceState={voiceButtonState}
 							/>
-							{visibleMessages.length > 0 ? <Footer className="relative z-10" /> : null}
+							{!showHomeState ? <Footer className="relative z-10" /> : null}
 						</>
 					)}
 				</div>
@@ -2028,6 +2097,17 @@ export function FutureChatShell({
 
 	const chatPaneContainer = (
 		<div className="overscroll-behavior-contain relative z-10 flex h-full min-w-0 flex-1 flex-col overflow-x-hidden touch-pan-y bg-background">
+			{shouldShowTimelineNavigator ? (
+				<ChatTimelineNavigator
+					activeItemId={activeTimelineMessageId}
+					className="absolute right-4 top-5 z-20 hidden md:block"
+					items={timelineItems}
+					onSelectItem={(messageId) => {
+						setScrollAnchorMessageId(messageId);
+						setScrollFollowMode("target");
+					}}
+				/>
+			) : null}
 			{showHomeState && !shouldSplitArtifactPane ? (
 				<div className="min-h-[40px] flex-1 shrink" />
 			) : null}

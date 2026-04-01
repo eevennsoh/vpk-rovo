@@ -39,6 +39,7 @@ import {
 	useSidebar,
 } from "@/components/ui/sidebar";
 import { shouldShowFutureChatSidebarRunIndicator } from "@/components/projects/future-chat/lib/future-chat-sidebar-run-indicator";
+import { getFutureChatSidebarThreadContentPaddingClass } from "@/components/projects/future-chat/lib/future-chat-sidebar-thread-layout";
 import type { FutureChatRunStatus, FutureChatThread } from "@/lib/future-chat-types";
 import { cn } from "@/lib/utils";
 import DeleteIcon from "@atlaskit/icon/core/delete";
@@ -186,7 +187,10 @@ function FutureChatSidebarThreadItem({
 	return (
 		<SidebarMenuItem>
 			<SidebarNavItem
-				className="rounded-lg p-1.5"
+				className={cn(
+					"rounded-lg p-1.5",
+					getFutureChatSidebarThreadContentPaddingClass({ showRunIndicator }),
+				)}
 				isSelected={isActive}
 				onClick={() => {
 					setOpenMobile(false);

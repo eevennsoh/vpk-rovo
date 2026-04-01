@@ -81,6 +81,7 @@ import {
 	updateFutureChatThreadTitleRecord,
 	upsertFutureChatThreadRecord,
 } from "@/components/projects/future-chat/lib/future-chat-thread-state";
+import { getPendingFutureChatTitleRequest } from "@/components/projects/future-chat/lib/future-chat-title-generation";
 import {
 	createFutureChatThread,
 	cancelFutureChatRun,
@@ -157,8 +158,11 @@ import {
 	updatePlanWidgetMetadataInMessages,
 } from "@/components/projects/shared/lib/plan-widget";
 import {
+	buildPlanApprovalPrompt,
 	createPlanApprovalSubmission,
 	getPlanApprovalKeyFromSubmission,
+	type PlanApprovalSelection,
+	type PlanApprovalSubmission,
 } from "@/components/projects/shared/lib/plan-approval";
 import { markLastFutureChatAssistantMessageInterrupted } from "@/lib/future-chat-interruptions";
 import {
@@ -584,6 +588,7 @@ export interface FutureChatHookResult {
 	submitClarification: (questionCard: ParsedQuestionCardPayload, answers: ClarificationAnswers) => Promise<void>;
 	submitClarificationDismiss: (questionCard: ParsedQuestionCardPayload) => Promise<void>;
 	acceptPlanReview: (planWidget: ParsedPlanWidgetPayload) => Promise<void>;
+	submitPlanApproval: (planWidget: ParsedPlanWidgetPayload, selection: PlanApprovalSelection) => Promise<void>;
 	submitPrompt: (payload: { text: string; files: FileUIPart[]; contextDescription?: string }) => Promise<void>;
 	suggestedPrompt: (text: string) => Promise<void>;
 	togglePlanMode: () => Promise<void>;
@@ -2032,21 +2037,19 @@ export function useFutureChat({
 		[messages, resolveChatTitle],
 	);
 
-	// Generate title via AI Gateway immediately when the user sends a message.
-	// This runs in parallel with the RovoDev chat stream — no conflict since
-	// title generation uses AI Gateway only (backendPreference: "ai-gateway").
+	// Generate title via AI Gateway immediately after the thread is created.
+	// This bypasses RovoDev Serve and preserves the original fast title flow.
 	useEffect(() => {
-		if (!pendingTitleThreadId || !pendingTitleMessageRef.current) {
+		const pendingTitleRequest = getPendingFutureChatTitleRequest({
+			pendingTitleThreadId,
+			pendingTitleThreadIdRef: pendingTitleThreadIdRef.current,
+			pendingTitleMessage: pendingTitleMessageRef.current,
+		});
+		if (!pendingTitleRequest) {
 			return;
 		}
 
-		const isTitleStillPending = pendingTitleThreadIdRef.current === pendingTitleThreadId;
-		if (!isTitleStillPending) {
-			return;
-		}
-
-		const threadId = pendingTitleThreadId;
-		const message = pendingTitleMessageRef.current;
+		const { threadId, message } = pendingTitleRequest;
 		pendingTitleMessageRef.current = null;
 
 		void fetchFutureChatAITitle(message).then((aiTitle) => {
@@ -2968,18 +2971,21 @@ export function useFutureChat({
 			planWidget,
 			result,
 			userMessageText,
+			approval,
 		}: {
 			isPlanMode: boolean;
 			messageMetadata?: RovoUIMessage["metadata"];
 			planWidget: ParsedPlanWidgetPayload;
 			result: string;
 			userMessageText: string;
+			approval?: PlanApprovalSubmission;
 		}) => {
-			const deferredToolResponse = buildExitPlanModeDeferredToolResponse(
-				planWidget,
-				result,
-			);
-			if (!deferredToolResponse) {
+			// When approval is provided, route through the resume_tool_calls
+			// backend path instead of the deferredToolResponse path.
+			const deferredToolResponse = approval
+				? null
+				: buildExitPlanModeDeferredToolResponse(planWidget, result);
+			if (!deferredToolResponse && !approval) {
 				throw new Error("The pending plan review is missing a deferred tool call.");
 			}
 
@@ -3048,7 +3054,8 @@ export function useFutureChat({
 						contextDescription: isPlanMode
 							? PLAN_MODE_POST_CLARIFICATION_CONTEXT
 							: undefined,
-						deferredToolResponse,
+						...(deferredToolResponse ? { deferredToolResponse } : {}),
+						...(approval ? { approval } : {}),
 					},
 				},
 			);
@@ -3740,6 +3747,38 @@ export function useFutureChat({
 			});
 		},
 		[sendPlanReviewResult],
+	);
+
+	const submitPlanApproval = useCallback(
+		async (planWidget: ParsedPlanWidgetPayload, selection: PlanApprovalSelection) => {
+			if (selection.decision === "auto-accept") {
+				await acceptPlanReview(planWidget);
+				return;
+			}
+
+			const approvalSubmission = createPlanApprovalSubmission(selection, planWidget);
+			const planApprovalPlanKey =
+				getPlanApprovalKeyFromSubmission(approvalSubmission) ?? undefined;
+			const userMessageText = buildPlanApprovalPrompt(approvalSubmission);
+			const result =
+				selection.decision === "custom" && selection.customInstruction?.trim()
+					? selection.customInstruction.trim()
+					: "Continue planning. Please revise the plan.";
+
+			await sendPlanReviewResult({
+				isPlanMode: true,
+				messageMetadata: {
+					source: "plan-approval-submit",
+					planApprovalDecision: selection.decision,
+					planApprovalPlanKey,
+				},
+				planWidget,
+				result,
+				userMessageText,
+				approval: approvalSubmission,
+			});
+		},
+		[acceptPlanReview, sendPlanReviewResult],
 	);
 
 	const togglePlanMode = useCallback(async () => {
@@ -5162,6 +5201,7 @@ export function useFutureChat({
 		submitClarification,
 		submitClarificationDismiss,
 		acceptPlanReview,
+		submitPlanApproval,
 		dismissPlanExecutionTracker,
 		submitPrompt,
 		suggestedPrompt,

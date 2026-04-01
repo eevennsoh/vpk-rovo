@@ -6,6 +6,7 @@ import {
 	getAllDataParts,
 	hasCreatePlanSkillSignal,
 	hasTurnCompleteSignal,
+	getMessageReasoningTimestamps,
 	getLatestDataPart,
 	getLatestRouteDecision,
 	getMessageReasoning,
@@ -99,6 +100,7 @@ function useThreadMessageDerived(
 	const thinkingEventParts = getAllDataParts(message, "data-thinking-event");
 	const lastThinkingEventPart =
 		thinkingEventParts[thinkingEventParts.length - 1] ?? null;
+	const thinkingTimestamps = getMessageReasoningTimestamps(message);
 	const thinkingStatusUpdateSignal = [
 		message.id,
 		`status-label:${thinkingStatusPart?.data.label ?? ""}`,
@@ -270,6 +272,8 @@ function useThreadMessageDerived(
 		responseKey: `${message.id}:thinking-status`,
 		autoIdle: false,
 		minPreloadMs: 0,
+		persistedStartTime: thinkingTimestamps.startedAt,
+		persistedEndTime: thinkingTimestamps.completedAt,
 	});
 	const hasTurnComplete = hasTurnCompleteSignal(message);
 	const hasToolFirstWarning =

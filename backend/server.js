@@ -4623,13 +4623,22 @@ function buildApprovalSummary(approvalSubmission) {
 		}
 	}
 
-	lines.push(
-		"This approval applies to the existing generated plan. Continue from it.",
-		"Stay in the current RovoDev Serve execution loop.",
-		"Maintain a single evolving update_todo list for implementation progress.",
-		"Do not ask clarification questions again unless the user explicitly requests a new plan.",
-		"Do not restate the plan as a fresh request or generate a new preview unless the user explicitly asks for one."
-	);
+	if (approvalSubmission.decision === "continue-planning") {
+		lines.push(
+			"The user rejected this plan and wants revisions.",
+			"Stay in plan mode. Revise the plan based on any feedback provided above.",
+			"Call exit_plan_mode again with the updated plan.",
+			"Do not start implementation or call update_todo."
+		);
+	} else {
+		lines.push(
+			"This approval applies to the existing generated plan. Continue from it.",
+			"Stay in the current RovoDev Serve execution loop.",
+			"Maintain a single evolving update_todo list for implementation progress.",
+			"Do not ask clarification questions again unless the user explicitly requests a new plan.",
+			"Do not restate the plan as a fresh request or generate a new preview unless the user explicitly asks for one."
+		);
+	}
 
 	return lines.join("\n");
 }
@@ -5402,7 +5411,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 			// Transition to execution phase on plan approval.
 			// This suppresses GenUI card routing so plan task outputs
 			// route to the artifact panel instead.
-			if (approvalSubmission && planSession.phase !== "execution") {
+			if (approvalSubmission && approvalSubmission.decision !== "continue-planning" && planSession.phase !== "execution") {
 				updatePlanSession(threadId, { phase: "execution" });
 				console.info("[PLAN-SESSION] Transitioned to execution phase on approval", {
 					threadId,

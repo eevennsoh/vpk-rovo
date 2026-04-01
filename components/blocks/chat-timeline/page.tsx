@@ -1,7 +1,8 @@
 "use client";
 
-import { startTransition, useEffect, useId, useRef, useState, type FocusEvent } from "react";
+import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 import { useReducedMotion } from "motion/react";
+import { ChatTimelineNavigator } from "@/components/blocks/chat-timeline/chat-timeline-navigator";
 import { token } from "@/lib/tokens";
 import { cn } from "@/lib/utils";
 import {
@@ -14,18 +15,6 @@ export interface ChatTimelineProps {
 	description?: string;
 	messages?: ReadonlyArray<ChatTimelineMessage>;
 	title?: string;
-}
-
-const TIMELINE_CLOSED_SIZE_PX = 48;
-const TIMELINE_OPEN_HEIGHT_PX = 492;
-const TIMELINE_OPEN_WIDTH_PX = 320;
-
-function toSnippet(text: string, maxLength = 78): string {
-	const normalized = text.replace(/\s+/gu, " ").trim();
-	if (normalized.length <= maxLength) {
-		return normalized;
-	}
-	return `${normalized.slice(0, maxLength - 1).trimEnd()}...`;
 }
 
 function buildJumpTarget(container: HTMLDivElement, element: HTMLDivElement): number {
@@ -45,18 +34,50 @@ export default function ChatTimeline({
 	messages = CHAT_TIMELINE_DEMO_MESSAGES,
 	title = "Chat Timeline",
 }: Readonly<ChatTimelineProps>) {
-	const userMessages = messages.filter((message) => message.role === "user");
-	const timelineItems = [...userMessages].reverse();
+	const userMessages = useMemo(
+		() => messages.filter((message) => message.role === "user"),
+		[messages],
+	);
+	const timelineItems = [...userMessages].reverse().map((message, index) => ({
+		id: message.id,
+		label: `Prompt ${userMessages.length - index}`,
+		text: message.text,
+		timestampLabel: message.timestamp,
+	}));
 	const latestUserMessageId = userMessages.at(-1)?.id ?? null;
 	const showTimeline = userMessages.length > 1;
-	const navigatorId = useId();
 	const shouldReduceMotion = useReducedMotion();
 	const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 	const messageNodesRef = useRef<Record<string, HTMLDivElement | null>>({});
-	const [isNavigatorOpen, setIsNavigatorOpen] = useState(false);
-	const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
+	const [scrollActiveId, setScrollActiveId] = useState<string | null>(() => userMessages[0]?.id ?? null);
 	const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
-	const activeSelectionId = selectedMessageId ?? latestUserMessageId;
+	const activeSelectionId = scrollActiveId ?? latestUserMessageId;
+
+	useEffect(() => {
+		const container = scrollContainerRef.current;
+		if (!container) return;
+
+		function handleScroll() {
+			const containerRect = container!.getBoundingClientRect();
+			const threshold = containerRect.top + containerRect.height * 0.3;
+
+			let activeId = userMessages[0]?.id ?? null;
+			for (const message of userMessages) {
+				const node = messageNodesRef.current[message.id];
+				if (!node) continue;
+
+				const nodeRect = node.getBoundingClientRect();
+				if (nodeRect.top <= threshold) {
+					activeId = message.id;
+				}
+			}
+
+			setScrollActiveId((prev) => (prev === activeId ? prev : activeId));
+		}
+
+		container.addEventListener("scroll", handleScroll, { passive: true });
+		return () => container.removeEventListener("scroll", handleScroll);
+	}, [userMessages]);
 
 	useEffect(() => {
 		if (!highlightedMessageId) {
@@ -72,20 +93,11 @@ export default function ChatTimeline({
 		return () => window.clearTimeout(timeoutId);
 	}, [highlightedMessageId]);
 
-	function handleBlur(event: FocusEvent<HTMLDivElement>) {
-		if (event.currentTarget.contains(event.relatedTarget as Node | null)) {
-			return;
-		}
-
-		setIsNavigatorOpen(false);
-	}
-
 	function handleSelectMessage(messageId: string) {
 		const scrollContainer = scrollContainerRef.current;
 		const messageNode = messageNodesRef.current[messageId];
 
 		startTransition(() => {
-			setSelectedMessageId(messageId);
 			setHighlightedMessageId(messageId);
 		});
 
@@ -141,111 +153,13 @@ export default function ChatTimeline({
 
 				<div className="relative">
 					{showTimeline ? (
-						<div
+						<ChatTimelineNavigator
+							activeItemId={activeSelectionId}
+							appearance="inverse"
 							className="absolute right-4 top-5 z-20 hidden md:block"
-							onBlur={handleBlur}
-							onFocusCapture={() => setIsNavigatorOpen(true)}
-							onMouseEnter={() => setIsNavigatorOpen(true)}
-							onMouseLeave={() => setIsNavigatorOpen(false)}
-						>
-							<div
-								className="relative origin-top-right overflow-hidden border text-left backdrop-blur-xl"
-								id={navigatorId}
-								style={{
-									width: isNavigatorOpen
-										? TIMELINE_OPEN_WIDTH_PX
-										: TIMELINE_CLOSED_SIZE_PX,
-									height: isNavigatorOpen
-										? TIMELINE_OPEN_HEIGHT_PX
-										: TIMELINE_CLOSED_SIZE_PX,
-									borderRadius: isNavigatorOpen ? 28 : 18,
-									borderColor: isNavigatorOpen
-										? "rgba(255,255,255,0.10)"
-										: "rgba(255,255,255,0.08)",
-									backgroundColor: isNavigatorOpen
-										? "rgba(42,37,36,0.95)"
-										: "rgba(255,255,255,0.03)",
-									boxShadow: isNavigatorOpen
-										? "0 32px 80px rgba(0,0,0,0.48)"
-										: "0 14px 36px rgba(0,0,0,0.28)",
-									transition: shouldReduceMotion
-										? undefined
-										: [
-											"width 220ms cubic-bezier(0.22, 1, 0.36, 1)",
-											"height 220ms cubic-bezier(0.22, 1, 0.36, 1)",
-											"border-radius 220ms cubic-bezier(0.22, 1, 0.36, 1)",
-											"background-color 180ms ease-out",
-											"border-color 180ms ease-out",
-											"box-shadow 220ms ease-out",
-										].join(", "),
-								}}
-							>
-								<button
-									aria-controls={navigatorId}
-									aria-expanded={isNavigatorOpen}
-									aria-label="Open prompt timeline"
-									className={cn(
-										"group absolute inset-0 flex items-center justify-center text-white/55 transition-opacity duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/35",
-										isNavigatorOpen
-											? "pointer-events-none opacity-0"
-											: "pointer-events-auto opacity-100 hover:text-white",
-									)}
-									onClick={() => setIsNavigatorOpen(true)}
-									type="button"
-								>
-									<span className="flex flex-col gap-[4px]">
-										<span className="h-[2px] w-5 rounded-full bg-current transition-transform duration-200 group-hover:translate-x-0.5" />
-										<span className="h-[2px] w-4 rounded-full bg-current" />
-										<span className="h-[2px] w-5 rounded-full bg-current transition-transform duration-200 group-hover:-translate-x-0.5" />
-									</span>
-								</button>
-
-								<div
-									className={cn(
-										"absolute inset-0 flex flex-col p-2 text-left transition-opacity duration-150",
-										isNavigatorOpen
-											? "pointer-events-auto opacity-100"
-											: "pointer-events-none opacity-0",
-									)}
-								>
-									<div className="px-3 pb-2 pt-2">
-										<div className="text-[11px] uppercase tracking-[0.22em] text-white/42">
-											Prompt timeline
-										</div>
-										<p className="mt-2 text-sm leading-5 text-white/72">
-											Jump to an earlier user prompt in the current thread.
-										</p>
-									</div>
-
-									<div className="min-h-0 flex-1 space-y-1 overflow-y-auto pr-1">
-										{timelineItems.map((message, index) => {
-											const isActive = message.id === activeSelectionId;
-											return (
-												<button
-													className={cn(
-														"flex w-full flex-col rounded-[18px] border px-3 py-3 text-left transition-colors duration-150",
-														isActive
-															? "border-white/16 bg-white/[0.09] text-white"
-															: "border-transparent bg-transparent text-white/72 hover:border-white/10 hover:bg-white/[0.06]",
-													)}
-													key={message.id}
-													onClick={() => handleSelectMessage(message.id)}
-													type="button"
-												>
-													<div className="flex items-center justify-between gap-3 text-[11px] uppercase tracking-[0.18em] text-white/38">
-														<span>Prompt {timelineItems.length - index}</span>
-														<span>{message.timestamp}</span>
-													</div>
-													<span className="mt-2 line-clamp-1 text-base leading-6">
-														{toSnippet(message.text)}
-													</span>
-												</button>
-											);
-										})}
-									</div>
-								</div>
-							</div>
-						</div>
+							items={timelineItems}
+							onSelectItem={handleSelectMessage}
+						/>
 					) : null}
 
 					<div
@@ -285,7 +199,11 @@ export default function ChatTimeline({
 												<span className="h-1 w-1 rounded-full bg-white/22" />
 												<span>{message.timestamp}</span>
 											</div>
-											<p className="mt-3 whitespace-pre-wrap text-[15px] leading-7 text-inherit">
+											<p
+												className={cn(
+													"mt-3 whitespace-pre-wrap text-[15px] leading-7 text-inherit",
+												)}
+											>
 												{message.text}
 											</p>
 										</article>

@@ -93,6 +93,7 @@ import {
 import {
 	getAgentExecutionSummaries,
 	getAllDataParts,
+	getMessageReasoningTimestamps,
 	getMessageInterruption,
 	getLatestDataPart,
 	getLatestTodoQueue,
@@ -147,6 +148,7 @@ interface FutureChatMessagesProps {
 	onOpenPlanPreview?: (planWidget: ParsedPlanWidgetPayload, sourceMessageId?: string) => void;
 	onRegisterArtifactCard: (documentId: string, element: HTMLElement) => void;
 	onRegenerate: () => void;
+	onScrollActiveUserMessageChange?: (messageId: string | null) => void;
 	onSelectSuggestion: (suggestion: string) => Promise<void>;
 	onSetEditingMessageId: (messageId: string | null) => void;
 	onVote: (messageId: string, value: "up" | "down" | null) => Promise<void>;
@@ -315,6 +317,49 @@ function FutureChatScrollAnchorSync({
 	return null;
 }
 
+function FutureChatScrollActiveTracker({
+	onActiveChange,
+}: Readonly<{
+	onActiveChange: (messageId: string | null) => void;
+}>) {
+	const { scrollRef } = useConversationContext();
+	const onActiveChangeRef = useRef(onActiveChange);
+
+	useEffect(() => {
+		onActiveChangeRef.current = onActiveChange;
+	});
+
+	useEffect(() => {
+		const scrollElement = scrollRef.current;
+		if (!scrollElement) return;
+
+		function handleScroll() {
+			const container = scrollRef.current;
+			if (!container) return;
+
+			const containerRect = container.getBoundingClientRect();
+			const threshold = containerRect.top + containerRect.height * 0.3;
+			const userMessageNodes = container.querySelectorAll<HTMLElement>("[data-message-id][data-role='user']");
+
+			let activeId: string | null = null;
+			for (const node of userMessageNodes) {
+				const nodeRect = node.getBoundingClientRect();
+				if (nodeRect.top <= threshold) {
+					activeId = node.getAttribute("data-message-id");
+				}
+			}
+
+			onActiveChangeRef.current(activeId);
+		}
+
+		handleScroll();
+		scrollElement.addEventListener("scroll", handleScroll, { passive: true });
+		return () => scrollElement.removeEventListener("scroll", handleScroll);
+	}, [scrollRef]);
+
+	return null;
+}
+
 function UserMessage({
 	isEditing,
 	isScrollAnchor,
@@ -353,6 +398,7 @@ function UserMessage({
 			animate
 			className={isEditing ? "w-full max-w-full" : undefined}
 			data-future-chat-scroll-anchor={isScrollAnchor ? "true" : undefined}
+			data-message-id={message.id}
 			data-role="user"
 			data-testid="message-user"
 			fitContent={!isEditing}
@@ -812,12 +858,15 @@ function AssistantMessage({
 		thinkingStatusParts[thinkingStatusParts.length - 1] ?? null;
 	const lastThinkingEventPart =
 		thinkingEventParts[thinkingEventParts.length - 1] ?? null;
+	const thinkingTimestamps = getMessageReasoningTimestamps(message);
 
 	const { phase: thinkingPhase, duration: thinkingDuration } = useReasoningPhase({
 		isStreaming: isThinkingStreaming,
 		hasMessageText: hasBackendThinkingActivity,
 		responseKey: message.id,
 		autoIdle: false,
+		persistedStartTime: thinkingTimestamps.startedAt,
+		persistedEndTime: thinkingTimestamps.completedAt,
 	});
 	const thinkingReasoningPhase = resolveFutureChatThinkingStatusPhase({
 		isThinkingActive: thinkingActive,
@@ -1237,6 +1286,7 @@ export function FutureChatMessages({
 	onOpenPlanPreview,
 	onRegisterArtifactCard,
 	onRegenerate,
+	onScrollActiveUserMessageChange,
 	onSelectSuggestion,
 	onSetEditingMessageId,
 	onVote,
@@ -1319,6 +1369,9 @@ export function FutureChatMessages({
 			targetScrollTop={handleTargetScrollTop}
 		>
 			<FutureChatScrollAnchorSync scrollAnchorMessageId={scrollAnchorMessageId} />
+				{onScrollActiveUserMessageChange ? (
+					<FutureChatScrollActiveTracker onActiveChange={onScrollActiveUserMessageChange} />
+				) : null}
 			{shouldShowEmptyConversationState ? (
 				<div className="flex flex-col items-center gap-2 py-6">
 					<Image

@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import {
 	getAllDataParts,
+	getMessageReasoningTimestamps,
 	getMessageText,
 	getThinkingToolCallSummaries,
 	hasTurnCompleteSignal,
@@ -147,6 +148,9 @@ export function useThinkingStatus({
 	const hasReasoningContent = trimmedReasoningContent.length > 0;
 	const hasThinkingDetails = hasReasoningContent || hasThinkingToolCalls;
 	const streamingReasoningKey = lastMessage?.id ?? "stream";
+	const reasoningTimestamps = lastMessage
+		? getMessageReasoningTimestamps(lastMessage)
+		: {};
 
 	const { phase: reasoningPhase, duration: reasoningDuration } =
 		useReasoningPhase({
@@ -155,6 +159,8 @@ export function useThinkingStatus({
 			responseKey: streamingReasoningKey,
 			autoIdle: true,
 			minPreloadMs: 0,
+			persistedStartTime: reasoningTimestamps.startedAt,
+			persistedEndTime: reasoningTimestamps.completedAt,
 		});
 	const resolvedThinkingLabel = resolveThinkingLabelForSurface({
 		baseLabel: dynamicThinkingLabel,

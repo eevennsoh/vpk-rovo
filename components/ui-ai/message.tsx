@@ -645,7 +645,7 @@ function MarkdownInlineCode({
 				data-inline-code-state="streaming"
 				{...props}
 			>
-				{`${inlineCodeFence}${inlineCodeText}${inlineCodeFence}`}
+				{inlineCodeFence}{children}{inlineCodeFence}
 			</code>
 		);
 	}

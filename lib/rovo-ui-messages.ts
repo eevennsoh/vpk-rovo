@@ -179,6 +179,7 @@ export type RovoDataParts = {
 		content?: string;
 		activity?: ThinkingStatusActivity;
 		source?: ThinkingStatusSource;
+		timestamp?: string;
 	};
 	"thinking-event": ThinkingEventUpdate;
 	"tool-first-warning": ToolFirstWarningData;
@@ -433,6 +434,59 @@ export function hasTurnCompleteSignal(
 	}
 
 	return false;
+}
+
+function getIsoTimestamp(value: unknown): string | undefined {
+	if (typeof value !== "string") {
+		return undefined;
+	}
+
+	const trimmed = value.trim();
+	if (trimmed.length === 0) {
+		return undefined;
+	}
+
+	return Number.isFinite(Date.parse(trimmed)) ? trimmed : undefined;
+}
+
+function getLatestTurnCompleteTimestamp(
+	message: Pick<RovoUIMessage, "parts">
+): string | undefined {
+	return getIsoTimestamp(
+		getLatestDataPart(message, "data-turn-complete")?.data.timestamp
+	);
+}
+
+export interface MessageReasoningTimestamps {
+	startedAt?: string;
+	completedAt?: string;
+}
+
+export function getMessageReasoningTimestamps(
+	message: Pick<RovoUIMessage, "parts" | "metadata">
+): MessageReasoningTimestamps {
+	const thinkingStatusParts = getAllDataParts(message, "data-thinking-status");
+	const thinkingEventParts = getAllDataParts(message, "data-thinking-event");
+	const thinkingStatusTimestamps = thinkingStatusParts
+		.map((part) => getIsoTimestamp(part.data.timestamp))
+		.filter((timestamp): timestamp is string => timestamp !== undefined);
+	const thinkingEventTimestamps = thinkingEventParts
+		.map((part) => getIsoTimestamp(part.data.timestamp))
+		.filter((timestamp): timestamp is string => timestamp !== undefined);
+	const startedAt =
+		thinkingEventTimestamps[0] ??
+		thinkingStatusTimestamps[0] ??
+		getIsoTimestamp(message.metadata?.createdAt);
+	const completedAt =
+		getLatestTurnCompleteTimestamp(message) ??
+		thinkingEventTimestamps[thinkingEventTimestamps.length - 1] ??
+		thinkingStatusTimestamps[thinkingStatusTimestamps.length - 1] ??
+		getIsoTimestamp(message.metadata?.updatedAt);
+
+	return {
+		startedAt,
+		completedAt,
+	};
 }
 
 export function getMessageInterruption(

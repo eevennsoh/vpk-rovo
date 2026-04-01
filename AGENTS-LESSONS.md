@@ -85,3 +85,15 @@ Mark promoted entries with `[Promoted]` prefix — see vpk-lesson skill for deta
 - **Rule:** When a user supplies a UI mock, match the primary composition
   literally first (placement, width, alignment, and chrome) before adding any
   styling interpretation or extra visual detail.
+
+### 2026-04-02 - Keep Future Chat title generation on the direct gateway path
+
+- **What happened:** Future Chat thread titles stopped updating even though the
+  direct AI Gateway title request still succeeded.
+- **Why:** The title flow was changed from the old immediate gateway call to a
+  post-stream path gated on the RovoDev Serve streaming lifecycle plus an extra
+  delay, which broke the previously working handoff.
+- **Rule:** For Future Chat thread titles, call the direct `/api/chat-title`
+  AI Gateway path immediately after thread creation. Do not couple title
+  generation to RovoDev Serve stream start, stream completion, or added
+  timeouts unless a verified gateway contention issue requires it.
