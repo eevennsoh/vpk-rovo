@@ -253,6 +253,63 @@ test("falls back to the latest plan shortDescription for legacy react artifacts"
 	);
 });
 
+test("prefers the plan title for legacy react artifacts whose saved title matches the route slug", () => {
+	const display = resolveFutureChatMessageArtifactDisplay({
+		documents: [
+			{
+				...createDocument({
+					id: "doc-legacy-crm",
+					title: "Crm",
+					content: "/crm",
+					previewSummary: "Track deals, revenue, and sales pipeline metrics",
+					updatedAt: "2026-03-09T10:46:00.000Z",
+				}),
+				kind: "react",
+			},
+		],
+		fallbackTitle: "CRM Analytics Dashboard",
+		message: createAssistantMessage("assistant-legacy-crm", {
+			action: "create",
+			documentId: "doc-legacy-crm",
+			kind: "react",
+			title: "Crm",
+		}),
+		pendingArtifactResult: null,
+		streamingArtifact: null,
+		streamingArtifactMessageId: null,
+	});
+
+	assert.equal(display?.title, "CRM Analytics Dashboard");
+});
+
+test("keeps explicit react artifact titles that do not match the route slug", () => {
+	const display = resolveFutureChatMessageArtifactDisplay({
+		documents: [
+			{
+				...createDocument({
+					id: "doc-crm-console",
+					title: "Revenue Console",
+					content: "/crm",
+					updatedAt: "2026-03-09T10:46:00.000Z",
+				}),
+				kind: "react",
+			},
+		],
+		fallbackTitle: "CRM Analytics Dashboard",
+		message: createAssistantMessage("assistant-crm-console", {
+			action: "create",
+			documentId: "doc-crm-console",
+			kind: "react",
+			title: "Revenue Console",
+		}),
+		pendingArtifactResult: null,
+		streamingArtifact: null,
+		streamingArtifactMessageId: null,
+	});
+
+	assert.equal(display?.title, "Revenue Console");
+});
+
 test("falls back to the last assistant message when the active document has no source message", () => {
 	const display = resolveFutureChatOrphanArtifactDisplay({
 		activeDocumentId: "doc-orange",

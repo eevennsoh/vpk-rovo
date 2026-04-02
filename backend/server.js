@@ -194,6 +194,7 @@ const {
 	generateSuggestedQuestionsViaAIGateway,
 } = require("./lib/suggested-questions");
 const {
+	derivePlanExecutionArtifactTitle,
 	generatePlanMetadata,
 	getLatestPlanWidgetMetadata,
 } = require("./lib/plan-metadata");
@@ -11289,21 +11290,16 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 
 							if (appRoute) {
 								try {
-									const artifactTitle =
-										appRoute === "/"
-											? "App"
-											: appRoute
-												.split("/")
-												.filter(Boolean)
-												.flatMap((s) => s.split("-"))
-												.map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-												.join(" ");
 									const currentThread =
 										syncedThread ?? await futureChatThreadManager.getThread(threadId);
 									const latestPlanWidget =
 										currentThread
 											? getLatestPlanWidgetMetadata(currentThread.messages)
 											: null;
+									const artifactTitle = derivePlanExecutionArtifactTitle({
+										appRoute,
+										planTitle: latestPlanWidget?.title,
+									});
 									let artifactPreviewSummary =
 										latestPlanWidget?.shortDescription ?? "";
 

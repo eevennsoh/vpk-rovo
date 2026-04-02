@@ -45,10 +45,15 @@ const RAIL_WIDTH = 48;
 const PANEL_WIDTH = 256;
 const VENN_SLACK_PROFILE_URL = "https://atlassian.enterprise.slack.com/user/@WEM1T2SLE";
 type AdsTagVariant = NonNullable<ComponentProps<typeof Lozenge>["variant"]>;
+const NAV_SECTION_TEXT_CLASSNAME = "text-[11px] font-medium tracking-wider text-text-subtle";
 const NAV_SECTION_LINK_CLASSNAME =
-	"flex flex-1 items-center rounded-md py-2 px-3 text-[11px] font-medium uppercase tracking-wider no-underline transition-colors text-text-subtle data-[active=true]:bg-bg-neutral data-[active=true]:font-semibold data-[active=true]:text-text hover:text-text";
+	`flex flex-1 items-center rounded-md py-2 px-3 ${NAV_SECTION_TEXT_CLASSNAME} uppercase no-underline transition-colors data-[active=true]:bg-bg-neutral data-[active=true]:font-semibold data-[active=true]:text-text hover:text-text`;
 const NAV_SECTION_LABEL_CLASSNAME =
-	"flex flex-1 items-center rounded-md py-2 px-3 text-[11px] font-medium uppercase tracking-wider text-text-subtle";
+	`flex flex-1 items-center rounded-md py-2 px-3 ${NAV_SECTION_TEXT_CLASSNAME} uppercase`;
+const NAV_GROUP_LINK_CLASSNAME =
+	`flex flex-1 items-center rounded-md py-2 px-3 ${NAV_SECTION_TEXT_CLASSNAME} no-underline transition-colors data-[active=true]:bg-bg-neutral data-[active=true]:font-semibold data-[active=true]:text-text hover:text-text`;
+const NAV_GROUP_LABEL_CLASSNAME =
+	`flex flex-1 items-center rounded-md py-2 px-3 ${NAV_SECTION_TEXT_CLASSNAME}`;
 
 export function WebsiteSidebarNav({
 	staticPages = [],
@@ -518,7 +523,7 @@ function NavGroupItem({
 			<Collapsible open={isGroupOpen} onOpenChange={onToggleGroup}>
 				<div className="flex items-center gap-1">
 					{item.expandOnly ? (
-						<div className={cn(NAV_SECTION_LABEL_CLASSNAME, "gap-1.5")}>
+						<div className={cn(NAV_GROUP_LABEL_CLASSNAME, "gap-1.5")}>
 							<span className="truncate">{item.name}</span>
 							{item.adsPackage && (
 								<AdsTag adsPackage={item.adsPackage} mounted={mounted} variant={item.adsTagVariant} />
@@ -528,7 +533,7 @@ function NavGroupItem({
 						<Link
 							href={item.href}
 							data-active={isActive(item.href)}
-							className={cn(NAV_SECTION_LINK_CLASSNAME, "gap-1.5")}
+							className={cn(NAV_GROUP_LINK_CLASSNAME, "gap-1.5")}
 						>
 							<span className="truncate">{item.name}</span>
 							{item.adsPackage && (
@@ -540,6 +545,7 @@ function NavGroupItem({
 						<CollapsibleTrigger
 							render={
 								<button
+									aria-label={isGroupOpen ? `Collapse ${item.name}` : `Expand ${item.name}`}
 									className="flex items-center justify-center rounded-md text-text-subtle bg-transparent border-none cursor-pointer transition-colors hover:bg-bg-neutral hover:text-text"
 									style={{ width: 36, height: 36 }}
 								/>

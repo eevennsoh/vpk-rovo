@@ -7,6 +7,13 @@ export interface ComponentLike {
 	slug: string;
 }
 
+function toTitleCase(slug: string): string {
+	return slug
+		.split("-")
+		.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+		.join(" ");
+}
+
 function sortNavItemsByName(items: readonly NavItem[]): NavItem[] {
 	return [...items]
 		.map((item) => ({
@@ -25,7 +32,7 @@ export const UI_GROUPS: Record<string, string[]> = {
 };
 
 export const VISUAL_GROUPS: Record<string, string[]> = {
-	shaders: ["particles", "wave-gradient", "liquid-gradient", "bands", "rings", "blockify", "pixels", "truchet", "fluted-glass", "mesh", "mesh-02", "chromatic-aberration"],
+	shaders: ["particles", "wave-gradient", "liquid-gradient", "bands", "rings", "blockify", "pixels", "truchet", "fluted-glass", "holo", "mesh", "mesh-02", "chromatic-aberration"],
 };
 
 export const BLOCK_GROUPS: Record<string, string[]> = {
@@ -93,9 +100,8 @@ export function buildNavItems(
 			for (const [parentSlug, children] of Object.entries(groups)) {
 				if (children.includes(c.slug) && !emittedGroups.has(parentSlug)) {
 					emittedGroups.add(parentSlug);
-					const parentName = parentSlug.charAt(0).toUpperCase() + parentSlug.slice(1);
 					items.push({
-						name: parentName,
+						name: toTitleCase(parentSlug),
 						href: `${hrefPrefix}${parentSlug}`,
 						expandOnly: true,
 						children: children

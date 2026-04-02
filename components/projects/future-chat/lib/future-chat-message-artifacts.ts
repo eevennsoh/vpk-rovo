@@ -84,9 +84,74 @@ function sortDocumentsNewestFirst(
 	return sortByUpdatedAtDesc(documents);
 }
 
+const DEFAULT_REACT_ROUTE_TITLE = "App";
+const DEFAULT_ARTIFACT_TITLE = "Artifact";
+
+function normalizeTitleKey(value: string): string {
+	return value.trim().replace(/\s+/gu, " ").toLowerCase();
+}
+
+function deriveReactArtifactRouteTitle(content: string): string | null {
+	const normalizedContent = toNonEmptyString(content);
+	if (!normalizedContent || !normalizedContent.startsWith("/")) {
+		return null;
+	}
+
+	const pathWithoutQuery = normalizedContent.split(/[?#]/u, 1)[0] ?? normalizedContent;
+	if (pathWithoutQuery === "/") {
+		return DEFAULT_REACT_ROUTE_TITLE;
+	}
+
+	const title = pathWithoutQuery
+		.split("/")
+		.filter(Boolean)
+		.flatMap((segment) => segment.split("-"))
+		.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+		.join(" ");
+
+	return title || DEFAULT_REACT_ROUTE_TITLE;
+}
+
+function resolveLegacyPlanExecutionArtifactTitle({
+	fallbackTitle,
+	kind,
+	previewContent,
+	title,
+}: Readonly<{
+	fallbackTitle?: string | null;
+	kind: FutureChatDocumentKind;
+	previewContent: string;
+	title?: string | null;
+}>): string {
+	const normalizedTitle = toNonEmptyString(title);
+	const normalizedFallbackTitle = toNonEmptyString(fallbackTitle);
+	if (!normalizedFallbackTitle) {
+		return normalizedTitle ?? DEFAULT_ARTIFACT_TITLE;
+	}
+
+	if (kind !== "react") {
+		return normalizedTitle ?? normalizedFallbackTitle;
+	}
+
+	const routeTitle = deriveReactArtifactRouteTitle(previewContent);
+	if (!routeTitle) {
+		return normalizedTitle ?? normalizedFallbackTitle;
+	}
+
+	if (!normalizedTitle) {
+		return normalizedFallbackTitle;
+	}
+
+	const normalizedTitleKey = normalizeTitleKey(normalizedTitle);
+	return normalizedTitleKey === normalizeTitleKey(routeTitle)
+		? normalizedFallbackTitle
+		: normalizedTitle;
+}
+
 export function resolveFutureChatMessageArtifactDisplay({
 	documents,
 	fallbackPreviewSummary,
+	fallbackTitle,
 	message,
 	pendingArtifactResult,
 	streamingArtifact,
@@ -94,6 +159,7 @@ export function resolveFutureChatMessageArtifactDisplay({
 }: Readonly<{
 	documents: ReadonlyArray<FutureChatDocument>;
 	fallbackPreviewSummary?: string | null;
+	fallbackTitle?: string | null;
 	message: Pick<RovoUIMessage, "id" | "parts">;
 	pendingArtifactResult: FutureChatPendingArtifactResult | null;
 	streamingArtifact: FutureChatStreamingArtifact | null;
@@ -125,6 +191,19 @@ export function resolveFutureChatMessageArtifactDisplay({
 		document?.kind ??
 		"text";
 	const resolvedFallbackPreviewSummary = toNonEmptyString(fallbackPreviewSummary);
+	const previewContent = usesStreamingPreview
+		? streamingArtifact?.content ?? ""
+		: getLatestDocumentContent(document);
+	const resolvedTitle = resolveLegacyPlanExecutionArtifactTitle({
+		fallbackTitle,
+		kind: resolvedKind,
+		previewContent,
+		title:
+			(usesStreamingPreview ? streamingArtifact?.title : null) ??
+			messageArtifact?.title ??
+			pendingArtifact?.title ??
+			document?.title,
+	});
 
 	return {
 		action: messageArtifact?.action ?? pendingArtifact?.action ?? null,
@@ -133,18 +212,11 @@ export function resolveFutureChatMessageArtifactDisplay({
 		documentId,
 		isStreaming,
 		kind: resolvedKind,
-		previewContent: usesStreamingPreview
-			? streamingArtifact?.content ?? ""
-			: getLatestDocumentContent(document),
+		previewContent,
 		previewSummary:
 			document?.previewSummary
 			?? (resolvedKind === "react" ? resolvedFallbackPreviewSummary : null),
-		title:
-			(usesStreamingPreview ? streamingArtifact?.title : null) ??
-			messageArtifact?.title ??
-			pendingArtifact?.title ??
-			document?.title ??
-			"Artifact",
+		title: resolvedTitle,
 	};
 }
 
@@ -152,11 +224,13 @@ export function resolveFutureChatOrphanArtifactDisplay({
 	activeDocumentId,
 	documents,
 	fallbackPreviewSummary,
+	fallbackTitle,
 	messages,
 }: Readonly<{
 	activeDocumentId: string | null;
 	documents: ReadonlyArray<FutureChatDocument>;
 	fallbackPreviewSummary?: string | null;
+	fallbackTitle?: string | null;
 	messages: ReadonlyArray<Pick<RovoUIMessage, "id" | "metadata" | "parts" | "role">>;
 }>): FutureChatOrphanArtifactDisplay | null {
 	const anchoredDocumentIds = new Set(
@@ -212,6 +286,13 @@ export function resolveFutureChatOrphanArtifactDisplay({
 	}
 
 	const resolvedFallbackPreviewSummary = toNonEmptyString(fallbackPreviewSummary);
+	const previewContent = getLatestDocumentContent(fallbackDocument);
+	const resolvedTitle = resolveLegacyPlanExecutionArtifactTitle({
+		fallbackTitle,
+		kind: fallbackDocument.kind,
+		previewContent,
+		title: fallbackDocument.title,
+	});
 
 	return {
 		action: null,
@@ -221,10 +302,10 @@ export function resolveFutureChatOrphanArtifactDisplay({
 		documentId: fallbackDocument.id,
 		isStreaming: false,
 		kind: fallbackDocument.kind,
-		previewContent: getLatestDocumentContent(fallbackDocument),
+		previewContent,
 		previewSummary:
 			fallbackDocument.previewSummary
 			?? (fallbackDocument.kind === "react" ? resolvedFallbackPreviewSummary : null),
-		title: fallbackDocument.title,
+		title: resolvedTitle,
 	};
 }

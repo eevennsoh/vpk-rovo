@@ -3,6 +3,7 @@ const assert = require("node:assert/strict");
 
 const {
 	buildPlanMetadataPrompt,
+	derivePlanExecutionArtifactTitle,
 	generatePlanMetadata,
 	getLatestPlanWidgetMetadata,
 	parsePlanMetadataResponse,
@@ -69,6 +70,24 @@ test("buildPlanMetadataPrompt includes the title, description, and task labels",
 	assert.match(prompt, /Current title: Analytics Dashboard/);
 	assert.match(prompt, /Current description: Build a dashboard with KPIs and campaign trends\./);
 	assert.match(prompt, /Tasks \(2\): Create KPI cards; Add trend chart/);
+});
+
+test("derivePlanExecutionArtifactTitle prefers the plan title over the route slug", () => {
+	const title = derivePlanExecutionArtifactTitle({
+		appRoute: "/crm",
+		planTitle: "CRM Analytics Dashboard",
+	});
+
+	assert.equal(title, "CRM Analytics Dashboard");
+});
+
+test("derivePlanExecutionArtifactTitle falls back to a titleized route slug", () => {
+	const title = derivePlanExecutionArtifactTitle({
+		appRoute: "/sales-pipeline",
+		planTitle: "",
+	});
+
+	assert.equal(title, "Sales Pipeline");
 });
 
 test("parsePlanMetadataResponse falls back to the provided title when parsing fails", () => {

@@ -104,6 +104,32 @@ function getLatestPlanWidgetMetadata(messages) {
 	return null;
 }
 
+const DEFAULT_ARTIFACT_TITLE = "App";
+
+function derivePlanExecutionArtifactTitle({
+	appRoute,
+	planTitle,
+}) {
+	const normalizedPlanTitle = getNonEmptyString(planTitle);
+	if (normalizedPlanTitle) {
+		return normalizedPlanTitle;
+	}
+
+	const normalizedRoute = getNonEmptyString(appRoute);
+	if (!normalizedRoute || normalizedRoute === "/") {
+		return DEFAULT_ARTIFACT_TITLE;
+	}
+
+	const routeTitle = normalizedRoute
+		.split("/")
+		.filter(Boolean)
+		.flatMap((segment) => segment.split("-"))
+		.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+		.join(" ");
+
+	return routeTitle || DEFAULT_ARTIFACT_TITLE;
+}
+
 function buildPlanMetadataPrompt({
 	title,
 	description,
@@ -210,6 +236,7 @@ async function generatePlanMetadata({
 module.exports = {
 	PLAN_METADATA_SYSTEM_PROMPT,
 	buildPlanMetadataPrompt,
+	derivePlanExecutionArtifactTitle,
 	generatePlanMetadata,
 	getLatestPlanWidgetMetadata,
 	parsePlanMetadataResponse,

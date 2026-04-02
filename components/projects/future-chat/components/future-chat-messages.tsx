@@ -1316,15 +1316,17 @@ export function FutureChatMessages({
 	const latestPlanVisualIdentity = latestPlanPayload
 		? (latestPlanPayload.visualIdentity ?? resolvePlanVisualIdentity(latestPlanPayload.title))
 		: undefined;
+	const latestPlanTitle = latestPlanPayload?.title ?? null;
 	const latestPlanShortDescription = latestPlanPayload?.shortDescription?.trim() || null;
 	const orphanArtifactDisplay = useMemo(() => {
 		return resolveFutureChatOrphanArtifactDisplay({
 			activeDocumentId,
 			documents,
 			fallbackPreviewSummary: latestPlanShortDescription,
+			fallbackTitle: latestPlanTitle,
 			messages: visibleMessages,
 		});
-	}, [activeDocumentId, documents, latestPlanShortDescription, visibleMessages]);
+	}, [activeDocumentId, documents, latestPlanShortDescription, latestPlanTitle, visibleMessages]);
 	const streamingAssistantMessageId = useMemo(() => {
 		return resolveFutureChatStreamingAssistantMessageId(visibleMessages);
 	}, [visibleMessages]);
@@ -1415,6 +1417,7 @@ export function FutureChatMessages({
 						const artifactDisplay = resolveFutureChatMessageArtifactDisplay({
 							documents,
 							fallbackPreviewSummary: latestPlanShortDescription,
+							fallbackTitle: latestPlanTitle,
 							message,
 							pendingArtifactResult,
 							streamingArtifact,

@@ -10,6 +10,7 @@ import { ProgressCircle } from "@/components/ui/progress-circle";
 import { VisualIdentityTile } from "@/components/projects/shared/components/visual-identity-tile";
 import { resolvePlanVisualIdentity } from "@/components/projects/shared/lib/plan-identity";
 import type { VisualIdentity } from "@/components/projects/shared/lib/visual-identity";
+import { shouldShowIndeterminateTaskProgressBar } from "@/components/blocks/task-progress/lib/progress-bar-state";
 import VideoStopOverlayIcon from "@atlaskit/icon/core/video-stop-overlay";
 import DeleteIcon from "@atlaskit/icon/core/delete";
 import SuccessIcon from "@atlaskit/icon/core/success";
@@ -238,6 +239,14 @@ export default function TaskProgress({
 
 		return Math.round((weightedProgress / totalTaskCount) * 100);
 	}, [runStatus, taskStatusGroups]);
+	const showIndeterminateProgressBar = useMemo(
+		() =>
+			shouldShowIndeterminateTaskProgressBar({
+				runStatus,
+				taskStatusGroups,
+			}),
+		[runStatus, taskStatusGroups],
+	);
 
 	const handleCardActivate = () => {
 		if (isCollapsible) {
@@ -324,6 +333,7 @@ export default function TaskProgress({
 												>
 													<ProgressRovo
 														aria-label="Run progress"
+														isIndeterminate={showIndeterminateProgressBar}
 														value={progressValue}
 														className="w-full"
 													/>

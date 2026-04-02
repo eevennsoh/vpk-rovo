@@ -37,6 +37,9 @@ export const VISUAL_DETAILS: Record<string, ComponentDetail> = {
 	"fluted-glass": {
 		description: "Fluted glass refraction with bars, waves, zigzag, or seigaiha shapes, chromatic dispersion, blur, and frost.",
 	},
+	"holo": {
+		description: "Iridescent holographic gradient with seeded turbulence, spectral band cycling, exposure shaping, and optional highlight tuning.",
+	},
 	"mesh": {
 		description: "SVG animated mesh gradient with 3-color palette, rotating linear gradients, and fractal noise blending.",
 	},
