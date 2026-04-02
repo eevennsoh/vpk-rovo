@@ -309,6 +309,7 @@ function normalizePlan(rawPlan) {
 		getNonEmptyString(planRecord.name) ||
 		"Execution plan";
 	const description = getNonEmptyString(planRecord.description) || undefined;
+	const shortDescription = getNonEmptyString(planRecord.shortDescription) || undefined;
 	const emoji = getNonEmptyString(planRecord.emoji) || undefined;
 	const tasks = normalizeTaskArray(planRecord.tasks, new Set());
 	if (tasks.length === 0) {
@@ -319,6 +320,7 @@ function normalizePlan(rawPlan) {
 	return {
 		title,
 		description,
+		shortDescription,
 		emoji,
 		agents,
 		tasks,
@@ -338,12 +340,14 @@ function normalizePlanDelta(rawPlanDelta, existingTaskIds) {
 
 	const title = getNonEmptyString(planDeltaRecord.title) || undefined;
 	const description = getNonEmptyString(planDeltaRecord.description) || undefined;
+	const shortDescription = getNonEmptyString(planDeltaRecord.shortDescription) || undefined;
 	const emoji = getNonEmptyString(planDeltaRecord.emoji) || undefined;
 	const agents = Array.from(new Set(tasks.map((task) => task.agentName))).sort();
 
 	return {
 		title,
 		description,
+		shortDescription,
 		emoji,
 		agents,
 		tasks,
@@ -744,6 +748,7 @@ function createInitialRun({
 		plan: {
 			title: plan.title,
 			description: plan.description,
+			shortDescription: plan.shortDescription,
 			emoji: plan.emoji,
 			agents: laneDefinitions.map((lane) => lane.agentName),
 			tasks: tasks.map((task) => ({
@@ -2986,6 +2991,7 @@ function createRunManager(options) {
 			planDelta: {
 				title: normalizedPlanDelta.title,
 				description: normalizedPlanDelta.description,
+				shortDescription: normalizedPlanDelta.shortDescription,
 				emoji: normalizedPlanDelta.emoji,
 				agents: run.plan.agents,
 				tasks: remappedPlanDeltaTasks.map((task) => ({

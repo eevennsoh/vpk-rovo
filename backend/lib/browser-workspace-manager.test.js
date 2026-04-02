@@ -4,6 +4,8 @@ const assert = require("node:assert/strict")
 const {
 	BrowserWorkspace,
 	BrowserWorkspaceManager,
+	BrowserWorkspaceNotFoundError,
+	isBrowserWorkspaceNotFoundError,
 } = require("./browser-workspace-manager")
 
 function titleFromUrl(url) {
@@ -465,4 +467,72 @@ test("browser workspace manager deletes explicit workspaces and cleans up idle o
 		secondState.workspaceId,
 	])
 	assert.equal(manager.listWorkspaces().length, 0)
+})
+
+test("browser workspace manager throws typed errors for missing workspaces", () => {
+	const manager = new BrowserWorkspaceManager({
+		cleanupIntervalMs: 1_000_000,
+	})
+
+	assert.throws(
+		() => manager.getWorkspaceState("missing-workspace"),
+		(error) => {
+			assert.equal(error instanceof BrowserWorkspaceNotFoundError, true)
+			assert.equal(isBrowserWorkspaceNotFoundError(error), true)
+			assert.equal(error.workspaceId, "missing-workspace")
+			assert.equal(
+				error.message,
+				"Browser workspace not found: missing-workspace",
+			)
+			return true
+		},
+	)
+})
+
+test("browser workspace manager uses compact runtime session ids", async () => {
+	let createdWorkspace = null
+
+	const manager = new BrowserWorkspaceManager({
+		cleanupIntervalMs: 1_000_000,
+		workspaceFactory: ({ workspaceId, sessionId }) => {
+			createdWorkspace = {
+				workspaceId,
+				sessionId,
+			}
+
+			return {
+				workspaceId,
+				sessionId,
+				state: {
+					workspaceId,
+					ready: true,
+					activeTabIndex: 0,
+					tabs: [
+						{
+							index: 0,
+							title: "",
+							url: "about:blank",
+							active: true,
+						},
+					],
+					title: "",
+					url: "about:blank",
+					viewportWidth: 1280,
+					viewportHeight: 900,
+					canGoBack: false,
+					canGoForward: false,
+					updatedAt: 1_000,
+				},
+				async initialize() {},
+				peekState() {
+					return this.state
+				},
+				async close() {},
+			}
+		},
+	})
+
+	await manager.createWorkspace()
+
+	assert.equal(createdWorkspace?.sessionId, createdWorkspace?.workspaceId)
 })

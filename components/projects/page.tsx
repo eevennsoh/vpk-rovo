@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { token } from "@/lib/tokens";
 import TopNavigation from "@/components/blocks/top-navigation/page";
 import Sidebar from "@/components/blocks/product-sidebar/page";
@@ -22,18 +22,23 @@ interface AppLayoutProps {
  * Detect iframe context so generated apps rendered inside the artifact
  * panel's iframe automatically hide all shell chrome (TopNavigation,
  * Sidebar, FloatingRovoButton, RovoChatPanel).
+ *
+ * Defers the browser-only check to an effect so the first client render
+ * matches the server render (both return false), avoiding hydration mismatch.
  */
 function useIsEmbedded(explicit: boolean): boolean {
-	const [auto] = useState(() => {
-		if (typeof window === "undefined") return false;
-		// Check pre-hydration attribute first (set by layout.tsx head script)
-		if (document.documentElement.dataset.embedded !== undefined) return true;
-		try {
-			return window.self !== window.top;
-		} catch {
-			return true; // cross-origin iframe
+	const [auto, setAuto] = useState(false);
+	useEffect(() => {
+		if (document.documentElement.dataset.embedded !== undefined) {
+			setAuto(true);
+		} else {
+			try {
+				if (window.self !== window.top) setAuto(true);
+			} catch {
+				setAuto(true); // cross-origin iframe
+			}
 		}
-	});
+	}, []);
 	return explicit || auto;
 }
 

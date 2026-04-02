@@ -231,6 +231,7 @@ export const UI_COMPONENTS: ComponentEntry[] = sortEntriesByName([
 	uiComponent("popover"),
 	uiComponent("progress"),
 	uiComponent("progress-circle", "Progress Circle"),
+	uiComponent("progress-rovo", "Progress Rovo"),
 	uiComponent("progress-indicator", "Progress Indicator"),
 	uiComponent("progress-tracker", "Progress Tracker"),
 	uiComponent("radio"),
@@ -332,8 +333,6 @@ export const PROJECT_COMPONENTS: ComponentEntry[] = sortEntriesByName([
 	projectComponent("fullscreen-chat", "Fullscreen Chat"),
 	projectComponent("future-chat", "Future Chat"),
 	projectComponent("search", "Search Results"),
-	projectComponent("overview", "Overview"),
-	projectComponent("team-productivity", "Team Productivity"),
 ]);
 
 export const UTILITY_COMPONENTS: ComponentEntry[] = sortEntriesByName([

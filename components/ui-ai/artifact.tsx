@@ -12,6 +12,9 @@ import {
 	GenerativeCardFooter,
 	GenerativeCardHeader,
 } from "@/components/blocks/generative-card";
+import { CardIdentityTile } from "@/components/projects/shared/components/card-identity-tile";
+import type { VisualIdentity } from "@/components/projects/shared/lib/visual-identity";
+import { resolveArtifactCardIdentity } from "@/components/projects/shared/lib/visual-identity";
 import { Button } from "@/components/ui/button";
 import {
 	Select,
@@ -20,7 +23,6 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { Tile } from "@/components/ui/tile";
 import { Textarea } from "@/components/ui/textarea";
 import {
 	Tooltip,
@@ -44,16 +46,11 @@ import {
 import { MessageResponse } from "@/components/ui-ai/message";
 import { cn } from "@/lib/utils";
 import {
-	CodeIcon,
 	CopyIcon,
-	FileTextIcon,
-	GlobeIcon,
-	ImageIcon,
 	LoaderCircleIcon,
 	MessageSquarePlusIcon,
 	PencilLineIcon,
 	SaveIcon,
-	SheetIcon,
 	Trash2Icon,
 	XIcon,
 } from "lucide-react";
@@ -209,36 +206,6 @@ export const ARTIFACT_KIND_LABELS: Record<ArtifactKind, string> = {
 	text: "Document",
 };
 
-function ArtifactKindIcon({ kind }: Readonly<{ kind: ArtifactKind }>) {
-	switch (kind) {
-		case "code":
-			return <CodeIcon className="size-4" />;
-		case "image":
-			return <ImageIcon className="size-4" />;
-		case "react":
-			return <GlobeIcon className="size-4" />;
-		case "sheet":
-			return <SheetIcon className="size-4" />;
-		default:
-			return <FileTextIcon className="size-4" />;
-	}
-}
-
-function getArtifactKindTileVariant(kind: ArtifactKind) {
-	switch (kind) {
-		case "code":
-			return "blueSubtle" as const;
-		case "image":
-			return "purpleSubtle" as const;
-		case "react":
-			return "tealSubtle" as const;
-		case "sheet":
-			return "greenSubtle" as const;
-		default:
-			return "graySubtle" as const;
-	}
-}
-
 function getArtifactActionLabel(
 	action: "create" | "update" | null | undefined,
 	isStreaming: boolean,
@@ -263,11 +230,13 @@ function ArtifactPreview({
 	isStreaming,
 	kind,
 	previewContent,
+	previewSummary,
 	title,
 }: Readonly<{
 	isStreaming: boolean;
 	kind: ArtifactKind;
 	previewContent: string;
+	previewSummary?: string;
 	title: string;
 }>) {
 	if (kind === "image" && /^https?:|^data:image\//u.test(previewContent)) {
@@ -292,7 +261,12 @@ function ArtifactPreview({
 		);
 	}
 
-	if (!previewContent.trim()) {
+	const resolvedPreviewText =
+		kind === "react"
+			? previewSummary?.trim() || "Generated app preview ready to open"
+			: previewContent;
+
+	if (!resolvedPreviewText.trim()) {
 		return (
 			<div className="flex min-h-32 flex-col gap-3 rounded-md bg-card p-4">
 				<div className="h-4 w-2/3 animate-pulse rounded-full bg-surface-raised" />
@@ -303,17 +277,30 @@ function ArtifactPreview({
 		);
 	}
 
+	const streamingBadge = isStreaming ? (
+		<div className="mt-3 inline-flex items-center gap-2 rounded-full border border-border bg-background px-2.5 py-1 text-[11px] text-text-subtle uppercase tracking-[0.16em]">
+			<LoaderCircleIcon className="size-3 animate-spin" />
+			Streaming
+		</div>
+	) : null;
+
+	if (kind === "react") {
+		return (
+			<div className="rounded-md">
+				<p className="text-left text-sm leading-6 text-text">
+					{resolvedPreviewText}
+				</p>
+				{streamingBadge}
+			</div>
+		);
+	}
+
 	return (
 		<div className="rounded-md">
 			<div className="max-h-36 overflow-hidden whitespace-pre-wrap text-left font-mono text-[12px] leading-5 text-text">
-				{previewContent}
+				{resolvedPreviewText}
 			</div>
-			{isStreaming ? (
-				<div className="mt-3 inline-flex items-center gap-2 rounded-full border border-border bg-background px-2.5 py-1 text-[11px] text-text-subtle uppercase tracking-[0.16em]">
-					<LoaderCircleIcon className="size-3 animate-spin" />
-					Streaming
-				</div>
-			) : null}
+			{streamingBadge}
 		</div>
 	);
 }
@@ -331,10 +318,14 @@ export interface ArtifactCardProps {
 	isStreaming?: boolean;
 	/** Display mode. "preview" shows expanded card. "chip" shows compact inline card. @default "preview" */
 	displayMode?: "preview" | "chip";
-	/** Optional emoji to display in the tile instead of the kind-based icon. */
-	emoji?: string;
+	/** Optional visual identity override used in the tile instead of the kind-based icon. */
+	visualIdentity?: VisualIdentity;
+	/** Optional stable seed used to keep the tile color consistent across renders. */
+	identitySeed?: string;
 	/** Content string for the preview (code text, image URL, etc.). */
 	previewContent?: string;
+	/** Optional user-facing summary for inline preview cards. */
+	previewSummary?: string;
 	/** Callback when the "Open" button is clicked. Receives the card root element. */
 	onOpen?: (element: HTMLDivElement) => void;
 	/** Callback when a preview-mode card mounts. Receives the card root element. */
@@ -352,8 +343,10 @@ export function ArtifactCard({
 	action,
 	isStreaming = false,
 	displayMode = "preview",
-	emoji,
+	visualIdentity,
+	identitySeed,
 	previewContent = "",
+	previewSummary,
 	onOpen,
 	onRegister,
 	className,
@@ -362,6 +355,12 @@ export function ArtifactCard({
 	const cardRef = useRef<HTMLDivElement>(null);
 	const actionLabel = getArtifactActionLabel(action, isStreaming);
 	const kindLabel = ARTIFACT_KIND_LABELS[kind];
+	const resolvedIdentity = resolveArtifactCardIdentity({
+		kind,
+		title,
+		identitySeed,
+		visualIdentity,
+	});
 	const openLabel = actionLabel
 		? `Open ${actionLabel.toLowerCase()} ${kindLabel.toLowerCase()} ${title}`
 		: `Open ${kindLabel.toLowerCase()} ${title}`;
@@ -419,20 +418,25 @@ export function ArtifactCard({
 					description={getArtifactDescription({ kind, versionNumber })}
 					expandLabel="Expand artifact details"
 					leading={
-						<Tile
-							label={kindLabel}
-							size={displayMode === "chip" ? "small" : "medium"}
-							variant={emoji ? "neutral" : getArtifactKindTileVariant(kind)}
-							isInset={!emoji}
-						>
-							{isStreaming ? (
-								<LoaderCircleIcon className="size-4 animate-spin" />
-							) : emoji ? (
-								<span>{emoji}</span>
-							) : (
-								<ArtifactKindIcon kind={kind} />
-							)}
-						</Tile>
+						isStreaming ? (
+							<div className="relative">
+								<CardIdentityTile
+									decorative
+									identity={resolvedIdentity}
+									label={kindLabel}
+									size={displayMode === "chip" ? "small" : "medium"}
+									className="animate-pulse"
+								/>
+								<LoaderCircleIcon className="absolute inset-0 m-auto size-4 animate-spin text-current" />
+							</div>
+						) : (
+							<CardIdentityTile
+								decorative
+								identity={resolvedIdentity}
+								label={kindLabel}
+								size={displayMode === "chip" ? "small" : "medium"}
+							/>
+						)
 					}
 					title={title}
 				/>
@@ -443,6 +447,7 @@ export function ArtifactCard({
 								isStreaming={isStreaming}
 								kind={kind}
 								previewContent={previewContent}
+								previewSummary={previewSummary}
 								title={title}
 							/>
 						)}

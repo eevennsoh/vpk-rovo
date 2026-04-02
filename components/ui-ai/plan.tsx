@@ -17,6 +17,9 @@ import { motion } from "motion/react";
 import { createContext, use, useEffect, useMemo, useRef, useState } from "react";
 
 import { GenerativeCardFooter, GenerativeCardHeader } from "@/components/blocks/generative-card";
+import { VisualIdentityTile } from "@/components/projects/shared/components/visual-identity-tile";
+import type { VisualIdentity } from "@/components/projects/shared/lib/visual-identity";
+import { resolvePlanVisualIdentity } from "@/components/projects/shared/lib/plan-identity";
 import { MessageResponse } from "./message";
 import { Shimmer } from "./shimmer";
 
@@ -103,12 +106,12 @@ export const PlanHeader = ({ className, ...props }: Readonly<PlanHeaderProps>) =
 /* ----- PlanAvatar ----- */
 
 export type PlanAvatarProps = ComponentProps<"div"> & {
-	emoji?: string;
+	visualIdentity?: VisualIdentity;
 };
 
-export const PlanAvatar = ({ emoji = "✌️", className, ...props }: Readonly<PlanAvatarProps>) => (
-	<div className={cn("flex size-8 shrink-0 items-center justify-center rounded-tile bg-bg-neutral", className)} data-slot="plan-avatar" {...props}>
-		<span className="text-base leading-5 text-text-subtle">{emoji}</span>
+export const PlanAvatar = ({ visualIdentity = resolvePlanVisualIdentity("Untitled task run"), className, ...props }: Readonly<PlanAvatarProps>) => (
+	<div className={cn("shrink-0", className)} data-slot="plan-avatar" {...props}>
+		<VisualIdentityTile decorative label="Plan" visualIdentity={visualIdentity} />
 	</div>
 );
 

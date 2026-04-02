@@ -63,7 +63,6 @@ import {
 	resolveFutureChatComposerSubmitState,
 	type FutureChatDirectDelegationPhase,
 } from "@/components/projects/future-chat/lib/future-chat-composer-submit-state";
-import { resolveFutureChatPlanReviewAction } from "@/components/projects/future-chat/lib/future-chat-plan-review";
 import {
 	canDispatchFutureChatQueuedAction,
 	hasQueuedFutureChatFollowUp,
@@ -119,6 +118,7 @@ import {
 	type FutureChatVote,
 	type FutureChatActiveArtifact,
 	type FutureChatPanelState,
+	type FutureChatPromptMode,
 	type FutureChatRecentHistoryEntry,
 	type VoteValue,
 	createFutureChatId,
@@ -134,11 +134,9 @@ import {
 	type ParsedQuestionCardPayload,
 } from "@/components/projects/shared/lib/question-card-widget";
 import {
-	type FutureChatAgentMode,
 	buildFutureChatAgentModeRequest,
 	buildFutureChatCancelUrl,
 } from "@/components/projects/future-chat/lib/future-chat-agent-mode";
-import { cancelDeferredToolCall } from "@/components/blocks/question-card/lib/cancel-deferred-tool";
 import { appendTurnCompleteToLastAssistantMessage, markClarificationToolResolved } from "@/components/projects/future-chat/lib/future-chat-streaming-assistant";
 import {
 	classifyFutureChatTurnMode,
@@ -306,12 +304,6 @@ interface FutureChatPlanningSession {
 	baselineAssistantMessageId: string | null;
 }
 
-type FutureChatPlanMode = "default" | "plan";
-
-function parseFutureChatPlanMode(value: unknown): FutureChatPlanMode | null {
-	return value === "default" || value === "plan" ? value : null;
-}
-
 const VOICE_MODE_CONTEXT = [
 	"The user is in voice mode — they are speaking to you and hearing your response read aloud.",
 	"Keep responses concise and conversational, suitable for text-to-speech.",
@@ -325,6 +317,16 @@ function toFutureChatUserErrorMessage(error: unknown): string {
 	}
 
 	return error instanceof Error ? error.message : String(error);
+}
+
+function buildPromptModeMetadata(
+	metadata: RovoUIMessage["metadata"] | undefined,
+	mode: FutureChatPromptMode,
+): RovoUIMessage["metadata"] {
+	return {
+		...(metadata ?? {}),
+		submittedMode: mode,
+	};
 }
 
 function waitForFutureChat(ms: number): Promise<void> {
@@ -591,7 +593,7 @@ export interface FutureChatHookResult {
 	submitPlanApproval: (planWidget: ParsedPlanWidgetPayload, selection: PlanApprovalSelection) => Promise<void>;
 	submitPrompt: (payload: { text: string; files: FileUIPart[]; contextDescription?: string }) => Promise<void>;
 	suggestedPrompt: (text: string) => Promise<void>;
-	togglePlanMode: () => Promise<void>;
+	togglePlanMode: () => void;
 	resetPlanMode: () => void;
 	toggleVoiceMode: () => void;
 	dismissPlanExecutionTracker: () => void;
@@ -718,6 +720,7 @@ export function useFutureChat({
 		clearQueuedActionsForThread,
 		enqueueQueuedAction,
 		peekNextQueuedActionForThread,
+		prependQueuedAction,
 		queuedActionsByThreadId,
 		removeQueuedAction,
 		shiftNextQueuedActionForThread,
@@ -726,7 +729,6 @@ export function useFutureChat({
 	const pendingTitleThreadIdRef = useRef<string | null>(null);
 	const pendingTitleMessageRef = useRef<string | null>(null);
 	const planModeSyncRequestIdRef = useRef(0);
-	const pendingPlanModeOverrideRef = useRef<FutureChatAgentMode | null>(null);
 	const resetObservedTurnComplete = useCallback(() => {
 		hasObservedTurnCompleteRef.current = false;
 		setHasObservedTurnComplete(false);
@@ -936,39 +938,29 @@ export function useFutureChat({
 	const deletedThreadIdsRef = useRef<Set<string>>(new Set());
 	const requestedSuggestionMessageIdsRef = useRef<Set<string>>(new Set());
 	const suggestionsAbortControllerRef = useRef<AbortController | null>(null);
-	const syncPlanModeFromBackend = useCallback(async () => {
-		const localModeOverride = pendingPlanModeOverrideRef.current;
-		if (localModeOverride) {
-			setIsPlanMode(localModeOverride === "plan");
-			return localModeOverride;
-		}
+	const lastSyncedAgentModeRef = useRef<"default" | "plan" | null>(null);
+	const syncAgentModeForDispatch = useCallback(
+		async (mode: "default" | "plan") => {
+			if (lastSyncedAgentModeRef.current === mode) {
+				return;
+			}
 
-		const requestId = planModeSyncRequestIdRef.current + 1;
-		planModeSyncRequestIdRef.current = requestId;
-
-		try {
 			const response = await fetch(API_ENDPOINTS.AGENT_MODE, {
-				method: "GET",
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(buildFutureChatAgentModeRequest({ mode })),
 			});
+
 			if (!response.ok) {
-				return null;
+				throw new Error(
+					`Failed to sync agent mode before dispatch (status ${response.status})`,
+				);
 			}
 
-			const payload = await response.json().catch(() => null);
-			const mode = parseFutureChatPlanMode(payload?.mode);
-			if (
-				mode === null ||
-				planModeSyncRequestIdRef.current !== requestId
-			) {
-				return null;
-			}
-
-			setIsPlanMode(mode === "plan");
-			return mode;
-		} catch {
-			return null;
-		}
-	}, []);
+			lastSyncedAgentModeRef.current = mode;
+		},
+		[],
+	);
 
 	const removeQueuedPrompt = useCallback(
 		(id: string) => {
@@ -983,11 +975,8 @@ export function useFutureChat({
 
 	useEffect(() => {
 		activeThreadIdRef.current = activeThreadId;
+		lastSyncedAgentModeRef.current = null;
 	}, [activeThreadId]);
-
-	useEffect(() => {
-		void syncPlanModeFromBackend();
-	}, [syncPlanModeFromBackend]);
 
 	const setLocalThreadActiveRun = useCallback(
 		(threadId: string, activeRun: FutureChatActiveRun | null) => {
@@ -1517,18 +1506,17 @@ export function useFutureChat({
 					});
 					break;
 
-					case "data-turn-complete": {
-						markObservedTurnComplete();
-						setAttachedRunStatus(null);
-						const threadId = activeThreadIdRef.current;
-						if (threadId) {
-							setLocalThreadActiveRun(threadId, null);
-						}
-						currentTurnIntentRef.current = null;
-						void syncPlanModeFromBackend();
-						kickQueue();
-						break;
+				case "data-turn-complete": {
+					markObservedTurnComplete();
+					setAttachedRunStatus(null);
+					const threadId = activeThreadIdRef.current;
+					if (threadId) {
+						setLocalThreadActiveRun(threadId, null);
 					}
+					currentTurnIntentRef.current = null;
+					kickQueue();
+					break;
+				}
 
 				case "data-route-decision": {
 					const routeData = dataPart.data as { intent?: string } | null;
@@ -1551,7 +1539,6 @@ export function useFutureChat({
 				persistActiveDocumentSelection,
 				queueStreamingArtifactDelta,
 				setLocalThreadActiveRun,
-				syncPlanModeFromBackend,
 				streamingArtifactRef,
 				visibleArtifactDocumentIdRef,
 			],
@@ -1988,6 +1975,7 @@ export function useFutureChat({
 					metadata: { visibility: "hidden", source: "plan-retry" },
 					text: PLAN_MODE_RETRY_PROMPT,
 				});
+				await syncAgentModeForDispatch("plan");
 				await sendMessage(
 					{
 						text: PLAN_MODE_RETRY_PROMPT,
@@ -2011,7 +1999,13 @@ export function useFutureChat({
 		};
 		retryAsync();
 	// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [isStreaming, normalizedRovodevMessages, planningSession, threads]);
+	}, [
+		isStreaming,
+		normalizedRovodevMessages,
+		planningSession,
+		syncAgentModeForDispatch,
+		threads,
+	]);
 
 	const resolveFallbackTitle = useCallback(
 		(): boolean => {
@@ -2996,22 +2990,7 @@ export function useFutureChat({
 			});
 
 			const threadId = await ensureThread(userMessageText || "Plan review");
-			if (!isPlanMode) {
-				const response = await fetch(API_ENDPOINTS.AGENT_MODE, {
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify(
-						buildFutureChatAgentModeRequest({
-							mode: "default",
-						}),
-					),
-				});
-				if (!response.ok) {
-					throw new Error(
-						`Failed to restore agent mode before execution (status ${response.status})`,
-					);
-				}
-			}
+			await syncAgentModeForDispatch(isPlanMode ? "plan" : "default");
 			const { message, messageId } = appendLocalUserMessage({
 				files: [],
 				metadata: messageMetadata,
@@ -3021,23 +3000,21 @@ export function useFutureChat({
 				clearFutureChatPlanExecutionDismissalsForThread(previousKeys, threadId),
 			);
 			resetPendingArtifactAssociation();
-			pendingPlanModeOverrideRef.current = null;
-			planModeSyncRequestIdRef.current += 1;
-			setIsPlanMode(isPlanMode);
-				if (isPlanMode) {
-					setPlanningSession({
-						requestId: planModeSyncRequestIdRef.current,
-						phase: "awaiting-plan",
-						hasStreamStarted: false,
-						retryUsed: false,
-						baselineAssistantMessageId:
-							getLatestFutureChatAssistantMessageId(
-								rovodevMessagesRef.current,
-							),
-					});
-				} else {
-					setPlanningSession(null);
-				}
+			if (isPlanMode) {
+				planModeSyncRequestIdRef.current += 1;
+				setPlanningSession({
+					requestId: planModeSyncRequestIdRef.current,
+					phase: "awaiting-plan",
+					hasStreamStarted: false,
+					retryUsed: false,
+					baselineAssistantMessageId:
+						getLatestFutureChatAssistantMessageId(
+							rovodevMessagesRef.current,
+						),
+				});
+			} else {
+				setPlanningSession(null);
+			}
 
 			markLocalThreadRunPending(threadId);
 			await sendMessage(
@@ -3067,41 +3044,8 @@ export function useFutureChat({
 			releaseCompletedUseChatTurnIfNeeded,
 			resetPendingArtifactAssociation,
 			sendMessage,
+			syncAgentModeForDispatch,
 		],
-	);
-
-	const rejectPendingPlanReview = useCallback(
-		async (planWidget: ParsedPlanWidgetPayload) => {
-			const toolCallId =
-				planWidget.deferredToolCallId ?? planWidget.toolCallId ?? null;
-			if (!toolCallId) {
-				throw new Error("The pending plan review is missing a deferred tool call.");
-			}
-
-			const didCancelDeferredTool = await cancelDeferredToolCall(toolCallId);
-			if (!didCancelDeferredTool) {
-				throw new Error("Couldn't reject the pending plan review.");
-			}
-
-			const response = await fetch(API_ENDPOINTS.AGENT_MODE, {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify(
-					buildFutureChatAgentModeRequest({
-						mode: "default",
-					}),
-				),
-			});
-			if (!response.ok) {
-				throw new Error(`Agent mode toggle failed with status ${response.status}`);
-			}
-
-			pendingPlanModeOverrideRef.current = null;
-			planModeSyncRequestIdRef.current += 1;
-			setPlanningSession(null);
-			setIsPlanMode(false);
-		},
-		[],
 	);
 
 	const submitToolApproval = useCallback(
@@ -3217,11 +3161,13 @@ export function useFutureChat({
 			files,
 			contextDescription,
 			messageMetadata,
+			mode,
 		}: {
 			text: string;
 			files: FileUIPart[];
 			contextDescription?: string;
 			messageMetadata?: RovoUIMessage["metadata"];
+			mode: FutureChatPromptMode;
 		}) => {
 			setInputError(null);
 			const trimmedText = text.trim();
@@ -3275,14 +3221,16 @@ export function useFutureChat({
 				setDismissedPlanExecutionTrackerKeys((previousKeys) =>
 					clearFutureChatPlanExecutionDismissalsForThread(previousKeys, threadId),
 				);
+				await syncAgentModeForDispatch(mode);
 				const { message, messageId } = appendLocalUserMessage({
 					files,
-					metadata: messageMetadata,
+					metadata: buildPromptModeMetadata(messageMetadata, mode),
 					text: trimmedText,
 				});
 				markLocalThreadRunPending(threadId);
 				resetPendingArtifactAssociation();
-				if (isPlanModeRef.current) {
+				if (mode === "plan") {
+					planModeSyncRequestIdRef.current += 1;
 					setPlanningSession({
 						requestId: planModeSyncRequestIdRef.current,
 						phase: "awaiting-plan",
@@ -3293,6 +3241,8 @@ export function useFutureChat({
 								rovodevMessagesRef.current,
 							),
 					});
+				} else {
+					setPlanningSession(null);
 				}
 				try {
 					await sendMessage({
@@ -3305,6 +3255,7 @@ export function useFutureChat({
 							id: threadId,
 							artifactContext: resolvedArtifactContext ?? undefined,
 							contextDescription,
+							isPlanMode: mode === "plan",
 							streamingArtifact: streamingArtifactPayload,
 						},
 					});
@@ -3335,10 +3286,10 @@ export function useFutureChat({
 			sendMessage,
 				setLocalThreadActiveRun,
 				setRovodevMessages,
-				isPlanModeRef,
 				stopUseChat,
 				streamingArtifact,
 				streamingArtifactRef,
+				syncAgentModeForDispatch,
 				useChatStatus,
 			],
 		);
@@ -3347,11 +3298,15 @@ export function useFutureChat({
 		({
 			contextDescription,
 			files,
+			messageMetadata,
+			mode,
 			text,
 			threadId,
 		}: {
 			contextDescription?: string;
 			files: ReadonlyArray<FileUIPart>;
+			messageMetadata?: RovoUIMessage["metadata"];
+			mode: FutureChatPromptMode;
 			text: string;
 			threadId: string;
 		}) => {
@@ -3363,6 +3318,8 @@ export function useFutureChat({
 				kind: "prompt",
 				files: [...files],
 				contextDescription,
+				messageMetadata,
+				mode,
 			};
 			enqueueQueuedAction(queuedAction);
 		},
@@ -3385,33 +3342,12 @@ export function useFutureChat({
 			if (!trimmedText && files.length === 0) {
 				return;
 			}
-
-			const pendingPlanReview = getActivePendingPlanReview();
-			const planReviewAction = resolveFutureChatPlanReviewAction({
-				fileCount: files.length,
-				hasPendingPlanReview: Boolean(pendingPlanReview),
-				isRejectOnNextPrompt: pendingPlanModeOverrideRef.current === "default",
-				text: trimmedText,
-			});
-			if (pendingPlanReview && planReviewAction === "send-plan-feedback") {
-				await sendPlanReviewResult({
-					isPlanMode: true,
-					planWidget: pendingPlanReview.planWidget,
-					result: trimmedText,
-					userMessageText: trimmedText,
-				});
-				return;
-			}
-
-			if (pendingPlanReview && planReviewAction === "reject-plan-and-send-prompt") {
-				await rejectPendingPlanReview(pendingPlanReview.planWidget);
-				await dispatchPromptNow({
-					text: trimmedText,
-					files,
-					contextDescription,
-				});
-				return;
-			}
+			const promptMode: FutureChatPromptMode =
+				isPlanModeRef.current ? "plan" : "default";
+			const promptMessageMetadata = buildPromptModeMetadata(
+				undefined,
+				promptMode,
+			);
 
 			const resolvedThreadId = activeThreadIdRef.current ?? draftThreadId;
 			const shouldEnqueue =
@@ -3427,6 +3363,8 @@ export function useFutureChat({
 				enqueuePromptAction({
 					contextDescription,
 					files,
+					messageMetadata: promptMessageMetadata,
+					mode: promptMode,
 					text: trimmedText,
 					threadId: resolvedThreadId,
 				});
@@ -3438,6 +3376,8 @@ export function useFutureChat({
 				text: trimmedText,
 				files,
 				contextDescription,
+				messageMetadata: promptMessageMetadata,
+				mode: promptMode,
 			});
 		},
 		[
@@ -3446,11 +3386,9 @@ export function useFutureChat({
 			dispatchPromptNow,
 			draftThreadId,
 			enqueuePromptAction,
-			getActivePendingPlanReview,
+			isPlanModeRef,
 			kickQueue,
 			queuedActionsByThreadId,
-			rejectPendingPlanReview,
-			sendPlanReviewResult,
 		],
 	);
 
@@ -3472,8 +3410,7 @@ export function useFutureChat({
 			// the question card was emitted during a plan-mode turn (indicated
 			// by the presence of a deferredToolCallId, which only happens when
 			// ask_user_questions is called via the plan-mode deferred tool
-			// flow).  This protects against isPlanModeRef being transiently
-			// reset by syncPlanModeFromBackend after a port recovery.
+			// flow).
 			const wasPlanModeActive =
 				isPlanModeRef.current || Boolean(questionCard.deferredToolCallId);
 			const promptText = buildClarificationSummaryPrompt(questionCard, answers);
@@ -3517,6 +3454,7 @@ export function useFutureChat({
 
 			markLocalThreadRunPending(threadId);
 			if (wasPlanModeActive) {
+				await syncAgentModeForDispatch("plan");
 				setPlanningSession((prev) =>
 					prev
 						? {
@@ -3559,6 +3497,7 @@ export function useFutureChat({
 			resetPendingArtifactAssociation,
 			sendMessage,
 			setRovodevMessages,
+			syncAgentModeForDispatch,
 		],
 	);
 
@@ -3663,6 +3602,7 @@ export function useFutureChat({
 
 			markLocalThreadRunPending(threadId);
 			if (wasPlanModeActive) {
+				await syncAgentModeForDispatch("plan");
 				setPlanningSession((prev) =>
 					prev
 						? {
@@ -3705,6 +3645,7 @@ export function useFutureChat({
 			resetPendingArtifactAssociation,
 			sendMessage,
 			setRovodevMessages,
+			syncAgentModeForDispatch,
 		],
 	);
 
@@ -3781,75 +3722,11 @@ export function useFutureChat({
 		[acceptPlanReview, sendPlanReviewResult],
 	);
 
-	const togglePlanMode = useCallback(async () => {
-		const pendingPlanReview = getActivePendingPlanReview();
-		if (pendingPlanReview) {
-			planModeSyncRequestIdRef.current += 1;
-			setPlanningSession(null);
-			if (isPlanMode) {
-				pendingPlanModeOverrideRef.current = "default";
-				setIsPlanMode(false);
-				return;
-			}
-
-			if (pendingPlanModeOverrideRef.current === "default") {
-				pendingPlanModeOverrideRef.current = null;
-				setIsPlanMode(true);
-				return;
-			}
-		}
-
-		const nextMode = isPlanMode ? "default" : "plan";
-		const threadId = activeThreadIdRef.current;
-		planModeSyncRequestIdRef.current += 1;
-		pendingPlanModeOverrideRef.current = null;
-		setPlanningSession(null);
-		setIsPlanMode(nextMode === "plan");
-		try {
-			if (isPlanMode && threadId) {
-				const activeQuestionCard = getLatestQuestionCardPayload(
-					rovodevMessagesRef.current,
-				);
-				const didCancelDeferredQuestion =
-					activeQuestionCard
-					&& (activeQuestionCard.deferredToolCallId
-						|| activeQuestionCard.toolCallId)
-						? await cancelClarificationQuestionSet(activeQuestionCard)
-						: null;
-
-				if (didCancelDeferredQuestion === false) {
-					setIsPlanMode(true);
-					return;
-				}
-
-				if (didCancelDeferredQuestion === null) {
-					await fetch(buildFutureChatCancelUrl(threadId), {
-						method: "POST",
-					}).catch((error) => {
-						console.warn("[FutureChat] Failed to cancel pending plan turn:", error);
-					});
-				}
-			}
-
-			const response = await fetch(API_ENDPOINTS.AGENT_MODE, {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify(buildFutureChatAgentModeRequest({ mode: nextMode })),
-			});
-
-			if (!response.ok) {
-				throw new Error(`Agent mode toggle failed with status ${response.status}`);
-			}
-		} catch (error) {
-			console.warn("[FutureChat] Failed to toggle plan mode:", error);
-			setIsPlanMode(isPlanMode);
-		}
-	}, [cancelClarificationQuestionSet, getActivePendingPlanReview, isPlanMode]);
+	const togglePlanMode = useCallback(() => {
+		setIsPlanMode((previousMode) => !previousMode);
+	}, []);
 
 	const resetPlanMode = useCallback(() => {
-		planModeSyncRequestIdRef.current += 1;
-		pendingPlanModeOverrideRef.current = null;
-		setPlanningSession(null);
 		setIsPlanMode(false);
 	}, []);
 
@@ -4238,6 +4115,11 @@ export function useFutureChat({
 				if (
 					!canDispatchFutureChatQueuedAction({
 						action: nextQueuedAction,
+						hasPendingClarification:
+							getLatestQuestionCardPayload(rovodevMessagesRef.current) !== null,
+						hasPendingPlanApproval:
+							getActivePendingPlanReview() !== null,
+						hasPendingToolApproval: activeToolApproval !== null,
 					})
 				) {
 					break;
@@ -4250,7 +4132,7 @@ export function useFutureChat({
 
 				// If cancelled between shift and dispatch, re-enqueue the action
 				if (!queueProcessorRunningRef.current) {
-					enqueueQueuedAction(nextAction);
+					prependQueuedAction(nextAction);
 					break;
 				}
 
@@ -4277,9 +4159,11 @@ export function useFutureChat({
 							files: [...nextAction.files],
 							contextDescription: nextAction.contextDescription,
 							messageMetadata: nextAction.messageMetadata,
+							mode: nextAction.mode,
 						});
 					}
 				} catch (error) {
+					prependQueuedAction(nextAction);
 					console.error("[FutureChat] Failed to dispatch queued action:", error);
 					setInputError(toFutureChatUserErrorMessage(error));
 					break;
@@ -4292,10 +4176,12 @@ export function useFutureChat({
 			}
 		}
 	}, [
+		activeToolApproval,
 		dispatchDelegationNow,
 		dispatchPromptNow,
-		enqueueQueuedAction,
+		getActivePendingPlanReview,
 		peekNextQueuedActionForThread,
+		prependQueuedAction,
 		shiftNextQueuedActionForThread,
 	]);
 

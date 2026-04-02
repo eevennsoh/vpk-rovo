@@ -82,10 +82,12 @@ function Tile({
 	children,
 	...props
 }: Readonly<TileProps>) {
+	const isDecorative = props["aria-hidden"] === true
+
 	return (
 		<div
 			data-slot="tile"
-			aria-label={label}
+			aria-label={isDecorative ? undefined : label}
 			className={cn(
 				tileVariants({ size, variant }),
 			isInset

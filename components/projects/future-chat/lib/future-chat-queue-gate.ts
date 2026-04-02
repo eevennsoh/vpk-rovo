@@ -30,8 +30,19 @@ export function hasQueuedFutureChatFollowUp({
 
 export function canDispatchFutureChatQueuedAction({
 	action,
+	hasPendingClarification = false,
+	hasPendingPlanApproval = false,
+	hasPendingToolApproval = false,
 }: Readonly<{
 	action: FutureChatQueuedAction | null;
+	hasPendingClarification?: boolean;
+	hasPendingPlanApproval?: boolean;
+	hasPendingToolApproval?: boolean;
 }>): boolean {
-	return action !== null;
+	return (
+		action !== null &&
+		!hasPendingClarification &&
+		!hasPendingPlanApproval &&
+		!hasPendingToolApproval
+	);
 }

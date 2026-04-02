@@ -66,6 +66,8 @@ export interface ProgressCircleProps
 	label?: string;
 	/** Whether to animate the completion check. Set to `false` to render the check statically (e.g. on remount after expand/collapse). Defaults to `true`. */
 	animated?: boolean;
+	/** When `false`, renders the full ring at value>=100 instead of the checkmark icon. Useful for animated fill→check transitions. Defaults to `true`. */
+	showCompleteIcon?: boolean;
 }
 
 function ProgressCircle({
@@ -75,11 +77,12 @@ function ProgressCircle({
 	status,
 	label = "Progress",
 	animated = true,
+	showCompleteIcon = true,
 	className,
 	...props
 }: Readonly<ProgressCircleProps>) {
 	const isIndeterminate = value == null && !status;
-	const isComplete = !status && !isIndeterminate && value != null && value >= 100;
+	const isComplete = !status && !isIndeterminate && value != null && value >= 100 && showCompleteIcon;
 	const clampedValue = isIndeterminate ? 0 : Math.min(100, Math.max(0, value ?? 0));
 	const isFilled = variant === "filled";
 

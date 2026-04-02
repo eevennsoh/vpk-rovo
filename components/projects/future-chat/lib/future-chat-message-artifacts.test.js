@@ -25,6 +25,7 @@ function createDocument({
 	id,
 	title,
 	content,
+	previewSummary,
 	updatedAt,
 }) {
 	return {
@@ -32,6 +33,7 @@ function createDocument({
 		threadId: "thread-1",
 		title,
 		kind: "text",
+		previewSummary,
 		sourceMessageId: null,
 		createdAt: updatedAt,
 		updatedAt,
@@ -185,6 +187,70 @@ test("keeps the open artifact message as an inline preview", () => {
 
 	assert.equal(display?.displayMode, "preview");
 	assert.equal(display?.previewContent, "# Orange\n\nSaved content");
+});
+
+test("exposes previewSummary for react app artifacts", () => {
+	const display = resolveFutureChatMessageArtifactDisplay({
+		documents: [
+			{
+				...createDocument({
+					id: "doc-dashboard",
+					title: "Analytics Dashboard",
+					content: "/dashboard-analytics",
+					previewSummary: "Monitor KPIs, trends, and campaign performance metrics",
+					updatedAt: "2026-03-09T10:45:00.000Z",
+				}),
+				kind: "react",
+			},
+		],
+		message: createAssistantMessage("assistant-dashboard", {
+			action: "create",
+			documentId: "doc-dashboard",
+			kind: "react",
+			title: "Analytics Dashboard",
+		}),
+		pendingArtifactResult: null,
+		streamingArtifact: null,
+		streamingArtifactMessageId: null,
+	});
+
+	assert.equal(display?.previewContent, "/dashboard-analytics");
+	assert.equal(
+		display?.previewSummary,
+		"Monitor KPIs, trends, and campaign performance metrics",
+	);
+});
+
+test("falls back to the latest plan shortDescription for legacy react artifacts", () => {
+	const display = resolveFutureChatMessageArtifactDisplay({
+		documents: [
+			{
+				...createDocument({
+					id: "doc-legacy-dashboard",
+					title: "Dashboard-analytics",
+					content: "/dashboard-analytics",
+					updatedAt: "2026-03-09T10:46:00.000Z",
+				}),
+				kind: "react",
+			},
+		],
+		fallbackPreviewSummary: "Monitor KPIs, trends, and campaign performance metrics",
+		message: createAssistantMessage("assistant-legacy-dashboard", {
+			action: "create",
+			documentId: "doc-legacy-dashboard",
+			kind: "react",
+			title: "Dashboard-analytics",
+		}),
+		pendingArtifactResult: null,
+		streamingArtifact: null,
+		streamingArtifactMessageId: null,
+	});
+
+	assert.equal(display?.previewContent, "/dashboard-analytics");
+	assert.equal(
+		display?.previewSummary,
+		"Monitor KPIs, trends, and campaign performance metrics",
+	);
 });
 
 test("falls back to the last assistant message when the active document has no source message", () => {

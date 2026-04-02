@@ -8,7 +8,7 @@ import {
 	type RovoDataParts,
 	type RovoUIMessage,
 } from "@/lib/rovo-ui-messages";
-import { sortByUpdatedAtDesc } from "@/lib/utils";
+import { sortByUpdatedAtDesc, toNonEmptyString } from "@/lib/utils";
 
 export interface FutureChatPendingArtifactResult {
 	action: RovoDataParts["artifact-result"]["action"] | null;
@@ -25,6 +25,7 @@ export interface FutureChatMessageArtifactDisplay {
 	isStreaming: boolean;
 	kind: FutureChatDocumentKind;
 	previewContent: string;
+	previewSummary: string | null;
 	title: string;
 }
 
@@ -85,12 +86,14 @@ function sortDocumentsNewestFirst(
 
 export function resolveFutureChatMessageArtifactDisplay({
 	documents,
+	fallbackPreviewSummary,
 	message,
 	pendingArtifactResult,
 	streamingArtifact,
 	streamingArtifactMessageId,
 }: Readonly<{
 	documents: ReadonlyArray<FutureChatDocument>;
+	fallbackPreviewSummary?: string | null;
 	message: Pick<RovoUIMessage, "id" | "parts">;
 	pendingArtifactResult: FutureChatPendingArtifactResult | null;
 	streamingArtifact: FutureChatStreamingArtifact | null;
@@ -115,6 +118,13 @@ export function resolveFutureChatMessageArtifactDisplay({
 		streamingArtifact?.documentId === documentId;
 	const isStreaming =
 		usesStreamingPreview && streamingArtifact?.status === "streaming";
+	const resolvedKind =
+		(usesStreamingPreview ? streamingArtifact?.kind : null) ??
+		messageArtifact?.kind ??
+		pendingArtifact?.kind ??
+		document?.kind ??
+		"text";
+	const resolvedFallbackPreviewSummary = toNonEmptyString(fallbackPreviewSummary);
 
 	return {
 		action: messageArtifact?.action ?? pendingArtifact?.action ?? null,
@@ -122,15 +132,13 @@ export function resolveFutureChatMessageArtifactDisplay({
 		document,
 		documentId,
 		isStreaming,
-		kind:
-			(usesStreamingPreview ? streamingArtifact?.kind : null) ??
-			messageArtifact?.kind ??
-			pendingArtifact?.kind ??
-			document?.kind ??
-			"text",
+		kind: resolvedKind,
 		previewContent: usesStreamingPreview
 			? streamingArtifact?.content ?? ""
 			: getLatestDocumentContent(document),
+		previewSummary:
+			document?.previewSummary
+			?? (resolvedKind === "react" ? resolvedFallbackPreviewSummary : null),
 		title:
 			(usesStreamingPreview ? streamingArtifact?.title : null) ??
 			messageArtifact?.title ??
@@ -143,10 +151,12 @@ export function resolveFutureChatMessageArtifactDisplay({
 export function resolveFutureChatOrphanArtifactDisplay({
 	activeDocumentId,
 	documents,
+	fallbackPreviewSummary,
 	messages,
 }: Readonly<{
 	activeDocumentId: string | null;
 	documents: ReadonlyArray<FutureChatDocument>;
+	fallbackPreviewSummary?: string | null;
 	messages: ReadonlyArray<Pick<RovoUIMessage, "id" | "metadata" | "parts" | "role">>;
 }>): FutureChatOrphanArtifactDisplay | null {
 	const anchoredDocumentIds = new Set(
@@ -201,6 +211,8 @@ export function resolveFutureChatOrphanArtifactDisplay({
 		return null;
 	}
 
+	const resolvedFallbackPreviewSummary = toNonEmptyString(fallbackPreviewSummary);
+
 	return {
 		action: null,
 		anchorMessageId: anchorMessage.id,
@@ -210,6 +222,9 @@ export function resolveFutureChatOrphanArtifactDisplay({
 		isStreaming: false,
 		kind: fallbackDocument.kind,
 		previewContent: getLatestDocumentContent(fallbackDocument),
+		previewSummary:
+			fallbackDocument.previewSummary
+			?? (fallbackDocument.kind === "react" ? resolvedFallbackPreviewSummary : null),
 		title: fallbackDocument.title,
 	};
 }

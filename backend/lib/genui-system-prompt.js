@@ -11,7 +11,28 @@
  */
 
 const generatedPrompt = require("./generated-catalog-prompt.json");
-const iconCatalog = require("./generated-icon-catalog.json");
+const generatedCardIconHints = [
+	"angle-brackets",
+	"app",
+	"audio",
+	"board",
+	"calendar",
+	"chart-bar",
+	"chart-bubble",
+	"chart-matrix",
+	"chart-pie",
+	"chart-trend",
+	"comment",
+	"feed",
+	"file",
+	"image",
+	"page",
+	"table",
+	"text",
+	"translate",
+	"video",
+	"work-item",
+];
 
 /**
  * VPK-specific rules appended after the catalog-generated rules.
@@ -57,7 +78,7 @@ const VPK_CUSTOM_RULES = [
 	"Output exactly one ```spec block per response. Keep the ```spec block machine-parseable: no markdown bullets, no prose, no comments inside the fence.",
 
 	// Icon hints
-	`You may include an "iconHint" field in the widget payload (alongside the spec) to choose the card header icon. Valid values: ${iconCatalog.names.join(", ")}. If omitted, the icon is inferred from content.`,
+	`You may include an "iconHint" field in the widget payload (alongside the spec) to choose the card header icon. Valid values: ${generatedCardIconHints.join(", ")}. If omitted, the icon is inferred from content.`,
 ];
 
 /**

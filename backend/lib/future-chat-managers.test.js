@@ -177,10 +177,15 @@ test("future chat document manager preserves react app artifacts", async () => {
 		title: "Analytics",
 		kind: "react",
 		content: "/analytics",
+		previewSummary: "Monitor KPIs, trends, and campaign performance metrics",
 		sourceMessageId: "assistant-1",
 	});
 
 	assert.equal(createdDocument.kind, "react");
+	assert.equal(
+		createdDocument.previewSummary,
+		"Monitor KPIs, trends, and campaign performance metrics",
+	);
 
 	const updatedDocument = await manager.appendDocumentVersion(createdDocument.id, {
 		changeLabel: "Updated route",
@@ -190,6 +195,10 @@ test("future chat document manager preserves react app artifacts", async () => {
 
 	assert.equal(updatedDocument?.kind, "react");
 	assert.equal(updatedDocument?.versions.at(-1)?.content, "/analytics-v2");
+	assert.equal(
+		updatedDocument?.previewSummary,
+		"Monitor KPIs, trends, and campaign performance metrics",
+	);
 
 	const shellDocument = await manager.createDocumentShell({
 		documentId: "doc-react-shell",
@@ -207,6 +216,7 @@ test("future chat document manager preserves react app artifacts", async () => {
 
 	assert.equal(finalizedShell?.kind, "react");
 	assert.equal(finalizedShell?.versions[0].content, "/dashboard");
+	assert.equal(finalizedShell?.previewSummary, undefined);
 });
 
 test("future chat document manager backfills legacy versions without title snapshots", async () => {

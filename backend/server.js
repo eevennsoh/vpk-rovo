@@ -194,6 +194,10 @@ const {
 	generateSuggestedQuestionsViaAIGateway,
 } = require("./lib/suggested-questions");
 const {
+	generatePlanMetadata,
+	getLatestPlanWidgetMetadata,
+} = require("./lib/plan-metadata");
+const {
 	createListeningPidReader,
 	restartRovoDevPort,
 	DEFAULT_RECOVERY_TIMEOUT_MS: DEFAULT_ROVODEV_PORT_RECOVERY_TIMEOUT_MS,
@@ -264,7 +268,10 @@ const {
 } = require("./lib/app-route-resolver");
 const { resolveChatSdkThreadId } = require("./lib/chat-sdk-thread-id");
 const { chromiumPreviewManager } = require("./lib/chromium-preview");
-const { browserWorkspaceManager } = require("./lib/browser-workspace-manager");
+const {
+	browserWorkspaceManager,
+	isBrowserWorkspaceNotFoundError,
+} = require("./lib/browser-workspace-manager");
 const {
 	classifyPromptIntent,
 	inferPromptIntent,
@@ -5144,6 +5151,30 @@ app.post("/api/future-chat/suggestions", async (req, res) => {
 	}
 });
 
+async function generatePlanMetadataViaGateway({
+	title,
+	description,
+	tasks,
+}) {
+	return generatePlanMetadata({
+		title,
+		description,
+		tasks,
+		generateText: (options) =>
+			generateTextViaGateway({
+				...options,
+				backendPreference: "ai-gateway",
+			}),
+	});
+}
+
+function buildArtifactPreviewSummary(title) {
+	const normalizedTitle = getNonEmptyString(title) ?? "App";
+	return normalizedTitle === "App"
+		? "Generated app preview ready to open"
+		: `${normalizedTitle} preview ready to open`;
+}
+
 app.post("/api/chat-title", async (req, res) => {
 	try {
 		const { message } = req.body || {};
@@ -5185,61 +5216,14 @@ app.post("/api/plan-title", async (req, res) => {
 			return res.status(400).json({ error: "A title is required" });
 		}
 
-		const taskLabels = Array.isArray(tasks)
-			? tasks.filter((t) => typeof t === "string" && t.trim()).map((t) => t.trim())
-			: [];
-
-		const taskContext = taskLabels.length > 0
-			? `\nTasks (${taskLabels.length}): ${taskLabels.join("; ")}`
-			: "";
-
-		const descriptionContext = typeof description === "string" && description.trim()
-			? `\nCurrent description: ${description.trim()}`
-			: "";
-
-		const enrichPrompt = `Name the app or product this plan will build, and write a terse plan-card header description.
-
-Current title: ${title.trim()}${descriptionContext}${taskContext}
-
-Rules:
-- Title: 2-5 words, name the final app/product/feature being built (e.g. "Time Tracking Dashboard", "Sprint Board", "Team Chat App"), no code/file references, no verbs like "Create" or "Build"
-- Short description: 4-10 words, terse and user-facing, suitable for a narrow card header
-- Do not mention file paths, routes, implementation steps, or technical details
-- Do not copy the full summary verbatim
-- Respond with JSON only`;
-
-		const text = await generateTextViaGateway({
-			system: 'You name apps and products based on technical plans. Identify what is being built, give it a clear product name, and write a terse header description. Respond with JSON only: {"title":"...","shortDescription":"..."}',
-			prompt: enrichPrompt,
-			maxOutputTokens: 120,
-			temperature: 0.4,
-			backendPreference: "ai-gateway",
+		const {
+			title: enrichedTitle,
+			shortDescription: enrichedShortDescription,
+		} = await generatePlanMetadataViaGateway({
+			title,
+			description,
+			tasks,
 		});
-
-		const trimmed = text.trim();
-		let enrichedTitle = title.trim();
-		let enrichedShortDescription = "";
-
-		try {
-			const jsonMatch = trimmed.match(/\{[\s\S]*\}/);
-			if (jsonMatch) {
-				const parsed = JSON.parse(jsonMatch[0]);
-				if (typeof parsed.title === "string" && parsed.title.trim()) {
-					enrichedTitle = parsed.title.trim().replace(/^["']|["']$/g, "").replace(/\.+$/, "").trim();
-				}
-				const rawShortDescription =
-					(typeof parsed.shortDescription === "string" && parsed.shortDescription.trim())
-						? parsed.shortDescription
-						: (typeof parsed.description === "string" && parsed.description.trim())
-							? parsed.description
-							: null;
-				if (rawShortDescription) {
-					enrichedShortDescription = rawShortDescription.trim().replace(/^["']|["']$/g, "").replace(/\.+$/, "").trim();
-				}
-			}
-		} catch {
-			// If JSON parsing fails, return the original values
-		}
 
 		if (!enrichedTitle) {
 			return res.status(500).json({ error: "Empty title generated" });
@@ -11242,9 +11226,10 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 					pendingQuestionCardLoadingWidgetId = null;
 				}
 
+				let syncedThread = null;
 				if (threadId && typeof resolvedRovoDevPort === "number" && resolvedRovoDevPort > 0) {
 					try {
-						await syncFutureChatThreadSessionFromCurrentPort(
+						syncedThread = await syncFutureChatThreadSessionFromCurrentPort(
 							threadId,
 							resolvedRovoDevPort,
 							{ sessionMode },
@@ -11310,14 +11295,43 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 											: appRoute
 												.split("/")
 												.filter(Boolean)
-												.map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+												.flatMap((s) => s.split("-"))
+												.map((w) => w.charAt(0).toUpperCase() + w.slice(1))
 												.join(" ");
+									const currentThread =
+										syncedThread ?? await futureChatThreadManager.getThread(threadId);
+									const latestPlanWidget =
+										currentThread
+											? getLatestPlanWidgetMetadata(currentThread.messages)
+											: null;
+									let artifactPreviewSummary =
+										latestPlanWidget?.shortDescription ?? "";
+
+									if (!artifactPreviewSummary) {
+										try {
+											const enrichedPlanMetadata =
+												await generatePlanMetadataViaGateway({
+													title: latestPlanWidget?.title ?? artifactTitle,
+													description: latestPlanWidget?.description ?? undefined,
+													tasks: latestPlanWidget?.tasks ?? [],
+												});
+											artifactPreviewSummary =
+												enrichedPlanMetadata.shortDescription || "";
+										} catch (metadataError) {
+											console.warn("[PLAN-EXECUTION] Failed to generate artifact preview summary:", metadataError);
+										}
+									}
+
+									if (!artifactPreviewSummary) {
+										artifactPreviewSummary = buildArtifactPreviewSummary(artifactTitle);
+									}
 
 									const artifactDocument = await futureChatDocumentManager.createDocument({
 										threadId,
 										title: artifactTitle,
 										kind: "react",
 										content: appRoute,
+										previewSummary: artifactPreviewSummary,
 										changeLabel: "Plan execution complete",
 										sourceMessageId: null,
 									});
@@ -11987,8 +12001,9 @@ function sendBrowserWorkspaceError(response, error, fallbackMessage) {
 			? error.message
 			: fallbackMessage;
 	const statusCode =
-		typeof message === "string" &&
-		message.startsWith("Browser workspace not found:")
+		isBrowserWorkspaceNotFoundError(error) ||
+		(typeof message === "string" &&
+			message.startsWith("Browser workspace not found:"))
 			? 404
 			: 500;
 
@@ -11997,13 +12012,26 @@ function sendBrowserWorkspaceError(response, error, fallbackMessage) {
 	});
 }
 
+function logBrowserWorkspaceError(label, error) {
+	if (isBrowserWorkspaceNotFoundError(error)) {
+		const message =
+			error instanceof Error && error.message
+				? error.message
+				: "Browser workspace not found.";
+		console.warn(`${label}: ${message}`);
+		return;
+	}
+
+	console.error(`${label}:`, error);
+}
+
 app.get("/api/browser-workspaces", async (_req, res) => {
 	try {
 		return res.json({
 			workspaces: browserWorkspaceManager.listWorkspaces(),
 		});
 	} catch (error) {
-		console.error("[BROWSER-WORKSPACE] List error:", error);
+		logBrowserWorkspaceError("[BROWSER-WORKSPACE] List error", error);
 		return sendBrowserWorkspaceError(
 			res,
 			error,
@@ -12020,7 +12048,7 @@ app.post("/api/browser-workspaces", async (req, res) => {
 		});
 		return res.status(201).json(state);
 	} catch (error) {
-		console.error("[BROWSER-WORKSPACE] Create error:", error);
+		logBrowserWorkspaceError("[BROWSER-WORKSPACE] Create error", error);
 		return sendBrowserWorkspaceError(
 			res,
 			error,
@@ -12041,7 +12069,7 @@ app.get("/api/browser-workspaces/:workspaceId", async (req, res) => {
 		const state = await browserWorkspaceManager.getWorkspaceState(workspaceId);
 		return res.json(state);
 	} catch (error) {
-		console.error("[BROWSER-WORKSPACE] State error:", error);
+		logBrowserWorkspaceError("[BROWSER-WORKSPACE] State error", error);
 		return sendBrowserWorkspaceError(
 			res,
 			error,
@@ -12062,7 +12090,7 @@ app.delete("/api/browser-workspaces/:workspaceId", async (req, res) => {
 		const result = await browserWorkspaceManager.deleteWorkspace(workspaceId);
 		return res.json(result);
 	} catch (error) {
-		console.error("[BROWSER-WORKSPACE] Delete error:", error);
+		logBrowserWorkspaceError("[BROWSER-WORKSPACE] Delete error", error);
 		return sendBrowserWorkspaceError(
 			res,
 			error,
@@ -12083,7 +12111,7 @@ app.get("/api/browser-workspaces/:workspaceId/tabs", async (req, res) => {
 		const tabs = await browserWorkspaceManager.getWorkspaceTabs(workspaceId);
 		return res.json(tabs);
 	} catch (error) {
-		console.error("[BROWSER-WORKSPACE] Tab list error:", error);
+		logBrowserWorkspaceError("[BROWSER-WORKSPACE] Tab list error", error);
 		return sendBrowserWorkspaceError(
 			res,
 			error,
@@ -12108,7 +12136,7 @@ app.post("/api/browser-workspaces/:workspaceId/tabs", async (req, res) => {
 		);
 		return res.json(state);
 	} catch (error) {
-		console.error("[BROWSER-WORKSPACE] Tab create error:", error);
+		logBrowserWorkspaceError("[BROWSER-WORKSPACE] Tab create error", error);
 		return sendBrowserWorkspaceError(
 			res,
 			error,
@@ -12141,7 +12169,7 @@ app.post(
 			);
 			return res.json(state);
 		} catch (error) {
-			console.error("[BROWSER-WORKSPACE] Tab activate error:", error);
+			logBrowserWorkspaceError("[BROWSER-WORKSPACE] Tab activate error", error);
 			return sendBrowserWorkspaceError(
 				res,
 				error,
@@ -12173,7 +12201,7 @@ app.delete("/api/browser-workspaces/:workspaceId/tabs/:tabIndex", async (req, re
 		);
 		return res.json(state);
 	} catch (error) {
-		console.error("[BROWSER-WORKSPACE] Tab close error:", error);
+		logBrowserWorkspaceError("[BROWSER-WORKSPACE] Tab close error", error);
 		return sendBrowserWorkspaceError(
 			res,
 			error,
@@ -12207,7 +12235,10 @@ app.post("/api/browser-workspaces/:workspaceId/preview-session", async (req, res
 		);
 		return res.status(201).json(session);
 	} catch (error) {
-		console.error("[BROWSER-WORKSPACE] Preview session create error:", error);
+		logBrowserWorkspaceError(
+			"[BROWSER-WORKSPACE] Preview session create error",
+			error,
+		);
 		return sendBrowserWorkspaceError(
 			res,
 			error,
@@ -12240,7 +12271,10 @@ app.delete(
 			);
 			return res.json(result);
 		} catch (error) {
-			console.error("[BROWSER-WORKSPACE] Preview session delete error:", error);
+			logBrowserWorkspaceError(
+				"[BROWSER-WORKSPACE] Preview session delete error",
+				error,
+			);
 			return sendBrowserWorkspaceError(
 				res,
 				error,
@@ -12310,7 +12344,7 @@ app.get("/api/browser-workspaces/:workspaceId/:action", async (req, res) => {
 			error: "Unsupported browser workspace action.",
 		});
 	} catch (error) {
-		console.error("[BROWSER-WORKSPACE] Read action error:", error);
+		logBrowserWorkspaceError("[BROWSER-WORKSPACE] Read action error", error);
 		return sendBrowserWorkspaceError(
 			res,
 			error,
@@ -12522,7 +12556,7 @@ app.post("/api/browser-workspaces/:workspaceId/:action", async (req, res) => {
 				});
 		}
 	} catch (error) {
-		console.error("[BROWSER-WORKSPACE] Mutation action error:", error);
+		logBrowserWorkspaceError("[BROWSER-WORKSPACE] Mutation action error", error);
 		return sendBrowserWorkspaceError(
 			res,
 			error,

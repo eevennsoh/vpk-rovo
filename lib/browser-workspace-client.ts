@@ -82,6 +82,16 @@ export type BrowserWorkspaceMutationAction =
 	| "press"
 	| "type";
 
+export class BrowserWorkspaceRequestError extends Error {
+	status: number
+
+	constructor(message: string, status: number) {
+		super(message)
+		this.name = "BrowserWorkspaceRequestError"
+		this.status = status
+	}
+}
+
 async function readJsonResponse<T>(response: Response): Promise<T> {
 	if (!response.ok) {
 		const rawText = await response.text();
@@ -114,7 +124,7 @@ async function readJsonResponse<T>(response: Response): Promise<T> {
 			}
 		}
 
-		throw new Error(message)
+		throw new BrowserWorkspaceRequestError(message, response.status)
 	}
 
 	return (await response.json()) as T;

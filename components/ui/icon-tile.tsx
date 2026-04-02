@@ -89,10 +89,12 @@ function IconTile({
 	className,
 	...props
 }: Readonly<IconTileProps>) {
+	const isDecorative = props["aria-hidden"] === true;
+
 	return (
 		<div
 			data-slot="icon-tile"
-			aria-label={label}
+			aria-label={isDecorative ? undefined : label}
 			className={cn(
 				iconTileVariants({ size, shape }),
 				ICON_TILE_VARIANTS[variant],

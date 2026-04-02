@@ -23,6 +23,7 @@ import {
 	ToolInput,
 	ToolOutput,
 } from "@/components/ui-ai/tool"
+import { resolvePlanVisualIdentity } from "@/components/projects/shared/lib/plan-identity"
 import {
 	Conversation,
 	ConversationContent,
@@ -106,7 +107,7 @@ export default function AIWorkflowBlock() {
 									{msg.plan && (
 										<Plan defaultOpen className="mb-4">
 											<PlanHeader
-												leading={<PlanAvatar emoji="✌️" />}
+												leading={<PlanAvatar visualIdentity={resolvePlanVisualIdentity(msg.plan.title)} />}
 												title={<PlanTitle>{msg.plan.title}</PlanTitle>}
 												description={<PlanDescription>{msg.plan.description}</PlanDescription>}
 											/>

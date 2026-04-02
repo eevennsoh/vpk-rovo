@@ -1,4 +1,5 @@
 import type { FutureChatQueuedAction } from "@/lib/future-chat-types";
+import { toNonEmptyString } from "@/lib/utils";
 
 export interface FutureChatTodoQueueItem {
 	id: string;
@@ -13,15 +14,6 @@ export interface FutureChatTodoQueuePayload {
 	planTitle?: string;
 	planKey?: string;
 	items: FutureChatTodoQueueItem[];
-}
-
-function toNonEmptyString(value: unknown): string | null {
-	if (typeof value !== "string") {
-		return null;
-	}
-
-	const trimmedValue = value.trim();
-	return trimmedValue.length > 0 ? trimmedValue : null;
 }
 
 export function normalizeFutureChatTodoQueuePayload(
@@ -96,5 +88,6 @@ export function buildFutureChatQueuedPromptsFromTodoQueue(
 		createdAt: Date.now(),
 		kind: "prompt",
 		files: [],
+		mode: "default",
 	}));
 }

@@ -41,7 +41,6 @@ import {
 	type ParsedPlanWidgetPayload,
 } from "@/components/projects/shared/lib/plan-widget";
 import {
-	derivePlanEmojiFromTitle,
 	resolvePlanDisplayTitle,
 } from "@/components/projects/shared/lib/plan-identity";
 
@@ -58,7 +57,6 @@ interface DisplayPlanTask {
 interface DisplayPlan {
 	source: "run" | "chat-draft";
 	resolvedTitle: string;
-	resolvedEmoji: string;
 	description?: string;
 	agents: string[];
 	tasks: DisplayPlanTask[];
@@ -725,11 +723,9 @@ export default function MakeArtifactBlock() {
 				selectedRun.plan.title,
 				selectedRun.plan.tasks,
 			);
-			const resolvedEmoji = selectedRun.plan.emoji ?? derivePlanEmojiFromTitle(resolvedTitle);
 			return {
 				source: "run",
 				resolvedTitle,
-				resolvedEmoji,
 				description: selectedRun.plan.description,
 				agents: selectedRun.plan.agents,
 				tasks: selectedRun.plan.tasks.map((task) => ({
@@ -743,11 +739,9 @@ export default function MakeArtifactBlock() {
 
 		if (fallbackPlan) {
 			const resolvedTitle = resolvePlanDisplayTitle(fallbackPlan.title, fallbackPlan.tasks);
-			const resolvedEmoji = fallbackPlan.emoji ?? derivePlanEmojiFromTitle(resolvedTitle);
 			return {
 				source: "chat-draft",
 				resolvedTitle,
-				resolvedEmoji,
 				description: fallbackPlan.description,
 				agents: fallbackPlan.agents,
 				tasks: fallbackPlan.tasks.map((task) => ({
@@ -767,7 +761,7 @@ export default function MakeArtifactBlock() {
 			return "Artifact output";
 		}
 
-		return `${displayPlan.resolvedEmoji} ${displayPlan.resolvedTitle}`;
+		return displayPlan.resolvedTitle;
 	}, [displayPlan]);
 
 	return (

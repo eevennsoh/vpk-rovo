@@ -7,6 +7,7 @@ export type FutureChatDocumentKind = "text" | "code" | "image" | "sheet" | "reac
 export type ArtifactMode = "preview" | "edit";
 export type VoteValue = "up" | "down";
 export type FutureChatRunStatus = "queued" | "streaming" | "background";
+export type FutureChatPromptMode = "default" | "plan";
 
 /**
  * Artifact panel state:
@@ -59,6 +60,7 @@ export interface FutureChatDocument {
 	threadId: string;
 	title: string;
 	kind: FutureChatDocumentKind;
+	previewSummary?: string;
 	sourceMessageId: string | null;
 	createdAt: string;
 	updatedAt: string;
@@ -95,6 +97,8 @@ export interface FutureChatQueuedPromptAction
 	kind: "prompt";
 	files: ReadonlyArray<FileUIPart>;
 	contextDescription?: string;
+	/** Snapshotted composer mode for this specific prompt. */
+	mode: FutureChatPromptMode;
 	messageMetadata?: RovoMessageMetadata;
 }
 

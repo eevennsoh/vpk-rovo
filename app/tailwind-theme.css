@@ -495,6 +495,44 @@
 	}
 }
 
+@keyframes progressRovoIndeterminate {
+	0% {
+		left: -60%;
+	}
+	100% {
+		left: 110%;
+	}
+}
+
+@keyframes rovoBandPulse {
+	0%,
+	100% {
+		flex: 1;
+	}
+	50% {
+		flex: 3;
+	}
+}
+
+@keyframes rovoBandPulseScale {
+	0%,
+	100% {
+		transform: scaleX(1);
+	}
+	50% {
+		transform: scaleX(1.8);
+	}
+}
+
+@keyframes rovoBandTraverse {
+	0% {
+		transform: translateX(-50%);
+	}
+	100% {
+		transform: translateX(0);
+	}
+}
+
 /* =====================================================================
    Motion Component Classes
    ===================================================================== */

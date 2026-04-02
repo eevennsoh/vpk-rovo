@@ -1,4 +1,5 @@
 import type { AgentExecutionUpdate } from "@/lib/rovo-ui-messages";
+import type { VisualIdentity } from "@/components/projects/shared/lib/visual-identity";
 import type { Spec } from "@json-render/react";
 
 export type AgentRunStatus = "running" | "completed" | "failed";
@@ -22,7 +23,8 @@ export interface AgentRunPlanTask {
 export interface AgentRunPlan {
 	title: string;
 	description?: string;
-	emoji?: string;
+	shortDescription?: string;
+	visualIdentity?: VisualIdentity;
 	agents: string[];
 	tasks: AgentRunPlanTask[];
 }

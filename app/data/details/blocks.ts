@@ -25,10 +25,9 @@ export const BLOCK_DETAILS: Record<string, ComponentDetail> = {
 				description: "Title displayed in the progress header.",
 			},
 			{
-				name: "planEmoji",
-				type: "string",
-				default: '"🔥"',
-				description: "Emoji icon shown in the avatar circle.",
+				name: "planVisualIdentity",
+				type: '{ iconName: string; tileVariant: "gray" | "blue" | "teal" | "green" | "lime" | "yellow" | "orange" | "red" | "magenta" | "purple" }',
+				description: "Icon tile identity shown in the progress header.",
 			},
 			{
 				name: "taskStatusGroups",
@@ -97,10 +96,9 @@ export const BLOCK_DETAILS: Record<string, ComponentDetail> = {
 				description: "Title displayed in the progress header.",
 			},
 			{
-				name: "planEmoji",
-				type: "string",
-				default: '"🔥"',
-				description: "Emoji icon shown in the avatar circle.",
+				name: "planVisualIdentity",
+				type: '{ iconName: string; tileVariant: "gray" | "blue" | "teal" | "green" | "lime" | "yellow" | "orange" | "red" | "magenta" | "purple" }',
+				description: "Icon tile identity shown in the progress header.",
 			},
 			{
 				name: "taskStatusGroups",

@@ -20,6 +20,21 @@ export function appendFutureChatQueuedActions(
 	};
 }
 
+export function prependFutureChatQueuedAction(
+	state: Readonly<FutureChatQueuedActionsByThreadId>,
+	threadId: string,
+	action: FutureChatQueuedAction,
+): FutureChatQueuedActionsByThreadId {
+	if (!threadId) {
+		return { ...state };
+	}
+
+	return {
+		...state,
+		[threadId]: [action, ...(state[threadId] ?? [])],
+	};
+}
+
 export function removeFutureChatQueuedAction(
 	state: Readonly<FutureChatQueuedActionsByThreadId>,
 	threadId: string,

@@ -557,7 +557,6 @@ export function FutureChatShell({
 		&& !shouldShowQuestionCard
 		&& !chat.isStreaming;
 
-	// Reset dismissed state on thread change
 	useEffect(() => {
 		setDismissedApprovalCardKey(null);
 		setIsSubmittingPlanApproval(false);
@@ -577,7 +576,6 @@ export function FutureChatShell({
 		},
 		[activePendingPlan, chat],
 	);
-
 	const handleDismissApprovalCard = useCallback(() => {
 		setDismissedApprovalCardKey(pendingPlanKey);
 	}, [pendingPlanKey]);
@@ -2023,8 +2021,8 @@ export function FutureChatShell({
 						<>
 							<ApprovalCard
 								key={pendingPlanKey ?? undefined}
-								onSelect={handlePlanApprovalSubmit}
 								onDismiss={handleDismissApprovalCard}
+								onSelect={handlePlanApprovalSubmit}
 								isSubmitting={isSubmittingPlanApproval}
 							/>
 							<QuestionCardShortcutsFooter escLabel="cancel" />
@@ -2103,6 +2101,7 @@ export function FutureChatShell({
 					className="absolute right-3 top-5 z-20 hidden md:block"
 					items={timelineItems}
 					onSelectItem={(messageId) => {
+						setScrollActiveTimelineId(messageId);
 						setScrollAnchorMessageId(messageId);
 						setScrollFollowMode("target");
 					}}

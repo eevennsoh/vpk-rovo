@@ -1,6 +1,7 @@
 "use client";
 
 import TaskProgress from "@/components/blocks/task-progress/page";
+import { resolvePlanVisualIdentity } from "@/components/projects/shared/lib/plan-identity";
 import type { ProgressStatusGroups } from "@/components/blocks/task-progress/data/mock-tasks";
 
 const TASKS_MIXED: ProgressStatusGroups = {
@@ -82,7 +83,7 @@ export default function TaskProgressDemo() {
 export function TaskProgressDemoRunning() {
 	return (
 		<div className="flex w-full items-center justify-center p-6">
-			<TaskProgress planTitle="Sprint Planning" planEmoji="🚀" taskStatusGroups={TASKS_MIXED} runStatus="running" agentCount={6} />
+			<TaskProgress planTitle="Sprint Planning" planVisualIdentity={resolvePlanVisualIdentity("Sprint Planning")} taskStatusGroups={TASKS_MIXED} runStatus="running" agentCount={6} />
 		</div>
 	);
 }
@@ -92,7 +93,7 @@ export function TaskProgressDemoCompleted() {
 		<div className="flex w-full items-center justify-center p-6">
 			<TaskProgress
 				planTitle="Code Review Sweep"
-				planEmoji="✅"
+				planVisualIdentity={resolvePlanVisualIdentity("Code Review Sweep")}
 				taskStatusGroups={TASKS_ALL_DONE}
 				runStatus="completed"
 				runCreatedAt="2025-01-15T10:00:00Z"
@@ -109,7 +110,7 @@ export function TaskProgressDemoFailed() {
 		<div className="flex w-full items-center justify-center p-6">
 			<TaskProgress
 				planTitle="Deploy Pipeline"
-				planEmoji="❌"
+				planVisualIdentity={resolvePlanVisualIdentity("Deploy Pipeline")}
 				taskStatusGroups={{
 					done: [{ id: "d1", label: "#1 Build artifacts", description: "Docker image pushed to registry" }],
 					inReview: [],
@@ -135,7 +136,7 @@ export function TaskProgressDemoFailed() {
 export function TaskProgressDemoCollapsed() {
 	return (
 		<div className="flex w-full items-center justify-center p-6">
-			<TaskProgress planTitle="Flexible Friday Plan" planEmoji="🔥" taskStatusGroups={TASKS_ALL_DONE} runStatus="completed" runCreatedAt="2025-01-15T10:00:00Z" runCompletedAt="2025-01-15T10:10:51Z" defaultCollapsed onDelete={() => {}} />
+			<TaskProgress planTitle="Flexible Friday Plan" planVisualIdentity={resolvePlanVisualIdentity("Flexible Friday Plan")} taskStatusGroups={TASKS_ALL_DONE} runStatus="completed" runCreatedAt="2025-01-15T10:00:00Z" runCompletedAt="2025-01-15T10:10:51Z" defaultCollapsed onDelete={() => {}} />
 		</div>
 	);
 }
@@ -143,7 +144,7 @@ export function TaskProgressDemoCollapsed() {
 export function TaskProgressDemoCollapsedRunning() {
 	return (
 		<div className="flex w-full items-center justify-center p-6">
-			<TaskProgress planTitle="Background Tasks" planEmoji="⏳" runStatus="running" agentCount={8} defaultCollapsed />
+			<TaskProgress planTitle="Background Tasks" planVisualIdentity={resolvePlanVisualIdentity("Background Tasks")} runStatus="running" agentCount={8} defaultCollapsed />
 		</div>
 	);
 }
@@ -151,7 +152,7 @@ export function TaskProgressDemoCollapsedRunning() {
 export function TaskProgressDemoWithAgents() {
 	return (
 		<div className="flex w-full items-center justify-center p-6">
-			<TaskProgress planTitle="Multi-Agent Sprint" planEmoji="🤖" taskStatusGroups={TASKS_WITH_AGENTS} runStatus="running" agentCount={4} />
+			<TaskProgress planTitle="Multi-Agent Sprint" planVisualIdentity={resolvePlanVisualIdentity("Multi-Agent Sprint")} taskStatusGroups={TASKS_WITH_AGENTS} runStatus="running" agentCount={4} />
 		</div>
 	);
 }
@@ -159,7 +160,7 @@ export function TaskProgressDemoWithAgents() {
 export function TaskProgressDemoEarlyProgress() {
 	return (
 		<div className="flex w-full items-center justify-center p-6">
-			<TaskProgress planTitle="New Feature Build" planEmoji="🏗️" taskStatusGroups={TASKS_EARLY} runStatus="running" agentCount={1} />
+			<TaskProgress planTitle="New Feature Build" planVisualIdentity={resolvePlanVisualIdentity("New Feature Build")} taskStatusGroups={TASKS_EARLY} runStatus="running" agentCount={1} />
 		</div>
 	);
 }
@@ -167,7 +168,7 @@ export function TaskProgressDemoEarlyProgress() {
 export function TaskProgressDemoMultipleRuns() {
 	return (
 		<div className="flex w-full items-center justify-center p-6">
-			<TaskProgress planTitle="Iterative Refinement" planEmoji="🔄" taskStatusGroups={TASKS_MIXED} runStatus="running" runCount={3} agentCount={5} />
+			<TaskProgress planTitle="Iterative Refinement" planVisualIdentity={resolvePlanVisualIdentity("Iterative Refinement")} taskStatusGroups={TASKS_MIXED} runStatus="running" runCount={3} agentCount={5} />
 		</div>
 	);
 }
@@ -175,10 +176,10 @@ export function TaskProgressDemoMultipleRuns() {
 export function TaskProgressDemoAllStates() {
 	return (
 		<div className="flex w-full flex-col items-center gap-6 p-6">
-			<TaskProgress planTitle="Running Plan" planEmoji="🚀" taskStatusGroups={TASKS_MIXED} runStatus="running" agentCount={6} />
+			<TaskProgress planTitle="Running Plan" planVisualIdentity={resolvePlanVisualIdentity("Running Plan")} taskStatusGroups={TASKS_MIXED} runStatus="running" agentCount={6} />
 			<TaskProgress
 				planTitle="Completed Plan"
-				planEmoji="✅"
+				planVisualIdentity={resolvePlanVisualIdentity("Completed Plan")}
 				taskStatusGroups={TASKS_ALL_DONE}
 				runStatus="completed"
 				runCreatedAt="2025-01-15T10:00:00Z"
@@ -188,7 +189,7 @@ export function TaskProgressDemoAllStates() {
 			/>
 			<TaskProgress
 				planTitle="Failed Plan"
-				planEmoji="❌"
+				planVisualIdentity={resolvePlanVisualIdentity("Failed Plan")}
 				taskStatusGroups={TASKS_EARLY}
 				runStatus="failed"
 				runCreatedAt="2025-01-15T10:00:00Z"

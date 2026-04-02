@@ -53,7 +53,7 @@ export default function ChatTimeline({
 		const container = scrollContainerRef.current;
 		if (!container) return;
 
-		function handleScroll() {
+		function detectActiveMessage() {
 			// Snap to first message at scroll top
 			if (container!.scrollTop <= 10) {
 				const firstId = userMessages[0]?.id ?? null;
@@ -85,8 +85,10 @@ export default function ChatTimeline({
 			setScrollActiveId((prev) => (prev === activeId ? prev : activeId));
 		}
 
-		container.addEventListener("scroll", handleScroll, { passive: true });
-		return () => container.removeEventListener("scroll", handleScroll);
+		detectActiveMessage();
+
+		container.addEventListener("scroll", detectActiveMessage, { passive: true });
+		return () => container.removeEventListener("scroll", detectActiveMessage);
 	}, [userMessages]);
 
 	useEffect(() => {
@@ -109,6 +111,7 @@ export default function ChatTimeline({
 
 		startTransition(() => {
 			setHighlightedMessageId(messageId);
+			setScrollActiveId(messageId);
 		});
 
 		if (!scrollContainer || !messageNode) {

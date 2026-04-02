@@ -1,3 +1,6 @@
+import type { VisualIdentity } from "@/components/projects/shared/lib/visual-identity";
+import { resolveVisualIdentityTileVariant } from "@/components/projects/shared/lib/visual-identity";
+
 interface PlanTaskLike {
 	label: string;
 }
@@ -6,6 +9,7 @@ const DEFAULT_FALLBACK_TITLE = "Untitled task run";
 const DEFAULT_EMOJI = "📋";
 const TITLE_MAX_WORDS = 6;
 const FALLBACK_EMOJI_POOL = ["📋", "🧭", "🛠️", "⚙️", "🧠", "🧩", "📌", "🗂️"];
+const FALLBACK_ICON_POOL = ["clipboard", "compass", "lab/wrench", "settings", "lightbulb", "app", "note", "board"];
 
 /** Collapse runs of whitespace to a single space and trim. */
 function collapseWhitespace(value: string): string {
@@ -31,6 +35,16 @@ const TITLE_EMOJI_RULES: Array<{ pattern: RegExp; emoji: string }> = [
 	{ pattern: /\b(docs?|document|write|content|copy)\b/i, emoji: "📝" },
 	{ pattern: /\b(data|metric|analytics?|dashboard|report)\b/i, emoji: "📊" },
 	{ pattern: /\b(test|qa|validate|verification|a11y|accessibility)\b/i, emoji: "✅" },
+];
+
+const TITLE_ICON_RULES: Array<{ pattern: RegExp; iconName: string }> = [
+	{ pattern: /\b(bug|fix|hotfix|incident|error|regression)\b/i, iconName: "bug" },
+	{ pattern: /\b(deploy|release|launch|ship|rollout)\b/i, iconName: "release" },
+	{ pattern: /\b(design|ui|ux|mockup|visual)\b/i, iconName: "paint-palette" },
+	{ pattern: /\b(research|discovery|investigate|analy[sz]e)\b/i, iconName: "search" },
+	{ pattern: /\b(docs?|document|write|content|copy)\b/i, iconName: "page" },
+	{ pattern: /\b(data|metric|analytics?|dashboard|report)\b/i, iconName: "dashboard" },
+	{ pattern: /\b(test|qa|validate|verification|a11y|accessibility)\b/i, iconName: "check-circle" },
 ];
 
 
@@ -203,6 +217,39 @@ export function derivePlanEmojiFromTitle(title: string): string {
 	return FALLBACK_EMOJI_POOL[hash % FALLBACK_EMOJI_POOL.length] ?? DEFAULT_EMOJI;
 }
 
+export function resolvePlanVisualIdentity(title: string): VisualIdentity {
+	const normalizedTitle = normalizePlanTitleCandidate(title);
+	if (!normalizedTitle) {
+		return {
+			iconName: FALLBACK_ICON_POOL[0] ?? "clipboard",
+			tileVariant: resolveVisualIdentityTileVariant(DEFAULT_FALLBACK_TITLE),
+		};
+	}
+
+	for (const rule of TITLE_ICON_RULES) {
+		if (rule.pattern.test(normalizedTitle)) {
+			return {
+				iconName: rule.iconName,
+				tileVariant: resolveVisualIdentityTileVariant(normalizedTitle),
+			};
+		}
+	}
+
+	let hash = 0;
+	for (let index = 0; index < normalizedTitle.length; index += 1) {
+		hash = (hash * 31 + normalizedTitle.charCodeAt(index)) >>> 0;
+	}
+
+	return {
+		iconName: FALLBACK_ICON_POOL[hash % FALLBACK_ICON_POOL.length] ?? "clipboard",
+		tileVariant: resolveVisualIdentityTileVariant(normalizedTitle),
+	};
+}
+
+export function formatPlanStepCount(stepCount: number): string {
+	return `${stepCount} step${stepCount === 1 ? "" : "s"}`;
+}
+
 /**
  * Clean up a raw plan description for display in the card header.
  * Strips markdown rules, code fences, and truncates with ellipsis.
@@ -211,7 +258,7 @@ export function sanitizePlanDescription(
 	raw: string | undefined,
 	taskCount: number
 ): string {
-	const prefix = `${taskCount} task${taskCount === 1 ? "" : "s"}`;
+	const prefix = formatPlanStepCount(taskCount);
 
 	if (!raw) {
 		return prefix;
@@ -233,9 +280,13 @@ export function sanitizePlanDescription(
 		.replace(/\s+/g, " ")
 		.trim();
 
-	if (!cleaned) {
+	const withoutLegacyPrefix = cleaned
+		.replace(/^\d+\s+(?:tasks|task|steps|step)\s*(?:•|:|-|—)?\s*/i, "")
+		.trim();
+
+	if (!withoutLegacyPrefix) {
 		return prefix;
 	}
 
-	return `${prefix} • ${cleaned}`;
+	return `${prefix} • ${withoutLegacyPrefix}`;
 }

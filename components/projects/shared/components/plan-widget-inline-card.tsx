@@ -1,10 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import ChevronRightIcon from "@atlaskit/icon/core/chevron-right";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
 	Plan,
 	PlanAvatar,
-	PlanChevronTrigger,
 	PlanContent,
 	PlanDescription,
 	PlanFooter,
@@ -13,12 +13,14 @@ import {
 	type PlanTask,
 } from "@/components/ui-ai/plan";
 import {
-	derivePlanEmojiFromTitle,
 	resolvePlanDisplayTitle,
+	resolvePlanVisualIdentity,
 	sanitizePlanDescription,
 } from "@/components/projects/shared/lib/plan-identity";
 import { runPlanBuildAndCollapse } from "@/components/projects/shared/lib/plan-widget-build-action";
 import { PlanTabContent } from "@/components/projects/shared/lib/plan-card-utils";
+import { VisualIdentityTile } from "@/components/projects/shared/components/visual-identity-tile";
+import type { VisualIdentity } from "@/components/projects/shared/lib/visual-identity";
 import { Button } from "@/components/ui/button";
 import { Shimmer } from "@/components/ui-ai/shimmer";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -27,32 +29,32 @@ import { token } from "@/lib/tokens";
 
 
 interface CollapsedPlanBubbleProps {
-	emoji: string;
+	visualIdentity: VisualIdentity;
 	onExpand: () => void;
 	title: string;
 }
 
 function CollapsedPlanBubble({
-	emoji,
+	visualIdentity,
 	onExpand,
 	title,
 }: Readonly<CollapsedPlanBubbleProps>) {
 	return (
 		<button
 			type="button"
+			aria-expanded={false}
 			onClick={onExpand}
-			className="flex w-full cursor-pointer items-center gap-3 rounded-xl border border-border bg-surface-raised px-4 py-3 text-left transition-colors hover:bg-surface-raised-hovered"
+			className="group flex w-full cursor-pointer items-center gap-3 rounded-xl border border-border bg-surface-raised px-4 py-3 text-left transition-colors hover:bg-surface-raised-hovered focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-3 outline-none"
 			style={{ boxShadow: token("elevation.shadow.raised") }}
 		>
-			<span className="text-base">{emoji}</span>
+			<VisualIdentityTile decorative label={title} visualIdentity={visualIdentity} />
 			<span className="min-w-0 flex-1 truncate text-sm font-semibold text-text">{title}</span>
-			<PlanChevronTrigger
-				isOpen={false}
-				onClick={(event) => {
-					event.stopPropagation();
-					onExpand();
-				}}
-			/>
+			<span
+				aria-hidden="true"
+				className="flex size-8 shrink-0 items-center justify-center rounded-full text-icon-subtle"
+			>
+				<ChevronRightIcon label="" size="small" />
+			</span>
 		</button>
 	);
 }
@@ -72,6 +74,7 @@ export interface PlanWidgetInlineCardProps {
 	onOpenPreview?: () => void;
 	isBuildDisabled?: boolean;
 	buildDisabledReason?: string;
+	shouldAutoCollapse?: boolean;
 }
 
 export function PlanWidgetInlineCard({
@@ -89,22 +92,35 @@ export function PlanWidgetInlineCard({
 	onOpenPreview,
 	isBuildDisabled = false,
 	buildDisabledReason,
+	shouldAutoCollapse = false,
 }: Readonly<PlanWidgetInlineCardProps>): React.ReactElement | null {
 	const [isOpen, setIsOpen] = useState(true);
 	const [internalCollapsed, setInternalCollapsed] = useState(false);
 	const [streamRevealCount, setStreamRevealCount] = useState(0);
 	const isCollapsed = controlledCollapsed ?? internalCollapsed;
+	const prevShouldAutoCollapseRef = useRef(false);
+
+	useEffect(() => {
+		const wasAutoCollapsed = prevShouldAutoCollapseRef.current;
+		prevShouldAutoCollapseRef.current = shouldAutoCollapse;
+		if (shouldAutoCollapse && !wasAutoCollapsed) {
+			const timerId = window.setTimeout(() => {
+				setInternalCollapsed(true);
+			}, 0);
+			return () => window.clearTimeout(timerId);
+		}
+	}, [shouldAutoCollapse]);
+
 	const visibleTasks = useMemo(
 		() => tasks.filter((task) => task.label.trim().length > 0),
 		[tasks],
 	);
 	const displayTitle = resolvePlanDisplayTitle(title, visibleTasks);
-	const taskCountPrefix = `${visibleTasks.length} task${visibleTasks.length === 1 ? "" : "s"}`;
-	const rawDescription =
-		shortDescription?.trim() || sanitizePlanDescription(description, visibleTasks.length);
-	const displayDescription =
-		rawDescription.startsWith(taskCountPrefix) ? rawDescription : `${taskCountPrefix} • ${rawDescription}`;
-	const displayEmoji = derivePlanEmojiFromTitle(displayTitle);
+	const displayDescription = sanitizePlanDescription(
+		shortDescription?.trim() || description,
+		visibleTasks.length,
+	);
+	const displayVisualIdentity = resolvePlanVisualIdentity(displayTitle);
 	const displayTitleNode = isMetadataPending ? (
 		<Shimmer
 			key={displayTitle}
@@ -164,7 +180,7 @@ export function PlanWidgetInlineCard({
 	if (isCollapsed) {
 		return (
 			<CollapsedPlanBubble
-				emoji={displayEmoji}
+				visualIdentity={displayVisualIdentity}
 				onExpand={() => setInternalCollapsed(false)}
 				title={displayTitle}
 			/>
@@ -180,7 +196,7 @@ export function PlanWidgetInlineCard({
 				isStreaming={isStreaming}
 			>
 				<PlanHeader
-					leading={<PlanAvatar emoji={displayEmoji} />}
+					leading={<PlanAvatar visualIdentity={displayVisualIdentity} />}
 					title={<PlanTitle className="truncate text-sm leading-5 font-semibold text-text">{displayTitleNode}</PlanTitle>}
 					description={<PlanDescription className="truncate text-xs leading-4 text-text-subtlest">{displayDescriptionNode}</PlanDescription>}
 				/>

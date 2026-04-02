@@ -121,8 +121,9 @@ function toExecutionPlan(run: AgentRun | null): ParsedPlanWidgetPayload | null {
 	return {
 		title: run.plan.title,
 		description: run.plan.description,
+		shortDescription: run.plan.shortDescription,
 		markdown: run.plan.description ?? "",
-		emoji: run.plan.emoji,
+		visualIdentity: run.plan.visualIdentity,
 		tasks: run.plan.tasks,
 		agents: run.plan.agents,
 	};

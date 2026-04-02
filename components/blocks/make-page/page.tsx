@@ -21,6 +21,7 @@ import {
 import { ThemeToggle } from "@/components/utils/theme-wrapper";
 import { MakeSidebarFooter } from "@/components/blocks/make-artifact/components/sidebar-footer";
 import AgentsProgress from "@/components/blocks/agent-progress/page";
+import { resolvePlanVisualIdentity } from "@/components/projects/shared/lib/plan-identity";
 import MakeGalleryContent from "./components/make-gallery-content";
 import SearchIcon from "@atlaskit/icon/core/search";
 import SidebarCollapseIcon from "@atlaskit/icon/core/sidebar-collapse";
@@ -107,7 +108,7 @@ function MakePageSidebar({ isOverlay, isHoverReveal, onPinSidebar, ...props }: R
 							runStatus="completed"
 							defaultCollapsed
 							planTitle="Flexible Friday Plan"
-							planEmoji="✌️"
+							planVisualIdentity={resolvePlanVisualIdentity("Flexible Friday Plan")}
 							runCreatedAt="2026-02-17T15:18:00.000Z"
 							runCompletedAt="2026-02-17T15:24:00.000Z"
 						/>

@@ -1,8 +1,10 @@
 import { API_ENDPOINTS } from "@/lib/api-config";
 import { isMessageVisibleInTranscript, type RovoUIMessage } from "@/lib/rovo-ui-messages";
+import type { VisualIdentity } from "@/components/projects/shared/lib/visual-identity";
+import { normalizeVisualIdentity } from "@/components/projects/shared/lib/visual-identity";
 import { toNonEmptyString } from "@/lib/utils";
 import type { PlanApprovalState } from "@/components/projects/shared/lib/plan-approval";
-import { resolvePlanDisplayTitle } from "@/components/projects/shared/lib/plan-identity";
+import { resolvePlanDisplayTitle, resolvePlanVisualIdentity } from "@/components/projects/shared/lib/plan-identity";
 
 interface StringRecord {
 	[key: string]: unknown;
@@ -20,7 +22,7 @@ export interface ParsedPlanWidgetPayload {
 	description?: string;
 	shortDescription?: string;
 	markdown: string;
-	emoji?: string;
+	visualIdentity?: VisualIdentity;
 	tasks: ParsedPlanTask[];
 	agents: string[];
 	toolCallId?: string;
@@ -204,7 +206,9 @@ export function parsePlanWidgetPayload(
 		toNonEmptyString(record.plan) ??
 		description ??
 		"";
-	const emoji = toNonEmptyString(record.emoji) ?? undefined;
+	const visualIdentity =
+		normalizeVisualIdentity(record.visualIdentity) ??
+		resolvePlanVisualIdentity(title);
 
 	const agentSet = new Set<string>();
 	for (const task of tasks) {
@@ -224,7 +228,7 @@ export function parsePlanWidgetPayload(
 		description,
 		shortDescription,
 		markdown,
-		emoji,
+		visualIdentity,
 		tasks,
 		agents,
 		toolCallId: toNonEmptyString(record.tool_call_id) ?? undefined,
@@ -615,6 +619,7 @@ export function updatePlanWidgetMetadataInMessages(
 
 			if (normalizedTitle && normalizedTitle !== toNonEmptyString(payload.title)) {
 				nextPayload.title = normalizedTitle;
+				nextPayload.visualIdentity = resolvePlanVisualIdentity(normalizedTitle);
 				didUpdatePayload = true;
 			}
 

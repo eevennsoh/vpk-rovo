@@ -1,4 +1,5 @@
 import type { FutureChatActiveRun } from "@/lib/future-chat-types";
+import type { VisualIdentity } from "@/components/projects/shared/lib/visual-identity";
 import {
 	getAllDataParts,
 	getMessageArtifactResult,
@@ -7,8 +8,8 @@ import {
 	type RovoUIMessage,
 } from "@/lib/rovo-ui-messages";
 import {
-	derivePlanEmojiFromTitle,
 	extractTaskHeadingFromLabel,
+	resolvePlanVisualIdentity,
 } from "@/components/projects/shared/lib/plan-identity";
 import {
 	getPlanApprovalKeyFromPlanWidget,
@@ -44,7 +45,7 @@ export interface FutureChatPlanExecutionStatusGroups {
 export interface FutureChatPlanExecutionTrackerViewModel {
 	planKey: string;
 	planTitle: string;
-	planEmoji: string;
+	planVisualIdentity: VisualIdentity;
 	runStatus: "running" | "completed" | "failed";
 	runCreatedAt: string | null;
 	runCompletedAt: string | null;
@@ -449,9 +450,9 @@ export function resolveFutureChatPlanExecutionTracker(input: {
 	return {
 		planKey: approvalState.planKey,
 		planTitle: acceptedPlanWidget.title,
-		planEmoji:
-			acceptedPlanWidget.emoji ??
-			derivePlanEmojiFromTitle(acceptedPlanWidget.title),
+		planVisualIdentity:
+			acceptedPlanWidget.visualIdentity ??
+			resolvePlanVisualIdentity(acceptedPlanWidget.title),
 		runStatus,
 		runCreatedAt,
 		runCompletedAt,

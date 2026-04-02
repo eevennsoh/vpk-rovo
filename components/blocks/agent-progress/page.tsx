@@ -6,6 +6,9 @@ import { token } from "@/lib/tokens";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { VisualIdentityTile } from "@/components/projects/shared/components/visual-identity-tile";
+import { resolvePlanVisualIdentity } from "@/components/projects/shared/lib/plan-identity";
+import type { VisualIdentity } from "@/components/projects/shared/lib/visual-identity";
 import ChevronDownIcon from "@atlaskit/icon/core/chevron-down";
 import ChevronRightIcon from "@atlaskit/icon/core/chevron-right";
 import CrossCircleIcon from "@atlaskit/icon/core/cross-circle";
@@ -14,7 +17,6 @@ import RetryIcon from "@atlaskit/icon/core/retry";
 import VideoStopOverlayIcon from "@atlaskit/icon/core/video-stop-overlay";
 import DeleteIcon from "@atlaskit/icon/core/delete";
 import { MOCK_TASKS, type ProgressStatusGroups, type ProgressTask } from "./data/mock-tasks";
-import { Tile } from "@/components/ui/tile";
 import { AnimatedDots } from "@/components/ui-ai/animated-dots";
 import { formatElapsedTime, getElapsedSeconds, resolveInitialNowMs } from "@/components/blocks/shared/elapsed-time";
 
@@ -241,7 +243,7 @@ function isRetryableStatusGroupKey(
 
 interface AgentsProgressProps {
 	planTitle?: string;
-	planEmoji?: string;
+	planVisualIdentity?: VisualIdentity;
 	taskStatusGroups?: ProgressStatusGroups;
 	runStatus?: RunStatus;
 	runCreatedAt?: string | null;
@@ -263,7 +265,7 @@ interface AgentsProgressProps {
 
 export default function AgentsProgress({
 	planTitle = "Untitled task run",
-	planEmoji = "📋",
+	planVisualIdentity,
 	taskStatusGroups = MOCK_TASKS,
 	runStatus = "running",
 	runCreatedAt = new Date(Date.now() - 651_000).toISOString(),
@@ -290,6 +292,10 @@ export default function AgentsProgress({
 	const [retryingGroupKey, setRetryingGroupKey] =
 		useState<RetryableStatusGroupKey | null>(null);
 	const isInteractive = isCollapsible || typeof onCardClick === "function";
+	const resolvedPlanVisualIdentity = useMemo(
+		() => planVisualIdentity ?? resolvePlanVisualIdentity(planTitle),
+		[planTitle, planVisualIdentity]
+	);
 
 	const shouldReduceMotion = useReducedMotion();
 	const prevDoneCountRef = useRef(taskStatusGroups.done.length);
@@ -401,7 +407,7 @@ export default function AgentsProgress({
 			<div className="flex flex-col gap-3 px-4 py-3">
 				<div className="flex items-center justify-between gap-3">
 					<div className="flex min-w-0 flex-1 items-center gap-3">
-						<Tile label={planTitle} size="medium" variant="neutral" className="relative shrink-0">
+						<div className="relative shrink-0">
 							{showSummaryRainbow ? (
 								<span
 									aria-hidden="true"
@@ -415,8 +421,14 @@ export default function AgentsProgress({
 									}}
 								/>
 							) : null}
-							<span className="relative z-10">{planEmoji}</span>
-						</Tile>
+							<VisualIdentityTile
+								decorative
+								className="relative z-10"
+								label={planTitle}
+								size="medium"
+								visualIdentity={resolvedPlanVisualIdentity}
+							/>
+						</div>
 						<div className="flex min-w-0 flex-1 flex-col gap-1">
 							<div className="flex min-w-0 items-center gap-1">
 								<span style={{ font: token("font.heading.xsmall") }} className="truncate text-text">

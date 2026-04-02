@@ -124,7 +124,8 @@ import {
 	hasMatchingClarificationResponse,
 	parseQuestionCardPayload,
 } from "@/components/projects/shared/lib/question-card-widget";
-import { derivePlanEmojiFromTitle } from "@/components/projects/shared/lib/plan-identity";
+import { resolvePlanVisualIdentity } from "@/components/projects/shared/lib/plan-identity";
+import type { VisualIdentity } from "@/components/projects/shared/lib/visual-identity";
 import { cn } from "@/lib/utils";
 import { renderResolvedToolIcon, resolveToolIcon } from "@/components/projects/shared/lib/tool-icon-resolver";
 import type { FutureChatDocument } from "@/lib/future-chat-types";
@@ -347,6 +348,13 @@ function FutureChatScrollActiveTracker({
 				if (nodeRect.top <= threshold) {
 					activeId = node.getAttribute("data-message-id");
 				}
+			}
+
+			// When scrolled to top, always prefer the first (topmost) user message.
+			// Without this, when multiple messages are close together and both above
+			// the threshold, the last one wins and the first can never be highlighted.
+			if (userMessageNodes.length > 0 && container.scrollTop <= 10) {
+				activeId = userMessageNodes[0].getAttribute("data-message-id");
 			}
 
 			onActiveChangeRef.current(activeId);
@@ -1084,6 +1092,7 @@ function AssistantMessage({
 								onOpenPreview={onOpenPlanPreview ? () => onOpenPlanPreview(parsedPlanWidget, message.id) : undefined}
 								isBuildDisabled={planBuildDisabled}
 								buildDisabledReason={planBuildDisabledReason}
+								shouldAutoCollapse={planBuildDisabled === true}
 							/>
 						</div>
 					) : shouldShowWidget && widget && !shouldHideResolvedQuestionCard ? (
@@ -1177,7 +1186,7 @@ function FutureChatThinkingIndicator() {
 
 function StreamingArtifactMessage({
 	documentId,
-	emoji,
+	visualIdentity,
 	kind,
 	onOpenArtifactFromCard,
 	onRegisterArtifactCard,
@@ -1186,7 +1195,7 @@ function StreamingArtifactMessage({
 	versionNumber = 1,
 }: Readonly<{
 	documentId: string;
-	emoji?: string;
+	visualIdentity?: VisualIdentity;
 	kind: ArtifactKind;
 	onOpenArtifactFromCard: (documentId: string, element: HTMLElement) => void;
 	onRegisterArtifactCard: (documentId: string, element: HTMLElement) => void;
@@ -1205,7 +1214,7 @@ function StreamingArtifactMessage({
 					<ArtifactCard
 						action={null}
 						displayMode="preview"
-						emoji={emoji}
+						visualIdentity={visualIdentity}
 						isStreaming={true}
 						kind={kind}
 						onOpen={(element) => onOpenArtifactFromCard(documentId, element)}
@@ -1300,18 +1309,22 @@ export function FutureChatMessages({
 		() => getLatestPendingPlanWidget(messages),
 		[messages],
 	);
-	const latestPlanEmoji = useMemo(() => {
-		const latestPlan = getLatestPlanWidgetPayload(messages);
-		if (!latestPlan) return undefined;
-		return latestPlan.emoji ?? derivePlanEmojiFromTitle(latestPlan.title);
-	}, [messages]);
+	const latestPlanPayload = useMemo(
+		() => getLatestPlanWidgetPayload(messages),
+		[messages],
+	);
+	const latestPlanVisualIdentity = latestPlanPayload
+		? (latestPlanPayload.visualIdentity ?? resolvePlanVisualIdentity(latestPlanPayload.title))
+		: undefined;
+	const latestPlanShortDescription = latestPlanPayload?.shortDescription?.trim() || null;
 	const orphanArtifactDisplay = useMemo(() => {
 		return resolveFutureChatOrphanArtifactDisplay({
 			activeDocumentId,
 			documents,
+			fallbackPreviewSummary: latestPlanShortDescription,
 			messages: visibleMessages,
 		});
-	}, [activeDocumentId, documents, visibleMessages]);
+	}, [activeDocumentId, documents, latestPlanShortDescription, visibleMessages]);
 	const streamingAssistantMessageId = useMemo(() => {
 		return resolveFutureChatStreamingAssistantMessageId(visibleMessages);
 	}, [visibleMessages]);
@@ -1401,6 +1414,7 @@ export function FutureChatMessages({
 
 						const artifactDisplay = resolveFutureChatMessageArtifactDisplay({
 							documents,
+							fallbackPreviewSummary: latestPlanShortDescription,
 							message,
 							pendingArtifactResult,
 							streamingArtifact,
@@ -1463,7 +1477,7 @@ export function FutureChatMessages({
 													<ArtifactCard
 														action={resolvedArtifactDisplay.action}
 														displayMode={resolvedArtifactDisplay.displayMode}
-														emoji={latestPlanEmoji}
+														visualIdentity={latestPlanVisualIdentity}
 														isStreaming={resolvedArtifactDisplay.isStreaming}
 														kind={resolvedArtifactDisplay.kind}
 														onOpen={(element) =>
@@ -1473,6 +1487,7 @@ export function FutureChatMessages({
 															onRegisterArtifactCard(resolvedArtifactDisplay.documentId, element)
 														}
 														previewContent={resolvedArtifactDisplay.previewContent}
+														previewSummary={resolvedArtifactDisplay.previewSummary ?? undefined}
 														title={resolvedArtifactDisplay.title}
 														versionNumber={resolvedArtifactDisplay.document?.versions.length ?? 1}
 													/>
@@ -1504,7 +1519,7 @@ export function FutureChatMessages({
 				{shouldShowStreamingArtifactPreview && streamingArtifact?.documentId ? (
 					<StreamingArtifactMessage
 						documentId={streamingArtifact.documentId}
-						emoji={latestPlanEmoji}
+						visualIdentity={latestPlanVisualIdentity}
 						kind={streamingArtifact.kind}
 						onOpenArtifactFromCard={onOpenArtifactFromCard}
 						onRegisterArtifactCard={onRegisterArtifactCard}

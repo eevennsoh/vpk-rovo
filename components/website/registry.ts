@@ -68,6 +68,9 @@ const UI_DEMO: Record<string, ComponentType> = {
   "progress-circle": dynamic(() => import("./demos/ui/progress-circle-demo"), {
     ssr: false,
   }),
+  "progress-rovo": dynamic(() => import("./demos/ui/progress-rovo-demo"), {
+    ssr: false,
+  }),
   "radio-group": dynamic(() => import("./demos/ui/radio-group-demo"), {
     ssr: false,
   }),
@@ -2280,6 +2283,33 @@ const UI_VARIANT_DEMOS: Record<string, ComponentType> = {
     () =>
       import("./demos/ui/progress-circle-demo").then((mod) => ({
         default: mod.ProgressCircleDemoStatus,
+      })),
+    { ssr: false },
+  ),
+  // Progress Rovo
+  "progress-rovo-demo-default": dynamic(
+    () => import("./demos/ui/progress-rovo/progress-rovo-demo-default"),
+    { ssr: false },
+  ),
+  "progress-rovo-demo-completed": dynamic(
+    () => import("./demos/ui/progress-rovo/progress-rovo-demo-completed"),
+    { ssr: false },
+  ),
+  "progress-rovo-demo-determinate": dynamic(
+    () => import("./demos/ui/progress-rovo/progress-rovo-demo-determinate"),
+    { ssr: false },
+  ),
+  "progress-rovo-demo-controlled": dynamic(
+    () =>
+      import("./demos/ui/progress-rovo-demo").then((mod) => ({
+        default: mod.ProgressRovoDemoControlled,
+      })),
+    { ssr: false },
+  ),
+  "progress-rovo-demo-transition": dynamic(
+    () =>
+      import("./demos/ui/progress-rovo-demo").then((mod) => ({
+        default: mod.ProgressRovoDemoTransition,
       })),
     { ssr: false },
   ),

@@ -19,7 +19,7 @@ export function FutureChatPlanExecutionTracker({
 			className="max-w-none"
 			defaultCollapsed={tracker.runStatus !== "running"}
 			onDelete={tracker.runStatus === "running" ? undefined : onDismiss}
-			planEmoji={tracker.planEmoji}
+			planVisualIdentity={tracker.planVisualIdentity}
 			planTitle={tracker.planTitle}
 			runCount={tracker.taskCount}
 			runCreatedAt={tracker.runCreatedAt}

@@ -31,7 +31,6 @@ import { AppSidebar } from "@/components/projects/make/components/app-sidebar";
 import type { ChatHistoryItem } from "@/components/projects/make/components/sidebar-chat-history";
 import {
 	resolvePlanDisplayTitle,
-	derivePlanEmojiFromTitle,
 } from "@/components/projects/shared/lib/plan-identity";
 import { useMakeConfig } from "@/components/projects/make/hooks/use-make-config";
 import { useConfigDialogs } from "@/components/projects/make/hooks/use-config-dialogs";
@@ -544,10 +543,8 @@ export function RunWorkspace({
 	const shouldShowExecutionGrid = isAppending || isRunExecutionPhase(run);
 
 	const summaryTitle = useMemo(() => {
-		const title = resolvePlanDisplayTitle(run.plan.title, run.tasks);
-		const emoji = run.plan.emoji ?? derivePlanEmojiFromTitle(title);
-		return `${emoji} ${title}`;
-	}, [run.plan.title, run.plan.emoji, run.tasks]);
+		return resolvePlanDisplayTitle(run.plan.title, run.tasks);
+	}, [run.plan.title, run.tasks]);
 
 	const sidebarRunHistory = useMemo(() => {
 		const runsById = new Map<string, AgentRunListItem>();

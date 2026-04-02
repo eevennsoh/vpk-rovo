@@ -89,6 +89,18 @@ function normalizeTabIndex(index) {
 	return parsed
 }
 
+class BrowserWorkspaceNotFoundError extends Error {
+	constructor(workspaceId) {
+		super(`Browser workspace not found: ${workspaceId}`)
+		this.name = "BrowserWorkspaceNotFoundError"
+		this.workspaceId = workspaceId
+	}
+}
+
+function isBrowserWorkspaceNotFoundError(error) {
+	return error instanceof BrowserWorkspaceNotFoundError
+}
+
 function tabsAreEqual(currentTabs, nextTabs) {
 	if (!Array.isArray(currentTabs) || !Array.isArray(nextTabs)) {
 		return false
@@ -1172,7 +1184,7 @@ class BrowserWorkspaceManager {
 		)
 		const workspace = this._workspaces.get(resolvedWorkspaceId)
 		if (!workspace) {
-			throw new Error(`Browser workspace not found: ${resolvedWorkspaceId}`)
+			throw new BrowserWorkspaceNotFoundError(resolvedWorkspaceId)
 		}
 
 		return workspace
@@ -1180,7 +1192,7 @@ class BrowserWorkspaceManager {
 
 	async createWorkspace(options = {}) {
 		const workspaceId = randomUUID()
-		const sessionId = `vpk-browser-workspace-${workspaceId}`
+		const sessionId = workspaceId
 		const workspace = this._createWorkspaceInstance({
 			workspaceId,
 			sessionId,
@@ -1360,7 +1372,9 @@ const browserWorkspaceManager = new BrowserWorkspaceManager()
 module.exports = {
 	BrowserWorkspace,
 	BrowserWorkspaceManager,
+	BrowserWorkspaceNotFoundError,
 	browserWorkspaceManager,
+	isBrowserWorkspaceNotFoundError,
 	WORKSPACE_IDLE_TIMEOUT_MS,
 	WORKSPACE_CLEANUP_INTERVAL_MS,
 }

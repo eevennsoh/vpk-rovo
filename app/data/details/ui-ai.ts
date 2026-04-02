@@ -805,7 +805,7 @@ import { Button } from "@/components/ui/button";
 
 <Plan open={isOpen} onOpenChange={setIsOpen}>
   <PlanHeader
-    leading={<PlanAvatar emoji="✌️" />}
+    leading={<PlanAvatar visualIdentity={{ iconName: "dashboard", tileVariant: "blue" }} />}
     title={
       <PlanTitle className="truncate text-sm leading-5 font-semibold text-text">
         Implementation plan
@@ -846,7 +846,7 @@ import { Button } from "@/components/ui/button";
 			],
 			subComponents: [
 				{ name: "PlanHeader", description: "Generative-style plan header with built-in chevron toggle. Accepts `leading`, `title`, and optional `description` props." },
-				{ name: "PlanAvatar", description: "Emoji avatar in a circular badge. Accepts `emoji` prop (default \"✌️\")." },
+				{ name: "PlanAvatar", description: "IconTile-based avatar for plan headers. Accepts a `visualIdentity` prop with `iconName` and subtle `tileVariant`." },
 				{ name: "PlanTitle", description: "Title text with shimmer support." },
 				{ name: "PlanDescription", description: "Description text with shimmer support." },
 				{ name: "PlanAction", description: "Legacy action slot used by custom headers." },
@@ -1072,7 +1072,8 @@ import {
 			examplesContentWidth: "full",
 		},
 		props: [
-			{ name: "kind", type: '"text" | "code" | "image" | "sheet"', description: "The artifact content type. Determines icon and color." },
+			{ name: "kind", type: '"text" | "code" | "image" | "sheet" | "react"', description: "The artifact content type. Determines the default icon tile and color." },
+			{ name: "visualIdentity", type: '{ iconName: string; tileVariant: "gray" | "blue" | "teal" | "green" | "lime" | "yellow" | "orange" | "red" | "magenta" | "purple" }', description: "Optional icon-tile override used instead of the kind-based default." },
 			{ name: "title", type: "string", description: "Artifact title text." },
 			{ name: "action", type: '"create" | "update" | null', description: "Optional action context for description text." },
 			{ name: "isStreaming", type: "boolean", description: "Whether the artifact is currently streaming." },

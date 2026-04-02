@@ -18,7 +18,6 @@ import { DEFAULT_DESIGN_CONFIG, type DesignConfig } from "@/lib/design-config-br
 import { DesignConfigInjector } from "@/components/utils/design-config-injector";
 import type { ParsedPlanWidgetPayload } from "@/components/projects/shared/lib/plan-widget";
 import {
-	derivePlanEmojiFromTitle,
 	resolvePlanDisplayTitle,
 } from "@/components/projects/shared/lib/plan-identity";
 import EyeOpenIcon from "@atlaskit/icon/core/eye-open";
@@ -129,7 +128,6 @@ interface DisplayPlanTask {
 interface DisplayPlan {
 	source: "run" | "chat-draft";
 	resolvedTitle: string;
-	resolvedEmoji: string;
 	description?: string;
 	agents: string[];
 	tasks: DisplayPlanTask[];
@@ -2523,11 +2521,9 @@ export function MakeArtifactSurface({
 				run.plan.title,
 				run.plan.tasks,
 			);
-			const resolvedEmoji = run.plan.emoji ?? derivePlanEmojiFromTitle(resolvedTitle);
 			return {
 				source: "run",
 				resolvedTitle,
-				resolvedEmoji,
 				description: run.plan.description,
 				agents: run.plan.agents,
 				tasks: run.plan.tasks.map((task) => ({
@@ -2541,11 +2537,9 @@ export function MakeArtifactSurface({
 
 		if (fallbackPlan) {
 			const resolvedTitle = resolvePlanDisplayTitle(fallbackPlan.title, fallbackPlan.tasks);
-			const resolvedEmoji = fallbackPlan.emoji ?? derivePlanEmojiFromTitle(resolvedTitle);
 			return {
 				source: "chat-draft",
 				resolvedTitle,
-				resolvedEmoji,
 				description: fallbackPlan.description,
 				agents: fallbackPlan.agents,
 				tasks: fallbackPlan.tasks.map((task) => ({

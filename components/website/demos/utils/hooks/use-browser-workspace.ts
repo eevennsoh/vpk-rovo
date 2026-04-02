@@ -14,6 +14,7 @@ import {
 	type BrowserWorkspaceState,
 	mutateBrowserWorkspace,
 } from "@/lib/browser-workspace-client";
+import { recoverMissingBrowserWorkspace } from "./browser-workspace-recovery";
 
 const WORKSPACE_POLL_INTERVAL_MS = 10_000;
 
@@ -137,6 +138,15 @@ export function useBrowserWorkspace(
 			}
 			return nextState
 		} catch (error) {
+			const recoveredState = await recoverMissingBrowserWorkspace({
+				error,
+				currentWorkspaceId,
+				recreateWorkspace: createAndBindWorkspace,
+			})
+			if (recoveredState) {
+				return recoveredState
+			}
+
 			if (
 				mountedRef.current &&
 				activeWorkspaceIdRef.current === currentWorkspaceId
@@ -147,7 +157,7 @@ export function useBrowserWorkspace(
 			}
 			return null
 		}
-	}, [applyWorkspaceState])
+	}, [applyWorkspaceState, createAndBindWorkspace])
 
 	const runGuardedMutation = useCallback(
 		async <T extends BrowserWorkspaceState>(
@@ -161,6 +171,7 @@ export function useBrowserWorkspace(
 			}
 
 			const shouldTrackMutation = options?.suppressMutating !== true
+			let recoveredMissingWorkspace = false
 			if (shouldTrackMutation) {
 				setIsWorkspaceMutating(true)
 			}
@@ -174,6 +185,16 @@ export function useBrowserWorkspace(
 				}
 				return nextState
 			} catch (error) {
+				const recoveredState = await recoverMissingBrowserWorkspace({
+					error,
+					currentWorkspaceId,
+					recreateWorkspace: createAndBindWorkspace,
+				})
+				if (recoveredState) {
+					recoveredMissingWorkspace = true
+					return recoveredState as T
+				}
+
 				if (
 					mountedRef.current &&
 					activeWorkspaceIdRef.current === currentWorkspaceId
@@ -185,13 +206,16 @@ export function useBrowserWorkspace(
 				if (
 					shouldTrackMutation &&
 					mountedRef.current &&
-					activeWorkspaceIdRef.current === currentWorkspaceId
+					(
+						activeWorkspaceIdRef.current === currentWorkspaceId ||
+						recoveredMissingWorkspace
+					)
 				) {
 					setIsWorkspaceMutating(false)
 				}
 			}
 		},
-		[applyWorkspaceState],
+		[applyWorkspaceState, createAndBindWorkspace],
 	)
 
 	const runWorkspaceAction = useCallback(
@@ -255,6 +279,15 @@ export function useBrowserWorkspace(
 				}
 				return snapshot
 			} catch (error) {
+				const recoveredState = await recoverMissingBrowserWorkspace({
+					error,
+					currentWorkspaceId,
+					recreateWorkspace: createAndBindWorkspace,
+				})
+				if (recoveredState) {
+					return null
+				}
+
 				if (
 					mountedRef.current &&
 					activeWorkspaceIdRef.current === currentWorkspaceId
@@ -266,7 +299,7 @@ export function useBrowserWorkspace(
 				return null
 			}
 		},
-		[applyWorkspaceState],
+		[applyWorkspaceState, createAndBindWorkspace],
 	)
 
 	const resetWorkspace = useCallback(async () => {

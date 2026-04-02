@@ -5,13 +5,15 @@ import { AnimatePresence, motion } from "motion/react";
 import { token } from "@/lib/tokens";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
+import { ProgressRovo } from "@/components/ui/progress-rovo";
 import { ProgressCircle } from "@/components/ui/progress-circle";
+import { VisualIdentityTile } from "@/components/projects/shared/components/visual-identity-tile";
+import { resolvePlanVisualIdentity } from "@/components/projects/shared/lib/plan-identity";
+import type { VisualIdentity } from "@/components/projects/shared/lib/visual-identity";
 import VideoStopOverlayIcon from "@atlaskit/icon/core/video-stop-overlay";
 import DeleteIcon from "@atlaskit/icon/core/delete";
 import SuccessIcon from "@atlaskit/icon/core/success";
 import { MOCK_TASKS, flattenStatusGroups, type ProgressStatusGroups, type FlatTask } from "./data/mock-tasks";
-import { Tile } from "@/components/ui/tile";
 import { formatElapsedTime, getElapsedSeconds, resolveInitialNowMs } from "@/components/blocks/shared/elapsed-time";
 
 const SUMMARY_RING_SEGMENTED_GRADIENT =
@@ -40,6 +42,36 @@ function TaskStatusIcon({
 	status: IconStatus;
 	animated?: boolean;
 }>) {
+	const [filling, setFilling] = useState(false);
+	const [prevStatus, setPrevStatus] = useState(status);
+
+	if (status !== prevStatus) {
+		setPrevStatus(status);
+		if (status === "done" && animated) {
+			setFilling(true);
+		} else {
+			setFilling(false);
+		}
+	}
+
+	useEffect(() => {
+		if (!filling) return;
+		const timerId = setTimeout(() => setFilling(false), 600);
+		return () => clearTimeout(timerId);
+	}, [filling]);
+
+	if (status === "done" && filling) {
+		return (
+			<ProgressCircle
+				value={100}
+				showCompleteIcon={false}
+				size="sm"
+				variant="outline"
+				label="Completing"
+			/>
+		);
+	}
+
 	if (status === "done") {
 		return (
 			<motion.span
@@ -111,7 +143,7 @@ const TimelineTaskItem = memo(function TimelineTaskItem({
 
 interface TaskProgressProps {
 	planTitle?: string;
-	planEmoji?: string;
+	planVisualIdentity?: VisualIdentity;
 	taskStatusGroups?: ProgressStatusGroups;
 	runStatus?: RunStatus;
 	runCreatedAt?: string | null;
@@ -130,7 +162,7 @@ interface TaskProgressProps {
 
 export default function TaskProgress({
 	planTitle = "Untitled task run",
-	planEmoji = "📋",
+	planVisualIdentity,
 	taskStatusGroups = MOCK_TASKS,
 	runStatus = "running",
 	runCreatedAt = new Date(Date.now() - 651_000).toISOString(),
@@ -171,19 +203,14 @@ export default function TaskProgress({
 	);
 
 	const flatTasks = useMemo(() => flattenStatusGroups(taskStatusGroups), [taskStatusGroups]);
+	const resolvedPlanVisualIdentity = useMemo(
+		() => planVisualIdentity ?? resolvePlanVisualIdentity(planTitle),
+		[planTitle, planVisualIdentity]
+	);
 
-	// Track which task IDs have already been seen as "done" so we only animate the
-	// check icon on the first transition to done — not on expand/collapse remounts.
+	// Track which task IDs have already rendered as "done" so we only animate the
+	// check icon on the first transition — not on expand/collapse remounts.
 	const seenDoneIdsRef = useRef<Set<string>>(new Set());
-	const newlyDoneIds = useMemo(() => {
-		const ids = new Set<string>();
-		for (const task of flatTasks) {
-			if (task.status === "done" && !seenDoneIdsRef.current.has(task.id)) {
-				ids.add(task.id);
-			}
-		}
-		return ids;
-	}, [flatTasks]);
 
 	useEffect(() => {
 		for (const task of flatTasks) {
@@ -256,7 +283,7 @@ export default function TaskProgress({
 						<div className="flex flex-col gap-3 px-4 py-3">
 							<div className="flex items-center justify-between gap-3">
 								<div className="flex min-w-0 flex-1 items-center gap-3">
-									<Tile label={planTitle} size="medium" variant="neutral" className="relative shrink-0">
+									<div className="relative shrink-0">
 										{showSummaryRainbow ? (
 											<span
 												aria-hidden="true"
@@ -270,8 +297,14 @@ export default function TaskProgress({
 												}}
 											/>
 										) : null}
-										<span className="relative z-10">{planEmoji}</span>
-									</Tile>
+										<VisualIdentityTile
+											decorative
+											className="relative z-10"
+											label={planTitle}
+											size="medium"
+											visualIdentity={resolvedPlanVisualIdentity}
+										/>
+									</div>
 									<div className="flex min-w-0 flex-1 flex-col gap-1">
 										<div className="flex min-w-0 items-center gap-1">
 											<span style={{ font: token("font.heading.xsmall") }} className="truncate text-text">
@@ -289,10 +322,9 @@ export default function TaskProgress({
 													transition={{ duration: 0.3, ease: "easeInOut" }}
 													className="overflow-hidden"
 												>
-													<Progress
+													<ProgressRovo
 														aria-label="Run progress"
 														value={progressValue}
-														variant="inverse"
 														className="w-full"
 													/>
 												</motion.div>
@@ -310,7 +342,7 @@ export default function TaskProgress({
 											<Button
 												variant="ghost"
 												size="sm"
-												className="cursor-pointer gap-1.5 rounded-full text-icon-success hover:text-icon-success"
+												className="[&_svg]:!text-icon-success"
 												onClick={(e) => {
 													e.stopPropagation();
 													setDismissed(true);
@@ -346,7 +378,7 @@ export default function TaskProgress({
 											key={task.id}
 											task={task}
 											isLast={index === flatTasks.length - 1}
-											animated={newlyDoneIds.has(task.id)}
+											animated={task.status === "done" && !seenDoneIdsRef.current.has(task.id)}
 										/>
 									))}
 								</div>

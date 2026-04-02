@@ -102,3 +102,27 @@ test("gallery and sidebar mappings preserve exact run identity", () => {
 	assert.equal(sidebarItems[0].runId, "run-xyz");
 	assert.equal(galleryItems[0].title, sidebarItems[0].title);
 });
+
+test("gallery descriptions prefer shortDescription when available", () => {
+	const galleryItems = mapRunsToMakeGalleryItems([
+		createRun({
+			plan: {
+				title: "Build release dashboard",
+				description: "Create a release readiness dashboard with implementation details.",
+				shortDescription: "Track release readiness across teams",
+				emoji: "🚀",
+				agents: ["Planner"],
+				tasks: [
+					{
+						id: "task-1",
+						label: "Build release dashboard",
+						agent: "Planner",
+						blockedBy: [],
+					},
+				],
+			},
+		}),
+	]);
+
+	assert.equal(galleryItems[0]?.description, "1 step • Track release readiness across teams");
+});

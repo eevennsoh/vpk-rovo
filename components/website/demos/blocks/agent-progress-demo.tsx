@@ -1,6 +1,7 @@
 "use client";
 
 import AgentsProgress from "@/components/blocks/agent-progress/page";
+import { resolvePlanVisualIdentity } from "@/components/projects/shared/lib/plan-identity";
 import type { ProgressStatusGroups } from "@/components/blocks/agent-progress/data/mock-tasks";
 
 const TASKS_MIXED: ProgressStatusGroups = {
@@ -82,7 +83,7 @@ export default function AgentProgressDemo() {
 export function AgentProgressDemoRunning() {
 	return (
 		<div className="flex items-center justify-center p-6">
-			<AgentsProgress planTitle="Sprint Planning" planEmoji="🚀" taskStatusGroups={TASKS_MIXED} runStatus="running" agentCount={6} />
+			<AgentsProgress planTitle="Sprint Planning" planVisualIdentity={resolvePlanVisualIdentity("Sprint Planning")} taskStatusGroups={TASKS_MIXED} runStatus="running" agentCount={6} />
 		</div>
 	);
 }
@@ -92,7 +93,7 @@ export function AgentProgressDemoCompleted() {
 		<div className="flex items-center justify-center p-6">
 			<AgentsProgress
 				planTitle="Code Review Sweep"
-				planEmoji="✅"
+				planVisualIdentity={resolvePlanVisualIdentity("Code Review Sweep")}
 				taskStatusGroups={TASKS_ALL_DONE}
 				runStatus="completed"
 				runCreatedAt="2025-01-15T10:00:00Z"
@@ -108,7 +109,7 @@ export function AgentProgressDemoFailed() {
 		<div className="flex items-center justify-center p-6">
 			<AgentsProgress
 				planTitle="Deploy Pipeline"
-				planEmoji="❌"
+				planVisualIdentity={resolvePlanVisualIdentity("Deploy Pipeline")}
 				taskStatusGroups={{
 					done: [{ id: "d1", label: "Task 1", description: "Build artifacts" }],
 					inReview: [],
@@ -133,7 +134,7 @@ export function AgentProgressDemoFailed() {
 export function AgentProgressDemoCollapsed() {
 	return (
 		<div className="flex items-center justify-center p-6">
-			<AgentsProgress planTitle="Flexible Friday Plan" planEmoji="🔥" runStatus="completed" runCreatedAt="2025-01-15T10:00:00Z" runCompletedAt="2025-01-15T10:10:51Z" defaultCollapsed />
+			<AgentsProgress planTitle="Flexible Friday Plan" planVisualIdentity={resolvePlanVisualIdentity("Flexible Friday Plan")} runStatus="completed" runCreatedAt="2025-01-15T10:00:00Z" runCompletedAt="2025-01-15T10:10:51Z" defaultCollapsed />
 		</div>
 	);
 }
@@ -141,7 +142,7 @@ export function AgentProgressDemoCollapsed() {
 export function AgentProgressDemoCollapsedRunning() {
 	return (
 		<div className="flex items-center justify-center p-6">
-			<AgentsProgress planTitle="Background Tasks" planEmoji="⏳" runStatus="running" agentCount={8} defaultCollapsed />
+			<AgentsProgress planTitle="Background Tasks" planVisualIdentity={resolvePlanVisualIdentity("Background Tasks")} runStatus="running" agentCount={8} defaultCollapsed />
 		</div>
 	);
 }
@@ -149,7 +150,7 @@ export function AgentProgressDemoCollapsedRunning() {
 export function AgentProgressDemoWithAgents() {
 	return (
 		<div className="flex items-center justify-center p-6">
-			<AgentsProgress planTitle="Multi-Agent Sprint" planEmoji="🤖" taskStatusGroups={TASKS_WITH_AGENTS} runStatus="running" agentCount={4} />
+			<AgentsProgress planTitle="Multi-Agent Sprint" planVisualIdentity={resolvePlanVisualIdentity("Multi-Agent Sprint")} taskStatusGroups={TASKS_WITH_AGENTS} runStatus="running" agentCount={4} />
 		</div>
 	);
 }
@@ -157,7 +158,7 @@ export function AgentProgressDemoWithAgents() {
 export function AgentProgressDemoEarlyProgress() {
 	return (
 		<div className="flex items-center justify-center p-6">
-			<AgentsProgress planTitle="New Feature Build" planEmoji="🏗️" taskStatusGroups={TASKS_EARLY} runStatus="running" agentCount={1} />
+			<AgentsProgress planTitle="New Feature Build" planVisualIdentity={resolvePlanVisualIdentity("New Feature Build")} taskStatusGroups={TASKS_EARLY} runStatus="running" agentCount={1} />
 		</div>
 	);
 }
@@ -165,7 +166,7 @@ export function AgentProgressDemoEarlyProgress() {
 export function AgentProgressDemoMultipleRuns() {
 	return (
 		<div className="flex items-center justify-center p-6">
-			<AgentsProgress planTitle="Iterative Refinement" planEmoji="🔄" taskStatusGroups={TASKS_MIXED} runStatus="running" runCount={3} agentCount={5} />
+			<AgentsProgress planTitle="Iterative Refinement" planVisualIdentity={resolvePlanVisualIdentity("Iterative Refinement")} taskStatusGroups={TASKS_MIXED} runStatus="running" runCount={3} agentCount={5} />
 		</div>
 	);
 }
@@ -173,10 +174,10 @@ export function AgentProgressDemoMultipleRuns() {
 export function AgentProgressDemoAllStates() {
 	return (
 		<div className="flex flex-col items-center gap-6 p-6">
-			<AgentsProgress planTitle="Running Plan" planEmoji="🚀" taskStatusGroups={TASKS_MIXED} runStatus="running" agentCount={6} />
+			<AgentsProgress planTitle="Running Plan" planVisualIdentity={resolvePlanVisualIdentity("Running Plan")} taskStatusGroups={TASKS_MIXED} runStatus="running" agentCount={6} />
 			<AgentsProgress
 				planTitle="Completed Plan"
-				planEmoji="✅"
+				planVisualIdentity={resolvePlanVisualIdentity("Completed Plan")}
 				taskStatusGroups={TASKS_ALL_DONE}
 				runStatus="completed"
 				runCreatedAt="2025-01-15T10:00:00Z"
@@ -185,7 +186,7 @@ export function AgentProgressDemoAllStates() {
 			/>
 			<AgentsProgress
 				planTitle="Failed Plan"
-				planEmoji="❌"
+				planVisualIdentity={resolvePlanVisualIdentity("Failed Plan")}
 				taskStatusGroups={TASKS_EARLY}
 				runStatus="failed"
 				runCreatedAt="2025-01-15T10:00:00Z"

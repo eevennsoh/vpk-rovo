@@ -5,7 +5,6 @@ import type {
 } from "@/components/blocks/make-item/lib/types";
 import type { AgentRunListItem } from "@/lib/make-run-types";
 import {
-	derivePlanEmojiFromTitle,
 	resolvePlanDisplayTitle,
 	sanitizePlanDescription,
 } from "@/components/projects/shared/lib/plan-identity";
@@ -76,16 +75,17 @@ function getRunMaintainers(): Array<{ name: string; src?: string }> {
 }
 
 function resolveRunTitle(run: AgentRunListItem): string {
-	const title = resolvePlanDisplayTitle(run.plan.title, run.plan.tasks);
-	const emoji = run.plan.emoji ?? derivePlanEmojiFromTitle(title);
-	return `${emoji} ${title}`;
+	return resolvePlanDisplayTitle(run.plan.title, run.plan.tasks);
 }
 
 function resolveRunDescription(run: AgentRunListItem): string {
-	if (!run.plan.description && APP_GALLERY_TEMPLATE.description) {
+	if (!run.plan.shortDescription && !run.plan.description && APP_GALLERY_TEMPLATE.description) {
 		return APP_GALLERY_TEMPLATE.description;
 	}
-	return sanitizePlanDescription(run.plan.description, run.tasks.length);
+	return sanitizePlanDescription(
+		run.plan.shortDescription ?? run.plan.description,
+		run.tasks.length,
+	);
 }
 
 function toRunMeta(run: RunnableMakeRun): MakeItemRunMeta {

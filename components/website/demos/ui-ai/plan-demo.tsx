@@ -15,6 +15,7 @@ import {
 	PlanTitle,
 	type PlanTask,
 } from "@/components/ui-ai/plan";
+import { formatPlanStepCount, resolvePlanVisualIdentity } from "@/components/projects/shared/lib/plan-identity";
 import { useState } from "react";
 
 const PLAN_TASKS: PlanTask[] = [
@@ -54,9 +55,9 @@ function resolveBlockedByLabels(task: PlanTask): string[] {
 function PlanDemoHeader() {
 	return (
 		<PlanHeader
-			leading={<PlanAvatar emoji="✌️" />}
+			leading={<PlanAvatar visualIdentity={resolvePlanVisualIdentity("Plan title")} />}
 			title={<PlanTitle className="truncate text-sm leading-5 font-semibold text-text">Plan title</PlanTitle>}
-			description={<PlanDescription className="text-xs leading-4 text-text-subtlest">{`${PLAN_TASKS.length} tasks • Description`}</PlanDescription>}
+			description={<PlanDescription className="text-xs leading-4 text-text-subtlest">{`${formatPlanStepCount(PLAN_TASKS.length)} • Description`}</PlanDescription>}
 		/>
 	);
 }

@@ -540,7 +540,6 @@ function FutureChatComposerInner({
 									aria-label="Task mode"
 									aria-pressed={isPlanMode}
 									variant="outline"
-									disabled={isComposerBusy || submitDisabled}
 									onClick={handleTogglePlanMode}
 									tooltip={{ content: "⌥ Tab", delay: 0 }}
 								>

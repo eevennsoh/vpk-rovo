@@ -100,6 +100,7 @@ function normalizeDocument(rawDocument) {
 		threadId,
 		title: normalizedTitle,
 		kind: normalizeDocumentKind(rawDocument.kind),
+		previewSummary: getNonEmptyString(rawDocument.previewSummary) || undefined,
 		sourceMessageId:
 			typeof rawDocument.sourceMessageId === "string" && rawDocument.sourceMessageId.trim()
 				? rawDocument.sourceMessageId.trim()
@@ -285,6 +286,7 @@ function createFutureChatDocumentManager({ baseDir }) {
 		title,
 		kind,
 		content,
+		previewSummary,
 		sourceMessageId,
 	}) => {
 		await ensureInitialized();
@@ -294,6 +296,7 @@ function createFutureChatDocumentManager({ baseDir }) {
 			threadId,
 			title,
 			kind,
+			previewSummary: getNonEmptyString(previewSummary) || undefined,
 			sourceMessageId,
 			createdAt: now,
 			updatedAt: now,
@@ -314,6 +317,7 @@ function createFutureChatDocumentManager({ baseDir }) {
 		threadId,
 		title,
 		kind,
+		previewSummary,
 		sourceMessageId,
 	}) => {
 		await ensureInitialized();
@@ -323,6 +327,7 @@ function createFutureChatDocumentManager({ baseDir }) {
 			threadId,
 			title,
 			kind,
+			previewSummary: getNonEmptyString(previewSummary) || undefined,
 			sourceMessageId,
 			createdAt: now,
 			updatedAt: now,
@@ -425,6 +430,9 @@ function createFutureChatDocumentManager({ baseDir }) {
 		const nextDocument = normalizeDocument({
 			...currentDocument,
 			...(typeof patch.sourceMessageId === "string" ? { sourceMessageId: patch.sourceMessageId } : {}),
+			...(typeof patch.previewSummary === "string"
+				? { previewSummary: getNonEmptyString(patch.previewSummary) || undefined }
+				: {}),
 		});
 		await writeDocument(nextDocument);
 		return nextDocument;

@@ -10,8 +10,8 @@ import {
 import { resolveSidebarRunDisplayState } from "../lib/run-display-state";
 import type { RetryTaskGroupKey } from "../lib/retry-task-groups";
 import {
-	derivePlanEmojiFromTitle,
 	resolvePlanDisplayTitle,
+	resolvePlanVisualIdentity,
 } from "@/components/projects/shared/lib/plan-identity";
 
 interface SidebarRunHistoryProps {
@@ -98,14 +98,15 @@ export default function SidebarRunHistory({
 						run.plan.title,
 						run.plan.tasks
 					);
-					const displayPlanEmoji = derivePlanEmojiFromTitle(displayPlanTitle);
+					const displayPlanVisualIdentity =
+						run.plan.visualIdentity ?? resolvePlanVisualIdentity(displayPlanTitle);
 					const isActive = activeRunId === run.runId;
 					const showSummaryRainbow = isSummaryGenerating(run) && hasOngoingTasks(run);
 					return (
 						<AgentsProgress
 							key={run.runId}
 							planTitle={displayPlanTitle}
-							planEmoji={displayPlanEmoji}
+							planVisualIdentity={displayPlanVisualIdentity}
 							taskStatusGroups={taskStatusGroups}
 							runStatus={displayState.status}
 							runCreatedAt={run.createdAt}

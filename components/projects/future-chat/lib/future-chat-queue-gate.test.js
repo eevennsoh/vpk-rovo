@@ -81,9 +81,46 @@ test("allows queued prompt actions when one is present", () => {
 				createdAt: 1,
 				kind: "prompt",
 				files: [],
+				mode: "default",
 			},
 		}),
 		true,
+	);
+});
+
+test("blocks queued actions while clarification, plan approval, or tool approval is pending", () => {
+	const queuedAction = {
+		id: "action-1",
+		threadId: "thread-1",
+		text: "Build route shell",
+		createdAt: 1,
+		kind: "prompt",
+		files: [],
+		mode: "plan",
+	};
+
+	assert.equal(
+		canDispatchFutureChatQueuedAction({
+			action: queuedAction,
+			hasPendingClarification: true,
+		}),
+		false,
+	);
+
+	assert.equal(
+		canDispatchFutureChatQueuedAction({
+			action: queuedAction,
+			hasPendingPlanApproval: true,
+		}),
+		false,
+	);
+
+	assert.equal(
+		canDispatchFutureChatQueuedAction({
+			action: queuedAction,
+			hasPendingToolApproval: true,
+		}),
+		false,
 	);
 });
 
