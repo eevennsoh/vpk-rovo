@@ -106,10 +106,7 @@ const DEEP_PLAN_INSTRUCTION = [
 	"4. Plan handoff is mandatory for build requests: Do quick exploration as needed, but finish the planning interaction by calling `exit_plan_mode`. Do not treat `invoke_subagents`, `get_skill`, `create_technical_plan`, or plain text as a substitute for the plan handoff.",
 	"4a. If you use `invoke_subagents` or `create_technical_plan` during plan mode, you must still continue the same planning turn until you call `exit_plan_mode`. Take the output from `create_technical_plan` and pass it as the markdown argument to `exit_plan_mode`. Do not stop after subagent exploration or plan generation. Do not end the turn without calling `exit_plan_mode`.",
 	"5. Implementation happens after approval: After the user approves the plan, the host will switch you back to `default` mode before implementation. Do not start implementing while plan mode is still active.",
-	"6. Plan content: Structure the markdown however best fits the user's request — use whatever sections make sense. The only requirements are:",
-	"   - Include a numbered list of action items (these are extracted as tasks by the host).",
-	"   - For tasks that depend on earlier steps, prefix with `[Blocked by <id,id>]` (e.g. `[Blocked by 1,2] Wire API`). Leave independent tasks without a prefix.",
-	"   - End with a Mermaid `graph TD` diagram showing task dependency edges. Only draw edges for actual dependencies — independent tasks have no incoming edges.",
+	"6. Plan content: Structure the markdown however best fits the user's request — use whatever sections, headings, diagrams, and prose make sense. During implementation you will use `update_todo` to define and track your own tasks.",
 	"7. One plan per turn: Call `exit_plan_mode` at most once per turn.",
 	"[End Deep Plan Protocol]",
 ].join("\n");

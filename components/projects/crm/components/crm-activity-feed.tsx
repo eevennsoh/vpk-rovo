@@ -1,7 +1,6 @@
 "use client";
 
 import { Card } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { CRM_ACTIVITIES, type CrmActivity } from "@/app/data/crm-data";
 import {
 	ArrowRightIcon,

@@ -3,10 +3,10 @@
 
 import { useCallback, useEffect, useState } from "react"
 import {
-  Check,
-  ChevronsUpDown,
-  Mic,
-  MicOff,
+  CheckIcon as Check,
+  ChevronsUpDownIcon as ChevronsUpDown,
+  MicIcon as Mic,
+  MicOffIcon as MicOff,
 } from "@/components/ui/vpk-icons"
 
 import { cn } from "@/lib/utils"

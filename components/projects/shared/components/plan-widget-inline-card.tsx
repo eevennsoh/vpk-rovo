@@ -24,7 +24,6 @@ import type { VisualIdentity } from "@/components/projects/shared/lib/visual-ide
 import { Button } from "@/components/ui/button";
 import { Shimmer } from "@/components/ui-ai/shimmer";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { token } from "@/lib/tokens";
 import { cn } from "@/lib/utils";
 
 
@@ -46,7 +45,6 @@ function CollapsedPlanBubble({
 			aria-expanded={false}
 			onClick={onExpand}
 			className="group flex w-full cursor-pointer items-center gap-3 rounded-xl border border-border bg-surface-raised px-4 py-3 text-left transition-colors hover:bg-surface-raised-hovered focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-3 outline-none"
-			style={{ boxShadow: token("elevation.shadow.raised") }}
 		>
 			<VisualIdentityTile decorative label={title} visualIdentity={visualIdentity} />
 			<span className="min-w-0 flex-1 truncate text-sm font-semibold text-text">{title}</span>

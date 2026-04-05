@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { SidebarLeft } from "./components/sidebar-left"
 import { SidebarRight } from "./components/sidebar-right"
 import {

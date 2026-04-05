@@ -1,4 +1,3 @@
-// @ts-nocheck
 "use client"
 
 import * as React from "react"
@@ -11,7 +10,7 @@ import {
   CopyIcon,
   CornerDownLeftIcon,
   FileTextIcon,
-  GalleryVerticalEnd,
+  GalleryVerticalEndIcon as GalleryVerticalEnd,
   LinkIcon,
   MoreHorizontalIcon,
   SettingsIcon,

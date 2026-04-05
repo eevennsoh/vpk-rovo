@@ -5,10 +5,7 @@ import { token } from "@/lib/tokens";
 import { cn } from "@/lib/utils";
 import {
 	SAMPLE_TASKS,
-	TEAM_MEMBERS,
 	getTaskStats,
-	getTeamMember,
-	type Task,
 	type TaskStatus,
 } from "@/app/data/dashboard-sample";
 import DashboardHeader from "./components/dashboard-header";

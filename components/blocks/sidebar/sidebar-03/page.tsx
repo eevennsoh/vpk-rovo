@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { AppSidebar } from "./components/app-sidebar"
 import {
   Breadcrumb,

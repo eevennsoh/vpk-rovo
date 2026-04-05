@@ -76,11 +76,15 @@ import {
 import { shouldHydratePersistedRealtimeMessages } from "@/components/projects/future-chat/lib/future-chat-realtime-persistence";
 import {
 	filterDeletedFutureChatThreads,
+	mergeFutureChatThreadWithLocalTitle,
 	updateFutureChatThreadMessagesRecord,
 	updateFutureChatThreadTitleRecord,
 	upsertFutureChatThreadRecord,
 } from "@/components/projects/future-chat/lib/future-chat-thread-state";
-import { getPendingFutureChatTitleRequest } from "@/components/projects/future-chat/lib/future-chat-title-generation";
+import {
+	getPendingFutureChatTitleRequest,
+	shouldDeferFutureChatTitlePersistence,
+} from "@/components/projects/future-chat/lib/future-chat-title-generation";
 import {
 	createFutureChatThread,
 	cancelFutureChatRun,
@@ -158,7 +162,7 @@ import {
 import {
 	buildPlanApprovalPrompt,
 	createPlanApprovalSubmission,
-	getPlanApprovalKeyFromSubmission,
+	getPlanApprovalKeyFromPlanWidget,
 	type PlanApprovalSelection,
 	type PlanApprovalSubmission,
 } from "@/components/projects/shared/lib/plan-approval";
@@ -880,6 +884,9 @@ export function useFutureChat({
 	const backgroundRefreshThreadIdsKey = useMemo(() => {
 		return JSON.stringify(backgroundRefreshThreadIds);
 	}, [backgroundRefreshThreadIds]);
+	const reconcileThreadWithLocalTitle = useCallback((thread: FutureChatThread) => {
+		return mergeFutureChatThreadWithLocalTitle(threadsRef.current, thread);
+	}, []);
 	const activeDocumentContent = useMemo(() => {
 		return getLatestDocumentContent(activeDocument);
 	}, [activeDocument]);
@@ -1271,8 +1278,9 @@ export function useFutureChat({
 			activeDocumentId: documentId,
 		})
 			.then((thread) => {
+				const resolvedThread = reconcileThreadWithLocalTitle(thread);
 				setThreads((previousThreads) =>
-					upsertFutureChatThreadRecord(previousThreads, thread, {
+					upsertFutureChatThreadRecord(previousThreads, resolvedThread, {
 						deletedThreadIds: deletedThreadIdsRef.current,
 					}),
 				);
@@ -1283,7 +1291,7 @@ export function useFutureChat({
 					toFutureChatUserErrorMessage(error),
 				);
 			});
-	}, []);
+	}, [reconcileThreadWithLocalTitle]);
 
 	const saveStreamingArtifactCheckpoint = useCallback(async () => {
 		const checkpoint = getFutureChatStreamingArtifactCheckpoint(streamingArtifactRef.current);
@@ -1687,25 +1695,26 @@ export function useFutureChat({
 				messages: updatedMessages,
 			})
 				.then((thread) => {
+					const resolvedThread = reconcileThreadWithLocalTitle(thread);
 					const persistedKey = buildFutureChatThreadPersistKey({
-						messages: thread.messages,
-						realtimeMessages: thread.realtimeMessages ?? [],
-						visibility: thread.visibility,
-						activeDocumentId: thread.activeDocumentId,
-						title: thread.title,
+						messages: resolvedThread.messages,
+						realtimeMessages: resolvedThread.realtimeMessages ?? [],
+						visibility: resolvedThread.visibility,
+						activeDocumentId: resolvedThread.activeDocumentId,
+						title: resolvedThread.title,
 					});
 					lastPersistedKeyRef.current = persistedKey;
 					setThreads((previousThreads) =>
-						upsertFutureChatThreadRecord(previousThreads, thread, {
+						upsertFutureChatThreadRecord(previousThreads, resolvedThread, {
 							deletedThreadIds: deletedThreadIdsRef.current,
 						}),
 					);
 					if (
 						activeThreadIdRef.current === options.threadId
-						&& !areFutureChatMessagesEqual(thread.messages, updatedMessages)
+						&& !areFutureChatMessagesEqual(resolvedThread.messages, updatedMessages)
 					) {
 						beginThreadHydration();
-						setRovodevMessages(thread.messages);
+						setRovodevMessages(resolvedThread.messages);
 						window.setTimeout(() => {
 							completeThreadHydration();
 						}, 0);
@@ -1727,6 +1736,7 @@ export function useFutureChat({
 			beginThreadHydration,
 			clearPendingPlanMetadataGeneration,
 			completeThreadHydration,
+			reconcileThreadWithLocalTitle,
 			setRovodevMessages,
 		],
 	);
@@ -2344,9 +2354,12 @@ export function useFutureChat({
 	const refreshThreads = useCallback(async () => {
 		try {
 			const nextThreads = await listFutureChatThreads();
+			const resolvedThreads = nextThreads.map((thread) =>
+				reconcileThreadWithLocalTitle(thread),
+			);
 			setThreads(
 				filterDeletedFutureChatThreads(
-					nextThreads,
+					resolvedThreads,
 					deletedThreadIdsRef.current,
 				),
 			);
@@ -2366,7 +2379,7 @@ export function useFutureChat({
 
 			console.error("[FutureChat] Failed to refresh threads:", error);
 		}
-	}, []);
+	}, [reconcileThreadWithLocalTitle]);
 
 	const hydrateThreadState = useCallback(
 		(thread: FutureChatThread, nextDocuments: FutureChatDocument[], nextVotes: FutureChatVote[]) => {
@@ -2434,15 +2447,16 @@ export function useFutureChat({
 				listFutureChatVotes(threadId),
 			]);
 			if (thread) {
-				hydrateThreadState(thread, nextDocuments, nextVotes);
+				const resolvedThread = reconcileThreadWithLocalTitle(thread);
+				hydrateThreadState(resolvedThread, nextDocuments, nextVotes);
 				setThreads((previousThreads) =>
-					upsertFutureChatThreadRecord(previousThreads, thread, {
+					upsertFutureChatThreadRecord(previousThreads, resolvedThread, {
 						deletedThreadIds: deletedThreadIdsRef.current,
 					}),
 				);
 			}
 		},
-		[hydrateThreadState],
+		[hydrateThreadState, reconcileThreadWithLocalTitle],
 	);
 
 	useEffect(() => {
@@ -2720,14 +2734,15 @@ export function useFutureChat({
 					nextDocuments,
 				);
 
-				hydrateThreadState(thread, hydratedDocuments, nextVotes);
+				const resolvedThread = reconcileThreadWithLocalTitle(thread);
+				hydrateThreadState(resolvedThread, hydratedDocuments, nextVotes);
 				setThreads((previousThreads) =>
-					upsertFutureChatThreadRecord(previousThreads, thread, {
+					upsertFutureChatThreadRecord(previousThreads, resolvedThread, {
 						deletedThreadIds: deletedThreadIdsRef.current,
 					}),
 				);
-				if (thread.activeRun) {
-					void subscribeToFutureChatRun(thread.id, thread.activeRun);
+				if (resolvedThread.activeRun) {
+					void subscribeToFutureChatRun(resolvedThread.id, resolvedThread.activeRun);
 				} else {
 					runSubscriptionAbortControllerRef.current?.abort();
 					runSubscriptionAbortControllerRef.current = null;
@@ -2746,6 +2761,7 @@ export function useFutureChat({
 			leaveActiveThreadForBackground,
 			resetToBlankChatState,
 			router,
+			reconcileThreadWithLocalTitle,
 			subscribeToFutureChatRun,
 		],
 	);
@@ -3669,12 +3685,8 @@ export function useFutureChat({
 
 	const acceptPlanReview = useCallback(
 		async (planWidget: ParsedPlanWidgetPayload) => {
-			const approvalSubmission = createPlanApprovalSubmission(
-				{ decision: "auto-accept" },
-				planWidget,
-			);
 			const planApprovalPlanKey =
-				getPlanApprovalKeyFromSubmission(approvalSubmission) ?? undefined;
+				getPlanApprovalKeyFromPlanWidget(planWidget) ?? undefined;
 			await sendPlanReviewResult({
 				isPlanMode: false,
 				messageMetadata: {
@@ -3699,7 +3711,7 @@ export function useFutureChat({
 
 			const approvalSubmission = createPlanApprovalSubmission(selection, planWidget);
 			const planApprovalPlanKey =
-				getPlanApprovalKeyFromSubmission(approvalSubmission) ?? undefined;
+				getPlanApprovalKeyFromPlanWidget(planWidget) ?? undefined;
 			const userMessageText = buildPlanApprovalPrompt(approvalSubmission);
 			const result =
 				selection.decision === "custom" && selection.customInstruction?.trim()
@@ -4814,55 +4826,63 @@ export function useFutureChat({
 
 		let cancelled = false;
 		const realtimeRequestVersion = realtimeMessagesVersionRef.current;
-		void updateFutureChatThread(activeThreadId, {
-			title: nextTitle,
+		const nextThreadUpdate: Parameters<typeof updateFutureChatThread>[1] = {
 			messages: normalizedRovodevMessages,
 			realtimeMessages,
 			visibility: threadVisibility,
 			activeDocumentId,
-		})
+		};
+		if (!shouldDeferFutureChatTitlePersistence({
+			activeThreadId,
+			isGeneratingTitle,
+			pendingTitleThreadId,
+		})) {
+			nextThreadUpdate.title = nextTitle;
+		}
+		void updateFutureChatThread(activeThreadId, nextThreadUpdate)
 			.then((thread) => {
 				if (cancelled) {
 					return;
 				}
 
+				const resolvedThread = reconcileThreadWithLocalTitle(thread);
 				const persistedKey = buildFutureChatThreadPersistKey({
-					messages: thread.messages,
-					realtimeMessages: thread.realtimeMessages ?? [],
-					visibility: thread.visibility,
-					activeDocumentId: thread.activeDocumentId,
-					title: thread.title,
+					messages: resolvedThread.messages,
+					realtimeMessages: resolvedThread.realtimeMessages ?? [],
+					visibility: resolvedThread.visibility,
+					activeDocumentId: resolvedThread.activeDocumentId,
+					title: resolvedThread.title,
 				});
 				lastPersistedKeyRef.current = persistedKey;
 				setThreads((previousThreads) =>
-					upsertFutureChatThreadRecord(previousThreads, thread, {
+					upsertFutureChatThreadRecord(previousThreads, resolvedThread, {
 						deletedThreadIds: deletedThreadIdsRef.current,
 					}),
 				);
 				if (
 					shouldReplaceFutureChatRouteAfterPersistence({
 						pendingThreadId: pendingRouteThreadIdRef.current,
-						thread,
+						thread: resolvedThread,
 						messages: normalizedRovodevMessages,
 						realtimeMessages,
 						visibility: threadVisibility,
 						activeDocumentId,
-						title: nextTitle,
+						title: resolvedThread.title,
 					})
 				) {
 					pendingRouteReadyRef.current = true;
-					flushPendingRouteReplacement(thread.id);
+					flushPendingRouteReplacement(resolvedThread.id);
 				}
-				if (!areFutureChatMessagesEqual(thread.messages, normalizedRovodevMessages)) {
+				if (!areFutureChatMessagesEqual(resolvedThread.messages, normalizedRovodevMessages)) {
 					beginThreadHydration();
-					setRovodevMessages(thread.messages);
+					setRovodevMessages(resolvedThread.messages);
 					window.setTimeout(() => {
 						completeThreadHydration();
 					}, 0);
 				}
 				if (
 					!areFutureChatMessagesEqual(
-						thread.realtimeMessages ?? [],
+						resolvedThread.realtimeMessages ?? [],
 						realtimeMessagesRef.current,
 					)
 					&& shouldHydratePersistedRealtimeMessages({
@@ -4872,7 +4892,7 @@ export function useFutureChat({
 					})
 				) {
 					beginThreadHydration();
-					replaceRealtimeMessagesState(thread.realtimeMessages ?? [], {
+					replaceRealtimeMessagesState(resolvedThread.realtimeMessages ?? [], {
 						incrementVersion: false,
 					});
 					window.setTimeout(() => {
@@ -4910,22 +4930,23 @@ export function useFutureChat({
 								return;
 							}
 
+							const resolvedThread = reconcileThreadWithLocalTitle(thread);
 							lastPersistedKeyRef.current = buildFutureChatThreadPersistKey({
-								messages: thread.messages,
-								realtimeMessages: thread.realtimeMessages ?? [],
-								visibility: thread.visibility,
-								activeDocumentId: thread.activeDocumentId,
-								title: thread.title,
+								messages: resolvedThread.messages,
+								realtimeMessages: resolvedThread.realtimeMessages ?? [],
+								visibility: resolvedThread.visibility,
+								activeDocumentId: resolvedThread.activeDocumentId,
+								title: resolvedThread.title,
 							});
 							setThreads((previousThreads) =>
-								upsertFutureChatThreadRecord(previousThreads, thread, {
+								upsertFutureChatThreadRecord(previousThreads, resolvedThread, {
 									deletedThreadIds: deletedThreadIdsRef.current,
 								}),
 							);
 							if (!embedded) {
-								pendingRouteThreadIdRef.current = thread.id;
+								pendingRouteThreadIdRef.current = resolvedThread.id;
 								pendingRouteReadyRef.current = true;
-								flushPendingRouteReplacement(thread.id);
+								flushPendingRouteReplacement(resolvedThread.id);
 							}
 						})
 						.catch((recoveryError) => {
@@ -4948,6 +4969,7 @@ export function useFutureChat({
 		beginThreadHydration,
 		completeThreadHydration,
 		embedded,
+		isGeneratingTitle,
 		isLoadingThread,
 		isStreaming,
 		isVoiceMode,
@@ -4956,6 +4978,8 @@ export function useFutureChat({
 		replaceRealtimeMessagesState,
 		flushPendingRouteReplacement,
 		normalizedRovodevMessages,
+		pendingTitleThreadId,
+		reconcileThreadWithLocalTitle,
 		setRovodevMessages,
 		threadVisibility,
 		threads,
@@ -4979,7 +5003,9 @@ export function useFutureChat({
 				if (cancelled) return;
 				const activeIds = new Set(streams.map((stream) => stream.threadId));
 				const nextThreads = filterDeletedFutureChatThreads(
-					await listFutureChatThreads(),
+					(await listFutureChatThreads()).map((thread) =>
+						reconcileThreadWithLocalTitle(thread),
+					),
 					deletedThreadIdsRef.current,
 				);
 				if (cancelled) return;
@@ -5021,7 +5047,7 @@ export function useFutureChat({
 			cancelled = true;
 			window.clearInterval(intervalId);
 		};
-	}, [backgroundRefreshThreadIdsKey, hydrateThreadById]);
+	}, [backgroundRefreshThreadIdsKey, hydrateThreadById, reconcileThreadWithLocalTitle]);
 
 	return {
 		activeDocument,

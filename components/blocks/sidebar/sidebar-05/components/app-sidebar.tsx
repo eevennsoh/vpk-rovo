@@ -1,7 +1,6 @@
-// @ts-nocheck
 import * as React from "react"
 import {
-  GalleryVerticalEnd,
+  GalleryVerticalEndIcon as GalleryVerticalEnd,
   MinusIcon,
   PlusIcon,
 } from "@/components/ui/vpk-icons"

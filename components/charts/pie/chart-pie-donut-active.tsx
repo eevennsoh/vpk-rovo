@@ -1,6 +1,6 @@
 "use client";
 
-import { TrendingUp } from "@/components/ui/vpk-icons";
+import { TrendingUpIcon as TrendingUp } from "@/components/ui/vpk-icons";
 import { Pie, PieChart, Sector } from "recharts";
 import { type PieSectorDataItem } from "recharts/types/polar/Pie";
 

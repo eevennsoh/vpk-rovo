@@ -16,14 +16,14 @@ import { Input } from "@/components/ui/input";
 import { API_ENDPOINTS } from "@/lib/api-config";
 import { cn } from "@/lib/utils";
 import {
-	ArrowLeft,
-	ArrowRight,
-	ExternalLink,
+	ArrowLeftIcon as ArrowLeft,
+	ArrowRightIcon as ArrowRight,
+	ExternalLinkIcon as ExternalLink,
 	Loader2Icon,
 	PlusIcon,
 	RefreshCwIcon,
-	RotateCw,
-	TreePine,
+	RotateCwIcon as RotateCw,
+	TreePineIcon as TreePine,
 	TriangleAlertIcon,
 	XIcon,
 } from "@/components/ui/vpk-icons";

@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/tabs";
 import {
   ChevronDownIcon,
-  Code,
+  CodeIcon as Code,
 } from "@/components/ui/vpk-icons";
 import { cn } from "@/lib/utils";
 

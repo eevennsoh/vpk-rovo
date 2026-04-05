@@ -1,5 +1,4 @@
-// @ts-nocheck
-import { Search } from "@/components/ui/vpk-icons"
+import { SearchIcon as Search } from "@/components/ui/vpk-icons"
 
 import { Label } from "@/components/ui/label"
 import { SidebarInput } from "@/components/ui/sidebar"

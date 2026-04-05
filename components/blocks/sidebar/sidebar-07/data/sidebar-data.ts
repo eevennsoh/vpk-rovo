@@ -1,4 +1,3 @@
-// @ts-nocheck
 import {
 	AppWindowIcon,
 	AudioWaveformIcon,
@@ -6,7 +5,7 @@ import {
 	BotIcon,
 	ChartPieIcon,
 	CommandIcon,
-	GalleryVerticalEnd,
+	GalleryVerticalEndIcon,
 	GlobeIcon,
 	SettingsIcon,
 	TerminalIcon,
@@ -21,7 +20,7 @@ export const USER_DATA = {
 export const TEAMS = [
 	{
 		name: "Acme Inc",
-		logo: GalleryVerticalEnd,
+		logo: GalleryVerticalEndIcon,
 		plan: "Enterprise",
 	},
 	{

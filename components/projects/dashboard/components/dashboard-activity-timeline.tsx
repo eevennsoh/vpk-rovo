@@ -16,7 +16,7 @@ function formatRelativeDate(dateStr: string): string {
 	if (diffDays === 1) return "Yesterday";
 	if (diffDays < 7) return `${diffDays}d ago`;
 	if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
-	return Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(date);
+	return Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(date);
 }
 
 const STATUS_ACTION: Record<string, string> = {

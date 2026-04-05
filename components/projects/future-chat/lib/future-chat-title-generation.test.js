@@ -3,6 +3,7 @@ const test = require("node:test");
 
 const {
 	getPendingFutureChatTitleRequest,
+	shouldDeferFutureChatTitlePersistence,
 } = require("./future-chat-title-generation.ts");
 
 test("returns the pending title request when state and ref still match", () => {
@@ -49,5 +50,27 @@ test("returns null when the ref no longer matches the pending thread id", () => 
 			pendingTitleMessage: "Hello",
 		}),
 		null,
+	);
+});
+
+test("defers generic title persistence while the active thread is still generating its AI title", () => {
+	assert.equal(
+		shouldDeferFutureChatTitlePersistence({
+			activeThreadId: "thread-1",
+			isGeneratingTitle: true,
+			pendingTitleThreadId: "thread-1",
+		}),
+		true,
+	);
+});
+
+test("does not defer generic title persistence for other threads", () => {
+	assert.equal(
+		shouldDeferFutureChatTitlePersistence({
+			activeThreadId: "thread-1",
+			isGeneratingTitle: true,
+			pendingTitleThreadId: "thread-2",
+		}),
+		false,
 	);
 });

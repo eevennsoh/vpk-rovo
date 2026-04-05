@@ -1,4 +1,3 @@
-// @ts-nocheck
 export const VERSIONS = ["1.0.1", "1.1.0-alpha", "2.0.0-beta1"] as const
 
 export const NAV_MAIN_ITEMS = [

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import * as React from "react"
 import { PlusIcon } from "@/components/ui/vpk-icons"
 

@@ -1,4 +1,4 @@
-import { GalleryVerticalEnd } from "@/components/ui/vpk-icons"
+import { GalleryVerticalEndIcon as GalleryVerticalEnd } from "@/components/ui/vpk-icons"
 import Image from "next/image"
 
 import { SignupForm } from "./components/signup-form"

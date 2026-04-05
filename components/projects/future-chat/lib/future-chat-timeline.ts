@@ -13,7 +13,7 @@ function formatFutureChatTimelineTimestamp(timestamp: string): string | null {
 		return null;
 	}
 
-	return new Intl.DateTimeFormat(undefined, {
+	return new Intl.DateTimeFormat("en-US", {
 		timeStyle: "short",
 	}).format(new Date(parsedTimestamp));
 }

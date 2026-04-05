@@ -3,10 +3,10 @@
 import * as React from "react"
 import type { ElevenLabs } from "@elevenlabs/elevenlabs-js"
 import {
-  Check,
-  ChevronsUpDown,
-  Pause,
-  Play,
+  CheckIcon as Check,
+  ChevronsUpDownIcon as ChevronsUpDown,
+  PauseIcon as Pause,
+  PlayIcon as Play,
 } from "@/components/ui/vpk-icons"
 
 import { cn } from "@/lib/utils"

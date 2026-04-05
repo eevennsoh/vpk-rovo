@@ -1,4 +1,3 @@
-// @ts-nocheck
 import * as React from "react"
 import { PlusIcon } from "@/components/ui/vpk-icons"
 
@@ -13,7 +12,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarRail,
   SidebarSeparator,
 } from "@/components/ui/sidebar"
 

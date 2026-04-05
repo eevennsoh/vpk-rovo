@@ -420,8 +420,6 @@ const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}/;
 const TITLE_KEY_PATTERN = /^(summary|title|name|subject|event|label|headline)$/i;
 const DESCRIPTION_KEY_PATTERN = /^(description|body|detail|content|text|snippet|excerpt)$/i;
 const URL_KEY_PATTERN = /^(url|link|href|web_url|html_url|permalink|self)$/i;
-const STATUS_KEY_PATTERN = /^(status|state|phase|stage)$/i;
-
 const STATUS_LOZENGE_MAP = {
 	done: "success",
 	closed: "success",

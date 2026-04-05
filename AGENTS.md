@@ -107,7 +107,7 @@ If instructions overlap, use this precedence:
 - Static assets live in `public/`; reference via absolute path (e.g. `/illustration-ai/chat/light.svg`)
 - Organize new assets by category: `1p/` (Atlassian product logos), `3p/` (third-party logos), `illustration/` (rich icons), `illustration-ai/` (AI illustrations with light/dark variants)
 - Shadows: `token("elevation.shadow.raised")` or `token("elevation.shadow.overlay")`
-- Dates: `Intl.DateTimeFormat(undefined, { dateStyle: "medium" })`
+- Dates: `Intl.DateTimeFormat("en-US", { dateStyle: "medium" })` (always specify locale to avoid SSR/client hydration mismatch)
 
 Key imports:
 

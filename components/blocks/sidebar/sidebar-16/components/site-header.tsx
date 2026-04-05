@@ -1,4 +1,3 @@
-// @ts-nocheck
 "use client"
 
 import { SidebarIcon } from "@/components/ui/vpk-icons"

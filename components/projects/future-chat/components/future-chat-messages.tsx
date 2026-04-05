@@ -1,6 +1,6 @@
 "use client";
 
-import { useReducedMotion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import type { ComponentProps, ErrorInfo, ReactNode, RefObject } from "react";
 import {
 	Attachment,
@@ -1292,6 +1292,7 @@ export function FutureChatMessages({
 	streamingArtifactMessageId,
 	votes,
 }: Readonly<FutureChatMessagesProps>) {
+	const shouldReduceMotion = useReducedMotion();
 	const scrollSpacerRef = useRef<HTMLDivElement | null>(null);
 	const visibleMessages = useMemo(
 		() => messages.filter((message) =>
@@ -1372,23 +1373,37 @@ export function FutureChatMessages({
 				) : null}
 			{shouldShowEmptyConversationState ? (
 				<div className="flex flex-col items-center gap-2 py-6">
-					<Image
-						alt="Chat"
-						className="h-auto w-auto object-contain dark:hidden"
-						height={67}
-						loading="eager"
-						src="/illustration-ai/chat/light.svg"
-						width={74}
-					/>
-					<Image
-						alt="Chat"
-						className="hidden h-auto w-auto object-contain dark:block"
-						height={67}
-						loading="eager"
-						src="/illustration-ai/chat/dark.svg"
-						width={74}
-					/>
-					<Heading size="xlarge">How can I help?</Heading>
+					<motion.div
+						initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
+						animate={{ opacity: 1, y: 0 }}
+						transition={{ duration: 0.4, ease: [0, 0.4, 0, 1] }}
+						style={{ willChange: "transform, opacity" }}
+					>
+						<Image
+							alt="Chat"
+							className="h-auto w-auto object-contain dark:hidden"
+							height={67}
+							loading="eager"
+							src="/illustration-ai/chat/light.svg"
+							width={74}
+						/>
+						<Image
+							alt="Chat"
+							className="hidden h-auto w-auto object-contain dark:block"
+							height={67}
+							loading="eager"
+							src="/illustration-ai/chat/dark.svg"
+							width={74}
+						/>
+					</motion.div>
+					<motion.div
+						initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
+						animate={{ opacity: 1, y: 0 }}
+						transition={{ duration: 0.4, ease: [0, 0.4, 0, 1], delay: 0.1 }}
+						style={{ willChange: "transform, opacity" }}
+					>
+						<Heading size="xlarge">How can I help?</Heading>
+					</motion.div>
 				</div>
 			) : null}
 

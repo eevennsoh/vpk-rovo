@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { TrendingUp } from "@/components/ui/vpk-icons";
+import { TrendingUpIcon as TrendingUp } from "@/components/ui/vpk-icons";
 import { Label, Pie, PieChart } from "recharts";
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { SettingsDialog } from "./components/settings-dialog"
 
 export default function Page() {

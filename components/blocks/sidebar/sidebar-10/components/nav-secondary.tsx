@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React from "react"
 import { type VpkIconComponent } from "@/components/ui/vpk-icons"
 
@@ -15,12 +14,12 @@ export function NavSecondary({
   items,
   ...props
 }: {
-  items: {
+  items: ReadonlyArray<{
     title: string
     url: string
     icon: VpkIconComponent
     badge?: React.ReactNode
-  }[]
+  }>
 } & React.ComponentPropsWithoutRef<typeof SidebarGroup>) {
   return (
     <SidebarGroup {...props}>

@@ -15,10 +15,10 @@ import {
 } from "react"
 import * as SliderPrimitive from "@radix-ui/react-slider"
 import {
-  Check,
+  CheckIcon as Check,
   PauseIcon,
   PlayIcon,
-  Settings,
+  SettingsIcon as Settings,
 } from "@/components/ui/vpk-icons"
 
 import { cn } from "@/lib/utils"

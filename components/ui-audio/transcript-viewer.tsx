@@ -11,7 +11,7 @@ import {
   type ReactNode,
 } from "react"
 import type { CharacterAlignmentResponseModel } from "@elevenlabs/elevenlabs-js/api/types/CharacterAlignmentResponseModel"
-import { Pause, Play } from "@/components/ui/vpk-icons"
+import { PauseIcon as Pause, PlayIcon as Play } from "@/components/ui/vpk-icons"
 
 import { cn } from "@/lib/utils"
 import {

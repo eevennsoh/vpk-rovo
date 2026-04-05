@@ -1,4 +1,3 @@
-// @ts-nocheck
 import * as React from "react"
 import { ChevronRightIcon } from "@/components/ui/vpk-icons"
 

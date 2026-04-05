@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { Calendar } from "@/components/ui/calendar"
 import {
   SidebarGroup,

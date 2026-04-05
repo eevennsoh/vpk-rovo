@@ -1,6 +1,7 @@
 "use client";
 
 import type { FileUIPart } from "ai";
+import { motion, useReducedMotion } from "motion/react";
 import { type CSSProperties, startTransition, useCallback, useEffect, useMemo, useRef, useState, ViewTransition } from "react";
 import { ArtifactPanel } from "@/components/ui-ai/artifact";
 import { ChatTimelineNavigator } from "@/components/blocks/chat-timeline/chat-timeline-navigator";
@@ -1559,6 +1560,7 @@ export function FutureChatShell({
 		!isArtifactOpen &&
 		!hasActiveThreadRun &&
 		visibleMessages.length === 0;
+	const shouldReduceMotion = useReducedMotion();
 	const shouldShowTimelineNavigator =
 		!showHomeState &&
 		!isArtifactOpen &&
@@ -2040,57 +2042,71 @@ export function FutureChatShell({
 									/>
 								</div>
 							) : null}
-							<FutureChatComposer
-								key={chat.runtimeThreadId}
-								artifactTitle={workspaceDocument?.title ?? null}
-								autoFocus={!embedded}
-								backgroundArtifactLabel={chat.backgroundArtifactLabel}
-								composerStatus={chat.composerStatus}
-								compact={isArtifactOpen}
-								errorMessage={chat.inputError}
-								galleryExpanded={galleryExpanded}
-								isPlanMode={chat.isPlanMode}
-								micStream={realtime.micStream}
-								onDismissArtifactContext={handleCloseArtifactPane}
-								onDismissPlanExecutionTracker={chat.dismissPlanExecutionTracker}
-								onStop={handleStop}
-								onRemoveQueuedPrompt={chat.removeQueuedPrompt}
-								onSubmit={handleComposerSubmit}
-								onTogglePlanMode={chat.togglePlanMode}
-								onToggleRealtimeVoice={handleToggleRealtimeVoice}
-								onToggleVoice={handleToggleVoice}
-								placeholder={composerPreviewState.placeholder}
-								prefillText={voiceTranscript ?? prefillText}
-								previewPrompt={composerPreviewState.activePreviewPrompt}
-								planExecutionTracker={chat.planExecutionTracker}
-								queuedPrompts={chat.queuedPrompts}
-								realtimeGenerationState={realtime.generationState}
-								realtimeOutputWaveformBars={realtime.outputWaveformBars}
-								realtimeVoiceActive={isRealtimeActive}
-								realtimeVoiceState={realtime.voiceState}
-								renderResponseGradient={(props) => (
-									<SmoothGradientWaveform {...props} />
-								)}
-								showBackgroundStop={chat.hasBackgroundDelegation}
-								submitDisabled={Boolean(chat.activeToolApproval)}
-								voiceState={voiceButtonState}
-							/>
+							<motion.div
+								initial={showHomeState && !shouldReduceMotion ? { opacity: 0, y: 20 } : false}
+								animate={{ opacity: 1, y: 0 }}
+								transition={{ duration: 0.4, ease: [0, 0.4, 0, 1], delay: 0.2 }}
+								style={{ willChange: "transform, opacity" }}
+							>
+								<FutureChatComposer
+									key={chat.runtimeThreadId}
+									artifactTitle={workspaceDocument?.title ?? null}
+									autoFocus={!embedded}
+									backgroundArtifactLabel={chat.backgroundArtifactLabel}
+									composerStatus={chat.composerStatus}
+									compact={isArtifactOpen}
+									errorMessage={chat.inputError}
+									galleryExpanded={galleryExpanded}
+									isPlanMode={chat.isPlanMode}
+									micStream={realtime.micStream}
+									onDismissArtifactContext={handleCloseArtifactPane}
+									onDismissPlanExecutionTracker={chat.dismissPlanExecutionTracker}
+									onStop={handleStop}
+									onRemoveQueuedPrompt={chat.removeQueuedPrompt}
+									onSubmit={handleComposerSubmit}
+									onTogglePlanMode={chat.togglePlanMode}
+									onToggleRealtimeVoice={handleToggleRealtimeVoice}
+									onToggleVoice={handleToggleVoice}
+									placeholder={composerPreviewState.placeholder}
+									prefillText={voiceTranscript ?? prefillText}
+									previewPrompt={composerPreviewState.activePreviewPrompt}
+									planExecutionTracker={chat.planExecutionTracker}
+									queuedPrompts={chat.queuedPrompts}
+									realtimeGenerationState={realtime.generationState}
+									realtimeOutputWaveformBars={realtime.outputWaveformBars}
+									realtimeVoiceActive={isRealtimeActive}
+									realtimeVoiceState={realtime.voiceState}
+									renderResponseGradient={(props) => (
+										<SmoothGradientWaveform {...props} />
+									)}
+									showBackgroundStop={chat.hasBackgroundDelegation}
+									submitDisabled={Boolean(chat.activeToolApproval)}
+									voiceState={voiceButtonState}
+								/>
+							</motion.div>
 							{!showHomeState ? <Footer className="relative z-10" /> : null}
 						</>
 					)}
 				</div>
 
 				{showHomeState ? (
-					<ViewTransition exit="slide-down" default="none">
-						<PromptGallery
-							className="mt-5"
-							items={HOME_SUGGESTIONS}
-							onSelect={handleGallerySelect}
-							onExpandChange={setGalleryExpanded}
-							onPreviewStart={handleGalleryPreviewStart}
-							onPreviewEnd={handleGalleryPreviewEnd}
-						/>
-					</ViewTransition>
+					<motion.div
+						initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
+						animate={{ opacity: 1, y: 0 }}
+						transition={{ duration: 0.4, ease: [0, 0.4, 0, 1], delay: 0.3 }}
+						style={{ willChange: "transform, opacity" }}
+					>
+						<ViewTransition exit="slide-down" default="none">
+							<PromptGallery
+								className="mt-5"
+								items={HOME_SUGGESTIONS}
+								onSelect={handleGallerySelect}
+								onExpandChange={setGalleryExpanded}
+								onPreviewStart={handleGalleryPreviewStart}
+								onPreviewEnd={handleGalleryPreviewEnd}
+							/>
+						</ViewTransition>
+					</motion.div>
 				) : null}
 			</div>
 		</>

@@ -21,6 +21,46 @@ export function filterDeletedFutureChatThreads(
 	);
 }
 
+export function mergeFutureChatThreadWithLocalTitle(
+	threads: ReadonlyArray<FutureChatThread>,
+	nextThread: FutureChatThread,
+): FutureChatThread {
+	const existingThread = threads.find((thread) => thread.id === nextThread.id);
+	if (!existingThread || existingThread.title === nextThread.title) {
+		return nextThread;
+	}
+
+	// Never let a stale server response overwrite an already-resolved
+	// non-default title with the "New chat" placeholder.
+	const existingIsReal = existingThread.title.trim().length > 0
+		&& existingThread.title.trim() !== "New chat";
+	const nextIsPlaceholder = !nextThread.title.trim()
+		|| nextThread.title.trim() === "New chat";
+	if (existingIsReal && nextIsPlaceholder) {
+		return {
+			...nextThread,
+			title: existingThread.title,
+			updatedAt: existingThread.updatedAt,
+		};
+	}
+
+	const existingUpdatedAt = Date.parse(existingThread.updatedAt);
+	const nextUpdatedAt = Date.parse(nextThread.updatedAt);
+	const hasNewerExistingTitle =
+		existingThread.title.trim().length > 0
+		&& Number.isFinite(existingUpdatedAt)
+		&& (!Number.isFinite(nextUpdatedAt) || existingUpdatedAt > nextUpdatedAt);
+	if (!hasNewerExistingTitle) {
+		return nextThread;
+	}
+
+	return {
+		...nextThread,
+		title: existingThread.title,
+		updatedAt: existingThread.updatedAt,
+	};
+}
+
 export function updateFutureChatThreadTitleRecord(
 	threads: ReadonlyArray<FutureChatThread>,
 	options: {

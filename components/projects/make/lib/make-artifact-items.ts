@@ -55,7 +55,7 @@ function formatRunDate(value: string): string {
 		return "Unknown";
 	}
 
-	return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(timestamp);
+	return new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(timestamp);
 }
 
 function getRunAgentCount(run: AgentRunListItem): number {

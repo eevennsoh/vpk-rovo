@@ -1,4 +1,4 @@
-import { GalleryVerticalEnd } from "@/components/ui/vpk-icons"
+import { GalleryVerticalEndIcon as GalleryVerticalEnd } from "@/components/ui/vpk-icons"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useCallback, useMemo, useRef, useState } from "react";
 import CrossIcon from "@atlaskit/icon/core/cross";
 import ImageIcon from "@atlaskit/icon/core/image";
@@ -32,9 +33,12 @@ function ImageUploadControl({
 			<Label className="text-xs font-medium text-text">Image</Label>
 			<div className="flex items-center gap-2">
 				{imageSrc ? (
-					<img
+					<Image
 						src={imageSrc}
 						alt="Source"
+						width={36}
+						height={36}
+						unoptimized
 						className="size-9 shrink-0 rounded border border-border object-cover"
 					/>
 				) : (

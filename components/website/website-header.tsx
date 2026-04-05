@@ -27,7 +27,7 @@ function formatLastUpdated(lastUpdatedAt: string): string | null {
 	if (Number.isNaN(date.getTime())) {
 		return null;
 	}
-	const formattedDate = new Intl.DateTimeFormat(undefined, {
+	const formattedDate = new Intl.DateTimeFormat("en-US", {
 		dateStyle: "medium",
 		timeStyle: "short",
 	}).format(date);

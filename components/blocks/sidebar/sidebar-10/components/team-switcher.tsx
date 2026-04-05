@@ -1,8 +1,11 @@
-// @ts-nocheck
 "use client"
 
 import * as React from "react"
-import { ChevronDownIcon, PlusIcon } from "@/components/ui/vpk-icons"
+import {
+  ChevronDownIcon,
+  PlusIcon,
+  type VpkIconComponent,
+} from "@/components/ui/vpk-icons"
 
 import {
   DropdownMenu,
@@ -23,11 +26,11 @@ import {
 export function TeamSwitcher({
   teams,
 }: {
-  teams: {
+  teams: ReadonlyArray<{
     name: string
-    logo: React.ElementType
+    logo: VpkIconComponent
     plan: string
-  }[]
+  }>
 }) {
   const [activeTeam, setActiveTeam] = React.useState(teams[0])
 

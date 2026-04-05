@@ -1,8 +1,7 @@
-// @ts-nocheck
 "use client"
 
 import {
-  MoreHorizontal,
+  MoreHorizontalIcon as MoreHorizontal,
   type VpkIconComponent,
 } from "@/components/ui/vpk-icons"
 

@@ -25,7 +25,7 @@ function DatePicker({
 	const [open, setOpen] = React.useState(false)
 
 	const label = value
-		? new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(value)
+		? new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(value)
 		: placeholder
 
 	return (

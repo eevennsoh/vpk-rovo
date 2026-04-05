@@ -1,4 +1,5 @@
-// @ts-nocheck
+import type { CSSProperties } from "react"
+
 import { AppSidebar } from "./components/app-sidebar"
 import {
   Breadcrumb,
@@ -21,7 +22,7 @@ export default function Page() {
       style={
         {
           "--sidebar-width": "350px",
-        } as React.CSSProperties
+        } as CSSProperties
       }
     >
       <AppSidebar />

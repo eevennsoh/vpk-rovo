@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Disc3, Square, Trash2 } from "@/components/ui/vpk-icons";
+import { Disc3, SquareIcon as Square, Trash2Icon as Trash2 } from "@/components/ui/vpk-icons";
 import { LiveWaveform } from "@/components/ui-audio/live-waveform";
 import { MicSelector } from "@/components/ui-audio/mic-selector";
 import { Button } from "@/components/ui/button";

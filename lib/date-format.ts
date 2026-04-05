@@ -26,7 +26,7 @@ export function formatDateForDisplay(
 		return getHydrationSafeDateFallback(dateStr);
 	}
 
-	return new Intl.DateTimeFormat(undefined, { dateStyle }).format(parsedDate);
+	return new Intl.DateTimeFormat("en-US", { dateStyle }).format(parsedDate);
 }
 
 export function formatRelativeDateForDisplay(dateStr: string): string {

@@ -1,6 +1,6 @@
 "use client";
 
-import { TrendingDown, TrendingUp } from "@/components/ui/vpk-icons";
+import { TrendingDownIcon as TrendingDown, TrendingUpIcon as TrendingUp } from "@/components/ui/vpk-icons";
 import { Area, AreaChart, CartesianGrid, XAxis } from "recharts";
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";

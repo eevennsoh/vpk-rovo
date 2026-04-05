@@ -3,6 +3,7 @@ const test = require("node:test");
 
 const {
 	filterDeletedFutureChatThreads,
+	mergeFutureChatThreadWithLocalTitle,
 	updateFutureChatThreadMessagesRecord,
 	upsertFutureChatThreadRecord,
 } = require("./future-chat-thread-state.ts");
@@ -83,4 +84,32 @@ test("updateFutureChatThreadMessagesRecord patches the target thread messages", 
 	assert.deepEqual(result.threads[0].messages, nextMessages);
 	assert.equal(result.threads[1].id, "thread-2");
 	assert.deepEqual(result.threads[1].messages, []);
+});
+
+test("mergeFutureChatThreadWithLocalTitle preserves a newer local title over a stale response", () => {
+	const localThread = createThread("thread-1", "2026-03-09T12:00:00.000Z");
+	localThread.title = "Project dashboard";
+	const staleResponseThread = createThread("thread-1", "2026-03-09T11:00:00.000Z");
+	staleResponseThread.title = "help me help me build a new app";
+
+	assert.deepEqual(
+		mergeFutureChatThreadWithLocalTitle([localThread], staleResponseThread),
+		{
+			...staleResponseThread,
+			title: "Project dashboard",
+			updatedAt: "2026-03-09T12:00:00.000Z",
+		},
+	);
+});
+
+test("mergeFutureChatThreadWithLocalTitle keeps the backend title when it is newer", () => {
+	const localThread = createThread("thread-1", "2026-03-09T11:00:00.000Z");
+	localThread.title = "Project dashboard";
+	const freshResponseThread = createThread("thread-1", "2026-03-09T12:00:00.000Z");
+	freshResponseThread.title = "Project Management Dashboard";
+
+	assert.deepEqual(
+		mergeFutureChatThreadWithLocalTitle([localThread], freshResponseThread),
+		freshResponseThread,
+	);
 });

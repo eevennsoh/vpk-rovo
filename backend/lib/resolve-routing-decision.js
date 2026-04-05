@@ -29,13 +29,6 @@ const GENUI_VERB_PATTERN =
 const DATA_NOUN_PATTERN =
 	/\b(revenue|sales|data|performance|growth|trend|trends|traffic|conversion|profit|expense|budget|forecast|q[1-4]|quarter|quarterly|annual|monthly|weekly|daily|ytd|year[\s-]to[\s-]date|breakdown|distribution|comparison|analysis)\b/i;
 
-/**
- * Modification verbs — indicate artifact_update when an artifact is active.
- * From future-chat-artifact-intent.js MODIFICATION_VERB_PATTERN.
- */
-const MODIFICATION_VERB_PATTERN =
-	/\b(update|edit|revise|rewrite|shorten|expand|polish|refine|change|format|improve|fix|tweak|adjust|modify|restyle|rework|redo)\b/i;
-
 // ---------------------------------------------------------------------------
 // Presentation mapping
 // ---------------------------------------------------------------------------
@@ -376,7 +369,7 @@ async function resolveRoutingDecision(context, { classify, timeoutMs = 1500 } = 
 			reason: parsed.reason || "llm_classification",
 			origin,
 		};
-	} catch (error) {
+	} catch {
 		// D3 / D19: never throw — fallback to chat on any error
 		return {
 			intent: "chat",

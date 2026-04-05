@@ -1,8 +1,7 @@
-// @ts-nocheck
 "use client"
 
 import {
-  ChevronRight,
+  ChevronRightIcon as ChevronRight,
   type VpkIconComponent,
 } from "@/components/ui/vpk-icons"
 

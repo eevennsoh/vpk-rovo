@@ -1,11 +1,10 @@
-// @ts-nocheck
 "use client"
 
 import * as React from "react"
 import {
   CheckIcon,
   ChevronsUpDownIcon,
-  GalleryVerticalEnd,
+  GalleryVerticalEndIcon as GalleryVerticalEnd,
 } from "@/components/ui/vpk-icons"
 
 import {
@@ -24,7 +23,7 @@ export function VersionSwitcher({
   versions,
   defaultVersion,
 }: {
-  versions: string[]
+  versions: ReadonlyArray<string>
   defaultVersion: string
 }) {
   const [selectedVersion, setSelectedVersion] = React.useState(defaultVersion)

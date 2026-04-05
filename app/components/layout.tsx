@@ -1,4 +1,3 @@
-import { ChatRouteProviders } from "@/app/chat-route-providers";
 import { token } from "@/lib/tokens";
 import { WebsiteSidebarNav } from "@/components/website/website-sidebar-nav";
 import { WebsiteHeader } from "@/components/website/website-header";
@@ -30,9 +29,7 @@ export default async function ComponentsLayout({
 					leftContent={<CategoryTabs />}
 				/>
 
-				<ChatRouteProviders>
-					<main>{children}</main>
-				</ChatRouteProviders>
+				<main>{children}</main>
 			</div>
 		</>
 	);

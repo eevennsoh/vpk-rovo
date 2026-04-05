@@ -19,3 +19,15 @@ export function getPendingFutureChatTitleRequest(input: {
 		message: input.pendingTitleMessage,
 	};
 }
+
+export function shouldDeferFutureChatTitlePersistence(input: {
+	activeThreadId: string | null;
+	isGeneratingTitle: boolean;
+	pendingTitleThreadId: string | null;
+}): boolean {
+	return (
+		input.isGeneratingTitle
+		&& input.activeThreadId !== null
+		&& input.pendingTitleThreadId === input.activeThreadId
+	);
+}

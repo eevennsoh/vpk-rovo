@@ -1,7 +1,6 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { token } from "@/lib/tokens";
 import { Card } from "@/components/ui/card";
 import {
 	BarChart3Icon,

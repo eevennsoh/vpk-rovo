@@ -13,7 +13,7 @@ function hasStructuredContinuationBody(requestBody) {
 	);
 }
 
-function shouldReplaceActiveRunForRequest({ existingRun, requestBody } = {}) {
+function shouldReplaceActiveRunForRequest({ existingRun } = {}) {
 	if (!existingRun || typeof existingRun !== "object") {
 		return false;
 	}

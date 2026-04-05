@@ -1,6 +1,5 @@
-// @ts-nocheck
 import * as React from "react"
-import { GalleryVerticalEnd } from "@/components/ui/vpk-icons"
+import { GalleryVerticalEndIcon as GalleryVerticalEnd } from "@/components/ui/vpk-icons"
 
 import { NavMain } from "./nav-main"
 import { SidebarOptInForm } from "./sidebar-opt-in-form"

@@ -31,14 +31,6 @@ function getStatusLabel(status: TaskStatus): string {
 }
 
 /**
- * Gets count of tasks for a given status
- */
-function getStatusCount(status: TaskStatus, filterFn?: (task: typeof SAMPLE_TASKS[0]) => boolean): number {
-	const tasks = SAMPLE_TASKS.filter((task) => task.status === status);
-	return filterFn ? tasks.filter(filterFn).length : tasks.length;
-}
-
-/**
  * Gets tasks for a given status, optionally filtered
  */
 function getTasksForStatus(

@@ -3,7 +3,7 @@
 import type { ComponentProps, ReactNode } from "react";
 import type { TProps as JsxParserProps } from "react-jsx-parser";
 
-import { AlertCircle } from "@/components/ui/vpk-icons";
+import { TriangleAlertIcon as AlertCircle } from "@/components/ui/vpk-icons";
 import { cn } from "@/lib/utils";
 import {
 	createContext,

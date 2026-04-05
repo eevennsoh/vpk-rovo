@@ -1,4 +1,3 @@
-// @ts-nocheck
 "use client"
 
 import { type VpkIconComponent } from "@/components/ui/vpk-icons"
@@ -12,12 +11,12 @@ import {
 export function NavMain({
   items,
 }: {
-  items: {
+  items: ReadonlyArray<{
     title: string
     url: string
     icon: VpkIconComponent
     isActive?: boolean
-  }[]
+  }>
 }) {
   return (
     <SidebarMenu>

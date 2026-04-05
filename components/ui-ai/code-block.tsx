@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   CheckIcon,
-  ChevronDown,
+  ChevronDownIcon as ChevronDown,
   CopyIcon,
   DownloadIcon,
 } from "@/components/ui/vpk-icons";

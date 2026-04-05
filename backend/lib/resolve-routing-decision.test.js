@@ -12,13 +12,13 @@ const {
 // ---------------------------------------------------------------------------
 
 function makeMockClassify(response) {
-	return async ({ system, prompt, signal }) => {
+	return async () => {
 		return JSON.stringify(response);
 	};
 }
 
 function makeSlowClassify(delayMs, response) {
-	return async ({ signal }) => {
+	return async () => {
 		await new Promise((resolve) => setTimeout(resolve, delayMs));
 		return JSON.stringify(response);
 	};

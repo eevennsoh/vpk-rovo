@@ -1,4 +1,3 @@
-// @ts-nocheck
 import * as React from "react"
 import { ChevronRightIcon, FileIcon, FolderIcon } from "@/components/ui/vpk-icons"
 
@@ -21,8 +20,16 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar"
 
+type TreeNode = string | [string, ...TreeNode[]]
+
 // This is sample data.
-const data = {
+const data: {
+  changes: Array<{
+    file: string
+    state: string
+  }>
+  tree: TreeNode[]
+} = {
   changes: [
     {
       file: "README.md",
@@ -101,20 +108,20 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   )
 }
 
-function Tree({ item }: { item: string | any[] }) {
-  const [name, ...items] = Array.isArray(item) ? item : [item]
-
-  if (!items.length) {
+function Tree({ item }: { item: TreeNode }) {
+  if (typeof item === "string") {
     return (
       <SidebarMenuButton
-        isActive={name === "button.tsx"}
+        isActive={item === "button.tsx"}
         className="data-[active=true]:bg-transparent"
       >
         <FileIcon />
-        {name}
+        {item}
       </SidebarMenuButton>
     )
   }
+
+  const [name, ...items] = item
 
   return (
     <SidebarMenuItem>

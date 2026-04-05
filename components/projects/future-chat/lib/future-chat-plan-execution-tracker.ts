@@ -50,14 +50,6 @@ export interface FutureChatPlanExecutionTrackerViewModel {
 	taskStatusGroups: FutureChatPlanExecutionStatusGroups;
 }
 
-const EMPTY_STATUS_GROUPS: FutureChatPlanExecutionStatusGroups = {
-	done: [],
-	inReview: [],
-	inProgress: [],
-	failed: [],
-	todo: [],
-};
-
 function isVisibleUserMessage(message: RovoUIMessage): boolean {
 	return message.role === "user" && isMessageVisibleInTranscript(message);
 }
@@ -364,10 +356,7 @@ export function resolveFutureChatPlanExecutionTracker(input: {
 	const executionMessages = resolveExecutionWindowMessages(messages, approvalIndex);
 	const latestSnapshot = getLatestFutureChatTodoProgressFromMessages(executionMessages);
 	const thinkingStatusContent = getLatestThinkingStatusContent(executionMessages);
-	const mergedItems = mergeTodoItemsWithPlanTasks(
-		acceptedPlanWidget.tasks,
-		latestSnapshot,
-	);
+	const mergedItems = mergeTodoItemsWithPlanTasks([], latestSnapshot);
 	const runEndedWithArtifact =
 		activeRun === null && hasArtifactResultInMessages(executionMessages);
 	const runStatus: "running" | "completed" | "failed" =
@@ -394,6 +383,10 @@ export function resolveFutureChatPlanExecutionTracker(input: {
 		runStatus === "running"
 			? null
 			: resolveRunCompletedAt(executionMessages, threadUpdatedAt);
+	if (finalItems.length === 0) {
+		return null;
+	}
+
 	const agentCount = Math.max(
 		new Set(
 			(acceptedPlanWidget.tasks.length > 0
@@ -419,7 +412,6 @@ export function resolveFutureChatPlanExecutionTracker(input: {
 		runCompletedAt,
 		agentCount,
 		taskCount: finalItems.length,
-		taskStatusGroups:
-			finalItems.length > 0 ? taskStatusGroups : EMPTY_STATUS_GROUPS,
+		taskStatusGroups,
 	};
 }

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import {
   ChevronRightIcon,
   MoreHorizontalIcon,
@@ -26,14 +25,14 @@ import {
 export function NavWorkspaces({
   workspaces,
 }: {
-  workspaces: {
+  workspaces: ReadonlyArray<{
     name: string
     emoji: React.ReactNode
-    pages: {
+    pages: ReadonlyArray<{
       name: string
       emoji: React.ReactNode
-    }[]
-  }[]
+    }>
+  }>
 }) {
   return (
     <SidebarGroup>

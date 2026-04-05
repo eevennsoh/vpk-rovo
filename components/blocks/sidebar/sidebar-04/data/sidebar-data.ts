@@ -1,4 +1,3 @@
-// @ts-nocheck
 export const NAV_MAIN_ITEMS = [
 	{
 		title: "Getting Started",

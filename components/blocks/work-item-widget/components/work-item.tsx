@@ -35,7 +35,7 @@ function getPriorityColor(priority?: string) {
 function formatDate(dateString: string) {
 	try {
 		const date = new Date(dateString);
-		return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(date);
+		return new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(date);
 	} catch {
 		return dateString;
 	}

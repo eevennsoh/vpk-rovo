@@ -1,4 +1,3 @@
-// @ts-nocheck
 "use client"
 
 import {
@@ -29,11 +28,11 @@ import {
 export function NavFavorites({
   favorites,
 }: {
-  favorites: {
+  favorites: ReadonlyArray<{
     name: string
     url: string
     emoji: string
-  }[]
+  }>
 }) {
   const { isMobile } = useSidebar()
 

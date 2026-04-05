@@ -1,4 +1,3 @@
-import { ChatRouteProviders } from "@/app/chat-route-providers";
 import { PreviewFrameGuard } from "@/app/preview/preview-frame-guard";
 
 export default function PreviewLayout({
@@ -9,7 +8,7 @@ export default function PreviewLayout({
 	return (
 		<>
 			<PreviewFrameGuard />
-			<ChatRouteProviders>{children}</ChatRouteProviders>
+			{children}
 		</>
 	);
 }

@@ -4,10 +4,10 @@ import * as React from "react"
 import { useConversation } from "@elevenlabs/react"
 import {
   ArrowUpIcon,
-  ChevronDown,
+  ChevronDownIcon as ChevronDown,
   KeyboardIcon,
-  Mic,
-  MicOff,
+  MicIcon as Mic,
+  MicOffIcon as MicOff,
   PhoneIcon,
   XIcon,
 } from "@/components/ui/vpk-icons"

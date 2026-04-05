@@ -442,7 +442,6 @@ function InlineToolCard({ toolPart }: { toolPart: RovoToolPart }) {
 	const output = getToolOutput(toolPart);
 	const errorText = getToolError(toolPart);
 	const displayInfo = getToolDisplayInfo(rawToolName, input);
-	const resolvedIcon = resolveToolIcon({ toolName: rawToolName, input });
 	const displayName = displayInfo.displayName;
 	const serverName = displayInfo.server;
 	const iconHtml = getResolvedIconHtml({ toolName: rawToolName, input });
@@ -566,7 +565,6 @@ function ThinkingToolCard({ toolCall }: { toolCall: ThinkingToolCallSummary }) {
 	const [resultExpanded, setResultExpanded] = useState(false);
 
 	const displayInfo = getToolDisplayInfo(toolCall.toolName, toolCall.input, toolCall.mcpServer);
-	const resolvedIcon = resolveToolIcon({ toolName: toolCall.toolName, input: toolCall.input, mcpServer: toolCall.mcpServer });
 	const displayName = displayInfo.displayName;
 	const serverName = displayInfo.server;
 	const iconHtml = getResolvedIconHtml({ toolName: toolCall.toolName, input: toolCall.input, mcpServer: toolCall.mcpServer });

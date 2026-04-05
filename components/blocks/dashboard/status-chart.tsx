@@ -61,7 +61,7 @@ function getStatusLabel(status: TaskStatus): string {
  * - X-axis: status labels (To Do, In Progress, Done)
  * - Y-axis: task count with automatic scaling
  */
-export function StatusChart({ filterFn, height = 280 }: StatusChartProps) {
+export function StatusChart({ filterFn }: StatusChartProps) {
 	const chartData = prepareChartData(filterFn);
 	const totalTasks = chartData.reduce((sum, item) => sum + item.count, 0);
 

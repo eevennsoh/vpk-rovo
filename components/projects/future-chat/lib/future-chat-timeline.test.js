@@ -6,7 +6,7 @@ const {
 } = require("./future-chat-timeline.ts");
 
 function formatExpectedTimestamp(timestamp) {
-	return new Intl.DateTimeFormat(undefined, {
+	return new Intl.DateTimeFormat("en-US", {
 		timeStyle: "short",
 	}).format(new Date(timestamp));
 }

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { AppSidebar } from "./components/app-sidebar"
 import { NavActions } from "./components/nav-actions"
 import {

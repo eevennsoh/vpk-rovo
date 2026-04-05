@@ -1,13 +1,10 @@
 "use client";
 
-import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
-	type CrmDeal,
 	type DealStage,
 	type DealStageFilter,
 	formatCurrency,
@@ -42,7 +39,7 @@ function stageBadgeVariant(stage: DealStage): { bg: string; text: string } {
 }
 
 function formatDate(iso: string) {
-	return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(iso));
+	return new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(new Date(iso));
 }
 
 interface CrmDealsTableProps {

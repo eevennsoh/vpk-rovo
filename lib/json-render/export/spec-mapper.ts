@@ -125,14 +125,14 @@ const pdfMappers: Record<string, Mapper> = {
 		},
 		children: ch,
 	}),
-	Card: (_, ch) => ({
+	Card: (__, ch) => ({
 		type: "View",
 		props: {
 			style: { border: "1pt solid #E0E0E0", borderRadius: 6, padding: 12, marginBottom: 8 },
 		},
 		children: ch,
 	}),
-	Grid: (_, ch) => ({
+	Grid: (__, ch) => ({
 		type: "View",
 		props: { style: { flexDirection: "row", flexWrap: "wrap", gap: 10 } },
 		children: ch,
@@ -169,17 +169,17 @@ const pdfMappers: Record<string, Mapper> = {
 		type: "Text",
 		props: { text: `[${str(p.text)}]`, style: { fontFamily: "Courier", fontSize: 10 } },
 	}),
-	Alert: (_) => ({
+	Alert: () => ({
 		type: "View",
 		props: { style: { backgroundColor: "#DEEBFF", padding: 10, borderRadius: 4, marginBottom: 8 } },
 		children: [uid("alert_t"), uid("alert_d")],
 	}),
-	SectionMessage: (_) => ({
+	SectionMessage: () => ({
 		type: "View",
 		props: { style: { backgroundColor: "#DEEBFF", padding: 10, borderRadius: 4, marginBottom: 8 } },
 		children: [uid("sm_t")],
 	}),
-	Banner: (_) => ({
+	Banner: () => ({
 		type: "View",
 		props: { style: { backgroundColor: "#FFF0B3", padding: 8, marginBottom: 8 } },
 		children: [uid("banner_t")],
@@ -188,7 +188,7 @@ const pdfMappers: Record<string, Mapper> = {
 		type: "Divider",
 		props: {},
 	}),
-	Metric: (_) => ({
+	Metric: () => ({
 		type: "View",
 		props: { style: { marginBottom: 8 } },
 		children: [uid("metric")],
@@ -216,12 +216,12 @@ const pdfMappers: Record<string, Mapper> = {
 		props: { style: { marginBottom: 8 } },
 		children: ((p.items as Array<{ title: string; content: string }>) ?? []).map(() => uid("acc")),
 	}),
-	Tabs: (_, ch) => ({
+	Tabs: (__, ch) => ({
 		type: "View",
 		props: {},
 		children: ch,
 	}),
-	TabContent: (_, ch) => ({
+	TabContent: (__, ch) => ({
 		type: "View",
 		props: {},
 		children: ch,
@@ -243,22 +243,22 @@ const pdfMappers: Record<string, Mapper> = {
 		type: "Text",
 		props: { text: `${str(p.label ?? "Progress")}: ${p.value ?? 0}%` },
 	}),
-	Callout: (_) => ({
+	Callout: () => ({
 		type: "View",
 		props: { style: { backgroundColor: "#EAE6FF", padding: 10, borderRadius: 4, marginBottom: 8 } },
 		children: [uid("callout")],
 	}),
-	EmptyState: (_) => ({
+	EmptyState: () => ({
 		type: "View",
 		props: { style: { textAlign: "center", padding: 20 } },
 		children: [uid("empty")],
 	}),
-	Comment: (_) => ({
+	Comment: () => ({
 		type: "View",
 		props: { style: { marginBottom: 8 } },
 		children: [uid("comment")],
 	}),
-	PageHeader: (_) => ({
+	PageHeader: () => ({
 		type: "View",
 		props: { style: { marginBottom: 12 } },
 		children: [uid("ph")],
@@ -283,47 +283,47 @@ const pdfMappers: Record<string, Mapper> = {
 		props: { text: "Loading...", style: { color: "#666666" } },
 	}),
 	Skeleton: () => null,
-	Dialog: (_, ch) => ({
+	Dialog: (__, ch) => ({
 		type: "View",
 		props: {},
 		children: ch,
 	}),
-	Tooltip: (_, ch) => ({
+	Tooltip: (__, ch) => ({
 		type: "View",
 		props: {},
 		children: ch,
 	}),
-	Collapsible: (_, ch) => ({
+	Collapsible: (__, ch) => ({
 		type: "View",
 		props: {},
 		children: ch,
 	}),
-	ButtonGroup: (_, ch) => ({
+	ButtonGroup: (__, ch) => ({
 		type: "View",
 		props: { style: { flexDirection: "row", gap: 6 } },
 		children: ch,
 	}),
-	TagGroup: (_, ch) => ({
+	TagGroup: (__, ch) => ({
 		type: "View",
 		props: { style: { flexDirection: "row", gap: 4, flexWrap: "wrap" } },
 		children: ch,
 	}),
-	ScrollArea: (_, ch) => ({
+	ScrollArea: (__, ch) => ({
 		type: "View",
 		props: {},
 		children: ch,
 	}),
-	AspectRatio: (_, ch) => ({
+	AspectRatio: (__, ch) => ({
 		type: "View",
 		props: {},
 		children: ch,
 	}),
-	Carousel: (_, ch) => ({
+	Carousel: (__, ch) => ({
 		type: "View",
 		props: {},
 		children: ch,
 	}),
-	ObjectTile: (_) => ({
+	ObjectTile: () => ({
 		type: "View",
 		props: { style: { padding: 8, border: "1pt solid #E0E0E0", borderRadius: 4, marginBottom: 4 } },
 		children: [uid("tile")],
@@ -344,7 +344,7 @@ const pdfMappers: Record<string, Mapper> = {
 			style: { color: "#666666", fontStyle: "italic" },
 		},
 	}),
-	AccordionForm: (_, ch) => ({
+	AccordionForm: (__, ch) => ({
 		type: "View",
 		props: {},
 		children: ch,
@@ -354,12 +354,12 @@ const pdfMappers: Record<string, Mapper> = {
 		props: { style: { marginBottom: 8 } },
 		children: ((p.steps as Array<{ label: string }>) ?? []).map(() => uid("pt")),
 	}),
-	FigmaDesignContext: (_) => ({
+	FigmaDesignContext: () => ({
 		type: "View",
 		props: { style: { padding: 10, border: "1pt solid #E0E0E0", borderRadius: 4 } },
 		children: [uid("figma")],
 	}),
-	WorkSummary: (_) => ({
+	WorkSummary: () => ({
 		type: "View",
 		props: { style: { marginBottom: 8 } },
 		children: [uid("ws")],
@@ -377,14 +377,14 @@ const imageMappers: Record<string, Mapper> = {
 		},
 		children: ch,
 	}),
-	Card: (_, ch) => ({
+	Card: (__, ch) => ({
 		type: "Box",
 		props: {
 			style: { border: "1px solid #E0E0E0", borderRadius: 6, padding: 12 },
 		},
 		children: ch,
 	}),
-	Grid: (_, ch) => ({
+	Grid: (__, ch) => ({
 		type: "Row",
 		props: { gap: 10, flexWrap: "wrap" },
 		children: ch,
@@ -409,7 +409,7 @@ const imageMappers: Record<string, Mapper> = {
 		type: "Text",
 		props: { text: str(p.text), fontSize: 12, color: "#0052CC" },
 	}),
-	Metric: (_) => ({
+	Metric: () => ({
 		type: "Column",
 		props: { gap: 2 },
 		children: [uid("metric_l"), uid("metric_v")],
@@ -424,12 +424,12 @@ const emailMappers: Record<string, Mapper> = {
 		props: {},
 		children: ch,
 	}),
-	Card: (_, ch) => ({
+	Card: (__, ch) => ({
 		type: "Container",
 		props: { style: { border: "1px solid #E0E0E0", borderRadius: "6px", padding: "12px" } },
 		children: ch,
 	}),
-	Grid: (_, ch) => ({
+	Grid: (__, ch) => ({
 		type: "Row",
 		props: {},
 		children: ch,
@@ -462,17 +462,17 @@ const emailMappers: Record<string, Mapper> = {
 		type: "Text",
 		props: { text: str(p.text), style: { fontSize: "12px", color: "#0052CC", fontWeight: "bold" } },
 	}),
-	Metric: (_) => ({
+	Metric: () => ({
 		type: "Section",
 		props: {},
 		children: [uid("metric")],
 	}),
-	Alert: (_) => ({
+	Alert: () => ({
 		type: "Section",
 		props: { style: { backgroundColor: "#DEEBFF", padding: "10px", borderRadius: "4px" } },
 		children: [uid("alert")],
 	}),
-	Table: (_) => ({
+	Table: () => ({
 		type: "Section",
 		props: {},
 		children: [uid("table_text")],

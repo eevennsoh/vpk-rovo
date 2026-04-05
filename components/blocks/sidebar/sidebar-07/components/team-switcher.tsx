@@ -1,8 +1,11 @@
-// @ts-nocheck
 "use client"
 
 import * as React from "react"
-import { ChevronsUpDownIcon, PlusIcon } from "@/components/ui/vpk-icons"
+import {
+  ChevronsUpDownIcon,
+  PlusIcon,
+  type VpkIconComponent,
+} from "@/components/ui/vpk-icons"
 
 import {
   DropdownMenu,
@@ -26,7 +29,7 @@ export function TeamSwitcher({
 }: {
   teams: {
     name: string
-    logo: React.ElementType
+    logo: VpkIconComponent
     plan: string
   }[]
 }) {

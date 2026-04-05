@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/sidebar"
 import {
 	FolderIcon,
-	MoreHorizontal,
+	MoreHorizontalIcon as MoreHorizontal,
 	ShareIcon,
 	Trash2Icon,
 } from "@/components/ui/vpk-icons"

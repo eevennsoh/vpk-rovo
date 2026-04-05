@@ -1,4 +1,3 @@
-// @ts-nocheck
 "use client"
 
 import * as React from "react"
@@ -29,8 +28,12 @@ import {
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 	// Note: I'm using state to show active item.
 	// IRL you should use the url/router.
-	const [activeItem, setActiveItem] = React.useState(NAV_MAIN_ITEMS[0])
-	const [mails, setMails] = React.useState(MAIL_ITEMS)
+	const [activeItem, setActiveItem] = React.useState<(typeof NAV_MAIN_ITEMS)[number]>(
+		NAV_MAIN_ITEMS[0]!
+	)
+	const [mails, setMails] = React.useState<Array<(typeof MAIL_ITEMS)[number]>>([
+		...MAIL_ITEMS,
+	])
 	const { setOpen } = useSidebar()
 
 	return (

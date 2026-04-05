@@ -205,7 +205,6 @@ const {
 	getEnvVars,
 	detectEndpointType,
 	resolveGatewayUrl,
-	streamBedrockGatewayManualSse,
 	streamGoogleGatewayManualSse,
 	getRealtimeConfig,
 } = require("./lib/ai-gateway-helpers");
@@ -589,18 +588,6 @@ const READY_PROBE_MAX_ATTEMPTS = 20; // 100ms × 20 = 2s max
 const activeRequests = new Map();
 const getListeningPidsForPort = createListeningPidReader();
 
-function resolveGatewayUrlForProvider(envVars, preferredProvider, providedGatewayUrl) {
-	if (typeof providedGatewayUrl === "string" && providedGatewayUrl.trim().length > 0) {
-		return providedGatewayUrl.trim();
-	}
-
-	if (preferredProvider === "google") {
-		return envVars.AI_GATEWAY_URL_GOOGLE || envVars.AI_GATEWAY_URL;
-	}
-
-	return envVars.AI_GATEWAY_URL || envVars.AI_GATEWAY_URL_GOOGLE;
-}
-
 function getAIGatewayConfigReport(envVars = getEnvVars()) {
 	return {
 		AI_GATEWAY_URL: envVars.AI_GATEWAY_URL ? "SET" : "MISSING",
@@ -731,58 +718,6 @@ function sendGatewayErrorResponse(res, error, fallbackErrorMessage) {
 		details: error instanceof Error ? error.message : String(error),
 		backendSelected: "unknown",
 		failureStage: "request",
-	});
-}
-
-async function streamTextViaAIGateway({
-	system,
-	prompt,
-	messages,
-	maxOutputTokens = 2000,
-	temperature = 1,
-	provider,
-	model,
-	gatewayUrl,
-	onTextDelta,
-	onFile,
-}) {
-	const envVars = getEnvVars();
-	const rawGatewayUrl = resolveGatewayUrlForProvider(
-		envVars,
-		typeof provider === "string" ? provider.trim() : null,
-		gatewayUrl
-	);
-
-	if (!rawGatewayUrl) {
-		throw new Error("AI Gateway URL is not configured.");
-	}
-
-	const resolvedGatewayUrl = resolveGatewayUrl(rawGatewayUrl) || rawGatewayUrl;
-	const endpointType = detectEndpointType(resolvedGatewayUrl);
-
-	if (endpointType === "bedrock") {
-		return streamBedrockGatewayManualSse({
-			gatewayUrl: resolvedGatewayUrl,
-			envVars,
-			system: typeof system === "string" ? system : undefined,
-			prompt: typeof prompt === "string" ? prompt : undefined,
-			maxOutputTokens,
-			onTextDelta,
-		});
-	}
-
-	const fallbackModel = endpointType === "openai" ? envVars.OPENAI_MODEL : envVars.GOOGLE_IMAGE_MODEL;
-	return streamGoogleGatewayManualSse({
-		gatewayUrl: resolvedGatewayUrl,
-		envVars,
-		model: typeof model === "string" && model.trim() ? model.trim() : fallbackModel,
-		system: typeof system === "string" ? system : undefined,
-		prompt: typeof prompt === "string" ? prompt : undefined,
-		messages,
-		maxOutputTokens,
-		temperature,
-		onTextDelta,
-		onFile,
 	});
 }
 
@@ -4591,92 +4526,6 @@ function buildApprovalResumeDecision(approvalSubmission) {
 
 	return buildApprovalSummary(approvalSubmission);
 }
-
-function hasAnswerForQuestion(question, answers) {
-	const answerValue = answers[question.id];
-	if (question.kind === "multi-select") {
-		return Array.isArray(answerValue) && answerValue.length > 0;
-	}
-
-	return typeof answerValue === "string" && answerValue.trim().length > 0;
-}
-
-function hasRequiredClarificationAnswers(questionCard, answers) {
-	return questionCard.questions.every((question) => {
-		if (!question.required) {
-			return true;
-		}
-
-		return hasAnswerForQuestion(question, answers);
-	});
-}
-
-function sanitizeAnswersForQuestionCard(questionCard, answers) {
-	return questionCard.questions.reduce((result, question) => {
-		const normalizedAnswerValue = normalizeClarificationAnswerValue(
-			answers[question.id]
-		);
-		if (!normalizedAnswerValue) {
-			return result;
-		}
-
-		result[question.id] = normalizedAnswerValue;
-		return result;
-	}, {});
-}
-
-function formatClarificationAnswerValue(value) {
-	return Array.isArray(value) ? value.join(", ") : value;
-}
-
-function resolveAnswerOptionLabel(question, answer) {
-	if (!question || typeof answer !== "string") {
-		return answer;
-	}
-
-	const matchingOption = question.options.find((option) => option.id === answer);
-	return matchingOption?.label || answer;
-}
-
-function formatClarificationAnswer(question, value) {
-	if (Array.isArray(value)) {
-		return value
-			.map((answer) => resolveAnswerOptionLabel(question, answer))
-			.join(", ");
-	}
-
-	return resolveAnswerOptionLabel(question, value);
-}
-
-function buildClarificationSummary(questionCard, answers) {
-	if (!questionCard) {
-		const answerLines = Object.entries(answers)
-			.map(([questionId, answerValue]) => `- ${questionId}: ${formatClarificationAnswerValue(answerValue)}`);
-		return answerLines.join("\n");
-	}
-
-	return questionCard.questions
-		.map((question) => {
-			const answerValue = answers[question.id];
-			if (!answerValue) {
-				return null;
-			}
-
-			return `- ${question.label}: ${formatClarificationAnswer(question, answerValue)}`;
-		})
-			.filter(Boolean)
-			.join("\n");
-}
-
-// Keep utility helpers available for rapid feature toggles without tripping lint.
-function markLintKeepalive() {}
-markLintKeepalive(
-	streamTextViaAIGateway,
-	buildApprovalSummary,
-	hasRequiredClarificationAnswers,
-	sanitizeAnswersForQuestionCard,
-	buildClarificationSummary
-);
 
 function streamQuestionCardWidget({ res, payload, introText }) {
 	const stream = createUIMessageStream({
