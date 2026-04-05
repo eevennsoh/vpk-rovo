@@ -159,6 +159,7 @@ import {
 	type ParsedPlanWidgetPayload,
 	updatePlanWidgetMetadataInMessages,
 } from "@/components/projects/shared/lib/plan-widget";
+import { isGenericPlanTitle } from "@/components/projects/shared/lib/plan-identity";
 import {
 	buildPlanApprovalPrompt,
 	createPlanApprovalSubmission,
@@ -2080,7 +2081,7 @@ export function useFutureChat({
 		if (!sourceMessageId || !planWidget) {
 			return;
 		}
-		if (planWidget.shortDescription?.trim()) {
+		if (planWidget.shortDescription?.trim() && !isGenericPlanTitle(planWidget.title)) {
 			return;
 		}
 		if (attemptedPlanMetadataMessageIdsRef.current.has(sourceMessageId)) {

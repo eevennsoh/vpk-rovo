@@ -32,6 +32,15 @@ export interface PlanApprovalState {
 	status: "accepted" | "pending";
 }
 
+function hashPlanKeySegment(value: string): string {
+	let hash = 0;
+	for (let index = 0; index < value.length; index += 1) {
+		hash = (hash * 31 + value.charCodeAt(index)) >>> 0;
+	}
+
+	return hash.toString(36);
+}
+
 export function serializePlanApprovalKey(
 	planTitle: string,
 	taskIds: ReadonlyArray<string>,
@@ -48,6 +57,32 @@ export function serializePlanApprovalKey(
 	return normalizedTaskIds.length > 0
 		? `${normalizedTitle}-${normalizedTaskIds.join("|")}`
 		: normalizedTitle;
+}
+
+function buildPlanApprovalIdentityKey(input: {
+	title?: string;
+	taskIds?: ReadonlyArray<string>;
+	markdown?: string;
+	deferredToolCallId?: string;
+}): string | null {
+	const deferredToolCallId = toNonEmptyString(input.deferredToolCallId);
+	if (deferredToolCallId) {
+		return `tool:${deferredToolCallId}`;
+	}
+
+	const planTitle = toNonEmptyString(input.title);
+	const taskIds = input.taskIds ?? [];
+	const taskKey = serializePlanApprovalKey(planTitle ?? "", taskIds);
+	if (taskKey) {
+		return taskKey;
+	}
+
+	const markdown = toNonEmptyString(input.markdown);
+	if (!planTitle || !markdown) {
+		return planTitle;
+	}
+
+	return `${planTitle}-${hashPlanKeySegment(markdown)}`;
 }
 
 export function createPlanApprovalSubmission(
@@ -196,19 +231,24 @@ export function getPlanApprovalKeyFromPlanWidget(
 		return null;
 	}
 
-	return serializePlanApprovalKey(
-		planWidget.title,
-		planWidget.tasks.map((task) => task.id),
-	);
+	return buildPlanApprovalIdentityKey({
+		title: planWidget.title,
+		taskIds: planWidget.tasks.map((task) => task.id),
+		markdown: planWidget.markdown,
+		deferredToolCallId:
+			planWidget.deferredToolCallId ?? planWidget.toolCallId,
+	});
 }
 
 export function getPlanApprovalKeyFromSubmission(
 	submission: Readonly<PlanApprovalSubmission>,
 ): string | null {
-	return serializePlanApprovalKey(
-		submission.planTitle ?? "",
-		(submission.planTasks ?? []).map((task) => task.id),
-	);
+	return buildPlanApprovalIdentityKey({
+		title: submission.planTitle,
+		taskIds: (submission.planTasks ?? []).map((task) => task.id),
+		deferredToolCallId:
+			submission.deferredToolCallId ?? submission.toolCallId,
+	});
 }
 
 function getDecisionLabel(decision: PlanApprovalDecision): string {

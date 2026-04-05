@@ -479,7 +479,7 @@ test("resolveFutureChatPlanExecutionTracker works with empty plan tasks and upda
 	);
 });
 
-test("resolveFutureChatPlanExecutionTracker shows running with zero tasks before update_todo arrives", () => {
+test("resolveFutureChatPlanExecutionTracker shows placeholder progress before update_todo arrives", () => {
 	const planWidget = createEmptyTasksPlanWidgetPayload();
 	const planKey = getPlanApprovalKeyFromPlanWidget(planWidget);
 	const tracker = resolveFutureChatPlanExecutionTracker({
@@ -499,14 +499,20 @@ test("resolveFutureChatPlanExecutionTracker shows running with zero tasks before
 	});
 
 	assert.equal(tracker?.runStatus, "running");
-	assert.equal(tracker?.taskCount, 0);
+	assert.equal(tracker?.taskCount, 1);
 	assert.equal(tracker?.agentCount, 1);
 	assert.deepEqual(tracker?.taskStatusGroups, {
 		done: [],
 		inReview: [],
 		inProgress: [],
 		failed: [],
-		todo: [],
+		todo: [
+			{
+				id: "__pending-update-todo__",
+				label: "Preparing task list",
+				description: "Waiting for the first task update",
+			},
+		],
 	});
 });
 

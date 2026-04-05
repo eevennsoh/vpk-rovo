@@ -4,7 +4,6 @@ const assert = require("node:assert/strict");
 const {
 	fetchEnrichedPlanTitle,
 	getLatestPlanWidgetPayload,
-	generateMermaidFromPlanTasks,
 	parsePlanWidgetPayload,
 	updatePlanWidgetMetadataInMessages,
 } = require("./plan-widget.ts");
@@ -99,6 +98,19 @@ test("parsePlanWidgetPayload preserves both generic and legacy tool call ids", (
 	assert.equal(payload.markdown, "# Sprint Board Plan\n\n1. Create board shell");
 });
 
+test("parsePlanWidgetPayload accepts raw markdown plans without tasks", () => {
+	const payload = parsePlanWidgetPayload({
+		tool_call_id: "tool-call-456",
+		plan: "# Raw Plan\n\nDo the work in this order.",
+	});
+
+	assert.ok(payload);
+	assert.equal(payload.title, "Plan");
+	assert.equal(payload.markdown, "# Raw Plan\n\nDo the work in this order.");
+	assert.deepEqual(payload.tasks, []);
+	assert.equal(payload.deferredToolCallId, "tool-call-456");
+});
+
 test("parsePlanWidgetPayload preserves shortDescription when present", () => {
 	const payload = parsePlanWidgetPayload({
 		title: "Sprint Board Plan",
@@ -135,20 +147,28 @@ test("updatePlanWidgetMetadataInMessages patches the targeted plan widget payloa
 
 test("fetchEnrichedPlanTitle reads shortDescription from the API response", async () => {
 	const originalFetch = global.fetch;
-	global.fetch = async () => ({
-		ok: true,
-		json: async () => ({
-			title: "Sprint Tracking App",
-			shortDescription: "Track sprint work on a board",
-		}),
-	});
+	global.fetch = async (_input, init) => {
+		const body = JSON.parse(String(init?.body ?? "{}"));
+		assert.equal(body.title, "Plan");
+		assert.equal(body.description, "Build a board");
+		assert.equal(body.markdown, "# Sprint Board Plan\n\nBuild a board");
+		assert.deepEqual(body.tasks, ["Create board shell"]);
+
+		return {
+			ok: true,
+			json: async () => ({
+				title: "Sprint Tracking App",
+				shortDescription: "Track sprint work on a board",
+			}),
+		};
+	};
 
 	try {
 		const result = await fetchEnrichedPlanTitle({
 			title: "Plan",
 			description: "Build a board",
 			shortDescription: undefined,
-			markdown: "Build a board",
+			markdown: "# Sprint Board Plan\n\nBuild a board",
 			tasks: [{ id: "task-1", label: "Create board shell", blockedBy: [] }],
 			agents: [],
 		});
@@ -160,69 +180,4 @@ test("fetchEnrichedPlanTitle reads shortDescription from the API response", asyn
 	} finally {
 		global.fetch = originalFetch;
 	}
-});
-
-test("generateMermaidFromPlanTasks preserves explicit blockedBy dependencies", () => {
-	const graph = generateMermaidFromPlanTasks([
-		{
-			id: "task-1",
-			label: "Define data model",
-			blockedBy: [],
-		},
-		{
-			id: "task-2",
-			label: "Implement API route",
-			blockedBy: ["task-1"],
-		},
-		{
-			id: "task-3",
-			label: "Add UI integration",
-			blockedBy: ["task-2"],
-		},
-	]);
-
-	assert.equal(graph.hasExplicitEdges, true);
-	assert.equal(graph.usesInferredLinearEdges, false);
-	assert.match(graph.markdown, /task_1 --> task_2/);
-	assert.match(graph.markdown, /task_2 --> task_3/);
-});
-
-test("generateMermaidFromPlanTasks falls back to inferred linear dependencies", () => {
-	const graph = generateMermaidFromPlanTasks([
-		{
-			id: "task-1",
-			label: "Collect requirements",
-			blockedBy: [],
-		},
-		{
-			id: "task-2",
-			label: "Build implementation",
-			blockedBy: [],
-		},
-		{
-			id: "task-3",
-			label: "Verify output",
-			blockedBy: [],
-		},
-	]);
-
-	assert.equal(graph.hasExplicitEdges, false);
-	assert.equal(graph.usesInferredLinearEdges, true);
-	assert.match(graph.markdown, /task_1 --> task_2/);
-	assert.match(graph.markdown, /task_2 --> task_3/);
-});
-
-test("generateMermaidFromPlanTasks keeps single-task graphs without edges", () => {
-	const graph = generateMermaidFromPlanTasks([
-		{
-			id: "task-1",
-			label: "Review scope",
-			blockedBy: [],
-		},
-	]);
-
-	assert.equal(graph.hasExplicitEdges, false);
-	assert.equal(graph.usesInferredLinearEdges, false);
-	assert.ok(graph.markdown.includes('task_1["Review scope"]'));
-	assert.ok(!graph.markdown.includes("-->"));
 });

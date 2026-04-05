@@ -140,6 +140,19 @@ function buildPlanTaskRecord(task: ParsedPlanTask): FutureChatTodoProgressItem {
 	};
 }
 
+function createPendingTodoBootstrapItem(
+	thinkingStatusContent: string | null,
+): FutureChatTodoProgressItem & { agentName?: string } {
+	return {
+		id: "__pending-update-todo__",
+		content: "Preparing task list",
+		label: "Preparing task list",
+		status: "pending",
+		blockedBy: [],
+		activeForm: thinkingStatusContent ?? "Waiting for the first task update",
+	};
+}
+
 function mergeTodoItemsWithPlanTasks(
 	planTasks: ReadonlyArray<ParsedPlanTask>,
 	snapshot: ReturnType<typeof getLatestFutureChatTodoProgressFromMessages>,
@@ -208,7 +221,7 @@ function toProgressTask(
 ): FutureChatPlanExecutionProgressTask {
 	const description =
 		item.status === "pending"
-			? buildBlockedByDescription(item.blockedBy)
+			? (item.activeForm ?? buildBlockedByDescription(item.blockedBy))
 			: item.status === "in_progress"
 				? (item.activeForm ?? thinkingStatusContent ?? "")
 				: "";
@@ -357,23 +370,27 @@ export function resolveFutureChatPlanExecutionTracker(input: {
 	const latestSnapshot = getLatestFutureChatTodoProgressFromMessages(executionMessages);
 	const thinkingStatusContent = getLatestThinkingStatusContent(executionMessages);
 	const mergedItems = mergeTodoItemsWithPlanTasks([], latestSnapshot);
+	const effectiveItems =
+		activeRun !== null && mergedItems.length === 0
+			? [createPendingTodoBootstrapItem(thinkingStatusContent)]
+			: mergedItems;
 	const runEndedWithArtifact =
 		activeRun === null && hasArtifactResultInMessages(executionMessages);
 	const runStatus: "running" | "completed" | "failed" =
 		activeRun !== null
 			? "running"
 			: runEndedWithArtifact ||
-				  mergedItems.every((item) => item.status === "completed")
+				  effectiveItems.every((item) => item.status === "completed")
 				? "completed"
 				: "failed";
 	const finalItems =
 		runStatus === "completed"
-			? mergedItems.map((item) =>
+			? effectiveItems.map((item) =>
 					item.status === "completed"
 						? item
 						: { ...item, status: "completed" as const },
 				)
-			: mergedItems;
+			: effectiveItems;
 	const taskStatusGroups = buildStatusGroups(finalItems, thinkingStatusContent);
 	const runCreatedAt =
 		toNonEmptyString(activeRun?.startedAt) ??

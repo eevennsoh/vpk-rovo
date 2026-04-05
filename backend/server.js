@@ -251,13 +251,6 @@ const {
 	buildTranslationGenuiSpec,
 } = require("./lib/translation-card");
 const {
-	extractPlanWidgetPayloadFromExitPlanToolInput,
-	extractProgressivePlanWidgetPayloadFromText,
-} = require("./lib/plan-widget-fallback");
-const {
-	extractUpdateTodoPlanPayloadFromObservations,
-} = require("./lib/update-todo-plan-payload");
-const {
 	extractAppRoutesFromObservations,
 	areAllPlanTasksCompleted,
 } = require("./lib/app-route-resolver");
@@ -299,6 +292,7 @@ const {
 	getPositiveInteger,
 	extractTextFromUiParts,
 	isPlainObject,
+	parseMaybeJson,
 } = require("./lib/shared-utils");
 const {
 	STAGE_TRACE_ID_HEADER,
@@ -4127,112 +4121,6 @@ function normalizePlanTasks(value) {
 		.slice(0, 20);
 }
 
-function hasCompleteMermaidDiagram(value) {
-	if (typeof value !== "string" || value.length === 0) {
-		return false;
-	}
-
-	return /```mermaid\b[\s\S]*?```/.test(value);
-}
-
-function hasMermaidDependencyEdges(value) {
-	if (typeof value !== "string" || value.length === 0) {
-		return false;
-	}
-
-	const mermaidBlocks = value.match(/```mermaid\b[\s\S]*?```/gi);
-	if (!mermaidBlocks || mermaidBlocks.length === 0) {
-		return false;
-	}
-
-	const edgePattern =
-		/\b[A-Za-z0-9_-]+\s*(?:-->|==>|-.->)\s*(?:\|[^|\n]+\|\s*)?[A-Za-z0-9_-]+\b/;
-	return mermaidBlocks.some((block) => edgePattern.test(block));
-}
-
-function hasValidMermaidDiagram(value) {
-	return hasCompleteMermaidDiagram(value) && hasMermaidDependencyEdges(value);
-}
-
-function hasUnclosedMermaidFence(value) {
-	if (typeof value !== "string" || value.length === 0) {
-		return false;
-	}
-
-	const markerIndex = value.lastIndexOf("```mermaid");
-	if (markerIndex === -1) {
-		return false;
-	}
-
-	const closingFenceIndex = value.indexOf("```", markerIndex + "```mermaid".length);
-	return closingFenceIndex === -1;
-}
-
-function parsePlanWidgetPayload(value) {
-	if (!value || typeof value !== "object") {
-		return null;
-	}
-
-	const record =
-		value.payload && typeof value.payload === "object"
-			? value.payload
-			: value;
-	const tasks = normalizePlanTasks(
-		Array.isArray(record.tasks)
-			? record.tasks
-			: Array.isArray(record.steps)
-				? record.steps
-				: null
-	);
-
-	if (tasks.length === 0) {
-		return null;
-	}
-
-	return {
-		title:
-			getNonEmptyString(record.title) ||
-			getNonEmptyString(record.name) ||
-			"Plan",
-		tasks,
-	};
-}
-
-function getPlanWidgetTaskCount(value) {
-	const parsedPayload = parsePlanWidgetPayload(value);
-	return parsedPayload ? parsedPayload.tasks.length : 0;
-}
-
-function planWidgetRequiresApproval(value) {
-	const parsedPayload = parsePlanWidgetPayload(value);
-	return Boolean(parsedPayload?.deferredToolCallId);
-}
-
-function mergePlanWidgetPayloadTasks(basePayload, taskPayload) {
-	const parsedBasePayload = parsePlanWidgetPayload(basePayload);
-	const parsedTaskPayload = parsePlanWidgetPayload(taskPayload);
-	if (!parsedBasePayload || !parsedTaskPayload || parsedTaskPayload.tasks.length === 0) {
-		return null;
-	}
-
-	return {
-		title: parsedBasePayload.title,
-		description:
-			parsedBasePayload.description ||
-			parsedTaskPayload.description ||
-			undefined,
-		emoji: parsedBasePayload.emoji,
-		tasks: parsedTaskPayload.tasks.map((task) => ({
-			id: task.id,
-			label: task.label,
-			blockedBy: Array.isArray(task.blockedBy) ? [...task.blockedBy] : [],
-			agent: task.agent,
-		})),
-		agents: [...parsedTaskPayload.agents],
-		deferredToolCallId: parsedBasePayload.deferredToolCallId,
-	};
-}
-
 function isWorkspaceWriteToolName(toolName) {
 	const normalizedToolName = getNonEmptyString(toolName)?.toLowerCase();
 	return (
@@ -4278,106 +4166,6 @@ function looksLikeWriteBlockedTurn({ assistantText, toolObservationEntries } = {
 	}
 
 	return looksLikeWriteBlockedResponse(assistantText);
-}
-
-function sanitizeMermaidNodeId(value) {
-	const normalizedValue = (value || "").toLowerCase().replace(/[^a-z0-9_]/g, "_");
-	if (!normalizedValue) {
-		return "task";
-	}
-
-	return /^[a-z_]/.test(normalizedValue) ? normalizedValue : `task_${normalizedValue}`;
-}
-
-function createUniqueMermaidNodeId(baseId, usedNodeIds) {
-	if (!usedNodeIds.has(baseId)) {
-		usedNodeIds.add(baseId);
-		return baseId;
-	}
-
-	let duplicateIndex = 2;
-	let candidateId = `${baseId}_${duplicateIndex}`;
-	while (usedNodeIds.has(candidateId)) {
-		duplicateIndex += 1;
-		candidateId = `${baseId}_${duplicateIndex}`;
-	}
-
-	usedNodeIds.add(candidateId);
-	return candidateId;
-}
-
-function escapeMermaidLabel(label) {
-	return label.replace(/#/g, "#35;").replace(/"/g, "#quot;");
-}
-
-function generateMermaidFromPlan(planPayload) {
-	const parsedPlan = parsePlanWidgetPayload(planPayload);
-	if (!parsedPlan) {
-		return "";
-	}
-
-	const usedNodeIds = new Set();
-	const taskIdToNodeId = new Map();
-	const nodeEntries = parsedPlan.tasks.map((task, index) => {
-		const taskId = getNonEmptyString(task.id) || `${index + 1}`;
-		const fallbackNodeId = `task_${index + 1}`;
-		const sanitizedNodeId = sanitizeMermaidNodeId(taskId) || fallbackNodeId;
-		const nodeId = createUniqueMermaidNodeId(sanitizedNodeId, usedNodeIds);
-		if (!taskIdToNodeId.has(taskId)) {
-			taskIdToNodeId.set(taskId, nodeId);
-		}
-
-		return {
-			nodeId,
-			taskId,
-			label: task.label,
-			blockedBy: task.blockedBy,
-		};
-	});
-
-	const edgeLines = [];
-	const seenEdges = new Set();
-	for (const node of nodeEntries) {
-		for (const dependencyId of node.blockedBy) {
-			const fromNodeId = taskIdToNodeId.get(dependencyId);
-			if (!fromNodeId) {
-				continue;
-			}
-
-			const edgeKey = `${fromNodeId}->${node.nodeId}`;
-			if (seenEdges.has(edgeKey)) {
-				continue;
-			}
-
-			seenEdges.add(edgeKey);
-			edgeLines.push(`  ${fromNodeId} --> ${node.nodeId}`);
-		}
-	}
-
-	// Ensure the diagram still represents dependencies when blockedBy metadata is absent.
-	if (edgeLines.length === 0 && nodeEntries.length > 1) {
-		for (let index = 1; index < nodeEntries.length; index += 1) {
-			const fromNodeId = nodeEntries[index - 1].nodeId;
-			const toNodeId = nodeEntries[index].nodeId;
-			const edgeKey = `${fromNodeId}->${toNodeId}`;
-			if (seenEdges.has(edgeKey)) {
-				continue;
-			}
-
-			seenEdges.add(edgeKey);
-			edgeLines.push(`  ${fromNodeId} --> ${toNodeId}`);
-		}
-	}
-
-	const lines = [
-		"```mermaid",
-		"graph TD",
-		...nodeEntries.map((node) => `  ${node.nodeId}["${escapeMermaidLabel(node.label)}"]`),
-		...edgeLines,
-		"```",
-	];
-
-	return lines.join("\n");
 }
 
 const APPROVAL_DECISIONS = new Set(["auto-accept", "continue-planning", "custom"]);
@@ -4676,11 +4464,13 @@ app.post("/api/future-chat/suggestions", async (req, res) => {
 async function generatePlanMetadataViaGateway({
 	title,
 	description,
+	markdown,
 	tasks,
 }) {
 	return generatePlanMetadata({
 		title,
 		description,
+		markdown,
 		tasks,
 		generateText: (options) =>
 			generateTextViaGateway({
@@ -4732,7 +4522,7 @@ User message: ${message.trim()}`;
 
 app.post("/api/plan-title", async (req, res) => {
 	try {
-		const { title, description, tasks } = req.body || {};
+		const { title, description, markdown, tasks } = req.body || {};
 
 		if (!title || typeof title !== "string" || !title.trim()) {
 			return res.status(400).json({ error: "A title is required" });
@@ -4744,6 +4534,7 @@ app.post("/api/plan-title", async (req, res) => {
 		} = await generatePlanMetadataViaGateway({
 			title,
 			description,
+			markdown,
 			tasks,
 		});
 
@@ -7046,7 +6837,6 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 				let assistantText = "";
 				let unsuppressedAssistantText = "";
 				let widgetType = null;
-				let latestPlanPayload = null;
 				let resolvedRovoDevPort = null;
 				let hasEmittedQuestionCard = false;
 				let hasEmittedPlanWidget = false;
@@ -7054,7 +6844,6 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 					let hasPendingToolApprovalPrompt = false;
 					let hasSeenPlanWidgetSignal = false;
 					let hasEmittedPlanLoadingState = false;
-					let latestProgressivePlanFingerprint = null;
 					let hasExplicitPlanPayload = false;
 					/** @type {Map<string, {widgetId: string; richnessScore: number}>} */
 					const emittedQuestionCardToolCalls = new Map();
@@ -7629,12 +7418,16 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 							toolInput,
 							source,
 						}) => {
-							const planPayload = extractPlanWidgetPayloadFromExitPlanToolInput(
-								toolInput,
-								{ minTasks: 1 },
-							);
-							if (!planPayload) {
-								console.warn("[EXIT-PLAN-MODE] Plan widget extraction returned null from tool input", {
+							const normalizedToolInput =
+								typeof toolInput === "string"
+									? parseMaybeJson(toolInput) ?? toolInput
+									: toolInput;
+							const planMarkdown =
+								normalizedToolInput && typeof normalizedToolInput === "object"
+									? getNonEmptyString(normalizedToolInput.plan)
+									: getNonEmptyString(normalizedToolInput);
+							if (!planMarkdown) {
+								console.warn("[EXIT-PLAN-MODE] Plan markdown missing from tool input", {
 									toolCallId,
 									source,
 									toolInputPreview:
@@ -7645,6 +7438,50 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 								return false;
 							}
 
+							const planPayload = {
+								title:
+									normalizedToolInput &&
+									typeof normalizedToolInput === "object"
+										? getNonEmptyString(normalizedToolInput.title) ||
+											getNonEmptyString(normalizedToolInput.name) ||
+											getNonEmptyString(normalizedToolInput.planTitle) ||
+											"Plan"
+										: "Plan",
+								description:
+									normalizedToolInput &&
+									typeof normalizedToolInput === "object"
+										? getNonEmptyString(normalizedToolInput.description) ||
+											getNonEmptyString(normalizedToolInput.summary) ||
+											getNonEmptyString(normalizedToolInput.subtitle) ||
+											undefined
+										: undefined,
+								shortDescription:
+									normalizedToolInput &&
+									typeof normalizedToolInput === "object"
+										? getNonEmptyString(normalizedToolInput.shortDescription) ||
+											getNonEmptyString(normalizedToolInput.short_description) ||
+											undefined
+										: undefined,
+								markdown: planMarkdown,
+								tasks:
+									normalizedToolInput &&
+									typeof normalizedToolInput === "object" &&
+									Array.isArray(normalizedToolInput.tasks)
+										? normalizedToolInput.tasks
+										: normalizedToolInput &&
+											typeof normalizedToolInput === "object" &&
+											Array.isArray(normalizedToolInput.steps)
+												? normalizedToolInput.steps
+												: [],
+								agents:
+									normalizedToolInput &&
+									typeof normalizedToolInput === "object" &&
+									Array.isArray(normalizedToolInput.agents)
+										? normalizedToolInput.agents
+										: [],
+								deferredToolCallId: toolCallId,
+							};
+
 							if (hasToolApprovalReadonlyFailure) {
 								console.info("[EXIT-PLAN-MODE] Suppressed plan widget after readonly write-tool failure", {
 									toolCallId,
@@ -7654,9 +7491,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 							}
 
 							planPayload.deferredToolCallId = toolCallId;
-							latestPlanPayload = planPayload;
 							hasExplicitPlanPayload = true;
-							latestProgressivePlanFingerprint = null;
 							if (threadId) {
 								recordPlanWidgetEmission(threadId, {
 									deferredToolCallId: toolCallId,
@@ -7670,7 +7505,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 							console.info("[EXIT-PLAN-MODE] Plan widget emitted from tool input", {
 								toolCallId,
 								source,
-								taskCount: planPayload.tasks?.length ?? 0,
+								taskCount: Array.isArray(planPayload.tasks) ? planPayload.tasks.length : 0,
 								hasMarkdown: Boolean(planPayload.markdown),
 								markdownLength: planPayload.markdown?.length ?? 0,
 								markdownPreview: (planPayload.markdown || "").slice(0, 300),
@@ -7841,53 +7676,6 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 								},
 							});
 						};
-
-						const maybeEmitProgressivePlanUpdate = () => {
-							if (
-								hasExplicitPlanPayload ||
-								!hasSeenPlanWidgetSignal ||
-								latestPlanPayload !== null
-							) {
-								return;
-							}
-
-					const progressivePlanPayload = extractProgressivePlanWidgetPayloadFromText(
-						assistantText,
-						{
-							minTasks: 1,
-							requireActionItemsHeading: true,
-						}
-					);
-					if (!progressivePlanPayload) {
-						return;
-					}
-
-					let nextFingerprint = null;
-					try {
-						nextFingerprint = JSON.stringify(progressivePlanPayload);
-					} catch {
-						nextFingerprint = null;
-					}
-
-					if (
-						nextFingerprint &&
-						nextFingerprint === latestProgressivePlanFingerprint
-					) {
-						return;
-					}
-
-					latestProgressivePlanFingerprint = nextFingerprint;
-					latestPlanPayload = progressivePlanPayload;
-					hasEmittedPlanWidget = true;
-					hasSeenPlanWidgetSignal = true;
-					widgetType = "plan";
-
-					if (!hasEmittedPlanLoadingState) {
-						emitPlanWidgetLoading(true);
-					}
-
-					emitPlanWidgetData(progressivePlanPayload);
-				};
 
 				const getQuestionCardRichnessScore = (payload) => {
 					if (!payload || typeof payload !== "object") {
@@ -8239,11 +8027,9 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 									hasEmittedGenuiWidget = true;
 								}
 								if (resolvedWidgetType === "plan") {
-									latestPlanPayload = parsedWidget;
 									hasEmittedPlanWidget = true;
 									hasSeenPlanWidgetSignal = true;
 									hasExplicitPlanPayload = true;
-									latestProgressivePlanFingerprint = null;
 									console.info("[PLAN-WIDGET-GENUI] Plan widget emitted from GenUI JSON path", {
 										hasMarkdown: Boolean(parsedWidget?.markdown),
 										markdownLength: (parsedWidget?.markdown || "").length,
@@ -8445,9 +8231,8 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 
 						emitLazyThinkingStatus();
 						textBuffer += delta;
-					processTextBuffer(false);
-					maybeEmitProgressivePlanUpdate();
-				};
+						processTextBuffer(false);
+					};
 
 					// RovoDev Serve: route through the local agent loop
 					console.log("[CHAT-SDK] Routing through RovoDev Serve");
@@ -9541,12 +9326,9 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 						};
 						currentToolFirstAttempt = nextAttempt;
 					}
+					processTextBuffer(true);
 
-
-				processTextBuffer(true);
-				maybeEmitProgressivePlanUpdate();
-
-				const leakedClassifierPayload = finalizeBufferedAssistantText();
+					const leakedClassifierPayload = finalizeBufferedAssistantText();
 				if (leakedClassifierPayload) {
 					console.warn("[CHAT-SDK] Suppressed classifier-style JSON response", {
 						intent: leakedClassifierPayload.intent,
@@ -9794,35 +9576,6 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 						assistantText = stripDirectMediaFences(assistantText);
 					}
 				}
-					if (!hasExplicitPlanPayload) {
-						const updateTodoPlanPayload =
-							extractUpdateTodoPlanPayloadFromObservations(toolObservationEntries);
-
-						if (updateTodoPlanPayload) {
-							if (planWidgetRequiresApproval(latestPlanPayload)) {
-								const mergedPlanPayload = mergePlanWidgetPayloadTasks(
-									latestPlanPayload,
-									updateTodoPlanPayload
-								);
-								const existingPlanTaskCount = getPlanWidgetTaskCount(latestPlanPayload);
-								const mergedPlanTaskCount = getPlanWidgetTaskCount(mergedPlanPayload);
-								const shouldUpgradePlanPayload =
-									mergedPlanPayload &&
-									mergedPlanTaskCount > 0 &&
-									(
-										!hasEmittedPlanWidget ||
-										mergedPlanTaskCount >= existingPlanTaskCount
-									);
-
-								if (shouldUpgradePlanPayload) {
-									latestPlanPayload = mergedPlanPayload;
-									hasEmittedPlanWidget = true;
-									emitPlanWidgetData(mergedPlanPayload);
-								}
-							}
-						}
-					}
-
 					if (hasToolApprovalReadonlyFailure) {
 						emitWidgetError({
 							type: "tool-approval",
@@ -9855,19 +9608,6 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 					hasEmittedPlanLoadingState
 				) {
 					emitPlanWidgetLoading(false);
-				}
-
-				// Generate mermaid fallback if plan widget was emitted but no dependency map.
-				if (latestPlanPayload !== null && !hasValidMermaidDiagram(assistantText)) {
-					const fallbackMermaid = generateMermaidFromPlan(latestPlanPayload);
-					if (fallbackMermaid) {
-						if (hasUnclosedMermaidFence(assistantText)) {
-							emitTextDelta("\n```");
-						}
-
-						const prefix = assistantText.trim().length > 0 ? "\n\n" : "";
-						emitTextDelta(`${prefix}${fallbackMermaid}`);
-					}
 				}
 
 				// ── Output Routing: Two-step GenUI flow (BE-001, BE-007) ──

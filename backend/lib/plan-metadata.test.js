@@ -72,6 +72,19 @@ test("buildPlanMetadataPrompt includes the title, description, and task labels",
 	assert.match(prompt, /Tasks \(2\): Create KPI cards; Add trend chart/);
 });
 
+test("buildPlanMetadataPrompt includes markdown context for generic plan titles", () => {
+	const prompt = buildPlanMetadataPrompt({
+		title: "Plan",
+		markdown: "# Task / Project Manager App with Jira Charts\n\n## Overview\nBuild a project planning surface.",
+		tasks: [],
+	});
+
+	assert.match(prompt, /Current title: Plan/);
+	assert.match(prompt, /Plan markdown excerpt:/);
+	assert.match(prompt, /Task \/ Project Manager App with Jira Charts/);
+	assert.match(prompt, /infer the actual product\/feature name from the markdown heading and overview/);
+});
+
 test("derivePlanExecutionArtifactTitle prefers the plan title over the route slug", () => {
 	const title = derivePlanExecutionArtifactTitle({
 		appRoute: "/crm",
@@ -103,10 +116,12 @@ test("generatePlanMetadata parses generated JSON metadata", async () => {
 	const metadata = await generatePlanMetadata({
 		title: "Analytics Dashboard",
 		description: "Build a dashboard with KPIs and campaign trends.",
+		markdown: "# Analytics Dashboard\n\nTrack KPIs and campaign trends.",
 		tasks: ["Create KPI cards"],
 		generateText: async ({ system, prompt, maxOutputTokens, temperature }) => {
 			assert.match(system, /Respond with JSON only/);
 			assert.match(prompt, /Analytics Dashboard/);
+			assert.match(prompt, /Plan markdown excerpt:/);
 			assert.equal(maxOutputTokens, 120);
 			assert.equal(temperature, 0.4);
 			return '{"title":"Analytics Dashboard","shortDescription":"Monitor KPIs, trends, and campaign performance metrics"}';

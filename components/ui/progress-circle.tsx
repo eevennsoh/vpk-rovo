@@ -229,7 +229,7 @@ function ProgressCircle({
 							className="text-border"
 						/>
 						{/* Indicator */}
-						<circle
+						<motion.circle
 							cx={CENTER}
 							cy={CENTER}
 							r={RADIUS}
@@ -237,12 +237,11 @@ function ProgressCircle({
 							stroke="currentColor"
 							strokeLinecap="butt"
 							strokeDasharray={CIRCUMFERENCE}
-							strokeDashoffset={dashOffset}
+							initial={false}
+							animate={{ strokeDashoffset: dashOffset }}
+							transition={isIndeterminate ? { duration: 0 } : { duration: 0.4, ease: [0, 0.4, 0, 1] }}
 							transform={`rotate(-90 ${CENTER} ${CENTER})`}
-							className={cn(
-								"text-text-subtle transition-[stroke-dashoffset] duration-300 ease-in-out",
-								isIndeterminate && "transition-none",
-							)}
+							className="text-text-subtle"
 						/>
 					</motion.svg>
 				)}

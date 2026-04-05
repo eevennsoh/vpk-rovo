@@ -18,6 +18,7 @@ describe("planWidgetRequiresApproval", () => {
 			planWidgetRequiresApproval({
 				title: "Team settings rollout",
 				description: "Plan summary",
+				markdown: "# Team settings rollout",
 				tasks: [{ id: "task-1", label: "Define scope", blockedBy: [] }],
 				agents: [],
 				deferredToolCallId: "tool-call-123",
@@ -26,15 +27,16 @@ describe("planWidgetRequiresApproval", () => {
 		);
 	});
 
-	it("returns true for widgets with tasks (approval needed)", () => {
+	it("returns false when no deferred tool call is present", () => {
 		assert.equal(
 			planWidgetRequiresApproval({
 				title: "Generated checklist",
 				description: "Standalone plan output",
+				markdown: "# Generated checklist",
 				tasks: [{ id: "task-1", label: "Queue follow-up", blockedBy: [] }],
 				agents: [],
 			}),
-			true,
+			false,
 		);
 	});
 
@@ -46,6 +48,7 @@ describe("planWidgetRequiresApproval", () => {
 		assert.equal(
 			planWidgetRequiresApproval({
 				title: "Empty",
+				markdown: "# Empty",
 				tasks: [],
 				agents: [],
 			}),
@@ -102,11 +105,12 @@ describe("createPlanApprovalSubmission", () => {
 		assert.equal(submission.toolCallId, "deferred-exit-plan-1");
 	});
 
-	it("includes plan title and extracted tasks", () => {
+	it("includes plan title and no preseeded tasks", () => {
 		const submission = createPlanApprovalSubmission(
 			{ decision: "auto-accept" },
 			{
 				title: "  Dashboard Plan  ",
+				markdown: "# Dashboard Plan",
 				tasks: [
 					{ id: "task-1", label: "Create stats card", blockedBy: [], agent: "ui" },
 					{ id: "task-2", label: "Build feed", blockedBy: ["task-1"] },
@@ -116,9 +120,7 @@ describe("createPlanApprovalSubmission", () => {
 		);
 
 		assert.equal(submission.planTitle, "Dashboard Plan");
-		assert.equal(submission.planTasks.length, 2);
-		assert.equal(submission.planTasks[0].agent, "ui");
-		assert.deepEqual(submission.planTasks[1].blockedBy, ["task-1"]);
+		assert.deepEqual(submission.planTasks, []);
 	});
 
 	it("trims custom instruction whitespace", () => {
@@ -142,8 +144,8 @@ describe("serializePlanApprovalKey (Test Case 7 — key format)", () => {
 		assert.equal(serializePlanApprovalKey("   ", ["task-1"]), null);
 	});
 
-	it("returns null for empty task ids", () => {
-		assert.equal(serializePlanApprovalKey("Plan", []), null);
+	it("falls back to title when task ids are empty", () => {
+		assert.equal(serializePlanApprovalKey("Plan", []), "Plan");
 	});
 
 	it("filters out empty task ids", () => {
@@ -151,8 +153,8 @@ describe("serializePlanApprovalKey (Test Case 7 — key format)", () => {
 		assert.equal(key, "Plan-task-1|task-3");
 	});
 
-	it("returns null when all task ids are empty", () => {
-		assert.equal(serializePlanApprovalKey("Plan", ["", "  "]), null);
+	it("falls back to title when all task ids are empty", () => {
+		assert.equal(serializePlanApprovalKey("Plan", ["", "  "]), "Plan");
 	});
 });
 
@@ -160,6 +162,7 @@ describe("getPlanApprovalKeyFromPlanWidget (Test Case 7)", () => {
 	it("generates key from plan widget payload", () => {
 		const key = getPlanApprovalKeyFromPlanWidget({
 			title: "Sprint Board Plan",
+			markdown: "# Sprint Board Plan",
 			tasks: [
 				{ id: "task-1", label: "Create board", blockedBy: [] },
 				{ id: "task-2", label: "Add drag-drop", blockedBy: ["task-1"] },
@@ -167,6 +170,17 @@ describe("getPlanApprovalKeyFromPlanWidget (Test Case 7)", () => {
 			agents: [],
 		});
 		assert.equal(key, "Sprint Board Plan-task-1|task-2");
+	});
+
+	it("prefers deferred tool call id for raw markdown plans", () => {
+		const key = getPlanApprovalKeyFromPlanWidget({
+			title: "Plan",
+			markdown: "# Raw plan",
+			tasks: [],
+			agents: [],
+			deferredToolCallId: "tool-plan-1",
+		});
+		assert.equal(key, "tool:tool-plan-1");
 	});
 
 	it("returns null for null widget", () => {
@@ -185,6 +199,16 @@ describe("getPlanApprovalKeyFromSubmission (Test Case 7)", () => {
 			],
 		});
 		assert.equal(key, "Sprint Board Plan-task-1|task-2");
+	});
+
+	it("prefers deferred tool call id from submission", () => {
+		const key = getPlanApprovalKeyFromSubmission({
+			decision: "auto-accept",
+			planTitle: "Plan",
+			planTasks: [],
+			deferredToolCallId: "tool-plan-2",
+		});
+		assert.equal(key, "tool:tool-plan-2");
 	});
 
 	it("returns null for missing planTitle", () => {

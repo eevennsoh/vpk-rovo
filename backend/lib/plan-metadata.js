@@ -5,6 +5,7 @@ const {
 
 const PLAN_METADATA_SYSTEM_PROMPT =
 	'You name apps and products based on technical plans. Identify what is being built, give it a clear product name, and write a terse header description. Respond with JSON only: {"title":"...","shortDescription":"..."}';
+const PLAN_MARKDOWN_CONTEXT_LIMIT = 2500;
 
 function parseTaskLabel(task) {
 	if (typeof task === "string") {
@@ -133,6 +134,7 @@ function derivePlanExecutionArtifactTitle({
 function buildPlanMetadataPrompt({
 	title,
 	description,
+	markdown,
 	tasks,
 }) {
 	const normalizedTitle = getNonEmptyString(title);
@@ -147,14 +149,18 @@ function buildPlanMetadataPrompt({
 	const descriptionContext = getNonEmptyString(description)
 		? `\nCurrent description: ${description.trim()}`
 		: "";
+	const markdownContext = getNonEmptyString(markdown)
+		? `\nPlan markdown excerpt:\n${markdown.trim().slice(0, PLAN_MARKDOWN_CONTEXT_LIMIT)}`
+		: "";
 
 	return `Name the app or product this plan will build, and write a terse plan-card header description.
 
-Current title: ${normalizedTitle}${descriptionContext}${taskContext}
+Current title: ${normalizedTitle}${descriptionContext}${taskContext}${markdownContext}
 
 Rules:
 - Title: 2-5 words, name the final app/product/feature being built (e.g. "Time Tracking Dashboard", "Sprint Board", "Team Chat App"), no code/file references, no verbs like "Create" or "Build"
 - Short description: 4-10 words, terse and user-facing, suitable for a narrow card header
+- If the current title is generic, infer the actual product/feature name from the markdown heading and overview
 - Do not mention file paths, routes, implementation steps, or technical details
 - Do not copy the full summary verbatim
 - Respond with JSON only`;
@@ -207,6 +213,7 @@ function parsePlanMetadataResponse(text, fallbackTitle) {
 async function generatePlanMetadata({
 	title,
 	description,
+	markdown,
 	tasks,
 	generateText,
 }) {
@@ -221,6 +228,7 @@ async function generatePlanMetadata({
 	const prompt = buildPlanMetadataPrompt({
 		title: normalizedTitle,
 		description,
+		markdown,
 		tasks,
 	});
 	const text = await generateText({

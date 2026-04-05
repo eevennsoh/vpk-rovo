@@ -31,7 +31,6 @@ const CARD_ANIMATION_STYLES = `
 `;
 
 const CARD_ANIMATION_INNER_HTML = { __html: CARD_ANIMATION_STYLES };
-const ICON_TRANSITION = { duration: 0.2, ease: "easeOut" as const };
 
 type RunStatus = "running" | "completed" | "failed";
 type IconStatus = "done" | "in-progress" | "failed" | "todo";
@@ -57,46 +56,62 @@ function TaskStatusIcon({
 
 	useEffect(() => {
 		if (!filling) return;
-		const timerId = setTimeout(() => setFilling(false), 600);
+		const timerId = setTimeout(() => setFilling(false), 500);
 		return () => clearTimeout(timerId);
 	}, [filling]);
 
-	if (status === "done" && filling) {
-		return (
-			<ProgressCircle
-				value={100}
-				showCompleteIcon={false}
-				size="sm"
-				variant="outline"
-				label="Completing"
-			/>
-		);
-	}
+	// Group in-progress and filling under the same key so the ProgressCircle
+	// instance stays mounted — this lets motion.circle animate the dashoffset
+	// fill from 25% to 100% when transitioning from spinner to full ring.
+	const isProgress = status === "in-progress" || (status === "done" && filling);
 
-	if (status === "done") {
-		return (
-			<motion.span
-				key="check-icon"
-				initial={animated ? { scale: 0.3, opacity: 0 } : false}
-				animate={{ scale: 1, opacity: 1 }}
-				exit={{ scale: 0.3, opacity: 0, transition: ICON_TRANSITION }}
-				transition={ICON_TRANSITION}
-				className="flex items-center justify-center"
-			>
-				<ProgressCircle value={100} size="sm" variant="outline" label="Complete" animated={animated} />
-			</motion.span>
-		);
-	}
-
-	if (status === "in-progress") {
-		return <ProgressCircle value={null} size="sm" variant="outline" label="In progress" />;
-	}
-
-	if (status === "failed") {
-		return <ProgressCircle status="error" size="sm" label="Failed" />;
-	}
-
-	return <ProgressCircle value={0} size="sm" variant="outline" label="Not started" />;
+	return (
+		<AnimatePresence mode="wait" initial={false}>
+			{isProgress ? (
+				<motion.span
+					key="progress"
+					exit={{ opacity: 0, scale: 0.5 }}
+					transition={{ duration: 0.15, ease: "easeOut" }}
+					className="flex items-center justify-center"
+				>
+					<ProgressCircle
+						value={status === "done" ? 100 : null}
+						showCompleteIcon={false}
+						size="sm"
+						variant="outline"
+						label={status === "done" ? "Completing" : "In progress"}
+					/>
+				</motion.span>
+			) : status === "done" ? (
+				<motion.span
+					key="done"
+					initial={animated ? { opacity: 0, scale: 0.5 } : false}
+					animate={{ opacity: 1, scale: 1 }}
+					transition={{ type: "spring", duration: 0.4, bounce: 0.3 }}
+					className="flex items-center justify-center"
+				>
+					<ProgressCircle value={100} size="sm" variant="outline" label="Complete" animated={animated} />
+				</motion.span>
+			) : status === "failed" ? (
+				<motion.span
+					key="failed"
+					initial={{ opacity: 0, scale: 0.5 }}
+					animate={{ opacity: 1, scale: 1 }}
+					transition={{ type: "spring", duration: 0.3, bounce: 0.2 }}
+					className="flex items-center justify-center"
+				>
+					<ProgressCircle status="error" size="sm" label="Failed" />
+				</motion.span>
+			) : (
+				<motion.span
+					key="todo"
+					className="flex items-center justify-center"
+				>
+					<ProgressCircle value={0} size="sm" variant="outline" label="Not started" />
+				</motion.span>
+			)}
+		</AnimatePresence>
+	);
 }
 
 const TimelineTaskItem = memo(function TimelineTaskItem({

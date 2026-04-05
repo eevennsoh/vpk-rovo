@@ -184,6 +184,11 @@ export function resolvePlanDisplayTitle(
 	const fallbackTitle = options?.fallbackTitle ?? DEFAULT_FALLBACK_TITLE;
 	const maxWords = options?.maxWords ?? TITLE_MAX_WORDS;
 	const normalizedTitle = rawTitle ? normalizePlanTitleCandidate(rawTitle) : "";
+	if (normalizedTitle && tasks.length === 0) {
+		const cleaned = collapseWhitespace(stripCodeArtifacts(normalizedTitle));
+		const candidate = isUsableTitle(cleaned) ? cleaned : normalizedTitle;
+		return truncateWords(candidate, maxWords);
+	}
 	if (normalizedTitle && !isGenericPlanTitle(normalizedTitle)) {
 		// Clean code artifacts and truncate even raw titles
 		const cleaned = collapseWhitespace(stripCodeArtifacts(normalizedTitle));

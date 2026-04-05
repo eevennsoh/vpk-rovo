@@ -41,6 +41,7 @@ import {
 	getLatestPlanWidgetPayload,
 	getLatestSourcedPlanWidget,
 } from "@/components/projects/shared/lib/plan-widget";
+import { isGenericPlanTitle } from "@/components/projects/shared/lib/plan-identity";
 import {
 	selectRetryTasks,
 } from "@/components/projects/make/lib/retry-task-groups";
@@ -508,7 +509,7 @@ export function MakeProvider({ children }: MakeProviderProps) {
 		) {
 			return;
 		}
-		if (planWidget.shortDescription?.trim()) {
+		if (planWidget.shortDescription?.trim() && !isGenericPlanTitle(planWidget.title)) {
 			return;
 		}
 		if (attemptedPlanMetadataMessageIdsRef.current.has(sourceMessageId)) {

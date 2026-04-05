@@ -440,10 +440,10 @@ export function FutureChatShell({
 		return () => clearHoverTimer();
 	}, [clearHoverTimer]);
 
-	// ⌘⇧N — create a new chat
+	// ⌘⇧O — create a new chat
 	useEffect(() => {
 		const handleNewChatShortcut = (e: KeyboardEvent) => {
-			if (e.metaKey && e.shiftKey && e.key.toLowerCase() === "n") {
+			if (e.metaKey && e.shiftKey && e.key.toLowerCase() === "o") {
 				e.preventDefault();
 				chatRef.current.openNewChat();
 			}
