@@ -743,6 +743,12 @@ export function MakeProvider({ children }: MakeProviderProps) {
 				});
 			}
 
+			// Deactivate plan mode (task toggle) so the UI reflects
+			// that we've moved from planning to execution.
+			if (chatTabIsPlanMode) {
+				chatTabTogglePlanMode();
+			}
+
 			void (async () => {
 				try {
 					const { runId: nextRunId } = await startExecution({
@@ -765,6 +771,8 @@ export function MakeProvider({ children }: MakeProviderProps) {
 		[
 			agentCount,
 			chatTabConversationItems,
+			chatTabIsPlanMode,
+			chatTabTogglePlanMode,
 			conversationItems,
 			latestChatTabUserPrompt,
 			latestUserPrompt,

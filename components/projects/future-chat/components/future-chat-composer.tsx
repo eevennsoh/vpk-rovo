@@ -560,9 +560,16 @@ function FutureChatComposerInner({
 							</PromptInputTools>
 
 							<div className="flex h-8 min-w-0 flex-1 items-center justify-end gap-1.5">
-								<AnimatePresence mode="wait" initial={false}>
+								<AnimatePresence mode="popLayout" initial={false}>
 									{realtimeVoiceActive ? (
-										<motion.div key="waveform" animate={{ opacity: 1 }} exit={{ opacity: 0 }} initial={{ opacity: 0 }} transition={{ duration: 0.08 }}>
+										<motion.div
+											key="waveform"
+											initial={{ opacity: 0, transform: "scale(0.8)" }}
+											animate={{ opacity: 1, transform: "scale(1)" }}
+											exit={{ opacity: 0, transform: "scale(0.8)" }}
+											transition={{ type: "spring", bounce: 0, visualDuration: 0.15 }}
+											style={{ willChange: "transform, opacity" }}
+										>
 											<button
 												aria-label="Stop live voice"
 												className="flex h-8 w-20 cursor-pointer items-center gap-1.5 overflow-hidden rounded-md border border-border bg-background pl-2 pr-2 text-icon-subtle transition-colors hover:bg-bg-neutral-hovered active:bg-bg-neutral-pressed"
@@ -597,13 +604,27 @@ function FutureChatComposerInner({
 											</button>
 										</motion.div>
 									) : idleAction === "submit" ? (
-										<motion.div key="submit" animate={{ opacity: 1 }} exit={{ opacity: 0 }} initial={{ opacity: 0 }} transition={{ duration: 0.08 }}>
+										<motion.div
+											key="submit"
+											initial={{ opacity: 0, transform: "scale(0.8)" }}
+											animate={{ opacity: 1, transform: "scale(1)" }}
+											exit={{ opacity: 0, transform: "scale(0.8)" }}
+											transition={{ type: "spring", bounce: 0, visualDuration: 0.15 }}
+											style={{ willChange: "transform, opacity" }}
+										>
 											<PromptInputSubmit aria-label="Submit" className="bg-icon text-white hover:bg-icon hover:opacity-90 active:opacity-80 [&_svg]:text-white" disabled={submitDisabled || !canSubmit} onStop={() => void onStop()} shape="circle" size="icon-sm" status={composerStatus}>
 												<ArrowUpIcon label="" />
 											</PromptInputSubmit>
 										</motion.div>
 									) : idleAction === "background-stop" ? (
-										<motion.div key="background-stop" animate={{ opacity: 1 }} exit={{ opacity: 0 }} initial={{ opacity: 0 }} transition={{ duration: 0.08 }}>
+										<motion.div
+											key="background-stop"
+											initial={{ opacity: 0, transform: "scale(0.8)" }}
+											animate={{ opacity: 1, transform: "scale(1)" }}
+											exit={{ opacity: 0, transform: "scale(0.8)" }}
+											transition={{ type: "spring", bounce: 0, visualDuration: 0.15 }}
+											style={{ willChange: "transform, opacity" }}
+										>
 											<PromptInputSubmit
 												aria-label="Stop background work"
 												onStop={() => void onStop()}
@@ -615,7 +636,14 @@ function FutureChatComposerInner({
 											</PromptInputSubmit>
 										</motion.div>
 									) : idleAction === "voice-start" ? (
-										<motion.div key="voice-start" animate={{ opacity: 1 }} exit={{ opacity: 0 }} initial={{ opacity: 0 }} transition={{ duration: 0.08 }}>
+										<motion.div
+											key="voice-start"
+											initial={{ opacity: 0, transform: "scale(0.8)" }}
+											animate={{ opacity: 1, transform: "scale(1)" }}
+											exit={{ opacity: 0, transform: "scale(0.8)" }}
+											transition={{ type: "spring", bounce: 0, visualDuration: 0.15 }}
+											style={{ willChange: "transform, opacity" }}
+										>
 											<PromptInputButton
 												aria-label="Start live voice"
 												className="size-8 bg-icon text-white transition-colors hover:bg-icon hover:opacity-90 active:opacity-80 [&_svg]:text-white"
@@ -630,7 +658,14 @@ function FutureChatComposerInner({
 								</AnimatePresence>
 								<AnimatePresence initial={false}>
 									{isComposerBusy ? (
-										<motion.div key="stop" animate={{ opacity: 1 }} exit={{ opacity: 0 }} initial={{ opacity: 0 }} transition={{ duration: 0.08 }}>
+										<motion.div
+											key="stop"
+											initial={{ opacity: 0, transform: "scale(0.8)" }}
+											animate={{ opacity: 1, transform: "scale(1)" }}
+											exit={{ opacity: 0, transform: "scale(0.8)" }}
+											transition={{ type: "spring", bounce: 0, visualDuration: 0.15 }}
+											style={{ willChange: "transform, opacity" }}
+										>
 											<PromptInputSubmit aria-label="Stop" onStop={() => void onStop()} shape="circle" size="icon-sm" status={composerStatus}>
 												<ArrowUpIcon label="" />
 											</PromptInputSubmit>
