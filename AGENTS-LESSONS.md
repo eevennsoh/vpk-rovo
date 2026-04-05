@@ -8,7 +8,7 @@ Mark promoted entries with `[Promoted]` prefix — see vpk-lesson skill for deta
 
 ### 2026-03-24 - Use the Serve-native deferred flow for plan-mode tools
 
-- **What happened:** Future Chat repeatedly broke the planning chain by
+- **What happened:** Rovo App repeatedly broke the planning chain by
   treating both `ask_user_questions` and `exit_plan_mode` like custom paused
   approval flows, mixing `resume_tool_calls`, synthetic approval payloads,
   manual agent-mode toggles, and a local make-grid build path. This caused
@@ -21,25 +21,25 @@ Mark promoted entries with `[Promoted]` prefix — see vpk-lesson skill for deta
   of reusing the next prompt as synthetic feedback.
 - **Rule:** For `ask_user_questions` and `exit_plan_mode`, render UI from the
   actual deferred-tool request event and return results through the
-  Serve-native deferred response path only. In Future Chat, map Build to
+  Serve-native deferred response path only. In Rovo App, map Build to
   `"Accept."`, a normal reply to plan feedback, and Plan-off plus the next
   prompt to cancel the pending deferred tool and send the new prompt in
   default mode; do not route plan acceptance through custom approval or
   make-grid logic.
 
-- **What happened:** Future Chat app generation recreated host-level shell
+- **What happened:** Rovo App app generation recreated host-level shell
   chrome, including top navigation and the floating Rovo launcher, which caused
   duplicate UI like a top nav inside a top nav.
 - **Why:** The shared make-run prompt constrained file placement but did not
-  tell the generator that Future Chat previews are embedded feature surfaces
+  tell the generator that Rovo App previews are embedded feature surfaces
   inside an existing shell.
-- **Rule:** For Future Chat app generation, treat the output as a mini feature
+- **Rule:** For Rovo App app generation, treat the output as a mini feature
   or widget by default. Do not add `AppLayout`, top navigation, product
   sidebar, floating Rovo button, global Rovo chat panel, or equivalent
   host-shell chrome unless the user explicitly asks to prototype the shell
   itself.
 
-### 2026-03-30 - Future Chat plan card → Build → execution full flow reference
+### 2026-03-30 - Rovo App plan card → Build → execution full flow reference
 
 - **What happened:** Multiple AI sessions spent significant time rediscovering
   how the plan card works and what happens after clicking Build, leading to
@@ -50,7 +50,7 @@ Mark promoted entries with `[Promoted]` prefix — see vpk-lesson skill for deta
 - **Rule:** The full plan card → Build → execution chain is:
   1. **Plan card renders** from `data-widget-data` parts with `deferredToolCallId`
      (`plan-widget.ts` → `plan-widget-inline-card.tsx`).
-  2. **Build click** calls `acceptPlanReview()` in `use-future-chat.ts`, which
+  2. **Build click** calls `acceptPlanReview()` in `use-rovo-app.ts`, which
      creates a `PlanApprovalSubmission` with `decision: "auto-accept"` and the
      `deferredToolCallId` from the plan widget.
   3. **Frontend sends** `POST /v3/stream_chat` with
@@ -66,18 +66,18 @@ Mark promoted entries with `[Promoted]` prefix — see vpk-lesson skill for deta
   6. **Agent calls `update_todo`** during execution; the backend streams these
      tool-call results back.
   7. **Frontend** parses `update_todo` output via
-     `getLatestFutureChatTodoProgress()` in `future-chat-update-todo-progress.ts`,
-     then `resolveFutureChatPlanExecutionTracker()` merges todo snapshots with
+     `getLatestRovoAppTodoProgress()` in `rovo-app-update-todo-progress.ts`,
+     then `resolveRovoAppPlanExecutionTracker()` merges todo snapshots with
      plan tasks to build a `PlanExecutionTrackerViewModel`.
-  8. **TaskProgress UI** (`future-chat-plan-execution-tracker.tsx`) renders live
+  8. **TaskProgress UI** (`rovo-app-plan-execution-tracker.tsx`) renders live
      status groups (done / in-progress / todo) with run timing and agent count.
-     Key files: `plan-widget.ts`, `plan-approval.ts`, `use-future-chat.ts`,
-     `server.js`, `rovodev-client.js`, `future-chat-update-todo-progress.ts`,
-     `future-chat-plan-execution-tracker.ts/.tsx`.
+     Key files: `plan-widget.ts`, `plan-approval.ts`, `use-rovo-app.ts`,
+     `server.js`, `rovodev-client.js`, `rovo-app-update-todo-progress.ts`,
+     `rovo-app-plan-execution-tracker.ts/.tsx`.
 
 ### 2026-04-01 - Match the user’s UI composition before embellishing
 
-- **What happened:** A rough UI mock for the Future Chat artifact context was
+- **What happened:** A rough UI mock for the Rovo App artifact context was
   translated into a centered decorative callout instead of the full-width top
   strip the user had shown.
 - **Why:** The design pass added extra hierarchy and ornamental framing before
@@ -86,14 +86,14 @@ Mark promoted entries with `[Promoted]` prefix — see vpk-lesson skill for deta
   literally first (placement, width, alignment, and chrome) before adding any
   styling interpretation or extra visual detail.
 
-### 2026-04-02 - Keep Future Chat title generation on the direct gateway path
+### 2026-04-02 - Keep Rovo App title generation on the direct gateway path
 
-- **What happened:** Future Chat thread titles stopped updating even though the
+- **What happened:** Rovo App thread titles stopped updating even though the
   direct AI Gateway title request still succeeded.
 - **Why:** The title flow was changed from the old immediate gateway call to a
   post-stream path gated on the RovoDev Serve streaming lifecycle plus an extra
   delay, which broke the previously working handoff.
-- **Rule:** For Future Chat thread titles, call the direct `/api/chat-title`
+- **Rule:** For Rovo App thread titles, call the direct `/api/chat-title`
   AI Gateway path immediately after thread creation. Do not couple title
   generation to RovoDev Serve stream start, stream completion, or added
   timeouts unless a verified gateway contention issue requires it.

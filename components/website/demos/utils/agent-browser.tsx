@@ -7,7 +7,7 @@ import { RovoChatProvider, useRovoChat } from "@/app/contexts";
 import type { SendPromptOptions } from "@/app/contexts";
 import { ChatMessages } from "@/components/projects/shared/components/chat-messages";
 import { useScrollAnchoring } from "@/components/projects/shared/hooks/use-scroll-anchoring";
-import { getFutureChatShellLayout } from "@/components/projects/future-chat/lib/future-chat-shell-layout";
+import { getRovoAppShellLayout } from "@/components/projects/rovo-app/lib/rovo-app-shell-layout";
 import { useBrowserWorkspace } from "@/components/website/demos/utils/hooks/use-browser-workspace";
 import { BrowserPreviewPanel } from "@/components/website/demos/utils/components/browser-preview-panel";
 import {
@@ -139,7 +139,7 @@ function AgentBrowserView() {
 		return () => observer.disconnect()
 	}, [])
 
-	const layout = getFutureChatShellLayout(shellWidth)
+	const layout = getRovoAppShellLayout(shellWidth)
 	const shouldSplit = isPreviewOpen && layout.mode === "split"
 
 	const handleSubmit = useCallback(async () => {

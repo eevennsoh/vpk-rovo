@@ -2,8 +2,8 @@ const SMART_ROUTE_TARGET_SURFACES = new Set([
 	"multiports",
 	"sidebar",
 	"fullscreen",
-	"future-chat",
-	"future-chat-preview",
+	"rovo-app",
+	"rovo-app-preview",
 ]);
 
 function isSmartRouteTargetSurface(value) {

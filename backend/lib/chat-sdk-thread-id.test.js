@@ -6,7 +6,7 @@ const { resolveChatSdkThreadId } = require("./chat-sdk-thread-id");
 test("prefers explicit threadId when provided", () => {
 	assert.equal(
 		resolveChatSdkThreadId({
-			chatSdkSource: "future-chat",
+			chatSdkSource: "rovo-app",
 			threadId: "thread-123",
 			id: "request-id",
 		}),
@@ -14,10 +14,10 @@ test("prefers explicit threadId when provided", () => {
 	);
 });
 
-test("falls back to request id for future-chat requests", () => {
+test("falls back to request id for rovo-app requests", () => {
 	assert.equal(
 		resolveChatSdkThreadId({
-			chatSdkSource: "future-chat",
+			chatSdkSource: "rovo-app",
 			threadId: "",
 			id: "future-thread-456",
 		}),

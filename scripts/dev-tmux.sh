@@ -110,6 +110,10 @@ cleanup_port_files() {
 	rm -f "$PORT_FILE" "$PORTS_FILE"
 }
 
+cleanup_worktree_listeners() {
+	node ./scripts/cleanup-worktree-listeners.js
+}
+
 resolve_rovodev_ports() {
 	node - <<'NODE'
 const fs = require("node:fs");
@@ -231,6 +235,7 @@ start_session() {
 		exec tmux attach -t "$SESSION_NAME"
 	fi
 
+	cleanup_worktree_listeners
 	prepare_port_files
 
 	local rovodev_ports_raw
@@ -299,6 +304,7 @@ stop_session() {
 		echo "No tmux session named '$SESSION_NAME' found."
 	fi
 
+	cleanup_worktree_listeners
 	cleanup_port_files
 	echo "Removed $PORT_FILE and $PORTS_FILE."
 }

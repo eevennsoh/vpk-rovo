@@ -2,7 +2,7 @@
 
 import { token } from "@/lib/tokens";
 import { Button } from "@/components/ui/button";
-import { HomeIcon, JiraIcon, ConfluenceIcon, RovoIcon, SearchIcon as SearchLogo } from "@/components/ui/logo";
+import { HomeIcon, RovoIcon } from "@/components/ui/logo";
 
 interface AppSwitcherMenuProps {
 	onNavigate: (path: string) => void;
@@ -10,10 +10,7 @@ interface AppSwitcherMenuProps {
 
 const appSwitcherItems = [
 	{ path: "/", label: "Home", icon: HomeIcon },
-	{ path: "/search", label: "Search", icon: SearchLogo },
-	{ path: "/jira", label: "Jira", icon: JiraIcon },
-	{ path: "/confluence", label: "Confluence", icon: ConfluenceIcon },
-	{ path: "/fullscreen-chat", label: "Fullscreen Chat", icon: RovoIcon },
+	{ path: "/rovo-app", label: "Rovo App", icon: RovoIcon },
 ] as const;
 
 export function AppSwitcherMenu({ onNavigate }: Readonly<AppSwitcherMenuProps>) {

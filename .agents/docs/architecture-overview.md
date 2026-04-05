@@ -29,7 +29,7 @@ generation, and Realtime voice routes.
 
 - `app/` - Next.js App Router routes, providers, and dev proxy handlers
 - `backend/` - Express production runtime and API handlers
-- `components/projects/` - ADS-themed feature surfaces (confluence, dashboard, fullscreen-chat, future-chat, jira, make, search, sidebar-chat, work-items)
+- `components/projects/` - ADS-themed feature surfaces (confluence, dashboard, fullscreen-chat, rovo-app, jira, make, search, sidebar-chat, work-items)
 - `components/blocks/` - standalone block surfaces (agent-progress, answer-card, approval-card, board, chat, chat-composer, chatbot, chatgpt, cursor, dashboard, data-table, discovery-gallery, figma-demo, generative, generative-card, kanban-sprint, login, make-artifact, make-gallery, make-grid, make-item, make-page, product-sidebar, prompt-gallery, question-card, settings-dialog, shared-ui, sidebar, sidebar-rail, signup, sprint-board, terminal-switch, time-tracker, top-navigation, visual-waveform, work-item-detail, work-item-widget, workflow)
 - `components/charts/` - chart components (area, bar, data, line, pie, radar, radial, tooltip)
 - `components/ui/` - shared shadcn/Base UI primitives
@@ -69,7 +69,7 @@ Common routes:
 - `/make` -> `components/projects/make/`
 - `/sidebar-chat` -> `components/projects/sidebar-chat/`
 - `/fullscreen-chat` -> `components/projects/fullscreen-chat/`
-- `/future-chat` -> `components/projects/future-chat/`
+- `/rovo-app` -> `components/projects/rovo-app/`
 - `/confluence` -> `components/projects/confluence/`
 - `/jira` -> `components/projects/jira/`
 - `/search` -> `components/projects/search/`

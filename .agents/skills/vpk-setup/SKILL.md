@@ -17,7 +17,7 @@ produces: [.env.local, .asap-config]
 **Goal:** Get the prototype running locally with the default required runtime:
 RovoDev Serve as the primary chat backend, plus AI Gateway-backed image/TTS
 routes, suggestions, and the current env-driven STT preset block used by
-Future Chat live voice mode.
+Rovo App live voice mode.
 
 ## Quick Workflow
 
@@ -240,7 +240,7 @@ OPENAI_REALTIME_VOICE=alloy
 
 ## Speech-to-Text Preset Switching
 
-Future Chat chat model selection is no longer exposed in the frontend. Chat stays on RovoDev Serve, while live voice transcription is selected entirely through `.env.local`.
+Rovo App chat model selection is no longer exposed in the frontend. Chat stays on RovoDev Serve, while live voice transcription is selected entirely through `.env.local`.
 
 Switch STT by updating only:
 
@@ -263,7 +263,7 @@ Notes:
 
 Model switching via `.env.local` applies only to AI Gateway-backed routes such
 as image, audio, suggestions, and explicit gateway-driven tools. RovoDev Serve
-manages standard chat internally, and Future Chat live voice STT is controlled
+manages standard chat internally, and Rovo App live voice STT is controlled
 separately via `STT_PRESET`.
 
 | Provider | Model | Endpoint |
@@ -314,7 +314,7 @@ For full model switching details, see [references/guide-model-switch.md](referen
 | "Model Id [X] not found" | Model not whitelisted. Run `atlas ml aigateway usecase view --id YOUR-USE-CASE-ID -e stg-west` |
 | Bedrock 403 while OpenAI works | Pull latest branch and confirm `backend/lib/ai-gateway-helpers.js` does **not** rewrite Bedrock URL; restart backend |
 | Want to switch models | See [Model Switching Guide](references/guide-model-switch.md) |
-| Future Chat voice mode 500 | Restart the backend so it picks up the latest `.env.local`. If using `STT_PRESET=qwen3-asr` or `qwen3-0.6b`, ensure an OpenAI-compatible transcription backend is available at `OPENAI_COMPATIBLE_STT_BASE_URL` (defaults to `http://localhost:8801/v1`) |
+| Rovo App voice mode 500 | Restart the backend so it picks up the latest `.env.local`. If using `STT_PRESET=qwen3-asr` or `qwen3-0.6b`, ensure an OpenAI-compatible transcription backend is available at `OPENAI_COMPATIBLE_STT_BASE_URL` (defaults to `http://localhost:8801/v1`) |
 | Stale AI context / wrong answers | RovoDev session may be corrupted — restart with `pnpm run rovodev` |
 | 409 "chat already in progress" | Background tasks may be using pinned panel ports — check that `PINNED_PORT_COUNT` matches your panel count. See [Port Isolation Guide](references/guide-ports.md) |
 | 409 on first prompt (tmux) | Watch the affected RovoDev pane. The fixed-port supervisor should restart the child automatically if recovery kills it. |

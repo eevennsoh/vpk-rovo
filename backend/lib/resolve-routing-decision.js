@@ -1,6 +1,6 @@
 const { getNonEmptyString } = require("./shared-utils");
 const { isConversationalMessage, isTaskLikeMessage } = require("./planning-question-gate");
-const { isExplicitNewFutureChatArtifactRequest } = require("./future-chat-artifact-updates");
+const { isExplicitNewRovoAppArtifactRequest } = require("./rovo-app-artifact-updates");
 
 // ---------------------------------------------------------------------------
 // Regex patterns — ported from existing classifiers
@@ -8,7 +8,7 @@ const { isExplicitNewFutureChatArtifactRequest } = require("./future-chat-artifa
 
 /**
  * Verb + noun patterns for artifact creation requests.
- * Derived from future-chat-artifact-intent.js DOCUMENT_VERB_PATTERN / DOCUMENT_NOUN_PATTERN.
+ * Derived from rovo-app-artifact-intent.js DOCUMENT_VERB_PATTERN / DOCUMENT_NOUN_PATTERN.
  */
 const ARTIFACT_CREATE_VERB_PATTERN =
 	/\b(write|draft|create|build|generate|make|compose|outline|design|implement|refactor|turn|convert)\b/i;
@@ -76,7 +76,7 @@ function resolveRoutingDecisionFastPath(context) {
 
 	// D1: Active artifact → artifact_update unless user explicitly requests a new artifact
 	if (activeArtifact?.id) {
-		if (isExplicitNewFutureChatArtifactRequest({ latestUserMessage: prompt })) {
+		if (isExplicitNewRovoAppArtifactRequest({ latestUserMessage: prompt })) {
 			return {
 				intent: "artifact_create",
 				presentation: "artifact_preview",

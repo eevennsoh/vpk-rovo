@@ -6,7 +6,7 @@ Remove the pre-parsed "Steps" tab from the plan card UI. The plan card should on
 ## Key Insight
 Currently there are two problems:
 1. Tasks are extracted from `exit_plan_mode` markdown and displayed in a "Steps" tab — this is redundant with the summary and fragile.
-2. System prompts mandate calling `update_todo` either before `exit_plan_mode` (make mode) or immediately after Build approval (future-chat rule 5a) to seed a checklist from the plan tasks — this is prescriptive and unnecessary.
+2. System prompts mandate calling `update_todo` either before `exit_plan_mode` (make mode) or immediately after Build approval (rovo-app rule 5a) to seed a checklist from the plan tasks — this is prescriptive and unnecessary.
 
 The fix: `exit_plan_mode` produces a markdown-only plan. No task extraction, no pre-seeded `update_todo`. After Build, RovoDev Serve decides how to decompose and track work.
 
@@ -37,13 +37,13 @@ The fix: `exit_plan_mode` produces a markdown-only plan. No task extraction, no 
 - **Keep task extraction logic as-is** — do not remove or stub it out. The frontend simply stops consuming the `tasks` field from the parsed payload.
 - Rationale: the RovoDev Serve backend (`endpoints.py`) is a passive pass-through — it emits `exit_plan_mode` args as a raw `deferred-request` SSE event with no task awareness. Task parsing is purely a JS-layer concern, and other consumers (e.g. `update-todo-plan-payload.js`) may still reference the extracted `tasks` field. Removing parsing here risks breaking those consumers silently.
 
-### 6. `components/projects/future-chat/lib/future-chat-plan-execution-tracker.ts`
+### 6. `components/projects/rovo-app/lib/rovo-app-plan-execution-tracker.ts`
 - `mergeTodoItemsWithPlanTasks()`: when `planTasks` is empty (which it now always will be for new plans), just return the snapshot items directly — no merge needed.
-- `resolveFutureChatPlanExecutionTracker()`: handle `acceptedPlanWidget.tasks` being empty gracefully — derive `taskCount` and `taskStatusGroups` purely from `update_todo` snapshot.
+- `resolveRovoAppPlanExecutionTracker()`: handle `acceptedPlanWidget.tasks` being empty gracefully — derive `taskCount` and `taskStatusGroups` purely from `update_todo` snapshot.
 - ⚠️ **Risk**: audit this function carefully for any implicit guard like `if (planTasks.length === 0) return early` that could short-circuit execution tracking before `update_todo` items arrive. The tracker must remain active and wait for `update_todo` snapshots even when `planTasks` is empty.
 
-### 7. `components/projects/future-chat/lib/future-chat-plan-task-labels.ts`
-- `buildFutureChatPlanTaskDisplayLabels()` and `resolveFutureChatPlanTaskDisplayLabels()`: when `planTasks` is empty, return labels from snapshot items only.
+### 7. `components/projects/rovo-app/lib/rovo-app-plan-task-labels.ts`
+- `buildRovoAppPlanTaskDisplayLabels()` and `resolveRovoAppPlanTaskDisplayLabels()`: when `planTasks` is empty, return labels from snapshot items only.
 
 ### 8. `components/projects/shared/thread-message/lib/plan-description-fallback.ts`
 - Remove mermaid graph generation from `planPayload.tasks` (line 23-24) since tasks will be empty.
@@ -71,7 +71,7 @@ The fix: `exit_plan_mode` produces a markdown-only plan. No task extraction, no 
 - Replace with simpler instruction: the agent should generate a plan markdown and call `exit_plan_mode` directly. No `update_todo` call during planning.
 - Affects: `MAKE_MODE_CONTEXT_DESCRIPTION`, `MAKE_MODE_POST_CLARIFICATION_CONTEXT_DESCRIPTION`, `MAKE_MODE_RETRY_PROMPT`, `MAKE_INTERVIEW_CONTEXT_DESCRIPTION`, `MAKE_INTERVIEW_FOLLOW_UP_CONTEXT_DESCRIPTION`.
 
-### 14. `components/projects/future-chat/components/future-chat-messages.tsx` — Remove `taskDisplayLabels` prop
+### 14. `components/projects/rovo-app/components/rovo-app-messages.tsx` — Remove `taskDisplayLabels` prop
 - Line 1092 passes `taskDisplayLabels={planTaskDisplayLabels}` to `PlanTabContent`. Remove this prop since the Steps tab no longer exists.
 
 ### 15. `components/projects/make/components/make-card-widget-inline.tsx` — Handle 0-task rendering
@@ -88,12 +88,12 @@ The fix: `exit_plan_mode` produces a markdown-only plan. No task extraction, no 
 
 ### 17. Test files — Update task-related assertions
 - **`components/projects/shared/lib/plan-widget-buildable.test.js`** — Lines 32-34 compare `planPayload.tasks.length === latestPlan.tasks.length` and `task.id === latestPlan.tasks[index]?.id` to determine if a plan is the "latest". This matches the `isPlanCardBuildable` logic being changed in item #3. Update assertions to use `deferredToolCallId` comparison instead.
-- **`components/projects/future-chat/lib/future-chat-plan-execution-tracker.test.js`** — Multiple tests assert plan-task-seeded behavior:
+- **`components/projects/rovo-app/lib/rovo-app-plan-execution-tracker.test.js`** — Multiple tests assert plan-task-seeded behavior:
   - Line 122: _"falls back to accepted plan tasks while running"_ — update to verify tracker works with empty plan tasks + `update_todo` snapshots only.
   - Line 150: _"preserves exact approved plan labels before update_todo runs"_ — this scenario no longer applies (no pre-approved plan labels). Remove or rewrite.
   - Line 266: _"aliases numeric todo ids to the original plan tasks"_ — update to verify `update_todo` items render directly without aliasing.
   - Line 304: _"prefers exact update_todo labels over plan labels"_ — simplify since there are no plan labels to prefer over.
-- **`components/projects/future-chat/lib/future-chat-plan-task-labels.test.js`** — Line 84: _"preserves exact approved plan labels before approval"_ — this scenario no longer applies. Update or remove.
+- **`components/projects/rovo-app/lib/rovo-app-plan-task-labels.test.js`** — Line 84: _"preserves exact approved plan labels before approval"_ — this scenario no longer applies. Update or remove.
 - **`backend/lib/plan-widget-fallback.test.js`** — Line 359: _"exit_plan_mode payload has required structure for frontend PlanTabContent (Test Case 6)"_ — the `tasks` field will still exist in the payload (backend parsing unchanged), but the test description references `PlanTabContent` which no longer uses tasks. Update test description. Lines 415, 423 test task IDs and extraction strategies — these still pass since backend parsing is unchanged.
 
 ---
@@ -123,4 +123,4 @@ The fix: `exit_plan_mode` produces a markdown-only plan. No task extraction, no 
 - Verify `update-todo-plan-payload.js` does not short-circuit when `planTasks` is empty — execution tracking must still activate and pick up `update_todo` snapshots.
 - Verify session restore / replay still renders correctly for older sessions that had pre-parsed tasks (mermaid graph absence is acceptable).
 - Verify make mode: agent calls `exit_plan_mode` directly without `update_todo` first. Plan card renders with summary only.
-- Verify future-chat: after Build approval, agent does NOT pre-seed `update_todo` — RovoDev Serve decides autonomously.
+- Verify rovo-app: after Build approval, agent does NOT pre-seed `update_todo` — RovoDev Serve decides autonomously.

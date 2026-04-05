@@ -189,9 +189,6 @@ const rows: AnswerCardRow[] = [
 			},
 		],
 	},
-	"make-artifact": {
-		description: "Make artifact view with sidebar navigation, top nav tabs, dual tab bars, and two-panel layout for artifact output and chat.",
-	},
 	dashboard: {
 		description: "A full dashboard layout with sidebar navigation, charts, and data tables.",
 	},
@@ -478,7 +475,7 @@ import { SheetIcon } from "@/components/ui/vpk-icons";
 		description: "Comprehensive work item detail view with description, comments, linked items, and activity history.",
 	},
 	"visual-waveform": {
-		description: "Standalone Future Chat live-voice demo using the exact composer, gradient waveform, and GPT Realtime hook without the thread-persistence backend dependency.",
+		description: "Standalone Rovo App live-voice demo using the exact composer, gradient waveform, and GPT Realtime hook without the thread-persistence backend dependency.",
 		importStatement: `import VisualWaveform from "@/components/blocks/visual-waveform/page";`,
 		usage: `import VisualWaveform from "@/components/blocks/visual-waveform/page";
 
@@ -678,24 +675,6 @@ const toolApproval: ToolApprovalPayload = {
 	},
 	"kanban-sprint": {
 		description: "Sprint planning kanban board with drag-and-drop task cards, status columns, sprint metrics, and story point tracking.",
-	},
-	"make-grid": {
-		description: "Make execution grid with live task tiles, sidebar navigation, and minimal prompt input.",
-		demoLayout: {
-			previewContentWidth: "full",
-		},
-	},
-	"make-gallery": {
-		description: "A chat-first landing surface with illustration, composer input, and prompt gallery for quick-start conversations and build requests.",
-	},
-	"make-item": {
-		description: "Horizontal card displaying a created object with animated ASCII preview and rich metadata.",
-	},
-	"make-page": {
-		description: "Make landing page with sidebar navigation, category tabs, recurring section, and make-item card gallery.",
-		demoLayout: {
-			previewContentWidth: "full",
-		},
 	},
 	generative: {
 		description: "v0-style generative UI with prompt input, artifact container, and preview/code toggle.",

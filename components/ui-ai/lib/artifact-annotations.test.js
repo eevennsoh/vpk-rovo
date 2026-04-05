@@ -30,10 +30,10 @@ function createAnnotation(overrides = {}) {
 			element: {},
 			anchor: {
 				selector: "pre code > span:nth-child(12)",
-				textExcerpt: "Welcome to Future Chat",
-				htmlPreview: "<span>Welcome to Future Chat</span>",
+				textExcerpt: "Welcome to Rovo App",
+				htmlPreview: "<span>Welcome to Rovo App</span>",
 				codeLineNumber: 12,
-				codeLineText: "Welcome to Future Chat",
+				codeLineText: "Welcome to Rovo App",
 				...anchorOverrides,
 			},
 			source: {
@@ -109,7 +109,7 @@ test("formatAnnotationsForVoiceContext includes kind-specific code anchor detail
 	assert.match(codeContext, /Artifact kind: code/u);
 	assert.match(codeContext, /#1: "Make this heading larger"/u);
 	assert.match(codeContext, /viewer anchor: code line 12/u);
-	assert.match(codeContext, /selected text: "Welcome to Future Chat"/u);
+	assert.match(codeContext, /selected text: "Welcome to Rovo App"/u);
 	assert.match(codeContext, /source: components\/ui-ai\/artifact\.tsx:1/u);
 	assert.match(codeContext, /selector: pre code > span:nth-child\(12\)/u);
 

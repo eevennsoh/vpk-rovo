@@ -19,54 +19,50 @@ const {
 	createUIMessageStreamResponse,
 	pipeUIMessageStreamToResponse,
 } = require("ai");
-const { createRunManager: createMakeRunManager } = require("./make/make-runs");
-const { createFutureChatThreadManager } = require("./lib/future-chat-threads");
-const { createFutureChatVoteManager } = require("./lib/future-chat-votes");
-const { createFutureChatDocumentManager } = require("./lib/future-chat-documents");
-const { createFutureChatUploadManager } = require("./lib/future-chat-uploads");
+const { createRovoAppThreadManager } = require("./lib/rovo-app-threads");
+const { createRovoAppVoteManager } = require("./lib/rovo-app-votes");
+const { createRovoAppDocumentManager } = require("./lib/rovo-app-documents");
+const { createRovoAppUploadManager } = require("./lib/rovo-app-uploads");
 const {
-	createFutureChatGeneratedFilesManager,
-} = require("./lib/future-chat-generated-files");
+	createRovoAppGeneratedFilesManager,
+} = require("./lib/rovo-app-generated-files");
 const { createAbortControllerFromRequest } = require("./lib/http-request-abort");
 const {
 	createCapturedResponse,
 	createInProcessRequest,
 } = require("./lib/in-process-http");
-const { createFutureChatRunManager } = require("./lib/future-chat-runs");
+const { createRovoAppRunManager } = require("./lib/rovo-app-runs");
 const {
 	collectUiMessagesFromResponseStream,
 	createUiMessageChunkSseStream,
-} = require("./lib/future-chat-ui-stream");
+} = require("./lib/rovo-app-ui-stream");
 const {
-	waitForFutureChatRovoDevAvailability,
-} = require("./lib/future-chat-availability");
+	waitForRovoAppRovoDevAvailability,
+} = require("./lib/rovo-app-availability");
 const {
-	buildFutureChatArtifactIntentPrompt,
+	buildRovoAppArtifactIntentPrompt,
 	normalizeArtifactKind,
-	parseFutureChatArtifactIntent,
-	resolveFastFutureChatArtifactIntent,
-} = require("./lib/future-chat-artifact-intent");
+	parseRovoAppArtifactIntent,
+	resolveFastRovoAppArtifactIntent,
+} = require("./lib/rovo-app-artifact-intent");
 const {
-	deriveFutureChatVersionChangeLabel,
-	isExplicitNewFutureChatArtifactRequest,
-	isSameFutureChatArtifactVersionRequest,
-} = require("./lib/future-chat-artifact-updates");
+	deriveRovoAppVersionChangeLabel,
+	isExplicitNewRovoAppArtifactRequest,
+	isSameRovoAppArtifactVersionRequest,
+} = require("./lib/rovo-app-artifact-updates");
 const {
-	inferFutureChatArtifactKindFromContent,
-} = require("./lib/future-chat-artifact-kind");
+	inferRovoAppArtifactKindFromContent,
+} = require("./lib/rovo-app-artifact-kind");
 const {
-	resolveFutureChatActiveArtifact,
-} = require("./lib/future-chat-artifact-routing");
+	resolveRovoAppActiveArtifact,
+} = require("./lib/rovo-app-artifact-routing");
 const {
-	deriveFutureChatArtifactTitle,
-	sanitizeFutureChatArtifactTitle,
-} = require("./lib/future-chat-artifact-titles");
+	deriveRovoAppArtifactTitle,
+	sanitizeRovoAppArtifactTitle,
+} = require("./lib/rovo-app-artifact-titles");
 const {
-	generateAndPersistFutureChatArtifact,
-} = require("./lib/future-chat-artifact-runner");
-const makeFs = require("./make/make-filesystem");
-const { createAppRegistry } = require("./make/make-app-registry");
-const { createForgePublishManager } = require("./make/make-forge-publish");
+	generateAndPersistRovoAppArtifact,
+} = require("./lib/rovo-app-artifact-runner");
 const { genuiChatHandler } = require("./lib/genui-chat-handler");
 const {
 	streamViaRovoDev,
@@ -176,8 +172,8 @@ const {
 	handleReplayDeferredToolRequest,
 } = require("./lib/replay-deferred-tool");
 const {
-	getFutureChatRunFailurePayload,
-} = require("./lib/future-chat-run-failure");
+	getRovoAppRunFailurePayload,
+} = require("./lib/rovo-app-run-failure");
 const {
 	buildInteractiveStuckPortFailureMessage,
 	shouldRetryInteractiveStuckPortRecovery,
@@ -185,7 +181,7 @@ const {
 const {
 	hasStructuredContinuationBody,
 	shouldReplaceActiveRunForRequest,
-} = require("./lib/future-chat-run-continuation");
+} = require("./lib/rovo-app-run-continuation");
 const { createRovoDevPool } = require("./lib/rovodev-pool");
 const { createOrchestratorLog } = require("./lib/orchestrator-log");
 const {
@@ -476,7 +472,7 @@ async function refreshRovoDevAvailability() {
 					rovoDevCancelChat(port, { timeoutMs: 5_000 }).catch(() => {});
 				},
 				onPortAvailable: () => {
-					void startNextQueuedFutureChatRun();
+					void startNextQueuedRovoAppRun();
 				},
 			});
 			initPool(_rovoDevPool);
@@ -564,8 +560,6 @@ const CLARIFICATION_CUSTOM_OPTION_PLACEHOLDER = "Tell Rovo what to do...";
 const TOOL_FIRST_GATE_SKIP_SOURCES = new Set([
 	"clarification-submit",
 ]);
-const DEFAULT_CONFLUENCE_BASE_URL = "https://venn-test.atlassian.net/wiki";
-const MAX_SLACK_SUMMARY_CHARS = 35000;
 const INTERACTIVE_CHAT_STUCK_PORT_RECOVERY_RETRY_ATTEMPTS = 1;
 const INTERACTIVE_CHAT_FORCE_PORT_RECOVERY_MAX_ATTEMPTS = 2;
 const INTERACTIVE_CHAT_FORCE_PORT_RECOVERY_TIMEOUT_MS =
@@ -1155,7 +1149,7 @@ function getLatestUserMessageSource(messages) {
 	return null;
 }
 
-function createHiddenFutureChatUserMessage(messageId, text) {
+function createHiddenRovoAppUserMessage(messageId, text) {
 	const resolvedText = getNonEmptyString(text);
 	if (!resolvedText) {
 		return null;
@@ -1165,7 +1159,7 @@ function createHiddenFutureChatUserMessage(messageId, text) {
 		id:
 			typeof messageId === "string" && messageId.trim().length > 0
 				? messageId.trim()
-				: `future-chat-hidden-user-${Date.now()}`,
+				: `rovo-app-hidden-user-${Date.now()}`,
 		role: "user",
 		metadata: {
 			source: "agent-directive",
@@ -1181,7 +1175,7 @@ function createHiddenFutureChatUserMessage(messageId, text) {
 	};
 }
 
-function findFutureChatMessageById(messages, messageId) {
+function findRovoAppMessageById(messages, messageId) {
 	if (!Array.isArray(messages) || typeof messageId !== "string" || !messageId.trim()) {
 		return null;
 	}
@@ -1198,7 +1192,7 @@ function findFutureChatMessageById(messages, messageId) {
 	);
 }
 
-function resolveFutureChatDelegatedPrompt({
+function resolveRovoAppDelegatedPrompt({
 	delegatedMessageId,
 	requestMessages,
 	thread,
@@ -1209,9 +1203,9 @@ function resolveFutureChatDelegatedPrompt({
 	}
 
 	const candidateMessage =
-		findFutureChatMessageById(requestMessages, resolvedDelegatedMessageId) ||
-		findFutureChatMessageById(thread?.realtimeMessages, resolvedDelegatedMessageId) ||
-		findFutureChatMessageById(thread?.messages, resolvedDelegatedMessageId);
+		findRovoAppMessageById(requestMessages, resolvedDelegatedMessageId) ||
+		findRovoAppMessageById(thread?.realtimeMessages, resolvedDelegatedMessageId) ||
+		findRovoAppMessageById(thread?.messages, resolvedDelegatedMessageId);
 	if (!candidateMessage) {
 		return null;
 	}
@@ -1227,57 +1221,42 @@ function resolveFutureChatDelegatedPrompt({
 	};
 }
 
-const futureChatThreadManager = createFutureChatThreadManager({
+const rovoAppThreadManager = createRovoAppThreadManager({
 	baseDir: path.join(__dirname, "data"),
 	logger: console,
 });
-const futureChatVoteManager = createFutureChatVoteManager({
+const rovoAppVoteManager = createRovoAppVoteManager({
 	baseDir: path.join(__dirname, "data"),
 });
-const futureChatDocumentManager = createFutureChatDocumentManager({
+const rovoAppDocumentManager = createRovoAppDocumentManager({
 	baseDir: path.join(__dirname, "data"),
 });
-const futureChatUploadManager = createFutureChatUploadManager({
+const rovoAppUploadManager = createRovoAppUploadManager({
 	baseDir: path.join(__dirname, "data"),
 });
-const futureChatGeneratedFilesManager = createFutureChatGeneratedFilesManager({
+const rovoAppGeneratedFilesManager = createRovoAppGeneratedFilesManager({
 	baseDir: path.join(__dirname, "data"),
 	projectRoot: path.join(__dirname, ".."),
 	logger: console,
 });
-const futureChatRunManager = createFutureChatRunManager({
+const rovoAppRunManager = createRovoAppRunManager({
 	logger: console,
 });
 
-const makeConfigManager = makeFs.createConfigManagerCompat();
-const appRegistry = createAppRegistry({
-	baseDir: path.join(__dirname, "data", "make"),
-	logger: console,
-});
-
-const makeRunManager = createMakeRunManager({
-	baseDir: path.join(__dirname, "data", "make"),
-	buildSystemPrompt: null, // Not used in RovoDev-only mode
-	configManager: makeConfigManager,
-	appRegistry,
-	logger: console,
-	isRovoDevAvailable,
-});
-
-function buildFutureChatFileUrl(uploadId) {
-	return `/api/future-chat/files/${encodeURIComponent(uploadId)}`;
+function buildRovoAppFileUrl(uploadId) {
+	return `/api/rovo-app/files/${encodeURIComponent(uploadId)}`;
 }
 
-function createFutureChatThreadId() {
-	return `future-chat-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+function createRovoAppThreadId() {
+	return `rovo-app-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function extractFutureChatUploadIdFromUrl(rawUrl) {
+function extractRovoAppUploadIdFromUrl(rawUrl) {
 	if (typeof rawUrl !== "string" || rawUrl.length === 0) {
 		return null;
 	}
 
-	const match = rawUrl.match(/\/api\/future-chat\/files\/([^/?#]+)/u);
+	const match = rawUrl.match(/\/api\/rovo-app\/files\/([^/?#]+)/u);
 	if (!match?.[1]) {
 		return null;
 	}
@@ -1289,7 +1268,7 @@ function extractFutureChatUploadIdFromUrl(rawUrl) {
 	}
 }
 
-function collectFutureChatUploadIdsFromMessages(messages) {
+function collectRovoAppUploadIdsFromMessages(messages) {
 	if (!Array.isArray(messages)) {
 		return [];
 	}
@@ -1305,7 +1284,7 @@ function collectFutureChatUploadIdsFromMessages(messages) {
 				continue;
 			}
 
-			const uploadId = extractFutureChatUploadIdFromUrl(part.url);
+			const uploadId = extractRovoAppUploadIdFromUrl(part.url);
 			if (uploadId) {
 				uploadIds.add(uploadId);
 			}
@@ -1315,7 +1294,7 @@ function collectFutureChatUploadIdsFromMessages(messages) {
 	return [...uploadIds];
 }
 
-async function persistFutureChatMessageFiles(threadId, messages) {
+async function persistRovoAppMessageFiles(threadId, messages) {
 	if (!Array.isArray(messages)) {
 		return [];
 	}
@@ -1335,7 +1314,7 @@ async function persistFutureChatMessageFiles(threadId, messages) {
 			}
 
 			if (typeof part.url === "string" && part.url.startsWith("data:")) {
-				const upload = await futureChatUploadManager.createUploadFromDataUrl({
+				const upload = await rovoAppUploadManager.createUploadFromDataUrl({
 					threadId,
 					filename:
 						typeof part.filename === "string" && part.filename.trim()
@@ -1352,7 +1331,7 @@ async function persistFutureChatMessageFiles(threadId, messages) {
 				nextParts.push({
 					...part,
 					filename: upload.filename,
-					url: buildFutureChatFileUrl(upload.id),
+					url: buildRovoAppFileUrl(upload.id),
 				});
 				continue;
 			}
@@ -1369,17 +1348,17 @@ async function persistFutureChatMessageFiles(threadId, messages) {
 	return nextMessages;
 }
 
-async function synchronizeFutureChatThreadGeneratedFiles(thread) {
+async function synchronizeRovoAppThreadGeneratedFiles(thread) {
 	if (!thread?.id) {
 		return thread;
 	}
 
-	await futureChatGeneratedFilesManager.backfillFromThread(thread);
-	await futureChatGeneratedFilesManager.captureRootFilesToWorkspace(thread.id);
+	await rovoAppGeneratedFilesManager.backfillFromThread(thread);
+	await rovoAppGeneratedFilesManager.captureRootFilesToWorkspace(thread.id);
 	return thread;
 }
 
-function buildFutureChatArtifactContext(rawArtifactContext) {
+function buildRovoAppArtifactContext(rawArtifactContext) {
 	if (!rawArtifactContext || typeof rawArtifactContext !== "object") {
 		return null;
 	}
@@ -1404,7 +1383,7 @@ function buildFutureChatArtifactContext(rawArtifactContext) {
 		.join("\n");
 }
 
-function buildFutureChatArtifactSystemPrompt({
+function buildRovoAppArtifactSystemPrompt({
 	mode,
 	title,
 	kind,
@@ -1436,7 +1415,7 @@ function buildFutureChatArtifactSystemPrompt({
 		.join("\n");
 }
 
-async function generateFutureChatArtifactText({
+async function generateRovoAppArtifactText({
 	mode,
 	title,
 	kind,
@@ -1447,7 +1426,7 @@ async function generateFutureChatArtifactText({
 	signal,
 	onTextDelta,
 }) {
-	const system = buildFutureChatArtifactSystemPrompt({
+	const system = buildRovoAppArtifactSystemPrompt({
 		mode,
 		title,
 		kind,
@@ -1498,11 +1477,11 @@ async function generateFutureChatArtifactText({
 	}
 }
 
-function deriveFutureChatArtifactDeltaType(kind) {
+function deriveRovoAppArtifactDeltaType(kind) {
 	return normalizeArtifactKind(kind) === "code" ? "data-codeDelta" : "data-textDelta";
 }
 
-async function generateFutureChatArtifactTitleFromContent({
+async function generateRovoAppArtifactTitleFromContent({
 	content,
 	provider,
 	signal,
@@ -1529,7 +1508,7 @@ async function generateFutureChatArtifactTitleFromContent({
 			signal,
 		});
 
-		return sanitizeFutureChatArtifactTitle(text);
+		return sanitizeRovoAppArtifactTitle(text);
 	} catch (error) {
 		console.warn(
 			"[FUTURE-CHAT] Failed to generate artifact title from content, falling back:",
@@ -1539,7 +1518,7 @@ async function generateFutureChatArtifactTitleFromContent({
 	}
 }
 
-function resolveFutureChatArtifactKind({
+function resolveRovoAppArtifactKind({
 	action,
 	activeArtifact,
 	decisionKind,
@@ -1551,7 +1530,7 @@ function resolveFutureChatArtifactKind({
 	return normalizeArtifactKind(decisionKind);
 }
 
-async function resolveFutureChatArtifactDecision({
+async function resolveRovoAppArtifactDecision({
 	activeArtifact,
 	artifactSteering,
 	conversationHistory,
@@ -1560,7 +1539,7 @@ async function resolveFutureChatArtifactDecision({
 	signal,
 	streamingArtifact,
 }) {
-	const fastDecision = resolveFastFutureChatArtifactIntent({
+	const fastDecision = resolveFastRovoAppArtifactIntent({
 		activeArtifact,
 		artifactSteering,
 		latestUserMessage,
@@ -1570,18 +1549,18 @@ async function resolveFutureChatArtifactDecision({
 		return fastDecision;
 	}
 
-	const prompt = buildFutureChatArtifactIntentPrompt({
+	const prompt = buildRovoAppArtifactIntentPrompt({
 		activeArtifact,
 		artifactSteering,
 		conversationHistory,
 		latestUserMessage,
 		streamingArtifact,
 	});
-	const sameArtifactVersionRequest = isSameFutureChatArtifactVersionRequest({
+	const sameArtifactVersionRequest = isSameRovoAppArtifactVersionRequest({
 		activeArtifact,
 		latestUserMessage,
 	});
-	const explicitlyRequestsNewArtifact = isExplicitNewFutureChatArtifactRequest({
+	const explicitlyRequestsNewArtifact = isExplicitNewRovoAppArtifactRequest({
 		latestUserMessage,
 	});
 
@@ -1594,7 +1573,7 @@ async function resolveFutureChatArtifactDecision({
 		signal,
 		backendPreference: "ai-gateway",
 	});
-	const parsedDecision = parseFutureChatArtifactIntent(rawDecision, {
+	const parsedDecision = parseRovoAppArtifactIntent(rawDecision, {
 		activeArtifact,
 		streamingArtifact,
 	});
@@ -1617,7 +1596,7 @@ async function resolveFutureChatArtifactDecision({
 	return parsedDecision;
 }
 
-function streamFutureChatArtifactToolResponse({
+function streamRovoAppArtifactToolResponse({
 	artifactAction,
 	artifactDocument,
 	cancelStreaming,
@@ -1675,20 +1654,20 @@ function streamFutureChatArtifactToolResponse({
 				transient: true,
 			});
 
-			const deltaType = deriveFutureChatArtifactDeltaType(artifactDocument.kind);
+			const deltaType = deriveRovoAppArtifactDeltaType(artifactDocument.kind);
 			const {
 				contentToPersist,
 				persistedArtifactDocument,
 				titleChanged,
 				kindChanged,
-			} = await generateAndPersistFutureChatArtifact({
+			} = await generateAndPersistRovoAppArtifact({
 				artifactAction,
 				artifactDocument,
 				changeLabel,
 				fallbackTitle: artifactDocument.title,
 				latestUserMessage,
 				generateArtifactText: ({ onTextDelta }) =>
-					generateFutureChatArtifactText({
+					generateRovoAppArtifactText({
 						mode: artifactAction === "updateDocument" ? "update" : "create",
 						title: artifactDocument.title,
 						kind: artifactDocument.kind,
@@ -1708,15 +1687,15 @@ function streamFutureChatArtifactToolResponse({
 							}
 						},
 					}),
-				inferArtifactKindFromContent: inferFutureChatArtifactKindFromContent,
-				futureChatDocumentManager,
+				inferArtifactKindFromContent: inferRovoAppArtifactKindFromContent,
+				rovoAppDocumentManager,
 				onCreateFailure: async () => {
 					const cleanupTasks = [
-						futureChatDocumentManager.deleteDocument(artifactDocument.id),
+						rovoAppDocumentManager.deleteDocument(artifactDocument.id),
 					];
 					if (artifactThreadId) {
 						cleanupTasks.push(
-							futureChatThreadManager.updateThread(artifactThreadId, {
+							rovoAppThreadManager.updateThread(artifactThreadId, {
 								activeDocumentId: previousActiveDocumentId,
 							}),
 						);
@@ -1735,7 +1714,7 @@ function streamFutureChatArtifactToolResponse({
 					}
 				},
 				resolveGeneratedTitle: ({ content }) =>
-					generateFutureChatArtifactTitleFromContent({
+					generateRovoAppArtifactTitleFromContent({
 						content,
 						provider,
 						signal,
@@ -1775,7 +1754,7 @@ function streamFutureChatArtifactToolResponse({
 				},
 			});
 
-			const textId = `future-chat-artifact-summary-${Date.now()}`;
+			const textId = `rovo-app-artifact-summary-${Date.now()}`;
 			const summaryText =
 				artifactAction === "updateDocument"
 					? `Updated artifact "${persistedArtifactDocument.title}".`
@@ -1821,13 +1800,13 @@ function streamFutureChatArtifactToolResponse({
 			}
 		},
 		onError: (error) =>
-			error instanceof Error ? error.message : "Failed to stream Future Chat artifact",
+			error instanceof Error ? error.message : "Failed to stream Rovo App artifact",
 	});
 
 	return createUIMessageStreamResponse({ stream });
 }
 
-async function handleFutureChatArtifactToolRequest({
+async function handleRovoAppArtifactToolRequest({
 	activeArtifact,
 	activeDocument,
 	artifactSteering,
@@ -1855,7 +1834,7 @@ async function handleFutureChatArtifactToolRequest({
 					kind: normalizeArtifactKind(legacyArtifactKind),
 					cancelStreaming: null,
 				}
-				: await resolveFutureChatArtifactDecision({
+				: await resolveRovoAppArtifactDecision({
 					activeArtifact,
 					artifactSteering,
 					conversationHistory,
@@ -1871,7 +1850,7 @@ async function handleFutureChatArtifactToolRequest({
 
 	const artifactContextBlock =
 		decision.action === "updateDocument"
-			? buildFutureChatArtifactContext(activeArtifact)
+			? buildRovoAppArtifactContext(activeArtifact)
 			: null;
 	const resolvedContextDescription = artifactContextBlock
 		? contextDescription
@@ -1879,14 +1858,14 @@ async function handleFutureChatArtifactToolRequest({
 			: artifactContextBlock
 		: contextDescription;
 
-	const artifactTitle = deriveFutureChatArtifactTitle({
+	const artifactTitle = deriveRovoAppArtifactTitle({
 		action: decision.action,
 		activeArtifact,
 		conversationHistory,
 		decisionTitle: decision.title,
 		latestUserMessage,
 	});
-	const artifactKind = resolveFutureChatArtifactKind({
+	const artifactKind = resolveRovoAppArtifactKind({
 		action: decision.action,
 		activeArtifact,
 		decisionKind: decision.kind,
@@ -1896,7 +1875,7 @@ async function handleFutureChatArtifactToolRequest({
 	let existingDocument = null;
 	const previousActiveDocumentId =
 		getNonEmptyString(activeDocument?.id) || getNonEmptyString(activeArtifact?.id);
-	let changeLabel = deriveFutureChatVersionChangeLabel({
+	let changeLabel = deriveRovoAppVersionChangeLabel({
 		artifactAction: decision.action,
 		artifactSteering,
 		latestUserMessage,
@@ -1911,7 +1890,7 @@ async function handleFutureChatArtifactToolRequest({
 		existingDocument =
 			activeDocument?.id === activeArtifact.id
 				? activeDocument
-				: await futureChatDocumentManager.getDocument(activeArtifact.id);
+				: await rovoAppDocumentManager.getDocument(activeArtifact.id);
 		if (!existingDocument) {
 			return false;
 		}
@@ -1921,7 +1900,7 @@ async function handleFutureChatArtifactToolRequest({
 			title: artifactTitle || existingDocument.title,
 			kind: artifactKind || existingDocument.kind,
 		};
-		changeLabel = deriveFutureChatVersionChangeLabel({
+		changeLabel = deriveRovoAppVersionChangeLabel({
 			artifactAction: decision.action,
 			artifactSteering,
 			latestUserMessage,
@@ -1933,7 +1912,7 @@ async function handleFutureChatArtifactToolRequest({
 			return false;
 		}
 
-		const documentShell = await futureChatDocumentManager.createDocumentShell({
+		const documentShell = await rovoAppDocumentManager.createDocumentShell({
 			threadId,
 			title: artifactTitle,
 			kind: artifactKind,
@@ -1948,7 +1927,7 @@ async function handleFutureChatArtifactToolRequest({
 	const artifactThreadId =
 		getNonEmptyString(threadId) || getNonEmptyString(existingDocument?.threadId);
 	if (artifactThreadId) {
-		void futureChatThreadManager.updateThread(artifactThreadId, {
+		void rovoAppThreadManager.updateThread(artifactThreadId, {
 			activeDocumentId: artifactDocument.id,
 		}).catch((error) => {
 			console.warn(
@@ -1963,7 +1942,7 @@ async function handleFutureChatArtifactToolRequest({
 		const partialContent = getNonEmptyString(streamingArtifact.content);
 		if (partialContent) {
 			try {
-				await futureChatDocumentManager.appendDocumentVersion(streamingArtifact.id, {
+				await rovoAppDocumentManager.appendDocumentVersion(streamingArtifact.id, {
 					changeLabel: "Partial (replaced)",
 					title: streamingArtifact.title,
 					kind: streamingArtifact.kind,
@@ -1978,7 +1957,7 @@ async function handleFutureChatArtifactToolRequest({
 		}
 	}
 
-	const response = streamFutureChatArtifactToolResponse({
+	const response = streamRovoAppArtifactToolResponse({
 		artifactAction: decision.action,
 		artifactDocument,
 		cancelStreaming: decision.cancelStreaming,
@@ -1998,38 +1977,38 @@ async function handleFutureChatArtifactToolRequest({
 	};
 }
 
-let isProcessingFutureChatRunQueue = false;
+let isProcessingRovoAppRunQueue = false;
 
-async function finalizeFutureChatRun(threadId, run, messages) {
+async function finalizeRovoAppRun(threadId, run, messages) {
 	if (threadId && Array.isArray(messages)) {
-		const updatedThread = await futureChatThreadManager.updateThread(threadId, {
+		const updatedThread = await rovoAppThreadManager.updateThread(threadId, {
 			activeRun: null,
 			messages,
 		});
-		await synchronizeFutureChatThreadGeneratedFiles(updatedThread);
+		await synchronizeRovoAppThreadGeneratedFiles(updatedThread);
 	} else {
-		await clearFutureChatRunState(threadId);
+		await clearRovoAppRunState(threadId);
 	}
 	if (threadId) {
 		activeRequests.delete(threadId);
 	}
-	futureChatRunManager.clearRun(threadId);
-	void startNextQueuedFutureChatRun();
+	rovoAppRunManager.clearRun(threadId);
+	void startNextQueuedRovoAppRun();
 }
 
-async function syncFutureChatThreadSession(threadId, rovoPort, { thread: providedThread } = {}) {
+async function syncRovoAppThreadSession(threadId, rovoPort, { thread: providedThread } = {}) {
 	if (!threadId || !Number.isInteger(rovoPort) || rovoPort <= 0) {
 		return providedThread ?? null;
 	}
 
-	const currentThread = providedThread ?? await futureChatThreadManager.getThread(threadId);
+	const currentThread = providedThread ?? await rovoAppThreadManager.getThread(threadId);
 	if (!currentThread) {
 		return null;
 	}
 
 	const customTitle =
 		getNonEmptyString(currentThread.title) ||
-		"Future Chat";
+		"Rovo App";
 
 	const existingSessionId = getNonEmptyString(currentThread.sessionId);
 	const sessionRecord = await ensureRovoDevSession(rovoPort, {
@@ -2054,13 +2033,13 @@ async function syncFutureChatThreadSession(threadId, rovoPort, { thread: provide
 		return currentThread;
 	}
 
-	return futureChatThreadManager.updateThread(threadId, {
+	return rovoAppThreadManager.updateThread(threadId, {
 		sessionId: nextSessionId,
 		sessionMode: nextSessionMode,
 	});
 }
 
-async function syncFutureChatThreadSessionFromCurrentPort(
+async function syncRovoAppThreadSessionFromCurrentPort(
 	threadId,
 	rovoPort,
 	{
@@ -2072,7 +2051,7 @@ async function syncFutureChatThreadSessionFromCurrentPort(
 		return providedThread ?? null;
 	}
 
-	const currentThread = providedThread ?? await futureChatThreadManager.getThread(threadId);
+	const currentThread = providedThread ?? await rovoAppThreadManager.getThread(threadId);
 	if (!currentThread) {
 		return null;
 	}
@@ -2086,7 +2065,7 @@ async function syncFutureChatThreadSessionFromCurrentPort(
 			port: rovoPort,
 			error: error instanceof Error ? error.message : String(error),
 		});
-		return syncFutureChatThreadSession(threadId, rovoPort, {
+		return syncRovoAppThreadSession(threadId, rovoPort, {
 			thread: currentThread,
 		});
 	}
@@ -2096,7 +2075,7 @@ async function syncFutureChatThreadSessionFromCurrentPort(
 			threadId,
 			port: rovoPort,
 		});
-		return syncFutureChatThreadSession(threadId, rovoPort, {
+		return syncRovoAppThreadSession(threadId, rovoPort, {
 			thread: currentThread,
 		});
 	}
@@ -2109,14 +2088,14 @@ async function syncFutureChatThreadSessionFromCurrentPort(
 		return currentThread;
 	}
 
-	return futureChatThreadManager.updateThread(threadId, {
+	return rovoAppThreadManager.updateThread(threadId, {
 		sessionId: nextSessionId,
 		sessionMode: nextSessionMode,
 	});
 }
 
-async function failFutureChatRun(threadId, error) {
-	const failurePayload = getFutureChatRunFailurePayload(error);
+async function failRovoAppRun(threadId, error) {
+	const failurePayload = getRovoAppRunFailurePayload(error);
 	const message = failurePayload.message;
 	const isAbortLike =
 		typeof error === "object"
@@ -2125,26 +2104,26 @@ async function failFutureChatRun(threadId, error) {
 			("name" in error && error.name === "AbortError")
 			|| /abort/i.test(message)
 		);
-	const run = futureChatRunManager.getRun(threadId);
+	const run = rovoAppRunManager.getRun(threadId);
 	if (run) {
-		futureChatRunManager.setRunError(threadId, message);
+		rovoAppRunManager.setRunError(threadId, message);
 		if (!isAbortLike) {
-			for (const chunk of createFutureChatFailureSseChunks(error)) {
-				futureChatRunManager.appendChunk(threadId, chunk);
+			for (const chunk of createRovoAppFailureSseChunks(error)) {
+				rovoAppRunManager.appendChunk(threadId, chunk);
 			}
 		}
 	}
-	await clearFutureChatRunState(threadId);
+	await clearRovoAppRunState(threadId);
 	if (threadId) {
 		activeRequests.delete(threadId);
 	}
-	futureChatRunManager.clearRun(threadId);
-	void startNextQueuedFutureChatRun();
+	rovoAppRunManager.clearRun(threadId);
+	void startNextQueuedRovoAppRun();
 }
 
-const FUTURE_CHAT_MESSAGE_PERSIST_DEBOUNCE_MS = 450;
+const ROVO_APP_MESSAGE_PERSIST_DEBOUNCE_MS = 450;
 
-async function consumeFutureChatManagedResponse({
+async function consumeRovoAppManagedResponse({
 	initialMessages,
 	prependChunk,
 	response,
@@ -2154,7 +2133,7 @@ async function consumeFutureChatManagedResponse({
 }) {
 	const contentType = response.headers.get("content-type") || "";
 	if (!contentType.includes("text/event-stream") || !response.body) {
-		throw new Error("Future Chat expected an event stream response.");
+		throw new Error("Rovo App expected an event stream response.");
 	}
 
 	const resolvedPort = getPositiveInteger(response.headers.get("x-vpk-rovo-port"));
@@ -2166,13 +2145,13 @@ async function consumeFutureChatManagedResponse({
 	) {
 		run.rovoPort = resolvedPort;
 		run.updatedAt = new Date().toISOString();
-		await persistFutureChatRunState(threadId, run);
+		await persistRovoAppRunState(threadId, run);
 	}
 
 	const [broadcastStream, parseStream] = response.body.tee();
 	const routeDecisionToSuppress = parseRouteDecisionFromSseChunk(prependChunk);
 	if (prependChunk) {
-		futureChatRunManager.appendChunk(threadId, prependChunk);
+		rovoAppRunManager.appendChunk(threadId, prependChunk);
 	}
 
 	let latestMessagesSnapshot = Array.isArray(initialMessages) ? [...initialMessages] : [];
@@ -2199,7 +2178,7 @@ async function consumeFutureChatManagedResponse({
 		}
 
 		const snapshotToPersist = latestMessagesSnapshot;
-		persistInFlight = persistFutureChatRunMessagesSnapshot(
+		persistInFlight = persistRovoAppRunMessagesSnapshot(
 			threadId,
 			snapshotToPersist,
 		)
@@ -2231,7 +2210,7 @@ async function consumeFutureChatManagedResponse({
 
 		scheduledPersistTimeout = setTimeout(() => {
 			void flushPersistedMessages();
-		}, FUTURE_CHAT_MESSAGE_PERSIST_DEBOUNCE_MS);
+		}, ROVO_APP_MESSAGE_PERSIST_DEBOUNCE_MS);
 	};
 
 	const parsePromise = collectUiMessagesFromResponseStream({
@@ -2265,7 +2244,7 @@ async function consumeFutureChatManagedResponse({
 								: null,
 				});
 			}
-			futureChatRunManager.appendChunk(threadId, value);
+			rovoAppRunManager.appendChunk(threadId, value);
 		}
 	} finally {
 		filteredSseReader.releaseLock();
@@ -2275,8 +2254,8 @@ async function consumeFutureChatManagedResponse({
 	latestMessagesSnapshot = Array.isArray(messages) ? [...messages] : [];
 	await flushPersistedMessages();
 	try {
-		const synchronizedThread = await syncFutureChatThreadSession(threadId, run.rovoPort, {
-			thread: threadId ? await futureChatThreadManager.getThread(threadId) : null,
+		const synchronizedThread = await syncRovoAppThreadSession(threadId, run.rovoPort, {
+			thread: threadId ? await rovoAppThreadManager.getThread(threadId) : null,
 		});
 		if (synchronizedThread?.sessionId) {
 			run.sessionId = synchronizedThread.sessionId;
@@ -2289,20 +2268,20 @@ async function consumeFutureChatManagedResponse({
 			error: error instanceof Error ? error.message : String(error),
 		});
 	}
-	await finalizeFutureChatRun(threadId, run, messages);
+	await finalizeRovoAppRun(threadId, run, messages);
 }
 
-async function executeFutureChatManagedRun(run) {
+async function executeRovoAppManagedRun(run) {
 	const requestBody =
 		run.requestBody && typeof run.requestBody === "object"
 			? { ...run.requestBody }
 			: {};
 	const requestOriginHint = getNonEmptyString(requestBody.origin) || "text";
 	const stageTrace = createStageTrace({
-		scope: "future-chat-run",
+		scope: "rovo-app-run",
 		logger: console,
 		baseMeta: {
-			path: "/api/future-chat/chat",
+			path: "/api/rovo-app/chat",
 			origin: requestOriginHint,
 			threadId: run.threadId,
 			runId: run.id,
@@ -2321,7 +2300,7 @@ async function executeFutureChatManagedRun(run) {
 	const requestMessages = Array.isArray(requestBody.messages)
 		? [...requestBody.messages]
 		: [];
-	const threadForSession = threadId ? await futureChatThreadManager.getThread(threadId) : null;
+	const threadForSession = threadId ? await rovoAppThreadManager.getThread(threadId) : null;
 	if (threadForSession?.sessionId) {
 		requestBody.sessionId = threadForSession.sessionId;
 		requestBody.sessionMode = threadForSession.sessionMode ?? "persistent";
@@ -2331,7 +2310,7 @@ async function executeFutureChatManagedRun(run) {
 			? threadForSession
 			: null;
 	const delegatedPrompt = delegatedMessageId
-		? resolveFutureChatDelegatedPrompt({
+		? resolveRovoAppDelegatedPrompt({
 			delegatedMessageId,
 			requestMessages,
 			thread: delegatedThread,
@@ -2341,7 +2320,7 @@ async function executeFutureChatManagedRun(run) {
 		throw new Error("delegatedMessageId did not resolve to a persisted user message");
 	}
 	if (delegatedPrompt && !requestMessages.some((message) => message?.id === delegatedPrompt.messageId)) {
-		const hiddenUserMessage = createHiddenFutureChatUserMessage(
+		const hiddenUserMessage = createHiddenRovoAppUserMessage(
 			delegatedPrompt.messageId,
 			delegatedPrompt.text,
 		);
@@ -2367,11 +2346,11 @@ async function executeFutureChatManagedRun(run) {
 		activeArtifact = requestActiveArtifact;
 		activeDocument = null;
 	} else {
-		const resolved = await resolveFutureChatActiveArtifact({
+		const resolved = await resolveRovoAppActiveArtifact({
 			activeDocumentId: requestBody.activeDocumentId,
 			artifactContext: requestBody.artifactContext,
-			futureChatDocumentManager,
-			futureChatThreadManager,
+			rovoAppDocumentManager,
+			rovoAppThreadManager,
 			threadId,
 		});
 		activeArtifact = resolved.activeArtifact;
@@ -2524,7 +2503,7 @@ async function executeFutureChatManagedRun(run) {
 	}
 
 	if (routingDecision.intent === "artifact_create" || routingDecision.intent === "artifact_update") {
-		const handled = await handleFutureChatArtifactToolRequest({
+		const handled = await handleRovoAppArtifactToolRequest({
 			activeArtifact,
 			activeDocument,
 			artifactSteering,
@@ -2540,7 +2519,7 @@ async function executeFutureChatManagedRun(run) {
 				intent: routingDecision.intent,
 				threadId,
 			});
-			await consumeFutureChatManagedResponse({
+			await consumeRovoAppManagedResponse({
 				initialMessages: requestMessages,
 				response: handled.response,
 				run,
@@ -2551,7 +2530,7 @@ async function executeFutureChatManagedRun(run) {
 		}
 	}
 
-	const artifactContextBlock = buildFutureChatArtifactContext(activeArtifact);
+	const artifactContextBlock = buildRovoAppArtifactContext(activeArtifact);
 	if (artifactContextBlock) {
 		requestBody.contextDescription = effectiveBaseContextDescription
 			? `${artifactContextBlock}\n\n${effectiveBaseContextDescription}`
@@ -2563,7 +2542,7 @@ async function executeFutureChatManagedRun(run) {
 		requestBody.genuiHint = true;
 	}
 	requestBody.resolvedPlanModeActive = requestIsPlanMode || autoPlanTriggered;
-	requestBody.chatSdkSource = "future-chat";
+	requestBody.chatSdkSource = "rovo-app";
 	requestBody.threadId = threadId;
 
 	const internalProxyStartedAtMs = Date.now();
@@ -2580,10 +2559,10 @@ async function executeFutureChatManagedRun(run) {
 
 	if (!response.ok) {
 		const errorText = await response.text();
-		throw new Error(errorText || "Failed to stream Future Chat response");
+		throw new Error(errorText || "Failed to stream Rovo App response");
 	}
 
-	await consumeFutureChatManagedResponse({
+	await consumeRovoAppManagedResponse({
 		initialMessages: requestMessages,
 		prependChunk: formatRouteDecisionSSE(routingDecision),
 		response,
@@ -2594,55 +2573,55 @@ async function executeFutureChatManagedRun(run) {
 	stageTrace.mark("run_complete");
 }
 
-async function startManagedFutureChatRun(run) {
-	const markedRun = futureChatRunManager.markRunStarted(run.threadId, {
+async function startManagedRovoAppRun(run) {
+	const markedRun = rovoAppRunManager.markRunStarted(run.threadId, {
 		portIndex: null,
 		rovoPort: null,
-		status: futureChatRunManager.hasSubscribers(run.threadId) ? "streaming" : "background",
+		status: rovoAppRunManager.hasSubscribers(run.threadId) ? "streaming" : "background",
 	});
 	if (!markedRun) {
 		return;
 	}
 
-	await persistFutureChatRunState(run.threadId, markedRun);
-	void executeFutureChatManagedRun(markedRun).catch(async (error) => {
+	await persistRovoAppRunState(run.threadId, markedRun);
+	void executeRovoAppManagedRun(markedRun).catch(async (error) => {
 		const wasAborted = markedRun.abortController.signal.aborted;
 		if (!wasAborted) {
 			console.error("[FUTURE-CHAT] Managed run failed:", error);
 		}
-		await failFutureChatRun(markedRun.threadId, error);
+		await failRovoAppRun(markedRun.threadId, error);
 	});
 }
 
-async function startNextQueuedFutureChatRun() {
-	if (isProcessingFutureChatRunQueue) {
+async function startNextQueuedRovoAppRun() {
+	if (isProcessingRovoAppRunQueue) {
 		return;
 	}
 
-	isProcessingFutureChatRunQueue = true;
+	isProcessingRovoAppRunQueue = true;
 	try {
-		const queuedThreadIds = futureChatRunManager.listQueuedThreadIds();
+		const queuedThreadIds = rovoAppRunManager.listQueuedThreadIds();
 		for (const threadId of queuedThreadIds) {
-			const run = futureChatRunManager.getRun(threadId);
+			const run = rovoAppRunManager.getRun(threadId);
 			if (!run) {
-				futureChatRunManager.removeQueuedRun(threadId);
+				rovoAppRunManager.removeQueuedRun(threadId);
 				continue;
 			}
 
-			const assignment = resolveFutureChatPortAvailability();
+			const assignment = resolveRovoAppPortAvailability();
 			if (!assignment) {
 				continue;
 			}
 
-			await startManagedFutureChatRun(run);
+			await startManagedRovoAppRun(run);
 			break;
 		}
 	} finally {
-		isProcessingFutureChatRunQueue = false;
+		isProcessingRovoAppRunQueue = false;
 	}
 }
 
-async function proxyFutureChatChatRequest(req, res) {
+async function proxyRovoAppChatRequest(req, res) {
 	const requestBody =
 		req.body && typeof req.body === "object" ? { ...req.body } : {};
 	const threadId = getNonEmptyString(requestBody.id);
@@ -2651,7 +2630,7 @@ async function proxyFutureChatChatRequest(req, res) {
 	}
 
 	const isStructuredContinuation = hasStructuredContinuationBody(requestBody);
-	const rovoDevReady = await waitForFutureChatRovoDevAvailability({
+	const rovoDevReady = await waitForRovoAppRovoDevAvailability({
 		getAvailability: refreshRovoDevAvailability,
 		getPorts: readRovoDevPorts,
 	});
@@ -2664,75 +2643,75 @@ async function proxyFutureChatChatRequest(req, res) {
 			hasPool: Boolean(_rovoDevPool),
 			totalPorts: poolPorts.length,
 		});
-		streamFutureChatUnavailableResponse(
+		streamRovoAppUnavailableResponse(
 			res,
 			"RovoDev Serve is required but not available. Start or restart `pnpm run rovodev` and try again.",
-			"Future Chat could not start because no healthy RovoDev ports were registered.",
+			"Rovo App could not start because no healthy RovoDev ports were registered.",
 		);
 		return;
 	}
 
-	let existingRun = futureChatRunManager.getRun(threadId);
+	let existingRun = rovoAppRunManager.getRun(threadId);
 	if (shouldReplaceActiveRunForRequest({ existingRun, requestBody })) {
 		if (typeof existingRun?.rovoPort === "number" && existingRun.rovoPort > 0) {
 			await rovoDevCancelChat(existingRun.rovoPort, { timeoutMs: 3_000 }).catch(() => {});
 		}
-		futureChatRunManager.cancelRun(threadId);
-		await clearFutureChatRunState(threadId);
+		rovoAppRunManager.cancelRun(threadId);
+		await clearRovoAppRunState(threadId);
 		existingRun = null;
 	}
 
 	const run =
 		existingRun ||
-		futureChatRunManager.createRun({
+		rovoAppRunManager.createRun({
 			threadId,
 			requestBody,
 			requestedPortIndex: null,
 		});
 
-	const subscriberId = futureChatRunManager.attachSubscriber(threadId, res, {
+	const subscriberId = rovoAppRunManager.attachSubscriber(threadId, res, {
 		onDetached: (detachedRun) => {
 			if (!detachedRun) {
 				return;
 			}
-			void persistFutureChatRunState(threadId, detachedRun);
+			void persistRovoAppRunState(threadId, detachedRun);
 		},
 	});
 	if (!subscriberId) {
-		return res.status(404).json({ error: "No active Future Chat run for threadId" });
+		return res.status(404).json({ error: "No active Rovo App run for threadId" });
 	}
 
 	if (!existingRun) {
 		const availableCount = poolPorts.filter((p) => p?.status === "available").length;
 		const busyCount = poolPorts.filter((p) => p?.status === "busy" || p?.status === "in-use").length;
-		console.info("[TIMING][future-chat] pool-status", {
+		console.info("[TIMING][rovo-app] pool-status", {
 			threadId,
 			totalPorts: poolPorts.length,
 			available: availableCount,
 			busy: busyCount,
 		});
 
-		const assignment = resolveFutureChatPortAvailability();
+		const assignment = resolveRovoAppPortAvailability();
 		if (isStructuredContinuation) {
-			console.info("[TIMING][future-chat] structured continuation bypassing queue gate", {
+			console.info("[TIMING][rovo-app] structured continuation bypassing queue gate", {
 				threadId,
 			});
-			await startManagedFutureChatRun(run);
+			await startManagedRovoAppRun(run);
 		} else if (assignment) {
-			console.info("[TIMING][future-chat] port-assignment", {
+			console.info("[TIMING][rovo-app] port-assignment", {
 				threadId,
 			});
-			await startManagedFutureChatRun(run);
+			await startManagedRovoAppRun(run);
 		} else {
-			console.info("[TIMING][future-chat] port-assignment: null (run will be QUEUED)", {
+			console.info("[TIMING][rovo-app] port-assignment: null (run will be QUEUED)", {
 				threadId,
 			});
-			futureChatRunManager.enqueueRun(threadId);
-			await persistFutureChatRunState(threadId, futureChatRunManager.getRun(threadId));
+			rovoAppRunManager.enqueueRun(threadId);
+			await persistRovoAppRunState(threadId, rovoAppRunManager.getRun(threadId));
 		}
 	}
 
-	await persistFutureChatRunState(threadId, futureChatRunManager.getRun(threadId));
+	await persistRovoAppRunState(threadId, rovoAppRunManager.getRun(threadId));
 }
 
 /**
@@ -2809,7 +2788,7 @@ async function dispatchChatSdkRequestInProcess({
 	return res.toWebResponse();
 }
 
-function buildFutureChatActiveRunPayload(run, thread) {
+function buildRovoAppActiveRunPayload(run, thread) {
 	if (!run) {
 		return null;
 	}
@@ -2837,47 +2816,47 @@ function buildFutureChatActiveRunPayload(run, thread) {
 	};
 }
 
-async function persistFutureChatRunState(threadId, run) {
+async function persistRovoAppRunState(threadId, run) {
 	if (!threadId) {
 		return null;
 	}
 
-	const thread = await futureChatThreadManager.getThread(threadId);
+	const thread = await rovoAppThreadManager.getThread(threadId);
 	if (!thread) {
 		return null;
 	}
 
-	return futureChatThreadManager.updateThread(threadId, {
-		activeRun: buildFutureChatActiveRunPayload(run, thread),
+	return rovoAppThreadManager.updateThread(threadId, {
+		activeRun: buildRovoAppActiveRunPayload(run, thread),
 	});
 }
 
-async function clearFutureChatRunState(threadId) {
+async function clearRovoAppRunState(threadId) {
 	if (!threadId) {
 		return null;
 	}
 
-	return futureChatThreadManager.updateThread(threadId, {
+	return rovoAppThreadManager.updateThread(threadId, {
 		activeRun: null,
 	});
 }
 
-async function persistFutureChatRunMessagesSnapshot(threadId, messages) {
+async function persistRovoAppRunMessagesSnapshot(threadId, messages) {
 	if (!threadId || !Array.isArray(messages)) {
 		return null;
 	}
 
-	const thread = await futureChatThreadManager.getThread(threadId);
+	const thread = await rovoAppThreadManager.getThread(threadId);
 	if (!thread) {
 		return null;
 	}
 
-	return futureChatThreadManager.updateThread(threadId, {
+	return rovoAppThreadManager.updateThread(threadId, {
 		messages,
 	});
 }
 
-function resolveFutureChatPortAvailability() {
+function resolveRovoAppPortAvailability() {
 	const poolStatus = _rovoDevPool?.getStatus?.();
 	if (!_rovoDevPool) {
 		return null;
@@ -2891,36 +2870,36 @@ function resolveFutureChatPortAvailability() {
 	return hasAvailable ? { available: true } : null;
 }
 
-async function reconcileOrphanedFutureChatThread(thread) {
+async function reconcileOrphanedRovoAppThread(thread) {
 	if (!thread?.id || !thread.activeRun) {
 		return thread;
 	}
 
-	if (futureChatRunManager.hasRun(thread.id)) {
+	if (rovoAppRunManager.hasRun(thread.id)) {
 		return thread;
 	}
 
-	return clearFutureChatRunState(thread.id);
+	return clearRovoAppRunState(thread.id);
 }
 
 function createSseDataChunk(payload) {
 	return `data: ${JSON.stringify(payload)}\n\n`;
 }
 
-function createFutureChatFailureSseChunks(errorOrMessage) {
-	const failurePayload = getFutureChatRunFailurePayload(
+function createRovoAppFailureSseChunks(errorOrMessage) {
+	const failurePayload = getRovoAppRunFailurePayload(
 		errorOrMessage,
 		typeof errorOrMessage === "string" ? errorOrMessage : undefined,
 	);
 	const text = failurePayload.message;
-	const textId = `future-chat-error-${Date.now()}`;
+	const textId = `rovo-app-error-${Date.now()}`;
 	return [
 		createSseDataChunk({ type: "text-start", id: textId }),
 		createSseDataChunk({ type: "text-delta", id: textId, delta: text }),
 		createSseDataChunk({ type: "text-end", id: textId }),
 		createSseDataChunk({
 			type: "data-widget-error",
-			id: `future-chat-error-widget-${Date.now()}`,
+			id: `rovo-app-error-widget-${Date.now()}`,
 			data: {
 				type: "question-card",
 				code: failurePayload.code,
@@ -2969,7 +2948,7 @@ function streamExpiredClarificationResponse(res, toolCallId) {
 	pipeUIMessageStreamToResponse({ response: res, stream });
 }
 
-function streamFutureChatUnavailableResponse(res, message, details) {
+function streamRovoAppUnavailableResponse(res, message, details) {
 	const normalizedMessage =
 		typeof message === "string" && message.trim().length > 0
 			? message.trim()
@@ -2981,7 +2960,7 @@ function streamFutureChatUnavailableResponse(res, message, details) {
 
 	const stream = createUIMessageStream({
 		execute: async ({ writer }) => {
-			const textId = `future-chat-unavailable-${Date.now()}`;
+			const textId = `rovo-app-unavailable-${Date.now()}`;
 			writer.write({ type: "text-start", id: textId });
 			writer.write({
 				type: "text-delta",
@@ -2991,7 +2970,7 @@ function streamFutureChatUnavailableResponse(res, message, details) {
 			writer.write({ type: "text-end", id: textId });
 			writer.write({
 				type: "data-widget-error",
-				id: `future-chat-unavailable-widget-${Date.now()}`,
+				id: `rovo-app-unavailable-widget-${Date.now()}`,
 				data: {
 					type: "question-card",
 					code: "rovodev_unavailable",
@@ -3018,12 +2997,6 @@ function getUtf8ByteLength(value) {
 		? Buffer.byteLength(value, "utf8")
 		: 0;
 }
-
-const forgePublishManager = createForgePublishManager({
-	appRegistry,
-	baseDir: path.join(__dirname, "data", "make"),
-	logger: console,
-});
 
 const orchestratorLog = createOrchestratorLog({
 	baseDir: path.join(__dirname, "data"),
@@ -3347,279 +3320,6 @@ function isClassifierIntentLeakCandidate(value) {
 
 	const trimmed = value.trimStart();
 	return trimmed.startsWith("{") || trimmed.startsWith("```");
-}
-
-function createHttpError(status, message) {
-	const error = new Error(message);
-	error.status = status;
-	return error;
-}
-
-function truncateText(value, maxChars) {
-	if (typeof value !== "string" || value.length <= maxChars) {
-		return value;
-	}
-
-	return `${value.slice(0, maxChars - 1)}…`;
-}
-
-function escapeHtml(value) {
-	return String(value)
-		.replaceAll("&", "&amp;")
-		.replaceAll("<", "&lt;")
-		.replaceAll(">", "&gt;")
-		.replaceAll('"', "&quot;")
-		.replaceAll("'", "&#39;");
-}
-
-function normalizeConfluenceBaseUrl(value) {
-	const trimmed = getNonEmptyString(value);
-	if (!trimmed) {
-		return null;
-	}
-
-	const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
-	try {
-		const normalizedUrl = new URL(withProtocol);
-		return normalizedUrl.toString().replace(/\/+$/, "");
-	} catch {
-		return null;
-	}
-}
-
-function getRunShareTitle(run) {
-	if (!run || typeof run !== "object") {
-		return "Agents team run summary";
-	}
-
-	const plan = run.plan && typeof run.plan === "object" ? run.plan : null;
-	return getNonEmptyString(plan?.title) || "Agents team run summary";
-}
-
-function resolveSummaryTimestamp(run, summary) {
-	return (
-		getNonEmptyString(summary?.createdAt) ||
-		getNonEmptyString(run?.updatedAt) ||
-		getNonEmptyString(run?.createdAt) ||
-		new Date().toISOString()
-	);
-}
-
-function buildConfluenceStorageBody(run, summary, summaryContent) {
-	const runTitle = escapeHtml(getRunShareTitle(run));
-	const runId = escapeHtml(getNonEmptyString(run?.runId) || "unknown");
-	const createdAt = escapeHtml(resolveSummaryTimestamp(run, summary));
-	const content = escapeHtml(summaryContent);
-
-	return [
-		`<h1>${runTitle}</h1>`,
-		`<p><strong>Run ID:</strong> <code>${runId}</code></p>`,
-		`<p><strong>Generated:</strong> ${createdAt}</p>`,
-		"<hr />",
-		`<pre>${content}</pre>`,
-	].join("");
-}
-
-function buildSlackSummaryText(run, summary, summaryContent) {
-	const runTitle = getRunShareTitle(run);
-	const runId = getNonEmptyString(run?.runId) || "unknown";
-	const createdAt = resolveSummaryTimestamp(run, summary);
-	const trimmedSummary = truncateText(summaryContent, MAX_SLACK_SUMMARY_CHARS);
-
-	return [
-		`*${runTitle}*`,
-		`Run ID: \`${runId}\``,
-		`Generated: ${createdAt}`,
-		"",
-		trimmedSummary,
-	].join("\n");
-}
-
-function parseExternalErrorMessage(payload, rawText) {
-	if (payload && typeof payload === "object") {
-		const errorPayload = payload;
-		if (typeof errorPayload.error === "string" && errorPayload.error.trim()) {
-			return errorPayload.error.trim();
-		}
-		if (typeof errorPayload.message === "string" && errorPayload.message.trim()) {
-			return errorPayload.message.trim();
-		}
-		if (
-			errorPayload.data &&
-			typeof errorPayload.data === "object" &&
-			typeof errorPayload.data.message === "string" &&
-			errorPayload.data.message.trim()
-		) {
-			return errorPayload.data.message.trim();
-		}
-	}
-
-	const trimmedText = getNonEmptyString(rawText);
-	if (trimmedText) {
-		return truncateText(trimmedText, 240);
-	}
-
-	return null;
-}
-
-function resolveConfluencePageUrl(baseUrl, payload) {
-	if (!payload || typeof payload !== "object") {
-		return null;
-	}
-
-	const links = payload._links && typeof payload._links === "object" ? payload._links : null;
-	const webUiPath =
-		getNonEmptyString(links?.webui) ||
-		getNonEmptyString(links?.tinyui) ||
-		getNonEmptyString(payload.webui);
-	if (webUiPath) {
-		try {
-			const linksBase = getNonEmptyString(links?.base) || baseUrl;
-			return new URL(webUiPath, linksBase).toString();
-		} catch {
-			// Ignore invalid URL payloads and use fallback below.
-		}
-	}
-
-	const pageId = getNonEmptyString(payload.id);
-	if (!pageId) {
-		return null;
-	}
-
-	return `${baseUrl}/pages/viewpage.action?pageId=${encodeURIComponent(pageId)}`;
-}
-
-async function createConfluenceSummaryPage({
-	run,
-	summary,
-	summaryContent,
-	confluence,
-}) {
-	const baseUrl =
-		normalizeConfluenceBaseUrl(confluence?.baseUrl) ||
-		normalizeConfluenceBaseUrl(process.env.CONFLUENCE_BASE_URL) ||
-		DEFAULT_CONFLUENCE_BASE_URL;
-	const spaceKey =
-		getNonEmptyString(confluence?.spaceKey) ||
-		getNonEmptyString(process.env.CONFLUENCE_DEFAULT_SPACE_KEY);
-	const title =
-		getNonEmptyString(confluence?.title) || `${getRunShareTitle(run)} summary`;
-	const parentPageId =
-		getNonEmptyString(confluence?.parentPageId) ||
-		getNonEmptyString(process.env.CONFLUENCE_PARENT_PAGE_ID);
-	const email = getNonEmptyString(process.env.CONFLUENCE_USER_EMAIL);
-	const apiToken = getNonEmptyString(process.env.CONFLUENCE_API_TOKEN);
-
-	if (!email || !apiToken) {
-		throw createHttpError(
-			500,
-			"Confluence sharing is not configured. Set CONFLUENCE_USER_EMAIL and CONFLUENCE_API_TOKEN."
-		);
-	}
-	if (!spaceKey) {
-		throw createHttpError(
-			400,
-			"Confluence space key is required. Provide it in the request or set CONFLUENCE_DEFAULT_SPACE_KEY."
-		);
-	}
-
-	const payload = {
-		type: "page",
-		title,
-		space: { key: spaceKey },
-		body: {
-			storage: {
-				value: buildConfluenceStorageBody(run, summary, summaryContent),
-				representation: "storage",
-			},
-		},
-	};
-	if (parentPageId) {
-		payload.ancestors = [{ id: parentPageId }];
-	}
-
-	const response = await fetch(`${baseUrl}/rest/api/content`, {
-		method: "POST",
-		headers: {
-			Authorization: `Basic ${Buffer.from(`${email}:${apiToken}`).toString("base64")}`,
-			"Content-Type": "application/json",
-			Accept: "application/json",
-		},
-		body: JSON.stringify(payload),
-	});
-
-	const rawText = await response.text();
-	const responsePayload = safeJsonParse(rawText);
-	if (!response.ok) {
-		const details =
-			parseExternalErrorMessage(responsePayload, rawText) || `status ${response.status}`;
-		throw createHttpError(
-			502,
-			`Failed to create Confluence page: ${details}`
-		);
-	}
-
-	return {
-		externalUrl: resolveConfluencePageUrl(baseUrl, responsePayload),
-	};
-}
-
-async function callSlackApi(endpoint, token, body) {
-	const response = await fetch(`https://slack.com/api/${endpoint}`, {
-		method: "POST",
-		headers: {
-			Authorization: `Bearer ${token}`,
-			"Content-Type": "application/json; charset=utf-8",
-		},
-		body: JSON.stringify(body),
-	});
-
-	const rawText = await response.text();
-	const responsePayload = safeJsonParse(rawText);
-	if (!response.ok) {
-		const details =
-			parseExternalErrorMessage(responsePayload, rawText) || `status ${response.status}`;
-		throw createHttpError(502, `Slack API request failed: ${details}`);
-	}
-
-	if (!responsePayload || responsePayload.ok !== true) {
-		const details =
-			parseExternalErrorMessage(responsePayload, rawText) || "Unknown Slack API error.";
-		throw createHttpError(502, `Slack API request failed: ${details}`);
-	}
-
-	return responsePayload;
-}
-
-async function sendSlackSummaryDm({ run, summary, summaryContent }) {
-	const slackToken = getNonEmptyString(process.env.SLACK_BOT_TOKEN);
-	const slackUserId = getNonEmptyString(process.env.SLACK_DM_USER_ID);
-
-	if (!slackToken || !slackUserId) {
-		throw createHttpError(
-			500,
-			"Slack sharing is not configured. Set SLACK_BOT_TOKEN and SLACK_DM_USER_ID."
-		);
-	}
-
-	const openPayload = await callSlackApi("conversations.open", slackToken, {
-		users: slackUserId,
-	});
-	const channelId = getNonEmptyString(openPayload.channel?.id);
-	if (!channelId) {
-		throw createHttpError(502, "Slack API did not return a direct-message channel.");
-	}
-
-	const messagePayload = await callSlackApi("chat.postMessage", slackToken, {
-		channel: channelId,
-		text: buildSlackSummaryText(run, summary, summaryContent),
-		unfurl_links: false,
-		unfurl_media: false,
-	});
-
-	return {
-		messageTs: getNonEmptyString(messagePayload.ts) || undefined,
-	};
 }
 
 function createClarificationSessionId() {
@@ -4396,7 +4096,7 @@ async function generateSuggestedQuestions({
 	});
 }
 
-app.post("/api/future-chat/suggestions", async (req, res) => {
+app.post("/api/rovo-app/suggestions", async (req, res) => {
 	const { abortController, cleanup } = createAbortControllerFromRequest(req, res);
 
 	try {
@@ -4454,7 +4154,7 @@ app.post("/api/future-chat/suggestions", async (req, res) => {
 			return;
 		}
 
-		console.error("[SUGGESTIONS] Future Chat suggestions request failed:", error);
+		console.error("[SUGGESTIONS] Rovo App suggestions request failed:", error);
 		return res.status(200).json({ questions: [] });
 	} finally {
 		cleanup();
@@ -7594,7 +7294,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 							if (threadId) {
 								try {
 									const synchronizedThread =
-										await syncFutureChatThreadSessionFromCurrentPort(
+										await syncRovoAppThreadSessionFromCurrentPort(
 											threadId,
 											control.port,
 											{ sessionMode },
@@ -8560,7 +8260,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 									}
 									if (threadId && typeof resolvedRovoDevPort === "number" && resolvedRovoDevPort > 0) {
 										try {
-											await syncFutureChatThreadSessionFromCurrentPort(
+											await syncRovoAppThreadSessionFromCurrentPort(
 												threadId,
 												resolvedRovoDevPort,
 												{ sessionMode },
@@ -8601,7 +8301,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 										resolvedRovoDevPort = acquiredPort;
 										if (threadId) {
 											activeRequests.set(threadId, { port: acquiredPort, abortController });
-											void syncFutureChatThreadSessionFromCurrentPort(
+											void syncRovoAppThreadSessionFromCurrentPort(
 												threadId,
 												acquiredPort,
 												{ sessionMode },
@@ -8850,7 +8550,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 														isRequestUserInputTool,
 														isExitPlanModeTool,
 														syncThreadSessionFromPort:
-															syncFutureChatThreadSessionFromCurrentPort,
+															syncRovoAppThreadSessionFromCurrentPort,
 														emitRequestUserInputQuestionCard,
 														emitExitPlanWidget: maybeEmitExitPlanWidget,
 														registerPausedToolCall: registerPausedRovoDevToolCall,
@@ -8978,7 +8678,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 														isRequestUserInputTool,
 														isExitPlanModeTool,
 														syncThreadSessionFromPort:
-															syncFutureChatThreadSessionFromCurrentPort,
+															syncRovoAppThreadSessionFromCurrentPort,
 														emitRequestUserInputQuestionCard,
 														emitExitPlanWidget: maybeEmitExitPlanWidget,
 														registerPausedToolCall: registerPausedRovoDevToolCall,
@@ -10310,7 +10010,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 				let syncedThread = null;
 				if (threadId && typeof resolvedRovoDevPort === "number" && resolvedRovoDevPort > 0) {
 					try {
-						syncedThread = await syncFutureChatThreadSessionFromCurrentPort(
+						syncedThread = await syncRovoAppThreadSessionFromCurrentPort(
 							threadId,
 							resolvedRovoDevPort,
 							{ sessionMode },
@@ -10371,7 +10071,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 							if (appRoute) {
 								try {
 									const currentThread =
-										syncedThread ?? await futureChatThreadManager.getThread(threadId);
+										syncedThread ?? await rovoAppThreadManager.getThread(threadId);
 									const latestPlanWidget =
 										currentThread
 											? getLatestPlanWidgetMetadata(currentThread.messages)
@@ -10402,7 +10102,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 										artifactPreviewSummary = buildArtifactPreviewSummary(artifactTitle);
 									}
 
-									const artifactDocument = await futureChatDocumentManager.createDocument({
+									const artifactDocument = await rovoAppDocumentManager.createDocument({
 										threadId,
 										title: artifactTitle,
 										kind: "react",
@@ -10411,7 +10111,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 										changeLabel: "Plan execution complete",
 										sourceMessageId: null,
 									});
-									await futureChatThreadManager.updateThread(threadId, {
+									await rovoAppThreadManager.updateThread(threadId, {
 										activeDocumentId: artifactDocument.id,
 									});
 
@@ -10535,7 +10235,7 @@ app.post("/api/chat-cancel", async (req, res) => {
 	}
 });
 
-app.post("/api/future-chat/cancel-deferred-tool", async (req, res) => {
+app.post("/api/rovo-app/cancel-deferred-tool", async (req, res) => {
 	try {
 		const toolCallId = getNonEmptyString(req.body?.toolCallId);
 		if (!toolCallId) {
@@ -12032,20 +11732,20 @@ app.get("/api/chromium-preview/screenshot", async (req, res) => {
 	}
 });
 
-app.post("/api/future-chat/chat", async (req, res) => {
+app.post("/api/rovo-app/chat", async (req, res) => {
 	try {
-		await proxyFutureChatChatRequest(req, res);
+		await proxyRovoAppChatRequest(req, res);
 	} catch (error) {
 		console.error("[FUTURE-CHAT] Chat proxy failed:", error);
 		return sendGatewayErrorResponse(
 			res,
 			error,
-			"Failed to stream Future Chat response"
+			"Failed to stream Rovo App response"
 		);
 	}
 });
 
-app.get("/api/future-chat/messages", async (req, res) => {
+app.get("/api/rovo-app/messages", async (req, res) => {
 	try {
 		const rawThreadId = Array.isArray(req.query.threadId) ? req.query.threadId[0] : req.query.threadId;
 		const threadId = getNonEmptyString(rawThreadId);
@@ -12053,17 +11753,17 @@ app.get("/api/future-chat/messages", async (req, res) => {
 			return res.status(400).json({ error: "threadId is required" });
 		}
 
-		const messages = await futureChatThreadManager.getRealtimeMessages(threadId);
+		const messages = await rovoAppThreadManager.getRealtimeMessages(threadId);
 		return res.status(200).json({
 			messages: Array.isArray(messages) ? messages : [],
 		});
 	} catch (error) {
 		console.error("[FUTURE-CHAT] Failed to load realtime messages:", error);
-		return res.status(500).json({ error: "Failed to load Future Chat realtime messages" });
+		return res.status(500).json({ error: "Failed to load Rovo App realtime messages" });
 	}
 });
 
-app.post("/api/future-chat/messages", async (req, res) => {
+app.post("/api/rovo-app/messages", async (req, res) => {
 	try {
 		const {
 			threadId: rawThreadId,
@@ -12077,9 +11777,9 @@ app.post("/api/future-chat/messages", async (req, res) => {
 
 		let thread = null;
 		if (message && typeof message === "object") {
-			thread = await futureChatThreadManager.upsertRealtimeMessage(threadId, message);
+			thread = await rovoAppThreadManager.upsertRealtimeMessage(threadId, message);
 		} else if (Array.isArray(messages)) {
-			thread = await futureChatThreadManager.replaceRealtimeMessages(threadId, messages);
+			thread = await rovoAppThreadManager.replaceRealtimeMessages(threadId, messages);
 		} else {
 			return res.status(400).json({
 				error: "Provide either `message` or `messages` to persist realtime messages.",
@@ -12095,29 +11795,29 @@ app.post("/api/future-chat/messages", async (req, res) => {
 		});
 	} catch (error) {
 		console.error("[FUTURE-CHAT] Failed to persist realtime messages:", error);
-		return res.status(500).json({ error: "Failed to persist Future Chat realtime messages" });
+		return res.status(500).json({ error: "Failed to persist Rovo App realtime messages" });
 	}
 });
 
-app.get("/api/future-chat/threads", async (req, res) => {
+app.get("/api/rovo-app/threads", async (req, res) => {
 	try {
 		const rawLimit = Array.isArray(req.query.limit) ? req.query.limit[0] : req.query.limit;
 		const limit = rawLimit ? Number(rawLimit) : undefined;
 		const threads = (
 			await Promise.all(
-				(await futureChatThreadManager.listThreads({ limit })).map((thread) =>
-					reconcileOrphanedFutureChatThread(thread),
+				(await rovoAppThreadManager.listThreads({ limit })).map((thread) =>
+					reconcileOrphanedRovoAppThread(thread),
 				),
 			)
 		).filter(Boolean);
 		return res.status(200).json({ threads });
 	} catch (error) {
 		console.error("[FUTURE-CHAT] Failed to list threads:", error);
-		return res.status(500).json({ error: "Failed to list Future Chat threads" });
+		return res.status(500).json({ error: "Failed to list Rovo App threads" });
 	}
 });
 
-app.post("/api/future-chat/threads", async (req, res) => {
+app.post("/api/rovo-app/threads", async (req, res) => {
 	try {
 		const {
 			id: rawThreadId,
@@ -12133,9 +11833,9 @@ app.post("/api/future-chat/threads", async (req, res) => {
 			createdAt,
 			updatedAt,
 		} = req.body || {};
-		const threadId = getNonEmptyString(rawThreadId) || createFutureChatThreadId();
-		const persistedMessages = await persistFutureChatMessageFiles(threadId, messages);
-		const thread = await futureChatThreadManager.createThread({
+		const threadId = getNonEmptyString(rawThreadId) || createRovoAppThreadId();
+		const persistedMessages = await persistRovoAppMessageFiles(threadId, messages);
+		const thread = await rovoAppThreadManager.createThread({
 			id: threadId,
 			title,
 			messages: persistedMessages,
@@ -12157,36 +11857,36 @@ app.post("/api/future-chat/threads", async (req, res) => {
 	}
 });
 
-app.delete("/api/future-chat/threads", async (req, res) => {
+app.delete("/api/rovo-app/threads", async (req, res) => {
 	try {
 		const rawAll = Array.isArray(req.query.all) ? req.query.all[0] : req.query.all;
 		if (rawAll !== "true" && rawAll !== "1") {
 			return res.status(400).json({ error: "Use ?all=true to delete all threads." });
 		}
 
-		const threads = await futureChatThreadManager.listThreads({ limit: Number.MAX_SAFE_INTEGER });
+		const threads = await rovoAppThreadManager.listThreads({ limit: Number.MAX_SAFE_INTEGER });
 		await Promise.all(
 			threads.map(async (thread) => {
-				await futureChatGeneratedFilesManager.deleteLegacyRootFiles(thread.id);
+				await rovoAppGeneratedFilesManager.deleteLegacyRootFiles(thread.id);
 			}),
 		);
 
-		await futureChatThreadManager.deleteAllThreads();
-		await futureChatVoteManager.deleteAllVotes();
-		await futureChatDocumentManager.deleteAllDocuments();
-		await futureChatUploadManager.deleteAllUploads();
+		await rovoAppThreadManager.deleteAllThreads();
+		await rovoAppVoteManager.deleteAllVotes();
+		await rovoAppDocumentManager.deleteAllDocuments();
+		await rovoAppUploadManager.deleteAllUploads();
 
 		return res.status(200).json({ deleted: true });
 	} catch (error) {
 		console.error("[FUTURE-CHAT] Failed to delete all threads:", error);
-		return res.status(500).json({ error: "Failed to delete all Future Chat threads" });
+		return res.status(500).json({ error: "Failed to delete all Rovo App threads" });
 	}
 });
 
-app.get("/api/future-chat/threads/:threadId", async (req, res) => {
+app.get("/api/rovo-app/threads/:threadId", async (req, res) => {
 	try {
-		const thread = await reconcileOrphanedFutureChatThread(
-			await futureChatThreadManager.getThread(req.params.threadId),
+		const thread = await reconcileOrphanedRovoAppThread(
+			await rovoAppThreadManager.getThread(req.params.threadId),
 		);
 		if (!thread) {
 			return res.status(404).json({ error: "Thread not found" });
@@ -12195,11 +11895,11 @@ app.get("/api/future-chat/threads/:threadId", async (req, res) => {
 		return res.status(200).json({ thread });
 	} catch (error) {
 		console.error("[FUTURE-CHAT] Failed to load thread:", error);
-		return res.status(500).json({ error: "Failed to load Future Chat thread" });
+		return res.status(500).json({ error: "Failed to load Rovo App thread" });
 	}
 });
 
-app.put("/api/future-chat/threads/:threadId", async (req, res) => {
+app.put("/api/rovo-app/threads/:threadId", async (req, res) => {
 	try {
 		const {
 			title,
@@ -12215,9 +11915,9 @@ app.put("/api/future-chat/threads/:threadId", async (req, res) => {
 		} = req.body || {};
 		const persistedMessages =
 			messages !== undefined
-				? await persistFutureChatMessageFiles(req.params.threadId, messages)
+				? await persistRovoAppMessageFiles(req.params.threadId, messages)
 				: undefined;
-		const thread = await futureChatThreadManager.updateThread(req.params.threadId, {
+		const thread = await rovoAppThreadManager.updateThread(req.params.threadId, {
 			title,
 			messages: persistedMessages,
 			realtimeMessages,
@@ -12236,25 +11936,25 @@ app.put("/api/future-chat/threads/:threadId", async (req, res) => {
 		return res.status(200).json({ thread });
 	} catch (error) {
 		console.error("[FUTURE-CHAT] Failed to update thread:", error);
-		return res.status(500).json({ error: "Failed to update Future Chat thread" });
+		return res.status(500).json({ error: "Failed to update Rovo App thread" });
 	}
 });
 
-app.post("/api/future-chat/detach", async (req, res) => {
+app.post("/api/rovo-app/detach", async (req, res) => {
 	try {
 		const threadId = getNonEmptyString(req.body?.threadId);
 		if (!threadId) {
 			return res.status(400).json({ error: "threadId is required" });
 		}
-		const run = futureChatRunManager.getRun(threadId);
+		const run = rovoAppRunManager.getRun(threadId);
 		if (!run) {
 			return res.status(404).json({ error: "No active stream for threadId" });
 		}
-		futureChatRunManager.setRunStatus(
+		rovoAppRunManager.setRunStatus(
 			threadId,
 			run.status === "queued" ? "queued" : "background",
 		);
-		await persistFutureChatRunState(threadId, futureChatRunManager.getRun(threadId));
+		await persistRovoAppRunState(threadId, rovoAppRunManager.getRun(threadId));
 		return res.status(200).json({ detached: true });
 	} catch (error) {
 		console.error("[FUTURE-CHAT] Failed to detach stream:", error);
@@ -12262,9 +11962,9 @@ app.post("/api/future-chat/detach", async (req, res) => {
 	}
 });
 
-app.get("/api/future-chat/background-streams", async (req, res) => {
+app.get("/api/rovo-app/background-streams", async (req, res) => {
 	try {
-		const streams = futureChatRunManager.listRuns();
+		const streams = rovoAppRunManager.listRuns();
 		return res.status(200).json({ streams });
 	} catch (error) {
 		console.error("[FUTURE-CHAT] Failed to list background streams:", error);
@@ -12272,64 +11972,64 @@ app.get("/api/future-chat/background-streams", async (req, res) => {
 	}
 });
 
-app.get("/api/future-chat/runs/:threadId/stream", async (req, res) => {
+app.get("/api/rovo-app/runs/:threadId/stream", async (req, res) => {
 	try {
 		const threadId = getNonEmptyString(req.params.threadId);
 		if (!threadId) {
 			return res.status(400).json({ error: "threadId is required" });
 		}
 
-		const subscriberId = futureChatRunManager.attachSubscriber(threadId, res, {
+		const subscriberId = rovoAppRunManager.attachSubscriber(threadId, res, {
 			onDetached: (run) => {
 				if (!run) {
 					return;
 				}
-				void persistFutureChatRunState(threadId, run);
+				void persistRovoAppRunState(threadId, run);
 			},
 		});
 		if (!subscriberId) {
 			return res.status(404).json({ error: "No active run for threadId" });
 		}
 
-		await persistFutureChatRunState(threadId, futureChatRunManager.getRun(threadId));
+		await persistRovoAppRunState(threadId, rovoAppRunManager.getRun(threadId));
 	} catch (error) {
 		console.error("[FUTURE-CHAT] Failed to attach run stream:", error);
-		return res.status(500).json({ error: "Failed to attach Future Chat run stream" });
+		return res.status(500).json({ error: "Failed to attach Rovo App run stream" });
 	}
 });
 
-app.post("/api/future-chat/runs/:threadId/detach", async (req, res) => {
+app.post("/api/rovo-app/runs/:threadId/detach", async (req, res) => {
 	try {
 		const threadId = getNonEmptyString(req.params.threadId);
 		if (!threadId) {
 			return res.status(400).json({ error: "threadId is required" });
 		}
 
-		const run = futureChatRunManager.getRun(threadId);
+		const run = rovoAppRunManager.getRun(threadId);
 		if (!run) {
 			return res.status(404).json({ error: "No active run for threadId" });
 		}
 
-		futureChatRunManager.setRunStatus(
+		rovoAppRunManager.setRunStatus(
 			threadId,
 			run.status === "queued" ? "queued" : "background",
 		);
-		await persistFutureChatRunState(threadId, futureChatRunManager.getRun(threadId));
+		await persistRovoAppRunState(threadId, rovoAppRunManager.getRun(threadId));
 		return res.status(200).json({ detached: true });
 	} catch (error) {
 		console.error("[FUTURE-CHAT] Failed to detach run:", error);
-		return res.status(500).json({ error: "Failed to detach Future Chat run" });
+		return res.status(500).json({ error: "Failed to detach Rovo App run" });
 	}
 });
 
-app.post("/api/future-chat/runs/:threadId/cancel", async (req, res) => {
+app.post("/api/rovo-app/runs/:threadId/cancel", async (req, res) => {
 	try {
 		const threadId = getNonEmptyString(req.params.threadId);
 		if (!threadId) {
 			return res.status(400).json({ error: "threadId is required" });
 		}
 
-		const run = futureChatRunManager.getRun(threadId);
+		const run = rovoAppRunManager.getRun(threadId);
 		if (!run) {
 			return res.status(404).json({ error: "No active run for threadId" });
 		}
@@ -12338,48 +12038,48 @@ app.post("/api/future-chat/runs/:threadId/cancel", async (req, res) => {
 			await rovoDevCancelChat(run.rovoPort).catch(() => {});
 		}
 
-		futureChatRunManager.cancelRun(threadId);
-		await clearFutureChatRunState(threadId);
-		void startNextQueuedFutureChatRun();
+		rovoAppRunManager.cancelRun(threadId);
+		await clearRovoAppRunState(threadId);
+		void startNextQueuedRovoAppRun();
 		return res.status(200).json({ cancelled: true });
 	} catch (error) {
 		console.error("[FUTURE-CHAT] Failed to cancel run:", error);
-		return res.status(500).json({ error: "Failed to cancel Future Chat run" });
+		return res.status(500).json({ error: "Failed to cancel Rovo App run" });
 	}
 });
 
-app.delete("/api/future-chat/threads/:threadId", async (req, res) => {
+app.delete("/api/rovo-app/threads/:threadId", async (req, res) => {
 	try {
 		const threadId = req.params.threadId;
-		const activeRun = futureChatRunManager.getRun(threadId);
+		const activeRun = rovoAppRunManager.getRun(threadId);
 		if (activeRun) {
 			if (typeof activeRun.rovoPort === "number" && activeRun.rovoPort > 0) {
 				await rovoDevCancelChat(activeRun.rovoPort).catch(() => {});
 			}
-			futureChatRunManager.cancelRun(threadId);
+			rovoAppRunManager.cancelRun(threadId);
 		}
-		const thread = await futureChatThreadManager.getThread(threadId);
-		const uploadIds = collectFutureChatUploadIdsFromMessages(thread?.messages);
+		const thread = await rovoAppThreadManager.getThread(threadId);
+		const uploadIds = collectRovoAppUploadIdsFromMessages(thread?.messages);
 		if (thread) {
-			await futureChatGeneratedFilesManager.backfillFromThread(thread);
-			await futureChatGeneratedFilesManager.deleteLegacyRootFiles(threadId);
+			await rovoAppGeneratedFilesManager.backfillFromThread(thread);
+			await rovoAppGeneratedFilesManager.deleteLegacyRootFiles(threadId);
 		}
 		await Promise.all(
 			uploadIds.map((uploadId) =>
-				futureChatUploadManager.deleteUpload(uploadId).catch(() => {})
+				rovoAppUploadManager.deleteUpload(uploadId).catch(() => {})
 			)
 		);
-		await futureChatVoteManager.deleteVotesForThread(threadId);
-		await futureChatDocumentManager.deleteDocumentsByThread(threadId);
-		await futureChatThreadManager.deleteThread(threadId);
+		await rovoAppVoteManager.deleteVotesForThread(threadId);
+		await rovoAppDocumentManager.deleteDocumentsByThread(threadId);
+		await rovoAppThreadManager.deleteThread(threadId);
 		return res.status(200).json({ deleted: true });
 	} catch (error) {
 		console.error("[FUTURE-CHAT] Failed to delete thread:", error);
-		return res.status(500).json({ error: "Failed to delete Future Chat thread" });
+		return res.status(500).json({ error: "Failed to delete Rovo App thread" });
 	}
 });
 
-app.get("/api/future-chat/votes", async (req, res) => {
+app.get("/api/rovo-app/votes", async (req, res) => {
 	try {
 		const rawThreadId = Array.isArray(req.query.threadId) ? req.query.threadId[0] : req.query.threadId;
 		const threadId = getNonEmptyString(rawThreadId);
@@ -12387,15 +12087,15 @@ app.get("/api/future-chat/votes", async (req, res) => {
 			return res.status(400).json({ error: "threadId is required" });
 		}
 
-		const votes = await futureChatVoteManager.listVotes(threadId);
+		const votes = await rovoAppVoteManager.listVotes(threadId);
 		return res.status(200).json({ votes });
 	} catch (error) {
 		console.error("[FUTURE-CHAT] Failed to list votes:", error);
-		return res.status(500).json({ error: "Failed to list Future Chat votes" });
+		return res.status(500).json({ error: "Failed to list Rovo App votes" });
 	}
 });
 
-app.patch("/api/future-chat/votes", async (req, res) => {
+app.patch("/api/rovo-app/votes", async (req, res) => {
 	try {
 		const { threadId: rawThreadId, messageId: rawMessageId, value } = req.body || {};
 		const threadId = getNonEmptyString(rawThreadId);
@@ -12404,7 +12104,7 @@ app.patch("/api/future-chat/votes", async (req, res) => {
 			return res.status(400).json({ error: "threadId and messageId are required" });
 		}
 
-		const vote = await futureChatVoteManager.setVote({
+		const vote = await rovoAppVoteManager.setVote({
 			threadId,
 			messageId,
 			value: value === "up" || value === "down" ? value : null,
@@ -12412,11 +12112,11 @@ app.patch("/api/future-chat/votes", async (req, res) => {
 		return res.status(200).json({ vote });
 	} catch (error) {
 		console.error("[FUTURE-CHAT] Failed to update vote:", error);
-		return res.status(500).json({ error: "Failed to update Future Chat vote" });
+		return res.status(500).json({ error: "Failed to update Rovo App vote" });
 	}
 });
 
-app.get("/api/future-chat/documents", async (req, res) => {
+app.get("/api/rovo-app/documents", async (req, res) => {
 	try {
 		const rawThreadId = Array.isArray(req.query.threadId) ? req.query.threadId[0] : req.query.threadId;
 		const rawDocumentId = Array.isArray(req.query.documentId) ? req.query.documentId[0] : req.query.documentId;
@@ -12424,22 +12124,22 @@ app.get("/api/future-chat/documents", async (req, res) => {
 		const documentId = getNonEmptyString(rawDocumentId);
 
 		if (documentId) {
-			const document = await futureChatDocumentManager.getDocument(documentId);
+			const document = await rovoAppDocumentManager.getDocument(documentId);
 			if (!document) {
 				return res.status(404).json({ error: "Document not found" });
 			}
 			return res.status(200).json({ document });
 		}
 
-		const documents = await futureChatDocumentManager.listDocuments({ threadId: threadId || undefined });
+		const documents = await rovoAppDocumentManager.listDocuments({ threadId: threadId || undefined });
 		return res.status(200).json({ documents });
 	} catch (error) {
 		console.error("[FUTURE-CHAT] Failed to list documents:", error);
-		return res.status(500).json({ error: "Failed to load Future Chat documents" });
+		return res.status(500).json({ error: "Failed to load Rovo App documents" });
 	}
 });
 
-app.post("/api/future-chat/documents", async (req, res) => {
+app.post("/api/rovo-app/documents", async (req, res) => {
 	try {
 		const {
 			changeLabel,
@@ -12452,7 +12152,7 @@ app.post("/api/future-chat/documents", async (req, res) => {
 		} = req.body || {};
 		if (typeof documentId === "string" && documentId.trim()) {
 			if (typeof content === "string") {
-				const document = await futureChatDocumentManager.appendDocumentVersion(documentId, {
+				const document = await rovoAppDocumentManager.appendDocumentVersion(documentId, {
 					changeLabel,
 					title,
 					kind,
@@ -12464,7 +12164,7 @@ app.post("/api/future-chat/documents", async (req, res) => {
 				return res.status(200).json({ document });
 			}
 
-			const document = await futureChatDocumentManager.patchDocumentMetadata(documentId, {
+			const document = await rovoAppDocumentManager.patchDocumentMetadata(documentId, {
 				sourceMessageId,
 			});
 			if (!document) {
@@ -12477,7 +12177,7 @@ app.post("/api/future-chat/documents", async (req, res) => {
 			return res.status(400).json({ error: "threadId is required" });
 		}
 
-		const document = await futureChatDocumentManager.createDocument({
+		const document = await rovoAppDocumentManager.createDocument({
 			changeLabel,
 			threadId,
 			title,
@@ -12488,11 +12188,11 @@ app.post("/api/future-chat/documents", async (req, res) => {
 		return res.status(201).json({ document });
 	} catch (error) {
 		console.error("[FUTURE-CHAT] Failed to save document:", error);
-		return res.status(500).json({ error: "Failed to save Future Chat document" });
+		return res.status(500).json({ error: "Failed to save Rovo App document" });
 	}
 });
 
-app.delete("/api/future-chat/documents", async (req, res) => {
+app.delete("/api/rovo-app/documents", async (req, res) => {
 	try {
 		const rawDocumentId = Array.isArray(req.query.documentId) ? req.query.documentId[0] : req.query.documentId;
 		const documentId = getNonEmptyString(rawDocumentId);
@@ -12500,22 +12200,22 @@ app.delete("/api/future-chat/documents", async (req, res) => {
 			return res.status(400).json({ error: "documentId is required" });
 		}
 
-		await futureChatDocumentManager.deleteDocument(documentId);
+		await rovoAppDocumentManager.deleteDocument(documentId);
 		return res.status(200).json({ deleted: true });
 	} catch (error) {
 		console.error("[FUTURE-CHAT] Failed to delete document:", error);
-		return res.status(500).json({ error: "Failed to delete Future Chat document" });
+		return res.status(500).json({ error: "Failed to delete Rovo App document" });
 	}
 });
 
-app.post("/api/future-chat/files/upload", async (req, res) => {
+app.post("/api/rovo-app/files/upload", async (req, res) => {
 	try {
 		const { name, mediaType, dataUrl, threadId } = req.body || {};
 		if (typeof dataUrl !== "string" || !dataUrl.trim()) {
 			return res.status(400).json({ error: "dataUrl is required" });
 		}
 
-		const upload = await futureChatUploadManager.createUploadFromDataUrl({
+		const upload = await rovoAppUploadManager.createUploadFromDataUrl({
 			threadId: getNonEmptyString(threadId) || undefined,
 			filename: typeof name === "string" && name.trim() ? name : "attachment.bin",
 			mediaType: typeof mediaType === "string" && mediaType.trim() ? mediaType : undefined,
@@ -12527,7 +12227,7 @@ app.post("/api/future-chat/files/upload", async (req, res) => {
 				filename: upload.filename,
 				mediaType: upload.mediaType,
 				sizeBytes: upload.sizeBytes,
-				url: buildFutureChatFileUrl(upload.id),
+				url: buildRovoAppFileUrl(upload.id),
 			},
 		});
 	} catch (error) {
@@ -12537,9 +12237,9 @@ app.post("/api/future-chat/files/upload", async (req, res) => {
 	}
 });
 
-app.get("/api/future-chat/files/:fileId", async (req, res) => {
+app.get("/api/rovo-app/files/:fileId", async (req, res) => {
 	try {
-		const upload = await futureChatUploadManager.getUpload(req.params.fileId);
+		const upload = await rovoAppUploadManager.getUpload(req.params.fileId);
 		if (!upload) {
 			return res.status(404).json({ error: "File not found" });
 		}
@@ -12553,7 +12253,7 @@ app.get("/api/future-chat/files/:fileId", async (req, res) => {
 		return res.status(200).send(upload.buffer);
 	} catch (error) {
 		console.error("[FUTURE-CHAT] Failed to serve file:", error);
-		return res.status(500).json({ error: "Failed to serve Future Chat file" });
+		return res.status(500).json({ error: "Failed to serve Rovo App file" });
 	}
 });
 
@@ -12615,732 +12315,6 @@ app.delete("/api/orchestrator/log", (_req, res) => {
 	}
 });
 
-
-// ─── Make Endpoints ──────────────────────────────────────────────────
-
-app.post("/api/make/runs", async (req, res) => {
-	try {
-		const {
-			plan,
-			userPrompt,
-			conversation,
-			customInstruction,
-			agentCount,
-			sourceSurface,
-		} = req.body || {};
-
-		const run = await makeRunManager.createRun({
-			plan,
-			userPrompt,
-			conversation,
-			customInstruction,
-			agentCount,
-			sourceSurface,
-		});
-		return res.status(201).json({ run });
-	} catch (error) {
-		console.error("[MAKE-RUN] Failed to create run:", error);
-		const message = error instanceof Error ? error.message : "Failed to create run";
-		return res.status(400).json({ error: message });
-	}
-});
-
-app.get("/api/make/runs", async (req, res) => {
-	try {
-		const rawLimit = Array.isArray(req.query.limit) ? req.query.limit[0] : req.query.limit;
-		const runs = await makeRunManager.listRuns({ limit: rawLimit });
-		return res.status(200).json({ runs });
-	} catch (error) {
-		console.error("[MAKE-RUN] Failed to list runs:", error);
-		const message = error instanceof Error ? error.message : "Failed to list runs";
-		return res.status(500).json({ error: message });
-	}
-});
-
-app.get("/api/make/runs/:runId", async (req, res) => {
-	try {
-		const runId = req.params.runId;
-		const run = await makeRunManager.getRun(runId);
-		if (!run) {
-			return res.status(404).json({ error: "Run not found" });
-		}
-
-		return res.status(200).json({ run });
-	} catch (error) {
-		console.error("[MAKE-RUN] Failed to get run:", error);
-		return res.status(500).json({ error: "Failed to load run" });
-	}
-});
-
-app.delete("/api/make/runs/:runId", async (req, res) => {
-	try {
-		const runId = req.params.runId;
-		await makeRunManager.deleteRun(runId);
-		return res.status(200).json({ deleted: true });
-	} catch (error) {
-		console.error("[MAKE-RUN] Failed to delete run:", error);
-		return res.status(500).json({ error: "Failed to delete run" });
-	}
-});
-
-app.post("/api/make/runs/:runId/tasks", async (req, res) => {
-	try {
-		const runId = req.params.runId;
-		const {
-			planDelta,
-			prompt,
-			contextPrompt,
-			conversation,
-			customInstruction,
-			retryTaskIds,
-		} = req.body || {};
-		const result = await makeRunManager.appendTasks(runId, {
-			planDelta,
-			prompt,
-			contextPrompt,
-			conversation,
-			customInstruction,
-			retryTaskIds,
-		});
-
-		if (result?.error) {
-			return res.status(400).json({ error: result.error });
-		}
-
-		return res.status(200).json(result);
-	} catch (error) {
-		console.error("[MAKE-RUN] Failed to append run tasks:", error);
-		const message = error instanceof Error ? error.message : "Failed to append tasks";
-		return res.status(400).json({ error: message });
-	}
-});
-
-app.get("/api/make/runs/:runId/stream", async (req, res) => {
-	try {
-		const runId = req.params.runId;
-		await makeRunManager.streamRunEvents(req, res, runId);
-	} catch (error) {
-		console.error("[MAKE-RUN] Failed to stream run events:", error);
-		if (!res.headersSent) {
-			res.status(500).json({ error: "Failed to stream run events" });
-		}
-	}
-});
-
-app.post("/api/make/runs/:runId/directives", async (req, res) => {
-	try {
-		const runId = req.params.runId;
-		const { agentName, message } = req.body || {};
-		const result = await makeRunManager.addDirective(runId, {
-			agentName,
-			message,
-		});
-
-		if (result.error) {
-			return res.status(400).json({ error: result.error });
-		}
-
-		return res.status(200).json(result);
-	} catch (error) {
-		console.error("[MAKE-RUN] Failed to add directive:", error);
-		return res.status(500).json({ error: "Failed to add directive" });
-	}
-});
-
-app.post("/api/make/runs/:runId/share", async (req, res) => {
-	try {
-		const runId = req.params.runId;
-		const requestBody = req.body && typeof req.body === "object" ? req.body : {};
-		const target = getNonEmptyString(requestBody.target)?.toLowerCase();
-		if (target !== "confluence" && target !== "slack") {
-			return res.status(400).json({
-				error: "Invalid share target. Use 'confluence' or 'slack'.",
-			});
-		}
-
-		const runSummary = await makeRunManager.getRunSummary(runId);
-		if (!runSummary || !runSummary.run) {
-			return res.status(404).json({ error: "Run not found" });
-		}
-
-		const summaryContent = getNonEmptyString(runSummary.summary?.content);
-		if (!summaryContent) {
-			return res.status(409).json({
-				error: "Final synthesis is not ready yet. Try again after summary generation completes.",
-			});
-		}
-
-		if (target === "confluence") {
-			const confluenceInput =
-				requestBody.confluence && typeof requestBody.confluence === "object"
-					? requestBody.confluence
-					: {};
-			const result = await createConfluenceSummaryPage({
-				run: runSummary.run,
-				summary: runSummary.summary,
-				summaryContent,
-				confluence: confluenceInput,
-			});
-			return res.status(200).json({
-				ok: true,
-				target: "confluence",
-				externalUrl: result.externalUrl,
-			});
-		}
-
-		const slackResult = await sendSlackSummaryDm({
-			run: runSummary.run,
-			summary: runSummary.summary,
-			summaryContent,
-		});
-		return res.status(200).json({
-			ok: true,
-			target: "slack",
-			messageTs: slackResult.messageTs,
-		});
-	} catch (error) {
-		console.error("[MAKE-RUN] Failed to share run summary:", error);
-		const status = typeof error?.status === "number" ? error.status : 500;
-		const message =
-			error instanceof Error && error.message.trim()
-				? error.message.trim()
-				: "Failed to share run summary";
-		return res.status(status).json({ error: message });
-	}
-});
-
-app.get("/api/make/runs/:runId/summary", async (req, res) => {
-	try {
-		const runId = req.params.runId;
-		const summary = await makeRunManager.getRunSummary(runId);
-		if (!summary) {
-			return res.status(404).json({ error: "Run not found" });
-		}
-
-		return res.status(200).json(summary);
-	} catch (error) {
-		console.error("[MAKE-RUN] Failed to load run summary:", error);
-		return res.status(500).json({ error: "Failed to load run summary" });
-	}
-});
-
-
-// --- Forge Publish ---
-
-app.get("/api/make/forge/sites", async (_req, res) => {
-	try {
-		const sites = await forgePublishManager.discoverSites();
-		return res.status(200).json({ sites });
-	} catch (error) {
-		console.error("[FORGE-PUBLISH] Failed to discover sites:", error);
-		return res.status(500).json({ error: "Failed to discover Atlassian sites" });
-	}
-});
-
-app.get("/api/make/forge/dev-spaces", async (_req, res) => {
-	try {
-		const devSpaces = await forgePublishManager.discoverDevSpaces();
-		return res.status(200).json({ devSpaces });
-	} catch (error) {
-		console.error("[FORGE-PUBLISH] Failed to discover dev spaces:", error);
-		return res.status(500).json({ error: "Failed to discover developer spaces" });
-	}
-});
-
-app.get("/api/make/runs/:runId/publish", async (req, res) => {
-	try {
-		const { runId } = req.params;
-		const status = await forgePublishManager.getPublishStatus(runId);
-		return res.status(200).json(status);
-	} catch (error) {
-		console.error("[FORGE-PUBLISH] Failed to get publish status:", error);
-		return res.status(500).json({ error: "Failed to get publish status" });
-	}
-});
-
-app.post("/api/make/runs/:runId/publish", async (req, res) => {
-	try {
-		const { runId } = req.params;
-		const { appName, siteUrl, product } = req.body ?? {};
-
-		if (!appName || !siteUrl) {
-			return res.status(400).json({ error: "appName and siteUrl are required" });
-		}
-
-		// Resolve the app slug for this run
-		const existingApp = await appRegistry.getAppByRunId(runId);
-		if (!existingApp) {
-			return res.status(404).json({ error: "No generated app found for this run. Build the app first." });
-		}
-
-		const appSlug = existingApp.slug;
-
-		// Start the publish process (runs async, but we await it)
-		const progressSteps = [];
-		const result = await forgePublishManager.publish(
-			{
-				runId,
-				appSlug,
-				appName,
-				siteUrl,
-				product: product || "jira",
-			},
-			(progress) => {
-				progressSteps.push(progress);
-			},
-		);
-
-		return res.status(result.success ? 200 : 500).json({
-			...result,
-			steps: progressSteps,
-		});
-	} catch (error) {
-		console.error("[FORGE-PUBLISH] Publish failed:", error);
-		return res.status(500).json({ error: "Publish failed" });
-	}
-});
-
-// --- Tools list ---
-
-app.get("/api/make/tools", (req, res) => {
-	// Returns available MCP tools. Stub for now — will be populated from MCP server discovery.
-	return res.status(200).json({ tools: [] });
-});
-
-// --- Skills CRUD (filesystem-backed) ---
-
-app.get("/api/make/skills", (req, res) => {
-	try {
-		const skills = makeFs.listSkills();
-		return res.status(200).json({ skills });
-	} catch (error) {
-		console.error("[MAKE-FS] Failed to list skills:", error);
-		return res.status(500).json({ error: "Failed to list skills" });
-	}
-});
-
-app.post("/api/make/skills", (req, res) => {
-	try {
-		const contentType = req.headers["content-type"] || "";
-
-		// Handle markdown import (raw SKILL.md content)
-		if (contentType.includes("text/markdown")) {
-			let rawContent = "";
-			if (typeof req.body === "string") {
-				rawContent = req.body;
-			} else if (Buffer.isBuffer(req.body)) {
-				rawContent = req.body.toString("utf8");
-			} else {
-				return res.status(400).json({ error: "Expected markdown content" });
-			}
-
-			const { frontmatter, body } = makeFs.parseFrontmatter(rawContent);
-			const name = frontmatter.name;
-			const description = typeof frontmatter.description === "string" ? frontmatter.description : "";
-
-			if (!name || typeof name !== "string") {
-				return res.status(400).json({ error: "SKILL.md must have a 'name' field in frontmatter" });
-			}
-
-			const nameError = makeFs.validateSkillName(name);
-			if (nameError) {
-				return res.status(400).json({ error: nameError });
-			}
-
-			if (makeFs.skillExists(name)) {
-				return res.status(409).json({ error: `A skill named "${name}" already exists` });
-			}
-
-			const extraFields = {};
-			if (frontmatter.license) extraFields.license = frontmatter.license;
-			if (frontmatter.compatibility) extraFields.compatibility = frontmatter.compatibility;
-			if (frontmatter["allowed-tools"]) extraFields["allowed-tools"] = frontmatter["allowed-tools"];
-
-			const skill = makeFs.writeSkill(name, description, body.trim(), extraFields);
-			return res.status(201).json({ skill });
-		}
-
-		const { name, description, content } = req.body || {};
-
-		// Validate name
-		const nameError = makeFs.validateSkillName(name);
-		if (nameError) {
-			return res.status(400).json({ error: nameError });
-		}
-		if (!makeFs.validatePathComponent(name)) {
-			return res.status(400).json({ error: "Invalid skill name" });
-		}
-
-		// Validate description
-		const descError = makeFs.validateSkillDescription(description);
-		if (descError) {
-			return res.status(400).json({ error: descError });
-		}
-
-		// Check for conflicts
-		if (makeFs.skillExists(name)) {
-			return res.status(409).json({ error: `A skill named "${name}" already exists` });
-		}
-
-		// Validate content length
-		const resolvedContent = typeof content === "string" ? content.trim() : "";
-		if (resolvedContent.length > makeFs.SKILL_CONTENT_MAX) {
-			return res.status(400).json({ error: `Content exceeds maximum length of ${makeFs.SKILL_CONTENT_MAX} characters` });
-		}
-
-		const skill = makeFs.writeSkill(name, description, resolvedContent);
-		return res.status(201).json({ skill });
-	} catch (error) {
-		console.error("[MAKE-FS] Failed to create skill:", error);
-		const message = error instanceof Error ? error.message : "Failed to create skill";
-		return res.status(500).json({ error: message });
-	}
-});
-
-app.put("/api/make/skills/:name", (req, res) => {
-	try {
-		const name = req.params.name;
-		if (!makeFs.validatePathComponent(name)) {
-			return res.status(400).json({ error: "Invalid skill name" });
-		}
-
-		// Read existing skill
-		const existing = makeFs.getSkillByName(name);
-		if (!existing) {
-			return res.status(404).json({ error: `Skill not found: ${name}` });
-		}
-
-		// Merge updates
-		const data = req.body || {};
-		const updatedDescription = data.description !== undefined ? data.description : existing.description;
-		const updatedContent = data.content !== undefined ? (typeof data.content === "string" ? data.content.trim() : "") : existing.content;
-
-		// Validate if description changed
-		if (data.description !== undefined) {
-			const descError = makeFs.validateSkillDescription(updatedDescription);
-			if (descError) {
-				return res.status(400).json({ error: descError });
-			}
-		}
-
-		// Validate content length
-		if (updatedContent.length > makeFs.SKILL_CONTENT_MAX) {
-			return res.status(400).json({ error: `Content exceeds maximum length of ${makeFs.SKILL_CONTENT_MAX} characters` });
-		}
-
-		// Preserve extra fields from existing skill
-		const extraFields = {};
-		if (existing.license) extraFields.license = existing.license;
-		if (existing.compatibility) extraFields.compatibility = existing.compatibility;
-		if (existing.allowedTools) extraFields["allowed-tools"] = existing.allowedTools;
-
-		const skill = makeFs.writeSkill(name, updatedDescription, updatedContent, extraFields);
-		return res.status(200).json({ skill });
-	} catch (error) {
-		console.error("[MAKE-FS] Failed to update skill:", error);
-		const message = error instanceof Error ? error.message : "Failed to update skill";
-		return res.status(500).json({ error: message });
-	}
-});
-
-app.delete("/api/make/skills/:name", (req, res) => {
-	try {
-		const name = req.params.name;
-		if (!makeFs.validatePathComponent(name)) {
-			return res.status(400).json({ error: "Invalid skill name" });
-		}
-		makeFs.deleteSkill(name);
-		return res.status(200).json({ success: true });
-	} catch (error) {
-		console.error("[MAKE-FS] Failed to delete skill:", error);
-		const message = error instanceof Error ? error.message : "Failed to delete skill";
-		return res.status(error.message?.includes("not found") ? 404 : 500).json({ error: message });
-	}
-});
-
-app.get("/api/make/skills/:name/raw", (req, res) => {
-	try {
-		const name = req.params.name;
-		if (!makeFs.validatePathComponent(name)) {
-			return res.status(400).json({ error: "Invalid skill name" });
-		}
-		const raw = makeFs.readSkillRaw(name);
-		if (!raw) {
-			return res.status(404).json({ error: `Skill not found: ${name}` });
-		}
-		res.setHeader("Content-Type", "text/markdown; charset=utf-8");
-		return res.status(200).send(raw);
-	} catch (error) {
-		console.error("[MAKE-FS] Failed to read skill raw:", error);
-		return res.status(500).json({ error: "Failed to read skill" });
-	}
-});
-
-// --- Agents/Subagents CRUD (filesystem-backed) ---
-
-app.get("/api/make/agents", (req, res) => {
-	try {
-		const agents = makeFs.listAgents();
-		return res.status(200).json({ agents });
-	} catch (error) {
-		console.error("[MAKE-FS] Failed to list agents:", error);
-		return res.status(500).json({ error: "Failed to list agents" });
-	}
-});
-
-app.post("/api/make/agents", (req, res) => {
-	try {
-		const contentType = req.headers["content-type"] || "";
-
-		// Handle markdown import (raw agent .md content)
-		if (contentType.includes("text/markdown")) {
-			let rawContent = "";
-			if (typeof req.body === "string") {
-				rawContent = req.body;
-			} else if (Buffer.isBuffer(req.body)) {
-				rawContent = req.body.toString("utf8");
-			} else {
-				return res.status(400).json({ error: "Expected markdown content" });
-			}
-
-			const { frontmatter, body } = makeFs.parseFrontmatter(rawContent);
-			const name = frontmatter.name;
-
-			if (!name || typeof name !== "string") {
-				return res.status(400).json({ error: "Agent .md must have a 'name' field in frontmatter" });
-			}
-
-			const nameError = makeFs.validateAgentName(name);
-			if (nameError) {
-				return res.status(400).json({ error: nameError });
-			}
-
-			if (makeFs.agentExists(name)) {
-				return res.status(409).json({ error: `An agent named "${name}" already exists` });
-			}
-
-			// Parse tools and skills from frontmatter
-			let tools = [];
-			if (frontmatter.tools) {
-				if (Array.isArray(frontmatter.tools)) {
-					tools = frontmatter.tools.map((t) => String(t).trim()).filter(Boolean);
-				} else if (typeof frontmatter.tools === "string") {
-					tools = frontmatter.tools.split(",").map((t) => t.trim()).filter(Boolean);
-				}
-			}
-
-			let skills = [];
-			if (frontmatter.skills) {
-				if (Array.isArray(frontmatter.skills)) {
-					skills = frontmatter.skills.map((s) => String(s).trim()).filter(Boolean);
-				} else if (typeof frontmatter.skills === "string") {
-					skills = frontmatter.skills.split(",").map((s) => s.trim()).filter(Boolean);
-				}
-			}
-
-			let disallowedTools = [];
-			if (frontmatter.disallowedTools) {
-				if (Array.isArray(frontmatter.disallowedTools)) {
-					disallowedTools = frontmatter.disallowedTools.map((t) => String(t).trim()).filter(Boolean);
-				} else if (typeof frontmatter.disallowedTools === "string") {
-					disallowedTools = frontmatter.disallowedTools.split(",").map((t) => t.trim()).filter(Boolean);
-				}
-			}
-
-			const agent = makeFs.writeAgent(name, {
-				description: typeof frontmatter.description === "string" ? frontmatter.description.trim() : "",
-				systemPrompt: body.trim(),
-				model: typeof frontmatter.model === "string" && frontmatter.model.trim() ? frontmatter.model.trim() : "inherit",
-				tools,
-				disallowedTools,
-				skills,
-				maxTurns: frontmatter.maxTurns ? parseInt(String(frontmatter.maxTurns), 10) : undefined,
-				permissionMode: typeof frontmatter.permissionMode === "string" && frontmatter.permissionMode.trim() ? frontmatter.permissionMode.trim() : undefined,
-			});
-			return res.status(201).json({ agent });
-		}
-
-		const { name, description, systemPrompt, model, tools, skills, disallowedTools, maxTurns, permissionMode } = req.body || {};
-
-		// Validate name
-		const nameError = makeFs.validateAgentName(name);
-		if (nameError) {
-			return res.status(400).json({ error: nameError });
-		}
-		if (!makeFs.validatePathComponent(name)) {
-			return res.status(400).json({ error: "Invalid agent name" });
-		}
-
-		// Validate description
-		if (!description || typeof description !== "string" || !description.trim()) {
-			return res.status(400).json({ error: "Description is required" });
-		}
-
-		// Check for conflicts
-		if (makeFs.agentExists(name)) {
-			return res.status(409).json({ error: `An agent named "${name}" already exists` });
-		}
-
-		const agent = makeFs.writeAgent(name, {
-			description: description.trim(),
-			systemPrompt: typeof systemPrompt === "string" ? systemPrompt.trim() : "",
-			model: typeof model === "string" && model.trim() ? model.trim() : "inherit",
-			tools: Array.isArray(tools) ? tools.filter((t) => typeof t === "string" && t.trim()).map((t) => t.trim()) : [],
-			disallowedTools: Array.isArray(disallowedTools) ? disallowedTools.filter((t) => typeof t === "string" && t.trim()).map((t) => t.trim()) : [],
-			skills: Array.isArray(skills) ? skills.filter((s) => typeof s === "string" && s.trim()).map((s) => s.trim()) : [],
-			maxTurns: typeof maxTurns === "number" && Number.isInteger(maxTurns) && maxTurns > 0 ? maxTurns : undefined,
-			permissionMode: typeof permissionMode === "string" && permissionMode.trim() ? permissionMode.trim() : undefined,
-		});
-		return res.status(201).json({ agent });
-	} catch (error) {
-		console.error("[MAKE-FS] Failed to create agent:", error);
-		const message = error instanceof Error ? error.message : "Failed to create agent";
-		return res.status(500).json({ error: message });
-	}
-});
-
-app.put("/api/make/agents/:name", (req, res) => {
-	try {
-		const name = req.params.name;
-		if (!makeFs.validatePathComponent(name)) {
-			return res.status(400).json({ error: "Invalid agent name" });
-		}
-
-		// Read existing agent
-		const existing = makeFs.getAgentByName(name);
-		if (!existing) {
-			return res.status(404).json({ error: `Agent not found: ${name}` });
-		}
-
-		// Merge updates
-		const data = req.body || {};
-		const updated = {
-			description: data.description !== undefined ? (typeof data.description === "string" ? data.description.trim() : existing.description) : existing.description,
-			systemPrompt: data.systemPrompt !== undefined ? (typeof data.systemPrompt === "string" ? data.systemPrompt.trim() : "") : existing.systemPrompt,
-			model: data.model !== undefined ? (typeof data.model === "string" && data.model.trim() ? data.model.trim() : existing.model) : existing.model,
-			tools: data.tools !== undefined ? (Array.isArray(data.tools) ? data.tools.filter((t) => typeof t === "string" && t.trim()).map((t) => t.trim()) : existing.tools) : existing.tools,
-			disallowedTools: data.disallowedTools !== undefined ? (Array.isArray(data.disallowedTools) ? data.disallowedTools.filter((t) => typeof t === "string" && t.trim()).map((t) => t.trim()) : existing.disallowedTools) : existing.disallowedTools,
-			skills: data.skills !== undefined ? (Array.isArray(data.skills) ? data.skills.filter((s) => typeof s === "string" && s.trim()).map((s) => s.trim()) : existing.skills) : existing.skills,
-			maxTurns: data.maxTurns !== undefined ? (typeof data.maxTurns === "number" && Number.isInteger(data.maxTurns) && data.maxTurns > 0 ? data.maxTurns : undefined) : existing.maxTurns,
-			permissionMode: data.permissionMode !== undefined ? (typeof data.permissionMode === "string" && data.permissionMode.trim() ? data.permissionMode.trim() : undefined) : existing.permissionMode,
-		};
-
-		// Validate description if changed
-		if (data.description !== undefined && (!updated.description || !updated.description.trim())) {
-			return res.status(400).json({ error: "Description is required" });
-		}
-
-		const agent = makeFs.writeAgent(name, updated);
-		return res.status(200).json({ agent });
-	} catch (error) {
-		console.error("[MAKE-FS] Failed to update agent:", error);
-		const message = error instanceof Error ? error.message : "Failed to update agent";
-		return res.status(500).json({ error: message });
-	}
-});
-
-app.delete("/api/make/agents/:name", (req, res) => {
-	try {
-		const name = req.params.name;
-		if (!makeFs.validatePathComponent(name)) {
-			return res.status(400).json({ error: "Invalid agent name" });
-		}
-		makeFs.deleteAgent(name);
-		return res.status(200).json({ success: true });
-	} catch (error) {
-		console.error("[MAKE-FS] Failed to delete agent:", error);
-		const message = error instanceof Error ? error.message : "Failed to delete agent";
-		return res.status(error.message?.includes("not found") ? 404 : 500).json({ error: message });
-	}
-});
-
-app.get("/api/make/agents/:name/raw", (req, res) => {
-	try {
-		const name = req.params.name;
-		if (!makeFs.validatePathComponent(name)) {
-			return res.status(400).json({ error: "Invalid agent name" });
-		}
-		const raw = makeFs.readAgentRaw(name);
-		if (!raw) {
-			return res.status(404).json({ error: `Agent not found: ${name}` });
-		}
-		res.setHeader("Content-Type", "text/markdown; charset=utf-8");
-		return res.status(200).send(raw);
-	} catch (error) {
-		console.error("[MAKE-FS] Failed to read agent raw:", error);
-		return res.status(500).json({ error: "Failed to read agent" });
-	}
-});
-
-// --- Config summary (for make context injection) ---
-
-// ─── Generated Apps Registry ────────────────────────────────────────────────
-
-app.get("/api/apps", async (_req, res) => {
-	try {
-		const apps = await appRegistry.listApps();
-		return res.status(200).json({ apps });
-	} catch (error) {
-		console.error("[APP-REGISTRY] Failed to list apps:", error);
-		return res.status(500).json({ error: "Failed to list apps" });
-	}
-});
-
-app.get("/api/apps/:slug", async (req, res) => {
-	try {
-		const slug = req.params.slug;
-		const app = await appRegistry.getApp(slug);
-		if (!app) {
-			return res.status(404).json({ error: "App not found" });
-		}
-		return res.status(200).json({ app });
-	} catch (error) {
-		console.error("[APP-REGISTRY] Failed to get app:", error);
-		return res.status(500).json({ error: "Failed to get app" });
-	}
-});
-
-app.delete("/api/apps/:slug", async (req, res) => {
-	try {
-		const slug = req.params.slug;
-		const app = await appRegistry.getApp(slug);
-		if (!app) {
-			return res.status(404).json({ error: "App not found" });
-		}
-
-		// Delete the generated app files
-		const appDir = `components/generated-apps/${slug}`;
-		const fsPromises = require("node:fs/promises");
-		const appDirPath = path.resolve(__dirname, "..", appDir);
-		try {
-			await fsPromises.rm(appDirPath, { recursive: true, force: true });
-			console.log(`[APP-REGISTRY] Deleted app directory: ${appDir}`);
-		} catch (dirError) {
-			if (dirError.code !== "ENOENT") {
-				console.warn(`[APP-REGISTRY] Failed to delete app directory: ${dirError.message}`);
-			}
-		}
-
-		// Remove from registry
-		await appRegistry.unregisterApp(slug);
-		return res.status(200).json({ deleted: true });
-	} catch (error) {
-		console.error("[APP-REGISTRY] Failed to delete app:", error);
-		return res.status(500).json({ error: "Failed to delete app" });
-	}
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-
-app.get("/api/make/config-summary", (req, res) => {
-	try {
-		const summary = makeFs.getConfigSummary();
-		return res.status(200).json({ summary });
-	} catch (error) {
-		console.error("[MAKE-FS] Failed to get config summary:", error);
-		return res.status(500).json({ error: "Failed to get config summary" });
-	}
-});
 
 // ─── Ticket Classifier ──────────────────────────────────────────────────────
 

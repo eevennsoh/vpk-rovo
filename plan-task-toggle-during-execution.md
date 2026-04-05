@@ -2,7 +2,7 @@
 
 ## Context
 
-The Task or Plan toggle in Future Chat needs to be toggleable at all times,
+The Task or Plan toggle in Rovo App needs to be toggleable at all times,
 including while a run is streaming, waiting on clarification, or sitting behind
 queued follow-ups. The toggle itself must not talk to the backend, cancel the
 current run, or change the behavior of any already-submitted prompt.
@@ -44,7 +44,7 @@ The implementation must follow these rules.
 The toggle becomes a local composer preference, while mode at execution time
 becomes a property of the message being dispatched.
 
-That means Future Chat needs two different concepts:
+That means Rovo App needs two different concepts:
 
 - `isPlanMode`: the current local composer toggle state
 - `mode` on a submitted or queued prompt: the snapped mode for that prompt
@@ -56,8 +56,8 @@ has been submitted.
 
 The queue and local transcript need to remember mode explicitly.
 
-1. Add `mode: "default" | "plan"` to `FutureChatQueuedPromptAction` in
-   `lib/future-chat-types.ts`.
+1. Add `mode: "default" | "plan"` to `RovoAppQueuedPromptAction` in
+   `lib/rovo-app-types.ts`.
 2. Add a message-level metadata field for submitted mode in
    `lib/rovo-ui-messages.ts`. The exact property name can be
    `submittedMode` or `promptMode`, but it must be stable and explicit.
@@ -121,7 +121,7 @@ Example shape inside `dispatchPromptNow`:
 const response = await fetch(API_ENDPOINTS.AGENT_MODE, {
 	method: "POST",
 	headers: { "Content-Type": "application/json" },
-	body: JSON.stringify(buildFutureChatAgentModeRequest({ mode })),
+	body: JSON.stringify(buildRovoAppAgentModeRequest({ mode })),
 });
 
 if (!response.ok) {
@@ -164,7 +164,7 @@ per-request from the `isPlanMode` field in the request body. The flow is:
 6. In `acra`, the `exit_plan_mode` tool explicitly checks that the Serve-side
    mode is `plan` and fails otherwise.
 
-Because Future Chat still relies on deferred `exit_plan_mode` approvals to
+Because Rovo App still relies on deferred `exit_plan_mode` approvals to
 produce the approval card, the safe implementation is:
 
 - keep mode snapshotting per message
@@ -176,12 +176,12 @@ This preserves the new UX model without relying on an unverified assumption
 about Serve internals.
 
 If a later investigation proves that Serve `agent_mode` is truly unnecessary
-for Future Chat, dispatch-time sync can be removed in a follow-up cleanup.
+for Rovo App, dispatch-time sync can be removed in a follow-up cleanup.
 
 ### Why `transport.prepareSendMessagesRequest` already supports this
 
 The existing `prepareSendMessagesRequest` function (around line 1145 in
-`use-future-chat.ts`) already reads `body?.isPlanMode` and forwards it into
+`use-rovo-app.ts`) already reads `body?.isPlanMode` and forwards it into
 the request. When `body.isPlanMode` is explicitly set, it takes precedence
 over `isPlanModeRef.current`. So passing the snapped mode through `body` is
 the natural integration point — no transport changes are needed.
@@ -220,7 +220,7 @@ await dispatchPromptNow({
 
 ### Strengthening the queue gate
 
-The current `canDispatchFutureChatQueuedAction` gate is too weak. It currently
+The current `canDispatchRovoAppQueuedAction` gate is too weak. It currently
 only checks that the action is not null. It needs to also block when:
 
 1. A deferred clarification card is active (the user has not answered the
@@ -269,7 +269,7 @@ This matches the example flow:
 Plan approval needs a stronger change.
 
 Today the next typed prompt can be interpreted as plan feedback or plan
-rejection through `resolveFutureChatPlanReviewAction(...)`. That conflicts with
+rejection through `resolveRovoAppPlanReviewAction(...)`. That conflicts with
 the new rule.
 
 Update the plan-review flow so:
@@ -288,9 +288,9 @@ This means the prompt-based plan-review shortcut must be removed from
 The composer button becomes always enabled, but the blocking cards remain in
 control of queue release.
 
-1. In `future-chat-composer.tsx`, remove the busy-state disable from the Task
+1. In `rovo-app-composer.tsx`, remove the busy-state disable from the Task
    button.
-2. In `future-chat-shell.tsx`, keep rendering the clarification card as a
+2. In `rovo-app-shell.tsx`, keep rendering the clarification card as a
    blocking state.
 3. Update the plan approval card behavior so it is not dismissible without a
    decision. The user must accept, continue planning, or submit custom
@@ -305,7 +305,7 @@ The following parts of the current implementation no longer match the desired
 behavior and must be removed or reworked.
 
 1. Prompt-based pending-plan interception in `submitPrompt`
-2. `resolveFutureChatPlanReviewAction(...)`
+2. `resolveRovoAppPlanReviewAction(...)`
 3. `pendingPlanModeOverrideRef`
 4. Backend-driven composer-mode resync through `syncPlanModeFromBackend`
 5. Any toggle path that cancels the active plan or clarification loop
@@ -342,7 +342,7 @@ Before removing dispatch-time `/api/agent-mode`, verify all of the following in
 an isolated test flow:
 
 1. Force Serve `agent_mode` to `default`.
-2. Send a Future Chat request with `body.isPlanMode: true`.
+2. Send a Rovo App request with `body.isPlanMode: true`.
 3. Confirm the assistant still behaves as plan mode inside Serve.
 4. Confirm `ask_user_questions` still behaves correctly for plan turns.
 5. Confirm `exit_plan_mode` still succeeds and emits the deferred approval

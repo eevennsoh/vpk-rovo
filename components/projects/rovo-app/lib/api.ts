@@ -1,0 +1,353 @@
+"use client";
+
+import type {
+	RovoAppDocument,
+	RovoAppThread,
+	RovoAppVisibility,
+	RovoAppVote,
+} from "@/lib/rovo-app-types";
+import { API_ENDPOINTS } from "@/lib/api-config";
+import type { RovoUIMessage } from "@/lib/rovo-ui-messages";
+
+export const ROVO_APP_BACKEND_UNAVAILABLE_MESSAGE =
+	"Cannot connect to backend server";
+
+export function isRovoAppBackendUnavailableError(error: unknown): boolean {
+	return (
+		error instanceof Error &&
+		error.message.trim().toLowerCase() ===
+			ROVO_APP_BACKEND_UNAVAILABLE_MESSAGE.toLowerCase()
+	);
+}
+
+export function getRovoAppBackendUnavailableUserMessage(): string {
+	return "Rovo App can't reach the local backend. Start `pnpm run dev:backend` or `pnpm run rovodev`, then refresh.";
+}
+
+async function parseJsonResponse<T>(response: Response): Promise<T> {
+	if (!response.ok) {
+		let message = `Request failed with status ${response.status}`;
+		try {
+			const payload = (await response.json()) as { error?: unknown; details?: unknown };
+			if (typeof payload.error === "string" && payload.error.trim()) {
+				message = payload.error.trim();
+			} else if (typeof payload.details === "string" && payload.details.trim()) {
+				message = payload.details.trim();
+			}
+		} catch {
+			const text = await response.text().catch(() => "");
+			if (text.trim()) {
+				message = text.trim();
+			}
+		}
+		throw new Error(message);
+	}
+
+	return response.json() as Promise<T>;
+}
+
+function assertRovoAppAvailable<T extends { backendUnavailable?: boolean }>(
+	payload: T,
+): T {
+	if (payload.backendUnavailable) {
+		throw new Error(ROVO_APP_BACKEND_UNAVAILABLE_MESSAGE);
+	}
+
+	return payload;
+}
+
+export async function listRovoAppThreads(): Promise<RovoAppThread[]> {
+	const response = await fetch(API_ENDPOINTS.rovoAppThreads(), {
+		method: "GET",
+	});
+	const payload = assertRovoAppAvailable(
+		await parseJsonResponse<{ backendUnavailable?: boolean; threads?: RovoAppThread[] }>(response),
+	);
+	return Array.isArray(payload.threads) ? payload.threads : [];
+}
+
+export async function getRovoAppThread(threadId: string): Promise<RovoAppThread | null> {
+	const response = await fetch(API_ENDPOINTS.rovoAppThread(threadId), {
+		method: "GET",
+	});
+	if (response.status === 404) {
+		return null;
+	}
+	const payload = assertRovoAppAvailable(
+		await parseJsonResponse<{ backendUnavailable?: boolean; thread?: RovoAppThread | null }>(response),
+	);
+	return payload.thread ?? null;
+}
+
+export async function createRovoAppThread(input: {
+	id: string;
+	title: string;
+	messages?: ReadonlyArray<RovoUIMessage>;
+	realtimeMessages?: ReadonlyArray<RovoUIMessage>;
+	visibility: RovoAppVisibility;
+	modelId?: string | null;
+	provider?: string | null;
+	activeDocumentId?: string | null;
+}): Promise<RovoAppThread> {
+	const response = await fetch(API_ENDPOINTS.ROVO_APP_THREADS, {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(input),
+	});
+	const payload = await parseJsonResponse<{ thread?: RovoAppThread }>(response);
+	if (!payload.thread) {
+		throw new Error("Rovo App thread response was missing a thread.");
+	}
+	return payload.thread;
+}
+
+export async function updateRovoAppThread(
+	threadId: string,
+	input: {
+		title?: string;
+		messages?: ReadonlyArray<RovoUIMessage>;
+		realtimeMessages?: ReadonlyArray<RovoUIMessage>;
+		visibility?: RovoAppVisibility;
+		modelId?: string | null;
+		provider?: string | null;
+		activeDocumentId?: string | null;
+	},
+): Promise<RovoAppThread> {
+	const response = await fetch(API_ENDPOINTS.rovoAppThread(threadId), {
+		method: "PUT",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(input),
+	});
+	const payload = await parseJsonResponse<{ thread?: RovoAppThread }>(response);
+	if (!payload.thread) {
+		throw new Error("Rovo App update response was missing a thread.");
+	}
+	return payload.thread;
+}
+
+export async function deleteRovoAppThread(threadId: string): Promise<void> {
+	const response = await fetch(API_ENDPOINTS.rovoAppThread(threadId), {
+		method: "DELETE",
+	});
+	await parseJsonResponse<{ deleted?: boolean }>(response);
+}
+
+export async function deleteAllRovoAppThreads(): Promise<void> {
+	const response = await fetch(`${API_ENDPOINTS.ROVO_APP_THREADS}?all=true`, {
+		method: "DELETE",
+	});
+	await parseJsonResponse<{ deleted?: boolean }>(response);
+}
+
+export async function listRovoAppRealtimeMessages(
+	threadId: string,
+): Promise<RovoUIMessage[]> {
+	const response = await fetch(API_ENDPOINTS.rovoAppMessages(threadId), {
+		method: "GET",
+	});
+	const payload = assertRovoAppAvailable(
+		await parseJsonResponse<{ backendUnavailable?: boolean; messages?: RovoUIMessage[] }>(
+			response,
+		),
+	);
+	return Array.isArray(payload.messages) ? payload.messages : [];
+}
+
+export async function saveRovoAppRealtimeMessages(input: {
+	threadId: string;
+	messages: ReadonlyArray<RovoUIMessage>;
+}): Promise<RovoUIMessage[]> {
+	const response = await fetch(API_ENDPOINTS.ROVO_APP_MESSAGES, {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(input),
+	});
+	const payload = await parseJsonResponse<{ messages?: RovoUIMessage[] }>(response);
+	if (!Array.isArray(payload.messages)) {
+		throw new Error("Rovo App realtime message response was missing messages.");
+	}
+	return payload.messages;
+}
+
+export async function upsertRovoAppRealtimeMessage(input: {
+	threadId: string;
+	message: RovoUIMessage;
+}): Promise<RovoUIMessage[]> {
+	const response = await fetch(API_ENDPOINTS.ROVO_APP_MESSAGES, {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(input),
+	});
+	const payload = await parseJsonResponse<{ messages?: RovoUIMessage[] }>(response);
+	if (!Array.isArray(payload.messages)) {
+		throw new Error("Rovo App realtime upsert response was missing messages.");
+	}
+	return payload.messages;
+}
+
+export async function fetchRovoAppSuggestedQuestions(input: {
+	message: string;
+	conversationHistory: Array<{
+		type: "user" | "assistant";
+		content: string;
+	}>;
+	assistantResponse: string;
+	signal?: AbortSignal;
+}): Promise<string[]> {
+	const { signal, ...body } = input;
+	const response = await fetch(API_ENDPOINTS.ROVO_APP_SUGGESTIONS, {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(body),
+		signal,
+	});
+	const payload = assertRovoAppAvailable(
+		await parseJsonResponse<{
+			backendUnavailable?: boolean;
+			questions?: string[];
+		}>(response),
+	);
+	return Array.isArray(payload.questions)
+		? payload.questions.filter(
+			(question) =>
+				typeof question === "string" && question.trim().length > 0,
+		)
+		: [];
+}
+
+export async function listRovoAppVotes(threadId: string): Promise<RovoAppVote[]> {
+	const response = await fetch(`${API_ENDPOINTS.ROVO_APP_VOTES}?threadId=${encodeURIComponent(threadId)}`, {
+		method: "GET",
+	});
+	const payload = assertRovoAppAvailable(
+		await parseJsonResponse<{ backendUnavailable?: boolean; votes?: RovoAppVote[] }>(response),
+	);
+	return Array.isArray(payload.votes) ? payload.votes : [];
+}
+
+export async function setRovoAppVote(input: {
+	threadId: string;
+	messageId: string;
+	value: "up" | "down" | null;
+}): Promise<RovoAppVote> {
+	const response = await fetch(API_ENDPOINTS.ROVO_APP_VOTES, {
+		method: "PATCH",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(input),
+	});
+	const payload = await parseJsonResponse<{ vote?: RovoAppVote }>(response);
+	if (!payload.vote) {
+		throw new Error("Rovo App vote response was missing a vote.");
+	}
+	return payload.vote;
+}
+
+export async function listRovoAppDocuments(threadId: string): Promise<RovoAppDocument[]> {
+	const response = await fetch(`${API_ENDPOINTS.ROVO_APP_DOCUMENTS}?threadId=${encodeURIComponent(threadId)}`, {
+		method: "GET",
+	});
+	const payload = assertRovoAppAvailable(
+		await parseJsonResponse<{ backendUnavailable?: boolean; documents?: RovoAppDocument[] }>(response),
+	);
+	return Array.isArray(payload.documents) ? payload.documents : [];
+}
+
+export async function getRovoAppDocument(documentId: string): Promise<RovoAppDocument | null> {
+	const response = await fetch(`${API_ENDPOINTS.ROVO_APP_DOCUMENTS}?documentId=${encodeURIComponent(documentId)}`, {
+		method: "GET",
+	});
+	if (response.status === 404) {
+		return null;
+	}
+	const payload = assertRovoAppAvailable(
+		await parseJsonResponse<{ backendUnavailable?: boolean; document?: RovoAppDocument | null }>(response),
+	);
+	return payload.document ?? null;
+}
+
+export async function saveRovoAppDocument(input: {
+	changeLabel?: string;
+	documentId?: string;
+	threadId?: string;
+	title?: string;
+	kind?: string;
+	content?: string;
+	sourceMessageId?: string;
+}): Promise<RovoAppDocument> {
+	const response = await fetch(API_ENDPOINTS.ROVO_APP_DOCUMENTS, {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(input),
+	});
+	const payload = await parseJsonResponse<{ document?: RovoAppDocument }>(response);
+	if (!payload.document) {
+		throw new Error("Rovo App document response was missing a document.");
+	}
+	return payload.document;
+}
+
+export async function deleteRovoAppDocument(documentId: string): Promise<void> {
+	const response = await fetch(`${API_ENDPOINTS.ROVO_APP_DOCUMENTS}?documentId=${encodeURIComponent(documentId)}`, {
+		method: "DELETE",
+	});
+	await parseJsonResponse<{ deleted?: boolean }>(response);
+}
+
+export async function detachRovoAppStream(threadId: string): Promise<boolean> {
+	const response = await fetch(API_ENDPOINTS.ROVO_APP_DETACH, {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({ threadId }),
+	});
+	if (response.status === 404) {
+		return false;
+	}
+	const payload = await parseJsonResponse<{ detached?: boolean }>(response);
+	return payload.detached === true;
+}
+
+export async function listRovoAppBackgroundStreams(): Promise<Array<{ threadId: string; status: string; startedAt: number }>> {
+	const response = await fetch(API_ENDPOINTS.ROVO_APP_BACKGROUND_STREAMS, {
+		method: "GET",
+	});
+	const payload = await parseJsonResponse<{ streams?: Array<{ threadId: string; status: string; startedAt: number }> }>(response);
+	return Array.isArray(payload.streams) ? payload.streams : [];
+}
+
+export async function fetchRovoAppAITitle(message: string): Promise<string | null> {
+	try {
+		const response = await fetch(API_ENDPOINTS.CHAT_TITLE, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ message }),
+		});
+		if (!response.ok) return null;
+		const data = (await response.json()) as { title?: string };
+		const title = (data.title ?? "").trim().replace(/^["']|["']$/g, "").replace(/\.+$/, "").trim();
+		return title.length > 0 ? title : null;
+	} catch {
+		return null;
+	}
+}
+
+export async function detachRovoAppRun(threadId: string): Promise<boolean> {
+	const response = await fetch(API_ENDPOINTS.rovoAppRunDetach(threadId), {
+		method: "POST",
+	});
+	if (response.status === 404) {
+		return false;
+	}
+	const payload = await parseJsonResponse<{ detached?: boolean }>(response);
+	return payload.detached === true;
+}
+
+export async function cancelRovoAppRun(threadId: string): Promise<boolean> {
+	const response = await fetch(API_ENDPOINTS.rovoAppRunCancel(threadId), {
+		method: "POST",
+	});
+	if (response.status === 404) {
+		return false;
+	}
+	const payload = await parseJsonResponse<{ cancelled?: boolean }>(response);
+	return payload.cancelled === true;
+}

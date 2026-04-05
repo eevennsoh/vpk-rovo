@@ -278,11 +278,6 @@ export const BLOCK_COMPONENTS: ComponentEntry[] = sortEntriesByName([
 	blockComponent("generative-card", "Generative Card"),
 	blockComponent("generative", "Generative UI"),
 	blockComponent("kanban-sprint", "Kanban Sprint"),
-	blockComponent("make-artifact", "Make Artifact"),
-	blockComponent("make-gallery", "Make Gallery"),
-	blockComponent("make-grid", "Make Grid"),
-	blockComponent("make-item", "Make Item"),
-	blockComponent("make-page", "Make Page"),
 	blockComponent("mermaid-diagram", "Mermaid Diagram"),
 	{ name: "Login 01", slug: "login-01", importPath: "@/components/blocks/login/login-01", category: "blocks", detail: BLOCK_DETAILS["login-01"] },
 	{ name: "Login 02", slug: "login-02", importPath: "@/components/blocks/login/login-02", category: "blocks", detail: BLOCK_DETAILS["login-02"] },
@@ -326,14 +321,7 @@ export const BLOCK_COMPONENTS: ComponentEntry[] = sortEntriesByName([
 ]);
 
 export const PROJECT_COMPONENTS: ComponentEntry[] = sortEntriesByName([
-	{ ...projectComponent("make", "Make"), importPath: "@/components/projects/make" },
-	projectComponent("sidebar-chat", "Sidebar Chat"),
-	projectComponent("confluence", "Confluence Editor"),
-	projectComponent("dashboard-analytics", "Dashboard Analytics"),
-	projectComponent("jira", "Jira Board"),
-	projectComponent("fullscreen-chat", "Fullscreen Chat"),
-	projectComponent("future-chat", "Future Chat"),
-	projectComponent("search", "Search Results"),
+	projectComponent("rovo-app", "Rovo App"),
 ]);
 
 export const UTILITY_COMPONENTS: ComponentEntry[] = sortEntriesByName([

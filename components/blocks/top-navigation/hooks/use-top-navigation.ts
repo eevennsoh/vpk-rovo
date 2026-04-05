@@ -1,27 +1,20 @@
 "use client";
 
 import { useCallback, useMemo, useRef, useState, type KeyboardEvent } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useWindowWidth } from "@/components/hooks/use-window-width";
 import { useClickOutside } from "@/components/hooks/use-click-outside";
 import { useSidebar } from "@/app/contexts/context-sidebar";
-import { useRovoChat } from "@/app/contexts";
 import { useTheme } from "@/components/utils/theme-wrapper";
 import { token } from "@/lib/tokens";
 
-function getInitialSearchValue(pathname: string): string {
-	return pathname === "/search" ? "2026 OKR planning" : "";
-}
-
 export function useTopNavigation() {
-	const pathname = usePathname();
 	const router = useRouter();
-	const [searchValue, setSearchValue] = useState(() => getInitialSearchValue(pathname));
+	const [searchValue, setSearchValue] = useState("");
 	const [isAppSwitcherOpen, setIsAppSwitcherOpen] = useState(false);
 	const [isSearchFocused, setIsSearchFocused] = useState(false);
 	const windowWidth = useWindowWidth();
 	const { isVisible, toggleSidebar, setHovered } = useSidebar();
-	const { toggleChat } = useRovoChat();
 	const { setTheme, actualTheme } = useTheme();
 	const searchContainerRef = useRef<HTMLDivElement>(null);
 	const searchPanelRef = useRef<HTMLDivElement>(null);
@@ -34,6 +27,10 @@ export function useTopNavigation() {
 		setTheme(actualTheme === "light" ? "dark" : "light");
 	}, [setTheme, actualTheme]);
 
+	const toggleChat = useCallback(() => {
+		router.push("/rovo-app");
+	}, [router]);
+
 	const handleNavigate = useCallback(
 		(path: string) => {
 			router.push(path);
@@ -45,7 +42,7 @@ export function useTopNavigation() {
 	const handleSearchKeyDown = useCallback(
 		(event: KeyboardEvent<HTMLInputElement>) => {
 			if (event.key === "Enter") {
-				router.push("/search");
+				router.push("/rovo-app");
 				setIsSearchFocused(false);
 			}
 			if (event.key === "Escape") {
@@ -56,7 +53,7 @@ export function useTopNavigation() {
 	);
 
 	const handleSearchAllApps = useCallback(() => {
-		router.push("/search");
+		router.push("/rovo-app");
 	}, [router]);
 
 	const handleRecentItemClick = useCallback(() => {
@@ -66,7 +63,7 @@ export function useTopNavigation() {
 	const handleRecentSearchClick = useCallback(
 		(query: string) => {
 			setSearchValue(query);
-			router.push("/search");
+			router.push("/rovo-app");
 			setIsSearchFocused(false);
 		},
 		[router]

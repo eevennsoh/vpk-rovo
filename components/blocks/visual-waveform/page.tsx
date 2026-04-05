@@ -2,15 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FileUIPart } from "ai";
-import { FutureChatComposer } from "@/components/projects/future-chat/components/future-chat-composer";
+import { RovoAppComposer } from "@/components/projects/rovo-app/components/rovo-app-composer";
 import {
 	createRealtimeTextMessage,
 	updateRealtimeTextMessage,
 	upsertRealtimeMessage,
-} from "@/components/projects/future-chat/lib/future-chat-realtime-message-state";
+} from "@/components/projects/rovo-app/lib/rovo-app-realtime-message-state";
 import {
 	useRealtimeVoice,
-} from "@/components/projects/future-chat/hooks/use-realtime-voice";
+} from "@/components/projects/rovo-app/hooks/use-realtime-voice";
 import { createId } from "@/lib/utils";
 import type { RovoUIMessage } from "@/lib/rovo-ui-messages";
 import { GUI } from "@/components/utils/gui";
@@ -199,7 +199,7 @@ export default function VisualWaveformPage() {
 		) => {
 			const createdAt = new Date().toISOString();
 			const messageId =
-				options?.messageId ?? createId("future-chat-realtime");
+				options?.messageId ?? createId("rovo-app-realtime");
 			const message = createRealtimeTextMessage({
 				id: messageId,
 				role,
@@ -651,7 +651,7 @@ export default function VisualWaveformPage() {
 						</div>
 					) : null}
 					<div className="w-full max-w-[800px]">
-						<FutureChatComposer
+						<RovoAppComposer
 							composerStatus="ready"
 							errorMessage={inputError}
 							micStream={realtime.micStream}

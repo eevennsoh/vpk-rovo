@@ -54,16 +54,18 @@ export default function SearchSuggestionsPanel({
 		<div
 			ref={ref}
 			style={{
-				position: "fixed",
-				top: "6px",
+				position: "absolute",
+				top: "-4px",
 				left: "50%",
 				transform: "translateX(-50%)",
 				zIndex: 1000,
+				width: "780px",
+				maxWidth: "calc(100vw - 24px)",
 			}}
 		>
 			<div
 				style={{
-					width: "780px",
+					width: "100%",
 					height: "36px",
 					backgroundColor: token("elevation.surface.overlay"),
 					borderRadius: "8px",
@@ -97,7 +99,7 @@ export default function SearchSuggestionsPanel({
 
 			<div
 				style={{
-					width: "780px",
+					width: "100%",
 					height: "530px",
 					backgroundColor: token("elevation.surface.overlay"),
 					borderRadius: "12px",

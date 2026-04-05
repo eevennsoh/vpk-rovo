@@ -126,19 +126,19 @@ export default function TopNavigation({
 									/>
 								</InputGroup>
 							) : null}
-						</div>
 
-						<SearchSuggestionsPanel
-							ref={searchPanelRef}
-							isVisible={isSearchFocused}
-							searchValue={searchValue}
-							onSearchChange={setSearchValue}
-							onSearchKeyDown={handleSearchKeyDown}
-							onClose={handleCloseSearch}
-							onSearchAllApps={handleSearchAllApps}
-							onRecentItemClick={handleRecentItemClick}
-							onRecentSearchClick={handleRecentSearchClick}
-						/>
+							<SearchSuggestionsPanel
+								ref={searchPanelRef}
+								isVisible={isSearchFocused}
+								searchValue={searchValue}
+								onSearchChange={setSearchValue}
+								onSearchKeyDown={handleSearchKeyDown}
+								onClose={handleCloseSearch}
+								onSearchAllApps={handleSearchAllApps}
+								onRecentItemClick={handleRecentItemClick}
+								onRecentSearchClick={handleRecentSearchClick}
+							/>
+						</div>
 
 						<CreateButton windowWidth={windowWidth} />
 					</div>

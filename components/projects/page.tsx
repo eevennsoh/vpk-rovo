@@ -4,10 +4,8 @@ import React, { useState, useEffect } from "react";
 import { token } from "@/lib/tokens";
 import TopNavigation from "@/components/blocks/top-navigation/page";
 import Sidebar from "@/components/blocks/product-sidebar/page";
-import { RovoChatPanel } from "@/components/projects/fullscreen-chat";
 import FloatingRovoButton from "@/components/projects/shared/components/floating-rovo-button";
 import { useSidebar } from "@/app/contexts/context-sidebar";
-import { useRovoChat } from "@/app/contexts";
 
 type Product = "home" | "jira" | "confluence" | "rovo" | "search";
 
@@ -72,7 +70,6 @@ export default function AppLayout({
 }: Readonly<AppLayoutProps>) {
 	const isEmbedded = useIsEmbedded(embedded);
 	const { isVisible } = useSidebar();
-	const { isOpen, closeChat } = useRovoChat();
 	const sidebarWidth = isEmbedded || !isVisible ? "0px" : "230px";
 	const shellViewportHeight = isEmbedded ? "100dvh" : "100vh";
 	const shellContentHeight = isEmbedded ? "100dvh" : "calc(100vh - 48px)";
@@ -106,11 +103,6 @@ export default function AppLayout({
 					}}
 				>
 					{children}
-				</div>
-
-				{/* Rovo Chat Panel */}
-				<div data-shell-chrome="">
-					{!isEmbedded && isOpen ? <RovoChatPanel onClose={closeChat} product={product} embedded={isEmbedded} /> : null}
 				</div>
 			</div>
 

@@ -6623,9 +6623,6 @@ const BLOCK_DEMOS: Record<string, ComponentType> = {
   "app-sidebar": dynamic(() => import("./demos/blocks/app-sidebar-demo"), {
     ssr: false,
   }),
-  "make-artifact": dynamic(() => import("./demos/blocks/make-artifact-demo"), {
-    ssr: false,
-  }),
   "mermaid-diagram": dynamic(() => import("./demos/blocks/mermaid-diagram-demo"), {
     ssr: false,
   }),
@@ -6767,18 +6764,6 @@ const BLOCK_DEMOS: Record<string, ComponentType> = {
     ssr: false,
   }),
   "kanban-sprint": dynamic(() => import("./demos/blocks/kanban-sprint-demo"), {
-    ssr: false,
-  }),
-  "make-gallery": dynamic(() => import("./demos/blocks/make-gallery-demo"), {
-    ssr: false,
-  }),
-  "make-grid": dynamic(() => import("./demos/blocks/make-grid-demo"), {
-    ssr: false,
-  }),
-  "make-item": dynamic(() => import("./demos/blocks/make-item-demo"), {
-    ssr: false,
-  }),
-  "make-page": dynamic(() => import("./demos/blocks/make-page-demo"), {
     ssr: false,
   }),
   "visual-waveform": dynamic(
@@ -7054,23 +7039,9 @@ const BLOCK_VARIANT_DEMOS: Record<string, ComponentType> = {
 };
 
 const PROJECT_DEMOS: Record<string, ComponentType> = {
-  layout: dynamic(() => import("./demos/projects/layout-demo"), { ssr: false }),
-  make: dynamic(() => import("./demos/projects/make-demo"), { ssr: false }),
-  "sidebar-chat": dynamic(() => import("./demos/projects/sidebar-chat-demo"), {
+  "rovo-app": dynamic(() => import("./demos/projects/rovo-app-demo"), {
     ssr: false,
   }),
-  confluence: dynamic(() => import("./demos/projects/confluence-demo"), {
-    ssr: false,
-  }),
-  jira: dynamic(() => import("./demos/projects/jira-demo"), { ssr: false }),
-  "fullscreen-chat": dynamic(
-    () => import("./demos/projects/fullscreen-chat-demo"),
-    { ssr: false },
-  ),
-  "future-chat": dynamic(() => import("./demos/projects/future-chat-demo"), {
-    ssr: false,
-  }),
-  search: dynamic(() => import("./demos/projects/search-demo"), { ssr: false }),
 };
 
 const CHART_DEMOS: Record<string, ComponentType> = {

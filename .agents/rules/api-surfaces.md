@@ -22,31 +22,31 @@ paths:
 - `POST /api/agent-mode` — set agent mode
 - `GET  /api/agent-mode` — get agent mode
 
-### Future Chat
+### Rovo App
 
-- `POST /api/future-chat/chat` — send message
-- `GET  /api/future-chat/messages` — list messages
-- `POST /api/future-chat/messages` — create message
-- `POST /api/future-chat/suggestions` — generate suggestions
-- `POST /api/future-chat/cancel-deferred-tool` — cancel deferred tool
-- `GET  /api/future-chat/threads` — list threads
-- `POST /api/future-chat/threads` — create thread
-- `DELETE /api/future-chat/threads` — delete all threads
-- `GET  /api/future-chat/threads/:threadId` — get thread
-- `PUT  /api/future-chat/threads/:threadId` — update thread
-- `DELETE /api/future-chat/threads/:threadId` — delete thread
-- `POST /api/future-chat/detach` — detach stream
-- `GET  /api/future-chat/background-streams` — list background streams
-- `GET  /api/future-chat/runs/:threadId/stream` — stream run output
-- `POST /api/future-chat/runs/:threadId/detach` — detach run
-- `POST /api/future-chat/runs/:threadId/cancel` — cancel run
-- `GET  /api/future-chat/votes` — get votes
-- `PATCH /api/future-chat/votes` — update vote
-- `GET  /api/future-chat/documents` — list documents
-- `POST /api/future-chat/documents` — create document
-- `DELETE /api/future-chat/documents` — delete document
-- `POST /api/future-chat/files/upload` — upload file
-- `GET  /api/future-chat/files/:fileId` — get file
+- `POST /api/rovo-app/chat` — send message
+- `GET  /api/rovo-app/messages` — list messages
+- `POST /api/rovo-app/messages` — create message
+- `POST /api/rovo-app/suggestions` — generate suggestions
+- `POST /api/rovo-app/cancel-deferred-tool` — cancel deferred tool
+- `GET  /api/rovo-app/threads` — list threads
+- `POST /api/rovo-app/threads` — create thread
+- `DELETE /api/rovo-app/threads` — delete all threads
+- `GET  /api/rovo-app/threads/:threadId` — get thread
+- `PUT  /api/rovo-app/threads/:threadId` — update thread
+- `DELETE /api/rovo-app/threads/:threadId` — delete thread
+- `POST /api/rovo-app/detach` — detach stream
+- `GET  /api/rovo-app/background-streams` — list background streams
+- `GET  /api/rovo-app/runs/:threadId/stream` — stream run output
+- `POST /api/rovo-app/runs/:threadId/detach` — detach run
+- `POST /api/rovo-app/runs/:threadId/cancel` — cancel run
+- `GET  /api/rovo-app/votes` — get votes
+- `PATCH /api/rovo-app/votes` — update vote
+- `GET  /api/rovo-app/documents` — list documents
+- `POST /api/rovo-app/documents` — create document
+- `DELETE /api/rovo-app/documents` — delete document
+- `POST /api/rovo-app/files/upload` — upload file
+- `GET  /api/rovo-app/files/:fileId` — get file
 
 ### GenUI
 
@@ -162,21 +162,21 @@ Forward to backend. Grouped by feature:
 - `app/api/agent-mode/route.ts`
 - `app/api/chat/threads/route.ts`
 - `app/api/chat/threads/[threadId]/route.ts`
-- `app/api/future-chat/chat/route.ts`
-- `app/api/future-chat/messages/route.ts`
-- `app/api/future-chat/suggestions/route.ts`
-- `app/api/future-chat/cancel-deferred-tool/route.ts`
-- `app/api/future-chat/threads/route.ts`
-- `app/api/future-chat/threads/[threadId]/route.ts`
-- `app/api/future-chat/detach/route.ts`
-- `app/api/future-chat/background-streams/route.ts`
-- `app/api/future-chat/runs/[threadId]/stream/route.ts`
-- `app/api/future-chat/runs/[threadId]/detach/route.ts`
-- `app/api/future-chat/runs/[threadId]/cancel/route.ts`
-- `app/api/future-chat/votes/route.ts`
-- `app/api/future-chat/documents/route.ts`
-- `app/api/future-chat/files/upload/route.ts`
-- `app/api/future-chat/files/[fileId]/route.ts`
+- `app/api/rovo-app/chat/route.ts`
+- `app/api/rovo-app/messages/route.ts`
+- `app/api/rovo-app/suggestions/route.ts`
+- `app/api/rovo-app/cancel-deferred-tool/route.ts`
+- `app/api/rovo-app/threads/route.ts`
+- `app/api/rovo-app/threads/[threadId]/route.ts`
+- `app/api/rovo-app/detach/route.ts`
+- `app/api/rovo-app/background-streams/route.ts`
+- `app/api/rovo-app/runs/[threadId]/stream/route.ts`
+- `app/api/rovo-app/runs/[threadId]/detach/route.ts`
+- `app/api/rovo-app/runs/[threadId]/cancel/route.ts`
+- `app/api/rovo-app/votes/route.ts`
+- `app/api/rovo-app/documents/route.ts`
+- `app/api/rovo-app/files/upload/route.ts`
+- `app/api/rovo-app/files/[fileId]/route.ts`
 - `app/api/genui-chat/route.ts`
 - `app/api/genui-export/route.ts`
 - `app/api/make/runs/route.ts`

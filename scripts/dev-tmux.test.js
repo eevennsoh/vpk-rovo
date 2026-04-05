@@ -88,6 +88,66 @@ test("dev-tmux accepts explicit command with numeric pool size", () => {
 	fs.rmSync(tempDir, { recursive: true, force: true });
 });
 
+test("dev-tmux stop invokes worktree listener cleanup", () => {
+	const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dev-tmux-stop-test-"));
+	const tmuxPath = path.join(tempDir, "tmux");
+	const nodePath = path.join(tempDir, "node");
+	const cleanupLogPath = path.join(tempDir, "cleanup.log");
+
+	fs.writeFileSync(
+		tmuxPath,
+		[
+			"#!/usr/bin/env bash",
+			"",
+			"if [ \"$1\" = \"has-session\" ]; then",
+			"\texit 1",
+			"fi",
+			"",
+			"echo \"unexpected tmux invocation: $*\" >&2",
+			"exit 1",
+			"",
+		].join("\n"),
+		"utf8"
+	);
+	fs.chmodSync(tmuxPath, 0o755);
+
+	fs.writeFileSync(
+		nodePath,
+		[
+			"#!/usr/bin/env bash",
+			"",
+			"if [ \"$1\" = \"./scripts/cleanup-worktree-listeners.js\" ]; then",
+			"\techo \"$1\" >> \"$NODE_CLEANUP_LOG\"",
+			"\texit 0",
+			"fi",
+			"",
+			`exec "${process.execPath}" "$@"`,
+			"",
+		].join("\n"),
+		"utf8"
+	);
+	fs.chmodSync(nodePath, 0o755);
+
+	const output = execFileSync(scriptPath, ["stop"], {
+		cwd: repoRoot,
+		encoding: "utf8",
+		env: {
+			...process.env,
+			PATH: `${tempDir}:${process.env.PATH}`,
+			NODE_CLEANUP_LOG: cleanupLogPath,
+			ROVODEV_BILLING_URL: "https://example.invalid",
+		},
+	});
+
+	assert.match(output, /No tmux session named/);
+	assert.equal(
+		fs.readFileSync(cleanupLogPath, "utf8").trim(),
+		"./scripts/cleanup-worktree-listeners.js"
+	);
+
+	fs.rmSync(tempDir, { recursive: true, force: true });
+});
+
 test("findAvailableRovodevPorts skips occupied reserved ports", async () => {
 	const ports = await findAvailableRovodevPorts({
 		basePort: 8002,

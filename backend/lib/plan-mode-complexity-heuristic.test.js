@@ -78,7 +78,7 @@ describe("assessPromptComplexityForPlanMode", () => {
 
 		it("triggers for a complex feature design prompt", () => {
 			const result = assessPromptComplexityForPlanMode(
-				"design and implement artifact diffing, version rollback, and approval workflow for future-chat",
+				"design and implement artifact diffing, version rollback, and approval workflow for rovo-app",
 			);
 			assert.strictEqual(result.shouldPlan, true);
 			assert.ok(result.score >= 2);

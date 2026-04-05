@@ -9,7 +9,7 @@ import {
 	type ToolUIPart,
 	type UIMessage,
 } from "ai";
-import type { FutureChatPromptMode } from "@/lib/future-chat-types";
+import type { RovoAppPromptMode } from "@/lib/rovo-app-types";
 
 // ---------------------------------------------------------------------------
 // Routing decision types (v2)
@@ -225,7 +225,7 @@ export interface RovoMessageMetadata {
 	/** Existing user message reused when GPT-Realtime delegates to RovoDev */
 	delegatedFromId?: string;
 	/** Mode snapped when the user submitted the prompt. */
-	submittedMode?: FutureChatPromptMode;
+	submittedMode?: RovoAppPromptMode;
 	planApprovalDecision?: "auto-accept" | "continue-planning" | "custom";
 	planApprovalPlanKey?: string;
 	/** Short label shown in the user bubble instead of the full prompt text */

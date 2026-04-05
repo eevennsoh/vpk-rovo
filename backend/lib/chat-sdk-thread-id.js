@@ -19,7 +19,7 @@ function resolveChatSdkThreadId({
 		return explicitThreadId;
 	}
 
-	if (getNonEmptyString(chatSdkSource) === "future-chat") {
+	if (getNonEmptyString(chatSdkSource) === "rovo-app") {
 		return getNonEmptyString(id);
 	}
 

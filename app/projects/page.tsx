@@ -1,12 +1,16 @@
-"use client";
-
-import AppLayout from "@/components/projects/page";
-import ProjectsView from "@/components/projects/projects/page";
+import { HomeContent } from "@/app/home-content";
+import { getProjectComponentsWithUpdatedAt } from "@/lib/project-component-updated";
+import { getWebsiteLastUpdatedAt } from "@/lib/website-last-updated";
 
 export default function ProjectsPage() {
+	const lastUpdatedAt = getWebsiteLastUpdatedAt();
+	const projectComponents = getProjectComponentsWithUpdatedAt();
+
 	return (
-		<AppLayout product="jira">
-			<ProjectsView />
-		</AppLayout>
+		<HomeContent
+			category="projects"
+			lastUpdatedAt={lastUpdatedAt}
+			projectComponents={projectComponents}
+		/>
 	);
 }

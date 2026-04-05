@@ -225,7 +225,7 @@ AI_GATEWAY_URL_GOOGLE=https://ai-gateway.us-east-1.staging.atl-paas.net/v1/googl
 
 Add this alongside `AI_GATEWAY_URL` to enable Google routing for features that request `provider: "google"` (image generation) and for voice synthesis route derivation (`/api/sound-generation` -> Google synth endpoint) without changing the default chat model. See `guide-model-switch.md` for details.
 
-**Speech-to-text preset switching (Future Chat live voice mode):**
+**Speech-to-text preset switching (Rovo App live voice mode):**
 
 The current setup also writes a live-voice STT block into `.env.local`. Switch only `STT_PRESET` to choose between:
 

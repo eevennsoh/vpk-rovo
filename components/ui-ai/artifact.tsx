@@ -193,7 +193,7 @@ export const ArtifactContent = ({
 
 /* ---------------------------------------------------------------------------
  * ArtifactCard — high-level component built on GenerativeCard
- * Mirrors the design from future-chat-artifact-card.tsx
+ * Mirrors the design from rovo-app-artifact-card.tsx
  * --------------------------------------------------------------------------- */
 
 export type ArtifactKind = "text" | "code" | "image" | "sheet" | "react";
@@ -474,7 +474,7 @@ export function ArtifactCard({
 /* ---------------------------------------------------------------------------
  * ArtifactPanel — full-featured artifact viewer/editor with versioning,
  * annotations, and edit/preview modes.
- * Ported from FutureChatArtifactPanel.
+ * Ported from RovoAppArtifactPanel.
  * --------------------------------------------------------------------------- */
 
 function inferCodeLanguage(code: string): "html" | "css" | "tsx" {

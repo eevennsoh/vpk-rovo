@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
-import { getProjectPageTitle } from "@/lib/project-page-title";
+import { getCategoryDisplayName } from "@/lib/project-page-title";
 
 export const metadata: Metadata = {
-	title: getProjectPageTitle("projects"),
-	description: "Task and project management with Jira analytics",
+	title: getCategoryDisplayName("projects"),
+	description: "Browse VPK project demos and templates.",
 	openGraph: {
-		title: `${getProjectPageTitle("projects")} — VPK`,
-		description: "Task and project management with Jira analytics",
+		title: `${getCategoryDisplayName("projects")} — VPK`,
+		description: "Browse VPK project demos and templates.",
 	},
 };
 

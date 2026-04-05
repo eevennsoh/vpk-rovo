@@ -1,5 +1,5 @@
 import type { ParsedPlanWidgetPayload } from "@/components/projects/shared/lib/plan-widget";
-import type { FutureChatActiveRun } from "@/lib/future-chat-types";
+import type { RovoAppActiveRun } from "@/lib/rovo-app-types";
 import type { RovoUIMessage } from "@/lib/rovo-ui-messages";
 import { toNonEmptyString } from "@/lib/utils";
 
@@ -185,7 +185,7 @@ function hasSubstantiveAssistantFollowUp(
 
 export function getPlanApprovalState(
 	messages: ReadonlyArray<RovoUIMessage>,
-	activeRun: FutureChatActiveRun | null,
+	activeRun: RovoAppActiveRun | null,
 ): PlanApprovalState | null {
 	for (let index = messages.length - 1; index >= 0; index -= 1) {
 		const message = messages[index];

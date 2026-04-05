@@ -96,7 +96,7 @@ This work needs to integrate cleanly with `components/ui-ai/chain-of-thought.tsx
 ### Current implementation facts
 - `ChainOfThoughtStep` currently accepts `icon?: ComponentType<NewCoreIconProps>`.
 - This works for simple Atlaskit icons, but not for provider logos or VPK-branded render output.
-- `components/projects/future-chat/components/future-chat-messages.tsx` currently renders tool-call steps using a single generic `StepToolIcon`.
+- `components/projects/rovo-app/components/rovo-app-messages.tsx` currently renders tool-call steps using a single generic `StepToolIcon`.
 
 ### Required integration approach
 Add a small renderable icon slot to `ChainOfThoughtStep` so tool-call rows can render:
@@ -119,7 +119,7 @@ Apply the same shared resolver in both demo and production surfaces so behavior 
 
 ### Primary targets
 - `components/ui-ai/chain-of-thought.tsx`
-- `components/projects/future-chat/components/future-chat-messages.tsx`
+- `components/projects/rovo-app/components/rovo-app-messages.tsx`
 - shared standalone tool rendering under `components/projects/shared/thread-message/*`
 - existing icon/logo primitives in:
   - `components/ui/icon.tsx`
@@ -150,7 +150,7 @@ Examples:
 - Atlassian 1P providers resolve to the VPK icon treatment.
 - Unknown tools still render the generic wrench icon.
 - Demo and production thinking/tool-card surfaces use the same shared resolver.
-- Future chat tool-call rows no longer rely on a single generic `StepToolIcon` when a more specific resolved icon is available.
+- Rovo App tool-call rows no longer rely on a single generic `StepToolIcon` when a more specific resolved icon is available.
 - `ChainOfThoughtStep` can render both icon-component and logo-style resolved outputs.
 
 ## Deliverable Shape

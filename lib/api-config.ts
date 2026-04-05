@@ -34,16 +34,16 @@ export const API_ENDPOINTS = {
 	CHAT_CANCEL: `${API_BASE_URL}/api/chat-cancel`,
 	HEALTH: `${API_BASE_URL}/api/health`,
 	CHAT_THREADS: `${API_BASE_URL}/api/chat/threads`,
-	FUTURE_CHAT_CHAT: `${API_BASE_URL}/api/future-chat/chat`,
-	FUTURE_CHAT_SUGGESTIONS: `${API_BASE_URL}/api/future-chat/suggestions`,
-	FUTURE_CHAT_MESSAGES: `${API_BASE_URL}/api/future-chat/messages`,
-	FUTURE_CHAT_THREADS: `${API_BASE_URL}/api/future-chat/threads`,
-	FUTURE_CHAT_VOTES: `${API_BASE_URL}/api/future-chat/votes`,
-	FUTURE_CHAT_DOCUMENTS: `${API_BASE_URL}/api/future-chat/documents`,
-	FUTURE_CHAT_DETACH: `${API_BASE_URL}/api/future-chat/detach`,
-	FUTURE_CHAT_BACKGROUND_STREAMS: `${API_BASE_URL}/api/future-chat/background-streams`,
-	FUTURE_CHAT_RUNS: `${API_BASE_URL}/api/future-chat/runs`,
-	FUTURE_CHAT_FILE_UPLOAD: `${API_BASE_URL}/api/future-chat/files/upload`,
+	ROVO_APP_CHAT: `${API_BASE_URL}/api/rovo-app/chat`,
+	ROVO_APP_SUGGESTIONS: `${API_BASE_URL}/api/rovo-app/suggestions`,
+	ROVO_APP_MESSAGES: `${API_BASE_URL}/api/rovo-app/messages`,
+	ROVO_APP_THREADS: `${API_BASE_URL}/api/rovo-app/threads`,
+	ROVO_APP_VOTES: `${API_BASE_URL}/api/rovo-app/votes`,
+	ROVO_APP_DOCUMENTS: `${API_BASE_URL}/api/rovo-app/documents`,
+	ROVO_APP_DETACH: `${API_BASE_URL}/api/rovo-app/detach`,
+	ROVO_APP_BACKGROUND_STREAMS: `${API_BASE_URL}/api/rovo-app/background-streams`,
+	ROVO_APP_RUNS: `${API_BASE_URL}/api/rovo-app/runs`,
+	ROVO_APP_FILE_UPLOAD: `${API_BASE_URL}/api/rovo-app/files/upload`,
 	AGENT_MODE: `${API_BASE_URL}/api/agent-mode`,
 	chatThreads: (limit?: number) =>
 		`${API_BASE_URL}/api/chat/threads${
@@ -51,59 +51,23 @@ export const API_ENDPOINTS = {
 		}`,
 	chatThread: (threadId: string) =>
 		`${API_BASE_URL}/api/chat/threads/${encodeURIComponent(threadId)}`,
-	futureChatThreads: (limit?: number) =>
-		`${API_BASE_URL}/api/future-chat/threads${
+	rovoAppThreads: (limit?: number) =>
+		`${API_BASE_URL}/api/rovo-app/threads${
 			typeof limit === "number" ? `?limit=${encodeURIComponent(String(limit))}` : ""
 		}`,
-	futureChatMessages: (threadId: string) =>
-		`${API_BASE_URL}/api/future-chat/messages?threadId=${encodeURIComponent(threadId)}`,
-	futureChatThread: (threadId: string) =>
-		`${API_BASE_URL}/api/future-chat/threads/${encodeURIComponent(threadId)}`,
-	futureChatRunStream: (threadId: string) =>
-		`${API_BASE_URL}/api/future-chat/runs/${encodeURIComponent(threadId)}/stream`,
-	futureChatRunDetach: (threadId: string) =>
-		`${API_BASE_URL}/api/future-chat/runs/${encodeURIComponent(threadId)}/detach`,
-	futureChatRunCancel: (threadId: string) =>
-		`${API_BASE_URL}/api/future-chat/runs/${encodeURIComponent(threadId)}/cancel`,
-	futureChatFile: (fileId: string) =>
-		`${API_BASE_URL}/api/future-chat/files/${encodeURIComponent(fileId)}`,
-	MAKE_RUNS: `${API_BASE_URL}/api/make/runs`,
-	MAKE_SKILLS: `${API_BASE_URL}/api/make/skills`,
-	MAKE_AGENTS: `${API_BASE_URL}/api/make/agents`,
-	MAKE_TOOLS: `${API_BASE_URL}/api/make/tools`,
-	MAKE_CONFIG_SUMMARY: `${API_BASE_URL}/api/make/config-summary`,
-	makeRuns: (limit?: number) =>
-		`${API_BASE_URL}/api/make/runs${
-			typeof limit === "number" ? `?limit=${encodeURIComponent(String(limit))}` : ""
-		}`,
-	makeRun: (runId: string) =>
-		`${API_BASE_URL}/api/make/runs/${encodeURIComponent(runId)}`,
-	makeRunStream: (runId: string) =>
-		`${API_BASE_URL}/api/make/runs/${encodeURIComponent(runId)}/stream`,
-	makeRunDirectives: (runId: string) =>
-		`${API_BASE_URL}/api/make/runs/${encodeURIComponent(runId)}/directives`,
-	makeRunSummary: (runId: string) =>
-		`${API_BASE_URL}/api/make/runs/${encodeURIComponent(runId)}/summary`,
-	makeRunTasks: (runId: string) =>
-		`${API_BASE_URL}/api/make/runs/${encodeURIComponent(runId)}/tasks`,
-	makeRunShare: (runId: string) =>
-		`${API_BASE_URL}/api/make/runs/${encodeURIComponent(runId)}/share`,
-	makeSkill: (name: string) =>
-		`${API_BASE_URL}/api/make/skills/${encodeURIComponent(name)}`,
-	makeAgent: (name: string) =>
-		`${API_BASE_URL}/api/make/agents/${encodeURIComponent(name)}`,
-	makeSkillRaw: (name: string) =>
-		`${API_BASE_URL}/api/make/skills/${encodeURIComponent(name)}/raw`,
-	makeAgentRaw: (name: string) =>
-		`${API_BASE_URL}/api/make/agents/${encodeURIComponent(name)}/raw`,
-	makeRunPublish: (runId: string) =>
-		`${API_BASE_URL}/api/make/runs/${encodeURIComponent(runId)}/publish`,
-	MAKE_FORGE_SITES: `${API_BASE_URL}/api/make/forge/sites`,
-	MAKE_FORGE_DEV_SPACES: `${API_BASE_URL}/api/make/forge/dev-spaces`,
+	rovoAppMessages: (threadId: string) =>
+		`${API_BASE_URL}/api/rovo-app/messages?threadId=${encodeURIComponent(threadId)}`,
+	rovoAppThread: (threadId: string) =>
+		`${API_BASE_URL}/api/rovo-app/threads/${encodeURIComponent(threadId)}`,
+	rovoAppRunStream: (threadId: string) =>
+		`${API_BASE_URL}/api/rovo-app/runs/${encodeURIComponent(threadId)}/stream`,
+	rovoAppRunDetach: (threadId: string) =>
+		`${API_BASE_URL}/api/rovo-app/runs/${encodeURIComponent(threadId)}/detach`,
+	rovoAppRunCancel: (threadId: string) =>
+		`${API_BASE_URL}/api/rovo-app/runs/${encodeURIComponent(threadId)}/cancel`,
+	rovoAppFile: (fileId: string) =>
+		`${API_BASE_URL}/api/rovo-app/files/${encodeURIComponent(fileId)}`,
 	SPEECH_TRANSCRIPTION: `${API_BASE_URL}/api/speech-transcription`,
-	APPS: `${API_BASE_URL}/api/apps`,
-	app: (slug: string) =>
-		`${API_BASE_URL}/api/apps/${encodeURIComponent(slug)}`,
 	WEB_PROXY: `${API_BASE_URL}/api/web-proxy`,
 	CHROMIUM_PREVIEW: `${API_BASE_URL}/api/chromium-preview`,
 	CHROMIUM_PREVIEW_STREAM: `${API_BASE_URL}/api/chromium-preview/stream`,
