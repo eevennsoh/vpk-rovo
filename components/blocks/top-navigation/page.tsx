@@ -39,7 +39,6 @@ export default function TopNavigation({
 		handleSearchAllApps,
 		handleRecentItemClick,
 		handleRecentSearchClick,
-		handleCloseSearch,
 		handleFocusSearch,
 		handleToggleAppSwitcher,
 		handleCloseAppSwitcher,
@@ -107,36 +106,30 @@ export default function TopNavigation({
 							className="search-box-wrapper"
 							style={{ position: "relative", flex: 1 }}
 						>
-							{!isSearchFocused ? (
-								<InputGroup className="h-7 rounded-md bg-bg-input shadow-none hover:bg-bg-input-hovered">
-									<InputGroupAddon align="inline-start">
-										<span className="size-4 shrink-0 text-icon-subtle">
-											<SearchIcon label="" spacing="none" />
-										</span>
-									</InputGroupAddon>
-									<InputGroupInput
-										type="search"
-										aria-label="Search"
-										value={searchValue}
-										onChange={(event) => setSearchValue(event.currentTarget.value)}
-										onFocus={handleFocusSearch}
-										onKeyDown={handleSearchKeyDown}
-										placeholder="Search"
-										className="h-full text-sm placeholder:text-sm [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden [&::-webkit-search-results-button]:hidden [&::-webkit-search-results-decoration]:hidden"
-									/>
-								</InputGroup>
-							) : null}
-
+							<InputGroup className="h-7 rounded-md bg-bg-input shadow-none hover:bg-bg-input-hovered">
+								<InputGroupAddon align="inline-start">
+									<span className="size-4 shrink-0 text-icon-subtle">
+										<SearchIcon label="" spacing="none" />
+									</span>
+								</InputGroupAddon>
+								<InputGroupInput
+									type="search"
+									aria-label="Search"
+									value={searchValue}
+									onChange={(event) => setSearchValue(event.currentTarget.value)}
+									onFocus={handleFocusSearch}
+									onKeyDown={handleSearchKeyDown}
+									placeholder="Search"
+									className="h-full text-sm placeholder:text-sm [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden [&::-webkit-search-results-button]:hidden [&::-webkit-search-results-decoration]:hidden"
+								/>
+							</InputGroup>
 							<SearchSuggestionsPanel
-								ref={searchPanelRef}
+								anchorRef={searchContainerRef}
 								isVisible={isSearchFocused}
-								searchValue={searchValue}
-								onSearchChange={setSearchValue}
-								onSearchKeyDown={handleSearchKeyDown}
-								onClose={handleCloseSearch}
 								onSearchAllApps={handleSearchAllApps}
 								onRecentItemClick={handleRecentItemClick}
 								onRecentSearchClick={handleRecentSearchClick}
+								panelRef={searchPanelRef}
 							/>
 						</div>
 

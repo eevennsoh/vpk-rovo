@@ -2221,10 +2221,10 @@ export function RovoAppShell({
 								"flex h-12 shrink-0 items-center border-b px-3 transition-[padding] duration-medium ease-in-out",
 								!chat.sidebarOpen && "pl-44",
 							)}
-							style={{
-								borderColor: token("color.border"),
-								backgroundColor: token("elevation.surface"),
-								viewTransitionName: "persistent-header" as never,
+								style={{
+									borderColor: token("color.border"),
+									backgroundColor: token("elevation.surface"),
+									viewTransitionName: "persistent-header" as never,
 							}}
 						>
 							<div className="relative flex min-w-0 flex-1 items-center justify-start gap-2">
@@ -2232,36 +2232,30 @@ export function RovoAppShell({
 									ref={nav.searchContainerRef}
 									className="relative w-full max-w-[680px]"
 								>
-									{!nav.isSearchFocused ? (
-										<InputGroup className="h-7 rounded-md bg-bg-input shadow-none hover:bg-bg-input-hovered">
-											<InputGroupAddon align="inline-start">
-												<span className="size-4 shrink-0 text-icon-subtle">
-													<SearchIcon label="" spacing="none" />
-												</span>
-											</InputGroupAddon>
-											<InputGroupInput
-												type="search"
-												aria-label="Search"
-												value={nav.searchValue}
-												onChange={(event) => nav.setSearchValue(event.currentTarget.value)}
-												onFocus={nav.handleFocusSearch}
-												onKeyDown={nav.handleSearchKeyDown}
-												placeholder="Search"
-												className="h-full text-sm placeholder:text-sm [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden [&::-webkit-search-results-button]:hidden [&::-webkit-search-results-decoration]:hidden"
-											/>
-										</InputGroup>
-									) : null}
-
+									<InputGroup className="h-7 rounded-md bg-bg-input shadow-none hover:bg-bg-input-hovered">
+										<InputGroupAddon align="inline-start">
+											<span className="size-4 shrink-0 text-icon-subtle">
+												<SearchIcon label="" spacing="none" />
+											</span>
+										</InputGroupAddon>
+										<InputGroupInput
+											type="search"
+											aria-label="Search"
+											value={nav.searchValue}
+											onChange={(event) => nav.setSearchValue(event.currentTarget.value)}
+											onFocus={nav.handleFocusSearch}
+											onKeyDown={nav.handleSearchKeyDown}
+											placeholder="Search"
+											className="h-full text-sm placeholder:text-sm [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden [&::-webkit-search-results-button]:hidden [&::-webkit-search-results-decoration]:hidden"
+										/>
+									</InputGroup>
 									<SearchSuggestionsPanel
-										ref={nav.searchPanelRef}
+										anchorRef={nav.searchContainerRef}
 										isVisible={nav.isSearchFocused}
-										searchValue={nav.searchValue}
-										onSearchChange={nav.setSearchValue}
-										onSearchKeyDown={nav.handleSearchKeyDown}
-										onClose={nav.handleCloseSearch}
 										onSearchAllApps={nav.handleSearchAllApps}
 										onRecentItemClick={nav.handleRecentItemClick}
 										onRecentSearchClick={nav.handleRecentSearchClick}
+										panelRef={nav.searchPanelRef}
 									/>
 								</div>
 

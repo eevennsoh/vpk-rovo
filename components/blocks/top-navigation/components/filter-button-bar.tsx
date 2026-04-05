@@ -9,24 +9,16 @@ import PersonIcon from "@atlaskit/icon/core/person";
 
 export default function FilterButtonBar(): JSX.Element {
 	return (
-		<div
-			style={{
-				padding: "0 8px 12px",
-				display: "flex",
-				justifyContent: "space-between",
-				alignItems: "center",
-				gap: "100px",
-			}}
-		>
-			<div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-				<Button className="gap-2" variant="secondary">
+		<div className="flex flex-col gap-2 px-2 pb-3 sm:flex-row sm:items-center sm:justify-between">
+			<div className="flex min-w-0 flex-wrap items-center gap-2">
+				<Button className="max-w-full gap-2" variant="secondary">
 					<FolderClosedIcon label="" size="small" />
-					<span>Space</span>
+					<span className="truncate">Space</span>
 					<ChevronDownIcon label="" size="small" />
 				</Button>
-				<Button className="gap-2" variant="secondary">
+				<Button className="max-w-full gap-2" variant="secondary">
 					<PersonIcon label="" size="small" />
-					<span>Contributor</span>
+					<span className="truncate">Contributor</span>
 					<ChevronDownIcon label="" size="small" />
 				</Button>
 				<Button aria-label="Customize filters" size="icon" variant="ghost">
@@ -34,14 +26,14 @@ export default function FilterButtonBar(): JSX.Element {
 				</Button>
 			</div>
 
-			<div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-				<Button className="gap-2" variant="secondary">
+			<div className="flex min-w-0 flex-wrap items-center gap-2 sm:justify-end">
+				<Button className="max-w-full gap-2" variant="secondary">
 					<Image src="/3p/google-drive/20.svg" alt="" aria-hidden width={20} height={20} />
-					<span>Google Drive</span>
+					<span className="truncate">Google Drive</span>
 				</Button>
-				<Button className="gap-2" variant="secondary">
+				<Button className="max-w-full gap-2" variant="secondary">
 					<Image src="/3p/slack/20.svg" alt="" aria-hidden width={20} height={20} />
-					<span>Slack</span>
+					<span className="truncate">Slack</span>
 				</Button>
 				<Button variant="secondary">+47</Button>
 			</div>

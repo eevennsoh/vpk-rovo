@@ -19,7 +19,7 @@ export default function RecentItemCard({
 	return (
 		<button
 			type="button"
-			className="flex w-full items-start gap-3 rounded-md border-none bg-transparent px-3 py-2 text-left transition-colors duration-[var(--duration-normal)] ease-[var(--ease-out)] hover:bg-bg-neutral-subtle-hovered"
+			className="flex w-full flex-wrap items-start gap-3 rounded-md border-none bg-transparent px-3 py-2 text-left transition-colors duration-[var(--duration-normal)] ease-[var(--ease-out)] hover:bg-bg-neutral-subtle-hovered sm:flex-nowrap"
 			onClick={onClick}
 		>
 			<div className="mt-0.5">
@@ -34,7 +34,7 @@ export default function RecentItemCard({
 				</div>
 			</div>
 			<div
-				className="shrink-0 whitespace-nowrap text-text-subtlest"
+				className="w-full pl-7 text-text-subtlest sm:w-auto sm:pl-0 sm:text-right"
 				style={{ font: token("font.body.small") }}
 			>
 				{timestamp}
