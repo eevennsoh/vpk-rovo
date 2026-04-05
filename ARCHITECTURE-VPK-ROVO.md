@@ -1,730 +1,697 @@
-# VPK-Rovo Architecture: Hermes Agent + Future-Chat Integration
+# VPK-Rovo architecture: RovoDev Serve loop + Hermes feature integration
 
-> **Status:** Brainstorm / Prototype Design  
-> **Date:** 2026-04-05  
-> **Goal:** Use VPK-Rovo (cloned from VPK-rovodev) as the primary web GUI for Hermes Agent, with rovo-app as the main messaging interface.
+> **Status:** Revised prototype plan
+> **Date:** April 6, 2026
+> **Goal:** Build the Rovo app UI in `vpk-rovo`, keep `rovodev serve`
+> (`acra`) as the primary interactive agent loop, and integrate Hermes Agent
+> closely for memory, skills, and scheduled jobs.
 
 ---
 
-## 1. High-Level Architecture
+## 1. Working model
 
-```
+The key architectural decision is:
+
+- **Interactive chat stays on `rovodev serve`.**
+- **Hermes is integrated as a first-class subsystem for memory, skills, and
+  scheduled jobs.**
+
+This keeps the current `rovo-app` behavior aligned with the existing
+RovoDev-specific stream and approval model, while still making Hermes a core
+part of the product.
+
+This is not "Hermes replaces the loop with a thin VPK bridge." It is
+"RovoDev remains the loop owner, Hermes powers important app capabilities."
+
+---
+
+## 2. High-level architecture
+
+```text
 ┌──────────────────────────────────────────────────────────────┐
-│                     VPK-Rovo (Next.js)                       │
+│                        VPK-Rovo UI                           │
 │                                                              │
-│  ┌──────────────┐  ┌───────────┐  ┌──────────┐  ┌────────┐  │
-│  │  rovo-app │  │ Memories  │  │  Skills  │  │  Cron  │  │
-│  │  (messaging) │  │ (panel)   │  │ (browser)│  │ (mgmt) │  │
-│  └──────┬───────┘  └─────┬─────┘  └────┬─────┘  └───┬────┘  │
-│         │                │             │             │       │
-│  ┌──────▼────────────────▼─────────────▼─────────────▼────┐  │
-│  │              VPK-Rovo Backend (Node.js)                 │  │
-│  │                                                         │  │
-│  │  ┌──────────────┐  ┌─────────────┐  ┌───────────────┐  │  │
-│  │  │  SSE Bridge  │  │ REST Proxy  │  │ Session Mgr   │  │  │
-│  │  │  OpenAI →    │  │ /memories   │  │ threadId ↔    │  │  │
-│  │  │  AI SDK fmt  │  │ /skills     │  │ hermesSession │  │  │
-│  │  │              │  │ /jobs       │  │               │  │  │
-│  │  └──────┬───────┘  └──────┬──────┘  └──────┬────────┘  │  │
-│  └─────────┼─────────────────┼─────────────────┼───────────┘  │
-└────────────┼─────────────────┼─────────────────┼──────────────┘
-             │                 │                 │
-             ▼                 ▼                 ▼
-┌────────────────────────────────────────────────────────────────┐
-│                 Hermes Agent (Local, port 8080)                │
-│                                                                │
-│  POST /v1/chat/completions   (SSE streaming, OpenAI-compat)   │
-│  GET  /v1/models             (available models)                │
-│  POST /v1/responses          (stored responses)                │
-│  GET  /v1/jobs               (cron CRUD)                       │
-│  POST /v1/jobs                                                 │
-│  PATCH /v1/jobs/{id}                                           │
-│  DELETE /v1/jobs/{id}                                           │
-│  POST /v1/jobs/{id}/run      (trigger now)                     │
-│  GET  /health                                                  │
-│  + memory via tool calls in conversation                       │
-│  + skills via tool calls + file-based discovery                │
-└────────────────────────────────────────────────────────────────┘
+│  ┌──────────────┐  ┌────────────┐  ┌───────────┐  ┌───────┐ │
+│  │   rovo-app   │  │  Memories  │  │  Skills   │  │ Jobs  │ │
+│  │    (chat)    │  │   panel    │  │  browser  │  │ /Cron │ │
+│  └──────┬───────┘  └─────┬──────┘  └─────┬─────┘  └───┬───┘ │
+│         │                │               │              │     │
+│  ┌──────▼────────────────▼───────────────▼──────────────▼───┐ │
+│  │                 VPK-Rovo Express backend                 │ │
+│  │                                                          │ │
+│  │  - Rovo app managed runs / threads / stream attach      │ │
+│  │  - RovoDev adapter for interactive chat                 │ │
+│  │  - Hermes adapter for memory / skills / jobs           │ │
+│  │  - Optional linking of jobs back into Rovo threads     │ │
+│  └──────────────┬───────────────────────────┬──────────────┘ │
+└─────────────────┼───────────────────────────┼────────────────┘
+                  │                           │
+                  ▼                           ▼
+┌────────────────────────────────┐   ┌──────────────────────────┐
+│   RovoDev Serve (`acra`)       │   │   Hermes Agent          │
+│   Primary interactive loop     │   │   Feature substrate     │
+│                                │   │                          │
+│   - /v3/set_chat_message       │   │   - MEMORY.md / USER.md  │
+│   - /v3/stream_chat            │   │   - skills + config      │
+│   - /v3/resume_tool_calls      │   │   - /api/jobs            │
+│   - /v3/sessions/*             │   │   - optional providers   │
+│   - /healthcheck               │   │                          │
+└────────────────────────────────┘   └──────────────────────────┘
 ```
 
-### How It Works
+### What each runtime owns
 
-1. **VPK-Rovo frontend** (Next.js) renders the chat UI, memory panel, skills browser, and cron manager
-2. **VPK-Rovo backend** (Node.js/Express) acts as a thin proxy + SSE protocol translator
-3. **Hermes Agent** runs locally as the AI backend — handles LLM inference, tool execution, memory, skills, and cron
+**RovoDev Serve owns:**
+
+- interactive chat execution
+- streaming response semantics
+- paused tool calls and resume flows
+- approval / deferred-question mechanics
+- session restore and current-session state
+- the live agent loop that `rovo-app` already expects
+
+**Hermes owns:**
+
+- persistent memory files and related config
+- skill discovery, external skill directories, and disabled-skill config
+- scheduled jobs / cron execution
+- optional future provider-backed memory/search capabilities
+
+**VPK-Rovo backend owns:**
+
+- app-specific thread and run persistence
+- the Rovo app HTTP contract used by the frontend
+- attachment of frontend surfaces to the correct runtime
+- optional linking across subsystems, such as job output into threads
 
 ---
 
-## 2. Authentication (Local Prototype)
+## 3. Why `rovodev serve` stays in the loop
 
-Since everything runs locally, **no auth token is needed**.
+`rovo-app` is not a generic OpenAI chat client. It already depends on a richer
+event model and loop behavior than Hermes's OpenAI-compatible chat API
+currently provides.
 
-Hermes API server's `_check_auth()` method allows all requests when no `api_key` is configured:
+For the prototype, `rovodev serve` remains the **local stand-in agent loop**
+for interactive use because it already supports the following product behaviors:
 
-```python
-# gateway/platforms/api_server.py
-def _check_auth(self, request):
-    if not self._api_key:
-        return None  # No key configured — allow all requests
-```
+- resumable sessions
+- managed streaming runs
+- paused tool calls
+- explicit resume decisions
+- read-only / full agent modes
+- richer event and approval flows than plain chat-completions SSE
 
-**For the prototype:**
-- Omit `api_key` from Hermes gateway config (or set it to empty string)
-- VPK-Rovo backend connects to `http://localhost:8080` without auth headers
-- No CORS issues since backend-to-backend (Node.js → Hermes), not browser-to-Hermes
-
-**If you later want basic security** (e.g., shared machine):
-- Set `api_key: "some-local-secret"` in Hermes config
-- Store the same secret in VPK-Rovo's `.env.local` as `HERMES_API_KEY`
-- Backend passes it as `Authorization: Bearer ${process.env.HERMES_API_KEY}`
+That makes `rovodev serve` the right runtime for the **interactive Rovo app
+surface**, even while Hermes is integrated closely elsewhere in the product.
 
 ---
 
-## 3. SSE Bridge: The Core Integration Piece
+## 4. Hermes's role in the product
 
-The bridge translates Hermes's OpenAI-format SSE into AI SDK's `uiMessageChunkSchema` that rovo-app expects.
+Hermes is still a core part of the architecture. The difference is that it is
+introduced through well-scoped app capabilities instead of replacing the
+interactive loop in one step.
 
-### 3.1 Format Translation
+### 4.1 Memory
 
-```
-Hermes SSE (OpenAI format)                    AI SDK format (VPK expects)
-──────────────────────────────────            ──────────────────────────────────
-data: {"choices":[{                           data: {"type":"text",
-  "delta":{"content":"Hello"}}]}                    "text":"Hello"}
+Hermes provides the memory model:
 
-data: {"choices":[{                           data: {"type":"tool-call",
-  "delta":{"tool_calls":[{                          "toolName":"bash",
-    "index":0,                                      "args":"{\"cmd\":\"ls\"}",
-    "function":{                                    "toolCallId":"call_abc123"}
-      "name":"bash",
-      "arguments":"{\"cmd\":\"ls\"}"
-    },
-    "id":"call_abc123"
-  }]}}]}
+- `~/.hermes/memories/MEMORY.md`
+- `~/.hermes/memories/USER.md`
+- bounded entries separated by `§`
+- add / replace / remove semantics via the Hermes memory tool
 
-data: {"choices":[{                           data: {"type":"tool-result",
-  "delta":{"role":"tool",                           "toolName":"bash",
-    "tool_call_id":"call_abc123",                   "toolCallId":"call_abc123",
-    "content":"file1.txt\nfile2.txt"}}]}            "result":"file1.txt\nfile2.txt"}
+The Rovo app gets a dedicated Memory surface backed by Hermes state.
 
-data: [DONE]                                  data: {"type":"finish",
-                                                    "finishReason":"stop"}
-```
+### 4.2 Skills
 
-### 3.2 Bridge Implementation (Node.js)
+Hermes provides the skills model:
 
-Lives in `backend/lib/hermes-sse-bridge.js`:
+- `~/.hermes/skills/` as the primary local skills directory
+- optional `skills.external_dirs` for shared read-only discovery
+- `config.yaml` disabled lists for skill enable / disable behavior
+- `SKILL.md` progressive-disclosure structure
 
-```javascript
-import { Transform } from 'stream';
+The Rovo app gets a Skills browser and configuration UI backed by Hermes.
 
-const HERMES_BASE_URL = process.env.HERMES_URL || 'http://localhost:8080';
+### 4.3 Jobs / cron
 
-/**
- * Proxy a chat request to Hermes and transform the SSE stream
- * from OpenAI format to AI SDK uiMessageChunkSchema format.
- */
-export async function streamHermesChat(req, res) {
-  const { messages, threadId, model } = req.body;
+Scheduled tasks are a **first-class Rovo app capability**.
 
-  const hermesRes = await fetch(`${HERMES_BASE_URL}/v1/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Hermes-Session-Id': threadId || '',
-    },
-    body: JSON.stringify({
-      messages,
-      model: model || undefined,
-      stream: true,
-    }),
-  });
+Hermes already has a job system, so Rovo app Jobs/Cron should be backed by
+Hermes job execution and CRUD endpoints instead of inventing a parallel
+scheduler inside `vpk-rovo`.
 
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
+This is not a side feature. Jobs belong in the app.
 
-  const reader = hermesRes.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
+### 4.4 Context and grounding
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
+Hermes has a stronger context model than the current app surface. On top of the
+existing interactive loop, `vpk-rovo` should add:
 
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split('\n');
-    buffer = lines.pop() || '';
+- recursive project context files
+- global and project `SOUL.md`-style personality / behavior overlays
+- explicit `@` references for files, folders, URLs, diffs, and notes
+- thread-scoped context bundles that can be reused across turns
 
-    for (const line of lines) {
-      if (!line.startsWith('data: ')) continue;
-      const data = line.slice(6).trim();
+This belongs in the Rovo app composer, attachment flow, and thread metadata.
 
-      if (data === '[DONE]') {
-        res.write(`data: ${JSON.stringify({ type: 'finish', finishReason: 'stop' })}\n\n`);
-        continue;
-      }
+### 4.5 Checkpoints and rollback
 
-      try {
-        const chunk = JSON.parse(data);
-        const delta = chunk.choices?.[0]?.delta;
-        if (!delta) continue;
+Hermes-style filesystem checkpoints are worth importing into the app as a
+product feature, not just a hidden runtime primitive.
 
-        // Text delta
-        if (delta.content) {
-          res.write(`data: ${JSON.stringify({ type: 'text', text: delta.content })}\n\n`);
-        }
+`vpk-rovo` should expose:
 
-        // Tool call
-        if (delta.tool_calls) {
-          for (const tc of delta.tool_calls) {
-            res.write(`data: ${JSON.stringify({
-              type: 'tool-call',
-              toolName: tc.function?.name || '',
-              args: tc.function?.arguments || '',
-              toolCallId: tc.id || '',
-            })}\n\n`);
-          }
-        }
-      } catch (e) {
-        // skip malformed chunks
-      }
-    }
-  }
+- thread-scoped run snapshots
+- diff previews between checkpoints
+- restore / rollback actions
+- checkpoint awareness for generated artifacts and workspace files
 
-  res.end();
-}
-```
+This should likely live under the existing Artifacts surface or a closely
+related recovery/history view.
 
-### 3.3 Session Mapping
+### 4.6 Provider routing and auxiliary runtimes
 
-| Concept | VPK-Rovo | Hermes |
-|---------|----------|--------|
-| Conversation ID | `threadId` (URL path param) | `X-Hermes-Session-Id` header |
-| Storage | Backend thread manager | Hermes SessionDB (SQLite) |
-| History | Managed by backend | Managed by Hermes |
+Hermes's provider-routing model is worth surfacing in the app. The value is not
+just fallback logic, but explicit control over which model/provider handles:
 
-**Strategy:** Use the VPK thread ID directly as the Hermes session ID. Pass it via the `X-Hermes-Session-Id` header. Hermes will create/resume sessions automatically.
+- interactive chat
+- vision
+- browser extraction
+- summarization
+- TTS / voice
+- scheduled jobs
+- research workloads
+
+This should become a visible control plane in Settings rather than remaining
+implicit backend configuration.
+
+### 4.7 Hooks, plugins, and startup automation
+
+On top of `rovodev serve`, the app should add a product-facing integration
+surface for:
+
+- event hooks
+- packaged plugin/integration bundles
+- startup / bootstrap automation similar to a `BOOT.md` workflow
+- configuration and visibility for advanced automation behavior
+
+The goal is to make these behaviors configurable from the app instead of hiding
+them in local config files.
+
+### 4.8 Programmatic code execution
+
+Hermes's code-execution pattern is worth bringing into the product as an
+advanced capability. This is especially useful for:
+
+- compact multi-step automations
+- data wrangling and transformations
+- research pipelines
+- richer scheduled jobs
+
+This should be treated as a backend capability surfaced through existing run and
+message flows, not as a separate raw developer REPL.
+
+### 4.9 Research workbench
+
+Because research-ready behavior is a stated goal, `vpk-rovo` should add a
+dedicated product surface for:
+
+- batch processing
+- run inspection
+- trajectory export
+- dataset generation
+- RL / Atropos-oriented experiment workflows
+
+This is distinct from interactive chat and should be modeled as its own app
+surface.
 
 ---
 
-## 4. Memory UI Design
+## 5. Runtime and authentication
 
-### 4.1 How Hermes Memory Works
+In local development, the browser should continue to talk only to `vpk-rovo`.
+The backend fans out to the two local runtimes.
 
-Hermes uses a simple file-based memory system:
+### Recommended local ports
 
-- **Storage:** Plain text files at `~/.hermes/memories/`
-- **Two targets (collections):**
-  - `MEMORY.md` — Agent's personal notes (environment facts, project conventions, lessons learned). Limit: 2200 chars.
-  - `USER.md` — User profile (name, preferences, communication style). Limit: 1375 chars.
-- **Entry format:** Plain text entries separated by `\n§\n` delimiters
-- **No IDs, timestamps, or tags** — entries are raw text strings
-- **Injected into system prompt** at session start as a formatted block
+- `vpk-rovo` Next.js frontend: `:3000`
+- `vpk-rovo` Express backend: `:8080`
+- `rovodev serve`: `:8000` by default, or a managed local pool
+- Hermes API server: `:8642` by default, or another explicit local port
 
-Example on-disk format (`~/.hermes/memories/MEMORY.md`):
-```
-User prefers TypeScript over JavaScript
-§
-Project uses pnpm, not npm
-§
-Always run tests before committing
-```
+### Authentication model
 
-### 4.2 Memory API (New VPK-Rovo Backend Endpoints)
+**Browser → VPK backend**
 
-Since Hermes doesn't expose memory via REST, the VPK-Rovo backend reads/writes the memory files directly (they're local files):
+- no direct runtime auth exposure
+- browser never talks directly to `rovodev serve` or Hermes
 
-```
-GET    /api/memories                → List all memory targets with entries
-GET    /api/memories/:target        → Get entries for a target (memory | user)
-PUT    /api/memories/:target        → Replace all entries for a target
-POST   /api/memories/:target/entry  → Add a single entry
-DELETE /api/memories/:target/entry  → Remove an entry (by content match)
-```
+**VPK backend → RovoDev Serve**
 
-**Response format:**
-```json
-// GET /api/memories
-{
-  "targets": [
-    {
-      "name": "memory",
-      "label": "Agent Memory",
-      "description": "Personal notes, facts, and lessons learned",
-      "maxChars": 2200,
-      "usedChars": 847,
-      "entries": [
-        "User prefers TypeScript over JavaScript",
-        "Project uses pnpm, not npm",
-        "Always run tests before committing"
-      ]
-    },
-    {
-      "name": "user",
-      "label": "User Profile",
-      "description": "Name, preferences, communication style",
-      "maxChars": 1375,
-      "usedChars": 234,
-      "entries": [
-        "Name: Esoh",
-        "Prefers concise responses with code examples"
-      ]
-    }
-  ]
-}
-```
+- use the RovoDev session token / Bearer token required by serve mode
+- this is mandatory unless serve mode is explicitly started with auth disabled
 
-### 4.3 Memory UI Mockup
+**VPK backend → Hermes**
 
-```
-┌─────────────────────────────────────────────────────────┐
-│  🧠 Memories                                    [Edit] │
-├─────────────────────────────────────────────────────────┤
-│                                                         │
-│  ┌─ Agent Memory ──────────────────── 847/2200 chars ─┐ │
-│  │                                          ████░░░░░ │ │
-│  │                                                     │ │
-│  │  ┌──────────────────────────────────────────────┐   │ │
-│  │  │ User prefers TypeScript over JavaScript   [×]│   │ │
-│  │  └──────────────────────────────────────────────┘   │ │
-│  │  ┌──────────────────────────────────────────────┐   │ │
-│  │  │ Project uses pnpm, not npm                [×]│   │ │
-│  │  └──────────────────────────────────────────────┘   │ │
-│  │  ┌──────────────────────────────────────────────┐   │ │
-│  │  │ Always run tests before committing        [×]│   │ │
-│  │  └──────────────────────────────────────────────┘   │ │
-│  │                                                     │ │
-│  │  [+ Add memory]                                     │ │
-│  └─────────────────────────────────────────────────────┘ │
-│                                                         │
-│  ┌─ User Profile ──────────────────── 234/1375 chars ─┐ │
-│  │                                          ██░░░░░░░ │ │
-│  │                                                     │ │
-│  │  ┌──────────────────────────────────────────────┐   │ │
-│  │  │ Name: Esoh                                [×]│   │ │
-│  │  └──────────────────────────────────────────────┘   │ │
-│  │  ┌──────────────────────────────────────────────┐   │ │
-│  │  │ Prefers concise responses with code ...   [×]│   │ │
-│  │  └──────────────────────────────────────────────┘   │ │
-│  │                                                     │ │
-│  │  [+ Add entry]                                      │ │
-│  └─────────────────────────────────────────────────────┘ │
-│                                                         │
-└─────────────────────────────────────────────────────────┘
-```
+- local HTTP
+- optional Bearer auth if `API_SERVER_KEY` is configured
+- for the prototype, localhost-only with explicit config is acceptable
 
-### 4.4 Memory UI Components
+### Recommendation
 
-| Component | Description | Reusable from VPK |
-|-----------|-------------|-------------------|
-| `MemoryPanel` | Full memory page/drawer with both targets | New, uses `panel.tsx` shell |
-| `MemoryTargetCard` | One collapsible card per target (memory/user) with usage bar | New |
-| `MemoryEntry` | Single entry with inline edit and delete | Adapt from `sources.tsx` pattern |
-| `MemoryUsageBar` | Character usage progress bar | New, simple `<progress>` |
-| `AddMemoryDialog` | Textarea dialog for adding a new entry | Adapt from existing dialog components |
-
-### 4.5 Memory Integration with Chat
-
-The agent can also manage memories during conversation via tool calls. When the agent calls `memory_add`, `memory_replace`, or `memory_remove`, the tool call shows in the chat UI (using the existing `tool.tsx` component), and the Memory Panel can refresh to reflect changes.
-
-```
-Chat message:  "I'll remember that you prefer dark mode."
-Tool call:     memory_add(target="user", content="Prefers dark mode UI themes")
-               → shown as a collapsible tool call card in chat
-Memory Panel:  Auto-refreshes to show the new entry
-```
+Keep all runtime auth handling in the Express backend. Do not require the
+frontend to understand either runtime's auth model.
 
 ---
 
-## 5. Skills UI Design
+## 6. Interactive chat integration
 
-### 5.1 How Hermes Skills Work
+The interactive chat path should keep the existing Rovo app surface:
 
-Skills are markdown documents with YAML frontmatter stored on disk:
-
-- **Location:** `~/.hermes/skills/<category>/<skill-name>/SKILL.md`
-- **Discovery:** Recursive scan for `SKILL.md` files
-- **Frontmatter fields:**
-
-```yaml
----
-name: apple-reminders
-description: Manage Apple Reminders via remindctl CLI
-version: 1.0.0
-author: Hermes Agent
-license: MIT
-platforms: [macos]
-metadata:
-  hermes:
-    tags: [Reminders, tasks, todo, macOS, Apple]
-prerequisites:
-  commands: [remindctl]
----
-
-# Apple Reminders Skill
-
-Instructions for the agent on how to use this skill...
+```text
+POST /api/rovo-app/chat
+  -> VPK managed run layer
+  -> RovoDev Serve V3 APIs
 ```
 
-- **Categories** derived from directory structure: `apple`, `creative`, `github`, `mlops`, `productivity`, `research`, etc.
-- **Enable/disable** per platform via `config.yaml`
+### Source of truth
 
-### 5.2 Skills API (New VPK-Rovo Backend Endpoints)
+For v1:
 
-The backend reads skill files directly from `~/.hermes/skills/`:
+- `vpk-rovo` thread records remain the app-level source of truth
+- RovoDev session IDs are stored on those threads
+- app runs can be attached / detached / resumed using the existing managed-run
+  approach
 
-```
-GET    /api/skills                     → List all skills with metadata
-GET    /api/skills/:category           → List skills in a category
-GET    /api/skills/:category/:name     → Get full skill content
-POST   /api/skills/:category/:name/toggle → Enable/disable a skill
-POST   /api/skills/install             → Install from Skills Hub (future)
-```
+Do **not** move app thread ownership into Hermes in v1.
 
-**Response format:**
-```json
-// GET /api/skills
-{
-  "categories": [
-    {
-      "name": "apple",
-      "skills": [
-        {
-          "name": "apple-reminders",
-          "description": "Manage Apple Reminders via remindctl CLI",
-          "version": "1.0.0",
-          "author": "Hermes Agent",
-          "tags": ["Reminders", "tasks", "todo", "macOS"],
-          "platforms": ["macos"],
-          "enabled": true,
-          "path": "apple/apple-reminders"
-        },
-        {
-          "name": "apple-notes",
-          "description": "Read and search Apple Notes",
-          "version": "1.0.0",
-          "author": "Hermes Agent",
-          "tags": ["Notes", "Apple"],
-          "platforms": ["macos"],
-          "enabled": true,
-          "path": "apple/apple-notes"
-        }
-      ]
-    },
-    {
-      "name": "github",
-      "skills": [...]
-    }
-  ]
-}
-```
+### What does not happen in v1
 
-### 5.3 Skills UI Mockup
+The backend does **not** replace the chat loop with a thin Hermes
+chat-completions SSE bridge.
 
-```
-┌──────────────────────────────────────────────────────────────┐
-│  🧩 Skills                              [Search...] [Hub ↗] │
-├──────────────────────────────────────────────────────────────┤
-│                                                              │
-│  Categories: [All] [Apple] [Creative] [GitHub] [MLOps] ...   │
-│                                                              │
-│  ┌────────────────────────────────────────────────────────┐  │
-│  │ 🍎 apple-reminders                          [Enabled ✓]│  │
-│  │ Manage Apple Reminders via remindctl CLI               │  │
-│  │ v1.0.0 · by Hermes Agent · macOS                      │  │
-│  │ Tags: Reminders, tasks, todo                    [View] │  │
-│  └────────────────────────────────────────────────────────┘  │
-│                                                              │
-│  ┌────────────────────────────────────────────────────────┐  │
-│  │ 🍎 apple-notes                              [Enabled ✓]│  │
-│  │ Read and search Apple Notes                            │  │
-│  │ v1.0.0 · by Hermes Agent · macOS                      │  │
-│  │ Tags: Notes, Apple                              [View] │  │
-│  └────────────────────────────────────────────────────────┘  │
-│                                                              │
-│  ┌────────────────────────────────────────────────────────┐  │
-│  │ 🎨 ascii-art                               [Disabled ○]│  │
-│  │ Generate ASCII art from text descriptions              │  │
-│  │ v1.0.0 · by Hermes Agent · all platforms              │  │
-│  │ Tags: ASCII, art, creative                      [View] │  │
-│  └────────────────────────────────────────────────────────┘  │
-│                                                              │
-│  ─────── Showing 12 of 45 skills ─────── [Load more]        │
-└──────────────────────────────────────────────────────────────┘
-```
-
-**Skill Detail View** (when clicking [View]):
-
-```
-┌──────────────────────────────────────────────────────────────┐
-│  ← Back to Skills                                            │
-│                                                              │
-│  🍎 apple-reminders                            [Enabled ✓]  │
-│  Manage Apple Reminders via remindctl CLI                    │
-│  ─────────────────────────────────────────────────────────── │
-│  Version: 1.0.0    Author: Hermes Agent    License: MIT     │
-│  Platforms: macOS   Prerequisites: remindctl                 │
-│  Tags: Reminders · tasks · todo · macOS · Apple              │
-│  ─────────────────────────────────────────────────────────── │
-│                                                              │
-│  # Apple Reminders Skill                                     │
-│                                                              │
-│  This skill allows the agent to manage your Apple            │
-│  Reminders. It can:                                          │
-│  - List all reminder lists and items                         │
-│  - Add new reminders with due dates                          │
-│  - Complete or delete existing reminders                     │
-│  ...                                                         │
-│  (rendered markdown)                                         │
-│                                                              │
-└──────────────────────────────────────────────────────────────┘
-```
-
-### 5.4 Skills UI Components
-
-| Component | Description | Reusable from VPK |
-|-----------|-------------|-------------------|
-| `SkillsPage` | Main skills browser with category filter and search | New page |
-| `SkillCategoryTabs` | Horizontal tab/pill filter for categories | Adapt from existing tab components |
-| `SkillCard` | Card showing skill name, description, version, toggle | New, similar to `package-info.tsx` |
-| `SkillDetailView` | Full skill page with rendered markdown content | Adapt from `artifact.tsx` pattern |
-| `SkillToggle` | Enable/disable switch | Use `ui/switch.tsx` |
-| `SkillSearch` | Search input filtering skills by name/tag/description | Use `ui/input.tsx` |
+That approach does not match the current `rovo-app` contract closely enough.
 
 ---
 
-## 6. Cron Job Manager UI Design
+## 7. Jobs / cron as a first-class app capability
 
-### 6.1 How Hermes Cron Works
+Jobs belong in the Rovo app and should have their own top-level app surface.
 
-Hermes has a full cron job system with REST API:
+### 7.1 Execution engine
 
-**Job structure:**
-```json
-{
-  "id": "uuid",
-  "name": "Daily standup summary",
-  "schedule": {
-    "type": "cron",
-    "value": "0 9 * * 1-5"
-  },
-  "action": {
-    "type": "agent",
-    "prompt": "Summarize my calendar for today and list top priorities",
-    "skills": ["google-workspace"],
-    "model": "claude-sonnet-4-20250514"
-  },
-  "delivery": {
-    "platform": "slack",
-    "channel": "#standup"
-  },
-  "enabled": true,
-  "next_run_at": "2026-04-06T09:00:00Z",
-  "last_run_at": "2026-04-05T09:00:00Z",
-  "last_error": null
-}
+Use Hermes as the scheduled-task engine.
+
+### 7.2 Backend mapping
+
+Proxy Rovo app job routes to Hermes job routes:
+
+```text
+GET    /api/jobs              -> Hermes GET    /api/jobs
+POST   /api/jobs              -> Hermes POST   /api/jobs
+GET    /api/jobs/:id          -> Hermes GET    /api/jobs/:id
+PATCH  /api/jobs/:id          -> Hermes PATCH  /api/jobs/:id
+DELETE /api/jobs/:id          -> Hermes DELETE /api/jobs/:id
+POST   /api/jobs/:id/run      -> Hermes POST   /api/jobs/:id/run
+POST   /api/jobs/:id/pause    -> Hermes POST   /api/jobs/:id/pause
+POST   /api/jobs/:id/resume   -> Hermes POST   /api/jobs/:id/resume
 ```
 
-### 6.2 Cron API (Direct Proxy to Hermes)
+### 7.3 Product behavior
 
-These are straight proxies — Hermes already has the REST endpoints:
+The Jobs UI should support:
 
-```
-GET    /api/jobs              → Hermes GET  /v1/jobs
-POST   /api/jobs              → Hermes POST /v1/jobs
-GET    /api/jobs/:id          → Hermes GET  /v1/jobs/:id
-PATCH  /api/jobs/:id          → Hermes PATCH /v1/jobs/:id
-DELETE /api/jobs/:id          → Hermes DELETE /v1/jobs/:id
-POST   /api/jobs/:id/run      → Hermes POST /v1/jobs/:id/run
-POST   /api/jobs/:id/pause    → Hermes POST /v1/jobs/:id/pause
-POST   /api/jobs/:id/resume   → Hermes POST /v1/jobs/:id/resume
-```
+- list jobs
+- create job
+- edit job
+- delete job
+- pause / resume
+- run now
+- show next run / last run / last error
 
-### 6.3 Cron UI Mockup
+### 7.4 Optional app-native linkage
 
-```
-┌──────────────────────────────────────────────────────────────┐
-│  ⏰ Scheduled Jobs                              [+ New Job]  │
-├──────────────────────────────────────────────────────────────┤
-│                                                              │
-│  ┌────────────────────────────────────────────────────────┐  │
-│  │ ● Daily standup summary                    [Enabled ✓] │  │
-│  │ "Summarize my calendar for today..."                   │  │
-│  │ ⏱ Every weekday at 9:00 AM  · 📤 #standup (Slack)     │  │
-│  │ Last run: Today 9:00 AM ✓   · Next: Tomorrow 9:00 AM  │  │
-│  │                                    [Run Now] [Edit] [×] │  │
-│  └────────────────────────────────────────────────────────┘  │
-│                                                              │
-│  ┌────────────────────────────────────────────────────────┐  │
-│  │ ● Weekly research digest                   [Enabled ✓] │  │
-│  │ "Search arxiv for latest papers on..."                 │  │
-│  │ ⏱ Every Monday at 8:00 AM  · 📤 #research (Slack)     │  │
-│  │ Last run: Mar 31 8:00 AM ✓  · Next: Apr 6 8:00 AM     │  │
-│  │                                    [Run Now] [Edit] [×] │  │
-│  └────────────────────────────────────────────────────────┘  │
-│                                                              │
-│  ┌────────────────────────────────────────────────────────┐  │
-│  │ ○ Backup reminders                        [Paused ⏸]  │  │
-│  │ "Export all Apple Reminders to..."                     │  │
-│  │ ⏱ Every 24h  · 📤 local only                          │  │
-│  │ Last run: Apr 1 — Error: timeout  · Next: paused      │  │
-│  │                                   [Resume] [Edit] [×]  │  │
-│  └────────────────────────────────────────────────────────┘  │
-│                                                              │
-└──────────────────────────────────────────────────────────────┘
-```
+Jobs may optionally link back into the Rovo app experience. Add support for
+fields such as:
 
-### 6.4 Create/Edit Job Dialog
+- `linkedThreadId`
+- `surface: "rovo-app"`
+- `artifactTarget`
+- `postResultToThread`
 
-```
-┌──────────────────────────────────────────────────────────┐
-│  Create Scheduled Job                                    │
-├──────────────────────────────────────────────────────────┤
-│                                                          │
-│  Name:     [Daily standup summary              ]         │
-│                                                          │
-│  Prompt:   ┌────────────────────────────────────┐        │
-│            │ Summarize my calendar for today    │        │
-│            │ and list top priorities from Jira  │        │
-│            │                                    │        │
-│            └────────────────────────────────────┘        │
-│                                                          │
-│  Schedule: (●) Cron    ( ) Duration                      │
-│            [0 9 * * 1-5        ]                         │
-│            → "Every weekday at 9:00 AM"                  │
-│                                                          │
-│  Model:    [claude-sonnet-4-20250514         ▾]                   │
-│  Skills:   [google-workspace ×] [+ add]                  │
-│                                                          │
-│  Deliver to: [Slack ▾]  Channel: [#standup      ]        │
-│                                                          │
-│                              [Cancel]  [Create Job]      │
-└──────────────────────────────────────────────────────────┘
-```
+Initial recommendation:
+
+- **v1:** jobs run via Hermes and show status in the Jobs UI
+- **v1.1+:** allow job results to append a summary into a linked Rovo thread or
+  create/update an artifact
 
 ---
 
-## 7. VPK-Rovo Backend Endpoints (Complete)
+## 8. Memory UI
 
-```
-# Chat (SSE bridge to Hermes)
-POST   /api/chat                    → Hermes /v1/chat/completions (SSE translated)
-GET    /api/chat/stream/:threadId   → Resume/poll active stream
+The Memory UI is Hermes-backed.
 
-# Sessions / Threads
-GET    /api/threads                 → List threads (from Hermes SessionDB)
-POST   /api/threads                 → Create new thread
-GET    /api/threads/:id             → Get thread with messages
-DELETE /api/threads/:id             → Delete thread
+### 8.1 Backing store
 
-# Memory (direct file access to ~/.hermes/memories/)
-GET    /api/memories                → All targets with entries
-GET    /api/memories/:target        → Entries for one target
-PUT    /api/memories/:target        → Replace all entries
-POST   /api/memories/:target/entry  → Add entry
-DELETE /api/memories/:target/entry  → Remove entry by content
+- read `MEMORY.md` and `USER.md`
+- split entries by `\n§\n`
+- show char usage against Hermes limits
 
-# Skills (direct file access to ~/.hermes/skills/)
-GET    /api/skills                  → All skills with metadata
-GET    /api/skills/:category/:name  → Full skill content
-POST   /api/skills/:category/:name/toggle → Enable/disable
+### 8.2 Scope
 
-# Cron Jobs (proxy to Hermes)
-GET    /api/jobs                    → List jobs
-POST   /api/jobs                    → Create job
-GET    /api/jobs/:id                → Get job
-PATCH  /api/jobs/:id                → Update job
-DELETE /api/jobs/:id                → Delete job
-POST   /api/jobs/:id/run            → Trigger now
-POST   /api/jobs/:id/pause          → Pause
-POST   /api/jobs/:id/resume         → Resume
+For v1, support only Hermes built-in memory:
 
-# Config & Status
-GET    /api/models                  → Hermes /v1/models
-GET    /api/status                  → Hermes /health + local state
-```
+- `memory`
+- `user`
+
+Do not attempt to expose multiple external memory providers in the first
+version of the UI.
+
+### 8.3 Important behavior note
+
+Hermes memory is a frozen snapshot at session start. Memory writes are visible
+to the UI immediately, but they do not automatically rewrite the live prompt of
+an already-running Hermes session.
+
+That matters if later you want RovoDev interactive turns to consume Hermes
+memory. That should be designed explicitly instead of assumed.
 
 ---
 
-## 8. Frontend Pages & Routes
+## 9. Skills browser
 
+The Skills browser is Hermes-backed.
+
+### 9.1 Discovery model
+
+Read skills from:
+
+- `~/.hermes/skills/`
+- optional `skills.external_dirs` from Hermes config
+
+### 9.2 Enable / disable model
+
+Skill toggles should update Hermes config rather than mutating `SKILL.md`
+files directly.
+
+Primary config surfaces:
+
+- `skills.disabled`
+- `skills.platform_disabled`
+
+### 9.3 Scope
+
+For v1:
+
+- browse installed skills
+- view skill metadata and content
+- filter/search installed skills
+- enable / disable local skills through config
+
+Defer:
+
+- Skills Hub install
+- update / publish
+- trust / provenance workflows
+
+---
+
+## 10. Backend endpoint plan
+
+### 10.1 Interactive Rovo app chat
+
+Existing Rovo app routes remain the frontend contract:
+
+```text
+POST   /api/rovo-app/chat
+GET    /api/rovo-app/messages
+POST   /api/rovo-app/messages
+GET    /api/rovo-app/threads
+POST   /api/rovo-app/threads
+GET    /api/rovo-app/threads/:threadId
+PUT    /api/rovo-app/threads/:threadId
+DELETE /api/rovo-app/threads/:threadId
+GET    /api/rovo-app/runs/:threadId/stream
+POST   /api/rovo-app/runs/:threadId/detach
+POST   /api/rovo-app/runs/:threadId/cancel
 ```
+
+These continue to be backed by the VPK managed-run layer plus `rovodev serve`.
+
+### 10.2 Hermes-backed app surfaces
+
+```text
+GET    /api/memories
+GET    /api/memories/:target
+PUT    /api/memories/:target
+POST   /api/memories/:target/entry
+DELETE /api/memories/:target/entry
+
+GET    /api/skills
+GET    /api/skills/:category/:name
+POST   /api/skills/:category/:name/toggle
+
+GET    /api/jobs
+POST   /api/jobs
+GET    /api/jobs/:id
+PATCH  /api/jobs/:id
+DELETE /api/jobs/:id
+POST   /api/jobs/:id/run
+POST   /api/jobs/:id/pause
+POST   /api/jobs/:id/resume
+```
+
+### 10.3 Status endpoints
+
+Add explicit runtime status visibility:
+
+```text
+GET /api/status/rovodev
+GET /api/status/hermes
+GET /api/status
+```
+
+This should report:
+
+- whether `rovodev serve` is reachable
+- whether Hermes is reachable
+- which app subsystems are degraded if one runtime is down
+
+### 10.4 Hermes-on-top app capabilities
+
+Add dedicated endpoints for Hermes-inspired product features layered on top of
+the existing RovoDev loop:
+
+```text
+# Context / references
+GET    /api/context/files
+POST   /api/context/resolve
+POST   /api/context/references
+GET    /api/context/bundles
+POST   /api/context/bundles
+
+# Checkpoints / rollback
+GET    /api/checkpoints
+GET    /api/checkpoints/:id
+GET    /api/checkpoints/:id/diff
+POST   /api/checkpoints/:id/restore
+
+# Hooks / integrations / bootstrap
+GET    /api/integrations
+GET    /api/hooks
+POST   /api/hooks
+PATCH  /api/hooks/:id
+DELETE /api/hooks/:id
+POST   /api/bootstrap/run
+
+# Provider routing / runtime config
+GET    /api/providers
+PUT    /api/providers
+
+# Research workbench
+GET    /api/research/runs
+POST   /api/research/runs
+GET    /api/research/runs/:id
+GET    /api/research/trajectories/:id
+POST   /api/research/datasets/export
+```
+
+These endpoints are app-level capabilities. They do not replace the interactive
+chat routes or the RovoDev serve loop.
+
+---
+
+## 11. Frontend pages and routes
+
+```text
 app/
-  rovo-app/[[...id]]/     ← Main chat interface (modified for Hermes SSE)
-  memories/                   ← NEW: Memory browser/editor
-  skills/                     ← NEW: Skills browser with categories
-  skills/[category]/[name]/   ← NEW: Skill detail view
-  cron/                       ← NEW: Cron job manager
-  settings/                   ← NEW: Model selection, Hermes config
+  rovo-app/[[...id]]/       <- interactive chat, still RovoDev-backed
+  memories/                 <- Hermes memory browser/editor
+  skills/                   <- Hermes skills browser
+  skills/[category]/[name]/ <- skill detail view
+  jobs/                     <- Hermes jobs / cron manager
+  context/                  <- context files, bundles, and @ reference management
+  research/                 <- batch runs, trajectories, dataset export
+  integrations/             <- hooks, plugins, bootstrap automation
+  settings/                 <- runtime status, provider routing, and integration settings
 ```
 
 ---
 
-## 9. Reusable VPK Components
+## 12. Reusable VPK components
 
-Existing components from VPK-rovodev that map well to new features:
+Existing VPK components that still map well:
 
-| Existing Component | Reuse For |
-|--------------------|-----------|
-| `panel.tsx` | Memory panel shell, skill detail side panel |
-| `artifact.tsx` | Skill detail view (rendered markdown) |
-| `sources.tsx` | Memory entry list pattern |
-| `schema-display.tsx` | Config/metadata display |
-| `queue.tsx` | Cron job list |
-| `task.tsx` | Cron job card |
-| `model-selector.tsx` | Model picker for settings + cron job form |
-| `file-tree.tsx` | Skills category tree |
-| `tool.tsx` | Tool call rendering in chat |
-| `prompt-input.tsx` | Chat input (voice, attachments, text) |
-| `message.tsx` | Chat message rendering |
-| `confirmation.tsx` | Delete confirmation dialogs |
-
----
-
-## 10. Implementation Phases
-
-### Phase 1: Chat Core (Get messages flowing)
-- [ ] Set up VPK-Rovo backend with Hermes SSE bridge
-- [ ] Modify rovo-app to use the bridge
-- [ ] Thread ID ↔ Hermes session mapping
-- [ ] Text streaming + basic tool call rendering
-- [ ] Verify: send message → see streamed response with tool calls
-
-### Phase 2: Model & Session Management
-- [ ] Model picker connected to Hermes `/v1/models`
-- [ ] Thread list backed by Hermes sessions
-- [ ] Thread create/delete
-- [ ] Settings page with model selection
-
-### Phase 3: Memory UI
-- [ ] Backend endpoints for reading/writing `~/.hermes/memories/`
-- [ ] Memory panel component with target cards
-- [ ] Add/edit/delete memory entries
-- [ ] Usage bar showing chars used vs limit
-- [ ] Auto-refresh when agent modifies memories via tool calls
-
-### Phase 4: Skills Browser
-- [ ] Backend endpoints for reading `~/.hermes/skills/`
-- [ ] Skills list page with category filter
-- [ ] Skill detail view with rendered markdown
-- [ ] Enable/disable toggle
-- [ ] Search by name/tag/description
-
-### Phase 5: Cron Manager
-- [ ] Backend proxy to Hermes `/v1/jobs`
-- [ ] Job list with status indicators
-- [ ] Create/edit job dialog
-- [ ] Run Now / Pause / Resume actions
-- [ ] Execution history display
+| Existing component | Path | Planned reuse |
+| --- | --- | --- |
+| `panel.tsx` | `components/ui-ai/panel.tsx` | Memory and skill side panels |
+| `artifact.tsx` | `components/ui-ai/artifact.tsx` | Skill detail rendering (markdown content) |
+| `sources.tsx` | `components/ui-ai/sources.tsx` | Memory entry list patterns |
+| `schema-display.tsx` | `components/ui-ai/schema-display.tsx` | Metadata / config display |
+| `queue.tsx` | `components/ui-ai/queue.tsx` | Job list patterns |
+| `task.tsx` | `components/ui-ai/task.tsx` | Job card patterns |
+| `model-selector.tsx` | `components/ui-ai/model-selector.tsx` | RovoDev model picker and optional job model picker |
+| `file-tree.tsx` | `components/ui-ai/file-tree.tsx` | Skill category tree |
+| `tool.tsx` | `components/ui-ai/tool.tsx` | Interactive chat tool rendering |
+| `chat-composer.tsx` | `components/projects/sidebar-chat/components/chat-composer.tsx` | Interactive chat composer |
+| `message.tsx` | `components/ui-ai/message.tsx` | Interactive chat message rendering |
+| `confirmation.tsx` | `components/ui-ai/confirmation.tsx` | Delete / destructive action confirmations |
 
 ---
 
-## 11. Open Questions
+## 13. Implementation phases
 
-1. **Hermes startup:** Should VPK-Rovo auto-start Hermes, or expect it to be running? (Recommend: user starts Hermes separately for the prototype)
-2. **Memory plugins:** Should the Memory UI support multiple providers (mem0, honcho) or just the built-in file store? (Recommend: built-in only for prototype)
-3. **Skills Hub:** Should the Skills UI support installing new skills from the Hermes Skills Hub? (Recommend: defer to Phase 4+)
-4. **Multi-user:** Is this single-user only? (Recommend: yes, for prototype)
-5. **Cron delivery:** Cron jobs can deliver to Slack/Discord/etc. Should the UI show delivery results? (Recommend: show last run status only for prototype)
+### Phase 1: Stabilize interactive chat on `rovodev serve`
 
+- [ ] Keep `rovo-app` wired to the current VPK managed-run system
+- [ ] Confirm `rovodev serve` remains the only interactive chat loop
+- [ ] Preserve thread, session, attach/detach, and approval behaviors
+- [ ] Make runtime health visible in the app
+
+### Phase 2: Add jobs / cron as a first-class app surface
+
+- [ ] Add Hermes-backed `/api/jobs*` proxy routes
+- [ ] Build Jobs page in the Rovo app shell
+- [ ] Support create / edit / pause / resume / run-now
+- [ ] Show next run, last run, and last error
+- [ ] Add optional `linkedThreadId` support for future result publishing
+
+### Phase 3: Add Hermes-backed Memory UI
+
+- [ ] Add `/api/memories*` backend routes
+- [ ] Build memory browser/editor
+- [ ] Support add / replace / remove entry flows
+- [ ] Show char usage and capacity state
+
+### Phase 4: Add Hermes-backed Skills browser
+
+- [ ] Add `/api/skills*` backend routes
+- [ ] Read local plus external skill directories
+- [ ] Build search / category browse / detail view
+- [ ] Implement enable / disable through Hermes config
+
+### Phase 5: Add deeper cross-runtime integration
+
+- [ ] Decide whether Hermes memory should be injected into interactive RovoDev
+      sessions
+- [ ] Allow jobs to post summaries into linked Rovo threads
+- [ ] Allow jobs to create or update artifacts/documents when appropriate
+- [ ] Evaluate whether selected Hermes skill metadata should influence the
+      interactive loop
+
+### Phase 6: Add context and grounding surfaces
+
+- [ ] Add context file discovery and thread-scoped context bundles
+- [ ] Support inline `@` references in the composer flow
+- [ ] Add support for project/global `SOUL.md`-style overlays
+- [ ] Render reference state in thread metadata and turn payloads
+
+### Phase 7: Add rollback and recovery
+
+- [ ] Add checkpoint creation and listing APIs
+- [ ] Build diff preview and restore flows
+- [ ] Link checkpoints to artifacts and workspace snapshots
+- [ ] Surface rollback in the app as a user-visible recovery feature
+
+### Phase 8: Add integrations and provider control plane
+
+- [ ] Build integrations page for hooks/plugins/bootstrap actions
+- [ ] Add provider-routing controls to settings
+- [ ] Expose advanced runtime selection for chat, vision, summarization, and
+      jobs
+- [ ] Add visibility for which provider handled each relevant workload
+
+### Phase 9: Add research workbench
+
+- [ ] Build batch-run creation and inspection flows
+- [ ] Add trajectory export UI
+- [ ] Add dataset export flows for training/evals
+- [ ] Add Atropos-oriented experiment support where the backend can support it
+
+---
+
+## 14. Recommendations and open questions
+
+### Recommended answers
+
+1. **Who owns the interactive loop?**
+   `rovodev serve` owns it in v1.
+
+2. **Should jobs be included in the app?**
+   Yes. Jobs / cron are a first-class Rovo app feature and should be exposed in
+   the product.
+
+3. **Who executes jobs?**
+   Hermes executes them.
+
+4. **Should memory plugins be in v1 UI?**
+   No. Built-in Hermes memory only in v1.
+
+5. **Should Skills Hub install/update be in v1 UI?**
+   No. Browse/configure installed skills first.
+
+6. **Multi-user?**
+   No. Single-user, localhost-focused prototype.
+
+7. **Which Hermes-on-top features are worth bringing into the app next?**
+   Prioritize:
+   - context files / `SOUL.md` / `@` references
+   - rollback / checkpoints
+   - provider-routing controls
+   - integrations/hooks/bootstrap automation
+   - research workbench
+
+### Remaining design questions
+
+1. **Should Hermes job output be visible only in the Jobs UI, or also in linked
+   Rovo threads and artifacts?**
+   Recommendation: start with Jobs UI only, then add optional thread linkage.
+
+2. **How should Hermes memory influence the interactive RovoDev loop?**
+   Recommendation: do not assume automatic shared prompt state. Design an
+   explicit sync or injection step later.
+
+3. **Should Hermes skills affect interactive chat behavior, or remain a
+   browse/config surface first?**
+   Recommendation: browse/config first, then selectively integrate into the
+   interactive loop if needed.
+
+4. **Where should rollback appear in the product?**
+   Recommendation: treat rollback as part of Artifacts/history rather than a
+   hidden backend-only concept.
+
+5. **How much provider routing should be user-visible?**
+   Recommendation: expose high-level routing controls in Settings, not every
+   internal fallback edge.
+
+6. **Should hooks/plugins/bootstrap be user-facing in v1 or v2?**
+   Recommendation: v2, after Jobs/Memory/Skills land cleanly.
+
+7. **Long-term direction**
+   Recommendation: validate the product first with
+   `RovoDev interactive loop + Hermes subsystems`. Only revisit "Hermes replaces
+   the loop" after the app proves which runtime semantics actually need to be
+   unified.
