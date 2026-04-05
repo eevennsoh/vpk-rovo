@@ -1,5 +1,5 @@
 import type { NavItem, NavSection } from "@/components/website/website-sidebar-nav";
-import { AUDIO_COMPONENTS, AI_COMPONENTS, UI_COMPONENTS, BLOCK_COMPONENTS, PROJECT_COMPONENTS, UTILITY_COMPONENTS, VISUAL_COMPONENTS } from "@/app/data/components";
+import { AUDIO_COMPONENTS, AI_COMPONENTS, UI_COMPONENTS, BLOCK_COMPONENTS, PROJECT_COMPONENTS, UTILITY_COMPONENTS, VISUAL_COMPONENTS } from "@/app/data/component-manifest";
 import { buildNavItems, UI_GROUPS, BLOCK_GROUPS, VISUAL_GROUPS } from "@/app/data/nav-utils";
 import { resolveAiAdsPackage, resolveBlockAdsPackage, resolveUiAdsPackage, resolveUiAdsTagVariant } from "@/app/data/nav-ads";
 

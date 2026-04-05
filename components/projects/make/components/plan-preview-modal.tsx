@@ -58,11 +58,7 @@ export function PlanPreviewModal({
 				<Plan className="min-h-0 h-full flex-1 overflow-y-auto rounded-none border-0 shadow-none -mx-6 -mt-6 -mb-6 px-6 pt-6 pb-6" defaultOpen defaultContentExpanded>
 					<PlanTabContent
 						description={description}
-						tasks={tasks}
-						revealedCount={visibleTasks.length}
-						tabsListClassName="mx-0"
 						summaryTabContentClassName="px-0 pb-0"
-						tasksTabContentClassName="px-0 pb-0"
 					/>
 				</Plan>
 

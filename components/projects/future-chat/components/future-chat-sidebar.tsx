@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { ViewTransition } from "react";
 import {
 	differenceInCalendarDays,
 	formatDistanceToNowStrict,
@@ -301,16 +302,17 @@ function FutureChatSidebarThreadSection({
 			</div>
 			<SidebarMenu>
 				{threads.map((thread) => (
-					<FutureChatSidebarThreadItem
-						isActive={thread.id === activeThreadId}
-						isPendingTitle={isGeneratingTitle && pendingTitleThreadId === thread.id}
-						onCancelThreadRun={onCancelThreadRun}
-						key={thread.id}
-						onDeleteThread={onDeleteThread}
-						onSelectThread={onSelectThread}
-						runStatus={thread.activeRun?.status ?? null}
-						thread={thread}
-					/>
+					<ViewTransition key={thread.id}>
+						<FutureChatSidebarThreadItem
+							isActive={thread.id === activeThreadId}
+							isPendingTitle={isGeneratingTitle && pendingTitleThreadId === thread.id}
+							onCancelThreadRun={onCancelThreadRun}
+							onDeleteThread={onDeleteThread}
+							onSelectThread={onSelectThread}
+							runStatus={thread.activeRun?.status ?? null}
+							thread={thread}
+						/>
+					</ViewTransition>
 				))}
 			</SidebarMenu>
 		</section>

@@ -14,14 +14,17 @@ produces: [.env.local, .asap-config]
 
 # VPK Setup - Initial Repository Setup
 
-**Goal:** Get the prototype running locally with the default required runtime: RovoDev Serve as primary chat backend plus AI Gateway fallback, Google image/TTS routing, and the current env-driven STT preset block used by Future Chat live voice mode.
+**Goal:** Get the prototype running locally with the default required runtime:
+RovoDev Serve as the primary chat backend, plus AI Gateway-backed image/TTS
+routes, suggestions, and the current env-driven STT preset block used by
+Future Chat live voice mode.
 
 ## Quick Workflow
 
 1. **Preflight cleanup** → If `node_modules` exists, clean Next.js cache (see below)
 2. **Install dependencies** → `pnpm install` (skip if `node_modules` already exists)
 3. **Collect AI Gateway credentials** → Ask for use case ID and Atlassian email
-4. **Configure AI Gateway + Voice STT** → Generate ASAP keys and create `.env.local` with fallback, Google endpoint values, and the current STT preset block
+4. **Configure AI Gateway + Voice STT** → Generate ASAP keys and create `.env.local` with Google endpoint values and the current STT preset block
 5. **Set RovoDev Session Token** → First launch of `pnpm run rovodev` prints a session token; copy it to `ROVODEV_SESSION_TOKEN` in `.env.local` (one-time, does not expire)
 6. **Start servers** → Ask permission, then `pnpm run rovodev` (single RovoDev Serve + backend + frontend by default)
 7. **Verify** → http://localhost:3000 (or the port shown in terminal output)
@@ -57,7 +60,9 @@ This prevents common issues:
 rovodev serve (:8000) + Express (:8080) + Next.js (:3000)
 ```
 
-RovoDev Serve handles primary chat. AI Gateway fallback is always enabled, and Google endpoint variables are always configured for `provider: "google"` image and TTS routes.
+RovoDev Serve handles primary chat. AI Gateway-backed routes handle image,
+sound, suggestions, and Realtime transport when configured. Google endpoint
+variables are used for `provider: "google"` image and TTS routes.
 RovoDev billing site is set via `ROVODEV_BILLING_URL` in `.env.local` (required, no hardcoded fallback).
 
 For the full pool (6 instances, needed for agent team parallel runs), use `pnpm run rovodev -- 6` instead.
@@ -171,9 +176,6 @@ ASAP_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY
 ASAP_KID=your-use-case-id/1234567890
 ASAP_ISSUER=your-use-case-id
 
-# Enable AI Gateway fallback when RovoDev is unavailable
-AUTO_FALLBACK_TO_AI_GATEWAY=true
-
 # Default billing site for rovodev serve (override if needed)
 ROVODEV_BILLING_URL=https://product-fabric.atlassian.net
 
@@ -195,7 +197,6 @@ OPENAI_REALTIME_VOICE=alloy
 
 | Variable | Required | Purpose |
 | -------- | -------- | ------- |
-| `AUTO_FALLBACK_TO_AI_GATEWAY` | Yes | Must be `true` to route to AI Gateway when RovoDev is unavailable |
 | `ROVODEV_BILLING_URL` | Yes | Billing site URL for `rovodev serve` (default: `https://product-fabric.atlassian.net`) |
 | `ROVODEV_SESSION_TOKEN` | Yes | Shared secret authenticating backend ↔ RovoDev Serve. One-time setup — does not expire or rotate. Copy from Serve's first-launch output. |
 | `ROVODEV_POOL_SIZE` | Optional | Concurrent RovoDev instances for agents team (default: 1) |
@@ -258,9 +259,12 @@ Notes:
 - Whisper presets require the `whisper` CLI on PATH.
 - Restart the backend/dev stack after changing `STT_PRESET`.
 
-## Model Switching (AI Gateway Fallback Mode)
+## Model Switching (AI Gateway-backed Routes)
 
-Model switching via `.env.local` applies only when using AI Gateway fallback for chat/image/TTS. RovoDev Serve manages chat internally, and Future Chat live voice STT is controlled separately via `STT_PRESET`.
+Model switching via `.env.local` applies only to AI Gateway-backed routes such
+as image, audio, suggestions, and explicit gateway-driven tools. RovoDev Serve
+manages standard chat internally, and Future Chat live voice STT is controlled
+separately via `STT_PRESET`.
 
 | Provider | Model | Endpoint |
 | -------- | ----- | -------- |
@@ -281,7 +285,6 @@ For full model switching details, see [references/guide-model-switch.md](referen
 - [ ] Atlas CLI installed, YubiKey enrolled
 - [ ] **ASAP credentials generated (timestamp generated ONCE)**
 - [ ] `.env.local` created via `create-env-local.js`
-- [ ] `AUTO_FALLBACK_TO_AI_GATEWAY=true` enabled in `.env.local`
 - [ ] `ROVODEV_BILLING_URL` is set (default: `https://product-fabric.atlassian.net`)
 - [ ] `ROVODEV_SESSION_TOKEN` is set (copy from RovoDev Serve first-launch output — one-time setup)
 - [ ] Google endpoints enabled in `.env.local`
@@ -306,7 +309,7 @@ For full model switching details, see [references/guide-model-switch.md](referen
 | "Missing credentials" from RovoDev Serve | `ROVODEV_SESSION_TOKEN` not set in `.env.local`. Copy the token from Serve's first-launch output (one-time setup, does not expire). Restart the dev stack after setting it. |
 | "Missing credentials" when curling port 8000 | Port 8000 is RovoDev Serve (not the VPK backend). Use `curl -H "Authorization: Bearer $ROVODEV_SESSION_TOKEN" http://localhost:8000/...` or use the backend port from `.dev-backend-port` instead. |
 | No AI response (RovoDev) | Verify `pnpm run rovodev` is running and RovoDev Serve started successfully |
-| No AI response (AI Gateway) | Verify health check passes and `AUTO_FALLBACK_TO_AI_GATEWAY=true` is set |
+| No AI response (AI Gateway-backed route) | Verify the AI Gateway URLs, ASAP credentials, and use case fields are set in `.env.local` |
 | **Mismatched ASAP KID** | **You generated timestamp twice! Regenerate with single timestamp** |
 | "Model Id [X] not found" | Model not whitelisted. Run `atlas ml aigateway usecase view --id YOUR-USE-CASE-ID -e stg-west` |
 | Bedrock 403 while OpenAI works | Pull latest branch and confirm `backend/lib/ai-gateway-helpers.js` does **not** rewrite Bedrock URL; restart backend |

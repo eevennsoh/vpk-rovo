@@ -1,7 +1,7 @@
 "use client";
 
 import { useForm } from "@tanstack/react-form";
-import { XIcon } from "lucide-react";
+import { XIcon } from "@/components/ui/vpk-icons";
 import { toast } from "sonner";
 import { z } from "zod";
 

@@ -5,13 +5,11 @@ import "streamdown/styles.css";
 import "leaflet/dist/leaflet.css";
 import { getSSRAutoScript, getThemeStyles } from "@atlaskit/tokens";
 import { Providers } from "@/app/providers";
-import { DevTurbopackCssChunkGuard } from "@/components/utils/dev-turbopack-css-chunk-guard";
-import { DevReactGrabMount } from "@/components/utils/dev-react-grab-mount";
+import { DevRootTools } from "@/components/utils/dev-root-tools";
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
-
 
 // Prevent @atlaskit/tokens from falling back to uninitialized FeatureGates client.
 // Sets the resolver on the same global that @atlaskit/platform-feature-flags uses internally.
@@ -183,8 +181,7 @@ export default async function RootLayout({
 			</head>
 			<body suppressHydrationWarning className="antialiased">
 				<Providers>{children}</Providers>
-				<DevReactGrabMount />
-				<DevTurbopackCssChunkGuard />
+				{process.env.NODE_ENV === "development" ? <DevRootTools /> : null}
 			</body>
 		</html>
 	);

@@ -16,7 +16,7 @@ import {
 	CopyIcon,
 	TrashIcon,
 	DownloadIcon,
-} from "lucide-react";
+} from "@/components/ui/vpk-icons";
 import { Button } from "@/components/ui/button";
 
 export default function FileTreeDemo() {

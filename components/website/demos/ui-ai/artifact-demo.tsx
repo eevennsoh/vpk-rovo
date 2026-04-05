@@ -23,7 +23,7 @@ import {
 	ResizablePanel,
 	ResizablePanelGroup,
 } from "@/components/ui/resizable";
-import { CopyIcon, DownloadIcon, PlayIcon, RefreshCwIcon, ShareIcon } from "lucide-react";
+import { CopyIcon, DownloadIcon, PlayIcon, RefreshCwIcon, ShareIcon } from "@/components/ui/vpk-icons";
 
 const dijkstraCode = `# Dijkstra's Algorithm implementation
 import heapq

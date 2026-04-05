@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { CheckIcon, XIcon } from "lucide-react"
+import { CheckIcon, XIcon } from "@/components/ui/vpk-icons"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"

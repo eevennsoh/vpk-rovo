@@ -1,6 +1,5 @@
 "use client";
 
-import type { LucideIcon } from "lucide-react";
 import type { ComponentProps, HTMLAttributes, ReactNode } from "react";
 
 import { useEffect, useRef, useState, type RefObject } from "react";
@@ -30,6 +29,16 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+	CopyIcon,
+	LoaderCircleIcon,
+	MessageSquarePlusIcon,
+	PencilLineIcon,
+	SaveIcon,
+	Trash2Icon,
+	type VpkIconComponent,
+	XIcon,
+} from "@/components/ui/vpk-icons";
 import { CodeBlock } from "@/components/ui-ai/code-block";
 import type {
 	ArtifactAnnotation,
@@ -45,15 +54,6 @@ import {
 } from "@/components/ui-ai/lib/artifact-versions";
 import { MessageResponse } from "@/components/ui-ai/message";
 import { cn } from "@/lib/utils";
-import {
-	CopyIcon,
-	LoaderCircleIcon,
-	MessageSquarePlusIcon,
-	PencilLineIcon,
-	SaveIcon,
-	Trash2Icon,
-	XIcon,
-} from "lucide-react";
 import Image from "next/image";
 
 export type ArtifactProps = HTMLAttributes<HTMLDivElement>;
@@ -137,7 +137,7 @@ export const ArtifactActions = ({
 export type ArtifactActionProps = ComponentProps<typeof Button> & {
   tooltip?: string;
   label?: string;
-  icon?: LucideIcon;
+  icon?: VpkIconComponent;
 };
 
 export const ArtifactAction = ({

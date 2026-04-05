@@ -1,6 +1,6 @@
 // @ts-nocheck
 import * as React from "react"
-import { type LucideIcon } from "lucide-react"
+import { type VpkIconComponent } from "@/components/ui/vpk-icons"
 
 import {
   SidebarGroup,
@@ -17,7 +17,7 @@ export function NavSecondary({
   items: {
     title: string
     url: string
-    icon: LucideIcon
+    icon: VpkIconComponent
   }[]
 } & React.ComponentPropsWithoutRef<typeof SidebarGroup>) {
   return (

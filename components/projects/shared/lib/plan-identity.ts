@@ -247,6 +247,9 @@ export function resolvePlanVisualIdentity(title: string): VisualIdentity {
 }
 
 export function formatPlanStepCount(stepCount: number): string {
+	if (stepCount === 0) {
+		return "";
+	}
 	return `${stepCount} step${stepCount === 1 ? "" : "s"}`;
 }
 
@@ -286,6 +289,10 @@ export function sanitizePlanDescription(
 
 	if (!withoutLegacyPrefix) {
 		return prefix;
+	}
+
+	if (!prefix) {
+		return withoutLegacyPrefix;
 	}
 
 	return `${prefix} • ${withoutLegacyPrefix}`;

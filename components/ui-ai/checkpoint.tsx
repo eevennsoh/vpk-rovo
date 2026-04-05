@@ -1,6 +1,5 @@
 "use client";
 
-import type { LucideProps } from "lucide-react";
 import type { ComponentProps, HTMLAttributes } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -10,8 +9,11 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  BookmarkIcon,
+  type VpkIconProps,
+} from "@/components/ui/vpk-icons";
 import { cn } from "@/lib/utils";
-import { BookmarkIcon } from "lucide-react";
 
 export type CheckpointProps = HTMLAttributes<HTMLDivElement>;
 
@@ -32,7 +34,7 @@ export const Checkpoint = ({
   </div>
 );
 
-export type CheckpointIconProps = LucideProps;
+export type CheckpointIconProps = VpkIconProps;
 
 export const CheckpointIcon = ({
   className,

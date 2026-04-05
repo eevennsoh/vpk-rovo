@@ -1,5 +1,5 @@
 import { Sources, SourcesTrigger, SourcesContent, Source } from "@/components/ui-ai/sources";
-import { ChevronDownIcon, ExternalLinkIcon } from "lucide-react";
+import { ChevronDownIcon, ExternalLinkIcon } from "@/components/ui/vpk-icons";
 
 export default function SourcesDemo() {
 	return (

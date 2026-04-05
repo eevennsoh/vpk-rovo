@@ -4,8 +4,11 @@
  * and 4 engineering KPI metrics with trend indicators.
  */
 
-import { TrendingDownIcon, TrendingUpIcon } from "lucide-react";
 import type { SectionCardData } from "@/components/blocks/dashboard/data/section-cards-data";
+import {
+	TrendingDownIcon,
+	TrendingUpIcon,
+} from "@/components/ui/vpk-icons";
 
 // ---------------------------------------------------------------------------
 // KPI types (reuse pattern from dashboard-analytics.ts)

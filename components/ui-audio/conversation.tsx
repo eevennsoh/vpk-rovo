@@ -2,7 +2,10 @@
 
 import type { ComponentProps } from "react"
 import { useCallback } from "react"
-import { ArrowDownIcon, DownloadIcon } from "lucide-react"
+import {
+  ArrowDownIcon,
+  DownloadIcon,
+} from "@/components/ui/vpk-icons"
 import { StickToBottom, useStickToBottomContext } from "use-stick-to-bottom"
 
 import { cn } from "@/lib/utils"

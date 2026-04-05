@@ -97,3 +97,29 @@ Mark promoted entries with `[Promoted]` prefix — see vpk-lesson skill for deta
   AI Gateway path immediately after thread creation. Do not couple title
   generation to RovoDev Serve stream start, stream completion, or added
   timeouts unless a verified gateway contention issue requires it.
+
+### 2026-04-05 - Use VPK Atlaskit-based icons, not lucide-react
+
+- **What happened:** A performance recommendation proposed optimizing
+  `lucide-react` imports even though VPK no longer wants new Lucide usage.
+- **Why:** The repo standard is to use VPK icon primitives and Atlaskit icons,
+  not add more `lucide-react` usage or invest in keeping it as a first-class
+  path.
+- **Rule:** Do not add new `lucide-react` imports. Use VPK icon components and
+  Atlaskit icon packages instead. When touching a Lucide-based surface, prefer
+  migrating that surface rather than optimizing Lucide usage further.
+
+### 2026-04-05 - Question cards in primary chat come from RovoDev deferred tools
+
+- **What happened:** The backend review treated question cards as an
+  AI Gateway-assisted helper flow and missed that the canonical clarification
+  experience is the `ask_user_questions` / `request_user_input` deferred-tool
+  path from RovoDev Serve.
+- **Why:** The codebase still contained a secondary backend-generated
+  clarification question-card path, which blurred the distinction between
+  question-card UI as a deferred-tool renderer and question-card UI as
+  independently generated metadata.
+- **Rule:** For primary chat clarification, question cards should originate
+  from RovoDev Serve deferred tools. Do not preserve or add parallel
+  AI Gateway-generated clarification question-card flows for the same user path
+  unless the user explicitly asks for a separate non-Rovo mechanism.

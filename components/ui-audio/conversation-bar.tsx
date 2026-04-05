@@ -5,12 +5,12 @@ import { useConversation } from "@elevenlabs/react"
 import {
   ArrowUpIcon,
   ChevronDown,
-  Keyboard,
+  KeyboardIcon,
   Mic,
   MicOff,
   PhoneIcon,
   XIcon,
-} from "lucide-react"
+} from "@/components/ui/vpk-icons"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -276,7 +276,7 @@ export const ConversationBar = React.forwardRef<
                     className="relative"
                     disabled={!isConnected}
                   >
-                    <Keyboard
+                    <KeyboardIcon
                       className={
                         "h-5 w-5 transform-gpu transition-[transform,opacity] duration-medium ease-out " +
                         (keyboardOpen

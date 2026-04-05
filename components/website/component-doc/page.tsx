@@ -1,7 +1,6 @@
-"use client";
-
 import { token } from "@/lib/tokens";
-import type { ComponentEntry } from "@/app/data/components";
+import type { ComponentDetail } from "@/app/data/component-detail-types";
+import type { ComponentCategory } from "@/app/data/component-manifest";
 import { getAdsDisplayInfo } from "@/app/data/ads-equivalents";
 import { DocHero } from "./components/doc-hero";
 import { DocPreview } from "./components/doc-preview";
@@ -11,7 +10,13 @@ import { DocPropsTable } from "./components/doc-props-table";
 import { DocExamples } from "./components/doc-examples";
 
 interface ComponentDocProps {
-	component: ComponentEntry;
+	component: {
+		name: string;
+		slug: string;
+		importPath: string;
+		category: ComponentCategory;
+		detail?: ComponentDetail;
+	};
 }
 
 export function ComponentDoc({ component }: Readonly<ComponentDocProps>) {

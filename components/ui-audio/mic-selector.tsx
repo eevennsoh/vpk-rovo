@@ -2,7 +2,12 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { Check, ChevronsUpDown, Mic, MicOff } from "lucide-react"
+import {
+  Check,
+  ChevronsUpDown,
+  Mic,
+  MicOff,
+} from "@/components/ui/vpk-icons"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"

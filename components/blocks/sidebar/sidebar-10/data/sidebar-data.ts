@@ -1,32 +1,32 @@
 // @ts-nocheck
 import {
-	AudioWaveform,
-	Blocks,
-	Calendar,
-	Command,
-	Home,
-	Inbox,
-	MessageCircleQuestion,
-	Search,
-	Settings2,
-	Sparkles,
-	Trash2,
-} from "lucide-react"
+	AudioWaveformIcon,
+	CalendarIcon,
+	Columns3Icon,
+	CommandIcon,
+	HelpCircleIcon,
+	HomeIcon,
+	InboxIcon,
+	SearchIcon,
+	SettingsIcon,
+	SparklesIcon,
+	Trash2Icon,
+} from "@/components/ui/vpk-icons"
 
 export const TEAMS = [
 	{
 		name: "Acme Inc",
-		logo: Command,
+		logo: CommandIcon,
 		plan: "Enterprise",
 	},
 	{
 		name: "Acme Corp.",
-		logo: AudioWaveform,
+		logo: AudioWaveformIcon,
 		plan: "Startup",
 	},
 	{
 		name: "Evil Corp.",
-		logo: Command,
+		logo: CommandIcon,
 		plan: "Free",
 	},
 ] as const
@@ -35,23 +35,23 @@ export const NAV_MAIN_ITEMS = [
 	{
 		title: "Search",
 		url: "#",
-		icon: Search,
+		icon: SearchIcon,
 	},
 	{
 		title: "Ask AI",
 		url: "#",
-		icon: Sparkles,
+		icon: SparklesIcon,
 	},
 	{
 		title: "Home",
 		url: "#",
-		icon: Home,
+		icon: HomeIcon,
 		isActive: true,
 	},
 	{
 		title: "Inbox",
 		url: "#",
-		icon: Inbox,
+		icon: InboxIcon,
 		badge: "10",
 	},
 ] as const
@@ -60,27 +60,27 @@ export const NAV_SECONDARY_ITEMS = [
 	{
 		title: "Calendar",
 		url: "#",
-		icon: Calendar,
+		icon: CalendarIcon,
 	},
 	{
 		title: "Settings",
 		url: "#",
-		icon: Settings2,
+		icon: SettingsIcon,
 	},
 	{
 		title: "Projects",
 		url: "#",
-		icon: Blocks,
+		icon: Columns3Icon,
 	},
 	{
 		title: "Trash",
 		url: "#",
-		icon: Trash2,
+		icon: Trash2Icon,
 	},
 	{
 		title: "Help",
 		url: "#",
-		icon: MessageCircleQuestion,
+		icon: HelpCircleIcon,
 	},
 ] as const
 

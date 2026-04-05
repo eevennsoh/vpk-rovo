@@ -58,5 +58,5 @@ Key files:
 - `backend/server.js` — Express streaming endpoint using `createUIMessageStream`
 - `backend/lib/rovodev-gateway.js` — RovoDev Serve streaming/text bridge
 - `backend/lib/rovodev-client.js` — Low-level V3 REST + SSE client for `rovodev serve`
-- `backend/lib/ai-gateway-helpers.js` — AI Gateway fallback helpers (used when `AUTO_FALLBACK_TO_AI_GATEWAY=true`)
+- `backend/lib/ai-gateway-helpers.js` — AI Gateway helpers for image, sound, suggestions, and other explicit gateway-backed flows
 - `app/api/chat-sdk/route.ts` — dev proxy forwarding to Express (requires RovoDev Serve)

@@ -8,14 +8,14 @@ import {
 	CollapsibleContent,
 	CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { cn } from "@/lib/utils";
 import {
 	CheckCircle2Icon,
 	ChevronRightIcon,
 	CircleDotIcon,
 	CircleIcon,
 	XCircleIcon,
-} from "lucide-react";
+} from "@/components/ui/vpk-icons";
+import { cn } from "@/lib/utils";
 import { createContext, use, useMemo } from "react";
 
 type TestStatus = "passed" | "failed" | "skipped" | "running";

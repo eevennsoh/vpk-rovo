@@ -4,8 +4,8 @@ import {
 	FolderIcon,
 	MoreHorizontalIcon,
 	ShareIcon,
-	type LucideIcon,
-} from "lucide-react"
+	type VpkIconComponent,
+} from "@/components/ui/vpk-icons"
 
 import {
 	DropdownMenu,
@@ -27,7 +27,7 @@ interface NavDocumentsProps {
 	items: readonly {
 		name: string
 		url: string
-		icon: LucideIcon
+		icon: VpkIconComponent
 	}[]
 }
 

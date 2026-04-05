@@ -1,6 +1,6 @@
 "use client";
 
-import { Play } from "lucide-react";
+import { Play } from "@/components/ui/vpk-icons";
 import {
 	TranscriptViewerAudio,
 	TranscriptViewerContainer,

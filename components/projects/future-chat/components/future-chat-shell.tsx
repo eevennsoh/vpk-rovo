@@ -1,7 +1,7 @@
 "use client";
 
 import type { FileUIPart } from "ai";
-import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type CSSProperties, startTransition, useCallback, useEffect, useMemo, useRef, useState, ViewTransition } from "react";
 import { ArtifactPanel } from "@/components/ui-ai/artifact";
 import { ChatTimelineNavigator } from "@/components/blocks/chat-timeline/chat-timeline-navigator";
 import { CreateButton } from "@/components/blocks/top-navigation/components/create-button";
@@ -1957,35 +1957,36 @@ export function FutureChatShell({
 
 	const chatPane = (
 		<>
-			<FutureChatMessages
-				activeDocumentId={chat.activeDocument?.id ?? null}
-				compact={isArtifactOpen}
-				extraHorizontalPaddingWhenCompact
-				documents={chat.documents}
-				editingMessageId={chat.editingMessageId}
-				isStreaming={chat.isStreaming}
-				key={chat.runtimeThreadId}
-				messages={displayMessages}
-				onBuildPlan={handleBuildPlan}
-				onEditMessage={chat.editMessage}
-				onOpenArtifactFromCard={handleOpenArtifactFromCard}
-				onOpenPlanPreview={handleOpenPlanPreview}
-				onRegisterArtifactCard={handleRegisterArtifactCard}
-				onRegenerate={chat.regenerateLatest}
-				onScrollActiveUserMessageChange={setScrollActiveTimelineId}
-				onSelectSuggestion={chat.suggestedPrompt}
-				onSetEditingMessageId={chat.setEditingMessageId}
-				onVote={chat.voteOnMessage}
-				pendingPlanMetadataMessageIds={chat.pendingPlanMetadataMessageIds}
-				pendingArtifactResult={chat.pendingArtifactResult}
-				scrollAnchorMessageId={scrollAnchorMessageId}
-				scrollFollowMode={scrollFollowMode}
-				showEmptyState={showHomeState}
-				shouldSuppressLatestAssistantSuggestions={chat.shouldSuppressLatestAssistantSuggestions}
-				streamingArtifact={chat.streamingArtifact}
-				streamingArtifactMessageId={chat.streamingArtifactMessageId}
-				votes={chat.votes}
-			/>
+			<ViewTransition key={chat.runtimeThreadId} enter="fade-in" exit="fade-out" default="none">
+				<FutureChatMessages
+					activeDocumentId={chat.activeDocument?.id ?? null}
+					compact={isArtifactOpen}
+					extraHorizontalPaddingWhenCompact
+					documents={chat.documents}
+					editingMessageId={chat.editingMessageId}
+					isStreaming={chat.isStreaming}
+					messages={displayMessages}
+					onBuildPlan={handleBuildPlan}
+					onEditMessage={chat.editMessage}
+					onOpenArtifactFromCard={handleOpenArtifactFromCard}
+					onOpenPlanPreview={handleOpenPlanPreview}
+					onRegisterArtifactCard={handleRegisterArtifactCard}
+					onRegenerate={chat.regenerateLatest}
+					onScrollActiveUserMessageChange={setScrollActiveTimelineId}
+					onSelectSuggestion={chat.suggestedPrompt}
+					onSetEditingMessageId={chat.setEditingMessageId}
+					onVote={chat.voteOnMessage}
+					pendingPlanMetadataMessageIds={chat.pendingPlanMetadataMessageIds}
+					pendingArtifactResult={chat.pendingArtifactResult}
+					scrollAnchorMessageId={scrollAnchorMessageId}
+					scrollFollowMode={scrollFollowMode}
+					showEmptyState={showHomeState}
+					shouldSuppressLatestAssistantSuggestions={chat.shouldSuppressLatestAssistantSuggestions}
+					streamingArtifact={chat.streamingArtifact}
+					streamingArtifactMessageId={chat.streamingArtifactMessageId}
+					votes={chat.votes}
+				/>
+			</ViewTransition>
 
 			<div
 				ref={composerDockRef}
@@ -2080,14 +2081,16 @@ export function FutureChatShell({
 				</div>
 
 				{showHomeState ? (
-					<PromptGallery
-						className="mt-5"
-						items={HOME_SUGGESTIONS}
-						onSelect={handleGallerySelect}
-						onExpandChange={setGalleryExpanded}
-						onPreviewStart={handleGalleryPreviewStart}
-						onPreviewEnd={handleGalleryPreviewEnd}
-					/>
+					<ViewTransition exit="slide-down" default="none">
+						<PromptGallery
+							className="mt-5"
+							items={HOME_SUGGESTIONS}
+							onSelect={handleGallerySelect}
+							onExpandChange={setGalleryExpanded}
+							onPreviewStart={handleGalleryPreviewStart}
+							onPreviewEnd={handleGalleryPreviewEnd}
+						/>
+					</ViewTransition>
 				) : null}
 			</div>
 		</>
@@ -2135,22 +2138,30 @@ export function FutureChatShell({
 				onCancelThreadRun={async (threadId) => {
 					await chat.cancelThreadRun(threadId);
 				}}
-				onDeleteThread={(threadId) => chat.deleteThread(threadId)}
+				onDeleteThread={async (threadId) => {
+					startTransition(() => {
+						void chat.deleteThread(threadId);
+					});
+				}}
 				onNewChat={() => {
 					setOptimisticUserMessage(null);
-					void chat.openNewChat();
+					startTransition(() => {
+						void chat.openNewChat();
+					});
 				}}
 				onSelectThread={async (threadId) => {
 					setOptimisticUserMessage(null);
-					await chat.loadThread(threadId);
-					if (embedded) {
-						return;
-					}
-					window.history.pushState(
-						null,
-						"",
-						buildFutureChatThreadPath(threadId),
-					);
+					startTransition(async () => {
+						await chat.loadThread(threadId);
+						if (embedded) {
+							return;
+						}
+						window.history.pushState(
+							null,
+							"",
+							buildFutureChatThreadPath(threadId),
+						);
+					});
 				}}
 				onSidebarMouseEnter={handleSidebarContentMouseEnter}
 				onSidebarMouseLeave={handleSidebarContentMouseLeave}
@@ -2168,7 +2179,7 @@ export function FutureChatShell({
 							? "w-(--sidebar-width) overflow-x-clip border-r border-border"
 							: "w-40 border-b border-border",
 					)}
-					style={{ backgroundColor: token("elevation.surface") }}
+					style={{ backgroundColor: token("elevation.surface"), viewTransitionName: "persistent-sidebar" as never }}
 				>
 					<LeftNavigation
 						product="rovo"
@@ -2197,6 +2208,7 @@ export function FutureChatShell({
 							style={{
 								borderColor: token("color.border"),
 								backgroundColor: token("elevation.surface"),
+								viewTransitionName: "persistent-header" as never,
 							}}
 						>
 							<div className="relative flex min-w-0 flex-1 items-center justify-start gap-2">

@@ -51,9 +51,9 @@ const NAV_SECTION_LINK_CLASSNAME =
 const NAV_SECTION_LABEL_CLASSNAME =
 	`flex flex-1 items-center rounded-md py-2 px-3 ${NAV_SECTION_TEXT_CLASSNAME} uppercase`;
 const NAV_GROUP_LINK_CLASSNAME =
-	`flex flex-1 items-center rounded-md py-2 px-3 ${NAV_SECTION_TEXT_CLASSNAME} no-underline transition-colors data-[active=true]:bg-bg-neutral data-[active=true]:font-semibold data-[active=true]:text-text hover:text-text`;
+	"flex flex-1 items-center rounded-md py-2 px-3 text-sm text-text-subtle no-underline transition-colors data-[active=true]:bg-bg-neutral data-[active=true]:font-semibold data-[active=true]:text-text hover:text-text";
 const NAV_GROUP_LABEL_CLASSNAME =
-	`flex flex-1 items-center rounded-md py-2 px-3 ${NAV_SECTION_TEXT_CLASSNAME}`;
+	"flex flex-1 items-center rounded-md py-2 px-3 text-sm text-text-subtle";
 
 export function WebsiteSidebarNav({
 	staticPages = [],

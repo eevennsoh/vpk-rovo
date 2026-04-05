@@ -1,6 +1,6 @@
 "use client";
 
-import { ChartBarIcon, ChartLineIcon, ChartPieIcon } from "lucide-react";
+import { ChartBarIcon, ChartLineIcon, ChartPieIcon } from "@/components/ui/vpk-icons";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";

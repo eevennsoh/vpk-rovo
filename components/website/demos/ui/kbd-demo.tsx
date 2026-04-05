@@ -1,4 +1,4 @@
-import { ArrowLeftIcon, ArrowRightIcon, CircleDashedIcon, SaveIcon } from "lucide-react";
+import { ArrowLeftIcon, ArrowRightIcon, CircleDashedIcon, SaveIcon } from "@/components/ui/vpk-icons";
 import { Button } from "@/components/ui/button";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";

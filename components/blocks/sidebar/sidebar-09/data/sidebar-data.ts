@@ -1,5 +1,12 @@
 // @ts-nocheck
-import { ArchiveX, Command, File, Inbox, Send, Trash2 } from "lucide-react"
+import {
+	ArchiveIcon,
+	CommandIcon,
+	FileIcon,
+	InboxIcon,
+	SendIcon,
+	Trash2Icon,
+} from "@/components/ui/vpk-icons"
 
 export const USER_DATA = {
 	name: "shadcn",
@@ -11,31 +18,31 @@ export const NAV_MAIN_ITEMS = [
 	{
 		title: "Inbox",
 		url: "#",
-		icon: Inbox,
+		icon: InboxIcon,
 		isActive: true,
 	},
 	{
 		title: "Drafts",
 		url: "#",
-		icon: File,
+		icon: FileIcon,
 		isActive: false,
 	},
 	{
 		title: "Sent",
 		url: "#",
-		icon: Send,
+		icon: SendIcon,
 		isActive: false,
 	},
 	{
 		title: "Junk",
 		url: "#",
-		icon: ArchiveX,
+		icon: ArchiveIcon,
 		isActive: false,
 	},
 	{
 		title: "Trash",
 		url: "#",
-		icon: Trash2,
+		icon: Trash2Icon,
 		isActive: false,
 	},
 ] as const
@@ -125,6 +132,6 @@ export const MAIL_ITEMS = [
 
 export const COMPANY_DATA = {
 	name: "Acme Inc",
-	logo: Command,
+	logo: CommandIcon,
 	plan: "Enterprise",
 } as const

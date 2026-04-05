@@ -139,7 +139,6 @@ export function PlanDemoSummaryAndTasks() {
 			<PlanContent className="px-0 pb-0 pt-4">
 				<PlanTabContent
 					description={PLAN_SUMMARY}
-					tasks={PLAN_TASKS}
 				/>
 
 				<PlanDemoFooter />

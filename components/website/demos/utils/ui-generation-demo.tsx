@@ -16,7 +16,7 @@ import {
 	SendIcon,
 	Trash2Icon,
 	XIcon,
-} from "lucide-react";
+} from "@/components/ui/vpk-icons";
 
 const DEBOUNCE_MS = 300;
 const GENUI_META_PREFIX = "[genui-meta]";

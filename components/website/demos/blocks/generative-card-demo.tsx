@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import Image from "next/image";
 import CalendarIcon from "@atlaskit/icon/core/calendar";
-import { SheetIcon } from "lucide-react";
+import { SheetIcon } from "@/components/ui/vpk-icons";
 
 import {
 	GenerativeCard,

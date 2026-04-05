@@ -1,6 +1,6 @@
 // @ts-nocheck
 import * as React from "react"
-import { ChevronRight, File, Folder } from "lucide-react"
+import { ChevronRightIcon, FileIcon, FolderIcon } from "@/components/ui/vpk-icons"
 
 import {
   Collapsible,
@@ -76,7 +76,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               {data.changes.map((item, index) => (
                 <SidebarMenuItem key={index}>
                   <SidebarMenuButton>
-                    <File />
+                    <FileIcon />
                     {item.file}
                   </SidebarMenuButton>
                   <SidebarMenuBadge>{item.state}</SidebarMenuBadge>
@@ -110,7 +110,7 @@ function Tree({ item }: { item: string | any[] }) {
         isActive={name === "button.tsx"}
         className="data-[active=true]:bg-transparent"
       >
-        <File />
+        <FileIcon />
         {name}
       </SidebarMenuButton>
     )
@@ -123,8 +123,8 @@ function Tree({ item }: { item: string | any[] }) {
         defaultOpen={name === "components" || name === "ui"}
       >
         <CollapsibleTrigger render={<SidebarMenuButton />}>
-          <ChevronRight className="transition-transform" />
-          <Folder />
+          <ChevronRightIcon className="transition-transform" />
+          <FolderIcon />
           {name}
         </CollapsibleTrigger>
         <CollapsibleContent>

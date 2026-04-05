@@ -14,7 +14,7 @@ export function FutureChatPlanExecutionTracker({
 }: Readonly<FutureChatPlanExecutionTrackerProps>) {
 	return (
 		<TaskProgress
-			key={`${tracker.planKey}:${tracker.runStatus}`}
+			key={tracker.planKey}
 			agentCount={tracker.agentCount}
 			className="max-w-none"
 			defaultCollapsed={tracker.runStatus !== "running"}

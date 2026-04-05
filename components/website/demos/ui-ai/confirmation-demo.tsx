@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CheckIcon, XIcon, TrashIcon, CalendarIcon, ShieldAlertIcon } from "lucide-react";
+import { CheckIcon, XIcon, TrashIcon, CalendarIcon, ShieldAlertIcon } from "@/components/ui/vpk-icons";
 import {
 	Confirmation,
 	ConfirmationTitle,

@@ -82,6 +82,10 @@ const {
 	getCurrentRovoDevSession,
 } = require("./lib/rovodev-session");
 const { createAIGatewayProvider } = require("./lib/ai-gateway-provider");
+const {
+	buildLlmRoutingStatus,
+	describeChatBackend,
+} = require("./lib/llm-routing-status");
 const { isLocalModelRequest, streamLocalModel } = require("./lib/local-model-provider");
 const { getGenuiSystemPrompt } = require("./lib/genui-system-prompt");
 const { analyzeGeneratedText, pickBestSpec, extractDirectSpec } = require("./lib/genui-spec-utils");
@@ -142,12 +146,6 @@ const {
 	resolveToolFirstWidgetSource,
 } = require("./lib/tool-first-widget-content-type");
 const { resolveToolFirstRoutingFlags } = require("./lib/tool-first-routing-flags");
-const {
-	buildClassifierPrompt: buildSmartClarificationClassifierPrompt,
-	parseClassifierOutput: parseSmartClarificationClassifierOutput,
-	isVagueVisualizationRequest,
-	shouldGateSmartClarification,
-} = require("./lib/smart-clarification-gate");
 const {
 	resolveGoogleImageGatewayConfig,
 	toImageWidgetErrorMessage,
@@ -254,9 +252,6 @@ const {
 	buildTranslationGenuiSpec,
 } = require("./lib/translation-card");
 const {
-	buildClarificationDirective,
-} = require("./lib/clarification-directive");
-const {
 	extractPlanWidgetPayloadFromExitPlanToolInput,
 	extractProgressivePlanWidgetPayloadFromText,
 } = require("./lib/plan-widget-fallback");
@@ -278,8 +273,6 @@ const {
 	inferPromptIntent,
 } = require("./lib/prompt-intent");
 const {
-	extractQuestionCardDefinitionFromAssistantText,
-	resolveFallbackQuestionCardState,
 	looksLikeClarificationResponse,
 	MAX_LABEL_LENGTH: CLARIFICATION_MAX_LABEL_LENGTH,
 } = require("./lib/question-card-extractor");
@@ -575,17 +568,11 @@ const CLARIFICATION_WIDGET_TYPE = "question-card";
 const CLARIFICATION_MAX_ROUNDS = 3;
 const CLARIFICATION_MAX_PRESET_OPTIONS = 8;
 const CLARIFICATION_CUSTOM_OPTION_PLACEHOLDER = "Tell Rovo what to do...";
-// Tool-only question-card routing: do not auto-convert plain assistant text
-// into question cards unless explicitly re-enabled for legacy behavior.
-const QUESTION_CARD_TEXT_EXTRACTION_FALLBACK_ENABLED = isTruthyFlag(
-	process.env.ENABLE_LEGACY_TEXT_QUESTION_CARD_FALLBACK
-);
 const TOOL_FIRST_GATE_SKIP_SOURCES = new Set([
 	"clarification-submit",
 ]);
 const DEFAULT_CONFLUENCE_BASE_URL = "https://venn-test.atlassian.net/wiki";
 const MAX_SLACK_SUMMARY_CHARS = 35000;
-const INTERACTIVE_CHAT_FALLBACK_ENABLED = false;
 const INTERACTIVE_CHAT_STUCK_PORT_RECOVERY_RETRY_ATTEMPTS = 1;
 const INTERACTIVE_CHAT_FORCE_PORT_RECOVERY_MAX_ATTEMPTS = 2;
 const INTERACTIVE_CHAT_FORCE_PORT_RECOVERY_TIMEOUT_MS =
@@ -600,20 +587,7 @@ const READY_PROBE_MAX_ATTEMPTS = 20; // 100ms × 20 = 2s max
  * @type {Map<string, { port: number; abortController: AbortController }>}
  */
 const activeRequests = new Map();
-const AI_GATEWAY_ALLOWED_USE_CASES = ["image", "sound", "suggestions"];
 const getListeningPidsForPort = createListeningPidReader();
-
-function isTruthyFlag(value) {
-	if (typeof value !== "string") {
-		return false;
-	}
-
-	return ["1", "true", "yes", "on"].includes(value.trim().toLowerCase());
-}
-
-function isAIGatewayFallbackEnabled() {
-	return isTruthyFlag(process.env.AUTO_FALLBACK_TO_AI_GATEWAY);
-}
 
 function resolveGatewayUrlForProvider(envVars, preferredProvider, providedGatewayUrl) {
 	if (typeof providedGatewayUrl === "string" && providedGatewayUrl.trim().length > 0) {
@@ -869,29 +843,13 @@ async function generateTextViaGateway({
 	const backendSelection = await resolvePreferredBackend({ backendPreference });
 	if (backendSelection.backend === "rovodev") {
 		debugLog("GENERATE", "Routing through RovoDev Serve");
-		try {
-			return await generateTextViaRovoDev({
-				system,
-				prompt,
-				conflictPolicy: "wait-for-turn",
-				timeoutMs: WAIT_FOR_TURN_TIMEOUT_MS,
-				signal,
-			});
-		} catch (rovoDevError) {
-			const is409Timeout =
-				rovoDevError?.code === "ROVODEV_CHAT_IN_PROGRESS_TIMEOUT" ||
-				isChatInProgressError(rovoDevError);
-			const canFallback =
-				is409Timeout &&
-				backendPreference === "ai-gateway" &&
-				hasGatewayUrlConfigured();
-			if (!canFallback) {
-				throw rovoDevError;
-			}
-			console.warn(
-				"[generateTextViaGateway] RovoDev 409 timeout — falling back to AI Gateway"
-			);
-		}
+		return await generateTextViaRovoDev({
+			system,
+			prompt,
+			conflictPolicy: "wait-for-turn",
+			timeoutMs: WAIT_FOR_TURN_TIMEOUT_MS,
+			signal,
+		});
 	}
 
 	if (backendSelection.backend !== "ai-gateway") {
@@ -951,30 +909,14 @@ async function streamTextViaGateway({
 
 	if (backendSelection.backend === "rovodev") {
 		debugLog("STREAM_GENERATE", "Routing through RovoDev Serve");
-		try {
-			await streamViaRovoDev({
-				message: buildRovoDevTextGenerationMessage({ system, prompt }),
-				onTextDelta: handleTextDelta,
-				conflictPolicy: "wait-for-turn",
-				timeoutMs: WAIT_FOR_TURN_TIMEOUT_MS,
-				signal,
-			});
-			return bufferedText.trim();
-		} catch (rovoDevError) {
-			const is409Timeout =
-				rovoDevError?.code === "ROVODEV_CHAT_IN_PROGRESS_TIMEOUT" ||
-				isChatInProgressError(rovoDevError);
-			const canFallback =
-				is409Timeout &&
-				backendPreference === "ai-gateway" &&
-				hasGatewayUrlConfigured();
-			if (!canFallback) {
-				throw rovoDevError;
-			}
-			console.warn(
-				"[streamTextViaGateway] RovoDev 409 timeout — falling back to AI Gateway"
-			);
-		}
+		await streamViaRovoDev({
+			message: buildRovoDevTextGenerationMessage({ system, prompt }),
+			onTextDelta: handleTextDelta,
+			conflictPolicy: "wait-for-turn",
+			timeoutMs: WAIT_FOR_TURN_TIMEOUT_MS,
+			signal,
+		});
+		return bufferedText.trim();
 	}
 
 	if (backendSelection.backend !== "ai-gateway") {
@@ -1190,8 +1132,6 @@ function buildAudioDataUrl(audioBytes, contentType) {
 
 async function generateSmartGenuiResult({
 	roleMessages,
-	provider,
-	gatewayUrl,
 	layoutContext,
 	signal,
 }) {
@@ -1209,11 +1149,6 @@ async function generateSmartGenuiResult({
 		maxOutputTokens: 3500,
 		temperature: 0.3,
 		signal,
-		backendPreference: "ai-gateway",
-		...buildSmartGenerationGatewayOptions({
-			provider,
-		}),
-		gatewayUrl,
 	});
 
 	const { meta, body } = parseGenuiMetaAndBody(rawText);
@@ -1363,42 +1298,6 @@ function resolveFutureChatDelegatedPrompt({
 	};
 }
 
-function buildPlanningQuestionCardSessionId(planRequestId) {
-	const rawRequestId = getNonEmptyString(planRequestId);
-	if (!rawRequestId) {
-		return createClarificationSessionId();
-	}
-
-	const normalizedRequestId = rawRequestId
-		.replace(/[^A-Za-z0-9_-]+/g, "-")
-		.replace(/-+/g, "-")
-		.replace(/^-|-$/g, "");
-	if (!normalizedRequestId) {
-		return createClarificationSessionId();
-	}
-
-	return `agent-team-${normalizedRequestId}`;
-}
-
-function buildSmartClarificationSessionId({ planRequestId, surface }) {
-	const normalizedSurface = typeof surface === "string" ? surface.trim().toLowerCase() : "";
-	const safeSurface = normalizedSurface ? normalizedSurface : "smart";
-
-	const rawRequestId = getNonEmptyString(planRequestId);
-	if (rawRequestId) {
-		const normalizedRequestId = rawRequestId
-			.replace(/[^A-Za-z0-9_-]+/g, "-")
-			.replace(/-+/g, "-")
-			.replace(/^-|-$/g, "");
-		if (normalizedRequestId) {
-			return `smart-${safeSurface}-${normalizedRequestId}`;
-		}
-	}
-
-	return `smart-${safeSurface}-${createClarificationSessionId()}`;
-}
-
-
 const futureChatThreadManager = createFutureChatThreadManager({
 	baseDir: path.join(__dirname, "data"),
 	logger: console,
@@ -1434,7 +1333,6 @@ const makeRunManager = createMakeRunManager({
 	appRegistry,
 	logger: console,
 	isRovoDevAvailable,
-	isAIGatewayFallbackEnabled: () => false,
 });
 
 function buildFutureChatFileUrl(uploadId) {
@@ -4694,53 +4592,6 @@ function buildApprovalResumeDecision(approvalSubmission) {
 	return buildApprovalSummary(approvalSubmission);
 }
 
-function getLatestAssistantWidgetPayload(messages) {
-	if (!Array.isArray(messages)) {
-		return null;
-	}
-
-	for (let messageIndex = messages.length - 1; messageIndex >= 0; messageIndex--) {
-		const message = messages[messageIndex];
-		if (!message || message.role !== "assistant" || !Array.isArray(message.parts)) {
-			continue;
-		}
-
-		for (let partIndex = message.parts.length - 1; partIndex >= 0; partIndex--) {
-			const part = message.parts[partIndex];
-			if (part?.type !== "data-widget-data" || !part.data) {
-				continue;
-			}
-
-			const widgetType = getNonEmptyString(part.data.type);
-			if (!widgetType) {
-				continue;
-			}
-
-			return {
-				type: widgetType,
-				payload: part.data.payload,
-			};
-		}
-	}
-
-	return null;
-}
-
-function getActiveQuestionCardPayload(messages) {
-	const latestWidgetPayload = getLatestAssistantWidgetPayload(messages);
-	if (!latestWidgetPayload || latestWidgetPayload.type !== CLARIFICATION_WIDGET_TYPE) {
-		return null;
-	}
-
-	return sanitizeQuestionCardPayload(latestWidgetPayload.payload, {
-		widgetType: CLARIFICATION_WIDGET_TYPE,
-		maxRounds: CLARIFICATION_MAX_ROUNDS,
-		maxPresetOptions: CLARIFICATION_MAX_PRESET_OPTIONS,
-		customOptionPlaceholder: CLARIFICATION_CUSTOM_OPTION_PLACEHOLDER,
-		maxLabelLength: CLARIFICATION_MAX_LABEL_LENGTH,
-	});
-}
-
 function hasAnswerForQuestion(question, answers) {
 	const answerValue = answers[question.id];
 	if (question.kind === "multi-select") {
@@ -4826,185 +4677,6 @@ markLintKeepalive(
 	sanitizeAnswersForQuestionCard,
 	buildClarificationSummary
 );
-
-function parseJsonFromText(rawText) {
-	try {
-		return JSON.parse(rawText);
-	} catch {
-		const objectMatch = rawText.match(/\{[\s\S]*\}/);
-		if (!objectMatch) {
-			return null;
-		}
-
-		try {
-			return JSON.parse(objectMatch[0]);
-		} catch {
-			return null;
-		}
-	}
-}
-
-function extractQuestionCardPayloadFromAssistantText(rawText, defaults = {}) {
-	const extractedPayload = extractQuestionCardDefinitionFromAssistantText(
-		rawText,
-		defaults
-	);
-	if (!extractedPayload) {
-		return null;
-	}
-
-	return sanitizeQuestionCardPayload(extractedPayload, {
-		...defaults,
-		widgetType: CLARIFICATION_WIDGET_TYPE,
-		maxRounds: CLARIFICATION_MAX_ROUNDS,
-		maxPresetOptions: CLARIFICATION_MAX_PRESET_OPTIONS,
-		customOptionPlaceholder: CLARIFICATION_CUSTOM_OPTION_PLACEHOLDER,
-		maxLabelLength: CLARIFICATION_MAX_LABEL_LENGTH,
-		createSessionId: createClarificationSessionId,
-	});
-}
-
-function createClarificationQuestionPrompt({
-	latestUserMessage,
-	conversationHistory,
-	previousQuestionCard,
-	submission,
-	round,
-	maxRounds,
-	intentHint,
-}) {
-	const conversationContext =
-		Array.isArray(conversationHistory) && conversationHistory.length > 0
-			? conversationHistory
-					.map((message) => `${message.type === "user" ? "User" : "Assistant"}: ${message.content}`)
-					.join("\n")
-			: "No prior context.";
-	const previousQuestions = previousQuestionCard
-		? JSON.stringify(previousQuestionCard.questions)
-		: "[]";
-	const previousAnswers = submission
-		? JSON.stringify(submission.answers)
-		: "{}";
-
-	const intentGuidance = intentHint === "visualization"
-		? `
-Visualization-specific guidance:
-- Ask about chart type (bar, line, pie, area, radar, etc.)
-- Ask about the data source or metrics to visualize (revenue, users, conversions, etc.)
-- Ask about the grouping dimension (by region, by month, by product, etc.)
-- Ask about the time range or period (last 30 days, 2024, Q1-Q4, etc.)
-`
-		: "";
-
-	return `You generate structured clarification question cards for planning and problem-solving requests.
-Return ONLY valid JSON and no markdown.
-
-Target schema:
-{
-  "type": "question-card",
-  "title": "string",
-  "description": "string",
-  "questions": [
-    {
-      "id": "string",
-      "label": "string",
-      "description": "string",
-      "required": true,
-      "kind": "single-select | multi-select",
-      "placeholder": "string",
-      "options": [
-        { "id": "string", "label": "string", "description": "string", "recommended": true }
-      ]
-    }
-  ]
-}
-
-Rules:
-- Generate 2-4 questions total.
-- Keep questions short and decision-focused.
-- At least 2 questions must be required.
-- Every question must be either "single-select" or "multi-select".
-- Use "multi-select" only when picking multiple answers is genuinely useful; otherwise prefer "single-select".
-- Every question must include 1-3 options.
-- Each option MUST be a specific, concrete answer to its question — not a generic category or meta-label.
-- Do not include a custom free-text option in the JSON options.
-- The UI automatically appends a "Tell Rovo what to do..." free-text field after the generated options.
-- Do not generate a plan or task list.
-- This is round ${round} of ${maxRounds}.
-- If previous answers are partial, ask only missing/high-impact follow-ups.
-
-Option quality:
-- BAD options (generic meta-labels): "Quick recommendation", "Balanced approach", "Detailed plan", "Basic", "Advanced"
-- GOOD options (specific answers): For "Which site?" → "Marketing site", "Developer docs", "Customer portal". For "What framework?" → "React", "Vue", "Angular".
-- Each option must directly answer the question it belongs to.
-${intentGuidance}
-Conversation context:
-${conversationContext}
-
-Latest user request:
-${latestUserMessage}
-
-Previous question set:
-${previousQuestions}
-
-Submitted answers:
-${previousAnswers}`;
-}
-
-async function generateClarificationQuestionCard({
-	latestUserMessage,
-	conversationHistory,
-	previousQuestionCard,
-	submission,
-	round,
-	maxRounds,
-	sessionId,
-	intentHint,
-	gatewayOptions,
-}) {
-	const promptText = createClarificationQuestionPrompt({
-		latestUserMessage,
-		conversationHistory,
-		previousQuestionCard,
-		submission,
-		round,
-		maxRounds,
-		intentHint,
-	});
-
-	try {
-		const text = await generateTextViaGateway({
-			system: "You output strict JSON for clarification question cards.",
-			prompt: promptText,
-			maxOutputTokens: 700,
-			temperature: 0.3,
-			...gatewayOptions,
-		});
-
-		const parsedJson = parseJsonFromText(text);
-		const sanitizedPayload = sanitizeQuestionCardPayload(parsedJson, {
-			sessionId,
-			round,
-			maxRounds,
-			widgetType: CLARIFICATION_WIDGET_TYPE,
-			directive: buildClarificationDirective({
-				latestUserMessage,
-				intentHint,
-			}),
-			maxPresetOptions: CLARIFICATION_MAX_PRESET_OPTIONS,
-			customOptionPlaceholder: CLARIFICATION_CUSTOM_OPTION_PLACEHOLDER,
-			maxLabelLength: CLARIFICATION_MAX_LABEL_LENGTH,
-			createSessionId: createClarificationSessionId,
-		});
-		if (sanitizedPayload) {
-			return sanitizedPayload;
-		}
-	} catch (error) {
-		console.error("[CLARIFICATION] Gateway error:", error.message || error);
-	}
-
-	return null;
-}
 
 function streamQuestionCardWidget({ res, payload, introText }) {
 	const stream = createUIMessageStream({
@@ -5251,7 +4923,6 @@ async function handleChatSdkRequest(req, res) {
 			approval: rawApproval,
 			toolApproval: rawToolApproval,
 			deferredToolResponse: rawDeferredToolResponse,
-			planRequestId,
 			creationMode,
 			smartGeneration: rawSmartGeneration,
 			hasQueuedPrompts: rawHasQueuedPrompts,
@@ -6447,109 +6118,6 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 					}
 				}
 
-				if (smartRoutingActive && !isStrictToolFirstTurn) {
-					const vagueVisualization = isVagueVisualizationRequest(latestUserMessage);
-
-					const smartClarificationClassifierPrompt =
-						smartIntentResult && smartIntentResult.intent !== "normal"
-							? buildSmartClarificationClassifierPrompt({
-									latestUserMessage,
-									conversationHistory,
-									smartIntentHint: smartIntentResult.intent,
-									layoutContext: smartLayoutContext,
-								})
-							: buildSmartClarificationClassifierPrompt({
-									latestUserMessage,
-									conversationHistory,
-									smartIntentHint: "normal",
-									layoutContext: smartLayoutContext,
-								});
-
-					let smartClarificationDecision = null;
-					if (vagueVisualization && smartIntentResult && (smartIntentResult.intent === "genui" || smartIntentResult.intent === "both")) {
-						// Heuristic fast-path: skip the LLM classifier entirely for vague
-						// visualization requests to avoid port contention hangs.
-						smartClarificationDecision = {
-							needsClarification: true,
-							confidence: 1,
-							reason: "heuristic-vague-visualization",
-						};
-						console.info("[SMART-CLARIFICATION] Heuristic fast-path: vague visualization request");
-					} else if (smartIntentResult?.timedOut) {
-						console.info(
-							"[SMART-CLARIFICATION] Skipping classifier after smart-intent timeout"
-						);
-					} else {
-						try {
-							const classifierText = await generateTextViaGateway({
-								system: "You output strict JSON indicating if clarification is needed.",
-								prompt: smartClarificationClassifierPrompt,
-								maxOutputTokens: 120,
-								temperature: 0,
-								backendPreference: "ai-gateway",
-								...buildSmartGenerationGatewayOptions({
-									provider,
-								}),
-							});
-							smartClarificationDecision = parseSmartClarificationClassifierOutput(
-								classifierText
-							);
-						} catch (error) {
-							console.warn(
-								"[SMART-CLARIFICATION] Classifier failed; continuing without smart gate",
-								error instanceof Error ? error.message : error
-							);
-						}
-					}
-
-					const shouldGateClarification = shouldGateSmartClarification({
-						latestUserMessage,
-						latestUserMessageSource,
-						smartGenerationActive: smartRoutingActive,
-						smartIntentResult,
-						classifierResult: smartClarificationDecision,
-					});
-
-					if (shouldGateClarification) {
-						const clarificationAbort = new AbortController();
-						const clarificationTimeout = setTimeout(() => clarificationAbort.abort(), 15_000);
-						try {
-							const questionCardPayload = await generateClarificationQuestionCard({
-								latestUserMessage: latestVisibleUserMessage?.text || latestUserMessage,
-								conversationHistory,
-								previousQuestionCard: null,
-								submission: null,
-								round: 1,
-								maxRounds: CLARIFICATION_MAX_ROUNDS,
-								sessionId: buildSmartClarificationSessionId({
-									planRequestId,
-									surface: smartGeneration.surface,
-								}),
-								intentHint: vagueVisualization ? "visualization" : undefined,
-								gatewayOptions: {
-									backendPreference: "ai-gateway",
-									...buildSmartGenerationGatewayOptions({
-										provider,
-									}),
-									signal: clarificationAbort.signal,
-								},
-							});
-
-							if (questionCardPayload) {
-								streamQuestionCardWidget({
-									res,
-									payload: questionCardPayload,
-									introText:
-										"A couple quick questions so I can generate the right output.",
-								});
-								return;
-							}
-						} finally {
-							clearTimeout(clarificationTimeout);
-						}
-					}
-				}
-
 			if (
 				smartRoutingActive &&
 				!isStrictToolFirstTurn &&
@@ -6855,12 +6423,11 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 							emitWidgetLoading(genuiWidgetId, SMART_WIDGET_TYPE_GENUI, true);
 							try {
 								throwIfSmartRouteAborted();
-								const genuiResult = await generateSmartGenuiResult({
-									roleMessages,
-									provider,
-									layoutContext: smartLayoutContext,
-									signal: smartRouteAbortController.signal,
-								});
+									const genuiResult = await generateSmartGenuiResult({
+										roleMessages,
+										layoutContext: smartLayoutContext,
+										signal: smartRouteAbortController.signal,
+									});
 								throwIfSmartRouteAborted();
 								const summaryText = getNonEmptyString(genuiResult.narrative);
 								if (summaryText) {
@@ -8146,12 +7713,11 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 							}
 
 							try {
-								const directGenuiResult = await generateSmartGenuiResult({
-									roleMessages: normalizedRoleMessages,
-									provider,
-									layoutContext: smartLayoutContext,
-									signal: abortController.signal,
-								});
+									const directGenuiResult = await generateSmartGenuiResult({
+										roleMessages: normalizedRoleMessages,
+										layoutContext: smartLayoutContext,
+										signal: abortController.signal,
+									});
 								if (!directGenuiResult?.spec) {
 									return false;
 								}
@@ -10379,79 +9945,6 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 						assistantText = stripDirectMediaFences(assistantText);
 					}
 				}
-
-				if (
-					QUESTION_CARD_TEXT_EXTRACTION_FALLBACK_ENABLED &&
-					!hasEmittedQuestionCard &&
-					!hasEmittedPlanWidget
-				) {
-					const previousQuestionCard = getActiveQuestionCardPayload(messages);
-					const fallbackQuestionCardState = resolveFallbackQuestionCardState({
-						isPostClarificationTurn,
-						clarificationSubmission,
-						previousQuestionCard,
-						fallbackSessionId: buildPlanningQuestionCardSessionId(planRequestId),
-						maxRounds: CLARIFICATION_MAX_ROUNDS,
-					});
-					if (fallbackQuestionCardState.canEmit) {
-						const fallbackQuestionCardPayload =
-							extractQuestionCardPayloadFromAssistantText(assistantText, {
-								sessionId: fallbackQuestionCardState.sessionId,
-								round: fallbackQuestionCardState.round,
-								maxRounds: fallbackQuestionCardState.maxRounds,
-								title: "Help me clarify what you need",
-								description:
-									"Answer these questions so I can build a better plan.",
-							});
-						if (fallbackQuestionCardPayload) {
-							const fallbackWidgetId = `question-card-fallback-${Date.now()}`;
-							hasEmittedQuestionCard = true;
-							writer.write({
-								type: "data-widget-loading",
-								id: fallbackWidgetId,
-								data: {
-									type: CLARIFICATION_WIDGET_TYPE,
-									loading: true,
-								},
-							});
-							writer.write({
-								type: "data-widget-data",
-								id: fallbackWidgetId,
-								data: {
-									type: CLARIFICATION_WIDGET_TYPE,
-									payload: fallbackQuestionCardPayload,
-								},
-							});
-							writer.write({
-								type: "data-widget-loading",
-								id: fallbackWidgetId,
-								data: {
-									type: CLARIFICATION_WIDGET_TYPE,
-									loading: false,
-								},
-							});
-
-							// BE-005 / BE-009: Emit route-decision for fallback question card
-							writer.write(createRouteDecisionPart({
-								intent: "chat",
-								origin: requestOrigin,
-								reason: "intent_clarification",
-							}));
-
-							console.info("[OUTPUT-ROUTING] Question card emitted via fallback extraction", {
-								reason: "intent_clarification",
-								experience: "question_card",
-								sessionId: fallbackQuestionCardPayload.sessionId,
-								round: fallbackQuestionCardPayload.round,
-								questionCount: Array.isArray(fallbackQuestionCardPayload.questions)
-									? fallbackQuestionCardPayload.questions.length
-									: 0,
-								source: "text_extraction_fallback",
-							});
-						}
-					}
-				}
-
 					if (!hasExplicitPlanPayload) {
 						const updateTodoPlanPayload =
 							extractUpdateTodoPlanPayloadFromObservations(toolObservationEntries);
@@ -10634,12 +10127,11 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 									maxObservationItems: 6,
 								})
 								: assistantText;
-							const genuiResult = await generateSmartGenuiResult({
-								roleMessages: [...roleMessages, { role: "assistant", content: genuiAssistantContent || assistantText }],
-								provider,
-								layoutContext: smartLayoutContext,
-								signal: abortController.signal,
-							});
+								const genuiResult = await generateSmartGenuiResult({
+									roleMessages: [...roleMessages, { role: "assistant", content: genuiAssistantContent || assistantText }],
+									layoutContext: smartLayoutContext,
+									signal: abortController.signal,
+								});
 							const summaryText = getNonEmptyString(genuiResult?.narrative);
 							const conciseSummary = summaryText
 								? summaryText.length > 280
@@ -10936,12 +10428,11 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 									});
 								}
 
-								const genuiResult = await generateSmartGenuiResult({
-									roleMessages: roleMessagesForGenui,
-									provider,
-									layoutContext: smartLayoutContext,
-									signal: abortController.signal,
-								});
+									const genuiResult = await generateSmartGenuiResult({
+										roleMessages: roleMessagesForGenui,
+										layoutContext: smartLayoutContext,
+										signal: abortController.signal,
+									});
 
 								const narrativeSummary = getNonEmptyString(
 									genuiResult.narrative
@@ -11715,8 +11206,6 @@ app.post("/api/chat-sdk/skip-question", async (req, res) => {
 app.post("/api/genui-chat", (req, res) =>
 	genuiChatHandler(req, res, {
 		isRovoDevAvailable,
-		isAIGatewayFallbackEnabled: () => false,
-		aiGatewayProvider,
 	})
 );
 
@@ -14359,14 +13848,17 @@ app.get("/api/health", async (req, res) => {
 	const key = process.env.ASAP_PRIVATE_KEY;
 	const rovoDevAvailable = await isRovoDevAvailable();
 	const envVars = getEnvVars();
-	const fallbackEnabled = isAIGatewayFallbackEnabled();
 	const aiGatewayConfigured = hasGatewayUrlConfigured(envVars);
-	const fallbackActive = !rovoDevAvailable && fallbackEnabled;
+	const llmRouting = buildLlmRoutingStatus({
+		rovoDevAvailable,
+		aiGatewayConfigured,
+	});
 
 	debugLog("HEALTH", "Auth configuration", {
 		hasAsapKey: !!key,
 		rovoDevAvailable,
-		fallbackEnabled,
+		chatSdkBackend: llmRouting.chatSdk.backend,
+		chatSdkRequiresRovoDev: llmRouting.chatSdk.requiresRovoDev,
 		aiGatewayConfigured,
 	});
 
@@ -14378,10 +13870,7 @@ app.get("/api/health", async (req, res) => {
 		debugMode: DEBUG,
 		rovoDevMode: rovoDevAvailable,
 		llmRouting: {
-			rovodevAvailable: rovoDevAvailable,
-			fallbackEnabled,
-			fallbackActive,
-			aiGatewayConfigured,
+			...llmRouting,
 			aiGatewayConfig: getAIGatewayConfigReport(envVars),
 		},
 		envCheck: {
@@ -14457,20 +13946,12 @@ const server = app.listen(port, "0.0.0.0", async () => {
 
 	// Check for RovoDev Serve at startup
 	const rovoDevReady = await refreshRovoDevAvailability();
-	const fallbackEnabled = isAIGatewayFallbackEnabled();
 	const aiGatewayConfigured = hasGatewayUrlConfigured(getEnvVars());
-	let chatBackendLabel = "RovoDev required (interactive fallback disabled)";
-	if (rovoDevReady) {
-		chatBackendLabel = "RovoDev Serve (agent loop)";
-	} else if (
-		INTERACTIVE_CHAT_FALLBACK_ENABLED &&
-		fallbackEnabled &&
-		aiGatewayConfigured
-	) {
-		chatBackendLabel = "AI Gateway fallback";
-	} else if (INTERACTIVE_CHAT_FALLBACK_ENABLED && fallbackEnabled) {
-		chatBackendLabel = "AI Gateway fallback (misconfigured)";
-	}
+	const llmRouting = buildLlmRoutingStatus({
+		rovoDevAvailable: rovoDevReady,
+		aiGatewayConfigured,
+	});
+	const chatBackendLabel = describeChatBackend(llmRouting);
 	console.log(`\n🤖 Chat Backend: ${chatBackendLabel}`);
 	if (rovoDevReady && _rovoDevPool) {
 		const poolStatus = _rovoDevPool.getStatus();
@@ -14478,12 +13959,6 @@ const server = app.listen(port, "0.0.0.0", async () => {
 	} else if (rovoDevReady) {
 		console.log(`  ROVODEV_PORT: ${process.env.ROVODEV_PORT}`);
 	}
-	console.log(`  AUTO_FALLBACK_TO_AI_GATEWAY: ${fallbackEnabled ? "ENABLED" : "DISABLED"}`);
-	console.log(
-		`  INTERACTIVE_CHAT_FALLBACK: ${
-			INTERACTIVE_CHAT_FALLBACK_ENABLED ? "ENABLED" : "DISABLED"
-		}`
-	);
 	console.log(
 		`  INTERACTIVE_CHAT_FORCE_PORT_RECOVERY_MAX_ATTEMPTS: ${INTERACTIVE_CHAT_FORCE_PORT_RECOVERY_MAX_ATTEMPTS}`
 	);
@@ -14491,7 +13966,11 @@ const server = app.listen(port, "0.0.0.0", async () => {
 		`  INTERACTIVE_CHAT_FORCE_PORT_RECOVERY_TIMEOUT_MS: ${INTERACTIVE_CHAT_FORCE_PORT_RECOVERY_TIMEOUT_MS}`
 	);
 	console.log(
-		`  AI_GATEWAY_ALLOWED_USE_CASES: ${AI_GATEWAY_ALLOWED_USE_CASES.join(", ")}`
+		`  AI_GATEWAY_ASSISTED_FEATURES: ${
+			llmRouting.aiGatewayAssistedFeatures.configured
+				? "CONFIGURED"
+				: "NOT CONFIGURED"
+		} (${llmRouting.aiGatewayAssistedFeatures.useCases.join(", ")})`
 	);
 
 	const realtimeConfig = getRealtimeConfig();

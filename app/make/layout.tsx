@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { CreationModeProvider } from "@/app/contexts/context-creation-mode";
 import { getProjectPageTitle } from "@/lib/project-page-title";
 
 export const metadata: Metadata = {
@@ -9,5 +10,5 @@ export const metadata: Metadata = {
 };
 
 export default function MakeLayout({ children }: { children: React.ReactNode }) {
-	return children;
+	return <CreationModeProvider>{children}</CreationModeProvider>;
 }

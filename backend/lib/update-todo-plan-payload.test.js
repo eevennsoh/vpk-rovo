@@ -108,8 +108,8 @@ test("extracts tasks from update_todo error observations when todo output is pre
 				"",
 				"<todo>",
 				'{"id":1,"content":"Create types","status":"in_progress"}',
-				'{"id":2,"content":"[needs 1] Build context","status":"pending"}',
-				'{"id":3,"content":"[needs 2] Wire renderer","status":"pending"}',
+				'{"id":2,"content":"[Blocked by 1] Build context","status":"pending"}',
+				'{"id":3,"content":"[Blocked by 2] Wire renderer","status":"pending"}',
 				"</todo>",
 			].join("\n"),
 		},
@@ -123,7 +123,7 @@ test("extracts tasks from update_todo error observations when todo output is pre
 	assert.deepEqual(payload.tasks[2].blockedBy, ["task-2"]);
 });
 
-test("parses strict [needs ...] tags and maps dependencies to canonical task ids", () => {
+test("parses strict [Blocked by ...] tags and maps dependencies to canonical task ids", () => {
 	const payload = extractUpdateTodoPlanPayloadFromObservations([
 		{
 			phase: "result",
@@ -131,8 +131,8 @@ test("parses strict [needs ...] tags and maps dependencies to canonical task ids
 			text: [
 				"<todo>",
 				'{"id":1,"content":"Define schema","status":"pending"}',
-				'{"id":2,"content":"[needs 1] Build data access layer","status":"pending"}',
-				'{"id":3,"content":"[needs 1,2] Wire API to frontend","status":"pending"}',
+				'{"id":2,"content":"[Blocked by 1] Build data access layer","status":"pending"}',
+				'{"id":3,"content":"[Blocked by 1,2] Wire API to frontend","status":"pending"}',
 			].join("\n"),
 		},
 	]);
@@ -147,7 +147,7 @@ test("parses strict [needs ...] tags and maps dependencies to canonical task ids
 	assert.deepEqual(payload.tasks[2].blockedBy, ["task-1", "task-2"]);
 });
 
-test("merges explicit blockedBy values and [needs] tags from mixed id formats", () => {
+test("merges explicit blockedBy values and [Blocked by] tags from mixed id formats", () => {
 	const payload = extractUpdateTodoPlanPayloadFromObservations([
 		{
 			phase: "result",
@@ -155,8 +155,8 @@ test("merges explicit blockedBy values and [needs] tags from mixed id formats", 
 			rawOutput: {
 				todos: [
 					{ id: "A", content: "Design data model", status: "pending" },
-					{ id: "B", content: "[needs A] Implement db layer", blockedBy: ["A"], status: "pending" },
-					{ id: "C", content: "[needs task-2] Add API endpoints", blockedBy: [2], status: "pending" },
+					{ id: "B", content: "[Blocked by A] Implement db layer", blockedBy: ["A"], status: "pending" },
+					{ id: "C", content: "[Blocked by task-2] Add API endpoints", blockedBy: [2], status: "pending" },
 				],
 			},
 		},
@@ -198,7 +198,7 @@ test("does not apply inference when at least one explicit dependency is present"
 			text: [
 				"<todo>",
 				'{"id":1,"content":"Research authentication options","status":"pending"}',
-				'{"id":2,"content":"[needs 1] Design authentication flow","status":"pending"}',
+				'{"id":2,"content":"[Blocked by 1] Design authentication flow","status":"pending"}',
 				'{"id":3,"content":"Implement authentication service","status":"pending"}',
 			].join("\n"),
 		},
@@ -215,8 +215,8 @@ test("extractUpdateTodoTasksFromObservations canonicalizes todo tasks and depend
 		createUpdateTodoObservation({
 			todos: [
 				{ id: "1", content: "Define rollout scope" },
-				{ id: "2", content: "[needs 1] Wire backend endpoint" },
-				{ id: "3", content: "[needs 2] Validate smoke tests" },
+				{ id: "2", content: "[Blocked by 1] Wire backend endpoint" },
+				{ id: "3", content: "[Blocked by 2] Validate smoke tests" },
 			],
 		}),
 	]);

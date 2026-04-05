@@ -1,7 +1,10 @@
 // @ts-nocheck
 "use client"
 
-import { MoreHorizontal, type LucideIcon } from "lucide-react"
+import {
+  MoreHorizontal,
+  type VpkIconComponent,
+} from "@/components/ui/vpk-icons"
 
 import {
   DropdownMenu,
@@ -23,7 +26,7 @@ export function NavMain({
   items: {
     title: string
     url: string
-    icon?: LucideIcon
+    icon?: VpkIconComponent
     isActive?: boolean
     items?: {
       title: string

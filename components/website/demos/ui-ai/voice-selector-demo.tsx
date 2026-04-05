@@ -22,7 +22,7 @@ import {
 	VoiceSelectorTrigger,
 } from "@/components/ui-ai/voice-selector";
 import { Button } from "@/components/ui/button";
-import { CheckIcon } from "lucide-react";
+import { CheckIcon } from "@/components/ui/vpk-icons";
 
 // — Shared voice data —
 

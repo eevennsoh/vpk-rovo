@@ -3,14 +3,10 @@ import type { VisualIdentity } from "@/components/projects/shared/lib/visual-ide
 import {
 	getAllDataParts,
 	getMessageArtifactResult,
-	getThinkingToolCallSummaries,
 	isMessageVisibleInTranscript,
 	type RovoUIMessage,
 } from "@/lib/rovo-ui-messages";
-import {
-	extractTaskHeadingFromLabel,
-	resolvePlanVisualIdentity,
-} from "@/components/projects/shared/lib/plan-identity";
+import { resolvePlanVisualIdentity } from "@/components/projects/shared/lib/plan-identity";
 import {
 	getPlanApprovalKeyFromPlanWidget,
 	getPlanApprovalState,
@@ -20,11 +16,11 @@ import {
 	type ParsedPlanTask,
 	type ParsedPlanWidgetPayload,
 } from "@/components/projects/shared/lib/plan-widget";
+import type { FutureChatTodoProgressItem } from "@/components/projects/future-chat/lib/future-chat-update-todo-progress";
 import {
-	getLatestFutureChatTodoProgress,
-	type FutureChatTodoProgressItem,
-	type FutureChatTodoProgressSnapshot,
-} from "@/components/projects/future-chat/lib/future-chat-update-todo-progress";
+	futureChatPlanTaskIdsMatch,
+	getLatestFutureChatTodoProgressFromMessages,
+} from "@/components/projects/future-chat/lib/future-chat-plan-task-labels";
 import { toNonEmptyString } from "@/lib/utils";
 
 export interface FutureChatPlanExecutionProgressTask {
@@ -129,26 +125,6 @@ function resolveExecutionWindowMessages(
 	return executionMessages;
 }
 
-function getLatestFutureChatTodoProgressFromMessages(
-	messages: ReadonlyArray<RovoUIMessage>,
-): FutureChatTodoProgressSnapshot | null {
-	for (let index = messages.length - 1; index >= 0; index -= 1) {
-		const message = messages[index];
-		if (message.role !== "assistant") {
-			continue;
-		}
-
-		const parsedSnapshot = getLatestFutureChatTodoProgress(
-			getThinkingToolCallSummaries(message),
-		);
-		if (parsedSnapshot) {
-			return parsedSnapshot;
-		}
-	}
-
-	return null;
-}
-
 function formatBlockedByTaskId(taskId: string): string {
 	const numericId = extractNumericTaskId(taskId);
 	return numericId !== null ? `#${numericId}` : taskId;
@@ -163,62 +139,45 @@ function buildBlockedByDescription(blockedBy: ReadonlyArray<string>): string {
 }
 
 function buildPlanTaskRecord(task: ParsedPlanTask): FutureChatTodoProgressItem {
-	const heading = extractTaskHeadingFromLabel(task.label) || task.label;
 	return {
 		id: task.id,
-		content: heading,
-		label: heading,
+		content: task.label,
+		label: task.label,
 		status: "pending",
 		blockedBy: [...task.blockedBy],
 	};
 }
 
-function normalizeTaskIdAlias(taskId: string): string {
-	const normalizedTaskId = taskId.trim();
-	if (!normalizedTaskId) {
-		return normalizedTaskId;
-	}
-
-	const prefixedMatch = normalizedTaskId.match(/^task-(\d+)$/iu);
-	if (prefixedMatch?.[1]) {
-		return `task-${Number.parseInt(prefixedMatch[1], 10)}`;
-	}
-
-	if (/^\d+$/u.test(normalizedTaskId)) {
-		return `task-${Number.parseInt(normalizedTaskId, 10)}`;
-	}
-
-	return normalizedTaskId;
-}
-
-function taskIdsMatch(leftTaskId: string, rightTaskId: string): boolean {
-	return normalizeTaskIdAlias(leftTaskId) === normalizeTaskIdAlias(rightTaskId);
-}
-
 function mergeTodoItemsWithPlanTasks(
 	planTasks: ReadonlyArray<ParsedPlanTask>,
-	snapshot: FutureChatTodoProgressSnapshot | null,
+	snapshot: ReturnType<typeof getLatestFutureChatTodoProgressFromMessages>,
 ): Array<FutureChatTodoProgressItem & { agentName?: string }> {
 	const snapshotItems = snapshot?.items ?? [];
+
+	// When planTasks is empty (new plans no longer pre-seed tasks),
+	// return snapshot items directly — no merge needed.
+	if (planTasks.length === 0) {
+		return snapshotItems.map((item) => ({ ...item }));
+	}
+
 	const mergedItems: Array<FutureChatTodoProgressItem & { agentName?: string }> = [];
 	const matchedSnapshotIds = new Set<string>();
 
 	for (const planTask of planTasks) {
 		const snapshotItem =
 			snapshotItems.find((item) =>
-				!matchedSnapshotIds.has(item.id) && taskIdsMatch(planTask.id, item.id)
+				!matchedSnapshotIds.has(item.id) &&
+				futureChatPlanTaskIdsMatch(planTask.id, item.id)
 			) ?? null;
 		if (snapshotItem) {
 			matchedSnapshotIds.add(snapshotItem.id);
 		}
-		const fallbackHeading =
-			extractTaskHeadingFromLabel(planTask.label) || planTask.label;
 
 		mergedItems.push({
 			...(snapshotItem ?? buildPlanTaskRecord(planTask)),
 			id: planTask.id,
-			content: snapshotItem?.content ?? fallbackHeading,
-			label: snapshotItem?.label ?? fallbackHeading,
+			content: snapshotItem?.content ?? planTask.label,
+			label: snapshotItem?.label ?? planTask.label,
 			blockedBy:
 				snapshotItem && snapshotItem.blockedBy.length > 0
 					? [...snapshotItem.blockedBy]
@@ -239,8 +198,6 @@ function mergeTodoItemsWithPlanTasks(
 
 const PREFIXED_TASK_ID_PATTERN = /^task-(\d+)$/iu;
 const NUMERIC_ID_PATTERN = /^\d+$/u;
-const LABEL_ALREADY_PREFIXED_PATTERN = /^#\d+\s/u;
-
 function extractNumericTaskId(taskId: string): string | null {
 	const trimmed = taskId.trim();
 	const prefixedMatch = trimmed.match(PREFIXED_TASK_ID_PATTERN);
@@ -264,16 +221,9 @@ function toProgressTask(
 				? (item.activeForm ?? thinkingStatusContent ?? "")
 				: "";
 
-	const numericId = extractNumericTaskId(item.id);
-	const alreadyPrefixed = LABEL_ALREADY_PREFIXED_PATTERN.test(item.label);
-	const label =
-		numericId !== null && !alreadyPrefixed
-			? `#${numericId} ${item.label}`
-			: item.label;
-
 	return {
 		id: item.id,
-		label,
+		label: item.label,
 		description,
 		agentName: item.agentName,
 	};
@@ -414,22 +364,28 @@ export function resolveFutureChatPlanExecutionTracker(input: {
 	const executionMessages = resolveExecutionWindowMessages(messages, approvalIndex);
 	const latestSnapshot = getLatestFutureChatTodoProgressFromMessages(executionMessages);
 	const thinkingStatusContent = getLatestThinkingStatusContent(executionMessages);
-	const rawMergedItems = mergeTodoItemsWithPlanTasks(
+	const mergedItems = mergeTodoItemsWithPlanTasks(
 		acceptedPlanWidget.tasks,
 		latestSnapshot,
 	);
-	const artifactGenerated =
+	const runEndedWithArtifact =
 		activeRun === null && hasArtifactResultInMessages(executionMessages);
-	const mergedItems = artifactGenerated
-		? rawMergedItems.map((item) => ({ ...item, status: "completed" as const }))
-		: rawMergedItems;
-	const taskStatusGroups = buildStatusGroups(mergedItems, thinkingStatusContent);
-	const runStatus =
+	const runStatus: "running" | "completed" | "failed" =
 		activeRun !== null
 			? "running"
-			: mergedItems.every((item) => item.status === "completed")
+			: runEndedWithArtifact ||
+				  mergedItems.every((item) => item.status === "completed")
 				? "completed"
 				: "failed";
+	const finalItems =
+		runStatus === "completed"
+			? mergedItems.map((item) =>
+					item.status === "completed"
+						? item
+						: { ...item, status: "completed" as const },
+				)
+			: mergedItems;
+	const taskStatusGroups = buildStatusGroups(finalItems, thinkingStatusContent);
 	const runCreatedAt =
 		toNonEmptyString(activeRun?.startedAt) ??
 		toNonEmptyString(messages[approvalIndex]?.metadata?.createdAt) ??
@@ -440,9 +396,14 @@ export function resolveFutureChatPlanExecutionTracker(input: {
 			: resolveRunCompletedAt(executionMessages, threadUpdatedAt);
 	const agentCount = Math.max(
 		new Set(
-			acceptedPlanWidget.tasks
-				.map((task) => toNonEmptyString(task.agent))
-				.filter((agent): agent is string => agent !== null),
+			(acceptedPlanWidget.tasks.length > 0
+				? acceptedPlanWidget.tasks
+						.map((task) => toNonEmptyString(task.agent))
+						.filter((agent): agent is string => agent !== null)
+				: finalItems
+						.map((item) => toNonEmptyString(item.agentName))
+						.filter((agent): agent is string => agent !== null)
+			),
 		).size,
 		1,
 	);
@@ -457,8 +418,8 @@ export function resolveFutureChatPlanExecutionTracker(input: {
 		runCreatedAt,
 		runCompletedAt,
 		agentCount,
-		taskCount: mergedItems.length,
+		taskCount: finalItems.length,
 		taskStatusGroups:
-			mergedItems.length > 0 ? taskStatusGroups : EMPTY_STATUS_GROUPS,
+			finalItems.length > 0 ? taskStatusGroups : EMPTY_STATUS_GROUPS,
 	};
 }

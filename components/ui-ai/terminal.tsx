@@ -3,9 +3,14 @@
 import type { ComponentProps, HTMLAttributes } from "react";
 
 import { Button } from "@/components/ui/button";
+import {
+	CheckIcon,
+	CopyIcon,
+	TerminalIcon,
+	Trash2Icon,
+} from "@/components/ui/vpk-icons";
 import { cn } from "@/lib/utils";
 import Ansi from "ansi-to-react";
-import { CheckIcon, CopyIcon, TerminalIcon, Trash2Icon } from "lucide-react";
 import {
 	createContext,
 	useCallback,

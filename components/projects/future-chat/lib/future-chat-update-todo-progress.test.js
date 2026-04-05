@@ -108,7 +108,7 @@ test("parseFutureChatTodoProgressFromText parses raw todo arrays and dependencie
 			},
 			{
 				id: "task-3",
-				content: "[needs task-2] Run validation",
+				content: "[Blocked by task-2] Run validation",
 				status: "pending",
 			},
 		],

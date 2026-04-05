@@ -1,6 +1,10 @@
 // @ts-nocheck
 import * as React from "react"
-import { GalleryVerticalEnd, Minus, Plus } from "lucide-react"
+import {
+  GalleryVerticalEnd,
+  MinusIcon,
+  PlusIcon,
+} from "@/components/ui/vpk-icons"
 
 import { SearchForm } from "./search-form"
 import {
@@ -54,8 +58,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <SidebarMenuItem>
                   <CollapsibleTrigger render={<SidebarMenuButton />}>
                     {item.title}{" "}
-                    <Plus className="ml-auto group-data-[state=open]/collapsible:hidden" />
-                    <Minus className="ml-auto group-data-[state=closed]/collapsible:hidden" />
+                    <PlusIcon className="ml-auto group-data-[state=open]/collapsible:hidden" />
+                    <MinusIcon className="ml-auto group-data-[state=closed]/collapsible:hidden" />
                   </CollapsibleTrigger>
                   {item.items?.length ? (
                     <CollapsibleContent>

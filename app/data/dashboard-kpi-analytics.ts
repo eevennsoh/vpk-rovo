@@ -4,8 +4,11 @@
  * feature comparison (bar chart), and user distribution (pie chart).
  */
 
-import { TrendingDownIcon, TrendingUpIcon } from "lucide-react";
 import type { SectionCardData } from "@/components/blocks/dashboard/data/section-cards-data";
+import {
+	TrendingDownIcon,
+	TrendingUpIcon,
+} from "@/components/ui/vpk-icons";
 
 // ---------------------------------------------------------------------------
 // Engagement trend data — area chart (12 months)

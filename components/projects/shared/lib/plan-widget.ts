@@ -172,18 +172,12 @@ export function parsePlanWidgetPayload(
 		? record.tasks
 		: Array.isArray(record.steps)
 			? record.steps
-			: null;
-
-	if (!taskCandidates) {
-		return null;
-	}
+			: [];
 
 	const tasks = taskCandidates
 		.map((task, index) => parseTaskItem(task, `task-${index + 1}`))
 		.filter((task): task is ParsedPlanTask => task !== null);
-	if (tasks.length === 0) {
-		return null;
-	}
+
 	const title = resolvePlanDisplayTitle(
 		toNonEmptyString(record.title) ??
 			toNonEmptyString(record.name) ??
@@ -206,6 +200,12 @@ export function parsePlanWidgetPayload(
 		toNonEmptyString(record.plan) ??
 		description ??
 		"";
+
+	// A plan with 0 tasks is valid only if it has a meaningful title or markdown
+	if (tasks.length === 0 && !toNonEmptyString(record.title) && !markdown) {
+		return null;
+	}
+
 	const visualIdentity =
 		normalizeVisualIdentity(record.visualIdentity) ??
 		resolvePlanVisualIdentity(title);
@@ -517,9 +517,10 @@ export function isPlanCardBuildable(
 
 	const latestPlan = allPlanPayloads[allPlanPayloads.length - 1];
 	const isLatest =
-		planPayload.title === latestPlan.title &&
-		planPayload.tasks.length === latestPlan.tasks.length &&
-		planPayload.tasks.every((task, index) => task.id === latestPlan.tasks[index]?.id);
+		(planPayload.deferredToolCallId && latestPlan.deferredToolCallId)
+			? planPayload.deferredToolCallId === latestPlan.deferredToolCallId
+			: planPayload.title === latestPlan.title &&
+				planPayload.markdown === latestPlan.markdown;
 
 	if (!isLatest) {
 		return { buildable: false, reason: "A newer plan is available." };

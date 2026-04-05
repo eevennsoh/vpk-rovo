@@ -1,9 +1,16 @@
 import "server-only";
 
 import { execSync } from "node:child_process";
-import { cache } from "react";
+const WEBSITE_LAST_UPDATED_TTL_MS = 60_000;
 
-export const getWebsiteLastUpdatedAt = cache(() => {
+let cachedWebsiteLastUpdatedAt:
+	| {
+		expiresAt: number;
+		value: string | null;
+	}
+	| null = null;
+
+function loadWebsiteLastUpdatedAt(): string | null {
 	try {
 		const committedAt = execSync("git log -1 --format=%cI", {
 			cwd: process.cwd(),
@@ -14,4 +21,19 @@ export const getWebsiteLastUpdatedAt = cache(() => {
 	} catch {
 		return null;
 	}
-});
+}
+
+export function getWebsiteLastUpdatedAt(): string | null {
+	const now = Date.now();
+	if (cachedWebsiteLastUpdatedAt && cachedWebsiteLastUpdatedAt.expiresAt > now) {
+		return cachedWebsiteLastUpdatedAt.value;
+	}
+
+	const value = loadWebsiteLastUpdatedAt();
+	cachedWebsiteLastUpdatedAt = {
+		value,
+		expiresAt: now + WEBSITE_LAST_UPDATED_TTL_MS,
+	};
+
+	return value;
+}

@@ -24,7 +24,7 @@ import {
 	ItemDescription,
 	ItemTitle,
 } from "@/components/ui/item"
-import { ChevronDownIcon } from "lucide-react"
+import { ChevronDownIcon } from "@/components/ui/vpk-icons"
 
 export function ModelSelector() {
 	const [mode, setMode] = useState("auto")

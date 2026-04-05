@@ -41,7 +41,7 @@ import {
 	ShoppingBagIcon,
 	SparklesIcon,
 	WandIcon,
-} from "lucide-react";
+} from "@/components/ui/vpk-icons";
 
 export function PromptForm() {
 	const [, setDictateEnabled] = useState(false);

@@ -1,12 +1,16 @@
-import { TrendingDownIcon, TrendingUpIcon } from "lucide-react";
+import {
+	type VpkIconComponent,
+	TrendingDownIcon,
+	TrendingUpIcon,
+} from "@/components/ui/vpk-icons";
 
 export interface SectionCardData {
 	title: string;
 	value: string;
 	badge: string;
-	badgeIcon: typeof TrendingUpIcon;
+	badgeIcon: VpkIconComponent;
 	footerText: string;
-	footerIcon: typeof TrendingUpIcon;
+	footerIcon: VpkIconComponent;
 	footerDescription: string;
 }
 

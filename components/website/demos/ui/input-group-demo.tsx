@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import AtlaskitSearchIcon from "@atlaskit/icon/core/search";
-import { ArrowUpIcon, CheckIcon, ChevronDownIcon, CodeIcon, CopyIcon, ExternalLinkIcon, EyeOffIcon, InfoIcon, MailIcon, MicIcon, RadioIcon, RefreshCwIcon, SearchIcon, SparklesIcon, StarIcon, TrashIcon } from "lucide-react";
+import { ArrowUpIcon, CheckIcon, ChevronDownIcon, CodeIcon, CopyIcon, ExternalLinkIcon, EyeOffIcon, InfoIcon, MailIcon, MicIcon, RadioIcon, RefreshCwIcon, SearchIcon, SparklesIcon, StarIcon, TrashIcon } from "@/components/ui/vpk-icons";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup, ButtonGroupText } from "@/components/ui/button-group";

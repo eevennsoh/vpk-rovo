@@ -1,5 +1,9 @@
 // @ts-nocheck
-import { ChevronRight, MoreHorizontal, Plus } from "lucide-react"
+import {
+  ChevronRightIcon,
+  MoreHorizontalIcon,
+  PlusIcon,
+} from "@/components/ui/vpk-icons"
 
 import {
   Collapsible,
@@ -51,10 +55,10 @@ export function NavWorkspaces({
                     />
                   }
                 >
-                  <ChevronRight />
+                  <ChevronRightIcon />
                 </CollapsibleTrigger>
                 <SidebarMenuAction showOnHover>
-                  <Plus />
+                  <PlusIcon />
                 </SidebarMenuAction>
                 <CollapsibleContent>
                   <SidebarMenuSub>
@@ -73,7 +77,7 @@ export function NavWorkspaces({
           ))}
           <SidebarMenuItem>
             <SidebarMenuButton className="text-sidebar-foreground/70">
-              <MoreHorizontal />
+              <MoreHorizontalIcon />
               <span>More</span>
             </SidebarMenuButton>
           </SidebarMenuItem>

@@ -1,10 +1,12 @@
 # AI Model Switching Guide
 
-> **Applies to: AI Gateway fallback mode only.**
-> Model switching via `.env.local` has no effect in RovoDev mode — RovoDev Serve manages its own model internally.
-> To enable AI Gateway fallback, set `AUTO_FALLBACK_TO_AI_GATEWAY=true` in `.env.local`.
+> **Applies to: AI Gateway-backed routes only.**
+> Model switching via `.env.local` has no effect on standard RovoDev chat turns.
+> RovoDev Serve manages main chat internally.
 
-This guide explains how to switch between Claude (Bedrock), GPT, and Gemini (Google) models in VPK when running in AI Gateway fallback mode, and how to verify TTS model routing.
+This guide explains how to switch between Claude (Bedrock), GPT, and Gemini
+(Google) models for AI Gateway-backed routes in VPK, and how to verify TTS
+model routing.
 
 ---
 
@@ -75,19 +77,25 @@ No code changes needed - just update the URL in `.env.local` and restart.
 
 ## Per-Request Provider Routing
 
-Instead of switching the default model for all chat, you can add **additional provider endpoints** that are used only when a request includes `provider: "google"` in its body. This keeps normal chat on Claude/GPT while routing specific features (like image generation) to Gemini.
+Instead of switching the default model for all AI Gateway-backed routes, you
+can add **additional provider endpoints** that are used only when a request
+includes `provider: "google"` in its body. This keeps standard chat on
+RovoDev while routing specific features, such as image generation, to Gemini.
 
 ### How It Works
 
 In this repo:
 
-- `/api/chat-sdk`: checks request `provider`; when `provider: "google"` and `AI_GATEWAY_URL_GOOGLE` is set, chat/image requests route to Google chat-completions.
-- `/api/sound-generation`: dedicated voice route; routes to Google synth endpoint and is intended for `tts-latest` voice output.
+- `/api/chat-sdk`: keeps standard turns on RovoDev, but certain explicit
+  AI Gateway-backed flows can target Google when `provider: "google"` and
+  `AI_GATEWAY_URL_GOOGLE` are set.
+- `/api/sound-generation`: dedicated voice route; routes to the Google synth
+  endpoint and is intended for `tts-latest` voice output.
 
 | Env var                  | Used by                                  | Purpose                        |
 | ------------------------ | ---------------------------------------- | ------------------------------ |
-| `AI_GATEWAY_URL`         | All normal chat (sidebar, fullscreen)    | Default model (Bedrock/OpenAI) |
-| `AI_GATEWAY_URL_GOOGLE`  | `provider: "google"` chat/image + voice synthesis route | Google endpoint for image + voice |
+| `AI_GATEWAY_URL`         | AI Gateway-backed helper flows and default gateway routes | Default model (Bedrock/OpenAI) |
+| `AI_GATEWAY_URL_GOOGLE`  | `provider: "google"` image flows + voice synthesis route | Google endpoint for image + voice |
 
 ### Setup
 
@@ -358,5 +366,5 @@ When using the Gemini endpoint with a model that supports image generation (e.g.
 |------|---------|
 | `.env.local` | Contains `AI_GATEWAY_URL` (default provider) and optional `AI_GATEWAY_URL_GOOGLE` (Google chat/image routing + voice route derivation) |
 | `backend/lib/ai-gateway-helpers.js` | Contains `DEFAULT_MODELS`, endpoint detection, and provider-specific request/stream helpers |
-| `backend/server.js` | Backend routing, fallback behavior, and endpoint handlers |
+| `backend/server.js` | Backend routing, gateway-backed behavior, and endpoint handlers |
 | `rovo/config.js` | Rovo user-message formatting (`buildUserMessage`) |

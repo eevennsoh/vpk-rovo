@@ -1,5 +1,5 @@
 import SearchIcon from "@atlaskit/icon/core/search";
-import { InboxIcon } from "lucide-react";
+import { InboxIcon } from "@/components/ui/vpk-icons";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Item, ItemActions, ItemContent, ItemDescription, ItemFooter, ItemGroup, ItemHeader, ItemMedia, ItemSeparator, ItemTitle } from "@/components/ui/item";

@@ -42,13 +42,13 @@ import {
   ChevronRightIcon,
   ChevronsLeftIcon,
   ChevronsRightIcon,
-  ColumnsIcon,
+  Columns3Icon as ColumnsIcon,
   GripVerticalIcon,
   LoaderIcon,
   MoreVerticalIcon,
   PlusIcon,
   TrendingUpIcon,
-} from "lucide-react"
+} from "@/components/ui/vpk-icons"
 import { Area, AreaChart, CartesianGrid, XAxis } from "recharts"
 import { toast } from "sonner"
 import { z } from "zod"

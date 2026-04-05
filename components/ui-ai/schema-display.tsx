@@ -8,8 +8,8 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { ChevronRightIcon } from "@/components/ui/vpk-icons";
 import { cn } from "@/lib/utils";
-import { ChevronRightIcon } from "lucide-react";
 import { createContext, use, useMemo } from "react";
 
 type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";

@@ -1,6 +1,6 @@
 "use client"
 
-import type { LucideIcon } from "lucide-react"
+import type { VpkIconComponent } from "@/components/ui/vpk-icons"
 import {
 	SidebarGroup,
 	SidebarGroupContent,
@@ -14,7 +14,7 @@ interface NavSecondaryProps
 	items: ReadonlyArray<{
 		title: string
 		url: string
-		icon: LucideIcon
+		icon: VpkIconComponent
 	}>
 }
 

@@ -6,7 +6,7 @@ import {
 	LoaderCircleIcon,
 	MessageSquareDiffIcon,
 	MicIcon,
-} from "lucide-react";
+} from "@/components/ui/vpk-icons";
 
 export type FutureChatSteeringPhase =
 	| "idle"

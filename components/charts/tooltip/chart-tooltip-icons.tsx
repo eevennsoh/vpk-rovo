@@ -1,6 +1,6 @@
 "use client";
 
-import { Footprints, Waves } from "lucide-react";
+import { Footprints, Waves } from "@/components/ui/vpk-icons";
 import { Bar, BarChart, XAxis } from "recharts";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

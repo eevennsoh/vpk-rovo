@@ -1,37 +1,18 @@
 "use client";
 
-import { memo, useMemo, useState, useEffect, useCallback } from "react";
+import { memo, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { token } from "@/lib/tokens";
 import {
 	Conversation,
 	ConversationContent,
 	ConversationScrollButton,
-	useConversationContext,
 } from "@/components/ui-ai/conversation";
 import { Message, MessageContent } from "@/components/ui-ai/message";
 import { AdsReasoningTrigger, Reasoning } from "@/components/ui-ai/reasoning";
 import { REASONING_LABELS } from "@/components/projects/shared/lib/reasoning-labels";
 import type { TaskExecution } from "../lib/execution-data";
-
-/**
- * Watches the conversation scroll container and reports scrollTop > 0.
- * Must be rendered inside a <Conversation>.
- */
-function ScrollWatcher({ onChange }: { onChange: (scrolled: boolean) => void }) {
-	const { scrollRef } = useConversationContext();
-
-	useEffect(() => {
-		const el = scrollRef.current;
-		if (!el) return;
-
-		const onScroll = () => onChange(el.scrollTop > 0);
-		el.addEventListener("scroll", onScroll, { passive: true });
-		return () => el.removeEventListener("scroll", onScroll);
-	}, [scrollRef, onChange]);
-
-	return null;
-}
+import styles from "./agent-screen.module.css";
 
 interface AgentScreenProps {
 	execution: TaskExecution;
@@ -66,11 +47,6 @@ export const AgentScreen = memo(function AgentScreen({
 		? `Blocked by: ${execution.blockedBy.map((id) => `#${id.replace(/^#?task-/, "")}`).join(", ")}`
 		: null;
 
-	const [hasScrolled, setHasScrolled] = useState(false);
-	const handleScrollChange = useCallback((scrolled: boolean) => {
-		setHasScrolled(scrolled);
-	}, [setHasScrolled]);
-
 	const conversation = useMemo(() => {
 		const result: { id: string; role: "assistant"; content: string }[] = [];
 
@@ -84,14 +60,21 @@ export const AgentScreen = memo(function AgentScreen({
 	return (
 		<div
 			className={cn(
+				styles.root,
 				"flex flex-col overflow-hidden bg-surface",
 				isFailed && "border-l-2 border-l-border-danger",
 				className
 			)}
 		>
 			<div className="relative z-10 flex items-center px-3 py-2" role="banner">
-				{/* Progressive blur — fades content scrolling underneath (only when scrolled) */}
-				<div className={cn("pointer-events-none absolute inset-x-0 -bottom-6 h-6 transition-opacity duration-200", hasScrolled ? "opacity-100" : "opacity-0")} aria-hidden>
+				{/* Progressive blur — fades content scrolling underneath */}
+				<div
+					aria-hidden
+					className={cn(
+						"pointer-events-none absolute inset-x-0 -bottom-6 h-6",
+						styles.headerFade,
+					)}
+				>
 					<div className="absolute inset-0 backdrop-blur-[2px] [mask-image:linear-gradient(to_bottom,black_20%,transparent)]" />
 					<div className="absolute inset-0 bg-gradient-to-b from-surface to-transparent" />
 				</div>
@@ -127,8 +110,7 @@ export const AgentScreen = memo(function AgentScreen({
 				) : null}
 			</div>
 
-			<Conversation className="min-h-0 flex-1">
-				<ScrollWatcher onChange={handleScrollChange} />
+			<Conversation className={cn("min-h-0 flex-1", styles.conversationRoot)}>
 				<ConversationContent className="gap-4 p-3">
 					{conversation.length > 0 ? (
 						conversation.map((msg) => (

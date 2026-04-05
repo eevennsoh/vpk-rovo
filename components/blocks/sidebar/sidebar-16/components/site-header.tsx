@@ -1,7 +1,7 @@
 // @ts-nocheck
 "use client"
 
-import { SidebarIcon } from "lucide-react"
+import { SidebarIcon } from "@/components/ui/vpk-icons"
 
 import { SearchForm } from "./search-form"
 import {

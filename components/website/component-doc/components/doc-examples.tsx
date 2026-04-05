@@ -1,9 +1,12 @@
 "use client";
 
-import { Suspense, createElement, type ComponentType } from "react";
+import { Suspense, createElement, type ComponentType, use } from "react";
 import { token } from "@/lib/tokens";
 import type { ExampleDefinition } from "@/app/data/component-detail-types";
-import { getVariantDemoComponent } from "@/components/website/registry";
+import {
+	loadVariantDemoComponents,
+	type DemoCategory,
+} from "@/components/website/demo-registry-loader";
 import { Lozenge } from "@/components/ui/lozenge";
 import { AnchorLinkButton, DocSection } from "./doc-section";
 import { DemoPreviewShell } from "./demo-preview-shell";
@@ -27,7 +30,7 @@ function slugify(name: string) {
 
 interface DocExamplesProps {
 	examples: ExampleDefinition[];
-	category: "ui-audio" | "ui-ai" | "ui" | "blocks" | "projects" | "utility" | "visual";
+	category: DemoCategory;
 }
 
 function ExampleSkeleton() {
@@ -113,11 +116,20 @@ function ExampleItem({
 	);
 }
 
-export function DocExamples({ examples, category }: Readonly<DocExamplesProps>) {
+function ResolvedDocExamples({
+	examples,
+	category,
+}: Readonly<DocExamplesProps>) {
+	const demos = use(
+		loadVariantDemoComponents(
+			examples.map((example) => example.demoSlug),
+			category,
+		),
+	);
 	const resolvedExamples = examples
-		.map((example) => ({
+		.map((example, index) => ({
 			example,
-			Demo: getVariantDemoComponent(example.demoSlug, category),
+			Demo: demos[index] ?? null,
 		}))
 		.filter(
 			(entry): entry is { example: ExampleDefinition; Demo: ComponentType } =>
@@ -146,5 +158,13 @@ export function DocExamples({ examples, category }: Readonly<DocExamplesProps>) 
 				))}
 			</div>
 		</DocSection>
+	);
+}
+
+export function DocExamples(props: Readonly<DocExamplesProps>) {
+	return (
+		<Suspense fallback={null}>
+			<ResolvedDocExamples {...props} />
+		</Suspense>
 	);
 }

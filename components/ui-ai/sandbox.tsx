@@ -14,8 +14,11 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
+import {
+  ChevronDownIcon,
+  Code,
+} from "@/components/ui/vpk-icons";
 import { cn } from "@/lib/utils";
-import { ChevronDownIcon, Code } from "lucide-react";
 
 import { getStatusBadge } from "./tool";
 

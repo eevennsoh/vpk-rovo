@@ -12,8 +12,11 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+	ChevronDownIcon,
+	ExternalLinkIcon,
+} from "@/components/ui/vpk-icons";
 import { cn } from "@/lib/utils";
-import { ChevronDownIcon, ExternalLinkIcon } from "lucide-react";
 import { createContext, use } from "react";
 
 import { providers } from "@/components/ui-ai/data/open-in-providers";

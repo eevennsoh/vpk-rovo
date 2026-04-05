@@ -9,7 +9,6 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { cn } from "@/lib/utils";
 import {
   CheckIcon,
   CopyIcon,
@@ -17,7 +16,8 @@ import {
   GitCommitIcon,
   MinusIcon,
   PlusIcon,
-} from "lucide-react";
+} from "@/components/ui/vpk-icons";
+import { cn } from "@/lib/utils";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 export type CommitProps = ComponentProps<typeof Collapsible>;

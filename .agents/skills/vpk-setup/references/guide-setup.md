@@ -20,7 +20,7 @@ Complete setup guide for local development with ASAP authentication to Atlassian
 Browser → Next.js Server (port 3000) with API proxy routes
         → Express Backend (port 8080)
         → RovoDev Serve (primary chat)
-        → AI Gateway (fallback + image/voice generation)
+        → AI Gateway-assisted routes (image, voice, suggestions)
 ```
 
 **Production (Micros Deployment):**

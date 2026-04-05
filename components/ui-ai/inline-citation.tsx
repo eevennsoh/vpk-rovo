@@ -14,8 +14,11 @@ import {
 	HoverCardContent,
 	HoverCardTrigger,
 } from "@/components/ui/hover-card";
+import {
+	ArrowLeftIcon,
+	ArrowRightIcon,
+} from "@/components/ui/vpk-icons";
 import { cn } from "@/lib/utils";
-import { ArrowLeftIcon, ArrowRightIcon } from "lucide-react";
 import {
 	createContext,
 	use,

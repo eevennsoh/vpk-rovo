@@ -3,22 +3,22 @@
 
 import * as React from "react"
 import {
-  ArrowDown,
-  ArrowUp,
-  Bell,
-  Copy,
-  CornerUpLeft,
-  CornerUpRight,
-  FileText,
+  ArrowDownIcon,
+  ArrowRightIcon,
+  ArrowUpIcon,
+  BellIcon,
+  ChartLineIcon,
+  CopyIcon,
+  CornerDownLeftIcon,
+  FileTextIcon,
   GalleryVerticalEnd,
-  LineChart,
-  Link,
-  MoreHorizontal,
-  Settings2,
-  Star,
-  Trash,
-  Trash2,
-} from "lucide-react"
+  LinkIcon,
+  MoreHorizontalIcon,
+  SettingsIcon,
+  StarIcon,
+  Trash2Icon,
+  TrashIcon,
+} from "@/components/ui/vpk-icons"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -40,39 +40,39 @@ const data = [
   [
     {
       label: "Customize Page",
-      icon: Settings2,
+      icon: SettingsIcon,
     },
     {
       label: "Turn into wiki",
-      icon: FileText,
+      icon: FileTextIcon,
     },
   ],
   [
     {
       label: "Copy Link",
-      icon: Link,
+      icon: LinkIcon,
     },
     {
       label: "Duplicate",
-      icon: Copy,
+      icon: CopyIcon,
     },
     {
       label: "Move to",
-      icon: CornerUpRight,
+      icon: ArrowRightIcon,
     },
     {
       label: "Move to Trash",
-      icon: Trash2,
+      icon: Trash2Icon,
     },
   ],
   [
     {
       label: "Undo",
-      icon: CornerUpLeft,
+      icon: CornerDownLeftIcon,
     },
     {
       label: "View analytics",
-      icon: LineChart,
+      icon: ChartLineIcon,
     },
     {
       label: "Version History",
@@ -80,21 +80,21 @@ const data = [
     },
     {
       label: "Show delete pages",
-      icon: Trash,
+      icon: TrashIcon,
     },
     {
       label: "Notifications",
-      icon: Bell,
+      icon: BellIcon,
     },
   ],
   [
     {
       label: "Import",
-      icon: ArrowUp,
+      icon: ArrowUpIcon,
     },
     {
       label: "Export",
-      icon: ArrowDown,
+      icon: ArrowDownIcon,
     },
   ],
 ]
@@ -112,7 +112,7 @@ export function NavActions() {
         Edit Oct 08
       </div>
       <Button variant="ghost" size="icon" className="h-7 w-7">
-        <Star />
+        <StarIcon />
       </Button>
       <Popover open={isOpen} onOpenChange={setIsOpen}>
         <PopoverTrigger
@@ -124,7 +124,7 @@ export function NavActions() {
             />
           }
         >
-          <MoreHorizontal />
+          <MoreHorizontalIcon />
         </PopoverTrigger>
         <PopoverContent
           className="w-56 overflow-hidden rounded-lg p-0"

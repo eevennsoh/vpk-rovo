@@ -3,7 +3,10 @@
 import type { ComponentProps, ReactNode, RefObject } from "react"
 import { createContext, use, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { UIMessage } from "ai"
-import { ArrowDownIcon, DownloadIcon } from "lucide-react"
+import {
+  ArrowDownIcon,
+  DownloadIcon,
+} from "@/components/ui/vpk-icons"
 
 import { Button } from "@/components/ui/button"
 import { token } from "@/lib/tokens"

@@ -19,8 +19,13 @@ import {
   type DropdownMenuRadioItemProps,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  CheckIcon,
+  ChevronDown,
+  CopyIcon,
+  DownloadIcon,
+} from "@/components/ui/vpk-icons";
 import { cn } from "@/lib/utils";
-import { CheckIcon, ChevronDown, CopyIcon, DownloadIcon } from "lucide-react";
 import {
   createContext,
   memo,

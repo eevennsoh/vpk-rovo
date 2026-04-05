@@ -6,7 +6,7 @@ import {
 	LogOutIcon,
 	MoreVerticalIcon,
 	UserCircleIcon,
-} from "lucide-react"
+} from "@/components/ui/vpk-icons"
 
 import {
 	Avatar,

@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2Icon } from "lucide-react";
+import { Loader2Icon } from "@/components/ui/vpk-icons";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { BoldIcon, BookmarkIcon, ItalicIcon, UnderlineIcon } from "lucide-react";
+import { BoldIcon, BookmarkIcon, ItalicIcon, UnderlineIcon } from "@/components/ui/vpk-icons";
 import { Button } from "@/components/ui/button";
 import { Toggle } from "@/components/ui/toggle";
 

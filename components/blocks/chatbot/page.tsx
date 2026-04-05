@@ -1,7 +1,13 @@
 "use client"
 
 import { useState } from "react"
-import { BotIcon, CopyIcon, RefreshCwIcon, ThumbsDownIcon, ThumbsUpIcon } from "lucide-react"
+import {
+  BotIcon,
+  CopyIcon,
+  RefreshCwIcon,
+  ThumbsDownIcon,
+  ThumbsUpIcon,
+} from "@/components/ui/vpk-icons"
 
 import {
 	Conversation,

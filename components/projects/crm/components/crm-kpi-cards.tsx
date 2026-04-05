@@ -3,7 +3,12 @@
 import { cn } from "@/lib/utils";
 import { token } from "@/lib/tokens";
 import { Card } from "@/components/ui/card";
-import { TrendingUpIcon, DollarSignIcon, TargetIcon, BarChart3Icon } from "lucide-react";
+import {
+	BarChart3Icon,
+	DollarSignIcon,
+	TargetIcon,
+	TrendingUpIcon,
+} from "@/components/ui/vpk-icons";
 import { formatCurrency } from "@/app/data/crm-data";
 
 interface KpiCardProps {

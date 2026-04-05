@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { InfoIcon } from "lucide-react";
+import { InfoIcon } from "@/components/ui/vpk-icons";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";

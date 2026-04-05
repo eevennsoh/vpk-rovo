@@ -1,6 +1,6 @@
 // @ts-nocheck
 import * as React from "react"
-import { Plus } from "lucide-react"
+import { PlusIcon } from "@/components/ui/vpk-icons"
 
 import { Calendars } from "./calendars"
 import { DatePicker } from "./date-picker"
@@ -55,7 +55,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton>
-              <Plus />
+              <PlusIcon />
               <span>New Calendar</span>
             </SidebarMenuButton>
           </SidebarMenuItem>

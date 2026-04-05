@@ -1,13 +1,16 @@
 "use client";
 
-import { Suspense, type ComponentType } from "react";
-import { getDemoComponent } from "./registry";
+import { Suspense, type ComponentType, use } from "react";
+import {
+	loadDemoComponent,
+	type DemoCategory,
+} from "@/components/website/demo-registry-loader";
 
 interface WebsitePreviewProps {
 	slug: string;
 	name: string;
 	importPath: string;
-	category: "ui-audio" | "ui-ai" | "ui" | "blocks" | "projects" | "visual";
+	category: Exclude<DemoCategory, "utility">;
 }
 
 function WebsitePreviewSkeleton() {
@@ -31,18 +34,29 @@ function TextFallback({ name, importPath }: Readonly<{ name: string; importPath:
 
 function WebsitePreviewWrapper({ Demo }: Readonly<{ Demo: ComponentType }>) {
 	return (
-		<Suspense fallback={<WebsitePreviewSkeleton />}>
-			<Demo />
-		</Suspense>
+		<Demo />
 	);
 }
 
-export function WebsitePreview({ slug, name, importPath, category }: Readonly<WebsitePreviewProps>) {
-	const Demo: ComponentType | null = getDemoComponent(slug, category);
+function ResolvedWebsitePreview({
+	slug,
+	name,
+	importPath,
+	category,
+}: Readonly<WebsitePreviewProps>) {
+	const Demo = use(loadDemoComponent(slug, category));
 
 	if (!Demo) {
 		return <TextFallback name={name} importPath={importPath} />;
 	}
 
 	return <WebsitePreviewWrapper Demo={Demo} />;
+}
+
+export function WebsitePreview(props: Readonly<WebsitePreviewProps>) {
+	return (
+		<Suspense fallback={<WebsitePreviewSkeleton />}>
+			<ResolvedWebsitePreview {...props} />
+		</Suspense>
+	);
 }

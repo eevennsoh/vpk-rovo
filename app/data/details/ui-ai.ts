@@ -549,7 +549,7 @@ export const UI_AI_DETAILS: Record<string, ComponentDetail> = {
   ChainOfThoughtSearchResults,
   ChainOfThoughtSearchResult,
 } from "@/components/ui-ai/chain-of-thought";
-import { SearchIcon } from "lucide-react";
+import { SearchIcon } from "@/components/ui/vpk-icons";
 
 <ChainOfThought defaultOpen>
   <ChainOfThoughtHeader>Tracing model reasoning</ChainOfThoughtHeader>

@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckIcon, PlusIcon } from "lucide-react";
+import { CheckIcon, PlusIcon } from "@/components/ui/vpk-icons";
 import { Avatar, AvatarBadge, AvatarFallback, AvatarGroup, AvatarGroupCount, AvatarImage, AvatarPresenceIndicator, AvatarStatusIndicator } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";

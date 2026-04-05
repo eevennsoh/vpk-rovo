@@ -9,7 +9,7 @@ import {
 	WebPreviewBody,
 	WebPreviewConsole,
 } from "@/components/ui-ai/web-preview";
-import { ArrowLeft, ArrowRight, ExternalLink, Maximize2, MousePointerClick, RotateCw } from "lucide-react";
+import { ArrowLeft, ArrowRight, ExternalLink, Maximize2, MousePointerClick, RotateCw } from "@/components/ui/vpk-icons";
 
 const EXAMPLE_URL = "https://www.theverge.com";
 

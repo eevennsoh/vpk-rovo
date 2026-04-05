@@ -10,7 +10,7 @@ import type {
 } from "react";
 
 import { Spinner } from "@/components/ui/spinner";
-import { TriangleAlertIcon } from "lucide-react";
+import { TriangleAlertIcon } from "@/components/ui/vpk-icons";
 import {
 	useCallback,
 	useEffect,

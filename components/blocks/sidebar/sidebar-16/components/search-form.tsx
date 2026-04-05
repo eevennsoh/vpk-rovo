@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { Search } from "lucide-react"
+import { Search } from "@/components/ui/vpk-icons"
 
 import { Label } from "@/components/ui/label"
 import { SidebarInput } from "@/components/ui/sidebar"

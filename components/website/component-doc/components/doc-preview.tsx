@@ -1,9 +1,12 @@
 "use client";
 
-import { createElement, Suspense } from "react";
+import { createElement, Suspense, use } from "react";
 import { token } from "@/lib/tokens";
 import type { DemoLayout } from "@/app/data/component-detail-types";
-import { getDemoComponent } from "@/components/website/registry";
+import {
+	loadDemoComponent,
+	type DemoCategory,
+} from "@/components/website/demo-registry-loader";
 import { Button } from "@/components/ui/button";
 import { DocSection } from "./doc-section";
 import { DemoPreviewShell } from "./demo-preview-shell";
@@ -11,7 +14,7 @@ import FullscreenEnterIcon from "@atlaskit/icon/core/fullscreen-enter";
 
 interface DocPreviewProps {
 	slug: string;
-	category: "ui-audio" | "ui-ai" | "ui" | "blocks" | "projects" | "utility" | "visual";
+	category: DemoCategory;
 	demoLayout?: DemoLayout;
 }
 
@@ -39,8 +42,12 @@ function PreviewSkeleton() {
 	);
 }
 
-export function DocPreview({ slug, category, demoLayout }: Readonly<DocPreviewProps>) {
-	const Demo = getDemoComponent(slug, category);
+function ResolvedDocPreview({
+	slug,
+	category,
+	demoLayout,
+}: Readonly<DocPreviewProps>) {
+	const Demo = use(loadDemoComponent(slug, category));
 
 	if (!Demo) {
 		return null;
@@ -64,5 +71,13 @@ export function DocPreview({ slug, category, demoLayout }: Readonly<DocPreviewPr
 				</Suspense>
 			</DemoPreviewShell>
 		</DocSection>
+	);
+}
+
+export function DocPreview(props: Readonly<DocPreviewProps>) {
+	return (
+		<Suspense fallback={<PreviewSkeleton />}>
+			<ResolvedDocPreview {...props} />
+		</Suspense>
 	);
 }

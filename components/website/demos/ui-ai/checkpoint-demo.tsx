@@ -15,7 +15,7 @@ import {
 	Conversation,
 	ConversationContent,
 } from "@/components/ui-ai/conversation";
-import { FlagIcon, HistoryIcon } from "lucide-react";
+import { FlagIcon, HistoryIcon } from "@/components/ui/vpk-icons";
 
 type CheckpointEntry = {
 	id: string;

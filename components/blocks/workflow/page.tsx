@@ -1,6 +1,11 @@
 "use client"
 
-import { BotIcon, CheckCircleIcon, CircleIcon, ClockIcon } from "lucide-react"
+import {
+	BotIcon,
+	CheckCircleIcon,
+	CircleIcon,
+	ClockIcon,
+} from "@/components/ui/vpk-icons"
 
 import {
 	Agent,

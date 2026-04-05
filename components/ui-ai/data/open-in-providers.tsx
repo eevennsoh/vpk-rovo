@@ -1,5 +1,5 @@
-import { MessageCircleIcon } from "lucide-react";
 import type { ReactNode } from "react";
+import { MessageCircleIcon } from "@/components/ui/vpk-icons";
 
 export interface OpenInProvider {
 	createUrl: (query: string) => string;

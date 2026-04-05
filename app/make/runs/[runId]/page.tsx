@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { headers } from "next/headers";
+import { fetchBackend } from "@/app/api/_utils/backend-url";
 import type { AgentRun } from "@/lib/make-run-types";
 import { RunWorkspace } from "@/components/projects/make/components/run-workspace";
 
@@ -10,28 +10,6 @@ interface RunResponse {
 
 interface RunPageProps {
 	params: Promise<{ runId: string }>;
-}
-
-interface HeaderLike {
-	get(name: string): string | null;
-}
-
-function getRequestOrigin(headersList: HeaderLike): string {
-	const forwardedHost = headersList.get("x-forwarded-host");
-	const host = forwardedHost ?? headersList.get("host");
-	if (!host) {
-		const localPort = process.env.PORT ?? "3000";
-		return `http://localhost:${localPort}`;
-	}
-
-	const forwardedProto = headersList.get("x-forwarded-proto");
-	if (forwardedProto === "http" || forwardedProto === "https") {
-		return `${forwardedProto}://${host}`;
-	}
-
-	const inferredProtocol =
-		host.includes("localhost") || host.startsWith("127.0.0.1") ? "http" : "https";
-	return `${inferredProtocol}://${host}`;
 }
 
 function getStringValue(value: unknown): string | null {
@@ -88,18 +66,18 @@ export const dynamic = "force-dynamic";
 
 export default async function MakeRunPage({ params }: Readonly<RunPageProps>) {
 	const { runId } = await params;
-	const headersList = await headers();
-	const requestOrigin = getRequestOrigin(headersList);
 	const encodedRunId = encodeURIComponent(runId);
 
 	let resolvedRun: AgentRun | null = null;
 	let errorMessage: string | null = null;
 
 	try {
-		const response = await fetch(
-			`${requestOrigin}/api/make/runs/${encodedRunId}`,
-			{ cache: "no-store" }
-		);
+		const response = (
+			await fetchBackend(`/api/make/runs/${encodedRunId}`, {
+				method: "GET",
+				cache: "no-store",
+			})
+		).response;
 		if (!response.ok) {
 			const errorPayload = (await response.json().catch(() => null)) as unknown;
 			errorMessage = parseApiError(errorPayload, "Failed to load run data.");

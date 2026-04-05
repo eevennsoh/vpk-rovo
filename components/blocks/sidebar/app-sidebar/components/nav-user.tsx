@@ -22,7 +22,7 @@ import {
 	CreditCardIcon,
 	BellIcon,
 	LogOutIcon,
-} from "lucide-react"
+} from "@/components/ui/vpk-icons"
 
 interface NavUserProps {
 	user: {

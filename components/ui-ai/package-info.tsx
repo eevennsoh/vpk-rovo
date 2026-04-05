@@ -3,8 +3,13 @@
 import type { HTMLAttributes } from "react";
 
 import { Badge } from "@/components/ui/badge";
+import {
+  ArrowRightIcon,
+  MinusIcon,
+  PackageIcon,
+  PlusIcon,
+} from "@/components/ui/vpk-icons";
 import { cn } from "@/lib/utils";
-import { ArrowRightIcon, MinusIcon, PackageIcon, PlusIcon } from "lucide-react";
 import { createContext, use } from "react";
 
 type ChangeType = "major" | "minor" | "patch" | "added" | "removed";

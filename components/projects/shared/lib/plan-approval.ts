@@ -1,4 +1,4 @@
-import type { ParsedPlanTask, ParsedPlanWidgetPayload } from "@/components/projects/shared/lib/plan-widget";
+import type { ParsedPlanWidgetPayload } from "@/components/projects/shared/lib/plan-widget";
 import type { FutureChatActiveRun } from "@/lib/future-chat-types";
 import type { RovoUIMessage } from "@/lib/rovo-ui-messages";
 import { toNonEmptyString } from "@/lib/utils";
@@ -44,23 +44,10 @@ export function serializePlanApprovalKey(
 	const normalizedTaskIds = taskIds
 		.map((taskId) => toNonEmptyString(taskId))
 		.filter((taskId): taskId is string => taskId !== null);
-	if (normalizedTaskIds.length === 0) {
-		return null;
-	}
 
-	return `${normalizedTitle}-${normalizedTaskIds.join("|")}`;
-}
-
-function extractTaskInfo(tasks: ReadonlyArray<ParsedPlanTask>): PlanApprovalTaskInfo[] {
-	return tasks
-		.filter((task) => task.label.trim().length > 0)
-		.slice(0, 12)
-		.map((task) => ({
-			id: task.id,
-			label: task.label.trim(),
-			agent: task.agent,
-			blockedBy: task.blockedBy,
-		}));
+	return normalizedTaskIds.length > 0
+		? `${normalizedTitle}-${normalizedTaskIds.join("|")}`
+		: normalizedTitle;
 }
 
 export function createPlanApprovalSubmission(
@@ -74,7 +61,7 @@ export function createPlanApprovalSubmission(
 		decision: selection.decision,
 		customInstruction: selection.customInstruction?.trim() || undefined,
 		planTitle: planWidget?.title?.trim() || undefined,
-		planTasks: planWidget ? extractTaskInfo(planWidget.tasks) : [],
+		planTasks: [],
 		toolCallId: deferredToolCallId,
 		deferredToolCallId,
 	};
@@ -87,11 +74,7 @@ export function planWidgetRequiresApproval(
 		return false;
 	}
 
-	if (planWidget.deferredToolCallId) {
-		return true;
-	}
-
-	return planWidget.tasks.length > 0;
+	return !!planWidget.deferredToolCallId;
 }
 
 export function findAcceptedPlanKey(

@@ -4,7 +4,7 @@ const { getNonEmptyString } = require("./shared-utils");
 const MAX_TASKS = 20;
 const DEFAULT_MIN_TASKS = 2;
 const MAX_RECURSION_DEPTH = 6;
-const NEEDS_PREFIX_PATTERN = /^\s*\[\s*needs\s+([^\]]+)\]\s*/i;
+const NEEDS_PREFIX_PATTERN = /^\s*\[\s*(?:blocked\s+by|needs)\s+([^\]]+)\]\s*/i;
 
 function normalizeWhitespace(value) {
 	return value.replace(/\s+/g, " ").trim();

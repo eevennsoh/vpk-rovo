@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { addDays, format } from "date-fns";
-import { CalendarIcon, ChevronDownIcon, Clock2Icon } from "lucide-react";
+import { CalendarIcon, ChevronDownIcon, Clock2Icon } from "@/components/ui/vpk-icons";
 import { type DateRange } from "react-day-picker";
 import { es } from "react-day-picker/locale";
 import { Button } from "@/components/ui/button";

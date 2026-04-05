@@ -54,7 +54,10 @@ import {
 } from "@/components/ui-ai/task"
 import { Terminal, TerminalContent } from "@/components/ui-ai/terminal"
 import { cn } from "@/lib/utils"
-import { CheckCircle2Icon, ListTodoIcon } from "lucide-react"
+import {
+	CheckCircle2Icon,
+	ListTodoIcon,
+} from "@/components/ui/vpk-icons"
 import { nanoid } from "nanoid"
 import { useCallback, useEffect, useState } from "react"
 import type { BundledLanguage } from "shiki"

@@ -959,7 +959,7 @@ import { Label } from "@/components/ui/label";
     description:
       "A toggle button component built on Base UI with variant and size options for toolbar-style interactions.",
     usage: `import { Toggle } from "@/components/ui/toggle";
-import { BoldIcon } from "lucide-react";
+import { BoldIcon } from "@/components/ui/vpk-icons";
 
 <Toggle aria-label="Toggle bold">
   <BoldIcon className="size-4" />

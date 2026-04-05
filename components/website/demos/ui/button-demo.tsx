@@ -3,7 +3,7 @@
 import AddIcon from "@atlaskit/icon/core/add";
 import EditIcon from "@atlaskit/icon/core/edit";
 import SearchIcon from "@atlaskit/icon/core/search";
-import { ArrowLeftCircleIcon, ArrowRightIcon } from "lucide-react";
+import { ArrowLeftCircleIcon, ArrowRightIcon } from "@/components/ui/vpk-icons";
 import { Button } from "@/components/ui/button";
 
 export default function ButtonDemo() {

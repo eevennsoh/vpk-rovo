@@ -17,7 +17,7 @@ import {
 	ModelSelectorTrigger,
 } from "@/components/ui-ai/model-selector";
 import { Button } from "@/components/ui/button";
-import { CheckIcon } from "lucide-react";
+import { CheckIcon } from "@/components/ui/vpk-icons";
 
 // — Shared model data —
 

@@ -17,7 +17,7 @@ import {
 	ItemDescription,
 	ItemTitle,
 } from "@/components/ui/item"
-import { SettingsIcon } from "lucide-react"
+import { SettingsIcon } from "@/components/ui/vpk-icons"
 
 interface MemorySettingsMenuProps {
 	memorySetting: "default" | "project-only";

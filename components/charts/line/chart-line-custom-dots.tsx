@@ -1,6 +1,6 @@
 "use client";
 
-import { GitCommitVertical, TrendingUp } from "lucide-react";
+import { TrendingUp } from "@/components/ui/vpk-icons";
 import { CartesianGrid, Line, LineChart, XAxis } from "recharts";
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -54,8 +54,26 @@ export function ChartLineDotsCustom() {
 							stroke="var(--color-desktop)"
 							strokeWidth={2}
 							dot={({ cx, cy, payload }) => {
-								const r = 24;
-								return <GitCommitVertical key={payload.month} x={(cx ?? 0) - r / 2} y={(cy ?? 0) - r / 2} width={r} height={r} fill="hsl(var(--background))" stroke="var(--color-desktop)" />;
+								const centerX = cx ?? 0;
+								const centerY = cy ?? 0;
+								return (
+									<g key={payload.month}>
+										<circle
+											cx={centerX}
+											cy={centerY}
+											r={11}
+											fill="hsl(var(--background))"
+											stroke="var(--color-desktop)"
+											strokeWidth={2}
+										/>
+										<circle
+											cx={centerX}
+											cy={centerY}
+											r={4}
+											fill="var(--color-desktop)"
+										/>
+									</g>
+								);
 							}}
 						/>
 					</LineChart>

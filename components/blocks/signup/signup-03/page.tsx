@@ -1,4 +1,4 @@
-import { GalleryVerticalEnd } from "lucide-react"
+import { GalleryVerticalEnd } from "@/components/ui/vpk-icons"
 
 import { SignupForm } from "./components/signup-form"
 

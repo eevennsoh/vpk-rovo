@@ -99,7 +99,20 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs"
-import { GripVerticalIcon, CircleCheckIcon, LoaderIcon, EllipsisVerticalIcon, Columns3Icon, ChevronDownIcon, PlusIcon, ChevronsLeftIcon, ChevronLeftIcon, ChevronRightIcon, ChevronsRightIcon, TrendingUpIcon } from "lucide-react"
+import {
+  ChevronDownIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  ChevronsLeftIcon,
+  ChevronsRightIcon,
+  CircleCheckIcon,
+  Columns3Icon,
+  EllipsisVerticalIcon,
+  GripVerticalIcon,
+  LoaderIcon,
+  PlusIcon,
+  TrendingUpIcon,
+} from "@/components/ui/vpk-icons"
 
 export const schema = z.object({
   id: z.number(),

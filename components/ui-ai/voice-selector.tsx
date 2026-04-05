@@ -22,18 +22,13 @@ import {
 	DialogTrigger,
 } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
-import { cn } from "@/lib/utils";
 import {
-	CircleSmallIcon,
-	MarsIcon,
-	MarsStrokeIcon,
-	NonBinaryIcon,
+	CircleIcon,
 	PauseIcon,
+	PersonIcon,
 	PlayIcon,
-	TransgenderIcon,
-	VenusAndMarsIcon,
-	VenusIcon,
-} from "lucide-react";
+} from "@/components/ui/vpk-icons";
+import { cn } from "@/lib/utils";
 import { createContext, use, useCallback, useMemo } from "react";
 
 interface VoiceSelectorContextValue {
@@ -200,12 +195,12 @@ type GenderValue =
 	| "intersex";
 
 const GENDER_ICONS: Record<GenderValue, ReactNode> = {
-	male: <MarsIcon className="size-4" />,
-	female: <VenusIcon className="size-4" />,
-	transgender: <TransgenderIcon className="size-4" />,
-	androgyne: <MarsStrokeIcon className="size-4" />,
-	"non-binary": <NonBinaryIcon className="size-4" />,
-	intersex: <VenusAndMarsIcon className="size-4" />,
+	male: <PersonIcon className="size-4" />,
+	female: <PersonIcon className="size-4" />,
+	transgender: <PersonIcon className="size-4" />,
+	androgyne: <PersonIcon className="size-4" />,
+	"non-binary": <PersonIcon className="size-4" />,
+	intersex: <PersonIcon className="size-4" />,
 };
 
 export type VoiceSelectorGenderProps = ComponentProps<"span"> & {
@@ -218,7 +213,9 @@ export function VoiceSelectorGender({
 	children,
 	...props
 }: Readonly<VoiceSelectorGenderProps>) {
-	const icon = value ? (GENDER_ICONS[value] ?? <CircleSmallIcon className="size-4" />) : <CircleSmallIcon className="size-4" />;
+	const icon = value
+		? (GENDER_ICONS[value] ?? <CircleIcon className="size-4" />)
+		: <CircleIcon className="size-4" />;
 
 	return (
 		<span className={cn("text-muted-foreground text-xs", className)} {...props}>

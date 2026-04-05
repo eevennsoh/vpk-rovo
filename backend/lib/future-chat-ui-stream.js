@@ -153,15 +153,32 @@ async function collectUiMessagesFromResponseStream({
 }) {
 	const messages = Array.isArray(initialMessages) ? [...initialMessages] : [];
 
-	for await (const message of readUIMessageStream({
-		stream: createTappedChunkStream(stream, {
-			onChunk,
-			routeDecisionToSuppress,
-		}),
-	})) {
-		messages.splice(0, messages.length, ...upsertMessage(messages, message));
-		if (typeof onMessagesUpdated === "function") {
-			void Promise.resolve(onMessagesUpdated([...messages])).catch(() => {});
+	try {
+		for await (const message of readUIMessageStream({
+			stream: createTappedChunkStream(stream, {
+				onChunk,
+				routeDecisionToSuppress,
+			}),
+		})) {
+			messages.splice(0, messages.length, ...upsertMessage(messages, message));
+			if (typeof onMessagesUpdated === "function") {
+				void Promise.resolve(onMessagesUpdated([...messages])).catch(() => {});
+			}
+		}
+	} catch (error) {
+		// The AI SDK's createAsyncIterableStream .throw() method rethrows
+		// instead of returning { done: true }, which causes V8 to emit
+		// "generator didn't stop after athrow()" when the underlying stream
+		// errors (e.g. RovoDev disconnect mid-stream). Swallow it here —
+		// the run-level catch in startManagedFutureChatRun handles the
+		// failure via failFutureChatRun.
+		const msg = error instanceof Error ? error.message : String(error);
+		if (/generator didn.t stop after athrow/i.test(msg)) {
+			console.warn("[FUTURE-CHAT] Stream iterator athrow — partial messages collected:", {
+				messageCount: messages.length,
+			});
+		} else {
+			throw error;
 		}
 	}
 

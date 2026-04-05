@@ -2,10 +2,18 @@ import "server-only";
 
 import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
-import { cache } from "react";
-import { PROJECT_COMPONENTS, type ComponentEntry } from "@/app/data/components";
+import { PROJECT_COMPONENTS, type ComponentManifestEntry } from "@/app/data/component-manifest";
 
-export interface ProjectComponentEntry extends ComponentEntry {
+const PROJECT_COMPONENTS_UPDATED_TTL_MS = 60_000;
+
+let cachedProjectComponentsWithUpdatedAt:
+	| {
+		expiresAt: number;
+		value: ProjectComponentEntry[];
+	}
+	| null = null;
+
+export interface ProjectComponentEntry extends ComponentManifestEntry {
 	updatedAt: string | null;
 }
 
@@ -48,9 +56,27 @@ function getLatestCommittedAt(paths: ReadonlyArray<string>): string | null {
 	return latestTimestamp;
 }
 
-export const getProjectComponentsWithUpdatedAt = cache((): ProjectComponentEntry[] => {
+function loadProjectComponentsWithUpdatedAt(): ProjectComponentEntry[] {
 	return PROJECT_COMPONENTS.map((component) => ({
 		...component,
 		updatedAt: getLatestCommittedAt(getCandidatePaths(component.slug)),
 	}));
-});
+}
+
+export function getProjectComponentsWithUpdatedAt(): ProjectComponentEntry[] {
+	const now = Date.now();
+	if (
+		cachedProjectComponentsWithUpdatedAt &&
+		cachedProjectComponentsWithUpdatedAt.expiresAt > now
+	) {
+		return cachedProjectComponentsWithUpdatedAt.value;
+	}
+
+	const value = loadProjectComponentsWithUpdatedAt();
+	cachedProjectComponentsWithUpdatedAt = {
+		value,
+		expiresAt: now + PROJECT_COMPONENTS_UPDATED_TTL_MS,
+	};
+
+	return value;
+}

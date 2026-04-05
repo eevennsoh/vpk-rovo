@@ -29,9 +29,10 @@ function isPlanCardBuildable(planPayload, allPlanPayloads, approvalState) {
 
 	const latestPlan = allPlanPayloads[allPlanPayloads.length - 1];
 	const isLatest =
-		planPayload.title === latestPlan.title &&
-		planPayload.tasks.length === latestPlan.tasks.length &&
-		planPayload.tasks.every((task, index) => task.id === latestPlan.tasks[index]?.id);
+		(planPayload.deferredToolCallId && latestPlan.deferredToolCallId)
+			? planPayload.deferredToolCallId === latestPlan.deferredToolCallId
+			: planPayload.title === latestPlan.title &&
+				planPayload.markdown === latestPlan.markdown;
 
 	if (!isLatest) {
 		return { buildable: false, reason: "A newer plan is available." };
@@ -40,11 +41,13 @@ function isPlanCardBuildable(planPayload, allPlanPayloads, approvalState) {
 	return { buildable: true };
 }
 
-function makePlan(title, taskIds) {
+function makePlan(title, taskIds, { deferredToolCallId, markdown } = {}) {
 	return {
 		title,
+		markdown: markdown ?? `## ${title}`,
 		tasks: taskIds.map((id) => ({ id, label: `Task ${id}`, blockedBy: [] })),
 		agents: [],
+		deferredToolCallId,
 	};
 }
 
@@ -56,8 +59,8 @@ describe("isPlanCardBuildable — Test Case 8: iterative CTA", () => {
 	});
 
 	it("older plan is NOT buildable when a newer plan exists", () => {
-		const planA = makePlan("Dashboard v1", ["task-1", "task-2"]);
-		const planB = makePlan("Dashboard v2", ["task-1", "task-2", "task-3"]);
+		const planA = makePlan("Dashboard v1", ["task-1", "task-2"], { deferredToolCallId: "tool-1" });
+		const planB = makePlan("Dashboard v2", ["task-1", "task-2", "task-3"], { deferredToolCallId: "tool-2" });
 
 		const resultA = isPlanCardBuildable(planA, [planA, planB], null);
 		assert.strictEqual(resultA.buildable, false);
@@ -68,9 +71,9 @@ describe("isPlanCardBuildable — Test Case 8: iterative CTA", () => {
 	});
 
 	it("only the last plan is buildable among three iterations", () => {
-		const planA = makePlan("Plan A", ["t1"]);
-		const planB = makePlan("Plan B", ["t1", "t2"]);
-		const planC = makePlan("Plan C", ["t1", "t2", "t3"]);
+		const planA = makePlan("Plan A", ["t1"], { deferredToolCallId: "tool-a" });
+		const planB = makePlan("Plan B", ["t1", "t2"], { deferredToolCallId: "tool-b" });
+		const planC = makePlan("Plan C", ["t1", "t2", "t3"], { deferredToolCallId: "tool-c" });
 		const all = [planA, planB, planC];
 
 		assert.strictEqual(isPlanCardBuildable(planA, all, null).buildable, false);
@@ -78,9 +81,9 @@ describe("isPlanCardBuildable — Test Case 8: iterative CTA", () => {
 		assert.strictEqual(isPlanCardBuildable(planC, all, null).buildable, true);
 	});
 
-	it("plans with same title but different task ids are distinguished", () => {
-		const planA = makePlan("Dashboard", ["task-1", "task-2"]);
-		const planB = makePlan("Dashboard", ["task-1", "task-2", "task-3"]);
+	it("plans with same title but different deferredToolCallIds are distinguished", () => {
+		const planA = makePlan("Dashboard", ["task-1", "task-2"], { deferredToolCallId: "tool-1" });
+		const planB = makePlan("Dashboard", ["task-1", "task-2", "task-3"], { deferredToolCallId: "tool-2" });
 
 		assert.strictEqual(
 			isPlanCardBuildable(planA, [planA, planB], null).buildable,
@@ -92,9 +95,9 @@ describe("isPlanCardBuildable — Test Case 8: iterative CTA", () => {
 		);
 	});
 
-	it("same title and task count but different task ids is not the latest plan", () => {
-		const planA = makePlan("Dashboard", ["task-1", "task-2"]);
-		const planB = makePlan("Dashboard", ["task-1", "task-99"]);
+	it("same title but different markdown is not the latest plan (no deferredToolCallId)", () => {
+		const planA = makePlan("Dashboard", ["task-1"], { markdown: "## Version 1" });
+		const planB = makePlan("Dashboard", ["task-1"], { markdown: "## Version 2" });
 
 		assert.strictEqual(isPlanCardBuildable(planA, [planA, planB], null).buildable, false);
 		assert.strictEqual(isPlanCardBuildable(planB, [planA, planB], null).buildable, true);

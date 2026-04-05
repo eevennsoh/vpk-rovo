@@ -1,16 +1,16 @@
 // @ts-nocheck
 import {
-	AudioWaveform,
-	BookOpen,
-	Bot,
-	Command,
-	Frame,
+	AppWindowIcon,
+	AudioWaveformIcon,
+	BookOpenIcon,
+	BotIcon,
+	ChartPieIcon,
+	CommandIcon,
 	GalleryVerticalEnd,
-	Map,
-	PieChart,
-	Settings2,
-	SquareTerminal,
-} from "lucide-react"
+	GlobeIcon,
+	SettingsIcon,
+	TerminalIcon,
+} from "@/components/ui/vpk-icons"
 
 export const USER_DATA = {
 	name: "shadcn",
@@ -26,12 +26,12 @@ export const TEAMS = [
 	},
 	{
 		name: "Acme Corp.",
-		logo: AudioWaveform,
+		logo: AudioWaveformIcon,
 		plan: "Startup",
 	},
 	{
 		name: "Evil Corp.",
-		logo: Command,
+		logo: CommandIcon,
 		plan: "Free",
 	},
 ]
@@ -40,7 +40,7 @@ export const NAV_MAIN_ITEMS = [
 	{
 		title: "Playground",
 		url: "#",
-		icon: SquareTerminal,
+		icon: TerminalIcon,
 		isActive: true,
 		items: [
 			{
@@ -60,7 +60,7 @@ export const NAV_MAIN_ITEMS = [
 	{
 		title: "Models",
 		url: "#",
-		icon: Bot,
+		icon: BotIcon,
 		items: [
 			{
 				title: "Genesis",
@@ -79,7 +79,7 @@ export const NAV_MAIN_ITEMS = [
 	{
 		title: "Documentation",
 		url: "#",
-		icon: BookOpen,
+		icon: BookOpenIcon,
 		items: [
 			{
 				title: "Introduction",
@@ -102,7 +102,7 @@ export const NAV_MAIN_ITEMS = [
 	{
 		title: "Settings",
 		url: "#",
-		icon: Settings2,
+		icon: SettingsIcon,
 		items: [
 			{
 				title: "General",
@@ -128,16 +128,16 @@ export const PROJECTS = [
 	{
 		name: "Design Engineering",
 		url: "#",
-		icon: Frame,
+		icon: AppWindowIcon,
 	},
 	{
 		name: "Sales & Marketing",
 		url: "#",
-		icon: PieChart,
+		icon: ChartPieIcon,
 	},
 	{
 		name: "Travel",
 		url: "#",
-		icon: Map,
+		icon: GlobeIcon,
 	},
 ]

@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { ChevronDown, Plus } from "lucide-react"
+import { ChevronDownIcon, PlusIcon } from "@/components/ui/vpk-icons"
 
 import {
   DropdownMenu,
@@ -46,7 +46,7 @@ export function TeamSwitcher({
               <activeTeam.logo className="size-3" />
             </div>
             <span className="truncate font-semibold">{activeTeam.name}</span>
-            <ChevronDown className="opacity-50" />
+            <ChevronDownIcon className="opacity-50" />
           </DropdownMenuTrigger>
           <DropdownMenuContent
             className="w-64 rounded-lg"
@@ -76,7 +76,7 @@ export function TeamSwitcher({
             <DropdownMenuGroup>
               <DropdownMenuItem className="gap-2 p-2">
                 <div className="flex size-6 items-center justify-center rounded-md border bg-background">
-                  <Plus className="size-4" />
+                  <PlusIcon className="size-4" />
                 </div>
                 <div className="font-medium text-muted-foreground">Add team</div>
               </DropdownMenuItem>

@@ -13,7 +13,7 @@ import {
 	OpenInSeparator,
 	OpenInLabel,
 } from "@/components/ui-ai/open-in-chat";
-import { SendIcon } from "lucide-react";
+import { SendIcon } from "@/components/ui/vpk-icons";
 
 export default function OpenInChatDemo() {
 	return <OpenInChatDemoAllProviders />;

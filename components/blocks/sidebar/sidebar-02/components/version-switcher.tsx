@@ -2,7 +2,11 @@
 "use client"
 
 import * as React from "react"
-import { Check, ChevronsUpDown, GalleryVerticalEnd } from "lucide-react"
+import {
+  CheckIcon,
+  ChevronsUpDownIcon,
+  GalleryVerticalEnd,
+} from "@/components/ui/vpk-icons"
 
 import {
   DropdownMenu,
@@ -44,7 +48,7 @@ export function VersionSwitcher({
               <span className="font-semibold">Documentation</span>
               <span className="">v{selectedVersion}</span>
             </div>
-            <ChevronsUpDown className="ml-auto" />
+            <ChevronsUpDownIcon className="ml-auto" />
           </DropdownMenuTrigger>
           <DropdownMenuContent
             className="w-(--anchor-width)"
@@ -56,7 +60,7 @@ export function VersionSwitcher({
                 onSelect={() => setSelectedVersion(version)}
               >
                 v{version}{" "}
-                {version === selectedVersion && <Check className="ml-auto" />}
+                {version === selectedVersion ? <CheckIcon className="ml-auto" /> : null}
               </DropdownMenuItem>
             ))}
           </DropdownMenuContent>

@@ -14,7 +14,7 @@ import {
 	DatabaseIcon,
 	FileChartColumnIcon,
 	FileIcon,
-} from "lucide-react"
+} from "@/components/ui/vpk-icons"
 
 export const USER_DATA = {
 	name: "shadcn",

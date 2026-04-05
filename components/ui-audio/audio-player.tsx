@@ -14,7 +14,12 @@ import {
   useState,
 } from "react"
 import * as SliderPrimitive from "@radix-ui/react-slider"
-import { Check, PauseIcon, PlayIcon, Settings } from "lucide-react"
+import {
+  Check,
+  PauseIcon,
+  PlayIcon,
+  Settings,
+} from "@/components/ui/vpk-icons"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"

@@ -1,6 +1,6 @@
 "use client";
 
-import { AppWindowIcon, CodeIcon, HomeIcon, MoreHorizontalIcon, SearchIcon, SettingsIcon } from "lucide-react";
+import { AppWindowIcon, CodeIcon, HomeIcon, MoreHorizontalIcon, SearchIcon, SettingsIcon } from "@/components/ui/vpk-icons";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";

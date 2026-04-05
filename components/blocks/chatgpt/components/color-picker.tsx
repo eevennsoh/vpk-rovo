@@ -11,7 +11,7 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "@/components/ui/popover"
-import { FolderIcon } from "lucide-react"
+import { FolderIcon } from "@/components/ui/vpk-icons"
 import { FOLDER_COLORS } from "../data/categories"
 
 interface ColorPickerProps {

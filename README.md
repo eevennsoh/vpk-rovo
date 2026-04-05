@@ -1,6 +1,7 @@
 # VPK (Venn Prototype Kit)
 
-Next.js 16 + Express backend with AI Gateway integration, deployable to Atlassian Micros.
+Next.js 16 + Express backend with RovoDev Serve for primary chat and AI Gateway
+for explicit helper and media routes, deployable to Atlassian Micros.
 
 ## Architecture
 
@@ -8,14 +9,16 @@ This project uses a dual-mode runtime:
 
 **Local Development (two processes):**
 
-```
-Browser → Next.js (:3000) → app/api/* proxy → Express (:8080) → AI Gateway
+```text
+Browser → Next.js (:3000) → app/api/* proxy → Express (:8080) → RovoDev Serve
+                                                        ↘ AI Gateway-assisted helper/media routes
 ```
 
 **Production (single process):**
 
-```
-Browser → Express (:8080) → serves static export + handles /api/* → AI Gateway
+```text
+Browser → Express (:8080) → serves static export + handles /api/* → RovoDev Serve
+                                                        ↘ AI Gateway-assisted helper/media routes
 ```
 
 Both modes use the same `/api/*` relative paths - no code changes needed between environments.
@@ -197,7 +200,6 @@ ASAP_ISSUER
 Optional:
 
 ```
-AUTO_FALLBACK_TO_AI_GATEWAY=true       # Auto-route to AI Gateway when RovoDev Serve is unavailable
 DEBUG=true                              # Verbose logging
 PORT=8080                               # Backend port
 BACKEND_URL=http://localhost:8080       # Backend URL for dev proxy
@@ -206,7 +208,8 @@ BACKEND_URL=http://localhost:8080       # Backend URL for dev proxy
 LLM routing behavior:
 
 - Default: RovoDev-first (`pnpm run rovodev` starts a single instance by default; use `pnpm run rovodev --6` for full pool)
-- Fallback: if `AUTO_FALLBACK_TO_AI_GATEWAY=true`, chat endpoints switch to AI Gateway when RovoDev is down
+- Main chat: `/api/chat-sdk` requires RovoDev Serve and returns `503` if RovoDev is unavailable
+- AI Gateway-assisted helper/media tasks: image, sound, suggestions, titles/metadata, and Realtime voice use AI Gateway when configured
 - Inspect current routing at `GET /api/health` under `llmRouting`
 
 See [guide-setup.md](./.cursor/skills/vpk-setup/references/guide-setup.md) for detailed credential setup.

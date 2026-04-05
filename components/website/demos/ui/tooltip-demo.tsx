@@ -1,7 +1,7 @@
 "use client";
 
 import AddIcon from "@atlaskit/icon/core/add";
-import { InfoIcon, SaveIcon } from "lucide-react";
+import { InfoIcon, SaveIcon } from "@/components/ui/vpk-icons";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";

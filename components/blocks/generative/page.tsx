@@ -1,7 +1,13 @@
 "use client"
 
 import { useState } from "react"
-import { CodeIcon, EyeIcon, CopyIcon, DownloadIcon, ShareIcon } from "lucide-react"
+import {
+	CodeIcon,
+	CopyIcon,
+	DownloadIcon,
+	EyeIcon,
+	ShareIcon,
+} from "@/components/ui/vpk-icons"
 
 import {
 	Artifact,

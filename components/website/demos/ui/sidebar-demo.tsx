@@ -1,7 +1,7 @@
 import HomeIcon from "@atlaskit/icon/core/home";
 import SearchIcon from "@atlaskit/icon/core/search";
 import SettingsIcon from "@atlaskit/icon/core/settings";
-import { LayoutDashboardIcon } from "lucide-react";
+import { LayoutDashboardIcon } from "@/components/ui/vpk-icons";
 import { Button } from "@/components/ui/button";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupLabel, SidebarInset, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 

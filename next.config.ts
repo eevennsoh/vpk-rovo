@@ -5,6 +5,10 @@ const projectRoot = process.cwd();
 const nextConfig: NextConfig = {
 	devIndicators: false,
 
+	experimental: {
+		viewTransition: true,
+	},
+
 	turbopack: {
 		// Prevent Turbopack from inferring the wrong workspace root.
 		root: projectRoot,

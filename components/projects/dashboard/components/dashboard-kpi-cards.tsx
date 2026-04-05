@@ -4,11 +4,11 @@ import { token } from "@/lib/tokens";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import {
-	ListTodoIcon,
-	CheckCircle2Icon,
 	LoaderCircleIcon,
 	AlertTriangleIcon,
-} from "lucide-react";
+	CheckCircle2Icon,
+	ListTodoIcon,
+} from "@/components/ui/vpk-icons";
 
 interface TaskStats {
 	total: number;

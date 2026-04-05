@@ -1,5 +1,3 @@
-"use client";
-
 import { DocSection } from "./doc-section";
 import { DocCodeSnippet } from "./doc-code-snippet";
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ArchiveIcon, ClipboardPasteIcon, CopyIcon, PencilIcon, ScissorsIcon, ShareIcon, TrashIcon } from "lucide-react";
+import { ArchiveIcon, ClipboardPasteIcon, CopyIcon, PencilIcon, ScissorsIcon, ShareIcon, TrashIcon } from "@/components/ui/vpk-icons";
 import { Button } from "@/components/ui/button";
 import { ContextMenu, ContextMenuCheckboxItem, ContextMenuContent, ContextMenuGroup, ContextMenuItem, ContextMenuLabel, ContextMenuRadioGroup, ContextMenuRadioItem, ContextMenuSeparator, ContextMenuShortcut, ContextMenuSub, ContextMenuSubContent, ContextMenuSubTrigger, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";

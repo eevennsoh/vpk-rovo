@@ -1,6 +1,6 @@
 "use client";
 
-import { CaptionsIcon, PlusIcon } from "lucide-react";
+import { CaptionsIcon, PlusIcon } from "@/components/ui/vpk-icons";
 import Image from "next/image";
 import { Avatar, AvatarFallback, AvatarGroup, AvatarGroupCount, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";

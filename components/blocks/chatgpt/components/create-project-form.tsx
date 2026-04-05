@@ -24,7 +24,10 @@ import {
 	InputGroupAddon,
 	InputGroupInput,
 } from "@/components/ui/input-group"
-import { CircleCheckIcon, LightbulbIcon } from "lucide-react"
+import {
+	CircleCheckIcon,
+	LightbulbIcon,
+} from "@/components/ui/vpk-icons"
 import { CATEGORIES } from "../data/categories"
 import { MemorySettingsMenu } from "./memory-settings-menu"
 import { ColorPicker } from "./color-picker"

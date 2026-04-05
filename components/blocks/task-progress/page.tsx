@@ -189,10 +189,6 @@ export default function TaskProgress({
 	const isInteractive = isCollapsible || typeof onCardClick === "function";
 
 	useEffect(() => {
-		setCollapsed(defaultCollapsed);
-	}, [defaultCollapsed]);
-
-	useEffect(() => {
 		if (runStatus !== "running" || !runCreatedAt) return;
 		const intervalId = setInterval(() => setNowMs(Date.now()), 1000);
 		return () => clearInterval(intervalId);

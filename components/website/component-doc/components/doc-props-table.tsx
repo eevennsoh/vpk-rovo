@@ -1,5 +1,3 @@
-"use client";
-
 import { type CSSProperties } from "react";
 import { token } from "@/lib/tokens";
 import type { PropDefinition, SubComponentDoc } from "@/app/data/component-detail-types";

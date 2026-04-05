@@ -1,6 +1,6 @@
 // @ts-nocheck
 import * as React from "react"
-import { Check, ChevronRight } from "lucide-react"
+import { CheckIcon, ChevronRightIcon } from "@/components/ui/vpk-icons"
 
 import {
   Collapsible,
@@ -39,7 +39,7 @@ export function Calendars({
               >
                 <CollapsibleTrigger className="flex w-full items-center">
                   {calendar.name}{" "}
-                  <ChevronRight className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-90" />
+                  <ChevronRightIcon className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-90" />
                 </CollapsibleTrigger>
               </SidebarGroupLabel>
               <CollapsibleContent>
@@ -52,7 +52,7 @@ export function Calendars({
                             data-active={index < 2}
                             className="group/calendar-item flex aspect-square size-4 shrink-0 items-center justify-center rounded-sm border border-sidebar-border text-sidebar-primary-foreground data-[active=true]:border-sidebar-primary data-[active=true]:bg-sidebar-primary"
                           >
-                            <Check className="hidden size-3 group-data-[active=true]/calendar-item:block" />
+                            <CheckIcon className="hidden size-3 group-data-[active=true]/calendar-item:block" />
                           </div>
                           {item}
                         </SidebarMenuButton>

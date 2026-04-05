@@ -9,13 +9,13 @@ import {
 	CollapsibleContent,
 	CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { cn } from "@/lib/utils";
 import {
 	AlertTriangleIcon,
 	CheckIcon,
 	ChevronDownIcon,
 	CopyIcon,
-} from "lucide-react";
+} from "@/components/ui/vpk-icons";
+import { cn } from "@/lib/utils";
 import {
 	createContext,
 	memo,

@@ -1,6 +1,6 @@
 "use client"
 
-import type { LucideIcon } from "lucide-react"
+import type { VpkIconComponent } from "@/components/ui/vpk-icons"
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -18,17 +18,17 @@ import {
 	useSidebar,
 } from "@/components/ui/sidebar"
 import {
-	MoreHorizontalIcon,
 	FolderIcon,
+	MoreHorizontal,
 	ShareIcon,
 	Trash2Icon,
-} from "lucide-react"
+} from "@/components/ui/vpk-icons"
 
 interface NavDocumentsProps {
 	items: ReadonlyArray<{
 		name: string
 		url: string
-		icon: LucideIcon
+		icon: VpkIconComponent
 	}>
 }
 
@@ -56,7 +56,7 @@ export function NavDocuments({ items }: Readonly<NavDocumentsProps>) {
 										/>
 									}
 								>
-									<MoreHorizontalIcon />
+									<MoreHorizontal />
 									<span className="sr-only">More</span>
 								</DropdownMenuTrigger>
 								<DropdownMenuContent
@@ -84,7 +84,7 @@ export function NavDocuments({ items }: Readonly<NavDocumentsProps>) {
 				})}
 				<SidebarMenuItem>
 					<SidebarMenuButton className="text-sidebar-foreground/70">
-						<MoreHorizontalIcon className="text-sidebar-foreground/70" />
+						<MoreHorizontal className="text-sidebar-foreground/70" />
 						<span>More</span>
 					</SidebarMenuButton>
 				</SidebarMenuItem>

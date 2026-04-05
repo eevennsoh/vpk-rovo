@@ -1,6 +1,6 @@
 "use client"
 
-import type { LucideIcon } from "lucide-react"
+import type { VpkIconComponent } from "@/components/ui/vpk-icons"
 import { Button } from "@/components/ui/button"
 import {
 	SidebarGroup,
@@ -9,13 +9,13 @@ import {
 	SidebarMenuButton,
 	SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { CirclePlusIcon, MailIcon } from "lucide-react"
+import { CirclePlusIcon, EmailIcon } from "@/components/ui/vpk-icons"
 
 interface NavMainProps {
 	items: ReadonlyArray<{
 		title: string
 		url: string
-		icon?: LucideIcon
+		icon?: VpkIconComponent
 	}>
 }
 
@@ -37,7 +37,7 @@ export function NavMain({ items }: Readonly<NavMainProps>) {
 							className="size-8 group-data-[collapsible=icon]:opacity-0"
 							variant="outline"
 						>
-							<MailIcon />
+							<EmailIcon />
 							<span className="sr-only">Inbox</span>
 						</Button>
 					</SidebarMenuItem>

@@ -329,7 +329,7 @@ export const PROJECT_COMPONENTS: ComponentEntry[] = sortEntriesByName([
 	{ ...projectComponent("make", "Make"), importPath: "@/components/projects/make" },
 	projectComponent("sidebar-chat", "Sidebar Chat"),
 	projectComponent("confluence", "Confluence Editor"),
-	projectComponent("crm", "CRM Dashboard"),
+	projectComponent("dashboard-analytics", "Dashboard Analytics"),
 	projectComponent("jira", "Jira Board"),
 	projectComponent("fullscreen-chat", "Fullscreen Chat"),
 	projectComponent("future-chat", "Future Chat"),

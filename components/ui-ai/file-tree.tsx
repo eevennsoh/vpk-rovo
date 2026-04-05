@@ -7,13 +7,13 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { cn } from "@/lib/utils";
 import {
   ChevronRightIcon,
   FileIcon,
   FolderIcon,
   FolderOpenIcon,
-} from "lucide-react";
+} from "@/components/ui/vpk-icons";
+import { cn } from "@/lib/utils";
 import {
   createContext,
   useCallback,

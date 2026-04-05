@@ -119,7 +119,7 @@ function createExecutionAssistantMessage({
 	};
 }
 
-test("resolveFutureChatPlanExecutionTracker falls back to accepted plan tasks while running", () => {
+test("resolveFutureChatPlanExecutionTracker falls back to plan tasks while running (backward compat)", () => {
 	const planWidget = createPlanWidgetPayload();
 	const planKey = getPlanApprovalKeyFromPlanWidget(planWidget);
 	const tracker = resolveFutureChatPlanExecutionTracker({
@@ -144,6 +144,51 @@ test("resolveFutureChatPlanExecutionTracker falls back to accepted plan tasks wh
 	assert.deepEqual(
 		tracker?.taskStatusGroups.todo.map((task) => task.description),
 		["Ready to start", "Blocked by #1", "Blocked by #2"],
+	);
+});
+
+test("resolveFutureChatPlanExecutionTracker preserves plan labels before update_todo runs (backward compat)", () => {
+	const planWidget = {
+		title: "Jira Analytics Dashboard",
+		description: "Build the dashboard route",
+		markdown: "## Plan",
+		tasks: [
+			{
+				id: "task-1",
+				label: "Create route page at `app/dashboard-analytics/page.tsx`",
+				blockedBy: [],
+			},
+			{
+				id: "task-2",
+				label: "Create main view component at `components/projects/dashboard-analytics/page.tsx`",
+				blockedBy: ["task-1"],
+			},
+		],
+		deferredToolCallId: "tool-plan-dashboard",
+	};
+	const planKey = getPlanApprovalKeyFromPlanWidget(planWidget);
+	const tracker = resolveFutureChatPlanExecutionTracker({
+		activeRun: {
+			id: "run-1",
+			status: "streaming",
+			rovoPort: 8000,
+			startedAt: "2026-03-30T10:00:10.000Z",
+			updatedAt: "2026-03-30T10:00:20.000Z",
+		},
+		messages: [
+			createPlanAssistantMessage(planWidget),
+			createApprovalUserMessage(planKey),
+		],
+		threadId: "thread-1",
+		threadUpdatedAt: "2026-03-30T10:00:20.000Z",
+	});
+
+	assert.deepEqual(
+		tracker?.taskStatusGroups.todo.map((task) => task.label),
+		[
+			"Create route page at `app/dashboard-analytics/page.tsx`",
+			"Create main view component at `components/projects/dashboard-analytics/page.tsx`",
+		],
 	);
 });
 
@@ -181,7 +226,7 @@ test("resolveFutureChatPlanExecutionTracker maps update_todo snapshot into task 
 	assert.equal(tracker?.taskStatusGroups.todo.length, 1);
 	assert.equal(
 		tracker?.taskStatusGroups.inProgress[0]?.label,
-		"#2 Refactor orchestration",
+		"Refactor orchestration",
 	);
 	assert.equal(
 		tracker?.taskStatusGroups.inProgress[0]?.description,
@@ -218,7 +263,7 @@ test("resolveFutureChatPlanExecutionTracker marks completed runs when all tasks 
 	assert.equal(tracker?.taskStatusGroups.done.length, 3);
 });
 
-test("resolveFutureChatPlanExecutionTracker aliases numeric todo ids to the original plan tasks", () => {
+test("resolveFutureChatPlanExecutionTracker aliases numeric todo ids to plan tasks (backward compat)", () => {
 	const planWidget = createPlanWidgetPayload();
 	const planKey = getPlanApprovalKeyFromPlanWidget(planWidget);
 	const tracker = resolveFutureChatPlanExecutionTracker({
@@ -252,11 +297,11 @@ test("resolveFutureChatPlanExecutionTracker aliases numeric todo ids to the orig
 	);
 	assert.deepEqual(
 		tracker?.taskStatusGroups.done.map((task) => task.label),
-		["#1 Audit current flow", "#2 Refactor orchestration", "#3 Run validation"],
+		["Audit current flow", "Refactor orchestration", "Run validation"],
 	);
 });
 
-test("resolveFutureChatPlanExecutionTracker prefers update_todo labels over plan headings", () => {
+test("resolveFutureChatPlanExecutionTracker uses update_todo labels directly (backward compat with plan labels)", () => {
 	const planWidget = createVerbosePlanWidgetPayload();
 	const planKey = getPlanApprovalKeyFromPlanWidget(planWidget);
 	const tracker = resolveFutureChatPlanExecutionTracker({
@@ -282,8 +327,8 @@ test("resolveFutureChatPlanExecutionTracker prefers update_todo labels over plan
 	assert.deepEqual(
 		tracker?.taskStatusGroups.done.map((task) => task.label),
 		[
-			"#1 Create mock contacts data and TypeScript interface",
-			"#2 Build contacts table component with sorting/filtering",
+			"Create mock contacts data and TypeScript interface",
+			"Build contacts table component with sorting/filtering",
 		],
 	);
 });
@@ -379,6 +424,119 @@ test("resolveFutureChatPlanExecutionTracker marks all tasks completed when artif
 	assert.equal(tracker?.taskStatusGroups.done.length, 3);
 	assert.equal(tracker?.taskStatusGroups.todo.length, 0);
 	assert.equal(tracker?.taskStatusGroups.inProgress.length, 0);
+});
+
+function createEmptyTasksPlanWidgetPayload() {
+	return {
+		title: "Build dashboard",
+		description: "Ship the execution flow",
+		markdown: "## Plan",
+		tasks: [],
+		deferredToolCallId: "tool-plan-empty",
+	};
+}
+
+test("resolveFutureChatPlanExecutionTracker works with empty plan tasks and update_todo snapshot", () => {
+	const planWidget = createEmptyTasksPlanWidgetPayload();
+	const planKey = getPlanApprovalKeyFromPlanWidget(planWidget);
+	const tracker = resolveFutureChatPlanExecutionTracker({
+		activeRun: {
+			id: "run-1",
+			status: "streaming",
+			rovoPort: 8000,
+			startedAt: "2026-03-30T10:00:10.000Z",
+			updatedAt: "2026-03-30T10:03:00.000Z",
+		},
+		messages: [
+			createPlanAssistantMessage(planWidget),
+			createApprovalUserMessage(planKey),
+			createExecutionAssistantMessage({
+				outputPreview: [
+					"<todo>",
+					'{"id":"task-1","content":"Audit current flow","status":"completed"}',
+					'{"id":"task-2","content":"Refactor orchestration","active_form":"Refactoring orchestration","status":"in_progress"}',
+					'{"id":"task-3","content":"Run validation","status":"pending"}',
+					"</todo>",
+				].join("\n"),
+			}),
+		],
+		threadId: "thread-1",
+		threadUpdatedAt: "2026-03-30T10:03:00.000Z",
+	});
+
+	assert.equal(tracker?.runStatus, "running");
+	assert.equal(tracker?.taskCount, 3);
+	assert.equal(tracker?.taskStatusGroups.done.length, 1);
+	assert.equal(tracker?.taskStatusGroups.inProgress.length, 1);
+	assert.equal(tracker?.taskStatusGroups.todo.length, 1);
+	assert.equal(
+		tracker?.taskStatusGroups.inProgress[0]?.label,
+		"Refactor orchestration",
+	);
+	assert.equal(
+		tracker?.taskStatusGroups.inProgress[0]?.description,
+		"Refactoring orchestration",
+	);
+});
+
+test("resolveFutureChatPlanExecutionTracker shows running with zero tasks before update_todo arrives", () => {
+	const planWidget = createEmptyTasksPlanWidgetPayload();
+	const planKey = getPlanApprovalKeyFromPlanWidget(planWidget);
+	const tracker = resolveFutureChatPlanExecutionTracker({
+		activeRun: {
+			id: "run-1",
+			status: "streaming",
+			rovoPort: 8000,
+			startedAt: "2026-03-30T10:00:10.000Z",
+			updatedAt: "2026-03-30T10:00:20.000Z",
+		},
+		messages: [
+			createPlanAssistantMessage(planWidget),
+			createApprovalUserMessage(planKey),
+		],
+		threadId: "thread-1",
+		threadUpdatedAt: "2026-03-30T10:00:20.000Z",
+	});
+
+	assert.equal(tracker?.runStatus, "running");
+	assert.equal(tracker?.taskCount, 0);
+	assert.equal(tracker?.agentCount, 1);
+	assert.deepEqual(tracker?.taskStatusGroups, {
+		done: [],
+		inReview: [],
+		inProgress: [],
+		failed: [],
+		todo: [],
+	});
+});
+
+test("resolveFutureChatPlanExecutionTracker marks completed with empty plan tasks when all snapshot tasks done", () => {
+	const planWidget = createEmptyTasksPlanWidgetPayload();
+	const planKey = getPlanApprovalKeyFromPlanWidget(planWidget);
+	const tracker = resolveFutureChatPlanExecutionTracker({
+		activeRun: null,
+		messages: [
+			createPlanAssistantMessage(planWidget),
+			createApprovalUserMessage(planKey),
+			createExecutionAssistantMessage({
+				outputPreview: [
+					"<todo>",
+					'{"id":"task-1","content":"Audit current flow","status":"completed"}',
+					'{"id":"task-2","content":"Refactor orchestration","status":"completed"}',
+					"</todo>",
+				].join("\n"),
+				text: "Your app is ready.",
+				timestamp: "2026-03-30T10:05:00.000Z",
+			}),
+		],
+		threadId: "thread-1",
+		threadUpdatedAt: "2026-03-30T10:05:00.000Z",
+	});
+
+	assert.equal(tracker?.runStatus, "completed");
+	assert.equal(tracker?.taskCount, 2);
+	assert.equal(tracker?.taskStatusGroups.done.length, 2);
+	assert.equal(tracker?.taskStatusGroups.todo.length, 0);
 });
 
 test("clearFutureChatPlanExecutionDismissalsForThread removes only matching thread keys", () => {

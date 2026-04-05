@@ -1,16 +1,16 @@
 // @ts-nocheck
 import {
-	BookOpen,
-	Bot,
-	Command,
-	Frame,
-	LifeBuoy,
-	Map,
-	PieChart,
-	Send,
-	Settings2,
-	SquareTerminal,
-} from "lucide-react"
+	AppWindowIcon,
+	BookOpenIcon,
+	BotIcon,
+	ChartPieIcon,
+	CommandIcon,
+	GlobeIcon,
+	HelpCircleIcon,
+	SendIcon,
+	SettingsIcon,
+	TerminalIcon,
+} from "@/components/ui/vpk-icons"
 
 export const USER_DATA = {
 	name: "shadcn",
@@ -20,7 +20,7 @@ export const USER_DATA = {
 
 export const COMPANY_DATA = {
 	name: "Acme Inc",
-	logo: Command,
+	logo: CommandIcon,
 	plan: "Enterprise",
 } as const
 
@@ -28,7 +28,7 @@ export const NAV_MAIN_ITEMS = [
 	{
 		title: "Playground",
 		url: "#",
-		icon: SquareTerminal,
+		icon: TerminalIcon,
 		isActive: true,
 		items: [
 			{
@@ -48,7 +48,7 @@ export const NAV_MAIN_ITEMS = [
 	{
 		title: "Models",
 		url: "#",
-		icon: Bot,
+		icon: BotIcon,
 		items: [
 			{
 				title: "Genesis",
@@ -67,7 +67,7 @@ export const NAV_MAIN_ITEMS = [
 	{
 		title: "Documentation",
 		url: "#",
-		icon: BookOpen,
+		icon: BookOpenIcon,
 		items: [
 			{
 				title: "Introduction",
@@ -90,7 +90,7 @@ export const NAV_MAIN_ITEMS = [
 	{
 		title: "Settings",
 		url: "#",
-		icon: Settings2,
+		icon: SettingsIcon,
 		items: [
 			{
 				title: "General",
@@ -116,12 +116,12 @@ export const NAV_SECONDARY_ITEMS = [
 	{
 		title: "Support",
 		url: "#",
-		icon: LifeBuoy,
+		icon: HelpCircleIcon,
 	},
 	{
 		title: "Feedback",
 		url: "#",
-		icon: Send,
+		icon: SendIcon,
 	},
 ]
 
@@ -129,16 +129,16 @@ export const PROJECTS = [
 	{
 		name: "Design Engineering",
 		url: "#",
-		icon: Frame,
+		icon: AppWindowIcon,
 	},
 	{
 		name: "Sales & Marketing",
 		url: "#",
-		icon: PieChart,
+		icon: ChartPieIcon,
 	},
 	{
 		name: "Travel",
 		url: "#",
-		icon: Map,
+		icon: GlobeIcon,
 	},
 ]

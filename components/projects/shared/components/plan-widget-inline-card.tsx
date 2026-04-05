@@ -1,7 +1,7 @@
 "use client";
 
 import ChevronRightIcon from "@atlaskit/icon/core/chevron-right";
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import {
 	Plan,
 	PlanAvatar,
@@ -24,8 +24,9 @@ import type { VisualIdentity } from "@/components/projects/shared/lib/visual-ide
 import { Button } from "@/components/ui/button";
 import { Shimmer } from "@/components/ui-ai/shimmer";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
 import { token } from "@/lib/tokens";
+import { cn } from "@/lib/utils";
+
 
 
 interface CollapsedPlanBubbleProps {
@@ -96,7 +97,6 @@ export function PlanWidgetInlineCard({
 }: Readonly<PlanWidgetInlineCardProps>): React.ReactElement | null {
 	const [isOpen, setIsOpen] = useState(true);
 	const [internalCollapsed, setInternalCollapsed] = useState(false);
-	const [streamRevealCount, setStreamRevealCount] = useState(0);
 	const isCollapsed = controlledCollapsed ?? internalCollapsed;
 	const prevShouldAutoCollapseRef = useRef(false);
 
@@ -111,14 +111,10 @@ export function PlanWidgetInlineCard({
 		}
 	}, [shouldAutoCollapse]);
 
-	const visibleTasks = useMemo(
-		() => tasks.filter((task) => task.label.trim().length > 0),
-		[tasks],
-	);
-	const displayTitle = resolvePlanDisplayTitle(title, visibleTasks);
+	const displayTitle = resolvePlanDisplayTitle(title, tasks);
 	const displayDescription = sanitizePlanDescription(
 		shortDescription?.trim() || description,
-		visibleTasks.length,
+		tasks.length,
 	);
 	const displayVisualIdentity = resolvePlanVisualIdentity(displayTitle);
 	const displayTitleNode = isMetadataPending ? (
@@ -155,25 +151,7 @@ export function PlanWidgetInlineCard({
 		}
 	}, [onBuild]);
 
-	useEffect(() => {
-		if (!isStreaming || streamRevealCount >= visibleTasks.length) {
-			return;
-		}
-
-		const timerId = window.setTimeout(() => {
-			setStreamRevealCount((previousCount) =>
-				Math.min(previousCount + 1, visibleTasks.length),
-			);
-		}, 150);
-
-		return () => {
-			window.clearTimeout(timerId);
-		};
-	}, [isStreaming, streamRevealCount, visibleTasks.length]);
-
-	const revealedCount = isStreaming ? streamRevealCount : visibleTasks.length;
-
-	if (!title.trim() || visibleTasks.length === 0) {
+	if (!title.trim()) {
 		return null;
 	}
 
@@ -201,56 +179,54 @@ export function PlanWidgetInlineCard({
 					description={<PlanDescription className="truncate text-xs leading-4 text-text-subtlest">{displayDescriptionNode}</PlanDescription>}
 				/>
 
-			<PlanContent className="px-0 pb-0 pt-4">
-				<PlanTabContent
-					description={description ?? ""}
-					markdown={markdown ?? ""}
-					tasks={visibleTasks}
-					revealedCount={revealedCount}
-				/>
-				{onBuild ? (
-					<PlanFooter className="border-t border-border flex-wrap px-4 py-4">
-						<div className="flex items-center justify-end gap-2">
-							{onOpenPreview ? (
-								<Button
-									disabled={isStreaming}
-									onClick={onOpenPreview}
-									type="button"
-									variant="outline"
-								>
-									Open plan
-								</Button>
-							) : null}
-							{isBuildDisabled && buildDisabledReason ? (
-								<Tooltip>
-									<TooltipTrigger render={<span className="inline-flex" />}>
-										<Button
-											disabled
-											type="button"
-										>
-											Build
-										</Button>
-									</TooltipTrigger>
-									<TooltipContent>{buildDisabledReason}</TooltipContent>
-								</Tooltip>
-							) : (
-								<Button
-									disabled={isBuildDisabled || isStreaming}
-									onClick={() => {
-										void handleBuild();
-									}}
-									type="button"
-								>
-									Build
-								</Button>
-							)}
-						</div>
-					</PlanFooter>
-				) : footer ? (
-					<PlanFooter className="border-t border-border px-4 py-3">{footer}</PlanFooter>
-				) : null}
-			</PlanContent>
-			</Plan>
-		</div>
-	);
-}
+				<PlanContent className="px-0 pb-0 pt-4">
+					<PlanTabContent
+						description={description ?? ""}
+						markdown={markdown ?? ""}
+					/>
+					{onBuild ? (
+						<PlanFooter className="border-t border-border flex-wrap px-4 py-4">
+							<div className="flex items-center justify-end gap-2">
+								{onOpenPreview ? (
+									<Button
+										disabled={isStreaming}
+										onClick={onOpenPreview}
+										type="button"
+										variant="outline"
+									>
+										Open plan
+									</Button>
+								) : null}
+								{isBuildDisabled && buildDisabledReason ? (
+									<Tooltip>
+										<TooltipTrigger render={<span className="inline-flex" />}>
+											<Button
+												disabled
+												type="button"
+											>
+												Build
+											</Button>
+										</TooltipTrigger>
+										<TooltipContent>{buildDisabledReason}</TooltipContent>
+									</Tooltip>
+								) : (
+									<Button
+										disabled={isBuildDisabled || isStreaming}
+										onClick={() => {
+											void handleBuild();
+										}}
+										type="button"
+									>
+										Build
+									</Button>
+								)}
+							</div>
+						</PlanFooter>
+					) : footer ? (
+						<PlanFooter className="border-t border-border px-4 py-3">{footer}</PlanFooter>
+					) : null}
+				</PlanContent>
+				</Plan>
+			</div>
+		);
+	}

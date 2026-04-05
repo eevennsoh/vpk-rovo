@@ -14,7 +14,7 @@ import {
 	SearchIcon,
 	SettingsIcon,
 	UsersIcon,
-} from "lucide-react"
+} from "@/components/ui/vpk-icons"
 
 export const SIDEBAR_USER = {
 	name: "shadcn",

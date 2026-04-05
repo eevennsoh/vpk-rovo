@@ -1,6 +1,6 @@
 // @ts-nocheck
 import * as React from "react"
-import { ChevronRight } from "lucide-react"
+import { ChevronRightIcon } from "@/components/ui/vpk-icons"
 
 import { SearchForm } from "./search-form"
 import { VersionSwitcher } from "./version-switcher"
@@ -48,7 +48,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               >
                 <CollapsibleTrigger className="flex w-full items-center">
                   {item.title}{" "}
-                  <ChevronRight className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-90" />
+                  <ChevronRightIcon className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-90" />
                 </CollapsibleTrigger>
               </SidebarGroupLabel>
               <CollapsibleContent>

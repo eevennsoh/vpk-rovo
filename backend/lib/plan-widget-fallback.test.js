@@ -354,9 +354,9 @@ test("flat tasks with no phase keywords remain independent after inference", () 
 	assert.deepEqual(result.tasks[2].blockedBy, []);
 });
 
-/* ---- Test Case 6: Plan widget structure (Plan tab + Tasks tab) ---- */
+/* ---- Test Case 6: Plan widget structure (backend task extraction) ---- */
 
-test("exit_plan_mode payload has required structure for frontend PlanTabContent (Test Case 6)", () => {
+test("exit_plan_mode payload has required structure for backend task extraction (Test Case 6)", () => {
 	const exitPlanModeMarkdown = [
 		"# React Dashboard Plan",
 		"",

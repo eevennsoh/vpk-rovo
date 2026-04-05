@@ -107,7 +107,12 @@ const resolvedRovodevSiteUrl =
 		? preservedRovodevSiteUrl.trim()
 		: DEFAULT_ROVODEV_BILLING_URL;
 
-const envContent = `# AI Gateway Configuration
+const envContent = `# Chat routing
+# - Standard /api/chat-sdk turns require RovoDev Serve.
+# - AI Gateway credentials below power gateway-backed routes such as image,
+#   sound, suggestions, plan/title metadata, and Realtime voice.
+#
+# AI Gateway configuration
 # Default: Claude via Bedrock (to switch to OpenAI, see guide-model-switch.md)
 # Claude: /v1/bedrock/model/{MODEL_ID}/invoke-with-response-stream
 # OpenAI: /v1/openai/v1/chat/completions
@@ -160,13 +165,10 @@ AI_GATEWAY_USE_CASE_ID=${useCaseId}
 AI_GATEWAY_CLOUD_ID=local-testing
 AI_GATEWAY_USER_ID=${email}
 
-# ASAP Credentials (Required for AI Gateway fallback and production)
+# ASAP Credentials (Required for AI Gateway-backed routes and production)
 ASAP_PRIVATE_KEY="${escaped}"
 ASAP_KID=${config.kid}
 ASAP_ISSUER=${config.issuer}
-
-# Auto-fallback to AI Gateway when RovoDev Serve is unavailable
-AUTO_FALLBACK_TO_AI_GATEWAY=true
 
 # Default billing site for rovodev serve (override as needed)
 ROVODEV_BILLING_URL=${resolvedRovodevSiteUrl}
@@ -190,12 +192,13 @@ ${preservedDebug ? `\nDEBUG=${preservedDebug}` : ''}${preservedPort ? `\nPORT=${
 `;
 
 fs.writeFileSync('.env.local', envContent);
-console.log('✅ Created .env.local with AI Gateway configuration (Claude/Bedrock default)');
+console.log('✅ Created .env.local with RovoDev chat + AI Gateway-backed route configuration');
 console.log(`   AI_GATEWAY_USE_CASE_ID: ${useCaseId}`);
 console.log(`   AI_GATEWAY_USER_ID: ${email}`);
-console.log('   AUTO_FALLBACK_TO_AI_GATEWAY: enabled');
+console.log('   AI Gateway-assisted routes: configured');
 console.log(`   ROVODEV_BILLING_URL: ${resolvedRovodevSiteUrl}`);
 console.log(`   ROVODEV_SESSION_TOKEN: ${preservedSessionToken ? 'preserved from existing .env.local' : '⚠️  NOT SET — copy from RovoDev Serve first-launch output'}`);
+console.log('   Main chat backend: RovoDev Serve');
 console.log('   Google image + voice endpoints: enabled');
 console.log(`   STT_PRESET: ${preservedSttPreset || 'qwen3-asr'}`);
 console.log(`   OPENAI_REALTIME_WS_URL: ${preservedRealtimeWsUrl || 'wss://ai-gateway.us-east-1.staging.atl-paas.net/v1/openai/v1/realtime'} (via AI Gateway)`);

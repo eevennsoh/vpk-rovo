@@ -29,15 +29,37 @@ interface AppLayoutProps {
 function useIsEmbedded(explicit: boolean): boolean {
 	const [auto, setAuto] = useState(false);
 	useEffect(() => {
+		let nextAuto = false;
 		if (document.documentElement.dataset.embedded !== undefined) {
-			setAuto(true);
+			nextAuto = true;
 		} else {
 			try {
-				if (window.self !== window.top) setAuto(true);
+				nextAuto = window.self !== window.top;
 			} catch {
-				setAuto(true); // cross-origin iframe
+				nextAuto = true; // cross-origin iframe
 			}
 		}
+
+		if (!nextAuto) {
+			return;
+		}
+
+		let cancelled = false;
+		const syncEmbeddedState = () => {
+			if (!cancelled) {
+				setAuto(true);
+			}
+		};
+
+		if (typeof queueMicrotask === "function") {
+			queueMicrotask(syncEmbeddedState);
+		} else {
+			setTimeout(syncEmbeddedState, 0);
+		}
+
+		return () => {
+			cancelled = true;
+		};
 	}, []);
 	return explicit || auto;
 }

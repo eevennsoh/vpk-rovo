@@ -9,7 +9,6 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
-import { cn } from "@/lib/utils";
 import {
   FileTextIcon,
   GlobeIcon,
@@ -18,7 +17,8 @@ import {
   PaperclipIcon,
   VideoIcon,
   XIcon,
-} from "lucide-react";
+} from "@/components/ui/vpk-icons";
+import { cn } from "@/lib/utils";
 import { createContext, use, useCallback, useMemo } from "react";
 
 // ============================================================================

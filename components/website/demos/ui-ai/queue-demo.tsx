@@ -17,7 +17,7 @@ import {
 } from "@/components/ui-ai/queue";
 import { Button } from "@/components/ui/button";
 import DeleteIcon from "@atlaskit/icon/core/delete";
-import { CheckIcon, CircleIcon, CopyIcon, PencilIcon, TrashIcon } from "lucide-react";
+import { CheckIcon, CircleIcon, CopyIcon, PencilIcon, TrashIcon } from "@/components/ui/vpk-icons";
 
 // — Default: todo list with collapsible sections —
 

@@ -1,4 +1,17 @@
-import { BellIcon, MenuIcon, HomeIcon, PaintbrushIcon, MessageCircleIcon, GlobeIcon, KeyboardIcon, CheckIcon, VideoIcon, LinkIcon, LockIcon, SettingsIcon } from "lucide-react"
+import {
+	BellIcon,
+	CheckIcon,
+	GlobeIcon,
+	HomeIcon,
+	KeyboardIcon,
+	LinkIcon,
+	LockIcon,
+	MenuIcon,
+	MessageCircleIcon,
+	PaintbrushIcon,
+	SettingsIcon,
+	VideoIcon,
+} from "@/components/ui/vpk-icons"
 
 export const SETTINGS_NAV_ITEMS = [
 	{ name: "Notifications", icon: <BellIcon /> },

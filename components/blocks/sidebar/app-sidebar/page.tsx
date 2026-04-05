@@ -1,6 +1,6 @@
 "use client"
 
-import { CommandIcon } from "lucide-react"
+import { CommandIcon } from "@/components/ui/vpk-icons"
 import { NavDocuments } from "./components/nav-documents"
 import { NavMain } from "./components/nav-main"
 import { NavSecondary } from "./components/nav-secondary"

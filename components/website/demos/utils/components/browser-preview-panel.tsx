@@ -26,7 +26,7 @@ import {
 	TreePine,
 	TriangleAlertIcon,
 	XIcon,
-} from "lucide-react";
+} from "@/components/ui/vpk-icons";
 import type { UseBrowserWorkspaceResult } from "@/components/website/demos/utils/hooks/use-browser-workspace";
 import { useBrowserPreviewSession } from "@/components/website/demos/utils/hooks/use-browser-preview-session";
 

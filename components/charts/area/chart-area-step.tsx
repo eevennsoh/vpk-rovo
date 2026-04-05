@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, TrendingUp } from "lucide-react";
+import { Activity, TrendingUp } from "@/components/ui/vpk-icons";
 import { Area, AreaChart, CartesianGrid, XAxis } from "recharts";
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";

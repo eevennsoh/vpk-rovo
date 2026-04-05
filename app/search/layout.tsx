@@ -1,4 +1,5 @@
 import { Metadata } from "next";
+import { ChatRouteProviders } from "@/app/chat-route-providers";
 import { getProjectPageTitle } from "@/lib/project-page-title";
 
 export const metadata: Metadata = {
@@ -20,5 +21,5 @@ export const metadata: Metadata = {
 };
 
 export default function SearchLayout({ children }: { children: React.ReactNode }) {
-	return children;
+	return <ChatRouteProviders>{children}</ChatRouteProviders>;
 }

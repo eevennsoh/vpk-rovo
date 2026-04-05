@@ -20,9 +20,9 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { ChevronDownIcon } from "@/components/ui/vpk-icons";
 import { cn } from "@/lib/utils";
 import { API_ENDPOINTS } from "@/lib/api-config";
-import { ChevronDownIcon } from "lucide-react";
 import {
 	createContext,
 	useCallback,

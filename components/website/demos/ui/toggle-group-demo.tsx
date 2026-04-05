@@ -3,7 +3,7 @@
 import AtlaskitBoldIcon from "@atlaskit/icon/core/text-bold";
 import AtlaskitItalicIcon from "@atlaskit/icon/core/text-italic";
 import AtlaskitUnderlineIcon from "@atlaskit/icon/core/text-underline";
-import { AlignCenterIcon, AlignLeftIcon, AlignRightIcon, ArrowDownIcon, ArrowUpIcon, BoldIcon, BookmarkIcon, HeartIcon, ItalicIcon, StarIcon, TrendingUpIcon, UnderlineIcon } from "lucide-react";
+import { AlignCenterIcon, AlignLeftIcon, AlignRightIcon, ArrowDownIcon, ArrowUpIcon, BoldIcon, BookmarkIcon, HeartIcon, ItalicIcon, StarIcon, TrendingUpIcon, UnderlineIcon } from "@/components/ui/vpk-icons";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";

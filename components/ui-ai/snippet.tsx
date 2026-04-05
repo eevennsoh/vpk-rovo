@@ -9,8 +9,8 @@ import {
 	InputGroupInput,
 	InputGroupText,
 } from "@/components/ui/input-group";
+import { CheckIcon, CopyIcon } from "@/components/ui/vpk-icons";
 import { cn } from "@/lib/utils";
-import { CheckIcon, CopyIcon } from "lucide-react";
 import {
 	createContext,
 	useCallback,

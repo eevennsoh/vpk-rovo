@@ -102,7 +102,7 @@ Optional environment variables:
 - `ROVODEV_PORT` - RovoDev Serve port (auto-set by `pnpm run rovodev`; do not set manually)
 - `ROVODEV_POOL_SIZE=1` - Number of RovoDev Serve instances in pool (default 1; set `pnpm run rovodev -- 6` for full pool)
 - `ROVODEV_FORCE_CLEAN_START=true` - Kill all existing RovoDev instances before starting
-- `AUTO_FALLBACK_TO_AI_GATEWAY=true` - Allow chat endpoints to route to AI Gateway automatically when RovoDev Serve is unavailable
+- `AI_GATEWAY_URL`, `AI_GATEWAY_URL_GOOGLE`, `AI_GATEWAY_USE_CASE_ID`, `AI_GATEWAY_CLOUD_ID`, `AI_GATEWAY_USER_ID`, `ASAP_*` - Configure AI Gateway-assisted routes such as image, sound, suggestions, and Realtime voice
 - `NEXT_PUBLIC_API_URL` - API URL for production builds
 
 ## Provider Reference

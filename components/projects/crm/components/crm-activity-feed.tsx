@@ -4,12 +4,12 @@ import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { CRM_ACTIVITIES, type CrmActivity } from "@/app/data/crm-data";
 import {
-	FileTextIcon,
-	MailIcon,
-	PhoneIcon,
-	CalendarIcon,
 	ArrowRightIcon,
-} from "lucide-react";
+	CalendarIcon,
+	EmailIcon,
+	FileTextIcon,
+	PhoneIcon,
+} from "@/components/ui/vpk-icons";
 
 function ActivityIcon({ type }: { type: CrmActivity["type"] }) {
 	const base = "flex items-center justify-center size-7 rounded-full shrink-0";
@@ -23,7 +23,7 @@ function ActivityIcon({ type }: { type: CrmActivity["type"] }) {
 		case "email":
 			return (
 				<div className={`${base} bg-accent-blue-subtler text-icon-information`}>
-					<MailIcon size={14} />
+					<EmailIcon size={14} />
 				</div>
 			);
 		case "call":

@@ -7,12 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tag } from "@/components/ui/tag";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { token } from "@/lib/tokens";
 import { cn } from "@/lib/utils";
 import ChevronRightIcon from "@atlaskit/icon/core/chevron-right";
 import PeopleGroupIcon from "@atlaskit/icon/core/people-group";
-import { ChevronsUpDownIcon } from "lucide-react";
+import { ChevronsUpDownIcon } from "@/components/ui/vpk-icons";
 import { motion } from "motion/react";
 import { createContext, use, useEffect, useMemo, useRef, useState } from "react";
 
@@ -411,107 +410,53 @@ function stripLeadingMarkdownRule(value: string): string {
 	return value.replace(/^\s*(?:-{3,}|\*{3,}|_{3,})\s*(?:\r?\n)+/, "").trimStart();
 }
 
-function stripTaskMarkdownDecorators(label: string): string {
-	return label
-		.replace(/\*\*([^*\n]+)\*\*/g, "$1")
-		.replace(/__([^_\n]+)__/g, "$1")
-		.replace(/^[*_`\s]+/, "")
-		.replace(/[\s*_`]+$/, "")
-		.trim();
-}
-
-function extractTaskHeading(label: string): string {
-	const normalizedLabel = stripTaskMarkdownDecorators(label);
-	const emDashIndex = normalizedLabel.indexOf("\u2014");
-	if (emDashIndex === -1) return normalizedLabel;
-	const heading = stripTaskMarkdownDecorators(normalizedLabel.slice(0, emDashIndex));
-	return heading.length > 0 ? heading : normalizedLabel;
-}
-
-function resolvePlanBlockedByLabels(task: PlanTask, allTasks: PlanTask[]): string[] {
-	if (!Array.isArray(task.blockedBy)) return [];
-	return task.blockedBy
-		.map((blockedById) => {
-			const taskIndex = allTasks.findIndex((candidate) => candidate.id === blockedById);
-			return taskIndex >= 0 ? `${taskIndex + 1}` : null;
-		})
-		.filter((label): label is string => label !== null);
-}
-
 export interface PlanTabContentProps {
 	description: string;
 	markdown?: string;
-	tasks: PlanTask[];
+	/** @deprecated Tasks are no longer displayed in the plan card. Kept for caller compatibility. */
+	tasks?: PlanTask[];
+	/** @deprecated Task display labels are no longer used. Kept for caller compatibility. */
+	taskDisplayLabels?: Readonly<Record<string, string>>;
+	/** @deprecated No longer used. */
 	revealedCount?: number;
+	/** @deprecated No longer used — only summary is shown. */
 	defaultValue?: "summary" | "tasks";
 	emptySummaryMessage?: string;
 	summaryShowMoreLabel?: string;
+	/** @deprecated No longer used. */
 	taskListShowMoreLabel?: string;
 	className?: string;
+	/** @deprecated No longer used — tabs have been removed. */
 	tabsListClassName?: string;
 	summaryTabContentClassName?: string;
+	/** @deprecated No longer used. */
 	tasksTabContentClassName?: string;
 }
 
 export const PlanTabContent = ({
 	description,
 	markdown = "",
-	tasks,
-	revealedCount,
-	defaultValue = "summary",
 	emptySummaryMessage = "No description provided.",
 	summaryShowMoreLabel = "Show more",
-	taskListShowMoreLabel = "Show more",
 	className,
-	tabsListClassName,
 	summaryTabContentClassName,
-	tasksTabContentClassName,
 }: Readonly<PlanTabContentProps>) => {
 	const normalizedSummaryMarkdown = useMemo(() => {
 		const rawContent = markdown.trim().length > 0 ? markdown : description;
 		const stripped = stripLeadingMarkdownRule(rawContent);
 		return stripped && !stripped.endsWith("\n") ? `${stripped}\n` : stripped;
 	}, [description, markdown]);
-	const visibleTasks = useMemo(
-		() => tasks.filter((task) => task.label.trim().length > 0),
-		[tasks]
-	);
-	const clampedRevealedCount = Math.min(revealedCount ?? visibleTasks.length, visibleTasks.length);
 
 	return (
-		<Tabs defaultValue={defaultValue} className={cn("gap-4", className)}>
-			<TabsList variant="line" className={cn("mx-4 h-10 w-auto justify-start", tabsListClassName)}>
-				<TabsTrigger value="summary" className="flex-none">
-					Summary
-				</TabsTrigger>
-				<TabsTrigger value="tasks" className="flex-none">
-					Steps ({visibleTasks.length})
-				</TabsTrigger>
-			</TabsList>
-
-			<TabsContent value="summary" className={cn("px-4 pb-4", summaryTabContentClassName)}>
+		<div className={cn("gap-4", className)}>
+			<div className={cn("px-4 pb-4", summaryTabContentClassName)}>
 				<PlanSummary
 					summary={normalizedSummaryMarkdown}
 					emptyMessage={emptySummaryMessage}
 					showMoreLabel={summaryShowMoreLabel}
 				/>
-			</TabsContent>
-
-			<TabsContent value="tasks" className={cn("px-3 pb-4", tasksTabContentClassName)}>
-				<PlanTaskList showMoreLabel={taskListShowMoreLabel}>
-					{visibleTasks.slice(0, clampedRevealedCount).map((task, index) => (
-						<PlanTaskItem
-							key={task.id}
-							index={index + 1}
-							label={extractTaskHeading(task.label)}
-							blockedByLabels={resolvePlanBlockedByLabels(task, tasks)}
-							agent={task.agent}
-							agentAvatarSrc={task.agentAvatarSrc}
-						/>
-					))}
-				</PlanTaskList>
-			</TabsContent>
-		</Tabs>
+			</div>
+		</div>
 	);
 };
 

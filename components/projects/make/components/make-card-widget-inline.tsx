@@ -36,17 +36,13 @@ export function MakeCardWidgetInline({
 }: Readonly<MakeCardWidgetInlineProps>): React.ReactElement | null {
 	const { agentCount } = useMakeState();
 	const { setAgentCount } = useMakeActions();
-	const visibleTasks = useMemo(
-		() => tasks.filter((task) => task.label.trim().length > 0),
-		[tasks],
-	);
-	const taskCount = visibleTasks.length;
+	const taskCount = tasks.length;
 	const estimate = useMemo(() => computeEstimate(taskCount, agentCount), [agentCount, taskCount]);
 	const agentMultiplierDisplay = `${agentCount}x`;
 	const getAgentBuildLabel = (count: number) =>
 		`Build with ${count} ${count === 1 ? "agent" : "agents"}`;
 
-	if (visibleTasks.length === 0 || !title.trim()) {
+	if (!title.trim()) {
 		return null;
 	}
 

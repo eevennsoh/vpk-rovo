@@ -1,7 +1,7 @@
 "use client";
 
 import { type ReactNode } from "react";
-import { CircleAlertIcon } from "lucide-react";
+import { CircleAlertIcon } from "@/components/ui/vpk-icons";
 import Link from "next/link";
 import { NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuLink, NavigationMenuList, NavigationMenuTrigger, navigationMenuTriggerStyle } from "@/components/ui/navigation-menu";
 

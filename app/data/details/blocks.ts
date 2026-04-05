@@ -303,7 +303,7 @@ const messages: ChatTimelineMessage[] = [
 } from "@/components/blocks/generative-card";
 import { Tile } from "@/components/ui/tile";
 import { Button } from "@/components/ui/button";
-import { SheetIcon } from "lucide-react";
+import { SheetIcon } from "@/components/ui/vpk-icons";
 
 <GenerativeCard className="max-w-[420px]">
   <GenerativeCardHeader

@@ -17,7 +17,7 @@ import {
 	getReasoningCompletedLabel,
 } from "@/components/projects/shared/lib/reasoning-labels";
 import RovoIconGlyph from "@atlaskit/icon-lab/core/rovo";
-import { ChevronDownIcon } from "lucide-react";
+import { ChevronDownIcon } from "@/components/ui/vpk-icons";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 
 import {

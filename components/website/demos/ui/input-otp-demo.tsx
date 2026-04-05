@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { REGEXP_ONLY_DIGITS, REGEXP_ONLY_DIGITS_AND_CHARS } from "input-otp";
-import { RefreshCwIcon } from "lucide-react";
+import { RefreshCwIcon } from "@/components/ui/vpk-icons";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";

@@ -3,7 +3,7 @@
 import SearchIcon from "@atlaskit/icon/core/search"
 import FolderClosedIcon from "@atlaskit/icon/core/folder-closed"
 import Image from "next/image"
-import { ArrowUpRightIcon } from "lucide-react"
+import { ArrowUpRightIcon } from "@/components/ui/vpk-icons"
 import { Button } from "@/components/ui/button"
 import {
 	Empty,

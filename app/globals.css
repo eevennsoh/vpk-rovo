@@ -488,4 +488,142 @@ html.dark [data-slot="lozenge-dropdown-trigger"][data-variant="accent-orange"] [
 		animation-iteration-count: 1 !important;
 		transition-duration: 0.01ms !important;
 	}
+
+	::view-transition-old(*),
+	::view-transition-new(*),
+	::view-transition-group(*) {
+		animation-duration: 0s !important;
+		animation-delay: 0s !important;
+	}
+}
+
+/* -----------------------------------------------------------------
+   View Transition Recipes
+
+   CSS for React <ViewTransition> component animations.
+   Class names match the enter/exit/share string props.
+   Uses project motion tokens for timing consistency.
+   ----------------------------------------------------------------- */
+
+:root {
+	--vt-duration-exit: var(--duration-normal);   /* 150ms */
+	--vt-duration-enter: var(--duration-medium);  /* 200ms */
+	--vt-duration-move: var(--duration-slower);   /* 400ms */
+}
+
+/* Shared keyframes */
+@keyframes vt-fade {
+	from { filter: blur(3px); opacity: 0; }
+	to { filter: blur(0); opacity: 1; }
+}
+
+@keyframes vt-slide {
+	from { translate: var(--vt-slide-offset); }
+	to { translate: 0; }
+}
+
+@keyframes vt-slide-y {
+	from { transform: translateY(var(--vt-slide-y-offset, 10px)); }
+	to { transform: translateY(0); }
+}
+
+/* Fade */
+::view-transition-old(.fade-out) {
+	animation: var(--vt-duration-exit) var(--ease-in) vt-fade reverse;
+}
+::view-transition-new(.fade-in) {
+	animation: var(--vt-duration-enter) var(--ease-out) var(--vt-duration-exit) both vt-fade;
+}
+
+/* Slide (vertical) */
+::view-transition-old(.slide-down) {
+	animation:
+		var(--vt-duration-exit) var(--ease-out) both vt-fade reverse,
+		var(--vt-duration-exit) var(--ease-out) both vt-slide-y reverse;
+}
+::view-transition-new(.slide-up) {
+	animation:
+		var(--vt-duration-enter) var(--ease-in) var(--vt-duration-exit) both vt-fade,
+		var(--vt-duration-move) var(--ease-in) both vt-slide-y;
+}
+
+/* Directional navigation */
+::view-transition-old(.nav-forward) {
+	--vt-slide-offset: -60px;
+	animation:
+		var(--vt-duration-exit) var(--ease-in) both vt-fade reverse,
+		var(--vt-duration-move) var(--ease-in-out) both vt-slide reverse;
+}
+::view-transition-new(.nav-forward) {
+	--vt-slide-offset: 60px;
+	animation:
+		var(--vt-duration-enter) var(--ease-out) var(--vt-duration-exit) both vt-fade,
+		var(--vt-duration-move) var(--ease-in-out) both vt-slide;
+}
+::view-transition-old(.nav-back) {
+	--vt-slide-offset: 60px;
+	animation:
+		var(--vt-duration-exit) var(--ease-in) both vt-fade reverse,
+		var(--vt-duration-move) var(--ease-in-out) both vt-slide reverse;
+}
+::view-transition-new(.nav-back) {
+	--vt-slide-offset: -60px;
+	animation:
+		var(--vt-duration-enter) var(--ease-out) var(--vt-duration-exit) both vt-fade,
+		var(--vt-duration-move) var(--ease-in-out) both vt-slide;
+}
+
+/* Shared element morph */
+::view-transition-group(.morph) {
+	animation-duration: var(--vt-duration-move);
+}
+::view-transition-image-pair(.morph) {
+	animation-name: vt-via-blur;
+}
+@keyframes vt-via-blur {
+	30% { filter: blur(3px); }
+}
+
+/* Text morph — avoids raster scaling artifacts */
+::view-transition-group(.text-morph) {
+	animation-duration: var(--vt-duration-move);
+}
+::view-transition-old(.text-morph) {
+	display: none;
+}
+::view-transition-new(.text-morph) {
+	animation: none;
+	object-fit: none;
+	object-position: left top;
+}
+
+/* Scale */
+::view-transition-old(.scale-out) {
+	animation: var(--vt-duration-exit) var(--ease-in) vt-scale-down;
+}
+::view-transition-new(.scale-in) {
+	animation: var(--vt-duration-enter) var(--ease-out) var(--vt-duration-exit) both vt-scale-up;
+}
+@keyframes vt-scale-down {
+	from { transform: scale(1); opacity: 1; }
+	to { transform: scale(0.85); opacity: 0; }
+}
+@keyframes vt-scale-up {
+	from { transform: scale(0.85); opacity: 0; }
+	to { transform: scale(1); opacity: 1; }
+}
+
+/* Persistent element isolation — keeps chrome static during content transitions */
+::view-transition-group(persistent-header),
+::view-transition-group(persistent-sidebar) {
+	animation: none;
+	z-index: 100;
+}
+::view-transition-old(persistent-header),
+::view-transition-old(persistent-sidebar) {
+	display: none;
+}
+::view-transition-new(persistent-header),
+::view-transition-new(persistent-sidebar) {
+	animation: none;
 }

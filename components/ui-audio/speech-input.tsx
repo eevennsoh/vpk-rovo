@@ -12,7 +12,11 @@ import {
 } from "react"
 import { cva, VariantProps } from "class-variance-authority"
 import { motion } from "motion/react"
-import { MicIcon, SquareIcon, XIcon } from "lucide-react"
+import {
+  MicIcon,
+  SquareIcon,
+  XIcon,
+} from "@/components/ui/vpk-icons"
 
 import { cn } from "@/lib/utils"
 import {

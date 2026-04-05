@@ -3,7 +3,6 @@ const {
 	streamViaRovoDev,
 	WAIT_FOR_TURN_TIMEOUT_MS,
 } = require("./rovodev-gateway");
-const { createAIGatewayProvider } = require("./ai-gateway-provider");
 const { getGenuiSystemPrompt } = require("./genui-system-prompt");
 const {
 	getMissingChildReferences,
@@ -15,7 +14,6 @@ const GENUI_META_PREFIX = "[genui-meta]";
 const WEB_LOOKUP_TIMEOUT_MS = 4500;
 const DEFAULT_ROVODEV_UNAVAILABLE_MESSAGE =
 	"RovoDev Serve is required but not available. Please start RovoDev Serve with 'pnpm run rovodev' before using UI Generation.";
-const DEFAULT_AI_GATEWAY_PROVIDER = createAIGatewayProvider({ logger: console });
 
 const STRICT_RETRY_INSTRUCTION = `
 ## Retry Enforcement
@@ -311,26 +309,6 @@ function buildFailureOutput(rawText, failureType, requirementMisses = []) {
 	return `${narrative}\n\n${guidance}`;
 }
 
-function classifyAIGatewayFailureStage(error) {
-	const message = error instanceof Error ? error.message : String(error ?? "");
-
-	if (
-		/AI Gateway URL is not configured|Server configuration error|AI_GATEWAY_URL|AI_GATEWAY_USE_CASE_ID|AI_GATEWAY_CLOUD_ID|AI_GATEWAY_USER_ID/i.test(message)
-	) {
-		return "config";
-	}
-
-	if (/ASAP_|authentication|Authorization|status 401|status 403|auth/i.test(message)) {
-		return "auth";
-	}
-
-	if (/stream|SSE|response body is empty|timeout|timed out/i.test(message)) {
-		return "stream";
-	}
-
-	return "request";
-}
-
 function createRovoDevUnavailableError() {
 	const error = new Error(DEFAULT_ROVODEV_UNAVAILABLE_MESSAGE);
 	error.code = "ROVODEV_UNAVAILABLE";
@@ -351,8 +329,6 @@ async function generateAssistantText({
 	messages,
 	onTextDelta,
 	rovoDevAvailable,
-	fallbackEnabled,
-	aiGatewayProvider,
 }) {
 	const conversationLines = messages.map(
 		(msg) => `[${msg.role === "assistant" ? "Assistant" : "User"}]\n${msg.content}`
@@ -382,30 +358,8 @@ async function generateAssistantText({
 		});
 	}
 
-	if (!fallbackEnabled) {
-		throw createRovoDevUnavailableError();
-	}
-
-	try {
-		const provider = aiGatewayProvider || DEFAULT_AI_GATEWAY_PROVIDER;
-		const text = await provider.generateText({
-			system: systemPrompt,
-			prompt: combinedMessage,
-			maxOutputTokens: 3500,
-			temperature: 0.3,
-		});
-
-		if (typeof onTextDelta === "function" && typeof text === "string" && text.length > 0) {
-			onTextDelta(text);
-		}
-
-		return text;
-	} catch (error) {
-		const normalizedError = error instanceof Error ? error : new Error(String(error));
-		normalizedError.backendSelected = "ai-gateway";
-		normalizedError.failureStage = classifyAIGatewayFailureStage(normalizedError);
-		throw normalizedError;
-	}
+	// GenUI is a primary user-facing route. Do not silently fail over.
+	throw createRovoDevUnavailableError();
 }
 
 function extractRelatedTopicTexts(topics, output = []) {
@@ -583,17 +537,12 @@ async function genuiChatHandler(req, res, options = {}) {
 			allowWebLookup,
 			layoutContext = null,
 			streamResponse = true,
-		} = req.body || {};
-		const rovoDevAvailable =
-			typeof options.isRovoDevAvailable === "function"
-				? await options.isRovoDevAvailable()
-				: true;
-		const fallbackEnabled =
-			typeof options.isAIGatewayFallbackEnabled === "function"
-				? options.isAIGatewayFallbackEnabled()
-				: false;
-		const aiGatewayProvider = options.aiGatewayProvider || DEFAULT_AI_GATEWAY_PROVIDER;
-		const normalizedMessages = normalizeMessages(rawMessages);
+	} = req.body || {};
+	const rovoDevAvailable =
+		typeof options.isRovoDevAvailable === "function"
+			? await options.isRovoDevAvailable()
+			: true;
+	const normalizedMessages = normalizeMessages(rawMessages);
 
 		if (normalizedMessages.length === 0) {
 			return res.status(400).json({ error: "messages array is required" });
@@ -613,24 +562,30 @@ async function genuiChatHandler(req, res, options = {}) {
 			strict: useStrictSpec,
 			layoutContext,
 		});
+		let hasPreparedStreamResponse = false;
+		const ensureStreamResponseStarted = () => {
+			if (hasPreparedStreamResponse) {
+				return;
+			}
 
-		res.setHeader("Content-Type", "text/plain; charset=utf-8");
-		res.setHeader("Cache-Control", "no-cache");
-		res.setHeader("Connection", "keep-alive");
-		if (typeof res.flushHeaders === "function") {
-			res.flushHeaders();
-		}
+			res.setHeader("Content-Type", "text/plain; charset=utf-8");
+			res.setHeader("Cache-Control", "no-cache");
+			res.setHeader("Connection", "keep-alive");
+			if (typeof res.flushHeaders === "function") {
+				res.flushHeaders();
+			}
+			hasPreparedStreamResponse = true;
+		};
 
 		const baseText = await generateAssistantText({
 			systemPrompt: basePrompt,
 			messages: normalizedMessages,
 			rovoDevAvailable,
-			fallbackEnabled,
-			aiGatewayProvider,
 			onTextDelta:
 				streamResponse === true
 					? (delta) => {
 							if (typeof delta === "string" && delta.length > 0) {
+								ensureStreamResponseStarted();
 								res.write(delta);
 							}
 						}
@@ -661,6 +616,7 @@ async function genuiChatHandler(req, res, options = {}) {
 				baseAnalysis.fixedSpec &&
 				fixedRequirementMisses.length === 0
 			) {
+				ensureStreamResponseStarted();
 				res.write(
 					`\n\nApplied automatic spec repair for rendering reliability.\n\n${buildSpecFence(baseAnalysis.fixedSpec)}`
 				);
@@ -677,6 +633,7 @@ async function genuiChatHandler(req, res, options = {}) {
 				baseAnalysis.synthesizedSpec &&
 				synthesizedRequirementMisses.length === 0
 			) {
+				ensureStreamResponseStarted();
 				res.write(
 					`\n\nRecovered ${baseAnalysis.synthesizedChildCount} missing section${
 						baseAnalysis.synthesizedChildCount === 1 ? "" : "s"
@@ -688,6 +645,7 @@ async function genuiChatHandler(req, res, options = {}) {
 
 			const failureType = getFailureType(baseAnalysis);
 			const guidance = buildFailureOutput("", failureType, requirementMisses);
+			ensureStreamResponseStarted();
 			res.write(`\n\n${guidance}`);
 			res.end();
 			return;
@@ -720,8 +678,6 @@ async function genuiChatHandler(req, res, options = {}) {
 				systemPrompt: strictRetryPrompt,
 				messages: normalizedMessages,
 				rovoDevAvailable,
-				fallbackEnabled,
-				aiGatewayProvider,
 			});
 			const retryAnalysis = analyzeGeneratedText(retryText);
 			logAttempt("strict-retry", retryAnalysis, requirements);
@@ -752,8 +708,6 @@ async function genuiChatHandler(req, res, options = {}) {
 					systemPrompt: webRetryPrompt,
 					messages: normalizedMessages,
 					rovoDevAvailable,
-					fallbackEnabled,
-					aiGatewayProvider,
 				});
 				const webRetryAnalysis = analyzeGeneratedText(webRetryText);
 				logAttempt("web-retry", webRetryAnalysis, requirements);
@@ -826,18 +780,6 @@ async function genuiChatHandler(req, res, options = {}) {
 				});
 			}
 
-			if (backendSelected === "ai-gateway") {
-				const failureStage =
-					error?.failureStage || classifyAIGatewayFailureStage(error);
-				const statusCode = failureStage === "config" ? 500 : 502;
-				return res.status(statusCode).json({
-					error: "AI Gateway request failed",
-					details: message,
-					backendSelected: "ai-gateway",
-					failureStage,
-				});
-			}
-
 			return res.status(500).json({
 				error: "Internal server error",
 				details: message,
@@ -866,10 +808,6 @@ async function genuiChatHandler(req, res, options = {}) {
  *   (surface, containerWidthPx, viewportWidthPx, widthClass).
  * @param {boolean} [options.rovoDevAvailable] - Whether RovoDev Serve is available for the
  *   GenUI LLM call. Defaults to true.
- * @param {boolean} [options.fallbackEnabled] - Whether AI Gateway fallback is enabled.
- *   Defaults to false.
- * @param {object} [options.aiGatewayProvider] - AI Gateway provider instance for fallback.
- *
  * @returns {Promise<{success: boolean, spec?: object, rawText: string, narrative?: string, error?: string}>}
  */
 async function generateGenuiFromRovodevResponse({
@@ -877,8 +815,6 @@ async function generateGenuiFromRovodevResponse({
 	conversationMessages,
 	layoutContext = null,
 	rovoDevAvailable = true,
-	fallbackEnabled = false,
-	aiGatewayProvider,
 }) {
 	if (typeof rovodevResponseText !== "string" || rovodevResponseText.trim().length === 0) {
 		return {
@@ -911,7 +847,6 @@ async function generateGenuiFromRovodevResponse({
 		rovodevResponseLength: rovodevResponseText.length,
 		conversationMessageCount: messagesForGenui.length,
 		rovoDevAvailable,
-		fallbackEnabled,
 	});
 
 	try {
@@ -919,8 +854,6 @@ async function generateGenuiFromRovodevResponse({
 			systemPrompt,
 			messages: messagesForGenui,
 			rovoDevAvailable,
-			fallbackEnabled,
-			aiGatewayProvider: aiGatewayProvider || DEFAULT_AI_GATEWAY_PROVIDER,
 		});
 
 		console.info("[GENUI-TWO-STEP] GenUI LLM raw output received", {

@@ -55,8 +55,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
-import { cva, type VariantProps } from "class-variance-authority";
 import {
   CornerDownLeftIcon,
   ImageIcon,
@@ -64,7 +62,9 @@ import {
   MonitorIcon,
   PlusIcon,
   XIcon,
-} from "lucide-react";
+} from "@/components/ui/vpk-icons";
+import { cn } from "@/lib/utils";
+import { cva, type VariantProps } from "class-variance-authority";
 import { nanoid } from "nanoid";
 import {
   Children,

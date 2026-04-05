@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { BoldIcon, CheckIcon, CircleDashedIcon, ClipboardPasteIcon, CopyIcon, FileIcon, FolderIcon, ImageIcon, ItalicIcon, LinkIcon, LogOutIcon, SaveIcon, ScissorsIcon, SearchIcon, SettingsIcon, TableIcon, TrashIcon, UnderlineIcon, UserIcon } from "lucide-react";
+import { BoldIcon, CheckIcon, CircleDashedIcon, ClipboardPasteIcon, CopyIcon, FileIcon, FolderIcon, ImageIcon, ItalicIcon, LinkIcon, LogOutIcon, SaveIcon, ScissorsIcon, SearchIcon, SettingsIcon, TableIcon, TrashIcon, UnderlineIcon, UserIcon } from "@/components/ui/vpk-icons";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Menubar, MenubarCheckboxItem, MenubarContent, MenubarGroup, MenubarItem, MenubarLabel, MenubarMenu, MenubarRadioGroup, MenubarRadioItem, MenubarSeparator, MenubarShortcut, MenubarSub, MenubarSubContent, MenubarSubTrigger, MenubarTrigger } from "@/components/ui/menubar";
