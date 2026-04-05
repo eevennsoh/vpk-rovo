@@ -104,7 +104,7 @@ export default function SearchSuggestionsPanel({
 					backgroundColor: token("elevation.surface.overlay"),
 					borderRadius: "12px",
 					boxShadow: token("elevation.shadow.overlay"),
-					padding: "8px 0",
+					padding: "8px 0 0",
 				}}
 				className="flex flex-col overflow-hidden"
 			>
