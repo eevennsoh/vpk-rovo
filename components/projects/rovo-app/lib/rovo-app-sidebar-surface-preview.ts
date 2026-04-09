@@ -1,0 +1,125 @@
+import {
+	INITIAL_CONTROL_PLANE_JOBS,
+	INITIAL_CONTROL_PLANE_MEMORIES,
+	INITIAL_CONTROL_PLANE_SETTINGS,
+	INITIAL_CONTROL_PLANE_SKILLS,
+} from "@/components/projects/control-plane/lib/control-plane-data";
+
+export interface RovoAppSidebarSurfacePreviewRow {
+	label: string;
+	value: string;
+}
+
+export interface RovoAppSidebarSurfacePreview {
+	description: string;
+	footerLabel: string;
+	footerValue: string;
+	rows: readonly RovoAppSidebarSurfacePreviewRow[];
+	title: string;
+}
+
+interface RovoAppSidebarSurfacePreviewInput {
+	description?: string;
+	label: string;
+	selected: boolean;
+}
+
+type ControlPlaneSurfaceLabel = "Jobs" | "Memories" | "Skills" | "Settings";
+
+function getJobsPreview(): Pick<RovoAppSidebarSurfacePreview, "rows" | "footerLabel" | "footerValue"> {
+	const rows = INITIAL_CONTROL_PLANE_JOBS.map((job) => ({
+		label: job.name,
+		value: job.status.charAt(0).toUpperCase() + job.status.slice(1),
+	}));
+	const running = INITIAL_CONTROL_PLANE_JOBS.filter((j) => j.status === "running").length;
+	const scheduled = INITIAL_CONTROL_PLANE_JOBS.filter((j) => j.status === "scheduled").length;
+	const parts: string[] = [];
+	if (running > 0) parts.push(`${running} running`);
+	if (scheduled > 0) parts.push(`${scheduled} scheduled`);
+	return {
+		rows,
+		footerLabel: "Active",
+		footerValue: parts.length > 0 ? parts.join(", ") : "None",
+	};
+}
+
+function getMemoriesPreview(): Pick<RovoAppSidebarSurfacePreview, "rows" | "footerLabel" | "footerValue"> {
+	const memoryCount = INITIAL_CONTROL_PLANE_MEMORIES.memory.length;
+	const userCount = INITIAL_CONTROL_PLANE_MEMORIES.user.length;
+	return {
+		rows: [
+			{ label: "MEMORY.md", value: `${memoryCount} ${memoryCount === 1 ? "entry" : "entries"}` },
+			{ label: "USER.md", value: `${userCount} ${userCount === 1 ? "entry" : "entries"}` },
+		],
+		footerLabel: "Total",
+		footerValue: `${memoryCount + userCount} entries`,
+	};
+}
+
+function getSkillsPreview(): Pick<RovoAppSidebarSurfacePreview, "rows" | "footerLabel" | "footerValue"> {
+	const rows = INITIAL_CONTROL_PLANE_SKILLS.map((skill) => ({
+		label: skill.name,
+		value: skill.enabled ? "Enabled" : "Disabled",
+	}));
+	const enabledCount = INITIAL_CONTROL_PLANE_SKILLS.filter((s) => s.enabled).length;
+	return {
+		rows,
+		footerLabel: "Active",
+		footerValue: `${enabledCount} of ${INITIAL_CONTROL_PLANE_SKILLS.length} enabled`,
+	};
+}
+
+function getSettingsPreview(): Pick<RovoAppSidebarSurfacePreview, "rows" | "footerLabel" | "footerValue"> {
+	const { providerRoutes, runtimeMirroring } = INITIAL_CONTROL_PLANE_SETTINGS;
+	return {
+		rows: [
+			{ label: "Chat", value: providerRoutes.chat },
+			{ label: "Summarization", value: providerRoutes.summarization },
+			{ label: "Jobs", value: providerRoutes.jobs },
+		],
+		footerLabel: "Mirroring",
+		footerValue: runtimeMirroring ? "On" : "Off",
+	};
+}
+
+const SURFACE_PREVIEW_BUILDERS: Record<
+	ControlPlaneSurfaceLabel,
+	() => Pick<RovoAppSidebarSurfacePreview, "rows" | "footerLabel" | "footerValue">
+> = {
+	Jobs: getJobsPreview,
+	Memories: getMemoriesPreview,
+	Skills: getSkillsPreview,
+	Settings: getSettingsPreview,
+};
+
+export function getRovoAppSidebarSurfacePreview({
+	description,
+	label,
+	selected,
+}: Readonly<RovoAppSidebarSurfacePreviewInput>): RovoAppSidebarSurfacePreview | null {
+	if (label === "New chat") {
+		return {
+			description:
+				"Start a fresh conversation and route the next message into a blank thread.",
+			footerLabel: selected ? "Status" : "Shortcut",
+			footerValue: selected ? "Current view" : "⌘⇧O",
+			rows: [
+				{ label: "Thread", value: "Blank conversation" },
+				{ label: "Context", value: "Hermes memory loaded" },
+			],
+			title: "New chat",
+		};
+	}
+
+	if (!(label in SURFACE_PREVIEW_BUILDERS) || !description) {
+		return null;
+	}
+
+	const builder = SURFACE_PREVIEW_BUILDERS[label as ControlPlaneSurfaceLabel];
+
+	return {
+		description,
+		title: label,
+		...builder(),
+	};
+}

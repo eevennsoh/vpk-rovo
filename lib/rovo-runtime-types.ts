@@ -1,0 +1,74 @@
+export type RuntimeHealth = "ok" | "degraded" | "down";
+export type RuntimeSurfaceName = "rovodev" | "hermes";
+
+export interface RuntimeSurfaceStatus {
+	name: RuntimeSurfaceName;
+	available: boolean;
+	health: RuntimeHealth;
+	status: string;
+	message: string | null;
+	url: string | null;
+	details?: Record<string, unknown>;
+}
+
+export interface RuntimeStatusSnapshot {
+	status: RuntimeHealth;
+	timestamp: string;
+	surfaces: {
+		rovodev: RuntimeSurfaceStatus;
+		hermes: RuntimeSurfaceStatus;
+	};
+	degradedSurfaces: RuntimeSurfaceName[];
+}
+
+export type HermesMemoryTarget = "memory" | "user";
+
+export interface HermesMemoryEntry {
+	id: string;
+	index: number;
+	text: string;
+	chars: number;
+}
+
+export interface HermesMemoryDocument {
+	target: HermesMemoryTarget;
+	exists: boolean;
+	path: string;
+	entries: HermesMemoryEntry[];
+	totalChars: number;
+	limit: number | null;
+	updatedAt: string | null;
+}
+
+export interface HermesSkillSummary {
+	id: string;
+	category: string;
+	name: string;
+	title: string;
+	description: string | null;
+	disabled: boolean;
+	path: string;
+	rootDir: string;
+	source: "local" | "external";
+	updatedAt: string | null;
+}
+
+export interface HermesSkillDetail extends HermesSkillSummary {
+	content: string;
+}
+
+export interface HermesJob {
+	id: string;
+	name: string;
+	description: string | null;
+	schedule: string | null;
+	status: string | null;
+	paused: boolean;
+	nextRunAt: string | null;
+	lastRunAt: string | null;
+	lastError: string | null;
+	linkedThreadId: string | null;
+	postResultToThread: boolean;
+	artifactTarget: string | null;
+	raw: Record<string, unknown>;
+}

@@ -54,7 +54,11 @@ import {
 	TOP_NAV_PADDING_PX,
 } from "@/components/blocks/top-navigation/layout-constants";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
 import SearchIcon from "@atlaskit/icon/core/search";
+import SkillIcon from "@atlaskit/icon-lab/core/skill";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { Footer } from "@/components/ui/footer";
 import { clamp, cn, createId } from "@/lib/utils";
@@ -64,6 +68,7 @@ import {
 	getMessageArtifactResult,
 	getMessageInterruption,
 	getMessageText,
+	type RovoUIMessage,
 } from "@/lib/rovo-ui-messages";
 import { ApprovalCard } from "@/components/blocks/approval-card/page";
 import { ClarificationQuestionCard } from "@/components/projects/shared/components/clarification-question-card";
@@ -72,6 +77,19 @@ import { getLatestQuestionCardPayload, type ClarificationAnswers } from "@/compo
 import type { PlanApprovalSelection } from "@/components/projects/shared/lib/plan-approval";
 import { getLatestPendingPlanWidget, type ParsedPlanWidgetPayload } from "@/components/projects/shared/lib/plan-widget";
 import { useDismissibleCards } from "@/components/projects/shared/hooks/use-dismissible-cards";
+import {
+	fetchMemoryDocuments,
+	fetchSkills,
+} from "@/components/projects/control-plane/lib/control-plane-api";
+import {
+	updateRovoAppThread,
+} from "@/components/projects/rovo-app/lib/api";
+import type {
+	HermesMemoryDocument,
+	HermesMemoryTarget,
+	HermesSkillSummary,
+} from "@/lib/rovo-runtime-types";
+import type { RovoAppHermesContext } from "@/lib/rovo-app-types";
 
 interface RovoAppShellProps {
 	embedded?: boolean;
@@ -131,6 +149,169 @@ function mergeContextDescriptions(
 	return mergedParts.length > 0 ? mergedParts.join("\n\n") : undefined;
 }
 
+function areSkillIdListsEqual(
+	left: ReadonlyArray<string>,
+	right: ReadonlyArray<string>,
+): boolean {
+	if (left.length !== right.length) {
+		return false;
+	}
+
+	return left.every((value, index) => value === right[index]);
+}
+
+function buildHermesMemoryLabel(
+	documents: Record<HermesMemoryTarget, HermesMemoryDocument> | null,
+): string | null {
+	if (!documents) {
+		return null;
+	}
+
+	const memoryCount = documents.memory.entries.length;
+	const userCount = documents.user.entries.length;
+	return `Hermes memory ${memoryCount + userCount} entries`;
+}
+
+function buildHermesContextWidgetMessage(options: {
+	threadId: string;
+	memoryDocuments: Record<HermesMemoryTarget, HermesMemoryDocument> | null;
+	selectedSkills: ReadonlyArray<HermesSkillSummary>;
+}): RovoUIMessage[] {
+	const memoryDocuments = options.memoryDocuments;
+	const selectedSkills = options.selectedSkills;
+	const memoryLines = memoryDocuments
+		? [
+			`Core memory: ${memoryDocuments.memory.entries.length} entries`,
+			`User memory: ${memoryDocuments.user.entries.length} entries`,
+		]
+		: [];
+	const skillLines = selectedSkills.map((skill) => `- ${skill.title} (${skill.id})`);
+
+	if (memoryLines.length === 0 && skillLines.length === 0) {
+		return [];
+	}
+
+	const bodyLines = [
+		...memoryLines,
+		skillLines.length > 0 ? "Selected skills:" : null,
+		...skillLines,
+	].filter((line): line is string => Boolean(line));
+
+	if (bodyLines.length === 0) {
+		return [];
+	}
+
+	const timestamp = new Date().toISOString();
+	const routeDecisionPart = {
+		type: "data-route-decision" as const,
+		data: {
+			intent: "genui" as const,
+			presentation: "genui_card" as const,
+			confidence: 1,
+			reason: "hermes_context_widget",
+			origin: "text" as const,
+		},
+	};
+
+	const messages: RovoUIMessage[] = [];
+
+	if (memoryLines.length > 0) {
+		messages.push({
+			id: `hermes-memory-${options.threadId}`,
+			role: "assistant",
+			metadata: {
+				createdAt: timestamp,
+				updatedAt: timestamp,
+			},
+			parts: [
+				routeDecisionPart,
+				{
+					type: "data-widget-data",
+					data: {
+						type: "hermes-memory",
+						payload: {
+							title: "Hermes Memory",
+							description: "Persistent memory loaded into this turn.",
+							summary: memoryLines.join("\n"),
+							contentTypeHint: "memory",
+							iconHint: "memory",
+							spec: {
+								root: "main",
+								elements: {
+									main: {
+										type: "Card",
+										props: {
+											title: "Hermes Memory",
+											description: "Persistent memory loaded into this turn.",
+										},
+										children: ["memory"],
+									},
+									memory: {
+										type: "Text",
+										props: {
+											content: memoryLines.join("\n"),
+										},
+										children: [],
+									},
+								},
+							},
+						},
+					},
+				},
+			],
+		});
+	}
+
+	if (skillLines.length > 0) {
+		messages.push({
+			id: `hermes-skill-${options.threadId}`,
+			role: "assistant",
+			metadata: {
+				createdAt: timestamp,
+				updatedAt: timestamp,
+			},
+			parts: [
+				routeDecisionPart,
+				{
+					type: "data-widget-data",
+					data: {
+						type: "hermes-skill",
+						payload: {
+							title: "Hermes Skills",
+							description: "Selected procedural skills loaded into this turn.",
+							summary: skillLines.join("\n"),
+							contentTypeHint: "skill",
+							iconHint: "skill",
+							spec: {
+								root: "main",
+								elements: {
+									main: {
+										type: "Card",
+										props: {
+											title: "Hermes Skills",
+											description: "Selected procedural skills loaded into this turn.",
+										},
+										children: ["skills"],
+									},
+									skills: {
+										type: "Text",
+										props: {
+											content: `Selected skills:\n${skillLines.join("\n")}`,
+										},
+										children: [],
+									},
+								},
+							},
+						},
+					},
+				},
+			],
+		});
+	}
+
+	return messages;
+}
+
 type RealtimeInjectContextPayload = {
 	type: string;
 	content?: string;
@@ -162,9 +343,11 @@ type RovoAppRealtimeShellAdapter = ReturnType<typeof useRovoApp> & {
 	) => Promise<void> | void;
 	submitRealtimeText?: (payload: {
 		contextDescription?: string;
+		hermesContext?: RovoAppHermesContext;
 		files: FileUIPart[];
 		text: string;
 	}) => Promise<void>;
+	upsertRealtimeSyntheticMessage?: (message: RovoUIMessage) => Promise<void>;
 	updateRealtimeMessage?: (
 		messageId: string,
 		contentDelta: string,
@@ -366,16 +549,135 @@ export function RovoAppShell({
 			viewportWidth: viewportWidthPx,
 		});
 	}, [shellSize.width, viewportWidthPx]);
-	const chat = useRovoApp({
-		embedded,
-		initialThreadId,
-		smartGenerationLayout,
-	});
-	useHmrReloadSuppression(chat.isStreaming);
-	const chatRef = useRef(chat);
-	chatRef.current = chat;
+		const chat = useRovoApp({
+			embedded,
+			initialThreadId,
+			smartGenerationLayout,
+		});
+		useHmrReloadSuppression(chat.isStreaming);
+		const chatRef = useRef(chat);
+		chatRef.current = chat;
+		const currentThread = useMemo(
+			() => chat.threads.find((thread) => thread.id === chat.activeThreadId) ?? null,
+			[chat.activeThreadId, chat.threads],
+		);
+		const [hermesMemoryDocuments, setHermesMemoryDocuments] = useState<Record<HermesMemoryTarget, HermesMemoryDocument> | null>(null);
+		const [availableHermesSkills, setAvailableHermesSkills] = useState<HermesSkillSummary[]>([]);
+		const [selectedHermesSkillIds, setSelectedHermesSkillIds] = useState<string[]>([]);
+		const [showHermesSkillPicker, setShowHermesSkillPicker] = useState(false);
+		const lastPersistedHermesContextRef = useRef<string | null>(null);
+		const previousActiveThreadIdRef = useRef<string | null>(null);
+		const selectedHermesSkills = useMemo(
+			() =>
+				selectedHermesSkillIds
+					.map((skillId) => availableHermesSkills.find((skill) => skill.id === skillId) ?? null)
+					.filter((skill): skill is HermesSkillSummary => skill !== null),
+			[selectedHermesSkillIds, availableHermesSkills],
+		);
+		const hermesMemoryLabel = useMemo(
+			() => buildHermesMemoryLabel(hermesMemoryDocuments),
+			[hermesMemoryDocuments],
+		);
 
-	// Bridge the global sidebar context (TopNavigation toggle) with the local
+		useEffect(() => {
+			let cancelled = false;
+
+			async function loadHermesSurfaceData() {
+				try {
+					const [nextMemoryDocuments, nextSkills] = await Promise.all([
+						fetchMemoryDocuments(),
+						fetchSkills(),
+					]);
+					if (cancelled) {
+						return;
+					}
+
+					setHermesMemoryDocuments(nextMemoryDocuments);
+					setAvailableHermesSkills(nextSkills);
+				} catch {
+					if (!cancelled) {
+						setHermesMemoryDocuments(null);
+						setAvailableHermesSkills([]);
+					}
+				}
+			}
+
+			void loadHermesSurfaceData();
+			const intervalId = window.setInterval(loadHermesSurfaceData, 30_000);
+			return () => {
+				cancelled = true;
+				window.clearInterval(intervalId);
+			};
+		}, []);
+
+		useEffect(() => {
+			const previousThreadId = previousActiveThreadIdRef.current;
+			previousActiveThreadIdRef.current = chat.activeThreadId;
+
+			if (chat.activeThreadId === null) {
+				if (previousThreadId !== null) {
+					setSelectedHermesSkillIds([]);
+					lastPersistedHermesContextRef.current = null;
+				}
+				return;
+			}
+
+			const persistedSkillIds = currentThread?.hermesContext?.selectedSkillIds ?? [];
+			if (!areSkillIdListsEqual(persistedSkillIds, selectedHermesSkillIds)) {
+				setSelectedHermesSkillIds(persistedSkillIds);
+				lastPersistedHermesContextRef.current = `${chat.activeThreadId}:${persistedSkillIds.join(",")}`;
+			}
+		}, [chat.activeThreadId, currentThread?.hermesContext, selectedHermesSkillIds]);
+
+		useEffect(() => {
+			if (!chat.activeThreadId) {
+				return;
+			}
+
+			const currentKey = `${chat.activeThreadId}:${selectedHermesSkillIds.join(",")}`;
+			const persistedSkillIds = currentThread?.hermesContext?.selectedSkillIds ?? [];
+			if (areSkillIdListsEqual(persistedSkillIds, selectedHermesSkillIds)) {
+				lastPersistedHermesContextRef.current = currentKey;
+				return;
+			}
+
+			if (lastPersistedHermesContextRef.current === currentKey) {
+				return;
+			}
+
+			lastPersistedHermesContextRef.current = currentKey;
+			void updateRovoAppThread(chat.activeThreadId, {
+				hermesContext: {
+					selectedSkillIds: selectedHermesSkillIds,
+				},
+			}).catch(() => {
+				lastPersistedHermesContextRef.current = null;
+			});
+		}, [chat.activeThreadId, currentThread?.hermesContext, selectedHermesSkillIds]);
+
+		const toggleHermesSkillSelection = useCallback((skillId: string) => {
+			setSelectedHermesSkillIds((previousSkillIds) =>
+				previousSkillIds.includes(skillId)
+					? previousSkillIds.filter((currentSkillId) => currentSkillId !== skillId)
+					: [...previousSkillIds, skillId],
+			);
+		}, []);
+
+		const buildHermesPromptOptions = useCallback(
+			(contextDescription?: string) => {
+				const hermesContext: RovoAppHermesContext | undefined =
+					selectedHermesSkillIds.length > 0
+						? { selectedSkillIds: selectedHermesSkillIds }
+						: undefined;
+				return {
+					contextDescription,
+					hermesContext,
+				};
+			},
+			[selectedHermesSkillIds],
+		);
+
+		// Bridge the global sidebar context (TopNavigation toggle) with the local
 	// shadcn SidebarProvider so the nav bar button controls the thread sidebar.
 	const globalSidebar = useGlobalSidebar();
 	const globalSidebarVisibleRef = useRef(globalSidebar.isVisible);
@@ -814,24 +1116,24 @@ export function RovoAppShell({
 						phase: shouldArtifactSteer ? "applying" : "idle",
 						text: shouldArtifactSteer ? pendingTranscript.text : null,
 					});
-					const annotationContext = annotationContextRef.current ?? undefined;
-					if (shouldArtifactSteer) {
-						void chatRef.current.applyVoiceSteer({
-							contextDescription: annotationContext,
-							text: pendingTranscript.text,
-						}).catch((error) => {
-							clearSteeringState();
-							console.error("[RovoAppVoice] Voice steer submission failed:", error);
-						});
-					} else {
-						void chatRef.current.submitPrompt({
-							contextDescription: annotationContext,
-							text: pendingTranscript.text,
-							files: [],
-						}).catch((error) => {
-							console.error("[RovoAppVoice] Voice transcript submission failed:", error);
-						});
-					}
+						const annotationContext = annotationContextRef.current ?? undefined;
+						if (shouldArtifactSteer) {
+							void chatRef.current.applyVoiceSteer({
+								...buildHermesPromptOptions(annotationContext),
+								text: pendingTranscript.text,
+							}).catch((error) => {
+								clearSteeringState();
+								console.error("[RovoAppVoice] Voice steer submission failed:", error);
+							});
+						} else {
+							void chatRef.current.submitPrompt({
+								...buildHermesPromptOptions(annotationContext),
+								text: pendingTranscript.text,
+								files: [],
+							}).catch((error) => {
+								console.error("[RovoAppVoice] Voice transcript submission failed:", error);
+							});
+						}
 
 					// Let the newly-submitted turn start before checking for a newer transcript.
 					await Promise.resolve();
@@ -845,7 +1147,7 @@ export function RovoAppShell({
 		})().catch((error) => {
 			console.error("[RovoAppVoice] Voice drain failed:", error);
 		});
-	}, [clearSteeringState]);
+		}, [buildHermesPromptOptions, clearSteeringState]);
 
 	const voice = useLiveVoice({
 		onBargeInStart: useCallback(() => {
@@ -1015,19 +1317,19 @@ export function RovoAppShell({
 		}
 	}, [clearSteeringState, voice]);
 
-	const handleStop = useCallback(async () => {
-		const hadActiveTurn = chatRef.current.isStreaming;
-		clearPendingVoiceWork("manual-stop");
+		const handleStop = useCallback(async () => {
+			const hadActiveTurn = chatRef.current.isStreaming;
+			clearPendingVoiceWork("manual-stop");
 		voice.cancelPendingTranscription();
 		stopSpeakingRef.current();
 		if (hadActiveTurn) {
 			skipNextAutoSpeakRef.current = true;
 		}
-		await chat.interruptActiveTurn({ source: "user-stop" });
-	}, [chat, clearPendingVoiceWork, voice]);
+			await chat.interruptActiveTurn({ source: "user-stop" });
+		}, [chat, clearPendingVoiceWork, voice]);
 
-	const voiceButtonState: VoiceButtonState =
-		voice.state === "speaking" ? "processing" : voice.state;
+		const voiceButtonState: VoiceButtonState =
+			voice.state === "speaking" ? "processing" : voice.state;
 
 	// --- Realtime voice (live conversation mode) ---
 	const realtime = useRealtimeVoice({
@@ -1048,38 +1350,38 @@ export function RovoAppShell({
 						extendedRequest.messageId ??
 						realtimeUserMessageIdRef.current;
 
-					if (
-						delegatedMessageId &&
-						typeof c.delegateToRovodev === "function"
-					) {
-						await c.delegateToRovodev(delegatedMessageId, {
-							contextDescription,
-							conversationSummary: request.conversationSummary,
-							existingRealtimeMessageId:
-								realtimeAssistantMessageIdRef.current ?? undefined,
-							intentType: request.intentType,
-							prompt: request.prompt,
-							referencedFiles: request.referencedFiles,
-							urgency: request.urgency,
-						});
-						return;
-					}
-
-					if (c.isStreaming && c.panelState === "preview") {
-						await c.applyVoiceSteer({
-							contextDescription,
-							text: request.prompt,
-						});
-					} else {
-						if (c.isStreaming) {
-							await c.interruptActiveTurn({ source: "voice-barge-in" });
+						if (
+							delegatedMessageId &&
+							typeof c.delegateToRovodev === "function"
+						) {
+							await c.delegateToRovodev(delegatedMessageId, {
+								...buildHermesPromptOptions(contextDescription),
+								conversationSummary: request.conversationSummary,
+								existingRealtimeMessageId:
+									realtimeAssistantMessageIdRef.current ?? undefined,
+								intentType: request.intentType,
+								prompt: request.prompt,
+								referencedFiles: request.referencedFiles,
+								urgency: request.urgency,
+							});
+							return;
 						}
-						await c.submitPrompt({
-							text: request.prompt,
-							files: [],
-							contextDescription,
-						});
-					}
+
+						if (c.isStreaming && c.panelState === "preview") {
+							await c.applyVoiceSteer({
+								...buildHermesPromptOptions(contextDescription),
+								text: request.prompt,
+							});
+						} else {
+							if (c.isStreaming) {
+								await c.interruptActiveTurn({ source: "voice-barge-in" });
+							}
+							await c.submitPrompt({
+								...buildHermesPromptOptions(contextDescription),
+								text: request.prompt,
+								files: [],
+							});
+						}
 				} catch (error) {
 					injectRealtimeContext({
 						type: "delegation_error",
@@ -1091,7 +1393,7 @@ export function RovoAppShell({
 					throw error;
 				}
 			},
-			[injectRealtimeContext],
+				[buildHermesPromptOptions, injectRealtimeContext],
 		),
 		onSpeechStarted: useCallback(() => {
 			activateTailFollowMode();
@@ -1318,26 +1620,32 @@ export function RovoAppShell({
 		}
 	}, [clearSteeringState, realtime, resetRealtimeAssistantMessageState, voice]);
 
-	const handleComposerSubmit = useCallback(
-		async ({ files, text }: { files: FileUIPart[]; text: string }) => {
-			const realtimeChat = chatRef.current as RovoAppRealtimeShellAdapter;
-			const realtimeVoice = realtime as RealtimeVoiceShellResult;
-			const contextDescription = annotationContextRef.current ?? undefined;
-			const latestUserMessageIdBeforeSubmit = getLatestUserMessageId(chat.messages);
+		const handleComposerSubmit = useCallback(
+			async ({ files, text }: { files: FileUIPart[]; text: string }) => {
+				const realtimeChat = chatRef.current as RovoAppRealtimeShellAdapter;
+				const realtimeVoice = realtime as RealtimeVoiceShellResult;
+				const contextDescription = annotationContextRef.current ?? undefined;
+				const latestUserMessageIdBeforeSubmit = getLatestUserMessageId(chat.messages);
+				const threadIdForWidget = chat.activeThreadId ?? chat.runtimeThreadId;
+				const hermesContextWidgetMessages = buildHermesContextWidgetMessage({
+					threadId: threadIdForWidget,
+					memoryDocuments: hermesMemoryDocuments,
+					selectedSkills: selectedHermesSkills,
+				});
 
-			if (isRealtimeActive) {
-				if (typeof realtimeChat.submitRealtimeText === "function") {
-					queueTypedScrollAnchor("realtime", latestUserMessageIdBeforeSubmit);
-					try {
-						await realtimeChat.submitRealtimeText({
-							contextDescription,
-							files,
-							text,
-						});
-					} catch (error) {
-						resetTypedScrollAnchorState();
-						throw error;
-					}
+				if (isRealtimeActive) {
+					if (typeof realtimeChat.submitRealtimeText === "function") {
+						queueTypedScrollAnchor("realtime", latestUserMessageIdBeforeSubmit);
+						try {
+							await realtimeChat.submitRealtimeText({
+								...buildHermesPromptOptions(contextDescription),
+								files,
+								text,
+							});
+						} catch (error) {
+							resetTypedScrollAnchorState();
+							throw error;
+						}
 					return;
 				}
 
@@ -1368,9 +1676,9 @@ export function RovoAppShell({
 				}
 			}
 
-			const trimmedText = text.trim();
-			const shouldShowOptimisticPrompt =
-				!chat.shouldQueueNextSubmission && (trimmedText || files.length > 0);
+				const trimmedText = text.trim();
+				const shouldShowOptimisticPrompt =
+					!chat.shouldQueueNextSubmission && (trimmedText || files.length > 0);
 			if (shouldShowOptimisticPrompt) {
 				setOptimisticUserMessage(
 					createRovoAppUserMessage({
@@ -1380,33 +1688,43 @@ export function RovoAppShell({
 						text: trimmedText,
 					}),
 				);
-			}
+				}
 
-			queueTypedScrollAnchor("standard", latestUserMessageIdBeforeSubmit);
-			try {
-				await realtimeChat.submitPrompt({
-					contextDescription,
-					files,
-					text,
-				});
-			} catch (error) {
-				setOptimisticUserMessage(null);
-				resetTypedScrollAnchorState();
-				throw error;
+				queueTypedScrollAnchor("standard", latestUserMessageIdBeforeSubmit);
+				try {
+					if (typeof realtimeChat.upsertRealtimeSyntheticMessage === "function") {
+						for (const hermesContextWidgetMessage of hermesContextWidgetMessages) {
+							await realtimeChat.upsertRealtimeSyntheticMessage(hermesContextWidgetMessage);
+						}
+					}
+					await realtimeChat.submitPrompt({
+						...buildHermesPromptOptions(contextDescription),
+						files,
+						text,
+					});
+				} catch (error) {
+					setOptimisticUserMessage(null);
+					resetTypedScrollAnchorState();
+					throw error;
 			}
 		},
 		[
-			appendRealtimeMessage,
-			chat.messages,
-			isRealtimeActive,
-			queueTypedScrollAnchor,
-			realtime,
-			resetRealtimeAssistantMessageState,
-			resetTypedScrollAnchorState,
-			setOptimisticUserMessage,
-			chat.shouldQueueNextSubmission,
-		],
-	);
+				appendRealtimeMessage,
+				chat.activeThreadId,
+				chat.messages,
+				chat.runtimeThreadId,
+				hermesMemoryDocuments,
+				isRealtimeActive,
+				queueTypedScrollAnchor,
+				realtime,
+				resetRealtimeAssistantMessageState,
+				resetTypedScrollAnchorState,
+				selectedHermesSkills,
+				setOptimisticUserMessage,
+				buildHermesPromptOptions,
+				chat.shouldQueueNextSubmission,
+			],
+		);
 
 	const displayMessages = useMemo(() => {
 		if (!optimisticUserMessage) {
@@ -1600,19 +1918,19 @@ export function RovoAppShell({
 				return;
 			}
 
-			for (const annotation of annotationsToApply) {
-				const contextDescription = formatAnnotationsForVoiceContext([annotation]);
-				void chat.submitPrompt({
-					text: annotation.comment,
-					files: [],
-					contextDescription,
-				});
-			}
+				for (const annotation of annotationsToApply) {
+					const contextDescription = formatAnnotationsForVoiceContext([annotation]);
+					void chat.submitPrompt({
+						...buildHermesPromptOptions(contextDescription),
+						text: annotation.comment,
+						files: [],
+					}).catch(() => {});
+				}
 
 			clearAnnotations();
 			setCursorMode(false);
 		},
-		[chat, clearAnnotations],
+			[buildHermesPromptOptions, chat, clearAnnotations],
 	);
 
 	const shellRef = useRef<HTMLDivElement | null>(null);
@@ -1966,6 +2284,7 @@ export function RovoAppShell({
 					extraHorizontalPaddingWhenCompact
 					documents={chat.documents}
 					editingMessageId={chat.editingMessageId}
+					hermesMemoryLabel={hermesMemoryLabel}
 					isStreaming={chat.isStreaming}
 					messages={displayMessages}
 					onBuildPlan={handleBuildPlan}
@@ -2047,38 +2366,79 @@ export function RovoAppShell({
 								animate={{ opacity: 1, y: 0 }}
 								transition={{ duration: 0.4, ease: [0, 0.4, 0, 1], delay: 0.2 }}
 								style={{ willChange: "transform, opacity" }}
-							>
-								<RovoAppComposer
-									key={chat.runtimeThreadId}
-									artifactTitle={workspaceDocument?.title ?? null}
-									autoFocus={!embedded}
-									backgroundArtifactLabel={chat.backgroundArtifactLabel}
-									composerStatus={chat.composerStatus}
-									compact={isArtifactOpen}
-									errorMessage={chat.inputError}
-									galleryExpanded={galleryExpanded}
-									isPlanMode={chat.isPlanMode}
-									micStream={realtime.micStream}
-									onDismissArtifactContext={handleCloseArtifactPane}
-									onDismissPlanExecutionTracker={chat.dismissPlanExecutionTracker}
-									onStop={handleStop}
-									onRemoveQueuedPrompt={chat.removeQueuedPrompt}
-									onSubmit={handleComposerSubmit}
-									onTogglePlanMode={chat.togglePlanMode}
-									onToggleRealtimeVoice={handleToggleRealtimeVoice}
-									onToggleVoice={handleToggleVoice}
-									placeholder={composerPreviewState.placeholder}
-									prefillText={voiceTranscript ?? prefillText}
-									previewPrompt={composerPreviewState.activePreviewPrompt}
-									planExecutionTracker={chat.planExecutionTracker}
-									queuedPrompts={chat.queuedPrompts}
-									realtimeGenerationState={realtime.generationState}
-									realtimeOutputWaveformBars={realtime.outputWaveformBars}
-									realtimeVoiceActive={isRealtimeActive}
-									realtimeVoiceState={realtime.voiceState}
-									renderResponseGradient={(props) => (
-										<SmoothGradientWaveform {...props} />
-									)}
+								>
+									{showHermesSkillPicker ? (
+										<div className="mb-3">
+											<Card size="sm">
+												<CardHeader className="pb-2">
+													<CardTitle>Hermes Skills</CardTitle>
+													<CardDescription>
+														Selected skills are injected into the next RovoDev turn as procedural context.
+													</CardDescription>
+												</CardHeader>
+												<CardContent className="space-y-3">
+													<ScrollArea className="max-h-40 pr-2">
+														<div className="flex flex-wrap gap-2">
+															{availableHermesSkills.filter((skill) => !skill.disabled).map((skill) => {
+																const selected = selectedHermesSkillIds.includes(skill.id);
+																return (
+																	<Button
+																		key={skill.id}
+																		size="sm"
+																		variant={selected ? "default" : "outline"}
+																		onClick={() => {
+																			toggleHermesSkillSelection(skill.id);
+																			setShowHermesSkillPicker(false);
+																		}}
+																	>
+																		<SkillIcon label="" size="small" />
+																		<span>{skill.title}</span>
+																	</Button>
+																);
+															})}
+														</div>
+													</ScrollArea>
+												</CardContent>
+											</Card>
+										</div>
+									) : null}
+									<RovoAppComposer
+										key={chat.runtimeThreadId}
+										artifactTitle={workspaceDocument?.title ?? null}
+										autoFocus={!embedded}
+										backgroundArtifactLabel={chat.backgroundArtifactLabel}
+										composerStatus={chat.composerStatus}
+										compact={isArtifactOpen}
+										errorMessage={chat.inputError}
+										galleryExpanded={galleryExpanded}
+										isPlanMode={chat.isPlanMode}
+										micStream={realtime.micStream}
+										onDismissArtifactContext={handleCloseArtifactPane}
+										onDismissPlanExecutionTracker={chat.dismissPlanExecutionTracker}
+										onRemoveHermesSkill={toggleHermesSkillSelection}
+										onStop={handleStop}
+										onRemoveQueuedPrompt={chat.removeQueuedPrompt}
+										onSubmit={handleComposerSubmit}
+										onToggleHermesSkillPicker={() => setShowHermesSkillPicker((current) => !current)}
+										onTogglePlanMode={chat.togglePlanMode}
+										onToggleRealtimeVoice={handleToggleRealtimeVoice}
+										onToggleVoice={handleToggleVoice}
+										placeholder={composerPreviewState.placeholder}
+										prefillText={voiceTranscript ?? prefillText}
+										previewPrompt={composerPreviewState.activePreviewPrompt}
+										planExecutionTracker={chat.planExecutionTracker}
+										queuedPrompts={chat.queuedPrompts}
+										realtimeGenerationState={realtime.generationState}
+										realtimeOutputWaveformBars={realtime.outputWaveformBars}
+										realtimeVoiceActive={isRealtimeActive}
+										realtimeVoiceState={realtime.voiceState}
+										selectedHermesSkills={selectedHermesSkills.map((skill) => ({
+											id: skill.id,
+											title: skill.title,
+										}))}
+										renderResponseGradient={(props) => (
+											<SmoothGradientWaveform {...props} />
+										)}
 									showBackgroundStop={chat.hasBackgroundDelegation}
 									submitDisabled={Boolean(chat.activeToolApproval)}
 									voiceState={voiceButtonState}

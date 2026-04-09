@@ -2,7 +2,7 @@ import type { AtlassianLogoName } from "@/components/ui/logo";
 import type { IconTileVariant } from "@/components/ui/icon-tile";
 import type { GenerativeContentType } from "@/components/projects/shared/lib/generative-widget";
 
-type ArtifactVisualIdentityKind = "text" | "code" | "image" | "sheet" | "react";
+type ArtifactVisualIdentityKind = "text" | "code" | "image" | "sheet" | "react" | "excalidraw";
 
 export const VISUAL_IDENTITY_TILE_VARIANTS = [
 	"gray",
@@ -72,6 +72,14 @@ const GENERATED_CARD_CONTENT_CATALOG: Record<
 	image: {
 		fallbackIconName: "image",
 		allowedHintAliases: ["photo", "picture", "illustration", "mockup", "banner"],
+	},
+	memory: {
+		fallbackIconName: "database",
+		allowedHintAliases: ["memory", "recall", "persistent memory"],
+	},
+	skill: {
+		fallbackIconName: "skill",
+		allowedHintAliases: ["skill", "procedural memory", "tooling"],
 	},
 	text: {
 		fallbackIconName: "text",
@@ -310,6 +318,8 @@ function resolveArtifactFallbackIconName(kind: ArtifactVisualIdentityKind): stri
 	switch (kind) {
 		case "code":
 			return "angle-brackets";
+		case "excalidraw":
+			return "diagram";
 		case "image":
 			return "image";
 		case "sheet":

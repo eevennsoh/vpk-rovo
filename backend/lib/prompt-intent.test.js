@@ -24,6 +24,10 @@ test("inferPromptIntent detects GenUI-style task requests", () => {
 	assert.equal(inferPromptIntent("Build me a dashboard showing sprint velocity"), "genui");
 });
 
+test("inferPromptIntent detects diagram requests as genui", () => {
+	assert.equal(inferPromptIntent("Create an architecture diagram for this system"), "genui");
+});
+
 test("inferPromptIntent detects combined UI and audio asks", () => {
 	assert.equal(
 		inferPromptIntent("Build me a dashboard widget and narrate the trends in audio"),

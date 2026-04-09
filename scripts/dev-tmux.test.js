@@ -88,6 +88,43 @@ test("dev-tmux accepts explicit command with numeric pool size", () => {
 	fs.rmSync(tempDir, { recursive: true, force: true });
 });
 
+test("dev-tmux accepts shorthand double-dash pool size syntax", () => {
+	const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dev-tmux-shorthand-test-"));
+	const tmuxPath = path.join(tempDir, "tmux");
+
+	fs.writeFileSync(
+		tmuxPath,
+		[
+			"#!/usr/bin/env bash",
+			"",
+			"if [ \"$1\" = \"has-session\" ]; then",
+			"\texit 1",
+			"fi",
+			"",
+			"echo \"unexpected tmux invocation: $*\" >&2",
+			"exit 1",
+			"",
+		].join("\n"),
+		"utf8"
+	);
+	fs.chmodSync(tmuxPath, 0o755);
+
+	const output = execFileSync(scriptPath, ["status", "--1"], {
+		cwd: repoRoot,
+		encoding: "utf8",
+		env: {
+			...process.env,
+			PATH: `${tempDir}:${process.env.PATH}`,
+			ROVODEV_BILLING_URL: "https://example.invalid",
+		},
+	});
+
+	assert.match(output, /Session:/);
+	assert.match(output, /tmux: stopped/);
+
+	fs.rmSync(tempDir, { recursive: true, force: true });
+});
+
 test("dev-tmux stop invokes worktree listener cleanup", () => {
 	const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dev-tmux-stop-test-"));
 	const tmuxPath = path.join(tempDir, "tmux");

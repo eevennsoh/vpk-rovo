@@ -502,7 +502,7 @@ test("parseGenerativeWidget strips leaked system instructions from card metadata
 
 	assert.ok(widget);
 	assert.equal(widget.summary, undefined);
-	assert.equal(widget.spec.elements["summary-card"].props.description, undefined);
+	assert.equal(widget.body.spec.elements["summary-card"].props.description, undefined);
 
 	const metadata = resolveGenerativeWidgetMetadata(widget);
 	assert.equal(metadata.title, "Today's Calendar");
@@ -537,7 +537,7 @@ test("parseGenerativeWidget keeps trailing metadata after system instructions wr
 	assert.ok(widget);
 	assert.equal(widget.description, "Upcoming events from Google Calendar.");
 	assert.equal(
-		widget.spec.elements["summary-card"].props.description,
+		widget.body.spec.elements["summary-card"].props.description,
 		"Upcoming events from Google Calendar."
 	);
 
@@ -788,4 +788,38 @@ test("createBodyOnlySpec removes generated action button stacks from card body",
 	assert.equal(result.elements["action-row"], undefined);
 	assert.equal(result.elements["edit-button"], undefined);
 	assert.equal(result.elements["view-button"], undefined);
+});
+
+test("parseGenerativeWidget normalizes legacy audio widgets into the shared preview envelope", () => {
+	const widget = parseGenerativeWidget("audio-preview", {
+		audioUrl: "https://example.com/voice.mp3",
+		transcript: "hello world",
+		title: "Narration",
+	});
+
+	assert.ok(widget);
+	assert.equal(widget.type, "genui-preview");
+	assert.equal(widget.body.kind, "audio");
+	assert.equal(widget.body.audioUrl, "https://example.com/voice.mp3");
+	assert.equal(widget.body.transcript, "hello world");
+});
+
+test("parseGenerativeWidget accepts explicit excalidraw body payloads", () => {
+	const widget = parseGenerativeWidget("genui-preview", {
+		title: "Architecture diagram",
+		body: {
+			kind: "excalidraw",
+			scene: {
+				type: "excalidraw",
+				version: 2,
+				elements: [{ id: "node-1", type: "rectangle", x: 0, y: 0 }],
+			},
+		},
+	});
+
+	assert.ok(widget);
+	assert.equal(widget.type, "genui-preview");
+	assert.equal(widget.body.kind, "excalidraw");
+	assert.equal(widget.body.scene.type, "excalidraw");
+	assert.equal(widget.body.scene.elements.length, 1);
 });

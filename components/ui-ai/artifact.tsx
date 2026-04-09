@@ -11,7 +11,10 @@ import {
 	GenerativeCardFooter,
 	GenerativeCardHeader,
 } from "@/components/blocks/generative-card";
+import { PreviewBodyRenderer } from "@/components/projects/shared/components/preview-body-renderer";
+import { buildArtifactPreviewBody } from "@/components/projects/shared/lib/artifact-preview";
 import { CardIdentityTile } from "@/components/projects/shared/components/card-identity-tile";
+import type { PreviewBody } from "@/components/projects/shared/lib/generative-widget";
 import type { VisualIdentity } from "@/components/projects/shared/lib/visual-identity";
 import { resolveArtifactCardIdentity } from "@/components/projects/shared/lib/visual-identity";
 import { Button } from "@/components/ui/button";
@@ -39,7 +42,6 @@ import {
 	type VpkIconComponent,
 	XIcon,
 } from "@/components/ui/vpk-icons";
-import { CodeBlock } from "@/components/ui-ai/code-block";
 import type {
 	ArtifactAnnotation,
 	ArtifactAnnotationPosition,
@@ -52,9 +54,7 @@ import {
 	getArtifactVersionTitle,
 	type ArtifactDocument,
 } from "@/components/ui-ai/lib/artifact-versions";
-import { MessageResponse } from "@/components/ui-ai/message";
 import { cn } from "@/lib/utils";
-import Image from "next/image";
 
 export type ArtifactProps = HTMLAttributes<HTMLDivElement>;
 
@@ -196,10 +196,11 @@ export const ArtifactContent = ({
  * Mirrors the design from rovo-app-artifact-card.tsx
  * --------------------------------------------------------------------------- */
 
-export type ArtifactKind = "text" | "code" | "image" | "sheet" | "react";
+export type ArtifactKind = "text" | "code" | "image" | "sheet" | "react" | "excalidraw";
 
 export const ARTIFACT_KIND_LABELS: Record<ArtifactKind, string> = {
 	code: "Code",
+	excalidraw: "Diagram",
 	image: "Image",
 	react: "App",
 	sheet: "Sheet",
@@ -226,85 +227,6 @@ function getArtifactDescription({
 	return `${ARTIFACT_KIND_LABELS[kind]} \u2022 Version ${versionNumber}`;
 }
 
-function ArtifactPreview({
-	isStreaming,
-	kind,
-	previewContent,
-	previewSummary,
-	title,
-}: Readonly<{
-	isStreaming: boolean;
-	kind: ArtifactKind;
-	previewContent: string;
-	previewSummary?: string;
-	title: string;
-}>) {
-	if (kind === "image" && /^https?:|^data:image\//u.test(previewContent)) {
-		return (
-			<div className="relative aspect-[16/10] w-full overflow-hidden rounded-md bg-card">
-				<Image
-					alt={title}
-					className="h-full w-full object-cover"
-					height={800}
-					src={previewContent}
-					unoptimized
-					width={1280}
-				/>
-				<div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/15 to-transparent" />
-				{isStreaming ? (
-					<div className="absolute bottom-3 left-3 inline-flex items-center gap-2 rounded-full border border-border/80 bg-background/95 px-2.5 py-1 text-[11px] text-text-subtle uppercase tracking-[0.16em] shadow-sm">
-						<LoaderCircleIcon className="size-3 animate-spin" />
-						Streaming
-					</div>
-				) : null}
-			</div>
-		);
-	}
-
-	const resolvedPreviewText =
-		kind === "react"
-			? previewSummary?.trim() || "Generated app preview ready to open"
-			: previewContent;
-
-	if (!resolvedPreviewText.trim()) {
-		return (
-			<div className="flex min-h-32 flex-col gap-3 rounded-md bg-card p-4">
-				<div className="h-4 w-2/3 animate-pulse rounded-full bg-surface-raised" />
-				<div className="h-3 w-full animate-pulse rounded-full bg-surface-raised" />
-				<div className="h-3 w-5/6 animate-pulse rounded-full bg-surface-raised" />
-				<div className="h-3 w-3/4 animate-pulse rounded-full bg-surface-raised" />
-			</div>
-		);
-	}
-
-	const streamingBadge = isStreaming ? (
-		<div className="mt-3 inline-flex items-center gap-2 rounded-full border border-border bg-background px-2.5 py-1 text-[11px] text-text-subtle uppercase tracking-[0.16em]">
-			<LoaderCircleIcon className="size-3 animate-spin" />
-			Streaming
-		</div>
-	) : null;
-
-	if (kind === "react") {
-		return (
-			<div className="rounded-md">
-				<p className="text-left text-sm leading-6 text-text">
-					{resolvedPreviewText}
-				</p>
-				{streamingBadge}
-			</div>
-		);
-	}
-
-	return (
-		<div className="rounded-md">
-			<div className="max-h-36 overflow-hidden whitespace-pre-wrap text-left font-mono text-[12px] leading-5 text-text">
-				{resolvedPreviewText}
-			</div>
-			{streamingBadge}
-		</div>
-	);
-}
-
 export interface ArtifactCardProps {
 	/** The artifact content type. Determines icon and color. */
 	kind: ArtifactKind;
@@ -326,6 +248,8 @@ export interface ArtifactCardProps {
 	previewContent?: string;
 	/** Optional user-facing summary for inline preview cards. */
 	previewSummary?: string;
+	/** Optional shared preview body override. */
+	previewBody?: PreviewBody;
 	/** Callback when the "Open" button is clicked. Receives the card root element. */
 	onOpen?: (element: HTMLDivElement) => void;
 	/** Callback when a preview-mode card mounts. Receives the card root element. */
@@ -347,6 +271,7 @@ export function ArtifactCard({
 	identitySeed,
 	previewContent = "",
 	previewSummary,
+	previewBody,
 	onOpen,
 	onRegister,
 	className,
@@ -365,6 +290,11 @@ export function ArtifactCard({
 		? `Open ${actionLabel.toLowerCase()} ${kindLabel.toLowerCase()} ${title}`
 		: `Open ${kindLabel.toLowerCase()} ${title}`;
 	const openCtaLabel = `Open ${kindLabel.toLowerCase()}`;
+	const resolvedPreviewBody = previewBody ?? buildArtifactPreviewBody({
+		content: previewContent,
+		kind,
+		summary: previewSummary,
+	});
 
 	const handleOpen = () => {
 		if (!cardRef.current || !onOpen) {
@@ -443,12 +373,12 @@ export function ArtifactCard({
 				<GenerativeCardBody>
 					<GenerativeCardContent>
 						{children ?? (
-							<ArtifactPreview
+							<PreviewBodyRenderer
+								body={resolvedPreviewBody}
 								isStreaming={isStreaming}
-								kind={kind}
-								previewContent={previewContent}
-								previewSummary={previewSummary}
+								surface="card"
 								title={title}
+								summary={previewSummary}
 							/>
 						)}
 					</GenerativeCardContent>
@@ -476,18 +406,6 @@ export function ArtifactCard({
  * annotations, and edit/preview modes.
  * Ported from RovoAppArtifactPanel.
  * --------------------------------------------------------------------------- */
-
-function inferCodeLanguage(code: string): "html" | "css" | "tsx" {
-	if (/<!doctype html>|<html[\s>]|<head[\s>]|<body[\s>]|<style[\s>]/iu.test(code)) {
-		return "html";
-	}
-
-	if (/^\s*[.#@]?[a-z0-9_-]+\s*\{[\s\S]*\}\s*$/imu.test(code)) {
-		return "css";
-	}
-
-	return "tsx";
-}
 
 function getAnnotationPinStyle(position: ArtifactAnnotationPosition): {
 	left: string;
@@ -678,6 +596,11 @@ export function ArtifactPanel({
 		isStreaming && draftContent.trim().length > 0
 			? draftContent
 			: selectedVersion?.content ?? "";
+	const resolvedPreviewBody = buildArtifactPreviewBody({
+		content: previewContent,
+		kind: document.kind,
+		summary: document.previewSummary ?? null,
+	});
 	const versionLabel = isStreaming
 		? "Generating artifact..."
 		: selectedVersion
@@ -821,42 +744,18 @@ export function ArtifactPanel({
 							</Button>
 						</div>
 					</>
-				) : document.kind === "react" ? (
-					<div className="flex h-full w-full flex-col overflow-hidden">
-						<iframe
-							title={`Live app preview — ${selectedVersionTitle}`}
-							className="h-full min-h-0 w-full flex-1 border-0 bg-surface"
-							sandbox="allow-forms allow-modals allow-popups allow-same-origin allow-scripts"
-							src={previewContent}
-						/>
-					</div>
 				) : (
 					<div
 						ref={contentRef}
 						className="relative min-h-0 flex-1 overflow-auto scrollbar-auto-hide py-4 px-6 md:py-6 md:px-6"
 					>
-						{document.kind === "code" ? (
-							<CodeBlock
-								code={previewContent}
-								language={inferCodeLanguage(previewContent)}
-								showLineNumbers
-							/>
-						) : document.kind === "image" && /^https?:|^data:image\//u.test(previewContent) ? (
-							<div className="flex h-full min-h-[320px] items-center justify-center rounded-2xl border border-border bg-surface-raised p-4">
-								<Image
-									alt={selectedVersionTitle}
-									className="h-auto max-w-full rounded-md"
-									height={900}
-									src={previewContent}
-									unoptimized
-									width={1200}
-								/>
-							</div>
-						) : (
-							<MessageResponse isAnimating={isStreaming}>
-								{previewContent}
-							</MessageResponse>
-						)}
+						<PreviewBodyRenderer
+							body={resolvedPreviewBody}
+							isStreaming={isStreaming}
+							surface="artifact-pane"
+							title={selectedVersionTitle}
+							summary={document.previewSummary}
+						/>
 
 						{mode === "preview" ? (
 							<div

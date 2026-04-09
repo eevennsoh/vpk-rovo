@@ -3,11 +3,15 @@ import type { RovoMessageMetadata, RovoUIMessage } from "@/lib/rovo-ui-messages"
 import { createId } from "@/lib/utils";
 
 export type RovoAppVisibility = "private" | "public";
-export type RovoAppDocumentKind = "text" | "code" | "image" | "sheet" | "react";
+export type RovoAppDocumentKind = "text" | "code" | "image" | "sheet" | "react" | "excalidraw";
 export type ArtifactMode = "preview" | "edit";
 export type VoteValue = "up" | "down";
 export type RovoAppRunStatus = "queued" | "streaming" | "background";
 export type RovoAppPromptMode = "default" | "plan";
+
+export interface RovoAppHermesContext {
+	selectedSkillIds: string[];
+}
 
 /**
  * Artifact panel state:
@@ -33,6 +37,7 @@ export interface RovoAppThread {
 	modelId: string | null;
 	provider: string | null;
 	activeDocumentId: string | null;
+	hermesContext?: RovoAppHermesContext | null;
 	sessionId: string | null;
 	sessionMode: "persistent" | "ephemeral" | null;
 	activeRun?: RovoAppActiveRun | null;
@@ -97,6 +102,7 @@ export interface RovoAppQueuedPromptAction
 	kind: "prompt";
 	files: ReadonlyArray<FileUIPart>;
 	contextDescription?: string;
+	hermesContext?: RovoAppHermesContext;
 	/** Snapshotted composer mode for this specific prompt. */
 	mode: RovoAppPromptMode;
 	messageMetadata?: RovoMessageMetadata;
@@ -106,6 +112,7 @@ export interface RovoAppQueuedDelegationAction
 	extends RovoAppQueuedActionBase {
 	kind: "delegation";
 	contextDescription?: string;
+	hermesContext?: RovoAppHermesContext;
 	conversationSummary?: string;
 	delegatedMessageId: string;
 	existingRealtimeMessageId?: string | null;

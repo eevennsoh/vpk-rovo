@@ -20,6 +20,7 @@ fi
 WINDOW_NAME="ports"
 POOL_SIZE="${ROVODEV_POOL_SIZE:-6}"
 : "${ROVODEV_BILLING_URL:?ROVODEV_BILLING_URL is not set in .env.local}"
+REPO_ROOT="$(pwd)"
 
 PORT_FILE=".dev-rovodev-port"
 PORTS_FILE=".dev-rovodev-ports"
@@ -197,11 +198,14 @@ apply_window_styling() {
 	ports_pair="$(resolve_frontend_backend_ports)"
 	frontend_port="${ports_pair%% *}"
 	backend_port="${ports_pair##* }"
+	local pane_border_format
 
 	tmux set-window-option -t "$SESSION_NAME:$WINDOW_NAME" pane-border-status top
 	tmux set-window-option -t "$SESSION_NAME:$WINDOW_NAME" pane-border-style "fg=colour238"
 	tmux set-window-option -t "$SESSION_NAME:$WINDOW_NAME" pane-active-border-style "fg=colour39"
-	tmux set-window-option -t "$SESSION_NAME:$WINDOW_NAME" pane-border-format "#{?#{==:#{pane_index},0},#[fg=green,bold] Frontend (${frontend_port}),#{?#{==:#{pane_index},1},#[fg=yellow,bold] Backend (${backend_port}),#[fg=cyan,bold] RovoDev #{pane_title}}}#[default]"
+
+	pane_border_format="#{?#{==:#{pane_index},0},#[fg=green,bold] #{pane_title},#{?#{==:#{pane_index},1},#[fg=yellow,bold] #{pane_title},#[fg=cyan,bold] rovodev:#{pane_title}}}#[default]"
+	tmux set-window-option -t "$SESSION_NAME:$WINDOW_NAME" pane-border-format "$pane_border_format"
 
 	tmux select-pane -t "$SESSION_NAME:$WINDOW_NAME.0" -T "frontend:${frontend_port}" 2>/dev/null || true
 	tmux select-pane -t "$SESSION_NAME:$WINDOW_NAME.1" -T "backend:${backend_port}" 2>/dev/null || true
@@ -277,7 +281,7 @@ start_session() {
 		pane=$((index + 2))
 		port="${rovodev_ports[$index]}"
 		tmux select-pane -t "$SESSION_NAME:$WINDOW_NAME.$pane" -T "$port"
-		cmd="cd \"$(pwd)\" && node scripts/dev-rovodev-port.js \"$port\""
+		cmd="cd \"$REPO_ROOT\" && node scripts/dev-rovodev-port.js \"$port\""
 		tmux send-keys -t "$SESSION_NAME:$WINDOW_NAME.$pane" "$cmd" C-m
 	done
 
@@ -285,8 +289,8 @@ start_session() {
 
 	tmux select-pane -t "$SESSION_NAME:$WINDOW_NAME.0" -T "frontend:${frontend_port}"
 	tmux select-pane -t "$SESSION_NAME:$WINDOW_NAME.1" -T "backend:${backend_port}"
-	tmux send-keys -t "$SESSION_NAME:$WINDOW_NAME.1" "cd \"$(pwd)\" && VPK_TMUX_OWNED=1 pnpm run dev:backend" C-m
-	tmux send-keys -t "$SESSION_NAME:$WINDOW_NAME.0" "cd \"$(pwd)\" && VPK_TMUX_OWNED=1 pnpm run dev:frontend" C-m
+	tmux send-keys -t "$SESSION_NAME:$WINDOW_NAME.1" "cd \"$REPO_ROOT\" && VPK_TMUX_OWNED=1 pnpm run dev:backend" C-m
+	tmux send-keys -t "$SESSION_NAME:$WINDOW_NAME.0" "cd \"$REPO_ROOT\" && VPK_TMUX_OWNED=1 pnpm run dev:frontend" C-m
 
 	tmux select-layout -t "$SESSION_NAME:$WINDOW_NAME" tiled
 	tmux select-pane -t "$SESSION_NAME:$WINDOW_NAME.0"
@@ -350,6 +354,7 @@ status_session() {
 	else
 		echo "$PORTS_FILE: missing"
 	fi
+
 }
 
 usage() {
@@ -362,6 +367,7 @@ usage() {
 	echo "Examples:"
 	echo "  pnpm run rovodev:tmux:start"
 	echo "  pnpm run rovodev:tmux:start -- 6"
+	echo "  pnpm run rovodev:tmux:start --1"
 	echo "  pnpm run rovodev:tmux:stop"
 	echo ""
 	echo "Commands:"

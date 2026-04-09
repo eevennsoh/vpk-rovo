@@ -10,16 +10,18 @@ import {
 	parseISO,
 } from "date-fns";
 import AddIcon from "@atlaskit/icon/core/add";
-import AiAgentIcon from "@atlaskit/icon/core/ai-agent";
 import ChevronRightIcon from "@atlaskit/icon/core/chevron-right";
-import ScorecardIcon from "@atlaskit/icon/core/scorecard";
-import ShapesIcon from "@atlaskit/icon/core/shapes";
 import SkillIcon from "@atlaskit/icon-lab/core/skill";
 import Heading from "@/components/blocks/shared-ui/heading";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { SidebarNavItem, SidebarNavItemAction, SidebarNavItemCount } from "@/components/ui/sidebar-nav-item";
 import { Shimmer } from "@/components/ui-ai/shimmer";
 import { Spinner } from "@/components/ui/spinner";
+import {
+	getRovoAppSidebarSurfacePreview,
+	type RovoAppSidebarSurfacePreview,
+} from "@/components/projects/rovo-app/lib/rovo-app-sidebar-surface-preview";
 import { token } from "@/lib/tokens";
 import {
 	DropdownMenu,
@@ -39,12 +41,15 @@ import {
 	SidebarMenuItem,
 	useSidebar,
 } from "@/components/ui/sidebar";
+import { DatabaseIcon, ListTodoIcon, SettingsIcon } from "@/components/ui/vpk-icons";
 import { shouldShowRovoAppSidebarRunIndicator } from "@/components/projects/rovo-app/lib/rovo-app-sidebar-run-indicator";
 import { getRovoAppSidebarThreadContentPaddingClass } from "@/components/projects/rovo-app/lib/rovo-app-sidebar-thread-layout";
 import type { RovoAppRunStatus, RovoAppThread } from "@/lib/rovo-app-types";
 import { cn } from "@/lib/utils";
 import DeleteIcon from "@atlaskit/icon/core/delete";
 import ShowMoreHorizontalIcon from "@atlaskit/icon/core/show-more-horizontal";
+import { CONTROL_PLANE_SURFACES } from "@/components/projects/control-plane/lib/control-plane-data";
+import { usePathname, useRouter } from "next/navigation";
 
 interface RovoAppSidebarProps {
 	activeThreadId: string | null;
@@ -132,6 +137,9 @@ function RovoAppSidebarNavItem({
 	icon,
 	label,
 	onClick,
+	onSidebarMouseEnter,
+	onSidebarMouseLeave,
+	preview,
 	selected = false,
 	showChevron = false,
 	trailing,
@@ -139,29 +147,145 @@ function RovoAppSidebarNavItem({
 	icon: React.ReactNode;
 	label: string;
 	onClick?: () => void;
+	onSidebarMouseEnter?: () => void;
+	onSidebarMouseLeave?: () => void;
+	preview?: RovoAppSidebarSurfacePreview | null;
 	selected?: boolean;
 	showChevron?: boolean;
 	trailing?: React.ReactNode;
 }>) {
+	const [hoverOpen, setHoverOpen] = React.useState(false);
+	const hoverTimeout = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+	const handleMouseEnter = React.useCallback(() => {
+		if (hoverTimeout.current) {
+			clearTimeout(hoverTimeout.current);
+			hoverTimeout.current = null;
+		}
+		setHoverOpen(true);
+		onSidebarMouseEnter?.();
+	}, [onSidebarMouseEnter]);
+
+	const handleMouseLeave = React.useCallback(() => {
+		hoverTimeout.current = setTimeout(() => {
+			setHoverOpen(false);
+			onSidebarMouseLeave?.();
+		}, 100);
+	}, [onSidebarMouseLeave]);
+
+	React.useEffect(() => {
+		return () => {
+			if (hoverTimeout.current) {
+				clearTimeout(hoverTimeout.current);
+			}
+		};
+	}, []);
+
+	const navItem = (
+		<SidebarNavItem
+			className={cn(
+				selected && "[&_button]:text-text-selected",
+			)}
+			isSelected={selected}
+			label={label}
+			leading={icon}
+			leadingSize="medium"
+			meta={trailing}
+			onClick={onClick}
+			actions={showChevron ? (
+				<SidebarNavItemAction aria-label={`Open ${label}`}>
+					<ChevronRightIcon label="" />
+				</SidebarNavItemAction>
+			) : null}
+		/>
+	);
+
+	if (!preview) {
+		return (
+			<SidebarMenuItem className="relative">
+				{navItem}
+			</SidebarMenuItem>
+		);
+	}
+
 	return (
-		<SidebarMenuItem className="relative">
-			<SidebarNavItem
-				className={cn(
-					selected && "[&_button]:text-text-selected",
-				)}
-				isSelected={selected}
-				label={label}
-				leading={icon}
-				leadingSize="medium"
-				meta={trailing}
-				onClick={onClick}
-				actions={showChevron ? (
-					<SidebarNavItemAction aria-label={`Open ${label}`}>
-						<ChevronRightIcon label="" />
-					</SidebarNavItemAction>
-				) : null}
-			/>
+		<SidebarMenuItem
+			className="relative"
+			onMouseEnter={handleMouseEnter}
+			onMouseLeave={handleMouseLeave}
+		>
+			<Popover open={hoverOpen} onOpenChange={setHoverOpen}>
+				<PopoverTrigger render={<div />} nativeButton={false}>
+					{navItem}
+				</PopoverTrigger>
+				<RovoAppSidebarNavPreviewCard
+					icon={icon}
+					onMouseEnter={handleMouseEnter}
+					onMouseLeave={handleMouseLeave}
+					preview={preview}
+				/>
+			</Popover>
 		</SidebarMenuItem>
+	);
+}
+
+function RovoAppSidebarNavPreviewCard({
+	icon,
+	onMouseEnter,
+	onMouseLeave,
+	preview,
+}: Readonly<{
+	icon: React.ReactNode;
+	onMouseEnter?: () => void;
+	onMouseLeave?: () => void;
+	preview: RovoAppSidebarSurfacePreview;
+}>) {
+	return (
+		<PopoverContent
+			align="start"
+			className="bg-surface-overlay w-72 divide-y divide-border overflow-hidden rounded-lg p-0 shadow-2xl"
+			side="right"
+			sideOffset={8}
+			onMouseEnter={onMouseEnter}
+			onMouseLeave={onMouseLeave}
+		>
+			<div className="flex items-start gap-3 p-3">
+				<span className="flex size-6 shrink-0 items-center justify-center text-icon-subtle [&_svg]:shrink-0">
+					{icon}
+				</span>
+				<div className="min-w-0 space-y-1">
+					<div className="text-sm font-semibold text-text">
+						{preview.title}
+					</div>
+					<p className="text-sm leading-5 text-text-subtle">
+						{preview.description}
+					</p>
+				</div>
+			</div>
+			<div className="space-y-1.5 p-3">
+				{preview.rows.map((row) => (
+					<div
+						key={row.label}
+						className="flex items-center justify-between gap-3 text-sm"
+					>
+						<span className="min-w-0 truncate text-text-subtle">
+							{row.label}
+						</span>
+						<span className="shrink-0 text-right text-xs font-medium text-text">
+							{row.value}
+						</span>
+					</div>
+				))}
+			</div>
+			<div className="bg-surface-raised flex items-center justify-between gap-3 p-3 text-xs">
+				<span className="text-text-subtle">
+					{preview.footerLabel}
+				</span>
+				<span className="font-medium text-text">
+					{preview.footerValue}
+				</span>
+			</div>
+		</PopoverContent>
 	);
 }
 
@@ -334,8 +458,34 @@ export function RovoAppSidebar({
 	threadsLoaded = true,
 	topOffset = false,
 }: Readonly<RovoAppSidebarProps>) {
-	const isNewChatSelected = activeThreadId === null;
+	const pathname = usePathname() ?? "";
+	const router = useRouter();
+	const isOnControlPlaneSurface = CONTROL_PLANE_SURFACES.some(
+		(surface) => pathname === surface.href || pathname.startsWith(`${surface.href}/`),
+	);
+	const isNewChatSelected = activeThreadId === null && !isOnControlPlaneSurface;
 	const threadSections = React.useMemo(() => groupRovoAppThreadsByDate(threads), [threads]);
+	const controlPlaneNavItems = React.useMemo(
+		() =>
+			CONTROL_PLANE_SURFACES.map((surface) => {
+				const icon =
+					surface.label === "Jobs"
+						? <ListTodoIcon size="medium" />
+						: surface.label === "Memories"
+							? <DatabaseIcon size="medium" />
+							: surface.label === "Skills"
+								? <SkillIcon label="" size="medium" />
+								: <SettingsIcon size="medium" />;
+
+				return {
+					description: surface.description,
+					href: surface.href,
+					icon,
+					label: surface.label,
+				};
+			}),
+		[],
+	);
 
 	return (
 		<Sidebar
@@ -352,10 +502,10 @@ export function RovoAppSidebar({
 		>
 			<SidebarContent className="bg-sidebar gap-3">
 				{/* Top navigation items */}
-				<SidebarGroup className="p-0">
-					<SidebarGroupContent>
-						<SidebarMenu>
-							<RovoAppSidebarNavItem
+			<SidebarGroup className="p-0">
+				<SidebarGroupContent>
+					<SidebarMenu>
+						<RovoAppSidebarNavItem
 								icon={
 									<span
 										className={cn(
@@ -365,36 +515,42 @@ export function RovoAppSidebar({
 									>
 										<AddIcon color="currentColor" label="" size="small" />
 									</span>
-								}
-								label="New chat"
-								onClick={onNewChat}
-								selected={isNewChatSelected}
-								trailing={
-									<SidebarNavItemCount className="pointer-events-auto min-w-0 rounded-xs px-1 font-normal text-text hover:bg-bg-neutral active:bg-bg-neutral group-data-[selected=true]/sidebar-nav-item:bg-transparent">
+							}
+							label="New chat"
+							onClick={onNewChat}
+							onSidebarMouseEnter={onSidebarMouseEnter}
+							onSidebarMouseLeave={onSidebarMouseLeave}
+							preview={getRovoAppSidebarSurfacePreview({
+								label: "New chat",
+								selected: isNewChatSelected,
+							})}
+							selected={isNewChatSelected}
+							trailing={
+								<SidebarNavItemCount className="pointer-events-auto min-w-0 rounded-xs px-1 font-normal text-text hover:bg-bg-neutral active:bg-bg-neutral group-data-[selected=true]/sidebar-nav-item:bg-transparent">
 										⌘⇧O
 									</SidebarNavItemCount>
 								}
 							/>
-							<RovoAppSidebarNavItem
-								icon={<ScorecardIcon label="" size="medium" />}
-								label="Tasks"
-								showChevron
-							/>
-							<RovoAppSidebarNavItem
-								icon={<ShapesIcon label="" size="medium" />}
-								label="Artifacts"
-								showChevron
-							/>
-	<RovoAppSidebarNavItem
-								icon={<AiAgentIcon label="" size="medium" />}
-								label="Agents"
-								showChevron
-							/>
-							<RovoAppSidebarNavItem
-								icon={<SkillIcon label="" size="medium" />}
-								label="Skills"
-								showChevron
-							/>
+							{controlPlaneNavItems.map((item) => {
+								const isSelected = pathname === item.href || pathname.startsWith(`${item.href}/`);
+								return (
+									<RovoAppSidebarNavItem
+										key={item.href}
+										icon={item.icon}
+										label={item.label}
+										onClick={() => router.push(item.href)}
+										onSidebarMouseEnter={onSidebarMouseEnter}
+										onSidebarMouseLeave={onSidebarMouseLeave}
+										preview={getRovoAppSidebarSurfacePreview({
+											description: item.description,
+											label: item.label,
+											selected: isSelected,
+										})}
+										selected={isSelected}
+										showChevron
+									/>
+								);
+							})}
 						</SidebarMenu>
 					</SidebarGroupContent>
 				</SidebarGroup>

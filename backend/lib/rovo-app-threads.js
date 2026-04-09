@@ -68,6 +68,22 @@ function normalizeRealtimeMessages(rawMessages) {
 	});
 }
 
+function normalizeHermesContext(rawHermesContext) {
+	if (!rawHermesContext || typeof rawHermesContext !== "object") {
+		return null;
+	}
+
+	const selectedSkillIds = Array.isArray(rawHermesContext.selectedSkillIds)
+		? rawHermesContext.selectedSkillIds.filter(
+			(skillId) => typeof skillId === "string" && skillId.trim().length > 0,
+		)
+		: [];
+
+	return {
+		selectedSkillIds: Array.from(new Set(selectedSkillIds.map((skillId) => skillId.trim()))),
+	};
+}
+
 function normalizeActiveRun(rawActiveRun, updatedAtFallback) {
 	if (!rawActiveRun || typeof rawActiveRun !== "object") {
 		return null;
@@ -160,16 +176,17 @@ function normalizeThreadRecord(rawThread) {
 			typeof rawThread.modelId === "string" && rawThread.modelId.trim()
 				? rawThread.modelId.trim()
 				: null,
-		provider:
-			typeof rawThread.provider === "string" && rawThread.provider.trim()
-				? rawThread.provider.trim()
-				: null,
-		realtimeMessages: normalizeRealtimeMessages(rawThread.realtimeMessages),
-		activeDocumentId:
-			typeof rawThread.activeDocumentId === "string" && rawThread.activeDocumentId.trim()
-				? rawThread.activeDocumentId.trim()
-				: null,
-		sessionId,
+			provider:
+				typeof rawThread.provider === "string" && rawThread.provider.trim()
+					? rawThread.provider.trim()
+					: null,
+			realtimeMessages: normalizeRealtimeMessages(rawThread.realtimeMessages),
+			activeDocumentId:
+				typeof rawThread.activeDocumentId === "string" && rawThread.activeDocumentId.trim()
+					? rawThread.activeDocumentId.trim()
+					: null,
+			hermesContext: normalizeHermesContext(rawThread.hermesContext),
+			sessionId,
 		sessionMode: normalizeSessionMode(
 			rawThread.sessionMode ?? rawThread.session_mode,
 			Boolean(sessionId),

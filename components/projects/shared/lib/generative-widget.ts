@@ -20,59 +20,123 @@ interface ParsedGenerativeWidgetBase {
 	iconHint?: string;
 }
 
-export interface ParsedGenuiPreviewWidget extends ParsedGenerativeWidgetBase {
+export interface PreviewImageSource {
+	url: string;
+	mimeType?: string;
+}
+
+export interface PreviewVideoTrack {
+	id: string;
+	name: string;
+	type: string;
+	enabled: boolean;
+}
+
+export interface PreviewVideoClip {
+	id: string;
+	trackId: string;
+	component: string;
+	props: Record<string, unknown>;
+	from: number;
+	durationInFrames: number;
+}
+
+export interface PreviewVideoComposition {
+	id: string;
+	fps: number;
+	width: number;
+	height: number;
+	durationInFrames: number;
+}
+
+export interface PreviewExcalidrawScene {
+	type?: string;
+	version?: number;
+	source?: string;
+	elements: unknown[];
+	appState?: Record<string, unknown> | null;
+	files?: Record<string, unknown>;
+}
+
+export type PreviewBody =
+	| {
+		kind: "json-render";
+		spec: Spec;
+	}
+	| {
+		kind: "audio";
+		audioUrl: string;
+		mimeType?: string;
+		transcript?: string;
+	}
+	| {
+		kind: "image";
+		images: PreviewImageSource[];
+		prompt?: string;
+	}
+	| {
+		kind: "video";
+		composition: PreviewVideoComposition;
+		tracks: PreviewVideoTrack[];
+		clips: PreviewVideoClip[];
+		audio?: { tracks: unknown[] };
+	}
+	| {
+		kind: "text";
+		text: string;
+		markdown?: boolean;
+	}
+	| {
+		kind: "code";
+		code: string;
+		language?: string;
+	}
+	| {
+		kind: "app-url";
+		url: string;
+		summary?: string;
+	}
+	| {
+		kind: "excalidraw";
+		scene: PreviewExcalidrawScene;
+	}
+	| {
+		kind: "json";
+		value: unknown;
+	};
+
+export interface ParsedGenerativeWidget extends ParsedGenerativeWidgetBase {
 	type: "genui-preview";
-	spec: Spec;
+	body: PreviewBody;
 	summary?: string;
 }
 
-export interface ParsedAudioPreviewWidget extends ParsedGenerativeWidgetBase {
-	type: "audio-preview";
+export interface PreviewAudioBody {
+	kind: "audio";
 	audioUrl: string;
 	mimeType?: string;
 	transcript?: string;
 }
 
-export interface ParsedImagePreviewWidget extends ParsedGenerativeWidgetBase {
-	type: "image-preview";
-	images: Array<{
-		url: string;
-		mimeType?: string;
-	}>;
+export interface PreviewImageBody {
+	kind: "image";
+	images: PreviewImageSource[];
 	prompt?: string;
 }
 
-export interface ParsedVideoPreviewWidget extends ParsedGenerativeWidgetBase {
-	type: "video-preview";
-	composition: {
-		id: string;
-		fps: number;
-		width: number;
-		height: number;
-		durationInFrames: number;
-	};
-	tracks: Array<{
-		id: string;
-		name: string;
-		type: string;
-		enabled: boolean;
-	}>;
-	clips: Array<{
-		id: string;
-		trackId: string;
-		component: string;
-		props: Record<string, unknown>;
-		from: number;
-		durationInFrames: number;
-	}>;
+export interface PreviewVideoBody {
+	kind: "video";
+	composition: PreviewVideoComposition;
+	tracks: PreviewVideoTrack[];
+	clips: PreviewVideoClip[];
 	audio?: { tracks: unknown[] };
 }
 
-export type ParsedGenerativeWidget =
-	| ParsedGenuiPreviewWidget
-	| ParsedAudioPreviewWidget
-	| ParsedImagePreviewWidget
-	| ParsedVideoPreviewWidget;
+type JsonRenderPreviewBody = Extract<PreviewBody, { kind: "json-render" }>;
+
+function isJsonRenderBody(body: PreviewBody): body is JsonRenderPreviewBody {
+	return body.kind === "json-render";
+}
 
 export interface GenerativeWidgetMetadata {
 	contentType: GenerativeContentType;
@@ -104,6 +168,8 @@ const GENERATIVE_CONTENT_TYPE_HINT_KEYS = [
 
 export type GenerativeContentType =
 	| "image"
+	| "memory"
+	| "skill"
 	| "text"
 	| "translation"
 	| "message"
@@ -895,7 +961,7 @@ function parseGenerativeWidgetBase(payload: Record<string, unknown>): ParsedGene
 	};
 }
 
-function parseGenuiPreviewWidgetData(value: unknown): ParsedGenuiPreviewWidget | null {
+function parseJsonRenderPreviewBody(value: unknown): Extract<PreviewBody, { kind: "json-render" }> | null {
 	if (!isObjectRecord(value) || !isObjectRecord(value.spec)) {
 		return null;
 	}
@@ -906,27 +972,21 @@ function parseGenuiPreviewWidgetData(value: unknown): ParsedGenuiPreviewWidget |
 	if (!root.trim() || !elements || Object.keys(elements).length === 0) {
 		return null;
 	}
+
 	const sanitizedElements = sanitizeSpecElementTextProps(elements);
-
-	const spec = {
-		root,
-		elements: sanitizedElements,
-		...(Object.prototype.hasOwnProperty.call(rawSpec, "state")
-			? { state: rawSpec.state }
-			: {}),
-	} as Spec;
-
-	const summary = getNonEmptyString(value.summary);
-
 	return {
-		type: "genui-preview",
-		spec,
-		...(summary ? { summary } : {}),
-		...parseGenerativeWidgetBase(value),
+		kind: "json-render",
+		spec: {
+			root,
+			elements: sanitizedElements,
+			...(Object.prototype.hasOwnProperty.call(rawSpec, "state")
+				? { state: rawSpec.state }
+				: {}),
+		} as Spec,
 	};
 }
 
-function parseAudioPreviewWidgetData(value: unknown): ParsedAudioPreviewWidget | null {
+function parseAudioPreviewBody(value: unknown): PreviewAudioBody | null {
 	if (!isObjectRecord(value) || typeof value.audioUrl !== "string") {
 		return null;
 	}
@@ -940,15 +1000,14 @@ function parseAudioPreviewWidgetData(value: unknown): ParsedAudioPreviewWidget |
 	const transcript = getNonEmptyString(value.transcript);
 
 	return {
-		type: "audio-preview",
+		kind: "audio",
 		audioUrl,
 		...(mimeType ? { mimeType } : {}),
 		...(transcript ? { transcript } : {}),
-		...parseGenerativeWidgetBase(value),
 	};
 }
 
-function parseImagePreviewWidgetData(value: unknown): ParsedImagePreviewWidget | null {
+function parseImagePreviewBody(value: unknown): PreviewImageBody | null {
 	if (!isObjectRecord(value) || !Array.isArray(value.images)) {
 		return null;
 	}
@@ -967,22 +1026,28 @@ function parseImagePreviewWidgetData(value: unknown): ParsedImagePreviewWidget |
 	const prompt = getNonEmptyString(value.prompt);
 
 	return {
-		type: "image-preview",
+		kind: "image",
 		images,
 		...(prompt ? { prompt } : {}),
-		...parseGenerativeWidgetBase(value),
 	};
 }
 
-function parseVideoPreviewWidgetData(value: unknown): ParsedVideoPreviewWidget | null {
-	if (!isObjectRecord(value)) return null;
+function parseVideoPreviewBody(value: unknown): PreviewVideoBody | null {
+	if (!isObjectRecord(value)) {
+		return null;
+	}
 
 	const composition = value.composition;
-	if (!isObjectRecord(composition)) return null;
-	if (typeof composition.fps !== "number" || typeof composition.durationInFrames !== "number") return null;
+	if (!isObjectRecord(composition)) {
+		return null;
+	}
+
+	if (typeof composition.fps !== "number" || typeof composition.durationInFrames !== "number") {
+		return null;
+	}
 
 	return {
-		type: "video-preview",
+		kind: "video",
 		composition: {
 			id: typeof composition.id === "string" ? composition.id : "main",
 			fps: composition.fps,
@@ -990,18 +1055,223 @@ function parseVideoPreviewWidgetData(value: unknown): ParsedVideoPreviewWidget |
 			height: typeof composition.height === "number" ? composition.height : 1080,
 			durationInFrames: composition.durationInFrames,
 		},
-		tracks: Array.isArray(value.tracks) ? value.tracks as ParsedVideoPreviewWidget["tracks"] : [],
-		clips: Array.isArray(value.clips) ? value.clips as ParsedVideoPreviewWidget["clips"] : [],
+		tracks: Array.isArray(value.tracks) ? value.tracks as PreviewVideoTrack[] : [],
+		clips: Array.isArray(value.clips) ? value.clips as PreviewVideoClip[] : [],
 		...(isObjectRecord(value.audio) ? { audio: value.audio as { tracks: unknown[] } } : {}),
+	};
+}
+
+export function parseExcalidrawPreviewScene(value: unknown): PreviewExcalidrawScene | null {
+	if (!isObjectRecord(value) || !Array.isArray(value.elements)) {
+		return null;
+	}
+
+	const type = getNonEmptyString(value.type);
+	const source = getNonEmptyString(value.source);
+	const appState = isObjectRecord(value.appState) ? value.appState : null;
+	const files = isObjectRecord(value.files) ? value.files : undefined;
+	const version = typeof value.version === "number" ? value.version : undefined;
+
+	return {
+		...(type ? { type } : {}),
+		...(version !== undefined ? { version } : {}),
+		...(source ? { source } : {}),
+		elements: value.elements,
+		...(appState ? { appState } : {}),
+		...(files ? { files } : {}),
+	};
+}
+
+function parseExplicitPreviewBody(value: unknown): PreviewBody | null {
+	if (!isObjectRecord(value) || !isObjectRecord(value.body)) {
+		return null;
+	}
+
+	const body = value.body;
+	const kind = getNonEmptyString(body.kind);
+	if (!kind) {
+		return { kind: "json", value: body };
+	}
+
+	if (kind === "json-render") {
+		return parseJsonRenderPreviewBody(body);
+	}
+
+	if (kind === "audio") {
+		return parseAudioPreviewBody(body);
+	}
+
+	if (kind === "image") {
+		return parseImagePreviewBody(body);
+	}
+
+	if (kind === "video") {
+		return parseVideoPreviewBody(body);
+	}
+
+	if (kind === "text") {
+		const text = getNonEmptyString(body.text);
+		if (!text) {
+			return null;
+		}
+
+		return {
+			kind: "text",
+			text,
+			...(typeof body.markdown === "boolean" ? { markdown: body.markdown } : {}),
+		};
+	}
+
+	if (kind === "code") {
+		const code = getNonEmptyString(body.code);
+		if (!code) {
+			return null;
+		}
+
+		const language = getNonEmptyString(body.language);
+		return {
+			kind: "code",
+			code,
+			...(language ? { language } : {}),
+		};
+	}
+
+	if (kind === "app-url") {
+		const url = getNonEmptyString(body.url);
+		if (!url) {
+			return null;
+		}
+
+		const summary = getNonEmptyString(body.summary);
+		return {
+			kind: "app-url",
+			url,
+			...(summary ? { summary } : {}),
+		};
+	}
+
+	if (kind === "excalidraw") {
+		const scene = parseExcalidrawPreviewScene(body.scene ?? body);
+		return scene ? { kind: "excalidraw", scene } : null;
+	}
+
+	if (kind === "json") {
+		return {
+			kind: "json",
+			value: Object.prototype.hasOwnProperty.call(body, "value") ? body.value : body,
+		};
+	}
+
+	return {
+		kind: "json",
+		value: body,
+	};
+}
+
+function parseGenerativeWidgetFromBody({
+	body,
+	summary,
+	value,
+}: Readonly<{
+	body: PreviewBody;
+	summary?: string;
+	value: Record<string, unknown>;
+}>): ParsedGenerativeWidget {
+	return {
+		type: "genui-preview",
+		body,
+		...(summary ? { summary } : {}),
 		...parseGenerativeWidgetBase(value),
 	};
+}
+
+function parseGenuiPreviewWidgetData(value: unknown): ParsedGenerativeWidget | null {
+	if (!isObjectRecord(value)) {
+		return null;
+	}
+
+	const summary = getNonEmptyString(value.summary);
+	const explicitBody = parseExplicitPreviewBody(value);
+	if (explicitBody) {
+		return parseGenerativeWidgetFromBody({
+			body: explicitBody,
+			summary: summary ?? undefined,
+			value,
+		});
+	}
+
+	const jsonRenderBody = parseJsonRenderPreviewBody(value);
+	if (jsonRenderBody) {
+		return parseGenerativeWidgetFromBody({
+			body: jsonRenderBody,
+			summary: summary ?? undefined,
+			value,
+		});
+	}
+
+	const scene = parseExcalidrawPreviewScene(value.scene ?? value);
+	if (scene) {
+		return parseGenerativeWidgetFromBody({
+			body: {
+				kind: "excalidraw",
+				scene,
+			},
+			summary: summary ?? undefined,
+			value,
+		});
+	}
+
+	return null;
+}
+
+function parseAudioPreviewWidgetData(value: unknown): ParsedGenerativeWidget | null {
+	if (!isObjectRecord(value)) {
+		return null;
+	}
+
+	const body = parseAudioPreviewBody(value);
+	if (!body) {
+		return null;
+	}
+
+	return parseGenerativeWidgetFromBody({ body, value });
+}
+
+function parseImagePreviewWidgetData(value: unknown): ParsedGenerativeWidget | null {
+	if (!isObjectRecord(value)) {
+		return null;
+	}
+
+	const body = parseImagePreviewBody(value);
+	if (!body) {
+		return null;
+	}
+
+	return parseGenerativeWidgetFromBody({ body, value });
+}
+
+function parseVideoPreviewWidgetData(value: unknown): ParsedGenerativeWidget | null {
+	if (!isObjectRecord(value)) {
+		return null;
+	}
+
+	const body = parseVideoPreviewBody(value);
+	if (!body) {
+		return null;
+	}
+
+	return parseGenerativeWidgetFromBody({ body, value });
 }
 
 export function parseGenerativeWidget(
 	widgetType: string,
 	widgetData: unknown
 ): ParsedGenerativeWidget | null {
-	if (widgetType === "genui-preview") {
+	if (
+		widgetType === "genui-preview" ||
+		widgetType === "hermes-memory" ||
+		widgetType === "hermes-skill"
+	) {
 		return parseGenuiPreviewWidgetData(widgetData);
 	}
 
@@ -1020,7 +1290,43 @@ export function parseGenerativeWidget(
 	return null;
 }
 
-function resolveGenuiContentType(widget: ParsedGenuiPreviewWidget): GenerativeContentType {
+function resolveGenuiContentType(widget: ParsedGenerativeWidget): GenerativeContentType {
+	if (!isJsonRenderBody(widget.body)) {
+		if (widget.body.kind === "text") {
+			return "text";
+		}
+
+		if (widget.body.kind === "code" || widget.body.kind === "json") {
+			return "code";
+		}
+
+		if (widget.body.kind === "image") {
+			return "image";
+		}
+
+		if (widget.body.kind === "audio") {
+			return "sound";
+		}
+
+		if (widget.body.kind === "video") {
+			return "video";
+		}
+
+		if (widget.body.kind === "app-url") {
+			return "ui";
+		}
+
+		return "other";
+	}
+
+	if (widget.contentTypeHint === "memory") {
+		return "memory";
+	}
+
+	if (widget.contentTypeHint === "skill") {
+		return "skill";
+	}
+
 	const textHints = [
 		widget.title,
 		widget.description,
@@ -1036,7 +1342,7 @@ function resolveGenuiContentType(widget: ParsedGenuiPreviewWidget): GenerativeCo
 		return hintedContentType;
 	}
 
-	for (const value of Object.values(widget.spec.elements ?? {})) {
+	for (const value of Object.values(widget.body.spec.elements ?? {})) {
 		if (!isObjectRecord(value)) {
 			continue;
 		}
@@ -1062,41 +1368,24 @@ function resolveGenuiContentType(widget: ParsedGenuiPreviewWidget): GenerativeCo
 
 function resolveContentType(widget: ParsedGenerativeWidget): GenerativeContentType {
 	const explicitHint = resolveContentTypeFromHint(widget.contentTypeHint);
-	if (widget.type === "genui-preview") {
-		const inferredContentType = resolveGenuiContentType(widget);
+	const inferredContentType = resolveGenuiContentType(widget);
 
-		// Generic "text" hints should not override stronger inferred domains.
-		if (
-			explicitHint &&
-			!(
-				explicitHint === "text" &&
-				inferredContentType !== "other" &&
-				inferredContentType !== "text"
-			)
-		) {
-			return explicitHint;
-		}
-
-		if (inferredContentType !== "other") {
-			return inferredContentType;
-		}
-
-		return explicitHint ?? inferredContentType;
-	}
-
-	if (explicitHint) {
+	if (
+		explicitHint &&
+		!(
+			explicitHint === "text" &&
+			inferredContentType !== "other" &&
+			inferredContentType !== "text"
+		)
+	) {
 		return explicitHint;
 	}
 
-	if (widget.type === "image-preview") {
-		return "image";
+	if (inferredContentType !== "other") {
+		return inferredContentType;
 	}
 
-	if (widget.type === "audio-preview") {
-		return "sound";
-	}
-
-	return "other";
+	return explicitHint ?? inferredContentType;
 }
 
 function getSpecTraversalKeys(spec: Spec): string[] {
@@ -1144,12 +1433,16 @@ interface SpecTitleCandidate {
 	index: number;
 }
 
-function findBestTitleInSpec(widget: ParsedGenuiPreviewWidget): SpecTitleCandidate | null {
-	const traversalKeys = getSpecTraversalKeys(widget.spec);
+function findBestTitleInSpec(widget: ParsedGenerativeWidget): SpecTitleCandidate | null {
+	if (!isJsonRenderBody(widget.body)) {
+		return null;
+	}
+
+	const traversalKeys = getSpecTraversalKeys(widget.body.spec);
 	let best: SpecTitleCandidate | null = null;
 
 	for (const [index, key] of traversalKeys.entries()) {
-		const element = widget.spec.elements[key];
+		const element = widget.body.spec.elements[key];
 		if (!isObjectRecord(element)) {
 			continue;
 		}
@@ -1195,7 +1488,7 @@ function findBestTitleInSpec(widget: ParsedGenuiPreviewWidget): SpecTitleCandida
 	return best;
 }
 
-function resolveGenuiTitleFromSpec(widget: ParsedGenuiPreviewWidget): string | undefined {
+function resolveGenuiTitleFromSpec(widget: ParsedGenerativeWidget): string | undefined {
 	return findBestTitleInSpec(widget)?.text;
 }
 
@@ -1207,12 +1500,16 @@ interface SpecDescriptionCandidate {
 	index: number;
 }
 
-function findBestDescriptionInSpec(widget: ParsedGenuiPreviewWidget): SpecDescriptionCandidate | null {
-	const traversalKeys = getSpecTraversalKeys(widget.spec);
+function findBestDescriptionInSpec(widget: ParsedGenerativeWidget): SpecDescriptionCandidate | null {
+	if (!isJsonRenderBody(widget.body)) {
+		return null;
+	}
+
+	const traversalKeys = getSpecTraversalKeys(widget.body.spec);
 	let best: SpecDescriptionCandidate | null = null;
 
 	for (const [index, key] of traversalKeys.entries()) {
-		const element = widget.spec.elements[key];
+		const element = widget.body.spec.elements[key];
 		if (!isObjectRecord(element)) {
 			continue;
 		}
@@ -1253,7 +1550,7 @@ function findBestDescriptionInSpec(widget: ParsedGenuiPreviewWidget): SpecDescri
 	return best;
 }
 
-function resolveGenuiDescriptionFromSpec(widget: ParsedGenuiPreviewWidget): string | undefined {
+function resolveGenuiDescriptionFromSpec(widget: ParsedGenerativeWidget): string | undefined {
 	return findBestDescriptionInSpec(widget)?.text;
 }
 
@@ -1290,14 +1587,18 @@ function scorePrimaryActionLabel(
 }
 
 function resolveGenuiPrimaryActionLabelFromSpec(
-	widget: ParsedGenuiPreviewWidget
+	widget: ParsedGenerativeWidget
 ): string | undefined {
-	const traversalKeys = getSpecTraversalKeys(widget.spec);
+	if (!isJsonRenderBody(widget.body)) {
+		return undefined;
+	}
+
+	const traversalKeys = getSpecTraversalKeys(widget.body.spec);
 	let fallbackLabel: string | undefined;
 	let bestLabel: { text: string; score: number } | null = null;
 
 	for (const key of traversalKeys) {
-		const element = widget.spec.elements[key];
+		const element = widget.body.spec.elements[key];
 		if (!isObjectRecord(element)) {
 			continue;
 		}
@@ -1361,13 +1662,17 @@ function resolveActionHrefFromPress(pressValue: unknown): string | undefined {
 }
 
 function resolveGenuiActionsFromSpec(
-	widget: ParsedGenuiPreviewWidget
+	widget: ParsedGenerativeWidget
 ): GenerativeWidgetActionItem[] {
-	const traversalKeys = getSpecTraversalKeys(widget.spec);
+	if (!isJsonRenderBody(widget.body)) {
+		return [];
+	}
+
+	const traversalKeys = getSpecTraversalKeys(widget.body.spec);
 	const actions: GenerativeWidgetActionItem[] = [];
 
 	for (const key of traversalKeys) {
-		const element = widget.spec.elements[key];
+		const element = widget.body.spec.elements[key];
 		if (!isObjectRecord(element)) {
 			continue;
 		}
@@ -1400,6 +1705,8 @@ function resolveGenuiActionsFromSpec(
 
 const CONTENT_TYPE_FALLBACK_TITLES: Partial<Record<GenerativeContentType, string>> = {
 	"image": "Generated image",
+	"memory": "Memory context",
+	"skill": "Skill context",
 	"sound": "Generated audio",
 	"translation": "Generated translation",
 	"message": "Generated message draft",
@@ -1430,16 +1737,20 @@ function resolveTitle(
 		return clipText(widget.title, 72);
 	}
 
-	if (widget.type === "genui-preview" && derivedGenuiTitle) {
+	if (derivedGenuiTitle) {
 		return clipText(derivedGenuiTitle, 72);
 	}
 
-	if (widget.type === "image-preview" && widget.prompt) {
-		return clipText(widget.prompt, 72);
+	if (widget.body.kind === "image" && widget.body.prompt) {
+		return clipText(widget.body.prompt, 72);
 	}
 
-	if (widget.type === "audio-preview" && widget.transcript) {
-		return clipText(widget.transcript, 72);
+	if (widget.body.kind === "audio" && widget.body.transcript) {
+		return clipText(widget.body.transcript, 72);
+	}
+
+	if (widget.body.kind === "app-url" && widget.body.summary) {
+		return clipText(widget.body.summary, 72);
 	}
 
 	return CONTENT_TYPE_FALLBACK_TITLES[contentType] ?? "Generated content";
@@ -1460,12 +1771,16 @@ interface CalendarOverviewDetails {
 	timeZone?: string;
 }
 
-function extractCalendarOverviewDetails(widget: ParsedGenuiPreviewWidget): CalendarOverviewDetails {
-	const traversalKeys = getSpecTraversalKeys(widget.spec);
+function extractCalendarOverviewDetails(widget: ParsedGenerativeWidget): CalendarOverviewDetails {
+	if (!isJsonRenderBody(widget.body)) {
+		return {};
+	}
+
+	const traversalKeys = getSpecTraversalKeys(widget.body.spec);
 	const details: CalendarOverviewDetails = {};
 
 	for (const key of traversalKeys) {
-		const element = widget.spec.elements[key];
+		const element = widget.body.spec.elements[key];
 		if (!isObjectRecord(element) || getNonEmptyString(element.type) !== "Text") {
 			continue;
 		}
@@ -1507,13 +1822,17 @@ function extractCalendarOverviewDetails(widget: ParsedGenuiPreviewWidget): Calen
 }
 
 function resolveGenuiContextDescription(
-	widget: ParsedGenuiPreviewWidget
+	widget: ParsedGenerativeWidget
 ): string | undefined {
-	const traversalKeys = getSpecTraversalKeys(widget.spec);
+	if (!isJsonRenderBody(widget.body)) {
+		return undefined;
+	}
+
+	const traversalKeys = getSpecTraversalKeys(widget.body.spec);
 	const calendarOverview = extractCalendarOverviewDetails(widget);
 
 	for (const key of traversalKeys) {
-		const element = widget.spec.elements[key];
+		const element = widget.body.spec.elements[key];
 		if (!isObjectRecord(element)) {
 			continue;
 		}
@@ -1582,7 +1901,7 @@ function resolveGenuiContextDescription(
 	}
 
 	for (const key of traversalKeys) {
-		const element = widget.spec.elements[key];
+		const element = widget.body.spec.elements[key];
 		if (!isObjectRecord(element)) {
 			continue;
 		}
@@ -1652,39 +1971,41 @@ function resolveDescription(
 		? clipText(widget.description, 140)
 		: undefined;
 
-	if (widget.type === "genui-preview") {
-		const contextDescription = resolveGenuiContextDescription(widget);
-		const preferredDescription = resolvePreferredGenuiDescription({
-			explicitDescription,
-			derivedDescription: derivedGenuiDescription
-				? clipText(derivedGenuiDescription, 140)
-				: undefined,
-			summary: widget.summary
-				? clipText(widget.summary, 140)
-				: undefined,
-			contextDescription,
-		});
-		if (preferredDescription) {
-			return clipText(preferredDescription, 140);
-		}
+	const contextDescription = resolveGenuiContextDescription(widget);
+	const preferredDescription = resolvePreferredGenuiDescription({
+		explicitDescription,
+		derivedDescription: derivedGenuiDescription
+			? clipText(derivedGenuiDescription, 140)
+			: undefined,
+		summary: widget.summary
+			? clipText(widget.summary, 140)
+			: undefined,
+		contextDescription,
+	});
+	if (preferredDescription) {
+		return clipText(preferredDescription, 140);
 	}
 
 	if (explicitDescription) {
 		return explicitDescription;
 	}
 
-	if (widget.type === "image-preview") {
-		if (widget.title && widget.prompt) {
-			return clipText(widget.prompt, 140);
+	if (widget.body.kind === "image") {
+		if (widget.title && widget.body.prompt) {
+			return clipText(widget.body.prompt, 140);
 		}
 		return "AI-generated image";
 	}
 
-	if (widget.type === "audio-preview") {
-		if (widget.title && widget.transcript) {
-			return clipText(widget.transcript, 140);
+	if (widget.body.kind === "audio") {
+		if (widget.title && widget.body.transcript) {
+			return clipText(widget.body.transcript, 140);
 		}
 		return "AI-generated audio";
+	}
+
+	if (widget.body.kind === "app-url" && widget.body.summary) {
+		return clipText(widget.body.summary, 140);
 	}
 
 	return DEFAULT_DESCRIPTION;
@@ -1694,10 +2015,6 @@ function resolvePrimaryActionLabel(
 	widget: ParsedGenerativeWidget,
 	derivedGenuiPrimaryActionLabel?: string
 ): string | undefined {
-	if (widget.type !== "genui-preview") {
-		return undefined;
-	}
-
 	if (widget.primaryActionLabel) {
 		return clipText(widget.primaryActionLabel, 40);
 	}
@@ -1714,10 +2031,6 @@ function resolveActions(
 	primaryActionLabel: string | undefined,
 	derivedGenuiActions: GenerativeWidgetActionItem[] = []
 ): GenerativeWidgetActionItem[] | undefined {
-	if (widget.type !== "genui-preview") {
-		return undefined;
-	}
-
 	const mergedActions = mergeActionItems([
 		...(primaryActionLabel ? [{ label: primaryActionLabel }] : []),
 		...(widget.actions ?? []),
@@ -1728,10 +2041,9 @@ function resolveActions(
 			.map((actionItem) => getNonEmptyString(actionItem.href))
 			.filter((href): href is string => Boolean(href))
 	));
-	const additionalCandidates =
-		widget.type === "genui-preview"
-			? collectUrlCandidates(widget.spec)
-			: [];
+	const additionalCandidates = isJsonRenderBody(widget.body)
+		? collectUrlCandidates(widget.body.spec)
+		: [];
 	const allCandidates = Array.from(new Set([...knownHrefs, ...additionalCandidates]));
 	const hydratedActions = mergedActions.map((actionItem) => {
 		if (actionItem.href) {
@@ -1768,22 +2080,10 @@ export function resolveGenerativeWidgetMetadata(
 	widget: ParsedGenerativeWidget
 ): GenerativeWidgetMetadata {
 	const contentType = resolveContentType(widget);
-	const derivedGenuiTitle =
-		widget.type === "genui-preview"
-			? resolveGenuiTitleFromSpec(widget)
-			: undefined;
-	const derivedGenuiDescription =
-		widget.type === "genui-preview"
-			? resolveGenuiDescriptionFromSpec(widget)
-			: undefined;
-	const derivedGenuiPrimaryActionLabel =
-		widget.type === "genui-preview"
-			? resolveGenuiPrimaryActionLabelFromSpec(widget)
-			: undefined;
-	const derivedGenuiActions =
-		widget.type === "genui-preview"
-			? resolveGenuiActionsFromSpec(widget)
-			: [];
+	const derivedGenuiTitle = resolveGenuiTitleFromSpec(widget);
+	const derivedGenuiDescription = resolveGenuiDescriptionFromSpec(widget);
+	const derivedGenuiPrimaryActionLabel = resolveGenuiPrimaryActionLabelFromSpec(widget);
+	const derivedGenuiActions = resolveGenuiActionsFromSpec(widget);
 	const primaryActionLabel = resolvePrimaryActionLabel(
 		widget,
 		derivedGenuiPrimaryActionLabel
@@ -1797,7 +2097,7 @@ export function resolveGenerativeWidgetMetadata(
 	const iconHintText = [
 		widget.title,
 		widget.description,
-		widget.type === "genui-preview" ? widget.summary : undefined,
+		widget.summary,
 		derivedGenuiTitle,
 		derivedGenuiDescription,
 		widget.source?.name,
@@ -1839,12 +2139,12 @@ interface SpecTextSource {
 	propName: string;
 }
 
-function findTitleSourceInSpec(widget: ParsedGenuiPreviewWidget): SpecTextSource | null {
+function findTitleSourceInSpec(widget: ParsedGenerativeWidget): SpecTextSource | null {
 	const best = findBestTitleInSpec(widget);
 	return best ? { key: best.key, propName: best.propName } : null;
 }
 
-function findDescriptionSourceInSpec(widget: ParsedGenuiPreviewWidget): SpecTextSource | null {
+function findDescriptionSourceInSpec(widget: ParsedGenerativeWidget): SpecTextSource | null {
 	const best = findBestDescriptionInSpec(widget);
 	return best ? { key: best.key, propName: best.propName } : null;
 }
@@ -2131,20 +2431,40 @@ function collectActionButtonKeysFromSpec(spec: Spec): Set<string> {
 	return buttonKeys;
 }
 
-export function createBodyOnlySpec(widget: ParsedGenuiPreviewWidget): Spec {
-	const specElements = isObjectRecord(widget.spec.elements)
-		? widget.spec.elements
+export function createBodyOnlySpec(
+	widget: ParsedGenerativeWidget | { spec: Spec }
+): Spec {
+	const normalizedWidget = "body" in widget
+		? widget
+		: ({
+			type: "genui-preview",
+			body: {
+				kind: "json-render",
+				spec: widget.spec,
+			},
+			source: null,
+		} satisfies ParsedGenerativeWidget);
+	const spec = "body" in widget
+		? isJsonRenderBody(widget.body)
+			? widget.body.spec
+			: null
+		: widget.spec;
+	if (!spec) {
+		return { root: "", elements: {} };
+	}
+	const specElements = isObjectRecord(spec.elements)
+		? spec.elements
 		: null;
 	if (!specElements) {
-		return widget.spec;
+		return spec;
 	}
 
-	const titleSource = findTitleSourceInSpec(widget);
-	const descSource = findDescriptionSourceInSpec(widget);
-	const actionButtonKeys = collectActionButtonKeysFromSpec(widget.spec);
+	const titleSource = findTitleSourceInSpec(normalizedWidget);
+	const descSource = findDescriptionSourceInSpec(normalizedWidget);
+	const actionButtonKeys = collectActionButtonKeysFromSpec(spec);
 
 	if (!titleSource && !descSource && actionButtonKeys.size === 0) {
-		return widget.spec;
+		return spec;
 	}
 
 	const propsToStrip = new Map<string, Set<string>>();
@@ -2199,8 +2519,8 @@ export function createBodyOnlySpec(widget: ParsedGenuiPreviewWidget): Spec {
 		}
 	}
 
-	if (keysToRemove.has(widget.spec.root)) {
-		return widget.spec;
+	if (keysToRemove.has(spec.root)) {
+		return spec;
 	}
 
 	let changed = true;
@@ -2208,7 +2528,7 @@ export function createBodyOnlySpec(widget: ParsedGenuiPreviewWidget): Spec {
 		changed = false;
 
 		for (const [key, element] of Object.entries(newElements)) {
-			if (key === widget.spec.root || keysToRemove.has(key)) {
+			if (key === spec.root || keysToRemove.has(key)) {
 				continue;
 			}
 			if (!isObjectRecord(element) || !Array.isArray(element.children)) {
@@ -2242,8 +2562,8 @@ export function createBodyOnlySpec(widget: ParsedGenuiPreviewWidget): Spec {
 		}
 	}
 
-	if (keysToRemove.has(widget.spec.root)) {
-		return widget.spec;
+	if (keysToRemove.has(spec.root)) {
+		return spec;
 	}
 
 	const elementsAfterRemoval: Record<string, unknown> = {};
@@ -2253,8 +2573,8 @@ export function createBodyOnlySpec(widget: ParsedGenuiPreviewWidget): Spec {
 		}
 	}
 
-	if (!Object.prototype.hasOwnProperty.call(elementsAfterRemoval, widget.spec.root)) {
-		return widget.spec;
+	if (!Object.prototype.hasOwnProperty.call(elementsAfterRemoval, spec.root)) {
+		return spec;
 	}
 
 	const normalizedElements: Record<string, unknown> = {};
@@ -2283,16 +2603,16 @@ export function createBodyOnlySpec(widget: ParsedGenuiPreviewWidget): Spec {
 	}
 
 	const prunedElements = pruneUnreachableElements(
-		widget.spec.root,
+		spec.root,
 		normalizedElements
 	);
 
-	if (!Object.prototype.hasOwnProperty.call(prunedElements, widget.spec.root)) {
-		return widget.spec;
+	if (!Object.prototype.hasOwnProperty.call(prunedElements, spec.root)) {
+		return spec;
 	}
 
 	return {
-		...widget.spec,
+		...spec,
 		elements: normalizeUsageNotesGap(
 			normalizeTranslationTypography(prunedElements)
 		),

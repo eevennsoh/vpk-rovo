@@ -26,6 +26,7 @@ import {
 import { composerPromptInputClassName, composerTextareaClassName, composerUpwardShadow, textareaCSS } from "@/components/blocks/shared-ui/composer-styles";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { SkillTag, SkillTagGroup } from "@/components/ui/skill-tag";
 import type { VoiceButtonState } from "@/components/ui-audio/voice-button";
 import { LiveWaveform } from "@/components/ui-audio/live-waveform";
 import { resolveRovoAppComposerWaveformState } from "@/components/projects/rovo-app/lib/rovo-app-composer-waveform-state";
@@ -42,6 +43,7 @@ import AudioWaveformIcon from "@atlaskit/icon-lab/core/audio-waveform";
 import AddIcon from "@atlaskit/icon/core/add";
 import ScorecardIcon from "@atlaskit/icon/core/scorecard";
 import DeleteIcon from "@atlaskit/icon/core/delete";
+import SkillIcon from "@atlaskit/icon-lab/core/skill";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { RovoAppComposerAddMenu } from "./rovo-app-composer-add-menu";
@@ -77,6 +79,7 @@ interface RovoAppComposerProps {
 	onSubmit: (payload: { text: string; files: FileUIPart[] }) => Promise<void>;
 	onTogglePlanMode?: () => void;
 	onToggleRealtimeVoice?: () => void;
+	onToggleHermesSkillPicker?: () => void;
 	onToggleVoice?: () => void;
 	galleryExpanded?: boolean;
 	placeholder?: string;
@@ -96,6 +99,8 @@ interface RovoAppComposerProps {
 		micStream?: MediaStream | null;
 	}) => React.ReactNode;
 	showBackgroundStop?: boolean;
+	selectedHermesSkills?: ReadonlyArray<{ id: string; title: string }>;
+	onRemoveHermesSkill?: (skillId: string) => void;
 	submitDisabled?: boolean;
 	voiceState?: VoiceButtonState;
 }
@@ -118,6 +123,7 @@ function RovoAppComposerInner({
 	onSubmit,
 	onTogglePlanMode,
 	onToggleRealtimeVoice,
+	onToggleHermesSkillPicker,
 	placeholder = "Ask, @mention, or / for skills",
 	planExecutionTracker = null,
 	prefillText,
@@ -128,6 +134,8 @@ function RovoAppComposerInner({
 	realtimeVoiceState = "idle",
 	renderResponseGradient,
 	showBackgroundStop = false,
+	selectedHermesSkills = [],
+	onRemoveHermesSkill,
 	submitDisabled = false,
 }: Readonly<RovoAppComposerProps>) {
 	const controller = usePromptInputController();
@@ -180,7 +188,7 @@ function RovoAppComposerInner({
 				return;
 			}
 
-			void onSubmit(payload);
+			void onSubmit(payload).catch(() => {});
 		},
 		[onSubmit, submitDisabled],
 	);
@@ -481,8 +489,26 @@ function RovoAppComposerInner({
 								}
 							: {}),
 					}}
-				>
-					{artifactTitle ? (
+						>
+							{selectedHermesSkills.length > 0 ? (
+								<div className="mb-3 flex flex-wrap items-center gap-2">
+									<SkillTagGroup>
+										{selectedHermesSkills.map((skill) => (
+											<SkillTag
+												key={skill.id}
+												color="platform"
+												icon={<SkillIcon label="" size="small" />}
+												onRemove={onRemoveHermesSkill ? () => onRemoveHermesSkill(skill.id) : undefined}
+												removeButtonLabel={`Remove ${skill.title}`}
+											>
+												{skill.title}
+											</SkillTag>
+										))}
+									</SkillTagGroup>
+								</div>
+							) : null}
+
+						{artifactTitle ? (
 							<div
 								className={cn(
 									"-mx-3 mb-3 overflow-hidden rounded-t-[inherit] bg-bg-neutral/70",
@@ -534,8 +560,8 @@ function RovoAppComposerInner({
 						</PromptInputBody>
 
 						<PromptInputFooter className="mt-3 justify-between px-0 pb-0">
-							<PromptInputTools>
-								{onTogglePlanMode ? (
+								<PromptInputTools>
+									{onTogglePlanMode ? (
 								<PromptInputButton
 									aria-label="Task mode"
 									aria-pressed={isPlanMode}
@@ -546,8 +572,18 @@ function RovoAppComposerInner({
 										<ScorecardIcon label="" size="small" />
 										<span>Task</span>
 									</PromptInputButton>
-								) : null}
-								<PromptInputActionMenu open={isAddMenuOpen} onOpenChange={setIsAddMenuOpen}>
+									) : null}
+									{onToggleHermesSkillPicker ? (
+										<PromptInputButton
+											aria-label="Hermes skills"
+											variant="outline"
+											onClick={onToggleHermesSkillPicker}
+										>
+											<SkillIcon label="" size="small" />
+											<span>Skills</span>
+										</PromptInputButton>
+									) : null}
+									<PromptInputActionMenu open={isAddMenuOpen} onOpenChange={setIsAddMenuOpen}>
 									<PromptInputActionMenuTrigger aria-label="Add" size="icon-sm" variant="ghost">
 										<AddIcon label="" />
 									</PromptInputActionMenuTrigger>

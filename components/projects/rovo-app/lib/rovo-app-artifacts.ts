@@ -2,6 +2,7 @@ import type { RovoAppDocument } from "@/lib/rovo-app-types";
 
 const ROVO_APP_ARTIFACT_KIND_LABELS = {
 	code: "Code",
+	excalidraw: "Diagram",
 	image: "Image",
 	react: "App",
 	sheet: "Sheet",

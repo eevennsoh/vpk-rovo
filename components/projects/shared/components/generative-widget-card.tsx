@@ -1,12 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import Image from "next/image";
-import type { Spec } from "@json-render/react";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import CrossIcon from "@atlaskit/icon/core/cross";
-import WarningIcon from "@atlaskit/icon/core/warning";
 import { cn } from "@/lib/utils";
-import { MessageResponse } from "@/components/ui-ai/message";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
 	GenerativeCard,
@@ -25,21 +21,6 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import {
-	AudioPlayer,
-	AudioPlayerControlBar,
-	AudioPlayerDurationDisplay,
-	AudioPlayerElement,
-	AudioPlayerPlayButton,
-	AudioPlayerTimeDisplay,
-	AudioPlayerTimeRange,
-} from "@/components/ui-ai/audio-player";
-import {
-	Transcription,
-	TranscriptionSegment,
-} from "@/components/ui-ai/transcription";
-import { JsonRenderView } from "@/lib/json-render/renderer";
-import { useProgressiveSpec } from "@/lib/json-render/use-progressive-spec";
-import {
 	type GenerativeWidgetActionItem,
 	type GenerativeWidgetPrimaryActionPayload,
 	parseGenerativeWidget,
@@ -51,7 +32,7 @@ import {
 import { formatContentTypeLabel } from "@/components/projects/shared/lib/generative-widget-branding";
 import { ContentTypeTile } from "./content-type-tile";
 import { GenuiExportMenu } from "./genui-export-menu";
-import { VideoPreviewBody } from "./video-preview-body";
+import { PreviewBodyRenderer } from "./preview-body-renderer";
 
 /* -------------------------------------------------------------------------- */
 /*  Props                                                                     */
@@ -64,8 +45,6 @@ const DEFAULT_INNER_GLOW_THICKNESS = 12;
 const DEFAULT_INNER_GLOW_SOFTNESS = 10;
 const DEFAULT_INNER_GLOW_SATURATION = 170;
 const DEFAULT_INNER_GLOW_INTENSITY = 1;
-const SUMMARY_STREAM_INTERVAL_MS = 24;
-const SUMMARY_STREAM_STEP_CHARS = 18;
 
 const INNER_GLOW_KEYFRAMES = `
 @property --gen-widget-card-inner-angle {
@@ -138,15 +117,6 @@ interface GenerativeWidgetCardShellProps {
 	onStateChange?: (changes: Array<{ path: string; value: unknown }>) => void;
 	cardAnimation?: GenerativeCardAnimationProps;
 }
-
-interface GenuiBodyProps {
-	spec: Spec;
-	summary?: string;
-	previewMode: boolean;
-	withContainer?: boolean;
-	onStateChange?: (changes: Array<{ path: string; value: unknown }>) => void;
-	progressive?: boolean;
-}
 /*  Helpers                                                                   */
 /* -------------------------------------------------------------------------- */
 
@@ -181,8 +151,68 @@ function immutableSetByPath(
 }
 
 function toInitialGenuiState(widget: ParsedGenerativeWidget): Record<string, unknown> {
-	if (widget.type !== "genui-preview") return {};
-	return isObjectRecord(widget.spec.state) ? { ...widget.spec.state } : {};
+	if (widget.body.kind !== "json-render") return {};
+	return isObjectRecord(widget.body.spec.state) ? { ...widget.body.spec.state } : {};
+}
+
+function slugifyFilename(value: string, fallback = "diagram"): string {
+	const slug = value
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, "-")
+		.replace(/^-+|-+$/g, "")
+		.trim();
+
+	return slug || fallback;
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+	const url = window.URL.createObjectURL(blob);
+	const link = document.createElement("a");
+	link.href = url;
+	link.download = filename;
+	link.click();
+	window.URL.revokeObjectURL(url);
+}
+
+function getBodySpecificFooterActions({
+	bodyWidget,
+	metadata,
+}: Readonly<{
+	bodyWidget: ParsedGenerativeWidget;
+	metadata: GenerativeWidgetMetadata;
+}>): ReactNode[] {
+	if (bodyWidget.body.kind !== "excalidraw") {
+		return [];
+	}
+
+	const sceneJson = JSON.stringify(bodyWidget.body.scene, null, 2);
+	const filename = `${slugifyFilename(metadata.title, "diagram")}.excalidraw`;
+
+	return [
+		<Button
+			key="download-excalidraw"
+			variant="outline"
+			className="h-8 min-w-0 flex-shrink-0 px-3 text-sm sm:min-w-[117px]"
+			onClick={() => {
+				downloadBlob(
+					new Blob([sceneJson], { type: "application/json" }),
+					filename,
+				);
+			}}
+			type="button"
+		>
+			Download .excalidraw
+		</Button>,
+		<Button
+			key="copy-excalidraw-json"
+			variant="outline"
+			className="h-8 min-w-0 flex-shrink-0 px-3 text-sm sm:min-w-[117px]"
+			onClick={() => void navigator.clipboard.writeText(sceneJson)}
+			type="button"
+		>
+			Copy JSON
+		</Button>,
+	];
 }
 
 function useInnerGlowStyles(enabled: boolean) {
@@ -200,45 +230,6 @@ function useInnerGlowStyles(enabled: boolean) {
 			styleEl.textContent = INNER_GLOW_KEYFRAMES;
 		}
 	}, [enabled]);
-}
-
-function StreamingSummaryPreview({ summary }: Readonly<{ summary: string }>): ReactNode {
-	const [cursor, setCursor] = useState(0);
-
-	useEffect(() => {
-		if (!summary) return;
-
-		const intervalId = window.setInterval(() => {
-			setCursor((previousCursor) => {
-				const nextCursor = Math.min(
-					summary.length,
-					previousCursor + SUMMARY_STREAM_STEP_CHARS,
-				);
-
-				if (nextCursor >= summary.length) {
-					window.clearInterval(intervalId);
-				}
-
-				return nextCursor;
-			});
-		}, SUMMARY_STREAM_INTERVAL_MS);
-
-		return () => {
-			window.clearInterval(intervalId);
-		};
-	}, [summary]);
-
-	const streamedSummary = summary.slice(0, cursor);
-	const isStreamingSummary = cursor < summary.length;
-
-	return (
-		<MessageResponse
-			className="[&_p]:m-0 text-sm leading-6 text-text"
-			isAnimating={isStreamingSummary}
-		>
-			{streamedSummary}
-		</MessageResponse>
-	);
 }
 
 interface GenerativeCardInnerGlowShellProps {
@@ -302,308 +293,6 @@ function GenerativeCardInnerGlowShell({
 }
 
 /* -------------------------------------------------------------------------- */
-/*  Widget body renderers                                                     */
-/* -------------------------------------------------------------------------- */
-
-function estimateTranscriptSegments(
-	text: string,
-	duration: number,
-): Array<{ text: string; startSecond: number; endSecond: number }> {
-	const words = text.split(/\s+/).filter(Boolean);
-	if (words.length === 0 || duration <= 0) return [];
-
-	const totalChars = words.reduce((sum, w) => sum + w.length, 0);
-	let cursor = 0;
-
-	return words.map((word) => {
-		const fraction = word.length / totalChars;
-		const wordDuration = fraction * duration;
-		const segment = {
-			text: word,
-			startSecond: cursor,
-			endSecond: cursor + wordDuration,
-		};
-		cursor += wordDuration;
-		return segment;
-	});
-}
-
-function GenuiBody({
-	spec,
-	summary,
-	previewMode,
-	withContainer = true,
-	onStateChange,
-	progressive = false,
-}: Readonly<GenuiBodyProps>): ReactNode {
-	const { progressiveSpec, isProgressing } = useProgressiveSpec(spec, progressive);
-	const summaryText = summary?.trim() ?? "";
-	const shouldStreamSummary = progressive && isProgressing && summaryText.length > 0;
-
-	const content = (
-		<JsonRenderView
-			spec={progressiveSpec ?? spec}
-			skipValidation={isProgressing}
-			onStateChange={onStateChange}
-		/>
-	);
-
-	const summaryNode = shouldStreamSummary ? (
-		<StreamingSummaryPreview
-			key={`${spec.root}:${summaryText}`}
-			summary={summaryText}
-		/>
-	) : null;
-
-	if (!withContainer) {
-		if (shouldStreamSummary) {
-			return previewMode ? (
-				<div className="max-h-[65vh] overflow-auto">{summaryNode}</div>
-			) : (
-				summaryNode
-			);
-		}
-
-		return previewMode ? (
-			<div className="max-h-[65vh] overflow-auto">{content}</div>
-		) : (
-			content
-		);
-	}
-
-	if (shouldStreamSummary) {
-		return (
-			<div
-				className={cn(
-					"rounded-md bg-surface p-3 sm:p-4",
-					previewMode && "max-h-[65vh] overflow-auto",
-				)}
-			>
-				{summaryNode}
-			</div>
-		);
-	}
-
-	return (
-		<div
-			className={cn(
-				"rounded-md",
-				previewMode && "max-h-[65vh] overflow-auto",
-			)}
-		>
-			{content}
-		</div>
-	);
-}
-
-function AudioBody({
-	audioUrl,
-	transcript,
-	withContainer,
-}: Readonly<{
-	audioUrl: string;
-	transcript?: string;
-	withContainer: boolean;
-}>): ReactNode {
-	const [audioError, setAudioError] = useState(false);
-	const audioRef = useRef<HTMLAudioElement>(null);
-	const [duration, setDuration] = useState(0);
-	const [currentTime, setCurrentTime] = useState(0);
-
-	const segments = useMemo(
-		() => (transcript && duration > 0 ? estimateTranscriptSegments(transcript, duration) : []),
-		[transcript, duration],
-	);
-
-	if (audioError) {
-		return (
-			<div className={withContainer ? "rounded-md bg-surface" : undefined}>
-				<MediaErrorState message="Failed to load audio" />
-			</div>
-		);
-	}
-
-	return (
-		<div className={withContainer ? "rounded-md bg-surface" : undefined}>
-			<AudioPlayer className="block w-full [&_media-control-bar]:w-full [&_[data-slot=button-group]]:w-full! [&_media-time-range]:flex-1">
-				<AudioPlayerElement
-					ref={audioRef}
-					preload="metadata"
-					src={audioUrl}
-					onError={() => setAudioError(true)}
-					onLoadedMetadata={() => {
-						if (audioRef.current) {
-							setDuration(audioRef.current.duration);
-						}
-					}}
-					onTimeUpdate={() => {
-						if (audioRef.current) {
-							setCurrentTime(audioRef.current.currentTime);
-						}
-					}}
-				/>
-				<AudioPlayerControlBar>
-					<AudioPlayerPlayButton />
-					<AudioPlayerTimeDisplay />
-					<AudioPlayerTimeRange />
-					<AudioPlayerDurationDisplay />
-				</AudioPlayerControlBar>
-			</AudioPlayer>
-			{segments.length > 0 ? (
-				<Transcription
-					segments={segments}
-					currentTime={currentTime}
-					onSeek={(time) => {
-						if (audioRef.current) {
-							audioRef.current.currentTime = time;
-						}
-					}}
-					className={withContainer ? "mt-2" : "mt-3"}
-				>
-					{(segment, index) => (
-						<TranscriptionSegment key={index} segment={segment} index={index} />
-					)}
-				</Transcription>
-			) : transcript ? (
-				<p className={cn("text-xs text-text-subtle", withContainer ? "mt-2" : "mt-3")}>
-					{transcript}
-				</p>
-			) : null}
-		</div>
-	);
-}
-
-function MediaErrorState({ message }: Readonly<{ message: string }>): ReactNode {
-	return (
-		<div className="flex flex-col items-center justify-center gap-2 rounded-md bg-bg-neutral-subtle p-6 text-center">
-			<span className="text-icon-danger">
-				<WarningIcon label="Error" />
-			</span>
-			<p className="text-sm text-text-subtle">{message}</p>
-		</div>
-	);
-}
-
-function ImageBody({
-	images,
-	withContainer,
-	onImageClick,
-}: Readonly<{
-	images: Array<{ url: string; mimeType?: string }>;
-	withContainer: boolean;
-	onImageClick?: () => void;
-}>): ReactNode {
-	const [loadStates, setLoadStates] = useState<Record<number, "loading" | "loaded" | "error">>({});
-
-	return (
-		<div className="grid place-items-center gap-2 sm:grid-cols-2">
-			{images.map((image, index) => {
-				const loadState = loadStates[index] ?? "loading";
-				const imageEl = (
-					<>
-						{loadState === "loading" ? (
-							<div className="absolute inset-0 flex items-center justify-center bg-bg-neutral-subtle">
-								<div className="size-6 animate-spin rounded-full border-2 border-border border-t-transparent" />
-							</div>
-						) : null}
-						{loadState === "error" ? (
-							<div className="absolute inset-0">
-								<MediaErrorState message="Failed to load image" />
-							</div>
-						) : null}
-						<Image
-							src={image.url}
-							alt={`Generated image ${index + 1}`}
-							width={960}
-							height={960}
-							unoptimized
-							className={cn(
-								"size-full object-cover transition-opacity",
-								loadState === "loaded" ? "opacity-100" : "opacity-0",
-							)}
-							onLoad={() => setLoadStates((prev) => ({ ...prev, [index]: "loaded" }))}
-							onError={() => setLoadStates((prev) => ({ ...prev, [index]: "error" }))}
-						/>
-					</>
-				);
-				const containerClass = cn(
-					"relative block overflow-hidden rounded-md aspect-square w-full",
-					withContainer && "bg-surface"
-				);
-
-				return onImageClick ? (
-					<button
-						key={`${image.url}-${index}`}
-						type="button"
-						onClick={onImageClick}
-						className={cn(containerClass, "cursor-pointer")}
-					>
-						{imageEl}
-					</button>
-				) : (
-					<div key={`${image.url}-${index}`} className={containerClass}>
-						{imageEl}
-					</div>
-				);
-			})}
-		</div>
-	);
-}
-
-function renderWidgetBody(
-	widget: ParsedGenerativeWidget,
-	previewMode: boolean,
-	withContainer = true,
-	onImageClick?: () => void,
-	onStateChange?: (changes: Array<{ path: string; value: unknown }>) => void,
-	progressive = false,
-): ReactNode {
-	if (widget.type === "genui-preview") {
-		return (
-			<GenuiBody
-				spec={widget.spec}
-				summary={widget.summary}
-				previewMode={previewMode}
-				withContainer={withContainer}
-				onStateChange={onStateChange}
-				progressive={progressive}
-			/>
-		);
-	}
-
-	if (widget.type === "audio-preview") {
-		return (
-			<AudioBody
-				audioUrl={widget.audioUrl}
-				transcript={widget.transcript}
-				withContainer={withContainer}
-			/>
-		);
-	}
-
-	if (widget.type === "image-preview") {
-		return (
-			<ImageBody
-				images={widget.images}
-				withContainer={withContainer}
-				onImageClick={onImageClick}
-			/>
-		);
-	}
-
-	if (widget.type === "video-preview") {
-		return (
-			<VideoPreviewBody
-				widget={widget}
-				withContainer={withContainer}
-			/>
-		);
-	}
-
-	return null;
-}
-
-/* -------------------------------------------------------------------------- */
 /*  Card shell                                                                */
 /* -------------------------------------------------------------------------- */
 
@@ -619,9 +308,13 @@ function GenerativeWidgetCardShell({
 	cardAnimation,
 }: Readonly<GenerativeWidgetCardShellProps>): ReactNode {
 	const contentTypeLabel = formatContentTypeLabel(metadata.contentType);
+	const bodySpecificFooterActions = getBodySpecificFooterActions({
+		bodyWidget,
+		metadata,
+	});
 	const shouldAnimateDistortion =
 		!previewMode &&
-		bodyWidget.type === "genui-preview" &&
+		bodyWidget.body.kind === "json-render" &&
 		(cardAnimation?.distortion ?? false);
 	const shouldRenderInnerGlow = !previewMode && Boolean(cardAnimation?.innerGlow);
 	const shouldRenderDistortionTint =
@@ -662,14 +355,19 @@ function GenerativeWidgetCardShell({
 			/>
 			<GenerativeCardBody>
 				<GenerativeCardContent className="p-4">
-					{renderWidgetBody(
-						bodyWidget,
-						previewMode,
-						true,
-						onOpenPreview,
-						onStateChange,
-						!previewMode && !shouldAnimateDistortion,
-					)}
+					<PreviewBodyRenderer
+						body={bodyWidget.body}
+						surface={previewMode ? "dialog" : "card"}
+						title={metadata.title}
+						summary={bodyWidget.summary}
+						progressive={!previewMode && !shouldAnimateDistortion}
+						onStateChange={onStateChange}
+						cardSpecOverride={
+							!previewMode && bodyWidget.body.kind === "json-render"
+								? createBodyOnlySpec(bodyWidget)
+								: null
+						}
+					/>
 				</GenerativeCardContent>
 				<GenerativeCardFooter className="flex-wrap gap-2">
 					<Button
@@ -680,13 +378,14 @@ function GenerativeWidgetCardShell({
 					>
 						Open preview
 					</Button>
-					{bodyWidget.type === "genui-preview" ? (
+					{bodyWidget.body.kind === "json-render" ? (
 						<GenuiExportMenu
-							spec={bodyWidget.spec}
+							spec={bodyWidget.body.spec}
 							title={metadata.title}
 							contentType={metadata.contentType}
 						/>
 					) : null}
+					{bodySpecificFooterActions}
 					{actions.map((actionItem, index) => (
 						actionItem.href ? (
 							<a
@@ -769,10 +468,6 @@ export function GenerativeWidgetCard({
 	const [genuiState, setGenuiState] = useState<Record<string, unknown>>(
 		() => (parsedWidget ? toInitialGenuiState(parsedWidget) : {})
 	);
-	const bodyWidget = useMemo(() => {
-		if (!parsedWidget || parsedWidget.type !== "genui-preview") return parsedWidget;
-		return { ...parsedWidget, spec: createBodyOnlySpec(parsedWidget) };
-	}, [parsedWidget]);
 
 	const handleGenuiStateChange = useCallback(
 		(changes: Array<{ path: string; value: unknown }>) => {
@@ -788,17 +483,12 @@ export function GenerativeWidgetCard({
 		[]
 	);
 
-	const footerActions =
-		parsedWidget?.type === "genui-preview"
-			? (metadata?.actions ?? [])
-			: [];
-	const shouldShowFooterActions =
-		parsedWidget?.type === "genui-preview" &&
-		footerActions.length > 0;
+	const footerActions = metadata?.actions ?? [];
+	const shouldShowFooterActions = footerActions.length > 0;
 
 	const handleAction = useCallback((actionLabel: string) => {
 		if (
-			parsedWidget?.type !== "genui-preview" ||
+			!parsedWidget ||
 			!actionLabel ||
 			!metadata ||
 			!metadata.title ||
@@ -823,7 +513,7 @@ export function GenerativeWidgetCard({
 		<div className={cn("pb-2", className)}>
 			<Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
 					<GenerativeWidgetCardShell
-						bodyWidget={bodyWidget ?? parsedWidget}
+						bodyWidget={parsedWidget}
 						metadata={metadata}
 						cardAnimation={cardAnimation}
 						onOpenPreview={() => setPreviewOpen(true)}
@@ -858,13 +548,13 @@ export function GenerativeWidgetCard({
 						</DialogClose>
 					</DialogHeader>
 					<div className="max-h-[65vh] overflow-y-auto p-4 sm:p-6">
-						{bodyWidget ? renderWidgetBody(
-							bodyWidget,
-							false,
-							false,
-							undefined,
-							handleGenuiStateChange
-						) : null}
+						<PreviewBodyRenderer
+							body={parsedWidget.body}
+							surface="dialog"
+							title={metadata.title}
+							summary={parsedWidget.summary}
+							onStateChange={handleGenuiStateChange}
+						/>
 					</div>
 				</DialogContent>
 			</Dialog>

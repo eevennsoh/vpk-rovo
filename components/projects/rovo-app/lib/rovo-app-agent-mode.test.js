@@ -6,6 +6,7 @@ const {
 	buildRovoAppAgentModeRequest,
 	fetchRovoAppAgentMode,
 	parseRovoAppAgentMode,
+	syncRovoAppAgentModeForDispatch,
 } = require("./rovo-app-agent-mode.ts");
 
 test("buildRovoAppAgentModeRequest returns only mode", () => {
@@ -53,4 +54,67 @@ test("fetchRovoAppAgentMode requests agent mode and parses the response", async 
 			options: { method: "GET" },
 		},
 	]);
+});
+
+test("syncRovoAppAgentModeForDispatch applies the mode when the backend succeeds", async () => {
+	const calls = [];
+	const fetchImpl = async (url, options) => {
+		calls.push({ url, options });
+		return {
+			ok: true,
+			status: 200,
+		};
+	};
+
+	const result = await syncRovoAppAgentModeForDispatch(fetchImpl, "plan");
+
+	assert.deepEqual(result, { applied: true });
+	assert.deepEqual(calls, [
+		{
+			url: "/api/agent-mode",
+			options: {
+				body: JSON.stringify({ mode: "plan" }),
+				headers: { "Content-Type": "application/json" },
+				method: "POST",
+			},
+		},
+	]);
+});
+
+test("syncRovoAppAgentModeForDispatch skips unavailable RovoDev preflight failures", async () => {
+	const result = await syncRovoAppAgentModeForDispatch(async () => ({
+		ok: false,
+		status: 503,
+		json: async () => ({
+			error: "RovoDev Serve is required but not available",
+		}),
+	}), "default");
+
+	assert.deepEqual(result, { applied: false });
+});
+
+test("syncRovoAppAgentModeForDispatch skips unsupported upstream agent-mode errors", async () => {
+	const result = await syncRovoAppAgentModeForDispatch(async () => ({
+		ok: false,
+		status: 500,
+		json: async () => ({
+			error: "Set agent mode failed (status 404): {\"detail\":\"Not Found\"}",
+		}),
+	}), "default");
+
+	assert.deepEqual(result, { applied: false });
+});
+
+test("syncRovoAppAgentModeForDispatch throws non-recoverable failures", async () => {
+	await assert.rejects(
+		() =>
+			syncRovoAppAgentModeForDispatch(async () => ({
+				ok: false,
+				status: 500,
+				json: async () => ({
+					error: "Failed to set agent mode",
+				}),
+			}), "default"),
+		/Failed to set agent mode/,
+	);
 });

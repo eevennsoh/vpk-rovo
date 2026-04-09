@@ -123,3 +123,15 @@ Mark promoted entries with `[Promoted]` prefix — see vpk-lesson skill for deta
   from RovoDev Serve deferred tools. Do not preserve or add parallel
   AI Gateway-generated clarification question-card flows for the same user path
   unless the user explicitly asks for a separate non-Rovo mechanism.
+
+### 2026-04-06 - Menu section labels should match dropdown sentence case
+
+- **What happened:** A `menu-group` styling change kept section headings in all
+  caps even though the matching `dropdown-menu` labels in this repo use sentence
+  case.
+- **Why:** The primitive was styled like a legacy uppercase heading instead of
+  matching the existing dropdown label treatment the user asked to mirror.
+- **Rule:** When aligning `menu-group` with `dropdown-menu`, use the same
+  sentence-case label styling and spacing. Do not add uppercase or
+  `tracking-wider` menu section headings unless the design explicitly requires
+  that treatment.

@@ -1,0 +1,278 @@
+{
+  "type": "excalidraw",
+  "version": 2,
+  "source": "hermes-agent",
+  "appState": { "viewBackgroundColor": "#ffffff" },
+  "elements": [
+    {
+      "type": "text", "id": "title", "x": 280, "y": 20, "width": 400, "height": 35,
+      "text": "VPK-Rovo Architecture", "fontSize": 28, "fontFamily": 1,
+      "strokeColor": "#1e1e1e", "textAlign": "center", "originalText": "VPK-Rovo Architecture", "autoResize": true
+    },
+
+    {
+      "type": "rectangle", "id": "zone_browser", "x": 20, "y": 70, "width": 920, "height": 90,
+      "backgroundColor": "#e7f5ff", "fillStyle": "solid", "strokeColor": "#74c0fc", "roughness": 1,
+      "boundElements": [{"id": "t_zone_browser", "type": "text"}]
+    },
+    {
+      "type": "text", "id": "t_zone_browser", "x": 25, "y": 75, "width": 910, "height": 20,
+      "text": "Browser (Client)", "fontSize": 14, "fontFamily": 1, "strokeColor": "#1971c2",
+      "textAlign": "left", "containerId": "zone_browser", "originalText": "Browser (Client)", "autoResize": true
+    },
+
+    {
+      "type": "rectangle", "id": "nextjs", "x": 80, "y": 100, "width": 200, "height": 50,
+      "backgroundColor": "#a5d8ff", "fillStyle": "solid", "strokeColor": "#1971c2", "roughness": 1,
+      "roundness": {"type": 3},
+      "boundElements": [{"id": "t_nextjs", "type": "text"}, {"id": "a_next_to_express", "type": "arrow"}]
+    },
+    {
+      "type": "text", "id": "t_nextjs", "x": 85, "y": 115, "width": 190, "height": 20,
+      "text": "Next.js :3000", "fontSize": 16, "fontFamily": 1, "strokeColor": "#1e1e1e",
+      "textAlign": "center", "verticalAlign": "middle", "containerId": "nextjs", "originalText": "Next.js :3000", "autoResize": true
+    },
+
+    {
+      "type": "rectangle", "id": "rovo_chat_ctx", "x": 330, "y": 100, "width": 220, "height": 50,
+      "backgroundColor": "#d0bfff", "fillStyle": "solid", "strokeColor": "#7048e8", "roughness": 1,
+      "roundness": {"type": 3},
+      "boundElements": [{"id": "t_rovo_chat_ctx", "type": "text"}]
+    },
+    {
+      "type": "text", "id": "t_rovo_chat_ctx", "x": 335, "y": 115, "width": 210, "height": 20,
+      "text": "RovoChatProvider + useChat", "fontSize": 14, "fontFamily": 1, "strokeColor": "#1e1e1e",
+      "textAlign": "center", "verticalAlign": "middle", "containerId": "rovo_chat_ctx", "originalText": "RovoChatProvider + useChat", "autoResize": true
+    },
+
+    {
+      "type": "rectangle", "id": "ui_components", "x": 610, "y": 100, "width": 280, "height": 50,
+      "backgroundColor": "#b2f2bb", "fillStyle": "solid", "strokeColor": "#2f9e44", "roughness": 1,
+      "roundness": {"type": 3},
+      "boundElements": [{"id": "t_ui", "type": "text"}]
+    },
+    {
+      "type": "text", "id": "t_ui", "x": 615, "y": 115, "width": 270, "height": 20,
+      "text": "UI: components/projects/ + blocks/", "fontSize": 14, "fontFamily": 1, "strokeColor": "#1e1e1e",
+      "textAlign": "center", "verticalAlign": "middle", "containerId": "ui_components", "originalText": "UI: components/projects/ + blocks/", "autoResize": true
+    },
+
+    {
+      "type": "rectangle", "id": "zone_backend", "x": 20, "y": 190, "width": 920, "height": 100,
+      "backgroundColor": "#fff9db", "fillStyle": "solid", "strokeColor": "#f59f00", "roughness": 1,
+      "boundElements": [{"id": "t_zone_backend", "type": "text"}]
+    },
+    {
+      "type": "text", "id": "t_zone_backend", "x": 25, "y": 195, "width": 910, "height": 20,
+      "text": "Express Backend :8080  (backend/server.js)", "fontSize": 14, "fontFamily": 1, "strokeColor": "#e67700",
+      "textAlign": "left", "containerId": "zone_backend", "originalText": "Express Backend :8080  (backend/server.js)", "autoResize": true
+    },
+
+    {
+      "type": "rectangle", "id": "proxy", "x": 60, "y": 220, "width": 160, "height": 50,
+      "backgroundColor": "#ffec99", "fillStyle": "solid", "strokeColor": "#f59f00", "roughness": 1,
+      "roundness": {"type": 3},
+      "boundElements": [{"id": "t_proxy", "type": "text"}]
+    },
+    {
+      "type": "text", "id": "t_proxy", "x": 65, "y": 237, "width": 150, "height": 20,
+      "text": "API Proxy /api/*", "fontSize": 14, "fontFamily": 1, "strokeColor": "#1e1e1e",
+      "textAlign": "center", "verticalAlign": "middle", "containerId": "proxy", "originalText": "API Proxy /api/*", "autoResize": true
+    },
+
+    {
+      "type": "rectangle", "id": "session_mgr", "x": 270, "y": 220, "width": 200, "height": 50,
+      "backgroundColor": "#ffec99", "fillStyle": "solid", "strokeColor": "#f59f00", "roughness": 1,
+      "roundness": {"type": 3},
+      "boundElements": [{"id": "t_session_mgr", "type": "text"}]
+    },
+    {
+      "type": "text", "id": "t_session_mgr", "x": 275, "y": 237, "width": 190, "height": 20,
+      "text": "session-manager.js", "fontSize": 14, "fontFamily": 1, "strokeColor": "#1e1e1e",
+      "textAlign": "center", "verticalAlign": "middle", "containerId": "session_mgr", "originalText": "session-manager.js", "autoResize": true
+    },
+
+    {
+      "type": "rectangle", "id": "rovodev_gw", "x": 520, "y": 220, "width": 200, "height": 50,
+      "backgroundColor": "#ffec99", "fillStyle": "solid", "strokeColor": "#f59f00", "roughness": 1,
+      "roundness": {"type": 3},
+      "boundElements": [{"id": "t_rovodev_gw", "type": "text"}]
+    },
+    {
+      "type": "text", "id": "t_rovodev_gw", "x": 525, "y": 237, "width": 190, "height": 20,
+      "text": "rovodev-gateway.js", "fontSize": 14, "fontFamily": 1, "strokeColor": "#1e1e1e",
+      "textAlign": "center", "verticalAlign": "middle", "containerId": "rovodev_gw", "originalText": "rovodev-gateway.js", "autoResize": true
+    },
+
+    {
+      "type": "rectangle", "id": "ai_gw_helpers", "x": 770, "y": 220, "width": 150, "height": 50,
+      "backgroundColor": "#ffec99", "fillStyle": "solid", "strokeColor": "#f59f00", "roughness": 1,
+      "roundness": {"type": 3},
+      "boundElements": [{"id": "t_ai_gw", "type": "text"}]
+    },
+    {
+      "type": "text", "id": "t_ai_gw", "x": 775, "y": 237, "width": 140, "height": 20,
+      "text": "AI Gateway helpers", "fontSize": 13, "fontFamily": 1, "strokeColor": "#1e1e1e",
+      "textAlign": "center", "verticalAlign": "middle", "containerId": "ai_gw_helpers", "originalText": "AI Gateway helpers", "autoResize": true
+    },
+
+    {
+      "type": "rectangle", "id": "zone_rovodev", "x": 20, "y": 320, "width": 460, "height": 180,
+      "backgroundColor": "#ffe8cc", "fillStyle": "solid", "strokeColor": "#e8590c", "roughness": 1,
+      "boundElements": [{"id": "t_zone_rovodev", "type": "text"}]
+    },
+    {
+      "type": "text", "id": "t_zone_rovodev", "x": 25, "y": 325, "width": 450, "height": 20,
+      "text": "RovoDev Serve :8000 / :9147  (Agent Runtime)", "fontSize": 14, "fontFamily": 1, "strokeColor": "#c2410c",
+      "textAlign": "left", "containerId": "zone_rovodev", "originalText": "RovoDev Serve :8000 / :9147  (Agent Runtime)", "autoResize": true
+    },
+
+    {
+      "type": "rectangle", "id": "agent_loop", "x": 50, "y": 360, "width": 180, "height": 50,
+      "backgroundColor": "#ffa94d", "fillStyle": "solid", "strokeColor": "#e8590c", "roughness": 1,
+      "roundness": {"type": 3},
+      "boundElements": [{"id": "t_agent_loop", "type": "text"}]
+    },
+    {
+      "type": "text", "id": "t_agent_loop", "x": 55, "y": 377, "width": 170, "height": 20,
+      "text": "LLM + Tool Loop", "fontSize": 15, "fontFamily": 1, "strokeColor": "#1e1e1e",
+      "textAlign": "center", "verticalAlign": "middle", "containerId": "agent_loop", "originalText": "LLM + Tool Loop", "autoResize": true
+    },
+
+    {
+      "type": "rectangle", "id": "sse_stream", "x": 270, "y": 360, "width": 180, "height": 50,
+      "backgroundColor": "#ffa94d", "fillStyle": "solid", "strokeColor": "#e8590c", "roughness": 1,
+      "roundness": {"type": 3},
+      "boundElements": [{"id": "t_sse", "type": "text"}]
+    },
+    {
+      "type": "text", "id": "t_sse", "x": 275, "y": 377, "width": 170, "height": 20,
+      "text": "SSE Stream out", "fontSize": 15, "fontFamily": 1, "strokeColor": "#1e1e1e",
+      "textAlign": "center", "verticalAlign": "middle", "containerId": "sse_stream", "originalText": "SSE Stream out", "autoResize": true
+    },
+
+    {
+      "type": "rectangle", "id": "rovodev_tools", "x": 60, "y": 430, "width": 380, "height": 50,
+      "backgroundColor": "#ffd8a8", "fillStyle": "solid", "strokeColor": "#e8590c", "roughness": 1,
+      "roundness": {"type": 3},
+      "boundElements": [{"id": "t_tools", "type": "text"}]
+    },
+    {
+      "type": "text", "id": "t_tools", "x": 65, "y": 447, "width": 370, "height": 20,
+      "text": "MCP Tools: Jira, Confluence, Bitbucket, Slack…", "fontSize": 13, "fontFamily": 1, "strokeColor": "#1e1e1e",
+      "textAlign": "center", "verticalAlign": "middle", "containerId": "rovodev_tools", "originalText": "MCP Tools: Jira, Confluence, Bitbucket, Slack…", "autoResize": true
+    },
+
+    {
+      "type": "rectangle", "id": "zone_hermes", "x": 510, "y": 320, "width": 430, "height": 180,
+      "backgroundColor": "#f3d9fa", "fillStyle": "solid", "strokeColor": "#9c36b5", "roughness": 1,
+      "boundElements": [{"id": "t_zone_hermes", "type": "text"}]
+    },
+    {
+      "type": "text", "id": "t_zone_hermes", "x": 515, "y": 325, "width": 420, "height": 20,
+      "text": "Hermes  (Capability Substrate)", "fontSize": 14, "fontFamily": 1, "strokeColor": "#9c36b5",
+      "textAlign": "left", "containerId": "zone_hermes", "originalText": "Hermes  (Capability Substrate)", "autoResize": true
+    },
+
+    {
+      "type": "rectangle", "id": "h_memory", "x": 530, "y": 360, "width": 120, "height": 50,
+      "backgroundColor": "#e9d8fd", "fillStyle": "solid", "strokeColor": "#7048e8", "roughness": 1,
+      "roundness": {"type": 3},
+      "boundElements": [{"id": "t_h_memory", "type": "text"}]
+    },
+    {
+      "type": "text", "id": "t_h_memory", "x": 535, "y": 377, "width": 110, "height": 20,
+      "text": "Memory", "fontSize": 15, "fontFamily": 1, "strokeColor": "#1e1e1e",
+      "textAlign": "center", "verticalAlign": "middle", "containerId": "h_memory", "originalText": "Memory", "autoResize": true
+    },
+
+    {
+      "type": "rectangle", "id": "h_skills", "x": 670, "y": 360, "width": "120", "height": 50,
+      "backgroundColor": "#e9d8fd", "fillStyle": "solid", "strokeColor": "#7048e8", "roughness": 1,
+      "roundness": {"type": 3},
+      "boundElements": [{"id": "t_h_skills", "type": "text"}]
+    },
+    {
+      "type": "text", "id": "t_h_skills", "x": 675, "y": 377, "width": 110, "height": 20,
+      "text": "Skills", "fontSize": 15, "fontFamily": 1, "strokeColor": "#1e1e1e",
+      "textAlign": "center", "verticalAlign": "middle", "containerId": "h_skills", "originalText": "Skills", "autoResize": true
+    },
+
+    {
+      "type": "rectangle", "id": "h_jobs", "x": 810, "y": 360, "width": 110, "height": 50,
+      "backgroundColor": "#e9d8fd", "fillStyle": "solid", "strokeColor": "#7048e8", "roughness": 1,
+      "roundness": {"type": 3},
+      "boundElements": [{"id": "t_h_jobs", "type": "text"}]
+    },
+    {
+      "type": "text", "id": "t_h_jobs", "x": 815, "y": 377, "width": 100, "height": 20,
+      "text": "Jobs", "fontSize": 15, "fontFamily": 1, "strokeColor": "#1e1e1e",
+      "textAlign": "center", "verticalAlign": "middle", "containerId": "h_jobs", "originalText": "Jobs", "autoResize": true
+    },
+
+    {
+      "type": "rectangle", "id": "h_ctx", "x": 530, "y": 430, "width": 390, "height": 50,
+      "backgroundColor": "#d8bbff", "fillStyle": "solid", "strokeColor": "#7048e8", "roughness": 1,
+      "roundness": {"type": 3},
+      "boundElements": [{"id": "t_h_ctx", "type": "text"}]
+    },
+    {
+      "type": "text", "id": "t_h_ctx", "x": 535, "y": 447, "width": 380, "height": 20,
+      "text": "Identity · Session history · System context injection", "fontSize": 13, "fontFamily": 1, "strokeColor": "#1e1e1e",
+      "textAlign": "center", "verticalAlign": "middle", "containerId": "h_ctx", "originalText": "Identity · Session history · System context injection", "autoResize": true
+    },
+
+    {
+      "type": "arrow", "id": "a_next_to_express", "x": 180, "y": 125, "width": 0, "height": 95,
+      "points": [[0,0],[0,95]], "endArrowhead": "arrow", "strokeColor": "#1971c2", "roughness": 1,
+      "startBinding": {"elementId": "nextjs", "fixedPoint": [0.5, 1]},
+      "endBinding": {"elementId": "proxy", "fixedPoint": [0.5, 0]}
+    },
+
+    {
+      "type": "arrow", "id": "a_ctx_to_session", "x": 440, "y": 125, "width": 0, "height": 95,
+      "points": [[0,0],[0,95]], "endArrowhead": "arrow", "strokeColor": "#7048e8", "roughness": 1,
+      "startBinding": {"elementId": "rovo_chat_ctx", "fixedPoint": [0.5, 1]},
+      "endBinding": {"elementId": "session_mgr", "fixedPoint": [0.5, 0]}
+    },
+
+    {
+      "type": "arrow", "id": "a_proxy_to_session", "x": 220, "y": 245, "width": 50, "height": 0,
+      "points": [[0,0],[50,0]], "endArrowhead": "arrow", "strokeColor": "#e67700", "roughness": 1,
+      "startBinding": {"elementId": "proxy", "fixedPoint": [1, 0.5]},
+      "endBinding": {"elementId": "session_mgr", "fixedPoint": [0, 0.5]}
+    },
+
+    {
+      "type": "arrow", "id": "a_session_to_gw", "x": 470, "y": 245, "width": 50, "height": 0,
+      "points": [[0,0],[50,0]], "endArrowhead": "arrow", "strokeColor": "#e67700", "roughness": 1,
+      "startBinding": {"elementId": "session_mgr", "fixedPoint": [1, 0.5]},
+      "endBinding": {"elementId": "rovodev_gw", "fixedPoint": [0, 0.5]}
+    },
+
+    {
+      "type": "arrow", "id": "a_gw_to_rovodev", "x": 620, "y": 270, "width": 0, "height": 90,
+      "points": [[0,0],[0,90]], "endArrowhead": "arrow", "strokeColor": "#e8590c", "roughness": 1,
+      "startBinding": {"elementId": "rovodev_gw", "fixedPoint": [0.5, 1]},
+      "endBinding": {"elementId": "sse_stream", "fixedPoint": [0.5, 0]}
+    },
+
+    {
+      "type": "arrow", "id": "a_session_to_hermes", "x": 370, "y": 245, "width": 0, "height": 95,
+      "points": [[0,0],[0,95]], "endArrowhead": "arrow", "strokeStyle": "dashed", "strokeColor": "#9c36b5", "roughness": 1,
+      "startBinding": {"elementId": "session_mgr", "fixedPoint": [0.5, 1]},
+      "endBinding": {"elementId": "h_ctx", "fixedPoint": [0, 0.5]}
+    },
+
+    {
+      "type": "text", "id": "lbl_sse", "x": 625, "y": 290, "width": 100, "height": 20,
+      "text": "SSE stream", "fontSize": 12, "fontFamily": 1, "strokeColor": "#e8590c",
+      "textAlign": "left", "originalText": "SSE stream", "autoResize": true
+    },
+    {
+      "type": "text", "id": "lbl_mem_inject", "x": 375, "y": 280, "width": 130, "height": 20,
+      "text": "memory inject", "fontSize": 12, "fontFamily": 1, "strokeColor": "#9c36b5",
+      "textAlign": "left", "strokeStyle": "dashed", "originalText": "memory inject", "autoResize": true
+    }
+  ]
+}

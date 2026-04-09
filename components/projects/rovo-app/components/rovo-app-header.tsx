@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import CustomizeMenu from "@/components/blocks/shared-ui/customize-menu";
 import { REASONING_OPTIONS } from "@/components/blocks/shared-ui/data/customize-menu-data";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,6 +21,8 @@ import EditIcon from "@atlaskit/icon/core/edit";
 import RandomizeIcon from "@atlaskit/icon-lab/core/randomize";
 import ShapesIcon from "@atlaskit/icon/core/shapes";
 import ShowMoreHorizontalIcon from "@atlaskit/icon/core/show-more-horizontal";
+import { normalizeRuntimeStatusSnapshot } from "@/lib/rovo-runtime-status";
+import type { RuntimeStatusSnapshot } from "@/lib/rovo-runtime-types";
 
 interface ArtifactMenuItem {
 	id: string;
@@ -44,12 +47,49 @@ export function RovoAppHeader({
 	const [selectedReasoning, setSelectedReasoning] = useState("let-rovo-decide");
 	const [webResultsEnabled, setWebResultsEnabled] = useState(false);
 	const [companyKnowledgeEnabled, setCompanyKnowledgeEnabled] = useState(true);
+	const [runtimeStatus, setRuntimeStatus] = useState<RuntimeStatusSnapshot | null>(null);
 	const hasArtifacts = artifactMenuItems && artifactMenuItems.length > 0;
 	const activeReasoningOption = REASONING_OPTIONS.find((option) => option.id === selectedReasoning) ?? REASONING_OPTIONS[0];
 	const reasoningLabel = activeReasoningOption.id === "let-rovo-decide" ? "Auto" : activeReasoningOption.label;
 	const reasoningIcon = activeReasoningOption.id === "let-rovo-decide"
 		? <RandomizeIcon label="" />
 		: activeReasoningOption.icon;
+	const normalizedRuntimeStatus = runtimeStatus
+		? normalizeRuntimeStatusSnapshot(runtimeStatus)
+		: null;
+
+	function formatSurfaceStatus(value: string) {
+		return value.replace(/-/gu, " ");
+	}
+
+	useEffect(() => {
+		let cancelled = false;
+
+		async function loadRuntimeStatus() {
+			try {
+				const response = await fetch("/api/status", {
+					method: "GET",
+				});
+				if (!response.ok) {
+					return;
+				}
+				const payload = await response.json();
+				if (!cancelled) {
+					setRuntimeStatus(normalizeRuntimeStatusSnapshot(payload));
+				}
+			} catch {
+				// Ignore transient status errors in the chat header.
+			}
+		}
+
+		void loadRuntimeStatus();
+		const intervalId = window.setInterval(loadRuntimeStatus, 30_000);
+
+		return () => {
+			cancelled = true;
+			window.clearInterval(intervalId);
+		};
+	}, []);
 
 	return (
 		<header className={cn("flex items-center gap-3 px-3 py-3", isArtifactOpen && "border-b border-border")}>
@@ -81,6 +121,17 @@ export function RovoAppHeader({
 			</Popover>
 
 			<div className="min-h-px min-w-px flex-1" />
+
+			{normalizedRuntimeStatus ? (
+				<div className="hidden items-center gap-2 text-xs md:flex">
+					<Badge variant={normalizedRuntimeStatus.surfaces.rovodev.health === "ok" ? "success" : normalizedRuntimeStatus.surfaces.rovodev.health === "degraded" ? "warning" : "danger"}>
+						RovoDev {formatSurfaceStatus(normalizedRuntimeStatus.surfaces.rovodev.status)}
+					</Badge>
+					<Badge variant={normalizedRuntimeStatus.surfaces.hermes.health === "ok" ? "success" : normalizedRuntimeStatus.surfaces.hermes.health === "degraded" ? "warning" : "danger"}>
+						Hermes {formatSurfaceStatus(normalizedRuntimeStatus.surfaces.hermes.status)}
+					</Badge>
+				</div>
+			) : null}
 
 			<div className="flex items-center gap-1">
 				{hasArtifacts ? (

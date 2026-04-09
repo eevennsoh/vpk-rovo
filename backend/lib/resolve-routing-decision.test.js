@@ -127,6 +127,16 @@ describe("resolveRoutingDecisionFastPath", () => {
 		assert.equal(result.presentation, "artifact_preview");
 	});
 
+	it("returns genui for diagram requests even when an artifact is open", () => {
+		const result = resolveRoutingDecisionFastPath({
+			prompt: "Create an architecture diagram for this system",
+			activeArtifact: { id: "doc_1", title: "Login", kind: "code" },
+		});
+		assert.equal(result.intent, "genui");
+		assert.equal(result.presentation, "genui_card");
+		assert.equal(result.reason, "diagram_request");
+	});
+
 	it("returns artifact_create for 'create a new app' when activeArtifact exists", () => {
 		const result = resolveRoutingDecisionFastPath({
 			prompt: "create a new app",
@@ -213,6 +223,13 @@ describe("resolveRoutingDecisionFastPath", () => {
 		const result = resolveRoutingDecisionFastPath({ prompt: "create a dashboard" });
 		assert.equal(result.intent, "genui");
 		assert.equal(result.presentation, "genui_card");
+	});
+
+	it("returns genui for architecture diagram requests", () => {
+		const result = resolveRoutingDecisionFastPath({ prompt: "create an architecture diagram for this service" });
+		assert.equal(result.intent, "genui");
+		assert.equal(result.presentation, "genui_card");
+		assert.equal(result.reason, "diagram_request");
 	});
 
 	it("returns null for ambiguous prompts", () => {

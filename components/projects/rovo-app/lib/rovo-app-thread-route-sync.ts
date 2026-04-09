@@ -1,4 +1,5 @@
 import type {
+	RovoAppHermesContext,
 	RovoAppThread,
 	RovoAppVisibility,
 } from "@/lib/rovo-app-types";
@@ -11,6 +12,7 @@ export function buildRovoAppThreadPersistKey(options: {
 	realtimeMessages: ReadonlyArray<RovoUIMessage>;
 	visibility: RovoAppVisibility;
 	activeDocumentId: string | null;
+	hermesContext?: RovoAppHermesContext | null;
 	title: string;
 }): string {
 	return JSON.stringify({
@@ -18,6 +20,7 @@ export function buildRovoAppThreadPersistKey(options: {
 		realtimeMessages: options.realtimeMessages,
 		visibility: options.visibility,
 		activeDocumentId: options.activeDocumentId,
+		hermesContext: options.hermesContext ?? null,
 		title: options.title,
 	});
 }
@@ -25,6 +28,8 @@ export function buildRovoAppThreadPersistKey(options: {
 export function buildRovoAppThreadPath(threadId: string): string {
 	return `${ROVO_APP_ROOT_PATH}/${encodeURIComponent(threadId)}`;
 }
+
+const ROVO_APP_RESERVED_SEGMENTS = new Set(["jobs", "memories", "skills", "settings"]);
 
 export function getRovoAppThreadIdFromPath(pathname: string): string | null {
 	const normalizedPath =
@@ -46,6 +51,10 @@ export function getRovoAppThreadIdFromPath(pathname: string): string | null {
 		return null;
 	}
 
+	if (ROVO_APP_RESERVED_SEGMENTS.has(threadIdSegment)) {
+		return null;
+	}
+
 	try {
 		return decodeURIComponent(threadIdSegment);
 	} catch {
@@ -60,6 +69,7 @@ export function shouldReplaceRovoAppRouteAfterPersistence(options: {
 	realtimeMessages: ReadonlyArray<RovoUIMessage>;
 	visibility: RovoAppVisibility;
 	activeDocumentId: string | null;
+	hermesContext?: RovoAppHermesContext | null;
 	title: string;
 }): boolean {
 	if (!options.pendingThreadId || options.thread.id !== options.pendingThreadId) {
@@ -71,6 +81,7 @@ export function shouldReplaceRovoAppRouteAfterPersistence(options: {
 		realtimeMessages: options.realtimeMessages,
 		visibility: options.visibility,
 		activeDocumentId: options.activeDocumentId,
+		hermesContext: options.hermesContext ?? null,
 		title: options.title,
 	});
 	const persistedThreadKey = buildRovoAppThreadPersistKey({
@@ -78,6 +89,7 @@ export function shouldReplaceRovoAppRouteAfterPersistence(options: {
 		realtimeMessages: options.thread.realtimeMessages,
 		visibility: options.thread.visibility,
 		activeDocumentId: options.thread.activeDocumentId,
+		hermesContext: options.thread.hermesContext ?? null,
 		title: options.thread.title,
 	});
 

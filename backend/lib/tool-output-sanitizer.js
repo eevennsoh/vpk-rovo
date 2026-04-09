@@ -184,6 +184,30 @@ function stripUnfencedSpecPatchLines(text) {
 	return filtered.join("\n");
 }
 
+function splitTrailingUnfencedSpecPatchFragment(text) {
+	if (typeof text !== "string" || text.length === 0 || text.endsWith("\n")) {
+		return {
+			stableText: text,
+			pendingText: "",
+		};
+	}
+
+	const lastNewlineIndex = text.lastIndexOf("\n");
+	const trailingLine =
+		lastNewlineIndex >= 0 ? text.slice(lastNewlineIndex + 1) : text;
+	if (!SPEC_PATCH_LINE_PATTERN.test(trailingLine)) {
+		return {
+			stableText: text,
+			pendingText: "",
+		};
+	}
+
+	return {
+		stableText: lastNewlineIndex >= 0 ? text.slice(0, lastNewlineIndex + 1) : "",
+		pendingText: trailingLine,
+	};
+}
+
 function splitSpecFenceTextForStreaming(text) {
 	if (typeof text !== "string" || text.length === 0) {
 		return {
@@ -204,12 +228,21 @@ function splitSpecFenceTextForStreaming(text) {
 	);
 
 	if (!pendingFenceMatch || pendingFenceMatch.index === undefined) {
-		// Step 3: No pending fence — also strip unfenced JSONL patch lines
-		const withoutUnfencedPatches = stripUnfencedSpecPatchLines(
+		// Step 3: No pending fence — keep a trailing partial patch line buffered
+		// so the next chunk can't leak the remainder as plain assistant text.
+		const {
+			stableText,
+			pendingText,
+		} = splitTrailingUnfencedSpecPatchFragment(
 			textWithCompletedSpecFencesRemoved
 		);
+
+		// Step 4: Strip complete unfenced JSONL patch lines from the visible text.
+		const withoutUnfencedPatches = stripUnfencedSpecPatchLines(
+			stableText
+		);
 		return {
-			pendingText: "",
+			pendingText,
 			visibleText: collapseFenceNewlines(withoutUnfencedPatches),
 		};
 	}

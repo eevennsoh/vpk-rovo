@@ -96,6 +96,15 @@ const WEB_SEARCH_INSTRUCTION = [
 	"[End Web Search Protocol]",
 ].join("\n");
 
+const DURABLE_MEMORY_INSTRUCTION = [
+	"[Durable Memory Protocol]",
+	"In Rovo App, durable memory means Hermes persistent memory.",
+	"When the user asks you to remember, save, or store something for future conversations, treat that as Hermes memory unless they explicitly ask for a repo lesson or rule.",
+	"Use repo lesson logging only for repo/operator corrections or explicit requests to save a lesson, rule, or prevention note.",
+	"Do not describe durable memory as a lesson or skill unless the user explicitly asked for that kind of record.",
+	"[End Durable Memory Protocol]",
+].join("\n");
+
 const DEEP_PLAN_INSTRUCTION = [
 	"[Deep Plan Protocol]",
 	"When plan mode is active, you are in the serve planning workflow. Follow these rules strictly:",
@@ -352,6 +361,7 @@ function getInstructionBlocksForProfile(profile, promptSpecificInstruction, cont
 		SHELL_CHROME_AVOIDANCE_INSTRUCTION,
 		FIGMA_CLARIFICATION_INSTRUCTION,
 		WEB_SEARCH_INSTRUCTION,
+		DURABLE_MEMORY_INSTRUCTION,
 		promptSpecificInstruction,
 	];
 }

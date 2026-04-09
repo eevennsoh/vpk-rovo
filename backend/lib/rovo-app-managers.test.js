@@ -219,6 +219,28 @@ test("rovo app document manager preserves react app artifacts", async () => {
 	assert.equal(finalizedShell?.previewSummary, undefined);
 });
 
+test("rovo app document manager preserves excalidraw artifacts", async () => {
+	const baseDir = await createTempBaseDir();
+	const manager = createRovoAppDocumentManager({ baseDir });
+
+	const shellDocument = await manager.createDocumentShell({
+		documentId: "doc-diagram-shell",
+		threadId: "thread-1",
+		title: "System Diagram",
+		kind: "excalidraw",
+	});
+
+	assert.equal(shellDocument.kind, "excalidraw");
+
+	const finalizedShell = await manager.finalizeDocumentShell(shellDocument.id, {
+		content: "{\"type\":\"excalidraw\",\"version\":2,\"elements\":[{\"id\":\"a\",\"type\":\"rectangle\"}]}",
+		kind: "excalidraw",
+	});
+
+	assert.equal(finalizedShell?.kind, "excalidraw");
+	assert.match(finalizedShell?.versions[0].content || "", /"type":"excalidraw"/);
+});
+
 test("rovo app document manager backfills legacy versions without title snapshots", async () => {
 	const baseDir = await createTempBaseDir();
 	const documentsDir = path.join(baseDir, "rovo-app", "documents");

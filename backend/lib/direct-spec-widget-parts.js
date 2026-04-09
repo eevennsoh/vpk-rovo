@@ -1,4 +1,5 @@
 const { createRouteDecisionPart } = require("./route-decision");
+const { withCanonicalPreviewBody } = require("./widget-preview-payload");
 
 function buildDirectSpecWidgetParts({
 	latestUserMessage,
@@ -19,11 +20,11 @@ function buildDirectSpecWidgetParts({
 			id: widgetId,
 			data: {
 				type: widgetType,
-				payload: {
+				payload: withCanonicalPreviewBody(widgetType, {
 					spec,
 					summary: narrative || latestUserMessage,
 					source: "direct-rovodev-spec",
-				},
+				}),
 			},
 		},
 		{

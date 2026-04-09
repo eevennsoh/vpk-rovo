@@ -31,6 +31,14 @@ test("buildUserMessage omits GenUI protocol during plan-mode context", () => {
 	assert.doesNotMatch(message, /\[Interactive Visual UI Protocol\]/);
 });
 
+test("buildUserMessage includes durable memory protocol in default profile", () => {
+	const message = buildUserMessage("Save this to durable memory.", [], undefined);
+
+	assert.match(message, /\[Durable Memory Protocol\]/);
+	assert.match(message, /durable memory means Hermes persistent memory/i);
+	assert.match(message, /repo lesson logging only for repo\/operator corrections/i);
+});
+
 it("buildUserMessage plain-chat profile limits conversation history", () => {
 	const history = [
 		{ type: "user", content: "one" },

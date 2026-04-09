@@ -19,6 +19,10 @@ function normalizeRovoAppArtifactKind(value) {
 		return "image";
 	}
 
+	if (normalizedValue === "excalidraw") {
+		return "excalidraw";
+	}
+
 	return "text";
 }
 
@@ -51,6 +55,13 @@ function inferRovoAppArtifactKindFromContent(content, fallbackKind = "text") {
 
 	if (/^data:image\//iu.test(normalizedContent)) {
 		return "image";
+	}
+
+	if (
+		/^\s*\{\s*"type"\s*:\s*"excalidraw"/iu.test(normalizedContent) &&
+		/"elements"\s*:\s*\[/iu.test(normalizedContent)
+	) {
+		return "excalidraw";
 	}
 
 	if (

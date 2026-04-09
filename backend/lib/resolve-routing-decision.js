@@ -19,7 +19,7 @@ const ARTIFACT_CREATE_NOUN_PATTERN =
  * GenUI patterns — ported from prompt-intent.js SMART_UI_REQUEST_PATTERN.
  */
 const GENUI_NOUN_PATTERN =
-	/\b(dashboard|chart|charts|graph|graphs|plot|plots|visuali[sz]e|visualization|infographic|kanban|board|timeline|roadmap|widget|json\s*spec|json-render|data\s*view|breakdown|overview|analytics|metrics|kpi|stats|statistics)\b/i;
+	/\b(dashboard|chart|charts|graph|graphs|plot|plots|visuali[sz]e|visualization|infographic|kanban|board|timeline|roadmap|widget|json\s*spec|json-render|data\s*view|breakdown|overview|analytics|metrics|kpi|stats|statistics|diagram|flowchart|excalidraw|sequence\s+diagram)\b/i;
 const GENUI_VERB_PATTERN =
 	/\b(show|display|visuali[sz]e|render|chart|graph|plot|present|summarize|breakdown)\b/i;
 
@@ -28,6 +28,8 @@ const GENUI_VERB_PATTERN =
  */
 const DATA_NOUN_PATTERN =
 	/\b(revenue|sales|data|performance|growth|trend|trends|traffic|conversion|profit|expense|budget|forecast|q[1-4]|quarter|quarterly|annual|monthly|weekly|daily|ytd|year[\s-]to[\s-]date|breakdown|distribution|comparison|analysis)\b/i;
+const DIAGRAM_REQUEST_PATTERN =
+	/\b(?:create|build|generate|make|draw|design|render|show)\b[\s\S]{0,80}\b(?:diagram|flowchart|excalidraw|sequence\s+diagram|architecture\s+diagram|system\s+diagram)\b|\b(?:diagram|flowchart|excalidraw|sequence\s+diagram|architecture\s+diagram|system\s+diagram)\b[\s\S]{0,80}\b(?:create|build|generate|make|draw|design|render|show)\b/i;
 
 // ---------------------------------------------------------------------------
 // Presentation mapping
@@ -73,6 +75,17 @@ function resolveRoutingDecisionFastPath(context) {
 	}
 
 	const lower = prompt.toLowerCase();
+	const isExplicitDiagramRequest = DIAGRAM_REQUEST_PATTERN.test(prompt);
+
+	if (isExplicitDiagramRequest) {
+		return {
+			intent: "genui",
+			presentation: "genui_card",
+			confidence: 0.95,
+			reason: "diagram_request",
+			origin,
+		};
+	}
 
 	// D1: Active artifact → artifact_update unless user explicitly requests a new artifact
 	if (activeArtifact?.id) {
@@ -179,7 +192,7 @@ Classify the user's latest message into exactly one intent:
 
 - chat: normal conversation, Q&A, greetings, explanations, opinions, or anything that should stay in the chat transcript
 - artifact_create: user wants to create a new code artifact, document, or durable content (app, page, component, doc, spec, memo, etc.)
-- genui: user wants a dynamic data visualization, dashboard, chart, graph, infographic, or interactive UI widget
+- genui: user wants a dynamic data visualization, dashboard, chart, graph, infographic, diagram, flowchart, or interactive UI widget
 
 Rules:
 - Choose artifact_create only when the user explicitly asks to build/create/generate a durable artifact.

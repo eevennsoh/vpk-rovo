@@ -36,6 +36,10 @@ test("buildDirectSpecWidgetParts emits widget parts and a final genui route deci
 		data: {
 			type: "genui-preview",
 			payload: {
+				body: {
+					kind: "json-render",
+					spec,
+				},
 				spec,
 				summary: "Here is the UI.",
 				source: "direct-rovodev-spec",

@@ -50,6 +50,28 @@ test("resolvePersistedRovoAppArtifactTitle keeps fallback title when model fallb
 	assert.equal(title, "My fallback");
 });
 
+test("resolvePersistedRovoAppArtifactTitle keeps fallback title for excalidraw scene content", async () => {
+	let generatedTitleCalls = 0;
+
+	const title = await resolvePersistedRovoAppArtifactTitle({
+		artifactAction: "createDocument",
+		content: JSON.stringify({
+			type: "excalidraw",
+			version: 2,
+			elements: [{ id: "node-1", type: "rectangle", x: 0, y: 0 }],
+		}),
+		fallbackTitle: "System Diagram",
+		latestUserMessage: "Create a system diagram",
+		resolveGeneratedTitle: async () => {
+			generatedTitleCalls += 1;
+			return "Model diagram title";
+		},
+	});
+
+	assert.equal(title, "System Diagram");
+	assert.equal(generatedTitleCalls, 0);
+});
+
 test("generateAndPersistRovoAppArtifact cleans up failed create shells", async () => {
 	const cleanupCalls = [];
 

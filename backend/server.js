@@ -26,6 +26,28 @@ const { createRovoAppUploadManager } = require("./lib/rovo-app-uploads");
 const {
 	createRovoAppGeneratedFilesManager,
 } = require("./lib/rovo-app-generated-files");
+const {
+	createHermesJobsProvider,
+} = require("./lib/hermes-jobs-provider");
+const {
+	addHermesMemoryEntry,
+	getHermesMemory,
+	listHermesMemories,
+	removeHermesMemoryEntry,
+	replaceHermesMemory,
+} = require("./lib/hermes-memory");
+const { getHermesSkill, listHermesSkills, toggleHermesSkill } = require("./lib/hermes-skills");
+const { getHermesRuntimeStatus } = require("./lib/hermes-status");
+const { createHermesJobLinkManager } = require("./lib/hermes-job-links");
+const { buildRovoAppHermesContextDescription } = require("./lib/hermes-rovo-context");
+const {
+	getLatestAssistantTextFromMessages,
+	isExplicitHermesMemoryRequest,
+	runHermesMemoryCompanionReview,
+} = require("./lib/hermes-memory-companion");
+const { executeRovoTask } = require("./lib/rovo-task-executor");
+const { syncHermesJobResultsToRovoThreads } = require("./lib/hermes-rovo-job-sync");
+const { buildRuntimeStatusSnapshot } = require("./lib/runtime-status");
 const { createAbortControllerFromRequest } = require("./lib/http-request-abort");
 const {
 	createCapturedResponse,
@@ -88,9 +110,18 @@ const { analyzeGeneratedText, pickBestSpec, extractDirectSpec } = require("./lib
 const { buildFallbackGenuiSpecFromText } = require("./lib/genui-fallback-spec");
 const { shouldAttemptPostToolGenui } = require("./lib/genui-post-tool-eligibility");
 const { buildDirectSpecWidgetParts } = require("./lib/direct-spec-widget-parts");
+const { withCanonicalPreviewBody } = require("./lib/widget-preview-payload");
 const { resolveAutomaticGenuiOutcome } = require("./lib/automatic-genui-outcome");
 const { assessToolFirstGenuiQuality } = require("./lib/tool-first-genui-quality");
 const { dispatchBespokeGenuiHandler } = require("./lib/bespoke-genui-handler-dispatch");
+const {
+	buildExcalidrawArtifactSystemPrompt,
+	buildExcalidrawWidgetPayload,
+	buildExcalidrawWidgetSystemPrompt,
+	deriveExcalidrawTitle,
+	isExcalidrawDiagramRequest,
+	normalizeExcalidrawArtifactOutput,
+} = require("./lib/excalidraw-artifact");
 const { looksLikeInabilityResponse, looksLikeWriteBlockedResponse } = require("./lib/inability-response-detector");
 const { assessPromptComplexityForPlanMode } = require("./lib/plan-mode-complexity-heuristic");
 const {
@@ -709,6 +740,152 @@ function sendGatewayErrorResponse(res, error, fallbackErrorMessage) {
 	});
 }
 
+function parseOptionalBoolean(value) {
+	if (value === true || value === "true" || value === 1 || value === "1") {
+		return true;
+	}
+	if (value === false || value === "false" || value === 0 || value === "0") {
+		return false;
+	}
+	return null;
+}
+
+function parseOptionalInteger(value) {
+	if (typeof value === "number" && Number.isInteger(value)) {
+		return value;
+	}
+	if (typeof value === "string" && value.trim()) {
+		const parsed = Number.parseInt(value, 10);
+		return Number.isInteger(parsed) ? parsed : null;
+	}
+	return null;
+}
+
+function getFirstQueryValue(value) {
+	return Array.isArray(value) ? value[0] : value;
+}
+
+function sendHermesUnavailableResponse(res, error, fallbackErrorMessage = "Hermes request failed") {
+	const statusCode =
+		error && typeof error === "object" && error !== null && typeof error.statusCode === "number"
+			? error.statusCode
+			: error?.code === "ENOENT"
+				? 404
+				: error?.code === "INVALID_INPUT"
+					? 400
+					: error?.code === "HERMES_UNREACHABLE"
+						? 503
+						: 500;
+
+	return res.status(statusCode).json({
+		error: statusCode === 503 ? fallbackErrorMessage : error instanceof Error ? error.message : fallbackErrorMessage,
+		details: error instanceof Error ? error.details ?? error.message : String(error),
+	});
+}
+
+function extractHermesJobLinkMetadata(rawInput) {
+	if (!rawInput || typeof rawInput !== "object") {
+		return null;
+	}
+
+	const linkedThreadId =
+		typeof rawInput.linkedThreadId === "string" && rawInput.linkedThreadId.trim()
+			? rawInput.linkedThreadId.trim()
+			: null;
+	return {
+		artifactTarget:
+			typeof rawInput.artifactTarget === "string" && rawInput.artifactTarget.trim()
+				? rawInput.artifactTarget.trim()
+				: null,
+		lastPostedRunMarker:
+			typeof rawInput.lastPostedRunMarker === "string" && rawInput.lastPostedRunMarker.trim()
+				? rawInput.lastPostedRunMarker.trim()
+				: null,
+		linkedThreadId,
+		postResultToThread: rawInput.postResultToThread === true,
+		surface:
+			typeof rawInput.surface === "string" && rawInput.surface.trim()
+				? rawInput.surface.trim()
+				: null,
+		threadStrategy:
+			rawInput.threadStrategy === "fixed" || rawInput.threadStrategy === "new-per-run"
+				? rawInput.threadStrategy
+				: linkedThreadId
+					? "fixed"
+					: "new-per-run",
+	};
+}
+
+function buildHermesJobLinkMetadata(rawInput, overrides = {}) {
+	return extractHermesJobLinkMetadata({
+		...(rawInput && typeof rawInput === "object" ? rawInput : {}),
+		...(overrides && typeof overrides === "object" ? overrides : {}),
+	});
+}
+
+async function persistHermesJobLink(jobId, rawInput, overrides = {}, { mergeExisting = false } = {}) {
+	const baseMetadata = mergeExisting
+		? (await hermesJobLinkManager.getLink(jobId)) ?? {}
+		: {};
+	const linkMetadata = buildHermesJobLinkMetadata({
+		...baseMetadata,
+		...(rawInput && typeof rawInput === "object" ? rawInput : {}),
+	}, overrides);
+	await hermesJobLinkManager.setLink(jobId, linkMetadata);
+	return linkMetadata;
+}
+
+function toHermesJobInput(rawInput) {
+	if (!rawInput || typeof rawInput !== "object") {
+		return {};
+	}
+
+	const nextInput = {};
+	const fields = ["name", "schedule", "prompt", "deliver", "skills", "repeat"];
+	for (const field of fields) {
+		if (field in rawInput) {
+			nextInput[field] = rawInput[field];
+		}
+	}
+	if (!("prompt" in nextInput) && "target" in rawInput) {
+		nextInput.prompt = rawInput.target;
+	}
+
+	return nextInput;
+}
+
+async function listMergedHermesJobs(searchParams) {
+	const jobs = await hermesJobsProvider.listHermesJobs(searchParams);
+	return hermesJobLinkManager.mergeJobsWithLinks(jobs);
+}
+
+async function getMergedHermesJob(jobId) {
+	const [job, link] = await Promise.all([
+		hermesJobsProvider.getHermesJob(jobId),
+		hermesJobLinkManager.getLink(jobId),
+	]);
+	return {
+		...job,
+		...(link ?? {}),
+	};
+}
+
+async function syncHermesJobsForRovoThreads(threadId = null) {
+	try {
+		const jobs = await listMergedHermesJobs();
+		await syncHermesJobResultsToRovoThreads({
+			jobs,
+			onJobPosted: async (job, metadata) => {
+				await persistHermesJobLink(job.id, job, metadata, { mergeExisting: true });
+			},
+			rovoAppThreadManager,
+			threadId,
+		});
+	} catch (error) {
+		console.warn("[HERMES-JOBS] Failed to sync Hermes job results into Rovo threads:", error instanceof Error ? error.message : String(error));
+	}
+}
+
 app.use(cors());
 app.use(express.json({ limit: "50mb" }));
 app.use(express.text({ limit: "50mb", type: "text/markdown" }));
@@ -1239,6 +1416,43 @@ const rovoAppGeneratedFilesManager = createRovoAppGeneratedFilesManager({
 	projectRoot: path.join(__dirname, ".."),
 	logger: console,
 });
+const hermesJobLinkManager = createHermesJobLinkManager({
+	baseDir: path.join(__dirname, "data"),
+});
+const hermesJobsProvider = createHermesJobsProvider({
+	baseDir: path.join(__dirname, "data"),
+	executeTask: async ({
+		job,
+		prompt,
+		selectedSkillIds,
+	}) =>
+		executeRovoTask({
+			prompt,
+			selectedSkillIds,
+			system: [
+				"[Hermes Job Runner]",
+				"You are executing a scheduled Hermes job through the shared RovoDev executor.",
+				job?.name ? `Job name: ${job.name}` : null,
+				"Complete the requested work using the same tool-capable runtime used by interactive Rovo chat.",
+				"[End Hermes Job Runner]",
+			]
+				.filter(Boolean)
+				.join("\n"),
+		}),
+	logger: console,
+	onJobSettled: async (job) => {
+		const mergedJob = await getMergedHermesJob(job.id);
+		await syncHermesJobResultsToRovoThreads({
+			jobs: [mergedJob],
+			onJobPosted: async (syncedJob, metadata) => {
+				await persistHermesJobLink(syncedJob.id, syncedJob, metadata, {
+					mergeExisting: true,
+				});
+			},
+			rovoAppThreadManager,
+		});
+	},
+});
 const rovoAppRunManager = createRovoAppRunManager({
 	logger: console,
 });
@@ -1389,6 +1603,13 @@ function buildRovoAppArtifactSystemPrompt({
 	kind,
 }) {
 	const normalizedKind = getNonEmptyString(kind) || "text";
+	if (normalizedKind === "excalidraw") {
+		return buildExcalidrawArtifactSystemPrompt({
+			mode,
+			title,
+		});
+	}
+
 	const header = mode === "update"
 		? `You are updating an existing ${normalizedKind} artifact titled "${title}".`
 		: `You are generating a new ${normalizedKind} artifact titled "${title}".`;
@@ -1441,7 +1662,35 @@ async function generateRovoAppArtifactText({
 			content: message.content,
 		}))
 		: [];
-	const maxOutputTokens = kind === "code" ? 3200 : kind === "sheet" ? 2200 : 1800;
+	const maxOutputTokens =
+		kind === "code"
+			? 3200
+			: kind === "sheet"
+				? 2200
+				: kind === "excalidraw"
+					? 3200
+					: 1800;
+	if (kind === "excalidraw") {
+		const rawText = await generateTextViaGateway({
+			system,
+			prompt,
+			messages: normalizedMessages,
+			maxOutputTokens,
+			temperature: 0.2,
+			provider,
+			signal,
+			backendPreference: "ai-gateway",
+		});
+		const normalizedExcalidraw = normalizeExcalidrawArtifactOutput(rawText);
+		if (!normalizedExcalidraw) {
+			throw new Error("Excalidraw artifact generation returned invalid scene JSON.");
+		}
+		if (typeof onTextDelta === "function") {
+			onTextDelta(normalizedExcalidraw);
+		}
+		return normalizedExcalidraw;
+	}
+
 	const streamArtifactText = () =>
 		streamTextViaGateway({
 			system,
@@ -2268,6 +2517,47 @@ async function consumeRovoAppManagedResponse({
 			error: error instanceof Error ? error.message : String(error),
 		});
 	}
+
+	const {
+		conversationHistory: memoryCompanionHistory,
+		message: latestUserMessage,
+	} = mapUiMessagesToConversation(messages);
+	const latestAssistantMessage = getLatestAssistantTextFromMessages(messages);
+	const explicitMemoryRequest = isExplicitHermesMemoryRequest(latestUserMessage);
+
+	if (latestUserMessage || latestAssistantMessage) {
+		const runHermesMemoryReview = async () => {
+			try {
+				const reviewResult = await runHermesMemoryCompanionReview({
+					conversationHistory: memoryCompanionHistory,
+					explicitSaveRequest: explicitMemoryRequest,
+					latestAssistantMessage,
+					latestUserMessage,
+				});
+				if (!reviewResult.didReview) {
+					return;
+				}
+
+				console.info("[HERMES] Memory companion reviewed completed Rovo App turn", {
+					threadId,
+					explicitMemoryRequest,
+					responseText: reviewResult.responseText ?? null,
+				});
+			} catch (error) {
+				console.warn("[HERMES] Memory companion review failed:", {
+					threadId,
+					explicitMemoryRequest,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+		};
+
+		if (explicitMemoryRequest) {
+			await runHermesMemoryReview();
+		} else {
+			void runHermesMemoryReview();
+		}
+	}
 	await finalizeRovoAppRun(threadId, run, messages);
 }
 
@@ -2297,13 +2587,17 @@ async function executeRovoAppManagedRun(run) {
 	const signal = run.abortController.signal;
 	const delegatedMessageId = getNonEmptyString(requestBody.delegatedMessageId);
 	const conversationSummary = getNonEmptyString(requestBody.conversationSummary);
-	const requestMessages = Array.isArray(requestBody.messages)
-		? [...requestBody.messages]
-		: [];
-	const threadForSession = threadId ? await rovoAppThreadManager.getThread(threadId) : null;
-	if (threadForSession?.sessionId) {
-		requestBody.sessionId = threadForSession.sessionId;
-		requestBody.sessionMode = threadForSession.sessionMode ?? "persistent";
+		const requestMessages = Array.isArray(requestBody.messages)
+			? [...requestBody.messages]
+			: [];
+		const threadForSession = threadId ? await rovoAppThreadManager.getThread(threadId) : null;
+		const requestHermesContext =
+			requestBody.hermesContext && typeof requestBody.hermesContext === "object"
+				? requestBody.hermesContext
+				: null;
+		if (threadForSession?.sessionId) {
+			requestBody.sessionId = threadForSession.sessionId;
+			requestBody.sessionMode = threadForSession.sessionMode ?? "persistent";
 	}
 	const delegatedThread =
 		threadId && delegatedMessageId
@@ -2362,11 +2656,24 @@ async function executeRovoAppManagedRun(run) {
 		typeof requestBody.artifactSteering === "object"
 			? requestBody.artifactSteering
 			: null;
-	const baseContextDescription = getNonEmptyString(requestBody.contextDescription);
-	const delegationContextDescription = conversationSummary
-		? `[Voice delegation summary]\n${conversationSummary}`
-		: null;
-	const streamingArtifact =
+		const baseContextDescription = getNonEmptyString(requestBody.contextDescription);
+		const selectedHermesSkillIds = Array.isArray(requestHermesContext?.selectedSkillIds)
+			? requestHermesContext.selectedSkillIds
+			: Array.isArray(threadForSession?.hermesContext?.selectedSkillIds)
+				? threadForSession.hermesContext.selectedSkillIds
+				: [];
+		const delegationContextDescription = conversationSummary
+			? `[Voice delegation summary]\n${conversationSummary}`
+			: null;
+		let hermesContextDescription = null;
+		try {
+			hermesContextDescription = await buildRovoAppHermesContextDescription({
+				selectedSkillIds: selectedHermesSkillIds,
+			});
+		} catch (error) {
+			console.warn("[HERMES] Failed to build Hermes context for RovoDev chat:", error instanceof Error ? error.message : String(error));
+		}
+		const streamingArtifact =
 		requestBody.streamingArtifact &&
 		typeof requestBody.streamingArtifact === "object" &&
 		getNonEmptyString(requestBody.streamingArtifact.id)
@@ -2378,12 +2685,13 @@ async function executeRovoAppManagedRun(run) {
 			}
 			: null;
 	const resolvedProvider = getNonEmptyString(requestBody.provider);
-	const effectiveBaseContextDescription = [
-		delegationContextDescription,
-		baseContextDescription,
-	]
-		.filter(Boolean)
-		.join("\n\n");
+		const effectiveBaseContextDescription = [
+			delegationContextDescription,
+			hermesContextDescription,
+			baseContextDescription,
+		]
+			.filter(Boolean)
+			.join("\n\n");
 
 	delete requestBody.activeDocumentId;
 	delete requestBody.artifactContext;
@@ -2394,8 +2702,9 @@ async function executeRovoAppManagedRun(run) {
 	delete requestBody.origin;
 	delete requestBody.voiceMetadata;
 	delete requestBody.activeArtifact;
-	delete requestBody.executionMode;
-	delete requestBody.executionTask;
+		delete requestBody.executionMode;
+		delete requestBody.executionTask;
+		delete requestBody.hermesContext;
 
 	const requestIsPlanMode = requestBody.isPlanMode === true;
 	delete requestBody.isPlanMode;
@@ -4866,11 +5175,11 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 							id: widgetId,
 							data: {
 								type: SMART_WIDGET_TYPE_GENUI,
-								payload: {
+								payload: withCanonicalPreviewBody(SMART_WIDGET_TYPE_GENUI, {
 									spec: translationSpec,
 									summary: summaryText,
 									source: "translation-tool",
-								},
+								}),
 							},
 						});
 						writer.write({
@@ -4992,7 +5301,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 							id: audioWidgetId,
 							data: {
 								type: SMART_WIDGET_TYPE_AUDIO,
-								payload: {
+								payload: withCanonicalPreviewBody(SMART_WIDGET_TYPE_AUDIO, {
 									audioUrl: buildAudioDataUrl(
 										synthesisResult.audioBytes,
 										synthesisResult.contentType
@@ -5001,7 +5310,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 									transcript: stripConversationalFiller(clarifiedAudioSelection.voiceInput),
 									source: "audio-context-clarification",
 									inputSource: clarifiedAudioSelection.source || undefined,
-								},
+								}),
 							},
 						});
 						writer.write({ type: "text-start", id: textId });
@@ -5167,19 +5476,19 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 										url: `data:${resolvedMediaType};base64,${base64}`,
 										mimeType: resolvedMediaType,
 									});
-									writer.write({
-										type: "data-widget-data",
-										id: imageWidgetId,
-										data: {
-											type: SMART_WIDGET_TYPE_IMAGE,
-											payload: {
-												images: [...generatedImages],
-												prompt: latestUserMessage,
-												source: "image-context-clarification",
-												inputSource: clarifiedImageContext.source || undefined,
+										writer.write({
+											type: "data-widget-data",
+											id: imageWidgetId,
+											data: {
+												type: SMART_WIDGET_TYPE_IMAGE,
+												payload: withCanonicalPreviewBody(SMART_WIDGET_TYPE_IMAGE, {
+													images: [...generatedImages],
+													prompt: latestUserMessage,
+													source: "image-context-clarification",
+													inputSource: clarifiedImageContext.source || undefined,
+												}),
 											},
-										},
-									});
+										});
 								},
 							});
 						};
@@ -5538,7 +5847,10 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 							writer.write({
 								type: "data-widget-data",
 								id,
-								data: { type, payload },
+								data: {
+									type,
+									payload: withCanonicalPreviewBody(type, payload),
+								},
 							});
 						};
 
@@ -5759,43 +6071,81 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 							smartIntentResult.intent === "genui" ||
 							smartIntentResult.intent === "both"
 						) {
-							emitThinkingStatus("Generating results");
+							const shouldGenerateExcalidrawDiagram = isExcalidrawDiagramRequest(latestUserMessage);
+							emitThinkingStatus(
+								shouldGenerateExcalidrawDiagram ? "Generating diagram" : "Generating results",
+							);
 							emitWidgetLoading(genuiWidgetId, SMART_WIDGET_TYPE_GENUI, true);
 							try {
 								throwIfSmartRouteAborted();
-									const genuiResult = await generateSmartGenuiResult({
-										roleMessages,
-										layoutContext: smartLayoutContext,
+								if (shouldGenerateExcalidrawDiagram) {
+									const excalidrawTitle = deriveExcalidrawTitle(latestUserMessage);
+									const rawSceneText = await generateTextViaGateway({
+										system: buildExcalidrawWidgetSystemPrompt({ title: excalidrawTitle }),
+										prompt: [
+											"User request:",
+											latestUserMessage,
+											conversationHistory.length > 0
+												? `\nConversation context:\n${conversationHistory
+													.map((message) => `${message.type === "assistant" ? "Assistant" : "User"}: ${message.content}`)
+													.join("\n")}`
+												: null,
+										].filter(Boolean).join("\n"),
+										maxOutputTokens: 3200,
+										temperature: 0.2,
+										provider: resolvedProvider,
 										signal: smartRouteAbortController.signal,
-									});
-								throwIfSmartRouteAborted();
-								const summaryText = getNonEmptyString(genuiResult.narrative);
-								if (summaryText) {
-									generatedNarrative = summaryText;
-								}
-
-								const fallbackSpec = summaryText
-									? buildFallbackGenuiSpecFromText({
-											text: summaryText,
-											prompt: latestUserMessage,
-										})
-									: null;
-								const resolvedSpec = genuiResult.spec || fallbackSpec;
-
-								if (resolvedSpec) {
-									const hasGeneratedSpec = Boolean(genuiResult.spec);
-									emitWidgetData(genuiWidgetId, SMART_WIDGET_TYPE_GENUI, {
-										spec: resolvedSpec,
-										summary:
-											summaryText && summaryText.length > 280
-												? `${summaryText.slice(0, 279)}...`
-												: summaryText || "Generated interactive preview",
-										source: hasGeneratedSpec
-											? "genui-chat"
-											: "genui-chat-fallback",
-									});
+										});
+									throwIfSmartRouteAborted();
+									const normalizedScene = normalizeExcalidrawArtifactOutput(rawSceneText);
+									if (!normalizedScene) {
+										emitTextDelta(GENUI_FALLBACK_ERROR_TEXT);
+									} else {
+										emitWidgetData(
+											genuiWidgetId,
+											SMART_WIDGET_TYPE_GENUI,
+											buildExcalidrawWidgetPayload({
+												prompt: latestUserMessage,
+												normalizedSceneJson: normalizedScene,
+											}),
+										);
+										generatedNarrative = latestUserMessage;
+									}
 								} else {
-									emitTextDelta(GENUI_FALLBACK_ERROR_TEXT);
+										const genuiResult = await generateSmartGenuiResult({
+											roleMessages,
+											layoutContext: smartLayoutContext,
+											signal: smartRouteAbortController.signal,
+										});
+									throwIfSmartRouteAborted();
+									const summaryText = getNonEmptyString(genuiResult.narrative);
+									if (summaryText) {
+										generatedNarrative = summaryText;
+									}
+
+									const fallbackSpec = summaryText
+										? buildFallbackGenuiSpecFromText({
+												text: summaryText,
+												prompt: latestUserMessage,
+											})
+										: null;
+									const resolvedSpec = genuiResult.spec || fallbackSpec;
+
+									if (resolvedSpec) {
+										const hasGeneratedSpec = Boolean(genuiResult.spec);
+										emitWidgetData(genuiWidgetId, SMART_WIDGET_TYPE_GENUI, {
+											spec: resolvedSpec,
+											summary:
+												summaryText && summaryText.length > 280
+													? `${summaryText.slice(0, 279)}...`
+													: summaryText || "Generated interactive preview",
+											source: hasGeneratedSpec
+												? "genui-chat"
+												: "genui-chat-fallback",
+										});
+									} else {
+										emitTextDelta(GENUI_FALLBACK_ERROR_TEXT);
+									}
 								}
 							} catch (genuiError) {
 								if (isSmartRouteAbortError(genuiError)) {
@@ -6100,12 +6450,12 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 											id: imageWidgetId,
 											data: {
 												type: SMART_WIDGET_TYPE_IMAGE,
-												payload: {
+												payload: withCanonicalPreviewBody(SMART_WIDGET_TYPE_IMAGE, {
 													images: [...generatedImages],
 													prompt: latestUserMessage,
 													source: "media-bypass-image",
 													inputSource: mediaBypassImageSource || undefined,
-												},
+												}),
 											},
 										});
 									},
@@ -6264,7 +6614,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 								id: audioWidgetId,
 								data: {
 									type: SMART_WIDGET_TYPE_AUDIO,
-									payload: {
+									payload: withCanonicalPreviewBody(SMART_WIDGET_TYPE_AUDIO, {
 										audioUrl: buildAudioDataUrl(
 											synthesisResult.audioBytes,
 											synthesisResult.contentType
@@ -6273,7 +6623,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 										transcript: stripConversationalFiller(mediaBypassVoiceInput),
 										source: "media-bypass-audio",
 										inputSource: mediaBypassVoiceInputSource || undefined,
-									},
+									}),
 								},
 							});
 
@@ -7066,15 +7416,18 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 									id: widgetId,
 									data: {
 										type: SMART_WIDGET_TYPE_GENUI,
-										payload: withRouteWidgetContentType({
-											spec: directGenuiResult.spec,
-											summary: summaryText
-												? summaryText.length > 280
+										payload: withCanonicalPreviewBody(
+											SMART_WIDGET_TYPE_GENUI,
+											withRouteWidgetContentType({
+												spec: directGenuiResult.spec,
+												summary: summaryText
+													? summaryText.length > 280
 													? `${summaryText.slice(0, 279)}...`
 													: summaryText
-												: "Generated interactive view",
-											source,
-										}),
+													: "Generated interactive view",
+												source,
+											}),
+										),
 									},
 								});
 								hasEmittedGenuiWidget = true;
@@ -7745,7 +8098,10 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 									id: widgetId,
 									data: {
 										type: resolvedWidgetType,
-										payload: parsedWidget,
+										payload: withCanonicalPreviewBody(
+											resolvedWidgetType,
+											parsedWidget,
+										),
 									},
 								});
 
@@ -9171,11 +9527,11 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 												id: imageWidgetId,
 												data: {
 													type: SMART_WIDGET_TYPE_IMAGE,
-													payload: {
+													payload: withCanonicalPreviewBody(SMART_WIDGET_TYPE_IMAGE, {
 														images: [...generatedImages],
 														prompt: imagePayload.prompt || latestUserMessage,
 														source: "direct-rovodev-image",
-													},
+													}),
 												},
 											});
 										},
@@ -9236,7 +9592,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 									id: audioWidgetId,
 									data: {
 										type: SMART_WIDGET_TYPE_AUDIO,
-										payload: {
+										payload: withCanonicalPreviewBody(SMART_WIDGET_TYPE_AUDIO, {
 											audioUrl: buildAudioDataUrl(
 												synthesisResult.audioBytes,
 												synthesisResult.contentType
@@ -9244,7 +9600,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 											mimeType: synthesisResult.contentType,
 											transcript: audioPayload.text,
 											source: "direct-rovodev-audio",
-										},
+										}),
 									},
 								});
 							} catch (audioError) {
@@ -9388,11 +9744,14 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 									id: widgetId,
 									data: {
 										type: SMART_WIDGET_TYPE_GENUI,
-										payload: withRouteWidgetContentType({
-											spec: bespokeResult.spec,
-											summary: bespokeResult.summary,
-											source: bespokeResult.source,
-										}),
+										payload: withCanonicalPreviewBody(
+											SMART_WIDGET_TYPE_GENUI,
+											withRouteWidgetContentType({
+												spec: bespokeResult.spec,
+												summary: bespokeResult.summary,
+												source: bespokeResult.source,
+											}),
+										),
 									},
 								});
 								hasEmittedGenuiWidget = true;
@@ -9434,18 +9793,21 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 							});
 
 							if (outcome.kind === "widget") {
-								writer.write({
-									type: "data-widget-data",
-									id: widgetId,
-									data: {
-										type: SMART_WIDGET_TYPE_GENUI,
-										payload: withRouteWidgetContentType({
-											spec: outcome.spec,
-											summary: outcome.summary,
-											source: outcome.source,
-										}),
-									},
-								});
+									writer.write({
+										type: "data-widget-data",
+										id: widgetId,
+										data: {
+											type: SMART_WIDGET_TYPE_GENUI,
+											payload: withCanonicalPreviewBody(
+												SMART_WIDGET_TYPE_GENUI,
+												withRouteWidgetContentType({
+												spec: outcome.spec,
+												summary: outcome.summary,
+												source: outcome.source,
+											}),
+											),
+										},
+									});
 								hasEmittedGenuiWidget = true;
 								writer.write(createRouteDecisionPart({
 									intent: "genui",
@@ -9480,6 +9842,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 							};
 						}
 					};
+					const planExecutionActive = isPlanExecutionPhase(threadId);
 					if (!isStrictToolFirstTurn) {
 						const hasToolObservationData = hasToolObservationEntries();
 						const looksLikeClarification = looksLikeClarificationResponse(trimmedAssistantText);
@@ -9507,7 +9870,6 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 								textLength: trimmedAssistantText.length,
 							});
 						}
-				const planExecutionActive = isPlanExecutionPhase(threadId);
 					const shouldAttemptGenui = shouldAttemptPostToolGenui({
 						assistantText: trimmedAssistantText,
 						hasEmittedQuestionCard,
@@ -9685,11 +10047,14 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 										id: toolFirstGenuiWidgetId,
 										data: {
 											type: SMART_WIDGET_TYPE_GENUI,
-											payload: withRouteWidgetContentType({
+											payload: withCanonicalPreviewBody(
+												SMART_WIDGET_TYPE_GENUI,
+												withRouteWidgetContentType({
 												spec: bespokeResult.spec,
 												summary: bespokeResult.summary,
 												source: bespokeResult.source,
 											}),
+											),
 										},
 									});
 									hasEmittedGenuiWidget = true;
@@ -9751,18 +10116,21 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 									const renderedSummary =
 										outcome.summary ||
 										"Generated a visual summary from tool context below.";
-									writer.write({
-										type: "data-widget-data",
-										id: toolFirstGenuiWidgetId,
-										data: {
-											type: SMART_WIDGET_TYPE_GENUI,
-											payload: withRouteWidgetContentType({
-												spec: outcome.spec,
-												summary: renderedSummary,
-												source: outcome.source,
-											}),
-										},
-									});
+										writer.write({
+											type: "data-widget-data",
+											id: toolFirstGenuiWidgetId,
+											data: {
+												type: SMART_WIDGET_TYPE_GENUI,
+												payload: withCanonicalPreviewBody(
+													SMART_WIDGET_TYPE_GENUI,
+													withRouteWidgetContentType({
+													spec: outcome.spec,
+													summary: renderedSummary,
+													source: outcome.source,
+												}),
+												),
+											},
+										});
 									hasEmittedGenuiWidget = true;
 									toolFirstRouteReason = "intent_task_toolable";
 									toolFirstRouteExperience = "generative_ui";
@@ -9873,11 +10241,14 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 												id: recoveryWidgetId,
 												data: {
 													type: SMART_WIDGET_TYPE_GENUI,
-													payload: withRouteWidgetContentType({
+													payload: withCanonicalPreviewBody(
+														SMART_WIDGET_TYPE_GENUI,
+														withRouteWidgetContentType({
 														spec: recoverySpec,
 														summary: recoverySpec.title,
 														source: "work-summary-zero-tool-recovery",
 													}),
+													),
 												},
 											});
 											writer.write({
@@ -11801,6 +12172,7 @@ app.post("/api/rovo-app/messages", async (req, res) => {
 
 app.get("/api/rovo-app/threads", async (req, res) => {
 	try {
+		await syncHermesJobsForRovoThreads();
 		const rawLimit = Array.isArray(req.query.limit) ? req.query.limit[0] : req.query.limit;
 		const limit = rawLimit ? Number(rawLimit) : undefined;
 		const threads = (
@@ -11828,6 +12200,7 @@ app.post("/api/rovo-app/threads", async (req, res) => {
 			modelId,
 			provider,
 			activeDocumentId,
+			hermesContext,
 			sessionId,
 			sessionMode,
 			createdAt,
@@ -11842,10 +12215,11 @@ app.post("/api/rovo-app/threads", async (req, res) => {
 			realtimeMessages,
 			visibility,
 			modelId,
-			provider,
-			activeDocumentId,
-			sessionId,
-			sessionMode,
+				provider,
+				activeDocumentId,
+				hermesContext,
+				sessionId,
+				sessionMode,
 			createdAt,
 			updatedAt,
 		});
@@ -11885,6 +12259,7 @@ app.delete("/api/rovo-app/threads", async (req, res) => {
 
 app.get("/api/rovo-app/threads/:threadId", async (req, res) => {
 	try {
+		await syncHermesJobsForRovoThreads(req.params.threadId);
 		const thread = await reconcileOrphanedRovoAppThread(
 			await rovoAppThreadManager.getThread(req.params.threadId),
 		);
@@ -11909,6 +12284,7 @@ app.put("/api/rovo-app/threads/:threadId", async (req, res) => {
 			modelId,
 			provider,
 			activeDocumentId,
+			hermesContext,
 			sessionId,
 			sessionMode,
 			updatedAt,
@@ -11923,9 +12299,10 @@ app.put("/api/rovo-app/threads/:threadId", async (req, res) => {
 			realtimeMessages,
 			visibility,
 			modelId,
-			provider,
-			activeDocumentId,
-			sessionId,
+				provider,
+				activeDocumentId,
+				hermesContext,
+				sessionId,
 			sessionMode,
 			updatedAt,
 		});
@@ -12399,6 +12776,345 @@ app.post("/api/standup", async (req, res) => {
 	}
 });
 
+// ─── Hermes Status / Memory / Skills / Jobs ─────────────────────────────────
+
+function isHermesMemoryTarget(target) {
+	return target === "memory" || target === "user";
+}
+
+app.get("/api/status/rovodev", async (_req, res) => {
+	try {
+		const available = await isRovoDevAvailable();
+		const port = parseOptionalInteger(process.env.ROVODEV_PORT);
+		return res.json(
+			buildRuntimeStatusSnapshot({
+				rovodev: {
+					available,
+					message: available
+						? "RovoDev Serve is ready for interactive chat."
+						: "RovoDev Serve is unavailable.",
+					status: available ? "ready" : "unavailable",
+					url: typeof port === "number" ? `http://localhost:${port}` : null,
+				},
+			}).surfaces.rovodev,
+		);
+	} catch (error) {
+		return res.status(500).json({
+			error: "Failed to check RovoDev status",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+app.get("/api/status/hermes", async (_req, res) => {
+	try {
+		const status = await getHermesRuntimeStatus({
+			jobsProvider: hermesJobsProvider,
+		});
+		return res.json(
+			buildRuntimeStatusSnapshot({
+				hermes: {
+					available: status.available,
+					details: status,
+					message: status.message ?? null,
+					status: status.status ?? (status.available ? "ready" : "unavailable"),
+					url: status.baseUrl ?? null,
+				},
+			}).surfaces.hermes,
+		);
+	} catch (error) {
+		return res.status(500).json({
+			error: "Failed to check Hermes status",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+app.get("/api/status", async (_req, res) => {
+	try {
+		const [rovoDevAvailable, hermesStatus] = await Promise.all([
+			isRovoDevAvailable(),
+			getHermesRuntimeStatus({
+				jobsProvider: hermesJobsProvider,
+			}),
+		]);
+		const port = parseOptionalInteger(process.env.ROVODEV_PORT);
+		return res.json(
+			buildRuntimeStatusSnapshot({
+				hermes: {
+					available: hermesStatus.available,
+					details: hermesStatus,
+					message: hermesStatus.message ?? null,
+					status: hermesStatus.status ?? (hermesStatus.available ? "ready" : "unavailable"),
+					url: hermesStatus.baseUrl ?? null,
+				},
+				rovodev: {
+					available: rovoDevAvailable,
+					message: rovoDevAvailable
+						? "RovoDev Serve is ready for interactive chat."
+						: "RovoDev Serve is unavailable.",
+					status: rovoDevAvailable ? "ready" : "unavailable",
+					url: typeof port === "number" ? `http://localhost:${port}` : null,
+				},
+			}),
+		);
+	} catch (error) {
+		return res.status(500).json({
+			error: "Failed to resolve runtime status",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+app.get("/api/jobs", async (_req, res) => {
+	try {
+		const jobs = await listMergedHermesJobs(_req.query);
+		await syncHermesJobResultsToRovoThreads({
+			jobs,
+			onJobPosted: async (job, metadata) => {
+				await persistHermesJobLink(job.id, job, metadata, { mergeExisting: true });
+			},
+			rovoAppThreadManager,
+		});
+		return res.json({ jobs });
+	} catch (error) {
+		return sendHermesUnavailableResponse(res, error, "Failed to list Hermes jobs");
+	}
+});
+
+app.post("/api/jobs", async (req, res) => {
+	try {
+		const job = await hermesJobsProvider.createHermesJob(toHermesJobInput(req.body));
+		const linkMetadata = await persistHermesJobLink(job.id, req.body);
+		return res.status(201).json({
+			job: {
+				...job,
+				...(linkMetadata ?? {}),
+			},
+		});
+	} catch (error) {
+		return sendHermesUnavailableResponse(res, error, "Failed to create Hermes job");
+	}
+});
+
+app.get("/api/jobs/:id", async (req, res) => {
+	try {
+		const job = await getMergedHermesJob(req.params.id);
+		return res.json({ job });
+	} catch (error) {
+		return sendHermesUnavailableResponse(res, error, "Failed to load Hermes job");
+	}
+});
+
+app.patch("/api/jobs/:id", async (req, res) => {
+	try {
+		const hermesJobInput = toHermesJobInput(req.body);
+		const job = Object.keys(hermesJobInput).length > 0
+			? await hermesJobsProvider.updateHermesJob(req.params.id, hermesJobInput)
+			: await hermesJobsProvider.getHermesJob(req.params.id);
+		const linkMetadata = await persistHermesJobLink(req.params.id, req.body);
+		return res.json({
+			job: {
+				...job,
+				...(linkMetadata ?? {}),
+			},
+		});
+	} catch (error) {
+		return sendHermesUnavailableResponse(res, error, "Failed to update Hermes job");
+	}
+});
+
+app.delete("/api/jobs/:id", async (req, res) => {
+	try {
+		await hermesJobsProvider.deleteHermesJob(req.params.id);
+		await hermesJobLinkManager.removeLink(req.params.id);
+		return res.status(204).end();
+	} catch (error) {
+		return sendHermesUnavailableResponse(res, error, "Failed to delete Hermes job");
+	}
+});
+
+app.post("/api/jobs/:id/run", async (req, res) => {
+	try {
+		const job = await hermesJobsProvider.performHermesJobAction(req.params.id, "run");
+		return res.json({ job });
+	} catch (error) {
+		return sendHermesUnavailableResponse(res, error, "Failed to run Hermes job");
+	}
+});
+
+app.post("/api/jobs/:id/pause", async (req, res) => {
+	try {
+		const job = await hermesJobsProvider.performHermesJobAction(req.params.id, "pause");
+		return res.json({ job });
+	} catch (error) {
+		return sendHermesUnavailableResponse(res, error, "Failed to pause Hermes job");
+	}
+});
+
+app.post("/api/jobs/:id/resume", async (req, res) => {
+	try {
+		const job = await hermesJobsProvider.performHermesJobAction(req.params.id, "resume");
+		return res.json({ job });
+	} catch (error) {
+		return sendHermesUnavailableResponse(res, error, "Failed to resume Hermes job");
+	}
+});
+
+app.get("/api/memories", async (_req, res) => {
+	try {
+		const memories = await listHermesMemories();
+		return res.json({ memories });
+	} catch (error) {
+		return res.status(500).json({
+			error: "Failed to list Hermes memories",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+app.get("/api/memories/:target", async (req, res) => {
+	try {
+		if (!isHermesMemoryTarget(req.params.target)) {
+			return res.status(400).json({
+				error: "Unknown Hermes memory target",
+			});
+		}
+
+		const memory = await getHermesMemory(req.params.target);
+		return res.json({ memory });
+	} catch (error) {
+		return res.status(500).json({
+			error: "Failed to load Hermes memory",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+app.put("/api/memories/:target", async (req, res) => {
+	try {
+		if (!isHermesMemoryTarget(req.params.target)) {
+			return res.status(400).json({
+				error: "Unknown Hermes memory target",
+			});
+		}
+
+		const memory = await replaceHermesMemory(req.params.target, req.body);
+		return res.json({ memory });
+	} catch (error) {
+		return res.status(400).json({
+			error: "Failed to update Hermes memory",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+app.post("/api/memories/:target/entry", async (req, res) => {
+	try {
+		if (!isHermesMemoryTarget(req.params.target)) {
+			return res.status(400).json({
+				error: "Unknown Hermes memory target",
+			});
+		}
+
+		const memory = await addHermesMemoryEntry(req.params.target, req.body);
+		return res.json({ memory });
+	} catch (error) {
+		return res.status(400).json({
+			error: "Failed to add Hermes memory entry",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+app.delete("/api/memories/:target/entry", async (req, res) => {
+	try {
+		if (!isHermesMemoryTarget(req.params.target)) {
+			return res.status(400).json({
+				error: "Unknown Hermes memory target",
+			});
+		}
+
+		const memory = await getHermesMemory(req.params.target);
+		const entryId = getFirstQueryValue(req.query.entryId)
+			?? getFirstQueryValue(req.query.entry_id)
+			?? req.body?.entryId
+			?? req.body?.entry_id
+			?? (() => {
+				const entryValue = getFirstQueryValue(req.query.entry)
+					?? req.body?.entry
+					?? req.body?.match;
+				if (!entryValue) {
+					return null;
+				}
+
+				const matchingEntry = memory.entries.find((entry) => {
+					return entry.id === entryValue || entry.content === entryValue;
+				});
+				return matchingEntry?.id ?? null;
+			})();
+		if (!entryId) {
+			return res.status(400).json({
+				error: "A Hermes memory entryId is required to delete an entry.",
+			});
+		}
+
+		const nextMemory = await removeHermesMemoryEntry(req.params.target, entryId);
+		return res.json({ memory: nextMemory });
+	} catch (error) {
+		return res.status(400).json({
+			error: "Failed to remove Hermes memory entry",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+app.get("/api/skills", async (_req, res) => {
+	try {
+		const skills = await listHermesSkills({ query: getFirstQueryValue(_req.query.q) ?? getFirstQueryValue(_req.query.query) });
+		return res.json({ skills });
+	} catch (error) {
+		return res.status(500).json({
+			error: "Failed to list Hermes skills",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+app.get("/api/skills/:category/:name", async (req, res) => {
+	try {
+		const skill = await getHermesSkill(req.params.category, req.params.name);
+		return res.json({ skill });
+	} catch (error) {
+		if (error?.code === "ENOENT") {
+			return res.status(404).json({
+				error: "Hermes skill not found",
+			});
+		}
+		return res.status(500).json({
+			error: "Failed to load Hermes skill",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+app.post("/api/skills/:category/:name/toggle", async (req, res) => {
+	try {
+		const enabled = parseOptionalBoolean(
+			getFirstQueryValue(req.query.enabled) ?? req.body?.enabled,
+		);
+		const skill = await toggleHermesSkill(req.params.category, req.params.name, enabled);
+		return res.json({ skill });
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		const statusCode = /not found/i.test(message) ? 404 : 400;
+		return res.status(statusCode).json({
+			error: "Failed to toggle Hermes skill",
+			details: message,
+		});
+	}
+});
+
 app.get("/healthcheck", (req, res) => {
 	console.log("Healthcheck requested by Micros");
 	res.status(200).json({ status: "ok" });
@@ -12509,6 +13225,7 @@ const server = app.listen(port, "0.0.0.0", async () => {
 
 	// Check for RovoDev Serve at startup
 	const rovoDevReady = await refreshRovoDevAvailability();
+	hermesJobsProvider.startJobTicker?.();
 	const aiGatewayConfigured = hasGatewayUrlConfigured(getEnvVars());
 	const llmRouting = buildLlmRoutingStatus({
 		rovoDevAvailable: rovoDevReady,
@@ -12687,12 +13404,14 @@ process.on("unhandledRejection", (reason, promise) => {
 
 // Graceful shutdown — clean up RovoDev pool
 process.on("SIGINT", () => {
+	hermesJobsProvider.stopJobTicker?.();
 	if (_rovoDevPool) {
 		_rovoDevPool.shutdown();
 	}
 	process.exit(0);
 });
 process.on("SIGTERM", () => {
+	hermesJobsProvider.stopJobTicker?.();
 	if (_rovoDevPool) {
 		_rovoDevPool.shutdown();
 	}

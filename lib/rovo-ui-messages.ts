@@ -145,11 +145,11 @@ export interface RovoMessageInterruption {
 export type RovoDataParts = {
 	id: string;
 	title: string;
-	kind: "text" | "code" | "image" | "sheet";
+	kind: "text" | "code" | "image" | "sheet" | "excalidraw";
 	"artifact-result": {
 		documentId: string;
 		title: string;
-		kind: "text" | "code" | "image" | "sheet";
+		kind: "text" | "code" | "image" | "sheet" | "excalidraw";
 		action: "create" | "update";
 	};
 	clear: null;

@@ -212,6 +212,7 @@ test("resolveFastRovoAppArtifactIntent does not bypass model classification for 
 test("normalizeArtifactKind maps spreadsheet aliases", () => {
 	assert.equal(normalizeArtifactKind("spreadsheet"), "sheet");
 	assert.equal(normalizeArtifactKind("table"), "sheet");
+	assert.equal(normalizeArtifactKind("excalidraw"), "excalidraw");
 });
 
 test("buildRovoAppArtifactIntentPrompt includes current artifact context", () => {

@@ -198,3 +198,36 @@ test("stripSpecFences removes unfenced JSONL patches", () => {
 	assert.ok(result.includes("Conclusion"), "Should keep closing text");
 	assert.ok(!result.includes('"op"'), "Should strip JSONL patches");
 });
+
+test("splitSpecFenceTextForStreaming buffers a trailing partial unfenced patch line until it completes", () => {
+	const firstChunk = [
+		"You have 63 skills available.",
+		'{"op":"add","path":"/elements/header","value":{"type":"Pag',
+	].join("\n");
+	const firstResult = splitSpecFenceTextForStreaming(firstChunk);
+
+	assert.equal(
+		firstResult.visibleText,
+		"You have 63 skills available.\n",
+		"Only the prose should be visible while the patch line is incomplete"
+	);
+	assert.equal(
+		firstResult.pendingText,
+		'{"op":"add","path":"/elements/header","value":{"type":"Pag',
+		"The incomplete patch line should stay buffered"
+	);
+
+	const secondChunk = `${firstResult.pendingText}eHeader","props":{"title":"Available Skills"}}}\nAll set.`;
+	const secondResult = splitSpecFenceTextForStreaming(secondChunk);
+
+	assert.equal(secondResult.pendingText, "");
+	assert.equal(
+		secondResult.visibleText,
+		"All set.",
+		"The completed patch line should stay hidden once the chunk finishes"
+	);
+	assert.ok(
+		!secondResult.visibleText.includes("PageHeader"),
+		"Patch fragments must not leak into visible assistant text"
+	);
+});
