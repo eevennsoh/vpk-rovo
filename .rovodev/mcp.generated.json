@@ -1,0 +1,44 @@
+{
+	"mcpServers": {
+		"forge-knowledge": {
+			"url": "https://mcp.atlassian.com/v1/forge/mcp",
+			"transport": "http"
+		},
+		"ads-mcp": {
+			"url": "https://mcp.atlassian.com/v1/ads/public/mcp"
+		},
+		"web-search": {
+			"command": "npx",
+			"args": [
+				"open-websearch@latest"
+			],
+			"env": {
+				"MODE": "stdio",
+				"DEFAULT_SEARCH_ENGINE": "google",
+				"ALLOWED_SEARCH_ENGINES": "google,duckduckgo,bing"
+			}
+		},
+		"chrome-devtools": {
+			"type": "stdio",
+			"command": "npx",
+			"args": [
+				"-y",
+				"chrome-devtools-mcp@latest",
+				"--browser-url=http://127.0.0.1:9222"
+			]
+		},
+		"hermes-tools": {
+			"type": "stdio",
+			"command": "/Users/esoh/Documents/Labs/hermes/hermes-agent/.venv/bin/python",
+			"args": [
+				"/Users/esoh/Documents/Labs/VPK-rovo/scripts/hermes_tools_mcp.py"
+			],
+			"env": {
+				"PYTHONUNBUFFERED": "1",
+				"HERMES_TOOLS_SERVER_NAME": "hermes-tools",
+				"HERMES_AGENT_PATH": "/Users/esoh/Documents/Labs/hermes/hermes-agent"
+			}
+		}
+	},
+	"inputs": []
+}
