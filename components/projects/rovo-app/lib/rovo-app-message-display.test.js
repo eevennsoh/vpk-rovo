@@ -4,6 +4,7 @@ const assert = require("node:assert/strict");
 const {
 	ROVO_APP_ARTIFACT_INTENT_LEAK_FALLBACK,
 	removeRovoAppDirectMediaFences,
+	removeRovoAppSpecFences,
 	sanitizeRovoAppAssistantText,
 	shouldRenderRovoAppAssistantActions,
 	shouldRenderRovoAppAssistantMessage,
@@ -55,12 +56,37 @@ test("removeRovoAppDirectMediaFences strips complete and incomplete direct-media
 	assert.equal(incompleteFence.text, "Intro");
 });
 
+test("removeRovoAppSpecFences strips spec fences and unfenced patch lines", () => {
+	const fencedSpec = removeRovoAppSpecFences(
+		"Intro\n```spec\n{\"op\":\"add\",\"path\":\"/root\",\"value\":\"main\"}\n```\nOutro"
+	);
+	assert.equal(fencedSpec.removed, true);
+	assert.equal(fencedSpec.text, "Intro\n\nOutro");
+
+	const unfencedPatch = removeRovoAppSpecFences(
+		"Intro\n{\"op\":\"add\",\"path\":\"/root\",\"value\":\"main\"}\nOutro"
+	);
+	assert.equal(unfencedPatch.removed, true);
+	assert.equal(unfencedPatch.text, "Intro\n\nOutro");
+});
+
 test("sanitizeRovoAppAssistantText falls back for artifact-intent leaks after fence removal", () => {
 	const sanitizedText = sanitizeRovoAppAssistantText(
 		'{"action":"createDocument","title":"Spec","kind":"text"}'
 	);
 
 	assert.equal(sanitizedText, ROVO_APP_ARTIFACT_INTENT_LEAK_FALLBACK);
+});
+
+test("sanitizeRovoAppAssistantText strips persisted spec fences from assistant text", () => {
+	const sanitizedText = sanitizeRovoAppAssistantText(
+		"Based on my Hermes memory, here's what I know about you.\n\n```spec\n{\"op\":\"add\",\"path\":\"/root\",\"value\":\"main\"}\n```\n\nThat's what I've got stored durably so far."
+	);
+
+	assert.equal(
+		sanitizedText,
+		"Based on my Hermes memory, here's what I know about you.\n\nThat's what I've got stored durably so far."
+	);
 });
 
 test("shouldRenderRovoAppAssistantActions hides actions for the active in-flight assistant placeholder", () => {

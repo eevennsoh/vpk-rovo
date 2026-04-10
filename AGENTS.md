@@ -39,8 +39,6 @@ Prefer reading these references over relying on pre-trained knowledge.
 | Session corrections log                | `AGENTS-LESSONS.md`                                         |
 | AI SDK chat integration                | `rovo/config.js`, `app/contexts/context-rovo-chat.tsx`      |
 | AI Gateway helpers                     | `backend/lib/ai-gateway-helpers.js`                         |
-| Share/export workflows                 | `.agents/skills/vpk-share/SKILL.md`                         |
-| Sync workflows                         | `.agents/skills/vpk-sync/SKILL.md`                          |
 | RovoDev Serve gateway (agent loop)     | `backend/lib/rovodev-gateway.js`, `backend/lib/rovodev-client.js` |
 | UI message types and data parts        | `lib/rovo-ui-messages.ts`                                   |
 | Architecture overview                  | `.agents/docs/architecture-overview.md`                     |

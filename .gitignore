@@ -89,9 +89,6 @@ next-env.d.ts
 *.local.md
 *.local.json
 
-# VPK Sync configuration (user-specific)
-.vpk-sync.json
-
 # Additional key/credential patterns
 *.key
 credentials*

@@ -168,6 +168,34 @@ test("extractChunkFromEvent parses tool_result success payload variants", () => 
 	assert.equal(Array.isArray(chunk.rawOutput.events), true);
 });
 
+test("extractChunkFromEvent preserves multi-field tool_result payloads without flattening", () => {
+	const chunk = extractChunkFromEvent("tool_result", {
+		status: "success",
+		content: "Success",
+		data: {
+			manager: {
+				name: "David Hoang",
+			},
+		},
+		tool_name: "get_user_manager_v2",
+		tool_call_id: "call-3b",
+	});
+
+	assert.ok(chunk);
+	assert.equal(chunk.type, "tool_result");
+	assert.equal(chunk.toolName, "get_user_manager_v2");
+	assert.equal(chunk.toolCallId, "call-3b");
+	assert.deepEqual(chunk.rawOutput, {
+		content: "Success",
+		data: {
+			manager: {
+				name: "David Hoang",
+			},
+		},
+	});
+	assert.match(chunk.outputPreview, /David Hoang/);
+});
+
 test("extractChunkFromEvent parses tool_result error payload variants", () => {
 	const chunk = extractChunkFromEvent("tool_result", {
 		status: "failed",

@@ -180,6 +180,29 @@ const StepAgentsIcon = ({ label = "", size = "small", spacing = "none", ...props
 const StepStreamIcon = ({ label = "", size = "small", spacing = "none", ...props }: NewCoreIconProps) => (
 	<Icon render={<AiGenerativeTextSummaryIcon label={label} size={size} spacing={spacing} {...props} />} />
 );
+
+function isHermesContextTranscriptMessage(
+	message: Pick<RovoUIMessage, "id" | "role" | "parts">,
+): boolean {
+	if (message.role !== "assistant") {
+		return false;
+	}
+
+	if (
+		message.id.startsWith("hermes-memory-")
+		|| message.id.startsWith("hermes-skill-")
+	) {
+		return true;
+	}
+
+	const widgetType = getLatestDataPart(message, "data-widget-data")?.data.type;
+	if (widgetType === "hermes-memory" || widgetType === "hermes-skill") {
+		return true;
+	}
+
+	return getLatestDataPart(message, "data-route-decision")?.data.reason === "hermes_context_widget";
+}
+
 function toolStateToCoTStatus(
 	state: string,
 ): "complete" | "active" | "pending" {
@@ -980,6 +1003,7 @@ function AssistantMessage({
 								<ChainOfThoughtHeader
 								state={thinkingReasoningPhase === "completed" ? "completed" : thinkingReasoningPhase === "thinking" ? "thinking" : "preload"}
 								duration={thinkingReasoningPhase === "completed" ? thinkingDuration : undefined}
+								showChevron={hasThinkingDetails}
 							>
 								{thinkingTriggerLabel}
 							</ChainOfThoughtHeader>
@@ -1049,6 +1073,7 @@ function AssistantMessage({
 													<ToolOutput
 														errorText={toolCall.errorText}
 														output={toolCall.output}
+														outputPreview={toolCall.outputPreview}
 														outputBytes={toolCall.outputBytes}
 														outputTruncated={toolCall.outputTruncated}
 														suppressedRawOutput={toolCall.suppressedRawOutput}
@@ -1301,6 +1326,7 @@ export function RovoAppMessages({
 		() => messages.filter((message) =>
 			(message.role === "user" || message.role === "assistant")
 			&& message.metadata?.visibility !== "hidden"
+			&& !isHermesContextTranscriptMessage(message)
 		),
 		[messages],
 	);

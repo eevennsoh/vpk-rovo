@@ -254,6 +254,24 @@ const stringifyToolValue = (value: unknown): string => {
   }
 };
 
+const stringifyExactToolValue = (value: unknown): string => {
+  if (typeof value === "string") {
+    return value;
+  }
+  if (value === null || value === undefined) {
+    return "";
+  }
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
+};
+
 const toToolValuePreview = (
   value: unknown,
   { maxChars = MAX_TOOL_PREVIEW_CHARS, maxLines = MAX_TOOL_PREVIEW_LINES } = {}
@@ -394,6 +412,7 @@ export const ToolInput = ({ className, input, ...props }: ToolInputProps) => {
 
 export type ToolOutputProps = ComponentProps<"div"> & {
   output: ToolPart["output"];
+  outputPreview?: string;
   errorText: ToolPart["errorText"];
   outputTruncated?: boolean;
   outputBytes?: number;
@@ -403,6 +422,7 @@ export type ToolOutputProps = ComponentProps<"div"> & {
 export const ToolOutput = ({
   className,
   output,
+  outputPreview,
   errorText,
   outputTruncated,
   outputBytes,
@@ -413,16 +433,30 @@ export const ToolOutput = ({
     return null;
   }
 
-  const outputPreview = toToolValuePreview(output);
+  const outputValuePreview =
+    typeof outputPreview === "string" && outputPreview.length > 0
+      ? {
+          text: outputPreview,
+          truncated: outputTruncated === true,
+          rawLength: outputPreview.length,
+        }
+      : toToolValuePreview(output);
   const errorPreview = errorText
     ? toToolValuePreview(errorText, { maxChars: 320, maxLines: 6 })
     : null;
   const shouldShowTruncationNotice =
-    outputTruncated === true ||
-    suppressedRawOutput === true ||
-    outputPreview.truncated;
+    outputTruncated === true || outputValuePreview.truncated;
   const formattedOutputBytes =
     typeof outputBytes === "number" ? formatByteSize(outputBytes) : null;
+  const exactRawOutputText =
+    output !== undefined && output !== null ? stringifyExactToolValue(output) : "";
+  const hasExactRawOutput = exactRawOutputText.length > 0;
+  const previewMatchesExactRaw =
+    hasExactRawOutput && outputValuePreview.text === exactRawOutputText;
+  const shouldShowRawOutputDisclosure =
+    hasExactRawOutput &&
+    suppressedRawOutput !== true &&
+    (!previewMatchesExactRaw || shouldShowTruncationNotice || Boolean(errorText));
 
   const outputLanguage =
     typeof output === "object" && !isValidElement(output) ? "json" : "markdown";
@@ -432,7 +466,7 @@ export const ToolOutput = ({
   const Output = (
     <CodeBlock
       className="text-[12px] leading-5"
-      code={outputPreview.text}
+      code={outputValuePreview.text}
       language={outputLanguage}
     >
       <CodeBlockHeader>
@@ -453,10 +487,21 @@ export const ToolOutput = ({
         {errorText ? "Error" : "Result"}
       </h4>
       {errorText ? (
-        <Lozenge variant="danger" size="compact" className="max-w-full shrink">
-          {errorPreview?.text ?? errorText}
-        </Lozenge>
-      ) : (
+        <>
+          <Lozenge variant="danger" size="compact" className="max-w-full shrink">
+            {errorPreview?.text ?? errorText}
+          </Lozenge>
+          {outputValuePreview.text ? (
+            <div
+              className={cn(
+                "overflow-x-auto rounded-md text-xs [&_table]:w-full bg-muted/50 text-foreground"
+              )}
+            >
+              {Output}
+            </div>
+          ) : null}
+        </>
+      ) : outputValuePreview.text ? (
         <>
           <div
             className={cn(
@@ -467,12 +512,41 @@ export const ToolOutput = ({
           </div>
           {shouldShowTruncationNotice ? (
             <p className="text-[11px] leading-4 text-text-subtle">
-              Output truncated for performance
+              Result preview truncated for display
               {formattedOutputBytes ? ` (${formattedOutputBytes} received)` : ""}.
             </p>
           ) : null}
         </>
-      )}
+      ) : null}
+      {suppressedRawOutput === true ? (
+        <p className="text-[11px] leading-4 text-text-subtle">
+          Raw output is unavailable for this event. Showing the best preserved preview.
+        </p>
+      ) : null}
+      {shouldShowRawOutputDisclosure ? (
+        <details className="rounded-md border border-border/60 bg-background/60 px-3 py-2">
+          <summary className="cursor-pointer select-none font-medium text-[12px] text-muted-foreground">
+            Raw output
+          </summary>
+          <div className="mt-2 overflow-x-auto rounded-md bg-muted/50 text-foreground">
+            <CodeBlock
+              className="text-[12px] leading-5"
+              code={exactRawOutputText}
+              language={outputLanguage}
+            >
+              <CodeBlockHeader>
+                <CodeBlockTitle>
+                  <CodeBlockFilename>raw</CodeBlockFilename>
+                </CodeBlockTitle>
+                <CodeBlockActions>
+                  <CodeBlockDownloadButton />
+                  <CodeBlockCopyButton />
+                </CodeBlockActions>
+              </CodeBlockHeader>
+            </CodeBlock>
+          </div>
+        </details>
+      ) : null}
     </div>
   );
 };

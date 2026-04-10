@@ -3,6 +3,9 @@
 import { API_ENDPOINTS } from "@/lib/api-config";
 import { normalizeRuntimeStatusSnapshot } from "@/lib/rovo-runtime-status";
 import type {
+	Checkpoint,
+	HermesHubInstallResult,
+	HermesHubSkill,
 	HermesJob,
 	HermesMemoryDocument,
 	HermesMemoryEntry,
@@ -10,6 +13,7 @@ import type {
 	HermesSkillDetail,
 	HermesSkillSummary,
 	RuntimeStatusSnapshot,
+	SessionSearchResult,
 } from "@/lib/rovo-runtime-types";
 
 function getString(value: unknown): string | null {
@@ -314,4 +318,137 @@ export async function toggleSkill(category: string, name: string, enabled: boole
 		method: "POST",
 	}));
 	return normalizeHermesSkillDetail(payload.skill);
+}
+
+export async function searchSessions(query: string, limit?: number): Promise<SessionSearchResult[]> {
+	if (!query || !query.trim()) {
+		return [];
+	}
+
+	const payload = await parseJsonResponse<{ results?: unknown[] }>(
+		await fetch(API_ENDPOINTS.sessionSearch(query.trim(), limit), {
+			method: "GET",
+		}),
+	);
+
+	if (!Array.isArray(payload.results)) {
+		return [];
+	}
+
+	return payload.results.map((raw) => {
+		const item = raw && typeof raw === "object" ? raw as Record<string, unknown> : {};
+		return {
+			threadId: getString(item.threadId) ?? "",
+			title: getString(item.title) ?? "Untitled",
+			snippet: getString(item.snippet) ?? "",
+			matchCount: typeof item.matchCount === "number" ? item.matchCount : 0,
+			lastMessageAt: getString(item.lastMessageAt) ?? new Date().toISOString(),
+		};
+	});
+}
+
+function normalizeCheckpoint(raw: unknown): Checkpoint {
+	const item = raw && typeof raw === "object" ? raw as Record<string, unknown> : {};
+	return {
+		id: getString(item.id) ?? "",
+		name: getString(item.name) ?? "Unnamed",
+		description: getString(item.description),
+		createdAt: getString(item.createdAt) ?? new Date().toISOString(),
+	};
+}
+
+export async function fetchCheckpoints(): Promise<Checkpoint[]> {
+	const payload = await parseJsonResponse<{ checkpoints?: unknown[] }>(
+		await fetch(API_ENDPOINTS.CHECKPOINTS, { method: "GET" }),
+	);
+	return Array.isArray(payload.checkpoints)
+		? payload.checkpoints.map(normalizeCheckpoint)
+		: [];
+}
+
+export async function createCheckpoint(name: string, description?: string): Promise<Checkpoint> {
+	const payload = await parseJsonResponse<{ checkpoint?: unknown }>(
+		await fetch(API_ENDPOINTS.CHECKPOINTS, {
+			body: JSON.stringify({ name, description }),
+			headers: { "Content-Type": "application/json" },
+			method: "POST",
+		}),
+	);
+	return normalizeCheckpoint(payload.checkpoint);
+}
+
+export async function rollbackCheckpoint(id: string): Promise<Checkpoint> {
+	const payload = await parseJsonResponse<{ checkpoint?: unknown }>(
+		await fetch(API_ENDPOINTS.checkpointRollback(id), { method: "POST" }),
+	);
+	return normalizeCheckpoint(payload.checkpoint);
+}
+
+export async function deleteCheckpoint(id: string): Promise<Checkpoint> {
+	const payload = await parseJsonResponse<{ checkpoint?: unknown }>(
+		await fetch(API_ENDPOINTS.checkpoint(id), { method: "DELETE" }),
+	);
+	return normalizeCheckpoint(payload.checkpoint);
+}
+
+export async function searchSkillsHub(query: string): Promise<HermesHubSkill[]> {
+	if (!query || !query.trim()) {
+		return [];
+	}
+
+	const payload = await parseJsonResponse<{ results?: unknown[] }>(
+		await fetch(API_ENDPOINTS.skillsHubSearch(query.trim()), { method: "GET" }),
+	);
+
+	if (!Array.isArray(payload.results)) {
+		return [];
+	}
+
+	return payload.results.map((raw) => {
+		const item = raw && typeof raw === "object" ? raw as Record<string, unknown> : {};
+		return {
+			name: getString(item.name) ?? "unknown",
+			description: getString(item.description),
+			category: getString(item.category) ?? "community",
+		};
+	});
+}
+
+export async function fetchInstalledHubSkills(): Promise<HermesHubSkill[]> {
+	const payload = await parseJsonResponse<{ skills?: unknown[] }>(
+		await fetch(API_ENDPOINTS.SKILLS_HUB_INSTALLED, { method: "GET" }),
+	);
+
+	if (!Array.isArray(payload.skills)) {
+		return [];
+	}
+
+	return payload.skills.map((raw) => {
+		const item = raw && typeof raw === "object" ? raw as Record<string, unknown> : {};
+		return {
+			name: getString(item.name) ?? "unknown",
+			description: getString(item.description),
+			category: getString(item.category) ?? "community",
+		};
+	});
+}
+
+export async function installHubSkill(bundle: {
+	name: string;
+	category?: string;
+	files: Array<{ path: string; content: string }>;
+}): Promise<HermesHubInstallResult> {
+	const payload = await parseJsonResponse<Record<string, unknown>>(
+		await fetch(API_ENDPOINTS.SKILLS_HUB_INSTALL, {
+			body: JSON.stringify(bundle),
+			headers: { "Content-Type": "application/json" },
+			method: "POST",
+		}),
+	);
+	return {
+		installed: Boolean(payload.installed),
+		path: getString(payload.path) ?? "",
+		name: getString(payload.name) ?? bundle.name,
+		category: getString(payload.category) ?? bundle.category ?? "community",
+	};
 }

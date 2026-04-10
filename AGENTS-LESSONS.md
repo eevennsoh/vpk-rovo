@@ -135,3 +135,14 @@ Mark promoted entries with `[Promoted]` prefix — see vpk-lesson skill for deta
   sentence-case label styling and spacing. Do not add uppercase or
   `tracking-wider` menu section headings unless the design explicitly requires
   that treatment.
+
+### 2026-04-10 - Verify RovoDev Serve behavior against the ACRA repo
+
+- **What happened:** A review treated RovoDev Serve idle/session behavior as
+  unsupported because the evidence was not in the VPK repo.
+- **Why:** The relevant implementation and docs live in the sibling ACRA repo
+  at `/Users/esoh/Documents/Labs/acra`, which is the actual source of truth for
+  Serve behavior.
+- **Rule:** When reviewing VPK plans or code that depend on RovoDev Serve
+  semantics, check the local ACRA repo before calling a Serve-behavior claim
+  unsupported.

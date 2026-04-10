@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import CustomizeMenu from "@/components/blocks/shared-ui/customize-menu";
 import { REASONING_OPTIONS } from "@/components/blocks/shared-ui/data/customize-menu-data";
 import { Badge } from "@/components/ui/badge";
@@ -15,12 +16,14 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Icon } from "@/components/ui/icon";
+import { DatabaseIcon, SettingsIcon } from "@/components/ui/vpk-icons";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import ChevronDownIcon from "@atlaskit/icon/core/chevron-down";
 import EditIcon from "@atlaskit/icon/core/edit";
 import RandomizeIcon from "@atlaskit/icon-lab/core/randomize";
 import ShapesIcon from "@atlaskit/icon/core/shapes";
 import ShowMoreHorizontalIcon from "@atlaskit/icon/core/show-more-horizontal";
+import { CONTROL_PLANE_HEADER_SURFACES } from "@/components/projects/control-plane/lib/control-plane-data";
 import { normalizeRuntimeStatusSnapshot } from "@/lib/rovo-runtime-status";
 import type { RuntimeStatusSnapshot } from "@/lib/rovo-runtime-types";
 
@@ -43,6 +46,8 @@ export function RovoAppHeader({
 	onOpenDocument,
 	isArtifactOpen,
 }: Readonly<RovoAppHeaderProps>) {
+	const pathname = usePathname() ?? "";
+	const router = useRouter();
 	const [isChatConfigurationOpen, setIsChatConfigurationOpen] = useState(false);
 	const [selectedReasoning, setSelectedReasoning] = useState("let-rovo-decide");
 	const [webResultsEnabled, setWebResultsEnabled] = useState(false);
@@ -174,13 +179,45 @@ export function RovoAppHeader({
 				>
 					<Icon aria-hidden render={<EditIcon label="" />} />
 				</Button>
-				<Button
-					aria-label="More"
-					size="icon"
-					variant="ghost"
-				>
-					<Icon aria-hidden render={<ShowMoreHorizontalIcon label="" />} />
-				</Button>
+				<DropdownMenu>
+					<DropdownMenuTrigger
+						render={(
+							<Button
+								aria-label="More"
+								size="icon"
+								type="button"
+								variant="ghost"
+							/>
+						)}
+					>
+						<Icon aria-hidden render={<ShowMoreHorizontalIcon label="" />} />
+					</DropdownMenuTrigger>
+					<DropdownMenuContent align="end">
+						<DropdownMenuGroup>
+							<DropdownMenuLabel>
+								Control plane
+							</DropdownMenuLabel>
+							{CONTROL_PLANE_HEADER_SURFACES.map((surface) => {
+								const isSelected = pathname === surface.href || pathname.startsWith(`${surface.href}/`);
+								const icon = surface.label === "Memories"
+									? <DatabaseIcon size="medium" />
+									: <SettingsIcon size="medium" />;
+
+								return (
+									<DropdownMenuItem
+										description={surface.description}
+										disabled={isSelected}
+										elemBefore={icon}
+										key={surface.href}
+										onClick={() => router.push(surface.href)}
+									>
+										{surface.label}
+									</DropdownMenuItem>
+								);
+							})}
+						</DropdownMenuGroup>
+					</DropdownMenuContent>
+				</DropdownMenu>
 			</div>
 		</header>
 	);

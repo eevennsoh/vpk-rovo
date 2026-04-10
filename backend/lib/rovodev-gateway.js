@@ -58,8 +58,6 @@ function initPool(pool) {
  * @returns {Promise<{
  *   port: number;
  *   release: () => void;
- *   touch?: () => void;
- *   setBusyTimeoutMs?: (timeoutMs: number) => void;
  *   releaseAsUnhealthy?: (options?: { quarantineMs?: number }) => void;
  * }>}
  */
@@ -74,8 +72,6 @@ async function acquirePort({
 		return {
 			port: resolvedPort,
 			release: () => {},
-			touch: () => {},
-			setBusyTimeoutMs: () => {},
 		};
 	}
 	return _pool.acquire({ timeoutMs, signal, preferredPort, avoidPorts });
@@ -971,14 +967,6 @@ async function streamViaRovoDev({
 				typeof providedPortHandle.release === "function"
 					? () => providedPortHandle.release()
 					: () => {},
-			touch:
-				typeof providedPortHandle.touch === "function"
-					? () => providedPortHandle.touch()
-					: () => {},
-			setBusyTimeoutMs:
-				typeof providedPortHandle.setBusyTimeoutMs === "function"
-					? (timeoutMs) => providedPortHandle.setBusyTimeoutMs(timeoutMs)
-					: () => {},
 			releaseAsUnhealthy:
 				typeof providedPortHandle.releaseAsUnhealthy === "function"
 					? () => providedPortHandle.releaseAsUnhealthy()
@@ -1005,23 +993,10 @@ async function streamViaRovoDev({
 		onPortAcquired(handle.port);
 	}
 
-	if (waitForTurn && typeof handle.setBusyTimeoutMs === "function") {
-		handle.setBusyTimeoutMs(
-			typeof idleTimeoutMs === "number" && idleTimeoutMs > 0
-				? idleTimeoutMs
-				: WAIT_FOR_TURN_TIMEOUT_MS
-		);
-	}
-
 	let portStuck = false;
 	let preservePortHandle = false;
 	let abortedBySignal = false;
 	let handleReleased = false;
-	const noteHandleActivity = () => {
-		if (typeof handle.touch === "function") {
-			handle.touch();
-		}
-	};
 
 	const releaseHandleAsUnhealthy = (reason) => {
 		if (handleReleased || preservePortHandle) {
@@ -1200,7 +1175,6 @@ async function streamViaRovoDev({
 
 				const streamHandle = sendMessageStreaming(message, {
 					onChunk: (chunk) => {
-						noteHandleActivity();
 						if (chunk.type === "text" && chunk.subagentName) {
 							if (typeof onSubagentTextDelta === "function" && chunk.text) {
 								onSubagentTextDelta(chunk.text, {
@@ -1364,14 +1338,16 @@ async function streamViaRovoDev({
 										? toolNameByCallId.get(normalizedToolCallId) ?? null
 										: null,
 								});
+								const canonicalOutput =
+									chunk.rawOutput !== undefined
+										? chunk.rawOutput
+										: chunk.text;
 
 								onToolCallResult({
 									toolName: resolvedToolName,
 									toolCallId: normalizedToolCallId,
-									toolOutputRaw:
-										chunk.rawOutput !== undefined
-											? chunk.rawOutput
-											: chunk.text,
+									output: canonicalOutput,
+									toolOutputRaw: canonicalOutput,
 									toolOutputPreview:
 										typeof chunk.outputPreview === "string"
 											? chunk.outputPreview
@@ -1391,17 +1367,24 @@ async function streamViaRovoDev({
 								reportedToolName: chunk.toolName,
 								rememberedToolName,
 							});
+							const canonicalOutput =
+								chunk.rawOutput !== undefined
+									? chunk.rawOutput
+									: chunk.text;
+							const canonicalOutputPreview = toPreview(canonicalOutput);
 							const outputPreview =
 								typeof chunk.outputPreview === "string"
 									? chunk.outputPreview
-									: toPreview(chunk.text).text;
+									: canonicalOutputPreview.text;
 							const outputTruncated =
 								chunk.outputTruncated === true ||
-								outputPreview !== chunk.text;
+								canonicalOutputPreview.truncated;
 							const outputBytes =
 								typeof chunk.outputBytes === "number"
 									? chunk.outputBytes
-									: toPreview(chunk.text).bytes;
+									: canonicalOutputPreview.bytes;
+							const suppressedRawOutput =
+								chunk.rawOutput === undefined && outputTruncated;
 
 							if (correlatedToolCallId) {
 								toolNameByCallId.delete(correlatedToolCallId);
@@ -1419,29 +1402,28 @@ async function streamViaRovoDev({
 									)
 								);
 							}
-								if (typeof onThinkingEvent === "function") {
-									const isToolError = chunk.type === "tool_error";
-									const thinkingEvent = buildThinkingEventFromToolEvent({
-										toolName: resolvedToolName,
+							if (typeof onThinkingEvent === "function") {
+								const isToolError = chunk.type === "tool_error";
+								const thinkingEvent = buildThinkingEventFromToolEvent({
+									toolName: resolvedToolName,
 									toolCallId: correlatedToolCallId,
 									phase: isToolError ? "error" : "result",
-									output: !isToolError ? outputPreview : undefined,
+									output: canonicalOutput,
 									outputPreview,
 									outputTruncated,
 									outputBytes,
-									suppressedRawOutput: outputTruncated,
+									suppressedRawOutput,
 									errorText: isToolError ? outputPreview : undefined,
 									subagentName: chunk.subagentName,
 									subagentToolCallId: chunk.subagentToolCallId,
 								});
-										if (thinkingEvent) {
-											onThinkingEvent(thinkingEvent);
-										}
-									}
+								if (thinkingEvent) {
+									onThinkingEvent(thinkingEvent);
+								}
+							}
 						}
 					},
 					onPauseToolCalls: async (rawEvent, control) => {
-						noteHandleActivity();
 						if (typeof onPausedToolCalls !== "function") {
 							await resumeToolCalls(port, {
 								decisions: (Array.isArray(rawEvent?.parts) ? rawEvent.parts : [])
@@ -1479,7 +1461,7 @@ async function streamViaRovoDev({
 							}
 							resolve();
 						},
-						onError: (err) => {
+					onError: (err) => {
 							if (signal && onAbort) {
 								signal.removeEventListener("abort", onAbort);
 							}
@@ -1505,7 +1487,6 @@ async function streamViaRovoDev({
 							resolve();
 						},
 						onEvent: (eventName, rawData) => {
-							noteHandleActivity();
 							const normalizedEventName =
 								typeof eventName === "string" ? eventName.trim() : "";
 							if (!normalizedEventName) {
@@ -2022,12 +2003,14 @@ async function replayViaRovoDev({
 								? toolNameByCallId.get(normalizedToolCallId) ?? null
 								: null,
 						});
+						const canonicalOutput =
+							chunk.rawOutput !== undefined ? chunk.rawOutput : chunk.text;
 
 						onToolCallResult({
 							toolName: resolvedToolName,
 							toolCallId: normalizedToolCallId,
-							toolOutputRaw:
-								chunk.rawOutput !== undefined ? chunk.rawOutput : chunk.text,
+							output: canonicalOutput,
+							toolOutputRaw: canonicalOutput,
 							toolOutputPreview:
 								typeof chunk.outputPreview === "string"
 									? chunk.outputPreview
@@ -2047,16 +2030,21 @@ async function replayViaRovoDev({
 						reportedToolName: chunk.toolName,
 						rememberedToolName,
 					});
+					const canonicalOutput =
+						chunk.rawOutput !== undefined ? chunk.rawOutput : chunk.text;
+					const canonicalOutputPreview = toPreview(canonicalOutput);
 					const outputPreview =
 						typeof chunk.outputPreview === "string"
 							? chunk.outputPreview
-							: toPreview(chunk.text).text;
+							: canonicalOutputPreview.text;
 					const outputTruncated =
-						chunk.outputTruncated === true || outputPreview !== chunk.text;
+						chunk.outputTruncated === true || canonicalOutputPreview.truncated;
 					const outputBytes =
 						typeof chunk.outputBytes === "number"
 							? chunk.outputBytes
-							: toPreview(chunk.text).bytes;
+							: canonicalOutputPreview.bytes;
+					const suppressedRawOutput =
+						chunk.rawOutput === undefined && outputTruncated;
 
 					if (correlatedToolCallId) {
 						toolNameByCallId.delete(correlatedToolCallId);
@@ -2080,11 +2068,11 @@ async function replayViaRovoDev({
 							toolName: resolvedToolName,
 							toolCallId: correlatedToolCallId,
 							phase: isToolError ? "error" : "result",
-							output: !isToolError ? outputPreview : undefined,
+							output: canonicalOutput,
 							outputPreview,
 							outputTruncated,
 							outputBytes,
-							suppressedRawOutput: outputTruncated,
+							suppressedRawOutput,
 							errorText: isToolError ? outputPreview : undefined,
 						});
 						if (thinkingEvent) {
@@ -2275,10 +2263,6 @@ async function generateTextViaRovoDev({
 		preferredPort,
 		avoidPorts,
 	});
-
-	if (waitForTurn && typeof handle.setBusyTimeoutMs === "function") {
-		handle.setBusyTimeoutMs(retryTimeoutMs);
-	}
 
 	let portKnownStuck = false;
 	let handleReleased = false;

@@ -664,7 +664,6 @@ export interface RovoAppHookResult {
 			urgency?: string;
 		},
 	) => Promise<void>;
-	upsertRealtimeSyntheticMessage: (message: RovoUIMessage) => Promise<void>;
 	setRealtimeMessageContent: (messageId: string, content: string) => void;
 	updateRealtimeMessage: (messageId: string, contentDelta: string) => void;
 }
@@ -3860,40 +3859,6 @@ export function useRovoApp({
 			[ensureThread, mutateRealtimeMessagesState],
 		);
 
-		const upsertRealtimeSyntheticMessage = useCallback(
-			async (message: RovoUIMessage) => {
-				const threadId = await ensureThread(message.id || "hermes-context");
-				const nextRealtimeMessages = mutateRealtimeMessagesState((previousMessages) =>
-					upsertRealtimeMessage(previousMessages, message),
-				);
-				setThreads((previousThreads) =>
-					previousThreads.map((thread) => {
-						if (thread.id !== threadId) {
-							return thread;
-						}
-
-						return {
-							...thread,
-							realtimeMessages: upsertRealtimeMessage(
-								thread.realtimeMessages ?? [],
-								message,
-							),
-							updatedAt: new Date().toISOString(),
-						};
-					}),
-				);
-				void upsertRovoAppRealtimeMessage({
-					threadId,
-					message:
-						nextRealtimeMessages.find((existingMessage) => existingMessage.id === message.id)
-						?? message,
-				}).catch((error) => {
-					console.warn("[RovoApp] Failed to persist synthetic realtime message:", error);
-				});
-			},
-			[ensureThread, mutateRealtimeMessagesState],
-		);
-
 	const mutateRealtimeMessageContent = useCallback(
 		(messageId: string, content: string, options: { append: boolean; state: "done" | "streaming" }) => {
 			if (!messageId || (!content && options.append)) {
@@ -5238,7 +5203,6 @@ export function useRovoApp({
 		votes,
 		voteOnMessage,
 			appendRealtimeMessage,
-			upsertRealtimeSyntheticMessage,
 			delegateToRovodev,
 		setRealtimeMessageContent,
 		updateRealtimeMessage,

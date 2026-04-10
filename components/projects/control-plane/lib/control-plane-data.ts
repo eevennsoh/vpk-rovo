@@ -8,7 +8,7 @@ export const CONTROL_PLANE_SURFACES: readonly ControlPlaneSurfaceLink[] = [
 	{
 		description: "Scheduled work and run history",
 		href: "/rovo-app/jobs",
-		label: "Jobs",
+		label: "Tasks",
 	},
 	{
 		description: "Memory entries and character usage",
@@ -26,6 +26,21 @@ export const CONTROL_PLANE_SURFACES: readonly ControlPlaneSurfaceLink[] = [
 		label: "Settings",
 	},
 ] as const;
+
+const CONTROL_PLANE_HEADER_SURFACE_LABELS = new Set<ControlPlaneSurfaceLink["label"]>([
+	"Memories",
+	"Settings",
+]);
+
+export const CONTROL_PLANE_HEADER_SURFACES: readonly ControlPlaneSurfaceLink[] =
+	CONTROL_PLANE_SURFACES.filter((surface) => {
+		return CONTROL_PLANE_HEADER_SURFACE_LABELS.has(surface.label);
+	});
+
+export const CONTROL_PLANE_SIDEBAR_SURFACES: readonly ControlPlaneSurfaceLink[] =
+	CONTROL_PLANE_SURFACES.filter((surface) => {
+		return !CONTROL_PLANE_HEADER_SURFACE_LABELS.has(surface.label);
+	});
 
 export type ControlPlaneJobStatus = "scheduled" | "running" | "paused" | "failed";
 

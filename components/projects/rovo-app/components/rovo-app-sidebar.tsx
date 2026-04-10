@@ -41,14 +41,17 @@ import {
 	SidebarMenuItem,
 	useSidebar,
 } from "@/components/ui/sidebar";
-import { DatabaseIcon, ListTodoIcon, SettingsIcon } from "@/components/ui/vpk-icons";
+import ScorecardIcon from "@atlaskit/icon/core/scorecard";
 import { shouldShowRovoAppSidebarRunIndicator } from "@/components/projects/rovo-app/lib/rovo-app-sidebar-run-indicator";
 import { getRovoAppSidebarThreadContentPaddingClass } from "@/components/projects/rovo-app/lib/rovo-app-sidebar-thread-layout";
 import type { RovoAppRunStatus, RovoAppThread } from "@/lib/rovo-app-types";
 import { cn } from "@/lib/utils";
 import DeleteIcon from "@atlaskit/icon/core/delete";
 import ShowMoreHorizontalIcon from "@atlaskit/icon/core/show-more-horizontal";
-import { CONTROL_PLANE_SURFACES } from "@/components/projects/control-plane/lib/control-plane-data";
+import {
+	CONTROL_PLANE_SIDEBAR_SURFACES,
+	CONTROL_PLANE_SURFACES,
+} from "@/components/projects/control-plane/lib/control-plane-data";
 import { usePathname, useRouter } from "next/navigation";
 
 interface RovoAppSidebarProps {
@@ -467,15 +470,10 @@ export function RovoAppSidebar({
 	const threadSections = React.useMemo(() => groupRovoAppThreadsByDate(threads), [threads]);
 	const controlPlaneNavItems = React.useMemo(
 		() =>
-			CONTROL_PLANE_SURFACES.map((surface) => {
-				const icon =
-					surface.label === "Jobs"
-						? <ListTodoIcon size="medium" />
-						: surface.label === "Memories"
-							? <DatabaseIcon size="medium" />
-							: surface.label === "Skills"
-								? <SkillIcon label="" size="medium" />
-								: <SettingsIcon size="medium" />;
+			CONTROL_PLANE_SIDEBAR_SURFACES.map((surface) => {
+				const icon = surface.label === "Tasks"
+					? <ScorecardIcon label="" size="medium" />
+					: <SkillIcon label="" size="medium" />;
 
 				return {
 					description: surface.description,

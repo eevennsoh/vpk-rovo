@@ -314,7 +314,7 @@ function JsonRenderPreview({
 	}
 
 	return (
-		<div className={cn("rounded-md", surface === "dialog" && "max-h-[65vh] overflow-auto")}>
+		<div className="rounded-md">
 			<JsonRenderView
 				spec={progressiveSpec ?? spec}
 				skipValidation={isProgressing}

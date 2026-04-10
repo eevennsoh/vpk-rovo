@@ -136,6 +136,26 @@ function getSubagentMetadataFromPayload(payload) {
 	};
 }
 
+const TOOL_RESULT_OUTPUT_FIELDS = [
+	"content",
+	"output",
+	"result",
+	"value",
+	"data",
+	"error",
+];
+
+function getToolResultFieldEntries(payload) {
+	if (!payload || typeof payload !== "object") {
+		return [];
+	}
+
+	return TOOL_RESULT_OUTPUT_FIELDS.flatMap((key) => {
+		const value = payload[key];
+		return value !== undefined && value !== null ? [[key, value]] : [];
+	});
+}
+
 function resolveToolResultOutput(payload) {
 	if (!payload || typeof payload !== "object") {
 		return "";
@@ -161,6 +181,51 @@ function resolveToolResultOutput(payload) {
 	}
 
 	return "";
+}
+
+function resolveToolResultRawOutput(payload) {
+	if (!payload || typeof payload !== "object") {
+		return "";
+	}
+
+	const entries = getToolResultFieldEntries(payload);
+	if (entries.length === 1) {
+		return entries[0][1];
+	}
+	if (entries.length > 1) {
+		return Object.fromEntries(entries);
+	}
+
+	return payload;
+}
+
+function isGenericSuccessText(value) {
+	if (typeof value !== "string") {
+		return false;
+	}
+
+	const normalizedValue = value.trim().toLowerCase();
+	return (
+		normalizedValue === "ok" ||
+		normalizedValue === "success" ||
+		normalizedValue === "successful" ||
+		normalizedValue === "done" ||
+		normalizedValue === "complete" ||
+		normalizedValue === "completed"
+	);
+}
+
+function resolveToolResultPreviewSource(payload, rawOutput) {
+	const preferredOutput = resolveToolResultOutput(payload);
+	if (preferredOutput === "" || preferredOutput === null) {
+		return rawOutput;
+	}
+
+	if (isGenericSuccessText(preferredOutput) && preferredOutput !== rawOutput) {
+		return rawOutput;
+	}
+
+	return preferredOutput;
 }
 
 function parseStructuredToolResultOutput(outputValue) {
@@ -411,8 +476,10 @@ function extractChunkFromEvent(eventName, parsed) {
 		eventName === "tool-return" ||
 		eventName === "tool_result"
 	) {
-		const rawContent = resolveToolResultOutput(parsed);
-		const preview = toPreview(rawContent);
+		const rawContent = resolveToolResultRawOutput(parsed);
+		const previewSource = resolveToolResultPreviewSource(parsed, rawContent);
+		const preview = toPreview(previewSource);
+		const rawContentPreview = toPreview(rawContent);
 		const content = preview.text;
 		const toolName = getToolNameFromPayload(parsed);
 		const toolCallId = getToolCallIdFromPayload(parsed);
@@ -424,7 +491,7 @@ function extractChunkFromEvent(eventName, parsed) {
 			toolCallId,
 			outputPreview: content,
 			outputTruncated: preview.truncated,
-			outputBytes: preview.bytes,
+			outputBytes: rawContentPreview.bytes,
 			rawOutput: rawContent,
 			...subagentMetadata,
 		};

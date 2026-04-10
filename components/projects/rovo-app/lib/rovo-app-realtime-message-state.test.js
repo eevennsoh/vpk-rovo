@@ -158,3 +158,42 @@ test("mergeRovoAppMessages keeps a streaming realtime message until the canonica
 	assert.equal(mergedMessages[0]?.metadata?.origin, "realtime");
 	assert.equal(mergedMessages[0]?.parts[0]?.text, "Streaming response");
 });
+
+test("mergeRovoAppMessages retains hidden metadata for legacy Hermes transcript widgets", () => {
+	const mergedMessages = mergeRovoAppMessages({
+		rovodevMessages: [],
+		realtimeMessages: [
+			{
+				id: "hermes-memory-thread-1",
+				role: "assistant",
+				metadata: {
+					createdAt: "2026-04-10T00:00:00.000Z",
+					updatedAt: "2026-04-10T00:00:00.000Z",
+					visibility: "hidden",
+				},
+				parts: [
+					{
+						type: "data-route-decision",
+						data: {
+							intent: "genui",
+							presentation: "genui_card",
+							confidence: 1,
+							reason: "hermes_context_widget",
+							origin: "text",
+						},
+					},
+					{
+						type: "data-widget-data",
+						data: {
+							type: "hermes-memory",
+							payload: { title: "Hermes Memory" },
+						},
+					},
+				],
+			},
+		],
+	});
+
+	assert.equal(mergedMessages.length, 1);
+	assert.equal(mergedMessages[0]?.metadata?.visibility, "hidden");
+});

@@ -6,18 +6,18 @@ import { usePathname } from "next/navigation";
 import { Icon } from "@/components/ui/icon";
 import {
 	DatabaseIcon,
-	ListTodoIcon,
 	SettingsIcon,
 	TreePineIcon,
 } from "@/components/ui/vpk-icons";
+import ScorecardIcon from "@atlaskit/icon/core/scorecard";
 import { cn } from "@/lib/utils";
 
 import { CONTROL_PLANE_SURFACES } from "./lib/control-plane-data";
 
 function getSurfaceIcon(label: string) {
 	switch (label) {
-		case "Jobs":
-			return <ListTodoIcon />;
+		case "Tasks":
+			return <ScorecardIcon label="" />;
 		case "Memories":
 			return <DatabaseIcon />;
 		case "Skills":

@@ -72,3 +72,31 @@ export interface HermesJob {
 	artifactTarget: string | null;
 	raw: Record<string, unknown>;
 }
+
+export interface SessionSearchResult {
+	threadId: string;
+	title: string;
+	snippet: string;
+	matchCount: number;
+	lastMessageAt: string;
+}
+
+export interface Checkpoint {
+	id: string;
+	name: string;
+	description: string | null;
+	createdAt: string;
+}
+
+export interface HermesHubSkill {
+	name: string;
+	description: string | null;
+	category: string;
+}
+
+export interface HermesHubInstallResult {
+	installed: boolean;
+	path: string;
+	name: string;
+	category: string;
+}

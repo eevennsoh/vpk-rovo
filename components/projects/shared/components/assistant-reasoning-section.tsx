@@ -29,7 +29,7 @@ export function AssistantReasoningSection({
 			streamingWaveGradientColor={phaseProps.streamingWaveGradientColor}
 			animatedDots={phaseProps.animatedDots}
 		>
-			<AdsReasoningTrigger streaming={phaseProps.triggerStreaming} />
+			<AdsReasoningTrigger showChevron={!!reasoning.text} streaming={phaseProps.triggerStreaming} />
 			<ReasoningContent>{reasoning.text}</ReasoningContent>
 		</Reasoning>
 	);

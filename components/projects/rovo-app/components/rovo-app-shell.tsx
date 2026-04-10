@@ -68,7 +68,6 @@ import {
 	getMessageArtifactResult,
 	getMessageInterruption,
 	getMessageText,
-	type RovoUIMessage,
 } from "@/lib/rovo-ui-messages";
 import { ApprovalCard } from "@/components/blocks/approval-card/page";
 import { ClarificationQuestionCard } from "@/components/projects/shared/components/clarification-question-card";
@@ -172,146 +171,6 @@ function buildHermesMemoryLabel(
 	return `Hermes memory ${memoryCount + userCount} entries`;
 }
 
-function buildHermesContextWidgetMessage(options: {
-	threadId: string;
-	memoryDocuments: Record<HermesMemoryTarget, HermesMemoryDocument> | null;
-	selectedSkills: ReadonlyArray<HermesSkillSummary>;
-}): RovoUIMessage[] {
-	const memoryDocuments = options.memoryDocuments;
-	const selectedSkills = options.selectedSkills;
-	const memoryLines = memoryDocuments
-		? [
-			`Core memory: ${memoryDocuments.memory.entries.length} entries`,
-			`User memory: ${memoryDocuments.user.entries.length} entries`,
-		]
-		: [];
-	const skillLines = selectedSkills.map((skill) => `- ${skill.title} (${skill.id})`);
-
-	if (memoryLines.length === 0 && skillLines.length === 0) {
-		return [];
-	}
-
-	const bodyLines = [
-		...memoryLines,
-		skillLines.length > 0 ? "Selected skills:" : null,
-		...skillLines,
-	].filter((line): line is string => Boolean(line));
-
-	if (bodyLines.length === 0) {
-		return [];
-	}
-
-	const timestamp = new Date().toISOString();
-	const routeDecisionPart = {
-		type: "data-route-decision" as const,
-		data: {
-			intent: "genui" as const,
-			presentation: "genui_card" as const,
-			confidence: 1,
-			reason: "hermes_context_widget",
-			origin: "text" as const,
-		},
-	};
-
-	const messages: RovoUIMessage[] = [];
-
-	if (memoryLines.length > 0) {
-		messages.push({
-			id: `hermes-memory-${options.threadId}`,
-			role: "assistant",
-			metadata: {
-				createdAt: timestamp,
-				updatedAt: timestamp,
-			},
-			parts: [
-				routeDecisionPart,
-				{
-					type: "data-widget-data",
-					data: {
-						type: "hermes-memory",
-						payload: {
-							title: "Hermes Memory",
-							description: "Persistent memory loaded into this turn.",
-							summary: memoryLines.join("\n"),
-							contentTypeHint: "memory",
-							iconHint: "memory",
-							spec: {
-								root: "main",
-								elements: {
-									main: {
-										type: "Card",
-										props: {
-											title: "Hermes Memory",
-											description: "Persistent memory loaded into this turn.",
-										},
-										children: ["memory"],
-									},
-									memory: {
-										type: "Text",
-										props: {
-											content: memoryLines.join("\n"),
-										},
-										children: [],
-									},
-								},
-							},
-						},
-					},
-				},
-			],
-		});
-	}
-
-	if (skillLines.length > 0) {
-		messages.push({
-			id: `hermes-skill-${options.threadId}`,
-			role: "assistant",
-			metadata: {
-				createdAt: timestamp,
-				updatedAt: timestamp,
-			},
-			parts: [
-				routeDecisionPart,
-				{
-					type: "data-widget-data",
-					data: {
-						type: "hermes-skill",
-						payload: {
-							title: "Hermes Skills",
-							description: "Selected procedural skills loaded into this turn.",
-							summary: skillLines.join("\n"),
-							contentTypeHint: "skill",
-							iconHint: "skill",
-							spec: {
-								root: "main",
-								elements: {
-									main: {
-										type: "Card",
-										props: {
-											title: "Hermes Skills",
-											description: "Selected procedural skills loaded into this turn.",
-										},
-										children: ["skills"],
-									},
-									skills: {
-										type: "Text",
-										props: {
-											content: `Selected skills:\n${skillLines.join("\n")}`,
-										},
-										children: [],
-									},
-								},
-							},
-						},
-					},
-				},
-			],
-		});
-	}
-
-	return messages;
-}
-
 type RealtimeInjectContextPayload = {
 	type: string;
 	content?: string;
@@ -347,7 +206,6 @@ type RovoAppRealtimeShellAdapter = ReturnType<typeof useRovoApp> & {
 		files: FileUIPart[];
 		text: string;
 	}) => Promise<void>;
-	upsertRealtimeSyntheticMessage?: (message: RovoUIMessage) => Promise<void>;
 	updateRealtimeMessage?: (
 		messageId: string,
 		contentDelta: string,
@@ -1626,12 +1484,6 @@ export function RovoAppShell({
 				const realtimeVoice = realtime as RealtimeVoiceShellResult;
 				const contextDescription = annotationContextRef.current ?? undefined;
 				const latestUserMessageIdBeforeSubmit = getLatestUserMessageId(chat.messages);
-				const threadIdForWidget = chat.activeThreadId ?? chat.runtimeThreadId;
-				const hermesContextWidgetMessages = buildHermesContextWidgetMessage({
-					threadId: threadIdForWidget,
-					memoryDocuments: hermesMemoryDocuments,
-					selectedSkills: selectedHermesSkills,
-				});
 
 				if (isRealtimeActive) {
 					if (typeof realtimeChat.submitRealtimeText === "function") {
@@ -1692,11 +1544,6 @@ export function RovoAppShell({
 
 				queueTypedScrollAnchor("standard", latestUserMessageIdBeforeSubmit);
 				try {
-					if (typeof realtimeChat.upsertRealtimeSyntheticMessage === "function") {
-						for (const hermesContextWidgetMessage of hermesContextWidgetMessages) {
-							await realtimeChat.upsertRealtimeSyntheticMessage(hermesContextWidgetMessage);
-						}
-					}
 					await realtimeChat.submitPrompt({
 						...buildHermesPromptOptions(contextDescription),
 						files,
@@ -1710,16 +1557,12 @@ export function RovoAppShell({
 		},
 		[
 				appendRealtimeMessage,
-				chat.activeThreadId,
 				chat.messages,
-				chat.runtimeThreadId,
-				hermesMemoryDocuments,
 				isRealtimeActive,
 				queueTypedScrollAnchor,
 				realtime,
 				resetRealtimeAssistantMessageState,
 				resetTypedScrollAnchorState,
-				selectedHermesSkills,
 				setOptimisticUserMessage,
 				buildHermesPromptOptions,
 				chat.shouldQueueNextSubmission,

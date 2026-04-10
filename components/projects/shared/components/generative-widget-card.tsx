@@ -521,7 +521,7 @@ export function GenerativeWidgetCard({
 						actions={shouldShowFooterActions ? footerActions : []}
 						onStateChange={handleGenuiStateChange}
 				/>
-				<DialogContent className="max-h-[90vh] overflow-hidden gap-0 p-0 sm:max-w-5xl" size="xl" showCloseButton={false}>
+				<DialogContent className="max-h-[90vh] overflow-hidden gap-0 p-0 sm:max-w-5xl [grid-template-rows:auto_minmax(0,1fr)]" size="xl" showCloseButton={false}>
 					<DialogHeader className="mx-0 mt-0 flex-row items-center border-b p-4 sm:p-6">
 						<div className="flex min-w-0 flex-1 items-center gap-3">
 								<ContentTypeTile
@@ -543,11 +543,11 @@ export function GenerativeWidgetCard({
 								</DialogDescription>
 							</div>
 						</div>
-						<DialogClose render={<Button variant="ghost" size="icon-sm" />}>
+						<DialogClose render={<Button variant="ghost" size="icon" />}>
 							<CrossIcon label="Close" />
 						</DialogClose>
 					</DialogHeader>
-					<div className="max-h-[65vh] overflow-y-auto p-4 sm:p-6">
+					<div className="min-h-0 overflow-y-auto p-4 sm:p-6">
 						<PreviewBodyRenderer
 							body={parsedWidget.body}
 							surface="dialog"

@@ -51,6 +51,24 @@ export const API_ENDPOINTS = {
 	JOBS: `${API_BASE_URL}/api/jobs`,
 	MEMORIES: `${API_BASE_URL}/api/memories`,
 	SKILLS: `${API_BASE_URL}/api/skills`,
+	SESSION_SEARCH: `${API_BASE_URL}/api/sessions/search`,
+	CHECKPOINTS: `${API_BASE_URL}/api/checkpoints`,
+	checkpoint: (id: string) =>
+		`${API_BASE_URL}/api/checkpoints/${encodeURIComponent(id)}`,
+	checkpointRollback: (id: string) =>
+		`${API_BASE_URL}/api/checkpoints/${encodeURIComponent(id)}/rollback`,
+	SKILLS_HUB_SEARCH: `${API_BASE_URL}/api/skills/hub/search`,
+	SKILLS_HUB_INSTALLED: `${API_BASE_URL}/api/skills/hub/installed`,
+	SKILLS_HUB_INSTALL: `${API_BASE_URL}/api/skills/hub/install`,
+	skillsHubSearch: (query: string) =>
+		`${API_BASE_URL}/api/skills/hub/search?q=${encodeURIComponent(query)}`,
+	sessionSearch: (query: string, limit?: number) => {
+		const params = new URLSearchParams({ q: query });
+		if (typeof limit === "number") {
+			params.set("limit", String(limit));
+		}
+		return `${API_BASE_URL}/api/sessions/search?${params.toString()}`;
+	},
 	chatThreads: (limit?: number) =>
 		`${API_BASE_URL}/api/chat/threads${
 			typeof limit === "number" ? `?limit=${encodeURIComponent(String(limit))}` : ""

@@ -51,20 +51,99 @@ function getTimestamp(value) {
 	return Date.parse(value);
 }
 
+function getRealtimeWidgetType(message) {
+	for (const part of message.parts) {
+		if (part?.type !== "data-widget-data") {
+			continue;
+		}
+
+		const widgetType = typeof part.data?.type === "string"
+			? part.data.type.trim()
+			: "";
+		if (widgetType) {
+			return widgetType;
+		}
+	}
+
+	return null;
+}
+
+function getRealtimeRouteDecisionReason(message) {
+	for (const part of message.parts) {
+		if (part?.type !== "data-route-decision") {
+			continue;
+		}
+
+		const reason = typeof part.data?.reason === "string"
+			? part.data.reason.trim()
+			: "";
+		if (reason) {
+			return reason;
+		}
+	}
+
+	return null;
+}
+
+function isLegacyHermesRealtimeMessage(message) {
+	if (!message || typeof message !== "object") {
+		return false;
+	}
+
+	if (
+		typeof message.id === "string"
+		&& (message.id.startsWith("hermes-memory-") || message.id.startsWith("hermes-skill-"))
+	) {
+		return true;
+	}
+
+	const widgetType = getRealtimeWidgetType(message);
+	if (widgetType === "hermes-memory" || widgetType === "hermes-skill") {
+		return true;
+	}
+
+	return getRealtimeRouteDecisionReason(message) === "hermes_context_widget";
+}
+
+function normalizeRealtimeMessage(message) {
+	if (!isLegacyHermesRealtimeMessage(message)) {
+		return message;
+	}
+
+	const metadata = message.metadata && typeof message.metadata === "object"
+		? message.metadata
+		: {};
+	if (metadata.visibility === "hidden") {
+		return message;
+	}
+
+	return {
+		...message,
+		metadata: {
+			...metadata,
+			visibility: "hidden",
+		},
+	};
+}
+
 function normalizeRealtimeMessages(rawMessages) {
 	if (!Array.isArray(rawMessages)) {
 		return [];
 	}
 
-	return rawMessages.filter((message) => {
-		return (
+	return rawMessages.flatMap((message) => {
+		if (
 			message &&
 			typeof message === "object" &&
 			typeof message.id === "string" &&
 			message.id.trim().length > 0 &&
 			(message.role === "user" || message.role === "assistant") &&
 			Array.isArray(message.parts)
-		);
+		) {
+			return [normalizeRealtimeMessage(message)];
+		}
+
+		return [];
 	});
 }
 

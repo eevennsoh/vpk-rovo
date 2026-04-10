@@ -2153,6 +2153,10 @@ const REMOVABLE_HEADER_TYPES = new Set(["PageHeader", "Heading", "Text"]);
 const COLLAPSIBLE_EMPTY_CONTAINER_TYPES = new Set(["Stack"]);
 const TRANSLATED_HEADING_PATTERN = /^translated\s*\(/i;
 const USAGE_NOTES_CARD_TITLE_PATTERN = /^usage\s+notes\b/i;
+const BODY_ONLY_SPEC_CACHE = new WeakMap<
+	Spec,
+	Map<string, Spec>
+>();
 
 function getLiveChildKeys(
 	children: unknown[],
@@ -2431,6 +2435,16 @@ function collectActionButtonKeysFromSpec(spec: Spec): Set<string> {
 	return buttonKeys;
 }
 
+function getBodyOnlySpecCacheKey(
+	widget: ParsedGenerativeWidget | { spec: Spec }
+): string {
+	if (!("body" in widget)) {
+		return "";
+	}
+
+	return `${widget.title ?? ""}\u0000${widget.description ?? ""}`;
+}
+
 export function createBodyOnlySpec(
 	widget: ParsedGenerativeWidget | { spec: Spec }
 ): Spec {
@@ -2452,6 +2466,14 @@ export function createBodyOnlySpec(
 	if (!spec) {
 		return { root: "", elements: {} };
 	}
+
+	const cacheKey = getBodyOnlySpecCacheKey(widget);
+	const cachedSpecs = BODY_ONLY_SPEC_CACHE.get(spec);
+	const cachedSpec = cachedSpecs?.get(cacheKey);
+	if (cachedSpec) {
+		return cachedSpec;
+	}
+
 	const specElements = isObjectRecord(spec.elements)
 		? spec.elements
 		: null;
@@ -2611,10 +2633,18 @@ export function createBodyOnlySpec(
 		return spec;
 	}
 
-	return {
+	const bodyOnlySpec = {
 		...spec,
 		elements: normalizeUsageNotesGap(
 			normalizeTranslationTypography(prunedElements)
 		),
 	} as Spec;
+
+	if (cachedSpecs) {
+		cachedSpecs.set(cacheKey, bodyOnlySpec);
+	} else {
+		BODY_ONLY_SPEC_CACHE.set(spec, new Map([[cacheKey, bodyOnlySpec]]));
+	}
+
+	return bodyOnlySpec;
 }

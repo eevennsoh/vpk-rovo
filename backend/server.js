@@ -48,6 +48,12 @@ const {
 const { executeRovoTask } = require("./lib/rovo-task-executor");
 const { syncHermesJobResultsToRovoThreads } = require("./lib/hermes-rovo-job-sync");
 const { buildRuntimeStatusSnapshot } = require("./lib/runtime-status");
+const { redactSecrets, detectSecrets } = require("./lib/hermes-secret-redaction");
+const { classifyCommand, extractCommandFromArgs } = require("./lib/hermes-command-approval");
+const { compressConversation } = require("./lib/hermes-context-compression");
+const { searchThreads } = require("./lib/hermes-session-search");
+const { createCheckpointManager } = require("./lib/hermes-checkpoints");
+const { createSkillsHubClient } = require("./lib/hermes-skills-hub");
 const { createAbortControllerFromRequest } = require("./lib/http-request-abort");
 const {
 	createCapturedResponse,
@@ -109,6 +115,9 @@ const { getGenuiSystemPrompt } = require("./lib/genui-system-prompt");
 const { analyzeGeneratedText, pickBestSpec, extractDirectSpec } = require("./lib/genui-spec-utils");
 const { buildFallbackGenuiSpecFromText } = require("./lib/genui-fallback-spec");
 const { shouldAttemptPostToolGenui } = require("./lib/genui-post-tool-eligibility");
+const {
+	shouldSuppressHermesKnowledgeDirectSpecCard,
+} = require("./lib/hermes-direct-spec-suppression");
 const { buildDirectSpecWidgetParts } = require("./lib/direct-spec-widget-parts");
 const { withCanonicalPreviewBody } = require("./lib/widget-preview-payload");
 const { resolveAutomaticGenuiOutcome } = require("./lib/automatic-genui-outcome");
@@ -498,10 +507,6 @@ async function refreshRovoDevAvailability() {
 		} else {
 			_rovoDevPool = createRovoDevPool(healthyPorts, {
 				waitForReady: waitForPortReady,
-				onStaleBusyPort: (port) => {
-					console.warn(`[ROVODEV] Attempting cancel on stale busy port ${port}`);
-					rovoDevCancelChat(port, { timeoutMs: 5_000 }).catch(() => {});
-				},
 				onPortAvailable: () => {
 					void startNextQueuedRovoAppRun();
 				},
@@ -1402,6 +1407,13 @@ const rovoAppThreadManager = createRovoAppThreadManager({
 	baseDir: path.join(__dirname, "data"),
 	logger: console,
 });
+const checkpointManager = createCheckpointManager({
+	baseDir: path.join(__dirname, "data"),
+	maxCheckpoints: 10,
+});
+const skillsHubClient = createSkillsHubClient({
+	skillsDir: require("./lib/hermes-config").getHermesSkillsDir(),
+});
 const rovoAppVoteManager = createRovoAppVoteManager({
 	baseDir: path.join(__dirname, "data"),
 });
@@ -2066,10 +2078,22 @@ async function handleRovoAppArtifactToolRequest({
 	streamingArtifact,
 	threadId,
 }) {
-	const { message: latestUserMessage, conversationHistory } =
+	const { message: latestUserMessage, conversationHistory: rawConversationHistory } =
 		mapUiMessagesToConversation(requestBody.messages);
 	if (!latestUserMessage) {
 		return false;
+	}
+
+	// ── Context compression: summarize older turns when history is large ──
+	const compressionResult = compressConversation(rawConversationHistory, {
+		thresholdChars: 80_000,
+		tailCount: 8,
+	});
+	const conversationHistory = compressionResult.messages;
+	if (compressionResult.compressed) {
+		console.info(
+			`[HERMES] Compressed conversation history: ${rawConversationHistory.length} → ${conversationHistory.length} messages`,
+		);
 	}
 
 	const legacyArtifactMode = getNonEmptyString(requestBody.futureArtifactMode);
@@ -7233,26 +7257,32 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 						}
 					}
 
-					const outputCandidate =
-						value.outputPreview !== undefined ? value.outputPreview : value.output;
+					const rawOutputCandidate = value.output;
+					const outputPreviewCandidate =
+						value.outputPreview !== undefined ? value.outputPreview : rawOutputCandidate;
 					const outputPreview =
-						outputCandidate !== undefined ? toPreview(outputCandidate) : null;
+						outputPreviewCandidate !== undefined
+							? toPreview(outputPreviewCandidate)
+							: null;
 					const outputBytes =
 						typeof value.outputBytes === "number" && Number.isFinite(value.outputBytes)
 							? value.outputBytes
 							: outputPreview?.bytes;
-					const outputTruncated =
-						Boolean(value.outputTruncated) || Boolean(outputPreview?.truncated);
+					const outputTruncated = Boolean(value.outputTruncated);
 
+					if (phase === "result" && rawOutputCandidate !== undefined) {
+						payload.output = rawOutputCandidate;
+					}
 					if (phase === "result" && outputPreview?.text) {
-						payload.output = outputPreview.text;
 						payload.outputPreview = outputPreview.text;
 						if (outputTruncated) {
 							payload.outputTruncated = true;
-							payload.suppressedRawOutput = true;
 						}
 						if (typeof outputBytes === "number" && Number.isFinite(outputBytes)) {
 							payload.outputBytes = outputBytes;
+						}
+						if (Boolean(value.suppressedRawOutput)) {
+							payload.suppressedRawOutput = true;
 						}
 					}
 
@@ -7266,12 +7296,16 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 							}
 						}
 
+						if (rawOutputCandidate !== undefined) {
+							payload.output = rawOutputCandidate;
+						}
 						if (outputPreview?.text) {
-							payload.output = outputPreview.text;
 							payload.outputPreview = outputPreview.text;
 						}
-						if (outputTruncated || Boolean(value.suppressedRawOutput)) {
+						if (outputTruncated) {
 							payload.outputTruncated = true;
+						}
+						if (Boolean(value.suppressedRawOutput)) {
 							payload.suppressedRawOutput = true;
 						}
 						if (typeof outputBytes === "number" && Number.isFinite(outputBytes)) {
@@ -8495,6 +8529,19 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 									hasObservedActionableToolCall = true;
 								},
 								onToolCallInputResolved: (toolCall) => {
+									// ── Safety: flag dangerous commands ──
+									if (toolCall?.toolInput) {
+										const cmd = extractCommandFromArgs(toolCall.toolInput);
+										if (cmd) {
+											const classification = classifyCommand(cmd);
+											if (classification) {
+												console.warn(
+													`[SAFETY] Dangerous command detected in ${toolCall.toolName}: ${classification.label} (${classification.match})`,
+												);
+											}
+										}
+									}
+
 									if (!isRequestUserInputTool(toolCall?.toolName)) {
 										emitRequestUserInputQuestionCard({
 											toolName: toolCall?.toolName,
@@ -8518,6 +8565,20 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 									}
 								},
 									onToolCallResult: (toolCallResult) => {
+										// ── Safety: redact secrets from tool output ──
+										if (toolCallResult?.toolOutputRaw) {
+											const detected = detectSecrets(toolCallResult.toolOutputRaw);
+											if (detected.length > 0) {
+												toolCallResult.toolOutputRaw = redactSecrets(toolCallResult.toolOutputRaw);
+												if (toolCallResult.toolOutputPreview) {
+													toolCallResult.toolOutputPreview = redactSecrets(toolCallResult.toolOutputPreview);
+												}
+												console.info(
+													`[SAFETY] Redacted ${detected.length} secret(s) in ${toolCallResult.toolName} output: ${detected.map((d) => d.label).join(", ")}`,
+												);
+											}
+										}
+
 										const toolGuard = maybeGuardPlanFeedbackTool({
 											toolCallId: toolCallResult?.toolCallId,
 											toolName: toolCallResult?.toolName,
@@ -9448,26 +9509,46 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 					!hasEmittedPlanWidget &&
 					!isPlanExecutionPhase(threadId)
 				) {
+					const rawDirectSpecText =
+						hasSuppressedLargeAssistantJson ? unsuppressedAssistantText : assistantText;
 					const directSpecResult = extractDirectSpec(
-						hasSuppressedLargeAssistantJson ? unsuppressedAssistantText : assistantText
+						rawDirectSpecText
 					);
 					if (directSpecResult?.spec) {
-						const directSpecWidgetId = `widget-direct-spec-${Date.now()}`;
-						for (const part of buildDirectSpecWidgetParts({
-							latestUserMessage,
-							narrative: directSpecResult.narrative,
-							requestOrigin,
-							spec: directSpecResult.spec,
-							widgetId: directSpecWidgetId,
-							widgetType: SMART_WIDGET_TYPE_GENUI,
-						})) {
-							writer.write(part);
+						const shouldSuppressHermesKnowledgeCard =
+							shouldSuppressHermesKnowledgeDirectSpecCard({
+								assistantText: rawDirectSpecText,
+								genuiHint,
+								latestUserMessage,
+								narrative: directSpecResult.narrative,
+							});
+
+						if (shouldSuppressHermesKnowledgeCard) {
+							console.info(
+								"[DIRECT-SPEC] Suppressed GenUI widget promotion for Hermes knowledge recall",
+								{
+									elementCount: Object.keys(directSpecResult.spec.elements || {}).length,
+									narrativeLength: (directSpecResult.narrative || "").length,
+								}
+							);
+						} else {
+							const directSpecWidgetId = `widget-direct-spec-${Date.now()}`;
+							for (const part of buildDirectSpecWidgetParts({
+								latestUserMessage,
+								narrative: directSpecResult.narrative,
+								requestOrigin,
+								spec: directSpecResult.spec,
+								widgetId: directSpecWidgetId,
+								widgetType: SMART_WIDGET_TYPE_GENUI,
+							})) {
+								writer.write(part);
+							}
+							hasEmittedGenuiWidget = true;
+							console.info("[DIRECT-SPEC] Emitted GenUI widget from RovoDev spec fence", {
+								elementCount: Object.keys(directSpecResult.spec.elements || {}).length,
+								narrativeLength: (directSpecResult.narrative || "").length,
+							});
 						}
-						hasEmittedGenuiWidget = true;
-						console.info("[DIRECT-SPEC] Emitted GenUI widget from RovoDev spec fence", {
-							elementCount: Object.keys(directSpecResult.spec.elements || {}).length,
-							narrativeLength: (directSpecResult.narrative || "").length,
-						});
 					}
 
 					// ── Phase 3: Direct RovoDev media fence detection ──
@@ -12189,6 +12270,90 @@ app.get("/api/rovo-app/threads", async (req, res) => {
 	}
 });
 
+app.get("/api/sessions/search", async (req, res) => {
+	try {
+		const query = Array.isArray(req.query.q) ? req.query.q[0] : req.query.q;
+		if (!query || typeof query !== "string" || !query.trim()) {
+			return res.status(200).json({ results: [] });
+		}
+
+		const rawLimit = Array.isArray(req.query.limit) ? req.query.limit[0] : req.query.limit;
+		const limit = rawLimit ? Number(rawLimit) : undefined;
+		const threads = await rovoAppThreadManager.listThreads({ limit: 100 });
+		const results = searchThreads(threads, query.trim(), { limit });
+		return res.status(200).json({ results });
+	} catch (error) {
+		console.error("[SESSION-SEARCH] Failed to search sessions:", error);
+		return res.status(500).json({
+			error: "Failed to search sessions",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+// ── Checkpoint endpoints ──
+
+app.get("/api/checkpoints", async (_req, res) => {
+	try {
+		const checkpoints = await checkpointManager.list();
+		return res.status(200).json({ checkpoints });
+	} catch (error) {
+		console.error("[CHECKPOINTS] Failed to list checkpoints:", error);
+		return res.status(500).json({
+			error: "Failed to list checkpoints",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+app.post("/api/checkpoints", async (req, res) => {
+	try {
+		const name = typeof req.body?.name === "string" && req.body.name.trim()
+			? req.body.name.trim()
+			: `checkpoint-${Date.now()}`;
+		const description = typeof req.body?.description === "string"
+			? req.body.description.trim()
+			: null;
+		const checkpoint = await checkpointManager.create({ name, description });
+		return res.status(201).json({ checkpoint });
+	} catch (error) {
+		console.error("[CHECKPOINTS] Failed to create checkpoint:", error);
+		return res.status(500).json({
+			error: "Failed to create checkpoint",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+app.post("/api/checkpoints/:id/rollback", async (req, res) => {
+	try {
+		const checkpoint = await checkpointManager.rollback(req.params.id);
+		return res.status(200).json({ checkpoint });
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		const statusCode = /not found/iu.test(message) ? 404 : 500;
+		return res.status(statusCode).json({
+			error: "Failed to rollback checkpoint",
+			details: message,
+		});
+	}
+});
+
+app.delete("/api/checkpoints/:id", async (req, res) => {
+	try {
+		const deleted = await checkpointManager.delete(req.params.id);
+		if (!deleted) {
+			return res.status(404).json({ error: "Checkpoint not found" });
+		}
+		return res.status(200).json({ checkpoint: deleted });
+	} catch (error) {
+		return res.status(500).json({
+			error: "Failed to delete checkpoint",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
 app.post("/api/rovo-app/threads", async (req, res) => {
 	try {
 		const {
@@ -13110,6 +13275,51 @@ app.post("/api/skills/:category/:name/toggle", async (req, res) => {
 		const statusCode = /not found/i.test(message) ? 404 : 400;
 		return res.status(statusCode).json({
 			error: "Failed to toggle Hermes skill",
+			details: message,
+		});
+	}
+});
+
+// ── Skills Hub endpoints ──
+
+app.get("/api/skills/hub/search", async (req, res) => {
+	try {
+		const query = Array.isArray(req.query.q) ? req.query.q[0] : req.query.q;
+		const results = await skillsHubClient.search(query || "");
+		return res.status(200).json({ results });
+	} catch (error) {
+		return res.status(500).json({
+			error: "Failed to search skills hub",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+app.get("/api/skills/hub/installed", async (_req, res) => {
+	try {
+		const installed = await skillsHubClient.listInstalled();
+		return res.status(200).json({ skills: installed });
+	} catch (error) {
+		return res.status(500).json({
+			error: "Failed to list installed hub skills",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+app.post("/api/skills/hub/install", async (req, res) => {
+	try {
+		const bundle = req.body;
+		if (!bundle || typeof bundle !== "object" || !bundle.name) {
+			return res.status(400).json({ error: "Invalid skill bundle: name and files required" });
+		}
+		const result = await skillsHubClient.installFromBundle(bundle);
+		return res.status(201).json(result);
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		const statusCode = /traversal|absolute/iu.test(message) ? 400 : 500;
+		return res.status(statusCode).json({
+			error: "Failed to install skill",
 			details: message,
 		});
 	}

@@ -188,6 +188,53 @@ test("createBodyOnlySpec normalizes usage notes spacing to md gap", () => {
 	assert.equal(result.elements.root.props.gap, "md");
 });
 
+test("createBodyOnlySpec reuses the same transformed spec for identical widget input", () => {
+	const spec = {
+		root: "root",
+		elements: {
+			root: {
+				type: "Stack",
+				props: { direction: "vertical", gap: "md" },
+				children: ["title", "description", "cta", "body"],
+			},
+			title: {
+				type: "Heading",
+				props: { text: "Hermes Features", level: "h3" },
+			},
+			description: {
+				type: "Text",
+				props: {
+					content: "Persistent capabilities available across sessions in VPK-Rovo",
+				},
+			},
+			cta: {
+				type: "Button",
+				props: { label: "Export" },
+			},
+			body: {
+				type: "Text",
+				props: { content: "Rendered body content" },
+			},
+		},
+	};
+
+	const widget = {
+		type: "genui-preview",
+		body: {
+			kind: "json-render",
+			spec,
+		},
+		title: "Hermes Features",
+		description: "Persistent capabilities available across sessions in VPK-Rovo",
+		source: null,
+	};
+
+	const firstResult = createBodyOnlySpec(widget);
+	const secondResult = createBodyOnlySpec(widget);
+
+	assert.strictEqual(secondResult, firstResult);
+});
+
 test("createBodyOnlySpec keeps meaningful separators between remaining sections", () => {
 	const spec = {
 		root: "root",

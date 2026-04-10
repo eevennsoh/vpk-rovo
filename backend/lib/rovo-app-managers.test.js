@@ -63,6 +63,93 @@ test("rovo app thread manager persists and lists thread metadata", async () => {
 	assert.equal(listedThreads[0].id, "thread-1");
 });
 
+test("rovo app thread manager hides persisted legacy Hermes realtime widgets", async () => {
+	const baseDir = await createTempBaseDir();
+	const threadDir = path.join(baseDir, "rovo-app", "threads", "thread-legacy");
+	await fs.mkdir(threadDir, { recursive: true });
+	await fs.writeFile(
+		path.join(threadDir, "thread.json"),
+		JSON.stringify({
+			id: "thread-legacy",
+			title: "Legacy thread",
+			createdAt: "2026-04-10T00:00:00.000Z",
+			updatedAt: "2026-04-10T00:00:00.000Z",
+			messages: [],
+			realtimeMessages: [
+				{
+					id: "hermes-memory-thread-legacy",
+					role: "assistant",
+					metadata: {
+						createdAt: "2026-04-10T00:00:00.000Z",
+						updatedAt: "2026-04-10T00:00:00.000Z",
+					},
+					parts: [
+						{
+							type: "data-route-decision",
+							data: {
+								intent: "genui",
+								presentation: "genui_card",
+								confidence: 1,
+								reason: "hermes_context_widget",
+								origin: "text",
+							},
+						},
+						{
+							type: "data-widget-data",
+							data: {
+								type: "hermes-memory",
+								payload: {
+									title: "Hermes Memory",
+								},
+							},
+						},
+					],
+				},
+			],
+			visibility: "private",
+		}),
+		"utf8",
+	);
+
+	const manager = createRovoAppThreadManager({ baseDir, logger: console });
+	const thread = await manager.getThread("thread-legacy");
+
+	assert.equal(thread?.realtimeMessages.length, 1);
+	assert.equal(thread?.realtimeMessages[0]?.metadata?.visibility, "hidden");
+});
+
+test("rovo app thread manager preserves ordinary realtime assistant visibility", async () => {
+	const baseDir = await createTempBaseDir();
+	const manager = createRovoAppThreadManager({ baseDir, logger: console });
+
+	await manager.createThread({
+		id: "thread-visible",
+		title: "Visible thread",
+		messages: [],
+		realtimeMessages: [
+			{
+				id: "assistant-visible",
+				role: "assistant",
+				metadata: {
+					createdAt: "2026-04-10T00:00:00.000Z",
+					updatedAt: "2026-04-10T00:00:00.000Z",
+				},
+				parts: [
+					{
+						type: "text",
+						text: "Visible response",
+						state: "done",
+					},
+				],
+			},
+		],
+	});
+
+	const thread = await manager.getThread("thread-visible");
+
+	assert.equal(thread?.realtimeMessages[0]?.metadata?.visibility, undefined);
+});
+
 test("rovo app vote manager stores one vote per message", async () => {
 	const baseDir = await createTempBaseDir();
 	const manager = createRovoAppVoteManager({ baseDir });
