@@ -393,6 +393,446 @@ async function captureUrl({
 }
 
 // ---------------------------------------------------------------------------
+// queryWiki
+// ---------------------------------------------------------------------------
+
+const WIKI_CONTENT_DIRS = ["entities", "concepts", "comparisons", "queries"];
+
+async function queryWiki(query, { wikiDir = WIKI_DIR } = {}) {
+	if (!query || typeof query !== "string" || !query.trim()) {
+		return { results: [] };
+	}
+
+	const normalizedQuery = query.toLowerCase().trim();
+	const terms = normalizedQuery.split(/\s+/u);
+	const results = [];
+
+	for (const dir of WIKI_CONTENT_DIRS) {
+		const dirPath = path.join(wikiDir, dir);
+		const files = await walkMarkdownFiles(dirPath);
+
+		for (const filePath of files) {
+			try {
+				const content = await fs.readFile(filePath, "utf8");
+				const { frontmatter, body } = parseFrontmatter(content);
+				const title = (frontmatter.title || "").toLowerCase();
+				const tagsStr = Array.isArray(frontmatter.tags)
+					? frontmatter.tags.join(" ").toLowerCase()
+					: "";
+				const bodyLower = body.toLowerCase();
+
+				const searchable = `${title} ${tagsStr} ${bodyLower}`;
+				const matchCount = terms.filter((term) => searchable.includes(term)).length;
+
+				if (matchCount === 0) {
+					continue;
+				}
+
+				// Extract snippet around first match
+				const firstTermIndex = terms.reduce((best, term) => {
+					const idx = bodyLower.indexOf(term);
+					return idx >= 0 && (best < 0 || idx < best) ? idx : best;
+				}, -1);
+
+				const snippetStart = Math.max(0, firstTermIndex - 40);
+				const snippet = body.slice(snippetStart, snippetStart + 120).trim();
+
+				results.push({
+					title: frontmatter.title || path.basename(filePath, ".md"),
+					path: filePath,
+					snippet: snippet || body.slice(0, 120).trim(),
+					score: matchCount / terms.length,
+				});
+			} catch {
+				// Skip unreadable files
+			}
+		}
+	}
+
+	results.sort((a, b) => b.score - a.score);
+	return { results };
+}
+
+// ---------------------------------------------------------------------------
+// lintWiki
+// ---------------------------------------------------------------------------
+
+async function lintWiki({ wikiDir = WIKI_DIR } = {}) {
+	const issues = [];
+
+	// 1. Read index.md
+	let indexContent = "";
+	try {
+		indexContent = await fs.readFile(path.join(wikiDir, "index.md"), "utf8");
+	} catch {
+		issues.push({ type: "missing-file", path: "index.md", message: "index.md not found" });
+	}
+
+	// 2. Collect all canonical pages
+	const allPages = [];
+	for (const dir of WIKI_CONTENT_DIRS) {
+		const dirPath = path.join(wikiDir, dir);
+		const files = await walkMarkdownFiles(dirPath);
+		for (const filePath of files) {
+			try {
+				const content = await fs.readFile(filePath, "utf8");
+				const { frontmatter, body } = parseFrontmatter(content);
+				allPages.push({ filePath, frontmatter, body, slug: path.basename(filePath, ".md") });
+			} catch {
+				issues.push({ type: "unreadable", path: filePath, message: "Could not read file" });
+			}
+		}
+	}
+
+	// Collect all known slugs for wikilink resolution
+	const knownSlugs = new Set(allPages.map((p) => p.slug));
+
+	// 3. Check each page
+	for (const page of allPages) {
+		// Check frontmatter fields
+		for (const field of ["title", "created", "updated", "type", "tags"]) {
+			if (page.frontmatter[field] === undefined || page.frontmatter[field] === "") {
+				issues.push({
+					type: "missing-frontmatter",
+					path: page.filePath,
+					message: `Missing required field: ${field}`,
+				});
+			}
+		}
+
+		// Check index entry
+		if (!indexContent.includes(`[[${page.slug}]]`)) {
+			issues.push({
+				type: "missing-index-entry",
+				path: page.filePath,
+				message: `Page "${page.slug}" not found in index.md`,
+			});
+		}
+
+		// Check wikilinks resolve
+		const wikilinks = page.body.match(/\[\[([^\]]+)\]\]/gu) || [];
+		for (const link of wikilinks) {
+			const target = link.slice(2, -2).toLowerCase();
+			if (!knownSlugs.has(target)) {
+				issues.push({
+					type: "broken-wikilink",
+					path: page.filePath,
+					message: `Broken wikilink [[${target}]] — page does not exist`,
+				});
+			}
+		}
+	}
+
+	// 4. Check for duplicate canonical URLs in raw/
+	const rawDir = path.join(wikiDir, "raw");
+	const rawFiles = await walkMarkdownFiles(rawDir);
+	const urlToFiles = new Map();
+
+	for (const filePath of rawFiles) {
+		try {
+			const content = await fs.readFile(filePath, "utf8");
+			const { frontmatter } = parseFrontmatter(content);
+			const url = frontmatter.canonical_url || frontmatter.source_url;
+			if (url) {
+				if (!urlToFiles.has(url)) {
+					urlToFiles.set(url, []);
+				}
+				urlToFiles.get(url).push(filePath);
+			}
+		} catch {
+			// Skip
+		}
+	}
+
+	for (const [url, files] of urlToFiles) {
+		if (files.length > 1) {
+			issues.push({
+				type: "duplicate-url",
+				path: files[1],
+				message: `Duplicate canonical URL "${url}" — also in ${files[0]}`,
+			});
+		}
+	}
+
+	return { issues };
+}
+
+// ---------------------------------------------------------------------------
+// ingestRawSources
+// ---------------------------------------------------------------------------
+
+const TYPE_TO_DIR = {
+	entity: "entities",
+	concept: "concepts",
+	comparison: "comparisons",
+	query: "queries",
+};
+
+function buildIngestPrompt(rawFrontmatter, rawBody, schemaContent, indexContent) {
+	return [
+		"You are a wiki editor. Given the raw captured article below, generate a canonical wiki page.",
+		"",
+		"## Wiki Schema",
+		schemaContent,
+		"",
+		"## Current Index",
+		indexContent,
+		"",
+		"## Raw Article Frontmatter",
+		JSON.stringify(rawFrontmatter, null, 2),
+		"",
+		"## Raw Article Content",
+		rawBody,
+		"",
+		"## Instructions",
+		"Generate a JSON object with these fields:",
+		'- slug: lowercase hyphenated page name (e.g., "rovo")',
+		'- type: one of "entity", "concept", "comparison", "query"',
+		"- frontmatter: object with title, created (YYYY-MM-DD), updated (YYYY-MM-DD), type, tags (array), sources (array of raw file paths)",
+		"- body: markdown content with at least 2 [[wikilinks]] to other pages",
+		'- indexEntry: one line for index.md (e.g., "- [[slug]] — description")',
+		"",
+		"Return ONLY the JSON object, no other text.",
+	].join("\n");
+}
+
+function updateRawFileStatus(content, newStatus) {
+	return content.replace(
+		/^(status:\s*).+$/mu,
+		`$1${newStatus}`,
+	);
+}
+
+async function ingestRawSources({
+	executorImpl,
+	wikiDir = WIKI_DIR,
+} = {}) {
+	// Default executor: use runRovoDevBackgroundTask with structured JSON parsing
+	const executor = executorImpl || (async ({ prompt }) => {
+		const { runRovoDevBackgroundTask, parseStructuredJsonResponse } = require("./rovo-task-executor");
+		return runRovoDevBackgroundTask({
+			prompt,
+			selectedSkillIds: ["research/llm-wiki"],
+			parseStructuredResult: parseStructuredJsonResponse,
+			system: "You are a wiki editor. Return ONLY a JSON object with fields: slug, type, frontmatter, body, indexEntry. No other text.",
+		});
+	});
+	const rawDir = path.join(wikiDir, "raw");
+	const rawFiles = await walkMarkdownFiles(rawDir);
+
+	// Read schema and index for LLM context
+	let schemaContent = "";
+	let indexContent = "";
+	try {
+		schemaContent = await fs.readFile(path.join(wikiDir, "SCHEMA.md"), "utf8");
+	} catch {
+		// No schema — proceed without
+	}
+	try {
+		indexContent = await fs.readFile(path.join(wikiDir, "index.md"), "utf8");
+	} catch {
+		// No index — proceed without
+	}
+
+	let processed = 0;
+	let skipped = 0;
+	const errors = [];
+
+	for (const filePath of rawFiles) {
+		let content;
+		try {
+			content = await fs.readFile(filePath, "utf8");
+		} catch {
+			errors.push(`Could not read ${filePath}`);
+			continue;
+		}
+
+		const { frontmatter, body } = parseFrontmatter(content);
+
+		// Only process queued or updated files
+		if (frontmatter.status !== "queued" && frontmatter.status !== "updated") {
+			skipped += 1;
+			continue;
+		}
+
+		try {
+			// Call LLM to generate canonical page
+			const prompt = buildIngestPrompt(frontmatter, body, schemaContent, indexContent);
+			const executorResult = await executor({ prompt });
+
+			// Parse structured result
+			let pageData = executorResult.structuredResult;
+			if (!pageData && executorResult.responseText) {
+				const { parseStructuredJsonResponse } = require("./rovo-task-executor");
+				pageData = parseStructuredJsonResponse(executorResult.responseText);
+			}
+
+			if (!pageData || !pageData.slug || !pageData.type || !pageData.body) {
+				errors.push(`Invalid LLM response for ${filePath}`);
+				continue;
+			}
+
+			// Write canonical page
+			const targetDir = TYPE_TO_DIR[pageData.type] || "entities";
+			const canonicalPath = path.join(wikiDir, targetDir, `${pageData.slug}.md`);
+			const canonicalContent = `${serializeFrontmatter(pageData.frontmatter)}\n${pageData.body}\n`;
+			await fs.writeFile(canonicalPath, canonicalContent, "utf8");
+
+			// Update index.md
+			if (pageData.indexEntry && !indexContent.includes(`[[${pageData.slug}]]`)) {
+				indexContent += `${pageData.indexEntry}\n`;
+				await fs.writeFile(path.join(wikiDir, "index.md"), indexContent, "utf8");
+			}
+
+			// Update raw file status
+			const updatedContent = updateRawFileStatus(content, "ingested");
+			await fs.writeFile(filePath, updatedContent, "utf8");
+
+			// Log
+			await appendToLog(wikiDir, "ingest", pageData.frontmatter?.title || pageData.slug, [
+				`Source: ${filePath}`,
+				`Canonical: ${canonicalPath}`,
+				`Type: ${pageData.type}`,
+			]);
+
+			processed += 1;
+		} catch (error) {
+			errors.push(`${filePath}: ${error.message}`);
+		}
+	}
+
+	return { processed, skipped, errors };
+}
+
+// ---------------------------------------------------------------------------
+// regenerateMemoryDigest
+// ---------------------------------------------------------------------------
+
+const DIGEST_PREFIX = "[wiki-digest]";
+
+async function regenerateMemoryDigest({
+	memoryImpl,
+	wikiDir = WIKI_DIR,
+} = {}) {
+	// Default memory impl: use Hermes memory system
+	const memory = memoryImpl || (() => {
+		const { addHermesMemoryEntry, getHermesMemory, removeHermesMemoryEntry } = require("./hermes-memory");
+		return {
+			getMemory: (target) => getHermesMemory(target),
+			addEntry: (target, content) => addHermesMemoryEntry(target, { content }),
+			removeEntry: (target, entryId) => removeHermesMemoryEntry(target, entryId),
+		};
+	})();
+	// 1. Read all canonical wiki pages
+	const pages = [];
+	for (const dir of WIKI_CONTENT_DIRS) {
+		const dirPath = path.join(wikiDir, dir);
+		const files = await walkMarkdownFiles(dirPath);
+		for (const filePath of files) {
+			try {
+				const content = await fs.readFile(filePath, "utf8");
+				const { frontmatter } = parseFrontmatter(content);
+				pages.push({
+					title: frontmatter.title || path.basename(filePath, ".md"),
+					type: frontmatter.type || dir.replace(/s$/u, ""),
+					tags: frontmatter.tags || [],
+					updated: frontmatter.updated || "",
+				});
+			} catch {
+				// Skip unreadable files
+			}
+		}
+	}
+
+	// 2. Remove old wiki-digest entries from memory
+	const currentMemory = await memory.getMemory("memory");
+	for (const entry of currentMemory.entries || []) {
+		if (entry.content && entry.content.startsWith(DIGEST_PREFIX)) {
+			await memory.removeEntry("memory", entry.id);
+		}
+	}
+
+	// 3. Build condensed digest
+	if (pages.length === 0) {
+		return { entriesWritten: 0 };
+	}
+
+	const byType = {};
+	for (const page of pages) {
+		const type = page.type;
+		if (!byType[type]) {
+			byType[type] = [];
+		}
+		byType[type].push(page.title);
+	}
+
+	const digestLines = [`${DIGEST_PREFIX} Wiki knowledge base (${pages.length} pages)`];
+	for (const [type, titles] of Object.entries(byType)) {
+		digestLines.push(`${type}: ${titles.join(", ")}`);
+	}
+
+	// Add recent captures info
+	const allTags = [...new Set(pages.flatMap((p) => p.tags))];
+	if (allTags.length > 0) {
+		digestLines.push(`Topics covered: ${allTags.join(", ")}`);
+	}
+
+	const digestText = digestLines.join(". ");
+
+	// 4. Write new digest entry
+	await memory.addEntry("memory", digestText);
+
+	return { entriesWritten: 1 };
+}
+
+// ---------------------------------------------------------------------------
+// Job definitions
+// ---------------------------------------------------------------------------
+
+function getWikiJobDefinitions() {
+	return [
+		{
+			name: "wiki-nightly-ingest",
+			schedule: "0 2 * * *",
+			prompt: "Run the wiki ingest process: scan wiki/raw/ for files with status queued or updated, generate canonical wiki pages from each, update index.md, and set raw file status to ingested.",
+			skills: ["research/llm-wiki"],
+			repeat: true,
+		},
+		{
+			name: "wiki-digest-regen",
+			schedule: "0 6 * * *",
+			prompt: "Regenerate the wiki memory digest: read all canonical wiki pages, produce a condensed summary, and write to Hermes core memory. Do not modify user memory.",
+			skills: ["research/llm-wiki"],
+			repeat: true,
+		},
+	];
+}
+
+async function ensureWikiJobs(jobsProvider) {
+	if (!jobsProvider || typeof jobsProvider.listHermesJobs !== "function") {
+		return { created: 0, existing: 0 };
+	}
+
+	const existingJobs = await jobsProvider.listHermesJobs();
+	const existingNames = new Set(existingJobs.map((job) => job.name));
+	const definitions = getWikiJobDefinitions();
+
+	let created = 0;
+	let existing = 0;
+
+	for (const def of definitions) {
+		if (existingNames.has(def.name)) {
+			existing += 1;
+			continue;
+		}
+		await jobsProvider.createHermesJob(def);
+		created += 1;
+	}
+
+	return { created, existing };
+}
+
+// ---------------------------------------------------------------------------
 // Exports
 // ---------------------------------------------------------------------------
 
@@ -403,9 +843,15 @@ module.exports = {
 	buildOutputPath,
 	captureUrl,
 	computeContentHash,
+	ensureWikiJobs,
 	generateSlug,
+	getWikiJobDefinitions,
+	ingestRawSources,
 	isSkippableUrl,
+	lintWiki,
 	parseFrontmatter,
+	queryWiki,
+	regenerateMemoryDigest,
 	serializeFrontmatter,
 	validateUrl,
 };

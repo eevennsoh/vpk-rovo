@@ -52,6 +52,21 @@ test("buildUserMessage includes Hermes skill discoverability protocol in default
 	assert.match(message, /prefer loading it directly with the `get_skill` tool/i);
 });
 
+test("buildUserMessage no longer injects standup-specific instructions from prompt text", () => {
+	const message = buildUserMessage("Can you write my daily standup from Jira?", [], undefined);
+
+	assert.doesNotMatch(message, /\[Standup Summary Protocol\]/);
+	assert.doesNotMatch(message, /assignee = currentUser\(\) AND updated >= -24h/i);
+});
+
+test("buildUserMessage no longer injects ticket or work-summary prompt-specific instructions", () => {
+	const ticketMessage = buildUserMessage("Please triage incoming support tickets", [], undefined);
+	const workSummaryMessage = buildUserMessage("Summarize my last 7 days of work", [], undefined);
+
+	assert.doesNotMatch(ticketMessage, /\[Ticket Classifier Protocol\]/);
+	assert.doesNotMatch(workSummaryMessage, /\[Work Summary Scope\]/);
+});
+
 test("Hermes skill discoverability protocol distinguishes discoverable skills from active skills", () => {
 	assert.match(HERMES_SKILL_DISCOVERABILITY_INSTRUCTION, /\[Hermes Skills Catalog\]/);
 	assert.match(HERMES_SKILL_DISCOVERABILITY_INSTRUCTION, /\[Hermes Skills\]/);

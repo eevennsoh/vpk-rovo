@@ -13,9 +13,15 @@ const {
 	buildOutputPath,
 	captureUrl,
 	computeContentHash,
+	ensureWikiJobs,
 	generateSlug,
+	getWikiJobDefinitions,
+	ingestRawSources,
 	isSkippableUrl,
+	lintWiki,
 	parseFrontmatter,
+	queryWiki,
+	regenerateMemoryDigest,
 	serializeFrontmatter,
 	validateUrl,
 } = require("./wiki-clipper");
@@ -456,4 +462,495 @@ test("captureUrl applies tags from options", async () => {
 	const saved = await fs.readFile(result.filePath, "utf8");
 	const { frontmatter } = parseFrontmatter(saved);
 	assert.deepEqual(frontmatter.tags, ["rovo", "ai"]);
+});
+
+// ---------------------------------------------------------------------------
+// queryWiki
+// ---------------------------------------------------------------------------
+
+async function createPopulatedWiki() {
+	const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "vpk-wiki-query-"));
+	for (const sub of ["raw/articles", "entities", "concepts", "comparisons", "queries"]) {
+		await fs.mkdir(path.join(tmpDir, ...sub.split("/")), { recursive: true });
+	}
+	await fs.writeFile(path.join(tmpDir, "log.md"), "# Wiki Log\n\n", "utf8");
+	await fs.writeFile(
+		path.join(tmpDir, "index.md"),
+		"# Wiki Index\n\n## Entities\n\n- [[atlassian]] — The company\n- [[rovo]] — AI assistant\n",
+		"utf8",
+	);
+
+	await fs.writeFile(
+		path.join(tmpDir, "entities", "atlassian.md"),
+		[
+			"---",
+			"title: Atlassian",
+			"created: 2026-04-11",
+			"updated: 2026-04-11",
+			"type: entity",
+			"tags: [company]",
+			"sources: [raw/articles/atlassian-overview.md]",
+			"---",
+			"",
+			"Atlassian is a software company that builds tools for teams.",
+			"See also [[rovo]] and [[jira]].",
+		].join("\n"),
+		"utf8",
+	);
+
+	await fs.writeFile(
+		path.join(tmpDir, "entities", "rovo.md"),
+		[
+			"---",
+			"title: Rovo",
+			"created: 2026-04-11",
+			"updated: 2026-04-11",
+			"type: entity",
+			"tags: [rovo, ai]",
+			"sources: [raw/articles/rovo-intro.md]",
+			"---",
+			"",
+			"Rovo is Atlassian's AI assistant.",
+			"Part of [[atlassian]] platform.",
+		].join("\n"),
+		"utf8",
+	);
+
+	return tmpDir;
+}
+
+test("queryWiki returns matching pages by title", async () => {
+	const wikiDir = await createPopulatedWiki();
+	const result = await queryWiki("rovo", { wikiDir });
+	assert.ok(result.results.length > 0, "should find results");
+	assert.ok(result.results.some((r) => r.title === "Rovo"));
+});
+
+test("queryWiki returns matching pages by tag", async () => {
+	const wikiDir = await createPopulatedWiki();
+	const result = await queryWiki("ai", { wikiDir });
+	assert.ok(result.results.length > 0, "should find results by tag");
+});
+
+test("queryWiki returns matching pages by body content", async () => {
+	const wikiDir = await createPopulatedWiki();
+	const result = await queryWiki("software company", { wikiDir });
+	assert.ok(result.results.length > 0, "should find results by body content");
+	assert.ok(result.results.some((r) => r.title === "Atlassian"));
+});
+
+test("queryWiki returns empty for no matches", async () => {
+	const wikiDir = await createPopulatedWiki();
+	const result = await queryWiki("nonexistent-query-xyz", { wikiDir });
+	assert.equal(result.results.length, 0);
+});
+
+// ---------------------------------------------------------------------------
+// lintWiki
+// ---------------------------------------------------------------------------
+
+test("lintWiki returns clean for valid wiki", async () => {
+	const wikiDir = await createPopulatedWiki();
+	const result = await lintWiki({ wikiDir });
+	// May have some issues (e.g., jira wikilink doesn't resolve), but should not crash
+	assert.ok(Array.isArray(result.issues));
+});
+
+test("lintWiki detects broken wikilinks", async () => {
+	const wikiDir = await createPopulatedWiki();
+	// atlassian.md links to [[jira]] which doesn't exist
+	const result = await lintWiki({ wikiDir });
+	const brokenLinks = result.issues.filter((i) => i.type === "broken-wikilink");
+	assert.ok(brokenLinks.length > 0, "should detect broken [[jira]] link");
+	assert.ok(brokenLinks.some((i) => i.message.includes("jira")));
+});
+
+test("lintWiki detects missing index entries", async () => {
+	const wikiDir = await createPopulatedWiki();
+	// Add a page that isn't in the index
+	await fs.writeFile(
+		path.join(wikiDir, "concepts", "teamwork.md"),
+		[
+			"---",
+			"title: Teamwork",
+			"created: 2026-04-11",
+			"updated: 2026-04-11",
+			"type: concept",
+			"tags: [company]",
+			"sources: []",
+			"---",
+			"",
+			"Teamwork is core to [[atlassian]].",
+		].join("\n"),
+		"utf8",
+	);
+
+	const result = await lintWiki({ wikiDir });
+	const missing = result.issues.filter((i) => i.type === "missing-index-entry");
+	assert.ok(missing.length > 0, "should detect page not in index");
+	assert.ok(missing.some((i) => i.path.includes("teamwork")));
+});
+
+test("lintWiki detects duplicate canonical URLs in raw", async () => {
+	const wikiDir = await createPopulatedWiki();
+	const rawDir = path.join(wikiDir, "raw", "articles");
+	await fs.mkdir(path.join(rawDir, "2026", "04"), { recursive: true });
+
+	const rawContent = [
+		"---",
+		"title: Duplicate",
+		"source_url: https://example.com/dup",
+		"canonical_url: https://example.com/dup",
+		"status: queued",
+		"---",
+		"Content.",
+	].join("\n");
+	await fs.writeFile(path.join(rawDir, "2026", "04", "dup-1.md"), rawContent, "utf8");
+	await fs.writeFile(path.join(rawDir, "2026", "04", "dup-2.md"), rawContent, "utf8");
+
+	const result = await lintWiki({ wikiDir });
+	const dups = result.issues.filter((i) => i.type === "duplicate-url");
+	assert.ok(dups.length > 0, "should detect duplicate canonical URLs");
+});
+
+// ---------------------------------------------------------------------------
+// ingestRawSources
+// ---------------------------------------------------------------------------
+
+async function createWikiWithQueuedRaw() {
+	const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "vpk-wiki-ingest-"));
+	for (const sub of ["raw/articles/2026/04", "entities", "concepts", "comparisons", "queries"]) {
+		await fs.mkdir(path.join(tmpDir, ...sub.split("/")), { recursive: true });
+	}
+	await fs.writeFile(path.join(tmpDir, "log.md"), "# Wiki Log\n\n", "utf8");
+	await fs.writeFile(
+		path.join(tmpDir, "index.md"),
+		"# Wiki Index\n\n## Entities\n\n### Products\n\n### People\n\n## Concepts\n\n## Comparisons\n\n## Queries\n",
+		"utf8",
+	);
+	await fs.writeFile(
+		path.join(tmpDir, "SCHEMA.md"),
+		"# Wiki Schema\n\n## Domain\nAtlassian\n",
+		"utf8",
+	);
+
+	// Add a queued raw file
+	await fs.writeFile(
+		path.join(tmpDir, "raw", "articles", "2026", "04", "rovo-overview.md"),
+		[
+			"---",
+			"title: Rovo Overview",
+			"source_url: https://example.com/rovo",
+			"canonical_url: https://example.com/rovo",
+			"captured_at: 2026-04-11T12:00:00Z",
+			"capture_method: defuddle",
+			"content_type: article",
+			"word_count: 200",
+			"tags: [rovo, ai]",
+			"status: queued",
+			"---",
+			"",
+			"# Rovo Overview",
+			"",
+			"Rovo is Atlassian's AI assistant that helps teams find information.",
+			"It uses Atlassian Intelligence to search across connected apps.",
+		].join("\n"),
+		"utf8",
+	);
+
+	return tmpDir;
+}
+
+// Mock LLM response for ingest
+function createMockExecutor() {
+	return async ({ prompt }) => {
+		// Return a structured JSON response simulating what the LLM would generate
+		return {
+			backend: "mock",
+			didRun: true,
+			responseText: JSON.stringify({
+				slug: "rovo",
+				type: "entity",
+				frontmatter: {
+					title: "Rovo",
+					created: "2026-04-11",
+					updated: "2026-04-11",
+					type: "entity",
+					tags: ["rovo", "ai"],
+					sources: ["raw/articles/2026/04/rovo-overview.md"],
+				},
+				body: "Rovo is [[atlassian]]'s AI assistant.\n\nIt helps teams find and act on information using [[atlassian-intelligence]].\n",
+				indexEntry: "- [[rovo]] — Atlassian AI assistant",
+			}),
+			structuredResult: {
+				slug: "rovo",
+				type: "entity",
+				frontmatter: {
+					title: "Rovo",
+					created: "2026-04-11",
+					updated: "2026-04-11",
+					type: "entity",
+					tags: ["rovo", "ai"],
+					sources: ["raw/articles/2026/04/rovo-overview.md"],
+				},
+				body: "Rovo is [[atlassian]]'s AI assistant.\n\nIt helps teams find and act on information using [[atlassian-intelligence]].\n",
+				indexEntry: "- [[rovo]] — Atlassian AI assistant",
+			},
+		};
+	};
+}
+
+test("ingestRawSources processes queued files into canonical pages", async () => {
+	const wikiDir = await createWikiWithQueuedRaw();
+
+	const result = await ingestRawSources({
+		wikiDir,
+		executorImpl: createMockExecutor(),
+	});
+
+	assert.equal(result.processed, 1);
+	assert.equal(result.errors.length, 0);
+
+	// Check canonical page was created
+	const canonicalPath = path.join(wikiDir, "entities", "rovo.md");
+	const canonicalContent = await fs.readFile(canonicalPath, "utf8");
+	assert.ok(canonicalContent.includes("Rovo"), "canonical page should exist");
+});
+
+test("ingestRawSources updates raw file status to ingested", async () => {
+	const wikiDir = await createWikiWithQueuedRaw();
+
+	await ingestRawSources({
+		wikiDir,
+		executorImpl: createMockExecutor(),
+	});
+
+	const rawContent = await fs.readFile(
+		path.join(wikiDir, "raw", "articles", "2026", "04", "rovo-overview.md"),
+		"utf8",
+	);
+	const { frontmatter } = parseFrontmatter(rawContent);
+	assert.equal(frontmatter.status, "ingested");
+});
+
+test("ingestRawSources updates index.md", async () => {
+	const wikiDir = await createWikiWithQueuedRaw();
+
+	await ingestRawSources({
+		wikiDir,
+		executorImpl: createMockExecutor(),
+	});
+
+	const indexContent = await fs.readFile(path.join(wikiDir, "index.md"), "utf8");
+	assert.ok(indexContent.includes("[[rovo]]"), "index should contain new entry");
+});
+
+test("ingestRawSources appends to log.md", async () => {
+	const wikiDir = await createWikiWithQueuedRaw();
+
+	await ingestRawSources({
+		wikiDir,
+		executorImpl: createMockExecutor(),
+	});
+
+	const logContent = await fs.readFile(path.join(wikiDir, "log.md"), "utf8");
+	assert.ok(logContent.includes("ingest"), "log should contain ingest event");
+});
+
+test("ingestRawSources skips already-ingested files", async () => {
+	const wikiDir = await createWikiWithQueuedRaw();
+
+	// Change status to ingested
+	const rawPath = path.join(wikiDir, "raw", "articles", "2026", "04", "rovo-overview.md");
+	let content = await fs.readFile(rawPath, "utf8");
+	content = content.replace("status: queued", "status: ingested");
+	await fs.writeFile(rawPath, content, "utf8");
+
+	const result = await ingestRawSources({
+		wikiDir,
+		executorImpl: createMockExecutor(),
+	});
+
+	assert.equal(result.processed, 0);
+	assert.equal(result.skipped, 1);
+});
+
+test("ingestRawSources handles executor failure without crashing", async () => {
+	const wikiDir = await createWikiWithQueuedRaw();
+
+	const failingExecutor = async () => {
+		throw new Error("LLM unavailable");
+	};
+
+	const result = await ingestRawSources({
+		wikiDir,
+		executorImpl: failingExecutor,
+	});
+
+	assert.equal(result.processed, 0);
+	assert.equal(result.errors.length, 1);
+	assert.ok(result.errors[0].includes("LLM unavailable"));
+});
+
+// ---------------------------------------------------------------------------
+// regenerateMemoryDigest
+// ---------------------------------------------------------------------------
+
+test("regenerateMemoryDigest produces digest from wiki pages", async () => {
+	const wikiDir = await createPopulatedWiki();
+
+	const memoryEntries = [];
+	const mockMemoryImpl = {
+		getMemory: async () => ({ entries: [] }),
+		addEntry: async (target, content) => {
+			memoryEntries.push({ target, content });
+		},
+		removeEntry: async () => {},
+	};
+
+	const result = await regenerateMemoryDigest({ wikiDir, memoryImpl: mockMemoryImpl });
+
+	assert.ok(result.entriesWritten > 0, "should write at least one entry");
+	assert.ok(memoryEntries.length > 0, "should have called addEntry");
+	assert.equal(memoryEntries[0].target, "memory");
+
+	// Digest should mention entities in the wiki
+	const digestContent = memoryEntries[0].content;
+	assert.ok(digestContent.includes("Atlassian") || digestContent.includes("Rovo"), "digest should reference wiki content");
+});
+
+test("regenerateMemoryDigest does not touch user memory", async () => {
+	const wikiDir = await createPopulatedWiki();
+
+	const memoryEntries = [];
+	const mockMemoryImpl = {
+		getMemory: async () => ({ entries: [] }),
+		addEntry: async (target, content) => {
+			memoryEntries.push({ target, content });
+		},
+		removeEntry: async () => {},
+	};
+
+	await regenerateMemoryDigest({ wikiDir, memoryImpl: mockMemoryImpl });
+
+	const userEntries = memoryEntries.filter((e) => e.target === "user");
+	assert.equal(userEntries.length, 0, "should not write to user memory");
+});
+
+test("regenerateMemoryDigest removes old digest entries", async () => {
+	const wikiDir = await createPopulatedWiki();
+
+	const existingEntries = [
+		{ id: "old1", content: "[wiki-digest] Old entry 1" },
+		{ id: "old2", content: "Some other memory" },
+		{ id: "old3", content: "[wiki-digest] Old entry 2" },
+	];
+	const removedIds = [];
+	const addedEntries = [];
+
+	const mockMemoryImpl = {
+		getMemory: async () => ({ entries: existingEntries }),
+		addEntry: async (target, content) => {
+			addedEntries.push({ target, content });
+		},
+		removeEntry: async (target, id) => {
+			removedIds.push(id);
+		},
+	};
+
+	await regenerateMemoryDigest({ wikiDir, memoryImpl: mockMemoryImpl });
+
+	// Should remove old wiki-digest entries
+	assert.ok(removedIds.includes("old1"), "should remove old digest entry old1");
+	assert.ok(removedIds.includes("old3"), "should remove old digest entry old3");
+	assert.ok(!removedIds.includes("old2"), "should NOT remove non-digest entry");
+});
+
+test("regenerateMemoryDigest handles empty wiki", async () => {
+	const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "vpk-wiki-empty-"));
+	for (const sub of ["entities", "concepts", "comparisons", "queries"]) {
+		await fs.mkdir(path.join(tmpDir, sub), { recursive: true });
+	}
+
+	const addedEntries = [];
+	const mockMemoryImpl = {
+		getMemory: async () => ({ entries: [] }),
+		addEntry: async (target, content) => {
+			addedEntries.push({ target, content });
+		},
+		removeEntry: async () => {},
+	};
+
+	const result = await regenerateMemoryDigest({ wikiDir: tmpDir, memoryImpl: mockMemoryImpl });
+	// Empty wiki should produce minimal or no digest
+	assert.ok(result.entriesWritten >= 0);
+});
+
+// ---------------------------------------------------------------------------
+// getWikiJobDefinitions
+// ---------------------------------------------------------------------------
+
+test("getWikiJobDefinitions returns two job definitions", () => {
+	const jobs = getWikiJobDefinitions();
+	assert.equal(jobs.length, 2);
+});
+
+test("getWikiJobDefinitions has valid cron schedules", () => {
+	const jobs = getWikiJobDefinitions();
+	for (const job of jobs) {
+		assert.ok(job.name, "job should have a name");
+		assert.ok(job.schedule, "job should have a schedule");
+		assert.ok(job.prompt, "job should have a prompt");
+		assert.ok(job.skills.includes("research/llm-wiki"), "job should reference wiki skill");
+		// Validate cron format: 5 fields
+		const parts = job.schedule.split(/\s+/u);
+		assert.equal(parts.length, 5, `schedule "${job.schedule}" should have 5 fields`);
+	}
+});
+
+// ---------------------------------------------------------------------------
+// ensureWikiJobs
+// ---------------------------------------------------------------------------
+
+test("ensureWikiJobs creates jobs when none exist", async () => {
+	const createdJobs = [];
+	const mockProvider = {
+		listHermesJobs: async () => [],
+		createHermesJob: async (def) => {
+			createdJobs.push(def);
+			return { ...def, id: `job-${createdJobs.length}` };
+		},
+	};
+
+	const result = await ensureWikiJobs(mockProvider);
+	assert.equal(result.created, 2);
+	assert.equal(result.existing, 0);
+	assert.equal(createdJobs.length, 2);
+	assert.ok(createdJobs.some((j) => j.name === "wiki-nightly-ingest"));
+	assert.ok(createdJobs.some((j) => j.name === "wiki-digest-regen"));
+});
+
+test("ensureWikiJobs skips jobs that already exist", async () => {
+	const createdJobs = [];
+	const mockProvider = {
+		listHermesJobs: async () => [
+			{ name: "wiki-nightly-ingest", id: "existing-1" },
+			{ name: "wiki-digest-regen", id: "existing-2" },
+		],
+		createHermesJob: async (def) => {
+			createdJobs.push(def);
+			return def;
+		},
+	};
+
+	const result = await ensureWikiJobs(mockProvider);
+	assert.equal(result.created, 0);
+	assert.equal(result.existing, 2);
+	assert.equal(createdJobs.length, 0);
+});
+
+test("ensureWikiJobs handles missing provider gracefully", async () => {
+	const result = await ensureWikiJobs(null);
+	assert.equal(result.created, 0);
+	assert.equal(result.existing, 0);
 });

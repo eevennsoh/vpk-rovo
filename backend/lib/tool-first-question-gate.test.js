@@ -34,143 +34,24 @@ describe("shouldGateToolFirstQuestionCard", () => {
 		assert.equal(result.shouldGate, false);
 	});
 
-	it("should gate when prompt is missing all required context for Slack", () => {
-		const prompt = "Send a Slack message";
-		const policy = resolveToolFirstPolicy({ prompt });
-		const result = shouldGateToolFirstQuestionCard({
-			prompt,
-			toolFirstPolicy: policy,
-			latestUserMessageSource: "user",
-			gateSkipSources: SKIP_SOURCES,
-		});
-		assert.equal(result.shouldGate, true);
-		assert.ok(result.unsatisfiedHints.length >= 2);
-		const hintIds = result.unsatisfiedHints.map((h) => h.id);
-		assert.ok(hintIds.includes("channel"));
-		assert.ok(hintIds.includes("message-content"));
-	});
-
-	it("should NOT gate when prompt has full context for Slack", () => {
-		const prompt = 'Send "hello world" to #general on Slack';
-		const policy = resolveToolFirstPolicy({ prompt });
-		const result = shouldGateToolFirstQuestionCard({
-			prompt,
-			toolFirstPolicy: policy,
-			latestUserMessageSource: "user",
-			gateSkipSources: SKIP_SOURCES,
-		});
-		assert.equal(result.shouldGate, false);
-	});
-
-	it("should gate with partial context (has channel but no message)", () => {
-		const prompt = "Send a message to #general on Slack";
-		const policy = resolveToolFirstPolicy({ prompt });
-		const result = shouldGateToolFirstQuestionCard({
-			prompt,
-			toolFirstPolicy: policy,
-			latestUserMessageSource: "user",
-			gateSkipSources: SKIP_SOURCES,
-		});
-		assert.equal(result.shouldGate, true);
-		const hintIds = result.unsatisfiedHints.map((h) => h.id);
-		assert.ok(!hintIds.includes("channel"), "channel should be satisfied");
-		assert.ok(hintIds.includes("message-content"), "message-content should be unsatisfied");
-	});
-
-	it("should NOT gate for read-only prompt to gated domain", () => {
-		const prompt = "Check my Slack channels";
-		const policy = resolveToolFirstPolicy({ prompt });
-		const result = shouldGateToolFirstQuestionCard({
-			prompt,
-			toolFirstPolicy: policy,
-			latestUserMessageSource: "user",
-			gateSkipSources: SKIP_SOURCES,
-		});
-		assert.equal(result.shouldGate, false);
-	});
-
-	it("should NOT gate for domain with no hints (e.g. bitbucket)", () => {
-		const prompt = "Show my Bitbucket pull requests";
-		const policy = resolveToolFirstPolicy({ prompt });
-		const result = shouldGateToolFirstQuestionCard({
-			prompt,
-			toolFirstPolicy: policy,
-			latestUserMessageSource: "user",
-			gateSkipSources: SKIP_SOURCES,
-		});
-		assert.equal(result.shouldGate, false);
-	});
-
-	it("should gate for Confluence page creation without context", () => {
-		const prompt = "Create a Confluence page";
-		const policy = resolveToolFirstPolicy({ prompt });
-		const result = shouldGateToolFirstQuestionCard({
-			prompt,
-			toolFirstPolicy: policy,
-			latestUserMessageSource: "user",
-			gateSkipSources: SKIP_SOURCES,
-		});
-		assert.equal(result.shouldGate, true);
-		const hintIds = result.unsatisfiedHints.map((h) => h.id);
-		assert.ok(hintIds.includes("space"));
-		assert.ok(hintIds.includes("page-title"));
-	});
-
-	it("should gate for Jira issue creation without context", () => {
-		const prompt = "Create a Jira issue";
-		const policy = resolveToolFirstPolicy({ prompt });
-		const result = shouldGateToolFirstQuestionCard({
-			prompt,
-			toolFirstPolicy: policy,
-			latestUserMessageSource: "user",
-			gateSkipSources: SKIP_SOURCES,
-		});
-		assert.equal(result.shouldGate, true);
-		const hintIds = result.unsatisfiedHints.map((h) => h.id);
-		assert.ok(hintIds.includes("project"));
-		assert.ok(hintIds.includes("summary"));
-	});
-
-	it("should gate for Google Calendar meeting creation without context", () => {
-		const prompt = "Schedule a meeting on Google Calendar";
-		const policy = resolveToolFirstPolicy({ prompt });
-		const result = shouldGateToolFirstQuestionCard({
-			prompt,
-			toolFirstPolicy: policy,
-			latestUserMessageSource: "user",
-			gateSkipSources: SKIP_SOURCES,
-		});
-		assert.equal(result.shouldGate, true);
-		const hintIds = result.unsatisfiedHints.map((h) => h.id);
-		assert.ok(hintIds.includes("attendees"));
-		assert.ok(hintIds.includes("time"));
-	});
-
-	it("should gate for generic figma design-context request with missing file", () => {
-		const prompt = "Get Figma design context";
-		const policy = resolveToolFirstPolicy({ prompt });
-		const result = shouldGateToolFirstQuestionCard({
-			prompt,
-			toolFirstPolicy: policy,
-			latestUserMessageSource: "user",
-			gateSkipSources: SKIP_SOURCES,
-		});
-		assert.equal(result.shouldGate, true);
-		const hintIds = result.unsatisfiedHints.map((h) => h.id);
-		assert.ok(hintIds.includes("figma-file"));
-	});
-
-	it("should NOT gate for figma prompt when file is present", () => {
-		const prompt =
-			"Get Figma design context from https://figma.com/design/abc123/My-File?node-id=1-2";
-		const policy = resolveToolFirstPolicy({ prompt });
-		const result = shouldGateToolFirstQuestionCard({
-			prompt,
-			toolFirstPolicy: policy,
-			latestUserMessageSource: "user",
-			gateSkipSources: SKIP_SOURCES,
-		});
-		assert.equal(result.shouldGate, false);
+	it("should NOT gate for prompts that previously matched local tool-first domains", () => {
+		for (const prompt of [
+			"Send a Slack message",
+			"Create a Confluence page",
+			"Create a Jira issue",
+			"Schedule a meeting on Google Calendar",
+			"Get Figma design context",
+		]) {
+			const policy = resolveToolFirstPolicy({ prompt });
+			const result = shouldGateToolFirstQuestionCard({
+				prompt,
+				toolFirstPolicy: policy,
+				latestUserMessageSource: "user",
+				gateSkipSources: SKIP_SOURCES,
+			});
+			assert.equal(result.shouldGate, false, `Expected no gating for "${prompt}"`);
+			assert.equal(result.unsatisfiedHints.length, 0);
+		}
 	});
 });
 

@@ -59,12 +59,14 @@ interface RovoAppSidebarProps {
 	onCancelThreadRun: (threadId: string) => Promise<void>;
 	hoverOpen?: boolean;
 	isGeneratingTitle?: boolean;
+	isResizing?: boolean;
 	onDeleteThread: (threadId: string) => Promise<void>;
 	onNewChat: () => void;
 	onSidebarMouseEnter?: () => void;
 	onSidebarMouseLeave?: () => void;
 	onSelectThread: (threadId: string) => Promise<void>;
 	pendingTitleThreadId?: string | null;
+	resizeHandle?: React.ReactNode;
 	threads: ReadonlyArray<RovoAppThread>;
 	threadsLoaded?: boolean;
 	topOffset?: boolean;
@@ -451,12 +453,14 @@ export function RovoAppSidebar({
 	onCancelThreadRun,
 	hoverOpen = false,
 	isGeneratingTitle = false,
+	isResizing,
 	onDeleteThread,
 	onNewChat,
 	onSidebarMouseEnter,
 	onSidebarMouseLeave,
 	onSelectThread,
 	pendingTitleThreadId = null,
+	resizeHandle,
 	threads,
 	threadsLoaded = true,
 	topOffset = false,
@@ -492,8 +496,10 @@ export function RovoAppSidebar({
 				"bg-sidebar !px-3 !pb-0 group-data-[state=expanded]:group-data-[side=left]:border-r group-data-[state=expanded]:group-data-[side=left]:border-border",
 				topOffset && "!top-12 !h-[calc(100svh-3rem)]",
 			)}
+			isResizing={isResizing}
 			onMouseEnter={onSidebarMouseEnter}
 			onMouseLeave={onSidebarMouseLeave}
+			resizeHandle={resizeHandle}
 			role="complementary"
 			style={hoverOpen ? { left: 0, zIndex: 50, boxShadow: token("elevation.shadow.overlay") } : { zIndex: 50 }}
 			variant="inset"

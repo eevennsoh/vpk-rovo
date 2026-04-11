@@ -18,13 +18,16 @@ import { RovoAppSidebar } from "@/components/projects/rovo-app/components/rovo-a
 import { useRovoAppThreadList } from "@/components/projects/rovo-app/hooks/use-rovo-app-thread-list";
 import { buildRovoAppThreadPath } from "@/components/projects/rovo-app/lib/rovo-app-thread-route-sync";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
-import { SidebarProvider } from "@/components/ui/sidebar";
+import { SidebarProvider, SidebarResizeHandle } from "@/components/ui/sidebar";
 import SearchIcon from "@atlaskit/icon/core/search";
 import { cn } from "@/lib/utils";
 import { token } from "@/lib/tokens";
+import { useSidebarResize } from "@/components/projects/rovo-app/hooks/use-sidebar-resize";
 
 const SIDEBAR_MOTION_DURATION_TOKEN = "--duration-medium";
 const SIDEBAR_MOTION_FALLBACK_MS = 200;
+const SIDEBAR_MIN_WIDTH = 240;
+const SIDEBAR_MAX_WIDTH = 480;
 
 function getCssDurationTokenMs(tokenName: string, fallbackMs: number): number {
 	if (typeof window === "undefined") {
@@ -89,8 +92,16 @@ export function RovoAppSurfaceShell({ children }: Readonly<RovoAppSurfaceShellPr
 
 	const isHoverOpen = hoverRevealActive && !sidebarOpen;
 
+	const sidebarResize = useSidebarResize({
+		defaultWidth: ROVO_APP_SEPARATOR_LINE_OFFSET_PX,
+		minWidth: SIDEBAR_MIN_WIDTH,
+		maxWidth: SIDEBAR_MAX_WIDTH,
+		onCollapse: useCallback(() => {
+			setSidebarOpen(false);
+		}, []),
+	});
 	const rovoAppSidebarStyle = {
-		"--sidebar-width": `${ROVO_APP_SEPARATOR_LINE_OFFSET_PX}px`,
+		"--sidebar-width": `${sidebarResize.sidebarWidth}px`,
 	} as CSSProperties;
 
 	return (
@@ -105,6 +116,7 @@ export function RovoAppSurfaceShell({ children }: Readonly<RovoAppSurfaceShellPr
 				activeThreadId={null}
 				hoverOpen={isHoverOpen}
 				isGeneratingTitle={false}
+				isResizing={sidebarResize.isResizing}
 				onCancelThreadRun={() => Promise.resolve()}
 				onDeleteThread={async (threadId) => {
 					startTransition(() => {
@@ -120,6 +132,13 @@ export function RovoAppSurfaceShell({ children }: Readonly<RovoAppSurfaceShellPr
 				onSidebarMouseEnter={handleSidebarContentMouseEnter}
 				onSidebarMouseLeave={handleSidebarContentMouseLeave}
 				pendingTitleThreadId={null}
+				resizeHandle={
+					<SidebarResizeHandle
+						data-active={sidebarResize.isResizing ? "" : undefined}
+						data-will-collapse={sidebarResize.willCollapse ? "" : undefined}
+						onPointerDown={sidebarResize.onResizeHandlePointerDown}
+					/>
+				}
 				threads={threads}
 				threadsLoaded={threadsLoaded}
 				topOffset
@@ -129,6 +148,7 @@ export function RovoAppSurfaceShell({ children }: Readonly<RovoAppSurfaceShellPr
 			<div
 				className={cn(
 					"fixed top-0 left-0 z-50 flex h-12 items-center px-3 transition-[width,border-color] duration-medium ease-in-out",
+					sidebarResize.isResizing && "transition-none",
 					sidebarOpen
 						? "w-(--sidebar-width) overflow-x-clip border-r border-border"
 						: "w-40 border-b border-border",
@@ -141,7 +161,7 @@ export function RovoAppSurfaceShell({ children }: Readonly<RovoAppSurfaceShellPr
 					isVisible={nav.isVisible}
 					isAppSwitcherOpen={nav.isAppSwitcherOpen}
 					hideAppSwitcher
-					separatorLineOffsetPx={ROVO_APP_SEPARATOR_LINE_OFFSET_PX - TOP_NAV_PADDING_PX}
+					separatorLineOffsetPx={sidebarResize.sidebarWidth - TOP_NAV_PADDING_PX}
 					onToggleSidebar={nav.toggleSidebar}
 					onToggleAppSwitcher={nav.handleToggleAppSwitcher}
 					onCloseAppSwitcher={nav.handleCloseAppSwitcher}

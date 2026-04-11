@@ -293,30 +293,6 @@ function hasLast7DaysWorkGuardrail(contextDescription) {
 }
 
 function resolvePromptSpecificInstruction(message, contextDescription) {
-	// Standup summary (check first — more specific than 7-day work summary)
-	if (hasStandupGuardrail(contextDescription)) {
-		return null;
-	}
-	if (isStandupSummaryPrompt(message)) {
-		return STANDUP_SUMMARY_INSTRUCTION;
-	}
-
-	// Ticket classifier
-	if (hasTicketClassifierGuardrail(contextDescription)) {
-		return null;
-	}
-	if (isTicketClassifierPrompt(message)) {
-		return TICKET_CLASSIFIER_INSTRUCTION;
-	}
-
-	// 7-day work summary
-	if (hasLast7DaysWorkGuardrail(contextDescription)) {
-		return null;
-	}
-	if (isSevenDayWorkSummaryPrompt(message)) {
-		return LAST_7_DAYS_WORK_INSTRUCTION;
-	}
-
 	return null;
 }
 

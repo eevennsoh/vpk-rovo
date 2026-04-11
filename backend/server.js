@@ -270,6 +270,13 @@ const {
 	DEFAULT_RECOVERY_TIMEOUT_MS: DEFAULT_ROVODEV_PORT_RECOVERY_TIMEOUT_MS,
 } = require("./lib/rovodev-port-recovery");
 const {
+	buildRovoDevDiscoveryCandidatePorts,
+	resolveRovoDevPorts,
+} = require("./lib/rovodev-port-discovery");
+const {
+	getRovodevBasePort,
+} = require("../scripts/lib/worktree-ports");
+const {
 	getEnvVars,
 	detectEndpointType,
 	resolveGatewayUrl,
@@ -377,6 +384,7 @@ console.log("[STARTUP] Dependencies loaded");
 
 const ROVODEV_PORT_FILE = path.join(__dirname, "..", ".dev-rovodev-port");
 const ROVODEV_PORTS_FILE = path.join(__dirname, "..", ".dev-rovodev-ports");
+const ROVODEV_PORT_SEARCH_MAX_TRIES = Number.parseInt(process.env.PORT_SEARCH_MAX ?? "20", 10);
 
 /** Cached availability state — refreshed on each request via the port file. */
 let _rovoDevAvailable = false;
@@ -384,45 +392,6 @@ let _rovoDevChecked = false;
 let _rovoDevLastRefresh = 0;
 /** @type {import("./lib/rovodev-pool") | null} */
 let _rovoDevPool = null;
-
-/**
- * Read ports from the multi-port file (.dev-rovodev-ports) or fall back
- * to the single-port file (.dev-rovodev-port).
- * @returns {number[]} Array of valid port numbers, or empty array.
- */
-function readRovoDevPorts() {
-	const fs = require("fs");
-
-	// Try JSON array file first
-	if (fs.existsSync(ROVODEV_PORTS_FILE)) {
-		try {
-			const parsed = JSON.parse(fs.readFileSync(ROVODEV_PORTS_FILE, "utf8").trim());
-			if (Array.isArray(parsed) && parsed.length > 0) {
-				const validPorts = parsed.filter((p) => typeof p === "number" && p > 0);
-				if (validPorts.length > 0) {
-					return validPorts;
-				}
-			}
-		} catch {
-			// Ignore parse errors
-		}
-	}
-
-	// Fall back to single port file
-	if (fs.existsSync(ROVODEV_PORT_FILE)) {
-		try {
-			const portStr = fs.readFileSync(ROVODEV_PORT_FILE, "utf8").trim();
-			const port = parseInt(portStr, 10);
-			if (!isNaN(port) && port > 0) {
-				return [port];
-			}
-		} catch {
-			// Ignore read errors
-		}
-	}
-
-	return [];
-}
 
 /**
  * Poll a RovoDev port until it's ready for new requests.
@@ -475,7 +444,16 @@ async function waitForPortReady(port) {
  */
 async function refreshRovoDevAvailability() {
 	try {
-		const ports = readRovoDevPorts();
+		const { ports, source } = await resolveRovoDevPorts({
+			portFile: ROVODEV_PORT_FILE,
+			portsFile: ROVODEV_PORTS_FILE,
+			envPort: process.env.ROVODEV_PORT,
+			basePort: getRovodevBasePort(),
+			maxTries: ROVODEV_PORT_SEARCH_MAX_TRIES,
+			healthCheck: rovoDevHealthCheck,
+			classifyHealthCheck: classifyRovoDevHealthCheck,
+			persistDiscoveredPorts: true,
+		});
 		if (ports.length === 0) {
 			if (_rovoDevPool) {
 				_rovoDevPool.shutdown();
@@ -485,6 +463,12 @@ async function refreshRovoDevAvailability() {
 			_rovoDevAvailable = false;
 			_rovoDevChecked = true;
 			return false;
+		}
+
+		if (source === "discovered") {
+			console.warn(
+				`[ROVODEV] Rediscovered healthy RovoDev port files from live serve instance(s): ${ports.join(", ")}`
+			);
 		}
 
 		// Health-check each port
@@ -575,19 +559,11 @@ async function isRovoDevAvailable() {
 	const portsFileExists = fs.existsSync(ROVODEV_PORTS_FILE);
 	const portFileExists = fs.existsSync(ROVODEV_PORT_FILE);
 
-	// If both port files disappeared, RovoDev was stopped
 	if (!portsFileExists && !portFileExists) {
 		if (_rovoDevAvailable) {
-			console.error("[ROVODEV] Port files removed — RovoDev Serve is no longer available");
-			if (_rovoDevPool) {
-				_rovoDevPool.shutdown();
-				_rovoDevPool = null;
-				initPool(null);
-			}
+			console.warn("[ROVODEV] Port files removed — attempting RovoDev rediscovery");
 		}
-		_rovoDevAvailable = false;
-		_rovoDevChecked = true;
-		return false;
+		_rovoDevChecked = false;
 	}
 
 	// If the port file appeared or we haven't checked yet, do a fresh health check
@@ -3125,7 +3101,12 @@ async function proxyRovoAppChatRequest(req, res) {
 	const isStructuredContinuation = hasStructuredContinuationBody(requestBody);
 	const rovoDevReady = await waitForRovoAppRovoDevAvailability({
 		getAvailability: refreshRovoDevAvailability,
-		getPorts: readRovoDevPorts,
+		getPorts: () =>
+			buildRovoDevDiscoveryCandidatePorts({
+				envPort: process.env.ROVODEV_PORT,
+				basePort: getRovodevBasePort(),
+				maxTries: ROVODEV_PORT_SEARCH_MAX_TRIES,
+			}),
 	});
 	const poolStatus = _rovoDevPool?.getStatus?.();
 	const poolPorts = Array.isArray(poolStatus?.ports) ? poolStatus.ports : [];

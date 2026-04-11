@@ -62,12 +62,10 @@ import {
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Button } from "@/components/ui/button";
 import SearchIcon from "@atlaskit/icon/core/search";
-import SkillIcon from "@atlaskit/icon-lab/core/skill";
-import { SidebarProvider } from "@/components/ui/sidebar";
+import { SidebarProvider, SidebarResizeHandle } from "@/components/ui/sidebar";
 import { Footer } from "@/components/ui/footer";
+import { useSidebarResize } from "@/components/projects/rovo-app/hooks/use-sidebar-resize";
 import { clamp, cn, createId } from "@/lib/utils";
 import { token } from "@/lib/tokens";
 import {
@@ -107,6 +105,8 @@ interface RovoAppShellProps {
 
 const ROVO_APP_SIDEBAR_MOTION_DURATION_TOKEN = "--duration-medium";
 const ROVO_APP_SIDEBAR_MOTION_FALLBACK_MS = 200;
+const ROVO_APP_SIDEBAR_MIN_WIDTH = 240;
+const ROVO_APP_SIDEBAR_MAX_WIDTH = 480;
 
 const HOME_SUGGESTIONS = DEFAULT_PROMPT_GALLERY_SUGGESTIONS.slice(0, 3);
 const DEFAULT_COMPOSER_PLACEHOLDER = "Ask, @mention, or / for skills";
@@ -422,7 +422,6 @@ export function RovoAppShell({
 		const [activePendingSkillDraftDetail, setActivePendingSkillDraftDetail] = useState<HermesSkillDraftDetail | null>(null);
 		const [submittingSkillDraftId, setSubmittingSkillDraftId] = useState<string | null>(null);
 		const [selectedHermesSkillIds, setSelectedHermesSkillIds] = useState<string[]>([]);
-		const [showHermesSkillPicker, setShowHermesSkillPicker] = useState(false);
 		const previousActiveThreadIdRef = useRef<string | null>(null);
 		const activeThreadRecord = useMemo(
 			() => chat.threads.find((thread) => thread.id === chat.activeThreadId) ?? null,
@@ -459,26 +458,18 @@ export function RovoAppShell({
 			let cancelled = false;
 
 			async function loadHermesSurfaceData() {
-				try {
-					const [nextMemoryDocuments, nextSkills, nextDrafts] = await Promise.all([
-						fetchMemoryDocuments(),
-						fetchSkills(),
-						fetchSkillDrafts("pending"),
-					]);
-					if (cancelled) {
-						return;
-					}
-
-					setHermesMemoryDocuments(nextMemoryDocuments);
-					setAvailableHermesSkills(nextSkills);
-					setSkillDrafts(nextDrafts);
-				} catch {
-					if (!cancelled) {
-						setHermesMemoryDocuments(null);
-						setAvailableHermesSkills([]);
-						setSkillDrafts([]);
-					}
+				const [memoryResult, skillsResult, draftsResult] = await Promise.allSettled([
+					fetchMemoryDocuments(),
+					fetchSkills(),
+					fetchSkillDrafts("pending"),
+				]);
+				if (cancelled) {
+					return;
 				}
+
+				setHermesMemoryDocuments(memoryResult.status === "fulfilled" ? memoryResult.value : null);
+				setAvailableHermesSkills(skillsResult.status === "fulfilled" ? skillsResult.value : []);
+				setSkillDrafts(draftsResult.status === "fulfilled" ? draftsResult.value : []);
 			}
 
 			void loadHermesSurfaceData();
@@ -554,11 +545,11 @@ export function RovoAppShell({
 			};
 		}, [activePendingSkillDraft?.id]);
 
-		const toggleHermesSkillSelection = useCallback((skillId: string) => {
+		const selectHermesSkill = useCallback((skillId: string) => {
 			setSelectedHermesSkillIds((previousSkillIds) =>
 				previousSkillIds.includes(skillId)
 					? previousSkillIds.filter((currentSkillId) => currentSkillId !== skillId)
-					: [...previousSkillIds, skillId],
+					: [skillId],
 			);
 		}, []);
 		const clearHermesSkillSelection = useCallback(() => {
@@ -668,8 +659,16 @@ export function RovoAppShell({
 	const voiceTranscriptIdRef = useRef(0);
 	const voiceDrainEpochRef = useRef(0);
 	const isDrainingVoiceRef = useRef(false);
+	const sidebarResize = useSidebarResize({
+		defaultWidth: ROVO_APP_SEPARATOR_LINE_OFFSET_PX,
+		minWidth: ROVO_APP_SIDEBAR_MIN_WIDTH,
+		maxWidth: ROVO_APP_SIDEBAR_MAX_WIDTH,
+		onCollapse: useCallback(() => {
+			chat.setSidebarOpen(false);
+		}, [chat]),
+	});
 	const rovoAppSidebarStyle = {
-		"--sidebar-width": `${ROVO_APP_SEPARATOR_LINE_OFFSET_PX}px`,
+		"--sidebar-width": `${sidebarResize.sidebarWidth}px`,
 	} as CSSProperties;
 	const [steeringState, setSteeringState] = useState<{
 		phase: RovoAppSteeringPhase;
@@ -2257,7 +2256,7 @@ export function RovoAppShell({
 							{realtimeStatusMessage}
 					</div>
 				) : null}
-				<div className={cn("px-6", !isArtifactOpen && "md:px-0")}>
+				<div className="px-6">
 					{shouldShowQuestionCard && activeQuestionCard ? (
 						<>
 							<ClarificationQuestionCard
@@ -2317,41 +2316,6 @@ export function RovoAppShell({
 								transition={{ duration: 0.4, ease: [0, 0.4, 0, 1], delay: 0.2 }}
 								style={{ willChange: "transform, opacity" }}
 								>
-									{showHermesSkillPicker ? (
-										<div className="mb-3">
-											<Card size="sm">
-												<CardHeader className="pb-2">
-													<CardTitle>Hermes Skills</CardTitle>
-													<CardDescription>
-														Selected skills are injected into the next RovoDev turn as procedural context.
-													</CardDescription>
-												</CardHeader>
-												<CardContent className="space-y-3">
-													<ScrollArea className="max-h-40 pr-2">
-														<div className="flex flex-wrap gap-2">
-															{availableHermesSkills.filter((skill) => !skill.disabled).map((skill) => {
-																const selected = selectedHermesSkillIds.includes(skill.id);
-																return (
-																	<Button
-																		key={skill.id}
-																		size="sm"
-																		variant={selected ? "default" : "outline"}
-																		onClick={() => {
-																			toggleHermesSkillSelection(skill.id);
-																			setShowHermesSkillPicker(false);
-																		}}
-																	>
-																		<SkillIcon label="" size="small" />
-																		<span>{skill.title}</span>
-																	</Button>
-																);
-															})}
-														</div>
-													</ScrollArea>
-												</CardContent>
-											</Card>
-										</div>
-									) : null}
 									{autoSelectedHermesSkills.length > 0 || pendingThreadSkillDrafts.length > 0 ? (
 										<div className="mb-3">
 											<Card size="sm">
@@ -2393,6 +2357,7 @@ export function RovoAppShell({
 									<RovoAppComposer
 										key={chat.runtimeThreadId}
 										artifactTitle={workspaceDocument?.title ?? null}
+										availableHermesSkills={availableHermesSkills}
 										autoFocus={!embedded}
 										backgroundArtifactLabel={chat.backgroundArtifactLabel}
 										composerStatus={chat.composerStatus}
@@ -2403,11 +2368,11 @@ export function RovoAppShell({
 										micStream={realtime.micStream}
 										onDismissArtifactContext={handleCloseArtifactPane}
 										onDismissPlanExecutionTracker={chat.dismissPlanExecutionTracker}
-										onRemoveHermesSkill={toggleHermesSkillSelection}
+										onRemoveHermesSkill={selectHermesSkill}
+										onSelectHermesSkill={selectHermesSkill}
 										onStop={handleStop}
 										onRemoveQueuedPrompt={chat.removeQueuedPrompt}
 										onSubmit={handleComposerSubmit}
-										onToggleHermesSkillPicker={() => setShowHermesSkillPicker((current) => !current)}
 										onTogglePlanMode={chat.togglePlanMode}
 										onToggleRealtimeVoice={handleToggleRealtimeVoice}
 										onToggleVoice={handleToggleVoice}
@@ -2499,6 +2464,7 @@ export function RovoAppShell({
 				activeThreadId={chat.activeThreadId}
 				hoverOpen={isHoverOpen}
 				isGeneratingTitle={chat.isGeneratingTitle}
+				isResizing={sidebarResize.isResizing}
 				onCancelThreadRun={async (threadId) => {
 					await chat.cancelThreadRun(threadId);
 				}}
@@ -2530,6 +2496,13 @@ export function RovoAppShell({
 				onSidebarMouseEnter={handleSidebarContentMouseEnter}
 				onSidebarMouseLeave={handleSidebarContentMouseLeave}
 				pendingTitleThreadId={chat.pendingTitleThreadId}
+				resizeHandle={
+					<SidebarResizeHandle
+						data-active={sidebarResize.isResizing ? "" : undefined}
+						data-will-collapse={sidebarResize.willCollapse ? "" : undefined}
+						onPointerDown={sidebarResize.onResizeHandlePointerDown}
+					/>
+				}
 				threads={chat.threads}
 				threadsLoaded={chat.threadsLoaded}
 				topOffset={!embedded}
@@ -2539,6 +2512,7 @@ export function RovoAppShell({
 				<div
 					className={cn(
 						"fixed top-0 left-0 z-50 flex h-12 items-center px-3 transition-[width,border-color] duration-medium ease-in-out",
+						sidebarResize.isResizing && "transition-none",
 						chat.sidebarOpen
 							? "w-(--sidebar-width) overflow-x-clip border-r border-border"
 							: "w-40 border-b border-border",
@@ -2551,7 +2525,7 @@ export function RovoAppShell({
 						isVisible={nav.isVisible}
 						isAppSwitcherOpen={nav.isAppSwitcherOpen}
 						hideAppSwitcher
-						separatorLineOffsetPx={ROVO_APP_SEPARATOR_LINE_OFFSET_PX - TOP_NAV_PADDING_PX}
+						separatorLineOffsetPx={sidebarResize.sidebarWidth - TOP_NAV_PADDING_PX}
 						onToggleSidebar={nav.toggleSidebar}
 						onToggleAppSwitcher={nav.handleToggleAppSwitcher}
 						onCloseAppSwitcher={nav.handleCloseAppSwitcher}

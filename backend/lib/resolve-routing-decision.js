@@ -74,107 +74,12 @@ function resolveRoutingDecisionFastPath(context) {
 		};
 	}
 
-	const lower = prompt.toLowerCase();
-	const isExplicitDiagramRequest = DIAGRAM_REQUEST_PATTERN.test(prompt);
-
-	if (isExplicitDiagramRequest) {
-		return {
-			intent: "genui",
-			presentation: "genui_card",
-			confidence: 0.95,
-			reason: "diagram_request",
-			origin,
-		};
-	}
-
-	// D1: Active artifact → artifact_update unless user explicitly requests a new artifact
 	if (activeArtifact?.id) {
-		if (isExplicitNewRovoAppArtifactRequest({ latestUserMessage: prompt })) {
-			return {
-				intent: "artifact_create",
-				presentation: "artifact_preview",
-				confidence: 0.95,
-				reason: "explicit_new_artifact",
-				origin,
-			};
-		}
-
 		return {
 			intent: "artifact_update",
 			presentation: "artifact_preview",
 			confidence: 1,
 			reason: "active_artifact",
-			origin,
-		};
-	}
-
-	// Conversational messages → chat (ported from planning-question-gate.js)
-	if (isConversationalMessage(prompt)) {
-		return {
-			intent: "chat",
-			presentation: "text",
-			confidence: 0.95,
-			reason: "conversational_pattern",
-			origin,
-		};
-	}
-
-	// Pure questions about concepts → chat
-	if (/^(?:what|who|why|when|where|how|is|are|do|does|can|could|should|would|will)\b/i.test(lower) && /\?\s*$/.test(prompt)) {
-		// Only if it doesn't also match genui or artifact patterns
-		const matchesGenui = GENUI_VERB_PATTERN.test(lower) && DATA_NOUN_PATTERN.test(lower);
-		const matchesArtifact = ARTIFACT_CREATE_VERB_PATTERN.test(lower) && ARTIFACT_CREATE_NOUN_PATTERN.test(lower);
-		if (!matchesGenui && !matchesArtifact) {
-			return {
-				intent: "chat",
-				presentation: "text",
-				confidence: 0.9,
-				reason: "question_pattern",
-				origin,
-			};
-		}
-	}
-
-	// GenUI: verb + data noun (e.g. "show Q3 revenue", "visualize the breakdown")
-	if (GENUI_VERB_PATTERN.test(lower) && DATA_NOUN_PATTERN.test(lower)) {
-		return {
-			intent: "genui",
-			presentation: "genui_card",
-			confidence: 0.9,
-			reason: "genui_verb_data_noun",
-			origin,
-		};
-	}
-
-	// GenUI: explicit chart/dashboard/visualization noun with task-like phrasing
-	if (GENUI_NOUN_PATTERN.test(lower) && isTaskLikeMessage(prompt)) {
-		return {
-			intent: "genui",
-			presentation: "genui_card",
-			confidence: 0.85,
-			reason: "genui_noun_task_like",
-			origin,
-		};
-	}
-
-	// Artifact creation: verb + noun (e.g. "build a login page", "create a dashboard")
-	// Note: "create a dashboard" could be genui — check if it also matches genui nouns
-	if (ARTIFACT_CREATE_VERB_PATTERN.test(lower) && ARTIFACT_CREATE_NOUN_PATTERN.test(lower)) {
-		// If it matches genui nouns too, prefer genui
-		if (GENUI_NOUN_PATTERN.test(lower)) {
-			return {
-				intent: "genui",
-				presentation: "genui_card",
-				confidence: 0.85,
-				reason: "genui_noun_create_verb",
-				origin,
-			};
-		}
-		return {
-			intent: "artifact_create",
-			presentation: "artifact_preview",
-			confidence: 0.85,
-			reason: "artifact_create_verb_noun",
 			origin,
 		};
 	}

@@ -62,34 +62,7 @@ const MEDIA_NEGATIVE_PATTERNS = [
  *   Returns intent=null when pre-classification is inconclusive (fall through to LLM).
  */
 function preClassifyMediaIntent(message) {
-	const text = getNonEmptyString(message);
-	if (!text) {
-		return { intent: null, confidence: 0, reason: "empty-input" };
-	}
-
-	// Check negative patterns first — if the message looks like a query about
-	// media rather than a generation request, skip pre-classification.
-	for (const pattern of MEDIA_NEGATIVE_PATTERNS) {
-		if (pattern.test(text)) {
-			return { intent: null, confidence: 0, reason: "negative-pattern-match" };
-		}
-	}
-
-	// Check image patterns.
-	for (const pattern of IMAGE_PRE_PATTERNS) {
-		if (pattern.test(text)) {
-			return { intent: "image", confidence: 0.95, reason: "keyword-match-image" };
-		}
-	}
-
-	// Check audio patterns.
-	for (const pattern of AUDIO_PRE_PATTERNS) {
-		if (pattern.test(text)) {
-			return { intent: "audio", confidence: 0.95, reason: "keyword-match-audio" };
-		}
-	}
-
-	return { intent: null, confidence: 0, reason: "no-keyword-match" };
+	return { intent: null, confidence: 0, reason: "disabled-local-preclassification" };
 }
 
 function normalizeIntent(value) {
@@ -279,20 +252,6 @@ async function classifySmartGenerationIntent({
 			complexity: "simple",
 			confidence: null,
 			reason: "missing-input",
-			rawOutput: null,
-			error: null,
-			timedOut: false,
-		};
-	}
-
-	// Try lightweight pre-classification first to skip LLM round-trip.
-	const preResult = preClassifyMediaIntent(prompt);
-	if (preResult.intent) {
-		return {
-			intent: preResult.intent,
-			complexity: "simple",
-			confidence: preResult.confidence,
-			reason: preResult.reason,
 			rawOutput: null,
 			error: null,
 			timedOut: false,
