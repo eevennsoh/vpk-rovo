@@ -195,6 +195,9 @@ importers:
       date-fns:
         specifier: ^4.1.0
         version: 4.1.0
+      defuddle:
+        specifier: ^0.16.0
+        version: 0.16.0
       embla-carousel-react:
         specifier: ^8.6.0
         version: 8.6.0(react@19.2.4)
@@ -216,6 +219,9 @@ importers:
       leaflet:
         specifier: ^1.9.4
         version: 1.9.4
+      linkedom:
+        specifier: ^0.18.12
+        version: 0.18.12
       media-chrome:
         specifier: ^4.18.0
         version: 4.18.0(react@19.2.4)
@@ -276,6 +282,9 @@ importers:
       tokenlens:
         specifier: ^1.3.1
         version: 1.3.1
+      turndown:
+        specifier: ^7.2.4
+        version: 7.2.4
       tw-animate-css:
         specifier: ^1.4.0
         version: 1.4.0
@@ -1295,6 +1304,9 @@ packages:
 
   '@mermaid-js/parser@1.0.1':
     resolution: {integrity: sha512-opmV19kN1JsK0T6HhhokHpcVkqKpF+x2pPDKKM2ThHtZAB5F4PROopk0amuVYK5qMrIA4erzpNm8gmPNJgMDxQ==, tarball: https://packages.atlassian.com/api/npm/npm-remote/@mermaid-js/parser/-/parser-1.0.1.tgz}
+
+  '@mixmark-io/domino@2.2.0':
+    resolution: {integrity: sha512-Y28PR25bHXUg88kCV7nivXrP2Nj2RueZ3/l/jdx6J9f8J4nsEGcgX0Qe6lt7Pa+J79+kPiJU3LguR6O/6zrLOw==, tarball: https://packages.atlassian.com/api/npm/npm-remote/@mixmark-io/domino/-/domino-2.2.0.tgz}
 
   '@modelcontextprotocol/sdk@1.27.1':
     resolution: {integrity: sha512-sr6GbP+4edBwFndLbM60gf07z0FQ79gaExpnsjMGePXqFcSSb7t6iscpjk9DhFhwd+mTEQrzNafGP8/iGGFYaA==, tarball: https://packages.atlassian.com/api/npm/npm-remote/@modelcontextprotocol/sdk/-/sdk-1.27.1.tgz}
@@ -3076,6 +3088,10 @@ packages:
   '@webgpu/types@0.1.69':
     resolution: {integrity: sha512-RPmm6kgRbI8e98zSD3RVACvnuktIja5+yLgDAkTmxLr90BEwdTXRQWNLF3ETTTyH/8mKhznZuN5AveXYFEsMGQ==, tarball: https://packages.atlassian.com/api/npm/npm-remote/@webgpu/types/-/types-0.1.69.tgz}
 
+  '@xmldom/xmldom@0.8.12':
+    resolution: {integrity: sha512-9k/gHF6n/pAi/9tqr3m3aqkuiNosYTurLLUtc7xQ9sxB/wm7WPygCv8GYa6mS0fLJEHhqMC1ATYhz++U/lRHqg==, tarball: https://packages.atlassian.com/api/npm/npm-remote/@xmldom/xmldom/-/xmldom-0.8.12.tgz}
+    engines: {node: '>=10.0.0'}
+
   '@xyflow/react@12.10.1':
     resolution: {integrity: sha512-5eSWtIK/+rkldOuFbOOz44CRgQRjtS9v5nufk77DV+XBnfCGL9HAQ8PG00o2ZYKqkEU/Ak6wrKC95Tu+2zuK3Q==, tarball: https://packages.atlassian.com/api/npm/npm-remote/@xyflow/react/-/react-12.10.1.tgz}
     peerDependencies:
@@ -3528,6 +3544,10 @@ packages:
     resolution: {integrity: sha512-yPVavfyCcRhmorC7rWlkHn15b4wDVgVmBA7kV4QVBsF7kv/9TKJAbAXVTxvTnwP8HHKjRCJDClKbciiYS7p0DQ==, tarball: https://packages.atlassian.com/api/npm/npm-remote/commander/-/commander-11.1.0.tgz}
     engines: {node: '>=16'}
 
+  commander@12.1.0:
+    resolution: {integrity: sha512-Vw8qHK3bZM9y/P10u3Vib8o/DdkvA2OtPtZvD871QKjy74Wj1WSKFILMPRPSdUSx5RFK1arlJzEtA4PkFgnbuA==, tarball: https://packages.atlassian.com/api/npm/npm-remote/commander/-/commander-12.1.0.tgz}
+    engines: {node: '>=18'}
+
   commander@14.0.3:
     resolution: {integrity: sha512-H+y0Jo/T1RZ9qPP4Eh1pkcQcLRglraJaSLoyOtHxu6AapkjWVCy2Sit1QQ4x3Dng8qDlSsZEet7g5Pq06MvTgw==, tarball: https://packages.atlassian.com/api/npm/npm-remote/commander/-/commander-14.0.3.tgz}
     engines: {node: '>=20'}
@@ -3647,6 +3667,9 @@ packages:
     resolution: {integrity: sha512-/Tb/JcjK111nNScGob5MNtsntNM1aCNUDipB/TkwZFhyDrrE47SOx/18wF2bbjgc3ZzCSKW1T5nt5EbFoAz/Vg==, tarball: https://packages.atlassian.com/api/npm/npm-remote/cssesc/-/cssesc-3.0.0.tgz}
     engines: {node: '>=4'}
     hasBin: true
+
+  cssom@0.5.0:
+    resolution: {integrity: sha512-iKuQcq+NdHqlAcwUY0o/HL69XQrUaQdMjmStJ8JFmUaiiQErlhrmuigkg/CU4E2J0IyUKUrMAgl36TvN67MqTw==, tarball: https://packages.atlassian.com/api/npm/npm-remote/cssom/-/cssom-0.5.0.tgz}
 
   csstype@3.2.3:
     resolution: {integrity: sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ==, tarball: https://packages.atlassian.com/api/npm/npm-remote/csstype/-/csstype-3.2.3.tgz}
@@ -3903,6 +3926,10 @@ packages:
   define-properties@1.2.1:
     resolution: {integrity: sha512-8QmQKqEASLd5nx0U1B1okLElbUuuttJ/AnYmRXbbbGDWh6uS208EjD4Xqq/I9wK7u0v6O08XhTWnt5XtEbR6Dg==, tarball: https://packages.atlassian.com/api/npm/npm-remote/define-properties/-/define-properties-1.2.1.tgz}
     engines: {node: '>= 0.4'}
+
+  defuddle@0.16.0:
+    resolution: {integrity: sha512-8Y87EivlIqzxFsULUQLnch29oPeBxMk3yvX2W+8HeZdgxHXeoQINTZD24jfRCQE7n5ui08WWHVipr9xh5MI2TQ==, tarball: https://packages.atlassian.com/api/npm/npm-remote/defuddle/-/defuddle-0.16.0.tgz}
+    hasBin: true
 
   delaunator@5.0.1:
     resolution: {integrity: sha512-8nvh+XBe96aCESrGOqMp/84b13H9cdKbG5P2ejQCh4d4sK9RL4371qou9drQjMhvnPmhWl5hnmqbEE0fXr9Xnw==, tarball: https://packages.atlassian.com/api/npm/npm-remote/delaunator/-/delaunator-5.0.1.tgz}
@@ -4671,6 +4698,9 @@ packages:
   hsl-to-rgb-for-reals@1.1.1:
     resolution: {integrity: sha512-LgOWAkrN0rFaQpfdWBQlv/VhkOxb5AsBjk6NQVx4yEzWS923T07X0M1Y0VNko2H52HeSpZrZNNMJ0aFqsdVzQg==, tarball: https://packages.atlassian.com/api/npm/npm-remote/hsl-to-rgb-for-reals/-/hsl-to-rgb-for-reals-1.1.1.tgz}
 
+  html-escaper@3.0.3:
+    resolution: {integrity: sha512-RuMffC89BOWQoY0WKGpIhn5gX3iI54O6nRA0yC124NYVtzjmFWBIiFd8M0x+ZdX0P9R4lADg1mgP8C7PxGOWuQ==, tarball: https://packages.atlassian.com/api/npm/npm-remote/html-escaper/-/html-escaper-3.0.3.tgz}
+
   html-url-attributes@3.0.1:
     resolution: {integrity: sha512-ol6UPyBWqsrO6EJySPz2O7ZSr856WDrEzM5zMqp+FJJLGMW35cLYmmZnl0vztAZxRUoNZJFTCohfjuIJ8I4QBQ==, tarball: https://packages.atlassian.com/api/npm/npm-remote/html-url-attributes/-/html-url-attributes-3.0.1.tgz}
 
@@ -5252,6 +5282,15 @@ packages:
   lines-and-columns@1.2.4:
     resolution: {integrity: sha512-7ylylesZQ/PV29jhEDl3Ufjo6ZX7gCqJr5F7PKrqc93v7fzSymt1BpwEU8nAUXs8qzzvqhbjhK5QZg6Mt/HkBg==, tarball: https://packages.atlassian.com/api/npm/npm-remote/lines-and-columns/-/lines-and-columns-1.2.4.tgz}
 
+  linkedom@0.18.12:
+    resolution: {integrity: sha512-jalJsOwIKuQJSeTvsgzPe9iJzyfVaEJiEXl+25EkKevsULHvMJzpNqwvj1jOESWdmgKDiXObyjOYwlUqG7wo1Q==, tarball: https://packages.atlassian.com/api/npm/npm-remote/linkedom/-/linkedom-0.18.12.tgz}
+    engines: {node: '>=16'}
+    peerDependencies:
+      canvas: '>= 2'
+    peerDependenciesMeta:
+      canvas:
+        optional: true
+
   linkify-it@2.2.0:
     resolution: {integrity: sha512-GnAl/knGn+i1U/wjBz3akz2stz+HrHLsxMwHQGofCDfPvlf+gDKN58UtfmUquTY4/MXeE2x7k19KQmeoZi94Iw==, tarball: https://packages.atlassian.com/api/npm/npm-remote/linkify-it/-/linkify-it-2.2.0.tgz}
 
@@ -5369,6 +5408,9 @@ packages:
   math-intrinsics@1.1.0:
     resolution: {integrity: sha512-/IXtbwEk5HTPyEwyKX6hGkYXxM9nbj64B+ilVJnC/R6B0pH5G4V3b0pVbL7DBj4tkhBAppbQUlf6F6Xl9LHu1g==}
     engines: {node: '>= 0.4'}
+
+  mathml-to-latex@1.5.0:
+    resolution: {integrity: sha512-rrWn0eEvcEcdMM4xfHcSGIy+i01DX9byOdXTLWg+w1iJ6O6ohP5UXY1dVzNUZLhzfl3EGcRekWLhY7JT5Omaew==, tarball: https://packages.atlassian.com/api/npm/npm-remote/mathml-to-latex/-/mathml-to-latex-1.5.0.tgz}
 
   mdast-util-find-and-replace@3.0.2:
     resolution: {integrity: sha512-Tmd1Vg/m3Xz43afeNxDIhWRtFZgM2VLyaf4vSTYwudTyeuTneoL3qtWMA5jeLyz/O1vDJmmV4QuScFCA2tBPwg==, tarball: https://packages.atlassian.com/api/npm/npm-remote/mdast-util-find-and-replace/-/mdast-util-find-and-replace-3.0.2.tgz}
@@ -6967,6 +7009,10 @@ packages:
     resolution: {integrity: sha512-+HRtZ40Vc+6YfCDWCeAsixwxJgMbPY4HHuTgzPYH3JXvqHWUlsCfy+ylXlAKhFNcuLp4xVeWeFBUhDk+7KYUvQ==, tarball: https://packages.atlassian.com/api/npm/npm-remote/taskkill/-/taskkill-5.0.0.tgz}
     engines: {node: '>=14.16'}
 
+  temml@0.13.2:
+    resolution: {integrity: sha512-n8fDRSsLscq9nh9j6z+FgkCvFMT0IJm6GCgwfzh+7AHT3Sfb4jFTQlsA6hVcF2dYYr3b66oDBVES95RfoukyrA==, tarball: https://packages.atlassian.com/api/npm/npm-remote/temml/-/temml-0.13.2.tgz}
+    engines: {node: '>=18.13.0'}
+
   terminal-size@4.0.1:
     resolution: {integrity: sha512-avMLDQpUI9I5XFrklECw1ZEUPJhqzcwSWsyyI8blhRLT+8N1jLJWLWWYQpB2q2xthq8xDvjZPISVh53T/+CLYQ==, tarball: https://packages.atlassian.com/api/npm/npm-remote/terminal-size/-/terminal-size-4.0.1.tgz}
     engines: {node: '>=18'}
@@ -7082,6 +7128,10 @@ packages:
   tunnel-rat@0.1.2:
     resolution: {integrity: sha512-lR5VHmkPhzdhrM092lI2nACsLO4QubF0/yoOhzX7c+wIpbN1GjHNzCc91QlpxBi+cnx8vVJ+Ur6vL5cEoQPFpQ==, tarball: https://packages.atlassian.com/api/npm/npm-remote/tunnel-rat/-/tunnel-rat-0.1.2.tgz}
 
+  turndown@7.2.4:
+    resolution: {integrity: sha512-I8yFsfRzmzK0WV1pNNOA4A7y4RDfFxPRxb3t+e3ui14qSGOxGtiSP6GjeX+Y6CHb7HYaFj7ECUD7VE5kQMZWGQ==, tarball: https://packages.atlassian.com/api/npm/npm-remote/turndown/-/turndown-7.2.4.tgz}
+    engines: {node: '>=18', npm: '>=9'}
+
   tw-animate-css@1.4.0:
     resolution: {integrity: sha512-7bziOlRqH0hJx80h/3mbicLW7o8qLsH5+RaLR2t+OHM3D0JlWGODQKQ4cxbK7WlvmUxpcj6Kgu6EKqjrGFe3QQ==, tarball: https://packages.atlassian.com/api/npm/npm-remote/tw-animate-css/-/tw-animate-css-1.4.0.tgz}
 
@@ -7136,6 +7186,9 @@ packages:
 
   ufo@1.6.3:
     resolution: {integrity: sha512-yDJTmhydvl5lJzBmy/hyOAA0d+aqCBuwl818haVdYCRrWV84o7YyeVm4QlVHStqNrrJSTb6jKuFAVqAFsr+K3Q==, tarball: https://packages.atlassian.com/api/npm/npm-remote/ufo/-/ufo-1.6.3.tgz}
+
+  uhyphen@0.2.0:
+    resolution: {integrity: sha512-qz3o9CHXmJJPGBdqzab7qAYuW8kQGKNEuoHFYrBwV6hWIMcpAmxDLXojcHfFr9US1Pe6zUswEIJIbLI610fuqA==, tarball: https://packages.atlassian.com/api/npm/npm-remote/uhyphen/-/uhyphen-0.2.0.tgz}
 
   unbox-primitive@1.1.0:
     resolution: {integrity: sha512-nWJ91DjeOkej/TA8pXQ3myruKpKEYgqvpw9lz4OPHj/NWFNluYrjbz9j01CJ8yKQd2g4jFoOkINCTW2I5LEEyw==, tarball: https://packages.atlassian.com/api/npm/npm-remote/unbox-primitive/-/unbox-primitive-1.1.0.tgz}
@@ -8583,6 +8636,8 @@ snapshots:
   '@mermaid-js/parser@1.0.1':
     dependencies:
       langium: 4.2.1
+
+  '@mixmark-io/domino@2.2.0': {}
 
   '@modelcontextprotocol/sdk@1.27.1(zod@3.25.76)':
     dependencies:
@@ -10412,6 +10467,9 @@ snapshots:
 
   '@webgpu/types@0.1.69': {}
 
+  '@xmldom/xmldom@0.8.12':
+    optional: true
+
   '@xyflow/react@12.10.1(@types/react@19.2.14)(immer@11.1.4)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
     dependencies:
       '@xyflow/system': 0.0.75
@@ -10911,6 +10969,8 @@ snapshots:
 
   commander@11.1.0: {}
 
+  commander@12.1.0: {}
+
   commander@14.0.3: {}
 
   commander@7.2.0: {}
@@ -11009,6 +11069,8 @@ snapshots:
   css-what@6.2.2: {}
 
   cssesc@3.0.0: {}
+
+  cssom@0.5.0: {}
 
   csstype@3.2.3: {}
 
@@ -11275,6 +11337,17 @@ snapshots:
       define-data-property: 1.1.4
       has-property-descriptors: 1.0.2
       object-keys: 1.1.1
+
+  defuddle@0.16.0:
+    dependencies:
+      commander: 12.1.0
+    optionalDependencies:
+      linkedom: 0.18.12
+      mathml-to-latex: 1.5.0
+      temml: 0.13.2
+      turndown: 7.2.4
+    transitivePeerDependencies:
+      - canvas
 
   delaunator@5.0.1:
     dependencies:
@@ -12301,6 +12374,8 @@ snapshots:
 
   hsl-to-rgb-for-reals@1.1.1: {}
 
+  html-escaper@3.0.3: {}
+
   html-url-attributes@3.0.1: {}
 
   html-void-elements@3.0.0: {}
@@ -12824,6 +12899,14 @@ snapshots:
 
   lines-and-columns@1.2.4: {}
 
+  linkedom@0.18.12:
+    dependencies:
+      css-select: 5.2.2
+      cssom: 0.5.0
+      html-escaper: 3.0.3
+      htmlparser2: 10.1.0
+      uhyphen: 0.2.0
+
   linkify-it@2.2.0:
     dependencies:
       uc.micro: 1.0.6
@@ -12931,6 +13014,11 @@ snapshots:
   marked@17.0.4: {}
 
   math-intrinsics@1.1.0: {}
+
+  mathml-to-latex@1.5.0:
+    dependencies:
+      '@xmldom/xmldom': 0.8.12
+    optional: true
 
   mdast-util-find-and-replace@3.0.2:
     dependencies:
@@ -15160,6 +15248,9 @@ snapshots:
     dependencies:
       execa: 6.1.0
 
+  temml@0.13.2:
+    optional: true
+
   terminal-size@4.0.1: {}
 
   three-mesh-bvh@0.8.3(three@0.183.2):
@@ -15276,6 +15367,10 @@ snapshots:
       - immer
       - react
 
+  turndown@7.2.4:
+    dependencies:
+      '@mixmark-io/domino': 2.2.0
+
   tw-animate-css@1.4.0: {}
 
   type-check@0.4.0:
@@ -15347,6 +15442,8 @@ snapshots:
   uc.micro@2.1.0: {}
 
   ufo@1.6.3: {}
+
+  uhyphen@0.2.0: {}
 
   unbox-primitive@1.1.0:
     dependencies:
