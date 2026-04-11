@@ -49,12 +49,46 @@ export interface HermesSkillSummary {
 	disabled: boolean;
 	path: string;
 	rootDir: string;
-	source: "local" | "external";
+	source: "local" | "external" | "vendored-upstream";
 	updatedAt: string | null;
 }
 
 export interface HermesSkillDetail extends HermesSkillSummary {
 	content: string;
+}
+
+export interface HermesSkillBundleDetail extends HermesSkillDetail {
+	files: Array<{
+		path: string;
+		content: string;
+	}>;
+}
+
+export type HermesSkillDraftAction = "create" | "update" | "delete";
+export type HermesSkillDraftStatus = "pending" | "approved" | "rejected";
+
+export interface HermesSkillDraftFile {
+	path: string;
+	content: string;
+}
+
+export interface HermesSkillDraftSummary {
+	id: string;
+	status: HermesSkillDraftStatus;
+	action: HermesSkillDraftAction;
+	category: string;
+	name: string;
+	summary: string | null;
+	rationale: string | null;
+	sourceThreadId: string | null;
+	sourceMessageId: string | null;
+	createdAt: string;
+	updatedAt: string;
+	reviewedAt: string | null;
+}
+
+export interface HermesSkillDraftDetail extends HermesSkillDraftSummary {
+	files: HermesSkillDraftFile[];
 }
 
 export interface HermesJob {

@@ -144,6 +144,25 @@ const TOOL_RESULT_OUTPUT_FIELDS = [
 	"data",
 	"error",
 ];
+const TOOL_RESULT_METADATA_FIELDS = new Set([
+	"status",
+	"success",
+	"ok",
+	"is_error",
+	"isError",
+	"tool_name",
+	"toolName",
+	"tool_call_id",
+	"toolCallId",
+	"call_id",
+	"callId",
+	"mcp_server",
+	"mcpServer",
+	"subagent_name",
+	"subagentName",
+	"subagent_tool_call_id",
+	"subagentToolCallId",
+]);
 
 function getToolResultFieldEntries(payload) {
 	if (!payload || typeof payload !== "object") {
@@ -153,6 +172,20 @@ function getToolResultFieldEntries(payload) {
 	return TOOL_RESULT_OUTPUT_FIELDS.flatMap((key) => {
 		const value = payload[key];
 		return value !== undefined && value !== null ? [[key, value]] : [];
+	});
+}
+
+function getToolResultPayloadEntries(payload) {
+	if (!payload || typeof payload !== "object") {
+		return [];
+	}
+
+	return Object.entries(payload).flatMap(([key, value]) => {
+		if (TOOL_RESULT_METADATA_FIELDS.has(key) || value === undefined) {
+			return [];
+		}
+
+		return [[key, value]];
 	});
 }
 
@@ -186,6 +219,15 @@ function resolveToolResultOutput(payload) {
 function resolveToolResultRawOutput(payload) {
 	if (!payload || typeof payload !== "object") {
 		return "";
+	}
+
+	const payloadEntries = getToolResultPayloadEntries(payload);
+	if (payloadEntries.length === 1) {
+		const [key, value] = payloadEntries[0];
+		return TOOL_RESULT_OUTPUT_FIELDS.includes(key) ? value : { [key]: value };
+	}
+	if (payloadEntries.length > 1) {
+		return Object.fromEntries(payloadEntries);
 	}
 
 	const entries = getToolResultFieldEntries(payload);

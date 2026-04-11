@@ -105,6 +105,17 @@ const DURABLE_MEMORY_INSTRUCTION = [
 	"[End Durable Memory Protocol]",
 ].join("\n");
 
+const HERMES_SKILL_DISCOVERABILITY_INSTRUCTION = [
+	"[Hermes Skill Discoverability Protocol]",
+	"When context includes a [Hermes Skills Catalog] section, treat it as the source of truth for which Hermes skills are installed in this environment.",
+	"Skills listed in [Hermes Skills Catalog] are discoverable, even if they are not active in the current turn.",
+	"Only skills included in the [Hermes Skills] section are fully loaded as procedural memory for the current turn.",
+	"Do not say a listed skill is unavailable just because it is missing from [Hermes Skills]. Instead, explain that it is installed but not currently selected for this thread.",
+	"If a relevant installed skill is not active, prefer loading it directly with the `get_skill` tool when that tool is available.",
+	"Use the Rovo App Skills picker only when direct loading is unavailable or when the user wants the skill to stay active as procedural context for future turns. Picker activation applies starting on the next turn.",
+	"[End Hermes Skill Discoverability Protocol]",
+].join("\n");
+
 const DEEP_PLAN_INSTRUCTION = [
 	"[Deep Plan Protocol]",
 	"When plan mode is active, you are in the serve planning workflow. Follow these rules strictly:",
@@ -362,6 +373,7 @@ function getInstructionBlocksForProfile(profile, promptSpecificInstruction, cont
 		FIGMA_CLARIFICATION_INSTRUCTION,
 		WEB_SEARCH_INSTRUCTION,
 		DURABLE_MEMORY_INSTRUCTION,
+		HERMES_SKILL_DISCOVERABILITY_INSTRUCTION,
 		promptSpecificInstruction,
 	];
 }
@@ -420,4 +432,5 @@ module.exports = {
 	buildUserMessage,
 	buildQuestionCardSkipNotification,
 	DEEP_PLAN_INSTRUCTION,
+	HERMES_SKILL_DISCOVERABILITY_INSTRUCTION,
 };

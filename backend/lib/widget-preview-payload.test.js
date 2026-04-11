@@ -56,6 +56,45 @@ test("withCanonicalPreviewBody adds body.kind image for image widgets", () => {
 	});
 });
 
+test("withCanonicalPreviewBody adds body.kind video for direct video widgets", () => {
+	const payload = withCanonicalPreviewBody("video-preview", {
+		videoUrl: "/api/rovo-app/generated-media?path=media%2Fvideos%2Fdemo.mp4",
+		mimeType: "video/mp4",
+		fileName: "demo.mp4",
+	});
+
+	assert.deepEqual(payload.body, {
+		kind: "video",
+		videoUrl: "/api/rovo-app/generated-media?path=media%2Fvideos%2Fdemo.mp4",
+		mimeType: "video/mp4",
+		fileName: "demo.mp4",
+	});
+});
+
+test("withCanonicalPreviewBody infers generated video bodies from genui specs", () => {
+	const payload = withCanonicalPreviewBody("genui-preview", {
+		spec: {
+			root: "main",
+			elements: {
+				main: { type: "Card", props: { title: "Output" }, children: ["path"] },
+				path: {
+					type: "Code",
+					props: { text: "media/videos/tmp/demo/VPKRovoVideo.mp4" },
+					children: [],
+				},
+			},
+		},
+	});
+
+	assert.deepEqual(payload.body, {
+		kind: "video",
+		videoUrl:
+			"/api/rovo-app/generated-media?path=media%2Fvideos%2Ftmp%2Fdemo%2FVPKRovoVideo.mp4",
+		mimeType: "video/mp4",
+		fileName: "VPKRovoVideo.mp4",
+	});
+});
+
 test("withCanonicalPreviewBody preserves payloads that already declare body", () => {
 	const payload = withCanonicalPreviewBody("genui-preview", {
 		body: {

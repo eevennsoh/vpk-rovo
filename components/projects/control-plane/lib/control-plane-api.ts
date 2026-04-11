@@ -10,6 +10,9 @@ import type {
 	HermesMemoryDocument,
 	HermesMemoryEntry,
 	HermesMemoryTarget,
+	HermesSkillBundleDetail,
+	HermesSkillDraftDetail,
+	HermesSkillDraftSummary,
 	HermesSkillDetail,
 	HermesSkillSummary,
 	RuntimeStatusSnapshot,
@@ -163,7 +166,9 @@ function normalizeHermesSkillSummary(rawSkill: unknown): HermesSkillSummary {
 		source:
 			skill.source === "external"
 				? "external"
-				: "local",
+				: skill.source === "vendored-upstream"
+					? "vendored-upstream"
+					: "local",
 		title: getString(skill.title) ?? getString(skill.name) ?? "Unknown skill",
 		updatedAt: getString(skill.updatedAt),
 	};
@@ -177,6 +182,87 @@ function normalizeHermesSkillDetail(rawSkill: unknown): HermesSkillDetail {
 	return {
 		...summary,
 		content: getString(skill.content) ?? "",
+	};
+}
+
+function normalizeHermesSkillBundleDetail(rawSkill: unknown): HermesSkillBundleDetail {
+	const detail = normalizeHermesSkillDetail(rawSkill);
+	const skill = rawSkill && typeof rawSkill === "object"
+		? rawSkill as Record<string, unknown>
+		: {};
+
+	return {
+		...detail,
+		files: Array.isArray(skill.files)
+			? skill.files.flatMap((file) => {
+				const item = file && typeof file === "object"
+					? file as Record<string, unknown>
+					: {};
+				const filePath = getString(item.path);
+				if (!filePath) {
+					return [];
+				}
+
+				return [{
+					path: filePath,
+					content: typeof item.content === "string" ? item.content : "",
+				}];
+			})
+			: [],
+	};
+}
+
+function normalizeHermesSkillDraftSummary(rawDraft: unknown): HermesSkillDraftSummary {
+	const draft = rawDraft && typeof rawDraft === "object"
+		? rawDraft as Record<string, unknown>
+		: {};
+
+	return {
+		id: getString(draft.id) ?? "draft-unknown",
+		status:
+			draft.status === "approved" || draft.status === "rejected"
+				? draft.status
+				: "pending",
+		action:
+			draft.action === "create" || draft.action === "update" || draft.action === "delete"
+				? draft.action
+				: "create",
+		category: getString(draft.category) ?? "local",
+		name: getString(draft.name) ?? "unknown",
+		summary: getString(draft.summary),
+		rationale: getString(draft.rationale),
+		sourceThreadId: getString(draft.sourceThreadId),
+		sourceMessageId: getString(draft.sourceMessageId),
+		createdAt: getString(draft.createdAt) ?? new Date().toISOString(),
+		updatedAt: getString(draft.updatedAt) ?? new Date().toISOString(),
+		reviewedAt: getString(draft.reviewedAt),
+	};
+}
+
+function normalizeHermesSkillDraftDetail(rawDraft: unknown): HermesSkillDraftDetail {
+	const summary = normalizeHermesSkillDraftSummary(rawDraft);
+	const draft = rawDraft && typeof rawDraft === "object"
+		? rawDraft as Record<string, unknown>
+		: {};
+
+	return {
+		...summary,
+		files: Array.isArray(draft.files)
+			? draft.files.flatMap((file) => {
+				const item = file && typeof file === "object"
+					? file as Record<string, unknown>
+					: {};
+				const filePath = getString(item.path);
+				if (!filePath) {
+					return [];
+				}
+
+				return [{
+					path: filePath,
+					content: typeof item.content === "string" ? item.content : "",
+				}];
+			})
+			: [],
 	};
 }
 
@@ -309,6 +395,13 @@ export async function fetchSkillDetail(category: string, name: string): Promise<
 	return normalizeHermesSkillDetail(payload.skill);
 }
 
+export async function fetchSkillBundleDetail(category: string, name: string): Promise<HermesSkillBundleDetail> {
+	const payload = await parseJsonResponse<{ skill?: unknown }>(await fetch(API_ENDPOINTS.skillBundle(category, name), {
+		method: "GET",
+	}));
+	return normalizeHermesSkillBundleDetail(payload.skill);
+}
+
 export async function toggleSkill(category: string, name: string, enabled: boolean): Promise<HermesSkillDetail> {
 	const payload = await parseJsonResponse<{ skill?: unknown }>(await fetch(API_ENDPOINTS.skillToggle(category, name), {
 		body: JSON.stringify({ enabled }),
@@ -318,6 +411,44 @@ export async function toggleSkill(category: string, name: string, enabled: boole
 		method: "POST",
 	}));
 	return normalizeHermesSkillDetail(payload.skill);
+}
+
+export async function fetchSkillDrafts(status?: HermesSkillDraftSummary["status"]): Promise<HermesSkillDraftSummary[]> {
+	const endpoint = status
+		? `${API_ENDPOINTS.SKILL_DRAFTS}?status=${encodeURIComponent(status)}`
+		: API_ENDPOINTS.SKILL_DRAFTS;
+	const payload = await parseJsonResponse<{ drafts?: unknown[] }>(await fetch(endpoint, {
+		method: "GET",
+	}));
+	return Array.isArray(payload.drafts) ? payload.drafts.map(normalizeHermesSkillDraftSummary) : [];
+}
+
+export async function fetchSkillDraftDetail(draftId: string): Promise<HermesSkillDraftDetail> {
+	const payload = await parseJsonResponse<{ draft?: unknown }>(await fetch(API_ENDPOINTS.skillDraft(draftId), {
+		method: "GET",
+	}));
+	return normalizeHermesSkillDraftDetail(payload.draft);
+}
+
+export async function approveSkillDraft(draftId: string): Promise<HermesSkillDraftDetail> {
+	const payload = await parseJsonResponse<{ draft?: unknown }>(await fetch(API_ENDPOINTS.skillDraftApprove(draftId), {
+		method: "POST",
+	}));
+	return normalizeHermesSkillDraftDetail(payload.draft);
+}
+
+export async function rejectSkillDraft(draftId: string): Promise<HermesSkillDraftDetail> {
+	const payload = await parseJsonResponse<{ draft?: unknown }>(await fetch(API_ENDPOINTS.skillDraftReject(draftId), {
+		method: "POST",
+	}));
+	return normalizeHermesSkillDraftDetail(payload.draft);
+}
+
+export async function deleteSkillDraft(draftId: string): Promise<HermesSkillDraftSummary | null> {
+	const payload = await parseJsonResponse<{ draft?: unknown | null }>(await fetch(API_ENDPOINTS.skillDraft(draftId), {
+		method: "DELETE",
+	}));
+	return payload.draft ? normalizeHermesSkillDraftSummary(payload.draft) : null;
 }
 
 export async function searchSessions(query: string, limit?: number): Promise<SessionSearchResult[]> {

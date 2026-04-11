@@ -1,4 +1,0 @@
-interface:
-  display_name: "vpk-utils-codex"
-  short_description: "Switch Codex CLI versions and auth modes"
-  default_prompt: "Use $vpk-utils-codex to switch my Codex CLI between 0.107.0 and 0.116.0 and align auth mode."

@@ -27,6 +27,11 @@ function getHermesSkillsDir() {
 	return path.join(getHermesHomeDir(), "skills");
 }
 
+function getVendoredHermesSkillsDir() {
+	return toNonEmptyString(process.env.HERMES_VENDOR_SKILLS_DIR)
+		?? path.join(__dirname, "..", "..", ".agents", "vendor", "hermes-agent", "skills");
+}
+
 function getHermesMemoryPath(target) {
 	const targetMap = {
 		memory: "MEMORY.md",
@@ -330,6 +335,7 @@ module.exports = {
 	getHermesMemoriesDir,
 	getHermesMemoryPath,
 	getHermesSkillsDir,
+	getVendoredHermesSkillsDir,
 	parseHermesSkillsConfig,
 	readHermesConfigText,
 	upsertSkillsList,

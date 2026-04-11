@@ -18,6 +18,7 @@ import {
 import { fetchRuntimeStatusSnapshot } from "./lib/control-plane-api";
 import { ControlPlanePageShell } from "./control-plane-page-shell";
 import { usePersistentState } from "./lib/use-persistent-state";
+import { UserProfileCard } from "./user-profile-card";
 
 const SETTINGS_STORAGE_KEY = "vpk-control-plane-settings";
 const DEFAULT_SETTINGS_STATE = createSettingsState();
@@ -190,6 +191,8 @@ export function SettingsSurfacePage() {
 				</div>
 
 				<div className="space-y-4">
+					<UserProfileCard />
+
 					<Card>
 						<CardHeader>
 							<CardTitle>Runtime options</CardTitle>

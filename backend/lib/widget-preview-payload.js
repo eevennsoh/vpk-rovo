@@ -1,3 +1,11 @@
+const path = require("node:path");
+
+const {
+	buildGeneratedMediaUrl,
+	findGeneratedVideoPathInValue,
+	inferGeneratedMediaContentType,
+} = require("./generated-media");
+
 function isObjectRecord(value) {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -22,9 +30,71 @@ function normalizeImageEntries(images) {
 		.filter((entry) => entry.url.length > 0);
 }
 
+function buildVideoPreviewBody(payload) {
+	if (!isObjectRecord(payload)) {
+		return null;
+	}
+
+	const directVideoUrl =
+		getNonEmptyString(payload.videoUrl) || getNonEmptyString(payload.url);
+	const directMimeType = getNonEmptyString(payload.mimeType);
+	const directPosterUrl = getNonEmptyString(payload.posterUrl);
+	const directFileName =
+		getNonEmptyString(payload.fileName) || getNonEmptyString(payload.filename);
+	if (directVideoUrl) {
+		return {
+			kind: "video",
+			videoUrl: directVideoUrl,
+			...(directMimeType ? { mimeType: directMimeType } : {}),
+			...(directPosterUrl ? { posterUrl: directPosterUrl } : {}),
+			...(directFileName ? { fileName: directFileName } : {}),
+		};
+	}
+
+	const generatedVideoPath = findGeneratedVideoPathInValue(payload);
+	if (generatedVideoPath) {
+		const generatedVideoUrl = buildGeneratedMediaUrl(generatedVideoPath);
+		if (generatedVideoUrl) {
+			return {
+				kind: "video",
+				videoUrl: generatedVideoUrl,
+				mimeType:
+					inferGeneratedMediaContentType(generatedVideoPath) || undefined,
+				fileName: path.posix.basename(generatedVideoPath),
+			};
+		}
+	}
+
+	if (
+		isObjectRecord(payload.composition) &&
+		typeof payload.composition.fps === "number" &&
+		typeof payload.composition.durationInFrames === "number"
+	) {
+		return {
+			kind: "video",
+			composition: payload.composition,
+			tracks: Array.isArray(payload.tracks) ? payload.tracks : [],
+			clips: Array.isArray(payload.clips) ? payload.clips : [],
+			...(isObjectRecord(payload.audio) ? { audio: payload.audio } : {}),
+		};
+	}
+
+	return null;
+}
+
 function withCanonicalPreviewBody(type, payload) {
 	if (!isObjectRecord(payload) || isObjectRecord(payload.body)) {
 		return payload;
+	}
+
+	if (type === "genui-preview") {
+		const inferredVideoBody = buildVideoPreviewBody(payload);
+		if (inferredVideoBody) {
+			return {
+				...payload,
+				body: inferredVideoBody,
+			};
+		}
 	}
 
 	if (type === "genui-preview" && isObjectRecord(payload.spec)) {
@@ -65,21 +135,15 @@ function withCanonicalPreviewBody(type, payload) {
 		};
 	}
 
-	if (
-		type === "video-preview" &&
-		isObjectRecord(payload.composition) &&
-		typeof payload.composition.fps === "number" &&
-		typeof payload.composition.durationInFrames === "number"
-	) {
+	if (type === "video-preview") {
+		const videoBody = buildVideoPreviewBody(payload);
+		if (!videoBody) {
+			return payload;
+		}
+
 		return {
 			...payload,
-			body: {
-				kind: "video",
-				composition: payload.composition,
-				tracks: Array.isArray(payload.tracks) ? payload.tracks : [],
-				clips: Array.isArray(payload.clips) ? payload.clips : [],
-				...(isObjectRecord(payload.audio) ? { audio: payload.audio } : {}),
-			},
+			body: videoBody,
 		};
 	}
 

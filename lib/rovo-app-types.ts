@@ -11,6 +11,8 @@ export type RovoAppPromptMode = "default" | "plan";
 
 export interface RovoAppHermesContext {
 	selectedSkillIds: string[];
+	autoSelectedSkillIds?: string[];
+	pendingDraftIds?: string[];
 }
 
 /**

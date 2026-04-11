@@ -7,6 +7,7 @@ const {
 	removeRovoAppSpecFences,
 	sanitizeRovoAppAssistantText,
 	shouldRenderRovoAppAssistantActions,
+	shouldRenderRovoAppAssistantText,
 	shouldRenderRovoAppAssistantMessage,
 	shouldRenderRovoAppVisibleWidget,
 	shouldRenderRovoAppWidget,
@@ -26,6 +27,14 @@ test("shouldRenderRovoAppWidget keeps direct media widgets visible on text route
 			hasWidget: true,
 			routeDecision: { presentation: "text" },
 			widgetType: "audio-preview",
+		}),
+		true
+	);
+	assert.equal(
+		shouldRenderRovoAppWidget({
+			hasWidget: true,
+			routeDecision: { presentation: "text" },
+			widgetType: "video-preview",
 		}),
 		true
 	);
@@ -116,6 +125,54 @@ test("shouldRenderRovoAppAssistantActions shows actions for settled assistant ou
 			hasWidgetError: false,
 			isLastAssistant: true,
 			isResponseInFlight: false,
+		}),
+		true,
+	);
+});
+
+test("shouldRenderRovoAppAssistantText defers provisional tool-driven text until turn completion", () => {
+	assert.equal(
+		shouldRenderRovoAppAssistantText({
+			hasText: true,
+			hasTurnComplete: false,
+			hasToolActivity: true,
+			hasWidgetSignal: false,
+			isFallbackRoute: false,
+			isResponseInFlight: true,
+			isTextPresentation: true,
+			shouldRenderPlanWidget: false,
+		}),
+		false,
+	);
+});
+
+test("shouldRenderRovoAppAssistantText renders settled text once the tool-driven turn completes", () => {
+	assert.equal(
+		shouldRenderRovoAppAssistantText({
+			hasText: true,
+			hasTurnComplete: true,
+			hasToolActivity: true,
+			hasWidgetSignal: false,
+			isFallbackRoute: false,
+			isResponseInFlight: false,
+			isTextPresentation: true,
+			shouldRenderPlanWidget: false,
+		}),
+		true,
+	);
+});
+
+test("shouldRenderRovoAppAssistantText does not suppress ordinary streaming text turns without tool activity", () => {
+	assert.equal(
+		shouldRenderRovoAppAssistantText({
+			hasText: true,
+			hasTurnComplete: false,
+			hasToolActivity: false,
+			hasWidgetSignal: false,
+			isFallbackRoute: false,
+			isResponseInFlight: true,
+			isTextPresentation: true,
+			shouldRenderPlanWidget: false,
 		}),
 		true,
 	);

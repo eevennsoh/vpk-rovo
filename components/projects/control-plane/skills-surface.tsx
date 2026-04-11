@@ -17,10 +17,26 @@ import {
 	FileTreeIcon,
 	FileTreeName,
 } from "@/components/ui-ai/file-tree";
-import type { HermesSkillDetail, HermesSkillSummary } from "@/lib/rovo-runtime-types";
+import type {
+	HermesSkillBundleDetail,
+	HermesSkillDetail,
+	HermesSkillDraftDetail,
+	HermesSkillDraftSummary,
+	HermesSkillSummary,
+} from "@/lib/rovo-runtime-types";
 import { cn } from "@/lib/utils";
 
-import { fetchSkillDetail, fetchSkills, toggleSkill } from "./lib/control-plane-api";
+import {
+	approveSkillDraft,
+	deleteSkillDraft,
+	fetchSkillBundleDetail,
+	fetchSkillDetail,
+	fetchSkillDraftDetail,
+	fetchSkillDrafts,
+	fetchSkills,
+	rejectSkillDraft,
+	toggleSkill,
+} from "./lib/control-plane-api";
 import { ControlPlanePageShell } from "./control-plane-page-shell";
 import { formatControlPlaneDateTime } from "./lib/control-plane-utils";
 
@@ -28,6 +44,8 @@ interface SkillsSurfacePageProps {
 	initialCategory?: string | null;
 	initialSlug?: string | null;
 }
+
+type SkillsSurfaceView = "drafts" | "installed";
 
 function buildSkillKey(skill: { category: string; name: string }): string {
 	return `${skill.category}/${skill.name}`;
@@ -54,14 +72,76 @@ function groupSkillsByCategory(skills: ReadonlyArray<HermesSkillSummary>) {
 		}));
 }
 
+function resolveDraftBadgeVariant(
+	status: HermesSkillDraftSummary["status"],
+): "danger" | "neutral" | "success" | "warning" {
+	if (status === "approved") {
+		return "success";
+	}
+	if (status === "rejected") {
+		return "danger";
+	}
+	return "warning";
+}
+
+function findDraftSkillFile(
+	draft: HermesSkillDraftDetail | null,
+	requestedPath: string,
+): string | null {
+	if (!draft) {
+		return null;
+	}
+
+	const file = draft.files.find((candidate) => candidate.path === requestedPath);
+	return file?.content ?? null;
+}
+
+function buildDraftPreviewSummary(draft: HermesSkillDraftSummary): string {
+	return [
+		draft.summary,
+		draft.rationale,
+	].filter(Boolean).join(" ");
+}
+
+function collectDraftComparisonPaths(
+	draft: HermesSkillDraftDetail | null,
+	liveSkillBundle: HermesSkillBundleDetail | null,
+): string[] {
+	const paths = new Set<string>();
+
+	for (const file of draft?.files ?? []) {
+		paths.add(file.path);
+	}
+
+	for (const file of liveSkillBundle?.files ?? []) {
+		paths.add(file.path);
+	}
+
+	return [...paths].sort((left, right) => left.localeCompare(right));
+}
+
+function findBundleFileContent(
+	files: ReadonlyArray<{ path: string; content: string }> | undefined,
+	requestedPath: string,
+): string | null {
+	const file = files?.find((candidate) => candidate.path === requestedPath);
+	return file?.content ?? null;
+}
+
 export function SkillsSurfacePage({
 	initialCategory = null,
 	initialSlug = null,
 }: Readonly<SkillsSurfacePageProps>) {
 	const router = useRouter();
+	const [activeView, setActiveView] = useState<SkillsSurfaceView>("installed");
 	const [skills, setSkills] = useState<HermesSkillSummary[]>([]);
-	const [selectedKey, setSelectedKey] = useState<string | null>(null);
+	const [skillDrafts, setSkillDrafts] = useState<HermesSkillDraftSummary[]>([]);
+	const [selectedSkillKey, setSelectedSkillKey] = useState<string | null>(null);
 	const [selectedSkill, setSelectedSkill] = useState<HermesSkillDetail | null>(null);
+	const [selectedDraftId, setSelectedDraftId] = useState<string | null>(null);
+	const [selectedDraft, setSelectedDraft] = useState<HermesSkillDraftDetail | null>(null);
+	const [draftTargetSkill, setDraftTargetSkill] = useState<HermesSkillBundleDetail | null>(null);
+	const [selectedDraftFilePath, setSelectedDraftFilePath] = useState<string>("SKILL.md");
 	const [query, setQuery] = useState("");
 	const [showDisabled, setShowDisabled] = useState(false);
 	const [isLoading, setIsLoading] = useState(true);
@@ -85,15 +165,46 @@ export function SkillsSurfacePage({
 		});
 	}, [query, showDisabled, skills]);
 	const groupedSkills = useMemo(() => groupSkillsByCategory(filteredSkills), [filteredSkills]);
+	const filteredDrafts = useMemo(() => {
+		const normalizedQuery = query.trim().toLowerCase();
+		return skillDrafts.filter((draft) => {
+			if (!normalizedQuery) {
+				return true;
+			}
 
-	async function refreshSkills() {
+			return `${draft.category} ${draft.name} ${draft.summary ?? ""} ${draft.rationale ?? ""}`
+				.toLowerCase()
+				.includes(normalizedQuery);
+		});
+	}, [query, skillDrafts]);
+	const pendingDraftCount = useMemo(
+		() => skillDrafts.filter((draft) => draft.status === "pending").length,
+		[skillDrafts],
+	);
+
+	async function refreshInstalledSkills() {
+		const nextSkills = await fetchSkills();
+		setSkills(nextSkills);
+		if (!selectedSkillKey && nextSkills[0]) {
+			setSelectedSkillKey(buildSkillKey(nextSkills[0]));
+		}
+	}
+
+	async function refreshSkillDrafts() {
+		const nextDrafts = await fetchSkillDrafts();
+		setSkillDrafts(nextDrafts);
+		if (!selectedDraftId && nextDrafts[0]) {
+			setSelectedDraftId(nextDrafts[0].id);
+		}
+	}
+
+	async function refreshAll() {
 		setIsLoading(true);
 		try {
-			const nextSkills = await fetchSkills();
-			setSkills(nextSkills);
-			if (!selectedKey && nextSkills[0]) {
-				setSelectedKey(buildSkillKey(nextSkills[0]));
-			}
+			await Promise.all([
+				refreshInstalledSkills(),
+				refreshSkillDrafts(),
+			]);
 			setErrorMessage(null);
 		} catch (error) {
 			setErrorMessage(error instanceof Error ? error.message : String(error));
@@ -105,23 +216,29 @@ export function SkillsSurfacePage({
 	useEffect(() => {
 		let cancelled = false;
 
-		async function loadSkills() {
+		async function loadSurfaceData() {
 			try {
-				const nextSkills = await fetchSkills();
+				const [nextSkills, nextDrafts] = await Promise.all([
+					fetchSkills(),
+					fetchSkillDrafts(),
+				]);
 				if (cancelled) {
 					return;
 				}
+
 				setSkills(nextSkills);
+				setSkillDrafts(nextDrafts);
 				const routeKey =
 					initialCategory && initialSlug
 						? `${decodeURIComponent(initialCategory)}/${decodeURIComponent(initialSlug)}`
 						: null;
-				const nextSelectedKey = routeKey && nextSkills.some((skill) => buildSkillKey(skill) === routeKey)
+				const nextSelectedSkillKey = routeKey && nextSkills.some((skill) => buildSkillKey(skill) === routeKey)
 					? routeKey
 					: nextSkills[0]
 						? buildSkillKey(nextSkills[0])
 						: null;
-				setSelectedKey(nextSelectedKey);
+				setSelectedSkillKey(nextSelectedSkillKey);
+				setSelectedDraftId((currentDraftId) => currentDraftId ?? nextDrafts[0]?.id ?? null);
 				setErrorMessage(null);
 			} catch (error) {
 				if (!cancelled) {
@@ -135,7 +252,7 @@ export function SkillsSurfacePage({
 		}
 
 		setIsLoading(true);
-		void loadSkills();
+		void loadSurfaceData();
 
 		return () => {
 			cancelled = true;
@@ -143,12 +260,12 @@ export function SkillsSurfacePage({
 	}, [initialCategory, initialSlug]);
 
 	useEffect(() => {
-		if (!selectedKey) {
+		if (activeView !== "installed" || !selectedSkillKey) {
 			setSelectedSkill(null);
 			return;
 		}
 
-		const [category, name] = selectedKey.split("/");
+		const [category, name] = selectedSkillKey.split("/");
 		if (!category || !name) {
 			setSelectedSkill(null);
 			return;
@@ -171,15 +288,79 @@ export function SkillsSurfacePage({
 		}
 
 		void loadDetail();
-
 		return () => {
 			cancelled = true;
 		};
-	}, [selectedKey]);
+	}, [activeView, selectedSkillKey]);
+
+	useEffect(() => {
+		if (activeView !== "drafts" || !selectedDraftId) {
+			setSelectedDraft(null);
+			setDraftTargetSkill(null);
+			return;
+		}
+
+		let cancelled = false;
+		const draftId = selectedDraftId;
+
+		async function loadDraftDetail() {
+			try {
+				const detail = await fetchSkillDraftDetail(draftId);
+				if (cancelled) {
+					return;
+				}
+
+				setSelectedDraft(detail);
+				setSelectedDraftFilePath("SKILL.md");
+				if (detail.action === "create") {
+					setDraftTargetSkill(null);
+				} else {
+					try {
+						const liveSkill = await fetchSkillBundleDetail(detail.category, detail.name);
+						if (!cancelled) {
+							setDraftTargetSkill(liveSkill);
+						}
+					} catch {
+						if (!cancelled) {
+							setDraftTargetSkill(null);
+						}
+					}
+				}
+				setErrorMessage(null);
+			} catch (error) {
+				if (!cancelled) {
+					setErrorMessage(error instanceof Error ? error.message : String(error));
+					setSelectedDraft(null);
+					setDraftTargetSkill(null);
+				}
+			}
+		}
+
+		void loadDraftDetail();
+		return () => {
+			cancelled = true;
+		};
+	}, [activeView, selectedDraftId]);
+	const draftComparisonPaths = useMemo(
+		() => collectDraftComparisonPaths(selectedDraft, draftTargetSkill),
+		[selectedDraft, draftTargetSkill],
+	);
+
+	useEffect(() => {
+		if (draftComparisonPaths.length === 0) {
+			setSelectedDraftFilePath("SKILL.md");
+			return;
+		}
+
+		if (!draftComparisonPaths.includes(selectedDraftFilePath)) {
+			setSelectedDraftFilePath(draftComparisonPaths[0]);
+		}
+	}, [draftComparisonPaths, selectedDraftFilePath]);
 
 	function handleSelectSkill(skill: HermesSkillSummary) {
 		const nextKey = buildSkillKey(skill);
-		setSelectedKey(nextKey);
+		setSelectedSkillKey(nextKey);
+		setActiveView("installed");
 		router.push(buildSkillRoute(skill));
 	}
 
@@ -211,166 +392,440 @@ export function SkillsSurfacePage({
 		}
 	}
 
+	async function handleDraftMutation(
+		action: "approve" | "delete" | "reject",
+		draftId: string,
+	) {
+		setIsMutating(true);
+		try {
+			if (action === "approve") {
+				await approveSkillDraft(draftId);
+			} else if (action === "reject") {
+				await rejectSkillDraft(draftId);
+			} else {
+				await deleteSkillDraft(draftId);
+			}
+
+			await Promise.all([
+				refreshInstalledSkills(),
+				refreshSkillDrafts(),
+			]);
+			setSelectedDraftId((currentDraftId) => {
+				if (currentDraftId !== draftId) {
+					return currentDraftId;
+				}
+				return null;
+			});
+			if (selectedDraftId === draftId) {
+				setSelectedDraft(null);
+				setDraftTargetSkill(null);
+			}
+			setErrorMessage(null);
+		} catch (error) {
+			setErrorMessage(error instanceof Error ? error.message : String(error));
+		} finally {
+			setIsMutating(false);
+		}
+	}
+
 	return (
 		<ControlPlanePageShell
-			description="Browse installed Hermes skills, inspect SKILL.md content, and toggle skill enablement."
+			description="Browse installed Hermes skills, inspect SKILL.md content, and review pending draft skill changes."
 			title="Skills"
 			actions={
 				<div className="flex items-center gap-2">
-					<Badge variant="neutral">{filteredSkills.length} visible</Badge>
-					<Button variant="outline" onClick={() => void refreshSkills()} disabled={isLoading}>
+					<Badge variant="neutral">
+						{activeView === "installed" ? `${filteredSkills.length} visible` : `${filteredDrafts.length} drafts`}
+					</Badge>
+					<Button variant="outline" onClick={() => void refreshAll()} disabled={isLoading}>
 						Refresh
 					</Button>
 				</div>
 			}
 		>
-			<div className="grid gap-4 lg:grid-cols-[0.92fr_1.08fr]">
-				<div className="space-y-4">
-					{errorMessage ? (
-						<Card>
-							<CardContent className="pt-4 text-sm text-text-danger">
-								{errorMessage}
-							</CardContent>
-						</Card>
-					) : null}
-
-					<Card>
-						<CardHeader>
-							<CardTitle>Browse skills</CardTitle>
-							<CardDescription>Search across categories and open the canonical detail route.</CardDescription>
-						</CardHeader>
-						<CardContent className="space-y-3">
-							<div className="grid gap-3 sm:grid-cols-[1fr_auto]">
-								<Input
-									placeholder="Search skills, categories, or descriptions"
-									value={query}
-									onChange={(event) => setQuery(event.target.value)}
-								/>
-								<Button
-									variant={showDisabled ? "default" : "outline"}
-									onClick={() => setShowDisabled((current) => !current)}
-								>
-									{showDisabled ? "Showing disabled" : "Enabled only"}
-								</Button>
-							</div>
-
-							<ScrollArea className="h-[calc(100vh-20rem)] pr-2">
-								<FileTree
-									className="bg-transparent"
-									defaultExpanded={new Set(groupedSkills.map((group) => group.category))}
-									onSelect={(path) => {
-										const nextSkill = filteredSkills.find((skill) => buildSkillKey(skill) === path);
-										if (nextSkill) {
-											handleSelectSkill(nextSkill);
-										}
-									}}
-									selectedPath={selectedKey ?? undefined}
-								>
-									{isLoading ? (
-										<div className="rounded-xl border border-border bg-surface-raised px-3 py-8 text-center text-sm text-text-subtle">
-											Loading Hermes skills...
-										</div>
-									) : groupedSkills.map((group) => (
-										<FileTreeFolder key={group.category} name={group.category} path={group.category}>
-											{group.skills.map((skill) => {
-												const path = buildSkillKey(skill);
-												return (
-													<FileTreeFile key={path} name={skill.name} path={path}>
-														<FileTreeIcon>
-															<Lozenge variant={skill.disabled ? "neutral" : "success"}>
-																{skill.disabled ? "off" : "on"}
-															</Lozenge>
-														</FileTreeIcon>
-														<FileTreeName>
-															<span className={cn("truncate", selectedKey === path && "text-text-selected")}>
-																{skill.title}
-															</span>
-														</FileTreeName>
-													</FileTreeFile>
-												);
-											})}
-										</FileTreeFolder>
-									))}
-								</FileTree>
-							</ScrollArea>
-						</CardContent>
-					</Card>
+			<div className="space-y-4">
+				<div className="flex flex-wrap items-center gap-2">
+					<Button
+						variant={activeView === "installed" ? "default" : "outline"}
+						onClick={() => setActiveView("installed")}
+					>
+						Installed skills
+					</Button>
+					<Button
+						variant={activeView === "drafts" ? "default" : "outline"}
+						onClick={() => setActiveView("drafts")}
+					>
+						Drafts
+						{pendingDraftCount > 0 ? (
+							<span className="ml-2 rounded-full bg-surface-overlay px-2 py-0.5 text-xs">
+								{pendingDraftCount}
+							</span>
+						) : null}
+					</Button>
 				</div>
 
-				<div className="space-y-4">
-					<Card>
-						<CardHeader>
-							<div className="flex items-center justify-between gap-3">
-								<div>
-									<CardTitle>{selectedSkill ? selectedSkill.title : "Select a skill"}</CardTitle>
-									<CardDescription>
-										{selectedSkill ? selectedSkill.description ?? "No summary provided." : "No skill matches the current filter."}
-									</CardDescription>
-								</div>
-								{selectedSkill ? (
-									<div className="flex items-center gap-2">
-										<Badge variant={selectedSkill.disabled ? "neutral" : "success"}>
-											{selectedSkill.disabled ? "disabled" : "enabled"}
-										</Badge>
-										<Button variant="outline" onClick={() => void handleToggleSkill()} disabled={isMutating}>
-											{selectedSkill.disabled ? "Enable" : "Disable"}
+				<div className="grid gap-4 lg:grid-cols-[0.92fr_1.08fr]">
+					<div className="space-y-4">
+						{errorMessage ? (
+							<Card>
+								<CardContent className="pt-4 text-sm text-text-danger">
+									{errorMessage}
+								</CardContent>
+							</Card>
+						) : null}
+
+						<Card>
+							<CardHeader>
+								<CardTitle>{activeView === "installed" ? "Browse skills" : "Review drafts"}</CardTitle>
+								<CardDescription>
+									{activeView === "installed"
+										? "Search across categories and open the canonical detail route."
+										: "Pending drafts are proposed by the Hermes skill companion and only become live after approval."}
+								</CardDescription>
+							</CardHeader>
+							<CardContent className="space-y-3">
+								<div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+									<Input
+										placeholder={
+											activeView === "installed"
+												? "Search skills, categories, or descriptions"
+												: "Search drafts by target, rationale, or summary"
+										}
+										value={query}
+										onChange={(event) => setQuery(event.target.value)}
+									/>
+									{activeView === "installed" ? (
+										<Button
+											variant={showDisabled ? "default" : "outline"}
+											onClick={() => setShowDisabled((current) => !current)}
+										>
+											{showDisabled ? "Showing disabled" : "Enabled only"}
 										</Button>
-									</div>
-								) : null}
-							</div>
-						</CardHeader>
-						<CardContent className="space-y-4">
-							{selectedSkill ? (
-								<>
-									<div className="grid gap-3 sm:grid-cols-2">
-										<div className="rounded-lg border border-border bg-surface-raised px-3 py-2">
-											<div className="text-xs uppercase tracking-wide text-text-subtlest">Category</div>
-											<div className="text-sm">{selectedSkill.category}</div>
+									) : (
+										<div className="flex items-center">
+											<Badge variant="neutral">{pendingDraftCount} pending</Badge>
 										</div>
-										<div className="rounded-lg border border-border bg-surface-raised px-3 py-2">
-											<div className="text-xs uppercase tracking-wide text-text-subtlest">Location</div>
-											<div className="text-sm">{selectedSkill.path}</div>
-										</div>
-									</div>
-
-									<div className="grid gap-2 sm:grid-cols-2">
-										<div className="rounded-lg border border-border bg-surface-raised px-3 py-2">
-											<div className="text-xs uppercase tracking-wide text-text-subtlest">Updated</div>
-											<div className="text-sm">{formatControlPlaneDateTime(selectedSkill.updatedAt)}</div>
-										</div>
-										<div className="rounded-lg border border-border bg-surface-raised px-3 py-2">
-											<div className="text-xs uppercase tracking-wide text-text-subtlest">Source dir</div>
-											<div className="text-sm">{selectedSkill.rootDir}</div>
-										</div>
-									</div>
-
-									<Separator />
-
-									<Button variant="ghost" onClick={() => router.push(buildSkillRoute(selectedSkill))}>
-										Open canonical route
-									</Button>
-								</>
-							) : (
-								<div className="rounded-xl border border-dashed border-border px-4 py-8 text-sm text-text-subtle">
-									No skills match the active search filter.
+									)}
 								</div>
-							)}
-						</CardContent>
-					</Card>
 
-					<Card>
-						<CardHeader>
-							<CardTitle>Skill content</CardTitle>
-							<CardDescription>Preview the skill body exactly as it exists on disk.</CardDescription>
-						</CardHeader>
-						<CardContent>
-							<ScrollArea className="max-h-[20rem]">
-								<pre className="whitespace-pre-wrap rounded-xl border border-border bg-surface-raised p-3 text-sm text-text-subtle">
-									{selectedSkill ? selectedSkill.content : "Select a skill to inspect its content."}
-								</pre>
-							</ScrollArea>
-						</CardContent>
-					</Card>
+								<ScrollArea className="h-[calc(100vh-20rem)] pr-2">
+									{isLoading ? (
+										<div className="rounded-xl border border-border bg-surface-raised px-3 py-8 text-center text-sm text-text-subtle">
+											Loading Hermes skill data...
+										</div>
+									) : activeView === "installed" ? (
+										<FileTree
+											className="bg-transparent"
+											defaultExpanded={new Set(groupedSkills.map((group) => group.category))}
+											onSelect={(path) => {
+												const nextSkill = filteredSkills.find((skill) => buildSkillKey(skill) === path);
+												if (nextSkill) {
+													handleSelectSkill(nextSkill);
+												}
+											}}
+											selectedPath={selectedSkillKey ?? undefined}
+										>
+											{groupedSkills.map((group) => (
+												<FileTreeFolder key={group.category} name={group.category} path={group.category}>
+													{group.skills.map((skill) => {
+														const itemPath = buildSkillKey(skill);
+														return (
+															<FileTreeFile key={itemPath} name={skill.name} path={itemPath}>
+																<FileTreeIcon>
+																	<Lozenge variant={skill.disabled ? "neutral" : "success"}>
+																		{skill.disabled ? "off" : "on"}
+																	</Lozenge>
+																</FileTreeIcon>
+																<FileTreeName>
+																	<span className={cn("truncate", selectedSkillKey === itemPath && "text-text-selected")}>
+																		{skill.title}
+																	</span>
+																</FileTreeName>
+															</FileTreeFile>
+														);
+													})}
+												</FileTreeFolder>
+											))}
+										</FileTree>
+									) : (
+										<div className="space-y-3">
+											{filteredDrafts.length === 0 ? (
+												<div className="rounded-xl border border-dashed border-border px-4 py-8 text-sm text-text-subtle">
+													No Hermes skill drafts match the current filter.
+												</div>
+											) : filteredDrafts.map((draft) => {
+												const selected = selectedDraftId === draft.id;
+												return (
+													<button
+														key={draft.id}
+														className={cn(
+															"w-full rounded-xl border px-3 py-3 text-left transition-colors",
+															selected
+																? "border-accent bg-surface-raised"
+																: "border-border bg-surface hover:border-accent-subtle hover:bg-surface-raised",
+														)}
+														type="button"
+														onClick={() => {
+															setSelectedDraftId(draft.id);
+															setActiveView("drafts");
+														}}
+													>
+														<div className="flex items-start justify-between gap-3">
+															<div className="space-y-1">
+																<div className="font-medium">{draft.category}/{draft.name}</div>
+																<div className="text-xs text-text-subtle">
+																	{draft.action} · {formatControlPlaneDateTime(draft.updatedAt)}
+																</div>
+															</div>
+															<Badge variant={resolveDraftBadgeVariant(draft.status)}>
+																{draft.status}
+															</Badge>
+														</div>
+														<div className="mt-2 text-sm text-text-subtle">
+															{buildDraftPreviewSummary(draft) || "No summary or rationale provided."}
+														</div>
+													</button>
+												);
+											})}
+										</div>
+									)}
+								</ScrollArea>
+							</CardContent>
+						</Card>
+					</div>
+
+					<div className="space-y-4">
+						{activeView === "installed" ? (
+							<>
+								<Card>
+									<CardHeader>
+										<div className="flex items-center justify-between gap-3">
+											<div>
+												<CardTitle>{selectedSkill ? selectedSkill.title : "Select a skill"}</CardTitle>
+												<CardDescription>
+													{selectedSkill ? selectedSkill.description ?? "No summary provided." : "No skill matches the current filter."}
+												</CardDescription>
+											</div>
+											{selectedSkill ? (
+												<div className="flex items-center gap-2">
+													<Badge variant={selectedSkill.disabled ? "neutral" : "success"}>
+														{selectedSkill.disabled ? "disabled" : "enabled"}
+													</Badge>
+													<Button variant="outline" onClick={() => void handleToggleSkill()} disabled={isMutating}>
+														{selectedSkill.disabled ? "Enable" : "Disable"}
+													</Button>
+												</div>
+											) : null}
+										</div>
+									</CardHeader>
+									<CardContent className="space-y-4">
+										{selectedSkill ? (
+											<>
+												<div className="grid gap-3 sm:grid-cols-2">
+													<div className="rounded-lg border border-border bg-surface-raised px-3 py-2">
+														<div className="text-xs uppercase tracking-wide text-text-subtlest">Category</div>
+														<div className="text-sm">{selectedSkill.category}</div>
+													</div>
+													<div className="rounded-lg border border-border bg-surface-raised px-3 py-2">
+														<div className="text-xs uppercase tracking-wide text-text-subtlest">Location</div>
+														<div className="text-sm">{selectedSkill.path}</div>
+													</div>
+												</div>
+
+												<div className="grid gap-2 sm:grid-cols-2">
+													<div className="rounded-lg border border-border bg-surface-raised px-3 py-2">
+														<div className="text-xs uppercase tracking-wide text-text-subtlest">Updated</div>
+														<div className="text-sm">{formatControlPlaneDateTime(selectedSkill.updatedAt)}</div>
+													</div>
+													<div className="rounded-lg border border-border bg-surface-raised px-3 py-2">
+														<div className="text-xs uppercase tracking-wide text-text-subtlest">Source dir</div>
+														<div className="text-sm">{selectedSkill.rootDir}</div>
+													</div>
+												</div>
+
+												<Separator />
+
+												<Button variant="ghost" onClick={() => router.push(buildSkillRoute(selectedSkill))}>
+													Open canonical route
+												</Button>
+											</>
+										) : (
+											<div className="rounded-xl border border-dashed border-border px-4 py-8 text-sm text-text-subtle">
+												No skills match the active search filter.
+											</div>
+										)}
+									</CardContent>
+								</Card>
+
+								<Card>
+									<CardHeader>
+										<CardTitle>Skill content</CardTitle>
+										<CardDescription>Preview the skill body exactly as it exists on disk.</CardDescription>
+									</CardHeader>
+									<CardContent>
+										<ScrollArea className="max-h-[20rem]">
+											<pre className="whitespace-pre-wrap rounded-xl border border-border bg-surface-raised p-3 text-sm text-text-subtle">
+												{selectedSkill ? selectedSkill.content : "Select a skill to inspect its content."}
+											</pre>
+										</ScrollArea>
+									</CardContent>
+								</Card>
+							</>
+						) : (
+							<>
+								<Card>
+									<CardHeader>
+										<div className="flex items-center justify-between gap-3">
+											<div>
+												<CardTitle>
+													{selectedDraft ? `${selectedDraft.category}/${selectedDraft.name}` : "Select a draft"}
+												</CardTitle>
+												<CardDescription>
+													{selectedDraft
+														? selectedDraft.rationale ?? "No rationale provided."
+														: "Select a draft to inspect or review it."}
+												</CardDescription>
+											</div>
+											{selectedDraft ? (
+												<Badge variant={resolveDraftBadgeVariant(selectedDraft.status)}>
+													{selectedDraft.status}
+												</Badge>
+											) : null}
+										</div>
+									</CardHeader>
+									<CardContent className="space-y-4">
+										{selectedDraft ? (
+											<>
+												<div className="grid gap-3 sm:grid-cols-2">
+													<div className="rounded-lg border border-border bg-surface-raised px-3 py-2">
+														<div className="text-xs uppercase tracking-wide text-text-subtlest">Action</div>
+														<div className="text-sm">{selectedDraft.action}</div>
+													</div>
+													<div className="rounded-lg border border-border bg-surface-raised px-3 py-2">
+														<div className="text-xs uppercase tracking-wide text-text-subtlest">Source thread</div>
+														<div className="text-sm">{selectedDraft.sourceThreadId ?? "Unknown"}</div>
+													</div>
+												</div>
+												<div className="grid gap-3 sm:grid-cols-2">
+													<div className="rounded-lg border border-border bg-surface-raised px-3 py-2">
+														<div className="text-xs uppercase tracking-wide text-text-subtlest">Created</div>
+														<div className="text-sm">{formatControlPlaneDateTime(selectedDraft.createdAt)}</div>
+													</div>
+													<div className="rounded-lg border border-border bg-surface-raised px-3 py-2">
+														<div className="text-xs uppercase tracking-wide text-text-subtlest">Updated</div>
+														<div className="text-sm">{formatControlPlaneDateTime(selectedDraft.updatedAt)}</div>
+													</div>
+												</div>
+												{selectedDraft.summary ? (
+													<div className="rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm text-text-subtle">
+														{selectedDraft.summary}
+													</div>
+												) : null}
+
+												<div className="flex flex-wrap gap-2">
+													<Button
+														onClick={() => void handleDraftMutation("approve", selectedDraft.id)}
+														disabled={isMutating || selectedDraft.status !== "pending"}
+													>
+														Approve
+													</Button>
+													<Button
+														variant="outline"
+														onClick={() => void handleDraftMutation("reject", selectedDraft.id)}
+														disabled={isMutating || selectedDraft.status !== "pending"}
+													>
+														Reject
+													</Button>
+													<Button
+														variant="ghost"
+														onClick={() => void handleDraftMutation("delete", selectedDraft.id)}
+														disabled={isMutating}
+													>
+														Delete
+													</Button>
+												</div>
+											</>
+										) : (
+											<div className="rounded-xl border border-dashed border-border px-4 py-8 text-sm text-text-subtle">
+												No skill draft is selected.
+											</div>
+										)}
+									</CardContent>
+								</Card>
+
+								<Card>
+									<CardHeader>
+										<CardTitle>Draft preview</CardTitle>
+										<CardDescription>
+											{selectedDraft?.action === "create"
+												? "New skill bundle proposed by the companion."
+												: "Compare the proposed draft with the currently installed skill."}
+										</CardDescription>
+									</CardHeader>
+									<CardContent className="space-y-4">
+										{selectedDraft ? (
+											<>
+												{draftComparisonPaths.length > 0 ? (
+													<div className="space-y-2">
+														<div className="text-sm font-medium">Bundle files</div>
+														<div className="flex flex-wrap gap-2">
+															{draftComparisonPaths.map((filePath) => (
+																<Button
+																	key={filePath}
+																	size="sm"
+																	variant={selectedDraftFilePath === filePath ? "default" : "outline"}
+																	onClick={() => setSelectedDraftFilePath(filePath)}
+																>
+																	{filePath}
+																</Button>
+															))}
+														</div>
+													</div>
+												) : null}
+												<div className="grid gap-4 lg:grid-cols-2">
+													<div className="space-y-2">
+														<div className="text-sm font-medium">Live file</div>
+														<ScrollArea className="max-h-[18rem] rounded-xl border border-border bg-surface-raised p-3">
+															<pre className="whitespace-pre-wrap text-sm text-text-subtle">
+																{findBundleFileContent(draftTargetSkill?.files, selectedDraftFilePath)
+																	?? (selectedDraft.action === "create"
+																		? "No live skill exists for this draft target."
+																		: "This file does not exist in the live skill bundle.")}
+															</pre>
+														</ScrollArea>
+													</div>
+													<div className="space-y-2">
+														<div className="text-sm font-medium">Draft file</div>
+														<ScrollArea className="max-h-[18rem] rounded-xl border border-border bg-surface-raised p-3">
+															<pre className="whitespace-pre-wrap text-sm text-text-subtle">
+																{findDraftSkillFile(selectedDraft, selectedDraftFilePath)
+																	?? "This file is not present in the draft bundle."}
+															</pre>
+														</ScrollArea>
+													</div>
+												</div>
+
+												<div className="space-y-2">
+													<div className="text-sm font-medium">Draft bundle files</div>
+													<div className="flex flex-wrap gap-2">
+														{selectedDraft.files.map((file) => (
+															<Badge key={file.path} variant="neutral">
+																{file.path}
+															</Badge>
+														))}
+													</div>
+												</div>
+											</>
+										) : (
+											<div className="rounded-xl border border-dashed border-border px-4 py-8 text-sm text-text-subtle">
+												Select a draft to inspect the proposed bundle files.
+											</div>
+										)}
+									</CardContent>
+								</Card>
+							</>
+						)}
+					</div>
 				</div>
 			</div>
 		</ControlPlanePageShell>

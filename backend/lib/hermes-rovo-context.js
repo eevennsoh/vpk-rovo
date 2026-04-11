@@ -3,6 +3,7 @@ const {
 } = require("./hermes-memory");
 const {
 	getHermesSkill,
+	listHermesSkills,
 } = require("./hermes-skills");
 
 function truncateText(value, maxChars) {
@@ -86,22 +87,68 @@ function buildHermesSkillsContextDescription(skills) {
 	].join("\n");
 }
 
+function buildHermesSkillsCatalogDescription(skills) {
+	const skillLines = skills
+		.filter(Boolean)
+		.map((skill) => {
+			const skillId = typeof skill.id === "string" && skill.id.trim()
+				? skill.id.trim()
+				: null;
+			if (!skillId) {
+				return null;
+			}
+
+			const title = typeof skill.title === "string" && skill.title.trim()
+				? skill.title.trim()
+				: skill.name;
+			const summary = typeof skill.description === "string" && skill.description.trim()
+				? skill.description.trim()
+				: skill.summary;
+			const statusLabel = skill.enabled === false ? "disabled" : "enabled";
+			const sourceLabel = typeof skill.source === "string" && skill.source.trim()
+				? skill.source.trim()
+				: "unknown";
+			const detail = summary ? `: ${truncateText(summary, 140)}` : "";
+			return `- ${skillId} (${statusLabel}, ${sourceLabel}) — ${title}${detail}`;
+		})
+		.filter(Boolean);
+
+	if (skillLines.length === 0) {
+		return null;
+	}
+
+	return [
+		"[Hermes Skills Catalog]",
+		"These Hermes skills are installed and discoverable in this environment.",
+		"Use this catalog to determine which skills exist. Only skills in the [Hermes Skills] section are actively loaded for this turn.",
+		skillLines.join("\n"),
+		"[End Hermes Skills Catalog]",
+	].join("\n");
+}
+
 async function buildRovoAppHermesContextDescription({
+	autoSelectedSkillIds,
 	selectedSkillIds,
+	listSkillsImpl = listHermesSkills,
+	getMemoryImpl = getHermesMemory,
+	getSkillImpl = getHermesSkill,
 }) {
 	const [memory, user] = await Promise.all([
-		getHermesMemory("memory"),
-		getHermesMemory("user"),
+		getMemoryImpl("memory"),
+		getMemoryImpl("user"),
 	]);
 	const memoryContext = buildHermesMemoryContextDescription([memory, user]);
+	const allSkills = await listSkillsImpl();
+	const skillsCatalogContext = buildHermesSkillsCatalogDescription(allSkills);
 
-	const normalizedSkillIds = Array.isArray(selectedSkillIds)
-		? Array.from(
-			new Set(
-				selectedSkillIds.filter((skillId) => typeof skillId === "string" && skillId.trim().length > 0),
-			),
-		)
-		: [];
+	const normalizedSkillIds = Array.from(
+		new Set(
+			[
+				...(Array.isArray(selectedSkillIds) ? selectedSkillIds : []),
+				...(Array.isArray(autoSelectedSkillIds) ? autoSelectedSkillIds : []),
+			].filter((skillId) => typeof skillId === "string" && skillId.trim().length > 0),
+		),
+	);
 	const selectedSkills = await Promise.all(
 		normalizedSkillIds.map(async (skillId) => {
 			const segments = skillId.split("/").filter(Boolean);
@@ -111,7 +158,7 @@ async function buildRovoAppHermesContextDescription({
 			const name = segments[segments.length - 1];
 			const category = segments.slice(0, -1).join("__");
 			try {
-				return await getHermesSkill(category, name);
+				return await getSkillImpl(category, name);
 			} catch {
 				return null;
 			}
@@ -119,10 +166,11 @@ async function buildRovoAppHermesContextDescription({
 	);
 	const skillsContext = buildHermesSkillsContextDescription(selectedSkills.filter(Boolean));
 
-	return [memoryContext, skillsContext].filter(Boolean).join("\n\n") || null;
+	return [memoryContext, skillsCatalogContext, skillsContext].filter(Boolean).join("\n\n") || null;
 }
 
 module.exports = {
+	buildHermesSkillsCatalogDescription,
 	buildHermesMemoryContextDescription,
 	buildHermesSkillsContextDescription,
 	buildRovoAppHermesContextDescription,

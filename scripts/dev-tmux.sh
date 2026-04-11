@@ -234,6 +234,12 @@ start_session() {
 	fi
 
 	if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
+		# Ensure port files exist even when reattaching — they may have been
+		# cleaned up by a prior stop or lost across restarts while the tmux
+		# session (and its RovoDev processes) kept running.
+		if [[ ! -f "$PORT_FILE" || ! -f "$PORTS_FILE" ]]; then
+			prepare_port_files
+		fi
 		apply_window_styling
 		echo "Session '$SESSION_NAME' already exists. Attaching..."
 		exec tmux attach -t "$SESSION_NAME"

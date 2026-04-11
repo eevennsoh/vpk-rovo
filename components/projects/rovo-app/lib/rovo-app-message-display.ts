@@ -10,6 +10,7 @@ const ROVO_APP_SPEC_PATCH_LINE_PATTERN =
 const ROVO_APP_TOOL_DRIVEN_WIDGET_TYPES = new Set([
 	"audio-preview",
 	"image-preview",
+	"video-preview",
 	"plan",
 	"question-card",
 ]);
@@ -123,6 +124,35 @@ export function shouldRenderRovoAppWidget(input: {
 	}
 
 	return input.routeDecision.presentation === "genui_card";
+}
+
+export function shouldRenderRovoAppAssistantText(input: {
+	hasText: boolean;
+	hasTurnComplete: boolean;
+	hasToolActivity: boolean;
+	hasWidgetSignal: boolean;
+	isFallbackRoute: boolean;
+	isResponseInFlight: boolean;
+	isTextPresentation: boolean;
+	shouldRenderPlanWidget: boolean;
+}): boolean {
+	if (!input.hasText || input.shouldRenderPlanWidget) {
+		return false;
+	}
+
+	if (!(input.isTextPresentation || input.isFallbackRoute || !input.hasWidgetSignal)) {
+		return false;
+	}
+
+	const shouldDeferUntilTurnComplete =
+		input.isResponseInFlight
+		&& !input.hasTurnComplete
+		&& input.hasToolActivity;
+	if (shouldDeferUntilTurnComplete) {
+		return false;
+	}
+
+	return true;
 }
 
 export function shouldRenderRovoAppAssistantActions(input: {

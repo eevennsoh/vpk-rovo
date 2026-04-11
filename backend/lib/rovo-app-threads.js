@@ -157,9 +157,23 @@ function normalizeHermesContext(rawHermesContext) {
 			(skillId) => typeof skillId === "string" && skillId.trim().length > 0,
 		)
 		: [];
+	const autoSelectedSkillIds = Array.isArray(rawHermesContext.autoSelectedSkillIds)
+		? rawHermesContext.autoSelectedSkillIds.filter(
+			(skillId) => typeof skillId === "string" && skillId.trim().length > 0,
+		)
+		: [];
+	const pendingDraftIds = Array.isArray(rawHermesContext.pendingDraftIds)
+		? rawHermesContext.pendingDraftIds.filter(
+			(draftId) => typeof draftId === "string" && draftId.trim().length > 0,
+		)
+		: [];
 
 	return {
 		selectedSkillIds: Array.from(new Set(selectedSkillIds.map((skillId) => skillId.trim()))),
+		autoSelectedSkillIds: Array.from(
+			new Set(autoSelectedSkillIds.map((skillId) => skillId.trim())),
+		),
+		pendingDraftIds: Array.from(new Set(pendingDraftIds.map((draftId) => draftId.trim()))),
 	};
 }
 
@@ -355,6 +369,7 @@ function createRovoAppThreadManager({ baseDir, logger }) {
 		modelId,
 		provider,
 		activeDocumentId,
+		hermesContext,
 		sessionId,
 		sessionMode,
 		activeRun,
@@ -373,6 +388,7 @@ function createRovoAppThreadManager({ baseDir, logger }) {
 			modelId,
 			provider,
 			activeDocumentId,
+			hermesContext,
 			sessionId,
 			sessionMode,
 			activeRun,

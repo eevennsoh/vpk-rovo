@@ -17,6 +17,8 @@
 		"rovodev": "node scripts/run-rovodev-stack.js",
 		"ports": "node scripts/show-worktree-ports.js",
 		"verify:hermes": "node scripts/verify-hermes-control-plane.js",
+		"import:hermes:upstream": "node scripts/import-hermes-upstream-skills.js",
+		"sync:rovodev:skills": "node scripts/sync-rovodev-skills.js",
 		"generate:prompt": "node --experimental-strip-types scripts/generate-catalog-prompt.js",
 		"dev:stt": ".venv/bin/python scripts/stt-server.py",
 		"dev:stt:install": "python3 -m venv .venv && .venv/bin/pip install -r scripts/stt-requirements.txt"

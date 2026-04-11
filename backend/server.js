@@ -36,7 +36,15 @@ const {
 	removeHermesMemoryEntry,
 	replaceHermesMemory,
 } = require("./lib/hermes-memory");
-const { getHermesSkill, listHermesSkills, toggleHermesSkill } = require("./lib/hermes-skills");
+const {
+	archiveHermesSkill,
+	createHermesSkillFromBundle,
+	getHermesSkill,
+	getHermesSkillBundle,
+	listHermesSkills,
+	toggleHermesSkill,
+	updateHermesSkillFromBundle,
+} = require("./lib/hermes-skills");
 const { getHermesRuntimeStatus } = require("./lib/hermes-status");
 const { createHermesJobLinkManager } = require("./lib/hermes-job-links");
 const { buildRovoAppHermesContextDescription } = require("./lib/hermes-rovo-context");
@@ -45,7 +53,10 @@ const {
 	isExplicitHermesMemoryRequest,
 	runHermesMemoryCompanionReview,
 } = require("./lib/hermes-memory-companion");
-const { executeRovoTask } = require("./lib/rovo-task-executor");
+const {
+	runHermesSkillCompanionReview,
+} = require("./lib/hermes-skill-companion");
+const { executeRovoTask, runRovoDevBackgroundTask } = require("./lib/rovo-task-executor");
 const { syncHermesJobResultsToRovoThreads } = require("./lib/hermes-rovo-job-sync");
 const { buildRuntimeStatusSnapshot } = require("./lib/runtime-status");
 const { redactSecrets, detectSecrets } = require("./lib/hermes-secret-redaction");
@@ -54,7 +65,21 @@ const { compressConversation } = require("./lib/hermes-context-compression");
 const { searchThreads } = require("./lib/hermes-session-search");
 const { createCheckpointManager } = require("./lib/hermes-checkpoints");
 const { createSkillsHubClient } = require("./lib/hermes-skills-hub");
+const { createHermesSkillDraftManager } = require("./lib/hermes-skill-drafts");
+const {
+	autoSelectHermesSkillIds,
+	rankHermesSkillCandidates,
+	shouldDisambiguateRankedCandidates,
+} = require("./lib/hermes-skill-auto-selection");
+const { registerHermesSkillDraftRoutes } = require("./lib/hermes-skill-draft-routes");
+const { resolveAmbiguousAutoSelectedSkillIds } = require("./lib/hermes-skill-disambiguation");
 const { createAbortControllerFromRequest } = require("./lib/http-request-abort");
+const {
+	buildImageProxyRequestHeaders,
+	deriveAtlassianImageCandidatesFromUrl,
+	extractAtlassianImageCandidatesFromHtml,
+	parseImageProxyTarget,
+} = require("./lib/image-proxy");
 const {
 	createCapturedResponse,
 	createInProcessRequest,
@@ -119,6 +144,10 @@ const {
 	shouldSuppressHermesKnowledgeDirectSpecCard,
 } = require("./lib/hermes-direct-spec-suppression");
 const { buildDirectSpecWidgetParts } = require("./lib/direct-spec-widget-parts");
+const {
+	inferGeneratedMediaContentType,
+	resolveGeneratedMediaAbsolutePath,
+} = require("./lib/generated-media");
 const { withCanonicalPreviewBody } = require("./lib/widget-preview-payload");
 const { resolveAutomaticGenuiOutcome } = require("./lib/automatic-genui-outcome");
 const { assessToolFirstGenuiQuality } = require("./lib/tool-first-genui-quality");
@@ -232,6 +261,9 @@ const {
 	generatePlanMetadata,
 	getLatestPlanWidgetMetadata,
 } = require("./lib/plan-metadata");
+const {
+	generateDescriptionSummary,
+} = require("./lib/genui-description-summary");
 const {
 	createListeningPidReader,
 	restartRovoDevPort,
@@ -1403,6 +1435,53 @@ function resolveRovoAppDelegatedPrompt({
 	};
 }
 
+function normalizeHermesContextIds(value) {
+	return Array.isArray(value)
+		? Array.from(
+			new Set(
+				value.filter((item) => typeof item === "string" && item.trim().length > 0),
+			),
+		)
+		: [];
+}
+
+function buildNextHermesThreadContext({
+	currentHermesContext,
+	autoSelectedSkillIds,
+	pendingDraftIds,
+	selectedSkillIds,
+}) {
+	return {
+		selectedSkillIds: normalizeHermesContextIds(
+			selectedSkillIds ?? currentHermesContext?.selectedSkillIds,
+		),
+		autoSelectedSkillIds: normalizeHermesContextIds(
+			autoSelectedSkillIds ?? currentHermesContext?.autoSelectedSkillIds,
+		),
+		pendingDraftIds: normalizeHermesContextIds(
+		pendingDraftIds ?? currentHermesContext?.pendingDraftIds,
+		),
+	};
+}
+
+async function syncThreadPendingSkillDraftIds(threadId) {
+	if (!threadId) {
+		return null;
+	}
+
+	const currentThread = await rovoAppThreadManager.getThread(threadId);
+	if (!currentThread) {
+		return null;
+	}
+
+	return rovoAppThreadManager.updateThread(threadId, {
+		hermesContext: buildNextHermesThreadContext({
+			currentHermesContext: currentThread.hermesContext,
+			pendingDraftIds: await hermesSkillDraftManager.listPendingDraftIdsForThread(threadId),
+		}),
+	});
+}
+
 const rovoAppThreadManager = createRovoAppThreadManager({
 	baseDir: path.join(__dirname, "data"),
 	logger: console,
@@ -1413,6 +1492,9 @@ const checkpointManager = createCheckpointManager({
 });
 const skillsHubClient = createSkillsHubClient({
 	skillsDir: require("./lib/hermes-config").getHermesSkillsDir(),
+});
+const hermesSkillDraftManager = createHermesSkillDraftManager({
+	baseDir: path.join(__dirname, "data"),
 });
 const rovoAppVoteManager = createRovoAppVoteManager({
 	baseDir: path.join(__dirname, "data"),
@@ -2575,12 +2657,51 @@ async function consumeRovoAppManagedResponse({
 				});
 			}
 		};
+		const runHermesSkillReview = async () => {
+			try {
+				const reviewResult = await runHermesSkillCompanionReview({
+					conversationHistory: memoryCompanionHistory,
+					latestAssistantMessage,
+					latestUserMessage,
+					sourceThreadId: threadId,
+					upsertDraftImpl: hermesSkillDraftManager.upsertDraft,
+				});
+				if (!reviewResult.didReview || reviewResult.structuredSkillActions.length === 0) {
+					return;
+				}
+
+				const currentThread = threadId
+					? await rovoAppThreadManager.getThread(threadId)
+					: null;
+				if (threadId && currentThread) {
+					const pendingDraftIds = await hermesSkillDraftManager.listPendingDraftIdsForThread(threadId);
+					await rovoAppThreadManager.updateThread(threadId, {
+						hermesContext: buildNextHermesThreadContext({
+							currentHermesContext: currentThread.hermesContext,
+							pendingDraftIds,
+						}),
+					});
+				}
+
+				console.info("[HERMES] Skill companion reviewed completed Rovo App turn", {
+					threadId,
+					draftCount: reviewResult.structuredSkillActions.length,
+					responseText: reviewResult.responseText ?? null,
+				});
+			} catch (error) {
+				console.warn("[HERMES] Skill companion review failed:", {
+					threadId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+		};
 
 		if (explicitMemoryRequest) {
 			await runHermesMemoryReview();
 		} else {
 			void runHermesMemoryReview();
 		}
+		void runHermesSkillReview();
 	}
 	await finalizeRovoAppRun(threadId, run, messages);
 }
@@ -2680,24 +2801,65 @@ async function executeRovoAppManagedRun(run) {
 		typeof requestBody.artifactSteering === "object"
 			? requestBody.artifactSteering
 			: null;
-		const baseContextDescription = getNonEmptyString(requestBody.contextDescription);
-		const selectedHermesSkillIds = Array.isArray(requestHermesContext?.selectedSkillIds)
-			? requestHermesContext.selectedSkillIds
-			: Array.isArray(threadForSession?.hermesContext?.selectedSkillIds)
-				? threadForSession.hermesContext.selectedSkillIds
-				: [];
-		const delegationContextDescription = conversationSummary
-			? `[Voice delegation summary]\n${conversationSummary}`
-			: null;
-		let hermesContextDescription = null;
-		try {
-			hermesContextDescription = await buildRovoAppHermesContextDescription({
-				selectedSkillIds: selectedHermesSkillIds,
-			});
-		} catch (error) {
-			console.warn("[HERMES] Failed to build Hermes context for RovoDev chat:", error instanceof Error ? error.message : String(error));
+	const { message: latestUserMessage, conversationHistory } =
+		mapUiMessagesToConversation(requestMessages);
+	const baseContextDescription = getNonEmptyString(requestBody.contextDescription);
+	const selectedHermesSkillIds = Array.isArray(requestHermesContext?.selectedSkillIds)
+		? requestHermesContext.selectedSkillIds
+		: Array.isArray(threadForSession?.hermesContext?.selectedSkillIds)
+			? threadForSession.hermesContext.selectedSkillIds
+			: [];
+	let autoSelectedHermesSkillIds = [];
+	try {
+		const installedHermesSkills = await listHermesSkills();
+		const rankedCandidates = rankHermesSkillCandidates({
+			promptText: latestUserMessage,
+			selectedSkillIds: selectedHermesSkillIds,
+			skills: installedHermesSkills,
+		});
+		autoSelectedHermesSkillIds = autoSelectHermesSkillIds({
+			promptText: latestUserMessage,
+			selectedSkillIds: selectedHermesSkillIds,
+			skills: installedHermesSkills,
+		});
+		if (shouldDisambiguateRankedCandidates(rankedCandidates)) {
+			try {
+				autoSelectedHermesSkillIds = await resolveAmbiguousAutoSelectedSkillIds({
+					promptText: latestUserMessage,
+					rankedCandidates: rankedCandidates.slice(0, 5),
+					runBackgroundTaskImpl: runRovoDevBackgroundTask,
+				});
+			} catch (error) {
+				console.warn("[HERMES] Failed to disambiguate auto-selected Hermes skills:", error instanceof Error ? error.message : String(error));
+			}
 		}
-		const streamingArtifact =
+	} catch (error) {
+		console.warn("[HERMES] Failed to auto-select Hermes skills:", error instanceof Error ? error.message : String(error));
+	}
+	const delegationContextDescription = conversationSummary
+		? `[Voice delegation summary]\n${conversationSummary}`
+		: null;
+	let hermesContextDescription = null;
+	try {
+		hermesContextDescription = await buildRovoAppHermesContextDescription({
+			autoSelectedSkillIds: autoSelectedHermesSkillIds,
+			selectedSkillIds: selectedHermesSkillIds,
+		});
+	} catch (error) {
+		console.warn("[HERMES] Failed to build Hermes context for RovoDev chat:", error instanceof Error ? error.message : String(error));
+	}
+	if (threadId && threadForSession) {
+		void rovoAppThreadManager.updateThread(threadId, {
+			hermesContext: buildNextHermesThreadContext({
+				currentHermesContext: threadForSession.hermesContext,
+				autoSelectedSkillIds: autoSelectedHermesSkillIds,
+				selectedSkillIds: selectedHermesSkillIds,
+			}),
+		}).catch((error) => {
+			console.warn("[HERMES] Failed to persist resolved Hermes thread context:", error instanceof Error ? error.message : String(error));
+		});
+	}
+	const streamingArtifact =
 		requestBody.streamingArtifact &&
 		typeof requestBody.streamingArtifact === "object" &&
 		getNonEmptyString(requestBody.streamingArtifact.id)
@@ -2726,9 +2888,9 @@ async function executeRovoAppManagedRun(run) {
 	delete requestBody.origin;
 	delete requestBody.voiceMetadata;
 	delete requestBody.activeArtifact;
-		delete requestBody.executionMode;
-		delete requestBody.executionTask;
-		delete requestBody.hermesContext;
+	delete requestBody.executionMode;
+	delete requestBody.executionTask;
+	delete requestBody.hermesContext;
 
 	const requestIsPlanMode = requestBody.isPlanMode === true;
 	delete requestBody.isPlanMode;
@@ -2736,8 +2898,6 @@ async function executeRovoAppManagedRun(run) {
 	const requestArtifactCreationRetry = requestBody.artifactCreationRetry === true;
 	delete requestBody.artifactCreationRetry;
 
-	const { message: latestUserMessage, conversationHistory } =
-		mapUiMessagesToConversation(requestMessages);
 	const recentHistory = conversationHistory.slice(-5).map((msg) => ({
 		role: msg.type === "user" ? "user" : "assistant",
 		content: msg.content,
@@ -3340,48 +3500,6 @@ const orchestratorLog = createOrchestratorLog({
 
 const IMAGE_PROXY_TIMEOUT_MS = 15_000;
 const WEB_PROXY_TIMEOUT_MS = 30_000;
-const FIGMA_MCP_ASSET_PATH_PREFIX = "/api/mcp/asset/";
-const IMAGE_PROXY_ALLOWED_HOSTS = new Set(["figma.com", "www.figma.com"]);
-
-function parseImageProxyTarget(value) {
-	const normalizedValue = getNonEmptyString(value);
-	if (!normalizedValue) {
-		return {
-			error: "Missing required query parameter: src",
-		};
-	}
-
-	let parsedUrl;
-	try {
-		parsedUrl = new URL(normalizedValue);
-	} catch {
-		return {
-			error: "Invalid src URL",
-		};
-	}
-
-	const protocol = parsedUrl.protocol.toLowerCase();
-	if (protocol !== "https:" && protocol !== "http:") {
-		return {
-			error: "Only http(s) image URLs are supported",
-		};
-	}
-
-	const hostname = parsedUrl.hostname.toLowerCase();
-	if (!IMAGE_PROXY_ALLOWED_HOSTS.has(hostname)) {
-		return {
-			error: "Image host is not allowed",
-		};
-	}
-
-	if (!parsedUrl.pathname.startsWith(FIGMA_MCP_ASSET_PATH_PREFIX)) {
-		return {
-			error: "Only Figma MCP asset URLs are supported",
-		};
-	}
-
-	return { targetUrl: parsedUrl };
-}
 
 const WEB_PROXY_PRIVATE_IP_PATTERNS = [
 	/^localhost$/i,
@@ -4579,6 +4697,31 @@ app.post("/api/plan-title", async (req, res) => {
 	} catch (error) {
 		console.error("Plan title API error:", error);
 		return sendGatewayErrorResponse(res, error, "Failed to generate plan title");
+	}
+});
+
+app.post("/api/genui-description-summary", async (req, res) => {
+	try {
+		const { title, description } = req.body || {};
+
+		if (!description || typeof description !== "string" || !description.trim()) {
+			return res.status(400).json({ error: "A description is required" });
+		}
+
+		const result = await generateDescriptionSummary({
+			title,
+			description,
+			generateText: (options) =>
+				generateTextViaGateway({
+					...options,
+					backendPreference: "ai-gateway",
+				}),
+		});
+
+		return res.json(result);
+	} catch (error) {
+		console.warn("[GENUI-DESCRIPTION] AI Gateway unavailable:", error?.message || error);
+		return res.json({ shortDescription: null });
 	}
 });
 
@@ -11078,7 +11221,7 @@ app.post("/api/speech-transcription", async (req, res) => {
 
 app.get("/api/image-proxy", async (req, res) => {
 	const rawSrc = Array.isArray(req.query.src) ? req.query.src[0] : req.query.src;
-	const { targetUrl, error } = parseImageProxyTarget(rawSrc);
+	const { targetUrl, source, error } = parseImageProxyTarget(rawSrc);
 	if (error) {
 		return res.status(400).json({ error });
 	}
@@ -11089,45 +11232,76 @@ app.get("/api/image-proxy", async (req, res) => {
 	}, IMAGE_PROXY_TIMEOUT_MS);
 
 	try {
-		const upstreamResponse = await fetch(targetUrl.toString(), {
-			method: "GET",
-			headers: {
-				Accept: "image/*",
-				"User-Agent": "VPK-ImageProxy/1.0",
-			},
-			redirect: "follow",
-			signal: abortController.signal,
+		const candidateQueue = [
+			targetUrl,
+			...(source === "atlassian"
+				? deriveAtlassianImageCandidatesFromUrl(targetUrl)
+				: []),
+		];
+		const attemptedUrls = new Set();
+		let lastStatus = null;
+
+		while (candidateQueue.length > 0 && attemptedUrls.size < 8) {
+			const currentUrl = candidateQueue.shift();
+			if (!currentUrl) {
+				continue;
+			}
+
+			const currentUrlString = currentUrl.toString();
+			if (attemptedUrls.has(currentUrlString)) {
+				continue;
+			}
+			attemptedUrls.add(currentUrlString);
+
+			const upstreamResponse = await fetch(currentUrlString, {
+				method: "GET",
+				headers: buildImageProxyRequestHeaders(currentUrl),
+				redirect: "follow",
+				signal: abortController.signal,
+			});
+
+			if (!upstreamResponse.ok) {
+				lastStatus = upstreamResponse.status;
+				continue;
+			}
+
+			const contentType =
+				getNonEmptyString(upstreamResponse.headers.get("content-type")) ||
+				"application/octet-stream";
+
+			if (contentType.toLowerCase().startsWith("image/")) {
+				const payload = Buffer.from(await upstreamResponse.arrayBuffer());
+				const upstreamCacheControl = getNonEmptyString(
+					upstreamResponse.headers.get("cache-control")
+				);
+
+				res.setHeader("Content-Type", contentType);
+				res.setHeader("Content-Length", String(payload.length));
+				res.setHeader(
+					"Cache-Control",
+					upstreamCacheControl || "public, max-age=300, stale-while-revalidate=300"
+				);
+
+				return res.status(200).send(payload);
+			}
+
+			if (source === "atlassian") {
+				const htmlText = await upstreamResponse.text();
+				for (const derivedUrl of extractAtlassianImageCandidatesFromHtml(
+					htmlText,
+					currentUrl
+				)) {
+					candidateQueue.push(derivedUrl);
+				}
+			}
+		}
+
+		return res.status(502).json({
+			error:
+				lastStatus !== null
+					? `Image fetch failed (${lastStatus})`
+					: "Upstream response is not an image",
 		});
-
-		if (!upstreamResponse.ok) {
-			return res.status(502).json({
-				error: `Image fetch failed (${upstreamResponse.status})`,
-			});
-		}
-
-		const contentType =
-			getNonEmptyString(upstreamResponse.headers.get("content-type")) ||
-			"application/octet-stream";
-
-		if (!contentType.toLowerCase().startsWith("image/")) {
-			return res.status(502).json({
-				error: "Upstream response is not an image",
-			});
-		}
-
-		const payload = Buffer.from(await upstreamResponse.arrayBuffer());
-		const upstreamCacheControl = getNonEmptyString(
-			upstreamResponse.headers.get("cache-control")
-		);
-
-		res.setHeader("Content-Type", contentType);
-		res.setHeader("Content-Length", String(payload.length));
-		res.setHeader(
-			"Cache-Control",
-			upstreamCacheControl || "public, max-age=300, stale-while-revalidate=300"
-		);
-
-		return res.status(200).send(payload);
 	} catch (error) {
 		const isAbortError =
 			typeof error === "object" &&
@@ -12799,6 +12973,41 @@ app.get("/api/rovo-app/files/:fileId", async (req, res) => {
 	}
 });
 
+app.get("/api/rovo-app/generated-media", async (req, res) => {
+	try {
+		const requestedPath = Array.isArray(req.query.path)
+			? req.query.path[0]
+			: req.query.path;
+		const absolutePath = resolveGeneratedMediaAbsolutePath(
+			path.join(__dirname, ".."),
+			requestedPath,
+		);
+		if (!absolutePath) {
+			return res.status(400).json({ error: "Invalid generated media path" });
+		}
+
+		const contentType = inferGeneratedMediaContentType(requestedPath);
+		if (!contentType) {
+			return res.status(400).json({ error: "Unsupported generated media type" });
+		}
+
+		await require("node:fs/promises").access(absolutePath);
+		res.setHeader("Content-Type", contentType);
+		res.setHeader(
+			"Content-Disposition",
+			`inline; filename="${path.basename(absolutePath)}"`,
+		);
+		return res.sendFile(absolutePath);
+	} catch (error) {
+		if (error?.code === "ENOENT") {
+			return res.status(404).json({ error: "Generated media file not found" });
+		}
+
+		console.error("[FUTURE-CHAT] Failed to serve generated media:", error);
+		return res.status(500).json({ error: "Failed to serve generated media" });
+	}
+});
+
 // ─── Orchestrator Log Endpoints ──────────────────────────────────────────────
 
 app.get("/api/orchestrator/log", (req, res) => {
@@ -13246,6 +13455,14 @@ app.get("/api/skills", async (_req, res) => {
 	}
 });
 
+registerHermesSkillDraftRoutes(app, {
+	archiveSkillImpl: archiveHermesSkill,
+	createSkillFromBundleImpl: createHermesSkillFromBundle,
+	draftManager: hermesSkillDraftManager,
+	syncThreadPendingSkillDraftIdsImpl: syncThreadPendingSkillDraftIds,
+	updateSkillFromBundleImpl: updateHermesSkillFromBundle,
+});
+
 app.get("/api/skills/:category/:name", async (req, res) => {
 	try {
 		const skill = await getHermesSkill(req.params.category, req.params.name);
@@ -13258,6 +13475,23 @@ app.get("/api/skills/:category/:name", async (req, res) => {
 		}
 		return res.status(500).json({
 			error: "Failed to load Hermes skill",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+app.get("/api/skills/:category/:name/bundle", async (req, res) => {
+	try {
+		const skill = await getHermesSkillBundle(req.params.category, req.params.name);
+		return res.json({ skill });
+	} catch (error) {
+		if (error?.code === "ENOENT") {
+			return res.status(404).json({
+				error: "Hermes skill not found",
+			});
+		}
+		return res.status(500).json({
+			error: "Failed to load Hermes skill bundle",
 			details: error instanceof Error ? error.message : String(error),
 		});
 	}

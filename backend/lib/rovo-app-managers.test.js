@@ -26,6 +26,11 @@ test("rovo app thread manager persists and lists thread metadata", async () => {
 		provider: "anthropic",
 		sessionId: "session-1",
 		sessionMode: "persistent",
+		hermesContext: {
+			selectedSkillIds: ["research/llm-wiki"],
+			autoSelectedSkillIds: ["research/arxiv"],
+			pendingDraftIds: ["draft-1"],
+		},
 		activeRun: {
 			id: "run-1",
 			status: "queued",
@@ -43,6 +48,9 @@ test("rovo app thread manager persists and lists thread metadata", async () => {
 	assert.equal(createdThread.modelId, "anthropic/claude-4.5-sonnet");
 	assert.equal(createdThread.sessionId, "session-1");
 	assert.equal(createdThread.sessionMode, "persistent");
+	assert.deepEqual(createdThread.hermesContext?.selectedSkillIds, ["research/llm-wiki"]);
+	assert.deepEqual(createdThread.hermesContext?.autoSelectedSkillIds, ["research/arxiv"]);
+	assert.deepEqual(createdThread.hermesContext?.pendingDraftIds, ["draft-1"]);
 	assert.equal(createdThread.activeRun?.status, "queued");
 	assert.equal(createdThread.activeRun?.rovoPort, 8001);
 	assert.equal(createdThread.activeRun?.sessionId, "session-1");
@@ -52,11 +60,17 @@ test("rovo app thread manager persists and lists thread metadata", async () => {
 		title: "Updated launch plan",
 		activeDocumentId: "doc-1",
 		sessionMode: "ephemeral",
+		hermesContext: {
+			selectedSkillIds: ["research/llm-wiki", "research/llm-wiki"],
+			autoSelectedSkillIds: ["research/arxiv", "research/arxiv"],
+			pendingDraftIds: ["draft-2", "draft-2"],
+		},
 	});
 
 	assert.equal(updatedThread?.title, "Updated launch plan");
 	assert.equal(updatedThread?.activeDocumentId, "doc-1");
 	assert.equal(updatedThread?.sessionMode, "ephemeral");
+	assert.deepEqual(updatedThread?.hermesContext?.pendingDraftIds, ["draft-2"]);
 
 	const listedThreads = await manager.listThreads();
 	assert.equal(listedThreads.length, 1);

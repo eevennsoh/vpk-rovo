@@ -2,7 +2,11 @@ const test = require("node:test");
 const { describe, it } = test;
 const assert = require("node:assert/strict");
 
-const { buildUserMessage, DEEP_PLAN_INSTRUCTION } = require("./config");
+const {
+	buildUserMessage,
+	DEEP_PLAN_INSTRUCTION,
+	HERMES_SKILL_DISCOVERABILITY_INSTRUCTION,
+} = require("./config");
 
 test("buildUserMessage plain-chat profile omits heavy protocol blocks", () => {
 	const message = buildUserMessage("hi", [], undefined, {
@@ -37,6 +41,22 @@ test("buildUserMessage includes durable memory protocol in default profile", () 
 	assert.match(message, /\[Durable Memory Protocol\]/);
 	assert.match(message, /durable memory means Hermes persistent memory/i);
 	assert.match(message, /repo lesson logging only for repo\/operator corrections/i);
+});
+
+test("buildUserMessage includes Hermes skill discoverability protocol in default profile", () => {
+	const message = buildUserMessage("Can you use llm-wiki?", [], undefined);
+
+	assert.match(message, /\[Hermes Skill Discoverability Protocol\]/);
+	assert.match(message, /source of truth for which Hermes skills are installed/i);
+	assert.match(message, /installed but not currently selected for this thread/i);
+	assert.match(message, /prefer loading it directly with the `get_skill` tool/i);
+});
+
+test("Hermes skill discoverability protocol distinguishes discoverable skills from active skills", () => {
+	assert.match(HERMES_SKILL_DISCOVERABILITY_INSTRUCTION, /\[Hermes Skills Catalog\]/);
+	assert.match(HERMES_SKILL_DISCOVERABILITY_INSTRUCTION, /\[Hermes Skills\]/);
+	assert.match(HERMES_SKILL_DISCOVERABILITY_INSTRUCTION, /get_skill/i);
+	assert.match(HERMES_SKILL_DISCOVERABILITY_INSTRUCTION, /next turn/i);
 });
 
 it("buildUserMessage plain-chat profile limits conversation history", () => {

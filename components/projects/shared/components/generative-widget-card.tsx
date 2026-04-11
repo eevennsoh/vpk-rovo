@@ -26,9 +26,12 @@ import {
 	parseGenerativeWidget,
 	resolveGenerativeWidgetMetadata,
 	createBodyOnlySpec,
+	enrichGenerativeWidgetProfilePhotos,
+	fetchDescriptionSummary,
 	type ParsedGenerativeWidget,
 	type GenerativeWidgetMetadata,
 } from "@/components/projects/shared/lib/generative-widget";
+import type { ThinkingToolCallSummary } from "@/lib/rovo-ui-messages";
 import { formatContentTypeLabel } from "@/components/projects/shared/lib/generative-widget-branding";
 import { ContentTypeTile } from "./content-type-tile";
 import { GenuiExportMenu } from "./genui-export-menu";
@@ -101,6 +104,7 @@ interface GenerativeWidgetCardProps {
 	widgetData: unknown;
 	className?: string;
 	cardAnimation?: GenerativeCardAnimationProps;
+	thinkingToolCalls?: readonly ThinkingToolCallSummary[];
 	onPrimaryAction?: (
 		payload: GenerativeWidgetPrimaryActionPayload
 	) => Promise<void> | void;
@@ -453,6 +457,7 @@ export function GenerativeWidgetCard({
 	widgetData,
 	className,
 	cardAnimation,
+	thinkingToolCalls,
 	onPrimaryAction,
 }: Readonly<GenerativeWidgetCardProps>): ReactNode {
 	const [previewOpen, setPreviewOpen] = useState(false);
@@ -460,13 +465,41 @@ export function GenerativeWidgetCard({
 		() => parseGenerativeWidget(widgetType, widgetData),
 		[widgetData, widgetType]
 	);
-	const metadata = useMemo(
-		() => (parsedWidget ? resolveGenerativeWidgetMetadata(parsedWidget) : null),
-		[parsedWidget]
+	const resolvedWidget = useMemo(
+		() =>
+			parsedWidget
+				? enrichGenerativeWidgetProfilePhotos(
+					parsedWidget,
+					thinkingToolCalls ?? [],
+				)
+				: null,
+		[parsedWidget, thinkingToolCalls]
 	);
-	const contentTypeLabel = metadata ? formatContentTypeLabel(metadata.contentType) : "";
+	const metadata = useMemo(
+		() => (resolvedWidget ? resolveGenerativeWidgetMetadata(resolvedWidget) : null),
+		[resolvedWidget]
+	);
+	const [shortDescription, setShortDescription] = useState<string | null>(null);
+
+	useEffect(() => {
+		if (!metadata) return;
+		let cancelled = false;
+		fetchDescriptionSummary(metadata.title, metadata.description).then((result) => {
+			if (!cancelled && result) setShortDescription(result);
+		});
+		return () => { cancelled = true; };
+	}, [metadata]);
+
+	const displayMetadata = useMemo(
+		() =>
+			metadata && shortDescription
+				? { ...metadata, description: shortDescription }
+				: metadata,
+		[metadata, shortDescription],
+	);
+	const contentTypeLabel = displayMetadata ? formatContentTypeLabel(displayMetadata.contentType) : "";
 	const [genuiState, setGenuiState] = useState<Record<string, unknown>>(
-		() => (parsedWidget ? toInitialGenuiState(parsedWidget) : {})
+		() => (resolvedWidget ? toInitialGenuiState(resolvedWidget) : {})
 	);
 
 	const handleGenuiStateChange = useCallback(
@@ -483,12 +516,12 @@ export function GenerativeWidgetCard({
 		[]
 	);
 
-	const footerActions = metadata?.actions ?? [];
+	const footerActions = displayMetadata?.actions ?? [];
 	const shouldShowFooterActions = footerActions.length > 0;
 
 	const handleAction = useCallback((actionLabel: string) => {
 		if (
-			!parsedWidget ||
+			!resolvedWidget ||
 			!actionLabel ||
 			!metadata ||
 			!metadata.title ||
@@ -505,16 +538,16 @@ export function GenerativeWidgetCard({
 			description: metadata.description,
 			formState: genuiState,
 		});
-	}, [parsedWidget, metadata, onPrimaryAction, genuiState]);
+	}, [resolvedWidget, metadata, onPrimaryAction, genuiState]);
 
-	if (!parsedWidget || !metadata) return null;
+	if (!resolvedWidget || !displayMetadata) return null;
 
 	return (
 		<div className={cn("pb-2", className)}>
 			<Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
 					<GenerativeWidgetCardShell
-						bodyWidget={parsedWidget}
-						metadata={metadata}
+						bodyWidget={resolvedWidget}
+						metadata={displayMetadata}
 						cardAnimation={cardAnimation}
 						onOpenPreview={() => setPreviewOpen(true)}
 						onAction={handleAction}
@@ -525,21 +558,21 @@ export function GenerativeWidgetCard({
 					<DialogHeader className="mx-0 mt-0 flex-row items-center border-b p-4 sm:p-6">
 						<div className="flex min-w-0 flex-1 items-center gap-3">
 								<ContentTypeTile
-									contentType={metadata.contentType}
+									contentType={displayMetadata.contentType}
 									label={contentTypeLabel}
-									title={metadata.title}
-									description={metadata.description}
-									sourceName={metadata.source?.name}
-									sourceLogoSrc={metadata.source?.logoSrc}
-									iconHint={metadata.iconHint}
-									hintText={metadata.iconHintText}
+									title={displayMetadata.title}
+									description={displayMetadata.description}
+									sourceName={displayMetadata.source?.name}
+									sourceLogoSrc={displayMetadata.source?.logoSrc}
+									iconHint={displayMetadata.iconHint}
+									hintText={displayMetadata.iconHintText}
 								/>
 							<div className="min-w-0 flex-1 space-y-1">
 								<DialogTitle className="truncate">
-									{metadata.title}
+									{displayMetadata.title}
 								</DialogTitle>
 								<DialogDescription className="line-clamp-2">
-									{metadata.description}
+									{displayMetadata.description}
 								</DialogDescription>
 							</div>
 						</div>
@@ -549,10 +582,10 @@ export function GenerativeWidgetCard({
 					</DialogHeader>
 					<div className="min-h-0 overflow-y-auto p-4 sm:p-6">
 						<PreviewBodyRenderer
-							body={parsedWidget.body}
+							body={resolvedWidget.body}
 							surface="dialog"
-							title={metadata.title}
-							summary={parsedWidget.summary}
+							title={displayMetadata.title}
+							summary={resolvedWidget.summary}
 							onStateChange={handleGenuiStateChange}
 						/>
 					</div>

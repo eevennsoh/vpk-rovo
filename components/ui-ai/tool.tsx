@@ -429,7 +429,7 @@ export const ToolOutput = ({
   suppressedRawOutput,
   ...props
 }: ToolOutputProps) => {
-  if (!(output || errorText)) {
+  if ((output === undefined || output === null) && !errorText) {
     return null;
   }
 
@@ -444,18 +444,28 @@ export const ToolOutput = ({
   const errorPreview = errorText
     ? toToolValuePreview(errorText, { maxChars: 320, maxLines: 6 })
     : null;
-  const shouldShowTruncationNotice =
-    outputTruncated === true || outputValuePreview.truncated;
   const formattedOutputBytes =
     typeof outputBytes === "number" ? formatByteSize(outputBytes) : null;
   const exactRawOutputText =
     output !== undefined && output !== null ? stringifyExactToolValue(output) : "";
   const hasExactRawOutput = exactRawOutputText.length > 0;
+  const shouldPreferExactRawOutput =
+    !errorText &&
+    hasExactRawOutput &&
+    !isValidElement(output) &&
+    suppressedRawOutput !== true;
+  const displayedOutputText = shouldPreferExactRawOutput
+    ? exactRawOutputText
+    : outputValuePreview.text;
+  const shouldShowTruncationNotice =
+    !shouldPreferExactRawOutput &&
+    (outputTruncated === true || outputValuePreview.truncated);
   const previewMatchesExactRaw =
-    hasExactRawOutput && outputValuePreview.text === exactRawOutputText;
+    hasExactRawOutput && displayedOutputText === exactRawOutputText;
   const shouldShowRawOutputDisclosure =
     hasExactRawOutput &&
     suppressedRawOutput !== true &&
+    !shouldPreferExactRawOutput &&
     (!previewMatchesExactRaw || shouldShowTruncationNotice || Boolean(errorText));
 
   const outputLanguage =
@@ -466,7 +476,7 @@ export const ToolOutput = ({
   const Output = (
     <CodeBlock
       className="text-[12px] leading-5"
-      code={outputValuePreview.text}
+      code={displayedOutputText}
       language={outputLanguage}
     >
       <CodeBlockHeader>
@@ -491,7 +501,7 @@ export const ToolOutput = ({
           <Lozenge variant="danger" size="compact" className="max-w-full shrink">
             {errorPreview?.text ?? errorText}
           </Lozenge>
-          {outputValuePreview.text ? (
+          {displayedOutputText ? (
             <div
               className={cn(
                 "overflow-x-auto rounded-md text-xs [&_table]:w-full bg-muted/50 text-foreground"
@@ -501,7 +511,7 @@ export const ToolOutput = ({
             </div>
           ) : null}
         </>
-      ) : outputValuePreview.text ? (
+      ) : displayedOutputText ? (
         <>
           <div
             className={cn(

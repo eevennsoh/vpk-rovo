@@ -58,6 +58,7 @@ import {
 import {
 	sanitizeRovoAppAssistantText,
 	shouldRenderRovoAppAssistantActions,
+	shouldRenderRovoAppAssistantText,
 	shouldRenderRovoAppAssistantMessage,
 	shouldRenderRovoAppVisibleWidget,
 	shouldRenderRovoAppWidget,
@@ -918,10 +919,16 @@ function AssistantMessage({
 	});
 
 	const shouldRenderPlanWidget = shouldShowWidget && parsedPlanWidget !== null;
-	const shouldRenderAssistantText =
-		Boolean(text) &&
-		(isTextPresentation || isFallbackRoute || !widget) &&
-		!shouldRenderPlanWidget;
+	const shouldRenderAssistantText = shouldRenderRovoAppAssistantText({
+		hasText: Boolean(text),
+		hasTurnComplete,
+		hasToolActivity: hasThinkingToolCalls || hasTraceDataSignals,
+		hasWidgetSignal: Boolean(widget) || widgetLoading?.data.loading === true,
+		isFallbackRoute,
+		isResponseInFlight,
+		isTextPresentation,
+		shouldRenderPlanWidget,
+	});
 	const shouldRenderAssistantActions =
 		shouldRenderRovoAppAssistantActions({
 			hasArtifactCard: Boolean(artifactCard),
@@ -1125,6 +1132,7 @@ function AssistantMessage({
 					) : shouldShowWidget && widget && !shouldHideResolvedQuestionCard ? (
 							<div className="w-full">
 								<GenerativeWidgetCard
+									thinkingToolCalls={thinkingToolCalls}
 									widgetData={widget.data.payload}
 									widgetType={widget.data.type ?? "message"}
 								/>

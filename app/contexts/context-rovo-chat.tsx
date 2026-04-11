@@ -826,7 +826,11 @@ export function RovoChatProvider({
 				}
 				const partData = part as { data?: { type?: string; loading?: boolean } };
 				const widgetType = partData.data?.type;
-				if (widgetType === "image-preview" || widgetType === "audio-preview") {
+				if (
+					widgetType === "image-preview" ||
+					widgetType === "audio-preview" ||
+					widgetType === "video-preview"
+				) {
 					latestMediaLoadingPart = { loading: !!partData.data?.loading };
 				}
 			}

@@ -3,12 +3,14 @@
 import type { FileUIPart } from "ai";
 import { motion, useReducedMotion } from "motion/react";
 import { type CSSProperties, startTransition, useCallback, useEffect, useMemo, useRef, useState, ViewTransition } from "react";
+import { useRouter } from "next/navigation";
 import { ArtifactPanel } from "@/components/ui-ai/artifact";
 import { ChatTimelineNavigator } from "@/components/blocks/chat-timeline/chat-timeline-navigator";
 import { CreateButton } from "@/components/blocks/top-navigation/components/create-button";
 import { RovoAppHeader } from "@/components/projects/rovo-app/components/rovo-app-header";
 import { RovoAppComposer } from "@/components/projects/rovo-app/components/rovo-app-composer";
 import { RovoAppMessages } from "@/components/projects/rovo-app/components/rovo-app-messages";
+import { RovoAppHermesSkillDraftBar } from "@/components/projects/rovo-app/components/rovo-app-hermes-skill-draft-bar";
 import { RovoAppShellPaneLayout } from "@/components/projects/rovo-app/components/rovo-app-shell-pane-layout";
 import { RovoAppSidebar } from "@/components/projects/rovo-app/components/rovo-app-sidebar";
 import { RovoAppToolApprovalBar } from "@/components/projects/rovo-app/components/rovo-app-tool-approval-bar";
@@ -33,6 +35,10 @@ import {
 } from "@/components/projects/rovo-app/lib/rovo-app-shell-layout";
 import { getRovoAppSmartGenerationLayoutContext } from "@/components/projects/rovo-app/lib/rovo-app-smart-generation-layout";
 import { deriveRovoAppTimelineItems } from "@/components/projects/rovo-app/lib/rovo-app-timeline";
+import {
+	buildComposerHermesContext,
+	shouldResetComposerHermesSkillSelection,
+} from "@/components/projects/rovo-app/lib/rovo-app-hermes-skill-selection";
 import { buildRovoAppThreadPath } from "@/components/projects/rovo-app/lib/rovo-app-thread-route-sync";
 import { createRovoAppUserMessage } from "@/components/projects/rovo-app/lib/rovo-app-user-message";
 import { useLiveVoice } from "@/components/projects/rovo-app/hooks/use-live-voice";
@@ -54,6 +60,7 @@ import {
 	TOP_NAV_PADDING_PX,
 } from "@/components/blocks/top-navigation/layout-constants";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -77,15 +84,18 @@ import type { PlanApprovalSelection } from "@/components/projects/shared/lib/pla
 import { getLatestPendingPlanWidget, type ParsedPlanWidgetPayload } from "@/components/projects/shared/lib/plan-widget";
 import { useDismissibleCards } from "@/components/projects/shared/hooks/use-dismissible-cards";
 import {
+	approveSkillDraft,
 	fetchMemoryDocuments,
+	fetchSkillDraftDetail,
+	fetchSkillDrafts,
 	fetchSkills,
+	rejectSkillDraft,
 } from "@/components/projects/control-plane/lib/control-plane-api";
-import {
-	updateRovoAppThread,
-} from "@/components/projects/rovo-app/lib/api";
 import type {
 	HermesMemoryDocument,
 	HermesMemoryTarget,
+	HermesSkillDraftDetail,
+	HermesSkillDraftSummary,
 	HermesSkillSummary,
 } from "@/lib/rovo-runtime-types";
 import type { RovoAppHermesContext } from "@/lib/rovo-app-types";
@@ -146,17 +156,6 @@ function mergeContextDescriptions(
 		.filter((part): part is string => Boolean(part));
 
 	return mergedParts.length > 0 ? mergedParts.join("\n\n") : undefined;
-}
-
-function areSkillIdListsEqual(
-	left: ReadonlyArray<string>,
-	right: ReadonlyArray<string>,
-): boolean {
-	if (left.length !== right.length) {
-		return false;
-	}
-
-	return left.every((value, index) => value === right[index]);
 }
 
 function buildHermesMemoryLabel(
@@ -398,6 +397,7 @@ export function RovoAppShell({
 	embedded = false,
 	initialThreadId = null,
 }: Readonly<RovoAppShellProps>) {
+	const router = useRouter();
 	const nav = useTopNavigation();
 	const [viewportWidthPx, setViewportWidthPx] = useState<number | null>(null);
 	const [shellSize, setShellSize] = useState({ width: 0, height: 0 });
@@ -415,16 +415,19 @@ export function RovoAppShell({
 		useHmrReloadSuppression(chat.isStreaming);
 		const chatRef = useRef(chat);
 		chatRef.current = chat;
-		const currentThread = useMemo(
+		const [hermesMemoryDocuments, setHermesMemoryDocuments] = useState<Record<HermesMemoryTarget, HermesMemoryDocument> | null>(null);
+		const [availableHermesSkills, setAvailableHermesSkills] = useState<HermesSkillSummary[]>([]);
+		const [skillDrafts, setSkillDrafts] = useState<HermesSkillDraftSummary[]>([]);
+		const [activePendingSkillDraftIndex, setActivePendingSkillDraftIndex] = useState(0);
+		const [activePendingSkillDraftDetail, setActivePendingSkillDraftDetail] = useState<HermesSkillDraftDetail | null>(null);
+		const [submittingSkillDraftId, setSubmittingSkillDraftId] = useState<string | null>(null);
+		const [selectedHermesSkillIds, setSelectedHermesSkillIds] = useState<string[]>([]);
+		const [showHermesSkillPicker, setShowHermesSkillPicker] = useState(false);
+		const previousActiveThreadIdRef = useRef<string | null>(null);
+		const activeThreadRecord = useMemo(
 			() => chat.threads.find((thread) => thread.id === chat.activeThreadId) ?? null,
 			[chat.activeThreadId, chat.threads],
 		);
-		const [hermesMemoryDocuments, setHermesMemoryDocuments] = useState<Record<HermesMemoryTarget, HermesMemoryDocument> | null>(null);
-		const [availableHermesSkills, setAvailableHermesSkills] = useState<HermesSkillSummary[]>([]);
-		const [selectedHermesSkillIds, setSelectedHermesSkillIds] = useState<string[]>([]);
-		const [showHermesSkillPicker, setShowHermesSkillPicker] = useState(false);
-		const lastPersistedHermesContextRef = useRef<string | null>(null);
-		const previousActiveThreadIdRef = useRef<string | null>(null);
 		const selectedHermesSkills = useMemo(
 			() =>
 				selectedHermesSkillIds
@@ -432,6 +435,21 @@ export function RovoAppShell({
 					.filter((skill): skill is HermesSkillSummary => skill !== null),
 			[selectedHermesSkillIds, availableHermesSkills],
 		);
+		const autoSelectedHermesSkills = useMemo(
+			() =>
+				(activeThreadRecord?.hermesContext?.autoSelectedSkillIds ?? [])
+					.map((skillId) => availableHermesSkills.find((skill) => skill.id === skillId) ?? null)
+					.filter((skill): skill is HermesSkillSummary => skill !== null),
+			[activeThreadRecord?.hermesContext?.autoSelectedSkillIds, availableHermesSkills],
+		);
+		const pendingThreadSkillDrafts = useMemo(() => {
+			const pendingDraftIdSet = new Set(activeThreadRecord?.hermesContext?.pendingDraftIds ?? []);
+			return skillDrafts.filter((draft) =>
+				draft.status === "pending" && pendingDraftIdSet.has(draft.id),
+			);
+		}, [activeThreadRecord?.hermesContext?.pendingDraftIds, skillDrafts]);
+		const activePendingSkillDraft =
+			pendingThreadSkillDrafts[activePendingSkillDraftIndex] ?? pendingThreadSkillDrafts[0] ?? null;
 		const hermesMemoryLabel = useMemo(
 			() => buildHermesMemoryLabel(hermesMemoryDocuments),
 			[hermesMemoryDocuments],
@@ -442,9 +460,10 @@ export function RovoAppShell({
 
 			async function loadHermesSurfaceData() {
 				try {
-					const [nextMemoryDocuments, nextSkills] = await Promise.all([
+					const [nextMemoryDocuments, nextSkills, nextDrafts] = await Promise.all([
 						fetchMemoryDocuments(),
 						fetchSkills(),
+						fetchSkillDrafts("pending"),
 					]);
 					if (cancelled) {
 						return;
@@ -452,10 +471,12 @@ export function RovoAppShell({
 
 					setHermesMemoryDocuments(nextMemoryDocuments);
 					setAvailableHermesSkills(nextSkills);
+					setSkillDrafts(nextDrafts);
 				} catch {
 					if (!cancelled) {
 						setHermesMemoryDocuments(null);
 						setAvailableHermesSkills([]);
+						setSkillDrafts([]);
 					}
 				}
 			}
@@ -472,46 +493,66 @@ export function RovoAppShell({
 			const previousThreadId = previousActiveThreadIdRef.current;
 			previousActiveThreadIdRef.current = chat.activeThreadId;
 
-			if (chat.activeThreadId === null) {
-				if (previousThreadId !== null) {
-					setSelectedHermesSkillIds([]);
-					lastPersistedHermesContextRef.current = null;
-				}
+			if (
+				shouldResetComposerHermesSkillSelection({
+					previousThreadId,
+					nextThreadId: chat.activeThreadId,
+				})
+			) {
+				setSelectedHermesSkillIds(activeThreadRecord?.hermesContext?.selectedSkillIds ?? []);
+			}
+		}, [activeThreadRecord?.hermesContext?.selectedSkillIds, chat.activeThreadId]);
+		useEffect(() => {
+			if (
+				chat.activeThreadId
+				&& selectedHermesSkillIds.length === 0
+				&& (activeThreadRecord?.hermesContext?.selectedSkillIds?.length ?? 0) > 0
+			) {
+				setSelectedHermesSkillIds(activeThreadRecord?.hermesContext?.selectedSkillIds ?? []);
+			}
+		}, [
+			activeThreadRecord?.hermesContext?.selectedSkillIds,
+			chat.activeThreadId,
+			selectedHermesSkillIds.length,
+		]);
+		useEffect(() => {
+			if (pendingThreadSkillDrafts.length === 0) {
+				setActivePendingSkillDraftIndex(0);
+				setActivePendingSkillDraftDetail(null);
 				return;
 			}
 
-			const persistedSkillIds = currentThread?.hermesContext?.selectedSkillIds ?? [];
-			if (!areSkillIdListsEqual(persistedSkillIds, selectedHermesSkillIds)) {
-				setSelectedHermesSkillIds(persistedSkillIds);
-				lastPersistedHermesContextRef.current = `${chat.activeThreadId}:${persistedSkillIds.join(",")}`;
-			}
-		}, [chat.activeThreadId, currentThread?.hermesContext, selectedHermesSkillIds]);
+			setActivePendingSkillDraftIndex((currentIndex) =>
+				Math.min(currentIndex, pendingThreadSkillDrafts.length - 1),
+			);
+		}, [pendingThreadSkillDrafts]);
 
 		useEffect(() => {
-			if (!chat.activeThreadId) {
+			if (!activePendingSkillDraft?.id) {
+				setActivePendingSkillDraftDetail(null);
 				return;
 			}
 
-			const currentKey = `${chat.activeThreadId}:${selectedHermesSkillIds.join(",")}`;
-			const persistedSkillIds = currentThread?.hermesContext?.selectedSkillIds ?? [];
-			if (areSkillIdListsEqual(persistedSkillIds, selectedHermesSkillIds)) {
-				lastPersistedHermesContextRef.current = currentKey;
-				return;
+			let cancelled = false;
+
+			async function loadDraftDetail() {
+				try {
+					const detail = await fetchSkillDraftDetail(activePendingSkillDraft.id);
+					if (!cancelled) {
+						setActivePendingSkillDraftDetail(detail);
+					}
+				} catch {
+					if (!cancelled) {
+						setActivePendingSkillDraftDetail(null);
+					}
+				}
 			}
 
-			if (lastPersistedHermesContextRef.current === currentKey) {
-				return;
-			}
-
-			lastPersistedHermesContextRef.current = currentKey;
-			void updateRovoAppThread(chat.activeThreadId, {
-				hermesContext: {
-					selectedSkillIds: selectedHermesSkillIds,
-				},
-			}).catch(() => {
-				lastPersistedHermesContextRef.current = null;
-			});
-		}, [chat.activeThreadId, currentThread?.hermesContext, selectedHermesSkillIds]);
+			void loadDraftDetail();
+			return () => {
+				cancelled = true;
+			};
+		}, [activePendingSkillDraft?.id]);
 
 		const toggleHermesSkillSelection = useCallback((skillId: string) => {
 			setSelectedHermesSkillIds((previousSkillIds) =>
@@ -520,13 +561,13 @@ export function RovoAppShell({
 					: [...previousSkillIds, skillId],
 			);
 		}, []);
+		const clearHermesSkillSelection = useCallback(() => {
+			setSelectedHermesSkillIds([]);
+		}, []);
 
 		const buildHermesPromptOptions = useCallback(
 			(contextDescription?: string) => {
-				const hermesContext: RovoAppHermesContext | undefined =
-					selectedHermesSkillIds.length > 0
-						? { selectedSkillIds: selectedHermesSkillIds }
-						: undefined;
+				const hermesContext = buildComposerHermesContext(selectedHermesSkillIds);
 				return {
 					contextDescription,
 					hermesContext,
@@ -756,6 +797,48 @@ export function RovoAppShell({
 			}
 		},
 		[chat],
+	);
+	const handleHermesSkillDraftApprove = useCallback(
+		async (draft: HermesSkillDraftSummary) => {
+			setSubmittingSkillDraftId(draft.id);
+			try {
+				await approveSkillDraft(draft.id);
+				const [nextSkills, nextDrafts] = await Promise.all([
+					fetchSkills(),
+					fetchSkillDrafts("pending"),
+				]);
+				setAvailableHermesSkills(nextSkills);
+				setSkillDrafts(nextDrafts);
+				setActivePendingSkillDraftDetail((currentDraft) =>
+					currentDraft?.id === draft.id ? null : currentDraft,
+				);
+			} finally {
+				setSubmittingSkillDraftId((currentId) => currentId === draft.id ? null : currentId);
+			}
+		},
+		[],
+	);
+	const handleHermesSkillDraftReject = useCallback(
+		async (draft: HermesSkillDraftSummary) => {
+			setSubmittingSkillDraftId(draft.id);
+			try {
+				await rejectSkillDraft(draft.id);
+				const nextDrafts = await fetchSkillDrafts("pending");
+				setSkillDrafts(nextDrafts);
+				setActivePendingSkillDraftDetail((currentDraft) =>
+					currentDraft?.id === draft.id ? null : currentDraft,
+				);
+			} finally {
+				setSubmittingSkillDraftId((currentId) => currentId === draft.id ? null : currentId);
+			}
+		},
+		[],
+	);
+	const handleOpenHermesSkillDraftReview = useCallback(
+		() => {
+			router.push("/rovo-app/skills");
+		},
+		[router],
 	);
 	useEffect(() => {
 		if (!chat.activeToolApproval) {
@@ -1483,6 +1566,8 @@ export function RovoAppShell({
 				const realtimeChat = chatRef.current as RovoAppRealtimeShellAdapter;
 				const realtimeVoice = realtime as RealtimeVoiceShellResult;
 				const contextDescription = annotationContextRef.current ?? undefined;
+				const hermesPromptOptions = buildHermesPromptOptions(contextDescription);
+				const shouldClearHermesSkillSelection = Boolean(hermesPromptOptions.hermesContext);
 				const latestUserMessageIdBeforeSubmit = getLatestUserMessageId(chat.messages);
 
 				if (isRealtimeActive) {
@@ -1490,10 +1575,13 @@ export function RovoAppShell({
 						queueTypedScrollAnchor("realtime", latestUserMessageIdBeforeSubmit);
 						try {
 							await realtimeChat.submitRealtimeText({
-								...buildHermesPromptOptions(contextDescription),
+								...hermesPromptOptions,
 								files,
 								text,
 							});
+							if (shouldClearHermesSkillSelection) {
+								clearHermesSkillSelection();
+							}
 						} catch (error) {
 							resetTypedScrollAnchorState();
 							throw error;
@@ -1545,10 +1633,13 @@ export function RovoAppShell({
 				queueTypedScrollAnchor("standard", latestUserMessageIdBeforeSubmit);
 				try {
 					await realtimeChat.submitPrompt({
-						...buildHermesPromptOptions(contextDescription),
+						...hermesPromptOptions,
 						files,
 						text,
 					});
+					if (shouldClearHermesSkillSelection) {
+						clearHermesSkillSelection();
+					}
 				} catch (error) {
 					setOptimisticUserMessage(null);
 					resetTypedScrollAnchorState();
@@ -1565,6 +1656,7 @@ export function RovoAppShell({
 				resetTypedScrollAnchorState,
 				setOptimisticUserMessage,
 				buildHermesPromptOptions,
+				clearHermesSkillSelection,
 				chat.shouldQueueNextSubmission,
 			],
 		);
@@ -2204,6 +2296,21 @@ export function RovoAppShell({
 									/>
 								</div>
 							) : null}
+							{activePendingSkillDraft ? (
+								<div className="mb-3">
+									<RovoAppHermesSkillDraftBar
+										activeIndex={activePendingSkillDraftIndex}
+										draft={activePendingSkillDraft}
+										draftDetail={activePendingSkillDraftDetail}
+										isSubmitting={submittingSkillDraftId === activePendingSkillDraft.id}
+										onApprove={handleHermesSkillDraftApprove}
+										onOpenReview={handleOpenHermesSkillDraftReview}
+										onReject={handleHermesSkillDraftReject}
+										onSelectIndex={setActivePendingSkillDraftIndex}
+										totalDrafts={pendingThreadSkillDrafts.length}
+									/>
+								</div>
+							) : null}
 							<motion.div
 								initial={showHomeState && !shouldReduceMotion ? { opacity: 0, y: 20 } : false}
 								animate={{ opacity: 1, y: 0 }}
@@ -2241,6 +2348,44 @@ export function RovoAppShell({
 															})}
 														</div>
 													</ScrollArea>
+												</CardContent>
+											</Card>
+										</div>
+									) : null}
+									{autoSelectedHermesSkills.length > 0 || pendingThreadSkillDrafts.length > 0 ? (
+										<div className="mb-3">
+											<Card size="sm">
+												<CardHeader className="pb-2">
+													<CardTitle>Hermes turn state</CardTitle>
+													<CardDescription>
+														Server-resolved skills and Hermes draft-review state for this thread.
+													</CardDescription>
+												</CardHeader>
+												<CardContent className="space-y-3">
+													{autoSelectedHermesSkills.length > 0 ? (
+														<div className="space-y-2">
+															<div className="text-xs font-medium uppercase tracking-wide text-text-subtlest">
+																Auto-loaded on the last turn
+															</div>
+															<div className="flex flex-wrap gap-2">
+																{autoSelectedHermesSkills.map((skill) => (
+																	<Badge key={skill.id} variant="neutral">
+																		{skill.title}
+																	</Badge>
+																))}
+															</div>
+														</div>
+													) : null}
+													{pendingThreadSkillDrafts.length > 0 ? (
+														<div className="space-y-2">
+															<div className="text-xs font-medium uppercase tracking-wide text-text-subtlest">
+																Pending inline review
+															</div>
+															<div className="text-sm text-text-subtle">
+																{pendingThreadSkillDrafts.length} draft{pendingThreadSkillDrafts.length === 1 ? "" : "s"} waiting for approval in this thread.
+															</div>
+														</div>
+													) : null}
 												</CardContent>
 											</Card>
 										</div>

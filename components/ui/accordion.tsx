@@ -2,9 +2,8 @@
 
 import { Accordion as AccordionPrimitive } from "@base-ui/react/accordion"
 
+import { ChevronDownIcon, ChevronUpIcon } from "@/components/ui/vpk-icons"
 import { cn } from "@/lib/utils"
-import ChevronDownIcon from "@atlaskit/icon/core/chevron-down"
-import ChevronUpIcon from "@atlaskit/icon/core/chevron-up"
 
 function Accordion({ className, ...props }: AccordionPrimitive.Root.Props) {
   return (
@@ -42,8 +41,8 @@ function AccordionTrigger({
         {...props}
       >
         {children}
-        <span data-slot="accordion-trigger-icon" className="pointer-events-none shrink-0 group-aria-expanded/accordion-trigger:hidden"><ChevronDownIcon label="" spacing="none" /></span>
-        <span data-slot="accordion-trigger-icon" className="pointer-events-none hidden shrink-0 group-aria-expanded/accordion-trigger:inline"><ChevronUpIcon label="" spacing="none" /></span>
+        <span data-slot="accordion-trigger-icon" className="pointer-events-none shrink-0 group-aria-expanded/accordion-trigger:hidden"><ChevronDownIcon size="small" /></span>
+        <span data-slot="accordion-trigger-icon" className="pointer-events-none hidden shrink-0 group-aria-expanded/accordion-trigger:inline"><ChevronUpIcon size="small" /></span>
       </AccordionPrimitive.Trigger>
     </AccordionPrimitive.Header>
   )

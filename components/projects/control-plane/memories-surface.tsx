@@ -33,7 +33,7 @@ export function MemoriesSurfacePage() {
 		memory: createEmptyDocument("memory"),
 		user: createEmptyDocument("user"),
 	});
-	const [activeTarget, setActiveTarget] = useState<HermesMemoryTarget>("memory");
+	const activeTarget: HermesMemoryTarget = "memory";
 	const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
 	const [draftText, setDraftText] = useState("");
 	const [isLoading, setIsLoading] = useState(true);
@@ -83,18 +83,14 @@ export function MemoriesSurfacePage() {
 		return () => {
 			cancelled = true;
 		};
-	}, [activeTarget]);
+	}, []);
 
 	useEffect(() => {
 		const fallbackEntry = entries[0] ?? null;
 		const nextSelectedEntry = entries.find((entry) => entry.id === selectedEntryId) ?? fallbackEntry;
 		setSelectedEntryId(nextSelectedEntry?.id ?? null);
 		setDraftText(nextSelectedEntry?.text ?? "");
-	}, [activeTarget, entries, selectedEntryId]);
-
-	function handleSelectTarget(target: HermesMemoryTarget) {
-		setActiveTarget(target);
-	}
+	}, [entries, selectedEntryId]);
 
 	function handleSelectEntry(entryId: string) {
 		const entry = entries.find((item) => item.id === entryId) ?? null;
@@ -201,7 +197,7 @@ export function MemoriesSurfacePage() {
 
 	return (
 		<ControlPlanePageShell
-			description="Read and edit the local Hermes memory model with live entry counts and character usage."
+			description="Read and edit Hermes core memory (MEMORY.md) with live entry counts and character usage."
 			title="Memories"
 			actions={
 				<div className="flex items-center gap-2">
@@ -222,40 +218,18 @@ export function MemoriesSurfacePage() {
 						</Card>
 					) : null}
 
-					<div className="grid gap-3 sm:grid-cols-2">
-						<Card>
-							<CardHeader className="pb-2">
-								<CardDescription>Target</CardDescription>
-								<CardTitle>{activeTarget === "memory" ? "MEMORY.md" : "USER.md"}</CardTitle>
-							</CardHeader>
-							<CardContent className="flex flex-wrap gap-2">
-								<Button
-									variant={activeTarget === "memory" ? "default" : "outline"}
-									onClick={() => handleSelectTarget("memory")}
-								>
-									MEMORY.md
-								</Button>
-								<Button
-									variant={activeTarget === "user" ? "default" : "outline"}
-									onClick={() => handleSelectTarget("user")}
-								>
-									USER.md
-								</Button>
-							</CardContent>
-						</Card>
-						<Card>
-							<CardHeader className="pb-2">
-								<CardDescription>Usage</CardDescription>
-								<CardTitle>{usage.percentage}%</CardTitle>
-							</CardHeader>
-							<CardContent className="space-y-2">
-								<Progress value={usage.percentage} />
-								<div className="text-xs text-text-subtle">
-									{activeDocument.totalChars.toLocaleString()} chars used{activeDocument.limit ? ` of ${activeDocument.limit.toLocaleString()}` : ""}.
-								</div>
-							</CardContent>
-						</Card>
-					</div>
+					<Card>
+						<CardHeader className="pb-2">
+							<CardDescription>Usage</CardDescription>
+							<CardTitle>{usage.percentage}%</CardTitle>
+						</CardHeader>
+						<CardContent className="space-y-2">
+							<Progress value={usage.percentage} />
+							<div className="text-xs text-text-subtle">
+								{activeDocument.totalChars.toLocaleString()} chars used{activeDocument.limit ? ` of ${activeDocument.limit.toLocaleString()}` : ""}.
+							</div>
+						</CardContent>
+					</Card>
 
 					<Card>
 						<CardHeader>

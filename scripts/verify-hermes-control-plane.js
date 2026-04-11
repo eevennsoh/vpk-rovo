@@ -124,11 +124,11 @@ async function main() {
 	printSection("Skills");
 	const skillsPayload = await readJson(`${backendBaseUrl}/api/skills`);
 	expect(Array.isArray(skillsPayload?.skills), "Skills payload was missing the skills array.");
-	const demoSkill = skillsPayload.skills.find(
-		(skill) => skill.category === "demo" && skill.name === "test-skill",
+	const vendoredSkill = skillsPayload.skills.find(
+		(skill) => skill.category === "research" && skill.name === "llm-wiki",
 	);
-	expect(demoSkill, "Expected demo/test-skill to be discoverable.");
-	console.log(`Verified ${skillsPayload.skills.length} skills. demo/test-skill is present.`);
+	expect(vendoredSkill, "Expected research/llm-wiki to be discoverable from the vendored upstream snapshot.");
+	console.log(`Verified ${skillsPayload.skills.length} skills. research/llm-wiki is present.`);
 
 	printSection("Jobs");
 	const jobsPayload = await readJson(`${backendBaseUrl}/api/jobs`);

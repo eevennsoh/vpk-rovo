@@ -3,10 +3,13 @@ const path = require("node:path");
 
 const {
 	getHermesHomeDir,
+	getHermesSkillsDir,
+	getVendoredHermesSkillsDir,
 	parseHermesSkillsConfig,
 	readHermesConfigText,
 	writeHermesSkillConfig,
 } = require("./hermes-config");
+const { validateSkillBundle } = require("./hermes-skills-hub");
 
 function normalizeSkillCategory(relativePathSegments) {
 	if (relativePathSegments.length <= 1) {
@@ -62,6 +65,107 @@ function stripSkillContent(skill) {
 	const nextSkill = { ...skill };
 	delete nextSkill.content;
 	return nextSkill;
+}
+
+function toSkillCategoryPath(category) {
+	if (typeof category !== "string" || category.trim().length === 0 || category === "local") {
+		return [];
+	}
+
+	return category
+		.split("__")
+		.map((segment) => segment.trim())
+		.filter(Boolean);
+}
+
+function buildSkillBundleFromInput(input) {
+	const name = typeof input?.name === "string" ? input.name.trim() : "";
+	const category = typeof input?.category === "string" ? input.category.trim() : "";
+	const files = Array.isArray(input?.files)
+		? input.files
+				.filter((file) => file && typeof file === "object")
+				.map((file) => ({
+					path: typeof file.path === "string" ? file.path.trim() : "",
+					content: typeof file.content === "string" ? file.content : "",
+				}))
+				.filter((file) => file.path.length > 0)
+		: [];
+
+	return {
+		name,
+		category,
+		files,
+	};
+}
+
+async function walkFiles(currentDirectory, rootDirectory, files) {
+	const directoryEntries = await readDirectoryEntries(currentDirectory);
+
+	for (const entry of directoryEntries) {
+		if (entry.name.startsWith(".")) {
+			continue;
+		}
+
+		const entryPath = path.join(currentDirectory, entry.name);
+		if (entry.isDirectory()) {
+			await walkFiles(entryPath, rootDirectory, files);
+			continue;
+		}
+
+		if (!entry.isFile()) {
+			continue;
+		}
+
+		files.push({
+			path: path.relative(rootDirectory, entryPath).split(path.sep).join("/"),
+			content: await fs.readFile(entryPath, "utf8"),
+		});
+	}
+}
+
+async function readSkillBundleFromDir(skillDir) {
+	const files = [];
+	await walkFiles(skillDir, skillDir, files);
+	return files.sort((left, right) => left.path.localeCompare(right.path));
+}
+
+async function writeSkillBundleToDir(skillDir, bundle) {
+	const stagingRootDir = await fs.mkdtemp(
+		path.join(path.dirname(skillDir), ".tmp-hermes-skill-"),
+	);
+
+	try {
+		for (const file of bundle.files) {
+			const filePath = path.join(stagingRootDir, file.path);
+			await fs.mkdir(path.dirname(filePath), { recursive: true });
+			await fs.writeFile(filePath, file.content, "utf8");
+		}
+
+		await fs.rm(skillDir, { recursive: true, force: true });
+		await fs.rename(stagingRootDir, skillDir);
+	} catch (error) {
+		await fs.rm(stagingRootDir, { recursive: true, force: true }).catch(() => {});
+		throw error;
+	}
+}
+
+async function setSkillDisabledState(skill, enabled) {
+	const configText = await readHermesConfigText();
+	const skillConfig = parseHermesSkillsConfig(configText);
+	const removeCandidates = new Set(buildSkillConfigCandidates(skill));
+	const nextDisabled = skillConfig.disabled.filter((candidate) => !removeCandidates.has(candidate));
+	const nextPlatformDisabled = skillConfig.platformDisabled.filter(
+		(candidate) => !removeCandidates.has(candidate),
+	);
+
+	if (!enabled) {
+		nextDisabled.push(skill.id);
+	}
+
+	await writeHermesSkillConfig({
+		disabled: Array.from(new Set(nextDisabled)).sort(),
+		platformDisabled: Array.from(new Set(nextPlatformDisabled)).sort(),
+	});
 }
 
 async function readDirectoryEntries(directoryPath) {
@@ -124,6 +228,7 @@ async function walkSkillDirectory(baseDirectory, source, currentDirectory, skill
 async function collectSkills() {
 	const homeDir = getHermesHomeDir();
 	const skillsRoot = path.join(homeDir, "skills");
+	const vendoredSkillsRoot = getVendoredHermesSkillsDir();
 	const configText = await readHermesConfigText();
 	const skillConfig = parseHermesSkillsConfig(configText);
 	const allSkillRoots = [
@@ -132,14 +237,27 @@ async function collectSkills() {
 			directory,
 			source: "external",
 		})),
+		{ directory: vendoredSkillsRoot, source: "vendored-upstream" },
 	];
 
-	const skills = [];
+	const skillsById = new Map();
 	for (const skillRoot of allSkillRoots) {
-		await walkSkillDirectory(skillRoot.directory, skillRoot.source, skillRoot.directory, skills);
+		const discoveredSkills = [];
+		await walkSkillDirectory(
+			skillRoot.directory,
+			skillRoot.source,
+			skillRoot.directory,
+			discoveredSkills,
+		);
+
+		for (const skill of discoveredSkills) {
+			if (!skillsById.has(skill.id)) {
+				skillsById.set(skill.id, skill);
+			}
+		}
 	}
 
-	return skills
+	return Array.from(skillsById.values())
 		.map((skill) => ({
 			...skill,
 			enabled: !isSkillDisabled(skill, skillConfig),
@@ -195,32 +313,109 @@ async function getHermesSkillRecord(category, name) {
 	}
 }
 
-async function toggleHermesSkill(category, name, enabled) {
+async function getHermesSkillBundle(category, name) {
 	const skill = await getHermesSkill(category, name);
-	const configText = await readHermesConfigText();
-	const skillConfig = parseHermesSkillsConfig(configText);
-	const removeCandidates = new Set(buildSkillConfigCandidates(skill));
-	const nextDisabled = skillConfig.disabled.filter((candidate) => !removeCandidates.has(candidate));
-	const nextPlatformDisabled = skillConfig.platformDisabled.filter(
-		(candidate) => !removeCandidates.has(candidate),
-	);
+	return {
+		...skill,
+		files: await readSkillBundleFromDir(skill.path),
+	};
+}
 
-	if (!enabled) {
-		nextDisabled.push(skill.id);
+async function createHermesSkillFromBundle(input) {
+	const bundle = buildSkillBundleFromInput(input);
+	const validation = validateSkillBundle(bundle);
+	if (!validation.valid) {
+		const error = new Error(validation.error);
+		error.code = "INVALID_INPUT";
+		throw error;
 	}
 
-	await writeHermesSkillConfig({
-		disabled: Array.from(new Set(nextDisabled)).sort(),
-		platformDisabled: Array.from(new Set(nextPlatformDisabled)).sort(),
-	});
+	const categorySegments = toSkillCategoryPath(bundle.category);
+	const skillDir = path.join(getHermesSkillsDir(), ...categorySegments, bundle.name);
+	try {
+		await fs.access(skillDir);
+		const error = new Error(`Skill ${bundle.category}/${bundle.name} already exists.`);
+		error.code = "EEXIST";
+		throw error;
+	} catch (error) {
+		if (error?.code !== "ENOENT") {
+			throw error;
+		}
+	}
 
+	await fs.mkdir(path.dirname(skillDir), { recursive: true });
+	await writeSkillBundleToDir(skillDir, bundle);
+	const createdSkill = await getHermesSkill(
+		categorySegments.join("__") || "local",
+		bundle.name,
+	);
+	await setSkillDisabledState(createdSkill, true);
+	return getHermesSkillBundle(createdSkill.category, createdSkill.name);
+}
+
+async function updateHermesSkillFromBundle(input) {
+	const bundle = buildSkillBundleFromInput(input);
+	const validation = validateSkillBundle(bundle);
+	if (!validation.valid) {
+		const error = new Error(validation.error);
+		error.code = "INVALID_INPUT";
+		throw error;
+	}
+
+	const existingSkill = await getHermesSkill(bundle.category, bundle.name);
+	if (existingSkill.source !== "local") {
+		const error = new Error(`Only local Hermes skills can be updated: ${bundle.category}/${bundle.name}`);
+		error.code = "INVALID_INPUT";
+		throw error;
+	}
+
+	await writeSkillBundleToDir(existingSkill.path, bundle);
+	return getHermesSkillBundle(existingSkill.category, existingSkill.name);
+}
+
+async function archiveHermesSkill(category, name) {
+	const existingSkill = await getHermesSkill(category, name);
+	if (existingSkill.source !== "local") {
+		const error = new Error(`Only local Hermes skills can be archived: ${category}/${name}`);
+		error.code = "INVALID_INPUT";
+		throw error;
+	}
+
+	const archiveTimestamp = new Date().toISOString().replace(/[:.]/gu, "-");
+	const archiveRootDir = path.join(
+		getHermesHomeDir(),
+		"archive",
+		"skills",
+		archiveTimestamp,
+	);
+	const archivePath = path.join(
+		archiveRootDir,
+		...toSkillCategoryPath(existingSkill.category),
+		existingSkill.name,
+	);
+	await fs.mkdir(path.dirname(archivePath), { recursive: true });
+	await fs.rename(existingSkill.path, archivePath);
+	await setSkillDisabledState(existingSkill, false);
+	return {
+		...existingSkill,
+		archivedPath: archivePath,
+	};
+}
+
+async function toggleHermesSkill(category, name, enabled) {
+	const skill = await getHermesSkill(category, name);
+	await setSkillDisabledState(skill, enabled);
 	return getHermesSkill(category, name);
 }
 
 module.exports = {
+	archiveHermesSkill,
+	createHermesSkillFromBundle,
 	getHermesSkill,
+	getHermesSkillBundle,
 	getHermesSkillRecord,
 	listHermesSkills,
 	listHermesSkillRecords,
 	toggleHermesSkill,
+	updateHermesSkillFromBundle,
 };

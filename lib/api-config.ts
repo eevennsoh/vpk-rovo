@@ -31,6 +31,7 @@ export const API_ENDPOINTS = {
 	CHAT_SDK: `${API_BASE_URL}/api/chat-sdk`,
 	CHAT_TITLE: `${API_BASE_URL}/api/chat-title`,
 	PLAN_TITLE: `${API_BASE_URL}/api/plan-title`,
+	GENUI_DESCRIPTION_SUMMARY: `${API_BASE_URL}/api/genui-description-summary`,
 	CHAT_CANCEL: `${API_BASE_URL}/api/chat-cancel`,
 	HEALTH: `${API_BASE_URL}/api/health`,
 	STATUS: `${API_BASE_URL}/api/status`,
@@ -51,6 +52,7 @@ export const API_ENDPOINTS = {
 	JOBS: `${API_BASE_URL}/api/jobs`,
 	MEMORIES: `${API_BASE_URL}/api/memories`,
 	SKILLS: `${API_BASE_URL}/api/skills`,
+	SKILL_DRAFTS: `${API_BASE_URL}/api/skills/drafts`,
 	SESSION_SEARCH: `${API_BASE_URL}/api/sessions/search`,
 	CHECKPOINTS: `${API_BASE_URL}/api/checkpoints`,
 	checkpoint: (id: string) =>
@@ -106,6 +108,14 @@ export const API_ENDPOINTS = {
 		`${API_BASE_URL}/api/memories/${encodeURIComponent(target)}/entry`,
 	skill: (category: string, name: string) =>
 		`${API_BASE_URL}/api/skills/${encodeURIComponent(category)}/${encodeURIComponent(name)}`,
+	skillBundle: (category: string, name: string) =>
+		`${API_BASE_URL}/api/skills/${encodeURIComponent(category)}/${encodeURIComponent(name)}/bundle`,
+	skillDraft: (draftId: string) =>
+		`${API_BASE_URL}/api/skills/drafts/${encodeURIComponent(draftId)}`,
+	skillDraftApprove: (draftId: string) =>
+		`${API_BASE_URL}/api/skills/drafts/${encodeURIComponent(draftId)}/approve`,
+	skillDraftReject: (draftId: string) =>
+		`${API_BASE_URL}/api/skills/drafts/${encodeURIComponent(draftId)}/reject`,
 	skillToggle: (category: string, name: string) =>
 		`${API_BASE_URL}/api/skills/${encodeURIComponent(category)}/${encodeURIComponent(name)}/toggle`,
 	SPEECH_TRANSCRIPTION: `${API_BASE_URL}/api/speech-transcription`,
