@@ -25,46 +25,6 @@ Rules:
 Return strict JSON only:
 {"intent":"normal|audio|image","complexity":"simple|complex","confidence":0.0,"reason":"short reason"}`;
 
-/**
- * Regex patterns for lightweight pre-classification of obvious media intents.
- * These run BEFORE the LLM classifier to avoid unnecessary round-trips for
- * clear-cut cases like "generate an image of..." or "create a sound of...".
- */
-const IMAGE_PRE_PATTERNS = [
-	/\b(?:generate|create|make|draw|design|produce|render)\b.*\b(?:image|picture|photo|illustration|icon|logo|artwork|portrait|poster|banner|thumbnail)\b/i,
-	/\b(?:image|picture|photo|illustration|icon|logo|artwork|portrait|poster|banner|thumbnail)\b.*\b(?:of|for|showing|depicting|with)\b/i,
-	/\b(?:generate|create|make|draw|design|produce|render)\b\s+(?:a|an|the|some|me)\s+\b\w+\s*(?:image|picture|photo|illustration|icon|logo)\b/i,
-];
-
-const AUDIO_PRE_PATTERNS = [
-	/\b(?:generate|create|make|produce|render|synthesize)\b.*\b(?:sound|audio|voice|narration|speech|tts|sound\s*effect|sfx|music|tone|jingle)\b/i,
-	/\b(?:sound|audio|voice|narration|speech|tts|sound\s*effect|sfx)\b.*\b(?:of|for|that|like)\b/i,
-	/\b(?:read|speak|narrate|say)\b.*\b(?:aloud|out\s*loud|this|that|it)\b/i,
-	/\b(?:text[\s-]*to[\s-]*speech|tts)\b/i,
-];
-
-/**
- * Negative patterns that indicate the user is NOT requesting media generation
- * even if media keywords appear (e.g., "find me an image", "what image format").
- */
-const MEDIA_NEGATIVE_PATTERNS = [
-	/\b(?:find|search|look\s*up|show\s*me|get|fetch|retrieve|download|upload|link|url|format|size|resolution|edit|crop|resize|compress)\b/i,
-	/\b(?:what|how|why|where|when|which|explain|describe|tell\s*me\s*about)\b.*\b(?:image|picture|photo|sound|audio)\b/i,
-];
-
-/**
- * Lightweight regex/keyword pre-classification for obvious media intents.
- * Runs synchronously before the LLM classifier to skip the round-trip
- * for clear-cut media requests.
- *
- * @param {string} message - The user's latest message text.
- * @returns {{ intent: "audio" | "image" | null, confidence: number, reason: string }}
- *   Returns intent=null when pre-classification is inconclusive (fall through to LLM).
- */
-function preClassifyMediaIntent(message) {
-	return { intent: null, confidence: 0, reason: "disabled-local-preclassification" };
-}
-
 function normalizeIntent(value) {
 	const normalized = getNonEmptyString(value)?.toLowerCase();
 	if (!normalized) {
@@ -300,5 +260,4 @@ module.exports = {
 	parseClassification,
 	buildClassifierPrompt,
 	classifySmartGenerationIntent,
-	preClassifyMediaIntent,
 };

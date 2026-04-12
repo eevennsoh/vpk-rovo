@@ -24,6 +24,8 @@ interface LeftNavigationProps {
 	windowWidth: number;
 	isVisible: boolean;
 	isAppSwitcherOpen: boolean;
+	/** While dragging the sidebar width: disables `left` transitions on nav controls and fades out the collapse toggle. */
+	isSidebarResizing?: boolean;
 	hideAppSwitcher?: boolean;
 	separatorLineOffsetPx?: number;
 	onToggleSidebar: () => void;
@@ -39,6 +41,7 @@ export function LeftNavigation({
 	windowWidth,
 	isVisible,
 	isAppSwitcherOpen,
+	isSidebarResizing = false,
 	hideAppSwitcher = false,
 	separatorLineOffsetPx = TOP_NAV_LEFT_SECTION_WIDTH_PX,
 	onToggleSidebar,
@@ -68,6 +71,10 @@ export function LeftNavigation({
 		(hideAppSwitcher ? 0 : TOP_NAV_COLLAPSED_CONTROL_STEP_PX) +
 		(isVisible ? 0 : TOP_NAV_COLLAPSED_CONTROL_STEP_PX);
 
+	const absPositionTransition = isSidebarResizing
+		? "none"
+		: "left var(--duration-medium) var(--ease-in-out)";
+
 	const containerStyle = useMemo(() => {
 		const base = {
 			display: "flex",
@@ -95,7 +102,9 @@ export function LeftNavigation({
 	return (
 		<div style={containerStyle}>
 			<SidebarToggle
+				hideWhileResizing={isSidebarResizing}
 				isVisible={isVisible}
+				leftTransition={absPositionTransition}
 				offsetPx={sidebarToggleOffsetPx}
 				onToggle={onToggleSidebar}
 				onHoverEnter={onHoverEnter}
@@ -107,6 +116,7 @@ export function LeftNavigation({
 					isOpen={isAppSwitcherOpen}
 					isVisible={isVisible}
 					buttonRef={appSwitcherButtonRef}
+					leftTransition={absPositionTransition}
 					menuRef={appSwitcherMenuRef}
 					onToggle={onToggleAppSwitcher}
 					onNavigate={onNavigate}
@@ -117,7 +127,7 @@ export function LeftNavigation({
 				style={{
 					position: "absolute",
 					left: `${productButtonLeftPx}px`,
-					transition: "left var(--duration-medium) var(--ease-in-out)",
+					transition: absPositionTransition,
 					display: "flex",
 					alignItems: "center",
 					height: "100%",
@@ -149,7 +159,10 @@ export function LeftNavigation({
 }
 
 interface SidebarToggleProps {
+	/** True while the sidebar width drag is active (pointer down on resize handle). */
+	hideWhileResizing: boolean;
 	isVisible: boolean;
+	leftTransition: string;
 	offsetPx: number;
 	onToggle: () => void;
 	onHoverEnter: () => void;
@@ -157,18 +170,29 @@ interface SidebarToggleProps {
 }
 
 function SidebarToggle({
+	hideWhileResizing,
 	isVisible,
+	leftTransition,
 	offsetPx,
 	onToggle,
 	onHoverEnter,
 	onHoverLeave,
 }: Readonly<SidebarToggleProps>) {
+	const wrapperTransition = useMemo(() => {
+		const opacityPart = "opacity var(--duration-medium) var(--ease-in-out)";
+		if (leftTransition === "none") {
+			return opacityPart;
+		}
+		return `${leftTransition}, ${opacityPart}`;
+	}, [leftTransition]);
+
 	return (
 		<div
 			style={{
 				position: "absolute",
 				left: isVisible ? `${offsetPx}px` : "0",
-				transition: "left var(--duration-medium) var(--ease-in-out)",
+				opacity: hideWhileResizing ? 0 : 1,
+				transition: wrapperTransition,
 				display: "flex",
 				alignItems: "center",
 				height: "100%",
@@ -176,13 +200,15 @@ function SidebarToggle({
 			}}
 		>
 			<Button
+				aria-hidden={hideWhileResizing ? true : undefined}
 				aria-label={isVisible ? "Collapse sidebar" : "Expand sidebar"}
 				size="icon"
+				tabIndex={hideWhileResizing ? -1 : 0}
 				variant="ghost"
 				onClick={onToggle}
 				onMouseEnter={onHoverEnter}
 				onMouseLeave={onHoverLeave}
-				style={{ pointerEvents: "auto" }}
+				style={{ pointerEvents: hideWhileResizing ? "none" : "auto" }}
 			>
 				{isVisible ? <SidebarCollapseIcon label="" color={token("color.icon.subtle")} /> : <SidebarExpandIcon label="" color={token("color.icon.subtle")} />}
 			</Button>
@@ -194,6 +220,7 @@ interface AppSwitcherProps {
 	isOpen: boolean;
 	isVisible: boolean;
 	buttonRef: React.RefObject<HTMLButtonElement | null>;
+	leftTransition: string;
 	menuRef: React.RefObject<HTMLDivElement | null>;
 	onToggle: () => void;
 	onNavigate: (path: string) => void;
@@ -203,6 +230,7 @@ function AppSwitcher({
 	isOpen,
 	isVisible,
 	buttonRef,
+	leftTransition,
 	menuRef,
 	onToggle,
 	onNavigate,
@@ -212,7 +240,7 @@ function AppSwitcher({
 			style={{
 				position: "absolute",
 				left: isVisible ? "0" : `${TOP_NAV_COLLAPSED_CONTROL_STEP_PX}px`,
-				transition: "left var(--duration-medium) var(--ease-in-out)",
+				transition: leftTransition,
 				display: "flex",
 				alignItems: "center",
 				height: "100%",

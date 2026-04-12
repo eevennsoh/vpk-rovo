@@ -136,7 +136,10 @@ export function RovoAppSurfaceShell({ children }: Readonly<RovoAppSurfaceShellPr
 					<SidebarResizeHandle
 						data-active={sidebarResize.isResizing ? "" : undefined}
 						data-will-collapse={sidebarResize.willCollapse ? "" : undefined}
+						onDoubleClick={sidebarResize.onResizeHandleDoubleClick}
 						onPointerDown={sidebarResize.onResizeHandlePointerDown}
+						onPointerEnter={sidebarResize.onResizeHandlePointerEnter}
+						onPointerLeave={sidebarResize.onResizeHandlePointerLeave}
 					/>
 				}
 				threads={threads}
@@ -150,7 +153,13 @@ export function RovoAppSurfaceShell({ children }: Readonly<RovoAppSurfaceShellPr
 					"fixed top-0 left-0 z-50 flex h-12 items-center px-3 transition-[width,border-color] duration-medium ease-in-out",
 					sidebarResize.isResizing && "transition-none",
 					sidebarOpen
-						? "w-(--sidebar-width) overflow-x-clip border-r border-border"
+						? cn(
+								"w-(--sidebar-width) overflow-x-clip border-r",
+								sidebarResize.isResizing ||
+									sidebarResize.isResizeHandleHovered
+									? "border-border-selected"
+									: "border-border",
+							)
 						: "w-40 border-b border-border",
 				)}
 				style={{ backgroundColor: token("elevation.surface"), viewTransitionName: "persistent-sidebar" as never }}
@@ -160,6 +169,7 @@ export function RovoAppSurfaceShell({ children }: Readonly<RovoAppSurfaceShellPr
 					windowWidth={nav.windowWidth}
 					isVisible={nav.isVisible}
 					isAppSwitcherOpen={nav.isAppSwitcherOpen}
+					isSidebarResizing={sidebarResize.isResizing}
 					hideAppSwitcher
 					separatorLineOffsetPx={sidebarResize.sidebarWidth - TOP_NAV_PADDING_PX}
 					onToggleSidebar={nav.toggleSidebar}

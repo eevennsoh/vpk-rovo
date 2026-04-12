@@ -233,10 +233,9 @@ function createSkillsShSource(auth) {
 	/**
 	 * Extract security audit statuses from detail page HTML.
 	 * @param {string} html
-	 * @param {string} _identifier
 	 * @returns {Record<string, string>}
 	 */
-	function _extractSecurityAudits(html, _identifier) {
+	function _extractSecurityAudits(html) {
 		/** @type {Record<string, string>} */
 		const audits = {};
 		for (const audit of ["agent-trust-hub", "socket", "snyk"]) {

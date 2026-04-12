@@ -664,7 +664,7 @@ async function createWikiWithQueuedRaw() {
 
 // Mock LLM response for ingest
 function createMockExecutor() {
-	return async ({ prompt }) => {
+	return async () => {
 		// Return a structured JSON response simulating what the LLM would generate
 		return {
 			backend: "mock",

@@ -8,7 +8,6 @@ const {
 	inferRovoAppArtifactKindFromRequest,
 	normalizeRovoAppArtifactKind,
 } = require("./rovo-app-artifact-kind");
-const { isConversationalMessage } = require("./planning-question-gate");
 
 function normalizeArtifactKind(value) {
 	return normalizeRovoAppArtifactKind(value);
@@ -261,13 +260,7 @@ function fallbackRovoAppArtifactIntent({
 	};
 }
 
-function resolveFastRovoAppArtifactIntent({
-	activeArtifact,
-	artifactSteering,
-	latestUserMessage,
-	streamingArtifact,
-}) {
-	const normalizedMessage = getNonEmptyString(latestUserMessage) || "";
+function resolveFastRovoAppArtifactIntent() {
 	return null;
 }
 

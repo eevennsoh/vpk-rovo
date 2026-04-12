@@ -6,8 +6,8 @@ const {
 	getNonEmptyString,
 } = require("./shared-utils");
 const {
+	executeStructuredFallbackTask,
 	parseStructuredJsonResponse,
-	runRovoDevBackgroundTask,
 } = require("./rovo-task-executor");
 const { validateSkillBundle } = require("./hermes-skills-hub");
 
@@ -169,16 +169,28 @@ function parseStructuredHermesSkillFallback(text) {
 		return null;
 	}
 
-	const actionsSource = Array.isArray(payload.actions) ? payload.actions : [];
+	const actionsSource = Array.isArray(payload.actions) ? payload.actions : null;
+	if (!actionsSource) {
+		return null;
+	}
 	const actions = actionsSource
 		.map(normalizeStructuredSkillAction)
 		.filter(Boolean);
+	if (actionsSource.length > 0 && actions.length === 0) {
+		return null;
+	}
 
 	return {
 		mode,
 		summary: getNonEmptyString(payload.summary),
 		actions,
 	};
+}
+
+function createStructuredSkillCompanionError(message) {
+	const error = new Error(message);
+	error.code = "HERMES_SKILL_COMPANION_INVALID_OUTPUT";
+	return error;
 }
 
 async function applyStructuredHermesSkillActions(
@@ -205,10 +217,31 @@ async function applyStructuredHermesSkillActions(
 	return appliedActions;
 }
 
+async function executeSkillCompanionViaGateway({ prompt, signal, system, timeoutMs }) {
+	const fallbackResult = await executeStructuredFallbackTask({
+		prompt,
+		signal,
+		system,
+		timeoutMs,
+	});
+	const structuredResult = parseStructuredHermesSkillFallback(fallbackResult.text);
+	if (!structuredResult) {
+		throw createStructuredSkillCompanionError(
+			"Hermes skill companion returned invalid structured output.",
+		);
+	}
+	return {
+		backend: "ai-gateway",
+		didRun: true,
+		responseText: fallbackResult.text,
+		structuredResult,
+	};
+}
+
 async function runHermesSkillCompanionReview({
 	applyStructuredSkillActionsImpl = applyStructuredHermesSkillActions,
 	conversationHistory,
-	executeBackgroundTaskImpl = runRovoDevBackgroundTask,
+	executeBackgroundTaskImpl = executeSkillCompanionViaGateway,
 	installedSkillsImpl = listHermesSkills,
 	latestAssistantMessage,
 	latestUserMessage,
@@ -246,24 +279,28 @@ async function runHermesSkillCompanionReview({
 			signal: abortController.signal,
 			timeoutMs,
 		});
-		const structuredSkillActions = payload.structuredResult
-			? await applyStructuredSkillActionsImpl(payload.structuredResult.actions, {
+		if (!payload?.structuredResult) {
+			throw createStructuredSkillCompanionError(
+				"Hermes skill companion review completed without structured actions metadata.",
+			);
+		}
+		const structuredSkillActions = await applyStructuredSkillActionsImpl(
+			payload.structuredResult.actions,
+			{
 				sourceMessageId,
 				sourceThreadId,
 				upsertDraftImpl,
-			})
-			: [];
+			},
+		);
 
 		return {
 			didReview: true,
 			responseText: payload.responseText ?? null,
-			structuredFallback: payload.structuredResult
-				? {
-					actions: structuredSkillActions,
-					mode: payload.structuredResult.mode,
-					summary: payload.structuredResult.summary ?? null,
-				}
-				: null,
+			structuredFallback: {
+				actions: structuredSkillActions,
+				mode: payload.structuredResult.mode,
+				summary: payload.structuredResult.summary ?? null,
+			},
 			structuredSkillActions,
 		};
 	} finally {
@@ -276,6 +313,7 @@ module.exports = {
 	applyStructuredHermesSkillActions,
 	buildHermesSkillCompanionExecutionInput,
 	buildHermesSkillCompanionMessages,
+	executeSkillCompanionViaGateway,
 	parseStructuredHermesSkillFallback,
 	runHermesSkillCompanionReview,
 };

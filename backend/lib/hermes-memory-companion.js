@@ -16,22 +16,6 @@ const {
 const DEFAULT_MEMORY_COMPANION_TIMEOUT_MS = 20_000;
 const MEMORY_COMPANION_HISTORY_LIMIT = 6;
 
-const EXPLICIT_MEMORY_REQUEST_PATTERNS = [
-	/\bremember\s+(?:this|that|it|me)\b/i,
-	/\b(?:save|store|add|put)\b.{0,24}\b(?:this|that|it)\b.{0,24}\b(?:to|into|in)\b.{0,12}\b(?:your\s+)?(?:durable\s+)?memory\b/i,
-	/\b(?:save|store|add|put)\b.{0,24}\b(?:to|into|in)\b.{0,12}\b(?:your\s+)?(?:durable\s+)?memory\b/i,
-	/\bkeep\b.{0,24}\b(?:this|that|it)\b.{0,24}\bfor\s+future\s+conversations\b/i,
-];
-
-function isExplicitHermesMemoryRequest(message) {
-	const normalizedMessage = getNonEmptyString(message);
-	if (!normalizedMessage) {
-		return false;
-	}
-
-	return EXPLICIT_MEMORY_REQUEST_PATTERNS.some((pattern) => pattern.test(normalizedMessage));
-}
-
 function getLatestAssistantTextFromMessages(messages) {
 	if (!Array.isArray(messages)) {
 		return null;
@@ -75,7 +59,6 @@ function formatConversationHistory(conversationHistory) {
 
 function buildHermesMemoryCompanionMessages({
 	conversationHistory,
-	explicitSaveRequest = false,
 	latestAssistantMessage,
 	latestUserMessage,
 }) {
@@ -103,7 +86,8 @@ function buildHermesMemoryCompanionMessages({
 			content: [
 				"[Hermes Memory Companion]",
 				"You are reviewing a finished turn from another assistant.",
-				"Emit a single JSON object with `mode` set to `structured-memory-fallback` and an `actions` array containing only `add` or `replace` entries.",
+				"Reply exactly with a single JSON object using mode `structured-memory-fallback`.",
+				"The JSON must include an `actions` array containing only `add` or `replace` entries.",
 				"Each action must include `target` (`memory` or `user`) and `content`.",
 				"Use `replace` only when you intend to replace the full memory document for that target.",
 				"Do not include commentary outside the JSON object in the fallback path.",
@@ -111,11 +95,11 @@ function buildHermesMemoryCompanionMessages({
 				"Prefer target `user` for user preferences, communication style, identity, and stable habits.",
 				"Prefer target `memory` for environment facts, project conventions, reusable corrections, and durable workflow notes.",
 				"Prefer `replace` over `add` when updating an existing fact to avoid duplicates.",
-				"Skip temporary task state, one-off requests, ephemeral artifact details, and anything easily rediscovered.",
-				"If you decide nothing durable should be saved, reply exactly: Nothing to save.",
-				explicitSaveRequest
-					? "The user explicitly asked to remember or save something. Save it now unless it is clearly transient."
-					: null,
+				"Direct requests to remember, save, or store something for future conversations are durable-memory candidates unless the request is actually for a reminder, scheduled action, or other future task.",
+				"Decide from the meaning of the full turn, not simple keywords or fixed phrases.",
+				"Ignore mistaken assistant claims about lacking a memory tool; judge whether the completed turn should produce durable memory.",
+				"Skip temporary task state, one-off requests, ephemeral artifact details, reminders, and anything easily rediscovered.",
+				"If nothing durable should be saved, reply with `{ \"mode\": \"structured-memory-fallback\", \"actions\": [] }`.",
 				"[End Hermes Memory Companion]",
 			]
 				.filter(Boolean)
@@ -145,7 +129,7 @@ function normalizeStructuredHermesMemoryAction(action) {
 	const actionType =
 		action.action === "add" || action.action === "replace"
 			? action.action
-			: null;
+			: "add";
 	const content = getNonEmptyString(action.content);
 	if (!target || !actionType || !content) {
 		return null;
@@ -173,12 +157,14 @@ function parseStructuredHermesMemoryFallback(text) {
 		? payload.actions
 		: Array.isArray(payload.memoryActions)
 			? payload.memoryActions
-			: [];
+			: null;
+	if (!actionsSource) {
+		return null;
+	}
 	const actions = actionsSource
 		.map(normalizeStructuredHermesMemoryAction)
 		.filter(Boolean);
-
-	if (actions.length === 0) {
+	if (actionsSource.length > 0 && actions.length === 0) {
 		return null;
 	}
 
@@ -227,6 +213,12 @@ async function applyStructuredHermesMemoryActions(
 	return appliedActions;
 }
 
+function createStructuredMemoryCompanionError(message) {
+	const error = new Error(message);
+	error.code = "HERMES_MEMORY_COMPANION_INVALID_OUTPUT";
+	return error;
+}
+
 async function executeMemoryCompanionViaGateway({ prompt, system, signal, timeoutMs }) {
 	const fallbackResult = await executeStructuredFallbackTask({
 		prompt,
@@ -235,6 +227,11 @@ async function executeMemoryCompanionViaGateway({ prompt, system, signal, timeou
 		timeoutMs,
 	});
 	const structuredResult = parseStructuredHermesMemoryFallback(fallbackResult.text);
+	if (!structuredResult) {
+		throw createStructuredMemoryCompanionError(
+			"Hermes memory companion returned invalid structured output.",
+		);
+	}
 	return {
 		backend: "ai-gateway",
 		didRun: true,
@@ -245,7 +242,6 @@ async function executeMemoryCompanionViaGateway({ prompt, system, signal, timeou
 
 async function runHermesMemoryCompanionReview({
 	conversationHistory,
-	explicitSaveRequest = false,
 	executeBackgroundTaskImpl = executeMemoryCompanionViaGateway,
 	applyStructuredMemoryActionsImpl = applyStructuredHermesMemoryActions,
 	latestAssistantMessage,
@@ -263,7 +259,6 @@ async function runHermesMemoryCompanionReview({
 
 	const executionInput = buildHermesMemoryCompanionExecutionInput({
 		conversationHistory,
-		explicitSaveRequest,
 		latestAssistantMessage: normalizedLatestAssistantMessage,
 		latestUserMessage: normalizedLatestUserMessage,
 	});
@@ -273,22 +268,24 @@ async function runHermesMemoryCompanionReview({
 		parseStructuredResult: parseStructuredHermesMemoryFallback,
 		timeoutMs,
 	});
+	if (!payload?.structuredResult) {
+		throw createStructuredMemoryCompanionError(
+			"Hermes memory companion review completed without structured actions metadata.",
+		);
+	}
 
-	const structuredMemoryActions = payload.structuredResult
-		? await applyStructuredMemoryActionsImpl(payload.structuredResult.actions)
-		: [];
+	const structuredMemoryActions = await applyStructuredMemoryActionsImpl(
+		payload.structuredResult.actions,
+	);
 
 	return {
 		didReview: true,
-		explicitSaveRequest,
 		responseText: payload.responseText ?? null,
-		structuredFallback: payload.structuredResult
-			? {
-				actions: structuredMemoryActions,
-				mode: payload.structuredResult.mode,
-				summary: payload.structuredResult.summary ?? null,
-			}
-			: null,
+		structuredFallback: {
+			actions: structuredMemoryActions,
+			mode: payload.structuredResult.mode,
+			summary: payload.structuredResult.summary ?? null,
+		},
 		structuredMemoryActions,
 	};
 }
@@ -300,7 +297,6 @@ module.exports = {
 	buildHermesMemoryCompanionMessages,
 	executeMemoryCompanionViaGateway,
 	getLatestAssistantTextFromMessages,
-	isExplicitHermesMemoryRequest,
 	parseStructuredHermesMemoryFallback,
 	runHermesMemoryCompanionReview,
 };

@@ -2,13 +2,7 @@
 
 import * as React from "react";
 import { ViewTransition } from "react";
-import {
-	differenceInCalendarDays,
-	formatDistanceToNowStrict,
-	isToday,
-	isYesterday,
-	parseISO,
-} from "date-fns";
+import { formatDistanceToNowStrict } from "date-fns";
 import AddIcon from "@atlaskit/icon/core/add";
 import ChevronRightIcon from "@atlaskit/icon/core/chevron-right";
 import SkillIcon from "@atlaskit/icon-lab/core/skill";
@@ -70,72 +64,6 @@ interface RovoAppSidebarProps {
 	threads: ReadonlyArray<RovoAppThread>;
 	threadsLoaded?: boolean;
 	topOffset?: boolean;
-}
-
-type RovoAppThreadSectionLabel =
-	| "Today"
-	| "Yesterday"
-	| "Previous 7 Days"
-	| "Previous 30 Days"
-	| "Older";
-
-const ROVO_APP_THREAD_SECTION_ORDER: readonly RovoAppThreadSectionLabel[] = [
-	"Today",
-	"Yesterday",
-	"Previous 7 Days",
-	"Previous 30 Days",
-	"Older",
-];
-
-function getRovoAppThreadSectionLabel(updatedAt: string): RovoAppThreadSectionLabel {
-	const updatedAtDate = parseISO(updatedAt);
-	if (Number.isNaN(updatedAtDate.getTime())) {
-		return "Older";
-	}
-
-	if (isToday(updatedAtDate)) {
-		return "Today";
-	}
-
-	if (isYesterday(updatedAtDate)) {
-		return "Yesterday";
-	}
-
-	const dayDifference = differenceInCalendarDays(new Date(), updatedAtDate);
-	if (dayDifference <= 7) {
-		return "Previous 7 Days";
-	}
-
-	if (dayDifference <= 30) {
-		return "Previous 30 Days";
-	}
-
-	return "Older";
-}
-
-function groupRovoAppThreadsByDate(
-	threads: ReadonlyArray<RovoAppThread>,
-): ReadonlyArray<{
-	label: RovoAppThreadSectionLabel;
-	threads: ReadonlyArray<RovoAppThread>;
-}> {
-	const groupedThreads = new Map<
-		RovoAppThreadSectionLabel,
-		RovoAppThread[]
-	>(
-		ROVO_APP_THREAD_SECTION_ORDER.map((label) => [label, []]),
-	);
-
-	for (const thread of threads) {
-		groupedThreads.get(getRovoAppThreadSectionLabel(thread.updatedAt))?.push(thread);
-	}
-
-	return ROVO_APP_THREAD_SECTION_ORDER
-		.map((label) => ({
-			label,
-			threads: groupedThreads.get(label) ?? [],
-		}))
-		.filter((section) => section.threads.length > 0);
 }
 
 function RovoAppSidebarNavItem({
@@ -413,6 +341,7 @@ function RovoAppSidebarThreadSection({
 	onDeleteThread,
 	onSelectThread,
 	pendingTitleThreadId,
+	showGeneratingPlaceholder,
 	threads,
 }: Readonly<{
 	activeThreadId: string | null;
@@ -422,6 +351,7 @@ function RovoAppSidebarThreadSection({
 	onDeleteThread: (threadId: string) => Promise<void>;
 	onSelectThread: (threadId: string) => Promise<void>;
 	pendingTitleThreadId: string | null;
+	showGeneratingPlaceholder: boolean;
 	threads: ReadonlyArray<RovoAppThread>;
 }>) {
 	return (
@@ -429,21 +359,47 @@ function RovoAppSidebarThreadSection({
 			<div className="flex h-8 items-center px-1.5 text-xs font-bold leading-4 text-text-subtlest">
 				{label}
 			</div>
-			<SidebarMenu>
-				{threads.map((thread) => (
-					<ViewTransition key={thread.id}>
-						<RovoAppSidebarThreadItem
-							isActive={thread.id === activeThreadId}
-							isPendingTitle={isGeneratingTitle && pendingTitleThreadId === thread.id}
-							onCancelThreadRun={onCancelThreadRun}
-							onDeleteThread={onDeleteThread}
-							onSelectThread={onSelectThread}
-							runStatus={thread.activeRun?.status ?? null}
-							thread={thread}
-						/>
-					</ViewTransition>
-				))}
-			</SidebarMenu>
+			{showGeneratingPlaceholder ? (
+				<SidebarMenu>
+					<SidebarMenuItem>
+						<SidebarMenuButton
+							className="h-auto min-h-9 rounded-lg p-1.5"
+							size="lg"
+							type="button"
+							aria-label="Generating chat title"
+						>
+							<div className="min-w-0 flex-1">
+								<div className="text-sm font-medium leading-5">
+									<Shimmer
+										as="span"
+										duration={1}
+										className="block max-w-full truncate motion-safe:animate-[sd-blurIn_160ms_ease-out_both] motion-reduce:animate-none"
+									>
+										Generating chat title
+									</Shimmer>
+								</div>
+							</div>
+						</SidebarMenuButton>
+					</SidebarMenuItem>
+				</SidebarMenu>
+			) : null}
+			{threads.length > 0 ? (
+				<SidebarMenu>
+					{threads.map((thread) => (
+						<ViewTransition key={thread.id}>
+							<RovoAppSidebarThreadItem
+								isActive={thread.id === activeThreadId}
+								isPendingTitle={isGeneratingTitle && pendingTitleThreadId === thread.id}
+								onCancelThreadRun={onCancelThreadRun}
+								onDeleteThread={onDeleteThread}
+								onSelectThread={onSelectThread}
+								runStatus={thread.activeRun?.status ?? null}
+								thread={thread}
+							/>
+						</ViewTransition>
+					))}
+				</SidebarMenu>
+			) : null}
 		</section>
 	);
 }
@@ -471,7 +427,6 @@ export function RovoAppSidebar({
 		(surface) => pathname === surface.href || pathname.startsWith(`${surface.href}/`),
 	);
 	const isNewChatSelected = activeThreadId === null && !isOnControlPlaneSurface;
-	const threadSections = React.useMemo(() => groupRovoAppThreadsByDate(threads), [threads]);
 	const controlPlaneNavItems = React.useMemo(
 		() =>
 			CONTROL_PLANE_SIDEBAR_SURFACES.map((surface) => {
@@ -493,7 +448,10 @@ export function RovoAppSidebar({
 		<Sidebar
 			aria-label="Rovo App navigation"
 			className={cn(
-				"bg-sidebar !px-3 !pb-0 group-data-[state=expanded]:group-data-[side=left]:border-r group-data-[state=expanded]:group-data-[side=left]:border-border",
+				"bg-sidebar !px-3 !pb-0",
+				// Resize handle paints the divider; container border-r would stack to a 2px edge.
+				!resizeHandle &&
+					"group-data-[state=expanded]:group-data-[side=left]:border-r group-data-[state=expanded]:group-data-[side=left]:border-border",
 				topOffset && "!top-12 !h-[calc(100svh-3rem)]",
 			)}
 			isResizing={isResizing}
@@ -586,43 +544,19 @@ export function RovoAppSidebar({
 				) : (
 					<SidebarGroup className="p-0">
 						<SidebarGroupContent className="flex flex-col gap-2">
-							{isGeneratingTitle && threads.length === 0 ? (
-								<SidebarMenu>
-									<SidebarMenuItem>
-										<SidebarMenuButton
-											className="h-auto min-h-9 rounded-lg p-1.5"
-											size="lg"
-											type="button"
-											aria-label="Generating chat title"
-										>
-											<div className="min-w-0 flex-1">
-												<div className="text-sm font-medium leading-5">
-													<Shimmer
-														as="span"
-														duration={1}
-														className="block max-w-full truncate motion-safe:animate-[sd-blurIn_160ms_ease-out_both] motion-reduce:animate-none"
-													>
-														Generating chat title
-													</Shimmer>
-												</div>
-											</div>
-										</SidebarMenuButton>
-									</SidebarMenuItem>
-								</SidebarMenu>
-							) : null}
-							{threadSections.map((section) => (
+							{threads.length > 0 || (isGeneratingTitle && threads.length === 0) ? (
 								<RovoAppSidebarThreadSection
 									activeThreadId={activeThreadId}
 									isGeneratingTitle={isGeneratingTitle}
-									key={section.label}
-									label={section.label}
+									label="Chats"
 									onCancelThreadRun={onCancelThreadRun}
 									onDeleteThread={onDeleteThread}
 									onSelectThread={onSelectThread}
 									pendingTitleThreadId={pendingTitleThreadId}
-									threads={section.threads}
+									showGeneratingPlaceholder={isGeneratingTitle && threads.length === 0}
+									threads={threads}
 								/>
-							))}
+							) : null}
 						</SidebarGroupContent>
 					</SidebarGroup>
 				)}

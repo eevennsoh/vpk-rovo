@@ -56,6 +56,33 @@ test("parseStructuredHermesSkillFallback accepts create actions with bundle file
 	assert.equal(parsed?.actions[0].files[0].path, "SKILL.md");
 });
 
+test("parseStructuredHermesSkillFallback accepts an explicit no-op actions array", () => {
+	const parsed = parseStructuredHermesSkillFallback([
+		"```json",
+		"{",
+		'  "mode": "structured-skill-fallback",',
+		'  "actions": []',
+		"}",
+		"```",
+	].join("\n"));
+
+	assert.equal(parsed?.mode, "structured-skill-fallback");
+	assert.deepEqual(parsed?.actions, []);
+});
+
+test("parseStructuredHermesSkillFallback rejects malformed non-empty actions arrays", () => {
+	const parsed = parseStructuredHermesSkillFallback([
+		"```json",
+		"{",
+		'  "mode": "structured-skill-fallback",',
+		'  "actions": [{ "action": "create", "category": "research" }]',
+		"}",
+		"```",
+	].join("\n"));
+
+	assert.equal(parsed, null);
+});
+
 test("runHermesSkillCompanionReview upserts pending drafts from structured fallback output", async () => {
 	const upsertedDrafts = [];
 	const result = await runHermesSkillCompanionReview({
@@ -119,6 +146,55 @@ test("runHermesSkillCompanionReview upserts pending drafts from structured fallb
 	assert.equal(upsertedDrafts[0].sourceThreadId, "thread-1");
 	assert.equal(result.structuredSkillActions.length, 1);
 	assert.equal(result.structuredSkillActions[0].draft.id, "draft-1");
+});
+
+test("runHermesSkillCompanionReview preserves explicit no-op reviewer decisions", async () => {
+	const result = await runHermesSkillCompanionReview({
+		conversationHistory: [
+			{ type: "user", content: "Hi" },
+		],
+		executeBackgroundTaskImpl: async () => ({
+			didRun: true,
+			responseText: '{ "mode": "structured-skill-fallback", "actions": [] }',
+			structuredResult: {
+				mode: "structured-skill-fallback",
+				summary: "No reusable skill surfaced.",
+				actions: [],
+			},
+		}),
+		installedSkillsImpl: async () => [],
+		latestAssistantMessage: "Hello there.",
+		latestUserMessage: "Hi",
+		upsertDraftImpl: async () => {
+			throw new Error("should not upsert draft for no-op");
+		},
+	});
+
+	assert.equal(result.didReview, true);
+	assert.deepEqual(result.structuredSkillActions, []);
+	assert.deepEqual(result.structuredFallback.actions, []);
+});
+
+test("runHermesSkillCompanionReview rejects invalid reviewer output instead of silently no-oping", async () => {
+	await assert.rejects(
+		runHermesSkillCompanionReview({
+			conversationHistory: [
+				{ type: "user", content: "This should become a skill." },
+			],
+			executeBackgroundTaskImpl: async () => ({
+				didRun: true,
+				responseText: "Not JSON",
+				structuredResult: null,
+			}),
+			installedSkillsImpl: async () => [],
+			latestAssistantMessage: "I'll think about it.",
+			latestUserMessage: "This should become a skill.",
+			upsertDraftImpl: async () => {
+				throw new Error("should not upsert draft for invalid output");
+			},
+		}),
+		(error) => error?.code === "HERMES_SKILL_COMPANION_INVALID_OUTPUT",
+	);
 });
 
 test("buildHermesSkillCompanionExecutionInput preserves the prompt payload", () => {

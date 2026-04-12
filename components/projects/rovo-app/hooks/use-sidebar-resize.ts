@@ -1,3 +1,4 @@
+import type { MouseEvent, PointerEvent as ReactPointerEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { clamp } from "@/lib/utils";
 
@@ -12,8 +13,12 @@ interface UseSidebarResizeOptions {
 }
 
 interface UseSidebarResizeResult {
+	isResizeHandleHovered: boolean;
 	isResizing: boolean;
-	onResizeHandlePointerDown: (event: React.PointerEvent) => void;
+	onResizeHandleDoubleClick: (event: MouseEvent) => void;
+	onResizeHandlePointerDown: (event: ReactPointerEvent) => void;
+	onResizeHandlePointerEnter: () => void;
+	onResizeHandlePointerLeave: () => void;
 	sidebarWidth: number;
 	willCollapse: boolean;
 }
@@ -26,6 +31,7 @@ export function useSidebarResize({
 }: UseSidebarResizeOptions): UseSidebarResizeResult {
 	const [sidebarWidth, setSidebarWidth] = useState(defaultWidth);
 	const [isResizing, setIsResizing] = useState(false);
+	const [isResizeHandleHovered, setIsResizeHandleHovered] = useState(false);
 	const [willCollapse, setWillCollapse] = useState(false);
 	const startXRef = useRef(0);
 	const startWidthRef = useRef(defaultWidth);
@@ -33,8 +39,28 @@ export function useSidebarResize({
 	const willCollapseRef = useRef(false);
 	const collapseThreshold = minWidth - COLLAPSE_THRESHOLD_OFFSET;
 
+	const onResizeHandlePointerEnter = useCallback(() => {
+		setIsResizeHandleHovered(true);
+	}, []);
+
+	const onResizeHandlePointerLeave = useCallback(() => {
+		setIsResizeHandleHovered(false);
+	}, []);
+
+	const onResizeHandleDoubleClick = useCallback(
+		(event: MouseEvent) => {
+			event.preventDefault();
+			event.stopPropagation();
+			setSidebarWidth(defaultWidth);
+			lastValidWidthRef.current = defaultWidth;
+			willCollapseRef.current = false;
+			setWillCollapse(false);
+		},
+		[defaultWidth],
+	);
+
 	const onResizeHandlePointerDown = useCallback(
-		(event: React.PointerEvent) => {
+		(event: ReactPointerEvent) => {
 			event.preventDefault();
 			startXRef.current = event.clientX;
 			startWidthRef.current = sidebarWidth;
@@ -95,8 +121,12 @@ export function useSidebarResize({
 	}, [isResizing, minWidth, sidebarWidth]);
 
 	return {
+		isResizeHandleHovered,
 		isResizing,
+		onResizeHandleDoubleClick,
 		onResizeHandlePointerDown,
+		onResizeHandlePointerEnter,
+		onResizeHandlePointerLeave,
 		sidebarWidth,
 		willCollapse,
 	};

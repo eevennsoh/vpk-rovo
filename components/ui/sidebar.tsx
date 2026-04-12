@@ -238,7 +238,13 @@ function Sidebar({
           "fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) transition-[left,right,width] duration-medium ease-in-out group-data-[resizing]:transition-none data-[side=left]:left-0 data-[side=left]:group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)] data-[side=right]:right-0 data-[side=right]:group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)] md:flex",
           variant === "floating" || variant === "inset"
             ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4))+2px)]"
-            : "group-data-[collapsible=icon]:w-(--sidebar-width-icon) group-data-[side=left]:border-r group-data-[side=right]:border-l",
+            : cn(
+                "group-data-[collapsible=icon]:w-(--sidebar-width-icon)",
+                // Resize handle already paints `w-px bg-border`; skip container border to avoid a double line.
+                resizeHandle
+                  ? null
+                  : "group-data-[side=left]:border-r group-data-[side=right]:border-l"
+              ),
           className
         )}
         {...props}
@@ -712,15 +718,27 @@ function SidebarResizeHandle({
       role="separator"
       aria-orientation="vertical"
       className={cn(
-        "absolute inset-y-0 right-0 z-20 w-px cursor-col-resize bg-border transition-colors hover:bg-bg-selected-bold data-[active]:bg-bg-selected-bold",
-        "data-[will-collapse]:w-0.5 data-[will-collapse]:bg-bg-warning-bold",
+        // Named group so notch `group-hover/*` does not inherit from the outer Sidebar `group` wrapper.
+        "group/sidebar-resize absolute inset-y-0 right-0 z-20 flex w-px cursor-col-resize items-center justify-center bg-border transition-colors hover:bg-bg-selected-bold data-[active]:bg-bg-selected-bold",
+        "data-[will-collapse]:bg-bg-warning-bold",
         "after:absolute after:inset-y-0 after:left-1/2 after:w-3 after:-translate-x-1/2",
         "group-data-[collapsible=offcanvas]:hidden",
         className
       )}
       onPointerDown={onPointerDown}
       {...props}
-    />
+    >
+      {/* Pill notch — same pattern as ResizableHandle (artifact split); shown on hover / drag */}
+      <div
+        aria-hidden
+        className={cn(
+          "pointer-events-none z-10 h-6 w-1 shrink-0 rounded-lg bg-neutral-100 transition-[opacity,background-color] duration-medium ease-out",
+          "opacity-0 group-hover/sidebar-resize:opacity-100 group-data-[active]/sidebar-resize:opacity-100",
+          "group-hover/sidebar-resize:bg-bg-selected-bold group-data-[active]/sidebar-resize:bg-bg-selected-bold",
+          "group-data-[will-collapse]/sidebar-resize:bg-bg-warning-bold group-data-[will-collapse]/sidebar-resize:group-hover/sidebar-resize:bg-bg-warning-bold group-data-[will-collapse]/sidebar-resize:group-data-[active]/sidebar-resize:bg-bg-warning-bold"
+        )}
+      />
+    </div>
   )
 }
 

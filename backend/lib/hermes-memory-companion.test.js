@@ -5,7 +5,6 @@ const {
 	buildHermesMemoryCompanionExecutionInput,
 	buildHermesMemoryCompanionMessages,
 	getLatestAssistantTextFromMessages,
-	isExplicitHermesMemoryRequest,
 	parseStructuredHermesMemoryFallback,
 	runHermesMemoryCompanionReview,
 } = require("./hermes-memory-companion");
@@ -14,25 +13,19 @@ const {
 	runRovoDevBackgroundTask,
 } = require("./rovo-task-executor");
 
-test("isExplicitHermesMemoryRequest matches direct save requests", () => {
-	assert.equal(isExplicitHermesMemoryRequest("Please save this to durable memory."), true);
-	assert.equal(isExplicitHermesMemoryRequest("Can you remember this for future conversations?"), true);
-	assert.equal(isExplicitHermesMemoryRequest("How does durable memory work here?"), false);
-});
-
-test("buildHermesMemoryCompanionMessages marks explicit save requests as Hermes memory", () => {
+test("buildHermesMemoryCompanionMessages asks the reviewer to decide from full-turn meaning", () => {
 	const messages = buildHermesMemoryCompanionMessages({
 		conversationHistory: [
 			{ type: "assistant", content: "I can keep that preference for this chat." },
 		],
-		explicitSaveRequest: true,
 		latestAssistantMessage: "I'll save it.",
 		latestUserMessage: "Save this to durable memory.",
 	});
 
 	assert.equal(messages.length, 2);
 	assert.match(messages[0].content, /Durable memory here means Hermes memory/i);
-	assert.match(messages[0].content, /explicitly asked to remember or save/i);
+	assert.match(messages[0].content, /Decide from the meaning of the full turn/i);
+	assert.match(messages[0].content, /Ignore mistaken assistant claims about lacking a memory tool/i);
 	assert.match(messages[1].content, /Latest user message:/);
 });
 
@@ -66,6 +59,33 @@ test("parseStructuredHermesMemoryFallback accepts fenced JSON actions", () => {
 	assert.equal(parsed?.actions[0].action, "add");
 	assert.equal(parsed?.actions[0].target, "memory");
 	assert.equal(parsed?.actions[0].content, "Prefer concise replies.");
+});
+
+test("parseStructuredHermesMemoryFallback accepts an explicit no-op actions array", () => {
+	const parsed = parseStructuredHermesMemoryFallback([
+		"```json",
+		"{",
+		'  "mode": "structured-memory-fallback",',
+		'  "actions": []',
+		"}",
+		"```",
+	].join("\n"));
+
+	assert.equal(parsed?.mode, "structured-memory-fallback");
+	assert.deepEqual(parsed?.actions, []);
+});
+
+test("parseStructuredHermesMemoryFallback rejects malformed non-empty actions arrays", () => {
+	const parsed = parseStructuredHermesMemoryFallback([
+		"```json",
+		"{",
+		'  "mode": "structured-memory-fallback",',
+		'  "actions": [{ "action": "add", "target": "user" }]',
+		"}",
+		"```",
+	].join("\n"));
+
+	assert.equal(parsed, null);
 });
 
 test("runRovoDevBackgroundTask parses structured fallback output", async () => {
@@ -106,7 +126,6 @@ test("runHermesMemoryCompanionReview applies structured fallback memory actions"
 		conversationHistory: [
 			{ type: "user", content: "Can you remember a preference for later?" },
 		],
-		explicitSaveRequest: true,
 		executeBackgroundTaskImpl: async (input) => {
 			assert.equal(input.system.includes("[Hermes Memory Companion]"), true);
 			assert.equal(input.prompt.includes("Recent conversation:"), true);
@@ -160,12 +179,54 @@ test("runHermesMemoryCompanionReview applies structured fallback memory actions"
 	assert.equal(result.structuredMemoryActions[0].action, "add");
 });
 
+test("runHermesMemoryCompanionReview preserves explicit no-op reviewer decisions", async () => {
+	const result = await runHermesMemoryCompanionReview({
+		conversationHistory: [
+			{ type: "user", content: "Remember to do XYZ tomorrow." },
+		],
+		executeBackgroundTaskImpl: async () => ({
+			didRun: true,
+			responseText: '{ "mode": "structured-memory-fallback", "actions": [] }',
+			structuredResult: {
+				mode: "structured-memory-fallback",
+				summary: "This is a reminder-style request, not durable memory.",
+				actions: [],
+			},
+		}),
+		latestAssistantMessage: "I can help you set a reminder.",
+		latestUserMessage: "Remember to do XYZ tomorrow.",
+		timeoutMs: 50,
+	});
+
+	assert.equal(result.didReview, true);
+	assert.deepEqual(result.structuredMemoryActions, []);
+	assert.deepEqual(result.structuredFallback.actions, []);
+});
+
+test("runHermesMemoryCompanionReview rejects invalid reviewer output instead of silently no-oping", async () => {
+	await assert.rejects(
+		runHermesMemoryCompanionReview({
+			conversationHistory: [
+				{ type: "user", content: "Save this preference for later." },
+			],
+			executeBackgroundTaskImpl: async () => ({
+				didRun: true,
+				responseText: "Nothing to save.",
+				structuredResult: null,
+			}),
+			latestAssistantMessage: "I'll save it.",
+			latestUserMessage: "Save this preference for later.",
+			timeoutMs: 50,
+		}),
+		(error) => error?.code === "HERMES_MEMORY_COMPANION_INVALID_OUTPUT",
+	);
+});
+
 test("buildHermesMemoryCompanionExecutionInput preserves the message payload", () => {
 	const input = buildHermesMemoryCompanionExecutionInput({
 		conversationHistory: [
 			{ type: "assistant", content: "I will keep that in mind." },
 		],
-		explicitSaveRequest: false,
 		latestAssistantMessage: "I can do that.",
 		latestUserMessage: "Please remember that preference.",
 	});

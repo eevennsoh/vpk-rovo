@@ -40,6 +40,8 @@ test("buildUserMessage includes durable memory protocol in default profile", () 
 
 	assert.match(message, /\[Durable Memory Protocol\]/);
 	assert.match(message, /durable memory means Hermes persistent memory/i);
+	assert.match(message, /backend reviews completed turns and persists durable memories after the turn/i);
+	assert.match(message, /do not say that you lack a memory write tool/i);
 	assert.match(message, /repo lesson logging only for repo\/operator corrections/i);
 });
 

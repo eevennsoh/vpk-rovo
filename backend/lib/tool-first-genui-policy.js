@@ -5,12 +5,6 @@ const TOOL_FIRST_DOMAIN_CONFIG = [
 	{
 		id: "google-calendar",
 		label: "Google Calendar",
-		promptPatterns: [
-			/\bgoogle\s+calendar\b/i,
-			/\bcalendar\b/i,
-			/\bavailability\b/i,
-			/\bmeeting\s+slots?\b/i,
-		],
 		toolPatterns: [
 			/\bgoogle[_\s:-]*calendar\b/i,
 			/\bcalendar\b/i,
@@ -56,17 +50,6 @@ const TOOL_FIRST_DOMAIN_CONFIG = [
 	{
 		id: "google-drive-docs",
 		label: "Google Drive / Docs",
-		promptPatterns: [
-			/\bgoogle\s+drive\b/i,
-			/\bgoogle\s+doc(s)?\b/i,
-			/\bgoogle\s+sheet(s)?\b/i,
-			/\bgoogle\s+slide(s)?\b/i,
-			/\bmy\s+drive\b/i,
-			/\bdrive\s+(file|files|folder|folders|storage|usage|quota|content|contents)\b/i,
-			/\b(list|show|find|search|check|extract|get|open)\b[\s\S]{0,80}\b(files?|folders?|storage|quota|doc(s|uments?)?|sheet(s)?|slide(s)?|comments?|permissions?)\b[\s\S]{0,80}\bdrive\b/i,
-			/\b(doc|docs|drive|sheet|sheets|slide|slides)\s+(comment|permission|revision|label)s?\b/i,
-			/\batlassian:url:get:content\b/i,
-		],
 		toolPatterns: [
 			/\bgoogle[_\s:-]*(drive|doc|docs|sheet|sheets|slide|slides)\b/i,
 			/\bgoogle[_\s:-]*google[_\s:-]*drive\b/i,
@@ -87,13 +70,6 @@ const TOOL_FIRST_DOMAIN_CONFIG = [
 	{
 		id: "google-translate",
 		label: "Google Translate",
-		promptPatterns: [
-			/\bgoogle\s+translate\b/i,
-			/\bgoogle\s+cloud\s+translate\b/i,
-			/\bcloud\s+translation\b/i,
-			/\buse\s+google\s+translate\b/i,
-			/\btranslate\s+(?:via|with)\s+google\b/i,
-		],
 		toolPatterns: [
 			/\btranslate\b/i,
 			/\blanguage\b/i,
@@ -102,13 +78,6 @@ const TOOL_FIRST_DOMAIN_CONFIG = [
 	{
 		id: "slack",
 		label: "Slack",
-		promptPatterns: [
-			/\bslack\b/i,
-			/\bchannel(s)?\b/i,
-			/\bthread(s)?\b/i,
-			/\brepl(y|ies)\b/i,
-			/\bsend\s+(a\s+)?message\b/i,
-		],
 		toolPatterns: [
 			/\bslack\b/i,
 			/\bchannel(s)?\b/i,
@@ -155,13 +124,6 @@ const TOOL_FIRST_DOMAIN_CONFIG = [
 	{
 		id: "compass",
 		label: "Compass",
-		promptPatterns: [
-			/\bcompass\b/i,
-			/\bcomponent(s)?\b/i,
-			/\bdependencies\b/i,
-			/\bevent\s+sources?\b/i,
-			/\bapi\s+changelog(s)?\b/i,
-		],
 		toolPatterns: [
 			/\bcompass\b/i,
 			/\bcomponent(s)?\b/i,
@@ -173,23 +135,6 @@ const TOOL_FIRST_DOMAIN_CONFIG = [
 	{
 		id: "teamwork-graph",
 		label: "Teamwork Graph",
-		promptPatterns: [
-			/\bteamwork\s+graph\b/i,
-			/\bgraph\b/i,
-			/\bcypher\b/i,
-			/\bwork\s+summary\b/i,
-			/\bcollaboration\s+summary\b/i,
-			/\borg\s+hierarchy\b/i,
-			/\breport\s+chain\b/i,
-			/\b(last|past|previous|recent)\s+\d+\s+(day|days|week|weeks|month|months)\s+(of\s+)?work\b/i,
-			/\bmy\s+(recent\s+)?work\b/i,
-			/\bwork\s+activit(y|ies)\b/i,
-			/\bwhat\s+(did|have)\s+\w+\s+work(ed)?\s+on\b/i,
-			/\b(last|past|previous|recent)\s+(one|two|three|four|five|six|seven|eight|nine|ten)\s+(day|days|week|weeks|month|months)\s+(of\s+)?work\b/i,
-			/\b(last|past|previous|recent)\s+week\b/i,
-			/\bthis\s+week'?s?\s+work\b/i,
-			/\b(summarize|summary|show|list)\s+(my\s+)?(recent\s+)?work\b/i,
-		],
 		toolPatterns: [
 			/\bteamwork\b/i,
 			/\bgraph\b/i,
@@ -204,12 +149,6 @@ const TOOL_FIRST_DOMAIN_CONFIG = [
 	{
 		id: "atlassian-projects",
 		label: "Atlassian Projects",
-		promptPatterns: [
-			/\batlassian\s+project(s)?\b/i,
-			/\bproject\s+update(s)?\b/i,
-			/\bprogress\s+update(s)?\b/i,
-			/\bproject\s+context\b/i,
-		],
 		toolPatterns: [
 			/\bproject(s)?\b/i,
 			/\bprogress[_\s-]*update(s)?\b/i,
@@ -219,12 +158,6 @@ const TOOL_FIRST_DOMAIN_CONFIG = [
 	{
 		id: "jira",
 		label: "Jira",
-		promptPatterns: [
-			/\bjira\b/i,
-			/\bissue(s)?\b/i,
-			/\bjql\b/i,
-			/\btransition(s)?\b/i,
-		],
 		toolPatterns: [
 			/\bjira\b/i,
 			/\bissue(s)?\b/i,
@@ -266,16 +199,6 @@ const TOOL_FIRST_DOMAIN_CONFIG = [
 	{
 		id: "confluence",
 		label: "Confluence",
-		promptPatterns: [
-			/\bconfluence\b/i,
-			/\bcql\b/i,
-			/\bconfluence\s+page(s)?\b/i,
-			/\bpage(s)?\b[\s\S]{0,20}\bconfluence\b/i,
-			/\bconfluence\b[\s\S]{0,20}\bpage(s)?\b/i,
-			/\bspace(s)?\b/i,
-			/\bdoc(ument)?s?\b[\s\S]{0,20}\bconfluence\b/i,
-			/\bconfluence\b[\s\S]{0,20}\bdoc(ument)?s?\b/i,
-		],
 		toolPatterns: [
 			/\bconfluence\b/i,
 			/\bcql\b/i,
@@ -317,12 +240,6 @@ const TOOL_FIRST_DOMAIN_CONFIG = [
 	{
 		id: "bitbucket",
 		label: "Bitbucket",
-		promptPatterns: [
-			/\bbitbucket\b/i,
-			/\bpull\s+request(s)?\b/i,
-			/\bpipeline(s)?\b/i,
-			/\brepo(sitory|s)?\b/i,
-		],
 		toolPatterns: [
 			/\bbitbucket\b/i,
 			/\bpull[_\s-]*request(s)?\b/i,
@@ -334,15 +251,6 @@ const TOOL_FIRST_DOMAIN_CONFIG = [
 	{
 		id: "planning-orchestration",
 		label: "Planning & Orchestration",
-		promptPatterns: [
-			/\bupdate[_\s-]*todo\b/i,
-			/\bask[_\s-]*user[_\s-]*questions\b/i,
-			/\binvoke[_\s-]*subagents\b/i,
-			/\bget[_\s-]*skill\b/i,
-			/\bsubagent(s)?\b/i,
-			/\btodo\s+list\b/i,
-			/\bclarifying\s+question(s)?\b/i,
-		],
 		toolPatterns: [
 			/\bupdate[_\s-]*todo\b/i,
 			/\bask[_\s-]*user[_\s-]*questions\b/i,
@@ -356,14 +264,6 @@ const TOOL_FIRST_DOMAIN_CONFIG = [
 	{
 		id: "browser-automation",
 		label: "Browser Automation",
-		promptPatterns: [
-			/\bagent[_\s-]*browser\b/i,
-			/\bbrowser\s+automation\b/i,
-			/\bscreenshot\b/i,
-			/\bsnapshot\b/i,
-			/\bfill\s+form\b/i,
-			/\bnavigate\b/i,
-		],
 		toolPatterns: [
 			/\bagent[_\s-]*browser\b/i,
 			/\bbrowser[_\s-]/i,
@@ -377,13 +277,6 @@ const TOOL_FIRST_DOMAIN_CONFIG = [
 	{
 		id: "figma",
 		label: "Figma",
-		promptPatterns: [
-			/\bfigma\b/i,
-			/\bnode[-\s]?id\b/i,
-			/\bdesign\s+context\b/i,
-			/\bcode\s+connect\b/i,
-			/\bvariable\s+definitions?\b/i,
-		],
 		toolPatterns: [
 			/\bfigma\b/i,
 			/\bcode[_\s-]*connect\b/i,
@@ -419,13 +312,6 @@ const TOOL_FIRST_DOMAIN_CONFIG = [
 	{
 		id: "workspace-file-ops",
 		label: "Workspace File Ops",
-		promptPatterns: [
-			/\bopen[_\s-]*files?\b/i,
-			/\bexpand[_\s-]*code[_\s-]*chunks?\b/i,
-			/\bfind[_\s-]*and[_\s-]*replace(_code)?\b/i,
-			/\bexpand[_\s-]*folder\b/i,
-			/\b(create|delete|move|rename|open|read|search|replace|edit|run|execute)\b[\s\S]{0,40}\b(file|files|folder|folders|directory|directories|code|bash|terminal|command)\b/i,
-		],
 		toolPatterns: [
 			/\bopen[_\s-]*files?\b/i,
 			/\bexpand[_\s-]*code[_\s-]*chunks?\b/i,
@@ -446,29 +332,6 @@ const TOOL_FIRST_DEFAULT_MAX_RETRIES = 1;
 const TOOL_FIRST_DEFAULT_RETRY_BACKOFF_MS = [750, 1500];
 const TOOL_FIRST_DEFAULT_MAX_RETRY_WINDOW_MS = 3000;
 const TOOL_FIRST_GOOGLE_CALENDAR_DOMAIN_ID = "google-calendar";
-const TOOL_FIRST_DEFAULT_CALENDAR_WINDOW_DAYS = 7;
-const TOOL_FIRST_TEAMWORK_GRAPH_DOMAIN_ID = "teamwork-graph";
-const TOOL_FIRST_TEAMWORK_GRAPH_FALLBACK_RELEVANCE_DOMAINS = [
-	"jira",
-	"confluence",
-	"atlassian-projects",
-];
-const TOOL_FIRST_DEFAULT_WORK_SUMMARY_WINDOW_DAYS = 7;
-const TOOL_FIRST_MAX_WORK_SUMMARY_WINDOW_DAYS = 120;
-const TOOL_FIRST_RELATIVE_NUMBER_MAP = new Map([
-	["one", 1],
-	["two", 2],
-	["three", 3],
-	["four", 4],
-	["five", 5],
-	["six", 6],
-	["seven", 7],
-	["eight", 8],
-	["nine", 9],
-	["ten", 10],
-	["eleven", 11],
-	["twelve", 12],
-]);
 
 const TOOL_FIRST_DOMAIN_MAP = new Map(
 	TOOL_FIRST_DOMAIN_CONFIG.map((domain) => [domain.id, domain])
@@ -563,20 +426,6 @@ function resolveToolFirstEnforcementConfig() {
 	};
 }
 
-function resolveMatchedDomains(prompt) {
-	const text = getNonEmptyString(prompt);
-	if (!text) {
-		return [];
-	}
-
-	return TOOL_FIRST_DOMAIN_CONFIG
-		.filter((domain) =>
-			Array.isArray(domain.promptPatterns)
-			&& domain.promptPatterns.some((pattern) => pattern.test(text))
-		)
-		.map((domain) => domain.id);
-}
-
 function getDomainLabels(domains) {
 	if (!Array.isArray(domains)) {
 		return [];
@@ -587,132 +436,7 @@ function getDomainLabels(domains) {
 		.filter(Boolean);
 }
 
-function toIsoSeconds(value) {
-	if (!(value instanceof Date) || Number.isNaN(value.getTime())) {
-		return null;
-	}
-
-	return value.toISOString().replace(/\.\d{3}Z$/, "Z");
-}
-
-function resolveGoogleCalendarDefaultWindow({
-	now = new Date(),
-	windowDays = TOOL_FIRST_DEFAULT_CALENDAR_WINDOW_DAYS,
-} = {}) {
-	const safeWindowDays =
-		typeof windowDays === "number" && Number.isFinite(windowDays) && windowDays > 0
-			? Math.floor(windowDays)
-			: TOOL_FIRST_DEFAULT_CALENDAR_WINDOW_DAYS;
-	const end = new Date(now.getTime() + safeWindowDays * 24 * 60 * 60 * 1000);
-
-	return {
-		windowDays: safeWindowDays,
-		startIso: toIsoSeconds(now),
-		endIso: toIsoSeconds(end),
-	};
-}
-
-function parseRelativeWindowDays(prompt) {
-	const normalizedPrompt = getNonEmptyString(prompt);
-	if (!normalizedPrompt) {
-		return TOOL_FIRST_DEFAULT_WORK_SUMMARY_WINDOW_DAYS;
-	}
-
-	const explicitRangeMatch = normalizedPrompt.match(
-		/\b(last|past|previous|recent)\s+(\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(day|days|week|weeks|month|months)\b/i
-	);
-	if (explicitRangeMatch) {
-		const rawCount = explicitRangeMatch[2]?.toLowerCase();
-		const unit = explicitRangeMatch[3]?.toLowerCase() || "days";
-		const parsedCount = Number.parseInt(rawCount, 10);
-		const count = Number.isFinite(parsedCount) && parsedCount > 0
-			? parsedCount
-			: TOOL_FIRST_RELATIVE_NUMBER_MAP.get(rawCount) || 1;
-		const multiplier = unit.startsWith("week")
-			? 7
-			: unit.startsWith("month")
-				? 30
-				: 1;
-		return Math.max(
-			1,
-			Math.min(count * multiplier, TOOL_FIRST_MAX_WORK_SUMMARY_WINDOW_DAYS)
-		);
-	}
-
-	if (/\b(last|past|previous|recent)\s+week\b/i.test(normalizedPrompt)) {
-		return 7;
-	}
-
-	if (/\bthis\s+week'?s?\s+work\b/i.test(normalizedPrompt)) {
-		return 7;
-	}
-
-	return TOOL_FIRST_DEFAULT_WORK_SUMMARY_WINDOW_DAYS;
-}
-
-function resolveTeamworkGraphTimeWindowContext({ prompt, domains } = {}) {
-	const normalizedPrompt = getNonEmptyString(prompt);
-	if (!normalizedPrompt || !Array.isArray(domains)) {
-		return {
-			enabled: false,
-		};
-	}
-
-	if (!domains.includes(TOOL_FIRST_TEAMWORK_GRAPH_DOMAIN_ID)) {
-		return {
-			enabled: false,
-		};
-	}
-
-	const hasWorkSummarySignal =
-		/\b(work\s+summary|work\s+activit(y|ies)|recent\s+work|my\s+work)\b/i.test(
-			normalizedPrompt
-		) ||
-		/\b(last|past|previous|recent|this)\b[\s\S]{0,40}\b(day|days|week|weeks|month|months)\b/i.test(
-			normalizedPrompt
-		) ||
-		/\bthis\s+week'?s?\s+work\b/i.test(normalizedPrompt);
-	if (!hasWorkSummarySignal) {
-		return {
-			enabled: false,
-		};
-	}
-
-	const windowDays = parseRelativeWindowDays(normalizedPrompt);
-	const now = new Date();
-	const end = new Date(
-		Date.UTC(
-			now.getUTCFullYear(),
-			now.getUTCMonth(),
-			now.getUTCDate(),
-			23,
-			59,
-			59
-		)
-	);
-	const windowStartBase = new Date(
-		end.getTime() - (windowDays - 1) * 24 * 60 * 60 * 1000
-	);
-	const start = new Date(
-		Date.UTC(
-			windowStartBase.getUTCFullYear(),
-			windowStartBase.getUTCMonth(),
-			windowStartBase.getUTCDate(),
-			0,
-			0,
-			0
-		)
-	);
-
-	return {
-		enabled: true,
-		windowDays,
-		startIso: toIsoSeconds(start),
-		endIso: toIsoSeconds(end),
-	};
-}
-
-function resolveToolFirstPolicy({ prompt } = {}) {
+function resolveToolFirstPolicy() {
 	const enforcement = resolveToolFirstEnforcementConfig();
 	return {
 		matched: false,
@@ -1421,7 +1145,6 @@ function getPostClarificationDirective(domains) {
 }
 
 module.exports = {
-	TOOL_FIRST_DOMAIN_CONFIG,
 	TOOL_FIRST_ENFORCEMENT_MODE_SOFT_RETRY,
 	resolveToolFirstPolicy,
 	resolveUnsatisfiedContextHints,

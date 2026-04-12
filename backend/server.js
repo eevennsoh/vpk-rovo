@@ -50,7 +50,6 @@ const { createHermesJobLinkManager } = require("./lib/hermes-job-links");
 const { buildRovoAppHermesContextDescription } = require("./lib/hermes-rovo-context");
 const {
 	getLatestAssistantTextFromMessages,
-	isExplicitHermesMemoryRequest,
 	runHermesMemoryCompanionReview,
 } = require("./lib/hermes-memory-companion");
 const {
@@ -2609,14 +2608,12 @@ async function consumeRovoAppManagedResponse({
 		message: latestUserMessage,
 	} = mapUiMessagesToConversation(messages);
 	const latestAssistantMessage = getLatestAssistantTextFromMessages(messages);
-	const explicitMemoryRequest = isExplicitHermesMemoryRequest(latestUserMessage);
 
 	if (latestUserMessage || latestAssistantMessage) {
 		const runHermesMemoryReview = async () => {
 			try {
 				const reviewResult = await runHermesMemoryCompanionReview({
 					conversationHistory: memoryCompanionHistory,
-					explicitSaveRequest: explicitMemoryRequest,
 					latestAssistantMessage,
 					latestUserMessage,
 				});
@@ -2626,13 +2623,11 @@ async function consumeRovoAppManagedResponse({
 
 				console.info("[HERMES] Memory companion reviewed completed Rovo App turn", {
 					threadId,
-					explicitMemoryRequest,
 					responseText: reviewResult.responseText ?? null,
 				});
 			} catch (error) {
 				console.warn("[HERMES] Memory companion review failed:", {
 					threadId,
-					explicitMemoryRequest,
 					error: error instanceof Error ? error.message : String(error),
 				});
 			}
@@ -2676,11 +2671,7 @@ async function consumeRovoAppManagedResponse({
 			}
 		};
 
-		if (explicitMemoryRequest) {
-			await runHermesMemoryReview();
-		} else {
-			void runHermesMemoryReview();
-		}
+		await runHermesMemoryReview();
 		void runHermesSkillReview();
 	}
 	await finalizeRovoAppRun(threadId, run, messages);

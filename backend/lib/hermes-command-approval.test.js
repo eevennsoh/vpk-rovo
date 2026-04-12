@@ -2,7 +2,6 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 
 const {
-	DEFAULT_DANGEROUS_PATTERNS,
 	isDangerousCommand,
 	classifyCommand,
 } = require("./hermes-command-approval");

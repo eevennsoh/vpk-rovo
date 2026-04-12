@@ -1,35 +1,4 @@
 const { getNonEmptyString } = require("./shared-utils");
-const { isConversationalMessage, isTaskLikeMessage } = require("./planning-question-gate");
-const { isExplicitNewRovoAppArtifactRequest } = require("./rovo-app-artifact-updates");
-
-// ---------------------------------------------------------------------------
-// Regex patterns — ported from existing classifiers
-// ---------------------------------------------------------------------------
-
-/**
- * Verb + noun patterns for artifact creation requests.
- * Derived from rovo-app-artifact-intent.js DOCUMENT_VERB_PATTERN / DOCUMENT_NOUN_PATTERN.
- */
-const ARTIFACT_CREATE_VERB_PATTERN =
-	/\b(write|draft|create|build|generate|make|compose|outline|design|implement|refactor|turn|convert)\b/i;
-const ARTIFACT_CREATE_NOUN_PATTERN =
-	/\b(document|doc|plan|brief|proposal|spec|summary|memo|outline|report|email|copy|article|blog|code|component|app|page|ui|table|spreadsheet|sheet|artifact|website|site|landing\s*page|form|template|script|function|class|module|api|endpoint)\b/i;
-
-/**
- * GenUI patterns — ported from prompt-intent.js SMART_UI_REQUEST_PATTERN.
- */
-const GENUI_NOUN_PATTERN =
-	/\b(dashboard|chart|charts|graph|graphs|plot|plots|visuali[sz]e|visualization|infographic|kanban|board|timeline|roadmap|widget|json\s*spec|json-render|data\s*view|breakdown|overview|analytics|metrics|kpi|stats|statistics|diagram|flowchart|excalidraw|sequence\s+diagram)\b/i;
-const GENUI_VERB_PATTERN =
-	/\b(show|display|visuali[sz]e|render|chart|graph|plot|present|summarize|breakdown)\b/i;
-
-/**
- * Data-oriented nouns that, combined with a genui verb, strongly indicate genui.
- */
-const DATA_NOUN_PATTERN =
-	/\b(revenue|sales|data|performance|growth|trend|trends|traffic|conversion|profit|expense|budget|forecast|q[1-4]|quarter|quarterly|annual|monthly|weekly|daily|ytd|year[\s-]to[\s-]date|breakdown|distribution|comparison|analysis)\b/i;
-const DIAGRAM_REQUEST_PATTERN =
-	/\b(?:create|build|generate|make|draw|design|render|show)\b[\s\S]{0,80}\b(?:diagram|flowchart|excalidraw|sequence\s+diagram|architecture\s+diagram|system\s+diagram)\b|\b(?:diagram|flowchart|excalidraw|sequence\s+diagram|architecture\s+diagram|system\s+diagram)\b[\s\S]{0,80}\b(?:create|build|generate|make|draw|design|render|show)\b/i;
 
 // ---------------------------------------------------------------------------
 // Presentation mapping

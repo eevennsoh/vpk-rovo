@@ -7,16 +7,15 @@ const DEFAULT_MEDIA_PRECLASSIFICATION = Object.freeze({
 	reason: "disabled-local-preclassification",
 });
 
-function inferPromptIntent(prompt) {
-	const text = getNonEmptyString(prompt);
-	return text ? "normal" : "normal";
+function inferPromptIntent() {
+	return "normal";
 }
 
-function shouldPreferGenuiWhenPossible(prompt) {
+function shouldPreferGenuiWhenPossible() {
 	return false;
 }
 
-function isCreateIntentRequest(prompt) {
+function isCreateIntentRequest() {
 	return false;
 }
 

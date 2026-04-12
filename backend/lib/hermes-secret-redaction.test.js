@@ -2,7 +2,6 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 
 const {
-	DEFAULT_SECRET_PATTERNS,
 	redactSecrets,
 	detectSecrets,
 } = require("./hermes-secret-redaction");

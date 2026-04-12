@@ -158,7 +158,7 @@ export function SkillsSurfacePage({
 	const [hubTotal, setHubTotal] = useState(0);
 	const [hubPage, setHubPage] = useState(1);
 	const [hubTotalPages, setHubTotalPages] = useState(1);
-	const [hubSource, setHubSource] = useState("all");
+	const [hubSource] = useState("all");
 	const [hubQuery, setHubQuery] = useState("");
 	const [hubSelectedSkill, setHubSelectedSkill] = useState<HermesHubSkill | null>(null);
 	const [hubInspectResult, setHubInspectResult] = useState<HermesHubInspectResult | null>(null);
@@ -856,6 +856,89 @@ export function SkillsSurfacePage({
 										<ScrollArea className="max-h-[20rem]">
 											<pre className="whitespace-pre-wrap rounded-xl border border-border bg-surface-raised p-3 text-sm text-text-subtle">
 												{selectedSkill ? selectedSkill.content : "Select a skill to inspect its content."}
+											</pre>
+										</ScrollArea>
+									</CardContent>
+								</Card>
+							</>
+						) : activeView === "hub" ? (
+							<>
+								<Card>
+									<CardHeader>
+										<div className="flex items-center justify-between gap-3">
+											<div>
+												<CardTitle>{hubSelectedSkill ? hubSelectedSkill.name : "Select a skill"}</CardTitle>
+												<CardDescription>
+													{hubSelectedSkill
+														? hubSelectedSkill.description ?? "No description available."
+														: "Browse or search the hub, then select a skill to preview."}
+												</CardDescription>
+											</div>
+											{hubSelectedSkill ? (
+												<div className="flex items-center gap-2">
+													{hubSelectedSkill.trustLevel ? (
+														<Badge variant={
+															hubSelectedSkill.trustLevel === "trusted" ? "success"
+																: hubSelectedSkill.trustLevel === "builtin" ? "info"
+																	: "neutral"
+														}>
+															{hubSelectedSkill.trustLevel}
+														</Badge>
+													) : null}
+													<Button
+														onClick={() => void handleHubInstall()}
+														disabled={isHubInstalling || !hubSelectedSkill.identifier}
+													>
+														{isHubInstalling ? "Installing..." : "Install"}
+													</Button>
+												</div>
+											) : null}
+										</div>
+									</CardHeader>
+									<CardContent className="space-y-4">
+										{hubSelectedSkill ? (
+											<>
+												<div className="grid gap-3 sm:grid-cols-2">
+													{hubSelectedSkill.source ? (
+														<div className="rounded-lg border border-border bg-surface-raised px-3 py-2">
+															<div className="text-xs uppercase tracking-wide text-text-subtlest">Source</div>
+															<div className="text-sm">{hubSelectedSkill.source}</div>
+														</div>
+													) : null}
+													{hubSelectedSkill.identifier ? (
+														<div className="rounded-lg border border-border bg-surface-raised px-3 py-2">
+															<div className="text-xs uppercase tracking-wide text-text-subtlest">Identifier</div>
+															<div className="truncate text-sm">{hubSelectedSkill.identifier}</div>
+														</div>
+													) : null}
+												</div>
+												{hubSelectedSkill.tags.length > 0 ? (
+													<div className="flex flex-wrap gap-1">
+														{hubSelectedSkill.tags.map((tag) => (
+															<Badge key={tag} variant="neutral">{tag}</Badge>
+														))}
+													</div>
+												) : null}
+											</>
+										) : (
+											<div className="rounded-xl border border-dashed border-border px-4 py-8 text-sm text-text-subtle">
+												Select a skill from the hub to preview and install.
+											</div>
+										)}
+									</CardContent>
+								</Card>
+
+								<Card>
+									<CardHeader>
+										<CardTitle>Skill preview</CardTitle>
+										<CardDescription>SKILL.md content from the selected hub skill.</CardDescription>
+									</CardHeader>
+									<CardContent>
+										<ScrollArea className="max-h-[20rem]">
+											<pre className="whitespace-pre-wrap rounded-xl border border-border bg-surface-raised p-3 text-sm text-text-subtle">
+												{hubInspectResult?.preview
+													? hubInspectResult.preview
+													: "Select a skill to preview its content."}
 											</pre>
 										</ScrollArea>
 									</CardContent>
