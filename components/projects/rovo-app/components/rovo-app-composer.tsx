@@ -722,7 +722,7 @@ function RovoAppComposerInner({
 											transition={{ type: "spring", bounce: 0, visualDuration: 0.15 }}
 											style={{ willChange: "transform, opacity" }}
 										>
-											<PromptInputSubmit aria-label="Submit" className="bg-icon text-white hover:bg-icon hover:opacity-90 active:opacity-80 [&_svg]:text-white" disabled={submitDisabled || !canSubmit} onStop={() => void onStop()} shape="circle" size="icon-sm" status={composerStatus}>
+											<PromptInputSubmit aria-label="Submit" className="hover:opacity-90 active:opacity-80" disabled={submitDisabled || !canSubmit} onStop={() => void onStop()} shape="circle" size="icon-sm" status={composerStatus}>
 												<ArrowUpIcon label="" />
 											</PromptInputSubmit>
 										</motion.div>
@@ -755,8 +755,9 @@ function RovoAppComposerInner({
 											style={{ willChange: "transform, opacity" }}
 										>
 											<PromptInputButton
+												variant="default"
 												aria-label="Start live voice"
-												className="size-8 bg-icon text-white transition-colors hover:bg-icon hover:opacity-90 active:opacity-80 [&_svg]:text-white"
+												className="size-8 hover:opacity-90 active:opacity-80"
 												onClick={handleToggleRealtimeVoice}
 												shape="circle"
 												tooltip={{ content: "Live chat", delay: 0 }}

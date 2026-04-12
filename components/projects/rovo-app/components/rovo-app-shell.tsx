@@ -2221,7 +2221,6 @@ export function RovoAppShell({
 					extraHorizontalPaddingWhenCompact
 					documents={chat.documents}
 					editingMessageId={chat.editingMessageId}
-					hermesMemoryLabel={hermesMemoryLabel}
 					isStreaming={chat.isStreaming}
 					messages={displayMessages}
 					onBuildPlan={handleBuildPlan}
@@ -2624,6 +2623,7 @@ export function RovoAppShell({
 					) : null}
 					<RovoAppHeader
 						artifactMenuItems={artifactMenuItems}
+						hermesMemoryLabel={hermesMemoryLabel}
 						isArtifactOpen={isArtifactOpen}
 						onNewChat={() => {
 							setOptimisticUserMessage(null);

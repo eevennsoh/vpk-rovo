@@ -46,7 +46,6 @@ import type { NewCoreIconProps } from "@atlaskit/icon/base-new";
 import ListChecklistIcon from "@atlaskit/icon/core/list-checklist";
 import PeopleGroupIcon from "@atlaskit/icon/core/people-group";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Lozenge } from "@/components/ui/lozenge";
 import { InlineEdit } from "@/components/ui/inline-edit";
 import { getRovoAppInterruptionLabel } from "@/lib/rovo-app-interruptions";
@@ -143,7 +142,6 @@ interface RovoAppMessagesProps {
 	extraHorizontalPaddingWhenCompact?: boolean;
 	documents: ReadonlyArray<RovoAppDocument>;
 	editingMessageId: string | null;
-	hermesMemoryLabel?: string | null;
 	isStreaming: boolean;
 	messages: ReadonlyArray<RovoUIMessage>;
 	onBuildPlan?: (planWidget: ParsedPlanWidgetPayload) => void | Promise<void>;
@@ -1305,7 +1303,6 @@ export function RovoAppMessages({
 	extraHorizontalPaddingWhenCompact = false,
 	documents,
 	editingMessageId,
-	hermesMemoryLabel = null,
 	isStreaming,
 	messages,
 	onBuildPlan,
@@ -1441,16 +1438,6 @@ export function RovoAppMessages({
 					>
 						<Heading size="xlarge">How can I help?</Heading>
 					</motion.div>
-					{hermesMemoryLabel ? (
-						<motion.div
-							initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
-							animate={{ opacity: 1, y: 0 }}
-							transition={{ duration: 0.4, ease: [0, 0.4, 0, 1], delay: 0.15 }}
-							style={{ willChange: "transform, opacity" }}
-						>
-							<Badge variant="information">{hermesMemoryLabel}</Badge>
-						</motion.div>
-					) : null}
 				</div>
 			) : null}
 

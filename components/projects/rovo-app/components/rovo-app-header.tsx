@@ -35,6 +35,7 @@ interface ArtifactMenuItem {
 
 interface RovoAppHeaderProps {
 	artifactMenuItems?: ReadonlyArray<ArtifactMenuItem>;
+	hermesMemoryLabel?: string | null;
 	onNewChat?: () => void;
 	onOpenDocument?: (documentId: string) => void;
 	isArtifactOpen?: boolean;
@@ -42,6 +43,7 @@ interface RovoAppHeaderProps {
 
 export function RovoAppHeader({
 	artifactMenuItems,
+	hermesMemoryLabel = null,
 	onNewChat,
 	onOpenDocument,
 	isArtifactOpen,
@@ -127,14 +129,23 @@ export function RovoAppHeader({
 
 			<div className="min-h-px min-w-px flex-1" />
 
-			{normalizedRuntimeStatus ? (
+			{(normalizedRuntimeStatus || hermesMemoryLabel) ? (
 				<div className="hidden items-center gap-2 text-xs md:flex">
-					<Badge variant={normalizedRuntimeStatus.surfaces.rovodev.health === "ok" ? "success" : normalizedRuntimeStatus.surfaces.rovodev.health === "degraded" ? "warning" : "danger"}>
-						RovoDev {formatSurfaceStatus(normalizedRuntimeStatus.surfaces.rovodev.status)}
-					</Badge>
-					<Badge variant={normalizedRuntimeStatus.surfaces.hermes.health === "ok" ? "success" : normalizedRuntimeStatus.surfaces.hermes.health === "degraded" ? "warning" : "danger"}>
-						Hermes {formatSurfaceStatus(normalizedRuntimeStatus.surfaces.hermes.status)}
-					</Badge>
+					{normalizedRuntimeStatus ? (
+						<>
+							{hermesMemoryLabel ? (
+								<Badge variant="information">{hermesMemoryLabel}</Badge>
+							) : null}
+							<Badge variant={normalizedRuntimeStatus.surfaces.rovodev.health === "ok" ? "success" : normalizedRuntimeStatus.surfaces.rovodev.health === "degraded" ? "warning" : "danger"}>
+								RovoDev {formatSurfaceStatus(normalizedRuntimeStatus.surfaces.rovodev.status)}
+							</Badge>
+							<Badge variant={normalizedRuntimeStatus.surfaces.hermes.health === "ok" ? "success" : normalizedRuntimeStatus.surfaces.hermes.health === "degraded" ? "warning" : "danger"}>
+								Hermes {formatSurfaceStatus(normalizedRuntimeStatus.surfaces.hermes.status)}
+							</Badge>
+						</>
+					) : hermesMemoryLabel ? (
+						<Badge variant="information">{hermesMemoryLabel}</Badge>
+					) : null}
 				</div>
 			) : null}
 

@@ -472,8 +472,8 @@ function RovoAppSidebarNavMenu({
 						icon={
 							<span
 								className={cn(
-									"flex size-5 items-center justify-center rounded-full text-text-inverse",
-									isNewChatSelected ? "bg-bg-selected-bold" : "bg-text",
+									"flex size-5 items-center justify-center rounded-full text-primary-foreground",
+									isNewChatSelected ? "bg-bg-selected-bold" : "bg-primary",
 								)}
 							>
 								<AddIcon color="currentColor" label="" size="small" />
