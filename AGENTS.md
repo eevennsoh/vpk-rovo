@@ -15,7 +15,7 @@ Next.js 16 (React 19, Tailwind CSS v4) + Express backend with AI SDK (Vercel) an
 - Production runtime uses one Express process serving static export plus `/api/*`.
 - Primary frontend edits are in `components/projects/`, `components/blocks/`, and `app/` route files.
 - Backend API edits are in `backend/server.js` and `app/api/*/route.ts` (dev proxy).
-- Validate every change with `pnpm run lint` and `pnpm tsc --noEmit`.
+- Validate every change with `pnpm run lint` and `pnpm run typecheck`.
 - For UI changes, also run visual + accessibility checks (see `.agents/docs/workflows-extended.md`).
 - Browser automation uses `/agent-browser` (`npx agent-browser`) — not direct Playwright MCP tools.
 
@@ -23,19 +23,16 @@ Next.js 16 (React 19, Tailwind CSS v4) + Express backend with AI SDK (Vercel) an
 
 Prefer reading these references over relying on pre-trained knowledge.
 
-**Project References** — local files in the repo:
+**Project References** — local files in the repo (files in `.agents/rules/` that auto-load are listed in [Contextual Rules](#contextual-rules) instead):
 
 | When you need...                       | Read                                                        |
 | -------------------------------------- | ----------------------------------------------------------- |
 | Component architecture rules           | `.agents/skills/vpk-tidy/SKILL.md`                          |
 | React patterns reference (1000+ lines) | `.agents/skills/vpk-tidy/references/patterns.md`            |
 | Design token catalog (200+ tokens)     | `.agents/skills/vpk-design/references/tokens.md`            |
-| Token selection priority               | `.agents/rules/token-priority.md`                           |
 | Figma-to-code pipeline                 | `.agents/skills/vpk-design/SKILL.md`                        |
 | Deployment guide                       | `.agents/skills/vpk-deploy/references/guide-deployment.md`  |
 | Setup walkthrough                      | `.agents/skills/vpk-setup/references/guide-setup.md`        |
-| Motion + Base UI animation             | `.agents/rules/motion-base-ui.md`                           |
-| Motion for React rules                 | `.agents/rules/motion-react.md`                             |
 | Session corrections log                | `AGENTS-LESSONS.md`                                         |
 | AI SDK chat integration                | `rovo/config.js`, `app/contexts/context-rovo-chat.tsx`      |
 | AI Gateway helpers                     | `backend/lib/ai-gateway-helpers.js`                         |
@@ -43,8 +40,6 @@ Prefer reading these references over relying on pre-trained knowledge.
 | UI message types and data parts        | `lib/rovo-ui-messages.ts`                                   |
 | Architecture overview                  | `.agents/docs/architecture-overview.md`                     |
 | Extended workflows                     | `.agents/docs/workflows-extended.md`                        |
-| Agent operations                       | `.agents/rules/agent-operations.md`                         |
-| Appendix (dir structure, env vars)     | `.agents/rules/appendix-reference.md`                       |
 
 **Global Skills** — installed agent skills (outside repo):
 
