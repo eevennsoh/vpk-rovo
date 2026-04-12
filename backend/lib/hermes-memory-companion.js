@@ -9,11 +9,11 @@ const {
 	getNonEmptyString,
 } = require("./shared-utils");
 const {
+	executeStructuredFallbackTask,
 	parseStructuredJsonResponse,
-	runRovoDevBackgroundTask,
 } = require("./rovo-task-executor");
 
-const DEFAULT_MEMORY_COMPANION_TIMEOUT_MS = 8_000;
+const DEFAULT_MEMORY_COMPANION_TIMEOUT_MS = 20_000;
 const MEMORY_COMPANION_HISTORY_LIMIT = 6;
 
 const EXPLICIT_MEMORY_REQUEST_PATTERNS = [
@@ -103,9 +103,7 @@ function buildHermesMemoryCompanionMessages({
 			content: [
 				"[Hermes Memory Companion]",
 				"You are reviewing a finished turn from another assistant.",
-				"Persist durable memory with the built-in `memory` tool when appropriate.",
-				"Use only the `memory` tool. Do not use any other tool.",
-				"If the `memory` tool is unavailable, emit a single JSON object with `mode` set to `structured-memory-fallback` and an `actions` array containing only `add` or `replace` entries.",
+				"Emit a single JSON object with `mode` set to `structured-memory-fallback` and an `actions` array containing only `add` or `replace` entries.",
 				"Each action must include `target` (`memory` or `user`) and `content`.",
 				"Use `replace` only when you intend to replace the full memory document for that target.",
 				"Do not include commentary outside the JSON object in the fallback path.",
@@ -229,10 +227,26 @@ async function applyStructuredHermesMemoryActions(
 	return appliedActions;
 }
 
+async function executeMemoryCompanionViaGateway({ prompt, system, signal, timeoutMs }) {
+	const fallbackResult = await executeStructuredFallbackTask({
+		prompt,
+		signal,
+		system,
+		timeoutMs,
+	});
+	const structuredResult = parseStructuredHermesMemoryFallback(fallbackResult.text);
+	return {
+		backend: "ai-gateway",
+		didRun: true,
+		responseText: fallbackResult.text,
+		structuredResult,
+	};
+}
+
 async function runHermesMemoryCompanionReview({
 	conversationHistory,
 	explicitSaveRequest = false,
-	executeBackgroundTaskImpl = runRovoDevBackgroundTask,
+	executeBackgroundTaskImpl = executeMemoryCompanionViaGateway,
 	applyStructuredMemoryActionsImpl = applyStructuredHermesMemoryActions,
 	latestAssistantMessage,
 	latestUserMessage,
@@ -247,46 +261,36 @@ async function runHermesMemoryCompanionReview({
 		};
 	}
 
-	const abortController = new AbortController();
-	const timer = setTimeout(() => {
-		abortController.abort();
-	}, timeoutMs);
+	const executionInput = buildHermesMemoryCompanionExecutionInput({
+		conversationHistory,
+		explicitSaveRequest,
+		latestAssistantMessage: normalizedLatestAssistantMessage,
+		latestUserMessage: normalizedLatestUserMessage,
+	});
+	const payload = await executeBackgroundTaskImpl({
+		...executionInput,
+		conflictPolicy: "wait-for-turn",
+		parseStructuredResult: parseStructuredHermesMemoryFallback,
+		timeoutMs,
+	});
 
-	try {
-		const executionInput = buildHermesMemoryCompanionExecutionInput({
-			conversationHistory,
-			explicitSaveRequest,
-			latestAssistantMessage: normalizedLatestAssistantMessage,
-			latestUserMessage: normalizedLatestUserMessage,
-		});
-		const payload = await executeBackgroundTaskImpl({
-			...executionInput,
-			conflictPolicy: "wait-for-turn",
-			parseStructuredResult: parseStructuredHermesMemoryFallback,
-			signal: abortController.signal,
-			timeoutMs,
-		});
+	const structuredMemoryActions = payload.structuredResult
+		? await applyStructuredMemoryActionsImpl(payload.structuredResult.actions)
+		: [];
 
-		const structuredMemoryActions = payload.structuredResult
-			? await applyStructuredMemoryActionsImpl(payload.structuredResult.actions)
-			: [];
-
-		return {
-			didReview: true,
-			explicitSaveRequest,
-			responseText: payload.responseText ?? null,
-			structuredFallback: payload.structuredResult
-				? {
-					actions: structuredMemoryActions,
-					mode: payload.structuredResult.mode,
-					summary: payload.structuredResult.summary ?? null,
-				}
-				: null,
-			structuredMemoryActions,
-		};
-	} finally {
-		clearTimeout(timer);
-	}
+	return {
+		didReview: true,
+		explicitSaveRequest,
+		responseText: payload.responseText ?? null,
+		structuredFallback: payload.structuredResult
+			? {
+				actions: structuredMemoryActions,
+				mode: payload.structuredResult.mode,
+				summary: payload.structuredResult.summary ?? null,
+			}
+			: null,
+		structuredMemoryActions,
+	};
 }
 
 module.exports = {
@@ -294,6 +298,7 @@ module.exports = {
 	applyStructuredHermesMemoryActions,
 	buildHermesMemoryCompanionExecutionInput,
 	buildHermesMemoryCompanionMessages,
+	executeMemoryCompanionViaGateway,
 	getLatestAssistantTextFromMessages,
 	isExplicitHermesMemoryRequest,
 	parseStructuredHermesMemoryFallback,

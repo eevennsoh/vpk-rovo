@@ -1,27 +1,50 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Lozenge } from "@/components/ui/lozenge";
-import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
-import type { RuntimeHealth, RuntimeStatusSnapshot } from "@/lib/rovo-runtime-types";
+import type {
+	HermesJob,
+	HermesMemoryDocument,
+	RuntimeHealth,
+	RuntimeStatusSnapshot,
+	WikiStatus,
+} from "@/lib/rovo-runtime-types";
 
+import {
+	fetchJobs,
+	fetchMemoryDocuments,
+	fetchRuntimeStatusSnapshot,
+	fetchWikiStatus,
+	runJobAction,
+} from "./lib/control-plane-api";
 import {
 	INITIAL_CONTROL_PLANE_SETTINGS,
 	type ControlPlaneProviderRoutes,
 	type ControlPlaneSettingsState,
 } from "./lib/control-plane-data";
-import { fetchRuntimeStatusSnapshot } from "./lib/control-plane-api";
+import { formatControlPlaneDateTime } from "./lib/control-plane-utils";
 import { ControlPlanePageShell } from "./control-plane-page-shell";
 import { usePersistentState } from "./lib/use-persistent-state";
-import { UserProfileCard } from "./user-profile-card";
 
 const SETTINGS_STORAGE_KEY = "vpk-control-plane-settings";
 const DEFAULT_SETTINGS_STATE = createSettingsState();
+const WIKI_JOB_NAMES = ["wiki-nightly-ingest", "wiki-digest-regen"] as const;
+const WIKI_JOB_METADATA: Record<(typeof WIKI_JOB_NAMES)[number], { description: string; label: string }> = {
+	"wiki-nightly-ingest": {
+		description: "Turns queued raw captures into canonical wiki pages and updates the index.",
+		label: "Nightly ingest",
+	},
+	"wiki-digest-regen": {
+		description: "Rebuilds the Hermes memory digest from canonical wiki pages.",
+		label: "Digest regeneration",
+	},
+};
 
 const PROVIDER_OPTIONS: Record<keyof ControlPlaneProviderRoutes, readonly string[]> = {
 	browser: ["browser-extraction", "local-browser", "ai-gateway"],
@@ -50,14 +73,47 @@ function formatSurfaceHealth(health: RuntimeHealth): "neutral" | "danger" | "suc
 	}
 }
 
+function formatJobTone(status: HermesJob["status"]): "neutral" | "danger" | "success" | "warning" {
+	switch (status) {
+		case "running":
+			return "warning";
+		case "paused":
+			return "neutral";
+		case "failed":
+			return "danger";
+		default:
+			return "success";
+	}
+}
+
+function formatMemoryUsage(document: HermesMemoryDocument): string {
+	const limitText = typeof document.limit === "number" && document.limit > 0
+		? ` / ${document.limit.toLocaleString()}`
+		: "";
+	return `${document.totalChars.toLocaleString()}${limitText} chars`;
+}
+
+function formatCountLabel(count: number, singular: string, plural: string): string {
+	return `${count.toLocaleString()} ${count === 1 ? singular : plural}`;
+}
+
+function formatStatusValue(value: string | null | undefined, fallback: string): string {
+	return typeof value === "string" && value.trim().length > 0 ? value : fallback;
+}
+
 export function SettingsSurfacePage() {
+	const router = useRouter();
 	const [settings, setSettings] = usePersistentState(
 		SETTINGS_STORAGE_KEY,
 		DEFAULT_SETTINGS_STATE,
 	);
 	const [runtimeStatus, setRuntimeStatus] = useState<RuntimeStatusSnapshot | null>(null);
+	const [memoryDocuments, setMemoryDocuments] = useState<Record<"memory" | "user", HermesMemoryDocument> | null>(null);
+	const [jobs, setJobs] = useState<HermesJob[]>([]);
+	const [wikiStatus, setWikiStatus] = useState<WikiStatus | null>(null);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 	const [isRefreshing, setIsRefreshing] = useState(false);
+	const [jobActionKey, setJobActionKey] = useState<string | null>(null);
 
 	const runtimeCards = useMemo(() => {
 		if (!runtimeStatus) {
@@ -93,6 +149,33 @@ export function SettingsSurfacePage() {
 		];
 	}, [runtimeStatus]);
 
+	const wikiJobs = useMemo(() => {
+		return WIKI_JOB_NAMES.map((jobName) => ({
+			job: jobs.find((candidate) => candidate.name === jobName) ?? null,
+			name: jobName,
+			...WIKI_JOB_METADATA[jobName],
+		}));
+	}, [jobs]);
+
+	const memorySummary = useMemo(() => {
+		if (!memoryDocuments) {
+			return [];
+		}
+
+		return [
+			{
+				description: "Shared workspace memory",
+				document: memoryDocuments.memory,
+				label: "Core memory",
+			},
+			{
+				description: "User-specific durable context",
+				document: memoryDocuments.user,
+				label: "User memory",
+			},
+		];
+	}, [memoryDocuments]);
+
 	function updateRoute(surface: keyof ControlPlaneProviderRoutes, value: string) {
 		setSettings((current) => ({
 			...current,
@@ -103,37 +186,86 @@ export function SettingsSurfacePage() {
 		}));
 	}
 
-	async function refreshRuntimeStatus() {
+	async function refreshJobsOnly() {
+		const nextJobs = await fetchJobs();
+		setJobs(nextJobs);
+	}
+
+	async function refreshSurfaceData() {
 		setIsRefreshing(true);
 		try {
-			const snapshot = await fetchRuntimeStatusSnapshot();
-			setRuntimeStatus(snapshot);
-			setErrorMessage(null);
-		} catch (error) {
-			setErrorMessage(error instanceof Error ? error.message : String(error));
+			const [runtimeResult, memoriesResult, jobsResult, wikiResult] = await Promise.allSettled([
+				fetchRuntimeStatusSnapshot(),
+				fetchMemoryDocuments(),
+				fetchJobs(),
+				fetchWikiStatus(),
+			]);
+			const errors: string[] = [];
+
+			if (runtimeResult.status === "fulfilled") {
+				setRuntimeStatus(runtimeResult.value);
+			} else {
+				errors.push(runtimeResult.reason instanceof Error ? runtimeResult.reason.message : String(runtimeResult.reason));
+			}
+
+			if (memoriesResult.status === "fulfilled") {
+				setMemoryDocuments(memoriesResult.value);
+			} else {
+				errors.push(memoriesResult.reason instanceof Error ? memoriesResult.reason.message : String(memoriesResult.reason));
+			}
+
+			if (jobsResult.status === "fulfilled") {
+				setJobs(jobsResult.value);
+			} else {
+				errors.push(jobsResult.reason instanceof Error ? jobsResult.reason.message : String(jobsResult.reason));
+			}
+
+			if (wikiResult.status === "fulfilled") {
+				setWikiStatus(wikiResult.value);
+			} else {
+				errors.push(wikiResult.reason instanceof Error ? wikiResult.reason.message : String(wikiResult.reason));
+			}
+
+			setErrorMessage(errors.length > 0 ? errors.join(" ") : null);
 		} finally {
 			setIsRefreshing(false);
 		}
 	}
 
+	async function handleJobAction(jobId: string, action: "pause" | "resume" | "run") {
+		const actionKey = `${jobId}:${action}`;
+		setJobActionKey(actionKey);
+		try {
+			await runJobAction(jobId, action);
+			await refreshJobsOnly();
+			setErrorMessage(null);
+		} catch (error) {
+			setErrorMessage(error instanceof Error ? error.message : String(error));
+		} finally {
+			setJobActionKey(null);
+		}
+	}
+
 	useEffect(() => {
-		void refreshRuntimeStatus();
+		void refreshSurfaceData();
 	}, []);
 
 	return (
 		<ControlPlanePageShell
-			description="Tune provider routing, inspect runtime reachability, and model advanced automation settings locally."
+			description="Tune provider routing, inspect Hermes runtime reachability, and manage the live wiki mirror from one surface."
 			title="Settings"
 			actions={
 				<div className="flex items-center gap-2">
-					<Badge variant="neutral">{settings.advancedAutomation ? "automation on" : "automation off"}</Badge>
-					<Button variant="outline" isLoading={isRefreshing} onClick={() => void refreshRuntimeStatus()}>
+					<Badge variant="neutral">
+						{wikiStatus?.hasWikiDigestEntry ? "wiki digest present" : "wiki digest missing"}
+					</Badge>
+					<Button variant="outline" isLoading={isRefreshing} onClick={() => void refreshSurfaceData()}>
 						Refresh status
 					</Button>
 				</div>
 			}
 		>
-			<div className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
+			<div className="grid gap-4 xl:grid-cols-[1.04fr_0.96fr]">
 				<div className="space-y-4">
 					{errorMessage ? (
 						<Card>
@@ -163,7 +295,10 @@ export function SettingsSurfacePage() {
 					<Card>
 						<CardHeader>
 							<CardTitle>Provider routing</CardTitle>
-							<CardDescription>Choose the default runtime for each workload family. Jobs now run through the shared RovoDev executor, with Hermes providing the backing capabilities.</CardDescription>
+							<CardDescription>
+								Choose the default runtime for each workload family. Jobs run through the shared
+								RovoDev executor, with Hermes providing the backing capabilities.
+							</CardDescription>
 						</CardHeader>
 						<CardContent className="space-y-4">
 							{(Object.keys(PROVIDER_OPTIONS) as Array<keyof ControlPlaneProviderRoutes>).map((surface) => (
@@ -188,10 +323,6 @@ export function SettingsSurfacePage() {
 							))}
 						</CardContent>
 					</Card>
-				</div>
-
-				<div className="space-y-4">
-					<UserProfileCard />
 
 					<Card>
 						<CardHeader>
@@ -215,48 +346,203 @@ export function SettingsSurfacePage() {
 							</label>
 						</CardContent>
 					</Card>
+				</div>
 
+				<div className="space-y-4">
 					<Card>
-						<CardHeader>
-							<CardTitle>Integration surface</CardTitle>
-							<CardDescription>Hooks, bootstrap automation, and research work are reserved for the next phase.</CardDescription>
+						<CardHeader className="pb-3">
+							<div className="flex items-start justify-between gap-3">
+								<div className="space-y-1">
+									<CardTitle>Hermes memory</CardTitle>
+									<CardDescription>Live durable memory summary from the active Hermes runtime.</CardDescription>
+								</div>
+								<Lozenge variant={wikiStatus?.hasWikiDigestEntry ? "success" : "warning"}>
+									{wikiStatus?.hasWikiDigestEntry ? "Digest ready" : "Digest missing"}
+								</Lozenge>
+							</div>
 						</CardHeader>
 						<CardContent className="space-y-3">
-							<div className="rounded-xl border border-border bg-surface-raised px-3 py-2">
-								<div className="text-sm font-medium">Hooks</div>
-								<div className="text-sm text-text-subtle">User-facing hook and plugin settings will live in this surface.</div>
+							{memorySummary.length === 0 ? (
+								<div className="rounded-xl border border-border bg-surface-raised px-3 py-4 text-sm text-text-subtle">
+									Loading Hermes memory state...
+								</div>
+							) : (
+								memorySummary.map(({ document, label, description }) => (
+									<div key={label} className="rounded-xl border border-border bg-surface-raised px-3 py-3">
+										<div className="flex items-center justify-between gap-3">
+											<div>
+												<div className="text-sm font-medium">{label}</div>
+												<div className="text-sm text-text-subtle">{description}</div>
+											</div>
+											<Badge variant="neutral">
+												{formatCountLabel(document.entries.length, "entry", "entries")}
+											</Badge>
+										</div>
+										<div className="mt-3 grid gap-2 sm:grid-cols-2">
+											<div className="rounded-lg border border-border bg-background px-3 py-2">
+												<div className="text-xs uppercase tracking-wide text-text-subtle">Usage</div>
+												<div className="mt-1 text-sm font-medium">{formatMemoryUsage(document)}</div>
+											</div>
+											<div className="rounded-lg border border-border bg-background px-3 py-2">
+												<div className="text-xs uppercase tracking-wide text-text-subtle">Updated</div>
+												<div className="mt-1 text-sm font-medium">
+													{formatControlPlaneDateTime(document.updatedAt)}
+												</div>
+											</div>
+										</div>
+									</div>
+								))
+							)}
+
+							<Button variant="outline" onClick={() => router.push("/rovo-app/memories")}>
+								Open memories
+							</Button>
+						</CardContent>
+					</Card>
+
+					<Card>
+						<CardHeader className="pb-3">
+							<CardTitle>Wiki mirror</CardTitle>
+							<CardDescription>
+								Operational snapshot of the generated wiki rooted at <span className="font-mono text-xs">{wikiStatus?.wikiDir || "/Users/esoh/wiki"}</span>.
+							</CardDescription>
+						</CardHeader>
+						<CardContent className="space-y-3">
+							<div className="rounded-xl border border-border bg-surface-raised px-3 py-3">
+								<div className="text-xs uppercase tracking-wide text-text-subtle">Wiki root</div>
+								<div className="mt-1 break-all font-mono text-sm">
+									{wikiStatus?.wikiDir || "/Users/esoh/wiki"}
+								</div>
 							</div>
-							<div className="rounded-xl border border-border bg-surface-raised px-3 py-2">
-								<div className="text-sm font-medium">Bootstrap automation</div>
-								<div className="text-sm text-text-subtle">Track startup scripts and repo bootstrap helpers here.</div>
+
+							<div className="grid gap-3 sm:grid-cols-2">
+								<div className="rounded-xl border border-border bg-surface-raised px-3 py-3">
+									<div className="flex items-center justify-between gap-2">
+										<div className="text-sm font-medium">Canonical pages</div>
+										<Badge variant="neutral">
+											{wikiStatus ? formatCountLabel(wikiStatus.totalCanonicalPages, "page", "pages") : "Loading"}
+										</Badge>
+									</div>
+									<div className="mt-3 space-y-2 text-sm text-text-subtle">
+										{Object.entries(wikiStatus?.canonicalCounts ?? {}).map(([section, count]) => (
+											<div key={section} className="flex items-center justify-between gap-2">
+												<span className="capitalize">{section}</span>
+												<span>{count.toLocaleString()}</span>
+											</div>
+										))}
+									</div>
+								</div>
+
+								<div className="rounded-xl border border-border bg-surface-raised px-3 py-3">
+									<div className="flex items-center justify-between gap-2">
+										<div className="text-sm font-medium">Raw captures</div>
+										<Badge variant="neutral">
+											{wikiStatus ? formatCountLabel(wikiStatus.totalRawCaptures, "capture", "captures") : "Loading"}
+										</Badge>
+									</div>
+									<div className="mt-3 space-y-2 text-sm text-text-subtle">
+										{Object.entries(wikiStatus?.rawCounts ?? {}).map(([section, count]) => (
+											<div key={section} className="flex items-center justify-between gap-2">
+												<span className="capitalize">{section}</span>
+												<span>{count.toLocaleString()}</span>
+											</div>
+										))}
+									</div>
+								</div>
 							</div>
-							<div className="rounded-xl border border-border bg-surface-raised px-3 py-2">
-								<div className="text-sm font-medium">Research workbench</div>
-								<div className="text-sm text-text-subtle">Batch runs and trajectory export remain a next-phase surface.</div>
+
+							<div className="rounded-xl border border-border bg-surface-raised px-3 py-3">
+								<div className="text-sm font-medium">Key files</div>
+								<div className="mt-3 space-y-2 text-sm text-text-subtle">
+									{[
+										["SCHEMA.md", wikiStatus?.files.schema.updatedAt, wikiStatus?.files.schema.exists],
+										["index.md", wikiStatus?.files.index.updatedAt, wikiStatus?.files.index.exists],
+										["log.md", wikiStatus?.files.log.updatedAt, wikiStatus?.files.log.exists],
+									].map(([label, updatedAt, exists]) => (
+										<div key={String(label)} className="flex items-center justify-between gap-3">
+											<span>{label}</span>
+											<span className="text-right">
+												{exists ? formatControlPlaneDateTime(String(updatedAt)) : "Missing"}
+											</span>
+										</div>
+									))}
+								</div>
 							</div>
 						</CardContent>
 					</Card>
 
 					<Card>
-						<CardHeader>
-							<CardTitle>Runtime payload</CardTitle>
-							<CardDescription>Snapshot of the current `/api/status` response for quick debugging.</CardDescription>
+						<CardHeader className="pb-3">
+							<div className="flex items-start justify-between gap-3">
+								<div className="space-y-1">
+									<CardTitle>Wiki jobs</CardTitle>
+									<CardDescription>
+										Provisioned Hermes jobs that keep the generated wiki and memory digest in sync.
+									</CardDescription>
+								</div>
+								<Badge variant="neutral">
+									{formatCountLabel(wikiJobs.filter(({ job }) => job !== null).length, "job", "jobs")}
+								</Badge>
+							</div>
 						</CardHeader>
-						<CardContent>
-							<pre className="overflow-auto rounded-xl border border-border bg-surface-raised p-3 text-xs text-text-subtle">
-								{JSON.stringify(
-									{
-										runtimeStatus,
-										settings,
-									},
-									null,
-									2,
-								)}
-							</pre>
+						<CardContent className="space-y-3">
+							{wikiJobs.map(({ job, label, description, name }) => (
+								<div key={name} className="rounded-xl border border-border bg-surface-raised px-3 py-3">
+									<div className="flex flex-wrap items-start justify-between gap-3">
+										<div className="space-y-1">
+											<div className="flex items-center gap-2">
+												<div className="text-sm font-medium">{label}</div>
+												<Lozenge variant={job ? formatJobTone(job.status) : "danger"}>
+													{job ? formatStatusValue(job.status, "scheduled") : "missing"}
+												</Lozenge>
+											</div>
+											<div className="text-sm text-text-subtle">{description}</div>
+										</div>
+
+										{job ? (
+											<div className="flex items-center gap-2">
+												<Button
+													size="xs"
+													variant="outline"
+													isLoading={jobActionKey === `${job.id}:run`}
+													onClick={() => void handleJobAction(job.id, "run")}
+												>
+													Run now
+												</Button>
+												<Button
+													size="xs"
+													variant="outline"
+													isLoading={jobActionKey === `${job.id}:${job.status === "paused" ? "resume" : "pause"}`}
+													onClick={() => void handleJobAction(job.id, job.status === "paused" ? "resume" : "pause")}
+												>
+													{job.status === "paused" ? "Resume" : "Pause"}
+												</Button>
+											</div>
+										) : null}
+									</div>
+
+									<div className="mt-3 grid gap-2 sm:grid-cols-2">
+										<div className="rounded-lg border border-border bg-background px-3 py-2">
+											<div className="text-xs uppercase tracking-wide text-text-subtle">Schedule</div>
+											<div className="mt-1 text-sm font-medium">
+												{job?.schedule?.trim() ? job.schedule : "Not configured"}
+											</div>
+										</div>
+										<div className="rounded-lg border border-border bg-background px-3 py-2">
+											<div className="text-xs uppercase tracking-wide text-text-subtle">Last run</div>
+											<div className="mt-1 text-sm font-medium">
+												{job ? formatControlPlaneDateTime(job.lastRunAt) : "Not provisioned"}
+											</div>
+										</div>
+									</div>
+								</div>
+							))}
+
+							<Button variant="outline" onClick={() => router.push("/rovo-app/jobs")}>
+								Open jobs
+							</Button>
 						</CardContent>
 					</Card>
-
-					<Separator />
 				</div>
 			</div>
 		</ControlPlanePageShell>

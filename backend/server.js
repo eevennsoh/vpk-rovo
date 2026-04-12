@@ -104,6 +104,10 @@ const {
 	isSameRovoAppArtifactVersionRequest,
 } = require("./lib/rovo-app-artifact-updates");
 const {
+	ensureWikiJobs,
+	getWikiStatus,
+} = require("./lib/wiki-clipper");
+const {
 	inferRovoAppArtifactKindFromContent,
 } = require("./lib/rovo-app-artifact-kind");
 const {
@@ -13237,6 +13241,18 @@ app.get("/api/jobs", async (_req, res) => {
 	}
 });
 
+app.get("/api/wiki/status", async (_req, res) => {
+	try {
+		const wiki = await getWikiStatus();
+		return res.json({ wiki });
+	} catch (error) {
+		return res.status(500).json({
+			error: "Failed to load wiki status",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
 app.post("/api/jobs", async (req, res) => {
 	try {
 		const job = await hermesJobsProvider.createHermesJob(toHermesJobInput(req.body));
@@ -13500,11 +13516,55 @@ app.post("/api/skills/:category/:name/toggle", async (req, res) => {
 app.get("/api/skills/hub/search", async (req, res) => {
 	try {
 		const query = Array.isArray(req.query.q) ? req.query.q[0] : req.query.q;
-		const results = await skillsHubClient.search(query || "");
+		const source = Array.isArray(req.query.source) ? req.query.source[0] : req.query.source;
+		const limit = Array.isArray(req.query.limit) ? req.query.limit[0] : req.query.limit;
+		const results = await skillsHubClient.search(query || "", {
+			source: source || "all",
+			limit: limit ? parseInt(limit, 10) : 10,
+		});
 		return res.status(200).json({ results });
 	} catch (error) {
 		return res.status(500).json({
 			error: "Failed to search skills hub",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+app.get("/api/skills/hub/browse", async (req, res) => {
+	try {
+		const page = req.query.page ? parseInt(Array.isArray(req.query.page) ? req.query.page[0] : req.query.page, 10) : 1;
+		const pageSize = req.query.pageSize ? parseInt(Array.isArray(req.query.pageSize) ? req.query.pageSize[0] : req.query.pageSize, 10) : 20;
+		const source = Array.isArray(req.query.source) ? req.query.source[0] : req.query.source;
+		const result = await skillsHubClient.browse({ page, pageSize, source: source || "all" });
+		return res.status(200).json(result);
+	} catch (error) {
+		return res.status(500).json({
+			error: "Failed to browse skills hub",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+function getWildcardRouteValue(value) {
+	if (Array.isArray(value)) {
+		return getNonEmptyString(value.join("/"));
+	}
+
+	return getNonEmptyString(value);
+}
+
+app.get("/api/skills/hub/inspect/*identifier", async (req, res) => {
+	try {
+		const identifier = getWildcardRouteValue(req.params.identifier);
+		if (!identifier) {
+			return res.status(400).json({ error: "Identifier required" });
+		}
+		const result = await skillsHubClient.inspect(identifier);
+		return res.status(200).json(result);
+	} catch (error) {
+		return res.status(500).json({
+			error: "Failed to inspect skill",
 			details: error instanceof Error ? error.message : String(error),
 		});
 	}
@@ -13536,6 +13596,103 @@ app.post("/api/skills/hub/install", async (req, res) => {
 		return res.status(statusCode).json({
 			error: "Failed to install skill",
 			details: message,
+		});
+	}
+});
+
+app.post("/api/skills/hub/install-by-id", async (req, res) => {
+	try {
+		const { identifier, category, force } = req.body || {};
+		if (!identifier || typeof identifier !== "string") {
+			return res.status(400).json({ error: "Identifier required" });
+		}
+		const result = await skillsHubClient.installFromIdentifier(identifier, { category, force });
+		return res.status(201).json(result);
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		const statusCode = /already installed/iu.test(message) ? 409 : 500;
+		return res.status(statusCode).json({
+			error: "Failed to install skill",
+			details: message,
+		});
+	}
+});
+
+app.delete("/api/skills/hub/uninstall/*name", async (req, res) => {
+	try {
+		const name = getWildcardRouteValue(req.params.name);
+		if (!name) {
+			return res.status(400).json({ error: "Skill name required" });
+		}
+		const result = await skillsHubClient.uninstall(name);
+		if (!result.success) {
+			return res.status(404).json({ error: result.message });
+		}
+		return res.status(200).json(result);
+	} catch (error) {
+		return res.status(500).json({
+			error: "Failed to uninstall skill",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+app.get("/api/skills/hub/check", async (req, res) => {
+	try {
+		const name = Array.isArray(req.query.name) ? req.query.name[0] : req.query.name;
+		const results = await skillsHubClient.checkUpdates(name || undefined);
+		return res.status(200).json({ results });
+	} catch (error) {
+		return res.status(500).json({
+			error: "Failed to check for updates",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+app.get("/api/skills/hub/taps", async (_req, res) => {
+	try {
+		const result = await skillsHubClient.manageTaps("list");
+		return res.status(200).json({ taps: result.taps || [] });
+	} catch (error) {
+		return res.status(500).json({
+			error: "Failed to list taps",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+app.post("/api/skills/hub/taps", async (req, res) => {
+	try {
+		const { repo, path: repoPath } = req.body || {};
+		if (!repo || typeof repo !== "string") {
+			return res.status(400).json({ error: "Repo required" });
+		}
+		const result = await skillsHubClient.manageTaps("add", repo, repoPath);
+		return res.status(result.success ? 201 : 200).json(result);
+	} catch (error) {
+		return res.status(500).json({
+			error: "Failed to add tap",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+app.delete("/api/skills/hub/taps/*repo", async (req, res) => {
+	try {
+		const repo = getWildcardRouteValue(req.params.repo);
+		if (!repo) {
+			return res.status(400).json({ error: "Repo required" });
+		}
+		const result = await skillsHubClient.manageTaps("remove", repo);
+		if (!result.success) {
+			return res.status(404).json(result);
+		}
+		return res.status(200).json(result);
+	} catch (error) {
+		return res.status(500).json({
+			error: "Failed to remove tap",
+			details: error instanceof Error ? error.message : String(error),
 		});
 	}
 });
@@ -13650,6 +13807,17 @@ const server = app.listen(port, "0.0.0.0", async () => {
 
 	// Check for RovoDev Serve at startup
 	const rovoDevReady = await refreshRovoDevAvailability();
+	try {
+		const wikiJobProvisioning = await ensureWikiJobs(hermesJobsProvider);
+		console.log(
+			`  WIKI_JOBS: ${wikiJobProvisioning.existing} existing, ${wikiJobProvisioning.created} created`
+		);
+	} catch (error) {
+		console.error(
+			"[STARTUP] Failed to ensure wiki jobs",
+			error instanceof Error ? error.message : error,
+		);
+	}
 	hermesJobsProvider.startJobTicker?.();
 	const aiGatewayConfigured = hasGatewayUrlConfigured(getEnvVars());
 	const llmRouting = buildLlmRoutingStatus({

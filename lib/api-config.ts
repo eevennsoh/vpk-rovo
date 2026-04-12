@@ -37,6 +37,7 @@ export const API_ENDPOINTS = {
 	STATUS: `${API_BASE_URL}/api/status`,
 	STATUS_ROVODEV: `${API_BASE_URL}/api/status/rovodev`,
 	STATUS_HERMES: `${API_BASE_URL}/api/status/hermes`,
+	WIKI_STATUS: `${API_BASE_URL}/api/wiki/status`,
 	CHAT_THREADS: `${API_BASE_URL}/api/chat/threads`,
 	ROVO_APP_CHAT: `${API_BASE_URL}/api/rovo-app/chat`,
 	ROVO_APP_SUGGESTIONS: `${API_BASE_URL}/api/rovo-app/suggestions`,
@@ -62,8 +63,24 @@ export const API_ENDPOINTS = {
 	SKILLS_HUB_SEARCH: `${API_BASE_URL}/api/skills/hub/search`,
 	SKILLS_HUB_INSTALLED: `${API_BASE_URL}/api/skills/hub/installed`,
 	SKILLS_HUB_INSTALL: `${API_BASE_URL}/api/skills/hub/install`,
-	skillsHubSearch: (query: string) =>
-		`${API_BASE_URL}/api/skills/hub/search?q=${encodeURIComponent(query)}`,
+	SKILLS_HUB_BROWSE: `${API_BASE_URL}/api/skills/hub/browse`,
+	SKILLS_HUB_INSTALL_BY_ID: `${API_BASE_URL}/api/skills/hub/install-by-id`,
+	SKILLS_HUB_TAPS: `${API_BASE_URL}/api/skills/hub/taps`,
+	skillsHubSearch: (query: string, source?: string, limit?: number) => {
+		const params = new URLSearchParams({ q: query });
+		if (source) params.set("source", source);
+		if (typeof limit === "number") params.set("limit", String(limit));
+		return `${API_BASE_URL}/api/skills/hub/search?${params.toString()}`;
+	},
+	skillsHubBrowse: (page?: number, pageSize?: number, source?: string) => {
+		const params = new URLSearchParams();
+		if (typeof page === "number") params.set("page", String(page));
+		if (typeof pageSize === "number") params.set("pageSize", String(pageSize));
+		if (source) params.set("source", source);
+		return `${API_BASE_URL}/api/skills/hub/browse?${params.toString()}`;
+	},
+	skillsHubInspect: (identifier: string) =>
+		`${API_BASE_URL}/api/skills/hub/inspect/${identifier}`,
 	sessionSearch: (query: string, limit?: number) => {
 		const params = new URLSearchParams({ q: query });
 		if (typeof limit === "number") {

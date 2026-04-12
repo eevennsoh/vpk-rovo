@@ -21,7 +21,7 @@ export const CONTROL_PLANE_SURFACES: readonly ControlPlaneSurfaceLink[] = [
 		label: "Skills",
 	},
 	{
-		description: "Provider routing and runtime controls",
+		description: "Provider routing, Hermes memory, and wiki mirror controls",
 		href: "/rovo-app/settings",
 		label: "Settings",
 	},

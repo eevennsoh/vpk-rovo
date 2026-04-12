@@ -18,6 +18,8 @@ import {
 	FileTreeName,
 } from "@/components/ui-ai/file-tree";
 import type {
+	HermesHubInspectResult,
+	HermesHubSkill,
 	HermesSkillBundleDetail,
 	HermesSkillDetail,
 	HermesSkillDraftDetail,
@@ -28,12 +30,15 @@ import { cn } from "@/lib/utils";
 
 import {
 	approveSkillDraft,
+	browseSkillsHub,
 	deleteSkillDraft,
 	fetchSkillBundleDetail,
 	fetchSkillDetail,
 	fetchSkillDraftDetail,
 	fetchSkillDrafts,
 	fetchSkills,
+	inspectHubSkill,
+	installHubSkillById,
 	rejectSkillDraft,
 	toggleSkill,
 } from "./lib/control-plane-api";
@@ -45,7 +50,7 @@ interface SkillsSurfacePageProps {
 	initialSlug?: string | null;
 }
 
-type SkillsSurfaceView = "drafts" | "installed";
+type SkillsSurfaceView = "drafts" | "hub" | "installed";
 
 function buildSkillKey(skill: { category: string; name: string }): string {
 	return `${skill.category}/${skill.name}`;
@@ -148,6 +153,18 @@ export function SkillsSurfacePage({
 	const [isMutating, setIsMutating] = useState(false);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+	// Hub tab state
+	const [hubSkills, setHubSkills] = useState<HermesHubSkill[]>([]);
+	const [hubTotal, setHubTotal] = useState(0);
+	const [hubPage, setHubPage] = useState(1);
+	const [hubTotalPages, setHubTotalPages] = useState(1);
+	const [hubSource, setHubSource] = useState("all");
+	const [hubQuery, setHubQuery] = useState("");
+	const [hubSelectedSkill, setHubSelectedSkill] = useState<HermesHubSkill | null>(null);
+	const [hubInspectResult, setHubInspectResult] = useState<HermesHubInspectResult | null>(null);
+	const [isHubLoading, setIsHubLoading] = useState(false);
+	const [isHubInstalling, setIsHubInstalling] = useState(false);
+
 	const filteredSkills = useMemo(() => {
 		const normalizedQuery = query.trim().toLowerCase();
 		return skills.filter((skill) => {
@@ -210,6 +227,58 @@ export function SkillsSurfacePage({
 			setErrorMessage(error instanceof Error ? error.message : String(error));
 		} finally {
 			setIsLoading(false);
+		}
+	}
+
+	async function loadHubSkills(page: number, source: string, searchQuery?: string) {
+		setIsHubLoading(true);
+		try {
+			if (searchQuery && searchQuery.trim()) {
+				const { searchSkillsHub } = await import("./lib/control-plane-api");
+				const results = await searchSkillsHub(searchQuery.trim(), { source, limit: 20 });
+				setHubSkills(results);
+				setHubTotal(results.length);
+				setHubPage(1);
+				setHubTotalPages(1);
+			} else {
+				const result = await browseSkillsHub({ page, pageSize: 20, source });
+				setHubSkills(result.results);
+				setHubTotal(result.total);
+				setHubPage(result.page);
+				setHubTotalPages(result.totalPages);
+			}
+			setErrorMessage(null);
+		} catch (error) {
+			setErrorMessage(error instanceof Error ? error.message : String(error));
+		} finally {
+			setIsHubLoading(false);
+		}
+	}
+
+	async function handleHubSelectSkill(skill: HermesHubSkill) {
+		setHubSelectedSkill(skill);
+		if (skill.identifier) {
+			try {
+				const result = await inspectHubSkill(skill.identifier);
+				setHubInspectResult(result);
+			} catch {
+				setHubInspectResult(null);
+			}
+		}
+	}
+
+	async function handleHubInstall() {
+		if (!hubSelectedSkill?.identifier) return;
+		setIsHubInstalling(true);
+		try {
+			await installHubSkillById(hubSelectedSkill.identifier);
+			setErrorMessage(null);
+			await refreshInstalledSkills();
+			setActiveView("installed");
+		} catch (error) {
+			setErrorMessage(error instanceof Error ? error.message : String(error));
+		} finally {
+			setIsHubInstalling(false);
 		}
 	}
 
@@ -357,6 +426,13 @@ export function SkillsSurfacePage({
 		}
 	}, [draftComparisonPaths, selectedDraftFilePath]);
 
+	// Load hub skills when switching to hub tab or changing filters
+	useEffect(() => {
+		if (activeView !== "hub") return;
+		void loadHubSkills(hubPage, hubSource, hubQuery);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [activeView, hubPage, hubSource]);
+
 	function handleSelectSkill(skill: HermesSkillSummary) {
 		const nextKey = buildSkillKey(skill);
 		setSelectedSkillKey(nextKey);
@@ -435,7 +511,11 @@ export function SkillsSurfacePage({
 			actions={
 				<div className="flex items-center gap-2">
 					<Badge variant="neutral">
-						{activeView === "installed" ? `${filteredSkills.length} visible` : `${filteredDrafts.length} drafts`}
+						{activeView === "installed"
+								? `${filteredSkills.length} visible`
+								: activeView === "hub"
+									? `${hubTotal} available`
+									: `${filteredDrafts.length} drafts`}
 					</Badge>
 					<Button variant="outline" onClick={() => void refreshAll()} disabled={isLoading}>
 						Refresh
@@ -462,7 +542,13 @@ export function SkillsSurfacePage({
 							</span>
 						) : null}
 					</Button>
-				</div>
+						<Button
+							variant={activeView === "hub" ? "default" : "outline"}
+							onClick={() => setActiveView("hub")}
+						>
+							Hub
+						</Button>
+					</div>
 
 				<div className="grid gap-4 lg:grid-cols-[0.92fr_1.08fr]">
 					<div className="space-y-4">
@@ -476,11 +562,19 @@ export function SkillsSurfacePage({
 
 						<Card>
 							<CardHeader>
-								<CardTitle>{activeView === "installed" ? "Browse skills" : "Review drafts"}</CardTitle>
+								<CardTitle>
+								{activeView === "installed"
+									? "Browse skills"
+									: activeView === "hub"
+										? "Skills Hub"
+										: "Review drafts"}
+							</CardTitle>
 								<CardDescription>
 									{activeView === "installed"
 										? "Search across categories and open the canonical detail route."
-										: "Pending drafts are proposed by the Hermes skill companion and only become live after approval."}
+										: activeView === "hub"
+											? "Discover and install skills from GitHub, skills.sh, ClawHub, and LobeHub."
+											: "Pending drafts are proposed by the Hermes skill companion and only become live after approval."}
 								</CardDescription>
 							</CardHeader>
 							<CardContent className="space-y-3">
@@ -489,10 +583,23 @@ export function SkillsSurfacePage({
 										placeholder={
 											activeView === "installed"
 												? "Search skills, categories, or descriptions"
-												: "Search drafts by target, rationale, or summary"
+												: activeView === "hub"
+													? "Search the skills hub..."
+													: "Search drafts by target, rationale, or summary"
 										}
-										value={query}
-										onChange={(event) => setQuery(event.target.value)}
+										value={activeView === "hub" ? hubQuery : query}
+										onChange={(event) => {
+											if (activeView === "hub") {
+												setHubQuery(event.target.value);
+											} else {
+												setQuery(event.target.value);
+											}
+										}}
+										onKeyDown={activeView === "hub" ? (event) => {
+											if (event.key === "Enter") {
+												void loadHubSkills(1, hubSource, hubQuery);
+											}
+										} : undefined}
 									/>
 									{activeView === "installed" ? (
 										<Button
@@ -500,6 +607,14 @@ export function SkillsSurfacePage({
 											onClick={() => setShowDisabled((current) => !current)}
 										>
 											{showDisabled ? "Showing disabled" : "Enabled only"}
+										</Button>
+									) : activeView === "hub" ? (
+										<Button
+											variant="default"
+											onClick={() => void loadHubSkills(1, hubSource, hubQuery)}
+											disabled={isHubLoading}
+										>
+											Search
 										</Button>
 									) : (
 										<div className="flex items-center">
@@ -547,6 +662,81 @@ export function SkillsSurfacePage({
 												</FileTreeFolder>
 											))}
 										</FileTree>
+									) : activeView === "hub" ? (
+										<div className="space-y-3">
+											{isHubLoading ? (
+												<div className="rounded-xl border border-border bg-surface-raised px-3 py-8 text-center text-sm text-text-subtle">
+													Searching the skills hub...
+												</div>
+											) : hubSkills.length === 0 ? (
+												<div className="rounded-xl border border-dashed border-border px-4 py-8 text-sm text-text-subtle">
+													No skills found. Try a different search term.
+												</div>
+											) : (
+												<>
+													{hubSkills.map((skill) => {
+														const selected = hubSelectedSkill?.identifier === skill.identifier;
+														return (
+															<button
+																key={skill.identifier ?? skill.name}
+																className={cn(
+																	"w-full rounded-xl border px-3 py-3 text-left transition-colors",
+																	selected
+																		? "border-accent bg-surface-raised"
+																		: "border-border bg-surface hover:border-accent-subtle hover:bg-surface-raised",
+																)}
+																type="button"
+																onClick={() => void handleHubSelectSkill(skill)}
+															>
+																<div className="flex items-start justify-between gap-3">
+																	<div className="space-y-1">
+																		<div className="font-medium">{skill.name}</div>
+																		<div className="text-xs text-text-subtle line-clamp-2">
+																			{skill.description ?? "No description available."}
+																		</div>
+																	</div>
+																	<div className="flex flex-col items-end gap-1">
+																		<Badge variant={
+																			skill.trustLevel === "trusted" ? "success"
+																				: skill.trustLevel === "builtin" ? "info"
+																					: "neutral"
+																		}>
+																			{skill.trustLevel ?? "community"}
+																		</Badge>
+																		{skill.source ? (
+																			<span className="text-xs text-text-subtlest">{skill.source}</span>
+																		) : null}
+																	</div>
+																</div>
+															</button>
+														);
+													})}
+													{hubTotalPages > 1 ? (
+														<div className="flex items-center justify-center gap-2 pt-2">
+															<Button
+																size="sm"
+																variant="outline"
+																disabled={hubPage <= 1}
+																onClick={() => setHubPage((p) => Math.max(1, p - 1))}
+															>
+																Prev
+															</Button>
+															<span className="text-sm text-text-subtle">
+																{hubPage} / {hubTotalPages}
+															</span>
+															<Button
+																size="sm"
+																variant="outline"
+																disabled={hubPage >= hubTotalPages}
+																onClick={() => setHubPage((p) => p + 1)}
+															>
+																Next
+															</Button>
+														</div>
+													) : null}
+												</>
+											)}
+										</div>
 									) : (
 										<div className="space-y-3">
 											{filteredDrafts.length === 0 ? (

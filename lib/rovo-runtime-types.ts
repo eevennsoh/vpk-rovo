@@ -40,6 +40,27 @@ export interface HermesMemoryDocument {
 	updatedAt: string | null;
 }
 
+export interface WikiStatusFileSummary {
+	path: string;
+	exists: boolean;
+	updatedAt: string | null;
+}
+
+export interface WikiStatus {
+	wikiDir: string;
+	generatedAt: string;
+	canonicalCounts: Record<string, number>;
+	rawCounts: Record<string, number>;
+	totalCanonicalPages: number;
+	totalRawCaptures: number;
+	hasWikiDigestEntry: boolean;
+	files: {
+		index: WikiStatusFileSummary;
+		log: WikiStatusFileSummary;
+		schema: WikiStatusFileSummary;
+	};
+}
+
 export interface HermesSkillSummary {
 	id: string;
 	category: string;
@@ -126,6 +147,11 @@ export interface HermesHubSkill {
 	name: string;
 	description: string | null;
 	category: string;
+	source: string | null;
+	identifier: string | null;
+	trustLevel: "builtin" | "community" | "trusted" | null;
+	tags: string[];
+	extra: Record<string, unknown>;
 }
 
 export interface HermesHubInstallResult {
@@ -133,4 +159,16 @@ export interface HermesHubInstallResult {
 	path: string;
 	name: string;
 	category: string;
+}
+
+export interface HermesHubBrowseResult {
+	results: HermesHubSkill[];
+	total: number;
+	page: number;
+	totalPages: number;
+}
+
+export interface HermesHubInspectResult {
+	meta: HermesHubSkill | null;
+	preview: string | null;
 }

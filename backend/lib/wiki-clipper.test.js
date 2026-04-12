@@ -15,6 +15,7 @@ const {
 	computeContentHash,
 	ensureWikiJobs,
 	generateSlug,
+	getWikiStatus,
 	getWikiJobDefinitions,
 	ingestRawSources,
 	isSkippableUrl,
@@ -953,4 +954,77 @@ test("ensureWikiJobs handles missing provider gracefully", async () => {
 	const result = await ensureWikiJobs(null);
 	assert.equal(result.created, 0);
 	assert.equal(result.existing, 0);
+});
+
+// ---------------------------------------------------------------------------
+// getWikiStatus
+// ---------------------------------------------------------------------------
+
+test("getWikiStatus summarizes canonical pages, raw captures, and digest state", async () => {
+	const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "vpk-wiki-status-"));
+
+	await fs.mkdir(path.join(tmpDir, "entities"), { recursive: true });
+	await fs.mkdir(path.join(tmpDir, "concepts"), { recursive: true });
+	await fs.mkdir(path.join(tmpDir, "comparisons"), { recursive: true });
+	await fs.mkdir(path.join(tmpDir, "queries"), { recursive: true });
+	await fs.mkdir(path.join(tmpDir, "raw", "articles", "2026", "04"), { recursive: true });
+	await fs.mkdir(path.join(tmpDir, "raw", "papers", "2026", "04"), { recursive: true });
+
+	await Promise.all([
+		fs.writeFile(path.join(tmpDir, "SCHEMA.md"), "# Schema\n", "utf8"),
+		fs.writeFile(path.join(tmpDir, "index.md"), "# Index\n", "utf8"),
+		fs.writeFile(path.join(tmpDir, "log.md"), "# Log\n", "utf8"),
+		fs.writeFile(path.join(tmpDir, "entities", "atlassian.md"), "# Atlassian\n", "utf8"),
+		fs.writeFile(path.join(tmpDir, "concepts", "rovo.md"), "# Rovo\n", "utf8"),
+		fs.writeFile(path.join(tmpDir, "comparisons", "jira-vs-linear.md"), "# Compare\n", "utf8"),
+		fs.writeFile(path.join(tmpDir, "queries", "what-is-rovo.md"), "# Query\n", "utf8"),
+		fs.writeFile(path.join(tmpDir, "raw", "articles", "2026", "04", "capture-1.md"), "# Raw article\n", "utf8"),
+		fs.writeFile(path.join(tmpDir, "raw", "papers", "2026", "04", "capture-2.md"), "# Raw paper\n", "utf8"),
+	]);
+
+	const status = await getWikiStatus({
+		wikiDir: tmpDir,
+		memoryImpl: {
+			getMemory: async () => ({
+				entries: [
+					{ content: "[wiki-digest] Atlassian summary" },
+				],
+			}),
+		},
+	});
+
+	assert.equal(status.wikiDir, tmpDir);
+	assert.equal(status.canonicalCounts.entities, 1);
+	assert.equal(status.canonicalCounts.concepts, 1);
+	assert.equal(status.canonicalCounts.comparisons, 1);
+	assert.equal(status.canonicalCounts.queries, 1);
+	assert.equal(status.totalCanonicalPages, 4);
+	assert.equal(status.rawCounts.articles, 1);
+	assert.equal(status.rawCounts.papers, 1);
+	assert.equal(status.totalRawCaptures, 2);
+	assert.equal(status.hasWikiDigestEntry, true);
+	assert.equal(status.files.schema.exists, true);
+	assert.equal(status.files.index.exists, true);
+	assert.equal(status.files.log.exists, true);
+	assert.ok(typeof status.generatedAt === "string" && status.generatedAt.length > 0);
+});
+
+test("getWikiStatus returns zero counts when the wiki directories are missing", async () => {
+	const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "vpk-wiki-status-empty-"));
+
+	const status = await getWikiStatus({
+		wikiDir: tmpDir,
+		memoryImpl: {
+			getMemory: async () => ({
+				entries: [],
+			}),
+		},
+	});
+
+	assert.equal(status.totalCanonicalPages, 0);
+	assert.equal(status.totalRawCaptures, 0);
+	assert.equal(status.hasWikiDigestEntry, false);
+	assert.equal(status.files.schema.exists, false);
+	assert.equal(status.files.index.exists, false);
+	assert.equal(status.files.log.exists, false);
 });

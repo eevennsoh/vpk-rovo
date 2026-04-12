@@ -4,7 +4,9 @@ import { API_ENDPOINTS } from "@/lib/api-config";
 import { normalizeRuntimeStatusSnapshot } from "@/lib/rovo-runtime-status";
 import type {
 	Checkpoint,
+	HermesHubBrowseResult,
 	HermesHubInstallResult,
+	HermesHubInspectResult,
 	HermesHubSkill,
 	HermesJob,
 	HermesMemoryDocument,
@@ -17,6 +19,8 @@ import type {
 	HermesSkillSummary,
 	RuntimeStatusSnapshot,
 	SessionSearchResult,
+	WikiStatus,
+	WikiStatusFileSummary,
 } from "@/lib/rovo-runtime-types";
 
 function getString(value: unknown): string | null {
@@ -151,6 +155,66 @@ function normalizeHermesMemoryDocument(
 	};
 }
 
+function normalizeCountRecord(rawRecord: unknown): Record<string, number> {
+	const record = rawRecord && typeof rawRecord === "object"
+		? rawRecord as Record<string, unknown>
+		: {};
+
+	return Object.fromEntries(
+		Object.entries(record)
+			.filter(([, value]) => typeof value === "number" && Number.isFinite(value))
+			.map(([key, value]) => [key, value as number]),
+	);
+}
+
+function normalizeWikiStatusFileSummary(rawFile: unknown, fallbackPath = ""): WikiStatusFileSummary {
+	const file = rawFile && typeof rawFile === "object"
+		? rawFile as Record<string, unknown>
+		: {};
+
+	return {
+		exists: file.exists === true,
+		path: getString(file.path) ?? fallbackPath,
+		updatedAt: getString(file.updatedAt),
+	};
+}
+
+function sumCountRecord(record: Record<string, number>): number {
+	return Object.values(record).reduce((total, value) => total + value, 0);
+}
+
+function normalizeWikiStatus(rawStatus: unknown): WikiStatus {
+	const status = rawStatus && typeof rawStatus === "object"
+		? rawStatus as Record<string, unknown>
+		: {};
+	const files = status.files && typeof status.files === "object"
+		? status.files as Record<string, unknown>
+		: {};
+	const canonicalCounts = normalizeCountRecord(status.canonicalCounts);
+	const rawCounts = normalizeCountRecord(status.rawCounts);
+
+	return {
+		canonicalCounts,
+		files: {
+			index: normalizeWikiStatusFileSummary(files.index, "index.md"),
+			log: normalizeWikiStatusFileSummary(files.log, "log.md"),
+			schema: normalizeWikiStatusFileSummary(files.schema, "SCHEMA.md"),
+		},
+		generatedAt: getString(status.generatedAt) ?? new Date().toISOString(),
+		hasWikiDigestEntry: status.hasWikiDigestEntry === true,
+		rawCounts,
+		totalCanonicalPages:
+			typeof status.totalCanonicalPages === "number" && Number.isFinite(status.totalCanonicalPages)
+				? status.totalCanonicalPages
+				: sumCountRecord(canonicalCounts),
+		totalRawCaptures:
+			typeof status.totalRawCaptures === "number" && Number.isFinite(status.totalRawCaptures)
+				? status.totalRawCaptures
+				: sumCountRecord(rawCounts),
+		wikiDir: getString(status.wikiDir) ?? "",
+	};
+}
+
 function normalizeHermesSkillSummary(rawSkill: unknown): HermesSkillSummary {
 	const skill = rawSkill && typeof rawSkill === "object"
 		? rawSkill as Record<string, unknown>
@@ -271,6 +335,13 @@ export async function fetchRuntimeStatusSnapshot(): Promise<RuntimeStatusSnapsho
 		method: "GET",
 	}));
 	return normalizeRuntimeStatusSnapshot(payload);
+}
+
+export async function fetchWikiStatus(): Promise<WikiStatus> {
+	const payload = await parseJsonResponse<{ wiki?: unknown }>(await fetch(API_ENDPOINTS.WIKI_STATUS, {
+		method: "GET",
+	}));
+	return normalizeWikiStatus(payload.wiki);
 }
 
 export async function fetchJobs(): Promise<HermesJob[]> {
@@ -522,27 +593,96 @@ export async function deleteCheckpoint(id: string): Promise<Checkpoint> {
 	return normalizeCheckpoint(payload.checkpoint);
 }
 
-export async function searchSkillsHub(query: string): Promise<HermesHubSkill[]> {
+function normalizeHubSkill(raw: unknown): HermesHubSkill {
+	const item = raw && typeof raw === "object" ? raw as Record<string, unknown> : {};
+	return {
+		name: getString(item.name) ?? "unknown",
+		description: getString(item.description),
+		category: getString(item.category) ?? "community",
+		source: getString(item.source),
+		identifier: getString(item.identifier),
+		trustLevel:
+			item.trustLevel === "builtin" || item.trustLevel === "trusted" || item.trustLevel === "community"
+				? item.trustLevel
+				: null,
+		tags: Array.isArray(item.tags) ? item.tags.filter((t): t is string => typeof t === "string") : [],
+		extra: item.extra && typeof item.extra === "object" ? item.extra as Record<string, unknown> : {},
+	};
+}
+
+export async function searchSkillsHub(
+	query: string,
+	options?: { source?: string; limit?: number },
+): Promise<HermesHubSkill[]> {
 	if (!query || !query.trim()) {
 		return [];
 	}
 
 	const payload = await parseJsonResponse<{ results?: unknown[] }>(
-		await fetch(API_ENDPOINTS.skillsHubSearch(query.trim()), { method: "GET" }),
+		await fetch(API_ENDPOINTS.skillsHubSearch(query.trim(), options?.source, options?.limit), { method: "GET" }),
 	);
 
 	if (!Array.isArray(payload.results)) {
 		return [];
 	}
 
-	return payload.results.map((raw) => {
-		const item = raw && typeof raw === "object" ? raw as Record<string, unknown> : {};
-		return {
-			name: getString(item.name) ?? "unknown",
-			description: getString(item.description),
-			category: getString(item.category) ?? "community",
-		};
-	});
+	return payload.results.map(normalizeHubSkill);
+}
+
+export async function browseSkillsHub(
+	options?: { page?: number; pageSize?: number; source?: string },
+): Promise<HermesHubBrowseResult> {
+	const payload = await parseJsonResponse<{
+		results?: unknown[];
+		total?: number;
+		page?: number;
+		totalPages?: number;
+	}>(
+		await fetch(API_ENDPOINTS.skillsHubBrowse(options?.page, options?.pageSize, options?.source), {
+			method: "GET",
+		}),
+	);
+
+	return {
+		results: Array.isArray(payload.results) ? payload.results.map(normalizeHubSkill) : [],
+		total: typeof payload.total === "number" ? payload.total : 0,
+		page: typeof payload.page === "number" ? payload.page : 1,
+		totalPages: typeof payload.totalPages === "number" ? payload.totalPages : 1,
+	};
+}
+
+export async function inspectHubSkill(identifier: string): Promise<HermesHubInspectResult> {
+	const payload = await parseJsonResponse<{ meta?: unknown; preview?: unknown }>(
+		await fetch(API_ENDPOINTS.skillsHubInspect(identifier), { method: "GET" }),
+	);
+
+	return {
+		meta: payload.meta ? normalizeHubSkill(payload.meta) : null,
+		preview: typeof payload.preview === "string" ? payload.preview : null,
+	};
+}
+
+export async function installHubSkillById(
+	identifier: string,
+	options?: { category?: string; force?: boolean },
+): Promise<HermesHubInstallResult> {
+	const payload = await parseJsonResponse<Record<string, unknown>>(
+		await fetch(API_ENDPOINTS.SKILLS_HUB_INSTALL_BY_ID, {
+			body: JSON.stringify({
+				identifier,
+				category: options?.category,
+				force: options?.force,
+			}),
+			headers: { "Content-Type": "application/json" },
+			method: "POST",
+		}),
+	);
+	return {
+		installed: Boolean(payload.installed),
+		path: getString(payload.path) ?? "",
+		name: getString(payload.name) ?? identifier.split("/").pop() ?? "unknown",
+		category: getString(payload.category) ?? options?.category ?? "community",
+	};
 }
 
 export async function fetchInstalledHubSkills(): Promise<HermesHubSkill[]> {
@@ -554,14 +694,7 @@ export async function fetchInstalledHubSkills(): Promise<HermesHubSkill[]> {
 		return [];
 	}
 
-	return payload.skills.map((raw) => {
-		const item = raw && typeof raw === "object" ? raw as Record<string, unknown> : {};
-		return {
-			name: getString(item.name) ?? "unknown",
-			description: getString(item.description),
-			category: getString(item.category) ?? "community",
-		};
-	});
+	return payload.skills.map(normalizeHubSkill);
 }
 
 export async function installHubSkill(bundle: {

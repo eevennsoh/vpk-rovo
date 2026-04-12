@@ -397,6 +397,7 @@ async function captureUrl({
 // ---------------------------------------------------------------------------
 
 const WIKI_CONTENT_DIRS = ["entities", "concepts", "comparisons", "queries"];
+const RAW_WIKI_CONTENT_DIRS = ["articles", "papers", "transcripts", "assets"];
 
 async function queryWiki(query, { wikiDir = WIKI_DIR } = {}) {
 	if (!query || typeof query !== "string" || !query.trim()) {
@@ -710,6 +711,113 @@ async function ingestRawSources({
 
 const DIGEST_PREFIX = "[wiki-digest]";
 
+async function readFileSummary(filePath) {
+	try {
+		const stats = await fs.stat(filePath);
+		return {
+			exists: stats.isFile(),
+			path: filePath,
+			updatedAt: stats.mtime.toISOString(),
+		};
+	} catch (error) {
+		if (error && error.code === "ENOENT") {
+			return {
+				exists: false,
+				path: filePath,
+				updatedAt: null,
+			};
+		}
+
+		throw error;
+	}
+}
+
+async function countMarkdownFiles(dirPath) {
+	const files = await walkMarkdownFiles(dirPath);
+	return files.length;
+}
+
+function buildCountRecord(entries) {
+	return Object.fromEntries(entries);
+}
+
+function sumCountRecord(record) {
+	return Object.values(record).reduce((total, value) => total + value, 0);
+}
+
+function getMemoryEntryText(entry) {
+	if (typeof entry === "string") {
+		return entry;
+	}
+
+	if (typeof entry?.content === "string") {
+		return entry.content;
+	}
+
+	if (typeof entry?.text === "string") {
+		return entry.text;
+	}
+
+	return "";
+}
+
+async function getWikiStatus({
+	memoryImpl,
+	wikiDir = WIKI_DIR,
+} = {}) {
+	const memory = memoryImpl || (() => {
+		const { getHermesMemory } = require("./hermes-memory");
+		return {
+			getMemory: getHermesMemory,
+		};
+	})();
+
+	const [
+		indexFile,
+		logFile,
+		schemaFile,
+		canonicalEntries,
+		rawEntries,
+		memoryRecord,
+	] = await Promise.all([
+		readFileSummary(path.join(wikiDir, "index.md")),
+		readFileSummary(path.join(wikiDir, "log.md")),
+		readFileSummary(path.join(wikiDir, "SCHEMA.md")),
+		Promise.all(
+			WIKI_CONTENT_DIRS.map(async (section) => ([
+				section,
+				await countMarkdownFiles(path.join(wikiDir, section)),
+			])),
+		),
+		Promise.all(
+			RAW_WIKI_CONTENT_DIRS.map(async (section) => ([
+				section,
+				await countMarkdownFiles(path.join(wikiDir, "raw", section)),
+			])),
+		),
+		memory.getMemory("memory"),
+	]);
+
+	const canonicalCounts = buildCountRecord(canonicalEntries);
+	const rawCounts = buildCountRecord(rawEntries);
+	const memoryEntries = Array.isArray(memoryRecord?.entries) ? memoryRecord.entries : [];
+
+	return {
+		wikiDir,
+		generatedAt: new Date().toISOString(),
+		canonicalCounts,
+		rawCounts,
+		totalCanonicalPages: sumCountRecord(canonicalCounts),
+		totalRawCaptures: sumCountRecord(rawCounts),
+		hasWikiDigestEntry: memoryEntries.some((entry) => getMemoryEntryText(entry).includes(DIGEST_PREFIX)),
+		files: {
+			index: indexFile,
+			log: logFile,
+			schema: schemaFile,
+		},
+	};
+}
+
 async function regenerateMemoryDigest({
 	memoryImpl,
 	wikiDir = WIKI_DIR,
@@ -845,6 +953,7 @@ module.exports = {
 	computeContentHash,
 	ensureWikiJobs,
 	generateSlug,
+	getWikiStatus,
 	getWikiJobDefinitions,
 	ingestRawSources,
 	isSkippableUrl,
