@@ -2,6 +2,9 @@ const {
 	extractRovoAppRequestedTitle,
 } = require("./rovo-app-artifact-updates");
 const {
+	isExcalidrawArtifactOutput,
+} = require("./excalidraw-artifact");
+const {
 	extractRovoAppArtifactTitleFromContent,
 	sanitizeRovoAppArtifactTitle,
 } = require("./rovo-app-artifact-titles");
@@ -24,6 +27,10 @@ async function resolvePersistedRovoAppArtifactTitle({
 	const extractedTitle = extractRovoAppArtifactTitleFromContent(content);
 	if (extractedTitle) {
 		return extractedTitle;
+	}
+
+	if (isExcalidrawArtifactOutput(content)) {
+		return sanitizeRovoAppArtifactTitle(fallbackTitle) || "Diagram";
 	}
 
 	if (typeof resolveGeneratedTitle === "function") {

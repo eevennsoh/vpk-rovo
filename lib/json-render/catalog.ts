@@ -380,6 +380,33 @@ export const catalog = defineCatalog(schema, {
 			description: "Colored icon tile with label",
 			example: { label: "Settings", variant: "blue", size: "medium" },
 		},
+		FileTree: {
+			props: z.object({
+				nodes: z.array(
+					z.object({
+						path: z.string(),
+						name: z.string().nullable(),
+						type: z.enum(["file", "folder"]).nullable(),
+					}),
+				),
+				defaultExpandedPaths: z.array(z.string()).nullable(),
+				selectedPath: z.string().nullable(),
+				className: z.string().nullable(),
+			}),
+			slots: [],
+			description:
+				"Hierarchical file and directory tree. Provide slash-delimited paths. Missing ancestor folders are inferred automatically. Use for repository layouts, generated file sets, and directory summaries.",
+			example: {
+				nodes: [
+					{ path: "~/wiki", name: "~/wiki", type: "folder" },
+					{ path: "~/wiki/SCHEMA.md", name: "SCHEMA.md", type: "file" },
+					{ path: "~/wiki/raw", name: "raw", type: "folder" },
+					{ path: "~/wiki/raw/articles", name: "articles", type: "folder" },
+				],
+				defaultExpandedPaths: ["~/wiki", "~/wiki/raw"],
+				selectedPath: "~/wiki/SCHEMA.md",
+			},
+		},
 		MapWidget: {
 			props: z.object({
 				center: z.object({

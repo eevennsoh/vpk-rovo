@@ -1,7 +1,7 @@
 "use client";
 
 import { lazy, Suspense } from "react";
-import type { ParsedVideoPreviewWidget } from "@/components/projects/shared/lib/generative-widget";
+import type { PreviewVideoBody } from "@/components/projects/shared/lib/generative-widget";
 import { cn } from "@/lib/utils";
 
 const Player = lazy(() =>
@@ -9,12 +9,12 @@ const Player = lazy(() =>
 );
 
 interface VideoPreviewBodyProps {
-	readonly widget: ParsedVideoPreviewWidget;
+	readonly body: PreviewVideoBody;
 	readonly withContainer?: boolean;
 }
 
 function VideoComposition(props: Record<string, unknown>) {
-	const clips = (props.clips ?? []) as ParsedVideoPreviewWidget["clips"];
+	const clips = (props.clips ?? []) as NonNullable<PreviewVideoBody["clips"]>;
 
 	return (
 		<div className="flex h-full w-full items-center justify-center bg-bg-neutral-bold text-text-inverse">
@@ -28,8 +28,32 @@ function VideoComposition(props: Record<string, unknown>) {
 	);
 }
 
-export function VideoPreviewBody({ widget, withContainer = true }: VideoPreviewBodyProps) {
-	const { composition, clips } = widget;
+export function VideoPreviewBody({ body, withContainer = true }: VideoPreviewBodyProps) {
+	const composition = body.composition;
+	const clips = body.clips ?? [];
+
+	if (body.videoUrl) {
+		return (
+			<div className={cn(withContainer && "overflow-hidden rounded-md")}>
+				<video
+					className="h-auto max-h-[360px] w-full rounded-md bg-bg-neutral"
+					controls
+					playsInline
+					preload="metadata"
+					poster={body.posterUrl}
+				>
+					<source
+						src={body.videoUrl}
+						type={body.mimeType || "video/mp4"}
+					/>
+				</video>
+			</div>
+		);
+	}
+
+	if (!composition) {
+		return null;
+	}
 
 	return (
 		<div className={cn(withContainer && "overflow-hidden rounded-md")}>

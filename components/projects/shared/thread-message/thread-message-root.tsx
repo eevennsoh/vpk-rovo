@@ -375,7 +375,11 @@ function useThreadMessageDerived(
 		shouldSuppressQuestionCardText ||
 		(
 			shouldShowWidgetSections &&
-			(widgetType === "genui-preview" || widgetType === "audio-preview") &&
+			(
+				widgetType === "genui-preview" ||
+				widgetType === "audio-preview" ||
+				widgetType === "video-preview"
+			) &&
 			!isFallbackTextRoute &&
 			(hasWidgetPayload || isWidgetLoading)
 		);

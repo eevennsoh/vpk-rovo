@@ -4,7 +4,6 @@ const assert = require("node:assert/strict");
 const {
 	TOOL_FIRST_ENFORCEMENT_MODE_SOFT_RETRY,
 	resolveToolFirstPolicy,
-	isToolNameRelevant,
 	createToolFirstExecutionState,
 	recordToolFirstAttempt,
 	recordToolThinkingEvent,
@@ -20,157 +19,51 @@ const {
 	buildToolFirstWarningPayload,
 } = require("./tool-first-genui-policy");
 
-test("resolveToolFirstPolicy matches integration-domain prompts", () => {
-	const policy = resolveToolFirstPolicy({
-		prompt: "Check my Google Calendar availability tomorrow and propose slots",
-	});
+test("resolveToolFirstPolicy disables local tool-first matching for broad prompts", () => {
+	const prompts = [
+		"Send a Slack message saying hi",
+		"Check my Google Calendar availability tomorrow and propose slots",
+		"How do I manage space on this page layout?",
+		"Can you summarize the dependencies of this React component?",
+		"What is the best way to structure a project update email?",
+		"Show me the recent work on this graph rendering bug",
+	];
 
-	assert.equal(policy.matched, true);
-	assert.ok(policy.domains.includes("google-calendar"));
-	assert.match(policy.instruction, /Tool-first execution policy/);
-	assert.equal(policy.enforcement.mode, TOOL_FIRST_ENFORCEMENT_MODE_SOFT_RETRY);
-	assert.equal(policy.enforcement.maxRelevantRetries, 1);
+	for (const prompt of prompts) {
+		const policy = resolveToolFirstPolicy({ prompt });
+		assert.equal(policy.matched, false, `Expected local tool-first matching to stay disabled for "${prompt}"`);
+		assert.deepEqual(policy.domains, []);
+		assert.equal(policy.instruction, null);
+	}
 });
 
-test("resolveToolFirstPolicy adds Google Calendar required-args guidance", () => {
-	const policy = resolveToolFirstPolicy({
-		prompt: "List Google Calendar events",
-	});
-
-	assert.equal(policy.matched, true);
-	assert.ok(policy.domains.includes("google-calendar"));
-	assert.match(policy.instruction, /Google Calendar/i);
-	assert.match(policy.instruction, /calendarId/i);
-	assert.match(policy.instruction, /timeMin/i);
-	assert.match(policy.instruction, /timeMax/i);
-	assert.match(policy.instruction, /next 7 days/i);
-	assert.match(policy.instruction, /local timezone/i);
-	assert.match(policy.instruction, /UTC ISO 8601/i);
-});
-
-test("resolveToolFirstPolicy ignores casual prompts", () => {
+test("resolveToolFirstPolicy still returns enforcement defaults while disabled", () => {
 	const policy = resolveToolFirstPolicy({
 		prompt: "Hey, can you tell me a joke?",
 	});
 
 	assert.equal(policy.matched, false);
-	assert.equal(policy.domains.length, 0);
-	assert.equal(policy.instruction, null);
+	assert.equal(policy.enforcement.mode, TOOL_FIRST_ENFORCEMENT_MODE_SOFT_RETRY);
+	assert.equal(policy.enforcement.maxRelevantRetries, 1);
+	assert.equal(policy.teamworkGraphTimeWindow.enabled, false);
 });
 
-test("resolveToolFirstPolicy does not match generic translation prompts", () => {
-	const policy = resolveToolFirstPolicy({
-		prompt: 'translate "Let\'s do this together" to Mandarin',
-	});
-
-	assert.equal(policy.matched, false);
-	assert.equal(policy.domains.length, 0);
-});
-
-test("resolveToolFirstPolicy matches explicit Google Translate prompts", () => {
-	const policy = resolveToolFirstPolicy({
-		prompt: 'Use Google Translate to translate "Hello team" to Spanish',
-	});
-
-	assert.equal(policy.matched, true);
-	assert.ok(policy.domains.includes("google-translate"));
-});
-
-test("resolveToolFirstPolicy does not match generic single-page app sizing language as Confluence", () => {
-	const policy = resolveToolFirstPolicy({
-		prompt: "Build a dashboard app for data visualization and start with a single page",
-	});
-
-	assert.equal(policy.domains.includes("confluence"), false);
-});
-
-test("resolveToolFirstPolicy matches figma design-context prompts", () => {
-	const policy = resolveToolFirstPolicy({
-		prompt: "Get Figma design context",
-	});
-
-	assert.equal(policy.matched, true);
-	assert.ok(policy.domains.includes("figma"));
-});
-
-test("resolveToolFirstPolicy matches Drive prompts without explicit Google prefix", () => {
-	const listPolicy = resolveToolFirstPolicy({
-		prompt: "List all files in my Drive?",
-	});
-	const storagePolicy = resolveToolFirstPolicy({
-		prompt: "Check my Drive storage info",
-	});
-
-	assert.equal(listPolicy.matched, true);
-	assert.ok(listPolicy.domains.includes("google-drive-docs"));
-	assert.equal(storagePolicy.matched, true);
-	assert.ok(storagePolicy.domains.includes("google-drive-docs"));
-});
-
-test("isToolNameRelevant maps tool names against matched domains", () => {
-	const relevant = isToolNameRelevant({
-		toolName: "mcp__slack__search_channels",
+test("execution state still tracks manually-scoped relevant tool success", () => {
+	const state = createToolFirstExecutionState({
+		matched: true,
 		domains: ["slack"],
+		relevanceDomains: ["slack"],
+		domainLabels: ["Slack"],
 	});
-	const irrelevant = isToolNameRelevant({
-		toolName: "mcp__figma__get_design_context",
-		domains: ["slack"],
-	});
-
-	assert.equal(relevant, true);
-	assert.equal(irrelevant, false);
-});
-
-test("isToolNameRelevant matches Atlassian Google Drive URL bridge tools", () => {
-	const relevant = isToolNameRelevant({
-		toolName: "google_google_drive_atlassian_url_get_content",
-		domains: ["google-drive-docs"],
-	});
-
-	assert.equal(relevant, true);
-});
-
-test("planning-orchestration treats exit_plan_mode as a relevant tool", () => {
-	const relevant = isToolNameRelevant({
-		toolName: "exit_plan_mode",
-		domains: ["planning-orchestration"],
-	});
-
-	assert.equal(relevant, true);
-});
-
-test("browser automation treats bash helper calls as relevant", () => {
-	const policy = resolveToolFirstPolicy({
-		prompt: "Navigate to example.com and click the more information link",
-	});
-
-	assert.equal(policy.matched, true);
-	assert.ok(policy.domains.includes("browser-automation"));
-	assert.match(policy.instruction, /chromium-preview-agent/i);
-	assert.match(policy.instruction, /Do not call `mcp_get_tool_schema`/i);
-	assert.equal(
-		isToolNameRelevant({
-			toolName: "bash",
-			domains: ["browser-automation"],
-		}),
-		true
-	);
-});
-
-test("execution state tracks relevant tool success", () => {
-	const policy = resolveToolFirstPolicy({
-		prompt: "Find project context using Teamwork Graph and summarize updates",
-	});
-	const state = createToolFirstExecutionState(policy);
 
 	recordToolThinkingEvent(state, {
 		phase: "start",
-		toolName: "mcp__teamwork_graph__project_context",
+		toolName: "slack_slack_atlassian_channel_create_message",
 	});
 	recordToolThinkingEvent(state, {
 		phase: "result",
-		toolName: "mcp__teamwork_graph__project_context",
-		outputPreview: "Project context loaded",
+		toolName: "slack_slack_atlassian_channel_create_message",
+		outputPreview: "Message posted to CMM7V62NN",
 	});
 
 	assert.equal(state.relevantToolStarts, 1);
@@ -179,69 +72,13 @@ test("execution state tracks relevant tool success", () => {
 	assert.equal(hasRelevantToolObservation(state), true);
 });
 
-test("execution state counts resolved Slack integration tool results", () => {
-	const policy = resolveToolFirstPolicy({
-		prompt: "Send a Slack message saying hi",
-	});
-	const state = createToolFirstExecutionState(policy);
-
-	recordToolThinkingEvent(state, {
-		phase: "result",
-		toolName: "slack_slack_atlassian_channel_create_message",
-		outputPreview: "Message posted to CMM7V62NN",
-	});
-
-	assert.equal(state.relevantToolResults, 1);
-	assert.equal(hasRelevantToolSuccess(state), true);
-});
-
-test("fallback text explains text-only mode when tools fail", () => {
-	const policy = resolveToolFirstPolicy({
-		prompt: "Search Compass for webtransport ownership",
-	});
-	const state = createToolFirstExecutionState(policy);
-	recordToolFirstAttempt(state);
-	recordToolThinkingEvent(state, {
-		phase: "error",
-		toolName: "mcp__compass__component_search",
-		errorText: "403 unauthorized",
-	});
-
-	const message = buildToolFirstTextFallback({
-		policy,
-		execution: state,
-		rovoDevFallback: false,
-	});
-	assert.match(message, /couldn't verify a successful/i);
-	assert.match(message, /Last relevant tool/i);
-	assert.match(message, /re-authenticate/i);
-});
-
-test("planning-orchestration fallback avoids URL-or-ID recovery instructions", () => {
+test("buildToolContextForGenui includes relevant result summaries for manual policies", () => {
 	const policy = {
 		matched: true,
-		domains: ["planning-orchestration"],
-		relevanceDomains: ["planning-orchestration"],
-		domainLabels: ["Planning & Orchestration"],
+		domains: ["google-drive-docs"],
+		relevanceDomains: ["google-drive-docs"],
+		domainLabels: ["Google Drive / Docs"],
 	};
-	const state = createToolFirstExecutionState(policy);
-	recordToolFirstAttempt(state);
-
-	const message = buildToolFirstTextFallback({
-		policy,
-		execution: state,
-		rovoDevFallback: false,
-	});
-
-	assert.match(message, /planning handoff tool/i);
-	assert.match(message, /exit_plan_mode/i);
-	assert.doesNotMatch(message, /resource identifiers|URL\/ID/i);
-});
-
-test("buildToolContextForGenui includes relevant result summaries", () => {
-	const policy = resolveToolFirstPolicy({
-		prompt: "Summarize Google Drive comments and permissions for this doc",
-	});
 	const state = createToolFirstExecutionState(policy);
 	recordToolThinkingEvent(state, {
 		phase: "result",
@@ -260,10 +97,13 @@ test("buildToolContextForGenui includes relevant result summaries", () => {
 });
 
 test("recordToolFirstAttempt increments attempt and retry counters", () => {
-	const policy = resolveToolFirstPolicy({
-		prompt: "List Jira issues assigned to me",
+	const state = createToolFirstExecutionState({
+		matched: true,
+		domains: ["jira"],
+		relevanceDomains: ["jira"],
+		domainLabels: ["Jira"],
 	});
-	const state = createToolFirstExecutionState(policy);
+
 	recordToolFirstAttempt(state);
 	recordToolFirstAttempt(state, { isRetry: true });
 
@@ -271,12 +111,14 @@ test("recordToolFirstAttempt increments attempt and retry counters", () => {
 	assert.equal(state.retriesUsed, 1);
 });
 
-test("buildToolFirstRetryInstruction includes domain and retry details", () => {
-	const policy = resolveToolFirstPolicy({
-		prompt: "Search Slack thread updates",
-	});
+test("buildToolFirstRetryInstruction still reports manual retry metadata", () => {
 	const instruction = buildToolFirstRetryInstruction({
-		policy,
+		policy: {
+			matched: true,
+			domains: ["slack"],
+			relevanceDomains: ["slack"],
+			domainLabels: ["Slack"],
+		},
 		attemptNumber: 2,
 		remainingRetries: 1,
 	});
@@ -284,55 +126,6 @@ test("buildToolFirstRetryInstruction includes domain and retry details", () => {
 	assert.match(instruction, /Retry attempt 2/i);
 	assert.match(instruction, /Slack/i);
 	assert.match(instruction, /Remaining retries/i);
-});
-
-test("buildToolFirstRetryInstruction adds TWG fallback guidance for work-summary windows", () => {
-	const policy = resolveToolFirstPolicy({
-		prompt: "Last 7 days of work",
-	});
-	const state = createToolFirstExecutionState(policy);
-	recordToolThinkingEvent(state, {
-		phase: "error",
-		toolName: "mcp__teamwork_graph__cypher_query",
-		errorText: "SEMANTIC_ERROR: invalid datetime format. Expected ISO 8601 datetime format",
-	});
-	const instruction = buildToolFirstRetryInstruction({
-		policy,
-		attemptNumber: 2,
-		remainingRetries: 0,
-		execution: state,
-	});
-
-	assert.match(instruction, /Jira JQL/i);
-	assert.match(instruction, /Confluence CQL/i);
-	assert.match(instruction, /ISO 8601/i);
-	assert.match(instruction, /validation error/i);
-});
-
-test("buildToolFirstRetryInstruction adds Google Calendar validation retry guidance", () => {
-	const policy = resolveToolFirstPolicy({
-		prompt: "List Google Calendar events",
-	});
-	const state = createToolFirstExecutionState(policy);
-	recordToolThinkingEvent(state, {
-		phase: "error",
-		toolName: "google_google_calendar_atlassian_calendar_get_events",
-		errorText: "Expected ISO 8601 date-time for timeMin",
-	});
-
-	const instruction = buildToolFirstRetryInstruction({
-		policy,
-		attemptNumber: 2,
-		remainingRetries: 0,
-		execution: state,
-	});
-
-	assert.match(instruction, /Google Calendar validation retry directive/i);
-	assert.match(instruction, /Google Calendar/i);
-	assert.match(instruction, /calendarId/i);
-	assert.match(instruction, /timeMin/i);
-	assert.match(instruction, /timeMax/i);
-	assert.match(instruction, /UTC ISO 8601/i);
 });
 
 test("getToolFirstRetryDelayMs returns configured backoff values", () => {
@@ -359,9 +152,12 @@ test("classifyToolErrorCategory maps common failure types", () => {
 });
 
 test("buildToolFirstWarningPayload returns structured warning metadata", () => {
-	const policy = resolveToolFirstPolicy({
-		prompt: "Check Google Calendar availability this week",
-	});
+	const policy = {
+		matched: true,
+		domains: ["google-calendar"],
+		relevanceDomains: ["google-calendar"],
+		domainLabels: ["Google Calendar"],
+	};
 	const state = createToolFirstExecutionState(policy);
 	recordToolFirstAttempt(state);
 	recordToolThinkingEvent(state, {
@@ -387,16 +183,19 @@ test("buildToolFirstWarningPayload returns structured warning metadata", () => {
 	assert.equal(warning.rovoDevFallback, false);
 });
 
-test("buildToolFirstTextFallback adds Google Calendar required-field validation hints", () => {
-	const policy = resolveToolFirstPolicy({
-		prompt: "List Google Calendar events",
-	});
+test("buildToolFirstTextFallback still produces generic failure guidance", () => {
+	const policy = {
+		matched: true,
+		domains: ["compass"],
+		relevanceDomains: ["compass"],
+		domainLabels: ["Compass"],
+	};
 	const state = createToolFirstExecutionState(policy);
 	recordToolFirstAttempt(state);
 	recordToolThinkingEvent(state, {
 		phase: "error",
-		toolName: "google_google_calendar_atlassian_calendar_get_events",
-		errorText: "Invalid datetime format for timeMin",
+		toolName: "mcp__compass__component_search",
+		errorText: "403 unauthorized",
 	});
 
 	const message = buildToolFirstTextFallback({
@@ -404,70 +203,18 @@ test("buildToolFirstTextFallback adds Google Calendar required-field validation 
 		execution: state,
 		rovoDevFallback: false,
 	});
-
-	assert.match(message, /Google Calendar/i);
-	assert.match(message, /calendarId/i);
-	assert.match(message, /timeMin/i);
-	assert.match(message, /timeMax/i);
-	assert.match(message, /UTC ISO 8601/i);
-});
-
-test("stripToolFirstFailureNarrative removes fallback warning paragraph", () => {
-	const input = [
-		"I sent the message successfully.",
-		"",
-		"I couldn't verify a successful Slack tool result after 3 attempts (2 retries). Relevant integration tools were called, but no successful result was returned. If you need a tool-grounded result, retry after resolving the issue above.",
-	].join("\n");
-
-	const output = stripToolFirstFailureNarrative(input);
-	assert.equal(output.replaced, true);
-	assert.equal(output.text, "I sent the message successfully.");
-});
-
-test("resolveToolFirstPolicy matches work-activity prompts to teamwork-graph domain", () => {
-	const cases = [
-		"Last 7 days of work",
-		"Last seven days of work",
-		"Show my recent work",
-		"summarize my work from last week",
-		"recent work activity this week",
-		"What did I work on this week?",
-		"my work activity",
-		"past 2 weeks of work",
-		"my work activities",
-		"What have you worked on lately?",
-	];
-
-	for (const prompt of cases) {
-		const policy = resolveToolFirstPolicy({ prompt });
-		assert.equal(policy.matched, true, `Expected "${prompt}" to match`);
-		assert.ok(
-			policy.domains.includes("teamwork-graph"),
-			`Expected "${prompt}" to match teamwork-graph domain, got: ${policy.domains.join(", ")}`
-		);
-	}
-});
-
-test("resolveToolFirstPolicy enables TWG time-window fallback relevance domains", () => {
-	const policy = resolveToolFirstPolicy({
-		prompt: "Last 7 days of work summary",
-	});
-
-	assert.equal(policy.matched, true);
-	assert.ok(policy.domains.includes("teamwork-graph"));
-	assert.ok(policy.relevanceDomains.includes("jira"));
-	assert.ok(policy.relevanceDomains.includes("confluence"));
-	assert.equal(policy.teamworkGraphTimeWindow.enabled, true);
-	assert.match(policy.instruction, /Teamwork Graph/i);
-	assert.match(policy.instruction, /Jira JQL and Confluence CQL/i);
-	assert.match(policy.instruction, /ISO 8601/i);
+	assert.match(message, /couldn't verify a successful/i);
+	assert.match(message, /Last relevant tool/i);
+	assert.match(message, /re-authenticate/i);
 });
 
 test("shouldSuppressToolFirstIntentStatus suppresses early intent labels until relevant tool starts", () => {
-	const policy = resolveToolFirstPolicy({
-		prompt: "Last 7 days of work",
+	const state = createToolFirstExecutionState({
+		matched: true,
+		domains: ["teamwork-graph"],
+		relevanceDomains: ["teamwork-graph"],
+		domainLabels: ["Teamwork Graph"],
 	});
-	const state = createToolFirstExecutionState(policy);
 
 	assert.equal(
 		shouldSuppressToolFirstIntentStatus({
@@ -491,6 +238,18 @@ test("shouldSuppressToolFirstIntentStatus suppresses early intent labels until r
 		}),
 		false
 	);
+});
+
+test("stripToolFirstFailureNarrative removes fallback warning paragraph", () => {
+	const input = [
+		"I sent the message successfully.",
+		"",
+		"I couldn't verify a successful Slack tool result after 3 attempts (2 retries). Relevant integration tools were called, but no successful result was returned. If you need a tool-grounded result, retry after resolving the issue above.",
+	].join("\n");
+
+	const output = stripToolFirstFailureNarrative(input);
+	assert.equal(output.replaced, true);
+	assert.equal(output.text, "I sent the message successfully.");
 });
 
 test("stripToolFirstFailureNarrative keeps normal narrative unchanged", () => {

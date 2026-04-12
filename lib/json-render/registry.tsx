@@ -2,7 +2,7 @@
 
 import NextImage from "next/image";
 import dynamic from "next/dynamic";
-import { Children, Fragment, Suspense, lazy, useState } from "react";
+import { Children, Fragment, Suspense, lazy, useState, type ReactNode } from "react";
 import { defineRegistry, useBoundProp } from "@json-render/react";
 import { getByPath, setByPath } from "@json-render/core";
 import { catalog } from "./catalog";
@@ -114,6 +114,409 @@ function cloneStateModel<TState extends Record<string, unknown>>(state: TState):
 	return JSON.parse(JSON.stringify(state)) as TState;
 }
 
+type JsonRenderFileTreeNode = {
+	path: string;
+	name?: string | null;
+	type?: "file" | "folder" | null;
+};
+
+type FileTreeRenderNode = {
+	path: string;
+	name: string;
+	type: "file" | "folder";
+	children: FileTreeRenderNode[];
+};
+
+type FileTreeRenderData = {
+	defaultExpandedPaths: string[];
+	roots: FileTreeRenderNode[];
+};
+
+type MutableFileTreeNode = {
+	children: Set<string>;
+	name: string;
+	path: string;
+	type: "file" | "folder";
+};
+
+type TagTaxonomyGroup = {
+	color: "blue" | "teal" | "orange" | "purple" | "gray";
+	label: string;
+	tags: string[];
+};
+
+const DIRECTORY_TREE_BRANCH_PATTERN = /^((?:│   |    )*)(?:├── |└── )(.+)$/u;
+const DIRECTORY_TREE_SECTION_PATTERN = /^(.+\/):$/u;
+const FILE_TREE_INLINE_COMMENT_PATTERN = /\s+[←#].*$/u;
+const TAG_TAXONOMY_LINE_PATTERN = /^([A-Za-z][A-Za-z /&-]*):\s*(.+)$/u;
+const TAG_TAXONOMY_COLOR_MAP: Record<string, TagTaxonomyGroup["color"]> = {
+	business: "orange",
+	meta: "gray",
+	people: "purple",
+	platform: "teal",
+	products: "blue",
+};
+
+function normalizeFileTreePath(value: string): string {
+	const normalizedValue = value.trim().replace(/\\/g, "/");
+	if (!normalizedValue) {
+		return "";
+	}
+
+	const collapsedSeparators = normalizedValue.replace(/\/{2,}/g, "/");
+	if (collapsedSeparators === "/") {
+		return "/";
+	}
+
+	return collapsedSeparators.replace(/\/+$/u, "");
+}
+
+function getFileTreeParentPath(path: string): string | null {
+	const normalizedPath = normalizeFileTreePath(path);
+	if (!normalizedPath || normalizedPath === "/" || normalizedPath === "~") {
+		return null;
+	}
+
+	if (normalizedPath.startsWith("~/")) {
+		const segments = normalizedPath.slice(2).split("/").filter(Boolean);
+		if (segments.length <= 1) {
+			return null;
+		}
+
+		return `~/${segments.slice(0, -1).join("/")}`;
+	}
+
+	if (normalizedPath.startsWith("/")) {
+		const segments = normalizedPath.split("/").filter(Boolean);
+		if (segments.length <= 1) {
+			return null;
+		}
+
+		return `/${segments.slice(0, -1).join("/")}`;
+	}
+
+	const segments = normalizedPath.split("/").filter(Boolean);
+	if (segments.length <= 1) {
+		return null;
+	}
+
+	return segments.slice(0, -1).join("/");
+}
+
+function getDefaultFileTreeNodeName(path: string): string {
+	const parentPath = getFileTreeParentPath(path);
+	if (parentPath === null && path.includes("/")) {
+		return path;
+	}
+
+	return path.split("/").filter(Boolean).at(-1) ?? path;
+}
+
+function sanitizeFileTreeLabel(label: string): { name: string; type: "file" | "folder" } | null {
+	const withoutInlineComment = label.replace(FILE_TREE_INLINE_COMMENT_PATTERN, "").trim();
+	if (!withoutInlineComment) {
+		return null;
+	}
+
+	const isFolder = withoutInlineComment.endsWith("/");
+	const normalizedName = isFolder
+		? withoutInlineComment.slice(0, -1).trim()
+		: withoutInlineComment;
+	if (!normalizedName) {
+		return null;
+	}
+
+	return {
+		name: normalizedName,
+		type: isFolder ? "folder" : "file",
+	};
+}
+
+function compareFileTreeNodes(a: MutableFileTreeNode, b: MutableFileTreeNode): number {
+	if (a.type !== b.type) {
+		return a.type === "folder" ? -1 : 1;
+	}
+
+	return a.name.localeCompare(b.name, undefined, {
+		numeric: true,
+		sensitivity: "base",
+	});
+}
+
+function upsertFileTreeNode(
+	nodeMap: Map<string, MutableFileTreeNode>,
+	{
+		name,
+		path,
+		type,
+	}: Readonly<{
+		name?: string | null;
+		path: string;
+		type: "file" | "folder";
+	}>,
+): MutableFileTreeNode {
+	const existingNode = nodeMap.get(path);
+	if (existingNode) {
+		if (type === "folder") {
+			existingNode.type = "folder";
+		}
+		if (name && name.trim()) {
+			existingNode.name = name;
+		}
+		return existingNode;
+	}
+
+	const createdNode: MutableFileTreeNode = {
+		children: new Set<string>(),
+		name: name?.trim() || getDefaultFileTreeNodeName(path),
+		path,
+		type,
+	};
+	nodeMap.set(path, createdNode);
+	return createdNode;
+}
+
+function createFileTreeRenderData(nodes: ReadonlyArray<JsonRenderFileTreeNode>): FileTreeRenderData | null {
+	const nodeMap = new Map<string, MutableFileTreeNode>();
+	const childPaths = new Set<string>();
+
+	for (const node of nodes) {
+		const rawPath = typeof node.path === "string" ? node.path : "";
+		const normalizedPath = normalizeFileTreePath(rawPath);
+		if (!normalizedPath) {
+			continue;
+		}
+
+		const explicitName = typeof node.name === "string" && node.name.trim()
+			? node.name.trim()
+			: undefined;
+		const explicitType = node.type === "folder" || rawPath.trim().endsWith("/") || explicitName?.endsWith("/")
+			? "folder"
+			: "file";
+
+		upsertFileTreeNode(nodeMap, {
+			path: normalizedPath,
+			name: explicitName,
+			type: explicitType,
+		});
+
+		let currentPath = normalizedPath;
+		let parentPath = getFileTreeParentPath(currentPath);
+		while (parentPath) {
+			const parentNode = upsertFileTreeNode(nodeMap, {
+				path: parentPath,
+				type: "folder",
+			});
+			parentNode.children.add(currentPath);
+			childPaths.add(currentPath);
+			currentPath = parentPath;
+			parentPath = getFileTreeParentPath(currentPath);
+		}
+	}
+
+	if (nodeMap.size === 0) {
+		return null;
+	}
+
+	const buildNode = (path: string): FileTreeRenderNode => {
+		const currentNode = nodeMap.get(path)!;
+		const children = Array.from(currentNode.children)
+			.map((childPath) => nodeMap.get(childPath))
+			.filter((childNode): childNode is MutableFileTreeNode => childNode !== undefined)
+			.sort(compareFileTreeNodes)
+			.map((childNode) => buildNode(childNode.path));
+
+		return {
+			children,
+			name: currentNode.name,
+			path: currentNode.path,
+			type: currentNode.type,
+		};
+	};
+
+	const roots = Array.from(nodeMap.values())
+		.filter((node) => !childPaths.has(node.path))
+		.sort(compareFileTreeNodes)
+		.map((node) => buildNode(node.path));
+
+	if (roots.length === 0) {
+		return null;
+	}
+
+	return {
+		defaultExpandedPaths: Array.from(nodeMap.values())
+			.filter((node) => node.type === "folder")
+			.map((node) => node.path)
+			.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" })),
+		roots,
+	};
+}
+
+function parseAsciiDirectoryTree(value: string): FileTreeRenderData | null {
+	const lines = value.split(/\r?\n/u).map((line) => line.trimEnd()).filter((line) => line.trim().length > 0);
+	if (lines.length < 2) {
+		return null;
+	}
+
+	const rootLine = lines[0].trim();
+	if (DIRECTORY_TREE_BRANCH_PATTERN.test(rootLine) || !rootLine.endsWith("/")) {
+		return null;
+	}
+
+	const rootPath = normalizeFileTreePath(rootLine);
+	if (!rootPath) {
+		return null;
+	}
+
+	const nodes: JsonRenderFileTreeNode[] = [
+		{ path: rootPath, name: rootLine.replace(/\/+$/u, ""), type: "folder" },
+	];
+	const stack = new Map<number, string>([[0, rootPath]]);
+	let matchedBranchCount = 0;
+
+	for (const line of lines.slice(1)) {
+		const branchMatch = line.match(DIRECTORY_TREE_BRANCH_PATTERN);
+		if (!branchMatch) {
+			continue;
+		}
+
+		const label = sanitizeFileTreeLabel(branchMatch[2] ?? "");
+		if (!label) {
+			continue;
+		}
+
+		const depth = (branchMatch[1] ?? "").length / 4 + 1;
+		const parentPath = stack.get(depth - 1);
+		if (!parentPath) {
+			continue;
+		}
+
+		const nodePath = normalizeFileTreePath(`${parentPath}/${label.name}`);
+		if (!nodePath) {
+			continue;
+		}
+
+		nodes.push({
+			path: nodePath,
+			name: label.name,
+			type: label.type,
+		});
+		stack.set(depth, nodePath);
+		for (const existingDepth of Array.from(stack.keys())) {
+			if (existingDepth > depth) {
+				stack.delete(existingDepth);
+			}
+		}
+		matchedBranchCount += 1;
+	}
+
+	return matchedBranchCount > 0 ? createFileTreeRenderData(nodes) : null;
+}
+
+function parseSectionedDirectoryTree(value: string): FileTreeRenderData | null {
+	const lines = value.split(/\r?\n/u);
+	const nodes: JsonRenderFileTreeNode[] = [];
+	let currentFolderPath: string | null = null;
+	let matchedEntryCount = 0;
+
+	for (const rawLine of lines) {
+		const line = rawLine.trim();
+		if (!line) {
+			continue;
+		}
+
+		const sectionMatch = line.match(DIRECTORY_TREE_SECTION_PATTERN);
+		if (sectionMatch?.[1]) {
+			const folderPath = normalizeFileTreePath(sectionMatch[1]);
+			if (!folderPath) {
+				continue;
+			}
+
+			nodes.push({
+				path: folderPath,
+				name: getDefaultFileTreeNodeName(folderPath),
+				type: "folder",
+			});
+			currentFolderPath = folderPath;
+			continue;
+		}
+
+		if (!currentFolderPath) {
+			continue;
+		}
+
+		const label = sanitizeFileTreeLabel(line);
+		if (!label) {
+			continue;
+		}
+
+		nodes.push({
+			path: `${currentFolderPath}/${label.name}`,
+			name: label.name,
+			type: label.type,
+		});
+		matchedEntryCount += 1;
+	}
+
+	return matchedEntryCount > 0 ? createFileTreeRenderData(nodes) : null;
+}
+
+function parseDirectoryTreeText(value: string): FileTreeRenderData | null {
+	return parseAsciiDirectoryTree(value) ?? parseSectionedDirectoryTree(value);
+}
+
+function parseTagTaxonomyText(value: string): TagTaxonomyGroup[] | null {
+	const lines = value
+		.split(/\r?\n/u)
+		.map((line) => line.trim())
+		.filter((line) => line.length > 0);
+	if (lines.length < 2) {
+		return null;
+	}
+
+	const groups: TagTaxonomyGroup[] = [];
+	for (const line of lines) {
+		const match = line.match(TAG_TAXONOMY_LINE_PATTERN);
+		if (!match) {
+			return null;
+		}
+
+		const label = match[1]?.trim();
+		const rawTags = match[2] ?? "";
+		if (!label) {
+			return null;
+		}
+
+		const tags = rawTags
+			.split(",")
+			.map((tag) => tag.trim())
+			.filter((tag) => tag.length > 0);
+		if (tags.length === 0) {
+			return null;
+		}
+
+		groups.push({
+			color: TAG_TAXONOMY_COLOR_MAP[label.toLowerCase()] ?? "gray",
+			label,
+			tags,
+		});
+	}
+
+	return groups.length >= 2 ? groups : null;
+}
+
+function renderFileTreeNode(node: FileTreeRenderNode): ReactNode {
+	if (node.type === "folder") {
+		return (
+			<FileTreeFolderRoot key={node.path} path={node.path} name={node.name}>
+				{node.children.map((childNode) => renderFileTreeNode(childNode))}
+			</FileTreeFolderRoot>
+		);
+	}
+
+	return <FileTreeFileRoot key={node.path} path={node.path} name={node.name} />;
+}
+
 // ── VPK UI primitives ──────────────────────────────────────────
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -173,6 +576,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext } from "@/components/ui/carousel";
 import { TimePicker as TimePickerPrimitive } from "@/components/ui/time-picker";
 import { DateTimePicker as DateTimePickerPrimitive } from "@/components/ui/date-time-picker";
+import { FileTree as FileTreeRoot, FileTreeFile as FileTreeFileRoot, FileTreeFolder as FileTreeFolderRoot } from "@/components/ui-ai/file-tree";
 
 // ── Atlaskit icons ────────────────────────────────────────────
 import ChartTrendUpIcon from "@atlaskit/icon/core/chart-trend-up";
@@ -339,11 +743,13 @@ export const { registry } = defineRegistry(catalog, {
 				? wrap ? "flex-row flex-wrap" : "flex-row"
 				: "flex-col";
 			return (
-				<div className="@container/stack">
+				<div className="@container/stack" data-json-render-layout="stack">
 					<div
 						className={cn(
 							"flex",
 							directionClass,
+							isHorizontal && "[&>*]:min-w-0",
+							isHorizontal && !wrap && "[&>[data-json-render-layout=stack]]:flex-1",
 							GAP_CLASSES[gap ?? "md"],
 							align === "center" && "items-center",
 							align === "start" && "items-start",
@@ -357,9 +763,7 @@ export const { registry } = defineRegistry(catalog, {
 						)}
 						style={{ padding: padding ? `${padding * 4}px` : undefined }}
 					>
-						{isHorizontal
-							? Children.map(children, (child) => <div className="min-w-0">{child}</div>)
-							: children}
+						{children}
 					</div>
 				</div>
 			);
@@ -974,12 +1378,63 @@ export const { registry } = defineRegistry(catalog, {
 			const { items } = props;
 			return (
 				<Accordion>
-					{items.map((item: { title: string; content: string }, i: number) => (
-						<AccordionItem key={i} value={`item-${i}`}>
-							<AccordionTrigger>{toSafeText(item.title)}</AccordionTrigger>
-							<AccordionContent>{toSafeText(item.content)}</AccordionContent>
-						</AccordionItem>
-					))}
+					{items.map((item: { title: string; content: string }) => {
+						const title = toSafeText(item.title);
+						const content = toSafeText(item.content);
+						const itemKey = `${title}-${content.slice(0, 64)}`;
+						return (
+							<AccordionItem key={itemKey} value={itemKey}>
+								<AccordionTrigger>{title}</AccordionTrigger>
+								<AccordionContent>
+									{(() => {
+										const fileTreeData = parseDirectoryTreeText(content);
+										if (fileTreeData) {
+											return (
+												<div className="rounded-md border border-border bg-surface p-2">
+													<FileTreeRoot
+														className="bg-transparent text-xs"
+														defaultExpanded={new Set(fileTreeData.defaultExpandedPaths)}
+													>
+														{fileTreeData.roots.map((node) => renderFileTreeNode(node))}
+													</FileTreeRoot>
+												</div>
+											);
+										}
+
+										const tagTaxonomy = /tag taxonomy/i.test(title)
+											? parseTagTaxonomyText(content)
+											: null;
+										if (tagTaxonomy) {
+											return (
+												<div className="space-y-3">
+													{tagTaxonomy.map((group) => (
+														<div key={group.label} className="space-y-1.5">
+															<div className="text-xs font-medium uppercase tracking-wide text-text-subtlest">
+																{group.label}
+															</div>
+															<TagGroup className="gap-1.5">
+																{group.tags.map((tag) => (
+																	<TagPrimitive
+																		key={`${group.label}-${tag}`}
+																		color={group.color}
+																		variant="rounded"
+																	>
+																		{tag}
+																	</TagPrimitive>
+																))}
+															</TagGroup>
+														</div>
+													))}
+												</div>
+											);
+										}
+
+										return content;
+									})()}
+								</AccordionContent>
+							</AccordionItem>
+						);
+					})}
 				</Accordion>
 			);
 		},
@@ -1149,8 +1604,9 @@ export const { registry } = defineRegistry(catalog, {
 
 		// ── Data Display (extended) ───────────────────
 		Avatar: ({ props }) => {
-			const { src, fallback, size = "default" } = props;
+			const { src, fallback, size = "default", shape = "circle" } = props;
 			const safeFallback = toSafeText(fallback);
+			const resolvedSrc = resolveImageRenderSrc(src);
 			const initials =
 				safeFallback
 					.split(" ")
@@ -1159,8 +1615,8 @@ export const { registry } = defineRegistry(catalog, {
 					.map((w) => w[0]?.toUpperCase())
 					.join("") || "?";
 			return (
-				<AvatarRoot size={size} shape="circle">
-					{src ? <AvatarImage src={src} alt={safeFallback} /> : null}
+				<AvatarRoot size={size} shape={shape}>
+					{resolvedSrc ? <AvatarImage src={resolvedSrc} alt={safeFallback} /> : null}
 					<AvatarFallback>{initials}</AvatarFallback>
 				</AvatarRoot>
 			);
@@ -1217,11 +1673,9 @@ export const { registry } = defineRegistry(catalog, {
 				}
 
 				return (
-					<div className="rounded-md border border-border bg-surface p-3">
-						<MessageResponse mode="static" controls={false} className="text-sm [&_p]:m-0">
-							{mermaidMarkdown}
-						</MessageResponse>
-					</div>
+					<MessageResponse mode="static" controls={false} className="text-sm [&_p]:m-0">
+						{mermaidMarkdown}
+					</MessageResponse>
 				);
 			}
 
@@ -1300,6 +1754,53 @@ export const { registry } = defineRegistry(catalog, {
 		IconTile: ({ props }) => {
 			const { label, variant = "gray", size = "medium", shape = "square" } = props;
 			return <IconTile icon={null} label={toSafeText(label)} variant={nu(variant)} size={nu(size)} shape={nu(shape)} />;
+		},
+		FileTree: ({ props, bindings }) => {
+			const fileTreeNodes: JsonRenderFileTreeNode[] = Array.isArray(props.nodes)
+				? props.nodes.flatMap((node) => {
+					if (!node || typeof node !== "object" || Array.isArray(node)) {
+						return [];
+					}
+
+					const candidateNode = node as Record<string, unknown>;
+					if (typeof candidateNode.path !== "string") {
+						return [];
+					}
+
+					return [{
+						path: candidateNode.path,
+						name: typeof candidateNode.name === "string" ? candidateNode.name : null,
+						type: candidateNode.type === "folder" || candidateNode.type === "file" ? candidateNode.type : null,
+					}];
+				})
+				: [];
+			const fileTreeData = createFileTreeRenderData(fileTreeNodes);
+			const [selectedPath, setSelectedPath] = useBoundProp<string>(nu(props.selectedPath), bindings?.selectedPath);
+
+			if (!fileTreeData) {
+				return (
+					<div className="rounded-lg border border-dashed border-border bg-surface p-3 text-sm text-text-subtle">
+						No files available.
+					</div>
+				);
+			}
+
+			const defaultExpandedPaths = Array.isArray(props.defaultExpandedPaths) && props.defaultExpandedPaths.length > 0
+				? props.defaultExpandedPaths.filter((path): path is string => typeof path === "string" && path.trim().length > 0)
+				: fileTreeData.defaultExpandedPaths;
+
+			return (
+				<div className="rounded-md border border-border bg-surface p-2">
+					<FileTreeRoot
+						className={cn("bg-transparent text-xs", props.className ?? undefined)}
+						defaultExpanded={new Set(defaultExpandedPaths)}
+						selectedPath={selectedPath ?? undefined}
+						onSelect={setSelectedPath}
+					>
+						{fileTreeData.roots.map((node) => renderFileTreeNode(node))}
+					</FileTreeRoot>
+				</div>
+			);
 		},
 		MapWidget: ({ props, bindings }) => {
 			const markerEntries = Array.isArray(props.markers)

@@ -2,6 +2,7 @@
 
 import type {
 	RovoAppDocument,
+	RovoAppHermesContext,
 	RovoAppThread,
 	RovoAppVisibility,
 	RovoAppVote,
@@ -88,6 +89,7 @@ export async function createRovoAppThread(input: {
 	modelId?: string | null;
 	provider?: string | null;
 	activeDocumentId?: string | null;
+	hermesContext?: RovoAppHermesContext | null;
 }): Promise<RovoAppThread> {
 	const response = await fetch(API_ENDPOINTS.ROVO_APP_THREADS, {
 		method: "POST",
@@ -111,6 +113,7 @@ export async function updateRovoAppThread(
 		modelId?: string | null;
 		provider?: string | null;
 		activeDocumentId?: string | null;
+		hermesContext?: RovoAppHermesContext | null;
 	},
 ): Promise<RovoAppThread> {
 	const response = await fetch(API_ENDPOINTS.rovoAppThread(threadId), {

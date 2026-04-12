@@ -1,4 +1,5 @@
 import type { Spec } from "@json-render/react";
+import type { ThinkingToolCallSummary } from "@/lib/rovo-ui-messages";
 
 export interface ParsedGenerativeWidgetSource {
 	name?: string;
@@ -20,59 +21,241 @@ interface ParsedGenerativeWidgetBase {
 	iconHint?: string;
 }
 
-export interface ParsedGenuiPreviewWidget extends ParsedGenerativeWidgetBase {
+export interface PreviewImageSource {
+	url: string;
+	mimeType?: string;
+}
+
+export interface PreviewVideoTrack {
+	id: string;
+	name: string;
+	type: string;
+	enabled: boolean;
+}
+
+export interface PreviewVideoClip {
+	id: string;
+	trackId: string;
+	component: string;
+	props: Record<string, unknown>;
+	from: number;
+	durationInFrames: number;
+}
+
+export interface PreviewVideoComposition {
+	id: string;
+	fps: number;
+	width: number;
+	height: number;
+	durationInFrames: number;
+}
+
+export interface PreviewVideoFile {
+	videoUrl: string;
+	mimeType?: string;
+	posterUrl?: string;
+	fileName?: string;
+}
+
+export interface PreviewExcalidrawScene {
+	type?: string;
+	version?: number;
+	source?: string;
+	elements: unknown[];
+	appState?: Record<string, unknown> | null;
+	files?: Record<string, unknown>;
+}
+
+export type PreviewBody =
+	| {
+		kind: "json-render";
+		spec: Spec;
+	}
+	| {
+		kind: "audio";
+		audioUrl: string;
+		mimeType?: string;
+		transcript?: string;
+	}
+	| {
+		kind: "image";
+		images: PreviewImageSource[];
+		prompt?: string;
+	}
+	| {
+		kind: "video";
+		videoUrl?: string;
+		mimeType?: string;
+		posterUrl?: string;
+		fileName?: string;
+		composition?: PreviewVideoComposition;
+		tracks?: PreviewVideoTrack[];
+		clips?: PreviewVideoClip[];
+		audio?: { tracks: unknown[] };
+	}
+	| {
+		kind: "text";
+		text: string;
+		markdown?: boolean;
+	}
+	| {
+		kind: "code";
+		code: string;
+		language?: string;
+	}
+	| {
+		kind: "app-url";
+		url: string;
+		summary?: string;
+	}
+	| {
+		kind: "excalidraw";
+		scene: PreviewExcalidrawScene;
+	}
+	| {
+		kind: "json";
+		value: unknown;
+	};
+
+export interface ParsedGenerativeWidget extends ParsedGenerativeWidgetBase {
 	type: "genui-preview";
-	spec: Spec;
+	body: PreviewBody;
 	summary?: string;
 }
 
-export interface ParsedAudioPreviewWidget extends ParsedGenerativeWidgetBase {
-	type: "audio-preview";
+export interface PreviewAudioBody {
+	kind: "audio";
 	audioUrl: string;
 	mimeType?: string;
 	transcript?: string;
 }
 
-export interface ParsedImagePreviewWidget extends ParsedGenerativeWidgetBase {
-	type: "image-preview";
-	images: Array<{
-		url: string;
-		mimeType?: string;
-	}>;
+export interface PreviewImageBody {
+	kind: "image";
+	images: PreviewImageSource[];
 	prompt?: string;
 }
 
-export interface ParsedVideoPreviewWidget extends ParsedGenerativeWidgetBase {
-	type: "video-preview";
-	composition: {
-		id: string;
-		fps: number;
-		width: number;
-		height: number;
-		durationInFrames: number;
-	};
-	tracks: Array<{
-		id: string;
-		name: string;
-		type: string;
-		enabled: boolean;
-	}>;
-	clips: Array<{
-		id: string;
-		trackId: string;
-		component: string;
-		props: Record<string, unknown>;
-		from: number;
-		durationInFrames: number;
-	}>;
+export interface PreviewVideoBody {
+	kind: "video";
+	videoUrl?: string;
+	mimeType?: string;
+	posterUrl?: string;
+	fileName?: string;
+	composition?: PreviewVideoComposition;
+	tracks?: PreviewVideoTrack[];
+	clips?: PreviewVideoClip[];
 	audio?: { tracks: unknown[] };
 }
 
-export type ParsedGenerativeWidget =
-	| ParsedGenuiPreviewWidget
-	| ParsedAudioPreviewWidget
-	| ParsedImagePreviewWidget
-	| ParsedVideoPreviewWidget;
+type JsonRenderPreviewBody = Extract<PreviewBody, { kind: "json-render" }>;
+const GENERATED_MEDIA_ROUTE = "/api/rovo-app/generated-media";
+const GENERATED_VIDEO_PATH_PATTERN =
+	/(?:^|[\s"'`])((?:\.\/)?media\/videos\/[^\s"'`]+?\.(?:mp4|webm|mov|m4v|ogv))(?:$|[\s"'`])/giu;
+const GENERATED_VIDEO_MIME_TYPES: Readonly<Record<string, string>> = {
+	".m4v": "video/x-m4v",
+	".mov": "video/quicktime",
+	".mp4": "video/mp4",
+	".ogv": "video/ogg",
+	".webm": "video/webm",
+};
+
+function normalizeGeneratedVideoPath(value: unknown): string | undefined {
+	if (typeof value !== "string") {
+		return undefined;
+	}
+
+	const normalizedValue = value.trim().replace(/\\/g, "/");
+	if (!normalizedValue || normalizedValue.startsWith("/")) {
+		return undefined;
+	}
+
+	const withoutCurrentDirPrefix = normalizedValue.replace(/^(?:\.\/)+/u, "");
+	if (!withoutCurrentDirPrefix) {
+		return undefined;
+	}
+
+	const segments = withoutCurrentDirPrefix
+		.split("/")
+		.filter((segment) => segment.length > 0 && segment !== ".");
+	if (segments.length === 0) {
+		return undefined;
+	}
+
+	const normalizedSegments: string[] = [];
+	for (const segment of segments) {
+		if (segment === "..") {
+			return undefined;
+		}
+		normalizedSegments.push(segment);
+	}
+
+	const normalizedPath = normalizedSegments.join("/");
+	if (
+		!/^media\/videos(?:\/|$)/u.test(normalizedPath) ||
+		!/\.(?:mp4|webm|mov|m4v|ogv)$/iu.test(normalizedPath)
+	) {
+		return undefined;
+	}
+
+	return normalizedPath;
+}
+
+function buildGeneratedMediaUrl(relativePath: string): string {
+	return `${GENERATED_MEDIA_ROUTE}?path=${encodeURIComponent(relativePath)}`;
+}
+
+function inferGeneratedVideoMimeType(relativePath: string): string | undefined {
+	const extensionMatch = relativePath.match(/\.[^./]+$/u);
+	if (!extensionMatch) {
+		return undefined;
+	}
+
+	return GENERATED_VIDEO_MIME_TYPES[extensionMatch[0].toLowerCase()];
+}
+
+function findGeneratedVideoPathInValue(value: unknown, depth = 0): string | undefined {
+	if (depth > 6 || value === null || value === undefined) {
+		return undefined;
+	}
+
+	if (typeof value === "string") {
+		for (const match of value.matchAll(new RegExp(GENERATED_VIDEO_PATH_PATTERN))) {
+			const normalizedPath = normalizeGeneratedVideoPath(match[1]);
+			if (normalizedPath) {
+				return normalizedPath;
+			}
+		}
+		return undefined;
+	}
+
+	if (Array.isArray(value)) {
+		for (const entry of value) {
+			const nestedMatch = findGeneratedVideoPathInValue(entry, depth + 1);
+			if (nestedMatch) {
+				return nestedMatch;
+			}
+		}
+		return undefined;
+	}
+
+	if (!isObjectRecord(value)) {
+		return undefined;
+	}
+
+	for (const entry of Object.values(value)) {
+		const nestedMatch = findGeneratedVideoPathInValue(entry, depth + 1);
+		if (nestedMatch) {
+			return nestedMatch;
+		}
+	}
+
+	return undefined;
+}
+
+function isJsonRenderBody(body: PreviewBody): body is JsonRenderPreviewBody {
+	return body.kind === "json-render";
+}
 
 export interface GenerativeWidgetMetadata {
 	contentType: GenerativeContentType;
@@ -104,6 +287,8 @@ const GENERATIVE_CONTENT_TYPE_HINT_KEYS = [
 
 export type GenerativeContentType =
 	| "image"
+	| "memory"
+	| "skill"
 	| "text"
 	| "translation"
 	| "message"
@@ -895,7 +1080,7 @@ function parseGenerativeWidgetBase(payload: Record<string, unknown>): ParsedGene
 	};
 }
 
-function parseGenuiPreviewWidgetData(value: unknown): ParsedGenuiPreviewWidget | null {
+function parseJsonRenderPreviewBody(value: unknown): Extract<PreviewBody, { kind: "json-render" }> | null {
 	if (!isObjectRecord(value) || !isObjectRecord(value.spec)) {
 		return null;
 	}
@@ -906,27 +1091,21 @@ function parseGenuiPreviewWidgetData(value: unknown): ParsedGenuiPreviewWidget |
 	if (!root.trim() || !elements || Object.keys(elements).length === 0) {
 		return null;
 	}
+
 	const sanitizedElements = sanitizeSpecElementTextProps(elements);
-
-	const spec = {
-		root,
-		elements: sanitizedElements,
-		...(Object.prototype.hasOwnProperty.call(rawSpec, "state")
-			? { state: rawSpec.state }
-			: {}),
-	} as Spec;
-
-	const summary = getNonEmptyString(value.summary);
-
 	return {
-		type: "genui-preview",
-		spec,
-		...(summary ? { summary } : {}),
-		...parseGenerativeWidgetBase(value),
+		kind: "json-render",
+		spec: {
+			root,
+			elements: sanitizedElements,
+			...(Object.prototype.hasOwnProperty.call(rawSpec, "state")
+				? { state: rawSpec.state }
+				: {}),
+		} as Spec,
 	};
 }
 
-function parseAudioPreviewWidgetData(value: unknown): ParsedAudioPreviewWidget | null {
+function parseAudioPreviewBody(value: unknown): PreviewAudioBody | null {
 	if (!isObjectRecord(value) || typeof value.audioUrl !== "string") {
 		return null;
 	}
@@ -940,15 +1119,14 @@ function parseAudioPreviewWidgetData(value: unknown): ParsedAudioPreviewWidget |
 	const transcript = getNonEmptyString(value.transcript);
 
 	return {
-		type: "audio-preview",
+		kind: "audio",
 		audioUrl,
 		...(mimeType ? { mimeType } : {}),
 		...(transcript ? { transcript } : {}),
-		...parseGenerativeWidgetBase(value),
 	};
 }
 
-function parseImagePreviewWidgetData(value: unknown): ParsedImagePreviewWidget | null {
+function parseImagePreviewBody(value: unknown): PreviewImageBody | null {
 	if (!isObjectRecord(value) || !Array.isArray(value.images)) {
 		return null;
 	}
@@ -967,41 +1145,357 @@ function parseImagePreviewWidgetData(value: unknown): ParsedImagePreviewWidget |
 	const prompt = getNonEmptyString(value.prompt);
 
 	return {
-		type: "image-preview",
+		kind: "image",
 		images,
 		...(prompt ? { prompt } : {}),
+	};
+}
+
+function parseVideoPreviewBody(value: unknown): PreviewVideoBody | null {
+	if (!isObjectRecord(value)) {
+		return null;
+	}
+
+	const directVideoUrl =
+		getNonEmptyString(value.videoUrl) || getNonEmptyString(value.url);
+	const posterUrl = getNonEmptyString(value.posterUrl);
+	const mimeType = getNonEmptyString(value.mimeType);
+	const fileName =
+		getNonEmptyString(value.fileName) || getNonEmptyString(value.filename);
+
+	const composition = isObjectRecord(value.composition)
+		? value.composition
+		: null;
+	const compositionFps =
+		composition && typeof composition.fps === "number"
+			? composition.fps
+			: null;
+	const compositionDurationInFrames =
+		composition && typeof composition.durationInFrames === "number"
+			? composition.durationInFrames
+			: null;
+	const hasValidComposition =
+		Boolean(composition) &&
+		typeof compositionFps === "number" &&
+		typeof compositionDurationInFrames === "number";
+
+	if (!directVideoUrl && !hasValidComposition) {
+		return null;
+	}
+
+	const body: PreviewVideoBody = {
+		kind: "video",
+		...(directVideoUrl ? { videoUrl: directVideoUrl } : {}),
+		...(mimeType ? { mimeType } : {}),
+		...(posterUrl ? { posterUrl } : {}),
+		...(fileName ? { fileName } : {}),
+		...(isObjectRecord(value.audio) ? { audio: value.audio as { tracks: unknown[] } } : {}),
+	};
+
+	if (hasValidComposition && composition) {
+		body.composition = {
+			id: typeof composition.id === "string" ? composition.id : "main",
+			fps: compositionFps,
+			width: typeof composition.width === "number" ? composition.width : 1920,
+			height: typeof composition.height === "number" ? composition.height : 1080,
+			durationInFrames: compositionDurationInFrames,
+		};
+		body.tracks = Array.isArray(value.tracks) ? value.tracks as PreviewVideoTrack[] : [];
+		body.clips = Array.isArray(value.clips) ? value.clips as PreviewVideoClip[] : [];
+	}
+
+	return body;
+}
+
+export function parseExcalidrawPreviewScene(value: unknown): PreviewExcalidrawScene | null {
+	if (!isObjectRecord(value) || !Array.isArray(value.elements)) {
+		return null;
+	}
+
+	const type = getNonEmptyString(value.type);
+	const source = getNonEmptyString(value.source);
+	const appState = isObjectRecord(value.appState) ? value.appState : null;
+	const files = isObjectRecord(value.files) ? value.files : undefined;
+	const version = typeof value.version === "number" ? value.version : undefined;
+
+	return {
+		...(type ? { type } : {}),
+		...(version !== undefined ? { version } : {}),
+		...(source ? { source } : {}),
+		elements: value.elements,
+		...(appState ? { appState } : {}),
+		...(files ? { files } : {}),
+	};
+}
+
+function parseExplicitPreviewBody(value: unknown): PreviewBody | null {
+	if (!isObjectRecord(value) || !isObjectRecord(value.body)) {
+		return null;
+	}
+
+	const body = value.body;
+	const kind = getNonEmptyString(body.kind);
+	if (!kind) {
+		return { kind: "json", value: body };
+	}
+
+	if (kind === "json-render") {
+		return parseJsonRenderPreviewBody(body);
+	}
+
+	if (kind === "audio") {
+		return parseAudioPreviewBody(body);
+	}
+
+	if (kind === "image") {
+		return parseImagePreviewBody(body);
+	}
+
+	if (kind === "video") {
+		return parseVideoPreviewBody(body);
+	}
+
+	if (kind === "text") {
+		const text = getNonEmptyString(body.text);
+		if (!text) {
+			return null;
+		}
+
+		return {
+			kind: "text",
+			text,
+			...(typeof body.markdown === "boolean" ? { markdown: body.markdown } : {}),
+		};
+	}
+
+	if (kind === "code") {
+		const code = getNonEmptyString(body.code);
+		if (!code) {
+			return null;
+		}
+
+		const language = getNonEmptyString(body.language);
+		return {
+			kind: "code",
+			code,
+			...(language ? { language } : {}),
+		};
+	}
+
+	if (kind === "app-url") {
+		const url = getNonEmptyString(body.url);
+		if (!url) {
+			return null;
+		}
+
+		const summary = getNonEmptyString(body.summary);
+		return {
+			kind: "app-url",
+			url,
+			...(summary ? { summary } : {}),
+		};
+	}
+
+	if (kind === "excalidraw") {
+		const scene = parseExcalidrawPreviewScene(body.scene ?? body);
+		return scene ? { kind: "excalidraw", scene } : null;
+	}
+
+	if (kind === "json") {
+		return {
+			kind: "json",
+			value: Object.prototype.hasOwnProperty.call(body, "value") ? body.value : body,
+		};
+	}
+
+	return {
+		kind: "json",
+		value: body,
+	};
+}
+
+function parseGenerativeWidgetFromBody({
+	body,
+	summary,
+	value,
+}: Readonly<{
+	body: PreviewBody;
+	summary?: string;
+	value: Record<string, unknown>;
+}>): ParsedGenerativeWidget {
+	return {
+		type: "genui-preview",
+		body,
+		...(summary ? { summary } : {}),
 		...parseGenerativeWidgetBase(value),
 	};
 }
 
-function parseVideoPreviewWidgetData(value: unknown): ParsedVideoPreviewWidget | null {
-	if (!isObjectRecord(value)) return null;
-
-	const composition = value.composition;
-	if (!isObjectRecord(composition)) return null;
-	if (typeof composition.fps !== "number" || typeof composition.durationInFrames !== "number") return null;
+function inferGeneratedVideoPreviewBody(value: unknown): PreviewVideoBody | null {
+	const generatedVideoPath = findGeneratedVideoPathInValue(value);
+	if (!generatedVideoPath) {
+		return null;
+	}
 
 	return {
-		type: "video-preview",
-		composition: {
-			id: typeof composition.id === "string" ? composition.id : "main",
-			fps: composition.fps,
-			width: typeof composition.width === "number" ? composition.width : 1920,
-			height: typeof composition.height === "number" ? composition.height : 1080,
-			durationInFrames: composition.durationInFrames,
-		},
-		tracks: Array.isArray(value.tracks) ? value.tracks as ParsedVideoPreviewWidget["tracks"] : [],
-		clips: Array.isArray(value.clips) ? value.clips as ParsedVideoPreviewWidget["clips"] : [],
-		...(isObjectRecord(value.audio) ? { audio: value.audio as { tracks: unknown[] } } : {}),
-		...parseGenerativeWidgetBase(value),
+		kind: "video",
+		videoUrl: buildGeneratedMediaUrl(generatedVideoPath),
+		mimeType: inferGeneratedVideoMimeType(generatedVideoPath),
+		fileName: generatedVideoPath.split("/").at(-1),
 	};
+}
+
+function hydrateVideoWidgetMetadataFromSpec(
+	widget: ParsedGenerativeWidget,
+	baseValue: Record<string, unknown>,
+): ParsedGenerativeWidget {
+	const jsonRenderBody = parseJsonRenderPreviewBody(baseValue);
+	if (!jsonRenderBody) {
+		return widget;
+	}
+
+	const specWidget = parseGenerativeWidgetFromBody({
+		body: jsonRenderBody,
+		summary: widget.summary,
+		value: baseValue,
+	});
+	const derivedTitle = resolveGenuiTitleFromSpec(specWidget);
+	const derivedDescription = resolveGenuiDescriptionFromSpec(specWidget);
+
+	return {
+		...widget,
+		...parseGenerativeWidgetBase({
+			...baseValue,
+			...(derivedTitle ? { title: derivedTitle } : {}),
+			...(derivedDescription ? { description: derivedDescription } : {}),
+		}),
+	};
+}
+
+function parseGenuiPreviewWidgetData(value: unknown): ParsedGenerativeWidget | null {
+	if (!isObjectRecord(value)) {
+		return null;
+	}
+
+	const summary = getNonEmptyString(value.summary);
+	const explicitBody = parseExplicitPreviewBody(value);
+	if (explicitBody) {
+		if (explicitBody.kind === "video") {
+			return hydrateVideoWidgetMetadataFromSpec(
+				parseGenerativeWidgetFromBody({
+					body: explicitBody,
+					summary: summary ?? undefined,
+					value,
+				}),
+				value,
+			);
+		}
+
+		if (explicitBody.kind === "json-render") {
+			const inferredVideoBody = inferGeneratedVideoPreviewBody(value);
+			if (inferredVideoBody) {
+				return hydrateVideoWidgetMetadataFromSpec(
+					parseGenerativeWidgetFromBody({
+						body: inferredVideoBody,
+						summary: summary ?? undefined,
+						value,
+					}),
+					value,
+				);
+			}
+		}
+
+		return parseGenerativeWidgetFromBody({
+			body: explicitBody,
+			summary: summary ?? undefined,
+			value,
+		});
+	}
+
+	const jsonRenderBody = parseJsonRenderPreviewBody(value);
+	if (jsonRenderBody) {
+		const inferredVideoBody = inferGeneratedVideoPreviewBody(value);
+		if (inferredVideoBody) {
+			return hydrateVideoWidgetMetadataFromSpec(
+				parseGenerativeWidgetFromBody({
+					body: inferredVideoBody,
+					summary: summary ?? undefined,
+					value,
+				}),
+				value,
+			);
+		}
+
+		return parseGenerativeWidgetFromBody({
+			body: jsonRenderBody,
+			summary: summary ?? undefined,
+			value,
+		});
+	}
+
+	const scene = parseExcalidrawPreviewScene(value.scene ?? value);
+	if (scene) {
+		return parseGenerativeWidgetFromBody({
+			body: {
+				kind: "excalidraw",
+				scene,
+			},
+			summary: summary ?? undefined,
+			value,
+		});
+	}
+
+	return null;
+}
+
+function parseAudioPreviewWidgetData(value: unknown): ParsedGenerativeWidget | null {
+	if (!isObjectRecord(value)) {
+		return null;
+	}
+
+	const body = parseAudioPreviewBody(value);
+	if (!body) {
+		return null;
+	}
+
+	return parseGenerativeWidgetFromBody({ body, value });
+}
+
+function parseImagePreviewWidgetData(value: unknown): ParsedGenerativeWidget | null {
+	if (!isObjectRecord(value)) {
+		return null;
+	}
+
+	const body = parseImagePreviewBody(value);
+	if (!body) {
+		return null;
+	}
+
+	return parseGenerativeWidgetFromBody({ body, value });
+}
+
+function parseVideoPreviewWidgetData(value: unknown): ParsedGenerativeWidget | null {
+	if (!isObjectRecord(value)) {
+		return null;
+	}
+
+	const body = parseVideoPreviewBody(value);
+	if (!body) {
+		return null;
+	}
+
+	return parseGenerativeWidgetFromBody({ body, value });
 }
 
 export function parseGenerativeWidget(
 	widgetType: string,
 	widgetData: unknown
 ): ParsedGenerativeWidget | null {
-	if (widgetType === "genui-preview") {
+	if (
+		widgetType === "genui-preview" ||
+		widgetType === "hermes-memory" ||
+		widgetType === "hermes-skill"
+	) {
 		return parseGenuiPreviewWidgetData(widgetData);
 	}
 
@@ -1020,7 +1514,43 @@ export function parseGenerativeWidget(
 	return null;
 }
 
-function resolveGenuiContentType(widget: ParsedGenuiPreviewWidget): GenerativeContentType {
+function resolveGenuiContentType(widget: ParsedGenerativeWidget): GenerativeContentType {
+	if (!isJsonRenderBody(widget.body)) {
+		if (widget.body.kind === "text") {
+			return "text";
+		}
+
+		if (widget.body.kind === "code" || widget.body.kind === "json") {
+			return "code";
+		}
+
+		if (widget.body.kind === "image") {
+			return "image";
+		}
+
+		if (widget.body.kind === "audio") {
+			return "sound";
+		}
+
+		if (widget.body.kind === "video") {
+			return "video";
+		}
+
+		if (widget.body.kind === "app-url") {
+			return "ui";
+		}
+
+		return "other";
+	}
+
+	if (widget.contentTypeHint === "memory") {
+		return "memory";
+	}
+
+	if (widget.contentTypeHint === "skill") {
+		return "skill";
+	}
+
 	const textHints = [
 		widget.title,
 		widget.description,
@@ -1036,7 +1566,7 @@ function resolveGenuiContentType(widget: ParsedGenuiPreviewWidget): GenerativeCo
 		return hintedContentType;
 	}
 
-	for (const value of Object.values(widget.spec.elements ?? {})) {
+	for (const value of Object.values(widget.body.spec.elements ?? {})) {
 		if (!isObjectRecord(value)) {
 			continue;
 		}
@@ -1062,41 +1592,24 @@ function resolveGenuiContentType(widget: ParsedGenuiPreviewWidget): GenerativeCo
 
 function resolveContentType(widget: ParsedGenerativeWidget): GenerativeContentType {
 	const explicitHint = resolveContentTypeFromHint(widget.contentTypeHint);
-	if (widget.type === "genui-preview") {
-		const inferredContentType = resolveGenuiContentType(widget);
+	const inferredContentType = resolveGenuiContentType(widget);
 
-		// Generic "text" hints should not override stronger inferred domains.
-		if (
-			explicitHint &&
-			!(
-				explicitHint === "text" &&
-				inferredContentType !== "other" &&
-				inferredContentType !== "text"
-			)
-		) {
-			return explicitHint;
-		}
-
-		if (inferredContentType !== "other") {
-			return inferredContentType;
-		}
-
-		return explicitHint ?? inferredContentType;
-	}
-
-	if (explicitHint) {
+	if (
+		explicitHint &&
+		!(
+			explicitHint === "text" &&
+			inferredContentType !== "other" &&
+			inferredContentType !== "text"
+		)
+	) {
 		return explicitHint;
 	}
 
-	if (widget.type === "image-preview") {
-		return "image";
+	if (inferredContentType !== "other") {
+		return inferredContentType;
 	}
 
-	if (widget.type === "audio-preview") {
-		return "sound";
-	}
-
-	return "other";
+	return explicitHint ?? inferredContentType;
 }
 
 function getSpecTraversalKeys(spec: Spec): string[] {
@@ -1144,12 +1657,16 @@ interface SpecTitleCandidate {
 	index: number;
 }
 
-function findBestTitleInSpec(widget: ParsedGenuiPreviewWidget): SpecTitleCandidate | null {
-	const traversalKeys = getSpecTraversalKeys(widget.spec);
+function findBestTitleInSpec(widget: ParsedGenerativeWidget): SpecTitleCandidate | null {
+	if (!isJsonRenderBody(widget.body)) {
+		return null;
+	}
+
+	const traversalKeys = getSpecTraversalKeys(widget.body.spec);
 	let best: SpecTitleCandidate | null = null;
 
 	for (const [index, key] of traversalKeys.entries()) {
-		const element = widget.spec.elements[key];
+		const element = widget.body.spec.elements[key];
 		if (!isObjectRecord(element)) {
 			continue;
 		}
@@ -1195,7 +1712,7 @@ function findBestTitleInSpec(widget: ParsedGenuiPreviewWidget): SpecTitleCandida
 	return best;
 }
 
-function resolveGenuiTitleFromSpec(widget: ParsedGenuiPreviewWidget): string | undefined {
+function resolveGenuiTitleFromSpec(widget: ParsedGenerativeWidget): string | undefined {
 	return findBestTitleInSpec(widget)?.text;
 }
 
@@ -1207,12 +1724,16 @@ interface SpecDescriptionCandidate {
 	index: number;
 }
 
-function findBestDescriptionInSpec(widget: ParsedGenuiPreviewWidget): SpecDescriptionCandidate | null {
-	const traversalKeys = getSpecTraversalKeys(widget.spec);
+function findBestDescriptionInSpec(widget: ParsedGenerativeWidget): SpecDescriptionCandidate | null {
+	if (!isJsonRenderBody(widget.body)) {
+		return null;
+	}
+
+	const traversalKeys = getSpecTraversalKeys(widget.body.spec);
 	let best: SpecDescriptionCandidate | null = null;
 
 	for (const [index, key] of traversalKeys.entries()) {
-		const element = widget.spec.elements[key];
+		const element = widget.body.spec.elements[key];
 		if (!isObjectRecord(element)) {
 			continue;
 		}
@@ -1253,7 +1774,7 @@ function findBestDescriptionInSpec(widget: ParsedGenuiPreviewWidget): SpecDescri
 	return best;
 }
 
-function resolveGenuiDescriptionFromSpec(widget: ParsedGenuiPreviewWidget): string | undefined {
+function resolveGenuiDescriptionFromSpec(widget: ParsedGenerativeWidget): string | undefined {
 	return findBestDescriptionInSpec(widget)?.text;
 }
 
@@ -1290,14 +1811,18 @@ function scorePrimaryActionLabel(
 }
 
 function resolveGenuiPrimaryActionLabelFromSpec(
-	widget: ParsedGenuiPreviewWidget
+	widget: ParsedGenerativeWidget
 ): string | undefined {
-	const traversalKeys = getSpecTraversalKeys(widget.spec);
+	if (!isJsonRenderBody(widget.body)) {
+		return undefined;
+	}
+
+	const traversalKeys = getSpecTraversalKeys(widget.body.spec);
 	let fallbackLabel: string | undefined;
 	let bestLabel: { text: string; score: number } | null = null;
 
 	for (const key of traversalKeys) {
-		const element = widget.spec.elements[key];
+		const element = widget.body.spec.elements[key];
 		if (!isObjectRecord(element)) {
 			continue;
 		}
@@ -1361,13 +1886,17 @@ function resolveActionHrefFromPress(pressValue: unknown): string | undefined {
 }
 
 function resolveGenuiActionsFromSpec(
-	widget: ParsedGenuiPreviewWidget
+	widget: ParsedGenerativeWidget
 ): GenerativeWidgetActionItem[] {
-	const traversalKeys = getSpecTraversalKeys(widget.spec);
+	if (!isJsonRenderBody(widget.body)) {
+		return [];
+	}
+
+	const traversalKeys = getSpecTraversalKeys(widget.body.spec);
 	const actions: GenerativeWidgetActionItem[] = [];
 
 	for (const key of traversalKeys) {
-		const element = widget.spec.elements[key];
+		const element = widget.body.spec.elements[key];
 		if (!isObjectRecord(element)) {
 			continue;
 		}
@@ -1400,6 +1929,8 @@ function resolveGenuiActionsFromSpec(
 
 const CONTENT_TYPE_FALLBACK_TITLES: Partial<Record<GenerativeContentType, string>> = {
 	"image": "Generated image",
+	"memory": "Memory context",
+	"skill": "Skill context",
 	"sound": "Generated audio",
 	"translation": "Generated translation",
 	"message": "Generated message draft",
@@ -1430,16 +1961,24 @@ function resolveTitle(
 		return clipText(widget.title, 72);
 	}
 
-	if (widget.type === "genui-preview" && derivedGenuiTitle) {
+	if (derivedGenuiTitle) {
 		return clipText(derivedGenuiTitle, 72);
 	}
 
-	if (widget.type === "image-preview" && widget.prompt) {
-		return clipText(widget.prompt, 72);
+	if (widget.body.kind === "image" && widget.body.prompt) {
+		return clipText(widget.body.prompt, 72);
 	}
 
-	if (widget.type === "audio-preview" && widget.transcript) {
-		return clipText(widget.transcript, 72);
+	if (widget.body.kind === "audio" && widget.body.transcript) {
+		return clipText(widget.body.transcript, 72);
+	}
+
+	if (widget.body.kind === "video" && widget.body.fileName) {
+		return clipText(widget.body.fileName, 72);
+	}
+
+	if (widget.body.kind === "app-url" && widget.body.summary) {
+		return clipText(widget.body.summary, 72);
 	}
 
 	return CONTENT_TYPE_FALLBACK_TITLES[contentType] ?? "Generated content";
@@ -1460,12 +1999,16 @@ interface CalendarOverviewDetails {
 	timeZone?: string;
 }
 
-function extractCalendarOverviewDetails(widget: ParsedGenuiPreviewWidget): CalendarOverviewDetails {
-	const traversalKeys = getSpecTraversalKeys(widget.spec);
+function extractCalendarOverviewDetails(widget: ParsedGenerativeWidget): CalendarOverviewDetails {
+	if (!isJsonRenderBody(widget.body)) {
+		return {};
+	}
+
+	const traversalKeys = getSpecTraversalKeys(widget.body.spec);
 	const details: CalendarOverviewDetails = {};
 
 	for (const key of traversalKeys) {
-		const element = widget.spec.elements[key];
+		const element = widget.body.spec.elements[key];
 		if (!isObjectRecord(element) || getNonEmptyString(element.type) !== "Text") {
 			continue;
 		}
@@ -1507,13 +2050,17 @@ function extractCalendarOverviewDetails(widget: ParsedGenuiPreviewWidget): Calen
 }
 
 function resolveGenuiContextDescription(
-	widget: ParsedGenuiPreviewWidget
+	widget: ParsedGenerativeWidget
 ): string | undefined {
-	const traversalKeys = getSpecTraversalKeys(widget.spec);
+	if (!isJsonRenderBody(widget.body)) {
+		return undefined;
+	}
+
+	const traversalKeys = getSpecTraversalKeys(widget.body.spec);
 	const calendarOverview = extractCalendarOverviewDetails(widget);
 
 	for (const key of traversalKeys) {
-		const element = widget.spec.elements[key];
+		const element = widget.body.spec.elements[key];
 		if (!isObjectRecord(element)) {
 			continue;
 		}
@@ -1582,7 +2129,7 @@ function resolveGenuiContextDescription(
 	}
 
 	for (const key of traversalKeys) {
-		const element = widget.spec.elements[key];
+		const element = widget.body.spec.elements[key];
 		if (!isObjectRecord(element)) {
 			continue;
 		}
@@ -1652,39 +2199,48 @@ function resolveDescription(
 		? clipText(widget.description, 140)
 		: undefined;
 
-	if (widget.type === "genui-preview") {
-		const contextDescription = resolveGenuiContextDescription(widget);
-		const preferredDescription = resolvePreferredGenuiDescription({
-			explicitDescription,
-			derivedDescription: derivedGenuiDescription
-				? clipText(derivedGenuiDescription, 140)
-				: undefined,
-			summary: widget.summary
-				? clipText(widget.summary, 140)
-				: undefined,
-			contextDescription,
-		});
-		if (preferredDescription) {
-			return clipText(preferredDescription, 140);
-		}
+	const contextDescription = resolveGenuiContextDescription(widget);
+	const preferredDescription = resolvePreferredGenuiDescription({
+		explicitDescription,
+		derivedDescription: derivedGenuiDescription
+			? clipText(derivedGenuiDescription, 140)
+			: undefined,
+		summary: widget.summary
+			? clipText(widget.summary, 140)
+			: undefined,
+		contextDescription,
+	});
+	if (preferredDescription) {
+		return clipText(preferredDescription, 140);
 	}
 
 	if (explicitDescription) {
 		return explicitDescription;
 	}
 
-	if (widget.type === "image-preview") {
-		if (widget.title && widget.prompt) {
-			return clipText(widget.prompt, 140);
+	if (widget.body.kind === "image") {
+		if (widget.title && widget.body.prompt) {
+			return clipText(widget.body.prompt, 140);
 		}
 		return "AI-generated image";
 	}
 
-	if (widget.type === "audio-preview") {
-		if (widget.title && widget.transcript) {
-			return clipText(widget.transcript, 140);
+	if (widget.body.kind === "audio") {
+		if (widget.title && widget.body.transcript) {
+			return clipText(widget.body.transcript, 140);
 		}
 		return "AI-generated audio";
+	}
+
+	if (widget.body.kind === "video") {
+		if (widget.title && widget.body.fileName) {
+			return clipText(widget.body.fileName, 140);
+		}
+		return "AI-generated video";
+	}
+
+	if (widget.body.kind === "app-url" && widget.body.summary) {
+		return clipText(widget.body.summary, 140);
 	}
 
 	return DEFAULT_DESCRIPTION;
@@ -1694,10 +2250,6 @@ function resolvePrimaryActionLabel(
 	widget: ParsedGenerativeWidget,
 	derivedGenuiPrimaryActionLabel?: string
 ): string | undefined {
-	if (widget.type !== "genui-preview") {
-		return undefined;
-	}
-
 	if (widget.primaryActionLabel) {
 		return clipText(widget.primaryActionLabel, 40);
 	}
@@ -1714,10 +2266,6 @@ function resolveActions(
 	primaryActionLabel: string | undefined,
 	derivedGenuiActions: GenerativeWidgetActionItem[] = []
 ): GenerativeWidgetActionItem[] | undefined {
-	if (widget.type !== "genui-preview") {
-		return undefined;
-	}
-
 	const mergedActions = mergeActionItems([
 		...(primaryActionLabel ? [{ label: primaryActionLabel }] : []),
 		...(widget.actions ?? []),
@@ -1728,10 +2276,9 @@ function resolveActions(
 			.map((actionItem) => getNonEmptyString(actionItem.href))
 			.filter((href): href is string => Boolean(href))
 	));
-	const additionalCandidates =
-		widget.type === "genui-preview"
-			? collectUrlCandidates(widget.spec)
-			: [];
+	const additionalCandidates = isJsonRenderBody(widget.body)
+		? collectUrlCandidates(widget.body.spec)
+		: [];
 	const allCandidates = Array.from(new Set([...knownHrefs, ...additionalCandidates]));
 	const hydratedActions = mergedActions.map((actionItem) => {
 		if (actionItem.href) {
@@ -1768,22 +2315,10 @@ export function resolveGenerativeWidgetMetadata(
 	widget: ParsedGenerativeWidget
 ): GenerativeWidgetMetadata {
 	const contentType = resolveContentType(widget);
-	const derivedGenuiTitle =
-		widget.type === "genui-preview"
-			? resolveGenuiTitleFromSpec(widget)
-			: undefined;
-	const derivedGenuiDescription =
-		widget.type === "genui-preview"
-			? resolveGenuiDescriptionFromSpec(widget)
-			: undefined;
-	const derivedGenuiPrimaryActionLabel =
-		widget.type === "genui-preview"
-			? resolveGenuiPrimaryActionLabelFromSpec(widget)
-			: undefined;
-	const derivedGenuiActions =
-		widget.type === "genui-preview"
-			? resolveGenuiActionsFromSpec(widget)
-			: [];
+	const derivedGenuiTitle = resolveGenuiTitleFromSpec(widget);
+	const derivedGenuiDescription = resolveGenuiDescriptionFromSpec(widget);
+	const derivedGenuiPrimaryActionLabel = resolveGenuiPrimaryActionLabelFromSpec(widget);
+	const derivedGenuiActions = resolveGenuiActionsFromSpec(widget);
 	const primaryActionLabel = resolvePrimaryActionLabel(
 		widget,
 		derivedGenuiPrimaryActionLabel
@@ -1797,7 +2332,7 @@ export function resolveGenerativeWidgetMetadata(
 	const iconHintText = [
 		widget.title,
 		widget.description,
-		widget.type === "genui-preview" ? widget.summary : undefined,
+		widget.summary,
 		derivedGenuiTitle,
 		derivedGenuiDescription,
 		widget.source?.name,
@@ -1839,12 +2374,12 @@ interface SpecTextSource {
 	propName: string;
 }
 
-function findTitleSourceInSpec(widget: ParsedGenuiPreviewWidget): SpecTextSource | null {
+function findTitleSourceInSpec(widget: ParsedGenerativeWidget): SpecTextSource | null {
 	const best = findBestTitleInSpec(widget);
 	return best ? { key: best.key, propName: best.propName } : null;
 }
 
-function findDescriptionSourceInSpec(widget: ParsedGenuiPreviewWidget): SpecTextSource | null {
+function findDescriptionSourceInSpec(widget: ParsedGenerativeWidget): SpecTextSource | null {
 	const best = findBestDescriptionInSpec(widget);
 	return best ? { key: best.key, propName: best.propName } : null;
 }
@@ -1853,6 +2388,67 @@ const REMOVABLE_HEADER_TYPES = new Set(["PageHeader", "Heading", "Text"]);
 const COLLAPSIBLE_EMPTY_CONTAINER_TYPES = new Set(["Stack"]);
 const TRANSLATED_HEADING_PATTERN = /^translated\s*\(/i;
 const USAGE_NOTES_CARD_TITLE_PATTERN = /^usage\s+notes\b/i;
+const BODY_ONLY_SPEC_CACHE = new WeakMap<
+	Spec,
+	Map<string, Spec>
+>();
+const PROFILE_PHOTO_EXPLICIT_KEYS = new Set([
+	"avatar",
+	"avatarurl",
+	"avatarsrc",
+	"image",
+	"imageurl",
+	"photo",
+	"photourl",
+	"picture",
+	"pictureurl",
+	"profileimage",
+	"profilephoto",
+	"profilepicture",
+]);
+const PERSON_NAME_TOKEN_BLACKLIST = new Set([
+	"area",
+	"areas",
+	"calendar",
+	"details",
+	"directs",
+	"focus",
+	"key",
+	"manager",
+	"org",
+	"organization",
+	"overview",
+	"partners",
+	"profile",
+	"project",
+	"projects",
+	"reports",
+	"ritual",
+	"rituals",
+	"summary",
+	"team",
+	"teams",
+]);
+const IMAGE_URL_PATTERN = /https?:\/\/[^\s<>"')\]}]+/gi;
+const IMAGE_FILE_EXTENSION_PATTERN =
+	/\.(?:avif|bmp|gif|ico|jpe?g|png|svg|webp)(?:$|[?#])/i;
+const ATLASSIAN_HOST_PATTERN = /(^|\.)atlassian\.net$/i;
+
+type ProfilePhotoObservation = Pick<
+	ThinkingToolCallSummary,
+	"toolName" | "state" | "output" | "outputPreview"
+>;
+
+interface ProfilePhotoTarget {
+	avatarKey: string;
+	name: string;
+}
+
+interface ProfilePhotoCandidate {
+	url: string;
+	score: number;
+	isExplicit: boolean;
+}
 
 function getLiveChildKeys(
 	children: unknown[],
@@ -2131,20 +2727,58 @@ function collectActionButtonKeysFromSpec(spec: Spec): Set<string> {
 	return buttonKeys;
 }
 
-export function createBodyOnlySpec(widget: ParsedGenuiPreviewWidget): Spec {
-	const specElements = isObjectRecord(widget.spec.elements)
-		? widget.spec.elements
-		: null;
-	if (!specElements) {
-		return widget.spec;
+function getBodyOnlySpecCacheKey(
+	widget: ParsedGenerativeWidget | { spec: Spec }
+): string {
+	if (!("body" in widget)) {
+		return "";
 	}
 
-	const titleSource = findTitleSourceInSpec(widget);
-	const descSource = findDescriptionSourceInSpec(widget);
-	const actionButtonKeys = collectActionButtonKeysFromSpec(widget.spec);
+	return `${widget.title ?? ""}\u0000${widget.description ?? ""}`;
+}
+
+export function createBodyOnlySpec(
+	widget: ParsedGenerativeWidget | { spec: Spec }
+): Spec {
+	const normalizedWidget = "body" in widget
+		? widget
+		: ({
+			type: "genui-preview",
+			body: {
+				kind: "json-render",
+				spec: widget.spec,
+			},
+			source: null,
+		} satisfies ParsedGenerativeWidget);
+	const spec = "body" in widget
+		? isJsonRenderBody(widget.body)
+			? widget.body.spec
+			: null
+		: widget.spec;
+	if (!spec) {
+		return { root: "", elements: {} };
+	}
+
+	const cacheKey = getBodyOnlySpecCacheKey(widget);
+	const cachedSpecs = BODY_ONLY_SPEC_CACHE.get(spec);
+	const cachedSpec = cachedSpecs?.get(cacheKey);
+	if (cachedSpec) {
+		return cachedSpec;
+	}
+
+	const specElements = isObjectRecord(spec.elements)
+		? spec.elements
+		: null;
+	if (!specElements) {
+		return spec;
+	}
+
+	const titleSource = findTitleSourceInSpec(normalizedWidget);
+	const descSource = findDescriptionSourceInSpec(normalizedWidget);
+	const actionButtonKeys = collectActionButtonKeysFromSpec(spec);
 
 	if (!titleSource && !descSource && actionButtonKeys.size === 0) {
-		return widget.spec;
+		return spec;
 	}
 
 	const propsToStrip = new Map<string, Set<string>>();
@@ -2199,8 +2833,8 @@ export function createBodyOnlySpec(widget: ParsedGenuiPreviewWidget): Spec {
 		}
 	}
 
-	if (keysToRemove.has(widget.spec.root)) {
-		return widget.spec;
+	if (keysToRemove.has(spec.root)) {
+		return spec;
 	}
 
 	let changed = true;
@@ -2208,7 +2842,7 @@ export function createBodyOnlySpec(widget: ParsedGenuiPreviewWidget): Spec {
 		changed = false;
 
 		for (const [key, element] of Object.entries(newElements)) {
-			if (key === widget.spec.root || keysToRemove.has(key)) {
+			if (key === spec.root || keysToRemove.has(key)) {
 				continue;
 			}
 			if (!isObjectRecord(element) || !Array.isArray(element.children)) {
@@ -2242,8 +2876,8 @@ export function createBodyOnlySpec(widget: ParsedGenuiPreviewWidget): Spec {
 		}
 	}
 
-	if (keysToRemove.has(widget.spec.root)) {
-		return widget.spec;
+	if (keysToRemove.has(spec.root)) {
+		return spec;
 	}
 
 	const elementsAfterRemoval: Record<string, unknown> = {};
@@ -2253,8 +2887,8 @@ export function createBodyOnlySpec(widget: ParsedGenuiPreviewWidget): Spec {
 		}
 	}
 
-	if (!Object.prototype.hasOwnProperty.call(elementsAfterRemoval, widget.spec.root)) {
-		return widget.spec;
+	if (!Object.prototype.hasOwnProperty.call(elementsAfterRemoval, spec.root)) {
+		return spec;
 	}
 
 	const normalizedElements: Record<string, unknown> = {};
@@ -2283,18 +2917,596 @@ export function createBodyOnlySpec(widget: ParsedGenuiPreviewWidget): Spec {
 	}
 
 	const prunedElements = pruneUnreachableElements(
-		widget.spec.root,
+		spec.root,
 		normalizedElements
 	);
 
-	if (!Object.prototype.hasOwnProperty.call(prunedElements, widget.spec.root)) {
-		return widget.spec;
+	if (!Object.prototype.hasOwnProperty.call(prunedElements, spec.root)) {
+		return spec;
 	}
 
-	return {
-		...widget.spec,
+	const bodyOnlySpec = {
+		...spec,
 		elements: normalizeUsageNotesGap(
 			normalizeTranslationTypography(prunedElements)
 		),
 	} as Spec;
+
+	if (cachedSpecs) {
+		cachedSpecs.set(cacheKey, bodyOnlySpec);
+	} else {
+		BODY_ONLY_SPEC_CACHE.set(spec, new Map([[cacheKey, bodyOnlySpec]]));
+	}
+
+	return bodyOnlySpec;
+}
+
+function normalizeImageCandidateUrl(value: string): string | null {
+	const trimmedValue = value.trim();
+	if (!trimmedValue) {
+		return null;
+	}
+
+	return trimmedValue.replace(/[),.;:!?]+$/g, "");
+}
+
+function normalizeProfileText(value: string): string {
+	return value
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, " ")
+		.trim();
+}
+
+function normalizeProfileTokens(value: string): string[] {
+	return normalizeProfileText(value)
+		.split(/\s+/)
+		.filter(Boolean);
+}
+
+function safeDecodeURIComponent(value: string): string {
+	try {
+		return decodeURIComponent(value);
+	} catch {
+		return value;
+	}
+}
+
+function isHttpUrl(value: string): boolean {
+	return /^https?:\/\//i.test(value);
+}
+
+function isAtlassianHost(hostname: string): boolean {
+	return ATLASSIAN_HOST_PATTERN.test(hostname.toLowerCase());
+}
+
+function isAtlassianImageUrl(value: string): boolean {
+	try {
+		const parsedUrl = new URL(value);
+		if (!isAtlassianHost(parsedUrl.hostname)) {
+			return false;
+		}
+
+		if (/\/wiki\/pages\/viewpageattachments\.action$/i.test(parsedUrl.pathname)) {
+			const previewValue = safeDecodeURIComponent(
+				parsedUrl.searchParams.get("preview") ?? "",
+			);
+			return IMAGE_FILE_EXTENSION_PATTERN.test(previewValue);
+		}
+
+		if (/\/wiki\/download\/attachments\//i.test(parsedUrl.pathname)) {
+			return IMAGE_FILE_EXTENSION_PATTERN.test(parsedUrl.pathname);
+		}
+
+		return /\/secure\/(?:view|user)avatar/i.test(parsedUrl.pathname);
+	} catch {
+		return false;
+	}
+}
+
+function isLikelyImageUrl(value: string): boolean {
+	return IMAGE_FILE_EXTENSION_PATTERN.test(value) || isAtlassianImageUrl(value);
+}
+
+function extractUrlsFromText(value: string): string[] {
+	const matches = value.match(IMAGE_URL_PATTERN);
+	if (!Array.isArray(matches)) {
+		return [];
+	}
+
+	return matches
+		.map((match) => normalizeImageCandidateUrl(match))
+		.filter((url): url is string => Boolean(url));
+}
+
+function looksLikePersonName(value: string): boolean {
+	if (/[:/|]|\d/.test(value)) {
+		return false;
+	}
+
+	const parts = value.trim().split(/\s+/).filter(Boolean);
+	if (parts.length < 2 || parts.length > 4) {
+		return false;
+	}
+
+	let hasLongToken = false;
+	for (const part of parts) {
+		if (!/^[A-Z][A-Za-z'’.-]*$/.test(part) && !/^[A-Z]{2,}$/.test(part)) {
+			return false;
+		}
+
+		if (PERSON_NAME_TOKEN_BLACKLIST.has(part.toLowerCase())) {
+			return false;
+		}
+
+		if (part.length >= 3) {
+			hasLongToken = true;
+		}
+	}
+
+	return hasLongToken;
+}
+
+function buildSpecParentMap(spec: Spec): Map<string, string> {
+	const parentByChild = new Map<string, string>();
+
+	for (const [key, element] of Object.entries(spec.elements ?? {})) {
+		if (!isObjectRecord(element) || !Array.isArray(element.children)) {
+			continue;
+		}
+
+		for (const childKey of element.children) {
+			if (typeof childKey !== "string" || childKey.trim().length === 0) {
+				continue;
+			}
+
+			if (!parentByChild.has(childKey)) {
+				parentByChild.set(childKey, key);
+			}
+		}
+	}
+
+	return parentByChild;
+}
+
+function findPersonNameInSubtree(
+	spec: Spec,
+	rootKey: string,
+	maxDepth = 3,
+	skipKeys: ReadonlySet<string> = new Set(),
+): string | null {
+	const queue: Array<{ key: string; depth: number }> = [{ key: rootKey, depth: 0 }];
+	const visited = new Set<string>();
+	let bestCandidate: { name: string; score: number } | null = null;
+
+	while (queue.length > 0) {
+		const current = queue.shift();
+		if (!current || visited.has(current.key) || skipKeys.has(current.key)) {
+			continue;
+		}
+
+		visited.add(current.key);
+		const element = spec.elements?.[current.key];
+		if (!isObjectRecord(element)) {
+			continue;
+		}
+
+		const elementType = getNonEmptyString(element.type);
+		const props = getElementProps(element);
+		if (elementType && props) {
+			const candidateTexts = [
+				elementType === "Heading" ? getNonEmptyString(props.text) : undefined,
+				elementType === "PageHeader" ? getNonEmptyString(props.title) : undefined,
+				elementType === "Card" ? getNonEmptyString(props.title) : undefined,
+				elementType === "Text" ? getNonEmptyString(props.content) : undefined,
+			].filter((candidate): candidate is string => Boolean(candidate));
+
+			for (const candidateText of candidateTexts) {
+				if (!looksLikePersonName(candidateText)) {
+					continue;
+				}
+
+				const score =
+					(elementType === "Heading"
+						? 200
+						: elementType === "PageHeader"
+							? 180
+							: elementType === "Card"
+								? 150
+								: 120) - current.depth * 12;
+				if (!bestCandidate || score > bestCandidate.score) {
+					bestCandidate = {
+						name: candidateText,
+						score,
+					};
+				}
+			}
+		}
+
+		if (current.depth >= maxDepth || !Array.isArray(element.children)) {
+			continue;
+		}
+
+		for (const childKey of element.children) {
+			if (typeof childKey === "string" && childKey.trim().length > 0) {
+				queue.push({ key: childKey, depth: current.depth + 1 });
+			}
+		}
+	}
+
+	return bestCandidate?.name ?? null;
+}
+
+function findProfilePhotoTarget(spec: Spec): ProfilePhotoTarget | null {
+	const parentByChild = buildSpecParentMap(spec);
+
+	for (const key of getSpecTraversalKeys(spec)) {
+		const element = spec.elements[key];
+		if (!isObjectRecord(element) || getNonEmptyString(element.type) !== "Avatar") {
+			continue;
+		}
+
+		const props = getElementProps(element);
+		if (!props || getNonEmptyString(props.src)) {
+			continue;
+		}
+
+		const parentKey = parentByChild.get(key);
+		if (!parentKey) {
+			continue;
+		}
+
+		const parentElement = spec.elements[parentKey];
+		if (!isObjectRecord(parentElement) || !Array.isArray(parentElement.children)) {
+			continue;
+		}
+
+		const siblingKeys = parentElement.children.filter(
+			(childKey): childKey is string =>
+				typeof childKey === "string" &&
+				childKey.trim().length > 0 &&
+				childKey !== key,
+		);
+
+		for (const siblingKey of siblingKeys) {
+			const name = findPersonNameInSubtree(spec, siblingKey);
+			if (name) {
+				return {
+					avatarKey: key,
+					name,
+				};
+			}
+		}
+
+		const name = findPersonNameInSubtree(
+			spec,
+			parentKey,
+			4,
+			new Set([key]),
+		);
+		if (name) {
+			return {
+				avatarKey: key,
+				name,
+			};
+		}
+	}
+
+	return null;
+}
+
+function collectObservationSearchText(observation: ProfilePhotoObservation): string {
+	const searchParts = [
+		getNonEmptyString(observation.toolName),
+		getNonEmptyString(observation.outputPreview),
+	];
+
+	if (observation.output !== undefined) {
+		try {
+			searchParts.push(JSON.stringify(observation.output));
+		} catch {
+			// Ignore non-serializable outputs.
+		}
+	}
+
+	return searchParts
+		.filter((part): part is string => Boolean(part))
+		.join(" ");
+}
+
+function scoreProfilePhotoCandidate({
+	url,
+	isExplicit,
+	observationNameMatch,
+	urlNameMatch,
+}: Readonly<{
+	url: string;
+	isExplicit: boolean;
+	observationNameMatch: boolean;
+	urlNameMatch: boolean;
+}>): number {
+	let score = 0;
+
+	if (isExplicit) {
+		score += 320;
+	}
+
+	if (observationNameMatch) {
+		score += 120;
+	}
+	if (urlNameMatch) {
+		score += 180;
+	}
+
+	const normalizedUrl = normalizeProfileText(safeDecodeURIComponent(url));
+	if (normalizedUrl.includes("headshot")) {
+		score += 180;
+	}
+	if (normalizedUrl.includes("avatar")) {
+		score += 60;
+	}
+
+	if (IMAGE_FILE_EXTENSION_PATTERN.test(url)) {
+		score += 40;
+	}
+
+	if (isAtlassianImageUrl(url)) {
+		score += 140;
+	}
+
+	return score;
+}
+
+function collectProfilePhotoCandidates(
+	value: unknown,
+	candidatesByUrl: Map<string, ProfilePhotoCandidate>,
+	path = "",
+): void {
+	if (value === null || value === undefined) {
+		return;
+	}
+
+	if (typeof value === "string") {
+		for (const url of extractUrlsFromText(value)) {
+			if (!isLikelyImageUrl(url)) {
+				continue;
+			}
+
+			const score = scoreProfilePhotoCandidate({
+				url,
+				isExplicit: false,
+				observationNameMatch: false,
+				urlNameMatch: false,
+			});
+			const existing = candidatesByUrl.get(url);
+			if (!existing || score > existing.score) {
+				candidatesByUrl.set(url, {
+					url,
+					score,
+					isExplicit: false,
+				});
+			}
+		}
+		return;
+	}
+
+	if (Array.isArray(value)) {
+		for (let index = 0; index < value.length; index += 1) {
+			collectProfilePhotoCandidates(
+				value[index],
+				candidatesByUrl,
+				path ? `${path}[${index}]` : `[${index}]`,
+			);
+		}
+		return;
+	}
+
+	if (!isObjectRecord(value)) {
+		return;
+	}
+
+	for (const [key, nestedValue] of Object.entries(value)) {
+		const nextPath = path ? `${path}.${key}` : key;
+		const normalizedKey = key.replace(/[^a-z0-9]+/gi, "").toLowerCase();
+		const isExplicitKey = PROFILE_PHOTO_EXPLICIT_KEYS.has(normalizedKey);
+
+		if (
+			isExplicitKey &&
+			typeof nestedValue === "string" &&
+			isHttpUrl(nestedValue)
+		) {
+			const url = normalizeImageCandidateUrl(nestedValue);
+			if (url) {
+				const score = scoreProfilePhotoCandidate({
+					url,
+					isExplicit: true,
+					observationNameMatch: false,
+					urlNameMatch: false,
+				});
+				const existing = candidatesByUrl.get(url);
+				if (!existing || score > existing.score) {
+					candidatesByUrl.set(url, {
+						url,
+						score,
+						isExplicit: true,
+					});
+				}
+			}
+		}
+
+		collectProfilePhotoCandidates(nestedValue, candidatesByUrl, nextPath);
+	}
+}
+
+function findBestProfilePhotoUrl(
+	targetName: string,
+	observations: readonly ProfilePhotoObservation[],
+): string | null {
+	const nameTokens = normalizeProfileTokens(targetName);
+	if (nameTokens.length === 0) {
+		return null;
+	}
+
+	const candidatesByUrl = new Map<string, ProfilePhotoCandidate>();
+
+	for (const observation of observations) {
+		if (observation.state === "error") {
+			continue;
+		}
+
+		const searchText = normalizeProfileText(
+			collectObservationSearchText(observation),
+		);
+		const observationNameMatch = nameTokens.every((token) =>
+			searchText.includes(token),
+		);
+		const localCandidates = new Map<string, ProfilePhotoCandidate>();
+
+		collectProfilePhotoCandidates(observation.output, localCandidates);
+		collectProfilePhotoCandidates(observation.outputPreview, localCandidates);
+
+		for (const candidate of localCandidates.values()) {
+			const normalizedCandidateUrl = normalizeProfileText(
+				safeDecodeURIComponent(candidate.url),
+			);
+			const urlNameMatch = nameTokens.every((token) =>
+				normalizedCandidateUrl.includes(token),
+			);
+			if (!candidate.isExplicit && !observationNameMatch && !urlNameMatch) {
+				continue;
+			}
+
+			const rescoredCandidate = {
+				url: candidate.url,
+				score: scoreProfilePhotoCandidate({
+					url: candidate.url,
+					isExplicit: candidate.isExplicit,
+					observationNameMatch,
+					urlNameMatch,
+				}),
+				isExplicit: candidate.isExplicit,
+			};
+			const existing = candidatesByUrl.get(candidate.url);
+			if (!existing || rescoredCandidate.score > existing.score) {
+				candidatesByUrl.set(candidate.url, rescoredCandidate);
+			}
+		}
+	}
+
+	let bestCandidate: ProfilePhotoCandidate | null = null;
+	for (const candidate of candidatesByUrl.values()) {
+		if (candidate.score < 200) {
+			continue;
+		}
+
+		if (!bestCandidate || candidate.score > bestCandidate.score) {
+			bestCandidate = candidate;
+		}
+	}
+
+	return bestCandidate?.url ?? null;
+}
+
+export function enrichGenerativeWidgetProfilePhotos(
+	widget: ParsedGenerativeWidget,
+	observations: readonly ProfilePhotoObservation[] = [],
+): ParsedGenerativeWidget {
+	if (!isJsonRenderBody(widget.body) || observations.length === 0) {
+		return widget;
+	}
+
+	const profileTarget = findProfilePhotoTarget(widget.body.spec);
+	if (!profileTarget) {
+		return widget;
+	}
+
+	const photoUrl = findBestProfilePhotoUrl(profileTarget.name, observations);
+	if (!photoUrl) {
+		return widget;
+	}
+
+	const avatarElement = widget.body.spec.elements?.[profileTarget.avatarKey];
+	if (!isObjectRecord(avatarElement)) {
+		return widget;
+	}
+
+	const avatarProps = getElementProps(avatarElement);
+	if (!avatarProps || getNonEmptyString(avatarProps.src)) {
+		return widget;
+	}
+
+	return {
+		...widget,
+		body: {
+			...widget.body,
+			spec: {
+				...widget.body.spec,
+				elements: {
+					...widget.body.spec.elements,
+					[profileTarget.avatarKey]: {
+						...avatarElement,
+						props: {
+							...avatarProps,
+							src: photoUrl,
+						},
+					},
+				},
+			},
+		},
+	};
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Description summarization                                                 */
+/* -------------------------------------------------------------------------- */
+
+const CONTEXT_DRIVEN_DESCRIPTION_PATTERN = /^\d+\s+\w+.*\b(found|available|in this)\b/i;
+const descriptionSummaryCache = new Map<string, string>();
+const descriptionSummaryInflight = new Map<string, Promise<string | null>>();
+
+export function shouldSummarizeDescription(description: string): boolean {
+	const trimmed = description.trim();
+	if (trimmed.length <= 60) return false;
+	if (trimmed === DEFAULT_DESCRIPTION) return false;
+	if (isLowSignalWidgetDescription(trimmed)) return false;
+	if (CONTEXT_DRIVEN_DESCRIPTION_PATTERN.test(trimmed)) return false;
+	return true;
+}
+
+export async function fetchDescriptionSummary(
+	title: string,
+	description: string,
+): Promise<string | null> {
+	if (!shouldSummarizeDescription(description)) return null;
+
+	const cacheKey = `${title}::${description}`;
+	const cached = descriptionSummaryCache.get(cacheKey);
+	if (cached) return cached;
+
+	const inflight = descriptionSummaryInflight.get(cacheKey);
+	if (inflight) return inflight;
+
+	const promise = (async (): Promise<string | null> => {
+		try {
+			const res = await fetch("/api/genui-description-summary", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ title, description }),
+			});
+			if (!res.ok) return null;
+			const data = (await res.json()) as { shortDescription?: string };
+			const short = data?.shortDescription?.trim();
+			if (short) {
+				descriptionSummaryCache.set(cacheKey, short);
+				return short;
+			}
+			return null;
+		} catch {
+			return null;
+		} finally {
+			descriptionSummaryInflight.delete(cacheKey);
+		}
+	})();
+
+	descriptionSummaryInflight.set(cacheKey, promise);
+	return promise;
 }

@@ -13,6 +13,7 @@ export interface ArtifactDocument {
 	id: string;
 	title: string;
 	kind: ArtifactKind;
+	previewSummary?: string;
 	versions: ArtifactVersion[];
 	createdAt: string;
 	updatedAt: string;

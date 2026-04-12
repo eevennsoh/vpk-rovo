@@ -46,6 +46,7 @@ import type { NewCoreIconProps } from "@atlaskit/icon/base-new";
 import ListChecklistIcon from "@atlaskit/icon/core/list-checklist";
 import PeopleGroupIcon from "@atlaskit/icon/core/people-group";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Lozenge } from "@/components/ui/lozenge";
 import { InlineEdit } from "@/components/ui/inline-edit";
 import { getRovoAppInterruptionLabel } from "@/lib/rovo-app-interruptions";
@@ -57,6 +58,7 @@ import {
 import {
 	sanitizeRovoAppAssistantText,
 	shouldRenderRovoAppAssistantActions,
+	shouldRenderRovoAppAssistantText,
 	shouldRenderRovoAppAssistantMessage,
 	shouldRenderRovoAppVisibleWidget,
 	shouldRenderRovoAppWidget,
@@ -141,6 +143,7 @@ interface RovoAppMessagesProps {
 	extraHorizontalPaddingWhenCompact?: boolean;
 	documents: ReadonlyArray<RovoAppDocument>;
 	editingMessageId: string | null;
+	hermesMemoryLabel?: string | null;
 	isStreaming: boolean;
 	messages: ReadonlyArray<RovoUIMessage>;
 	onBuildPlan?: (planWidget: ParsedPlanWidgetPayload) => void | Promise<void>;
@@ -178,6 +181,29 @@ const StepAgentsIcon = ({ label = "", size = "small", spacing = "none", ...props
 const StepStreamIcon = ({ label = "", size = "small", spacing = "none", ...props }: NewCoreIconProps) => (
 	<Icon render={<AiGenerativeTextSummaryIcon label={label} size={size} spacing={spacing} {...props} />} />
 );
+
+function isHermesContextTranscriptMessage(
+	message: Pick<RovoUIMessage, "id" | "role" | "parts">,
+): boolean {
+	if (message.role !== "assistant") {
+		return false;
+	}
+
+	if (
+		message.id.startsWith("hermes-memory-")
+		|| message.id.startsWith("hermes-skill-")
+	) {
+		return true;
+	}
+
+	const widgetType = getLatestDataPart(message, "data-widget-data")?.data.type;
+	if (widgetType === "hermes-memory" || widgetType === "hermes-skill") {
+		return true;
+	}
+
+	return getLatestDataPart(message, "data-route-decision")?.data.reason === "hermes_context_widget";
+}
+
 function toolStateToCoTStatus(
 	state: string,
 ): "complete" | "active" | "pending" {
@@ -893,10 +919,16 @@ function AssistantMessage({
 	});
 
 	const shouldRenderPlanWidget = shouldShowWidget && parsedPlanWidget !== null;
-	const shouldRenderAssistantText =
-		Boolean(text) &&
-		(isTextPresentation || isFallbackRoute || !widget) &&
-		!shouldRenderPlanWidget;
+	const shouldRenderAssistantText = shouldRenderRovoAppAssistantText({
+		hasText: Boolean(text),
+		hasTurnComplete,
+		hasToolActivity: hasThinkingToolCalls || hasTraceDataSignals,
+		hasWidgetSignal: Boolean(widget) || widgetLoading?.data.loading === true,
+		isFallbackRoute,
+		isResponseInFlight,
+		isTextPresentation,
+		shouldRenderPlanWidget,
+	});
 	const shouldRenderAssistantActions =
 		shouldRenderRovoAppAssistantActions({
 			hasArtifactCard: Boolean(artifactCard),
@@ -978,6 +1010,7 @@ function AssistantMessage({
 								<ChainOfThoughtHeader
 								state={thinkingReasoningPhase === "completed" ? "completed" : thinkingReasoningPhase === "thinking" ? "thinking" : "preload"}
 								duration={thinkingReasoningPhase === "completed" ? thinkingDuration : undefined}
+								showChevron={hasThinkingDetails}
 							>
 								{thinkingTriggerLabel}
 							</ChainOfThoughtHeader>
@@ -1047,6 +1080,7 @@ function AssistantMessage({
 													<ToolOutput
 														errorText={toolCall.errorText}
 														output={toolCall.output}
+														outputPreview={toolCall.outputPreview}
 														outputBytes={toolCall.outputBytes}
 														outputTruncated={toolCall.outputTruncated}
 														suppressedRawOutput={toolCall.suppressedRawOutput}
@@ -1098,6 +1132,7 @@ function AssistantMessage({
 					) : shouldShowWidget && widget && !shouldHideResolvedQuestionCard ? (
 							<div className="w-full">
 								<GenerativeWidgetCard
+									thinkingToolCalls={thinkingToolCalls}
 									widgetData={widget.data.payload}
 									widgetType={widget.data.type ?? "message"}
 								/>
@@ -1270,6 +1305,7 @@ export function RovoAppMessages({
 	extraHorizontalPaddingWhenCompact = false,
 	documents,
 	editingMessageId,
+	hermesMemoryLabel = null,
 	isStreaming,
 	messages,
 	onBuildPlan,
@@ -1298,6 +1334,7 @@ export function RovoAppMessages({
 		() => messages.filter((message) =>
 			(message.role === "user" || message.role === "assistant")
 			&& message.metadata?.visibility !== "hidden"
+			&& !isHermesContextTranscriptMessage(message)
 		),
 		[messages],
 	);
@@ -1404,6 +1441,16 @@ export function RovoAppMessages({
 					>
 						<Heading size="xlarge">How can I help?</Heading>
 					</motion.div>
+					{hermesMemoryLabel ? (
+						<motion.div
+							initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
+							animate={{ opacity: 1, y: 0 }}
+							transition={{ duration: 0.4, ease: [0, 0.4, 0, 1], delay: 0.15 }}
+							style={{ willChange: "transform, opacity" }}
+						>
+							<Badge variant="information">{hermesMemoryLabel}</Badge>
+						</motion.div>
+					) : null}
 				</div>
 			) : null}
 

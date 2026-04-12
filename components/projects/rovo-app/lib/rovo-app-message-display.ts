@@ -4,9 +4,13 @@ export const ROVO_APP_ARTIFACT_INTENT_LEAK_FALLBACK =
 	"I had an internal routing issue while generating that response. Please try again.";
 
 const ROVO_APP_DIRECT_MEDIA_FENCE_PATTERN = /```(?:image|audio)\s*\n[\s\S]*?(?:```|$)/giu;
+const ROVO_APP_SPEC_FENCE_PATTERN = /```spec\s*\n[\s\S]*?(?:```|$)/giu;
+const ROVO_APP_SPEC_PATCH_LINE_PATTERN =
+	/^\s*\{"op"\s*:\s*"(?:add|replace|remove)"\s*,\s*"path"\s*:\s*"\/(?:root|elements|state)\b.*$/gmu;
 const ROVO_APP_TOOL_DRIVEN_WIDGET_TYPES = new Set([
 	"audio-preview",
 	"image-preview",
+	"video-preview",
 	"plan",
 	"question-card",
 ]);
@@ -39,9 +43,35 @@ export function removeRovoAppDirectMediaFences(rawText: string): {
 	};
 }
 
+export function removeRovoAppSpecFences(rawText: string): {
+	removed: boolean;
+	text: string;
+} {
+	const sanitizedText = rawText
+		.replace(ROVO_APP_SPEC_FENCE_PATTERN, "\n\n")
+		.replace(ROVO_APP_SPEC_PATCH_LINE_PATTERN, "")
+		.replace(/\n{3,}/g, "\n\n")
+		.trim();
+
+	if (sanitizedText === rawText) {
+		return {
+			removed: false,
+			text: rawText,
+		};
+	}
+
+	return {
+		removed: true,
+		text: sanitizedText,
+	};
+}
+
 export function sanitizeRovoAppAssistantText(rawText: string): string {
 	const directMediaResult = removeRovoAppDirectMediaFences(rawText);
-	const text = directMediaResult.removed ? directMediaResult.text : rawText;
+	const textAfterDirectMediaRemoval =
+		directMediaResult.removed ? directMediaResult.text : rawText;
+	const specResult = removeRovoAppSpecFences(textAfterDirectMediaRemoval);
+	const text = specResult.removed ? specResult.text : textAfterDirectMediaRemoval;
 	const trimmedText = text.trim();
 	if (!trimmedText.startsWith("{") || !trimmedText.endsWith("}")) {
 		return text;
@@ -94,6 +124,35 @@ export function shouldRenderRovoAppWidget(input: {
 	}
 
 	return input.routeDecision.presentation === "genui_card";
+}
+
+export function shouldRenderRovoAppAssistantText(input: {
+	hasText: boolean;
+	hasTurnComplete: boolean;
+	hasToolActivity: boolean;
+	hasWidgetSignal: boolean;
+	isFallbackRoute: boolean;
+	isResponseInFlight: boolean;
+	isTextPresentation: boolean;
+	shouldRenderPlanWidget: boolean;
+}): boolean {
+	if (!input.hasText || input.shouldRenderPlanWidget) {
+		return false;
+	}
+
+	if (!(input.isTextPresentation || input.isFallbackRoute || !input.hasWidgetSignal)) {
+		return false;
+	}
+
+	const shouldDeferUntilTurnComplete =
+		input.isResponseInFlight
+		&& !input.hasTurnComplete
+		&& input.hasToolActivity;
+	if (shouldDeferUntilTurnComplete) {
+		return false;
+	}
+
+	return true;
 }
 
 export function shouldRenderRovoAppAssistantActions(input: {

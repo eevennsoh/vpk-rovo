@@ -161,8 +161,9 @@ export function FileTreeFolder({
               }
             >
               <ChevronRightIcon
+                size="small"
                 className={cn(
-                  "size-4 shrink-0 text-muted-foreground transition-transform",
+                  "shrink-0 leading-[0] text-muted-foreground transition-transform",
                   isExpanded && "rotate-90"
                 )}
               />
@@ -174,9 +175,9 @@ export function FileTreeFolder({
             >
               <FileTreeIcon>
                 {isExpanded ? (
-                  <FolderOpenIcon className="size-4 text-blue-500" />
+                  <FolderOpenIcon size="small" className="text-blue-500" />
                 ) : (
-                  <FolderIcon className="size-4 text-blue-500" />
+                  <FolderIcon size="small" className="text-blue-500" />
                 )}
               </FileTreeIcon>
               <FileTreeName>{name}</FileTreeName>
@@ -252,7 +253,7 @@ export function FileTreeFile({
             {/* Spacer for alignment */}
             <span className="size-4 shrink-0" />
             <FileTreeIcon>
-              {icon ?? <FileIcon className="size-4 text-muted-foreground" />}
+              {icon ?? <FileIcon size="small" className="text-muted-foreground" />}
             </FileTreeIcon>
             <FileTreeName>{name}</FileTreeName>
           </>
@@ -270,7 +271,13 @@ export function FileTreeIcon({
   ...props
 }: Readonly<FileTreeIconProps>) {
   return (
-    <span className={cn("shrink-0", className)} {...props}>
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center justify-center leading-none",
+        className
+      )}
+      {...props}
+    >
       {children}
     </span>
   );

@@ -170,19 +170,14 @@ test("fallbackRovoAppArtifactIntent classifies page requests as code artifacts",
 	assert.equal(parsed.kind, "code");
 });
 
-test("resolveFastRovoAppArtifactIntent bypasses model classification for obvious artifact requests", () => {
+test("resolveFastRovoAppArtifactIntent no longer performs local artifact routing", () => {
 	const parsed = resolveFastRovoAppArtifactIntent({
 		activeArtifact: null,
 		artifactSteering: null,
 		latestUserMessage: "Create a product brief about Watermelon",
 	});
 
-	assert.deepEqual(parsed, {
-		action: "createDocument",
-		title: null,
-		kind: "text",
-		cancelStreaming: null,
-	});
+	assert.equal(parsed, null);
 });
 
 test("resolveFastRovoAppArtifactIntent leaves ambiguous questions for model classification", () => {
@@ -212,6 +207,7 @@ test("resolveFastRovoAppArtifactIntent does not bypass model classification for 
 test("normalizeArtifactKind maps spreadsheet aliases", () => {
 	assert.equal(normalizeArtifactKind("spreadsheet"), "sheet");
 	assert.equal(normalizeArtifactKind("table"), "sheet");
+	assert.equal(normalizeArtifactKind("excalidraw"), "excalidraw");
 });
 
 test("buildRovoAppArtifactIntentPrompt includes current artifact context", () => {
@@ -240,7 +236,7 @@ test("buildRovoAppArtifactIntentPrompt includes streaming artifact context", () 
 	assert.match(prompt, /cancelStreaming/);
 });
 
-test("resolveFastRovoAppArtifactIntent cancels streaming when pronoun references streaming artifact", () => {
+test("resolveFastRovoAppArtifactIntent defers streaming artifact edits to model classification", () => {
 	const parsed = resolveFastRovoAppArtifactIntent({
 		activeArtifact: null,
 		artifactSteering: null,
@@ -248,15 +244,10 @@ test("resolveFastRovoAppArtifactIntent cancels streaming when pronoun references
 		streamingArtifact: { id: "doc-1", title: "Apple Overview", kind: "text" },
 	});
 
-	assert.deepEqual(parsed, {
-		action: "updateDocument",
-		title: "Apple Overview",
-		kind: "text",
-		cancelStreaming: true,
-	});
+	assert.equal(parsed, null);
 });
 
-test("resolveFastRovoAppArtifactIntent keeps streaming when creating a different artifact", () => {
+test("resolveFastRovoAppArtifactIntent defers new streaming artifact requests to model classification", () => {
 	const parsed = resolveFastRovoAppArtifactIntent({
 		activeArtifact: null,
 		artifactSteering: null,
@@ -264,12 +255,7 @@ test("resolveFastRovoAppArtifactIntent keeps streaming when creating a different
 		streamingArtifact: { id: "doc-1", title: "Apple Overview", kind: "text" },
 	});
 
-	assert.deepEqual(parsed, {
-		action: "createDocument",
-		title: null,
-		kind: "text",
-		cancelStreaming: false,
-	});
+	assert.equal(parsed, null);
 });
 
 test("parseRovoAppArtifactIntent extracts cancelStreaming from LLM response when streaming artifact is present", () => {
@@ -315,7 +301,7 @@ test("parseRovoAppArtifactIntent ignores cancelStreaming when no streaming artif
 	});
 });
 
-test("resolveFastRovoAppArtifactIntent returns chat for conversational messages", () => {
+test("resolveFastRovoAppArtifactIntent returns null for conversational messages", () => {
 	for (const message of ["hi", "hello", "hey there", "thanks", "ok", "sure", "good morning"]) {
 		const parsed = resolveFastRovoAppArtifactIntent({
 			activeArtifact: null,
@@ -324,6 +310,6 @@ test("resolveFastRovoAppArtifactIntent returns chat for conversational messages"
 			streamingArtifact: null,
 		});
 
-		assert.deepEqual(parsed, { action: "chat" }, `Expected chat for "${message}"`);
+		assert.equal(parsed, null, `Expected null for "${message}"`);
 	}
 });

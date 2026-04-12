@@ -2,7 +2,11 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const { resolveRovodevBin } = require("./rovodev-utils");
-const { dedupeAllowedMcpServersInConfig, resolveRovodevConfigPath } = require("./rovodev-config");
+const {
+	dedupeAllowedMcpServersInConfig,
+	resolveRovodevConfigPath,
+	syncWorkspaceRovodevConfig,
+} = require("./rovodev-config");
 
 function ensureEnvLocalExists({ cwd = process.cwd(), logger = console } = {}) {
 	const envLocalPath = path.join(cwd, ".env.local");
@@ -29,16 +33,20 @@ function loadEnvLocal({ envLocalPath } = {}) {
 
 function resolveRovodevConfigState({ dedupeConfig = true } = {}) {
 	if (dedupeConfig) {
-		return dedupeAllowedMcpServersInConfig();
+		dedupeAllowedMcpServersInConfig();
 	}
 
-	const configPath = resolveRovodevConfigPath();
-	return {
-		configPath,
-		exists: fs.existsSync(configPath),
-		changed: false,
-		removed: 0,
-	};
+	if (!dedupeConfig) {
+		const configPath = resolveRovodevConfigPath();
+		return {
+			configPath,
+			exists: fs.existsSync(configPath),
+			changed: false,
+			removed: 0,
+		};
+	}
+
+	return syncWorkspaceRovodevConfig();
 }
 
 function prepareRovodevRuntime({ cwd = process.cwd(), logger = console, dedupeConfig = true, logConfigState = true, logBillingSite = true } = {}) {
@@ -52,11 +60,11 @@ function prepareRovodevRuntime({ cwd = process.cwd(), logger = console, dedupeCo
 
 	const configState = resolveRovodevConfigState({ dedupeConfig });
 	if (logConfigState) {
-		if (configState.removed > 0) {
-			logger.log?.(`[rovodev] Removed ${configState.removed} duplicate MCP server approval(s) from ${configState.configPath}.`);
-		}
 		if (configState.exists) {
 			logger.log?.(`[rovodev] Using config: ${configState.configPath}`);
+		}
+		if (configState.mcpConfigPath) {
+			logger.log?.(`[rovodev] Using MCP config: ${configState.mcpConfigPath}`);
 		}
 	}
 

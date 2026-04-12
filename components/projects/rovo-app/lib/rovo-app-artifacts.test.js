@@ -116,6 +116,10 @@ test("labels text artifacts as documents by default", () => {
 	assert.equal(getRovoAppArtifactKindLabel("text"), "Document");
 });
 
+test("labels excalidraw artifacts as diagrams", () => {
+	assert.equal(getRovoAppArtifactKindLabel("excalidraw"), "Diagram");
+});
+
 test("labels plan preview documents as plans", () => {
 	assert.equal(
 		getRovoAppArtifactTypeLabel({

@@ -121,6 +121,7 @@ import {
 	type RovoAppVisibility,
 	type RovoAppVote,
 	type RovoAppActiveArtifact,
+	type RovoAppHermesContext,
 	type RovoAppPanelState,
 	type RovoAppPromptMode,
 	type RovoAppRecentHistoryEntry,
@@ -138,8 +139,8 @@ import {
 	type ParsedQuestionCardPayload,
 } from "@/components/projects/shared/lib/question-card-widget";
 import {
-	buildRovoAppAgentModeRequest,
 	buildRovoAppCancelUrl,
+	syncRovoAppAgentModeForDispatch,
 } from "@/components/projects/rovo-app/lib/rovo-app-agent-mode";
 import { appendTurnCompleteToLastAssistantMessage, markClarificationToolResolved } from "@/components/projects/rovo-app/lib/rovo-app-streaming-assistant";
 import {
@@ -221,16 +222,35 @@ function buildVotesMap(votes: ReadonlyArray<RovoAppVote>): Record<string, VoteVa
 }
 
 function inferArtifactKind(message: RovoUIMessage, content: string): RovoAppDocumentKind {
+	if (
+		/^\s*\{\s*"type"\s*:\s*"excalidraw"/iu.test(content) &&
+		/"elements"\s*:\s*\[/iu.test(content)
+	) {
+		return "excalidraw";
+	}
+
 	if (/```[\w-]*[\s\S]+```/u.test(content)) {
 		return "code";
 	}
 
 	const widget = getLatestDataPart(message, "data-widget-data");
-	if (widget?.data.type === "image") {
+	if (widget?.data?.type === "image-preview") {
 		return "image";
 	}
-	if (widget?.data.type === "table") {
+	if (widget?.data?.type === "table") {
 		return "sheet";
+	}
+	if (
+		widget?.data?.type === "genui-preview" &&
+		widget.data.payload &&
+		typeof widget.data.payload === "object" &&
+		"body" in widget.data.payload &&
+		widget.data.payload.body &&
+		typeof widget.data.payload.body === "object" &&
+		"kind" in widget.data.payload.body &&
+		widget.data.payload.body.kind === "excalidraw"
+	) {
+		return "excalidraw";
 	}
 
 	return "text";
@@ -535,6 +555,7 @@ export interface RovoAppHookResult {
 	applyVoiceSteer: (payload: {
 		text: string;
 		contextDescription?: string;
+		hermesContext?: RovoAppHermesContext;
 	}) => Promise<void>;
 	artifactMode: ArtifactMode;
 	artifactDraftContent: string;
@@ -596,7 +617,12 @@ export interface RovoAppHookResult {
 	submitClarificationDismiss: (questionCard: ParsedQuestionCardPayload) => Promise<void>;
 	acceptPlanReview: (planWidget: ParsedPlanWidgetPayload) => Promise<void>;
 	submitPlanApproval: (planWidget: ParsedPlanWidgetPayload, selection: PlanApprovalSelection) => Promise<void>;
-	submitPrompt: (payload: { text: string; files: FileUIPart[]; contextDescription?: string }) => Promise<void>;
+	submitPrompt: (payload: {
+		text: string;
+		files: FileUIPart[];
+		contextDescription?: string;
+		hermesContext?: RovoAppHermesContext;
+	}) => Promise<void>;
 	suggestedPrompt: (text: string) => Promise<void>;
 	togglePlanMode: () => void;
 	resetPlanMode: () => void;
@@ -631,6 +657,7 @@ export interface RovoAppHookResult {
 		options?: {
 			contextDescription?: string;
 			conversationSummary?: string;
+			hermesContext?: RovoAppHermesContext;
 			intentType?: string;
 			prompt?: string;
 			referencedFiles?: string[];
@@ -953,19 +980,10 @@ export function useRovoApp({
 				return;
 			}
 
-			const response = await fetch(API_ENDPOINTS.AGENT_MODE, {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify(buildRovoAppAgentModeRequest({ mode })),
-			});
-
-			if (!response.ok) {
-				throw new Error(
-					`Failed to sync agent mode before dispatch (status ${response.status})`,
-				);
+			const result = await syncRovoAppAgentModeForDispatch(fetch, mode);
+			if (result.applied) {
+				lastSyncedAgentModeRef.current = mode;
 			}
-
-			lastSyncedAgentModeRef.current = mode;
 		},
 		[],
 	);
@@ -1697,13 +1715,14 @@ export function useRovoApp({
 			})
 				.then((thread) => {
 					const resolvedThread = reconcileThreadWithLocalTitle(thread);
-					const persistedKey = buildRovoAppThreadPersistKey({
-						messages: resolvedThread.messages,
-						realtimeMessages: resolvedThread.realtimeMessages ?? [],
-						visibility: resolvedThread.visibility,
-						activeDocumentId: resolvedThread.activeDocumentId,
-						title: resolvedThread.title,
-					});
+						const persistedKey = buildRovoAppThreadPersistKey({
+							messages: resolvedThread.messages,
+							realtimeMessages: resolvedThread.realtimeMessages ?? [],
+							visibility: resolvedThread.visibility,
+							activeDocumentId: resolvedThread.activeDocumentId,
+							hermesContext: resolvedThread.hermesContext ?? null,
+							title: resolvedThread.title,
+						});
 					lastPersistedKeyRef.current = persistedKey;
 					setThreads((previousThreads) =>
 						upsertRovoAppThreadRecord(previousThreads, resolvedThread, {
@@ -2412,13 +2431,14 @@ export function useRovoApp({
 					: null,
 			);
 			setVotes(buildVotesMap(nextVotes));
-			const persistedKey = buildRovoAppThreadPersistKey({
-				messages: thread.messages,
-				realtimeMessages: thread.realtimeMessages ?? [],
-				visibility: thread.visibility,
-				activeDocumentId: thread.activeDocumentId,
-				title: thread.title,
-			});
+				const persistedKey = buildRovoAppThreadPersistKey({
+					messages: thread.messages,
+					realtimeMessages: thread.realtimeMessages ?? [],
+					visibility: thread.visibility,
+					activeDocumentId: thread.activeDocumentId,
+					hermesContext: thread.hermesContext ?? null,
+					title: thread.title,
+				});
 			lastPersistedKeyRef.current = persistedKey;
 			clearPendingPlanMetadataGeneration();
 			pendingRouteThreadIdRef.current = null;
@@ -2587,13 +2607,14 @@ export function useRovoApp({
 		setThreadVisibility("private");
 		setEditingMessageId(null);
 		clearPendingPlanMetadataGeneration();
-		lastPersistedKeyRef.current = buildRovoAppThreadPersistKey({
-			messages: [],
-			realtimeMessages: [],
-			visibility: "private",
-			activeDocumentId: null,
-			title: "New chat",
-		});
+			lastPersistedKeyRef.current = buildRovoAppThreadPersistKey({
+				messages: [],
+				realtimeMessages: [],
+				visibility: "private",
+				activeDocumentId: null,
+				hermesContext: null,
+				title: "New chat",
+			});
 		pendingRouteThreadIdRef.current = null;
 		pendingRouteReadyRef.current = false;
 		window.setTimeout(() => {
@@ -2773,6 +2794,31 @@ export function useRovoApp({
 	}, [refreshThreads]);
 
 	useEffect(() => {
+		const handleFocus = () => {
+			void refreshThreads();
+		};
+		const handleVisibilityChange = () => {
+			if (document.visibilityState === "visible") {
+				void refreshThreads();
+			}
+		};
+		const intervalId = window.setInterval(() => {
+			if (document.visibilityState === "visible") {
+				void refreshThreads();
+			}
+		}, 3000);
+
+		window.addEventListener("focus", handleFocus);
+		document.addEventListener("visibilitychange", handleVisibilityChange);
+
+		return () => {
+			window.clearInterval(intervalId);
+			window.removeEventListener("focus", handleFocus);
+			document.removeEventListener("visibilitychange", handleVisibilityChange);
+		};
+	}, [refreshThreads]);
+
+	useEffect(() => {
 		if (!initialThreadId) {
 			lastLoadedInitialThreadIdRef.current = null;
 			return;
@@ -2868,14 +2914,14 @@ export function useRovoApp({
 				return pendingThreadCreationRef.current;
 			}
 
-			const threadCreationPromise = createRovoAppThread({
-				id: draftThreadId,
-				title: deriveThreadTitle(seedText),
-				messages: [],
-				realtimeMessages: [],
-				visibility: threadVisibility,
-				activeDocumentId,
-			})
+				const threadCreationPromise = createRovoAppThread({
+					id: draftThreadId,
+					title: deriveThreadTitle(seedText),
+					messages: [],
+					realtimeMessages: [],
+					visibility: threadVisibility,
+					activeDocumentId,
+				})
 				.then((nextThread) => {
 					activeThreadIdRef.current = nextThread.id;
 					hasHydratedActiveThreadRef.current = true;
@@ -2885,13 +2931,14 @@ export function useRovoApp({
 							deletedThreadIds: deletedThreadIdsRef.current,
 						}),
 					);
-					lastPersistedKeyRef.current = buildRovoAppThreadPersistKey({
-						messages: nextThread.messages,
-						realtimeMessages: nextThread.realtimeMessages ?? [],
-						visibility: nextThread.visibility,
-						activeDocumentId: nextThread.activeDocumentId,
-						title: nextThread.title,
-					});
+						lastPersistedKeyRef.current = buildRovoAppThreadPersistKey({
+							messages: nextThread.messages,
+							realtimeMessages: nextThread.realtimeMessages ?? [],
+							visibility: nextThread.visibility,
+							activeDocumentId: nextThread.activeDocumentId,
+							hermesContext: nextThread.hermesContext ?? null,
+							title: nextThread.title,
+						});
 					if (!embedded) {
 						pendingRouteThreadIdRef.current = nextThread.id;
 						pendingRouteReadyRef.current = false;
@@ -3172,20 +3219,22 @@ export function useRovoApp({
 		],
 	);
 
-	const dispatchPromptNow = useCallback(
-		async ({
-			text,
-			files,
-			contextDescription,
-			messageMetadata,
-			mode,
-		}: {
-			text: string;
-			files: FileUIPart[];
-			contextDescription?: string;
-			messageMetadata?: RovoUIMessage["metadata"];
-			mode: RovoAppPromptMode;
-		}) => {
+		const dispatchPromptNow = useCallback(
+			async ({
+				text,
+				files,
+				contextDescription,
+				hermesContext,
+				messageMetadata,
+				mode,
+			}: {
+				text: string;
+				files: FileUIPart[];
+				contextDescription?: string;
+				hermesContext?: RovoAppHermesContext;
+				messageMetadata?: RovoUIMessage["metadata"];
+				mode: RovoAppPromptMode;
+			}) => {
 			setInputError(null);
 			const trimmedText = text.trim();
 			if (!trimmedText && files.length === 0) {
@@ -3267,15 +3316,16 @@ export function useRovoApp({
 						files,
 						messageId,
 						metadata: message.metadata,
-					}, {
-						body: {
-							id: threadId,
-							artifactContext: resolvedArtifactContext ?? undefined,
-							contextDescription,
-							isPlanMode: mode === "plan",
-							streamingArtifact: streamingArtifactPayload,
-						},
-					});
+						}, {
+							body: {
+								id: threadId,
+								artifactContext: resolvedArtifactContext ?? undefined,
+								contextDescription,
+								hermesContext,
+								isPlanMode: mode === "plan",
+								streamingArtifact: streamingArtifactPayload,
+							},
+						});
 				} catch (sendError) {
 					// Pre-stream failure: roll back the optimistic user message
 					setRovodevMessages((prev) => prev.filter((m) => m.id !== messageId));
@@ -3312,18 +3362,20 @@ export function useRovoApp({
 		);
 
 	const enqueuePromptAction = useCallback(
-		({
-			contextDescription,
-			files,
-			messageMetadata,
-			mode,
-			text,
-			threadId,
-		}: {
-			contextDescription?: string;
-			files: ReadonlyArray<FileUIPart>;
-			messageMetadata?: RovoUIMessage["metadata"];
-			mode: RovoAppPromptMode;
+			({
+				contextDescription,
+				hermesContext,
+				files,
+				messageMetadata,
+				mode,
+				text,
+				threadId,
+			}: {
+				contextDescription?: string;
+				hermesContext?: RovoAppHermesContext;
+				files: ReadonlyArray<FileUIPart>;
+				messageMetadata?: RovoUIMessage["metadata"];
+				mode: RovoAppPromptMode;
 			text: string;
 			threadId: string;
 		}) => {
@@ -3332,12 +3384,13 @@ export function useRovoApp({
 				threadId,
 				text,
 				createdAt: Date.now(),
-				kind: "prompt",
-				files: [...files],
-				contextDescription,
-				messageMetadata,
-				mode,
-			};
+					kind: "prompt",
+					files: [...files],
+					contextDescription,
+					hermesContext,
+					messageMetadata,
+					mode,
+				};
 			enqueueQueuedAction(queuedAction);
 		},
 		[enqueueQueuedAction],
@@ -3345,15 +3398,17 @@ export function useRovoApp({
 
 
 	const submitPrompt = useCallback(
-		async ({
-			text,
-			files,
-			contextDescription,
-		}: {
-			text: string;
-			files: FileUIPart[];
-			contextDescription?: string;
-		}) => {
+			async ({
+				text,
+				files,
+				contextDescription,
+				hermesContext,
+			}: {
+				text: string;
+				files: FileUIPart[];
+				contextDescription?: string;
+				hermesContext?: RovoAppHermesContext;
+			}) => {
 			setInputError(null);
 			const trimmedText = text.trim();
 			if (!trimmedText && files.length === 0) {
@@ -3377,10 +3432,11 @@ export function useRovoApp({
 				(queuedActionsByThreadId[resolvedThreadId]?.length ?? 0) > 0;
 
 			if (shouldEnqueue) {
-				enqueuePromptAction({
-					contextDescription,
-					files,
-					messageMetadata: promptMessageMetadata,
+					enqueuePromptAction({
+						contextDescription,
+						hermesContext,
+						files,
+						messageMetadata: promptMessageMetadata,
 					mode: promptMode,
 					text: trimmedText,
 					threadId: resolvedThreadId,
@@ -3389,13 +3445,14 @@ export function useRovoApp({
 				return;
 			}
 
-			await dispatchPromptNow({
-				text: trimmedText,
-				files,
-				contextDescription,
-				messageMetadata: promptMessageMetadata,
-				mode: promptMode,
-			});
+				await dispatchPromptNow({
+					text: trimmedText,
+					files,
+					contextDescription,
+					hermesContext,
+					messageMetadata: promptMessageMetadata,
+					mode: promptMode,
+				});
 		},
 		[
 			attachedRunStatus,
@@ -3743,7 +3800,7 @@ export function useRovoApp({
 		setIsPlanMode(false);
 	}, []);
 
-	const appendRealtimeMessage = useCallback(
+		const appendRealtimeMessage = useCallback(
 		async (
 			role: "user" | "assistant",
 			content: string,
@@ -3799,8 +3856,8 @@ export function useRovoApp({
 
 			return messageId;
 		},
-		[ensureThread, mutateRealtimeMessagesState],
-	);
+			[ensureThread, mutateRealtimeMessagesState],
+		);
 
 	const mutateRealtimeMessageContent = useCallback(
 		(messageId: string, content: string, options: { append: boolean; state: "done" | "streaming" }) => {
@@ -3847,11 +3904,12 @@ export function useRovoApp({
 	);
 
 	const dispatchDelegationNow = useCallback(
-		async (
-			messageId: string,
-			options?: {
-				contextDescription?: string;
-				conversationSummary?: string;
+			async (
+				messageId: string,
+				options?: {
+					contextDescription?: string;
+					hermesContext?: RovoAppHermesContext;
+					conversationSummary?: string;
 				existingRealtimeMessageId?: string | null;
 				intentType?: string;
 				prompt?: string;
@@ -3925,14 +3983,15 @@ export function useRovoApp({
 							...realtimeMessagesRef.current,
 						],
 						artifactContext: resolvedArtifactContext ?? undefined,
-						artifactSteering: checkpointDocument
+							artifactSteering: checkpointDocument
 							? ({
 								preferCurrentArtifact: true,
 								source: "voice",
 							} satisfies RovoAppArtifactSteeringPayload)
 							: undefined,
-						contextDescription: options?.contextDescription,
-						conversationSummary: options?.conversationSummary,
+							contextDescription: options?.contextDescription,
+							hermesContext: options?.hermesContext,
+							conversationSummary: options?.conversationSummary,
 						delegatedMessageId: messageId,
 						smartGeneration: smartGenerationRequest,
 						activeArtifact: buildActiveArtifactMetadata(activeDocument),
@@ -4057,11 +4116,12 @@ export function useRovoApp({
 	);
 
 	const enqueueDelegationAction = useCallback(
-		(
-			delegatedMessageId: string,
-			options: {
-				contextDescription?: string;
-				conversationSummary?: string;
+			(
+				delegatedMessageId: string,
+				options: {
+					contextDescription?: string;
+					hermesContext?: RovoAppHermesContext;
+					conversationSummary?: string;
 				existingRealtimeMessageId?: string | null;
 				intentType?: string;
 				prompt: string;
@@ -4075,9 +4135,10 @@ export function useRovoApp({
 				threadId: options.threadId,
 				text: options.prompt,
 				createdAt: Date.now(),
-				kind: "delegation",
-				contextDescription: options.contextDescription,
-				conversationSummary: options.conversationSummary,
+					kind: "delegation",
+					contextDescription: options.contextDescription,
+					hermesContext: options.hermesContext,
+					conversationSummary: options.conversationSummary,
 				delegatedMessageId,
 				existingRealtimeMessageId: options.existingRealtimeMessageId,
 				intentType: options.intentType,
@@ -4155,10 +4216,11 @@ export function useRovoApp({
 				}
 
 				try {
-					if (nextAction.kind === "delegation") {
-						await dispatchDelegationNow(nextAction.delegatedMessageId, {
-							contextDescription: nextAction.contextDescription,
-							conversationSummary: nextAction.conversationSummary,
+						if (nextAction.kind === "delegation") {
+							await dispatchDelegationNow(nextAction.delegatedMessageId, {
+								contextDescription: nextAction.contextDescription,
+								hermesContext: nextAction.hermesContext,
+								conversationSummary: nextAction.conversationSummary,
 							existingRealtimeMessageId:
 								nextAction.existingRealtimeMessageId ?? undefined,
 							intentType: nextAction.intentType,
@@ -4166,14 +4228,15 @@ export function useRovoApp({
 							referencedFiles: nextAction.referencedFiles,
 							urgency: nextAction.urgency,
 						});
-					} else {
-						await dispatchPromptNow({
-							text: nextAction.text,
-							files: [...nextAction.files],
-							contextDescription: nextAction.contextDescription,
-							messageMetadata: nextAction.messageMetadata,
-							mode: nextAction.mode,
-						});
+						} else {
+							await dispatchPromptNow({
+								text: nextAction.text,
+								files: [...nextAction.files],
+								contextDescription: nextAction.contextDescription,
+								hermesContext: nextAction.hermesContext,
+								messageMetadata: nextAction.messageMetadata,
+								mode: nextAction.mode,
+							});
 					}
 				} catch (error) {
 					prependQueuedAction(nextAction);
@@ -4204,10 +4267,11 @@ export function useRovoApp({
 
 	const delegateToRovodev = useCallback(
 		async (
-			messageId: string,
-			options?: {
-				contextDescription?: string;
-				conversationSummary?: string;
+				messageId: string,
+				options?: {
+					contextDescription?: string;
+					hermesContext?: RovoAppHermesContext;
+					conversationSummary?: string;
 				existingRealtimeMessageId?: string | null;
 				intentType?: string;
 				prompt?: string;
@@ -4242,9 +4306,10 @@ export function useRovoApp({
 				(queuedActionsByThreadId[resolvedThreadId]?.length ?? 0) > 0;
 
 			if (shouldEnqueue) {
-				enqueueDelegationAction(messageId, {
-					contextDescription: options?.contextDescription,
-					conversationSummary: options?.conversationSummary,
+					enqueueDelegationAction(messageId, {
+						contextDescription: options?.contextDescription,
+						hermesContext: options?.hermesContext,
+						conversationSummary: options?.conversationSummary,
 					existingRealtimeMessageId: options?.existingRealtimeMessageId,
 					intentType: options?.intentType,
 					prompt: delegatedText,
@@ -4487,13 +4552,15 @@ export function useRovoApp({
 	}, [interruptActiveTurn]);
 
 	const applyVoiceSteer = useCallback(
-		async ({
-			text,
-			contextDescription,
-		}: {
-			text: string;
-			contextDescription?: string;
-		}) => {
+			async ({
+				text,
+				contextDescription,
+				hermesContext,
+			}: {
+				text: string;
+				contextDescription?: string;
+				hermesContext?: RovoAppHermesContext;
+			}) => {
 			const trimmedText = text.trim();
 			if (!trimmedText) {
 				return;
@@ -4528,11 +4595,12 @@ export function useRovoApp({
 						metadata: message.metadata,
 					},
 					{
-						body: {
-							id: threadId,
-							contextDescription,
-							origin: "voice" as const,
-							artifactSteering: {
+							body: {
+								id: threadId,
+								contextDescription,
+								hermesContext,
+								origin: "voice" as const,
+								artifactSteering: {
 								preferCurrentArtifact: true,
 								source: "voice",
 							} satisfies RovoAppArtifactSteeringPayload,
@@ -4814,25 +4882,26 @@ export function useRovoApp({
 			currentThread?.title && currentThread.title.trim() !== "New chat"
 				? currentThread.title
 				: deriveThreadTitle(getMessageText(messages.find((message) => message.role === "user") ?? { parts: [] }));
-		const nextPersistKey = buildRovoAppThreadPersistKey({
-			messages: normalizedRovodevMessages,
-			realtimeMessages,
-			visibility: threadVisibility,
-			activeDocumentId,
-			title: nextTitle,
-		});
+			const nextPersistKey = buildRovoAppThreadPersistKey({
+				messages: normalizedRovodevMessages,
+				realtimeMessages,
+				visibility: threadVisibility,
+				activeDocumentId,
+				hermesContext: currentThread?.hermesContext ?? null,
+				title: nextTitle,
+			});
 		if (nextPersistKey === lastPersistedKeyRef.current) {
 			return;
 		}
 
 		let cancelled = false;
 		const realtimeRequestVersion = realtimeMessagesVersionRef.current;
-		const nextThreadUpdate: Parameters<typeof updateRovoAppThread>[1] = {
-			messages: normalizedRovodevMessages,
-			realtimeMessages,
-			visibility: threadVisibility,
-			activeDocumentId,
-		};
+			const nextThreadUpdate: Parameters<typeof updateRovoAppThread>[1] = {
+				messages: normalizedRovodevMessages,
+				realtimeMessages,
+				visibility: threadVisibility,
+				activeDocumentId,
+			};
 		if (!shouldDeferRovoAppTitlePersistence({
 			activeThreadId,
 			isGeneratingTitle,
@@ -4847,30 +4916,32 @@ export function useRovoApp({
 				}
 
 				const resolvedThread = reconcileThreadWithLocalTitle(thread);
-				const persistedKey = buildRovoAppThreadPersistKey({
-					messages: resolvedThread.messages,
-					realtimeMessages: resolvedThread.realtimeMessages ?? [],
-					visibility: resolvedThread.visibility,
-					activeDocumentId: resolvedThread.activeDocumentId,
-					title: resolvedThread.title,
-				});
+					const persistedKey = buildRovoAppThreadPersistKey({
+						messages: resolvedThread.messages,
+						realtimeMessages: resolvedThread.realtimeMessages ?? [],
+						visibility: resolvedThread.visibility,
+						activeDocumentId: resolvedThread.activeDocumentId,
+						hermesContext: resolvedThread.hermesContext ?? null,
+						title: resolvedThread.title,
+					});
 				lastPersistedKeyRef.current = persistedKey;
 				setThreads((previousThreads) =>
 					upsertRovoAppThreadRecord(previousThreads, resolvedThread, {
 						deletedThreadIds: deletedThreadIdsRef.current,
 					}),
 				);
-				if (
-					shouldReplaceRovoAppRouteAfterPersistence({
-						pendingThreadId: pendingRouteThreadIdRef.current,
-						thread: resolvedThread,
-						messages: normalizedRovodevMessages,
-						realtimeMessages,
-						visibility: threadVisibility,
-						activeDocumentId,
-						title: resolvedThread.title,
-					})
-				) {
+					if (
+						shouldReplaceRovoAppRouteAfterPersistence({
+							pendingThreadId: pendingRouteThreadIdRef.current,
+							thread: resolvedThread,
+							messages: normalizedRovodevMessages,
+							realtimeMessages,
+							visibility: threadVisibility,
+							activeDocumentId,
+							hermesContext: currentThread?.hermesContext ?? null,
+							title: resolvedThread.title,
+						})
+					) {
 					pendingRouteReadyRef.current = true;
 					flushPendingRouteReplacement(resolvedThread.id);
 				}
@@ -5131,8 +5202,8 @@ export function useRovoApp({
 		threadVisibility,
 		votes,
 		voteOnMessage,
-		appendRealtimeMessage,
-		delegateToRovodev,
+			appendRealtimeMessage,
+			delegateToRovodev,
 		setRealtimeMessageContent,
 		updateRealtimeMessage,
 	};

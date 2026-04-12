@@ -342,26 +342,6 @@ The actual ports are written to `.dev-rovodev-port`, `.dev-frontend-port`, and `
 - **Ready to deploy?** Use `/vpk-deploy` to create a permanent, shareable URL
 - **Make changes:** Edit code, test locally, then commit and `/vpk-deploy` again
 
-### Cloned from VPK?
-
-If you cloned VPK to start a new prototype, consider these additional steps:
-
-| Step | Command | Description |
-| ---- | ------- | ----------- |
-| **Create your own repo** | `/vpk-share --create my-project` | Creates a new GitHub repo with VPK sync configured |
-| **Standalone repo** | `/vpk-share --create my-project --no-upstream` | Creates repo without VPK sync (for external users) |
-| **Configure sync only** | `/vpk-sync --init` | If staying in the cloned repo, configure upstream sync |
-| **Pull VPK updates** | `/vpk-sync --pull` | Get latest improvements from VPK |
-| **Push improvements** | `/vpk-sync --push` | Contribute your improvements back to VPK via PR |
-
-**Recommended workflow:**
-
-1. `/vpk-setup` — Configure credentials and start dev servers
-2. `/vpk-share --create my-project` — Create your own repo (optional but recommended)
-3. Develop your prototype
-4. `/vpk-sync --push` — Share improvements back to VPK
-5. `/vpk-sync --pull` — Get VPK updates periodically
-
 ## References
 
 - [Setup Guide](references/guide-setup.md) - Detailed setup documentation

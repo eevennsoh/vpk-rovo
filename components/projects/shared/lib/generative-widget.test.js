@@ -3,6 +3,7 @@ const assert = require("node:assert/strict");
 
 const {
 	createBodyOnlySpec,
+	enrichGenerativeWidgetProfilePhotos,
 	parseGenerativeWidget,
 	resolveGenerativeWidgetMetadata,
 } = require("./generative-widget.ts");
@@ -186,6 +187,53 @@ test("createBodyOnlySpec normalizes usage notes spacing to md gap", () => {
 	const result = createBodyOnlySpec(widget);
 
 	assert.equal(result.elements.root.props.gap, "md");
+});
+
+test("createBodyOnlySpec reuses the same transformed spec for identical widget input", () => {
+	const spec = {
+		root: "root",
+		elements: {
+			root: {
+				type: "Stack",
+				props: { direction: "vertical", gap: "md" },
+				children: ["title", "description", "cta", "body"],
+			},
+			title: {
+				type: "Heading",
+				props: { text: "Hermes Features", level: "h3" },
+			},
+			description: {
+				type: "Text",
+				props: {
+					content: "Persistent capabilities available across sessions in VPK-Rovo",
+				},
+			},
+			cta: {
+				type: "Button",
+				props: { label: "Export" },
+			},
+			body: {
+				type: "Text",
+				props: { content: "Rendered body content" },
+			},
+		},
+	};
+
+	const widget = {
+		type: "genui-preview",
+		body: {
+			kind: "json-render",
+			spec,
+		},
+		title: "Hermes Features",
+		description: "Persistent capabilities available across sessions in VPK-Rovo",
+		source: null,
+	};
+
+	const firstResult = createBodyOnlySpec(widget);
+	const secondResult = createBodyOnlySpec(widget);
+
+	assert.strictEqual(secondResult, firstResult);
 });
 
 test("createBodyOnlySpec keeps meaningful separators between remaining sections", () => {
@@ -502,7 +550,7 @@ test("parseGenerativeWidget strips leaked system instructions from card metadata
 
 	assert.ok(widget);
 	assert.equal(widget.summary, undefined);
-	assert.equal(widget.spec.elements["summary-card"].props.description, undefined);
+	assert.equal(widget.body.spec.elements["summary-card"].props.description, undefined);
 
 	const metadata = resolveGenerativeWidgetMetadata(widget);
 	assert.equal(metadata.title, "Today's Calendar");
@@ -537,7 +585,7 @@ test("parseGenerativeWidget keeps trailing metadata after system instructions wr
 	assert.ok(widget);
 	assert.equal(widget.description, "Upcoming events from Google Calendar.");
 	assert.equal(
-		widget.spec.elements["summary-card"].props.description,
+		widget.body.spec.elements["summary-card"].props.description,
 		"Upcoming events from Google Calendar."
 	);
 
@@ -788,4 +836,253 @@ test("createBodyOnlySpec removes generated action button stacks from card body",
 	assert.equal(result.elements["action-row"], undefined);
 	assert.equal(result.elements["edit-button"], undefined);
 	assert.equal(result.elements["view-button"], undefined);
+});
+
+test("enrichGenerativeWidgetProfilePhotos injects a discoverable Atlassian headshot into the profile avatar", () => {
+	const widget = {
+		type: "genui-preview",
+		body: {
+			kind: "json-render",
+			spec: {
+				root: "main",
+				elements: {
+					main: {
+						type: "Stack",
+						props: { gap: "md", padding: 0 },
+						children: ["header"],
+					},
+					header: {
+						type: "Stack",
+						props: { direction: "horizontal", gap: "md", align: "center" },
+						children: ["avatar", "title-stack"],
+					},
+					avatar: {
+						type: "Avatar",
+						props: { fallback: "DH", size: "xl", shape: "circle" },
+					},
+					"title-stack": {
+						type: "Stack",
+						props: { gap: "sm" },
+						children: ["name", "role"],
+					},
+					name: {
+						type: "Heading",
+						props: { text: "David Hoang", level: "h2" },
+						children: [],
+					},
+					role: {
+						type: "Text",
+						props: { content: "Head of Design, Rovo & AI, Jira, Ecosystem" },
+					},
+				},
+			},
+		},
+		source: null,
+	};
+	const headshotUrl =
+		"https://hello.atlassian.net/wiki/pages/viewpageattachments.action?pageId=6450653554&preview=%2F6450653554%2F6538248503%2FDavid+Hoang+headshot.png";
+
+	const result = enrichGenerativeWidgetProfilePhotos(widget, [
+		{
+			toolName: "atlassian_search",
+			state: "completed",
+			output: {
+				searchResponse: `- title: David Hoang headshot.png\n  url: ${headshotUrl}`,
+			},
+			outputPreview: `Found David Hoang headshot.png at ${headshotUrl}`,
+		},
+	]);
+
+	assert.notStrictEqual(result, widget);
+	assert.equal(result.body.spec.elements.avatar.props.src, headshotUrl);
+	assert.equal(widget.body.spec.elements.avatar.props.src, undefined);
+});
+
+test("enrichGenerativeWidgetProfilePhotos preserves an existing avatar src", () => {
+	const widget = {
+		type: "genui-preview",
+		body: {
+			kind: "json-render",
+			spec: {
+				root: "main",
+				elements: {
+					main: {
+						type: "Stack",
+						props: { gap: "md", padding: 0 },
+						children: ["header"],
+					},
+					header: {
+						type: "Stack",
+						props: { direction: "horizontal", gap: "md", align: "center" },
+						children: ["avatar", "title-stack"],
+					},
+					avatar: {
+						type: "Avatar",
+						props: {
+							src: "https://example.com/already-present.png",
+							fallback: "DH",
+							size: "xl",
+							shape: "circle",
+						},
+					},
+					"title-stack": {
+						type: "Stack",
+						props: { gap: "sm" },
+						children: ["name"],
+					},
+					name: {
+						type: "Heading",
+						props: { text: "David Hoang", level: "h2" },
+						children: [],
+					},
+				},
+			},
+		},
+		source: null,
+	};
+
+	const result = enrichGenerativeWidgetProfilePhotos(widget, [
+		{
+			toolName: "atlassian_search",
+			state: "completed",
+			outputPreview:
+				"Found David Hoang headshot.png at https://hello.atlassian.net/wiki/download/attachments/1/David+Hoang+headshot.png",
+		},
+	]);
+
+	assert.strictEqual(result, widget);
+	assert.equal(
+		result.body.spec.elements.avatar.props.src,
+		"https://example.com/already-present.png",
+	);
+});
+
+test("enrichGenerativeWidgetProfilePhotos ignores non-profile cards with avatars", () => {
+	const widget = {
+		type: "genui-preview",
+		body: {
+			kind: "json-render",
+			spec: {
+				root: "main",
+				elements: {
+					main: {
+						type: "Stack",
+						props: { gap: "md", padding: 0 },
+						children: ["header"],
+					},
+					header: {
+						type: "Stack",
+						props: { direction: "horizontal", gap: "md", align: "center" },
+						children: ["avatar", "title"],
+					},
+					avatar: {
+						type: "Avatar",
+						props: { fallback: "KP", size: "xl", shape: "circle" },
+					},
+					title: {
+						type: "Heading",
+						props: { text: "Key Partners", level: "h3" },
+						children: [],
+					},
+				},
+			},
+		},
+		source: null,
+	};
+
+	const result = enrichGenerativeWidgetProfilePhotos(widget, [
+		{
+			toolName: "atlassian_search",
+			state: "completed",
+			outputPreview:
+				"Found David Hoang headshot.png at https://hello.atlassian.net/wiki/download/attachments/1/David+Hoang+headshot.png",
+		},
+	]);
+
+	assert.strictEqual(result, widget);
+	assert.equal(result.body.spec.elements.avatar.props.src, undefined);
+});
+
+test("parseGenerativeWidget normalizes legacy audio widgets into the shared preview envelope", () => {
+	const widget = parseGenerativeWidget("audio-preview", {
+		audioUrl: "https://example.com/voice.mp3",
+		transcript: "hello world",
+		title: "Narration",
+	});
+
+	assert.ok(widget);
+	assert.equal(widget.type, "genui-preview");
+	assert.equal(widget.body.kind, "audio");
+	assert.equal(widget.body.audioUrl, "https://example.com/voice.mp3");
+	assert.equal(widget.body.transcript, "hello world");
+});
+
+test("parseGenerativeWidget normalizes direct video widgets into the shared preview envelope", () => {
+	const widget = parseGenerativeWidget("video-preview", {
+		videoUrl: "/api/rovo-app/generated-media?path=media%2Fvideos%2Fdemo.mp4",
+		mimeType: "video/mp4",
+		fileName: "demo.mp4",
+		title: "Render result",
+	});
+
+	assert.ok(widget);
+	assert.equal(widget.type, "genui-preview");
+	assert.equal(widget.body.kind, "video");
+	assert.equal(
+		widget.body.videoUrl,
+		"/api/rovo-app/generated-media?path=media%2Fvideos%2Fdemo.mp4",
+	);
+	assert.equal(widget.body.mimeType, "video/mp4");
+	assert.equal(widget.body.fileName, "demo.mp4");
+});
+
+test("parseGenerativeWidget infers inline video playback from json-render widgets", () => {
+	const widget = parseGenerativeWidget("genui-preview", {
+		spec: {
+			root: "main",
+			elements: {
+				main: {
+					type: "Card",
+					props: { title: "Output file", description: "Rendered video" },
+					children: ["path"],
+				},
+				path: {
+					type: "Code",
+					props: { text: "media/videos/tmp/demo/VPKRovoVideo.mp4" },
+					children: [],
+				},
+			},
+		},
+	});
+
+	assert.ok(widget);
+	assert.equal(widget.type, "genui-preview");
+	assert.equal(widget.body.kind, "video");
+	assert.equal(
+		widget.body.videoUrl,
+		"/api/rovo-app/generated-media?path=media%2Fvideos%2Ftmp%2Fdemo%2FVPKRovoVideo.mp4",
+	);
+	assert.equal(widget.body.fileName, "VPKRovoVideo.mp4");
+	assert.equal(widget.title, "Output file");
+	assert.equal(widget.description, "Rendered video");
+});
+
+test("parseGenerativeWidget accepts explicit excalidraw body payloads", () => {
+	const widget = parseGenerativeWidget("genui-preview", {
+		title: "Architecture diagram",
+		body: {
+			kind: "excalidraw",
+			scene: {
+				type: "excalidraw",
+				version: 2,
+				elements: [{ id: "node-1", type: "rectangle", x: 0, y: 0 }],
+			},
+		},
+	});
+
+	assert.ok(widget);
+	assert.equal(widget.type, "genui-preview");
+	assert.equal(widget.body.kind, "excalidraw");
+	assert.equal(widget.body.scene.type, "excalidraw");
+	assert.equal(widget.body.scene.elements.length, 1);
 });

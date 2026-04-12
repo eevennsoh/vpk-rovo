@@ -2,7 +2,11 @@ const test = require("node:test");
 const { describe, it } = test;
 const assert = require("node:assert/strict");
 
-const { buildUserMessage, DEEP_PLAN_INSTRUCTION } = require("./config");
+const {
+	buildUserMessage,
+	DEEP_PLAN_INSTRUCTION,
+	HERMES_SKILL_DISCOVERABILITY_INSTRUCTION,
+} = require("./config");
 
 test("buildUserMessage plain-chat profile omits heavy protocol blocks", () => {
 	const message = buildUserMessage("hi", [], undefined, {
@@ -29,6 +33,45 @@ test("buildUserMessage omits GenUI protocol during plan-mode context", () => {
 
 	assert.match(message, /\[Deep Plan Protocol\]/);
 	assert.doesNotMatch(message, /\[Interactive Visual UI Protocol\]/);
+});
+
+test("buildUserMessage includes durable memory protocol in default profile", () => {
+	const message = buildUserMessage("Save this to durable memory.", [], undefined);
+
+	assert.match(message, /\[Durable Memory Protocol\]/);
+	assert.match(message, /durable memory means Hermes persistent memory/i);
+	assert.match(message, /repo lesson logging only for repo\/operator corrections/i);
+});
+
+test("buildUserMessage includes Hermes skill discoverability protocol in default profile", () => {
+	const message = buildUserMessage("Can you use llm-wiki?", [], undefined);
+
+	assert.match(message, /\[Hermes Skill Discoverability Protocol\]/);
+	assert.match(message, /source of truth for which Hermes skills are installed/i);
+	assert.match(message, /installed but not currently selected for this thread/i);
+	assert.match(message, /prefer loading it directly with the `get_skill` tool/i);
+});
+
+test("buildUserMessage no longer injects standup-specific instructions from prompt text", () => {
+	const message = buildUserMessage("Can you write my daily standup from Jira?", [], undefined);
+
+	assert.doesNotMatch(message, /\[Standup Summary Protocol\]/);
+	assert.doesNotMatch(message, /assignee = currentUser\(\) AND updated >= -24h/i);
+});
+
+test("buildUserMessage no longer injects ticket or work-summary prompt-specific instructions", () => {
+	const ticketMessage = buildUserMessage("Please triage incoming support tickets", [], undefined);
+	const workSummaryMessage = buildUserMessage("Summarize my last 7 days of work", [], undefined);
+
+	assert.doesNotMatch(ticketMessage, /\[Ticket Classifier Protocol\]/);
+	assert.doesNotMatch(workSummaryMessage, /\[Work Summary Scope\]/);
+});
+
+test("Hermes skill discoverability protocol distinguishes discoverable skills from active skills", () => {
+	assert.match(HERMES_SKILL_DISCOVERABILITY_INSTRUCTION, /\[Hermes Skills Catalog\]/);
+	assert.match(HERMES_SKILL_DISCOVERABILITY_INSTRUCTION, /\[Hermes Skills\]/);
+	assert.match(HERMES_SKILL_DISCOVERABILITY_INSTRUCTION, /get_skill/i);
+	assert.match(HERMES_SKILL_DISCOVERABILITY_INSTRUCTION, /next turn/i);
 });
 
 it("buildUserMessage plain-chat profile limits conversation history", () => {

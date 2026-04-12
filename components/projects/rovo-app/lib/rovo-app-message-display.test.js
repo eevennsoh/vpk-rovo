@@ -4,8 +4,10 @@ const assert = require("node:assert/strict");
 const {
 	ROVO_APP_ARTIFACT_INTENT_LEAK_FALLBACK,
 	removeRovoAppDirectMediaFences,
+	removeRovoAppSpecFences,
 	sanitizeRovoAppAssistantText,
 	shouldRenderRovoAppAssistantActions,
+	shouldRenderRovoAppAssistantText,
 	shouldRenderRovoAppAssistantMessage,
 	shouldRenderRovoAppVisibleWidget,
 	shouldRenderRovoAppWidget,
@@ -25,6 +27,14 @@ test("shouldRenderRovoAppWidget keeps direct media widgets visible on text route
 			hasWidget: true,
 			routeDecision: { presentation: "text" },
 			widgetType: "audio-preview",
+		}),
+		true
+	);
+	assert.equal(
+		shouldRenderRovoAppWidget({
+			hasWidget: true,
+			routeDecision: { presentation: "text" },
+			widgetType: "video-preview",
 		}),
 		true
 	);
@@ -55,12 +65,37 @@ test("removeRovoAppDirectMediaFences strips complete and incomplete direct-media
 	assert.equal(incompleteFence.text, "Intro");
 });
 
+test("removeRovoAppSpecFences strips spec fences and unfenced patch lines", () => {
+	const fencedSpec = removeRovoAppSpecFences(
+		"Intro\n```spec\n{\"op\":\"add\",\"path\":\"/root\",\"value\":\"main\"}\n```\nOutro"
+	);
+	assert.equal(fencedSpec.removed, true);
+	assert.equal(fencedSpec.text, "Intro\n\nOutro");
+
+	const unfencedPatch = removeRovoAppSpecFences(
+		"Intro\n{\"op\":\"add\",\"path\":\"/root\",\"value\":\"main\"}\nOutro"
+	);
+	assert.equal(unfencedPatch.removed, true);
+	assert.equal(unfencedPatch.text, "Intro\n\nOutro");
+});
+
 test("sanitizeRovoAppAssistantText falls back for artifact-intent leaks after fence removal", () => {
 	const sanitizedText = sanitizeRovoAppAssistantText(
 		'{"action":"createDocument","title":"Spec","kind":"text"}'
 	);
 
 	assert.equal(sanitizedText, ROVO_APP_ARTIFACT_INTENT_LEAK_FALLBACK);
+});
+
+test("sanitizeRovoAppAssistantText strips persisted spec fences from assistant text", () => {
+	const sanitizedText = sanitizeRovoAppAssistantText(
+		"Based on my Hermes memory, here's what I know about you.\n\n```spec\n{\"op\":\"add\",\"path\":\"/root\",\"value\":\"main\"}\n```\n\nThat's what I've got stored durably so far."
+	);
+
+	assert.equal(
+		sanitizedText,
+		"Based on my Hermes memory, here's what I know about you.\n\nThat's what I've got stored durably so far."
+	);
 });
 
 test("shouldRenderRovoAppAssistantActions hides actions for the active in-flight assistant placeholder", () => {
@@ -90,6 +125,54 @@ test("shouldRenderRovoAppAssistantActions shows actions for settled assistant ou
 			hasWidgetError: false,
 			isLastAssistant: true,
 			isResponseInFlight: false,
+		}),
+		true,
+	);
+});
+
+test("shouldRenderRovoAppAssistantText defers provisional tool-driven text until turn completion", () => {
+	assert.equal(
+		shouldRenderRovoAppAssistantText({
+			hasText: true,
+			hasTurnComplete: false,
+			hasToolActivity: true,
+			hasWidgetSignal: false,
+			isFallbackRoute: false,
+			isResponseInFlight: true,
+			isTextPresentation: true,
+			shouldRenderPlanWidget: false,
+		}),
+		false,
+	);
+});
+
+test("shouldRenderRovoAppAssistantText renders settled text once the tool-driven turn completes", () => {
+	assert.equal(
+		shouldRenderRovoAppAssistantText({
+			hasText: true,
+			hasTurnComplete: true,
+			hasToolActivity: true,
+			hasWidgetSignal: false,
+			isFallbackRoute: false,
+			isResponseInFlight: false,
+			isTextPresentation: true,
+			shouldRenderPlanWidget: false,
+		}),
+		true,
+	);
+});
+
+test("shouldRenderRovoAppAssistantText does not suppress ordinary streaming text turns without tool activity", () => {
+	assert.equal(
+		shouldRenderRovoAppAssistantText({
+			hasText: true,
+			hasTurnComplete: false,
+			hasToolActivity: false,
+			hasWidgetSignal: false,
+			isFallbackRoute: false,
+			isResponseInFlight: true,
+			isTextPresentation: true,
+			shouldRenderPlanWidget: false,
 		}),
 		true,
 	);

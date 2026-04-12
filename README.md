@@ -102,8 +102,6 @@ VPK includes AI-assisted skills for common workflows:
 | Setup  | `/vpk-setup`  | Workflow | Initial setup: ASAP credentials, .env.local, dev servers      |
 | Deploy | `/vpk-deploy` | Workflow | Deploy to Atlassian Micros (auto-detects initial vs redeploy) |
 | Tidy   | `/vpk-tidy`   | Utility  | Refactor React components for reusability and modularity      |
-| Share  | `/vpk-share`  | Utility  | Create GitHub repos with VPK sync, export boilerplate, reset  |
-| Sync   | `/vpk-sync`   | Utility  | Sync changes with upstream VPK (pull updates, push via PR)    |
 
 Skills are defined in `.cursor/skills/`.
 

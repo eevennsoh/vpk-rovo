@@ -26,7 +26,60 @@ const { createRovoAppUploadManager } = require("./lib/rovo-app-uploads");
 const {
 	createRovoAppGeneratedFilesManager,
 } = require("./lib/rovo-app-generated-files");
+const {
+	createHermesJobsProvider,
+} = require("./lib/hermes-jobs-provider");
+const {
+	addHermesMemoryEntry,
+	getHermesMemory,
+	listHermesMemories,
+	removeHermesMemoryEntry,
+	replaceHermesMemory,
+} = require("./lib/hermes-memory");
+const {
+	archiveHermesSkill,
+	createHermesSkillFromBundle,
+	getHermesSkill,
+	getHermesSkillBundle,
+	listHermesSkills,
+	toggleHermesSkill,
+	updateHermesSkillFromBundle,
+} = require("./lib/hermes-skills");
+const { getHermesRuntimeStatus } = require("./lib/hermes-status");
+const { createHermesJobLinkManager } = require("./lib/hermes-job-links");
+const { buildRovoAppHermesContextDescription } = require("./lib/hermes-rovo-context");
+const {
+	getLatestAssistantTextFromMessages,
+	isExplicitHermesMemoryRequest,
+	runHermesMemoryCompanionReview,
+} = require("./lib/hermes-memory-companion");
+const {
+	runHermesSkillCompanionReview,
+} = require("./lib/hermes-skill-companion");
+const { executeRovoTask, runRovoDevBackgroundTask } = require("./lib/rovo-task-executor");
+const { syncHermesJobResultsToRovoThreads } = require("./lib/hermes-rovo-job-sync");
+const { buildRuntimeStatusSnapshot } = require("./lib/runtime-status");
+const { redactSecrets, detectSecrets } = require("./lib/hermes-secret-redaction");
+const { classifyCommand, extractCommandFromArgs } = require("./lib/hermes-command-approval");
+const { compressConversation } = require("./lib/hermes-context-compression");
+const { searchThreads } = require("./lib/hermes-session-search");
+const { createCheckpointManager } = require("./lib/hermes-checkpoints");
+const { createSkillsHubClient } = require("./lib/hermes-skills-hub");
+const { createHermesSkillDraftManager } = require("./lib/hermes-skill-drafts");
+const {
+	autoSelectHermesSkillIds,
+	rankHermesSkillCandidates,
+	shouldDisambiguateRankedCandidates,
+} = require("./lib/hermes-skill-auto-selection");
+const { registerHermesSkillDraftRoutes } = require("./lib/hermes-skill-draft-routes");
+const { resolveAmbiguousAutoSelectedSkillIds } = require("./lib/hermes-skill-disambiguation");
 const { createAbortControllerFromRequest } = require("./lib/http-request-abort");
+const {
+	buildImageProxyRequestHeaders,
+	deriveAtlassianImageCandidatesFromUrl,
+	extractAtlassianImageCandidatesFromHtml,
+	parseImageProxyTarget,
+} = require("./lib/image-proxy");
 const {
 	createCapturedResponse,
 	createInProcessRequest,
@@ -50,6 +103,10 @@ const {
 	isExplicitNewRovoAppArtifactRequest,
 	isSameRovoAppArtifactVersionRequest,
 } = require("./lib/rovo-app-artifact-updates");
+const {
+	ensureWikiJobs,
+	getWikiStatus,
+} = require("./lib/wiki-clipper");
 const {
 	inferRovoAppArtifactKindFromContent,
 } = require("./lib/rovo-app-artifact-kind");
@@ -87,10 +144,26 @@ const { getGenuiSystemPrompt } = require("./lib/genui-system-prompt");
 const { analyzeGeneratedText, pickBestSpec, extractDirectSpec } = require("./lib/genui-spec-utils");
 const { buildFallbackGenuiSpecFromText } = require("./lib/genui-fallback-spec");
 const { shouldAttemptPostToolGenui } = require("./lib/genui-post-tool-eligibility");
+const {
+	shouldSuppressHermesKnowledgeDirectSpecCard,
+} = require("./lib/hermes-direct-spec-suppression");
 const { buildDirectSpecWidgetParts } = require("./lib/direct-spec-widget-parts");
+const {
+	inferGeneratedMediaContentType,
+	resolveGeneratedMediaAbsolutePath,
+} = require("./lib/generated-media");
+const { withCanonicalPreviewBody } = require("./lib/widget-preview-payload");
 const { resolveAutomaticGenuiOutcome } = require("./lib/automatic-genui-outcome");
 const { assessToolFirstGenuiQuality } = require("./lib/tool-first-genui-quality");
 const { dispatchBespokeGenuiHandler } = require("./lib/bespoke-genui-handler-dispatch");
+const {
+	buildExcalidrawArtifactSystemPrompt,
+	buildExcalidrawWidgetPayload,
+	buildExcalidrawWidgetSystemPrompt,
+	deriveExcalidrawTitle,
+	isExcalidrawDiagramRequest,
+	normalizeExcalidrawArtifactOutput,
+} = require("./lib/excalidraw-artifact");
 const { looksLikeInabilityResponse, looksLikeWriteBlockedResponse } = require("./lib/inability-response-detector");
 const { assessPromptComplexityForPlanMode } = require("./lib/plan-mode-complexity-heuristic");
 const {
@@ -193,10 +266,20 @@ const {
 	getLatestPlanWidgetMetadata,
 } = require("./lib/plan-metadata");
 const {
+	generateDescriptionSummary,
+} = require("./lib/genui-description-summary");
+const {
 	createListeningPidReader,
 	restartRovoDevPort,
 	DEFAULT_RECOVERY_TIMEOUT_MS: DEFAULT_ROVODEV_PORT_RECOVERY_TIMEOUT_MS,
 } = require("./lib/rovodev-port-recovery");
+const {
+	buildRovoDevDiscoveryCandidatePorts,
+	resolveRovoDevPorts,
+} = require("./lib/rovodev-port-discovery");
+const {
+	getRovodevBasePort,
+} = require("../scripts/lib/worktree-ports");
 const {
 	getEnvVars,
 	detectEndpointType,
@@ -305,6 +388,7 @@ console.log("[STARTUP] Dependencies loaded");
 
 const ROVODEV_PORT_FILE = path.join(__dirname, "..", ".dev-rovodev-port");
 const ROVODEV_PORTS_FILE = path.join(__dirname, "..", ".dev-rovodev-ports");
+const ROVODEV_PORT_SEARCH_MAX_TRIES = Number.parseInt(process.env.PORT_SEARCH_MAX ?? "20", 10);
 
 /** Cached availability state — refreshed on each request via the port file. */
 let _rovoDevAvailable = false;
@@ -312,45 +396,6 @@ let _rovoDevChecked = false;
 let _rovoDevLastRefresh = 0;
 /** @type {import("./lib/rovodev-pool") | null} */
 let _rovoDevPool = null;
-
-/**
- * Read ports from the multi-port file (.dev-rovodev-ports) or fall back
- * to the single-port file (.dev-rovodev-port).
- * @returns {number[]} Array of valid port numbers, or empty array.
- */
-function readRovoDevPorts() {
-	const fs = require("fs");
-
-	// Try JSON array file first
-	if (fs.existsSync(ROVODEV_PORTS_FILE)) {
-		try {
-			const parsed = JSON.parse(fs.readFileSync(ROVODEV_PORTS_FILE, "utf8").trim());
-			if (Array.isArray(parsed) && parsed.length > 0) {
-				const validPorts = parsed.filter((p) => typeof p === "number" && p > 0);
-				if (validPorts.length > 0) {
-					return validPorts;
-				}
-			}
-		} catch {
-			// Ignore parse errors
-		}
-	}
-
-	// Fall back to single port file
-	if (fs.existsSync(ROVODEV_PORT_FILE)) {
-		try {
-			const portStr = fs.readFileSync(ROVODEV_PORT_FILE, "utf8").trim();
-			const port = parseInt(portStr, 10);
-			if (!isNaN(port) && port > 0) {
-				return [port];
-			}
-		} catch {
-			// Ignore read errors
-		}
-	}
-
-	return [];
-}
 
 /**
  * Poll a RovoDev port until it's ready for new requests.
@@ -403,7 +448,16 @@ async function waitForPortReady(port) {
  */
 async function refreshRovoDevAvailability() {
 	try {
-		const ports = readRovoDevPorts();
+		const { ports, source } = await resolveRovoDevPorts({
+			portFile: ROVODEV_PORT_FILE,
+			portsFile: ROVODEV_PORTS_FILE,
+			envPort: process.env.ROVODEV_PORT,
+			basePort: getRovodevBasePort(),
+			maxTries: ROVODEV_PORT_SEARCH_MAX_TRIES,
+			healthCheck: rovoDevHealthCheck,
+			classifyHealthCheck: classifyRovoDevHealthCheck,
+			persistDiscoveredPorts: true,
+		});
 		if (ports.length === 0) {
 			if (_rovoDevPool) {
 				_rovoDevPool.shutdown();
@@ -413,6 +467,12 @@ async function refreshRovoDevAvailability() {
 			_rovoDevAvailable = false;
 			_rovoDevChecked = true;
 			return false;
+		}
+
+		if (source === "discovered") {
+			console.warn(
+				`[ROVODEV] Rediscovered healthy RovoDev port files from live serve instance(s): ${ports.join(", ")}`
+			);
 		}
 
 		// Health-check each port
@@ -467,10 +527,6 @@ async function refreshRovoDevAvailability() {
 		} else {
 			_rovoDevPool = createRovoDevPool(healthyPorts, {
 				waitForReady: waitForPortReady,
-				onStaleBusyPort: (port) => {
-					console.warn(`[ROVODEV] Attempting cancel on stale busy port ${port}`);
-					rovoDevCancelChat(port, { timeoutMs: 5_000 }).catch(() => {});
-				},
 				onPortAvailable: () => {
 					void startNextQueuedRovoAppRun();
 				},
@@ -507,19 +563,11 @@ async function isRovoDevAvailable() {
 	const portsFileExists = fs.existsSync(ROVODEV_PORTS_FILE);
 	const portFileExists = fs.existsSync(ROVODEV_PORT_FILE);
 
-	// If both port files disappeared, RovoDev was stopped
 	if (!portsFileExists && !portFileExists) {
 		if (_rovoDevAvailable) {
-			console.error("[ROVODEV] Port files removed — RovoDev Serve is no longer available");
-			if (_rovoDevPool) {
-				_rovoDevPool.shutdown();
-				_rovoDevPool = null;
-				initPool(null);
-			}
+			console.warn("[ROVODEV] Port files removed — attempting RovoDev rediscovery");
 		}
-		_rovoDevAvailable = false;
-		_rovoDevChecked = true;
-		return false;
+		_rovoDevChecked = false;
 	}
 
 	// If the port file appeared or we haven't checked yet, do a fresh health check
@@ -707,6 +755,152 @@ function sendGatewayErrorResponse(res, error, fallbackErrorMessage) {
 		backendSelected: "unknown",
 		failureStage: "request",
 	});
+}
+
+function parseOptionalBoolean(value) {
+	if (value === true || value === "true" || value === 1 || value === "1") {
+		return true;
+	}
+	if (value === false || value === "false" || value === 0 || value === "0") {
+		return false;
+	}
+	return null;
+}
+
+function parseOptionalInteger(value) {
+	if (typeof value === "number" && Number.isInteger(value)) {
+		return value;
+	}
+	if (typeof value === "string" && value.trim()) {
+		const parsed = Number.parseInt(value, 10);
+		return Number.isInteger(parsed) ? parsed : null;
+	}
+	return null;
+}
+
+function getFirstQueryValue(value) {
+	return Array.isArray(value) ? value[0] : value;
+}
+
+function sendHermesUnavailableResponse(res, error, fallbackErrorMessage = "Hermes request failed") {
+	const statusCode =
+		error && typeof error === "object" && error !== null && typeof error.statusCode === "number"
+			? error.statusCode
+			: error?.code === "ENOENT"
+				? 404
+				: error?.code === "INVALID_INPUT"
+					? 400
+					: error?.code === "HERMES_UNREACHABLE"
+						? 503
+						: 500;
+
+	return res.status(statusCode).json({
+		error: statusCode === 503 ? fallbackErrorMessage : error instanceof Error ? error.message : fallbackErrorMessage,
+		details: error instanceof Error ? error.details ?? error.message : String(error),
+	});
+}
+
+function extractHermesJobLinkMetadata(rawInput) {
+	if (!rawInput || typeof rawInput !== "object") {
+		return null;
+	}
+
+	const linkedThreadId =
+		typeof rawInput.linkedThreadId === "string" && rawInput.linkedThreadId.trim()
+			? rawInput.linkedThreadId.trim()
+			: null;
+	return {
+		artifactTarget:
+			typeof rawInput.artifactTarget === "string" && rawInput.artifactTarget.trim()
+				? rawInput.artifactTarget.trim()
+				: null,
+		lastPostedRunMarker:
+			typeof rawInput.lastPostedRunMarker === "string" && rawInput.lastPostedRunMarker.trim()
+				? rawInput.lastPostedRunMarker.trim()
+				: null,
+		linkedThreadId,
+		postResultToThread: rawInput.postResultToThread === true,
+		surface:
+			typeof rawInput.surface === "string" && rawInput.surface.trim()
+				? rawInput.surface.trim()
+				: null,
+		threadStrategy:
+			rawInput.threadStrategy === "fixed" || rawInput.threadStrategy === "new-per-run"
+				? rawInput.threadStrategy
+				: linkedThreadId
+					? "fixed"
+					: "new-per-run",
+	};
+}
+
+function buildHermesJobLinkMetadata(rawInput, overrides = {}) {
+	return extractHermesJobLinkMetadata({
+		...(rawInput && typeof rawInput === "object" ? rawInput : {}),
+		...(overrides && typeof overrides === "object" ? overrides : {}),
+	});
+}
+
+async function persistHermesJobLink(jobId, rawInput, overrides = {}, { mergeExisting = false } = {}) {
+	const baseMetadata = mergeExisting
+		? (await hermesJobLinkManager.getLink(jobId)) ?? {}
+		: {};
+	const linkMetadata = buildHermesJobLinkMetadata({
+		...baseMetadata,
+		...(rawInput && typeof rawInput === "object" ? rawInput : {}),
+	}, overrides);
+	await hermesJobLinkManager.setLink(jobId, linkMetadata);
+	return linkMetadata;
+}
+
+function toHermesJobInput(rawInput) {
+	if (!rawInput || typeof rawInput !== "object") {
+		return {};
+	}
+
+	const nextInput = {};
+	const fields = ["name", "schedule", "prompt", "deliver", "skills", "repeat"];
+	for (const field of fields) {
+		if (field in rawInput) {
+			nextInput[field] = rawInput[field];
+		}
+	}
+	if (!("prompt" in nextInput) && "target" in rawInput) {
+		nextInput.prompt = rawInput.target;
+	}
+
+	return nextInput;
+}
+
+async function listMergedHermesJobs(searchParams) {
+	const jobs = await hermesJobsProvider.listHermesJobs(searchParams);
+	return hermesJobLinkManager.mergeJobsWithLinks(jobs);
+}
+
+async function getMergedHermesJob(jobId) {
+	const [job, link] = await Promise.all([
+		hermesJobsProvider.getHermesJob(jobId),
+		hermesJobLinkManager.getLink(jobId),
+	]);
+	return {
+		...job,
+		...(link ?? {}),
+	};
+}
+
+async function syncHermesJobsForRovoThreads(threadId = null) {
+	try {
+		const jobs = await listMergedHermesJobs();
+		await syncHermesJobResultsToRovoThreads({
+			jobs,
+			onJobPosted: async (job, metadata) => {
+				await persistHermesJobLink(job.id, job, metadata, { mergeExisting: true });
+			},
+			rovoAppThreadManager,
+			threadId,
+		});
+	} catch (error) {
+		console.warn("[HERMES-JOBS] Failed to sync Hermes job results into Rovo threads:", error instanceof Error ? error.message : String(error));
+	}
 }
 
 app.use(cors());
@@ -1221,9 +1415,66 @@ function resolveRovoAppDelegatedPrompt({
 	};
 }
 
+function normalizeHermesContextIds(value) {
+	return Array.isArray(value)
+		? Array.from(
+			new Set(
+				value.filter((item) => typeof item === "string" && item.trim().length > 0),
+			),
+		)
+		: [];
+}
+
+function buildNextHermesThreadContext({
+	currentHermesContext,
+	autoSelectedSkillIds,
+	pendingDraftIds,
+	selectedSkillIds,
+}) {
+	return {
+		selectedSkillIds: normalizeHermesContextIds(
+			selectedSkillIds ?? currentHermesContext?.selectedSkillIds,
+		),
+		autoSelectedSkillIds: normalizeHermesContextIds(
+			autoSelectedSkillIds ?? currentHermesContext?.autoSelectedSkillIds,
+		),
+		pendingDraftIds: normalizeHermesContextIds(
+		pendingDraftIds ?? currentHermesContext?.pendingDraftIds,
+		),
+	};
+}
+
+async function syncThreadPendingSkillDraftIds(threadId) {
+	if (!threadId) {
+		return null;
+	}
+
+	const currentThread = await rovoAppThreadManager.getThread(threadId);
+	if (!currentThread) {
+		return null;
+	}
+
+	return rovoAppThreadManager.updateThread(threadId, {
+		hermesContext: buildNextHermesThreadContext({
+			currentHermesContext: currentThread.hermesContext,
+			pendingDraftIds: await hermesSkillDraftManager.listPendingDraftIdsForThread(threadId),
+		}),
+	});
+}
+
 const rovoAppThreadManager = createRovoAppThreadManager({
 	baseDir: path.join(__dirname, "data"),
 	logger: console,
+});
+const checkpointManager = createCheckpointManager({
+	baseDir: path.join(__dirname, "data"),
+	maxCheckpoints: 10,
+});
+const skillsHubClient = createSkillsHubClient({
+	skillsDir: require("./lib/hermes-config").getHermesSkillsDir(),
+});
+const hermesSkillDraftManager = createHermesSkillDraftManager({
+	baseDir: path.join(__dirname, "data"),
 });
 const rovoAppVoteManager = createRovoAppVoteManager({
 	baseDir: path.join(__dirname, "data"),
@@ -1238,6 +1489,43 @@ const rovoAppGeneratedFilesManager = createRovoAppGeneratedFilesManager({
 	baseDir: path.join(__dirname, "data"),
 	projectRoot: path.join(__dirname, ".."),
 	logger: console,
+});
+const hermesJobLinkManager = createHermesJobLinkManager({
+	baseDir: path.join(__dirname, "data"),
+});
+const hermesJobsProvider = createHermesJobsProvider({
+	baseDir: path.join(__dirname, "data"),
+	executeTask: async ({
+		job,
+		prompt,
+		selectedSkillIds,
+	}) =>
+		executeRovoTask({
+			prompt,
+			selectedSkillIds,
+			system: [
+				"[Hermes Job Runner]",
+				"You are executing a scheduled Hermes job through the shared RovoDev executor.",
+				job?.name ? `Job name: ${job.name}` : null,
+				"Complete the requested work using the same tool-capable runtime used by interactive Rovo chat.",
+				"[End Hermes Job Runner]",
+			]
+				.filter(Boolean)
+				.join("\n"),
+		}),
+	logger: console,
+	onJobSettled: async (job) => {
+		const mergedJob = await getMergedHermesJob(job.id);
+		await syncHermesJobResultsToRovoThreads({
+			jobs: [mergedJob],
+			onJobPosted: async (syncedJob, metadata) => {
+				await persistHermesJobLink(syncedJob.id, syncedJob, metadata, {
+					mergeExisting: true,
+				});
+			},
+			rovoAppThreadManager,
+		});
+	},
 });
 const rovoAppRunManager = createRovoAppRunManager({
 	logger: console,
@@ -1389,6 +1677,13 @@ function buildRovoAppArtifactSystemPrompt({
 	kind,
 }) {
 	const normalizedKind = getNonEmptyString(kind) || "text";
+	if (normalizedKind === "excalidraw") {
+		return buildExcalidrawArtifactSystemPrompt({
+			mode,
+			title,
+		});
+	}
+
 	const header = mode === "update"
 		? `You are updating an existing ${normalizedKind} artifact titled "${title}".`
 		: `You are generating a new ${normalizedKind} artifact titled "${title}".`;
@@ -1441,7 +1736,35 @@ async function generateRovoAppArtifactText({
 			content: message.content,
 		}))
 		: [];
-	const maxOutputTokens = kind === "code" ? 3200 : kind === "sheet" ? 2200 : 1800;
+	const maxOutputTokens =
+		kind === "code"
+			? 3200
+			: kind === "sheet"
+				? 2200
+				: kind === "excalidraw"
+					? 3200
+					: 1800;
+	if (kind === "excalidraw") {
+		const rawText = await generateTextViaGateway({
+			system,
+			prompt,
+			messages: normalizedMessages,
+			maxOutputTokens,
+			temperature: 0.2,
+			provider,
+			signal,
+			backendPreference: "ai-gateway",
+		});
+		const normalizedExcalidraw = normalizeExcalidrawArtifactOutput(rawText);
+		if (!normalizedExcalidraw) {
+			throw new Error("Excalidraw artifact generation returned invalid scene JSON.");
+		}
+		if (typeof onTextDelta === "function") {
+			onTextDelta(normalizedExcalidraw);
+		}
+		return normalizedExcalidraw;
+	}
+
 	const streamArtifactText = () =>
 		streamTextViaGateway({
 			system,
@@ -1817,10 +2140,22 @@ async function handleRovoAppArtifactToolRequest({
 	streamingArtifact,
 	threadId,
 }) {
-	const { message: latestUserMessage, conversationHistory } =
+	const { message: latestUserMessage, conversationHistory: rawConversationHistory } =
 		mapUiMessagesToConversation(requestBody.messages);
 	if (!latestUserMessage) {
 		return false;
+	}
+
+	// ── Context compression: summarize older turns when history is large ──
+	const compressionResult = compressConversation(rawConversationHistory, {
+		thresholdChars: 80_000,
+		tailCount: 8,
+	});
+	const conversationHistory = compressionResult.messages;
+	if (compressionResult.compressed) {
+		console.info(
+			`[HERMES] Compressed conversation history: ${rawConversationHistory.length} → ${conversationHistory.length} messages`,
+		);
 	}
 
 	const legacyArtifactMode = getNonEmptyString(requestBody.futureArtifactMode);
@@ -2268,6 +2603,86 @@ async function consumeRovoAppManagedResponse({
 			error: error instanceof Error ? error.message : String(error),
 		});
 	}
+
+	const {
+		conversationHistory: memoryCompanionHistory,
+		message: latestUserMessage,
+	} = mapUiMessagesToConversation(messages);
+	const latestAssistantMessage = getLatestAssistantTextFromMessages(messages);
+	const explicitMemoryRequest = isExplicitHermesMemoryRequest(latestUserMessage);
+
+	if (latestUserMessage || latestAssistantMessage) {
+		const runHermesMemoryReview = async () => {
+			try {
+				const reviewResult = await runHermesMemoryCompanionReview({
+					conversationHistory: memoryCompanionHistory,
+					explicitSaveRequest: explicitMemoryRequest,
+					latestAssistantMessage,
+					latestUserMessage,
+				});
+				if (!reviewResult.didReview) {
+					return;
+				}
+
+				console.info("[HERMES] Memory companion reviewed completed Rovo App turn", {
+					threadId,
+					explicitMemoryRequest,
+					responseText: reviewResult.responseText ?? null,
+				});
+			} catch (error) {
+				console.warn("[HERMES] Memory companion review failed:", {
+					threadId,
+					explicitMemoryRequest,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+		};
+		const runHermesSkillReview = async () => {
+			try {
+				const reviewResult = await runHermesSkillCompanionReview({
+					conversationHistory: memoryCompanionHistory,
+					latestAssistantMessage,
+					latestUserMessage,
+					sourceThreadId: threadId,
+					upsertDraftImpl: hermesSkillDraftManager.upsertDraft,
+				});
+				if (!reviewResult.didReview || reviewResult.structuredSkillActions.length === 0) {
+					return;
+				}
+
+				const currentThread = threadId
+					? await rovoAppThreadManager.getThread(threadId)
+					: null;
+				if (threadId && currentThread) {
+					const pendingDraftIds = await hermesSkillDraftManager.listPendingDraftIdsForThread(threadId);
+					await rovoAppThreadManager.updateThread(threadId, {
+						hermesContext: buildNextHermesThreadContext({
+							currentHermesContext: currentThread.hermesContext,
+							pendingDraftIds,
+						}),
+					});
+				}
+
+				console.info("[HERMES] Skill companion reviewed completed Rovo App turn", {
+					threadId,
+					draftCount: reviewResult.structuredSkillActions.length,
+					responseText: reviewResult.responseText ?? null,
+				});
+			} catch (error) {
+				console.warn("[HERMES] Skill companion review failed:", {
+					threadId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+		};
+
+		if (explicitMemoryRequest) {
+			await runHermesMemoryReview();
+		} else {
+			void runHermesMemoryReview();
+		}
+		void runHermesSkillReview();
+	}
 	await finalizeRovoAppRun(threadId, run, messages);
 }
 
@@ -2297,13 +2712,17 @@ async function executeRovoAppManagedRun(run) {
 	const signal = run.abortController.signal;
 	const delegatedMessageId = getNonEmptyString(requestBody.delegatedMessageId);
 	const conversationSummary = getNonEmptyString(requestBody.conversationSummary);
-	const requestMessages = Array.isArray(requestBody.messages)
-		? [...requestBody.messages]
-		: [];
-	const threadForSession = threadId ? await rovoAppThreadManager.getThread(threadId) : null;
-	if (threadForSession?.sessionId) {
-		requestBody.sessionId = threadForSession.sessionId;
-		requestBody.sessionMode = threadForSession.sessionMode ?? "persistent";
+		const requestMessages = Array.isArray(requestBody.messages)
+			? [...requestBody.messages]
+			: [];
+		const threadForSession = threadId ? await rovoAppThreadManager.getThread(threadId) : null;
+		const requestHermesContext =
+			requestBody.hermesContext && typeof requestBody.hermesContext === "object"
+				? requestBody.hermesContext
+				: null;
+		if (threadForSession?.sessionId) {
+			requestBody.sessionId = threadForSession.sessionId;
+			requestBody.sessionMode = threadForSession.sessionMode ?? "persistent";
 	}
 	const delegatedThread =
 		threadId && delegatedMessageId
@@ -2362,10 +2781,64 @@ async function executeRovoAppManagedRun(run) {
 		typeof requestBody.artifactSteering === "object"
 			? requestBody.artifactSteering
 			: null;
+	const { message: latestUserMessage, conversationHistory } =
+		mapUiMessagesToConversation(requestMessages);
 	const baseContextDescription = getNonEmptyString(requestBody.contextDescription);
+	const selectedHermesSkillIds = Array.isArray(requestHermesContext?.selectedSkillIds)
+		? requestHermesContext.selectedSkillIds
+		: Array.isArray(threadForSession?.hermesContext?.selectedSkillIds)
+			? threadForSession.hermesContext.selectedSkillIds
+			: [];
+	let autoSelectedHermesSkillIds = [];
+	try {
+		const installedHermesSkills = await listHermesSkills();
+		const rankedCandidates = rankHermesSkillCandidates({
+			promptText: latestUserMessage,
+			selectedSkillIds: selectedHermesSkillIds,
+			skills: installedHermesSkills,
+		});
+		autoSelectedHermesSkillIds = autoSelectHermesSkillIds({
+			promptText: latestUserMessage,
+			selectedSkillIds: selectedHermesSkillIds,
+			skills: installedHermesSkills,
+		});
+		if (shouldDisambiguateRankedCandidates(rankedCandidates)) {
+			try {
+				autoSelectedHermesSkillIds = await resolveAmbiguousAutoSelectedSkillIds({
+					promptText: latestUserMessage,
+					rankedCandidates: rankedCandidates.slice(0, 5),
+					runBackgroundTaskImpl: runRovoDevBackgroundTask,
+				});
+			} catch (error) {
+				console.warn("[HERMES] Failed to disambiguate auto-selected Hermes skills:", error instanceof Error ? error.message : String(error));
+			}
+		}
+	} catch (error) {
+		console.warn("[HERMES] Failed to auto-select Hermes skills:", error instanceof Error ? error.message : String(error));
+	}
 	const delegationContextDescription = conversationSummary
 		? `[Voice delegation summary]\n${conversationSummary}`
 		: null;
+	let hermesContextDescription = null;
+	try {
+		hermesContextDescription = await buildRovoAppHermesContextDescription({
+			autoSelectedSkillIds: autoSelectedHermesSkillIds,
+			selectedSkillIds: selectedHermesSkillIds,
+		});
+	} catch (error) {
+		console.warn("[HERMES] Failed to build Hermes context for RovoDev chat:", error instanceof Error ? error.message : String(error));
+	}
+	if (threadId && threadForSession) {
+		void rovoAppThreadManager.updateThread(threadId, {
+			hermesContext: buildNextHermesThreadContext({
+				currentHermesContext: threadForSession.hermesContext,
+				autoSelectedSkillIds: autoSelectedHermesSkillIds,
+				selectedSkillIds: selectedHermesSkillIds,
+			}),
+		}).catch((error) => {
+			console.warn("[HERMES] Failed to persist resolved Hermes thread context:", error instanceof Error ? error.message : String(error));
+		});
+	}
 	const streamingArtifact =
 		requestBody.streamingArtifact &&
 		typeof requestBody.streamingArtifact === "object" &&
@@ -2378,12 +2851,13 @@ async function executeRovoAppManagedRun(run) {
 			}
 			: null;
 	const resolvedProvider = getNonEmptyString(requestBody.provider);
-	const effectiveBaseContextDescription = [
-		delegationContextDescription,
-		baseContextDescription,
-	]
-		.filter(Boolean)
-		.join("\n\n");
+		const effectiveBaseContextDescription = [
+			delegationContextDescription,
+			hermesContextDescription,
+			baseContextDescription,
+		]
+			.filter(Boolean)
+			.join("\n\n");
 
 	delete requestBody.activeDocumentId;
 	delete requestBody.artifactContext;
@@ -2396,6 +2870,7 @@ async function executeRovoAppManagedRun(run) {
 	delete requestBody.activeArtifact;
 	delete requestBody.executionMode;
 	delete requestBody.executionTask;
+	delete requestBody.hermesContext;
 
 	const requestIsPlanMode = requestBody.isPlanMode === true;
 	delete requestBody.isPlanMode;
@@ -2403,8 +2878,6 @@ async function executeRovoAppManagedRun(run) {
 	const requestArtifactCreationRetry = requestBody.artifactCreationRetry === true;
 	delete requestBody.artifactCreationRetry;
 
-	const { message: latestUserMessage, conversationHistory } =
-		mapUiMessagesToConversation(requestMessages);
 	const recentHistory = conversationHistory.slice(-5).map((msg) => ({
 		role: msg.type === "user" ? "user" : "assistant",
 		content: msg.content,
@@ -2632,7 +3105,12 @@ async function proxyRovoAppChatRequest(req, res) {
 	const isStructuredContinuation = hasStructuredContinuationBody(requestBody);
 	const rovoDevReady = await waitForRovoAppRovoDevAvailability({
 		getAvailability: refreshRovoDevAvailability,
-		getPorts: readRovoDevPorts,
+		getPorts: () =>
+			buildRovoDevDiscoveryCandidatePorts({
+				envPort: process.env.ROVODEV_PORT,
+				basePort: getRovodevBasePort(),
+				maxTries: ROVODEV_PORT_SEARCH_MAX_TRIES,
+			}),
 	});
 	const poolStatus = _rovoDevPool?.getStatus?.();
 	const poolPorts = Array.isArray(poolStatus?.ports) ? poolStatus.ports : [];
@@ -3007,48 +3485,6 @@ const orchestratorLog = createOrchestratorLog({
 
 const IMAGE_PROXY_TIMEOUT_MS = 15_000;
 const WEB_PROXY_TIMEOUT_MS = 30_000;
-const FIGMA_MCP_ASSET_PATH_PREFIX = "/api/mcp/asset/";
-const IMAGE_PROXY_ALLOWED_HOSTS = new Set(["figma.com", "www.figma.com"]);
-
-function parseImageProxyTarget(value) {
-	const normalizedValue = getNonEmptyString(value);
-	if (!normalizedValue) {
-		return {
-			error: "Missing required query parameter: src",
-		};
-	}
-
-	let parsedUrl;
-	try {
-		parsedUrl = new URL(normalizedValue);
-	} catch {
-		return {
-			error: "Invalid src URL",
-		};
-	}
-
-	const protocol = parsedUrl.protocol.toLowerCase();
-	if (protocol !== "https:" && protocol !== "http:") {
-		return {
-			error: "Only http(s) image URLs are supported",
-		};
-	}
-
-	const hostname = parsedUrl.hostname.toLowerCase();
-	if (!IMAGE_PROXY_ALLOWED_HOSTS.has(hostname)) {
-		return {
-			error: "Image host is not allowed",
-		};
-	}
-
-	if (!parsedUrl.pathname.startsWith(FIGMA_MCP_ASSET_PATH_PREFIX)) {
-		return {
-			error: "Only Figma MCP asset URLs are supported",
-		};
-	}
-
-	return { targetUrl: parsedUrl };
-}
 
 const WEB_PROXY_PRIVATE_IP_PATTERNS = [
 	/^localhost$/i,
@@ -4249,6 +4685,31 @@ app.post("/api/plan-title", async (req, res) => {
 	}
 });
 
+app.post("/api/genui-description-summary", async (req, res) => {
+	try {
+		const { title, description } = req.body || {};
+
+		if (!description || typeof description !== "string" || !description.trim()) {
+			return res.status(400).json({ error: "A description is required" });
+		}
+
+		const result = await generateDescriptionSummary({
+			title,
+			description,
+			generateText: (options) =>
+				generateTextViaGateway({
+					...options,
+					backendPreference: "ai-gateway",
+				}),
+		});
+
+		return res.json(result);
+	} catch (error) {
+		console.warn("[GENUI-DESCRIPTION] AI Gateway unavailable:", error?.message || error);
+		return res.json({ shortDescription: null });
+	}
+});
+
 async function handleChatSdkRequest(req, res) {
 	let stageTrace = null;
 	let cleanupChatSdkAbortTracking = null;
@@ -4866,11 +5327,11 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 							id: widgetId,
 							data: {
 								type: SMART_WIDGET_TYPE_GENUI,
-								payload: {
+								payload: withCanonicalPreviewBody(SMART_WIDGET_TYPE_GENUI, {
 									spec: translationSpec,
 									summary: summaryText,
 									source: "translation-tool",
-								},
+								}),
 							},
 						});
 						writer.write({
@@ -4992,7 +5453,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 							id: audioWidgetId,
 							data: {
 								type: SMART_WIDGET_TYPE_AUDIO,
-								payload: {
+								payload: withCanonicalPreviewBody(SMART_WIDGET_TYPE_AUDIO, {
 									audioUrl: buildAudioDataUrl(
 										synthesisResult.audioBytes,
 										synthesisResult.contentType
@@ -5001,7 +5462,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 									transcript: stripConversationalFiller(clarifiedAudioSelection.voiceInput),
 									source: "audio-context-clarification",
 									inputSource: clarifiedAudioSelection.source || undefined,
-								},
+								}),
 							},
 						});
 						writer.write({ type: "text-start", id: textId });
@@ -5167,19 +5628,19 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 										url: `data:${resolvedMediaType};base64,${base64}`,
 										mimeType: resolvedMediaType,
 									});
-									writer.write({
-										type: "data-widget-data",
-										id: imageWidgetId,
-										data: {
-											type: SMART_WIDGET_TYPE_IMAGE,
-											payload: {
-												images: [...generatedImages],
-												prompt: latestUserMessage,
-												source: "image-context-clarification",
-												inputSource: clarifiedImageContext.source || undefined,
+										writer.write({
+											type: "data-widget-data",
+											id: imageWidgetId,
+											data: {
+												type: SMART_WIDGET_TYPE_IMAGE,
+												payload: withCanonicalPreviewBody(SMART_WIDGET_TYPE_IMAGE, {
+													images: [...generatedImages],
+													prompt: latestUserMessage,
+													source: "image-context-clarification",
+													inputSource: clarifiedImageContext.source || undefined,
+												}),
 											},
-										},
-									});
+										});
 								},
 							});
 						};
@@ -5538,7 +5999,10 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 							writer.write({
 								type: "data-widget-data",
 								id,
-								data: { type, payload },
+								data: {
+									type,
+									payload: withCanonicalPreviewBody(type, payload),
+								},
 							});
 						};
 
@@ -5759,43 +6223,81 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 							smartIntentResult.intent === "genui" ||
 							smartIntentResult.intent === "both"
 						) {
-							emitThinkingStatus("Generating results");
+							const shouldGenerateExcalidrawDiagram = isExcalidrawDiagramRequest(latestUserMessage);
+							emitThinkingStatus(
+								shouldGenerateExcalidrawDiagram ? "Generating diagram" : "Generating results",
+							);
 							emitWidgetLoading(genuiWidgetId, SMART_WIDGET_TYPE_GENUI, true);
 							try {
 								throwIfSmartRouteAborted();
-									const genuiResult = await generateSmartGenuiResult({
-										roleMessages,
-										layoutContext: smartLayoutContext,
+								if (shouldGenerateExcalidrawDiagram) {
+									const excalidrawTitle = deriveExcalidrawTitle(latestUserMessage);
+									const rawSceneText = await generateTextViaGateway({
+										system: buildExcalidrawWidgetSystemPrompt({ title: excalidrawTitle }),
+										prompt: [
+											"User request:",
+											latestUserMessage,
+											conversationHistory.length > 0
+												? `\nConversation context:\n${conversationHistory
+													.map((message) => `${message.type === "assistant" ? "Assistant" : "User"}: ${message.content}`)
+													.join("\n")}`
+												: null,
+										].filter(Boolean).join("\n"),
+										maxOutputTokens: 3200,
+										temperature: 0.2,
+										provider: resolvedProvider,
 										signal: smartRouteAbortController.signal,
-									});
-								throwIfSmartRouteAborted();
-								const summaryText = getNonEmptyString(genuiResult.narrative);
-								if (summaryText) {
-									generatedNarrative = summaryText;
-								}
-
-								const fallbackSpec = summaryText
-									? buildFallbackGenuiSpecFromText({
-											text: summaryText,
-											prompt: latestUserMessage,
-										})
-									: null;
-								const resolvedSpec = genuiResult.spec || fallbackSpec;
-
-								if (resolvedSpec) {
-									const hasGeneratedSpec = Boolean(genuiResult.spec);
-									emitWidgetData(genuiWidgetId, SMART_WIDGET_TYPE_GENUI, {
-										spec: resolvedSpec,
-										summary:
-											summaryText && summaryText.length > 280
-												? `${summaryText.slice(0, 279)}...`
-												: summaryText || "Generated interactive preview",
-										source: hasGeneratedSpec
-											? "genui-chat"
-											: "genui-chat-fallback",
-									});
+										});
+									throwIfSmartRouteAborted();
+									const normalizedScene = normalizeExcalidrawArtifactOutput(rawSceneText);
+									if (!normalizedScene) {
+										emitTextDelta(GENUI_FALLBACK_ERROR_TEXT);
+									} else {
+										emitWidgetData(
+											genuiWidgetId,
+											SMART_WIDGET_TYPE_GENUI,
+											buildExcalidrawWidgetPayload({
+												prompt: latestUserMessage,
+												normalizedSceneJson: normalizedScene,
+											}),
+										);
+										generatedNarrative = latestUserMessage;
+									}
 								} else {
-									emitTextDelta(GENUI_FALLBACK_ERROR_TEXT);
+										const genuiResult = await generateSmartGenuiResult({
+											roleMessages,
+											layoutContext: smartLayoutContext,
+											signal: smartRouteAbortController.signal,
+										});
+									throwIfSmartRouteAborted();
+									const summaryText = getNonEmptyString(genuiResult.narrative);
+									if (summaryText) {
+										generatedNarrative = summaryText;
+									}
+
+									const fallbackSpec = summaryText
+										? buildFallbackGenuiSpecFromText({
+												text: summaryText,
+												prompt: latestUserMessage,
+											})
+										: null;
+									const resolvedSpec = genuiResult.spec || fallbackSpec;
+
+									if (resolvedSpec) {
+										const hasGeneratedSpec = Boolean(genuiResult.spec);
+										emitWidgetData(genuiWidgetId, SMART_WIDGET_TYPE_GENUI, {
+											spec: resolvedSpec,
+											summary:
+												summaryText && summaryText.length > 280
+													? `${summaryText.slice(0, 279)}...`
+													: summaryText || "Generated interactive preview",
+											source: hasGeneratedSpec
+												? "genui-chat"
+												: "genui-chat-fallback",
+										});
+									} else {
+										emitTextDelta(GENUI_FALLBACK_ERROR_TEXT);
+									}
 								}
 							} catch (genuiError) {
 								if (isSmartRouteAbortError(genuiError)) {
@@ -6100,12 +6602,12 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 											id: imageWidgetId,
 											data: {
 												type: SMART_WIDGET_TYPE_IMAGE,
-												payload: {
+												payload: withCanonicalPreviewBody(SMART_WIDGET_TYPE_IMAGE, {
 													images: [...generatedImages],
 													prompt: latestUserMessage,
 													source: "media-bypass-image",
 													inputSource: mediaBypassImageSource || undefined,
-												},
+												}),
 											},
 										});
 									},
@@ -6264,7 +6766,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 								id: audioWidgetId,
 								data: {
 									type: SMART_WIDGET_TYPE_AUDIO,
-									payload: {
+									payload: withCanonicalPreviewBody(SMART_WIDGET_TYPE_AUDIO, {
 										audioUrl: buildAudioDataUrl(
 											synthesisResult.audioBytes,
 											synthesisResult.contentType
@@ -6273,7 +6775,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 										transcript: stripConversationalFiller(mediaBypassVoiceInput),
 										source: "media-bypass-audio",
 										inputSource: mediaBypassVoiceInputSource || undefined,
-									},
+									}),
 								},
 							});
 
@@ -6883,26 +7385,32 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 						}
 					}
 
-					const outputCandidate =
-						value.outputPreview !== undefined ? value.outputPreview : value.output;
+					const rawOutputCandidate = value.output;
+					const outputPreviewCandidate =
+						value.outputPreview !== undefined ? value.outputPreview : rawOutputCandidate;
 					const outputPreview =
-						outputCandidate !== undefined ? toPreview(outputCandidate) : null;
+						outputPreviewCandidate !== undefined
+							? toPreview(outputPreviewCandidate)
+							: null;
 					const outputBytes =
 						typeof value.outputBytes === "number" && Number.isFinite(value.outputBytes)
 							? value.outputBytes
 							: outputPreview?.bytes;
-					const outputTruncated =
-						Boolean(value.outputTruncated) || Boolean(outputPreview?.truncated);
+					const outputTruncated = Boolean(value.outputTruncated);
 
+					if (phase === "result" && rawOutputCandidate !== undefined) {
+						payload.output = rawOutputCandidate;
+					}
 					if (phase === "result" && outputPreview?.text) {
-						payload.output = outputPreview.text;
 						payload.outputPreview = outputPreview.text;
 						if (outputTruncated) {
 							payload.outputTruncated = true;
-							payload.suppressedRawOutput = true;
 						}
 						if (typeof outputBytes === "number" && Number.isFinite(outputBytes)) {
 							payload.outputBytes = outputBytes;
+						}
+						if (Boolean(value.suppressedRawOutput)) {
+							payload.suppressedRawOutput = true;
 						}
 					}
 
@@ -6916,12 +7424,16 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 							}
 						}
 
+						if (rawOutputCandidate !== undefined) {
+							payload.output = rawOutputCandidate;
+						}
 						if (outputPreview?.text) {
-							payload.output = outputPreview.text;
 							payload.outputPreview = outputPreview.text;
 						}
-						if (outputTruncated || Boolean(value.suppressedRawOutput)) {
+						if (outputTruncated) {
 							payload.outputTruncated = true;
+						}
+						if (Boolean(value.suppressedRawOutput)) {
 							payload.suppressedRawOutput = true;
 						}
 						if (typeof outputBytes === "number" && Number.isFinite(outputBytes)) {
@@ -7066,15 +7578,18 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 									id: widgetId,
 									data: {
 										type: SMART_WIDGET_TYPE_GENUI,
-										payload: withRouteWidgetContentType({
-											spec: directGenuiResult.spec,
-											summary: summaryText
-												? summaryText.length > 280
+										payload: withCanonicalPreviewBody(
+											SMART_WIDGET_TYPE_GENUI,
+											withRouteWidgetContentType({
+												spec: directGenuiResult.spec,
+												summary: summaryText
+													? summaryText.length > 280
 													? `${summaryText.slice(0, 279)}...`
 													: summaryText
-												: "Generated interactive view",
-											source,
-										}),
+													: "Generated interactive view",
+												source,
+											}),
+										),
 									},
 								});
 								hasEmittedGenuiWidget = true;
@@ -7745,7 +8260,10 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 									id: widgetId,
 									data: {
 										type: resolvedWidgetType,
-										payload: parsedWidget,
+										payload: withCanonicalPreviewBody(
+											resolvedWidgetType,
+											parsedWidget,
+										),
 									},
 								});
 
@@ -8139,6 +8657,19 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 									hasObservedActionableToolCall = true;
 								},
 								onToolCallInputResolved: (toolCall) => {
+									// ── Safety: flag dangerous commands ──
+									if (toolCall?.toolInput) {
+										const cmd = extractCommandFromArgs(toolCall.toolInput);
+										if (cmd) {
+											const classification = classifyCommand(cmd);
+											if (classification) {
+												console.warn(
+													`[SAFETY] Dangerous command detected in ${toolCall.toolName}: ${classification.label} (${classification.match})`,
+												);
+											}
+										}
+									}
+
 									if (!isRequestUserInputTool(toolCall?.toolName)) {
 										emitRequestUserInputQuestionCard({
 											toolName: toolCall?.toolName,
@@ -8162,6 +8693,20 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 									}
 								},
 									onToolCallResult: (toolCallResult) => {
+										// ── Safety: redact secrets from tool output ──
+										if (toolCallResult?.toolOutputRaw) {
+											const detected = detectSecrets(toolCallResult.toolOutputRaw);
+											if (detected.length > 0) {
+												toolCallResult.toolOutputRaw = redactSecrets(toolCallResult.toolOutputRaw);
+												if (toolCallResult.toolOutputPreview) {
+													toolCallResult.toolOutputPreview = redactSecrets(toolCallResult.toolOutputPreview);
+												}
+												console.info(
+													`[SAFETY] Redacted ${detected.length} secret(s) in ${toolCallResult.toolName} output: ${detected.map((d) => d.label).join(", ")}`,
+												);
+											}
+										}
+
 										const toolGuard = maybeGuardPlanFeedbackTool({
 											toolCallId: toolCallResult?.toolCallId,
 											toolName: toolCallResult?.toolName,
@@ -9092,26 +9637,46 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 					!hasEmittedPlanWidget &&
 					!isPlanExecutionPhase(threadId)
 				) {
+					const rawDirectSpecText =
+						hasSuppressedLargeAssistantJson ? unsuppressedAssistantText : assistantText;
 					const directSpecResult = extractDirectSpec(
-						hasSuppressedLargeAssistantJson ? unsuppressedAssistantText : assistantText
+						rawDirectSpecText
 					);
 					if (directSpecResult?.spec) {
-						const directSpecWidgetId = `widget-direct-spec-${Date.now()}`;
-						for (const part of buildDirectSpecWidgetParts({
-							latestUserMessage,
-							narrative: directSpecResult.narrative,
-							requestOrigin,
-							spec: directSpecResult.spec,
-							widgetId: directSpecWidgetId,
-							widgetType: SMART_WIDGET_TYPE_GENUI,
-						})) {
-							writer.write(part);
+						const shouldSuppressHermesKnowledgeCard =
+							shouldSuppressHermesKnowledgeDirectSpecCard({
+								assistantText: rawDirectSpecText,
+								genuiHint,
+								latestUserMessage,
+								narrative: directSpecResult.narrative,
+							});
+
+						if (shouldSuppressHermesKnowledgeCard) {
+							console.info(
+								"[DIRECT-SPEC] Suppressed GenUI widget promotion for Hermes knowledge recall",
+								{
+									elementCount: Object.keys(directSpecResult.spec.elements || {}).length,
+									narrativeLength: (directSpecResult.narrative || "").length,
+								}
+							);
+						} else {
+							const directSpecWidgetId = `widget-direct-spec-${Date.now()}`;
+							for (const part of buildDirectSpecWidgetParts({
+								latestUserMessage,
+								narrative: directSpecResult.narrative,
+								requestOrigin,
+								spec: directSpecResult.spec,
+								widgetId: directSpecWidgetId,
+								widgetType: SMART_WIDGET_TYPE_GENUI,
+							})) {
+								writer.write(part);
+							}
+							hasEmittedGenuiWidget = true;
+							console.info("[DIRECT-SPEC] Emitted GenUI widget from RovoDev spec fence", {
+								elementCount: Object.keys(directSpecResult.spec.elements || {}).length,
+								narrativeLength: (directSpecResult.narrative || "").length,
+							});
 						}
-						hasEmittedGenuiWidget = true;
-						console.info("[DIRECT-SPEC] Emitted GenUI widget from RovoDev spec fence", {
-							elementCount: Object.keys(directSpecResult.spec.elements || {}).length,
-							narrativeLength: (directSpecResult.narrative || "").length,
-						});
 					}
 
 					// ── Phase 3: Direct RovoDev media fence detection ──
@@ -9171,11 +9736,11 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 												id: imageWidgetId,
 												data: {
 													type: SMART_WIDGET_TYPE_IMAGE,
-													payload: {
+													payload: withCanonicalPreviewBody(SMART_WIDGET_TYPE_IMAGE, {
 														images: [...generatedImages],
 														prompt: imagePayload.prompt || latestUserMessage,
 														source: "direct-rovodev-image",
-													},
+													}),
 												},
 											});
 										},
@@ -9236,7 +9801,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 									id: audioWidgetId,
 									data: {
 										type: SMART_WIDGET_TYPE_AUDIO,
-										payload: {
+										payload: withCanonicalPreviewBody(SMART_WIDGET_TYPE_AUDIO, {
 											audioUrl: buildAudioDataUrl(
 												synthesisResult.audioBytes,
 												synthesisResult.contentType
@@ -9244,7 +9809,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 											mimeType: synthesisResult.contentType,
 											transcript: audioPayload.text,
 											source: "direct-rovodev-audio",
-										},
+										}),
 									},
 								});
 							} catch (audioError) {
@@ -9388,11 +9953,14 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 									id: widgetId,
 									data: {
 										type: SMART_WIDGET_TYPE_GENUI,
-										payload: withRouteWidgetContentType({
-											spec: bespokeResult.spec,
-											summary: bespokeResult.summary,
-											source: bespokeResult.source,
-										}),
+										payload: withCanonicalPreviewBody(
+											SMART_WIDGET_TYPE_GENUI,
+											withRouteWidgetContentType({
+												spec: bespokeResult.spec,
+												summary: bespokeResult.summary,
+												source: bespokeResult.source,
+											}),
+										),
 									},
 								});
 								hasEmittedGenuiWidget = true;
@@ -9434,18 +10002,21 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 							});
 
 							if (outcome.kind === "widget") {
-								writer.write({
-									type: "data-widget-data",
-									id: widgetId,
-									data: {
-										type: SMART_WIDGET_TYPE_GENUI,
-										payload: withRouteWidgetContentType({
-											spec: outcome.spec,
-											summary: outcome.summary,
-											source: outcome.source,
-										}),
-									},
-								});
+									writer.write({
+										type: "data-widget-data",
+										id: widgetId,
+										data: {
+											type: SMART_WIDGET_TYPE_GENUI,
+											payload: withCanonicalPreviewBody(
+												SMART_WIDGET_TYPE_GENUI,
+												withRouteWidgetContentType({
+												spec: outcome.spec,
+												summary: outcome.summary,
+												source: outcome.source,
+											}),
+											),
+										},
+									});
 								hasEmittedGenuiWidget = true;
 								writer.write(createRouteDecisionPart({
 									intent: "genui",
@@ -9480,6 +10051,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 							};
 						}
 					};
+					const planExecutionActive = isPlanExecutionPhase(threadId);
 					if (!isStrictToolFirstTurn) {
 						const hasToolObservationData = hasToolObservationEntries();
 						const looksLikeClarification = looksLikeClarificationResponse(trimmedAssistantText);
@@ -9507,7 +10079,6 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 								textLength: trimmedAssistantText.length,
 							});
 						}
-				const planExecutionActive = isPlanExecutionPhase(threadId);
 					const shouldAttemptGenui = shouldAttemptPostToolGenui({
 						assistantText: trimmedAssistantText,
 						hasEmittedQuestionCard,
@@ -9685,11 +10256,14 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 										id: toolFirstGenuiWidgetId,
 										data: {
 											type: SMART_WIDGET_TYPE_GENUI,
-											payload: withRouteWidgetContentType({
+											payload: withCanonicalPreviewBody(
+												SMART_WIDGET_TYPE_GENUI,
+												withRouteWidgetContentType({
 												spec: bespokeResult.spec,
 												summary: bespokeResult.summary,
 												source: bespokeResult.source,
 											}),
+											),
 										},
 									});
 									hasEmittedGenuiWidget = true;
@@ -9751,18 +10325,21 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 									const renderedSummary =
 										outcome.summary ||
 										"Generated a visual summary from tool context below.";
-									writer.write({
-										type: "data-widget-data",
-										id: toolFirstGenuiWidgetId,
-										data: {
-											type: SMART_WIDGET_TYPE_GENUI,
-											payload: withRouteWidgetContentType({
-												spec: outcome.spec,
-												summary: renderedSummary,
-												source: outcome.source,
-											}),
-										},
-									});
+										writer.write({
+											type: "data-widget-data",
+											id: toolFirstGenuiWidgetId,
+											data: {
+												type: SMART_WIDGET_TYPE_GENUI,
+												payload: withCanonicalPreviewBody(
+													SMART_WIDGET_TYPE_GENUI,
+													withRouteWidgetContentType({
+													spec: outcome.spec,
+													summary: renderedSummary,
+													source: outcome.source,
+												}),
+												),
+											},
+										});
 									hasEmittedGenuiWidget = true;
 									toolFirstRouteReason = "intent_task_toolable";
 									toolFirstRouteExperience = "generative_ui";
@@ -9873,11 +10450,14 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 												id: recoveryWidgetId,
 												data: {
 													type: SMART_WIDGET_TYPE_GENUI,
-													payload: withRouteWidgetContentType({
+													payload: withCanonicalPreviewBody(
+														SMART_WIDGET_TYPE_GENUI,
+														withRouteWidgetContentType({
 														spec: recoverySpec,
 														summary: recoverySpec.title,
 														source: "work-summary-zero-tool-recovery",
 													}),
+													),
 												},
 											});
 											writer.write({
@@ -10626,7 +11206,7 @@ app.post("/api/speech-transcription", async (req, res) => {
 
 app.get("/api/image-proxy", async (req, res) => {
 	const rawSrc = Array.isArray(req.query.src) ? req.query.src[0] : req.query.src;
-	const { targetUrl, error } = parseImageProxyTarget(rawSrc);
+	const { targetUrl, source, error } = parseImageProxyTarget(rawSrc);
 	if (error) {
 		return res.status(400).json({ error });
 	}
@@ -10637,45 +11217,76 @@ app.get("/api/image-proxy", async (req, res) => {
 	}, IMAGE_PROXY_TIMEOUT_MS);
 
 	try {
-		const upstreamResponse = await fetch(targetUrl.toString(), {
-			method: "GET",
-			headers: {
-				Accept: "image/*",
-				"User-Agent": "VPK-ImageProxy/1.0",
-			},
-			redirect: "follow",
-			signal: abortController.signal,
+		const candidateQueue = [
+			targetUrl,
+			...(source === "atlassian"
+				? deriveAtlassianImageCandidatesFromUrl(targetUrl)
+				: []),
+		];
+		const attemptedUrls = new Set();
+		let lastStatus = null;
+
+		while (candidateQueue.length > 0 && attemptedUrls.size < 8) {
+			const currentUrl = candidateQueue.shift();
+			if (!currentUrl) {
+				continue;
+			}
+
+			const currentUrlString = currentUrl.toString();
+			if (attemptedUrls.has(currentUrlString)) {
+				continue;
+			}
+			attemptedUrls.add(currentUrlString);
+
+			const upstreamResponse = await fetch(currentUrlString, {
+				method: "GET",
+				headers: buildImageProxyRequestHeaders(currentUrl),
+				redirect: "follow",
+				signal: abortController.signal,
+			});
+
+			if (!upstreamResponse.ok) {
+				lastStatus = upstreamResponse.status;
+				continue;
+			}
+
+			const contentType =
+				getNonEmptyString(upstreamResponse.headers.get("content-type")) ||
+				"application/octet-stream";
+
+			if (contentType.toLowerCase().startsWith("image/")) {
+				const payload = Buffer.from(await upstreamResponse.arrayBuffer());
+				const upstreamCacheControl = getNonEmptyString(
+					upstreamResponse.headers.get("cache-control")
+				);
+
+				res.setHeader("Content-Type", contentType);
+				res.setHeader("Content-Length", String(payload.length));
+				res.setHeader(
+					"Cache-Control",
+					upstreamCacheControl || "public, max-age=300, stale-while-revalidate=300"
+				);
+
+				return res.status(200).send(payload);
+			}
+
+			if (source === "atlassian") {
+				const htmlText = await upstreamResponse.text();
+				for (const derivedUrl of extractAtlassianImageCandidatesFromHtml(
+					htmlText,
+					currentUrl
+				)) {
+					candidateQueue.push(derivedUrl);
+				}
+			}
+		}
+
+		return res.status(502).json({
+			error:
+				lastStatus !== null
+					? `Image fetch failed (${lastStatus})`
+					: "Upstream response is not an image",
 		});
-
-		if (!upstreamResponse.ok) {
-			return res.status(502).json({
-				error: `Image fetch failed (${upstreamResponse.status})`,
-			});
-		}
-
-		const contentType =
-			getNonEmptyString(upstreamResponse.headers.get("content-type")) ||
-			"application/octet-stream";
-
-		if (!contentType.toLowerCase().startsWith("image/")) {
-			return res.status(502).json({
-				error: "Upstream response is not an image",
-			});
-		}
-
-		const payload = Buffer.from(await upstreamResponse.arrayBuffer());
-		const upstreamCacheControl = getNonEmptyString(
-			upstreamResponse.headers.get("cache-control")
-		);
-
-		res.setHeader("Content-Type", contentType);
-		res.setHeader("Content-Length", String(payload.length));
-		res.setHeader(
-			"Cache-Control",
-			upstreamCacheControl || "public, max-age=300, stale-while-revalidate=300"
-		);
-
-		return res.status(200).send(payload);
 	} catch (error) {
 		const isAbortError =
 			typeof error === "object" &&
@@ -11801,6 +12412,7 @@ app.post("/api/rovo-app/messages", async (req, res) => {
 
 app.get("/api/rovo-app/threads", async (req, res) => {
 	try {
+		await syncHermesJobsForRovoThreads();
 		const rawLimit = Array.isArray(req.query.limit) ? req.query.limit[0] : req.query.limit;
 		const limit = rawLimit ? Number(rawLimit) : undefined;
 		const threads = (
@@ -11817,6 +12429,90 @@ app.get("/api/rovo-app/threads", async (req, res) => {
 	}
 });
 
+app.get("/api/sessions/search", async (req, res) => {
+	try {
+		const query = Array.isArray(req.query.q) ? req.query.q[0] : req.query.q;
+		if (!query || typeof query !== "string" || !query.trim()) {
+			return res.status(200).json({ results: [] });
+		}
+
+		const rawLimit = Array.isArray(req.query.limit) ? req.query.limit[0] : req.query.limit;
+		const limit = rawLimit ? Number(rawLimit) : undefined;
+		const threads = await rovoAppThreadManager.listThreads({ limit: 100 });
+		const results = searchThreads(threads, query.trim(), { limit });
+		return res.status(200).json({ results });
+	} catch (error) {
+		console.error("[SESSION-SEARCH] Failed to search sessions:", error);
+		return res.status(500).json({
+			error: "Failed to search sessions",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+// ── Checkpoint endpoints ──
+
+app.get("/api/checkpoints", async (_req, res) => {
+	try {
+		const checkpoints = await checkpointManager.list();
+		return res.status(200).json({ checkpoints });
+	} catch (error) {
+		console.error("[CHECKPOINTS] Failed to list checkpoints:", error);
+		return res.status(500).json({
+			error: "Failed to list checkpoints",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+app.post("/api/checkpoints", async (req, res) => {
+	try {
+		const name = typeof req.body?.name === "string" && req.body.name.trim()
+			? req.body.name.trim()
+			: `checkpoint-${Date.now()}`;
+		const description = typeof req.body?.description === "string"
+			? req.body.description.trim()
+			: null;
+		const checkpoint = await checkpointManager.create({ name, description });
+		return res.status(201).json({ checkpoint });
+	} catch (error) {
+		console.error("[CHECKPOINTS] Failed to create checkpoint:", error);
+		return res.status(500).json({
+			error: "Failed to create checkpoint",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+app.post("/api/checkpoints/:id/rollback", async (req, res) => {
+	try {
+		const checkpoint = await checkpointManager.rollback(req.params.id);
+		return res.status(200).json({ checkpoint });
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		const statusCode = /not found/iu.test(message) ? 404 : 500;
+		return res.status(statusCode).json({
+			error: "Failed to rollback checkpoint",
+			details: message,
+		});
+	}
+});
+
+app.delete("/api/checkpoints/:id", async (req, res) => {
+	try {
+		const deleted = await checkpointManager.delete(req.params.id);
+		if (!deleted) {
+			return res.status(404).json({ error: "Checkpoint not found" });
+		}
+		return res.status(200).json({ checkpoint: deleted });
+	} catch (error) {
+		return res.status(500).json({
+			error: "Failed to delete checkpoint",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
 app.post("/api/rovo-app/threads", async (req, res) => {
 	try {
 		const {
@@ -11828,6 +12524,7 @@ app.post("/api/rovo-app/threads", async (req, res) => {
 			modelId,
 			provider,
 			activeDocumentId,
+			hermesContext,
 			sessionId,
 			sessionMode,
 			createdAt,
@@ -11842,10 +12539,11 @@ app.post("/api/rovo-app/threads", async (req, res) => {
 			realtimeMessages,
 			visibility,
 			modelId,
-			provider,
-			activeDocumentId,
-			sessionId,
-			sessionMode,
+				provider,
+				activeDocumentId,
+				hermesContext,
+				sessionId,
+				sessionMode,
 			createdAt,
 			updatedAt,
 		});
@@ -11885,6 +12583,7 @@ app.delete("/api/rovo-app/threads", async (req, res) => {
 
 app.get("/api/rovo-app/threads/:threadId", async (req, res) => {
 	try {
+		await syncHermesJobsForRovoThreads(req.params.threadId);
 		const thread = await reconcileOrphanedRovoAppThread(
 			await rovoAppThreadManager.getThread(req.params.threadId),
 		);
@@ -11909,6 +12608,7 @@ app.put("/api/rovo-app/threads/:threadId", async (req, res) => {
 			modelId,
 			provider,
 			activeDocumentId,
+			hermesContext,
 			sessionId,
 			sessionMode,
 			updatedAt,
@@ -11923,9 +12623,10 @@ app.put("/api/rovo-app/threads/:threadId", async (req, res) => {
 			realtimeMessages,
 			visibility,
 			modelId,
-			provider,
-			activeDocumentId,
-			sessionId,
+				provider,
+				activeDocumentId,
+				hermesContext,
+				sessionId,
 			sessionMode,
 			updatedAt,
 		});
@@ -12257,6 +12958,41 @@ app.get("/api/rovo-app/files/:fileId", async (req, res) => {
 	}
 });
 
+app.get("/api/rovo-app/generated-media", async (req, res) => {
+	try {
+		const requestedPath = Array.isArray(req.query.path)
+			? req.query.path[0]
+			: req.query.path;
+		const absolutePath = resolveGeneratedMediaAbsolutePath(
+			path.join(__dirname, ".."),
+			requestedPath,
+		);
+		if (!absolutePath) {
+			return res.status(400).json({ error: "Invalid generated media path" });
+		}
+
+		const contentType = inferGeneratedMediaContentType(requestedPath);
+		if (!contentType) {
+			return res.status(400).json({ error: "Unsupported generated media type" });
+		}
+
+		await require("node:fs/promises").access(absolutePath);
+		res.setHeader("Content-Type", contentType);
+		res.setHeader(
+			"Content-Disposition",
+			`inline; filename="${path.basename(absolutePath)}"`,
+		);
+		return res.sendFile(absolutePath);
+	} catch (error) {
+		if (error?.code === "ENOENT") {
+			return res.status(404).json({ error: "Generated media file not found" });
+		}
+
+		console.error("[FUTURE-CHAT] Failed to serve generated media:", error);
+		return res.status(500).json({ error: "Failed to serve generated media" });
+	}
+});
+
 // ─── Orchestrator Log Endpoints ──────────────────────────────────────────────
 
 app.get("/api/orchestrator/log", (req, res) => {
@@ -12399,6 +13135,568 @@ app.post("/api/standup", async (req, res) => {
 	}
 });
 
+// ─── Hermes Status / Memory / Skills / Jobs ─────────────────────────────────
+
+function isHermesMemoryTarget(target) {
+	return target === "memory" || target === "user";
+}
+
+app.get("/api/status/rovodev", async (_req, res) => {
+	try {
+		const available = await isRovoDevAvailable();
+		const port = parseOptionalInteger(process.env.ROVODEV_PORT);
+		return res.json(
+			buildRuntimeStatusSnapshot({
+				rovodev: {
+					available,
+					message: available
+						? "RovoDev Serve is ready for interactive chat."
+						: "RovoDev Serve is unavailable.",
+					status: available ? "ready" : "unavailable",
+					url: typeof port === "number" ? `http://localhost:${port}` : null,
+				},
+			}).surfaces.rovodev,
+		);
+	} catch (error) {
+		return res.status(500).json({
+			error: "Failed to check RovoDev status",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+app.get("/api/status/hermes", async (_req, res) => {
+	try {
+		const status = await getHermesRuntimeStatus({
+			jobsProvider: hermesJobsProvider,
+		});
+		return res.json(
+			buildRuntimeStatusSnapshot({
+				hermes: {
+					available: status.available,
+					details: status,
+					message: status.message ?? null,
+					status: status.status ?? (status.available ? "ready" : "unavailable"),
+					url: status.baseUrl ?? null,
+				},
+			}).surfaces.hermes,
+		);
+	} catch (error) {
+		return res.status(500).json({
+			error: "Failed to check Hermes status",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+app.get("/api/status", async (_req, res) => {
+	try {
+		const [rovoDevAvailable, hermesStatus] = await Promise.all([
+			isRovoDevAvailable(),
+			getHermesRuntimeStatus({
+				jobsProvider: hermesJobsProvider,
+			}),
+		]);
+		const port = parseOptionalInteger(process.env.ROVODEV_PORT);
+		return res.json(
+			buildRuntimeStatusSnapshot({
+				hermes: {
+					available: hermesStatus.available,
+					details: hermesStatus,
+					message: hermesStatus.message ?? null,
+					status: hermesStatus.status ?? (hermesStatus.available ? "ready" : "unavailable"),
+					url: hermesStatus.baseUrl ?? null,
+				},
+				rovodev: {
+					available: rovoDevAvailable,
+					message: rovoDevAvailable
+						? "RovoDev Serve is ready for interactive chat."
+						: "RovoDev Serve is unavailable.",
+					status: rovoDevAvailable ? "ready" : "unavailable",
+					url: typeof port === "number" ? `http://localhost:${port}` : null,
+				},
+			}),
+		);
+	} catch (error) {
+		return res.status(500).json({
+			error: "Failed to resolve runtime status",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+app.get("/api/jobs", async (_req, res) => {
+	try {
+		const jobs = await listMergedHermesJobs(_req.query);
+		await syncHermesJobResultsToRovoThreads({
+			jobs,
+			onJobPosted: async (job, metadata) => {
+				await persistHermesJobLink(job.id, job, metadata, { mergeExisting: true });
+			},
+			rovoAppThreadManager,
+		});
+		return res.json({ jobs });
+	} catch (error) {
+		return sendHermesUnavailableResponse(res, error, "Failed to list Hermes jobs");
+	}
+});
+
+app.get("/api/wiki/status", async (_req, res) => {
+	try {
+		const wiki = await getWikiStatus();
+		return res.json({ wiki });
+	} catch (error) {
+		return res.status(500).json({
+			error: "Failed to load wiki status",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+app.post("/api/jobs", async (req, res) => {
+	try {
+		const job = await hermesJobsProvider.createHermesJob(toHermesJobInput(req.body));
+		const linkMetadata = await persistHermesJobLink(job.id, req.body);
+		return res.status(201).json({
+			job: {
+				...job,
+				...(linkMetadata ?? {}),
+			},
+		});
+	} catch (error) {
+		return sendHermesUnavailableResponse(res, error, "Failed to create Hermes job");
+	}
+});
+
+app.get("/api/jobs/:id", async (req, res) => {
+	try {
+		const job = await getMergedHermesJob(req.params.id);
+		return res.json({ job });
+	} catch (error) {
+		return sendHermesUnavailableResponse(res, error, "Failed to load Hermes job");
+	}
+});
+
+app.patch("/api/jobs/:id", async (req, res) => {
+	try {
+		const hermesJobInput = toHermesJobInput(req.body);
+		const job = Object.keys(hermesJobInput).length > 0
+			? await hermesJobsProvider.updateHermesJob(req.params.id, hermesJobInput)
+			: await hermesJobsProvider.getHermesJob(req.params.id);
+		const linkMetadata = await persistHermesJobLink(req.params.id, req.body);
+		return res.json({
+			job: {
+				...job,
+				...(linkMetadata ?? {}),
+			},
+		});
+	} catch (error) {
+		return sendHermesUnavailableResponse(res, error, "Failed to update Hermes job");
+	}
+});
+
+app.delete("/api/jobs/:id", async (req, res) => {
+	try {
+		await hermesJobsProvider.deleteHermesJob(req.params.id);
+		await hermesJobLinkManager.removeLink(req.params.id);
+		return res.status(204).end();
+	} catch (error) {
+		return sendHermesUnavailableResponse(res, error, "Failed to delete Hermes job");
+	}
+});
+
+app.post("/api/jobs/:id/run", async (req, res) => {
+	try {
+		const job = await hermesJobsProvider.performHermesJobAction(req.params.id, "run");
+		return res.json({ job });
+	} catch (error) {
+		return sendHermesUnavailableResponse(res, error, "Failed to run Hermes job");
+	}
+});
+
+app.post("/api/jobs/:id/pause", async (req, res) => {
+	try {
+		const job = await hermesJobsProvider.performHermesJobAction(req.params.id, "pause");
+		return res.json({ job });
+	} catch (error) {
+		return sendHermesUnavailableResponse(res, error, "Failed to pause Hermes job");
+	}
+});
+
+app.post("/api/jobs/:id/resume", async (req, res) => {
+	try {
+		const job = await hermesJobsProvider.performHermesJobAction(req.params.id, "resume");
+		return res.json({ job });
+	} catch (error) {
+		return sendHermesUnavailableResponse(res, error, "Failed to resume Hermes job");
+	}
+});
+
+app.get("/api/memories", async (_req, res) => {
+	try {
+		const memories = await listHermesMemories();
+		return res.json({ memories });
+	} catch (error) {
+		return res.status(500).json({
+			error: "Failed to list Hermes memories",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+app.get("/api/memories/:target", async (req, res) => {
+	try {
+		if (!isHermesMemoryTarget(req.params.target)) {
+			return res.status(400).json({
+				error: "Unknown Hermes memory target",
+			});
+		}
+
+		const memory = await getHermesMemory(req.params.target);
+		return res.json({ memory });
+	} catch (error) {
+		return res.status(500).json({
+			error: "Failed to load Hermes memory",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+app.put("/api/memories/:target", async (req, res) => {
+	try {
+		if (!isHermesMemoryTarget(req.params.target)) {
+			return res.status(400).json({
+				error: "Unknown Hermes memory target",
+			});
+		}
+
+		const memory = await replaceHermesMemory(req.params.target, req.body);
+		return res.json({ memory });
+	} catch (error) {
+		return res.status(400).json({
+			error: "Failed to update Hermes memory",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+app.post("/api/memories/:target/entry", async (req, res) => {
+	try {
+		if (!isHermesMemoryTarget(req.params.target)) {
+			return res.status(400).json({
+				error: "Unknown Hermes memory target",
+			});
+		}
+
+		const memory = await addHermesMemoryEntry(req.params.target, req.body);
+		return res.json({ memory });
+	} catch (error) {
+		return res.status(400).json({
+			error: "Failed to add Hermes memory entry",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+app.delete("/api/memories/:target/entry", async (req, res) => {
+	try {
+		if (!isHermesMemoryTarget(req.params.target)) {
+			return res.status(400).json({
+				error: "Unknown Hermes memory target",
+			});
+		}
+
+		const memory = await getHermesMemory(req.params.target);
+		const entryId = getFirstQueryValue(req.query.entryId)
+			?? getFirstQueryValue(req.query.entry_id)
+			?? req.body?.entryId
+			?? req.body?.entry_id
+			?? (() => {
+				const entryValue = getFirstQueryValue(req.query.entry)
+					?? req.body?.entry
+					?? req.body?.match;
+				if (!entryValue) {
+					return null;
+				}
+
+				const matchingEntry = memory.entries.find((entry) => {
+					return entry.id === entryValue || entry.content === entryValue;
+				});
+				return matchingEntry?.id ?? null;
+			})();
+		if (!entryId) {
+			return res.status(400).json({
+				error: "A Hermes memory entryId is required to delete an entry.",
+			});
+		}
+
+		const nextMemory = await removeHermesMemoryEntry(req.params.target, entryId);
+		return res.json({ memory: nextMemory });
+	} catch (error) {
+		return res.status(400).json({
+			error: "Failed to remove Hermes memory entry",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+app.get("/api/skills", async (_req, res) => {
+	try {
+		const skills = await listHermesSkills({ query: getFirstQueryValue(_req.query.q) ?? getFirstQueryValue(_req.query.query) });
+		return res.json({ skills });
+	} catch (error) {
+		return res.status(500).json({
+			error: "Failed to list Hermes skills",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+registerHermesSkillDraftRoutes(app, {
+	archiveSkillImpl: archiveHermesSkill,
+	createSkillFromBundleImpl: createHermesSkillFromBundle,
+	draftManager: hermesSkillDraftManager,
+	syncThreadPendingSkillDraftIdsImpl: syncThreadPendingSkillDraftIds,
+	updateSkillFromBundleImpl: updateHermesSkillFromBundle,
+});
+
+app.get("/api/skills/:category/:name", async (req, res) => {
+	try {
+		const skill = await getHermesSkill(req.params.category, req.params.name);
+		return res.json({ skill });
+	} catch (error) {
+		if (error?.code === "ENOENT") {
+			return res.status(404).json({
+				error: "Hermes skill not found",
+			});
+		}
+		return res.status(500).json({
+			error: "Failed to load Hermes skill",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+app.get("/api/skills/:category/:name/bundle", async (req, res) => {
+	try {
+		const skill = await getHermesSkillBundle(req.params.category, req.params.name);
+		return res.json({ skill });
+	} catch (error) {
+		if (error?.code === "ENOENT") {
+			return res.status(404).json({
+				error: "Hermes skill not found",
+			});
+		}
+		return res.status(500).json({
+			error: "Failed to load Hermes skill bundle",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+app.post("/api/skills/:category/:name/toggle", async (req, res) => {
+	try {
+		const enabled = parseOptionalBoolean(
+			getFirstQueryValue(req.query.enabled) ?? req.body?.enabled,
+		);
+		const skill = await toggleHermesSkill(req.params.category, req.params.name, enabled);
+		return res.json({ skill });
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		const statusCode = /not found/i.test(message) ? 404 : 400;
+		return res.status(statusCode).json({
+			error: "Failed to toggle Hermes skill",
+			details: message,
+		});
+	}
+});
+
+// ── Skills Hub endpoints ──
+
+app.get("/api/skills/hub/search", async (req, res) => {
+	try {
+		const query = Array.isArray(req.query.q) ? req.query.q[0] : req.query.q;
+		const source = Array.isArray(req.query.source) ? req.query.source[0] : req.query.source;
+		const limit = Array.isArray(req.query.limit) ? req.query.limit[0] : req.query.limit;
+		const results = await skillsHubClient.search(query || "", {
+			source: source || "all",
+			limit: limit ? parseInt(limit, 10) : 10,
+		});
+		return res.status(200).json({ results });
+	} catch (error) {
+		return res.status(500).json({
+			error: "Failed to search skills hub",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+app.get("/api/skills/hub/browse", async (req, res) => {
+	try {
+		const page = req.query.page ? parseInt(Array.isArray(req.query.page) ? req.query.page[0] : req.query.page, 10) : 1;
+		const pageSize = req.query.pageSize ? parseInt(Array.isArray(req.query.pageSize) ? req.query.pageSize[0] : req.query.pageSize, 10) : 20;
+		const source = Array.isArray(req.query.source) ? req.query.source[0] : req.query.source;
+		const result = await skillsHubClient.browse({ page, pageSize, source: source || "all" });
+		return res.status(200).json(result);
+	} catch (error) {
+		return res.status(500).json({
+			error: "Failed to browse skills hub",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+function getWildcardRouteValue(value) {
+	if (Array.isArray(value)) {
+		return getNonEmptyString(value.join("/"));
+	}
+
+	return getNonEmptyString(value);
+}
+
+app.get("/api/skills/hub/inspect/*identifier", async (req, res) => {
+	try {
+		const identifier = getWildcardRouteValue(req.params.identifier);
+		if (!identifier) {
+			return res.status(400).json({ error: "Identifier required" });
+		}
+		const result = await skillsHubClient.inspect(identifier);
+		return res.status(200).json(result);
+	} catch (error) {
+		return res.status(500).json({
+			error: "Failed to inspect skill",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+app.get("/api/skills/hub/installed", async (_req, res) => {
+	try {
+		const installed = await skillsHubClient.listInstalled();
+		return res.status(200).json({ skills: installed });
+	} catch (error) {
+		return res.status(500).json({
+			error: "Failed to list installed hub skills",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+app.post("/api/skills/hub/install", async (req, res) => {
+	try {
+		const bundle = req.body;
+		if (!bundle || typeof bundle !== "object" || !bundle.name) {
+			return res.status(400).json({ error: "Invalid skill bundle: name and files required" });
+		}
+		const result = await skillsHubClient.installFromBundle(bundle);
+		return res.status(201).json(result);
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		const statusCode = /traversal|absolute/iu.test(message) ? 400 : 500;
+		return res.status(statusCode).json({
+			error: "Failed to install skill",
+			details: message,
+		});
+	}
+});
+
+app.post("/api/skills/hub/install-by-id", async (req, res) => {
+	try {
+		const { identifier, category, force } = req.body || {};
+		if (!identifier || typeof identifier !== "string") {
+			return res.status(400).json({ error: "Identifier required" });
+		}
+		const result = await skillsHubClient.installFromIdentifier(identifier, { category, force });
+		return res.status(201).json(result);
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		const statusCode = /already installed/iu.test(message) ? 409 : 500;
+		return res.status(statusCode).json({
+			error: "Failed to install skill",
+			details: message,
+		});
+	}
+});
+
+app.delete("/api/skills/hub/uninstall/*name", async (req, res) => {
+	try {
+		const name = getWildcardRouteValue(req.params.name);
+		if (!name) {
+			return res.status(400).json({ error: "Skill name required" });
+		}
+		const result = await skillsHubClient.uninstall(name);
+		if (!result.success) {
+			return res.status(404).json({ error: result.message });
+		}
+		return res.status(200).json(result);
+	} catch (error) {
+		return res.status(500).json({
+			error: "Failed to uninstall skill",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+app.get("/api/skills/hub/check", async (req, res) => {
+	try {
+		const name = Array.isArray(req.query.name) ? req.query.name[0] : req.query.name;
+		const results = await skillsHubClient.checkUpdates(name || undefined);
+		return res.status(200).json({ results });
+	} catch (error) {
+		return res.status(500).json({
+			error: "Failed to check for updates",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+app.get("/api/skills/hub/taps", async (_req, res) => {
+	try {
+		const result = await skillsHubClient.manageTaps("list");
+		return res.status(200).json({ taps: result.taps || [] });
+	} catch (error) {
+		return res.status(500).json({
+			error: "Failed to list taps",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+app.post("/api/skills/hub/taps", async (req, res) => {
+	try {
+		const { repo, path: repoPath } = req.body || {};
+		if (!repo || typeof repo !== "string") {
+			return res.status(400).json({ error: "Repo required" });
+		}
+		const result = await skillsHubClient.manageTaps("add", repo, repoPath);
+		return res.status(result.success ? 201 : 200).json(result);
+	} catch (error) {
+		return res.status(500).json({
+			error: "Failed to add tap",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+app.delete("/api/skills/hub/taps/*repo", async (req, res) => {
+	try {
+		const repo = getWildcardRouteValue(req.params.repo);
+		if (!repo) {
+			return res.status(400).json({ error: "Repo required" });
+		}
+		const result = await skillsHubClient.manageTaps("remove", repo);
+		if (!result.success) {
+			return res.status(404).json(result);
+		}
+		return res.status(200).json(result);
+	} catch (error) {
+		return res.status(500).json({
+			error: "Failed to remove tap",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
 app.get("/healthcheck", (req, res) => {
 	console.log("Healthcheck requested by Micros");
 	res.status(200).json({ status: "ok" });
@@ -12509,6 +13807,18 @@ const server = app.listen(port, "0.0.0.0", async () => {
 
 	// Check for RovoDev Serve at startup
 	const rovoDevReady = await refreshRovoDevAvailability();
+	try {
+		const wikiJobProvisioning = await ensureWikiJobs(hermesJobsProvider);
+		console.log(
+			`  WIKI_JOBS: ${wikiJobProvisioning.existing} existing, ${wikiJobProvisioning.created} created`
+		);
+	} catch (error) {
+		console.error(
+			"[STARTUP] Failed to ensure wiki jobs",
+			error instanceof Error ? error.message : error,
+		);
+	}
+	hermesJobsProvider.startJobTicker?.();
 	const aiGatewayConfigured = hasGatewayUrlConfigured(getEnvVars());
 	const llmRouting = buildLlmRoutingStatus({
 		rovoDevAvailable: rovoDevReady,
@@ -12687,12 +13997,14 @@ process.on("unhandledRejection", (reason, promise) => {
 
 // Graceful shutdown — clean up RovoDev pool
 process.on("SIGINT", () => {
+	hermesJobsProvider.stopJobTicker?.();
 	if (_rovoDevPool) {
 		_rovoDevPool.shutdown();
 	}
 	process.exit(0);
 });
 process.on("SIGTERM", () => {
+	hermesJobsProvider.stopJobTicker?.();
 	if (_rovoDevPool) {
 		_rovoDevPool.shutdown();
 	}

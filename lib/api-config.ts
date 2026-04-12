@@ -31,8 +31,13 @@ export const API_ENDPOINTS = {
 	CHAT_SDK: `${API_BASE_URL}/api/chat-sdk`,
 	CHAT_TITLE: `${API_BASE_URL}/api/chat-title`,
 	PLAN_TITLE: `${API_BASE_URL}/api/plan-title`,
+	GENUI_DESCRIPTION_SUMMARY: `${API_BASE_URL}/api/genui-description-summary`,
 	CHAT_CANCEL: `${API_BASE_URL}/api/chat-cancel`,
 	HEALTH: `${API_BASE_URL}/api/health`,
+	STATUS: `${API_BASE_URL}/api/status`,
+	STATUS_ROVODEV: `${API_BASE_URL}/api/status/rovodev`,
+	STATUS_HERMES: `${API_BASE_URL}/api/status/hermes`,
+	WIKI_STATUS: `${API_BASE_URL}/api/wiki/status`,
 	CHAT_THREADS: `${API_BASE_URL}/api/chat/threads`,
 	ROVO_APP_CHAT: `${API_BASE_URL}/api/rovo-app/chat`,
 	ROVO_APP_SUGGESTIONS: `${API_BASE_URL}/api/rovo-app/suggestions`,
@@ -45,6 +50,44 @@ export const API_ENDPOINTS = {
 	ROVO_APP_RUNS: `${API_BASE_URL}/api/rovo-app/runs`,
 	ROVO_APP_FILE_UPLOAD: `${API_BASE_URL}/api/rovo-app/files/upload`,
 	AGENT_MODE: `${API_BASE_URL}/api/agent-mode`,
+	JOBS: `${API_BASE_URL}/api/jobs`,
+	MEMORIES: `${API_BASE_URL}/api/memories`,
+	SKILLS: `${API_BASE_URL}/api/skills`,
+	SKILL_DRAFTS: `${API_BASE_URL}/api/skills/drafts`,
+	SESSION_SEARCH: `${API_BASE_URL}/api/sessions/search`,
+	CHECKPOINTS: `${API_BASE_URL}/api/checkpoints`,
+	checkpoint: (id: string) =>
+		`${API_BASE_URL}/api/checkpoints/${encodeURIComponent(id)}`,
+	checkpointRollback: (id: string) =>
+		`${API_BASE_URL}/api/checkpoints/${encodeURIComponent(id)}/rollback`,
+	SKILLS_HUB_SEARCH: `${API_BASE_URL}/api/skills/hub/search`,
+	SKILLS_HUB_INSTALLED: `${API_BASE_URL}/api/skills/hub/installed`,
+	SKILLS_HUB_INSTALL: `${API_BASE_URL}/api/skills/hub/install`,
+	SKILLS_HUB_BROWSE: `${API_BASE_URL}/api/skills/hub/browse`,
+	SKILLS_HUB_INSTALL_BY_ID: `${API_BASE_URL}/api/skills/hub/install-by-id`,
+	SKILLS_HUB_TAPS: `${API_BASE_URL}/api/skills/hub/taps`,
+	skillsHubSearch: (query: string, source?: string, limit?: number) => {
+		const params = new URLSearchParams({ q: query });
+		if (source) params.set("source", source);
+		if (typeof limit === "number") params.set("limit", String(limit));
+		return `${API_BASE_URL}/api/skills/hub/search?${params.toString()}`;
+	},
+	skillsHubBrowse: (page?: number, pageSize?: number, source?: string) => {
+		const params = new URLSearchParams();
+		if (typeof page === "number") params.set("page", String(page));
+		if (typeof pageSize === "number") params.set("pageSize", String(pageSize));
+		if (source) params.set("source", source);
+		return `${API_BASE_URL}/api/skills/hub/browse?${params.toString()}`;
+	},
+	skillsHubInspect: (identifier: string) =>
+		`${API_BASE_URL}/api/skills/hub/inspect/${identifier}`,
+	sessionSearch: (query: string, limit?: number) => {
+		const params = new URLSearchParams({ q: query });
+		if (typeof limit === "number") {
+			params.set("limit", String(limit));
+		}
+		return `${API_BASE_URL}/api/sessions/search?${params.toString()}`;
+	},
 	chatThreads: (limit?: number) =>
 		`${API_BASE_URL}/api/chat/threads${
 			typeof limit === "number" ? `?limit=${encodeURIComponent(String(limit))}` : ""
@@ -67,6 +110,31 @@ export const API_ENDPOINTS = {
 		`${API_BASE_URL}/api/rovo-app/runs/${encodeURIComponent(threadId)}/cancel`,
 	rovoAppFile: (fileId: string) =>
 		`${API_BASE_URL}/api/rovo-app/files/${encodeURIComponent(fileId)}`,
+	statusRuntime: (runtime: "rovodev" | "hermes") =>
+		`${API_BASE_URL}/api/status/${encodeURIComponent(runtime)}`,
+	job: (jobId: string) =>
+		`${API_BASE_URL}/api/jobs/${encodeURIComponent(jobId)}`,
+	jobAction: (
+		jobId: string,
+		action: "run" | "pause" | "resume",
+	) =>
+		`${API_BASE_URL}/api/jobs/${encodeURIComponent(jobId)}/${action}`,
+	memory: (target: "memory" | "user") =>
+		`${API_BASE_URL}/api/memories/${encodeURIComponent(target)}`,
+	memoryEntry: (target: "memory" | "user") =>
+		`${API_BASE_URL}/api/memories/${encodeURIComponent(target)}/entry`,
+	skill: (category: string, name: string) =>
+		`${API_BASE_URL}/api/skills/${encodeURIComponent(category)}/${encodeURIComponent(name)}`,
+	skillBundle: (category: string, name: string) =>
+		`${API_BASE_URL}/api/skills/${encodeURIComponent(category)}/${encodeURIComponent(name)}/bundle`,
+	skillDraft: (draftId: string) =>
+		`${API_BASE_URL}/api/skills/drafts/${encodeURIComponent(draftId)}`,
+	skillDraftApprove: (draftId: string) =>
+		`${API_BASE_URL}/api/skills/drafts/${encodeURIComponent(draftId)}/approve`,
+	skillDraftReject: (draftId: string) =>
+		`${API_BASE_URL}/api/skills/drafts/${encodeURIComponent(draftId)}/reject`,
+	skillToggle: (category: string, name: string) =>
+		`${API_BASE_URL}/api/skills/${encodeURIComponent(category)}/${encodeURIComponent(name)}/toggle`,
 	SPEECH_TRANSCRIPTION: `${API_BASE_URL}/api/speech-transcription`,
 	WEB_PROXY: `${API_BASE_URL}/api/web-proxy`,
 	CHROMIUM_PREVIEW: `${API_BASE_URL}/api/chromium-preview`,

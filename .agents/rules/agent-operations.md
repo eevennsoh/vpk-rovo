@@ -32,8 +32,6 @@ Current VPK skills (see Appendix for details):
 - `/vpk-deploy`
 - `/vpk-design`
 - `/vpk-tidy`
-- `/vpk-share`
-- `/vpk-sync`
 - `/vpk-component`
 - `/vpk-component-ext`
 - `/vpk-lesson`

@@ -24,6 +24,17 @@ test("inferRovoAppArtifactKindFromRequest keeps table requests as sheets", () =>
 	);
 });
 
+test("inferRovoAppArtifactKindFromRequest keeps diagram requests out of artifact kinds", () => {
+	assert.equal(
+		inferRovoAppArtifactKindFromRequest("Draw me a system architecture diagram"),
+		"text",
+	);
+	assert.equal(
+		inferRovoAppArtifactKindFromRequest("Create an Excalidraw flowchart"),
+		"text",
+	);
+});
+
 test("inferRovoAppArtifactKindFromContent upgrades HTML output to code", () => {
 	assert.equal(
 		inferRovoAppArtifactKindFromContent("<!DOCTYPE html><html><head><title>Apple</title></head><body></body></html>", "text"),
@@ -35,5 +46,12 @@ test("inferRovoAppArtifactKindFromContent keeps markdown tables as sheets", () =
 	assert.equal(
 		inferRovoAppArtifactKindFromContent("| Fruit | Color |\n| --- | --- |\n| Apple | Red |", "text"),
 		"sheet",
+	);
+});
+
+test("inferRovoAppArtifactKindFromContent keeps excalidraw JSON as excalidraw", () => {
+	assert.equal(
+		inferRovoAppArtifactKindFromContent("{\"type\":\"excalidraw\",\"version\":2,\"elements\":[]}", "text"),
+		"excalidraw",
 	);
 });

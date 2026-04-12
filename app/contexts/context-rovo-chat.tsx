@@ -422,6 +422,7 @@ export function RovoChatProvider({
 	const [isMediaGenerating, setIsMediaGenerating] = useState(false);
 	const maybeFinalizeAndProcessRef = useRef<() => void>(() => {});
 	const processNextPromptRef = useRef<() => Promise<void>>(async () => {});
+	const sendChatMessageRef = useRef<(promptItem: QueuedPromptItem) => Promise<void>>(async () => {});
 
 	const startSubmitPending = useCallback((startedAt: number) => {
 		if (isSubmitPendingRef.current) {
@@ -825,7 +826,11 @@ export function RovoChatProvider({
 				}
 				const partData = part as { data?: { type?: string; loading?: boolean } };
 				const widgetType = partData.data?.type;
-				if (widgetType === "image-preview" || widgetType === "audio-preview") {
+				if (
+					widgetType === "image-preview" ||
+					widgetType === "audio-preview" ||
+					widgetType === "video-preview"
+				) {
 					latestMediaLoadingPart = { loading: !!partData.data?.loading };
 				}
 			}
@@ -931,6 +936,10 @@ export function RovoChatProvider({
 		[sendMessage, setMessages, stop]
 	);
 
+	useEffect(() => {
+		sendChatMessageRef.current = sendChatMessage;
+	}, [sendChatMessage]);
+
 	const finalizeActivePrompt = useCallback(() => {
 		if (!activePromptRef.current) {
 			return;
@@ -973,9 +982,7 @@ export function RovoChatProvider({
 
 	useEffect(() => {
 		maybeFinalizeAndProcessRef.current = maybeFinalizeAndProcess;
-		// Flush any prompts that may have been queued before refs were wired.
-		queueTick();
-	}, [maybeFinalizeAndProcess, queueTick]);
+	}, [maybeFinalizeAndProcess]);
 
 	const processNextPrompt = useCallback(async () => {
 		if (
@@ -1003,7 +1010,7 @@ export function RovoChatProvider({
 
 		isDispatchingPromptRef.current = true;
 		try {
-			await sendChatMessage(nextPrompt);
+			await sendChatMessageRef.current(nextPrompt);
 		} catch (error) {
 			shouldFinalizeActivePromptRef.current = true;
 			console.error("[RovoChatProvider] Failed to send queued prompt:", error);
@@ -1013,13 +1020,11 @@ export function RovoChatProvider({
 				queueTick();
 			}
 		}
-	}, [queueTick, sendChatMessage]);
+	}, [queueTick]);
 
 	useEffect(() => {
 		processNextPromptRef.current = processNextPrompt;
-		// Ensure queued prompts can drain after initial callback registration.
-		queueTick();
-	}, [processNextPrompt, queueTick]);
+	}, [processNextPrompt]);
 
 	useEffect(() => {
 		queuedPromptsRef.current = queuedPrompts;

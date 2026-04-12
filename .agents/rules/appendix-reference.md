@@ -125,8 +125,6 @@ Optional environment variables:
 | Deploy       | `/vpk-deploy`       | Workflow | Deploy to Atlassian Micros                            |
 | Design       | `/vpk-design`       | Workflow | Figma to VPK implementation with validation           |
 | Tidy         | `/vpk-tidy`         | Utility  | Refactor React components for reusability             |
-| Share        | `/vpk-share`        | Utility  | Create/sync/reset GitHub repos from VPK               |
-| Sync         | `/vpk-sync`         | Utility  | Pull upstream updates and push contributions          |
 | Component    | `/vpk-component`    | Utility  | Map ADS components to VPK equivalents                 |
 | Component Ext | `/vpk-component-ext` | Utility  | Migrate custom AI components to ui-ai                 |
 | Lesson       | `/vpk-lesson`       | Utility  | Log corrections to `AGENTS-LESSONS.md`                |

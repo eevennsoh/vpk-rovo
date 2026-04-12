@@ -16,60 +16,161 @@ const resolveRovodevConfigPath = () => {
 	return ymlPath;
 };
 
-const dedupeAllowedMcpServersInConfig = () => {
-	const configPath = resolveRovodevConfigPath();
+const resolveWorkspaceRovodevDir = (cwd = process.cwd()) =>
+	path.join(cwd, ".rovodev");
+
+const resolveWorkspaceRovodevGeneratedConfigPath = (cwd = process.cwd()) =>
+	path.join(resolveWorkspaceRovodevDir(cwd), "config.generated.yml");
+
+const resolveWorkspaceRovodevGeneratedMcpPath = (cwd = process.cwd()) =>
+	path.join(resolveWorkspaceRovodevDir(cwd), "mcp.generated.json");
+
+function normalizeYaml(text) {
+	return typeof text === "string"
+		? text.replace(/\r\n?/gu, "\n")
+		: "";
+}
+
+function extractYamlListEntries(text, key) {
+	const lines = normalizeYaml(text).split("\n");
+	const entries = [];
+	let inList = false;
+	let listIndent = 0;
+
+	for (const line of lines) {
+		if (!inList) {
+			const startMatch = line.match(new RegExp(`^(\\s*)${key}:\\s*$`, "u"));
+			if (startMatch) {
+				inList = true;
+				listIndent = startMatch[1].length;
+			}
+			continue;
+		}
+
+		const indent = (line.match(/^\s*/u) || [""])[0].length;
+		const trimmed = line.trim();
+		const listMatch = trimmed.match(/^-\s+(.+)$/u);
+		const isContinuationLine = indent > listIndent;
+		const isAlignedListItem = indent >= listIndent && listMatch;
+
+		if (isContinuationLine || isAlignedListItem) {
+			if (listMatch) {
+				entries.push(listMatch[1].trim());
+			}
+			continue;
+		}
+
+		break;
+	}
+
+	return entries;
+}
+
+function replaceYamlListEntries(text, key, entries) {
+	const lines = normalizeYaml(text).split("\n");
+	const output = [];
+	let replaced = false;
+	let inList = false;
+	let listIndent = 0;
+	let itemIndent = 0;
+
+	for (const line of lines) {
+		if (!inList) {
+			const startMatch = line.match(new RegExp(`^(\\s*)${key}:\\s*$`, "u"));
+			if (startMatch) {
+				replaced = true;
+				inList = true;
+				listIndent = startMatch[1].length;
+				output.push(line);
+				continue;
+			}
+
+			output.push(line);
+			continue;
+		}
+
+		const indent = (line.match(/^\s*/u) || [""])[0].length;
+		const trimmed = line.trim();
+		const listMatch = trimmed.match(/^-\s+(.+)$/u);
+		const isContinuationLine = indent > listIndent;
+		const isAlignedListItem = indent >= listIndent && listMatch;
+
+		if (isContinuationLine || isAlignedListItem) {
+			if (listMatch && itemIndent === 0) {
+				itemIndent = indent;
+			}
+			continue;
+		}
+
+		const resolvedItemIndent = itemIndent || listIndent;
+		for (const entry of entries) {
+			output.push(`${" ".repeat(resolvedItemIndent)}- ${entry}`);
+		}
+		inList = false;
+		output.push(line);
+	}
+
+	if (inList) {
+		const resolvedItemIndent = itemIndent || listIndent;
+		for (const entry of entries) {
+			output.push(`${" ".repeat(resolvedItemIndent)}- ${entry}`);
+		}
+	}
+
+	if (replaced) {
+		return output.join("\n");
+	}
+
+	const nextOutput = [...output];
+	if (nextOutput.length > 0 && nextOutput[nextOutput.length - 1] !== "") {
+		nextOutput.push("");
+	}
+	nextOutput.push(`${key}:`);
+	for (const entry of entries) {
+		nextOutput.push(`- ${entry}`);
+	}
+	return nextOutput.join("\n");
+}
+
+function replaceYamlScalar(text, key, value) {
+	const pattern = new RegExp(`^(\\s*${key}:\\s*).*$`, "mu");
+	if (pattern.test(text)) {
+		return text.replace(pattern, `$1${value}`);
+	}
+
+	return text;
+}
+
+function mergeUniqueStrings(...lists) {
+	return Array.from(
+		new Set(
+			lists
+				.flat()
+				.filter((entry) => typeof entry === "string" && entry.trim())
+				.map((entry) => entry.trim()),
+		),
+	);
+}
+
+function resolveRovodevMcpConfigPath(configText) {
+	const match = normalizeYaml(configText).match(/^\s*mcpConfigPath:\s*(.+)\s*$/mu);
+	if (match?.[1]?.trim()) {
+		return match[1].trim();
+	}
+
+	return path.join(os.homedir(), ".rovodev", "mcp.json");
+}
+
+const dedupeAllowedMcpServersInConfig = (configPath = resolveRovodevConfigPath()) => {
 	if (!fs.existsSync(configPath)) {
 		return { configPath, exists: false, changed: false, removed: 0 };
 	}
 
 	const original = fs.readFileSync(configPath, "utf8");
-	const lines = original.split(/\r?\n/);
-	const output = [];
-
-	let inAllowedList = false;
-	let allowedIndent = 0;
-	let removed = 0;
-	let seen = new Set();
-
-	for (const line of lines) {
-		if (!inAllowedList) {
-			const startMatch = line.match(/^(\s*)allowedMcpServers:\s*$/);
-			if (startMatch) {
-				inAllowedList = true;
-				allowedIndent = startMatch[1].length;
-				seen = new Set();
-			}
-
-			output.push(line);
-			continue;
-		}
-
-		const indent = (line.match(/^\s*/) || [""])[0].length;
-		const trimmed = line.trim();
-		const listMatch = trimmed.match(/^-\s+(.+)$/);
-		const isContinuationLine = indent > allowedIndent;
-		const isAlignedListItem = indent >= allowedIndent && listMatch;
-
-		if (isContinuationLine || isAlignedListItem) {
-			if (listMatch) {
-				const signature = listMatch[1].trim();
-				if (seen.has(signature)) {
-					removed += 1;
-					continue;
-				}
-				seen.add(signature);
-			}
-
-			output.push(line);
-			continue;
-		}
-
-		// Current line is not nested under allowedMcpServers anymore.
-		inAllowedList = false;
-		output.push(line);
-	}
-
-	const normalized = output.join("\n");
+	const currentAllowedServers = extractYamlListEntries(original, "allowedMcpServers");
+	const normalizedAllowedServers = mergeUniqueStrings(currentAllowedServers);
+	const removed = Math.max(0, currentAllowedServers.length - normalizedAllowedServers.length);
+	const normalized = replaceYamlListEntries(original, "allowedMcpServers", normalizedAllowedServers);
 	const changed = removed > 0 && normalized !== original;
 
 	if (changed) {
@@ -84,7 +185,118 @@ const dedupeAllowedMcpServersInConfig = () => {
 	};
 };
 
+function syncWorkspaceRovodevConfig({ cwd = process.cwd() } = {}) {
+	const sourceConfigPath = resolveRovodevConfigPath();
+	const workspaceConfigPath = resolveWorkspaceRovodevGeneratedConfigPath(cwd);
+	const workspaceMcpConfigPath = resolveWorkspaceRovodevGeneratedMcpPath(cwd);
+	const workspaceDir = resolveWorkspaceRovodevDir(cwd);
+
+	fs.mkdirSync(workspaceDir, { recursive: true });
+
+	const sourceConfigText = fs.existsSync(sourceConfigPath)
+		? fs.readFileSync(sourceConfigPath, "utf8")
+		: [
+			"version: 1",
+			"",
+			"mcp:",
+			`  mcpConfigPath: ${workspaceMcpConfigPath}`,
+			"  allowedMcpServers: []",
+			"  disabledMcpServers: []",
+			"",
+		].join("\n");
+	const existingWorkspaceConfigText = fs.existsSync(workspaceConfigPath)
+		? fs.readFileSync(workspaceConfigPath, "utf8")
+		: "";
+
+	const mergedAllowedServers = mergeUniqueStrings(
+		extractYamlListEntries(sourceConfigText, "allowedMcpServers"),
+		extractYamlListEntries(existingWorkspaceConfigText, "allowedMcpServers"),
+	);
+
+	let nextWorkspaceConfigText = replaceYamlScalar(
+		sourceConfigText,
+		"mcpConfigPath",
+		workspaceMcpConfigPath,
+	);
+	nextWorkspaceConfigText = replaceYamlListEntries(
+		nextWorkspaceConfigText,
+		"allowedMcpServers",
+		mergedAllowedServers,
+	);
+	if (!nextWorkspaceConfigText.endsWith("\n")) {
+		nextWorkspaceConfigText += "\n";
+	}
+
+	const sourceMcpConfigPath = resolveRovodevMcpConfigPath(sourceConfigText);
+	let sourceMcpConfig = {};
+	if (fs.existsSync(sourceMcpConfigPath)) {
+		try {
+			sourceMcpConfig = JSON.parse(fs.readFileSync(sourceMcpConfigPath, "utf8"));
+		} catch {
+			sourceMcpConfig = {};
+		}
+	}
+
+	let existingWorkspaceMcpConfig = {};
+	if (fs.existsSync(workspaceMcpConfigPath)) {
+		try {
+			existingWorkspaceMcpConfig = JSON.parse(fs.readFileSync(workspaceMcpConfigPath, "utf8"));
+		} catch {
+			existingWorkspaceMcpConfig = {};
+		}
+	}
+
+	const nextWorkspaceMcpConfig = {
+		...sourceMcpConfig,
+		...existingWorkspaceMcpConfig,
+		mcpServers: {
+			...(sourceMcpConfig.mcpServers && typeof sourceMcpConfig.mcpServers === "object"
+				? sourceMcpConfig.mcpServers
+				: {}),
+			...(existingWorkspaceMcpConfig.mcpServers && typeof existingWorkspaceMcpConfig.mcpServers === "object"
+				? existingWorkspaceMcpConfig.mcpServers
+				: {}),
+		},
+		inputs: Array.isArray(existingWorkspaceMcpConfig.inputs)
+			? existingWorkspaceMcpConfig.inputs
+			: Array.isArray(sourceMcpConfig.inputs)
+				? sourceMcpConfig.inputs
+				: [],
+	};
+	const nextWorkspaceMcpText = `${JSON.stringify(nextWorkspaceMcpConfig, null, "\t")}\n`;
+
+	const previousWorkspaceConfigText = fs.existsSync(workspaceConfigPath)
+		? fs.readFileSync(workspaceConfigPath, "utf8")
+		: null;
+	const previousWorkspaceMcpText = fs.existsSync(workspaceMcpConfigPath)
+		? fs.readFileSync(workspaceMcpConfigPath, "utf8")
+		: null;
+
+	if (previousWorkspaceConfigText !== nextWorkspaceConfigText) {
+		fs.writeFileSync(workspaceConfigPath, nextWorkspaceConfigText, "utf8");
+	}
+	if (previousWorkspaceMcpText !== nextWorkspaceMcpText) {
+		fs.writeFileSync(workspaceMcpConfigPath, nextWorkspaceMcpText, "utf8");
+	}
+
+	return {
+		changed:
+			previousWorkspaceConfigText !== nextWorkspaceConfigText ||
+			previousWorkspaceMcpText !== nextWorkspaceMcpText,
+		configPath: workspaceConfigPath,
+		exists: true,
+		mcpConfigPath: workspaceMcpConfigPath,
+		removed: Math.max(0, mergedAllowedServers.length - new Set(mergedAllowedServers).size),
+		sourceConfigPath,
+	};
+}
+
 module.exports = {
 	resolveRovodevConfigPath,
+	resolveWorkspaceRovodevDir,
+	resolveWorkspaceRovodevGeneratedConfigPath,
+	resolveWorkspaceRovodevGeneratedMcpPath,
 	dedupeAllowedMcpServersInConfig,
+	extractYamlListEntries,
+	syncWorkspaceRovodevConfig,
 };

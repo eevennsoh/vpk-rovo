@@ -96,6 +96,26 @@ const WEB_SEARCH_INSTRUCTION = [
 	"[End Web Search Protocol]",
 ].join("\n");
 
+const DURABLE_MEMORY_INSTRUCTION = [
+	"[Durable Memory Protocol]",
+	"In Rovo App, durable memory means Hermes persistent memory.",
+	"When the user asks you to remember, save, or store something for future conversations, treat that as Hermes memory unless they explicitly ask for a repo lesson or rule.",
+	"Use repo lesson logging only for repo/operator corrections or explicit requests to save a lesson, rule, or prevention note.",
+	"Do not describe durable memory as a lesson or skill unless the user explicitly asked for that kind of record.",
+	"[End Durable Memory Protocol]",
+].join("\n");
+
+const HERMES_SKILL_DISCOVERABILITY_INSTRUCTION = [
+	"[Hermes Skill Discoverability Protocol]",
+	"When context includes a [Hermes Skills Catalog] section, treat it as the source of truth for which Hermes skills are installed in this environment.",
+	"Skills listed in [Hermes Skills Catalog] are discoverable, even if they are not active in the current turn.",
+	"Only skills included in the [Hermes Skills] section are fully loaded as procedural memory for the current turn.",
+	"Do not say a listed skill is unavailable just because it is missing from [Hermes Skills]. Instead, explain that it is installed but not currently selected for this thread.",
+	"If a relevant installed skill is not active, prefer loading it directly with the `get_skill` tool when that tool is available.",
+	"Use the Rovo App Skills picker only when direct loading is unavailable or when the user wants the skill to stay active as procedural context for future turns. Picker activation applies starting on the next turn.",
+	"[End Hermes Skill Discoverability Protocol]",
+].join("\n");
+
 const DEEP_PLAN_INSTRUCTION = [
 	"[Deep Plan Protocol]",
 	"When plan mode is active, you are in the serve planning workflow. Follow these rules strictly:",
@@ -273,30 +293,6 @@ function hasLast7DaysWorkGuardrail(contextDescription) {
 }
 
 function resolvePromptSpecificInstruction(message, contextDescription) {
-	// Standup summary (check first — more specific than 7-day work summary)
-	if (hasStandupGuardrail(contextDescription)) {
-		return null;
-	}
-	if (isStandupSummaryPrompt(message)) {
-		return STANDUP_SUMMARY_INSTRUCTION;
-	}
-
-	// Ticket classifier
-	if (hasTicketClassifierGuardrail(contextDescription)) {
-		return null;
-	}
-	if (isTicketClassifierPrompt(message)) {
-		return TICKET_CLASSIFIER_INSTRUCTION;
-	}
-
-	// 7-day work summary
-	if (hasLast7DaysWorkGuardrail(contextDescription)) {
-		return null;
-	}
-	if (isSevenDayWorkSummaryPrompt(message)) {
-		return LAST_7_DAYS_WORK_INSTRUCTION;
-	}
-
 	return null;
 }
 
@@ -352,6 +348,8 @@ function getInstructionBlocksForProfile(profile, promptSpecificInstruction, cont
 		SHELL_CHROME_AVOIDANCE_INSTRUCTION,
 		FIGMA_CLARIFICATION_INSTRUCTION,
 		WEB_SEARCH_INSTRUCTION,
+		DURABLE_MEMORY_INSTRUCTION,
+		HERMES_SKILL_DISCOVERABILITY_INSTRUCTION,
 		promptSpecificInstruction,
 	];
 }
@@ -410,4 +408,5 @@ module.exports = {
 	buildUserMessage,
 	buildQuestionCardSkipNotification,
 	DEEP_PLAN_INSTRUCTION,
+	HERMES_SKILL_DISCOVERABILITY_INSTRUCTION,
 };

@@ -115,6 +115,7 @@ function AssistantThinkingToolItem({
 				<ToolOutput
 					errorText={toolCall.errorText}
 					output={toolCall.output}
+					outputPreview={toolCall.outputPreview}
 					outputBytes={toolCall.outputBytes}
 					outputTruncated={toolCall.outputTruncated}
 					suppressedRawOutput={toolCall.suppressedRawOutput}

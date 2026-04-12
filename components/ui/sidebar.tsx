@@ -156,11 +156,15 @@ function Sidebar({
   className,
   children,
   dir,
+  isResizing,
+  resizeHandle,
   ...props
 }: React.ComponentProps<"div"> & {
   side?: "left" | "right"
   variant?: "sidebar" | "floating" | "inset"
   collapsible?: "offcanvas" | "icon" | "none"
+  isResizing?: boolean
+  resizeHandle?: React.ReactNode
 }) {
   const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
 
@@ -213,12 +217,13 @@ function Sidebar({
       data-variant={variant}
       data-side={side}
       data-slot="sidebar"
+      data-resizing={isResizing ? "" : undefined}
     >
       {/* This is what handles the sidebar gap on desktop */}
       <div
         data-slot="sidebar-gap"
         className={cn(
-          "transition-[width] duration-medium ease-in-out relative w-(--sidebar-width) bg-transparent",
+          "transition-[width] duration-medium ease-in-out relative w-(--sidebar-width) bg-transparent group-data-[resizing]:transition-none",
           "group-data-[collapsible=offcanvas]:w-0",
           "group-data-[side=right]:rotate-180",
           variant === "floating" || variant === "inset"
@@ -230,8 +235,7 @@ function Sidebar({
         data-slot="sidebar-container"
         data-side={side}
         className={cn(
-          "fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) transition-[left,right,width] duration-medium ease-in-out data-[side=left]:left-0 data-[side=left]:group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)] data-[side=right]:right-0 data-[side=right]:group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)] md:flex",
-          // Adjust the padding for floating and inset variants.
+          "fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) transition-[left,right,width] duration-medium ease-in-out group-data-[resizing]:transition-none data-[side=left]:left-0 data-[side=left]:group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)] data-[side=right]:right-0 data-[side=right]:group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)] md:flex",
           variant === "floating" || variant === "inset"
             ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4))+2px)]"
             : "group-data-[collapsible=icon]:w-(--sidebar-width-icon) group-data-[side=left]:border-r group-data-[side=right]:border-l",
@@ -246,6 +250,7 @@ function Sidebar({
         >
           {children}
         </div>
+        {resizeHandle}
       </div>
     </div>
   )
@@ -694,6 +699,31 @@ function SidebarMenuSubButton({
   })
 }
 
+function SidebarResizeHandle({
+  className,
+  onPointerDown,
+  ...props
+}: React.ComponentProps<"div"> & {
+  onPointerDown?: (event: React.PointerEvent) => void
+}) {
+  return (
+    <div
+      data-slot="sidebar-resize-handle"
+      role="separator"
+      aria-orientation="vertical"
+      className={cn(
+        "absolute inset-y-0 right-0 z-20 w-px cursor-col-resize bg-border transition-colors hover:bg-bg-selected-bold data-[active]:bg-bg-selected-bold",
+        "data-[will-collapse]:w-0.5 data-[will-collapse]:bg-bg-warning-bold",
+        "after:absolute after:inset-y-0 after:left-1/2 after:w-3 after:-translate-x-1/2",
+        "group-data-[collapsible=offcanvas]:hidden",
+        className
+      )}
+      onPointerDown={onPointerDown}
+      {...props}
+    />
+  )
+}
+
 export {
   Sidebar,
   SidebarContent,
@@ -716,6 +746,7 @@ export {
   SidebarMenuSubItem,
   SidebarProvider,
   SidebarRail,
+  SidebarResizeHandle,
   SidebarSeparator,
   SidebarTrigger,
   useSidebar,

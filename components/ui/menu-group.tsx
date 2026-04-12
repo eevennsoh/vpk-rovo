@@ -28,11 +28,13 @@ function MenuGroup({
 			data-spacing={spacing}
 			role="menu"
 			aria-label={typeof title === "string" ? title : undefined}
-			className={cn("space-y-0.5", className)}
+			className={cn(className)}
 			{...props}
 		>
 			{title ? (
-				<div className="text-text-subtle px-2 py-1 text-xs font-medium">{title}</div>
+				<div className="text-text-subtle px-3 py-2 text-xs leading-4 font-medium">
+					{title}
+				</div>
 			) : null}
 			{children}
 		</div>
@@ -62,14 +64,12 @@ function MenuSection({
 			data-slot="menu-section"
 			role="group"
 			aria-label={title}
-			className={cn("py-1", className)}
+			className={cn("p-1", className)}
 			{...props}
 		>
-			{hasSeparator ? (
-				<div className="bg-border mx-2 my-1 h-px" role="separator" />
-			) : null}
+			{hasSeparator ? <div className="bg-border mx-1 my-1 h-px" role="separator" /> : null}
 			{title ? (
-				<div className="text-text-subtle px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider">
+				<div className="text-text-subtle px-3 py-2 text-xs leading-4 font-medium">
 					{title}
 				</div>
 			) : null}
@@ -112,7 +112,7 @@ function MenuItem({
 			aria-disabled={disabled || undefined}
 			disabled={disabled}
 			className={cn(
-				"flex w-full cursor-pointer items-center gap-3 rounded-sm px-3 py-2 text-left text-sm transition-colors",
+				"flex w-full cursor-pointer items-start gap-3 rounded-sm px-3 py-2 text-left text-[13px] leading-5 transition-colors",
 				"hover:bg-bg-neutral-subtle-hovered active:bg-bg-neutral-subtle-pressed",
 				"focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-3 focus-visible:outline-none",
 				"disabled:pointer-events-none disabled:opacity-(--opacity-disabled)",
@@ -130,7 +130,9 @@ function MenuItem({
 			<span className="flex min-w-0 flex-1 flex-col">
 				<span className="text-text truncate">{children}</span>
 				{description ? (
-					<span className="text-text-subtle truncate text-xs">{description}</span>
+					<span className="text-text-subtle truncate text-[11px] leading-4">
+						{description}
+					</span>
 				) : null}
 			</span>
 			{iconAfter ? (
@@ -168,7 +170,7 @@ function MenuLinkItem({
 			data-slot="menu-link-item"
 			role="menuitem"
 			className={cn(
-				"flex w-full cursor-pointer items-center gap-3 rounded-sm px-3 py-2 text-left text-sm no-underline transition-colors",
+				"flex w-full cursor-pointer items-start gap-3 rounded-sm px-3 py-2 text-left text-[13px] leading-5 no-underline transition-colors",
 				"hover:bg-bg-neutral-subtle-hovered active:bg-bg-neutral-subtle-pressed",
 				"focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-3 focus-visible:outline-none",
 				"[div[data-spacing=compact]_&]:py-1",
@@ -184,7 +186,9 @@ function MenuLinkItem({
 			<span className="flex min-w-0 flex-1 flex-col">
 				<span className="text-text truncate">{children}</span>
 				{description ? (
-					<span className="text-text-subtle truncate text-xs">{description}</span>
+					<span className="text-text-subtle truncate text-[11px] leading-4">
+						{description}
+					</span>
 				) : null}
 			</span>
 			{iconAfter ? (
@@ -208,7 +212,7 @@ function MenuHeading({ className, children, ...props }: Readonly<MenuHeadingProp
 			data-slot="menu-heading"
 			role="presentation"
 			className={cn(
-				"text-text-subtle px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider",
+				"text-text-subtle px-3 py-2 text-xs leading-4 font-medium",
 				className,
 			)}
 			{...props}
@@ -256,7 +260,7 @@ function MenuSkeletonHeading({ className, ...props }: Readonly<MenuSkeletonHeadi
 	return (
 		<div
 			data-slot="menu-skeleton-heading"
-			className={cn("px-3 py-1.5", className)}
+			className={cn("px-3 py-2", className)}
 			{...props}
 		>
 			<div className="bg-muted h-3 w-24 animate-pulse rounded-sm" />

@@ -75,6 +75,8 @@ cmux.json
 .dev-rovodev-ports
 .dev-rovodev-token
 .api-routes-backup
+.rovodev/config.generated.yml
+.rovodev/mcp.generated.json
 
 # vercel
 .vercel
@@ -86,9 +88,6 @@ next-env.d.ts
 # Claude Code local plugin settings
 *.local.md
 *.local.json
-
-# VPK Sync configuration (user-specific)
-.vpk-sync.json
 
 # Additional key/credential patterns
 *.key

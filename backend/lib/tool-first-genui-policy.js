@@ -713,86 +713,14 @@ function resolveTeamworkGraphTimeWindowContext({ prompt, domains } = {}) {
 }
 
 function resolveToolFirstPolicy({ prompt } = {}) {
-	const domains = resolveMatchedDomains(prompt);
 	const enforcement = resolveToolFirstEnforcementConfig();
-	if (domains.length === 0) {
-		return {
-			matched: false,
-			domains: [],
-			relevanceDomains: [],
-			domainLabels: [],
-			instruction: null,
-			teamworkGraphTimeWindow: { enabled: false },
-			enforcement,
-		};
-	}
-
-	const domainLabels = getDomainLabels(domains);
-	const teamworkGraphTimeWindow = resolveTeamworkGraphTimeWindowContext({
-		prompt,
-		domains,
-	});
-	const relevanceDomains = teamworkGraphTimeWindow.enabled
-		? Array.from(
-				new Set([
-					...domains,
-					...TOOL_FIRST_TEAMWORK_GRAPH_FALLBACK_RELEVANCE_DOMAINS,
-				])
-			)
-		: [...domains];
-	const instructionLines = [
-		"Tool-first execution policy:",
-		`- This request is in scope for: ${domainLabels.join(", ")}.`,
-		"- Before finalizing your answer, execute at least one relevant MCP/integration tool call and use its result as primary context.",
-		"- Do not invent tool results. If a tool fails, report the specific failure and the exact input needed to retry.",
-	];
-	if (domains.includes("browser-automation")) {
-		instructionLines.push(
-			"- For this browser-automation surface, the bash tool plus `node scripts/chromium-preview-agent.js [--workspace <id>] ...` counts as the relevant tool path because it controls the embedded browser workspace bound to the UI preview.",
-			"- Do not call `mcp_get_tool_schema` or external browser MCP tools unless the user explicitly asks for schema details.",
-			"- If the user asks you to click, type, select, scroll, or manage tabs, you must execute that interaction in the bound browser workspace before responding."
-		);
-	}
-	if (teamworkGraphTimeWindow.enabled) {
-		const resolvedRange =
-			teamworkGraphTimeWindow.startIso && teamworkGraphTimeWindow.endIso
-				? `${teamworkGraphTimeWindow.startIso} to ${teamworkGraphTimeWindow.endIso}`
-				: null;
-		instructionLines.push(
-			`- Time-window work-summary mode is active for the last ${teamworkGraphTimeWindow.windowDays} day${teamworkGraphTimeWindow.windowDays === 1 ? "" : "s"}.`,
-			"- Teamwork Graph / Cypher datetime filters must use strict ISO 8601 date-time values including timezone (e.g. YYYY-MM-DDTHH:mm:ssZ).",
-			resolvedRange
-				? `- Use this canonical UTC range unless the user overrides it: ${resolvedRange}.`
-				: "- Normalize relative dates into explicit UTC start/end timestamps before querying.",
-			"- If Teamwork Graph/Cypher returns datetime, semantic, permission, or no-result failures, fallback in the same turn to Jira JQL and Confluence CQL for the same date range."
-		);
-	}
-	if (domains.includes(TOOL_FIRST_GOOGLE_CALENDAR_DOMAIN_ID)) {
-		const calendarWindow = resolveGoogleCalendarDefaultWindow();
-		const calendarRange =
-			calendarWindow.startIso && calendarWindow.endIso
-				? `${calendarWindow.startIso} to ${calendarWindow.endIso}`
-				: null;
-		instructionLines.push(
-			"- Google Calendar event listing calls must use the Google Calendar MCP tool for listing events.",
-			"- Always include required params: `calendarId`, `timeMin`, and `timeMax`.",
-			"- If the user does not specify a calendar, default to `calendarId: \"primary\"`.",
-			calendarRange
-				? `- If the user does not provide a date range, default to the next ${calendarWindow.windowDays} days using this UTC range: ${calendarRange}.`
-				: `- If the user does not provide a date range, default to the next ${calendarWindow.windowDays} days and emit UTC ISO 8601 timestamps for both bounds.`,
-			"- Interpret relative dates in the user's local timezone, then convert to UTC ISO 8601 (`YYYY-MM-DDTHH:mm:ssZ`) for tool args.",
-			"- Do not call bash/date shell tools to compute date params; compute and pass timestamps directly in tool arguments."
-		);
-	}
-	const instruction = instructionLines.join("\n");
-
 	return {
-		matched: true,
-		domains,
-		relevanceDomains,
-		domainLabels,
-		instruction,
-		teamworkGraphTimeWindow,
+		matched: false,
+		domains: [],
+		relevanceDomains: [],
+		domainLabels: [],
+		instruction: null,
+		teamworkGraphTimeWindow: { enabled: false },
 		enforcement,
 	};
 }

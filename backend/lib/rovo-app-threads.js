@@ -51,21 +51,130 @@ function getTimestamp(value) {
 	return Date.parse(value);
 }
 
+function getRealtimeWidgetType(message) {
+	for (const part of message.parts) {
+		if (part?.type !== "data-widget-data") {
+			continue;
+		}
+
+		const widgetType = typeof part.data?.type === "string"
+			? part.data.type.trim()
+			: "";
+		if (widgetType) {
+			return widgetType;
+		}
+	}
+
+	return null;
+}
+
+function getRealtimeRouteDecisionReason(message) {
+	for (const part of message.parts) {
+		if (part?.type !== "data-route-decision") {
+			continue;
+		}
+
+		const reason = typeof part.data?.reason === "string"
+			? part.data.reason.trim()
+			: "";
+		if (reason) {
+			return reason;
+		}
+	}
+
+	return null;
+}
+
+function isLegacyHermesRealtimeMessage(message) {
+	if (!message || typeof message !== "object") {
+		return false;
+	}
+
+	if (
+		typeof message.id === "string"
+		&& (message.id.startsWith("hermes-memory-") || message.id.startsWith("hermes-skill-"))
+	) {
+		return true;
+	}
+
+	const widgetType = getRealtimeWidgetType(message);
+	if (widgetType === "hermes-memory" || widgetType === "hermes-skill") {
+		return true;
+	}
+
+	return getRealtimeRouteDecisionReason(message) === "hermes_context_widget";
+}
+
+function normalizeRealtimeMessage(message) {
+	if (!isLegacyHermesRealtimeMessage(message)) {
+		return message;
+	}
+
+	const metadata = message.metadata && typeof message.metadata === "object"
+		? message.metadata
+		: {};
+	if (metadata.visibility === "hidden") {
+		return message;
+	}
+
+	return {
+		...message,
+		metadata: {
+			...metadata,
+			visibility: "hidden",
+		},
+	};
+}
+
 function normalizeRealtimeMessages(rawMessages) {
 	if (!Array.isArray(rawMessages)) {
 		return [];
 	}
 
-	return rawMessages.filter((message) => {
-		return (
+	return rawMessages.flatMap((message) => {
+		if (
 			message &&
 			typeof message === "object" &&
 			typeof message.id === "string" &&
 			message.id.trim().length > 0 &&
 			(message.role === "user" || message.role === "assistant") &&
 			Array.isArray(message.parts)
-		);
+		) {
+			return [normalizeRealtimeMessage(message)];
+		}
+
+		return [];
 	});
+}
+
+function normalizeHermesContext(rawHermesContext) {
+	if (!rawHermesContext || typeof rawHermesContext !== "object") {
+		return null;
+	}
+
+	const selectedSkillIds = Array.isArray(rawHermesContext.selectedSkillIds)
+		? rawHermesContext.selectedSkillIds.filter(
+			(skillId) => typeof skillId === "string" && skillId.trim().length > 0,
+		)
+		: [];
+	const autoSelectedSkillIds = Array.isArray(rawHermesContext.autoSelectedSkillIds)
+		? rawHermesContext.autoSelectedSkillIds.filter(
+			(skillId) => typeof skillId === "string" && skillId.trim().length > 0,
+		)
+		: [];
+	const pendingDraftIds = Array.isArray(rawHermesContext.pendingDraftIds)
+		? rawHermesContext.pendingDraftIds.filter(
+			(draftId) => typeof draftId === "string" && draftId.trim().length > 0,
+		)
+		: [];
+
+	return {
+		selectedSkillIds: Array.from(new Set(selectedSkillIds.map((skillId) => skillId.trim()))),
+		autoSelectedSkillIds: Array.from(
+			new Set(autoSelectedSkillIds.map((skillId) => skillId.trim())),
+		),
+		pendingDraftIds: Array.from(new Set(pendingDraftIds.map((draftId) => draftId.trim()))),
+	};
 }
 
 function normalizeActiveRun(rawActiveRun, updatedAtFallback) {
@@ -160,16 +269,17 @@ function normalizeThreadRecord(rawThread) {
 			typeof rawThread.modelId === "string" && rawThread.modelId.trim()
 				? rawThread.modelId.trim()
 				: null,
-		provider:
-			typeof rawThread.provider === "string" && rawThread.provider.trim()
-				? rawThread.provider.trim()
-				: null,
-		realtimeMessages: normalizeRealtimeMessages(rawThread.realtimeMessages),
-		activeDocumentId:
-			typeof rawThread.activeDocumentId === "string" && rawThread.activeDocumentId.trim()
-				? rawThread.activeDocumentId.trim()
-				: null,
-		sessionId,
+			provider:
+				typeof rawThread.provider === "string" && rawThread.provider.trim()
+					? rawThread.provider.trim()
+					: null,
+			realtimeMessages: normalizeRealtimeMessages(rawThread.realtimeMessages),
+			activeDocumentId:
+				typeof rawThread.activeDocumentId === "string" && rawThread.activeDocumentId.trim()
+					? rawThread.activeDocumentId.trim()
+					: null,
+			hermesContext: normalizeHermesContext(rawThread.hermesContext),
+			sessionId,
 		sessionMode: normalizeSessionMode(
 			rawThread.sessionMode ?? rawThread.session_mode,
 			Boolean(sessionId),
@@ -259,6 +369,7 @@ function createRovoAppThreadManager({ baseDir, logger }) {
 		modelId,
 		provider,
 		activeDocumentId,
+		hermesContext,
 		sessionId,
 		sessionMode,
 		activeRun,
@@ -277,6 +388,7 @@ function createRovoAppThreadManager({ baseDir, logger }) {
 			modelId,
 			provider,
 			activeDocumentId,
+			hermesContext,
 			sessionId,
 			sessionMode,
 			activeRun,

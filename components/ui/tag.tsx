@@ -143,7 +143,7 @@ function Tag({
 			onClick={onClick}
 			style={resolvedStyle}
 			className={cn(
-				"relative inline-flex max-w-[11.25rem] min-w-0 shrink-0 items-center border bg-bg-neutral-subtle text-xs leading-4 font-normal text-text transition-colors box-border",
+				"relative inline-flex max-w-[11.25rem] min-w-0 shrink-0 self-start items-center border bg-bg-neutral-subtle text-xs leading-4 font-normal text-text transition-colors box-border",
 				"focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-3 focus-visible:outline-none",
 				colorClasses.border,
 				hasAvatarTagStyles

@@ -1,6 +1,7 @@
 "use client";
 
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import { cn } from "@/lib/utils";
 import { token } from "@/lib/tokens";
 import SearchSuggestionsPanel from "./components/search-suggestions-panel";
 import { LeftNavigation } from "./components/left-navigation";
@@ -106,7 +107,21 @@ export default function TopNavigation({
 							className="search-box-wrapper"
 							style={{ position: "relative", flex: 1 }}
 						>
-							<InputGroup className="h-7 rounded-md bg-bg-input shadow-none hover:bg-bg-input-hovered">
+							<InputGroup
+								className={cn(
+									"h-7 rounded-md bg-bg-input shadow-none transition-[height,background-color,box-shadow] duration-medium ease-out hover:bg-bg-input-hovered",
+									"has-[[data-slot=input-group-control]:focus-visible]:border-transparent has-[[data-slot=input-group-control]:focus-visible]:ring-0",
+									isSearchFocused && "h-9 relative z-[1001]",
+								)}
+								style={
+									isSearchFocused
+										? {
+												backgroundColor: token("elevation.surface.overlay"),
+												boxShadow: token("elevation.shadow.overlay"),
+											}
+										: undefined
+								}
+							>
 								<InputGroupAddon align="inline-start">
 									<span className="size-4 shrink-0 text-icon-subtle">
 										<SearchIcon label="" spacing="none" />

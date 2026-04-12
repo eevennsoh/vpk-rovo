@@ -145,11 +145,11 @@ export interface RovoMessageInterruption {
 export type RovoDataParts = {
 	id: string;
 	title: string;
-	kind: "text" | "code" | "image" | "sheet";
+	kind: "text" | "code" | "image" | "sheet" | "excalidraw";
 	"artifact-result": {
 		documentId: string;
 		title: string;
-		kind: "text" | "code" | "image" | "sheet";
+		kind: "text" | "code" | "image" | "sheet" | "excalidraw";
 		action: "create" | "update";
 	};
 	clear: null;
@@ -669,10 +669,13 @@ export function getThinkingToolCallSummaries(
 				? event.timestamp.trim()
 				: undefined;
 		const summaryIndex = summaryIndexByKey.get(key);
+		const eventOutput = event.output;
 		const eventOutputPreview =
 			typeof event.outputPreview === "string"
 				? event.outputPreview
-				: event.output;
+				: typeof eventOutput === "string"
+					? eventOutput
+					: undefined;
 		const eventOutputTruncated = event.outputTruncated === true;
 		const eventOutputBytes =
 			typeof event.outputBytes === "number" && Number.isFinite(event.outputBytes)
@@ -689,7 +692,10 @@ export function getThinkingToolCallSummaries(
 					permissionScenario: event.permissionScenario,
 				}),
 				input: event.input,
-				output: event.phase === "result" ? eventOutputPreview : undefined,
+				output:
+					event.phase === "result" || event.phase === "error"
+						? eventOutput
+						: undefined,
 				outputPreview: extractOutputPreview(event.phase, eventOutputPreview),
 				outputTruncated: eventOutputTruncated || undefined,
 				outputBytes: eventOutputBytes,
@@ -735,8 +741,8 @@ export function getThinkingToolCallSummaries(
 		if (event.phase === "result") {
 			summary.state = "completed";
 			summary.errorText = undefined;
-			if (eventOutputPreview !== undefined) {
-				summary.output = eventOutputPreview;
+			if (eventOutput !== undefined) {
+				summary.output = eventOutput;
 			}
 			if (typeof eventOutputPreview === "string") {
 				summary.outputPreview = eventOutputPreview;
@@ -753,6 +759,9 @@ export function getThinkingToolCallSummaries(
 			continue;
 		}
 		summary.state = "error";
+		if (eventOutput !== undefined) {
+			summary.output = eventOutput;
+		}
 		if (typeof eventOutputPreview === "string") {
 			summary.outputPreview = eventOutputPreview;
 		}
