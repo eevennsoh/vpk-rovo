@@ -12,29 +12,10 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { SidebarNavItem, SidebarNavItemAction, SidebarNavItemCount } from "@/components/ui/sidebar-nav-item";
 import { Shimmer } from "@/components/ui-ai/shimmer";
 import { Spinner } from "@/components/ui/spinner";
-import {
-	getRovoAppSidebarSurfacePreview,
-	type RovoAppSidebarSurfacePreview,
-} from "@/components/projects/rovo-app/lib/rovo-app-sidebar-surface-preview";
+import { getRovoAppSidebarSurfacePreview, type RovoAppSidebarSurfacePreview } from "@/components/projects/rovo-app/lib/rovo-app-sidebar-surface-preview";
 import { token } from "@/lib/tokens";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuGroup,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-	Sidebar,
-	SidebarContent,
-	SidebarGroup,
-	SidebarGroupContent,
-	SidebarMenuAction,
-	SidebarMenu,
-	SidebarMenuButton,
-	SidebarMenuItem,
-	useSidebar,
-} from "@/components/ui/sidebar";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenuAction, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from "@/components/ui/sidebar";
 import ScorecardIcon from "@atlaskit/icon/core/scorecard";
 import { shouldShowRovoAppSidebarRunIndicator } from "@/components/projects/rovo-app/lib/rovo-app-sidebar-run-indicator";
 import { getRovoAppSidebarThreadSidebarNavItemClassName } from "@/components/projects/rovo-app/lib/rovo-app-sidebar-thread-layout";
@@ -43,10 +24,7 @@ import { cn } from "@/lib/utils";
 import { ChevronDownIcon } from "@/components/ui/vpk-icons";
 import DeleteIcon from "@atlaskit/icon/core/delete";
 import ShowMoreHorizontalIcon from "@atlaskit/icon/core/show-more-horizontal";
-import {
-	CONTROL_PLANE_SIDEBAR_SURFACES,
-	CONTROL_PLANE_SURFACES,
-} from "@/components/projects/control-plane/lib/control-plane-data";
+import { CONTROL_PLANE_SIDEBAR_SURFACES, CONTROL_PLANE_SURFACES } from "@/components/projects/control-plane/lib/control-plane-data";
 import { usePathname, useRouter } from "next/navigation";
 
 interface RovoAppSidebarProps {
@@ -117,47 +95,34 @@ function RovoAppSidebarNavItem({
 
 	const navItem = (
 		<SidebarNavItem
-			className={cn(
-				selected && "[&_button]:text-text-selected",
-			)}
+			className={cn(selected && "[&_button]:text-text-selected")}
 			isSelected={selected}
 			label={label}
 			leading={icon}
 			leadingSize="medium"
 			meta={trailing}
 			onClick={onClick}
-			actions={showChevron ? (
-				<SidebarNavItemAction aria-label={`Open ${label}`}>
-					<ChevronRightIcon label="" />
-				</SidebarNavItemAction>
-			) : null}
+			actions={
+				showChevron ? (
+					<SidebarNavItemAction aria-label={`Open ${label}`}>
+						<ChevronRightIcon label="" />
+					</SidebarNavItemAction>
+				) : null
+			}
 		/>
 	);
 
 	if (!preview) {
-		return (
-			<SidebarMenuItem className="relative">
-				{navItem}
-			</SidebarMenuItem>
-		);
+		return <SidebarMenuItem className="relative">{navItem}</SidebarMenuItem>;
 	}
 
 	return (
-		<SidebarMenuItem
-			className="relative"
-			onMouseEnter={handleMouseEnter}
-			onMouseLeave={handleMouseLeave}
-		>
+		<SidebarMenuItem className="relative" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
 			<Popover open={hoverOpen} onOpenChange={setHoverOpen}>
 				<PopoverTrigger render={<div />} nativeButton={false}>
 					{navItem}
 				</PopoverTrigger>
-				<RovoAppSidebarNavPreviewCard
-					icon={icon}
-					onMouseEnter={handleMouseEnter}
-					onMouseLeave={handleMouseLeave}
-					preview={preview}
-				/>
+				<RovoAppSidebarNavPreviewCard icon={icon} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave} preview={preview} />
 			</Popover>
 		</SidebarMenuItem>
 	);
@@ -184,40 +149,23 @@ function RovoAppSidebarNavPreviewCard({
 			onMouseLeave={onMouseLeave}
 		>
 			<div className="flex items-start gap-3 p-3">
-				<span className="flex size-6 shrink-0 items-center justify-center text-icon-subtle [&_svg]:shrink-0">
-					{icon}
-				</span>
+				<span className="flex size-6 shrink-0 items-center justify-center text-icon-subtle [&_svg]:shrink-0">{icon}</span>
 				<div className="min-w-0 space-y-1">
-					<div className="text-sm font-semibold text-text">
-						{preview.title}
-					</div>
-					<p className="text-sm leading-5 text-text-subtle">
-						{preview.description}
-					</p>
+					<div className="text-sm font-semibold text-text">{preview.title}</div>
+					<p className="text-sm leading-5 text-text-subtle">{preview.description}</p>
 				</div>
 			</div>
 			<div className="space-y-1.5 p-3">
 				{preview.rows.map((row) => (
-					<div
-						key={row.label}
-						className="flex items-center justify-between gap-3 text-sm"
-					>
-						<span className="min-w-0 truncate text-text-subtle">
-							{row.label}
-						</span>
-						<span className="shrink-0 text-right text-xs font-medium text-text">
-							{row.value}
-						</span>
+					<div key={row.label} className="flex items-center justify-between gap-3 text-sm">
+						<span className="min-w-0 truncate text-text-subtle">{row.label}</span>
+						<span className="shrink-0 text-right text-xs font-medium text-text">{row.value}</span>
 					</div>
 				))}
 			</div>
 			<div className="bg-surface-raised flex items-center justify-between gap-3 p-3 text-xs">
-				<span className="text-text-subtle">
-					{preview.footerLabel}
-				</span>
-				<span className="font-medium text-text">
-					{preview.footerValue}
-				</span>
+				<span className="text-text-subtle">{preview.footerLabel}</span>
+				<span className="font-medium text-text">{preview.footerValue}</span>
 			</div>
 		</PopoverContent>
 	);
@@ -254,19 +202,11 @@ function RovoAppSidebarThreadItem({
 				}}
 				label={
 					isPendingTitle ? (
-						<Shimmer
-							key={`${thread.id}:${thread.title}`}
-							as="span"
-							duration={1}
-							className="block max-w-full truncate motion-safe:animate-[sd-blurIn_160ms_ease-out_both] motion-reduce:animate-none"
-						>
+						<Shimmer key={`${thread.id}:${thread.title}`} as="span" duration={1} className="block max-w-full truncate motion-safe:animate-[sd-blurIn_160ms_ease-out_both] motion-reduce:animate-none">
 							{thread.title}
 						</Shimmer>
 					) : (
-						<span
-							key={`${thread.id}:${thread.title}`}
-							className="block truncate motion-safe:animate-[sd-blurIn_160ms_ease-out_both] motion-reduce:animate-none"
-						>
+						<span key={`${thread.id}:${thread.title}`} className="block truncate motion-safe:animate-[sd-blurIn_160ms_ease-out_both] motion-reduce:animate-none">
 							{thread.title}
 						</span>
 					)
@@ -276,7 +216,7 @@ function RovoAppSidebarThreadItem({
 
 			<DropdownMenu modal={true}>
 				<DropdownMenuTrigger
-					render={(
+					render={
 						<SidebarMenuAction
 							showOnHover
 							className={cn(
@@ -291,7 +231,7 @@ function RovoAppSidebarThreadItem({
 							}}
 							type="button"
 						/>
-					)}
+					}
 				>
 					<ShowMoreHorizontalIcon label="More" color="currentColor" size="small" />
 				</DropdownMenuTrigger>
@@ -299,17 +239,17 @@ function RovoAppSidebarThreadItem({
 					<DropdownMenuGroup>
 						{showRunIndicator ? (
 							<DropdownMenuItem
-								elemBefore={<svg aria-hidden="true" className="size-4" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="14" height="14" rx="2.5" /></svg>}
+								elemBefore={
+									<svg aria-hidden="true" className="size-4" viewBox="0 0 16 16" fill="currentColor">
+										<rect x="1" y="1" width="14" height="14" rx="2.5" />
+									</svg>
+								}
 								onClick={() => void onCancelThreadRun(thread.id)}
 							>
 								Cancel run
 							</DropdownMenuItem>
 						) : null}
-						<DropdownMenuItem
-							variant="destructive"
-							elemBefore={<DeleteIcon label="" />}
-							onClick={() => void onDeleteThread(thread.id)}
-						>
+						<DropdownMenuItem variant="destructive" elemBefore={<DeleteIcon label="" />} onClick={() => void onDeleteThread(thread.id)}>
 							Delete
 						</DropdownMenuItem>
 					</DropdownMenuGroup>
@@ -319,11 +259,7 @@ function RovoAppSidebarThreadItem({
 			{showRunIndicator ? (
 				<div className="pointer-events-none absolute inset-y-0 right-1 flex items-center justify-center group-hover/menu-item:hidden group-has-[[data-sidebar=menu-action][aria-expanded=true]]/menu-item:hidden group-has-[[data-sidebar=menu-action][data-state=open]]/menu-item:hidden group-data-[collapsible=icon]:hidden">
 					<div className="flex size-6 items-center justify-center">
-						<Spinner
-							size="xs"
-							aria-hidden="true"
-							className="shrink-0 text-icon-subtle"
-						/>
+						<Spinner size="xs" aria-hidden="true" className="shrink-0 text-icon-subtle" />
 					</div>
 				</div>
 			) : null}
@@ -351,17 +287,8 @@ function RovoAppSidebarChatsHeader({
 			>
 				<span className="inline-flex min-w-0 max-w-full items-center gap-1">
 					<span className="truncate">{label}</span>
-					<span
-						aria-hidden
-						className="inline-flex shrink-0 items-center self-center opacity-0 transition-opacity duration-200 ease-out group-hover:opacity-100 group-focus-visible:opacity-100"
-					>
-						<ChevronDownIcon
-							className={cn(
-								"size-3 text-icon-subtlest transition-transform duration-200 ease-out",
-								chatsOpen ? "rotate-0" : "-rotate-90",
-							)}
-							size={12}
-						/>
+					<span aria-hidden className="inline-flex shrink-0 items-center self-center opacity-0 transition-opacity duration-200 ease-out group-hover:opacity-100 group-focus-visible:opacity-100">
+						<ChevronDownIcon className={cn("size-3 text-icon-subtlest transition-transform duration-200 ease-out", chatsOpen ? "rotate-0" : "-rotate-90")} size={12} />
 					</span>
 				</span>
 			</button>
@@ -391,28 +318,14 @@ function RovoAppSidebarChatsThreadList({
 	threads: ReadonlyArray<RovoAppThread>;
 }>) {
 	return (
-		<div
-			role="region"
-			aria-label={label}
-			className="min-h-0"
-			id="rovo-app-chats-list"
-		>
+		<div role="region" aria-label={label} className="min-h-0" id="rovo-app-chats-list">
 			{showGeneratingPlaceholder ? (
 				<SidebarMenu>
 					<SidebarMenuItem>
-						<SidebarMenuButton
-							className="h-auto min-h-9 w-full rounded-md p-1"
-							size="lg"
-							type="button"
-							aria-label="Generating chat title"
-						>
+						<SidebarMenuButton className="h-auto min-h-9 w-full rounded-md p-1" size="lg" type="button" aria-label="Generating chat title">
 							<div className="min-w-0 flex-1">
 								<div className="text-sm font-medium leading-5">
-									<Shimmer
-										as="span"
-										duration={1}
-										className="block max-w-full truncate motion-safe:animate-[sd-blurIn_160ms_ease-out_both] motion-reduce:animate-none"
-									>
+									<Shimmer as="span" duration={1} className="block max-w-full truncate motion-safe:animate-[sd-blurIn_160ms_ease-out_both] motion-reduce:animate-none">
 										Generating chat title
 									</Shimmer>
 								</div>
@@ -470,12 +383,7 @@ function RovoAppSidebarNavMenu({
 				<SidebarMenu>
 					<RovoAppSidebarNavItem
 						icon={
-							<span
-								className={cn(
-									"flex size-5 items-center justify-center rounded-full text-primary-foreground",
-									isNewChatSelected ? "bg-bg-selected-bold" : "bg-primary",
-								)}
-							>
+							<span className={cn("flex size-5 items-center justify-center rounded-full text-primary-foreground", isNewChatSelected ? "bg-bg-selected-bold" : "bg-primary")}>
 								<AddIcon color="currentColor" label="" size="small" />
 							</span>
 						}
@@ -539,16 +447,12 @@ export function RovoAppSidebar({
 }: Readonly<RovoAppSidebarProps>) {
 	const pathname = usePathname() ?? "";
 	const router = useRouter();
-	const isOnControlPlaneSurface = CONTROL_PLANE_SURFACES.some(
-		(surface) => pathname === surface.href || pathname.startsWith(`${surface.href}/`),
-	);
+	const isOnControlPlaneSurface = CONTROL_PLANE_SURFACES.some((surface) => pathname === surface.href || pathname.startsWith(`${surface.href}/`));
 	const isNewChatSelected = activeThreadId === null && !isOnControlPlaneSurface;
 	const controlPlaneNavItems = React.useMemo(
 		() =>
 			CONTROL_PLANE_SIDEBAR_SURFACES.map((surface) => {
-				const icon = surface.label === "Tasks"
-					? <ScorecardIcon label="" size="medium" />
-					: <SkillIcon label="" size="medium" />;
+				const icon = surface.label === "Tasks" ? <ScorecardIcon label="" size="medium" /> : <SkillIcon label="" size="medium" />;
 
 				return {
 					description: surface.description,
@@ -561,8 +465,7 @@ export function RovoAppSidebar({
 	);
 
 	const [chatsOpen, setChatsOpen] = React.useState(true);
-	const showStickyChatsLayout =
-		threads.length > 0 || (isGeneratingTitle && threads.length === 0);
+	const showStickyChatsLayout = threads.length > 0 || (isGeneratingTitle && threads.length === 0);
 
 	return (
 		<Sidebar
@@ -571,8 +474,7 @@ export function RovoAppSidebar({
 				// Horizontal padding lives on section wrappers (nav, thread list), not here — avoids doubling with inner `px-3`.
 				"bg-sidebar !px-0 !pb-0",
 				// Resize handle paints the divider; container border-r would stack to a 2px edge.
-				!resizeHandle &&
-					"group-data-[state=expanded]:group-data-[side=left]:border-r group-data-[state=expanded]:group-data-[side=left]:border-border",
+				!resizeHandle && "group-data-[state=expanded]:group-data-[side=left]:border-r group-data-[state=expanded]:group-data-[side=left]:border-border",
 				topOffset && "!top-12 !h-[calc(100svh-3rem)]",
 			)}
 			isResizing={isResizing}
@@ -583,14 +485,7 @@ export function RovoAppSidebar({
 			style={hoverOpen ? { left: 0, zIndex: 50, boxShadow: token("elevation.shadow.overlay") } : { zIndex: 50 }}
 			variant="inset"
 		>
-			<SidebarContent
-				className={cn(
-					"bg-sidebar",
-					showStickyChatsLayout
-						? "flex min-h-0 flex-1 flex-col gap-0 overflow-hidden"
-						: "gap-3 px-3",
-				)}
-			>
+			<SidebarContent className={cn("bg-sidebar", showStickyChatsLayout ? "flex min-h-0 flex-1 flex-col gap-0 overflow-hidden" : "gap-3 px-3")}>
 				{showStickyChatsLayout ? (
 					<>
 						<div className="shrink-0 space-y-3 overflow-visible bg-sidebar px-3">
@@ -603,18 +498,9 @@ export function RovoAppSidebar({
 								pathname={pathname}
 								router={router}
 							/>
-							<RovoAppSidebarChatsHeader
-								chatsOpen={chatsOpen}
-								label="Chats"
-								onToggle={() => setChatsOpen((open) => !open)}
-							/>
+							<RovoAppSidebarChatsHeader chatsOpen={chatsOpen} label="Chats" onToggle={() => setChatsOpen((open) => !open)} />
 						</div>
-						<div
-							className={cn(
-								"flex min-h-0 min-w-0 flex-1 flex-col pb-3",
-								!chatsOpen && "hidden",
-							)}
-						>
+						<div className={cn("flex min-h-0 min-w-0 flex-1 flex-col pb-3", !chatsOpen && "hidden")}>
 							<div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain">
 								<div className="min-w-0 px-3">
 									<SidebarGroup className="min-h-0 min-w-0 overflow-x-hidden p-0">
@@ -658,9 +544,7 @@ export function RovoAppSidebar({
 											<Heading as="h3" size="xsmall">
 												Get started
 											</Heading>
-											<p className="text-sm text-text-subtle">
-												Start a conversation to get going.
-											</p>
+											<p className="text-sm text-text-subtle">Start a conversation to get going.</p>
 										</div>
 										<div className="stagger-fade-in" style={{ animationDelay: "0.06s" }}>
 											<Button onClick={onNewChat} variant="outline">

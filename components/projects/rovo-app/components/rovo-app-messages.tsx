@@ -2,42 +2,13 @@
 
 import { motion, useReducedMotion } from "motion/react";
 import type { ComponentProps, ErrorInfo, ReactNode, RefObject } from "react";
-import {
-	Attachment,
-	AttachmentPreview,
-	Attachments,
-} from "@/components/ui-ai/attachments";
-import {
-	Conversation,
-	ConversationContent,
-	ConversationScrollButton,
-	type ConversationFollowMode,
-	useConversationContext,
-} from "@/components/ui-ai/conversation";
-import {
-	Message,
-	MessageActions,
-	MessageContent,
-	MessageCopyAction,
-	MessageEditAction,
-	MessageRegenerateAction,
-	MessageResponse,
-	MessageVoteActions,
-} from "@/components/ui-ai/message";
+import { Attachment, AttachmentPreview, Attachments } from "@/components/ui-ai/attachments";
+import { Conversation, ConversationContent, ConversationScrollButton, type ConversationFollowMode, useConversationContext } from "@/components/ui-ai/conversation";
+import { Message, MessageActions, MessageContent, MessageCopyAction, MessageEditAction, MessageRegenerateAction, MessageResponse, MessageVoteActions } from "@/components/ui-ai/message";
 import { ArtifactCard, type ArtifactKind } from "@/components/ui-ai/artifact";
-import {
-	ChainOfThought,
-	ChainOfThoughtContent,
-	ChainOfThoughtHeader,
-	ChainOfThoughtStep,
-} from "@/components/ui-ai/chain-of-thought";
+import { ChainOfThought, ChainOfThoughtContent, ChainOfThoughtHeader, ChainOfThoughtStep } from "@/components/ui-ai/chain-of-thought";
 import { CodeBlock } from "@/components/ui-ai/code-block";
-import {
-	AdsReasoningTrigger,
-	Reasoning,
-	ReasoningContent,
-	isTimelineOnlyContent,
-} from "@/components/ui-ai/reasoning";
+import { AdsReasoningTrigger, Reasoning, ReasoningContent, isTimelineOnlyContent } from "@/components/ui-ai/reasoning";
 import { ToolInput, ToolOutput } from "@/components/ui-ai/tool";
 import { Icon } from "@/components/ui/icon";
 import AiAgentIcon from "@atlaskit/icon/core/ai-agent";
@@ -49,11 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Lozenge } from "@/components/ui/lozenge";
 import { InlineEdit } from "@/components/ui/inline-edit";
 import { getRovoAppInterruptionLabel } from "@/lib/rovo-app-interruptions";
-import {
-	resolveRovoAppMessageArtifactDisplay,
-	resolveRovoAppOrphanArtifactDisplay,
-	type RovoAppPendingArtifactResult,
-} from "@/components/projects/rovo-app/lib/rovo-app-message-artifacts";
+import { resolveRovoAppMessageArtifactDisplay, resolveRovoAppOrphanArtifactDisplay, type RovoAppPendingArtifactResult } from "@/components/projects/rovo-app/lib/rovo-app-message-artifacts";
 import {
 	sanitizeRovoAppAssistantText,
 	shouldRenderRovoAppAssistantActions,
@@ -62,35 +29,17 @@ import {
 	shouldRenderRovoAppVisibleWidget,
 	shouldRenderRovoAppWidget,
 } from "@/components/projects/rovo-app/lib/rovo-app-message-display";
-import {
-	resolveRovoAppPendingAssistantDisplayState,
-	resolveRovoAppStreamingAssistantMessageId,
-} from "@/components/projects/rovo-app/lib/rovo-app-streaming-assistant";
-import {
-	resolveRovoAppThinkingStatusPhase,
-	resolveRovoAppThinkingVisibility,
-} from "@/components/projects/rovo-app/lib/rovo-app-thinking-status-phase";
-import {
-	resolveRovoAppScrollAnchorLayout,
-} from "@/components/projects/rovo-app/lib/rovo-app-scroll-anchor";
+import { resolveRovoAppPendingAssistantDisplayState, resolveRovoAppStreamingAssistantMessageId } from "@/components/projects/rovo-app/lib/rovo-app-streaming-assistant";
+import { resolveRovoAppThinkingStatusPhase, resolveRovoAppThinkingVisibility } from "@/components/projects/rovo-app/lib/rovo-app-thinking-status-phase";
+import { resolveRovoAppScrollAnchorLayout } from "@/components/projects/rovo-app/lib/rovo-app-scroll-anchor";
 import { GenerativeWidgetCard } from "@/components/projects/shared/components/generative-widget-card";
 import { AssistantSuggestionsSection } from "@/components/projects/shared/components/assistant-suggestions-section";
 import { PlanWidgetInlineCard } from "@/components/projects/shared/components/plan-widget-inline-card";
 import { PreloadThinkingIndicator } from "@/components/projects/shared/components/preload-thinking-indicator";
 import { useDynamicThinkingLabel } from "@/components/projects/shared/hooks/use-dynamic-thinking-label";
-import {
-	useReasoningPhase,
-} from "@/components/projects/shared/hooks/use-reasoning-phase";
-import {
-	getAwaitingUserResponseLabel,
-	getDefaultThinkingLabel,
-	getPreloadShimmerLabel,
-	getReasoningSectionTitle,
-} from "@/components/projects/shared/lib/reasoning-labels";
-import {
-	isThinkingStatusActive as checkThinkingStatusActive,
-	resolveThinkingStatusTriggerLabel,
-} from "@/components/projects/shared/thread-message/lib/thinking-status-state";
+import { useReasoningPhase } from "@/components/projects/shared/hooks/use-reasoning-phase";
+import { getAwaitingUserResponseLabel, getDefaultThinkingLabel, getPreloadShimmerLabel, getReasoningSectionTitle } from "@/components/projects/shared/lib/reasoning-labels";
+import { isThinkingStatusActive as checkThinkingStatusActive, resolveThinkingStatusTriggerLabel } from "@/components/projects/shared/thread-message/lib/thinking-status-state";
 import {
 	getAgentExecutionSummaries,
 	getAllDataParts,
@@ -111,20 +60,9 @@ import {
 	type RoutingDecision,
 	type RovoUIMessage,
 } from "@/lib/rovo-ui-messages";
-import {
-	getLatestRovoAppTodoProgress,
-	type RovoAppTodoProgressItem,
-} from "@/components/projects/rovo-app/lib/rovo-app-update-todo-progress";
-import {
-	getLatestPendingPlanWidget,
-	getLatestPlanWidgetPayload,
-	parsePlanWidgetPayload,
-	type ParsedPlanWidgetPayload,
-} from "@/components/projects/shared/lib/plan-widget";
-import {
-	hasMatchingClarificationResponse,
-	parseQuestionCardPayload,
-} from "@/components/projects/shared/lib/question-card-widget";
+import { getLatestRovoAppTodoProgress, type RovoAppTodoProgressItem } from "@/components/projects/rovo-app/lib/rovo-app-update-todo-progress";
+import { getLatestPendingPlanWidget, getLatestPlanWidgetPayload, parsePlanWidgetPayload, type ParsedPlanWidgetPayload } from "@/components/projects/shared/lib/plan-widget";
+import { hasMatchingClarificationResponse, parseQuestionCardPayload } from "@/components/projects/shared/lib/question-card-widget";
 import { resolvePlanVisualIdentity } from "@/components/projects/shared/lib/plan-identity";
 import type { VisualIdentity } from "@/components/projects/shared/lib/visual-identity";
 import { cn } from "@/lib/utils";
@@ -167,30 +105,21 @@ interface RovoAppMessagesProps {
 
 const ROVO_APP_SCROLL_ANCHOR_SELECTOR = "[data-rovo-app-scroll-anchor='true']";
 
-const StepThinkingIcon = ({ label = "", size = "small", spacing = "none", ...props }: NewCoreIconProps) => (
-	<Icon render={<AiAgentIcon label={label} size={size} spacing={spacing} {...props} />} />
-);
+const StepThinkingIcon = ({ label = "", size = "small", spacing = "none", ...props }: NewCoreIconProps) => <Icon render={<AiAgentIcon label={label} size={size} spacing={spacing} {...props} />} />;
 const StepChecklistIcon = ({ label = "", size = "small", spacing = "none", ...props }: NewCoreIconProps) => (
 	<Icon render={<ListChecklistIcon label={label} size={size} spacing={spacing} {...props} />} />
 );
-const StepAgentsIcon = ({ label = "", size = "small", spacing = "none", ...props }: NewCoreIconProps) => (
-	<Icon render={<PeopleGroupIcon label={label} size={size} spacing={spacing} {...props} />} />
-);
+const StepAgentsIcon = ({ label = "", size = "small", spacing = "none", ...props }: NewCoreIconProps) => <Icon render={<PeopleGroupIcon label={label} size={size} spacing={spacing} {...props} />} />;
 const StepStreamIcon = ({ label = "", size = "small", spacing = "none", ...props }: NewCoreIconProps) => (
 	<Icon render={<AiGenerativeTextSummaryIcon label={label} size={size} spacing={spacing} {...props} />} />
 );
 
-function isHermesContextTranscriptMessage(
-	message: Pick<RovoUIMessage, "id" | "role" | "parts">,
-): boolean {
+function isHermesContextTranscriptMessage(message: Pick<RovoUIMessage, "id" | "role" | "parts">): boolean {
 	if (message.role !== "assistant") {
 		return false;
 	}
 
-	if (
-		message.id.startsWith("hermes-memory-")
-		|| message.id.startsWith("hermes-skill-")
-	) {
+	if (message.id.startsWith("hermes-memory-") || message.id.startsWith("hermes-skill-")) {
 		return true;
 	}
 
@@ -202,14 +131,8 @@ function isHermesContextTranscriptMessage(
 	return getLatestDataPart(message, "data-route-decision")?.data.reason === "hermes_context_widget";
 }
 
-function toolStateToCoTStatus(
-	state: string,
-): "complete" | "active" | "pending" {
-	if (
-		state === "running" ||
-		state === "awaiting-input" ||
-		state === "approval-requested"
-	) {
+function toolStateToCoTStatus(state: string): "complete" | "active" | "pending" {
+	if (state === "running" || state === "awaiting-input" || state === "approval-requested") {
 		return "active";
 	}
 	if (state === "pending") {
@@ -219,13 +142,7 @@ function toolStateToCoTStatus(
 }
 
 function isToolCallStepOpenByDefault(state: string): boolean {
-	return (
-		state === "running" ||
-		state === "awaiting-input" ||
-		state === "approval-requested" ||
-		state === "error" ||
-		state === "denied"
-	);
+	return state === "running" || state === "awaiting-input" || state === "approval-requested" || state === "error" || state === "denied";
 }
 
 class AssistantMessageRenderBoundary extends Component<
@@ -265,13 +182,7 @@ class AssistantMessageRenderBoundary extends Component<
 			resetKey: string;
 		}>,
 	) {
-		if (
-			this.state.hasError &&
-			(
-				prevProps.messageId !== this.props.messageId ||
-				prevProps.resetKey !== this.props.resetKey
-			)
-		) {
+		if (this.state.hasError && (prevProps.messageId !== this.props.messageId || prevProps.resetKey !== this.props.resetKey)) {
 			this.setState({
 				hasError: false,
 			});
@@ -287,14 +198,8 @@ class AssistantMessageRenderBoundary extends Component<
 	}
 }
 
-function computeRovoAppAnchorScrollTop(
-	defaultTargetTop: number,
-	scrollElement: HTMLElement,
-	scrollSpacerRef: RefObject<HTMLDivElement | null>,
-): number {
-	const scrollAnchorElement = scrollElement.querySelector<HTMLElement>(
-		ROVO_APP_SCROLL_ANCHOR_SELECTOR,
-	);
+function computeRovoAppAnchorScrollTop(defaultTargetTop: number, scrollElement: HTMLElement, scrollSpacerRef: RefObject<HTMLDivElement | null>): number {
+	const scrollAnchorElement = scrollElement.querySelector<HTMLElement>(ROVO_APP_SCROLL_ANCHOR_SELECTOR);
 	if (!scrollAnchorElement) {
 		if (scrollSpacerRef.current) {
 			scrollSpacerRef.current.style.height = "0px";
@@ -413,16 +318,10 @@ function UserMessage({
 		if (!Array.isArray(meta.clarificationSummary)) return [];
 		return meta.clarificationSummary.filter(
 			(row): row is { question: string; answer: string; status?: "skipped" } =>
-				typeof row?.question === "string" &&
-				row.question.trim().length > 0 &&
-				typeof row?.answer === "string" &&
-				row.answer.trim().length > 0,
+				typeof row?.question === "string" && row.question.trim().length > 0 && typeof row?.answer === "string" && row.answer.trim().length > 0,
 		);
 	})();
-	const attachments = message.parts.filter(
-		(part): part is Extract<(typeof message.parts)[number], { type: "file" }> =>
-			part.type === "file",
-	);
+	const attachments = message.parts.filter((part): part is Extract<(typeof message.parts)[number], { type: "file" }> => part.type === "file");
 
 	return (
 		<Message
@@ -472,9 +371,7 @@ function UserMessage({
 			) : (
 				<>
 					<MessageContent>
-						<MessageResponse className="font-medium text-inherit [&_*]:text-inherit">
-							{getMessageText(message)}
-						</MessageResponse>
+						<MessageResponse className="font-medium text-inherit [&_*]:text-inherit">{getMessageText(message)}</MessageResponse>
 					</MessageContent>
 					<MessageActions reveal="hover" className="justify-end text-text-subtle">
 						<MessageCopyAction text={getMessageText(message)} />
@@ -513,39 +410,24 @@ function WidgetErrorCard({
 			<p className={textClass}>{friendlyMessage}</p>
 			{widgetError.data.canRetry ? (
 				<div className="mt-2">
-					<Button
-						onClick={onRetry}
-						size="sm"
-						type="button"
-						variant="outline"
-					>
+					<Button onClick={onRetry} size="sm" type="button" variant="outline">
 						Retry
 					</Button>
 				</div>
 			) : null}
 			{widgetError.data.details ? (
 				<div className="mt-2">
-					<button
-						className="text-text-subtlest text-xs underline"
-						onClick={() => setShowDetails((prev) => !prev)}
-						type="button"
-					>
+					<button className="text-text-subtlest text-xs underline" onClick={() => setShowDetails((prev) => !prev)} type="button">
 						{showDetails ? "Hide details" : "Show details"}
 					</button>
-					{showDetails ? (
-						<pre className="mt-1 whitespace-pre-wrap text-text-subtlest text-xs">
-							{widgetError.data.details}
-						</pre>
-					) : null}
+					{showDetails ? <pre className="mt-1 whitespace-pre-wrap text-text-subtlest text-xs">{widgetError.data.details}</pre> : null}
 				</div>
 			) : null}
 		</div>
 	);
 }
 
-function getAgentExecutionVariant(
-	status: AgentExecutionStatus
-): ComponentProps<typeof Lozenge>["variant"] {
+function getAgentExecutionVariant(status: AgentExecutionStatus): ComponentProps<typeof Lozenge>["variant"] {
 	if (status === "completed") {
 		return "success";
 	}
@@ -581,26 +463,17 @@ function TraceStepsSection({
 				const isBlocked = item.blockedBy.length > 0;
 
 				return (
-					<div
-						key={item.id}
-						className="rounded-lg border border-border/60 bg-background/60 px-3 py-2"
-					>
+					<div key={item.id} className="rounded-lg border border-border/60 bg-background/60 px-3 py-2">
 						<div className="flex flex-wrap items-start gap-2">
 							<div className="min-w-0 flex-1">
 								<p className="text-sm font-medium text-text">{item.text}</p>
 								<div className="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-xs text-text-subtle">
 									<span>{item.id}</span>
 									{item.agent ? <span>{item.agent}</span> : null}
-									{isBlocked ? (
-										<span>Blocked by {item.blockedBy.join(", ")}</span>
-									) : (
-										<span>Ready to run</span>
-									)}
+									{isBlocked ? <span>Blocked by {item.blockedBy.join(", ")}</span> : <span>Ready to run</span>}
 								</div>
 							</div>
-							<Lozenge variant={isBlocked ? "warning" : "neutral"}>
-								{isBlocked ? "Blocked" : "Queued"}
-							</Lozenge>
+							<Lozenge variant={isBlocked ? "warning" : "neutral"}>{isBlocked ? "Blocked" : "Queued"}</Lozenge>
 						</div>
 					</div>
 				);
@@ -609,9 +482,7 @@ function TraceStepsSection({
 	);
 }
 
-function getTodoProgressVariant(
-	status: RovoAppTodoProgressItem["status"],
-): ComponentProps<typeof Lozenge>["variant"] {
+function getTodoProgressVariant(status: RovoAppTodoProgressItem["status"]): ComponentProps<typeof Lozenge>["variant"] {
 	if (status === "completed") {
 		return "success";
 	}
@@ -621,9 +492,7 @@ function getTodoProgressVariant(
 	return "neutral";
 }
 
-function getTodoProgressLabel(
-	status: RovoAppTodoProgressItem["status"],
-): string {
+function getTodoProgressLabel(status: RovoAppTodoProgressItem["status"]): string {
 	if (status === "completed") {
 		return "Completed";
 	}
@@ -641,23 +510,16 @@ function TraceTodoProgressSection({
 	return (
 		<div className="space-y-2">
 			{items.map((item) => (
-				<div
-					key={item.id}
-					className="rounded-lg border border-border/60 bg-background/60 px-3 py-2"
-				>
+				<div key={item.id} className="rounded-lg border border-border/60 bg-background/60 px-3 py-2">
 					<div className="flex flex-wrap items-start gap-2">
 						<div className="min-w-0 flex-1">
 							<p className="text-sm font-medium text-text">{item.label}</p>
 							<div className="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-xs text-text-subtle">
 								<span>{item.id}</span>
-								{item.activeForm && item.activeForm !== item.content ? (
-									<span>{item.content}</span>
-								) : null}
+								{item.activeForm && item.activeForm !== item.content ? <span>{item.content}</span> : null}
 							</div>
 						</div>
-						<Lozenge variant={getTodoProgressVariant(item.status)}>
-							{getTodoProgressLabel(item.status)}
-						</Lozenge>
+						<Lozenge variant={getTodoProgressVariant(item.status)}>{getTodoProgressLabel(item.status)}</Lozenge>
 					</div>
 				</div>
 			))}
@@ -676,17 +538,13 @@ function TraceAgentExecutionSection({
 				<div key={execution.taskId} className="space-y-2">
 					<div className="flex flex-wrap items-start gap-2">
 						<div className="min-w-0 flex-1">
-							<p className="text-sm font-medium text-text">
-								{execution.taskLabel}
-							</p>
+							<p className="text-sm font-medium text-text">{execution.taskLabel}</p>
 							<div className="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-xs text-text-subtle">
 								<span>{execution.agentName}</span>
 								<span>{execution.taskId}</span>
 							</div>
 						</div>
-						<Lozenge variant={getAgentExecutionVariant(execution.status)}>
-							{getAgentExecutionLabel(execution.status)}
-						</Lozenge>
+						<Lozenge variant={getAgentExecutionVariant(execution.status)}>{getAgentExecutionLabel(execution.status)}</Lozenge>
 					</div>
 					{execution.content ? (
 						<div className="text-xs text-text-subtle">
@@ -747,23 +605,18 @@ function AssistantMessage({
 	// during clarification flows where presentation is "text"). GenUI widgets
 	// only render when the routing decision says "genui_card".
 	const widgetType = widget?.data.type ?? null;
-	const parsedPlanWidget = widgetType === "plan"
-		? parsePlanWidgetPayload(widget?.data.payload)
-		: null;
+	const parsedPlanWidget = widgetType === "plan" ? parsePlanWidgetPayload(widget?.data.payload) : null;
 	const shouldShowWidget = shouldRenderRovoAppWidget({
 		hasWidget: Boolean(widget),
 		routeDecision,
 		widgetType,
 	});
-	const shouldHideResolvedQuestionCard =
-		widgetType === "question-card" && isQuestionCardResolved;
+	const shouldHideResolvedQuestionCard = widgetType === "question-card" && isQuestionCardResolved;
 	const hasVisibleWidget = shouldRenderRovoAppVisibleWidget({
 		hasWidget: shouldShowWidget,
 		shouldHideResolvedQuestionCard,
 	});
-	const isTextPresentation = routeDecision
-		? routeDecision.presentation === "text"
-		: !widget;
+	const isTextPresentation = routeDecision ? routeDecision.presentation === "text" : !widget;
 	const isFallbackRoute = routeDecision !== null && routeDecision.confidence < 0.3;
 
 	// Thinking status extraction
@@ -779,18 +632,11 @@ function AssistantMessage({
 	const hasThinkingStatusPart = thinkingStatusParts.length > 0;
 	const hasThinkingEvents = thinkingEventParts.length > 0;
 	const hasThinkingToolCalls = thinkingToolCalls.length > 0;
-	const hasAwaitingInputToolCalls = thinkingToolCalls.some(
-		(toolCall) => toolCall.state === "awaiting-input",
-	);
+	const hasAwaitingInputToolCalls = thinkingToolCalls.some((toolCall) => toolCall.state === "awaiting-input");
 	const hasTodoProgressItems = todoProgressItems.length > 0;
-	const hasLegacyTodoQueueItems =
-		!hasTodoProgressItems && todoQueueItems.length > 0;
+	const hasLegacyTodoQueueItems = !hasTodoProgressItems && todoQueueItems.length > 0;
 	const hasAgentExecutions = agentExecutions.length > 0;
-	const hasTraceDataSignals =
-		hasThinkingEvents ||
-		hasTodoProgressItems ||
-		hasLegacyTodoQueueItems ||
-		hasAgentExecutions;
+	const hasTraceDataSignals = hasThinkingEvents || hasTodoProgressItems || hasLegacyTodoQueueItems || hasAgentExecutions;
 	const hasTurnComplete = hasTurnCompleteSignal(message);
 
 	const rawThinkingActive = checkThinkingStatusActive({
@@ -799,17 +645,13 @@ function AssistantMessage({
 		isRetryThinkingStatus: false,
 		isStreaming: isThinkingLifecycleStreaming,
 	});
-	const isResponseInFlight =
-		isMessageTextStreaming(message) ||
-		isThinkingLifecycleStreaming ||
-		widgetLoading?.data.loading === true;
+	const isResponseInFlight = isMessageTextStreaming(message) || isThinkingLifecycleStreaming || widgetLoading?.data.loading === true;
 	const [hasLatchedThinking, setHasLatchedThinking] = useState(false);
-	const { effectiveIsThinkingActive, nextLatched } =
-		resolveRovoAppThinkingVisibility({
-			isThinkingActive: rawThinkingActive,
-			isResponseInFlight,
-			wasLatched: hasLatchedThinking,
-		});
+	const { effectiveIsThinkingActive, nextLatched } = resolveRovoAppThinkingVisibility({
+		isThinkingActive: rawThinkingActive,
+		isResponseInFlight,
+		wasLatched: hasLatchedThinking,
+	});
 	useEffect(() => {
 		if (hasLatchedThinking === nextLatched) {
 			return;
@@ -823,37 +665,15 @@ function AssistantMessage({
 	}, [hasLatchedThinking, nextLatched]);
 	const thinkingActive = effectiveIsThinkingActive;
 
-	const hasBackendThinkingActivity =
-		hasThinkingStatusPart ||
-		hasThinkingEvents ||
-		hasThinkingToolCalls ||
-		hasTodoProgressItems ||
-		hasLegacyTodoQueueItems ||
-		hasAgentExecutions;
-	const isThinkingStreaming =
-		isThinkingLifecycleStreaming && thinkingActive && hasBackendThinkingActivity;
+	const hasBackendThinkingActivity = hasThinkingStatusPart || hasThinkingEvents || hasThinkingToolCalls || hasTodoProgressItems || hasLegacyTodoQueueItems || hasAgentExecutions;
+	const isThinkingStreaming = isThinkingLifecycleStreaming && thinkingActive && hasBackendThinkingActivity;
 
-	const accumulatedThinkingContent = thinkingNarrationMap.unassociated
-		.join("\n\n");
+	const accumulatedThinkingContent = thinkingNarrationMap.unassociated.join("\n\n");
 	const hasThinkingText = Boolean(accumulatedThinkingContent);
-	const shouldShowThinkingSection =
-		hasThinkingText &&
-		!(isTimelineOnlyContent(accumulatedThinkingContent) && hasThinkingToolCalls);
+	const shouldShowThinkingSection = hasThinkingText && !(isTimelineOnlyContent(accumulatedThinkingContent) && hasThinkingToolCalls);
 	const hasPlanNarrationText = shouldShowWidget && parsedPlanWidget !== null && Boolean(text);
-	const hasThinkingDetails =
-		shouldShowThinkingSection ||
-		hasTodoProgressItems ||
-		hasLegacyTodoQueueItems ||
-		hasAgentExecutions ||
-		hasThinkingToolCalls ||
-		hasPlanNarrationText;
-	const shouldAutoOpenThinking =
-		isThinkingStreaming ||
-		hasAwaitingInputToolCalls ||
-		thinkingToolCalls.some((toolCall) =>
-			toolCall.state === "running" ||
-			toolCall.state === "approval-requested"
-		);
+	const hasThinkingDetails = shouldShowThinkingSection || hasTodoProgressItems || hasLegacyTodoQueueItems || hasAgentExecutions || hasThinkingToolCalls || hasPlanNarrationText;
+	const shouldAutoOpenThinking = isThinkingStreaming || hasAwaitingInputToolCalls || thinkingToolCalls.some((toolCall) => toolCall.state === "running" || toolCall.state === "approval-requested");
 	const [thinkingUserOverride, setThinkingUserOverride] = useState<boolean | null>(null);
 	const prevAutoOpenRef = useRef(shouldAutoOpenThinking);
 	// Reset user override when streaming resumes (new turn / retry)
@@ -869,10 +689,8 @@ function AssistantMessage({
 	}, [shouldAutoOpenThinking]);
 	const isThinkingOpen = thinkingUserOverride ?? (hasThinkingDetails && shouldAutoOpenThinking);
 
-	const lastThinkingStatusPart =
-		thinkingStatusParts[thinkingStatusParts.length - 1] ?? null;
-	const lastThinkingEventPart =
-		thinkingEventParts[thinkingEventParts.length - 1] ?? null;
+	const lastThinkingStatusPart = thinkingStatusParts[thinkingStatusParts.length - 1] ?? null;
+	const lastThinkingEventPart = thinkingEventParts[thinkingEventParts.length - 1] ?? null;
 	const thinkingTimestamps = getMessageReasoningTimestamps(message);
 
 	const { phase: thinkingPhase, duration: thinkingDuration } = useReasoningPhase({
@@ -914,7 +732,7 @@ function AssistantMessage({
 				resolvedLabel: dynamicThinkingLabel,
 				reasoningPhase: thinkingReasoningPhase,
 				duration: thinkingDuration,
-	});
+			});
 
 	const shouldRenderPlanWidget = shouldShowWidget && parsedPlanWidget !== null;
 	const shouldRenderAssistantText = shouldRenderRovoAppAssistantText({
@@ -927,33 +745,26 @@ function AssistantMessage({
 		isTextPresentation,
 		shouldRenderPlanWidget,
 	});
-	const shouldRenderAssistantActions =
-		shouldRenderRovoAppAssistantActions({
-			hasArtifactCard: Boolean(artifactCard),
-			hasAssistantText: shouldRenderAssistantText,
-			hasInterruption: Boolean(interruptionLabel),
-			hasSources: sources.length > 0,
-			hasWidget: hasVisibleWidget,
-			hasWidgetError: Boolean(widgetError),
-			isLastAssistant,
-			isResponseInFlight,
-		});
-	const shouldRenderAssistantMessage =
-		shouldRenderRovoAppAssistantMessage({
-			hasArtifactCard: Boolean(artifactCard),
-			hasAssistantText: shouldRenderAssistantText,
-			hasInterruption: Boolean(interruptionLabel),
-			hasReasoning: Boolean(reasoning?.text) || thinkingActive,
-			hasSources: sources.length > 0,
-			hasWidget: hasVisibleWidget,
-			hasWidgetError: Boolean(widgetError),
-		});
-	const isPlanWidgetStreaming =
-		widgetType === "plan" &&
-		(
-			(widgetLoading?.data.type === "plan" && widgetLoading.data.loading) ||
-			isMessageTextStreaming(message)
-		);
+	const shouldRenderAssistantActions = shouldRenderRovoAppAssistantActions({
+		hasArtifactCard: Boolean(artifactCard),
+		hasAssistantText: shouldRenderAssistantText,
+		hasInterruption: Boolean(interruptionLabel),
+		hasSources: sources.length > 0,
+		hasWidget: hasVisibleWidget,
+		hasWidgetError: Boolean(widgetError),
+		isLastAssistant,
+		isResponseInFlight,
+	});
+	const shouldRenderAssistantMessage = shouldRenderRovoAppAssistantMessage({
+		hasArtifactCard: Boolean(artifactCard),
+		hasAssistantText: shouldRenderAssistantText,
+		hasInterruption: Boolean(interruptionLabel),
+		hasReasoning: Boolean(reasoning?.text) || thinkingActive,
+		hasSources: sources.length > 0,
+		hasWidget: hasVisibleWidget,
+		hasWidgetError: Boolean(widgetError),
+	});
+	const isPlanWidgetStreaming = widgetType === "plan" && ((widgetLoading?.data.type === "plan" && widgetLoading.data.loading) || isMessageTextStreaming(message));
 
 	if (!shouldRenderAssistantMessage) {
 		return null;
@@ -971,12 +782,7 @@ function AssistantMessage({
 			) : null}
 			{isLastAssistant ? (
 				<div>
-					<Button
-						size="sm"
-						type="button"
-						variant="outline"
-						onClick={onRegenerate}
-					>
+					<Button size="sm" type="button" variant="outline" onClick={onRegenerate}>
 						Retry
 					</Button>
 				</div>
@@ -985,96 +791,56 @@ function AssistantMessage({
 	);
 
 	return (
-		<Message
-			animate
-			className="max-w-full"
-			data-role="assistant"
-			data-testid="message-assistant"
-			from="assistant"
-		>
+		<Message animate className="max-w-full" data-role="assistant" data-testid="message-assistant" from="assistant">
 			<div className="flex w-full items-start gap-2 md:gap-3">
 				<div className="flex min-w-0 flex-1 flex-col gap-3">
-					<AssistantMessageRenderBoundary
-						fallback={assistantRenderFallback}
-						messageId={message.id}
-						resetKey={`${message.parts.length}:${isStreaming ? "streaming" : "done"}`}
-					>
+					<AssistantMessageRenderBoundary fallback={assistantRenderFallback} messageId={message.id} resetKey={`${message.parts.length}:${isStreaming ? "streaming" : "done"}`}>
 						{thinkingActive ? (
-							<ChainOfThought
-								className="mb-0"
-								open={isThinkingOpen}
-								onOpenChange={setThinkingUserOverride}
-							>
+							<ChainOfThought className="mb-0" open={isThinkingOpen} onOpenChange={setThinkingUserOverride}>
 								<ChainOfThoughtHeader
-								state={thinkingReasoningPhase === "completed" ? "completed" : thinkingReasoningPhase === "thinking" ? "thinking" : "preload"}
-								duration={thinkingReasoningPhase === "completed" ? thinkingDuration : undefined}
-								showChevron={hasThinkingDetails}
-							>
-								{thinkingTriggerLabel}
-							</ChainOfThoughtHeader>
+									state={thinkingReasoningPhase === "completed" ? "completed" : thinkingReasoningPhase === "thinking" ? "thinking" : "preload"}
+									duration={thinkingReasoningPhase === "completed" ? thinkingDuration : undefined}
+									showChevron={hasThinkingDetails}
+								>
+									{thinkingTriggerLabel}
+								</ChainOfThoughtHeader>
 								{hasThinkingDetails ? (
 									<ChainOfThoughtContent>
 										{shouldShowThinkingSection ? (
-											<ChainOfThoughtStep
-												icon={StepThinkingIcon}
-												label={getReasoningSectionTitle("thinking")}
-												status={isThinkingStreaming ? "active" : "complete"}
-											>
-												<CodeBlock
-												className="text-xs"
-												code={accumulatedThinkingContent}
-												language="markdown"
-											/>
+											<ChainOfThoughtStep icon={StepThinkingIcon} label={getReasoningSectionTitle("thinking")} status={isThinkingStreaming ? "active" : "complete"}>
+												<CodeBlock className="text-xs" code={accumulatedThinkingContent} language="markdown" />
 											</ChainOfThoughtStep>
 										) : null}
 										{hasTodoProgressItems ? (
-											<ChainOfThoughtStep
-												icon={StepChecklistIcon}
-												label={getReasoningSectionTitle("steps")}
-												status={isThinkingStreaming ? "active" : "complete"}
-											>
+											<ChainOfThoughtStep icon={StepChecklistIcon} label={getReasoningSectionTitle("steps")} status={isThinkingStreaming ? "active" : "complete"}>
 												<TraceTodoProgressSection items={todoProgressItems} />
 											</ChainOfThoughtStep>
 										) : null}
 										{hasLegacyTodoQueueItems ? (
-											<ChainOfThoughtStep
-												icon={StepChecklistIcon}
-												label={getReasoningSectionTitle("steps")}
-												status={isThinkingStreaming ? "active" : "complete"}
-											>
+											<ChainOfThoughtStep icon={StepChecklistIcon} label={getReasoningSectionTitle("steps")} status={isThinkingStreaming ? "active" : "complete"}>
 												<TraceStepsSection items={todoQueueItems} />
 											</ChainOfThoughtStep>
 										) : null}
 										{hasAgentExecutions ? (
-											<ChainOfThoughtStep
-												icon={StepAgentsIcon}
-												label={getReasoningSectionTitle("agents")}
-												status={isThinkingStreaming ? "active" : "complete"}
-											>
+											<ChainOfThoughtStep icon={StepAgentsIcon} label={getReasoningSectionTitle("agents")} status={isThinkingStreaming ? "active" : "complete"}>
 												<TraceAgentExecutionSection executions={agentExecutions} />
 											</ChainOfThoughtStep>
 										) : null}
 										{thinkingToolCalls.map((toolCall, index) => {
-											const narration = toolCall.toolCallId
-												? thinkingNarrationMap.byToolCallId.get(toolCall.toolCallId)
-												: undefined;
+											const narration = toolCall.toolCallId ? thinkingNarrationMap.byToolCallId.get(toolCall.toolCallId) : undefined;
 											return (
 												<ChainOfThoughtStep
 													key={`${message.id}-cot-tool-${toolCall.id}-${index}`}
 													collapsible
 													defaultOpen={isToolCallStepOpenByDefault(toolCall.state)}
-													iconRender={renderResolvedToolIcon(resolveToolIcon({ toolName: toolCall.toolName, title: toolCall.toolName, input: toolCall.input, mcpServer: toolCall.mcpServer }), { className: "size-4" })}
+													iconRender={renderResolvedToolIcon(resolveToolIcon({ toolName: toolCall.toolName, title: toolCall.toolName, input: toolCall.input, mcpServer: toolCall.mcpServer }), {
+														className: "size-4",
+													})}
 													label={toolCall.toolName}
 													status={toolStateToCoTStatus(toolCall.state)}
 												>
-													{narration && narration.length > 0 ? (
-														<div className="whitespace-pre-wrap text-xs text-text-subtle leading-5">
-															{narration.join("\n\n")}
-														</div>
-													) : null}
-													{toolCall.input !== undefined ? (
-														<ToolInput input={toolCall.input} />
-													) : null}
+													{narration && narration.length > 0 ? <div className="whitespace-pre-wrap text-xs text-text-subtle leading-5">{narration.join("\n\n")}</div> : null}
+													{toolCall.input !== undefined ? <ToolInput input={toolCall.input} /> : null}
 													<ToolOutput
 														errorText={toolCall.errorText}
 														output={toolCall.output}
@@ -1087,123 +853,78 @@ function AssistantMessage({
 											);
 										})}
 										{hasPlanNarrationText ? (
-											<ChainOfThoughtStep
-												icon={StepStreamIcon}
-												label={getReasoningSectionTitle("stream")}
-												status={isMessageTextStreaming(message) ? "active" : "complete"}
-											>
-												<div className="whitespace-pre-wrap text-xs text-text-subtle leading-5">
-													{text}
-												</div>
+											<ChainOfThoughtStep icon={StepStreamIcon} label={getReasoningSectionTitle("stream")} status={isMessageTextStreaming(message) ? "active" : "complete"}>
+												<div className="whitespace-pre-wrap text-xs text-text-subtle leading-5">{text}</div>
 											</ChainOfThoughtStep>
 										) : null}
 									</ChainOfThoughtContent>
 								) : null}
 							</ChainOfThought>
 						) : reasoning?.text ? (
-							<Reasoning
-								defaultOpen={reasoning.isStreaming}
-								isStreaming={isStreaming && reasoning.isStreaming}
-							>
+							<Reasoning defaultOpen={reasoning.isStreaming} isStreaming={isStreaming && reasoning.isStreaming}>
 								<AdsReasoningTrigger />
 								<ReasoningContent>{reasoning.text}</ReasoningContent>
 							</Reasoning>
 						) : null}
 
-					{shouldRenderPlanWidget ? (
-						<div className="w-full pt-2">
-							<PlanWidgetInlineCard
-								title={parsedPlanWidget.title}
-								description={parsedPlanWidget.description}
-								shortDescription={parsedPlanWidget.shortDescription}
-								markdown={parsedPlanWidget.markdown}
-								tasks={parsedPlanWidget.tasks}
-								isStreaming={isPlanWidgetStreaming}
-								isMetadataPending={isPlanMetadataPending}
-								onBuild={onBuildPlan ? () => onBuildPlan(parsedPlanWidget) : undefined}
-								onOpenPreview={onOpenPlanPreview ? () => onOpenPlanPreview(parsedPlanWidget, message.id) : undefined}
-								isBuildDisabled={planBuildDisabled}
-								buildDisabledReason={planBuildDisabledReason}
-								shouldAutoCollapse={planBuildDisabled === true}
-							/>
-						</div>
-					) : shouldShowWidget && widget && !shouldHideResolvedQuestionCard ? (
-							<div className="w-full">
-								<GenerativeWidgetCard
-									thinkingToolCalls={thinkingToolCalls}
-									widgetData={widget.data.payload}
-									widgetType={widget.data.type ?? "message"}
+						{shouldRenderPlanWidget ? (
+							<div className="w-full pt-2">
+								<PlanWidgetInlineCard
+									title={parsedPlanWidget.title}
+									description={parsedPlanWidget.description}
+									shortDescription={parsedPlanWidget.shortDescription}
+									markdown={parsedPlanWidget.markdown}
+									tasks={parsedPlanWidget.tasks}
+									isStreaming={isPlanWidgetStreaming}
+									isMetadataPending={isPlanMetadataPending}
+									onBuild={onBuildPlan ? () => onBuildPlan(parsedPlanWidget) : undefined}
+									onOpenPreview={onOpenPlanPreview ? () => onOpenPlanPreview(parsedPlanWidget, message.id) : undefined}
+									isBuildDisabled={planBuildDisabled}
+									buildDisabledReason={planBuildDisabledReason}
+									shouldAutoCollapse={planBuildDisabled === true}
 								/>
+							</div>
+						) : shouldShowWidget && widget && !shouldHideResolvedQuestionCard ? (
+							<div className="w-full">
+								<GenerativeWidgetCard thinkingToolCalls={thinkingToolCalls} widgetData={widget.data.payload} widgetType={widget.data.type ?? "message"} />
 							</div>
 						) : null}
 
-						{widgetError ? (
-							<WidgetErrorCard
-								widgetError={widgetError}
-								onRetry={onRegenerate}
-							/>
-						) : null}
+						{widgetError ? <WidgetErrorCard widgetError={widgetError} onRetry={onRegenerate} /> : null}
 
 						{shouldRenderAssistantText ? (
 							<MessageContent className="max-w-3xl">
-								<MessageResponse isAnimating={isMessageTextStreaming(message)}>
-									{text}
-								</MessageResponse>
+								<MessageResponse isAnimating={isMessageTextStreaming(message)}>{text}</MessageResponse>
 							</MessageContent>
 						) : null}
 
 						{artifactCard}
 
 						{interruptionLabel ? (
-							<div className="inline-flex w-fit items-center rounded-full border border-border-warning/40 bg-bg-warning-subtler px-2.5 py-1 text-text-warning-bolder text-xs">
-								{interruptionLabel}
-							</div>
+							<div className="inline-flex w-fit items-center rounded-full border border-border-warning/40 bg-bg-warning-subtler px-2.5 py-1 text-text-warning-bolder text-xs">{interruptionLabel}</div>
 						) : null}
 
 						{sources.length > 0 ? (
 							<div className="flex flex-wrap gap-2">
-								{sources.map((source) => (
+								{sources.map((source) =>
 									source.type === "source-url" && source.url ? (
-										<Button
-											key={`${message.id}-${source.url}`}
-											nativeButton={false}
-											render={(
-												<a
-													href={source.url}
-													rel="noreferrer"
-													target="_blank"
-												/>
-											)}
-											size="sm"
-											type="button"
-											variant="outline"
-										>
+										<Button key={`${message.id}-${source.url}`} nativeButton={false} render={<a href={source.url} rel="noreferrer" target="_blank" />} size="sm" type="button" variant="outline">
 											{source.title || source.url}
 										</Button>
 									) : (
-										<Button
-											key={`${message.id}-${source.title ?? "source"}`}
-											size="sm"
-											type="button"
-											variant="outline"
-										>
+										<Button key={`${message.id}-${source.title ?? "source"}`} size="sm" type="button" variant="outline">
 											{source.title || "Source"}
 										</Button>
-									)
-								))}
+									),
+								)}
 							</div>
 						) : null}
 
 						{shouldRenderAssistantActions && shouldRenderAssistantText ? (
 							<MessageActions reveal="hover" className="flex-wrap text-text-subtle">
 								<MessageCopyAction text={text} />
-								<MessageVoteActions
-									onVote={(v) => void onVote(message.id, v)}
-									value={voteValue}
-								/>
-								{isLastAssistant && !message.metadata?.realtimeMessageId ? (
-									<MessageRegenerateAction onClick={onRegenerate} />
-								) : null}
+								<MessageVoteActions onVote={(v) => void onVote(message.id, v)} value={voteValue} />
+								{isLastAssistant && !message.metadata?.realtimeMessageId ? <MessageRegenerateAction onClick={onRegenerate} /> : null}
 							</MessageActions>
 						) : null}
 					</AssistantMessageRenderBoundary>
@@ -1237,11 +958,7 @@ function StreamingArtifactMessage({
 	versionNumber?: number;
 }>) {
 	return (
-		<div
-			className="group/message fade-in w-full animate-in duration-200"
-			data-role="assistant"
-			data-testid="message-assistant-streaming-artifact"
-		>
+		<div className="group/message fade-in w-full animate-in duration-200" data-role="assistant" data-testid="message-assistant-streaming-artifact">
 			<div className="flex w-full items-start gap-2 md:gap-3">
 				<div className="flex min-w-0 flex-1 flex-col gap-3">
 					<ArtifactCard
@@ -1276,10 +993,7 @@ function AssistantSuggestionPills({
 	}
 
 	return (
-		<div
-			className="fade-in mb-6 w-full animate-in duration-200"
-			data-role="assistant-suggestions"
-		>
+		<div className="fade-in mb-6 w-full animate-in duration-200" data-role="assistant-suggestions">
 			<div className="flex w-full items-start gap-2 md:gap-3">
 				<div aria-hidden className="size-8 shrink-0" />
 				<div className="flex min-w-0 flex-1 justify-end">
@@ -1328,29 +1042,15 @@ export function RovoAppMessages({
 	const shouldReduceMotion = useReducedMotion();
 	const scrollSpacerRef = useRef<HTMLDivElement | null>(null);
 	const visibleMessages = useMemo(
-		() => messages.filter((message) =>
-			(message.role === "user" || message.role === "assistant")
-			&& message.metadata?.visibility !== "hidden"
-			&& !isHermesContextTranscriptMessage(message)
-		),
+		() => messages.filter((message) => (message.role === "user" || message.role === "assistant") && message.metadata?.visibility !== "hidden" && !isHermesContextTranscriptMessage(message)),
 		[messages],
 	);
 	const lastAssistantMessageId = useMemo(() => {
-		return [...visibleMessages]
-			.reverse()
-			.find((message) => message.role === "assistant")?.id ?? null;
+		return [...visibleMessages].reverse().find((message) => message.role === "assistant")?.id ?? null;
 	}, [visibleMessages]);
-	const pendingPlanReview = useMemo(
-		() => getLatestPendingPlanWidget(messages),
-		[messages],
-	);
-	const latestPlanPayload = useMemo(
-		() => getLatestPlanWidgetPayload(messages),
-		[messages],
-	);
-	const latestPlanVisualIdentity = latestPlanPayload
-		? (latestPlanPayload.visualIdentity ?? resolvePlanVisualIdentity(latestPlanPayload.title))
-		: undefined;
+	const pendingPlanReview = useMemo(() => getLatestPendingPlanWidget(messages), [messages]);
+	const latestPlanPayload = useMemo(() => getLatestPlanWidgetPayload(messages), [messages]);
+	const latestPlanVisualIdentity = latestPlanPayload ? (latestPlanPayload.visualIdentity ?? resolvePlanVisualIdentity(latestPlanPayload.title)) : undefined;
 	const latestPlanTitle = latestPlanPayload?.title ?? null;
 	const latestPlanShortDescription = latestPlanPayload?.shortDescription?.trim() || null;
 	const orphanArtifactDisplay = useMemo(() => {
@@ -1371,40 +1071,18 @@ export function RovoAppMessages({
 			messages: visibleMessages,
 		});
 	}, [isStreaming, visibleMessages]);
-	const shouldShowPendingAssistantSurface =
-		pendingAssistantDisplayState !== "idle";
-	const shouldShowStreamingArtifactPreview =
-		shouldShowPendingAssistantSurface &&
-		Boolean(streamingArtifact?.documentId) &&
-		streamingArtifactMessageId === null;
-	const shouldShowPreloader =
-		shouldShowPendingAssistantSurface && !shouldShowStreamingArtifactPreview;
-	const shouldShowEmptyConversationState =
-		showEmptyState && visibleMessages.length === 0;
-	const handleTargetScrollTop = useCallback(
-		(defaultTargetTop: number, { scrollElement }: { scrollElement: HTMLElement }) => {
-			return computeRovoAppAnchorScrollTop(
-				defaultTargetTop,
-				scrollElement,
-				scrollSpacerRef,
-			);
-		},
-		[],
-	);
+	const shouldShowPendingAssistantSurface = pendingAssistantDisplayState !== "idle";
+	const shouldShowStreamingArtifactPreview = shouldShowPendingAssistantSurface && Boolean(streamingArtifact?.documentId) && streamingArtifactMessageId === null;
+	const shouldShowPreloader = shouldShowPendingAssistantSurface && !shouldShowStreamingArtifactPreview;
+	const shouldShowEmptyConversationState = showEmptyState && visibleMessages.length === 0;
+	const handleTargetScrollTop = useCallback((defaultTargetTop: number, { scrollElement }: { scrollElement: HTMLElement }) => {
+		return computeRovoAppAnchorScrollTop(defaultTargetTop, scrollElement, scrollSpacerRef);
+	}, []);
 
 	return (
-		<Conversation
-			className={cn(
-				"relative bg-background",
-				shouldShowEmptyConversationState && "!flex-none overflow-visible",
-			)}
-			followMode={scrollFollowMode}
-			targetScrollTop={handleTargetScrollTop}
-		>
+		<Conversation className={cn("relative bg-background", shouldShowEmptyConversationState && "!flex-none overflow-visible")} followMode={scrollFollowMode} targetScrollTop={handleTargetScrollTop}>
 			<RovoAppScrollAnchorSync scrollAnchorMessageId={scrollAnchorMessageId} />
-				{onScrollActiveUserMessageChange ? (
-					<RovoAppScrollActiveTracker onActiveChange={onScrollActiveUserMessageChange} />
-				) : null}
+			{onScrollActiveUserMessageChange ? <RovoAppScrollActiveTracker onActiveChange={onScrollActiveUserMessageChange} /> : null}
 			{shouldShowEmptyConversationState ? (
 				<div className="flex flex-col items-center gap-2 py-6">
 					<motion.div
@@ -1413,22 +1091,8 @@ export function RovoAppMessages({
 						transition={{ duration: 0.4, ease: [0, 0.4, 0, 1] }}
 						style={{ willChange: "transform, opacity" }}
 					>
-						<Image
-							alt="Chat"
-							className="h-auto w-auto object-contain dark:hidden"
-							height={67}
-							loading="eager"
-							src="/illustration-ai/chat/light.svg"
-							width={74}
-						/>
-						<Image
-							alt="Chat"
-							className="hidden h-auto w-auto object-contain dark:block"
-							height={67}
-							loading="eager"
-							src="/illustration-ai/chat/dark.svg"
-							width={74}
-						/>
+						<Image alt="Chat" className="h-auto w-auto object-contain dark:hidden" height={67} loading="eager" src="/illustration-ai/chat/light.svg" width={74} />
+						<Image alt="Chat" className="hidden h-auto w-auto object-contain dark:block" height={67} loading="eager" src="/illustration-ai/chat/dark.svg" width={74} />
 					</motion.div>
 					<motion.div
 						initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
@@ -1450,123 +1114,101 @@ export function RovoAppMessages({
 				)}
 			>
 				{visibleMessages.map((message) => {
-						if (message.role === "user") {
-							return (
-								<UserMessage
-									isEditing={editingMessageId === message.id}
-									isScrollAnchor={message.id === scrollAnchorMessageId}
-									key={message.id}
-									message={message}
-									onEditMessage={onEditMessage}
-									onSetEditingMessageId={onSetEditingMessageId}
-								/>
-							);
+					if (message.role === "user") {
+						return (
+							<UserMessage
+								isEditing={editingMessageId === message.id}
+								isScrollAnchor={message.id === scrollAnchorMessageId}
+								key={message.id}
+								message={message}
+								onEditMessage={onEditMessage}
+								onSetEditingMessageId={onSetEditingMessageId}
+							/>
+						);
+					}
+
+					const artifactDisplay = resolveRovoAppMessageArtifactDisplay({
+						documents,
+						fallbackPreviewSummary: latestPlanShortDescription,
+						fallbackTitle: latestPlanTitle,
+						message,
+						pendingArtifactResult,
+						streamingArtifact,
+						streamingArtifactMessageId,
+					});
+					const fallbackArtifactDisplay = orphanArtifactDisplay?.anchorMessageId === message.id ? orphanArtifactDisplay : null;
+					const resolvedArtifactDisplay = artifactDisplay ?? fallbackArtifactDisplay;
+					const shouldHideSuggestions = message.id !== lastAssistantMessageId || shouldSuppressLatestAssistantSuggestions;
+					const suggestions = shouldHideSuggestions ? [] : (getLatestDataPart(message, "data-suggested-questions")?.data.questions ?? []);
+
+					const messagePlanWidget = (() => {
+						const widget = getLatestDataPart(message, "data-widget-data");
+						if (widget?.data.type !== "plan") return null;
+						return parsePlanWidgetPayload(widget.data.payload);
+					})();
+					const isActivePendingPlan = Boolean(messagePlanWidget?.deferredToolCallId) && pendingPlanReview?.sourceMessageId === message.id;
+					const planBuildDisabledReason = messagePlanWidget
+						? isActivePendingPlan
+							? undefined
+							: pendingPlanReview
+								? "A newer reply superseded this plan."
+								: "This plan is no longer awaiting review."
+						: undefined;
+					const isQuestionCardResolved = (() => {
+						const widget = getLatestDataPart(message, "data-widget-data");
+						if (widget?.data.type !== "question-card") {
+							return false;
 						}
 
-						const artifactDisplay = resolveRovoAppMessageArtifactDisplay({
-							documents,
-							fallbackPreviewSummary: latestPlanShortDescription,
-							fallbackTitle: latestPlanTitle,
-							message,
-							pendingArtifactResult,
-							streamingArtifact,
-							streamingArtifactMessageId,
+						const questionCard = parseQuestionCardPayload(widget.data.payload);
+						if (!questionCard) {
+							return false;
+						}
+
+						return hasMatchingClarificationResponse(messages, {
+							...questionCard,
+							sourceMessageId: message.id,
 						});
-						const fallbackArtifactDisplay =
-							orphanArtifactDisplay?.anchorMessageId === message.id
-								? orphanArtifactDisplay
-								: null;
-							const resolvedArtifactDisplay =
-								artifactDisplay ?? fallbackArtifactDisplay;
-							const shouldHideSuggestions =
-								message.id !== lastAssistantMessageId ||
-								shouldSuppressLatestAssistantSuggestions;
-							const suggestions =
-								shouldHideSuggestions
-									? []
-									: (
-										getLatestDataPart(message, "data-suggested-questions")?.data
-											.questions ?? []
-									);
+					})();
 
-							const messagePlanWidget = (() => {
-								const widget = getLatestDataPart(message, "data-widget-data");
-								if (widget?.data.type !== "plan") return null;
-								return parsePlanWidgetPayload(widget.data.payload);
-							})();
-							const isActivePendingPlan =
-								Boolean(messagePlanWidget?.deferredToolCallId) &&
-								pendingPlanReview?.sourceMessageId === message.id;
-							const planBuildDisabledReason = messagePlanWidget
-								? isActivePendingPlan
-									? undefined
-									: pendingPlanReview
-										? "A newer reply superseded this plan."
-										: "This plan is no longer awaiting review."
-								: undefined;
-							const isQuestionCardResolved = (() => {
-								const widget = getLatestDataPart(message, "data-widget-data");
-								if (widget?.data.type !== "question-card") {
-									return false;
-								}
-
-								const questionCard = parseQuestionCardPayload(widget.data.payload);
-								if (!questionCard) {
-									return false;
-								}
-
-								return hasMatchingClarificationResponse(messages, {
-									...questionCard,
-									sourceMessageId: message.id,
-								});
-							})();
-
-								return (
-									<Fragment key={message.id}>
-										<AssistantMessage
-											artifactCard={
-												resolvedArtifactDisplay ? (
-													<ArtifactCard
-														action={resolvedArtifactDisplay.action}
-														displayMode={resolvedArtifactDisplay.displayMode}
-														visualIdentity={latestPlanVisualIdentity}
-														isStreaming={resolvedArtifactDisplay.isStreaming}
-														kind={resolvedArtifactDisplay.kind}
-														onOpen={(element) =>
-															onOpenArtifactFromCard(resolvedArtifactDisplay.documentId, element)
-														}
-														onRegister={(element) =>
-															onRegisterArtifactCard(resolvedArtifactDisplay.documentId, element)
-														}
-														previewContent={resolvedArtifactDisplay.previewContent}
-														previewSummary={resolvedArtifactDisplay.previewSummary ?? undefined}
-														title={resolvedArtifactDisplay.title}
-														versionNumber={resolvedArtifactDisplay.document?.versions.length ?? 1}
-													/>
-												) : null
-											}
-											isLastAssistant={message.id === lastAssistantMessageId}
-											isPlanMetadataPending={pendingPlanMetadataMessageIds.has(message.id)}
-											isQuestionCardResolved={isQuestionCardResolved}
-											isStreaming={isStreaming}
-											isThinkingLifecycleStreaming={isStreaming && message.id === streamingAssistantMessageId}
-											message={message}
-											onBuildPlan={onBuildPlan}
-											onOpenPlanPreview={onOpenPlanPreview}
-											onRegenerate={onRegenerate}
-											onVote={onVote}
-											planBuildDisabled={messagePlanWidget ? !isActivePendingPlan : undefined}
-											planBuildDisabledReason={planBuildDisabledReason}
-											voteValue={votes[message.id]}
+					return (
+						<Fragment key={message.id}>
+							<AssistantMessage
+								artifactCard={
+									resolvedArtifactDisplay ? (
+										<ArtifactCard
+											action={resolvedArtifactDisplay.action}
+											displayMode={resolvedArtifactDisplay.displayMode}
+											visualIdentity={latestPlanVisualIdentity}
+											isStreaming={resolvedArtifactDisplay.isStreaming}
+											kind={resolvedArtifactDisplay.kind}
+											onOpen={(element) => onOpenArtifactFromCard(resolvedArtifactDisplay.documentId, element)}
+											onRegister={(element) => onRegisterArtifactCard(resolvedArtifactDisplay.documentId, element)}
+											previewContent={resolvedArtifactDisplay.previewContent}
+											previewSummary={resolvedArtifactDisplay.previewSummary ?? undefined}
+											title={resolvedArtifactDisplay.title}
+											versionNumber={resolvedArtifactDisplay.document?.versions.length ?? 1}
 										/>
-										<AssistantSuggestionPills
-											messageId={message.id}
-											onSelectSuggestion={onSelectSuggestion}
-											suggestions={suggestions}
-										/>
-									</Fragment>
-								);
-					})}
+									) : null
+								}
+								isLastAssistant={message.id === lastAssistantMessageId}
+								isPlanMetadataPending={pendingPlanMetadataMessageIds.has(message.id)}
+								isQuestionCardResolved={isQuestionCardResolved}
+								isStreaming={isStreaming}
+								isThinkingLifecycleStreaming={isStreaming && message.id === streamingAssistantMessageId}
+								message={message}
+								onBuildPlan={onBuildPlan}
+								onOpenPlanPreview={onOpenPlanPreview}
+								onRegenerate={onRegenerate}
+								onVote={onVote}
+								planBuildDisabled={messagePlanWidget ? !isActivePendingPlan : undefined}
+								planBuildDisabledReason={planBuildDisabledReason}
+								voteValue={votes[message.id]}
+							/>
+							<AssistantSuggestionPills messageId={message.id} onSelectSuggestion={onSelectSuggestion} suggestions={suggestions} />
+						</Fragment>
+					);
+				})}
 
 				{shouldShowStreamingArtifactPreview && streamingArtifact?.documentId ? (
 					<StreamingArtifactMessage
@@ -1577,10 +1219,7 @@ export function RovoAppMessages({
 						onRegisterArtifactCard={onRegisterArtifactCard}
 						streamingArtifact={streamingArtifact}
 						title={streamingArtifact.title}
-						versionNumber={
-							documents.find((document) => document.id === streamingArtifact.documentId)?.versions.length
-							?? 1
-						}
+						versionNumber={documents.find((document) => document.id === streamingArtifact.documentId)?.versions.length ?? 1}
 					/>
 				) : shouldShowPreloader ? (
 					<RovoAppThinkingIndicator />
