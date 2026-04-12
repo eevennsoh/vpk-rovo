@@ -1,8 +1,7 @@
 const {
-	addHermesMemoryEntry,
-	normalizeHermesMemoryTarget,
-	replaceHermesMemory,
-} = require("./hermes-memory");
+	enqueueWikiMemoryProposal,
+	mapMemoryTargetToScope,
+} = require("./wiki-memory-provider");
 const {
 	clipText,
 	extractTextFromUiParts,
@@ -89,12 +88,12 @@ function buildHermesMemoryCompanionMessages({
 				"Reply exactly with a single JSON object using mode `structured-memory-fallback`.",
 				"The JSON must include an `actions` array containing only `add` or `replace` entries.",
 				"Each action must include `target` (`memory` or `user`) and `content`.",
-				"Use `replace` only when you intend to replace the full memory document for that target.",
+				"Use `replace` only when the new fact should supersede prior memory for that target.",
 				"Do not include commentary outside the JSON object in the fallback path.",
-				"Durable memory here means Hermes memory, not repo lesson logs or skill updates.",
+				"Durable memory here means wiki-backed Hermes memory, not repo lesson logs or skill updates.",
 				"Prefer target `user` for user preferences, communication style, identity, and stable habits.",
 				"Prefer target `memory` for environment facts, project conventions, reusable corrections, and durable workflow notes.",
-				"Prefer `replace` over `add` when updating an existing fact to avoid duplicates.",
+				"Prefer `replace` over `add` when updating an existing fact to avoid stale duplicates.",
 				"Direct requests to remember, save, or store something for future conversations are durable-memory candidates unless the request is actually for a reminder, scheduled action, or other future task.",
 				"Decide from the meaning of the full turn, not simple keywords or fixed phrases.",
 				"Ignore mistaken assistant claims about lacking a memory tool; judge whether the completed turn should produce durable memory.",
@@ -125,7 +124,9 @@ function normalizeStructuredHermesMemoryAction(action) {
 		return null;
 	}
 
-	const target = normalizeHermesMemoryTarget(action.target);
+	const target = typeof action.target === "string" && mapMemoryTargetToScope(action.target)
+		? action.target
+		: null;
 	const actionType =
 		action.action === "add" || action.action === "replace"
 			? action.action
@@ -178,8 +179,9 @@ function parseStructuredHermesMemoryFallback(text) {
 async function applyStructuredHermesMemoryActions(
 	actions,
 	{
-		addMemoryEntryImpl = addHermesMemoryEntry,
-		replaceMemoryImpl = replaceHermesMemory,
+		enqueueWikiMemoryProposalImpl = enqueueWikiMemoryProposal,
+		sourceMessageId,
+		sourceThreadId,
 	} = {},
 ) {
 	const appliedActions = [];
@@ -188,26 +190,19 @@ async function applyStructuredHermesMemoryActions(
 			continue;
 		}
 
-		if (action.action === "add") {
-			const memory = await addMemoryEntryImpl(action.target, {
-				content: action.content,
-			});
-			appliedActions.push({
-				...action,
-				memory,
-			});
-			continue;
-		}
-
-		if (action.action === "replace") {
-			const memory = await replaceMemoryImpl(action.target, {
-				content: action.content,
-			});
-			appliedActions.push({
-				...action,
-				memory,
-			});
-		}
+		const proposal = await enqueueWikiMemoryProposalImpl({
+			action: action.action === "replace" ? "replace" : "add",
+			content: action.content,
+			sourceMessageId,
+			sourceThreadId,
+			summary: action.content.slice(0, 140),
+			target: action.target,
+		});
+		appliedActions.push({
+			...action,
+			proposal,
+			scope: mapMemoryTargetToScope(action.target),
+		});
 	}
 
 	return appliedActions;
@@ -246,6 +241,8 @@ async function runHermesMemoryCompanionReview({
 	applyStructuredMemoryActionsImpl = applyStructuredHermesMemoryActions,
 	latestAssistantMessage,
 	latestUserMessage,
+	sourceMessageId,
+	sourceThreadId,
 	timeoutMs = DEFAULT_MEMORY_COMPANION_TIMEOUT_MS,
 }) {
 	const normalizedLatestUserMessage = getNonEmptyString(latestUserMessage);
@@ -276,6 +273,10 @@ async function runHermesMemoryCompanionReview({
 
 	const structuredMemoryActions = await applyStructuredMemoryActionsImpl(
 		payload.structuredResult.actions,
+		{
+			sourceMessageId,
+			sourceThreadId,
+		},
 	);
 
 	return {

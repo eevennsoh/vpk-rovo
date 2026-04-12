@@ -11,7 +11,7 @@ export const CONTROL_PLANE_SURFACES: readonly ControlPlaneSurfaceLink[] = [
 		label: "Tasks",
 	},
 	{
-		description: "Memory entries and character usage",
+		description: "Compiled wiki-backed memory and proposal status",
 		href: "/rovo-app/memories",
 		label: "Memories",
 	},
@@ -21,7 +21,12 @@ export const CONTROL_PLANE_SURFACES: readonly ControlPlaneSurfaceLink[] = [
 		label: "Skills",
 	},
 	{
-		description: "Provider routing, Hermes memory, and wiki mirror controls",
+		description: "Hybrid wiki search, qmd sync state, and canonical knowledge results",
+		href: "/rovo-app/wiki",
+		label: "Wiki",
+	},
+	{
+		description: "Provider routing, compiled memory, and wiki mirror controls",
 		href: "/rovo-app/settings",
 		label: "Settings",
 	},
@@ -29,6 +34,7 @@ export const CONTROL_PLANE_SURFACES: readonly ControlPlaneSurfaceLink[] = [
 
 const CONTROL_PLANE_HEADER_SURFACE_LABELS = new Set<ControlPlaneSurfaceLink["label"]>([
 	"Memories",
+	"Wiki",
 	"Settings",
 ]);
 
@@ -212,13 +218,13 @@ export const INITIAL_CONTROL_PLANE_SKILLS: readonly ControlPlaneSkill[] = [
 	{
 		category: "memory",
 		content: [
-			"# Memory sync",
+			"# Wiki memory sync",
 			"",
-			"- Read `MEMORY.md` and `USER.md`.",
-			"- Treat memory as a compact summary, not a transcript.",
-			"- Keep entry edits bounded and explicit.",
+			"- Read compiled wiki memory context artifacts.",
+			"- Treat canonical wiki pages as the source of truth.",
+			"- Process durable-memory proposals through the llm-wiki flow.",
 		].join("\n"),
-		description: "Manages Hermetic memory files and entry-level updates.",
+		description: "Manages wiki-backed durable memory and compiled context refreshes.",
 		enabled: true,
 		name: "memory-sync",
 		path: "~/.hermes/skills/memory/memory-sync/SKILL.md",

@@ -9,11 +9,9 @@ agent:
   # Temperature setting for AI model responses (0.0-1.0)
   temperature: 0.3
   # Model ID to use for the agent. See /models command to list available models.
-  modelId: openai-responses-api:gpt-5.4-2026-03-05
+  modelId: anthropic:claude-sonnet-4-6
   # Optional model variant key selected from dynamic configuration.
-  modelVariant: high
-  # Per-model inference parameter overrides keyed by model ID.
-  inferenceConfig: null
+  modelVariant: null
   # Enable the deep planning tool for complex task planning
   enableDeepPlanTool: true
   # Enable/disable experimental features
@@ -25,6 +23,8 @@ agent:
     # Disable the built-in Atlassian MCP server so user can configure a custom
     # one
     disableBuiltinAtlassianMcp: false
+  inferenceConfig: null
+  enableSubagents: true
 
 # Session management settings
 sessions:
@@ -93,6 +93,7 @@ console:
     # {branch}  — current git branch   • {session} — session title   • {model}
     # — current model name
     displayValue: Rovo Dev
+  compactMode: true
 
 # Logging and prompt collection settings
 logging:
@@ -111,6 +112,7 @@ mcp:
   - url:https://mcp.atlassian.com/v1/ads/public/mcp
   - stdio:npx:open-websearch@latest
   - stdio:npx:-y chrome-devtools-mcp@latest --browser-url=http://127.0.0.1:9222
+  - stdio:pnpm:exec qmd mcp
   # List of globally disabled MCP server signatures
   disabledMcpServers: []
 
@@ -121,7 +123,7 @@ toolPermissions:
   # Permission settings for specific tools
   tools:
     create_file: allow
-    delete_file: ask
+    delete_file: allow
     move_file: ask
     find_and_replace_code: allow
     open_files: allow
@@ -153,6 +155,11 @@ toolPermissions:
     get_ranked_work_summary_for_given_user: allow
     get_recent_prs: allow
     fetchGithubReadme: allow
+    bitbucketRepoContent: allow
+    get_work_summary_for_given_user: allow
+    get_user_created_entities: allow
+    get_user_manager: allow
+    get_user_manager_v2: allow
   bash:
     # Default permission for bash commands not explicitly listed
     default: ask

@@ -6,103 +6,90 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Lozenge } from "@/components/ui/lozenge";
-import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
-import { Textarea } from "@/components/ui/textarea";
-import type { HermesMemoryDocument, HermesMemoryTarget } from "@/lib/rovo-runtime-types";
+import type { WikiCompiledContextDocument, WikiMemoryProposalSummary, WikiStatus } from "@/lib/rovo-runtime-types";
 
-import { addMemoryEntry, deleteMemoryEntry, fetchMemoryDocuments, replaceMemoryDocument } from "./lib/control-plane-api";
-import { calculateUsage, formatControlPlaneDateTime, joinMemoryEntries, splitMemoryEntries } from "./lib/control-plane-utils";
+import { fetchWikiStatus, syncWiki } from "./lib/control-plane-api";
+import { formatControlPlaneDateTime } from "./lib/control-plane-utils";
 import { ControlPlanePageShell } from "./control-plane-page-shell";
 
-function createEmptyDocument(target: HermesMemoryTarget): HermesMemoryDocument {
-	return {
-		entries: [],
-		exists: false,
-		limit: null,
-		path: "",
-		target,
-		totalChars: 0,
-		updatedAt: null,
-	};
+function formatProposalTone(status: string): "danger" | "neutral" | "success" | "warning" {
+	if (status === "ingested") {
+		return "success";
+	}
+	if (status === "queued") {
+		return "warning";
+	}
+	return "neutral";
+}
+
+function formatScopeLabel(scope: string): string {
+	if (scope === "profile") {
+		return "Profile";
+	}
+	if (scope === "operations") {
+		return "Runtime";
+	}
+	return scope;
+}
+
+function buildContextCards(wikiStatus: WikiStatus | null): Array<{
+	description: string;
+	document: WikiCompiledContextDocument;
+	label: string;
+}> {
+	if (!wikiStatus?.compiledContexts) {
+		return [];
+	}
+
+	return [
+		{
+			description: "Generated from `profiles/self.md` for user identity and preferences.",
+			document: wikiStatus.compiledContexts.profile ?? {
+				charCount: 0,
+				exists: false,
+				path: "",
+				preview: "",
+				updatedAt: null,
+			},
+			label: "Profile context",
+		},
+		{
+			description: "Generated from `operations/core-memory.md` for durable runtime memory.",
+			document: wikiStatus.compiledContexts.operations ?? {
+				charCount: 0,
+				exists: false,
+				path: "",
+				preview: "",
+				updatedAt: null,
+			},
+			label: "Runtime context",
+		},
+	];
 }
 
 export function MemoriesSurfacePage() {
-	const [documents, setDocuments] = useState<Record<HermesMemoryTarget, HermesMemoryDocument>>({
-		memory: createEmptyDocument("memory"),
-		user: createEmptyDocument("user"),
-	});
-	const activeTarget: HermesMemoryTarget = "memory";
-	const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
-	const [draftText, setDraftText] = useState("");
-	const [isLoading, setIsLoading] = useState(true);
-	const [isMutating, setIsMutating] = useState(false);
+	const [wikiStatus, setWikiStatus] = useState<WikiStatus | null>(null);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
+	const [isLoading, setIsLoading] = useState(true);
+	const [isSyncing, setIsSyncing] = useState(false);
 
-	const activeDocument = documents[activeTarget];
-	const entries = activeDocument.entries;
-	const selectedEntry = entries.find((entry) => entry.id === selectedEntryId) ?? entries[0] ?? null;
-	const usage = calculateUsage(
-		activeDocument.totalChars,
-		activeDocument.limit ?? activeDocument.totalChars ?? 1,
+	const contextCards = useMemo(
+		() => buildContextCards(wikiStatus),
+		[wikiStatus],
 	);
-	const joinedEntries = useMemo(
-		() => joinMemoryEntries(entries.map((entry) => entry.text)),
-		[entries],
-	);
+	const recentProposals = wikiStatus?.recentProposals ?? [];
+	const proposalCounts = wikiStatus?.proposalCounts ?? {
+		ingested: 0,
+		queued: 0,
+		total: 0,
+	};
 
-	useEffect(() => {
-		let cancelled = false;
-
-		async function loadDocuments() {
-			setIsLoading(true);
-			try {
-				const nextDocuments = await fetchMemoryDocuments();
-				if (cancelled) {
-					return;
-				}
-				setDocuments(nextDocuments);
-				const firstEntry = nextDocuments[activeTarget].entries[0] ?? null;
-				setSelectedEntryId(firstEntry?.id ?? null);
-				setDraftText(firstEntry?.text ?? "");
-				setErrorMessage(null);
-			} catch (error) {
-				if (!cancelled) {
-					setErrorMessage(error instanceof Error ? error.message : String(error));
-				}
-			} finally {
-				if (!cancelled) {
-					setIsLoading(false);
-				}
-			}
-		}
-
-		void loadDocuments();
-
-		return () => {
-			cancelled = true;
-		};
-	}, []);
-
-	useEffect(() => {
-		const fallbackEntry = entries[0] ?? null;
-		const nextSelectedEntry = entries.find((entry) => entry.id === selectedEntryId) ?? fallbackEntry;
-		setSelectedEntryId(nextSelectedEntry?.id ?? null);
-		setDraftText(nextSelectedEntry?.text ?? "");
-	}, [entries, selectedEntryId]);
-
-	function handleSelectEntry(entryId: string) {
-		const entry = entries.find((item) => item.id === entryId) ?? null;
-		setSelectedEntryId(entry?.id ?? null);
-		setDraftText(entry?.text ?? "");
-	}
-
-	async function handleRefresh() {
+	async function refreshStatus() {
 		setIsLoading(true);
 		try {
-			const nextDocuments = await fetchMemoryDocuments();
-			setDocuments(nextDocuments);
+			const nextStatus = await fetchWikiStatus();
+			setWikiStatus(nextStatus);
 			setErrorMessage(null);
 		} catch (error) {
 			setErrorMessage(error instanceof Error ? error.message : String(error));
@@ -111,104 +98,40 @@ export function MemoriesSurfacePage() {
 		}
 	}
 
-	async function handleAddEntry() {
-		const nextTexts = splitMemoryEntries(draftText);
-		if (nextTexts.length === 0) {
-			return;
-		}
-
-		setIsMutating(true);
+	async function handleSync() {
+		setIsSyncing(true);
 		try {
-			let nextDocument = activeDocument;
-			for (const text of nextTexts) {
-				nextDocument = await addMemoryEntry(activeTarget, text);
-			}
-			setDocuments((current) => ({
-				...current,
-				[activeTarget]: nextDocument,
-			}));
-			setSelectedEntryId(nextDocument.entries[0]?.id ?? null);
-			setDraftText(nextDocument.entries[0]?.text ?? "");
+			await syncWiki(true);
+			await refreshStatus();
 			setErrorMessage(null);
 		} catch (error) {
 			setErrorMessage(error instanceof Error ? error.message : String(error));
 		} finally {
-			setIsMutating(false);
+			setIsSyncing(false);
 		}
 	}
 
-	async function handleReplaceEntry() {
-		const nextTexts = splitMemoryEntries(draftText);
-		if (nextTexts.length === 0) {
-			return;
-		}
-
-		setIsMutating(true);
-		try {
-			const replacementEntries = selectedEntry
-				? entries.map((entry) =>
-					entry.id === selectedEntry.id
-						? nextTexts[0]
-						: entry.text,
-				)
-				: [...entries.map((entry) => entry.text), ...nextTexts];
-			const nextDocument = await replaceMemoryDocument(activeTarget, {
-				entries: replacementEntries,
-			});
-			setDocuments((current) => ({
-				...current,
-				[activeTarget]: nextDocument,
-			}));
-			const nextSelectedEntry = selectedEntry
-				? nextDocument.entries.find((entry) => entry.index === selectedEntry.index) ?? nextDocument.entries[0] ?? null
-				: nextDocument.entries[0] ?? null;
-			setSelectedEntryId(nextSelectedEntry?.id ?? null);
-			setDraftText(nextSelectedEntry?.text ?? "");
-			setErrorMessage(null);
-		} catch (error) {
-			setErrorMessage(error instanceof Error ? error.message : String(error));
-		} finally {
-			setIsMutating(false);
-		}
-	}
-
-	async function handleDeleteEntry() {
-		if (!selectedEntry) {
-			return;
-		}
-
-		setIsMutating(true);
-		try {
-			const nextDocument = await deleteMemoryEntry(activeTarget, selectedEntry.id);
-			setDocuments((current) => ({
-				...current,
-				[activeTarget]: nextDocument,
-			}));
-			const nextSelectedEntry = nextDocument.entries[0] ?? null;
-			setSelectedEntryId(nextSelectedEntry?.id ?? null);
-			setDraftText(nextSelectedEntry?.text ?? "");
-			setErrorMessage(null);
-		} catch (error) {
-			setErrorMessage(error instanceof Error ? error.message : String(error));
-		} finally {
-			setIsMutating(false);
-		}
-	}
+	useEffect(() => {
+		void refreshStatus();
+	}, []);
 
 	return (
 		<ControlPlanePageShell
-			description="Read and edit Hermes core memory (MEMORY.md) with live entry counts and character usage."
+			description="Read the compiled wiki-backed memory context and inspect queued durable-memory proposals."
 			title="Memories"
 			actions={
 				<div className="flex items-center gap-2">
-					<Badge variant="neutral">{entries.length} entries</Badge>
-					<Button variant="outline" onClick={() => void handleRefresh()} disabled={isLoading}>
+					<Badge variant="neutral">{proposalCounts.queued} queued</Badge>
+					<Button variant="outline" onClick={() => void refreshStatus()} disabled={isLoading || isSyncing}>
 						Refresh
+					</Button>
+					<Button onClick={() => void handleSync()} isLoading={isSyncing} disabled={isLoading}>
+						Sync memory wiki
 					</Button>
 				</div>
 			}
 		>
-			<div className="grid gap-4 lg:grid-cols-[0.92fr_1.08fr]">
+			<div className="grid gap-4 lg:grid-cols-[1.02fr_0.98fr]">
 				<div className="space-y-4">
 					{errorMessage ? (
 						<Card>
@@ -219,55 +142,51 @@ export function MemoriesSurfacePage() {
 					) : null}
 
 					<Card>
-						<CardHeader className="pb-2">
-							<CardDescription>Usage</CardDescription>
-							<CardTitle>{usage.percentage}%</CardTitle>
-						</CardHeader>
-						<CardContent className="space-y-2">
-							<Progress value={usage.percentage} />
-							<div className="text-xs text-text-subtle">
-								{activeDocument.totalChars.toLocaleString()} chars used{activeDocument.limit ? ` of ${activeDocument.limit.toLocaleString()}` : ""}.
-							</div>
-						</CardContent>
-					</Card>
-
-					<Card>
 						<CardHeader>
-							<CardTitle>Entries</CardTitle>
-							<CardDescription>Pick an entry to inspect, replace, or remove it.</CardDescription>
+							<CardTitle>Compiled context</CardTitle>
+							<CardDescription>
+								Hermes prompt context is now generated from canonical wiki pages after ingest.
+							</CardDescription>
 						</CardHeader>
 						<CardContent className="space-y-3">
 							{isLoading ? (
 								<div className="rounded-xl border border-border bg-surface-raised px-3 py-8 text-center text-sm text-text-subtle">
-									Loading Hermes memories...
+									Loading compiled memory state...
 								</div>
-							) : entries.length === 0 ? (
+							) : contextCards.length === 0 ? (
 								<div className="rounded-xl border border-dashed border-border px-3 py-8 text-center text-sm text-text-subtle">
-									No memory entries yet.
+									No compiled memory artifacts yet.
 								</div>
 							) : (
-								entries.map((entry) => {
-									const isActive = entry.id === selectedEntryId;
-									return (
-										<button
-											key={entry.id}
-											type="button"
-											className={`w-full rounded-xl border px-3 py-3 text-left transition-colors ${isActive ? "border-border-selected bg-bg-selected" : "border-border bg-surface-raised hover:bg-bg-neutral-subtle-hovered"}`}
-											onClick={() => handleSelectEntry(entry.id)}
-										>
-											<div className="flex items-center justify-between gap-2">
-												<div className="min-w-0">
-													<div className="truncate text-sm font-medium">{entry.text}</div>
-													<div className="mt-1 flex flex-wrap gap-2 text-xs text-text-subtlest">
-														<span>{formatControlPlaneDateTime(activeDocument.updatedAt)}</span>
-														<span>{entry.chars} chars</span>
-													</div>
-												</div>
-												<Lozenge variant="information">entry</Lozenge>
+								contextCards.map(({ description, document, label }) => (
+									<div key={label} className="rounded-xl border border-border bg-surface-raised px-3 py-3">
+										<div className="flex items-start justify-between gap-3">
+											<div className="space-y-1">
+												<div className="text-sm font-medium">{label}</div>
+												<div className="text-sm text-text-subtle">{description}</div>
 											</div>
-										</button>
-									);
-								})
+											<Lozenge variant={document.exists ? "success" : "warning"}>
+												{document.exists ? "Compiled" : "Missing"}
+											</Lozenge>
+										</div>
+										<div className="mt-3 grid gap-2 sm:grid-cols-2">
+											<div className="rounded-lg border border-border bg-background px-3 py-2">
+												<div className="text-xs uppercase tracking-wide text-text-subtle">Size</div>
+												<div className="mt-1 text-sm font-medium">{document.charCount.toLocaleString()} chars</div>
+											</div>
+											<div className="rounded-lg border border-border bg-background px-3 py-2">
+												<div className="text-xs uppercase tracking-wide text-text-subtle">Updated</div>
+												<div className="mt-1 text-sm font-medium">{formatControlPlaneDateTime(document.updatedAt)}</div>
+											</div>
+										</div>
+										<div className="mt-3 rounded-lg border border-border bg-background px-3 py-2 text-xs text-text-subtle">
+											{document.path || "No artifact path yet."}
+										</div>
+										<ScrollArea className="mt-3 max-h-40 rounded-lg border border-border bg-background p-3 text-sm text-text-subtle">
+											<pre className="whitespace-pre-wrap">{document.preview || "No preview available yet."}</pre>
+										</ScrollArea>
+									</div>
+								))
 							)}
 						</CardContent>
 					</Card>
@@ -275,72 +194,47 @@ export function MemoriesSurfacePage() {
 
 				<div className="space-y-4">
 					<Card>
-						<CardHeader>
-							<div className="flex items-center justify-between gap-3">
-								<div>
-									<CardTitle>{selectedEntry ? "Edit entry" : "Create entry"}</CardTitle>
-									<CardDescription>
-										Changes are written through the Hermes-backed memory routes.
-									</CardDescription>
-								</div>
-								<div className="flex items-center gap-2">
-									<Button variant="outline" onClick={() => void handleAddEntry()} disabled={isMutating}>
-										Add entry
-									</Button>
-									<Button onClick={() => void handleReplaceEntry()} disabled={isMutating}>
-										Replace entry
-									</Button>
-								</div>
-							</div>
+						<CardHeader className="pb-3">
+							<CardTitle>Proposal queue</CardTitle>
+							<CardDescription>
+								Completed turns enqueue durable-memory proposals into the wiki rather than editing files directly.
+							</CardDescription>
 						</CardHeader>
-						<CardContent className="space-y-4">
-							<div className="space-y-1.5">
-								<div className="text-sm font-medium">Entry text</div>
-								<Textarea
-									value={draftText}
-									onChange={(event) => setDraftText(event.target.value)}
-									placeholder="Write a compact memory entry separated by § when needed."
-								/>
-							</div>
-
-							<div className="grid gap-3 sm:grid-cols-2">
-								<div className="rounded-lg border border-border bg-surface-raised px-3 py-2">
-									<div className="text-xs uppercase tracking-wide text-text-subtlest">Selected entry</div>
-									<div className="text-sm">{selectedEntry ? selectedEntry.text : "No entry selected"}</div>
+						<CardContent className="space-y-3">
+							<div className="grid gap-3 sm:grid-cols-3">
+								<div className="rounded-xl border border-border bg-surface-raised px-3 py-3">
+									<div className="text-xs uppercase tracking-wide text-text-subtle">Queued</div>
+									<div className="mt-2 text-lg font-semibold text-text">{proposalCounts.queued.toLocaleString()}</div>
 								</div>
-								<div className="rounded-lg border border-border bg-surface-raised px-3 py-2">
-									<div className="text-xs uppercase tracking-wide text-text-subtlest">Remaining</div>
-									<div className="text-sm">{usage.remaining.toLocaleString()} chars</div>
+								<div className="rounded-xl border border-border bg-surface-raised px-3 py-3">
+									<div className="text-xs uppercase tracking-wide text-text-subtle">Ingested</div>
+									<div className="mt-2 text-lg font-semibold text-text">{proposalCounts.ingested.toLocaleString()}</div>
+								</div>
+								<div className="rounded-xl border border-border bg-surface-raised px-3 py-3">
+									<div className="text-xs uppercase tracking-wide text-text-subtle">Total</div>
+									<div className="mt-2 text-lg font-semibold text-text">{proposalCounts.total.toLocaleString()}</div>
 								</div>
 							</div>
 
-							<Separator />
-
-							<div className="flex flex-wrap items-center gap-2">
-								<Button variant="outline" onClick={() => void handleDeleteEntry()} disabled={!selectedEntry || isMutating}>
-									Delete entry
-								</Button>
-								<Button
-									variant="ghost"
-									onClick={() => setDraftText(joinedEntries)}
-								>
-									Load raw joined text
-								</Button>
-							</div>
-						</CardContent>
-					</Card>
-
-					<Card>
-						<CardHeader>
-							<CardTitle>Raw memory view</CardTitle>
-							<CardDescription>The entries are joined with the Hermes `§` delimiter.</CardDescription>
-						</CardHeader>
-						<CardContent>
-							<ScrollArea className="max-h-[18rem]">
-								<pre className="whitespace-pre-wrap rounded-xl border border-border bg-surface-raised p-3 text-sm text-text-subtle">
-									{joinedEntries || "No entries yet."}
-								</pre>
-							</ScrollArea>
+							{recentProposals.length === 0 ? (
+								<div className="rounded-xl border border-dashed border-border px-3 py-8 text-center text-sm text-text-subtle">
+									No memory proposals yet.
+								</div>
+							) : (
+								recentProposals.map((proposal: WikiMemoryProposalSummary) => (
+									<div key={proposal.id} className="rounded-xl border border-border bg-surface-raised px-3 py-3">
+										<div className="flex flex-wrap items-center gap-2">
+											<Lozenge variant={formatProposalTone(proposal.status)}>{proposal.status}</Lozenge>
+											<Badge variant="neutral">{formatScopeLabel(proposal.scope)}</Badge>
+											<Badge variant="outline">{proposal.action}</Badge>
+										</div>
+										<div className="mt-3 text-sm font-medium">{proposal.summary || "Untitled proposal"}</div>
+										<div className="mt-1 text-xs text-text-subtle">
+											{formatControlPlaneDateTime(proposal.createdAt)} · {proposal.path}
+										</div>
+									</div>
+								))
+							)}
 						</CardContent>
 					</Card>
 				</div>

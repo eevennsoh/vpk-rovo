@@ -9,9 +9,6 @@ import type {
 	HermesHubInspectResult,
 	HermesHubSkill,
 	HermesJob,
-	HermesMemoryDocument,
-	HermesMemoryEntry,
-	HermesMemoryTarget,
 	HermesSkillBundleDetail,
 	HermesSkillDraftDetail,
 	HermesSkillDraftSummary,
@@ -19,7 +16,14 @@ import type {
 	HermesSkillSummary,
 	RuntimeStatusSnapshot,
 	SessionSearchResult,
+	WikiQmdStatus,
+	WikiCompiledContextDocument,
+	WikiMemoryProposalSummary,
+	WikiProposalCounts,
+	WikiSearchResponse,
+	WikiSearchResult,
 	WikiStatus,
+	WikiSyncResponse,
 	WikiStatusFileSummary,
 } from "@/lib/rovo-runtime-types";
 
@@ -109,52 +113,6 @@ function normalizeHermesJob(rawJob: unknown): HermesJob {
 	};
 }
 
-function normalizeHermesMemoryEntry(rawEntry: unknown, index: number): HermesMemoryEntry {
-	const entry = rawEntry && typeof rawEntry === "object"
-		? rawEntry as Record<string, unknown>
-		: {};
-	const text = getString(entry.content) ?? getString(entry.text) ?? "";
-	return {
-		chars:
-			typeof entry.charCount === "number" && Number.isFinite(entry.charCount)
-				? entry.charCount
-				: text.length,
-		id: getString(entry.id) ?? `${index}`,
-		index:
-			typeof entry.order === "number" && Number.isFinite(entry.order)
-				? entry.order
-				: index,
-		text,
-	};
-}
-
-function normalizeHermesMemoryDocument(
-	target: HermesMemoryTarget,
-	rawDocument: unknown,
-): HermesMemoryDocument {
-	const document = rawDocument && typeof rawDocument === "object"
-		? rawDocument as Record<string, unknown>
-		: {};
-	const entries = Array.isArray(document.entries)
-		? document.entries.map(normalizeHermesMemoryEntry)
-		: [];
-	return {
-		entries,
-		exists: document.exists !== false,
-		limit:
-			typeof document.limit === "number" && Number.isFinite(document.limit)
-				? document.limit
-				: null,
-		path: getString(document.path) ?? "",
-		target,
-		totalChars:
-			typeof document.charCount === "number" && Number.isFinite(document.charCount)
-				? document.charCount
-				: entries.reduce((total, entry) => total + entry.chars, 0),
-		updatedAt: getString(document.updatedAt),
-	};
-}
-
 function normalizeCountRecord(rawRecord: unknown): Record<string, number> {
 	const record = rawRecord && typeof rawRecord === "object"
 		? rawRecord as Record<string, unknown>
@@ -179,6 +137,62 @@ function normalizeWikiStatusFileSummary(rawFile: unknown, fallbackPath = ""): Wi
 	};
 }
 
+function normalizeWikiCompiledContextDocument(rawDocument: unknown): WikiCompiledContextDocument {
+	const document = rawDocument && typeof rawDocument === "object"
+		? rawDocument as Record<string, unknown>
+		: {};
+
+	return {
+		charCount:
+			typeof document.charCount === "number" && Number.isFinite(document.charCount)
+				? document.charCount
+				: 0,
+		exists: document.exists === true,
+		path: getString(document.path) ?? "",
+		preview: getString(document.preview) ?? "",
+		updatedAt: getString(document.updatedAt),
+	};
+}
+
+function normalizeWikiProposalCounts(rawCounts: unknown): WikiProposalCounts {
+	const counts = rawCounts && typeof rawCounts === "object"
+		? rawCounts as Record<string, unknown>
+		: {};
+
+	return {
+		ingested:
+			typeof counts.ingested === "number" && Number.isFinite(counts.ingested)
+				? counts.ingested
+				: 0,
+		queued:
+			typeof counts.queued === "number" && Number.isFinite(counts.queued)
+				? counts.queued
+				: 0,
+		total:
+			typeof counts.total === "number" && Number.isFinite(counts.total)
+				? counts.total
+				: 0,
+	};
+}
+
+function normalizeWikiMemoryProposalSummary(rawProposal: unknown): WikiMemoryProposalSummary {
+	const proposal = rawProposal && typeof rawProposal === "object"
+		? rawProposal as Record<string, unknown>
+		: {};
+
+	return {
+		action: getString(proposal.action) ?? "add",
+		createdAt: getString(proposal.createdAt),
+		id: getString(proposal.id) ?? "proposal-unknown",
+		path: getString(proposal.path) ?? "",
+		scope: getString(proposal.scope) ?? "operations",
+		sourceMessageId: getString(proposal.sourceMessageId),
+		sourceThreadId: getString(proposal.sourceThreadId),
+		status: getString(proposal.status) ?? "queued",
+		summary: getString(proposal.summary) ?? "",
+	};
+}
+
 function sumCountRecord(record: Record<string, number>): number {
 	return Object.values(record).reduce((total, value) => total + value, 0);
 }
@@ -192,17 +206,32 @@ function normalizeWikiStatus(rawStatus: unknown): WikiStatus {
 		: {};
 	const canonicalCounts = normalizeCountRecord(status.canonicalCounts);
 	const rawCounts = normalizeCountRecord(status.rawCounts);
+	const qmd = status.qmd && typeof status.qmd === "object"
+		? status.qmd as Record<string, unknown>
+		: null;
 
 	return {
 		canonicalCounts,
+		compiledContexts: status.compiledContexts && typeof status.compiledContexts === "object"
+			? {
+				profile: normalizeWikiCompiledContextDocument((status.compiledContexts as Record<string, unknown>).profile),
+				operations: normalizeWikiCompiledContextDocument((status.compiledContexts as Record<string, unknown>).operations),
+			}
+			: undefined,
 		files: {
 			index: normalizeWikiStatusFileSummary(files.index, "index.md"),
 			log: normalizeWikiStatusFileSummary(files.log, "log.md"),
 			schema: normalizeWikiStatusFileSummary(files.schema, "SCHEMA.md"),
 		},
 		generatedAt: getString(status.generatedAt) ?? new Date().toISOString(),
+		hasCompiledContextArtifacts:
+			status.hasCompiledContextArtifacts === true || status.hasWikiDigestEntry === true,
 		hasWikiDigestEntry: status.hasWikiDigestEntry === true,
+		proposalCounts: normalizeWikiProposalCounts(status.proposalCounts),
 		rawCounts,
+		recentProposals: Array.isArray(status.recentProposals)
+			? status.recentProposals.map(normalizeWikiMemoryProposalSummary)
+			: [],
 		totalCanonicalPages:
 			typeof status.totalCanonicalPages === "number" && Number.isFinite(status.totalCanonicalPages)
 				? status.totalCanonicalPages
@@ -212,6 +241,51 @@ function normalizeWikiStatus(rawStatus: unknown): WikiStatus {
 				? status.totalRawCaptures
 				: sumCountRecord(rawCounts),
 		wikiDir: getString(status.wikiDir) ?? "",
+		...(qmd ? { qmd: normalizeWikiQmdStatus(qmd) } : {}),
+	};
+}
+
+function normalizeWikiQmdStatus(rawStatus: unknown): WikiQmdStatus {
+	const status = rawStatus && typeof rawStatus === "object"
+		? rawStatus as Record<string, unknown>
+		: {};
+
+	return {
+		collections: Array.isArray(status.collections)
+			? status.collections.filter((value): value is string => typeof value === "string")
+			: [],
+		dbExists: status.dbExists === true,
+		dbPath: getString(status.dbPath) ?? "",
+		errorMessage: getString(status.errorMessage),
+		lastSyncedAt: getString(status.lastSyncedAt),
+		latestCanonicalUpdateAt: getString(status.latestCanonicalUpdateAt),
+		needsEmbedding:
+			typeof status.needsEmbedding === "number" && Number.isFinite(status.needsEmbedding)
+				? status.needsEmbedding
+				: 0,
+		stale: status.stale === true,
+		totalDocuments:
+			typeof status.totalDocuments === "number" && Number.isFinite(status.totalDocuments)
+				? status.totalDocuments
+				: 0,
+	};
+}
+
+function normalizeWikiSearchResult(rawResult: unknown): WikiSearchResult {
+	const result = rawResult && typeof rawResult === "object"
+		? rawResult as Record<string, unknown>
+		: {};
+
+	return {
+		backend: result.backend === "naive" ? "naive" : "qmd",
+		collection: getString(result.collection),
+		path: getString(result.path),
+		score:
+			typeof result.score === "number" && Number.isFinite(result.score)
+				? result.score
+				: 0,
+		snippet: getString(result.snippet) ?? "",
+		title: getString(result.title) ?? "Untitled",
 	};
 }
 
@@ -344,6 +418,53 @@ export async function fetchWikiStatus(): Promise<WikiStatus> {
 	return normalizeWikiStatus(payload.wiki);
 }
 
+export async function searchWiki(
+	query: string,
+	limit?: number,
+): Promise<WikiSearchResponse> {
+	const payload = await parseJsonResponse<{ backend?: unknown; results?: unknown[] }>(
+		await fetch(API_ENDPOINTS.wikiSearch(query, limit), {
+			method: "GET",
+		}),
+	);
+
+	return {
+		backend: payload.backend === "naive" ? "naive" : "qmd",
+		results: Array.isArray(payload.results) ? payload.results.map(normalizeWikiSearchResult) : [],
+	};
+}
+
+export async function syncWiki(force = true): Promise<WikiSyncResponse> {
+	const payload = await parseJsonResponse<{ qmd?: unknown; sync?: unknown }>(
+		await fetch(API_ENDPOINTS.WIKI_SYNC, {
+			body: JSON.stringify({ force }),
+			headers: {
+				"Content-Type": "application/json",
+			},
+			method: "POST",
+		}),
+	);
+
+	const sync = payload.sync && typeof payload.sync === "object"
+		? payload.sync as Record<string, unknown>
+		: {};
+
+	return {
+		qmd: normalizeWikiQmdStatus(payload.qmd),
+		sync: {
+			didSync: sync.didSync === true,
+			reason: getString(sync.reason) ?? "unknown",
+			summary: normalizeWikiQmdStatus(sync.summary),
+			syncResult: sync.syncResult && typeof sync.syncResult === "object"
+				? {
+					lastSyncedAt: getString((sync.syncResult as Record<string, unknown>).lastSyncedAt),
+					latestCanonicalUpdateAt: getString((sync.syncResult as Record<string, unknown>).latestCanonicalUpdateAt),
+				}
+				: null,
+		},
+	};
+}
+
 export async function fetchJobs(): Promise<HermesJob[]> {
 	const payload = await parseJsonResponse<{ jobs?: unknown[] }>(await fetch(API_ENDPOINTS.JOBS, {
 		method: "GET",
@@ -394,59 +515,6 @@ export async function runJobAction(
 		method: "POST",
 	}));
 	return normalizeHermesJob(payload.job);
-}
-
-export async function fetchMemoryDocument(target: HermesMemoryTarget): Promise<HermesMemoryDocument> {
-	const payload = await parseJsonResponse<{ memory?: unknown }>(await fetch(API_ENDPOINTS.memory(target), {
-		method: "GET",
-	}));
-	return normalizeHermesMemoryDocument(target, payload.memory);
-}
-
-export async function fetchMemoryDocuments(): Promise<Record<HermesMemoryTarget, HermesMemoryDocument>> {
-	const [memory, user] = await Promise.all([
-		fetchMemoryDocument("memory"),
-		fetchMemoryDocument("user"),
-	]);
-	return { memory, user };
-}
-
-export async function replaceMemoryDocument(
-	target: HermesMemoryTarget,
-	input: { content?: string; entries?: Array<{ content: string }> | string[] },
-): Promise<HermesMemoryDocument> {
-	const payload = await parseJsonResponse<{ memory?: unknown }>(await fetch(API_ENDPOINTS.memory(target), {
-		body: JSON.stringify(input),
-		headers: {
-			"Content-Type": "application/json",
-		},
-		method: "PUT",
-	}));
-	return normalizeHermesMemoryDocument(target, payload.memory);
-}
-
-export async function addMemoryEntry(
-	target: HermesMemoryTarget,
-	content: string,
-): Promise<HermesMemoryDocument> {
-	const payload = await parseJsonResponse<{ memory?: unknown }>(await fetch(API_ENDPOINTS.memoryEntry(target), {
-		body: JSON.stringify({ content }),
-		headers: {
-			"Content-Type": "application/json",
-		},
-		method: "POST",
-	}));
-	return normalizeHermesMemoryDocument(target, payload.memory);
-}
-
-export async function deleteMemoryEntry(
-	target: HermesMemoryTarget,
-	entryId: string,
-): Promise<HermesMemoryDocument> {
-	const payload = await parseJsonResponse<{ memory?: unknown }>(await fetch(`${API_ENDPOINTS.memoryEntry(target)}?entryId=${encodeURIComponent(entryId)}`, {
-		method: "DELETE",
-	}));
-	return normalizeHermesMemoryDocument(target, payload.memory);
 }
 
 export async function fetchSkills(query?: string): Promise<HermesSkillSummary[]> {

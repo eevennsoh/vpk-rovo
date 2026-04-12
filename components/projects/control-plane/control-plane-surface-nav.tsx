@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { Icon } from "@/components/ui/icon";
 import {
 	DatabaseIcon,
+	SearchIcon,
 	SettingsIcon,
 	TreePineIcon,
 } from "@/components/ui/vpk-icons";
@@ -22,6 +23,8 @@ function getSurfaceIcon(label: string) {
 			return <DatabaseIcon />;
 		case "Skills":
 			return <TreePineIcon />;
+		case "Wiki":
+			return <SearchIcon />;
 		case "Settings":
 			return <SettingsIcon />;
 		default:

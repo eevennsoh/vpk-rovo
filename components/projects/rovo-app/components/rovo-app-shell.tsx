@@ -83,18 +83,17 @@ import { getLatestPendingPlanWidget, type ParsedPlanWidgetPayload } from "@/comp
 import { useDismissibleCards } from "@/components/projects/shared/hooks/use-dismissible-cards";
 import {
 	approveSkillDraft,
-	fetchMemoryDocuments,
+	fetchWikiStatus,
 	fetchSkillDraftDetail,
 	fetchSkillDrafts,
 	fetchSkills,
 	rejectSkillDraft,
 } from "@/components/projects/control-plane/lib/control-plane-api";
 import type {
-	HermesMemoryDocument,
-	HermesMemoryTarget,
 	HermesSkillDraftDetail,
 	HermesSkillDraftSummary,
 	HermesSkillSummary,
+	WikiStatus,
 } from "@/lib/rovo-runtime-types";
 import type { RovoAppHermesContext } from "@/lib/rovo-app-types";
 
@@ -159,15 +158,19 @@ function mergeContextDescriptions(
 }
 
 function buildHermesMemoryLabel(
-	documents: Record<HermesMemoryTarget, HermesMemoryDocument> | null,
+	wikiStatus: WikiStatus | null,
 ): string | null {
-	if (!documents) {
+	if (!wikiStatus) {
 		return null;
 	}
 
-	const memoryCount = documents.memory.entries.length;
-	const userCount = documents.user.entries.length;
-	return `Hermes memory ${memoryCount + userCount} entries`;
+	const compiledCount = Object.values(wikiStatus.compiledContexts ?? {})
+		.filter((document) => document?.exists === true)
+		.length;
+	const queuedCount = wikiStatus.proposalCounts?.queued ?? 0;
+	return queuedCount > 0
+		? `Wiki memory ${queuedCount} queued`
+		: `Wiki memory ${compiledCount} compiled`;
 }
 
 type RealtimeInjectContextPayload = {
@@ -415,7 +418,7 @@ export function RovoAppShell({
 		useHmrReloadSuppression(chat.isStreaming);
 		const chatRef = useRef(chat);
 		chatRef.current = chat;
-		const [hermesMemoryDocuments, setHermesMemoryDocuments] = useState<Record<HermesMemoryTarget, HermesMemoryDocument> | null>(null);
+		const [wikiMemoryStatus, setWikiMemoryStatus] = useState<WikiStatus | null>(null);
 		const [availableHermesSkills, setAvailableHermesSkills] = useState<HermesSkillSummary[]>([]);
 		const [skillDrafts, setSkillDrafts] = useState<HermesSkillDraftSummary[]>([]);
 		const [activePendingSkillDraftIndex, setActivePendingSkillDraftIndex] = useState(0);
@@ -450,8 +453,8 @@ export function RovoAppShell({
 		const activePendingSkillDraft =
 			pendingThreadSkillDrafts[activePendingSkillDraftIndex] ?? pendingThreadSkillDrafts[0] ?? null;
 		const hermesMemoryLabel = useMemo(
-			() => buildHermesMemoryLabel(hermesMemoryDocuments),
-			[hermesMemoryDocuments],
+			() => buildHermesMemoryLabel(wikiMemoryStatus),
+			[wikiMemoryStatus],
 		);
 
 		useEffect(() => {
@@ -459,7 +462,7 @@ export function RovoAppShell({
 
 			async function loadHermesSurfaceData() {
 				const [memoryResult, skillsResult, draftsResult] = await Promise.allSettled([
-					fetchMemoryDocuments(),
+					fetchWikiStatus(),
 					fetchSkills(),
 					fetchSkillDrafts("pending"),
 				]);
@@ -467,7 +470,7 @@ export function RovoAppShell({
 					return;
 				}
 
-				setHermesMemoryDocuments(memoryResult.status === "fulfilled" ? memoryResult.value : null);
+				setWikiMemoryStatus(memoryResult.status === "fulfilled" ? memoryResult.value : null);
 				setAvailableHermesSkills(skillsResult.status === "fulfilled" ? skillsResult.value : []);
 				setSkillDrafts(draftsResult.status === "fulfilled" ? draftsResult.value : []);
 			}
@@ -2246,7 +2249,7 @@ export function RovoAppShell({
 			<div
 				ref={composerDockRef}
 				className={cn(
-					"z-10 mx-auto flex min-w-0 w-full flex-col gap-3",
+					"z-10 mx-auto flex min-w-0 w-full flex-col gap-3 overflow-visible",
 					!showHomeState && "sticky bottom-0 bg-background/90 backdrop-blur",
 					isArtifactOpen ? "max-w-none" : "max-w-[800px]",
 				)}
@@ -2256,7 +2259,7 @@ export function RovoAppShell({
 							{realtimeStatusMessage}
 					</div>
 				) : null}
-				<div className="px-6">
+				<div>
 					{shouldShowQuestionCard && activeQuestionCard ? (
 						<>
 							<ClarificationQuestionCard
@@ -2426,7 +2429,7 @@ export function RovoAppShell({
 	);
 
 	const chatPaneContainer = (
-		<div className="overscroll-behavior-contain relative z-10 flex h-full min-w-0 flex-1 flex-col overflow-x-hidden touch-pan-y bg-background">
+		<div className="overscroll-behavior-contain relative z-10 flex h-full min-w-0 flex-1 flex-col touch-pan-y bg-background">
 			{shouldShowTimelineNavigator ? (
 				<ChatTimelineNavigator
 					activeItemId={activeTimelineMessageId}
@@ -2549,7 +2552,7 @@ export function RovoAppShell({
 				</div>
 				) : null}
 
-				<div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+				<div className="flex min-h-0 min-w-0 flex-1 flex-col">
 					{!embedded ? (
 						<div
 							className={cn(
@@ -2630,7 +2633,7 @@ export function RovoAppShell({
 					/>
 					<main
 						ref={shellRef}
-						className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden bg-background text-foreground"
+						className="relative flex min-h-0 min-w-0 flex-1 bg-background px-3 text-foreground"
 					>
 						<RovoAppShellPaneLayout
 							artifactOrigin={artifactOrigin}

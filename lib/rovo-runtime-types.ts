@@ -46,6 +46,32 @@ export interface WikiStatusFileSummary {
 	updatedAt: string | null;
 }
 
+export interface WikiCompiledContextDocument {
+	charCount: number;
+	exists: boolean;
+	path: string;
+	preview: string;
+	updatedAt: string | null;
+}
+
+export interface WikiProposalCounts {
+	queued: number;
+	ingested: number;
+	total: number;
+}
+
+export interface WikiMemoryProposalSummary {
+	action: string;
+	createdAt: string | null;
+	id: string;
+	path: string;
+	scope: string;
+	sourceMessageId: string | null;
+	sourceThreadId: string | null;
+	status: string;
+	summary: string;
+}
+
 export interface WikiStatus {
 	wikiDir: string;
 	generatedAt: string;
@@ -54,10 +80,57 @@ export interface WikiStatus {
 	totalCanonicalPages: number;
 	totalRawCaptures: number;
 	hasWikiDigestEntry: boolean;
+	hasCompiledContextArtifacts?: boolean;
+	compiledContexts?: {
+		profile?: WikiCompiledContextDocument;
+		operations?: WikiCompiledContextDocument;
+	};
+	proposalCounts?: WikiProposalCounts;
+	recentProposals?: WikiMemoryProposalSummary[];
 	files: {
 		index: WikiStatusFileSummary;
 		log: WikiStatusFileSummary;
 		schema: WikiStatusFileSummary;
+	};
+	qmd?: WikiQmdStatus;
+}
+
+export interface WikiQmdStatus {
+	dbExists: boolean;
+	dbPath: string;
+	errorMessage: string | null;
+	lastSyncedAt: string | null;
+	latestCanonicalUpdateAt: string | null;
+	needsEmbedding: number;
+	stale: boolean;
+	totalDocuments: number;
+	collections: string[];
+}
+
+export interface WikiSearchResult {
+	backend: "qmd" | "naive";
+	collection: string | null;
+	path: string | null;
+	score: number;
+	snippet: string;
+	title: string;
+}
+
+export interface WikiSearchResponse {
+	backend: "qmd" | "naive";
+	results: WikiSearchResult[];
+}
+
+export interface WikiSyncResponse {
+	qmd: WikiQmdStatus;
+	sync: {
+		didSync: boolean;
+		reason: string;
+		summary: WikiQmdStatus;
+		syncResult?: {
+			lastSyncedAt?: string | null;
+			latestCanonicalUpdateAt?: string | null;
+		} | null;
 	};
 }
 

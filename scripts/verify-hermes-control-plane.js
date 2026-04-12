@@ -107,19 +107,32 @@ async function main() {
 		hermesRuntime?.jobsMode === "embedded",
 		"Expected Hermes jobs mode to be embedded.",
 	);
+	expect(
+		hermesFileStores?.vendoredSkillsAccessible === true,
+		[
+			"Expected the vendored Hermes upstream snapshot to be accessible.",
+			"Run `pnpm import:hermes:upstream` to refresh `.agents/vendor/hermes-agent` if it is missing.",
+		].join(" "),
+	);
 
-	printSection("Memories");
-	const memoriesPayload = await readJson(`${backendBaseUrl}/api/memories`);
-	expect(Array.isArray(memoriesPayload?.memories), "Memories payload was missing the memories array.");
+	printSection("Wiki Memory");
+	const wikiStatusPayload = await readJson(`${backendBaseUrl}/api/wiki/status`);
+	expect(wikiStatusPayload?.wiki && typeof wikiStatusPayload.wiki === "object", "Wiki status payload was missing the wiki object.");
 	expect(
-		memoriesPayload.memories.some((memory) => memory.target === "memory"),
-		"Expected a memory document for target=memory.",
+		wikiStatusPayload.wiki.compiledContexts && typeof wikiStatusPayload.wiki.compiledContexts === "object",
+		"Expected compiled wiki-backed memory context metadata.",
 	);
 	expect(
-		memoriesPayload.memories.some((memory) => memory.target === "user"),
-		"Expected a memory document for target=user.",
+		wikiStatusPayload.wiki.proposalCounts && typeof wikiStatusPayload.wiki.proposalCounts === "object",
+		"Expected wiki-backed memory proposal counts.",
 	);
-	console.log(`Verified ${memoriesPayload.memories.length} memory documents.`);
+	console.log(
+		[
+			`Verified compiled wiki-backed memory status.`,
+			`Queued proposals: ${wikiStatusPayload.wiki.proposalCounts.queued ?? 0}`,
+			`Compiled contexts present: ${Object.values(wikiStatusPayload.wiki.compiledContexts).filter((context) => context?.exists === true).length}`,
+		].join(" "),
+	);
 
 	printSection("Skills");
 	const skillsPayload = await readJson(`${backendBaseUrl}/api/skills`);

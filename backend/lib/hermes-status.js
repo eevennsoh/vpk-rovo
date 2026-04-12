@@ -1,6 +1,10 @@
 const fs = require("node:fs/promises");
 
-const { getHermesMemoriesDir, getHermesSkillsDir } = require("./hermes-config");
+const {
+	getHermesMemoriesDir,
+	getHermesSkillsDir,
+	getVendoredHermesSkillsDir,
+} = require("./hermes-config");
 
 async function canAccessPath(targetPath) {
 	try {
@@ -14,13 +18,15 @@ async function canAccessPath(targetPath) {
 async function getHermesRuntimeStatus(options = {}) {
 	const memoriesDir = getHermesMemoriesDir();
 	const skillsDir = getHermesSkillsDir();
+	const vendoredSkillsDir = getVendoredHermesSkillsDir();
 	const providerStatus =
 		typeof options.jobsProvider?.getProviderStatus === "function"
 			? options.jobsProvider.getProviderStatus()
 			: null;
-	const [memoriesAccessible, skillsAccessible] = await Promise.all([
+	const [memoriesAccessible, skillsAccessible, vendoredSkillsAccessible] = await Promise.all([
 		canAccessPath(memoriesDir),
 		canAccessPath(skillsDir),
+		canAccessPath(vendoredSkillsDir),
 	]);
 	const jobsMode = typeof providerStatus?.mode === "string" && providerStatus.mode.trim()
 		? providerStatus.mode.trim().toLowerCase()
@@ -30,7 +36,9 @@ async function getHermesRuntimeStatus(options = {}) {
 	const available = fileStoresHealthy && jobsHealthy;
 	const status = available ? "embedded" : "unavailable";
 	const message = available
-		? "Hermes embedded capabilities are ready."
+		? vendoredSkillsAccessible
+			? "Hermes embedded capabilities are ready."
+			: "Hermes embedded capabilities are ready, but the vendored upstream skills snapshot is unavailable."
 		: fileStoresHealthy
 			? "Hermes local files are accessible, but the embedded jobs runtime is unavailable."
 			: "Hermes local files are unavailable.";
@@ -42,8 +50,10 @@ async function getHermesRuntimeStatus(options = {}) {
 		fileStores: {
 			memoriesDir,
 			skillsDir,
+			vendoredSkillsDir,
 			memoriesAccessible,
 			skillsAccessible,
+			vendoredSkillsAccessible,
 			healthy: fileStoresHealthy,
 		},
 		runtime: {
@@ -60,6 +70,7 @@ async function getHermesRuntimeStatus(options = {}) {
 			jobs: jobsHealthy,
 			memories: memoriesAccessible,
 			skills: skillsAccessible,
+			vendoredSkills: vendoredSkillsAccessible,
 		},
 	};
 }

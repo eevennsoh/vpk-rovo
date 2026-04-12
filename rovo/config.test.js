@@ -39,8 +39,8 @@ test("buildUserMessage includes durable memory protocol in default profile", () 
 	const message = buildUserMessage("Save this to durable memory.", [], undefined);
 
 	assert.match(message, /\[Durable Memory Protocol\]/);
-	assert.match(message, /durable memory means Hermes persistent memory/i);
-	assert.match(message, /backend reviews completed turns and persists durable memories after the turn/i);
+	assert.match(message, /durable memory means wiki-backed Hermes persistent memory/i);
+	assert.match(message, /persists durable memories through the llm-wiki flow after the turn/i);
 	assert.match(message, /do not say that you lack a memory write tool/i);
 	assert.match(message, /repo lesson logging only for repo\/operator corrections/i);
 });
@@ -51,7 +51,9 @@ test("buildUserMessage includes Hermes skill discoverability protocol in default
 	assert.match(message, /\[Hermes Skill Discoverability Protocol\]/);
 	assert.match(message, /source of truth for which Hermes skills are installed/i);
 	assert.match(message, /installed but not currently selected for this thread/i);
+	assert.match(message, /proactively load that skill/i);
 	assert.match(message, /prefer loading it directly with the `get_skill` tool/i);
+	assert.match(message, /Treat skill loading as the default response/i);
 });
 
 test("buildUserMessage no longer injects standup-specific instructions from prompt text", () => {

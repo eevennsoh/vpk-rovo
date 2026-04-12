@@ -1,6 +1,5 @@
 import {
 	INITIAL_CONTROL_PLANE_JOBS,
-	INITIAL_CONTROL_PLANE_MEMORIES,
 	INITIAL_CONTROL_PLANE_SETTINGS,
 	INITIAL_CONTROL_PLANE_SKILLS,
 } from "@/components/projects/control-plane/lib/control-plane-data";
@@ -24,7 +23,7 @@ interface RovoAppSidebarSurfacePreviewInput {
 	selected: boolean;
 }
 
-type ControlPlaneSurfaceLabel = "Jobs" | "Memories" | "Skills" | "Settings";
+type ControlPlaneSurfaceLabel = "Jobs" | "Memories" | "Skills" | "Wiki" | "Settings";
 
 function getJobsPreview(): Pick<RovoAppSidebarSurfacePreview, "rows" | "footerLabel" | "footerValue"> {
 	const rows = INITIAL_CONTROL_PLANE_JOBS.map((job) => ({
@@ -44,15 +43,15 @@ function getJobsPreview(): Pick<RovoAppSidebarSurfacePreview, "rows" | "footerLa
 }
 
 function getMemoriesPreview(): Pick<RovoAppSidebarSurfacePreview, "rows" | "footerLabel" | "footerValue"> {
-	const memoryCount = INITIAL_CONTROL_PLANE_MEMORIES.memory.length;
-	const userCount = INITIAL_CONTROL_PLANE_MEMORIES.user.length;
+	const queuedCount = 2;
 	return {
 		rows: [
-			{ label: "MEMORY.md", value: `${memoryCount} ${memoryCount === 1 ? "entry" : "entries"}` },
-			{ label: "USER.md", value: `${userCount} ${userCount === 1 ? "entry" : "entries"}` },
+			{ label: "Profile context", value: "Compiled" },
+			{ label: "Runtime context", value: "Compiled" },
+			{ label: "Proposal queue", value: `${queuedCount} queued` },
 		],
-		footerLabel: "Total",
-		footerValue: `${memoryCount + userCount} entries`,
+		footerLabel: "Mode",
+		footerValue: "Wiki-backed",
 	};
 }
 
@@ -82,6 +81,18 @@ function getSettingsPreview(): Pick<RovoAppSidebarSurfacePreview, "rows" | "foot
 	};
 }
 
+function getWikiPreview(): Pick<RovoAppSidebarSurfacePreview, "rows" | "footerLabel" | "footerValue"> {
+	return {
+		rows: [
+			{ label: "Search", value: "Hybrid qmd" },
+			{ label: "Corpus", value: "Canonical pages" },
+			{ label: "Sync", value: "Auto + manual" },
+		],
+		footerLabel: "Focus",
+		footerValue: "Wiki knowledge",
+	};
+}
+
 const SURFACE_PREVIEW_BUILDERS: Record<
 	ControlPlaneSurfaceLabel,
 	() => Pick<RovoAppSidebarSurfacePreview, "rows" | "footerLabel" | "footerValue">
@@ -89,6 +100,7 @@ const SURFACE_PREVIEW_BUILDERS: Record<
 	Jobs: getJobsPreview,
 	Memories: getMemoriesPreview,
 	Skills: getSkillsPreview,
+	Wiki: getWikiPreview,
 	Settings: getSettingsPreview,
 };
 
@@ -105,7 +117,7 @@ export function getRovoAppSidebarSurfacePreview({
 			footerValue: selected ? "Current view" : "⌘⇧O",
 			rows: [
 				{ label: "Thread", value: "Blank conversation" },
-				{ label: "Context", value: "Hermes memory loaded" },
+				{ label: "Context", value: "Wiki memory loaded" },
 			],
 			title: "New chat",
 		};

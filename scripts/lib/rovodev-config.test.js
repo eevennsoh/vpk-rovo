@@ -99,12 +99,21 @@ test("syncWorkspaceRovodevConfig creates a workspace-scoped config and MCP file"
 		assert.deepEqual(extractYamlListEntries(workspaceConfig, "allowedMcpServers"), [
 			"url:https://example.com/one",
 			"stdio:npx:base-mcp",
+			"stdio:pnpm:exec qmd mcp",
 		]);
 
 		const workspaceMcp = JSON.parse(fs.readFileSync(workspaceMcpPath, "utf8"));
 		assert.ok(workspaceMcp.mcpServers["base-server"]);
 		assert.ok(workspaceMcp.mcpServers["local-only"]);
-		assert.equal(Object.keys(workspaceMcp.mcpServers).length, 2);
+		assert.deepEqual(workspaceMcp.mcpServers.qmd, {
+			args: ["exec", "qmd", "mcp"],
+			command: "pnpm",
+			env: {
+				INDEX_PATH: path.join(workspaceDir, ".cache", "qmd", "wiki.sqlite"),
+			},
+			type: "stdio",
+		});
+		assert.equal(Object.keys(workspaceMcp.mcpServers).length, 3);
 	} finally {
 		osModule.homedir = originalHomeDir;
 	}

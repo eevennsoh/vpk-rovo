@@ -34,11 +34,13 @@ test("buildHermesSkillsCatalogDescription summarizes installed Hermes skills for
 
 test("buildRovoAppHermesContextDescription includes installed skill catalog and selected skill content", async () => {
 	const description = await buildRovoAppHermesContextDescription({
-		getMemoryImpl: async (target) => ({
-			target,
-			entries: target === "user"
-				? [{ content: "Prefers concise answers." }]
-				: [],
+		getCompiledContextImpl: async () => ({
+			profile: {
+				content: "- Prefers concise answers.",
+			},
+			operations: {
+				content: "- Keep the runtime loop on RovoDev.",
+			},
 		}),
 		getSkillImpl: async () => ({
 			content: "# LLM Wiki\n\nUse the wiki for linked knowledge capture.",
@@ -79,9 +81,7 @@ test("buildRovoAppHermesContextDescription includes installed skill catalog and 
 
 test("buildRovoAppHermesContextDescription merges pinned and auto-selected skill ids", async () => {
 	const description = await buildRovoAppHermesContextDescription({
-		getMemoryImpl: async () => ({
-			entries: [],
-		}),
+		getCompiledContextImpl: async () => ({}),
 		getSkillImpl: async (category, name) => ({
 			content: `# ${name}\n\n${category} skill content.`,
 			description: `${name} description`,

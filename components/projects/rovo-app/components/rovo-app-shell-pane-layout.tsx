@@ -50,7 +50,7 @@ export function RovoAppShellPaneLayout({
 	return (
 		<>
 			<ResizablePanelGroup
-				className="h-full w-full"
+				className="h-full min-h-0 min-w-0 w-full overflow-visible"
 				orientation="horizontal"
 				onLayoutChanged={onArtifactSplitLayoutChanged}
 				resizeTargetMinimumSize={{ coarse: 36, fine: 16 }}
@@ -63,6 +63,7 @@ export function RovoAppShellPaneLayout({
 					id={chatPanelId}
 					maxSize={shouldSplitArtifactPane ? splitChatPaneMaxSize : undefined}
 					minSize={shouldSplitArtifactPane ? minChatPaneWidth : undefined}
+					style={{ overflow: "visible" }}
 				>
 					{chatPane}
 				</ResizablePanel>

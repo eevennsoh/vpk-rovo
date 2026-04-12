@@ -23,7 +23,7 @@ test("buildHermesMemoryCompanionMessages asks the reviewer to decide from full-t
 	});
 
 	assert.equal(messages.length, 2);
-	assert.match(messages[0].content, /Durable memory here means Hermes memory/i);
+	assert.match(messages[0].content, /Durable memory here means wiki-backed Hermes memory/i);
 	assert.match(messages[0].content, /Decide from the meaning of the full turn/i);
 	assert.match(messages[0].content, /Ignore mistaken assistant claims about lacking a memory tool/i);
 	assert.match(messages[1].content, /Latest user message:/);

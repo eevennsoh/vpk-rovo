@@ -87,6 +87,9 @@ Only after orientation should you ingest, query, or lint. This prevents:
 - Contradicting the schema's conventions
 - Repeating work already logged
 
+If qmd tools are available in the current toolset, use them as the primary
+search layer over the canonical wiki before falling back to raw file search.
+
 For large wikis (100+ pages), also run a quick `search_files` for the topic
 at hand before creating anything new.
 
@@ -235,9 +238,10 @@ When the user provides a source (URL, file, paste), integrate it into the wiki:
 ② **Discuss takeaways** with the user — what's interesting, what matters for
    the domain. (Skip this in automated/cron contexts — proceed directly.)
 
-③ **Check what already exists** — search index.md and use `search_files` to find
-   existing pages for mentioned entities/concepts. This is the difference between
-   a growing wiki and a pile of duplicates.
+③ **Check what already exists** — search index.md and use qmd search when
+   available to find existing entities/concepts. Fall back to `search_files`
+   when qmd is unavailable. This is the difference between a growing wiki and
+   a pile of duplicates.
 
 ④ **Write or update wiki pages:**
    - **New entities/concepts:** Create pages only if they meet the Page Thresholds
@@ -264,15 +268,19 @@ and desired — it's the compounding effect.
 When the user asks a question about the wiki's domain:
 
 ① **Read `index.md`** to identify relevant pages.
-② **For wikis with 100+ pages**, also `search_files` across all `.md` files
-   for key terms — the index alone may miss relevant content.
-③ **Read the relevant pages** using `read_file`.
-④ **Synthesize an answer** from the compiled knowledge. Cite the wiki pages
+② **Use qmd search first** when qmd tools are available:
+   - Use qmd hybrid query for discovery.
+   - Use qmd `get` or `multi-get` to open the highest-signal pages.
+   - Restrict retrieval to canonical wiki collections when possible.
+③ **For wikis with 100+ pages**, or when qmd is unavailable, run `search_files`
+   across all `.md` files for key terms — the index alone may miss relevant content.
+④ **Read the relevant pages** using `read_file`.
+⑤ **Synthesize an answer** from the compiled knowledge. Cite the wiki pages
    you drew from: "Based on [[page-a]] and [[page-b]]..."
-⑤ **File valuable answers back** — if the answer is a substantial comparison,
+⑥ **File valuable answers back** — if the answer is a substantial comparison,
    deep dive, or novel synthesis, create a page in `queries/` or `comparisons/`.
    Don't file trivial lookups — only answers that would be painful to re-derive.
-⑥ **Update log.md** with the query and whether it was filed.
+⑦ **Update log.md** with the query and whether it was filed.
 
 ### 3. Lint
 
@@ -319,7 +327,12 @@ wiki = "<WIKI_PATH>"
 ### Searching
 
 ```bash
-# Find pages by content
+# Preferred: qmd hybrid search over canonical wiki pages
+qmd query "rovo pricing strategy" -c wiki-entities -c wiki-concepts --json
+qmd get qmd://wiki-entities/atlassian.md
+qmd multi-get "qmd://wiki-concepts/*.md"
+
+# Fallback: find pages by content
 search_files "transformer" path="$WIKI" file_glob="*.md"
 
 # Find pages by filename
@@ -445,4 +458,3 @@ vault in Obsidian on your laptop/phone — changes appear within seconds.
   The agent should check log size during lint.
 - **Handle contradictions explicitly** — don't silently overwrite. Note both claims with dates,
   mark in frontmatter, flag for user review.
-

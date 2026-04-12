@@ -37,9 +37,10 @@ import {
 } from "@/components/ui/sidebar";
 import ScorecardIcon from "@atlaskit/icon/core/scorecard";
 import { shouldShowRovoAppSidebarRunIndicator } from "@/components/projects/rovo-app/lib/rovo-app-sidebar-run-indicator";
-import { getRovoAppSidebarThreadContentPaddingClass } from "@/components/projects/rovo-app/lib/rovo-app-sidebar-thread-layout";
+import { getRovoAppSidebarThreadSidebarNavItemClassName } from "@/components/projects/rovo-app/lib/rovo-app-sidebar-thread-layout";
 import type { RovoAppRunStatus, RovoAppThread } from "@/lib/rovo-app-types";
 import { cn } from "@/lib/utils";
+import { ChevronDownIcon } from "@/components/ui/vpk-icons";
 import DeleteIcon from "@atlaskit/icon/core/delete";
 import ShowMoreHorizontalIcon from "@atlaskit/icon/core/show-more-horizontal";
 import {
@@ -245,10 +246,7 @@ function RovoAppSidebarThreadItem({
 	return (
 		<SidebarMenuItem>
 			<SidebarNavItem
-				className={cn(
-					"rounded-lg p-1.5",
-					getRovoAppSidebarThreadContentPaddingClass({ showRunIndicator }),
-				)}
+				className={getRovoAppSidebarThreadSidebarNavItemClassName({ showRunIndicator })}
 				isSelected={isActive}
 				onClick={() => {
 					setOpenMobile(false);
@@ -333,7 +331,45 @@ function RovoAppSidebarThreadItem({
 	);
 }
 
-function RovoAppSidebarThreadSection({
+function RovoAppSidebarChatsHeader({
+	chatsOpen,
+	label,
+	onToggle,
+}: Readonly<{
+	chatsOpen: boolean;
+	label: string;
+	onToggle: () => void;
+}>) {
+	return (
+		<div className="overflow-visible px-0 py-px">
+			<button
+				type="button"
+				className="group flex h-8 w-full items-center justify-start rounded-md px-1.5 text-left text-xs font-bold leading-4 text-text-subtlest outline-hidden hover:bg-sidebar-accent/60 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sidebar-ring"
+				aria-expanded={chatsOpen}
+				aria-controls="rovo-app-chats-list"
+				onClick={onToggle}
+			>
+				<span className="inline-flex min-w-0 max-w-full items-center gap-1">
+					<span className="truncate">{label}</span>
+					<span
+						aria-hidden
+						className="inline-flex shrink-0 items-center self-center opacity-0 transition-opacity duration-200 ease-out group-hover:opacity-100 group-focus-visible:opacity-100"
+					>
+						<ChevronDownIcon
+							className={cn(
+								"size-3 text-icon-subtlest transition-transform duration-200 ease-out",
+								chatsOpen ? "rotate-0" : "-rotate-90",
+							)}
+							size={12}
+						/>
+					</span>
+				</span>
+			</button>
+		</div>
+	);
+}
+
+function RovoAppSidebarChatsThreadList({
 	activeThreadId,
 	isGeneratingTitle,
 	label,
@@ -355,15 +391,17 @@ function RovoAppSidebarThreadSection({
 	threads: ReadonlyArray<RovoAppThread>;
 }>) {
 	return (
-		<section aria-label={label}>
-			<div className="flex h-8 items-center px-1.5 text-xs font-bold leading-4 text-text-subtlest">
-				{label}
-			</div>
+		<div
+			role="region"
+			aria-label={label}
+			className="min-h-0"
+			id="rovo-app-chats-list"
+		>
 			{showGeneratingPlaceholder ? (
 				<SidebarMenu>
 					<SidebarMenuItem>
 						<SidebarMenuButton
-							className="h-auto min-h-9 rounded-lg p-1.5"
+							className="h-auto min-h-9 w-full rounded-md p-1"
 							size="lg"
 							type="button"
 							aria-label="Generating chat title"
@@ -400,7 +438,85 @@ function RovoAppSidebarThreadSection({
 					))}
 				</SidebarMenu>
 			) : null}
-		</section>
+		</div>
+	);
+}
+
+function RovoAppSidebarNavMenu({
+	controlPlaneNavItems,
+	isNewChatSelected,
+	onNewChat,
+	onSidebarMouseEnter,
+	onSidebarMouseLeave,
+	pathname,
+	router,
+}: Readonly<{
+	controlPlaneNavItems: ReadonlyArray<{
+		description: string;
+		href: string;
+		icon: React.ReactNode;
+		label: string;
+	}>;
+	isNewChatSelected: boolean;
+	onNewChat: () => void;
+	onSidebarMouseEnter?: () => void;
+	onSidebarMouseLeave?: () => void;
+	pathname: string;
+	router: ReturnType<typeof useRouter>;
+}>) {
+	return (
+		<SidebarGroup className="p-0">
+			<SidebarGroupContent>
+				<SidebarMenu>
+					<RovoAppSidebarNavItem
+						icon={
+							<span
+								className={cn(
+									"flex size-5 items-center justify-center rounded-full text-text-inverse",
+									isNewChatSelected ? "bg-bg-selected-bold" : "bg-text",
+								)}
+							>
+								<AddIcon color="currentColor" label="" size="small" />
+							</span>
+						}
+						label="New chat"
+						onClick={onNewChat}
+						onSidebarMouseEnter={onSidebarMouseEnter}
+						onSidebarMouseLeave={onSidebarMouseLeave}
+						preview={getRovoAppSidebarSurfacePreview({
+							label: "New chat",
+							selected: isNewChatSelected,
+						})}
+						selected={isNewChatSelected}
+						trailing={
+							<SidebarNavItemCount className="pointer-events-auto min-w-0 rounded-xs px-1 font-normal text-text hover:bg-bg-neutral active:bg-bg-neutral group-data-[selected=true]/sidebar-nav-item:bg-transparent">
+								⌘⇧O
+							</SidebarNavItemCount>
+						}
+					/>
+					{controlPlaneNavItems.map((item) => {
+						const isSelected = pathname === item.href || pathname.startsWith(`${item.href}/`);
+						return (
+							<RovoAppSidebarNavItem
+								key={item.href}
+								icon={item.icon}
+								label={item.label}
+								onClick={() => router.push(item.href)}
+								onSidebarMouseEnter={onSidebarMouseEnter}
+								onSidebarMouseLeave={onSidebarMouseLeave}
+								preview={getRovoAppSidebarSurfacePreview({
+									description: item.description,
+									label: item.label,
+									selected: isSelected,
+								})}
+								selected={isSelected}
+								showChevron
+							/>
+						);
+					})}
+				</SidebarMenu>
+			</SidebarGroupContent>
+		</SidebarGroup>
 	);
 }
 
@@ -444,11 +560,16 @@ export function RovoAppSidebar({
 		[],
 	);
 
+	const [chatsOpen, setChatsOpen] = React.useState(true);
+	const showStickyChatsLayout =
+		threads.length > 0 || (isGeneratingTitle && threads.length === 0);
+
 	return (
 		<Sidebar
 			aria-label="Rovo App navigation"
 			className={cn(
-				"bg-sidebar !px-3 !pb-0",
+				// Horizontal padding lives on section wrappers (nav, thread list), not here — avoids doubling with inner `px-3`.
+				"bg-sidebar !px-0 !pb-0",
 				// Resize handle paints the divider; container border-r would stack to a 2px edge.
 				!resizeHandle &&
 					"group-data-[state=expanded]:group-data-[side=left]:border-r group-data-[state=expanded]:group-data-[side=left]:border-border",
@@ -462,103 +583,113 @@ export function RovoAppSidebar({
 			style={hoverOpen ? { left: 0, zIndex: 50, boxShadow: token("elevation.shadow.overlay") } : { zIndex: 50 }}
 			variant="inset"
 		>
-			<SidebarContent className="bg-sidebar gap-3">
-				{/* Top navigation items */}
-			<SidebarGroup className="p-0">
-				<SidebarGroupContent>
-					<SidebarMenu>
-						<RovoAppSidebarNavItem
-								icon={
-									<span
-										className={cn(
-											"flex size-5 items-center justify-center rounded-full text-text-inverse",
-											isNewChatSelected ? "bg-bg-selected-bold" : "bg-text",
-										)}
-									>
-										<AddIcon color="currentColor" label="" size="small" />
-									</span>
-							}
-							label="New chat"
-							onClick={onNewChat}
-							onSidebarMouseEnter={onSidebarMouseEnter}
-							onSidebarMouseLeave={onSidebarMouseLeave}
-							preview={getRovoAppSidebarSurfacePreview({
-								label: "New chat",
-								selected: isNewChatSelected,
-							})}
-							selected={isNewChatSelected}
-							trailing={
-								<SidebarNavItemCount className="pointer-events-auto min-w-0 rounded-xs px-1 font-normal text-text hover:bg-bg-neutral active:bg-bg-neutral group-data-[selected=true]/sidebar-nav-item:bg-transparent">
-										⌘⇧O
-									</SidebarNavItemCount>
-								}
+			<SidebarContent
+				className={cn(
+					"bg-sidebar",
+					showStickyChatsLayout
+						? "flex min-h-0 flex-1 flex-col gap-0 overflow-hidden"
+						: "gap-3 px-3",
+				)}
+			>
+				{showStickyChatsLayout ? (
+					<>
+						<div className="shrink-0 space-y-3 overflow-visible bg-sidebar px-3">
+							<RovoAppSidebarNavMenu
+								controlPlaneNavItems={controlPlaneNavItems}
+								isNewChatSelected={isNewChatSelected}
+								onNewChat={onNewChat}
+								onSidebarMouseEnter={onSidebarMouseEnter}
+								onSidebarMouseLeave={onSidebarMouseLeave}
+								pathname={pathname}
+								router={router}
 							/>
-							{controlPlaneNavItems.map((item) => {
-								const isSelected = pathname === item.href || pathname.startsWith(`${item.href}/`);
-								return (
-									<RovoAppSidebarNavItem
-										key={item.href}
-										icon={item.icon}
-										label={item.label}
-										onClick={() => router.push(item.href)}
-										onSidebarMouseEnter={onSidebarMouseEnter}
-										onSidebarMouseLeave={onSidebarMouseLeave}
-										preview={getRovoAppSidebarSurfacePreview({
-											description: item.description,
-											label: item.label,
-											selected: isSelected,
-										})}
-										selected={isSelected}
-										showChevron
-									/>
-								);
-							})}
-						</SidebarMenu>
-					</SidebarGroupContent>
-				</SidebarGroup>
-
-				{/* Chat threads list */}
-				{threadsLoaded && threads.length === 0 && !isGeneratingTitle ? (
-					<SidebarGroup className="flex flex-1 items-center justify-center p-0">
-						<SidebarGroupContent>
-							<div className="flex w-full flex-col items-center gap-4 px-6 text-center">
-								<div className="stagger-fade-in flex w-full flex-col items-center gap-1">
-									<Heading as="h3" size="xsmall">
-										Get started
-									</Heading>
-									<p className="text-sm text-text-subtle">
-										Start a conversation to get going.
-									</p>
-								</div>
-								<div className="stagger-fade-in" style={{ animationDelay: "0.06s" }}>
-									<Button
-										onClick={onNewChat}
-										variant="outline"
-									>
-										Chat
-									</Button>
+							<RovoAppSidebarChatsHeader
+								chatsOpen={chatsOpen}
+								label="Chats"
+								onToggle={() => setChatsOpen((open) => !open)}
+							/>
+						</div>
+						<div
+							className={cn(
+								"flex min-h-0 min-w-0 flex-1 flex-col pb-3",
+								!chatsOpen && "hidden",
+							)}
+						>
+							<div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain">
+								<div className="min-w-0 px-3">
+									<SidebarGroup className="min-h-0 min-w-0 overflow-x-hidden p-0">
+										<SidebarGroupContent>
+											{threads.length > 0 || (isGeneratingTitle && threads.length === 0) ? (
+												<RovoAppSidebarChatsThreadList
+													activeThreadId={activeThreadId}
+													isGeneratingTitle={isGeneratingTitle}
+													label="Chats"
+													onCancelThreadRun={onCancelThreadRun}
+													onDeleteThread={onDeleteThread}
+													onSelectThread={onSelectThread}
+													pendingTitleThreadId={pendingTitleThreadId}
+													showGeneratingPlaceholder={isGeneratingTitle && threads.length === 0}
+													threads={threads}
+												/>
+											) : null}
+										</SidebarGroupContent>
+									</SidebarGroup>
 								</div>
 							</div>
-						</SidebarGroupContent>
-					</SidebarGroup>
+						</div>
+					</>
 				) : (
-					<SidebarGroup className="p-0">
-						<SidebarGroupContent className="flex flex-col gap-2">
-							{threads.length > 0 || (isGeneratingTitle && threads.length === 0) ? (
-								<RovoAppSidebarThreadSection
-									activeThreadId={activeThreadId}
-									isGeneratingTitle={isGeneratingTitle}
-									label="Chats"
-									onCancelThreadRun={onCancelThreadRun}
-									onDeleteThread={onDeleteThread}
-									onSelectThread={onSelectThread}
-									pendingTitleThreadId={pendingTitleThreadId}
-									showGeneratingPlaceholder={isGeneratingTitle && threads.length === 0}
-									threads={threads}
-								/>
-							) : null}
-						</SidebarGroupContent>
-					</SidebarGroup>
+					<>
+						<RovoAppSidebarNavMenu
+							controlPlaneNavItems={controlPlaneNavItems}
+							isNewChatSelected={isNewChatSelected}
+							onNewChat={onNewChat}
+							onSidebarMouseEnter={onSidebarMouseEnter}
+							onSidebarMouseLeave={onSidebarMouseLeave}
+							pathname={pathname}
+							router={router}
+						/>
+
+						{threadsLoaded && threads.length === 0 && !isGeneratingTitle ? (
+							<SidebarGroup className="flex flex-1 items-center justify-center p-0">
+								<SidebarGroupContent>
+									<div className="flex w-full flex-col items-center gap-4 px-6 text-center">
+										<div className="stagger-fade-in flex w-full flex-col items-center gap-1">
+											<Heading as="h3" size="xsmall">
+												Get started
+											</Heading>
+											<p className="text-sm text-text-subtle">
+												Start a conversation to get going.
+											</p>
+										</div>
+										<div className="stagger-fade-in" style={{ animationDelay: "0.06s" }}>
+											<Button onClick={onNewChat} variant="outline">
+												Chat
+											</Button>
+										</div>
+									</div>
+								</SidebarGroupContent>
+							</SidebarGroup>
+						) : (
+							<SidebarGroup className="p-0">
+								<SidebarGroupContent className="flex flex-col gap-2">
+									{threads.length > 0 || (isGeneratingTitle && threads.length === 0) ? (
+										<RovoAppSidebarChatsThreadList
+											activeThreadId={activeThreadId}
+											isGeneratingTitle={isGeneratingTitle}
+											label="Chats"
+											onCancelThreadRun={onCancelThreadRun}
+											onDeleteThread={onDeleteThread}
+											onSelectThread={onSelectThread}
+											pendingTitleThreadId={pendingTitleThreadId}
+											showGeneratingPlaceholder={isGeneratingTitle && threads.length === 0}
+											threads={threads}
+										/>
+									) : null}
+								</SidebarGroupContent>
+							</SidebarGroup>
+						)}
+					</>
 				)}
 			</SidebarContent>
 		</Sidebar>

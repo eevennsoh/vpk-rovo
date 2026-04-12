@@ -130,7 +130,7 @@ function SidebarNavItem({
 					/>
 				) : null}
 
-				<span className="min-w-0 flex-1 pl-0.5">
+				<span className="min-w-0 flex-1 pl-1">
 					<span
 						data-slot="sidebar-nav-item-label"
 						className={cn(

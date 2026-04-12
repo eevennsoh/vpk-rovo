@@ -38,6 +38,8 @@ export const API_ENDPOINTS = {
 	STATUS_ROVODEV: `${API_BASE_URL}/api/status/rovodev`,
 	STATUS_HERMES: `${API_BASE_URL}/api/status/hermes`,
 	WIKI_STATUS: `${API_BASE_URL}/api/wiki/status`,
+	WIKI_SEARCH: `${API_BASE_URL}/api/wiki/search`,
+	WIKI_SYNC: `${API_BASE_URL}/api/wiki/sync`,
 	CHAT_THREADS: `${API_BASE_URL}/api/chat/threads`,
 	ROVO_APP_CHAT: `${API_BASE_URL}/api/rovo-app/chat`,
 	ROVO_APP_SUGGESTIONS: `${API_BASE_URL}/api/rovo-app/suggestions`,
@@ -51,7 +53,6 @@ export const API_ENDPOINTS = {
 	ROVO_APP_FILE_UPLOAD: `${API_BASE_URL}/api/rovo-app/files/upload`,
 	AGENT_MODE: `${API_BASE_URL}/api/agent-mode`,
 	JOBS: `${API_BASE_URL}/api/jobs`,
-	MEMORIES: `${API_BASE_URL}/api/memories`,
 	SKILLS: `${API_BASE_URL}/api/skills`,
 	SKILL_DRAFTS: `${API_BASE_URL}/api/skills/drafts`,
 	SESSION_SEARCH: `${API_BASE_URL}/api/sessions/search`,
@@ -81,6 +82,14 @@ export const API_ENDPOINTS = {
 	},
 	skillsHubInspect: (identifier: string) =>
 		`${API_BASE_URL}/api/skills/hub/inspect/${identifier}`,
+	wikiSearch: (query: string, limit?: number) => {
+		const params = new URLSearchParams({ q: query });
+		if (typeof limit === "number") {
+			params.set("limit", String(limit));
+		}
+		return `${API_BASE_URL}/api/wiki/search?${params.toString()}`;
+	},
+	wikiSync: `${API_BASE_URL}/api/wiki/sync`,
 	sessionSearch: (query: string, limit?: number) => {
 		const params = new URLSearchParams({ q: query });
 		if (typeof limit === "number") {
@@ -119,10 +128,6 @@ export const API_ENDPOINTS = {
 		action: "run" | "pause" | "resume",
 	) =>
 		`${API_BASE_URL}/api/jobs/${encodeURIComponent(jobId)}/${action}`,
-	memory: (target: "memory" | "user") =>
-		`${API_BASE_URL}/api/memories/${encodeURIComponent(target)}`,
-	memoryEntry: (target: "memory" | "user") =>
-		`${API_BASE_URL}/api/memories/${encodeURIComponent(target)}/entry`,
 	skill: (category: string, name: string) =>
 		`${API_BASE_URL}/api/skills/${encodeURIComponent(category)}/${encodeURIComponent(name)}`,
 	skillBundle: (category: string, name: string) =>

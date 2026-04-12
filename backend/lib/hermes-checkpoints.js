@@ -70,6 +70,44 @@ function createCheckpointManager({ baseDir, maxCheckpoints }) {
 		return CHECKPOINTS_DIR_NAME;
 	}
 
+	async function getWorkspaceGitMetadata() {
+		try {
+			const { stdout: insideGitWorkTree } = await execFileAsync("git", [
+				"rev-parse",
+				"--is-inside-work-tree",
+			], {
+				cwd: baseDir,
+			});
+			if (insideGitWorkTree.trim() !== "true") {
+				return {
+					dirty: null,
+					headSha: null,
+					isGitRepo: false,
+				};
+			}
+
+			const [{ stdout: headSha }, { stdout: statusOutput }] = await Promise.all([
+				execFileAsync("git", ["rev-parse", "HEAD"], {
+					cwd: baseDir,
+				}),
+				execFileAsync("git", ["status", "--porcelain"], {
+					cwd: baseDir,
+				}),
+			]);
+			return {
+				dirty: statusOutput.trim().length > 0,
+				headSha: headSha.trim() || null,
+				isGitRepo: true,
+			};
+		} catch {
+			return {
+				dirty: null,
+				headSha: null,
+				isGitRepo: false,
+			};
+		}
+	}
+
 	/**
 	 * Create a new checkpoint snapshot.
 	 *
@@ -81,6 +119,7 @@ function createCheckpointManager({ baseDir, maxCheckpoints }) {
 		const id = createId();
 		const archiveName = `${id}.tar.gz`;
 		const archivePath = path.join(checkpointsDir, archiveName);
+		const git = await getWorkspaceGitMetadata();
 
 		await execFileAsync("tar", [
 			"czf",
@@ -99,6 +138,8 @@ function createCheckpointManager({ baseDir, maxCheckpoints }) {
 				: null,
 			createdAt: new Date().toISOString(),
 			archivePath: archiveName,
+			git,
+			kind: "tar-gzip",
 		};
 
 		const index = await readIndex();
@@ -146,13 +187,40 @@ function createCheckpointManager({ baseDir, maxCheckpoints }) {
 			throw new Error(`Checkpoint archive not found: ${record.archivePath}`);
 		}
 
-		// Extract archive over current workspace (excluding checkpoints dir)
-		await execFileAsync("tar", [
-			"xzf",
-			archivePath,
-			"-C",
-			baseDir,
-		]);
+		const restoreDir = await fs.mkdtemp(path.join(checkpointsDir, ".restore-"));
+		try {
+			await execFileAsync("tar", [
+				"xzf",
+				archivePath,
+				"-C",
+				restoreDir,
+			]);
+
+			const currentEntries = await fs.readdir(baseDir, { withFileTypes: true });
+			for (const entry of currentEntries) {
+				if (entry.name === CHECKPOINTS_DIR_NAME) {
+					continue;
+				}
+				await fs.rm(path.join(baseDir, entry.name), {
+					force: true,
+					recursive: true,
+				});
+			}
+
+			const snapshotEntries = await fs.readdir(restoreDir, { withFileTypes: true });
+			for (const entry of snapshotEntries) {
+				await fs.cp(
+					path.join(restoreDir, entry.name),
+					path.join(baseDir, entry.name),
+					{
+						force: true,
+						recursive: true,
+					},
+				);
+			}
+		} finally {
+			await fs.rm(restoreDir, { force: true, recursive: true }).catch(() => {});
+		}
 
 		return record;
 	}

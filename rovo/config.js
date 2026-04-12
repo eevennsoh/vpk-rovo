@@ -98,9 +98,9 @@ const WEB_SEARCH_INSTRUCTION = [
 
 const DURABLE_MEMORY_INSTRUCTION = [
 	"[Durable Memory Protocol]",
-	"In Rovo App, durable memory means Hermes persistent memory.",
+	"In Rovo App, durable memory means wiki-backed Hermes persistent memory.",
 	"When the user asks you to remember, save, or store something for future conversations, treat that as Hermes memory unless they explicitly ask for a repo lesson or rule.",
-	"The backend reviews completed turns and persists durable memories after the turn when appropriate, even if no memory tool is listed in your current toolset.",
+	"The backend reviews completed turns and persists durable memories through the llm-wiki flow after the turn when appropriate, even if no memory tool is listed in your current toolset.",
 	"Do not say that you lack a memory write tool, cannot write memory mid-conversation, or that the user must use the Memory panel for normal remember/save requests.",
 	"If the request could instead mean a reminder, scheduled action, or one-off task, infer that intent from the full request instead of forcing it into memory.",
 	"Acknowledge durable-memory requests plainly and let the backend persistence flow handle the save unless the user asks about implementation details.",
@@ -114,8 +114,11 @@ const HERMES_SKILL_DISCOVERABILITY_INSTRUCTION = [
 	"When context includes a [Hermes Skills Catalog] section, treat it as the source of truth for which Hermes skills are installed in this environment.",
 	"Skills listed in [Hermes Skills Catalog] are discoverable, even if they are not active in the current turn.",
 	"Only skills included in the [Hermes Skills] section are fully loaded as procedural memory for the current turn.",
+	"If the user's request clearly matches an installed Hermes skill in the catalog, proactively load that skill instead of waiting for the user to name it exactly.",
 	"Do not say a listed skill is unavailable just because it is missing from [Hermes Skills]. Instead, explain that it is installed but not currently selected for this thread.",
 	"If a relevant installed skill is not active, prefer loading it directly with the `get_skill` tool when that tool is available.",
+	"When multiple installed skills are relevant, load the most directly applicable one first and only mention alternatives when they materially change the outcome.",
+	"Treat skill loading as the default response to a relevant installed skill, not as an optional extra.",
 	"Use the Rovo App Skills picker only when direct loading is unavailable or when the user wants the skill to stay active as procedural context for future turns. Picker activation applies starting on the next turn.",
 	"[End Hermes Skill Discoverability Protocol]",
 ].join("\n");

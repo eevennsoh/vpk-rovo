@@ -38,6 +38,18 @@
 				"HERMES_TOOLS_SERVER_NAME": "hermes-tools",
 				"HERMES_AGENT_PATH": "/Users/esoh/Documents/Labs/hermes/hermes-agent"
 			}
+		},
+		"qmd": {
+			"args": [
+				"exec",
+				"qmd",
+				"mcp"
+			],
+			"command": "pnpm",
+			"env": {
+				"INDEX_PATH": "/Users/esoh/Documents/Labs/VPK-rovo/.cache/qmd/wiki.sqlite"
+			},
+			"type": "stdio"
 		}
 	},
 	"inputs": []

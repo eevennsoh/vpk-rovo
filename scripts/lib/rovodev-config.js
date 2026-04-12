@@ -1,6 +1,10 @@
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
+const {
+	getQmdAllowedRovodevMcpServerSignature,
+	getQmdRovodevMcpServerConfig,
+} = require("../../backend/lib/qmd");
 
 const resolveRovodevConfigPath = () => {
 	const ymlPath = path.join(os.homedir(), ".rovodev", "config.yml");
@@ -211,7 +215,13 @@ function syncWorkspaceRovodevConfig({ cwd = process.cwd() } = {}) {
 	const mergedAllowedServers = mergeUniqueStrings(
 		extractYamlListEntries(sourceConfigText, "allowedMcpServers"),
 		extractYamlListEntries(existingWorkspaceConfigText, "allowedMcpServers"),
+		[getQmdAllowedRovodevMcpServerSignature()],
 	);
+	const qmdMcpServers = getQmdRovodevMcpServerConfig({ repoRoot: cwd });
+	const qmdIndexPath = qmdMcpServers.qmd?.env?.INDEX_PATH;
+	if (typeof qmdIndexPath === "string" && qmdIndexPath.trim()) {
+		fs.mkdirSync(path.dirname(qmdIndexPath), { recursive: true });
+	}
 
 	let nextWorkspaceConfigText = replaceYamlScalar(
 		sourceConfigText,
@@ -256,6 +266,7 @@ function syncWorkspaceRovodevConfig({ cwd = process.cwd() } = {}) {
 			...(existingWorkspaceMcpConfig.mcpServers && typeof existingWorkspaceMcpConfig.mcpServers === "object"
 				? existingWorkspaceMcpConfig.mcpServers
 				: {}),
+			...qmdMcpServers,
 		},
 		inputs: Array.isArray(existingWorkspaceMcpConfig.inputs)
 			? existingWorkspaceMcpConfig.inputs

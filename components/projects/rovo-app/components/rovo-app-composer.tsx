@@ -491,7 +491,7 @@ function RovoAppComposerInner({
 	})();
 
 	return (
-		<div className="relative isolate">
+		<div className="relative isolate overflow-visible">
 			<div className="pointer-events-none absolute inset-0 overflow-visible">
 				{renderResponseGradient ? (
 					renderResponseGradient({
@@ -506,7 +506,7 @@ function RovoAppComposerInner({
 					<RovoAppComposerResponseGradient active={realtimeResponseGradientState.visible} phase={realtimeResponseGradientState.phase ?? "warmup"} signal={realtimeOutputWaveformBars} />
 				)}
 			</div>
-			<div className="flex w-full flex-col">
+			<div className="flex w-full flex-col overflow-visible">
 				{errorMessage ? <Alert variant="danger">{errorMessage}</Alert> : null}
 				{backgroundArtifactLabel ? <p className="px-1 text-text-subtlest text-xs">{backgroundArtifactLabel}</p> : null}
 

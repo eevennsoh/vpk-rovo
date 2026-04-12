@@ -16,6 +16,7 @@
 		"rovodev:tmux:stop": "./scripts/dev-tmux.sh stop",
 		"rovodev": "node scripts/run-rovodev-stack.js",
 		"ports": "node scripts/show-worktree-ports.js",
+		"qmd:sync-wiki": "node scripts/sync-wiki-qmd.js",
 		"verify:hermes": "node scripts/verify-hermes-control-plane.js",
 		"import:hermes:upstream": "node scripts/import-hermes-upstream-skills.js",
 		"sync:rovodev:skills": "node scripts/sync-rovodev-skills.js",
@@ -71,6 +72,7 @@
 		"@tiptap/extension-underline": "^3.20.1",
 		"@tiptap/react": "^3.20.1",
 		"@tiptap/starter-kit": "^3.20.1",
+		"@tobilu/qmd": "^2.1.0",
 		"@visual-json/core": "^0.3.1",
 		"@visual-json/react": "^0.3.1",
 		"@xyflow/react": "^12.10.1",
@@ -165,8 +167,14 @@
 			"esbuild",
 			"geckodriver",
 			"iframe-resizer",
+			"node-llama-cpp",
 			"protobufjs",
-			"react-grab"
+			"react-grab",
+			"tree-sitter-go",
+			"tree-sitter-javascript",
+			"tree-sitter-python",
+			"tree-sitter-rust",
+			"tree-sitter-typescript"
 		]
 	}
 }

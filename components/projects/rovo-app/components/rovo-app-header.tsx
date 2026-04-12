@@ -16,7 +16,7 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Icon } from "@/components/ui/icon";
-import { DatabaseIcon, SettingsIcon } from "@/components/ui/vpk-icons";
+import { DatabaseIcon, SearchIcon, SettingsIcon } from "@/components/ui/vpk-icons";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import ChevronDownIcon from "@atlaskit/icon/core/chevron-down";
 import EditIcon from "@atlaskit/icon/core/edit";
@@ -192,15 +192,17 @@ export function RovoAppHeader({
 					>
 						<Icon aria-hidden render={<ShowMoreHorizontalIcon label="" />} />
 					</DropdownMenuTrigger>
-					<DropdownMenuContent align="end">
-						<DropdownMenuGroup>
-							<DropdownMenuLabel>
-								Control plane
-							</DropdownMenuLabel>
+						<DropdownMenuContent align="end">
+							<DropdownMenuGroup>
+								<DropdownMenuLabel>
+									Settings
+								</DropdownMenuLabel>
 							{CONTROL_PLANE_HEADER_SURFACES.map((surface) => {
 								const isSelected = pathname === surface.href || pathname.startsWith(`${surface.href}/`);
 								const icon = surface.label === "Memories"
 									? <DatabaseIcon size="medium" />
+									: surface.label === "Wiki"
+										? <SearchIcon size="medium" />
 									: <SettingsIcon size="medium" />;
 
 								return (

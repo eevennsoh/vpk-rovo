@@ -396,10 +396,19 @@ async function captureUrl({
 // queryWiki
 // ---------------------------------------------------------------------------
 
-const WIKI_CONTENT_DIRS = ["entities", "concepts", "comparisons", "queries"];
-const RAW_WIKI_CONTENT_DIRS = ["articles", "papers", "transcripts", "assets"];
+const WIKI_CONTENT_DIRS = [
+	"profiles",
+	"operations",
+	"sources",
+	"entities",
+	"concepts",
+	"comparisons",
+	"queries",
+	"synthesis",
+];
+const RAW_WIKI_CONTENT_DIRS = ["articles", "papers", "transcripts", "turns", "assets"];
 
-async function queryWiki(query, { wikiDir = WIKI_DIR } = {}) {
+async function queryWiki(query, { limit, wikiDir = WIKI_DIR } = {}) {
 	if (!query || typeof query !== "string" || !query.trim()) {
 		return { results: [] };
 	}
@@ -451,7 +460,8 @@ async function queryWiki(query, { wikiDir = WIKI_DIR } = {}) {
 	}
 
 	results.sort((a, b) => b.score - a.score);
-	return { results };
+	const resolvedLimit = Number.isInteger(limit) && limit > 0 ? limit : results.length;
+	return { results: results.slice(0, resolvedLimit) };
 }
 
 // ---------------------------------------------------------------------------
@@ -606,6 +616,7 @@ function updateRawFileStatus(content, newStatus) {
 
 async function ingestRawSources({
 	executorImpl,
+	qmdSyncImpl,
 	wikiDir = WIKI_DIR,
 } = {}) {
 	// Default executor: use runRovoDevBackgroundTask with structured JSON parsing
@@ -695,6 +706,35 @@ async function ingestRawSources({
 				`Canonical: ${canonicalPath}`,
 				`Type: ${pageData.type}`,
 			]);
+			const syncQmdIndex = qmdSyncImpl || (async ({ pageType }) => {
+				const {
+					resolveQmdCollectionNameForCanonicalType,
+					syncWikiQmdIndex,
+				} = require("./qmd");
+				const collectionName = resolveQmdCollectionNameForCanonicalType(pageType);
+				if (!collectionName) {
+					return;
+				}
+
+				await syncWikiQmdIndex({
+					collectionNames: [collectionName],
+					wikiDir,
+				});
+			});
+
+			try {
+				await syncQmdIndex({
+					canonicalPath,
+					pageData,
+					pageType: pageData.type,
+					wikiDir,
+				});
+			} catch (error) {
+				console.warn(
+					"[wiki-clipper] Failed to refresh qmd index after ingest:",
+					error instanceof Error ? error.message : error,
+				);
+			}
 
 			processed += 1;
 		} catch (error) {
@@ -708,8 +748,6 @@ async function ingestRawSources({
 // ---------------------------------------------------------------------------
 // regenerateMemoryDigest
 // ---------------------------------------------------------------------------
-
-const DIGEST_PREFIX = "[wiki-digest]";
 
 async function readFileSummary(filePath) {
 	try {
@@ -745,32 +783,10 @@ function sumCountRecord(record) {
 	return Object.values(record).reduce((total, value) => total + value, 0);
 }
 
-function getMemoryEntryText(entry) {
-	if (typeof entry === "string") {
-		return entry;
-	}
-
-	if (typeof entry?.content === "string") {
-		return entry.content;
-	}
-
-	if (typeof entry?.text === "string") {
-		return entry.text;
-	}
-
-	return "";
-}
-
 async function getWikiStatus({
-	memoryImpl,
 	wikiDir = WIKI_DIR,
 } = {}) {
-	const memory = memoryImpl || (() => {
-		const { getHermesMemory } = require("./hermes-memory");
-		return {
-			getMemory: getHermesMemory,
-		};
-	})();
+	const { getWikiMemoryStatus } = require("./wiki-memory-provider");
 
 	const [
 		indexFile,
@@ -778,7 +794,7 @@ async function getWikiStatus({
 		schemaFile,
 		canonicalEntries,
 		rawEntries,
-		memoryRecord,
+		memoryStatus,
 	] = await Promise.all([
 		readFileSummary(path.join(wikiDir, "index.md")),
 		readFileSummary(path.join(wikiDir, "log.md")),
@@ -795,12 +811,11 @@ async function getWikiStatus({
 				await countMarkdownFiles(path.join(wikiDir, "raw", section)),
 			])),
 		),
-		memory.getMemory("memory"),
+		getWikiMemoryStatus({ wikiDir }),
 	]);
 
 	const canonicalCounts = buildCountRecord(canonicalEntries);
 	const rawCounts = buildCountRecord(rawEntries);
-	const memoryEntries = Array.isArray(memoryRecord?.entries) ? memoryRecord.entries : [];
 
 	return {
 		wikiDir,
@@ -809,88 +824,34 @@ async function getWikiStatus({
 		rawCounts,
 		totalCanonicalPages: sumCountRecord(canonicalCounts),
 		totalRawCaptures: sumCountRecord(rawCounts),
-		hasWikiDigestEntry: memoryEntries.some((entry) => getMemoryEntryText(entry).includes(DIGEST_PREFIX)),
+		hasWikiDigestEntry: Object.values(memoryStatus.compiledContexts ?? {}).some((context) => context?.exists === true),
+		hasCompiledContextArtifacts: Object.values(memoryStatus.compiledContexts ?? {}).some((context) => context?.exists === true),
 		files: {
 			index: indexFile,
 			log: logFile,
 			schema: schemaFile,
 		},
+		compiledContexts: memoryStatus.compiledContexts,
+		proposalCounts: memoryStatus.proposalCounts,
+		recentProposals: memoryStatus.recentProposals,
 	};
 }
 
 async function regenerateMemoryDigest({
-	memoryImpl,
+	generateTextImpl,
+	logger = console,
 	wikiDir = WIKI_DIR,
 } = {}) {
-	// Default memory impl: use Hermes memory system
-	const memory = memoryImpl || (() => {
-		const { addHermesMemoryEntry, getHermesMemory, removeHermesMemoryEntry } = require("./hermes-memory");
-		return {
-			getMemory: (target) => getHermesMemory(target),
-			addEntry: (target, content) => addHermesMemoryEntry(target, { content }),
-			removeEntry: (target, entryId) => removeHermesMemoryEntry(target, entryId),
-		};
-	})();
-	// 1. Read all canonical wiki pages
-	const pages = [];
-	for (const dir of WIKI_CONTENT_DIRS) {
-		const dirPath = path.join(wikiDir, dir);
-		const files = await walkMarkdownFiles(dirPath);
-		for (const filePath of files) {
-			try {
-				const content = await fs.readFile(filePath, "utf8");
-				const { frontmatter } = parseFrontmatter(content);
-				pages.push({
-					title: frontmatter.title || path.basename(filePath, ".md"),
-					type: frontmatter.type || dir.replace(/s$/u, ""),
-					tags: frontmatter.tags || [],
-					updated: frontmatter.updated || "",
-				});
-			} catch {
-				// Skip unreadable files
-			}
-		}
-	}
-
-	// 2. Remove old wiki-digest entries from memory
-	const currentMemory = await memory.getMemory("memory");
-	for (const entry of currentMemory.entries || []) {
-		if (entry.content && entry.content.startsWith(DIGEST_PREFIX)) {
-			await memory.removeEntry("memory", entry.id);
-		}
-	}
-
-	// 3. Build condensed digest
-	if (pages.length === 0) {
-		return { entriesWritten: 0 };
-	}
-
-	const byType = {};
-	for (const page of pages) {
-		const type = page.type;
-		if (!byType[type]) {
-			byType[type] = [];
-		}
-		byType[type].push(page.title);
-	}
-
-	const digestLines = [`${DIGEST_PREFIX} Wiki knowledge base (${pages.length} pages)`];
-	for (const [type, titles] of Object.entries(byType)) {
-		digestLines.push(`${type}: ${titles.join(", ")}`);
-	}
-
-	// Add recent captures info
-	const allTags = [...new Set(pages.flatMap((p) => p.tags))];
-	if (allTags.length > 0) {
-		digestLines.push(`Topics covered: ${allTags.join(", ")}`);
-	}
-
-	const digestText = digestLines.join(". ");
-
-	// 4. Write new digest entry
-	await memory.addEntry("memory", digestText);
-
-	return { entriesWritten: 1 };
+	const { regenerateWikiMemoryContext } = require("./wiki-memory-provider");
+	const compiledContexts = await regenerateWikiMemoryContext({
+		generateTextImpl,
+		logger,
+		wikiDir,
+	});
+	return {
+		compiledContexts,
+		entriesWritten: Object.values(compiledContexts).filter((context) => context?.exists === true).length,
+	};
 }
 
 // ---------------------------------------------------------------------------
@@ -907,9 +868,16 @@ function getWikiJobDefinitions() {
 			repeat: true,
 		},
 		{
+			name: "wiki-memory-sync",
+			schedule: "*/5 * * * *",
+			prompt: "Process queued wiki-backed memory proposals from raw/turns/, update canonical memory pages, refresh qmd collections, and regenerate compiled context artifacts.",
+			skills: ["research/llm-wiki"],
+			repeat: true,
+		},
+		{
 			name: "wiki-digest-regen",
 			schedule: "0 6 * * *",
-			prompt: "Regenerate the wiki memory digest: read all canonical wiki pages, produce a condensed summary, and write to Hermes core memory. Do not modify user memory.",
+			prompt: "Regenerate the compiled wiki-backed runtime memory context artifacts from canonical wiki pages.",
 			skills: ["research/llm-wiki"],
 			repeat: true,
 		},

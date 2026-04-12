@@ -1,6 +1,6 @@
 const {
-	getHermesMemory,
-} = require("./hermes-memory");
+	readCompiledContextDocuments,
+} = require("./wiki-memory-provider");
 const {
 	getHermesSkill,
 	listHermesSkills,
@@ -19,25 +19,17 @@ function truncateText(value, maxChars) {
 	return `${trimmedValue.slice(0, maxChars - 1).trimEnd()}…`;
 }
 
-function buildHermesMemoryContextDescription(memories) {
+function buildHermesMemoryContextDescription(compiledContexts) {
 	const sections = [];
 
-	for (const memory of memories) {
-		if (!memory || !Array.isArray(memory.entries) || memory.entries.length === 0) {
+	for (const [key, value] of Object.entries(compiledContexts ?? {})) {
+		const content = truncateText(value?.content ?? "", 4_000);
+		if (!content) {
 			continue;
 		}
 
-		const label = memory.target === "user" ? "User memory" : "Core memory";
-		const entryLines = memory.entries
-			.slice(-8)
-			.map((entry) => `- ${truncateText(entry.content ?? entry.text ?? "", 320)}`)
-			.filter((line) => line !== "- ");
-
-		if (entryLines.length === 0) {
-			continue;
-		}
-
-		sections.push(`${label}:\n${entryLines.join("\n")}`);
+		const label = key === "profile" ? "Profile context" : "Runtime context";
+		sections.push(`${label}:\n${content}`);
 	}
 
 	if (sections.length === 0) {
@@ -130,14 +122,11 @@ async function buildRovoAppHermesContextDescription({
 	autoSelectedSkillIds,
 	selectedSkillIds,
 	listSkillsImpl = listHermesSkills,
-	getMemoryImpl = getHermesMemory,
+	getCompiledContextImpl = readCompiledContextDocuments,
 	getSkillImpl = getHermesSkill,
 }) {
-	const [memory, user] = await Promise.all([
-		getMemoryImpl("memory"),
-		getMemoryImpl("user"),
-	]);
-	const memoryContext = buildHermesMemoryContextDescription([memory, user]);
+	const compiledContexts = await getCompiledContextImpl();
+	const memoryContext = buildHermesMemoryContextDescription(compiledContexts);
 	const allSkills = await listSkillsImpl();
 	const skillsCatalogContext = buildHermesSkillsCatalogDescription(allSkills);
 

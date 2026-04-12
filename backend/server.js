@@ -30,13 +30,6 @@ const {
 	createHermesJobsProvider,
 } = require("./lib/hermes-jobs-provider");
 const {
-	addHermesMemoryEntry,
-	getHermesMemory,
-	listHermesMemories,
-	removeHermesMemoryEntry,
-	replaceHermesMemory,
-} = require("./lib/hermes-memory");
-const {
 	archiveHermesSkill,
 	createHermesSkillFromBundle,
 	getHermesSkill,
@@ -52,6 +45,10 @@ const {
 	getLatestAssistantTextFromMessages,
 	runHermesMemoryCompanionReview,
 } = require("./lib/hermes-memory-companion");
+const {
+	getWikiMemoryStatus,
+	syncWikiBackedMemory,
+} = require("./lib/wiki-memory-provider");
 const {
 	runHermesSkillCompanionReview,
 } = require("./lib/hermes-skill-companion");
@@ -105,7 +102,18 @@ const {
 const {
 	ensureWikiJobs,
 	getWikiStatus,
+	queryWiki,
 } = require("./lib/wiki-clipper");
+const {
+	ensureFreshWikiQmdIndex,
+	getQmdSyncSummary,
+	normalizeNaiveWikiSearchResults,
+	searchWikiWithQmd,
+	syncWikiQmdIndex,
+} = require("./lib/qmd");
+const {
+	createWikiRouteHandlers,
+} = require("./lib/wiki-route-handlers");
 const {
 	inferRovoAppArtifactKindFromContent,
 } = require("./lib/rovo-app-artifact-kind");
@@ -379,6 +387,22 @@ const {
 } = require("./lib/stage-trace");
 
 console.log("[STARTUP] Dependencies loaded");
+
+const wikiRouteHandlers = createWikiRouteHandlers({
+	ensureFreshWikiQmdIndexImpl: ensureFreshWikiQmdIndex,
+	getQmdSyncSummaryImpl: getQmdSyncSummary,
+	getWikiStatusImpl: getWikiStatus,
+	logger: console,
+	normalizeNaiveWikiSearchResultsImpl: normalizeNaiveWikiSearchResults,
+	queryWikiImpl: queryWiki,
+	searchWikiWithQmdImpl: searchWikiWithQmd,
+	syncWikiMemoryImpl: async ({ force, logger }) => {
+		return syncWikiBackedMemory({
+			forceContextRegeneration: force === true,
+			logger,
+		});
+	},
+});
 
 // ─── RovoDev Serve Detection ─────────────────────────────────────────────────
 // When `pnpm run rovodev` is used, `dev-rovodev.js` writes the serve port to
@@ -1095,6 +1119,46 @@ function mapUiMessagesToConversation(messages) {
 	return {
 		message: conversation[currentUserMessageIndex].content,
 		conversationHistory: conversation.slice(0, currentUserMessageIndex),
+	};
+}
+
+function compressUiConversationHistory(conversationHistory, options) {
+	const normalizedConversation = Array.isArray(conversationHistory)
+		? conversationHistory
+			.flatMap((message) => {
+				if (!message || typeof message !== "object") {
+					return [];
+				}
+
+				const type = message.type === "user" ? "user" : "assistant";
+				const content = getNonEmptyString(message.content);
+				return content ? [{ type, content }] : [];
+			})
+		: [];
+	const compressionResult = compressConversation(
+		normalizedConversation.map((message) => ({
+			role: message.type === "user" ? "user" : "assistant",
+			content: message.content,
+		})),
+		options,
+	);
+
+	return {
+		compressed: compressionResult.compressed,
+		conversationHistory: compressionResult.messages
+			.flatMap((message) => {
+				const content = getNonEmptyString(message?.content);
+				if (!content) {
+					return [];
+				}
+
+				return [{
+					type: message.role === "user" ? "user" : "assistant",
+					content,
+				}];
+			}),
+		length: compressionResult.length,
+		originalLength: normalizedConversation.length,
 	};
 }
 
@@ -2611,20 +2675,41 @@ async function consumeRovoAppManagedResponse({
 
 	if (latestUserMessage || latestAssistantMessage) {
 		const runHermesMemoryReview = async () => {
-			try {
-				const reviewResult = await runHermesMemoryCompanionReview({
-					conversationHistory: memoryCompanionHistory,
-					latestAssistantMessage,
-					latestUserMessage,
-				});
-				if (!reviewResult.didReview) {
-					return;
-				}
+				try {
+					const reviewResult = await runHermesMemoryCompanionReview({
+						conversationHistory: memoryCompanionHistory,
+						latestAssistantMessage,
+						latestUserMessage,
+						sourceThreadId: threadId,
+					});
+					if (!reviewResult.didReview) {
+						return;
+					}
 
-				console.info("[HERMES] Memory companion reviewed completed Rovo App turn", {
-					threadId,
-					responseText: reviewResult.responseText ?? null,
-				});
+					void syncWikiBackedMemory({
+						logger: console,
+						qmdSyncImpl: async ({ collectionName, wikiDir }) => {
+							if (!collectionName) {
+								return;
+							}
+
+							await syncWikiQmdIndex({
+								collectionNames: [collectionName],
+								logger: console,
+								wikiDir,
+							});
+						},
+					}).catch((syncError) => {
+						console.warn("[HERMES] Wiki-backed memory sync failed:", {
+							threadId,
+							error: syncError instanceof Error ? syncError.message : String(syncError),
+						});
+					});
+
+					console.info("[HERMES] Memory companion reviewed completed Rovo App turn", {
+						threadId,
+						responseText: reviewResult.responseText ?? null,
+					});
 			} catch (error) {
 				console.warn("[HERMES] Memory companion review failed:", {
 					threadId,
@@ -2772,9 +2857,19 @@ async function executeRovoAppManagedRun(run) {
 		typeof requestBody.artifactSteering === "object"
 			? requestBody.artifactSteering
 			: null;
-	const { message: latestUserMessage, conversationHistory } =
-		mapUiMessagesToConversation(requestMessages);
-	const baseContextDescription = getNonEmptyString(requestBody.contextDescription);
+		const { message: latestUserMessage, conversationHistory: rawConversationHistory } =
+			mapUiMessagesToConversation(requestMessages);
+		const compressedConversation = compressUiConversationHistory(rawConversationHistory, {
+			thresholdChars: 80_000,
+			tailCount: 8,
+		});
+		const conversationHistory = compressedConversation.conversationHistory;
+		if (compressedConversation.compressed) {
+			console.info(
+				`[HERMES] Compressed managed conversation history: ${compressedConversation.originalLength} → ${compressedConversation.length} messages`,
+			);
+		}
+		const baseContextDescription = getNonEmptyString(requestBody.contextDescription);
 	const selectedHermesSkillIds = Array.isArray(requestHermesContext?.selectedSkillIds)
 		? requestHermesContext.selectedSkillIds
 		: Array.isArray(threadForSession?.hermesContext?.selectedSkillIds)
@@ -5852,23 +5947,33 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 					? "plain-chat"
 					: "default";
 
-			const promptBuildStartedAtMs = Date.now();
-			const userMessageText = buildUserMessage(
-				latestUserMessage,
-				conversationHistory,
-				effectiveContextWithPortBinding,
-				{
-					profile: promptProfile,
+				const compressedPromptHistory = compressUiConversationHistory(conversationHistory, {
+					thresholdChars: 80_000,
+					tailCount: 8,
+				});
+				if (compressedPromptHistory.compressed) {
+					console.info(
+						`[HERMES] Compressed prompt conversation history: ${compressedPromptHistory.originalLength} → ${compressedPromptHistory.length} messages`,
+					);
+				}
+
+				const promptBuildStartedAtMs = Date.now();
+				const userMessageText = buildUserMessage(
+					latestUserMessage,
+					compressedPromptHistory.conversationHistory,
+					effectiveContextWithPortBinding,
+					{
+						profile: promptProfile,
 				}
 			);
 			stageTrace.mark("prompt_built", {
 				stageMs: Date.now() - promptBuildStartedAtMs,
-				promptProfile,
-				promptChars: userMessageText.length,
-				promptBytes: getUtf8ByteLength(userMessageText),
-				conversationHistoryCount: conversationHistory.length,
-				contextChars: effectiveContextWithPortBinding?.length ?? 0,
-			});
+					promptProfile,
+					promptChars: userMessageText.length,
+					promptBytes: getUtf8ByteLength(userMessageText),
+					conversationHistoryCount: compressedPromptHistory.conversationHistory.length,
+					contextChars: effectiveContextWithPortBinding?.length ?? 0,
+				});
 			const isTaskLikeRequest = promptIntent.isTaskLike;
 			const prefersGenuiCardExperience =
 				promptIntent.prefersGenuiCardExperience;
@@ -7754,35 +7859,64 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 							return { disconnect: false };
 						};
 
-						const handlePausedToolApprovalBatch = async ({
-							rawEvent,
-							control,
-						}) => {
-							const pausedParts = Array.isArray(rawEvent?.parts)
-								? rawEvent.parts
-								: [];
-							if (pausedParts.length === 0) {
-								return { disconnect: false };
-							}
+							const handlePausedToolApprovalBatch = async ({
+								rawEvent,
+								control,
+							}) => {
+								const pausedParts = Array.isArray(rawEvent?.parts)
+									? rawEvent.parts
+									: [];
+								if (pausedParts.length === 0) {
+									return { disconnect: false };
+								}
 
-							const permissions =
-								rawEvent?.permissions &&
-								typeof rawEvent.permissions === "object" &&
-								!Array.isArray(rawEvent.permissions)
-									? rawEvent.permissions
-									: null;
-							const approvalParts = pausedParts.filter((part) =>
-								Boolean(getPartPermissionScenario(part, permissions)),
-							);
-							if (approvalParts.length === 0) {
-								return autoResumePausedParts(pausedParts, control);
-							}
-							const autoApproveToolCallIds = pausedParts
-								.map((part) => {
-									const toolCallId = getNonEmptyString(part?.tool_call_id);
-									if (!toolCallId) {
-										return null;
+								const permissions =
+									rawEvent?.permissions &&
+									typeof rawEvent.permissions === "object" &&
+									!Array.isArray(rawEvent.permissions)
+										? rawEvent.permissions
+										: null;
+								const annotatedPausedParts = pausedParts.map((part) => {
+									if (!part || typeof part !== "object") {
+										return part;
 									}
+
+									if (getPartPermissionScenario(part, permissions)) {
+										return part;
+									}
+
+									const parsedArgs =
+										typeof part.args === "string"
+											? parseMaybeJson(part.args) ?? part.args
+											: part.args;
+									const command = extractCommandFromArgs(parsedArgs);
+									const dangerousCommand = command ? classifyCommand(command) : null;
+									if (!dangerousCommand) {
+										return part;
+									}
+
+									console.warn(
+										`[SAFETY] Dangerous command requires approval: ${dangerousCommand.label} (${dangerousCommand.match})`,
+									);
+									return {
+										...part,
+										dangerousCommandLabel: dangerousCommand.label,
+										dangerousCommandMatch: dangerousCommand.match,
+										permissionScenario: "dangerous_command",
+									};
+								});
+								const approvalParts = annotatedPausedParts.filter((part) =>
+									Boolean(getPartPermissionScenario(part, permissions)),
+								);
+								if (approvalParts.length === 0) {
+									return autoResumePausedParts(annotatedPausedParts, control);
+								}
+								const autoApproveToolCallIds = annotatedPausedParts
+									.map((part) => {
+										const toolCallId = getNonEmptyString(part?.tool_call_id);
+										if (!toolCallId) {
+											return null;
+										}
 
 									return getPartPermissionScenario(part, permissions)
 										? null
@@ -7821,11 +7955,11 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 								}
 							}
 
-							const approvalId = createPausedToolApprovalId();
-							const payload = buildPausedToolApprovalPayload({
-								approvalId,
-								threadId,
-								parts: approvalParts,
+								const approvalId = createPausedToolApprovalId();
+								const payload = buildPausedToolApprovalPayload({
+									approvalId,
+									threadId,
+									parts: approvalParts,
 								permissions,
 							});
 							if (!payload) {
@@ -8567,7 +8701,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 								return toolGuard;
 							};
 
-							const streamCommonOptions = {
+								const streamCommonOptions = {
 								onTextDelta: handleStreamTextDelta,
 								// ── Output Routing: Track all tool calls (BE-001) ──
 								// Question-card tools are emitted from resolved tool input
@@ -8823,13 +8957,77 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 										maybeEmitExitPlanWidget({
 											toolCallId: toolCall.toolCallId,
 											toolInput: toolCall.toolInput,
-											source: "deferred_tool_request",
+										source: "deferred_tool_request",
+									});
+								}
+							},
+								onPausedToolCalls: async ({ rawEvent, control }) => {
+									const pausedParts = Array.isArray(rawEvent?.parts)
+										? rawEvent.parts
+										: [];
+									const interactivePart = pausedParts.find((part) => {
+										const toolName = getNonEmptyString(part?.tool_name);
+										return (
+											isRequestUserInputTool(toolName) ||
+											isExitPlanModeTool(toolName)
+										);
+									});
+
+									if (!interactivePart) {
+										const pausedApprovalResult = await handlePausedToolApprovalBatch({
+											rawEvent,
+											control,
 										});
+										if (pausedApprovalResult?.disconnect) {
+											pausedToolCallHandled = true;
+										}
+										return pausedApprovalResult;
 									}
+
+									const replayDeferredToolResult =
+										await handleReplayDeferredToolRequest({
+											rawEvent,
+											control,
+											threadId,
+											sessionId: rovoDevSessionId,
+											sessionMode,
+											isRequestUserInputTool,
+											isExitPlanModeTool,
+											syncThreadSessionFromPort:
+												syncRovoAppThreadSessionFromCurrentPort,
+											emitRequestUserInputQuestionCard,
+											emitExitPlanWidget: maybeEmitExitPlanWidget,
+											registerPausedToolCall: registerPausedRovoDevToolCall,
+										});
+									if (replayDeferredToolResult.handled) {
+										if (replayDeferredToolResult.hasObservedDeferredToolRequest) {
+											hasObservedDeferredToolRequest = true;
+										}
+										if (replayDeferredToolResult.pausedToolCallHandled) {
+											pausedToolCallHandled = true;
+										}
+										return {
+											disconnect: replayDeferredToolResult.disconnect === true,
+										};
+									}
+
+									const decisions = pausedParts
+										.map((part) => {
+											const toolCallId = getNonEmptyString(part?.tool_call_id);
+											return toolCallId
+												? { tool_call_id: toolCallId, deny_message: null }
+												: null;
+										})
+										.filter(Boolean);
+									if (decisions.length > 0) {
+										await control.resume({ decisions });
+									}
+									return { disconnect: false };
 								},
 								enableDeferredTools: true,
 								idleTimeoutMs: WAIT_FOR_TURN_TIMEOUT_MS,
 								includeSubagentEvents: true,
+								pauseOnCallToolsStart: true,
 								signal: abortController.signal,
 								conflictPolicy: "wait-for-turn",
 								onPortAcquired: (acquiredPort) => {
@@ -13126,11 +13324,7 @@ app.post("/api/standup", async (req, res) => {
 	}
 });
 
-// ─── Hermes Status / Memory / Skills / Jobs ─────────────────────────────────
-
-function isHermesMemoryTarget(target) {
-	return target === "memory" || target === "user";
-}
+// ─── Hermes Status / Skills / Jobs ──────────────────────────────────────────
 
 app.get("/api/status/rovodev", async (_req, res) => {
 	try {
@@ -13232,17 +13426,9 @@ app.get("/api/jobs", async (_req, res) => {
 	}
 });
 
-app.get("/api/wiki/status", async (_req, res) => {
-	try {
-		const wiki = await getWikiStatus();
-		return res.json({ wiki });
-	} catch (error) {
-		return res.status(500).json({
-			error: "Failed to load wiki status",
-			details: error instanceof Error ? error.message : String(error),
-		});
-	}
-});
+app.get("/api/wiki/status", wikiRouteHandlers.handleWikiStatus);
+app.get("/api/wiki/search", wikiRouteHandlers.handleWikiSearch);
+app.post("/api/wiki/sync", wikiRouteHandlers.handleWikiSync);
 
 app.post("/api/jobs", async (req, res) => {
 	try {
@@ -13324,111 +13510,33 @@ app.post("/api/jobs/:id/resume", async (req, res) => {
 });
 
 app.get("/api/memories", async (_req, res) => {
-	try {
-		const memories = await listHermesMemories();
-		return res.json({ memories });
-	} catch (error) {
-		return res.status(500).json({
-			error: "Failed to list Hermes memories",
-			details: error instanceof Error ? error.message : String(error),
-		});
-	}
+	return res.status(410).json({
+		error: "Hermes file-backed memory has been removed. Use /api/wiki/status for compiled memory state.",
+	});
 });
 
 app.get("/api/memories/:target", async (req, res) => {
-	try {
-		if (!isHermesMemoryTarget(req.params.target)) {
-			return res.status(400).json({
-				error: "Unknown Hermes memory target",
-			});
-		}
-
-		const memory = await getHermesMemory(req.params.target);
-		return res.json({ memory });
-	} catch (error) {
-		return res.status(500).json({
-			error: "Failed to load Hermes memory",
-			details: error instanceof Error ? error.message : String(error),
-		});
-	}
+	return res.status(410).json({
+		error: "Hermes file-backed memory has been removed. Use the wiki-backed memory status instead.",
+	});
 });
 
 app.put("/api/memories/:target", async (req, res) => {
-	try {
-		if (!isHermesMemoryTarget(req.params.target)) {
-			return res.status(400).json({
-				error: "Unknown Hermes memory target",
-			});
-		}
-
-		const memory = await replaceHermesMemory(req.params.target, req.body);
-		return res.json({ memory });
-	} catch (error) {
-		return res.status(400).json({
-			error: "Failed to update Hermes memory",
-			details: error instanceof Error ? error.message : String(error),
-		});
-	}
+	return res.status(410).json({
+		error: "Direct Hermes memory editing has been removed. Write durable memory through the llm-wiki flow.",
+	});
 });
 
 app.post("/api/memories/:target/entry", async (req, res) => {
-	try {
-		if (!isHermesMemoryTarget(req.params.target)) {
-			return res.status(400).json({
-				error: "Unknown Hermes memory target",
-			});
-		}
-
-		const memory = await addHermesMemoryEntry(req.params.target, req.body);
-		return res.json({ memory });
-	} catch (error) {
-		return res.status(400).json({
-			error: "Failed to add Hermes memory entry",
-			details: error instanceof Error ? error.message : String(error),
-		});
-	}
+	return res.status(410).json({
+		error: "Direct Hermes memory editing has been removed. Write durable memory through the llm-wiki flow.",
+	});
 });
 
 app.delete("/api/memories/:target/entry", async (req, res) => {
-	try {
-		if (!isHermesMemoryTarget(req.params.target)) {
-			return res.status(400).json({
-				error: "Unknown Hermes memory target",
-			});
-		}
-
-		const memory = await getHermesMemory(req.params.target);
-		const entryId = getFirstQueryValue(req.query.entryId)
-			?? getFirstQueryValue(req.query.entry_id)
-			?? req.body?.entryId
-			?? req.body?.entry_id
-			?? (() => {
-				const entryValue = getFirstQueryValue(req.query.entry)
-					?? req.body?.entry
-					?? req.body?.match;
-				if (!entryValue) {
-					return null;
-				}
-
-				const matchingEntry = memory.entries.find((entry) => {
-					return entry.id === entryValue || entry.content === entryValue;
-				});
-				return matchingEntry?.id ?? null;
-			})();
-		if (!entryId) {
-			return res.status(400).json({
-				error: "A Hermes memory entryId is required to delete an entry.",
-			});
-		}
-
-		const nextMemory = await removeHermesMemoryEntry(req.params.target, entryId);
-		return res.json({ memory: nextMemory });
-	} catch (error) {
-		return res.status(400).json({
-			error: "Failed to remove Hermes memory entry",
-			details: error instanceof Error ? error.message : String(error),
-		});
-	}
+	return res.status(410).json({
+		error: "Direct Hermes memory editing has been removed. Write durable memory through the llm-wiki flow.",
+	});
 });
 
 app.get("/api/skills", async (_req, res) => {

@@ -10,7 +10,6 @@ import { Lozenge } from "@/components/ui/lozenge";
 import { Switch } from "@/components/ui/switch";
 import type {
 	HermesJob,
-	HermesMemoryDocument,
 	RuntimeHealth,
 	RuntimeStatusSnapshot,
 	WikiStatus,
@@ -18,7 +17,6 @@ import type {
 
 import {
 	fetchJobs,
-	fetchMemoryDocuments,
 	fetchRuntimeStatusSnapshot,
 	fetchWikiStatus,
 	runJobAction,
@@ -34,15 +32,19 @@ import { usePersistentState } from "./lib/use-persistent-state";
 
 const SETTINGS_STORAGE_KEY = "vpk-control-plane-settings";
 const DEFAULT_SETTINGS_STATE = createSettingsState();
-const WIKI_JOB_NAMES = ["wiki-nightly-ingest", "wiki-digest-regen"] as const;
+const WIKI_JOB_NAMES = ["wiki-nightly-ingest", "wiki-memory-sync", "wiki-digest-regen"] as const;
 const WIKI_JOB_METADATA: Record<(typeof WIKI_JOB_NAMES)[number], { description: string; label: string }> = {
 	"wiki-nightly-ingest": {
 		description: "Turns queued raw captures into canonical wiki pages and updates the index.",
 		label: "Nightly ingest",
 	},
+	"wiki-memory-sync": {
+		description: "Processes queued durable-memory proposals and refreshes compiled context artifacts.",
+		label: "Memory sync",
+	},
 	"wiki-digest-regen": {
-		description: "Rebuilds the Hermes memory digest from canonical wiki pages.",
-		label: "Digest regeneration",
+		description: "Rebuilds the compiled wiki-backed memory context from canonical pages.",
+		label: "Context regeneration",
 	},
 };
 
@@ -86,13 +88,6 @@ function formatJobTone(status: HermesJob["status"]): "neutral" | "danger" | "suc
 	}
 }
 
-function formatMemoryUsage(document: HermesMemoryDocument): string {
-	const limitText = typeof document.limit === "number" && document.limit > 0
-		? ` / ${document.limit.toLocaleString()}`
-		: "";
-	return `${document.totalChars.toLocaleString()}${limitText} chars`;
-}
-
 function formatCountLabel(count: number, singular: string, plural: string): string {
 	return `${count.toLocaleString()} ${count === 1 ? singular : plural}`;
 }
@@ -108,7 +103,6 @@ export function SettingsSurfacePage() {
 		DEFAULT_SETTINGS_STATE,
 	);
 	const [runtimeStatus, setRuntimeStatus] = useState<RuntimeStatusSnapshot | null>(null);
-	const [memoryDocuments, setMemoryDocuments] = useState<Record<"memory" | "user", HermesMemoryDocument> | null>(null);
 	const [jobs, setJobs] = useState<HermesJob[]>([]);
 	const [wikiStatus, setWikiStatus] = useState<WikiStatus | null>(null);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -158,23 +152,23 @@ export function SettingsSurfacePage() {
 	}, [jobs]);
 
 	const memorySummary = useMemo(() => {
-		if (!memoryDocuments) {
+		if (!wikiStatus?.compiledContexts) {
 			return [];
 		}
 
 		return [
 			{
-				description: "Shared workspace memory",
-				document: memoryDocuments.memory,
-				label: "Core memory",
+				description: "User preferences and identity compiled from `profiles/self.md`.",
+				document: wikiStatus.compiledContexts.profile,
+				label: "Profile context",
 			},
 			{
-				description: "User-specific durable context",
-				document: memoryDocuments.user,
-				label: "User memory",
+				description: "Runtime memory compiled from `operations/core-memory.md`.",
+				document: wikiStatus.compiledContexts.operations,
+				label: "Runtime context",
 			},
 		];
-	}, [memoryDocuments]);
+	}, [wikiStatus]);
 
 	function updateRoute(surface: keyof ControlPlaneProviderRoutes, value: string) {
 		setSettings((current) => ({
@@ -194,9 +188,8 @@ export function SettingsSurfacePage() {
 	async function refreshSurfaceData() {
 		setIsRefreshing(true);
 		try {
-			const [runtimeResult, memoriesResult, jobsResult, wikiResult] = await Promise.allSettled([
+			const [runtimeResult, jobsResult, wikiResult] = await Promise.allSettled([
 				fetchRuntimeStatusSnapshot(),
-				fetchMemoryDocuments(),
 				fetchJobs(),
 				fetchWikiStatus(),
 			]);
@@ -206,12 +199,6 @@ export function SettingsSurfacePage() {
 				setRuntimeStatus(runtimeResult.value);
 			} else {
 				errors.push(runtimeResult.reason instanceof Error ? runtimeResult.reason.message : String(runtimeResult.reason));
-			}
-
-			if (memoriesResult.status === "fulfilled") {
-				setMemoryDocuments(memoriesResult.value);
-			} else {
-				errors.push(memoriesResult.reason instanceof Error ? memoriesResult.reason.message : String(memoriesResult.reason));
 			}
 
 			if (jobsResult.status === "fulfilled") {
@@ -257,7 +244,7 @@ export function SettingsSurfacePage() {
 			actions={
 				<div className="flex items-center gap-2">
 					<Badge variant="neutral">
-						{wikiStatus?.hasWikiDigestEntry ? "wiki digest present" : "wiki digest missing"}
+						{wikiStatus?.proposalCounts?.queued ?? 0} queued proposals
 					</Badge>
 					<Button variant="outline" isLoading={isRefreshing} onClick={() => void refreshSurfaceData()}>
 						Refresh status
@@ -353,18 +340,18 @@ export function SettingsSurfacePage() {
 						<CardHeader className="pb-3">
 							<div className="flex items-start justify-between gap-3">
 								<div className="space-y-1">
-									<CardTitle>Hermes memory</CardTitle>
-									<CardDescription>Live durable memory summary from the active Hermes runtime.</CardDescription>
+									<CardTitle>Compiled memory</CardTitle>
+									<CardDescription>Wiki-backed memory compiled for Hermes prompt injection.</CardDescription>
 								</div>
-								<Lozenge variant={wikiStatus?.hasWikiDigestEntry ? "success" : "warning"}>
-									{wikiStatus?.hasWikiDigestEntry ? "Digest ready" : "Digest missing"}
+								<Lozenge variant={wikiStatus?.hasCompiledContextArtifacts ? "success" : "warning"}>
+									{wikiStatus?.hasCompiledContextArtifacts ? "Compiled" : "Missing"}
 								</Lozenge>
 							</div>
 						</CardHeader>
 						<CardContent className="space-y-3">
 							{memorySummary.length === 0 ? (
 								<div className="rounded-xl border border-border bg-surface-raised px-3 py-4 text-sm text-text-subtle">
-									Loading Hermes memory state...
+									Loading compiled memory state...
 								</div>
 							) : (
 								memorySummary.map(({ document, label, description }) => (
@@ -375,18 +362,18 @@ export function SettingsSurfacePage() {
 												<div className="text-sm text-text-subtle">{description}</div>
 											</div>
 											<Badge variant="neutral">
-												{formatCountLabel(document.entries.length, "entry", "entries")}
+												{document?.exists ? "ready" : "missing"}
 											</Badge>
 										</div>
 										<div className="mt-3 grid gap-2 sm:grid-cols-2">
 											<div className="rounded-lg border border-border bg-background px-3 py-2">
-												<div className="text-xs uppercase tracking-wide text-text-subtle">Usage</div>
-												<div className="mt-1 text-sm font-medium">{formatMemoryUsage(document)}</div>
+												<div className="text-xs uppercase tracking-wide text-text-subtle">Size</div>
+												<div className="mt-1 text-sm font-medium">{(document?.charCount ?? 0).toLocaleString()} chars</div>
 											</div>
 											<div className="rounded-lg border border-border bg-background px-3 py-2">
 												<div className="text-xs uppercase tracking-wide text-text-subtle">Updated</div>
 												<div className="mt-1 text-sm font-medium">
-													{formatControlPlaneDateTime(document.updatedAt)}
+													{formatControlPlaneDateTime(document?.updatedAt)}
 												</div>
 											</div>
 										</div>
@@ -468,6 +455,10 @@ export function SettingsSurfacePage() {
 									))}
 								</div>
 							</div>
+
+							<Button variant="outline" onClick={() => router.push("/rovo-app/wiki")}>
+								Open wiki search
+							</Button>
 						</CardContent>
 					</Card>
 
@@ -477,7 +468,7 @@ export function SettingsSurfacePage() {
 								<div className="space-y-1">
 									<CardTitle>Wiki jobs</CardTitle>
 									<CardDescription>
-										Provisioned Hermes jobs that keep the generated wiki and memory digest in sync.
+										Provisioned Hermes jobs that keep canonical wiki memory and compiled context artifacts in sync.
 									</CardDescription>
 								</div>
 								<Badge variant="neutral">

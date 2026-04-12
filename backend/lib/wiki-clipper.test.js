@@ -793,107 +793,97 @@ test("ingestRawSources handles executor failure without crashing", async () => {
 	assert.ok(result.errors[0].includes("LLM unavailable"));
 });
 
+test("ingestRawSources refreshes the matching qmd collection after canonical writes", async () => {
+	const wikiDir = await createWikiWithQueuedRaw();
+	const qmdSyncCalls = [];
+
+	const result = await ingestRawSources({
+		executorImpl: createMockExecutor(),
+		qmdSyncImpl: async (payload) => {
+			qmdSyncCalls.push(payload);
+		},
+		wikiDir,
+	});
+
+	assert.equal(result.processed, 1);
+	assert.equal(qmdSyncCalls.length, 1);
+	assert.equal(qmdSyncCalls[0].pageType, "entity");
+	assert.equal(qmdSyncCalls[0].pageData.slug, "rovo");
+	assert.ok(qmdSyncCalls[0].canonicalPath.endsWith(path.join("entities", "rovo.md")));
+});
+
+test("ingestRawSources logs qmd refresh failures without failing the ingest", async () => {
+	const wikiDir = await createWikiWithQueuedRaw();
+	const originalWarn = console.warn;
+	const warnings = [];
+	console.warn = (...args) => {
+		warnings.push(args.join(" "));
+	};
+
+	try {
+		const result = await ingestRawSources({
+			executorImpl: createMockExecutor(),
+			qmdSyncImpl: async () => {
+				throw new Error("qmd unavailable");
+			},
+			wikiDir,
+		});
+
+		assert.equal(result.processed, 1);
+		assert.equal(result.errors.length, 0);
+		assert.ok(warnings.some((warning) => warning.includes("qmd unavailable")));
+	} finally {
+		console.warn = originalWarn;
+	}
+});
+
 // ---------------------------------------------------------------------------
 // regenerateMemoryDigest
 // ---------------------------------------------------------------------------
 
 test("regenerateMemoryDigest produces digest from wiki pages", async () => {
 	const wikiDir = await createPopulatedWiki();
+	await fs.mkdir(path.join(wikiDir, "profiles"), { recursive: true });
+	await fs.mkdir(path.join(wikiDir, "operations"), { recursive: true });
+	await fs.writeFile(path.join(wikiDir, "profiles", "self.md"), "# Self\n\n- Prefers concise answers.\n", "utf8");
+	await fs.writeFile(path.join(wikiDir, "operations", "core-memory.md"), "# Core Memory\n\n- Keep the runtime loop on RovoDev.\n", "utf8");
 
-	const memoryEntries = [];
-	const mockMemoryImpl = {
-		getMemory: async () => ({ entries: [] }),
-		addEntry: async (target, content) => {
-			memoryEntries.push({ target, content });
+	const result = await regenerateMemoryDigest({
+		generateTextImpl: async ({ system }) => {
+			return system.includes("profile")
+				? "# Profile Context\n\n- Prefers concise answers."
+				: "# Runtime Context\n\n- Keep the runtime loop on RovoDev.";
 		},
-		removeEntry: async () => {},
-	};
+		wikiDir,
+	});
 
-	const result = await regenerateMemoryDigest({ wikiDir, memoryImpl: mockMemoryImpl });
-
-	assert.ok(result.entriesWritten > 0, "should write at least one entry");
-	assert.ok(memoryEntries.length > 0, "should have called addEntry");
-	assert.equal(memoryEntries[0].target, "memory");
-
-	// Digest should mention entities in the wiki
-	const digestContent = memoryEntries[0].content;
-	assert.ok(digestContent.includes("Atlassian") || digestContent.includes("Rovo"), "digest should reference wiki content");
-});
-
-test("regenerateMemoryDigest does not touch user memory", async () => {
-	const wikiDir = await createPopulatedWiki();
-
-	const memoryEntries = [];
-	const mockMemoryImpl = {
-		getMemory: async () => ({ entries: [] }),
-		addEntry: async (target, content) => {
-			memoryEntries.push({ target, content });
-		},
-		removeEntry: async () => {},
-	};
-
-	await regenerateMemoryDigest({ wikiDir, memoryImpl: mockMemoryImpl });
-
-	const userEntries = memoryEntries.filter((e) => e.target === "user");
-	assert.equal(userEntries.length, 0, "should not write to user memory");
-});
-
-test("regenerateMemoryDigest removes old digest entries", async () => {
-	const wikiDir = await createPopulatedWiki();
-
-	const existingEntries = [
-		{ id: "old1", content: "[wiki-digest] Old entry 1" },
-		{ id: "old2", content: "Some other memory" },
-		{ id: "old3", content: "[wiki-digest] Old entry 2" },
-	];
-	const removedIds = [];
-	const addedEntries = [];
-
-	const mockMemoryImpl = {
-		getMemory: async () => ({ entries: existingEntries }),
-		addEntry: async (target, content) => {
-			addedEntries.push({ target, content });
-		},
-		removeEntry: async (target, id) => {
-			removedIds.push(id);
-		},
-	};
-
-	await regenerateMemoryDigest({ wikiDir, memoryImpl: mockMemoryImpl });
-
-	// Should remove old wiki-digest entries
-	assert.ok(removedIds.includes("old1"), "should remove old digest entry old1");
-	assert.ok(removedIds.includes("old3"), "should remove old digest entry old3");
-	assert.ok(!removedIds.includes("old2"), "should NOT remove non-digest entry");
+	assert.equal(result.entriesWritten, 2);
+	const profileOutput = await fs.readFile(path.join(wikiDir, "output", "profile-context.md"), "utf8");
+	const runtimeOutput = await fs.readFile(path.join(wikiDir, "output", "runtime-context.md"), "utf8");
+	assert.match(profileOutput, /Prefers concise answers/u);
+	assert.match(runtimeOutput, /runtime loop on RovoDev/u);
 });
 
 test("regenerateMemoryDigest handles empty wiki", async () => {
 	const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "vpk-wiki-empty-"));
-	for (const sub of ["entities", "concepts", "comparisons", "queries"]) {
+	for (const sub of ["profiles", "operations", "entities", "concepts", "comparisons", "queries"]) {
 		await fs.mkdir(path.join(tmpDir, sub), { recursive: true });
 	}
 
-	const addedEntries = [];
-	const mockMemoryImpl = {
-		getMemory: async () => ({ entries: [] }),
-		addEntry: async (target, content) => {
-			addedEntries.push({ target, content });
-		},
-		removeEntry: async () => {},
-	};
-
-	const result = await regenerateMemoryDigest({ wikiDir: tmpDir, memoryImpl: mockMemoryImpl });
-	// Empty wiki should produce minimal or no digest
-	assert.ok(result.entriesWritten >= 0);
+	const result = await regenerateMemoryDigest({
+		generateTextImpl: async () => "- Empty compiled context.",
+		wikiDir: tmpDir,
+	});
+	assert.equal(result.entriesWritten, 2);
 });
 
 // ---------------------------------------------------------------------------
 // getWikiJobDefinitions
 // ---------------------------------------------------------------------------
 
-test("getWikiJobDefinitions returns two job definitions", () => {
+test("getWikiJobDefinitions returns wiki job definitions", () => {
 	const jobs = getWikiJobDefinitions();
-	assert.equal(jobs.length, 2);
+	assert.equal(jobs.length, 3);
 });
 
 test("getWikiJobDefinitions has valid cron schedules", () => {
@@ -924,10 +914,11 @@ test("ensureWikiJobs creates jobs when none exist", async () => {
 	};
 
 	const result = await ensureWikiJobs(mockProvider);
-	assert.equal(result.created, 2);
+	assert.equal(result.created, 3);
 	assert.equal(result.existing, 0);
-	assert.equal(createdJobs.length, 2);
+	assert.equal(createdJobs.length, 3);
 	assert.ok(createdJobs.some((j) => j.name === "wiki-nightly-ingest"));
+	assert.ok(createdJobs.some((j) => j.name === "wiki-memory-sync"));
 	assert.ok(createdJobs.some((j) => j.name === "wiki-digest-regen"));
 });
 
@@ -936,7 +927,8 @@ test("ensureWikiJobs skips jobs that already exist", async () => {
 	const mockProvider = {
 		listHermesJobs: async () => [
 			{ name: "wiki-nightly-ingest", id: "existing-1" },
-			{ name: "wiki-digest-regen", id: "existing-2" },
+			{ name: "wiki-memory-sync", id: "existing-2" },
+			{ name: "wiki-digest-regen", id: "existing-3" },
 		],
 		createHermesJob: async (def) => {
 			createdJobs.push(def);
@@ -946,7 +938,7 @@ test("ensureWikiJobs skips jobs that already exist", async () => {
 
 	const result = await ensureWikiJobs(mockProvider);
 	assert.equal(result.created, 0);
-	assert.equal(result.existing, 2);
+	assert.equal(result.existing, 3);
 	assert.equal(createdJobs.length, 0);
 });
 
@@ -963,46 +955,47 @@ test("ensureWikiJobs handles missing provider gracefully", async () => {
 test("getWikiStatus summarizes canonical pages, raw captures, and digest state", async () => {
 	const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "vpk-wiki-status-"));
 
+	await fs.mkdir(path.join(tmpDir, "profiles"), { recursive: true });
+	await fs.mkdir(path.join(tmpDir, "operations"), { recursive: true });
 	await fs.mkdir(path.join(tmpDir, "entities"), { recursive: true });
 	await fs.mkdir(path.join(tmpDir, "concepts"), { recursive: true });
 	await fs.mkdir(path.join(tmpDir, "comparisons"), { recursive: true });
 	await fs.mkdir(path.join(tmpDir, "queries"), { recursive: true });
 	await fs.mkdir(path.join(tmpDir, "raw", "articles", "2026", "04"), { recursive: true });
 	await fs.mkdir(path.join(tmpDir, "raw", "papers", "2026", "04"), { recursive: true });
+	await fs.mkdir(path.join(tmpDir, "output"), { recursive: true });
 
 	await Promise.all([
 		fs.writeFile(path.join(tmpDir, "SCHEMA.md"), "# Schema\n", "utf8"),
 		fs.writeFile(path.join(tmpDir, "index.md"), "# Index\n", "utf8"),
 		fs.writeFile(path.join(tmpDir, "log.md"), "# Log\n", "utf8"),
+		fs.writeFile(path.join(tmpDir, "profiles", "self.md"), "# Self\n", "utf8"),
+		fs.writeFile(path.join(tmpDir, "operations", "core-memory.md"), "# Core Memory\n", "utf8"),
 		fs.writeFile(path.join(tmpDir, "entities", "atlassian.md"), "# Atlassian\n", "utf8"),
 		fs.writeFile(path.join(tmpDir, "concepts", "rovo.md"), "# Rovo\n", "utf8"),
 		fs.writeFile(path.join(tmpDir, "comparisons", "jira-vs-linear.md"), "# Compare\n", "utf8"),
 		fs.writeFile(path.join(tmpDir, "queries", "what-is-rovo.md"), "# Query\n", "utf8"),
 		fs.writeFile(path.join(tmpDir, "raw", "articles", "2026", "04", "capture-1.md"), "# Raw article\n", "utf8"),
 		fs.writeFile(path.join(tmpDir, "raw", "papers", "2026", "04", "capture-2.md"), "# Raw paper\n", "utf8"),
+		fs.writeFile(path.join(tmpDir, "output", "profile-context.md"), "- Profile context\n", "utf8"),
 	]);
 
-	const status = await getWikiStatus({
-		wikiDir: tmpDir,
-		memoryImpl: {
-			getMemory: async () => ({
-				entries: [
-					{ content: "[wiki-digest] Atlassian summary" },
-				],
-			}),
-		},
-	});
+	const status = await getWikiStatus({ wikiDir: tmpDir });
 
 	assert.equal(status.wikiDir, tmpDir);
+	assert.equal(status.canonicalCounts.profiles, 1);
+	assert.equal(status.canonicalCounts.operations, 1);
 	assert.equal(status.canonicalCounts.entities, 1);
 	assert.equal(status.canonicalCounts.concepts, 1);
 	assert.equal(status.canonicalCounts.comparisons, 1);
 	assert.equal(status.canonicalCounts.queries, 1);
-	assert.equal(status.totalCanonicalPages, 4);
+	assert.equal(status.totalCanonicalPages, 6);
 	assert.equal(status.rawCounts.articles, 1);
 	assert.equal(status.rawCounts.papers, 1);
 	assert.equal(status.totalRawCaptures, 2);
 	assert.equal(status.hasWikiDigestEntry, true);
+	assert.equal(status.compiledContexts.profile.exists, true);
+	assert.equal(status.proposalCounts.queued, 0);
 	assert.equal(status.files.schema.exists, true);
 	assert.equal(status.files.index.exists, true);
 	assert.equal(status.files.log.exists, true);
@@ -1012,14 +1005,7 @@ test("getWikiStatus summarizes canonical pages, raw captures, and digest state",
 test("getWikiStatus returns zero counts when the wiki directories are missing", async () => {
 	const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "vpk-wiki-status-empty-"));
 
-	const status = await getWikiStatus({
-		wikiDir: tmpDir,
-		memoryImpl: {
-			getMemory: async () => ({
-				entries: [],
-			}),
-		},
-	});
+	const status = await getWikiStatus({ wikiDir: tmpDir });
 
 	assert.equal(status.totalCanonicalPages, 0);
 	assert.equal(status.totalRawCaptures, 0);

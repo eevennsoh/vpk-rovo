@@ -70,6 +70,22 @@ test("rollback restores checkpoint state", async () => {
 	});
 });
 
+test("rollback removes files created after the checkpoint", async () => {
+	await withTempDir(async (dir) => {
+		const mgr = createCheckpointManager({ baseDir: dir });
+		await fs.writeFile(path.join(dir, "original.txt"), "present", "utf8");
+		const checkpoint = await mgr.create({ name: "before-extra-file" });
+		await fs.writeFile(path.join(dir, "new-after-checkpoint.txt"), "remove me", "utf8");
+
+		await mgr.rollback(checkpoint.id);
+
+		await assert.rejects(
+			fs.readFile(path.join(dir, "new-after-checkpoint.txt"), "utf8"),
+			(error) => error?.code === "ENOENT",
+		);
+	});
+});
+
 test("deleteCheckpoint removes checkpoint", async () => {
 	await withTempDir(async (dir) => {
 		const mgr = createCheckpointManager({ baseDir: dir });

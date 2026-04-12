@@ -1,6 +1,4 @@
-import { type NextRequest } from "next/server";
-import { proxyToBackend } from "@/app/api/_utils/proxy";
-import { readJsonBody } from "@/app/api/_utils/read-json-body";
+import { NextResponse, type NextRequest } from "next/server";
 
 interface MemoryRouteContext {
 	params: Promise<{
@@ -8,24 +6,20 @@ interface MemoryRouteContext {
 	}>;
 }
 
-export async function GET(_request: NextRequest, { params }: MemoryRouteContext) {
-	const { target } = await params;
-	return proxyToBackend({
-		method: "GET",
-		path: `/api/memories/${encodeURIComponent(target)}`,
+function buildRemovedMemoryResponse(target: string) {
+	return NextResponse.json({
+		error: `Hermes file-backed memory target "${target}" has been removed. Use the wiki-backed memory status instead.`,
+	}, {
+		status: 410,
 	});
 }
 
-export async function PUT(request: NextRequest, { params }: MemoryRouteContext) {
+export async function GET(_request: NextRequest, { params }: MemoryRouteContext) {
 	const { target } = await params;
-	const { body, errorResponse } = await readJsonBody(request);
-	if (errorResponse) {
-		return errorResponse;
-	}
+	return buildRemovedMemoryResponse(target);
+}
 
-	return proxyToBackend({
-		method: "PUT",
-		path: `/api/memories/${encodeURIComponent(target)}`,
-		body,
-	});
+export async function PUT(_request: NextRequest, { params }: MemoryRouteContext) {
+	const { target } = await params;
+	return buildRemovedMemoryResponse(target);
 }

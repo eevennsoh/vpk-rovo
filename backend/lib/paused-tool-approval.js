@@ -158,7 +158,21 @@ function buildPausedToolApprovalItem(part, index = 0, { permissions } = {}) {
 	}
 
 	const args = parseToolArgs(part.args);
-	const description = describePausedTool({ toolName, args });
+	let description = describePausedTool({ toolName, args });
+	if (
+		permissionScenario === "dangerous_command" &&
+		typeof part?.dangerousCommandLabel === "string" &&
+		part.dangerousCommandLabel.trim()
+	) {
+		description = {
+			...description,
+			title: "Review dangerous command",
+			description: description.commandPreview
+				? `Run a shell command flagged as ${part.dangerousCommandLabel.trim()}.`
+				: `Run a shell command flagged as ${part.dangerousCommandLabel.trim()}.`,
+			riskLevel: "high",
+		};
+	}
 
 	return {
 		id: `${toolCallId}-${index + 1}`,
