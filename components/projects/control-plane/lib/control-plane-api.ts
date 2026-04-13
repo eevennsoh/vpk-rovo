@@ -15,6 +15,11 @@ import type {
 	HermesSkillDetail,
 	HermesSkillSummary,
 	RuntimeStatusSnapshot,
+	WikiCanonicalMemoryBlock,
+	WikiCanonicalMemoryDocument,
+	WikiCanonicalMemoryDocuments,
+	WikiMemoryDeleteResponse,
+	WikiMemoryProposalDeleteResponse,
 	SessionSearchResult,
 	WikiQmdStatus,
 	WikiCompiledContextDocument,
@@ -151,6 +156,61 @@ function normalizeWikiCompiledContextDocument(rawDocument: unknown): WikiCompile
 		path: getString(document.path) ?? "",
 		preview: getString(document.preview) ?? "",
 		updatedAt: getString(document.updatedAt),
+	};
+}
+
+function normalizeWikiCanonicalMemoryBlock(rawBlock: unknown): WikiCanonicalMemoryBlock {
+	const block = rawBlock && typeof rawBlock === "object"
+		? rawBlock as Record<string, unknown>
+		: {};
+
+	return {
+		charCount:
+			typeof block.charCount === "number" && Number.isFinite(block.charCount)
+				? block.charCount
+				: 0,
+		content: getString(block.content) ?? "",
+		id: getString(block.id) ?? "block-unknown",
+		lineCount:
+			typeof block.lineCount === "number" && Number.isFinite(block.lineCount)
+				? block.lineCount
+				: 0,
+		preview: getString(block.preview) ?? "",
+	};
+}
+
+function normalizeWikiCanonicalMemoryDocument(
+	rawDocument: unknown,
+	scope: WikiCanonicalMemoryDocument["scope"],
+): WikiCanonicalMemoryDocument {
+	const document = rawDocument && typeof rawDocument === "object"
+		? rawDocument as Record<string, unknown>
+		: {};
+
+	return {
+		blocks: Array.isArray(document.blocks)
+			? document.blocks.map(normalizeWikiCanonicalMemoryBlock)
+			: [],
+		canonicalPath: getString(document.canonicalPath) ?? "",
+		compiledContext: document.compiledContext && typeof document.compiledContext === "object"
+			? normalizeWikiCompiledContextDocument(document.compiledContext)
+			: null,
+		exists: document.exists === true,
+		revision: getString(document.revision) ?? "",
+		scope,
+		title: getString(document.title) ?? (scope === "profile" ? "Self" : "Runtime Memory"),
+		updatedAt: getString(document.updatedAt),
+	};
+}
+
+function normalizeWikiCanonicalMemoryDocuments(rawDocuments: unknown): WikiCanonicalMemoryDocuments {
+	const documents = rawDocuments && typeof rawDocuments === "object"
+		? rawDocuments as Record<string, unknown>
+		: {};
+
+	return {
+		operations: normalizeWikiCanonicalMemoryDocument(documents.operations, "operations"),
+		profile: normalizeWikiCanonicalMemoryDocument(documents.profile, "profile"),
 	};
 }
 
@@ -418,6 +478,13 @@ export async function fetchWikiStatus(): Promise<WikiStatus> {
 	return normalizeWikiStatus(payload.wiki);
 }
 
+export async function fetchWikiMemories(): Promise<WikiCanonicalMemoryDocuments> {
+	const payload = await parseJsonResponse<{ memories?: unknown }>(await fetch(API_ENDPOINTS.WIKI_MEMORIES, {
+		method: "GET",
+	}));
+	return normalizeWikiCanonicalMemoryDocuments(payload.memories);
+}
+
 export async function searchWiki(
 	query: string,
 	limit?: number,
@@ -462,6 +529,52 @@ export async function syncWiki(force = true): Promise<WikiSyncResponse> {
 				}
 				: null,
 		},
+	};
+}
+
+export async function deleteWikiMemoryBlock(
+	scope: WikiCanonicalMemoryDocument["scope"],
+	blockId: string,
+	revision: string,
+): Promise<WikiMemoryDeleteResponse> {
+	const payload = await parseJsonResponse<{
+		memories?: unknown;
+		removedBlock?: unknown;
+		wiki?: unknown;
+	}>(
+		await fetch(API_ENDPOINTS.wikiMemoryBlock(scope, blockId), {
+			body: JSON.stringify({ revision }),
+			headers: {
+				"Content-Type": "application/json",
+			},
+			method: "DELETE",
+		}),
+	);
+
+	return {
+		memories: normalizeWikiCanonicalMemoryDocuments(payload.memories),
+		removedBlock: normalizeWikiCanonicalMemoryBlock(payload.removedBlock),
+		wiki: normalizeWikiStatus(payload.wiki),
+	};
+}
+
+export async function deleteWikiMemoryProposal(
+	proposalId: string,
+): Promise<WikiMemoryProposalDeleteResponse> {
+	const payload = await parseJsonResponse<{
+		memories?: unknown;
+		proposal?: unknown;
+		wiki?: unknown;
+	}>(
+		await fetch(API_ENDPOINTS.wikiMemoryProposal(proposalId), {
+			method: "DELETE",
+		}),
+	);
+
+	return {
+		memories: normalizeWikiCanonicalMemoryDocuments(payload.memories),
+		proposal: normalizeWikiMemoryProposalSummary(payload.proposal),
+		wiki: normalizeWikiStatus(payload.wiki),
 	};
 }
 

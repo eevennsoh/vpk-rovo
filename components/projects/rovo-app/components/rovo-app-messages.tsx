@@ -23,6 +23,7 @@ import { getRovoAppInterruptionLabel } from "@/lib/rovo-app-interruptions";
 import { resolveRovoAppMessageArtifactDisplay, resolveRovoAppOrphanArtifactDisplay, type RovoAppPendingArtifactResult } from "@/components/projects/rovo-app/lib/rovo-app-message-artifacts";
 import {
 	sanitizeRovoAppAssistantText,
+	looksLikeBrowserFallbackAssistantText,
 	shouldRenderRovoAppAssistantActions,
 	shouldRenderRovoAppAssistantText,
 	shouldRenderRovoAppAssistantMessage,
@@ -67,6 +68,7 @@ import { resolvePlanVisualIdentity } from "@/components/projects/shared/lib/plan
 import type { VisualIdentity } from "@/components/projects/shared/lib/visual-identity";
 import { cn } from "@/lib/utils";
 import { renderResolvedToolIcon, resolveToolIcon } from "@/components/projects/shared/lib/tool-icon-resolver";
+import { BrowserScreenshotPart } from "@/components/projects/rovo-app/components/rovo-app-browser-screenshot";
 import type { RovoAppDocument } from "@/lib/rovo-app-types";
 import type { RovoAppStreamingArtifact } from "@/components/projects/rovo-app/lib/rovo-app-streaming-artifact";
 import Image from "next/image";
@@ -85,6 +87,7 @@ interface RovoAppMessagesProps {
 	onBuildPlan?: (planWidget: ParsedPlanWidgetPayload) => void | Promise<void>;
 	onEditMessage: (messageId: string, nextText: string) => Promise<void>;
 	onOpenArtifactFromCard: (documentId: string, element: HTMLElement) => void;
+	onOpenBrowserPreview?: () => void;
 	onOpenPlanPreview?: (planWidget: ParsedPlanWidgetPayload, sourceMessageId?: string) => void;
 	onRegisterArtifactCard: (documentId: string, element: HTMLElement) => void;
 	onRegenerate: () => void;
@@ -568,6 +571,7 @@ function AssistantMessage({
 	isThinkingLifecycleStreaming,
 	message,
 	onBuildPlan,
+	onOpenBrowserPreview,
 	onOpenPlanPreview,
 	onRegenerate,
 	onVote,
@@ -583,6 +587,7 @@ function AssistantMessage({
 	isThinkingLifecycleStreaming: boolean;
 	message: RovoUIMessage;
 	onBuildPlan?: (planWidget: ParsedPlanWidgetPayload) => void | Promise<void>;
+	onOpenBrowserPreview?: () => void;
 	onOpenPlanPreview?: (planWidget: ParsedPlanWidgetPayload, sourceMessageId?: string) => void;
 	onRegenerate: () => void;
 	onVote: (messageId: string, value: "up" | "down" | null) => Promise<void>;
@@ -598,6 +603,8 @@ function AssistantMessage({
 	const widgetLoading = getLatestDataPart(message, "data-widget-loading");
 	const widgetError = getLatestDataPart(message, "data-widget-error");
 	const sources = getMessageSources(message);
+	const browserScreenshots = getAllDataParts(message, "data-browser-screenshot");
+	const hasBrowserScreenshotContent = browserScreenshots.length > 0;
 	const routeDecision: RoutingDecision | null = getLatestRouteDecision(message);
 
 	// Widget type determines rendering path: "question-card" and "plan" widgets
@@ -607,6 +614,7 @@ function AssistantMessage({
 	const widgetType = widget?.data.type ?? null;
 	const parsedPlanWidget = widgetType === "plan" ? parsePlanWidgetPayload(widget?.data.payload) : null;
 	const shouldShowWidget = shouldRenderRovoAppWidget({
+		hasBrowserScreenshots: hasBrowserScreenshotContent,
 		hasWidget: Boolean(widget),
 		routeDecision,
 		widgetType,
@@ -735,6 +743,12 @@ function AssistantMessage({
 			});
 
 	const shouldRenderPlanWidget = shouldShowWidget && parsedPlanWidget !== null;
+	const shouldSuppressAssistantTextForBrowserScreenshot =
+		hasBrowserScreenshotContent &&
+		(
+			widgetType === "genui-preview" ||
+			looksLikeBrowserFallbackAssistantText(text)
+		);
 	const shouldRenderAssistantText = shouldRenderRovoAppAssistantText({
 		hasText: Boolean(text),
 		hasTurnComplete,
@@ -744,9 +758,10 @@ function AssistantMessage({
 		isResponseInFlight,
 		isTextPresentation,
 		shouldRenderPlanWidget,
-	});
+	}) && !shouldSuppressAssistantTextForBrowserScreenshot;
 	const shouldRenderAssistantActions = shouldRenderRovoAppAssistantActions({
 		hasArtifactCard: Boolean(artifactCard),
+		hasBrowserScreenshots: hasBrowserScreenshotContent,
 		hasAssistantText: shouldRenderAssistantText,
 		hasInterruption: Boolean(interruptionLabel),
 		hasSources: sources.length > 0,
@@ -757,6 +772,7 @@ function AssistantMessage({
 	});
 	const shouldRenderAssistantMessage = shouldRenderRovoAppAssistantMessage({
 		hasArtifactCard: Boolean(artifactCard),
+		hasBrowserScreenshots: hasBrowserScreenshotContent,
 		hasAssistantText: shouldRenderAssistantText,
 		hasInterruption: Boolean(interruptionLabel),
 		hasReasoning: Boolean(reasoning?.text) || thinkingActive,
@@ -900,6 +916,18 @@ function AssistantMessage({
 
 						{artifactCard}
 
+						{browserScreenshots.length > 0 ? (
+							<div className="flex flex-col gap-2">
+								{browserScreenshots.map((part, index) => (
+									<BrowserScreenshotPart
+										key={`browser-screenshot-${message.id}-${index}`}
+										screenshot={part.data}
+										onFocusBrowserPanel={onOpenBrowserPreview}
+									/>
+								))}
+							</div>
+						) : null}
+
 						{interruptionLabel ? (
 							<div className="inline-flex w-fit items-center rounded-full border border-border-warning/40 bg-bg-warning-subtler px-2.5 py-1 text-text-warning-bolder text-xs">{interruptionLabel}</div>
 						) : null}
@@ -1022,6 +1050,7 @@ export function RovoAppMessages({
 	onBuildPlan,
 	onEditMessage,
 	onOpenArtifactFromCard,
+	onOpenBrowserPreview,
 	onOpenPlanPreview,
 	onRegisterArtifactCard,
 	onRegenerate,
@@ -1198,6 +1227,7 @@ export function RovoAppMessages({
 								isThinkingLifecycleStreaming={isStreaming && message.id === streamingAssistantMessageId}
 								message={message}
 								onBuildPlan={onBuildPlan}
+								onOpenBrowserPreview={onOpenBrowserPreview}
 								onOpenPlanPreview={onOpenPlanPreview}
 								onRegenerate={onRegenerate}
 								onVote={onVote}

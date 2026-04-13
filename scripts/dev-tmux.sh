@@ -2,12 +2,20 @@
 
 set -euo pipefail
 
-# Mirror the non-tmux launcher by seeding .env.local from the example when
-# needed before loading environment overrides.
-if [ ! -f .env.local ] && [ -f .env.local.example ]; then
-	cp .env.local.example .env.local
-	echo "[tmux] Created .env.local from .env.local.example"
-fi
+# Mirror the non-tmux launcher by seeding .env.local before loading
+# environment overrides. Prefer the main worktree's .env.local and only
+# fall back to .env.local.example when needed.
+node - <<'NODE'
+const { ensureEnvLocalExists } = require("./scripts/lib/env-local");
+
+const result = ensureEnvLocalExists({ cwd: process.cwd() });
+
+if (result.createdFrom === "main-worktree") {
+	console.log(`[tmux] Created .env.local from main worktree: ${result.mainWorktreePath}`);
+} else if (result.createdFrom === "example") {
+	console.log("[tmux] Created .env.local from .env.local.example");
+}
+NODE
 
 # Load .env.local if it exists
 if [ -f .env.local ]; then

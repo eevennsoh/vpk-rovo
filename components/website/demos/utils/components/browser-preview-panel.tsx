@@ -15,6 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { API_ENDPOINTS } from "@/lib/api-config";
 import { cn } from "@/lib/utils";
+import { BrowserPreviewOverlay } from "@/components/projects/shared/components/browser-preview-overlay";
 import {
 	ArrowLeftIcon as ArrowLeft,
 	ArrowRightIcon as ArrowRight,
@@ -140,6 +141,7 @@ function EmbeddedBrowserWorkspacePreview({
 		isWorkspaceInitializing,
 		isWorkspaceMutating,
 		refreshWorkspace,
+		resetWorkspace,
 		runWorkspaceAction,
 		createWorkspaceTab,
 		activateWorkspaceTab,
@@ -157,9 +159,6 @@ function EmbeddedBrowserWorkspacePreview({
 	>(null);
 
 	const liveViewportRef = useRef<HTMLDivElement | null>(null);
-	const lastViewportRequestRef = useRef("");
-	const pendingViewportRequestRef = useRef("");
-	const viewportSyncTimerRef = useRef<number | null>(null);
 	const pendingWheelRef = useRef({
 		x: 0,
 		y: 0,
@@ -173,9 +172,14 @@ function EmbeddedBrowserWorkspacePreview({
 		status: previewStatus,
 		error: previewError,
 		sourceMetadata,
+		overlayState,
 		canSendControl,
 		sendControlMessage,
-	} = useBrowserPreviewSession(workspaceId);
+	} = useBrowserPreviewSession(workspaceId, {
+		onMissingWorkspace: async () => {
+			await resetWorkspace();
+		},
+	});
 	const previousPreviewStatusRef = useRef(previewStatus);
 
 	const currentUrl = workspaceState?.url ?? "";
@@ -246,76 +250,11 @@ function EmbeddedBrowserWorkspacePreview({
 
 	useEffect(() => {
 		return () => {
-			if (viewportSyncTimerRef.current !== null) {
-				window.clearTimeout(viewportSyncTimerRef.current);
-			}
 			if (wheelFlushTimerRef.current !== null) {
 				window.clearTimeout(wheelFlushTimerRef.current);
 			}
 		};
 	}, []);
-
-	useEffect(() => {
-		if (!workspaceId) {
-			return;
-		}
-
-		const dpr = window.devicePixelRatio || 1;
-		const requestKey = `${workspaceId}:${containerViewportSize.width}:${containerViewportSize.height}:${dpr}`;
-		if (
-			lastViewportRequestRef.current === requestKey ||
-			pendingViewportRequestRef.current === requestKey
-		) {
-			return;
-		}
-
-		let cancelled = false;
-		pendingViewportRequestRef.current = requestKey;
-		if (viewportSyncTimerRef.current !== null) {
-			window.clearTimeout(viewportSyncTimerRef.current);
-		}
-
-		viewportSyncTimerRef.current = window.setTimeout(() => {
-			viewportSyncTimerRef.current = null;
-			if (cancelled || pendingViewportRequestRef.current !== requestKey) {
-				return;
-			}
-
-			pendingViewportRequestRef.current = "";
-			void (async () => {
-				const nextState = await runWorkspaceAction(
-					"viewport",
-					{
-						width: containerViewportSize.width,
-						height: containerViewportSize.height,
-						deviceScaleFactor: dpr,
-					},
-					{ suppressMutating: true },
-				);
-				if (cancelled || !nextState) {
-					return;
-				}
-
-				lastViewportRequestRef.current = requestKey;
-			})();
-		}, 120);
-
-		return () => {
-			cancelled = true;
-			if (pendingViewportRequestRef.current === requestKey) {
-				pendingViewportRequestRef.current = "";
-			}
-			if (viewportSyncTimerRef.current !== null) {
-				window.clearTimeout(viewportSyncTimerRef.current);
-				viewportSyncTimerRef.current = null;
-			}
-		};
-	}, [
-		containerViewportSize.height,
-		containerViewportSize.width,
-		runWorkspaceAction,
-		workspaceId,
-	]);
 
 	const preferredScreenshotRevision = useMemo(() => {
 		if (previewStatus === "fallback") {
@@ -414,6 +353,7 @@ function EmbeddedBrowserWorkspacePreview({
 		);
 
 		return {
+			offsetTop: 0,
 			sourceWidth,
 			sourceHeight,
 			renderedWidth,
@@ -432,12 +372,13 @@ function EmbeddedBrowserWorkspacePreview({
 	const renderedMediaStyle = useMemo(
 		() => ({
 			left: previewGeometry.offsetLeft,
-			top: 0,
+			top: previewGeometry.offsetTop,
 			width: previewGeometry.renderedWidth,
 			height: previewGeometry.renderedHeight,
 		}),
 		[
 			previewGeometry.offsetLeft,
+			previewGeometry.offsetTop,
 			previewGeometry.renderedHeight,
 			previewGeometry.renderedWidth,
 		],
@@ -833,6 +774,11 @@ function EmbeddedBrowserWorkspacePreview({
 						<Loader2Icon className="size-7 animate-spin text-text-subtle" />
 					</div>
 				) : null}
+
+				<BrowserPreviewOverlay
+					geometry={previewGeometry}
+					overlayState={overlayState}
+				/>
 
 				{combinedPreviewError ? (
 					<div className="absolute inset-x-4 bottom-4 flex items-start gap-3 rounded-lg border border-border bg-background/90 p-3 shadow-sm">

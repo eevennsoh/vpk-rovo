@@ -5,6 +5,7 @@ const os = require("node:os");
 const path = require("node:path");
 
 const {
+	getGitWorktrees,
 	inferWorktreeKind,
 	getPortInfoForPath,
 } = require("./worktree-ports");
@@ -39,16 +40,18 @@ test("getPortInfoForPath resolves linked worktree slots from git metadata", () =
 	const repoRoot = path.resolve(__dirname, "..", "..");
 	const mainPath = path.resolve(repoRoot, "..", "VPK-rovodev");
 	const linkedPath = repoRoot;
+	const linkedWorktree = getGitWorktrees().find((worktree) => worktree.path === linkedPath);
 
 	const mainInfo = getPortInfoForPath(mainPath);
 	const linkedInfo = getPortInfoForPath(linkedPath);
 
+	assert.ok(linkedWorktree);
 	assert.equal(mainInfo.slot, 0);
 	assert.equal(mainInfo.rovodevBase, 8000);
-	assert.equal(linkedInfo.worktreeName, "plan-mode");
-	assert.equal(linkedInfo.slot, 1);
-	assert.equal(linkedInfo.offset, 20);
-	assert.equal(linkedInfo.frontendBase, 3020);
-	assert.equal(linkedInfo.backendBase, 8100);
-	assert.equal(linkedInfo.rovodevBase, 8020);
+	assert.equal(linkedInfo.worktreeName, linkedWorktree.identifier);
+	assert.ok(linkedInfo.slot > 0);
+	assert.equal(linkedInfo.offset, linkedInfo.slot * 20);
+	assert.equal(linkedInfo.frontendBase, 3000 + linkedInfo.offset);
+	assert.equal(linkedInfo.backendBase, 8080 + linkedInfo.offset);
+	assert.equal(linkedInfo.rovodevBase, 8000 + linkedInfo.offset);
 });

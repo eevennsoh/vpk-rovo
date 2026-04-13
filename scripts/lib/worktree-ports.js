@@ -38,8 +38,9 @@ function hashString(str) {
 	return Math.abs(hash);
 }
 
-function execGit(command) {
+function execGit(command, { cwd = process.cwd() } = {}) {
 	return execSync(command, {
+		cwd,
 		encoding: "utf8",
 		stdio: ["pipe", "pipe", "pipe"],
 	}).trim();
@@ -74,9 +75,9 @@ function resolveWorktreeIdentifier(worktree) {
 	return path.basename(worktree.path);
 }
 
-function getGitWorktrees() {
+function getGitWorktrees({ cwd = process.cwd() } = {}) {
 	try {
-		const output = execGit("git worktree list --porcelain");
+		const output = execGit("git worktree list --porcelain", { cwd });
 		const worktrees = [];
 		let current = null;
 
@@ -122,9 +123,9 @@ function getGitWorktrees() {
 	}
 }
 
-function getCurrentWorktreePath() {
+function getCurrentWorktreePath({ cwd = process.cwd() } = {}) {
 	try {
-		return path.resolve(execGit("git rev-parse --show-toplevel"));
+		return path.resolve(execGit("git rev-parse --show-toplevel", { cwd }));
 	} catch {
 		return null;
 	}
@@ -327,6 +328,7 @@ function getAllWorktreePortInfo() {
 module.exports = {
 	inferWorktreeKind,
 	hashString,
+	getGitWorktrees,
 	getWorktreeName,
 	getWorktreePortOffset,
 	getWorktreePortOffsetForPath,

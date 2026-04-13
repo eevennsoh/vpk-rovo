@@ -57,14 +57,59 @@ function assertRovoAppAvailable<T extends { backendUnavailable?: boolean }>(
 	return payload;
 }
 
+function normalizeRovoAppThread(thread: Partial<RovoAppThread> | null | undefined): RovoAppThread | null {
+	if (!thread || typeof thread !== "object" || typeof thread.id !== "string" || thread.id.trim().length === 0) {
+		return null;
+	}
+
+	return {
+		activeDocumentId:
+			typeof thread.activeDocumentId === "string" && thread.activeDocumentId.trim().length > 0
+				? thread.activeDocumentId
+				: null,
+		activeRun: thread.activeRun ?? null,
+		createdAt:
+			typeof thread.createdAt === "string" && thread.createdAt.trim().length > 0
+				? thread.createdAt
+				: new Date(0).toISOString(),
+		hermesContext: thread.hermesContext ?? null,
+		id: thread.id,
+		messages: Array.isArray(thread.messages) ? thread.messages : [],
+		modelId: typeof thread.modelId === "string" && thread.modelId.trim().length > 0 ? thread.modelId : null,
+		provider: typeof thread.provider === "string" && thread.provider.trim().length > 0 ? thread.provider : null,
+		realtimeMessages: Array.isArray(thread.realtimeMessages) ? thread.realtimeMessages : [],
+		sessionId:
+			typeof thread.sessionId === "string" && thread.sessionId.trim().length > 0
+				? thread.sessionId
+				: null,
+		sessionMode:
+			thread.sessionMode === "persistent" || thread.sessionMode === "ephemeral"
+				? thread.sessionMode
+				: null,
+		title:
+			typeof thread.title === "string" && thread.title.trim().length > 0
+				? thread.title
+				: "New chat",
+		updatedAt:
+			typeof thread.updatedAt === "string" && thread.updatedAt.trim().length > 0
+				? thread.updatedAt
+				: new Date(0).toISOString(),
+		visibility: thread.visibility === "public" ? "public" : "private",
+	};
+}
+
 export async function listRovoAppThreads(): Promise<RovoAppThread[]> {
 	const response = await fetch(API_ENDPOINTS.rovoAppThreads(), {
 		method: "GET",
 	});
 	const payload = assertRovoAppAvailable(
-		await parseJsonResponse<{ backendUnavailable?: boolean; threads?: RovoAppThread[] }>(response),
+		await parseJsonResponse<{ backendUnavailable?: boolean; threads?: Array<Partial<RovoAppThread>> }>(response),
 	);
-	return Array.isArray(payload.threads) ? payload.threads : [];
+	return Array.isArray(payload.threads)
+		? payload.threads
+				.map((thread) => normalizeRovoAppThread(thread))
+				.filter((thread): thread is RovoAppThread => thread !== null)
+		: [];
 }
 
 export async function getRovoAppThread(threadId: string): Promise<RovoAppThread | null> {
@@ -75,9 +120,9 @@ export async function getRovoAppThread(threadId: string): Promise<RovoAppThread 
 		return null;
 	}
 	const payload = assertRovoAppAvailable(
-		await parseJsonResponse<{ backendUnavailable?: boolean; thread?: RovoAppThread | null }>(response),
+		await parseJsonResponse<{ backendUnavailable?: boolean; thread?: Partial<RovoAppThread> | null }>(response),
 	);
-	return payload.thread ?? null;
+	return normalizeRovoAppThread(payload.thread);
 }
 
 export async function createRovoAppThread(input: {
@@ -96,11 +141,12 @@ export async function createRovoAppThread(input: {
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify(input),
 	});
-	const payload = await parseJsonResponse<{ thread?: RovoAppThread }>(response);
-	if (!payload.thread) {
+	const payload = await parseJsonResponse<{ thread?: Partial<RovoAppThread> }>(response);
+	const thread = normalizeRovoAppThread(payload.thread);
+	if (!thread) {
 		throw new Error("Rovo App thread response was missing a thread.");
 	}
-	return payload.thread;
+	return thread;
 }
 
 export async function updateRovoAppThread(
@@ -121,11 +167,12 @@ export async function updateRovoAppThread(
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify(input),
 	});
-	const payload = await parseJsonResponse<{ thread?: RovoAppThread }>(response);
-	if (!payload.thread) {
+	const payload = await parseJsonResponse<{ thread?: Partial<RovoAppThread> }>(response);
+	const thread = normalizeRovoAppThread(payload.thread);
+	if (!thread) {
 		throw new Error("Rovo App update response was missing a thread.");
 	}
-	return payload.thread;
+	return thread;
 }
 
 export async function deleteRovoAppThread(threadId: string): Promise<void> {

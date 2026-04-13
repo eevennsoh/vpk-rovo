@@ -14,6 +14,8 @@ const ROVO_APP_TOOL_DRIVEN_WIDGET_TYPES = new Set([
 	"plan",
 	"question-card",
 ]);
+const ROVO_APP_BROWSER_FALLBACK_TEXT_PATTERN =
+	/(?:screenshot image(?: itself)? (?:can'?t|cannot) be rendered|chrome devtools remote debugging is blocked|what would you like to do instead\?|try a local\/internal url|screenshots work fine for localhost)/iu;
 
 export function removeRovoAppDirectMediaFences(rawText: string): {
 	removed: boolean;
@@ -103,12 +105,25 @@ export function sanitizeRovoAppAssistantText(rawText: string): string {
 	}
 }
 
+export function looksLikeBrowserFallbackAssistantText(rawText: string): boolean {
+	if (typeof rawText !== "string" || rawText.trim().length === 0) {
+		return false;
+	}
+
+	return ROVO_APP_BROWSER_FALLBACK_TEXT_PATTERN.test(rawText);
+}
+
 export function shouldRenderRovoAppWidget(input: {
+	hasBrowserScreenshots?: boolean;
 	hasWidget: boolean;
 	routeDecision: RoutingDecision | null;
 	widgetType: string | null;
 }): boolean {
 	if (!input.hasWidget) {
+		return false;
+	}
+
+	if (input.hasBrowserScreenshots && input.widgetType === "genui-preview") {
 		return false;
 	}
 
@@ -157,6 +172,7 @@ export function shouldRenderRovoAppAssistantText(input: {
 
 export function shouldRenderRovoAppAssistantActions(input: {
 	hasArtifactCard: boolean;
+	hasBrowserScreenshots?: boolean;
 	hasAssistantText: boolean;
 	hasInterruption: boolean;
 	hasSources: boolean;
@@ -173,6 +189,7 @@ export function shouldRenderRovoAppAssistantActions(input: {
 		input.hasAssistantText ||
 		input.hasWidget ||
 		input.hasWidgetError ||
+		Boolean(input.hasBrowserScreenshots) ||
 		input.hasArtifactCard ||
 		input.hasSources ||
 		input.hasInterruption
@@ -188,6 +205,7 @@ export function shouldRenderRovoAppVisibleWidget(input: {
 
 export function shouldRenderRovoAppAssistantMessage(input: {
 	hasArtifactCard: boolean;
+	hasBrowserScreenshots?: boolean;
 	hasAssistantText: boolean;
 	hasInterruption: boolean;
 	hasReasoning: boolean;
@@ -200,6 +218,7 @@ export function shouldRenderRovoAppAssistantMessage(input: {
 		input.hasReasoning ||
 		input.hasWidget ||
 		input.hasWidgetError ||
+		Boolean(input.hasBrowserScreenshots) ||
 		input.hasArtifactCard ||
 		input.hasSources ||
 		input.hasInterruption

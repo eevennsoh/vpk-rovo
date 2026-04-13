@@ -201,6 +201,7 @@ function createTestWorkspace(options = {}) {
 		workspaceId: options.workspaceId ?? "workspace-test",
 		sessionId: options.sessionId ?? "workspace-test-session",
 		delayFn: async () => {},
+		nowFn: options.nowFn,
 		runtimeFactory: () => createFakeRuntime(options.initialUrl),
 		previewSessionFactory: options.previewSessionFactory,
 	})
@@ -315,10 +316,11 @@ test("browser workspace settles preview state for websocket-only preview clients
 	const originalClearTimeout = global.clearTimeout
 	const scheduledTimers = []
 
-	global.setTimeout = (callback) => {
+	global.setTimeout = (callback, delay) => {
 		const timer = {
 			callback,
 			cleared: false,
+			delay,
 			unref() {},
 		}
 		scheduledTimers.push(timer)
@@ -344,31 +346,168 @@ test("browser workspace settles preview state for websocket-only preview clients
 		}
 
 		await workspace.initialize("https://example.com")
-		await workspace.attachPreviewClient(client)
-		await workspace.previewClick(32, 48)
+			await workspace.attachPreviewClient(client)
+			await workspace.previewClick(32, 48)
 
-		assert.equal(workspace._previewStatus, "live")
-		assert.equal(scheduledTimers.length, 1)
-		assert.equal(
-			messages.some(
-				(message) => message.type === "preview-state" && message.status === "live",
-			),
-			true,
-		)
+			assert.equal(workspace._previewStatus, "live")
+			assert.equal(scheduledTimers.length, 2)
+			assert.equal(
+				messages.some(
+					(message) => message.type === "preview-state" && message.status === "live",
+				),
+				true,
+			)
+			assert.deepEqual(
+				messages.findLast((message) => message.type === "preview-overlay"),
+				{
+					type: "preview-overlay",
+					cursor: {
+						x: 32,
+						y: 48,
+						visible: true,
+					},
+					activity: {
+						kind: "click",
+						label: "Clicking",
+					},
+					updatedAt: workspace._previewOverlayState.updatedAt,
+				},
+			)
 
-		scheduledTimers[0].callback()
-		await workspace._queue
+			const settleTimer = scheduledTimers.find((timer) => timer.delay === 750)
+			const overlayTimer = scheduledTimers.find((timer) => timer.delay === 1200)
+			assert.ok(settleTimer)
+			assert.ok(overlayTimer)
 
-		const steadyMessages = messages.filter(
-			(message) => message.type === "preview-state" && message.status === "steady",
-		)
-		assert.equal(workspace._previewStatus, "steady")
-		assert.equal(steadyMessages.length >= 2, true)
-		assert.equal(steadyMessages.at(-1)?.settledScreenshotRevision, 1)
-	} finally {
-		global.setTimeout = originalSetTimeout
-		global.clearTimeout = originalClearTimeout
+			settleTimer.callback()
+			await workspace._queue
+
+			const steadyMessages = messages.filter(
+				(message) => message.type === "preview-state" && message.status === "steady",
+			)
+			assert.equal(workspace._previewStatus, "steady")
+			assert.equal(steadyMessages.length >= 2, true)
+			assert.equal(steadyMessages.at(-1)?.settledScreenshotRevision, 1)
+
+			overlayTimer.callback()
+			await workspace._queue
+
+			assert.deepEqual(
+				messages.findLast((message) => message.type === "preview-overlay"),
+				{
+					type: "preview-overlay",
+					cursor: {
+						x: 32,
+						y: 48,
+						visible: true,
+					},
+					activity: null,
+					updatedAt: workspace._previewOverlayState.updatedAt,
+				},
+			)
+		} finally {
+			global.setTimeout = originalSetTimeout
+			global.clearTimeout = originalClearTimeout
+		}
+	})
+
+test("browser workspace reuses recent pointer overlay for ref actions and falls back to center once stale", async () => {
+	let currentTime = 10_000
+	const workspace = createTestWorkspace({
+		workspaceId: "workspace-overlay-anchor",
+		initialUrl: "https://example.com",
+		nowFn: () => currentTime,
+	})
+
+	await workspace.initialize("https://example.com")
+	await workspace.previewClick(80, 120)
+	assert.deepEqual(workspace._previewOverlayState.cursor, {
+		x: 80,
+		y: 120,
+		visible: true,
+	})
+
+	currentTime += 1_000
+	await workspace.typeRef("@e1", "hello")
+	assert.deepEqual(workspace._previewOverlayState.cursor, {
+		x: 80,
+		y: 120,
+		visible: true,
+	})
+	assert.deepEqual(workspace._previewOverlayState.activity, {
+		kind: "type",
+		label: "Typing",
+	})
+
+	currentTime += 6_000
+	await workspace.selectRef("@e1", ["one"])
+	assert.deepEqual(workspace._previewOverlayState.cursor, {
+		x: 640,
+		y: 450,
+		visible: true,
+	})
+	assert.deepEqual(workspace._previewOverlayState.activity, {
+		kind: "select",
+		label: "Selecting",
+	})
+})
+
+test("browser workspace replays overlay state to preview clients on attach and sync", async () => {
+	const messages = []
+	const workspace = createTestWorkspace({
+		workspaceId: "workspace-overlay-sync",
+		initialUrl: "https://example.com",
+	})
+	const client = {
+		readyState: 1,
+		send(payload) {
+			messages.push(JSON.parse(payload))
+		},
 	}
+
+	await workspace.initialize("https://example.com")
+	await workspace.previewClick(24, 36)
+	await workspace.attachPreviewClient(client)
+
+	assert.deepEqual(
+		messages.findLast((message) => message.type === "preview-overlay"),
+		{
+			type: "preview-overlay",
+			cursor: {
+				x: 24,
+				y: 36,
+				visible: true,
+			},
+			activity: {
+				kind: "click",
+				label: "Clicking",
+			},
+			updatedAt: workspace._previewOverlayState.updatedAt,
+		},
+	)
+
+	messages.length = 0
+	workspace._handlePreviewControlMessage({
+		type: "preview-sync",
+	})
+	await workspace._queue
+
+	assert.deepEqual(
+		messages.findLast((message) => message.type === "preview-overlay"),
+		{
+			type: "preview-overlay",
+			cursor: {
+				x: 24,
+				y: 36,
+				visible: true,
+			},
+			activity: {
+				kind: "click",
+				label: "Clicking",
+			},
+			updatedAt: workspace._previewOverlayState.updatedAt,
+		},
+	)
 })
 
 test("browser workspace cleans up failed preview session negotiation", async () => {

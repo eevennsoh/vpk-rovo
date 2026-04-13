@@ -59,6 +59,16 @@ test("syncWorkspaceRovodevConfig creates a workspace-scoped config and MCP file"
 				args: ["base-mcp"],
 				type: "stdio",
 			},
+			playwright: {
+				command: "npx",
+				args: ["playwright-mcp", "--headless"],
+				type: "stdio",
+			},
+			"chrome-devtools": {
+				command: "npx",
+				args: ["-y", "chrome-devtools-mcp@latest", "--browser-url=http://127.0.0.1:9222"],
+				type: "stdio",
+			},
 		},
 	}, null, "\t"));
 
@@ -100,11 +110,15 @@ test("syncWorkspaceRovodevConfig creates a workspace-scoped config and MCP file"
 			"url:https://example.com/one",
 			"stdio:npx:base-mcp",
 			"stdio:pnpm:exec qmd mcp",
+			`stdio:node:${path.join(workspaceDir, "scripts", "browser-workspace-mcp.js")}`,
 		]);
 
 		const workspaceMcp = JSON.parse(fs.readFileSync(workspaceMcpPath, "utf8"));
 		assert.ok(workspaceMcp.mcpServers["base-server"]);
+		assert.ok(workspaceMcp.mcpServers["browser-workspace"]);
 		assert.ok(workspaceMcp.mcpServers["local-only"]);
+		assert.equal(workspaceMcp.mcpServers.playwright, undefined);
+		assert.equal(workspaceMcp.mcpServers["chrome-devtools"], undefined);
 		assert.deepEqual(workspaceMcp.mcpServers.qmd, {
 			args: ["exec", "qmd", "mcp"],
 			command: "pnpm",
@@ -113,7 +127,15 @@ test("syncWorkspaceRovodevConfig creates a workspace-scoped config and MCP file"
 			},
 			type: "stdio",
 		});
-		assert.equal(Object.keys(workspaceMcp.mcpServers).length, 3);
+		assert.deepEqual(workspaceMcp.mcpServers["browser-workspace"], {
+			args: [path.join(workspaceDir, "scripts", "browser-workspace-mcp.js")],
+			command: "node",
+			env: {
+				REPO_ROOT: workspaceDir,
+			},
+			type: "stdio",
+		});
+		assert.equal(Object.keys(workspaceMcp.mcpServers).length, 4);
 	} finally {
 		osModule.homedir = originalHomeDir;
 	}

@@ -18,14 +18,15 @@
 				"ALLOWED_SEARCH_ENGINES": "google,duckduckgo,bing"
 			}
 		},
-		"chrome-devtools": {
-			"type": "stdio",
-			"command": "npx",
+		"browser-workspace": {
 			"args": [
-				"-y",
-				"chrome-devtools-mcp@latest",
-				"--browser-url=http://127.0.0.1:9222"
-			]
+				"/Users/esoh/Documents/Labs/agent-browser/scripts/browser-workspace-mcp.js"
+			],
+			"command": "node",
+			"env": {
+				"REPO_ROOT": "/Users/esoh/Documents/Labs/agent-browser"
+			},
+			"type": "stdio"
 		},
 		"hermes-tools": {
 			"type": "stdio",
@@ -47,7 +48,7 @@
 			],
 			"command": "pnpm",
 			"env": {
-				"INDEX_PATH": "/Users/esoh/Documents/Labs/VPK-rovo/.cache/qmd/wiki.sqlite"
+				"INDEX_PATH": "/Users/esoh/Documents/Labs/agent-browser/.cache/qmd/wiki.sqlite"
 			},
 			"type": "stdio"
 		}

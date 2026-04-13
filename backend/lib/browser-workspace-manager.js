@@ -16,6 +16,8 @@ const SCREENSHOT_ROOT_DIR = path.join(os.tmpdir(), "vpk-browser-workspaces")
 const WORKSPACE_IDLE_TIMEOUT_MS = 30 * 60 * 1000
 const WORKSPACE_CLEANUP_INTERVAL_MS = 60 * 1000
 const PREVIEW_SETTLE_DELAY_MS = 750
+const PREVIEW_OVERLAY_ACTIVITY_RESET_MS = 1200
+const PREVIEW_OVERLAY_POINTER_STALE_MS = 5_000
 const SCROLL_DIRECTIONS = new Set(["up", "down", "left", "right"])
 
 function delay(milliseconds) {
@@ -188,12 +190,15 @@ class BrowserWorkspace {
 		this._screenshotDir = path.join(screenshotRootDir, this._workspaceId)
 		this._previewSessions = new Map()
 		this._previewClients = new Set()
-		this._previewStreamPromise = null
-		this._previewSettleTimer = null
-		this._previewSettledScreenshotRevision = 0
-		this._previewStatus = "steady"
-		this._lastPreviewMetadata = null
-	}
+			this._previewStreamPromise = null
+			this._previewSettleTimer = null
+			this._previewSettledScreenshotRevision = 0
+			this._previewStatus = "steady"
+			this._lastPreviewMetadata = null
+			this._previewOverlayState = null
+			this._previewOverlayActivityTimer = null
+			this._lastExactPointer = null
+		}
 
 	_touch() {
 		this._lastUsedAt = this._now()
@@ -221,8 +226,75 @@ class BrowserWorkspace {
 		}
 	}
 
+	_clearPreviewOverlayActivityTimer() {
+		if (this._previewOverlayActivityTimer !== null) {
+			clearTimeout(this._previewOverlayActivityTimer)
+			this._previewOverlayActivityTimer = null
+		}
+	}
+
 	_hasPreviewConsumers() {
 		return this._previewSessions.size > 0 || this._previewClients.size > 0
+	}
+
+	_getPreviewSourceDimensions() {
+		return {
+			width: Math.max(
+				1,
+				this._lastPreviewMetadata?.deviceWidth ?? this._viewport.width,
+			),
+			height: Math.max(
+				1,
+				this._lastPreviewMetadata?.deviceHeight ?? this._viewport.height,
+			),
+		}
+	}
+
+	_clampPreviewPoint(x, y) {
+		const sourceDimensions = this._getPreviewSourceDimensions()
+		return {
+			x: Math.min(
+				sourceDimensions.width,
+				Math.max(0, Math.round(Number(x) || 0)),
+			),
+			y: Math.min(
+				sourceDimensions.height,
+				Math.max(0, Math.round(Number(y) || 0)),
+			),
+		}
+	}
+
+	_setLastExactPointer(x, y) {
+		const nextPoint = this._clampPreviewPoint(x, y)
+		this._lastExactPointer = {
+			...nextPoint,
+			updatedAt: this._now(),
+		}
+		return nextPoint
+	}
+
+	_resolvePreviewOverlayPoint({ x, y, preferLastExact = true } = {}) {
+		if (Number.isFinite(Number(x)) && Number.isFinite(Number(y))) {
+			return this._setLastExactPointer(x, y)
+		}
+
+		if (
+			preferLastExact &&
+			this._lastExactPointer &&
+			this._now() - this._lastExactPointer.updatedAt <=
+				PREVIEW_OVERLAY_POINTER_STALE_MS
+		) {
+			return {
+				x: this._lastExactPointer.x,
+				y: this._lastExactPointer.y,
+			}
+		}
+
+		const sourceDimensions = this._getPreviewSourceDimensions()
+		return {
+			x: Math.round(sourceDimensions.width / 2),
+			y: Math.round(sourceDimensions.height / 2),
+		}
 	}
 
 	_getHistoryState(tabIndex) {
@@ -314,16 +386,28 @@ class BrowserWorkspace {
 	}
 
 	_getPreviewStateMessage(status = this._previewStatus) {
-		const sourceWidth = this._lastPreviewMetadata?.deviceWidth ?? this._viewport.width
-		const sourceHeight = this._lastPreviewMetadata?.deviceHeight ?? this._viewport.height
+		const sourceDimensions = this._getPreviewSourceDimensions()
 
 		return {
 			type: "preview-state",
 			status,
 			settledScreenshotRevision: this._previewSettledScreenshotRevision || null,
-			sourceWidth,
-			sourceHeight,
+			sourceWidth: sourceDimensions.width,
+			sourceHeight: sourceDimensions.height,
 			pageScaleFactor: this._lastPreviewMetadata?.pageScaleFactor ?? 1,
+		}
+	}
+
+	_getPreviewOverlayMessage() {
+		if (!this._previewOverlayState) {
+			return null
+		}
+
+		return {
+			type: "preview-overlay",
+			cursor: this._previewOverlayState.cursor,
+			activity: this._previewOverlayState.activity,
+			updatedAt: this._previewOverlayState.updatedAt,
 		}
 	}
 
@@ -342,6 +426,83 @@ class BrowserWorkspace {
 				continue
 			}
 			client.send(payload)
+		}
+	}
+
+	_broadcastPreviewOverlay() {
+		if (!this._hasPreviewConsumers()) {
+			return
+		}
+
+		const message = this._getPreviewOverlayMessage()
+		if (!message) {
+			return
+		}
+
+		for (const session of this._previewSessions.values()) {
+			session.send(message)
+		}
+
+		const payload = JSON.stringify(message)
+		for (const client of this._previewClients) {
+			if (client.readyState !== 1) {
+				continue
+			}
+			client.send(payload)
+		}
+	}
+
+	_syncPreviewMessages() {
+		this._broadcastPreviewState(this._previewStatus)
+		this._broadcastPreviewOverlay()
+	}
+
+	_schedulePreviewOverlayActivityReset() {
+		this._clearPreviewOverlayActivityTimer()
+		this._previewOverlayActivityTimer = setTimeout(() => {
+			this._previewOverlayActivityTimer = null
+			void this._enqueue(async () => {
+				if (!this._previewOverlayState?.activity) {
+					return
+				}
+
+				this._previewOverlayState = {
+					...this._previewOverlayState,
+					activity: null,
+					updatedAt: this._now(),
+				}
+				this._broadcastPreviewOverlay()
+			})
+		}, PREVIEW_OVERLAY_ACTIVITY_RESET_MS)
+		this._previewOverlayActivityTimer.unref?.()
+	}
+
+	_setPreviewOverlay({ x, y, kind, label, preferLastExact = true }) {
+		const point = this._resolvePreviewOverlayPoint({
+			x,
+			y,
+			preferLastExact,
+		})
+
+		this._previewOverlayState = {
+			cursor: {
+				...point,
+				visible: true,
+			},
+			activity:
+				typeof kind === "string" && typeof label === "string"
+					? {
+						kind,
+						label,
+					}
+					: null,
+			updatedAt: this._now(),
+		}
+		this._broadcastPreviewOverlay()
+		if (this._previewOverlayState.activity) {
+			this._schedulePreviewOverlayActivityReset()
+		} else {
+			this._clearPreviewOverlayActivityTimer()
 		}
 	}
 
@@ -510,11 +671,6 @@ class BrowserWorkspace {
 					this._lastPreviewMetadata.pageScaleFactor !== metadata?.pageScaleFactor
 
 				this._lastPreviewMetadata = metadata
-				const framePayload = JSON.stringify({
-					type: "frame",
-					data: frame?.data,
-					metadata,
-				})
 				for (const session of this._previewSessions.values()) {
 					session.pushFrame(frame)
 				}
@@ -522,7 +678,19 @@ class BrowserWorkspace {
 					if (client.readyState !== 1) {
 						continue
 					}
-					client.send(framePayload)
+					if (Buffer.isBuffer(frame?.buffer)) {
+						client.send(frame.buffer, { binary: true })
+						continue
+					}
+					if (typeof frame?.data === "string") {
+						client.send(
+							JSON.stringify({
+								type: "frame",
+								data: frame.data,
+								metadata,
+							}),
+						)
+					}
 				}
 				if (didMetadataChange) {
 					this._broadcastPreviewState("live")
@@ -579,6 +747,7 @@ class BrowserWorkspace {
 		}
 
 		this._clearPreviewSettleTimer()
+		this._clearPreviewOverlayActivityTimer()
 		await this._runtime.stopScreencast().catch(() => {})
 	}
 
@@ -606,7 +775,7 @@ class BrowserWorkspace {
 				void this.previewInsertText(message.text)
 				return
 			case "preview-sync":
-				this._broadcastPreviewState(this._previewStatus)
+				this._syncPreviewMessages()
 				return
 			default:
 				return
@@ -676,6 +845,10 @@ class BrowserWorkspace {
 		return this._enqueue(async () => {
 			const normalizedUrl = normalizeChromiumPreviewUrl(url)
 			this._beginPreviewActivity()
+			this._setPreviewOverlay({
+				kind: "navigate",
+				label: "Navigating",
+			})
 			this._pendingHistoryAction = "navigate"
 			this._pendingHistoryTabIndex = this._activeTabIndex
 			this._currentUrl = normalizedUrl
@@ -690,6 +863,10 @@ class BrowserWorkspace {
 	setViewport(width, height, deviceScaleFactor = this._deviceScaleFactor) {
 		return this._enqueue(async () => {
 			this._beginPreviewActivity()
+			this._setPreviewOverlay({
+				kind: "navigate",
+				label: "Navigating",
+			})
 			this._viewport = {
 				width: clampViewportDimension(width, DEFAULT_VIEWPORT.width),
 				height: clampViewportDimension(height, DEFAULT_VIEWPORT.height),
@@ -709,6 +886,10 @@ class BrowserWorkspace {
 	goBack() {
 		return this._enqueue(async () => {
 			this._beginPreviewActivity()
+			this._setPreviewOverlay({
+				kind: "navigate",
+				label: "Navigating",
+			})
 			this._pendingHistoryAction = "back"
 			this._pendingHistoryTabIndex = this._activeTabIndex
 			await this._runtime.back()
@@ -722,6 +903,10 @@ class BrowserWorkspace {
 	goForward() {
 		return this._enqueue(async () => {
 			this._beginPreviewActivity()
+			this._setPreviewOverlay({
+				kind: "navigate",
+				label: "Navigating",
+			})
 			this._pendingHistoryAction = "forward"
 			this._pendingHistoryTabIndex = this._activeTabIndex
 			await this._runtime.forward()
@@ -735,6 +920,10 @@ class BrowserWorkspace {
 	reload() {
 		return this._enqueue(async () => {
 			this._beginPreviewActivity()
+			this._setPreviewOverlay({
+				kind: "navigate",
+				label: "Navigating",
+			})
 			this._pendingHistoryAction = "reload"
 			this._pendingHistoryTabIndex = this._activeTabIndex
 			await this._runtime.reload()
@@ -750,6 +939,12 @@ class BrowserWorkspace {
 			this._beginPreviewActivity()
 			const resolvedX = Math.max(0, Math.round(Number(x) || 0))
 			const resolvedY = Math.max(0, Math.round(Number(y) || 0))
+			this._setPreviewOverlay({
+				x: resolvedX,
+				y: resolvedY,
+				kind: "click",
+				label: "Clicking",
+			})
 			await this._runtime.click(resolvedX, resolvedY)
 			await this._delay(125)
 			const state = await this._refreshState({ forceUpdated: true })
@@ -761,6 +956,10 @@ class BrowserWorkspace {
 	clickRef(ref) {
 		return this._enqueue(async () => {
 			this._beginPreviewActivity()
+			this._setPreviewOverlay({
+				kind: "click",
+				label: "Clicking",
+			})
 			await this._runtime.clickRef(
 				requireNonEmptyString(ref, "A non-empty accessibility ref is required."),
 			)
@@ -774,6 +973,10 @@ class BrowserWorkspace {
 	hoverRef(ref) {
 		return this._enqueue(async () => {
 			this._beginPreviewActivity()
+			this._setPreviewOverlay({
+				kind: "hover",
+				label: "Hovering",
+			})
 			await this._runtime.hoverRef(
 				requireNonEmptyString(ref, "A non-empty accessibility ref is required."),
 			)
@@ -790,6 +993,11 @@ class BrowserWorkspace {
 			if (typeof text !== "string") {
 				throw new Error("A text string is required.")
 			}
+
+			this._setPreviewOverlay({
+				kind: "type",
+				label: "Typing",
+			})
 
 			await this._runtime.fillRef(
 				requireNonEmptyString(ref, "A non-empty accessibility ref is required."),
@@ -809,6 +1017,11 @@ class BrowserWorkspace {
 				throw new Error("A text string is required.")
 			}
 
+			this._setPreviewOverlay({
+				kind: "type",
+				label: "Typing",
+			})
+
 			await this._runtime.typeRef(
 				requireNonEmptyString(ref, "A non-empty accessibility ref is required."),
 				text,
@@ -823,6 +1036,10 @@ class BrowserWorkspace {
 	selectRef(ref, values) {
 		return this._enqueue(async () => {
 			this._beginPreviewActivity()
+			this._setPreviewOverlay({
+				kind: "select",
+				label: "Selecting",
+			})
 			const resolvedValues = Array.isArray(values)
 				? values
 						.map((value) => (typeof value === "string" ? value.trim() : ""))
@@ -850,6 +1067,12 @@ class BrowserWorkspace {
 			const resolvedDeltaY = Math.round(Number(deltaY) || 0)
 			const targetX = Math.round(this._viewport.width / 2)
 			const targetY = Math.round(this._viewport.height / 2)
+			this._setPreviewOverlay({
+				x: targetX,
+				y: targetY,
+				kind: "scroll",
+				label: "Scrolling",
+			})
 			await this._runtime.wheel(targetX, targetY, resolvedDeltaX, resolvedDeltaY)
 			this._touch()
 			return this._getStateSnapshot()
@@ -859,6 +1082,10 @@ class BrowserWorkspace {
 	scroll(direction, pixels) {
 		return this._enqueue(async () => {
 			this._beginPreviewActivity()
+			this._setPreviewOverlay({
+				kind: "scroll",
+				label: "Scrolling",
+			})
 			await this._runtime.scroll(
 				normalizeScrollDirection(direction),
 				normalizeScrollDistance(pixels),
@@ -873,6 +1100,10 @@ class BrowserWorkspace {
 	press(key) {
 		return this._enqueue(async () => {
 			this._beginPreviewActivity()
+			this._setPreviewOverlay({
+				kind: "key",
+				label: "Pressing key",
+			})
 			await this._runtime.press(
 				requireNonEmptyString(key, "A keyboard key is required."),
 			)
@@ -890,6 +1121,11 @@ class BrowserWorkspace {
 				throw new Error("Text input is required.")
 			}
 
+			this._setPreviewOverlay({
+				kind: "type",
+				label: "Typing",
+			})
+
 			await this._runtime.insertText(text)
 			await this._delay(75)
 			const state = await this._refreshState({ forceUpdated: true })
@@ -901,6 +1137,10 @@ class BrowserWorkspace {
 	createTab(url) {
 		return this._enqueue(async () => {
 			this._beginPreviewActivity()
+			this._setPreviewOverlay({
+				kind: "navigate",
+				label: "Navigating",
+			})
 			const normalizedUrl =
 				typeof url === "string" && url.trim()
 					? normalizeChromiumPreviewUrl(url)
@@ -916,6 +1156,10 @@ class BrowserWorkspace {
 	activateTab(tabIndex) {
 		return this._enqueue(async () => {
 			this._beginPreviewActivity()
+			this._setPreviewOverlay({
+				kind: "navigate",
+				label: "Navigating",
+			})
 			await this._runtime.activateTab(normalizeTabIndex(tabIndex))
 			await this._delay(75)
 			const state = await this._refreshState({ forceUpdated: true })
@@ -927,6 +1171,10 @@ class BrowserWorkspace {
 	closeTab(tabIndex) {
 		return this._enqueue(async () => {
 			this._beginPreviewActivity()
+			this._setPreviewOverlay({
+				kind: "navigate",
+				label: "Navigating",
+			})
 			const resolvedIndex = normalizeTabIndex(tabIndex)
 			await this._runtime.closeTab(resolvedIndex)
 			this._shiftHistoriesAfterClose(resolvedIndex)
@@ -939,6 +1187,10 @@ class BrowserWorkspace {
 
 	screenshot() {
 		return this._enqueue(async () => {
+			this._setPreviewOverlay({
+				kind: "screenshot",
+				label: "Taking screenshot",
+			})
 			return this._captureScreenshot()
 		})
 	}
@@ -989,19 +1241,21 @@ class BrowserWorkspace {
 						},
 					})
 
-			this._previewSessions.set(sessionId, previewSession)
-			try {
-				const result = await previewSession.ready()
-				await this._ensurePreviewStreaming()
-				this._schedulePreviewSettle(50)
-				return result
-			} catch (error) {
-				this._previewSessions.delete(sessionId)
-				await previewSession.close().catch(() => {})
-				if (!this._hasPreviewConsumers()) {
-					this._clearPreviewSettleTimer()
-					await this._runtime.stopScreencast().catch(() => {})
-				}
+				this._previewSessions.set(sessionId, previewSession)
+				try {
+					const result = await previewSession.ready()
+					this._syncPreviewMessages()
+					await this._ensurePreviewStreaming()
+					this._schedulePreviewSettle(50)
+					return result
+				} catch (error) {
+					this._previewSessions.delete(sessionId)
+					await previewSession.close().catch(() => {})
+					if (!this._hasPreviewConsumers()) {
+						this._clearPreviewSettleTimer()
+						this._clearPreviewOverlayActivityTimer()
+						await this._runtime.stopScreencast().catch(() => {})
+					}
 				throw error
 			}
 		})
@@ -1034,6 +1288,12 @@ class BrowserWorkspace {
 			this._beginPreviewActivity()
 			const resolvedX = Math.max(0, Math.round(Number(x) || 0))
 			const resolvedY = Math.max(0, Math.round(Number(y) || 0))
+			this._setPreviewOverlay({
+				x: resolvedX,
+				y: resolvedY,
+				kind: "click",
+				label: "Clicking",
+			})
 			await this._runtime.click(resolvedX, resolvedY)
 			await this._delay(75)
 			await this._refreshState({ forceUpdated: true })
@@ -1048,6 +1308,12 @@ class BrowserWorkspace {
 			const resolvedY = Math.max(0, Math.round(Number(y) || 0))
 			const resolvedDeltaX = Math.round(Number(deltaX) || 0)
 			const resolvedDeltaY = Math.round(Number(deltaY) || 0)
+			this._setPreviewOverlay({
+				x: resolvedX,
+				y: resolvedY,
+				kind: "scroll",
+				label: "Scrolling",
+			})
 			await this._runtime.wheel(
 				resolvedX,
 				resolvedY,
@@ -1063,6 +1329,12 @@ class BrowserWorkspace {
 			this._beginPreviewActivity()
 			const resolvedEventType =
 				eventType === "keyUp" ? "keyUp" : "keyDown"
+			if (resolvedEventType === "keyDown") {
+				this._setPreviewOverlay({
+					kind: "key",
+					label: "Pressing key",
+				})
+			}
 			await this._runtime.keyEvent(
 				resolvedEventType,
 				typeof key === "string" ? key : undefined,
@@ -1082,6 +1354,10 @@ class BrowserWorkspace {
 				return
 			}
 
+			this._setPreviewOverlay({
+				kind: "type",
+				label: "Typing",
+			})
 			await this._runtime.insertText(text)
 			await this._delay(25)
 			await this._refreshState({ forceUpdated: true })
@@ -1092,7 +1368,7 @@ class BrowserWorkspace {
 	attachPreviewClient(client) {
 		return this._enqueue(async () => {
 			this._previewClients.add(client)
-			this._broadcastPreviewState(this._previewStatus)
+			this._syncPreviewMessages()
 			await this._ensurePreviewStreaming()
 		})
 	}
@@ -1105,6 +1381,7 @@ class BrowserWorkspace {
 			}
 
 			this._clearPreviewSettleTimer()
+			this._clearPreviewOverlayActivityTimer()
 			await this._runtime.stopScreencast().catch(() => {})
 		})
 	}
@@ -1112,6 +1389,7 @@ class BrowserWorkspace {
 	close() {
 		return this._enqueue(async () => {
 			this._clearPreviewSettleTimer()
+			this._clearPreviewOverlayActivityTimer()
 			for (const session of this._previewSessions.values()) {
 				await session.close().catch(() => {})
 			}
@@ -1119,6 +1397,8 @@ class BrowserWorkspace {
 			this._previewClients.clear()
 			this._latestScreenshotBuffer = null
 			this._screenshotDirty = true
+			this._previewOverlayState = null
+			this._lastExactPointer = null
 			this._tabs = [
 				{
 					index: 0,

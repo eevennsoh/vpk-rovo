@@ -145,11 +145,11 @@ export interface RovoMessageInterruption {
 export type RovoDataParts = {
 	id: string;
 	title: string;
-	kind: "text" | "code" | "image" | "sheet" | "excalidraw";
+	kind: "text" | "code" | "image" | "sheet" | "excalidraw" | "browser";
 	"artifact-result": {
 		documentId: string;
 		title: string;
-		kind: "text" | "code" | "image" | "sheet" | "excalidraw";
+		kind: "text" | "code" | "image" | "sheet" | "excalidraw" | "browser";
 		action: "create" | "update";
 	};
 	clear: null;
@@ -197,6 +197,27 @@ export type RovoDataParts = {
 	"turn-complete": {
 		timestamp: string;
 	};
+	"browser-state": {
+		workspaceId?: string;
+		url: string;
+		title: string;
+		status: "navigating" | "ready" | "error";
+		streamConfig?: {
+			enabled: boolean;
+			wsUrl: string;
+		};
+	};
+	"browser-screenshot": {
+		workspaceId?: string;
+		url: string;
+		contentType?: string;
+		height?: number;
+		imageData?: string;
+		imageUrl?: string;
+		thumbnailUrl?: string;
+		timestamp: string;
+		width?: number;
+	};
 	"route-decision": RoutingDecision;
 };
 
@@ -211,7 +232,6 @@ export interface RovoMessageMetadata {
 	source?:
 		| "clarification-submit"
 		| "plan-approval-submit"
-		| "tool-approval-submit"
 		| "agent-directive"
 		| "plan-retry"
 		| "plan-task-dispatch";
@@ -241,7 +261,6 @@ export interface RovoMessageMetadata {
 	clarificationSessionId?: string;
 	clarificationRound?: number;
 	clarificationStatus?: "answered" | "dismissed";
-	toolApprovalId?: string;
 	/** Assistant turn status used for transcript rendering and persistence */
 	interruption?: RovoMessageInterruption;
 }
@@ -871,126 +890,6 @@ export function getLatestTodoQueue(
 	message: Pick<RovoUIMessage, "parts">
 ): RovoDataParts["todo-queue"] | null {
 	return getLatestDataPart(message, "data-todo-queue")?.data ?? null;
-}
-
-function normalizeToolApprovalItem(value: unknown): ToolApprovalItem | null {
-	if (!value || typeof value !== "object") {
-		return null;
-	}
-
-	const candidate = value as Partial<ToolApprovalItem>;
-	if (
-		typeof candidate.id !== "string" ||
-		candidate.id.trim().length === 0 ||
-		typeof candidate.toolCallId !== "string" ||
-		candidate.toolCallId.trim().length === 0 ||
-		typeof candidate.toolName !== "string" ||
-		candidate.toolName.trim().length === 0 ||
-		typeof candidate.title !== "string" ||
-		candidate.title.trim().length === 0 ||
-		typeof candidate.description !== "string" ||
-		candidate.description.trim().length === 0
-	) {
-		return null;
-	}
-
-	return {
-		id: candidate.id.trim(),
-		toolCallId: candidate.toolCallId.trim(),
-		toolName: candidate.toolName.trim(),
-		title: candidate.title.trim(),
-		description: candidate.description.trim(),
-		targetPath:
-			typeof candidate.targetPath === "string" && candidate.targetPath.trim()
-				? candidate.targetPath.trim()
-				: undefined,
-		commandPreview:
-			typeof candidate.commandPreview === "string" && candidate.commandPreview.trim()
-				? candidate.commandPreview.trim()
-				: undefined,
-		riskLevel:
-			candidate.riskLevel === "low" ||
-			candidate.riskLevel === "medium" ||
-			candidate.riskLevel === "high"
-				? candidate.riskLevel
-				: undefined,
-		permissionScenario:
-			typeof candidate.permissionScenario === "string" && candidate.permissionScenario.trim()
-				? candidate.permissionScenario.trim()
-				: undefined,
-	};
-}
-
-function normalizeToolApprovalPayload(value: unknown): ToolApprovalPayload | null {
-	if (!value || typeof value !== "object") {
-		return null;
-	}
-
-	const candidate = value as Partial<ToolApprovalPayload>;
-	if (
-		typeof candidate.approvalId !== "string" ||
-		candidate.approvalId.trim().length === 0 ||
-		!Array.isArray(candidate.items)
-	) {
-		return null;
-	}
-
-	const items = candidate.items
-		.map((item) => normalizeToolApprovalItem(item))
-		.filter((item): item is ToolApprovalItem => item !== null);
-	if (items.length === 0) {
-		return null;
-	}
-
-	return {
-		approvalId: candidate.approvalId.trim(),
-		threadId:
-			typeof candidate.threadId === "string" && candidate.threadId.trim()
-				? candidate.threadId.trim()
-				: undefined,
-		createdAt:
-			typeof candidate.createdAt === "string" && candidate.createdAt.trim()
-				? candidate.createdAt.trim()
-				: undefined,
-		items,
-	};
-}
-
-export function getLatestToolApproval(
-	message: Pick<RovoUIMessage, "parts">
-): ToolApprovalPayload | null {
-	return normalizeToolApprovalPayload(
-		getLatestDataPart(message, "data-tool-approval")?.data ?? null,
-	);
-}
-
-export function getLatestPendingToolApproval(
-	messages: ReadonlyArray<RovoUIMessage>,
-): ToolApprovalPayload | null {
-	for (let index = messages.length - 1; index >= 0; index -= 1) {
-		const message = messages[index];
-		if (!message || !Array.isArray(message.parts)) {
-			continue;
-		}
-
-		if (
-			message.role === "user" &&
-			message.metadata?.source === "tool-approval-submit"
-		) {
-			return null;
-		}
-
-		if (message.role !== "assistant") {
-			continue;
-		}
-
-		const approval = getLatestToolApproval(message);
-		if (approval) {
-			return approval;
-		}
-	}
-
-	return null;
 }
 
 export function getToolPartName(toolPart: RovoToolPart): string {

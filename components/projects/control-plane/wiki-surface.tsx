@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import SearchIcon from "@atlaskit/icon/core/search";
 import { Badge } from "@/components/ui/badge";
@@ -64,7 +65,48 @@ function buildResultKey(result: WikiSearchResult): string {
 	return `${result.backend}:${result.path ?? result.title}`;
 }
 
+function resolveMemorySource(result: WikiSearchResult): {
+	label: string;
+	query: string;
+	scope: "operations" | "profile";
+} | null {
+	const normalizedPath = (result.path ?? "").toLowerCase();
+	if (
+		result.collection === "wiki-profiles"
+		&& (
+			normalizedPath.endsWith("/self.md")
+			|| normalizedPath.endsWith("qmd://wiki-profiles/self.md")
+			|| normalizedPath.endsWith("self.md")
+		)
+	) {
+		return {
+			label: "Profile memory source",
+			query: "self",
+			scope: "profile",
+		};
+	}
+
+	if (
+		result.collection === "wiki-operations"
+		&& (
+			normalizedPath.endsWith("/core-memory.md")
+			|| normalizedPath.endsWith("qmd://wiki-operations/core-memory.md")
+			|| normalizedPath.endsWith("core-memory.md")
+		)
+	) {
+		return {
+			label: "Runtime memory source",
+			query: "core-memory",
+			scope: "operations",
+		};
+	}
+
+	return null;
+}
+
 export function WikiSurfacePage() {
+	const router = useRouter();
+	const searchParams = useSearchParams();
 	const [wikiStatus, setWikiStatus] = useState<WikiStatus | null>(null);
 	const [query, setQuery] = useState("");
 	const [results, setResults] = useState<WikiSearchResult[]>([]);
@@ -78,6 +120,10 @@ export function WikiSurfacePage() {
 	const selectedResult = useMemo(
 		() => results.find((result) => buildResultKey(result) === selectedResultKey) ?? results[0] ?? null,
 		[results, selectedResultKey],
+	);
+	const selectedMemorySource = useMemo(
+		() => selectedResult ? resolveMemorySource(selectedResult) : null,
+		[selectedResult],
 	);
 
 	async function refreshStatus() {
@@ -154,6 +200,50 @@ export function WikiSurfacePage() {
 			cancelled = true;
 		};
 	}, []);
+
+	useEffect(() => {
+		let cancelled = false;
+		const nextQuery = searchParams.get("q")?.trim() ?? "";
+		setQuery(nextQuery);
+		if (nextQuery) {
+			async function searchFromUrl() {
+				setIsSearching(true);
+				try {
+					const response = await searchWiki(nextQuery, 12);
+					if (!cancelled) {
+						setResults(response.results);
+						setSearchBackend(response.backend);
+						setSelectedResultKey(response.results[0] ? buildResultKey(response.results[0]) : null);
+						setErrorMessage(null);
+					}
+					const nextStatus = await fetchWikiStatus();
+					if (!cancelled) {
+						setWikiStatus(nextStatus);
+					}
+				} catch (error) {
+					if (!cancelled) {
+						setErrorMessage(error instanceof Error ? error.message : String(error));
+					}
+				} finally {
+					if (!cancelled) {
+						setIsSearching(false);
+					}
+				}
+			}
+
+			void searchFromUrl();
+			return () => {
+				cancelled = true;
+			};
+		}
+
+		setResults([]);
+		setSearchBackend(null);
+		setSelectedResultKey(null);
+		return () => {
+			cancelled = true;
+		};
+	}, [searchParams]);
 
 	return (
 		<ControlPlanePageShell
@@ -298,12 +388,34 @@ export function WikiSurfacePage() {
 												{selectedResult.backend}
 											</Lozenge>
 											<Badge variant="outline">{formatWikiScore(selectedResult.score)}</Badge>
+											{selectedMemorySource ? (
+												<Badge variant="neutral">{selectedMemorySource.label}</Badge>
+											) : null}
 										</div>
 									</div>
 									<div className="rounded-xl border border-border bg-surface-raised px-3 py-3 font-mono text-xs text-text-subtle">
 										{selectedResult.path ?? "Unknown path"}
 									</div>
 									<p className="text-sm leading-6 text-text-subtle">{selectedResult.snippet}</p>
+									{selectedMemorySource ? (
+										<div className="rounded-xl border border-border bg-surface-raised px-3 py-3">
+											<div className="flex flex-wrap items-start justify-between gap-3">
+												<div className="space-y-1">
+													<div className="text-sm font-medium">Canonical memory page</div>
+													<div className="text-sm text-text-subtle">
+														This page is the source of truth for durable memory. Compiled prompt memory and manual remove controls live in the memories surface.
+													</div>
+												</div>
+												<Button
+													size="sm"
+													variant="outline"
+													onClick={() => router.push(`/rovo-app/memories`)}
+												>
+													Open memories
+												</Button>
+											</div>
+										</div>
+									) : null}
 								</>
 							) : (
 								<div className="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-text-subtle">

@@ -1,6 +1,7 @@
 import type { RovoAppDocument } from "@/lib/rovo-app-types";
 
 const ROVO_APP_ARTIFACT_KIND_LABELS = {
+	browser: "Browser",
 	code: "Code",
 	excalidraw: "Diagram",
 	image: "Image",

@@ -46,6 +46,7 @@ class BrowserPreviewSession {
 		this._videoTrack = this._videoSource.createTrack()
 		this._controlChannel = null
 		this._lastStateMessage = null
+		this._lastOverlayMessage = null
 		this._isClosed = false
 
 		this._peerConnection.addTrack(this._videoTrack)
@@ -82,6 +83,9 @@ class BrowserPreviewSession {
 			if (this._lastStateMessage) {
 				this.send(this._lastStateMessage)
 			}
+			if (this._lastOverlayMessage) {
+				this.send(this._lastOverlayMessage)
+			}
 		})
 		dataChannel.addEventListener("message", (event) => {
 			try {
@@ -106,6 +110,8 @@ class BrowserPreviewSession {
 	send(message) {
 		this._lastStateMessage =
 			message?.type === "preview-state" ? message : this._lastStateMessage
+		this._lastOverlayMessage =
+			message?.type === "preview-overlay" ? message : this._lastOverlayMessage
 		if (!this._controlChannel || this._controlChannel.readyState !== "open") {
 			return
 		}
@@ -114,11 +120,14 @@ class BrowserPreviewSession {
 	}
 
 	pushFrame(frame) {
-		if (this._isClosed || !frame?.data) {
+		if (this._isClosed || (!frame?.buffer && !frame?.data)) {
 			return
 		}
 
-		const decoded = jpeg.decode(Buffer.from(frame.data, "base64"), {
+		const frameBuffer = Buffer.isBuffer(frame.buffer)
+			? frame.buffer
+			: Buffer.from(frame.data, "base64")
+		const decoded = jpeg.decode(frameBuffer, {
 			useTArray: true,
 		})
 		const rgbaFrame = {

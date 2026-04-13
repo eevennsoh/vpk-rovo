@@ -6,6 +6,7 @@ const {
 	removeRovoAppDirectMediaFences,
 	removeRovoAppSpecFences,
 	sanitizeRovoAppAssistantText,
+	looksLikeBrowserFallbackAssistantText,
 	shouldRenderRovoAppAssistantActions,
 	shouldRenderRovoAppAssistantText,
 	shouldRenderRovoAppAssistantMessage,
@@ -16,6 +17,7 @@ const {
 test("shouldRenderRovoAppWidget keeps direct media widgets visible on text routes", () => {
 	assert.equal(
 		shouldRenderRovoAppWidget({
+			hasBrowserScreenshots: false,
 			hasWidget: true,
 			routeDecision: { presentation: "text" },
 			widgetType: "image-preview",
@@ -24,6 +26,7 @@ test("shouldRenderRovoAppWidget keeps direct media widgets visible on text route
 	);
 	assert.equal(
 		shouldRenderRovoAppWidget({
+			hasBrowserScreenshots: false,
 			hasWidget: true,
 			routeDecision: { presentation: "text" },
 			widgetType: "audio-preview",
@@ -32,6 +35,7 @@ test("shouldRenderRovoAppWidget keeps direct media widgets visible on text route
 	);
 	assert.equal(
 		shouldRenderRovoAppWidget({
+			hasBrowserScreenshots: false,
 			hasWidget: true,
 			routeDecision: { presentation: "text" },
 			widgetType: "video-preview",
@@ -43,11 +47,24 @@ test("shouldRenderRovoAppWidget keeps direct media widgets visible on text route
 test("shouldRenderRovoAppWidget hides non-tool widgets on text routes", () => {
 	assert.equal(
 		shouldRenderRovoAppWidget({
+			hasBrowserScreenshots: false,
 			hasWidget: true,
 			routeDecision: { presentation: "text" },
 			widgetType: "genui-preview",
 		}),
 		false
+	);
+});
+
+test("shouldRenderRovoAppWidget hides generic genui widgets when browser screenshots exist", () => {
+	assert.equal(
+		shouldRenderRovoAppWidget({
+			hasBrowserScreenshots: true,
+			hasWidget: true,
+			routeDecision: { presentation: "genui_card" },
+			widgetType: "genui-preview",
+		}),
+		false,
 	);
 });
 
@@ -98,10 +115,26 @@ test("sanitizeRovoAppAssistantText strips persisted spec fences from assistant t
 	);
 });
 
+test("looksLikeBrowserFallbackAssistantText detects misleading browser fallback prose", () => {
+	assert.equal(
+		looksLikeBrowserFallbackAssistantText(
+			"The screenshot image itself isn't rendering visibly in the response. What would you like to do instead?",
+		),
+		true,
+	);
+	assert.equal(
+		looksLikeBrowserFallbackAssistantText(
+			"Captured a screenshot of the current page from the active browser workspace.",
+		),
+		false,
+	);
+});
+
 test("shouldRenderRovoAppAssistantActions hides actions for the active in-flight assistant placeholder", () => {
 	assert.equal(
 		shouldRenderRovoAppAssistantActions({
 			hasArtifactCard: false,
+			hasBrowserScreenshots: false,
 			hasAssistantText: false,
 			hasInterruption: false,
 			hasSources: false,
@@ -118,6 +151,7 @@ test("shouldRenderRovoAppAssistantActions shows actions for settled assistant ou
 	assert.equal(
 		shouldRenderRovoAppAssistantActions({
 			hasArtifactCard: false,
+			hasBrowserScreenshots: false,
 			hasAssistantText: true,
 			hasInterruption: false,
 			hasSources: false,
@@ -199,6 +233,7 @@ test("shouldRenderRovoAppAssistantActions hides actions for settled reasoning-on
 	assert.equal(
 		shouldRenderRovoAppAssistantActions({
 			hasArtifactCard: false,
+			hasBrowserScreenshots: false,
 			hasAssistantText: false,
 			hasInterruption: false,
 			hasSources: false,
@@ -215,6 +250,7 @@ test("shouldRenderRovoAppAssistantMessage hides the blank assistant placeholder 
 	assert.equal(
 		shouldRenderRovoAppAssistantMessage({
 			hasArtifactCard: false,
+			hasBrowserScreenshots: false,
 			hasAssistantText: false,
 			hasInterruption: false,
 			hasReasoning: false,
@@ -230,9 +266,26 @@ test("shouldRenderRovoAppAssistantMessage keeps rendering once thinking or conte
 	assert.equal(
 		shouldRenderRovoAppAssistantMessage({
 			hasArtifactCard: false,
+			hasBrowserScreenshots: false,
 			hasAssistantText: false,
 			hasInterruption: false,
 			hasReasoning: true,
+			hasSources: false,
+			hasWidget: false,
+			hasWidgetError: false,
+		}),
+		true,
+	);
+});
+
+test("shouldRenderRovoAppAssistantMessage keeps screenshot-only browser responses visible", () => {
+	assert.equal(
+		shouldRenderRovoAppAssistantMessage({
+			hasArtifactCard: false,
+			hasBrowserScreenshots: true,
+			hasAssistantText: false,
+			hasInterruption: false,
+			hasReasoning: false,
 			hasSources: false,
 			hasWidget: false,
 			hasWidgetError: false,

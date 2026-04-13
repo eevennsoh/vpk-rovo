@@ -53,7 +53,8 @@ export async function proxyToBackend(
 		if (
 			options.method === "POST" ||
 			options.method === "PUT" ||
-			options.method === "PATCH"
+			options.method === "PATCH" ||
+			options.method === "DELETE"
 		) {
 			if (options.rawBody !== undefined) {
 				resolvedBody = options.rawBody;
