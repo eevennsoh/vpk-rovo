@@ -478,6 +478,7 @@ class BrowserWorkspace {
 	}
 
 	_setPreviewOverlay({ x, y, kind, label, preferLastExact = true }) {
+		this._clearPreviewOverlayActivityTimer()
 		const point = this._resolvePreviewOverlayPoint({
 			x,
 			y,
@@ -499,11 +500,6 @@ class BrowserWorkspace {
 			updatedAt: this._now(),
 		}
 		this._broadcastPreviewOverlay()
-		if (this._previewOverlayState.activity) {
-			this._schedulePreviewOverlayActivityReset()
-		} else {
-			this._clearPreviewOverlayActivityTimer()
-		}
 	}
 
 	_schedulePreviewSettle(delayMs = PREVIEW_SETTLE_DELAY_MS) {

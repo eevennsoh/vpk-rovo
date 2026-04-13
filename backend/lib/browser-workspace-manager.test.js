@@ -350,7 +350,7 @@ test("browser workspace settles preview state for websocket-only preview clients
 			await workspace.previewClick(32, 48)
 
 			assert.equal(workspace._previewStatus, "live")
-			assert.equal(scheduledTimers.length, 2)
+			assert.equal(scheduledTimers.length, 1)
 			assert.equal(
 				messages.some(
 					(message) => message.type === "preview-state" && message.status === "live",
@@ -375,9 +375,7 @@ test("browser workspace settles preview state for websocket-only preview clients
 			)
 
 			const settleTimer = scheduledTimers.find((timer) => timer.delay === 750)
-			const overlayTimer = scheduledTimers.find((timer) => timer.delay === 1200)
 			assert.ok(settleTimer)
-			assert.ok(overlayTimer)
 
 			settleTimer.callback()
 			await workspace._queue
@@ -389,9 +387,6 @@ test("browser workspace settles preview state for websocket-only preview clients
 			assert.equal(steadyMessages.length >= 2, true)
 			assert.equal(steadyMessages.at(-1)?.settledScreenshotRevision, 1)
 
-			overlayTimer.callback()
-			await workspace._queue
-
 			assert.deepEqual(
 				messages.findLast((message) => message.type === "preview-overlay"),
 				{
@@ -401,7 +396,10 @@ test("browser workspace settles preview state for websocket-only preview clients
 						y: 48,
 						visible: true,
 					},
-					activity: null,
+					activity: {
+						kind: "click",
+						label: "Clicking",
+					},
 					updatedAt: workspace._previewOverlayState.updatedAt,
 				},
 			)

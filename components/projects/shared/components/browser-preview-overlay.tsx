@@ -1,10 +1,26 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { motion, AnimatePresence } from "motion/react";
 import type {
 	BrowserPreviewOverlayState,
 	BrowserPreviewRenderGeometry,
 } from "@/components/website/demos/utils/lib/browser-preview-overlay";
+
+/**
+ * Expect-style browser overlay constants.
+ * Brand blue matches Expect's OVERLAY_BLUE (sRGB fallback for display-p3 0.25 0.61 0.98).
+ */
+const EXPECT_BLUE = "rgb(64, 156, 250)";
+
+/** Cursor movement — Expect's asymmetric easing (horizontal vs vertical arrive at different times). */
+const CURSOR_TRANSITION = {
+	x: { duration: 0.6, ease: [0.25, 0.1, 0.25, 1] as const },
+	y: { duration: 0.6, ease: [0.65, 0, 0.35, 1] as const },
+};
+
+/** Entrance/exit — Expect's fast-attack expo-out curve. */
+const EXPO_OUT = [0.22, 1, 0.36, 1] as const;
 
 interface BrowserPreviewOverlayProps {
 	overlayState: BrowserPreviewOverlayState | null;
@@ -14,6 +30,59 @@ interface BrowserPreviewOverlayProps {
 
 function clampToRange(value: number, min: number, max: number) {
 	return Math.min(max, Math.max(min, value));
+}
+
+/**
+ * 5-dot constellation indicator inside the activity label.
+ * 4 orbit dots pulse with staggered timing, 1 center dot pulses independently.
+ */
+function StarDots() {
+	const positions = [
+		{ x: 0, y: -5 },
+		{ x: 5, y: 0 },
+		{ x: 0, y: 5 },
+		{ x: -5, y: 0 },
+	];
+	const configs = [
+		{ delay: "0s", duration: "1.4s" },
+		{ delay: "0.3s", duration: "1.7s" },
+		{ delay: "0.7s", duration: "1.5s" },
+		{ delay: "1s", duration: "1.6s" },
+	];
+
+	return (
+		<div className="relative shrink-0" style={{ width: 16, height: 16 }}>
+			{positions.map((pos, i) => (
+				<div
+					key={i}
+					className="absolute rounded-full"
+					style={{
+						width: 4,
+						height: 4,
+						backgroundColor: EXPECT_BLUE,
+						left: "50%",
+						top: "50%",
+						marginLeft: pos.x - 2,
+						marginTop: pos.y - 2,
+						animation: `expect-dot-orbit ${configs[i].duration} ease-in-out ${configs[i].delay} infinite`,
+					}}
+				/>
+			))}
+			<div
+				className="absolute rounded-full"
+				style={{
+					width: 4,
+					height: 4,
+					backgroundColor: EXPECT_BLUE,
+					left: "50%",
+					top: "50%",
+					marginLeft: -2,
+					marginTop: -2,
+					animation: "expect-dot-center 2.2s ease-in-out 0.5s infinite",
+				}}
+			/>
+		</div>
+	);
 }
 
 export function BrowserPreviewOverlay({
@@ -48,56 +117,112 @@ export function BrowserPreviewOverlay({
 				className,
 			)}
 		>
+			{/* Full-screen halo — inset box-shadow pulse around viewport edges */}
 			<div
-				className="absolute transition-[transform,opacity] duration-medium ease-out"
+				className="absolute inset-0"
 				style={{
-					transform: `translate(${previewLeft}px, ${previewTop}px)`,
+					animation: "expect-glow-pulse 2s ease-in-out infinite",
+					willChange: "box-shadow",
+					contain: "strict",
+					transform: "translateZ(0)",
 				}}
+			/>
+
+			{/* Cursor position — Motion-animated with Expect's asymmetric easing */}
+			<motion.div
+				className="absolute top-0 left-0"
+				initial={false}
+				animate={{ x: previewLeft, y: previewTop }}
+				transition={CURSOR_TRANSITION}
+				style={{ willChange: "transform" }}
 			>
-				<div className="relative">
+				{/* Cursor entrance — scale up from 40% on mount */}
+				<motion.div
+					className="relative"
+					initial={{ scale: 0.4, opacity: 0 }}
+					animate={{ scale: 1, opacity: 1 }}
+					transition={{ duration: 0.3, ease: EXPO_OUT }}
+				>
+					{/* Cursor glow pulse — pulsing drop-shadow */}
 					<div
-						className="absolute -top-6 -left-6 size-14 rounded-full blur-xl"
 						style={{
-							background:
-								"radial-gradient(circle, rgba(56,189,248,0.48) 0%, rgba(14,165,233,0.24) 45%, rgba(14,165,233,0) 78%)",
+							animation:
+								"expect-cursor-glow 2s ease-in-out infinite",
 						}}
-					/>
-					<div className="absolute -top-4 -left-4 size-10 rounded-full border border-cyan-300/60 bg-cyan-400/10 shadow-[0_0_0_1px_rgba(34,211,238,0.14)]" />
-
-					<svg
-						viewBox="0 0 32 32"
-						aria-hidden="true"
-						className="relative z-10 size-8 -translate-x-[10px] -translate-y-[10px] drop-shadow-[0_10px_24px_rgba(14,165,233,0.34)]"
 					>
-						<path
-							d="M5 3.5l7.7 19.2 3.6-7.3 7.1 3.5-18.4-15.4z"
-							fill="rgba(9, 11, 17, 0.96)"
-							stroke="rgba(255, 255, 255, 0.9)"
-							strokeWidth="1.7"
-							strokeLinejoin="round"
-						/>
-					</svg>
-
-					{overlayState.activity ? (
-						<div
-							className={cn(
-								"absolute max-w-[190px] rounded-full border border-border bg-background/95 px-3 py-1.5 text-[11px] font-medium whitespace-nowrap text-text shadow-lg backdrop-blur-sm transition-[transform,opacity] duration-normal ease-out",
-								shouldFlipX
-									? "-translate-x-[calc(100%+12px)]"
-									: "translate-x-4",
-								shouldFlipY
-									? "-translate-y-[calc(100%+12px)]"
-									: "translate-y-5",
-							)}
+						{/* Blue pointer cursor — black fill with blue stroke border (paintOrder renders stroke behind fill) */}
+						<svg
+							viewBox="0 0 32 32"
+							aria-hidden="true"
+							className="size-8"
+							style={{
+								filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.22))",
+							}}
 						>
-							<span className="inline-flex items-center gap-2">
-								<span className="size-2 rounded-full bg-cyan-400 shadow-[0_0_14px_rgba(34,211,238,0.95)] animate-pulse" />
-								<span>{overlayState.activity.label}</span>
-							</span>
-						</div>
-					) : null}
-				</div>
-			</div>
+							<path
+								d="M5.5 3.2V20.8l4.9-4.9 3.4 8 3.3-1.4-3.4-8h6.8z"
+								fill="#000"
+								stroke={EXPECT_BLUE}
+								strokeWidth="2.5"
+								strokeLinejoin="round"
+								strokeLinecap="round"
+								paintOrder="stroke"
+							/>
+						</svg>
+					</div>
+
+					{/* Activity label — black pill with blue border */}
+					<AnimatePresence mode="wait">
+						{overlayState.activity ? (
+							<motion.div
+								key={overlayState.activity.label}
+								initial={{ opacity: 0, scale: 0.8, y: 4 }}
+								animate={{ opacity: 1, scale: 1, y: 0 }}
+								exit={{ opacity: 0, scale: 0.8, y: 4 }}
+								transition={{
+									duration: 0.25,
+									ease: EXPO_OUT,
+								}}
+								className={cn(
+									"absolute max-w-[240px] whitespace-nowrap",
+									shouldFlipX
+										? "-translate-x-[calc(100%+8px)]"
+										: "translate-x-[25px]",
+									shouldFlipY
+										? "-translate-y-[calc(100%+8px)]"
+										: "translate-y-[25px]",
+								)}
+							>
+								<div
+									className="flex items-center gap-2 rounded-full px-3 py-1.5 text-[13px] font-semibold leading-none text-white antialiased"
+									style={{
+										background: "#000",
+										border: `3px solid ${EXPECT_BLUE}`,
+										boxShadow:
+											"0 0 2px rgba(0,0,0,0.22)",
+									}}
+								>
+									<StarDots />
+									<span
+										style={{
+											background:
+												"linear-gradient(90deg, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.85) 35%, #fff 50%, rgba(255,255,255,0.85) 65%, rgba(255,255,255,0.85) 100%)",
+											backgroundSize: "250% 100%",
+											WebkitBackgroundClip: "text",
+											WebkitTextFillColor:
+												"transparent",
+											animation:
+												"expect-text-shimmer 4s ease-in-out infinite",
+										}}
+									>
+										{overlayState.activity.label}
+									</span>
+								</div>
+							</motion.div>
+						) : null}
+					</AnimatePresence>
+				</motion.div>
+			</motion.div>
 		</div>
 	);
 }

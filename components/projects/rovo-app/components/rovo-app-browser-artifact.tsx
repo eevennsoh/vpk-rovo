@@ -1,5 +1,6 @@
 "use client";
 
+import { cn } from "@/lib/utils";
 import {
 	GlobeIcon,
 	Loader2Icon,
@@ -282,8 +283,10 @@ export function RovoAppBrowserArtifact({
 		[canSendControl, resolvePreviewCenter, sendControlMessage],
 	);
 
+	const isOverlayActive = !!overlayState?.cursor?.visible;
+
 	return (
-		<div className="flex h-full flex-col overflow-hidden bg-surface">
+		<div className={cn("flex h-full flex-col overflow-hidden rounded-xl bg-surface", isOverlayActive && "animate-[expect-border-glow_2s_ease-in-out_infinite]")}>
 			{/* Header — read-only URL bar */}
 			<div className="flex items-center gap-2 border-b border-border bg-surface-sunken px-3 py-2">
 				<div className="flex min-w-0 flex-1 items-center gap-2 rounded-md border border-border bg-surface px-3 py-1.5">

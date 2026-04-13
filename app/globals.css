@@ -480,6 +480,75 @@ html.dark [data-slot="lozenge-dropdown-trigger"][data-variant="accent-orange"] [
 	}
 }
 
+/* -----------------------------------------------------------------
+   Browser Preview Overlay — Expect-style cursor, glow, and label
+   ----------------------------------------------------------------- */
+
+/* Cursor entrance — scale up from 40% */
+@keyframes expect-cursor-in {
+	from { opacity: 0; transform: scale(0.4); }
+	to   { opacity: 1; transform: scale(1); }
+}
+
+/* Cursor glow — pulsing drop-shadow around cursor SVG */
+@keyframes expect-cursor-glow {
+	0%, 100% {
+		filter: drop-shadow(0 0 8px rgba(64, 156, 250, 0.6))
+		        drop-shadow(0 0 16px rgba(64, 156, 250, 0.3));
+	}
+	50% {
+		filter: drop-shadow(0 0 4px rgba(64, 156, 250, 0.3))
+		        drop-shadow(0 0 8px rgba(64, 156, 250, 0.1));
+	}
+}
+
+/* Browser artifact border glow — soft pulsing glow around the pane when active */
+@keyframes expect-border-glow {
+	0%, 100% {
+		box-shadow:
+			inset 0 0 0 1px rgba(64, 156, 250, 0.35),
+			0 0 20px 2px rgba(64, 156, 250, 0.2),
+			0 0 40px 4px rgba(64, 156, 250, 0.08);
+	}
+	50% {
+		box-shadow:
+			inset 0 0 0 1px rgba(64, 156, 250, 0.15),
+			0 0 10px 1px rgba(64, 156, 250, 0.1),
+			0 0 20px 2px rgba(64, 156, 250, 0.03);
+	}
+}
+
+/* Full-screen halo — inset box-shadow pulse around viewport edges */
+@keyframes expect-glow-pulse {
+	0%, 100% {
+		box-shadow: inset 0 0 40px 12px rgba(64, 156, 250, 0.5);
+	}
+	50% {
+		box-shadow: inset 0 0 25px 6px rgba(64, 156, 250, 0.2);
+	}
+}
+
+/* Star dot orbit — 4 satellite dots in label indicator */
+@keyframes expect-dot-orbit {
+	0%   { opacity: 0.12; transform: scale(0.85); }
+	35%  { opacity: 1;    transform: scale(1.15); }
+	65%  { opacity: 0.5;  transform: scale(0.95); }
+	100% { opacity: 0.12; transform: scale(0.85); }
+}
+
+/* Star dot center — single center dot in label indicator */
+@keyframes expect-dot-center {
+	0%   { opacity: 0.3; transform: scale(0.9); }
+	50%  { opacity: 1;   transform: scale(1.1); }
+	100% { opacity: 0.3; transform: scale(0.9); }
+}
+
+/* Text shimmer — gradient sweep across label text */
+@keyframes expect-text-shimmer {
+	0%   { background-position: -200% 0; }
+	100% { background-position: 200% 0; }
+}
+
 /* Reduced motion — respects user preferences */
 @media (prefers-reduced-motion: reduce) {
 	*,

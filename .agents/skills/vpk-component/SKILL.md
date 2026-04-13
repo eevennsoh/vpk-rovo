@@ -1,6 +1,6 @@
 ---
 
-## name: vpk-component
+name: vpk-component
 description: Enrich shadcn components with ADS visual styling (state tokens, interaction feedback,
   semantic colors) while preserving all existing shadcn conventions (prop names, variant values,
   size values, sub-component names). Creates mapping tables, example demos, and doc site wiring.
@@ -15,6 +15,7 @@ argument-hint: "[ADS component name]"
 prerequisites:
   files: [.agents/skills/vpk-design/references/tokens.md]
 produces: []
+---
 
 # VPK Component Visual Enrichment
 
@@ -519,4 +520,3 @@ For the full 35-item checklist, see `references/checklist-full.md`.
 - Material a11y findings validated with `ads_suggest_a11y_fixes` and resolved or explicitly classified as noise
 - `pnpm run lint` passes (0 new errors)
 - `pnpm tsc --noEmit` passes (0 new errors)
-
