@@ -171,12 +171,10 @@ import {
 import { markLastRovoAppAssistantMessageInterrupted } from "@/lib/rovo-app-interruptions";
 import {
 	getLatestDataPart,
-	getLatestPendingToolApproval,
 	getMessageArtifactResult,
 	getMessageText,
 	hasTurnCompleteSignal,
 	type RovoMessageInterruptionSource,
-	type ToolApprovalPayload,
 	type RovoUIMessage,
 } from "@/lib/rovo-ui-messages";
 import { API_ENDPOINTS } from "@/lib/api-config";
@@ -549,7 +547,6 @@ export interface RovoAppHookOptions {
 
 export interface RovoAppHookResult {
 	activeDocument: RovoAppDocument | null;
-	activeToolApproval: ToolApprovalPayload | null;
 	activeDocumentContent: string;
 	activeThreadId: string | null;
 	applyVoiceSteer: (payload: {
@@ -608,10 +605,6 @@ export interface RovoAppHookResult {
 	planExecutionTracker: RovoAppPlanExecutionTrackerViewModel | null;
 	status: ChatStatus;
 	stop: () => Promise<void>;
-	submitToolApproval: (
-		toolApproval: ToolApprovalPayload,
-		decisions: Array<{ toolCallId: string; approved: boolean; denyMessage?: string }>,
-	) => Promise<void>;
 	cancelClarificationQuestionSet: (questionCard: ParsedQuestionCardPayload) => Promise<boolean>;
 	submitClarification: (questionCard: ParsedQuestionCardPayload, answers: ClarificationAnswers) => Promise<void>;
 	submitClarificationDismiss: (questionCard: ParsedQuestionCardPayload) => Promise<void>;
@@ -1204,7 +1197,6 @@ export function useRovoApp({
 						body?.clarification
 						|| body?.deferredToolResponse
 						|| body?.approval
-						|| body?.toolApproval
 					);
 					const turnMode = classifyRovoAppTurnMode({
 						prompt: latestVisibleUserPrompt?.text ?? "",
@@ -1767,9 +1759,6 @@ export function useRovoApp({
 			rovodevMessages: normalizedRovodevMessages,
 		});
 	}, [normalizedRovodevMessages, realtimeMessages]);
-	const activeToolApproval = useMemo(() => {
-		return getLatestPendingToolApproval(normalizedRovodevMessages);
-	}, [normalizedRovodevMessages]);
 	const latestThinkingStatusLabel = useMemo(() => {
 		if (!backgroundDelegationMessageId) {
 			return null;
@@ -3112,114 +3101,7 @@ export function useRovoApp({
 		],
 	);
 
-	const submitToolApproval = useCallback(
-		async (
-			toolApproval: ToolApprovalPayload,
-			decisions: Array<{
-				toolCallId: string;
-				approved: boolean;
-				denyMessage?: string;
-			}>,
-		) => {
-			if (!toolApproval?.approvalId || toolApproval.items.length === 0) {
-				throw new Error("The pending tool approval is missing approval data.");
-			}
-
-			const normalizedDecisions = decisions
-				.map((decision) => ({
-					toolCallId: decision.toolCallId?.trim(),
-					approved: decision.approved === true,
-					denyMessage: decision.denyMessage?.trim() || undefined,
-				}))
-				.filter((decision) => Boolean(decision.toolCallId));
-			if (normalizedDecisions.length !== toolApproval.items.length) {
-				throw new Error("Every paused tool requires an explicit Allow or Deny decision.");
-			}
-
-			hasObservedTurnCompleteRef.current = true;
-			setHasObservedTurnComplete(true);
-			const activeThreadId = activeThreadIdRef.current;
-			if (activeThreadId) {
-				setLocalThreadActiveRun(activeThreadId, null);
-			}
-			setAttachedRunStatus(null);
-			if (useChatStatusRef.current === "submitted" || useChatStatusRef.current === "streaming") {
-				try {
-					await stopUseChat();
-				} catch (error) {
-					console.warn(
-						"[RovoApp] Failed to stop UI stream before submitting tool approval:",
-						error,
-					);
-				}
-			}
-
-			await releaseCompletedUseChatTurnIfNeeded();
-			await waitForChatSendSettled({
-				statusRef: useChatStatusRef,
-				lastBusyAtRef: lastUseChatBusyAtRef,
-			});
-
-			const threadId = await ensureThread("Tool approval");
-			const approvedCount = normalizedDecisions.filter((decision) => decision.approved).length;
-			const deniedCount = normalizedDecisions.length - approvedCount;
-			const approvalSummaryText = [
-				`Submitted tool approvals for ${toolApproval.items.length} step${toolApproval.items.length === 1 ? "" : "s"}.`,
-				`${approvedCount} approved, ${deniedCount} denied.`,
-			].join(" ");
-			const { message, messageId } = appendLocalUserMessage({
-				files: [],
-				metadata: {
-					source: "tool-approval-submit",
-					toolApprovalId: toolApproval.approvalId,
-					visibility: "hidden",
-				},
-				text: approvalSummaryText,
-			});
-			resetPendingArtifactAssociation();
-			markLocalThreadRunPending(threadId);
-
-			try {
-				await sendMessage(
-					{
-						text: approvalSummaryText,
-						files: [],
-						messageId,
-						metadata: message.metadata,
-					},
-					{
-						body: {
-							id: threadId,
-							toolApproval: {
-								approvalId: toolApproval.approvalId,
-								decisions: normalizedDecisions,
-							},
-						},
-					},
-				);
-			} catch (sendError) {
-				setRovodevMessages((previousMessages) =>
-					previousMessages.filter((existingMessage) => existingMessage.id !== messageId),
-				);
-				setLocalThreadActiveRun(threadId, null);
-				setAttachedRunStatus(null);
-				throw sendError;
-			}
-		},
-		[
-			appendLocalUserMessage,
-			ensureThread,
-			markLocalThreadRunPending,
-			releaseCompletedUseChatTurnIfNeeded,
-			resetPendingArtifactAssociation,
-			sendMessage,
-			setLocalThreadActiveRun,
-			setRovodevMessages,
-			stopUseChat,
-		],
-	);
-
-		const dispatchPromptNow = useCallback(
+	const dispatchPromptNow = useCallback(
 			async ({
 				text,
 				files,
@@ -4193,7 +4075,6 @@ export function useRovoApp({
 							getLatestQuestionCardPayload(rovodevMessagesRef.current) !== null,
 						hasPendingPlanApproval:
 							getActivePendingPlanReview() !== null,
-						hasPendingToolApproval: activeToolApproval !== null,
 					})
 				) {
 					break;
@@ -4252,7 +4133,6 @@ export function useRovoApp({
 			}
 		}
 	}, [
-		activeToolApproval,
 		dispatchDelegationNow,
 		dispatchPromptNow,
 		getActivePendingPlanReview,
@@ -5123,7 +5003,6 @@ export function useRovoApp({
 
 	return {
 		activeDocument,
-		activeToolApproval,
 		activeDocumentContent,
 		activeThreadId,
 		applyVoiceSteer,
@@ -5180,7 +5059,6 @@ export function useRovoApp({
 		sidebarOpen,
 		status,
 		stop,
-		submitToolApproval,
 		cancelClarificationQuestionSet,
 		submitClarification,
 		submitClarificationDismiss,

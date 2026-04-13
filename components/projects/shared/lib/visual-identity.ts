@@ -2,7 +2,7 @@ import type { AtlassianLogoName } from "@/components/ui/logo";
 import type { IconTileVariant } from "@/components/ui/icon-tile";
 import type { GenerativeContentType } from "@/components/projects/shared/lib/generative-widget";
 
-type ArtifactVisualIdentityKind = "text" | "code" | "image" | "sheet" | "react" | "excalidraw";
+type ArtifactVisualIdentityKind = "text" | "code" | "image" | "sheet" | "react" | "excalidraw" | "browser";
 
 export const VISUAL_IDENTITY_TILE_VARIANTS = [
 	"gray",

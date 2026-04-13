@@ -38,6 +38,7 @@ export const API_ENDPOINTS = {
 	STATUS_ROVODEV: `${API_BASE_URL}/api/status/rovodev`,
 	STATUS_HERMES: `${API_BASE_URL}/api/status/hermes`,
 	WIKI_STATUS: `${API_BASE_URL}/api/wiki/status`,
+	WIKI_MEMORIES: `${API_BASE_URL}/api/wiki/memories`,
 	WIKI_SEARCH: `${API_BASE_URL}/api/wiki/search`,
 	WIKI_SYNC: `${API_BASE_URL}/api/wiki/sync`,
 	CHAT_THREADS: `${API_BASE_URL}/api/chat/threads`,
@@ -89,6 +90,10 @@ export const API_ENDPOINTS = {
 		}
 		return `${API_BASE_URL}/api/wiki/search?${params.toString()}`;
 	},
+	wikiMemoryBlock: (scope: string, blockId: string) =>
+		`${API_BASE_URL}/api/wiki/memories/${encodeURIComponent(scope)}/blocks/${encodeURIComponent(blockId)}`,
+	wikiMemoryProposal: (proposalId: string) =>
+		`${API_BASE_URL}/api/wiki/memories?proposalId=${encodeURIComponent(proposalId)}`,
 	wikiSync: `${API_BASE_URL}/api/wiki/sync`,
 	sessionSearch: (query: string, limit?: number) => {
 		const params = new URLSearchParams({ q: query });

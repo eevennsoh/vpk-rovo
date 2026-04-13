@@ -88,7 +88,7 @@ test("allows queued prompt actions when one is present", () => {
 	);
 });
 
-test("blocks queued actions while clarification, plan approval, or tool approval is pending", () => {
+test("blocks queued actions while clarification or plan approval is pending", () => {
 	const queuedAction = {
 		id: "action-1",
 		threadId: "thread-1",
@@ -111,14 +111,6 @@ test("blocks queued actions while clarification, plan approval, or tool approval
 		canDispatchRovoAppQueuedAction({
 			action: queuedAction,
 			hasPendingPlanApproval: true,
-		}),
-		false,
-	);
-
-	assert.equal(
-		canDispatchRovoAppQueuedAction({
-			action: queuedAction,
-			hasPendingToolApproval: true,
 		}),
 		false,
 	);

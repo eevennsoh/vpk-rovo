@@ -19,8 +19,11 @@ function getFirstQueryValue(value) {
 }
 
 function createWikiRouteHandlers({
+	deleteWikiMemoryBlockImpl,
+	deleteWikiMemoryProposalImpl,
 	ensureFreshWikiQmdIndexImpl,
 	getQmdSyncSummaryImpl,
+	getWikiMemoriesImpl,
 	getWikiStatusImpl,
 	logger = console,
 	normalizeNaiveWikiSearchResultsImpl,
@@ -30,6 +33,18 @@ function createWikiRouteHandlers({
 } = {}) {
 	if (typeof getWikiStatusImpl !== "function") {
 		throw new Error("createWikiRouteHandlers requires getWikiStatusImpl");
+	}
+
+	if (typeof getWikiMemoriesImpl !== "function") {
+		throw new Error("createWikiRouteHandlers requires getWikiMemoriesImpl");
+	}
+
+	if (typeof deleteWikiMemoryBlockImpl !== "function") {
+		throw new Error("createWikiRouteHandlers requires deleteWikiMemoryBlockImpl");
+	}
+
+	if (typeof deleteWikiMemoryProposalImpl !== "function") {
+		throw new Error("createWikiRouteHandlers requires deleteWikiMemoryProposalImpl");
 	}
 
 	if (typeof getQmdSyncSummaryImpl !== "function") {
@@ -116,6 +131,95 @@ function createWikiRouteHandlers({
 		}
 	}
 
+	async function handleWikiMemories(_req, res) {
+		try {
+			return res.json({
+				memories: await getWikiMemoriesImpl(),
+			});
+		} catch (error) {
+			return res.status(500).json({
+				error: "Failed to load wiki memories",
+				details: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
+	async function handleWikiMemoryBlockDelete(req, res) {
+		const revision = typeof req.body?.revision === "string" && req.body.revision.trim().length > 0
+			? req.body.revision.trim()
+			: null;
+		if (!revision) {
+			return res.status(400).json({
+				error: "A canonical memory revision is required.",
+			});
+		}
+
+		try {
+			const result = await deleteWikiMemoryBlockImpl({
+				blockId: req.params?.blockId,
+				logger,
+				revision,
+				scope: req.params?.scope,
+			});
+			return res.json({
+				memories: result.memories,
+				removedBlock: result.removedBlock,
+				wiki: await getWikiStatusImpl(),
+			});
+		} catch (error) {
+			if (error?.code === "INVALID_INPUT") {
+				return res.status(400).json({
+					error: error.message,
+				});
+			}
+			if (error?.code === "NOT_FOUND") {
+				return res.status(404).json({
+					error: error.message,
+				});
+			}
+			if (error?.code === "REVISION_CONFLICT") {
+				return res.status(409).json({
+					error: error.message,
+				});
+			}
+
+			return res.status(500).json({
+				error: "Failed to delete wiki memory block",
+				details: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
+	async function handleWikiMemoryProposalDelete(req, res) {
+		try {
+			const result = await deleteWikiMemoryProposalImpl({
+				logger,
+				proposalId: req.params?.proposalId,
+			});
+			return res.json({
+				memories: result.memories,
+				proposal: result.proposal,
+				wiki: await getWikiStatusImpl(),
+			});
+		} catch (error) {
+			if (error?.code === "INVALID_INPUT") {
+				return res.status(400).json({
+					error: error.message,
+				});
+			}
+			if (error?.code === "NOT_FOUND") {
+				return res.status(404).json({
+					error: error.message,
+				});
+			}
+
+			return res.status(500).json({
+				error: "Failed to delete wiki memory proposal",
+				details: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
 	async function handleWikiSync(req, res) {
 		try {
 			const force = req.body?.force !== false;
@@ -151,6 +255,9 @@ function createWikiRouteHandlers({
 	}
 
 	return {
+		handleWikiMemories,
+		handleWikiMemoryBlockDelete,
+		handleWikiMemoryProposalDelete,
 		handleWikiSearch,
 		handleWikiStatus,
 		handleWikiSync,

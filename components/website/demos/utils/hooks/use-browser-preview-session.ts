@@ -8,10 +8,13 @@ import {
 } from "react";
 import { getBrowserWorkspaceStream } from "@/lib/browser-workspace-client";
 import {
+	type BrowserPreviewFramePayload,
 	completeBrowserPreviewFrameLoad,
 	createBrowserPreviewFrameQueueState,
 	enqueueBrowserPreviewFrame,
 } from "@/components/website/demos/utils/lib/browser-preview-frame-queue";
+import type { BrowserPreviewOverlayState } from "@/components/website/demos/utils/lib/browser-preview-overlay";
+import { isMissingBrowserWorkspaceError } from "@/components/website/demos/utils/hooks/browser-workspace-recovery";
 
 type PreviewStatus = "connecting" | "live" | "steady" | "fallback";
 
@@ -39,10 +42,15 @@ interface PreviewFrameMessage {
 	};
 }
 
+interface PreviewOverlayMessage extends BrowserPreviewOverlayState {
+	type: "preview-overlay";
+}
+
 type PreviewServerMessage =
 	| PreviewStateMessage
 	| PreviewErrorMessage
-	| PreviewFrameMessage;
+	| PreviewFrameMessage
+	| PreviewOverlayMessage;
 
 export interface BrowserPreviewSourceMetadata {
 	width: number;
@@ -73,10 +81,33 @@ function resolveWebSocketUrl(rawUrl: string) {
 	return baseUrl.toString();
 }
 
-export function useBrowserPreviewSession(workspaceId: string | null) {
+function decodeBase64FramePayload(
+	base64Payload: string,
+	contentType = "image/jpeg",
+): Blob | string {
+	try {
+		const decoded = window.atob(base64Payload);
+		const bytes = new Uint8Array(decoded.length);
+		for (let index = 0; index < decoded.length; index += 1) {
+			bytes[index] = decoded.charCodeAt(index);
+		}
+
+		return new Blob([bytes], { type: contentType });
+	} catch {
+		return `data:${contentType};base64,${base64Payload}`;
+	}
+}
+
+export function useBrowserPreviewSession(
+	workspaceId: string | null,
+	options?: {
+		onMissingWorkspace?: (workspaceId: string) => Promise<unknown>;
+	},
+) {
+	const onMissingWorkspace = options?.onMissingWorkspace;
 	const liveCanvasRef = useRef<HTMLCanvasElement | null>(null);
 	const socketRef = useRef<WebSocket | null>(null);
-	const frameLoaderRef = useRef<HTMLImageElement | null>(null);
+	const frameLoaderRef = useRef<object | null>(null);
 	const frameQueueStateRef = useRef(createBrowserPreviewFrameQueueState());
 	const hasReachedLiveRef = useRef(false);
 
@@ -87,6 +118,8 @@ export function useBrowserPreviewSession(workspaceId: string | null) {
 	const [settledScreenshotRevision, setSettledScreenshotRevision] =
 		useState<number | null>(null);
 	const [canSendControl, setCanSendControl] = useState(false);
+	const [overlayState, setOverlayState] =
+		useState<BrowserPreviewOverlayState | null>(null);
 
 	const updateSourceMetadata = useCallback(
 		(nextMetadata: BrowserPreviewSourceMetadata) => {
@@ -120,14 +153,24 @@ export function useBrowserPreviewSession(workspaceId: string | null) {
 		frameQueueStateRef.current = createBrowserPreviewFrameQueueState();
 	}, []);
 
-	const promoteLoadedFrame = useCallback((frameImage: HTMLImageElement) => {
+	const promoteLoadedFrame = useCallback((frameImage: HTMLImageElement | ImageBitmap) => {
 		const canvas = liveCanvasRef.current;
 		if (!canvas) {
 			return;
 		}
 
-		const width = Math.max(1, frameImage.naturalWidth || frameImage.width || 1);
-		const height = Math.max(1, frameImage.naturalHeight || frameImage.height || 1);
+		const width = Math.max(
+			1,
+			"naturalWidth" in frameImage
+				? frameImage.naturalWidth || frameImage.width || 1
+				: frameImage.width || 1,
+		);
+		const height = Math.max(
+			1,
+			"naturalHeight" in frameImage
+				? frameImage.naturalHeight || frameImage.height || 1
+				: frameImage.height || 1,
+		);
 		if (canvas.width !== width) {
 			canvas.width = width;
 		}
@@ -145,55 +188,94 @@ export function useBrowserPreviewSession(workspaceId: string | null) {
 	}, []);
 
 	const loadQueuedFrame = useCallback(
-		(frameSrc: string) => {
-			const loader = new window.Image();
-			loader.decoding = "async";
-			frameLoaderRef.current = loader;
+		(framePayload: BrowserPreviewFramePayload) => {
+			const loaderToken = {};
+			frameLoaderRef.current = loaderToken;
 
 			const settleFrameLoad = () => {
-				if (frameLoaderRef.current !== loader) {
+				if (frameLoaderRef.current !== loaderToken) {
 					return;
 				}
 
-				const { frameSrcToLoad, nextState } = completeBrowserPreviewFrameLoad(
+				const { frameToLoad, nextState } = completeBrowserPreviewFrameLoad(
 					frameQueueStateRef.current,
 				);
 				frameLoaderRef.current = null;
 				frameQueueStateRef.current = nextState;
 
-				if (frameSrcToLoad) {
-					loadQueuedFrame(frameSrcToLoad);
+				if (frameToLoad) {
+					loadQueuedFrame(frameToLoad);
 				}
 			};
 
+			if (
+				framePayload instanceof Blob &&
+				typeof window.createImageBitmap === "function"
+			) {
+				void window.createImageBitmap(framePayload)
+					.then((frameBitmap) => {
+						if (frameLoaderRef.current !== loaderToken) {
+							frameBitmap.close();
+							return;
+						}
+
+						promoteLoadedFrame(frameBitmap);
+						frameBitmap.close();
+						settleFrameLoad();
+					})
+					.catch(() => {
+						settleFrameLoad();
+					});
+				return;
+			}
+
+			const loader = new window.Image();
+			loader.decoding = "async";
+			let objectUrl: string | null = null;
+
 			loader.onload = () => {
-				if (frameLoaderRef.current !== loader) {
+				if (frameLoaderRef.current !== loaderToken) {
+					if (objectUrl) {
+						window.URL.revokeObjectURL(objectUrl);
+					}
 					return;
 				}
 
 				promoteLoadedFrame(loader);
+				if (objectUrl) {
+					window.URL.revokeObjectURL(objectUrl);
+				}
 				settleFrameLoad();
 			};
 
 			loader.onerror = () => {
+				if (objectUrl) {
+					window.URL.revokeObjectURL(objectUrl);
+				}
 				settleFrameLoad();
 			};
 
-			loader.src = frameSrc;
+			if (typeof framePayload === "string") {
+				loader.src = framePayload;
+				return;
+			}
+
+			objectUrl = window.URL.createObjectURL(framePayload);
+			loader.src = objectUrl;
 		},
 		[promoteLoadedFrame],
 	);
 
 	const queueLiveFrame = useCallback(
-		(frameSrc: string) => {
-			const { frameSrcToLoad, nextState } = enqueueBrowserPreviewFrame(
+		(framePayload: BrowserPreviewFramePayload) => {
+			const { frameToLoad, nextState } = enqueueBrowserPreviewFrame(
 				frameQueueStateRef.current,
-				frameSrc,
+				framePayload,
 			);
 			frameQueueStateRef.current = nextState;
 
-			if (frameSrcToLoad) {
-				loadQueuedFrame(frameSrcToLoad);
+			if (frameToLoad) {
+				loadQueuedFrame(frameToLoad);
 			}
 		},
 		[loadQueuedFrame],
@@ -205,6 +287,7 @@ export function useBrowserPreviewSession(workspaceId: string | null) {
 			setStatus("fallback");
 			setError(null);
 			setCanSendControl(false);
+			setOverlayState(null);
 			return;
 		}
 
@@ -223,6 +306,7 @@ export function useBrowserPreviewSession(workspaceId: string | null) {
 		setError(null);
 		setSourceMetadata(null);
 		setSettledScreenshotRevision(null);
+		setOverlayState(null);
 		hasReachedLiveRef.current = false;
 		resetFrameQueue();
 
@@ -238,6 +322,7 @@ export function useBrowserPreviewSession(workspaceId: string | null) {
 				}
 
 				socket = new window.WebSocket(resolveWebSocketUrl(streamConfig.wsUrl));
+				socket.binaryType = "blob";
 				socketRef.current = socket;
 				const activeSocket = socket;
 
@@ -255,8 +340,20 @@ export function useBrowserPreviewSession(workspaceId: string | null) {
 						return;
 					}
 
+					if (typeof event.data !== "string") {
+						const frameBlob = event.data instanceof Blob
+							? event.data
+							: new Blob([event.data], { type: "image/jpeg" });
+						queueLiveFrame(frameBlob);
+						if (!hasReachedLiveRef.current) {
+							hasReachedLiveRef.current = true;
+							setStatus("live");
+						}
+						return;
+					}
+
 					try {
-						const payload = JSON.parse(String(event.data)) as PreviewServerMessage;
+						const payload = JSON.parse(event.data) as PreviewServerMessage;
 						if (payload.type === "preview-error") {
 							setError(payload.message);
 							setStatus("fallback");
@@ -275,8 +372,16 @@ export function useBrowserPreviewSession(workspaceId: string | null) {
 							return;
 						}
 
+						if (payload.type === "preview-overlay") {
+							setOverlayState({
+								cursor: payload.cursor,
+								activity: payload.activity,
+								updatedAt: payload.updatedAt,
+							});
+							return;
+						}
+
 						if (payload.type === "frame" && typeof payload.data === "string") {
-							const nextFrameSrc = `data:image/jpeg;base64,${payload.data}`;
 							if (payload.metadata?.deviceWidth && payload.metadata?.deviceHeight) {
 								updateSourceMetadata({
 									width: payload.metadata.deviceWidth,
@@ -284,7 +389,7 @@ export function useBrowserPreviewSession(workspaceId: string | null) {
 									pageScaleFactor: payload.metadata.pageScaleFactor ?? 1,
 								});
 							}
-							queueLiveFrame(nextFrameSrc);
+							queueLiveFrame(decodeBase64FramePayload(payload.data));
 							if (!hasReachedLiveRef.current) {
 								hasReachedLiveRef.current = true;
 								setStatus("live");
@@ -320,6 +425,15 @@ export function useBrowserPreviewSession(workspaceId: string | null) {
 					return;
 				}
 
+				if (
+					workspaceId &&
+					typeof onMissingWorkspace === "function" &&
+					isMissingBrowserWorkspaceError(caughtError)
+				) {
+					await onMissingWorkspace(workspaceId);
+					return;
+				}
+
 				setStatus("fallback");
 				setCanSendControl(false);
 				setError(
@@ -335,7 +449,7 @@ export function useBrowserPreviewSession(workspaceId: string | null) {
 			resetFrameQueue();
 			teardown();
 		};
-	}, [queueLiveFrame, resetFrameQueue, updateSourceMetadata, workspaceId]);
+	}, [onMissingWorkspace, queueLiveFrame, resetFrameQueue, updateSourceMetadata, workspaceId]);
 
 	return {
 		liveCanvasRef,
@@ -343,6 +457,7 @@ export function useBrowserPreviewSession(workspaceId: string | null) {
 		error,
 		sourceMetadata,
 		settledScreenshotRevision,
+		overlayState,
 		canSendControl,
 		sendControlMessage,
 	};

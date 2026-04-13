@@ -8,6 +8,7 @@ const {
 function buildBaseInput() {
 	return {
 		assistantText: "Here is the stock price history for the last 30 days.",
+		hasAuthoritativeBrowserOutput: false,
 		hasEmittedQuestionCard: false,
 		hasEmittedPlanWidget: false,
 		hasEmittedGenuiWidget: false,
@@ -150,6 +151,16 @@ test("shouldAttemptPostToolGenui suppresses GenUI when inability is detected", (
 		shouldAttemptPostToolGenui({
 			...buildBaseInput(),
 			looksLikeInability: true,
+		}),
+		false,
+	);
+});
+
+test("shouldAttemptPostToolGenui suppresses GenUI when authoritative browser output already exists", () => {
+	assert.equal(
+		shouldAttemptPostToolGenui({
+			...buildBaseInput(),
+			hasAuthoritativeBrowserOutput: true,
 		}),
 		false,
 	);

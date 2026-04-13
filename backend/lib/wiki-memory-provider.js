@@ -33,6 +33,8 @@ const WIKI_MEMORY_SCOPE_DEFINITIONS = Object.freeze({
 
 const PROPOSAL_STATUS_SET = new Set(["queued", "ingested"]);
 const PROPOSAL_ACTION_SET = new Set(["add", "replace"]);
+const DURABLE_MEMORY_HEADING = "## Durable Memory";
+const RECENT_CHANGES_HEADING = "## Recent Changes";
 
 function normalizeText(value) {
 	return typeof value === "string"
@@ -117,6 +119,185 @@ function stripMarkdownCodeFence(content) {
 	const normalizedContent = normalizeText(content);
 	const fencedMatch = normalizedContent.match(/^```(?:markdown|md)?\s*([\s\S]*?)```$/u);
 	return fencedMatch?.[1] ? fencedMatch[1].trim() : normalizedContent;
+}
+
+function trimBlankLines(lines) {
+	if (!Array.isArray(lines) || lines.length === 0) {
+		return [];
+	}
+
+	let start = 0;
+	let end = lines.length;
+	while (start < end && lines[start].trim() === "") {
+		start += 1;
+	}
+	while (end > start && lines[end - 1].trim() === "") {
+		end -= 1;
+	}
+	return lines.slice(start, end);
+}
+
+function stripLeadingDuplicatedFrontmatterFence(content) {
+	if (typeof content !== "string" || content.length === 0) {
+		return "";
+	}
+
+	const normalizedContent = content
+		.replace(/\r\n?/gu, "\n")
+		.trimStart();
+
+	return normalizedContent
+		.replace(/^```(?:yaml|yml)?\s*---\n[\s\S]*?\n---\s*```\n*/u, "")
+		.trimStart();
+}
+
+function getSectionBounds(lines, heading) {
+	const targetHeading = heading.trim();
+	const start = lines.findIndex((line) => line.trim() === targetHeading);
+	if (start < 0) {
+		return null;
+	}
+
+	let end = lines.length;
+	for (let index = start + 1; index < lines.length; index += 1) {
+		if (/^##\s+/u.test(lines[index].trim())) {
+			end = index;
+			break;
+		}
+	}
+
+	return { end, start };
+}
+
+function ensureTopLevelHeading(lines, fallbackTitle) {
+	const trimmedLines = trimBlankLines(lines);
+	if (trimmedLines.some((line) => /^#\s+/u.test(line.trim()))) {
+		return trimmedLines;
+	}
+
+	return [`# ${fallbackTitle}`, ...trimmedLines];
+}
+
+function normalizeMemoryBlockContent(content) {
+	return normalizeText(content).replace(/\n{3,}/gu, "\n\n");
+}
+
+function summarizeMemoryBlockContent(content) {
+	const normalized = normalizeMemoryBlockContent(content);
+	return normalized.length > 140
+		? `${normalized.slice(0, 137).trimEnd()}...`
+		: normalized;
+}
+
+function buildMemoryBlockId(scope, index, content) {
+	return `${scope}-${crypto.createHash("sha1").update(`${index}:${normalizeMemoryBlockContent(content)}`).digest("hex").slice(0, 12)}`;
+}
+
+function buildDocumentRevision(content) {
+	return crypto.createHash("sha1").update(typeof content === "string" ? content : "").digest("hex");
+}
+
+function splitDurableMemoryBlocks(content) {
+	const normalizedContent = normalizeMemoryBlockContent(content);
+	if (!normalizedContent || normalizedContent === "_No entries yet._") {
+		return [];
+	}
+
+	// Canonical memory pages currently use blank-line-separated durable memory blocks.
+	return normalizedContent
+		.split(/\n{2,}/u)
+		.map((block) => normalizeMemoryBlockContent(block))
+		.filter(Boolean);
+}
+
+function parseCanonicalMemoryDocument(document, definition) {
+	const sanitizedBody = stripLeadingDuplicatedFrontmatterFence(document.body);
+	const lines = sanitizedBody.length > 0 ? sanitizedBody.split("\n") : [];
+	const durableBounds = getSectionBounds(lines, DURABLE_MEMORY_HEADING);
+	const recentBounds = getSectionBounds(lines, RECENT_CHANGES_HEADING);
+	const prefixLines = durableBounds
+		? trimBlankLines(lines.slice(0, durableBounds.start))
+		: ensureTopLevelHeading(lines, definition.pageTitle);
+	const durableContent = durableBounds
+		? trimBlankLines(lines.slice(durableBounds.start + 1, durableBounds.end)).join("\n")
+		: "";
+	const recentLines = recentBounds
+		? trimBlankLines(lines.slice(recentBounds.start + 1, recentBounds.end))
+		: [];
+	const suffixLines = recentBounds
+		? trimBlankLines(lines.slice(recentBounds.end))
+		: [];
+	const titleLine = prefixLines.find((line) => /^#\s+/u.test(line.trim()));
+	const title = titleLine
+		? titleLine.trim().replace(/^#\s+/u, "")
+		: definition.pageTitle;
+	const blocks = splitDurableMemoryBlocks(durableContent).map((content, index) => ({
+		charCount: content.length,
+		content,
+		id: buildMemoryBlockId(definition.scope, index, content),
+		lineCount: content.split("\n").length,
+		preview: summarizeMemoryBlockContent(content),
+	}));
+
+	return {
+		blocks,
+		prefixLines: ensureTopLevelHeading(prefixLines, title),
+		recentLines,
+		sanitizedBody,
+		suffixLines,
+		title,
+	};
+}
+
+function buildCanonicalMemoryFrontmatter(definition, currentDocument) {
+	const currentFrontmatter = currentDocument?.frontmatter ?? {};
+	return serializeFrontmatter({
+		created: getNonEmptyString(currentFrontmatter.created) ?? getTodayDate(),
+		kind: "wiki-memory",
+		sources: Array.isArray(currentFrontmatter.sources) ? currentFrontmatter.sources.map((value) => String(value)) : [],
+		tags: definition.tags,
+		title: getNonEmptyString(currentFrontmatter.title) ?? definition.pageTitle,
+		type: definition.type,
+		updated: getTodayDate(),
+	}).trimEnd();
+}
+
+function buildCanonicalMemoryDocumentContent({
+	blocks,
+	currentDocument,
+	definition,
+	parsedDocument,
+	recentChange,
+}) {
+	const nextBlocks = Array.isArray(blocks) ? blocks : [];
+	const nextRecentLines = [
+		getNonEmptyString(recentChange),
+		...parsedDocument.recentLines,
+	].filter(Boolean);
+	const durableMemoryLines = nextBlocks.length > 0
+		? nextBlocks.map((block) => block.content).join("\n\n").split("\n")
+		: ["_No entries yet._"];
+	const bodyLines = [
+		...ensureTopLevelHeading(parsedDocument.prefixLines, parsedDocument.title || definition.pageTitle),
+		"",
+		DURABLE_MEMORY_HEADING,
+		"",
+		...durableMemoryLines,
+		"",
+		RECENT_CHANGES_HEADING,
+		"",
+		...nextRecentLines,
+	];
+
+	if (parsedDocument.suffixLines.length > 0) {
+		bodyLines.push("", ...parsedDocument.suffixLines);
+	}
+
+	return [
+		buildCanonicalMemoryFrontmatter(definition, currentDocument),
+		"",
+		bodyLines.join("\n"),
+	].join("\n");
 }
 
 function getWikiMemoryPaths({ wikiDir = DEFAULT_WIKI_DIR } = {}) {
@@ -604,6 +785,135 @@ async function regenerateWikiMemoryContext({
 	return compiledContexts;
 }
 
+function createWikiMemoryTextGenerator(generateTextImpl) {
+	return generateTextImpl || (async (input) => {
+		return aiGatewayProvider.generateText({
+			maxOutputTokens: 1500,
+			prompt: input.prompt,
+			system: input.system,
+			temperature: 0.1,
+		});
+	});
+}
+
+async function rewriteCanonicalMemoryFromCurrentSources({
+	generateTextImpl,
+	logger = console,
+	qmdSyncImpl,
+	scope,
+	wikiDir = DEFAULT_WIKI_DIR,
+} = {}) {
+	const definition = resolveScopeDefinition(scope, { wikiDir });
+	if (!definition) {
+		const error = new Error(`Unknown wiki memory scope: ${scope}`);
+		error.code = "NOT_FOUND";
+		throw error;
+	}
+
+	const currentPage = await readMarkdownDocument(definition.canonicalAbsolutePath);
+	const allScopeProposals = (await listWikiMemoryProposals({ wikiDir }))
+		.filter((proposal) => proposal.scope === scope);
+
+	if (allScopeProposals.length === 0) {
+		await writeMarkdownDocument(definition.canonicalAbsolutePath, buildCanonicalSeedContent(definition));
+	} else {
+		const textGenerator = createWikiMemoryTextGenerator(generateTextImpl);
+		const rewrittenPage = await textGenerator({
+			prompt: buildCanonicalRewritePrompt(
+				definition,
+				{
+					...currentPage,
+					body: "",
+					content: "",
+					exists: false,
+				},
+				allScopeProposals,
+			),
+			system: `You maintain the canonical ${definition.label.toLowerCase()} page in an LLM wiki.`,
+		});
+		const nextContent = normalizeCanonicalRewriteOutput(
+			rewrittenPage,
+			definition,
+			currentPage,
+		);
+		await writeMarkdownDocument(definition.canonicalAbsolutePath, nextContent);
+	}
+
+	let processed = 0;
+	for (const proposal of allScopeProposals) {
+		if (proposal.status !== "queued") {
+			continue;
+		}
+		const currentProposal = await readMarkdownDocument(proposal.path);
+		if (!currentProposal.exists) {
+			continue;
+		}
+		await writeMarkdownDocument(
+			proposal.path,
+			updateProposalStatusContent(currentProposal.content, "ingested"),
+		);
+		processed += 1;
+	}
+
+	if (typeof qmdSyncImpl === "function") {
+		await qmdSyncImpl({
+			collectionName: definition.collection,
+			scope,
+			wikiDir,
+		});
+	}
+
+	return {
+		processed,
+		updatedCollections: [definition.collection],
+		updatedScopes: [scope],
+	};
+}
+
+async function rebuildWikiMemoryFromCurrentSources({
+	generateTextImpl,
+	logger = console,
+	qmdSyncImpl,
+	wikiDir = DEFAULT_WIKI_DIR,
+} = {}) {
+	await ensureWikiMemoryScaffold({ wikiDir });
+
+	const errors = [];
+	let processed = 0;
+	const updatedCollections = [];
+	const updatedScopes = [];
+
+	for (const definition of listScopeDefinitions({ wikiDir })) {
+		try {
+			const result = await rewriteCanonicalMemoryFromCurrentSources({
+				generateTextImpl,
+				logger,
+				qmdSyncImpl,
+				scope: definition.scope,
+				wikiDir,
+			});
+			processed += result.processed;
+			updatedCollections.push(...result.updatedCollections);
+			updatedScopes.push(...result.updatedScopes);
+		} catch (error) {
+			errors.push(`${definition.scope}: ${error instanceof Error ? error.message : String(error)}`);
+		}
+	}
+
+	await regenerateWikiMemoryContext({
+		generateTextImpl,
+		logger,
+		wikiDir,
+	});
+
+	return {
+		errors,
+		processed,
+		updatedCollections: Array.from(new Set(updatedCollections)),
+		updatedScopes: Array.from(new Set(updatedScopes)),
+	};
+}
+
 async function ingestQueuedWikiMemoryProposals({
 	generateTextImpl,
 	logger = console,
@@ -624,14 +934,7 @@ async function ingestQueuedWikiMemoryProposals({
 		};
 	}
 
-	const textGenerator = generateTextImpl || (async (input) => {
-		return aiGatewayProvider.generateText({
-			maxOutputTokens: 1500,
-			prompt: input.prompt,
-			system: input.system,
-			temperature: 0.1,
-		});
-	});
+	const textGenerator = createWikiMemoryTextGenerator(generateTextImpl);
 
 	const groupedProposals = proposals.reduce((accumulator, proposal) => {
 		const bucket = accumulator.get(proposal.scope) ?? [];
@@ -731,6 +1034,46 @@ async function readCompiledContextDocuments({ wikiDir = DEFAULT_WIKI_DIR } = {})
 	return documents;
 }
 
+async function getCanonicalWikiMemoryDocuments({
+	wikiDir = DEFAULT_WIKI_DIR,
+} = {}) {
+	await ensureWikiMemoryScaffold({ wikiDir });
+
+	const compiledContexts = await readCompiledContextDocuments({ wikiDir });
+	const documents = {};
+
+	for (const definition of listScopeDefinitions({ wikiDir })) {
+		const document = await readMarkdownDocument(definition.canonicalAbsolutePath);
+		const parsedDocument = parseCanonicalMemoryDocument(document, definition);
+		documents[definition.scope] = {
+			blocks: parsedDocument.blocks,
+			canonicalPath: definition.canonicalAbsolutePath,
+			compiledContext: compiledContexts[definition.scope]
+				? {
+					charCount: compiledContexts[definition.scope].charCount,
+					exists: compiledContexts[definition.scope].exists,
+					path: compiledContexts[definition.scope].path,
+					preview: compiledContexts[definition.scope].preview,
+					updatedAt: compiledContexts[definition.scope].updatedAt,
+				}
+				: {
+					charCount: 0,
+					exists: false,
+					path: "",
+					preview: "",
+					updatedAt: null,
+				},
+			exists: document.exists,
+			revision: buildDocumentRevision(document.content),
+			scope: definition.scope,
+			title: parsedDocument.title,
+			updatedAt: document.updatedAt,
+		};
+	}
+
+	return documents;
+}
+
 async function buildWikiMemoryContextDescription({
 	wikiDir = DEFAULT_WIKI_DIR,
 } = {}) {
@@ -793,7 +1136,7 @@ async function getWikiMemoryStatus({
 	return {
 		compiledContexts,
 		proposalCounts,
-		recentProposals: allProposals.slice(0, 6),
+		recentProposals: allProposals,
 	};
 }
 
@@ -811,28 +1154,207 @@ async function syncWikiBackedMemory({
 		wikiDir,
 	});
 
-	if (forceContextRegeneration && ingestResult.processed === 0) {
-		await regenerateWikiMemoryContext({
+	if (forceContextRegeneration) {
+		const rebuildResult = await rebuildWikiMemoryFromCurrentSources({
 			generateTextImpl,
 			logger,
+			qmdSyncImpl,
 			wikiDir,
 		});
+		return {
+			errors: [...(ingestResult.errors ?? []), ...(rebuildResult.errors ?? [])],
+			processed: rebuildResult.processed,
+			updatedCollections: Array.from(new Set([
+				...(ingestResult.updatedCollections ?? []),
+				...(rebuildResult.updatedCollections ?? []),
+			])),
+			updatedScopes: Array.from(new Set([
+				...(ingestResult.updatedScopes ?? []),
+				...(rebuildResult.updatedScopes ?? []),
+			])),
+		};
 	}
 
 	return ingestResult;
 }
 
+async function deleteWikiMemoryProposal({
+	generateTextImpl,
+	logger = console,
+	proposalId,
+	qmdSyncImpl,
+	wikiDir = DEFAULT_WIKI_DIR,
+} = {}) {
+	const normalizedProposalId = getNonEmptyString(proposalId);
+	if (normalizedProposalId === null) {
+		const error = new Error("A wiki memory proposal id is required.");
+		error.code = "INVALID_INPUT";
+		throw error;
+	}
+
+	await ensureWikiMemoryScaffold({ wikiDir });
+
+	const proposals = await listWikiMemoryProposals({ wikiDir });
+	const proposal = proposals.find((candidate) => candidate.id === normalizedProposalId);
+	if (!proposal) {
+		const error = new Error("Wiki memory proposal not found.");
+		error.code = "NOT_FOUND";
+		throw error;
+	}
+
+	await fs.unlink(proposal.path);
+
+	const definition = resolveScopeDefinition(proposal.scope, { wikiDir });
+	if (definition) {
+		await appendToWikiLog(
+			"memory-source-delete",
+			definition.pageTitle,
+			[
+				`Removed raw memory proposal ${proposal.id}.`,
+				`Status: ${proposal.status}.`,
+				`Summary: ${proposal.summary}`,
+			],
+			{ wikiDir },
+		);
+	}
+
+	await rewriteCanonicalMemoryFromCurrentSources({
+		generateTextImpl,
+		logger,
+		qmdSyncImpl,
+		scope: proposal.scope,
+		wikiDir,
+	});
+	await regenerateWikiMemoryContext({
+		generateTextImpl,
+		logger,
+		wikiDir,
+	});
+
+	logger.info?.("[wiki-memory] Deleted memory proposal source", {
+		proposalId: proposal.id,
+		scope: proposal.scope,
+		status: proposal.status,
+		wikiDir,
+	});
+
+	return {
+		memories: await getCanonicalWikiMemoryDocuments({ wikiDir }),
+		proposal,
+	};
+}
+
+async function pruneCanonicalWikiMemoryBlock({
+	blockId,
+	generateTextImpl,
+	logger = console,
+	qmdSyncImpl,
+	revision,
+	scope,
+	wikiDir = DEFAULT_WIKI_DIR,
+} = {}) {
+	if (getNonEmptyString(blockId) === null) {
+		const error = new Error("A canonical memory block id is required.");
+		error.code = "INVALID_INPUT";
+		throw error;
+	}
+
+	const normalizedRevision = getNonEmptyString(revision);
+	if (normalizedRevision === null) {
+		const error = new Error("A canonical memory revision is required.");
+		error.code = "INVALID_INPUT";
+		throw error;
+	}
+
+	const definition = resolveScopeDefinition(scope, { wikiDir });
+	if (!definition) {
+		const error = new Error(`Unknown wiki memory scope: ${scope}`);
+		error.code = "NOT_FOUND";
+		throw error;
+	}
+
+	await ensureWikiMemoryScaffold({ wikiDir });
+
+	const currentDocument = await readMarkdownDocument(definition.canonicalAbsolutePath);
+	const currentRevision = buildDocumentRevision(currentDocument.content);
+	if (currentRevision !== normalizedRevision) {
+		const error = new Error("Canonical memory changed since this page was loaded.");
+		error.code = "REVISION_CONFLICT";
+		throw error;
+	}
+
+	const parsedDocument = parseCanonicalMemoryDocument(currentDocument, definition);
+	const removedBlock = parsedDocument.blocks.find((block) => block.id === blockId);
+	if (!removedBlock) {
+		const error = new Error("Canonical memory block not found.");
+		error.code = "NOT_FOUND";
+		throw error;
+	}
+
+	const nextBlocks = parsedDocument.blocks.filter((block) => block.id !== blockId);
+	const nextContent = buildCanonicalMemoryDocumentContent({
+		blocks: nextBlocks,
+		currentDocument,
+		definition,
+		parsedDocument,
+		recentChange: `- Removed durable memory block: ${summarizeMemoryBlockContent(removedBlock.content)} (${getTodayDate()})`,
+	});
+	await writeMarkdownDocument(definition.canonicalAbsolutePath, nextContent);
+
+	await appendToWikiLog(
+		"memory-prune",
+		definition.pageTitle,
+		[
+			`Removed canonical memory block ${removedBlock.id}.`,
+			`Scope: ${scope}.`,
+			`Summary: ${summarizeMemoryBlockContent(removedBlock.content)}`,
+		],
+		{ wikiDir },
+	);
+
+	if (typeof qmdSyncImpl === "function") {
+		await qmdSyncImpl({
+			collectionName: definition.collection,
+			scope,
+			wikiDir,
+		});
+	}
+
+	await regenerateWikiMemoryContext({
+		generateTextImpl,
+		logger,
+		wikiDir,
+	});
+
+	logger.info?.("[wiki-memory] Pruned canonical memory block", {
+		blockId: removedBlock.id,
+		scope,
+		wikiDir,
+	});
+
+	return {
+		memories: await getCanonicalWikiMemoryDocuments({ wikiDir }),
+		removedBlock,
+		updatedCollections: [definition.collection],
+		updatedScopes: [scope],
+	};
+}
+
 module.exports = {
 	DEFAULT_WIKI_DIR,
 	buildWikiMemoryContextDescription,
+	deleteWikiMemoryProposal,
 	enqueueWikiMemoryProposal,
 	ensureWikiMemoryScaffold,
+	getCanonicalWikiMemoryDocuments,
 	getWikiMemoryPaths,
 	getWikiMemoryStatus,
 	ingestQueuedWikiMemoryProposals,
 	listWikiMemoryProposals,
 	mapMemoryTargetToScope,
+	pruneCanonicalWikiMemoryBlock,
 	readCompiledContextDocuments,
+	rebuildWikiMemoryFromCurrentSources,
 	regenerateWikiMemoryContext,
 	resolveScopeDefinition,
 	syncWikiBackedMemory,

@@ -32,17 +32,14 @@ export function canDispatchRovoAppQueuedAction({
 	action,
 	hasPendingClarification = false,
 	hasPendingPlanApproval = false,
-	hasPendingToolApproval = false,
 }: Readonly<{
 	action: RovoAppQueuedAction | null;
 	hasPendingClarification?: boolean;
 	hasPendingPlanApproval?: boolean;
-	hasPendingToolApproval?: boolean;
 }>): boolean {
 	return (
 		action !== null &&
 		!hasPendingClarification &&
-		!hasPendingPlanApproval &&
-		!hasPendingToolApproval
+		!hasPendingPlanApproval
 	);
 }

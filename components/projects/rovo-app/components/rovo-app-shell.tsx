@@ -8,12 +8,12 @@ import { ArtifactPanel } from "@/components/ui-ai/artifact";
 import { ChatTimelineNavigator } from "@/components/blocks/chat-timeline/chat-timeline-navigator";
 import { CreateButton } from "@/components/blocks/top-navigation/components/create-button";
 import { RovoAppHeader } from "@/components/projects/rovo-app/components/rovo-app-header";
+import { RovoAppBrowserArtifact } from "@/components/projects/rovo-app/components/rovo-app-browser-artifact";
 import { RovoAppComposer } from "@/components/projects/rovo-app/components/rovo-app-composer";
 import { RovoAppMessages } from "@/components/projects/rovo-app/components/rovo-app-messages";
 import { RovoAppHermesSkillDraftBar } from "@/components/projects/rovo-app/components/rovo-app-hermes-skill-draft-bar";
 import { RovoAppShellPaneLayout } from "@/components/projects/rovo-app/components/rovo-app-shell-pane-layout";
 import { RovoAppSidebar } from "@/components/projects/rovo-app/components/rovo-app-sidebar";
-import { RovoAppToolApprovalBar } from "@/components/projects/rovo-app/components/rovo-app-tool-approval-bar";
 import { type RovoAppSteeringPhase } from "@/components/projects/rovo-app/components/rovo-app-steering-lane";
 import { SmoothGradientWaveform } from "@/components/blocks/visual-waveform/smooth-gradient-waveform";
 import { useArtifactAnnotations } from "@/components/ui-ai/hooks/use-artifact-annotations";
@@ -22,6 +22,11 @@ import type { ArtifactAnnotation } from "@/components/ui-ai/lib/artifact-annotat
 import { useRovoApp } from "@/components/projects/rovo-app/hooks/use-rovo-app";
 import { useHmrReloadSuppression } from "@/components/projects/rovo-app/hooks/use-hmr-reload-suppression";
 import { getRovoAppArtifactKindLabel, getRovoAppArtifactTypeLabel, sortRovoAppArtifacts } from "@/components/projects/rovo-app/lib/rovo-app-artifacts";
+import {
+	buildRovoAppBrowserArtifactKey,
+	shouldAutoOpenRovoAppBrowserArtifact,
+	shouldShowReopenRovoAppBrowserArtifactControl,
+} from "@/components/projects/rovo-app/lib/rovo-app-browser-preview";
 import { resolveRovoAppComposerPlaceholder } from "@/components/projects/rovo-app/lib/rovo-app-composer-placeholder";
 import { ROVO_APP_MAX_CHAT_PANE_WIDTH, ROVO_APP_MIN_ARTIFACT_PANE_WIDTH, ROVO_APP_MIN_CHAT_PANE_WIDTH, getRovoAppShellLayout } from "@/components/projects/rovo-app/lib/rovo-app-shell-layout";
 import { getRovoAppSmartGenerationLayoutContext } from "@/components/projects/rovo-app/lib/rovo-app-smart-generation-layout";
@@ -43,6 +48,7 @@ import { useTopNavigation } from "@/components/blocks/top-navigation/hooks/use-t
 import { ROVO_APP_SEPARATOR_LINE_OFFSET_PX, TOP_NAV_PADDING_PX } from "@/components/blocks/top-navigation/layout-constants";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import SearchIcon from "@atlaskit/icon/core/search";
 import { SidebarProvider, SidebarResizeHandle } from "@/components/ui/sidebar";
@@ -50,7 +56,7 @@ import { Footer } from "@/components/ui/footer";
 import { useSidebarResize } from "@/components/projects/rovo-app/hooks/use-sidebar-resize";
 import { clamp, cn, createId } from "@/lib/utils";
 import { token } from "@/lib/tokens";
-import { getLatestUserMessageId, getMessageArtifactResult, getMessageInterruption, getMessageText } from "@/lib/rovo-ui-messages";
+import { getLatestDataPart, getLatestUserMessageId, getMessageArtifactResult, getMessageInterruption, getMessageText } from "@/lib/rovo-ui-messages";
 import { ApprovalCard } from "@/components/blocks/approval-card/page";
 import { ClarificationQuestionCard } from "@/components/projects/shared/components/clarification-question-card";
 import { QuestionCardShortcutsFooter } from "@/components/projects/shared/components/question-card-shortcuts-footer";
@@ -549,10 +555,10 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 	const [prefillText, setPrefillText] = useState<string | null>(null);
 	const [voiceTranscript, setVoiceTranscript] = useState<string | null>(null);
 	const [scrollActiveTimelineId, setScrollActiveTimelineId] = useState<string | null>(null);
-	const [submittingToolApprovalId, setSubmittingToolApprovalId] = useState<string | null>(null);
 	const [scrollAnchorMessageId, setScrollAnchorMessageId] = useState<string | null>(null);
 	const [scrollFollowMode, setScrollFollowMode] = useState<ConversationFollowMode>("bottom");
 	const [optimisticUserMessage, setOptimisticUserMessage] = useState<ReturnType<typeof createRovoAppUserMessage> | null>(null);
+	const [dismissedBrowserArtifactKey, setDismissedBrowserArtifactKey] = useState<string | null>(null);
 	const realtimeUserMessageIdRef = useRef<string | null>(null);
 	const realtimeAssistantMessageIdRef = useRef<string | null>(null);
 	const realtimeAssistantMessagePromiseRef = useRef<Promise<string | null> | null>(null);
@@ -637,17 +643,6 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 		setDismissedApprovalCardKey(pendingPlanKey);
 	}, [pendingPlanKey]);
 
-	const handleToolApprovalSubmit = useCallback(
-		async (toolApproval: NonNullable<ReturnType<typeof useRovoApp>["activeToolApproval"]>, decisions: Array<{ toolCallId: string; approved: boolean; denyMessage?: string }>) => {
-			setSubmittingToolApprovalId(toolApproval.approvalId);
-			try {
-				await chat.submitToolApproval(toolApproval, decisions);
-			} finally {
-				setSubmittingToolApprovalId((currentId) => (currentId === toolApproval.approvalId ? null : currentId));
-			}
-		},
-		[chat],
-	);
 	const handleHermesSkillDraftApprove = useCallback(async (draft: HermesSkillDraftSummary) => {
 		setSubmittingSkillDraftId(draft.id);
 		try {
@@ -674,16 +669,6 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 	const handleOpenHermesSkillDraftReview = useCallback(() => {
 		router.push("/rovo-app/skills");
 	}, [router]);
-	useEffect(() => {
-		if (!chat.activeToolApproval) {
-			setSubmittingToolApprovalId(null);
-			return;
-		}
-
-		if (submittingToolApprovalId && submittingToolApprovalId !== chat.activeToolApproval.approvalId) {
-			setSubmittingToolApprovalId(null);
-		}
-	}, [chat.activeToolApproval, submittingToolApprovalId]);
 	const handleOpenPlanPreview = useCallback(
 		(planWidget: ParsedPlanWidgetPayload, sourceMessageId?: string) => {
 			chat.openPlanAsDocument({
@@ -1535,6 +1520,70 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 		return workspaceDocument?.versions.find((version) => version.id === chat.selectedVersionId) ?? workspaceDocument?.versions.at(-1) ?? null;
 	}, [chat.selectedVersionId, workspaceDocument]);
 	const isArtifactOpen = chat.panelState !== "closed";
+
+	// Derive the latest browser state from message data parts
+	const latestBrowserArtifact = useMemo(() => {
+		let browserState = null;
+		let browserStateMessageId: string | null = null;
+		let browserScreenshot = null;
+
+		for (let i = chat.messages.length - 1; i >= 0; i--) {
+			const message = chat.messages[i];
+			if (!browserState) {
+				const part = getLatestDataPart(message, "data-browser-state");
+				if (part) {
+					browserState = part.data;
+					browserStateMessageId = message.id;
+				}
+			}
+
+			if (!browserScreenshot) {
+				const part = getLatestDataPart(message, "data-browser-screenshot");
+				if (part) {
+					browserScreenshot = part.data;
+				}
+			}
+
+			if (browserState && browserScreenshot) {
+				break;
+			}
+		}
+
+		return {
+			browserArtifactKey: buildRovoAppBrowserArtifactKey({
+				browserScreenshot,
+				browserState,
+				messageId: browserStateMessageId,
+			}),
+			browserScreenshot,
+			browserState,
+		};
+	}, [chat.messages]);
+	const browserArtifactKey = latestBrowserArtifact.browserArtifactKey;
+	const browserState = latestBrowserArtifact.browserState;
+	const browserScreenshot = latestBrowserArtifact.browserScreenshot;
+
+	useEffect(() => {
+		setDismissedBrowserArtifactKey(null);
+	}, [chat.runtimeThreadId]);
+
+	// Auto-open artifact panel when browser state arrives and no document artifact is active
+	useEffect(() => {
+		if (shouldAutoOpenRovoAppBrowserArtifact({
+			browserArtifactKey,
+			dismissedBrowserArtifactKey,
+			hasWorkspaceDocument: Boolean(workspaceDocument),
+			panelState: chat.panelState,
+		})) {
+			chat.setPanelState("preview");
+		}
+	}, [browserArtifactKey, chat, dismissedBrowserArtifactKey, workspaceDocument]);
+	const shouldShowReopenBrowserPreviewControl = shouldShowReopenRovoAppBrowserArtifactControl({
+		browserArtifactKey,
+		dismissedBrowserArtifactKey,
+		hasWorkspaceDocument: Boolean(workspaceDocument),
+		panelState: chat.panelState,
+	});
 	const hasActiveThreadRun = typeof chat.activeThreadId === "string" && chat.backgroundStreamThreadIds.has(chat.activeThreadId);
 	const showHomeState = !chat.isLoadingThread && !isArtifactOpen && !hasActiveThreadRun && visibleMessages.length === 0;
 	const shouldReduceMotion = useReducedMotion();
@@ -1847,7 +1896,38 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 		chat.hideArtifactPane();
 	}, [workspaceDocument, chat]);
 
+	const handleOpenBrowserPreview = useCallback(() => {
+		setDismissedBrowserArtifactKey(null);
+		if (chat.panelState === "closed") {
+			chat.setPanelState("preview");
+		}
+	}, [chat]);
+
+	const handleCloseBrowserPreview = useCallback(() => {
+		if (browserArtifactKey) {
+			setDismissedBrowserArtifactKey(browserArtifactKey);
+		}
+		chat.hideArtifactPane();
+	}, [browserArtifactKey, chat]);
+
 	const artifactPane = (() => {
+		if (!isArtifactOpen) {
+			return null;
+		}
+
+		if (!workspaceDocument && browserState) {
+			return (
+				<RovoAppBrowserArtifact
+					url={browserState.url}
+					title={browserState.title}
+					status={browserState.status}
+					screenshot={browserScreenshot}
+					workspaceId={browserState.workspaceId ?? null}
+					onClose={handleCloseBrowserPreview}
+				/>
+			);
+		}
+
 		if (!workspaceDocument) {
 			return null;
 		}
@@ -1896,6 +1976,7 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 					onBuildPlan={handleBuildPlan}
 					onEditMessage={chat.editMessage}
 					onOpenArtifactFromCard={handleOpenArtifactFromCard}
+					onOpenBrowserPreview={handleOpenBrowserPreview}
 					onOpenPlanPreview={handleOpenPlanPreview}
 					onRegisterArtifactCard={handleRegisterArtifactCard}
 					onRegenerate={chat.regenerateLatest}
@@ -1924,6 +2005,13 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 				)}
 			>
 				{realtimeStatusMessage ? <div className="px-1 text-text-subtle text-xs">{realtimeStatusMessage}</div> : null}
+				{shouldShowReopenBrowserPreviewControl ? (
+					<div className="flex justify-center px-1">
+						<Button onClick={handleOpenBrowserPreview} size="sm" type="button" variant="outline">
+							Reopen browser preview
+						</Button>
+					</div>
+				) : null}
 				<div>
 					{shouldShowQuestionCard && activeQuestionCard ? (
 						<>
@@ -1948,16 +2036,6 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 						</>
 					) : (
 						<>
-							{chat.activeToolApproval ? (
-								<div className="mb-3">
-									<RovoAppToolApprovalBar
-										key={chat.activeToolApproval.approvalId}
-										isSubmitting={submittingToolApprovalId === chat.activeToolApproval.approvalId}
-										onSubmit={handleToolApprovalSubmit}
-										toolApproval={chat.activeToolApproval}
-									/>
-								</div>
-							) : null}
 							{activePendingSkillDraft ? (
 								<div className="mb-3">
 									<RovoAppHermesSkillDraftBar
@@ -2048,7 +2126,6 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 									}))}
 									renderResponseGradient={(props) => <SmoothGradientWaveform {...props} />}
 									showBackgroundStop={chat.hasBackgroundDelegation}
-									submitDisabled={Boolean(chat.activeToolApproval)}
 									voiceState={voiceButtonState}
 								/>
 							</motion.div>
