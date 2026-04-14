@@ -44,6 +44,7 @@ import AddIcon from "@atlaskit/icon/core/add";
 import ScorecardIcon from "@atlaskit/icon/core/scorecard";
 import DeleteIcon from "@atlaskit/icon/core/delete";
 import SkillIcon from "@atlaskit/icon-lab/core/skill";
+import TargetIcon from "@atlaskit/icon/core/target";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { RovoAppComposerAddMenu } from "./rovo-app-composer-add-menu";
@@ -80,6 +81,7 @@ interface RovoAppComposerProps {
 	onRemoveQueuedPrompt?: (id: string) => void;
 	onSelectHermesSkill?: (skillId: string) => void;
 	onSubmit: (payload: { text: string; files: FileUIPart[] }) => Promise<void>;
+	onToggleClicky?: () => void;
 	onTogglePlanMode?: () => void;
 	onToggleRealtimeVoice?: () => void;
 	onToggleVoice?: () => void;
@@ -92,6 +94,7 @@ interface RovoAppComposerProps {
 	realtimeOutputWaveformBars?: number[];
 	realtimeVoiceActive?: boolean;
 	realtimeVoiceState?: "idle" | "connecting" | "listening" | "speaking";
+	clickyActive?: boolean;
 	renderResponseGradient?: (props: {
 		active: boolean;
 		phase: "warmup" | "speaking";
@@ -127,6 +130,7 @@ function RovoAppComposerInner({
 	onRemoveQueuedPrompt,
 	onSelectHermesSkill,
 	onSubmit,
+	onToggleClicky,
 	onTogglePlanMode,
 	onToggleRealtimeVoice,
 	placeholder = "Ask, @mention, or / for skills",
@@ -137,6 +141,7 @@ function RovoAppComposerInner({
 	realtimeOutputWaveformBars = EMPTY_REALTIME_OUTPUT_WAVEFORM_BARS,
 	realtimeVoiceActive = false,
 	realtimeVoiceState = "idle",
+	clickyActive = false,
 	renderResponseGradient,
 	showBackgroundStop = false,
 	selectedHermesSkills = [],
@@ -657,6 +662,16 @@ function RovoAppComposerInner({
 										<span>Task</span>
 									</PromptInputButton>
 									) : null}
+								<PromptInputButton
+									size="icon-sm"
+									variant={clickyActive ? "default" : "ghost"}
+									onClick={onToggleClicky}
+									aria-label="Clicky AI cursor"
+									aria-pressed={clickyActive}
+									tooltip={{ content: "AI Cursor ⌘⇧K", delay: 0 }}
+								>
+									<TargetIcon label="" size="small" />
+								</PromptInputButton>
 								<PromptInputActionMenu open={isAddMenuOpen} onOpenChange={setIsAddMenuOpen}>
 									<PromptInputActionMenuTrigger aria-label="Add" size="icon-sm" variant="ghost">
 										<AddIcon label="" />

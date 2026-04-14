@@ -47,6 +47,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import SearchIcon from "@atlaskit/icon/core/search";
 import { SidebarProvider, SidebarResizeHandle } from "@/components/ui/sidebar";
 import { Footer } from "@/components/ui/footer";
+import { useClicky } from "@/components/projects/rovo-app/hooks/use-clicky";
+import { useClickyVoice } from "@/components/projects/rovo-app/hooks/use-clicky-voice";
+import { ClickyOverlay } from "@/components/projects/rovo-app/components/clicky/clicky-overlay";
+import { parseClickyResponse } from "@/components/projects/rovo-app/lib/clicky-point-parser";
 import { useSidebarResize } from "@/components/projects/rovo-app/hooks/use-sidebar-resize";
 import { clamp, cn, createId } from "@/lib/utils";
 import { token } from "@/lib/tokens";
@@ -1083,6 +1087,46 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 
 	const voiceButtonState: VoiceButtonState = voice.state === "speaking" ? "processing" : voice.state;
 
+	// --- Clicky AI cursor companion ---
+	const clicky = useClicky();
+	const {
+		toggle: toggleClicky,
+		isActive: isClickyActive,
+		deactivate: deactivateClicky,
+		startListening: clickyStartListening,
+		startProcessing: clickyStartProcessing,
+		startPointing: clickyStartPointing,
+		startSpeaking: clickyStartSpeaking,
+		returnToIdle: clickyReturnToIdle,
+		addExchange: clickyAddExchange,
+		screenshotDimensions: clickyScreenshotDimensions,
+		setScreenshotDimensions: clickySetScreenshotDimensions,
+	} = clicky;
+
+	const handleToggleClicky = useCallback(() => {
+		toggleClicky();
+	}, [toggleClicky]);
+
+	// Keyboard shortcuts for Clicky
+	useEffect(() => {
+		const handleKeyDown = (e: KeyboardEvent) => {
+			// Cmd+Shift+K (Mac) / Ctrl+Shift+K (other) toggles Clicky
+			if (e.key === "K" && e.shiftKey && (e.metaKey || e.ctrlKey)) {
+				e.preventDefault();
+				toggleClicky();
+				return;
+			}
+
+			// Escape deactivates Clicky
+			if (e.key === "Escape" && isClickyActive) {
+				deactivateClicky();
+			}
+		};
+
+		window.addEventListener("keydown", handleKeyDown);
+		return () => window.removeEventListener("keydown", handleKeyDown);
+	}, [isClickyActive, deactivateClicky, toggleClicky]);
+
 	// --- Realtime voice (live conversation mode) ---
 	const realtime = useRealtimeVoice({
 		onDelegateToRovo: useCallback(
@@ -1139,6 +1183,11 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 			realtimeUserMessageIdRef.current = null;
 			setVoiceTranscript("");
 
+			// Clicky: transition to listening
+			if (isClickyActive) {
+				clickyStartListening();
+			}
+
 			const annotationContext = annotationContextRef.current;
 			if (!annotationContext) {
 				return;
@@ -1148,7 +1197,7 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 				type: "artifact_annotations",
 				content: annotationContext,
 			});
-		}, [activateTailFollowMode, injectRealtimeContext, resetRealtimeAssistantMessageState]),
+		}, [activateTailFollowMode, injectRealtimeContext, isClickyActive, clickyStartListening, resetRealtimeAssistantMessageState]),
 		onSpeechTranscriptDelta: useCallback((payload: RealtimeSpeechTranscriptPayload) => {
 			// Browser SpeechRecognition sends { text } (full replacement);
 			// OpenAI transcription deltas send { delta, text } (accumulated).
@@ -1164,6 +1213,14 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 		onSpeechTranscriptCompleted: useCallback(
 			async (payload: RealtimeSpeechTranscriptPayload) => {
 				const transcript = typeof payload === "string" ? payload : (payload.transcript ?? payload.text ?? "");
+
+				// Clicky: transition to processing and record user exchange
+				if (isClickyActive) {
+					clickyStartProcessing();
+					if (transcript) {
+						clickyAddExchange({ role: "user", content: transcript });
+					}
+				}
 
 				// If the user manually stopped voice, skip auto-submit and leave
 				// the transcribed text in the composer for manual review/submit
@@ -1190,7 +1247,7 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 				realtimeUserTranscriptHasDeltaRef.current = false;
 				setVoiceTranscript(null);
 			},
-			[appendRealtimeMessage],
+			[appendRealtimeMessage, isClickyActive, clickyStartProcessing, clickyAddExchange],
 		),
 		onTextResponseStart: useCallback(
 			async (payload?: { messageId?: string }) => {
@@ -1224,14 +1281,38 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 				await updateRealtimeMessage(messageId, text, {
 					replace: true,
 				});
+
+				// Clicky: parse POINT tag and transition to speaking/pointing
+				if (isClickyActive) {
+					const parsed = parseClickyResponse(text, clickyScreenshotDimensions);
+					clickyAddExchange({ role: "assistant", content: parsed.text || text });
+					if (parsed.point) {
+						clickyStartPointing(parsed.point, parsed.text);
+					} else {
+						clickyStartSpeaking(text);
+					}
+				}
 			},
-			[ensureRealtimeAssistantMessage, updateRealtimeMessage],
+			[ensureRealtimeAssistantMessage, updateRealtimeMessage, isClickyActive, clickyStartPointing, clickyStartSpeaking, clickyAddExchange, clickyScreenshotDimensions],
 		),
 		chatMessages: chat.messages,
 		isGenerating: chat.isStreaming,
 	} satisfies RealtimeVoiceShellOptions) as RealtimeVoiceShellResult;
 
 	const isRealtimeActive = realtime.voiceState !== "idle";
+
+	// --- Clicky voice bridge ---
+	useClickyVoice({
+		clickyState: clicky.state,
+		isClickyActive,
+		sendImageInput: realtime.sendImageInput,
+		isRealtimeConnected: realtime.isConnected,
+		connectRealtime: realtime.connect,
+		disconnectRealtime: realtime.disconnect,
+		injectContext: realtime.injectContext,
+		onScreenshotCaptured: clickySetScreenshotDimensions,
+	});
+
 	const realtimeStatusMessage = resolveRealtimeStatusMessage(realtime);
 	const shouldChatVoiceModeBeEnabled = isVoiceActive || isRealtimeActive;
 	const realtimeSessionIdentity = resolveRealtimeSessionIdentity(realtime, chat.activeThreadId, chat.runtimeThreadId);
@@ -1350,6 +1431,13 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 				if (typeof realtimeVoice.sendTextInput === "function") {
 					queueTypedScrollAnchor("realtime", latestUserMessageIdBeforeSubmit);
 					resetRealtimeAssistantMessageState();
+
+					// Clicky: capture screenshot + transition to processing for text input
+					if (isClickyActive) {
+						clickyAddExchange({ role: "user", content: text });
+						clickyStartProcessing();
+					}
+
 					let messageId: string | null = null;
 					if (typeof realtimeChat.appendRealtimeMessage === "function") {
 						messageId = await appendRealtimeMessage("user", text, {
@@ -1407,6 +1495,9 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 			appendRealtimeMessage,
 			chat.messages,
 			isRealtimeActive,
+			isClickyActive,
+			clickyAddExchange,
+			clickyStartProcessing,
 			queueTypedScrollAnchor,
 			realtime,
 			resetRealtimeAssistantMessageState,
@@ -2032,6 +2123,8 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 									onSubmit={handleComposerSubmit}
 									onTogglePlanMode={chat.togglePlanMode}
 									onToggleRealtimeVoice={handleToggleRealtimeVoice}
+									onToggleClicky={handleToggleClicky}
+									clickyActive={isClickyActive}
 									onToggleVoice={handleToggleVoice}
 									placeholder={composerPreviewState.placeholder}
 									prefillText={voiceTranscript ?? prefillText}
@@ -2276,6 +2369,14 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 					/>
 				</main>
 			</div>
+			<ClickyOverlay
+				state={clicky.state}
+				pointTarget={clicky.pointTarget}
+				responseText={clicky.responseText}
+				history={clicky.history}
+				screenshotDimensions={clickyScreenshotDimensions}
+				onReturnToIdle={clickyReturnToIdle}
+			/>
 		</SidebarProvider>
 	);
 }

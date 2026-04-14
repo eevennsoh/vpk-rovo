@@ -81,10 +81,30 @@ describe("resolveRoutingDecisionFastPath", () => {
 		assert.equal(result.reason, "active_artifact");
 	});
 
-	it("returns null for non-empty prompts without active artifacts", () => {
+	it("returns artifact_create for document verb + noun match", () => {
+		const result = resolveRoutingDecisionFastPath({ prompt: "create a product brief about Watermelon" });
+		assert.equal(result.intent, "artifact_create");
+		assert.equal(result.reason, "document_verb_noun_match");
+	});
+
+	it("returns artifact_create for various verb + noun combinations", () => {
+		const prompts = [
+			"write a spec for the login flow",
+			"draft a proposal for the new feature",
+			"generate a summary of the meeting",
+			"build a login page",
+			"create a memo about the incident",
+		];
+		for (const prompt of prompts) {
+			const result = resolveRoutingDecisionFastPath({ prompt });
+			assert.equal(result.intent, "artifact_create", `Expected artifact_create for: "${prompt}"`);
+		}
+	});
+
+	it("returns null for prompts without document verb + noun pattern", () => {
 		assert.equal(resolveRoutingDecisionFastPath({ prompt: "hello" }), null);
-		assert.equal(resolveRoutingDecisionFastPath({ prompt: "build a login page" }), null);
 		assert.equal(resolveRoutingDecisionFastPath({ prompt: "show Q3 revenue" }), null);
+		assert.equal(resolveRoutingDecisionFastPath({ prompt: "what is the weather" }), null);
 	});
 });
 
@@ -104,10 +124,10 @@ describe("resolveRoutingDecision", () => {
 		assert.equal(result.presentation, "artifact_preview");
 	});
 
-	it("falls back to chat when no classifier is provided for non-empty prompts", async () => {
+	it("uses fast path for document verb + noun prompts without needing classifier", async () => {
 		const result = await resolveRoutingDecision({ prompt: "build a login page" });
-		assert.equal(result.intent, "chat");
-		assert.equal(result.reason, "no_classifier");
+		assert.equal(result.intent, "artifact_create");
+		assert.equal(result.reason, "document_verb_noun_match");
 	});
 
 	it("accepts LLM chat classifications", async () => {
@@ -119,9 +139,9 @@ describe("resolveRoutingDecision", () => {
 		assert.equal(result.presentation, "text");
 	});
 
-	it("accepts LLM artifact classifications", async () => {
+	it("accepts LLM artifact classifications for ambiguous prompts", async () => {
 		const result = await resolveRoutingDecision(
-			{ prompt: "build a login page" },
+			{ prompt: "I need a new landing experience for onboarding" },
 			{ classify: makeMockClassify({ intent: "artifact_create", confidence: 0.9, reason: "wants_to_build" }) },
 		);
 		assert.equal(result.intent, "artifact_create");
