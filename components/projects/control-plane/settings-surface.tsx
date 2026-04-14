@@ -456,9 +456,6 @@ export function SettingsSurfacePage() {
 								</div>
 							</div>
 
-							<Button variant="outline" onClick={() => router.push("/rovo-app/wiki")}>
-								Open wiki search
-							</Button>
 						</CardContent>
 					</Card>
 

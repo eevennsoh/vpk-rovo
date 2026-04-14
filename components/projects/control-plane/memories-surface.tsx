@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 
 import {
 	AlertDialog,
@@ -55,10 +54,6 @@ function formatScopeLabel(scope: string): string {
 	return scope;
 }
 
-function getWikiQueryForScope(scope: WikiCanonicalMemoryDocument["scope"]): string {
-	return scope === "profile" ? "Self" : "Runtime Memory";
-}
-
 function buildContextCards(wikiStatus: WikiStatus | null): Array<{
 	description: string;
 	document: WikiCompiledContextDocument;
@@ -106,7 +101,6 @@ function buildCanonicalMemoryCards(memoryDocuments: WikiCanonicalMemoryDocuments
 }
 
 export function MemoriesSurfacePage() {
-	const router = useRouter();
 	const [wikiStatus, setWikiStatus] = useState<WikiStatus | null>(null);
 	const [memoryDocuments, setMemoryDocuments] = useState<WikiCanonicalMemoryDocuments | null>(null);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -237,16 +231,9 @@ export function MemoriesSurfacePage() {
 														<Lozenge variant="success">Canonical</Lozenge>
 													</div>
 													<div className="text-sm text-text-subtle">
-														Searched from the wiki surface and compiled into Hermes prompt memory.
+														Sourced from the canonical wiki and compiled into Hermes prompt memory.
 													</div>
 												</div>
-												<Button
-													size="sm"
-													variant="outline"
-													onClick={() => router.push(`/rovo-app/wiki?q=${encodeURIComponent(getWikiQueryForScope(document.scope))}`)}
-												>
-													Open in wiki
-												</Button>
 											</div>
 
 											<div className="mt-3 grid gap-2 sm:grid-cols-2">

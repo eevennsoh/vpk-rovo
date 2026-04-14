@@ -321,7 +321,11 @@ export const BLOCK_COMPONENTS: ComponentEntry[] = sortEntriesByName([
 ]);
 
 export const PROJECT_COMPONENTS: ComponentEntry[] = sortEntriesByName([
+	projectComponent("confluence", "Confluence"),
+	projectComponent("jira", "Jira"),
 	projectComponent("rovo-app", "Rovo App"),
+	projectComponent("search", "Search"),
+	projectComponent("sidebar-chat", "Sidebar Chat"),
 ]);
 
 export const UTILITY_COMPONENTS: ComponentEntry[] = sortEntriesByName([

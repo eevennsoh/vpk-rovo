@@ -58,31 +58,33 @@ export const API_ENDPOINTS = {
 	SKILL_DRAFTS: `${API_BASE_URL}/api/skills/drafts`,
 	SESSION_SEARCH: `${API_BASE_URL}/api/sessions/search`,
 	CHECKPOINTS: `${API_BASE_URL}/api/checkpoints`,
+	SKILLS_HUB: `${API_BASE_URL}/api/skills/hub`,
 	checkpoint: (id: string) =>
 		`${API_BASE_URL}/api/checkpoints/${encodeURIComponent(id)}`,
 	checkpointRollback: (id: string) =>
 		`${API_BASE_URL}/api/checkpoints/${encodeURIComponent(id)}/rollback`,
-	SKILLS_HUB_SEARCH: `${API_BASE_URL}/api/skills/hub/search`,
-	SKILLS_HUB_INSTALLED: `${API_BASE_URL}/api/skills/hub/installed`,
-	SKILLS_HUB_INSTALL: `${API_BASE_URL}/api/skills/hub/install`,
-	SKILLS_HUB_BROWSE: `${API_BASE_URL}/api/skills/hub/browse`,
-	SKILLS_HUB_INSTALL_BY_ID: `${API_BASE_URL}/api/skills/hub/install-by-id`,
+	SKILLS_HUB_SEARCH: `${API_BASE_URL}/api/skills/hub`,
+	SKILLS_HUB_INSTALLED: `${API_BASE_URL}/api/skills/hub?installed=true`,
+	SKILLS_HUB_INSTALL: `${API_BASE_URL}/api/skills/hub`,
+	SKILLS_HUB_BROWSE: `${API_BASE_URL}/api/skills/hub`,
+	SKILLS_HUB_INSTALL_BY_ID: `${API_BASE_URL}/api/skills/hub`,
 	SKILLS_HUB_TAPS: `${API_BASE_URL}/api/skills/hub/taps`,
 	skillsHubSearch: (query: string, source?: string, limit?: number) => {
 		const params = new URLSearchParams({ q: query });
 		if (source) params.set("source", source);
 		if (typeof limit === "number") params.set("limit", String(limit));
-		return `${API_BASE_URL}/api/skills/hub/search?${params.toString()}`;
+		return `${API_BASE_URL}/api/skills/hub?${params.toString()}`;
 	},
 	skillsHubBrowse: (page?: number, pageSize?: number, source?: string) => {
 		const params = new URLSearchParams();
 		if (typeof page === "number") params.set("page", String(page));
 		if (typeof pageSize === "number") params.set("pageSize", String(pageSize));
 		if (source) params.set("source", source);
-		return `${API_BASE_URL}/api/skills/hub/browse?${params.toString()}`;
+		const query = params.toString();
+		return `${API_BASE_URL}/api/skills/hub${query ? `?${query}` : ""}`;
 	},
 	skillsHubInspect: (identifier: string) =>
-		`${API_BASE_URL}/api/skills/hub/inspect/${identifier}`,
+		`${API_BASE_URL}/api/skills/hub?identifier=${encodeURIComponent(identifier)}`,
 	wikiSearch: (query: string, limit?: number) => {
 		const params = new URLSearchParams({ q: query });
 		if (typeof limit === "number") {

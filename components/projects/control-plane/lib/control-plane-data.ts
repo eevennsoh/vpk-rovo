@@ -21,11 +21,6 @@ export const CONTROL_PLANE_SURFACES: readonly ControlPlaneSurfaceLink[] = [
 		label: "Skills",
 	},
 	{
-		description: "Hybrid wiki search, qmd sync state, and canonical knowledge results",
-		href: "/rovo-app/wiki",
-		label: "Wiki",
-	},
-	{
 		description: "Provider routing, compiled memory, and wiki mirror controls",
 		href: "/rovo-app/settings",
 		label: "Settings",
@@ -34,7 +29,6 @@ export const CONTROL_PLANE_SURFACES: readonly ControlPlaneSurfaceLink[] = [
 
 const CONTROL_PLANE_HEADER_SURFACE_LABELS = new Set<ControlPlaneSurfaceLink["label"]>([
 	"Memories",
-	"Wiki",
 	"Settings",
 ]);
 

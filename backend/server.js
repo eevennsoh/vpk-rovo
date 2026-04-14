@@ -13487,57 +13487,6 @@ registerHermesSkillDraftRoutes(app, {
 	updateSkillFromBundleImpl: updateHermesSkillFromBundle,
 });
 
-app.get("/api/skills/:category/:name", async (req, res) => {
-	try {
-		const skill = await getHermesSkill(req.params.category, req.params.name);
-		return res.json({ skill });
-	} catch (error) {
-		if (error?.code === "ENOENT") {
-			return res.status(404).json({
-				error: "Hermes skill not found",
-			});
-		}
-		return res.status(500).json({
-			error: "Failed to load Hermes skill",
-			details: error instanceof Error ? error.message : String(error),
-		});
-	}
-});
-
-app.get("/api/skills/:category/:name/bundle", async (req, res) => {
-	try {
-		const skill = await getHermesSkillBundle(req.params.category, req.params.name);
-		return res.json({ skill });
-	} catch (error) {
-		if (error?.code === "ENOENT") {
-			return res.status(404).json({
-				error: "Hermes skill not found",
-			});
-		}
-		return res.status(500).json({
-			error: "Failed to load Hermes skill bundle",
-			details: error instanceof Error ? error.message : String(error),
-		});
-	}
-});
-
-app.post("/api/skills/:category/:name/toggle", async (req, res) => {
-	try {
-		const enabled = parseOptionalBoolean(
-			getFirstQueryValue(req.query.enabled) ?? req.body?.enabled,
-		);
-		const skill = await toggleHermesSkill(req.params.category, req.params.name, enabled);
-		return res.json({ skill });
-	} catch (error) {
-		const message = error instanceof Error ? error.message : String(error);
-		const statusCode = /not found/i.test(message) ? 404 : 400;
-		return res.status(statusCode).json({
-			error: "Failed to toggle Hermes skill",
-			details: message,
-		});
-	}
-});
-
 // ── Skills Hub endpoints ──
 
 app.get("/api/skills/hub/search", async (req, res) => {
@@ -13720,6 +13669,57 @@ app.delete("/api/skills/hub/taps/*repo", async (req, res) => {
 		return res.status(500).json({
 			error: "Failed to remove tap",
 			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+app.get("/api/skills/:category/:name", async (req, res) => {
+	try {
+		const skill = await getHermesSkill(req.params.category, req.params.name);
+		return res.json({ skill });
+	} catch (error) {
+		if (error?.code === "ENOENT") {
+			return res.status(404).json({
+				error: "Hermes skill not found",
+			});
+		}
+		return res.status(500).json({
+			error: "Failed to load Hermes skill",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+app.get("/api/skills/:category/:name/bundle", async (req, res) => {
+	try {
+		const skill = await getHermesSkillBundle(req.params.category, req.params.name);
+		return res.json({ skill });
+	} catch (error) {
+		if (error?.code === "ENOENT") {
+			return res.status(404).json({
+				error: "Hermes skill not found",
+			});
+		}
+		return res.status(500).json({
+			error: "Failed to load Hermes skill bundle",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+app.post("/api/skills/:category/:name/toggle", async (req, res) => {
+	try {
+		const enabled = parseOptionalBoolean(
+			getFirstQueryValue(req.query.enabled) ?? req.body?.enabled,
+		);
+		const skill = await toggleHermesSkill(req.params.category, req.params.name, enabled);
+		return res.json({ skill });
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		const statusCode = /not found/i.test(message) ? 404 : 400;
+		return res.status(statusCode).json({
+			error: "Failed to toggle Hermes skill",
+			details: message,
 		});
 	}
 });

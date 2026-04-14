@@ -7039,7 +7039,15 @@ const BLOCK_VARIANT_DEMOS: Record<string, ComponentType> = {
 };
 
 const PROJECT_DEMOS: Record<string, ComponentType> = {
+  confluence: dynamic(() => import("./demos/projects/confluence-demo"), {
+    ssr: false,
+  }),
+  jira: dynamic(() => import("./demos/projects/jira-demo"), { ssr: false }),
   "rovo-app": dynamic(() => import("./demos/projects/rovo-app-demo"), {
+    ssr: false,
+  }),
+  search: dynamic(() => import("./demos/projects/search-demo"), { ssr: false }),
+  "sidebar-chat": dynamic(() => import("./demos/projects/sidebar-chat-demo"), {
     ssr: false,
   }),
 };

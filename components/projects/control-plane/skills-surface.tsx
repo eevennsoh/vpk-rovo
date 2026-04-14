@@ -286,15 +286,22 @@ export function SkillsSurfacePage({
 		let cancelled = false;
 
 		async function loadSurfaceData() {
-			try {
-				const [nextSkills, nextDrafts] = await Promise.all([
-					fetchSkills(),
-					fetchSkillDrafts(),
-				]);
-				if (cancelled) {
-					return;
-				}
+			const [skillsResult, draftsResult] = await Promise.allSettled([
+				fetchSkills(),
+				fetchSkillDrafts(),
+			]);
+			if (cancelled) {
+				return;
+			}
 
+			const nextSkills = skillsResult.status === "fulfilled"
+				? skillsResult.value
+				: [];
+			const nextDrafts = draftsResult.status === "fulfilled"
+				? draftsResult.value
+				: [];
+
+			try {
 				setSkills(nextSkills);
 				setSkillDrafts(nextDrafts);
 				const routeKey =
@@ -308,11 +315,11 @@ export function SkillsSurfacePage({
 						: null;
 				setSelectedSkillKey(nextSelectedSkillKey);
 				setSelectedDraftId((currentDraftId) => currentDraftId ?? nextDrafts[0]?.id ?? null);
-				setErrorMessage(null);
-			} catch (error) {
-				if (!cancelled) {
-					setErrorMessage(error instanceof Error ? error.message : String(error));
-				}
+				const errors = [skillsResult, draftsResult]
+					.filter((result): result is PromiseRejectedResult => result.status === "rejected")
+					.map((result) => result.reason instanceof Error ? result.reason.message : String(result.reason))
+					.filter(Boolean);
+				setErrorMessage(errors.length > 0 ? errors.join(" ") : null);
 			} finally {
 				if (!cancelled) {
 					setIsLoading(false);

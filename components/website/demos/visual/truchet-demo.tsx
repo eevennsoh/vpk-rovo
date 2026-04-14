@@ -9,6 +9,7 @@ import { GUI } from "@/components/utils/gui";
 import { Label } from "@/components/ui/label";
 import { token } from "@/lib/tokens";
 
+import { ShaderColorInput } from "./shader-color-controls";
 import Truchet from "./shaders/truchet";
 
 function ImageUploadControl({
@@ -78,42 +79,14 @@ function ImageUploadControl({
 	);
 }
 
-function ColorControl({
-	label,
-	value,
-	onChange,
-}: {
-	label: string;
-	value: string;
-	onChange: (next: string) => void;
-}) {
-	return (
-		<div className="space-y-2">
-			<Label className="text-xs font-medium text-text">{label}</Label>
-			<div className="flex items-center gap-2">
-				<input
-					type="color"
-					value={value}
-					onChange={(e) => onChange(e.target.value)}
-					className="size-7 shrink-0 cursor-pointer rounded border border-border bg-transparent p-0"
-				/>
-				<input
-					type="text"
-					value={value}
-					onChange={(e) => onChange(e.target.value)}
-					className="h-7 flex-1 rounded border border-border bg-transparent px-2 font-mono text-xs text-text"
-				/>
-			</div>
-		</div>
-	);
-}
+const DEFAULT_BACKGROUND = "#FFFFFF";
 
 export default function TruchetDemo() {
 	const [imageSrc, setImageSrc] = useState<string | undefined>(undefined);
 	const [cells, setCells] = useState(53);
 	const [thickness, setThickness] = useState(0.05);
 	const [invert, setInvert] = useState(true);
-	const [background, setBackground] = useState("#FFFFFF");
+	const [background, setBackground] = useState(DEFAULT_BACKGROUND);
 
 	const config = useMemo(
 		() => ({ cells, thickness, invert, background }),
@@ -167,9 +140,11 @@ export default function TruchetDemo() {
 					]}
 					onChange={(v) => setInvert(v === "yes")}
 				/>
-				<ColorControl
+				<ShaderColorInput
+					id="tr-background"
 					label="Background"
 					value={background}
+					defaultValue={DEFAULT_BACKGROUND}
 					onChange={setBackground}
 				/>
 			</GUI.Panel>

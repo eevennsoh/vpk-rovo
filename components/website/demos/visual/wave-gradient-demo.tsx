@@ -1,55 +1,14 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { GUI } from "@/components/utils/gui";
-import { Label } from "@/components/ui/label";
 import { token } from "@/lib/tokens";
 
+import { ShaderColorListControl } from "./shader-color-controls";
 import WaveGradient from "./shaders/wave-gradient";
 
 const DEFAULT_COLORS: [string, string, string, string] = ["#FFC2A8", "#FF5024", "#FFAE00", "#E29EFF"];
-
-function ColorQuadControl({
-	colors,
-	onChange,
-}: {
-	colors: [string, string, string, string];
-	onChange: (next: [string, string, string, string]) => void;
-}) {
-	const updateColor = useCallback(
-		(index: number, value: string) => {
-			const next = [...colors] as [string, string, string, string];
-			next[index] = value;
-			onChange(next);
-		},
-		[colors, onChange],
-	);
-
-	return (
-		<div className="space-y-2">
-			<Label className="text-xs font-medium text-text">Colors</Label>
-			<div className="flex flex-col gap-1.5">
-				{colors.map((color, i) => (
-					<div key={i} className="flex items-center gap-2">
-						<input
-							type="color"
-							value={color}
-							onChange={(e) => updateColor(i, e.target.value)}
-							className="size-7 shrink-0 cursor-pointer rounded border border-border bg-transparent p-0"
-						/>
-						<input
-							type="text"
-							value={color}
-							onChange={(e) => updateColor(i, e.target.value)}
-							className="h-7 flex-1 rounded border border-border bg-transparent px-2 font-mono text-xs text-text"
-						/>
-					</div>
-				))}
-			</div>
-		</div>
-	);
-}
 
 export default function WaveGradientDemo() {
 	const [colors, setColors] = useState<[string, string, string, string]>(DEFAULT_COLORS);
@@ -87,7 +46,13 @@ export default function WaveGradientDemo() {
 			</div>
 
 			<GUI.Panel title="Shader controls" values={config}>
-				<ColorQuadControl colors={colors} onChange={setColors} />
+				<ShaderColorListControl
+					id="wg-colors"
+					label="Colors"
+					value={colors}
+					defaultValue={DEFAULT_COLORS}
+					onChange={(next) => setColors(next as [string, string, string, string])}
+				/>
 				<GUI.Control
 					id="wg-seed"
 					label="Seed"

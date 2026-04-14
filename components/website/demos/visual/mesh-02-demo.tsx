@@ -3,44 +3,17 @@
 import { useMemo, useState } from "react";
 
 import { GUI } from "@/components/utils/gui";
-import { Label } from "@/components/ui/label";
 import { token } from "@/lib/tokens";
 
+import { ShaderColorInput } from "./shader-color-controls";
 import Mesh2 from "./shaders/mesh2";
 
-function ColorControl({
-	label,
-	value,
-	onChange,
-}: {
-	label: string;
-	value: string;
-	onChange: (next: string) => void;
-}) {
-	return (
-		<div className="space-y-2">
-			<Label className="text-xs font-medium text-text">{label}</Label>
-			<div className="flex items-center gap-2">
-				<input
-					type="color"
-					value={value}
-					onChange={(e) => onChange(e.target.value)}
-					className="size-7 shrink-0 cursor-pointer rounded border border-border bg-transparent p-0"
-				/>
-				<input
-					type="text"
-					value={value}
-					onChange={(e) => onChange(e.target.value)}
-					className="h-7 flex-1 rounded border border-border bg-transparent px-2 font-mono text-xs text-text"
-				/>
-			</div>
-		</div>
-	);
-}
+const DEFAULT_BACKGROUND_COLOR = "#000000";
+const DEFAULT_LINE_COLOR = "#FFFFFF";
 
 export default function Mesh02Demo() {
-	const [backgroundColor, setBackgroundColor] = useState("#000000");
-	const [lineColor, setLineColor] = useState("#FFFFFF");
+	const [backgroundColor, setBackgroundColor] = useState(DEFAULT_BACKGROUND_COLOR);
+	const [lineColor, setLineColor] = useState(DEFAULT_LINE_COLOR);
 	const [lineWidth, setLineWidth] = useState(0.1);
 	const [lineBlur, setLineBlur] = useState(2);
 	const [seed, setSeed] = useState(200);
@@ -78,8 +51,20 @@ export default function Mesh02Demo() {
 			</div>
 
 			<GUI.Panel title="Shader controls" values={config}>
-				<ColorControl label="Fill" value={backgroundColor} onChange={setBackgroundColor} />
-				<ColorControl label="Line Color" value={lineColor} onChange={setLineColor} />
+				<ShaderColorInput
+					id="m2-fill"
+					label="Fill"
+					value={backgroundColor}
+					defaultValue={DEFAULT_BACKGROUND_COLOR}
+					onChange={setBackgroundColor}
+				/>
+				<ShaderColorInput
+					id="m2-lineColor"
+					label="Line Color"
+					value={lineColor}
+					defaultValue={DEFAULT_LINE_COLOR}
+					onChange={setLineColor}
+				/>
 				<GUI.Control
 					id="m2-lineWidth"
 					label="Line Width"

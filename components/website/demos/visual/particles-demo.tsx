@@ -3,43 +3,15 @@
 import { useMemo, useState } from "react";
 
 import { GUI } from "@/components/utils/gui";
-import { Label } from "@/components/ui/label";
 import { token } from "@/lib/tokens";
 
+import { ShaderColorInput } from "./shader-color-controls";
 import Particles from "./shaders/particles";
 
-function ColorControl({
-	label,
-	value,
-	onChange,
-}: {
-	label: string;
-	value: string;
-	onChange: (next: string) => void;
-}) {
-	return (
-		<div className="space-y-2">
-			<Label className="text-xs font-medium text-text">{label}</Label>
-			<div className="flex items-center gap-2">
-				<input
-					type="color"
-					value={value}
-					onChange={(e) => onChange(e.target.value)}
-					className="size-7 shrink-0 cursor-pointer rounded border border-border bg-transparent p-0"
-				/>
-				<input
-					type="text"
-					value={value}
-					onChange={(e) => onChange(e.target.value)}
-					className="h-7 flex-1 rounded border border-border bg-transparent px-2 font-mono text-xs text-text"
-				/>
-			</div>
-		</div>
-	);
-}
+const DEFAULT_BACKGROUND_COLOR = "#000000";
 
 export default function ParticlesDemo() {
-	const [bgColor, setBgColor] = useState("#000000");
+	const [bgColor, setBgColor] = useState(DEFAULT_BACKGROUND_COLOR);
 	const [warp, setWarp] = useState(false);
 	const [randomize, setRandomize] = useState(true);
 	const [speed, setSpeed] = useState(0.6);
@@ -72,7 +44,13 @@ export default function ParticlesDemo() {
 			</div>
 
 			<GUI.Panel title="Shader controls" values={config}>
-				<ColorControl label="Background" value={bgColor} onChange={setBgColor} />
+				<ShaderColorInput
+					id="p-background"
+					label="Background"
+					value={bgColor}
+					defaultValue={DEFAULT_BACKGROUND_COLOR}
+					onChange={setBgColor}
+				/>
 				<GUI.Select
 					id="p-warp"
 					label="Warp"

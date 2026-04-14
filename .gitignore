@@ -91,8 +91,17 @@ next-env.d.ts
 
 # Additional key/credential patterns
 *.key
+*.p8
+*.pkcs8
+*.jks
+*.keystore
 credentials*
 secrets*
+.envrc
+.netrc
+.npmrc
+.pypirc
+*service-account*.json
 
 # Task management (session-local working state)
 tasks/

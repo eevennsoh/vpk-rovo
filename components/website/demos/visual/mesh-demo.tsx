@@ -5,12 +5,17 @@ import { useMemo, useState } from "react";
 import { GUI } from "@/components/utils/gui";
 import { token } from "@/lib/tokens";
 
+import { ShaderColorInput } from "./shader-color-controls";
 import Mesh from "./shaders/mesh";
 
+const DEFAULT_COLOR_A = "#ff0000";
+const DEFAULT_COLOR_B = "#00ff00";
+const DEFAULT_COLOR_C = "#0000ff";
+
 export default function MeshDemo() {
-	const [colorA, setColorA] = useState("#ff0000");
-	const [colorB, setColorB] = useState("#00ff00");
-	const [colorC, setColorC] = useState("#0000ff");
+	const [colorA, setColorA] = useState(DEFAULT_COLOR_A);
+	const [colorB, setColorB] = useState(DEFAULT_COLOR_B);
+	const [colorC, setColorC] = useState(DEFAULT_COLOR_C);
 	const [duration, setDuration] = useState(20);
 
 	const config = useMemo(
@@ -33,22 +38,25 @@ export default function MeshDemo() {
 			</div>
 
 			<GUI.Panel title="SVG controls" values={config}>
-				<GUI.TextInput
+				<ShaderColorInput
 					id="m-colorA"
 					label="Color A"
 					value={colorA}
+					defaultValue={DEFAULT_COLOR_A}
 					onChange={setColorA}
 				/>
-				<GUI.TextInput
+				<ShaderColorInput
 					id="m-colorB"
 					label="Color B"
 					value={colorB}
+					defaultValue={DEFAULT_COLOR_B}
 					onChange={setColorB}
 				/>
-				<GUI.TextInput
+				<ShaderColorInput
 					id="m-colorC"
 					label="Color C"
 					value={colorC}
+					defaultValue={DEFAULT_COLOR_C}
 					onChange={setColorC}
 				/>
 				<GUI.Control
