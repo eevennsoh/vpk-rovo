@@ -11,6 +11,7 @@ import { RovoAppHeader } from "@/components/projects/rovo-app/components/rovo-ap
 import { RovoAppBrowserArtifact } from "@/components/projects/rovo-app/components/rovo-app-browser-artifact";
 import { RovoAppComposer } from "@/components/projects/rovo-app/components/rovo-app-composer";
 import { RovoAppMessages } from "@/components/projects/rovo-app/components/rovo-app-messages";
+import { RovoAppHermesMemoryBar } from "@/components/projects/rovo-app/components/rovo-app-hermes-memory-bar";
 import { RovoAppHermesSkillDraftBar } from "@/components/projects/rovo-app/components/rovo-app-hermes-skill-draft-bar";
 import { RovoAppShellPaneLayout } from "@/components/projects/rovo-app/components/rovo-app-shell-pane-layout";
 import { RovoAppSidebar } from "@/components/projects/rovo-app/components/rovo-app-sidebar";
@@ -345,8 +346,29 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 		const pendingDraftIdSet = new Set(activeThreadRecord?.hermesContext?.pendingDraftIds ?? []);
 		return skillDrafts.filter((draft) => draft.status === "pending" && pendingDraftIdSet.has(draft.id));
 	}, [activeThreadRecord?.hermesContext?.pendingDraftIds, skillDrafts]);
+	const activeThreadMemoryProposals = useMemo(() => {
+		const threadId = activeThreadRecord?.id;
+		if (!threadId || !wikiMemoryStatus?.recentProposals) {
+			return [];
+		}
+
+		const recentProposalIdSet = new Set(activeThreadRecord?.hermesContext?.recentMemoryProposalIds ?? []);
+		const matchingById = wikiMemoryStatus.recentProposals.filter((proposal) => recentProposalIdSet.has(proposal.id));
+		if (matchingById.length > 0) {
+			return matchingById.slice(0, 3);
+		}
+
+		return wikiMemoryStatus.recentProposals
+			.filter((proposal) => proposal.sourceThreadId === threadId)
+			.slice(0, 3);
+	}, [activeThreadRecord?.hermesContext?.recentMemoryProposalIds, activeThreadRecord?.id, wikiMemoryStatus?.recentProposals]);
 	const activePendingSkillDraft = pendingThreadSkillDrafts[activePendingSkillDraftIndex] ?? pendingThreadSkillDrafts[0] ?? null;
 	const hermesMemoryLabel = useMemo(() => buildHermesMemoryLabel(wikiMemoryStatus), [wikiMemoryStatus]);
+	const hermesMemoryHref = useMemo(() => {
+		return activeThreadRecord?.id && activeThreadMemoryProposals.length > 0
+			? `/rovo-app/memories?threadId=${encodeURIComponent(activeThreadRecord.id)}`
+			: "/rovo-app/memories";
+	}, [activeThreadMemoryProposals.length, activeThreadRecord?.id]);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -2127,6 +2149,15 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 						</>
 					) : (
 						<>
+							{activeThreadRecord?.id && activeThreadMemoryProposals.length > 0 ? (
+								<div className="mb-3">
+									<RovoAppHermesMemoryBar
+										onOpenMemories={() => router.push(`/rovo-app/memories?threadId=${encodeURIComponent(activeThreadRecord.id)}`)}
+										proposals={activeThreadMemoryProposals}
+										threadId={activeThreadRecord.id}
+									/>
+								</div>
+							) : null}
 							{activePendingSkillDraft ? (
 								<div className="mb-3">
 									<RovoAppHermesSkillDraftBar
@@ -2421,6 +2452,7 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 				<RovoAppHeader
 					artifactMenuItems={artifactMenuItems}
 					hermesMemoryLabel={hermesMemoryLabel}
+					hermesMemoryHref={hermesMemoryHref}
 					isArtifactOpen={isArtifactOpen}
 					onNewChat={() => {
 						setOptimisticUserMessage(null);

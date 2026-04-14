@@ -167,14 +167,27 @@ function normalizeHermesContext(rawHermesContext) {
 			(draftId) => typeof draftId === "string" && draftId.trim().length > 0,
 		)
 		: [];
+	const recentMemoryProposalIds = Array.isArray(rawHermesContext.recentMemoryProposalIds)
+		? rawHermesContext.recentMemoryProposalIds.filter(
+			(proposalId) => typeof proposalId === "string" && proposalId.trim().length > 0,
+		)
+		: [];
 
-	return {
+	const normalizedContext = {
 		selectedSkillIds: Array.from(new Set(selectedSkillIds.map((skillId) => skillId.trim()))),
 		autoSelectedSkillIds: Array.from(
 			new Set(autoSelectedSkillIds.map((skillId) => skillId.trim())),
 		),
 		pendingDraftIds: Array.from(new Set(pendingDraftIds.map((draftId) => draftId.trim()))),
 	};
+
+	if (recentMemoryProposalIds.length > 0) {
+		normalizedContext.recentMemoryProposalIds = Array.from(
+			new Set(recentMemoryProposalIds.map((proposalId) => proposalId.trim())),
+		);
+	}
+
+	return normalizedContext;
 }
 
 function normalizeActiveRun(rawActiveRun, updatedAtFallback) {

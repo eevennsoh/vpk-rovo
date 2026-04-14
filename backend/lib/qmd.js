@@ -3,7 +3,8 @@
 const fs = require("node:fs/promises");
 const path = require("node:path");
 
-const DEFAULT_WIKI_DIR = "/Users/esoh/wiki";
+const DEFAULT_LLM_WIKI_ROOT = "/Users/esoh/llm-wiki";
+const DEFAULT_WIKI_DIR = path.join(DEFAULT_LLM_WIKI_ROOT, "wiki");
 const DEFAULT_QMD_DB_FILENAME = "wiki.sqlite";
 const DEFAULT_QMD_SYNC_STATE_FILENAME = "wiki-sync-state.json";
 const REPO_ROOT = path.resolve(__dirname, "..", "..");
@@ -16,10 +17,10 @@ const QMD_COLLECTION_DEFINITIONS = Object.freeze([
 		type: "profile",
 	},
 	{
-		context: "Canonical runtime memory pages for project conventions, durable workflow notes, and operational memory.",
-		dir: "operations",
-		name: "wiki-operations",
-		type: "operations",
+		context: "Canonical work memory pages for project conventions, durable workflow notes, and ongoing work context.",
+		dir: "work",
+		name: "wiki-work",
+		type: "work",
 	},
 	{
 		context: "Canonical source pages that summarize raw captures and memory proposals before they are linked across the wiki.",
@@ -65,7 +66,7 @@ const QMD_COLLECTION_NAMES = Object.freeze(
 
 const QMD_GLOBAL_CONTEXT = [
 	"Atlassian knowledge wiki and wiki-backed Hermes memory.",
-	"Canonical pages are the source of truth for durable research, profile memory, runtime memory, and memory synthesis.",
+	"Canonical pages are the source of truth for durable research, profile memory, work memory, and memory synthesis.",
 	"Prefer product names, internal platforms, ecosystem terms, pricing, migration, AI, company strategy language, and concise durable memory statements.",
 ].join(" ");
 
@@ -74,6 +75,25 @@ class QmdNotReadyError extends Error {
 		super(message);
 		this.code = "QMD_NOT_READY";
 	}
+}
+
+function resolveLlmWikiPaths({ wikiDir = DEFAULT_WIKI_DIR } = {}) {
+	const resolvedInput = path.resolve(wikiDir);
+	if (path.basename(resolvedInput) === "wiki") {
+		return {
+			outputDir: path.join(path.dirname(resolvedInput), "output"),
+			rawDir: path.join(path.dirname(resolvedInput), "raw"),
+			rootDir: path.dirname(resolvedInput),
+			wikiDir: resolvedInput,
+		};
+	}
+
+	return {
+		outputDir: path.join(resolvedInput, "output"),
+		rawDir: path.join(resolvedInput, "raw"),
+		rootDir: resolvedInput,
+		wikiDir: resolvedInput,
+	};
 }
 
 function getWorkspaceQmdCacheDir({ repoRoot = REPO_ROOT } = {}) {
@@ -106,9 +126,10 @@ function getQmdRovodevMcpServerConfig({ repoRoot = REPO_ROOT } = {}) {
 }
 
 function getQmdCollectionDefinitions({ wikiDir = DEFAULT_WIKI_DIR } = {}) {
+	const paths = resolveLlmWikiPaths({ wikiDir });
 	return QMD_COLLECTION_DEFINITIONS.map((definition) => ({
 		...definition,
-		path: path.join(wikiDir, definition.dir),
+		path: path.join(paths.wikiDir, definition.dir),
 	}));
 }
 
@@ -554,6 +575,7 @@ async function searchWikiWithQmd(
 }
 
 module.exports = {
+	DEFAULT_LLM_WIKI_ROOT,
 	DEFAULT_WIKI_DIR,
 	QMD_COLLECTION_NAMES,
 	QmdNotReadyError,
@@ -569,6 +591,7 @@ module.exports = {
 	normalizeNaiveWikiSearchResults,
 	normalizeQmdSearchResults,
 	readQmdSyncState,
+	resolveLlmWikiPaths,
 	resolveQmdCollectionNameForCanonicalType,
 	resolveQmdCollectionNameForFilePath,
 	searchWikiWithQmd,

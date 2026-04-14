@@ -66,20 +66,21 @@ test("generateSlug returns fallback for empty input", () => {
 // ---------------------------------------------------------------------------
 
 test("buildOutputPath produces correct YYYY/MM/slug.md path", () => {
-	const wikiDir = "/Users/esoh/wiki";
-	const result = buildOutputPath(wikiDir, "articles", "my-article");
+	const wikiDir = "/Users/esoh/llm-wiki";
+	const result = buildOutputPath(wikiDir, "captures", "my-article");
 	const now = new Date();
 	const yyyy = String(now.getFullYear());
 	const mm = String(now.getMonth() + 1).padStart(2, "0");
-	assert.ok(result.startsWith(path.join(wikiDir, "raw", "articles", yyyy, mm)));
+	assert.ok(result.startsWith(path.join(wikiDir, "raw", yyyy, mm)));
 	assert.ok(result.endsWith("my-article.md"));
 });
 
-test("buildOutputPath works for all categories", () => {
+test("buildOutputPath normalizes legacy capture categories to flat raw/", () => {
 	const wikiDir = "/tmp/wiki";
-	for (const category of ["articles", "papers", "transcripts", "bookmarks"]) {
+	for (const category of ["raw", "captures", "articles", "papers", "transcripts", "bookmarks"]) {
 		const result = buildOutputPath(wikiDir, category, "test");
-		assert.ok(result.includes(path.join("raw", category)));
+		assert.ok(result.includes(path.join("raw")));
+		assert.equal(result.includes(path.join("raw", "captures")), false);
 	}
 });
 
@@ -108,13 +109,13 @@ test("parseFrontmatter round-trips with serializeFrontmatter", () => {
 		captured_at: "2026-04-11T12:00:00Z",
 		tags: ["ai", "rovo"],
 		word_count: 1234,
-		status: "queued",
+		knowledge_status: "queued",
 	};
 	const serialized = serializeFrontmatter(original);
 	const { frontmatter, body } = parseFrontmatter(`${serialized}\nBody content here.`);
 	assert.equal(frontmatter.title, original.title);
 	assert.equal(frontmatter.source_url, original.source_url);
-	assert.equal(frontmatter.status, original.status);
+	assert.equal(frontmatter.knowledge_status, original.knowledge_status);
 	assert.equal(body.trim(), "Body content here.");
 });
 
@@ -195,7 +196,7 @@ test("computeContentHash returns hex SHA-256", () => {
 
 test("buildDedupeIndex scans raw/ frontmatter and returns URL→path map", async () => {
 	const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "vpk-wiki-dedupe-"));
-	const rawDir = path.join(tmpDir, "raw", "articles", "2026", "04");
+	const rawDir = path.join(tmpDir, "raw", "2026", "04");
 	await fs.mkdir(rawDir, { recursive: true });
 
 	const content = [
@@ -203,7 +204,7 @@ test("buildDedupeIndex scans raw/ frontmatter and returns URL→path map", async
 		"title: Test Article",
 		"source_url: https://example.com/article",
 		"canonical_url: https://example.com/canonical",
-		"status: queued",
+		"knowledge_status: queued",
 		"---",
 		"",
 		"Body content.",
@@ -218,14 +219,14 @@ test("buildDedupeIndex scans raw/ frontmatter and returns URL→path map", async
 
 test("buildDedupeIndex uses source_url when no canonical_url", async () => {
 	const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "vpk-wiki-dedupe2-"));
-	const rawDir = path.join(tmpDir, "raw", "articles", "2026", "04");
+	const rawDir = path.join(tmpDir, "raw", "2026", "04");
 	await fs.mkdir(rawDir, { recursive: true });
 
 	const content = [
 		"---",
 		"title: No Canonical",
 		"source_url: https://example.com/no-canonical",
-		"status: queued",
+		"knowledge_status: queued",
 		"---",
 		"",
 		"Body.",
@@ -280,7 +281,7 @@ test("appendToLog includes ISO date", async () => {
 
 async function createTestWiki() {
 	const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "vpk-wiki-capture-"));
-	for (const sub of ["raw/articles", "raw/papers", "raw/transcripts", "raw/bookmarks", "entities", "concepts"]) {
+	for (const sub of ["raw", "raw/assets", "entities", "concepts"]) {
 		await fs.mkdir(path.join(tmpDir, ...sub.split("/")), { recursive: true });
 	}
 	await fs.writeFile(path.join(tmpDir, "log.md"), "# Wiki Log\n\n", "utf8");
@@ -309,13 +310,14 @@ test("captureUrl saves markdown with correct frontmatter", async () => {
 
 	const result = await captureUrl({
 		url: "https://www.atlassian.com/software/rovo",
-		category: "articles",
+		category: "captures",
 		wikiDir,
 		fetchImpl: async () => ({ ok: true, status: 200, text: async () => SAMPLE_HTML }),
 	});
 
 	assert.ok(result.filePath, "should return filePath");
 	assert.ok(result.metadata, "should return metadata");
+	assert.equal(result.captureStatus, "created");
 	assert.equal(result.isUpdate, false);
 
 	const saved = await fs.readFile(result.filePath, "utf8");
@@ -325,7 +327,7 @@ test("captureUrl saves markdown with correct frontmatter", async () => {
 	assert.equal(frontmatter.source_url, "https://www.atlassian.com/software/rovo");
 	assert.equal(frontmatter.canonical_url, "https://www.atlassian.com/software/rovo");
 	assert.equal(frontmatter.capture_method, "defuddle");
-	assert.equal(frontmatter.status, "queued");
+	assert.equal(frontmatter.knowledge_status, "queued");
 	assert.ok(frontmatter.captured_at, "should have captured_at");
 	assert.ok(frontmatter.word_count > 0, "should have word_count");
 	assert.ok(body.trim().length > 0, "should have body content");
@@ -336,19 +338,20 @@ test("captureUrl dedupes on same canonical URL", async () => {
 
 	const first = await captureUrl({
 		url: "https://www.atlassian.com/software/rovo",
-		category: "articles",
+		category: "captures",
 		wikiDir,
 		fetchImpl: async () => ({ ok: true, status: 200, text: async () => SAMPLE_HTML }),
 	});
 
 	const second = await captureUrl({
 		url: "https://www.atlassian.com/software/rovo",
-		category: "articles",
+		category: "captures",
 		wikiDir,
 		fetchImpl: async () => ({ ok: true, status: 200, text: async () => SAMPLE_HTML }),
 	});
 
 	assert.equal(second.isUpdate, false);
+	assert.equal(second.captureStatus, "existing");
 	assert.equal(second.filePath, first.filePath);
 });
 
@@ -357,23 +360,24 @@ test("captureUrl with forceRefresh overwrites existing", async () => {
 
 	await captureUrl({
 		url: "https://www.atlassian.com/software/rovo",
-		category: "articles",
+		category: "captures",
 		wikiDir,
 		fetchImpl: async () => ({ ok: true, status: 200, text: async () => SAMPLE_HTML }),
 	});
 
 	const updated = await captureUrl({
 		url: "https://www.atlassian.com/software/rovo",
-		category: "articles",
+		category: "captures",
 		wikiDir,
 		forceRefresh: true,
 		fetchImpl: async () => ({ ok: true, status: 200, text: async () => SAMPLE_HTML }),
 	});
 
 	assert.equal(updated.isUpdate, true);
+	assert.equal(updated.captureStatus, "updated");
 	const saved = await fs.readFile(updated.filePath, "utf8");
 	const { frontmatter } = parseFrontmatter(saved);
-	assert.equal(frontmatter.status, "updated");
+	assert.equal(frontmatter.knowledge_status, "updated");
 });
 
 test("captureUrl skips SERP URLs", async () => {
@@ -381,7 +385,7 @@ test("captureUrl skips SERP URLs", async () => {
 
 	const result = await captureUrl({
 		url: "https://www.google.com/search?q=rovo",
-		category: "articles",
+		category: "captures",
 		wikiDir,
 		fetchImpl: async () => ({ ok: true, status: 200, text: async () => "<html><body>results</body></html>" }),
 	});
@@ -396,7 +400,7 @@ test("captureUrl skips low-content pages", async () => {
 	const lowContentHtml = "<html><head><title>Nav</title></head><body><nav>Menu</nav></body></html>";
 	const result = await captureUrl({
 		url: "https://example.com/nav-shell",
-		category: "articles",
+		category: "captures",
 		wikiDir,
 		fetchImpl: async () => ({ ok: true, status: 200, text: async () => lowContentHtml }),
 	});
@@ -410,7 +414,7 @@ test("captureUrl appends to log.md", async () => {
 
 	await captureUrl({
 		url: "https://www.atlassian.com/software/rovo",
-		category: "articles",
+		category: "captures",
 		wikiDir,
 		fetchImpl: async () => ({ ok: true, status: 200, text: async () => SAMPLE_HTML }),
 	});
@@ -424,7 +428,7 @@ test("captureUrl creates year/month directories", async () => {
 
 	const result = await captureUrl({
 		url: "https://www.atlassian.com/software/rovo",
-		category: "articles",
+		category: "captures",
 		wikiDir,
 		fetchImpl: async () => ({ ok: true, status: 200, text: async () => SAMPLE_HTML }),
 	});
@@ -439,12 +443,12 @@ test("captureUrl handles fetch failure gracefully", async () => {
 	const wikiDir = await createTestWiki();
 
 	await assert.rejects(
-		() => captureUrl({
-			url: "https://example.com/broken",
-			category: "articles",
-			wikiDir,
-			fetchImpl: async () => ({ ok: false, status: 404, text: async () => "Not Found" }),
-		}),
+			() => captureUrl({
+				url: "https://example.com/broken",
+				category: "captures",
+				wikiDir,
+				fetchImpl: async () => ({ ok: false, status: 404, text: async () => "Not Found" }),
+			}),
 		/fetch failed|404/iu,
 	);
 });
@@ -454,7 +458,7 @@ test("captureUrl applies tags from options", async () => {
 
 	const result = await captureUrl({
 		url: "https://www.atlassian.com/software/rovo",
-		category: "articles",
+		category: "captures",
 		tags: ["rovo", "ai"],
 		wikiDir,
 		fetchImpl: async () => ({ ok: true, status: 200, text: async () => SAMPLE_HTML }),
@@ -471,7 +475,7 @@ test("captureUrl applies tags from options", async () => {
 
 async function createPopulatedWiki() {
 	const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "vpk-wiki-query-"));
-	for (const sub of ["raw/articles", "entities", "concepts", "comparisons", "queries"]) {
+	for (const sub of ["raw", "entities", "concepts", "comparisons", "queries"]) {
 		await fs.mkdir(path.join(tmpDir, ...sub.split("/")), { recursive: true });
 	}
 	await fs.writeFile(path.join(tmpDir, "log.md"), "# Wiki Log\n\n", "utf8");
@@ -490,7 +494,7 @@ async function createPopulatedWiki() {
 			"updated: 2026-04-11",
 			"type: entity",
 			"tags: [company]",
-			"sources: [raw/articles/atlassian-overview.md]",
+			"sources: [raw/atlassian-overview.md]",
 			"---",
 			"",
 			"Atlassian is a software company that builds tools for teams.",
@@ -508,7 +512,7 @@ async function createPopulatedWiki() {
 			"updated: 2026-04-11",
 			"type: entity",
 			"tags: [rovo, ai]",
-			"sources: [raw/articles/rovo-intro.md]",
+			"sources: [raw/rovo-intro.md]",
 			"---",
 			"",
 			"Rovo is Atlassian's AI assistant.",
@@ -594,7 +598,7 @@ test("lintWiki detects missing index entries", async () => {
 
 test("lintWiki detects duplicate canonical URLs in raw", async () => {
 	const wikiDir = await createPopulatedWiki();
-	const rawDir = path.join(wikiDir, "raw", "articles");
+	const rawDir = path.join(wikiDir, "raw");
 	await fs.mkdir(path.join(rawDir, "2026", "04"), { recursive: true });
 
 	const rawContent = [
@@ -602,7 +606,7 @@ test("lintWiki detects duplicate canonical URLs in raw", async () => {
 		"title: Duplicate",
 		"source_url: https://example.com/dup",
 		"canonical_url: https://example.com/dup",
-		"status: queued",
+		"knowledge_status: queued",
 		"---",
 		"Content.",
 	].join("\n");
@@ -620,13 +624,13 @@ test("lintWiki detects duplicate canonical URLs in raw", async () => {
 
 async function createWikiWithQueuedRaw() {
 	const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "vpk-wiki-ingest-"));
-	for (const sub of ["raw/articles/2026/04", "entities", "concepts", "comparisons", "queries"]) {
+	for (const sub of ["raw/2026/04", "sources", "entities", "concepts", "comparisons", "queries"]) {
 		await fs.mkdir(path.join(tmpDir, ...sub.split("/")), { recursive: true });
 	}
 	await fs.writeFile(path.join(tmpDir, "log.md"), "# Wiki Log\n\n", "utf8");
 	await fs.writeFile(
 		path.join(tmpDir, "index.md"),
-		"# Wiki Index\n\n## Entities\n\n### Products\n\n### People\n\n## Concepts\n\n## Comparisons\n\n## Queries\n",
+		"# Wiki Index\n\n## Sources\n\n## Entities\n\n### Products\n\n### People\n\n## Concepts\n\n## Comparisons\n\n## Queries\n",
 		"utf8",
 	);
 	await fs.writeFile(
@@ -637,7 +641,7 @@ async function createWikiWithQueuedRaw() {
 
 	// Add a queued raw file
 	await fs.writeFile(
-		path.join(tmpDir, "raw", "articles", "2026", "04", "rovo-overview.md"),
+		path.join(tmpDir, "raw", "2026", "04", "rovo-overview.md"),
 		[
 			"---",
 			"title: Rovo Overview",
@@ -648,7 +652,7 @@ async function createWikiWithQueuedRaw() {
 			"content_type: article",
 			"word_count: 200",
 			"tags: [rovo, ai]",
-			"status: queued",
+			"knowledge_status: queued",
 			"---",
 			"",
 			"# Rovo Overview",
@@ -678,7 +682,7 @@ function createMockExecutor() {
 					updated: "2026-04-11",
 					type: "entity",
 					tags: ["rovo", "ai"],
-					sources: ["raw/articles/2026/04/rovo-overview.md"],
+						sources: ["raw/2026/04/rovo-overview.md"],
 				},
 				body: "Rovo is [[atlassian]]'s AI assistant.\n\nIt helps teams find and act on information using [[atlassian-intelligence]].\n",
 				indexEntry: "- [[rovo]] — Atlassian AI assistant",
@@ -692,7 +696,7 @@ function createMockExecutor() {
 					updated: "2026-04-11",
 					type: "entity",
 					tags: ["rovo", "ai"],
-					sources: ["raw/articles/2026/04/rovo-overview.md"],
+						sources: ["raw/2026/04/rovo-overview.md"],
 				},
 				body: "Rovo is [[atlassian]]'s AI assistant.\n\nIt helps teams find and act on information using [[atlassian-intelligence]].\n",
 				indexEntry: "- [[rovo]] — Atlassian AI assistant",
@@ -712,7 +716,11 @@ test("ingestRawSources processes queued files into canonical pages", async () =>
 	assert.equal(result.processed, 1);
 	assert.equal(result.errors.length, 0);
 
-	// Check canonical page was created
+	const sourcePath = path.join(wikiDir, "sources", "rovo-overview-source.md");
+	const sourceContent = await fs.readFile(sourcePath, "utf8");
+	assert.ok(sourceContent.includes("## Extract"), "source page should be created first");
+
+	// Check derived canonical page was created
 	const canonicalPath = path.join(wikiDir, "entities", "rovo.md");
 	const canonicalContent = await fs.readFile(canonicalPath, "utf8");
 	assert.ok(canonicalContent.includes("Rovo"), "canonical page should exist");
@@ -727,11 +735,11 @@ test("ingestRawSources updates raw file status to ingested", async () => {
 	});
 
 	const rawContent = await fs.readFile(
-		path.join(wikiDir, "raw", "articles", "2026", "04", "rovo-overview.md"),
+		path.join(wikiDir, "raw", "2026", "04", "rovo-overview.md"),
 		"utf8",
 	);
 	const { frontmatter } = parseFrontmatter(rawContent);
-	assert.equal(frontmatter.status, "ingested");
+	assert.equal(frontmatter.knowledge_status, "ingested");
 });
 
 test("ingestRawSources updates index.md", async () => {
@@ -743,6 +751,7 @@ test("ingestRawSources updates index.md", async () => {
 	});
 
 	const indexContent = await fs.readFile(path.join(wikiDir, "index.md"), "utf8");
+	assert.ok(indexContent.includes("[[rovo-overview-source]]"), "index should contain source entry");
 	assert.ok(indexContent.includes("[[rovo]]"), "index should contain new entry");
 });
 
@@ -762,9 +771,9 @@ test("ingestRawSources skips already-ingested files", async () => {
 	const wikiDir = await createWikiWithQueuedRaw();
 
 	// Change status to ingested
-	const rawPath = path.join(wikiDir, "raw", "articles", "2026", "04", "rovo-overview.md");
+	const rawPath = path.join(wikiDir, "raw", "2026", "04", "rovo-overview.md");
 	let content = await fs.readFile(rawPath, "utf8");
-	content = content.replace("status: queued", "status: ingested");
+	content = content.replace("knowledge_status: queued", "knowledge_status: ingested");
 	await fs.writeFile(rawPath, content, "utf8");
 
 	const result = await ingestRawSources({
@@ -774,6 +783,59 @@ test("ingestRawSources skips already-ingested files", async () => {
 
 	assert.equal(result.processed, 0);
 	assert.equal(result.skipped, 1);
+});
+
+test("ingestRawSources can consider raw turn files without mutating memory_status", async () => {
+	const wikiDir = await createWikiWithQueuedRaw();
+
+	await fs.writeFile(
+		path.join(wikiDir, "raw", "2026", "04", "memory-proposal.md"),
+		[
+			"---",
+			"title: Memory proposal",
+			"knowledge_status: queued",
+			"memory_status: queued",
+			"scope: work",
+			"target: memory",
+			"---",
+			"",
+			"Remember that the user prefers concise replies.",
+		].join("\n"),
+		"utf8",
+	);
+
+	const result = await ingestRawSources({
+		wikiDir,
+		executorImpl: async ({ prompt }) => {
+			if (prompt.includes("Remember that the user prefers concise replies.")) {
+				return {
+					backend: "mock",
+					didRun: true,
+					responseText: JSON.stringify({
+						skip: true,
+						reason: "This raw turn is memory-only and should not create a knowledge page.",
+					}),
+					structuredResult: {
+						skip: true,
+						reason: "This raw turn is memory-only and should not create a knowledge page.",
+					},
+				};
+			}
+
+			return createMockExecutor()();
+		},
+	});
+
+	assert.equal(result.processed, 2);
+	assert.equal(result.errors.length, 0);
+
+	const turnProposal = await fs.readFile(
+		path.join(wikiDir, "raw", "2026", "04", "memory-proposal.md"),
+		"utf8",
+	);
+	const { frontmatter } = parseFrontmatter(turnProposal);
+	assert.equal(frontmatter.knowledge_status, "ingested");
+	assert.equal(frontmatter.memory_status, "queued");
 });
 
 test("ingestRawSources handles executor failure without crashing", async () => {
@@ -806,10 +868,13 @@ test("ingestRawSources refreshes the matching qmd collection after canonical wri
 	});
 
 	assert.equal(result.processed, 1);
-	assert.equal(qmdSyncCalls.length, 1);
-	assert.equal(qmdSyncCalls[0].pageType, "entity");
-	assert.equal(qmdSyncCalls[0].pageData.slug, "rovo");
-	assert.ok(qmdSyncCalls[0].canonicalPath.endsWith(path.join("entities", "rovo.md")));
+	assert.equal(qmdSyncCalls.length, 2);
+	assert.equal(qmdSyncCalls[0].pageType, "source");
+	assert.equal(qmdSyncCalls[0].pageData.slug, "rovo-overview-source");
+	assert.ok(qmdSyncCalls[0].canonicalPath.endsWith(path.join("sources", "rovo-overview-source.md")));
+	assert.equal(qmdSyncCalls[1].pageType, "entity");
+	assert.equal(qmdSyncCalls[1].pageData.slug, "rovo");
+	assert.ok(qmdSyncCalls[1].canonicalPath.endsWith(path.join("entities", "rovo.md")));
 });
 
 test("ingestRawSources logs qmd refresh failures without failing the ingest", async () => {
@@ -844,29 +909,29 @@ test("ingestRawSources logs qmd refresh failures without failing the ingest", as
 test("regenerateMemoryDigest produces digest from wiki pages", async () => {
 	const wikiDir = await createPopulatedWiki();
 	await fs.mkdir(path.join(wikiDir, "profiles"), { recursive: true });
-	await fs.mkdir(path.join(wikiDir, "operations"), { recursive: true });
+	await fs.mkdir(path.join(wikiDir, "work"), { recursive: true });
 	await fs.writeFile(path.join(wikiDir, "profiles", "self.md"), "# Self\n\n- Prefers concise answers.\n", "utf8");
-	await fs.writeFile(path.join(wikiDir, "operations", "core-memory.md"), "# Core Memory\n\n- Keep the runtime loop on RovoDev.\n", "utf8");
+	await fs.writeFile(path.join(wikiDir, "work", "memory.md"), "# Work Context\n\n- Keep the runtime loop on RovoDev.\n", "utf8");
 
 	const result = await regenerateMemoryDigest({
 		generateTextImpl: async ({ system }) => {
 			return system.includes("profile")
 				? "# Profile Context\n\n- Prefers concise answers."
-				: "# Runtime Context\n\n- Keep the runtime loop on RovoDev.";
+				: "# Work Context\n\n- Keep the runtime loop on RovoDev.";
 		},
 		wikiDir,
 	});
 
 	assert.equal(result.entriesWritten, 2);
 	const profileOutput = await fs.readFile(path.join(wikiDir, "output", "profile-context.md"), "utf8");
-	const runtimeOutput = await fs.readFile(path.join(wikiDir, "output", "runtime-context.md"), "utf8");
+	const runtimeOutput = await fs.readFile(path.join(wikiDir, "output", "work-context.md"), "utf8");
 	assert.match(profileOutput, /Prefers concise answers/u);
 	assert.match(runtimeOutput, /runtime loop on RovoDev/u);
 });
 
 test("regenerateMemoryDigest handles empty wiki", async () => {
 	const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "vpk-wiki-empty-"));
-	for (const sub of ["profiles", "operations", "entities", "concepts", "comparisons", "queries"]) {
+	for (const sub of ["profiles", "work", "entities", "concepts", "comparisons", "queries"]) {
 		await fs.mkdir(path.join(tmpDir, sub), { recursive: true });
 	}
 
@@ -956,13 +1021,12 @@ test("getWikiStatus summarizes canonical pages, raw captures, and digest state",
 	const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "vpk-wiki-status-"));
 
 	await fs.mkdir(path.join(tmpDir, "profiles"), { recursive: true });
-	await fs.mkdir(path.join(tmpDir, "operations"), { recursive: true });
+	await fs.mkdir(path.join(tmpDir, "work"), { recursive: true });
 	await fs.mkdir(path.join(tmpDir, "entities"), { recursive: true });
 	await fs.mkdir(path.join(tmpDir, "concepts"), { recursive: true });
 	await fs.mkdir(path.join(tmpDir, "comparisons"), { recursive: true });
 	await fs.mkdir(path.join(tmpDir, "queries"), { recursive: true });
-	await fs.mkdir(path.join(tmpDir, "raw", "articles", "2026", "04"), { recursive: true });
-	await fs.mkdir(path.join(tmpDir, "raw", "papers", "2026", "04"), { recursive: true });
+	await fs.mkdir(path.join(tmpDir, "raw", "2026", "04"), { recursive: true });
 	await fs.mkdir(path.join(tmpDir, "output"), { recursive: true });
 
 	await Promise.all([
@@ -970,28 +1034,28 @@ test("getWikiStatus summarizes canonical pages, raw captures, and digest state",
 		fs.writeFile(path.join(tmpDir, "index.md"), "# Index\n", "utf8"),
 		fs.writeFile(path.join(tmpDir, "log.md"), "# Log\n", "utf8"),
 		fs.writeFile(path.join(tmpDir, "profiles", "self.md"), "# Self\n", "utf8"),
-		fs.writeFile(path.join(tmpDir, "operations", "core-memory.md"), "# Core Memory\n", "utf8"),
+		fs.writeFile(path.join(tmpDir, "work", "memory.md"), "# Work Context\n", "utf8"),
 		fs.writeFile(path.join(tmpDir, "entities", "atlassian.md"), "# Atlassian\n", "utf8"),
 		fs.writeFile(path.join(tmpDir, "concepts", "rovo.md"), "# Rovo\n", "utf8"),
 		fs.writeFile(path.join(tmpDir, "comparisons", "jira-vs-linear.md"), "# Compare\n", "utf8"),
 		fs.writeFile(path.join(tmpDir, "queries", "what-is-rovo.md"), "# Query\n", "utf8"),
-		fs.writeFile(path.join(tmpDir, "raw", "articles", "2026", "04", "capture-1.md"), "# Raw article\n", "utf8"),
-		fs.writeFile(path.join(tmpDir, "raw", "papers", "2026", "04", "capture-2.md"), "# Raw paper\n", "utf8"),
-		fs.writeFile(path.join(tmpDir, "output", "profile-context.md"), "- Profile context\n", "utf8"),
+			fs.writeFile(path.join(tmpDir, "raw", "2026", "04", "capture-1.md"), "# Raw capture\n", "utf8"),
+			fs.writeFile(path.join(tmpDir, "raw", "2026", "04", "proposal-1.md"), "# Raw turn\n", "utf8"),
+			fs.writeFile(path.join(tmpDir, "output", "profile-context.md"), "- Profile context\n", "utf8"),
 	]);
 
 	const status = await getWikiStatus({ wikiDir: tmpDir });
 
 	assert.equal(status.wikiDir, tmpDir);
 	assert.equal(status.canonicalCounts.profiles, 1);
-	assert.equal(status.canonicalCounts.operations, 1);
+	assert.equal(status.canonicalCounts.work, 1);
 	assert.equal(status.canonicalCounts.entities, 1);
 	assert.equal(status.canonicalCounts.concepts, 1);
 	assert.equal(status.canonicalCounts.comparisons, 1);
 	assert.equal(status.canonicalCounts.queries, 1);
 	assert.equal(status.totalCanonicalPages, 6);
-	assert.equal(status.rawCounts.articles, 1);
-	assert.equal(status.rawCounts.papers, 1);
+	assert.equal(status.rawCounts.raw, 2);
+	assert.equal(status.rawCounts.assets, 0);
 	assert.equal(status.totalRawCaptures, 2);
 	assert.equal(status.hasWikiDigestEntry, true);
 	assert.equal(status.compiledContexts.profile.exists, true);

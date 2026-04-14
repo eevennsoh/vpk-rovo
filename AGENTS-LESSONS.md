@@ -146,3 +146,14 @@ Mark promoted entries with `[Promoted]` prefix — see vpk-lesson skill for deta
 - **Rule:** When reviewing VPK plans or code that depend on RovoDev Serve
   semantics, check the local ACRA repo before calling a Serve-behavior claim
   unsupported.
+
+### 2026-04-14 - Respect explicit stack choices for major implementation details
+
+- **What happened:** The memory explorer was implemented with
+  `@xyflow/react` even after the user explicitly asked for the `wiki-os`
+  style graph stack based on `graphology` and `sigma`.
+- **Why:** The implementation optimized for already-installed repo primitives
+  instead of honoring the user’s direct technical choice for the graph layer.
+- **Rule:** When the user explicitly names a required library or stack for a
+  major subsystem, use that stack. Do not substitute a familiar or already
+  installed alternative unless the user approves the change in direction.

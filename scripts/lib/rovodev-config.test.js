@@ -111,11 +111,13 @@ test("syncWorkspaceRovodevConfig creates a workspace-scoped config and MCP file"
 			"stdio:npx:base-mcp",
 			"stdio:pnpm:exec qmd mcp",
 			`stdio:node:${path.join(workspaceDir, "scripts", "browser-workspace-mcp.js")}`,
+			`stdio:node:${path.join(workspaceDir, "scripts", "wiki-capture-mcp.js")}`,
 		]);
 
 		const workspaceMcp = JSON.parse(fs.readFileSync(workspaceMcpPath, "utf8"));
 		assert.ok(workspaceMcp.mcpServers["base-server"]);
 		assert.ok(workspaceMcp.mcpServers["browser-workspace"]);
+		assert.ok(workspaceMcp.mcpServers["wiki-capture"]);
 		assert.ok(workspaceMcp.mcpServers["local-only"]);
 		assert.equal(workspaceMcp.mcpServers.playwright, undefined);
 		assert.equal(workspaceMcp.mcpServers["chrome-devtools"], undefined);
@@ -135,7 +137,15 @@ test("syncWorkspaceRovodevConfig creates a workspace-scoped config and MCP file"
 			},
 			type: "stdio",
 		});
-		assert.equal(Object.keys(workspaceMcp.mcpServers).length, 4);
+		assert.deepEqual(workspaceMcp.mcpServers["wiki-capture"], {
+			args: [path.join(workspaceDir, "scripts", "wiki-capture-mcp.js")],
+			command: "node",
+			env: {
+				REPO_ROOT: workspaceDir,
+			},
+			type: "stdio",
+		});
+		assert.equal(Object.keys(workspaceMcp.mcpServers).length, 5);
 	} finally {
 		osModule.homedir = originalHomeDir;
 	}

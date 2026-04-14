@@ -25,14 +25,12 @@ test("getHermesRuntimeStatus reports embedded Hermes capabilities as healthy whe
 		assert.equal(status.available, true);
 		assert.equal(status.status, "embedded");
 		assert.match(status.message, /embedded capabilities are ready/i);
-		assert.equal(status.fileStores.memoriesAccessible, true);
 		assert.equal(status.fileStores.skillsAccessible, true);
 		assert.equal(status.fileStores.vendoredSkillsAccessible, true);
 		assert.equal(status.fileStores.healthy, true);
 		assert.equal(status.runtime.jobsMode, "embedded");
 		assert.equal(status.runtime.providerStatus.mode, "embedded");
 		assert.equal(status.subsystems.jobs, true);
-		assert.equal(status.subsystems.memories, true);
 		assert.equal(status.subsystems.skills, true);
 		assert.equal(status.subsystems.vendoredSkills, true);
 	} finally {
@@ -52,14 +50,12 @@ test("getHermesRuntimeStatus reports Hermes unavailable when local stores are in
 
 		assert.equal(status.available, false);
 		assert.equal(status.status, "unavailable");
-		assert.match(status.message, /local files are unavailable/i);
-		assert.equal(status.fileStores.memoriesAccessible, false);
+		assert.match(status.message, /local skill files are unavailable/i);
 		assert.equal(status.fileStores.skillsAccessible, false);
 		assert.equal(status.fileStores.vendoredSkillsAccessible, false);
 		assert.equal(status.fileStores.healthy, false);
 		assert.equal(status.runtime.jobsMode, "embedded");
 		assert.equal(status.subsystems.jobs, false);
-		assert.equal(status.subsystems.memories, false);
 		assert.equal(status.subsystems.skills, false);
 		assert.equal(status.subsystems.vendoredSkills, false);
 	} finally {

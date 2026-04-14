@@ -397,12 +397,12 @@ export const catalog = defineCatalog(schema, {
 			description:
 				"Hierarchical file and directory tree. Provide slash-delimited paths. Missing ancestor folders are inferred automatically. Use for repository layouts, generated file sets, and directory summaries.",
 			example: {
-				nodes: [
-					{ path: "~/wiki", name: "~/wiki", type: "folder" },
-					{ path: "~/wiki/SCHEMA.md", name: "SCHEMA.md", type: "file" },
-					{ path: "~/wiki/raw", name: "raw", type: "folder" },
-					{ path: "~/wiki/raw/articles", name: "articles", type: "folder" },
-				],
+					nodes: [
+						{ path: "~/wiki", name: "~/wiki", type: "folder" },
+						{ path: "~/wiki/SCHEMA.md", name: "SCHEMA.md", type: "file" },
+						{ path: "~/wiki/raw", name: "raw", type: "folder" },
+						{ path: "~/wiki/raw/2026", name: "2026", type: "folder" },
+					],
 				defaultExpandedPaths: ["~/wiki", "~/wiki/raw"],
 				selectedPath: "~/wiki/SCHEMA.md",
 			},

@@ -21,25 +21,6 @@ export interface RuntimeStatusSnapshot {
 	degradedSurfaces: RuntimeSurfaceName[];
 }
 
-export type HermesMemoryTarget = "memory" | "user";
-
-export interface HermesMemoryEntry {
-	id: string;
-	index: number;
-	text: string;
-	chars: number;
-}
-
-export interface HermesMemoryDocument {
-	target: HermesMemoryTarget;
-	exists: boolean;
-	path: string;
-	entries: HermesMemoryEntry[];
-	totalChars: number;
-	limit: number | null;
-	updatedAt: string | null;
-}
-
 export interface WikiStatusFileSummary {
 	path: string;
 	exists: boolean;
@@ -68,13 +49,13 @@ export interface WikiCanonicalMemoryDocument {
 	compiledContext: WikiCompiledContextDocument | null;
 	exists: boolean;
 	revision: string;
-	scope: "operations" | "profile";
+	scope: "work" | "profile";
 	title: string;
 	updatedAt: string | null;
 }
 
 export interface WikiCanonicalMemoryDocuments {
-	operations: WikiCanonicalMemoryDocument;
+	work: WikiCanonicalMemoryDocument;
 	profile: WikiCanonicalMemoryDocument;
 }
 
@@ -86,14 +67,20 @@ export interface WikiProposalCounts {
 
 export interface WikiMemoryProposalSummary {
 	action: string;
+	content?: string;
 	createdAt: string | null;
 	id: string;
+	ingestedAt?: string | null;
+	origin?: string | null;
 	path: string;
+	reason?: string | null;
 	scope: string;
 	sourceMessageId: string | null;
 	sourceThreadId: string | null;
 	status: string;
 	summary: string;
+	tags?: string[];
+	target?: string | null;
 }
 
 export interface WikiStatus {
@@ -107,7 +94,7 @@ export interface WikiStatus {
 	hasCompiledContextArtifacts?: boolean;
 	compiledContexts?: {
 		profile?: WikiCompiledContextDocument;
-		operations?: WikiCompiledContextDocument;
+		work?: WikiCompiledContextDocument;
 	};
 	proposalCounts?: WikiProposalCounts;
 	recentProposals?: WikiMemoryProposalSummary[];
@@ -117,6 +104,105 @@ export interface WikiStatus {
 		schema: WikiStatusFileSummary;
 	};
 	qmd?: WikiQmdStatus;
+}
+
+export type WikiMemoryExplorerNodeKind =
+	| "canonical-memory"
+	| "compiled-context"
+	| "linked-knowledge"
+	| "raw-proposal";
+
+export type WikiMemoryExplorerEdgeKind =
+	| "canonical_to_compiled"
+	| "inferred_topic"
+	| "proposal_to_canonical"
+	| "same_scope"
+	| "same_thread"
+	| "shared_tag"
+	| "wiki_link";
+
+export interface WikiMemoryExplorerNode {
+	bodyPreview: string;
+	charCount: number;
+	connectionCount: number;
+	createdAt: string | null;
+	id: string;
+	kind: WikiMemoryExplorerNodeKind;
+	label: string;
+	metadata: Record<string, unknown>;
+	path: string;
+	relativePath: string;
+	scope: string | null;
+	sourceMessageId: string | null;
+	sourceThreadId: string | null;
+	status: string | null;
+	summary: string;
+	tags: string[];
+	target: string | null;
+	title: string;
+	topics: string[];
+	updatedAt: string | null;
+	wikiLinks: string[];
+}
+
+export interface WikiMemoryExplorerEdge {
+	id: string;
+	kind: WikiMemoryExplorerEdgeKind;
+	label: string;
+	metadata: Record<string, unknown>;
+	relationKinds: WikiMemoryExplorerEdgeKind[];
+	source: string;
+	target: string;
+}
+
+export interface WikiMemoryExplorerFacet {
+	count: number;
+	label: string;
+	value: string;
+}
+
+export interface WikiMemoryExplorerFacets {
+	kinds: WikiMemoryExplorerFacet[];
+	scopes: WikiMemoryExplorerFacet[];
+	statuses: WikiMemoryExplorerFacet[];
+	tags: WikiMemoryExplorerFacet[];
+	threads: WikiMemoryExplorerFacet[];
+}
+
+export interface WikiMemoryExplorerFilters {
+	includeLinkedKnowledge: boolean;
+	kind: string | null;
+	scope: string | null;
+	status: string | null;
+	tag: string | null;
+	threadId: string | null;
+}
+
+export interface WikiMemoryExplorerStats {
+	edgeCount: number;
+	nodeCount: number;
+	totalEdgeCount: number;
+	totalNodeCount: number;
+	visibleKindCounts: Record<string, number>;
+	visibleScopeCounts: Record<string, number>;
+	visibleStatusCounts: Record<string, number>;
+}
+
+export interface WikiMemoryExplorerResponse {
+	edges: WikiMemoryExplorerEdge[];
+	facets: WikiMemoryExplorerFacets;
+	filters: WikiMemoryExplorerFilters;
+	generatedAt: string;
+	nodes: WikiMemoryExplorerNode[];
+	stats: WikiMemoryExplorerStats;
+}
+
+export interface WikiMemoryGeneratedArtifact {
+	content: string;
+	format: "brief" | "deck";
+	generatedAt: string;
+	selectedNodeIds: string[];
+	title: string;
 }
 
 export interface WikiQmdStatus {

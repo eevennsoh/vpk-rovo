@@ -28,7 +28,7 @@ function buildHermesMemoryContextDescription(compiledContexts) {
 			continue;
 		}
 
-		const label = key === "profile" ? "Profile context" : "Runtime context";
+		const label = key === "profile" ? "Profile context" : "Work context";
 		sections.push(`${label}:\n${content}`);
 	}
 

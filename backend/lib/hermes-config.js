@@ -19,10 +19,6 @@ function getHermesConfigPath() {
 	return path.join(getHermesHomeDir(), "config.yaml");
 }
 
-function getHermesMemoriesDir() {
-	return path.join(getHermesHomeDir(), "memories");
-}
-
 function getHermesSkillsDir() {
 	return path.join(getHermesHomeDir(), "skills");
 }
@@ -30,32 +26,6 @@ function getHermesSkillsDir() {
 function getVendoredHermesSkillsDir() {
 	return toNonEmptyString(process.env.HERMES_VENDOR_SKILLS_DIR)
 		?? path.join(__dirname, "..", "..", ".agents", "vendor", "hermes-agent", "skills");
-}
-
-function getHermesMemoryPath(target) {
-	const targetMap = {
-		memory: "MEMORY.md",
-		user: "USER.md",
-	};
-	const filename = targetMap[target];
-	if (!filename) {
-		const error = new Error(`Unsupported Hermes memory target: ${target}`);
-		error.code = "INVALID_TARGET";
-		throw error;
-	}
-
-	return path.join(getHermesHomeDir(), "memories", filename);
-}
-
-function getHermesMemoryLimit(target) {
-	const envKey = target === "user" ? "HERMES_USER_MEMORY_LIMIT" : "HERMES_MEMORY_LIMIT";
-	const rawLimit = toNonEmptyString(process.env[envKey]);
-	if (!rawLimit) {
-		return null;
-	}
-
-	const parsedLimit = Number.parseInt(rawLimit, 10);
-	return Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : null;
 }
 
 function countIndent(line) {
@@ -331,9 +301,6 @@ async function writeHermesSkillConfig({
 module.exports = {
 	getHermesConfigPath,
 	getHermesHomeDir,
-	getHermesMemoryLimit,
-	getHermesMemoriesDir,
-	getHermesMemoryPath,
 	getHermesSkillsDir,
 	getVendoredHermesSkillsDir,
 	parseHermesSkillsConfig,

@@ -18,7 +18,7 @@ const {
 	regenerateWikiMemoryContext,
 } = require("./wiki-memory-provider");
 
-test("enqueueWikiMemoryProposal stores queued proposals under raw/turns", async () => {
+test("enqueueWikiMemoryProposal stores queued proposals under raw/", async () => {
 	const wikiDir = await fs.mkdtemp(path.join(os.tmpdir(), "wiki-memory-provider-"));
 
 	const proposal = await enqueueWikiMemoryProposal({
@@ -36,6 +36,34 @@ test("enqueueWikiMemoryProposal stores queued proposals under raw/turns", async 
 	assert.equal(proposals[0].scope, "profile");
 });
 
+test("listWikiMemoryProposals scans shared raw folders but only returns memory-marked raw files", async () => {
+	const wikiDir = await fs.mkdtemp(path.join(os.tmpdir(), "wiki-memory-provider-shared-raw-"));
+	await fs.mkdir(path.join(wikiDir, "raw", "2026", "04"), { recursive: true });
+
+	await fs.writeFile(
+		path.join(wikiDir, "raw", "2026", "04", "capture.md"),
+		[
+			"---",
+			'title: "Capture only"',
+			"knowledge_status: queued",
+			"---",
+			"",
+			"General knowledge capture that should not be treated as a memory proposal.",
+		].join("\n"),
+		"utf8",
+	);
+
+	await enqueueWikiMemoryProposal({
+		content: "Remember the user's preference for concise answers.",
+		target: "user",
+		wikiDir,
+	});
+
+	const proposals = await listWikiMemoryProposals({ wikiDir });
+	assert.equal(proposals.length, 1);
+	assert.equal(proposals[0].scope, "profile");
+});
+
 test("ingestQueuedWikiMemoryProposals updates canonical pages, marks proposals ingested, and regenerates compiled context", async () => {
 	const wikiDir = await fs.mkdtemp(path.join(os.tmpdir(), "wiki-memory-provider-ingest-"));
 	const qmdCalls = [];
@@ -48,18 +76,18 @@ test("ingestQueuedWikiMemoryProposals updates canonical pages, marks proposals i
 
 	const result = await ingestQueuedWikiMemoryProposals({
 		generateTextImpl: async ({ system }) => {
-			if (system.includes("maintain the canonical runtime memory")) {
+			if (system.includes("maintain the canonical work context")) {
 				return [
 					"---",
-					'title: "Core Memory"',
+					'title: "Work Context"',
 					"created: \"2026-04-12\"",
 					"updated: \"2026-04-12\"",
-					'type: "operations"',
-					'tags: ["operations", "memory"]',
+					'type: "work"',
+					'tags: ["work", "memory"]',
 					"sources: []",
 					"---",
 					"",
-					"# Core Memory",
+					"# Work Context",
 					"",
 					"## Durable Memory",
 					"",
@@ -71,8 +99,8 @@ test("ingestQueuedWikiMemoryProposals updates canonical pages, marks proposals i
 				].join("\n");
 			}
 
-			if (system.includes("compile runtime memory")) {
-				return "# Runtime Context\n\n- Keep the runtime loop on RovoDev.";
+			if (system.includes("compile work context")) {
+				return "# Work Context\n\n- Keep the runtime loop on RovoDev.";
 			}
 
 			return "# Profile Context\n\n- No profile context yet.";
@@ -84,18 +112,18 @@ test("ingestQueuedWikiMemoryProposals updates canonical pages, marks proposals i
 	});
 
 	assert.equal(result.processed, 1);
-	assert.deepEqual(result.updatedScopes, ["operations"]);
+	assert.deepEqual(result.updatedScopes, ["work"]);
 	assert.equal(qmdCalls.length, 1);
-	assert.equal(qmdCalls[0].collectionName, "wiki-operations");
+	assert.equal(qmdCalls[0].collectionName, "wiki-work");
 
-	const canonicalPage = await fs.readFile(path.join(wikiDir, "operations", "core-memory.md"), "utf8");
+	const canonicalPage = await fs.readFile(path.join(wikiDir, "work", "context.md"), "utf8");
 	assert.match(canonicalPage, /Keep the runtime loop on RovoDev/u);
 
 	const proposals = await listWikiMemoryProposals({ wikiDir });
 	assert.equal(proposals[0].status, "ingested");
 
-	const runtimeContext = await fs.readFile(path.join(wikiDir, "output", "runtime-context.md"), "utf8");
-	assert.match(runtimeContext, /Runtime Context/u);
+	const runtimeContext = await fs.readFile(path.join(wikiDir, "output", "work-context.md"), "utf8");
+	assert.match(runtimeContext, /Work Context/u);
 });
 
 test("buildWikiMemoryContextDescription reads compiled artifacts", async () => {
@@ -105,7 +133,7 @@ test("buildWikiMemoryContextDescription reads compiled artifacts", async () => {
 		generateTextImpl: async ({ system }) => {
 			return system.includes("profile")
 				? "# Profile Context\n\n- Prefers concise answers."
-				: "# Runtime Context\n\n- Keep the runtime loop on RovoDev.";
+				: "# Work Context\n\n- Keep the runtime loop on RovoDev.";
 		},
 		wikiDir,
 	});
@@ -118,27 +146,27 @@ test("buildWikiMemoryContextDescription reads compiled artifacts", async () => {
 
 test("getCanonicalWikiMemoryDocuments parses canonical durable memory blocks from wiki pages", async () => {
 	const wikiDir = await fs.mkdtemp(path.join(os.tmpdir(), "wiki-memory-provider-canonical-"));
-	await fs.mkdir(path.join(wikiDir, "operations"), { recursive: true });
+	await fs.mkdir(path.join(wikiDir, "work"), { recursive: true });
 	await fs.writeFile(
-		path.join(wikiDir, "operations", "core-memory.md"),
+		path.join(wikiDir, "work", "context.md"),
 		[
 			"---",
 			'created: "2026-04-12"',
 			'kind: "wiki-memory"',
 			"sources: []",
-			'tags: ["operations", "memory"]',
-			'title: "Core Memory"',
-			'type: "operations"',
+			'tags: ["work", "memory"]',
+			'title: "Work Context"',
+			'type: "work"',
 			'updated: "2026-04-13"',
 			"---",
 			"",
 			"```yaml",
 			"---",
-			'title: "Core Memory"',
+			'title: "Work Context"',
 			"---",
 			"```",
 			"",
-			"# Runtime Memory",
+			"# Work Context",
 			"",
 			"## Durable Memory",
 			"",
@@ -157,39 +185,39 @@ test("getCanonicalWikiMemoryDocuments parses canonical durable memory blocks fro
 
 	const documents = await getCanonicalWikiMemoryDocuments({ wikiDir });
 
-	assert.equal(documents.operations.title, "Runtime Memory");
-	assert.equal(documents.operations.blocks.length, 2);
-	assert.match(documents.operations.blocks[0].content, /runtime loop on RovoDev/u);
-	assert.match(documents.operations.blocks[1].content, /External browsing constraints/u);
-	assert.equal(documents.operations.blocks[0].id.startsWith("operations-"), true);
-	assert.equal(documents.operations.canonicalPath, path.join(wikiDir, "operations", "core-memory.md"));
+	assert.equal(documents.work.title, "Work Context");
+	assert.equal(documents.work.blocks.length, 2);
+	assert.match(documents.work.blocks[0].content, /runtime loop on RovoDev/u);
+	assert.match(documents.work.blocks[1].content, /External browsing constraints/u);
+	assert.equal(documents.work.blocks[0].id.startsWith("work-"), true);
+	assert.equal(documents.work.canonicalPath, path.join(wikiDir, "work", "context.md"));
 });
 
 test("pruneCanonicalWikiMemoryBlock removes canonical memory, preserves raw proposals, and regenerates compiled context", async () => {
 	const wikiDir = await fs.mkdtemp(path.join(os.tmpdir(), "wiki-memory-provider-prune-"));
 	const qmdCalls = [];
 
-	await fs.mkdir(path.join(wikiDir, "operations"), { recursive: true });
+	await fs.mkdir(path.join(wikiDir, "work"), { recursive: true });
 	await fs.writeFile(
-		path.join(wikiDir, "operations", "core-memory.md"),
+		path.join(wikiDir, "work", "context.md"),
 		[
 			"---",
 			'created: "2026-04-12"',
 			'kind: "wiki-memory"',
 			"sources: []",
-			'tags: ["operations", "memory"]',
-			'title: "Core Memory"',
-			'type: "operations"',
+			'tags: ["work", "memory"]',
+			'title: "Work Context"',
+			'type: "work"',
 			'updated: "2026-04-13"',
 			"---",
 			"",
 			"```yaml",
 			"---",
-			'title: "Core Memory"',
+			'title: "Work Context"',
 			"---",
 			"```",
 			"",
-			"# Runtime Memory",
+			"# Work Context",
 			"",
 			"## Durable Memory",
 			"",
@@ -212,7 +240,7 @@ test("pruneCanonicalWikiMemoryBlock removes canonical memory, preserves raw prop
 	});
 	const rawProposalBefore = await fs.readFile(rawProposal.path, "utf8");
 	const documents = await getCanonicalWikiMemoryDocuments({ wikiDir });
-	const removedBlock = documents.operations.blocks[0];
+	const removedBlock = documents.work.blocks[0];
 
 	const result = await pruneCanonicalWikiMemoryBlock({
 		generateTextImpl: async ({ prompt, system }) => {
@@ -221,24 +249,24 @@ test("pruneCanonicalWikiMemoryBlock removes canonical memory, preserves raw prop
 			}
 
 			return prompt.includes("Keep this durable note.")
-				? "# Runtime Context\n\n- Keep this durable note."
-				: "# Runtime Context\n\n- No runtime memory.";
+				? "# Work Context\n\n- Keep this durable note."
+				: "# Work Context\n\n- No runtime memory.";
 		},
 		qmdSyncImpl: async (payload) => {
 			qmdCalls.push(payload);
 		},
-		revision: documents.operations.revision,
-		scope: "operations",
+		revision: documents.work.revision,
+		scope: "work",
 		blockId: removedBlock.id,
 		wikiDir,
 	});
 
-	assert.equal(result.memories.operations.blocks.length, 1);
+	assert.equal(result.memories.work.blocks.length, 1);
 	assert.equal(result.removedBlock.id, removedBlock.id);
 	assert.equal(qmdCalls.length, 1);
-	assert.equal(qmdCalls[0].collectionName, "wiki-operations");
+	assert.equal(qmdCalls[0].collectionName, "wiki-work");
 
-	const canonicalPage = await fs.readFile(path.join(wikiDir, "operations", "core-memory.md"), "utf8");
+	const canonicalPage = await fs.readFile(path.join(wikiDir, "work", "context.md"), "utf8");
 	assert.match(canonicalPage, /Keep this durable note/u);
 	assert.doesNotMatch(canonicalPage, /```yaml/u);
 	assert.match(canonicalPage, /Removed durable memory block/u);
@@ -249,7 +277,7 @@ test("pruneCanonicalWikiMemoryBlock removes canonical memory, preserves raw prop
 	const rawProposalAfter = await fs.readFile(rawProposal.path, "utf8");
 	assert.equal(rawProposalAfter, rawProposalBefore);
 
-	const runtimeContext = await fs.readFile(path.join(wikiDir, "output", "runtime-context.md"), "utf8");
+	const runtimeContext = await fs.readFile(path.join(wikiDir, "output", "work-context.md"), "utf8");
 	assert.match(runtimeContext, /Keep this durable note/u);
 });
 
@@ -288,7 +316,7 @@ test("pruneCanonicalWikiMemoryBlock writes an empty placeholder when the final b
 		generateTextImpl: async ({ system }) => {
 			return system.includes("profile")
 				? "# Profile Context\n\n- No profile memory."
-				: "# Runtime Context\n\n- No runtime memory.";
+				: "# Work Context\n\n- No runtime memory.";
 		},
 		revision: documents.profile.revision,
 		scope: "profile",
@@ -312,7 +340,7 @@ test("deleteWikiMemoryProposal removes a queued raw proposal without changing ca
 		generateTextImpl: async ({ system }) => {
 			return system.includes("profile")
 				? "# Profile Context\n\n- No profile context yet."
-				: "# Runtime Context\n\n- No runtime memory.";
+				: "# Work Context\n\n- No runtime memory.";
 		},
 		proposalId: proposal.id,
 		wikiDir,
@@ -344,10 +372,10 @@ test("deleteWikiMemoryProposal removes an ingested raw proposal and rebuilds can
 
 	await ingestQueuedWikiMemoryProposals({
 		generateTextImpl: async ({ prompt, system }) => {
-			if (system.includes("maintain the canonical runtime memory")) {
+			if (system.includes("maintain the canonical work context")) {
 				if (prompt.includes("External screenshots are blocked.") && prompt.includes("Keep the runtime loop on RovoDev.")) {
 					return [
-						"# Runtime Memory",
+						"# Work Context",
 						"",
 						"## Durable Memory",
 						"",
@@ -362,7 +390,7 @@ test("deleteWikiMemoryProposal removes an ingested raw proposal and rebuilds can
 				}
 
 				return [
-					"# Runtime Memory",
+					"# Work Context",
 					"",
 					"## Durable Memory",
 					"",
@@ -374,10 +402,10 @@ test("deleteWikiMemoryProposal removes an ingested raw proposal and rebuilds can
 				].join("\n");
 			}
 
-			if (system.includes("compile runtime memory")) {
+			if (system.includes("compile work context")) {
 				return prompt.includes("External screenshots are blocked.")
-					? "# Runtime Context\n\n- Keep the runtime loop on RovoDev.\n- External screenshots are blocked."
-					: "# Runtime Context\n\n- Keep the runtime loop on RovoDev.";
+					? "# Work Context\n\n- Keep the runtime loop on RovoDev.\n- External screenshots are blocked."
+					: "# Work Context\n\n- Keep the runtime loop on RovoDev.";
 			}
 
 			return "# Profile Context\n\n- No profile context yet.";
@@ -392,9 +420,9 @@ test("deleteWikiMemoryProposal removes an ingested raw proposal and rebuilds can
 
 	const result = await deleteWikiMemoryProposal({
 		generateTextImpl: async ({ system }) => {
-			if (system.includes("maintain the canonical runtime memory")) {
+			if (system.includes("maintain the canonical work context")) {
 				return [
-					"# Runtime Memory",
+					"# Work Context",
 					"",
 					"## Durable Memory",
 					"",
@@ -406,8 +434,8 @@ test("deleteWikiMemoryProposal removes an ingested raw proposal and rebuilds can
 				].join("\n");
 			}
 
-			if (system.includes("compile runtime memory")) {
-				return "# Runtime Context\n\n- Keep the runtime loop on RovoDev.";
+			if (system.includes("compile work context")) {
+				return "# Work Context\n\n- Keep the runtime loop on RovoDev.";
 			}
 
 			return "# Profile Context\n\n- No profile context yet.";
@@ -422,11 +450,11 @@ test("deleteWikiMemoryProposal removes an ingested raw proposal and rebuilds can
 	assert.equal(proposalsAfterDelete.length, 1);
 	assert.match(proposalsAfterDelete[0].content, /runtime loop on RovoDev/u);
 
-	const canonicalPage = await fs.readFile(path.join(wikiDir, "operations", "core-memory.md"), "utf8");
+	const canonicalPage = await fs.readFile(path.join(wikiDir, "work", "context.md"), "utf8");
 	assert.match(canonicalPage, /Keep the runtime loop on RovoDev/u);
 	assert.doesNotMatch(canonicalPage, /External screenshots are blocked/u);
 
-	const runtimeContext = await fs.readFile(path.join(wikiDir, "output", "runtime-context.md"), "utf8");
+	const runtimeContext = await fs.readFile(path.join(wikiDir, "output", "work-context.md"), "utf8");
 	assert.match(runtimeContext, /Keep the runtime loop on RovoDev/u);
 	assert.doesNotMatch(runtimeContext, /External screenshots are blocked/u);
 });
@@ -447,10 +475,10 @@ test("syncWikiBackedMemory with force rebuilds canonical memory from current raw
 
 	await ingestQueuedWikiMemoryProposals({
 		generateTextImpl: async ({ prompt, system }) => {
-			if (system.includes("maintain the canonical runtime memory")) {
+			if (system.includes("maintain the canonical work context")) {
 				return prompt.includes("External screenshots are blocked.")
 					? [
-						"# Runtime Memory",
+						"# Work Context",
 						"",
 						"## Durable Memory",
 						"",
@@ -463,7 +491,7 @@ test("syncWikiBackedMemory with force rebuilds canonical memory from current raw
 						"- Added both runtime memories.",
 					].join("\n")
 					: [
-						"# Runtime Memory",
+						"# Work Context",
 						"",
 						"## Durable Memory",
 						"",
@@ -475,10 +503,10 @@ test("syncWikiBackedMemory with force rebuilds canonical memory from current raw
 					].join("\n");
 			}
 
-			if (system.includes("compile runtime memory")) {
+			if (system.includes("compile work context")) {
 				return prompt.includes("External screenshots are blocked.")
-					? "# Runtime Context\n\n- Keep the runtime loop on RovoDev.\n- External screenshots are blocked."
-					: "# Runtime Context\n\n- Keep the runtime loop on RovoDev.";
+					? "# Work Context\n\n- Keep the runtime loop on RovoDev.\n- External screenshots are blocked."
+					: "# Work Context\n\n- Keep the runtime loop on RovoDev.";
 			}
 
 			return "# Profile Context\n\n- No profile context yet.";
@@ -494,10 +522,10 @@ test("syncWikiBackedMemory with force rebuilds canonical memory from current raw
 	await syncWikiBackedMemory({
 		forceContextRegeneration: true,
 		generateTextImpl: async ({ prompt, system }) => {
-			if (system.includes("maintain the canonical runtime memory")) {
+			if (system.includes("maintain the canonical work context")) {
 				return prompt.includes("External screenshots are blocked.")
 					? [
-						"# Runtime Memory",
+						"# Work Context",
 						"",
 						"## Durable Memory",
 						"",
@@ -510,7 +538,7 @@ test("syncWikiBackedMemory with force rebuilds canonical memory from current raw
 						"- Added both runtime memories.",
 					].join("\n")
 					: [
-						"# Runtime Memory",
+						"# Work Context",
 						"",
 						"## Durable Memory",
 						"",
@@ -522,10 +550,10 @@ test("syncWikiBackedMemory with force rebuilds canonical memory from current raw
 					].join("\n");
 			}
 
-			if (system.includes("compile runtime memory")) {
+			if (system.includes("compile work context")) {
 				return prompt.includes("External screenshots are blocked.")
-					? "# Runtime Context\n\n- Keep the runtime loop on RovoDev.\n- External screenshots are blocked."
-					: "# Runtime Context\n\n- Keep the runtime loop on RovoDev.";
+					? "# Work Context\n\n- Keep the runtime loop on RovoDev.\n- External screenshots are blocked."
+					: "# Work Context\n\n- Keep the runtime loop on RovoDev.";
 			}
 
 			return "# Profile Context\n\n- No profile context yet.";
@@ -533,11 +561,11 @@ test("syncWikiBackedMemory with force rebuilds canonical memory from current raw
 		wikiDir,
 	});
 
-	const canonicalPage = await fs.readFile(path.join(wikiDir, "operations", "core-memory.md"), "utf8");
+	const canonicalPage = await fs.readFile(path.join(wikiDir, "work", "context.md"), "utf8");
 	assert.match(canonicalPage, /Keep the runtime loop on RovoDev/u);
 	assert.doesNotMatch(canonicalPage, /External screenshots are blocked/u);
 
-	const runtimeContext = await fs.readFile(path.join(wikiDir, "output", "runtime-context.md"), "utf8");
+	const runtimeContext = await fs.readFile(path.join(wikiDir, "output", "work-context.md"), "utf8");
 	assert.match(runtimeContext, /Keep the runtime loop on RovoDev/u);
 	assert.doesNotMatch(runtimeContext, /External screenshots are blocked/u);
 });

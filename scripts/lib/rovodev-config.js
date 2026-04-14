@@ -6,6 +6,10 @@ const {
 	getBrowserWorkspaceRovodevMcpServerConfig,
 } = require("../../backend/lib/browser-workspace-mcp");
 const {
+	getWikiCaptureAllowedRovodevMcpServerSignature,
+	getWikiCaptureRovodevMcpServerConfig,
+} = require("../../backend/lib/wiki-capture-mcp");
+const {
 	getQmdAllowedRovodevMcpServerSignature,
 	getQmdRovodevMcpServerConfig,
 } = require("../../backend/lib/qmd");
@@ -234,10 +238,14 @@ function syncWorkspaceRovodevConfig({ cwd = process.cwd() } = {}) {
 		[
 			getQmdAllowedRovodevMcpServerSignature(),
 			getBrowserWorkspaceAllowedRovodevMcpServerSignature({ repoRoot: cwd }),
+			getWikiCaptureAllowedRovodevMcpServerSignature({ repoRoot: cwd }),
 		],
 	);
 	const qmdMcpServers = getQmdRovodevMcpServerConfig({ repoRoot: cwd });
 	const browserWorkspaceMcpServers = getBrowserWorkspaceRovodevMcpServerConfig({
+		repoRoot: cwd,
+	});
+	const wikiCaptureMcpServers = getWikiCaptureRovodevMcpServerConfig({
 		repoRoot: cwd,
 	});
 	const qmdIndexPath = qmdMcpServers.qmd?.env?.INDEX_PATH;
@@ -295,12 +303,13 @@ function syncWorkspaceRovodevConfig({ cwd = process.cwd() } = {}) {
 	const nextWorkspaceMcpConfig = {
 		...sourceMcpConfig,
 		...existingWorkspaceMcpConfig,
-		mcpServers: {
-			...sourceMcpServers,
-			...existingWorkspaceMcpServers,
-			...qmdMcpServers,
-			...browserWorkspaceMcpServers,
-		},
+			mcpServers: {
+				...sourceMcpServers,
+				...existingWorkspaceMcpServers,
+				...qmdMcpServers,
+				...browserWorkspaceMcpServers,
+				...wikiCaptureMcpServers,
+			},
 		inputs: Array.isArray(existingWorkspaceMcpConfig.inputs)
 			? existingWorkspaceMcpConfig.inputs
 			: Array.isArray(sourceMcpConfig.inputs)

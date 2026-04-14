@@ -163,9 +163,9 @@ export function SettingsSurfacePage() {
 				label: "Profile context",
 			},
 			{
-				description: "Runtime memory compiled from `operations/core-memory.md`.",
-				document: wikiStatus.compiledContexts.operations,
-				label: "Runtime context",
+				description: "Work memory compiled from `work/context.md`.",
+				document: wikiStatus.compiledContexts.work,
+				label: "Work context",
 			},
 		];
 	}, [wikiStatus]);
@@ -391,14 +391,14 @@ export function SettingsSurfacePage() {
 						<CardHeader className="pb-3">
 							<CardTitle>Wiki mirror</CardTitle>
 							<CardDescription>
-								Operational snapshot of the generated wiki rooted at <span className="font-mono text-xs">{wikiStatus?.wikiDir || "/Users/esoh/wiki"}</span>.
+								Operational snapshot of the generated wiki rooted at <span className="font-mono text-xs">{wikiStatus?.wikiDir || "/Users/esoh/llm-wiki"}</span>.
 							</CardDescription>
 						</CardHeader>
 						<CardContent className="space-y-3">
 							<div className="rounded-xl border border-border bg-surface-raised px-3 py-3">
 								<div className="text-xs uppercase tracking-wide text-text-subtle">Wiki root</div>
 								<div className="mt-1 break-all font-mono text-sm">
-									{wikiStatus?.wikiDir || "/Users/esoh/wiki"}
+									{wikiStatus?.wikiDir || "/Users/esoh/llm-wiki"}
 								</div>
 							</div>
 

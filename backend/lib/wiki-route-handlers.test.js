@@ -36,31 +36,72 @@ async function withServer(registerRoutes, run) {
 
 function createTestHandlers(overrides = {}) {
 	return createWikiRouteHandlers({
+		buildWikiMemoryBriefImpl: ({ title }) => `# ${title || "Memory Brief"}\n`,
+		buildWikiMemoryDeckImpl: ({ title }) => `---\nmarp: true\ntitle: "${title || "Memory Explorer Deck"}"\n---\n`,
+		buildWikiMemoryExplorerCsvImpl: () => "\"id\",\"title\"\n\"canonical:work\",\"Work Context\"\n",
+		buildWikiMemoryExplorerImpl: async () => ({
+			edges: [],
+			facets: {
+				kinds: [],
+				scopes: [],
+				statuses: [],
+				tags: [],
+				threads: [],
+			},
+			filters: {
+				includeLinkedKnowledge: true,
+				kind: null,
+				scope: null,
+				status: null,
+				tag: null,
+				threadId: null,
+			},
+			generatedAt: "2026-04-12T00:00:00.000Z",
+			nodes: [],
+			stats: {
+				edgeCount: 0,
+				nodeCount: 0,
+				totalEdgeCount: 0,
+				totalNodeCount: 0,
+				visibleKindCounts: {},
+				visibleScopeCounts: {},
+				visibleStatusCounts: {},
+			},
+		}),
+		captureUrlImpl: async ({ url }) => ({
+			captureStatus: "created",
+			filePath: "/tmp/llm-wiki/raw/2026/04/capture.md",
+			metadata: {
+				canonical_url: url,
+				source_url: url,
+				title: "Captured page",
+			},
+		}),
 		deleteWikiMemoryBlockImpl: async ({ blockId, revision, scope }) => ({
 			memories: {
-				operations: {
+				work: {
 					blocks: [],
-					canonicalPath: "/tmp/wiki/operations/core-memory.md",
+					canonicalPath: "/tmp/llm-wiki/wiki/work/context.md",
 					compiledContext: {
 						charCount: 18,
 						exists: true,
-						path: "/tmp/wiki/output/runtime-context.md",
-						preview: "# Runtime Context",
+						path: "/tmp/llm-wiki/output/work-context.md",
+						preview: "# Work Context",
 						updatedAt: "2026-04-12T00:00:00.000Z",
 					},
 					exists: true,
 					revision: `${scope}:${blockId}:${revision}`,
-					scope: "operations",
-					title: "Runtime Memory",
+					scope: "work",
+					title: "Work Context",
 					updatedAt: "2026-04-12T00:00:00.000Z",
 				},
 				profile: {
 					blocks: [],
-					canonicalPath: "/tmp/wiki/profiles/self.md",
+					canonicalPath: "/tmp/llm-wiki/wiki/profiles/self.md",
 					compiledContext: {
 						charCount: 18,
 						exists: true,
-						path: "/tmp/wiki/output/profile-context.md",
+						path: "/tmp/llm-wiki/output/profile-context.md",
 						preview: "# Profile Context",
 						updatedAt: "2026-04-12T00:00:00.000Z",
 					},
@@ -81,29 +122,29 @@ function createTestHandlers(overrides = {}) {
 		}),
 		deleteWikiMemoryProposalImpl: async ({ proposalId }) => ({
 			memories: {
-				operations: {
+				work: {
 					blocks: [],
-					canonicalPath: "/tmp/wiki/operations/core-memory.md",
+					canonicalPath: "/tmp/llm-wiki/wiki/work/context.md",
 					compiledContext: {
 						charCount: 18,
 						exists: true,
-						path: "/tmp/wiki/output/runtime-context.md",
-						preview: "# Runtime Context",
+						path: "/tmp/llm-wiki/output/work-context.md",
+						preview: "# Work Context",
 						updatedAt: "2026-04-12T00:00:00.000Z",
 					},
 					exists: true,
-					revision: "operations-rev",
-					scope: "operations",
-					title: "Runtime Memory",
+					revision: "work-rev",
+					scope: "work",
+					title: "Work Context",
 					updatedAt: "2026-04-12T00:00:00.000Z",
 				},
 				profile: {
 					blocks: [],
-					canonicalPath: "/tmp/wiki/profiles/self.md",
+					canonicalPath: "/tmp/llm-wiki/wiki/profiles/self.md",
 					compiledContext: {
 						charCount: 18,
 						exists: true,
-						path: "/tmp/wiki/output/profile-context.md",
+						path: "/tmp/llm-wiki/output/profile-context.md",
 						preview: "# Profile Context",
 						updatedAt: "2026-04-12T00:00:00.000Z",
 					},
@@ -119,8 +160,8 @@ function createTestHandlers(overrides = {}) {
 				content: "Old memory",
 				createdAt: "2026-04-12T00:00:00.000Z",
 				id: proposalId,
-				path: `/tmp/wiki/raw/turns/${proposalId}.md`,
-				scope: "operations",
+				path: `/tmp/llm-wiki/raw/${proposalId}.md`,
+				scope: "work",
 				sourceMessageId: null,
 				sourceThreadId: null,
 				status: "ingested",
@@ -164,38 +205,38 @@ function createTestHandlers(overrides = {}) {
 			recentProposals: [],
 			totalCanonicalPages: 0,
 			totalRawCaptures: 0,
-			wikiDir: "/tmp/wiki",
+			wikiDir: "/tmp/llm-wiki",
 		}),
 		getWikiMemoriesImpl: async () => ({
-			operations: {
+			work: {
 				blocks: [{
 					charCount: 18,
 					content: "Keep responses terse.",
-					id: "operations-1",
+					id: "work-1",
 					lineCount: 1,
 					preview: "Keep responses terse.",
 				}],
-				canonicalPath: "/tmp/wiki/operations/core-memory.md",
+				canonicalPath: "/tmp/llm-wiki/wiki/work/context.md",
 				compiledContext: {
 					charCount: 18,
 					exists: true,
-					path: "/tmp/wiki/output/runtime-context.md",
-					preview: "# Runtime Context",
+					path: "/tmp/llm-wiki/output/work-context.md",
+					preview: "# Work Context",
 					updatedAt: "2026-04-12T00:00:00.000Z",
 				},
 				exists: true,
-				revision: "operations-rev",
-				scope: "operations",
-				title: "Runtime Memory",
+				revision: "work-rev",
+				scope: "work",
+				title: "Work Context",
 				updatedAt: "2026-04-12T00:00:00.000Z",
 			},
 			profile: {
 				blocks: [],
-				canonicalPath: "/tmp/wiki/profiles/self.md",
+				canonicalPath: "/tmp/llm-wiki/wiki/profiles/self.md",
 				compiledContext: {
 					charCount: 18,
 					exists: true,
-					path: "/tmp/wiki/output/profile-context.md",
+					path: "/tmp/llm-wiki/output/profile-context.md",
 					preview: "# Profile Context",
 					updatedAt: "2026-04-12T00:00:00.000Z",
 				},
@@ -206,15 +247,24 @@ function createTestHandlers(overrides = {}) {
 				updatedAt: "2026-04-12T00:00:00.000Z",
 			},
 		}),
+		lintWikiImpl: async () => ({
+			issues: [],
+		}),
 		logger: { warn() {} },
 		normalizeNaiveWikiSearchResultsImpl: (results) => results,
 		queryWikiImpl: async () => ({ results: [] }),
+		saveSynthesisPageImpl: async ({ title }) => ({
+			path: `/tmp/llm-wiki/wiki/synthesis/${title.toLowerCase().replace(/\s+/gu, "-")}.md`,
+			slug: title.toLowerCase().replace(/\s+/gu, "-"),
+			title,
+		}),
 		searchWikiWithQmdImpl: async () => [],
 		syncWikiMemoryImpl: async () => ({
 			errors: [],
 			processed: 0,
 			updatedScopes: [],
 		}),
+		wikiDir: "/tmp/llm-wiki",
 		...overrides,
 	});
 }
@@ -229,9 +279,143 @@ test("GET /api/wiki/memories returns canonical wiki memory documents", async () 
 		const payload = await response.json();
 
 		assert.equal(response.status, 200);
-		assert.equal(payload.memories.operations.blocks.length, 1);
-		assert.equal(payload.memories.operations.canonicalPath, "/tmp/wiki/operations/core-memory.md");
+		assert.equal(payload.memories.work.blocks.length, 1);
+		assert.equal(payload.memories.work.canonicalPath, "/tmp/llm-wiki/wiki/work/context.md");
 		assert.equal(payload.memories.profile.title, "Self");
+	});
+});
+
+test("POST /api/wiki/captures returns a normalized created response", async () => {
+	const captureCalls = [];
+	const handlers = createTestHandlers({
+		captureUrlImpl: async (input) => {
+			captureCalls.push(input);
+			return {
+				captureStatus: "created",
+				filePath: "/tmp/llm-wiki/raw/2026/04/rovo.md",
+				metadata: {
+					canonical_url: "https://www.atlassian.com/software/rovo",
+					source_url: "https://www.atlassian.com/software/rovo",
+					title: "Rovo",
+				},
+			};
+		},
+	});
+
+	await withServer((app) => {
+		app.post("/api/wiki/captures", handlers.handleWikiCapture);
+	}, async (baseUrl) => {
+		const response = await fetch(`${baseUrl}/api/wiki/captures`, {
+			body: JSON.stringify({ url: "https://www.atlassian.com/software/rovo" }),
+			headers: {
+				"Content-Type": "application/json",
+			},
+			method: "POST",
+		});
+		const payload = await response.json();
+
+		assert.equal(response.status, 201);
+		assert.deepEqual(captureCalls, [{
+			wikiDir: "/tmp/llm-wiki",
+			url: "https://www.atlassian.com/software/rovo",
+		}]);
+		assert.deepEqual(payload, {
+			canonicalUrl: "https://www.atlassian.com/software/rovo",
+			reason: null,
+			sourceUrl: "https://www.atlassian.com/software/rovo",
+			status: "created",
+			title: "Rovo",
+			wikiPath: "raw/2026/04/rovo.md",
+		});
+	});
+});
+
+test("POST /api/wiki/captures returns existing captures without rewriting", async () => {
+	const handlers = createTestHandlers({
+		captureUrlImpl: async () => ({
+			captureStatus: "existing",
+			filePath: "/tmp/llm-wiki/raw/2026/04/rovo.md",
+			metadata: {
+				canonical_url: "https://www.atlassian.com/software/rovo",
+				source_url: "https://www.atlassian.com/software/rovo",
+				title: "Rovo",
+			},
+		}),
+	});
+
+	await withServer((app) => {
+		app.post("/api/wiki/captures", handlers.handleWikiCapture);
+	}, async (baseUrl) => {
+		const response = await fetch(`${baseUrl}/api/wiki/captures`, {
+			body: JSON.stringify({ url: "https://www.atlassian.com/software/rovo" }),
+			headers: {
+				"Content-Type": "application/json",
+			},
+			method: "POST",
+		});
+		const payload = await response.json();
+
+		assert.equal(response.status, 200);
+		assert.equal(payload.status, "existing");
+		assert.equal(payload.wikiPath, "raw/2026/04/rovo.md");
+	});
+});
+
+test("POST /api/wiki/captures returns skipped captures with a reason", async () => {
+	const handlers = createTestHandlers({
+		captureUrlImpl: async () => ({
+			reason: "search-results-page",
+			skipped: true,
+		}),
+	});
+
+	await withServer((app) => {
+		app.post("/api/wiki/captures", handlers.handleWikiCapture);
+	}, async (baseUrl) => {
+		const response = await fetch(`${baseUrl}/api/wiki/captures`, {
+			body: JSON.stringify({ url: "https://www.google.com/search?q=rovo" }),
+			headers: {
+				"Content-Type": "application/json",
+			},
+			method: "POST",
+		});
+		const payload = await response.json();
+
+		assert.equal(response.status, 200);
+		assert.deepEqual(payload, {
+			canonicalUrl: null,
+			reason: "search-results-page",
+			sourceUrl: "https://www.google.com/search?q=rovo",
+			status: "skipped",
+			title: null,
+			wikiPath: null,
+		});
+	});
+});
+
+test("POST /api/wiki/captures returns 400 for invalid inputs", async () => {
+	const handlers = createTestHandlers({
+		captureUrlImpl: async () => {
+			const error = new Error("URL rejected: private/local address localhost");
+			error.code = "INVALID_INPUT";
+			throw error;
+		},
+	});
+
+	await withServer((app) => {
+		app.post("/api/wiki/captures", handlers.handleWikiCapture);
+	}, async (baseUrl) => {
+		const response = await fetch(`${baseUrl}/api/wiki/captures`, {
+			body: JSON.stringify({ url: "http://localhost:3000" }),
+			headers: {
+				"Content-Type": "application/json",
+			},
+			method: "POST",
+		});
+		const payload = await response.json();
+
+		assert.equal(response.status, 400);
+		assert.equal(payload.error, "URL rejected: private/local address localhost");
 	});
 });
 
@@ -358,6 +542,7 @@ test("GET /api/wiki/search falls back to naive search when qmd fails", async () 
 test("POST /api/wiki/sync returns both wiki memory sync status and qmd status", async () => {
 	const memorySyncCalls = [];
 	const qmdSyncCalls = [];
+	const lintCalls = [];
 	const handlers = createTestHandlers({
 		ensureFreshWikiQmdIndexImpl: async (input) => {
 			qmdSyncCalls.push(input);
@@ -382,7 +567,13 @@ test("POST /api/wiki/sync returns both wiki memory sync status and qmd status", 
 			return {
 				errors: [],
 				processed: 2,
-				updatedScopes: ["profile", "operations"],
+				updatedScopes: ["profile", "work"],
+			};
+		},
+		lintWikiImpl: async (input) => {
+			lintCalls.push(input);
+			return {
+				issues: [{ message: "Example lint issue", path: "wiki/index.md", type: "missing-index-entry" }],
 			};
 		},
 	});
@@ -403,9 +594,49 @@ test("POST /api/wiki/sync returns both wiki memory sync status and qmd status", 
 		assert.equal(memorySyncCalls.length, 1);
 		assert.equal(memorySyncCalls[0].force, true);
 		assert.equal(qmdSyncCalls.length, 1);
+		assert.equal(lintCalls.length, 1);
 		assert.equal(payload.memory.processed, 2);
+		assert.equal(payload.lint.issues.length, 1);
 		assert.equal(payload.qmd.totalDocuments, 2);
 		assert.equal(payload.sync.didSync, true);
+	});
+});
+
+test("POST /api/wiki/synthesis saves a reusable synthesis page", async () => {
+	const saveCalls = [];
+	const handlers = createTestHandlers({
+		saveSynthesisPageImpl: async (input) => {
+			saveCalls.push(input);
+			return {
+				path: "/tmp/llm-wiki/wiki/synthesis/atlassian-ai.md",
+				slug: "atlassian-ai",
+				title: input.title,
+			};
+		},
+	});
+
+	await withServer((app) => {
+		app.post("/api/wiki/synthesis", handlers.handleWikiSynthesisSave);
+	}, async (baseUrl) => {
+		const response = await fetch(`${baseUrl}/api/wiki/synthesis`, {
+			body: JSON.stringify({
+				title: "Atlassian AI",
+				content: "# Atlassian AI\n\nReusable synthesis body.",
+				sources: ["wiki/sources/atlassian-ai-source.md"],
+				tags: ["ai", "atlassian"],
+			}),
+			headers: {
+				"Content-Type": "application/json",
+			},
+			method: "POST",
+		});
+		const payload = await response.json();
+
+		assert.equal(response.status, 201);
+		assert.equal(saveCalls.length, 1);
+		assert.equal(saveCalls[0].title, "Atlassian AI");
+		assert.equal(payload.slug, "atlassian-ai");
+		assert.equal(payload.path, "wiki/synthesis/atlassian-ai.md");
 	});
 });
 
@@ -416,29 +647,29 @@ test("DELETE /api/wiki/memories/:scope/blocks/:blockId removes a canonical memor
 			deleteCalls.push(input);
 			return {
 				memories: {
-					operations: {
+					work: {
 						blocks: [],
-						canonicalPath: "/tmp/wiki/operations/core-memory.md",
+						canonicalPath: "/tmp/llm-wiki/wiki/work/context.md",
 						compiledContext: {
 							charCount: 12,
 							exists: true,
-							path: "/tmp/wiki/output/runtime-context.md",
-							preview: "# Runtime Context",
+							path: "/tmp/llm-wiki/output/work-context.md",
+							preview: "# Work Context",
 							updatedAt: "2026-04-12T00:00:00.000Z",
 						},
 						exists: true,
-						revision: "operations-next-rev",
-						scope: "operations",
-						title: "Runtime Memory",
+						revision: "work-next-rev",
+						scope: "work",
+						title: "Work Context",
 						updatedAt: "2026-04-12T00:00:00.000Z",
 					},
 					profile: {
 						blocks: [],
-						canonicalPath: "/tmp/wiki/profiles/self.md",
+						canonicalPath: "/tmp/llm-wiki/wiki/profiles/self.md",
 						compiledContext: {
 							charCount: 12,
 							exists: true,
-							path: "/tmp/wiki/output/profile-context.md",
+							path: "/tmp/llm-wiki/output/profile-context.md",
 							preview: "# Profile Context",
 							updatedAt: "2026-04-12T00:00:00.000Z",
 						},
@@ -463,8 +694,8 @@ test("DELETE /api/wiki/memories/:scope/blocks/:blockId removes a canonical memor
 	await withServer((app) => {
 		app.delete("/api/wiki/memories/:scope/blocks/:blockId", handlers.handleWikiMemoryBlockDelete);
 	}, async (baseUrl) => {
-		const response = await fetch(`${baseUrl}/api/wiki/memories/operations/blocks/operations-1`, {
-			body: JSON.stringify({ revision: "operations-rev" }),
+		const response = await fetch(`${baseUrl}/api/wiki/memories/work/blocks/work-1`, {
+			body: JSON.stringify({ revision: "work-rev" }),
 			headers: {
 				"Content-Type": "application/json",
 			},
@@ -474,13 +705,13 @@ test("DELETE /api/wiki/memories/:scope/blocks/:blockId removes a canonical memor
 
 		assert.equal(response.status, 200);
 		assert.equal(deleteCalls.length, 1);
-		assert.equal(deleteCalls[0].blockId, "operations-1");
-		assert.equal(deleteCalls[0].revision, "operations-rev");
-		assert.equal(deleteCalls[0].scope, "operations");
+		assert.equal(deleteCalls[0].blockId, "work-1");
+		assert.equal(deleteCalls[0].revision, "work-rev");
+		assert.equal(deleteCalls[0].scope, "work");
 		assert.equal(typeof deleteCalls[0].logger.warn, "function");
-		assert.equal(payload.removedBlock.id, "operations-1");
-		assert.equal(payload.memories.operations.revision, "operations-next-rev");
-		assert.equal(payload.wiki.wikiDir, "/tmp/wiki");
+		assert.equal(payload.removedBlock.id, "work-1");
+		assert.equal(payload.memories.work.revision, "work-next-rev");
+		assert.equal(payload.wiki.wikiDir, "/tmp/llm-wiki");
 	});
 });
 
@@ -496,7 +727,7 @@ test("DELETE /api/wiki/memories/:scope/blocks/:blockId returns 409 for stale rev
 	await withServer((app) => {
 		app.delete("/api/wiki/memories/:scope/blocks/:blockId", handlers.handleWikiMemoryBlockDelete);
 	}, async (baseUrl) => {
-		const response = await fetch(`${baseUrl}/api/wiki/memories/operations/blocks/operations-1`, {
+		const response = await fetch(`${baseUrl}/api/wiki/memories/work/blocks/work-1`, {
 			body: JSON.stringify({ revision: "stale-rev" }),
 			headers: {
 				"Content-Type": "application/json",
@@ -517,29 +748,29 @@ test("DELETE /api/wiki/memories/proposals/:proposalId removes a raw memory propo
 			deleteCalls.push(input);
 			return {
 				memories: {
-					operations: {
+					work: {
 						blocks: [],
-						canonicalPath: "/tmp/wiki/operations/core-memory.md",
+						canonicalPath: "/tmp/llm-wiki/wiki/work/context.md",
 						compiledContext: {
 							charCount: 12,
 							exists: true,
-							path: "/tmp/wiki/output/runtime-context.md",
-							preview: "# Runtime Context",
+							path: "/tmp/llm-wiki/output/work-context.md",
+							preview: "# Work Context",
 							updatedAt: "2026-04-12T00:00:00.000Z",
 						},
 						exists: true,
-						revision: "operations-next-rev",
-						scope: "operations",
-						title: "Runtime Memory",
+						revision: "work-next-rev",
+						scope: "work",
+						title: "Work Context",
 						updatedAt: "2026-04-12T00:00:00.000Z",
 					},
 					profile: {
 						blocks: [],
-						canonicalPath: "/tmp/wiki/profiles/self.md",
+						canonicalPath: "/tmp/llm-wiki/wiki/profiles/self.md",
 						compiledContext: {
 							charCount: 12,
 							exists: true,
-							path: "/tmp/wiki/output/profile-context.md",
+							path: "/tmp/llm-wiki/output/profile-context.md",
 							preview: "# Profile Context",
 							updatedAt: "2026-04-12T00:00:00.000Z",
 						},
@@ -554,8 +785,8 @@ test("DELETE /api/wiki/memories/proposals/:proposalId removes a raw memory propo
 					action: "add",
 					createdAt: "2026-04-12T00:00:00.000Z",
 					id: input.proposalId,
-					path: `/tmp/wiki/raw/turns/${input.proposalId}.md`,
-					scope: "operations",
+					path: `/tmp/llm-wiki/raw/${input.proposalId}.md`,
+					scope: "work",
 					sourceMessageId: null,
 					sourceThreadId: null,
 					status: "ingested",
@@ -578,6 +809,94 @@ test("DELETE /api/wiki/memories/proposals/:proposalId removes a raw memory propo
 		assert.equal(deleteCalls[0].proposalId, "proposal-1");
 		assert.equal(typeof deleteCalls[0].logger.warn, "function");
 		assert.equal(payload.proposal.id, "proposal-1");
-		assert.equal(payload.wiki.wikiDir, "/tmp/wiki");
+		assert.equal(payload.wiki.wikiDir, "/tmp/llm-wiki");
+	});
+});
+
+test("GET /api/wiki/memory-explorer returns the normalized explorer snapshot", async () => {
+	const handlers = createTestHandlers({
+		buildWikiMemoryExplorerImpl: async ({ filters }) => ({
+			edges: [],
+			facets: {
+				kinds: [{ count: 1, label: "canonical memory", value: "canonical-memory" }],
+				scopes: [],
+				statuses: [],
+				tags: [],
+				threads: [],
+			},
+			filters,
+			generatedAt: "2026-04-12T00:00:00.000Z",
+			nodes: [{
+				bodyPreview: "Keep the runtime loop on RovoDev.",
+				charCount: 32,
+				connectionCount: 1,
+				createdAt: null,
+				id: "canonical:work",
+				kind: "canonical-memory",
+				label: "Work memory",
+				metadata: {},
+				path: "/tmp/llm-wiki/wiki/work/context.md",
+				relativePath: "wiki/work/context.md",
+				scope: "work",
+				sourceMessageId: null,
+				sourceThreadId: null,
+				status: null,
+				summary: "Keep the runtime loop on RovoDev.",
+				tags: ["work", "memory"],
+				target: null,
+				title: "Work Context",
+				topics: ["runtime", "rovodev"],
+				updatedAt: "2026-04-12T00:00:00.000Z",
+				wikiLinks: [],
+			}],
+			stats: {
+				edgeCount: 0,
+				nodeCount: 1,
+				totalEdgeCount: 0,
+				totalNodeCount: 1,
+				visibleKindCounts: { "canonical-memory": 1 },
+				visibleScopeCounts: { work: 1 },
+				visibleStatusCounts: {},
+			},
+		}),
+	});
+
+	await withServer((app) => {
+		app.get("/api/wiki/memory-explorer", handlers.handleWikiMemoryExplorer);
+	}, async (baseUrl) => {
+		const response = await fetch(`${baseUrl}/api/wiki/memory-explorer?scope=work&includeLinkedKnowledge=false`);
+		const payload = await response.json();
+
+		assert.equal(response.status, 200);
+		assert.equal(payload.explorer.nodes.length, 1);
+		assert.equal(payload.explorer.filters.scope, "work");
+		assert.equal(payload.explorer.filters.includeLinkedKnowledge, false);
+	});
+});
+
+test("POST /api/wiki/memory-explorer/brief returns generated markdown", async () => {
+	const handlers = createTestHandlers({
+		buildWikiMemoryBriefImpl: ({ title }) => `# ${title}\n\n- Keep the runtime loop on RovoDev.\n`,
+	});
+
+	await withServer((app) => {
+		app.post("/api/wiki/memory-explorer/brief", handlers.handleWikiMemoryBrief);
+	}, async (baseUrl) => {
+		const response = await fetch(`${baseUrl}/api/wiki/memory-explorer/brief`, {
+			body: JSON.stringify({
+				filters: { scope: "work" },
+				selectedNodeIds: ["canonical:work"],
+				title: "Work Memory Brief",
+			}),
+			headers: {
+				"Content-Type": "application/json",
+			},
+			method: "POST",
+		});
+		const payload = await response.json();
+
+		assert.equal(response.status, 200);
+		assert.match(payload.brief.content, /Work Memory Brief/u);
+		assert.deepEqual(payload.brief.selectedNodeIds, ["canonical:work"]);
 	});
 });

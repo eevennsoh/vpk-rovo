@@ -38,7 +38,7 @@ test("buildRovoAppHermesContextDescription includes installed skill catalog and 
 			profile: {
 				content: "- Prefers concise answers.",
 			},
-			operations: {
+			work: {
 				content: "- Keep the runtime loop on RovoDev.",
 			},
 		}),
