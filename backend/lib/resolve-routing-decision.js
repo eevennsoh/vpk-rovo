@@ -19,6 +19,11 @@ function presentationForIntent(intent) {
 // Layer 1 — Deterministic fast path (< 10ms)
 // ---------------------------------------------------------------------------
 
+const DOCUMENT_VERB_PATTERN =
+	/\b(write|draft|create|build|generate|make|compose|outline|summari[sz]e|plan|design|implement|refactor|turn|convert)\b/;
+const DOCUMENT_NOUN_PATTERN =
+	/\b(document|doc|plan|brief|proposal|spec|summary|memo|outline|report|email|copy|article|blog|code|component|app|page|ui|table|spreadsheet|sheet|artifact)\b/;
+
 /**
  * Attempts to classify a routing decision without calling the LLM.
  * Returns a full RoutingDecision when confident, or `null` when the
@@ -49,6 +54,18 @@ function resolveRoutingDecisionFastPath(context) {
 			presentation: "artifact_preview",
 			confidence: 1,
 			reason: "active_artifact",
+			origin,
+		};
+	}
+
+	// Document verb + noun → artifact_create
+	const lowerPrompt = prompt.toLowerCase();
+	if (DOCUMENT_VERB_PATTERN.test(lowerPrompt) && DOCUMENT_NOUN_PATTERN.test(lowerPrompt)) {
+		return {
+			intent: "artifact_create",
+			presentation: "artifact_preview",
+			confidence: 1,
+			reason: "document_verb_noun_match",
 			origin,
 		};
 	}

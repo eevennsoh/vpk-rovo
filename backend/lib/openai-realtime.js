@@ -13,7 +13,7 @@
  */
 
 const WebSocket = require("ws");
-const { getRealtimeConfig, getAuthToken, getEnvVars } = require("./ai-gateway-helpers");
+const { getRealtimeConfig, getAuthToken, getEnvVars, streamBedrockGatewayManualSse } = require("./ai-gateway-helpers");
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -203,6 +203,7 @@ class RealtimeSession {
 		this._awaitingOpenAIPong = false;
 		this._sessionRefreshTimer = null;
 		this._plannedCloseReason = null;
+		this._clickyTtsResponseId = null; // suppress text for Clicky TTS responses
 	}
 
 	get state() {
@@ -421,6 +422,9 @@ class RealtimeSession {
 			case "text_message_from_user":
 				this._handleTextMessageFromUser(msg);
 				break;
+			case "image_message_from_user":
+				this._handleImageMessageFromUser(msg);
+				break;
 			case "response_create":
 				this._handleResponseCreate();
 				break;
@@ -593,6 +597,157 @@ class RealtimeSession {
 		this._log("REALTIME", "Text message received from user");
 	}
 
+	/**
+	 * Handle an image message from the browser client.
+	 * Sends as a conversation item with input_image content part,
+	 * optionally accompanied by text.
+	 * @param {{ image: string, text?: string, detail?: "low"|"high"|"auto" }} msg
+	 */
+	_handleImageMessageFromUser(msg) {
+		if (!this.isReady || !this._openaiWs) {
+			return;
+		}
+
+		const image = typeof msg.image === "string" ? msg.image : "";
+		if (!image) {
+			return;
+		}
+
+		// Route Clicky screenshots to Claude via AI Gateway
+		if (msg.clicky) {
+			this._handleClickyVision(msg);
+			return;
+		}
+
+		const content = [
+			{
+				type: "input_image",
+				image,
+				detail: msg.detail || "low",
+			},
+		];
+
+		// Append text part if provided
+		const text = typeof msg.text === "string" ? msg.text.trim() : "";
+		if (text) {
+			content.push({
+				type: "input_text",
+				text,
+			});
+		}
+
+		this._sendToOpenAI({
+			type: OPENAI_EVENT.CONVERSATION_ITEM_CREATE,
+			item: {
+				type: "message",
+				role: "user",
+				content,
+			},
+		});
+		this._sendToOpenAI({
+			type: OPENAI_EVENT.RESPONSE_CREATE,
+			response: {},
+		});
+		this._log("REALTIME", `Image message received from user (${image.length} chars, detail: ${msg.detail || "low"})`);
+	}
+
+	// ── Clicky vision (Claude via AI Gateway) ────────────────────────────
+
+	async _handleClickyVision(msg) {
+		const envVars = getEnvVars();
+		const gatewayUrl = envVars.AI_GATEWAY_URL;
+
+		if (!gatewayUrl) {
+			this._log("CLICKY_VISION", "AI_GATEWAY_URL not configured — falling back to OpenAI");
+			this._handleImageMessageFromUser({ ...msg, clicky: false });
+			return;
+		}
+
+		const image = typeof msg.image === "string" ? msg.image : "";
+		const textContext = typeof msg.text === "string" ? msg.text.trim() : "";
+		const systemPrompt = typeof msg.systemPrompt === "string" ? msg.systemPrompt : "";
+
+		this._log("CLICKY_VISION", `Sending screenshot to Claude (${image.length} chars)`);
+
+		// Build Anthropic messages with image
+		const userContent = [
+			{
+				type: "image",
+				source: {
+					type: "base64",
+					media_type: "image/jpeg",
+					data: image,
+				},
+			},
+		];
+		if (textContext) {
+			userContent.push({
+				type: "text",
+				text: textContext,
+			});
+		}
+
+		try {
+			const result = await streamBedrockGatewayManualSse({
+				gatewayUrl,
+				envVars,
+				system: systemPrompt || undefined,
+				messages: [{ role: "user", content: userContent }],
+				maxOutputTokens: 300,
+			});
+
+			const responseText = result?.text || "";
+			if (!responseText) {
+				this._log("CLICKY_VISION", "Claude returned empty response");
+				this._sendToClient({ type: "response_done" });
+				return;
+			}
+
+			this._log("CLICKY_VISION", `Claude response: ${responseText.slice(0, 100)}...`);
+
+			// Send Claude's text response directly to the client for POINT tag parsing
+			this._sendToClient({
+				type: "clicky_text_completed",
+				text: responseText,
+			});
+
+			// Strip POINT tag for TTS — OpenAI should only read the spoken text
+			const spokenText = responseText.replace(/\[POINT:[^\]]*\]/g, "").trim();
+
+			if (spokenText && this.isReady && this._openaiWs) {
+				// Mark the next response as a Clicky TTS response (suppress its text output)
+				this._clickyTtsResponseId = "pending";
+
+				// Inject Claude's response into OpenAI Realtime for TTS generation
+				this._sendToOpenAI({
+					type: OPENAI_EVENT.CONVERSATION_ITEM_CREATE,
+					item: {
+						type: "message",
+						role: "user",
+						content: [
+							{
+								type: "input_text",
+								text: `Read this response aloud exactly as written, without adding anything: "${spokenText}"`,
+							},
+						],
+					},
+				});
+				this._sendToOpenAI({
+					type: OPENAI_EVENT.RESPONSE_CREATE,
+					response: {},
+				});
+			} else {
+				// No spoken text (POINT-only response) — send synthetic response_done
+				// so the frontend voice state machine resets
+				this._sendToClient({ type: "response_done" });
+			}
+		} catch (error) {
+			this._log("CLICKY_VISION", `Claude vision error: ${error.message}`);
+			// Fall back to OpenAI
+			this._handleImageMessageFromUser({ ...msg, clicky: false });
+		}
+	}
+
 	// ── OpenAI event handling ─────────────────────────────────────────────
 
 	_handleOpenAIMessage(data) {
@@ -624,6 +779,11 @@ class RealtimeSession {
 				break;
 
 			case OPENAI_EVENT.RESPONSE_CREATED:
+				// Track Clicky TTS responses to suppress their text output
+				if (this._clickyTtsResponseId === "pending") {
+					this._clickyTtsResponseId = event.response?.id ?? event.response_id ?? null;
+					this._log("CLICKY_VISION", `TTS response created: ${this._clickyTtsResponseId}`);
+				}
 				this._sendToClient({
 					type: "response_created",
 					responseId: event.response?.id ?? event.response_id,
@@ -635,6 +795,10 @@ class RealtimeSession {
 				break;
 
 			case OPENAI_EVENT.RESPONSE_TEXT_DELTA:
+				// Suppress text from Clicky TTS responses (Claude already sent the text)
+				if (this._clickyTtsResponseId && event.response_id === this._clickyTtsResponseId) {
+					break;
+				}
 				this._sendToClient({
 					type: "text_delta",
 					delta: event.delta,
@@ -648,6 +812,10 @@ class RealtimeSession {
 				break;
 
 			case OPENAI_EVENT.RESPONSE_AUDIO_TRANSCRIPT_DELTA:
+				// Suppress transcript from Clicky TTS responses
+				if (this._clickyTtsResponseId && event.response_id === this._clickyTtsResponseId) {
+					break;
+				}
 				this._sendToClient({
 					type: "audio_transcript_delta",
 					delta: event.delta,
@@ -661,6 +829,10 @@ class RealtimeSession {
 				break;
 
 			case OPENAI_EVENT.RESPONSE_DONE:
+				// Clear Clicky TTS tracking when its response completes
+				if (this._clickyTtsResponseId && (event.response?.id ?? event.response_id) === this._clickyTtsResponseId) {
+					this._clickyTtsResponseId = null;
+				}
 				this._sendToClient({
 					type: "response_done",
 					responseId: event.response?.id ?? event.response_id,

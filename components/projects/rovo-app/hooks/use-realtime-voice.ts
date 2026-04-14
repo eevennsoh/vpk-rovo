@@ -84,6 +84,11 @@ export interface UseRealtimeVoiceResult {
 		messageId?: string;
 		text: string;
 	}) => Promise<void>;
+	sendImageInput: (payload: {
+		image: string;
+		text?: string;
+		detail?: "low" | "high" | "auto";
+	}) => void;
 	voiceState: RealtimeVoiceState;
 	generationState: RealtimeGenerationState;
 	isConnected: boolean;
@@ -168,6 +173,13 @@ interface ClientTextMessageFromUser {
 	text: string;
 }
 
+interface ClientImageMessageFromUser {
+	type: "image_message_from_user";
+	image: string;
+	text?: string;
+	detail?: "low" | "high" | "auto";
+}
+
 interface ClientResponseCreate {
 	type: "response_create";
 }
@@ -178,6 +190,7 @@ type ClientMessage =
 	| ClientSessionUpdate
 	| ClientContextInject
 	| ClientTextMessageFromUser
+	| ClientImageMessageFromUser
 	| ClientResponseCreate;
 
 // ---------------------------------------------------------------------------
@@ -250,6 +263,11 @@ interface ServerResponseDone {
 	responseId?: string;
 }
 
+interface ServerClickyTextCompleted {
+	type: "clicky_text_completed";
+	text: string;
+}
+
 type ServerMessage =
 	| ServerSessionReady
 	| ServerAudioDelta
@@ -262,7 +280,8 @@ type ServerMessage =
 	| ServerSpeechStopped
 	| ServerError
 	| ServerFunctionCall
-	| ServerResponseDone;
+	| ServerResponseDone
+	| ServerClickyTextCompleted;
 
 // ---------------------------------------------------------------------------
 // Audio helpers
@@ -1472,6 +1491,15 @@ export function useRealtimeVoice({
 					resetGenerationStateSoon();
 					break;
 
+				case "clicky_text_completed":
+					// Claude vision response — text with POINT tags, sent separately from TTS
+					if (message.text) {
+						onAssistantTextCompletedRef.current?.({
+							text: message.text,
+						});
+					}
+					break;
+
 				case "function_call":
 					markSpeechResponseStarted();
 					if (message.name === "end_voice_session") {
@@ -1759,6 +1787,30 @@ export function useRealtimeVoice({
 		});
 	}, [dispatchTextInput]);
 
+	const sendImageInput = useCallback(({
+		image,
+		text,
+		detail = "low",
+		clicky,
+		systemPrompt,
+	}: {
+		image: string;
+		text?: string;
+		detail?: "low" | "high" | "auto";
+		clicky?: boolean;
+		systemPrompt?: string;
+	}) => {
+		if (!image) return;
+
+		sendWsMessage({
+			type: "image_message_from_user",
+			image,
+			text,
+			detail,
+			...(clicky ? { clicky: true, systemPrompt } : {}),
+		});
+	}, [sendWsMessage]);
+
 	const disconnect = useCallback(() => {
 		activeRef.current = false;
 		isCaptureAvailableRef.current = false;
@@ -1806,6 +1858,7 @@ export function useRealtimeVoice({
 		connect,
 		disconnect,
 		sendTextInput,
+		sendImageInput,
 		voiceState,
 		generationState,
 		isConnected,
