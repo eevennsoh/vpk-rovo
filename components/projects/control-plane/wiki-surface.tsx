@@ -68,7 +68,7 @@ function buildResultKey(result: WikiSearchResult): string {
 function resolveMemorySource(result: WikiSearchResult): {
 	label: string;
 	query: string;
-	scope: "operations" | "profile";
+	scope: "work" | "profile";
 } | null {
 	const normalizedPath = (result.path ?? "").toLowerCase();
 	if (
@@ -87,17 +87,17 @@ function resolveMemorySource(result: WikiSearchResult): {
 	}
 
 	if (
-		result.collection === "wiki-operations"
+		result.collection === "wiki-work"
 		&& (
-			normalizedPath.endsWith("/core-memory.md")
-			|| normalizedPath.endsWith("qmd://wiki-operations/core-memory.md")
-			|| normalizedPath.endsWith("core-memory.md")
+			normalizedPath.endsWith("/context.md")
+			|| normalizedPath.endsWith("qmd://wiki-work/context.md")
+			|| normalizedPath.endsWith("context.md")
 		)
 	) {
 		return {
-			label: "Runtime memory source",
-			query: "core-memory",
-			scope: "operations",
+			label: "Work memory source",
+			query: "work context",
+			scope: "work",
 		};
 	}
 

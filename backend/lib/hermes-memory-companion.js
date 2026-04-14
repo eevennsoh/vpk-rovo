@@ -14,6 +14,12 @@ const {
 
 const DEFAULT_MEMORY_COMPANION_TIMEOUT_MS = 20_000;
 const MEMORY_COMPANION_HISTORY_LIMIT = 6;
+const MEMORY_ACTION_ORIGINS = new Set([
+	"durable_workflow",
+	"explicit_request",
+	"identity",
+	"implicit_preference",
+]);
 
 function getLatestAssistantTextFromMessages(messages) {
 	if (!Array.isArray(messages)) {
@@ -88,6 +94,7 @@ function buildHermesMemoryCompanionMessages({
 				"Reply exactly with a single JSON object using mode `structured-memory-fallback`.",
 				"The JSON must include an `actions` array containing only `add` or `replace` entries.",
 				"Each action must include `target` (`memory` or `user`) and `content`.",
+				"Each action may include `origin` (`explicit_request`, `implicit_preference`, `durable_workflow`, or `identity`) and a short `reason` string.",
 				"Use `replace` only when the new fact should supersede prior memory for that target.",
 				"Do not include commentary outside the JSON object in the fallback path.",
 				"Durable memory here means wiki-backed Hermes memory, not repo lesson logs or skill updates.",
@@ -139,6 +146,11 @@ function normalizeStructuredHermesMemoryAction(action) {
 	return {
 		action: actionType,
 		content,
+		origin:
+			typeof action.origin === "string" && MEMORY_ACTION_ORIGINS.has(action.origin)
+				? action.origin
+				: null,
+		reason: getNonEmptyString(action.reason),
 		target,
 	};
 }
@@ -180,6 +192,7 @@ async function applyStructuredHermesMemoryActions(
 	actions,
 	{
 		enqueueWikiMemoryProposalImpl = enqueueWikiMemoryProposal,
+		latestUserMessage,
 		sourceMessageId,
 		sourceThreadId,
 	} = {},
@@ -193,6 +206,8 @@ async function applyStructuredHermesMemoryActions(
 		const proposal = await enqueueWikiMemoryProposalImpl({
 			action: action.action === "replace" ? "replace" : "add",
 			content: action.content,
+			origin: resolveMemoryActionOrigin(action, latestUserMessage),
+			reason: resolveMemoryActionReason(action, latestUserMessage),
 			sourceMessageId,
 			sourceThreadId,
 			summary: action.content.slice(0, 140),
@@ -206,6 +221,36 @@ async function applyStructuredHermesMemoryActions(
 	}
 
 	return appliedActions;
+}
+
+function resolveMemoryActionOrigin(action, latestUserMessage) {
+	if (typeof action?.origin === "string" && MEMORY_ACTION_ORIGINS.has(action.origin)) {
+		return action.origin;
+	}
+
+	const normalizedLatestUserMessage = getNonEmptyString(latestUserMessage)?.toLowerCase() ?? "";
+	if (/\b(remember|save|store|keep this|note this)\b/iu.test(normalizedLatestUserMessage)) {
+		return "explicit_request";
+	}
+
+	if (action?.target === "user") {
+		return "identity";
+	}
+
+	return "durable_workflow";
+}
+
+function resolveMemoryActionReason(action, latestUserMessage) {
+	if (getNonEmptyString(action?.reason)) {
+		return action.reason.trim();
+	}
+
+	const normalizedLatestUserMessage = getNonEmptyString(latestUserMessage);
+	if (!normalizedLatestUserMessage) {
+		return null;
+	}
+
+	return clipText(normalizedLatestUserMessage, 180);
 }
 
 function createStructuredMemoryCompanionError(message) {
@@ -274,6 +319,7 @@ async function runHermesMemoryCompanionReview({
 	const structuredMemoryActions = await applyStructuredMemoryActionsImpl(
 		payload.structuredResult.actions,
 		{
+			latestUserMessage: normalizedLatestUserMessage,
 			sourceMessageId,
 			sourceThreadId,
 		},

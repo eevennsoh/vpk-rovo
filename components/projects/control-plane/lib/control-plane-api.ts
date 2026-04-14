@@ -19,6 +19,14 @@ import type {
 	WikiCanonicalMemoryDocument,
 	WikiCanonicalMemoryDocuments,
 	WikiMemoryDeleteResponse,
+	WikiMemoryExplorerEdge,
+	WikiMemoryExplorerFacet,
+	WikiMemoryExplorerFacets,
+	WikiMemoryExplorerFilters,
+	WikiMemoryExplorerNode,
+	WikiMemoryExplorerResponse,
+	WikiMemoryExplorerStats,
+	WikiMemoryGeneratedArtifact,
 	WikiMemoryProposalDeleteResponse,
 	SessionSearchResult,
 	WikiQmdStatus,
@@ -36,6 +44,10 @@ function getString(value: unknown): string | null {
 	return typeof value === "string" && value.trim().length > 0
 		? value.trim()
 		: null;
+}
+
+function getBoolean(value: unknown, fallback = false): boolean {
+	return typeof value === "boolean" ? value : fallback;
 }
 
 async function parseJsonResponse<T>(response: Response): Promise<T> {
@@ -198,7 +210,7 @@ function normalizeWikiCanonicalMemoryDocument(
 		exists: document.exists === true,
 		revision: getString(document.revision) ?? "",
 		scope,
-		title: getString(document.title) ?? (scope === "profile" ? "Self" : "Runtime Memory"),
+		title: getString(document.title) ?? (scope === "profile" ? "Self" : "Work Context"),
 		updatedAt: getString(document.updatedAt),
 	};
 }
@@ -209,7 +221,7 @@ function normalizeWikiCanonicalMemoryDocuments(rawDocuments: unknown): WikiCanon
 		: {};
 
 	return {
-		operations: normalizeWikiCanonicalMemoryDocument(documents.operations, "operations"),
+		work: normalizeWikiCanonicalMemoryDocument(documents.work, "work"),
 		profile: normalizeWikiCanonicalMemoryDocument(documents.profile, "profile"),
 	};
 }
@@ -242,14 +254,197 @@ function normalizeWikiMemoryProposalSummary(rawProposal: unknown): WikiMemoryPro
 
 	return {
 		action: getString(proposal.action) ?? "add",
+		content: getString(proposal.content) ?? undefined,
 		createdAt: getString(proposal.createdAt),
 		id: getString(proposal.id) ?? "proposal-unknown",
+		ingestedAt: getString(proposal.ingestedAt) ?? undefined,
+		origin: getString(proposal.origin) ?? undefined,
 		path: getString(proposal.path) ?? "",
-		scope: getString(proposal.scope) ?? "operations",
+		reason: getString(proposal.reason) ?? undefined,
+		scope: getString(proposal.scope) ?? "work",
 		sourceMessageId: getString(proposal.sourceMessageId),
 		sourceThreadId: getString(proposal.sourceThreadId),
 		status: getString(proposal.status) ?? "queued",
 		summary: getString(proposal.summary) ?? "",
+		tags: Array.isArray(proposal.tags)
+			? proposal.tags.filter((value): value is string => typeof value === "string")
+			: undefined,
+		target: getString(proposal.target) ?? undefined,
+	};
+}
+
+function normalizeStringArray(value: unknown): string[] {
+	return Array.isArray(value)
+		? value.filter((entry): entry is string => typeof entry === "string")
+		: [];
+}
+
+function normalizeRecordOfNumbers(value: unknown): Record<string, number> {
+	const record = value && typeof value === "object"
+		? value as Record<string, unknown>
+		: {};
+
+	return Object.fromEntries(
+		Object.entries(record)
+			.filter(([, entry]) => typeof entry === "number" && Number.isFinite(entry))
+			.map(([key, entry]) => [key, entry as number]),
+	);
+}
+
+function normalizeWikiMemoryExplorerNode(rawNode: unknown): WikiMemoryExplorerNode {
+	const node = rawNode && typeof rawNode === "object"
+		? rawNode as Record<string, unknown>
+		: {};
+
+	return {
+		bodyPreview: getString(node.bodyPreview) ?? "",
+		charCount:
+			typeof node.charCount === "number" && Number.isFinite(node.charCount)
+				? node.charCount
+				: 0,
+		connectionCount:
+			typeof node.connectionCount === "number" && Number.isFinite(node.connectionCount)
+				? node.connectionCount
+				: 0,
+		createdAt: getString(node.createdAt),
+		id: getString(node.id) ?? "node-unknown",
+		kind: (getString(node.kind) ?? "linked-knowledge") as WikiMemoryExplorerNode["kind"],
+		label: getString(node.label) ?? "memory node",
+		metadata: node.metadata && typeof node.metadata === "object"
+			? node.metadata as Record<string, unknown>
+			: {},
+		path: getString(node.path) ?? "",
+		relativePath: getString(node.relativePath) ?? "",
+		scope: getString(node.scope),
+		sourceMessageId: getString(node.sourceMessageId),
+		sourceThreadId: getString(node.sourceThreadId),
+		status: getString(node.status),
+		summary: getString(node.summary) ?? "",
+		tags: normalizeStringArray(node.tags),
+		target: getString(node.target),
+		title: getString(node.title) ?? "Untitled",
+		topics: normalizeStringArray(node.topics),
+		updatedAt: getString(node.updatedAt),
+		wikiLinks: normalizeStringArray(node.wikiLinks),
+	};
+}
+
+function normalizeWikiMemoryExplorerEdge(rawEdge: unknown): WikiMemoryExplorerEdge {
+	const edge = rawEdge && typeof rawEdge === "object"
+		? rawEdge as Record<string, unknown>
+		: {};
+
+	return {
+		id: getString(edge.id) ?? "edge-unknown",
+		kind: (getString(edge.kind) ?? "shared_tag") as WikiMemoryExplorerEdge["kind"],
+		label: getString(edge.label) ?? "",
+		metadata: edge.metadata && typeof edge.metadata === "object"
+			? edge.metadata as Record<string, unknown>
+			: {},
+		relationKinds: normalizeStringArray(edge.relationKinds) as WikiMemoryExplorerEdge["relationKinds"],
+		source: getString(edge.source) ?? "",
+		target: getString(edge.target) ?? "",
+	};
+}
+
+function normalizeWikiMemoryExplorerFacet(rawFacet: unknown): WikiMemoryExplorerFacet {
+	const facet = rawFacet && typeof rawFacet === "object"
+		? rawFacet as Record<string, unknown>
+		: {};
+
+	return {
+		count:
+			typeof facet.count === "number" && Number.isFinite(facet.count)
+				? facet.count
+				: 0,
+		label: getString(facet.label) ?? "",
+		value: getString(facet.value) ?? "",
+	};
+}
+
+function normalizeWikiMemoryExplorerFacets(rawFacets: unknown): WikiMemoryExplorerFacets {
+	const facets = rawFacets && typeof rawFacets === "object"
+		? rawFacets as Record<string, unknown>
+		: {};
+
+	return {
+		kinds: Array.isArray(facets.kinds) ? facets.kinds.map(normalizeWikiMemoryExplorerFacet) : [],
+		scopes: Array.isArray(facets.scopes) ? facets.scopes.map(normalizeWikiMemoryExplorerFacet) : [],
+		statuses: Array.isArray(facets.statuses) ? facets.statuses.map(normalizeWikiMemoryExplorerFacet) : [],
+		tags: Array.isArray(facets.tags) ? facets.tags.map(normalizeWikiMemoryExplorerFacet) : [],
+		threads: Array.isArray(facets.threads) ? facets.threads.map(normalizeWikiMemoryExplorerFacet) : [],
+	};
+}
+
+function normalizeWikiMemoryExplorerFilters(rawFilters: unknown): WikiMemoryExplorerFilters {
+	const filters = rawFilters && typeof rawFilters === "object"
+		? rawFilters as Record<string, unknown>
+		: {};
+
+	return {
+		includeLinkedKnowledge: getBoolean(filters.includeLinkedKnowledge, true),
+		kind: getString(filters.kind),
+		scope: getString(filters.scope),
+		status: getString(filters.status),
+		tag: getString(filters.tag),
+		threadId: getString(filters.threadId),
+	};
+}
+
+function normalizeWikiMemoryExplorerStats(rawStats: unknown): WikiMemoryExplorerStats {
+	const stats = rawStats && typeof rawStats === "object"
+		? rawStats as Record<string, unknown>
+		: {};
+
+	return {
+		edgeCount:
+			typeof stats.edgeCount === "number" && Number.isFinite(stats.edgeCount)
+				? stats.edgeCount
+				: 0,
+		nodeCount:
+			typeof stats.nodeCount === "number" && Number.isFinite(stats.nodeCount)
+				? stats.nodeCount
+				: 0,
+		totalEdgeCount:
+			typeof stats.totalEdgeCount === "number" && Number.isFinite(stats.totalEdgeCount)
+				? stats.totalEdgeCount
+				: 0,
+		totalNodeCount:
+			typeof stats.totalNodeCount === "number" && Number.isFinite(stats.totalNodeCount)
+				? stats.totalNodeCount
+				: 0,
+		visibleKindCounts: normalizeRecordOfNumbers(stats.visibleKindCounts),
+		visibleScopeCounts: normalizeRecordOfNumbers(stats.visibleScopeCounts),
+		visibleStatusCounts: normalizeRecordOfNumbers(stats.visibleStatusCounts),
+	};
+}
+
+function normalizeWikiMemoryExplorerResponse(rawResponse: unknown): WikiMemoryExplorerResponse {
+	const response = rawResponse && typeof rawResponse === "object"
+		? rawResponse as Record<string, unknown>
+		: {};
+
+	return {
+		edges: Array.isArray(response.edges) ? response.edges.map(normalizeWikiMemoryExplorerEdge) : [],
+		facets: normalizeWikiMemoryExplorerFacets(response.facets),
+		filters: normalizeWikiMemoryExplorerFilters(response.filters),
+		generatedAt: getString(response.generatedAt) ?? new Date().toISOString(),
+		nodes: Array.isArray(response.nodes) ? response.nodes.map(normalizeWikiMemoryExplorerNode) : [],
+		stats: normalizeWikiMemoryExplorerStats(response.stats),
+	};
+}
+
+function normalizeWikiMemoryGeneratedArtifact(rawArtifact: unknown): WikiMemoryGeneratedArtifact {
+	const artifact = rawArtifact && typeof rawArtifact === "object"
+		? rawArtifact as Record<string, unknown>
+		: {};
+
+	return {
+		content: getString(artifact.content) ?? "",
+		format: (getString(artifact.format) ?? "brief") as WikiMemoryGeneratedArtifact["format"],
+		generatedAt: getString(artifact.generatedAt) ?? new Date().toISOString(),
+		selectedNodeIds: normalizeStringArray(artifact.selectedNodeIds),
+		title: getString(artifact.title) ?? "Untitled",
 	};
 }
 
@@ -275,7 +470,7 @@ function normalizeWikiStatus(rawStatus: unknown): WikiStatus {
 		compiledContexts: status.compiledContexts && typeof status.compiledContexts === "object"
 			? {
 				profile: normalizeWikiCompiledContextDocument((status.compiledContexts as Record<string, unknown>).profile),
-				operations: normalizeWikiCompiledContextDocument((status.compiledContexts as Record<string, unknown>).operations),
+				work: normalizeWikiCompiledContextDocument((status.compiledContexts as Record<string, unknown>).work),
 			}
 			: undefined,
 		files: {
@@ -483,6 +678,55 @@ export async function fetchWikiMemories(): Promise<WikiCanonicalMemoryDocuments>
 		method: "GET",
 	}));
 	return normalizeWikiCanonicalMemoryDocuments(payload.memories);
+}
+
+export async function fetchWikiMemoryExplorer(
+	filters?: Partial<WikiMemoryExplorerFilters>,
+): Promise<WikiMemoryExplorerResponse> {
+	const payload = await parseJsonResponse<{ explorer?: unknown }>(
+		await fetch(API_ENDPOINTS.wikiMemoryExplorer(filters), {
+			method: "GET",
+		}),
+	);
+
+	return normalizeWikiMemoryExplorerResponse(payload.explorer);
+}
+
+export async function generateWikiMemoryBrief(input: {
+	audience?: string | null;
+	filters?: Partial<WikiMemoryExplorerFilters>;
+	selectedNodeIds?: string[];
+	title?: string | null;
+}): Promise<WikiMemoryGeneratedArtifact> {
+	const payload = await parseJsonResponse<{ brief?: unknown }>(
+		await fetch(API_ENDPOINTS.WIKI_MEMORY_EXPLORER_BRIEF, {
+			body: JSON.stringify(input),
+			headers: {
+				"Content-Type": "application/json",
+			},
+			method: "POST",
+		}),
+	);
+
+	return normalizeWikiMemoryGeneratedArtifact(payload.brief);
+}
+
+export async function generateWikiMemoryDeck(input: {
+	filters?: Partial<WikiMemoryExplorerFilters>;
+	selectedNodeIds?: string[];
+	title?: string | null;
+}): Promise<WikiMemoryGeneratedArtifact> {
+	const payload = await parseJsonResponse<{ deck?: unknown }>(
+		await fetch(API_ENDPOINTS.WIKI_MEMORY_EXPLORER_DECK, {
+			body: JSON.stringify(input),
+			headers: {
+				"Content-Type": "application/json",
+			},
+			method: "POST",
+		}),
+	);
+
+	return normalizeWikiMemoryGeneratedArtifact(payload.deck);
 }
 
 export async function searchWiki(

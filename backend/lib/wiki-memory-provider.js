@@ -5,7 +5,7 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 
 const { createAIGatewayProvider } = require("./ai-gateway-provider");
-const { DEFAULT_WIKI_DIR } = require("./qmd");
+const { DEFAULT_WIKI_DIR, resolveLlmWikiPaths } = require("./qmd");
 const { getNonEmptyString } = require("./shared-utils");
 
 const aiGatewayProvider = createAIGatewayProvider({ logger: console });
@@ -20,14 +20,14 @@ const WIKI_MEMORY_SCOPE_DEFINITIONS = Object.freeze({
 		tags: ["profile", "memory"],
 		type: "profile",
 	},
-	operations: {
-		canonicalPath: ["operations", "core-memory.md"],
-		collection: "wiki-operations",
-		label: "Runtime Memory",
-		outputPath: ["output", "runtime-context.md"],
-		pageTitle: "Core Memory",
-		tags: ["operations", "memory"],
-		type: "operations",
+	work: {
+		canonicalPath: ["work", "context.md"],
+		collection: "wiki-work",
+		label: "Work Context",
+		outputPath: ["output", "work-context.md"],
+		pageTitle: "Work Context",
+		tags: ["work", "memory"],
+		type: "work",
 	},
 });
 
@@ -35,6 +35,12 @@ const PROPOSAL_STATUS_SET = new Set(["queued", "ingested"]);
 const PROPOSAL_ACTION_SET = new Set(["add", "replace"]);
 const DURABLE_MEMORY_HEADING = "## Durable Memory";
 const RECENT_CHANGES_HEADING = "## Recent Changes";
+const MEMORY_STATUS_KEY = "memory_status";
+const KNOWLEDGE_STATUS_KEY = "knowledge_status";
+const RAW_SOURCE_DIRS = Object.freeze([
+	["raw"],
+	["raw", "assets"],
+]);
 
 function normalizeText(value) {
 	return typeof value === "string"
@@ -301,27 +307,42 @@ function buildCanonicalMemoryDocumentContent({
 }
 
 function getWikiMemoryPaths({ wikiDir = DEFAULT_WIKI_DIR } = {}) {
+	const paths = resolveLlmWikiPaths({ wikiDir });
 	return {
-		indexPath: path.join(wikiDir, "index.md"),
-		logPath: path.join(wikiDir, "log.md"),
-		outputDir: path.join(wikiDir, "output"),
-		rawTurnsDir: path.join(wikiDir, "raw", "turns"),
-		schemaPath: path.join(wikiDir, "SCHEMA.md"),
-		wikiDir,
+		indexPath: path.join(paths.wikiDir, "index.md"),
+		logPath: path.join(paths.wikiDir, "log.md"),
+		outputDir: paths.outputDir,
+		rawDir: paths.rawDir,
+		rootDir: paths.rootDir,
+		schemaPath: path.join(paths.wikiDir, "SCHEMA.md"),
+		wikiDir: paths.wikiDir,
 	};
 }
 
-function resolveScopeDefinition(scope, { wikiDir = DEFAULT_WIKI_DIR } = {}) {
-	const definition = WIKI_MEMORY_SCOPE_DEFINITIONS[scope];
-	if (!definition) {
+function normalizeWikiMemoryScope(scope) {
+	if (typeof scope !== "string" || scope.trim().length === 0) {
 		return null;
 	}
 
+	const normalizedScope = scope.trim();
+	return Object.hasOwn(WIKI_MEMORY_SCOPE_DEFINITIONS, normalizedScope)
+		? normalizedScope
+		: null;
+}
+
+function resolveScopeDefinition(scope, { wikiDir = DEFAULT_WIKI_DIR } = {}) {
+	const normalizedScope = normalizeWikiMemoryScope(scope);
+	const definition = normalizedScope ? WIKI_MEMORY_SCOPE_DEFINITIONS[normalizedScope] : null;
+	if (!definition) {
+		return null;
+	}
+	const paths = resolveLlmWikiPaths({ wikiDir });
+
 	return {
 		...definition,
-		canonicalAbsolutePath: path.join(wikiDir, ...definition.canonicalPath),
-		outputAbsolutePath: path.join(wikiDir, ...definition.outputPath),
-		scope,
+		canonicalAbsolutePath: path.join(paths.wikiDir, ...definition.canonicalPath),
+		outputAbsolutePath: path.join(paths.rootDir, ...definition.outputPath),
+		scope: normalizedScope,
 	};
 }
 
@@ -361,7 +382,7 @@ function buildDefaultSchemaContent() {
 		"Durable wiki-backed Hermes memory and linked knowledge.",
 		"",
 		"## Conventions",
-		"- Canonical pages under `profiles/`, `operations/`, `sources/`, `entities/`, `concepts/`, and `synthesis/` are the source of truth.",
+		"- Canonical pages under `profiles/`, `work/`, `sources/`, `entities/`, `concepts/`, and `synthesis/` are the source of truth.",
 		"- Raw captures and turn-derived memory proposals live under `raw/` and are immutable after ingest.",
 		"- Compiled prompt context artifacts live under `output/` and are generated, never edited by hand.",
 		"- Use qmd over canonical wiki pages for retrieval.",
@@ -390,7 +411,7 @@ async function ensureWikiMemoryScaffold({ wikiDir = DEFAULT_WIKI_DIR } = {}) {
 	const paths = getWikiMemoryPaths({ wikiDir });
 	const canonicalDirs = [
 		"profiles",
-		"operations",
+		"work",
 		"sources",
 		"entities",
 		"concepts",
@@ -398,16 +419,10 @@ async function ensureWikiMemoryScaffold({ wikiDir = DEFAULT_WIKI_DIR } = {}) {
 		"queries",
 		"synthesis",
 	];
-	const rawDirs = [
-		["raw", "captures"],
-		["raw", "turns"],
-		["raw", "assets"],
-	];
-
 	await Promise.all([
 		fs.mkdir(paths.outputDir, { recursive: true }),
 		...canonicalDirs.map((dirName) => fs.mkdir(path.join(wikiDir, dirName), { recursive: true })),
-		...rawDirs.map((segments) => fs.mkdir(path.join(wikiDir, ...segments), { recursive: true })),
+		...RAW_SOURCE_DIRS.map((segments) => fs.mkdir(path.join(wikiDir, ...segments), { recursive: true })),
 	]);
 
 	try {
@@ -427,8 +442,8 @@ async function ensureWikiMemoryScaffold({ wikiDir = DEFAULT_WIKI_DIR } = {}) {
 				"## Profiles",
 				"- [[self]] — User profile and personal preferences",
 				"",
-				"## Operations",
-				"- [[core-memory]] — Runtime memory and durable workflow notes",
+				"## Work",
+				"- [[memory]] — Work memory and durable workflow notes",
 				"",
 				"## Sources",
 				"",
@@ -470,7 +485,7 @@ async function ensureWikiMemoryScaffold({ wikiDir = DEFAULT_WIKI_DIR } = {}) {
 }
 
 function mapMemoryTargetToScope(target) {
-	return target === "user" ? "profile" : "operations";
+	return target === "user" ? "profile" : "work";
 }
 
 async function walkMarkdownFiles(dirPath) {
@@ -541,12 +556,27 @@ async function writeMarkdownDocument(filePath, content) {
 }
 
 function normalizeProposalRecord(filePath, document) {
+	const memoryStatus =
+		typeof document.frontmatter[MEMORY_STATUS_KEY] === "string" && document.frontmatter[MEMORY_STATUS_KEY].trim().length > 0
+			? document.frontmatter[MEMORY_STATUS_KEY].trim()
+			: typeof document.frontmatter.status === "string" && document.frontmatter.status.trim().length > 0
+				? document.frontmatter.status.trim()
+				: null;
+	if (
+		typeof document.frontmatter.target !== "string"
+		&& typeof document.frontmatter.scope !== "string"
+		&& typeof document.frontmatter.action !== "string"
+		&& memoryStatus === null
+	) {
+		return null;
+	}
+
 	const action = PROPOSAL_ACTION_SET.has(document.frontmatter.action)
 		? document.frontmatter.action
 		: "add";
-	const scope = resolveScopeDefinition(document.frontmatter.scope) ? document.frontmatter.scope : "operations";
-	const status = PROPOSAL_STATUS_SET.has(document.frontmatter.status)
-		? document.frontmatter.status
+	const scope = normalizeWikiMemoryScope(document.frontmatter.scope) ?? "work";
+	const status = PROPOSAL_STATUS_SET.has(memoryStatus)
+		? memoryStatus
 		: "queued";
 	const body = normalizeText(document.body);
 	return {
@@ -554,12 +584,19 @@ function normalizeProposalRecord(filePath, document) {
 		content: body,
 		createdAt: getNonEmptyString(document.frontmatter.created_at) ?? document.updatedAt,
 		id: getNonEmptyString(document.frontmatter.id) ?? path.basename(filePath, ".md"),
+		ingestedAt: getNonEmptyString(document.frontmatter.ingested_at),
+		origin: getNonEmptyString(document.frontmatter.capture_origin),
 		path: filePath,
+		reason: getNonEmptyString(document.frontmatter.capture_reason),
 		scope,
 		sourceMessageId: getNonEmptyString(document.frontmatter.source_message_id),
 		sourceThreadId: getNonEmptyString(document.frontmatter.source_thread_id),
 		status,
 		summary: getNonEmptyString(document.frontmatter.summary) ?? body.slice(0, 140),
+		tags: Array.isArray(document.frontmatter.tags)
+			? document.frontmatter.tags
+			: [],
+		target: getNonEmptyString(document.frontmatter.target) ?? "memory",
 	};
 }
 
@@ -568,8 +605,8 @@ async function listWikiMemoryProposals({
 	statuses,
 	wikiDir = DEFAULT_WIKI_DIR,
 } = {}) {
-	const { rawTurnsDir } = getWikiMemoryPaths({ wikiDir });
-	const files = await walkMarkdownFiles(rawTurnsDir);
+	const { rawDir } = getWikiMemoryPaths({ wikiDir });
+	const files = await walkMarkdownFiles(rawDir);
 	const requestedStatuses = Array.isArray(statuses) && statuses.length > 0
 		? new Set(statuses)
 		: null;
@@ -581,6 +618,9 @@ async function listWikiMemoryProposals({
 			continue;
 		}
 		const proposal = normalizeProposalRecord(filePath, document);
+		if (!proposal) {
+			continue;
+		}
 		if (requestedStatuses && !requestedStatuses.has(proposal.status)) {
 			continue;
 		}
@@ -596,6 +636,8 @@ async function listWikiMemoryProposals({
 async function enqueueWikiMemoryProposal({
 	action = "add",
 	content,
+	origin,
+	reason,
 	sourceMessageId,
 	sourceThreadId,
 	summary,
@@ -616,17 +658,21 @@ async function enqueueWikiMemoryProposal({
 	const mm = String(now.getUTCMonth() + 1).padStart(2, "0");
 	const id = buildProposalId();
 	const scope = mapMemoryTargetToScope(target);
-	const proposalDir = path.join(wikiDir, "raw", "turns", yyyy, mm);
+	const { rawDir } = getWikiMemoryPaths({ wikiDir });
+	const proposalDir = path.join(rawDir, yyyy, mm);
 	const proposalPath = path.join(proposalDir, `${now.toISOString().replace(/[:.]/gu, "-")}-${id}.md`);
 	const fileContent = [
 		serializeFrontmatter({
 			action,
+			capture_origin: getNonEmptyString(origin) ?? undefined,
+			capture_reason: getNonEmptyString(reason) ?? undefined,
 			created_at: now.toISOString(),
 			id,
+			[KNOWLEDGE_STATUS_KEY]: "queued",
+			[MEMORY_STATUS_KEY]: "queued",
 			scope,
 			source_message_id: getNonEmptyString(sourceMessageId) ?? undefined,
 			source_thread_id: getNonEmptyString(sourceThreadId) ?? undefined,
-			status: "queued",
 			summary: getNonEmptyString(summary) ?? normalizedContent.slice(0, 140),
 			target: target === "user" ? "user" : "memory",
 			title: `Memory proposal ${id}`,
@@ -642,18 +688,40 @@ async function enqueueWikiMemoryProposal({
 		content: normalizedContent,
 		createdAt: now.toISOString(),
 		id,
+		ingestedAt: null,
+		origin: getNonEmptyString(origin),
 		path: proposalPath,
+		reason: getNonEmptyString(reason),
 		scope,
 		status: "queued",
 		summary: getNonEmptyString(summary) ?? normalizedContent.slice(0, 140),
+		target: target === "user" ? "user" : "memory",
+		tags: [],
 	};
 }
 
-function updateProposalStatusContent(content, status) {
-	return content.replace(
-		/^(status:\s*).+$/mu,
-		`${"$1"}${status}`,
-	);
+function updateProposalStatusContent(content, status, changedAt) {
+	const memoryStatusPattern = new RegExp(`^(${MEMORY_STATUS_KEY}:\\s*).+$`, "mu");
+	let nextContent = memoryStatusPattern.test(content)
+		? content.replace(memoryStatusPattern, `$1${status}`)
+		: content.replace(
+			/^(status:\s*).+$/mu,
+			`${"$1"}${status}`,
+		);
+
+	if (status === "ingested" && getNonEmptyString(changedAt)) {
+		const ingestedAtPattern = /^(ingested_at:\s*).+$/mu;
+		if (ingestedAtPattern.test(nextContent)) {
+			nextContent = nextContent.replace(ingestedAtPattern, `$1${changedAt}`);
+		} else {
+			nextContent = nextContent.replace(
+				/^---\n/u,
+				`---\ningested_at: "${changedAt}"\n`,
+			);
+		}
+	}
+
+	return nextContent;
 }
 
 function buildCanonicalRewritePrompt(definition, currentPage, proposals) {
@@ -765,7 +833,7 @@ async function regenerateWikiMemoryContext({
 		const canonicalDocument = await readMarkdownDocument(definition.canonicalAbsolutePath);
 		const output = await textGenerator({
 			prompt: buildCompiledContextPrompt(definition, canonicalDocument),
-			system: `You compile ${definition.label.toLowerCase()} into concise runtime memory.`,
+			system: `You compile ${definition.label.toLowerCase()} into concise prompt context.`,
 		});
 		const content = normalizeCompiledContextOutput(output, definition);
 		const document = await writeMarkdownDocument(definition.outputAbsolutePath, content);
@@ -850,7 +918,7 @@ async function rewriteCanonicalMemoryFromCurrentSources({
 		}
 		await writeMarkdownDocument(
 			proposal.path,
-			updateProposalStatusContent(currentProposal.content, "ingested"),
+			updateProposalStatusContent(currentProposal.content, "ingested", new Date().toISOString()),
 		);
 		processed += 1;
 	}
@@ -1082,8 +1150,8 @@ async function buildWikiMemoryContextDescription({
 		compiledContexts.profile?.content
 			? `Profile Context:\n${compiledContexts.profile.content}`
 			: null,
-		compiledContexts.operations?.content
-			? `Runtime Context:\n${compiledContexts.operations.content}`
+		compiledContexts.work?.content
+			? `Work Context:\n${compiledContexts.work.content}`
 			: null,
 	].filter(Boolean);
 

@@ -88,10 +88,6 @@ async function main() {
 
 	expect(hermesSurface.available === true, "Expected Hermes capabilities to report healthy in embedded mode.");
 	expect(
-		hermesFileStores?.memoriesAccessible === true,
-		"Expected Hermes memories filesystem to be accessible.",
-	);
-	expect(
 		hermesFileStores?.skillsAccessible === true,
 		"Expected Hermes skills filesystem to be accessible.",
 	);

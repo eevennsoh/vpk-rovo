@@ -13,6 +13,7 @@ export interface RovoAppHermesContext {
 	selectedSkillIds: string[];
 	autoSelectedSkillIds?: string[];
 	pendingDraftIds?: string[];
+	recentMemoryProposalIds?: string[];
 }
 
 /**

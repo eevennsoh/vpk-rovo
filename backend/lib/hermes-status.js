@@ -1,7 +1,6 @@
 const fs = require("node:fs/promises");
 
 const {
-	getHermesMemoriesDir,
 	getHermesSkillsDir,
 	getVendoredHermesSkillsDir,
 } = require("./hermes-config");
@@ -16,22 +15,20 @@ async function canAccessPath(targetPath) {
 }
 
 async function getHermesRuntimeStatus(options = {}) {
-	const memoriesDir = getHermesMemoriesDir();
 	const skillsDir = getHermesSkillsDir();
 	const vendoredSkillsDir = getVendoredHermesSkillsDir();
 	const providerStatus =
 		typeof options.jobsProvider?.getProviderStatus === "function"
 			? options.jobsProvider.getProviderStatus()
 			: null;
-	const [memoriesAccessible, skillsAccessible, vendoredSkillsAccessible] = await Promise.all([
-		canAccessPath(memoriesDir),
+	const [skillsAccessible, vendoredSkillsAccessible] = await Promise.all([
 		canAccessPath(skillsDir),
 		canAccessPath(vendoredSkillsDir),
 	]);
 	const jobsMode = typeof providerStatus?.mode === "string" && providerStatus.mode.trim()
 		? providerStatus.mode.trim().toLowerCase()
 		: "embedded";
-	const fileStoresHealthy = memoriesAccessible && skillsAccessible;
+	const fileStoresHealthy = skillsAccessible;
 	const jobsHealthy = fileStoresHealthy && providerStatus?.available !== false;
 	const available = fileStoresHealthy && jobsHealthy;
 	const status = available ? "embedded" : "unavailable";
@@ -40,18 +37,16 @@ async function getHermesRuntimeStatus(options = {}) {
 			? "Hermes embedded capabilities are ready."
 			: "Hermes embedded capabilities are ready, but the vendored upstream skills snapshot is unavailable."
 		: fileStoresHealthy
-			? "Hermes local files are accessible, but the embedded jobs runtime is unavailable."
-			: "Hermes local files are unavailable.";
+			? "Hermes local skill files are accessible, but the embedded jobs runtime is unavailable."
+			: "Hermes local skill files are unavailable.";
 
 	return {
 		checkedAt: new Date().toISOString(),
 		configured: true,
 		available,
 		fileStores: {
-			memoriesDir,
 			skillsDir,
 			vendoredSkillsDir,
-			memoriesAccessible,
 			skillsAccessible,
 			vendoredSkillsAccessible,
 			healthy: fileStoresHealthy,
@@ -68,7 +63,6 @@ async function getHermesRuntimeStatus(options = {}) {
 		message,
 		subsystems: {
 			jobs: jobsHealthy,
-			memories: memoriesAccessible,
 			skills: skillsAccessible,
 			vendoredSkills: vendoredSkillsAccessible,
 		},

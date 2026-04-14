@@ -39,6 +39,7 @@ export const API_ENDPOINTS = {
 	STATUS_HERMES: `${API_BASE_URL}/api/status/hermes`,
 	WIKI_STATUS: `${API_BASE_URL}/api/wiki/status`,
 	WIKI_MEMORIES: `${API_BASE_URL}/api/wiki/memories`,
+	WIKI_MEMORY_EXPLORER: `${API_BASE_URL}/api/wiki/memory-explorer`,
 	WIKI_SEARCH: `${API_BASE_URL}/api/wiki/search`,
 	WIKI_SYNC: `${API_BASE_URL}/api/wiki/sync`,
 	CHAT_THREADS: `${API_BASE_URL}/api/chat/threads`,
@@ -94,6 +95,70 @@ export const API_ENDPOINTS = {
 		`${API_BASE_URL}/api/wiki/memories/${encodeURIComponent(scope)}/blocks/${encodeURIComponent(blockId)}`,
 	wikiMemoryProposal: (proposalId: string) =>
 		`${API_BASE_URL}/api/wiki/memories?proposalId=${encodeURIComponent(proposalId)}`,
+	wikiMemoryExplorer: (options?: {
+		includeLinkedKnowledge?: boolean;
+		kind?: string | null;
+		scope?: string | null;
+		status?: string | null;
+		tag?: string | null;
+		threadId?: string | null;
+	}) => {
+		const params = new URLSearchParams();
+		if (options?.includeLinkedKnowledge === false) {
+			params.set("includeLinkedKnowledge", "false");
+		}
+		if (options?.kind) {
+			params.set("kind", options.kind);
+		}
+		if (options?.scope) {
+			params.set("scope", options.scope);
+		}
+		if (options?.status) {
+			params.set("status", options.status);
+		}
+		if (options?.tag) {
+			params.set("tag", options.tag);
+		}
+		if (options?.threadId) {
+			params.set("threadId", options.threadId);
+		}
+		const query = params.toString();
+		return `${API_BASE_URL}/api/wiki/memory-explorer${query ? `?${query}` : ""}`;
+	},
+	wikiMemoryExplorerExport: (
+		format: "csv" | "json",
+		options?: {
+			includeLinkedKnowledge?: boolean;
+			kind?: string | null;
+			scope?: string | null;
+			status?: string | null;
+			tag?: string | null;
+			threadId?: string | null;
+		},
+	) => {
+		const params = new URLSearchParams({ format });
+		if (options?.includeLinkedKnowledge === false) {
+			params.set("includeLinkedKnowledge", "false");
+		}
+		if (options?.kind) {
+			params.set("kind", options.kind);
+		}
+		if (options?.scope) {
+			params.set("scope", options.scope);
+		}
+		if (options?.status) {
+			params.set("status", options.status);
+		}
+		if (options?.tag) {
+			params.set("tag", options.tag);
+		}
+		if (options?.threadId) {
+			params.set("threadId", options.threadId);
+		}
+		return `${API_BASE_URL}/api/wiki/memory-explorer/export?${params.toString()}`;
+	},
+	WIKI_MEMORY_EXPLORER_BRIEF: `${API_BASE_URL}/api/wiki/memory-explorer/brief`,
+	WIKI_MEMORY_EXPLORER_DECK: `${API_BASE_URL}/api/wiki/memory-explorer/deck`,
 	wikiSync: `${API_BASE_URL}/api/wiki/sync`,
 	sessionSearch: (query: string, limit?: number) => {
 		const params = new URLSearchParams({ q: query });

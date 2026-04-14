@@ -36,6 +36,7 @@ interface ArtifactMenuItem {
 interface RovoAppHeaderProps {
 	artifactMenuItems?: ReadonlyArray<ArtifactMenuItem>;
 	hermesMemoryLabel?: string | null;
+	hermesMemoryHref?: string | null;
 	onNewChat?: () => void;
 	onOpenDocument?: (documentId: string) => void;
 	isArtifactOpen?: boolean;
@@ -44,6 +45,7 @@ interface RovoAppHeaderProps {
 export function RovoAppHeader({
 	artifactMenuItems,
 	hermesMemoryLabel = null,
+	hermesMemoryHref = null,
 	onNewChat,
 	onOpenDocument,
 	isArtifactOpen,
@@ -64,6 +66,19 @@ export function RovoAppHeader({
 	const normalizedRuntimeStatus = runtimeStatus
 		? normalizeRuntimeStatusSnapshot(runtimeStatus)
 		: null;
+	const memoryBadge = hermesMemoryLabel ? (
+		hermesMemoryHref ? (
+			<button
+				type="button"
+				className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+				onClick={() => router.push(hermesMemoryHref)}
+			>
+				<Badge variant="information">{hermesMemoryLabel}</Badge>
+			</button>
+		) : (
+			<Badge variant="information">{hermesMemoryLabel}</Badge>
+		)
+	) : null;
 
 	function formatSurfaceStatus(value: string) {
 		return value.replace(/-/gu, " ");
@@ -133,9 +148,7 @@ export function RovoAppHeader({
 				<div className="hidden items-center gap-2 text-xs md:flex">
 					{normalizedRuntimeStatus ? (
 						<>
-							{hermesMemoryLabel ? (
-								<Badge variant="information">{hermesMemoryLabel}</Badge>
-							) : null}
+							{memoryBadge}
 							<Badge variant={normalizedRuntimeStatus.surfaces.rovodev.health === "ok" ? "success" : normalizedRuntimeStatus.surfaces.rovodev.health === "degraded" ? "warning" : "danger"}>
 								RovoDev {formatSurfaceStatus(normalizedRuntimeStatus.surfaces.rovodev.status)}
 							</Badge>
@@ -143,8 +156,8 @@ export function RovoAppHeader({
 								Hermes {formatSurfaceStatus(normalizedRuntimeStatus.surfaces.hermes.status)}
 							</Badge>
 						</>
-					) : hermesMemoryLabel ? (
-						<Badge variant="information">{hermesMemoryLabel}</Badge>
+					) : memoryBadge ? (
+						memoryBadge
 					) : null}
 				</div>
 			) : null}

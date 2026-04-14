@@ -41,6 +41,7 @@ const {
 const { getHermesRuntimeStatus } = require("./lib/hermes-status");
 const { createHermesJobLinkManager } = require("./lib/hermes-job-links");
 const { buildRovoAppHermesContextDescription } = require("./lib/hermes-rovo-context");
+const { buildWikiQueryContextDescription } = require("./lib/wiki-query-context");
 const {
 	getLatestAssistantTextFromMessages,
 	runHermesMemoryCompanionReview,
@@ -51,6 +52,12 @@ const {
 	pruneCanonicalWikiMemoryBlock,
 	syncWikiBackedMemory,
 } = require("./lib/wiki-memory-provider");
+const {
+	buildWikiMemoryBrief,
+	buildWikiMemoryDeck,
+	buildWikiMemoryExplorer,
+	buildWikiMemoryExplorerCsv,
+} = require("./lib/wiki-memory-explorer");
 const {
 	runHermesSkillCompanionReview,
 } = require("./lib/hermes-skill-companion");
@@ -102,9 +109,12 @@ const {
 	isSameRovoAppArtifactVersionRequest,
 } = require("./lib/rovo-app-artifact-updates");
 const {
+	captureUrl,
 	ensureWikiJobs,
 	getWikiStatus,
+	lintWiki,
 	queryWiki,
+	saveSynthesisPage,
 } = require("./lib/wiki-clipper");
 const {
 	ensureFreshWikiQmdIndex,
@@ -407,6 +417,11 @@ const syncWikiMemoryCollection = async ({ collectionName, wikiDir }) => {
 };
 
 const wikiRouteHandlers = createWikiRouteHandlers({
+	buildWikiMemoryBriefImpl: buildWikiMemoryBrief,
+	buildWikiMemoryDeckImpl: buildWikiMemoryDeck,
+	buildWikiMemoryExplorerCsvImpl: buildWikiMemoryExplorerCsv,
+	buildWikiMemoryExplorerImpl: buildWikiMemoryExplorer,
+	captureUrlImpl: captureUrl,
 	deleteWikiMemoryBlockImpl: async ({ blockId, logger, revision, scope }) => {
 		return pruneCanonicalWikiMemoryBlock({
 			blockId,
@@ -427,9 +442,11 @@ const wikiRouteHandlers = createWikiRouteHandlers({
 	getQmdSyncSummaryImpl: getQmdSyncSummary,
 	getWikiMemoriesImpl: getCanonicalWikiMemoryDocuments,
 	getWikiStatusImpl: getWikiStatus,
+	lintWikiImpl: lintWiki,
 	logger: console,
 	normalizeNaiveWikiSearchResultsImpl: normalizeNaiveWikiSearchResults,
 	queryWikiImpl: queryWiki,
+	saveSynthesisPageImpl: saveSynthesisPage,
 	searchWikiWithQmdImpl: searchWikiWithQmd,
 	syncWikiMemoryImpl: async ({ force, logger }) => {
 		return syncWikiBackedMemory({
@@ -1527,9 +1544,10 @@ function buildNextHermesThreadContext({
 	currentHermesContext,
 	autoSelectedSkillIds,
 	pendingDraftIds,
+	recentMemoryProposalIds,
 	selectedSkillIds,
 }) {
-	return {
+	const nextContext = {
 		selectedSkillIds: normalizeHermesContextIds(
 			selectedSkillIds ?? currentHermesContext?.selectedSkillIds,
 		),
@@ -1540,6 +1558,15 @@ function buildNextHermesThreadContext({
 		pendingDraftIds ?? currentHermesContext?.pendingDraftIds,
 		),
 	};
+
+	const resolvedRecentMemoryProposalIds = normalizeHermesContextIds(
+		recentMemoryProposalIds ?? currentHermesContext?.recentMemoryProposalIds,
+	);
+	if (resolvedRecentMemoryProposalIds.length > 0) {
+		nextContext.recentMemoryProposalIds = resolvedRecentMemoryProposalIds;
+	}
+
+	return nextContext;
 }
 
 async function syncThreadPendingSkillDraftIds(threadId) {
@@ -2951,6 +2978,20 @@ async function consumeRovoAppManagedResponse({
 						return;
 					}
 
+					if (threadId && Array.isArray(reviewResult.structuredMemoryActions) && reviewResult.structuredMemoryActions.length > 0) {
+						const currentThread = await rovoAppThreadManager.getThread(threadId);
+						if (currentThread) {
+							await rovoAppThreadManager.updateThread(threadId, {
+								hermesContext: buildNextHermesThreadContext({
+									currentHermesContext: currentThread.hermesContext,
+									recentMemoryProposalIds: reviewResult.structuredMemoryActions
+										.map((action) => action?.proposal?.id)
+										.filter((proposalId) => typeof proposalId === "string" && proposalId.trim().length > 0),
+								}),
+							});
+						}
+					}
+
 					void syncWikiBackedMemory({
 						logger: console,
 						qmdSyncImpl: async ({ collectionName, wikiDir }) => {
@@ -3179,6 +3220,12 @@ async function executeRovoAppManagedRun(run) {
 	} catch (error) {
 		console.warn("[HERMES] Failed to build Hermes context for RovoDev chat:", error instanceof Error ? error.message : String(error));
 	}
+	let wikiQueryContextDescription = null;
+	try {
+		wikiQueryContextDescription = await buildWikiQueryContextDescription(latestUserMessage);
+	} catch (error) {
+		console.warn("[WIKI] Failed to build per-turn wiki query context:", error instanceof Error ? error.message : String(error));
+	}
 	if (threadId && threadForSession) {
 		void rovoAppThreadManager.updateThread(threadId, {
 			hermesContext: buildNextHermesThreadContext({
@@ -3205,6 +3252,7 @@ async function executeRovoAppManagedRun(run) {
 		const effectiveBaseContextDescription = [
 			delegationContextDescription,
 			hermesContextDescription,
+			wikiQueryContextDescription,
 			baseContextDescription,
 		]
 			.filter(Boolean)
@@ -3385,10 +3433,27 @@ async function executeRovoAppManagedRun(run) {
 		"Always use browser_snapshot after navigation or significant DOM changes to refresh refs before interacting again.",
 		"[END BROWSER TOOLS]",
 	].join("\n");
+	const wikiCaptureContextBlock = [
+		"[WIKI TOOLS]",
+		"You can save durable webpage sources and reusable synthesis pages into the llm-wiki.",
+		"For normal answering, you also receive a wiki query context block before each turn whenever relevant canonical pages match the user request.",
+		"Use these wiki tools when the user wants a webpage saved, clipped, remembered, added to the wiki, or when a reusable answer should be saved back into the wiki:",
+		"- wiki_capture_url — save a specific public URL into llm-wiki/raw",
+		"- wiki_capture_active_page — save the current page from the thread-bound browser workspace",
+		"- wiki_save_synthesis — save a reusable answer as a canonical llm-wiki/wiki/synthesis page",
+		`For wiki_capture_active_page calls, pass \`thread_id: \"${threadId}\"\`.`,
+		"Prefer wiki_capture_active_page for requests like 'save this page' after browsing in-thread.",
+		"Prefer wiki_capture_url when the user pasted or mentioned a direct URL.",
+		"When your answer seems broadly reusable, offer to save it to the wiki. If the user confirms, call wiki_save_synthesis with a clear title and markdown body.",
+		"Do not capture search-result pages, localhost/private URLs, login walls, or obviously thin pages.",
+		"After a successful wiki tool call, briefly confirm what was saved, where it went, or why it was skipped.",
+		"[END WIKI TOOLS]",
+	].join("\n");
 
 	const contextBlocks = [
 		artifactContextBlock,
 		browserContextBlock,
+		wikiCaptureContextBlock,
 		effectiveBaseContextDescription,
 	].filter(Boolean);
 	if (contextBlocks.length > 0) {
@@ -13352,8 +13417,14 @@ app.get("/api/jobs", async (_req, res) => {
 });
 
 app.get("/api/wiki/status", wikiRouteHandlers.handleWikiStatus);
+app.post("/api/wiki/captures", wikiRouteHandlers.handleWikiCapture);
 app.get("/api/wiki/search", wikiRouteHandlers.handleWikiSearch);
+app.post("/api/wiki/synthesis", wikiRouteHandlers.handleWikiSynthesisSave);
 app.get("/api/wiki/memories", wikiRouteHandlers.handleWikiMemories);
+app.get("/api/wiki/memory-explorer", wikiRouteHandlers.handleWikiMemoryExplorer);
+app.get("/api/wiki/memory-explorer/export", wikiRouteHandlers.handleWikiMemoryExplorerExport);
+app.post("/api/wiki/memory-explorer/brief", wikiRouteHandlers.handleWikiMemoryBrief);
+app.post("/api/wiki/memory-explorer/deck", wikiRouteHandlers.handleWikiMemoryDeck);
 app.delete("/api/wiki/memories/:scope/blocks/:blockId", wikiRouteHandlers.handleWikiMemoryBlockDelete);
 app.delete("/api/wiki/memories/proposals/:proposalId", wikiRouteHandlers.handleWikiMemoryProposalDelete);
 app.post("/api/wiki/sync", wikiRouteHandlers.handleWikiSync);
@@ -13435,36 +13506,6 @@ app.post("/api/jobs/:id/resume", async (req, res) => {
 	} catch (error) {
 		return sendHermesUnavailableResponse(res, error, "Failed to resume Hermes job");
 	}
-});
-
-app.get("/api/memories", async (_req, res) => {
-	return res.status(410).json({
-		error: "Hermes file-backed memory has been removed. Use /api/wiki/status for compiled memory state.",
-	});
-});
-
-app.get("/api/memories/:target", async (req, res) => {
-	return res.status(410).json({
-		error: "Hermes file-backed memory has been removed. Use the wiki-backed memory status instead.",
-	});
-});
-
-app.put("/api/memories/:target", async (req, res) => {
-	return res.status(410).json({
-		error: "Direct Hermes memory editing has been removed. Write durable memory through the llm-wiki flow.",
-	});
-});
-
-app.post("/api/memories/:target/entry", async (req, res) => {
-	return res.status(410).json({
-		error: "Direct Hermes memory editing has been removed. Write durable memory through the llm-wiki flow.",
-	});
-});
-
-app.delete("/api/memories/:target/entry", async (req, res) => {
-	return res.status(410).json({
-		error: "Direct Hermes memory editing has been removed. Write durable memory through the llm-wiki flow.",
-	});
 });
 
 app.get("/api/skills", async (_req, res) => {

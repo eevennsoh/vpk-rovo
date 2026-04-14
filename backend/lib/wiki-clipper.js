@@ -4,8 +4,18 @@ const crypto = require("node:crypto");
 const fs = require("node:fs/promises");
 const path = require("node:path");
 
-const WIKI_DIR = "/Users/esoh/wiki";
+const { DEFAULT_WIKI_DIR, resolveLlmWikiPaths } = require("./qmd");
+const WIKI_DIR = DEFAULT_WIKI_DIR;
 const MAX_SLUG_LENGTH = 80;
+const KNOWLEDGE_STATUS_KEY = "knowledge_status";
+const RAW_TEXT_CONTENT_TYPE_MAP = Object.freeze({
+	articles: "article",
+	bookmarks: "bookmark",
+	captures: "article",
+	papers: "paper",
+	raw: "article",
+	transcripts: "transcript",
+});
 
 const SERP_PATTERNS = [
 	/google\.\w+\/search/iu,
@@ -61,11 +71,41 @@ function generateSlug(title) {
 // Output path
 // ---------------------------------------------------------------------------
 
+function resolveRawTextContentType(category) {
+	if (typeof category !== "string" || category.trim().length === 0) {
+		return RAW_TEXT_CONTENT_TYPE_MAP.raw;
+	}
+
+	const normalizedCategory = category.trim().toLowerCase();
+	return RAW_TEXT_CONTENT_TYPE_MAP[normalizedCategory] ?? RAW_TEXT_CONTENT_TYPE_MAP.raw;
+}
+
+function readPipelineStatus(frontmatter, fieldName) {
+	if (
+		typeof frontmatter?.[fieldName] === "string"
+		&& frontmatter[fieldName].trim().length > 0
+	) {
+		return frontmatter[fieldName].trim();
+	}
+
+	if (typeof frontmatter?.status === "string" && frontmatter.status.trim().length > 0) {
+		return frontmatter.status.trim();
+	}
+
+	return null;
+}
+
 function buildOutputPath(wikiDir, category, slug) {
+	const { rawDir } = resolveLlmWikiPaths({ wikiDir });
 	const now = new Date();
 	const yyyy = String(now.getFullYear());
 	const mm = String(now.getMonth() + 1).padStart(2, "0");
-	return path.join(wikiDir, "raw", category, yyyy, mm, `${slug}.md`);
+	return path.join(
+		rawDir,
+		yyyy,
+		mm,
+		`${slug}.md`,
+	);
 }
 
 // ---------------------------------------------------------------------------
@@ -278,7 +318,8 @@ async function buildDedupeIndex(rawDir) {
 // ---------------------------------------------------------------------------
 
 async function appendToLog(wikiDir, action, subject, details = []) {
-	const logPath = path.join(wikiDir, "log.md");
+	const paths = resolveLlmWikiPaths({ wikiDir });
+	const logPath = path.join(paths.wikiDir, "log.md");
 	const date = new Date().toISOString().slice(0, 10);
 	const lines = [`\n## [${date}] ${action} | ${subject}`];
 	for (const detail of details) {
@@ -296,7 +337,7 @@ async function appendToLog(wikiDir, action, subject, details = []) {
 const MIN_WORD_COUNT = 50;
 
 async function captureUrl({
-	category = "articles",
+	category = "raw",
 	fetchImpl = globalThis.fetch,
 	forceRefresh = false,
 	tags = [],
@@ -346,7 +387,7 @@ async function captureUrl({
 	// 6. Generate slug + check dedupe
 	const title = extracted.title || "Untitled";
 	const slug = generateSlug(title);
-	const rawDir = path.join(wikiDir, "raw");
+	const { rawDir } = resolveLlmWikiPaths({ wikiDir });
 	const dedupeIndex = await buildDedupeIndex(rawDir);
 
 	const dedupeKey = canonicalUrl || url;
@@ -355,7 +396,12 @@ async function captureUrl({
 	if (existingPath && !forceRefresh) {
 		const existingContent = await fs.readFile(existingPath, "utf8");
 		const { frontmatter } = parseFrontmatter(existingContent);
-		return { filePath: existingPath, metadata: frontmatter, isUpdate: false };
+		return {
+			captureStatus: "existing",
+			filePath: existingPath,
+			metadata: frontmatter,
+			isUpdate: false,
+		};
 	}
 
 	// 7. Build metadata
@@ -365,13 +411,13 @@ async function captureUrl({
 		canonical_url: canonicalUrl,
 		captured_at: new Date().toISOString(),
 		capture_method: "defuddle",
-		content_type: category === "bookmarks" ? "bookmark" : "article",
+		content_type: resolveRawTextContentType(category),
 		author: extracted.author || undefined,
 		published: extracted.published || undefined,
 		description: extracted.description || undefined,
 		word_count: wordCount,
 		tags: tags.length > 0 ? tags : undefined,
-		status: forceRefresh && existingPath ? "updated" : "queued",
+		[KNOWLEDGE_STATUS_KEY]: forceRefresh && existingPath ? "updated" : "queued",
 	};
 
 	// 8. Write file
@@ -389,7 +435,12 @@ async function captureUrl({
 		forceRefresh && existingPath ? "Action: updated existing" : "Action: new capture",
 	]);
 
-	return { filePath, metadata, isUpdate: Boolean(forceRefresh && existingPath) };
+	return {
+		captureStatus: forceRefresh && existingPath ? "updated" : "created",
+		filePath,
+		metadata,
+		isUpdate: Boolean(forceRefresh && existingPath),
+	};
 }
 
 // ---------------------------------------------------------------------------
@@ -398,7 +449,7 @@ async function captureUrl({
 
 const WIKI_CONTENT_DIRS = [
 	"profiles",
-	"operations",
+	"work",
 	"sources",
 	"entities",
 	"concepts",
@@ -406,8 +457,6 @@ const WIKI_CONTENT_DIRS = [
 	"queries",
 	"synthesis",
 ];
-const RAW_WIKI_CONTENT_DIRS = ["articles", "papers", "transcripts", "turns", "assets"];
-
 async function queryWiki(query, { limit, wikiDir = WIKI_DIR } = {}) {
 	if (!query || typeof query !== "string" || !query.trim()) {
 		return { results: [] };
@@ -418,7 +467,8 @@ async function queryWiki(query, { limit, wikiDir = WIKI_DIR } = {}) {
 	const results = [];
 
 	for (const dir of WIKI_CONTENT_DIRS) {
-		const dirPath = path.join(wikiDir, dir);
+		const { wikiDir: canonicalWikiDir } = resolveLlmWikiPaths({ wikiDir });
+		const dirPath = path.join(canonicalWikiDir, dir);
 		const files = await walkMarkdownFiles(dirPath);
 
 		for (const filePath of files) {
@@ -474,15 +524,17 @@ async function lintWiki({ wikiDir = WIKI_DIR } = {}) {
 	// 1. Read index.md
 	let indexContent = "";
 	try {
-		indexContent = await fs.readFile(path.join(wikiDir, "index.md"), "utf8");
+		const { wikiDir: canonicalWikiDir } = resolveLlmWikiPaths({ wikiDir });
+		indexContent = await fs.readFile(path.join(canonicalWikiDir, "index.md"), "utf8");
 	} catch {
 		issues.push({ type: "missing-file", path: "index.md", message: "index.md not found" });
 	}
 
 	// 2. Collect all canonical pages
+	const { wikiDir: canonicalWikiDir, rawDir } = resolveLlmWikiPaths({ wikiDir });
 	const allPages = [];
 	for (const dir of WIKI_CONTENT_DIRS) {
-		const dirPath = path.join(wikiDir, dir);
+		const dirPath = path.join(canonicalWikiDir, dir);
 		const files = await walkMarkdownFiles(dirPath);
 		for (const filePath of files) {
 			try {
@@ -535,7 +587,6 @@ async function lintWiki({ wikiDir = WIKI_DIR } = {}) {
 	}
 
 	// 4. Check for duplicate canonical URLs in raw/
-	const rawDir = path.join(wikiDir, "raw");
 	const rawFiles = await walkMarkdownFiles(rawDir);
 	const urlToFiles = new Map();
 
@@ -573,15 +624,92 @@ async function lintWiki({ wikiDir = WIKI_DIR } = {}) {
 // ---------------------------------------------------------------------------
 
 const TYPE_TO_DIR = {
+	source: "sources",
 	entity: "entities",
 	concept: "concepts",
 	comparison: "comparisons",
 	query: "queries",
+	synthesis: "synthesis",
 };
 
-function buildIngestPrompt(rawFrontmatter, rawBody, schemaContent, indexContent) {
+function getDateOnly(value) {
+	if (typeof value !== "string" || value.trim().length === 0) {
+		return null;
+	}
+
+	const match = value.trim().match(/^(\d{4}-\d{2}-\d{2})/u);
+	return match?.[1] ?? null;
+}
+
+function toRelativeRawPath(filePath, wikiDir) {
+	const { rootDir, rawDir } = resolveLlmWikiPaths({ wikiDir });
+	const relativeToRoot = path.relative(rootDir, filePath).split(path.sep).join("/");
+	if (relativeToRoot && !relativeToRoot.startsWith("..")) {
+		return relativeToRoot;
+	}
+
+	const relativeToRaw = path.relative(rawDir, filePath).split(path.sep).join("/");
+	return relativeToRaw && !relativeToRaw.startsWith("..")
+		? `raw/${relativeToRaw}`
+		: filePath;
+}
+
+function buildSourcePageFromRaw(filePath, rawFrontmatter, rawBody, { wikiDir = WIKI_DIR } = {}) {
+	const rawTitle =
+		typeof rawFrontmatter?.title === "string" && rawFrontmatter.title.trim()
+			? rawFrontmatter.title.trim()
+			: path.basename(filePath, ".md");
+	const sourceSlug = `${generateSlug(rawTitle)}-source`;
+	const relativeRawPath = toRelativeRawPath(filePath, wikiDir);
+	const created = getDateOnly(rawFrontmatter?.captured_at) ?? getDateOnly(rawFrontmatter?.created_at) ?? new Date().toISOString().slice(0, 10);
+	const tags = Array.isArray(rawFrontmatter?.tags)
+		? Array.from(new Set(["source", ...rawFrontmatter.tags.map((tag) => String(tag).trim()).filter(Boolean)]))
+		: ["source"];
+	const metadataLines = [
+		typeof rawFrontmatter?.source_url === "string" && rawFrontmatter.source_url.trim()
+			? `- Source URL: ${rawFrontmatter.source_url.trim()}`
+			: null,
+		typeof rawFrontmatter?.canonical_url === "string" && rawFrontmatter.canonical_url.trim()
+			? `- Canonical URL: ${rawFrontmatter.canonical_url.trim()}`
+			: null,
+		typeof rawFrontmatter?.captured_at === "string" && rawFrontmatter.captured_at.trim()
+			? `- Captured: ${rawFrontmatter.captured_at.trim()}`
+			: null,
+		typeof rawFrontmatter?.content_type === "string" && rawFrontmatter.content_type.trim()
+			? `- Content type: ${rawFrontmatter.content_type.trim()}`
+			: null,
+	].filter(Boolean);
+
+	return {
+		slug: sourceSlug,
+		type: "source",
+		frontmatter: {
+			title: rawTitle,
+			created,
+			updated: new Date().toISOString().slice(0, 10),
+			type: "source",
+			tags,
+			sources: [relativeRawPath],
+		},
+		body: [
+			`# ${rawTitle}`,
+			"",
+			"## Source Metadata",
+			"",
+			...(metadataLines.length > 0 ? metadataLines : ["- No source metadata captured."]),
+			"",
+			"## Extract",
+			"",
+			rawBody.trim() || "_No extracted body available._",
+			"",
+		].join("\n"),
+		indexEntry: `- [[${sourceSlug}]] — Canonical source summary for ${rawTitle}`,
+	};
+}
+
+function buildDerivationPrompt(sourcePage, schemaContent, indexContent) {
 	return [
-		"You are a wiki editor. Given the raw captured article below, generate a canonical wiki page.",
+		"You are a wiki editor. Given the canonical source page below, derive any additional canonical wiki pages that should exist.",
 		"",
 		"## Wiki Schema",
 		schemaContent,
@@ -589,29 +717,122 @@ function buildIngestPrompt(rawFrontmatter, rawBody, schemaContent, indexContent)
 		"## Current Index",
 		indexContent,
 		"",
-		"## Raw Article Frontmatter",
-		JSON.stringify(rawFrontmatter, null, 2),
+		"## Canonical Source Page Frontmatter",
+		JSON.stringify(sourcePage.frontmatter, null, 2),
 		"",
-		"## Raw Article Content",
-		rawBody,
+		"## Canonical Source Page Body",
+		sourcePage.body,
 		"",
 		"## Instructions",
 		"Generate a JSON object with these fields:",
-		'- slug: lowercase hyphenated page name (e.g., "rovo")',
-		'- type: one of "entity", "concept", "comparison", "query"',
-		"- frontmatter: object with title, created (YYYY-MM-DD), updated (YYYY-MM-DD), type, tags (array), sources (array of raw file paths)",
-		"- body: markdown content with at least 2 [[wikilinks]] to other pages",
-		'- indexEntry: one line for index.md (e.g., "- [[slug]] — description")',
+		'- pages: array of zero or more canonical pages to create/update',
+		'- each page must include slug, type, frontmatter, body, and indexEntry',
+		'- type must be one of "entity", "concept", "comparison", "query", "synthesis"',
+		"- frontmatter must include title, created, updated, type, tags, and sources",
+		"- body should use markdown and include [[wikilinks]] where appropriate",
+		'- indexEntry should be one line for index.md (e.g., "- [[slug]] — description")',
 		"",
+		"If no additional canonical pages should be derived from this source, return `{ \"pages\": [] }`.",
+		"Do not recreate the source page itself in the pages array.",
 		"Return ONLY the JSON object, no other text.",
 	].join("\n");
 }
 
-function updateRawFileStatus(content, newStatus) {
-	return content.replace(
-		/^(status:\s*).+$/mu,
-		`$1${newStatus}`,
-	);
+function writeCanonicalPage(pageData, canonicalWikiDir) {
+	const targetDir = TYPE_TO_DIR[pageData.type] || "entities";
+	const canonicalPath = path.join(canonicalWikiDir, targetDir, `${pageData.slug}.md`);
+	const canonicalContent = `${serializeFrontmatter(pageData.frontmatter)}\n${pageData.body}\n`;
+	return fs.writeFile(canonicalPath, canonicalContent, "utf8").then(() => canonicalPath);
+}
+
+async function saveSynthesisPage({
+	content,
+	sources = [],
+	tags = [],
+	title,
+	wikiDir = WIKI_DIR,
+} = {}) {
+	const resolvedTitle =
+		typeof title === "string" && title.trim().length > 0
+			? title.trim()
+			: null;
+	const resolvedContent =
+		typeof content === "string" && content.trim().length > 0
+			? content.trim()
+			: null;
+	if (!resolvedTitle || !resolvedContent) {
+		const error = new Error("A synthesis title and content are required.");
+		error.code = "INVALID_INPUT";
+		throw error;
+	}
+
+	const { wikiDir: canonicalWikiDir } = resolveLlmWikiPaths({ wikiDir });
+	await fs.mkdir(path.join(canonicalWikiDir, "synthesis"), { recursive: true });
+	const slug = generateSlug(resolvedTitle);
+	const synthesisPath = path.join(canonicalWikiDir, "synthesis", `${slug}.md`);
+	const now = new Date().toISOString().slice(0, 10);
+	const normalizedSources = Array.isArray(sources)
+		? sources.map((value) => String(value).trim()).filter(Boolean)
+		: [];
+	const normalizedTags = Array.isArray(tags)
+		? Array.from(new Set(["synthesis", ...tags.map((value) => String(value).trim()).filter(Boolean)]))
+		: ["synthesis"];
+
+	const pageData = {
+		slug,
+		type: "synthesis",
+		frontmatter: {
+			title: resolvedTitle,
+			created: now,
+			updated: now,
+			type: "synthesis",
+			tags: normalizedTags,
+			sources: normalizedSources,
+		},
+		body: resolvedContent,
+		indexEntry: `- [[${slug}]] — ${resolvedTitle}`,
+	};
+
+	await writeCanonicalPage(pageData, canonicalWikiDir);
+	let indexContent = "";
+	const indexPath = path.join(canonicalWikiDir, "index.md");
+	try {
+		indexContent = await fs.readFile(indexPath, "utf8");
+	} catch {
+		indexContent = "# Wiki Index\n\n## Synthesis\n";
+	}
+
+	if (!indexContent.includes(`[[${slug}]]`)) {
+		indexContent += `${pageData.indexEntry}\n`;
+		await fs.writeFile(indexPath, indexContent, "utf8");
+	}
+
+	await appendToLog(wikiDir, "synthesis-save", resolvedTitle, [
+		`Canonical: ${synthesisPath}`,
+		...(normalizedSources.length > 0 ? [`Sources: ${normalizedSources.join(", ")}`] : []),
+	]);
+
+	return {
+		path: synthesisPath,
+		slug,
+		title: resolvedTitle,
+	};
+}
+
+function updateFrontmatterField(content, fieldName, nextValue) {
+	const fieldPattern = new RegExp(`^(${fieldName}:\\s*).+$`, "mu");
+	if (fieldPattern.test(content)) {
+		return content.replace(fieldPattern, `$1${nextValue}`);
+	}
+
+	const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/u);
+	if (!frontmatterMatch) {
+		return content;
+	}
+
+	return content.replace(/^---\n([\s\S]*?)\n---/u, (_match, block) => {
+		return `---\n${block}\n${fieldName}: ${nextValue}\n---`;
+	});
 }
 
 async function ingestRawSources({
@@ -626,22 +847,22 @@ async function ingestRawSources({
 			prompt,
 			selectedSkillIds: ["research/llm-wiki"],
 			parseStructuredResult: parseStructuredJsonResponse,
-			system: "You are a wiki editor. Return ONLY a JSON object with fields: slug, type, frontmatter, body, indexEntry. No other text.",
+			system: "You are a wiki editor. Return ONLY a JSON object. For derivation prompts return { pages: [...] }. No other text.",
 		});
 	});
-	const rawDir = path.join(wikiDir, "raw");
+	const { rawDir, wikiDir: canonicalWikiDir } = resolveLlmWikiPaths({ wikiDir });
 	const rawFiles = await walkMarkdownFiles(rawDir);
 
 	// Read schema and index for LLM context
 	let schemaContent = "";
 	let indexContent = "";
 	try {
-		schemaContent = await fs.readFile(path.join(wikiDir, "SCHEMA.md"), "utf8");
+			schemaContent = await fs.readFile(path.join(canonicalWikiDir, "SCHEMA.md"), "utf8");
 	} catch {
 		// No schema — proceed without
 	}
 	try {
-		indexContent = await fs.readFile(path.join(wikiDir, "index.md"), "utf8");
+			indexContent = await fs.readFile(path.join(canonicalWikiDir, "index.md"), "utf8");
 	} catch {
 		// No index — proceed without
 	}
@@ -661,50 +882,69 @@ async function ingestRawSources({
 
 		const { frontmatter, body } = parseFrontmatter(content);
 
-		// Only process queued or updated files
-		if (frontmatter.status !== "queued" && frontmatter.status !== "updated") {
+		const knowledgeStatus = readPipelineStatus(frontmatter, KNOWLEDGE_STATUS_KEY);
+
+		// Only process raw sources queued for knowledge ingest.
+		if (knowledgeStatus !== "queued" && knowledgeStatus !== "updated") {
 			skipped += 1;
 			continue;
 		}
 
 		try {
-			// Call LLM to generate canonical page
-			const prompt = buildIngestPrompt(frontmatter, body, schemaContent, indexContent);
+			const sourcePage = buildSourcePageFromRaw(filePath, frontmatter, body, { wikiDir });
+			const writtenPaths = [];
+			const updatedCollections = new Set();
+
+			const sourceCanonicalPath = await writeCanonicalPage(sourcePage, canonicalWikiDir);
+			writtenPaths.push({
+				pageData: sourcePage,
+				path: sourceCanonicalPath,
+			});
+			if (sourcePage.indexEntry && !indexContent.includes(`[[${sourcePage.slug}]]`)) {
+				indexContent += `${sourcePage.indexEntry}\n`;
+				await fs.writeFile(path.join(canonicalWikiDir, "index.md"), indexContent, "utf8");
+			}
+			updatedCollections.add("source");
+
+			const prompt = buildDerivationPrompt(sourcePage, schemaContent, indexContent);
 			const executorResult = await executor({ prompt });
 
-			// Parse structured result
-			let pageData = executorResult.structuredResult;
-			if (!pageData && executorResult.responseText) {
+			let derivationData = executorResult.structuredResult;
+			if (!derivationData && executorResult.responseText) {
 				const { parseStructuredJsonResponse } = require("./rovo-task-executor");
-				pageData = parseStructuredJsonResponse(executorResult.responseText);
+				derivationData = parseStructuredJsonResponse(executorResult.responseText);
 			}
 
-			if (!pageData || !pageData.slug || !pageData.type || !pageData.body) {
-				errors.push(`Invalid LLM response for ${filePath}`);
-				continue;
+			let derivedPages = Array.isArray(derivationData?.pages)
+				? derivationData.pages
+				: derivationData && !Array.isArray(derivationData) && derivationData.slug && derivationData.type && derivationData.body
+					? [derivationData]
+					: [];
+			derivedPages = derivedPages.filter((pageData) => {
+				return pageData
+					&& typeof pageData === "object"
+					&& typeof pageData.slug === "string"
+					&& typeof pageData.type === "string"
+					&& pageData.type !== "source"
+					&& typeof pageData.body === "string";
+			});
+
+			for (const pageData of derivedPages) {
+				const canonicalPath = await writeCanonicalPage(pageData, canonicalWikiDir);
+				writtenPaths.push({ pageData, path: canonicalPath });
+				if (pageData.indexEntry && !indexContent.includes(`[[${pageData.slug}]]`)) {
+					indexContent += `${pageData.indexEntry}\n`;
+					await fs.writeFile(path.join(canonicalWikiDir, "index.md"), indexContent, "utf8");
+				}
+				updatedCollections.add(pageData.type);
 			}
 
-			// Write canonical page
-			const targetDir = TYPE_TO_DIR[pageData.type] || "entities";
-			const canonicalPath = path.join(wikiDir, targetDir, `${pageData.slug}.md`);
-			const canonicalContent = `${serializeFrontmatter(pageData.frontmatter)}\n${pageData.body}\n`;
-			await fs.writeFile(canonicalPath, canonicalContent, "utf8");
-
-			// Update index.md
-			if (pageData.indexEntry && !indexContent.includes(`[[${pageData.slug}]]`)) {
-				indexContent += `${pageData.indexEntry}\n`;
-				await fs.writeFile(path.join(wikiDir, "index.md"), indexContent, "utf8");
-			}
-
-			// Update raw file status
-			const updatedContent = updateRawFileStatus(content, "ingested");
+			const updatedContent = updateFrontmatterField(content, KNOWLEDGE_STATUS_KEY, "ingested");
 			await fs.writeFile(filePath, updatedContent, "utf8");
 
-			// Log
-			await appendToLog(wikiDir, "ingest", pageData.frontmatter?.title || pageData.slug, [
+			await appendToLog(wikiDir, "ingest", sourcePage.frontmatter?.title || sourcePage.slug, [
 				`Source: ${filePath}`,
-				`Canonical: ${canonicalPath}`,
-				`Type: ${pageData.type}`,
+				...writtenPaths.map(({ pageData, path }) => `Canonical: ${path} (${pageData.type})`),
 			]);
 			const syncQmdIndex = qmdSyncImpl || (async ({ pageType }) => {
 				const {
@@ -723,12 +963,14 @@ async function ingestRawSources({
 			});
 
 			try {
-				await syncQmdIndex({
-					canonicalPath,
-					pageData,
-					pageType: pageData.type,
-					wikiDir,
-				});
+				for (const { pageData, path } of writtenPaths) {
+					await syncQmdIndex({
+						canonicalPath: path,
+						pageData,
+						pageType: pageData.type,
+						wikiDir,
+					});
+				}
 			} catch (error) {
 				console.warn(
 					"[wiki-clipper] Failed to refresh qmd index after ingest:",
@@ -788,42 +1030,46 @@ async function getWikiStatus({
 } = {}) {
 	const { getWikiMemoryStatus } = require("./wiki-memory-provider");
 
+	const paths = resolveLlmWikiPaths({ wikiDir });
 	const [
 		indexFile,
 		logFile,
 		schemaFile,
 		canonicalEntries,
-		rawEntries,
+		rawTextCount,
+		rawAssetCount,
 		memoryStatus,
 	] = await Promise.all([
-		readFileSummary(path.join(wikiDir, "index.md")),
-		readFileSummary(path.join(wikiDir, "log.md")),
-		readFileSummary(path.join(wikiDir, "SCHEMA.md")),
+		readFileSummary(path.join(paths.wikiDir, "index.md")),
+		readFileSummary(path.join(paths.wikiDir, "log.md")),
+		readFileSummary(path.join(paths.wikiDir, "SCHEMA.md")),
 		Promise.all(
 			WIKI_CONTENT_DIRS.map(async (section) => ([
 				section,
-				await countMarkdownFiles(path.join(wikiDir, section)),
+				await countMarkdownFiles(path.join(paths.wikiDir, section)),
 			])),
 		),
-		Promise.all(
-			RAW_WIKI_CONTENT_DIRS.map(async (section) => ([
-				section,
-				await countMarkdownFiles(path.join(wikiDir, "raw", section)),
-			])),
-		),
-		getWikiMemoryStatus({ wikiDir }),
+		countMarkdownFiles(paths.rawDir),
+		countMarkdownFiles(path.join(paths.rawDir, "assets")),
+		getWikiMemoryStatus({ wikiDir: paths.wikiDir }),
 	]);
 
 	const canonicalCounts = buildCountRecord(canonicalEntries);
-	const rawCounts = buildCountRecord(rawEntries);
+	const rawCounts = {
+		raw: Math.max(0, rawTextCount - rawAssetCount),
+		assets: rawAssetCount,
+	};
 
 	return {
-		wikiDir,
+		wikiDir: paths.rootDir,
 		generatedAt: new Date().toISOString(),
 		canonicalCounts,
-		rawCounts,
+		rawCounts: {
+			raw: rawTextCount,
+			assets: rawCounts.assets ?? 0,
+		},
 		totalCanonicalPages: sumCountRecord(canonicalCounts),
-		totalRawCaptures: sumCountRecord(rawCounts),
+		totalRawCaptures: rawTextCount,
 		hasWikiDigestEntry: Object.values(memoryStatus.compiledContexts ?? {}).some((context) => context?.exists === true),
 		hasCompiledContextArtifacts: Object.values(memoryStatus.compiledContexts ?? {}).some((context) => context?.exists === true),
 		files: {
@@ -863,21 +1109,21 @@ function getWikiJobDefinitions() {
 		{
 			name: "wiki-nightly-ingest",
 			schedule: "0 2 * * *",
-			prompt: "Run the wiki ingest process: scan wiki/raw/ for files with status queued or updated, generate canonical wiki pages from each, update index.md, and set raw file status to ingested.",
+			prompt: "Run the wiki ingest process: scan llm-wiki/raw/ for files with knowledge_status queued or updated, create/update canonical source pages first, derive any canonical entity/concept/comparison/query/synthesis pages, update wiki/index.md, mark knowledge_status as ingested when processed, and lint the wiki afterward.",
 			skills: ["research/llm-wiki"],
 			repeat: true,
 		},
 		{
 			name: "wiki-memory-sync",
 			schedule: "*/5 * * * *",
-			prompt: "Process queued wiki-backed memory proposals from raw/turns/, update canonical memory pages, refresh qmd collections, and regenerate compiled context artifacts.",
+			prompt: "Process queued wiki-backed memory proposals discovered under llm-wiki/raw/, update canonical memory pages, refresh qmd collections, regenerate compiled context artifacts, and lint the canonical wiki plus memory pages afterward.",
 			skills: ["research/llm-wiki"],
 			repeat: true,
 		},
 		{
 			name: "wiki-digest-regen",
 			schedule: "0 6 * * *",
-			prompt: "Regenerate the compiled wiki-backed runtime memory context artifacts from canonical wiki pages.",
+			prompt: "Regenerate the compiled wiki-backed memory context artifacts from canonical wiki pages and lint the canonical wiki afterward.",
 			skills: ["research/llm-wiki"],
 			repeat: true,
 		},
@@ -929,6 +1175,7 @@ module.exports = {
 	parseFrontmatter,
 	queryWiki,
 	regenerateMemoryDigest,
+	saveSynthesisPage,
 	serializeFrontmatter,
 	validateUrl,
 };
