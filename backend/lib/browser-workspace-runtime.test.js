@@ -16,13 +16,22 @@ class TestAgentBrowserRuntime extends AgentBrowserRuntime {
 		this.commands = []
 		this.jsonCommands = []
 		this.jsonResults = new Map()
+		this.commandFailures = new Map()
 		this.screencastBuffers = []
+		this.streamEnableResult = null
+		this.streamStatusResult = null
+		this.nativeStreamFrames = []
 	}
 
 	async _ensureInstalled() {}
 
 	async _runCommand(args) {
-		this.commands.push(args.map((value) => String(value)))
+		const normalizedArgs = args.map((value) => String(value))
+		const key = normalizedArgs.join(" ")
+		this.commands.push(normalizedArgs)
+		if (this.commandFailures.has(key)) {
+			throw this.commandFailures.get(key)
+		}
 		return ""
 	}
 
@@ -42,6 +51,33 @@ class TestAgentBrowserRuntime extends AgentBrowserRuntime {
 			this.screencastBuffers.shift() || Buffer.from("not-a-jpeg")
 		this.commands.push(["capture-screencast-frame"])
 		return nextBuffer
+	}
+
+	async _getNativeStreamStatus() {
+		this.commands.push(["stream", "status"])
+		return this.streamStatusResult
+	}
+
+	async _enableNativeStream() {
+		this.commands.push(["stream", "enable"])
+		return this.streamEnableResult
+	}
+
+	async _disableNativeStream() {
+		this.commands.push(["stream", "disable"])
+	}
+
+	async _connectNativeStream(port, callback) {
+		this.commands.push(["connect-native-stream", String(port)])
+		for (const frame of this.nativeStreamFrames) {
+			callback(frame)
+		}
+
+		return {
+			close() {
+				return undefined
+			},
+		}
 	}
 }
 
@@ -68,10 +104,7 @@ test("browser workspace runtime reads tab state through agent-browser JSON comma
 
 	const state = await runtime.getState()
 
-	assert.deepEqual(runtime.commands, [
-		["open", "about:blank"],
-		["set", "viewport", "1280", "900", "1"],
-	])
+	assert.deepEqual(runtime.commands, [["open", "about:blank"]])
 	assert.deepEqual(runtime.jsonCommands, [["tab"]])
 	assert.equal(state.activeTabIndex, 1)
 	assert.equal(state.title, "Two")
@@ -99,10 +132,7 @@ test("browser workspace runtime snapshot normalizes ref keys for interactive mod
 
 	const snapshot = await runtime.snapshot({ interactive: true })
 
-	assert.deepEqual(runtime.commands, [
-		["open", "about:blank"],
-		["set", "viewport", "1280", "900", "1"],
-	])
+	assert.deepEqual(runtime.commands, [["open", "about:blank"]])
 	assert.deepEqual(runtime.jsonCommands, [["snapshot", "-i"]])
 	assert.equal(snapshot.snapshot.includes("[ref=@e1]"), true)
 	assert.deepEqual(snapshot.refs, {
@@ -117,7 +147,69 @@ test("browser workspace runtime snapshot normalizes ref keys for interactive mod
 	})
 })
 
-test("browser workspace runtime screencast emits jpeg frames with capped fallback metadata", async () => {
+test("browser workspace runtime initializes directly on the target URL and recovers timed-out initial opens", async () => {
+	const runtime = new TestAgentBrowserRuntime()
+	runtime.commandFailures.set(
+		"open https://theverge.com",
+		new Error("✗ Operation timed out. The page may still be loading or the element may not exist."),
+	)
+	runtime.jsonResults.set("tab", {
+		tabs: [
+			{
+				active: true,
+				index: 0,
+				title: "The Verge",
+				type: "page",
+				url: "https://www.theverge.com/",
+			},
+		],
+	})
+
+	await runtime.initialize("https://theverge.com")
+
+	assert.deepEqual(runtime.commands, [["open", "https://theverge.com"]])
+	assert.deepEqual(runtime.jsonCommands, [["tab"]])
+})
+
+test("browser workspace runtime prefers the native agent-browser stream when available", async () => {
+	const capturedFrames = []
+	const runtime = new TestAgentBrowserRuntime()
+	runtime.streamStatusResult = {
+		enabled: true,
+		port: 59029,
+	}
+	runtime.nativeStreamFrames = [
+		{
+			buffer: Buffer.from("native-frame"),
+			metadata: {
+				deviceWidth: 1200,
+				deviceHeight: 769,
+				pageScaleFactor: 1,
+			},
+		},
+	]
+
+	await runtime.startScreencast((frame) => {
+		capturedFrames.push(frame)
+	})
+	await runtime.stopScreencast()
+
+	assert.deepEqual(runtime.commands, [
+		["open", "about:blank"],
+		["stream", "status"],
+		["connect-native-stream", "59029"],
+		["stream", "disable"],
+	])
+	assert.equal(capturedFrames.length, 1)
+	assert.equal(Buffer.isBuffer(capturedFrames[0]?.buffer), true)
+	assert.deepEqual(capturedFrames[0]?.metadata, {
+		deviceWidth: 1200,
+		deviceHeight: 769,
+		pageScaleFactor: 1,
+	})
+})
+
+test("browser workspace runtime screencast falls back to screenshots with capped metadata", async () => {
 	let capturedFrame = null
 	const runtime = new TestAgentBrowserRuntime({
 		viewport: {
@@ -126,6 +218,10 @@ test("browser workspace runtime screencast emits jpeg frames with capped fallbac
 		},
 		deviceScaleFactor: 2,
 	})
+	runtime.streamEnableResult = {
+		enabled: false,
+		port: null,
+	}
 
 	await runtime.startScreencast((frame) => {
 		capturedFrame = frame
@@ -134,13 +230,26 @@ test("browser workspace runtime screencast emits jpeg frames with capped fallbac
 
 	assert.deepEqual(runtime.commands, [
 		["open", "about:blank"],
-		["set", "viewport", "1400", "1000", "2"],
+		["stream", "status"],
+		["stream", "enable"],
 		["capture-screencast-frame"],
+		["stream", "disable"],
 	])
-	assert.equal(typeof capturedFrame?.data, "string")
+	assert.equal(Buffer.isBuffer(capturedFrame?.buffer), true)
 	assert.deepEqual(capturedFrame?.metadata, {
 		deviceWidth: DEFAULT_SCREENCAST_MAX_WIDTH,
 		deviceHeight: DEFAULT_SCREENCAST_MAX_HEIGHT,
 		pageScaleFactor: 2,
 	})
+})
+
+test("browser workspace runtime only changes viewport when explicitly requested", async () => {
+	const runtime = new TestAgentBrowserRuntime()
+
+	await runtime.setViewport(1440, 960, 2)
+
+	assert.deepEqual(runtime.commands, [
+		["open", "about:blank"],
+		["set", "viewport", "1440", "960", "2"],
+	])
 })

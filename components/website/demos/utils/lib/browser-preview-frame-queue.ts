@@ -1,60 +1,62 @@
+export type BrowserPreviewFramePayload = Blob | string
+
 export interface BrowserPreviewFrameQueueState {
-	inflightFrameSrc: string | null
-	pendingFrameSrc: string | null
+	inflightFrame: BrowserPreviewFramePayload | null
+	pendingFrame: BrowserPreviewFramePayload | null
 }
 
 export function createBrowserPreviewFrameQueueState(): BrowserPreviewFrameQueueState {
 	return {
-		inflightFrameSrc: null,
-		pendingFrameSrc: null,
+		inflightFrame: null,
+		pendingFrame: null,
 	}
 }
 
 export function enqueueBrowserPreviewFrame(
 	state: BrowserPreviewFrameQueueState,
-	frameSrc: string,
+	frame: BrowserPreviewFramePayload,
 ) {
-	if (!state.inflightFrameSrc) {
+	if (!state.inflightFrame) {
 		return {
 			nextState: {
-				inflightFrameSrc: frameSrc,
-				pendingFrameSrc: null,
+				inflightFrame: frame,
+				pendingFrame: null,
 			},
-			frameSrcToLoad: frameSrc,
+			frameToLoad: frame,
 		}
 	}
 
-	if (state.inflightFrameSrc === frameSrc || state.pendingFrameSrc === frameSrc) {
+	if (state.inflightFrame === frame || state.pendingFrame === frame) {
 		return {
 			nextState: state,
-			frameSrcToLoad: null,
+			frameToLoad: null,
 		}
 	}
 
 	return {
 		nextState: {
-			inflightFrameSrc: state.inflightFrameSrc,
-			pendingFrameSrc: frameSrc,
+			inflightFrame: state.inflightFrame,
+			pendingFrame: frame,
 		},
-		frameSrcToLoad: null,
+		frameToLoad: null,
 	}
 }
 
 export function completeBrowserPreviewFrameLoad(
 	state: BrowserPreviewFrameQueueState,
 ) {
-	if (!state.pendingFrameSrc) {
+	if (!state.pendingFrame) {
 		return {
 			nextState: createBrowserPreviewFrameQueueState(),
-			frameSrcToLoad: null,
+			frameToLoad: null,
 		}
 	}
 
 	return {
 		nextState: {
-			inflightFrameSrc: state.pendingFrameSrc,
-			pendingFrameSrc: null,
+			inflightFrame: state.pendingFrame,
+			pendingFrame: null,
 		},
-		frameSrcToLoad: state.pendingFrameSrc,
+		frameToLoad: state.pendingFrame,
 	}
 }

@@ -1,6 +1,6 @@
 const fs = require("node:fs");
-const path = require("node:path");
 
+const { ensureEnvLocalExists: ensureEnvLocalExistsBase } = require("./env-local");
 const { resolveRovodevBin } = require("./rovodev-utils");
 const {
 	dedupeAllowedMcpServersInConfig,
@@ -9,18 +9,15 @@ const {
 } = require("./rovodev-config");
 
 function ensureEnvLocalExists({ cwd = process.cwd(), logger = console } = {}) {
-	const envLocalPath = path.join(cwd, ".env.local");
-	const envExamplePath = path.join(cwd, ".env.local.example");
+	const result = ensureEnvLocalExistsBase({ cwd });
 
-	if (!fs.existsSync(envLocalPath) && fs.existsSync(envExamplePath)) {
-		fs.copyFileSync(envExamplePath, envLocalPath);
+	if (result.createdFrom === "main-worktree") {
+		logger.log?.(`[rovodev] Created .env.local from main worktree: ${result.mainWorktreePath}`);
+	} else if (result.createdFrom === "example") {
 		logger.log?.("[rovodev] Created .env.local from .env.local.example");
 	}
 
-	return {
-		envLocalPath,
-		envExamplePath,
-	};
+	return result;
 }
 
 function loadEnvLocal({ envLocalPath } = {}) {

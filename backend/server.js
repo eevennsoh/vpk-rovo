@@ -46,7 +46,9 @@ const {
 	runHermesMemoryCompanionReview,
 } = require("./lib/hermes-memory-companion");
 const {
-	getWikiMemoryStatus,
+	deleteWikiMemoryProposal,
+	getCanonicalWikiMemoryDocuments,
+	pruneCanonicalWikiMemoryBlock,
 	syncWikiBackedMemory,
 } = require("./lib/wiki-memory-provider");
 const {
@@ -347,6 +349,16 @@ const {
 	isBrowserWorkspaceNotFoundError,
 } = require("./lib/browser-workspace-manager");
 const {
+	isBrowserToolCall,
+	createThreadBrowserBridge,
+} = require("./lib/rovo-app-browser-tools");
+const {
+	deleteRovoAppThreadBrowserWorkspace,
+	ensureRovoAppThreadBrowserWorkspace,
+	getRovoAppThreadBrowserWorkspace,
+} = require("./lib/rovo-app-browser-workspace");
+const { getMirrorBrowser, destroyMirrorBrowser } = require("./lib/rovo-app-browser-mirror");
+const {
 	classifyPromptIntent,
 	inferPromptIntent,
 } = require("./lib/prompt-intent");
@@ -359,12 +371,6 @@ const {
 	buildQuestionCardPayloadFromRequestUserInput,
 	findRequestUserInputQuestionContainer,
 } = require("./lib/question-card-payload");
-const {
-	buildPausedToolApprovalPayload,
-	buildToolApprovalResumeDecisions,
-	getPartPermissionScenario,
-	normalizeToolApprovalSubmission,
-} = require("./lib/paused-tool-approval");
 const {
 	shouldGateToolFirstQuestionCard,
 	buildToolFirstClarificationInstruction,
@@ -388,9 +394,38 @@ const {
 
 console.log("[STARTUP] Dependencies loaded");
 
+const syncWikiMemoryCollection = async ({ collectionName, wikiDir }) => {
+	if (!collectionName) {
+		return;
+	}
+
+	await syncWikiQmdIndex({
+		collectionNames: [collectionName],
+		logger: console,
+		wikiDir,
+	});
+};
+
 const wikiRouteHandlers = createWikiRouteHandlers({
+	deleteWikiMemoryBlockImpl: async ({ blockId, logger, revision, scope }) => {
+		return pruneCanonicalWikiMemoryBlock({
+			blockId,
+			logger,
+			qmdSyncImpl: syncWikiMemoryCollection,
+			revision,
+			scope,
+		});
+	},
+	deleteWikiMemoryProposalImpl: async ({ logger, proposalId }) => {
+		return deleteWikiMemoryProposal({
+			logger,
+			proposalId,
+			qmdSyncImpl: syncWikiMemoryCollection,
+		});
+	},
 	ensureFreshWikiQmdIndexImpl: ensureFreshWikiQmdIndex,
 	getQmdSyncSummaryImpl: getQmdSyncSummary,
+	getWikiMemoriesImpl: getCanonicalWikiMemoryDocuments,
 	getWikiStatusImpl: getWikiStatus,
 	logger: console,
 	normalizeNaiveWikiSearchResultsImpl: normalizeNaiveWikiSearchResults,
@@ -1619,6 +1654,140 @@ function extractRovoAppUploadIdFromUrl(rawUrl) {
 	}
 }
 
+function getPngImageDimensions(buffer) {
+	if (!Buffer.isBuffer(buffer) || buffer.length < 24) {
+		return null;
+	}
+
+	if (buffer.subarray(0, 8).toString("hex") !== "89504e470d0a1a0a") {
+		return null;
+	}
+
+	return {
+		height: buffer.readUInt32BE(20),
+		width: buffer.readUInt32BE(16),
+	};
+}
+
+function getJpegImageDimensions(buffer) {
+	if (!Buffer.isBuffer(buffer) || buffer.length < 4) {
+		return null;
+	}
+
+	if (buffer[0] !== 0xff || buffer[1] !== 0xd8) {
+		return null;
+	}
+
+	let offset = 2;
+	while (offset + 8 < buffer.length) {
+		if (buffer[offset] !== 0xff) {
+			offset += 1;
+			continue;
+		}
+
+		const marker = buffer[offset + 1];
+		offset += 2;
+
+		if (marker === 0xd8 || marker === 0xd9) {
+			continue;
+		}
+
+		if (offset + 2 > buffer.length) {
+			break;
+		}
+
+		const segmentLength = buffer.readUInt16BE(offset);
+		if (segmentLength < 2 || offset + segmentLength > buffer.length) {
+			break;
+		}
+
+		const isStartOfFrame =
+			(marker >= 0xc0 && marker <= 0xc3) ||
+			(marker >= 0xc5 && marker <= 0xc7) ||
+			(marker >= 0xc9 && marker <= 0xcb) ||
+			(marker >= 0xcd && marker <= 0xcf);
+		if (isStartOfFrame && segmentLength >= 7) {
+			return {
+				height: buffer.readUInt16BE(offset + 3),
+				width: buffer.readUInt16BE(offset + 5),
+			};
+		}
+
+		offset += segmentLength;
+	}
+
+	return null;
+}
+
+function getRovoAppBrowserImageMetadata(buffer) {
+	const pngDimensions = getPngImageDimensions(buffer);
+	if (pngDimensions) {
+		return {
+			contentType: "image/png",
+			extension: "png",
+			...pngDimensions,
+		};
+	}
+
+	const jpegDimensions = getJpegImageDimensions(buffer);
+	if (jpegDimensions) {
+		return {
+			contentType: "image/jpeg",
+			extension: "jpg",
+			...jpegDimensions,
+		};
+	}
+
+	return {
+		contentType: "image/png",
+		extension: "png",
+		height: undefined,
+		width: undefined,
+	};
+}
+
+function normalizeRovoAppBrowserScreenshotContentType(rawContentType, fallbackContentType) {
+	if (typeof rawContentType !== "string" || rawContentType.trim().length === 0) {
+		return fallbackContentType;
+	}
+
+	const normalized = rawContentType.trim().toLowerCase();
+	if (normalized === "image/jpg") {
+		return "image/jpeg";
+	}
+	if (normalized === "image/jpeg" || normalized === "image/png") {
+		return normalized;
+	}
+
+	return fallbackContentType;
+}
+
+async function persistRovoAppBrowserScreenshotBuffer({
+	buffer,
+	contentType,
+	threadId,
+}) {
+	const metadata = getRovoAppBrowserImageMetadata(buffer);
+	const resolvedContentType = normalizeRovoAppBrowserScreenshotContentType(
+		contentType,
+		metadata.contentType,
+	);
+	const extension = resolvedContentType === "image/jpeg" ? "jpg" : metadata.extension;
+	const upload = await rovoAppUploadManager.createUploadFromBuffer({
+		threadId,
+		filename: `browser-screenshot-${Date.now()}.${extension}`,
+		mediaType: resolvedContentType,
+		buffer,
+	});
+
+	return {
+		contentType: resolvedContentType,
+		height: metadata.height,
+		imageUrl: buildRovoAppFileUrl(upload.id),
+		width: metadata.width,
+	};
+}
+
 function collectRovoAppUploadIdsFromMessages(messages) {
 	if (!Array.isArray(messages)) {
 		return [];
@@ -1631,11 +1800,15 @@ function collectRovoAppUploadIdsFromMessages(messages) {
 		}
 
 		for (const part of message.parts) {
-			if (!part || part.type !== "file") {
+			if (!part || typeof part !== "object") {
 				continue;
 			}
 
-			const uploadId = extractRovoAppUploadIdFromUrl(part.url);
+			const uploadId = part.type === "file"
+				? extractRovoAppUploadIdFromUrl(part.url)
+				: part.type === "data-browser-screenshot"
+					? extractRovoAppUploadIdFromUrl(part.data?.imageUrl)
+					: null;
 			if (uploadId) {
 				uploadIds.add(uploadId);
 			}
@@ -1659,7 +1832,47 @@ async function persistRovoAppMessageFiles(threadId, messages) {
 		const messageParts = Array.isArray(message.parts) ? message.parts : [];
 		const nextParts = [];
 		for (const part of messageParts) {
-			if (!part || typeof part !== "object" || part.type !== "file") {
+			if (!part || typeof part !== "object") {
+				nextParts.push(part);
+				continue;
+			}
+
+			if (part.type === "data-browser-screenshot") {
+				const screenshotData =
+					part.data && typeof part.data === "object" ? part.data : null;
+				const imageData =
+					typeof screenshotData?.imageData === "string" && screenshotData.imageData.trim()
+						? screenshotData.imageData.trim()
+						: null;
+				if (!imageData) {
+					nextParts.push(part);
+					continue;
+				}
+
+				const buffer = Buffer.from(imageData, "base64");
+				const persistedScreenshot = await persistRovoAppBrowserScreenshotBuffer({
+					threadId,
+					buffer,
+					contentType: screenshotData?.contentType,
+				});
+				const screenshotOutput = {
+					...screenshotData,
+					...persistedScreenshot,
+					timestamp:
+						typeof screenshotData.timestamp === "string" &&
+						screenshotData.timestamp.trim()
+							? screenshotData.timestamp
+							: new Date().toISOString(),
+				};
+				delete screenshotOutput.imageData;
+				nextParts.push({
+					...part,
+					data: screenshotOutput,
+				});
+				continue;
+			}
+
+			if (part.type !== "file") {
 				nextParts.push(part);
 				continue;
 			}
@@ -1697,6 +1910,58 @@ async function persistRovoAppMessageFiles(threadId, messages) {
 	}
 
 	return nextMessages;
+}
+
+function hasPersistedRovoAppBrowserScreenshotImageData(messages) {
+	if (!Array.isArray(messages)) {
+		return false;
+	}
+
+	for (const message of messages) {
+		if (!message || typeof message !== "object" || !Array.isArray(message.parts)) {
+			continue;
+		}
+
+		for (const part of message.parts) {
+			if (
+				part?.type === "data-browser-screenshot" &&
+				typeof part.data?.imageData === "string" &&
+				part.data.imageData.trim().length > 0
+			) {
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
+async function maybeMigratePersistedRovoAppThreadBrowserScreenshots(thread) {
+	if (!thread?.id || !hasPersistedRovoAppBrowserScreenshotImageData(thread.messages)) {
+		return thread;
+	}
+
+	const persistedMessages = await persistRovoAppMessageFiles(thread.id, thread.messages);
+	return (
+		await rovoAppThreadManager.updateThread(thread.id, {
+			messages: persistedMessages,
+			updatedAt: thread.updatedAt,
+		})
+	) ?? {
+		...thread,
+		messages: persistedMessages,
+	};
+}
+
+function buildRovoAppThreadSummary(thread) {
+	if (!thread || typeof thread !== "object") {
+		return thread;
+	}
+
+	const summary = { ...thread };
+	delete summary.messages;
+	delete summary.realtimeMessages;
+	return summary;
 }
 
 async function synchronizeRovoAppThreadGeneratedFiles(thread) {
@@ -3090,12 +3355,44 @@ async function executeRovoAppManagedRun(run) {
 	}
 
 	const artifactContextBlock = buildRovoAppArtifactContext(activeArtifact);
-	if (artifactContextBlock) {
-		requestBody.contextDescription = effectiveBaseContextDescription
-			? `${artifactContextBlock}\n\n${effectiveBaseContextDescription}`
-			: artifactContextBlock;
-	} else if (effectiveBaseContextDescription) {
-		requestBody.contextDescription = effectiveBaseContextDescription;
+
+	const browserContextBlock = [
+		"[BROWSER TOOLS]",
+		"You have access to a thread-bound browser workspace runtime.",
+		`For every browser tool call in this conversation, pass \`thread_id: \"${threadId}\"\`.`,
+		"When you need to browse a web page, take a screenshot, or interact with a website, use these browser_* tools:",
+		"- browser_navigate — navigate to a URL",
+		"- browser_take_screenshot — capture a screenshot of the current page",
+		"- browser_snapshot — get an accessibility tree snapshot of the page",
+		"- browser_click — click an element by accessibility ref",
+		"- browser_hover — hover an element by accessibility ref",
+		"- browser_fill — replace the text in an element by accessibility ref",
+		"- browser_type — type text into an element by accessibility ref",
+		"- browser_select — select one or more values by accessibility ref",
+		"- browser_press_key — press a keyboard key",
+		"- browser_scroll — scroll the page",
+		"- browser_navigate_back — go back in history",
+		"- browser_navigate_forward — go forward in history",
+		"- browser_reload — reload the current page",
+		"- browser_tab_list — list browser tabs",
+		"- browser_tab_new — open a new tab",
+		"- browser_tab_select — switch to a tab by index",
+		"- browser_tab_close — close a tab by index",
+		"- browser_wait — wait a short time before continuing",
+		"",
+		"IMPORTANT: Do NOT use Playwright MCP, Chrome DevTools MCP, get_skill, browsing_get_web, get_url, or other built-in browsing tools for web browsing here.",
+		"Do NOT call tools like navigate_page or other Chrome DevTools actions in this conversation.",
+		"Always use browser_snapshot after navigation or significant DOM changes to refresh refs before interacting again.",
+		"[END BROWSER TOOLS]",
+	].join("\n");
+
+	const contextBlocks = [
+		artifactContextBlock,
+		browserContextBlock,
+		effectiveBaseContextDescription,
+	].filter(Boolean);
+	if (contextBlocks.length > 0) {
+		requestBody.contextDescription = contextBlocks.join("\n\n");
 	}
 	if (routingDecision.intent === "genui") {
 		requestBody.genuiHint = true;
@@ -3963,158 +4260,7 @@ const _requestUserInputQuestionMetaStore = new Map();
 const _activeDeferredToolCallStore = new Map();
 /** @type {Map<string, { toolCallId: string; port: number; handle: { port: number; release: () => void; releaseAsUnhealthy?: () => void }; threadId: string | null; sessionId: string | null; sessionMode: "persistent" | "ephemeral"; kind: "clarification" | "plan-approval"; createdAt: number; expiresAt: number; expiryTimer: NodeJS.Timeout | null; }>} */
 const _pausedRovoDevToolCallStore = new Map();
-/** @type {Map<string, { approvalId: string; port: number; handle: { port: number; release: () => void; releaseAsUnhealthy?: () => void }; threadId: string | null; sessionId: string | null; sessionMode: "persistent" | "ephemeral"; parts: Array<object>; autoApproveToolCallIds: string[]; payload: object; createdAt: number; expiresAt: number; expiryTimer: NodeJS.Timeout | null; }>} */
-const _pausedRovoDevToolApprovalStore = new Map();
 const PAUSED_ROVODEV_TOOL_CALL_TTL_MS = 15 * 60_000;
-
-function createPausedToolApprovalId() {
-	return `tool-approval-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
-function clearPausedRovoDevToolApprovalBatch(approvalId, { cancel = false } = {}) {
-	const normalizedApprovalId = getNonEmptyString(approvalId);
-	if (!normalizedApprovalId) {
-		return null;
-	}
-
-	const record = _pausedRovoDevToolApprovalStore.get(normalizedApprovalId) || null;
-	if (!record) {
-		return null;
-	}
-
-	_pausedRovoDevToolApprovalStore.delete(normalizedApprovalId);
-	if (record.expiryTimer) {
-		clearTimeout(record.expiryTimer);
-		record.expiryTimer = null;
-	}
-
-	const releaseHandle = () => {
-		try {
-			record.handle?.release?.();
-		} catch (error) {
-			console.warn("[ROVODEV-PAUSE] Failed to release reserved tool-approval handle:", error);
-		}
-	};
-	const releaseHandleAsUnhealthy = () => {
-		try {
-			if (typeof record.handle?.releaseAsUnhealthy === "function") {
-				record.handle.releaseAsUnhealthy("paused tool approval cleanup failed");
-				return;
-			}
-			record.handle?.release?.();
-		} catch (error) {
-			console.warn("[ROVODEV-PAUSE] Failed to release unhealthy tool-approval handle:", error);
-		}
-	};
-
-	if (cancel) {
-		void (async () => {
-			let shouldReleaseAsUnhealthy = false;
-			try {
-				await rovoDevCancelChat(record.port, { timeoutMs: 3_000 });
-				await waitForPortReady(record.port);
-			} catch (error) {
-				shouldReleaseAsUnhealthy = true;
-				console.warn("[ROVODEV-PAUSE] Failed to cancel paused tool approval batch:", {
-					approvalId: normalizedApprovalId,
-					port: record.port,
-					error: error instanceof Error ? error.message : String(error),
-				});
-			} finally {
-				if (shouldReleaseAsUnhealthy) {
-					releaseHandleAsUnhealthy();
-				} else {
-					releaseHandle();
-				}
-			}
-		})();
-	} else {
-		releaseHandle();
-	}
-
-	return record;
-}
-
-function registerPausedRovoDevToolApprovalBatch({
-	approvalId,
-	port,
-	handle,
-	threadId = null,
-	sessionId = null,
-	sessionMode = "persistent",
-	parts,
-	autoApproveToolCallIds = [],
-	payload,
-}) {
-	const normalizedApprovalId = getNonEmptyString(approvalId);
-	if (
-		!normalizedApprovalId ||
-		!Number.isInteger(port) ||
-		port <= 0 ||
-		!handle ||
-		!Array.isArray(parts) ||
-		!payload ||
-		typeof payload !== "object"
-	) {
-		return null;
-	}
-
-	clearPausedRovoDevToolApprovalBatch(normalizedApprovalId, { cancel: true });
-
-	const now = Date.now();
-	const record = {
-		approvalId: normalizedApprovalId,
-		port,
-		handle,
-		threadId: getNonEmptyString(threadId),
-		sessionId: getNonEmptyString(sessionId),
-		sessionMode: sessionMode === "ephemeral" ? "ephemeral" : "persistent",
-		parts,
-		autoApproveToolCallIds: Array.isArray(autoApproveToolCallIds)
-			? autoApproveToolCallIds
-				.map((toolCallId) => getNonEmptyString(toolCallId))
-				.filter(Boolean)
-			: [],
-		payload,
-		createdAt: now,
-		expiresAt: now + PAUSED_ROVODEV_TOOL_CALL_TTL_MS,
-		expiryTimer: null,
-	};
-
-	record.expiryTimer = setTimeout(() => {
-		console.info("[ROVODEV-PAUSE] Expiring paused tool approval batch", {
-			approvalId: normalizedApprovalId,
-			port,
-		});
-		clearPausedRovoDevToolApprovalBatch(normalizedApprovalId, { cancel: true });
-	}, PAUSED_ROVODEV_TOOL_CALL_TTL_MS);
-	if (typeof record.expiryTimer?.unref === "function") {
-		record.expiryTimer.unref();
-	}
-
-	_pausedRovoDevToolApprovalStore.set(normalizedApprovalId, record);
-	return record;
-}
-
-function takePausedRovoDevToolApprovalBatch(approvalId) {
-	const normalizedApprovalId = getNonEmptyString(approvalId);
-	if (!normalizedApprovalId) {
-		return null;
-	}
-
-	const record = _pausedRovoDevToolApprovalStore.get(normalizedApprovalId) || null;
-	if (!record) {
-		return null;
-	}
-
-	_pausedRovoDevToolApprovalStore.delete(normalizedApprovalId);
-	if (record.expiryTimer) {
-		clearTimeout(record.expiryTimer);
-		record.expiryTimer = null;
-	}
-
-	return record;
-}
 
 function clearActiveDeferredToolCall(toolCallId) {
 	const normalizedToolCallId = getNonEmptyString(toolCallId);
@@ -4808,7 +4954,6 @@ async function handleChatSdkRequest(req, res) {
 			model: rawModel,
 			clarification: rawClarification,
 			approval: rawApproval,
-			toolApproval: rawToolApproval,
 			deferredToolResponse: rawDeferredToolResponse,
 			creationMode,
 			smartGeneration: rawSmartGeneration,
@@ -4853,7 +4998,6 @@ async function handleChatSdkRequest(req, res) {
 			model: getNonEmptyString(rawModel) || null,
 			hasClarification: Boolean(rawClarification),
 			hasApproval: Boolean(rawApproval),
-			hasToolApproval: Boolean(rawToolApproval),
 			hasDeferredToolResponse: Boolean(rawDeferredToolResponse),
 			resolvedPlanModeActive,
 		});
@@ -4878,7 +5022,6 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 			latestUserMessageSource === "clarification-submit";
 		const clarificationSubmission = normalizeClarificationSubmission(rawClarification);
 		const approvalSubmission = normalizeApprovalSubmission(rawApproval);
-		const toolApprovalSubmission = normalizeToolApprovalSubmission(rawToolApproval);
 		const deferredToolResponseToolCallId =
 			rawDeferredToolResponse && typeof rawDeferredToolResponse === "object"
 				? getNonEmptyString(rawDeferredToolResponse.tool_call_id)
@@ -4896,9 +5039,6 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 		let hasPausedApprovalToolCall =
 			Boolean(approvalToolCallId) &&
 			_pausedRovoDevToolCallStore.has(approvalToolCallId);
-		const hasPausedToolApprovalBatch =
-			Boolean(toolApprovalSubmission?.approvalId) &&
-			_pausedRovoDevToolApprovalStore.has(toolApprovalSubmission.approvalId);
 
 		if (approvalSubmission) {
 			console.info("[DEBUG-PLAN-APPROVAL] Approval store lookup", {
@@ -7139,22 +7279,19 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 				let hasEmittedQuestionCard = false;
 				let hasEmittedPlanWidget = false;
 				let hasEmittedGenuiWidget = false;
-					let hasPendingToolApprovalPrompt = false;
 					let hasSeenPlanWidgetSignal = false;
 					let hasEmittedPlanLoadingState = false;
 					let hasExplicitPlanPayload = false;
 					/** @type {Map<string, {widgetId: string; richnessScore: number}>} */
 					const emittedQuestionCardToolCalls = new Map();
 					/** @type {Map<string, Array<{id: string, label: string}>>} */
-					const requestUserInputQuestionMeta = new Map();
-					let pendingQuestionCardLoadingWidgetId = null;
-					let hasSuppressedLargeAssistantJson = false;
+						const requestUserInputQuestionMeta = new Map();
+						let pendingQuestionCardLoadingWidgetId = null;
+						let hasSuppressedLargeAssistantJson = false;
 						let hasObservedToolExecution = false;
 						/** @type {Set<string>} */
 						const bashQuestionCardWorkaroundCallIds = new Set();
 						let hasObservedDeferredToolRequest = false;
-						let hasToolApprovalReadonlyFailure = false;
-						let toolApprovalReadonlyFailureMessage = null;
 					// ── Output Routing: Two-step GenUI state ──
 					// Track whether non-question-card tool calls were observed during
 					// the RovoDev stream. When true, post-stream processing triggers
@@ -7793,14 +7930,6 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 								deferredToolCallId: toolCallId,
 							};
 
-							if (hasToolApprovalReadonlyFailure) {
-								console.info("[EXIT-PLAN-MODE] Suppressed plan widget after readonly write-tool failure", {
-									toolCallId,
-									source,
-								});
-								return false;
-							}
-
 							planPayload.deferredToolCallId = toolCallId;
 							hasExplicitPlanPayload = true;
 							if (threadId) {
@@ -7831,19 +7960,6 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 							return true;
 						};
 
-						const emitToolApprovalData = (payload) => {
-							if (!payload || typeof payload !== "object") {
-								return;
-							}
-
-							hasPendingToolApprovalPrompt = true;
-							writer.write({
-								type: "data-tool-approval",
-								id: `tool-approval-${payload.approvalId}`,
-								data: payload,
-							});
-						};
-
 						const autoResumePausedParts = async (pausedParts, control) => {
 							const decisions = pausedParts
 								.map((part) => {
@@ -7857,140 +7973,6 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 								await control.resume({ decisions });
 							}
 							return { disconnect: false };
-						};
-
-							const handlePausedToolApprovalBatch = async ({
-								rawEvent,
-								control,
-							}) => {
-								const pausedParts = Array.isArray(rawEvent?.parts)
-									? rawEvent.parts
-									: [];
-								if (pausedParts.length === 0) {
-									return { disconnect: false };
-								}
-
-								const permissions =
-									rawEvent?.permissions &&
-									typeof rawEvent.permissions === "object" &&
-									!Array.isArray(rawEvent.permissions)
-										? rawEvent.permissions
-										: null;
-								const annotatedPausedParts = pausedParts.map((part) => {
-									if (!part || typeof part !== "object") {
-										return part;
-									}
-
-									if (getPartPermissionScenario(part, permissions)) {
-										return part;
-									}
-
-									const parsedArgs =
-										typeof part.args === "string"
-											? parseMaybeJson(part.args) ?? part.args
-											: part.args;
-									const command = extractCommandFromArgs(parsedArgs);
-									const dangerousCommand = command ? classifyCommand(command) : null;
-									if (!dangerousCommand) {
-										return part;
-									}
-
-									console.warn(
-										`[SAFETY] Dangerous command requires approval: ${dangerousCommand.label} (${dangerousCommand.match})`,
-									);
-									return {
-										...part,
-										dangerousCommandLabel: dangerousCommand.label,
-										dangerousCommandMatch: dangerousCommand.match,
-										permissionScenario: "dangerous_command",
-									};
-								});
-								const approvalParts = annotatedPausedParts.filter((part) =>
-									Boolean(getPartPermissionScenario(part, permissions)),
-								);
-								if (approvalParts.length === 0) {
-									return autoResumePausedParts(annotatedPausedParts, control);
-								}
-								const autoApproveToolCallIds = annotatedPausedParts
-									.map((part) => {
-										const toolCallId = getNonEmptyString(part?.tool_call_id);
-										if (!toolCallId) {
-											return null;
-										}
-
-									return getPartPermissionScenario(part, permissions)
-										? null
-										: toolCallId;
-								})
-								.filter(Boolean);
-
-							const reservedHandle = control.reservePort?.();
-							if (!reservedHandle) {
-								return autoResumePausedParts(pausedParts, control);
-							}
-
-							let pausedSessionId = rovoDevSessionId;
-							let pausedSessionMode = sessionMode;
-							if (threadId) {
-								try {
-									const synchronizedThread =
-										await syncRovoAppThreadSessionFromCurrentPort(
-											threadId,
-											control.port,
-											{ sessionMode },
-										);
-									pausedSessionId =
-										getNonEmptyString(synchronizedThread?.sessionId)
-										|| pausedSessionId;
-									pausedSessionMode =
-										synchronizedThread?.sessionMode === "ephemeral"
-											? "ephemeral"
-											: pausedSessionMode;
-								} catch (error) {
-									console.warn("[FUTURE-CHAT] Failed to sync thread session on paused tool approval:", {
-										threadId,
-										port: control.port,
-										error: error instanceof Error ? error.message : String(error),
-									});
-								}
-							}
-
-								const approvalId = createPausedToolApprovalId();
-								const payload = buildPausedToolApprovalPayload({
-									approvalId,
-									threadId,
-									parts: approvalParts,
-								permissions,
-							});
-							if (!payload) {
-								return autoResumePausedParts(pausedParts, control);
-							}
-							hasPendingToolApprovalPrompt = true;
-
-							const record = registerPausedRovoDevToolApprovalBatch({
-								approvalId,
-								port: control.port,
-								handle: reservedHandle,
-								threadId,
-								sessionId: pausedSessionId,
-								sessionMode: pausedSessionMode,
-								parts: pausedParts,
-								autoApproveToolCallIds,
-								payload,
-							});
-							if (!record) {
-								return autoResumePausedParts(pausedParts, control);
-							}
-
-							console.info("[ROVODEV-PAUSE] Captured paused tool approval batch", {
-								approvalId,
-								threadId,
-								port: control.port,
-								toolCount: payload.items.length,
-								toolNames: payload.items.map((item) => item.toolName),
-							});
-							emitToolApprovalData(payload);
-							return { disconnect: true };
 						};
 
 						const emitWidgetError = ({
@@ -8624,6 +8606,27 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 					let stuckPortRecoveryRetryCount = 0;
 					let hasBlockedPlanFeedbackExecutionTool = false;
 
+					const browserBridge = createThreadBrowserBridge({
+						screenshotStore: {
+							async persistScreenshot({
+								buffer,
+								contentType,
+								threadId: screenshotThreadId,
+							}) {
+								return persistRovoAppBrowserScreenshotBuffer({
+									buffer,
+									contentType,
+									threadId: screenshotThreadId,
+								});
+							},
+						},
+						writer,
+						threadId,
+					});
+					// Track toolCallIds for MCP-wrapped browser tools
+					// (detected in onToolCallInputResolved, consumed in onToolCallResult)
+					const mcpBrowserToolCallIds = new Map();
+
 					while (shouldContinueToolFirstRetry) {
 						recordToolFirstAttempt(toolFirstExecutionState, {
 							isRetry: currentToolFirstAttempt > 1,
@@ -8632,10 +8635,6 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 						const pausedToolCallRecord =
 							pausedContinuationToolCallId && currentToolFirstAttempt === 1
 								? takePausedRovoDevToolCall(pausedContinuationToolCallId)
-								: null;
-						const pausedToolApprovalBatchRecord =
-							toolApprovalSubmission?.approvalId && currentToolFirstAttempt === 1
-								? takePausedRovoDevToolApprovalBatch(toolApprovalSubmission.approvalId)
 								: null;
 						if (pausedContinuationToolCallId) {
 							console.info("[DEBUG-PLAN-APPROVAL] Paused tool call record", {
@@ -8646,18 +8645,6 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 								recordCreatedAt: pausedToolCallRecord?.createdAt,
 								recordExpiresAt: pausedToolCallRecord?.expiresAt,
 								ageMs: pausedToolCallRecord?.createdAt ? Date.now() - pausedToolCallRecord.createdAt : null,
-							});
-						}
-						if (toolApprovalSubmission?.approvalId) {
-							console.info("[DEBUG-TOOL-APPROVAL] Paused tool approval batch lookup", {
-								approvalId: toolApprovalSubmission.approvalId,
-								recordFound: Boolean(pausedToolApprovalBatchRecord),
-								recordPort: pausedToolApprovalBatchRecord?.port,
-								recordCreatedAt: pausedToolApprovalBatchRecord?.createdAt,
-								recordExpiresAt: pausedToolApprovalBatchRecord?.expiresAt,
-								ageMs: pausedToolApprovalBatchRecord?.createdAt
-									? Date.now() - pausedToolApprovalBatchRecord.createdAt
-									: null,
 							});
 						}
 						let streamTimedOut = false;
@@ -8710,6 +8697,12 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 								// two-step GenUI flow.
 								onToolCallStart: (toolCall) => {
 									if (!toolCall || typeof toolCall !== "object") {
+										return;
+									}
+
+									// Browser tool calls are handled by the browser bridge
+									if (isBrowserToolCall(toolCall.toolName)) {
+										void browserBridge.handleToolCallStart(toolCall);
 										return;
 									}
 
@@ -8816,8 +8809,40 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 											source: "bash_workaround_tool_input",
 										});
 									}
+
+									// Detect MCP-wrapped browser tools (mcp_invoke_tool with tool_name: "browser_*")
+									if (
+										toolCall?.toolName === "mcp_invoke_tool" &&
+										toolCall?.toolInput?.tool_name &&
+										isBrowserToolCall(toolCall.toolInput.tool_name)
+									) {
+										const realToolName = toolCall.toolInput.tool_name;
+										mcpBrowserToolCallIds.set(toolCall.toolCallId, realToolName);
+										void browserBridge.handleToolCallStart({
+											toolName: realToolName,
+											toolCallId: toolCall.toolCallId,
+											toolInput: toolCall.toolInput.tool_input || null,
+										});
+									}
 								},
 									onToolCallResult: (toolCallResult) => {
+										// Browser tool results — check both direct and MCP-wrapped
+										if (isBrowserToolCall(toolCallResult?.toolName)) {
+											void browserBridge.handleToolCallResult(toolCallResult);
+											return;
+										}
+										// MCP-wrapped browser tools: toolName is "mcp_invoke_tool"
+										// but we tracked the real tool name in onToolCallInputResolved
+										const mcpRealToolName = mcpBrowserToolCallIds.get(toolCallResult?.toolCallId);
+										if (mcpRealToolName) {
+											mcpBrowserToolCallIds.delete(toolCallResult.toolCallId);
+											void browserBridge.handleToolCallResult({
+												...toolCallResult,
+												toolName: mcpRealToolName,
+											});
+											return;
+										}
+
 										// ── Safety: redact secrets from tool output ──
 										if (toolCallResult?.toolOutputRaw) {
 											const detected = detectSecrets(toolCallResult.toolOutputRaw);
@@ -8881,16 +8906,6 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 												outputTruncated: toolOutputPreview.truncated,
 												outputBytes: toolOutputPreview.bytes,
 											});
-										}
-
-										if (
-											toolApprovalSubmission &&
-											isWorkspaceWriteToolName(toolCallResult?.toolName) &&
-											isReadonlyToolBlockMessage(toolOutputPreview?.text)
-										) {
-											hasToolApprovalReadonlyFailure = true;
-											toolApprovalReadonlyFailureMessage =
-												"Write tools remained blocked after explicit approval. Check the RovoDev filesystem tool permission flow.";
 										}
 
 									if (toolFirstPolicy.matched && toolCallResult?.toolName) {
@@ -8974,14 +8989,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 									});
 
 									if (!interactivePart) {
-										const pausedApprovalResult = await handlePausedToolApprovalBatch({
-											rawEvent,
-											control,
-										});
-										if (pausedApprovalResult?.disconnect) {
-											pausedToolCallHandled = true;
-										}
-										return pausedApprovalResult;
+										return autoResumePausedParts(pausedParts, control);
 									}
 
 									const replayDeferredToolResult =
@@ -9171,19 +9179,6 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 								},
 							};
 
-							if (
-								toolApprovalSubmission &&
-								currentToolFirstAttempt === 1 &&
-								!pausedToolApprovalBatchRecord &&
-								!hasPausedToolApprovalBatch
-							) {
-								handleStreamTextDelta(
-									"\n\n⚠️ The pending tool approval expired before it could be resumed. Please retry the step."
-								);
-								shouldContinueToolFirstRetry = false;
-								continue;
-							}
-
 							if (pausedToolCallRecord) {
 								const resumeDecisions =
 									hasPausedClarificationToolCall && clarificationSubmission
@@ -9263,15 +9258,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 												});
 
 												if (!interactivePart) {
-													const pausedApprovalResult =
-														await handlePausedToolApprovalBatch({
-															rawEvent,
-															control,
-														});
-													if (pausedApprovalResult?.disconnect) {
-														pausedToolCallHandled = true;
-													}
-													return pausedApprovalResult;
+													return autoResumePausedParts(pausedParts, control);
 												}
 
 												const replayDeferredToolResult =
@@ -9335,127 +9322,6 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 											}).catch(() => {});
 										}
 										pausedToolCallRecord.handle?.release?.();
-									}
-								}
-							} else if (pausedToolApprovalBatchRecord) {
-								const resumeDecisions = buildToolApprovalResumeDecisions(
-									toolApprovalSubmission,
-									pausedToolApprovalBatchRecord.parts,
-									{
-										autoApproveToolCallIds:
-											pausedToolApprovalBatchRecord.autoApproveToolCallIds,
-									},
-								);
-								const resumedToolCallId = getNonEmptyString(
-									pausedToolApprovalBatchRecord.parts[0]?.tool_call_id,
-								);
-								let replayCompleted = false;
-								let pausedToolApprovalHandled = false;
-								try {
-									console.info("[CHAT-SDK] Resuming paused tool approval batch", {
-										threadId,
-										runId: stageTrace.requestId,
-										approvalId: pausedToolApprovalBatchRecord.approvalId,
-										port: pausedToolApprovalBatchRecord.port,
-										decisionCount: resumeDecisions.length,
-									});
-									await rovoDevResumeToolCalls(pausedToolApprovalBatchRecord.port, {
-										decisions: resumeDecisions,
-									});
-
-									await Promise.race([
-										replayViaRovoDev({
-											port: pausedToolApprovalBatchRecord.port,
-											portHandle: pausedToolApprovalBatchRecord.handle,
-											onTextDelta: streamCommonOptions.onTextDelta,
-											onThinkingStatus: streamCommonOptions.onThinkingStatus,
-											onThinkingEvent: streamCommonOptions.onThinkingEvent,
-											onToolCallStart: streamCommonOptions.onToolCallStart,
-											onToolCallInputResolved: streamCommonOptions.onToolCallInputResolved,
-											onToolCallResult: streamCommonOptions.onToolCallResult,
-											onWarning: streamCommonOptions.onWarning,
-											onDeferredToolRequest: streamCommonOptions.onDeferredToolRequest,
-											signal: streamCommonOptions.signal,
-											onTimingStage: streamCommonOptions.onTimingStage,
-											skipReplayUntilToolCallId: resumedToolCallId,
-											onPausedToolCalls: async ({ rawEvent, control }) => {
-												const pausedParts = Array.isArray(rawEvent?.parts)
-													? rawEvent.parts
-													: [];
-												const interactivePart = pausedParts.find((part) => {
-													const toolName = getNonEmptyString(part?.tool_name);
-													return (
-														isRequestUserInputTool(toolName) ||
-														isExitPlanModeTool(toolName)
-													);
-												});
-
-												if (!interactivePart) {
-													const pausedApprovalResult =
-														await handlePausedToolApprovalBatch({
-															rawEvent,
-															control,
-														});
-													if (pausedApprovalResult?.disconnect) {
-														pausedToolApprovalHandled = true;
-													}
-													return pausedApprovalResult;
-												}
-
-												const replayDeferredToolResult =
-													await handleReplayDeferredToolRequest({
-														rawEvent,
-														control,
-														threadId,
-														sessionId: rovoDevSessionId,
-														sessionMode,
-														isRequestUserInputTool,
-														isExitPlanModeTool,
-														syncThreadSessionFromPort:
-															syncRovoAppThreadSessionFromCurrentPort,
-														emitRequestUserInputQuestionCard,
-														emitExitPlanWidget: maybeEmitExitPlanWidget,
-														registerPausedToolCall: registerPausedRovoDevToolCall,
-													});
-												if (replayDeferredToolResult.handled) {
-													if (
-														replayDeferredToolResult.hasObservedDeferredToolRequest
-													) {
-														hasObservedDeferredToolRequest = true;
-													}
-													if (replayDeferredToolResult.pausedToolCallHandled) {
-														pausedToolApprovalHandled = true;
-													}
-													return {
-														disconnect:
-															replayDeferredToolResult.disconnect === true,
-													};
-												}
-
-												const decisions = pausedParts
-													.map((part) => {
-														const toolCallId = getNonEmptyString(part?.tool_call_id);
-														return toolCallId
-															? { tool_call_id: toolCallId, deny_message: null }
-															: null;
-													})
-													.filter(Boolean);
-												if (decisions.length > 0) {
-													await control.resume({ decisions });
-												}
-												return { disconnect: false };
-											},
-										}),
-									]);
-									replayCompleted = true;
-								} finally {
-									if (!pausedToolApprovalHandled) {
-										if (!replayCompleted) {
-											await rovoDevCancelChat(pausedToolApprovalBatchRecord.port, {
-												timeoutMs: 3_000,
-											}).catch(() => {});
-										}
-										pausedToolApprovalBatchRecord.handle?.release?.();
 									}
 								}
 							} else {
@@ -10030,16 +9896,6 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 						assistantText = stripDirectMediaFences(assistantText);
 					}
 				}
-					if (hasToolApprovalReadonlyFailure) {
-						emitWidgetError({
-							type: "tool-approval",
-							message:
-								toolApprovalReadonlyFailureMessage ||
-								"Write tools remained blocked after approval. Check the RovoDev filesystem tool permissions.",
-							canRetry: true,
-						});
-					}
-
 					const shouldEmitPlanWidgetError =
 						hasSeenPlanWidgetSignal &&
 						!hasEmittedPlanWidget;
@@ -10242,7 +10098,11 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 					};
 					const planExecutionActive = isPlanExecutionPhase(threadId);
 					if (!isStrictToolFirstTurn) {
-						const hasToolObservationData = hasToolObservationEntries();
+						const hasAuthoritativeBrowserOutput =
+							typeof browserBridge.hasAuthoritativeOutput === "function" &&
+							browserBridge.hasAuthoritativeOutput();
+						const hasToolObservationData =
+							hasToolObservationEntries() && !hasAuthoritativeBrowserOutput;
 						const looksLikeClarification = looksLikeClarificationResponse(trimmedAssistantText);
 						const looksLikeInability = looksLikeInabilityResponse(trimmedAssistantText);
 						const readonlyBlockedWriteToolNames =
@@ -10270,6 +10130,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 						}
 					const shouldAttemptGenui = shouldAttemptPostToolGenui({
 						assistantText: trimmedAssistantText,
+						hasAuthoritativeBrowserOutput,
 						hasEmittedQuestionCard,
 						hasEmittedPlanWidget,
 						hasEmittedGenuiWidget,
@@ -10287,7 +10148,6 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 					if (
 						!resolvedPlanModeActive &&
 						!planExecutionActive &&
-						!hasPendingToolApprovalPrompt &&
 						shouldAttemptGenui
 					) {
 						// Single-pass GenUI: RovoDev emits ```spec blocks directly.
@@ -10342,7 +10202,6 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 						} else if (
 							!resolvedPlanModeActive &&
 							!planExecutionActive &&
-							!hasPendingToolApprovalPrompt &&
 							!hasEmittedQuestionCard &&
 							!hasEmittedGenuiWidget
 						) {
@@ -11884,6 +11743,12 @@ app.get("/api/browser-workspaces/:workspaceId/:action", async (req, res) => {
 		}
 
 			if (action === "stream") {
+				// Check mirror browsers first (Rovo App browser feature)
+				const mirrorBrowser = getMirrorBrowser(workspaceId);
+				if (mirrorBrowser) {
+					return res.json(mirrorBrowser.getStreamConfig(port));
+				}
+
 				const streamConfig = browserWorkspaceManager.getWorkspaceStream(workspaceId);
 				return res.json({
 					...streamConfig,
@@ -12610,7 +12475,9 @@ app.get("/api/rovo-app/threads", async (req, res) => {
 					reconcileOrphanedRovoAppThread(thread),
 				),
 			)
-		).filter(Boolean);
+		)
+			.filter(Boolean)
+			.map((thread) => buildRovoAppThreadSummary(thread));
 		return res.status(200).json({ threads });
 	} catch (error) {
 		console.error("[FUTURE-CHAT] Failed to list threads:", error);
@@ -12773,8 +12640,10 @@ app.delete("/api/rovo-app/threads", async (req, res) => {
 app.get("/api/rovo-app/threads/:threadId", async (req, res) => {
 	try {
 		await syncHermesJobsForRovoThreads(req.params.threadId);
-		const thread = await reconcileOrphanedRovoAppThread(
-			await rovoAppThreadManager.getThread(req.params.threadId),
+		const thread = await maybeMigratePersistedRovoAppThreadBrowserScreenshots(
+			await reconcileOrphanedRovoAppThread(
+				await rovoAppThreadManager.getThread(req.params.threadId),
+			),
 		);
 		if (!thread) {
 			return res.status(404).json({ error: "Thread not found" });
@@ -12938,6 +12807,60 @@ app.post("/api/rovo-app/runs/:threadId/cancel", async (req, res) => {
 	}
 });
 
+app.get("/api/rovo-app/threads/:threadId/browser-workspace", async (req, res) => {
+	try {
+		const threadId = getNonEmptyString(req.params.threadId);
+		if (!threadId) {
+			return res.status(400).json({ error: "threadId is required" });
+		}
+
+		const workspace = await getRovoAppThreadBrowserWorkspace({ threadId });
+		if (!workspace) {
+			return res.status(404).json({ error: "Browser workspace not found" });
+		}
+
+		return res.status(200).json(workspace.state);
+	} catch (error) {
+		console.error("[ROVO-BROWSER] Failed to read thread browser workspace:", error);
+		return res.status(500).json({ error: "Failed to read thread browser workspace" });
+	}
+});
+
+app.post("/api/rovo-app/threads/:threadId/browser-workspace", async (req, res) => {
+	try {
+		const threadId = getNonEmptyString(req.params.threadId);
+		if (!threadId) {
+			return res.status(400).json({ error: "threadId is required" });
+		}
+
+		const defaultUrl = getNonEmptyString(req.body?.defaultUrl);
+		const workspace = await ensureRovoAppThreadBrowserWorkspace({
+			defaultUrl: defaultUrl || undefined,
+			threadId,
+		});
+
+		return res.status(workspace.created ? 201 : 200).json(workspace.state);
+	} catch (error) {
+		console.error("[ROVO-BROWSER] Failed to ensure thread browser workspace:", error);
+		return res.status(500).json({ error: "Failed to ensure thread browser workspace" });
+	}
+});
+
+app.delete("/api/rovo-app/threads/:threadId/browser-workspace", async (req, res) => {
+	try {
+		const threadId = getNonEmptyString(req.params.threadId);
+		if (!threadId) {
+			return res.status(400).json({ error: "threadId is required" });
+		}
+
+		const result = await deleteRovoAppThreadBrowserWorkspace(threadId);
+		return res.status(200).json(result);
+	} catch (error) {
+		console.error("[ROVO-BROWSER] Failed to delete thread browser workspace:", error);
+		return res.status(500).json({ error: "Failed to delete thread browser workspace" });
+	}
+});
+
 app.delete("/api/rovo-app/threads/:threadId", async (req, res) => {
 	try {
 		const threadId = req.params.threadId;
@@ -12961,6 +12884,8 @@ app.delete("/api/rovo-app/threads/:threadId", async (req, res) => {
 		);
 		await rovoAppVoteManager.deleteVotesForThread(threadId);
 		await rovoAppDocumentManager.deleteDocumentsByThread(threadId);
+		await deleteRovoAppThreadBrowserWorkspace(threadId).catch(() => ({}));
+		await destroyMirrorBrowser(`mirror-${threadId}`);
 		await rovoAppThreadManager.deleteThread(threadId);
 		return res.status(200).json({ deleted: true });
 	} catch (error) {
@@ -13428,6 +13353,9 @@ app.get("/api/jobs", async (_req, res) => {
 
 app.get("/api/wiki/status", wikiRouteHandlers.handleWikiStatus);
 app.get("/api/wiki/search", wikiRouteHandlers.handleWikiSearch);
+app.get("/api/wiki/memories", wikiRouteHandlers.handleWikiMemories);
+app.delete("/api/wiki/memories/:scope/blocks/:blockId", wikiRouteHandlers.handleWikiMemoryBlockDelete);
+app.delete("/api/wiki/memories/proposals/:proposalId", wikiRouteHandlers.handleWikiMemoryProposalDelete);
 app.post("/api/wiki/sync", wikiRouteHandlers.handleWikiSync);
 
 app.post("/api/jobs", async (req, res) => {
@@ -14033,6 +13961,13 @@ realtimeWss.on("connection", (ws) => {
 });
 
 browserPreviewWss.on("connection", (ws, _request, workspaceId) => {
+	// Check if this is a headless mirror browser (used by Rovo App browser feature)
+	const mirrorBrowser = getMirrorBrowser(workspaceId);
+	if (mirrorBrowser) {
+		mirrorBrowser.attachClient(ws);
+		return;
+	}
+
 	void browserWorkspaceManager.attachWorkspacePreviewClient(workspaceId, ws).catch(
 		(error) => {
 			const message =

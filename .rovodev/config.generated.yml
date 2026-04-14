@@ -12,19 +12,17 @@ agent:
   modelId: anthropic:claude-sonnet-4-6
   # Optional model variant key selected from dynamic configuration.
   modelVariant: null
+  # Per-model inference parameter overrides keyed by model ID.
+  inferenceConfig: null
   # Enable the deep planning tool for complex task planning
   enableDeepPlanTool: true
+  # Enable/disable subagents for task delegation
+  enableSubagents: true
   # Enable/disable experimental features
   experimental:
-    # Enable/disable the agent to run in shadow mode. This will run the agent on
-    # a temporary clone of your workspace, prompting you before any changes are
-    # applied to your working directory.
-    enableShadowMode: false
     # Disable the built-in Atlassian MCP server so user can configure a custom
     # one
     disableBuiltinAtlassianMcp: false
-  inferenceConfig: null
-  enableSubagents: true
 
 # Session management settings
 sessions:
@@ -84,6 +82,9 @@ console:
   # Automatically copy selected text to clipboard when text is selected in the
   # chat
   copyOnSelect: true
+  # Compact older agent turns to reduce memory usage in long sessions. Only the
+  # last 5 turns stay fully expanded.
+  compactMode: true
   # Terminal tab title settings
   terminalTitle:
     # Enable or disable automatic terminal tab title updates
@@ -93,7 +94,6 @@ console:
     # {branch}  — current git branch   • {session} — session title   • {model}
     # — current model name
     displayValue: Rovo Dev
-  compactMode: true
 
 # Logging and prompt collection settings
 logging:
@@ -105,13 +105,14 @@ logging:
 # Model Context Protocol server configuration
 mcp:
   # Path to the MCP (Model Context Protocol) configuration file
-  mcpConfigPath: /Users/esoh/Documents/Labs/VPK-rovo/.rovodev/mcp.generated.json
+  mcpConfigPath: /Users/esoh/Documents/Labs/agent-browser/.rovodev/mcp.generated.json
   # List of allowed MCP server signatures
   allowedMcpServers:
   - url:https://mcp.atlassian.com/v1/forge/mcp
   - url:https://mcp.atlassian.com/v1/ads/public/mcp
   - stdio:npx:open-websearch@latest
-  - stdio:npx:-y chrome-devtools-mcp@latest --browser-url=http://127.0.0.1:9222
+  - stdio:node:/Users/esoh/Documents/Labs/agent-browser/scripts/browser-workspace-mcp.js
+  - stdio:node:scripts/browser-workspace-mcp.js
   - stdio:pnpm:exec qmd mcp
   # List of globally disabled MCP server signatures
   disabledMcpServers: []

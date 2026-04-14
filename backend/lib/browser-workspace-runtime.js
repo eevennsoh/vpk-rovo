@@ -3,6 +3,7 @@ const os = require("node:os")
 const path = require("node:path")
 const { execFile } = require("node:child_process")
 const { promisify } = require("node:util")
+const WebSocket = require("ws")
 
 const execFileAsync = promisify(execFile)
 
@@ -27,8 +28,16 @@ const DEFAULT_SCREENCAST_QUALITY = 82
 const DEFAULT_SCREENCAST_MAX_WIDTH = 1600
 const DEFAULT_SCREENCAST_MAX_HEIGHT = 1200
 const SCREENCAST_INTERVAL_MS = 200
+const OPEN_TIMEOUT_RECOVERY_ATTEMPTS = 5
+const OPEN_TIMEOUT_RECOVERY_DELAY_MS = 500
 
 let installPromise = null
+
+function delay(milliseconds) {
+	return new Promise((resolve) => {
+		setTimeout(resolve, milliseconds)
+	})
+}
 
 function clampDeviceScaleFactor(value) {
 	const parsed = Number.parseFloat(String(value))
@@ -86,6 +95,78 @@ function normalizeSnapshotText(snapshot) {
 	}
 
 	return snapshot.replace(/\bref=(e\d+)\b/gu, "ref=@$1")
+}
+
+function parseComparableUrl(value) {
+	if (typeof value !== "string" || !value.trim()) {
+		return null
+	}
+
+	try {
+		const parsed = new URL(value.trim())
+		parsed.hash = ""
+		return parsed
+	} catch {
+		return null
+	}
+}
+
+function normalizeComparableHostname(value) {
+	return typeof value === "string"
+		? value.trim().toLowerCase().replace(/^www\./u, "")
+		: ""
+}
+
+function normalizeComparablePathname(value) {
+	if (typeof value !== "string") {
+		return ""
+	}
+
+	const trimmed = value.trim().replace(/\/+$/u, "")
+	return trimmed === "/" ? "" : trimmed
+}
+
+function urlsLooselyMatch(currentUrl, targetUrl) {
+	const current = parseComparableUrl(currentUrl)
+	const target = parseComparableUrl(targetUrl)
+	if (!current || !target) {
+		return false
+	}
+
+	if (
+		normalizeComparableHostname(current.hostname) !==
+		normalizeComparableHostname(target.hostname)
+	) {
+		return false
+	}
+
+	const targetPathname = normalizeComparablePathname(target.pathname)
+	if (!targetPathname) {
+		return true
+	}
+
+	const currentPathname = normalizeComparablePathname(current.pathname)
+	return (
+		currentPathname === targetPathname ||
+		currentPathname.startsWith(`${targetPathname}/`)
+	)
+}
+
+function stateLooksLoadedForTarget(state, targetUrl) {
+	if (!state || typeof state !== "object") {
+		return false
+	}
+
+	return urlsLooselyMatch(state.url, targetUrl)
+}
+
+function isOperationTimedOutError(error) {
+	const message =
+		error instanceof Error && typeof error.message === "string"
+			? error.message
+			: String(error ?? "")
+
+	return /\boperation timed out\b|\btimed out\b/iu.test(message)
 }
 
 function getPngDimensions(buffer) {
@@ -204,6 +285,8 @@ class AgentBrowserRuntime {
 		}
 		this._deviceScaleFactor = clampDeviceScaleFactor(deviceScaleFactor)
 		this._isBrowserReady = false
+		this._nativeStreamConnectPromise = null
+		this._nativeStreamSocket = null
 		this._screencastInterval = null
 		this._screencastCapturePromise = null
 		this._screenshotDir = path.join(SCREENSHOT_ROOT_DIR, sessionToken)
@@ -268,29 +351,7 @@ class AgentBrowserRuntime {
 		await ensureAgentBrowserInstalled()
 	}
 
-	async _applyViewport() {
-		await this._runCommand([
-			"set",
-			"viewport",
-			this._viewport.width,
-			this._viewport.height,
-			this._deviceScaleFactor,
-		])
-	}
-
-	async _ensureBrowser() {
-		if (this._isBrowserReady) {
-			return
-		}
-
-		await this._ensureInstalled()
-		await this._runCommand(["open", "about:blank"])
-		await this._applyViewport()
-		this._isBrowserReady = true
-	}
-
-	async _readState() {
-		await this._ensureBrowser()
+	async _readStateFromActiveSession() {
 		const data = await this._runJsonCommand(["tab"])
 		const tabs = Array.isArray(data?.tabs)
 			? data.tabs
@@ -311,6 +372,65 @@ class AgentBrowserRuntime {
 			title: activeTab?.title ?? "",
 			url: activeTab?.url ?? "about:blank",
 		}
+	}
+
+	async _recoverTimedOutOpen(url) {
+		for (
+			let attempt = 0;
+			attempt < OPEN_TIMEOUT_RECOVERY_ATTEMPTS;
+			attempt += 1
+		) {
+			const state = await this._readStateFromActiveSession().catch(() => null)
+			if (stateLooksLoadedForTarget(state, url)) {
+				return true
+			}
+
+			if (attempt + 1 < OPEN_TIMEOUT_RECOVERY_ATTEMPTS) {
+				await delay(OPEN_TIMEOUT_RECOVERY_DELAY_MS)
+			}
+		}
+
+		return false
+	}
+
+	async _openUrl(url) {
+		try {
+			await this._runCommand(["open", url])
+		} catch (error) {
+			if (
+				isOperationTimedOutError(error) &&
+				(await this._recoverTimedOutOpen(url))
+			) {
+				return
+			}
+
+			throw error
+		}
+	}
+
+	async _applyViewport() {
+		await this._runCommand([
+			"set",
+			"viewport",
+			this._viewport.width,
+			this._viewport.height,
+			this._deviceScaleFactor,
+		])
+	}
+
+	async _ensureBrowser(initialUrl = "about:blank") {
+		if (this._isBrowserReady) {
+			return
+		}
+
+		await this._ensureInstalled()
+		await this._openUrl(initialUrl)
+		this._isBrowserReady = true
+	}
+
+	async _readState() {
+		await this._ensureBrowser()
+		return this._readStateFromActiveSession()
 	}
 
 	async _captureScreenshotBuffer({
@@ -352,12 +472,121 @@ class AgentBrowserRuntime {
 		})
 	}
 
-	async initialize(defaultUrl) {
-		await this._ensureBrowser()
+	async _getNativeStreamStatus() {
+		return this._runJsonCommand(["stream", "status"])
+	}
 
-		if (defaultUrl && defaultUrl !== "about:blank") {
-			await this.navigate(defaultUrl)
+	async _enableNativeStream() {
+		return this._runJsonCommand(["stream", "enable"])
+	}
+
+	async _disableNativeStream() {
+		await this._runCommand(["stream", "disable"]).catch(() => {})
+	}
+
+	_normalizeNativeStreamMetadata(rawMetadata) {
+		const fallbackMetadata = this._getScreencastFallbackMetadata()
+		const deviceWidth = Number.parseInt(String(rawMetadata?.deviceWidth), 10)
+		const deviceHeight = Number.parseInt(String(rawMetadata?.deviceHeight), 10)
+		const pageScaleFactor = Number.parseFloat(
+			String(rawMetadata?.pageScaleFactor),
+		)
+
+		return {
+			deviceWidth:
+				Number.isFinite(deviceWidth) && deviceWidth > 0
+					? deviceWidth
+					: fallbackMetadata.deviceWidth,
+			deviceHeight:
+				Number.isFinite(deviceHeight) && deviceHeight > 0
+					? deviceHeight
+					: fallbackMetadata.deviceHeight,
+			pageScaleFactor:
+				Number.isFinite(pageScaleFactor) && pageScaleFactor > 0
+					? pageScaleFactor
+					: fallbackMetadata.pageScaleFactor,
 		}
+	}
+
+	async _connectNativeStream(port, callback) {
+		return new Promise((resolve, reject) => {
+			const socket = new WebSocket(`ws://127.0.0.1:${port}`)
+			let settled = false
+
+			socket.on("open", () => {
+				settled = true
+				resolve(socket)
+			})
+
+			socket.on("message", (rawMessage, isBinary) => {
+				if (isBinary) {
+					return
+				}
+
+				const parsedMessage = parseJsonOutput(String(rawMessage))
+				if (
+					!parsedMessage ||
+					parsedMessage.type !== "frame" ||
+					typeof parsedMessage.data !== "string"
+				) {
+					return
+				}
+
+				callback({
+					buffer: Buffer.from(parsedMessage.data, "base64"),
+					metadata: this._normalizeNativeStreamMetadata(
+						parsedMessage.metadata,
+					),
+				})
+			})
+
+			socket.on("close", () => {
+				if (this._nativeStreamSocket === socket) {
+					this._nativeStreamSocket = null
+				}
+			})
+
+			socket.on("error", (error) => {
+				if (!settled) {
+					reject(error)
+				}
+			})
+		})
+	}
+
+	async _startNativeScreencast(callback) {
+		let streamStatus = await this._getNativeStreamStatus().catch(() => null)
+		let port = Number.parseInt(String(streamStatus?.port), 10)
+		if (streamStatus?.enabled !== true || !Number.isFinite(port) || port <= 0) {
+			streamStatus = await this._enableNativeStream().catch((error) => {
+				if (/already enabled/iu.test(error?.message || "")) {
+					return null
+				}
+
+				throw error
+			})
+			const refreshedStatus = streamStatus ??
+				(await this._getNativeStreamStatus().catch(() => null))
+			port = Number.parseInt(String(refreshedStatus?.port), 10)
+			if (
+				refreshedStatus?.enabled !== true ||
+				!Number.isFinite(port) ||
+				port <= 0
+			) {
+				return false
+			}
+		}
+
+		this._nativeStreamSocket = await this._connectNativeStream(port, callback)
+		return true
+	}
+
+	async initialize(defaultUrl) {
+		const initialUrl =
+			typeof defaultUrl === "string" && defaultUrl !== "about:blank"
+				? defaultUrl
+				: "about:blank"
+		await this._ensureBrowser(initialUrl)
 	}
 
 	async getState() {
@@ -366,7 +595,7 @@ class AgentBrowserRuntime {
 
 	async navigate(url) {
 		await this._ensureBrowser()
-		await this._runCommand(["open", url])
+		await this._openUrl(url)
 	}
 
 	async setViewport(width, height, deviceScaleFactor = this._deviceScaleFactor) {
@@ -471,13 +700,11 @@ class AgentBrowserRuntime {
 			args.push(url)
 		}
 		await this._runCommand(args)
-		await this._applyViewport()
 	}
 
 	async activateTab(tabIndex) {
 		await this._ensureBrowser()
 		await this._runCommand(["tab", tabIndex])
-		await this._applyViewport()
 	}
 
 	async closeTab(tabIndex) {
@@ -492,7 +719,6 @@ class AgentBrowserRuntime {
 		}
 
 		await this._runCommand(["tab", "close", resolvedIndex])
-		await this._applyViewport()
 	}
 
 	async screenshotBuffer() {
@@ -520,14 +746,27 @@ class AgentBrowserRuntime {
 	}
 
 	isScreencasting() {
-		return this._screencastInterval !== null || this._screencastCapturePromise !== null
+		return (
+			this._nativeStreamSocket !== null ||
+			this._nativeStreamConnectPromise !== null ||
+			this._screencastInterval !== null ||
+			this._screencastCapturePromise !== null
+		)
 	}
 
 	async startScreencast(callback) {
-		if (this._screencastInterval) {
+		if (this.isScreencasting()) {
 			return
 		}
 		await this._ensureBrowser()
+
+		this._nativeStreamConnectPromise = this._startNativeScreencast(callback)
+			.catch(() => false)
+		const startedNativeStream = await this._nativeStreamConnectPromise
+		this._nativeStreamConnectPromise = null
+		if (startedNativeStream) {
+			return
+		}
 
 		const emitFrame = async () => {
 			if (this._screencastCapturePromise) {
@@ -540,7 +779,7 @@ class AgentBrowserRuntime {
 				const dimensions =
 					getImageDimensions(buffer, "jpeg") || fallbackMetadata
 				callback({
-					data: buffer.toString("base64"),
+					buffer,
 					metadata: {
 						deviceWidth: dimensions.width ?? fallbackMetadata.deviceWidth,
 						deviceHeight: dimensions.height ?? fallbackMetadata.deviceHeight,
@@ -568,6 +807,17 @@ class AgentBrowserRuntime {
 		}
 
 		await this._screencastCapturePromise?.catch(() => {})
+		this._screencastCapturePromise = null
+		await this._nativeStreamConnectPromise?.catch(() => {})
+		this._nativeStreamConnectPromise = null
+		if (this._nativeStreamSocket) {
+			const socket = this._nativeStreamSocket
+			this._nativeStreamSocket = null
+			socket.close()
+		}
+		if (this._isBrowserReady) {
+			await this._disableNativeStream()
+		}
 	}
 
 	async close() {

@@ -1,5 +1,6 @@
 function shouldAttemptPostToolGenui({
 	assistantText,
+	hasAuthoritativeBrowserOutput = false,
 	hasEmittedQuestionCard = false,
 	hasEmittedPlanWidget = false,
 	hasEmittedGenuiWidget = false,
@@ -20,6 +21,7 @@ function shouldAttemptPostToolGenui({
 		!hasEmittedQuestionCard &&
 		!hasEmittedPlanWidget &&
 		!hasEmittedGenuiWidget &&
+		!hasAuthoritativeBrowserOutput &&
 		!looksLikeClarification &&
 		!looksLikeInability &&
 		!resolvedPlanModeActive &&

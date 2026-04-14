@@ -194,7 +194,7 @@ function RovoAppSidebarThreadItem({
 	return (
 		<SidebarMenuItem>
 			<SidebarNavItem
-				className={getRovoAppSidebarThreadSidebarNavItemClassName({ showRunIndicator })}
+				className={cn("group-hover/menu-item:pr-8", getRovoAppSidebarThreadSidebarNavItemClassName({ showRunIndicator }))}
 				isSelected={isActive}
 				onClick={() => {
 					setOpenMobile(false);

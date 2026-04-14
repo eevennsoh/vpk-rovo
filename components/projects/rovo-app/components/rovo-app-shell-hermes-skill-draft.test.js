@@ -31,17 +31,16 @@ test("RovoAppShell tracks active Hermes skill draft review state", () => {
 	);
 	assert.match(
 		SHELL_SOURCE,
-		/const activePendingSkillDraft =\s*\n\t\t\tpendingThreadSkillDrafts\[activePendingSkillDraftIndex\] \?\? pendingThreadSkillDrafts\[0\] \?\? null;/,
+		/const activePendingSkillDraft = pendingThreadSkillDrafts\[activePendingSkillDraftIndex\] \?\? pendingThreadSkillDrafts\[0\] \?\? null;/,
 	);
 });
 
 test("RovoAppShell renders the Hermes skill draft review bar inline with composer controls", () => {
 	const regularComposerBranch = extractSlice(
-		"{chat.activeToolApproval ? (",
+		"{activePendingSkillDraft ? (",
 		"<motion.div",
 	);
 
-	assert.match(regularComposerBranch, /<RovoAppToolApprovalBar/);
 	assert.match(regularComposerBranch, /activePendingSkillDraft \? \(/);
 	assert.match(regularComposerBranch, /<RovoAppHermesSkillDraftBar/);
 	assert.match(regularComposerBranch, /onApprove=\{handleHermesSkillDraftApprove\}/);

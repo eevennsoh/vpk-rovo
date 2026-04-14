@@ -2,6 +2,10 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const {
+	getBrowserWorkspaceAllowedRovodevMcpServerSignature,
+	getBrowserWorkspaceRovodevMcpServerConfig,
+} = require("../../backend/lib/browser-workspace-mcp");
+const {
 	getQmdAllowedRovodevMcpServerSignature,
 	getQmdRovodevMcpServerConfig,
 } = require("../../backend/lib/qmd");
@@ -156,6 +160,14 @@ function mergeUniqueStrings(...lists) {
 	);
 }
 
+function isRepoLocalBrowserAutomationSignature(entry) {
+	if (typeof entry !== "string") {
+		return false;
+	}
+
+	return /chrome-devtools-mcp|@playwright\/mcp|playwright-mcp/u.test(entry);
+}
+
 function resolveRovodevMcpConfigPath(configText) {
 	const match = normalizeYaml(configText).match(/^\s*mcpConfigPath:\s*(.+)\s*$/mu);
 	if (match?.[1]?.trim()) {
@@ -213,11 +225,21 @@ function syncWorkspaceRovodevConfig({ cwd = process.cwd() } = {}) {
 		: "";
 
 	const mergedAllowedServers = mergeUniqueStrings(
-		extractYamlListEntries(sourceConfigText, "allowedMcpServers"),
-		extractYamlListEntries(existingWorkspaceConfigText, "allowedMcpServers"),
-		[getQmdAllowedRovodevMcpServerSignature()],
+		extractYamlListEntries(sourceConfigText, "allowedMcpServers").filter(
+			(entry) => !isRepoLocalBrowserAutomationSignature(entry),
+		),
+		extractYamlListEntries(existingWorkspaceConfigText, "allowedMcpServers").filter(
+			(entry) => !isRepoLocalBrowserAutomationSignature(entry),
+		),
+		[
+			getQmdAllowedRovodevMcpServerSignature(),
+			getBrowserWorkspaceAllowedRovodevMcpServerSignature({ repoRoot: cwd }),
+		],
 	);
 	const qmdMcpServers = getQmdRovodevMcpServerConfig({ repoRoot: cwd });
+	const browserWorkspaceMcpServers = getBrowserWorkspaceRovodevMcpServerConfig({
+		repoRoot: cwd,
+	});
 	const qmdIndexPath = qmdMcpServers.qmd?.env?.INDEX_PATH;
 	if (typeof qmdIndexPath === "string" && qmdIndexPath.trim()) {
 		fs.mkdirSync(path.dirname(qmdIndexPath), { recursive: true });
@@ -256,17 +278,28 @@ function syncWorkspaceRovodevConfig({ cwd = process.cwd() } = {}) {
 		}
 	}
 
+	const sourceMcpServers =
+		sourceMcpConfig.mcpServers && typeof sourceMcpConfig.mcpServers === "object"
+			? { ...sourceMcpConfig.mcpServers }
+			: {};
+	const existingWorkspaceMcpServers =
+		existingWorkspaceMcpConfig.mcpServers &&
+		typeof existingWorkspaceMcpConfig.mcpServers === "object"
+			? { ...existingWorkspaceMcpConfig.mcpServers }
+			: {};
+	delete sourceMcpServers.playwright;
+	delete existingWorkspaceMcpServers.playwright;
+	delete sourceMcpServers["chrome-devtools"];
+	delete existingWorkspaceMcpServers["chrome-devtools"];
+
 	const nextWorkspaceMcpConfig = {
 		...sourceMcpConfig,
 		...existingWorkspaceMcpConfig,
 		mcpServers: {
-			...(sourceMcpConfig.mcpServers && typeof sourceMcpConfig.mcpServers === "object"
-				? sourceMcpConfig.mcpServers
-				: {}),
-			...(existingWorkspaceMcpConfig.mcpServers && typeof existingWorkspaceMcpConfig.mcpServers === "object"
-				? existingWorkspaceMcpConfig.mcpServers
-				: {}),
+			...sourceMcpServers,
+			...existingWorkspaceMcpServers,
 			...qmdMcpServers,
+			...browserWorkspaceMcpServers,
 		},
 		inputs: Array.isArray(existingWorkspaceMcpConfig.inputs)
 			? existingWorkspaceMcpConfig.inputs

@@ -54,6 +54,30 @@ export interface WikiCompiledContextDocument {
 	updatedAt: string | null;
 }
 
+export interface WikiCanonicalMemoryBlock {
+	charCount: number;
+	content: string;
+	id: string;
+	lineCount: number;
+	preview: string;
+}
+
+export interface WikiCanonicalMemoryDocument {
+	blocks: WikiCanonicalMemoryBlock[];
+	canonicalPath: string;
+	compiledContext: WikiCompiledContextDocument | null;
+	exists: boolean;
+	revision: string;
+	scope: "operations" | "profile";
+	title: string;
+	updatedAt: string | null;
+}
+
+export interface WikiCanonicalMemoryDocuments {
+	operations: WikiCanonicalMemoryDocument;
+	profile: WikiCanonicalMemoryDocument;
+}
+
 export interface WikiProposalCounts {
 	queued: number;
 	ingested: number;
@@ -132,6 +156,18 @@ export interface WikiSyncResponse {
 			latestCanonicalUpdateAt?: string | null;
 		} | null;
 	};
+}
+
+export interface WikiMemoryDeleteResponse {
+	memories: WikiCanonicalMemoryDocuments;
+	removedBlock: WikiCanonicalMemoryBlock;
+	wiki: WikiStatus;
+}
+
+export interface WikiMemoryProposalDeleteResponse {
+	memories: WikiCanonicalMemoryDocuments;
+	proposal: WikiMemoryProposalSummary;
+	wiki: WikiStatus;
 }
 
 export interface HermesSkillSummary {
