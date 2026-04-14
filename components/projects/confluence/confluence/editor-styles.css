@@ -1,0 +1,258 @@
+/* Tiptap Editor Styles */
+.tiptap-editor {
+	outline: none;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+	font-size: 14px;
+	line-height: 1.6;
+	color: var(--ds-text, #172b4d);
+}
+
+/* Text alignment */
+.tiptap-editor [style*="text-align: left"] {
+	text-align: left;
+}
+
+.tiptap-editor [style*="text-align: center"] {
+	text-align: center;
+}
+
+.tiptap-editor [style*="text-align: right"] {
+	text-align: right;
+}
+
+/* Headings */
+.tiptap-editor h1 {
+	font-size: 32px;
+	font-weight: 600;
+	line-height: 1.25;
+	margin-top: 24px;
+	margin-bottom: 16px;
+	color: var(--ds-text, #172b4d);
+}
+
+.tiptap-editor h2 {
+	font-size: 24px;
+	font-weight: 600;
+	line-height: 1.33;
+	margin-top: 24px;
+	margin-bottom: 12px;
+	color: var(--ds-text, #172b4d);
+}
+
+.tiptap-editor h3 {
+	font-size: 18px;
+	font-weight: 600;
+	line-height: 1.44;
+	margin-top: 20px;
+	margin-bottom: 8px;
+	color: var(--ds-text, #172b4d);
+}
+
+.tiptap-editor h4 {
+	font-size: 16px;
+	font-weight: 600;
+	line-height: 1.5;
+	margin-top: 16px;
+	margin-bottom: 8px;
+	color: var(--ds-text, #172b4d);
+}
+
+.tiptap-editor h5,
+.tiptap-editor h6 {
+	font-size: 14px;
+	font-weight: 600;
+	line-height: 1.5;
+	margin-top: 12px;
+	margin-bottom: 8px;
+	color: var(--ds-text, #172b4d);
+}
+
+.tiptap-editor h1:first-child,
+.tiptap-editor h2:first-child,
+.tiptap-editor h3:first-child {
+	margin-top: 0;
+}
+
+/* Paragraphs */
+.tiptap-editor p {
+	margin-bottom: 16px;
+}
+
+.tiptap-editor p:last-child {
+	margin-bottom: 0;
+}
+
+/* Lists */
+.tiptap-editor ul,
+.tiptap-editor ol {
+	padding-left: 24px;
+	margin-bottom: 16px;
+}
+
+.tiptap-editor ul {
+	list-style-type: disc;
+}
+
+.tiptap-editor ol {
+	list-style-type: decimal;
+}
+
+.tiptap-editor li {
+	margin-bottom: 4px;
+}
+
+.tiptap-editor li > p {
+	margin-bottom: 4px;
+}
+
+.tiptap-editor li:last-child {
+	margin-bottom: 0;
+}
+
+/* Nested lists */
+.tiptap-editor ul ul,
+.tiptap-editor ol ul {
+	list-style-type: circle;
+}
+
+.tiptap-editor ul ul ul,
+.tiptap-editor ol ul ul {
+	list-style-type: square;
+}
+
+.tiptap-editor ol ol,
+.tiptap-editor ul ol {
+	list-style-type: lower-alpha;
+}
+
+/* Code blocks */
+.tiptap-editor pre {
+	background-color: var(--ds-surface-raised, #f4f5f7);
+	border: 1px solid var(--ds-border, #dfe1e6);
+	border-radius: var(--ds-radius-medium);
+	padding: 16px;
+	margin-bottom: 16px;
+	overflow-x: auto;
+	font-family: "SFMono-Medium", "SF Mono", "Segoe UI Mono", "Roboto Mono", "Ubuntu Mono", Menlo, Consolas, Courier, monospace;
+	font-size: 13px;
+	line-height: 1.5;
+}
+
+.tiptap-editor pre code {
+	background: none;
+	padding: 0;
+	border: none;
+	color: var(--ds-text, #172b4d);
+}
+
+/* Inline code */
+.tiptap-editor code {
+	background-color: var(--ds-surface-raised, #f4f5f7);
+	border: 1px solid var(--ds-border, #dfe1e6);
+	border-radius: var(--ds-radius-medium);
+	padding: 2px 4px;
+	font-family: "SFMono-Medium", "SF Mono", "Segoe UI Mono", "Roboto Mono", "Ubuntu Mono", Menlo, Consolas, Courier, monospace;
+	font-size: 0.9em;
+	color: var(--ds-text-accent-red, #bf2600);
+}
+
+/* Blockquotes */
+.tiptap-editor blockquote {
+	border-left: 4px solid var(--ds-border-accent-blue, #0065ff);
+	padding-left: 16px;
+	margin-left: 0;
+	margin-bottom: 16px;
+	color: var(--ds-text-subtle, #6b778c);
+	font-style: italic;
+}
+
+.tiptap-editor blockquote p {
+	margin-bottom: 8px;
+}
+
+.tiptap-editor blockquote p:last-child {
+	margin-bottom: 0;
+}
+
+/* Links */
+.tiptap-editor a,
+.tiptap-editor .editor-link {
+	color: var(--ds-link, #0052cc);
+	text-decoration: none;
+	cursor: pointer;
+}
+
+.tiptap-editor a:hover,
+.tiptap-editor .editor-link:hover {
+	color: var(--ds-link-hover, #0065ff);
+	text-decoration: underline;
+}
+
+/* Text formatting */
+.tiptap-editor strong {
+	font-weight: 600;
+}
+
+.tiptap-editor em {
+	font-style: italic;
+}
+
+.tiptap-editor u {
+	text-decoration: underline;
+}
+
+.tiptap-editor s {
+	text-decoration: line-through;
+}
+
+/* Horizontal rule */
+.tiptap-editor hr {
+	border: none;
+	border-top: 2px solid var(--ds-border, #dfe1e6);
+	margin: 24px 0;
+}
+
+/* Focus styles */
+.tiptap-editor:focus {
+	outline: none;
+}
+
+/* Placeholder */
+.tiptap-editor p.is-editor-empty:first-child::before {
+	content: attr(data-placeholder);
+	float: left;
+	color: var(--ds-text-subtlest, #97a0af);
+	pointer-events: none;
+	height: 0;
+}
+
+/* Selection */
+.tiptap-editor ::selection {
+	background-color: var(--ds-background-selected, #deebff);
+}
+
+/* Make sure the editor takes full width */
+.ProseMirror {
+	min-height: 200px;
+}
+
+/* Task list items (if you add them later) */
+.tiptap-editor ul[data-type="taskList"] {
+	list-style: none;
+	padding-left: 0;
+}
+
+.tiptap-editor ul[data-type="taskList"] li {
+	display: flex;
+	align-items: flex-start;
+}
+
+.tiptap-editor ul[data-type="taskList"] li > label {
+	flex: 0 0 auto;
+	margin-right: 8px;
+	user-select: none;
+}
+
+.tiptap-editor ul[data-type="taskList"] li > div {
+	flex: 1 1 auto;
+}
