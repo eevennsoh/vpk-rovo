@@ -642,6 +642,7 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 	// Plan approval card support
 	const activePendingPlan = useMemo(() => getLatestPendingPlanWidget(chat.messages), [chat.messages]);
 	const [dismissedApprovalCardKey, setDismissedApprovalCardKey] = useState<string | null>(null);
+	const [dismissedMemoryBarThreadId, setDismissedMemoryBarThreadId] = useState<string | null>(null);
 	const [isSubmittingPlanApproval, setIsSubmittingPlanApproval] = useState(false);
 	const pendingPlanKey = activePendingPlan?.planWidget.deferredToolCallId ?? null;
 	const shouldShowApprovalCard = activePendingPlan !== null && pendingPlanKey !== dismissedApprovalCardKey && !shouldShowQuestionCard && !chat.isStreaming;
@@ -2149,9 +2150,10 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 						</>
 					) : (
 						<>
-							{activeThreadRecord?.id && activeThreadMemoryProposals.length > 0 ? (
+							{activeThreadRecord?.id && activeThreadMemoryProposals.length > 0 && dismissedMemoryBarThreadId !== activeThreadRecord.id ? (
 								<div className="mb-3">
 									<RovoAppHermesMemoryBar
+										onDismiss={() => setDismissedMemoryBarThreadId(activeThreadRecord.id)}
 										onOpenMemories={() => router.push(`/rovo-app/memories?threadId=${encodeURIComponent(activeThreadRecord.id)}`)}
 										proposals={activeThreadMemoryProposals}
 										threadId={activeThreadRecord.id}

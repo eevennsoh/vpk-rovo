@@ -4,9 +4,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Lozenge } from "@/components/ui/lozenge";
+import CrossIcon from "@atlaskit/icon/core/cross";
 import type { WikiMemoryProposalSummary } from "@/lib/rovo-runtime-types";
 
 interface RovoAppHermesMemoryBarProps {
+	onDismiss: () => void;
 	onOpenMemories: () => void;
 	proposals: ReadonlyArray<WikiMemoryProposalSummary>;
 	threadId: string;
@@ -33,6 +35,7 @@ function formatScopeLabel(scope: string | null | undefined): string {
 }
 
 export function RovoAppHermesMemoryBar({
+	onDismiss,
 	onOpenMemories,
 	proposals,
 	threadId,
@@ -57,6 +60,16 @@ export function RovoAppHermesMemoryBar({
 							</p>
 						</div>
 						<Badge variant="neutral">{threadId}</Badge>
+							<Button
+								aria-label="Dismiss memory activity"
+								className="-mr-1 -mt-1"
+								onClick={onDismiss}
+								size="icon-xs"
+								type="button"
+								variant="ghost"
+							>
+								<CrossIcon label="" />
+							</Button>
 					</div>
 				</CardHeader>
 
