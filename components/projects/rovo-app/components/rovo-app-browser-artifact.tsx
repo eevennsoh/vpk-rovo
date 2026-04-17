@@ -9,13 +9,11 @@ import {
 import { BrowserPreviewOverlay } from "@/components/projects/shared/components/browser-preview-overlay";
 import type { RovoDataParts } from "@/lib/rovo-ui-messages";
 import {
-	useCallback,
 	useEffect,
 	useMemo,
 	useRef,
 	useState,
-	type PointerEvent as ReactPointerEvent,
-	type WheelEvent as ReactWheelEvent,
+	type RefObject,
 } from "react";
 import { useBrowserPreviewSession } from "@/components/website/demos/utils/hooks/use-browser-preview-session";
 
@@ -29,6 +27,7 @@ interface RovoAppBrowserArtifactProps {
 		| "ready"
 		| "error";
 	screenshot?: RovoDataParts["browser-screenshot"] | null;
+	streamConfig?: RovoDataParts["browser-state"]["streamConfig"] | null;
 	workspaceId?: string | null;
 	onClose: () => void;
 }
@@ -49,11 +48,128 @@ function resolveScreenshotSrc(screenshot: RovoDataParts["browser-screenshot"] | 
 	return null;
 }
 
+function renderPreviewState({
+	displayUrl,
+	fallbackScreenshotSrc,
+	hasLiveStream,
+	isAwaitingAuth,
+	isError,
+	isLaunchingCanary,
+	isLoading,
+	liveCanvasRef,
+	renderedMediaStyle,
+	screenshot,
+}: {
+	displayUrl: string;
+	fallbackScreenshotSrc: string | null;
+	hasLiveStream: boolean;
+	isAwaitingAuth: boolean;
+	isError: boolean;
+	isLaunchingCanary: boolean;
+	isLoading: boolean;
+	liveCanvasRef: RefObject<HTMLCanvasElement | null>;
+	renderedMediaStyle: {
+		left: number;
+		top: number;
+		width: number;
+		height: number;
+	};
+	screenshot?: RovoDataParts["browser-screenshot"] | null;
+}) {
+	if (isError) {
+		return (
+			<div className="flex flex-col items-center gap-2 text-center">
+				<GlobeIcon className="size-8 text-text-subtlest" />
+				<p className="text-sm text-text-subtle">
+					Browser session unavailable
+				</p>
+			</div>
+		);
+	}
+
+	if (hasLiveStream) {
+		return (
+			<canvas
+				ref={liveCanvasRef}
+				className="pointer-events-none absolute block select-none"
+				style={renderedMediaStyle}
+			/>
+		);
+	}
+
+	if (fallbackScreenshotSrc) {
+		return (
+			/* eslint-disable-next-line @next/next/no-img-element */
+			<img
+				src={fallbackScreenshotSrc}
+				alt={`Screenshot of ${displayUrl}`}
+				decoding="async"
+				height={screenshot?.height}
+				className="pointer-events-none absolute block select-none"
+				width={screenshot?.width}
+				style={renderedMediaStyle}
+			/>
+		);
+	}
+
+	if (isLaunchingCanary) {
+		return (
+			<div className="flex flex-col items-center gap-3 px-4 text-center">
+				<Loader2Icon className="size-8 animate-spin text-text-subtlest" />
+				<p className="text-sm text-text-subtle">
+					Connecting browser preview...
+				</p>
+				<p className="text-xs text-text-subtlest">
+					The in-app preview will sync once the live browser session is ready.
+				</p>
+			</div>
+		);
+	}
+
+	if (isAwaitingAuth) {
+		return (
+			<div className="flex flex-col items-center gap-3 px-4 text-center">
+				<GlobeIcon className="size-8 text-text-subtlest" />
+				<p className="text-sm text-text-subtle">
+					Live browser session is ready
+				</p>
+				<p className="text-xs text-text-subtlest">
+					Sign in there once, then retry the browsing step to reuse that session here.
+				</p>
+			</div>
+		);
+	}
+
+	if (isLoading) {
+		return (
+			<div className="flex flex-col items-center gap-3 text-center">
+				<Loader2Icon className="size-8 animate-spin text-text-subtlest" />
+				<p className="text-sm text-text-subtle">
+					Browsing {displayUrl}...
+				</p>
+			</div>
+		);
+	}
+
+	return (
+		<div className="flex flex-col items-center gap-2 px-4 text-center">
+			<GlobeIcon className="size-8 text-text-subtlest" />
+			<p className="text-sm text-text-subtle">
+				Browsing {displayUrl}
+			</p>
+			<p className="text-xs text-text-subtlest">
+				Screenshot will appear when the agent captures one
+			</p>
+		</div>
+	);
+}
+
 export function RovoAppBrowserArtifact({
 	url,
 	title,
 	status,
 	screenshot,
+	streamConfig,
 	workspaceId,
 	onClose,
 }: Readonly<RovoAppBrowserArtifactProps>) {
@@ -65,24 +181,17 @@ export function RovoAppBrowserArtifact({
 
 	const {
 		liveCanvasRef,
-		canSendControl,
-		sendControlMessage,
 		overlayState,
 		sourceMetadata,
 		status: streamStatus,
-	} = useBrowserPreviewSession(workspaceId ?? null);
+	} = useBrowserPreviewSession(workspaceId ?? null, {
+		streamUrl: streamConfig?.wsUrl ?? null,
+	});
 	const [containerViewportSize, setContainerViewportSize] = useState({
 		width: 1280,
 		height: 900,
 	});
 	const liveViewportRef = useRef<HTMLDivElement | null>(null);
-	const wheelFlushTimerRef = useRef<number | null>(null);
-	const pendingWheelRef = useRef({
-		deltaX: 0,
-		deltaY: 0,
-		x: 0,
-		y: 0,
-	});
 
 	const hasLiveStream =
 		streamStatus === "live" || streamStatus === "steady";
@@ -116,14 +225,6 @@ export function RovoAppBrowserArtifact({
 
 		observer.observe(container);
 		return () => observer.disconnect();
-	}, []);
-
-	useEffect(() => {
-		return () => {
-			if (wheelFlushTimerRef.current !== null) {
-				window.clearTimeout(wheelFlushTimerRef.current);
-			}
-		};
 	}, []);
 
 	const previewGeometry = useMemo(() => {
@@ -180,116 +281,6 @@ export function RovoAppBrowserArtifact({
 		],
 	);
 
-	const resolvePreviewPoint = useCallback(
-		(clientX: number, clientY: number) => {
-			const container = liveViewportRef.current;
-			if (!container) {
-				return null;
-			}
-
-			const bounds = container.getBoundingClientRect();
-			const xWithinImage = clientX - bounds.left - previewGeometry.offsetLeft;
-			const yWithinImage = clientY - bounds.top - previewGeometry.offsetTop;
-
-			if (
-				xWithinImage < 0 ||
-				yWithinImage < 0 ||
-				xWithinImage > previewGeometry.renderedWidth ||
-				yWithinImage > previewGeometry.renderedHeight
-			) {
-				return null;
-			}
-
-			const scaleX =
-				previewGeometry.sourceWidth / Math.max(previewGeometry.renderedWidth, 1);
-			const scaleY =
-				previewGeometry.sourceHeight / Math.max(previewGeometry.renderedHeight, 1);
-
-			return {
-				x: Math.round(xWithinImage * scaleX),
-				y: Math.round(yWithinImage * scaleY),
-			};
-		},
-		[
-			previewGeometry.offsetLeft,
-			previewGeometry.offsetTop,
-			previewGeometry.renderedHeight,
-			previewGeometry.renderedWidth,
-			previewGeometry.sourceHeight,
-			previewGeometry.sourceWidth,
-		],
-	);
-
-	const resolvePreviewCenter = useCallback(() => ({
-		x: Math.round(previewGeometry.sourceWidth / 2),
-		y: Math.round(previewGeometry.sourceHeight / 2),
-	}), [previewGeometry.sourceHeight, previewGeometry.sourceWidth]);
-
-	const handlePointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
-		if (event.button !== 0) {
-			return;
-		}
-
-		const point = resolvePreviewPoint(event.clientX, event.clientY);
-		if (!point) {
-			return;
-		}
-
-		event.preventDefault();
-		liveViewportRef.current?.focus();
-		if (canSendControl) {
-			void sendControlMessage({
-				type: "preview-click",
-				x: point.x,
-				y: point.y,
-			});
-		}
-	}, [canSendControl, resolvePreviewPoint, sendControlMessage]);
-
-	const handleWheel = useCallback(
-		(event: ReactWheelEvent<HTMLDivElement>) => {
-			if (!canSendControl) {
-				return;
-			}
-
-			event.preventDefault();
-			liveViewportRef.current?.focus();
-			const center = resolvePreviewCenter();
-			pendingWheelRef.current.x = center.x;
-			pendingWheelRef.current.y = center.y;
-			pendingWheelRef.current.deltaX += Math.round(event.deltaX);
-			pendingWheelRef.current.deltaY += Math.round(event.deltaY);
-
-			if (wheelFlushTimerRef.current !== null) {
-				return;
-			}
-
-			wheelFlushTimerRef.current = window.setTimeout(() => {
-				wheelFlushTimerRef.current = null;
-				const nextWheel = pendingWheelRef.current;
-				pendingWheelRef.current = {
-					x: nextWheel.x,
-					y: nextWheel.y,
-					deltaX: 0,
-					deltaY: 0,
-				};
-
-				if (!nextWheel.deltaX && !nextWheel.deltaY) {
-					return;
-				}
-
-				void sendControlMessage({
-					type: "preview-wheel",
-					x: nextWheel.x,
-					y: nextWheel.y,
-					deltaX: nextWheel.deltaX,
-					deltaY: nextWheel.deltaY,
-				});
-			}, 40);
-		},
-		[canSendControl, resolvePreviewCenter, sendControlMessage],
-	);
-
 	const isOverlayActive = !!overlayState?.cursor?.visible;
 
 	return (
@@ -329,74 +320,20 @@ export function RovoAppBrowserArtifact({
 			<div
 				ref={liveViewportRef}
 				className="relative flex flex-1 items-center justify-center overflow-hidden bg-neutral-50 outline-none dark:bg-neutral-900"
-				role="application"
 				aria-label={title || "Browser preview"}
-				tabIndex={0}
-				onPointerDown={handlePointerDown}
-				onWheel={handleWheel}
 			>
-				{isError ? (
-					<div className="flex flex-col items-center gap-2 text-center">
-						<GlobeIcon className="size-8 text-text-subtlest" />
-						<p className="text-sm text-text-subtle">
-							Browser session unavailable
-						</p>
-					</div>
-				) : hasLiveStream ? (
-					<canvas
-						ref={liveCanvasRef}
-						className="pointer-events-none absolute block select-none"
-						style={renderedMediaStyle}
-					/>
-				) : fallbackScreenshotSrc ? (
-					/* eslint-disable-next-line @next/next/no-img-element */
-					<img
-						src={fallbackScreenshotSrc}
-						alt={`Screenshot of ${displayUrl}`}
-						decoding="async"
-						height={screenshot?.height}
-						className="pointer-events-none absolute block select-none"
-						width={screenshot?.width}
-						style={renderedMediaStyle}
-					/>
-				) : isLaunchingCanary ? (
-					<div className="flex flex-col items-center gap-3 px-4 text-center">
-						<Loader2Icon className="size-8 animate-spin text-text-subtlest" />
-						<p className="text-sm text-text-subtle">
-							Opening Google Chrome Canary...
-						</p>
-						<p className="text-xs text-text-subtlest">
-							The in-app preview will sync once Canary exposes its DevTools port.
-						</p>
-					</div>
-				) : isAwaitingAuth ? (
-					<div className="flex flex-col items-center gap-3 px-4 text-center">
-						<GlobeIcon className="size-8 text-text-subtlest" />
-						<p className="text-sm text-text-subtle">
-							Google Chrome Canary is ready
-						</p>
-						<p className="text-xs text-text-subtlest">
-							Sign in there once, then retry the browsing step to reuse that session here.
-						</p>
-					</div>
-				) : isLoading ? (
-					<div className="flex flex-col items-center gap-3 text-center">
-						<Loader2Icon className="size-8 animate-spin text-text-subtlest" />
-						<p className="text-sm text-text-subtle">
-							Browsing {displayUrl}...
-						</p>
-					</div>
-				) : (
-					<div className="flex flex-col items-center gap-2 text-center px-4">
-						<GlobeIcon className="size-8 text-text-subtlest" />
-						<p className="text-sm text-text-subtle">
-							Browsing {displayUrl}
-						</p>
-						<p className="text-xs text-text-subtlest">
-							Screenshot will appear when the agent captures one
-						</p>
-					</div>
-				)}
+				{renderPreviewState({
+					displayUrl,
+					fallbackScreenshotSrc,
+					hasLiveStream,
+					isAwaitingAuth,
+					isError,
+					isLaunchingCanary,
+					isLoading,
+					liveCanvasRef,
+					renderedMediaStyle,
+					screenshot,
+				})}
 
 				<BrowserPreviewOverlay
 					geometry={previewGeometry}

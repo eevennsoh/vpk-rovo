@@ -270,7 +270,17 @@ export const PlanFooter = (props: Readonly<PlanFooterProps>) => <GenerativeCardF
 export type PlanTriggerProps = ComponentProps<typeof CollapsibleTrigger>;
 
 export const PlanTrigger = ({ className, ...props }: Readonly<PlanTriggerProps>) => (
-	<CollapsibleTrigger render={<Button className={cn("size-8", className)} data-slot="plan-trigger" size="icon" variant="ghost" {...props} />}>
+	<CollapsibleTrigger
+		{...props}
+		render={
+			<Button
+				className={cn("size-8", className)}
+				data-slot="plan-trigger"
+				size="icon"
+				variant="ghost"
+			/>
+		}
+	>
 		<ChevronsUpDownIcon className="size-4" />
 		<span className="sr-only">Toggle plan</span>
 	</CollapsibleTrigger>

@@ -161,148 +161,6 @@ const PLAIN_CHAT_INSTRUCTION = [
 	"[End Plain Chat Mode]",
 ].join("\n");
 
-const rovodevSiteUrl = process.env.ROVODEV_SITE_URL || "https://hello.atlassian.net";
-
-const LAST_7_DAYS_WORK_INSTRUCTION = [
-	"[Work Summary Scope]",
-	"For this request, gather the user's last-7-days work activity across both Atlassian sites.",
-	`- Jira site_url: "https://product-fabric.atlassian.net"`,
-	`- Confluence site_url: "${rovodevSiteUrl}"`,
-	"Choose the tools needed to fetch Jira and Confluence activity for these sites. Do not assume a fixed tool path.",
-	"If one site has no results or errors, continue with the other site and clearly report coverage and gaps.",
-	"Merge and deduplicate activity before responding.",
-	"[End Work Summary Scope]",
-].join("\n");
-
-const STANDUP_SUMMARY_INSTRUCTION = [
-	"[Standup Summary Protocol]",
-	"For this request, generate a daily standup summary from the user's Jira activity.",
-	`Use site_url: "https://product-fabric.atlassian.net".`,
-	"Search for Jira work items assigned to the current user updated in the last 24 hours using JQL: assignee = currentUser() AND updated >= -24h ORDER BY updated DESC",
-	"Classify each work item into one of three buckets based on its status:",
-	'- **Done**: statuses containing "done", "closed", "resolved", "completed", "merged", "released", "shipped"',
-	'- **In Progress**: statuses containing "in progress", "in review", "in development", "ready for", "active", "open"',
-	'- **Blockers**: statuses containing "blocked", "on hold", "needs refinement", "impediment", "waiting", "escalated"',
-	"Present the summary in Done / Doing / Blockers format with:",
-	"1. A metrics row showing counts for each bucket",
-	"2. Grouped work item lists with status lozenges, priority badges, and links",
-	"3. If no work items are found, show a friendly empty state message",
-	"Use Lozenge variants: success for Done, information for In Progress, danger for Blockers.",
-	"[End Standup Summary Protocol]",
-].join("\n");
-
-const STANDUP_PATTERN = /\b(standup|stand[\s-]?up|daily\s+summary|daily\s+standup|standup\s+summary)\b/i;
-const STANDUP_CONTEXT_PATTERN = /\b(jira|work\s+items?|activity|status|what\s+did\s+i|what\s+i\s+did|my\s+updates?)\b/i;
-
-const TICKET_CLASSIFIER_INSTRUCTION = [
-	"[Ticket Classifier Protocol]",
-	"For this request, classify and route incoming support tickets from Jira.",
-	`Use site_url: "https://product-fabric.atlassian.net".`,
-	'Search for open support tickets using JQL: project = "SUPPORT" AND status NOT IN ("Done", "Closed", "Resolved") ORDER BY created DESC',
-	"For each ticket, classify it into one of six product area categories based on its summary, description, labels, and components:",
-	'- **Billing**: keywords like "invoice", "payment", "charge", "subscription", "refund", "pricing"',
-	'- **Account**: keywords like "login", "password", "SSO", "permissions", "access", "MFA"',
-	'- **Technical**: keywords like "bug", "error", "crash", "performance", "timeout", "outage"',
-	'- **Onboarding**: keywords like "setup", "getting started", "tutorial", "configuration"',
-	'- **API / Integration**: keywords like "API", "webhook", "REST", "endpoint", "SDK", "OAuth"',
-	'- **Documentation**: keywords like "docs", "guide", "how to", "instructions", "FAQ"',
-	"Also infer a priority (P1–P4) from the Jira priority and urgency keywords in the text.",
-	"For each classified ticket, present:",
-	"1. A rich card with the ticket key, summary, category Lozenge, priority Badge, and confidence score",
-	"2. Suggested team for routing (do NOT auto-assign)",
-	"3. If confidence is below 50%, show a low-confidence warning",
-	"Use Lozenge variants: warning for Billing, discovery for Account, danger for Technical, success for Onboarding, accent-teal for API/Integration, information for Documentation.",
-	"[End Ticket Classifier Protocol]",
-].join("\n");
-
-const TICKET_CLASSIFIER_PATTERN = /\b(classify|categorize|triage|route|sort)\s+.{0,20}\b(ticket|support|request|incident)s?\b/i;
-const TICKET_CLASSIFIER_DIRECT_PATTERN = /\b(ticket\s+classif|support\s+ticket|triage\s+ticket|classify\s+.*ticket|route\s+.*ticket|incoming\s+ticket)/i;
-
-const LAST_7_DAYS_WINDOW_PATTERN = /\b(?:last|past)\s+7\s+days?\b|\b7[-\s]?day\b|\blast\s+week\b/i;
-const WORK_SUMMARY_PATTERN = /\b(work|activity|summary|updates?)\b/i;
-
-function isStandupSummaryPrompt(message) {
-	if (typeof message !== "string" || message.trim().length === 0) {
-		return false;
-	}
-
-	// Direct standup request (e.g. "summarize my standup", "daily standup")
-	if (STANDUP_PATTERN.test(message)) {
-		return true;
-	}
-
-	// Contextual standup request (e.g. "what did I do today in Jira")
-	const hasTodayContext = /\b(today|yesterday|this\s+morning|last\s+24|past\s+24)\b/i.test(message);
-	return hasTodayContext && STANDUP_CONTEXT_PATTERN.test(message);
-}
-
-function hasStandupGuardrail(contextDescription) {
-	if (typeof contextDescription !== "string" || contextDescription.trim().length === 0) {
-		return false;
-	}
-
-	return (
-		contextDescription.includes("[Standup Summary Protocol]") &&
-		contextDescription.includes("product-fabric.atlassian.net")
-	);
-}
-
-function isTicketClassifierPrompt(message) {
-	if (typeof message !== "string" || message.trim().length === 0) {
-		return false;
-	}
-
-	// Direct classifier request (e.g. "classify my support tickets", "triage incoming tickets")
-	if (TICKET_CLASSIFIER_PATTERN.test(message)) {
-		return true;
-	}
-
-	// Alternative phrasing (e.g. "support ticket classification", "route incoming tickets")
-	if (TICKET_CLASSIFIER_DIRECT_PATTERN.test(message)) {
-		return true;
-	}
-
-	return false;
-}
-
-function hasTicketClassifierGuardrail(contextDescription) {
-	if (typeof contextDescription !== "string" || contextDescription.trim().length === 0) {
-		return false;
-	}
-
-	return (
-		contextDescription.includes("[Ticket Classifier Protocol]") &&
-		contextDescription.includes("product-fabric.atlassian.net")
-	);
-}
-
-function isSevenDayWorkSummaryPrompt(message) {
-	if (typeof message !== "string" || message.trim().length === 0) {
-		return false;
-	}
-
-	return (
-		LAST_7_DAYS_WINDOW_PATTERN.test(message) &&
-		WORK_SUMMARY_PATTERN.test(message)
-	);
-}
-
-function hasLast7DaysWorkGuardrail(contextDescription) {
-	if (typeof contextDescription !== "string" || contextDescription.trim().length === 0) {
-		return false;
-	}
-
-	return (
-		contextDescription.includes("[Work Summary Scope]") &&
-		contextDescription.includes("https://product-fabric.atlassian.net") &&
-		contextDescription.includes(rovodevSiteUrl)
-	);
-}
-
-function resolvePromptSpecificInstruction(message, contextDescription) {
-	return null;
-}
-
 /**
  * System message sent to RovoDev when the user skips/dismisses a
  * Question Card without providing answers. RovoDev can then decide
@@ -339,9 +197,9 @@ function isPlanModeContext(contextDescription) {
 	);
 }
 
-function getInstructionBlocksForProfile(profile, promptSpecificInstruction, contextDescription) {
+function getInstructionBlocksForProfile(profile, contextDescription) {
 	if (profile === "plain-chat") {
-		return [PLAIN_CHAT_INSTRUCTION, promptSpecificInstruction];
+		return [PLAIN_CHAT_INSTRUCTION];
 	}
 
 	const planModeContextActive = isPlanModeContext(contextDescription);
@@ -357,7 +215,6 @@ function getInstructionBlocksForProfile(profile, promptSpecificInstruction, cont
 		WEB_SEARCH_INSTRUCTION,
 		DURABLE_MEMORY_INSTRUCTION,
 		HERMES_SKILL_DISCOVERABILITY_INSTRUCTION,
-		promptSpecificInstruction,
 	];
 }
 
@@ -384,13 +241,8 @@ function buildUserMessage(
 	options = {},
 ) {
 	const profile = options?.profile === "plain-chat" ? "plain-chat" : "default";
-	const promptSpecificInstruction = resolvePromptSpecificInstruction(
-		message,
-		contextDescription
-	);
 	const instructions = getInstructionBlocksForProfile(
 		profile,
-		promptSpecificInstruction,
 		contextDescription,
 	)
 		.filter((entry) => typeof entry === "string" && entry.trim().length > 0)

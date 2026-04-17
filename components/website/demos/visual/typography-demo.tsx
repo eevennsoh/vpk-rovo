@@ -16,7 +16,6 @@ const BODY_TOKENS = [
 	{ token: "font.body.large", label: "Large" },
 	{ token: "font.body", label: "Default" },
 	{ token: "font.body.small", label: "Small" },
-	{ token: "font.body.UNSAFE_small", label: "UNSAFE Small" },
 ] as const;
 
 export default function TypographyDemo() {

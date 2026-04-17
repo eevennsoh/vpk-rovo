@@ -1,4 +1,5 @@
 const fs = require("node:fs/promises")
+const fsSync = require("node:fs")
 const os = require("node:os")
 const net = require("node:net")
 const path = require("node:path")
@@ -27,6 +28,14 @@ const BINARY_PATH = path.resolve(
 
 const MAX_OUTPUT_BYTES = 10 * 1024 * 1024
 const SCREENSHOT_ROOT_DIR = path.join(os.tmpdir(), "vpk-browser-workspaces")
+const DEFAULT_AGENT_BROWSER_SUBPROCESS_HOME = path.join(
+	os.tmpdir(),
+	"vpk-agent-browser-home",
+)
+const DEFAULT_AGENT_BROWSER_HOME = path.join(
+	DEFAULT_AGENT_BROWSER_SUBPROCESS_HOME,
+	".agent-browser",
+)
 
 const DEFAULT_DEVICE_SCALE_FACTOR = 1
 const DEFAULT_VIEWPORT = {
@@ -42,6 +51,10 @@ const OPEN_TIMEOUT_RECOVERY_DELAY_MS = 500
 const LIVE_CANARY_LAUNCH_TIMEOUT_MS = 15_000
 const LIVE_CANARY_CONNECT_TIMEOUT_MS = 500
 const LIVE_CANARY_CONNECT_RETRY_INTERVAL_MS = 250
+const DEFAULT_AGENT_BROWSER_EXECUTABLE_CANDIDATE_PATHS = [
+	"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+	"/Applications/Chromium.app/Contents/MacOS/Chromium",
+]
 
 let installPromise = null
 let liveCanaryEnsurePromise = null
@@ -108,6 +121,79 @@ function normalizeSnapshotText(snapshot) {
 	}
 
 	return snapshot.replace(/\bref=(e\d+)\b/gu, "ref=@$1")
+}
+
+function hasConfiguredString(value) {
+	return typeof value === "string" && value.trim().length > 0
+}
+
+function resolveAgentBrowserExecutablePath({
+	env = process.env,
+	fsImpl = fsSync,
+} = {}) {
+	if (hasConfiguredString(env?.AGENT_BROWSER_EXECUTABLE_PATH)) {
+		return env.AGENT_BROWSER_EXECUTABLE_PATH.trim()
+	}
+
+	if (typeof fsImpl?.existsSync !== "function") {
+		return null
+	}
+
+	for (const candidatePath of DEFAULT_AGENT_BROWSER_EXECUTABLE_CANDIDATE_PATHS) {
+		if (fsImpl.existsSync(candidatePath)) {
+			return candidatePath
+		}
+	}
+
+	return null
+}
+
+function buildAgentBrowserEnv({
+	env = process.env,
+	agentBrowserExecutablePath,
+	fsImpl = fsSync,
+} = {}) {
+	const resolvedAgentBrowserHome = hasConfiguredString(env?.AGENT_BROWSER_HOME)
+		? env.AGENT_BROWSER_HOME.trim()
+		: DEFAULT_AGENT_BROWSER_HOME
+	const resolvedSubprocessHome = path.dirname(resolvedAgentBrowserHome)
+	const baseEnv = {
+		...env,
+		AGENT_BROWSER_HOME: resolvedAgentBrowserHome,
+		HOME: resolvedSubprocessHome,
+		USERPROFILE: resolvedSubprocessHome,
+	}
+	const resolvedExecutablePath =
+		hasConfiguredString(agentBrowserExecutablePath)
+			? agentBrowserExecutablePath.trim()
+			: resolveAgentBrowserExecutablePath({ env, fsImpl })
+
+	if (!hasConfiguredString(resolvedExecutablePath)) {
+		return baseEnv
+	}
+
+	return {
+		...baseEnv,
+		AGENT_BROWSER_EXECUTABLE_PATH: resolvedExecutablePath,
+	}
+}
+
+async function ensureAgentBrowserDirectories({
+	env = process.env,
+	fsImpl = fs,
+} = {}) {
+	const directoriesToEnsure = new Set()
+
+	if (hasConfiguredString(env?.HOME)) {
+		directoriesToEnsure.add(path.join(env.HOME.trim(), ".agent-browser"))
+	}
+	if (hasConfiguredString(env?.AGENT_BROWSER_HOME)) {
+		directoriesToEnsure.add(env.AGENT_BROWSER_HOME.trim())
+	}
+
+	for (const directoryPath of directoriesToEnsure) {
+		await fsImpl.mkdir(directoryPath, { recursive: true })
+	}
 }
 
 function parseComparableUrl(value) {
@@ -260,10 +346,30 @@ function getImageDimensions(buffer, format) {
 	return null
 }
 
-async function ensureAgentBrowserInstalled() {
+async function ensureAgentBrowserInstalled({
+	env = process.env,
+	fsImpl = fsSync,
+	execFileImpl = execFileAsync,
+} = {}) {
+	const executablePath = resolveAgentBrowserExecutablePath({ env, fsImpl })
+	if (
+		hasConfiguredString(executablePath) &&
+		typeof fsImpl?.existsSync === "function" &&
+		fsImpl.existsSync(executablePath)
+	) {
+		await ensureAgentBrowserDirectories({ env })
+		return
+	}
+
+	await ensureAgentBrowserDirectories({ env })
+
 	if (!installPromise) {
-		installPromise = execFileAsync(BINARY_PATH, ["install"], {
-			env: process.env,
+		installPromise = execFileImpl(BINARY_PATH, ["install"], {
+			env: buildAgentBrowserEnv({
+				env,
+				agentBrowserExecutablePath: executablePath,
+				fsImpl,
+			}),
 			maxBuffer: MAX_OUTPUT_BYTES,
 		}).catch((error) => {
 			installPromise = null
@@ -336,6 +442,7 @@ class AgentBrowserRuntime {
 		viewport = DEFAULT_VIEWPORT,
 		deviceScaleFactor = DEFAULT_DEVICE_SCALE_FACTOR,
 		browserMode = getConfiguredBrowserMode(),
+		agentBrowserExecutablePath = resolveAgentBrowserExecutablePath(),
 		cdpPort = getConfiguredLiveCanaryCdpPort(),
 		canaryExecutablePath = getConfiguredCanaryExecutablePath(),
 		spawnProcess = spawn,
@@ -348,6 +455,10 @@ class AgentBrowserRuntime {
 			browserMode === LIVE_CANARY_BROWSER_MODE
 				? LIVE_CANARY_BROWSER_MODE
 				: DEFAULT_BROWSER_MODE
+		this._agentBrowserExecutablePath = agentBrowserExecutablePath
+		this._agentBrowserEnv = buildAgentBrowserEnv({
+			agentBrowserExecutablePath,
+		})
 		this._cdpPort = cdpPort
 		this._canaryExecutablePath = canaryExecutablePath
 		this._spawnProcess = spawnProcess
@@ -381,8 +492,11 @@ class AgentBrowserRuntime {
 	}
 
 	async _executeAgentBrowser(commandArgs) {
+		await ensureAgentBrowserDirectories({
+			env: this._agentBrowserEnv,
+		})
 		const { stdout } = await execFileAsync(BINARY_PATH, commandArgs, {
-			env: process.env,
+			env: this._agentBrowserEnv,
 			maxBuffer: MAX_OUTPUT_BYTES,
 		})
 		return stdout.trim()
@@ -452,7 +566,9 @@ class AgentBrowserRuntime {
 	}
 
 	async _ensureInstalled() {
-		await ensureAgentBrowserInstalled()
+		await ensureAgentBrowserInstalled({
+			env: this._agentBrowserEnv,
+		})
 	}
 
 	async _canConnectToLiveCanary() {
@@ -462,7 +578,7 @@ class AgentBrowserRuntime {
 	async _launchLiveCanaryProcess() {
 		const executablePath = this._canaryExecutablePath
 		if (typeof executablePath !== "string" || !executablePath.trim()) {
-			throw new Error("Google Chrome Canary executable path is not configured.")
+			throw new Error("Live browser executable path is not configured.")
 		}
 
 		let launchedChild = null
@@ -484,7 +600,7 @@ class AgentBrowserRuntime {
 			throw new Error(
 				error instanceof Error && error.message
 					? error.message
-					: "Failed to launch Google Chrome Canary.",
+					: "Failed to launch the live browser session.",
 			)
 		}
 
@@ -494,7 +610,7 @@ class AgentBrowserRuntime {
 				throw new Error(
 					error instanceof Error && error.message
 						? error.message
-						: "Failed to launch Google Chrome Canary.",
+						: "Failed to launch the live browser session.",
 				)
 			}),
 		])
@@ -505,7 +621,7 @@ class AgentBrowserRuntime {
 		const didConnect = await waitForCdpPort(this._cdpPort)
 		if (!didConnect) {
 			throw new Error(
-				`Timed out waiting for Google Chrome Canary remote debugging on port ${this._cdpPort}.`,
+				`Timed out waiting for the live browser session on port ${this._cdpPort}.`,
 			)
 		}
 	}
@@ -1034,11 +1150,16 @@ class AgentBrowserRuntime {
 
 module.exports = {
 	AgentBrowserRuntime,
+	buildAgentBrowserEnv,
 	DEFAULT_DEVICE_SCALE_FACTOR,
+	DEFAULT_AGENT_BROWSER_EXECUTABLE_CANDIDATE_PATHS,
 	DEFAULT_VIEWPORT,
 	DEFAULT_SCREENCAST_QUALITY,
 	DEFAULT_SCREENCAST_MAX_WIDTH,
 	DEFAULT_SCREENCAST_MAX_HEIGHT,
 	LIVE_CANARY_BROWSER_MODE,
 	canConnectToCdpPort,
+	ensureAgentBrowserDirectories,
+	ensureAgentBrowserInstalled,
+	resolveAgentBrowserExecutablePath,
 }

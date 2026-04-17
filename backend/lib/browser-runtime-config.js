@@ -60,17 +60,9 @@ function hasLiveCanaryConfigurationHint({ env = process.env } = {}) {
 	)
 }
 
-function getBrowserRuntimeDefaultReason({ env = process.env, fsImpl = fs } = {}) {
+function getBrowserRuntimeDefaultReason({ env = process.env } = {}) {
 	if (hasExplicitBrowserMode({ env })) {
 		return "explicit-mode"
-	}
-
-	if (hasLiveCanaryConfigurationHint({ env })) {
-		return "canary-hint"
-	}
-
-	if (isCanaryExecutableAvailable({ env, fsImpl })) {
-		return "canary-detected"
 	}
 
 	return "default-isolated"
@@ -90,30 +82,13 @@ function isCanaryExecutableAvailable({
 
 function ensureBrowserRuntimeEnvDefaults({
 	env = process.env,
-	fsImpl = fs,
 } = {}) {
-	const reason = getBrowserRuntimeDefaultReason({ env, fsImpl })
-
-	if (reason === "explicit-mode") {
-		return {
-			changed: false,
-			browserMode: getConfiguredBrowserMode({ env }),
-			reason,
-		}
-	}
-
-	if (reason === "canary-hint" || reason === "canary-detected") {
-		env.ROVO_BROWSER_MODE = LIVE_CANARY_BROWSER_MODE
-		return {
-			changed: true,
-			browserMode: LIVE_CANARY_BROWSER_MODE,
-			reason,
-		}
-	}
+	const browserMode = getConfiguredBrowserMode({ env })
+	const reason = getBrowserRuntimeDefaultReason({ env })
 
 	return {
 		changed: false,
-		browserMode: getConfiguredBrowserMode({ env }),
+		browserMode,
 		reason,
 	}
 }

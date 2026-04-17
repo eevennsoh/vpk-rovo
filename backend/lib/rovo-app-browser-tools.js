@@ -1,8 +1,8 @@
 const {
 	ensureRovoAppThreadBrowserWorkspace,
 	getRovoAppThreadBrowserWorkspace,
+	getRovoAppThreadBrowserWorkspaceScreenshot,
 } = require("./rovo-app-browser-workspace")
-const { browserWorkspaceManager } = require("./browser-workspace-manager")
 const {
 	getConfiguredLiveCanaryCdpPort,
 	isLiveCanaryBrowserMode,
@@ -73,10 +73,7 @@ function createDefaultWorkspaceBindings() {
 			})
 			return {
 				state: result.state,
-				streamConfig: {
-					enabled: true,
-					wsUrl: `/api/browser-workspaces/${encodeURIComponent(result.workspaceId)}/live`,
-				},
+				streamConfig: result.streamConfig,
 				workspaceId: result.workspaceId,
 			}
 		},
@@ -88,24 +85,12 @@ function createDefaultWorkspaceBindings() {
 
 			return {
 				state: result.state,
-				streamConfig: {
-					enabled: true,
-					wsUrl: `/api/browser-workspaces/${encodeURIComponent(result.workspaceId)}/live`,
-				},
+				streamConfig: result.streamConfig,
 				workspaceId: result.workspaceId,
 			}
 		},
 		async getThreadWorkspaceScreenshot(threadId) {
-			const ensured = await ensureRovoAppThreadBrowserWorkspace({ threadId })
-			const screenshot = await browserWorkspaceManager.getWorkspaceScreenshot(
-				ensured.workspaceId,
-			)
-			return {
-				buffer: screenshot.buffer,
-				contentType: screenshot.contentType,
-				state: screenshot.state,
-				workspaceId: ensured.workspaceId,
-			}
+			return getRovoAppThreadBrowserWorkspaceScreenshot({ threadId })
 		},
 	}
 }

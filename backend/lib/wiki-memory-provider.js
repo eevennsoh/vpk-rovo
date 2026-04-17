@@ -931,6 +931,12 @@ async function rewriteCanonicalMemoryFromCurrentSources({
 		});
 	}
 
+	logger.info?.("[wiki-memory] Rebuilt canonical memory from current sources", {
+		processed,
+		scope,
+		wikiDir,
+	});
+
 	return {
 		processed,
 		updatedCollections: [definition.collection],

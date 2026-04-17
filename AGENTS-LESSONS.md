@@ -157,3 +157,56 @@ Mark promoted entries with `[Promoted]` prefix — see vpk-lesson skill for deta
 - **Rule:** When the user explicitly names a required library or stack for a
   major subsystem, use that stack. Do not substitute a familiar or already
   installed alternative unless the user approves the change in direction.
+
+### 2026-04-18 - Do not auto-reenable the legacy live Canary browser path
+
+- **What happened:** The browser runtime started opening the old Google
+  Chrome Canary preview path again when Canary happened to be installed or a
+  Canary executable path was present, even though the product had already
+  moved back to the isolated browser workspace by default.
+- **Why:** Runtime defaulting logic inferred `ROVO_BROWSER_MODE=live-canary`
+  from local machine state instead of requiring an explicit opt-in, which let
+  environment hints silently override the intended default browser behavior.
+- **Rule:** Keep the browser runtime in isolated mode unless
+  `ROVO_BROWSER_MODE` is explicitly set to `live-canary`. Do not infer the
+  live Chrome DevTools path from detected Canary installs or executable-path
+  hints.
+
+### 2026-04-18 - Keep the Rovo inline browser preview view-only
+
+- **What happened:** The Rovo inline browser preview kept interactive click and
+  wheel forwarding even after the product requirement narrowed to a passive
+  live mirror with screenshots while `agent-browser` remains the only browser
+  controller.
+- **Why:** The Rovo artifact reused parts of the richer demo preview surface,
+  so interaction plumbing stayed attached even though the inline browser was
+  no longer meant to be a control surface.
+- **Rule:** In Rovo App, treat the inline browser as a passive preview. Let
+  `agent-browser` control the authoritative browser session, and keep the IAB
+  limited to mirroring live frames plus screenshot display.
+
+### 2026-04-18 - Prefer an existing local Chrome over install-time browser downloads
+
+- **What happened:** Thread-bound browser workspace creation failed during
+  request handling because `agent-browser install` tried to fetch Chrome for
+  Testing metadata from the network before navigation could begin.
+- **Why:** The runtime treated browser installation as part of normal workspace
+  bootstrap even on machines that already had a usable local Chrome binary,
+  turning a recoverable setup detail into a hard navigation failure.
+- **Rule:** When bootstrapping `agent-browser` workspaces, prefer an existing
+  local Chrome executable and skip install-time browser downloads in the
+  request path. If bootstrap still fails, surface the underlying error details
+  instead of collapsing everything into a generic workspace error.
+
+### 2026-04-18 - Keep Rovo browsing on direct agent-browser sessions
+
+- **What happened:** Rovo browser navigation and inline preview drifted onto a
+  separate custom workspace/runtime stack instead of following the native
+  `agent-browser` session model that powers the dashboard experience.
+- **Why:** The project added a thread-bound browser workspace layer with its
+  own bootstrap, transport, and state assumptions, which created extra latency
+  and failure modes that the direct `agent-browser` path does not have.
+- **Rule:** For Rovo browser flows, prefer direct `agent-browser` sessions and
+  native session streaming over custom browser workspace runtimes. Keep the
+  Rovo-specific logic at the message and preview-shell layer, not in browser
+  process management.

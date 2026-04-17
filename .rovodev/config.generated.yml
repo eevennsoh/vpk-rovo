@@ -114,9 +114,9 @@ mcp:
   - stdio:pnpm:exec qmd mcp
   - stdio:node:/Users/esoh/Documents/Labs/VPK-rovo/scripts/browser-workspace-mcp.js
   - stdio:node:/Users/esoh/Documents/Labs/VPK-rovo/scripts/wiki-capture-mcp.js
-  - stdio:npx:-y chrome-devtools-mcp@latest --browser-url=http://127.0.0.1:9222
   # List of globally disabled MCP server signatures
-  disabledMcpServers: []
+  disabledMcpServers:
+  - stdio:npx:-y chrome-devtools-mcp@latest
 
 # Tool and command permission settings
 toolPermissions:

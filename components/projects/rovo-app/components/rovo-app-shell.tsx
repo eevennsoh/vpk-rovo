@@ -2036,6 +2036,7 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 					title={browserState.title}
 					status={browserState.status}
 					screenshot={browserScreenshot}
+					streamConfig={browserState.streamConfig ?? null}
 					workspaceId={browserState.workspaceId ?? null}
 					onClose={handleCloseBrowserPreview}
 				/>

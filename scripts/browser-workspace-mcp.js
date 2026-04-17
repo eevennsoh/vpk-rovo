@@ -1,160 +1,48 @@
 #!/usr/bin/env node
 
-const fs = require("node:fs")
-const path = require("node:path")
 const { McpServer } = require("@modelcontextprotocol/sdk/server/mcp.js")
 const { StdioServerTransport } = require("@modelcontextprotocol/sdk/server/stdio.js")
 const z = require("zod/v4")
-
-const DEFAULT_BACKEND_URL = "http://localhost:8080"
-const DEFAULT_REPO_ROOT = path.resolve(__dirname, "..")
-
-function getRepoRoot() {
-	if (typeof process.env.REPO_ROOT === "string" && process.env.REPO_ROOT.trim()) {
-		return process.env.REPO_ROOT.trim()
-	}
-
-	return DEFAULT_REPO_ROOT
-}
-
-function getBackendPortFilePath() {
-	return path.join(getRepoRoot(), ".dev-backend-port")
-}
-
-function getBackendBaseUrl() {
-	if (typeof process.env.BACKEND_URL === "string" && process.env.BACKEND_URL.trim()) {
-		return process.env.BACKEND_URL.trim().replace(/\/+$/u, "")
-	}
-
-	if (typeof process.env.BACKEND_PORT === "string" && process.env.BACKEND_PORT.trim()) {
-		return `http://127.0.0.1:${process.env.BACKEND_PORT.trim()}`
-	}
-
-	try {
-		const rawPort = fs.readFileSync(getBackendPortFilePath(), "utf8").trim()
-		if (rawPort) {
-			return `http://127.0.0.1:${rawPort}`
-		}
-	} catch {
-		// Fall back to the default backend URL.
-	}
-
-	return DEFAULT_BACKEND_URL
-}
-
-function buildBackendUrl(routePath) {
-	return `${getBackendBaseUrl()}${routePath}`
-}
-
-async function parseErrorResponse(response) {
-	const rawText = await response.text()
-	if (!rawText.trim()) {
-		return `${response.status} ${response.statusText}`.trim()
-	}
-
-	try {
-		const parsed = JSON.parse(rawText)
-		if (parsed && typeof parsed === "object") {
-			if (typeof parsed.error === "string" && parsed.error.trim()) {
-				return parsed.error.trim()
-			}
-			if (typeof parsed.details === "string" && parsed.details.trim()) {
-				return parsed.details.trim()
-			}
-		}
-	} catch {
-		// Fall through to the raw body text.
-	}
-
-	return rawText.trim()
-}
-
-async function requestJson(method, routePath, body) {
-	const init =
-		body === undefined
-			? { method }
-			: {
-					method,
-					headers: {
-						"Content-Type": "application/json",
-					},
-					body: JSON.stringify(body),
-				}
-	const response = await fetch(buildBackendUrl(routePath), init)
-	if (!response.ok) {
-		throw new Error(await parseErrorResponse(response))
-	}
-
-	return response.json()
-}
-
-async function requestBinary(routePath) {
-	const response = await fetch(buildBackendUrl(routePath), {
-		method: "GET",
-	})
-	if (!response.ok) {
-		throw new Error(await parseErrorResponse(response))
-	}
-
-	return Buffer.from(await response.arrayBuffer())
-}
-
-function requireThreadId(threadId) {
-	if (typeof threadId !== "string" || !threadId.trim()) {
-		throw new Error("A non-empty thread_id is required.")
-	}
-
-	return threadId.trim()
-}
+const {
+	ensureRovoAppThreadBrowserWorkspace,
+	getRovoAppThreadBrowserWorkspaceScreenshot,
+	getRovoAppThreadBrowserWorkspaceSnapshot,
+	performRovoAppThreadBrowserWorkspaceAction,
+	urlsLooselyMatch,
+} = require("../backend/lib/rovo-app-browser-workspace")
 
 async function ensureThreadWorkspace(threadId, defaultUrl) {
-	const resolvedThreadId = requireThreadId(threadId)
-	const body =
-		typeof defaultUrl === "string" && defaultUrl.trim()
-			? { defaultUrl: defaultUrl.trim() }
-			: {}
-	return requestJson(
-		"POST",
-		`/api/rovo-app/threads/${encodeURIComponent(resolvedThreadId)}/browser-workspace`,
-		body,
-	)
+	return ensureRovoAppThreadBrowserWorkspace({
+		defaultUrl,
+		threadId,
+	})
 }
 
 async function getThreadWorkspaceState(threadId, defaultUrl) {
-	const state = await ensureThreadWorkspace(threadId, defaultUrl)
-	return requestJson(
-		"GET",
-		`/api/browser-workspaces/${encodeURIComponent(state.workspaceId)}`,
-	)
+	const workspace = await ensureThreadWorkspace(threadId, defaultUrl)
+	return workspace.state
 }
 
 async function mutateWorkspace(threadId, action, body, { defaultUrl } = {}) {
-	const state = await ensureThreadWorkspace(threadId, defaultUrl)
-	return requestJson(
-		"POST",
-		`/api/browser-workspaces/${encodeURIComponent(state.workspaceId)}/${action}`,
+	await ensureThreadWorkspace(threadId, defaultUrl)
+	return performRovoAppThreadBrowserWorkspaceAction({
+		action,
 		body,
-	)
+		threadId,
+	})
 }
 
 async function readWorkspaceSnapshot(threadId, interactive) {
-	const state = await ensureThreadWorkspace(threadId)
-	const query = interactive ? "?interactive=true" : ""
-	return requestJson(
-		"GET",
-		`/api/browser-workspaces/${encodeURIComponent(state.workspaceId)}/snapshot${query}`,
-	)
+	return getRovoAppThreadBrowserWorkspaceSnapshot({
+		interactive,
+		threadId,
+	})
 }
 
 async function captureWorkspaceScreenshot(threadId) {
-	const state = await getThreadWorkspaceState(threadId)
-	const buffer = await requestBinary(
-		`/api/browser-workspaces/${encodeURIComponent(state.workspaceId)}/screenshot`,
-	)
-	return {
-		buffer,
-		state,
-	}
+	return getRovoAppThreadBrowserWorkspaceScreenshot({
+		threadId,
+	})
 }
 
 function formatWorkspaceState(state, prefix) {
@@ -172,67 +60,6 @@ function formatWorkspaceState(state, prefix) {
 		lines.push(`Tabs: ${state.tabs.length}`)
 	}
 	return lines.join("\n")
-}
-
-function normalizeUrlCandidate(value) {
-	if (typeof value !== "string" || !value.trim()) {
-		return ""
-	}
-
-	try {
-		const parsedUrl = new URL(value)
-		parsedUrl.hash = ""
-		return parsedUrl.toString()
-	} catch {
-		return value.trim()
-	}
-}
-
-function normalizeComparableHostname(value) {
-	return typeof value === "string"
-		? value.trim().toLowerCase().replace(/^www\./u, "")
-		: ""
-}
-
-function normalizeComparablePathname(value) {
-	if (typeof value !== "string") {
-		return ""
-	}
-
-	const trimmed = value.trim().replace(/\/+$/u, "")
-	return trimmed === "/" ? "" : trimmed
-}
-
-function urlsLooselyMatch(currentUrl, targetUrl) {
-	const normalizedTargetUrl = normalizeUrlCandidate(targetUrl)
-	const normalizedCurrentUrl = normalizeUrlCandidate(currentUrl)
-	if (!normalizedTargetUrl || !normalizedCurrentUrl) {
-		return false
-	}
-
-	try {
-		const current = new URL(normalizedCurrentUrl)
-		const target = new URL(normalizedTargetUrl)
-		if (
-			normalizeComparableHostname(current.hostname) !==
-			normalizeComparableHostname(target.hostname)
-		) {
-			return false
-		}
-
-		const targetPathname = normalizeComparablePathname(target.pathname)
-		if (!targetPathname) {
-			return true
-		}
-
-		const currentPathname = normalizeComparablePathname(current.pathname)
-		return (
-			currentPathname === targetPathname ||
-			currentPathname.startsWith(`${targetPathname}/`)
-		)
-	} catch {
-		return normalizedCurrentUrl.replace(/\/+$/u, "") === normalizedTargetUrl.replace(/\/+$/u, "")
-	}
 }
 
 function stateLooksLoadedForTarget(state, targetUrl) {
@@ -500,8 +327,8 @@ server.registerTool(
 		},
 	},
 	async ({ thread_id }) => {
-		const state = await ensureThreadWorkspace(thread_id)
-		const lines = state.tabs.map((tab) => {
+		const workspace = await ensureThreadWorkspace(thread_id)
+		const lines = workspace.state.tabs.map((tab) => {
 			const marker = tab.active ? "*" : "-"
 			return `${marker} [${tab.index}] ${tab.title || "Untitled"} — ${tab.url}`
 		})
@@ -519,12 +346,9 @@ server.registerTool(
 		},
 	},
 	async ({ thread_id, url }) => {
-		const state = await ensureThreadWorkspace(thread_id)
-		const nextState = await requestJson(
-			"POST",
-			`/api/browser-workspaces/${encodeURIComponent(state.workspaceId)}/tabs`,
-			url ? { url } : {},
-		)
+		const nextState = await mutateWorkspace(thread_id, "tab-new", {
+			url,
+		})
 		return textResult(formatWorkspaceState(nextState, "Opened a new tab."))
 	},
 )
@@ -539,12 +363,9 @@ server.registerTool(
 		},
 	},
 	async ({ thread_id, tab_index }) => {
-		const state = await ensureThreadWorkspace(thread_id)
-		const nextState = await requestJson(
-			"POST",
-			`/api/browser-workspaces/${encodeURIComponent(state.workspaceId)}/tabs/${encodeURIComponent(String(tab_index))}/activate`,
-			{},
-		)
+		const nextState = await mutateWorkspace(thread_id, "tab-select", {
+			tabIndex: tab_index,
+		})
 		return textResult(formatWorkspaceState(nextState, `Switched to tab ${tab_index}.`))
 	},
 )
@@ -559,11 +380,9 @@ server.registerTool(
 		},
 	},
 	async ({ thread_id, tab_index }) => {
-		const state = await ensureThreadWorkspace(thread_id)
-		const nextState = await requestJson(
-			"DELETE",
-			`/api/browser-workspaces/${encodeURIComponent(state.workspaceId)}/tabs/${encodeURIComponent(String(tab_index))}`,
-		)
+		const nextState = await mutateWorkspace(thread_id, "tab-close", {
+			tabIndex: tab_index,
+		})
 		return textResult(formatWorkspaceState(nextState, `Closed tab ${tab_index}.`))
 	},
 )
@@ -582,8 +401,8 @@ server.registerTool(
 		await new Promise((resolve) => {
 			setTimeout(resolve, milliseconds)
 		})
-		const state = await ensureThreadWorkspace(thread_id)
-		return textResult(formatWorkspaceState(state, `Waited ${milliseconds}ms.`))
+		const workspace = await ensureThreadWorkspace(thread_id)
+		return textResult(formatWorkspaceState(workspace.state, `Waited ${milliseconds}ms.`))
 	},
 )
 

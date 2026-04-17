@@ -3,7 +3,6 @@ const assert = require("node:assert/strict")
 
 const {
 	DEFAULT_BROWSER_MODE,
-	LIVE_CANARY_BROWSER_MODE,
 	ensureBrowserRuntimeEnvDefaults,
 	hasChromeDevtoolsRovodevMcpServer,
 } = require("./browser-runtime-config")
@@ -31,7 +30,7 @@ test("ensureBrowserRuntimeEnvDefaults preserves an explicit browser mode", () =>
 	assert.equal(env.ROVO_BROWSER_MODE, "isolated")
 })
 
-test("ensureBrowserRuntimeEnvDefaults enables live-canary when canary config is hinted", () => {
+test("ensureBrowserRuntimeEnvDefaults ignores canary config hints without an explicit mode", () => {
 	const env = {
 		ROVO_BROWSER_CANARY_EXECUTABLE_PATH: "/tmp/fake-canary",
 	}
@@ -40,40 +39,37 @@ test("ensureBrowserRuntimeEnvDefaults enables live-canary when canary config is 
 		env,
 		fsImpl: {
 			existsSync() {
-				throw new Error("existsSync should not be consulted when canary is explicitly hinted")
+				throw new Error("existsSync should not be consulted for implicit defaults")
 			},
 		},
 	})
 
 	assert.deepEqual(result, {
-		changed: true,
-		browserMode: LIVE_CANARY_BROWSER_MODE,
-		reason: "canary-hint",
+		changed: false,
+		browserMode: DEFAULT_BROWSER_MODE,
+		reason: "default-isolated",
 	})
-	assert.equal(env.ROVO_BROWSER_MODE, LIVE_CANARY_BROWSER_MODE)
+	assert.equal(env.ROVO_BROWSER_MODE, undefined)
 })
 
-test("ensureBrowserRuntimeEnvDefaults enables live-canary when the default Canary executable exists", () => {
+test("ensureBrowserRuntimeEnvDefaults ignores detected canary executables without an explicit mode", () => {
 	const env = {}
-	let checkedPath = null
 
 	const result = ensureBrowserRuntimeEnvDefaults({
 		env,
 		fsImpl: {
 			existsSync(value) {
-				checkedPath = value
-				return true
+				throw new Error(`existsSync should not be consulted for implicit defaults: ${value}`)
 			},
 		},
 	})
 
-	assert.match(checkedPath ?? "", /Google Chrome Canary/)
 	assert.deepEqual(result, {
-		changed: true,
-		browserMode: LIVE_CANARY_BROWSER_MODE,
-		reason: "canary-detected",
+		changed: false,
+		browserMode: DEFAULT_BROWSER_MODE,
+		reason: "default-isolated",
 	})
-	assert.equal(env.ROVO_BROWSER_MODE, LIVE_CANARY_BROWSER_MODE)
+	assert.equal(env.ROVO_BROWSER_MODE, undefined)
 })
 
 test("ensureBrowserRuntimeEnvDefaults keeps isolated mode when Canary is unavailable", () => {

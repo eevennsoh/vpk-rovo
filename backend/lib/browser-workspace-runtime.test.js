@@ -4,9 +4,13 @@ const { EventEmitter } = require("node:events")
 
 const {
 	AgentBrowserRuntime,
+	buildAgentBrowserEnv,
+	DEFAULT_AGENT_BROWSER_EXECUTABLE_CANDIDATE_PATHS,
 	DEFAULT_SCREENCAST_MAX_HEIGHT,
 	DEFAULT_SCREENCAST_MAX_WIDTH,
+	ensureAgentBrowserInstalled,
 	LIVE_CANARY_BROWSER_MODE,
+	resolveAgentBrowserExecutablePath,
 } = require("./browser-workspace-runtime")
 
 class TestAgentBrowserRuntime extends AgentBrowserRuntime {
@@ -326,4 +330,77 @@ test("browser workspace runtime surfaces live Canary spawn failures as a rejecte
 		runtime._ensureLiveCanaryReady(),
 		/spawn \/missing\/canary ENOENT/,
 	)
+})
+
+test("resolveAgentBrowserExecutablePath prefers an explicit executable path", () => {
+	const executablePath = resolveAgentBrowserExecutablePath({
+		env: {
+			AGENT_BROWSER_EXECUTABLE_PATH: "/custom/chrome",
+		},
+		fsImpl: {
+			existsSync() {
+				throw new Error("existsSync should not be consulted for an explicit executable path")
+			},
+		},
+	})
+
+	assert.equal(executablePath, "/custom/chrome")
+})
+
+test("resolveAgentBrowserExecutablePath auto-detects the local stable Chrome executable", () => {
+	const executablePath = resolveAgentBrowserExecutablePath({
+		env: {},
+		fsImpl: {
+			existsSync(candidatePath) {
+				return candidatePath === DEFAULT_AGENT_BROWSER_EXECUTABLE_CANDIDATE_PATHS[0]
+			},
+		},
+	})
+
+	assert.equal(
+		executablePath,
+		DEFAULT_AGENT_BROWSER_EXECUTABLE_CANDIDATE_PATHS[0],
+	)
+})
+
+test("buildAgentBrowserEnv injects the detected executable path into agent-browser commands", () => {
+	const env = buildAgentBrowserEnv({
+		env: {
+			EXISTING_VAR: "value",
+		},
+		agentBrowserExecutablePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+	})
+
+	assert.deepEqual(env, {
+		EXISTING_VAR: "value",
+		AGENT_BROWSER_HOME: env.AGENT_BROWSER_HOME,
+		HOME: env.HOME,
+		USERPROFILE: env.USERPROFILE,
+		AGENT_BROWSER_EXECUTABLE_PATH: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+	})
+	assert.match(env.AGENT_BROWSER_HOME, /vpk-agent-browser/)
+	assert.match(env.HOME, /vpk-agent-browser-home/)
+})
+
+test("ensureAgentBrowserInstalled skips the install command when a system browser executable is available", async () => {
+	let installWasCalled = false
+
+	await ensureAgentBrowserInstalled({
+		env: {
+			AGENT_BROWSER_EXECUTABLE_PATH: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+		},
+		fsImpl: {
+			existsSync(candidatePath) {
+				return candidatePath === "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+			},
+		},
+		execFileImpl: async () => {
+			installWasCalled = true
+			return {
+				stdout: "",
+			}
+		},
+	})
+
+	assert.equal(installWasCalled, false)
 })

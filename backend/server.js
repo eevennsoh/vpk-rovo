@@ -3423,8 +3423,8 @@ async function executeRovoAppManagedRun(run) {
 		isLiveCanaryBrowserMode() && hasChromeDevtoolsRovodevMcpServer()
 		? [
 			"[BROWSER TOOLS]",
-			"You have access to a live Google Chrome Canary browser session plus the existing in-app browser preview.",
-			"When you need to browse a website in this conversation, prefer Chrome DevTools MCP actions that operate on the live Canary session:",
+			"You have access to a live Chrome DevTools browser session plus the existing in-app browser preview.",
+			"When you need to browse a website in this conversation, prefer Chrome DevTools MCP actions that operate on the live browser session:",
 			"- navigate_page — navigate the current page",
 			"- new_page — open a new tab or page",
 			"- select_page — switch to a page by id",
@@ -3439,7 +3439,7 @@ async function executeRovoAppManagedRun(run) {
 			"- type_text — type into the active element",
 			"- wait_for — wait for text, timing, or navigation conditions",
 			"",
-			"The `/rovo-app` preview mirrors that same Canary session automatically.",
+			"The `/rovo-app` preview mirrors that same live browser session automatically.",
 			`Use the browser_* tools only as a fallback or when a tool explicitly requires \`thread_id: \"${threadId}\"\`.`,
 			"When you do use a browser_* tool, always pass that thread_id.",
 			"[END BROWSER TOOLS]",
@@ -8811,6 +8811,21 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 										return;
 									}
 
+									if (
+										toolCall.toolName === "mcp_invoke_tool" &&
+										toolCall.toolInput?.tool_name &&
+										isBrowserToolCall(toolCall.toolInput.tool_name)
+									) {
+										const realToolName = toolCall.toolInput.tool_name;
+										mcpBrowserToolCallIds.set(toolCall.toolCallId, realToolName);
+										void browserBridge.handleToolCallStart({
+											toolName: realToolName,
+											toolCallId: toolCall.toolCallId,
+											toolInput: toolCall.toolInput.tool_input || null,
+										});
+										return;
+									}
+
 									const toolGuard = maybeGuardPlanFeedbackTool({
 										toolCallId: toolCall.toolCallId,
 										toolName: toolCall.toolName,
@@ -8922,6 +8937,9 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 										isBrowserToolCall(toolCall.toolInput.tool_name)
 									) {
 										const realToolName = toolCall.toolInput.tool_name;
+										if (mcpBrowserToolCallIds.get(toolCall.toolCallId) === realToolName) {
+											return;
+										}
 										mcpBrowserToolCallIds.set(toolCall.toolCallId, realToolName);
 										void browserBridge.handleToolCallStart({
 											toolName: realToolName,
@@ -12947,7 +12965,14 @@ app.post("/api/rovo-app/threads/:threadId/browser-workspace", async (req, res) =
 		return res.status(workspace.created ? 201 : 200).json(workspace.state);
 	} catch (error) {
 		console.error("[ROVO-BROWSER] Failed to ensure thread browser workspace:", error);
-		return res.status(500).json({ error: "Failed to ensure thread browser workspace" });
+		return res.status(500).json({
+			error: "Failed to ensure thread browser workspace",
+			...(error instanceof Error && error.message
+				? {
+					details: error.message,
+				}
+				: {}),
+		});
 	}
 });
 

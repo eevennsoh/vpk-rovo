@@ -102,9 +102,11 @@ export function useBrowserPreviewSession(
 	workspaceId: string | null,
 	options?: {
 		onMissingWorkspace?: (workspaceId: string) => Promise<unknown>;
+		streamUrl?: string | null;
 	},
 ) {
 	const onMissingWorkspace = options?.onMissingWorkspace;
+	const streamUrl = options?.streamUrl;
 	const liveCanvasRef = useRef<HTMLCanvasElement | null>(null);
 	const socketRef = useRef<WebSocket | null>(null);
 	const frameLoaderRef = useRef<object | null>(null);
@@ -312,7 +314,12 @@ export function useBrowserPreviewSession(
 
 		void (async () => {
 			try {
-				const streamConfig = await getBrowserWorkspaceStream(workspaceId);
+				const streamConfig = streamUrl
+					? {
+						enabled: true,
+						wsUrl: streamUrl,
+					}
+					: await getBrowserWorkspaceStream(workspaceId);
 				if (cancelled) {
 					return;
 				}
@@ -449,7 +456,7 @@ export function useBrowserPreviewSession(
 			resetFrameQueue();
 			teardown();
 		};
-	}, [onMissingWorkspace, queueLiveFrame, resetFrameQueue, updateSourceMetadata, workspaceId]);
+	}, [onMissingWorkspace, queueLiveFrame, resetFrameQueue, streamUrl, updateSourceMetadata, workspaceId]);
 
 	return {
 		liveCanvasRef,

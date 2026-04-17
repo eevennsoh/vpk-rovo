@@ -2,70 +2,41 @@ const test = require("node:test")
 const assert = require("node:assert/strict")
 
 const {
-	BrowserWorkspaceNotFoundError,
-	browserWorkspaceManager,
-} = require("./browser-workspace-manager")
-const {
-	deleteRovoAppThreadBrowserWorkspace,
-	ensureRovoAppThreadBrowserWorkspace,
-	getRovoAppThreadBrowserWorkspace,
+	getRovoAppThreadBrowserSessionName,
+	getRovoAppThreadBrowserWorkspaceId,
+	urlsLooselyMatch,
 } = require("./rovo-app-browser-workspace")
 
-test("thread browser workspace binding is created once and reused", async (t) => {
-	const createdStates = []
-	const originalCreateWorkspace = browserWorkspaceManager.createWorkspace
-	const originalDeleteWorkspace = browserWorkspaceManager.deleteWorkspace
-	const originalGetWorkspaceState = browserWorkspaceManager.getWorkspaceState
+test("thread browser workspace derives a stable agent-browser session name", () => {
+	const firstSessionName = getRovoAppThreadBrowserSessionName("thread-browser-test")
+	const secondSessionName = getRovoAppThreadBrowserSessionName("thread-browser-test")
+	const alternateSessionName = getRovoAppThreadBrowserSessionName("thread browser test")
 
-	t.after(async () => {
-		browserWorkspaceManager.createWorkspace = originalCreateWorkspace
-		browserWorkspaceManager.deleteWorkspace = originalDeleteWorkspace
-		browserWorkspaceManager.getWorkspaceState = originalGetWorkspaceState
-		await deleteRovoAppThreadBrowserWorkspace("thread-browser-test").catch(() => {})
-	})
+	assert.equal(firstSessionName, secondSessionName)
+	assert.match(firstSessionName, /^rt-thread-browser-t-[0-9a-f]{12}$/)
+	assert.notEqual(firstSessionName, alternateSessionName)
+})
 
-	browserWorkspaceManager.createWorkspace = async () => {
-		const state = {
-			activeTabIndex: 0,
-			canGoBack: false,
-			canGoForward: false,
-			ready: true,
-			tabs: [],
-			title: "",
-			updatedAt: Date.now(),
-			url: "about:blank",
-			viewportHeight: 900,
-			viewportWidth: 1280,
-			workspaceId: `workspace-${createdStates.length + 1}`,
-		}
-		createdStates.push(state)
-		return state
-	}
-	browserWorkspaceManager.getWorkspaceState = async (workspaceId) => {
-		const state = createdStates.find((entry) => entry.workspaceId === workspaceId)
-		if (!state) {
-			throw new BrowserWorkspaceNotFoundError(workspaceId)
-		}
-		return state
-	}
-	browserWorkspaceManager.deleteWorkspace = async (workspaceId) => ({
-		closed: true,
-		workspaceId,
-	})
+test("thread browser workspace exposes a deterministic workspace id for the session-backed preview", () => {
+	assert.equal(
+		getRovoAppThreadBrowserWorkspaceId("thread-browser-test"),
+		`agent-browser-session:${getRovoAppThreadBrowserSessionName("thread-browser-test")}`,
+	)
+})
 
-	const first = await ensureRovoAppThreadBrowserWorkspace({
-		threadId: "thread-browser-test",
-	})
-	const second = await ensureRovoAppThreadBrowserWorkspace({
-		threadId: "thread-browser-test",
-	})
-	const fetched = await getRovoAppThreadBrowserWorkspace({
-		threadId: "thread-browser-test",
-	})
-
-	assert.equal(createdStates.length, 1)
-	assert.equal(first.created, true)
-	assert.equal(second.created, false)
-	assert.equal(first.workspaceId, second.workspaceId)
-	assert.equal(fetched?.workspaceId, first.workspaceId)
+test("thread browser workspace url matching ignores hashes and trailing slashes", () => {
+	assert.equal(
+		urlsLooselyMatch(
+			"https://www.theverge.com/2026/04/18/story#comments",
+			"https://theverge.com/2026/04/18/story/",
+		),
+		true,
+	)
+	assert.equal(
+		urlsLooselyMatch(
+			"https://example.com/docs",
+			"https://example.com/blog",
+		),
+		false,
+	)
 })

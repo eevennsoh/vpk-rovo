@@ -21,7 +21,7 @@ export const Suggestions = ({
   ...props
 }: SuggestionsProps) =>
   orientation === "vertical" ? (
-    <div className={cn("flex flex-col items-end gap-2", className)} {...props}>
+    <div className={cn("flex flex-col items-end gap-2", className)}>
       {children}
     </div>
   ) : (

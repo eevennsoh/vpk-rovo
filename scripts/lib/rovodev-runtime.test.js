@@ -62,7 +62,7 @@ test("resolveRovodevConfigState writes and returns the workspace-scoped generate
 	}
 })
 
-test("prepareRovodevRuntime defaults to live-canary and wires chrome-devtools when a Canary executable is configured", () => {
+test("prepareRovodevRuntime keeps isolated mode unless live-canary is explicit", () => {
 	const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "rovodev-runtime-browser-test-"))
 	const homeDir = path.join(tmpDir, "home")
 	const workspaceDir = path.join(tmpDir, "workspace")
@@ -123,28 +123,20 @@ test("prepareRovodevRuntime defaults to live-canary and wires chrome-devtools wh
 			logConfigState: false,
 		})
 
-		assert.equal(result.browserRuntimeDefaults.browserMode, "live-canary")
-		assert.equal(result.browserRuntimeDefaults.changed, true)
-		assert.equal(process.env.ROVO_BROWSER_MODE, "live-canary")
+		assert.equal(result.browserRuntimeDefaults.browserMode, "isolated")
+		assert.equal(result.browserRuntimeDefaults.changed, false)
+		assert.equal(process.env.ROVO_BROWSER_MODE, undefined)
 		assert.equal(result.configState.configPath, workspaceConfigPath)
 		assert.equal(result.configState.mcpConfigPath, workspaceMcpPath)
 
 		const workspaceConfig = fs.readFileSync(workspaceConfigPath, "utf8")
-		assert.match(
+		assert.doesNotMatch(
 			workspaceConfig,
-			/stdio:npx:-y chrome-devtools-mcp@latest --browser-url=http:\/\/127\.0\.0\.1:9222/
+			/chrome-devtools-mcp@latest/
 		)
 
 		const workspaceMcp = JSON.parse(fs.readFileSync(workspaceMcpPath, "utf8"))
-		assert.deepEqual(workspaceMcp.mcpServers["chrome-devtools"], {
-			command: "npx",
-			args: [
-				"-y",
-				"chrome-devtools-mcp@latest",
-				"--browser-url=http://127.0.0.1:9222",
-			],
-			type: "stdio",
-		})
+		assert.equal(workspaceMcp.mcpServers["chrome-devtools"], undefined)
 	} finally {
 		osModule.homedir = originalHomeDir
 		if (originalBrowserMode === undefined) {
