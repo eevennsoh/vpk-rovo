@@ -3,6 +3,7 @@ const os = require("node:os")
 const net = require("node:net")
 const path = require("node:path")
 const { execFile, spawn } = require("node:child_process")
+const { once } = require("node:events")
 const { promisify } = require("node:util")
 const WebSocket = require("ws")
 const {
@@ -337,6 +338,7 @@ class AgentBrowserRuntime {
 		browserMode = getConfiguredBrowserMode(),
 		cdpPort = getConfiguredLiveCanaryCdpPort(),
 		canaryExecutablePath = getConfiguredCanaryExecutablePath(),
+		spawnProcess = spawn,
 	} = {}) {
 		const sessionToken = sanitizeSessionToken(sessionId)
 
@@ -348,6 +350,7 @@ class AgentBrowserRuntime {
 				: DEFAULT_BROWSER_MODE
 		this._cdpPort = cdpPort
 		this._canaryExecutablePath = canaryExecutablePath
+		this._spawnProcess = spawnProcess
 		this._provider =
 			this._browserMode === LIVE_CANARY_BROWSER_MODE
 				? "chrome-devtools"
@@ -462,19 +465,39 @@ class AgentBrowserRuntime {
 			throw new Error("Google Chrome Canary executable path is not configured.")
 		}
 
-		const launchedChild = spawn(
-			executablePath,
-			[
-				`--remote-debugging-port=${this._cdpPort}`,
-				"--no-first-run",
-				"--no-default-browser-check",
-				"about:blank",
-			],
-			{
-				detached: true,
-				stdio: "ignore",
-			},
-		)
+		let launchedChild = null
+		try {
+			launchedChild = this._spawnProcess(
+				executablePath,
+				[
+					`--remote-debugging-port=${this._cdpPort}`,
+					"--no-first-run",
+					"--no-default-browser-check",
+					"about:blank",
+				],
+				{
+					detached: true,
+					stdio: "ignore",
+				},
+			)
+		} catch (error) {
+			throw new Error(
+				error instanceof Error && error.message
+					? error.message
+					: "Failed to launch Google Chrome Canary.",
+			)
+		}
+
+		await Promise.race([
+			once(launchedChild, "spawn"),
+			once(launchedChild, "error").then(([error]) => {
+				throw new Error(
+					error instanceof Error && error.message
+						? error.message
+						: "Failed to launch Google Chrome Canary.",
+				)
+			}),
+		])
 		launchedChild.unref()
 	}
 

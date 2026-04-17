@@ -374,6 +374,7 @@ const {
 	createThreadBrowserBridge,
 } = require("./lib/rovo-app-browser-tools");
 const {
+	hasChromeDevtoolsRovodevMcpServer,
 	isLiveCanaryBrowserMode,
 } = require("./lib/browser-runtime-config");
 const {
@@ -3418,7 +3419,8 @@ async function executeRovoAppManagedRun(run) {
 
 	const artifactContextBlock = buildRovoAppArtifactContext(activeArtifact);
 
-	const browserContextBlock = isLiveCanaryBrowserMode()
+	const browserContextBlock =
+		isLiveCanaryBrowserMode() && hasChromeDevtoolsRovodevMcpServer()
 		? [
 			"[BROWSER TOOLS]",
 			"You have access to a live Google Chrome Canary browser session plus the existing in-app browser preview.",

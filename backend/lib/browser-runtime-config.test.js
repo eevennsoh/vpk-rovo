@@ -5,6 +5,7 @@ const {
 	DEFAULT_BROWSER_MODE,
 	LIVE_CANARY_BROWSER_MODE,
 	ensureBrowserRuntimeEnvDefaults,
+	hasChromeDevtoolsRovodevMcpServer,
 } = require("./browser-runtime-config")
 
 test("ensureBrowserRuntimeEnvDefaults preserves an explicit browser mode", () => {
@@ -93,4 +94,51 @@ test("ensureBrowserRuntimeEnvDefaults keeps isolated mode when Canary is unavail
 		reason: "default-isolated",
 	})
 	assert.equal(env.ROVO_BROWSER_MODE, undefined)
+})
+
+test("hasChromeDevtoolsRovodevMcpServer returns true when the workspace MCP config includes chrome-devtools", () => {
+	const result = hasChromeDevtoolsRovodevMcpServer({
+		cwd: "/tmp/workspace",
+		fsImpl: {
+			readFileSync(filePath, encoding) {
+				assert.equal(filePath, "/tmp/workspace/.rovodev/mcp.generated.json")
+				assert.equal(encoding, "utf8")
+				return JSON.stringify({
+					mcpServers: {
+						"chrome-devtools": {
+							command: "npx",
+						},
+					},
+				})
+			},
+		},
+	})
+
+	assert.equal(result, true)
+})
+
+test("hasChromeDevtoolsRovodevMcpServer returns false when the workspace MCP config is missing or invalid", () => {
+	assert.equal(
+		hasChromeDevtoolsRovodevMcpServer({
+			cwd: "/tmp/workspace",
+			fsImpl: {
+				readFileSync() {
+					throw new Error("missing")
+				},
+			},
+		}),
+		false,
+	)
+
+	assert.equal(
+		hasChromeDevtoolsRovodevMcpServer({
+			cwd: "/tmp/workspace",
+			fsImpl: {
+				readFileSync() {
+					return "{not-json"
+				},
+			},
+		}),
+		false,
+	)
 })

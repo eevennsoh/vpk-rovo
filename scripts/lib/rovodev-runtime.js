@@ -45,19 +45,16 @@ function applyBrowserRuntimeDefaults({ logger = console } = {}) {
 function resolveRovodevConfigState({ cwd = process.cwd(), dedupeConfig = true } = {}) {
 	if (dedupeConfig) {
 		dedupeAllowedMcpServersInConfig();
+		return syncWorkspaceRovodevConfig({ cwd });
 	}
 
-	if (!dedupeConfig) {
-		const configPath = resolveRovodevConfigPath();
-		return {
-			configPath,
-			exists: fs.existsSync(configPath),
-			changed: false,
-			removed: 0,
-		};
-	}
-
-	return syncWorkspaceRovodevConfig({ cwd });
+	const configPath = resolveRovodevConfigPath();
+	return {
+		configPath,
+		exists: fs.existsSync(configPath),
+		changed: false,
+		removed: 0,
+	};
 }
 
 function prepareRovodevRuntime({ cwd = process.cwd(), logger = console, dedupeConfig = true, logConfigState = true, logBillingSite = true } = {}) {
@@ -82,7 +79,9 @@ function prepareRovodevRuntime({ cwd = process.cwd(), logger = console, dedupeCo
 
 	const { bin: rovodevBin, servePrefix } = resolveRovodevBin();
 	if (logBillingSite) {
-		logger.log?.(`[rovodev] Billing site URL: ${configuredBillingSiteUrl}` + " (override with ROVODEV_BILLING_URL)");
+		logger.log?.(
+			`[rovodev] Billing site URL: ${configuredBillingSiteUrl} (override with ROVODEV_BILLING_URL)`
+		);
 	}
 
 	return {

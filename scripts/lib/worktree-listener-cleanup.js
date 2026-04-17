@@ -1,9 +1,60 @@
 const { execSync } = require("node:child_process");
 const path = require("node:path");
 
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+function sleep(ms) {
+	return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 const ROVODEV_SUPERVISOR_COMMAND_PATTERN =
 	/(?:^|\s)(?:\S*\/)?node(?:\s+--[^\s]+)*\s+(?:\S*\/)?scripts\/dev-rovodev-port\.js(?:\s|$)/;
+
+function getUniqueSortedPids(values) {
+	return Array.from(
+		new Set(
+			values.filter((value) => Number.isInteger(value) && value > 0)
+		)
+	).sort((left, right) => left - right);
+}
+
+function parseProcessInfoLine(line) {
+	const match = line.match(/^(\d+)\s+(.*)$/);
+	if (!match) {
+		return null;
+	}
+
+	const pid = Number.parseInt(match[1], 10);
+	if (!Number.isInteger(pid) || pid <= 0) {
+		return null;
+	}
+
+	return {
+		pid,
+		command: match[2],
+	};
+}
+
+function buildCleanupResult({
+	worktreePath,
+	matchedListenerPids,
+	matchedSupervisorPids,
+	signalledCount = 0,
+	forceKilledCount = 0,
+}) {
+	const matchedPids = getUniqueSortedPids([
+		...matchedListenerPids,
+		...matchedSupervisorPids,
+	]);
+
+	return {
+		worktreePath,
+		matchedListenerPids,
+		matchedSupervisorPids,
+		matchedPids,
+		signalledCount,
+		gracefulCount: Math.max(signalledCount - forceKilledCount, 0),
+		forceKilledCount,
+	};
+}
 
 function listListeningPids({ execSyncFn = execSync } = {}) {
 	try {
@@ -12,15 +63,12 @@ function listListeningPids({ execSyncFn = execSync } = {}) {
 			stdio: ["pipe", "pipe", "pipe"],
 		});
 
-		return Array.from(
-			new Set(
-				output
-					.trim()
-					.split(/\s+/)
-					.map((value) => Number.parseInt(value, 10))
-					.filter((value) => Number.isInteger(value) && value > 0)
-			)
-		).sort((left, right) => left - right);
+		return getUniqueSortedPids(
+			output
+				.trim()
+				.split(/\s+/)
+				.map((value) => Number.parseInt(value, 10))
+		);
 	} catch {
 		return [];
 	}
@@ -37,22 +85,7 @@ function listProcessInfo({ execSyncFn = execSync } = {}) {
 			.split("\n")
 			.map((line) => line.trim())
 			.filter((line) => line.length > 0)
-			.map((line) => {
-				const match = line.match(/^(\d+)\s+(.*)$/);
-				if (!match) {
-					return null;
-				}
-
-				const pid = Number.parseInt(match[1], 10);
-				if (!Number.isInteger(pid) || pid <= 0) {
-					return null;
-				}
-
-				return {
-					pid,
-					command: match[2],
-				};
-			})
+			.map(parseProcessInfoLine)
 			.filter((entry) => entry !== null);
 	} catch {
 		return [];
@@ -87,11 +120,11 @@ function findListeningPidsForWorktree({
 } = {}) {
 	const normalizedWorktreePath = path.resolve(worktreePath);
 
-	return listListeningPidsFn()
-		.filter((pid) => pid !== process.pid)
-		.filter((pid) => getProcessCwdFn(pid) === normalizedWorktreePath)
-		.filter((pid, index, values) => values.indexOf(pid) === index)
-		.sort((left, right) => left - right);
+	return getUniqueSortedPids(
+		listListeningPidsFn()
+			.filter((pid) => pid !== process.pid)
+			.filter((pid) => getProcessCwdFn(pid) === normalizedWorktreePath)
+	);
 }
 
 function findRovodevSupervisorPidsForWorktree({
@@ -101,13 +134,13 @@ function findRovodevSupervisorPidsForWorktree({
 } = {}) {
 	const normalizedWorktreePath = path.resolve(worktreePath);
 
-	return listProcessInfoFn()
-		.filter((entry) => entry && entry.pid !== process.pid)
-		.filter((entry) => ROVODEV_SUPERVISOR_COMMAND_PATTERN.test(entry.command))
-		.filter((entry) => getProcessCwdFn(entry.pid) === normalizedWorktreePath)
-		.map((entry) => entry.pid)
-		.filter((pid, index, values) => values.indexOf(pid) === index)
-		.sort((left, right) => left - right);
+	return getUniqueSortedPids(
+		listProcessInfoFn()
+			.filter((entry) => entry && entry.pid !== process.pid)
+			.filter((entry) => ROVODEV_SUPERVISOR_COMMAND_PATTERN.test(entry.command))
+			.filter((entry) => getProcessCwdFn(entry.pid) === normalizedWorktreePath)
+			.map((entry) => entry.pid)
+	);
 }
 
 async function cleanupListeningProcessesForWorktree({
@@ -131,20 +164,15 @@ async function cleanupListeningProcessesForWorktree({
 		listProcessInfoFn,
 		getProcessCwdFn,
 	});
-	const matchedPids = Array.from(
-		new Set([...matchedListenerPids, ...matchedSupervisorPids])
-	).sort((left, right) => left - right);
+	const initialResult = buildCleanupResult({
+		worktreePath: normalizedWorktreePath,
+		matchedListenerPids,
+		matchedSupervisorPids,
+	});
+	const { matchedPids } = initialResult;
 
 	if (matchedPids.length === 0) {
-		return {
-			worktreePath: normalizedWorktreePath,
-			matchedListenerPids,
-			matchedSupervisorPids,
-			matchedPids,
-			signalledCount: 0,
-			gracefulCount: 0,
-			forceKilledCount: 0,
-		};
+		return initialResult;
 	}
 
 	logger.log?.(
@@ -162,15 +190,7 @@ async function cleanupListeningProcessesForWorktree({
 	}
 
 	if (signalledCount === 0) {
-		return {
-			worktreePath: normalizedWorktreePath,
-			matchedListenerPids,
-			matchedSupervisorPids,
-			matchedPids,
-			signalledCount: 0,
-			gracefulCount: 0,
-			forceKilledCount: 0,
-		};
+		return initialResult;
 	}
 
 	await sleepFn(gracePeriodMs);
@@ -191,22 +211,19 @@ async function cleanupListeningProcessesForWorktree({
 		}
 	}
 
-	const gracefulCount = Math.max(signalledCount - forceKilledCount, 0);
 	if (forceKilledCount > 0) {
 		logger.warn?.(
 			`[cleanup] Force-killed ${forceKilledCount} lingering process(es) for ${normalizedWorktreePath}.`
 		);
 	}
 
-	return {
+	return buildCleanupResult({
 		worktreePath: normalizedWorktreePath,
 		matchedListenerPids,
 		matchedSupervisorPids,
-		matchedPids,
 		signalledCount,
-		gracefulCount,
 		forceKilledCount,
-	};
+	});
 }
 
 module.exports = {

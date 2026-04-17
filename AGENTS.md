@@ -131,11 +131,13 @@ In VPK feature code, use ADS semantic naming (`bg-surface-raised`, `text-text-su
 
 - Install dependencies: `pnpm install`
 - First-time MCP setup: `acli rovodev` (interactive, approve MCP servers, then Ctrl+C)
-- Start everything: `pnpm run rovodev` (starts 1 rovodev serve instance + backend + frontend; use `pnpm run rovodev --6` for full pool)
+- Start everything: `pnpm run rovodev` (starts 1 rovodev serve instance + backend + frontend; use `pnpm run rovodev -- 6` for full pool)
 - Start frontend + backend only: `pnpm run dev` (requires rovodev serve already running)
+- Start RovoDev Serve only: `pnpm run dev:rovodev`
 - Start frontend only: `pnpm run dev:frontend`
 - Start backend only: `pnpm run dev:backend`
 - Start with tmux (8 panes): `pnpm run rovodev:tmux:start`
+- Stop tmux dev session: `pnpm run rovodev:tmux:stop`
 
 ### Testing
 
@@ -150,12 +152,12 @@ In VPK feature code, use ADS semantic naming (`bg-surface-raised`, `text-text-su
   2. `cmux read-screen --surface surface:N --scrollback --lines 200` — capture recent terminal output.
   3. Analyze the captured logs to identify the actual error before proposing a fix.
 - Prefer this over re-running commands or reading log files — the terminal pane already has the live output.
-- Outside cmux, fall back to reading `.dev-frontend-port` / `.dev-backend-port` and checking process output manually.
+- Outside cmux, fall back to reading `.dev-rovodev-port` / `.dev-rovodev-ports`, `.dev-frontend-port`, and `.dev-backend-port` and checking process output manually.
 
 ## Gotchas
 
 - Worktree ports are deterministic; check with `pnpm ports`.
-- Runtime port files: `.dev-frontend-port`, `.dev-backend-port`
+- Runtime port files: `.dev-rovodev-port`, `.dev-rovodev-ports`, `.dev-frontend-port`, `.dev-backend-port`
 - Dev API calls traverse Next.js proxy then Express; debug both layers.
 - No directories are excluded from TypeScript type-checking (only `node_modules`). All errors are visible and trackable.
 - Never import transitive pnpm dependencies directly — pnpm's strict isolation only allows imports from `package.json` direct dependencies. Use internal mechanisms (e.g., `globalThis.__PLATFORM_FEATURE_FLAGS__`) or add the package explicitly.

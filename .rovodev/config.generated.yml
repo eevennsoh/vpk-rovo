@@ -124,44 +124,14 @@ toolPermissions:
   default: ask
   # Permission settings for specific tools
   tools:
-    create_file: allow
-    delete_file: allow
+    create_file: ask
+    delete_file: ask
     move_file: ask
-    find_and_replace_code: allow
+    find_and_replace_code: ask
     open_files: allow
     expand_code_chunks: allow
     expand_folder: allow
     grep: allow
-    search: allow
-    fetchWebContent: allow
-    get_events: allow
-    email_list_labels: allow
-    drive_get_information: allow
-    workspace_search_user_by_email: allow
-    bitbucketWorkspace: allow
-    component_search: allow
-    get_context: allow
-    search_projects: allow
-    atlassian_search: allow
-    search_goals: allow
-    component_get_custom_field_definitions: allow
-    translate_detect_language: allow
-    get_user_teams: allow
-    execute_forecast_summary: allow
-    list-forge-modules: allow
-    ads_get_components: allow
-    browser_snapshot: allow
-    atlassian_docs_search: allow
-    channel_create_message: allow
-    get_full_context_for_user: allow
-    get_ranked_work_summary_for_given_user: allow
-    get_recent_prs: allow
-    fetchGithubReadme: allow
-    bitbucketRepoContent: allow
-    get_work_summary_for_given_user: allow
-    get_user_created_entities: allow
-    get_user_manager: allow
-    get_user_manager_v2: allow
   bash:
     # Default permission for bash commands not explicitly listed
     default: ask
@@ -174,14 +144,6 @@ toolPermissions:
     - command: echo(\s.*)?
       permission: allow
     - command: pwd
-      permission: allow
-    - command: sed -n '1816,1940p' components/projects/future-chat/components/future-chat-shell.tsx
-      permission: allow
-    - command: sed(\s.*)?
-      permission: allow
-    - command: find(\s.*)?
-      permission: allow
-    - command: node(\s.*)?
       permission: allow
     # Run bash commands in a sandboxed environment - currently available for
     # MacOS and Linux only. Enabling this option for Windows will prevent the

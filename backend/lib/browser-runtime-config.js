@@ -1,12 +1,14 @@
 "use strict"
 
 const fs = require("node:fs")
+const path = require("node:path")
 
 const DEFAULT_BROWSER_MODE = "isolated"
 const LIVE_CANARY_BROWSER_MODE = "live-canary"
 const DEFAULT_LIVE_CANARY_CDP_PORT = 9222
 const DEFAULT_CANARY_EXECUTABLE_PATH =
 	"/Applications/Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary"
+const CHROME_DEVTOOLS_MCP_PACKAGE = "chrome-devtools-mcp@latest"
 
 function hasConfiguredString(value) {
 	return typeof value === "string" && value.trim().length > 0
@@ -40,9 +42,7 @@ function getConfiguredLiveCanaryCdpPort({ env = process.env } = {}) {
 }
 
 function getConfiguredCanaryExecutablePath({ env = process.env } = {}) {
-	if (
-		hasConfiguredString(env?.ROVO_BROWSER_CANARY_EXECUTABLE_PATH)
-	) {
+	if (hasConfiguredString(env?.ROVO_BROWSER_CANARY_EXECUTABLE_PATH)) {
 		return env.ROVO_BROWSER_CANARY_EXECUTABLE_PATH.trim()
 	}
 
@@ -58,6 +58,22 @@ function hasLiveCanaryConfigurationHint({ env = process.env } = {}) {
 		hasConfiguredString(env?.ROVO_BROWSER_CDP_PORT) ||
 		hasConfiguredString(env?.ROVO_BROWSER_CANARY_EXECUTABLE_PATH)
 	)
+}
+
+function getBrowserRuntimeDefaultReason({ env = process.env, fsImpl = fs } = {}) {
+	if (hasExplicitBrowserMode({ env })) {
+		return "explicit-mode"
+	}
+
+	if (hasLiveCanaryConfigurationHint({ env })) {
+		return "canary-hint"
+	}
+
+	if (isCanaryExecutableAvailable({ env, fsImpl })) {
+		return "canary-detected"
+	}
+
+	return "default-isolated"
 }
 
 function isCanaryExecutableAvailable({
@@ -76,28 +92,29 @@ function ensureBrowserRuntimeEnvDefaults({
 	env = process.env,
 	fsImpl = fs,
 } = {}) {
-	if (hasExplicitBrowserMode({ env })) {
+	const reason = getBrowserRuntimeDefaultReason({ env, fsImpl })
+
+	if (reason === "explicit-mode") {
 		return {
 			changed: false,
 			browserMode: getConfiguredBrowserMode({ env }),
-			reason: "explicit-mode",
+			reason,
 		}
 	}
 
-	const hasCanaryHint = hasLiveCanaryConfigurationHint({ env })
-	if (hasCanaryHint || isCanaryExecutableAvailable({ env, fsImpl })) {
+	if (reason === "canary-hint" || reason === "canary-detected") {
 		env.ROVO_BROWSER_MODE = LIVE_CANARY_BROWSER_MODE
 		return {
 			changed: true,
 			browserMode: LIVE_CANARY_BROWSER_MODE,
-			reason: hasCanaryHint ? "canary-hint" : "canary-detected",
+			reason,
 		}
 	}
 
 	return {
 		changed: false,
 		browserMode: getConfiguredBrowserMode({ env }),
-		reason: "default-isolated",
+		reason,
 	}
 }
 
@@ -108,7 +125,15 @@ function getConfiguredChromeDevtoolsBrowserUrl({ env = process.env } = {}) {
 function getChromeDevtoolsAllowedRovodevMcpServerSignature({
 	env = process.env,
 } = {}) {
-	return `stdio:npx:-y chrome-devtools-mcp@latest --browser-url=${getConfiguredChromeDevtoolsBrowserUrl({ env })}`
+	return `stdio:npx:-y ${CHROME_DEVTOOLS_MCP_PACKAGE} --browser-url=${getConfiguredChromeDevtoolsBrowserUrl({ env })}`
+}
+
+function getChromeDevtoolsMcpArgs({ env = process.env } = {}) {
+	return [
+		"-y",
+		CHROME_DEVTOOLS_MCP_PACKAGE,
+		`--browser-url=${getConfiguredChromeDevtoolsBrowserUrl({ env })}`,
+	]
 }
 
 function getChromeDevtoolsRovodevMcpServerConfig({
@@ -117,13 +142,26 @@ function getChromeDevtoolsRovodevMcpServerConfig({
 	return {
 		"chrome-devtools": {
 			command: "npx",
-			args: [
-				"-y",
-				"chrome-devtools-mcp@latest",
-				`--browser-url=${getConfiguredChromeDevtoolsBrowserUrl({ env })}`,
-			],
+			args: getChromeDevtoolsMcpArgs({ env }),
 			type: "stdio",
 		},
+	}
+}
+
+function hasChromeDevtoolsRovodevMcpServer({
+	cwd = process.cwd(),
+	fsImpl = fs,
+} = {}) {
+	const workspaceMcpPath = path.join(cwd, ".rovodev", "mcp.generated.json")
+	if (typeof fsImpl?.readFileSync !== "function") {
+		return false
+	}
+
+	try {
+		const parsed = JSON.parse(fsImpl.readFileSync(workspaceMcpPath, "utf8"))
+		return parsed?.mcpServers?.["chrome-devtools"] != null
+	} catch {
+		return false
 	}
 }
 
@@ -139,6 +177,7 @@ module.exports = {
 	getConfiguredCanaryExecutablePath,
 	getConfiguredChromeDevtoolsBrowserUrl,
 	getConfiguredLiveCanaryCdpPort,
+	hasChromeDevtoolsRovodevMcpServer,
 	hasLiveCanaryConfigurationHint,
 	isCanaryExecutableAvailable,
 	isLiveCanaryBrowserMode,

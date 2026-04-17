@@ -1,5 +1,6 @@
 const test = require("node:test")
 const assert = require("node:assert/strict")
+const { EventEmitter } = require("node:events")
 
 const {
 	AgentBrowserRuntime,
@@ -296,4 +297,33 @@ test("browser workspace runtime uses a live Canary CDP connection instead of iso
 		provider: "chrome-devtools",
 		canaryWasLaunched: true,
 	})
+})
+
+test("browser workspace runtime surfaces live Canary spawn failures as a rejected error", async () => {
+	const runtime = new AgentBrowserRuntime({
+		sessionId: "test-live-canary-error",
+		browserMode: LIVE_CANARY_BROWSER_MODE,
+		cdpPort: 9333,
+		canaryExecutablePath: "/missing/canary",
+		spawnProcess() {
+			const child = new EventEmitter()
+			child.unref = () => {}
+			queueMicrotask(() => {
+				const error = new Error("spawn /missing/canary ENOENT")
+				error.code = "ENOENT"
+				child.emit("error", error)
+			})
+			return child
+		},
+	})
+
+	runtime._canConnectToLiveCanary = async () => false
+	runtime._waitForLiveCanary = async () => {
+		throw new Error("wait should not be reached")
+	}
+
+	await assert.rejects(
+		runtime._ensureLiveCanaryReady(),
+		/spawn \/missing\/canary ENOENT/,
+	)
 })
