@@ -1,7 +1,9 @@
 "use strict";
 
 const fs = require("node:fs/promises");
+const fsSync = require("node:fs");
 const path = require("node:path");
+const { spawnSync } = require("node:child_process");
 
 const DEFAULT_LLM_WIKI_ROOT = "/Users/esoh/llm-wiki";
 const DEFAULT_WIKI_DIR = path.join(DEFAULT_LLM_WIKI_ROOT, "wiki");
@@ -123,6 +125,38 @@ function getQmdRovodevMcpServerConfig({ repoRoot = REPO_ROOT } = {}) {
 			type: "stdio",
 		},
 	};
+}
+
+function isQmdRovodevMcpServerAvailable({
+	repoRoot = REPO_ROOT,
+	spawnSyncImpl = spawnSync,
+} = {}) {
+	const dbPath = getWorkspaceQmdDbPath({ repoRoot });
+	fsSync.mkdirSync(path.dirname(dbPath), { recursive: true });
+
+	const script = [
+		`const dbPath = ${JSON.stringify(dbPath)};`,
+		`import("@tobilu/qmd")`,
+		`.then(async ({ createStore }) => {`,
+		`  const store = await createStore({ dbPath });`,
+		`  await store.getStatus();`,
+		`  await store.close();`,
+		`})`,
+		`.then(() => process.exit(0))`,
+		`.catch((error) => {`,
+		`  console.error(error?.stack || String(error));`,
+		`  process.exit(1);`,
+		`});`,
+	].join("");
+
+	const result = spawnSyncImpl(process.execPath, ["-e", script], {
+		cwd: repoRoot,
+		encoding: "utf8",
+		stdio: "pipe",
+		timeout: 10_000,
+	});
+
+	return result.status === 0;
 }
 
 function getQmdCollectionDefinitions({ wikiDir = DEFAULT_WIKI_DIR } = {}) {
@@ -584,6 +618,7 @@ module.exports = {
 	getQmdAllowedRovodevMcpServerSignature,
 	getQmdCollectionDefinitions,
 	getQmdRovodevMcpServerConfig,
+	isQmdRovodevMcpServerAvailable,
 	getQmdSyncStatePath,
 	getQmdSyncSummary,
 	getWorkspaceQmdCacheDir,

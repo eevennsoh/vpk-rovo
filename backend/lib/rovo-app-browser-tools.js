@@ -3,6 +3,35 @@ const {
 	getRovoAppThreadBrowserWorkspace,
 } = require("./rovo-app-browser-workspace")
 const { browserWorkspaceManager } = require("./browser-workspace-manager")
+const {
+	getConfiguredLiveCanaryCdpPort,
+	isLiveCanaryBrowserMode,
+} = require("./browser-runtime-config")
+const {
+	canConnectToCdpPort,
+} = require("./browser-workspace-runtime")
+
+const CHROME_DEVTOOLS_BROWSER_TOOL_NAMES = new Set([
+	"click",
+	"click_at",
+	"close_page",
+	"fill",
+	"hover",
+	"list_pages",
+	"navigate_page",
+	"new_page",
+	"press_key",
+	"select_page",
+	"take_screenshot",
+	"take_snapshot",
+	"type_text",
+	"wait_for",
+])
+
+const SCREENSHOT_TOOL_NAMES = new Set([
+	"browser_take_screenshot",
+	"take_screenshot",
+])
 
 function getBaseBrowserToolName(toolName) {
 	if (typeof toolName !== "string") {
@@ -22,12 +51,15 @@ function isBrowserToolCall(toolName) {
 		return false
 	}
 
-	return baseName.startsWith("browser_")
+	return (
+		baseName.startsWith("browser_") ||
+		CHROME_DEVTOOLS_BROWSER_TOOL_NAMES.has(baseName)
+	)
 }
 
 function isScreenshotToolCall(toolName) {
 	const baseName = getBaseBrowserToolName(toolName)
-	return baseName === "browser_take_screenshot"
+	return SCREENSHOT_TOOL_NAMES.has(baseName)
 }
 
 function createDefaultWorkspaceBindings() {
@@ -89,6 +121,20 @@ function resolveToolThreadId(toolInput, fallbackThreadId) {
 	return threadId
 }
 
+function resolveRequestedUrl(baseName, toolInput) {
+	if (
+		(baseName === "browser_navigate" ||
+			baseName === "navigate_page" ||
+			baseName === "new_page") &&
+		typeof toolInput?.url === "string" &&
+		toolInput.url.trim()
+	) {
+		return toolInput.url.trim()
+	}
+
+	return undefined
+}
+
 function createThreadBrowserBridge({
 	screenshotStore = null,
 	threadId,
@@ -111,6 +157,11 @@ function createThreadBrowserBridge({
 		writer.write({
 			type: "data-browser-state",
 			data: {
+				...(typeof state?.provider === "string" && state.provider
+					? {
+						provider: state.provider,
+					}
+					: {}),
 				status,
 				streamConfig,
 				title: title ?? state?.title ?? "",
@@ -186,12 +237,26 @@ function createThreadBrowserBridge({
 		}
 
 		try {
-			const requestedUrl =
-				baseName === "browser_navigate" &&
-				typeof toolCall.toolInput?.url === "string" &&
-				toolCall.toolInput.url.trim()
-					? toolCall.toolInput.url.trim()
-					: undefined
+			const requestedUrl = resolveRequestedUrl(baseName, toolCall.toolInput)
+			const existingWorkspace = await workspaceBindings.getThreadWorkspace(
+				resolvedThreadId,
+			)
+			if (
+				!existingWorkspace &&
+				isLiveCanaryBrowserMode() &&
+				!(await canConnectToCdpPort(
+					getConfiguredLiveCanaryCdpPort(),
+				).catch(() => false))
+			) {
+				emitBrowserState({
+					state: {
+						provider: "chrome-devtools",
+					},
+					status: "launching-canary",
+					url: requestedUrl ?? "about:blank",
+					workspaceId: undefined,
+				})
+			}
 			const workspace = await workspaceBindings.ensureThreadWorkspace(
 				resolvedThreadId,
 				requestedUrl,
@@ -206,7 +271,12 @@ function createThreadBrowserBridge({
 
 			emitBrowserState({
 				state: workspace.state,
-				status: "navigating",
+				status:
+					workspace.state?.canaryWasLaunched === true &&
+					!requestedUrl &&
+					workspace.state?.url === "about:blank"
+						? "awaiting-auth"
+						: "navigating",
 				streamConfig: workspace.streamConfig,
 				title: workspace.state?.title ?? "",
 				url: requestedUrl ?? workspace.state?.url ?? "",

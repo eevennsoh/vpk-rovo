@@ -10,6 +10,17 @@ try {
 	console.log("[STARTUP] .env.local not found, using environment variables only");
 }
 
+const {
+	ensureBrowserRuntimeEnvDefaults,
+} = require("./lib/browser-runtime-config");
+
+const browserRuntimeDefaults = ensureBrowserRuntimeEnvDefaults();
+if (browserRuntimeDefaults.changed) {
+	console.log(
+		`[STARTUP] Defaulted ROVO_BROWSER_MODE=${browserRuntimeDefaults.browserMode} (${browserRuntimeDefaults.reason})`
+	);
+}
+
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
@@ -362,6 +373,9 @@ const {
 	isBrowserToolCall,
 	createThreadBrowserBridge,
 } = require("./lib/rovo-app-browser-tools");
+const {
+	isLiveCanaryBrowserMode,
+} = require("./lib/browser-runtime-config");
 const {
 	deleteRovoAppThreadBrowserWorkspace,
 	ensureRovoAppThreadBrowserWorkspace,
@@ -3404,35 +3418,59 @@ async function executeRovoAppManagedRun(run) {
 
 	const artifactContextBlock = buildRovoAppArtifactContext(activeArtifact);
 
-	const browserContextBlock = [
-		"[BROWSER TOOLS]",
-		"You have access to a thread-bound browser workspace runtime.",
-		`For every browser tool call in this conversation, pass \`thread_id: \"${threadId}\"\`.`,
-		"When you need to browse a web page, take a screenshot, or interact with a website, use these browser_* tools:",
-		"- browser_navigate — navigate to a URL",
-		"- browser_take_screenshot — capture a screenshot of the current page",
-		"- browser_snapshot — get an accessibility tree snapshot of the page",
-		"- browser_click — click an element by accessibility ref",
-		"- browser_hover — hover an element by accessibility ref",
-		"- browser_fill — replace the text in an element by accessibility ref",
-		"- browser_type — type text into an element by accessibility ref",
-		"- browser_select — select one or more values by accessibility ref",
-		"- browser_press_key — press a keyboard key",
-		"- browser_scroll — scroll the page",
-		"- browser_navigate_back — go back in history",
-		"- browser_navigate_forward — go forward in history",
-		"- browser_reload — reload the current page",
-		"- browser_tab_list — list browser tabs",
-		"- browser_tab_new — open a new tab",
-		"- browser_tab_select — switch to a tab by index",
-		"- browser_tab_close — close a tab by index",
-		"- browser_wait — wait a short time before continuing",
-		"",
-		"IMPORTANT: Do NOT use Playwright MCP, Chrome DevTools MCP, get_skill, browsing_get_web, get_url, or other built-in browsing tools for web browsing here.",
-		"Do NOT call tools like navigate_page or other Chrome DevTools actions in this conversation.",
-		"Always use browser_snapshot after navigation or significant DOM changes to refresh refs before interacting again.",
-		"[END BROWSER TOOLS]",
-	].join("\n");
+	const browserContextBlock = isLiveCanaryBrowserMode()
+		? [
+			"[BROWSER TOOLS]",
+			"You have access to a live Google Chrome Canary browser session plus the existing in-app browser preview.",
+			"When you need to browse a website in this conversation, prefer Chrome DevTools MCP actions that operate on the live Canary session:",
+			"- navigate_page — navigate the current page",
+			"- new_page — open a new tab or page",
+			"- select_page — switch to a page by id",
+			"- close_page — close a page by id",
+			"- list_pages — list open pages",
+			"- take_snapshot — capture the accessibility snapshot",
+			"- take_screenshot — capture the current page screenshot",
+			"- click — click an element by uid",
+			"- fill — replace text in an element by uid",
+			"- hover — hover an element by uid",
+			"- press_key — press a keyboard key or shortcut",
+			"- type_text — type into the active element",
+			"- wait_for — wait for text, timing, or navigation conditions",
+			"",
+			"The `/rovo-app` preview mirrors that same Canary session automatically.",
+			`Use the browser_* tools only as a fallback or when a tool explicitly requires \`thread_id: \"${threadId}\"\`.`,
+			"When you do use a browser_* tool, always pass that thread_id.",
+			"[END BROWSER TOOLS]",
+		].join("\n")
+		: [
+			"[BROWSER TOOLS]",
+			"You have access to a thread-bound browser workspace runtime.",
+			`For every browser tool call in this conversation, pass \`thread_id: \"${threadId}\"\`.`,
+			"When you need to browse a web page, take a screenshot, or interact with a website, use these browser_* tools:",
+			"- browser_navigate — navigate to a URL",
+			"- browser_take_screenshot — capture a screenshot of the current page",
+			"- browser_snapshot — get an accessibility tree snapshot of the page",
+			"- browser_click — click an element by accessibility ref",
+			"- browser_hover — hover an element by accessibility ref",
+			"- browser_fill — replace the text in an element by accessibility ref",
+			"- browser_type — type text into an element by accessibility ref",
+			"- browser_select — select one or more values by accessibility ref",
+			"- browser_press_key — press a keyboard key",
+			"- browser_scroll — scroll the page",
+			"- browser_navigate_back — go back in history",
+			"- browser_navigate_forward — go forward in history",
+			"- browser_reload — reload the current page",
+			"- browser_tab_list — list browser tabs",
+			"- browser_tab_new — open a new tab",
+			"- browser_tab_select — switch to a tab by index",
+			"- browser_tab_close — close a tab by index",
+			"- browser_wait — wait a short time before continuing",
+			"",
+			"IMPORTANT: Do NOT use Playwright MCP, Chrome DevTools MCP, get_skill, browsing_get_web, get_url, or other built-in browsing tools for web browsing here.",
+			"Do NOT call tools like navigate_page or other Chrome DevTools actions in this conversation.",
+			"Always use browser_snapshot after navigation or significant DOM changes to refresh refs before interacting again.",
+			"[END BROWSER TOOLS]",
+		].join("\n");
 	const wikiCaptureContextBlock = [
 		"[WIKI TOOLS]",
 		"You can save durable webpage sources and reusable synthesis pages into the llm-wiki.",

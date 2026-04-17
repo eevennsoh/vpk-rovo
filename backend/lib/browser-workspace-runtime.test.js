@@ -5,6 +5,7 @@ const {
 	AgentBrowserRuntime,
 	DEFAULT_SCREENCAST_MAX_HEIGHT,
 	DEFAULT_SCREENCAST_MAX_WIDTH,
+	LIVE_CANARY_BROWSER_MODE,
 } = require("./browser-workspace-runtime")
 
 class TestAgentBrowserRuntime extends AgentBrowserRuntime {
@@ -78,6 +79,34 @@ class TestAgentBrowserRuntime extends AgentBrowserRuntime {
 				return undefined
 			},
 		}
+	}
+}
+
+class LiveCanaryAgentBrowserRuntime extends AgentBrowserRuntime {
+	constructor(options = {}) {
+		super({
+			sessionId: "test-live-canary",
+			browserMode: LIVE_CANARY_BROWSER_MODE,
+			cdpPort: 9333,
+			...options,
+		})
+		this.commands = []
+		this.liveCanaryReadyChecks = 0
+	}
+
+	async _ensureInstalled() {}
+
+	async _ensureLiveCanaryReady() {
+		this.liveCanaryReadyChecks += 1
+		this._canaryWasLaunched = true
+		return {
+			launched: true,
+		}
+	}
+
+	async _executeAgentBrowser(commandArgs) {
+		this.commands.push(commandArgs.map((value) => String(value)))
+		return ""
 	}
 }
 
@@ -252,4 +281,19 @@ test("browser workspace runtime only changes viewport when explicitly requested"
 		["open", "about:blank"],
 		["set", "viewport", "1440", "960", "2"],
 	])
+})
+
+test("browser workspace runtime uses a live Canary CDP connection instead of isolated sessions when configured", async () => {
+	const runtime = new LiveCanaryAgentBrowserRuntime()
+
+	await runtime.initialize("https://example.com")
+
+	assert.equal(runtime.liveCanaryReadyChecks, 1)
+	assert.deepEqual(runtime.commands, [
+		["--cdp", "9333", "open", "https://example.com"],
+	])
+	assert.deepEqual(runtime.getBrowserStateMetadata(), {
+		provider: "chrome-devtools",
+		canaryWasLaunched: true,
+	})
 })

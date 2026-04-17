@@ -1,6 +1,7 @@
 "use client";
 
 import { startTransition, useEffect, useMemo, useState, type ReactNode } from "react";
+import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import {
@@ -32,7 +33,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { ControlPlanePageShell } from "./control-plane-page-shell";
-import { MemoryExplorerSigmaGraph } from "./memory-explorer-sigma-graph";
 import {
 	deleteWikiMemoryBlock,
 	deleteWikiMemoryProposal,
@@ -66,6 +66,11 @@ import CopyIcon from "@atlaskit/icon/core/copy";
 import TableIcon from "@atlaskit/icon/core/table";
 import { ExternalLinkIcon } from "@/components/ui/vpk-icons";
 import { cn } from "@/lib/utils";
+
+const MemoryExplorerSigmaGraph = dynamic(
+	() => import("./memory-explorer-sigma-graph").then((module) => module.MemoryExplorerSigmaGraph),
+	{ ssr: false },
+);
 
 type ExplorerView = "brief" | "deck" | "graph" | "table" | "timeline";
 

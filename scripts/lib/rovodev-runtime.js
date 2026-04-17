@@ -3,6 +3,9 @@ const fs = require("node:fs");
 const { ensureEnvLocalExists: ensureEnvLocalExistsBase } = require("./env-local");
 const { resolveRovodevBin } = require("./rovodev-utils");
 const {
+	ensureBrowserRuntimeEnvDefaults,
+} = require("../../backend/lib/browser-runtime-config");
+const {
 	dedupeAllowedMcpServersInConfig,
 	resolveRovodevConfigPath,
 	syncWorkspaceRovodevConfig,
@@ -28,7 +31,18 @@ function loadEnvLocal({ envLocalPath } = {}) {
 	}
 }
 
-function resolveRovodevConfigState({ dedupeConfig = true } = {}) {
+function applyBrowserRuntimeDefaults({ logger = console } = {}) {
+	const result = ensureBrowserRuntimeEnvDefaults();
+	if (result.changed) {
+		logger.log?.(
+			`[rovodev] Defaulted ROVO_BROWSER_MODE=${result.browserMode} (${result.reason})`
+		);
+	}
+
+	return result;
+}
+
+function resolveRovodevConfigState({ cwd = process.cwd(), dedupeConfig = true } = {}) {
 	if (dedupeConfig) {
 		dedupeAllowedMcpServersInConfig();
 	}
@@ -43,19 +57,20 @@ function resolveRovodevConfigState({ dedupeConfig = true } = {}) {
 		};
 	}
 
-	return syncWorkspaceRovodevConfig();
+	return syncWorkspaceRovodevConfig({ cwd });
 }
 
 function prepareRovodevRuntime({ cwd = process.cwd(), logger = console, dedupeConfig = true, logConfigState = true, logBillingSite = true } = {}) {
 	const { envLocalPath } = ensureEnvLocalExists({ cwd, logger });
 	loadEnvLocal({ envLocalPath });
+	const browserRuntimeDefaults = applyBrowserRuntimeDefaults({ logger });
 
 	const configuredBillingSiteUrl = (process.env.ROVODEV_BILLING_URL ?? "").trim();
 	if (!configuredBillingSiteUrl) {
 		throw new Error("[rovodev] ROVODEV_BILLING_URL is not set in .env.local");
 	}
 
-	const configState = resolveRovodevConfigState({ dedupeConfig });
+	const configState = resolveRovodevConfigState({ cwd, dedupeConfig });
 	if (logConfigState) {
 		if (configState.exists) {
 			logger.log?.(`[rovodev] Using config: ${configState.configPath}`);
@@ -71,6 +86,7 @@ function prepareRovodevRuntime({ cwd = process.cwd(), logger = console, dedupeCo
 	}
 
 	return {
+		browserRuntimeDefaults,
 		configState,
 		configuredBillingSiteUrl,
 		rovodevBin,

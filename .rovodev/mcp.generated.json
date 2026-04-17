@@ -20,25 +20,32 @@
 		},
 		"browser-workspace": {
 			"args": [
-				"/Users/esoh/Documents/Labs/agent-browser/scripts/browser-workspace-mcp.js"
+				"/Users/esoh/Documents/Labs/VPK-rovo/scripts/browser-workspace-mcp.js"
 			],
 			"command": "node",
 			"env": {
-				"REPO_ROOT": "/Users/esoh/Documents/Labs/agent-browser"
+				"REPO_ROOT": "/Users/esoh/Documents/Labs/VPK-rovo"
 			},
 			"type": "stdio"
 		},
-		"hermes-tools": {
-			"type": "stdio",
-			"command": "/Users/esoh/Documents/Labs/hermes/hermes-agent/.venv/bin/python",
+		"wiki-capture": {
 			"args": [
-				"/Users/esoh/Documents/Labs/VPK-rovo/scripts/hermes_tools_mcp.py"
+				"/Users/esoh/Documents/Labs/VPK-rovo/scripts/wiki-capture-mcp.js"
 			],
+			"command": "node",
 			"env": {
-				"PYTHONUNBUFFERED": "1",
-				"HERMES_TOOLS_SERVER_NAME": "hermes-tools",
-				"HERMES_AGENT_PATH": "/Users/esoh/Documents/Labs/hermes/hermes-agent"
-			}
+				"REPO_ROOT": "/Users/esoh/Documents/Labs/VPK-rovo"
+			},
+			"type": "stdio"
+		},
+		"chrome-devtools": {
+			"command": "npx",
+			"args": [
+				"-y",
+				"chrome-devtools-mcp@latest",
+				"--browser-url=http://127.0.0.1:9222"
+			],
+			"type": "stdio"
 		},
 		"qmd": {
 			"args": [
@@ -48,7 +55,7 @@
 			],
 			"command": "pnpm",
 			"env": {
-				"INDEX_PATH": "/Users/esoh/Documents/Labs/agent-browser/.cache/qmd/wiki.sqlite"
+				"INDEX_PATH": "/Users/esoh/Documents/Labs/VPK-rovo/.cache/qmd/wiki.sqlite"
 			},
 			"type": "stdio"
 		}

@@ -12,7 +12,13 @@ const {
 const {
 	getQmdAllowedRovodevMcpServerSignature,
 	getQmdRovodevMcpServerConfig,
+	isQmdRovodevMcpServerAvailable,
 } = require("../../backend/lib/qmd");
+const {
+	getChromeDevtoolsAllowedRovodevMcpServerSignature,
+	getChromeDevtoolsRovodevMcpServerConfig,
+	isLiveCanaryBrowserMode,
+} = require("../../backend/lib/browser-runtime-config");
 
 const resolveRovodevConfigPath = () => {
 	const ymlPath = path.join(os.homedir(), ".rovodev", "config.yml");
@@ -172,6 +178,14 @@ function isRepoLocalBrowserAutomationSignature(entry) {
 	return /chrome-devtools-mcp|@playwright\/mcp|playwright-mcp/u.test(entry);
 }
 
+function isWorkspaceGeneratedMcpSignature(entry) {
+	if (typeof entry !== "string") {
+		return false;
+	}
+
+	return /browser-workspace-mcp\.js|wiki-capture-mcp\.js|stdio:pnpm:exec qmd mcp/u.test(entry);
+}
+
 function resolveRovodevMcpConfigPath(configText) {
 	const match = normalizeYaml(configText).match(/^\s*mcpConfigPath:\s*(.+)\s*$/mu);
 	if (match?.[1]?.trim()) {
@@ -205,7 +219,10 @@ const dedupeAllowedMcpServersInConfig = (configPath = resolveRovodevConfigPath()
 	};
 };
 
-function syncWorkspaceRovodevConfig({ cwd = process.cwd() } = {}) {
+function syncWorkspaceRovodevConfig({
+	cwd = process.cwd(),
+	isQmdRovodevMcpServerAvailableImpl = isQmdRovodevMcpServerAvailable,
+} = {}) {
 	const sourceConfigPath = resolveRovodevConfigPath();
 	const workspaceConfigPath = resolveWorkspaceRovodevGeneratedConfigPath(cwd);
 	const workspaceMcpConfigPath = resolveWorkspaceRovodevGeneratedMcpPath(cwd);
@@ -227,27 +244,41 @@ function syncWorkspaceRovodevConfig({ cwd = process.cwd() } = {}) {
 	const existingWorkspaceConfigText = fs.existsSync(workspaceConfigPath)
 		? fs.readFileSync(workspaceConfigPath, "utf8")
 		: "";
+	const liveCanaryModeEnabled = isLiveCanaryBrowserMode();
+	const qmdMcpEnabled = isQmdRovodevMcpServerAvailableImpl({ repoRoot: cwd });
 
 	const mergedAllowedServers = mergeUniqueStrings(
 		extractYamlListEntries(sourceConfigText, "allowedMcpServers").filter(
-			(entry) => !isRepoLocalBrowserAutomationSignature(entry),
+			(entry) =>
+				!isWorkspaceGeneratedMcpSignature(entry) &&
+				!isRepoLocalBrowserAutomationSignature(entry),
 		),
 		extractYamlListEntries(existingWorkspaceConfigText, "allowedMcpServers").filter(
-			(entry) => !isRepoLocalBrowserAutomationSignature(entry),
+			(entry) =>
+				!isWorkspaceGeneratedMcpSignature(entry) &&
+				!isRepoLocalBrowserAutomationSignature(entry),
 		),
 		[
-			getQmdAllowedRovodevMcpServerSignature(),
+			...(qmdMcpEnabled ? [getQmdAllowedRovodevMcpServerSignature()] : []),
 			getBrowserWorkspaceAllowedRovodevMcpServerSignature({ repoRoot: cwd }),
 			getWikiCaptureAllowedRovodevMcpServerSignature({ repoRoot: cwd }),
+			...(liveCanaryModeEnabled
+				? [getChromeDevtoolsAllowedRovodevMcpServerSignature()]
+				: []),
 		],
 	);
-	const qmdMcpServers = getQmdRovodevMcpServerConfig({ repoRoot: cwd });
+	const qmdMcpServers = qmdMcpEnabled
+		? getQmdRovodevMcpServerConfig({ repoRoot: cwd })
+		: {};
 	const browserWorkspaceMcpServers = getBrowserWorkspaceRovodevMcpServerConfig({
 		repoRoot: cwd,
 	});
 	const wikiCaptureMcpServers = getWikiCaptureRovodevMcpServerConfig({
 		repoRoot: cwd,
 	});
+	const chromeDevtoolsMcpServers = liveCanaryModeEnabled
+		? getChromeDevtoolsRovodevMcpServerConfig()
+		: {};
 	const qmdIndexPath = qmdMcpServers.qmd?.env?.INDEX_PATH;
 	if (typeof qmdIndexPath === "string" && qmdIndexPath.trim()) {
 		fs.mkdirSync(path.dirname(qmdIndexPath), { recursive: true });
@@ -297,19 +328,26 @@ function syncWorkspaceRovodevConfig({ cwd = process.cwd() } = {}) {
 			: {};
 	delete sourceMcpServers.playwright;
 	delete existingWorkspaceMcpServers.playwright;
-	delete sourceMcpServers["chrome-devtools"];
-	delete existingWorkspaceMcpServers["chrome-devtools"];
+	if (!qmdMcpEnabled) {
+		delete sourceMcpServers.qmd;
+		delete existingWorkspaceMcpServers.qmd;
+	}
+	if (!liveCanaryModeEnabled) {
+		delete sourceMcpServers["chrome-devtools"];
+		delete existingWorkspaceMcpServers["chrome-devtools"];
+	}
 
 	const nextWorkspaceMcpConfig = {
 		...sourceMcpConfig,
 		...existingWorkspaceMcpConfig,
 			mcpServers: {
 				...sourceMcpServers,
-				...existingWorkspaceMcpServers,
-				...qmdMcpServers,
-				...browserWorkspaceMcpServers,
-				...wikiCaptureMcpServers,
-			},
+					...existingWorkspaceMcpServers,
+					...qmdMcpServers,
+					...browserWorkspaceMcpServers,
+					...wikiCaptureMcpServers,
+					...chromeDevtoolsMcpServers,
+				},
 		inputs: Array.isArray(existingWorkspaceMcpConfig.inputs)
 			? existingWorkspaceMcpConfig.inputs
 			: Array.isArray(sourceMcpConfig.inputs)

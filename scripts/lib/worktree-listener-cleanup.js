@@ -2,6 +2,8 @@ const { execSync } = require("node:child_process");
 const path = require("node:path");
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const ROVODEV_SUPERVISOR_COMMAND_PATTERN =
+	/(?:^|\s)(?:\S*\/)?node(?:\s+--[^\s]+)*\s+(?:\S*\/)?scripts\/dev-rovodev-port\.js(?:\s|$)/;
 
 function listListeningPids({ execSyncFn = execSync } = {}) {
 	try {
@@ -19,6 +21,39 @@ function listListeningPids({ execSyncFn = execSync } = {}) {
 					.filter((value) => Number.isInteger(value) && value > 0)
 			)
 		).sort((left, right) => left - right);
+	} catch {
+		return [];
+	}
+}
+
+function listProcessInfo({ execSyncFn = execSync } = {}) {
+	try {
+		const output = execSyncFn("ps -axo pid=,command=", {
+			encoding: "utf8",
+			stdio: ["pipe", "pipe", "pipe"],
+		});
+
+		return output
+			.split("\n")
+			.map((line) => line.trim())
+			.filter((line) => line.length > 0)
+			.map((line) => {
+				const match = line.match(/^(\d+)\s+(.*)$/);
+				if (!match) {
+					return null;
+				}
+
+				const pid = Number.parseInt(match[1], 10);
+				if (!Number.isInteger(pid) || pid <= 0) {
+					return null;
+				}
+
+				return {
+					pid,
+					command: match[2],
+				};
+			})
+			.filter((entry) => entry !== null);
 	} catch {
 		return [];
 	}
@@ -59,9 +94,26 @@ function findListeningPidsForWorktree({
 		.sort((left, right) => left - right);
 }
 
+function findRovodevSupervisorPidsForWorktree({
+	worktreePath = process.cwd(),
+	listProcessInfoFn = listProcessInfo,
+	getProcessCwdFn = getProcessCwd,
+} = {}) {
+	const normalizedWorktreePath = path.resolve(worktreePath);
+
+	return listProcessInfoFn()
+		.filter((entry) => entry && entry.pid !== process.pid)
+		.filter((entry) => ROVODEV_SUPERVISOR_COMMAND_PATTERN.test(entry.command))
+		.filter((entry) => getProcessCwdFn(entry.pid) === normalizedWorktreePath)
+		.map((entry) => entry.pid)
+		.filter((pid, index, values) => values.indexOf(pid) === index)
+		.sort((left, right) => left - right);
+}
+
 async function cleanupListeningProcessesForWorktree({
 	worktreePath = process.cwd(),
 	listListeningPidsFn = listListeningPids,
+	listProcessInfoFn = listProcessInfo,
 	getProcessCwdFn = getProcessCwd,
 	killFn = process.kill,
 	sleepFn = sleep,
@@ -69,15 +121,25 @@ async function cleanupListeningProcessesForWorktree({
 	logger = console,
 } = {}) {
 	const normalizedWorktreePath = path.resolve(worktreePath);
-	const matchedPids = findListeningPidsForWorktree({
+	const matchedListenerPids = findListeningPidsForWorktree({
 		worktreePath: normalizedWorktreePath,
 		listListeningPidsFn,
 		getProcessCwdFn,
 	});
+	const matchedSupervisorPids = findRovodevSupervisorPidsForWorktree({
+		worktreePath: normalizedWorktreePath,
+		listProcessInfoFn,
+		getProcessCwdFn,
+	});
+	const matchedPids = Array.from(
+		new Set([...matchedListenerPids, ...matchedSupervisorPids])
+	).sort((left, right) => left - right);
 
 	if (matchedPids.length === 0) {
 		return {
 			worktreePath: normalizedWorktreePath,
+			matchedListenerPids,
+			matchedSupervisorPids,
 			matchedPids,
 			signalledCount: 0,
 			gracefulCount: 0,
@@ -86,7 +148,7 @@ async function cleanupListeningProcessesForWorktree({
 	}
 
 	logger.log?.(
-		`[cleanup] Stopping ${matchedPids.length} listening process(es) for ${normalizedWorktreePath}...`
+		`[cleanup] Stopping ${matchedPids.length} worktree process(es) for ${normalizedWorktreePath}...`
 	);
 
 	let signalledCount = 0;
@@ -102,6 +164,8 @@ async function cleanupListeningProcessesForWorktree({
 	if (signalledCount === 0) {
 		return {
 			worktreePath: normalizedWorktreePath,
+			matchedListenerPids,
+			matchedSupervisorPids,
 			matchedPids,
 			signalledCount: 0,
 			gracefulCount: 0,
@@ -136,6 +200,8 @@ async function cleanupListeningProcessesForWorktree({
 
 	return {
 		worktreePath: normalizedWorktreePath,
+		matchedListenerPids,
+		matchedSupervisorPids,
 		matchedPids,
 		signalledCount,
 		gracefulCount,
@@ -146,6 +212,8 @@ async function cleanupListeningProcessesForWorktree({
 module.exports = {
 	cleanupListeningProcessesForWorktree,
 	findListeningPidsForWorktree,
+	findRovodevSupervisorPidsForWorktree,
 	getProcessCwd,
+	listProcessInfo,
 	listListeningPids,
 };

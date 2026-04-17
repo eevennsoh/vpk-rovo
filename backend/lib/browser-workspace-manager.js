@@ -369,6 +369,10 @@ class BrowserWorkspace {
 
 	_getStateSnapshot() {
 		const activeHistory = this._getHistoryState(this._activeTabIndex)
+		const runtimeMetadata =
+			typeof this._runtime?.getBrowserStateMetadata === "function"
+				? this._runtime.getBrowserStateMetadata()
+				: null
 
 		return {
 			workspaceId: this._workspaceId,
@@ -381,6 +385,11 @@ class BrowserWorkspace {
 			viewportHeight: this._viewport.height,
 			canGoBack: activeHistory.index > 0,
 			canGoForward: activeHistory.index < activeHistory.entries.length - 1,
+			provider:
+				typeof runtimeMetadata?.provider === "string"
+					? runtimeMetadata.provider
+					: "browser-workspace",
+			canaryWasLaunched: runtimeMetadata?.canaryWasLaunched === true,
 			updatedAt: this._updatedAt,
 		}
 	}

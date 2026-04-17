@@ -22,7 +22,12 @@ import { useBrowserPreviewSession } from "@/components/website/demos/utils/hooks
 interface RovoAppBrowserArtifactProps {
 	url: string;
 	title: string;
-	status: "navigating" | "ready" | "error";
+	status:
+		| "launching-canary"
+		| "awaiting-auth"
+		| "navigating"
+		| "ready"
+		| "error";
 	screenshot?: RovoDataParts["browser-screenshot"] | null;
 	workspaceId?: string | null;
 	onClose: () => void;
@@ -52,7 +57,9 @@ export function RovoAppBrowserArtifact({
 	workspaceId,
 	onClose,
 }: Readonly<RovoAppBrowserArtifactProps>) {
-	const isLoading = status === "navigating";
+	const isLaunchingCanary = status === "launching-canary";
+	const isAwaitingAuth = status === "awaiting-auth";
+	const isLoading = status === "navigating" || isLaunchingCanary;
 	const isError = status === "error";
 	const displayUrl = url || "about:blank";
 
@@ -352,6 +359,26 @@ export function RovoAppBrowserArtifact({
 						width={screenshot?.width}
 						style={renderedMediaStyle}
 					/>
+				) : isLaunchingCanary ? (
+					<div className="flex flex-col items-center gap-3 px-4 text-center">
+						<Loader2Icon className="size-8 animate-spin text-text-subtlest" />
+						<p className="text-sm text-text-subtle">
+							Opening Google Chrome Canary...
+						</p>
+						<p className="text-xs text-text-subtlest">
+							The in-app preview will sync once Canary exposes its DevTools port.
+						</p>
+					</div>
+				) : isAwaitingAuth ? (
+					<div className="flex flex-col items-center gap-3 px-4 text-center">
+						<GlobeIcon className="size-8 text-text-subtlest" />
+						<p className="text-sm text-text-subtle">
+							Google Chrome Canary is ready
+						</p>
+						<p className="text-xs text-text-subtlest">
+							Sign in there once, then retry the browsing step to reuse that session here.
+						</p>
+					</div>
 				) : isLoading ? (
 					<div className="flex flex-col items-center gap-3 text-center">
 						<Loader2Icon className="size-8 animate-spin text-text-subtlest" />

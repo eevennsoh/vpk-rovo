@@ -32,7 +32,7 @@ const run = async () => {
 		configuredBillingSiteUrl,
 		rovodevBin,
 		servePrefix,
-	} = prepareRovodevRuntime({ dedupeConfig: false });
+	} = prepareRovodevRuntime();
 
 	if (!(await isPortAvailable(port))) {
 		console.warn(

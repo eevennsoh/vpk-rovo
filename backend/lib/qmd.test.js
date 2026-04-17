@@ -12,6 +12,7 @@ const {
 	QmdNotReadyError,
 	getQmdAllowedRovodevMcpServerSignature,
 	getQmdRovodevMcpServerConfig,
+	isQmdRovodevMcpServerAvailable,
 	searchWikiWithQmd,
 	syncWikiQmdIndex,
 	writeQmdSyncState,
@@ -173,6 +174,30 @@ test("getQmdRovodevMcpServerConfig returns a workspace-local stdio server", () =
 			type: "stdio",
 		},
 	});
+});
+
+test("isQmdRovodevMcpServerAvailable returns true only when the local qmd bootstrap succeeds", () => {
+	const repoRoot = "/tmp/workspace";
+
+	assert.equal(
+		isQmdRovodevMcpServerAvailable({
+			repoRoot,
+			spawnSyncImpl: () => ({
+				status: 0,
+			}),
+		}),
+		true,
+	);
+
+	assert.equal(
+		isQmdRovodevMcpServerAvailable({
+			repoRoot,
+			spawnSyncImpl: () => ({
+				status: 1,
+			}),
+		}),
+		false,
+	);
 });
 
 test("ensureFreshWikiQmdIndex skips sync when the qmd state matches canonical wiki mtimes", async () => {

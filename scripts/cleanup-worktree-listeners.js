@@ -9,12 +9,12 @@ const run = async () => {
 	});
 
 	if (summary.matchedPids.length === 0) {
-		console.log(`[cleanup] No lingering listeners found for ${summary.worktreePath}.`);
+		console.log(`[cleanup] No lingering worktree processes found for ${summary.worktreePath}.`);
 		return;
 	}
 
 	console.log(
-		`[cleanup] Stopped ${summary.signalledCount} listener(s) for ${summary.worktreePath}. ` +
+		`[cleanup] Stopped ${summary.signalledCount} worktree process(es) for ${summary.worktreePath}. ` +
 			`${summary.gracefulCount} exited gracefully, ${summary.forceKilledCount} required SIGKILL.`
 	);
 };

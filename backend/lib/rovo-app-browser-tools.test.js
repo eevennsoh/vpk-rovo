@@ -187,3 +187,94 @@ test("browser bridge emits a screenshot only for explicit screenshot tool result
 	})
 	assert.match(writes[2].data.timestamp, /^\d{4}-\d{2}-\d{2}T/)
 })
+
+test("browser bridge treats chrome-devtools MCP browser actions as preview-driving browser events", async () => {
+	const writes = []
+	const bridge = createThreadBrowserBridge({
+		threadId: "thread-browser-bridge",
+		writer: {
+			write(entry) {
+				writes.push(entry)
+			},
+		},
+		workspaceBindings: {
+			async ensureThreadWorkspace(threadId, defaultUrl) {
+				assert.equal(threadId, "thread-browser-bridge")
+				assert.equal(defaultUrl, "https://example.com/docs")
+				return {
+					state: {
+						provider: "chrome-devtools",
+						title: "Loading",
+						url: "https://example.com/docs",
+					},
+					streamConfig: {
+						enabled: true,
+						wsUrl: "/api/browser-workspaces/workspace-canary/live",
+					},
+					workspaceId: "workspace-canary",
+				}
+			},
+			async getThreadWorkspace(threadId) {
+				assert.equal(threadId, "thread-browser-bridge")
+				return {
+					state: {
+						provider: "chrome-devtools",
+						title: "Docs",
+						url: "https://example.com/docs",
+					},
+					streamConfig: {
+						enabled: true,
+						wsUrl: "/api/browser-workspaces/workspace-canary/live",
+					},
+					workspaceId: "workspace-canary",
+				}
+			},
+			async getThreadWorkspaceScreenshot() {
+				throw new Error("Screenshot should not be fetched for navigate_page")
+			},
+		},
+	})
+
+	await bridge.handleToolCallStart({
+		toolCallId: "tool-call-cdp-1",
+		toolInput: {
+			url: "https://example.com/docs",
+		},
+		toolName: "navigate_page",
+	})
+	await bridge.handleToolCallResult({
+		toolCallId: "tool-call-cdp-1",
+		toolName: "navigate_page",
+	})
+
+	assert.deepEqual(writes, [
+		{
+			type: "data-browser-state",
+			data: {
+				provider: "chrome-devtools",
+				status: "navigating",
+				streamConfig: {
+					enabled: true,
+					wsUrl: "/api/browser-workspaces/workspace-canary/live",
+				},
+				title: "Loading",
+				url: "https://example.com/docs",
+				workspaceId: "workspace-canary",
+			},
+		},
+		{
+			type: "data-browser-state",
+			data: {
+				provider: "chrome-devtools",
+				status: "ready",
+				streamConfig: {
+					enabled: true,
+					wsUrl: "/api/browser-workspaces/workspace-canary/live",
+				},
+				title: "Docs",
+				url: "https://example.com/docs",
+				workspaceId: "workspace-canary",
+			},
+		},
+	])
+})
