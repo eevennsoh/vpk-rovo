@@ -372,6 +372,7 @@ const {
 const {
 	isBrowserToolCall,
 	createThreadBrowserBridge,
+	deleteLiveCanaryThreadWorkspace,
 } = require("./lib/rovo-app-browser-tools");
 const {
 	hasChromeDevtoolsRovodevMcpServer,
@@ -12983,8 +12984,20 @@ app.delete("/api/rovo-app/threads/:threadId/browser-workspace", async (req, res)
 			return res.status(400).json({ error: "threadId is required" });
 		}
 
-		const result = await deleteRovoAppThreadBrowserWorkspace(threadId);
-		return res.status(200).json(result);
+		const [sessionResult, liveCanaryPreviewResult] = await Promise.all([
+			deleteRovoAppThreadBrowserWorkspace(threadId),
+			deleteLiveCanaryThreadWorkspace(threadId),
+		]);
+		return res.status(200).json({
+			...sessionResult,
+			closed:
+				sessionResult.closed === true ||
+				liveCanaryPreviewResult.closed === true,
+			workspaceId:
+				sessionResult.workspaceId ??
+				liveCanaryPreviewResult.workspaceId ??
+				null,
+		});
 	} catch (error) {
 		console.error("[ROVO-BROWSER] Failed to delete thread browser workspace:", error);
 		return res.status(500).json({ error: "Failed to delete thread browser workspace" });
@@ -13014,7 +13027,10 @@ app.delete("/api/rovo-app/threads/:threadId", async (req, res) => {
 		);
 		await rovoAppVoteManager.deleteVotesForThread(threadId);
 		await rovoAppDocumentManager.deleteDocumentsByThread(threadId);
-		await deleteRovoAppThreadBrowserWorkspace(threadId).catch(() => ({}));
+		await Promise.all([
+			deleteRovoAppThreadBrowserWorkspace(threadId).catch(() => ({})),
+			deleteLiveCanaryThreadWorkspace(threadId).catch(() => ({})),
+		]);
 		await destroyMirrorBrowser(`mirror-${threadId}`);
 		await rovoAppThreadManager.deleteThread(threadId);
 		return res.status(200).json({ deleted: true });

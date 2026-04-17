@@ -4,6 +4,10 @@ const {
 	getRovoAppThreadBrowserWorkspaceScreenshot,
 } = require("./rovo-app-browser-workspace")
 const {
+	browserWorkspaceManager,
+	isBrowserWorkspaceNotFoundError,
+} = require("./browser-workspace-manager")
+const {
 	getConfiguredLiveCanaryCdpPort,
 	isLiveCanaryBrowserMode,
 } = require("./browser-runtime-config")
@@ -32,6 +36,114 @@ const SCREENSHOT_TOOL_NAMES = new Set([
 	"browser_take_screenshot",
 	"take_screenshot",
 ])
+
+const liveCanaryThreadWorkspaceIds = new Map()
+
+function requireThreadId(threadId) {
+	if (typeof threadId !== "string" || !threadId.trim()) {
+		throw new Error("A non-empty threadId is required.")
+	}
+
+	return threadId.trim()
+}
+
+async function readLiveCanaryThreadWorkspace(threadId, {
+	browserWorkspaceManagerImpl = browserWorkspaceManager,
+} = {}) {
+	const resolvedThreadId = requireThreadId(threadId)
+	const workspaceId = liveCanaryThreadWorkspaceIds.get(resolvedThreadId)
+	if (!workspaceId) {
+		return null
+	}
+
+	try {
+		const state = await browserWorkspaceManagerImpl.getWorkspaceState(workspaceId)
+		return {
+			state,
+			streamConfig: browserWorkspaceManagerImpl.getWorkspaceStream(workspaceId),
+			workspaceId,
+		}
+	} catch (error) {
+		if (!isBrowserWorkspaceNotFoundError(error)) {
+			throw error
+		}
+
+		liveCanaryThreadWorkspaceIds.delete(resolvedThreadId)
+		return null
+	}
+}
+
+async function ensureLiveCanaryThreadWorkspace(threadId, defaultUrl, {
+	browserWorkspaceManagerImpl = browserWorkspaceManager,
+} = {}) {
+	const resolvedThreadId = requireThreadId(threadId)
+	const existingWorkspace = await readLiveCanaryThreadWorkspace(resolvedThreadId, {
+		browserWorkspaceManagerImpl,
+	})
+	if (existingWorkspace) {
+		return existingWorkspace
+	}
+
+	const state = await browserWorkspaceManagerImpl.createWorkspace({
+		...(typeof defaultUrl === "string" && defaultUrl.trim()
+			? { defaultUrl: defaultUrl.trim() }
+			: {}),
+	})
+	liveCanaryThreadWorkspaceIds.set(resolvedThreadId, state.workspaceId)
+
+	return {
+		state,
+		streamConfig: browserWorkspaceManagerImpl.getWorkspaceStream(
+			state.workspaceId,
+		),
+		workspaceId: state.workspaceId,
+	}
+}
+
+async function getLiveCanaryThreadWorkspaceScreenshot(threadId, {
+	browserWorkspaceManagerImpl = browserWorkspaceManager,
+} = {}) {
+	const resolvedThreadId = requireThreadId(threadId)
+	const existingWorkspace = await readLiveCanaryThreadWorkspace(resolvedThreadId, {
+		browserWorkspaceManagerImpl,
+	})
+	if (!existingWorkspace) {
+		throw new Error(
+			`No live browser preview workspace is bound for thread ${resolvedThreadId}.`,
+		)
+	}
+
+	const screenshot = await browserWorkspaceManagerImpl.getWorkspaceScreenshot(
+		existingWorkspace.workspaceId,
+	)
+	return {
+		buffer: screenshot.buffer,
+		contentType: screenshot.contentType,
+		state: screenshot.state,
+		workspaceId: existingWorkspace.workspaceId,
+	}
+}
+
+async function deleteLiveCanaryThreadWorkspace(threadId, {
+	browserWorkspaceManagerImpl = browserWorkspaceManager,
+} = {}) {
+	const resolvedThreadId = requireThreadId(threadId)
+	const workspaceId = liveCanaryThreadWorkspaceIds.get(resolvedThreadId) ?? null
+	liveCanaryThreadWorkspaceIds.delete(resolvedThreadId)
+	if (!workspaceId) {
+		return {
+			closed: false,
+			threadId: resolvedThreadId,
+			workspaceId: null,
+		}
+	}
+
+	const result = await browserWorkspaceManagerImpl.deleteWorkspace(workspaceId)
+	return {
+		...result,
+		threadId: resolvedThreadId,
+	}
+}
 
 function getBaseBrowserToolName(toolName) {
 	if (typeof toolName !== "string") {
@@ -62,10 +174,36 @@ function isScreenshotToolCall(toolName) {
 	return SCREENSHOT_TOOL_NAMES.has(baseName)
 }
 
-function createDefaultWorkspaceBindings() {
+function createDefaultWorkspaceBindings({
+	browserWorkspaceManagerImpl = browserWorkspaceManager,
+	ensureThreadSessionWorkspaceImpl = ensureRovoAppThreadBrowserWorkspace,
+	getThreadSessionWorkspaceImpl = getRovoAppThreadBrowserWorkspace,
+	getThreadSessionWorkspaceScreenshotImpl = getRovoAppThreadBrowserWorkspaceScreenshot,
+	isLiveCanaryBrowserModeImpl = isLiveCanaryBrowserMode,
+} = {}) {
+	if (isLiveCanaryBrowserModeImpl()) {
+		return {
+			async ensureThreadWorkspace(threadId, defaultUrl) {
+				return ensureLiveCanaryThreadWorkspace(threadId, defaultUrl, {
+					browserWorkspaceManagerImpl,
+				})
+			},
+			async getThreadWorkspace(threadId) {
+				return readLiveCanaryThreadWorkspace(threadId, {
+					browserWorkspaceManagerImpl,
+				})
+			},
+			async getThreadWorkspaceScreenshot(threadId) {
+				return getLiveCanaryThreadWorkspaceScreenshot(threadId, {
+					browserWorkspaceManagerImpl,
+				})
+			},
+		}
+	}
+
 	return {
 		async ensureThreadWorkspace(threadId, defaultUrl) {
-			const result = await ensureRovoAppThreadBrowserWorkspace({
+			const result = await ensureThreadSessionWorkspaceImpl({
 				threadId,
 				...(typeof defaultUrl === "string" && defaultUrl.trim()
 					? { defaultUrl: defaultUrl.trim() }
@@ -78,7 +216,7 @@ function createDefaultWorkspaceBindings() {
 			}
 		},
 		async getThreadWorkspace(threadId) {
-			const result = await getRovoAppThreadBrowserWorkspace({ threadId })
+			const result = await getThreadSessionWorkspaceImpl({ threadId })
 			if (!result) {
 				return null
 			}
@@ -90,7 +228,7 @@ function createDefaultWorkspaceBindings() {
 			}
 		},
 		async getThreadWorkspaceScreenshot(threadId) {
-			return getRovoAppThreadBrowserWorkspaceScreenshot({ threadId })
+			return getThreadSessionWorkspaceScreenshotImpl({ threadId })
 		},
 	}
 }
@@ -342,7 +480,9 @@ function createThreadBrowserBridge({
 }
 
 module.exports = {
+	createDefaultWorkspaceBindings,
 	createThreadBrowserBridge,
+	deleteLiveCanaryThreadWorkspace,
 	getBaseBrowserToolName,
 	isBrowserToolCall,
 	isScreenshotToolCall,
