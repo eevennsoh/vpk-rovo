@@ -84,11 +84,10 @@ async function ensureLiveCanaryThreadWorkspace(threadId, defaultUrl, {
 		return existingWorkspace
 	}
 
-	const state = await browserWorkspaceManagerImpl.createWorkspace({
-		...(typeof defaultUrl === "string" && defaultUrl.trim()
-			? { defaultUrl: defaultUrl.trim() }
-			: {}),
-	})
+	// In live-canary mode the actual browser action should drive navigation.
+	// Passing defaultUrl here would mutate the shared live session before the
+	// corresponding Chrome DevTools tool executes.
+	const state = await browserWorkspaceManagerImpl.createWorkspace()
 	liveCanaryThreadWorkspaceIds.set(resolvedThreadId, state.workspaceId)
 
 	return {

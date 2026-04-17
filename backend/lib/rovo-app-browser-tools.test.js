@@ -289,7 +289,7 @@ test("default workspace bindings route live-canary previews through browserWorks
 			return {
 				provider: "chrome-devtools",
 				title: "Loading",
-				url: options.defaultUrl ?? "about:blank",
+				url: "about:blank",
 				workspaceId: "workspace-canary",
 			}
 		},
@@ -346,7 +346,7 @@ test("default workspace bindings route live-canary previews through browserWorks
 			state: {
 				provider: "chrome-devtools",
 				title: "Loading",
-				url: "https://example.com/docs",
+				url: "about:blank",
 				workspaceId: "workspace-canary",
 			},
 			streamConfig: {
@@ -369,7 +369,7 @@ test("default workspace bindings route live-canary previews through browserWorks
 			workspaceId: "workspace-canary",
 		})
 		assert.deepEqual(calls, [
-			["createWorkspace", "https://example.com/docs"],
+			["createWorkspace", null],
 			["getWorkspaceStream", "workspace-canary"],
 			["getWorkspaceState", "workspace-canary"],
 			["getWorkspaceStream", "workspace-canary"],
