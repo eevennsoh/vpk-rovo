@@ -4,7 +4,8 @@ import { WebsiteHeader } from "@/components/website/website-header";
 import { WebsiteGrid } from "@/components/website/website-grid";
 import { WebsiteCard } from "@/components/website/website-card";
 import { WebsitePreview } from "@/components/website/website-preview";
-import { CategoryTabs, type WebsiteCategoryTab } from "@/components/website/category-tabs";
+import { CategoryTabs } from "@/components/website/category-tabs";
+import { CATEGORY_TAB_OPTIONS, type WebsiteCategoryTab } from "@/app/data/category-tabs";
 import {
 	AUDIO_COMPONENTS,
 	AI_COMPONENTS,
@@ -46,7 +47,7 @@ export function HomeContent({ category, lastUpdatedAt, projectComponents }: Read
 				<WebsiteHeader
 					packageName="@vpk"
 					lastUpdatedAt={lastUpdatedAt}
-					leftContent={<CategoryTabs activeCategory={category} />}
+					leftContent={<CategoryTabs activeCategory={category} options={CATEGORY_TAB_OPTIONS} />}
 				/>
 
 				<main>
