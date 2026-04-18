@@ -14,8 +14,12 @@ const DEFAULT_DISPLACEMENT_SCALE = -133;
 const DEFAULT_BLUR = 4.15;
 const DEFAULT_BORDER_OPACITY = 0.7;
 const DEFAULT_BORDER_ANGLE = 315;
-const INNER_MAP_INSET_RATIO = 0.025;
-const INNER_MAP_BLUR_RATIO = 10 / DEFAULT_WIDTH;
+const DEFAULT_LIGHTNESS = 88;
+const DEFAULT_ALPHA = 0.9;
+const DEFAULT_DISPERSION = 0;
+const DEFAULT_MAP_BLUR = 5;
+const DEFAULT_MAP_INSET = 0.05;
+const DEFAULT_BORDER_COLOR = "#171717";
 
 function clamp(value: number, min: number, max: number): number {
 	return Math.min(Math.max(value, min), max);
@@ -33,16 +37,25 @@ function buildColorMix(color: string, opacity: number): string {
 	return `color-mix(in srgb, ${color} ${round(safeOpacity * 100, 1)}%, transparent)`;
 }
 
-function createMapDataUrl(width: number, height: number, radius: number): string {
+function createMapDataUrl(
+	width: number,
+	height: number,
+	radius: number,
+	lightness: number,
+	alpha: number,
+	mapBlur: number,
+	mapInset: number,
+): string {
 	const safeWidth = Math.max(1, round(width));
 	const safeHeight = Math.max(1, round(height));
 	const safeRadius = round(clamp(radius, 0, Math.min(safeWidth, safeHeight) / 2));
-	const inset = round(Math.min(safeWidth, safeHeight) * INNER_MAP_INSET_RATIO);
-	const innerWidth = Math.max(1, round(safeWidth - inset * 2));
-	const innerHeight = Math.max(1, round(safeHeight - inset * 2));
-	const innerBlur = round(Math.min(safeWidth, safeHeight) * INNER_MAP_BLUR_RATIO);
+	const halfW = round(safeWidth / 2);
+	const halfH = round(safeHeight / 2);
+	const inset = round(Math.min(halfW, halfH) * mapInset * 0.5);
+	const innerWidth = Math.max(1, round(halfW - inset * 2));
+	const innerHeight = Math.max(1, round(halfH - inset * 2));
 	const svg = `
-<svg viewBox="0 0 ${safeWidth} ${safeHeight}" xmlns="http://www.w3.org/2000/svg">
+<svg viewBox="0 0 ${halfW} ${halfH}" xmlns="http://www.w3.org/2000/svg">
 	<defs>
 		<linearGradient id="red" x1="100%" y1="0%" x2="0%" y2="0%">
 			<stop offset="0%" stop-color="#0000" />
@@ -53,10 +66,10 @@ function createMapDataUrl(width: number, height: number, radius: number): string
 			<stop offset="100%" stop-color="blue" />
 		</linearGradient>
 	</defs>
-	<rect x="0" y="0" width="${safeWidth}" height="${safeHeight}" fill="black" />
-	<rect x="0" y="0" width="${safeWidth}" height="${safeHeight}" rx="${safeRadius}" fill="url(#red)" />
-	<rect x="0" y="0" width="${safeWidth}" height="${safeHeight}" rx="${safeRadius}" fill="url(#blue)" style="mix-blend-mode:difference" />
-	<rect x="${inset}" y="${inset}" width="${innerWidth}" height="${innerHeight}" rx="${safeRadius}" fill="hsl(0 0% 88% / 0.9)" style="filter:blur(${innerBlur}px)" />
+	<rect x="0" y="0" width="${halfW}" height="${halfH}" fill="black" />
+	<rect x="0" y="0" width="${halfW}" height="${halfH}" rx="${safeRadius}" fill="url(#red)" />
+	<rect x="0" y="0" width="${halfW}" height="${halfH}" rx="${safeRadius}" fill="url(#blue)" style="mix-blend-mode:difference" />
+	<rect x="${inset}" y="${inset}" width="${innerWidth}" height="${innerHeight}" rx="${safeRadius}" fill="hsl(0 0% ${clamp(lightness, 0, 100)}% / ${clamp(alpha, 0, 1)})" style="filter:blur(${Math.max(0, mapBlur)}px)" />
 </svg>`.trim();
 
 	return `data:image/svg+xml,${encodeURIComponent(svg)}`;
@@ -84,6 +97,12 @@ export interface LiquidGlassProps extends Omit<ComponentPropsWithoutRef<"div">, 
 	blur?: number;
 	borderOpacity?: number;
 	borderAngle?: number;
+	borderColor?: string;
+	lightness?: number;
+	alpha?: number;
+	dispersion?: number;
+	mapBlur?: number;
+	mapInset?: number;
 }
 
 export default function LiquidGlass({
@@ -96,6 +115,12 @@ export default function LiquidGlass({
 	blur = DEFAULT_BLUR,
 	borderOpacity = DEFAULT_BORDER_OPACITY,
 	borderAngle = DEFAULT_BORDER_ANGLE,
+	borderColor = DEFAULT_BORDER_COLOR,
+	lightness = DEFAULT_LIGHTNESS,
+	alpha = DEFAULT_ALPHA,
+	dispersion = DEFAULT_DISPERSION,
+	mapBlur = DEFAULT_MAP_BLUR,
+	mapInset = DEFAULT_MAP_INSET,
 	style,
 	role,
 	"aria-hidden": ariaHidden,
@@ -152,11 +177,11 @@ export default function LiquidGlass({
 
 	const clampedRadius = clamp(radius, 0, Math.min(size.width, size.height) / 2);
 	const mapDataUrl = useMemo(
-		() => createMapDataUrl(size.width, size.height, clampedRadius),
-		[size.width, size.height, clampedRadius],
+		() => createMapDataUrl(size.width, size.height, clampedRadius, lightness, alpha, mapBlur, mapInset),
+		[size.width, size.height, clampedRadius, lightness, alpha, mapBlur, mapInset],
 	);
 	const fill = buildColorMix(fillColor, fillOpacity);
-	const borderColor = buildColorMix("rgb(23 23 23)", borderOpacity);
+	const borderFill = buildColorMix(borderColor, borderOpacity);
 	const borderStyle: CSSProperties = {
 		position: "absolute",
 		inset: 0,
@@ -165,7 +190,7 @@ export default function LiquidGlass({
 		padding: 1,
 		borderRadius: clampedRadius,
 		border: "1px solid transparent",
-		background: `linear-gradient(${borderAngle}deg, ${borderColor} 0%, transparent 30%, transparent 70%, ${borderColor} 100%) border-box`,
+		background: `linear-gradient(${borderAngle}deg, ${borderFill} 0%, transparent 30%, transparent 70%, ${borderFill} 100%) border-box`,
 		WebkitMask: "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
 		mask: "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
 		WebkitMaskComposite: "xor",
@@ -214,11 +239,11 @@ export default function LiquidGlass({
 				<defs>
 					<filter id={filterId} colorInterpolationFilters="sRGB">
 						<feImage href={mapDataUrl} x="0" y="0" width="100%" height="100%" result="map" />
-						<feDisplacementMap in="SourceGraphic" in2="map" scale={displacementScale} xChannelSelector="R" yChannelSelector="B" result="dispRed" />
+						<feDisplacementMap in="SourceGraphic" in2="map" scale={displacementScale + dispersion} xChannelSelector="R" yChannelSelector="B" result="dispRed" />
 						<feColorMatrix in="dispRed" type="matrix" values="1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0" result="red" />
-						<feDisplacementMap in="SourceGraphic" in2="map" scale={displacementScale} xChannelSelector="R" yChannelSelector="B" result="dispGreen" />
+						<feDisplacementMap in="SourceGraphic" in2="map" scale={displacementScale + dispersion} xChannelSelector="R" yChannelSelector="B" result="dispGreen" />
 						<feColorMatrix in="dispGreen" type="matrix" values="0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 1 0" result="green" />
-						<feDisplacementMap in="SourceGraphic" in2="map" scale={displacementScale} xChannelSelector="R" yChannelSelector="B" result="dispBlue" />
+						<feDisplacementMap in="SourceGraphic" in2="map" scale={displacementScale + dispersion} xChannelSelector="R" yChannelSelector="B" result="dispBlue" />
 						<feColorMatrix in="dispBlue" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 1 0" result="blue" />
 						<feBlend in="red" in2="green" mode="screen" result="rg" />
 						<feBlend in="rg" in2="blue" mode="screen" result="output" />
