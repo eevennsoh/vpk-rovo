@@ -30,8 +30,8 @@ export function WebsiteCard({ name, href, children, className, fullWidth }: Read
 			{name}
 		</Link>
 	) : (
-		<span className="text-xs text-text-subtlest">
-			<em>{name}</em>
+		<span className="text-sm text-text-subtle">
+			{name}
 		</span>
 	);
 

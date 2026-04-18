@@ -37,6 +37,37 @@ export const VISUAL_DETAILS: Record<string, ComponentDetail> = {
 	"fluted-glass": {
 		description: "Fluted glass refraction with bars, waves, zigzag, or seigaiha shapes, chromatic dispersion, blur, and frost.",
 	},
+	"liquid-glass": {
+		description: "A Framer-style liquid glass shell built with an SVG displacement filter, translucent fill, and masked diagonal border sheen. Sized externally and tuned for tall editorial pills by default.",
+		importStatement: `import LiquidGlass from "@/components/website/demos/visual/shaders/liquid-glass";`,
+		usage: `<div className="relative h-[607px] w-[188px]">
+	<LiquidGlass className="size-full" />
+</div>
+
+<div className="relative h-80 w-56">
+	<LiquidGlass
+		className="size-full"
+		fillOpacity={0.14}
+		displacementScale={-150}
+		blur={5.2}
+	>
+		<div className="flex h-full items-end p-5 text-sm text-text">
+			Content stays crisp above the distortion layer.
+		</div>
+	</LiquidGlass>
+</div>`,
+		props: [
+			{ name: "className", type: "string", description: "Applies external sizing and layout classes. Size the component from the outside in v1." },
+			{ name: "children", type: "React.ReactNode", description: "Optional foreground content rendered above the glass layer." },
+			{ name: "radius", type: "number", default: "81", description: "Corner radius in pixels. The SVG map is regenerated to match the rendered box." },
+			{ name: "fillColor", type: "string", default: "\"#ffffff\"", description: "Base tint color mixed into the translucent glass surface." },
+			{ name: "fillOpacity", type: "number", default: "0.1", description: "Opacity of the glass fill, expressed from 0 to 1." },
+			{ name: "displacementScale", type: "number", default: "-133", description: "Strength of the liquid displacement map applied through the SVG filter." },
+			{ name: "blur", type: "number", default: "4.15", description: "Final blur radius applied to the refracted RGB channels." },
+			{ name: "borderOpacity", type: "number", default: "0.7", description: "Opacity of the diagonal masked border highlight." },
+			{ name: "borderAngle", type: "number", default: "315", description: "Angle, in degrees, for the diagonal border sheen gradient." },
+		],
+	},
 	"holo": {
 		description: "Iridescent holographic gradient with seeded turbulence, spectral band cycling, exposure shaping, and optional highlight tuning.",
 	},

@@ -12,6 +12,7 @@ const CATEGORY_DISPLAY_NAMES: Record<string, string> = {
 	"ui-ai": "UI-AI",
 	blocks: "Blocks",
 	projects: "Projects",
+	arts: "Arts",
 	utility: "Utility",
 	visual: "Visual",
 };

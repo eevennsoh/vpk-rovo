@@ -462,6 +462,8 @@ export const PROJECT_COMPONENTS: ComponentManifestEntry[] = sortEntriesByName([
 	projectComponent("sidebar-chat", "Sidebar Chat"),
 ]);
 
+export const ART_COMPONENTS: ComponentManifestEntry[] = sortEntriesByName([]);
+
 export const UTILITY_COMPONENTS: ComponentManifestEntry[] = sortEntriesByName([
 	{
 		name: "Agent Browser",
@@ -512,6 +514,7 @@ export const VISUAL_COMPONENTS: ComponentManifestEntry[] = sortEntriesByName([
 		"Fluted Glass",
 		"@/components/website/demos/visual/shaders/fluted-glass",
 	),
+	visualComponent("liquid-glass", "Liquid Glass", "@/components/website/demos/visual/shaders/liquid-glass"),
 	visualComponent("holo", "Holo", "@/components/website/demos/visual/shaders/holo"),
 	visualComponent("mesh", "Mesh SVG", "@/components/website/demos/visual/shaders/mesh"),
 	visualComponent("mesh-02", "Mesh", "@/components/website/demos/visual/shaders/mesh2"),
@@ -528,6 +531,7 @@ const ALL_COMPONENTS = [
 	...UI_COMPONENTS,
 	...BLOCK_COMPONENTS,
 	...PROJECT_COMPONENTS,
+	...ART_COMPONENTS,
 	...UTILITY_COMPONENTS,
 	...VISUAL_COMPONENTS,
 ];

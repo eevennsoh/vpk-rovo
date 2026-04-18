@@ -2,12 +2,13 @@
 
 import { useRouter } from "next/navigation";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AUDIO_COMPONENTS, AI_COMPONENTS, UI_COMPONENTS, BLOCK_COMPONENTS, PROJECT_COMPONENTS, UTILITY_COMPONENTS, VISUAL_COMPONENTS } from "@/app/data/component-manifest";
+import { ART_COMPONENTS, AUDIO_COMPONENTS, AI_COMPONENTS, UI_COMPONENTS, BLOCK_COMPONENTS, PROJECT_COMPONENTS, UTILITY_COMPONENTS, VISUAL_COMPONENTS } from "@/app/data/component-manifest";
 
-export type WebsiteCategoryTab = "ui" | "ui-audio" | "ui-ai" | "blocks" | "projects" | "utility" | "visual";
+export type WebsiteCategoryTab = "ui" | "ui-audio" | "ui-ai" | "blocks" | "projects" | "arts" | "utility" | "visual";
 
 const CATEGORY_OPTIONS: ReadonlyArray<{ key: WebsiteCategoryTab; title: string; count: number }> = [
 	{ key: "projects", title: "Projects", count: PROJECT_COMPONENTS.length },
+	{ key: "arts", title: "Arts", count: ART_COMPONENTS.length },
 	{ key: "ui", title: "UI", count: UI_COMPONENTS.length },
 	{ key: "ui-audio", title: "UI — Audio", count: AUDIO_COMPONENTS.length },
 	{ key: "ui-ai", title: "UI — AI", count: AI_COMPONENTS.length },
