@@ -365,6 +365,7 @@ export function WebsiteSidebarNav({
 
 					{/* Collapsible sections */}
 					{filteredSections.map((section) => {
+						const hasItems = section.items.length > 0;
 						const sectionOpen = isFiltering || isSectionOpen(section.title);
 						return (
 							<div key={section.title}>
@@ -382,7 +383,7 @@ export function WebsiteSidebarNav({
 											{section.title}
 										</div>
 									)}
-									{!isFiltering && (
+									{!isFiltering && hasItems && (
 										<button
 											onClick={() => toggleSection(section.title)}
 											aria-label={sectionOpen ? `Collapse ${section.title}` : `Expand ${section.title}`}
@@ -399,7 +400,7 @@ export function WebsiteSidebarNav({
 									)}
 								</div>
 
-								{sectionOpen && (
+								{sectionOpen && hasItems && (
 									<ul className="m-0 flex list-none flex-col gap-1 p-0">
 										{section.items.map((item) =>
 											item.children?.length ? (

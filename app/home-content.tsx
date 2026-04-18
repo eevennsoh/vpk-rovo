@@ -15,6 +15,9 @@ import {
 } from "./data/component-manifest";
 import { WEBSITE_STATIC_PAGES, WEBSITE_NAV_SECTIONS } from "./data/website-sidebar-nav";
 import {
+	HomeArtsSection,
+} from "@/app/home-arts-section";
+import {
 	HomeProjectsSection,
 	type ProjectListEntry,
 } from "@/app/home-projects-section";
@@ -122,6 +125,10 @@ export function HomeContent({ category, lastUpdatedAt, projectComponents }: Read
 
 					{category === "projects" && (
 						<HomeProjectsSection projectComponents={projectComponents} />
+					)}
+
+					{category === "arts" && (
+						<HomeArtsSection />
 					)}
 
 					{category === "utility" && (

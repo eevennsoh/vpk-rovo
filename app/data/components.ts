@@ -353,6 +353,7 @@ export const VISUAL_COMPONENTS: ComponentEntry[] = sortEntriesByName([
 	visualComponent("pixels", "Pixels", "@/components/website/demos/visual/shaders/pixels"),
 	visualComponent("truchet", "Truchet", "@/components/website/demos/visual/shaders/truchet"),
 	visualComponent("fluted-glass", "Fluted Glass", "@/components/website/demos/visual/shaders/fluted-glass"),
+	visualComponent("liquid-glass", "Liquid Glass", "@/components/website/demos/visual/shaders/liquid-glass"),
 	visualComponent("holo", "Holo", "@/components/website/demos/visual/shaders/holo"),
 	visualComponent("mesh", "Mesh SVG", "@/components/website/demos/visual/shaders/mesh"),
 	visualComponent("mesh-02", "Mesh", "@/components/website/demos/visual/shaders/mesh2"),

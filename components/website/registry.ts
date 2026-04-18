@@ -7600,6 +7600,9 @@ const VISUAL_DEMOS: Record<string, ComponentType> = {
     () => import("./demos/visual/fluted-glass-demo"),
     { ssr: false },
   ),
+  "liquid-glass": dynamic(() => import("./demos/visual/liquid-glass-demo"), {
+    ssr: false,
+  }),
   holo: dynamic(() => import("./demos/visual/holo-demo"), { ssr: false }),
   mesh: dynamic(() => import("./demos/visual/mesh-demo"), { ssr: false }),
   "mesh-02": dynamic(() => import("./demos/visual/mesh-02-demo"), {
