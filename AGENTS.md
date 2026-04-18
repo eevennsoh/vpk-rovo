@@ -139,6 +139,15 @@ In VPK feature code, use ADS semantic naming (`bg-surface-raised`, `text-text-su
 - Start with tmux (8 panes): `pnpm run rovodev:tmux:start`
 - Stop tmux dev session: `pnpm run rovodev:tmux:stop`
 
+### Build and deploy
+
+Use these commands when you need to verify the app build locally or prepare the
+static export used by deployment.
+
+- Verify the Next.js build locally: `pnpm run build`
+- Build the static export used in production deployment: `NEXT_OUTPUT=export pnpm run build`
+- Fast redeploy to Micros after `.deploy.local` exists: `pnpm run deploy:micros`
+
 ### Testing
 
 - Backend: `node --test backend/lib/*.test.js` (no package.json script — run directly)
