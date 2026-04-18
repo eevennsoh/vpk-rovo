@@ -158,19 +158,19 @@ Mark promoted entries with `[Promoted]` prefix — see vpk-lesson skill for deta
   major subsystem, use that stack. Do not substitute a familiar or already
   installed alternative unless the user approves the change in direction.
 
-### 2026-04-18 - Do not auto-reenable the legacy live Canary browser path
+### 2026-04-18 - Do not auto-reenable the legacy alternate browser path
 
-- **What happened:** The browser runtime started opening the old Google
-  Chrome Canary preview path again when Canary happened to be installed or a
-  Canary executable path was present, even though the product had already
-  moved back to the isolated browser workspace by default.
-- **Why:** Runtime defaulting logic inferred `ROVO_BROWSER_MODE=live-canary`
-  from local machine state instead of requiring an explicit opt-in, which let
-  environment hints silently override the intended default browser behavior.
-- **Rule:** Keep the browser runtime in isolated mode unless
-  `ROVO_BROWSER_MODE` is explicitly set to `live-canary`. Do not infer the
-  live Chrome DevTools path from detected Canary installs or executable-path
-  hints.
+- **What happened:** The browser runtime started reopening the old alternate
+  preview path when a matching local browser install or executable-path hint
+  was present, even though the product had already moved back to the isolated
+  browser workspace by default.
+- **Why:** Runtime defaulting logic inferred deprecated alternate browser
+  behavior from local machine state instead of requiring an explicit opt-in,
+  which let environment hints silently override the intended default browser
+  behavior.
+- **Rule:** Keep the browser runtime in isolated mode unless the product
+  explicitly enables an alternate browser path. Do not infer alternate browser
+  behavior from detected local installs or executable-path hints.
 
 ### 2026-04-18 - Keep the Rovo inline browser preview view-only
 

@@ -20,12 +20,7 @@ import { useBrowserPreviewSession } from "@/components/website/demos/utils/hooks
 interface RovoAppBrowserArtifactProps {
 	url: string;
 	title: string;
-	status:
-		| "launching-canary"
-		| "awaiting-auth"
-		| "navigating"
-		| "ready"
-		| "error";
+	status: "navigating" | "ready" | "error";
 	screenshot?: RovoDataParts["browser-screenshot"] | null;
 	streamConfig?: RovoDataParts["browser-state"]["streamConfig"] | null;
 	workspaceId?: string | null;
@@ -52,9 +47,7 @@ function renderPreviewState({
 	displayUrl,
 	fallbackScreenshotSrc,
 	hasLiveStream,
-	isAwaitingAuth,
 	isError,
-	isLaunchingCanary,
 	isLoading,
 	liveCanvasRef,
 	renderedMediaStyle,
@@ -63,9 +56,7 @@ function renderPreviewState({
 	displayUrl: string;
 	fallbackScreenshotSrc: string | null;
 	hasLiveStream: boolean;
-	isAwaitingAuth: boolean;
 	isError: boolean;
-	isLaunchingCanary: boolean;
 	isLoading: boolean;
 	liveCanvasRef: RefObject<HTMLCanvasElement | null>;
 	renderedMediaStyle: {
@@ -112,34 +103,6 @@ function renderPreviewState({
 		);
 	}
 
-	if (isLaunchingCanary) {
-		return (
-			<div className="flex flex-col items-center gap-3 px-4 text-center">
-				<Loader2Icon className="size-8 animate-spin text-text-subtlest" />
-				<p className="text-sm text-text-subtle">
-					Connecting browser preview...
-				</p>
-				<p className="text-xs text-text-subtlest">
-					The in-app preview will sync once the live browser session is ready.
-				</p>
-			</div>
-		);
-	}
-
-	if (isAwaitingAuth) {
-		return (
-			<div className="flex flex-col items-center gap-3 px-4 text-center">
-				<GlobeIcon className="size-8 text-text-subtlest" />
-				<p className="text-sm text-text-subtle">
-					Live browser session is ready
-				</p>
-				<p className="text-xs text-text-subtlest">
-					Sign in there once, then retry the browsing step to reuse that session here.
-				</p>
-			</div>
-		);
-	}
-
 	if (isLoading) {
 		return (
 			<div className="flex flex-col items-center gap-3 text-center">
@@ -173,9 +136,7 @@ export function RovoAppBrowserArtifact({
 	workspaceId,
 	onClose,
 }: Readonly<RovoAppBrowserArtifactProps>) {
-	const isLaunchingCanary = status === "launching-canary";
-	const isAwaitingAuth = status === "awaiting-auth";
-	const isLoading = status === "navigating" || isLaunchingCanary;
+	const isLoading = status === "navigating";
 	const isError = status === "error";
 	const displayUrl = url || "about:blank";
 
@@ -326,9 +287,7 @@ export function RovoAppBrowserArtifact({
 					displayUrl,
 					fallbackScreenshotSrc,
 					hasLiveStream,
-					isAwaitingAuth,
 					isError,
-					isLaunchingCanary,
 					isLoading,
 					liveCanvasRef,
 					renderedMediaStyle,

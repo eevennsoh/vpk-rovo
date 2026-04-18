@@ -1,18 +1,12 @@
 const fs = require("node:fs/promises")
 const fsSync = require("node:fs")
 const os = require("node:os")
-const net = require("node:net")
 const path = require("node:path")
-const { execFile, spawn } = require("node:child_process")
-const { once } = require("node:events")
+const { execFile } = require("node:child_process")
 const { promisify } = require("node:util")
 const WebSocket = require("ws")
 const {
 	DEFAULT_BROWSER_MODE,
-	LIVE_CANARY_BROWSER_MODE,
-	getConfiguredBrowserMode,
-	getConfiguredCanaryExecutablePath,
-	getConfiguredLiveCanaryCdpPort,
 } = require("./browser-runtime-config")
 
 const execFileAsync = promisify(execFile)
@@ -48,16 +42,12 @@ const DEFAULT_SCREENCAST_MAX_HEIGHT = 1200
 const SCREENCAST_INTERVAL_MS = 200
 const OPEN_TIMEOUT_RECOVERY_ATTEMPTS = 5
 const OPEN_TIMEOUT_RECOVERY_DELAY_MS = 500
-const LIVE_CANARY_LAUNCH_TIMEOUT_MS = 15_000
-const LIVE_CANARY_CONNECT_TIMEOUT_MS = 500
-const LIVE_CANARY_CONNECT_RETRY_INTERVAL_MS = 250
 const DEFAULT_AGENT_BROWSER_EXECUTABLE_CANDIDATE_PATHS = [
 	"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
 	"/Applications/Chromium.app/Contents/MacOS/Chromium",
 ]
 
 let installPromise = null
-let liveCanaryEnsurePromise = null
 
 function delay(milliseconds) {
 	return new Promise((resolve) => {
@@ -388,91 +378,29 @@ async function ensureAgentBrowserInstalled({
 	return installPromise
 }
 
-function isAboutBlankUrl(value) {
-	return typeof value !== "string" || !value.trim() || value.trim() === "about:blank"
-}
-
-function isPassiveInitialAttach({ browserMode, initialUrl }) {
-	return (
-		browserMode === LIVE_CANARY_BROWSER_MODE &&
-		isAboutBlankUrl(initialUrl)
-	)
-}
-
-async function canConnectToCdpPort(port, {
-	host = "127.0.0.1",
-	timeoutMs = LIVE_CANARY_CONNECT_TIMEOUT_MS,
-} = {}) {
-	return new Promise((resolve) => {
-		const socket = net.createConnection({
-			host,
-			port,
-		})
-
-		const finalize = (result) => {
-			socket.destroy()
-			resolve(result)
-		}
-
-		socket.setTimeout(timeoutMs)
-		socket.once("connect", () => finalize(true))
-		socket.once("timeout", () => finalize(false))
-		socket.once("error", () => finalize(false))
-	})
-}
-
-async function waitForCdpPort(port, {
-	timeoutMs = LIVE_CANARY_LAUNCH_TIMEOUT_MS,
-} = {}) {
-	const startedAt = Date.now()
-	while (Date.now() - startedAt < timeoutMs) {
-		if (await canConnectToCdpPort(port)) {
-			return true
-		}
-
-		await delay(LIVE_CANARY_CONNECT_RETRY_INTERVAL_MS)
-	}
-
-	return false
-}
-
 class AgentBrowserRuntime {
 	constructor({
 		sessionId,
 		viewport = DEFAULT_VIEWPORT,
 		deviceScaleFactor = DEFAULT_DEVICE_SCALE_FACTOR,
-		browserMode = getConfiguredBrowserMode(),
 		agentBrowserExecutablePath = resolveAgentBrowserExecutablePath(),
-		cdpPort = getConfiguredLiveCanaryCdpPort(),
-		canaryExecutablePath = getConfiguredCanaryExecutablePath(),
-		spawnProcess = spawn,
 	} = {}) {
 		const sessionToken = sanitizeSessionToken(sessionId)
 
 		this._sessionId = sessionId
 		this._sessionName = `browser-workspace-${sessionToken}`
-		this._browserMode =
-			browserMode === LIVE_CANARY_BROWSER_MODE
-				? LIVE_CANARY_BROWSER_MODE
-				: DEFAULT_BROWSER_MODE
+		this._browserMode = DEFAULT_BROWSER_MODE
 		this._agentBrowserExecutablePath = agentBrowserExecutablePath
 		this._agentBrowserEnv = buildAgentBrowserEnv({
 			agentBrowserExecutablePath,
 		})
-		this._cdpPort = cdpPort
-		this._canaryExecutablePath = canaryExecutablePath
-		this._spawnProcess = spawnProcess
-		this._provider =
-			this._browserMode === LIVE_CANARY_BROWSER_MODE
-				? "chrome-devtools"
-				: "browser-workspace"
+		this._provider = "browser-workspace"
 		this._viewport = {
 			width: viewport.width,
 			height: viewport.height,
 		}
 		this._deviceScaleFactor = clampDeviceScaleFactor(deviceScaleFactor)
 		this._isBrowserReady = false
-		this._canaryWasLaunched = false
 		this._nativeStreamConnectPromise = null
 		this._nativeStreamSocket = null
 		this._screencastInterval = null
@@ -485,9 +413,6 @@ class AgentBrowserRuntime {
 	getBrowserStateMetadata() {
 		return {
 			provider: this._provider,
-			canaryWasLaunched:
-				this._browserMode === LIVE_CANARY_BROWSER_MODE &&
-				this._canaryWasLaunched === true,
 		}
 	}
 
@@ -510,10 +435,7 @@ class AgentBrowserRuntime {
 		if (json) {
 			commandArgs.push("--json")
 		}
-		if (this._browserMode === LIVE_CANARY_BROWSER_MODE) {
-			await this._ensureLiveCanaryReady()
-			commandArgs.push("--cdp", String(this._cdpPort))
-		} else if (includeSession) {
+		if (includeSession) {
 			commandArgs.push("--session", this._sessionName)
 		}
 		commandArgs.push(...args.map((value) => String(value)))
@@ -569,93 +491,6 @@ class AgentBrowserRuntime {
 		await ensureAgentBrowserInstalled({
 			env: this._agentBrowserEnv,
 		})
-	}
-
-	async _canConnectToLiveCanary() {
-		return canConnectToCdpPort(this._cdpPort)
-	}
-
-	async _launchLiveCanaryProcess() {
-		const executablePath = this._canaryExecutablePath
-		if (typeof executablePath !== "string" || !executablePath.trim()) {
-			throw new Error("Live browser executable path is not configured.")
-		}
-
-		let launchedChild = null
-		try {
-			launchedChild = this._spawnProcess(
-				executablePath,
-				[
-					`--remote-debugging-port=${this._cdpPort}`,
-					"--no-first-run",
-					"--no-default-browser-check",
-					"about:blank",
-				],
-				{
-					detached: true,
-					stdio: "ignore",
-				},
-			)
-		} catch (error) {
-			throw new Error(
-				error instanceof Error && error.message
-					? error.message
-					: "Failed to launch the live browser session.",
-			)
-		}
-
-		await Promise.race([
-			once(launchedChild, "spawn"),
-			once(launchedChild, "error").then(([error]) => {
-				throw new Error(
-					error instanceof Error && error.message
-						? error.message
-						: "Failed to launch the live browser session.",
-				)
-			}),
-		])
-		launchedChild.unref()
-	}
-
-	async _waitForLiveCanary() {
-		const didConnect = await waitForCdpPort(this._cdpPort)
-		if (!didConnect) {
-			throw new Error(
-				`Timed out waiting for the live browser session on port ${this._cdpPort}.`,
-			)
-		}
-	}
-
-	async _ensureLiveCanaryReady() {
-		if (await this._canConnectToLiveCanary()) {
-			return {
-				launched: false,
-			}
-		}
-
-		if (!liveCanaryEnsurePromise) {
-			liveCanaryEnsurePromise = (async () => {
-				if (await this._canConnectToLiveCanary()) {
-					return {
-						launched: false,
-					}
-				}
-
-				await this._launchLiveCanaryProcess()
-				await this._waitForLiveCanary()
-				return {
-					launched: true,
-				}
-			})().finally(() => {
-				liveCanaryEnsurePromise = null
-			})
-		}
-
-		const result = await liveCanaryEnsurePromise
-		if (result?.launched) {
-			this._canaryWasLaunched = true
-		}
-		return result
 	}
 
 	async _readStateFromActiveSession() {
@@ -731,14 +566,7 @@ class AgentBrowserRuntime {
 		}
 
 		await this._ensureInstalled()
-		if (isPassiveInitialAttach({
-			browserMode: this._browserMode,
-			initialUrl,
-		})) {
-			await this._ensureLiveCanaryReady()
-		} else {
-			await this._openUrl(initialUrl)
-		}
+		await this._openUrl(initialUrl)
 		this._isBrowserReady = true
 	}
 
@@ -1141,9 +969,6 @@ class AgentBrowserRuntime {
 		}
 
 		this._isBrowserReady = false
-		if (this._browserMode === LIVE_CANARY_BROWSER_MODE) {
-			return
-		}
 		await this._runCommand(["close"]).catch(() => {})
 	}
 }
@@ -1157,8 +982,6 @@ module.exports = {
 	DEFAULT_SCREENCAST_QUALITY,
 	DEFAULT_SCREENCAST_MAX_WIDTH,
 	DEFAULT_SCREENCAST_MAX_HEIGHT,
-	LIVE_CANARY_BROWSER_MODE,
-	canConnectToCdpPort,
 	ensureAgentBrowserDirectories,
 	ensureAgentBrowserInstalled,
 	resolveAgentBrowserExecutablePath,

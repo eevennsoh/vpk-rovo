@@ -389,7 +389,6 @@ class BrowserWorkspace {
 				typeof runtimeMetadata?.provider === "string"
 					? runtimeMetadata.provider
 					: "browser-workspace",
-			canaryWasLaunched: runtimeMetadata?.canaryWasLaunched === true,
 			updatedAt: this._updatedAt,
 		}
 	}

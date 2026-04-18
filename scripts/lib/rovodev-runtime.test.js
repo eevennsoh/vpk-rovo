@@ -62,7 +62,7 @@ test("resolveRovodevConfigState writes and returns the workspace-scoped generate
 	}
 })
 
-test("prepareRovodevRuntime keeps isolated mode unless live-canary is explicit", () => {
+test("prepareRovodevRuntime keeps isolated mode and strips legacy browser automation wiring", () => {
 	const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "rovodev-runtime-browser-test-"))
 	const homeDir = path.join(tmpDir, "home")
 	const workspaceDir = path.join(tmpDir, "workspace")
@@ -70,7 +70,6 @@ test("prepareRovodevRuntime keeps isolated mode unless live-canary is explicit",
 	const workspaceRovodevDir = path.join(workspaceDir, ".rovodev")
 	const originalHomeDir = osModule.homedir
 	const originalBrowserMode = process.env.ROVO_BROWSER_MODE
-	const originalCanaryPath = process.env.ROVO_BROWSER_CANARY_EXECUTABLE_PATH
 	const originalBillingUrl = process.env.ROVODEV_BILLING_URL
 
 	fs.mkdirSync(globalRovodevDir, { recursive: true })
@@ -80,7 +79,6 @@ test("prepareRovodevRuntime keeps isolated mode unless live-canary is explicit",
 	const globalMcpPath = path.join(globalRovodevDir, "mcp.json")
 	const workspaceConfigPath = path.join(workspaceRovodevDir, "config.generated.yml")
 	const workspaceMcpPath = path.join(workspaceRovodevDir, "mcp.generated.json")
-	const canaryExecutablePath = path.join(tmpDir, "Google Chrome Canary")
 
 	fs.writeFileSync(globalConfigPath, [
 		"version: 1",
@@ -101,16 +99,13 @@ test("prepareRovodevRuntime keeps isolated mode unless live-canary is explicit",
 			},
 		},
 	}, null, "\t"))
-	fs.writeFileSync(canaryExecutablePath, "#!/bin/sh\n", "utf8")
 	fs.writeFileSync(path.join(workspaceDir, ".env.local"), [
 		"ROVODEV_BILLING_URL=https://example.invalid",
-		`ROVO_BROWSER_CANARY_EXECUTABLE_PATH=${canaryExecutablePath}`,
 		"",
 	].join("\n"))
 
 	osModule.homedir = () => homeDir
 	delete process.env.ROVO_BROWSER_MODE
-	delete process.env.ROVO_BROWSER_CANARY_EXECUTABLE_PATH
 	delete process.env.ROVODEV_BILLING_URL
 
 	try {
@@ -143,12 +138,6 @@ test("prepareRovodevRuntime keeps isolated mode unless live-canary is explicit",
 			delete process.env.ROVO_BROWSER_MODE
 		} else {
 			process.env.ROVO_BROWSER_MODE = originalBrowserMode
-		}
-		if (originalCanaryPath === undefined) {
-			delete process.env.ROVO_BROWSER_CANARY_EXECUTABLE_PATH
-		} else {
-			process.env.ROVO_BROWSER_CANARY_EXECUTABLE_PATH =
-				originalCanaryPath
 		}
 		if (originalBillingUrl === undefined) {
 			delete process.env.ROVODEV_BILLING_URL
