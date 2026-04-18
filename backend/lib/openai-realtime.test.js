@@ -237,6 +237,89 @@ test("text and transcript deltas forward item ids to the client", () => {
 	]);
 });
 
+test("modern realtime output delta events are normalized for the client", () => {
+	const { session, clientMessages } = createReadySession();
+
+	session._handleOpenAIMessage(Buffer.from(JSON.stringify({
+		type: "response.created",
+		response: { id: "response-2" },
+	})));
+	session._handleOpenAIMessage(Buffer.from(JSON.stringify({
+		type: "response.output_audio.delta",
+		delta: "audio-base64",
+		response_id: "response-2",
+	})));
+	session._handleOpenAIMessage(Buffer.from(JSON.stringify({
+		type: "response.output_text.delta",
+		delta: "Hello",
+		item_id: "assistant-item-2",
+		response_id: "response-2",
+	})));
+	session._handleOpenAIMessage(Buffer.from(JSON.stringify({
+		type: "response.output_audio_transcript.delta",
+		delta: " there",
+		item_id: "assistant-item-2",
+		response_id: "response-2",
+	})));
+	session._handleOpenAIMessage(Buffer.from(JSON.stringify({
+		type: "response.done",
+		response: { id: "response-2" },
+	})));
+
+	assert.deepEqual(clientMessages, [
+		{
+			type: "response_created",
+			responseId: "response-2",
+		},
+		{
+			type: "audio_delta",
+			delta: "audio-base64",
+		},
+		{
+			type: "text_delta",
+			delta: "Hello",
+			itemId: "assistant-item-2",
+			responseId: "response-2",
+		},
+		{
+			type: "audio_transcript_delta",
+			delta: " there",
+			itemId: "assistant-item-2",
+			responseId: "response-2",
+		},
+		{
+			type: "response_done",
+			responseId: "response-2",
+		},
+	]);
+});
+
+test("benign realtime item lifecycle events are ignored without unhandled logs", () => {
+	const { session, clientMessages, logEntries } = createReadySession();
+
+	session._handleOpenAIMessage(Buffer.from(JSON.stringify({
+		type: "conversation.item.created",
+		item: { id: "item-1", type: "message" },
+	})));
+	session._handleOpenAIMessage(Buffer.from(JSON.stringify({
+		type: "response.output_item.added",
+		response_id: "response-3",
+		item: { id: "item-2", type: "message" },
+	})));
+	session._handleOpenAIMessage(Buffer.from(JSON.stringify({
+		type: "response.content_part.added",
+		response_id: "response-3",
+		item_id: "item-2",
+		part: { type: "output_text" },
+	})));
+
+	assert.deepEqual(clientMessages, []);
+	assert.equal(
+		logEntries.some(({ message }) => /Unhandled OpenAI event/.test(message)),
+		false,
+	);
+});
+
 test("unknown context types log and no-op", () => {
 	const { session, openaiMessages, logEntries } = createReadySession();
 

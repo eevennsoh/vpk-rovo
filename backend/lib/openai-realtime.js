@@ -157,17 +157,30 @@ const OPENAI_EVENT = {
 	SESSION_CREATED: "session.created",
 	SESSION_UPDATED: "session.updated",
 	RESPONSE_AUDIO_DELTA: "response.audio.delta",
+	RESPONSE_OUTPUT_AUDIO_DELTA: "response.output_audio.delta",
 	RESPONSE_AUDIO_DONE: "response.audio.done",
+	RESPONSE_OUTPUT_AUDIO_DONE: "response.output_audio.done",
 	RESPONSE_CREATED: "response.created",
 	RESPONSE_TEXT_DELTA: "response.text.delta",
+	RESPONSE_OUTPUT_TEXT_DELTA: "response.output_text.delta",
 	RESPONSE_TEXT_DONE: "response.text.done",
+	RESPONSE_OUTPUT_TEXT_DONE: "response.output_text.done",
 	RESPONSE_DONE: "response.done",
 	RESPONSE_AUDIO_TRANSCRIPT_DELTA: "response.audio_transcript.delta",
+	RESPONSE_OUTPUT_AUDIO_TRANSCRIPT_DELTA: "response.output_audio_transcript.delta",
 	RESPONSE_AUDIO_TRANSCRIPT_DONE: "response.audio_transcript.done",
+	RESPONSE_OUTPUT_AUDIO_TRANSCRIPT_DONE: "response.output_audio_transcript.done",
 	CONVERSATION_ITEM_INPUT_AUDIO_TRANSCRIPTION_COMPLETED:
 		"conversation.item.input_audio_transcription.completed",
 	CONVERSATION_ITEM_INPUT_AUDIO_TRANSCRIPTION_DELTA:
 		"conversation.item.input_audio_transcription.delta",
+	CONVERSATION_ITEM_CREATED: "conversation.item.created",
+	CONVERSATION_ITEM_ADDED: "conversation.item.added",
+	CONVERSATION_ITEM_DONE: "conversation.item.done",
+	RESPONSE_OUTPUT_ITEM_ADDED: "response.output_item.added",
+	RESPONSE_OUTPUT_ITEM_DONE: "response.output_item.done",
+	RESPONSE_CONTENT_PART_ADDED: "response.content_part.added",
+	RESPONSE_CONTENT_PART_DONE: "response.content_part.done",
 	INPUT_AUDIO_BUFFER_SPEECH_STARTED: "input_audio_buffer.speech_started",
 	INPUT_AUDIO_BUFFER_SPEECH_STOPPED: "input_audio_buffer.speech_stopped",
 	ERROR: "error",
@@ -182,6 +195,39 @@ const OPENAI_EVENT = {
 	RESPONSE_CANCEL: "response.cancel",
 	RESPONSE_CREATE: "response.create",
 };
+
+const OPENAI_EVENT_ALIASES = new Map([
+	[OPENAI_EVENT.RESPONSE_OUTPUT_AUDIO_DELTA, OPENAI_EVENT.RESPONSE_AUDIO_DELTA],
+	[OPENAI_EVENT.RESPONSE_OUTPUT_AUDIO_DONE, OPENAI_EVENT.RESPONSE_AUDIO_DONE],
+	[OPENAI_EVENT.RESPONSE_OUTPUT_TEXT_DELTA, OPENAI_EVENT.RESPONSE_TEXT_DELTA],
+	[OPENAI_EVENT.RESPONSE_OUTPUT_TEXT_DONE, OPENAI_EVENT.RESPONSE_TEXT_DONE],
+	[
+		OPENAI_EVENT.RESPONSE_OUTPUT_AUDIO_TRANSCRIPT_DELTA,
+		OPENAI_EVENT.RESPONSE_AUDIO_TRANSCRIPT_DELTA,
+	],
+	[
+		OPENAI_EVENT.RESPONSE_OUTPUT_AUDIO_TRANSCRIPT_DONE,
+		OPENAI_EVENT.RESPONSE_AUDIO_TRANSCRIPT_DONE,
+	],
+]);
+
+const OPENAI_EVENT_NO_OPS = new Set([
+	OPENAI_EVENT.CONVERSATION_ITEM_CREATED,
+	OPENAI_EVENT.CONVERSATION_ITEM_ADDED,
+	OPENAI_EVENT.CONVERSATION_ITEM_DONE,
+	OPENAI_EVENT.RESPONSE_OUTPUT_ITEM_ADDED,
+	OPENAI_EVENT.RESPONSE_OUTPUT_ITEM_DONE,
+	OPENAI_EVENT.RESPONSE_CONTENT_PART_ADDED,
+	OPENAI_EVENT.RESPONSE_CONTENT_PART_DONE,
+]);
+
+function normalizeOpenAIEventType(type) {
+	if (typeof type !== "string") {
+		return "";
+	}
+
+	return OPENAI_EVENT_ALIASES.get(type) ?? type;
+}
 
 // ─── Session class ───────────────────────────────────────────────────────────
 
@@ -759,7 +805,9 @@ class RealtimeSession {
 			return;
 		}
 
-		switch (event.type) {
+		const normalizedEventType = normalizeOpenAIEventType(event.type);
+
+		switch (normalizedEventType) {
 			case OPENAI_EVENT.SESSION_CREATED:
 				this._state = SESSION_STATE.READY;
 				this._log("REALTIME", `Session created: ${event.session?.id || "unknown"}`);
@@ -906,6 +954,9 @@ class RealtimeSession {
 			}
 
 			default:
+				if (OPENAI_EVENT_NO_OPS.has(event.type)) {
+					break;
+				}
 				// Log unrecognized events for debugging but don't forward them
 				this._log("REALTIME", `Unhandled OpenAI event: ${event.type}`);
 		}
