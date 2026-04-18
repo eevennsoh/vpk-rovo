@@ -150,8 +150,16 @@ static export used by deployment.
 
 ### Testing
 
-- Backend: `node --test backend/lib/*.test.js` (no package.json script — run directly)
-- Frontend: No automated test framework — use observational validation (lint, typecheck, visual checks via `/agent-browser`, accessibility checks via `ads_analyze_a11y` / `ads_analyze_localhost_a11y`)
+- There is no single `pnpm test` script in `package.json`.
+- Repo tests are spread across `backend/`, `lib/`, `scripts/`, `app/`,
+  `components/`, and `rovo/`; run targeted `node --test` commands against the
+  relevant `.test.js` or `.test.ts` files.
+- Browser coverage lives under `tests/**/*.spec.ts` with `@playwright/test`;
+  run targeted specs with `pnpm exec playwright test <spec>` after
+  `pnpm install`.
+- For UI changes, keep the observational checks too: `pnpm run lint`, `pnpm run
+  typecheck`, visual checks via `/agent-browser`, and accessibility checks via
+  `ads_analyze_a11y` / `ads_analyze_localhost_a11y`.
 
 ### Debugging
 
