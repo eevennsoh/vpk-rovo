@@ -494,7 +494,7 @@ const questions: QuestionCardQuestion[] = [
     kind: "single-select",
     options: [
       { id: "blue-green", label: "Blue-green" },
-      { id: "canary", label: "Canary release" },
+      { id: "staged-rollout", label: "Staged rollout" },
     ],
   },
 ];

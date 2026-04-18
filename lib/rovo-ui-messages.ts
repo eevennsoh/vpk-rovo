@@ -199,15 +199,10 @@ export type RovoDataParts = {
 	};
 	"browser-state": {
 		workspaceId?: string;
-		provider?: "browser-workspace" | "chrome-devtools";
+		provider?: "browser-workspace";
 		url: string;
 		title: string;
-		status:
-			| "launching-canary"
-			| "awaiting-auth"
-			| "navigating"
-			| "ready"
-			| "error";
+		status: "navigating" | "ready" | "error";
 		streamConfig?: {
 			enabled: boolean;
 			wsUrl: string;

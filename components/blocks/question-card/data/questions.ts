@@ -88,8 +88,8 @@ export const QUESTION_CARD_SINGLE_SELECT_DEMO: ReadonlyArray<QuestionCardDemoQue
 				description: "Run two identical environments and switch traffic between them.",
 			},
 			{
-				id: "canary",
-				label: "Canary release",
+				id: "staged-rollout",
+				label: "Staged rollout",
 				description: "Gradually roll out to a small subset of users before full deployment.",
 			},
 			{

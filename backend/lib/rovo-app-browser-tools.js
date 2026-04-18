@@ -3,34 +3,9 @@ const {
 	getRovoAppThreadBrowserWorkspace,
 	getRovoAppThreadBrowserWorkspaceScreenshot,
 } = require("./rovo-app-browser-workspace")
-const {
-	getConfiguredLiveCanaryCdpPort,
-	isLiveCanaryBrowserMode,
-} = require("./browser-runtime-config")
-const {
-	canConnectToCdpPort,
-} = require("./browser-workspace-runtime")
-
-const CHROME_DEVTOOLS_BROWSER_TOOL_NAMES = new Set([
-	"click",
-	"click_at",
-	"close_page",
-	"fill",
-	"hover",
-	"list_pages",
-	"navigate_page",
-	"new_page",
-	"press_key",
-	"select_page",
-	"take_screenshot",
-	"take_snapshot",
-	"type_text",
-	"wait_for",
-])
 
 const SCREENSHOT_TOOL_NAMES = new Set([
 	"browser_take_screenshot",
-	"take_screenshot",
 ])
 
 function getTrimmedString(value) {
@@ -60,10 +35,7 @@ function isBrowserToolCall(toolName) {
 		return false
 	}
 
-	return (
-		baseName.startsWith("browser_") ||
-		CHROME_DEVTOOLS_BROWSER_TOOL_NAMES.has(baseName)
-	)
+	return baseName.startsWith("browser_")
 }
 
 function isScreenshotToolCall(toolName) {
@@ -95,20 +67,24 @@ function buildEnsureWorkspaceInput(threadId, defaultUrl) {
 	}
 }
 
-function createDefaultWorkspaceBindings() {
+function createDefaultWorkspaceBindings({
+	ensureThreadSessionWorkspaceImpl = ensureRovoAppThreadBrowserWorkspace,
+	getThreadSessionWorkspaceImpl = getRovoAppThreadBrowserWorkspace,
+	getThreadSessionWorkspaceScreenshotImpl = getRovoAppThreadBrowserWorkspaceScreenshot,
+} = {}) {
 	return {
 		async ensureThreadWorkspace(threadId, defaultUrl) {
-			const result = await ensureRovoAppThreadBrowserWorkspace(
+			const result = await ensureThreadSessionWorkspaceImpl(
 				buildEnsureWorkspaceInput(threadId, defaultUrl),
 			)
 			return toWorkspaceResult(result)
 		},
 		async getThreadWorkspace(threadId) {
-			const result = await getRovoAppThreadBrowserWorkspace({ threadId })
+			const result = await getThreadSessionWorkspaceImpl({ threadId })
 			return toWorkspaceResult(result)
 		},
 		async getThreadWorkspaceScreenshot(threadId) {
-			return getRovoAppThreadBrowserWorkspaceScreenshot({ threadId })
+			return getThreadSessionWorkspaceScreenshotImpl({ threadId })
 		},
 	}
 }
@@ -123,8 +99,7 @@ function resolveToolThreadId(toolInput, fallbackThreadId) {
 function resolveRequestedUrl(baseName, toolInput) {
 	const canUseToolUrl =
 		baseName === "browser_navigate" ||
-		baseName === "navigate_page" ||
-		baseName === "new_page"
+		baseName === "browser_tab_new"
 	if (canUseToolUrl) {
 		return getTrimmedString(toolInput?.url) ?? undefined
 	}
@@ -132,15 +107,7 @@ function resolveRequestedUrl(baseName, toolInput) {
 	return undefined
 }
 
-function resolvePendingWorkspaceStatus(requestedUrl, workspaceState) {
-	if (
-		workspaceState?.canaryWasLaunched === true &&
-		!requestedUrl &&
-		workspaceState.url === "about:blank"
-	) {
-		return "awaiting-auth"
-	}
-
+function resolvePendingWorkspaceStatus() {
 	return "navigating"
 }
 
@@ -234,17 +201,6 @@ function buildWorkspaceScreenshotData(screenshot, persistedScreenshot) {
 	}
 }
 
-async function shouldEmitLaunchingCanaryState(existingWorkspace) {
-	if (existingWorkspace || !isLiveCanaryBrowserMode()) {
-		return false
-	}
-
-	const canConnect = await canConnectToCdpPort(
-		getConfiguredLiveCanaryCdpPort(),
-	).catch(() => false)
-	return !canConnect
-}
-
 function createThreadBrowserBridge({
 	screenshotStore = null,
 	threadId,
@@ -312,19 +268,6 @@ function createThreadBrowserBridge({
 
 		try {
 			const requestedUrl = resolveRequestedUrl(baseName, toolCall.toolInput)
-			const existingWorkspace = await workspaceBindings.getThreadWorkspace(
-				resolvedThreadId,
-			)
-			if (await shouldEmitLaunchingCanaryState(existingWorkspace)) {
-				emitBrowserState({
-					state: {
-						provider: "chrome-devtools",
-					},
-					status: "launching-canary",
-					url: requestedUrl ?? "about:blank",
-					workspaceId: undefined,
-				})
-			}
 			const workspace = await workspaceBindings.ensureThreadWorkspace(
 				resolvedThreadId,
 				requestedUrl,
@@ -420,6 +363,7 @@ function createThreadBrowserBridge({
 }
 
 module.exports = {
+	createDefaultWorkspaceBindings,
 	createThreadBrowserBridge,
 	getBaseBrowserToolName,
 	isBrowserToolCall,

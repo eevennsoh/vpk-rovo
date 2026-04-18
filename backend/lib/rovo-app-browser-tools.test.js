@@ -4,7 +4,6 @@ const assert = require("node:assert/strict")
 const {
 	createDefaultWorkspaceBindings,
 	createThreadBrowserBridge,
-	deleteLiveCanaryThreadWorkspace,
 } = require("./rovo-app-browser-tools")
 
 function createWorkspaceBindings() {
@@ -190,193 +189,83 @@ test("browser bridge emits a screenshot only for explicit screenshot tool result
 	assert.match(writes[2].data.timestamp, /^\d{4}-\d{2}-\d{2}T/)
 })
 
-test("browser bridge treats chrome-devtools MCP browser actions as preview-driving browser events", async () => {
-	const writes = []
-	const bridge = createThreadBrowserBridge({
-		threadId: "thread-browser-bridge",
-		writer: {
-			write(entry) {
-				writes.push(entry)
-			},
+test("default workspace bindings use the thread session workspace helpers", async () => {
+	const bindings = createDefaultWorkspaceBindings({
+		ensureThreadSessionWorkspaceImpl: async ({ threadId, defaultUrl }) => {
+			assert.equal(threadId, "thread-browser-bridge")
+			assert.equal(defaultUrl, "https://example.com/docs")
+			return {
+				state: {
+					title: "Loading",
+					url: "https://example.com/docs",
+				},
+				streamConfig: {
+					enabled: true,
+					wsUrl: "/api/browser-workspaces/workspace-1/live",
+				},
+				workspaceId: "workspace-1",
+			}
 		},
-		workspaceBindings: {
-			async ensureThreadWorkspace(threadId, defaultUrl) {
-				assert.equal(threadId, "thread-browser-bridge")
-				assert.equal(defaultUrl, "https://example.com/docs")
-				return {
-					state: {
-						provider: "chrome-devtools",
-						title: "Loading",
-						url: "https://example.com/docs",
-					},
-					streamConfig: {
-						enabled: true,
-						wsUrl: "/api/browser-workspaces/workspace-canary/live",
-					},
-					workspaceId: "workspace-canary",
-				}
-			},
-			async getThreadWorkspace(threadId) {
-				assert.equal(threadId, "thread-browser-bridge")
-				return {
-					state: {
-						provider: "chrome-devtools",
-						title: "Docs",
-						url: "https://example.com/docs",
-					},
-					streamConfig: {
-						enabled: true,
-						wsUrl: "/api/browser-workspaces/workspace-canary/live",
-					},
-					workspaceId: "workspace-canary",
-				}
-			},
-			async getThreadWorkspaceScreenshot() {
-				throw new Error("Screenshot should not be fetched for navigate_page")
-			},
+		getThreadSessionWorkspaceImpl: async ({ threadId }) => {
+			assert.equal(threadId, "thread-browser-bridge")
+			return {
+				state: {
+					title: "Docs",
+					url: "https://example.com/docs",
+				},
+				streamConfig: {
+					enabled: true,
+					wsUrl: "/api/browser-workspaces/workspace-1/live",
+				},
+				workspaceId: "workspace-1",
+			}
+		},
+		getThreadSessionWorkspaceScreenshotImpl: async ({ threadId }) => {
+			assert.equal(threadId, "thread-browser-bridge")
+			return {
+				contentType: "image/png",
+				state: {
+					url: "https://example.com/docs",
+				},
+				workspaceId: "workspace-1",
+			}
 		},
 	})
 
-	await bridge.handleToolCallStart({
-		toolCallId: "tool-call-cdp-1",
-		toolInput: {
+	const ensured = await bindings.ensureThreadWorkspace(
+		"thread-browser-bridge",
+		"https://example.com/docs",
+	)
+	const fetched = await bindings.getThreadWorkspace("thread-browser-bridge")
+	const screenshot = await bindings.getThreadWorkspaceScreenshot("thread-browser-bridge")
+
+	assert.deepEqual(ensured, {
+		state: {
+			title: "Loading",
 			url: "https://example.com/docs",
 		},
-		toolName: "navigate_page",
+		streamConfig: {
+			enabled: true,
+			wsUrl: "/api/browser-workspaces/workspace-1/live",
+		},
+		workspaceId: "workspace-1",
 	})
-	await bridge.handleToolCallResult({
-		toolCallId: "tool-call-cdp-1",
-		toolName: "navigate_page",
+	assert.deepEqual(fetched, {
+		state: {
+			title: "Docs",
+			url: "https://example.com/docs",
+		},
+		streamConfig: {
+			enabled: true,
+			wsUrl: "/api/browser-workspaces/workspace-1/live",
+		},
+		workspaceId: "workspace-1",
 	})
-
-	assert.deepEqual(writes, [
-		{
-			type: "data-browser-state",
-			data: {
-				provider: "chrome-devtools",
-				status: "navigating",
-				streamConfig: {
-					enabled: true,
-					wsUrl: "/api/browser-workspaces/workspace-canary/live",
-				},
-				title: "Loading",
-				url: "https://example.com/docs",
-				workspaceId: "workspace-canary",
-			},
+	assert.deepEqual(screenshot, {
+		contentType: "image/png",
+		state: {
+			url: "https://example.com/docs",
 		},
-		{
-			type: "data-browser-state",
-			data: {
-				provider: "chrome-devtools",
-				status: "ready",
-				streamConfig: {
-					enabled: true,
-					wsUrl: "/api/browser-workspaces/workspace-canary/live",
-				},
-				title: "Docs",
-				url: "https://example.com/docs",
-				workspaceId: "workspace-canary",
-			},
-		},
-	])
-})
-
-test("default workspace bindings route live-canary previews through browserWorkspaceManager", async () => {
-	const calls = []
-	const browserWorkspaceManagerImpl = {
-		async createWorkspace(options = {}) {
-			calls.push(["createWorkspace", options.defaultUrl ?? null])
-			return {
-				provider: "chrome-devtools",
-				title: "Loading",
-				url: "about:blank",
-				workspaceId: "workspace-canary",
-			}
-		},
-		getWorkspaceStream(workspaceId) {
-			calls.push(["getWorkspaceStream", workspaceId])
-			return {
-				enabled: true,
-				wsUrl: `/api/browser-workspaces/${workspaceId}/live`,
-			}
-		},
-		async getWorkspaceState(workspaceId) {
-			calls.push(["getWorkspaceState", workspaceId])
-			return {
-				provider: "chrome-devtools",
-				title: "Docs",
-				url: "https://example.com/docs",
-				workspaceId,
-			}
-		},
-		async deleteWorkspace(workspaceId) {
-			calls.push(["deleteWorkspace", workspaceId])
-			return {
-				closed: true,
-				workspaceId,
-			}
-		},
-	}
-	const bindings = createDefaultWorkspaceBindings({
-		browserWorkspaceManagerImpl,
-		ensureThreadSessionWorkspaceImpl: async () => {
-			throw new Error("session workspace path should not be used in live-canary mode")
-		},
-		getThreadSessionWorkspaceImpl: async () => {
-			throw new Error("session workspace path should not be used in live-canary mode")
-		},
-		getThreadSessionWorkspaceScreenshotImpl: async () => {
-			throw new Error("session workspace path should not be used in live-canary mode")
-		},
-		isLiveCanaryBrowserModeImpl() {
-			return true
-		},
+		workspaceId: "workspace-1",
 	})
-
-	try {
-		const ensured = await bindings.ensureThreadWorkspace(
-			"thread-live-canary-preview",
-			"https://example.com/docs",
-		)
-		const fetched = await bindings.getThreadWorkspace(
-			"thread-live-canary-preview",
-		)
-
-		assert.deepEqual(ensured, {
-			state: {
-				provider: "chrome-devtools",
-				title: "Loading",
-				url: "about:blank",
-				workspaceId: "workspace-canary",
-			},
-			streamConfig: {
-				enabled: true,
-				wsUrl: "/api/browser-workspaces/workspace-canary/live",
-			},
-			workspaceId: "workspace-canary",
-		})
-		assert.deepEqual(fetched, {
-			state: {
-				provider: "chrome-devtools",
-				title: "Docs",
-				url: "https://example.com/docs",
-				workspaceId: "workspace-canary",
-			},
-			streamConfig: {
-				enabled: true,
-				wsUrl: "/api/browser-workspaces/workspace-canary/live",
-			},
-			workspaceId: "workspace-canary",
-		})
-		assert.deepEqual(calls, [
-			["createWorkspace", null],
-			["getWorkspaceStream", "workspace-canary"],
-			["getWorkspaceState", "workspace-canary"],
-			["getWorkspaceStream", "workspace-canary"],
-		])
-	} finally {
-		await deleteLiveCanaryThreadWorkspace("thread-live-canary-preview", {
-			browserWorkspaceManagerImpl,
-		})
-	}
 })

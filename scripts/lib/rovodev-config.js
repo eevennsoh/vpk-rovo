@@ -14,11 +14,6 @@ const {
 	getQmdRovodevMcpServerConfig,
 	isQmdRovodevMcpServerAvailable,
 } = require("../../backend/lib/qmd");
-const {
-	getChromeDevtoolsAllowedRovodevMcpServerSignature,
-	getChromeDevtoolsRovodevMcpServerConfig,
-	isLiveCanaryBrowserMode,
-} = require("../../backend/lib/browser-runtime-config");
 
 const resolveRovodevConfigPath = () => {
 	const ymlPath = path.join(os.homedir(), ".rovodev", "config.yml");
@@ -244,7 +239,6 @@ function syncWorkspaceRovodevConfig({
 	const existingWorkspaceConfigText = fs.existsSync(workspaceConfigPath)
 		? fs.readFileSync(workspaceConfigPath, "utf8")
 		: "";
-	const liveCanaryModeEnabled = isLiveCanaryBrowserMode();
 	const qmdMcpEnabled = isQmdRovodevMcpServerAvailableImpl({ repoRoot: cwd });
 
 	const mergedAllowedServers = mergeUniqueStrings(
@@ -258,15 +252,12 @@ function syncWorkspaceRovodevConfig({
 				!isWorkspaceGeneratedMcpSignature(entry) &&
 				!isRepoLocalBrowserAutomationSignature(entry),
 		),
-		[
-			...(qmdMcpEnabled ? [getQmdAllowedRovodevMcpServerSignature()] : []),
-			getBrowserWorkspaceAllowedRovodevMcpServerSignature({ repoRoot: cwd }),
-			getWikiCaptureAllowedRovodevMcpServerSignature({ repoRoot: cwd }),
-			...(liveCanaryModeEnabled
-				? [getChromeDevtoolsAllowedRovodevMcpServerSignature()]
-				: []),
-		],
-	);
+			[
+				...(qmdMcpEnabled ? [getQmdAllowedRovodevMcpServerSignature()] : []),
+				getBrowserWorkspaceAllowedRovodevMcpServerSignature({ repoRoot: cwd }),
+				getWikiCaptureAllowedRovodevMcpServerSignature({ repoRoot: cwd }),
+			],
+		);
 	const qmdMcpServers = qmdMcpEnabled
 		? getQmdRovodevMcpServerConfig({ repoRoot: cwd })
 		: {};
@@ -276,9 +267,6 @@ function syncWorkspaceRovodevConfig({
 	const wikiCaptureMcpServers = getWikiCaptureRovodevMcpServerConfig({
 		repoRoot: cwd,
 	});
-	const chromeDevtoolsMcpServers = liveCanaryModeEnabled
-		? getChromeDevtoolsRovodevMcpServerConfig()
-		: {};
 	const qmdIndexPath = qmdMcpServers.qmd?.env?.INDEX_PATH;
 	if (typeof qmdIndexPath === "string" && qmdIndexPath.trim()) {
 		fs.mkdirSync(path.dirname(qmdIndexPath), { recursive: true });
@@ -332,10 +320,8 @@ function syncWorkspaceRovodevConfig({
 		delete sourceMcpServers.qmd;
 		delete existingWorkspaceMcpServers.qmd;
 	}
-	if (!liveCanaryModeEnabled) {
-		delete sourceMcpServers["chrome-devtools"];
-		delete existingWorkspaceMcpServers["chrome-devtools"];
-	}
+	delete sourceMcpServers["chrome-devtools"];
+	delete existingWorkspaceMcpServers["chrome-devtools"];
 
 	const nextWorkspaceMcpConfig = {
 		...sourceMcpConfig,
@@ -346,7 +332,6 @@ function syncWorkspaceRovodevConfig({
 					...qmdMcpServers,
 					...browserWorkspaceMcpServers,
 					...wikiCaptureMcpServers,
-					...chromeDevtoolsMcpServers,
 				},
 		inputs: Array.isArray(existingWorkspaceMcpConfig.inputs)
 			? existingWorkspaceMcpConfig.inputs

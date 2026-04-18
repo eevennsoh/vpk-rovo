@@ -1,6 +1,5 @@
 const test = require("node:test")
 const assert = require("node:assert/strict")
-const { EventEmitter } = require("node:events")
 
 const {
 	AgentBrowserRuntime,
@@ -9,7 +8,6 @@ const {
 	DEFAULT_SCREENCAST_MAX_HEIGHT,
 	DEFAULT_SCREENCAST_MAX_WIDTH,
 	ensureAgentBrowserInstalled,
-	LIVE_CANARY_BROWSER_MODE,
 	resolveAgentBrowserExecutablePath,
 } = require("./browser-workspace-runtime")
 
@@ -84,34 +82,6 @@ class TestAgentBrowserRuntime extends AgentBrowserRuntime {
 				return undefined
 			},
 		}
-	}
-}
-
-class LiveCanaryAgentBrowserRuntime extends AgentBrowserRuntime {
-	constructor(options = {}) {
-		super({
-			sessionId: "test-live-canary",
-			browserMode: LIVE_CANARY_BROWSER_MODE,
-			cdpPort: 9333,
-			...options,
-		})
-		this.commands = []
-		this.liveCanaryReadyChecks = 0
-	}
-
-	async _ensureInstalled() {}
-
-	async _ensureLiveCanaryReady() {
-		this.liveCanaryReadyChecks += 1
-		this._canaryWasLaunched = true
-		return {
-			launched: true,
-		}
-	}
-
-	async _executeAgentBrowser(commandArgs) {
-		this.commands.push(commandArgs.map((value) => String(value)))
-		return ""
 	}
 }
 
@@ -286,50 +256,6 @@ test("browser workspace runtime only changes viewport when explicitly requested"
 		["open", "about:blank"],
 		["set", "viewport", "1440", "960", "2"],
 	])
-})
-
-test("browser workspace runtime uses a live Canary CDP connection instead of isolated sessions when configured", async () => {
-	const runtime = new LiveCanaryAgentBrowserRuntime()
-
-	await runtime.initialize("https://example.com")
-
-	assert.equal(runtime.liveCanaryReadyChecks, 1)
-	assert.deepEqual(runtime.commands, [
-		["--cdp", "9333", "open", "https://example.com"],
-	])
-	assert.deepEqual(runtime.getBrowserStateMetadata(), {
-		provider: "chrome-devtools",
-		canaryWasLaunched: true,
-	})
-})
-
-test("browser workspace runtime surfaces live Canary spawn failures as a rejected error", async () => {
-	const runtime = new AgentBrowserRuntime({
-		sessionId: "test-live-canary-error",
-		browserMode: LIVE_CANARY_BROWSER_MODE,
-		cdpPort: 9333,
-		canaryExecutablePath: "/missing/canary",
-		spawnProcess() {
-			const child = new EventEmitter()
-			child.unref = () => {}
-			queueMicrotask(() => {
-				const error = new Error("spawn /missing/canary ENOENT")
-				error.code = "ENOENT"
-				child.emit("error", error)
-			})
-			return child
-		},
-	})
-
-	runtime._canConnectToLiveCanary = async () => false
-	runtime._waitForLiveCanary = async () => {
-		throw new Error("wait should not be reached")
-	}
-
-	await assert.rejects(
-		runtime._ensureLiveCanaryReady(),
-		/spawn \/missing\/canary ENOENT/,
-	)
 })
 
 test("resolveAgentBrowserExecutablePath prefers an explicit executable path", () => {
