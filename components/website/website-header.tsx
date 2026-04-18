@@ -52,7 +52,7 @@ export function WebsiteHeader({
 	const lastUpdatedLabel = mounted && lastUpdatedAt ? formatLastUpdated(lastUpdatedAt) : null;
 
 	return (
-		<header className="sticky top-0 z-10 flex h-14 items-center border-b border-border bg-surface">
+		<header className="sticky top-0 z-20 flex h-14 items-center border-b border-border bg-surface">
 			<div className="flex min-w-0 flex-1 items-center px-4">
 				{leftContent}
 			</div>

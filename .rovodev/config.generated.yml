@@ -105,15 +105,15 @@ logging:
 # Model Context Protocol server configuration
 mcp:
   # Path to the MCP (Model Context Protocol) configuration file
-  mcpConfigPath: /Users/esoh/.codex/worktrees/8162/VPK-rovo/.rovodev/mcp.generated.json
+  mcpConfigPath: /Users/esoh/Documents/Labs/VPK-rovo/.rovodev/mcp.generated.json
   # List of allowed MCP server signatures
   allowedMcpServers:
   - url:https://mcp.atlassian.com/v1/forge/mcp
   - url:https://mcp.atlassian.com/v1/ads/public/mcp
   - stdio:npx:open-websearch@latest
   - stdio:pnpm:exec qmd mcp
-  - stdio:node:/Users/esoh/.codex/worktrees/8162/VPK-rovo/scripts/browser-workspace-mcp.js
-  - stdio:node:/Users/esoh/.codex/worktrees/8162/VPK-rovo/scripts/wiki-capture-mcp.js
+  - stdio:node:/Users/esoh/Documents/Labs/VPK-rovo/scripts/browser-workspace-mcp.js
+  - stdio:node:/Users/esoh/Documents/Labs/VPK-rovo/scripts/wiki-capture-mcp.js
   # List of globally disabled MCP server signatures
   disabledMcpServers:
   - stdio:npx:-y chrome-devtools-mcp@latest

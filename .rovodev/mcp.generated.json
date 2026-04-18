@@ -20,21 +20,21 @@
 		},
 		"browser-workspace": {
 			"args": [
-				"/Users/esoh/.codex/worktrees/8162/VPK-rovo/scripts/browser-workspace-mcp.js"
+				"/Users/esoh/Documents/Labs/VPK-rovo/scripts/browser-workspace-mcp.js"
 			],
 			"command": "node",
 			"env": {
-				"REPO_ROOT": "/Users/esoh/.codex/worktrees/8162/VPK-rovo"
+				"REPO_ROOT": "/Users/esoh/Documents/Labs/VPK-rovo"
 			},
 			"type": "stdio"
 		},
 		"wiki-capture": {
 			"args": [
-				"/Users/esoh/.codex/worktrees/8162/VPK-rovo/scripts/wiki-capture-mcp.js"
+				"/Users/esoh/Documents/Labs/VPK-rovo/scripts/wiki-capture-mcp.js"
 			],
 			"command": "node",
 			"env": {
-				"REPO_ROOT": "/Users/esoh/.codex/worktrees/8162/VPK-rovo"
+				"REPO_ROOT": "/Users/esoh/Documents/Labs/VPK-rovo"
 			},
 			"type": "stdio"
 		},
@@ -46,7 +46,7 @@
 			],
 			"command": "pnpm",
 			"env": {
-				"INDEX_PATH": "/Users/esoh/.codex/worktrees/8162/VPK-rovo/.cache/qmd/wiki.sqlite"
+				"INDEX_PATH": "/Users/esoh/Documents/Labs/VPK-rovo/.cache/qmd/wiki.sqlite"
 			},
 			"type": "stdio"
 		}

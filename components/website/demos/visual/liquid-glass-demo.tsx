@@ -1,34 +1,26 @@
 "use client";
 
-import Image from "next/image";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { GUI } from "@/components/utils/gui";
 import { token } from "@/lib/tokens";
 
 import LiquidGlass from "./shaders/liquid-glass";
+import WaveGradient from "./shaders/wave-gradient";
 
-const DEFAULT_STAGE_WIDTH = 188;
-const DEFAULT_STAGE_HEIGHT = 607;
+const DEFAULT_STAGE_WIDTH = 200;
+const DEFAULT_STAGE_HEIGHT = 100;
 const DEFAULT_RADIUS = 81;
 const DEFAULT_FILL_OPACITY = 0.1;
 const DEFAULT_DISPLACEMENT_SCALE = -133;
 const DEFAULT_BLUR = 4.15;
 const DEFAULT_BORDER_OPACITY = 0.7;
 const DEFAULT_BORDER_ANGLE = 315;
-const PLACEHOLDER_IMAGE_SRC = "/avatar-human/priya-hansra.png";
-const PLACEHOLDER_IMAGE_SIZE = 1024;
-
-type BackgroundPreset = "framer" | "aurora" | "schematic";
-
-const BACKGROUND_OPTIONS: ReadonlyArray<{
-	value: BackgroundPreset;
-	label: string;
-}> = [
-	{ value: "framer", label: "Framer" },
-	{ value: "aurora", label: "Aurora" },
-	{ value: "schematic", label: "Schematic" },
-] as const;
+const DEFAULT_LIGHTNESS = 88;
+const DEFAULT_ALPHA = 0.9;
+const DEFAULT_DISPERSION = 0;
+const DEFAULT_MAP_BLUR = 5;
+const DEFAULT_MAP_INSET = 0.05;
 
 function clamp(value: number, min: number, max: number): number {
 	return Math.min(Math.max(value, min), max);
@@ -79,11 +71,11 @@ function StageBackground({ preset }: Readonly<{ preset: BackgroundPreset }>) {
 	const imageLayer = (
 		<>
 			<Image
-				src={PLACEHOLDER_IMAGE_SRC}
+				src={BACKGROUND_IMAGE_SRC}
 				alt=""
 				aria-hidden="true"
-				width={PLACEHOLDER_IMAGE_SIZE}
-				height={PLACEHOLDER_IMAGE_SIZE}
+				width={1200}
+				height={1200}
 				sizes="(max-width: 768px) 100vw, 720px"
 				className="absolute inset-0 h-full w-full object-cover object-center"
 			/>
@@ -147,6 +139,11 @@ export default function LiquidGlassDemo() {
 	const [blur, setBlur] = useState(DEFAULT_BLUR);
 	const [borderOpacity, setBorderOpacity] = useState(DEFAULT_BORDER_OPACITY);
 	const [borderAngle, setBorderAngle] = useState(DEFAULT_BORDER_ANGLE);
+	const [lightness, setLightness] = useState(DEFAULT_LIGHTNESS);
+	const [alpha, setAlpha] = useState(DEFAULT_ALPHA);
+	const [dispersion, setDispersion] = useState(DEFAULT_DISPERSION);
+	const [mapBlur, setMapBlur] = useState(DEFAULT_MAP_BLUR);
+	const [mapInset, setMapInset] = useState(DEFAULT_MAP_INSET);
 	const [backgroundPreset, setBackgroundPreset] = useState<BackgroundPreset>("framer");
 	const { ref: stageViewportRef, size: stageViewportSize } = useElementSize<HTMLDivElement>({
 		width: 520,
@@ -167,6 +164,31 @@ export default function LiquidGlassDemo() {
 
 	const fittedWidth = width * fittedScale;
 	const fittedHeight = height * fittedScale;
+
+	const dragRef = useRef<{ startX: number; startY: number; originX: number; originY: number } | null>(null);
+	const [position, setPosition] = useState({ x: 0, y: 0 });
+
+	const onPointerDown = useCallback((e: React.PointerEvent) => {
+		e.currentTarget.setPointerCapture(e.pointerId);
+		dragRef.current = {
+			startX: e.clientX,
+			startY: e.clientY,
+			originX: position.x,
+			originY: position.y,
+		};
+	}, [position]);
+
+	const onPointerMove = useCallback((e: React.PointerEvent) => {
+		if (!dragRef.current) return;
+		setPosition({
+			x: dragRef.current.originX + (e.clientX - dragRef.current.startX),
+			y: dragRef.current.originY + (e.clientY - dragRef.current.startY),
+		});
+	}, []);
+
+	const onPointerUp = useCallback(() => {
+		dragRef.current = null;
+	}, []);
 	const config = useMemo(
 		() => ({
 			width,
@@ -177,9 +199,14 @@ export default function LiquidGlassDemo() {
 			blur,
 			borderOpacity,
 			borderAngle,
+			lightness,
+			alpha,
+			dispersion,
+			mapBlur,
+			mapInset,
 			backgroundPreset,
 		}),
-		[backgroundPreset, blur, borderAngle, borderOpacity, displacementScale, fillOpacity, height, radius, width],
+		[alpha, backgroundPreset, blur, borderAngle, borderOpacity, dispersion, displacementScale, fillOpacity, height, lightness, mapBlur, mapInset, radius, width],
 	);
 
 	return (
@@ -202,11 +229,18 @@ export default function LiquidGlassDemo() {
 				>
 					<StageBackground preset={backgroundPreset} />
 					<div
-						className="relative z-10"
+						className="relative z-10 cursor-grab select-none active:cursor-grabbing"
 						style={{
 							width: fittedWidth,
 							height: fittedHeight,
+							transform: `translate(${position.x}px, ${position.y}px)`,
+							willChange: "transform",
+							touchAction: "none",
 						}}
+						onPointerDown={onPointerDown}
+						onPointerMove={onPointerMove}
+						onPointerUp={onPointerUp}
+						onPointerCancel={onPointerUp}
 					>
 						<div
 							style={{
@@ -224,6 +258,11 @@ export default function LiquidGlassDemo() {
 								blur={blur}
 								borderOpacity={borderOpacity}
 								borderAngle={borderAngle}
+								lightness={lightness}
+								alpha={alpha}
+								dispersion={dispersion}
+								mapBlur={mapBlur}
+								mapInset={mapInset}
 							/>
 						</div>
 					</div>
@@ -265,24 +304,34 @@ export default function LiquidGlassDemo() {
 					onChange={setRadius}
 				/>
 				<GUI.Control
-					id="liquid-glass-fill-opacity"
-					label="Fill opacity"
-					value={fillOpacity}
-					defaultValue={DEFAULT_FILL_OPACITY}
-					min={0}
-					max={0.35}
-					step={0.01}
-					onChange={setFillOpacity}
-				/>
-				<GUI.Control
 					id="liquid-glass-displacement"
-					label="Displacement"
+					label="Scale"
 					value={displacementScale}
 					defaultValue={DEFAULT_DISPLACEMENT_SCALE}
-					min={-220}
-					max={0}
+					min={-360}
+					max={360}
 					step={1}
 					onChange={setDisplacementScale}
+				/>
+				<GUI.Control
+					id="liquid-glass-dispersion"
+					label="Dispersion"
+					value={dispersion}
+					defaultValue={DEFAULT_DISPERSION}
+					min={0}
+					max={100}
+					step={1}
+					onChange={setDispersion}
+				/>
+				<GUI.Control
+					id="liquid-glass-lightness"
+					label="Lightness"
+					value={lightness}
+					defaultValue={DEFAULT_LIGHTNESS}
+					min={0}
+					max={100}
+					step={1}
+					onChange={setLightness}
 				/>
 				<GUI.Control
 					id="liquid-glass-blur"
@@ -290,10 +339,50 @@ export default function LiquidGlassDemo() {
 					value={blur}
 					defaultValue={DEFAULT_BLUR}
 					min={0}
-					max={12}
-					step={0.05}
-					unit="px"
+					max={10}
+					step={0.01}
 					onChange={setBlur}
+				/>
+				<GUI.Control
+					id="liquid-glass-alpha"
+					label="Alpha"
+					value={alpha}
+					defaultValue={DEFAULT_ALPHA}
+					min={0}
+					max={1}
+					step={0.01}
+					onChange={setAlpha}
+				/>
+				<GUI.Control
+					id="liquid-glass-map-blur"
+					label="Map blur"
+					value={mapBlur}
+					defaultValue={DEFAULT_MAP_BLUR}
+					min={0}
+					max={100}
+					step={1}
+					unit="px"
+					onChange={setMapBlur}
+				/>
+				<GUI.Control
+					id="liquid-glass-map-inset"
+					label="Map inset"
+					value={mapInset}
+					defaultValue={DEFAULT_MAP_INSET}
+					min={0}
+					max={0.5}
+					step={0.01}
+					onChange={setMapInset}
+				/>
+				<GUI.Control
+					id="liquid-glass-fill-opacity"
+					label="Frost"
+					value={fillOpacity}
+					defaultValue={DEFAULT_FILL_OPACITY}
+					min={0}
+					max={1}
+					step={0.01}
+					onChange={setFillOpacity}
 				/>
 				<GUI.Control
 					id="liquid-glass-border-opacity"

@@ -32,7 +32,7 @@ export const UI_GROUPS: Record<string, string[]> = {
 };
 
 export const VISUAL_GROUPS: Record<string, string[]> = {
-	shaders: ["particles", "wave-gradient", "liquid-gradient", "bands", "rings", "blockify", "pixels", "truchet", "fluted-glass", "liquid-glass", "holo", "mesh", "mesh-02", "chromatic-aberration"],
+	shaders: ["particles", "wave-gradient", "liquid-gradient", "bands", "rings", "blockify", "pixels", "truchet", "fluted-glass", "holo", "mesh", "mesh-02", "chromatic-aberration"],
 };
 
 export const BLOCK_GROUPS: Record<string, string[]> = {
