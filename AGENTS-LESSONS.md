@@ -210,3 +210,16 @@ Mark promoted entries with `[Promoted]` prefix — see vpk-lesson skill for deta
   native session streaming over custom browser workspace runtimes. Keep the
   Rovo-specific logic at the message and preview-shell layer, not in browser
   process management.
+
+### 2026-04-19 - Re-try git cleanup after state changes before assuming approval is required
+
+- **What happened:** I said deleting `automation/performance-audit` was blocked
+  on approval, but once the stale linked worktree was gone the branch cleanup
+  completed directly and the remote ref had already been removed.
+- **Why:** I assumed git ref updates and remote branch cleanup still needed
+  escalation instead of re-checking the current branch/worktree state and
+  retrying the concrete commands first.
+- **Rule:** For git branch cleanup, re-check worktree and ref state after each
+  failure and retry the exact delete command before telling the user approval
+  is required. Only escalate when the retried command still proves it needs
+  broader permissions.
