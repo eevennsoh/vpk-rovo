@@ -67,69 +67,6 @@ function useElementSize<T extends HTMLElement>(fallback: { width: number; height
 	return { ref, size };
 }
 
-function StageBackground({ preset }: Readonly<{ preset: BackgroundPreset }>) {
-	const imageLayer = (
-		<>
-			<Image
-				src={BACKGROUND_IMAGE_SRC}
-				alt=""
-				aria-hidden="true"
-				width={1200}
-				height={1200}
-				sizes="(max-width: 768px) 100vw, 720px"
-				className="absolute inset-0 h-full w-full object-cover object-center"
-			/>
-			<div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.16),rgba(255,255,255,0.08)_40%,rgba(255,255,255,0.2))]" />
-		</>
-	);
-
-	if (preset === "aurora") {
-		return (
-			<>
-				<div className="absolute inset-0 bg-[#f7f5ef]" />
-				{imageLayer}
-				<div className="absolute left-[8%] top-[10%] h-48 w-48 rounded-full bg-[#ffc9a9]/55 blur-3xl" />
-				<div className="absolute right-[10%] top-[18%] h-56 w-56 rounded-full bg-[#8ed0ff]/45 blur-3xl" />
-				<div className="absolute bottom-[8%] left-[20%] h-64 w-64 rounded-full bg-[#ffe58f]/35 blur-3xl" />
-				<div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.62),rgba(255,255,255,0.18)_38%,rgba(255,255,255,0.82))]" />
-			</>
-		);
-	}
-
-	if (preset === "schematic") {
-		return (
-			<>
-				<div className="absolute inset-0 bg-[#f6f5f2]" />
-				{imageLayer}
-				<div
-					className="absolute inset-0 opacity-50"
-					style={{
-						backgroundImage: [
-							"linear-gradient(rgba(17,24,39,0.035) 1px, transparent 1px)",
-							"linear-gradient(90deg, rgba(17,24,39,0.035) 1px, transparent 1px)",
-						].join(", "),
-						backgroundSize: "48px 48px",
-					}}
-				/>
-				<div className="absolute inset-y-[12%] left-[17%] w-px bg-black/10" />
-				<div className="absolute inset-y-[18%] right-[18%] w-px bg-black/8" />
-				<div className="absolute left-[12%] right-[12%] top-[16%] h-px bg-black/10" />
-				<div className="absolute left-[16%] top-[22%] h-28 w-28 rounded-full border border-black/10" />
-				<div className="absolute bottom-[14%] right-[15%] h-36 w-36 rounded-full border border-black/8" />
-			</>
-		);
-	}
-
-	return (
-		<>
-			<div className="absolute inset-0 bg-[#fbfbfa]" />
-			{imageLayer}
-			<div className="absolute left-1/2 top-[6%] h-24 w-[72%] -translate-x-1/2 rounded-full bg-white/75 blur-3xl" />
-			<div className="absolute bottom-0 left-0 right-0 h-28 bg-[linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,0.06))]" />
-		</>
-	);
-}
-
 export default function LiquidGlassDemo() {
 	const [width, setWidth] = useState(DEFAULT_STAGE_WIDTH);
 	const [height, setHeight] = useState(DEFAULT_STAGE_HEIGHT);
@@ -144,7 +81,6 @@ export default function LiquidGlassDemo() {
 	const [dispersion, setDispersion] = useState(DEFAULT_DISPERSION);
 	const [mapBlur, setMapBlur] = useState(DEFAULT_MAP_BLUR);
 	const [mapInset, setMapInset] = useState(DEFAULT_MAP_INSET);
-	const [backgroundPreset, setBackgroundPreset] = useState<BackgroundPreset>("framer");
 	const { ref: stageViewportRef, size: stageViewportSize } = useElementSize<HTMLDivElement>({
 		width: 520,
 		height: 520,
@@ -204,9 +140,8 @@ export default function LiquidGlassDemo() {
 			dispersion,
 			mapBlur,
 			mapInset,
-			backgroundPreset,
 		}),
-		[alpha, backgroundPreset, blur, borderAngle, borderOpacity, dispersion, displacementScale, fillOpacity, height, lightness, mapBlur, mapInset, radius, width],
+		[alpha, blur, borderAngle, borderOpacity, dispersion, displacementScale, fillOpacity, height, lightness, mapBlur, mapInset, radius, width],
 	);
 
 	return (
@@ -227,7 +162,7 @@ export default function LiquidGlassDemo() {
 						height: "min(72vh, 560px)",
 					}}
 				>
-					<StageBackground preset={backgroundPreset} />
+					<WaveGradient className="absolute inset-0 h-full w-full" />
 					<div
 						className="relative z-10 cursor-grab select-none active:cursor-grabbing"
 						style={{
@@ -404,13 +339,6 @@ export default function LiquidGlassDemo() {
 					step={1}
 					unit="deg"
 					onChange={setBorderAngle}
-				/>
-				<GUI.Select
-					id="liquid-glass-background"
-					label="Background preset"
-					value={backgroundPreset}
-					options={BACKGROUND_OPTIONS}
-					onChange={setBackgroundPreset}
 				/>
 			</GUI.Panel>
 		</div>
