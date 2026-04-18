@@ -87,6 +87,85 @@ const server = new McpServer({
 })
 
 const threadIdSchema = z.string().min(1).describe("Rovo thread ID")
+const refSchema = z.string().min(1).describe("Accessibility ref such as @e1")
+const tabIndexSchema = z.number().int().min(0)
+
+function formatWorkspaceStateResult(state, prefix) {
+	return textResult(formatWorkspaceState(state, prefix))
+}
+
+function registerMutationTool({
+	name,
+	description,
+	inputSchema,
+	action,
+	getBody = function getBody() {
+		return {}
+	},
+	getPrefix,
+}) {
+	server.registerTool(
+		name,
+		{
+			description,
+			inputSchema,
+		},
+		async function handleMutationTool(args) {
+			const state = await mutateWorkspace(
+				args.thread_id,
+				action,
+				getBody(args),
+				{},
+			)
+			return formatWorkspaceStateResult(state, getPrefix(args))
+		},
+	)
+}
+
+async function navigateThreadWorkspace(threadId, url) {
+	const initialState = await getThreadWorkspaceState(threadId, url)
+	if (stateLooksLoadedForTarget(initialState, url)) {
+		return formatWorkspaceStateResult(initialState, `Navigated to ${url}.`)
+	}
+
+	try {
+		const state = await mutateWorkspace(
+			threadId,
+			"navigate",
+			{ url },
+			{ defaultUrl: url },
+		)
+		return formatWorkspaceStateResult(state, `Navigated to ${url}.`)
+	} catch (error) {
+		const state = await getThreadWorkspaceState(threadId).catch(() => null)
+		if (stateLooksLoadedForTarget(state, url)) {
+			return formatWorkspaceStateResult(
+				state,
+				`Navigation reported a timeout, but the page appears loaded for ${url}.`,
+			)
+		}
+
+		throw error
+	}
+}
+
+function formatWorkspaceTabs(state) {
+	const tabs = Array.isArray(state?.tabs) ? state.tabs : []
+	const lines = tabs.map((tab) => {
+		const marker = tab.active ? "*" : "-"
+		return `${marker} [${tab.index}] ${tab.title || "Untitled"} — ${tab.url}`
+	})
+	return lines.join("\n") || "No tabs are open."
+}
+
+async function waitForWorkspace(threadId, milliseconds) {
+	await ensureThreadWorkspace(threadId)
+	await new Promise((resolve) => {
+		setTimeout(resolve, milliseconds)
+	})
+	const workspace = await ensureThreadWorkspace(threadId)
+	return formatWorkspaceStateResult(workspace.state, `Waited ${milliseconds}ms.`)
+}
 
 server.registerTool(
 	"browser_navigate",
@@ -97,33 +176,8 @@ server.registerTool(
 			url: z.string().min(1).describe("Destination URL"),
 		},
 	},
-	async ({ thread_id, url }) => {
-		const initialState = await getThreadWorkspaceState(thread_id, url)
-		if (stateLooksLoadedForTarget(initialState, url)) {
-			return textResult(formatWorkspaceState(initialState, `Navigated to ${url}.`))
-		}
-
-		try {
-			const state = await mutateWorkspace(
-				thread_id,
-				"navigate",
-				{ url },
-				{ defaultUrl: url },
-			)
-			return textResult(formatWorkspaceState(state, `Navigated to ${url}.`))
-		} catch (error) {
-			const state = await getThreadWorkspaceState(thread_id).catch(() => null)
-			if (stateLooksLoadedForTarget(state, url)) {
-				return textResult(
-					formatWorkspaceState(
-						state,
-						`Navigation reported a timeout, but the page appears loaded for ${url}.`,
-					),
-				)
-			}
-
-			throw error
-		}
+	async function handleNavigate({ thread_id, url }) {
+		return navigateThreadWorkspace(thread_id, url)
 	},
 )
 
@@ -136,7 +190,7 @@ server.registerTool(
 			interactive: z.boolean().optional().default(true),
 		},
 	},
-	async ({ thread_id, interactive }) => {
+	async function handleSnapshot({ thread_id, interactive }) {
 		const snapshot = await readWorkspaceSnapshot(thread_id, interactive !== false)
 		return textResult(snapshot.snapshot || "Empty page")
 	},
@@ -150,173 +204,172 @@ server.registerTool(
 			thread_id: threadIdSchema,
 		},
 	},
-	async ({ thread_id }) => {
+	async function handleScreenshot({ thread_id }) {
 		const { state } = await captureWorkspaceScreenshot(thread_id)
-		return textResult(
-			formatWorkspaceState(
-				state,
-				"Captured a screenshot of the current page from the active browser workspace.",
-			),
+		return formatWorkspaceStateResult(
+			state,
+			"Captured a screenshot of the current page from the active browser workspace.",
 		)
 	},
 )
 
-server.registerTool(
-	"browser_click",
-	{
-		description: "Click an element in the browser workspace by accessibility ref.",
-		inputSchema: {
-			thread_id: threadIdSchema,
-			ref: z.string().min(1).describe("Accessibility ref such as @e1"),
-		},
+registerMutationTool({
+	name: "browser_click",
+	description: "Click an element in the browser workspace by accessibility ref.",
+	inputSchema: {
+		thread_id: threadIdSchema,
+		ref: refSchema,
 	},
-	async ({ thread_id, ref }) => {
-		const state = await mutateWorkspace(thread_id, "click-ref", { ref })
-		return textResult(formatWorkspaceState(state, `Clicked ${ref}.`))
+	action: "click-ref",
+	getBody: function getBody({ ref }) {
+		return { ref }
 	},
-)
+	getPrefix: function getPrefix({ ref }) {
+		return `Clicked ${ref}.`
+	},
+})
 
-server.registerTool(
-	"browser_hover",
-	{
-		description: "Hover an element in the browser workspace by accessibility ref.",
-		inputSchema: {
-			thread_id: threadIdSchema,
-			ref: z.string().min(1).describe("Accessibility ref such as @e1"),
-		},
+registerMutationTool({
+	name: "browser_hover",
+	description: "Hover an element in the browser workspace by accessibility ref.",
+	inputSchema: {
+		thread_id: threadIdSchema,
+		ref: refSchema,
 	},
-	async ({ thread_id, ref }) => {
-		const state = await mutateWorkspace(thread_id, "hover-ref", { ref })
-		return textResult(formatWorkspaceState(state, `Hovered ${ref}.`))
+	action: "hover-ref",
+	getBody: function getBody({ ref }) {
+		return { ref }
 	},
-)
+	getPrefix: function getPrefix({ ref }) {
+		return `Hovered ${ref}.`
+	},
+})
 
-server.registerTool(
-	"browser_fill",
-	{
-		description: "Fill an input in the browser workspace by accessibility ref.",
-		inputSchema: {
-			thread_id: threadIdSchema,
-			ref: z.string().min(1).describe("Accessibility ref such as @e1"),
-			text: z.string().describe("Replacement text"),
-		},
+registerMutationTool({
+	name: "browser_fill",
+	description: "Fill an input in the browser workspace by accessibility ref.",
+	inputSchema: {
+		thread_id: threadIdSchema,
+		ref: refSchema,
+		text: z.string().describe("Replacement text"),
 	},
-	async ({ thread_id, ref, text }) => {
-		const state = await mutateWorkspace(thread_id, "fill-ref", { ref, text })
-		return textResult(formatWorkspaceState(state, `Filled ${ref}.`))
+	action: "fill-ref",
+	getBody: function getBody({ ref, text }) {
+		return { ref, text }
 	},
-)
+	getPrefix: function getPrefix({ ref }) {
+		return `Filled ${ref}.`
+	},
+})
 
-server.registerTool(
-	"browser_type",
-	{
-		description: "Type text into an element in the browser workspace by accessibility ref.",
-		inputSchema: {
-			thread_id: threadIdSchema,
-			ref: z.string().min(1).describe("Accessibility ref such as @e1"),
-			text: z.string().describe("Text to type"),
-		},
+registerMutationTool({
+	name: "browser_type",
+	description: "Type text into an element in the browser workspace by accessibility ref.",
+	inputSchema: {
+		thread_id: threadIdSchema,
+		ref: refSchema,
+		text: z.string().describe("Text to type"),
 	},
-	async ({ thread_id, ref, text }) => {
-		const state = await mutateWorkspace(thread_id, "type-ref", { ref, text })
-		return textResult(formatWorkspaceState(state, `Typed into ${ref}.`))
+	action: "type-ref",
+	getBody: function getBody({ ref, text }) {
+		return { ref, text }
 	},
-)
+	getPrefix: function getPrefix({ ref }) {
+		return `Typed into ${ref}.`
+	},
+})
 
-server.registerTool(
-	"browser_select",
-	{
-		description: "Select one or more values in the browser workspace by accessibility ref.",
-		inputSchema: {
-			thread_id: threadIdSchema,
-			ref: z.string().min(1).describe("Accessibility ref such as @e1"),
-			values: z.array(z.string().min(1)).min(1).describe("Values to select"),
-		},
+registerMutationTool({
+	name: "browser_select",
+	description: "Select one or more values in the browser workspace by accessibility ref.",
+	inputSchema: {
+		thread_id: threadIdSchema,
+		ref: refSchema,
+		values: z.array(z.string().min(1)).min(1).describe("Values to select"),
 	},
-	async ({ thread_id, ref, values }) => {
-		const state = await mutateWorkspace(thread_id, "select-ref", {
+	action: "select-ref",
+	getBody: function getBody({ ref, values }) {
+		return {
 			ref,
 			values,
-		})
-		return textResult(formatWorkspaceState(state, `Updated ${ref} selection.`))
+		}
 	},
-)
+	getPrefix: function getPrefix({ ref }) {
+		return `Updated ${ref} selection.`
+	},
+})
 
-server.registerTool(
-	"browser_press_key",
-	{
-		description: "Press a keyboard key in the browser workspace.",
-		inputSchema: {
-			thread_id: threadIdSchema,
-			key: z.string().min(1).describe("Key name, such as Enter or ArrowDown"),
-		},
+registerMutationTool({
+	name: "browser_press_key",
+	description: "Press a keyboard key in the browser workspace.",
+	inputSchema: {
+		thread_id: threadIdSchema,
+		key: z.string().min(1).describe("Key name, such as Enter or ArrowDown"),
 	},
-	async ({ thread_id, key }) => {
-		const state = await mutateWorkspace(thread_id, "press", { key })
-		return textResult(formatWorkspaceState(state, `Pressed ${key}.`))
+	action: "press",
+	getBody: function getBody({ key }) {
+		return { key }
 	},
-)
+	getPrefix: function getPrefix({ key }) {
+		return `Pressed ${key}.`
+	},
+})
 
-server.registerTool(
-	"browser_scroll",
-	{
-		description: "Scroll the browser workspace in a direction by a number of pixels.",
-		inputSchema: {
-			thread_id: threadIdSchema,
-			direction: z.enum(["up", "down", "left", "right"]),
-			pixels: z.number().int().positive().optional(),
-		},
+registerMutationTool({
+	name: "browser_scroll",
+	description: "Scroll the browser workspace in a direction by a number of pixels.",
+	inputSchema: {
+		thread_id: threadIdSchema,
+		direction: z.enum(["up", "down", "left", "right"]),
+		pixels: z.number().int().positive().optional(),
 	},
-	async ({ thread_id, direction, pixels }) => {
-		const state = await mutateWorkspace(thread_id, "scroll", {
+	action: "scroll",
+	getBody: function getBody({ direction, pixels }) {
+		return {
 			direction,
 			pixels,
-		})
-		return textResult(formatWorkspaceState(state, `Scrolled ${direction}.`))
+		}
 	},
-)
+	getPrefix: function getPrefix({ direction }) {
+		return `Scrolled ${direction}.`
+	},
+})
 
-server.registerTool(
-	"browser_navigate_back",
-	{
-		description: "Navigate back in browser history.",
-		inputSchema: {
-			thread_id: threadIdSchema,
-		},
+registerMutationTool({
+	name: "browser_navigate_back",
+	description: "Navigate back in browser history.",
+	inputSchema: {
+		thread_id: threadIdSchema,
 	},
-	async ({ thread_id }) => {
-		const state = await mutateWorkspace(thread_id, "back", {})
-		return textResult(formatWorkspaceState(state, "Navigated back."))
+	action: "back",
+	getPrefix: function getPrefix() {
+		return "Navigated back."
 	},
-)
+})
 
-server.registerTool(
-	"browser_navigate_forward",
-	{
-		description: "Navigate forward in browser history.",
-		inputSchema: {
-			thread_id: threadIdSchema,
-		},
+registerMutationTool({
+	name: "browser_navigate_forward",
+	description: "Navigate forward in browser history.",
+	inputSchema: {
+		thread_id: threadIdSchema,
 	},
-	async ({ thread_id }) => {
-		const state = await mutateWorkspace(thread_id, "forward", {})
-		return textResult(formatWorkspaceState(state, "Navigated forward."))
+	action: "forward",
+	getPrefix: function getPrefix() {
+		return "Navigated forward."
 	},
-)
+})
 
-server.registerTool(
-	"browser_reload",
-	{
-		description: "Reload the current browser page.",
-		inputSchema: {
-			thread_id: threadIdSchema,
-		},
+registerMutationTool({
+	name: "browser_reload",
+	description: "Reload the current browser page.",
+	inputSchema: {
+		thread_id: threadIdSchema,
 	},
-	async ({ thread_id }) => {
-		const state = await mutateWorkspace(thread_id, "reload", {})
-		return textResult(formatWorkspaceState(state, "Reloaded the current page."))
+	action: "reload",
+	getPrefix: function getPrefix() {
+		return "Reloaded the current page."
 	},
-)
+})
 
 server.registerTool(
 	"browser_tab_list",
@@ -326,66 +379,63 @@ server.registerTool(
 			thread_id: threadIdSchema,
 		},
 	},
-	async ({ thread_id }) => {
+	async function handleTabList({ thread_id }) {
 		const workspace = await ensureThreadWorkspace(thread_id)
-		const lines = workspace.state.tabs.map((tab) => {
-			const marker = tab.active ? "*" : "-"
-			return `${marker} [${tab.index}] ${tab.title || "Untitled"} — ${tab.url}`
-		})
-		return textResult(lines.join("\n") || "No tabs are open.")
+		return textResult(formatWorkspaceTabs(workspace.state))
 	},
 )
 
-server.registerTool(
-	"browser_tab_new",
-	{
-		description: "Open a new tab in the browser workspace.",
-		inputSchema: {
-			thread_id: threadIdSchema,
-			url: z.string().optional().describe("Optional URL for the new tab"),
-		},
+registerMutationTool({
+	name: "browser_tab_new",
+	description: "Open a new tab in the browser workspace.",
+	inputSchema: {
+		thread_id: threadIdSchema,
+		url: z.string().optional().describe("Optional URL for the new tab"),
 	},
-	async ({ thread_id, url }) => {
-		const nextState = await mutateWorkspace(thread_id, "tab-new", {
-			url,
-		})
-		return textResult(formatWorkspaceState(nextState, "Opened a new tab."))
+	action: "tab-new",
+	getBody: function getBody({ url }) {
+		return { url }
 	},
-)
+	getPrefix: function getPrefix() {
+		return "Opened a new tab."
+	},
+})
 
-server.registerTool(
-	"browser_tab_select",
-	{
-		description: "Switch to a browser tab by index.",
-		inputSchema: {
-			thread_id: threadIdSchema,
-			tab_index: z.number().int().min(0).describe("Tab index to activate"),
-		},
+registerMutationTool({
+	name: "browser_tab_select",
+	description: "Switch to a browser tab by index.",
+	inputSchema: {
+		thread_id: threadIdSchema,
+		tab_index: tabIndexSchema.describe("Tab index to activate"),
 	},
-	async ({ thread_id, tab_index }) => {
-		const nextState = await mutateWorkspace(thread_id, "tab-select", {
+	action: "tab-select",
+	getBody: function getBody({ tab_index }) {
+		return {
 			tabIndex: tab_index,
-		})
-		return textResult(formatWorkspaceState(nextState, `Switched to tab ${tab_index}.`))
+		}
 	},
-)
+	getPrefix: function getPrefix({ tab_index }) {
+		return `Switched to tab ${tab_index}.`
+	},
+})
 
-server.registerTool(
-	"browser_tab_close",
-	{
-		description: "Close a browser tab by index.",
-		inputSchema: {
-			thread_id: threadIdSchema,
-			tab_index: z.number().int().min(0).describe("Tab index to close"),
-		},
+registerMutationTool({
+	name: "browser_tab_close",
+	description: "Close a browser tab by index.",
+	inputSchema: {
+		thread_id: threadIdSchema,
+		tab_index: tabIndexSchema.describe("Tab index to close"),
 	},
-	async ({ thread_id, tab_index }) => {
-		const nextState = await mutateWorkspace(thread_id, "tab-close", {
+	action: "tab-close",
+	getBody: function getBody({ tab_index }) {
+		return {
 			tabIndex: tab_index,
-		})
-		return textResult(formatWorkspaceState(nextState, `Closed tab ${tab_index}.`))
+		}
 	},
-)
+	getPrefix: function getPrefix({ tab_index }) {
+		return `Closed tab ${tab_index}.`
+	},
+})
 
 server.registerTool(
 	"browser_wait",
@@ -396,13 +446,8 @@ server.registerTool(
 			milliseconds: z.number().int().min(1).max(10000).describe("Time to wait in milliseconds"),
 		},
 	},
-	async ({ thread_id, milliseconds }) => {
-		await ensureThreadWorkspace(thread_id)
-		await new Promise((resolve) => {
-			setTimeout(resolve, milliseconds)
-		})
-		const workspace = await ensureThreadWorkspace(thread_id)
-		return textResult(formatWorkspaceState(workspace.state, `Waited ${milliseconds}ms.`))
+	async function handleWait({ thread_id, milliseconds }) {
+		return waitForWorkspace(thread_id, milliseconds)
 	},
 )
 

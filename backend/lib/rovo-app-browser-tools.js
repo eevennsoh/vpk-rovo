@@ -4,10 +4,6 @@ const {
 	getRovoAppThreadBrowserWorkspaceScreenshot,
 } = require("./rovo-app-browser-workspace")
 const {
-	browserWorkspaceManager,
-	isBrowserWorkspaceNotFoundError,
-} = require("./browser-workspace-manager")
-const {
 	getConfiguredLiveCanaryCdpPort,
 	isLiveCanaryBrowserMode,
 } = require("./browser-runtime-config")
@@ -37,111 +33,13 @@ const SCREENSHOT_TOOL_NAMES = new Set([
 	"take_screenshot",
 ])
 
-const liveCanaryThreadWorkspaceIds = new Map()
-
-function requireThreadId(threadId) {
-	if (typeof threadId !== "string" || !threadId.trim()) {
-		throw new Error("A non-empty threadId is required.")
-	}
-
-	return threadId.trim()
-}
-
-async function readLiveCanaryThreadWorkspace(threadId, {
-	browserWorkspaceManagerImpl = browserWorkspaceManager,
-} = {}) {
-	const resolvedThreadId = requireThreadId(threadId)
-	const workspaceId = liveCanaryThreadWorkspaceIds.get(resolvedThreadId)
-	if (!workspaceId) {
+function getTrimmedString(value) {
+	if (typeof value !== "string") {
 		return null
 	}
 
-	try {
-		const state = await browserWorkspaceManagerImpl.getWorkspaceState(workspaceId)
-		return {
-			state,
-			streamConfig: browserWorkspaceManagerImpl.getWorkspaceStream(workspaceId),
-			workspaceId,
-		}
-	} catch (error) {
-		if (!isBrowserWorkspaceNotFoundError(error)) {
-			throw error
-		}
-
-		liveCanaryThreadWorkspaceIds.delete(resolvedThreadId)
-		return null
-	}
-}
-
-async function ensureLiveCanaryThreadWorkspace(threadId, defaultUrl, {
-	browserWorkspaceManagerImpl = browserWorkspaceManager,
-} = {}) {
-	const resolvedThreadId = requireThreadId(threadId)
-	const existingWorkspace = await readLiveCanaryThreadWorkspace(resolvedThreadId, {
-		browserWorkspaceManagerImpl,
-	})
-	if (existingWorkspace) {
-		return existingWorkspace
-	}
-
-	// In live-canary mode the actual browser action should drive navigation.
-	// Passing defaultUrl here would mutate the shared live session before the
-	// corresponding Chrome DevTools tool executes.
-	const state = await browserWorkspaceManagerImpl.createWorkspace()
-	liveCanaryThreadWorkspaceIds.set(resolvedThreadId, state.workspaceId)
-
-	return {
-		state,
-		streamConfig: browserWorkspaceManagerImpl.getWorkspaceStream(
-			state.workspaceId,
-		),
-		workspaceId: state.workspaceId,
-	}
-}
-
-async function getLiveCanaryThreadWorkspaceScreenshot(threadId, {
-	browserWorkspaceManagerImpl = browserWorkspaceManager,
-} = {}) {
-	const resolvedThreadId = requireThreadId(threadId)
-	const existingWorkspace = await readLiveCanaryThreadWorkspace(resolvedThreadId, {
-		browserWorkspaceManagerImpl,
-	})
-	if (!existingWorkspace) {
-		throw new Error(
-			`No live browser preview workspace is bound for thread ${resolvedThreadId}.`,
-		)
-	}
-
-	const screenshot = await browserWorkspaceManagerImpl.getWorkspaceScreenshot(
-		existingWorkspace.workspaceId,
-	)
-	return {
-		buffer: screenshot.buffer,
-		contentType: screenshot.contentType,
-		state: screenshot.state,
-		workspaceId: existingWorkspace.workspaceId,
-	}
-}
-
-async function deleteLiveCanaryThreadWorkspace(threadId, {
-	browserWorkspaceManagerImpl = browserWorkspaceManager,
-} = {}) {
-	const resolvedThreadId = requireThreadId(threadId)
-	const workspaceId = liveCanaryThreadWorkspaceIds.get(resolvedThreadId) ?? null
-	liveCanaryThreadWorkspaceIds.delete(resolvedThreadId)
-	if (!workspaceId) {
-		return {
-			closed: false,
-			threadId: resolvedThreadId,
-			workspaceId: null,
-		}
-	}
-
-	const result = await browserWorkspaceManagerImpl.deleteWorkspace(workspaceId)
-	return {
-		...result,
-		threadId: resolvedThreadId,
-	}
+	const trimmedValue = value.trim()
+	return trimmedValue || null
 }
 
 function getBaseBrowserToolName(toolName) {
@@ -173,88 +71,178 @@ function isScreenshotToolCall(toolName) {
 	return SCREENSHOT_TOOL_NAMES.has(baseName)
 }
 
-function createDefaultWorkspaceBindings({
-	browserWorkspaceManagerImpl = browserWorkspaceManager,
-	ensureThreadSessionWorkspaceImpl = ensureRovoAppThreadBrowserWorkspace,
-	getThreadSessionWorkspaceImpl = getRovoAppThreadBrowserWorkspace,
-	getThreadSessionWorkspaceScreenshotImpl = getRovoAppThreadBrowserWorkspaceScreenshot,
-	isLiveCanaryBrowserModeImpl = isLiveCanaryBrowserMode,
-} = {}) {
-	if (isLiveCanaryBrowserModeImpl()) {
-		return {
-			async ensureThreadWorkspace(threadId, defaultUrl) {
-				return ensureLiveCanaryThreadWorkspace(threadId, defaultUrl, {
-					browserWorkspaceManagerImpl,
-				})
-			},
-			async getThreadWorkspace(threadId) {
-				return readLiveCanaryThreadWorkspace(threadId, {
-					browserWorkspaceManagerImpl,
-				})
-			},
-			async getThreadWorkspaceScreenshot(threadId) {
-				return getLiveCanaryThreadWorkspaceScreenshot(threadId, {
-					browserWorkspaceManagerImpl,
-				})
-			},
-		}
+function toWorkspaceResult(result) {
+	if (!result) {
+		return null
 	}
 
 	return {
+		state: result.state,
+		streamConfig: result.streamConfig,
+		workspaceId: result.workspaceId,
+	}
+}
+
+function buildEnsureWorkspaceInput(threadId, defaultUrl) {
+	const normalizedDefaultUrl = getTrimmedString(defaultUrl)
+	if (!normalizedDefaultUrl) {
+		return { threadId }
+	}
+
+	return {
+		threadId,
+		defaultUrl: normalizedDefaultUrl,
+	}
+}
+
+function createDefaultWorkspaceBindings() {
+	return {
 		async ensureThreadWorkspace(threadId, defaultUrl) {
-			const result = await ensureThreadSessionWorkspaceImpl({
-				threadId,
-				...(typeof defaultUrl === "string" && defaultUrl.trim()
-					? { defaultUrl: defaultUrl.trim() }
-					: {}),
-			})
-			return {
-				state: result.state,
-				streamConfig: result.streamConfig,
-				workspaceId: result.workspaceId,
-			}
+			const result = await ensureRovoAppThreadBrowserWorkspace(
+				buildEnsureWorkspaceInput(threadId, defaultUrl),
+			)
+			return toWorkspaceResult(result)
 		},
 		async getThreadWorkspace(threadId) {
-			const result = await getThreadSessionWorkspaceImpl({ threadId })
-			if (!result) {
-				return null
-			}
-
-			return {
-				state: result.state,
-				streamConfig: result.streamConfig,
-				workspaceId: result.workspaceId,
-			}
+			const result = await getRovoAppThreadBrowserWorkspace({ threadId })
+			return toWorkspaceResult(result)
 		},
 		async getThreadWorkspaceScreenshot(threadId) {
-			return getThreadSessionWorkspaceScreenshotImpl({ threadId })
+			return getRovoAppThreadBrowserWorkspaceScreenshot({ threadId })
 		},
 	}
 }
 
 function resolveToolThreadId(toolInput, fallbackThreadId) {
-	const threadId =
-		typeof toolInput?.thread_id === "string" && toolInput.thread_id.trim()
-			? toolInput.thread_id.trim()
-			: typeof fallbackThreadId === "string" && fallbackThreadId.trim()
-				? fallbackThreadId.trim()
-				: null
-
-	return threadId
+	return (
+		getTrimmedString(toolInput?.thread_id) ??
+		getTrimmedString(fallbackThreadId)
+	)
 }
 
 function resolveRequestedUrl(baseName, toolInput) {
-	if (
-		(baseName === "browser_navigate" ||
-			baseName === "navigate_page" ||
-			baseName === "new_page") &&
-		typeof toolInput?.url === "string" &&
-		toolInput.url.trim()
-	) {
-		return toolInput.url.trim()
+	const canUseToolUrl =
+		baseName === "browser_navigate" ||
+		baseName === "navigate_page" ||
+		baseName === "new_page"
+	if (canUseToolUrl) {
+		return getTrimmedString(toolInput?.url) ?? undefined
 	}
 
 	return undefined
+}
+
+function resolvePendingWorkspaceStatus(requestedUrl, workspaceState) {
+	if (
+		workspaceState?.canaryWasLaunched === true &&
+		!requestedUrl &&
+		workspaceState.url === "about:blank"
+	) {
+		return "awaiting-auth"
+	}
+
+	return "navigating"
+}
+
+function buildBrowserStateData({
+	state,
+	status,
+	streamConfig,
+	workspaceId,
+	url,
+	title,
+}) {
+	const data = {
+		status,
+		streamConfig,
+		title: title ?? state?.title ?? "",
+		url: url ?? state?.url ?? "",
+		workspaceId,
+	}
+	const provider = getTrimmedString(state?.provider)
+	if (!provider) {
+		return data
+	}
+
+	return {
+		...data,
+		provider,
+	}
+}
+
+async function persistWorkspaceScreenshot({
+	resolvedThreadId,
+	screenshot,
+	screenshotStore,
+}) {
+	if (
+		typeof screenshotStore?.persistScreenshot !== "function" ||
+		!Buffer.isBuffer(screenshot?.buffer)
+	) {
+		return null
+	}
+
+	return screenshotStore.persistScreenshot({
+		buffer: screenshot.buffer,
+		contentType: screenshot.contentType,
+		state: screenshot.state,
+		threadId: resolvedThreadId,
+		workspaceId: screenshot.workspaceId,
+	})
+}
+
+function buildScreenshotImageData(screenshot, persistedScreenshot) {
+	if (persistedScreenshot?.imageUrl) {
+		return {
+			imageUrl: persistedScreenshot.imageUrl,
+		}
+	}
+
+	if (persistedScreenshot?.imageData) {
+		return {
+			imageData: persistedScreenshot.imageData,
+		}
+	}
+
+	if (Buffer.isBuffer(screenshot?.buffer)) {
+		return {
+			imageData: screenshot.buffer.toString("base64"),
+		}
+	}
+
+	return {}
+}
+
+function buildWorkspaceScreenshotData(screenshot, persistedScreenshot) {
+	const data = {
+		contentType:
+			persistedScreenshot?.contentType ?? screenshot.contentType ?? "image/png",
+		height: persistedScreenshot?.height,
+		timestamp: persistedScreenshot?.timestamp ?? new Date().toISOString(),
+		url: screenshot.state?.url ?? "",
+		width: persistedScreenshot?.width,
+		workspaceId: screenshot.workspaceId,
+		...buildScreenshotImageData(screenshot, persistedScreenshot),
+	}
+	if (!persistedScreenshot?.thumbnailUrl) {
+		return data
+	}
+
+	return {
+		...data,
+		thumbnailUrl: persistedScreenshot.thumbnailUrl,
+	}
+}
+
+async function shouldEmitLaunchingCanaryState(existingWorkspace) {
+	if (existingWorkspace || !isLiveCanaryBrowserMode()) {
+		return false
+	}
+
+	const canConnect = await canConnectToCdpPort(
+		getConfiguredLiveCanaryCdpPort(),
+	).catch(() => false)
+	return !canConnect
 }
 
 function createThreadBrowserBridge({
@@ -278,18 +266,14 @@ function createThreadBrowserBridge({
 		hasEmittedBrowserState = true
 		writer.write({
 			type: "data-browser-state",
-			data: {
-				...(typeof state?.provider === "string" && state.provider
-					? {
-						provider: state.provider,
-					}
-					: {}),
+			data: buildBrowserStateData({
+				state,
 				status,
 				streamConfig,
-				title: title ?? state?.title ?? "",
-				url: url ?? state?.url ?? "",
 				workspaceId,
-			},
+				url,
+				title,
+			}),
 		})
 	}
 
@@ -297,47 +281,15 @@ function createThreadBrowserBridge({
 		try {
 			const screenshot =
 				await workspaceBindings.getThreadWorkspaceScreenshot(resolvedThreadId)
-			const persistedScreenshot =
-				screenshotStore?.persistScreenshot &&
-				Buffer.isBuffer(screenshot?.buffer)
-					? await screenshotStore.persistScreenshot({
-						buffer: screenshot.buffer,
-						contentType: screenshot.contentType,
-						state: screenshot.state,
-						threadId: resolvedThreadId,
-						workspaceId: screenshot.workspaceId,
-					})
-					: null
+			const persistedScreenshot = await persistWorkspaceScreenshot({
+				resolvedThreadId,
+				screenshot,
+				screenshotStore,
+			})
 			hasEmittedBrowserScreenshot = true
 			writer.write({
 				type: "data-browser-screenshot",
-				data: {
-					contentType:
-						persistedScreenshot?.contentType ?? screenshot.contentType ?? "image/png",
-					height: persistedScreenshot?.height,
-					timestamp: persistedScreenshot?.timestamp ?? new Date().toISOString(),
-					url: screenshot.state?.url ?? "",
-					width: persistedScreenshot?.width,
-					workspaceId: screenshot.workspaceId,
-					...(persistedScreenshot?.imageUrl
-						? {
-							imageUrl: persistedScreenshot.imageUrl,
-						}
-						: persistedScreenshot?.imageData
-							? {
-								imageData: persistedScreenshot.imageData,
-							}
-							: Buffer.isBuffer(screenshot?.buffer)
-								? {
-									imageData: screenshot.buffer.toString("base64"),
-								}
-								: {}),
-					...(persistedScreenshot?.thumbnailUrl
-						? {
-							thumbnailUrl: persistedScreenshot.thumbnailUrl,
-						}
-						: {}),
-				},
+				data: buildWorkspaceScreenshotData(screenshot, persistedScreenshot),
 			})
 		} catch (error) {
 			console.warn(
@@ -363,13 +315,7 @@ function createThreadBrowserBridge({
 			const existingWorkspace = await workspaceBindings.getThreadWorkspace(
 				resolvedThreadId,
 			)
-			if (
-				!existingWorkspace &&
-				isLiveCanaryBrowserMode() &&
-				!(await canConnectToCdpPort(
-					getConfiguredLiveCanaryCdpPort(),
-				).catch(() => false))
-			) {
+			if (await shouldEmitLaunchingCanaryState(existingWorkspace)) {
 				emitBrowserState({
 					state: {
 						provider: "chrome-devtools",
@@ -393,12 +339,7 @@ function createThreadBrowserBridge({
 
 			emitBrowserState({
 				state: workspace.state,
-				status:
-					workspace.state?.canaryWasLaunched === true &&
-					!requestedUrl &&
-					workspace.state?.url === "about:blank"
-						? "awaiting-auth"
-						: "navigating",
+				status: resolvePendingWorkspaceStatus(requestedUrl, workspace.state),
 				streamConfig: workspace.streamConfig,
 				title: workspace.state?.title ?? "",
 				url: requestedUrl ?? workspace.state?.url ?? "",
@@ -479,9 +420,7 @@ function createThreadBrowserBridge({
 }
 
 module.exports = {
-	createDefaultWorkspaceBindings,
 	createThreadBrowserBridge,
-	deleteLiveCanaryThreadWorkspace,
 	getBaseBrowserToolName,
 	isBrowserToolCall,
 	isScreenshotToolCall,
