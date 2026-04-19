@@ -292,7 +292,7 @@ export default function Rings({
 		animRef.current = requestAnimationFrame(render);
 
 		return () => cancelAnimationFrame(animRef.current);
-	}, [colorsKey, seed, speed, ephemeralAmp, lensScale, ringSpacing, ringRadius, ringWarpStrength, ringDispersion, edgeDisp]);
+	}, [colors, colorsKey, seed, speed, ephemeralAmp, lensScale, ringSpacing, ringRadius, ringWarpStrength, ringDispersion, edgeDisp]);
 
 	return (
 		<canvas

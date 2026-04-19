@@ -239,7 +239,7 @@ export default function WaveGradient({
 		animRef.current = requestAnimationFrame(render);
 
 		return () => cancelAnimationFrame(animRef.current);
-	}, [colorsKey, seed, speed, freqX, freqY, angle, amplitude, softness, blend]);
+	}, [colors, colorsKey, seed, speed, freqX, freqY, angle, amplitude, softness, blend]);
 
 	return (
 		<canvas

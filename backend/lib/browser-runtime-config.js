@@ -6,7 +6,7 @@ function hasConfiguredString(value) {
 	return typeof value === "string" && value.trim().length > 0
 }
 
-function normalizeBrowserMode(value) {
+function normalizeBrowserMode() {
 	return DEFAULT_BROWSER_MODE
 }
 

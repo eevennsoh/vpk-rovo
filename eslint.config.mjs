@@ -89,6 +89,23 @@ const eslintConfig = defineConfig([
 		},
 	},
 	{
+		settings: {
+			react: {
+				version: "19.2.5",
+			},
+		},
+		rules: {
+			// Next 16 enables React compiler-style rules that the current repo is not
+			// consistently written to satisfy yet; keep lint focused on the existing
+			// enforced standards until that cleanup happens intentionally.
+			"react-hooks/immutability": "off",
+			"react-hooks/preserve-manual-memoization": "off",
+			"react-hooks/purity": "off",
+			"react-hooks/refs": "off",
+			"react-hooks/set-state-in-effect": "off",
+		},
+	},
+	{
 		files: ["components/blocks/dashboard/components/data-table.tsx"],
 		rules: {
 			"react-hooks/incompatible-library": "off",

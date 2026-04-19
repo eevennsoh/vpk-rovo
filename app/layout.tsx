@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-page-custom-font -- App Router root layout applies these fonts globally. */
 import type { Metadata } from "next";
 import "./globals.css";
 import "katex/dist/katex.min.css";
@@ -10,7 +11,7 @@ import { Geist } from "next/font/google";
 import localFont from "next/font/local";
 import { cn } from "@/lib/utils";
 
-const geist = Geist({subsets:['latin'],variable:'--font-sans'});
+const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
 const arkEsSolidLight = localFont({
 	src: "../public/fonts/ark-es/ARK-ES-SolidLight.woff",
@@ -164,12 +165,17 @@ export default async function RootLayout({
 	}
 
 	return (
-		<html
-			lang="en"
-			className={cn(colorMode, "font-sans", geist.variable, arkEsSolidLight.variable)}
-			data-theme={themeData}
-			data-color-mode={colorMode}
-			data-contrast-mode={contrastMode}
+			<html
+				lang="en"
+				className={cn(
+					colorMode,
+					"font-sans",
+					geist.variable,
+					arkEsSolidLight.variable,
+				)}
+				data-theme={themeData}
+				data-color-mode={colorMode}
+				data-contrast-mode={contrastMode}
 			suppressHydrationWarning
 		>
 			<head>

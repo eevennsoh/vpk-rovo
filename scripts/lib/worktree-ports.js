@@ -17,7 +17,6 @@
  */
 
 const { execSync } = require("node:child_process");
-const fs = require("node:fs");
 const path = require("node:path");
 
 const FRONTEND_DEFAULT_BASE = 3000;
@@ -47,20 +46,9 @@ function execGit(command, { cwd = process.cwd() } = {}) {
 }
 
 function inferWorktreeKind(worktreePath) {
-	const gitEntryPath = path.join(path.resolve(worktreePath), ".git");
-
 	try {
-		const stat = fs.lstatSync(gitEntryPath);
-		if (stat.isDirectory()) {
-			return "main";
-		}
-
-		if (stat.isFile()) {
-			const gitFile = fs.readFileSync(gitEntryPath, "utf8");
-			if (/gitdir:\s*.+\/\.git\/worktrees\//i.test(gitFile)) {
-				return "linked";
-			}
-		}
+		const gitDir = execGit("git rev-parse --git-dir", { cwd: worktreePath });
+		return path.basename(gitDir) === ".git" ? "main" : "linked";
 	} catch {
 		// Fall back to path heuristics when git metadata is unavailable.
 	}

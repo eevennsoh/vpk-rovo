@@ -279,7 +279,7 @@ export default function Bands({
 		animRef.current = requestAnimationFrame(render);
 
 		return () => cancelAnimationFrame(animRef.current);
-	}, [colorsKey, seed, speed, ephemeralAmp, lensScale, lensSpacingX, lensSpacingY, lensRadius, dispersionStrength, edgeDisp]);
+	}, [colors, colorsKey, seed, speed, ephemeralAmp, lensScale, lensSpacingX, lensSpacingY, lensRadius, dispersionStrength, edgeDisp]);
 
 	return (
 		<canvas

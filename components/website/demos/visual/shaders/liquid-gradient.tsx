@@ -399,7 +399,7 @@ export default function LiquidGradient({
 		animRef.current = requestAnimationFrame(render);
 
 		return () => cancelAnimationFrame(animRef.current);
-	}, [colorsKey, seed, speed, loop, scale, turbAmp, turbFreq, turbIter, waveFreq, distBias, jellify, ditherMode, dither, exposure, contrast, saturation]);
+	}, [colors, colorsKey, seed, speed, loop, scale, turbAmp, turbFreq, turbIter, waveFreq, distBias, jellify, ditherMode, dither, exposure, contrast, saturation]);
 
 	return (
 		<canvas

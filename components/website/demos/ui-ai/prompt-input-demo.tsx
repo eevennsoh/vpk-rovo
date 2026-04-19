@@ -282,7 +282,6 @@ function ScrollLock({ children }: { children: ReactNode }) {
 	// Capture synchronously during render, before children mount.
 	// Reading a ref during render is intentional here — we need to snapshot
 	// the scroll position before cmdk's layout effects fire scrollIntoView.
-	// eslint-disable-next-line react-hooks/refs
 	if (typeof window !== "undefined" && savedRef.current === null) {
 		savedRef.current = window.scrollY;
 	}

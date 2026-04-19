@@ -98,7 +98,7 @@ export function VerticalElasticSlider({
 	);
 
 	const [isInteracting, setIsInteracting] = useState(false);
-	const [isDragging, setIsDragging] = useState(false);
+	const [, setIsDragging] = useState(false);
 	const [isHovered, setIsHovered] = useState(false);
 	const [keyboardFocusRing, setKeyboardFocusRing] = useState(false);
 

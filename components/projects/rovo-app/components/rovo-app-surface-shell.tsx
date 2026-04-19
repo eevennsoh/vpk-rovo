@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/refs -- refs from useTopNavigation are passed as props, matching rovo-app-shell.tsx */
 "use client";
 
 import type { CSSProperties, ReactNode } from "react";

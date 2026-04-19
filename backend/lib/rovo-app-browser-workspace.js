@@ -291,7 +291,6 @@ async function buildThreadBrowserWorkspaceResult(threadId, state, {
 }
 
 async function ensureRovoAppThreadBrowserWorkspace({
-	defaultUrl: _defaultUrl,
 	threadId,
 } = {}) {
 	const resolvedThreadId = requireNonEmptyString(

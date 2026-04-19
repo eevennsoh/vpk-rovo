@@ -39,7 +39,9 @@ export function WidgetCard({
 		typeof style?.width === "number" ? style.width : 240;
 	const height =
 		typeof style?.height === "number" ? style.height : 240;
-	const { width: _width, height: _height, ...restStyle } = style ?? {};
+	const restStyle = { ...(style ?? {}) };
+	delete restStyle.width;
+	delete restStyle.height;
 
 	return (
 		<div

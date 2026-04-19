@@ -12,7 +12,7 @@ import { DigitDisplay } from "./digit-display";
 import { useCities } from "./use-cities";
 import { useCurrentWeather } from "./use-current-weather";
 import { useLocationClock } from "./use-location-clock";
-import { WeatherIcon, getWeatherLabel } from "./weather-icon";
+import { WeatherIcon } from "./weather-icon";
 import {
 	WidgetCard,
 	WidgetGridOverlay,
@@ -161,8 +161,6 @@ export default function Weather({
 	const palette = THEME_PALETTE[resolvedTheme];
 
 	const temperature = formatTemperature(weather.temperatureCelsius);
-	const weatherLabel = getWeatherLabel(weather.weatherCode, weather.isDay);
-
 	const weekdayShort = clock.isReady
 		? clock.weekday.slice(0, 3).toUpperCase()
 		: "---";
@@ -259,10 +257,10 @@ export default function Weather({
 						>
 							{clock.minutes}
 						</DigitDisplay>
-						<span
-							className="font-mono text-[13px] tabular-nums opacity-60"
-							style={{ color: "#FFFFFF", marginTop: 10, fontFamily: "'DotGothic16', sans-serif" }}
-						>
+							<span
+								className="font-mono text-[13px] tabular-nums opacity-60"
+								style={{ color: "#FFFFFF", marginTop: 10, fontFamily: "'DotGothic16', sans-serif" }}
+							>
 							: {clock.seconds}
 						</span>
 					</div>
@@ -308,21 +306,21 @@ export default function Weather({
 								? ["—", "—"]
 								: String(Math.round(weather.humidity)).split("")
 							).map((digit, i) => (
-								<DigitDisplay
-									key={i}
-									className="text-[72px]"
-									weight={400}
-									tracking={-0.04}
-									style={{ color: "#FFFFFF", lineHeight: 0.95, fontFamily: "'DotGothic16', sans-serif" }}
-								>
+									<DigitDisplay
+										key={i}
+										className="text-[72px]"
+										weight={400}
+										tracking={-0.04}
+										style={{ color: "#FFFFFF", lineHeight: 0.95, fontFamily: "'DotGothic16', sans-serif" }}
+									>
 									{digit}
 								</DigitDisplay>
 							))}
 						</div>
-						<span
-							className="text-[14px] opacity-60"
-							style={{ color: "#FFFFFF", fontFamily: "'DotGothic16', sans-serif" }}
-						>
+							<span
+								className="text-[14px] opacity-60"
+								style={{ color: "#FFFFFF", fontFamily: "'DotGothic16', sans-serif" }}
+							>
 							湿度
 						</span>
 					</div>
@@ -363,12 +361,12 @@ export default function Weather({
 							>
 								Temp °C
 							</span>
-							<DigitDisplay
-								className="text-[72px]"
-								weight={200}
-								tracking={-0.04}
-								style={{ color: "#FFFFFF", lineHeight: 0.95, fontFamily: "'Bitcount Grid Single', sans-serif" }}
-							>
+								<DigitDisplay
+									className="text-[72px]"
+									weight={200}
+									tracking={-0.04}
+									style={{ color: "#FFFFFF", lineHeight: 0.95, fontFamily: "'Bitcount Grid Single', sans-serif" }}
+								>
 								{temperature}
 							</DigitDisplay>
 							<div className="flex items-center gap-1" style={{ marginTop: 4 }}>
@@ -380,10 +378,10 @@ export default function Weather({
 								/>
 							</div>
 						</div>
-						<span
-							className="text-[14px] opacity-60"
-							style={{ color: "#FFFFFF", fontFamily: "'Bitcount Grid Single', sans-serif" }}
-						>
+							<span
+								className="text-[14px] opacity-60"
+								style={{ color: "#FFFFFF", fontFamily: "'Bitcount Grid Single', sans-serif" }}
+							>
 							温度
 						</span>
 					</div>
