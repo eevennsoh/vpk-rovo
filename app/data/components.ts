@@ -3,6 +3,7 @@ import { UI_AUDIO_DETAILS } from "./details/ui-audio";
 import { UI_AI_DETAILS } from "./details/ui-ai";
 import { BLOCK_DETAILS } from "./details/blocks";
 import { PROJECT_DETAILS } from "./details/projects";
+import { ART_DETAILS } from "./details/arts";
 import { UI_DETAILS } from "./details/ui";
 import { UTILITY_DETAILS } from "./details/utility";
 import { VISUAL_DETAILS } from "./details/visual";
@@ -12,7 +13,7 @@ export interface ComponentEntry {
 	name: string;
 	slug: string;
 	importPath: string;
-	category: "ui-audio" | "ui-ai" | "ui" | "blocks" | "projects" | "utility" | "visual";
+	category: "ui-audio" | "ui-ai" | "ui" | "blocks" | "projects" | "arts" | "utility" | "visual";
 	detail?: ComponentDetail;
 }
 
@@ -74,6 +75,16 @@ function projectComponent(slug: string, name?: string): ComponentEntry {
 		importPath: `@/components/projects/${slug}`,
 		category: "projects",
 		detail: PROJECT_DETAILS[slug],
+	};
+}
+
+function artComponent(slug: string, name?: string): ComponentEntry {
+	return {
+		name: name ?? toTitleCase(slug),
+		slug,
+		importPath: `@/components/arts/${slug}`,
+		category: "arts",
+		detail: ART_DETAILS[slug],
 	};
 }
 
@@ -328,6 +339,10 @@ export const PROJECT_COMPONENTS: ComponentEntry[] = sortEntriesByName([
 	projectComponent("sidebar-chat", "Sidebar Chat"),
 ]);
 
+export const ART_COMPONENTS: ComponentEntry[] = sortEntriesByName([
+	artComponent("sydney-lockscreen", "Sydney Lockscreen"),
+]);
+
 export const UTILITY_COMPONENTS: ComponentEntry[] = sortEntriesByName([
 	{ name: "Agent Browser", slug: "agent-browser", importPath: "@/components/website/demos/utils/agent-browser", category: "utility", detail: UTILITY_DETAILS["agent-browser"] },
 	utilityComponent("gui", "GUI"),
@@ -360,7 +375,7 @@ export const VISUAL_COMPONENTS: ComponentEntry[] = sortEntriesByName([
 	visualComponent("chromatic-aberration", "Chromatic Aberration", "@/components/website/demos/visual/shaders/chromatic-aberration"),
 ]);
 
-const ALL_COMPONENTS = [...AUDIO_COMPONENTS, ...AI_COMPONENTS, ...UI_COMPONENTS, ...BLOCK_COMPONENTS, ...PROJECT_COMPONENTS, ...UTILITY_COMPONENTS, ...VISUAL_COMPONENTS];
+const ALL_COMPONENTS = [...AUDIO_COMPONENTS, ...AI_COMPONENTS, ...UI_COMPONENTS, ...BLOCK_COMPONENTS, ...PROJECT_COMPONENTS, ...ART_COMPONENTS, ...UTILITY_COMPONENTS, ...VISUAL_COMPONENTS];
 
 export function findComponent(category: string, slug: string): ComponentEntry | undefined {
 	return ALL_COMPONENTS.find((c) => c.category === category && c.slug === slug);

@@ -38,40 +38,38 @@ export const VISUAL_DETAILS: Record<string, ComponentDetail> = {
 		description: "Fluted glass refraction with bars, waves, zigzag, or seigaiha shapes, chromatic dispersion, blur, and frost.",
 	},
 	"liquid-glass": {
-		description: "A Framer-style liquid glass shell built with an SVG displacement filter, translucent fill, and masked diagonal border sheen. Sized externally and tuned for tall editorial pills by default.",
+		description: "Apple-style liquid glass surface with real-time SVG displacement distortion, chromatic dispersion, a crisp hairline edge with inner specular highlights, a soft drop shadow, and backdrop-filter refraction.",
 		importStatement: `import LiquidGlass from "@/components/website/demos/visual/shaders/liquid-glass";`,
-		usage: `<div className="relative h-[607px] w-[188px]">
-	<LiquidGlass className="size-full" />
-</div>
+		usage: `<LiquidGlass width={200} height={400} borderRadius={50} />
 
-<div className="relative h-80 w-56">
-	<LiquidGlass
-		className="size-full"
-		fillOpacity={0.14}
-		displacementScale={-150}
-		blur={5.2}
-	>
-		<div className="flex h-full items-end p-5 text-sm text-text">
-			Content stays crisp above the distortion layer.
-		</div>
-	</LiquidGlass>
-</div>`,
+<LiquidGlass
+	width={300}
+	height={200}
+	borderRadius={30}
+	distortionScale={-120}
+	dispersion={10}
+	backgroundOpacity={0.1}
+>
+	<p className="text-sm text-text">Content inside the glass</p>
+</LiquidGlass>`,
 		props: [
-			{ name: "className", type: "string", description: "Applies external sizing and layout classes. Size the component from the outside in v1." },
-			{ name: "children", type: "React.ReactNode", description: "Optional foreground content rendered above the glass layer." },
-			{ name: "radius", type: "number", default: "81", description: "Corner radius in pixels. The SVG map is regenerated to match the rendered box." },
-			{ name: "fillColor", type: "string", default: "\"#ffffff\"", description: "Base tint color mixed into the translucent glass surface." },
-			{ name: "fillOpacity", type: "number", default: "0.1", description: "Frost opacity of the glass fill (0 = clear, 1 = fully frosted)." },
-			{ name: "displacementScale", type: "number", default: "-133", description: "Base scale of the liquid displacement map applied through the SVG filter." },
-			{ name: "blur", type: "number", default: "4.15", description: "Final Gaussian blur radius applied to the refracted RGB channels." },
-			{ name: "lightness", type: "number", default: "88", description: "Lightness (0–100) of the inner displacement map fill controlling refraction intensity." },
-			{ name: "alpha", type: "number", default: "0.9", description: "Alpha (0–1) of the inner displacement map fill controlling refraction blending." },
-			{ name: "dispersion", type: "number", default: "0", description: "Chromatic dispersion amount added to the displacement scale." },
-			{ name: "mapBlur", type: "number", default: "5", description: "CSS blur applied to the inner displacement map rect for softer refraction edges." },
-			{ name: "mapInset", type: "number", default: "0.05", description: "Inset ratio (0–0.5) for the inner displacement map rect." },
-			{ name: "borderOpacity", type: "number", default: "0.7", description: "Opacity of the diagonal masked border highlight." },
-			{ name: "borderAngle", type: "number", default: "315", description: "Angle, in degrees, for the diagonal border sheen gradient." },
-			{ name: "borderColor", type: "string", default: "\"#171717\"", description: "Color of the diagonal border sheen gradient." },
+			{ name: "children", type: "React.ReactNode", description: "Content displayed inside the glass surface." },
+			{ name: "width", type: "number | string", default: "200", description: "Width of the glass surface (pixels or CSS value)." },
+			{ name: "height", type: "number | string", default: "400", description: "Height of the glass surface (pixels or CSS value)." },
+			{ name: "borderRadius", type: "number", default: "50", description: "Corner radius in pixels." },
+			{ name: "borderWidth", type: "number", default: "0.05", description: "Border width factor for the displacement map inset." },
+			{ name: "brightness", type: "number", default: "50", description: "Brightness percentage (0–100) for the displacement map." },
+			{ name: "opacity", type: "number", default: "0.93", description: "Opacity of the displacement map inner fill." },
+			{ name: "blur", type: "number", default: "8", description: "Blur applied to the displacement map inner rect." },
+			{ name: "displace", type: "number", default: "0", description: "Output Gaussian blur (stdDeviation) on the refracted result." },
+			{ name: "backgroundOpacity", type: "number", default: "0", description: "Background frost opacity (0 = clear, 1 = fully frosted)." },
+			{ name: "saturation", type: "number", default: "1", description: "Backdrop-filter saturation multiplier." },
+			{ name: "distortionScale", type: "number", default: "-90", description: "Main displacement scale applied to all channels." },
+			{ name: "dispersion", type: "number", default: "6", description: "Chromatic dispersion amount added to the distortion scale." },
+			{ name: "borderOpacity", type: "number", default: "0.35", description: "Opacity of the inset hairline edge." },
+			{ name: "borderColor", type: "string", default: "\"#000000\"", description: "Color of the inset hairline edge." },
+			{ name: "className", type: "string", description: "Additional CSS class names." },
+			{ name: "style", type: "React.CSSProperties", description: "Inline styles object." },
 		],
 	},
 	"holo": {

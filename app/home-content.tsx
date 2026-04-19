@@ -17,6 +17,7 @@ import {
 import { WEBSITE_STATIC_PAGES, WEBSITE_NAV_SECTIONS } from "./data/website-sidebar-nav";
 import {
 	HomeArtsSection,
+	type ArtListEntry,
 } from "@/app/home-arts-section";
 import {
 	HomeProjectsSection,
@@ -30,9 +31,10 @@ interface HomeContentProps {
 	category: HomeCategory;
 	lastUpdatedAt?: string | null;
 	projectComponents?: ReadonlyArray<ProjectListEntry>;
+	artComponents?: ReadonlyArray<ArtListEntry>;
 }
 
-export function HomeContent({ category, lastUpdatedAt, projectComponents }: Readonly<HomeContentProps>) {
+export function HomeContent({ category, lastUpdatedAt, projectComponents, artComponents }: Readonly<HomeContentProps>) {
 	return (
 		<>
 			<WebsiteSidebarNav staticPages={WEBSITE_STATIC_PAGES} sections={WEBSITE_NAV_SECTIONS} logoText="VPK" />
@@ -129,7 +131,7 @@ export function HomeContent({ category, lastUpdatedAt, projectComponents }: Read
 					)}
 
 					{category === "arts" && (
-						<HomeArtsSection />
+						<HomeArtsSection artComponents={artComponents} />
 					)}
 
 					{category === "utility" && (

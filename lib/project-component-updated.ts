@@ -2,23 +2,29 @@ import "server-only";
 
 import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
-import { PROJECT_COMPONENTS, type ComponentManifestEntry } from "@/app/data/component-manifest";
+import {
+	ART_COMPONENTS,
+	PROJECT_COMPONENTS,
+	type ComponentManifestEntry,
+} from "@/app/data/component-manifest";
 
-const PROJECT_COMPONENTS_UPDATED_TTL_MS = 60_000;
-
-let cachedProjectComponentsWithUpdatedAt:
-	| {
-		expiresAt: number;
-		value: ProjectComponentEntry[];
-	}
-	| null = null;
+const COMPONENTS_UPDATED_TTL_MS = 60_000;
 
 export interface ProjectComponentEntry extends ComponentManifestEntry {
 	updatedAt: string | null;
 }
 
-function getCandidatePaths(slug: string): string[] {
-	const candidatePaths = [`components/projects/${slug}`];
+export type ArtComponentEntry = ProjectComponentEntry;
+
+interface ComponentsCache {
+	expiresAt: number;
+	value: ProjectComponentEntry[];
+}
+
+const cacheByPrefix = new Map<string, ComponentsCache>();
+
+function getCandidatePaths(prefix: string, slug: string): string[] {
+	const candidatePaths = [`components/${prefix}/${slug}`];
 	const appPath = `app/${slug}`;
 
 	if (existsSync(appPath)) {
@@ -56,27 +62,39 @@ function getLatestCommittedAt(paths: ReadonlyArray<string>): string | null {
 	return latestTimestamp;
 }
 
-function loadProjectComponentsWithUpdatedAt(): ProjectComponentEntry[] {
-	return PROJECT_COMPONENTS.map((component) => ({
+function loadComponentsWithUpdatedAt(
+	components: ReadonlyArray<ComponentManifestEntry>,
+	prefix: string,
+): ProjectComponentEntry[] {
+	return components.map((component) => ({
 		...component,
-		updatedAt: getLatestCommittedAt(getCandidatePaths(component.slug)),
+		updatedAt: getLatestCommittedAt(getCandidatePaths(prefix, component.slug)),
 	}));
 }
 
-export function getProjectComponentsWithUpdatedAt(): ProjectComponentEntry[] {
+function getComponentsWithUpdatedAt(
+	components: ReadonlyArray<ComponentManifestEntry>,
+	prefix: string,
+): ProjectComponentEntry[] {
 	const now = Date.now();
-	if (
-		cachedProjectComponentsWithUpdatedAt &&
-		cachedProjectComponentsWithUpdatedAt.expiresAt > now
-	) {
-		return cachedProjectComponentsWithUpdatedAt.value;
+	const cached = cacheByPrefix.get(prefix);
+	if (cached && cached.expiresAt > now) {
+		return cached.value;
 	}
 
-	const value = loadProjectComponentsWithUpdatedAt();
-	cachedProjectComponentsWithUpdatedAt = {
+	const value = loadComponentsWithUpdatedAt(components, prefix);
+	cacheByPrefix.set(prefix, {
 		value,
-		expiresAt: now + PROJECT_COMPONENTS_UPDATED_TTL_MS,
-	};
+		expiresAt: now + COMPONENTS_UPDATED_TTL_MS,
+	});
 
 	return value;
+}
+
+export function getProjectComponentsWithUpdatedAt(): ProjectComponentEntry[] {
+	return getComponentsWithUpdatedAt(PROJECT_COMPONENTS, "projects");
+}
+
+export function getArtComponentsWithUpdatedAt(): ArtComponentEntry[] {
+	return getComponentsWithUpdatedAt(ART_COMPONENTS, "arts");
 }
