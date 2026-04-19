@@ -5,6 +5,11 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
+import {
+	buildLiquidGlassChannelScales,
+	buildLiquidGlassDisplacementImageHref,
+} from "./liquid-glass-utils";
+
 function clamp(value: number, min: number, max: number): number {
 	return Math.min(Math.max(value, min), max);
 }
@@ -72,6 +77,7 @@ export default function LiquidGlass({
 	const filterId = `liquid-glass-filter-${uniqueId}`;
 	const redGradId = `liquid-glass-red-${uniqueId}`;
 	const blueGradId = `liquid-glass-blue-${uniqueId}`;
+	const blurFilterId = `liquid-glass-inner-blur-${uniqueId}`;
 
 	const containerRef = useRef<HTMLDivElement>(null);
 	const feImageRef = useRef<SVGFEImageElement>(null);
@@ -91,38 +97,19 @@ export default function LiquidGlass({
 			return null;
 		}
 
-		// Render the displacement map at a higher internal resolution for smoother
-		// gradient sampling, then let `preserveAspectRatio="none"` scale it back to
-		// the container size. This removes the staircase artifacts seen at small
-		// sizes without forcing the actual filter to run at higher cost.
-		const aspectRatio = w / h;
-		const longSide = 800;
-		const innerW = aspectRatio >= 1 ? longSide : Math.round(longSide * aspectRatio);
-		const innerH = aspectRatio >= 1 ? Math.round(longSide / aspectRatio) : longSide;
-		const minSide = Math.min(innerW, innerH);
-		const scaledRadius = (borderRadius / Math.min(w, h)) * minSide;
-		const edgeSize = minSide * (borderWidth * 0.5);
-
-		const svg = `
-<svg viewBox="0 0 ${innerW} ${innerH}" xmlns="http://www.w3.org/2000/svg">
-	<defs>
-		<linearGradient id="${redGradId}" x1="100%" y1="0%" x2="0%" y2="0%">
-			<stop offset="0%" stop-color="#0000"/>
-			<stop offset="100%" stop-color="red"/>
-		</linearGradient>
-		<linearGradient id="${blueGradId}" x1="0%" y1="0%" x2="0%" y2="100%">
-			<stop offset="0%" stop-color="#0000"/>
-			<stop offset="100%" stop-color="blue"/>
-		</linearGradient>
-	</defs>
-	<rect x="0" y="0" width="${innerW}" height="${innerH}" fill="black"/>
-	<rect x="0" y="0" width="${innerW}" height="${innerH}" rx="${scaledRadius}" fill="url(#${redGradId})"/>
-	<rect x="0" y="0" width="${innerW}" height="${innerH}" rx="${scaledRadius}" fill="url(#${blueGradId})" style="mix-blend-mode:difference"/>
-	<rect x="${edgeSize}" y="${edgeSize}" width="${innerW - edgeSize * 2}" height="${innerH - edgeSize * 2}" rx="${scaledRadius}" fill="hsl(0 0% ${brightness}% / ${opacity})" style="filter:blur(${blur}px)"/>
-</svg>`;
-
-		return `data:image/svg+xml,${encodeURIComponent(svg)}`;
-	}, [blueGradId, borderRadius, borderWidth, brightness, blur, opacity, redGradId]);
+		return buildLiquidGlassDisplacementImageHref({
+			width: w,
+			height: h,
+			borderRadius,
+			borderWidth,
+			brightness,
+			blur,
+			opacity,
+			redGradId,
+			blueGradId,
+			blurFilterId,
+		});
+	}, [blueGradId, blurFilterId, borderRadius, borderWidth, brightness, blur, opacity, redGradId]);
 
 	const updateDisplacementMap = useCallback(() => {
 		const href = generateDisplacementMap();
@@ -133,13 +120,16 @@ export default function LiquidGlass({
 	useEffect(() => {
 		updateDisplacementMap();
 
-		const scale = distortionScale + dispersion;
-		for (const ref of [dispRedRef, dispGreenRef, dispBlueRef]) {
-			if (ref.current) {
-				ref.current.setAttribute("scale", scale.toString());
-				ref.current.setAttribute("xChannelSelector", "R");
-				ref.current.setAttribute("yChannelSelector", "B");
-			}
+		const channelScales = buildLiquidGlassChannelScales(distortionScale, dispersion);
+		for (const [ref, scale] of [
+			[dispRedRef, channelScales.red],
+			[dispGreenRef, channelScales.green],
+			[dispBlueRef, channelScales.blue],
+		] as const) {
+			if (!ref.current) continue;
+			ref.current.setAttribute("scale", scale.toString());
+			ref.current.setAttribute("xChannelSelector", "R");
+			ref.current.setAttribute("yChannelSelector", "B");
 		}
 
 		gaussianBlurRef.current?.setAttribute("stdDeviation", displace.toString());
@@ -238,7 +228,7 @@ export default function LiquidGlass({
 						<feColorMatrix in="dispBlue" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 1 0" result="blue" />
 						<feBlend in="red" in2="green" mode="screen" result="rg" />
 						<feBlend in="rg" in2="blue" mode="screen" result="output" />
-						<feGaussianBlur ref={gaussianBlurRef} in="output" stdDeviation="0.7" />
+						<feGaussianBlur ref={gaussianBlurRef} in="output" stdDeviation="0" />
 					</filter>
 				</defs>
 			</svg>

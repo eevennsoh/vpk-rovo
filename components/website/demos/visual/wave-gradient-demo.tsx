@@ -3,12 +3,13 @@
 import { useMemo, useState } from "react";
 
 import { GUI } from "@/components/utils/gui";
+import { ROVO_SHADER_COLOR_HEX } from "@/lib/rovo-colors";
 import { token } from "@/lib/tokens";
 
 import { ShaderColorListControl } from "./shader-color-controls";
 import WaveGradient from "./shaders/wave-gradient";
 
-const DEFAULT_COLORS: [string, string, string, string] = ["#FFC2A8", "#FF5024", "#FFAE00", "#E29EFF"];
+const DEFAULT_COLORS = [...ROVO_SHADER_COLOR_HEX] as [string, string, string, string];
 
 export default function WaveGradientDemo() {
 	const [colors, setColors] = useState<[string, string, string, string]>(DEFAULT_COLORS);

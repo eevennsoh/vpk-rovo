@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { ROVO_SHADER_COLOR_HEX } from "@/lib/rovo-colors";
+
+const DEFAULT_RINGS_COLORS = [...ROVO_SHADER_COLOR_HEX];
 
 const VERTEX_SHADER = `#version 300 es
 precision highp float;
@@ -201,7 +204,7 @@ interface RingsProps {
 
 export default function Rings({
 	className,
-	colors = ["#91FFCC", "#FFB938", "#FF4242"],
+	colors = DEFAULT_RINGS_COLORS,
 	seed = 47,
 	speed = 0.5,
 	ephemeralAmp = 0.12,
@@ -214,6 +217,7 @@ export default function Rings({
 }: RingsProps) {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const animRef = useRef<number>(0);
+	const colorsKey = colors.join("|");
 
 	useEffect(() => {
 		const canvas = canvasRef.current;
@@ -288,7 +292,7 @@ export default function Rings({
 		animRef.current = requestAnimationFrame(render);
 
 		return () => cancelAnimationFrame(animRef.current);
-	}, [colors, seed, speed, ephemeralAmp, lensScale, ringSpacing, ringRadius, ringWarpStrength, ringDispersion, edgeDisp]);
+	}, [colorsKey, seed, speed, ephemeralAmp, lensScale, ringSpacing, ringRadius, ringWarpStrength, ringDispersion, edgeDisp]);
 
 	return (
 		<canvas

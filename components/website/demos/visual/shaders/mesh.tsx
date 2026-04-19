@@ -1,6 +1,9 @@
 "use client";
 
 import { useId } from "react";
+import { ROVO_SHADER_TRIAD_HEX } from "@/lib/rovo-colors";
+
+const DEFAULT_MESH_COLORS = [...ROVO_SHADER_TRIAD_HEX] as [string, string, string];
 
 function getShifted(array: string[], n: number): string[] {
 	const shift = n % array.length;
@@ -21,9 +24,9 @@ interface MeshProps {
 
 export default function Mesh({
 	className,
-	colorA = "red",
-	colorB = "green",
-	colorC = "blue",
+	colorA = DEFAULT_MESH_COLORS[0],
+	colorB = DEFAULT_MESH_COLORS[1],
+	colorC = DEFAULT_MESH_COLORS[2],
 	duration = 20,
 }: MeshProps) {
 	const id = useId();

@@ -6,6 +6,26 @@ name = "VPK-rovo"
 script = ""
 
 [[actions]]
-name = "Run"
+name = "pnpm  install"
 icon = "run"
 command = "pnpm install"
+
+[[actions]]
+name = "pnpm run dev"
+icon = "run"
+command = "pnpm run dev"
+
+[[actions]]
+name = "pnpm run rovodev"
+icon = "run"
+command = "pnpm run rovodev"
+
+[[actions]]
+name = "pnpm run rovodev:tmux:start --1"
+icon = "run"
+command = "pnpm run rovodev:tmux:start --1"
+
+[[actions]]
+name = "pnpm run rovodev:tmux:stop"
+icon = "run"
+command = "pnpm run rovodev:tmux:stop"

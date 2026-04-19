@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { ROVO_SHADER_COLOR_HEX } from "@/lib/rovo-colors";
+
+const DEFAULT_BANDS_COLORS = [...ROVO_SHADER_COLOR_HEX];
 
 const VERTEX_SHADER = `#version 300 es
 precision highp float;
@@ -188,7 +191,7 @@ interface BandsProps {
 
 export default function Bands({
 	className,
-	colors = ["#4AB7FF", "#FFC680", "#FF4040"],
+	colors = DEFAULT_BANDS_COLORS,
 	seed = 210,
 	speed = 0.3,
 	ephemeralAmp = 0,
@@ -201,6 +204,7 @@ export default function Bands({
 }: BandsProps) {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const animRef = useRef<number>(0);
+	const colorsKey = colors.join("|");
 
 	useEffect(() => {
 		const canvas = canvasRef.current;
@@ -275,7 +279,7 @@ export default function Bands({
 		animRef.current = requestAnimationFrame(render);
 
 		return () => cancelAnimationFrame(animRef.current);
-	}, [colors, seed, speed, ephemeralAmp, lensScale, lensSpacingX, lensSpacingY, lensRadius, dispersionStrength, edgeDisp]);
+	}, [colorsKey, seed, speed, ephemeralAmp, lensScale, lensSpacingX, lensSpacingY, lensRadius, dispersionStrength, edgeDisp]);
 
 	return (
 		<canvas

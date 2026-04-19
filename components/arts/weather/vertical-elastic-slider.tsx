@@ -15,10 +15,16 @@ import {
 	useCallback,
 	useEffect,
 	useLayoutEffect,
+	useMemo,
 	useRef,
 	useState,
 } from "react";
+import type { CSSProperties } from "react";
 
+import {
+	formatCornerShapeSuperellipse,
+	SQUIRCLE_DEFAULT_SMOOTHNESS,
+} from "@/components/website/demos/visual/shaders/squircle-shape";
 import { cn } from "@/lib/utils";
 import { useControllableState } from "@/hooks/use-controllable-state";
 
@@ -51,6 +57,9 @@ export interface VerticalElasticSliderProps {
 	step?: number;
 	formatValue?: (value: number) => string;
 	className?: string;
+	trackClassName?: string;
+	trackStyle?: CSSProperties;
+	trackShape?: "squircle" | "none";
 	"aria-label"?: string;
 }
 
@@ -64,6 +73,9 @@ export function VerticalElasticSlider({
 	step = 1,
 	formatValue,
 	className,
+	trackClassName,
+	trackStyle,
+	trackShape = "squircle",
 	"aria-label": ariaLabel,
 }: VerticalElasticSliderProps) {
 	const [value = min, setValue] = useControllableState({
@@ -76,6 +88,14 @@ export function VerticalElasticSlider({
 
 	const wrapperRef = useRef<HTMLDivElement>(null);
 	const trackRef = useRef<HTMLDivElement>(null);
+	const squircleTrackStyle = useMemo(
+		() =>
+			({
+				borderRadius: 9999,
+				cornerShape: formatCornerShapeSuperellipse(SQUIRCLE_DEFAULT_SMOOTHNESS),
+			}) as CSSProperties & { cornerShape: string },
+		[],
+	);
 
 	const [isInteracting, setIsInteracting] = useState(false);
 	const [isDragging, setIsDragging] = useState(false);
@@ -393,12 +413,15 @@ export function VerticalElasticSlider({
 					"relative cursor-grab overflow-hidden outline-none active:cursor-grabbing",
 					"bg-(--elastic-slider-bg)",
 					keyboardFocusRing && "ring-2 ring-black/20 ring-offset-2",
+					trackClassName,
 				)}
 				style={{
 					width: "100%",
 					height: rubberHeight,
 					borderRadius: "var(--elastic-slider-radius)",
 					y: rubberY,
+					...(trackShape === "squircle" ? squircleTrackStyle : {}),
+					...trackStyle,
 				}}
 				onPointerDown={handlePointerDown}
 				onPointerMove={handlePointerMove}
@@ -409,7 +432,12 @@ export function VerticalElasticSlider({
 				onBlur={handleBlur}
 				onMouseEnter={() => setIsHovered(true)}
 				onMouseLeave={() => setIsHovered(false)}
-			>
+				>
+				<div
+					aria-hidden="true"
+					className="pointer-events-none absolute inset-0"
+					style={{ boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.12)" }}
+				/>
 				{/* Hash marks */}
 				<div
 					data-slot="vertical-elastic-slider-hash-marks"

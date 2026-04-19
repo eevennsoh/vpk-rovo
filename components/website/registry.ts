@@ -7053,8 +7053,8 @@ const PROJECT_DEMOS: Record<string, ComponentType> = {
 };
 
 const ARTS_DEMOS: Record<string, ComponentType> = {
-  "sydney-lockscreen": dynamic(
-    () => import("./demos/arts/sydney-lockscreen-demo"),
+  weather: dynamic(
+    () => import("./demos/arts/weather-demo"),
     { ssr: false },
   ),
 };
@@ -7586,6 +7586,9 @@ const VISUAL_DEMOS: Record<string, ComponentType> = {
   }),
   color: dynamic(() => import("./demos/visual/color-demo"), { ssr: false }),
   shadow: dynamic(() => import("./demos/visual/shadow-demo"), { ssr: false }),
+  squircle: dynamic(() => import("./demos/visual/squircle-demo"), {
+    ssr: false,
+  }),
   particles: dynamic(() => import("./demos/visual/particles-demo"), {
     ssr: false,
   }),
@@ -7615,11 +7618,12 @@ const VISUAL_DEMOS: Record<string, ComponentType> = {
   "mesh-02": dynamic(() => import("./demos/visual/mesh-02-demo"), {
     ssr: false,
   }),
-  "chromatic-aberration": dynamic(
-    () => import("./demos/visual/chromatic-aberration-demo"),
-    { ssr: false },
-  ),
-};
+	  "chromatic-aberration": dynamic(
+	    () => import("./demos/visual/chromatic-aberration-demo"),
+	    { ssr: false },
+	  ),
+	  pattern: dynamic(() => import("./demos/visual/pattern-demo"), { ssr: false }),
+	};
 
 const CATEGORY_REGISTRIES: Record<string, Record<string, ComponentType>> = {
   visual: VISUAL_DEMOS,

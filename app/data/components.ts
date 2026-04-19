@@ -340,7 +340,7 @@ export const PROJECT_COMPONENTS: ComponentEntry[] = sortEntriesByName([
 ]);
 
 export const ART_COMPONENTS: ComponentEntry[] = sortEntriesByName([
-	artComponent("sydney-lockscreen", "Sydney Lockscreen"),
+	artComponent("weather", "Weather"),
 ]);
 
 export const UTILITY_COMPONENTS: ComponentEntry[] = sortEntriesByName([
@@ -359,7 +359,9 @@ export const VISUAL_COMPONENTS: ComponentEntry[] = sortEntriesByName([
 	visualComponent("typography", "Typography", "@/lib/tokens"),
 	visualComponent("color", "Color", "@/app/tailwind-theme.css\n@/app/shadcn-theme.css"),
 	visualComponent("shadow", "Shadow", "@/lib/tokens"),
+	visualComponent("squircle", "Squircle", "@/components/website/demos/visual/shaders/squircle"),
 	visualComponent("particles", "Particles", "@/components/website/demos/visual/shaders/particles"),
+	visualComponent("pattern", "Pattern", "@/components/website/demos/visual/shaders/pattern"),
 	visualComponent("wave-gradient", "Wave Gradient", "@/components/website/demos/visual/shaders/wave-gradient"),
 	visualComponent("liquid-gradient", "Liquid Gradient", "@/components/website/demos/visual/shaders/liquid-gradient"),
 	visualComponent("bands", "Bands", "@/components/website/demos/visual/shaders/bands"),
@@ -369,11 +371,11 @@ export const VISUAL_COMPONENTS: ComponentEntry[] = sortEntriesByName([
 	visualComponent("truchet", "Truchet", "@/components/website/demos/visual/shaders/truchet"),
 	visualComponent("fluted-glass", "Fluted Glass", "@/components/website/demos/visual/shaders/fluted-glass"),
 	visualComponent("liquid-glass", "Liquid Glass", "@/components/website/demos/visual/shaders/liquid-glass"),
-	visualComponent("holo", "Holo", "@/components/website/demos/visual/shaders/holo"),
-	visualComponent("mesh", "Mesh SVG", "@/components/website/demos/visual/shaders/mesh"),
-	visualComponent("mesh-02", "Mesh", "@/components/website/demos/visual/shaders/mesh2"),
-	visualComponent("chromatic-aberration", "Chromatic Aberration", "@/components/website/demos/visual/shaders/chromatic-aberration"),
-]);
+		visualComponent("holo", "Holo", "@/components/website/demos/visual/shaders/holo"),
+		visualComponent("mesh", "Mesh SVG", "@/components/website/demos/visual/shaders/mesh"),
+		visualComponent("mesh-02", "Mesh", "@/components/website/demos/visual/shaders/mesh2"),
+		visualComponent("chromatic-aberration", "Chromatic Aberration", "@/components/website/demos/visual/shaders/chromatic-aberration"),
+	]);
 
 const ALL_COMPONENTS = [...AUDIO_COMPONENTS, ...AI_COMPONENTS, ...UI_COMPONENTS, ...BLOCK_COMPONENTS, ...PROJECT_COMPONENTS, ...ART_COMPONENTS, ...UTILITY_COMPONENTS, ...VISUAL_COMPONENTS];
 

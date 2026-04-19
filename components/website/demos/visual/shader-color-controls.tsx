@@ -6,6 +6,7 @@ import UndoIcon from "@atlaskit/icon/core/undo";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 
 function normalizeColorValue(value: string): string {
 	return value.trim().toLowerCase();
@@ -57,6 +58,7 @@ type ShaderColorInputProps = Readonly<{
 	label: string;
 	value: string;
 	defaultValue?: string;
+	disabled?: boolean;
 	onChange: (next: string) => void;
 }>;
 
@@ -65,6 +67,7 @@ export function ShaderColorInput({
 	label,
 	value,
 	defaultValue,
+	disabled,
 	onChange,
 }: ShaderColorInputProps) {
 	const isDefault = defaultValue == null
@@ -72,7 +75,7 @@ export function ShaderColorInput({
 		: normalizeColorValue(value) === normalizeColorValue(defaultValue);
 
 	return (
-		<div className="space-y-2">
+		<div className={cn("space-y-2", disabled && "pointer-events-none opacity-40")}>
 			<div className="flex items-center gap-2">
 				<Label htmlFor={`${id}-text`} className="text-xs font-medium text-text">
 					{label}
@@ -81,7 +84,7 @@ export function ShaderColorInput({
 					<div className="ml-auto">
 						<ResetButton
 							ariaLabel={`Reset ${label}`}
-							disabled={isDefault}
+							disabled={isDefault || !!disabled}
 							onClick={() => onChange(defaultValue)}
 						/>
 					</div>
@@ -94,6 +97,7 @@ export function ShaderColorInput({
 					aria-label={`${label} color`}
 					value={resolvePickerValue(value, defaultValue)}
 					onChange={(event) => onChange(event.currentTarget.value)}
+					disabled={disabled}
 					className="size-7 shrink-0 cursor-pointer rounded border border-border bg-transparent p-0"
 				/>
 				<Input
@@ -101,6 +105,7 @@ export function ShaderColorInput({
 					type="text"
 					value={value}
 					onChange={(event) => onChange(event.currentTarget.value)}
+					disabled={disabled}
 					isCompact
 					isMonospaced
 					className="h-7 flex-1 text-xs"

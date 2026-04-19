@@ -1,7 +1,11 @@
 "use client";
-
 import type { CSSProperties, ReactNode } from "react";
 
+import {
+	formatCornerShapeSuperellipse,
+	SQUIRCLE_DEFAULT_SMOOTHNESS,
+} from "@/components/website/demos/visual/shaders/squircle-shape";
+import Pattern from "@/components/website/demos/visual/shaders/pattern";
 import { cn } from "@/lib/utils";
 
 interface WidgetCardProps {
@@ -11,16 +15,13 @@ interface WidgetCardProps {
 	className?: string;
 	style?: CSSProperties;
 	radius?: number | string;
-	hairlineColor?: string;
-	dropShadow?: string;
-	innerHighlight?: string;
 	contrastTint?: string | null;
 }
 
-const DEFAULT_HAIRLINE = "rgba(255, 255, 255, 0.55)";
-const DEFAULT_DROP_SHADOW = "0 24px 60px -28px rgba(0, 0, 0, 0.55)";
-const DEFAULT_INNER_HIGHLIGHT =
-	"inset 0 1px 0 rgba(255, 255, 255, 0.55), inset 0 -1px 0 rgba(0, 0, 0, 0.18)";
+const SQUIRCLE_SHELL_STYLE = {
+	borderRadius: 9999,
+	cornerShape: formatCornerShapeSuperellipse(SQUIRCLE_DEFAULT_SMOOTHNESS),
+} as CSSProperties & { cornerShape: string };
 
 /**
  * Pill-shaped widget card. Renders an absolute background slot (typically a
@@ -32,27 +33,22 @@ export function WidgetCard({
 	overlay,
 	className,
 	style,
-	radius = 36,
-	hairlineColor = DEFAULT_HAIRLINE,
-	dropShadow = DEFAULT_DROP_SHADOW,
-	innerHighlight = DEFAULT_INNER_HIGHLIGHT,
 	contrastTint,
 }: WidgetCardProps) {
-	const composedShadow = [
-		dropShadow,
-		`inset 0 0 0 1px ${hairlineColor}`,
-		innerHighlight,
-	]
-		.filter(Boolean)
-		.join(", ");
+	const width =
+		typeof style?.width === "number" ? style.width : 240;
+	const height =
+		typeof style?.height === "number" ? style.height : 240;
+	const { width: _width, height: _height, ...restStyle } = style ?? {};
 
 	return (
 		<div
 			className={cn("relative isolate overflow-hidden", className)}
 			style={{
-				borderRadius: radius,
-				boxShadow: composedShadow,
-				...style,
+				width,
+				height,
+				...SQUIRCLE_SHELL_STYLE,
+				...restStyle,
 			}}
 		>
 			{background ? (
@@ -85,10 +81,13 @@ interface WidgetGridOverlayProps {
 
 /**
  * Subtle pixel grid overlay used to give shader-backed cards a printed
- * "schematic" feel that matches the Framer reference.
+ * "schematic" feel that matches the Framer reference. Backed by the shared
+ * Pattern component (`patternType="grid"`) so the visual stays in sync with
+ * the pattern catalog, with a radial mask focusing the grid near the top of
+ * the card.
  */
 export function WidgetGridOverlay({
-	color = "rgba(255, 255, 255, 0.18)",
+	color = "rgba(15, 15, 18, 0.24)",
 	opacity = 0.6,
 	cellSize = 16,
 }: WidgetGridOverlayProps) {
@@ -98,14 +97,17 @@ export function WidgetGridOverlay({
 			className="absolute inset-0"
 			style={{
 				opacity,
-				backgroundImage: `linear-gradient(${color} 1px, transparent 1px), linear-gradient(90deg, ${color} 1px, transparent 1px)`,
-				backgroundSize: `${cellSize}px ${cellSize}px`,
-				maskImage:
-					"radial-gradient(circle at 50% 35%, black 30%, transparent 90%)",
-				WebkitMaskImage:
-					"radial-gradient(circle at 50% 35%, black 30%, transparent 90%)",
 			}}
-		/>
+		>
+			<Pattern
+				patternType="grid"
+				front={color}
+				back="transparent"
+				scale={cellSize}
+				blendMode="multiply"
+				fill="tile"
+			/>
+		</div>
 	);
 }
 
@@ -116,12 +118,12 @@ interface WidgetScrewDotsProps {
 }
 
 /**
- * Decorative corner screws used on the Framer reference cards.
+ * Decorative corner dots used on the shader cards.
  */
 export function WidgetScrewDots({
-	color = "rgba(255, 255, 255, 0.55)",
-	size = 4,
-	inset = 14,
+	color = "rgba(255, 255, 255, 0.96)",
+	size = 8,
+	inset = 20,
 }: WidgetScrewDotsProps) {
 	const positions = [
 		{ top: inset, left: inset },
@@ -141,7 +143,6 @@ export function WidgetScrewDots({
 						width: size,
 						height: size,
 						background: color,
-						boxShadow: "0 0 0 1px rgba(0, 0, 0, 0.35)",
 					}}
 				/>
 			))}

@@ -33,6 +33,7 @@ import { resolveRovoAppComposerWaveformState } from "@/components/projects/rovo-
 import { resolveRovoAppComposerIdleAction } from "@/components/projects/rovo-app/lib/rovo-app-composer-idle-action";
 import { resolveRovoAppComposerResponseGradientState } from "@/components/projects/rovo-app/lib/rovo-app-composer-response-gradient-state";
 import type { RealtimeGenerationState } from "@/components/projects/rovo-app/hooks/use-realtime-voice";
+import { ROVO_WAVEFORM_COLOR_CSS_VARS } from "@/lib/rovo-colors";
 import { cn } from "@/lib/utils";
 import { resolveRovoAppComposerPreviewHeight } from "@/components/projects/rovo-app/lib/rovo-app-composer-preview";
 import type { RovoAppPlanExecutionTrackerViewModel } from "@/components/projects/rovo-app/lib/rovo-app-plan-execution-tracker";
@@ -52,7 +53,7 @@ import { RovoAppPlanExecutionTracker } from "./rovo-app-plan-execution-tracker";
 import { RovoAppComposerResponseGradient } from "./rovo-app-composer-response-gradient";
 import { PendingAttachments } from "./pending-attachments";
 
-const ROVO_APP_WAVEFORM_COLORS = ["var(--color-blue-600)", "var(--color-orange-300)", "var(--color-purple-500)", "var(--color-lime-400)"] as const;
+const ROVO_APP_WAVEFORM_COLORS = ROVO_WAVEFORM_COLOR_CSS_VARS;
 
 
 const ROVO_APP_WAVEFORM_INTRO_MS = 500;

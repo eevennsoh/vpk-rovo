@@ -2,6 +2,7 @@
 
 import { type ReactNode, useCallback, useRef, useState } from "react";
 import { token } from "@/lib/tokens";
+import { ROVO_COLOR_SWATCHES } from "@/lib/rovo-colors";
 import {
 	Tooltip,
 	TooltipContent,
@@ -120,13 +121,6 @@ function Section({ title, children }: Readonly<SectionProps>) {
 }
 
 const SCALE_STEPS = ["50", "100", "200", "300", "400", "500", "600", "700", "800", "900", "950"] as const;
-const ROVO_SWATCHES = [
-	{ label: "blue-600", className: "bg-blue-600" },
-	{ label: "orange-300", className: "bg-orange-300" },
-	{ label: "purple-500", className: "bg-purple-500" },
-	{ label: "lime-400", className: "bg-lime-400" },
-] as const;
-
 interface ScaleRowProps {
 	title: string;
 	swatches: string[];
@@ -429,7 +423,7 @@ export default function ColorDemo() {
 				</h2>
 
 				<Section title="Rovo">
-					{ROVO_SWATCHES.map((swatch) => (
+					{ROVO_COLOR_SWATCHES.map((swatch) => (
 						<Swatch key={swatch.label} label={swatch.label} className={swatch.className} type="bg" />
 					))}
 				</Section>

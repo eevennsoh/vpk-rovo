@@ -10,6 +10,29 @@ export const VISUAL_DETAILS: Record<string, ComponentDetail> = {
 	"shadow": {
 		description: "Elevation shadow tokens for raised, overflow, and overlay surfaces. Applied via the token() function or Tailwind shadow utilities.",
 	},
+	"squircle": {
+		description: "Framer-aligned squircle surface that uses native CSS corner-shape when supported, with an SVG superellipse fallback for unsupported browsers.",
+		importStatement: `import Squircle from "@/components/website/demos/visual/shaders/squircle";`,
+		usage: `<Squircle
+	width={240}
+	height={240}
+	smoothness={100}
+	strokeWidth={1.5}
+	strokeColor="rgb(255 255 255 / 0.4)"
+/>`,
+		props: [
+			{ name: "children", type: "React.ReactNode", description: "Optional content centered inside the squircle." },
+			{ name: "width", type: "number", default: "240", description: "Rendered width in pixels." },
+			{ name: "height", type: "number", default: "240", description: "Rendered height in pixels." },
+			{ name: "smoothness", type: "number", default: "100", description: "Superellipse smoothing amount from 0 to 100. The default matches Framer's `superellipse(2)` card shape." },
+			{ name: "strokeWidth", type: "number", default: "1.5", description: "Inside stroke width in pixels. Set to 0 to disable it." },
+			{ name: "strokeColor", type: "string", default: `"rgb(255 255 255 / 0.4)"`, description: "Stroke color string, including optional alpha." },
+			{ name: "fillColor", type: "string", default: `"token(color.background.neutral)"`, description: "Background fill color for the squircle surface." },
+			{ name: "className", type: "string", description: "Additional class names applied to the squircle host element." },
+			{ name: "contentClassName", type: "string", description: "Class names applied to the inner content wrapper." },
+			{ name: "style", type: "React.CSSProperties", description: "Inline styles merged onto the squircle host element." },
+		],
+	},
 	"particles": {
 		description: "PCG hash-based WebGL particle field with configurable layers, glow, blink, and optional warp tunnel mode.",
 	},
@@ -60,12 +83,12 @@ export const VISUAL_DETAILS: Record<string, ComponentDetail> = {
 			{ name: "borderWidth", type: "number", default: "0.05", description: "Border width factor for the displacement map inset." },
 			{ name: "brightness", type: "number", default: "50", description: "Brightness percentage (0–100) for the displacement map." },
 			{ name: "opacity", type: "number", default: "0.93", description: "Opacity of the displacement map inner fill." },
-			{ name: "blur", type: "number", default: "8", description: "Blur applied to the displacement map inner rect." },
+			{ name: "blur", type: "number", default: "8", description: "Softens the displacement map inner transition in output pixels." },
 			{ name: "displace", type: "number", default: "0", description: "Output Gaussian blur (stdDeviation) on the refracted result." },
 			{ name: "backgroundOpacity", type: "number", default: "0", description: "Background frost opacity (0 = clear, 1 = fully frosted)." },
 			{ name: "saturation", type: "number", default: "1", description: "Backdrop-filter saturation multiplier." },
-			{ name: "distortionScale", type: "number", default: "-90", description: "Main displacement scale applied to all channels." },
-			{ name: "dispersion", type: "number", default: "6", description: "Chromatic dispersion amount added to the distortion scale." },
+			{ name: "distortionScale", type: "number", default: "-90", description: "Base displacement scale applied to the center channel." },
+			{ name: "dispersion", type: "number", default: "6", description: "Offsets the red and blue channels around the base scale for chromatic separation." },
 			{ name: "borderOpacity", type: "number", default: "0.35", description: "Opacity of the inset hairline edge." },
 			{ name: "borderColor", type: "string", default: "\"#000000\"", description: "Color of the inset hairline edge." },
 			{ name: "className", type: "string", description: "Additional CSS class names." },
@@ -83,5 +106,11 @@ export const VISUAL_DETAILS: Record<string, ComponentDetail> = {
 	},
 	"chromatic-aberration": {
 		description: "Spectral chromatic aberration with radial, horizontal, vertical, and swirl modes, animated pulse, and configurable radius.",
+	},
+	"pattern": {
+		description: "CSS background pattern generator with 20 pattern types, two-color palette, animation, and configurable scale.",
+	},
+	"noise": {
+		description: "CSS-based tiling noise texture overlay with configurable opacity, grain size, and border radius.",
 	},
 };

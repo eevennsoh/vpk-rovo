@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { ROVO_SHADER_COLOR_HEX } from "@/lib/rovo-colors";
 
 const VERTEX_SHADER = `#version 300 es
 precision highp float;
@@ -35,6 +36,8 @@ uniform float u_bumpStrength;
 uniform float u_ambient;
 uniform float u_saturation;
 uniform float u_exposure;
+uniform vec4 u_colors[4];
+uniform int u_colors_length;
 
 const float GOLDEN_ANGLE = 2.3999632;
 const float TAU = 6.28318530;
@@ -82,12 +85,78 @@ float fringe(vec2 q, float t) {
 	);
 }
 
+vec3 getColor(int idx) {
+	if (u_colors_length < 1) return vec3(0.0);
+	int safeIdx = clamp(idx, 0, u_colors_length - 1);
+	return u_colors[safeIdx].rgb;
+}
+
+vec3 toLinear(vec3 c) {
+	return pow(c, vec3(2.2));
+}
+
+vec3 linearToOklab(vec3 c) {
+	float l = 0.4122214708 * c.r + 0.5363325363 * c.g + 0.0514459929 * c.b;
+	float m = 0.2119034982 * c.r + 0.6806995451 * c.g + 0.1073969566 * c.b;
+	float s = 0.0883024619 * c.r + 0.2817188376 * c.g + 0.6299787005 * c.b;
+	l = pow(max(l, 0.0), 1.0 / 3.0);
+	m = pow(max(m, 0.0), 1.0 / 3.0);
+	s = pow(max(s, 0.0), 1.0 / 3.0);
+	return vec3(
+		0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s,
+		1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
+		0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s
+	);
+}
+
+vec3 oklabToLinear(vec3 c) {
+	float l = c.x + 0.3963377774 * c.y + 0.2158037573 * c.z;
+	float m = c.x - 0.1055613458 * c.y - 0.0638541728 * c.z;
+	float s = c.x - 0.0894841775 * c.y - 1.2914855480 * c.z;
+	l = l * l * l;
+	m = m * m * m;
+	s = s * s * s;
+	return vec3(
+		+4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+		-1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+		-0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s
+	);
+}
+
+vec3 oklabToLch(vec3 lab) {
+	return vec3(lab.x, length(lab.yz), atan(lab.z, lab.y));
+}
+
+vec3 lchToOklab(vec3 lch) {
+	return vec3(lch.x, lch.y * cos(lch.z), lch.y * sin(lch.z));
+}
+
+vec3 mixLch(vec3 lab0, vec3 lab1, float t) {
+	vec3 lch0 = oklabToLch(lab0);
+	vec3 lch1 = oklabToLch(lab1);
+	if (lch0.y < 0.05) lch0.z = lch1.z;
+	if (lch1.y < 0.05) lch1.z = lch0.z;
+	float dh = lch1.z - lch0.z;
+	if (dh > 3.14159265) dh -= 6.28318530;
+	if (dh < -3.14159265) dh += 6.28318530;
+	return lchToOklab(vec3(
+		mix(lch0.x, lch1.x, t),
+		mix(lch0.y, lch1.y, t),
+		lch0.z + dh * t
+	));
+}
+
 vec3 palette(float t) {
-	vec3 a = vec3(0.5, 0.5, 0.5);
-	vec3 b = vec3(0.5, 0.5, 0.5);
-	vec3 c = vec3(1.0, 1.0, 1.0);
-	vec3 d = vec3(0.00, 0.33, 0.67);
-	return a + b * cos(TAU * (c * t + d));
+	if (u_colors_length < 1) return vec3(0.0);
+	if (u_colors_length == 1) return getColor(0);
+	float wrapped = fract(t);
+	float scaled = wrapped * float(u_colors_length);
+	int idx = int(floor(scaled)) % u_colors_length;
+	int nextIdx = (idx + 1) % u_colors_length;
+	float localT = fract(scaled);
+	vec3 lab0 = linearToOklab(toLinear(getColor(idx)));
+	vec3 lab1 = linearToOklab(toLinear(getColor(nextIdx)));
+	return oklabToLinear(mixLch(lab0, lab1, localT));
 }
 
 void main() {
@@ -148,6 +217,7 @@ void main() {
 
 export interface HoloProps {
 	className?: string;
+	colors?: readonly [string, string, string, string];
 	seed?: number;
 	speed?: number;
 	scale?: number;
@@ -166,6 +236,7 @@ export interface HoloProps {
 
 export default function Holo({
 	className,
+	colors = ROVO_SHADER_COLOR_HEX,
 	seed = 600,
 	speed = 0.5,
 	scale = 1,
@@ -183,6 +254,15 @@ export default function Holo({
 }: HoloProps) {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const animRef = useRef<number>(0);
+
+	function hexToRgb(hex: string): [number, number, number] {
+		const value = hex.replace("#", "");
+		return [
+			parseInt(value.substring(0, 2), 16) / 255,
+			parseInt(value.substring(2, 4), 16) / 255,
+			parseInt(value.substring(4, 6), 16) / 255,
+		];
+	}
 
 	useEffect(() => {
 		const canvas = canvasRef.current;
@@ -230,6 +310,7 @@ export default function Holo({
 
 		const uResolution = gl.getUniformLocation(program, "u_resolution");
 		const uTime = gl.getUniformLocation(program, "u_time");
+		const uColorsLen = gl.getUniformLocation(program, "u_colors_length");
 
 		gl.uniform1f(gl.getUniformLocation(program, "u_seed"), seed);
 		gl.uniform1f(gl.getUniformLocation(program, "u_speed"), speed);
@@ -245,6 +326,16 @@ export default function Holo({
 		gl.uniform1f(gl.getUniformLocation(program, "u_ambient"), ambient);
 		gl.uniform1f(gl.getUniformLocation(program, "u_saturation"), saturation);
 		gl.uniform1f(gl.getUniformLocation(program, "u_exposure"), exposure);
+		gl.uniform1i(uColorsLen, colors.length);
+		for (let i = 0; i < 4; i++) {
+			const loc = gl.getUniformLocation(program, `u_colors[${i}]`);
+			if (i < colors.length) {
+				const [r, g, b] = hexToRgb(colors[i]);
+				gl.uniform4f(loc, r, g, b, 1.0);
+			} else {
+				gl.uniform4f(loc, 0, 0, 0, 1.0);
+			}
+		}
 
 		const start = performance.now();
 		const render = () => {
@@ -273,7 +364,7 @@ export default function Holo({
 			gl.deleteShader(vertexShader);
 			gl.deleteShader(fragmentShader);
 		};
-	}, [ambient, bandSpread, bumpStrength, exposure, fringeFreq, iter, noise, saturation, scale, seed, speed, turbAmp, turbIter, warp]);
+	}, [ambient, bandSpread, bumpStrength, colors, exposure, fringeFreq, iter, noise, saturation, scale, seed, speed, turbAmp, turbIter, warp]);
 
 	return (
 		<canvas

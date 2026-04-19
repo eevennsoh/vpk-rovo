@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { ROVO_SHADER_COLOR_HEX } from "@/lib/rovo-colors";
+
+const DEFAULT_LIQUID_GRADIENT_COLORS = [...ROVO_SHADER_COLOR_HEX];
 
 const VERTEX_SHADER = `#version 300 es
 precision highp float;
@@ -294,7 +297,7 @@ interface LiquidGradientProps {
 
 export default function LiquidGradient({
 	className,
-	colors = ["#00001A", "#2962FF", "#40BCFF", "#FFB8B5", "#FFC14F"],
+	colors = DEFAULT_LIQUID_GRADIENT_COLORS,
 	seed = 648,
 	speed = 0.3,
 	loop = 0,
@@ -313,6 +316,7 @@ export default function LiquidGradient({
 }: LiquidGradientProps) {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const animRef = useRef<number>(0);
+	const colorsKey = colors.join("|");
 
 	useEffect(() => {
 		const canvas = canvasRef.current;
@@ -395,7 +399,7 @@ export default function LiquidGradient({
 		animRef.current = requestAnimationFrame(render);
 
 		return () => cancelAnimationFrame(animRef.current);
-	}, [colors, seed, speed, loop, scale, turbAmp, turbFreq, turbIter, waveFreq, distBias, jellify, ditherMode, dither, exposure, contrast, saturation]);
+	}, [colorsKey, seed, speed, loop, scale, turbAmp, turbFreq, turbIter, waveFreq, distBias, jellify, ditherMode, dither, exposure, contrast, saturation]);
 
 	return (
 		<canvas

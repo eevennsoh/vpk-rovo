@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { ROVO_SHADER_COLOR_HEX } from "@/lib/rovo-colors";
+
+const DEFAULT_WAVE_GRADIENT_COLORS = [...ROVO_SHADER_COLOR_HEX] as [string, string, string, string];
 
 const VERTEX_SHADER = `#version 300 es
 precision highp float;
@@ -146,7 +149,7 @@ interface WaveGradientProps {
 
 export default function WaveGradient({
 	className,
-	colors = ["#FFC2A8", "#FF5024", "#FFAE00", "#E29EFF"],
+	colors = DEFAULT_WAVE_GRADIENT_COLORS,
 	seed = 26,
 	speed = 2.85,
 	freqX = 0.9,
@@ -158,6 +161,7 @@ export default function WaveGradient({
 }: WaveGradientProps) {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const animRef = useRef<number>(0);
+	const colorsKey = colors.join("|");
 
 	useEffect(() => {
 		const canvas = canvasRef.current;
@@ -235,7 +239,7 @@ export default function WaveGradient({
 		animRef.current = requestAnimationFrame(render);
 
 		return () => cancelAnimationFrame(animRef.current);
-	}, [colors, seed, speed, freqX, freqY, angle, amplitude, softness, blend]);
+	}, [colorsKey, seed, speed, freqX, freqY, angle, amplitude, softness, blend]);
 
 	return (
 		<canvas

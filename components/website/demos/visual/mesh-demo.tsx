@@ -3,19 +3,18 @@
 import { useMemo, useState } from "react";
 
 import { GUI } from "@/components/utils/gui";
+import { ROVO_SHADER_TRIAD_HEX } from "@/lib/rovo-colors";
 import { token } from "@/lib/tokens";
 
 import { ShaderColorInput } from "./shader-color-controls";
 import Mesh from "./shaders/mesh";
 
-const DEFAULT_COLOR_A = "#ff0000";
-const DEFAULT_COLOR_B = "#00ff00";
-const DEFAULT_COLOR_C = "#0000ff";
+const [DEFAULT_COLOR_A, DEFAULT_COLOR_B, DEFAULT_COLOR_C] = ROVO_SHADER_TRIAD_HEX;
 
 export default function MeshDemo() {
-	const [colorA, setColorA] = useState(DEFAULT_COLOR_A);
-	const [colorB, setColorB] = useState(DEFAULT_COLOR_B);
-	const [colorC, setColorC] = useState(DEFAULT_COLOR_C);
+	const [colorA, setColorA] = useState<string>(DEFAULT_COLOR_A);
+	const [colorB, setColorB] = useState<string>(DEFAULT_COLOR_B);
+	const [colorC, setColorC] = useState<string>(DEFAULT_COLOR_C);
 	const [duration, setDuration] = useState(20);
 
 	const config = useMemo(

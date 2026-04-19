@@ -87,7 +87,7 @@ export function DocHero({ name, description, category, importPath, adsLinks, ads
 							fontSize: "15px",
 							color: token("color.text.subtle"),
 							lineHeight: 1.6,
-							maxWidth: 640,
+							width: "100%",
 							margin: 0,
 						}}
 					>

@@ -3,12 +3,13 @@
 import { useMemo, useState } from "react";
 
 import { GUI } from "@/components/utils/gui";
+import { ROVO_SHADER_COLOR_HEX } from "@/lib/rovo-colors";
 import { token } from "@/lib/tokens";
 
 import { ShaderColorListControl } from "./shader-color-controls";
 import LiquidGradient from "./shaders/liquid-gradient";
 
-const DEFAULT_COLORS = ["#00001A", "#2962FF", "#40BCFF", "#FFB8B5", "#FFC14F"];
+const DEFAULT_COLORS = [...ROVO_SHADER_COLOR_HEX];
 const MAX_COLORS = 8;
 
 export default function LiquidGradientDemo() {
