@@ -29,6 +29,7 @@ export function DemoPreviewShell({ children, fullPage, fitContent }: Readonly<De
 					...(!fitContent && { height: FULL_PAGE_HEIGHT_PX }),
 					border: `1px solid ${token("color.border")}`,
 					borderRadius: token("radius.large"),
+					backgroundColor: token("elevation.surface"),
 					transform: "translateZ(0)",
 				}}
 			>
@@ -45,6 +46,7 @@ export function DemoPreviewShell({ children, fullPage, fitContent }: Readonly<De
 				maxWidth: "100%",
 				border: `1px solid ${token("color.border")}`,
 				borderRadius: token("radius.large"),
+				backgroundColor: token("elevation.surface"),
 				overflow: "auto",
 			}}
 		>
