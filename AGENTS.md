@@ -10,7 +10,7 @@ Next.js 16 (React 19, Tailwind CSS v4) + Express backend with AI SDK (Vercel) an
 - Read this file top-to-bottom once. For details, use the Documentation Index.
 - Quick start:
   - `pnpm install`
-  - `pnpm run dev`
+  - `pnpm run rovodev`
 - Local runtime uses three processes: RovoDev Serve + Express backend + Next.js frontend proxy.
 - Production runtime uses one Express process serving static export plus `/api/*`.
 - Primary frontend edits are in `components/projects/`, `components/blocks/`, and `app/` route files.
