@@ -7052,6 +7052,13 @@ const PROJECT_DEMOS: Record<string, ComponentType> = {
   }),
 };
 
+const ARTS_DEMOS: Record<string, ComponentType> = {
+  "sydney-lockscreen": dynamic(
+    () => import("./demos/arts/sydney-lockscreen-demo"),
+    { ssr: false },
+  ),
+};
+
 const CHART_DEMOS: Record<string, ComponentType> = {
   // Area
   "chart-area": dynamic(
@@ -7618,6 +7625,7 @@ const CATEGORY_REGISTRIES: Record<string, Record<string, ComponentType>> = {
   visual: VISUAL_DEMOS,
   utility: UTILITY_DEMOS,
   projects: PROJECT_DEMOS,
+  arts: ARTS_DEMOS,
   blocks: BLOCK_DEMOS,
   "ui-audio": UI_AUDIO_DEMO,
   "ui-ai": UI_AI_DEMO,
@@ -7632,6 +7640,7 @@ export function getDemoComponent(
     | "ui"
     | "blocks"
     | "projects"
+    | "arts"
     | "utility"
     | "visual",
 ): ComponentType | null {
@@ -7795,6 +7804,7 @@ export function getVariantDemoComponent(
     | "ui"
     | "blocks"
     | "projects"
+    | "arts"
     | "utility"
     | "visual",
 ): ComponentType | null {

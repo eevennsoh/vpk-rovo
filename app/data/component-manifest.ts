@@ -6,6 +6,7 @@ export type ComponentCategory =
 	| "ui"
 	| "blocks"
 	| "projects"
+	| "arts"
 	| "utility"
 	| "visual";
 
@@ -69,6 +70,15 @@ function projectComponent(slug: string, name?: string): ComponentManifestEntry {
 		slug,
 		importPath: `@/components/projects/${slug}`,
 		category: "projects",
+	};
+}
+
+function artComponent(slug: string, name?: string): ComponentManifestEntry {
+	return {
+		name: name ?? toTitleCase(slug),
+		slug,
+		importPath: `@/components/arts/${slug}`,
+		category: "arts",
 	};
 }
 
@@ -462,7 +472,9 @@ export const PROJECT_COMPONENTS: ComponentManifestEntry[] = sortEntriesByName([
 	projectComponent("sidebar-chat", "Sidebar Chat"),
 ]);
 
-export const ART_COMPONENTS: ComponentManifestEntry[] = sortEntriesByName([]);
+export const ART_COMPONENTS: ComponentManifestEntry[] = sortEntriesByName([
+	artComponent("sydney-lockscreen", "Sydney Lockscreen"),
+]);
 
 export const UTILITY_COMPONENTS: ComponentManifestEntry[] = sortEntriesByName([
 	{

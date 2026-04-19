@@ -6,6 +6,7 @@ export type DemoCategory =
 	| "ui"
 	| "blocks"
 	| "projects"
+	| "arts"
 	| "utility"
 	| "visual";
 

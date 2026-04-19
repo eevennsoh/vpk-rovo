@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { HomeContent, type HomeCategory } from "../home-content";
 import { getCategoryDisplayName } from "@/lib/project-page-title";
-import { getProjectComponentsWithUpdatedAt } from "@/lib/project-component-updated";
+import { getArtComponentsWithUpdatedAt, getProjectComponentsWithUpdatedAt } from "@/lib/project-component-updated";
 import { getWebsiteLastUpdatedAt } from "@/lib/website-last-updated";
 
 interface PageProps {
@@ -35,12 +35,14 @@ export default async function CategoryPage({ params }: PageProps) {
 
 	const lastUpdatedAt = getWebsiteLastUpdatedAt();
 	const projectComponents = category === "projects" ? getProjectComponentsWithUpdatedAt() : undefined;
+	const artComponents = category === "arts" ? getArtComponentsWithUpdatedAt() : undefined;
 
 	return (
 		<HomeContent
 			category={category satisfies HomeCategory}
 			lastUpdatedAt={lastUpdatedAt}
 			projectComponents={projectComponents}
+			artComponents={artComponents}
 		/>
 	);
 }
