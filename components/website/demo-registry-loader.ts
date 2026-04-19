@@ -13,42 +13,51 @@ const demoComponentCache = new Map<string, Promise<ComponentType | null>>();
 const variantDemoComponentCache = new Map<string, Promise<ComponentType | null>>();
 const variantDemoListCache = new Map<string, Promise<Array<ComponentType | null>>>();
 
+type RegistryModule = typeof import("@/components/website/registry");
+
 function getDemoCacheKey(slug: string, category: DemoCategory): string {
 	return `${category}:${slug}`;
+}
+
+function loadRegistryModule(): Promise<RegistryModule> {
+	return import("@/components/website/registry");
+}
+
+function loadCachedResult<T>(
+	cache: Map<string, Promise<T>>,
+	cacheKey: string,
+	load: () => Promise<T>,
+): Promise<T> {
+	const cached = cache.get(cacheKey);
+	if (cached) {
+		return cached;
+	}
+
+	const result = load();
+	cache.set(cacheKey, result);
+	return result;
 }
 
 export function loadDemoComponent(
 	slug: string,
 	category: DemoCategory,
 ): Promise<ComponentType | null> {
-	const cacheKey = getDemoCacheKey(slug, category);
-	const cached = demoComponentCache.get(cacheKey);
-	if (cached) {
-		return cached;
-	}
-
-	const promise = import("@/components/website/registry").then((module) => {
-		return module.getDemoComponent(slug, category);
-	});
-	demoComponentCache.set(cacheKey, promise);
-	return promise;
+	return loadCachedResult(
+		demoComponentCache,
+		getDemoCacheKey(slug, category),
+		() => loadRegistryModule().then((module) => module.getDemoComponent(slug, category)),
+	);
 }
 
 export function loadVariantDemoComponent(
 	slug: string,
 	category: DemoCategory,
 ): Promise<ComponentType | null> {
-	const cacheKey = getDemoCacheKey(slug, category);
-	const cached = variantDemoComponentCache.get(cacheKey);
-	if (cached) {
-		return cached;
-	}
-
-	const promise = import("@/components/website/registry").then((module) => {
-		return module.getVariantDemoComponent(slug, category);
-	});
-	variantDemoComponentCache.set(cacheKey, promise);
-	return promise;
+	return loadCachedResult(
+		variantDemoComponentCache,
+		getDemoCacheKey(slug, category),
+		() => loadRegistryModule().then((module) => module.getVariantDemoComponent(slug, category)),
+	);
 }
 
 export function loadVariantDemoComponents(
@@ -56,14 +65,7 @@ export function loadVariantDemoComponents(
 	category: DemoCategory,
 ): Promise<Array<ComponentType | null>> {
 	const cacheKey = `${category}:${slugs.join("|")}`;
-	const cached = variantDemoListCache.get(cacheKey);
-	if (cached) {
-		return cached;
-	}
-
-	const promise = Promise.all(
-		slugs.map((slug) => loadVariantDemoComponent(slug, category)),
-	);
-	variantDemoListCache.set(cacheKey, promise);
-	return promise;
+	return loadCachedResult(variantDemoListCache, cacheKey, () => {
+		return Promise.all(slugs.map((slug) => loadVariantDemoComponent(slug, category)));
+	});
 }
