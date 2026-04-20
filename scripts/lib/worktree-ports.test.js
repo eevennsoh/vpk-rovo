@@ -1,5 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const { execFileSync, execSync } = require("node:child_process");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
@@ -7,12 +8,69 @@ const path = require("node:path");
 const {
 	getBackendBasePort,
 	getFrontendBasePort,
-	getGitWorktrees,
 	inferWorktreeKind,
 	getPortInfoForPath,
 	getRovodevBasePort,
 	getWorktreePortOffsetForPath,
 } = require("./worktree-ports");
+
+const WORKTREE_PORTS_MODULE_PATH = path.resolve(__dirname, "worktree-ports.js");
+
+function createGitWorktreeFixture() {
+	const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "worktree-ports-fixture-"));
+	const repoPath = path.join(tempDir, "repo");
+	const worktreeAPath = path.join(tempDir, "wt-a");
+	const worktreeBPath = path.join(tempDir, "wt-b");
+
+	try {
+		execSync(`git init ${JSON.stringify(repoPath)}`, { stdio: "ignore" });
+		execSync("git config user.email test@example.com", {
+			cwd: repoPath,
+			stdio: "ignore",
+		});
+		execSync("git config user.name test", { cwd: repoPath, stdio: "ignore" });
+
+		fs.writeFileSync(path.join(repoPath, "README.md"), "fixture\n", "utf8");
+		execSync("git add README.md", { cwd: repoPath, stdio: "ignore" });
+		execSync("git commit -m init", { cwd: repoPath, stdio: "ignore" });
+		execSync("git branch feature-b", { cwd: repoPath, stdio: "ignore" });
+		execSync("git branch feature-a", { cwd: repoPath, stdio: "ignore" });
+		execSync(`git worktree add ${JSON.stringify(worktreeBPath)} feature-b`, {
+			cwd: repoPath,
+			stdio: "ignore",
+		});
+		execSync(`git worktree add ${JSON.stringify(worktreeAPath)} feature-a`, {
+			cwd: repoPath,
+			stdio: "ignore",
+		});
+
+		return {
+			repoPath,
+			worktreeAPath,
+			worktreeBPath,
+			cleanup() {
+				fs.rmSync(tempDir, { recursive: true, force: true });
+			},
+		};
+	} catch (error) {
+		fs.rmSync(tempDir, { recursive: true, force: true });
+		throw error;
+	}
+}
+
+function runWorktreePortsExpression(cwd, expression) {
+	const script = `
+		const mod = require(${JSON.stringify(WORKTREE_PORTS_MODULE_PATH)});
+		process.stdout.write(JSON.stringify(${expression}));
+	`;
+
+	return JSON.parse(
+		execFileSync(process.execPath, ["-e", script], {
+			cwd,
+			encoding: "utf8",
+		})
+	);
+}
 
 test("inferWorktreeKind treats a worktree with .git directory as main", () => {
 	const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "worktree-ports-main-"));
@@ -25,39 +83,92 @@ test("inferWorktreeKind treats a worktree with .git directory as main", () => {
 	}
 });
 
-test("inferWorktreeKind treats a worktree with .git file pointing into .git/worktrees as linked", () => {
+test("inferWorktreeKind falls back to worktree path heuristics when git metadata is unavailable", () => {
 	const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "worktree-ports-linked-"));
 	try {
-		fs.writeFileSync(
-			path.join(tempDir, ".git"),
-			"gitdir: /tmp/example/.git/worktrees/plan-mode\n",
-			"utf8"
-		);
+		const linkedWorktreePath = path.join(tempDir, "codex", "worktrees", "plan-mode");
+		fs.mkdirSync(linkedWorktreePath, { recursive: true });
 
-		assert.equal(inferWorktreeKind(tempDir), "linked");
+		assert.equal(inferWorktreeKind(linkedWorktreePath), "linked");
 	} finally {
 		fs.rmSync(tempDir, { recursive: true, force: true });
 	}
 });
 
-test("getPortInfoForPath resolves linked worktree slots from git metadata", () => {
-	const repoRoot = path.resolve(__dirname, "..", "..");
-	const mainPath = path.resolve(repoRoot, "..", "VPK-rovodev");
-	const linkedPath = repoRoot;
-	const linkedWorktree = getGitWorktrees().find((worktree) => worktree.path === linkedPath);
+test("worktree port helpers keep main first and assign linked worktree slots by identifier", () => {
+	const fixture = createGitWorktreeFixture();
 
-	const mainInfo = getPortInfoForPath(mainPath);
-	const linkedInfo = getPortInfoForPath(linkedPath);
+	try {
+		const resolvedRepoPath = fs.realpathSync(fixture.repoPath);
+		const resolvedWorktreeAPath = fs.realpathSync(fixture.worktreeAPath);
+		const resolvedWorktreeBPath = fs.realpathSync(fixture.worktreeBPath);
+		const allWorktreeInfo = runWorktreePortsExpression(
+			fixture.repoPath,
+			"mod.getAllWorktreePortInfo()"
+		);
+		const worktreeAInfo = runWorktreePortsExpression(
+			fixture.repoPath,
+			`mod.getPortInfoForPath(${JSON.stringify(resolvedWorktreeAPath)})`
+		);
+		const worktreeBInfo = runWorktreePortsExpression(
+			fixture.repoPath,
+			`mod.getPortInfoForPath(${JSON.stringify(resolvedWorktreeBPath)})`
+		);
 
-	assert.ok(linkedWorktree);
-	assert.equal(mainInfo.slot, 0);
-	assert.equal(mainInfo.rovodevBase, 8000);
-	assert.equal(linkedInfo.worktreeName, linkedWorktree.identifier);
-	assert.ok(linkedInfo.slot > 0);
-	assert.equal(linkedInfo.offset, linkedInfo.slot * 20);
-	assert.equal(linkedInfo.frontendBase, 3000 + linkedInfo.offset);
-	assert.equal(linkedInfo.backendBase, 8080 + linkedInfo.offset);
-	assert.equal(linkedInfo.rovodevBase, 8000 + linkedInfo.offset);
+		assert.deepEqual(
+			allWorktreeInfo.map(({ worktreeName, slot, offset, path, isMain }) => ({
+				worktreeName,
+				slot,
+				offset,
+				path,
+				isMain,
+			})),
+			[
+				{
+					worktreeName: "main",
+					slot: 0,
+					offset: 0,
+					path: resolvedRepoPath,
+					isMain: true,
+				},
+				{
+					worktreeName: "feature-a",
+					slot: 1,
+					offset: 20,
+					path: resolvedWorktreeAPath,
+					isMain: false,
+				},
+				{
+					worktreeName: "feature-b",
+					slot: 2,
+					offset: 40,
+					path: resolvedWorktreeBPath,
+					isMain: false,
+				},
+			]
+		);
+		assert.match(allWorktreeInfo[0].identifier, /\S/u);
+		assert.equal(allWorktreeInfo[1].identifier, "feature-a");
+		assert.equal(allWorktreeInfo[2].identifier, "feature-b");
+		assert.deepEqual(worktreeAInfo, {
+			worktreeName: "feature-a",
+			offset: 20,
+			slot: 1,
+			frontendBase: 3020,
+			backendBase: 8100,
+			rovodevBase: 8020,
+		});
+		assert.deepEqual(worktreeBInfo, {
+			worktreeName: "feature-b",
+			offset: 40,
+			slot: 2,
+			frontendBase: 3040,
+			backendBase: 8120,
+			rovodevBase: 8040,
+		});
+	} finally {
+		fixture.cleanup();
+	}
 });
 
 test("getPortInfoForPath falls back to main defaults for unknown paths", () => {
