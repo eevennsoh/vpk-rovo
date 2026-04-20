@@ -24,6 +24,23 @@ const BACKEND_DEFAULT_BASE = 8080;
 const ROVODEV_DEFAULT_BASE = 8000;
 const SLOT_STRIDE = 20;
 const WORKTREE_SLOT_CAPACITY = 100;
+const PORT_TARGETS = {
+	frontend: {
+		defaultBase: FRONTEND_DEFAULT_BASE,
+		envVar: "PORT",
+		label: "Frontend",
+	},
+	backend: {
+		defaultBase: BACKEND_DEFAULT_BASE,
+		envVar: "BACKEND_PORT",
+		label: "Backend",
+	},
+	rovodev: {
+		defaultBase: ROVODEV_DEFAULT_BASE,
+		envVar: "ROVODEV_PORT",
+		label: "RovoDev",
+	},
+};
 
 /**
  * Simple string hash function (djb2)
@@ -149,21 +166,33 @@ function buildWorktreeSlotTable(worktrees) {
 	return { ordered, slots };
 }
 
+function findWorktreeByPath(worktrees, worktreePath) {
+	return worktrees.find((worktree) => worktree.path === worktreePath) ?? null;
+}
+
+function getWorktreeDisplayName(worktree) {
+	return worktree && !worktree.isMain ? worktree.identifier : "main";
+}
+
+function getWorktreeSlotDetails(worktreePath) {
+	const normalizedPath = path.resolve(worktreePath);
+	const worktrees = getGitWorktrees();
+	const { slots } = buildWorktreeSlotTable(worktrees);
+	const slot = slots.get(normalizedPath) ?? 0;
+
+	return {
+		worktree: findWorktreeByPath(worktrees, normalizedPath),
+		slot,
+		offset: getOffsetFromSlot(slot),
+	};
+}
+
 function getOffsetFromSlot(slot) {
 	return slot * SLOT_STRIDE;
 }
 
 function getWorktreePortOffsetForPath(worktreePath) {
-	const normalizedPath = path.resolve(worktreePath);
-	const worktrees = getGitWorktrees();
-	const { slots } = buildWorktreeSlotTable(worktrees);
-	const slot = slots.get(normalizedPath);
-
-	if (typeof slot !== "number") {
-		return 0;
-	}
-
-	return getOffsetFromSlot(slot);
+	return getWorktreeSlotDetails(worktreePath).offset;
 }
 
 function buildPortInfo(worktreeName, offset, slot) {
@@ -182,16 +211,15 @@ function buildPortInfo(worktreeName, offset, slot) {
  * Returns null if not in a worktree or if it's the main worktree
  */
 function getWorktreeName() {
-	const currentPath = getCurrentWorktreePath();
-	if (!currentPath) {
+	const currentWorktreePath = getCurrentWorktreePath();
+	if (!currentWorktreePath) {
 		return null;
 	}
 
-	const worktrees = getGitWorktrees();
-	const currentWorktree = worktrees.find((worktree) => worktree.path === currentPath);
+	const { worktree } = getWorktreeSlotDetails(currentWorktreePath);
 
-	if (currentWorktree) {
-		return currentWorktree.isMain ? null : currentWorktree.identifier;
+	if (worktree) {
+		return worktree.isMain ? null : worktree.identifier;
 	}
 
 	return null;
@@ -202,72 +230,55 @@ function getWorktreeName() {
  * Returns 0 for main worktree.
  */
 function getWorktreePortOffset() {
-	const currentPath = getCurrentWorktreePath();
-	if (!currentPath) {
+	const currentWorktreePath = getCurrentWorktreePath();
+	if (!currentWorktreePath) {
 		return 0;
 	}
 
-	return getWorktreePortOffsetForPath(currentPath);
+	return getWorktreeSlotDetails(currentWorktreePath).offset;
+}
+
+function getBasePort(target) {
+	const { defaultBase, envVar, label } = PORT_TARGETS[target];
+	const envPort = process.env[envVar];
+	if (envPort) {
+		return Number.parseInt(envPort, 10);
+	}
+
+	const currentWorktreePath = getCurrentWorktreePath();
+	if (!currentWorktreePath) {
+		return defaultBase;
+	}
+
+	const { offset, worktree } = getWorktreeSlotDetails(currentWorktreePath);
+	const basePort = defaultBase + offset;
+
+	if (worktree && !worktree.isMain && offset > 0) {
+		console.log(`[worktree: ${worktree.identifier}] ${label} base port: ${basePort}`);
+	}
+
+	return basePort;
 }
 
 /**
  * Get the base frontend port for the current worktree
  */
 function getFrontendBasePort() {
-	const envPort = process.env.PORT;
-	if (envPort) {
-		return Number.parseInt(envPort, 10);
-	}
-
-	const offset = getWorktreePortOffset();
-	const basePort = FRONTEND_DEFAULT_BASE + offset;
-
-	const worktreeName = getWorktreeName();
-	if (worktreeName && offset > 0) {
-		console.log(`[worktree: ${worktreeName}] Frontend base port: ${basePort}`);
-	}
-
-	return basePort;
+	return getBasePort("frontend");
 }
 
 /**
  * Get the base backend port for the current worktree
  */
 function getBackendBasePort() {
-	const envPort = process.env.BACKEND_PORT;
-	if (envPort) {
-		return Number.parseInt(envPort, 10);
-	}
-
-	const offset = getWorktreePortOffset();
-	const basePort = BACKEND_DEFAULT_BASE + offset;
-
-	const worktreeName = getWorktreeName();
-	if (worktreeName && offset > 0) {
-		console.log(`[worktree: ${worktreeName}] Backend base port: ${basePort}`);
-	}
-
-	return basePort;
+	return getBasePort("backend");
 }
 
 /**
  * Get the base rovodev serve port for the current worktree
  */
 function getRovodevBasePort() {
-	const envPort = process.env.ROVODEV_PORT;
-	if (envPort) {
-		return Number.parseInt(envPort, 10);
-	}
-
-	const offset = getWorktreePortOffset();
-	const basePort = ROVODEV_DEFAULT_BASE + offset;
-
-	const worktreeName = getWorktreeName();
-	if (worktreeName && offset > 0) {
-		console.log(`[worktree: ${worktreeName}] RovoDev base port: ${basePort}`);
-	}
-
-	return basePort;
+	return getBasePort("rovodev");
 }
 
 /**
@@ -283,15 +294,8 @@ function getPortInfo() {
 }
 
 function getPortInfoForPath(worktreePath) {
-	const normalizedPath = path.resolve(worktreePath);
-	const worktrees = getGitWorktrees();
-	const { slots } = buildWorktreeSlotTable(worktrees);
-	const worktree = worktrees.find((entry) => entry.path === normalizedPath);
-	const slot = slots.get(normalizedPath) ?? 0;
-	const offset = getOffsetFromSlot(slot);
-	const worktreeName = worktree && !worktree.isMain ? worktree.identifier : "main";
-
-	return buildPortInfo(worktreeName, offset, slot);
+	const { offset, slot, worktree } = getWorktreeSlotDetails(worktreePath);
+	return buildPortInfo(getWorktreeDisplayName(worktree), offset, slot);
 }
 
 function getAllWorktreePortInfo() {
@@ -301,7 +305,7 @@ function getAllWorktreePortInfo() {
 	return ordered.map((worktree) => {
 		const slot = slots.get(worktree.path) ?? 0;
 		const offset = getOffsetFromSlot(slot);
-		const info = buildPortInfo(worktree.isMain ? "main" : worktree.identifier, offset, slot);
+		const info = buildPortInfo(getWorktreeDisplayName(worktree), offset, slot);
 
 		return {
 			...info,
