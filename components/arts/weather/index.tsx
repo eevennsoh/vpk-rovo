@@ -398,11 +398,11 @@ function WeatherDateSummary({
 
 	return (
 		<div
-			className="text-text-subtle relative z-10 flex items-center gap-2 text-[13px] font-medium uppercase tracking-[0.36em]"
-			style={{ fontFamily: "var(--font-alpha-lyrae)" }}
+			className="text-text-subtle relative z-10 flex items-center gap-2 text-[13px] uppercase tracking-[0.36em] transition-colors duration-slow"
+			style={{ fontFamily: "'BBH Bartle', sans-serif" }}
 		>
 			<span>{weekdayShort}</span>
-			<span style={{ fontSize: 16 }}>✿</span>
+			<span style={{ fontSize: 16 }}>—</span>
 			<span>
 				{monthShort} {clock.isReady ? clock.day : "--"}
 			</span>
@@ -567,14 +567,11 @@ export default function Weather({
 			/>
 
 			<div className="text-text relative z-10 flex flex-col items-center gap-2">
-				<span className="text-[28px] leading-none" aria-hidden="true">
-					{countryCodeToFlag(selected.countryCode)}
-				</span>
 				<span
 					className="text-[15px] font-medium uppercase tracking-[0.36em]"
 					style={{
 						letterSpacing: "0.36em",
-						fontFamily: "var(--font-alpha-lyrae)",
+						fontFamily: "'BBH Bartle', sans-serif",
 					}}
 				>
 					{selected.name}
