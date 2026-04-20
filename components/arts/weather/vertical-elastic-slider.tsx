@@ -35,11 +35,13 @@ const CLICK_THRESHOLD = 3;
 const DEAD_ZONE = 16;
 const MAX_CURSOR_RANGE = 200;
 const MAX_STRETCH = 24;
+// Maximum width-thinning at full stretch (e.g. 0.18 → track narrows to 82%).
+const MAX_THIN_RATIO = 0.18;
 
 const HANDLE_BUFFER = 8;
 const DEFAULT_GLASS_SHELL_PROPS: Partial<LiquidGlassProps> = {
 	borderRadius: 9999,
-	borderWidth: 0.05,
+	borderWidth: 0,
 	brightness: 50,
 	opacity: 0.93,
 	blur: 8,
@@ -47,7 +49,7 @@ const DEFAULT_GLASS_SHELL_PROPS: Partial<LiquidGlassProps> = {
 	saturation: 1,
 	distortionScale: -90,
 	dispersion: 6,
-	borderOpacity: 0.35,
+	borderOpacity: 0,
 };
 
 function clamp(v: number, lo: number, hi: number) {
@@ -156,13 +158,24 @@ export function VerticalElasticSlider({
 		(pct) => `max(4px, calc(${pct}% - 8px))`,
 	);
 
-	// Rubber band: stretches track height and shifts it down when overshoot at top
+	// Rubber band: stretches track height and shifts it so the anchor edge
+	// (opposite to the overshoot direction) stays put while the other edge
+	// extends past the wrapper.
+	//   • s < 0 → overshoot at top    → shift up   so bottom stays anchored
+	//   • s > 0 → overshoot at bottom → shift down so top    stays anchored
 	const rubberStretch = useMotionValue(0);
 	const rubberHeight = useTransform(
 		rubberStretch,
 		(s) => `calc(100% + ${Math.abs(s)}px)`,
 	);
-	const rubberY = useTransform(rubberStretch, (s) => (s > 0 ? 0 : s));
+	// Real rubber bands get thinner as you stretch them. Map the absolute
+	// stretch (0 → MAX_STRETCH) to a width scale (1 → 1 - MAX_THIN_RATIO),
+	// applied symmetrically on both "+" and "-" overshoot directions.
+	const rubberScaleX = useTransform(rubberStretch, (s) => {
+		const ratio = Math.min(Math.abs(s) / MAX_STRETCH, 1);
+		return 1 - ratio * MAX_THIN_RATIO;
+	});
+	const rubberY = useTransform(rubberStretch, (s) => s);
 
 	useEffect(() => {
 		if (!isInteracting && !animRef.current) {
@@ -235,7 +248,7 @@ export function VerticalElasticSlider({
 	const handlePointerDown = useCallback(
 		(e: React.PointerEvent) => {
 			e.preventDefault();
-			(e.target as HTMLElement).setPointerCapture(e.pointerId);
+			(trackRef.current ?? (e.target as HTMLElement)).setPointerCapture(e.pointerId);
 
 			pointerDownPos.current = { x: e.clientX, y: e.clientY };
 			isClickRef.current = true;
@@ -451,6 +464,7 @@ export function VerticalElasticSlider({
 		width: "100%",
 		height: rubberHeight,
 		y: rubberY,
+		scaleX: rubberScaleX,
 		transformOrigin: "center center",
 	};
 	const trackSurfaceStyle = {
@@ -501,27 +515,42 @@ export function VerticalElasticSlider({
 					// bar already occupies that vertical position — rendering both
 					// produces the "two stacked marks" artifact.
 					const showDot = !isSelected;
+					// Inset the topmost and bottommost ticks by a few pixels so the
+					// grown hover state isn't clipped by the track edge (the
+					// surface uses overflow-hidden / squircle clip).
+					const EDGE_INSET_PX = 4;
+					const tickTop =
+						i === hashMarkCount - 1
+							? `${EDGE_INSET_PX}px`
+							: i === 0
+								? `calc(100% - ${EDGE_INSET_PX}px)`
+								: `${hashMarkPct(i)}%`;
 					return (
 						<div
 							key={i}
 							data-selected={isSelected || undefined}
 							className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2"
-							style={{ top: `${hashMarkPct(i)}%` }}
+							style={{ top: tickTop }}
 						>
-							{showDot ? (
-								<div
-									className={cn(
-										"h-px w-4 rounded-full transition-colors duration-200",
-										hasLabel
-											? "bg-(--elastic-slider-hash)"
-											: "bg-transparent group-data-[active=true]/elastic-slider:bg-(--elastic-slider-hash)",
-									)}
-								/>
-							) : (
-								// Reserve the same vertical footprint so the label
-								// position doesn't shift when selection changes.
-								<div className="h-px w-4" />
-							)}
+							{/* Reserve the maximum hover footprint (h-[3px] w-5) so the
+							    label, which anchors to this box's edge via
+							    bottom-full/top-full, doesn't shift when the tick
+							    grows on hover. The actual tick is centered inside
+							    this reserved box. */}
+							<div className="flex h-[3px] w-5 items-center justify-center">
+								{showDot ? (
+									<div
+										className={cn(
+											"rounded-full transition-all duration-150 ease-out",
+											hasLabel
+												? isHoveredTick
+													? "h-[3px] w-5 bg-(--elastic-slider-focus)"
+													: "h-px w-4 bg-(--elastic-slider-hash)"
+												: "h-px w-4 bg-transparent group-data-[active=true]/elastic-slider:bg-(--elastic-slider-hash)",
+										)}
+									/>
+								) : null}
+							</div>
 							{tickLabel ? (
 								<span
 									data-slot="vertical-elastic-slider-tick-label"
@@ -576,11 +605,6 @@ export function VerticalElasticSlider({
 								onPointerLeave={() =>
 									setHoveredTickIndex((prev) => (prev === i ? null : prev))
 								}
-								onPointerDown={(e) => {
-									// Don't let the track start a drag when the user
-									// is clicking a tick row.
-									e.stopPropagation();
-								}}
 								onClick={(e) => {
 									e.stopPropagation();
 									handleTickActivate(i);
@@ -713,13 +737,13 @@ export function VerticalElasticSlider({
 				)}
 				style={shell === "none" ? { ...trackMotionStyle, ...trackSurfaceStyle } : trackMotionStyle}
 				animate={{
-					scale: isActive ? 1.04 : 1,
+					scaleY: isActive ? 1.04 : 1,
 				}}
 				transition={
 					shouldReduceMotion
 						? { duration: 0 }
 						: {
-								scale: {
+								scaleY: {
 									type: "spring",
 									stiffness: 260,
 									damping: 18,

@@ -11,8 +11,8 @@ import Noise, { BLEND_MODE_TYPES, type NoiseBlendMode } from "./shaders/noise";
 const DEFAULT_OPACITY = 0.18;
 const DEFAULT_GRAIN_SIZE = 140;
 const DEFAULT_SEED = 7;
-const DEFAULT_COLOR = "#101214";
-const DEFAULT_BLEND_MODE: NoiseBlendMode = "multiply";
+const DEFAULT_COLOR = "#292A2E";
+const DEFAULT_BLEND_MODE: NoiseBlendMode = "soft-light";
 
 export default function NoiseDemo() {
 	const [opacity, setOpacity] = useState(DEFAULT_OPACITY);
@@ -37,26 +37,9 @@ export default function NoiseDemo() {
 				style={{ boxShadow: token("elevation.shadow.raised") }}
 			>
 				<div
-					className="relative w-full overflow-hidden"
-					style={{
-						height: 400,
-						background:
-							"linear-gradient(135deg, #fff5cf 0%, #dff2ff 44%, #ffd7ef 100%)",
-					}}
+					className="relative w-full overflow-hidden bg-surface"
+					style={{ height: 400 }}
 				>
-					<div
-						className="absolute -left-10 top-10 h-48 w-48 rounded-full blur-3xl"
-						style={{ background: "rgba(255, 121, 103, 0.52)" }}
-					/>
-					<div
-						className="absolute bottom-0 right-0 h-56 w-56 rounded-full blur-3xl"
-						style={{ background: "rgba(93, 122, 255, 0.42)" }}
-					/>
-					<div
-						className="absolute left-1/2 top-1/2 h-56 w-56 -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl"
-						style={{ background: "rgba(255, 255, 255, 0.68)" }}
-					/>
-
 					<Noise
 						className="absolute inset-0"
 						opacity={opacity}

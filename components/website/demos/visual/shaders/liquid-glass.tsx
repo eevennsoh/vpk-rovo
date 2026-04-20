@@ -25,13 +25,18 @@ const DROP_SHADOW = "0 8px 30px -12px rgba(0, 0, 0, 0.18)";
 const INNER_HIGHLIGHT_TOP = "inset 0 1px 0 rgba(255, 255, 255, 0.7)";
 const INNER_HIGHLIGHT_BOTTOM = "inset 0 -1px 0 rgba(0, 0, 0, 0.05)";
 
-function buildBoxShadow(hairlineColor: string): string {
+function buildBoxShadow(
+	hairlineColor: string,
+	dropShadow: string | false,
+): string {
 	return [
-		DROP_SHADOW,
+		dropShadow,
 		`inset 0 0 0 1px ${hairlineColor}`,
 		INNER_HIGHLIGHT_TOP,
 		INNER_HIGHLIGHT_BOTTOM,
-	].join(", ");
+	]
+		.filter(Boolean)
+		.join(", ");
 }
 
 export interface LiquidGlassProps {
@@ -56,6 +61,7 @@ export interface LiquidGlassProps {
 	chromaticOffsetB?: number;
 	borderOpacity?: number;
 	borderColor?: string;
+	dropShadow?: string | false;
 	className?: string;
 	style?: CSSProperties;
 }
@@ -79,6 +85,7 @@ export default function LiquidGlass({
 	chromaticOffsetB = 0,
 	borderOpacity = 0.35,
 	borderColor = "#000000",
+	dropShadow = DROP_SHADOW,
 	className,
 	style,
 }: LiquidGlassProps) {
@@ -182,7 +189,7 @@ export default function LiquidGlass({
 		width,
 		height,
 		borderRadius,
-		boxShadow: buildBoxShadow(hairlineColor),
+		boxShadow: buildBoxShadow(hairlineColor, dropShadow),
 	};
 
 	if (svgSupported) {

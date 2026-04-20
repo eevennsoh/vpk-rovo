@@ -4,6 +4,9 @@ import * as React from "react";
 
 import Bands from "@/components/website/demos/visual/shaders/bands";
 import LiquidGradient from "@/components/website/demos/visual/shaders/liquid-gradient";
+import Noise, {
+	type NoiseBlendMode,
+} from "@/components/website/demos/visual/shaders/noise";
 import WaveGradient from "@/components/website/demos/visual/shaders/wave-gradient";
 import { cn } from "@/lib/utils";
 
@@ -52,9 +55,30 @@ const GRID_CELL_SIZE = 14;
 type ThemeMode = "auto" | "light" | "dark";
 type ResolvedTheme = "light" | "dark";
 
-const THEME_PALETTE: Record<ResolvedTheme, { background: string; foreground: string }> = {
-	light: { background: "#FFFFFF", foreground: "#0F0F12" },
-	dark: { background: "#0F0F12", foreground: "#F5F5F5" },
+const THEME_PALETTE: Record<
+	ResolvedTheme,
+	{
+		background: string;
+		foreground: string;
+		noiseColor: string;
+		noiseOpacity: number;
+		noiseBlendMode: NoiseBlendMode;
+	}
+> = {
+	light: {
+		background: "#FFFFFF",
+		foreground: "#0F0F12",
+		noiseColor: "#101214",
+		noiseOpacity: 0.3,
+		noiseBlendMode: "multiply",
+	},
+	dark: {
+		background: "#0F0F12",
+		foreground: "#F5F5F5",
+		noiseColor: "#F5F5F5",
+		noiseOpacity: 0.3,
+		noiseBlendMode: "soft-light",
+	},
 };
 
 /**
@@ -234,187 +258,211 @@ export default function Weather({
 					width={SLIDER_WIDTH}
 				/>
 
-				{/* Pill 2: Time (HH / MM) */}
-				<WidgetCard
-					className="flex flex-col"
-					style={{ width: TIME_WIDTH, height: PILL_HEIGHT }}
-					background={
-						<LiquidGradient
-							className="h-full w-full"
-							seed={648}
-							speed={0.3}
-							scale={0.42}
-							turbAmp={0.6}
-							turbFreq={0.1}
-							turbIter={7}
-							waveFreq={3.8}
-							exposure={1.1}
-							contrast={1.1}
-							saturation={1}
-						/>
-					}
-					overlay={
-						<>
-							<WidgetGridOverlay opacity={0.42} cellSize={GRID_CELL_SIZE} />
-							<WidgetScrewDots insetX={40} insetY={28} />
-						</>
-					}
-				>
-					<div
-						className="flex h-full flex-col items-center justify-start gap-0 pt-14"
-						style={{ color: "#FFFFFF" }}
+					{/* Pill 2: Time (HH / MM) */}
+					<WidgetCard
+						className="flex flex-col"
+						style={{ width: TIME_WIDTH, height: PILL_HEIGHT }}
+						background={
+							<LiquidGradient
+								className="h-full w-full"
+								seed={648}
+								speed={0.3}
+								scale={0.42}
+								turbAmp={0.6}
+								turbFreq={0.1}
+								turbIter={7}
+								waveFreq={3.8}
+								exposure={1.1}
+								contrast={1.1}
+								saturation={1}
+							/>
+						}
+						overlay={
+							<>
+								<WidgetGridOverlay opacity={0.42} cellSize={GRID_CELL_SIZE} />
+								<WidgetScrewDots insetX={60} insetY={24} />
+								<Noise
+									className="absolute inset-0"
+									opacity={palette.noiseOpacity}
+									grainSize={140}
+									seed={7}
+									color={palette.noiseColor}
+									blendMode={palette.noiseBlendMode}
+								/>
+							</>
+						}
 					>
-						<span
-							className="font-mono text-[11px] uppercase tracking-[0.3em] opacity-70"
-							style={{ color: "#FFFFFF", marginBottom: 8 }}
+						<div
+							className="flex h-full flex-col items-center justify-start gap-0 pt-14"
+							style={{ color: "#FFFFFF" }}
 						>
-							Time
-						</span>
-						<DigitDisplay
-							className="text-[72px]"
-							weight={180}
-							tracking={-0.04}
-							style={{ color: "#FFFFFF", lineHeight: 0.95, fontFamily: "var(--font-ark-es)" }}
-						>
-							{clock.hours}
-						</DigitDisplay>
-						<DigitDisplay
-							className="text-[72px]"
-							weight={180}
-							tracking={-0.04}
-							style={{ color: "#FFFFFF", lineHeight: 0.95, fontFamily: "var(--font-ark-es)" }}
-						>
-							{clock.minutes}
-						</DigitDisplay>
-							<span
-								className="font-mono text-[13px] tabular-nums opacity-60"
-								style={{ color: "#FFFFFF", marginTop: 10, fontFamily: "'DotGothic16', sans-serif" }}
-							>
-							: {clock.seconds}
-						</span>
-					</div>
-				</WidgetCard>
-
-				{/* Pill 3: Humidity */}
-				<WidgetCard
-					className="flex flex-col"
-					style={{ width: HUMIDITY_WIDTH, height: PILL_HEIGHT }}
-					background={
-						<Bands
-							className="h-full w-full"
-							seed={210}
-							speed={0.3}
-							ephemeralAmp={0}
-							lensScale={3.7}
-							lensSpacingX={1}
-							lensSpacingY={0.01}
-							lensRadius={0.58}
-							dispersionStrength={0.4}
-							edgeDisp={2}
-						/>
-					}
-					overlay={
-						<>
-							<WidgetGridOverlay opacity={0.42} cellSize={GRID_CELL_SIZE} />
-							<WidgetScrewDots />
-						</>
-					}
-				>
-					<div
-						className="flex h-full flex-col items-center justify-between pb-10 pt-14"
-						style={{ color: "#FFFFFF" }}
-					>
-						<div className="flex flex-col items-center gap-0">
 							<span
 								className="font-mono text-[11px] uppercase tracking-[0.3em] opacity-70"
 								style={{ color: "#FFFFFF", marginBottom: 8 }}
 							>
-								Humid %
+								Time
 							</span>
-							{(weather.humidity === null
-								? ["—", "—"]
-								: String(Math.round(weather.humidity)).split("")
-							).map((digit, i) => (
-									<DigitDisplay
-										key={i}
-										className="text-[72px]"
-										weight={400}
-										tracking={-0.04}
-										style={{ color: "#FFFFFF", lineHeight: 0.95, fontFamily: "'DotGothic16', sans-serif" }}
-									>
-									{digit}
-								</DigitDisplay>
-							))}
+							<DigitDisplay
+								className="text-[72px]"
+								weight={180}
+								tracking={-0.04}
+								style={{ color: "#FFFFFF", lineHeight: 0.95, fontFamily: "var(--font-ark-es)" }}
+							>
+								{clock.hours}
+							</DigitDisplay>
+							<DigitDisplay
+								className="text-[72px]"
+								weight={180}
+								tracking={-0.04}
+								style={{ color: "#FFFFFF", lineHeight: 0.95, fontFamily: "var(--font-ark-es)" }}
+							>
+								{clock.minutes}
+							</DigitDisplay>
+								<span
+									className="font-mono text-[13px] tabular-nums opacity-60"
+									style={{ color: "#FFFFFF", marginTop: 10, fontFamily: "'DotGothic16', sans-serif" }}
+								>
+								: {clock.seconds}
+							</span>
 						</div>
+					</WidgetCard>
+
+					{/* Pill 3: Humidity */}
+					<WidgetCard
+						className="flex flex-col"
+						style={{ width: HUMIDITY_WIDTH, height: PILL_HEIGHT }}
+						background={
+							<Bands
+								className="h-full w-full"
+								seed={210}
+								speed={0.3}
+								ephemeralAmp={0}
+								lensScale={3.7}
+								lensSpacingX={1}
+								lensSpacingY={0.01}
+								lensRadius={0.58}
+								dispersionStrength={0.4}
+								edgeDisp={2}
+							/>
+						}
+						overlay={
+							<>
+								<WidgetGridOverlay opacity={0.42} cellSize={GRID_CELL_SIZE} />
+								<WidgetScrewDots insetX={40} insetY={24} />
+								<Noise
+									className="absolute inset-0"
+									opacity={palette.noiseOpacity}
+									grainSize={140}
+									seed={13}
+									color={palette.noiseColor}
+									blendMode={palette.noiseBlendMode}
+								/>
+							</>
+						}
+					>
+						<div
+							className="flex h-full flex-col items-center justify-between pb-10 pt-14"
+							style={{ color: "#FFFFFF" }}
+						>
+							<div className="flex flex-col items-center gap-0">
+								<span
+									className="font-mono text-[11px] uppercase tracking-[0.3em] opacity-70"
+									style={{ color: "#FFFFFF", marginBottom: 8 }}
+								>
+									Humid %
+								</span>
+								{(weather.humidity === null
+									? ["—", "—"]
+									: String(Math.round(weather.humidity)).split("")
+								).map((digit, i) => (
+										<DigitDisplay
+											key={i}
+											className="text-[72px]"
+											weight={400}
+											tracking={-0.04}
+											style={{ color: "#FFFFFF", lineHeight: 0.95, fontFamily: "'DotGothic16', sans-serif" }}
+										>
+										{digit}
+									</DigitDisplay>
+								))}
+							</div>
 							<span
 								className="text-[14px] opacity-60"
 								style={{ color: "#FFFFFF", fontFamily: "'DotGothic16', sans-serif" }}
 							>
-							湿度
-						</span>
-					</div>
-				</WidgetCard>
-
-				{/* Pill 4: Temperature + weather icon */}
-				<WidgetCard
-					className="flex flex-col"
-					style={{ width: TEMPERATURE_WIDTH, height: PILL_HEIGHT }}
-					background={
-						<WaveGradient
-							className="h-full w-full"
-							seed={26}
-							speed={2.85}
-							freqX={0.9}
-							freqY={6}
-							angle={105}
-							amplitude={1.6}
-							softness={1.4}
-							blend={0.5}
-						/>
-					}
-					overlay={
-						<>
-							<WidgetGridOverlay opacity={0.42} cellSize={GRID_CELL_SIZE} />
-							<WidgetScrewDots insetX={40} insetY={28} />
-						</>
-					}
-				>
-					<div
-						className="flex h-full flex-col items-center justify-between pb-10 pt-14"
-						style={{ color: "#FFFFFF" }}
-					>
-						<div className="flex flex-col items-center gap-1">
-							<span
-								className="font-mono text-[11px] uppercase tracking-[0.3em] opacity-70"
-								style={{ color: "#FFFFFF", marginBottom: 4 }}
-							>
-								Temp °C
+								湿度
 							</span>
+						</div>
+					</WidgetCard>
+
+					{/* Pill 4: Temperature + weather icon */}
+					<WidgetCard
+						className="flex flex-col"
+						style={{ width: TEMPERATURE_WIDTH, height: PILL_HEIGHT }}
+						background={
+							<WaveGradient
+								className="h-full w-full"
+								seed={26}
+								speed={2.85}
+								freqX={0.9}
+								freqY={6}
+								angle={105}
+								amplitude={1.6}
+								softness={1.4}
+								blend={0.5}
+							/>
+						}
+						overlay={
+							<>
+								<WidgetGridOverlay opacity={0.42} cellSize={GRID_CELL_SIZE} />
+								<WidgetScrewDots insetX={60} insetY={24} />
+								<Noise
+									className="absolute inset-0"
+									opacity={palette.noiseOpacity}
+									grainSize={140}
+									seed={7}
+									color={palette.noiseColor}
+									blendMode={palette.noiseBlendMode}
+								/>
+							</>
+						}
+					>
+						<div
+							className="flex h-full flex-col items-center justify-between pb-10 pt-14"
+							style={{ color: "#FFFFFF" }}
+						>
+							<div className="flex flex-col items-center gap-1">
+								<span
+									className="font-mono text-[11px] uppercase tracking-[0.3em] opacity-70"
+									style={{ color: "#FFFFFF", marginBottom: 4 }}
+								>
+									Temp °C
+								</span>
 								<DigitDisplay
 									className="text-[72px]"
 									weight={200}
 									tracking={-0.04}
 									style={{ color: "#FFFFFF", lineHeight: 0.95, fontFamily: "'Bitcount Grid Single', sans-serif" }}
 								>
-								{temperature}
-							</DigitDisplay>
-							<div className="flex items-center gap-1" style={{ marginTop: 4 }}>
-								<WeatherIcon
-									weatherCode={weather.weatherCode}
-									isDay={weather.isDay}
-									size={22}
-									style={{ color: "rgba(255,255,255,0.85)" }}
-								/>
+									{temperature}
+								</DigitDisplay>
+								<div className="flex items-center gap-1" style={{ marginTop: 4 }}>
+									<WeatherIcon
+										weatherCode={weather.weatherCode}
+										isDay={weather.isDay}
+										size={22}
+										style={{ color: "rgba(255,255,255,0.85)" }}
+									/>
+								</div>
 							</div>
+								<span
+									className="text-[14px] opacity-60"
+									style={{ color: "#FFFFFF", fontFamily: "'Bitcount Grid Single', sans-serif" }}
+								>
+								温度
+							</span>
 						</div>
-							<span
-								className="text-[14px] opacity-60"
-								style={{ color: "#FFFFFF", fontFamily: "'Bitcount Grid Single', sans-serif" }}
-							>
-							温度
-						</span>
-					</div>
-				</WidgetCard>
+					</WidgetCard>
 			</div>
 
 			{/* Bottom: weekday + flower + month day */}

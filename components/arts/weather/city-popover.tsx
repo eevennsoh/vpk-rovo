@@ -176,6 +176,7 @@ export function CityRailEditor({
 						trackShape="squircle"
 						trackClassName="border-transparent bg-transparent"
 						shell="liquid-glass"
+						shellProps={{ dropShadow: false }}
 					/>
 				</div>
 			) : null}
