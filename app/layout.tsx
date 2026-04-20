@@ -19,23 +19,6 @@ const arkEsSolidLight = localFont({
 	display: "swap",
 });
 
-const alphaLyraeMedium = localFont({
-	src: [
-		{
-			path: "../public/fonts/alpha-lyrae/AlphaLyrae-Medium.woff2",
-			weight: "500",
-			style: "normal",
-		},
-		{
-			path: "../public/fonts/alpha-lyrae/AlphaLyrae-Medium.woff",
-			weight: "500",
-			style: "normal",
-		},
-	],
-	variable: "--font-alpha-lyrae",
-	display: "swap",
-});
-
 // Prevent @atlaskit/tokens from falling back to uninitialized FeatureGates client.
 // Sets the resolver on the same global that @atlaskit/platform-feature-flags uses internally.
 // Returns false for all flags — increased-contrast themes stay disabled.
@@ -189,7 +172,6 @@ export default async function RootLayout({
 					"font-sans",
 					geist.variable,
 					arkEsSolidLight.variable,
-					alphaLyraeMedium.variable,
 				)}
 				data-theme={themeData}
 				data-color-mode={colorMode}
@@ -209,10 +191,10 @@ export default async function RootLayout({
 				<link rel="preconnect" href="https://ds-cdn.prod-east.frontend.public.atl-paas.net" />
 				<link rel="preload" href="https://ds-cdn.prod-east.frontend.public.atl-paas.net/assets/fonts/atlassian-sans/v3/AtlassianSans-latin.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
 				<link rel="preload stylesheet" href="https://ds-cdn.prod-east.frontend.public.atl-paas.net/assets/font-rules/v5/atlassian-fonts.css" as="style" crossOrigin="anonymous" />
-				{/* Bitcount Grid Single */}
+				{/* Bitcount Grid Single + DotGothic16 + BBH Bartle + JetBrains Mono */}
 				<link rel="preconnect" href="https://fonts.googleapis.com" />
 				<link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-				<link href="https://fonts.googleapis.com/css2?family=Bitcount+Grid+Single:wght@100..900&family=DotGothic16&display=swap" rel="stylesheet" />
+				<link href="https://fonts.googleapis.com/css2?family=BBH+Bartle&family=Bitcount+Grid+Single:wght@100..900&family=DotGothic16&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 			</head>
 			<body suppressHydrationWarning className="antialiased">
 				<Providers>{children}</Providers>

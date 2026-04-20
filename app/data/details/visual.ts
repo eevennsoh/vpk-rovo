@@ -103,7 +103,6 @@ export const VISUAL_DETAILS: Record<string, ComponentDetail> = {
 	selectedIndex={selectedIndex}
 	setSelectedIndex={setSelectedIndex}
 	addCity={addCity}
-	removeCity={removeCity}
 	width={194}
 	height={440}
 	fillGlassProps={{
@@ -119,7 +118,6 @@ export const VISUAL_DETAILS: Record<string, ComponentDetail> = {
 			{ name: "selectedIndex", type: "number", description: "Currently selected city index (controlled)." },
 			{ name: "setSelectedIndex", type: "(index: number) => void", description: "Setter called on hover-preview, drag, click, or keyboard navigation." },
 			{ name: "addCity", type: "(city: LockscreenLocation) => void", description: "Append a city to the rail when the user adds one from the editor popover." },
-			{ name: "removeCity", type: "(index: number) => void", description: "Remove a city from the rail." },
 			{ name: "width", type: "number", default: "150", description: "Outer width in pixels. CityRailEditor subtracts a 24px TRACK_INSET internally to derive the visible rail width." },
 			{ name: "height", type: "number", default: "380", description: "Outer height in pixels." },
 			{ name: "fillGlassProps", type: "Partial<LiquidGlassProps>", description: "Override the LiquidGlass props applied to the progress fill (distortion, dispersion, blur, etc.). Forwarded verbatim to the inner GlassSlider." },

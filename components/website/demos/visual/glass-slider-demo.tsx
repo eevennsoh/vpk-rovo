@@ -13,7 +13,7 @@ const SLIDER_RAIL_WIDTH = 170;
 const SLIDER_HEIGHT = 440;
 
 export default function GlassSliderDemo() {
-	const { cities, selectedIndex, setSelectedIndex, addCity, removeCity } =
+	const { cities, selectedIndex, setSelectedIndex, addCity } =
 		useCities();
 
 	return (
@@ -45,7 +45,6 @@ export default function GlassSliderDemo() {
 							selectedIndex={selectedIndex}
 							setSelectedIndex={setSelectedIndex}
 							addCity={addCity}
-							removeCity={removeCity}
 							width={SLIDER_RAIL_WIDTH + CITY_RAIL_TRACK_INSET}
 							height={SLIDER_HEIGHT}
 						/>

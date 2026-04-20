@@ -163,6 +163,8 @@ export function WidgetScrewDots({
 						height: size,
 						background: color,
 						boxShadow,
+						transition:
+							"background-color var(--duration-slow), box-shadow var(--duration-slow)",
 					}}
 				/>
 			))}

@@ -20,8 +20,6 @@ export interface UseCitiesReturn {
 	selected: LockscreenLocation;
 	setSelectedIndex: (index: number) => void;
 	addCity: (city: LockscreenLocation) => void;
-	removeCity: (index: number) => void;
-	isAdded: (id: string) => boolean;
 }
 
 function loadStoredState(): StoredCitiesState | null {
@@ -85,25 +83,6 @@ export function useCities(): UseCitiesReturn {
 		[cities],
 	);
 
-	const removeCity = useCallback(
-		(index: number) => {
-			if (cities.length <= 1) return;
-			setCities((prev) => {
-				const next = prev.filter((_, i) => i !== index);
-				return next;
-			});
-			setSelectedIndexRaw((prev) =>
-				prev >= cities.length - 1 ? Math.max(0, cities.length - 2) : prev,
-			);
-		},
-		[cities.length],
-	);
-
-	const isAdded = useCallback(
-		(id: string) => cities.some((c) => c.id === id),
-		[cities],
-	);
-
 	const selected = cities[selectedIndex] ?? DEFAULT_PRESET_CITY;
 
 	return {
@@ -112,8 +91,6 @@ export function useCities(): UseCitiesReturn {
 		selected,
 		setSelectedIndex,
 		addCity,
-		removeCity,
-		isAdded,
 	};
 }
 
