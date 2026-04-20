@@ -13,7 +13,10 @@ import { cn } from "@/lib/utils";
 
 import type { LockscreenLocation } from "./locations";
 import { PRESET_CITIES } from "./preset-cities";
-import { VerticalElasticSlider } from "./vertical-elastic-slider";
+import {
+	VerticalElasticSlider,
+	type VerticalElasticSliderProps,
+} from "./vertical-elastic-slider";
 
 interface CityRailEditorProps {
 	cities: ReadonlyArray<LockscreenLocation>;
@@ -103,6 +106,21 @@ export function CityRailEditor({
 
 	const railWidth = width - TRACK_INSET;
 	const selectedCity = cities[selectedIndex] ?? cities[0] ?? PRESET_CITIES[0];
+	const citySliderMax = Math.max(0, cities.length - 1);
+	const citySliderTickLabels = cities.map((city) => city.code);
+	const citySliderProps = {
+		min: 0,
+		max: citySliderMax,
+		step: 1,
+		value: selectedIndex,
+		onValueChange: setSelectedIndex,
+		formatValue: (value: number) => cities[value]?.code ?? "",
+		tickLabels: citySliderTickLabels,
+		"aria-label": "Cities",
+		className: "h-full w-full",
+		trackShape: "squircle",
+		trackClassName: "border-transparent bg-transparent",
+	} satisfies Omit<VerticalElasticSliderProps, "shell" | "shellProps">;
 	const squircleShellStyle = useMemo(
 		() =>
 			({
@@ -164,17 +182,7 @@ export function CityRailEditor({
 			{!isOpen ? (
 				<div className="absolute inset-y-0 left-0 z-30" style={{ width: railWidth }}>
 					<VerticalElasticSlider
-						min={0}
-						max={Math.max(0, cities.length - 1)}
-						step={1}
-						value={selectedIndex}
-						onValueChange={setSelectedIndex}
-						formatValue={(value) => cities[value]?.code ?? ""}
-						tickLabels={cities.map((city) => city.code)}
-						aria-label="Cities"
-						className="h-full w-full"
-						trackShape="squircle"
-						trackClassName="border-transparent bg-transparent"
+						{...citySliderProps}
 						shell="liquid-glass"
 						shellProps={{ dropShadow: false }}
 					/>
@@ -229,19 +237,7 @@ export function CityRailEditor({
 									className="relative z-10 h-full shrink-0"
 									style={{ width: railWidth }}
 								>
-									<VerticalElasticSlider
-										min={0}
-										max={Math.max(0, cities.length - 1)}
-										step={1}
-										value={selectedIndex}
-										onValueChange={setSelectedIndex}
-										formatValue={(value) => cities[value]?.code ?? ""}
-										tickLabels={cities.map((city) => city.code)}
-										aria-label="Cities"
-										className="h-full w-full"
-										trackShape="squircle"
-										trackClassName="border-transparent bg-transparent"
-									/>
+									<VerticalElasticSlider {...citySliderProps} />
 								</div>
 
 								<motion.div
