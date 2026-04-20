@@ -5,7 +5,9 @@ import {
 	formatCornerShapeSuperellipse,
 	SQUIRCLE_DEFAULT_SMOOTHNESS,
 } from "@/components/website/demos/visual/shaders/squircle-shape";
-import Pattern from "@/components/website/demos/visual/shaders/pattern";
+import Pattern, {
+	type PatternBlendMode,
+} from "@/components/website/demos/visual/shaders/pattern";
 import { cn } from "@/lib/utils";
 
 interface WidgetCardProps {
@@ -79,6 +81,7 @@ interface WidgetGridOverlayProps {
 	color?: string;
 	opacity?: number;
 	cellSize?: number;
+	blendMode?: PatternBlendMode;
 }
 
 /**
@@ -89,9 +92,10 @@ interface WidgetGridOverlayProps {
  * the card.
  */
 export function WidgetGridOverlay({
-	color = "rgba(15, 15, 18, 0.24)",
+	color = "color-mix(in srgb, var(--ds-text) 16%, transparent)",
 	opacity = 0.6,
 	cellSize = 16,
+	blendMode = "multiply",
 }: WidgetGridOverlayProps) {
 	return (
 		<div
@@ -106,7 +110,7 @@ export function WidgetGridOverlay({
 				front={color}
 				back="transparent"
 				scale={cellSize}
-				blendMode="multiply"
+				blendMode={blendMode}
 				fill="tile"
 			/>
 		</div>
@@ -119,17 +123,24 @@ interface WidgetScrewDotsProps {
 	inset?: number;
 	insetX?: number;
 	insetY?: number;
+	/**
+	 * Optional `box-shadow` applied to each dot. Used to create a debossed
+	 * (pressed-in) effect by combining an inset top shadow with an outer
+	 * bottom highlight.
+	 */
+	boxShadow?: string;
 }
 
 /**
  * Decorative corner dots used on the shader cards.
  */
 export function WidgetScrewDots({
-	color = "rgba(255, 255, 255, 0.98)",
+	color = "var(--ds-text)",
 	size = 10,
 	inset = 28,
 	insetX,
 	insetY,
+	boxShadow,
 }: WidgetScrewDotsProps) {
 	const resolvedInsetX = insetX ?? inset;
 	const resolvedInsetY = insetY ?? inset;
@@ -141,9 +152,9 @@ export function WidgetScrewDots({
 	];
 	return (
 		<>
-			{positions.map((position, index) => (
+			{positions.map((position) => (
 				<span
-					key={index}
+					key={`${position.top ?? "auto"}-${position.right ?? "auto"}-${position.bottom ?? "auto"}-${position.left ?? "auto"}`}
 					aria-hidden="true"
 					className="absolute rounded-full"
 					style={{
@@ -151,6 +162,7 @@ export function WidgetScrewDots({
 						width: size,
 						height: size,
 						background: color,
+						boxShadow,
 					}}
 				/>
 			))}

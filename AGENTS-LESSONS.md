@@ -223,3 +223,59 @@ Mark promoted entries with `[Promoted]` prefix — see vpk-lesson skill for deta
   failure and retry the exact delete command before telling the user approval
   is required. Only escalate when the retried command still proves it needs
   broader permissions.
+
+### 2026-04-20 - Preserve existing shader presentation and controls during tokenization
+
+- **What happened:** A weather theming refactor removed the page’s hover theme
+  control, added a contrast tint that made the shader cards look washed out,
+  and changed shader-card overlay content away from the intended inverse color
+  treatment.
+- **Why:** I treated shader wrappers like normal surface chrome and optimized
+  for token purity before preserving the feature’s existing visual behavior and
+  user-facing controls.
+- **Rule:** When tokenizing an existing themed surface, preserve any existing
+  controls and keep shader presentation visually unchanged unless the user asks
+  for a redesign. Do not add tint or overlay layers that alter perceived shader
+  color, and keep overlay UI on shader art aligned with the intended inverse
+  foreground treatment.
+
+### 2026-04-20 - Search every rendered branch before closing a style fix
+
+- **What happened:** A weather card label fix updated one `温度` span to
+  `DotGothic16`, but the rendered temperature card still showed the old font.
+- **Why:** I patched the first matching node instead of checking the file for
+  duplicate or later-rendered branches that used the same text.
+- **Rule:** When fixing text or styling in a component file, search every
+  rendered branch for the same literal text or style before marking the change
+  complete. Do not assume the first match is the one on screen.
+
+### 2026-04-20 - Match optical spacing, not just symmetric math
+
+- **What happened:** The weather slider used the same numeric inset for the
+  top and bottom edge ticks, but the bottom tick still looked closer to the
+  rounded edge in the rendered UI.
+- **Why:** I treated equal geometry as sufficient and did not account for the
+  optical imbalance introduced by the bottom cap and surrounding label layout.
+- **Rule:** For rounded UI surfaces, verify edge spacing visually. If equal
+  numeric insets read unevenly, tune the optical spacing instead of insisting
+  on mathematical symmetry.
+
+### 2026-04-20 - Distinguish row alignment from mark alignment
+
+- **What happened:** I adjusted the bottom weather-slider tick row position
+  when the user was actually calling out the horizontal mark inside the row.
+- **Why:** I treated the rendered issue as an outer positioning problem before
+  separating the tick row geometry from the inner mark placement.
+- **Rule:** When a control has nested positioning, confirm which element is
+  visually wrong before patching. Do not move the whole row when the issue is
+  only the inner mark.
+
+### 2026-04-20 - Remove state suffixes when the label itself is the requirement
+
+- **What happened:** The weather mode control kept appending resolved theme
+  state like `· Light` to `Location` and `System` after the user asked for
+  plain labels only.
+- **Why:** I preserved extra status context in the button copy instead of
+  matching the explicit copy requirement.
+- **Rule:** When a user asks for a specific control label, remove any derived
+  status suffixes from that label unless they explicitly ask to keep them.

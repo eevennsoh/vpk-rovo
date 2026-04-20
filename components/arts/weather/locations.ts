@@ -4,6 +4,7 @@ export interface LockscreenLocation {
 	id: string;
 	name: string;
 	code: string;
+	countryCode: string;
 	region: string;
 	timezone: string;
 	latitude: number;
