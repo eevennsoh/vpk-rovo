@@ -2,6 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import {
+	readStoredCitiesState,
+	type StoredCitiesState,
+	WEATHER_CITY_STORAGE_KEY,
+} from "./city-storage";
 import { findLocation, type LockscreenLocation } from "./locations";
 import {
 	DEFAULT_PRESET_CITIES,
@@ -19,42 +24,9 @@ export interface UseCitiesReturn {
 	isAdded: (id: string) => boolean;
 }
 
-// v2: bumped when default city set changed (Sydney/SF/Tokyo/Kuala Lumpur).
-// Bumping the key effectively re-seeds the defaults for existing visitors.
-const STORAGE_KEY = "vpk:weather:cities:v2";
-const LEGACY_STORAGE_KEYS = ["vpk:weather:cities"];
-
-interface StoredCitiesState {
-	cityIds: string[];
-	selectedIndex: number;
-}
-
 function loadStoredState(): StoredCitiesState | null {
 	if (typeof window === "undefined") return null;
-	try {
-		const raw = window.localStorage.getItem(STORAGE_KEY);
-		if (!raw) {
-			// Best-effort cleanup of legacy keys so the next save uses the new key.
-			for (const legacyKey of LEGACY_STORAGE_KEYS) {
-				try {
-					window.localStorage.removeItem(legacyKey);
-				} catch {
-					// Ignore.
-				}
-			}
-			return null;
-		}
-		const parsed = JSON.parse(raw) as Partial<StoredCitiesState>;
-		if (!parsed || !Array.isArray(parsed.cityIds)) return null;
-		const cityIds = parsed.cityIds.filter(
-			(id): id is string => typeof id === "string",
-		);
-		const selectedIndex =
-			typeof parsed.selectedIndex === "number" ? parsed.selectedIndex : 0;
-		return { cityIds, selectedIndex };
-	} catch {
-		return null;
-	}
+	return readStoredCitiesState(window.localStorage);
 }
 
 function getInitialCities(): LockscreenLocation[] {
@@ -85,7 +57,10 @@ export function useCities(): UseCitiesReturn {
 				cityIds: cities.map((c) => c.id),
 				selectedIndex,
 			};
-			window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+			window.localStorage.setItem(
+				WEATHER_CITY_STORAGE_KEY,
+				JSON.stringify(payload),
+			);
 		} catch {
 			// Ignore quota / serialization errors.
 		}
