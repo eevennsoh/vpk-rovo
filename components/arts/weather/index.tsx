@@ -245,6 +245,171 @@ function useWeatherBreakpoint(): WeatherBreakpoint {
 	return React.useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }
 
+interface WeatherTimeCardProps {
+	timezone: string;
+	sizes: ResponsiveSizes;
+	gridColor: string;
+	gridBlendMode: "multiply" | "screen";
+	noiseBlendMode: NoiseBlendMode;
+	noiseOpacity: number;
+	noiseColor: string;
+	shaderTextClass: string;
+	shaderScrewColor: string;
+	shaderLabelColor: string;
+	shaderFootnoteColor: string;
+	cutoutFillColor: string;
+	cutoutTextShadow: string;
+	debossTextShadow: string;
+	debossDotShadow: string;
+}
+
+function WeatherTimeCard({
+	timezone,
+	sizes,
+	gridColor,
+	gridBlendMode,
+	noiseBlendMode,
+	noiseOpacity,
+	noiseColor,
+	shaderTextClass,
+	shaderScrewColor,
+	shaderLabelColor,
+	shaderFootnoteColor,
+	cutoutFillColor,
+	cutoutTextShadow,
+	debossTextShadow,
+	debossDotShadow,
+}: WeatherTimeCardProps) {
+	const clock = useLocationClock(timezone);
+
+	return (
+		<WidgetCard
+			className="flex flex-col"
+			style={{ width: sizes.timeWidth, height: sizes.pillHeight }}
+			background={
+				<LiquidGradient
+					className="h-full w-full"
+					seed={648}
+					speed={0.3}
+					scale={0.42}
+					turbAmp={0.6}
+					turbFreq={0.1}
+					turbIter={7}
+					waveFreq={3.8}
+					exposure={1.1}
+					contrast={1.1}
+					saturation={1}
+				/>
+			}
+			overlay={
+				<>
+					<WidgetGridOverlay
+						color={gridColor}
+						blendMode={gridBlendMode}
+						opacity={0.42}
+						cellSize={sizes.gridCellSize}
+					/>
+					<WidgetScrewDots
+						color={shaderScrewColor}
+						insetX={sizes.screwInsetX.time}
+						insetY={sizes.screwInsetY}
+						boxShadow={debossDotShadow}
+					/>
+					<Noise
+						className="absolute inset-0"
+						opacity={noiseOpacity}
+						grainSize={140}
+						seed={7}
+						color={noiseColor}
+						blendMode={noiseBlendMode}
+					/>
+				</>
+			}
+		>
+			<div className={cn("relative flex h-full flex-col items-center justify-center", shaderTextClass)}>
+				<span
+					className="absolute font-mono uppercase tracking-[0.3em]"
+					style={{
+						color: shaderLabelColor,
+						top: sizes.labelInsetPx,
+						fontSize: sizes.labelFontPx,
+						textShadow: debossTextShadow,
+					}}
+				>
+					Time
+				</span>
+				<div className="flex flex-col items-center gap-0">
+					<DigitDisplay
+						weight={180}
+						tracking={-0.04}
+						style={{
+							color: cutoutFillColor,
+							lineHeight: 0.92,
+							fontFamily: "var(--font-ark-es)",
+							fontSize: sizes.timeFontPx,
+							textShadow: cutoutTextShadow,
+						}}
+					>
+						{clock.hours}
+					</DigitDisplay>
+					<DigitDisplay
+						weight={180}
+						tracking={-0.04}
+						style={{
+							color: cutoutFillColor,
+							lineHeight: 0.92,
+							fontFamily: "var(--font-ark-es)",
+							fontSize: sizes.timeFontPx,
+							textShadow: cutoutTextShadow,
+						}}
+					>
+						{clock.minutes}
+					</DigitDisplay>
+				</div>
+				<span
+					className="absolute font-mono tabular-nums"
+					style={{
+						color: shaderFootnoteColor,
+						fontFamily: "'DotGothic16', sans-serif",
+						bottom: sizes.labelInsetPx,
+						fontSize: sizes.footnoteFontPx,
+						textShadow: debossTextShadow,
+					}}
+				>
+					: {clock.seconds}
+				</span>
+			</div>
+		</WidgetCard>
+	);
+}
+
+function WeatherDateSummary({
+	timezone,
+}: {
+	timezone: string;
+}) {
+	const clock = useLocationClock(timezone);
+	const weekdayShort = clock.isReady
+		? clock.weekday.slice(0, 3).toUpperCase()
+		: "---";
+	const monthShort = clock.isReady
+		? clock.month.slice(0, 3).toUpperCase()
+		: "---";
+
+	return (
+		<div
+			className="text-text-subtle relative z-10 flex items-center gap-2 text-[13px] font-medium uppercase tracking-[0.36em]"
+			style={{ fontFamily: "var(--font-alpha-lyrae)" }}
+		>
+			<span>{weekdayShort}</span>
+			<span style={{ fontSize: 16 }}>✿</span>
+			<span>
+				{monthShort} {clock.isReady ? clock.day : "--"}
+			</span>
+		</div>
+	);
+}
+
 export default function Weather({
 	className,
 }: WeatherProps) {
@@ -261,7 +426,6 @@ export default function Weather({
 	const breakpoint = useWeatherBreakpoint();
 	const sizes = SIZE_PRESETS[breakpoint];
 
-	const clock = useLocationClock(selected.timezone);
 	const weather = useCurrentWeather(
 		selected.latitude,
 		selected.longitude,
@@ -389,12 +553,6 @@ export default function Weather({
 		"inset 0 1px 0.5px color-mix(in srgb, var(--ds-text) 45%, transparent), 0 1px 0 color-mix(in srgb, var(--ds-text-inverse) 40%, transparent)";
 
 	const temperature = formatTemperature(weather.temperatureCelsius);
-	const weekdayShort = clock.isReady
-		? clock.weekday.slice(0, 3).toUpperCase()
-		: "---";
-	const monthShort = clock.isReady
-		? clock.month.slice(0, 3).toUpperCase()
-		: "---";
 
 	return (
 		<div
@@ -438,103 +596,23 @@ export default function Weather({
 					width={sizes.sliderWidth + CITY_RAIL_TRACK_INSET}
 				/>
 
-				<WidgetCard
-					className="flex flex-col"
-					style={{ width: sizes.timeWidth, height: sizes.pillHeight }}
-					background={
-						<LiquidGradient
-							className="h-full w-full"
-							seed={648}
-							speed={0.3}
-							scale={0.42}
-							turbAmp={0.6}
-							turbFreq={0.1}
-							turbIter={7}
-							waveFreq={3.8}
-							exposure={1.1}
-							contrast={1.1}
-							saturation={1}
-						/>
-					}
-					overlay={
-						<>
-							<WidgetGridOverlay
-								color={gridColor}
-								blendMode={gridBlendMode}
-								opacity={0.42}
-								cellSize={sizes.gridCellSize}
-							/>
-							<WidgetScrewDots
-								color={shaderScrewColor}
-								insetX={sizes.screwInsetX.time}
-								insetY={sizes.screwInsetY}
-								boxShadow={debossDotShadow}
-							/>
-							<Noise
-								className="absolute inset-0"
-								opacity={noiseOpacity}
-								grainSize={140}
-								seed={7}
-								color={noiseColor}
-								blendMode={noiseBlendMode}
-							/>
-						</>
-					}
-				>
-					<div className={cn("relative flex h-full flex-col items-center justify-center", shaderTextClass)}>
-						<span
-							className="absolute font-mono uppercase tracking-[0.3em]"
-							style={{
-								color: shaderLabelColor,
-								top: sizes.labelInsetPx,
-								fontSize: sizes.labelFontPx,
-								textShadow: debossTextShadow,
-							}}
-						>
-							Time
-						</span>
-						<div className="flex flex-col items-center gap-0">
-							<DigitDisplay
-								weight={180}
-								tracking={-0.04}
-								style={{
-									color: cutoutFillColor,
-									lineHeight: 0.92,
-									fontFamily: "var(--font-ark-es)",
-									fontSize: sizes.timeFontPx,
-									textShadow: cutoutTextShadow,
-								}}
-							>
-								{clock.hours}
-							</DigitDisplay>
-							<DigitDisplay
-								weight={180}
-								tracking={-0.04}
-								style={{
-									color: cutoutFillColor,
-									lineHeight: 0.92,
-									fontFamily: "var(--font-ark-es)",
-									fontSize: sizes.timeFontPx,
-									textShadow: cutoutTextShadow,
-								}}
-							>
-								{clock.minutes}
-							</DigitDisplay>
-						</div>
-						<span
-							className="absolute font-mono tabular-nums"
-							style={{
-								color: shaderFootnoteColor,
-								fontFamily: "'DotGothic16', sans-serif",
-								bottom: sizes.labelInsetPx,
-								fontSize: sizes.footnoteFontPx,
-								textShadow: debossTextShadow,
-							}}
-						>
-							: {clock.seconds}
-						</span>
-					</div>
-				</WidgetCard>
+				<WeatherTimeCard
+					timezone={selected.timezone}
+					sizes={sizes}
+					gridColor={gridColor}
+					gridBlendMode={gridBlendMode}
+					noiseBlendMode={noiseBlendMode}
+					noiseOpacity={noiseOpacity}
+					noiseColor={noiseColor}
+					shaderTextClass={shaderTextClass}
+					shaderScrewColor={shaderScrewColor}
+					shaderLabelColor={shaderLabelColor}
+					shaderFootnoteColor={shaderFootnoteColor}
+					cutoutFillColor={cutoutFillColor}
+					cutoutTextShadow={cutoutTextShadow}
+					debossTextShadow={debossTextShadow}
+					debossDotShadow={debossDotShadow}
+				/>
 
 				<WidgetCard
 					className="flex flex-col"
@@ -721,16 +799,7 @@ export default function Weather({
 				</WidgetCard>
 			</div>
 
-			<div
-				className="text-text-subtle relative z-10 flex items-center gap-2 text-[13px] font-medium uppercase tracking-[0.36em]"
-				style={{ fontFamily: "var(--font-alpha-lyrae)" }}
-			>
-				<span>{weekdayShort}</span>
-				<span style={{ fontSize: 16 }}>✿</span>
-				<span>
-					{monthShort} {clock.isReady ? clock.day : "--"}
-				</span>
-			</div>
+			<WeatherDateSummary timezone={selected.timezone} />
 		</div>
 	);
 }
