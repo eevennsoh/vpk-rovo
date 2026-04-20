@@ -25,15 +25,30 @@ import {
 	formatCornerShapeSuperellipse,
 	SQUIRCLE_DEFAULT_SMOOTHNESS,
 } from "@/components/website/demos/visual/shaders/squircle-shape";
+import LiquidGlass, {
+	type LiquidGlassProps,
+} from "@/components/website/demos/visual/shaders/liquid-glass";
 import { cn } from "@/lib/utils";
 import { useControllableState } from "@/hooks/use-controllable-state";
 
 const CLICK_THRESHOLD = 3;
-const DEAD_ZONE = 32;
+const DEAD_ZONE = 16;
 const MAX_CURSOR_RANGE = 200;
-const MAX_STRETCH = 8;
+const MAX_STRETCH = 24;
 
 const HANDLE_BUFFER = 8;
+const DEFAULT_GLASS_SHELL_PROPS: Partial<LiquidGlassProps> = {
+	borderRadius: 9999,
+	borderWidth: 0.05,
+	brightness: 50,
+	opacity: 0.93,
+	blur: 8,
+	backgroundOpacity: 0.2,
+	saturation: 1,
+	distortionScale: -90,
+	dispersion: 6,
+	borderOpacity: 0.35,
+};
 
 function clamp(v: number, lo: number, hi: number) {
 	return Math.max(lo, Math.min(hi, v));
@@ -60,6 +75,14 @@ export interface VerticalElasticSliderProps {
 	trackClassName?: string;
 	trackStyle?: CSSProperties;
 	trackShape?: "squircle" | "none";
+	shell?: "none" | "liquid-glass";
+	shellProps?: Partial<LiquidGlassProps>;
+	/**
+	 * Optional labels (one per hash-mark tick, ordered low→high).
+	 * When provided, the corresponding hash marks and their labels are
+	 * always visible (independent of hover/interaction state).
+	 */
+	tickLabels?: ReadonlyArray<string>;
 	"aria-label"?: string;
 }
 
@@ -76,6 +99,9 @@ export function VerticalElasticSlider({
 	trackClassName,
 	trackStyle,
 	trackShape = "squircle",
+	shell = "none",
+	shellProps,
+	tickLabels,
 	"aria-label": ariaLabel,
 }: VerticalElasticSliderProps) {
 	const [value = min, setValue] = useControllableState({
@@ -108,6 +134,14 @@ export function VerticalElasticSlider({
 	const animRef = useRef<ReturnType<typeof animate> | null>(null);
 	const wrapperRectRef = useRef<DOMRect | null>(null);
 	const scaleRef = useRef(1);
+	// Captured at pointerdown so drag can advance from the original handle
+	// position by *delta* rather than jumping to wherever the cursor is.
+	const valueAtPointerDownRef = useRef(0);
+	const trackHeightAtPointerDownRef = useRef(0);
+
+	// Tracks which tick row the cursor is currently over (for label hover
+	// styling). `null` when not hovering any tick.
+	const [hoveredTickIndex, setHoveredTickIndex] = useState<number | null>(null);
 
 	// Percentage: 0 = min (bottom), 100 = max (top)
 	const percentage = ((value - min) / (max - min)) * 100;
@@ -169,9 +203,9 @@ export function VerticalElasticSlider({
 
 			animRef.current = animate(fillPercent, targetPercent, {
 				type: "spring",
-				stiffness: 300,
-				damping: 25,
-				mass: 0.8,
+				stiffness: 180,
+				damping: 12,
+				mass: 0.6,
 				onComplete: () => {
 					animRef.current = null;
 				},
@@ -190,36 +224,42 @@ export function VerticalElasticSlider({
 				sign < 0 ? rect.top - clientY : clientY - rect.bottom;
 			const overflow = Math.max(0, distancePast - DEAD_ZONE);
 
-			return (
-				sign *
-				MAX_STRETCH *
-				Math.sqrt(Math.min(overflow / MAX_CURSOR_RANGE, 1))
-			);
+			// Steeper rubber-band curve (cube root) ramps up faster than sqrt at small overflow,
+			// matching the bouncier feel of reactbits.dev/elastic-slider.
+			const ratio = Math.min(overflow / MAX_CURSOR_RANGE, 1);
+			return sign * MAX_STRETCH * Math.cbrt(ratio);
 		},
 		[],
 	);
 
-	const handlePointerDown = useCallback((e: React.PointerEvent) => {
-		e.preventDefault();
-		(e.target as HTMLElement).setPointerCapture(e.pointerId);
+	const handlePointerDown = useCallback(
+		(e: React.PointerEvent) => {
+			e.preventDefault();
+			(e.target as HTMLElement).setPointerCapture(e.pointerId);
 
-		pointerDownPos.current = { x: e.clientX, y: e.clientY };
-		isClickRef.current = true;
-		setIsInteracting(true);
-		pendingPointerFocusRef.current = true;
-		setKeyboardFocusRing(false);
-		trackRef.current?.focus({ preventScroll: true });
-		requestAnimationFrame(() => {
-			pendingPointerFocusRef.current = false;
-		});
+			pointerDownPos.current = { x: e.clientX, y: e.clientY };
+			isClickRef.current = true;
+			setIsInteracting(true);
+			pendingPointerFocusRef.current = true;
+			setKeyboardFocusRing(false);
+			trackRef.current?.focus({ preventScroll: true });
+			requestAnimationFrame(() => {
+				pendingPointerFocusRef.current = false;
+			});
 
-		const wrapper = wrapperRef.current;
-		if (wrapper) {
-			const rect = wrapper.getBoundingClientRect();
-			wrapperRectRef.current = rect;
-			scaleRef.current = rect.height / wrapper.offsetHeight;
-		}
-	}, []);
+			const wrapper = wrapperRef.current;
+			if (wrapper) {
+				const rect = wrapper.getBoundingClientRect();
+				wrapperRectRef.current = rect;
+				scaleRef.current = rect.height / wrapper.offsetHeight;
+				// Native (unscaled) height — drag deltas are in scene-space
+				// pixels, matching positionToValue's coordinate handling.
+				trackHeightAtPointerDownRef.current = wrapper.offsetHeight;
+			}
+			valueAtPointerDownRef.current = value;
+		},
+		[value],
+	);
 
 	const handlePointerMove = useCallback(
 		(e: React.PointerEvent) => {
@@ -246,7 +286,20 @@ export function VerticalElasticSlider({
 				}
 			}
 
-			const newValue = positionToValue(e.clientY);
+			// Drag uses *delta* from the press-down position so the handle
+			// stays put on press-down and tracks the cursor relatively (no
+			// jump-to-cursor). Click-snap is handled in handlePointerUp.
+			const trackHeight = trackHeightAtPointerDownRef.current;
+			const range = max - min;
+			const valueDelta =
+				trackHeight > 0
+					? -(dy / scaleRef.current / trackHeight) * range
+					: 0;
+			const newValue = clamp(
+				valueAtPointerDownRef.current + valueDelta,
+				min,
+				max,
+			);
 			animRef.current?.stop();
 			animRef.current = null;
 			fillPercent.jump(percentFromValue(newValue));
@@ -254,7 +307,8 @@ export function VerticalElasticSlider({
 		},
 		[
 			isInteracting,
-			positionToValue,
+			min,
+			max,
 			percentFromValue,
 			setValue,
 			step,
@@ -283,8 +337,8 @@ export function VerticalElasticSlider({
 			if (!shouldReduceMotion && rubberStretch.get() !== 0) {
 				animate(rubberStretch, 0, {
 					type: "spring",
-					visualDuration: 0.35,
-					bounce: 0.15,
+					visualDuration: 0.6,
+					bounce: 0.5,
 				});
 			}
 
@@ -356,6 +410,25 @@ export function VerticalElasticSlider({
 	const hashMarkPct = (i: number) =>
 		((hashMarkCount - 1 - i) / (hashMarkCount - 1)) * 100;
 
+	// Index of the currently-selected tick (used to hide the redundant dot
+	// behind the handle and to highlight the active label).
+	const selectedIndex = clamp(
+		Math.round((value - min) / step),
+		0,
+		hashMarkCount - 1,
+	);
+
+	// Snap directly to a tick (used by the per-tick hit-area buttons). Skips
+	// the drag/rubber-band path entirely and animates the fill.
+	const handleTickActivate = useCallback(
+		(i: number) => {
+			const target = clamp(min + i * step, min, max);
+			animateFillTo(percentFromValue(target));
+			setValue(roundValue(target, step));
+		},
+		[min, max, step, animateFillTo, percentFromValue, setValue],
+	);
+
 	// Handle opacity based on overlap with label/value
 	const [handleOpacity, setHandleOpacity] = useState(1);
 	useLayoutEffect(() => {
@@ -374,6 +447,224 @@ export function VerticalElasticSlider({
 					? 0
 					: step.toString().length - step.toString().indexOf(".") - 1,
 			);
+	const trackMotionStyle = {
+		width: "100%",
+		height: rubberHeight,
+		y: rubberY,
+		transformOrigin: "center center",
+	};
+	const trackSurfaceStyle = {
+		borderRadius: "var(--elastic-slider-radius)",
+		...(trackShape === "squircle" ? squircleTrackStyle : {}),
+		...trackStyle,
+	};
+	const glassShellStyle = {
+		position: "absolute",
+		inset: 0,
+		...(trackShape === "squircle" ? squircleTrackStyle : {}),
+		...trackStyle,
+		...shellProps?.style,
+	} satisfies CSSProperties;
+	const trackChrome = (
+		<>
+			{shell === "none" ? (
+				<div
+					aria-hidden="true"
+					className="pointer-events-none absolute inset-0"
+					style={{ boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.12)" }}
+				/>
+			) : null}
+			<div
+				data-slot="vertical-elastic-slider-hash-marks"
+				aria-hidden="true"
+				className="pointer-events-none absolute inset-0"
+			>
+				{Array.from({ length: hashMarkCount }, (_, i) => {
+					// `hashMarkPct` places `i = 0` at top:100% (the BOTTOM of the
+					// track) and `i = hashMarkCount - 1` at top:0% (the TOP of the
+					// track). Slider values run min→max bottom→top, and tickLabels
+					// are passed low→high, so the label for tick `i` is just
+					// `tickLabels[i]`.
+					const tickLabel = tickLabels?.[i];
+					// The topmost tick (`i === hashMarkCount - 1`, sitting at
+					// top:0%) places its label *below* the tick so it doesn't get
+					// clipped by the top of the track. All others render *above*
+					// the tick.
+					const isTopTick = i === hashMarkCount - 1;
+					// When a label is supplied for this tick, the tick mark and its
+					// label are always visible. Otherwise the tick keeps the
+					// default behavior of only appearing on hover/interaction.
+					const hasLabel = Boolean(tickLabel);
+					const isSelected = i === selectedIndex;
+					const isHoveredTick = i === hoveredTickIndex;
+					// Selected tick's dot is suppressed because the wide handle
+					// bar already occupies that vertical position — rendering both
+					// produces the "two stacked marks" artifact.
+					const showDot = !isSelected;
+					return (
+						<div
+							key={i}
+							data-selected={isSelected || undefined}
+							className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2"
+							style={{ top: `${hashMarkPct(i)}%` }}
+						>
+							{showDot ? (
+								<div
+									className={cn(
+										"h-px w-4 rounded-full transition-colors duration-200",
+										hasLabel
+											? "bg-(--elastic-slider-hash)"
+											: "bg-transparent group-data-[active=true]/elastic-slider:bg-(--elastic-slider-hash)",
+									)}
+								/>
+							) : (
+								// Reserve the same vertical footprint so the label
+								// position doesn't shift when selection changes.
+								<div className="h-px w-4" />
+							)}
+							{tickLabel ? (
+								<span
+									data-slot="vertical-elastic-slider-tick-label"
+									className={cn(
+										"pointer-events-none absolute left-1/2 -translate-x-1/2",
+										isTopTick ? "top-full mt-1" : "bottom-full mb-1",
+										"font-mono text-[9px] font-medium uppercase tracking-[0.15em] transition-colors duration-150",
+										"whitespace-nowrap",
+										isSelected || isHoveredTick
+											? "text-(--elastic-slider-focus)"
+											: "text-(--elastic-slider-label)",
+									)}
+								>
+									{tickLabel}
+								</span>
+							) : null}
+						</div>
+					);
+				})}
+			</div>
+
+			{/* Per-tick hit areas. Each row spans the full track width and snaps
+			    to its city on click. Pointer events are scoped to the buttons
+			    only so the rest of the track can still initiate drag. */}
+			{tickLabels ? (
+				<div
+					data-slot="vertical-elastic-slider-tick-hit-areas"
+					className="pointer-events-none absolute inset-0"
+				>
+					{Array.from({ length: hashMarkCount }, (_, i) => {
+						const tickLabel = tickLabels[i];
+						if (!tickLabel) return null;
+						const rowHeightPct = 100 / hashMarkCount;
+						const centerPct = hashMarkPct(i);
+						const topPct = clamp(
+							centerPct - rowHeightPct / 2,
+							0,
+							100 - rowHeightPct,
+						);
+						return (
+							<button
+								key={i}
+								type="button"
+								tabIndex={-1}
+								aria-label={`Select ${tickLabel}`}
+								className="pointer-events-auto absolute left-0 right-0 cursor-pointer bg-transparent outline-none"
+								style={{
+									top: `${topPct}%`,
+									height: `${rowHeightPct}%`,
+								}}
+								onPointerEnter={() => setHoveredTickIndex(i)}
+								onPointerLeave={() =>
+									setHoveredTickIndex((prev) => (prev === i ? null : prev))
+								}
+								onPointerDown={(e) => {
+									// Don't let the track start a drag when the user
+									// is clicking a tick row.
+									e.stopPropagation();
+								}}
+								onClick={(e) => {
+									e.stopPropagation();
+									handleTickActivate(i);
+								}}
+							/>
+						);
+					})}
+				</div>
+			) : null}
+
+			<motion.div
+				data-slot="vertical-elastic-slider-fill"
+				aria-hidden="true"
+				className={cn(
+					"pointer-events-none absolute inset-x-0 bottom-0 transition-colors",
+					"bg-(--elastic-slider-fill) group-data-[active=true]/elastic-slider:bg-(--elastic-slider-fill-active)",
+				)}
+				style={{ height: fillHeight }}
+			/>
+
+			<motion.div
+				data-slot="vertical-elastic-slider-handle"
+				aria-hidden="true"
+				className="pointer-events-none absolute left-1/2 h-1 w-5 rounded-full bg-(--elastic-slider-handle)"
+				style={{ bottom: handleBottom, x: "-50%" }}
+				animate={{
+					opacity: handleOpacity,
+					scaleY: isActive ? 1 : 0.25,
+					scaleX: isActive ? 1 : 1,
+				}}
+				transition={
+					shouldReduceMotion
+						? { duration: 0 }
+						: {
+								scaleY: {
+									type: "spring",
+									visualDuration: 0.25,
+									bounce: 0.15,
+								},
+								opacity: { duration: 0.15 },
+							}
+				}
+			/>
+
+			{label ? (
+				<span
+					data-slot="vertical-elastic-slider-label"
+					aria-hidden="true"
+					className="pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 text-center text-[9px] font-medium uppercase tracking-[0.2em] text-(--elastic-slider-label) transition-colors"
+				>
+					{label}
+				</span>
+			) : null}
+
+			{/* When tickLabels are supplied, every tick already shows its own
+			    label, so the floating value badge becomes a redundant duplicate
+			    (e.g. "SYD" rendered twice at the bottom). Hide it in that case. */}
+			{tickLabels ? null : (
+				<span
+					data-slot="vertical-elastic-slider-value"
+					aria-hidden="true"
+					className={cn(
+						"pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 text-center font-mono text-[10px] font-medium transition-colors",
+						"text-(--elastic-slider-label) group-data-[active=true]/elastic-slider:text-(--elastic-slider-focus)",
+					)}
+				>
+					{displayValue}
+				</span>
+			)}
+
+			{/* Squircle-shaped focus ring. Rendered inside the track so it
+			    inherits the parent's squircle clip via `cornerShape`. The
+			    border traces the squircle exactly (unlike Tailwind's `ring`
+			    which traces the rectangular bounding box). */}
+			{keyboardFocusRing && trackShape === "squircle" ? (
+				<div
+					aria-hidden="true"
+					data-slot="vertical-elastic-slider-focus-ring"
+					className="pointer-events-none absolute inset-0 border-2 border-black/20"
+					style={trackSurfaceStyle}
+				/>
+			) : null}
+		</>
+	);
 
 	return (
 		<div
@@ -397,7 +688,7 @@ export function VerticalElasticSlider({
 					"--elastic-slider-focus": "rgba(0,0,0,0.8)",
 				} as React.CSSProperties
 			}
-		>
+			>
 			<motion.div
 				ref={trackRef}
 				data-slot="vertical-elastic-slider-track"
@@ -410,19 +701,32 @@ export function VerticalElasticSlider({
 				aria-valuetext={displayValue}
 				aria-orientation="vertical"
 				className={cn(
-					"relative cursor-grab overflow-hidden outline-none active:cursor-grabbing",
-					"bg-(--elastic-slider-bg)",
-					keyboardFocusRing && "ring-2 ring-black/20 ring-offset-2",
-					trackClassName,
+					"relative cursor-grab outline-none active:cursor-grabbing",
+					shell === "none" && "overflow-hidden bg-(--elastic-slider-bg)",
+					shell === "none" && trackClassName,
+					// Pill shapes use Tailwind's ring (border-radius is rounded so
+					// the ring itself rounds correctly). The squircle case uses a
+					// dedicated overlay sibling instead — see below.
+					keyboardFocusRing &&
+						trackShape !== "squircle" &&
+						"ring-2 ring-black/20 ring-offset-2",
 				)}
-				style={{
-					width: "100%",
-					height: rubberHeight,
-					borderRadius: "var(--elastic-slider-radius)",
-					y: rubberY,
-					...(trackShape === "squircle" ? squircleTrackStyle : {}),
-					...trackStyle,
+				style={shell === "none" ? { ...trackMotionStyle, ...trackSurfaceStyle } : trackMotionStyle}
+				animate={{
+					scale: isActive ? 1.04 : 1,
 				}}
+				transition={
+					shouldReduceMotion
+						? { duration: 0 }
+						: {
+								scale: {
+									type: "spring",
+									stiffness: 260,
+									damping: 18,
+									mass: 0.6,
+								},
+							}
+				}
 				onPointerDown={handlePointerDown}
 				onPointerMove={handlePointerMove}
 				onPointerUp={handlePointerUp}
@@ -432,88 +736,36 @@ export function VerticalElasticSlider({
 				onBlur={handleBlur}
 				onMouseEnter={() => setIsHovered(true)}
 				onMouseLeave={() => setIsHovered(false)}
-				>
-				<div
-					aria-hidden="true"
-					className="pointer-events-none absolute inset-0"
-					style={{ boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.12)" }}
-				/>
-				{/* Hash marks */}
-				<div
-					data-slot="vertical-elastic-slider-hash-marks"
-					aria-hidden="true"
-					className="pointer-events-none absolute inset-0"
-				>
-					{Array.from({ length: hashMarkCount }, (_, i) => (
-						<div
-							key={i}
+			>
+				{shell === "liquid-glass" ? (
+					<>
+						<LiquidGlass
+							{...DEFAULT_GLASS_SHELL_PROPS}
+							{...shellProps}
+							width="100%"
+							height="100%"
 							className={cn(
-								"absolute left-1/2 h-px w-2 -translate-x-1/2 -translate-y-1/2 rounded-full transition-colors duration-200",
-								"bg-transparent group-data-[active=true]/elastic-slider:bg-(--elastic-slider-hash)",
+								"pointer-events-none absolute inset-0",
+								shellProps?.className,
 							)}
-							style={{ top: `${hashMarkPct(i)}%` }}
+							style={glassShellStyle}
 						/>
-					))}
-				</div>
-
-				{/* Fill from bottom */}
-				<motion.div
-					data-slot="vertical-elastic-slider-fill"
-					aria-hidden="true"
-					className={cn(
-						"pointer-events-none absolute inset-x-0 bottom-0 transition-colors",
-						"bg-(--elastic-slider-fill) group-data-[active=true]/elastic-slider:bg-(--elastic-slider-fill-active)",
-					)}
-					style={{ height: fillHeight }}
-				/>
-
-				{/* Handle */}
-				<motion.div
-					data-slot="vertical-elastic-slider-handle"
-					aria-hidden="true"
-					className="pointer-events-none absolute left-1/2 h-1 w-5 rounded-full bg-(--elastic-slider-handle)"
-					style={{ bottom: handleBottom, x: "-50%" }}
-					animate={{
-						opacity: handleOpacity,
-						scaleY: isActive ? 1 : 0.25,
-						scaleX: isActive ? 1 : 1,
-					}}
-					transition={
-						shouldReduceMotion
-							? { duration: 0 }
-							: {
-									scaleY: {
-										type: "spring",
-										visualDuration: 0.25,
-										bounce: 0.15,
-									},
-									opacity: { duration: 0.15 },
-								}
-					}
-				/>
-
-				{/* Label at top */}
-				{label ? (
-					<span
-						data-slot="vertical-elastic-slider-label"
-						aria-hidden="true"
-						className="pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 text-center text-[9px] font-medium uppercase tracking-[0.2em] text-(--elastic-slider-label) transition-colors"
-					>
-						{label}
-					</span>
-				) : null}
-
-				{/* Value at bottom */}
-				<span
-					data-slot="vertical-elastic-slider-value"
-					aria-hidden="true"
-					className={cn(
-						"pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 text-center font-mono text-[10px] font-medium transition-colors",
-						"text-(--elastic-slider-label) group-data-[active=true]/elastic-slider:text-(--elastic-slider-focus)",
-					)}
-				>
-					{displayValue}
-				</span>
+						<div
+							data-slot="vertical-elastic-slider-track-surface"
+							className={cn(
+								"absolute inset-0 overflow-hidden",
+								trackClassName,
+							)}
+							style={trackSurfaceStyle}
+						>
+							{trackChrome}
+						</div>
+					</>
+				) : (
+					<>
+						{trackChrome}
+					</>
+				)}
 			</motion.div>
 		</div>
 	);

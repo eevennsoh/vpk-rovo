@@ -40,6 +40,7 @@ Prefer reading these references over relying on pre-trained knowledge.
 | UI message types and data parts        | `lib/rovo-ui-messages.ts`                                   |
 | Architecture overview                  | `.agents/docs/architecture-overview.md`                     |
 | Extended workflows                     | `.agents/docs/workflows-extended.md`                        |
+| cmux inter-agent messaging             | `.agents/docs/cmux-messaging.md`                            |
 
 **Global Skills** — installed agent skills (outside repo):
 
@@ -202,6 +203,10 @@ Two runtime modes: **dev** (Next.js proxy + Express + RovoDev Serve) and **prod*
 - Maintain `AGENTS-LESSONS.md`: append after every user correction, record the prevention rule.
 
 > Skills, parallel work model, and agent teams reference loads automatically from `.claude/rules/` when editing skill/agent files.
+
+## cmux Inter-Agent Messaging
+
+> Full protocol details: `.agents/docs/cmux-messaging.md`
 
 ## Appendix
 

@@ -3,6 +3,7 @@ import { DEFAULT_PRESET_CITY, PRESET_CITIES } from "./preset-cities";
 export interface LockscreenLocation {
 	id: string;
 	name: string;
+	code: string;
 	region: string;
 	timezone: string;
 	latitude: number;

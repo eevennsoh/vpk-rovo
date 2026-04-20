@@ -83,15 +83,44 @@ function ThemeToggle({
 		{ value: "dark", label: "Dark" },
 	];
 	const isDark = resolved === "dark";
+
+	const [isVisible, setIsVisible] = React.useState(false);
+
+	React.useEffect(() => {
+		const isOverSlider = (target: EventTarget | null) => {
+			if (!(target instanceof Element)) return false;
+			return Boolean(target.closest('[role="slider"]'));
+		};
+
+		const handlePointerMove = (event: PointerEvent) => {
+			if (isOverSlider(event.target)) {
+				setIsVisible(false);
+				return;
+			}
+			const halfway = window.innerHeight / 2;
+			setIsVisible(event.clientY < halfway);
+		};
+		const handlePointerLeave = () => setIsVisible(false);
+
+		window.addEventListener("pointermove", handlePointerMove);
+		window.addEventListener("pointerleave", handlePointerLeave);
+		return () => {
+			window.removeEventListener("pointermove", handlePointerMove);
+			window.removeEventListener("pointerleave", handlePointerLeave);
+		};
+	}, []);
+
 	return (
 		<div
 			role="radiogroup"
 			aria-label="Theme"
-			className="absolute right-4 top-4 z-20 flex items-center gap-1 rounded-full p-1 text-[11px] font-medium uppercase tracking-[0.2em]"
+			className="absolute left-1/2 top-4 z-20 flex -translate-x-1/2 items-center gap-1 rounded-full p-1 text-[11px] font-medium uppercase tracking-[0.2em] transition-opacity duration-300"
 			style={{
 				background: isDark ? "rgba(245,245,245,0.08)" : "rgba(15,15,18,0.06)",
 				backdropFilter: "blur(8px)",
 				border: `1px solid ${isDark ? "rgba(245,245,245,0.16)" : "rgba(15,15,18,0.12)"}`,
+				opacity: isVisible ? 1 : 0,
+				pointerEvents: isVisible ? "auto" : "none",
 			}}
 		>
 			{options.map((option) => {
@@ -227,7 +256,7 @@ export default function Weather({
 					overlay={
 						<>
 							<WidgetGridOverlay opacity={0.42} cellSize={GRID_CELL_SIZE} />
-							<WidgetScrewDots />
+							<WidgetScrewDots insetX={40} insetY={28} />
 						</>
 					}
 				>
@@ -346,7 +375,7 @@ export default function Weather({
 					overlay={
 						<>
 							<WidgetGridOverlay opacity={0.42} cellSize={GRID_CELL_SIZE} />
-							<WidgetScrewDots />
+							<WidgetScrewDots insetX={40} insetY={28} />
 						</>
 					}
 				>

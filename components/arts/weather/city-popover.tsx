@@ -158,39 +158,25 @@ export function CityRailEditor({
 	return (
 		<div
 			ref={rootRef}
-			className={cn("relative overflow-visible", className)}
+			className={cn("group/city-rail relative overflow-visible", className)}
 			style={{ width: railWidth, height }}
 		>
 			{!isOpen ? (
 				<div className="absolute inset-y-0 left-0 z-30" style={{ width: railWidth }}>
-					<LiquidGlass
-						width={railWidth}
-						height={height}
-						borderRadius={9999}
-						borderWidth={0.05}
-						brightness={50}
-						opacity={0.93}
-						blur={8}
-						backgroundOpacity={0.08}
-						saturation={1}
-						distortionScale={-90}
-						dispersion={6}
-						borderOpacity={0.35}
-						style={squircleShellStyle as CSSProperties}
-					>
-						<VerticalElasticSlider
-							min={0}
-							max={Math.max(0, cities.length - 1)}
-							step={1}
-							value={selectedIndex}
-							onValueChange={setSelectedIndex}
-							formatValue={(value) => cities[value]?.name?.slice(0, 6) ?? ""}
-							label="Cities"
-							className="h-full w-full"
-							trackShape="none"
-							trackClassName="border-transparent bg-transparent"
-						/>
-					</LiquidGlass>
+					<VerticalElasticSlider
+						min={0}
+						max={Math.max(0, cities.length - 1)}
+						step={1}
+						value={selectedIndex}
+						onValueChange={setSelectedIndex}
+						formatValue={(value) => cities[value]?.code ?? ""}
+						tickLabels={cities.map((city) => city.code)}
+						aria-label="Cities"
+						className="h-full w-full"
+						trackShape="squircle"
+						trackClassName="border-transparent bg-transparent"
+						shell="liquid-glass"
+					/>
 				</div>
 			) : null}
 
@@ -226,7 +212,7 @@ export function CityRailEditor({
 								brightness={50}
 								opacity={0.93}
 								blur={8}
-								backgroundOpacity={0.08}
+								backgroundOpacity={0.2}
 								saturation={1}
 								distortionScale={-90}
 								dispersion={6}
@@ -248,12 +234,12 @@ export function CityRailEditor({
 										step={1}
 										value={selectedIndex}
 										onValueChange={setSelectedIndex}
-										formatValue={(value) => cities[value]?.name?.slice(0, 6) ?? ""}
-										label="Cities"
+										formatValue={(value) => cities[value]?.code ?? ""}
+										tickLabels={cities.map((city) => city.code)}
+										aria-label="Cities"
 										className="h-full w-full"
-										trackShape="none"
+										trackShape="squircle"
 										trackClassName="border-transparent bg-transparent"
-										trackStyle={{ borderRadius: "46px 0 0 46px" }}
 									/>
 								</div>
 
@@ -411,7 +397,12 @@ export function CityRailEditor({
 			</AnimatePresence>
 
 			<div
-				className="absolute left-1/2 top-0 z-40 flex items-center justify-center"
+				className={cn(
+					"absolute left-1/2 top-0 z-40 flex items-center justify-center transition-opacity duration-200",
+					isOpen
+						? "opacity-100"
+						: "opacity-0 group-hover/city-rail:opacity-100 group-focus-within/city-rail:opacity-100",
+				)}
 				style={{ transform: "translate(-50%, calc(-100% - 8px))" }}
 			>
 				<button
@@ -430,7 +421,12 @@ export function CityRailEditor({
 			</div>
 
 			<div
-				className="absolute bottom-0 left-1/2 z-40 flex items-center justify-center"
+				className={cn(
+					"absolute bottom-0 left-1/2 z-40 flex items-center justify-center transition-opacity duration-200",
+					isOpen
+						? "opacity-100"
+						: "opacity-0 group-hover/city-rail:opacity-100 group-focus-within/city-rail:opacity-100",
+				)}
 				style={{ transform: "translate(-50%, calc(100% + 8px))" }}
 			>
 				<button

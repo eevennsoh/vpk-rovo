@@ -503,6 +503,7 @@ export const VISUAL_COMPONENTS: ComponentManifestEntry[] = sortEntriesByName([
 		"Particles",
 		"@/components/website/demos/visual/shaders/particles",
 	),
+	visualComponent("noise", "Noise", "@/components/website/demos/visual/shaders/noise"),
 	visualComponent(
 		"wave-gradient",
 		"Wave Gradient",

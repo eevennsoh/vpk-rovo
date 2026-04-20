@@ -7592,6 +7592,9 @@ const VISUAL_DEMOS: Record<string, ComponentType> = {
   particles: dynamic(() => import("./demos/visual/particles-demo"), {
     ssr: false,
   }),
+  noise: dynamic(() => import("./demos/visual/noise-demo"), {
+    ssr: false,
+  }),
   "wave-gradient": dynamic(() => import("./demos/visual/wave-gradient-demo"), {
     ssr: false,
   }),

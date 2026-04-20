@@ -117,21 +117,27 @@ interface WidgetScrewDotsProps {
 	color?: string;
 	size?: number;
 	inset?: number;
+	insetX?: number;
+	insetY?: number;
 }
 
 /**
  * Decorative corner dots used on the shader cards.
  */
 export function WidgetScrewDots({
-	color = "rgba(255, 255, 255, 0.96)",
-	size = 8,
-	inset = 20,
+	color = "rgba(255, 255, 255, 0.98)",
+	size = 10,
+	inset = 28,
+	insetX,
+	insetY,
 }: WidgetScrewDotsProps) {
+	const resolvedInsetX = insetX ?? inset;
+	const resolvedInsetY = insetY ?? inset;
 	const positions = [
-		{ top: inset, left: inset },
-		{ top: inset, right: inset },
-		{ bottom: inset, left: inset },
-		{ bottom: inset, right: inset },
+		{ top: resolvedInsetY, left: resolvedInsetX },
+		{ top: resolvedInsetY, right: resolvedInsetX },
+		{ bottom: resolvedInsetY, left: resolvedInsetX },
+		{ bottom: resolvedInsetY, right: resolvedInsetX },
 	];
 	return (
 		<>

@@ -4,6 +4,7 @@ export const PRESET_CITIES: ReadonlyArray<LockscreenLocation> = [
 	{
 		id: "sydney",
 		name: "Sydney",
+		code: "SYD",
 		region: "Australia",
 		timezone: "Australia/Sydney",
 		latitude: -33.8688,
@@ -12,6 +13,7 @@ export const PRESET_CITIES: ReadonlyArray<LockscreenLocation> = [
 	{
 		id: "tokyo",
 		name: "Tokyo",
+		code: "TYO",
 		region: "Japan",
 		timezone: "Asia/Tokyo",
 		latitude: 35.6762,
@@ -20,6 +22,7 @@ export const PRESET_CITIES: ReadonlyArray<LockscreenLocation> = [
 	{
 		id: "new-york",
 		name: "New York",
+		code: "NYC",
 		region: "United States",
 		timezone: "America/New_York",
 		latitude: 40.7128,
@@ -28,6 +31,7 @@ export const PRESET_CITIES: ReadonlyArray<LockscreenLocation> = [
 	{
 		id: "london",
 		name: "London",
+		code: "LDN",
 		region: "United Kingdom",
 		timezone: "Europe/London",
 		latitude: 51.5074,
@@ -36,6 +40,7 @@ export const PRESET_CITIES: ReadonlyArray<LockscreenLocation> = [
 	{
 		id: "paris",
 		name: "Paris",
+		code: "PAR",
 		region: "France",
 		timezone: "Europe/Paris",
 		latitude: 48.8566,
@@ -44,6 +49,7 @@ export const PRESET_CITIES: ReadonlyArray<LockscreenLocation> = [
 	{
 		id: "berlin",
 		name: "Berlin",
+		code: "BER",
 		region: "Germany",
 		timezone: "Europe/Berlin",
 		latitude: 52.52,
@@ -52,6 +58,7 @@ export const PRESET_CITIES: ReadonlyArray<LockscreenLocation> = [
 	{
 		id: "san-francisco",
 		name: "San Francisco",
+		code: "SF",
 		region: "United States",
 		timezone: "America/Los_Angeles",
 		latitude: 37.7749,
@@ -60,6 +67,7 @@ export const PRESET_CITIES: ReadonlyArray<LockscreenLocation> = [
 	{
 		id: "los-angeles",
 		name: "Los Angeles",
+		code: "LA",
 		region: "United States",
 		timezone: "America/Los_Angeles",
 		latitude: 34.0522,
@@ -68,6 +76,7 @@ export const PRESET_CITIES: ReadonlyArray<LockscreenLocation> = [
 	{
 		id: "singapore",
 		name: "Singapore",
+		code: "SG",
 		region: "Singapore",
 		timezone: "Asia/Singapore",
 		latitude: 1.3521,
@@ -76,6 +85,7 @@ export const PRESET_CITIES: ReadonlyArray<LockscreenLocation> = [
 	{
 		id: "dubai",
 		name: "Dubai",
+		code: "DXB",
 		region: "UAE",
 		timezone: "Asia/Dubai",
 		latitude: 25.2048,
@@ -84,6 +94,7 @@ export const PRESET_CITIES: ReadonlyArray<LockscreenLocation> = [
 	{
 		id: "mumbai",
 		name: "Mumbai",
+		code: "BOM",
 		region: "India",
 		timezone: "Asia/Kolkata",
 		latitude: 19.076,
@@ -92,6 +103,7 @@ export const PRESET_CITIES: ReadonlyArray<LockscreenLocation> = [
 	{
 		id: "toronto",
 		name: "Toronto",
+		code: "YYZ",
 		region: "Canada",
 		timezone: "America/Toronto",
 		latitude: 43.6532,
@@ -100,6 +112,7 @@ export const PRESET_CITIES: ReadonlyArray<LockscreenLocation> = [
 	{
 		id: "mexico-city",
 		name: "Mexico City",
+		code: "MEX",
 		region: "Mexico",
 		timezone: "America/Mexico_City",
 		latitude: 19.4326,
@@ -108,6 +121,7 @@ export const PRESET_CITIES: ReadonlyArray<LockscreenLocation> = [
 	{
 		id: "sao-paulo",
 		name: "São Paulo",
+		code: "GRU",
 		region: "Brazil",
 		timezone: "America/Sao_Paulo",
 		latitude: -23.5505,
@@ -116,6 +130,7 @@ export const PRESET_CITIES: ReadonlyArray<LockscreenLocation> = [
 	{
 		id: "seoul",
 		name: "Seoul",
+		code: "SEL",
 		region: "South Korea",
 		timezone: "Asia/Seoul",
 		latitude: 37.5665,
@@ -124,6 +139,7 @@ export const PRESET_CITIES: ReadonlyArray<LockscreenLocation> = [
 	{
 		id: "shanghai",
 		name: "Shanghai",
+		code: "SHA",
 		region: "China",
 		timezone: "Asia/Shanghai",
 		latitude: 31.2304,
@@ -132,6 +148,7 @@ export const PRESET_CITIES: ReadonlyArray<LockscreenLocation> = [
 	{
 		id: "bangkok",
 		name: "Bangkok",
+		code: "BKK",
 		region: "Thailand",
 		timezone: "Asia/Bangkok",
 		latitude: 13.7563,
@@ -140,6 +157,7 @@ export const PRESET_CITIES: ReadonlyArray<LockscreenLocation> = [
 	{
 		id: "cairo",
 		name: "Cairo",
+		code: "CAI",
 		region: "Egypt",
 		timezone: "Africa/Cairo",
 		latitude: 30.0444,
@@ -148,6 +166,7 @@ export const PRESET_CITIES: ReadonlyArray<LockscreenLocation> = [
 	{
 		id: "istanbul",
 		name: "Istanbul",
+		code: "IST",
 		region: "Turkey",
 		timezone: "Europe/Istanbul",
 		latitude: 41.0082,
@@ -156,6 +175,7 @@ export const PRESET_CITIES: ReadonlyArray<LockscreenLocation> = [
 	{
 		id: "moscow",
 		name: "Moscow",
+		code: "MOW",
 		region: "Russia",
 		timezone: "Europe/Moscow",
 		latitude: 55.7558,
@@ -164,6 +184,7 @@ export const PRESET_CITIES: ReadonlyArray<LockscreenLocation> = [
 	{
 		id: "rome",
 		name: "Rome",
+		code: "ROM",
 		region: "Italy",
 		timezone: "Europe/Rome",
 		latitude: 41.9028,
@@ -172,6 +193,7 @@ export const PRESET_CITIES: ReadonlyArray<LockscreenLocation> = [
 	{
 		id: "amsterdam",
 		name: "Amsterdam",
+		code: "AMS",
 		region: "Netherlands",
 		timezone: "Europe/Amsterdam",
 		latitude: 52.3676,
@@ -180,6 +202,7 @@ export const PRESET_CITIES: ReadonlyArray<LockscreenLocation> = [
 	{
 		id: "cape-town",
 		name: "Cape Town",
+		code: "CPT",
 		region: "South Africa",
 		timezone: "Africa/Johannesburg",
 		latitude: -33.9249,
@@ -188,6 +211,7 @@ export const PRESET_CITIES: ReadonlyArray<LockscreenLocation> = [
 	{
 		id: "buenos-aires",
 		name: "Buenos Aires",
+		code: "BUE",
 		region: "Argentina",
 		timezone: "America/Argentina/Buenos_Aires",
 		latitude: -34.6037,
@@ -196,11 +220,37 @@ export const PRESET_CITIES: ReadonlyArray<LockscreenLocation> = [
 	{
 		id: "auckland",
 		name: "Auckland",
+		code: "AKL",
 		region: "New Zealand",
 		timezone: "Pacific/Auckland",
 		latitude: -36.8485,
 		longitude: 174.7633,
 	},
+	{
+		id: "kuala-lumpur",
+		name: "Kuala Lumpur",
+		code: "KL",
+		region: "Malaysia",
+		timezone: "Asia/Kuala_Lumpur",
+		latitude: 3.139,
+		longitude: 101.6869,
+	},
 ];
 
 export const DEFAULT_PRESET_CITY = PRESET_CITIES[0];
+
+const DEFAULT_PRESET_CITY_IDS = [
+	"sydney",
+	"san-francisco",
+	"tokyo",
+	"kuala-lumpur",
+] as const;
+
+export const DEFAULT_PRESET_CITIES: ReadonlyArray<LockscreenLocation> =
+	DEFAULT_PRESET_CITY_IDS.map((id) => {
+		const city = PRESET_CITIES.find((c) => c.id === id);
+		if (!city) {
+			throw new Error(`DEFAULT_PRESET_CITIES: missing preset city "${id}"`);
+		}
+		return city;
+	});

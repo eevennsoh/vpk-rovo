@@ -3,7 +3,11 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { findLocation, type LockscreenLocation } from "./locations";
-import { DEFAULT_PRESET_CITY, PRESET_CITIES } from "./preset-cities";
+import {
+	DEFAULT_PRESET_CITIES,
+	DEFAULT_PRESET_CITY,
+	PRESET_CITIES,
+} from "./preset-cities";
 
 export interface UseCitiesReturn {
 	cities: ReadonlyArray<LockscreenLocation>;
@@ -15,7 +19,10 @@ export interface UseCitiesReturn {
 	isAdded: (id: string) => boolean;
 }
 
-const STORAGE_KEY = "vpk:weather:cities";
+// v2: bumped when default city set changed (Sydney/SF/Tokyo/Kuala Lumpur).
+// Bumping the key effectively re-seeds the defaults for existing visitors.
+const STORAGE_KEY = "vpk:weather:cities:v2";
+const LEGACY_STORAGE_KEYS = ["vpk:weather:cities"];
 
 interface StoredCitiesState {
 	cityIds: string[];
@@ -26,7 +33,17 @@ function loadStoredState(): StoredCitiesState | null {
 	if (typeof window === "undefined") return null;
 	try {
 		const raw = window.localStorage.getItem(STORAGE_KEY);
-		if (!raw) return null;
+		if (!raw) {
+			// Best-effort cleanup of legacy keys so the next save uses the new key.
+			for (const legacyKey of LEGACY_STORAGE_KEYS) {
+				try {
+					window.localStorage.removeItem(legacyKey);
+				} catch {
+					// Ignore.
+				}
+			}
+			return null;
+		}
 		const parsed = JSON.parse(raw) as Partial<StoredCitiesState>;
 		if (!parsed || !Array.isArray(parsed.cityIds)) return null;
 		const cityIds = parsed.cityIds.filter(
@@ -42,11 +59,11 @@ function loadStoredState(): StoredCitiesState | null {
 
 function getInitialCities(): LockscreenLocation[] {
 	const stored = loadStoredState();
-	if (!stored) return [DEFAULT_PRESET_CITY];
+	if (!stored) return [...DEFAULT_PRESET_CITIES];
 	const resolved = stored.cityIds
 		.map((id) => findLocation(id))
 		.filter((c): c is LockscreenLocation => Boolean(c));
-	return resolved.length > 0 ? resolved : [DEFAULT_PRESET_CITY];
+	return resolved.length > 0 ? resolved : [...DEFAULT_PRESET_CITIES];
 }
 
 function getInitialSelectedIndex(citiesLength: number): number {

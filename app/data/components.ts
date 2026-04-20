@@ -362,6 +362,7 @@ export const VISUAL_COMPONENTS: ComponentEntry[] = sortEntriesByName([
 	visualComponent("squircle", "Squircle", "@/components/website/demos/visual/shaders/squircle"),
 	visualComponent("particles", "Particles", "@/components/website/demos/visual/shaders/particles"),
 	visualComponent("pattern", "Pattern", "@/components/website/demos/visual/shaders/pattern"),
+	visualComponent("noise", "Noise", "@/components/website/demos/visual/shaders/noise"),
 	visualComponent("wave-gradient", "Wave Gradient", "@/components/website/demos/visual/shaders/wave-gradient"),
 	visualComponent("liquid-gradient", "Liquid Gradient", "@/components/website/demos/visual/shaders/liquid-gradient"),
 	visualComponent("bands", "Bands", "@/components/website/demos/visual/shaders/bands"),

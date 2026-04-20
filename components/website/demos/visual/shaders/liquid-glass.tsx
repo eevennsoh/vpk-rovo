@@ -48,6 +48,12 @@ export interface LiquidGlassProps {
 	saturation?: number;
 	distortionScale?: number;
 	dispersion?: number;
+	/** Per-channel chromatic offsets added on top of the base displacement scale. Use these
+	 * to introduce chromatic-aberration fringes on the red, green, or blue channel
+	 * independently. All default to 0 (no offset, matching Framer's reference). */
+	chromaticOffsetR?: number;
+	chromaticOffsetG?: number;
+	chromaticOffsetB?: number;
 	borderOpacity?: number;
 	borderColor?: string;
 	className?: string;
@@ -63,11 +69,14 @@ export default function LiquidGlass({
 	brightness = 50,
 	opacity = 0.93,
 	blur = 8,
-	displace = 0,
+	displace = 5,
 	backgroundOpacity = 0,
 	saturation = 1,
 	distortionScale = -90,
 	dispersion = 6,
+	chromaticOffsetR = 0,
+	chromaticOffsetG = 0,
+	chromaticOffsetB = 0,
 	borderOpacity = 0.35,
 	borderColor = "#000000",
 	className,
@@ -97,19 +106,22 @@ export default function LiquidGlass({
 			return null;
 		}
 
+		// `displace` is passed through as raw pixels — the displacement-map SVG is
+		// rendered at the same dimensions as the glass element, and the inner-rect
+		// blur is applied via a raw CSS `filter:blur()` (matching Framer's reference).
 		return buildLiquidGlassDisplacementImageHref({
 			width: w,
 			height: h,
 			borderRadius,
 			borderWidth,
 			brightness,
-			blur,
+			blur: displace,
 			opacity,
 			redGradId,
 			blueGradId,
 			blurFilterId,
 		});
-	}, [blueGradId, blurFilterId, borderRadius, borderWidth, brightness, blur, opacity, redGradId]);
+	}, [blueGradId, blurFilterId, borderRadius, borderWidth, brightness, displace, opacity, redGradId]);
 
 	const updateDisplacementMap = useCallback(() => {
 		const href = generateDisplacementMap();
@@ -120,7 +132,11 @@ export default function LiquidGlass({
 	useEffect(() => {
 		updateDisplacementMap();
 
-		const channelScales = buildLiquidGlassChannelScales(distortionScale, dispersion);
+		const channelScales = buildLiquidGlassChannelScales(distortionScale, dispersion, {
+			red: chromaticOffsetR,
+			green: chromaticOffsetG,
+			blue: chromaticOffsetB,
+		});
 		for (const [ref, scale] of [
 			[dispRedRef, channelScales.red],
 			[dispGreenRef, channelScales.green],
@@ -132,8 +148,8 @@ export default function LiquidGlass({
 			ref.current.setAttribute("yChannelSelector", "B");
 		}
 
-		gaussianBlurRef.current?.setAttribute("stdDeviation", displace.toString());
-	}, [updateDisplacementMap, distortionScale, dispersion, displace]);
+		gaussianBlurRef.current?.setAttribute("stdDeviation", blur.toString());
+	}, [updateDisplacementMap, distortionScale, dispersion, chromaticOffsetR, chromaticOffsetG, chromaticOffsetB, blur]);
 
 	useEffect(() => {
 		const check = () => {
@@ -206,10 +222,10 @@ export default function LiquidGlass({
 					<filter
 						id={filterId}
 						colorInterpolationFilters="sRGB"
-						x="0%"
-						y="0%"
-						width="100%"
-						height="100%"
+						x="-50%"
+						y="-50%"
+						width="200%"
+						height="200%"
 					>
 						<feImage
 							ref={feImageRef}
