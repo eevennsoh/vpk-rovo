@@ -5,9 +5,13 @@ const os = require("node:os");
 const path = require("node:path");
 
 const {
+	getBackendBasePort,
+	getFrontendBasePort,
 	getGitWorktrees,
 	inferWorktreeKind,
 	getPortInfoForPath,
+	getRovodevBasePort,
+	getWorktreePortOffsetForPath,
 } = require("./worktree-ports");
 
 test("inferWorktreeKind treats a worktree with .git directory as main", () => {
@@ -54,4 +58,56 @@ test("getPortInfoForPath resolves linked worktree slots from git metadata", () =
 	assert.equal(linkedInfo.frontendBase, 3000 + linkedInfo.offset);
 	assert.equal(linkedInfo.backendBase, 8080 + linkedInfo.offset);
 	assert.equal(linkedInfo.rovodevBase, 8000 + linkedInfo.offset);
+});
+
+test("getPortInfoForPath falls back to main defaults for unknown paths", () => {
+	const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "worktree-ports-unknown-"));
+
+	try {
+		assert.equal(getWorktreePortOffsetForPath(tempDir), 0);
+		assert.deepEqual(getPortInfoForPath(tempDir), {
+			worktreeName: "main",
+			offset: 0,
+			slot: 0,
+			frontendBase: 3000,
+			backendBase: 8080,
+			rovodevBase: 8000,
+		});
+	} finally {
+		fs.rmSync(tempDir, { recursive: true, force: true });
+	}
+});
+
+test("base port helpers honor explicit environment overrides", () => {
+	const originalPort = process.env.PORT;
+	const originalBackendPort = process.env.BACKEND_PORT;
+	const originalRovodevPort = process.env.ROVODEV_PORT;
+
+	process.env.PORT = "4100";
+	process.env.BACKEND_PORT = "9100";
+	process.env.ROVODEV_PORT = "9200";
+
+	try {
+		assert.equal(getFrontendBasePort(), 4100);
+		assert.equal(getBackendBasePort(), 9100);
+		assert.equal(getRovodevBasePort(), 9200);
+	} finally {
+		if (originalPort === undefined) {
+			delete process.env.PORT;
+		} else {
+			process.env.PORT = originalPort;
+		}
+
+		if (originalBackendPort === undefined) {
+			delete process.env.BACKEND_PORT;
+		} else {
+			process.env.BACKEND_PORT = originalBackendPort;
+		}
+
+		if (originalRovodevPort === undefined) {
+			delete process.env.ROVODEV_PORT;
+		} else {
+			process.env.ROVODEV_PORT = originalRovodevPort;
+		}
+	}
 });
