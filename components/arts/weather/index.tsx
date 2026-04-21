@@ -9,10 +9,13 @@ import Noise, {
 	type NoiseBlendMode,
 } from "@/components/website/demos/visual/shaders/noise";
 import WaveGradient from "@/components/website/demos/visual/shaders/wave-gradient";
+import { Footer } from "@/components/ui/footer";
+import { ReturnIcon } from "@/components/ui/vpk-icons";
 import { cn } from "@/lib/utils";
 
 import { CityRailEditor } from "./city-popover";
 import { DigitDisplay } from "./digit-display";
+import { GlassSegmentedControl } from "./glass-segmented-control";
 import { useCities } from "./use-cities";
 import { useCurrentWeather } from "./use-current-weather";
 import { useLocationClock } from "./use-location-clock";
@@ -52,18 +55,16 @@ function formatTemperature(value: number | null): string {
 	return `${Math.round(value)}`;
 }
 
-function countryCodeToFlag(countryCode: string): string {
-	return [...countryCode.toUpperCase()]
-		.map((c) => String.fromCodePoint(0x1f1e6 - 65 + c.charCodeAt(0)))
-		.join("");
-}
-
 function ThemeControl({
 	mode,
 	onChange,
+	isVisible,
+	keyboardSelectionPulseKey,
 }: {
 	mode: WeatherThemeMode;
 	onChange: (mode: WeatherThemeMode) => void;
+	isVisible: boolean;
+	keyboardSelectionPulseKey: number;
 }) {
 	const options: { value: WeatherThemeMode; label: string }[] = [
 		{ value: "location", label: "Location" },
@@ -71,63 +72,56 @@ function ThemeControl({
 		{ value: "light", label: "Light" },
 		{ value: "dark", label: "Dark" },
 	];
-	const [isVisible, setIsVisible] = React.useState(false);
-
-	React.useEffect(() => {
-		const isOverSlider = (target: EventTarget | null) => {
-			if (!(target instanceof Element)) return false;
-			return Boolean(target.closest('[role="slider"]'));
-		};
-
-		const handlePointerMove = (event: PointerEvent) => {
-			if (isOverSlider(event.target)) {
-				setIsVisible(false);
-				return;
-			}
-
-			setIsVisible(event.clientY < window.innerHeight / 2);
-		};
-		const handlePointerLeave = () => setIsVisible(false);
-
-		window.addEventListener("pointermove", handlePointerMove);
-		window.addEventListener("pointerleave", handlePointerLeave);
-		return () => {
-			window.removeEventListener("pointermove", handlePointerMove);
-			window.removeEventListener("pointerleave", handlePointerLeave);
-		};
-	}, []);
 
 	return (
 		<div
-			role="radiogroup"
-			aria-label="Theme"
-			className="absolute left-1/2 top-4 z-20 flex -translate-x-1/2 items-center gap-1 rounded-full border border-border/70 bg-surface-overlay/85 p-1 text-[11px] font-medium uppercase tracking-[0.2em] shadow-xs backdrop-blur transition-opacity duration-normal"
+			className="absolute left-1/2 top-4 z-20 -translate-x-1/2 transition-opacity duration-normal"
 			style={{
 				opacity: isVisible ? 1 : 0,
 				pointerEvents: isVisible ? "auto" : "none",
 			}}
 		>
-			{options.map((option) => {
-				const isActive = mode === option.value;
+			<GlassSegmentedControl
+				aria-label="Theme"
+				options={options}
+				value={mode}
+				onChange={onChange}
+				keyboardSelectionPulseKey={keyboardSelectionPulseKey}
+			/>
+		</div>
+	);
+}
 
-				return (
-					<button
-						key={option.value}
-						type="button"
-						role="radio"
-						aria-checked={isActive}
-						onClick={() => onChange(option.value)}
-					className={cn(
-							"rounded-full px-2.5 py-1 transition-colors duration-normal",
-							isActive
-								? "bg-bg-neutral-bold text-text-inverse"
-								: "text-text-subtle hover:bg-bg-neutral-subtle-hovered hover:text-text active:bg-bg-neutral-subtle-pressed",
-						)}
-					>
-						{option.label}
-					</button>
-				);
-			})}
+function WeatherKeyboardHints({
+	isVisible,
+}: {
+	isVisible: boolean;
+}) {
+	return (
+			<div
+				className="absolute bottom-0 left-1/2 z-20 w-full max-w-[calc(100%-2rem)] -translate-x-1/2 px-4 transition-opacity duration-normal"
+				style={{
+					opacity: isVisible ? 1 : 0,
+					pointerEvents: isVisible ? "auto" : "none",
+				}}
+			>
+				<Footer
+					hideIcon
+					style={{ fontFamily: "'JetBrains Mono', monospace" }}
+				>
+				<span>
+					<kbd className="font-sans">←</kbd> <kbd className="font-sans">→</kbd> theme
+				</span>
+				<span aria-hidden>•</span>
+				<span>
+					<kbd className="font-sans">↑</kbd> <kbd className="font-sans">↓</kbd> city
+				</span>
+				<span aria-hidden>•</span>
+				<span className="inline-flex items-center gap-1">
+					<ReturnIcon className="size-3.5" />
+					Enter to update cities
+				</span>
+			</Footer>
 		</div>
 	);
 }
@@ -137,8 +131,6 @@ function ThemeControl({
 // the value here so we can compensate when sizing the slider to match
 // the Humidity card width directly beneath it in the 2×2 grid.
 const CITY_RAIL_TRACK_INSET = 24;
-
-type WeatherBreakpoint = "base" | "md" | "lg";
 
 interface ResponsiveSizes {
 	sliderWidth: number;
@@ -158,91 +150,237 @@ interface ResponsiveSizes {
 	screwInsetY: number;
 }
 
-const SIZE_PRESETS: Record<WeatherBreakpoint, ResponsiveSizes> = {
-	// Mobile (<640px) — small 2×2 grid. The slider sits in the top-left
-	// cell directly above the Humidity card, so its width matches the
-	// Humidity card width to keep the column edges aligned.
-	base: {
-		sliderWidth: 110,
-		timeWidth: 196,
-		humidityWidth: 110,
-		temperatureWidth: 196,
-		pillHeight: 220,
-		gridCellSize: 8,
-		timeFontPx: 52,
-		humidityFontPx: 44,
-		temperatureFontPx: 48,
-		weatherIconSize: 36,
-		labelFontPx: 9,
-		footnoteFontPx: 11,
-		labelInsetPx: 16,
-		screwInsetX: { time: 22, humidity: 14, temperature: 22 },
-		screwInsetY: 12,
-	},
-	// Tablet (≥640px, <1024px) — medium 2×2 grid.
-	md: {
-		sliderWidth: 170,
-		timeWidth: 300,
-		humidityWidth: 170,
-		temperatureWidth: 300,
-		pillHeight: 320,
-		gridCellSize: 12,
-		timeFontPx: 84,
-		humidityFontPx: 72,
-		temperatureFontPx: 80,
-		weatherIconSize: 56,
-		labelFontPx: 10,
-		footnoteFontPx: 12,
-		labelInsetPx: 28,
-		screwInsetX: { time: 44, humidity: 28, temperature: 44 },
-		screwInsetY: 18,
-	},
-	// Desktop (≥1024px) — original horizontal 4-card layout.
-	lg: {
-		sliderWidth: 200,
-		timeWidth: 400,
-		humidityWidth: 200,
-		temperatureWidth: 400,
-		pillHeight: 380,
-		gridCellSize: 14,
-		timeFontPx: 104,
-		humidityFontPx: 88,
-		temperatureFontPx: 96,
-		weatherIconSize: 72,
-		labelFontPx: 11,
-		footnoteFontPx: 13,
-		labelInsetPx: 40,
-		screwInsetX: { time: 60, humidity: 40, temperature: 60 },
-		screwInsetY: 24,
-	},
+// Layout anchors describe the *target* sizes the design was authored
+// against at three reference container widths. Between (and outside) those
+// anchors we linearly interpolate every numeric value so the layout grows
+// fluidly with whatever space the component actually has, instead of
+// snapping at hard CSS breakpoints.
+//
+// `containerWidth` is the width of the cards row (the parent of all four
+// pills + the slider), measured at runtime via `ResizeObserver`.
+interface SizeAnchor extends ResponsiveSizes {
+	containerWidth: number;
+}
+
+// 2×2 grid anchors — used while the container is narrow enough that the
+// horizontal 4-card layout cannot fit. The container width here is the
+// width of one *row* of the 2×2 grid (slider + time, or humidity + temp).
+const GRID_ANCHOR_SMALL: SizeAnchor = {
+	containerWidth: 320,
+	sliderWidth: 110,
+	timeWidth: 196,
+	humidityWidth: 110,
+	temperatureWidth: 196,
+	pillHeight: 220,
+	gridCellSize: 8,
+	timeFontPx: 52,
+	humidityFontPx: 44,
+	temperatureFontPx: 48,
+	weatherIconSize: 36,
+	labelFontPx: 9,
+	footnoteFontPx: 11,
+	labelInsetPx: 16,
+	screwInsetX: { time: 22, humidity: 14, temperature: 22 },
+	screwInsetY: 12,
 };
 
-function useWeatherBreakpoint(): WeatherBreakpoint {
-	const subscribe = React.useCallback((notify: () => void) => {
-		if (typeof window === "undefined") return () => {};
-		const mqlMd = window.matchMedia("(min-width: 640px)");
-		const mqlLg = window.matchMedia("(min-width: 1024px)");
-		mqlMd.addEventListener("change", notify);
-		mqlLg.addEventListener("change", notify);
-		return () => {
-			mqlMd.removeEventListener("change", notify);
-			mqlLg.removeEventListener("change", notify);
+const GRID_ANCHOR_LARGE: SizeAnchor = {
+	containerWidth: 484, // 170 + 12 (gap) + 300 + small breathing room
+	sliderWidth: 170,
+	timeWidth: 300,
+	humidityWidth: 170,
+	temperatureWidth: 300,
+	pillHeight: 320,
+	gridCellSize: 12,
+	timeFontPx: 84,
+	humidityFontPx: 72,
+	temperatureFontPx: 80,
+	weatherIconSize: 56,
+	labelFontPx: 10,
+	footnoteFontPx: 12,
+	labelInsetPx: 28,
+	screwInsetX: { time: 44, humidity: 28, temperature: 44 },
+	screwInsetY: 18,
+};
+
+// Horizontal anchors — used while the container is wide enough for the
+// row layout (slider + time + humidity + temperature in a single row).
+// The container width here is the width of the entire row.
+const ROW_ANCHOR_SMALL: SizeAnchor = {
+	// 170 + 300 + 170 + 300 + 3*12 (gaps) = 976. Use a slightly smaller
+	// number so we begin the row layout the moment it can geometrically
+	// fit, then start scaling values up from there.
+	containerWidth: 940,
+	sliderWidth: 170,
+	timeWidth: 300,
+	humidityWidth: 170,
+	temperatureWidth: 300,
+	pillHeight: 320,
+	gridCellSize: 12,
+	timeFontPx: 84,
+	humidityFontPx: 72,
+	temperatureFontPx: 80,
+	weatherIconSize: 56,
+	labelFontPx: 10,
+	footnoteFontPx: 12,
+	labelInsetPx: 28,
+	screwInsetX: { time: 44, humidity: 28, temperature: 44 },
+	screwInsetY: 18,
+};
+
+const ROW_ANCHOR_LARGE: SizeAnchor = {
+	// 200 + 400 + 200 + 400 + 3*12 (gaps) = 1236.
+	containerWidth: 1236,
+	sliderWidth: 200,
+	timeWidth: 400,
+	humidityWidth: 200,
+	temperatureWidth: 400,
+	pillHeight: 380,
+	gridCellSize: 14,
+	timeFontPx: 104,
+	humidityFontPx: 88,
+	temperatureFontPx: 96,
+	weatherIconSize: 72,
+	labelFontPx: 11,
+	footnoteFontPx: 13,
+	labelInsetPx: 40,
+	screwInsetX: { time: 60, humidity: 40, temperature: 60 },
+	screwInsetY: 24,
+};
+
+// Below this container width we drop back to the 2×2 grid layout.
+// Must be >= ROW_ANCHOR_SMALL.containerWidth (940) so the cards never
+// overflow their parent in row mode — otherwise `overflow-hidden` on the
+// outer container clips the leftmost card (the city slider).
+const ROW_LAYOUT_MIN_WIDTH = ROW_ANCHOR_SMALL.containerWidth;
+
+function lerp(a: number, b: number, t: number): number {
+	return a + (b - a) * t;
+}
+
+function clamp01(t: number): number {
+	if (t < 0) return 0;
+	if (t > 1) return 1;
+	return t;
+}
+
+function interpolateSizes(
+	a: SizeAnchor,
+	b: SizeAnchor,
+	width: number,
+): ResponsiveSizes {
+	const span = b.containerWidth - a.containerWidth;
+	const t = span <= 0 ? 0 : clamp01((width - a.containerWidth) / span);
+	const mix = (key: keyof ResponsiveSizes) =>
+		lerp(a[key] as number, b[key] as number, t);
+	return {
+		sliderWidth: mix("sliderWidth"),
+		timeWidth: mix("timeWidth"),
+		humidityWidth: mix("humidityWidth"),
+		temperatureWidth: mix("temperatureWidth"),
+		pillHeight: mix("pillHeight"),
+		gridCellSize: mix("gridCellSize"),
+		timeFontPx: mix("timeFontPx"),
+		humidityFontPx: mix("humidityFontPx"),
+		temperatureFontPx: mix("temperatureFontPx"),
+		weatherIconSize: mix("weatherIconSize"),
+		labelFontPx: mix("labelFontPx"),
+		footnoteFontPx: mix("footnoteFontPx"),
+		labelInsetPx: mix("labelInsetPx"),
+		screwInsetX: {
+			time: lerp(a.screwInsetX.time, b.screwInsetX.time, t),
+			humidity: lerp(a.screwInsetX.humidity, b.screwInsetX.humidity, t),
+			temperature: lerp(
+				a.screwInsetX.temperature,
+				b.screwInsetX.temperature,
+				t,
+			),
+		},
+		screwInsetY: lerp(a.screwInsetY, b.screwInsetY, t),
+	};
+}
+
+interface FluidLayout {
+	sizes: ResponsiveSizes;
+	layout: "grid" | "row";
+}
+
+function computeFluidLayout(containerWidth: number): FluidLayout {
+	if (containerWidth >= ROW_LAYOUT_MIN_WIDTH) {
+		// Row layout: grow from ROW_ANCHOR_SMALL up to ROW_ANCHOR_LARGE.
+		// `interpolateSizes` clamps `t` to [0, 1], so once the container
+		// width exceeds `ROW_ANCHOR_LARGE.containerWidth` we cap at the
+		// large anchor — the design stops scaling on very wide monitors
+		// instead of growing unbounded.
+		return {
+			layout: "row",
+			sizes: interpolateSizes(
+				ROW_ANCHOR_SMALL,
+				ROW_ANCHOR_LARGE,
+				containerWidth,
+			),
 		};
+	}
+	// 2×2 grid layout — interpolate between the two grid anchors using
+	// the per-row width (which is roughly half the available container
+	// width once we factor in inner gaps).
+	const rowWidth = containerWidth;
+	return {
+		layout: "grid",
+		sizes: interpolateSizes(
+			GRID_ANCHOR_SMALL,
+			GRID_ANCHOR_LARGE,
+			rowWidth,
+		),
+	};
+}
+
+function useFluidWeatherLayout(): {
+	measureRef: React.RefObject<HTMLDivElement | null>;
+	layout: FluidLayout;
+} {
+	// We measure the *available* width by attaching the observer to a
+	// zero-height sentinel element that fills the parent. This avoids any
+	// feedback loop where the cards' own intrinsic widths feed back into
+	// the layout decision.
+	const measureRef = React.useRef<HTMLDivElement | null>(null);
+	// Default to the largest row layout on first paint to match the
+	// historical desktop look and avoid a flash on first measurement.
+	const [layout, setLayout] = React.useState<FluidLayout>(() =>
+		computeFluidLayout(ROW_ANCHOR_LARGE.containerWidth),
+	);
+
+	React.useEffect(() => {
+		const node = measureRef.current;
+		if (!node || typeof ResizeObserver === "undefined") return;
+		const update = (width: number) => {
+			setLayout((prev) => {
+				const next = computeFluidLayout(width);
+				// Avoid spamming React with no-op state updates from
+				// sub-pixel resize ticks.
+				if (
+					prev.layout === next.layout &&
+					Math.abs(prev.sizes.timeWidth - next.sizes.timeWidth) < 0.5 &&
+					Math.abs(prev.sizes.pillHeight - next.sizes.pillHeight) < 0.5
+				) {
+					return prev;
+				}
+				return next;
+			});
+		};
+		const observer = new ResizeObserver((entries) => {
+			for (const entry of entries) {
+				update(entry.contentRect.width);
+			}
+		});
+		observer.observe(node);
+		// Prime with the current width so we don't wait for the first
+		// resize event after mount.
+		update(node.getBoundingClientRect().width);
+		return () => observer.disconnect();
 	}, []);
 
-	const getSnapshot = React.useCallback((): WeatherBreakpoint => {
-		if (typeof window === "undefined") return "lg";
-		if (window.matchMedia("(min-width: 1024px)").matches) return "lg";
-		if (window.matchMedia("(min-width: 640px)").matches) return "md";
-		return "base";
-	}, []);
-
-	// Default to "lg" on the server / first render to match the
-	// historical desktop layout and avoid layout flashes for desktop
-	// users (the most common case).
-	const getServerSnapshot = React.useCallback((): WeatherBreakpoint => "lg", []);
-
-	return React.useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+	return { measureRef, layout };
 }
 
 interface WeatherTimeCardProps {
@@ -414,6 +552,14 @@ export default function Weather({
 	className,
 }: WeatherProps) {
 	const { setTheme, actualTheme } = useTheme();
+	const [pointerViewportZone, setPointerViewportZone] = React.useState<"top" | "bottom" | null>(null);
+	const [isPointerOverSlider, setIsPointerOverSlider] = React.useState(false);
+	const [isThemeKeyboardVisible, setIsThemeKeyboardVisible] = React.useState(false);
+	const [themeNavigationPulseKey, setThemeNavigationPulseKey] = React.useState(0);
+	const [openCityManagerRequestKey, setOpenCityManagerRequestKey] = React.useState(0);
+	const [isCityManagerOpen, setIsCityManagerOpen] = React.useState(false);
+	const [cityNavigationPulseKey, setCityNavigationPulseKey] = React.useState(0);
+	const themeKeyboardVisibleTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 	const {
 		cities,
 		selectedIndex,
@@ -423,8 +569,8 @@ export default function Weather({
 		removeCity,
 	} = useCities();
 
-	const breakpoint = useWeatherBreakpoint();
-	const sizes = SIZE_PRESETS[breakpoint];
+	const { measureRef, layout: fluidLayout } = useFluidWeatherLayout();
+	const sizes = fluidLayout.sizes;
 
 	const weather = useCurrentWeather(
 		selected.latitude,
@@ -463,6 +609,25 @@ export default function Weather({
 		}
 	}, []);
 
+	const revealThemeControlFromKeyboard = React.useCallback(() => {
+		setIsThemeKeyboardVisible(true);
+		if (themeKeyboardVisibleTimeoutRef.current !== null) {
+			clearTimeout(themeKeyboardVisibleTimeoutRef.current);
+		}
+		themeKeyboardVisibleTimeoutRef.current = setTimeout(() => {
+			setIsThemeKeyboardVisible(false);
+			themeKeyboardVisibleTimeoutRef.current = null;
+		}, 1200);
+	}, []);
+
+	React.useEffect(() => {
+		return () => {
+			if (themeKeyboardVisibleTimeoutRef.current !== null) {
+				clearTimeout(themeKeyboardVisibleTimeoutRef.current);
+			}
+		};
+	}, []);
+
 	// Drive the underlying ThemeWrapper based on the selected weatherMode.
 	// "location" → derive light/dark from the focused city's `isDay`.
 	// "system" / "light" / "dark" → pass through to the underlying theme.
@@ -474,42 +639,138 @@ export default function Weather({
 		}
 	}, [weatherMode, weather.isDay, setTheme]);
 
-	// Hijack the left/right arrow keys to cycle the theme mode.
 	React.useEffect(() => {
 		if (typeof window === "undefined") return;
-		const handleKeyDown = (event: KeyboardEvent) => {
-			if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
 
-			// Avoid hijacking when the user is typing in an input/textarea
-			// or interacting with another focusable control like a slider.
+		const isOverSlider = (target: EventTarget | null) => {
+			if (!(target instanceof Element)) return false;
+			return Boolean(target.closest('[role="slider"]'));
+		};
+
+		const handlePointerMove = (event: PointerEvent) => {
+			setPointerViewportZone(
+				event.clientY < window.innerHeight / 2 ? "top" : "bottom",
+			);
+			setIsPointerOverSlider(isOverSlider(event.target));
+		};
+
+		const handlePointerLeave = () => {
+			setPointerViewportZone(null);
+			setIsPointerOverSlider(false);
+		};
+
+		window.addEventListener("pointermove", handlePointerMove);
+		window.addEventListener("pointerleave", handlePointerLeave);
+		return () => {
+			window.removeEventListener("pointermove", handlePointerMove);
+			window.removeEventListener("pointerleave", handlePointerLeave);
+		};
+	}, []);
+
+	// Global weather-scene keyboard shortcuts:
+	// left/right cycle the theme, up/down move between cities, and Enter
+	// opens the city manager. Text inputs and focused interactive
+	// controls keep their native keyboard behavior.
+	React.useEffect(() => {
+		if (typeof window === "undefined") return;
+
+		const isTypingTarget = (target: EventTarget | null) => {
+			if (!(target instanceof HTMLElement)) return false;
+			const tag = target.tagName;
+			return (
+				tag === "INPUT" ||
+				tag === "TEXTAREA" ||
+				tag === "SELECT" ||
+				target.isContentEditable
+			);
+		};
+
+		const isSliderTarget = (target: EventTarget | null) => {
+			if (!(target instanceof HTMLElement)) return false;
+			return (
+				target.getAttribute("role") === "slider" ||
+				Boolean(target.closest('[role="slider"]'))
+			);
+		};
+
+		const isInteractiveTarget = (target: EventTarget | null) => {
+			if (!(target instanceof HTMLElement)) return false;
+			return Boolean(target.closest("button, a, [role='button'], [role='radio']"));
+		};
+
+		const handleKeyDown = (event: KeyboardEvent) => {
 			const target = event.target;
-			if (target instanceof HTMLElement) {
-				const tag = target.tagName;
+			const typingTarget = isTypingTarget(target);
+			const sliderTarget = isSliderTarget(target);
+			const interactiveTarget = isInteractiveTarget(target);
+
+			if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+				if (typingTarget || sliderTarget) return;
+
+				event.preventDefault();
+				revealThemeControlFromKeyboard();
+				const currentIndex = THEME_MODE_ORDER.indexOf(weatherMode);
+				const safeIndex = currentIndex === -1 ? 0 : currentIndex;
+				const delta = event.key === "ArrowLeft" ? -1 : 1;
+				const nextIndex =
+					(safeIndex + delta + THEME_MODE_ORDER.length) %
+					THEME_MODE_ORDER.length;
+				setThemeNavigationPulseKey((current) => current + 1);
+				updateWeatherMode(THEME_MODE_ORDER[nextIndex]);
+				return;
+			}
+
+			if (event.key === "ArrowUp" || event.key === "ArrowDown") {
 				if (
-					tag === "INPUT" ||
-					tag === "TEXTAREA" ||
-					tag === "SELECT" ||
-					target.isContentEditable ||
-					target.getAttribute("role") === "slider" ||
-					target.closest('[role="slider"]')
+					typingTarget ||
+					sliderTarget ||
+					interactiveTarget ||
+					isCityManagerOpen
 				) {
 					return;
 				}
+
+				const delta = event.key === "ArrowUp" ? 1 : -1;
+				const nextSelectedIndex = Math.max(
+					0,
+					Math.min(selectedIndex + delta, cities.length - 1),
+				);
+				if (nextSelectedIndex === selectedIndex) {
+					return;
+				}
+
+				event.preventDefault();
+				setSelectedIndex(nextSelectedIndex);
+				setCityNavigationPulseKey((current) => current + 1);
+				return;
 			}
 
-			event.preventDefault();
-			const currentIndex = THEME_MODE_ORDER.indexOf(weatherMode);
-			const safeIndex = currentIndex === -1 ? 0 : currentIndex;
-			const delta = event.key === "ArrowLeft" ? -1 : 1;
-			const nextIndex =
-				(safeIndex + delta + THEME_MODE_ORDER.length) %
-				THEME_MODE_ORDER.length;
-			updateWeatherMode(THEME_MODE_ORDER[nextIndex]);
+			if (event.key === "Enter") {
+				if (
+					typingTarget ||
+					sliderTarget ||
+					interactiveTarget ||
+					isCityManagerOpen
+				) {
+					return;
+				}
+
+				event.preventDefault();
+				setOpenCityManagerRequestKey((current) => current + 1);
+			}
 		};
 
 		window.addEventListener("keydown", handleKeyDown);
 		return () => window.removeEventListener("keydown", handleKeyDown);
-	}, [weatherMode, updateWeatherMode]);
+	}, [
+		isCityManagerOpen,
+		cities.length,
+		selectedIndex,
+		setSelectedIndex,
+		weatherMode,
+		revealThemeControlFromKeyboard,
+		updateWeatherMode,
+	]);
 
 	const isDarkTheme = actualTheme === "dark";
 	const noiseBlendMode: NoiseBlendMode = isDarkTheme
@@ -556,14 +817,20 @@ export default function Weather({
 
 	return (
 		<div
+			ref={measureRef}
 			className={cn(
-				"bg-surface text-text relative isolate flex h-full w-full flex-col items-center justify-center gap-6 overflow-hidden px-4 py-6 transition-[background-color,color] duration-slow sm:gap-10 sm:py-8 lg:gap-14",
+				"bg-surface text-text relative isolate flex h-full w-full flex-col items-center justify-center gap-6 overflow-hidden px-6 pt-6 pb-0 transition-[background-color,color] duration-slow sm:gap-10 sm:pt-8 lg:gap-14",
 				className,
 			)}
 		>
 			<ThemeControl
 				mode={weatherMode}
 				onChange={updateWeatherMode}
+				isVisible={
+					isThemeKeyboardVisible ||
+					(pointerViewportZone === "top" && !isPointerOverSlider)
+				}
+				keyboardSelectionPulseKey={themeNavigationPulseKey}
 			/>
 
 			<div className="text-text relative z-10 flex flex-col items-center gap-2">
@@ -578,12 +845,22 @@ export default function Weather({
 				</span>
 			</div>
 
-			<div className="relative z-10 grid grid-cols-[auto_auto] items-center justify-center gap-2 sm:gap-3 lg:flex lg:gap-3">
+			<div
+				className={cn(
+					"relative z-10 items-center justify-center",
+					fluidLayout.layout === "row"
+						? "flex gap-3"
+						: "grid grid-cols-[auto_auto] gap-2",
+				)}
+			>
 				<CityRailEditor
 					cities={cities}
 					selectedIndex={selectedIndex}
 					setSelectedIndex={setSelectedIndex}
 					addCity={addCity}
+					openRequestKey={openCityManagerRequestKey}
+					onOpenChange={setIsCityManagerOpen}
+					keyboardNavigationPulseKey={cityNavigationPulseKey}
 					removeCity={removeCity}
 					height={sizes.pillHeight}
 					// CityRailEditor subtracts a 24px TRACK_INSET internally to
@@ -797,6 +1074,7 @@ export default function Weather({
 			</div>
 
 			<WeatherDateSummary timezone={selected.timezone} />
+			<WeatherKeyboardHints isVisible={pointerViewportZone === "bottom"} />
 		</div>
 	);
 }

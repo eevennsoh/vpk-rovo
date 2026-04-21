@@ -6,8 +6,16 @@ import {
 	useMotionValue,
 	useReducedMotion,
 } from "motion/react";
+import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
+
+import {
+	Empty,
+	EmptyHeader,
+	EmptyMedia,
+	EmptyTitle,
+} from "@/components/ui/empty";
 
 import {
 	formatCornerShapeSuperellipse,
@@ -21,6 +29,7 @@ import {
 	PinFilledIcon,
 	PinIcon,
 	PlusIcon,
+	SearchIcon,
 } from "@/components/ui/vpk-icons";
 import { cn } from "@/lib/utils";
 
@@ -33,6 +42,16 @@ interface CityRailEditorProps {
 	selectedIndex: number;
 	setSelectedIndex: (index: number) => void;
 	addCity: (city: LockscreenLocation) => void;
+	openRequestKey?: number;
+	onOpenChange?: (isOpen: boolean) => void;
+	keyboardNavigationPulseKey?: number;
+	/**
+	 * Optional remove handler. Accepted for forward-compatibility with
+	 * `useCities().removeCity` so the parent (`weather/index.tsx`) can
+	 * forward it without a type mismatch. The popover doesn't render a
+	 * delete affordance yet — wire one in here when designed.
+	 */
+	removeCity?: (cityId: string) => void;
 	className?: string;
 	height?: number;
 	width?: number;
@@ -77,33 +96,46 @@ const INLINE_MANAGER_GLASS_PROPS: Partial<LiquidGlassProps> = {
 	saturation: 1,
 	distortionScale: -90,
 	dispersion: 6,
-	borderOpacity: 0.35,
+	// Use the ADS default border token so the popover hairline tracks
+	// the design-system border color across light/dark themes instead of
+	// being a hard-coded translucent black.
+	borderColor: "var(--ds-border)",
+	borderOpacity: 1,
 };
 
-function SearchIcon() {
-	return (
-		<svg
-			width={14}
-			height={14}
-			viewBox="0 0 24 24"
-			fill="none"
-			stroke="currentColor"
-			strokeWidth={2}
-			strokeLinecap="round"
-			className="shrink-0 opacity-40"
-			aria-hidden="true"
-		>
-			<circle cx="11" cy="11" r="8" />
-			<line x1="21" y1="21" x2="16.65" y2="16.65" />
-		</svg>
-	);
-}
+// Top + bottom edge fades for the scrollable city list. Implemented as a
+// CSS mask-image on the scroll container itself so the fade follows the
+// container's shape (including the outer squircle clip) and never
+// produces a stray rectangle that pokes past the curved corners.
+//
+// Previous approach (an absolutely-positioned overlay div tinted with a
+// linear-gradient) relied on the outer motion.div's `overflow-hidden`
+// to clip the rectangle — but `overflow:hidden` clips against the
+// standard `border-radius`, not the `corner-shape: superellipse` we use
+// for the squircle, so a thin rectangular sliver was visible at the
+// bottom corners. Masking the content directly side-steps the problem
+// entirely: there is no rectangle to clip in the first place.
+//
+// The top fade mirrors the bottom one so list rows softly dissolve
+// under the floating search bar as the user scrolls. We ramp the top
+// fade height from 0 → SCROLL_FADE_PX based on the actual scrollTop so
+// at rest (scrollTop === 0) the first row is fully opaque and there's
+// no decorative haze — the fade only appears once the user has actually
+// pushed content under the search bar.
+const SCROLL_FADE_PX = 48;
+const buildScrollFadeMask = (topFadePx: number) => {
+	const top = Math.max(0, Math.min(SCROLL_FADE_PX, topFadePx));
+	return `linear-gradient(to bottom, transparent 0%, #000 ${top}px, #000 calc(100% - ${SCROLL_FADE_PX}px), transparent 100%)`;
+};
 
 export function CityRailEditor({
 	cities,
 	selectedIndex,
 	setSelectedIndex,
 	addCity,
+	openRequestKey = 0,
+	onOpenChange,
+	keyboardNavigationPulseKey = 0,
 	className,
 	height = DEFAULT_HEIGHT,
 	width = DEFAULT_WIDTH,
@@ -160,6 +192,16 @@ export function CityRailEditor({
 	const shouldReduceMotion = useReducedMotion();
 	const rootRef = useRef<HTMLDivElement>(null);
 	const searchInputRef = useRef<HTMLInputElement>(null);
+	// scrollTop in px, clamped 0..SCROLL_FADE_PX, drives the height of
+	// the top mask fade so it ramps in only as the user scrolls down.
+	const [topFadePx, setTopFadePx] = useState(0);
+	const handleListScroll = useCallback(
+		(event: React.UIEvent<HTMLDivElement>) => {
+			setTopFadePx(event.currentTarget.scrollTop);
+		},
+		[],
+	);
+	const scrollFadeMask = useMemo(() => buildScrollFadeMask(topFadePx), [topFadePx]);
 
 	const railWidth = width - TRACK_INSET;
 	const squircleShellStyle = useMemo(
@@ -170,6 +212,15 @@ export function CityRailEditor({
 			}) as CSSProperties & { cornerShape: string },
 		[],
 	);
+
+	useEffect(() => {
+		onOpenChange?.(isOpen);
+	}, [isOpen, onOpenChange]);
+
+	useEffect(() => {
+		if (openRequestKey <= 0) return;
+		setIsOpen(true);
+	}, [openRequestKey]);
 
 	useEffect(() => {
 		if (!isOpen) {
@@ -235,6 +286,14 @@ export function CityRailEditor({
 			ref={rootRef}
 			className={cn("group/city-rail relative overflow-visible", className)}
 			style={{ width: railWidth, height }}
+			onKeyDown={(event) => {
+				if (isOpen || event.key !== "Enter") return;
+				const target = event.target;
+				if (!(target instanceof HTMLElement)) return;
+				if (!target.closest('[role="slider"]')) return;
+				event.preventDefault();
+				setIsOpen(true);
+			}}
 		>
 			{!isOpen ? (
 				<div className="absolute inset-y-0 left-0 z-30" style={{ width: railWidth }}>
@@ -262,6 +321,7 @@ export function CityRailEditor({
 						fillMeniscusHeightPxActive={fillMeniscusHeightPxActive}
 						fillMeniscusCurveActive={fillMeniscusCurveActive}
 						onShapeChange={handleSliderShapeChange}
+						keyboardNavigationPulseKey={keyboardNavigationPulseKey}
 					/>
 				</div>
 			) : null}
@@ -297,8 +357,8 @@ export function CityRailEditor({
 							} as CSSProperties}
 						/>
 						<div className="relative z-10 flex h-full flex-col px-3 py-3">
-							<div className="mb-3 flex items-center gap-2 rounded-full border border-border/70 bg-surface-overlay/85 px-3 py-2 text-text-subtle shadow-xs backdrop-blur">
-								<SearchIcon />
+							<div className="mb-3 flex items-center gap-2 px-3 py-2 text-text-subtle">
+								<SearchIcon className="size-3.5 shrink-0 opacity-40" />
 								<input
 									ref={searchInputRef}
 									type="text"
@@ -307,79 +367,95 @@ export function CityRailEditor({
 									placeholder="Search cities..."
 									className="w-full bg-transparent text-sm text-text outline-none placeholder:text-text-subtlest"
 								/>
-								<button
-									type="button"
-									onClick={() => setIsOpen(false)}
-									className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-icon-subtle transition-colors hover:bg-bg-neutral-subtle-hovered hover:text-icon active:bg-bg-neutral-subtle-pressed"
-									aria-label="Close city manager"
-								>
-									<svg
-										width={14}
-										height={14}
-										viewBox="0 0 24 24"
-										fill="none"
-										stroke="currentColor"
-										strokeWidth={2}
-										strokeLinecap="round"
-										aria-hidden="true"
-									>
-										<line x1="6" y1="6" x2="18" y2="18" />
-										<line x1="6" y1="18" x2="18" y2="6" />
-									</svg>
-								</button>
 							</div>
 
-							<div className="min-h-0 flex-1 overflow-y-auto pr-1">
-								<div className="flex flex-col gap-1 pb-10">
-									{filteredCities.length > 0 ? (
-										filteredCities.map((city) => {
-											const cityIndex = cities.findIndex((item) => item.id === city.id);
-											const isSelected = cityIndex === selectedIndex;
+							<div className="relative min-h-0 flex-1">
+								<div
+									className="absolute inset-0 overflow-y-auto pr-1"
+									onScroll={handleListScroll}
+									style={{
+										WebkitMaskImage: scrollFadeMask,
+										maskImage: scrollFadeMask,
+									}}
+								>
+									<div
+										className={cn(
+											"flex flex-col gap-1 pb-10",
+											filteredCities.length === 0 && "h-full",
+										)}
+									>
+										{filteredCities.length > 0 ? (
+											filteredCities.map((city) => {
+												const cityIndex = cities.findIndex((item) => item.id === city.id);
+												const isSelected = cityIndex === selectedIndex;
 
-											return (
-												<div
-													key={city.id}
-													className="flex items-center gap-2 px-3 py-2"
-												>
-													<button
-														type="button"
-														onClick={() => handleCityRowPress(city, cityIndex)}
-														className="min-w-0 flex-1 text-left"
+												return (
+													<div
+														key={city.id}
+														className="flex items-center gap-2 px-3 py-2"
 													>
-														<div className="flex items-center gap-2">
-															<span
-																className="truncate text-sm font-medium text-text"
-																style={{ fontFamily: "'DotGothic16', sans-serif" }}
+														<button
+															type="button"
+															onClick={() => handleCityRowPress(city, cityIndex)}
+															className="min-w-0 flex-1 text-left"
+														>
+															<div className="flex items-center gap-2">
+																<span
+																	className="truncate text-sm font-medium text-text"
+																	style={{ fontFamily: "'DotGothic16', sans-serif" }}
+																>
+																	{city.name}
+																</span>
+															</div>
+															<p
+																className="truncate uppercase tracking-[0.3em] text-text-subtle"
+																style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9 }}
 															>
-																{city.name}
-															</span>
-														</div>
-														<p
-															className="truncate uppercase tracking-[0.3em] text-text-subtle"
-															style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9 }}
-														>
-															{city.region}
-														</p>
-													</button>
+																{city.region}
+															</p>
+														</button>
 
-													{isSelected ? (
-														<span
-															className="flex h-8 w-8 shrink-0 items-center justify-center text-icon"
-															aria-hidden="true"
-														>
-															<CheckIcon className="size-3.5" />
-														</span>
-													) : (
-														null
-													)}
-												</div>
-											);
-										})
-									) : (
-										<div className="flex h-full items-center justify-center rounded-[28px] border border-dashed border-border/70 bg-surface-overlay/60 px-4 py-8 text-center text-xs text-text-subtle">
-											No cities found
-										</div>
-									)}
+														{isSelected ? (
+															<span
+																className="flex h-8 w-8 shrink-0 items-center justify-center text-icon"
+																aria-hidden="true"
+															>
+																<CheckIcon className="size-3.5" />
+															</span>
+														) : (
+															null
+														)}
+													</div>
+												);
+											})
+										) : (
+											<Empty width="narrow" className="px-4 py-6">
+												<EmptyHeader>
+													<EmptyMedia>
+														<Image
+															src="/illustration-spot/error-state/search-no-result/light.svg"
+															alt=""
+															role="presentation"
+															width={120}
+															height={120}
+														/>
+													</EmptyMedia>
+													<EmptyTitle
+														headingSize="xsmall"
+														className="flex flex-col items-center text-[15px] font-medium uppercase leading-tight tracking-[0.36em] text-text-subtlest"
+														style={{
+															letterSpacing: "0.36em",
+															fontFamily: "'Bitcount Grid Single', sans-serif",
+														}}
+													>
+														<span>No</span>
+														<span>Cities</span>
+														<span>Found</span>
+													</EmptyTitle>
+												</EmptyHeader>
+											</Empty>
+										)}
+									</div>
 								</div>
 							</div>
 						</div>

@@ -20,6 +20,12 @@ export interface UseCitiesReturn {
 	selected: LockscreenLocation;
 	setSelectedIndex: (index: number) => void;
 	addCity: (city: LockscreenLocation) => void;
+	/**
+	 * Remove a city by id. Clamps `selectedIndex` so the focused city
+	 * stays in range; refuses to remove the final city so the rail is
+	 * never empty.
+	 */
+	removeCity: (cityId: string) => void;
 }
 
 function loadStoredState(): StoredCitiesState | null {
@@ -83,6 +89,26 @@ export function useCities(): UseCitiesReturn {
 		[cities],
 	);
 
+	const removeCity = useCallback((cityId: string) => {
+		setCities((prev) => {
+			// Always keep at least one city so the rail and dependent
+			// widgets (current weather, time card, etc.) have something
+			// to render.
+			if (prev.length <= 1) return prev;
+			const removalIndex = prev.findIndex((c) => c.id === cityId);
+			if (removalIndex === -1) return prev;
+
+			const next = prev.filter((_, idx) => idx !== removalIndex);
+			// Clamp the selection: if the removed city was at or before the
+			// current selection, shift left; always ensure we stay in range.
+			setSelectedIndexRaw((current) => {
+				const adjusted = removalIndex <= current ? current - 1 : current;
+				return Math.max(0, Math.min(adjusted, next.length - 1));
+			});
+			return next;
+		});
+	}, []);
+
 	const selected = cities[selectedIndex] ?? DEFAULT_PRESET_CITY;
 
 	return {
@@ -91,6 +117,7 @@ export function useCities(): UseCitiesReturn {
 		selected,
 		setSelectedIndex,
 		addCity,
+		removeCity,
 	};
 }
 

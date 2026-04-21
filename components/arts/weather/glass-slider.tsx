@@ -156,6 +156,17 @@ function clamp(v: number, lo: number, hi: number) {
 	return Math.max(lo, Math.min(hi, v));
 }
 
+function hoverStretchFromNorm(norm: number) {
+	const DEAD = 0.1;
+	const sign = Math.sign(norm);
+	const mag = Math.max(0, Math.abs(norm) - DEAD) / (1 - DEAD);
+	return -sign * MAX_HOVER_STRETCH * Math.sqrt(mag);
+}
+
+function computeHoverStretchFromPercent(percent: number) {
+	return hoverStretchFromNorm(clamp(percent / 50 - 1, -1, 1));
+}
+
 function roundValue(val: number, step: number): number {
 	const raw = Math.round(val / step) * step;
 	const s = step.toString();
@@ -275,6 +286,7 @@ export interface GlassSliderProps {
 		topOffsetPx: number;
 		bottomOffsetPx: number;
 	}) => void;
+	keyboardNavigationPulseKey?: number;
 }
 
 export function GlassSlider({
@@ -304,6 +316,7 @@ export function GlassSlider({
 	onCommit,
 	"aria-label": ariaLabel,
 	onShapeChange,
+	keyboardNavigationPulseKey = 0,
 }: GlassSliderProps) {
 	const [value = min, setValue] = useControllableState({
 		prop: valueProp,
@@ -385,6 +398,10 @@ export function GlassSlider({
 	const [isInteracting, setIsInteracting] = useState(false);
 	const [, setIsDragging] = useState(false);
 	const [isHovered, setIsHovered] = useState(false);
+	const [isKeyboardActive, setIsKeyboardActive] = useState(false);
+	const skipControlledFillAnimationRef = useRef(false);
+	const keyboardReleaseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const keyboardActiveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const pointerDownPos = useRef<{ x: number; y: number } | null>(null);
 	const pendingPointerFocusRef = useRef(false);
 	const isClickRef = useRef(true);
@@ -406,7 +423,7 @@ export function GlassSlider({
 
 	// Percentage: 0 = min (bottom), 100 = max (top)
 	const percentage = ((value - min) / (max - min)) * 100;
-	const isActive = isInteracting || isHovered;
+	const isActive = isInteracting || isHovered || isKeyboardActive;
 
 	const fillPercent = useMotionValue(percentage);
 	// Fill grows from bottom
@@ -435,12 +452,6 @@ export function GlassSlider({
 		return 1 - ratio * MAX_THIN_RATIO;
 	});
 	const rubberY = useTransform(rubberStretch, (s) => s);
-
-	useEffect(() => {
-		if (!isInteracting && !animRef.current) {
-			fillPercent.jump(percentage);
-		}
-	}, [percentage, isInteracting, fillPercent]);
 
 	// Drive the active-state scaleY ourselves so we can both pass it to
 	// the track AND publish edge offsets to external consumers (e.g.
@@ -584,6 +595,96 @@ export function GlassSlider({
 		[fillPercent, shouldReduceMotion],
 	);
 
+	const clearKeyboardPulseTimeouts = useCallback(() => {
+		if (keyboardReleaseTimeoutRef.current !== null) {
+			clearTimeout(keyboardReleaseTimeoutRef.current);
+			keyboardReleaseTimeoutRef.current = null;
+		}
+		if (keyboardActiveTimeoutRef.current !== null) {
+			clearTimeout(keyboardActiveTimeoutRef.current);
+			keyboardActiveTimeoutRef.current = null;
+		}
+	}, []);
+
+	const pulseKeyboardHover = useCallback(
+		(targetPercent: number) => {
+			if (isInteracting || isHovered) return;
+
+			clearKeyboardPulseTimeouts();
+			setIsKeyboardActive(true);
+
+			if (shouldReduceMotion) {
+				rubberStretch.jump(0);
+				setIsKeyboardActive(false);
+				return;
+			}
+
+			const targetStretch = computeHoverStretchFromPercent(targetPercent);
+			hoverStretchAnimRef.current?.stop();
+			hoverStretchAnimRef.current = animate(rubberStretch, targetStretch, {
+				type: "spring",
+				stiffness: 260,
+				damping: 22,
+				mass: 0.55,
+			});
+
+			keyboardReleaseTimeoutRef.current = setTimeout(() => {
+				hoverStretchAnimRef.current?.stop();
+				hoverStretchAnimRef.current = animate(rubberStretch, 0, {
+					type: "spring",
+					visualDuration: 0.6,
+					bounce: 0.5,
+				});
+				keyboardReleaseTimeoutRef.current = null;
+			}, 130);
+
+			keyboardActiveTimeoutRef.current = setTimeout(() => {
+				setIsKeyboardActive(false);
+				keyboardActiveTimeoutRef.current = null;
+			}, 280);
+		},
+		[
+			clearKeyboardPulseTimeouts,
+			isHovered,
+			isInteracting,
+			rubberStretch,
+			shouldReduceMotion,
+		],
+	);
+
+	useEffect(() => {
+		return () => {
+			clearKeyboardPulseTimeouts();
+		};
+	}, [clearKeyboardPulseTimeouts]);
+
+	useEffect(() => {
+		if (isInteracting) {
+			return;
+		}
+
+		// Hover and drag already drive the fill motion directly from the
+		// pointer path, so the controlled-value echo from `setValue` should
+		// snap to the already-correct position instead of re-animating.
+		if (skipControlledFillAnimationRef.current) {
+			skipControlledFillAnimationRef.current = false;
+			fillPercent.jump(percentage);
+			return;
+		}
+
+		// Parent-driven updates (for example the weather scene's global
+		// ArrowUp / ArrowDown shortcuts) don't touch the fill directly, so
+		// animate them here instead of snapping.
+		if (!animRef.current && fillPercent.get() !== percentage) {
+			animateFillTo(percentage);
+		}
+	}, [percentage, isInteracting, fillPercent, animateFillTo]);
+
+	useEffect(() => {
+		if (keyboardNavigationPulseKey <= 0) return;
+		pulseKeyboardHover(percentage);
+	}, [keyboardNavigationPulseKey, percentage, pulseKeyboardHover]);
+
 	const computeRubberStretch = useCallback(
 		(clientY: number, sign: number) => {
 			const rect = wrapperRectRef.current;
@@ -621,14 +722,9 @@ export function GlassSlider({
 		// Normalized position: −1 at bottom edge, +1 at top edge.
 		// (Bottom is the larger clientY, so we negate.)
 		const norm = clamp(-(clientY - center) / halfHeight, -1, 1);
-		// Apply a small dead zone around 0 then ease-out.
-		const DEAD = 0.1;
-		const sign = Math.sign(norm);
-		const mag = Math.max(0, Math.abs(norm) - DEAD) / (1 - DEAD);
-		// Use a sqrt curve so the stretch ramps in quickly near the center
-		// and softens as the cursor approaches the edges.
-		// Negate so cursor near TOP (norm > 0) → stretch < 0 (extends up).
-		return -sign * MAX_HOVER_STRETCH * Math.sqrt(mag);
+		// Reuse the same easing curve as keyboard navigation pulses so the
+		// directional stretch feels identical regardless of input method.
+		return hoverStretchFromNorm(norm);
 	}, []);
 
 	const handlePointerDown = useCallback(
@@ -751,6 +847,7 @@ export function GlassSlider({
 				fillPercent.set(percentFromValue(rawValue));
 
 				if (snappedValue !== value) {
+					skipControlledFillAnimationRef.current = true;
 					setValue(roundValue(snappedValue, step));
 				}
 				return;
@@ -797,6 +894,7 @@ export function GlassSlider({
 			animRef.current?.stop();
 			animRef.current = null;
 			fillPercent.jump(percentFromValue(newValue));
+			skipControlledFillAnimationRef.current = true;
 			setValue(roundValue(newValue, step));
 		},
 		[
@@ -901,12 +999,24 @@ export function GlassSlider({
 
 			e.preventDefault();
 			const rounded = roundValue(newValue, step);
+			if (rounded === value) return;
 			animateFillTo(percentFromValue(rounded));
+			pulseKeyboardHover(percentFromValue(rounded));
 			setValue(rounded);
 			// Keyboard navigation is an explicit commit.
 			onCommit?.(rounded);
 		},
-		[value, min, max, step, percentFromValue, animateFillTo, setValue, onCommit],
+		[
+			value,
+			min,
+			max,
+			step,
+			percentFromValue,
+			animateFillTo,
+			pulseKeyboardHover,
+			setValue,
+			onCommit,
+		],
 	);
 
 	// Snap directly to a tick (used by the per-tick hit-area buttons). Skips
