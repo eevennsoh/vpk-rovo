@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 import { motion } from "motion/react";
 
 import { CityRailEditor } from "./city-popover";
-import { DigitDisplay } from "./digit-display";
+import { DigitDisplay, FlipText } from "./digit-display";
 import { useCities } from "./use-cities";
 import { useCurrentWeather } from "./use-current-weather";
 import { useLocationClock } from "./use-location-clock";
@@ -26,6 +26,13 @@ import {
 	WidgetGridOverlay,
 	WidgetScrewDots,
 } from "./widget-card";
+
+function playSound(src: string) {
+	if (typeof window === "undefined") return;
+	const audio = new Audio(src);
+	audio.volume = 0.5;
+	audio.play().catch(() => {});
+}
 
 export interface WeatherProps {
 	className?: string;
@@ -508,34 +515,34 @@ function WeatherTimeCard({
 				>
 					Time
 				</span>
-				<div className="flex flex-col items-center gap-0">
-					<DigitDisplay
-						weight={180}
-						tracking={-0.04}
-						style={{
-							color: cutoutFillColor,
-							lineHeight: 0.92,
-							fontFamily: "var(--font-ark-es)",
-							fontSize: sizes.timeFontPx,
-							textShadow: cutoutTextShadow,
-						}}
-					>
-						{clock.hours}
-					</DigitDisplay>
-					<DigitDisplay
-						weight={180}
-						tracking={-0.04}
-						style={{
-							color: cutoutFillColor,
-							lineHeight: 0.92,
-							fontFamily: "var(--font-ark-es)",
-							fontSize: sizes.timeFontPx,
-							textShadow: cutoutTextShadow,
-						}}
-					>
-						{clock.minutes}
-					</DigitDisplay>
-				</div>
+					<div className="flex flex-col items-center gap-0">
+						<DigitDisplay
+							weight={180}
+							tracking={-0.04}
+							style={{
+								color: cutoutFillColor,
+								lineHeight: 0.92,
+								fontFamily: "var(--font-ark-es)",
+								fontSize: sizes.timeFontPx,
+								textShadow: cutoutTextShadow,
+							}}
+						>
+							{clock.hours}
+						</DigitDisplay>
+						<DigitDisplay
+							weight={180}
+							tracking={-0.04}
+							style={{
+								color: cutoutFillColor,
+								lineHeight: 0.92,
+								fontFamily: "var(--font-ark-es)",
+								fontSize: sizes.timeFontPx,
+								textShadow: cutoutTextShadow,
+							}}
+						>
+							{clock.minutes}
+						</DigitDisplay>
+					</div>
 				<span
 					className="absolute font-mono tabular-nums"
 					style={{
@@ -546,7 +553,7 @@ function WeatherTimeCard({
 						textShadow: debossTextShadow,
 					}}
 				>
-					: {clock.seconds}
+					: <FlipText text={clock.seconds} />
 				</span>
 			</div>
 		</WidgetCard>
@@ -591,6 +598,7 @@ export default function Weather({
 	const [openCityManagerRequestKey, setOpenCityManagerRequestKey] = React.useState(0);
 	const [isCityManagerOpen, setIsCityManagerOpen] = React.useState(false);
 	const [cityNavigationPulseKey, setCityNavigationPulseKey] = React.useState(0);
+	const [isEntranceAnimating, setIsEntranceAnimating] = React.useState(true);
 	const themeKeyboardVisibleTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 	const {
 		cities,
@@ -731,6 +739,7 @@ export default function Weather({
 		};
 
 		const handleKeyDown = (event: KeyboardEvent) => {
+			if (isEntranceAnimating) return;
 			const target = event.target;
 			const typingTarget = isTypingTarget(target);
 			const sliderTarget = isSliderTarget(target);
@@ -751,6 +760,7 @@ export default function Weather({
 				if (nextIndex === safeIndex) {
 					return;
 				}
+				playSound("/sound/click-003.mp3");
 				setThemeNavigationPulseKey((current) => current + 1);
 				updateWeatherMode(THEME_MODE_ORDER[nextIndex]);
 				return;
@@ -776,6 +786,7 @@ export default function Weather({
 				}
 
 				event.preventDefault();
+				playSound("/sound/click-002.mp3");
 				setSelectedIndex(nextSelectedIndex);
 				setCityNavigationPulseKey((current) => current + 1);
 				return;
@@ -799,6 +810,7 @@ export default function Weather({
 		window.addEventListener("keydown", handleKeyDown);
 		return () => window.removeEventListener("keydown", handleKeyDown);
 	}, [
+		isEntranceAnimating,
 		isCityManagerOpen,
 		cities.length,
 		selectedIndex,
@@ -869,17 +881,24 @@ export default function Weather({
 				keyboardSelectionPulseKey={themeNavigationPulseKey}
 			/>
 
-			<div className="text-text relative z-10 flex flex-col items-center gap-2">
-				<span
-					className="text-[15px] font-medium uppercase tracking-[0.36em]"
-					style={{
-						letterSpacing: "0.36em",
-						fontFamily: "'BBH Bartle', sans-serif",
-					}}
-				>
-					{selected.name}
-				</span>
-			</div>
+			<motion.div
+				initial={{ opacity: 0, y: 40, filter: "blur(12px)" }}
+				animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+				transition={{ type: "spring", stiffness: 120, damping: 14, mass: 0.7 }}
+				style={{ willChange: "opacity, filter, transform" }}
+			>
+				<div className="text-text relative z-10 flex flex-col items-center gap-2">
+					<span
+						className="text-[15px] font-medium uppercase tracking-[0.36em]"
+						style={{
+							letterSpacing: "0.36em",
+							fontFamily: "'BBH Bartle', sans-serif",
+						}}
+					>
+						{selected.name}
+					</span>
+				</div>
+			</motion.div>
 
 			<div
 				className={cn(
@@ -889,227 +908,283 @@ export default function Weather({
 						: "grid grid-cols-[auto_auto] gap-2",
 				)}
 			>
-				<CityRailEditor
-					cities={cities}
-					selectedIndex={selectedIndex}
-					setSelectedIndex={setSelectedIndex}
-					addCity={addCity}
-					openRequestKey={openCityManagerRequestKey}
-					onOpenChange={setIsCityManagerOpen}
-					keyboardNavigationPulseKey={cityNavigationPulseKey}
-					removeCity={removeCity}
-					height={sizes.pillHeight}
-					// CityRailEditor subtracts a 24px TRACK_INSET internally to
-					// derive the visible rail width, so we add it back here to
-					// make the slider's visible pill match the Humidity card
-					// width directly underneath it in the 2×2 grid.
-					width={sizes.sliderWidth + CITY_RAIL_TRACK_INSET}
-				/>
-
-				<WeatherTimeCard
-					timezone={selected.timezone}
-					sizes={sizes}
-					gridColor={gridColor}
-					gridBlendMode={gridBlendMode}
-					noiseBlendMode={noiseBlendMode}
-					noiseOpacity={noiseOpacity}
-					noiseColor={noiseColor}
-					shaderTextClass={shaderTextClass}
-					shaderScrewColor={shaderScrewColor}
-					shaderLabelColor={shaderLabelColor}
-					shaderFootnoteColor={shaderFootnoteColor}
-					cutoutFillColor={cutoutFillColor}
-					cutoutTextShadow={cutoutTextShadow}
-					debossTextShadow={debossTextShadow}
-					debossDotShadow={debossDotShadow}
-				/>
-
-				<WidgetCard
-					className="flex flex-col"
-					style={{ width: sizes.humidityWidth, height: sizes.pillHeight }}
-					background={
-						<Bands
-							className="h-full w-full"
-							seed={210}
-							speed={0.3}
-							ephemeralAmp={0}
-							lensScale={3.7}
-							lensSpacingX={1}
-							lensSpacingY={0.01}
-							lensRadius={0.58}
-							dispersionStrength={0.4}
-							edgeDisp={2}
-						/>
-					}
-					overlay={
-						<>
-							<WidgetGridOverlay
-								color={gridColor}
-								blendMode={gridBlendMode}
-								opacity={0.42}
-								cellSize={sizes.gridCellSize}
-							/>
-							<WidgetScrewDots
-								color={shaderScrewColor}
-								insetX={sizes.screwInsetX.humidity}
-								insetY={sizes.screwInsetY}
-								boxShadow={debossDotShadow}
-							/>
-							<Noise
-								className="absolute inset-0"
-								opacity={noiseOpacity}
-								grainSize={140}
-								seed={13}
-								color={noiseColor}
-								blendMode={noiseBlendMode}
-							/>
-						</>
-					}
+				<motion.div
+					initial={{ opacity: 0, filter: "blur(16px)", scaleY: 0, y: 80 }}
+					animate={{ opacity: 1, filter: "blur(0px)", scaleY: 1, y: 0 }}
+					transition={{
+						scaleY: { type: "spring", stiffness: 180, damping: 12, mass: 0.6, delay: 0.1 },
+						y: { type: "spring", stiffness: 180, damping: 12, mass: 0.6, delay: 0.1 },
+						filter: { duration: 0.5, ease: [0, 0.4, 0, 1], delay: 0.1 },
+						opacity: { duration: 0.4, ease: [0, 0.4, 0, 1], delay: 0.1 },
+					}}
+					style={{ transformOrigin: "bottom center", willChange: "opacity, filter, transform" }}
 				>
-					<div className={cn("relative flex h-full flex-col items-center justify-center", shaderTextClass)}>
-						<span
-							className="absolute font-mono uppercase tracking-[0.3em]"
-							style={{
-								color: shaderLabelColor,
-								top: sizes.labelInsetPx,
-								fontSize: sizes.labelFontPx,
-								textShadow: debossTextShadow,
-							}}
-						>
-							Humid %
-						</span>
-						<div className="flex flex-col items-center gap-0">
-							{(weather.humidity === null
-								? ["—", "—"]
-								: String(Math.round(weather.humidity)).split("")
-							).map((digit, i) => (
-								<DigitDisplay
-									key={i}
-									weight={400}
-									tracking={-0.04}
-									style={{
-										color: cutoutFillColor,
-										lineHeight: 0.92,
-										fontFamily: "'DotGothic16', sans-serif",
-										fontSize: sizes.humidityFontPx,
-										textShadow: cutoutTextShadow,
-									}}
-								>
-									{digit}
-								</DigitDisplay>
-							))}
-						</div>
-						<span
-							className="absolute"
-							style={{
-								color: shaderFootnoteColor,
-								fontFamily: "'DotGothic16', sans-serif",
-								bottom: sizes.labelInsetPx,
-								fontSize: sizes.footnoteFontPx + 1,
-								textShadow: debossTextShadow,
-							}}
-						>
-							湿度
-						</span>
-					</div>
-				</WidgetCard>
+					<CityRailEditor
+						cities={cities}
+						selectedIndex={selectedIndex}
+						setSelectedIndex={setSelectedIndex}
+						addCity={addCity}
+						openRequestKey={openCityManagerRequestKey}
+						onOpenChange={setIsCityManagerOpen}
+						keyboardNavigationPulseKey={cityNavigationPulseKey}
+						removeCity={removeCity}
+						height={sizes.pillHeight}
+						// CityRailEditor subtracts a 24px TRACK_INSET internally to
+						// derive the visible rail width, so we add it back here to
+						// make the slider's visible pill match the Humidity card
+						// width directly underneath it in the 2×2 grid.
+						width={sizes.sliderWidth + CITY_RAIL_TRACK_INSET}
+					/>
+				</motion.div>
 
-				<WidgetCard
-					className="flex flex-col"
-					style={{ width: sizes.temperatureWidth, height: sizes.pillHeight }}
-					background={
-						<WaveGradient
-							className="h-full w-full"
-							seed={26}
-							speed={2.85}
-							freqX={0.9}
-							freqY={6}
-							angle={105}
-							amplitude={1.6}
-							softness={1.4}
-							blend={0.5}
-						/>
-					}
-					overlay={
-						<>
-							<WidgetGridOverlay
-								color={gridColor}
-								blendMode={gridBlendMode}
-								opacity={0.42}
-								cellSize={sizes.gridCellSize}
-							/>
-							<WidgetScrewDots
-								color={shaderScrewColor}
-								insetX={sizes.screwInsetX.temperature}
-								insetY={sizes.screwInsetY}
-								boxShadow={debossDotShadow}
-							/>
-							<Noise
-								className="absolute inset-0"
-								opacity={noiseOpacity}
-								grainSize={140}
-								seed={7}
-								color={noiseColor}
-								blendMode={noiseBlendMode}
-							/>
-						</>
-					}
+				<motion.div
+					initial={{ opacity: 0, filter: "blur(16px)", scale: 0.5, y: 140 }}
+					animate={{ opacity: 1, filter: "blur(0px)", scale: 1, y: 0 }}
+					transition={{
+						scale: { type: "spring", stiffness: 180, damping: 12, mass: 0.6, delay: 0.2 },
+						y: { type: "spring", stiffness: 180, damping: 12, mass: 0.6, delay: 0.2 },
+						filter: { duration: 0.5, ease: [0, 0.4, 0, 1], delay: 0.2 },
+						opacity: { duration: 0.4, ease: [0, 0.4, 0, 1], delay: 0.2 },
+					}}
+					style={{ willChange: "opacity, filter, transform" }}
 				>
-					<div className={cn("relative flex h-full flex-col items-center justify-center", shaderTextClass)}>
-						<span
-							className="absolute font-mono uppercase tracking-[0.3em]"
-							style={{
-								color: shaderLabelColor,
-								top: sizes.labelInsetPx,
-								fontSize: sizes.labelFontPx,
-								textShadow: debossTextShadow,
-							}}
-						>
-							Temp °C
-						</span>
-						<div className="flex flex-col items-center gap-0">
-							<DigitDisplay
-								weight={200}
-								tracking={-0.04}
+					<WeatherTimeCard
+						timezone={selected.timezone}
+						sizes={sizes}
+						gridColor={gridColor}
+						gridBlendMode={gridBlendMode}
+						noiseBlendMode={noiseBlendMode}
+						noiseOpacity={noiseOpacity}
+						noiseColor={noiseColor}
+						shaderTextClass={shaderTextClass}
+						shaderScrewColor={shaderScrewColor}
+						shaderLabelColor={shaderLabelColor}
+						shaderFootnoteColor={shaderFootnoteColor}
+						cutoutFillColor={cutoutFillColor}
+						cutoutTextShadow={cutoutTextShadow}
+						debossTextShadow={debossTextShadow}
+						debossDotShadow={debossDotShadow}
+					/>
+				</motion.div>
+
+				<motion.div
+					initial={{ opacity: 0, filter: "blur(16px)", scaleY: 0, y: 80 }}
+					animate={{ opacity: 1, filter: "blur(0px)", scaleY: 1, y: 0 }}
+					transition={{
+						scaleY: { type: "spring", stiffness: 180, damping: 12, mass: 0.6, delay: 0.3 },
+						y: { type: "spring", stiffness: 180, damping: 12, mass: 0.6, delay: 0.3 },
+						filter: { duration: 0.5, ease: [0, 0.4, 0, 1], delay: 0.3 },
+						opacity: { duration: 0.4, ease: [0, 0.4, 0, 1], delay: 0.3 },
+					}}
+					style={{ transformOrigin: "bottom center", willChange: "opacity, filter, transform" }}
+				>
+					<WidgetCard
+						className="flex flex-col"
+						style={{ width: sizes.humidityWidth, height: sizes.pillHeight }}
+						background={
+							<Bands
+								className="h-full w-full"
+								seed={210}
+								speed={0.3}
+								ephemeralAmp={0}
+								lensScale={3.7}
+								lensSpacingX={1}
+								lensSpacingY={0.01}
+								lensRadius={0.58}
+								dispersionStrength={0.4}
+								edgeDisp={2}
+							/>
+						}
+						overlay={
+							<>
+								<WidgetGridOverlay
+									color={gridColor}
+									blendMode={gridBlendMode}
+									opacity={0.42}
+									cellSize={sizes.gridCellSize}
+								/>
+								<WidgetScrewDots
+									color={shaderScrewColor}
+									insetX={sizes.screwInsetX.humidity}
+									insetY={sizes.screwInsetY}
+									boxShadow={debossDotShadow}
+								/>
+								<Noise
+									className="absolute inset-0"
+									opacity={noiseOpacity}
+									grainSize={140}
+									seed={13}
+									color={noiseColor}
+									blendMode={noiseBlendMode}
+								/>
+							</>
+						}
+					>
+						<div className={cn("relative flex h-full flex-col items-center justify-center", shaderTextClass)}>
+							<span
+								className="absolute font-mono uppercase tracking-[0.3em]"
 								style={{
-									color: cutoutFillColor,
-									lineHeight: 0.92,
-									fontFamily: "'Bitcount Grid Single', sans-serif",
-									fontSize: sizes.temperatureFontPx,
-									textShadow: cutoutTextShadow,
+									color: shaderLabelColor,
+									top: sizes.labelInsetPx,
+									fontSize: sizes.labelFontPx,
+									textShadow: debossTextShadow,
 								}}
 							>
-								{temperature}
-							</DigitDisplay>
-							<div
-								className="-mt-1 flex items-center gap-1"
-								style={{ filter: cutoutIconFilter }}
+								Humid %
+							</span>
+							<div className="flex flex-col items-center gap-0">
+									{(weather.humidity === null
+										? ["—", "—"]
+										: String(Math.round(weather.humidity)).split("")
+									).map((digit, i) => (
+										<DigitDisplay
+											key={i}
+											weight={400}
+											tracking={-0.04}
+											style={{
+												color: cutoutFillColor,
+												lineHeight: 0.92,
+												fontFamily: "'DotGothic16', sans-serif",
+												fontSize: sizes.humidityFontPx,
+												textShadow: cutoutTextShadow,
+											}}
+										>
+											{digit}
+										</DigitDisplay>
+									))}
+								</div>
+							<span
+								className="absolute"
+								style={{
+									color: shaderFootnoteColor,
+									fontFamily: "'DotGothic16', sans-serif",
+									bottom: sizes.labelInsetPx,
+									fontSize: sizes.footnoteFontPx + 1,
+									textShadow: debossTextShadow,
+								}}
 							>
-								<WeatherIcon
-									weatherCode={weather.weatherCode}
-									isDay={weather.isDay}
-									size={sizes.weatherIconSize}
-									style={{ color: cutoutFillColor }}
-								/>
-							</div>
+								湿度
+							</span>
 						</div>
-						<span
-							className="absolute"
-							style={{
-								color: shaderFootnoteColor,
-								fontFamily: "'DotGothic16', sans-serif",
-								bottom: sizes.labelInsetPx,
-								fontSize: sizes.footnoteFontPx + 1,
-								textShadow: debossTextShadow,
-							}}
-						>
-							温度
-						</span>
-					</div>
-				</WidgetCard>
+					</WidgetCard>
+				</motion.div>
+
+				<motion.div
+					initial={{ opacity: 0, filter: "blur(16px)", scale: 0.5, y: 140 }}
+					animate={{ opacity: 1, filter: "blur(0px)", scale: 1, y: 0 }}
+					transition={{
+						scale: { type: "spring", stiffness: 180, damping: 12, mass: 0.6, delay: 0.4 },
+						y: { type: "spring", stiffness: 180, damping: 12, mass: 0.6, delay: 0.4 },
+						filter: { duration: 0.5, ease: [0, 0.4, 0, 1], delay: 0.4 },
+						opacity: { duration: 0.4, ease: [0, 0.4, 0, 1], delay: 0.4 },
+					}}
+					style={{ willChange: "opacity, filter, transform" }}
+				>
+					<WidgetCard
+						className="flex flex-col"
+						style={{ width: sizes.temperatureWidth, height: sizes.pillHeight }}
+						background={
+							<WaveGradient
+								className="h-full w-full"
+								seed={26}
+								speed={2.85}
+								freqX={0.9}
+								freqY={6}
+								angle={105}
+								amplitude={1.6}
+								softness={1.4}
+								blend={0.5}
+							/>
+						}
+						overlay={
+							<>
+								<WidgetGridOverlay
+									color={gridColor}
+									blendMode={gridBlendMode}
+									opacity={0.42}
+									cellSize={sizes.gridCellSize}
+								/>
+								<WidgetScrewDots
+									color={shaderScrewColor}
+									insetX={sizes.screwInsetX.temperature}
+									insetY={sizes.screwInsetY}
+									boxShadow={debossDotShadow}
+								/>
+								<Noise
+									className="absolute inset-0"
+									opacity={noiseOpacity}
+									grainSize={140}
+									seed={7}
+									color={noiseColor}
+									blendMode={noiseBlendMode}
+								/>
+							</>
+						}
+					>
+						<div className={cn("relative flex h-full flex-col items-center justify-center", shaderTextClass)}>
+							<span
+								className="absolute font-mono uppercase tracking-[0.3em]"
+								style={{
+									color: shaderLabelColor,
+									top: sizes.labelInsetPx,
+									fontSize: sizes.labelFontPx,
+									textShadow: debossTextShadow,
+								}}
+							>
+								Temp °C
+							</span>
+							<div className="flex flex-col items-center gap-0">
+									<DigitDisplay
+										weight={200}
+										tracking={-0.04}
+										style={{
+											color: cutoutFillColor,
+											lineHeight: 0.92,
+											fontFamily: "'Bitcount Grid Single', sans-serif",
+											fontSize: sizes.temperatureFontPx,
+											textShadow: cutoutTextShadow,
+										}}
+									>
+										{temperature}
+									</DigitDisplay>
+									<div
+										className="-mt-1 flex items-center gap-1"
+										style={{ filter: cutoutIconFilter }}
+									>
+										<WeatherIcon
+											weatherCode={weather.weatherCode}
+											isDay={weather.isDay}
+											size={sizes.weatherIconSize}
+											style={{ color: cutoutFillColor }}
+										/>
+									</div>
+								</div>
+							<span
+								className="absolute"
+								style={{
+									color: shaderFootnoteColor,
+									fontFamily: "'DotGothic16', sans-serif",
+									bottom: sizes.labelInsetPx,
+									fontSize: sizes.footnoteFontPx + 1,
+									textShadow: debossTextShadow,
+								}}
+							>
+								温度
+							</span>
+						</div>
+					</WidgetCard>
+				</motion.div>
 			</div>
 
-			<WeatherDateSummary timezone={selected.timezone} />
+			<motion.div
+				initial={{ opacity: 0, y: 24, filter: "blur(12px)" }}
+				animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+				transition={{ type: "spring", stiffness: 160, damping: 14, mass: 0.5, delay: 0.44 }}
+				style={{ willChange: "opacity, filter, transform" }}
+				onAnimationComplete={() => setIsEntranceAnimating(false)}
+			>
+				<WeatherDateSummary timezone={selected.timezone} />
+			</motion.div>
 			<WeatherKeyboardHints isVisible={pointerViewportZone === "bottom"} isEditing={isCityManagerOpen} />
 		</div>
 	);

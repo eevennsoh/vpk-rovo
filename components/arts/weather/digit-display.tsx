@@ -2,6 +2,7 @@
 
 import type { CSSProperties, ReactNode } from "react";
 
+import { AnimatePresence, motion } from "motion/react";
 import { cn } from "@/lib/utils";
 
 interface DigitDisplayProps {
@@ -12,6 +13,40 @@ interface DigitDisplayProps {
 	style?: CSSProperties;
 }
 
+function FlipChar({ char }: { char: string }) {
+	return (
+		<span className="inline-flex overflow-hidden">
+			<AnimatePresence mode="popLayout" initial={false}>
+				<motion.span
+					key={char}
+					className="inline-block"
+					initial={{ y: "100%", filter: "blur(4px)", opacity: 0 }}
+					animate={{ y: 0, filter: "blur(0px)", opacity: 1 }}
+					exit={{ y: "-100%", filter: "blur(4px)", opacity: 0 }}
+					transition={{
+						type: "spring",
+						bounce: 0,
+						visualDuration: 0.3,
+					}}
+					style={{ willChange: "transform, filter" }}
+				>
+					{char}
+				</motion.span>
+			</AnimatePresence>
+		</span>
+	);
+}
+
+export function FlipText({ text }: { text: string }) {
+	return (
+		<>
+			{text.split("").map((char, i) => (
+				<FlipChar key={i} char={char} />
+			))}
+		</>
+	);
+}
+
 export function DigitDisplay({
 	children,
 	className,
@@ -19,6 +54,8 @@ export function DigitDisplay({
 	tracking = -0.04,
 	style,
 }: DigitDisplayProps) {
+	const text = typeof children === "string" ? children : null;
+
 	return (
 		<span
 			className={cn(
@@ -32,7 +69,11 @@ export function DigitDisplay({
 				...style,
 			}}
 		>
-			{children}
+			{text
+				? text.split("").map((char, i) => (
+						<FlipChar key={i} char={char} />
+					))
+				: children}
 		</span>
 	);
 }
