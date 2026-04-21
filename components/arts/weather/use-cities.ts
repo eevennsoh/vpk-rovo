@@ -28,13 +28,23 @@ export interface UseCitiesReturn {
 	removeCity: (cityId: string) => void;
 }
 
+interface InitialCitiesState {
+	cities: LockscreenLocation[];
+	selectedIndex: number;
+}
+
 function loadStoredState(): StoredCitiesState | null {
 	if (typeof window === "undefined") return null;
 	return readStoredCitiesState(window.localStorage);
 }
 
-function getInitialCities(): LockscreenLocation[] {
-	const stored = loadStoredState();
+function clampSelectedIndex(index: number, citiesLength: number): number {
+	return Math.max(0, Math.min(index, citiesLength - 1));
+}
+
+function resolveStoredCities(
+	stored: StoredCitiesState | null,
+): LockscreenLocation[] {
 	if (!stored) return [...DEFAULT_PRESET_CITIES];
 	const resolved = stored.cityIds
 		.map((id) => findLocation(id))
@@ -42,16 +52,24 @@ function getInitialCities(): LockscreenLocation[] {
 	return resolved.length > 0 ? resolved : [...DEFAULT_PRESET_CITIES];
 }
 
-function getInitialSelectedIndex(citiesLength: number): number {
+function getInitialCitiesState(): InitialCitiesState {
 	const stored = loadStoredState();
-	if (!stored) return 0;
-	return Math.max(0, Math.min(stored.selectedIndex, citiesLength - 1));
+	const cities = resolveStoredCities(stored);
+	return {
+		cities,
+		selectedIndex: stored
+			? clampSelectedIndex(stored.selectedIndex, cities.length)
+			: 0,
+	};
 }
 
 export function useCities(): UseCitiesReturn {
-	const [cities, setCities] = useState<LockscreenLocation[]>(getInitialCities);
-	const [selectedIndex, setSelectedIndexRaw] = useState(() =>
-		getInitialSelectedIndex(getInitialCities().length),
+	const [initialCitiesState] = useState(getInitialCitiesState);
+	const [cities, setCities] = useState<LockscreenLocation[]>(
+		initialCitiesState.cities,
+	);
+	const [selectedIndex, setSelectedIndexRaw] = useState(
+		initialCitiesState.selectedIndex,
 	);
 
 	useEffect(() => {
@@ -72,22 +90,22 @@ export function useCities(): UseCitiesReturn {
 
 	const setSelectedIndex = useCallback(
 		(index: number) => {
-			setSelectedIndexRaw(Math.max(0, Math.min(index, cities.length - 1)));
+			setSelectedIndexRaw(clampSelectedIndex(index, cities.length));
 		},
 		[cities.length],
 	);
 
-	const addCity = useCallback(
-		(city: LockscreenLocation) => {
-			if (cities.some((c) => c.id === city.id)) return;
-			setCities((prev) => {
+	const addCity = useCallback((city: LockscreenLocation) => {
+		setCities((prev) => {
+			if (prev.some((currentCity) => currentCity.id === city.id)) {
+				return prev;
+			}
+
 				const next = [...prev, city];
 				setSelectedIndexRaw(next.length - 1);
 				return next;
-			});
-		},
-		[cities],
-	);
+		});
+	}, []);
 
 	const removeCity = useCallback((cityId: string) => {
 		setCities((prev) => {
@@ -103,7 +121,7 @@ export function useCities(): UseCitiesReturn {
 			// current selection, shift left; always ensure we stay in range.
 			setSelectedIndexRaw((current) => {
 				const adjusted = removalIndex <= current ? current - 1 : current;
-				return Math.max(0, Math.min(adjusted, next.length - 1));
+				return clampSelectedIndex(adjusted, next.length);
 			});
 			return next;
 		});
