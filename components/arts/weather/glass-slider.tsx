@@ -105,6 +105,11 @@ export const DEFAULT_FILL_GLASS_PROPS: Partial<LiquidGlassProps> = {
 // can override it with custom CSS gradients.
 export const DEFAULT_FILL_TINT_GRADIENT = `linear-gradient(0deg, ${ROVO_COLOR_SWATCHES[0].hex}38 0%, ${ROVO_COLOR_SWATCHES[1].hex}30 35%, ${ROVO_COLOR_SWATCHES[2].hex}30 70%, ${ROVO_COLOR_SWATCHES[3].hex}38 100%)`;
 
+// The meniscus mask is composed from a curved fixed-height cap layer plus
+// a rectangular body layer underneath. Without a tiny overlap, some dark-mode
+// combinations reveal a faint horizontal seam where the two mask layers meet.
+const MENISCUS_MASK_JOIN_OVERLAP_PX = 1;
+
 // Build a `mask-image` CSS style object that crops the top of the fill
 // element with a half-ellipse cap of the given pixel height and curvature
 // (0 = flat, 1 = full half-ellipse). Returns `null` when either input
@@ -145,8 +150,8 @@ function buildMeniscusMaskStyle(
 		WebkitMaskRepeat: "no-repeat, no-repeat",
 		maskPosition: "top center, bottom center",
 		WebkitMaskPosition: "top center, bottom center",
-		maskSize: `100% ${h}px, 100% calc(100% - ${h}px)`,
-		WebkitMaskSize: `100% ${h}px, 100% calc(100% - ${h}px)`,
+		maskSize: `100% ${h}px, 100% calc(100% - ${h}px + ${MENISCUS_MASK_JOIN_OVERLAP_PX}px)`,
+		WebkitMaskSize: `100% ${h}px, 100% calc(100% - ${h}px + ${MENISCUS_MASK_JOIN_OVERLAP_PX}px)`,
 		maskComposite: "add",
 		WebkitMaskComposite: "source-over",
 	};
@@ -455,18 +460,23 @@ export function GlassSlider({
 
 	// Drive the active-state scaleY ourselves so we can both pass it to
 	// the track AND publish edge offsets to external consumers (e.g.
-	// floating buttons that need to stay glued to the deformed edges).
+	// floating buttons that need to stay glued to the deformed edges.
+	// `useLayoutEffect` starts the reverse hover animation in the same
+	// frame as mouseleave, avoiding a visible one-frame delay before the
+	// slider begins settling back to rest.
 	const activeScaleY = useMotionValue(1);
-	useEffect(() => {
+	useLayoutEffect(() => {
 		const target = isActive ? 1.04 : 1;
-		const controls = animate(activeScaleY, target, shouldReduceMotion
-			? { duration: 0 }
-			: {
-					type: "spring",
-					stiffness: 260,
-					damping: 18,
-					mass: 0.6,
-				});
+		if (shouldReduceMotion) {
+			activeScaleY.jump(target);
+			return;
+		}
+		const controls = animate(activeScaleY, target, {
+			type: "spring",
+			stiffness: 260,
+			damping: 18,
+			mass: 0.6,
+		});
 		return () => {
 			controls.stop();
 		};
@@ -475,8 +485,9 @@ export function GlassSlider({
 	// Animate the meniscus cap between resting and active shapes
 	// whenever `isActive` flips. Uses a slightly slower spring than the
 	// scale-up so the meniscus reads as a soft "settling" of liquid
-	// rather than an instantaneous snap.
-	useEffect(() => {
+	// rather than an instantaneous snap. Keep this in `useLayoutEffect`
+	// too so the reverse meniscus motion starts immediately on hover-out.
+	useLayoutEffect(() => {
 		const targetHeight = isActive ? activeMeniscusHeightPx : restMeniscusHeightPx;
 		const targetCurve = isActive ? activeMeniscusCurve : restMeniscusCurve;
 		if (shouldReduceMotion) {
@@ -674,8 +685,9 @@ export function GlassSlider({
 
 		// Parent-driven updates (for example the weather scene's global
 		// ArrowUp / ArrowDown shortcuts) don't touch the fill directly, so
-		// animate them here instead of snapping.
-		if (!animRef.current && fillPercent.get() !== percentage) {
+		// retarget the fill here on every new percentage instead of waiting
+		// for any previous animation to finish.
+		if (fillPercent.get() !== percentage) {
 			animateFillTo(percentage);
 		}
 	}, [percentage, isInteracting, fillPercent, animateFillTo]);
@@ -1472,7 +1484,7 @@ export function GlassSlider({
 				aria-orientation="vertical"
 				className={cn(
 					"relative cursor-grab active:cursor-grabbing",
-					"outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2",
+					"outline-none",
 					shell === "none" && "overflow-clip bg-(--elastic-slider-bg)",
 					shell === "none" && trackClassName,
 				)}
@@ -1489,11 +1501,15 @@ export function GlassSlider({
 					}
 				}}
 				onMouseLeave={() => {
+					const skipPinnedHoverLeaveSettle =
+						pinned && !isInteracting && !isKeyboardActive;
 					setIsHovered(false);
 					setHoveredTickIndex(null);
 					hoverStretchAnimRef.current?.stop();
 					hoverStretchAnimRef.current = null;
-					if (!shouldReduceMotion && rubberStretch.get() !== 0) {
+					if (skipPinnedHoverLeaveSettle) {
+						rubberStretch.jump(0);
+					} else if (!shouldReduceMotion && rubberStretch.get() !== 0) {
 						animate(rubberStretch, 0, {
 							type: "spring",
 							visualDuration: 0.6,
@@ -1506,7 +1522,13 @@ export function GlassSlider({
 					// the selected city.
 					const targetPercent = percentFromValue(value);
 					if (fillPercent.get() !== targetPercent) {
-						animateFillTo(targetPercent);
+						if (skipPinnedHoverLeaveSettle) {
+							animRef.current?.stop();
+							animRef.current = null;
+							fillPercent.jump(targetPercent);
+						} else {
+							animateFillTo(targetPercent);
+						}
 					}
 				}}
 			>

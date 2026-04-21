@@ -7,7 +7,14 @@ import {
 	useReducedMotion,
 } from "motion/react";
 import Image from "next/image";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+	useCallback,
+	useEffect,
+	useEffectEvent,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import type { CSSProperties } from "react";
 
 import {
@@ -46,10 +53,9 @@ interface CityRailEditorProps {
 	onOpenChange?: (isOpen: boolean) => void;
 	keyboardNavigationPulseKey?: number;
 	/**
-	 * Optional remove handler. Accepted for forward-compatibility with
-	 * `useCities().removeCity` so the parent (`weather/index.tsx`) can
-	 * forward it without a type mismatch. The popover doesn't render a
-	 * delete affordance yet — wire one in here when designed.
+	 * Optional remove handler used by keyboard toggles on already-selected
+	 * cities. Keep forwarding it from `useCities().removeCity` so the
+	 * popover can deselect rows without owning the list state.
 	 */
 	removeCity?: (cityId: string) => void;
 	className?: string;
@@ -133,6 +139,7 @@ export function CityRailEditor({
 	selectedIndex,
 	setSelectedIndex,
 	addCity,
+	removeCity,
 	openRequestKey = 0,
 	onOpenChange,
 	keyboardNavigationPulseKey = 0,
@@ -151,6 +158,7 @@ export function CityRailEditor({
 	const [isPinned, setIsPinned] = useState(false);
 	const [hasManuallySelectedCity, setHasManuallySelectedCity] = useState(false);
 	const [search, setSearch] = useState("");
+	const [highlightedIndex, setHighlightedIndex] = useState(0);
 
 	// Hover-driven preview: just update the previewed index. Does NOT pin
 	// the city — the user has only moved the cursor across the slider, not
@@ -220,6 +228,7 @@ export function CityRailEditor({
 	useEffect(() => {
 		if (openRequestKey <= 0) return;
 		setIsOpen(true);
+		setHighlightedIndex(0);
 	}, [openRequestKey]);
 
 	useEffect(() => {
@@ -240,19 +249,11 @@ export function CityRailEditor({
 			}
 		};
 
-		const handleKeyDown = (event: KeyboardEvent) => {
-			if (event.key === "Escape") {
-				setIsOpen(false);
-			}
-		};
-
 		window.addEventListener("pointerdown", handlePointerDown);
-		window.addEventListener("keydown", handleKeyDown);
 
 		return () => {
 			window.cancelAnimationFrame(focusHandle);
 			window.removeEventListener("pointerdown", handlePointerDown);
-			window.removeEventListener("keydown", handleKeyDown);
 		};
 	}, [isOpen]);
 
@@ -264,6 +265,10 @@ export function CityRailEditor({
 				|| city.region.toLowerCase().includes(query);
 		});
 	}, [search]);
+
+	useEffect(() => {
+		setHighlightedIndex(0);
+	}, [filteredCities]);
 
 	const handleCityRowPress = useCallback(
 		(city: LockscreenLocation, cityIndex: number) => {
@@ -280,6 +285,42 @@ export function CityRailEditor({
 		},
 		[addCity, cities.length, handleCommit],
 	);
+
+	const handleOpenKeyDown = useEffectEvent((event: KeyboardEvent) => {
+		if (event.key === "Escape") {
+			setIsOpen(false);
+			return;
+		}
+		if (event.key === "ArrowDown") {
+			event.preventDefault();
+			setHighlightedIndex((prev) => Math.min(prev + 1, filteredCities.length - 1));
+			return;
+		}
+		if (event.key === "ArrowUp") {
+			event.preventDefault();
+			setHighlightedIndex((prev) => Math.max(prev - 1, 0));
+			return;
+		}
+		if (event.key === "Enter") {
+			event.preventDefault();
+			const city = filteredCities[highlightedIndex];
+			if (!city) return;
+			const cityIndex = cities.findIndex((item) => item.id === city.id);
+			if (cityIndex !== -1 && removeCity) {
+				removeCity(city.id);
+			} else {
+				addCity(city);
+				handleCommit(cities.length);
+			}
+		}
+	});
+
+	useEffect(() => {
+		if (!isOpen) return;
+
+		window.addEventListener("keydown", handleOpenKeyDown);
+		return () => window.removeEventListener("keydown", handleOpenKeyDown);
+	}, [isOpen]);
 
 	return (
 		<div
@@ -365,13 +406,13 @@ export function CityRailEditor({
 									value={search}
 									onChange={(event) => setSearch(event.target.value)}
 									placeholder="Search cities..."
-									className="w-full bg-transparent text-sm text-text outline-none placeholder:text-text-subtlest"
+									className="w-full bg-transparent text-sm text-text-subtlest outline-none placeholder:text-text-subtlest"
 								/>
 							</div>
 
 							<div className="relative min-h-0 flex-1">
 								<div
-									className="absolute inset-0 overflow-y-auto pr-1"
+									className="absolute inset-0 overflow-y-auto px-1"
 									onScroll={handleListScroll}
 									style={{
 										WebkitMaskImage: scrollFadeMask,
@@ -385,20 +426,26 @@ export function CityRailEditor({
 										)}
 									>
 										{filteredCities.length > 0 ? (
-											filteredCities.map((city) => {
+											filteredCities.map((city, index) => {
 												const cityIndex = cities.findIndex((item) => item.id === city.id);
-												const isSelected = cityIndex === selectedIndex;
+												const isSelected = cityIndex !== -1;
+												const isHighlighted = index === highlightedIndex;
 
 												return (
-													<div
+													<button
 														key={city.id}
-														className="flex items-center gap-2 px-3 py-2"
+														ref={isHighlighted ? (el) => el?.scrollIntoView({ block: "nearest" }) : undefined}
+														type="button"
+														onClick={() => handleCityRowPress(city, cityIndex)}
+														onPointerEnter={() => setHighlightedIndex(index)}
+														className={cn(
+															"flex w-full items-center gap-2 rounded-2xl px-3 py-2 text-left transition-colors duration-normal ease-out",
+															"hover:bg-bg-neutral-subtle-hovered active:bg-bg-neutral-subtle-pressed",
+															"focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-3 focus-visible:outline-none",
+															isHighlighted && "bg-bg-neutral-subtle-hovered",
+														)}
 													>
-														<button
-															type="button"
-															onClick={() => handleCityRowPress(city, cityIndex)}
-															className="min-w-0 flex-1 text-left"
-														>
+														<div className="min-w-0 flex-1">
 															<div className="flex items-center gap-2">
 																<span
 																	className="truncate text-sm font-medium text-text"
@@ -413,11 +460,11 @@ export function CityRailEditor({
 															>
 																{city.region}
 															</p>
-														</button>
+														</div>
 
 														{isSelected ? (
 															<span
-																className="flex h-8 w-8 shrink-0 items-center justify-center text-icon"
+																className="flex h-8 w-8 shrink-0 items-center justify-center text-icon-subtlest"
 																aria-hidden="true"
 															>
 																<CheckIcon className="size-3.5" />
@@ -425,7 +472,7 @@ export function CityRailEditor({
 														) : (
 															null
 														)}
-													</div>
+													</button>
 												);
 											})
 										) : (
@@ -476,7 +523,7 @@ export function CityRailEditor({
 							<button
 								type="button"
 								onClick={() => setIsOpen(true)}
-								className="flex h-7 w-7 items-center justify-center rounded-full border border-transparent text-icon transition-colors hover:bg-bg-neutral-subtle-hovered active:bg-bg-neutral-subtle-pressed"
+								className="flex h-7 w-7 items-center justify-center rounded-full border border-transparent text-icon-subtlest transition-colors hover:bg-bg-neutral-subtle-hovered active:bg-bg-neutral-subtle-pressed"
 								aria-label="Add city"
 							>
 								<PlusIcon className="size-3.5" />
@@ -505,8 +552,8 @@ export function CityRailEditor({
 									// remains. Unpinned still gets the soft hover
 									// chip so the affordance is discoverable.
 									isPinned
-										? "text-icon"
-										: "text-icon-subtle hover:bg-bg-neutral-subtle-hovered hover:text-icon active:bg-bg-neutral-subtle-pressed",
+										? "text-icon-subtlest"
+										: "text-icon-subtlest hover:bg-bg-neutral-subtle-hovered active:bg-bg-neutral-subtle-pressed",
 								)}
 								aria-pressed={isPinned}
 								aria-label={isPinned ? "Unpin city" : "Pin city"}

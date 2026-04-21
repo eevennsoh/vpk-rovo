@@ -1,7 +1,5 @@
 "use client";
 
-import { token } from "@/lib/tokens";
-
 import { CityRailEditor } from "@/components/arts/weather/city-popover";
 import { useCities } from "@/components/arts/weather/use-cities";
 
@@ -17,39 +15,28 @@ export default function GlassSliderDemo() {
 		useCities();
 
 	return (
-		<div className="flex w-full max-w-2xl flex-col" style={{ gap: token("space.400") }}>
+		<div
+			className="relative flex w-full items-center justify-center overflow-hidden px-6 py-8"
+			style={{
+				minHeight: 520,
+				height: "min(72vh, 620px)",
+			}}
+		>
 			<div
-				className="relative overflow-hidden border border-border"
+				className="relative z-10"
 				style={{
-					borderRadius: 28,
-					boxShadow: token("elevation.shadow.raised"),
-					backgroundColor: token("elevation.surface"),
+					width: SLIDER_RAIL_WIDTH + CITY_RAIL_TRACK_INSET,
+					height: SLIDER_HEIGHT,
 				}}
 			>
-				<div
-					className="relative flex w-full items-center justify-center overflow-hidden px-6 py-8"
-					style={{
-						minHeight: 520,
-						height: "min(72vh, 620px)",
-					}}
-				>
-					<div
-						className="relative z-10"
-						style={{
-							width: SLIDER_RAIL_WIDTH + CITY_RAIL_TRACK_INSET,
-							height: SLIDER_HEIGHT,
-						}}
-					>
-						<CityRailEditor
-							cities={cities}
-							selectedIndex={selectedIndex}
-							setSelectedIndex={setSelectedIndex}
-							addCity={addCity}
-							width={SLIDER_RAIL_WIDTH + CITY_RAIL_TRACK_INSET}
-							height={SLIDER_HEIGHT}
-						/>
-					</div>
-				</div>
+				<CityRailEditor
+					cities={cities}
+					selectedIndex={selectedIndex}
+					setSelectedIndex={setSelectedIndex}
+					addCity={addCity}
+					width={SLIDER_RAIL_WIDTH + CITY_RAIL_TRACK_INSET}
+					height={SLIDER_HEIGHT}
+				/>
 			</div>
 		</div>
 	);

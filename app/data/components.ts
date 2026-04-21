@@ -372,6 +372,7 @@ export const VISUAL_COMPONENTS: ComponentEntry[] = sortEntriesByName([
 	visualComponent("truchet", "Truchet", "@/components/website/demos/visual/shaders/truchet"),
 	visualComponent("fluted-glass", "Fluted Glass", "@/components/website/demos/visual/shaders/fluted-glass"),
 	visualComponent("liquid-glass", "Liquid Glass", "@/components/website/demos/visual/shaders/liquid-glass"),
+	visualComponent("glass-tabs", "Glass tabs", "@/components/ui/glass-tabs"),
 	visualComponent(
 		"glass-slider",
 		"Glass Slider",

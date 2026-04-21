@@ -10,12 +10,13 @@ import Noise, {
 } from "@/components/website/demos/visual/shaders/noise";
 import WaveGradient from "@/components/website/demos/visual/shaders/wave-gradient";
 import { Footer } from "@/components/ui/footer";
+import { GlassTabs } from "@/components/ui/glass-tabs";
 import { ReturnIcon } from "@/components/ui/vpk-icons";
 import { cn } from "@/lib/utils";
+import { motion } from "motion/react";
 
 import { CityRailEditor } from "./city-popover";
 import { DigitDisplay } from "./digit-display";
-import { GlassSegmentedControl } from "./glass-segmented-control";
 import { useCities } from "./use-cities";
 import { useCurrentWeather } from "./use-current-weather";
 import { useLocationClock } from "./use-location-clock";
@@ -75,33 +76,51 @@ function ThemeControl({
 
 	return (
 		<div
-			className="absolute left-1/2 top-4 z-20 -translate-x-1/2 transition-opacity duration-normal"
-			style={{
-				opacity: isVisible ? 1 : 0,
-				pointerEvents: isVisible ? "auto" : "none",
-			}}
+			className="absolute left-1/2 top-4 z-20 -translate-x-1/2"
+			style={{ pointerEvents: isVisible ? "auto" : "none" }}
 		>
-			<GlassSegmentedControl
-				aria-label="Theme"
-				options={options}
-				value={mode}
-				onChange={onChange}
-				keyboardSelectionPulseKey={keyboardSelectionPulseKey}
-			/>
+			<motion.div
+				animate={isVisible
+					? { opacity: 1, filter: "blur(0px)", transform: "scale(1) translateY(0px)" }
+					: { opacity: 0, filter: "blur(16px)", transform: "scale(0.82) translateY(-16px)" }
+				}
+				initial={{ opacity: 0, filter: "blur(16px)", transform: "scale(0.82) translateY(-16px)" }}
+				transition={{ duration: 0.35, ease: [0, 0.4, 0, 1] }}
+				style={{
+					transformOrigin: "top center",
+					willChange: "opacity, filter, transform",
+				}}
+			>
+				<GlassTabs
+					aria-label="Theme"
+					options={options}
+					value={mode}
+					onChange={onChange}
+					keyboardSelectionPulseKey={keyboardSelectionPulseKey}
+				/>
+			</motion.div>
 		</div>
 	);
 }
 
 function WeatherKeyboardHints({
 	isVisible,
+	isEditing,
 }: {
 	isVisible: boolean;
+	isEditing: boolean;
 }) {
 	return (
-			<div
-				className="absolute bottom-0 left-1/2 z-20 w-full max-w-[calc(100%-2rem)] -translate-x-1/2 px-4 transition-opacity duration-normal"
+		<div className="absolute bottom-0 left-1/2 z-20 w-full max-w-[calc(100%-2rem)] -translate-x-1/2 px-4">
+			<motion.div
+				animate={isVisible
+					? { opacity: 1, filter: "blur(0px)" }
+					: { opacity: 0, filter: "blur(16px)" }
+				}
+				initial={{ opacity: 0, filter: "blur(16px)" }}
+				transition={{ duration: 0.35, ease: [0, 0.4, 0, 1] }}
 				style={{
-					opacity: isVisible ? 1 : 0,
+					willChange: "opacity, filter",
 					pointerEvents: isVisible ? "auto" : "none",
 				}}
 			>
@@ -109,19 +128,32 @@ function WeatherKeyboardHints({
 					hideIcon
 					style={{ fontFamily: "'JetBrains Mono', monospace" }}
 				>
-				<span>
-					<kbd className="font-sans">←</kbd> <kbd className="font-sans">→</kbd> theme
-				</span>
-				<span aria-hidden>•</span>
-				<span>
-					<kbd className="font-sans">↑</kbd> <kbd className="font-sans">↓</kbd> city
-				</span>
-				<span aria-hidden>•</span>
-				<span className="inline-flex items-center gap-1">
-					<ReturnIcon className="size-3.5" />
-					Enter to update cities
-				</span>
-			</Footer>
+					{!isEditing && (
+						<>
+							<span>
+								<kbd className="font-sans">←</kbd> <kbd className="font-sans">→</kbd> theme
+							</span>
+							<span aria-hidden>•</span>
+						</>
+					)}
+					<span>
+						<kbd className="font-sans">↑</kbd> <kbd className="font-sans">↓</kbd> city
+					</span>
+					<span aria-hidden>•</span>
+					<span className="inline-flex items-center gap-1">
+						<ReturnIcon className="size-3.5" />
+						Enter to update cities
+					</span>
+					{isEditing && (
+						<>
+							<span aria-hidden>•</span>
+							<span>
+								<kbd className="font-sans">ESC</kbd> to cancel
+							</span>
+						</>
+					)}
+				</Footer>
+			</motion.div>
 		</div>
 	);
 }
@@ -668,7 +700,7 @@ export default function Weather({
 	}, []);
 
 	// Global weather-scene keyboard shortcuts:
-	// left/right cycle the theme, up/down move between cities, and Enter
+	// left/right step through the theme, up/down move between cities, and Enter
 	// opens the city manager. Text inputs and focused interactive
 	// controls keep their native keyboard behavior.
 	React.useEffect(() => {
@@ -705,16 +737,20 @@ export default function Weather({
 			const interactiveTarget = isInteractiveTarget(target);
 
 			if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
-				if (typingTarget || sliderTarget) return;
+				if (typingTarget || sliderTarget || interactiveTarget) return;
 
 				event.preventDefault();
 				revealThemeControlFromKeyboard();
 				const currentIndex = THEME_MODE_ORDER.indexOf(weatherMode);
 				const safeIndex = currentIndex === -1 ? 0 : currentIndex;
 				const delta = event.key === "ArrowLeft" ? -1 : 1;
-				const nextIndex =
-					(safeIndex + delta + THEME_MODE_ORDER.length) %
-					THEME_MODE_ORDER.length;
+				const nextIndex = Math.max(
+					0,
+					Math.min(safeIndex + delta, THEME_MODE_ORDER.length - 1),
+				);
+				if (nextIndex === safeIndex) {
+					return;
+				}
 				setThemeNavigationPulseKey((current) => current + 1);
 				updateWeatherMode(THEME_MODE_ORDER[nextIndex]);
 				return;
@@ -1074,7 +1110,7 @@ export default function Weather({
 			</div>
 
 			<WeatherDateSummary timezone={selected.timezone} />
-			<WeatherKeyboardHints isVisible={pointerViewportZone === "bottom"} />
+			<WeatherKeyboardHints isVisible={pointerViewportZone === "bottom"} isEditing={isCityManagerOpen} />
 		</div>
 	);
 }

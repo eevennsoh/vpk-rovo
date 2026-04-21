@@ -95,6 +95,36 @@ export const VISUAL_DETAILS: Record<string, ComponentDetail> = {
 			{ name: "style", type: "React.CSSProperties", description: "Inline styles object." },
 		],
 	},
+	"glass-tabs": {
+		description: "Shared liquid-glass segmented control extracted from the weather theme switcher. Uses the same elastic committed pill, hover ghost pill, and magnetic hover label drift as the weather scene.",
+		importStatement: `import { GlassTabs } from "@/components/ui/glass-tabs";`,
+		usage: `const options = [
+	{ value: "location", label: "Location" },
+	{ value: "system", label: "System" },
+	{ value: "light", label: "Light" },
+	{ value: "dark", label: "Dark" },
+] as const;
+
+type ThemeMode = (typeof options)[number]["value"];
+
+const [value, setValue] = React.useState<ThemeMode>("location");
+
+<GlassTabs
+	aria-label="Theme"
+	options={options}
+	value={value}
+	onChange={setValue}
+/>`,
+		props: [
+			{ name: "options", type: "ReadonlyArray<{ value: string; label: string }>", description: "Controlled list of tabs to render. Each option provides the string value and visible label." },
+			{ name: "value", type: "string", description: "Currently selected option value." },
+			{ name: "onChange", type: "(value: string) => void", description: "Called when the user commits a different tab via pointer or keyboard." },
+			{ name: "keyboardSelectionPulseKey", type: "number", description: "Optional external pulse used when parent-level keyboard shortcuts change `value`, so the pill uses the tighter keyboard animation path." },
+			{ name: "aria-label", type: "string", description: "Accessible name applied to the radiogroup wrapper." },
+			{ name: "className", type: "string", description: "Additional class names merged onto the outer glass shell." },
+			{ name: "style", type: "React.CSSProperties", description: "Inline styles merged onto the outer glass shell." },
+		],
+	},
 	"glass-slider": {
 		description: "The vertical liquid-glass slider used by the weather demo (CityRailEditor + inner GlassSlider). Renders the exact same component the /weather page uses, including the same city list, liquid-glass shell, and rainbow tick.",
 		importStatement: `import { GlassSlider, DEFAULT_FILL_GLASS_PROPS, DEFAULT_FILL_TINT_GRADIENT } from "@/components/arts/weather/glass-slider";\nimport { CityRailEditor } from "@/components/arts/weather/city-popover";`,
