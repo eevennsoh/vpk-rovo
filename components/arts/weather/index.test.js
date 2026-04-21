@@ -17,11 +17,23 @@ test("Weather keeps the ticking clock state out of the top-level scene", () => {
 	assert.match(WEATHER_SOURCE, /function WeatherDateSummary\(/);
 	assert.match(
 		WEATHER_SOURCE,
-		/<WeatherTimeCard[\s\S]*timezone=\{selected\.timezone\}/,
+		/function SelectedWeatherClock\(/,
 	);
 	assert.match(
 		WEATHER_SOURCE,
-		/<WeatherDateSummary timezone=\{selected\.timezone\} \/>/,
+		/const clock = useLocationClock\(timezone\);/,
+	);
+	assert.match(
+		WEATHER_SOURCE,
+		/<SelectedWeatherClock[\s\S]*timezone=\{selected\.timezone\}/,
+	);
+	assert.match(
+		WEATHER_SOURCE,
+		/<WeatherTimeCard[\s\S]*clock=\{clock\}/,
+	);
+	assert.match(
+		WEATHER_SOURCE,
+		/<WeatherDateSummary clock=\{clock\} \/>/,
 	);
 });
 
