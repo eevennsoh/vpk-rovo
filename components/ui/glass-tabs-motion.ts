@@ -118,6 +118,32 @@ const MAX_SHELL_STRETCH_PX = 32;
 const MAX_SHELL_THIN_RATIO = 0.14;
 const EDGE_PILL_STRETCH_FOLLOW_RATIO = 0.94;
 
+function getEdgeFollowerLeft(
+	baseLeft: number,
+	stretch: number,
+	index: number | null,
+): number {
+	if (index === 0 && stretch < 0) {
+		return baseLeft + stretch * EDGE_PILL_STRETCH_FOLLOW_RATIO;
+	}
+	return baseLeft;
+}
+
+function getEdgeFollowerWidth(
+	baseWidth: number,
+	stretch: number,
+	index: number | null,
+	lastIndex: number,
+): number {
+	if (index === 0 && stretch < 0) {
+		return baseWidth + Math.abs(stretch) * EDGE_PILL_STRETCH_FOLLOW_RATIO;
+	}
+	if (index === lastIndex && stretch > 0) {
+		return baseWidth + stretch * EDGE_PILL_STRETCH_FOLLOW_RATIO;
+	}
+	return baseWidth;
+}
+
 // Reverse-engineered from the "Magnetic Hover" component shipped on
 // magnet.learnframer.site (chunk-ND35KM2X.mjs).
 const MAGNET_PARENT_DISTANCE = 10;
@@ -214,43 +240,35 @@ export function useGlassTabsMotion<TValue extends string>({
 	// selected tab is at the edge — first tab stretches left with the
 	// shell, last tab stretches right. Middle tabs stay put.
 	const pillDisplayLeft = useTransform(() => {
-		const stretch = shellStretch.get();
-		const idx = selectedIndexRef.current;
-		if (idx === 0 && stretch < 0) {
-			return pillLeft.get() + stretch * EDGE_PILL_STRETCH_FOLLOW_RATIO;
-		}
-		return pillLeft.get();
+		return getEdgeFollowerLeft(
+			pillLeft.get(),
+			shellStretch.get(),
+			selectedIndexRef.current,
+		);
 	});
 	const pillDisplayWidth = useTransform(() => {
-		const stretch = shellStretch.get();
-		const idx = selectedIndexRef.current;
-		if (idx === 0 && stretch < 0) {
-			return pillWidth.get() + Math.abs(stretch) * EDGE_PILL_STRETCH_FOLLOW_RATIO;
-		}
-		if (idx === lastIndex && stretch > 0) {
-			return pillWidth.get() + stretch * EDGE_PILL_STRETCH_FOLLOW_RATIO;
-		}
-		return pillWidth.get();
+		return getEdgeFollowerWidth(
+			pillWidth.get(),
+			shellStretch.get(),
+			selectedIndexRef.current,
+			lastIndex,
+		);
 	});
 
 	const hoverPillDisplayLeft = useTransform(() => {
-		const stretch = shellStretch.get();
-		const idx = hoveredIndexRef.current;
-		if (idx === 0 && stretch < 0) {
-			return hoverPillLeft.get() + stretch * EDGE_PILL_STRETCH_FOLLOW_RATIO;
-		}
-		return hoverPillLeft.get();
+		return getEdgeFollowerLeft(
+			hoverPillLeft.get(),
+			shellStretch.get(),
+			hoveredIndexRef.current,
+		);
 	});
 	const hoverPillDisplayWidth = useTransform(() => {
-		const stretch = shellStretch.get();
-		const idx = hoveredIndexRef.current;
-		if (idx === 0 && stretch < 0) {
-			return hoverPillWidth.get() + Math.abs(stretch) * EDGE_PILL_STRETCH_FOLLOW_RATIO;
-		}
-		if (idx === lastIndex && stretch > 0) {
-			return hoverPillWidth.get() + stretch * EDGE_PILL_STRETCH_FOLLOW_RATIO;
-		}
-		return hoverPillWidth.get();
+		return getEdgeFollowerWidth(
+			hoverPillWidth.get(),
+			shellStretch.get(),
+			hoveredIndexRef.current,
+			lastIndex,
+		);
 	});
 
 	const parentMagnetX = useMotionValue(0);
