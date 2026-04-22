@@ -8,26 +8,14 @@ const WEATHER_SOURCE = fs.readFileSync(
 	"utf8",
 );
 
-test("Weather opens the wake-lock popover when the W shortcut activates keep-awake", () => {
+test("Weather toggles keep-awake directly from the W shortcut", () => {
+	assert.doesNotMatch(WEATHER_SOURCE, /openWakeLockMenuRequestKey/);
 	assert.match(
 		WEATHER_SOURCE,
-		/const \[openWakeLockMenuRequestKey, setOpenWakeLockMenuRequestKey\] = React\.useState\(0\);/,
-	);
-	assert.match(WEATHER_SOURCE, /openRequestKey\?: number;/);
-	assert.match(
-		WEATHER_SOURCE,
-		/React\.useEffect\(\(\) => \{\s+if \(openRequestKey <= lastOpenRequestKeyRef\.current \|\| disabled\) \{\s+return;\s+\}\s+lastOpenRequestKeyRef\.current = openRequestKey;\s+allowNextOpenRef\.current = true;\s+setIsPositionOpen\(true\);\s+setIsTooltipOpen\(false\);\s+\}, \[disabled, openRequestKey\]\);/s,
+		/if \(normalizedKey === "w"\) \{\s+if \(\s+event\.repeat \|\|\s+hasShortcutModifier \|\|\s+typingTarget \|\|\s+sliderTarget \|\|\s+interactiveTarget \|\|\s+isCityManagerOpen \|\|\s+!isWakeLockSupported\s+\) \{\s+return;\s+\}\s+event\.preventDefault\(\);\s+revealThemeControlFromKeyboard\(\);\s+handleWakeLockToggle\(\);\s+if \(wakeLockButtonRef\.current\) \{\s+animate\(wakeLockButtonRef\.current, \{ scale: \[0\.82, 1\] \}, \{ type: "spring", duration: 0\.4, bounce: 0\.55 \}\);\s+\}\s+return;\s+\}/s,
 	);
 	assert.match(
 		WEATHER_SOURCE,
-		/openRequestKey=\{wakeLock\.openRequestKey\}/,
-	);
-	assert.match(
-		WEATHER_SOURCE,
-		/if \(normalizedKey === "w"\) \{\s+if \(\s+event\.repeat \|\|\s+hasShortcutModifier \|\|\s+typingTarget \|\|\s+sliderTarget \|\|\s+interactiveTarget \|\|\s+isCityManagerOpen \|\|\s+!isWakeLockSupported\s+\) \{\s+return;\s+\}\s+event\.preventDefault\(\);\s+revealThemeControlFromKeyboard\(\);\s+handleWakeLockToggle\(\);\s+if \(!isWakeLockEnabled\) \{\s+setOpenWakeLockMenuRequestKey\(\(current\) => current \+ 1\);\s+\}\s+if \(wakeLockButtonRef\.current\) \{/s,
-	);
-	assert.match(
-		WEATHER_SOURCE,
-		/wakeLock=\{\{[\s\S]*openRequestKey: openWakeLockMenuRequestKey,[\s\S]*\}\}/,
+		/wakeLock=\{\{[\s\S]*status: wakeLockStatus,[\s\S]*statusMessage: wakeLockStatusMessage,[\s\S]*onToggle: handleWakeLockToggle,[\s\S]*\}\}/,
 	);
 });

@@ -35,7 +35,11 @@ import { DigitDisplay, FlipText } from "./digit-display";
 import { useCities } from "./use-cities";
 import { useCurrentWeather } from "./use-current-weather";
 import { type LocationClock, useLocationClock } from "./use-location-clock";
-import { useWakeLock } from "./use-wake-lock";
+import {
+	type WakeLockStatus,
+	useWakeLock,
+	WAKE_LOCK_VISIBLE_TAB_MESSAGE,
+} from "./use-wake-lock";
 import { WeatherIcon } from "./weather-icon";
 import {
 	WidgetCard,
@@ -207,6 +211,8 @@ function ThemeControl({
 		isSupported: boolean;
 		isEnabled: boolean;
 		isActive: boolean;
+		status: WakeLockStatus;
+		statusMessage: string | null;
 		error: string | null;
 		onToggle: () => void;
 		buttonRef?: React.RefObject<HTMLButtonElement | null>;
@@ -337,18 +343,20 @@ function ThemeControl({
 							// the shell's `transformOrigin: center`).
 							transformOrigin: "center",
 						}}
-					>
-						<WakeLockControl
-							isTabbable={isThemeChromeVisible}
-							isSupported={wakeLock.isSupported}
-							isEnabled={wakeLock.isEnabled}
-							isActive={wakeLock.isActive}
-							error={wakeLock.error}
-							onToggle={wakeLock.onToggle}
-							buttonRef={wakeLock.buttonRef}
-							cutoutFillColor={cutoutFillColor}
-							cutoutIconFilter={cutoutIconFilter}
-							noiseColor={noiseColor}
+						>
+							<WakeLockControl
+								isTabbable={isThemeChromeVisible}
+								isSupported={wakeLock.isSupported}
+								isEnabled={wakeLock.isEnabled}
+								isActive={wakeLock.isActive}
+								status={wakeLock.status}
+								statusMessage={wakeLock.statusMessage}
+								error={wakeLock.error}
+								onToggle={wakeLock.onToggle}
+								buttonRef={wakeLock.buttonRef}
+								cutoutFillColor={cutoutFillColor}
+								cutoutIconFilter={cutoutIconFilter}
+								noiseColor={noiseColor}
 							noiseOpacity={noiseOpacity}
 							noiseBlendMode={noiseBlendMode}
 						/>
@@ -364,6 +372,8 @@ function WakeLockControl({
 	isSupported,
 	isEnabled,
 	isActive,
+	status,
+	statusMessage,
 	error,
 	onToggle,
 	buttonRef,
@@ -377,6 +387,8 @@ function WakeLockControl({
 	isSupported: boolean;
 	isEnabled: boolean;
 	isActive: boolean;
+	status: WakeLockStatus;
+	statusMessage: string | null;
 	error: string | null;
 	onToggle: () => void;
 	buttonRef?: React.RefObject<HTMLButtonElement | null>;
@@ -389,11 +401,10 @@ function WakeLockControl({
 	const disabled = !isSupported;
 	const labelOn = "Allow screen to sleep";
 	const labelOff = "Keep screen awake";
+	const inlineStatusMessage = status === "waiting-for-visible" ? statusMessage : null;
 	const tooltip = disabled
 		? "Keep awake is not supported in this browser"
-		: isEnabled
-			? labelOn
-			: labelOff;
+		: error ?? inlineStatusMessage ?? (isEnabled ? labelOn : labelOff);
 
 	return (
 		<TooltipProvider>
@@ -1102,6 +1113,8 @@ export default function Weather({
 		isSupported: isWakeLockSupported,
 		isEnabled: isWakeLockEnabled,
 		isActive: isWakeLockActive,
+		status: wakeLockStatus,
+		statusMessage: wakeLockStatusMessage,
 		error: wakeLockError,
 		toggle: toggleWakeLock,
 	} = useWakeLock();
@@ -1444,31 +1457,138 @@ export default function Weather({
 	const temperature = formatTemperature(weather.temperatureCelsius);
 
 	const [awakeElapsed, setAwakeElapsed] = React.useState(0);
-	const awakeStartRef = React.useRef<number | null>(null);
+	const awakeElapsedMsRef = React.useRef(0);
+	const awakeSessionStartedAtRef = React.useRef<number | null>(null);
+	const [isWakeLockReturnReminderVisible, setIsWakeLockReturnReminderVisible] = React.useState(false);
+	const wakeLockReturnReminderTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+	const previousWakeLockStatusRef = React.useRef(wakeLockStatus);
+	const isWakeLockTimerRunning =
+		isWakeLockEnabled &&
+		isWakeLockActive &&
+		!isWakeLockReturnReminderVisible;
+
 	React.useEffect(() => {
+		const previousStatus = previousWakeLockStatusRef.current;
+		previousWakeLockStatusRef.current = wakeLockStatus;
+
 		if (!isWakeLockEnabled) {
-			awakeStartRef.current = null;
+			if (wakeLockReturnReminderTimeoutRef.current !== null) {
+				clearTimeout(wakeLockReturnReminderTimeoutRef.current);
+				wakeLockReturnReminderTimeoutRef.current = null;
+			}
+			setIsWakeLockReturnReminderVisible(false);
 			return;
 		}
-		setAwakeElapsed(0);
-		awakeStartRef.current = Date.now();
-		const tick = () => {
-			if (awakeStartRef.current !== null) {
-				setAwakeElapsed(Math.floor((Date.now() - awakeStartRef.current) / 1000));
+
+		if (
+			previousStatus === "waiting-for-visible" &&
+			wakeLockStatus === "active" &&
+			isWakeLockActive
+		) {
+			setIsWakeLockReturnReminderVisible(true);
+			if (wakeLockReturnReminderTimeoutRef.current !== null) {
+				clearTimeout(wakeLockReturnReminderTimeoutRef.current);
+			}
+			wakeLockReturnReminderTimeoutRef.current = setTimeout(() => {
+				setIsWakeLockReturnReminderVisible(false);
+				wakeLockReturnReminderTimeoutRef.current = null;
+			}, 3000);
+			return;
+		}
+
+		if (wakeLockStatus !== "active" && isWakeLockReturnReminderVisible) {
+			if (wakeLockReturnReminderTimeoutRef.current !== null) {
+				clearTimeout(wakeLockReturnReminderTimeoutRef.current);
+				wakeLockReturnReminderTimeoutRef.current = null;
+			}
+			setIsWakeLockReturnReminderVisible(false);
+		}
+	}, [isWakeLockActive, isWakeLockEnabled, isWakeLockReturnReminderVisible, wakeLockStatus]);
+
+	React.useEffect(() => {
+		return () => {
+			if (wakeLockReturnReminderTimeoutRef.current !== null) {
+				clearTimeout(wakeLockReturnReminderTimeoutRef.current);
 			}
 		};
+	}, []);
+
+	React.useEffect(() => {
+		if (!isWakeLockEnabled) {
+			awakeSessionStartedAtRef.current = null;
+			awakeElapsedMsRef.current = 0;
+			setAwakeElapsed(0);
+			return;
+		}
+
+		if (!isWakeLockTimerRunning) {
+			if (awakeSessionStartedAtRef.current !== null) {
+				awakeElapsedMsRef.current += Date.now() - awakeSessionStartedAtRef.current;
+				awakeSessionStartedAtRef.current = null;
+			}
+			setAwakeElapsed(Math.floor(awakeElapsedMsRef.current / 1000));
+			return;
+		}
+
+		awakeSessionStartedAtRef.current = Date.now();
+		const tick = () => {
+			const sessionStartedAt = awakeSessionStartedAtRef.current;
+			const sessionElapsedMs =
+				sessionStartedAt === null ? 0 : Date.now() - sessionStartedAt;
+			setAwakeElapsed(
+				Math.floor((awakeElapsedMsRef.current + sessionElapsedMs) / 1000),
+			);
+		};
+		tick();
 		const id = setInterval(tick, 1000);
-		return () => clearInterval(id);
-	}, [isWakeLockEnabled]);
+		return () => {
+			clearInterval(id);
+			if (awakeSessionStartedAtRef.current !== null) {
+				awakeElapsedMsRef.current += Date.now() - awakeSessionStartedAtRef.current;
+				awakeSessionStartedAtRef.current = null;
+			}
+		};
+	}, [isWakeLockEnabled, isWakeLockTimerRunning]);
 
 	const awakeHours = String(Math.floor(awakeElapsed / 3600)).padStart(2, "0");
 	const awakeMinutes = String(Math.floor((awakeElapsed % 3600) / 60)).padStart(2, "0");
 	const awakeSeconds = String(awakeElapsed % 60).padStart(2, "0");
+	const wakeLockWarning = isWakeLockEnabled && !isWakeLockActive
+		? wakeLockStatus === "waiting-for-visible"
+			? wakeLockStatusMessage
+			: wakeLockError
+		: isWakeLockReturnReminderVisible
+			? WAKE_LOCK_VISIBLE_TAB_MESSAGE
+		: null;
 
 	const cityTitleContent = (
 		<div className="text-text relative flex flex-col items-center text-center">
-			<AnimatePresence>
-				{isWakeLockEnabled ? (
+			<AnimatePresence initial={false}>
+				{wakeLockWarning ? (
+					<motion.span
+						key="awake-warning"
+						role="status"
+						aria-live="polite"
+						// Plain inline text — no yellow pill chrome
+						// (border / bg / rounded-full / padding stripped).
+						// Matches the awake-timer counter underneath in
+						// color (`text-text`) and motion. The reminder
+						// auto-dismisses after 3 s via the
+						// `wakeLockReturnReminderTimeoutRef` timeout above.
+						className="text-text absolute bottom-full mb-2 inline-flex max-w-[20rem] text-center text-[11px]/[15px]"
+						initial={{ opacity: 0, filter: "blur(12px)", y: 8 }}
+						animate={{ opacity: 1, filter: "blur(0px)", y: 0 }}
+						exit={{ opacity: 0, filter: "blur(12px)", y: 8 }}
+						transition={{ duration: 0.35, ease: [0, 0.4, 0, 1] }}
+						style={{
+							fontFamily: "'DotGothic16', sans-serif",
+							letterSpacing: "0.04em",
+							willChange: "opacity, filter, transform",
+						}}
+					>
+						{wakeLockWarning}
+					</motion.span>
+				) : isWakeLockEnabled ? (
 					<motion.span
 						key="awake-timer"
 						className="text-text absolute bottom-full mb-2 tabular-nums tracking-[0.08em]"
@@ -1541,6 +1661,8 @@ export default function Weather({
 					isSupported: isWakeLockSupported,
 					isEnabled: isWakeLockEnabled,
 					isActive: isWakeLockActive,
+					status: wakeLockStatus,
+					statusMessage: wakeLockStatusMessage,
 					error: wakeLockError,
 					onToggle: handleWakeLockToggle,
 					buttonRef: wakeLockButtonRef,
@@ -1549,12 +1671,12 @@ export default function Weather({
 				// Pass the small-scale cutout filter — the wake-lock eye
 				// icon is 16×16, so the hero `cutoutIconFilter` (sized for
 				// the ~120px temperature numerals and the larger weather
-					// icon) reads as an oversized emboss against the busy
-					// Rings shader at this footprint.
-					cutoutIconFilter={cutoutIconFilterSmall}
-					noiseColor={noiseColor}
-					noiseOpacity={noiseOpacity}
-					noiseBlendMode={noiseBlendMode}
+				// icon) reads as an oversized emboss against the busy
+				// Rings shader at this footprint.
+				cutoutIconFilter={cutoutIconFilterSmall}
+				noiseColor={noiseColor}
+				noiseOpacity={noiseOpacity}
+				noiseBlendMode={noiseBlendMode}
 			/>
 
 				{isEntranceAnimating ? (

@@ -76,10 +76,14 @@ test("Weather splits pointer-driven chrome between the top theme control and bot
 	);
 	assert.match(WEATHER_SOURCE, /function WeatherKeyboardHints\(/);
 	assert.match(WEATHER_SOURCE, /showWakeShortcut: boolean;/);
-	assert.match(
-		WEATHER_SOURCE,
-		/const \{\s+isSupported: isWakeLockSupported,\s+isEnabled: isWakeLockEnabled,\s+isActive: isWakeLockActive,\s+error: wakeLockError,\s+toggle: toggleWakeLock,\s+\} = useWakeLock\(\);/s,
-	);
+		assert.match(
+			WEATHER_SOURCE,
+			/const \{\s+isSupported: isWakeLockSupported,\s+isEnabled: isWakeLockEnabled,\s+isActive: isWakeLockActive,\s+status: wakeLockStatus,\s+statusMessage: wakeLockStatusMessage,\s+error: wakeLockError,\s+toggle: toggleWakeLock,\s+\} = useWakeLock\(\);/s,
+		);
+		assert.match(
+			WEATHER_SOURCE,
+			/WAKE_LOCK_VISIBLE_TAB_MESSAGE,\s*\n\} from "\.\/use-wake-lock";/s,
+		);
 	assert.match(WEATHER_SOURCE, /const handleWakeLockToggle = React\.useCallback\(\(\) => \{/);
 	assert.match(WEATHER_SOURCE, /const revealThemeControlFromKeyboard = React\.useCallback\(\(\) => \{/);
 	assert.match(WEATHER_SOURCE, /setIsThemeKeyboardVisible\(true\);/);
@@ -122,7 +126,7 @@ test("Weather splits pointer-driven chrome between the top theme control and bot
 	assert.match(WEATHER_SOURCE, /if \(normalizedKey === "w"\) \{/);
 	assert.match(
 		WEATHER_SOURCE,
-		/if \(normalizedKey === "w"\) \{\s+if \(\s+event\.repeat \|\|\s+hasShortcutModifier \|\|\s+typingTarget \|\|\s+sliderTarget \|\|\s+interactiveTarget \|\|\s+isCityManagerOpen \|\|\s+!isWakeLockSupported\s+\) \{\s+return;\s+\}\s+event\.preventDefault\(\);\s+revealThemeControlFromKeyboard\(\);\s+handleWakeLockToggle\(\);\s+return;\s+\}/s,
+		/if \(normalizedKey === "w"\) \{\s+if \(\s+event\.repeat \|\|\s+hasShortcutModifier \|\|\s+typingTarget \|\|\s+sliderTarget \|\|\s+interactiveTarget \|\|\s+isCityManagerOpen \|\|\s+!isWakeLockSupported\s+\) \{\s+return;\s+\}\s+event\.preventDefault\(\);\s+revealThemeControlFromKeyboard\(\);\s+handleWakeLockToggle\(\);\s+if \(wakeLockButtonRef\.current\) \{\s+animate\(wakeLockButtonRef\.current, \{ scale: \[0\.82, 1\] \}, \{ type: "spring", duration: 0\.4, bounce: 0\.55 \}\);\s+\}\s+return;\s+\}/s,
 	);
 	assert.match(
 		WEATHER_SOURCE,
@@ -147,10 +151,10 @@ test("Weather splits pointer-driven chrome between the top theme control and bot
 		WEATHER_SOURCE,
 		/keyboardSelectionPulseKey=\{themeNavigationPulseKey\}/,
 	);
-	assert.match(
-		WEATHER_SOURCE,
-		/wakeLock=\{\{[\s\S]*isSupported: isWakeLockSupported,[\s\S]*isEnabled: isWakeLockEnabled,[\s\S]*isActive: isWakeLockActive,[\s\S]*error: wakeLockError,[\s\S]*onToggle: handleWakeLockToggle,[\s\S]*\}\}/,
-	);
+		assert.match(
+			WEATHER_SOURCE,
+			/wakeLock=\{\{[\s\S]*isSupported: isWakeLockSupported,[\s\S]*isEnabled: isWakeLockEnabled,[\s\S]*isActive: isWakeLockActive,[\s\S]*status: wakeLockStatus,[\s\S]*statusMessage: wakeLockStatusMessage,[\s\S]*error: wakeLockError,[\s\S]*onToggle: handleWakeLockToggle,[\s\S]*\}\}/,
+		);
 	assert.match(
 		WEATHER_SOURCE,
 		/focus-visible:border-ring focus-visible:ring-ring\/50 focus-visible:ring-3 focus-visible:outline-none/,
@@ -171,23 +175,35 @@ test("Weather splits pointer-driven chrome between the top theme control and bot
 test("Weather renders the city slider last in source so the glass shell can overlap the other cards", () => {
 	assert.match(
 		WEATHER_SOURCE,
-		/const cityTitleContent = \(\s*<div className="text-text flex flex-col items-center gap-2">/s,
+		/const cityTitleContent = \(\s*<div className="text-text relative flex flex-col items-center text-center">/s,
 	);
 	assert.match(
 		WEATHER_SOURCE,
-		/\{isEntranceAnimating \? \(\s*<motion\.div[\s\S]*\{cityTitleContent\}[\s\S]*\) : \(\s*<div aria-hidden="true" className="pointer-events-none opacity-0">\s*\{cityTitleContent\}[\s\S]*\)\}/s,
+		/const wakeLockWarning = isWakeLockEnabled && !isWakeLockActive\s+\?\s+wakeLockStatus === "waiting-for-visible"\s+\?\s+wakeLockStatusMessage\s+:\s+wakeLockError\s+:\s+isWakeLockReturnReminderVisible\s+\?\s+WAKE_LOCK_VISIBLE_TAB_MESSAGE\s+:\s+null;/s,
 	);
 	assert.match(
 		WEATHER_SOURCE,
-		/<motion\.div[\s\S]*className=\{isRowLayout \? "order-2" : "col-start-2 row-start-1"\}[\s\S]*<WeatherTimeCard/s,
+		/<AnimatePresence initial=\{false\}>[\s\S]*wakeLockWarning \? \([\s\S]*key="awake-warning"[\s\S]*role="status"[\s\S]*aria-live="polite"[\s\S]*\{wakeLockWarning\}/s,
 	);
 	assert.match(
 		WEATHER_SOURCE,
-		/<motion\.div[\s\S]*className=\{isRowLayout \? "order-3" : "col-start-1 row-start-2"\}[\s\S]*Humid %/s,
+		/key="awake-warning"[\s\S]*fontFamily: "'DotGothic16', sans-serif"/s,
 	);
 	assert.match(
 		WEATHER_SOURCE,
-		/<motion\.div[\s\S]*className=\{isRowLayout \? "order-4" : "col-start-2 row-start-2"\}[\s\S]*Temp °C/s,
+		/\{isEntranceAnimating \? \(\s*<motion\.div[\s\S]*\{cityTitleContent\}[\s\S]*\) : \(\s*cityTitleContent\s*\)\}/s,
+	);
+	assert.match(
+		WEATHER_SOURCE,
+		/<SelectedWeatherClock[\s\S]*timeClassName=\{isRowLayout \? "col-start-2 row-start-1" : "col-start-2 row-start-1"\}/s,
+	);
+	assert.match(
+		WEATHER_SOURCE,
+		/<motion\.div[\s\S]*className=\{isRowLayout \? "col-start-3 row-start-1" : "col-start-1 row-start-2"\}[\s\S]*Humid %/s,
+	);
+	assert.match(
+		WEATHER_SOURCE,
+		/<motion\.div[\s\S]*className=\{isRowLayout \? "col-start-4 row-start-1" : "col-start-2 row-start-2"\}[\s\S]*Temp °C/s,
 	);
 	assert.match(
 		WEATHER_SOURCE,
@@ -199,10 +215,6 @@ test("Weather renders the city slider last in source so the glass shell can over
 		WEATHER_SOURCE,
 		/\{isEntranceAnimating \? \(\s*<motion\.div[\s\S]*pointerEvents: "none"[\s\S]*\{cityRailEditor\}[\s\S]*\) : \(\s*<div[\s\S]*style=\{\{ marginBottom: sliderOverlapMarginBottom \}\}[\s\S]*\{cityRailEditor\}[\s\S]*\)\}/s,
 	);
-	assert.match(
-		WEATHER_SOURCE,
-		/\{!isEntranceAnimating \? \(\s*<div className="pointer-events-none absolute left-1\/2 bottom-full mb-6 -translate-x-1\/2">\s*\{cityTitleContent\}[\s\S]*\) : null\}/s,
-	);
 	assert.ok(
 		WEATHER_SOURCE.lastIndexOf("{cityRailEditor}") > WEATHER_SOURCE.lastIndexOf("Temp °C"),
 		"cityRailEditor should be rendered after the other cards in source order",
@@ -210,12 +222,60 @@ test("Weather renders the city slider last in source so the glass shell can over
 	assert.doesNotMatch(WEATHER_SOURCE, /<motion\.div\s+className="relative z-20"[\s\S]*\{cityRailEditor\}/s);
 });
 
+test("Weather only advances the awake timer while the wake lock is active", () => {
+	assert.match(WEATHER_SOURCE, /const \[awakeElapsed, setAwakeElapsed\] = React\.useState\(0\);/);
+	assert.match(WEATHER_SOURCE, /const awakeElapsedMsRef = React\.useRef\(0\);/);
+	assert.match(
+		WEATHER_SOURCE,
+		/const awakeSessionStartedAtRef = React\.useRef<number \| null>\(null\);/,
+	);
+	assert.match(
+		WEATHER_SOURCE,
+		/const \[isWakeLockReturnReminderVisible, setIsWakeLockReturnReminderVisible\] = React\.useState\(false\);/,
+	);
+	assert.match(
+		WEATHER_SOURCE,
+		/const wakeLockReturnReminderTimeoutRef = React\.useRef<ReturnType<typeof setTimeout> \| null>\(null\);/,
+	);
+	assert.match(
+		WEATHER_SOURCE,
+		/const previousWakeLockStatusRef = React\.useRef\(wakeLockStatus\);/,
+	);
+	assert.match(
+		WEATHER_SOURCE,
+		/const isWakeLockTimerRunning =\s+isWakeLockEnabled &&\s+isWakeLockActive &&\s+!isWakeLockReturnReminderVisible;/s,
+	);
+	assert.match(
+		WEATHER_SOURCE,
+		/if \(\s+previousStatus === "waiting-for-visible" &&\s+wakeLockStatus === "active" &&\s+isWakeLockActive\s+\) \{\s+setIsWakeLockReturnReminderVisible\(true\);[\s\S]*setTimeout\(\(\) => \{\s+setIsWakeLockReturnReminderVisible\(false\);[\s\S]*\}, 3000\);/s,
+	);
+	assert.match(
+		WEATHER_SOURCE,
+		/if \(!isWakeLockEnabled\) \{\s+awakeSessionStartedAtRef\.current = null;\s+awakeElapsedMsRef\.current = 0;\s+setAwakeElapsed\(0\);\s+return;\s+\}/s,
+	);
+	assert.match(
+		WEATHER_SOURCE,
+		/if \(!isWakeLockTimerRunning\) \{\s+if \(awakeSessionStartedAtRef\.current !== null\) \{\s+awakeElapsedMsRef\.current \+= Date\.now\(\) - awakeSessionStartedAtRef\.current;\s+awakeSessionStartedAtRef\.current = null;\s+\}\s+setAwakeElapsed\(Math\.floor\(awakeElapsedMsRef\.current \/ 1000\)\);\s+return;\s+\}/s,
+	);
+	assert.match(
+		WEATHER_SOURCE,
+		/setAwakeElapsed\(\s*Math\.floor\(\(awakeElapsedMsRef\.current \+ sessionElapsedMs\) \/ 1000\),\s*\);/s,
+	);
+	assert.match(
+		WEATHER_SOURCE,
+		/\}, \[isWakeLockEnabled, isWakeLockTimerRunning\]\);/,
+	);
+});
+
 test("CityRailEditor opens the city manager with Enter from the focused slider", () => {
 	assert.match(CITY_POPOVER_SOURCE, /openRequestKey\?: number;/);
 	assert.match(CITY_POPOVER_SOURCE, /onOpenChange\?: \(isOpen: boolean\) => void;/);
 	assert.match(CITY_POPOVER_SOURCE, /keyboardNavigationPulseKey\?: number;/);
 	assert.match(CITY_POPOVER_SOURCE, /onOpenChange\?\.\(isOpen\);/);
-	assert.match(CITY_POPOVER_SOURCE, /if \(openRequestKey <= 0 \|\| isOpen\) return;/);
+	assert.match(
+		CITY_POPOVER_SOURCE,
+		/if \(\s+openRequestKey <= 0 \|\|\s+openRequestKey === handledOpenRequestKeyRef\.current\s+\) \{\s+return;\s+\}/s,
+	);
 	assert.match(
 		CITY_POPOVER_SOURCE,
 		/playSound\("\/sound\/click-001\.mp3"\);\s+setIsOpen\(true\);\s+setHighlightedIndex\(0\);/s,

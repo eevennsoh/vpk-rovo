@@ -3,6 +3,11 @@
 import * as React from "react";
 
 export const WAKE_LOCK_STORAGE_KEY = "vpk:weather:wake-lock";
+export const WAKE_LOCK_VISIBLE_TAB_MESSAGE = "Remember to keep this page active";
+
+export type WakeLockStatus = "idle" | "active" | "waiting-for-visible";
+
+const WAKE_LOCK_VISIBLE_TAB_TITLE = "Return to Weather to keep screen awake";
 
 interface MinimalWakeLockSentinel {
 	released: boolean;
@@ -32,6 +37,10 @@ export interface UseWakeLockResult {
 	isActive: boolean;
 	/** True when the user has requested the lock be on (pref persisted). */
 	isEnabled: boolean;
+	/** Semantic wake-lock status used for user-facing UI. */
+	status: WakeLockStatus;
+	/** Human-readable non-error status copy for the current state. */
+	statusMessage: string | null;
 	/** Last error encountered when requesting/releasing the lock. */
 	error: string | null;
 	enable: () => Promise<void>;
@@ -96,31 +105,65 @@ export function useWakeLock(
 	const [isSupported, setIsSupported] = React.useState(false);
 	const [isEnabled, setIsEnabled] = React.useState(false);
 	const [isActive, setIsActive] = React.useState(false);
+	const [status, setStatus] = React.useState<WakeLockStatus>("idle");
+	const [statusMessage, setStatusMessage] = React.useState<string | null>(null);
 	const [error, setError] = React.useState<string | null>(null);
 
 	const sentinelRef = React.useRef<MinimalWakeLockSentinel | null>(null);
 	const isEnabledRef = React.useRef(false);
+	const previousDocumentTitleRef = React.useRef<string | null>(null);
 
 	React.useEffect(() => {
 		isEnabledRef.current = isEnabled;
 	}, [isEnabled]);
 
+	const restoreDocumentTitle = React.useCallback(() => {
+		if (typeof document === "undefined") return;
+		if (previousDocumentTitleRef.current === null) return;
+		document.title = previousDocumentTitleRef.current;
+		previousDocumentTitleRef.current = null;
+	}, []);
+
+	const clearHiddenTabAlert = React.useCallback(() => {
+		restoreDocumentTitle();
+	}, [restoreDocumentTitle]);
+
+	const setHiddenTabReminder = React.useCallback(() => {
+		if (typeof document === "undefined") return;
+		if (previousDocumentTitleRef.current === null) {
+			previousDocumentTitleRef.current = document.title;
+		}
+		document.title = WAKE_LOCK_VISIBLE_TAB_TITLE;
+	}, []);
+
+	const markWaitingForVisible = React.useCallback(() => {
+		setIsActive(false);
+		setStatus("waiting-for-visible");
+		setStatusMessage(WAKE_LOCK_VISIBLE_TAB_MESSAGE);
+		setError(null);
+		setHiddenTabReminder();
+	}, [setHiddenTabReminder]);
+
 	const releaseInternal = React.useCallback(async () => {
 		const sentinel = sentinelRef.current;
 		sentinelRef.current = null;
 		setIsActive(false);
+		setStatus("idle");
+		setStatusMessage(null);
+		clearHiddenTabAlert();
 		if (!sentinel || sentinel.released) return;
 		try {
 			await sentinel.release();
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Failed to release wake lock");
 		}
-	}, []);
+	}, [clearHiddenTabAlert]);
 
 	const acquireInternal = React.useCallback(async () => {
 		if (typeof document !== "undefined" && document.visibilityState !== "visible") {
 			// Browsers reject wake-lock requests in hidden tabs. We'll
 			// retry from the visibilitychange listener once visible.
+			markWaitingForVisible();
 			return;
 		}
 		const nav = (typeof navigator !== "undefined"
@@ -129,26 +172,46 @@ export function useWakeLock(
 		if (!nav?.wakeLock) return;
 		if (sentinelRef.current && !sentinelRef.current.released) {
 			setIsActive(true);
+			setStatus("active");
+			setStatusMessage(null);
+			setError(null);
+			clearHiddenTabAlert();
 			return;
 		}
 		try {
 			const sentinel = await nav.wakeLock.request("screen");
 			sentinelRef.current = sentinel;
 			setIsActive(true);
+			setStatus("active");
+			setStatusMessage(null);
 			setError(null);
+			clearHiddenTabAlert();
 			const handleRelease = () => {
 				if (sentinelRef.current === sentinel) {
 					sentinelRef.current = null;
 					setIsActive(false);
+					if (
+						isEnabledRef.current &&
+						typeof document !== "undefined" &&
+						document.visibilityState !== "visible"
+					) {
+						markWaitingForVisible();
+						return;
+					}
+					setStatus("idle");
+					setStatusMessage(null);
 				}
 			};
 			sentinel.addEventListener("release", handleRelease);
 		} catch (err) {
 			sentinelRef.current = null;
 			setIsActive(false);
+			setStatus("idle");
+			setStatusMessage(null);
+			clearHiddenTabAlert();
 			setError(err instanceof Error ? err.message : "Failed to acquire wake lock");
 		}
-	}, []);
+	}, [clearHiddenTabAlert, markWaitingForVisible]);
 
 	// Mount: detect support and rehydrate preference. If the user
 	// previously enabled the lock, attempt to re-acquire immediately.
@@ -169,15 +232,18 @@ export function useWakeLock(
 		if (!isSupported) return;
 		if (typeof document === "undefined") return;
 		const handler = () => {
-			if (document.visibilityState === "visible" && isEnabledRef.current) {
+			if (!isEnabledRef.current) return;
+			if (document.visibilityState === "visible") {
 				void acquireInternal();
+				return;
 			}
+			markWaitingForVisible();
 		};
 		document.addEventListener("visibilitychange", handler);
 		return () => {
 			document.removeEventListener("visibilitychange", handler);
 		};
-	}, [acquireInternal, isSupported]);
+	}, [acquireInternal, isSupported, markWaitingForVisible]);
 
 	// Release sentinel on unmount.
 	React.useEffect(() => {
@@ -188,6 +254,8 @@ export function useWakeLock(
 
 	const enable = React.useCallback(async () => {
 		if (!detectWakeLockSupport()) {
+			setStatus("idle");
+			setStatusMessage(null);
 			setError("Wake lock is not supported in this browser");
 			return;
 		}
@@ -200,6 +268,7 @@ export function useWakeLock(
 	const disable = React.useCallback(async () => {
 		setIsEnabled(false);
 		isEnabledRef.current = false;
+		setError(null);
 		writeStoredPreference(storageKey, false);
 		await releaseInternal();
 	}, [releaseInternal, storageKey]);
@@ -216,6 +285,8 @@ export function useWakeLock(
 		isSupported,
 		isActive,
 		isEnabled,
+		status,
+		statusMessage,
 		error,
 		enable,
 		disable,
