@@ -779,8 +779,9 @@ export default function Weather({
 
 	const { measureRef, layout: fluidLayout } = useFluidWeatherLayout();
 	const sizes = fluidLayout.sizes;
+	const isRowLayout = fluidLayout.layout === "row";
 	const sliderOverlapMarginBottom =
-		fluidLayout.layout === "grid"
+		!isRowLayout
 			? -Math.round(sizes.pillHeight * 0.18)
 			: 0;
 
@@ -1082,13 +1083,13 @@ export default function Weather({
 					// the slider down inside its row track. In the row
 					// layout we keep `items-center` so all four pills sit
 					// on the same horizontal centerline.
-					fluidLayout.layout === "row"
+					isRowLayout
 						? "flex items-center gap-3"
 						: "grid grid-cols-[auto_auto] items-start gap-2",
 				)}
 			>
 				<motion.div
-					className="order-2"
+					className={isRowLayout ? "order-2" : "col-start-2 row-start-1"}
 					initial={{ opacity: 0, filter: "blur(16px)", scale: 0.5, y: 140 }}
 					animate={{ opacity: 1, filter: "blur(0px)", scale: 1, y: 0 }}
 					transition={{
@@ -1125,7 +1126,7 @@ export default function Weather({
 				</motion.div>
 
 				<motion.div
-					className="order-3"
+					className={isRowLayout ? "order-3" : "col-start-1 row-start-2"}
 					initial={{ opacity: 0, filter: "blur(16px)", scaleY: 0, y: 80 }}
 					animate={{ opacity: 1, filter: "blur(0px)", scaleY: 1, y: 0 }}
 					transition={{
@@ -1228,7 +1229,7 @@ export default function Weather({
 				</motion.div>
 
 				<motion.div
-					className="order-4"
+					className={isRowLayout ? "order-4" : "col-start-2 row-start-2"}
 					initial={{ opacity: 0, filter: "blur(16px)", scale: 0.5, y: 140 }}
 					animate={{ opacity: 1, filter: "blur(0px)", scale: 1, y: 0 }}
 					transition={{
@@ -1350,7 +1351,7 @@ export default function Weather({
 					// snapshot and only the page background is refracted.
 					// We instead push the *neighbouring* widget cards
 					// behind the slider (see `negative-z` comments below).
-					className="order-1"
+					className={isRowLayout ? "order-1" : "col-start-1 row-start-1"}
 					initial={{ opacity: 0, filter: "blur(16px)", scaleY: 0, y: 80 }}
 					animate={{ opacity: 1, filter: "blur(0px)", scaleY: 1, y: 0 }}
 					transition={{
