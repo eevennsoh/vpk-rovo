@@ -5,15 +5,21 @@ import * as React from "react";
 import { useTheme } from "@/components/utils/theme-wrapper";
 import Bands from "@/components/website/demos/visual/shaders/bands";
 import LiquidGradient from "@/components/website/demos/visual/shaders/liquid-gradient";
+import Rings from "@/components/website/demos/visual/shaders/rings";
 import Noise, {
 	type NoiseBlendMode,
 } from "@/components/website/demos/visual/shaders/noise";
 import WaveGradient from "@/components/website/demos/visual/shaders/wave-gradient";
 
 import { Footer } from "@/components/ui/footer";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { GlassTabs } from "@/components/ui/glass-tabs";
 import {
-	GLASS_TABS_SHELL_GLASS_PROPS,
 	GLASS_TABS_SQUIRCLE_STYLE,
 } from "@/components/ui/glass-tabs-motion";
 import {
@@ -21,9 +27,9 @@ import {
 	EyeOffIcon,
 	ReturnIcon,
 } from "@/components/ui/vpk-icons";
-import LiquidGlass from "@/components/website/demos/visual/shaders/liquid-glass";
 import { cn } from "@/lib/utils";
-import { motion, useMotionValue } from "motion/react";
+import { motion, useMotionValue, useTransform } from "motion/react";
+import { flushSync } from "react-dom";
 
 import { CityRailEditor } from "./city-popover";
 import { DigitDisplay, FlipText } from "./digit-display";
@@ -38,10 +44,10 @@ import {
 	WidgetScrewDots,
 } from "./widget-card";
 
-function playSound(src: string) {
+function playSound(src: string, volume = 0.5) {
 	if (typeof window === "undefined") return;
 	const audio = new Audio(src);
-	audio.volume = 0.5;
+	audio.volume = Math.max(0, Math.min(1, volume));
 	audio.play().catch(() => {});
 }
 
@@ -74,40 +80,98 @@ function formatTemperature(value: number | null): string {
 	return `${Math.round(value)}`;
 }
 
+// Match the GlassTabs internal elastic constants so the wake-lock button
+// thins/translates in lockstep with the shell. Keep these in sync with
+// `MAX_SHELL_STRETCH_PX` / `MAX_SHELL_THIN_RATIO` in
+// `components/ui/glass-tabs-motion.ts`.
+const WAKE_BUTTON_MAX_SHELL_STRETCH_PX = 32;
+const WAKE_BUTTON_MAX_THIN_RATIO = 0.14;
+// When the shell stretches LEFT (negative `shellStretch`), the wake-lock
+// button gets sympathetically tugged left by this fraction of the stretch
+// magnitude — softer than the shell's own translation so the button
+// reads as "pulled along" rather than "rigidly attached".
+const WAKE_BUTTON_LEFT_PULL_RATIO = 0.35;
+
 function ThemeControl({
 	mode,
 	onChange,
 	isVisible,
 	keyboardSelectionPulseKey,
+	wakeLock,
+	cutoutFillColor,
+	cutoutIconFilter,
 }: {
 	mode: WeatherThemeMode;
 	onChange: (mode: WeatherThemeMode) => void;
 	isVisible: boolean;
 	keyboardSelectionPulseKey: number;
+	wakeLock: {
+		isSupported: boolean;
+		isEnabled: boolean;
+		isActive: boolean;
+		error: string | null;
+		onToggle: () => void;
+	};
+	cutoutFillColor: string;
+	cutoutIconFilter: string;
 }) {
-	const wakeButtonX = useMotionValue(0);
+	const [isFocusWithin, setIsFocusWithin] = React.useState(false);
+	// Signed pixel offset matching the live `shellStretch` of the GlassTabs
+	// container: positive when stretched RIGHT (button moves right with the
+	// shell's growing edge), negative when stretched LEFT (button is
+	// gently tugged leftward by a fraction of the magnitude).
+	const wakeButtonStretchX = useMotionValue(0);
+	// Vertical thinning factor mirroring the GlassTabs `shellScaleY` so the
+	// button squashes/un-squashes in lockstep with the shell.
+	const wakeButtonScaleY = useMotionValue(1);
+	// Mirrors the GlassTabs whole-pill magnet drift (`parentSpringX/Y`)
+	// so the wake-lock button physically follows the pill as it drifts
+	// toward the cursor.
+	const wakeButtonMagnetX = useMotionValue(0);
+	const wakeButtonMagnetY = useMotionValue(0);
+	// Composite X = stretch offset + magnet drift.
+	const wakeButtonX = useTransform(
+		[wakeButtonStretchX, wakeButtonMagnetX],
+		([stretch, magnet]) => (stretch as number) + (magnet as number),
+	);
 	const options: { value: WeatherThemeMode; label: string }[] = [
 		{ value: "location", label: "Location" },
 		{ value: "system", label: "System" },
 		{ value: "light", label: "Light" },
 		{ value: "dark", label: "Dark" },
 	];
+	const isThemeChromeVisible = isVisible || isFocusWithin;
 
 	return (
 		<div
 			className="absolute left-1/2 top-4 z-20 -translate-x-1/2"
-			style={{ pointerEvents: isVisible ? "auto" : "none" }}
+			style={{ pointerEvents: isThemeChromeVisible ? "auto" : "none" }}
 		>
 			<motion.div
-				animate={isVisible
+				animate={isThemeChromeVisible
 					? { opacity: 1, filter: "blur(0px)", transform: "scale(1) translateY(0px)" }
 					: { opacity: 0, filter: "blur(16px)", transform: "scale(0.82) translateY(-16px)" }
 				}
 				initial={{ opacity: 0, filter: "blur(16px)", transform: "scale(0.82) translateY(-16px)" }}
 				transition={{ duration: 0.35, ease: [0, 0.4, 0, 1] }}
+				aria-hidden={!isThemeChromeVisible}
+				inert={!isThemeChromeVisible}
 				style={{
 					transformOrigin: "top center",
 					willChange: "opacity, filter, transform",
+				}}
+				onFocusCapture={() => {
+					setIsFocusWithin(true);
+				}}
+				onBlurCapture={(event) => {
+					const nextTarget = event.relatedTarget;
+					if (
+						nextTarget instanceof HTMLElement &&
+						event.currentTarget.contains(nextTarget)
+					) {
+						return;
+					}
+					setIsFocusWithin(false);
 				}}
 			>
 				{/*
@@ -129,24 +193,82 @@ function ThemeControl({
 						}}
 						keyboardSelectionPulseKey={keyboardSelectionPulseKey}
 						onShellStretchChange={(stretchPx) => {
-							wakeButtonX.set(stretchPx > 0 ? stretchPx : 0);
+							// Mirror the GlassTabs shell stretch so the
+							// wake-lock button stays visually attached to
+							// the shell — matching the shell's right-edge
+							// translation when stretched RIGHT, and being
+							// gently tugged LEFT when the shell stretches
+							// the other way (softer than the shell to
+							// preserve a sense of elastic linkage rather
+							// than a rigid bond).
+							if (stretchPx >= 0) {
+								wakeButtonStretchX.set(stretchPx);
+							} else {
+								wakeButtonStretchX.set(stretchPx * WAKE_BUTTON_LEFT_PULL_RATIO);
+							}
+							const ratio = Math.min(
+								Math.abs(stretchPx) / WAKE_BUTTON_MAX_SHELL_STRETCH_PX,
+								1,
+							);
+							wakeButtonScaleY.set(1 - ratio * WAKE_BUTTON_MAX_THIN_RATIO);
+						}}
+						onParentMagnetChange={(xPx, yPx) => {
+							// Ride along with the whole-pill magnet drift
+							// so the wake-lock button physically follows
+							// the GlassTabs as it leans toward the
+							// pointer.
+							wakeButtonMagnetX.set(xPx);
+							wakeButtonMagnetY.set(yPx);
 						}}
 					/>
 					<motion.div
 						className="absolute left-full top-1/2 ml-2 -translate-y-1/2"
-						style={{ x: wakeButtonX }}
+						style={{
+							x: wakeButtonX,
+							y: wakeButtonMagnetY,
+							scaleY: wakeButtonScaleY,
+							// Anchor the squash to the vertical centerline
+							// so the button thins symmetrically (matching
+							// the shell's `transformOrigin: center`).
+							transformOrigin: "center",
+						}}
 					>
-						<WakeLockControl />
+						<WakeLockControl
+							isTabbable={isThemeChromeVisible}
+							isSupported={wakeLock.isSupported}
+							isEnabled={wakeLock.isEnabled}
+							isActive={wakeLock.isActive}
+							error={wakeLock.error}
+							onToggle={wakeLock.onToggle}
+							cutoutFillColor={cutoutFillColor}
+							cutoutIconFilter={cutoutIconFilter}
+						/>
 					</motion.div>
-				</div>
-			</motion.div>
-		</div>
-	);
+					</div>
+				</motion.div>
+			</div>
+		);
 }
 
-function WakeLockControl() {
-	const { isSupported, isEnabled, isActive, error, toggle } = useWakeLock();
-
+function WakeLockControl({
+	isTabbable,
+	isSupported,
+	isEnabled,
+	isActive,
+	error,
+	onToggle,
+	cutoutFillColor,
+	cutoutIconFilter,
+}: {
+	isTabbable: boolean;
+	isSupported: boolean;
+	isEnabled: boolean;
+	isActive: boolean;
+	error: string | null;
+	onToggle: () => void;
+	cutoutFillColor: string;
+	cutoutIconFilter: string;
+}) {
 	const disabled = !isSupported;
 	const labelOn = "Allow screen to sleep";
 	const labelOff = "Keep screen awake";
@@ -157,68 +279,116 @@ function WakeLockControl() {
 			: labelOff;
 
 	return (
-		<button
-			type="button"
-			role="switch"
-			aria-checked={isEnabled}
-			aria-label={tooltip}
-			title={tooltip}
-			disabled={disabled}
-			// Skip the Tab order so users can't accidentally trap focus on
-			// this control and disable the global weather keyboard
-			// shortcuts (Enter opens the city manager, arrows navigate).
-			tabIndex={-1}
-			onClick={(event) => {
-				playSound("/sound/click-003.mp3");
-				void toggle();
-				// Return focus to <body> so the global weather keyboard
-				// shortcuts keep working — the global keydown handler
-				// swallows events that originate from focused buttons.
-				event.currentTarget.blur();
-			}}
-			className={cn(
-				"relative flex size-7 cursor-pointer items-center justify-center overflow-hidden",
-				"border border-border bg-surface-overlay/70 backdrop-blur-md",
-				"text-text-subtle transition-colors duration-normal",
-				"hover:text-text",
-				"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focused",
-				"disabled:cursor-not-allowed disabled:opacity-50",
-				isEnabled && "border-border-selected text-text-selected",
-			)}
-			style={GLASS_TABS_SQUIRCLE_STYLE}
-			data-active={isActive ? "true" : undefined}
-			data-error={error ? "true" : undefined}
-		>
-			<LiquidGlass
-				{...GLASS_TABS_SHELL_GLASS_PROPS}
-				width="100%"
-				height="100%"
-				className="pointer-events-none absolute inset-0"
-				style={GLASS_TABS_SQUIRCLE_STYLE}
+		<TooltipProvider>
+		<Tooltip>
+			<TooltipTrigger
+				render={
+					<button
+						type="button"
+						role="switch"
+						aria-checked={isEnabled}
+						aria-label={tooltip}
+						disabled={disabled}
+						// Keep this in the Tab order only while the theme
+						// chrome is intentionally revealed.
+						tabIndex={isTabbable ? 0 : -1}
+						onClick={(event) => {
+							// Toggle-off uses the same dismiss cue as
+							// pressing Escape in the city manager; toggle-on
+							// uses the lighter click-001 tap sound.
+							onToggle();
+							// Pointer users can drop back to scene-level
+							// shortcuts immediately after clicking. Keyboard
+							// users should keep focus here so Tab continues
+							// forward to the slider.
+							if (event.detail > 0) {
+								event.currentTarget.blur();
+							}
+						}}
+						className={cn(
+							// Clear squircle button — no opaque fill,
+							// no LiquidGlass refractive shell. The
+							// squircle clip alone defines the button's
+							// shape, so when toggled on the Rings shader
+							// reads through the clip without being washed
+							// out by a translucent overlay. A 1px subtle
+							// border traces the squircle outline so the
+							// shape stays visible against any backdrop —
+							// this replaces the border that the
+							// LiquidGlass shell used to draw.
+							"relative flex size-9 cursor-pointer items-center justify-center overflow-hidden border border-border",
+							// Keep the icon at the same subtle weight on
+							// hover/active — no darkening — so the only
+							// hover affordance is the squircle/shader
+							// surface itself responding under the pointer.
+							"transition-colors duration-normal",
+							"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focused",
+							"disabled:cursor-not-allowed disabled:opacity-50",
+							// Off-state icon color. When ON the icon switches
+							// to `cutoutFillColor` (`var(--ds-surface)`) via
+							// inline style so it reads like a hole punched
+							// through the shader card, matching the time
+							// digits and weather icon on the time card.
+							!isEnabled && "text-icon-subtlest",
+						)}
+						style={GLASS_TABS_SQUIRCLE_STYLE}
+						data-active={isActive ? "true" : undefined}
+						data-error={error ? "true" : undefined}
+					>
+						{/*
+						 * When toggled on, render the Rings shader behind
+						 * the icon so the "keep awake" state reads as a
+						 * lively, focused gradient at this small size.
+						 * The Rings shader has tighter, higher-contrast
+						 * features than LiquidGradient, so it stays
+						 * visible inside the 36×36 squircle without the
+						 * LiquidGlass shell washing it out.
+						 */}
+						{isEnabled ? (
+							<span
+								aria-hidden="true"
+								className="pointer-events-none absolute inset-0 overflow-hidden"
+								style={GLASS_TABS_SQUIRCLE_STYLE}
+							>
+								<Rings className="h-full w-full" />
+							</span>
+						) : null}
+						{isEnabled ? (
+							// Mirror the time card's hero numerals + weather
+							// icon: fill = page surface, drop-shadow stack =
+							// directional shadow + highlight + ambient blur,
+							// producing the "punched through" cutout look
+							// rather than a raised emboss.
+							<span
+								aria-hidden="true"
+								className="relative inline-flex items-center justify-center"
+								style={{ filter: cutoutIconFilter }}
+							>
+								<EyeIcon
+									className="size-4"
+									style={{ color: cutoutFillColor }}
+								/>
+							</span>
+						) : (
+							<EyeOffIcon className="relative size-4" />
+						)}
+					</button>
+				}
 			/>
-			<div
-				aria-hidden="true"
-				className={cn(
-					"pointer-events-none absolute inset-0 transition-colors duration-normal",
-					isEnabled ? "bg-surface-selected/30" : "bg-surface-overlay/50",
-				)}
-				style={GLASS_TABS_SQUIRCLE_STYLE}
-			/>
-			{isEnabled ? (
-				<EyeIcon className="size-4" />
-			) : (
-				<EyeOffIcon className="size-4" />
-			)}
-		</button>
+			<TooltipContent sideOffset={8}>{tooltip}</TooltipContent>
+		</Tooltip>
+		</TooltipProvider>
 	);
 }
 
 function WeatherKeyboardHints({
 	isVisible,
 	isEditing,
+	showWakeShortcut,
 }: {
 	isVisible: boolean;
 	isEditing: boolean;
+	showWakeShortcut: boolean;
 }) {
 	return (
 		<div className="absolute bottom-0 left-1/2 z-20 w-full max-w-[calc(100%-2rem)] -translate-x-1/2 px-4">
@@ -237,31 +407,39 @@ function WeatherKeyboardHints({
 				<Footer
 					hideIcon
 					style={{ fontFamily: "'JetBrains Mono', monospace" }}
-				>
-					{!isEditing && (
-						<>
-							<span>
-								<kbd className="font-sans">←</kbd> <kbd className="font-sans">→</kbd> theme
-							</span>
-							<span aria-hidden>•</span>
-						</>
-					)}
-					<span>
-						<kbd className="font-sans">↑</kbd> <kbd className="font-sans">↓</kbd> city
+					>
+						{!isEditing ? (
+							<>
+								<span>
+									<kbd className="font-sans">←</kbd> <kbd className="font-sans">→</kbd> theme
+								</span>
+								<span aria-hidden>•</span>
+							</>
+						) : null}
+						<span>
+							<kbd className="font-sans">↑</kbd> <kbd className="font-sans">↓</kbd> city
 					</span>
 					<span aria-hidden>•</span>
 					<span className="inline-flex items-center gap-1">
 						<ReturnIcon className="size-3.5" />
 						update cities
-					</span>
-					{isEditing && (
-						<>
-							<span aria-hidden>•</span>
-							<span>
+						</span>
+						{showWakeShortcut ? (
+							<>
+								<span aria-hidden>•</span>
+								<span>
+									<kbd className="font-sans">W</kbd> screen awake
+								</span>
+							</>
+						) : null}
+						{isEditing ? (
+							<>
+								<span aria-hidden>•</span>
+								<span>
 								<kbd className="font-sans">ESC</kbd> to cancel
 							</span>
 						</>
-					)}
+					) : null}
 				</Footer>
 			</motion.div>
 		</div>
@@ -759,6 +937,13 @@ export default function Weather({
 	className,
 }: WeatherProps) {
 	const { setTheme, actualTheme } = useTheme();
+	const {
+		isSupported: isWakeLockSupported,
+		isEnabled: isWakeLockEnabled,
+		isActive: isWakeLockActive,
+		error: wakeLockError,
+		toggle: toggleWakeLock,
+	} = useWakeLock();
 	const [pointerViewportZone, setPointerViewportZone] = React.useState<"top" | "bottom" | null>(null);
 	const [isPointerOverSlider, setIsPointerOverSlider] = React.useState(false);
 	const [isThemeKeyboardVisible, setIsThemeKeyboardVisible] = React.useState(false);
@@ -822,8 +1007,19 @@ export default function Weather({
 		}
 	}, []);
 
+	const handleWakeLockToggle = React.useCallback(() => {
+		playSound(
+			isWakeLockEnabled ? "/sound/click-004.mp3" : "/sound/click-001.mp3",
+		);
+		void toggleWakeLock();
+	}, [isWakeLockEnabled, toggleWakeLock]);
+
 	const revealThemeControlFromKeyboard = React.useCallback(() => {
-		setIsThemeKeyboardVisible(true);
+		// Reveal the top chrome before Tab focus is resolved so the hidden
+		// theme radios are eligible for the next keyboard step immediately.
+		flushSync(() => {
+			setIsThemeKeyboardVisible(true);
+		});
 		if (themeKeyboardVisibleTimeoutRef.current !== null) {
 			clearTimeout(themeKeyboardVisibleTimeoutRef.current);
 		}
@@ -881,9 +1077,10 @@ export default function Weather({
 	}, []);
 
 	// Global weather-scene keyboard shortcuts:
-	// left/right step through the theme, up/down move between cities, and Enter
-	// opens the city manager. Text inputs and focused interactive
-	// controls keep their native keyboard behavior.
+	// left/right step through the theme, W toggles screen wake lock,
+	// up/down move between cities, and Enter opens the city manager.
+	// Text inputs and focused interactive controls keep their native
+	// keyboard behavior.
 	React.useEffect(() => {
 		if (typeof window === "undefined") return;
 
@@ -917,6 +1114,8 @@ export default function Weather({
 			const typingTarget = isTypingTarget(target);
 			const sliderTarget = isSliderTarget(target);
 			const interactiveTarget = isInteractiveTarget(target);
+			const normalizedKey = event.key.toLowerCase();
+			const hasShortcutModifier = event.metaKey || event.ctrlKey || event.altKey;
 
 			if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
 				if (typingTarget || sliderTarget || interactiveTarget) return;
@@ -933,7 +1132,7 @@ export default function Weather({
 				if (nextIndex === safeIndex) {
 					return;
 				}
-				playSound("/sound/click-003.mp3");
+				playSound("/sound/click-003.mp3", 1);
 				setThemeNavigationPulseKey((current) => current + 1);
 				updateWeatherMode(THEME_MODE_ORDER[nextIndex]);
 				return;
@@ -959,9 +1158,28 @@ export default function Weather({
 				}
 
 				event.preventDefault();
-				playSound("/sound/click-002.mp3");
+				playSound("/sound/click-002.mp3", 1);
 				setSelectedIndex(nextSelectedIndex);
 				setCityNavigationPulseKey((current) => current + 1);
+				return;
+			}
+
+			if (normalizedKey === "w") {
+				if (
+					event.repeat ||
+					hasShortcutModifier ||
+					typingTarget ||
+					sliderTarget ||
+					interactiveTarget ||
+					isCityManagerOpen ||
+					!isWakeLockSupported
+				) {
+					return;
+				}
+
+				event.preventDefault();
+				revealThemeControlFromKeyboard();
+				handleWakeLockToggle();
 				return;
 			}
 
@@ -985,7 +1203,9 @@ export default function Weather({
 	}, [
 		isEntranceAnimating,
 		isCityManagerOpen,
+		isWakeLockSupported,
 		cities.length,
+		handleWakeLockToggle,
 		selectedIndex,
 		setSelectedIndex,
 		weatherMode,
@@ -1052,6 +1272,15 @@ export default function Weather({
 					(pointerViewportZone === "top" && !isPointerOverSlider)
 				}
 				keyboardSelectionPulseKey={themeNavigationPulseKey}
+				wakeLock={{
+					isSupported: isWakeLockSupported,
+					isEnabled: isWakeLockEnabled,
+					isActive: isWakeLockActive,
+					error: wakeLockError,
+					onToggle: handleWakeLockToggle,
+				}}
+				cutoutFillColor={cutoutFillColor}
+				cutoutIconFilter={cutoutIconFilter}
 			/>
 
 			<motion.div
@@ -1384,7 +1613,11 @@ export default function Weather({
 				</motion.div>
 			</div>
 
-			<WeatherKeyboardHints isVisible={pointerViewportZone === "bottom"} isEditing={isCityManagerOpen} />
+			<WeatherKeyboardHints
+				isVisible={pointerViewportZone === "bottom"}
+				isEditing={isCityManagerOpen}
+				showWakeShortcut={!isCityManagerOpen && isWakeLockSupported}
+			/>
 		</div>
 	);
 }

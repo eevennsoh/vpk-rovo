@@ -120,7 +120,7 @@ export function useCities(): UseCitiesReturn {
 			// Clamp the selection: if the removed city was at or before the
 			// current selection, shift left; always ensure we stay in range.
 			setSelectedIndexRaw((current) => {
-				const adjusted = removalIndex <= current ? current - 1 : current;
+				const adjusted = removalIndex < current ? current - 1 : current;
 				return clampSelectedIndex(adjusted, next.length);
 			});
 			return next;

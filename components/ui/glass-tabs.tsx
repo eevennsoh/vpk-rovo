@@ -1,7 +1,12 @@
 "use client";
 
 import { motion } from "motion/react";
-import { useEffect, type CSSProperties } from "react";
+import {
+	useCallback,
+	useEffect,
+	useState,
+	type CSSProperties,
+} from "react";
 
 import LiquidGlass from "@/components/website/demos/visual/shaders/liquid-glass";
 import { cn } from "@/lib/utils";
@@ -13,6 +18,13 @@ import {
 	GLASS_TABS_SQUIRCLE_STYLE,
 	useGlassTabsMotion,
 } from "./glass-tabs-motion";
+
+const GLASS_TABS_FOCUS_RING_STYLE = {
+	...GLASS_TABS_SQUIRCLE_STYLE,
+	border: "1px solid var(--ds-border-focused)",
+	boxShadow:
+		"0 0 0 3px color-mix(in srgb, var(--ds-border-focused) 24%, transparent)",
+} satisfies CSSProperties;
 
 export interface GlassTabsOption<TValue extends string> {
 	value: TValue;
@@ -29,6 +41,14 @@ export interface GlassTabsProps<TValue extends string> {
 	className?: string;
 	style?: CSSProperties;
 	onShellStretchChange?: (stretchPx: number) => void;
+	/**
+	 * Fires whenever the magnet spring (the whole-pill drift triggered by
+	 * pointer proximity) updates. Emits the current `(x, y)` translation
+	 * in pixels relative to the natural pill position. Useful when an
+	 * external sibling element needs to ride along with the pill's
+	 * magnetic motion (e.g. an icon button anchored to the pill's edge).
+	 */
+	onParentMagnetChange?: (xPx: number, yPx: number) => void;
 }
 
 export function GlassTabs<TValue extends string>({
@@ -41,7 +61,9 @@ export function GlassTabs<TValue extends string>({
 	className,
 	style,
 	onShellStretchChange,
+	onParentMagnetChange,
 }: Readonly<GlassTabsProps<TValue>>) {
+	const [isFocusVisibleWithin, setIsFocusVisibleWithin] = useState(false);
 	const {
 		containerRef,
 		groupId,
@@ -78,6 +100,29 @@ export function GlassTabs<TValue extends string>({
 		? { ...style, ...GLASS_TABS_SQUIRCLE_STYLE }
 		: GLASS_TABS_SQUIRCLE_STYLE;
 
+	const handleFocusCapture = useCallback(
+		(event: React.FocusEvent<HTMLDivElement>) => {
+			if (!(event.target instanceof HTMLElement)) return;
+			setIsFocusVisibleWithin(event.target.matches(":focus-visible"));
+		},
+		[],
+	);
+
+	const handleBlurCapture = useCallback(
+		(event: React.FocusEvent<HTMLDivElement>) => {
+			const nextTarget = event.relatedTarget;
+			if (
+				nextTarget instanceof HTMLElement &&
+				event.currentTarget.contains(nextTarget)
+			) {
+				setIsFocusVisibleWithin(nextTarget.matches(":focus-visible"));
+				return;
+			}
+			setIsFocusVisibleWithin(false);
+		},
+		[],
+	);
+
 	useEffect(() => {
 		if (!onShellStretchChange) return;
 		onShellStretchChange(shellStretch.get());
@@ -86,6 +131,20 @@ export function GlassTabs<TValue extends string>({
 			unsubscribe();
 		};
 	}, [onShellStretchChange, shellStretch]);
+
+	useEffect(() => {
+		if (!onParentMagnetChange) return;
+		const emit = () => {
+			onParentMagnetChange(parentSpringX.get(), parentSpringY.get());
+		};
+		emit();
+		const unsubscribeX = parentSpringX.on("change", emit);
+		const unsubscribeY = parentSpringY.on("change", emit);
+		return () => {
+			unsubscribeX();
+			unsubscribeY();
+		};
+	}, [onParentMagnetChange, parentSpringX, parentSpringY]);
 
 	return (
 		<motion.div
@@ -103,6 +162,8 @@ export function GlassTabs<TValue extends string>({
 				style={containerStyle}
 				onPointerMove={handleContainerPointerMove}
 				onPointerLeave={handleContainerPointerLeave}
+				onFocusCapture={handleFocusCapture}
+				onBlurCapture={handleBlurCapture}
 			>
 				<motion.div
 					aria-hidden="true"
@@ -121,6 +182,22 @@ export function GlassTabs<TValue extends string>({
 						className="pointer-events-none absolute inset-0"
 						style={GLASS_TABS_SQUIRCLE_STYLE}
 					/>
+				</motion.div>
+
+				<motion.div
+					data-slot="glass-tabs-focus-ring"
+					aria-hidden="true"
+					className={cn(
+						"pointer-events-none absolute inset-y-0 left-0 z-20 transition-opacity duration-fast ease-out",
+						isFocusVisibleWithin ? "opacity-100" : "opacity-0",
+					)}
+					style={{
+						width: shellWidth,
+						x: shellOffsetX,
+						scaleY: shellScaleY,
+					}}
+				>
+					<div className="absolute inset-0" style={GLASS_TABS_FOCUS_RING_STYLE} />
 				</motion.div>
 
 				<motion.div

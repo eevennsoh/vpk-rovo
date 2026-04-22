@@ -75,6 +75,12 @@ test("Weather splits pointer-driven chrome between the top theme control and bot
 		/const \[cityNavigationPulseKey, setCityNavigationPulseKey\] = React\.useState\(0\);/,
 	);
 	assert.match(WEATHER_SOURCE, /function WeatherKeyboardHints\(/);
+	assert.match(WEATHER_SOURCE, /showWakeShortcut: boolean;/);
+	assert.match(
+		WEATHER_SOURCE,
+		/const \{\s+isSupported: isWakeLockSupported,\s+isEnabled: isWakeLockEnabled,\s+isActive: isWakeLockActive,\s+error: wakeLockError,\s+toggle: toggleWakeLock,\s+\} = useWakeLock\(\);/s,
+	);
+	assert.match(WEATHER_SOURCE, /const handleWakeLockToggle = React\.useCallback\(\(\) => \{/);
 	assert.match(WEATHER_SOURCE, /const revealThemeControlFromKeyboard = React\.useCallback\(\(\) => \{/);
 	assert.match(WEATHER_SOURCE, /setIsThemeKeyboardVisible\(true\);/);
 	assert.match(WEATHER_SOURCE, /setTimeout\(\(\) => \{\s+setIsThemeKeyboardVisible\(false\);/s);
@@ -85,10 +91,15 @@ test("Weather splits pointer-driven chrome between the top theme control and bot
 	);
 	assert.match(
 		WEATHER_SOURCE,
-		/<WeatherKeyboardHints isVisible=\{pointerViewportZone === "bottom"\} isEditing=\{isCityManagerOpen\} \/>/,
+		/<WeatherKeyboardHints[\s\S]*isVisible=\{pointerViewportZone === "bottom"\}[\s\S]*isEditing=\{isCityManagerOpen\}[\s\S]*showWakeShortcut=\{!isCityManagerOpen && isWakeLockSupported\}[\s\S]*\/>/,
 	);
 	assert.match(WEATHER_SOURCE, /<ReturnIcon className="size-3\.5" \/>/);
+	assert.match(WEATHER_SOURCE, /<kbd className="font-sans">W<\/kbd> screen awake/);
 	assert.match(WEATHER_SOURCE, /update cities/);
+	assert.match(
+		WEATHER_SOURCE,
+		/update cities[\s\S]*showWakeShortcut \?[\s\S]*<kbd className="font-sans">W<\/kbd> screen awake/s,
+	);
 	assert.doesNotMatch(WEATHER_SOURCE, /Esc closes search/);
 	assert.match(WEATHER_SOURCE, /event\.key === "ArrowUp" \|\| event\.key === "ArrowDown"/);
 	assert.match(WEATHER_SOURCE, /const nextSelectedIndex = Math\.max\(/);
@@ -102,6 +113,16 @@ test("Weather splits pointer-driven chrome between the top theme control and bot
 	assert.match(
 		WEATHER_SOURCE,
 		/if \(typingTarget \|\| sliderTarget \|\| interactiveTarget\) return;/,
+	);
+	assert.match(WEATHER_SOURCE, /const normalizedKey = event\.key\.toLowerCase\(\);/);
+	assert.match(
+		WEATHER_SOURCE,
+		/const hasShortcutModifier = event\.metaKey \|\| event\.ctrlKey \|\| event\.altKey;/,
+	);
+	assert.match(WEATHER_SOURCE, /if \(normalizedKey === "w"\) \{/);
+	assert.match(
+		WEATHER_SOURCE,
+		/if \(normalizedKey === "w"\) \{\s+if \(\s+event\.repeat \|\|\s+hasShortcutModifier \|\|\s+typingTarget \|\|\s+sliderTarget \|\|\s+interactiveTarget \|\|\s+isCityManagerOpen \|\|\s+!isWakeLockSupported\s+\) \{\s+return;\s+\}\s+event\.preventDefault\(\);\s+revealThemeControlFromKeyboard\(\);\s+handleWakeLockToggle\(\);\s+return;\s+\}/s,
 	);
 	assert.match(
 		WEATHER_SOURCE,
@@ -125,6 +146,10 @@ test("Weather splits pointer-driven chrome between the top theme control and bot
 	assert.match(
 		WEATHER_SOURCE,
 		/keyboardSelectionPulseKey=\{themeNavigationPulseKey\}/,
+	);
+	assert.match(
+		WEATHER_SOURCE,
+		/wakeLock=\{\{[\s\S]*isSupported: isWakeLockSupported,[\s\S]*isEnabled: isWakeLockEnabled,[\s\S]*isActive: isWakeLockActive,[\s\S]*error: wakeLockError,[\s\S]*onToggle: handleWakeLockToggle,[\s\S]*\}\}/,
 	);
 	assert.match(
 		WEATHER_SOURCE,
@@ -160,7 +185,11 @@ test("CityRailEditor opens the city manager with Enter from the focused slider",
 	assert.match(CITY_POPOVER_SOURCE, /onOpenChange\?: \(isOpen: boolean\) => void;/);
 	assert.match(CITY_POPOVER_SOURCE, /keyboardNavigationPulseKey\?: number;/);
 	assert.match(CITY_POPOVER_SOURCE, /onOpenChange\?\.\(isOpen\);/);
-	assert.match(CITY_POPOVER_SOURCE, /if \(openRequestKey <= 0\) return;/);
+	assert.match(CITY_POPOVER_SOURCE, /if \(openRequestKey <= 0 \|\| isOpen\) return;/);
+	assert.match(
+		CITY_POPOVER_SOURCE,
+		/playSound\("\/sound\/click-001\.mp3"\);\s+setIsOpen\(true\);\s+setHighlightedIndex\(0\);/s,
+	);
 	assert.match(CITY_POPOVER_SOURCE, /onKeyDown=\{\(event\) => \{/);
 	assert.match(CITY_POPOVER_SOURCE, /if \(isOpen \|\| event\.key !== "Enter"\) return;/);
 	assert.match(CITY_POPOVER_SOURCE, /target\.closest\('\[role="slider"\]'\)/);
@@ -168,11 +197,22 @@ test("CityRailEditor opens the city manager with Enter from the focused slider",
 	assert.match(CITY_POPOVER_SOURCE, /keyboardNavigationPulseKey=\{keyboardNavigationPulseKey\}/);
 });
 
+test("CityRailEditor reuses the slider navigation sound while moving through the search list", () => {
+	assert.match(
+		CITY_POPOVER_SOURCE,
+		/if \(event\.key === "ArrowDown"\) \{\s+event\.preventDefault\(\);\s+setHighlightedIndex\(\(prev\) => \{\s+const next = Math\.min\(prev \+ 1, Math\.max\(filteredCities\.length - 1, 0\)\);\s+if \(next !== prev\) \{\s+playSound\("\/sound\/click-002\.mp3"\);\s+\}\s+return next;\s+\}\);\s+return;\s+\}/s,
+	);
+	assert.match(
+		CITY_POPOVER_SOURCE,
+		/if \(event\.key === "ArrowUp"\) \{\s+event\.preventDefault\(\);\s+setHighlightedIndex\(\(prev\) => \{\s+const next = Math\.max\(prev - 1, 0\);\s+if \(next !== prev\) \{\s+playSound\("\/sound\/click-002\.mp3"\);\s+\}\s+return next;\s+\}\);\s+return;\s+\}/s,
+	);
+});
+
 test("CityRailEditor toggles a selected city off when Enter is pressed again", () => {
 	assert.match(CITY_POPOVER_SOURCE, /addCity,\s+removeCity,\s+openRequestKey = 0,/s);
 	assert.match(
 		CITY_POPOVER_SOURCE,
-		/if \(cityIndex !== -1 && removeCity\) \{\s+removeCity\(city\.id\);/s,
+		/const isRemoving = cityIndex !== -1 && Boolean\(removeCity\);\s+playSound\(isRemoving \? "\/sound\/click-004\.mp3" : "\/sound\/click-001\.mp3"\);\s+if \(cityIndex !== -1 && removeCity\) \{\s+removeCity\(city\.id\);/s,
 	);
 	assert.match(
 		CITY_POPOVER_SOURCE,

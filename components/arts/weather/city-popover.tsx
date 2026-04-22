@@ -180,6 +180,18 @@ export function CityRailEditor({
 		[setSelectedIndex],
 	);
 
+	// When pinned, hover-to-select is disabled so handleManualSelect never
+	// fires. Use onHoverTickChange to still play the sound as the cursor
+	// moves across cities.
+	const handleHoverTickChange = useCallback(
+		(index: number | null) => {
+			if (index !== null) {
+				playSound("/sound/click-002.mp3");
+			}
+		},
+		[],
+	);
+
 	// Explicit commit (click on the slider / a tick, drag-end, or keyboard
 	// navigation). Only THIS path implies the user "chose" the city, so
 	// only THIS path auto-pins and reveals the pin affordance.
@@ -210,6 +222,7 @@ export function CityRailEditor({
 	const shouldReduceMotion = useReducedMotion();
 	const rootRef = useRef<HTMLDivElement>(null);
 	const searchInputRef = useRef<HTMLInputElement>(null);
+	const handledOpenRequestKeyRef = useRef(0);
 	// scrollTop in px, clamped 0..SCROLL_FADE_PX, drives the height of
 	// the top mask fade so it ramps in only as the user scrolls down.
 	const [topFadePx, setTopFadePx] = useState(0);
@@ -236,7 +249,14 @@ export function CityRailEditor({
 	}, [isOpen, onOpenChange]);
 
 	useEffect(() => {
-		if (openRequestKey <= 0) return;
+		if (
+			openRequestKey <= 0 ||
+			openRequestKey === handledOpenRequestKeyRef.current
+		) {
+			return;
+		}
+		handledOpenRequestKeyRef.current = openRequestKey;
+		playSound("/sound/click-001.mp3");
 		setIsOpen(true);
 		setHighlightedIndex(0);
 	}, [openRequestKey]);
@@ -302,20 +322,27 @@ export function CityRailEditor({
 		setHighlightedIndex(0);
 	}, [filteredCities]);
 
+	// Keep row clicks aligned with keyboard Enter: toggle the city in place
+	// without dismissing the manager.
+	const toggleCitySelection = useCallback(
+		(city: LockscreenLocation, cityIndex: number) => {
+			const isRemoving = cityIndex !== -1 && Boolean(removeCity);
+			playSound(isRemoving ? "/sound/click-004.mp3" : "/sound/click-001.mp3");
+			if (cityIndex !== -1 && removeCity) {
+				removeCity(city.id);
+			} else {
+				addCity(city);
+				handleCommit(cities.length);
+			}
+		},
+		[addCity, cities.length, handleCommit, removeCity],
+	);
+
 	const handleCityRowPress = useCallback(
 		(city: LockscreenLocation, cityIndex: number) => {
-			if (cityIndex !== -1) {
-				handleCommit(cityIndex);
-				setIsOpen(false);
-				return;
-			}
-
-			addCity(city);
-			const nextIndex = cities.length;
-			handleCommit(nextIndex);
-			setIsOpen(false);
+			toggleCitySelection(city, cityIndex);
 		},
-		[addCity, cities.length, handleCommit],
+		[toggleCitySelection],
 	);
 
 	const handleOpenKeyDown = useEffectEvent((event: KeyboardEvent) => {
@@ -326,12 +353,24 @@ export function CityRailEditor({
 		}
 		if (event.key === "ArrowDown") {
 			event.preventDefault();
-			setHighlightedIndex((prev) => Math.min(prev + 1, filteredCities.length - 1));
+			setHighlightedIndex((prev) => {
+				const next = Math.min(prev + 1, Math.max(filteredCities.length - 1, 0));
+				if (next !== prev) {
+					playSound("/sound/click-002.mp3");
+				}
+				return next;
+			});
 			return;
 		}
 		if (event.key === "ArrowUp") {
 			event.preventDefault();
-			setHighlightedIndex((prev) => Math.max(prev - 1, 0));
+			setHighlightedIndex((prev) => {
+				const next = Math.max(prev - 1, 0);
+				if (next !== prev) {
+					playSound("/sound/click-002.mp3");
+				}
+				return next;
+			});
 			return;
 		}
 		if (event.key === "Enter") {
@@ -339,12 +378,7 @@ export function CityRailEditor({
 			const city = filteredCities[highlightedIndex];
 			if (!city) return;
 			const cityIndex = cities.findIndex((item) => item.id === city.id);
-			if (cityIndex !== -1 && removeCity) {
-				removeCity(city.id);
-			} else {
-				addCity(city);
-				handleCommit(cities.length);
-			}
+			toggleCitySelection(city, cityIndex);
 		}
 	});
 
@@ -379,6 +413,7 @@ export function CityRailEditor({
 						value={selectedIndex}
 						onValueChange={handleManualSelect}
 						onCommit={handleCommit}
+						onHoverTickChange={handleHoverTickChange}
 						formatValue={(value) => cities[value]?.code ?? ""}
 						tickLabels={cities.map((city) => city.code)}
 						pinned={isPinned}

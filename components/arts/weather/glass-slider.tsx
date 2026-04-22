@@ -72,6 +72,9 @@ const DEFAULT_GLASS_SHELL_PROPS: Partial<LiquidGlassProps> = {
 	borderColor: "var(--elastic-slider-border)",
 };
 
+const GLASS_SLIDER_FOCUS_RING_BOX_SHADOW =
+	"0 0 0 3px color-mix(in srgb, var(--ds-border-focused) 24%, transparent)";
+
 // Liquid-glass props for the PROGRESS FILL itself. These are intentionally
 // softer than the shell so that, when the slider is wrapped in a
 // `shell="liquid-glass"` surface, the inner fill reads as a lighter "inner
@@ -274,6 +277,15 @@ export interface GlassSliderProps {
 	 * deliberate user action.
 	 */
 	onCommit?: (value: number) => void;
+	/**
+	 * Fires whenever the hovered tick index changes during pure pointer
+	 * hover (including when `pinned` is true). Use this to trigger sound
+	 * or other feedback that should still respond to hover even when
+	 * hover-to-select is disabled.
+	 *
+	 * Called with `null` when the cursor leaves the track.
+	 */
+	onHoverTickChange?: (index: number | null) => void;
 	"aria-label"?: string;
 	/**
 	 * Fires whenever any of the slider's shape-affecting transforms change
@@ -319,6 +331,7 @@ export function GlassSlider({
 	tickLabels,
 	pinned = false,
 	onCommit,
+	onHoverTickChange,
 	"aria-label": ariaLabel,
 	onShapeChange,
 	keyboardNavigationPulseKey = 0,
@@ -404,6 +417,7 @@ export function GlassSlider({
 	const [, setIsDragging] = useState(false);
 	const [isHovered, setIsHovered] = useState(false);
 	const [isKeyboardActive, setIsKeyboardActive] = useState(false);
+	const [isFocusVisible, setIsFocusVisible] = useState(false);
 	const skipControlledFillAnimationRef = useRef(false);
 	const keyboardReleaseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const keyboardActiveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -808,7 +822,7 @@ export function GlassSlider({
 			// when there's no discrete tick set (continuous slider keeps the
 			// classic click-to-set / drag interaction).
 			if (!isInteracting) {
-				if (pinned || !tickLabels || e.pointerType === "touch") return;
+				if (!tickLabels || e.pointerType === "touch") return;
 
 				if (!wrapperRectRef.current) refreshWrapperRect();
 				const rect = wrapperRectRef.current;
@@ -847,7 +861,16 @@ export function GlassSlider({
 					hashMarkCount - 1,
 				);
 				const snappedValue = clamp(min + snappedIndex * step, min, max);
+
+				if (snappedIndex !== hoveredTickIndex) {
+					onHoverTickChange?.(snappedIndex);
+				}
 				setHoveredTickIndex(snappedIndex);
+
+				// When pinned, selection is locked — only the elastic-magnet
+				// stretch and hover sound (via onHoverTickChange) are active.
+				// Skip fill animation and value update.
+				if (pinned) return;
 
 				// Drive the fill height from the RAW cursor position so the
 				// progress fluidly trails the mouse — instead of staying
@@ -927,6 +950,8 @@ export function GlassSlider({
 			positionToValue,
 			refreshWrapperRect,
 			hashMarkCount,
+			hoveredTickIndex,
+			onHoverTickChange,
 		],
 	);
 
@@ -1082,6 +1107,12 @@ export function GlassSlider({
 		...(trackShape === "squircle" ? squircleTrackStyle : {}),
 		...trackStyle,
 		...shellProps?.style,
+	} satisfies CSSProperties;
+	const focusRingStyle = {
+		borderRadius: "var(--elastic-slider-radius)",
+		border: "1px solid var(--ds-border-focused)",
+		boxShadow: GLASS_SLIDER_FOCUS_RING_BOX_SHADOW,
+		...(trackShape === "squircle" ? squircleTrackStyle : {}),
 	} satisfies CSSProperties;
 	const trackChrome = (
 		<>
@@ -1472,6 +1503,15 @@ export function GlassSlider({
 			}
 		>
 			<motion.div
+				data-slot="glass-slider-focus-ring"
+				aria-hidden="true"
+				className={cn(
+					"pointer-events-none absolute inset-x-0 top-0 z-30 transition-opacity duration-fast ease-out",
+					isFocusVisible ? "opacity-100" : "opacity-0",
+				)}
+				style={{ ...trackMotionStyle, ...focusRingStyle }}
+			/>
+			<motion.div
 				ref={trackRef}
 				data-slot="glass-slider-track"
 				role="slider"
@@ -1494,9 +1534,15 @@ export function GlassSlider({
 				onPointerUp={handlePointerUp}
 				onPointerCancel={handlePointerUp}
 				onKeyDown={handleKeyDown}
+				onFocus={(event) => {
+					setIsFocusVisible(event.currentTarget.matches(":focus-visible"));
+				}}
+				onBlur={() => {
+					setIsFocusVisible(false);
+				}}
 				onMouseEnter={() => {
 					setIsHovered(true);
-					if (!pinned && tickLabels) {
+					if (tickLabels) {
 						refreshWrapperRect();
 					}
 				}}
@@ -1505,6 +1551,7 @@ export function GlassSlider({
 						pinned && !isInteracting && !isKeyboardActive;
 					setIsHovered(false);
 					setHoveredTickIndex(null);
+					onHoverTickChange?.(null);
 					hoverStretchAnimRef.current?.stop();
 					hoverStretchAnimRef.current = null;
 					if (skipPinnedHoverLeaveSettle) {
