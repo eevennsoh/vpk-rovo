@@ -61,6 +61,14 @@ test("GlassTabs keeps the tighter keyboard animation path in the shared motion h
 	);
 	assert.match(
 		GLASS_TABS_MOTION_SOURCE,
+		/function getEdgeFollowerLeft\(\s*baseLeft: number,\s*stretch: number,\s*index: number \| null,\s*\): number \{/s,
+	);
+	assert.match(
+		GLASS_TABS_MOTION_SOURCE,
+		/function getEdgeFollowerWidth\(\s*baseWidth: number,\s*stretch: number,\s*index: number \| null,\s*lastIndex: number,\s*\): number \{/s,
+	);
+	assert.match(
+		GLASS_TABS_MOTION_SOURCE,
 		/const selectionInputModeRef = useRef<"pointer" \| "keyboard">\("pointer"\);/,
 	);
 	assert.match(
@@ -89,7 +97,15 @@ test("GlassTabs keeps the tighter keyboard animation path in the shared motion h
 	);
 	assert.match(
 		GLASS_TABS_MOTION_SOURCE,
-		/return hoverPillWidth\.get\(\) \+ stretch \* EDGE_PILL_STRETCH_FOLLOW_RATIO;/,
+		/return baseWidth \+ stretch \* EDGE_PILL_STRETCH_FOLLOW_RATIO;/,
+	);
+	assert.match(
+		GLASS_TABS_MOTION_SOURCE,
+		/const pillDisplayLeft = useTransform\(\(\) => \{\s+return getEdgeFollowerLeft\(\s+pillLeft\.get\(\),\s+shellStretch\.get\(\),\s+selectedIndexRef\.current,\s+\);\s+\}\);/s,
+	);
+	assert.match(
+		GLASS_TABS_MOTION_SOURCE,
+		/const hoverPillDisplayWidth = useTransform\(\(\) => \{\s+return getEdgeFollowerWidth\(\s+hoverPillWidth\.get\(\),\s+shellStretch\.get\(\),\s+hoveredIndexRef\.current,\s+lastIndex,\s+\);\s+\}\);/s,
 	);
 	assert.match(
 		GLASS_TABS_MOTION_SOURCE,
