@@ -88,7 +88,7 @@ test("Weather splits pointer-driven chrome between the top theme control and bot
 		/<WeatherKeyboardHints isVisible=\{pointerViewportZone === "bottom"\} isEditing=\{isCityManagerOpen\} \/>/,
 	);
 	assert.match(WEATHER_SOURCE, /<ReturnIcon className="size-3\.5" \/>/);
-	assert.match(WEATHER_SOURCE, /Enter (opens city manager|to update cities)/);
+	assert.match(WEATHER_SOURCE, /update cities/);
 	assert.doesNotMatch(WEATHER_SOURCE, /Esc closes search/);
 	assert.match(WEATHER_SOURCE, /event\.key === "ArrowUp" \|\| event\.key === "ArrowDown"/);
 	assert.match(WEATHER_SOURCE, /const nextSelectedIndex = Math\.max\(/);
@@ -136,6 +136,23 @@ test("Weather splits pointer-driven chrome between the top theme control and bot
 		/animate=\{isVisible\s*\?\s*\{ opacity: 1, filter: "blur\(0px\)" \}\s*:\s*\{ opacity: 0, filter: "blur\(16px\)" \}\s*\}/s,
 	);
 	assert.match(WEATHER_SOURCE, /keyboardNavigationPulseKey=\{cityNavigationPulseKey\}/);
+});
+
+test("Weather renders the city slider last in source so the glass shell can overlap the other cards", () => {
+	assert.match(WEATHER_SOURCE, /<motion\.div\s+className="order-1"[\s\S]*<CityRailEditor/s);
+	assert.match(WEATHER_SOURCE, /<motion\.div\s+className="order-2"[\s\S]*<WeatherTimeCard/s);
+	assert.match(WEATHER_SOURCE, /<motion\.div\s+className="order-3"[\s\S]*Humid %/s);
+	assert.match(WEATHER_SOURCE, /<motion\.div\s+className="order-4"[\s\S]*Temp °C/s);
+	assert.match(
+		WEATHER_SOURCE,
+		/const sliderOverlapMarginBottom =\s+fluidLayout\.layout === "grid"\s+\?\s+-Math\.round\(sizes\.pillHeight \* 0\.18\)\s+:\s+0;/s,
+	);
+	assert.match(WEATHER_SOURCE, /marginBottom: sliderOverlapMarginBottom/);
+	assert.ok(
+		WEATHER_SOURCE.lastIndexOf("<CityRailEditor") > WEATHER_SOURCE.lastIndexOf("Temp °C"),
+		"CityRailEditor should come after the other cards in source order",
+	);
+	assert.doesNotMatch(WEATHER_SOURCE, /<motion\.div\s+className="relative z-20"[\s\S]*<CityRailEditor/s);
 });
 
 test("CityRailEditor opens the city manager with Enter from the focused slider", () => {

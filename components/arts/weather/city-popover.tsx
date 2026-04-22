@@ -23,6 +23,7 @@ import {
 	EmptyMedia,
 	EmptyTitle,
 } from "@/components/ui/empty";
+import { Spinner } from "@/components/ui/spinner";
 
 import {
 	formatCornerShapeSuperellipse,
@@ -43,6 +44,14 @@ import { cn } from "@/lib/utils";
 import type { LockscreenLocation } from "./locations";
 import { PRESET_CITIES } from "./preset-cities";
 import { GlassSlider } from "./glass-slider";
+import { useCitySearch } from "./use-city-search";
+
+function playSound(src: string) {
+	if (typeof window === "undefined") return;
+	const audio = new Audio(src);
+	audio.volume = 0.5;
+	audio.play().catch(() => {});
+}
 
 interface CityRailEditorProps {
 	cities: ReadonlyArray<LockscreenLocation>;
@@ -165,6 +174,7 @@ export function CityRailEditor({
 	// committed to a selection.
 	const handleManualSelect = useCallback(
 		(value: number) => {
+			playSound("/sound/click-002.mp3");
 			setSelectedIndex(value);
 		},
 		[setSelectedIndex],
@@ -257,14 +267,36 @@ export function CityRailEditor({
 		};
 	}, [isOpen]);
 
+	// Live search against Open-Meteo's geocoding API. The hook debounces
+	// input, aborts stale requests, caches responses, and short-circuits
+	// for queries shorter than its minimum length — so we can hand the
+	// raw `search` value through without any extra wiring.
+	const {
+		results: remoteCities,
+		isLoading: isRemoteLoading,
+		error: remoteError,
+	} = useCitySearch(search);
+
 	const filteredCities = useMemo(() => {
 		if (!search.trim()) return PRESET_CITIES;
 		const query = search.toLowerCase();
-		return PRESET_CITIES.filter((city) => {
+		const presetMatches = PRESET_CITIES.filter((city) => {
 			return city.name.toLowerCase().includes(query)
 				|| city.region.toLowerCase().includes(query);
 		});
-	}, [search]);
+
+		// Merge presets first (they're instant + already curated) then
+		// API results, deduping by id so a preset and an API hit for the
+		// same place don't both render.
+		const seen = new Set<string>(presetMatches.map((city) => city.id));
+		const merged: LockscreenLocation[] = [...presetMatches];
+		for (const city of remoteCities) {
+			if (seen.has(city.id)) continue;
+			seen.add(city.id);
+			merged.push(city);
+		}
+		return merged;
+	}, [search, remoteCities]);
 
 	useEffect(() => {
 		setHighlightedIndex(0);
@@ -288,6 +320,7 @@ export function CityRailEditor({
 
 	const handleOpenKeyDown = useEffectEvent((event: KeyboardEvent) => {
 		if (event.key === "Escape") {
+			playSound("/sound/click-004.mp3");
 			setIsOpen(false);
 			return;
 		}
@@ -333,6 +366,7 @@ export function CityRailEditor({
 				if (!(target instanceof HTMLElement)) return;
 				if (!target.closest('[role="slider"]')) return;
 				event.preventDefault();
+				playSound("/sound/click-001.mp3");
 				setIsOpen(true);
 			}}
 		>
@@ -479,13 +513,25 @@ export function CityRailEditor({
 											<Empty width="narrow" className="px-4 py-6">
 												<EmptyHeader>
 													<EmptyMedia>
-														<Image
-															src="/illustration-spot/error-state/search-no-result/light.svg"
-															alt=""
-															role="presentation"
-															width={120}
-															height={120}
-														/>
+														{isRemoteLoading ? (
+															<div
+																className="flex size-[120px] items-center justify-center text-text-subtle"
+																role="presentation"
+															>
+																<Spinner
+																	size="xl"
+																	label="Searching the world"
+																/>
+															</div>
+														) : (
+															<Image
+																src="/illustration-spot/error-state/search-no-result/light.svg"
+																alt=""
+																role="presentation"
+																width={120}
+																height={120}
+															/>
+														)}
 													</EmptyMedia>
 													<EmptyTitle
 														headingSize="xsmall"
@@ -495,9 +541,24 @@ export function CityRailEditor({
 															fontFamily: "'Bitcount Grid Single', sans-serif",
 														}}
 													>
-														<span>No</span>
-														<span>Cities</span>
-														<span>Found</span>
+														{isRemoteLoading ? (
+															<>
+																<span>Searching</span>
+																<span>The</span>
+																<span>World</span>
+															</>
+														) : remoteError ? (
+															<>
+																<span>Search</span>
+																<span>Unavailable</span>
+															</>
+														) : (
+															<>
+																<span>No</span>
+																<span>Cities</span>
+																<span>Found</span>
+															</>
+														)}
 													</EmptyTitle>
 												</EmptyHeader>
 											</Empty>
@@ -522,8 +583,8 @@ export function CityRailEditor({
 						<motion.div style={{ y: plusButtonY }}>
 							<button
 								type="button"
-								onClick={() => setIsOpen(true)}
-								className="flex h-7 w-7 items-center justify-center rounded-full border border-transparent text-icon-subtlest transition-colors hover:bg-bg-neutral-subtle-hovered active:bg-bg-neutral-subtle-pressed"
+								onClick={() => { playSound("/sound/click-001.mp3"); setIsOpen(true); }}
+								className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border border-transparent text-icon-subtlest transition-colors hover:bg-bg-neutral-subtle-hovered active:bg-bg-neutral-subtle-pressed"
 								aria-label="Add city"
 							>
 								<PlusIcon className="size-3.5" />
@@ -544,16 +605,17 @@ export function CityRailEditor({
 						<motion.div style={{ y: pinButtonY }}>
 							<button
 								type="button"
-								onClick={() => setIsPinned((current) => !current)}
+								onClick={() => { playSound("/sound/click-001.mp3"); setIsPinned((current) => !current); }}
 								className={cn(
-									"flex h-7 w-7 items-center justify-center rounded-full border border-transparent transition-colors",
-									// In the selected (pinned) state we drop the
-									// circular backdrop entirely — only the icon
-									// remains. Unpinned still gets the soft hover
-									// chip so the affordance is discoverable.
-									isPinned
-										? "text-icon-subtlest"
-										: "text-icon-subtlest hover:bg-bg-neutral-subtle-hovered active:bg-bg-neutral-subtle-pressed",
+									"flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border border-transparent text-icon-subtlest transition-colors",
+									// Always show the soft circular hover/press
+									// chip — including in the pinned state — so
+									// the click target stays discoverable when
+									// users want to unpin. The pinned vs
+									// unpinned distinction is conveyed by the
+									// icon (PinFilledIcon vs PinIcon), not by
+									// the backdrop.
+									"hover:bg-bg-neutral-subtle-hovered active:bg-bg-neutral-subtle-pressed",
 								)}
 								aria-pressed={isPinned}
 								aria-label={isPinned ? "Unpin city" : "Pin city"}

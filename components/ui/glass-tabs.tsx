@@ -23,6 +23,7 @@ export interface GlassTabsProps<TValue extends string> {
 	options: ReadonlyArray<GlassTabsOption<TValue>>;
 	value: TValue;
 	onChange: (value: TValue) => void;
+	onHover?: (value: TValue) => void;
 	keyboardSelectionPulseKey?: number;
 	"aria-label"?: string;
 	className?: string;
@@ -33,6 +34,7 @@ export function GlassTabs<TValue extends string>({
 	options,
 	value,
 	onChange,
+	onHover,
 	keyboardSelectionPulseKey = 0,
 	"aria-label": ariaLabel,
 	className,
@@ -65,6 +67,7 @@ export function GlassTabs<TValue extends string>({
 		options,
 		value,
 		onChange,
+		onHover,
 		keyboardSelectionPulseKey,
 	});
 

@@ -42,6 +42,7 @@ interface UseGlassTabsMotionProps<TValue extends string> {
 	options: ReadonlyArray<GlassTabsOptionShape<TValue>>;
 	value: TValue;
 	onChange: (value: TValue) => void;
+	onHover?: (value: TValue) => void;
 	keyboardSelectionPulseKey: number;
 }
 
@@ -157,6 +158,7 @@ export function useGlassTabsMotion<TValue extends string>({
 	options,
 	value,
 	onChange,
+	onHover,
 	keyboardSelectionPulseKey,
 }: Readonly<UseGlassTabsMotionProps<TValue>>) {
 	const shouldReduceMotion = useReducedMotion();
@@ -600,6 +602,9 @@ export function useGlassTabsMotion<TValue extends string>({
 		handleOptionKeyDown,
 		handleOptionPointerEnter: (index: number) => {
 			setHoveredIndex(index);
+			if (onHover && index !== selectedIndex) {
+				onHover(options[index].value);
+			}
 		},
 		hoverPillLeft: hoverPillDisplayLeft,
 		hoverPillOpacity,

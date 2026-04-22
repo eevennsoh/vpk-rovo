@@ -1,6 +1,6 @@
 "use client";
 
-import type { CSSProperties, ReactNode } from "react";
+import { useRef, type CSSProperties, type ReactNode } from "react";
 
 import { AnimatePresence, motion } from "motion/react";
 import { cn } from "@/lib/utils";
@@ -14,12 +14,21 @@ interface DigitDisplayProps {
 }
 
 function FlipChar({ char }: { char: string }) {
+	const idRef = useRef(0);
+	const prevRef = useRef(char);
+
+	if (prevRef.current !== char) {
+		idRef.current += 1;
+		prevRef.current = char;
+	}
+
 	return (
-		<span className="inline-flex overflow-hidden">
-			<AnimatePresence mode="popLayout" initial={false}>
+		<span className="relative inline-flex overflow-hidden">
+			<span className="invisible" aria-hidden="true">{char}</span>
+			<AnimatePresence initial={false}>
 				<motion.span
-					key={char}
-					className="inline-block"
+					key={idRef.current}
+					className="absolute left-0 top-0"
 					initial={{ y: "100%", filter: "blur(4px)", opacity: 0 }}
 					animate={{ y: 0, filter: "blur(0px)", opacity: 1 }}
 					exit={{ y: "-100%", filter: "blur(4px)", opacity: 0 }}

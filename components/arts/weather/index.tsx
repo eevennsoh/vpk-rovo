@@ -9,6 +9,8 @@ import Noise, {
 	type NoiseBlendMode,
 } from "@/components/website/demos/visual/shaders/noise";
 import WaveGradient from "@/components/website/demos/visual/shaders/wave-gradient";
+import LightbulbIcon from "@atlaskit/icon/core/lightbulb";
+
 import { Footer } from "@/components/ui/footer";
 import { GlassTabs } from "@/components/ui/glass-tabs";
 import { ReturnIcon } from "@/components/ui/vpk-icons";
@@ -20,6 +22,7 @@ import { DigitDisplay, FlipText } from "./digit-display";
 import { useCities } from "./use-cities";
 import { useCurrentWeather } from "./use-current-weather";
 import { type LocationClock, useLocationClock } from "./use-location-clock";
+import { useWakeLock } from "./use-wake-lock";
 import { WeatherIcon } from "./weather-icon";
 import {
 	WidgetCard,
@@ -98,15 +101,84 @@ function ThemeControl({
 					willChange: "opacity, filter, transform",
 				}}
 			>
-				<GlassTabs
-					aria-label="Theme"
-					options={options}
-					value={mode}
-					onChange={onChange}
-					keyboardSelectionPulseKey={keyboardSelectionPulseKey}
-				/>
+				{/*
+				 * Position GlassTabs in a relative container so the wake-lock
+				 * button can hang off the right edge using absolute positioning.
+				 * This keeps the tabs perfectly centered on the page.
+				 */}
+				<div className="relative">
+					<GlassTabs
+						aria-label="Theme"
+						options={options}
+						value={mode}
+						onChange={(value) => {
+							playSound("/sound/click-003.mp3");
+							onChange(value);
+						}}
+						onHover={() => {
+							playSound("/sound/click-003.mp3");
+						}}
+						keyboardSelectionPulseKey={keyboardSelectionPulseKey}
+					/>
+					<div className="absolute left-full top-1/2 ml-2 -translate-y-1/2">
+						<WakeLockControl />
+					</div>
+				</div>
 			</motion.div>
 		</div>
+	);
+}
+
+function WakeLockControl() {
+	const { isSupported, isEnabled, isActive, error, toggle } = useWakeLock();
+
+	const disabled = !isSupported;
+	const labelOn = "Allow screen to sleep";
+	const labelOff = "Keep screen awake";
+	const tooltip = disabled
+		? "Keep awake is not supported in this browser"
+		: isEnabled
+			? labelOn
+			: labelOff;
+
+	return (
+		<button
+			type="button"
+			role="switch"
+			aria-checked={isEnabled}
+			aria-label={tooltip}
+			title={tooltip}
+			disabled={disabled}
+			// Skip the Tab order so users can't accidentally trap focus on
+			// this control and disable the global weather keyboard
+			// shortcuts (Enter opens the city manager, arrows navigate).
+			tabIndex={-1}
+			onClick={(event) => {
+				playSound("/sound/click-003.mp3");
+				void toggle();
+				// Return focus to <body> so the global weather keyboard
+				// shortcuts keep working — the global keydown handler
+				// swallows events that originate from focused buttons.
+				event.currentTarget.blur();
+			}}
+			className={cn(
+				"relative flex size-7 cursor-pointer items-center justify-center rounded-full",
+				"border border-border bg-surface-overlay/70 backdrop-blur-md",
+				"text-text-subtle transition-colors duration-normal",
+				"hover:bg-surface-hovered hover:text-text",
+				"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focused",
+				"disabled:cursor-not-allowed disabled:opacity-50",
+				isEnabled && "border-border-selected text-text-selected bg-surface-selected/40",
+			)}
+			data-active={isActive ? "true" : undefined}
+			data-error={error ? "true" : undefined}
+		>
+			<LightbulbIcon
+				label=""
+				color="currentColor"
+				spacing="none"
+			/>
+		</button>
 	);
 }
 
@@ -149,7 +221,7 @@ function WeatherKeyboardHints({
 					<span aria-hidden>•</span>
 					<span className="inline-flex items-center gap-1">
 						<ReturnIcon className="size-3.5" />
-						Enter to update cities
+						update cities
 					</span>
 					{isEditing && (
 						<>
@@ -440,12 +512,8 @@ interface WeatherTimeCardProps {
 	debossDotShadow: string;
 }
 
-type SharedWeatherClockProps = Omit<WeatherTimeCardProps, "timezone"> & {
-	clock: LocationClock;
-};
-
 function WeatherTimeCard({
-	clock,
+	timezone,
 	sizes,
 	gridColor,
 	gridBlendMode,
@@ -460,7 +528,8 @@ function WeatherTimeCard({
 	cutoutTextShadow,
 	debossTextShadow,
 	debossDotShadow,
-}: SharedWeatherClockProps) {
+}: WeatherTimeCardProps) {
+	const clock = useLocationClock(timezone);
 	return (
 		<WidgetCard
 			className="flex flex-col"
@@ -624,7 +693,7 @@ function SelectedWeatherClock({
 				style={{ willChange: "opacity, filter, transform" }}
 			>
 				<WeatherTimeCard
-					clock={clock}
+					timezone={timezone}
 					sizes={sizes}
 					gridColor={gridColor}
 					gridBlendMode={gridBlendMode}
@@ -679,6 +748,10 @@ export default function Weather({
 
 	const { measureRef, layout: fluidLayout } = useFluidWeatherLayout();
 	const sizes = fluidLayout.sizes;
+	const sliderOverlapMarginBottom =
+		fluidLayout.layout === "grid"
+			? -Math.round(sizes.pillHeight * 0.18)
+			: 0;
 
 	const weather = useCurrentWeather(
 		selected.latitude,
@@ -970,61 +1043,58 @@ export default function Weather({
 
 			<div
 				className={cn(
-					"relative z-10 items-center justify-center",
+					"relative z-10 justify-center",
+					// Top-align in the 2×2 grid so the slider and the time
+					// card share the same top edge — the slider's negative
+					// `marginBottom` (used to overlap the HUMID card below)
+					// would otherwise interact with `items-center` and push
+					// the slider down inside its row track. In the row
+					// layout we keep `items-center` so all four pills sit
+					// on the same horizontal centerline.
 					fluidLayout.layout === "row"
-						? "flex gap-3"
-						: "grid grid-cols-[auto_auto] gap-2",
+						? "flex items-center gap-3"
+						: "grid grid-cols-[auto_auto] items-start gap-2",
 				)}
 			>
 				<motion.div
-					initial={{ opacity: 0, filter: "blur(16px)", scaleY: 0, y: 80 }}
-					animate={{ opacity: 1, filter: "blur(0px)", scaleY: 1, y: 0 }}
+					className="order-2"
+					initial={{ opacity: 0, filter: "blur(16px)", scale: 0.5, y: 140 }}
+					animate={{ opacity: 1, filter: "blur(0px)", scale: 1, y: 0 }}
 					transition={{
-						scaleY: { type: "spring", stiffness: 180, damping: 12, mass: 0.6, delay: 0.1 },
-						y: { type: "spring", stiffness: 180, damping: 12, mass: 0.6, delay: 0.1 },
-						filter: { duration: 0.5, ease: [0, 0.4, 0, 1], delay: 0.1 },
-						opacity: { duration: 0.4, ease: [0, 0.4, 0, 1], delay: 0.1 },
+						scale: { type: "spring", stiffness: 180, damping: 12, mass: 0.6, delay: 0.2 },
+						y: { type: "spring", stiffness: 180, damping: 12, mass: 0.6, delay: 0.2 },
+						filter: { duration: 0.5, ease: [0, 0.4, 0, 1], delay: 0.2 },
+						opacity: { duration: 0.4, ease: [0, 0.4, 0, 1], delay: 0.2 },
 					}}
-					style={{ transformOrigin: "bottom center", willChange: "opacity, filter, transform" }}
+					style={{ willChange: "opacity, filter, transform" }}
+					// Mark the entrance as complete so the global weather
+					// keyboard shortcuts (Enter, arrows) are re-enabled. The
+					// previous standalone <WeatherDateSummary> motion.div that
+					// fired this callback was removed during the
+					// `SelectedWeatherClock` extraction refactor.
+					onAnimationComplete={() => setIsEntranceAnimating(false)}
 				>
-					<CityRailEditor
-						cities={cities}
-						selectedIndex={selectedIndex}
-						setSelectedIndex={setSelectedIndex}
-						addCity={addCity}
-						openRequestKey={openCityManagerRequestKey}
-						onOpenChange={setIsCityManagerOpen}
-						keyboardNavigationPulseKey={cityNavigationPulseKey}
-						removeCity={removeCity}
-						height={sizes.pillHeight}
-						// CityRailEditor subtracts a 24px TRACK_INSET internally to
-						// derive the visible rail width, so we add it back here to
-						// make the slider's visible pill match the Humidity card
-						// width directly underneath it in the 2×2 grid.
-						width={sizes.sliderWidth + CITY_RAIL_TRACK_INSET}
+					<WeatherTimeCard
+						timezone={selected.timezone}
+						sizes={sizes}
+						gridColor={gridColor}
+						gridBlendMode={gridBlendMode}
+						noiseBlendMode={noiseBlendMode}
+						noiseOpacity={noiseOpacity}
+						noiseColor={noiseColor}
+						shaderTextClass={shaderTextClass}
+						shaderScrewColor={shaderScrewColor}
+						shaderLabelColor={shaderLabelColor}
+						shaderFootnoteColor={shaderFootnoteColor}
+						cutoutFillColor={cutoutFillColor}
+						cutoutTextShadow={cutoutTextShadow}
+						debossTextShadow={debossTextShadow}
+						debossDotShadow={debossDotShadow}
 					/>
 				</motion.div>
 
-				<SelectedWeatherClock
-					timezone={selected.timezone}
-					sizes={sizes}
-					gridColor={gridColor}
-					gridBlendMode={gridBlendMode}
-					noiseBlendMode={noiseBlendMode}
-					noiseOpacity={noiseOpacity}
-					noiseColor={noiseColor}
-					shaderTextClass={shaderTextClass}
-					shaderScrewColor={shaderScrewColor}
-					shaderLabelColor={shaderLabelColor}
-					shaderFootnoteColor={shaderFootnoteColor}
-					cutoutFillColor={cutoutFillColor}
-					cutoutTextShadow={cutoutTextShadow}
-					debossTextShadow={debossTextShadow}
-					debossDotShadow={debossDotShadow}
-					onFooterAnimationComplete={() => setIsEntranceAnimating(false)}
-				/>
-
 				<motion.div
+					className="order-3"
 					initial={{ opacity: 0, filter: "blur(16px)", scaleY: 0, y: 80 }}
 					animate={{ opacity: 1, filter: "blur(0px)", scaleY: 1, y: 0 }}
 					transition={{
@@ -1127,6 +1197,7 @@ export default function Weather({
 				</motion.div>
 
 				<motion.div
+					className="order-4"
 					initial={{ opacity: 0, filter: "blur(16px)", scale: 0.5, y: 140 }}
 					animate={{ opacity: 1, filter: "blur(0px)", scale: 1, y: 0 }}
 					transition={{
@@ -1230,6 +1301,54 @@ export default function Weather({
 							</span>
 						</div>
 					</WidgetCard>
+				</motion.div>
+
+				<motion.div
+					// IMPORTANT: do NOT add `relative z-N` (or any
+					// stacking-context-creating CSS) to this wrapper. The
+					// slider's `LiquidGlass` shell uses
+					// `backdrop-filter: url(#filter)` to displace whatever
+					// is painted *behind* it (the chromatic-dispersion
+					// effect). `backdrop-filter` only samples content from
+					// the slider's own ancestor stacking contexts — the
+					// moment this wrapper becomes its own stacking context
+					// (`position: relative; z-index: …`,
+					// `will-change: transform`, `transform`, `filter`,
+					// `isolation: isolate`, etc.), the HUMID card sibling
+					// below the slider gets clipped out of the backdrop
+					// snapshot and only the page background is refracted.
+					// We instead push the *neighbouring* widget cards
+					// behind the slider (see `negative-z` comments below).
+					className="order-1"
+					initial={{ opacity: 0, filter: "blur(16px)", scaleY: 0, y: 80 }}
+					animate={{ opacity: 1, filter: "blur(0px)", scaleY: 1, y: 0 }}
+					transition={{
+						scaleY: { type: "spring", stiffness: 180, damping: 12, mass: 0.6, delay: 0.1 },
+						y: { type: "spring", stiffness: 180, damping: 12, mass: 0.6, delay: 0.1 },
+						filter: { duration: 0.5, ease: [0, 0.4, 0, 1], delay: 0.1 },
+						opacity: { duration: 0.4, ease: [0, 0.4, 0, 1], delay: 0.1 },
+					}}
+					style={{
+						marginBottom: sliderOverlapMarginBottom,
+						transformOrigin: "bottom center",
+					}}
+				>
+					<CityRailEditor
+						cities={cities}
+						selectedIndex={selectedIndex}
+						setSelectedIndex={setSelectedIndex}
+						addCity={addCity}
+						openRequestKey={openCityManagerRequestKey}
+						onOpenChange={setIsCityManagerOpen}
+						keyboardNavigationPulseKey={cityNavigationPulseKey}
+						removeCity={removeCity}
+						height={sizes.pillHeight}
+						// CityRailEditor subtracts a 24px TRACK_INSET internally to
+						// derive the visible rail width, so we add it back here to
+						// make the slider's visible pill match the Humidity card
+						// width directly underneath it in the 2×2 grid.
+						width={sizes.sliderWidth + CITY_RAIL_TRACK_INSET}
+					/>
 				</motion.div>
 			</div>
 
