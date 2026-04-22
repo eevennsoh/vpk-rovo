@@ -182,6 +182,14 @@ export function useGlassTabsMotion<TValue extends string>({
 	selectedIndexRef.current = selectedIndex;
 	const hoveredIndexRef = useRef(hoveredIndex);
 	hoveredIndexRef.current = hoveredIndex;
+	// Mirror the latest measured segments so animation `onComplete`
+	// callbacks (chained settles after the stretch overshoot) can read
+	// the freshest layout values instead of the stale closure capture
+	// from when the effect ran. Fixes the "rainbow pill stuck at the
+	// stretched-out coordinates" bug that surfaces when fonts finish
+	// loading or the container resizes mid-animation.
+	const segmentsRef = useRef<SegmentRect[]>(segments);
+	segmentsRef.current = segments;
 
 	const pillLeft = useMotionValue(0);
 	const pillWidth = useMotionValue(0);
@@ -396,8 +404,18 @@ export function useGlassTabsMotion<TValue extends string>({
 			: PILL_STRETCH_RATIO;
 
 		if (isKeyboardSelection) {
-			leftAnimRef.current = animate(pillLeft, target.left, motionSpring);
-			widthAnimRef.current = animate(pillWidth, target.width, motionSpring);
+			// Clear refs when the keyboard animation finishes so the
+			// self-correcting effect can re-assert if segments change
+			// after the animation settles.
+			const keyboardOptions = {
+				...motionSpring,
+				onComplete: () => {
+					leftAnimRef.current = null;
+					widthAnimRef.current = null;
+				},
+			};
+			leftAnimRef.current = animate(pillLeft, target.left, keyboardOptions);
+			widthAnimRef.current = animate(pillWidth, target.width, keyboardOptions);
 			return;
 		}
 
@@ -411,11 +429,35 @@ export function useGlassTabsMotion<TValue extends string>({
 		widthAnimRef.current = animate(pillWidth, stretchedWidth, {
 			...motionSpring,
 			onComplete: () => {
-				leftAnimRef.current = animate(pillLeft, targetLeft, motionSpring);
+				// Re-read the freshest segments via ref instead of the
+				// closure-captured `target` so a font-load or container
+				// resize that fired during the stretch animation gets
+				// reflected in the settle. Without this the pill could
+				// settle to stale stretched-coordinates and visually
+				// drift off the selected tab.
+				const latest = segmentsRef.current[selectedIndexRef.current];
+				if (!latest || latest.width <= 0) {
+					// Mark the chain finished so the self-correcting
+					// effect can take over on the next segments update.
+					leftAnimRef.current = null;
+					widthAnimRef.current = null;
+					return;
+				}
+				// Clear refs when the settle finishes naturally so the
+				// self-correcting effect (which checks `isAnimating`)
+				// can re-assert if segments change after the settle.
+				const settleOptions = {
+					...motionSpring,
+					onComplete: () => {
+						leftAnimRef.current = null;
+						widthAnimRef.current = null;
+					},
+				};
+				leftAnimRef.current = animate(pillLeft, latest.left, settleOptions);
 				widthAnimRef.current = animate(
 					pillWidth,
-					target.width,
-					motionSpring,
+					latest.width,
+					settleOptions,
 				);
 			},
 		});
@@ -428,6 +470,31 @@ export function useGlassTabsMotion<TValue extends string>({
 		shouldReduceMotion,
 		stopAnims,
 	]);
+
+	// Self-correcting safety net: whenever segments change AND no
+	// selection animation is currently in flight, re-assert the pill at
+	// the latest measured position for the selected tab. This catches
+	// edge cases where the chained stretch+settle was interrupted (e.g.
+	// rapid clicks, parent re-render, font-load mid-animation) and the
+	// pill ended up stranded at stretched-out coordinates instead of
+	// converging on the target tab.
+	useEffect(() => {
+		const target = segments[selectedIndex];
+		if (!target || target.width <= 0) return;
+		const isAnimating =
+			leftAnimRef.current !== null || widthAnimRef.current !== null;
+		if (isAnimating) return;
+		// Compare against current motion values to avoid no-op writes
+		// (which would still trigger downstream subscribers).
+		const epsilon = 0.5;
+		if (
+			Math.abs(pillLeft.get() - target.left) > epsilon ||
+			Math.abs(pillWidth.get() - target.width) > epsilon
+		) {
+			pillLeft.set(target.left);
+			pillWidth.set(target.width);
+		}
+	}, [segments, selectedIndex, pillLeft, pillWidth]);
 
 	useEffect(() => {
 		stopHoverAnims();

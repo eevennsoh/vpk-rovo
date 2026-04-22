@@ -94,11 +94,11 @@ test("Weather splits pointer-driven chrome between the top theme control and bot
 		/<WeatherKeyboardHints[\s\S]*isVisible=\{pointerViewportZone === "bottom"\}[\s\S]*isEditing=\{isCityManagerOpen\}[\s\S]*showWakeShortcut=\{!isCityManagerOpen && isWakeLockSupported\}[\s\S]*\/>/,
 	);
 	assert.match(WEATHER_SOURCE, /<ReturnIcon className="size-3\.5" \/>/);
-	assert.match(WEATHER_SOURCE, /<kbd className="font-sans">W<\/kbd> screen awake/);
-	assert.match(WEATHER_SOURCE, /update cities/);
+	assert.match(WEATHER_SOURCE, /<kbd className="font-sans">W<\/kbd> for awake/);
+	assert.match(WEATHER_SOURCE, /update/);
 	assert.match(
 		WEATHER_SOURCE,
-		/update cities[\s\S]*showWakeShortcut \?[\s\S]*<kbd className="font-sans">W<\/kbd> screen awake/s,
+		/update[\s\S]*showWakeShortcut \?[\s\S]*<kbd className="font-sans">W<\/kbd> for awake/s,
 	);
 	assert.doesNotMatch(WEATHER_SOURCE, /Esc closes search/);
 	assert.match(WEATHER_SOURCE, /event\.key === "ArrowUp" \|\| event\.key === "ArrowDown"/);
@@ -169,20 +169,45 @@ test("Weather splits pointer-driven chrome between the top theme control and bot
 });
 
 test("Weather renders the city slider last in source so the glass shell can overlap the other cards", () => {
-	assert.match(WEATHER_SOURCE, /<motion\.div\s+className="order-1"[\s\S]*<CityRailEditor/s);
-	assert.match(WEATHER_SOURCE, /<motion\.div\s+className="order-2"[\s\S]*<WeatherTimeCard/s);
-	assert.match(WEATHER_SOURCE, /<motion\.div\s+className="order-3"[\s\S]*Humid %/s);
-	assert.match(WEATHER_SOURCE, /<motion\.div\s+className="order-4"[\s\S]*Temp °C/s);
 	assert.match(
 		WEATHER_SOURCE,
-		/const sliderOverlapMarginBottom =\s+fluidLayout\.layout === "grid"\s+\?\s+-Math\.round\(sizes\.pillHeight \* 0\.18\)\s+:\s+0;/s,
+		/const cityTitleContent = \(\s*<div className="text-text flex flex-col items-center gap-2">/s,
 	);
+	assert.match(
+		WEATHER_SOURCE,
+		/\{isEntranceAnimating \? \(\s*<motion\.div[\s\S]*\{cityTitleContent\}[\s\S]*\) : \(\s*<div aria-hidden="true" className="pointer-events-none opacity-0">\s*\{cityTitleContent\}[\s\S]*\)\}/s,
+	);
+	assert.match(
+		WEATHER_SOURCE,
+		/<motion\.div[\s\S]*className=\{isRowLayout \? "order-2" : "col-start-2 row-start-1"\}[\s\S]*<WeatherTimeCard/s,
+	);
+	assert.match(
+		WEATHER_SOURCE,
+		/<motion\.div[\s\S]*className=\{isRowLayout \? "order-3" : "col-start-1 row-start-2"\}[\s\S]*Humid %/s,
+	);
+	assert.match(
+		WEATHER_SOURCE,
+		/<motion\.div[\s\S]*className=\{isRowLayout \? "order-4" : "col-start-2 row-start-2"\}[\s\S]*Temp °C/s,
+	);
+	assert.match(
+		WEATHER_SOURCE,
+		/const sliderOverlapMarginBottom =\s+!isRowLayout\s+\?\s+-Math\.round\(sizes\.pillHeight \* 0\.18\)\s+:\s+0;/s,
+	);
+	assert.match(WEATHER_SOURCE, /const cityRailEditor = \(\s*<CityRailEditor/s);
 	assert.match(WEATHER_SOURCE, /marginBottom: sliderOverlapMarginBottom/);
-	assert.ok(
-		WEATHER_SOURCE.lastIndexOf("<CityRailEditor") > WEATHER_SOURCE.lastIndexOf("Temp °C"),
-		"CityRailEditor should come after the other cards in source order",
+	assert.match(
+		WEATHER_SOURCE,
+		/\{isEntranceAnimating \? \(\s*<motion\.div[\s\S]*pointerEvents: "none"[\s\S]*\{cityRailEditor\}[\s\S]*\) : \(\s*<div[\s\S]*style=\{\{ marginBottom: sliderOverlapMarginBottom \}\}[\s\S]*\{cityRailEditor\}[\s\S]*\)\}/s,
 	);
-	assert.doesNotMatch(WEATHER_SOURCE, /<motion\.div\s+className="relative z-20"[\s\S]*<CityRailEditor/s);
+	assert.match(
+		WEATHER_SOURCE,
+		/\{!isEntranceAnimating \? \(\s*<div className="pointer-events-none absolute left-1\/2 bottom-full mb-6 -translate-x-1\/2">\s*\{cityTitleContent\}[\s\S]*\) : null\}/s,
+	);
+	assert.ok(
+		WEATHER_SOURCE.lastIndexOf("{cityRailEditor}") > WEATHER_SOURCE.lastIndexOf("Temp °C"),
+		"cityRailEditor should be rendered after the other cards in source order",
+	);
+	assert.doesNotMatch(WEATHER_SOURCE, /<motion\.div\s+className="relative z-20"[\s\S]*\{cityRailEditor\}/s);
 });
 
 test("CityRailEditor opens the city manager with Enter from the focused slider", () => {

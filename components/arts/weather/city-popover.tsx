@@ -582,7 +582,7 @@ export function CityRailEditor({
 
 							<div className="relative min-h-0 flex-1">
 								<div
-									className="scrollbar-auto-hide absolute inset-0 overflow-y-auto pl-1 pr-0"
+									className="scrollbar-auto-hide absolute inset-0 overflow-y-auto"
 									onScroll={handleListScroll}
 									style={{
 										WebkitMaskImage: scrollFadeMask,
@@ -591,10 +591,15 @@ export function CityRailEditor({
 										// `scrollbar-gutter: stable both-edges` to keep
 										// content centered when the thumb appears. In
 										// this popover that reserved gutter reads as
-										// extra right padding on the row highlight, so
-										// let the thin thumb overlay the content
-										// instead of shrinking the usable list width.
-										scrollbarGutter: "unset",
+										// extra padding on both sides of the row
+										// highlight (offsetting the rows from the
+										// search input above). Force `auto` so no
+										// gutter is reserved — the thin thumb (when
+										// it appears) overlays the content edge
+										// instead of shrinking the usable list width,
+										// keeping rows flush with the search bar.
+										scrollbarGutter: "auto",
+										scrollbarWidth: "none",
 									}}
 								>
 									<div
@@ -642,7 +647,7 @@ export function CityRailEditor({
 
 														{isSelected ? (
 															<span
-																className="flex h-8 w-8 shrink-0 items-center justify-center text-icon-subtlest"
+																className="flex h-4 w-4 shrink-0 items-center justify-center text-icon-subtlest"
 																aria-hidden="true"
 															>
 																<CheckIcon className="size-3.5" />

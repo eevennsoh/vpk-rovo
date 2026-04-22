@@ -27,7 +27,7 @@ import {
 	ReturnIcon,
 } from "@/components/ui/vpk-icons";
 import { cn } from "@/lib/utils";
-import { motion, useMotionValue, useTransform } from "motion/react";
+import { animate, motion, useMotionValue, useTransform } from "motion/react";
 import { flushSync } from "react-dom";
 
 import { CityRailEditor } from "./city-popover";
@@ -209,6 +209,7 @@ function ThemeControl({
 		isActive: boolean;
 		error: string | null;
 		onToggle: () => void;
+		buttonRef?: React.RefObject<HTMLButtonElement | null>;
 	};
 	cutoutFillColor: string;
 	// Tuned for the small (16×16) wake-lock eye icon — see
@@ -344,6 +345,7 @@ function ThemeControl({
 							isActive={wakeLock.isActive}
 							error={wakeLock.error}
 							onToggle={wakeLock.onToggle}
+							buttonRef={wakeLock.buttonRef}
 							cutoutFillColor={cutoutFillColor}
 							cutoutIconFilter={cutoutIconFilter}
 							noiseColor={noiseColor}
@@ -567,36 +569,43 @@ function WeatherKeyboardHints({
 			>
 				<Footer
 					hideIcon
+					className="flex-wrap justify-center gap-x-2 gap-y-1 sm:flex-nowrap sm:gap-1"
 					style={{ fontFamily: "'JetBrains Mono', monospace" }}
 					>
 						{!isEditing ? (
 							<>
-								<span>
-									<kbd className="font-sans">←</kbd> <kbd className="font-sans">→</kbd> theme
+								<span className="inline-flex flex-col items-center gap-0.5 sm:flex-row sm:gap-1">
+									<span className="inline-flex items-center gap-0.5">
+										<kbd className="font-sans">←</kbd> <kbd className="font-sans">→</kbd>
+									</span>
+									<span>theme</span>
 								</span>
 								<span aria-hidden>•</span>
 							</>
 						) : null}
-						<span>
-							<kbd className="font-sans">↑</kbd> <kbd className="font-sans">↓</kbd> city
+						<span className="inline-flex flex-col items-center gap-0.5 sm:flex-row sm:gap-1">
+							<span className="inline-flex items-center gap-0.5">
+								<kbd className="font-sans">↑</kbd> <kbd className="font-sans">↓</kbd>
+							</span>
+							<span>city</span>
 					</span>
 					<span aria-hidden>•</span>
-					<span className="inline-flex items-center gap-1">
+					<span className="inline-flex flex-col items-center gap-0.5 sm:flex-row sm:gap-1">
 						<ReturnIcon className="size-3.5" />
-						update cities
+						update
 						</span>
 						{showWakeShortcut ? (
 							<>
 								<span aria-hidden>•</span>
-								<span>
-									<kbd className="font-sans">W</kbd> screen awake
+								<span className="inline-flex flex-col items-center gap-0.5 sm:flex-row sm:gap-1">
+									<kbd className="font-sans">W</kbd> for awake
 								</span>
 							</>
 						) : null}
 						{isEditing ? (
 							<>
 								<span aria-hidden>•</span>
-								<span>
+								<span className="inline-flex flex-col items-center gap-0.5 sm:flex-row sm:gap-1">
 								<kbd className="font-sans">ESC</kbd> to cancel
 							</span>
 						</>
@@ -1113,6 +1122,7 @@ export default function Weather({
 	const [isCityManagerOpen, setIsCityManagerOpen] = React.useState(false);
 	const [cityNavigationPulseKey, setCityNavigationPulseKey] = React.useState(0);
 	const [isEntranceAnimating, setIsEntranceAnimating] = React.useState(true);
+	const wakeLockButtonRef = React.useRef<HTMLButtonElement>(null);
 	const themeKeyboardVisibleTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 	const {
 		cities,
@@ -1341,6 +1351,9 @@ export default function Weather({
 				event.preventDefault();
 				revealThemeControlFromKeyboard();
 				handleWakeLockToggle();
+				if (wakeLockButtonRef.current) {
+					animate(wakeLockButtonRef.current, { scale: [0.82, 1] }, { type: "spring", duration: 0.4, bounce: 0.55 });
+				}
 				return;
 			}
 
@@ -1437,6 +1450,37 @@ export default function Weather({
 		"inset 0 1px 0.5px color-mix(in srgb, var(--ds-text) 45%, transparent), 0 1px 0 color-mix(in srgb, var(--ds-text-inverse) 40%, transparent)";
 
 	const temperature = formatTemperature(weather.temperatureCelsius);
+	const cityTitleContent = (
+		<div className="text-text flex flex-col items-center gap-2 text-center">
+			<span
+				className="text-[15px] font-medium uppercase tracking-[0.36em]"
+				style={{
+					letterSpacing: "0.36em",
+					fontFamily: "'BBH Bartle', sans-serif",
+				}}
+			>
+				{selected.name}
+			</span>
+		</div>
+	);
+	const cityRailEditor = (
+		<CityRailEditor
+			cities={cities}
+			selectedIndex={selectedIndex}
+			setSelectedIndex={setSelectedIndex}
+			addCity={addCity}
+			openRequestKey={openCityManagerRequestKey}
+			onOpenChange={setIsCityManagerOpen}
+			keyboardNavigationPulseKey={cityNavigationPulseKey}
+			removeCity={removeCity}
+			height={sizes.pillHeight}
+			// CityRailEditor subtracts a 24px TRACK_INSET internally to
+			// derive the visible rail width, so we add it back here to
+			// make the slider's visible pill match the Humidity card
+			// width directly underneath it in the 2×2 grid.
+			width={sizes.sliderWidth + CITY_RAIL_TRACK_INSET}
+		/>
+	);
 
 	return (
 		<div
@@ -1460,6 +1504,7 @@ export default function Weather({
 					isActive: isWakeLockActive,
 					error: wakeLockError,
 					onToggle: handleWakeLockToggle,
+					buttonRef: wakeLockButtonRef,
 				}}
 				cutoutFillColor={cutoutFillColor}
 				// Pass the small-scale cutout filter — the wake-lock eye
@@ -1473,24 +1518,20 @@ export default function Weather({
 					noiseBlendMode={noiseBlendMode}
 			/>
 
-			<motion.div
-				initial={{ opacity: 0, y: 40, filter: "blur(12px)" }}
-				animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-				transition={{ type: "spring", stiffness: 120, damping: 14, mass: 0.7 }}
-				style={{ willChange: "opacity, filter, transform" }}
-			>
-				<div className="text-text relative z-10 flex flex-col items-center gap-2">
-					<span
-						className="text-[15px] font-medium uppercase tracking-[0.36em]"
-						style={{
-							letterSpacing: "0.36em",
-							fontFamily: "'BBH Bartle', sans-serif",
-						}}
+				{isEntranceAnimating ? (
+					<motion.div
+						initial={{ opacity: 0, y: 40, filter: "blur(12px)" }}
+						animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+						transition={{ type: "spring", stiffness: 120, damping: 14, mass: 0.7 }}
+						style={{ willChange: "opacity, filter, transform" }}
 					>
-						{selected.name}
-					</span>
-				</div>
-			</motion.div>
+						{cityTitleContent}
+					</motion.div>
+				) : (
+					<div aria-hidden="true" className="pointer-events-none opacity-0">
+						{cityTitleContent}
+					</div>
+				)}
 
 			<div
 				className={cn(
@@ -1506,9 +1547,15 @@ export default function Weather({
 						? "flex items-center gap-3"
 						: "grid grid-cols-[auto_auto] items-start gap-2",
 				)}
-			>
-				<motion.div
-					className={isRowLayout ? "order-2" : "col-start-2 row-start-1"}
+				>
+					{!isEntranceAnimating ? (
+						<div className="pointer-events-none absolute left-1/2 bottom-full mb-6 -translate-x-1/2">
+							{cityTitleContent}
+						</div>
+					) : null}
+
+					<motion.div
+						className={isRowLayout ? "order-2" : "col-start-2 row-start-1"}
 					initial={{ opacity: 0, filter: "blur(16px)", scale: 0.5, y: 140 }}
 					animate={{ opacity: 1, filter: "blur(0px)", scale: 1, y: 0 }}
 					transition={{
@@ -1754,53 +1801,48 @@ export default function Weather({
 					</WidgetCard>
 				</motion.div>
 
-				<motion.div
-					// IMPORTANT: do NOT add `relative z-N` (or any
-					// stacking-context-creating CSS) to this wrapper. The
-					// slider's `LiquidGlass` shell uses
-					// `backdrop-filter: url(#filter)` to displace whatever
-					// is painted *behind* it (the chromatic-dispersion
-					// effect). `backdrop-filter` only samples content from
-					// the slider's own ancestor stacking contexts — the
-					// moment this wrapper becomes its own stacking context
-					// (`position: relative; z-index: …`,
-					// `will-change: transform`, `transform`, `filter`,
-					// `isolation: isolate`, etc.), the HUMID card sibling
-					// below the slider gets clipped out of the backdrop
-					// snapshot and only the page background is refracted.
-					// We instead push the *neighbouring* widget cards
-					// behind the slider (see `negative-z` comments below).
-					className={isRowLayout ? "order-1" : "col-start-1 row-start-1"}
-					initial={{ opacity: 0, filter: "blur(16px)", scaleY: 0, y: 80 }}
-					animate={{ opacity: 1, filter: "blur(0px)", scaleY: 1, y: 0 }}
-					transition={{
-						scaleY: { type: "spring", stiffness: 180, damping: 12, mass: 0.6, delay: 0.1 },
-						y: { type: "spring", stiffness: 180, damping: 12, mass: 0.6, delay: 0.1 },
-						filter: { duration: 0.5, ease: [0, 0.4, 0, 1], delay: 0.1 },
-						opacity: { duration: 0.4, ease: [0, 0.4, 0, 1], delay: 0.1 },
-					}}
-					style={{
-						marginBottom: sliderOverlapMarginBottom,
-						transformOrigin: "bottom center",
-					}}
-				>
-					<CityRailEditor
-						cities={cities}
-						selectedIndex={selectedIndex}
-						setSelectedIndex={setSelectedIndex}
-						addCity={addCity}
-						openRequestKey={openCityManagerRequestKey}
-						onOpenChange={setIsCityManagerOpen}
-						keyboardNavigationPulseKey={cityNavigationPulseKey}
-						removeCity={removeCity}
-						height={sizes.pillHeight}
-						// CityRailEditor subtracts a 24px TRACK_INSET internally to
-						// derive the visible rail width, so we add it back here to
-						// make the slider's visible pill match the Humidity card
-						// width directly underneath it in the 2×2 grid.
-						width={sizes.sliderWidth + CITY_RAIL_TRACK_INSET}
-					/>
-				</motion.div>
+				{isEntranceAnimating ? (
+					<motion.div
+						className={isRowLayout ? "order-1" : "col-start-1 row-start-1"}
+						initial={{ opacity: 0, filter: "blur(16px)", scaleY: 0, y: 80 }}
+						animate={{ opacity: 1, filter: "blur(0px)", scaleY: 1, y: 0 }}
+						transition={{
+							scaleY: { type: "spring", stiffness: 180, damping: 12, mass: 0.6, delay: 0.1 },
+							y: { type: "spring", stiffness: 180, damping: 12, mass: 0.6, delay: 0.1 },
+							filter: { duration: 0.5, ease: [0, 0.4, 0, 1], delay: 0.1 },
+							opacity: { duration: 0.4, ease: [0, 0.4, 0, 1], delay: 0.1 },
+						}}
+						style={{
+							marginBottom: sliderOverlapMarginBottom,
+							transformOrigin: "bottom center",
+							pointerEvents: "none",
+						}}
+					>
+						{cityRailEditor}
+					</motion.div>
+				) : (
+					<div
+						// IMPORTANT: do NOT add `relative z-N` (or any
+						// stacking-context-creating CSS) to this wrapper. The
+						// slider's `LiquidGlass` shell uses
+						// `backdrop-filter: url(#filter)` to displace whatever
+						// is painted *behind* it (the chromatic-dispersion
+						// effect). `backdrop-filter` only samples content from
+						// the slider's own ancestor stacking contexts — the
+						// moment this wrapper becomes its own stacking context
+						// (`position: relative; z-index: …`,
+						// `will-change: transform`, `transform`, `filter`,
+						// `isolation: isolate`, etc.), the HUMID card sibling
+						// below the slider gets clipped out of the backdrop
+						// snapshot and only the page background is refracted.
+						// Keep the settled wrapper layout-only so the glass can
+						// sample the overlapping HUMID card beneath it.
+						className={isRowLayout ? "order-1" : "col-start-1 row-start-1"}
+						style={{ marginBottom: sliderOverlapMarginBottom }}
+					>
+						{cityRailEditor}
+					</div>
+				)}
 			</div>
 
 			<WeatherKeyboardHints

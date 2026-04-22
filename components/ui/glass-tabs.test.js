@@ -77,7 +77,7 @@ test("GlassTabs keeps the tighter keyboard animation path in the shared motion h
 	);
 	assert.match(
 		GLASS_TABS_MOTION_SOURCE,
-		/if \(isKeyboardSelection\) \{\s+leftAnimRef\.current = animate\(pillLeft, target\.left, motionSpring\);\s+widthAnimRef\.current = animate\(pillWidth, target\.width, motionSpring\);\s+return;\s+\}/s,
+		/if \(isKeyboardSelection\) \{[\s\S]*const keyboardOptions = \{\s+\.\.\.motionSpring,\s+onComplete: \(\) => \{\s+leftAnimRef\.current = null;\s+widthAnimRef\.current = null;\s+\},\s+\};\s+leftAnimRef\.current = animate\(pillLeft, target\.left, keyboardOptions\);\s+widthAnimRef\.current = animate\(pillWidth, target\.width, keyboardOptions\);\s+return;\s+\}/s,
 	);
 	assert.match(
 		GLASS_TABS_MOTION_SOURCE,

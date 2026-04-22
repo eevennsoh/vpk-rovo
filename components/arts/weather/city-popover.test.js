@@ -49,11 +49,15 @@ test("CityRailEditor keeps the manager open when mouse clicks toggle a city row"
 test("CityRailEditor lets the city rows use the full list width", () => {
 	assert.match(
 		CITY_POPOVER_SOURCE,
-		/className="scrollbar-auto-hide absolute inset-0 overflow-y-auto pl-1 pr-0"/,
+		/className="scrollbar-auto-hide absolute inset-0 overflow-y-auto"/,
 	);
 	assert.match(
 		CITY_POPOVER_SOURCE,
-		/scrollbarGutter: "unset",/,
+		/scrollbarGutter: "auto",/,
+	);
+	assert.match(
+		CITY_POPOVER_SOURCE,
+		/scrollbarWidth: "none",/,
 	);
 });
 
