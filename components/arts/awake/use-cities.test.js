@@ -174,7 +174,7 @@ async function loadUseCitiesModule() {
 			.build({
 				stdin: {
 					contents: `
-						export { useCities } from "./components/arts/weather/use-cities.ts";
+						export { useCities } from "./components/arts/awake/use-cities.ts";
 					`,
 					loader: "ts",
 					resolveDir: process.cwd(),
@@ -310,3 +310,4 @@ test("useCities shifts focus left when removing a city before the current select
 		},
 	);
 });
+

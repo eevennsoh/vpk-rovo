@@ -7,7 +7,7 @@ export const WAKE_LOCK_VISIBLE_TAB_MESSAGE = "Remember to keep this page active"
 
 export type WakeLockStatus = "idle" | "active" | "waiting-for-visible";
 
-const WAKE_LOCK_VISIBLE_TAB_TITLE = "Return to Weather to keep screen awake";
+const WAKE_LOCK_VISIBLE_TAB_TITLE = "⚠ Keep this page active";
 
 interface MinimalWakeLockSentinel {
 	released: boolean;

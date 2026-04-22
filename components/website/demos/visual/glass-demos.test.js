@@ -60,3 +60,14 @@ test("GlassSliderDemo renders the slider without the extra showcase card wrapper
 	assert.doesNotMatch(markup, /class="relative overflow-hidden border border-border"/);
 	assert.match(markup, /group\/city-rail/);
 });
+
+test("LogoGlassDemo renders the image control and extended glass sections", async () => {
+	const markup = await renderDemoMarkup(
+		"./components/website/demos/visual/logo-glass-demo.tsx",
+		"logo-glass-demo-harness.tsx",
+	);
+
+	assert.match(markup, /type="file"/);
+	assert.match(markup, /Lens Warp/);
+	assert.match(markup, /Lighting/);
+});

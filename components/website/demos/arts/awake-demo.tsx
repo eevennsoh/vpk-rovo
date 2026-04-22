@@ -1,7 +1,7 @@
 "use client";
 
-import Weather from "@/components/arts/weather";
+import Awake from "@/components/arts/awake";
 
-export default function WeatherDemo() {
-	return <Weather className="min-h-svh" />;
+export default function AwakeDemo() {
+	return <Awake className="min-h-svh" />;
 }

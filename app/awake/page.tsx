@@ -3,16 +3,16 @@
 import { Suspense, createElement, use } from "react";
 import { loadDemoComponent } from "@/components/website/demo-registry-loader";
 
-function WeatherContent() {
-	const Demo = use(loadDemoComponent("weather", "arts"));
+function AwakeContent() {
+	const Demo = use(loadDemoComponent("awake", "arts"));
 	if (!Demo) return null;
 	return createElement(Demo);
 }
 
-export default function WeatherPage() {
+export default function AwakePage() {
 	return (
 		<Suspense>
-			<WeatherContent />
+			<AwakeContent />
 		</Suspense>
 	);
 }

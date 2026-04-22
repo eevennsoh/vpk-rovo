@@ -7053,8 +7053,8 @@ const PROJECT_DEMOS: Record<string, ComponentType> = {
 };
 
 const ARTS_DEMOS: Record<string, ComponentType> = {
-  weather: dynamic(
-    () => import("./demos/arts/weather-demo"),
+  awake: dynamic(
+    () => import("./demos/arts/awake-demo"),
     { ssr: false },
   ),
 };
@@ -7602,6 +7602,9 @@ const VISUAL_DEMOS: Record<string, ComponentType> = {
     () => import("./demos/visual/liquid-gradient-demo"),
     { ssr: false },
   ),
+  "logo-gradient": dynamic(() => import("./demos/visual/logo-gradient-demo"), {
+    ssr: false,
+  }),
   bands: dynamic(() => import("./demos/visual/bands-demo"), { ssr: false }),
   rings: dynamic(() => import("./demos/visual/rings-demo"), { ssr: false }),
   blockify: dynamic(() => import("./demos/visual/blockify-demo"), {
@@ -7621,6 +7624,9 @@ const VISUAL_DEMOS: Record<string, ComponentType> = {
     { ssr: false },
   ),
   "liquid-glass": dynamic(() => import("./demos/visual/liquid-glass-demo"), {
+    ssr: false,
+  }),
+  "logo-glass": dynamic(() => import("./demos/visual/logo-glass-demo"), {
     ssr: false,
   }),
   holo: dynamic(() => import("./demos/visual/holo-demo"), { ssr: false }),

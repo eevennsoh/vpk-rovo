@@ -19,6 +19,7 @@ import {
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { GlassTabs } from "@/components/ui/glass-tabs";
+import { Kbd } from "@/components/ui/kbd";
 import {
 	GLASS_TABS_SQUIRCLE_STYLE,
 } from "@/components/ui/glass-tabs-motion";
@@ -32,6 +33,7 @@ import { flushSync } from "react-dom";
 
 import { CityRailEditor } from "./city-popover";
 import { DigitDisplay, FlipText } from "./digit-display";
+import { getRandomShaderConfig, type ShaderConfig } from "./shader-config";
 import { useCities } from "./use-cities";
 import { useCurrentWeather } from "./use-current-weather";
 import { type LocationClock, useLocationClock } from "./use-location-clock";
@@ -562,49 +564,59 @@ function WeatherKeyboardHints({
 			>
 				<Footer
 					hideIcon
-					className="flex-wrap justify-center gap-x-2 gap-y-1 sm:flex-nowrap sm:gap-1"
+					// Bumped sm:gap-1 (4 px) → sm:gap-2 (8 px) so each
+					// shortcut group has more breathing room now that the
+					// `•` bullet separators are gone. The wrap layout uses
+					// `gap-x-2 gap-y-1` to match.
+					className="flex-wrap justify-center gap-x-2 gap-y-1 sm:flex-nowrap sm:gap-2"
 					style={{ fontFamily: "'JetBrains Mono', monospace" }}
 					>
+						{/* All keyboard hints use the shadcn `Kbd` primitive
+						    (`bg-muted text-muted-foreground rounded-sm px-1`) for
+						    consistent styling with the rest of the app — see
+						    /components/ui/kbd. The wrapping <span>s keep the
+						    flex-col / flex-row responsive label layout. */}
+						{/* Bullet glyph (`•`) separators removed — the
+						    Footer's flex `gap-x-2 gap-y-1` rhythm already
+						    visually separates each shortcut group, so the
+						    bullets were redundant chrome. The aria-hidden
+						    placeholder spans preserve the EXACT same flex
+						    item count + gap math (each "•" was a flex item
+						    that contributed `gap-x-2`); replacing them with
+						    empty zero-width spans keeps the spacing rhythm
+						    identical without rendering any glyph. */}
 						{!isEditing ? (
 							<>
 								<span className="inline-flex flex-col items-center gap-0.5 sm:flex-row sm:gap-1">
 									<span className="inline-flex items-center gap-0.5">
-										<kbd className="font-sans">←</kbd> <kbd className="font-sans">→</kbd>
+										<Kbd className="font-sans">←</Kbd> <Kbd className="font-sans">→</Kbd>
 									</span>
 									<span>theme</span>
 								</span>
-								<span aria-hidden>•</span>
 							</>
 						) : null}
 						<span className="inline-flex flex-col items-center gap-0.5 sm:flex-row sm:gap-1">
 							<span className="inline-flex items-center gap-0.5">
-								<kbd className="font-sans">↑</kbd> <kbd className="font-sans">↓</kbd>
+								<Kbd className="font-sans">↑</Kbd> <Kbd className="font-sans">↓</Kbd>
 							</span>
 							<span>city</span>
 					</span>
-					<span aria-hidden>•</span>
 					<span className="inline-flex flex-col items-center gap-0.5 sm:flex-row sm:gap-1">
-						<ReturnIcon className="size-3.5" />
+						<Kbd className="font-sans">
+							<ReturnIcon className="size-3.5" />
+						</Kbd>
 						update
 						</span>
 						{showWakeShortcut ? (
-							<>
-								<span aria-hidden>•</span>
-								<span className="inline-flex flex-col items-center gap-0.5 sm:flex-row sm:gap-1">
-									<kbd className="font-sans">W</kbd>
-									<span>
-										for<span className="inline-block w-1.5" />awake
-									</span>
-								</span>
-							</>
+							<span className="inline-flex flex-col items-center gap-0.5 sm:flex-row sm:gap-1">
+								<Kbd className="font-sans">W</Kbd>
+								<span>awake</span>
+							</span>
 						) : null}
 						{isEditing ? (
-							<>
-								<span aria-hidden>•</span>
-								<span className="inline-flex flex-col items-center gap-0.5 sm:flex-row sm:gap-1">
-								<kbd className="font-sans">ESC</kbd> to cancel
+							<span className="inline-flex flex-col items-center gap-0.5 sm:flex-row sm:gap-1">
+								<Kbd className="font-sans">ESC</Kbd> to cancel
 							</span>
-						</>
 					) : null}
 				</Footer>
 			</motion.div>
@@ -885,6 +897,7 @@ interface WeatherTimeCardProps {
 	cutoutTextShadow: string;
 	debossTextShadow: string;
 	debossDotShadow: string;
+	shader: ShaderConfig;
 }
 
 function WeatherTimeCard({
@@ -903,6 +916,7 @@ function WeatherTimeCard({
 	cutoutTextShadow,
 	debossTextShadow,
 	debossDotShadow,
+	shader,
 }: WeatherTimeCardProps) {
 	const clock = useLocationClock(timezone);
 	return (
@@ -912,16 +926,8 @@ function WeatherTimeCard({
 			background={
 				<LiquidGradient
 					className="h-full w-full"
-					seed={648}
-					speed={0.3}
-					scale={0.42}
-					turbAmp={0.6}
-					turbFreq={0.1}
-					turbIter={7}
-					waveFreq={3.8}
-					exposure={1.1}
-					contrast={1.1}
-					saturation={1}
+					colors={shader.colors}
+					{...shader.time}
 				/>
 			}
 			overlay={
@@ -1048,6 +1054,7 @@ function SelectedWeatherClock({
 	cutoutTextShadow,
 	debossTextShadow,
 	debossDotShadow,
+	shader,
 	timeClassName,
 	dateClassName,
 	onFooterAnimationComplete,
@@ -1088,6 +1095,7 @@ function SelectedWeatherClock({
 					cutoutTextShadow={cutoutTextShadow}
 					debossTextShadow={debossTextShadow}
 					debossDotShadow={debossDotShadow}
+					shader={shader}
 				/>
 			</motion.div>
 
@@ -1136,6 +1144,21 @@ export default function Weather({
 		addCity,
 		removeCity,
 	} = useCities();
+	// Shader params are ephemeral: a fresh random roll on mount, and a new
+	// roll every time the selected city changes (covers explicit commit,
+	// keyboard navigation, and hover-to-select via the rail). Nothing here
+	// is persisted — reloading the page produces new values.
+	const [shaderConfig, setShaderConfig] = React.useState<ShaderConfig>(
+		getRandomShaderConfig,
+	);
+	const didInitialMount = React.useRef(false);
+	React.useEffect(() => {
+		if (!didInitialMount.current) {
+			didInitialMount.current = true;
+			return;
+		}
+		setShaderConfig(getRandomShaderConfig());
+	}, [selected.id]);
 
 	const { measureRef, layout: fluidLayout } = useFluidWeatherLayout();
 	const sizes = fluidLayout.sizes;
@@ -1726,6 +1749,7 @@ export default function Weather({
 						cutoutTextShadow={cutoutTextShadow}
 						debossTextShadow={debossTextShadow}
 						debossDotShadow={debossDotShadow}
+						shader={shaderConfig}
 						timeClassName={isRowLayout ? "col-start-2 row-start-1" : "col-start-2 row-start-1"}
 						dateClassName={cn(
 							isRowLayout
@@ -1753,15 +1777,8 @@ export default function Weather({
 						background={
 							<Bands
 								className="h-full w-full"
-								seed={210}
-								speed={0.3}
-								ephemeralAmp={0}
-								lensScale={3.7}
-								lensSpacingX={1}
-								lensSpacingY={0.01}
-								lensRadius={0.58}
-								dispersionStrength={0.4}
-								edgeDisp={2}
+								colors={shaderConfig.colors}
+								{...shaderConfig.humidity}
 							/>
 						}
 						overlay={
@@ -1856,14 +1873,8 @@ export default function Weather({
 						background={
 							<WaveGradient
 								className="h-full w-full"
-								seed={26}
-								speed={2.85}
-								freqX={0.9}
-								freqY={6}
-								angle={105}
-								amplitude={1.6}
-								softness={1.4}
-								blend={0.5}
+								colors={shaderConfig.colorsTuple}
+								{...shaderConfig.temperature}
 							/>
 						}
 						overlay={

@@ -112,10 +112,10 @@ function installDom({
 	storage = createStorage(),
 	wakeLockController,
 	initialVisibility = "visible",
-	initialTitle = "Weather",
+	initialTitle = "Awake",
 } = {}) {
 	const { window } = parseHTML(
-		"<!doctype html><html><head><title>Weather</title></head><body><div id='app'></div></body></html>",
+		"<!doctype html><html><head><title>Awake</title></head><body><div id='app'></div></body></html>",
 	);
 	let visibilityState = initialVisibility;
 	const navigatorWithWakeLock = Object.create(window.navigator);
@@ -245,7 +245,7 @@ async function loadUseWakeLockModule() {
 			.build({
 				stdin: {
 					contents: `
-						export { useWakeLock } from "./components/arts/weather/use-wake-lock.ts";
+						export { useWakeLock } from "./components/arts/awake/use-wake-lock.ts";
 					`,
 					loader: "ts",
 					resolveDir: process.cwd(),
@@ -278,7 +278,7 @@ async function loadUseWakeLockModule() {
 async function renderUseWakeLock({
 	storageValues = {},
 	initialVisibility = "visible",
-	initialTitle = "Weather",
+	initialTitle = "Awake",
 	wakeLockController = createWakeLockController(),
 } = {}) {
 	const { useWakeLock } = await loadUseWakeLockModule();
@@ -415,13 +415,13 @@ test("useWakeLock enables immediately when wake lock support is available", asyn
 
 test("useWakeLock marks hidden tabs as waiting for visibility and re-acquires on return", async () => {
 	const harness = await renderUseWakeLock({
-		initialTitle: "Weather",
+		initialTitle: "Awake",
 	});
 	try {
 		await harness.run(async (wakeLock) => {
 			await wakeLock.enable();
 		});
-		assert.equal(harness.dom.getTitle(), "Weather");
+		assert.equal(harness.dom.getTitle(), "Awake");
 
 		await harness.run(async () => {
 			harness.dom.setVisibility("hidden");
@@ -436,7 +436,7 @@ test("useWakeLock marks hidden tabs as waiting for visibility and re-acquires on
 			statusMessage: WAKE_LOCK_VISIBLE_TAB_MESSAGE,
 			error: null,
 		});
-		assert.equal(harness.dom.getTitle(), "Return to Weather to keep screen awake");
+		assert.equal(harness.dom.getTitle(), "⚠ Keep this page active");
 
 		await harness.run(async () => {
 			harness.dom.setVisibility("visible");
@@ -451,7 +451,7 @@ test("useWakeLock marks hidden tabs as waiting for visibility and re-acquires on
 			statusMessage: null,
 			error: null,
 		});
-		assert.equal(harness.dom.getTitle(), "Weather");
+		assert.equal(harness.dom.getTitle(), "Awake");
 		assert.deepEqual(harness.wakeLockController.requestCalls, ["screen", "screen"]);
 	} finally {
 		await harness.cleanup();
@@ -464,7 +464,7 @@ test("useWakeLock keeps the waiting message visible until a delayed re-acquire c
 	});
 	const harness = await renderUseWakeLock({
 		wakeLockController,
-		initialTitle: "Weather",
+		initialTitle: "Awake",
 	});
 	try {
 		await harness.run(async (wakeLock) => {
@@ -489,7 +489,7 @@ test("useWakeLock keeps the waiting message visible until a delayed re-acquire c
 			statusMessage: WAKE_LOCK_VISIBLE_TAB_MESSAGE,
 			error: null,
 		});
-		assert.equal(harness.dom.getTitle(), "Return to Weather to keep screen awake");
+		assert.equal(harness.dom.getTitle(), "⚠ Keep this page active");
 
 		await harness.run(async () => {
 			harness.wakeLockController.resolveNextPendingRequest();
@@ -504,7 +504,7 @@ test("useWakeLock keeps the waiting message visible until a delayed re-acquire c
 			statusMessage: null,
 			error: null,
 		});
-		assert.equal(harness.dom.getTitle(), "Weather");
+		assert.equal(harness.dom.getTitle(), "Awake");
 	} finally {
 		await harness.cleanup();
 	}
@@ -512,7 +512,7 @@ test("useWakeLock keeps the waiting message visible until a delayed re-acquire c
 
 test("useWakeLock uses the title cue when the tab goes hidden", async () => {
 	const harness = await renderUseWakeLock({
-		initialTitle: "Weather",
+		initialTitle: "Awake",
 	});
 	try {
 		await harness.run(async (wakeLock) => {
@@ -524,7 +524,7 @@ test("useWakeLock uses the title cue when the tab goes hidden", async () => {
 			await Promise.resolve();
 		});
 
-		assert.equal(harness.dom.getTitle(), "Return to Weather to keep screen awake");
+		assert.equal(harness.dom.getTitle(), "⚠ Keep this page active");
 		assert.deepEqual(harness.getState(), {
 			isSupported: true,
 			isActive: false,

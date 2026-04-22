@@ -340,7 +340,7 @@ export const PROJECT_COMPONENTS: ComponentEntry[] = sortEntriesByName([
 ]);
 
 export const ART_COMPONENTS: ComponentEntry[] = sortEntriesByName([
-	artComponent("weather", "Weather"),
+	artComponent("awake", "Awake"),
 ]);
 
 export const UTILITY_COMPONENTS: ComponentEntry[] = sortEntriesByName([
@@ -365,6 +365,7 @@ export const VISUAL_COMPONENTS: ComponentEntry[] = sortEntriesByName([
 	visualComponent("noise", "Noise", "@/components/website/demos/visual/shaders/noise"),
 	visualComponent("wave-gradient", "Wave Gradient", "@/components/website/demos/visual/shaders/wave-gradient"),
 	visualComponent("liquid-gradient", "Liquid Gradient", "@/components/website/demos/visual/shaders/liquid-gradient"),
+	visualComponent("logo-gradient", "Logo Gradient", "@/components/website/demos/visual/shaders/logo-gradient"),
 	visualComponent("bands", "Bands", "@/components/website/demos/visual/shaders/bands"),
 	visualComponent("rings", "Rings", "@/components/website/demos/visual/shaders/rings"),
 	visualComponent("blockify", "Blockify", "@/components/website/demos/visual/shaders/blockify"),
@@ -372,11 +373,12 @@ export const VISUAL_COMPONENTS: ComponentEntry[] = sortEntriesByName([
 	visualComponent("truchet", "Truchet", "@/components/website/demos/visual/shaders/truchet"),
 	visualComponent("fluted-glass", "Fluted Glass", "@/components/website/demos/visual/shaders/fluted-glass"),
 	visualComponent("liquid-glass", "Liquid Glass", "@/components/website/demos/visual/shaders/liquid-glass"),
+	visualComponent("logo-glass", "Logo Glass", "@/components/website/demos/visual/shaders/logo-glass"),
 	visualComponent("glass-tabs", "Glass tabs", "@/components/ui/glass-tabs"),
 	visualComponent(
 		"glass-slider",
 		"Glass Slider",
-		"@/components/arts/weather/glass-slider",
+		"@/components/arts/awake/glass-slider",
 	),
 		visualComponent("holo", "Holo", "@/components/website/demos/visual/shaders/holo"),
 		visualComponent("mesh", "Mesh SVG", "@/components/website/demos/visual/shaders/mesh"),

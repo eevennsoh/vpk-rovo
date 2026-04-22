@@ -25,6 +25,10 @@ export function getProjectPageTitle(templateSlug: string): string {
 	return `${toTitleCase(templateSlug)} — Projects`;
 }
 
+export function getArtPageTitle(artSlug: string): string {
+	return `${toTitleCase(artSlug)} — ${getCategoryDisplayName("arts")}`;
+}
+
 export function getComponentPageTitle(name: string, category: string): string {
 	return `${name} — ${getCategoryDisplayName(category)}`;
 }

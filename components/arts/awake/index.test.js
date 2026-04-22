@@ -97,12 +97,16 @@ test("Weather splits pointer-driven chrome between the top theme control and bot
 		WEATHER_SOURCE,
 		/<WeatherKeyboardHints[\s\S]*isVisible=\{pointerViewportZone === "bottom"\}[\s\S]*isEditing=\{isCityManagerOpen\}[\s\S]*showWakeShortcut=\{!isCityManagerOpen && isWakeLockSupported\}[\s\S]*\/>/,
 	);
-	assert.match(WEATHER_SOURCE, /<ReturnIcon className="size-3\.5" \/>/);
-	assert.match(WEATHER_SOURCE, /<kbd className="font-sans">W<\/kbd>\s+<span>\s+for<span className="inline-block w-1\.5" \/>awake/);
+	// Footer keyboard hints now use the shadcn `Kbd` primitive
+	// (`@/components/ui/kbd`) for consistent styling. The ReturnIcon
+	// glyph is wrapped in a `<Kbd>` so it visually reads like the
+	// other shortcut keys (Enter == Return key).
+	assert.match(WEATHER_SOURCE, /<Kbd className="font-sans">\s*<ReturnIcon className="size-3\.5" \/>\s*<\/Kbd>/);
+	assert.match(WEATHER_SOURCE, /<Kbd className="font-sans">W<\/Kbd>\s+<span>awake<\/span>/);
 	assert.match(WEATHER_SOURCE, /update/);
 	assert.match(
 		WEATHER_SOURCE,
-		/update[\s\S]*showWakeShortcut \?[\s\S]*<kbd className="font-sans">W<\/kbd>[\s\S]*for<span className="inline-block w-1\.5" \/>awake/s,
+		/update[\s\S]*showWakeShortcut \?[\s\S]*<Kbd className="font-sans">W<\/Kbd>[\s\S]*<span>awake<\/span>/s,
 	);
 	assert.doesNotMatch(WEATHER_SOURCE, /Esc closes search/);
 	assert.match(WEATHER_SOURCE, /event\.key === "ArrowUp" \|\| event\.key === "ArrowDown"/);

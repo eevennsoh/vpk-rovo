@@ -35,6 +35,7 @@ uniform float u_warp;
 uniform float u_warpDirection;
 uniform float u_tunnelRadius;
 uniform float u_fadeRadius;
+uniform float u_blur;
 uniform vec4 u_bgColor;
 
 uint pcg(uint v) {
@@ -60,6 +61,8 @@ void main() {
 	vec2 dir = vec2(cos(rad), sin(rad));
 
 	float sharpness = mix(0.3, 2.0, u_glow);
+	float softness = 1.0 + u_blur * 6.0;
+	float blurBoost = 1.0 + u_blur * 3.0;
 
 	vec4 colOffset = u_customColor > .5
 		? vec4(u_colorR, u_colorG, u_colorB, 0.)
@@ -105,9 +108,9 @@ void main() {
 			clamper = u_starSize;
 		}
 
-		float dist = max(length(sin(q * 3.)), clamper);
+		float dist = max(length(sin(q * 3.)), clamper * softness);
 		dist = pow(dist, sharpness);
-		O += (i * cos(i + colOffset) + i) * light * blink * fade / dist;
+		O += (i * cos(i + colOffset) + i) * light * blink * fade * blurBoost / dist;
 	}
 
 	O = tanh(O * O);
@@ -134,6 +137,7 @@ interface ParticlesProps {
 	layers?: number;
 	brightness?: number;
 	glow?: number;
+	blur?: number;
 	starSize?: number;
 	direction?: number;
 	blink?: boolean;
@@ -156,6 +160,7 @@ export default function Particles({
 	layers = 30,
 	brightness = 0.8,
 	glow = 0.5,
+	blur = 0,
 	starSize = 0.01,
 	direction = 90,
 	blink = false,
@@ -222,6 +227,7 @@ export default function Particles({
 		gl.uniform1f(gl.getUniformLocation(prog, "u_warpDirection"), warpDirection);
 		gl.uniform1f(gl.getUniformLocation(prog, "u_tunnelRadius"), tunnelRadius);
 		gl.uniform1f(gl.getUniformLocation(prog, "u_fadeRadius"), fadeRadius);
+		gl.uniform1f(gl.getUniformLocation(prog, "u_blur"), blur);
 
 		const [bgR, bgG, bgB, bgA] = hexToRgba(bgColor);
 		gl.uniform4f(gl.getUniformLocation(prog, "u_bgColor"), bgR, bgG, bgB, bgA);
@@ -244,7 +250,7 @@ export default function Particles({
 		animRef.current = requestAnimationFrame(render);
 
 		return () => cancelAnimationFrame(animRef.current);
-	}, [bgColor, speed, scale, layers, brightness, glow, starSize, direction, blink, randomize, warp, warpDirection, tunnelRadius, fadeRadius, customColor, colorR, colorG, colorB]);
+	}, [bgColor, speed, scale, layers, brightness, glow, blur, starSize, direction, blink, randomize, warp, warpDirection, tunnelRadius, fadeRadius, customColor, colorR, colorG, colorB]);
 
 	return (
 		<canvas

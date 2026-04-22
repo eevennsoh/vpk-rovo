@@ -1,11 +1,11 @@
 "use client";
 
-import { CityRailEditor } from "@/components/arts/weather/city-popover";
-import { useCities } from "@/components/arts/weather/use-cities";
+import { CityRailEditor } from "@/components/arts/awake/city-popover";
+import { useCities } from "@/components/arts/awake/use-cities";
 
 // CityRailEditor subtracts this many pixels (TRACK_INSET) from `width`
 // internally to derive the visible rail width, so the demo adds it back
-// here to match the rendered slider width used by the weather screen.
+// here to match the rendered slider width used by the Awake screen.
 const CITY_RAIL_TRACK_INSET = 24;
 const SLIDER_RAIL_WIDTH = 170;
 const SLIDER_HEIGHT = 440;

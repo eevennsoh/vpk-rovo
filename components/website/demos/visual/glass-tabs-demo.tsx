@@ -24,7 +24,7 @@ export default function GlassTabsDemo() {
 			}}
 		>
 			<GlassTabs
-				aria-label="Weather theme"
+				aria-label="Awake theme"
 				options={GLASS_TAB_OPTIONS}
 				value={value}
 				onChange={setValue}
