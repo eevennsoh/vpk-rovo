@@ -19,7 +19,7 @@ import { CityRailEditor } from "./city-popover";
 import { DigitDisplay, FlipText } from "./digit-display";
 import { useCities } from "./use-cities";
 import { useCurrentWeather } from "./use-current-weather";
-import { useLocationClock } from "./use-location-clock";
+import { type LocationClock, useLocationClock } from "./use-location-clock";
 import { WeatherIcon } from "./weather-icon";
 import {
 	WidgetCard,
@@ -440,8 +440,12 @@ interface WeatherTimeCardProps {
 	debossDotShadow: string;
 }
 
+type SharedWeatherClockProps = Omit<WeatherTimeCardProps, "timezone"> & {
+	clock: LocationClock;
+};
+
 function WeatherTimeCard({
-	timezone,
+	clock,
 	sizes,
 	gridColor,
 	gridBlendMode,
@@ -456,9 +460,7 @@ function WeatherTimeCard({
 	cutoutTextShadow,
 	debossTextShadow,
 	debossDotShadow,
-}: WeatherTimeCardProps) {
-	const clock = useLocationClock(timezone);
-
+}: SharedWeatherClockProps) {
 	return (
 		<WidgetCard
 			className="flex flex-col"
@@ -561,11 +563,10 @@ function WeatherTimeCard({
 }
 
 function WeatherDateSummary({
-	timezone,
+	clock,
 }: {
-	timezone: string;
+	clock: LocationClock;
 }) {
-	const clock = useLocationClock(timezone);
 	const weekdayShort = clock.isReady
 		? clock.weekday.slice(0, 3).toUpperCase()
 		: "---";
@@ -584,6 +585,73 @@ function WeatherDateSummary({
 				{monthShort} {clock.isReady ? clock.day : "--"}
 			</span>
 		</div>
+	);
+}
+
+function SelectedWeatherClock({
+	timezone,
+	sizes,
+	gridColor,
+	gridBlendMode,
+	noiseBlendMode,
+	noiseOpacity,
+	noiseColor,
+	shaderTextClass,
+	shaderScrewColor,
+	shaderLabelColor,
+	shaderFootnoteColor,
+	cutoutFillColor,
+	cutoutTextShadow,
+	debossTextShadow,
+	debossDotShadow,
+	onFooterAnimationComplete,
+}: WeatherTimeCardProps & {
+	onFooterAnimationComplete?: () => void;
+}) {
+	const clock = useLocationClock(timezone);
+
+	return (
+		<>
+			<motion.div
+				initial={{ opacity: 0, filter: "blur(16px)", scale: 0.5, y: 140 }}
+				animate={{ opacity: 1, filter: "blur(0px)", scale: 1, y: 0 }}
+				transition={{
+					scale: { type: "spring", stiffness: 180, damping: 12, mass: 0.6, delay: 0.2 },
+					y: { type: "spring", stiffness: 180, damping: 12, mass: 0.6, delay: 0.2 },
+					filter: { duration: 0.5, ease: [0, 0.4, 0, 1], delay: 0.2 },
+					opacity: { duration: 0.4, ease: [0, 0.4, 0, 1], delay: 0.2 },
+				}}
+				style={{ willChange: "opacity, filter, transform" }}
+			>
+				<WeatherTimeCard
+					clock={clock}
+					sizes={sizes}
+					gridColor={gridColor}
+					gridBlendMode={gridBlendMode}
+					noiseBlendMode={noiseBlendMode}
+					noiseOpacity={noiseOpacity}
+					noiseColor={noiseColor}
+					shaderTextClass={shaderTextClass}
+					shaderScrewColor={shaderScrewColor}
+					shaderLabelColor={shaderLabelColor}
+					shaderFootnoteColor={shaderFootnoteColor}
+					cutoutFillColor={cutoutFillColor}
+					cutoutTextShadow={cutoutTextShadow}
+					debossTextShadow={debossTextShadow}
+					debossDotShadow={debossDotShadow}
+				/>
+			</motion.div>
+
+			<motion.div
+				initial={{ opacity: 0, y: 24, filter: "blur(12px)" }}
+				animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+				transition={{ type: "spring", stiffness: 160, damping: 14, mass: 0.5, delay: 0.44 }}
+				style={{ willChange: "opacity, filter, transform" }}
+				onAnimationComplete={onFooterAnimationComplete}
+			>
+				<WeatherDateSummary clock={clock} />
+			</motion.div>
+		</>
 	);
 }
 
@@ -937,35 +1005,24 @@ export default function Weather({
 					/>
 				</motion.div>
 
-				<motion.div
-					initial={{ opacity: 0, filter: "blur(16px)", scale: 0.5, y: 140 }}
-					animate={{ opacity: 1, filter: "blur(0px)", scale: 1, y: 0 }}
-					transition={{
-						scale: { type: "spring", stiffness: 180, damping: 12, mass: 0.6, delay: 0.2 },
-						y: { type: "spring", stiffness: 180, damping: 12, mass: 0.6, delay: 0.2 },
-						filter: { duration: 0.5, ease: [0, 0.4, 0, 1], delay: 0.2 },
-						opacity: { duration: 0.4, ease: [0, 0.4, 0, 1], delay: 0.2 },
-					}}
-					style={{ willChange: "opacity, filter, transform" }}
-				>
-					<WeatherTimeCard
-						timezone={selected.timezone}
-						sizes={sizes}
-						gridColor={gridColor}
-						gridBlendMode={gridBlendMode}
-						noiseBlendMode={noiseBlendMode}
-						noiseOpacity={noiseOpacity}
-						noiseColor={noiseColor}
-						shaderTextClass={shaderTextClass}
-						shaderScrewColor={shaderScrewColor}
-						shaderLabelColor={shaderLabelColor}
-						shaderFootnoteColor={shaderFootnoteColor}
-						cutoutFillColor={cutoutFillColor}
-						cutoutTextShadow={cutoutTextShadow}
-						debossTextShadow={debossTextShadow}
-						debossDotShadow={debossDotShadow}
-					/>
-				</motion.div>
+				<SelectedWeatherClock
+					timezone={selected.timezone}
+					sizes={sizes}
+					gridColor={gridColor}
+					gridBlendMode={gridBlendMode}
+					noiseBlendMode={noiseBlendMode}
+					noiseOpacity={noiseOpacity}
+					noiseColor={noiseColor}
+					shaderTextClass={shaderTextClass}
+					shaderScrewColor={shaderScrewColor}
+					shaderLabelColor={shaderLabelColor}
+					shaderFootnoteColor={shaderFootnoteColor}
+					cutoutFillColor={cutoutFillColor}
+					cutoutTextShadow={cutoutTextShadow}
+					debossTextShadow={debossTextShadow}
+					debossDotShadow={debossDotShadow}
+					onFooterAnimationComplete={() => setIsEntranceAnimating(false)}
+				/>
 
 				<motion.div
 					initial={{ opacity: 0, filter: "blur(16px)", scaleY: 0, y: 80 }}
@@ -1176,15 +1233,6 @@ export default function Weather({
 				</motion.div>
 			</div>
 
-			<motion.div
-				initial={{ opacity: 0, y: 24, filter: "blur(12px)" }}
-				animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-				transition={{ type: "spring", stiffness: 160, damping: 14, mass: 0.5, delay: 0.44 }}
-				style={{ willChange: "opacity, filter, transform" }}
-				onAnimationComplete={() => setIsEntranceAnimating(false)}
-			>
-				<WeatherDateSummary timezone={selected.timezone} />
-			</motion.div>
 			<WeatherKeyboardHints isVisible={pointerViewportZone === "bottom"} isEditing={isCityManagerOpen} />
 		</div>
 	);
