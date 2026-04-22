@@ -140,3 +140,22 @@ test("GlassSlider overlaps the meniscus body mask so the cap join cannot show a 
 		/WebkitMaskSize: `100% \$\{h\}px, 100% calc\(100% - \$\{h\}px \+ \$\{MENISCUS_MASK_JOIN_OVERLAP_PX\}px\)`/,
 	);
 });
+
+test("GlassSlider embosses labeled city ticks so they stay legible on the glass rail", () => {
+	assert.match(
+		GLASS_SLIDER_SOURCE,
+		/const GLASS_SLIDER_TICK_EMBOSS_BOX_SHADOW =/,
+	);
+	assert.match(
+		GLASS_SLIDER_SOURCE,
+		/\? \{ backgroundImage: ROVO_TICK_GRADIENT \}/,
+	);
+	assert.match(
+		GLASS_SLIDER_SOURCE,
+		/: hasLabel\s+\? \{ boxShadow: GLASS_SLIDER_TICK_EMBOSS_BOX_SHADOW \}/,
+	);
+	assert.doesNotMatch(
+		GLASS_SLIDER_SOURCE,
+		/GLASS_SLIDER_TICK_EMBOSS_TEXT_SHADOW/,
+	);
+});

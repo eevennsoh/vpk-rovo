@@ -74,6 +74,8 @@ const DEFAULT_GLASS_SHELL_PROPS: Partial<LiquidGlassProps> = {
 
 const GLASS_SLIDER_FOCUS_RING_BOX_SHADOW =
 	"0 0 0 3px color-mix(in srgb, var(--ds-border-focused) 24%, transparent)";
+const GLASS_SLIDER_TICK_EMBOSS_BOX_SHADOW =
+	"inset 0 1px 0 color-mix(in srgb, var(--ds-text-inverse) 40%, transparent), inset 0 -1px 0 color-mix(in srgb, var(--ds-text) 22%, transparent), 0 1px 2px color-mix(in srgb, var(--ds-text) 12%, transparent)";
 
 // Liquid-glass props for the PROGRESS FILL itself. These are intentionally
 // softer than the shell so that, when the slider is wrapped in a
@@ -1265,7 +1267,9 @@ export function GlassSlider({
 											style={
 												hasLabel && isEmphasized
 													? { backgroundImage: ROVO_TICK_GRADIENT }
-													: undefined
+													: hasLabel
+														? { boxShadow: GLASS_SLIDER_TICK_EMBOSS_BOX_SHADOW }
+														: undefined
 											}
 										/>
 									) : null}

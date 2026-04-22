@@ -27,7 +27,7 @@ import {
 	ReturnIcon,
 } from "@/components/ui/vpk-icons";
 import { cn } from "@/lib/utils";
-import { animate, motion, useMotionValue, useTransform } from "motion/react";
+import { AnimatePresence, animate, motion, useMotionValue, useTransform } from "motion/react";
 import { flushSync } from "react-dom";
 
 import { CityRailEditor } from "./city-popover";
@@ -397,149 +397,131 @@ function WakeLockControl({
 
 	return (
 		<TooltipProvider>
-		<Tooltip>
-			<TooltipTrigger
-				render={
+			<Tooltip>
+				<TooltipTrigger
+					render={
 						<motion.button
 							type="button"
 							role="switch"
 							aria-checked={isEnabled}
-						aria-label={tooltip}
-						ref={buttonRef}
-						disabled={disabled}
-						whileTap={{ scale: 0.82 }}
-						transition={{ type: "spring", duration: 0.4, bounce: 0.55 }}
-						// Keep this in the Tab order only while the theme
-						// chrome is intentionally revealed.
-						tabIndex={isTabbable ? 0 : -1}
-						onClick={(event) => {
-							// Toggle-off uses the same dismiss cue as
-							// pressing Escape in the city manager; toggle-on
-							// uses the lighter click-001 tap sound.
-							onToggle();
-							// Pointer users can drop back to scene-level
-							// shortcuts immediately after clicking. Keyboard
-							// users should keep focus here so Tab continues
-							// forward to the slider.
-							if (event.detail > 0) {
-								event.currentTarget.blur();
-							}
-						}}
+							aria-label={tooltip}
+							ref={buttonRef}
+							disabled={disabled}
+							whileTap={{ scale: 0.82 }}
+							transition={{ type: "spring", duration: 0.4, bounce: 0.55 }}
+							// Keep this in the Tab order only while the theme
+							// chrome is intentionally revealed.
+							tabIndex={isTabbable ? 0 : -1}
+							onClick={(event) => {
+								// Toggle-off uses the same dismiss cue as
+								// pressing Escape in the city manager; toggle-on
+								// uses the lighter click-001 tap sound.
+								onToggle();
+								// Pointer users can drop back to scene-level
+								// shortcuts immediately after clicking. Keyboard
+								// users should keep focus here so Tab continues
+								// forward to the slider.
+								if (event.detail > 0) {
+									event.currentTarget.blur();
+								}
+							}}
 							className={cn(
-							// Clear squircle button — no opaque fill,
-							// no LiquidGlass refractive shell. The
-							// squircle clip alone defines the button's
-							// shape, so when toggled on the Rings shader
-							// reads through the clip without being washed
-							// out by a translucent overlay. A 1px subtle
-							// border traces the squircle outline so the
-							// shape stays visible against any backdrop —
-							// this replaces the border that the
-							// LiquidGlass shell used to draw.
+								// Clear squircle button — no opaque fill,
+								// no LiquidGlass refractive shell. The
+								// squircle clip alone defines the button's
+								// shape, so when toggled on the Rings shader
+								// reads through the clip without being washed
+								// out by a translucent overlay. A 1px subtle
+								// border traces the squircle outline so the
+								// shape stays visible against any backdrop —
+								// this replaces the border that the
+								// LiquidGlass shell used to draw.
 								"relative flex size-9 cursor-pointer items-center justify-center overflow-hidden",
-							// Border traces the squircle outline only in the
-							// off state — when toggled on, the Rings shader
-							// fills the squircle and the border would
-							// compete with the lit surface.
-							!isEnabled && "border border-border",
-							// Keep the icon at the same subtle weight on
-							// hover/active — no darkening — so the only
-							// hover affordance is the squircle/shader
-							// surface itself responding under the pointer.
-							"transition-colors duration-normal",
+								// Border traces the squircle outline only in the
+								// off state — when toggled on, the Rings shader
+								// fills the squircle and the border would
+								// compete with the lit surface.
+								!isEnabled && "border border-border",
+								// Keep the icon at the same subtle weight on
+								// hover/active — no darkening — so the only
+								// hover affordance is the squircle/shader
+								// surface itself responding under the pointer.
+								"transition-colors duration-normal",
 								"focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-3 focus-visible:outline-none",
 								"disabled:cursor-not-allowed disabled:opacity-50",
-							// Off-state icon color. When ON the icon switches
-							// to `cutoutFillColor` (`var(--ds-surface)`) via
-							// inline style so it reads like a hole punched
-							// through the shader card, matching the time
-							// digits and weather icon on the time card.
-							!isEnabled && "text-icon-subtlest",
-						)}
-						style={{ ...GLASS_TABS_SQUIRCLE_STYLE, willChange: "transform" }}
-						data-active={isActive ? "true" : undefined}
-						data-error={error ? "true" : undefined}
-					>
-						{/*
-						 * When toggled on, render the Rings shader behind
-						 * the icon so the "keep awake" state reads as a
-						 * lively, focused gradient at this small size.
-						 * The Rings shader has tighter, higher-contrast
-						 * features than LiquidGradient, so it stays
-						 * visible inside the 36×36 squircle without the
-						 * LiquidGlass shell washing it out.
-						 */}
+								// Off-state icon color. When ON the icon switches
+								// to `cutoutFillColor` (`var(--ds-surface)`) via
+								// inline style so it reads like a hole punched
+								// through the shader card, matching the time
+								// digits and weather icon on the time card.
+								!isEnabled && "text-icon-subtlest",
+							)}
+							style={{
+								...GLASS_TABS_SQUIRCLE_STYLE,
+								willChange: "transform",
+							}}
+							data-active={isActive ? "true" : undefined}
+							data-error={error ? "true" : undefined}
+						>
+							{/*
+							 * When toggled on, render the Rings shader behind
+							 * the icon so the "keep awake" state reads as a
+							 * lively, focused gradient at this small size.
+							 * The Rings shader has tighter, higher-contrast
+							 * features than LiquidGradient, so it stays
+							 * visible inside the 36×36 squircle without the
+							 * LiquidGlass shell washing it out.
+							 */}
 							{isEnabled ? (
 								<span
 									aria-hidden="true"
 									className="pointer-events-none absolute inset-0 overflow-hidden"
-								style={GLASS_TABS_SQUIRCLE_STYLE}
-							>
-								<Rings
-									className="h-full w-full"
-									// Toned-down parameters for the small
-									// 36×36 squircle: fewer, larger rings
-									// with softer warp/dispersion so the
-									// shader reads as a calm lit surface
-									// instead of a busy psychedelic target.
-									lensScale={4}
-									ringSpacing={2.5}
-									speed={0.25}
-									ringWarpStrength={1.5}
-									ringDispersion={0.2}
-									edgeDisp={0.6}
-									ephemeralAmp={0.06}
-								/>
-								{/*
-								 * Subtle noise grain to match the time
-								 * card's surface texture. The grid pattern
-								 * is intentionally omitted on this 36×36
-								 * footprint — gridlines that scale read as
-								 * busy/jittery against the Rings shader at
-								 * this size, where the time card's grid
-								 * reads as a clean schematic.
-								 */}
-								<Noise
-									className="absolute inset-0"
-									opacity={noiseOpacity}
-									grainSize={140}
-									seed={7}
-									color={noiseColor}
-									blendMode={noiseBlendMode}
-									// Override the default `inherit` so the
-									// noise tile doesn't pick up the
-									// parent's `borderRadius: 9999` and
-									// render as a full circle on top of the
-									// squircle (the parent `<span>` already
-									// clips to the squircle via
-									// `overflow-hidden`).
-									borderRadius={0}
+									style={GLASS_TABS_SQUIRCLE_STYLE}
+								>
+									<Rings
+										className="h-full w-full"
+										lensScale={4}
+										ringSpacing={2.5}
+										speed={0.25}
+										ringWarpStrength={1.5}
+										ringDispersion={0.2}
+										edgeDisp={0.6}
+										ephemeralAmp={0.06}
+									/>
+									<Noise
+										className="absolute inset-0"
+										opacity={noiseOpacity}
+										grainSize={140}
+										seed={7}
+										color={noiseColor}
+										blendMode={noiseBlendMode}
+										borderRadius={0}
 									/>
 								</span>
 							) : null}
-								{isEnabled ? (
+							{isEnabled ? (
 								<span
 									aria-hidden="true"
-								className="relative inline-flex items-center justify-center"
-								style={{ filter: cutoutIconFilter }}
-							>
-								<Cctv
-									size={16}
-									className="size-4"
-									style={{ color: cutoutFillColor }}
-									animate
-									loop
-									loopDelay={800}
-								/>
-							</span>
-						) : (
-							<Cctv size={16} className="relative size-4" />
-						)}
-					</motion.button>
-				}
-			/>
-			<TooltipContent sideOffset={8}>{tooltip}</TooltipContent>
-		</Tooltip>
+									className="relative inline-flex items-center justify-center"
+									style={{ filter: cutoutIconFilter }}
+								>
+									<Cctv
+										size={16}
+										className="size-4"
+										style={{ color: cutoutFillColor }}
+										animate
+										loop
+										loopDelay={800}
+									/>
+								</span>
+							) : (
+								<Cctv size={16} className="relative size-4" />
+							)}
+						</motion.button>
+					}
+				/>
+				<TooltipContent sideOffset={8}>{tooltip}</TooltipContent>
+			</Tooltip>
 		</TooltipProvider>
 	);
 }
@@ -598,7 +580,10 @@ function WeatherKeyboardHints({
 							<>
 								<span aria-hidden>•</span>
 								<span className="inline-flex flex-col items-center gap-0.5 sm:flex-row sm:gap-1">
-									<kbd className="font-sans">W</kbd> for awake
+									<kbd className="font-sans">W</kbd>
+									<span>
+										for<span className="inline-block w-1.5" />awake
+									</span>
 								</span>
 							</>
 						) : null}
@@ -1052,8 +1037,12 @@ function SelectedWeatherClock({
 	cutoutTextShadow,
 	debossTextShadow,
 	debossDotShadow,
+	timeClassName,
+	dateClassName,
 	onFooterAnimationComplete,
 }: WeatherTimeCardProps & {
+	timeClassName?: string;
+	dateClassName?: string;
 	onFooterAnimationComplete?: () => void;
 }) {
 	const clock = useLocationClock(timezone);
@@ -1061,6 +1050,7 @@ function SelectedWeatherClock({
 	return (
 		<>
 			<motion.div
+				className={timeClassName}
 				initial={{ opacity: 0, filter: "blur(16px)", scale: 0.5, y: 140 }}
 				animate={{ opacity: 1, filter: "blur(0px)", scale: 1, y: 0 }}
 				transition={{
@@ -1091,6 +1081,7 @@ function SelectedWeatherClock({
 			</motion.div>
 
 			<motion.div
+				className={dateClassName}
 				initial={{ opacity: 0, y: 24, filter: "blur(12px)" }}
 				animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
 				transition={{ type: "spring", stiffness: 160, damping: 14, mass: 0.5, delay: 0.44 }}
@@ -1377,6 +1368,7 @@ export default function Weather({
 	}, [
 		isEntranceAnimating,
 		isCityManagerOpen,
+		isWakeLockEnabled,
 		isWakeLockSupported,
 		cities.length,
 		handleWakeLockToggle,
@@ -1450,8 +1442,55 @@ export default function Weather({
 		"inset 0 1px 0.5px color-mix(in srgb, var(--ds-text) 45%, transparent), 0 1px 0 color-mix(in srgb, var(--ds-text-inverse) 40%, transparent)";
 
 	const temperature = formatTemperature(weather.temperatureCelsius);
+
+	const [awakeElapsed, setAwakeElapsed] = React.useState(0);
+	const awakeStartRef = React.useRef<number | null>(null);
+	React.useEffect(() => {
+		if (!isWakeLockEnabled) {
+			awakeStartRef.current = null;
+			return;
+		}
+		setAwakeElapsed(0);
+		awakeStartRef.current = Date.now();
+		const tick = () => {
+			if (awakeStartRef.current !== null) {
+				setAwakeElapsed(Math.floor((Date.now() - awakeStartRef.current) / 1000));
+			}
+		};
+		const id = setInterval(tick, 1000);
+		return () => clearInterval(id);
+	}, [isWakeLockEnabled]);
+
+	const awakeHours = String(Math.floor(awakeElapsed / 3600)).padStart(2, "0");
+	const awakeMinutes = String(Math.floor((awakeElapsed % 3600) / 60)).padStart(2, "0");
+	const awakeSeconds = String(awakeElapsed % 60).padStart(2, "0");
+
 	const cityTitleContent = (
-		<div className="text-text flex flex-col items-center gap-2 text-center">
+		<div className="text-text relative flex flex-col items-center text-center">
+			<AnimatePresence>
+				{isWakeLockEnabled ? (
+					<motion.span
+						key="awake-timer"
+						className="text-text absolute bottom-full mb-2 tabular-nums tracking-[0.08em]"
+						initial={{ opacity: 0, filter: "blur(12px)", y: 8 }}
+						animate={{ opacity: 1, filter: "blur(0px)", y: 0 }}
+						exit={{ opacity: 0, filter: "blur(12px)", y: 8 }}
+						transition={{ duration: 0.35, ease: [0, 0.4, 0, 1] }}
+						style={{
+							fontFamily: "'Bitcount Grid Single', sans-serif",
+							fontSize: 20,
+							fontWeight: 300,
+							willChange: "opacity, filter, transform",
+						}}
+					>
+						<FlipText text={awakeHours} />
+						<span className="text-text-disabled">:</span>
+						<FlipText text={awakeMinutes} />
+						<span className="text-text-disabled">:</span>
+						<FlipText text={awakeSeconds} />
+					</motion.span>
+				) : null}
+			</AnimatePresence>
 			<span
 				className="text-[15px] font-medium uppercase tracking-[0.36em]"
 				style={{
@@ -1528,9 +1567,7 @@ export default function Weather({
 						{cityTitleContent}
 					</motion.div>
 				) : (
-					<div aria-hidden="true" className="pointer-events-none opacity-0">
-						{cityTitleContent}
-					</div>
+					cityTitleContent
 				)}
 
 			<div
@@ -1541,38 +1578,17 @@ export default function Weather({
 					// `marginBottom` (used to overlap the HUMID card below)
 					// would otherwise interact with `items-center` and push
 					// the slider down inside its row track. In the row
-					// layout we keep `items-center` so all four pills sit
-					// on the same horizontal centerline.
+					// layout we use an explicit 4-column grid so the cards
+					// stay on one row and the date strip gets its own
+					// centered second row. Mirror the parent stack's
+					// responsive vertical gap so the title->cards spacing
+					// matches the cards->date spacing.
 					isRowLayout
-						? "flex items-center gap-3"
+						? "grid grid-cols-[auto_auto_auto_auto] items-center justify-center gap-x-3 gap-y-6 sm:gap-y-10 lg:gap-y-14"
 						: "grid grid-cols-[auto_auto] items-start gap-2",
 				)}
 				>
-					{!isEntranceAnimating ? (
-						<div className="pointer-events-none absolute left-1/2 bottom-full mb-6 -translate-x-1/2">
-							{cityTitleContent}
-						</div>
-					) : null}
-
-					<motion.div
-						className={isRowLayout ? "order-2" : "col-start-2 row-start-1"}
-					initial={{ opacity: 0, filter: "blur(16px)", scale: 0.5, y: 140 }}
-					animate={{ opacity: 1, filter: "blur(0px)", scale: 1, y: 0 }}
-					transition={{
-						scale: { type: "spring", stiffness: 180, damping: 12, mass: 0.6, delay: 0.2 },
-						y: { type: "spring", stiffness: 180, damping: 12, mass: 0.6, delay: 0.2 },
-						filter: { duration: 0.5, ease: [0, 0.4, 0, 1], delay: 0.2 },
-						opacity: { duration: 0.4, ease: [0, 0.4, 0, 1], delay: 0.2 },
-					}}
-					style={{ willChange: "opacity, filter, transform" }}
-					// Mark the entrance as complete so the global weather
-					// keyboard shortcuts (Enter, arrows) are re-enabled. The
-					// previous standalone <WeatherDateSummary> motion.div that
-					// fired this callback was removed during the
-					// `SelectedWeatherClock` extraction refactor.
-					onAnimationComplete={() => setIsEntranceAnimating(false)}
-				>
-					<WeatherTimeCard
+					<SelectedWeatherClock
 						timezone={selected.timezone}
 						sizes={sizes}
 						gridColor={gridColor}
@@ -1588,11 +1604,17 @@ export default function Weather({
 						cutoutTextShadow={cutoutTextShadow}
 						debossTextShadow={debossTextShadow}
 						debossDotShadow={debossDotShadow}
+						timeClassName={isRowLayout ? "col-start-2 row-start-1" : "col-start-2 row-start-1"}
+						dateClassName={cn(
+							isRowLayout
+								? "col-span-4 row-start-2 flex justify-center"
+								: "col-span-2 row-start-3 flex justify-center",
+						)}
+						onFooterAnimationComplete={() => setIsEntranceAnimating(false)}
 					/>
-				</motion.div>
 
 				<motion.div
-					className={isRowLayout ? "order-3" : "col-start-1 row-start-2"}
+					className={isRowLayout ? "col-start-3 row-start-1" : "col-start-1 row-start-2"}
 					initial={{ opacity: 0, filter: "blur(16px)", scaleY: 0, y: 80 }}
 					animate={{ opacity: 1, filter: "blur(0px)", scaleY: 1, y: 0 }}
 					transition={{
@@ -1695,7 +1717,7 @@ export default function Weather({
 				</motion.div>
 
 				<motion.div
-					className={isRowLayout ? "order-4" : "col-start-2 row-start-2"}
+					className={isRowLayout ? "col-start-4 row-start-1" : "col-start-2 row-start-2"}
 					initial={{ opacity: 0, filter: "blur(16px)", scale: 0.5, y: 140 }}
 					animate={{ opacity: 1, filter: "blur(0px)", scale: 1, y: 0 }}
 					transition={{
@@ -1837,7 +1859,7 @@ export default function Weather({
 						// snapshot and only the page background is refracted.
 						// Keep the settled wrapper layout-only so the glass can
 						// sample the overlapping HUMID card beneath it.
-						className={isRowLayout ? "order-1" : "col-start-1 row-start-1"}
+						className={isRowLayout ? "col-start-1 row-start-1" : "col-start-1 row-start-1"}
 						style={{ marginBottom: sliderOverlapMarginBottom }}
 					>
 						{cityRailEditor}

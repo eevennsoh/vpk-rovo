@@ -94,11 +94,11 @@ test("Weather splits pointer-driven chrome between the top theme control and bot
 		/<WeatherKeyboardHints[\s\S]*isVisible=\{pointerViewportZone === "bottom"\}[\s\S]*isEditing=\{isCityManagerOpen\}[\s\S]*showWakeShortcut=\{!isCityManagerOpen && isWakeLockSupported\}[\s\S]*\/>/,
 	);
 	assert.match(WEATHER_SOURCE, /<ReturnIcon className="size-3\.5" \/>/);
-	assert.match(WEATHER_SOURCE, /<kbd className="font-sans">W<\/kbd> for awake/);
+	assert.match(WEATHER_SOURCE, /<kbd className="font-sans">W<\/kbd>\s+<span>\s+for<span className="inline-block w-1\.5" \/>awake/);
 	assert.match(WEATHER_SOURCE, /update/);
 	assert.match(
 		WEATHER_SOURCE,
-		/update[\s\S]*showWakeShortcut \?[\s\S]*<kbd className="font-sans">W<\/kbd> for awake/s,
+		/update[\s\S]*showWakeShortcut \?[\s\S]*<kbd className="font-sans">W<\/kbd>[\s\S]*for<span className="inline-block w-1\.5" \/>awake/s,
 	);
 	assert.doesNotMatch(WEATHER_SOURCE, /Esc closes search/);
 	assert.match(WEATHER_SOURCE, /event\.key === "ArrowUp" \|\| event\.key === "ArrowDown"/);
