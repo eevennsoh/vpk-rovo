@@ -30,7 +30,7 @@ test("CityRailEditor consumes each parent open request only once so Escape can c
 test("CityRailEditor keeps the manager open when mouse clicks toggle a city row", () => {
 	assert.match(
 		CITY_POPOVER_SOURCE,
-		/const toggleCitySelection = useCallback\(\s*\(city: LockscreenLocation, cityIndex: number\) => \{\s*playSound\("\/sound\/click-001\.mp3"\);\s*if \(cityIndex !== -1 && removeCity\) \{\s*removeCity\(city\.id\);\s*\} else \{\s*addCity\(city\);\s*handleCommit\(cities\.length\);\s*\}\s*\},\s*\[addCity, cities\.length, handleCommit, removeCity\],\s*\);/s,
+		/const toggleCitySelection = useCallback\(\s*\(city: LockscreenLocation, cityIndex: number\) => \{\s*const isRemoving = cityIndex !== -1 && Boolean\(removeCity\);\s*playSound\(isRemoving \? "\/sound\/click-004\.mp3" : "\/sound\/click-001\.mp3"\);\s*if \(cityIndex !== -1 && removeCity\) \{\s*removeCity\(city\.id\);\s*\} else \{\s*addCity\(city\);\s*handleCommit\(cities\.length\);\s*\}\s*\},\s*\[addCity, cities\.length, handleCommit, removeCity\],\s*\);/s,
 	);
 	assert.match(
 		CITY_POPOVER_SOURCE,
@@ -43,5 +43,31 @@ test("CityRailEditor keeps the manager open when mouse clicks toggle a city row"
 	assert.doesNotMatch(
 		CITY_POPOVER_SOURCE,
 		/const handleCityRowPress = useCallback\(\s*\(city: LockscreenLocation, cityIndex: number\) => \{[\s\S]*setIsOpen\(false\);[\s\S]*\},\s*\[toggleCitySelection\],\s*\);/s,
+	);
+});
+
+test("CityRailEditor lets the city rows use the full list width", () => {
+	assert.match(
+		CITY_POPOVER_SOURCE,
+		/className="scrollbar-auto-hide absolute inset-0 overflow-y-auto pl-1 pr-0"/,
+	);
+	assert.match(
+		CITY_POPOVER_SOURCE,
+		/scrollbarGutter: "unset",/,
+	);
+});
+
+test("CityRailEditor gives the floating add and pin buttons the standard VPK focus ring", () => {
+	assert.match(
+		CITY_POPOVER_SOURCE,
+		/Add city"[\s\S]*focus-visible:border-ring focus-visible:ring-ring\/50 focus-visible:ring-3 focus-visible:outline-none/s,
+	);
+	assert.match(
+		CITY_POPOVER_SOURCE,
+		/hover:bg-bg-neutral-subtle-hovered active:bg-bg-neutral-subtle-pressed focus-visible:border-ring focus-visible:ring-ring\/50 focus-visible:ring-3 focus-visible:outline-none/,
+	);
+	assert.match(
+		CITY_POPOVER_SOURCE,
+		/group-focus-within\/city-rail:opacity-100/,
 	);
 });

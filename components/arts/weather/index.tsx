@@ -22,9 +22,8 @@ import { GlassTabs } from "@/components/ui/glass-tabs";
 import {
 	GLASS_TABS_SQUIRCLE_STYLE,
 } from "@/components/ui/glass-tabs-motion";
+import { Cctv } from "@/components/animate-ui/icons/cctv";
 import {
-	EyeIcon,
-	EyeOffIcon,
 	ReturnIcon,
 } from "@/components/ui/vpk-icons";
 import { cn } from "@/lib/utils";
@@ -44,11 +43,107 @@ import {
 	WidgetScrewDots,
 } from "./widget-card";
 
+// Pool of preloaded <audio> elements keyed by src. Reusing the same element
+// across calls means:
+//  1. The first successful playback after a user gesture "unlocks" that
+//     element for the rest of the session, so subsequent hover-triggered
+//     plays (which the browser would otherwise block as not-user-initiated)
+//     keep working.
+//  2. We don't pay the network/decode cost on every hover tick.
+const audioPool = new Map<string, HTMLAudioElement>();
+
+function getPooledAudio(src: string): HTMLAudioElement {
+	let audio = audioPool.get(src);
+	if (!audio) {
+		audio = new Audio(src);
+		audio.preload = "auto";
+		audioPool.set(src, audio);
+	}
+	return audio;
+}
+
+// Browser autoplay policies block `<audio>.play()` until the page has
+// received a "user activation" gesture (click, keydown, pointerdown,
+// touchstart). Hover events (mousemove / pointerenter) DO NOT count, so
+// the very first hover after a fresh page load can't play anything.
+//
+// To make hover sounds reliable from the very first interaction, we
+// install one-time listeners for the gesture types the browser DOES
+// recognize. On the first such gesture we play+pause every pooled
+// `<audio>` element with volume 0 — that single user-initiated play
+// unlocks each element for the rest of the session, after which
+// non-gesture-initiated `.play()` calls (e.g. hover) work as expected.
+let audioUnlocked = false;
+function unlockAllAudio() {
+	if (audioUnlocked) return;
+	audioUnlocked = true;
+	for (const audio of audioPool.values()) {
+		const previousVolume = audio.volume;
+		audio.volume = 0;
+		audio
+			.play()
+			.then(() => {
+				audio.pause();
+				audio.currentTime = 0;
+				audio.volume = previousVolume;
+			})
+			.catch(() => {
+				// Restore volume even on failure so the next genuine play
+				// uses the right level.
+				audio.volume = previousVolume;
+			});
+	}
+}
+
+function ensureAudioUnlockListener() {
+	if (typeof window === "undefined") return;
+	if ((window as unknown as { __vpkAudioUnlockBound?: boolean }).__vpkAudioUnlockBound) {
+		return;
+	}
+	(window as unknown as { __vpkAudioUnlockBound?: boolean }).__vpkAudioUnlockBound = true;
+	const handler = () => {
+		unlockAllAudio();
+		window.removeEventListener("pointerdown", handler, true);
+		window.removeEventListener("keydown", handler, true);
+		window.removeEventListener("touchstart", handler, true);
+	};
+	// Capture phase + once-style cleanup so we hear the first gesture
+	// regardless of whether downstream handlers stop propagation.
+	window.addEventListener("pointerdown", handler, true);
+	window.addEventListener("keydown", handler, true);
+	window.addEventListener("touchstart", handler, true);
+}
+
+// Install the unlock listener at module-load time (client only) so the
+// FIRST gesture anywhere on the page primes the pool — even if the user
+// hovers the slider before triggering any other code path that calls
+// playSound. Without this, the listener wouldn't bind until the first
+// hover, and hovers themselves don't count as user activation.
+if (typeof window !== "undefined") {
+	ensureAudioUnlockListener();
+}
+
 function playSound(src: string, volume = 0.5) {
 	if (typeof window === "undefined") return;
-	const audio = new Audio(src);
+	ensureAudioUnlockListener();
+	const audio = getPooledAudio(src);
 	audio.volume = Math.max(0, Math.min(1, volume));
-	audio.play().catch(() => {});
+	// Rewind so rapid re-triggers (hover scrub across ticks) actually
+	// re-play instead of being swallowed because the element is already
+	// mid-playback.
+	try {
+		audio.currentTime = 0;
+	} catch {
+		// Some browsers throw if metadata isn't loaded yet — safe to skip.
+	}
+	audio.play().catch(() => {
+		// Most failures here are NotAllowedError before the user has
+		// produced a qualifying gesture (click/keydown/pointerdown/
+		// touchstart). The capture-phase unlock listener installed at
+		// module load primes every pooled element on the first such
+		// gesture, after which subsequent hover-only plays succeed for
+		// the rest of the session.
+	});
 }
 
 export interface WeatherProps {
@@ -100,6 +195,9 @@ function ThemeControl({
 	wakeLock,
 	cutoutFillColor,
 	cutoutIconFilter,
+	noiseColor,
+	noiseOpacity,
+	noiseBlendMode,
 }: {
 	mode: WeatherThemeMode;
 	onChange: (mode: WeatherThemeMode) => void;
@@ -113,7 +211,13 @@ function ThemeControl({
 		onToggle: () => void;
 	};
 	cutoutFillColor: string;
+	// Tuned for the small (16×16) wake-lock eye icon — see
+	// `cutoutIconFilterSmall` in the parent component for the rationale on
+	// why we don't reuse the hero `cutoutIconFilter` at this size.
 	cutoutIconFilter: string;
+	noiseColor: string;
+	noiseOpacity: number;
+	noiseBlendMode: NoiseBlendMode;
 }) {
 	const [isFocusWithin, setIsFocusWithin] = React.useState(false);
 	// Signed pixel offset matching the live `shellStretch` of the GlassTabs
@@ -242,6 +346,9 @@ function ThemeControl({
 							onToggle={wakeLock.onToggle}
 							cutoutFillColor={cutoutFillColor}
 							cutoutIconFilter={cutoutIconFilter}
+							noiseColor={noiseColor}
+							noiseOpacity={noiseOpacity}
+							noiseBlendMode={noiseBlendMode}
 						/>
 					</motion.div>
 					</div>
@@ -257,8 +364,12 @@ function WakeLockControl({
 	isActive,
 	error,
 	onToggle,
+	buttonRef,
 	cutoutFillColor,
 	cutoutIconFilter,
+	noiseColor,
+	noiseOpacity,
+	noiseBlendMode,
 }: {
 	isTabbable: boolean;
 	isSupported: boolean;
@@ -266,8 +377,12 @@ function WakeLockControl({
 	isActive: boolean;
 	error: string | null;
 	onToggle: () => void;
+	buttonRef?: React.RefObject<HTMLButtonElement | null>;
 	cutoutFillColor: string;
 	cutoutIconFilter: string;
+	noiseColor: string;
+	noiseOpacity: number;
+	noiseBlendMode: NoiseBlendMode;
 }) {
 	const disabled = !isSupported;
 	const labelOn = "Allow screen to sleep";
@@ -283,12 +398,15 @@ function WakeLockControl({
 		<Tooltip>
 			<TooltipTrigger
 				render={
-					<button
-						type="button"
-						role="switch"
-						aria-checked={isEnabled}
+						<motion.button
+							type="button"
+							role="switch"
+							aria-checked={isEnabled}
 						aria-label={tooltip}
+						ref={buttonRef}
 						disabled={disabled}
+						whileTap={{ scale: 0.82 }}
+						transition={{ type: "spring", duration: 0.4, bounce: 0.55 }}
 						// Keep this in the Tab order only while the theme
 						// chrome is intentionally revealed.
 						tabIndex={isTabbable ? 0 : -1}
@@ -305,7 +423,7 @@ function WakeLockControl({
 								event.currentTarget.blur();
 							}
 						}}
-						className={cn(
+							className={cn(
 							// Clear squircle button — no opaque fill,
 							// no LiquidGlass refractive shell. The
 							// squircle clip alone defines the button's
@@ -316,14 +434,19 @@ function WakeLockControl({
 							// shape stays visible against any backdrop —
 							// this replaces the border that the
 							// LiquidGlass shell used to draw.
-							"relative flex size-9 cursor-pointer items-center justify-center overflow-hidden border border-border",
+								"relative flex size-9 cursor-pointer items-center justify-center overflow-hidden",
+							// Border traces the squircle outline only in the
+							// off state — when toggled on, the Rings shader
+							// fills the squircle and the border would
+							// compete with the lit surface.
+							!isEnabled && "border border-border",
 							// Keep the icon at the same subtle weight on
 							// hover/active — no darkening — so the only
 							// hover affordance is the squircle/shader
 							// surface itself responding under the pointer.
 							"transition-colors duration-normal",
-							"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focused",
-							"disabled:cursor-not-allowed disabled:opacity-50",
+								"focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-3 focus-visible:outline-none",
+								"disabled:cursor-not-allowed disabled:opacity-50",
 							// Off-state icon color. When ON the icon switches
 							// to `cutoutFillColor` (`var(--ds-surface)`) via
 							// inline style so it reads like a hole punched
@@ -331,7 +454,7 @@ function WakeLockControl({
 							// digits and weather icon on the time card.
 							!isEnabled && "text-icon-subtlest",
 						)}
-						style={GLASS_TABS_SQUIRCLE_STYLE}
+						style={{ ...GLASS_TABS_SQUIRCLE_STYLE, willChange: "transform" }}
 						data-active={isActive ? "true" : undefined}
 						data-error={error ? "true" : undefined}
 					>
@@ -344,35 +467,73 @@ function WakeLockControl({
 						 * visible inside the 36×36 squircle without the
 						 * LiquidGlass shell washing it out.
 						 */}
-						{isEnabled ? (
-							<span
-								aria-hidden="true"
-								className="pointer-events-none absolute inset-0 overflow-hidden"
+							{isEnabled ? (
+								<span
+									aria-hidden="true"
+									className="pointer-events-none absolute inset-0 overflow-hidden"
 								style={GLASS_TABS_SQUIRCLE_STYLE}
 							>
-								<Rings className="h-full w-full" />
-							</span>
-						) : null}
-						{isEnabled ? (
-							// Mirror the time card's hero numerals + weather
-							// icon: fill = page surface, drop-shadow stack =
-							// directional shadow + highlight + ambient blur,
-							// producing the "punched through" cutout look
-							// rather than a raised emboss.
-							<span
-								aria-hidden="true"
+								<Rings
+									className="h-full w-full"
+									// Toned-down parameters for the small
+									// 36×36 squircle: fewer, larger rings
+									// with softer warp/dispersion so the
+									// shader reads as a calm lit surface
+									// instead of a busy psychedelic target.
+									lensScale={4}
+									ringSpacing={2.5}
+									speed={0.25}
+									ringWarpStrength={1.5}
+									ringDispersion={0.2}
+									edgeDisp={0.6}
+									ephemeralAmp={0.06}
+								/>
+								{/*
+								 * Subtle noise grain to match the time
+								 * card's surface texture. The grid pattern
+								 * is intentionally omitted on this 36×36
+								 * footprint — gridlines that scale read as
+								 * busy/jittery against the Rings shader at
+								 * this size, where the time card's grid
+								 * reads as a clean schematic.
+								 */}
+								<Noise
+									className="absolute inset-0"
+									opacity={noiseOpacity}
+									grainSize={140}
+									seed={7}
+									color={noiseColor}
+									blendMode={noiseBlendMode}
+									// Override the default `inherit` so the
+									// noise tile doesn't pick up the
+									// parent's `borderRadius: 9999` and
+									// render as a full circle on top of the
+									// squircle (the parent `<span>` already
+									// clips to the squircle via
+									// `overflow-hidden`).
+									borderRadius={0}
+									/>
+								</span>
+							) : null}
+								{isEnabled ? (
+								<span
+									aria-hidden="true"
 								className="relative inline-flex items-center justify-center"
 								style={{ filter: cutoutIconFilter }}
 							>
-								<EyeIcon
+								<Cctv
+									size={16}
 									className="size-4"
 									style={{ color: cutoutFillColor }}
+									animate
+									loop
+									loopDelay={800}
 								/>
 							</span>
 						) : (
-							<EyeOffIcon className="relative size-4" />
+							<Cctv size={16} className="relative size-4" />
 						)}
-					</button>
+					</motion.button>
 				}
 			/>
 			<TooltipContent sideOffset={8}>{tooltip}</TooltipContent>
@@ -1251,6 +1412,27 @@ export default function Weather({
 		`drop-shadow(0.75px 0.75px 0 ${cutoutHighlightColor})`,
 		`drop-shadow(1.5px 1.5px 3px ${cutoutAmbientColor})`,
 	].join(" ");
+	// Smaller-scale variant for the 16×16 wake-lock eye icon. The hero
+	// `cutoutIconFilter` is calibrated for the ~120px temperature glyphs
+	// and the larger weather icon — at 16px those same offsets cover ~10%
+	// of the silhouette and read as a heavy emboss against the busy Rings
+	// shader. Halve the geometry, soften the highlight/shadow alphas, and
+	// shrink the ambient blur so the icon sits *into* the squircle as a
+	// subtle deboss instead of bulging.
+	const cutoutShadowColorSmall = isDarkTheme
+		? "rgb(0 0 0 / 0.28)"
+		: "rgb(0 0 0 / 0.18)";
+	const cutoutHighlightColorSmall = isDarkTheme
+		? "rgb(255 255 255 / 0.12)"
+		: "rgb(255 255 255 / 0.09)";
+	const cutoutAmbientColorSmall = isDarkTheme
+		? "rgb(0 0 0 / 0.14)"
+		: "rgb(0 0 0 / 0.08)";
+	const cutoutIconFilterSmall = [
+		`drop-shadow(-0.4px -0.4px 0 ${cutoutShadowColorSmall})`,
+		`drop-shadow(0.4px 0.4px 0 ${cutoutHighlightColorSmall})`,
+		`drop-shadow(0.75px 0.75px 1.25px ${cutoutAmbientColorSmall})`,
+	].join(" ");
 	const debossDotShadow =
 		"inset 0 1px 0.5px color-mix(in srgb, var(--ds-text) 45%, transparent), 0 1px 0 color-mix(in srgb, var(--ds-text-inverse) 40%, transparent)";
 
@@ -1280,7 +1462,15 @@ export default function Weather({
 					onToggle: handleWakeLockToggle,
 				}}
 				cutoutFillColor={cutoutFillColor}
-				cutoutIconFilter={cutoutIconFilter}
+				// Pass the small-scale cutout filter — the wake-lock eye
+				// icon is 16×16, so the hero `cutoutIconFilter` (sized for
+				// the ~120px temperature numerals and the larger weather
+					// icon) reads as an oversized emboss against the busy
+					// Rings shader at this footprint.
+					cutoutIconFilter={cutoutIconFilterSmall}
+					noiseColor={noiseColor}
+					noiseOpacity={noiseOpacity}
+					noiseBlendMode={noiseBlendMode}
 			/>
 
 			<motion.div

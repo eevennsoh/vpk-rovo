@@ -57,6 +57,10 @@ test("GlassTabs keeps the tighter keyboard animation path in the shared motion h
 	);
 	assert.match(
 		GLASS_TABS_MOTION_SOURCE,
+		/const EDGE_PILL_STRETCH_FOLLOW_RATIO = 0\.94;/,
+	);
+	assert.match(
+		GLASS_TABS_MOTION_SOURCE,
 		/const selectionInputModeRef = useRef<"pointer" \| "keyboard">\("pointer"\);/,
 	);
 	assert.match(
@@ -82,6 +86,10 @@ test("GlassTabs keeps the tighter keyboard animation path in the shared motion h
 	assert.match(
 		GLASS_TABS_MOTION_SOURCE,
 		/const stretchRatio = isKeyboardSelection\s+\? KEYBOARD_STRETCH_RATIO\s+\: PILL_STRETCH_RATIO;/s,
+	);
+	assert.match(
+		GLASS_TABS_MOTION_SOURCE,
+		/return hoverPillWidth\.get\(\) \+ stretch \* EDGE_PILL_STRETCH_FOLLOW_RATIO;/,
 	);
 	assert.match(
 		GLASS_TABS_MOTION_SOURCE,

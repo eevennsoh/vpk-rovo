@@ -116,6 +116,7 @@ const KEYBOARD_MAX_STRETCH_PX = 8;
 const KEYBOARD_STRETCH_RATIO = 0.06;
 const MAX_SHELL_STRETCH_PX = 32;
 const MAX_SHELL_THIN_RATIO = 0.14;
+const EDGE_PILL_STRETCH_FOLLOW_RATIO = 0.94;
 
 // Reverse-engineered from the "Magnetic Hover" component shipped on
 // magnet.learnframer.site (chunk-ND35KM2X.mjs).
@@ -208,7 +209,7 @@ export function useGlassTabsMotion<TValue extends string>({
 		const stretch = shellStretch.get();
 		const idx = selectedIndexRef.current;
 		if (idx === 0 && stretch < 0) {
-			return pillLeft.get() + stretch * 0.85;
+			return pillLeft.get() + stretch * EDGE_PILL_STRETCH_FOLLOW_RATIO;
 		}
 		return pillLeft.get();
 	});
@@ -216,10 +217,10 @@ export function useGlassTabsMotion<TValue extends string>({
 		const stretch = shellStretch.get();
 		const idx = selectedIndexRef.current;
 		if (idx === 0 && stretch < 0) {
-			return pillWidth.get() + Math.abs(stretch) * 0.85;
+			return pillWidth.get() + Math.abs(stretch) * EDGE_PILL_STRETCH_FOLLOW_RATIO;
 		}
 		if (idx === lastIndex && stretch > 0) {
-			return pillWidth.get() + stretch * 0.85;
+			return pillWidth.get() + stretch * EDGE_PILL_STRETCH_FOLLOW_RATIO;
 		}
 		return pillWidth.get();
 	});
@@ -228,7 +229,7 @@ export function useGlassTabsMotion<TValue extends string>({
 		const stretch = shellStretch.get();
 		const idx = hoveredIndexRef.current;
 		if (idx === 0 && stretch < 0) {
-			return hoverPillLeft.get() + stretch * 0.85;
+			return hoverPillLeft.get() + stretch * EDGE_PILL_STRETCH_FOLLOW_RATIO;
 		}
 		return hoverPillLeft.get();
 	});
@@ -236,10 +237,10 @@ export function useGlassTabsMotion<TValue extends string>({
 		const stretch = shellStretch.get();
 		const idx = hoveredIndexRef.current;
 		if (idx === 0 && stretch < 0) {
-			return hoverPillWidth.get() + Math.abs(stretch) * 0.85;
+			return hoverPillWidth.get() + Math.abs(stretch) * EDGE_PILL_STRETCH_FOLLOW_RATIO;
 		}
 		if (idx === lastIndex && stretch > 0) {
-			return hoverPillWidth.get() + stretch * 0.85;
+			return hoverPillWidth.get() + stretch * EDGE_PILL_STRETCH_FOLLOW_RATIO;
 		}
 		return hoverPillWidth.get();
 	});

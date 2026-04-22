@@ -1332,7 +1332,14 @@ export function GlassSlider({
 									top: `${topPct}%`,
 									height: `${rowHeightPct}%`,
 								}}
-								onPointerEnter={() => setHoveredTickIndex(i)}
+								// NOTE: Don't pre-set `hoveredTickIndex` here. The
+								// track's `handlePointerMove` is the single
+								// source of truth for which tick is hovered —
+								// pre-setting from the tick's `onPointerEnter`
+								// races ahead of the move handler and makes
+								// the `if (snappedIndex !== hoveredTickIndex)`
+								// guard skip the `onHoverTickChange` call,
+								// silencing the hover sound.
 								onPointerLeave={() =>
 									setHoveredTickIndex((prev) => (prev === i ? null : prev))
 								}

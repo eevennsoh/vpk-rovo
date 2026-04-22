@@ -46,11 +46,92 @@ import { PRESET_CITIES } from "./preset-cities";
 import { GlassSlider } from "./glass-slider";
 import { useCitySearch } from "./use-city-search";
 
+// Pool of preloaded <audio> elements keyed by src. Reusing the same element
+// across calls means:
+//  1. The first successful playback after a user gesture "unlocks" that
+//     element for the rest of the session, so subsequent hover-triggered
+//     plays keep working without re-failing the browser autoplay check.
+//  2. Rapid re-triggers (hover scrub across ticks) reset to time 0 and
+//     replay instead of being swallowed mid-playback.
+const audioPool = new Map<string, HTMLAudioElement>();
+
+function getPooledAudio(src: string): HTMLAudioElement {
+	let audio = audioPool.get(src);
+	if (!audio) {
+		audio = new Audio(src);
+		audio.preload = "auto";
+		audioPool.set(src, audio);
+	}
+	return audio;
+}
+
+// Browser autoplay policies block `<audio>.play()` until the page has
+// received a "user activation" gesture (click/keydown/pointerdown/
+// touchstart). Hover events do NOT count, so the very first hover-only
+// interaction with the slider can't play. We install a one-shot
+// capture-phase listener that primes every pooled <audio> with a silent
+// play+pause on first gesture, after which non-gesture .play() calls
+// work for the rest of the session.
+let audioUnlocked = false;
+function unlockAllAudio() {
+	if (audioUnlocked) return;
+	audioUnlocked = true;
+	for (const audio of audioPool.values()) {
+		const previousVolume = audio.volume;
+		audio.volume = 0;
+		audio
+			.play()
+			.then(() => {
+				audio.pause();
+				audio.currentTime = 0;
+				audio.volume = previousVolume;
+			})
+			.catch(() => {
+				audio.volume = previousVolume;
+			});
+	}
+}
+
+function ensureAudioUnlockListener() {
+	if (typeof window === "undefined") return;
+	if ((window as unknown as { __vpkAudioUnlockBound?: boolean }).__vpkAudioUnlockBound) {
+		return;
+	}
+	(window as unknown as { __vpkAudioUnlockBound?: boolean }).__vpkAudioUnlockBound = true;
+	const handler = () => {
+		unlockAllAudio();
+		window.removeEventListener("pointerdown", handler, true);
+		window.removeEventListener("keydown", handler, true);
+		window.removeEventListener("touchstart", handler, true);
+	};
+	window.addEventListener("pointerdown", handler, true);
+	window.addEventListener("keydown", handler, true);
+	window.addEventListener("touchstart", handler, true);
+}
+
+// Install at module-load time (client only) so the very first gesture
+// anywhere in the page primes the pool — even if the user hovers the
+// slider before any other playSound caller runs.
+if (typeof window !== "undefined") {
+	ensureAudioUnlockListener();
+}
+
 function playSound(src: string) {
 	if (typeof window === "undefined") return;
-	const audio = new Audio(src);
+	ensureAudioUnlockListener();
+	const audio = getPooledAudio(src);
 	audio.volume = 0.5;
-	audio.play().catch(() => {});
+	try {
+		audio.currentTime = 0;
+	} catch {
+		// Some browsers throw if metadata isn't loaded yet — safe to skip.
+	}
+	audio.play().catch(() => {
+		// Most failures here are NotAllowedError before the user has
+		// produced a qualifying gesture. The module-load capture-phase
+		// unlock listener primes the pool on first gesture; after that,
+		// hover-only plays succeed for the rest of the session.
+	});
 }
 
 interface CityRailEditorProps {
@@ -226,12 +307,32 @@ export function CityRailEditor({
 	// scrollTop in px, clamped 0..SCROLL_FADE_PX, drives the height of
 	// the top mask fade so it ramps in only as the user scrolls down.
 	const [topFadePx, setTopFadePx] = useState(0);
+	// Idle timer for `data-scrolling` toggling so .scrollbar-auto-hide
+	// reveals its thumb only while the user is actively scrolling and
+	// hides it again ~600ms after motion stops.
+	const scrollIdleTimerRef = useRef<number | null>(null);
 	const handleListScroll = useCallback(
 		(event: React.UIEvent<HTMLDivElement>) => {
 			setTopFadePx(event.currentTarget.scrollTop);
+			const node = event.currentTarget;
+			node.setAttribute("data-scrolling", "");
+			if (scrollIdleTimerRef.current !== null) {
+				window.clearTimeout(scrollIdleTimerRef.current);
+			}
+			scrollIdleTimerRef.current = window.setTimeout(() => {
+				node.removeAttribute("data-scrolling");
+				scrollIdleTimerRef.current = null;
+			}, 600);
 		},
 		[],
 	);
+	useEffect(() => {
+		return () => {
+			if (scrollIdleTimerRef.current !== null) {
+				window.clearTimeout(scrollIdleTimerRef.current);
+			}
+		};
+	}, []);
 	const scrollFadeMask = useMemo(() => buildScrollFadeMask(topFadePx), [topFadePx]);
 
 	const railWidth = width - TRACK_INSET;
@@ -481,11 +582,19 @@ export function CityRailEditor({
 
 							<div className="relative min-h-0 flex-1">
 								<div
-									className="absolute inset-0 overflow-y-auto px-1"
+									className="scrollbar-auto-hide absolute inset-0 overflow-y-auto pl-1 pr-0"
 									onScroll={handleListScroll}
 									style={{
 										WebkitMaskImage: scrollFadeMask,
 										maskImage: scrollFadeMask,
+										// The shared `.scrollbar-auto-hide` utility uses
+										// `scrollbar-gutter: stable both-edges` to keep
+										// content centered when the thumb appears. In
+										// this popover that reserved gutter reads as
+										// extra right padding on the row highlight, so
+										// let the thin thumb overlay the content
+										// instead of shrinking the usable list width.
+										scrollbarGutter: "unset",
 									}}
 								>
 									<div
@@ -616,14 +725,14 @@ export function CityRailEditor({
 						style={{ transform: "translate(-50%, calc(-100% - 8px))" }}
 					>
 						<motion.div style={{ y: plusButtonY }}>
-							<button
-								type="button"
-								onClick={() => { playSound("/sound/click-001.mp3"); setIsOpen(true); }}
-								className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border border-transparent text-icon-subtlest transition-colors hover:bg-bg-neutral-subtle-hovered active:bg-bg-neutral-subtle-pressed"
-								aria-label="Add city"
-							>
-								<PlusIcon className="size-3.5" />
-							</button>
+								<button
+									type="button"
+									onClick={() => { playSound("/sound/click-001.mp3"); setIsOpen(true); }}
+									className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border border-transparent text-icon-subtlest transition-colors hover:bg-bg-neutral-subtle-hovered active:bg-bg-neutral-subtle-pressed focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-3 focus-visible:outline-none"
+									aria-label="Add city"
+								>
+									<PlusIcon className="size-3.5" />
+								</button>
 						</motion.div>
 					</div>
 				) : null}
@@ -641,19 +750,19 @@ export function CityRailEditor({
 							<button
 								type="button"
 								onClick={() => { playSound("/sound/click-001.mp3"); setIsPinned((current) => !current); }}
-								className={cn(
-									"flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border border-transparent text-icon-subtlest transition-colors",
-									// Always show the soft circular hover/press
-									// chip — including in the pinned state — so
+									className={cn(
+										"flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border border-transparent text-icon-subtlest transition-colors",
+										// Always show the soft circular hover/press
+										// chip — including in the pinned state — so
 									// the click target stays discoverable when
-									// users want to unpin. The pinned vs
-									// unpinned distinction is conveyed by the
-									// icon (PinFilledIcon vs PinIcon), not by
-									// the backdrop.
-									"hover:bg-bg-neutral-subtle-hovered active:bg-bg-neutral-subtle-pressed",
-								)}
-								aria-pressed={isPinned}
-								aria-label={isPinned ? "Unpin city" : "Pin city"}
+										// users want to unpin. The pinned vs
+										// unpinned distinction is conveyed by the
+										// icon (PinFilledIcon vs PinIcon), not by
+										// the backdrop.
+										"hover:bg-bg-neutral-subtle-hovered active:bg-bg-neutral-subtle-pressed focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-3 focus-visible:outline-none",
+									)}
+									aria-pressed={isPinned}
+									aria-label={isPinned ? "Unpin city" : "Pin city"}
 							>
 								{isPinned ? (
 									<PinFilledIcon className="size-3.5" />

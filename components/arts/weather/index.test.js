@@ -153,6 +153,11 @@ test("Weather splits pointer-driven chrome between the top theme control and bot
 	);
 	assert.match(
 		WEATHER_SOURCE,
+		/focus-visible:border-ring focus-visible:ring-ring\/50 focus-visible:ring-3 focus-visible:outline-none/,
+	);
+	assert.doesNotMatch(WEATHER_SOURCE, /group-hover\/wake-lock:opacity-100/);
+	assert.match(
+		WEATHER_SOURCE,
 		/<GlassTabs[\s\S]*keyboardSelectionPulseKey=\{themeNavigationPulseKey\}/,
 	);
 	assert.doesNotMatch(WEATHER_SOURCE, /clipPath:/);
