@@ -199,6 +199,38 @@ const INLINE_MANAGER_GLASS_PROPS: Partial<LiquidGlassProps> = {
 	borderOpacity: 1,
 };
 
+// Liquid-glass backdrop for the floating + / pin buttons that hover above
+// and below the slider. Tuned smaller and more transparent than the inline
+// city-manager popover (the buttons are only 28×28 px, so heavy distortion
+// reads as noise) — but still gives the icons enough chroma contrast to
+// stay legible against the colorful weather cards underneath, especially
+// on mobile where they overlap the rainbow / temperature artwork.
+const BUTTON_GLASS_PROPS: Partial<LiquidGlassProps> = {
+	borderRadius: 9999,
+	borderWidth: 0.05,
+	brightness: 50,
+	opacity: 0.9,
+	blur: 4,
+	backgroundOpacity: 0.18,
+	saturation: 1,
+	distortionScale: -40,
+	dispersion: 4,
+	borderColor: "var(--ds-border)",
+	borderOpacity: 1,
+	dropShadow: false,
+};
+
+// Emboss filter for the floating-button icons. Mirrors the recipe used
+// by GLASS_SLIDER_TICK_EMBOSS_BOX_SHADOW (light highlight on top edge +
+// dark shadow on bottom edge) but as `drop-shadow()` filters so the
+// halo follows the SVG glyph outline (vs. `text-shadow`/`box-shadow`
+// which would only outline the bounding box). The result reads as the
+// icon being stamped INTO the glass surface, which both gives the
+// glyph high contrast on busy / rainbow backgrounds and visually
+// matches the embossed slider tick marks above.
+const BUTTON_ICON_EMBOSS_FILTER =
+	"drop-shadow(0 1px 0 color-mix(in srgb, var(--ds-text-inverse) 60%, transparent)) drop-shadow(0 -0.5px 0 color-mix(in srgb, var(--ds-text) 28%, transparent))";
+
 // Top + bottom edge fades for the scrollable city list. Implemented as a
 // CSS mask-image on the scroll container itself so the fade follows the
 // container's shape (including the outer squircle clip) and never
@@ -724,23 +756,91 @@ export function CityRailEditor({
 			    the slider's top edge). Inner motion.div applies the
 			    rubber-band offset so the + button follows the stretched
 			    top edge of the slider. */}
-				{!isOpen ? (
-					<div
-						className="absolute left-1/2 top-0 z-40 flex items-center justify-center opacity-0 transition-opacity duration-200 group-hover/city-rail:opacity-100 group-focus-within/city-rail:opacity-100"
-						style={{ transform: "translate(-50%, calc(-100% - 8px))" }}
-					>
-						<motion.div style={{ y: plusButtonY }}>
-								<button
-									type="button"
-									onClick={() => { playSound("/sound/click-001.mp3"); setIsOpen(true); }}
-									className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border border-transparent text-icon-subtlest transition-colors hover:bg-bg-neutral-subtle-hovered active:bg-bg-neutral-subtle-pressed focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-3 focus-visible:outline-none"
-									aria-label="Add city"
+				{/* The + button stays mounted in BOTH states (closed and
+				    open) so the user always has a single-button affordance
+				    to enter / exit the city manager. When the popover is
+				    open, the same button rotates the + glyph 45° to morph
+				    into an × close icon — visually signaling "tap again to
+				    dismiss" without introducing a second control. */}
+				<div
+					className={cn(
+						"absolute left-1/2 top-0 z-40 flex items-center justify-center transition-opacity duration-200",
+						// Hover-only when closed (resting state shouldn't
+						// clutter the slider edge); always visible when
+						// open so the close affordance stays findable.
+						isOpen
+							? "opacity-100"
+							: "opacity-0 group-hover/city-rail:opacity-100 group-focus-within/city-rail:opacity-100",
+					)}
+					style={{ transform: "translate(-50%, calc(-100% - 8px))" }}
+				>
+					<motion.div style={{ y: plusButtonY }}>
+							<motion.button
+								type="button"
+								onClick={(event) => {
+									playSound(
+										isOpen
+											? "/sound/click-002.mp3"
+											: "/sound/click-001.mp3",
+									);
+									setIsOpen((current) => !current);
+									// When the user CLOSES the popover via
+									// pointer click, drop focus from the
+									// button so the wrapper's
+									// `group-focus-within` reveal selector
+									// no longer pins the chip at opacity 1.
+									// Without this, the button stays stuck
+									// visible after dismiss instead of
+									// fading back into the hover-only
+									// resting state. Detail > 0 limits the
+									// blur to mouse/touch (not Enter / Space
+									// keyboard activations, where focus must
+									// remain so users can keep tabbing).
+									if (isOpen && event.detail > 0) {
+										event.currentTarget.blur();
+									}
+								}}
+								// Springy press animation matches the
+								// WakeLockControl button — same scale +
+								// spring values so all small "chip" buttons
+								// in the weather scene have a consistent
+								// tactile press cue.
+								whileTap={{ scale: 0.82 }}
+								transition={{ type: "spring", duration: 0.4, bounce: 0.55 }}
+								style={{ willChange: "transform" }}
+								className="relative isolate flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border border-transparent text-text transition-colors focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-3 focus-visible:outline-none"
+								aria-label={isOpen ? "Close city manager" : "Add city"}
+								aria-expanded={isOpen}
+							>
+								{/* Liquid-glass backdrop sits BEHIND the icon
+								    (z=-10) so the colorful weather cards
+								    underneath get refracted/blurred and the
+								    icon stays legible on mobile where the
+								    button overlaps bright artwork. `isolate`
+								    on the button creates a stacking context
+								    so this negative z-index doesn't escape. */}
+								<LiquidGlass
+									{...BUTTON_GLASS_PROPS}
+									width="100%"
+									height="100%"
+									className="pointer-events-none absolute inset-0 -z-10 rounded-full"
+								/>
+								{/* Rotate the + 45° to morph into an × when
+								    the popover is open. A spring transition
+								    matches the press animation so the
+								    rotation feels physically continuous
+								    with the click. */}
+								<motion.span
+									className="inline-flex"
+									animate={{ rotate: isOpen ? 45 : 0 }}
+									transition={{ type: "spring", duration: 0.4, bounce: 0.4 }}
+									style={{ filter: BUTTON_ICON_EMBOSS_FILTER }}
 								>
 									<PlusIcon className="size-3.5" />
-								</button>
-						</motion.div>
-					</div>
-				) : null}
+								</motion.span>
+							</motion.button>
+					</motion.div>
+				</div>
 
 			{/* Outer wrapper handles fixed positioning (anchored 8px below
 			    the slider's bottom edge). Inner motion.div applies the
@@ -752,29 +852,68 @@ export function CityRailEditor({
 						style={{ transform: "translate(-50%, calc(100% + 8px))" }}
 					>
 						<motion.div style={{ y: pinButtonY }}>
-							<button
+							<motion.button
 								type="button"
-								onClick={() => { playSound("/sound/click-001.mp3"); setIsPinned((current) => !current); }}
+								onClick={(event) => {
+									playSound("/sound/click-001.mp3");
+									setIsPinned((current) => !current);
+									// Drop focus on pointer click so the
+									// chip fades back into the hover-only
+									// resting state (otherwise
+									// `group-focus-within` would keep both
+									// floating buttons visible). Keyboard
+									// users keep focus to continue tabbing.
+									if (event.detail > 0) {
+										event.currentTarget.blur();
+									}
+								}}
+									// Springy press animation — see Add-city
+									// button above for the rationale (consistent
+									// tactile feedback across small chip
+									// buttons in the weather scene).
+									whileTap={{ scale: 0.82 }}
+									transition={{ type: "spring", duration: 0.4, bounce: 0.55 }}
+									style={{ willChange: "transform" }}
 									className={cn(
-										"flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border border-transparent text-icon-subtlest transition-colors",
-										// Always show the soft circular hover/press
-										// chip — including in the pinned state — so
-									// the click target stays discoverable when
-										// users want to unpin. The pinned vs
-										// unpinned distinction is conveyed by the
-										// icon (PinFilledIcon vs PinIcon), not by
-										// the backdrop.
-										"hover:bg-bg-neutral-subtle-hovered active:bg-bg-neutral-subtle-pressed focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-3 focus-visible:outline-none",
+										"relative isolate flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border border-transparent text-text transition-colors",
+										// The liquid-glass backdrop + the icon
+										// emboss are the only chip styling — no
+										// hover/press background fill, since the
+										// solid bg paints inside the glass shell's
+										// hairline and reads as a second
+										// concentric ring around the chip.
+										// Focus ring matches the standard VPK
+										// button (`focus-visible:border-ring` +
+										// translucent halo) so keyboard focus on
+										// these chips visually matches every
+										// other interactive surface in the app.
+										"focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-3 focus-visible:outline-none",
 									)}
 									aria-pressed={isPinned}
 									aria-label={isPinned ? "Unpin city" : "Pin city"}
 							>
+								{/* Liquid-glass backdrop — see Add-city button
+								    above for the rationale. Keeps the pin icon
+								    legible against bright weather cards on
+								    mobile viewports. */}
+								<LiquidGlass
+									{...BUTTON_GLASS_PROPS}
+									width="100%"
+									height="100%"
+									className="pointer-events-none absolute inset-0 -z-10 rounded-full"
+								/>
 								{isPinned ? (
-									<PinFilledIcon className="size-3.5" />
+									<PinFilledIcon
+										className="size-3.5"
+										style={{ filter: BUTTON_ICON_EMBOSS_FILTER }}
+									/>
 								) : (
-									<PinIcon className="size-3.5" />
+									<PinIcon
+										className="size-3.5"
+										style={{ filter: BUTTON_ICON_EMBOSS_FILTER }}
+									/>
 								)}
-							</button>
+							</motion.button>
 						</motion.div>
 					</div>
 				) : null}

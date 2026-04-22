@@ -25,6 +25,6 @@ test("Weather mounts the selected clock wrapper with a standalone centered date 
 	);
 	assert.match(
 		WEATHER_SOURCE,
-		/<SelectedWeatherClock[\s\S]*timeClassName=\{isRowLayout \? "col-start-2 row-start-1" : "col-start-2 row-start-1"\}[\s\S]*dateClassName=\{cn\(\s*isRowLayout\s*\?\s*"col-span-4 row-start-2 flex justify-center"\s*:\s*"col-span-2 row-start-3 flex justify-center",/s,
+		/<SelectedWeatherClock[\s\S]*timeClassName=\{isRowLayout \? "col-start-2 row-start-1" : "col-start-2 row-start-1"\}[\s\S]*dateClassName=\{cn\(\s*isRowLayout\s*\?\s*"col-span-4 row-start-2 flex justify-center"\s*:\s*"col-span-2 row-start-3 mt-4 flex justify-center sm:mt-8",/s,
 	);
 });

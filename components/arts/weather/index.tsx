@@ -1608,7 +1608,7 @@ export default function Weather({
 						dateClassName={cn(
 							isRowLayout
 								? "col-span-4 row-start-2 flex justify-center"
-								: "col-span-2 row-start-3 flex justify-center",
+								: "col-span-2 row-start-3 mt-4 flex justify-center sm:mt-8",
 						)}
 						onFooterAnimationComplete={() => setIsEntranceAnimating(false)}
 					/>

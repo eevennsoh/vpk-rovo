@@ -62,16 +62,50 @@ test("CityRailEditor lets the city rows use the full list width", () => {
 });
 
 test("CityRailEditor gives the floating add and pin buttons the standard VPK focus ring", () => {
+	// Both floating chips share the same VPK focus-ring pattern
+	// (`focus-visible:ring-ring/50 focus-visible:ring-3 focus-visible:outline-none`).
+	// The Add-city button label switches to "Close city manager" when the
+	// popover is open, but the focus-ring classes are identical in both
+	// states — match the suffix of the className regardless of label.
 	assert.match(
 		CITY_POPOVER_SOURCE,
-		/Add city"[\s\S]*focus-visible:border-ring focus-visible:ring-ring\/50 focus-visible:ring-3 focus-visible:outline-none/s,
+		/aria-label=\{isOpen \? "Close city manager" : "Add city"\}/,
 	);
-	assert.match(
-		CITY_POPOVER_SOURCE,
-		/hover:bg-bg-neutral-subtle-hovered active:bg-bg-neutral-subtle-pressed focus-visible:border-ring focus-visible:ring-ring\/50 focus-visible:ring-3 focus-visible:outline-none/,
+	// Add-city / close button focus ring (both buttons share the same
+	// className suffix; just match the canonical fragment in source).
+	const focusRingFragment =
+		/focus-visible:ring-ring\/50 focus-visible:ring-3 focus-visible:outline-none/;
+	assert.match(CITY_POPOVER_SOURCE, focusRingFragment);
+	// Pin button keeps the same focus-ring class set (use a separate
+	// match to ensure it appears at least twice in source).
+	const focusRingMatches = CITY_POPOVER_SOURCE.match(
+		/focus-visible:ring-ring\/50 focus-visible:ring-3 focus-visible:outline-none/g,
+	);
+	assert.ok(
+		focusRingMatches && focusRingMatches.length >= 2,
+		"expected focus-ring class fragment to appear on both floating buttons",
 	);
 	assert.match(
 		CITY_POPOVER_SOURCE,
 		/group-focus-within\/city-rail:opacity-100/,
+	);
+});
+
+test("CityRailEditor keeps the Add-city button mounted while the popover is open and morphs the + glyph into an × via 45° rotation", () => {
+	// Button is no longer wrapped in `{!isOpen ? ... : null}` — instead
+	// the wrapper div toggles its opacity classes based on `isOpen` so
+	// the same button serves both as "Add city" and "Close city manager".
+	assert.doesNotMatch(
+		CITY_POPOVER_SOURCE,
+		/\{!isOpen \? \(\s*<div[\s\S]*aria-label="Add city"/,
+	);
+	// Verify the `aria-expanded` attribute is wired so screen-reader users
+	// know the button toggles a disclosure.
+	assert.match(CITY_POPOVER_SOURCE, /aria-expanded=\{isOpen\}/);
+	// Verify the + glyph rotates 45° (visually morphing into an ×) when
+	// the popover is open.
+	assert.match(
+		CITY_POPOVER_SOURCE,
+		/animate=\{\{ rotate: isOpen \? 45 : 0 \}\}/,
 	);
 });

@@ -1514,15 +1514,6 @@ export function GlassSlider({
 			}
 		>
 			<motion.div
-				data-slot="glass-slider-focus-ring"
-				aria-hidden="true"
-				className={cn(
-					"pointer-events-none absolute inset-x-0 top-0 z-30 transition-opacity duration-fast ease-out",
-					isFocusVisible ? "opacity-100" : "opacity-0",
-				)}
-				style={{ ...trackMotionStyle, ...focusRingStyle }}
-			/>
-			<motion.div
 				ref={trackRef}
 				data-slot="glass-slider-track"
 				role="slider"
@@ -1626,6 +1617,23 @@ export function GlassSlider({
 						{trackChrome}
 					</>
 				)}
+				{/* Focus ring is rendered as the LAST absolutely-positioned
+				    child inside the track itself (rather than as an outer
+				    sibling) so it shares the exact bounds, rubber-band
+				    stretch, and squircle corner-shape of the visible glass
+				    shell. Sibling-mirroring with the same motion values
+				    still produced a tiny visual gap because the LiquidGlass
+				    SVG renders with sub-pixel insets that the bare DOM box
+				    of a sibling div cannot replicate. */}
+				<div
+					data-slot="glass-slider-focus-ring"
+					aria-hidden="true"
+					className={cn(
+						"pointer-events-none absolute inset-0 z-40 transition-opacity duration-fast ease-out",
+						isFocusVisible ? "opacity-100" : "opacity-0",
+					)}
+					style={focusRingStyle}
+				/>
 			</motion.div>
 		</div>
 	);
