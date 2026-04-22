@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
-import type { CSSProperties } from "react";
+import { useEffect, type CSSProperties } from "react";
 
 import LiquidGlass from "@/components/website/demos/visual/shaders/liquid-glass";
 import { cn } from "@/lib/utils";
@@ -28,6 +28,7 @@ export interface GlassTabsProps<TValue extends string> {
 	"aria-label"?: string;
 	className?: string;
 	style?: CSSProperties;
+	onShellStretchChange?: (stretchPx: number) => void;
 }
 
 export function GlassTabs<TValue extends string>({
@@ -39,6 +40,7 @@ export function GlassTabs<TValue extends string>({
 	"aria-label": ariaLabel,
 	className,
 	style,
+	onShellStretchChange,
 }: Readonly<GlassTabsProps<TValue>>) {
 	const {
 		containerRef,
@@ -62,6 +64,7 @@ export function GlassTabs<TValue extends string>({
 		setButtonRef,
 		shellOffsetX,
 		shellScaleY,
+		shellStretch,
 		shellWidth,
 	} = useGlassTabsMotion({
 		options,
@@ -74,6 +77,15 @@ export function GlassTabs<TValue extends string>({
 	const containerStyle = style
 		? { ...style, ...GLASS_TABS_SQUIRCLE_STYLE }
 		: GLASS_TABS_SQUIRCLE_STYLE;
+
+	useEffect(() => {
+		if (!onShellStretchChange) return;
+		onShellStretchChange(shellStretch.get());
+		const unsubscribe = shellStretch.on("change", onShellStretchChange);
+		return () => {
+			unsubscribe();
+		};
+	}, [onShellStretchChange, shellStretch]);
 
 	return (
 		<motion.div

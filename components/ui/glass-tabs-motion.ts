@@ -620,6 +620,7 @@ export function useGlassTabsMotion<TValue extends string>({
 		setButtonRef: (index: number, node: HTMLButtonElement | null) => {
 			buttonRefs.current[index] = node;
 		},
+		shellStretch,
 		shellOffsetX,
 		shellScaleY,
 		shellWidth,
