@@ -9,13 +9,21 @@ import Noise, {
 	type NoiseBlendMode,
 } from "@/components/website/demos/visual/shaders/noise";
 import WaveGradient from "@/components/website/demos/visual/shaders/wave-gradient";
-import LightbulbIcon from "@atlaskit/icon/core/lightbulb";
 
 import { Footer } from "@/components/ui/footer";
 import { GlassTabs } from "@/components/ui/glass-tabs";
-import { ReturnIcon } from "@/components/ui/vpk-icons";
+import {
+	GLASS_TABS_SHELL_GLASS_PROPS,
+	GLASS_TABS_SQUIRCLE_STYLE,
+} from "@/components/ui/glass-tabs-motion";
+import {
+	EyeIcon,
+	EyeOffIcon,
+	ReturnIcon,
+} from "@/components/ui/vpk-icons";
+import LiquidGlass from "@/components/website/demos/visual/shaders/liquid-glass";
 import { cn } from "@/lib/utils";
-import { motion } from "motion/react";
+import { motion, useMotionValue } from "motion/react";
 
 import { CityRailEditor } from "./city-popover";
 import { DigitDisplay, FlipText } from "./digit-display";
@@ -77,6 +85,7 @@ function ThemeControl({
 	isVisible: boolean;
 	keyboardSelectionPulseKey: number;
 }) {
+	const wakeButtonX = useMotionValue(0);
 	const options: { value: WeatherThemeMode; label: string }[] = [
 		{ value: "location", label: "Location" },
 		{ value: "system", label: "System" },
@@ -119,10 +128,16 @@ function ThemeControl({
 							playSound("/sound/click-003.mp3");
 						}}
 						keyboardSelectionPulseKey={keyboardSelectionPulseKey}
+						onShellStretchChange={(stretchPx) => {
+							wakeButtonX.set(stretchPx > 0 ? stretchPx : 0);
+						}}
 					/>
-					<div className="absolute left-full top-1/2 ml-2 -translate-y-1/2">
+					<motion.div
+						className="absolute left-full top-1/2 ml-2 -translate-y-1/2"
+						style={{ x: wakeButtonX }}
+					>
 						<WakeLockControl />
-					</div>
+					</motion.div>
 				</div>
 			</motion.div>
 		</div>
@@ -162,22 +177,38 @@ function WakeLockControl() {
 				event.currentTarget.blur();
 			}}
 			className={cn(
-				"relative flex size-7 cursor-pointer items-center justify-center rounded-full",
+				"relative flex size-7 cursor-pointer items-center justify-center overflow-hidden",
 				"border border-border bg-surface-overlay/70 backdrop-blur-md",
 				"text-text-subtle transition-colors duration-normal",
-				"hover:bg-surface-hovered hover:text-text",
+				"hover:text-text",
 				"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focused",
 				"disabled:cursor-not-allowed disabled:opacity-50",
-				isEnabled && "border-border-selected text-text-selected bg-surface-selected/40",
+				isEnabled && "border-border-selected text-text-selected",
 			)}
+			style={GLASS_TABS_SQUIRCLE_STYLE}
 			data-active={isActive ? "true" : undefined}
 			data-error={error ? "true" : undefined}
 		>
-			<LightbulbIcon
-				label=""
-				color="currentColor"
-				spacing="none"
+			<LiquidGlass
+				{...GLASS_TABS_SHELL_GLASS_PROPS}
+				width="100%"
+				height="100%"
+				className="pointer-events-none absolute inset-0"
+				style={GLASS_TABS_SQUIRCLE_STYLE}
 			/>
+			<div
+				aria-hidden="true"
+				className={cn(
+					"pointer-events-none absolute inset-0 transition-colors duration-normal",
+					isEnabled ? "bg-surface-selected/30" : "bg-surface-overlay/50",
+				)}
+				style={GLASS_TABS_SQUIRCLE_STYLE}
+			/>
+			{isEnabled ? (
+				<EyeIcon className="size-4" />
+			) : (
+				<EyeOffIcon className="size-4" />
+			)}
 		</button>
 	);
 }
