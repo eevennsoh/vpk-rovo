@@ -121,13 +121,13 @@ function composeLayout({ targetName, routeSlug, providers }) {
 	}
 	body = `<ThemeWrapper>\n\t\t\t\t${body}\n\t\t\t</ThemeWrapper>`;
 
-	// Note: we do NOT inject a client-side FeatureGates shim here. Both
-	// bare <script> tags and next/script in App Router trigger React's
-	// "Encountered a script tag while rendering" warning on every render
-	// in dev mode, which is louder than the one-time informational log
-	// that @atlaskit/tokens emits client-side when the flag can't be
-	// resolved. The server-side shim (via feature-flags-shim import below)
-	// covers SSR; the client log is harmless and appears at most once.
+	// Client-side FeatureGates shim is rendered inside <body> as a trivial
+	// component. Its module-level side effect installs the resolver on the
+	// client's globalThis before @atlaskit/tokens runs during hydration —
+	// mirrors what VPK-Rovo's providers.tsx does. Without it the browser
+	// logs "error checking the feature gate" the first time a token lookup
+	// fires. Using a component (not a bare <script>) avoids React's
+	// "encountered a script tag while rendering" dev warning.
 
 	return `// IMPORTANT: this import MUST come first. It's a side-effect import that
 // installs a FeatureGates resolver on globalThis before @atlaskit/tokens
@@ -142,13 +142,21 @@ import { Geist } from "next/font/google";
 import localFont from "next/font/local";
 import { getThemeStyles } from "@atlaskit/tokens";
 
-// Tailwind theme maps semantic classes (bg-surface, text-text-subtle, etc.)
-// to --ds-* variables. Those variables are defined by the runtime-injected
-// styles below from getThemeStyles — they do NOT ship as a static .css file.
-import "./tailwind-theme.css";
+// globals.css orchestrates the CSS pipeline:
+//   1. tailwind-theme.css  — @theme vars aliased to --ds-* tokens
+//   2. shadcn-theme.css    — shadcn/ui semantic tokens (bg-card, text-foreground)
+//   3. @import "tailwindcss" — actually emits utility classes. Without this,
+//      @theme defines vars but no .flex / .bg-surface rules exist.
+//   4. tw-animate-css       — animate-in/fade-in utilities for dropdowns/tooltips
+// --ds-* variable *values* come from the runtime-injected styles below
+// (getThemeStyles). @atlaskit/tokens ships no static CSS.
+import "./globals.css";
 
 import { ThemeWrapper } from "@/components/utils/theme-wrapper";
 import { cn } from "@/lib/utils";
+// Client-side counterpart to feature-flags-shim.ts — installs the resolver
+// on the browser globalThis during hydration.
+import { FeatureFlagsShim } from "./feature-flags-shim-client";
 ${providerImports ? "\n" + providerImports + "\n" : ""}
 // Fonts — VPK prototypes reference --font-sans and --font-ark-es as CSS
 // variables. Without these declarations the fonts fall back to browser
@@ -191,14 +199,97 @@ export default async function RootLayout({
 						dangerouslySetInnerHTML={{ __html: style.css }}
 					/>
 				))}
+				{/* Atlassian Sans — the ADS token runtime references this family. */}
+				<link rel="preconnect" href="https://ds-cdn.prod-east.frontend.public.atl-paas.net" />
+				<link rel="preload" href="https://ds-cdn.prod-east.frontend.public.atl-paas.net/assets/fonts/atlassian-sans/v3/AtlassianSans-latin.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
+				<link rel="preload stylesheet" href="https://ds-cdn.prod-east.frontend.public.atl-paas.net/assets/font-rules/v5/atlassian-fonts.css" as="style" crossOrigin="anonymous" />
+				{/* Google Fonts used by various VPK demos (BBH Bartle, Bitcount Grid,
+					DotGothic16, JetBrains Mono). If your route doesn't use these you
+					can delete these <link> tags — they don't hurt, but they're a few
+					KB of network you don't need. */}
+				<link rel="preconnect" href="https://fonts.googleapis.com" />
+				<link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+				<link href="https://fonts.googleapis.com/css2?family=BBH+Bartle&family=Bitcount+Grid+Single:wght@100..900&family=DotGothic16&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 			</head>
 			<body className={cn("min-h-svh bg-bg-neutral text-text antialiased font-sans", geist.variable, arkEsSolidLight.variable)}>
+				<FeatureFlagsShim />
 				${body}
 			</body>
 		</html>
 	);
 }
 `;
+}
+
+// -------- CSS pipeline --------------------------------------------------
+
+// Package names that are always present in extracted projects (either as
+// runtime deps or devDeps in the scaffold templates), so their @import /
+// @source lines should never be stripped.
+const ALWAYS_AVAILABLE_PACKAGES = new Set([
+	"tailwindcss",
+	"@tailwindcss/postcss",
+	"tw-animate-css", // auto-injected into the dep block by the scaffolder
+]);
+
+/**
+ * Extract the npm package name an `@import` / `@source` directive depends
+ * on. Returns `null` for relative paths (which don't need filtering) and
+ * for lines that don't reference an external package.
+ */
+function extractPackageFromCssDirective(line) {
+	// Relative file or glob: "./foo.css" or "../foo/**" — no package dep.
+	const relativeMatch = line.match(/["']\s*\.{1,2}\/(?!node_modules\/)/);
+	if (relativeMatch) return null;
+
+	// ../node_modules/<pkg>/… — <pkg> may be scoped (@scope/name) or plain.
+	const nmMatch = line.match(
+		/["']\s*(?:\.{1,2}\/)*node_modules\/(@[^/"']+\/[^/"']+|[^/"']+)/,
+	);
+	if (nmMatch) return nmMatch[1];
+
+	// Bare specifier: "pkg" or "pkg/sub". Ignore TS/JS-style comments and
+	// CSS keywords (source, none, etc.) — they never start with a quote.
+	const bareMatch = line.match(/["']\s*(@[^/"']+\/[^/"']+|[a-z0-9][^"'/]*)/);
+	if (bareMatch) return bareMatch[1];
+
+	return null;
+}
+
+/**
+ * Start from VPK-Rovo's `app/globals.css` verbatim and strip only the
+ * `@import` / `@source` lines whose packages aren't in the resolved dep
+ * set. Keeps a single source of truth (VPK-Rovo's file) while avoiding
+ * build-time failures for heavy optional deps (excalidraw, streamdown,
+ * katex, leaflet, shadcn preset, etc.) that the extracted route doesn't
+ * pull in.
+ *
+ * Stripped lines are replaced with a commented marker so diffs against
+ * the source stay readable.
+ */
+function buildGlobalsCssFromSource(sourceCss, availablePackages) {
+	const directive = /^(\s*)@(import|source)\s+.+$/;
+	const lines = sourceCss.split("\n");
+	const stripped = [];
+
+	const out = lines.map((line) => {
+		const match = line.match(directive);
+		if (!match) return line;
+		const pkg = extractPackageFromCssDirective(line);
+		if (!pkg) return line; // Relative path — always keep.
+		if (ALWAYS_AVAILABLE_PACKAGES.has(pkg)) return line;
+		if (availablePackages.has(pkg)) return line;
+		stripped.push(pkg);
+		return `${match[1]}/* vpk-build: stripped @${match[2]} for missing dep "${pkg}" */`;
+	});
+
+	if (stripped.length > 0) {
+		console.error(
+			`  Stripped ${stripped.length} CSS directive(s) for deps not in plan: ${[...new Set(stripped)].join(", ")}`,
+		);
+	}
+
+	return out.join("\n");
 }
 
 // -------- Copy helpers ---------------------------------------------------
@@ -301,6 +392,29 @@ function main() {
 `,
 	);
 
+	// Client-side counterpart. The server shim above runs only during SSR;
+	// @atlaskit/tokens ALSO runs in the browser (during hydration) and checks
+	// the same globalThis — so without a client-bundled equivalent we log a
+	// one-time "error checking the feature gate" warning in the browser
+	// console. Mounting <FeatureFlagsShim /> inside <body> bundles this
+	// module into the client chunk, making its module-level side effect run
+	// before tokens does its first client-side lookup.
+	writeFileEnsuring(
+		path.join(targetDir, "app", "feature-flags-shim-client.tsx"),
+		`"use client";
+
+// Auto-generated by /vpk-build. See feature-flags-shim.ts for the server
+// counterpart and the rationale for splitting the shim across runtimes.
+(globalThis as Record<string, unknown>).__PLATFORM_FEATURE_FLAGS__ = {
+\tbooleanResolver: () => false,
+};
+
+export function FeatureFlagsShim() {
+\treturn null;
+}
+`,
+	);
+
 	// ---- 3b. Compose app/layout.tsx dynamically from detected contexts ----
 	// If the plan found contextFiles (under app/contexts/), parse each for
 	// exported *Provider components and wrap the layout with them. If none,
@@ -321,11 +435,38 @@ function main() {
 		composeLayout({ targetName, routeSlug, providers }),
 	);
 
-	// ---- 4. Always copy tailwind-theme.css into app/ ----
+	// ---- 4. CSS pipeline: copy tailwind-theme + shadcn-theme verbatim,
+	//         filter VPK-Rovo's globals.css to drop imports for deps that
+	//         aren't in the extracted project ----
+	// Just copying tailwind-theme.css is NOT enough: @theme inline {…} only
+	// declares CSS vars. Tailwind v4 utility classes are emitted only by
+	// whatever file runs `@import "tailwindcss"`. VPK-Rovo's globals.css does
+	// that. We start from that file verbatim and strip @import/@source lines
+	// whose packages aren't resolvable in the extracted dep set (excalidraw,
+	// streamdown, etc.), keeping a single source of truth.
 	const themeCssSrc = path.join(repoRoot, "app", "tailwind-theme.css");
 	if (fs.existsSync(themeCssSrc)) {
 		copyFileVerbatim(themeCssSrc, path.join(targetDir, "app", "tailwind-theme.css"));
 	}
+	const shadcnCssSrc = path.join(repoRoot, "app", "shadcn-theme.css");
+	if (fs.existsSync(shadcnCssSrc)) {
+		copyFileVerbatim(shadcnCssSrc, path.join(targetDir, "app", "shadcn-theme.css"));
+	}
+	const globalsCssSrc = path.join(repoRoot, "app", "globals.css");
+	const sourceGlobalsCss = fs.existsSync(globalsCssSrc)
+		? fs.readFileSync(globalsCssSrc, "utf8")
+		: "";
+	// The "available packages" set for filtering must reflect what the
+	// extracted project will actually install — same set we hand to
+	// buildDependenciesBlock() below. Declared here so it's the single
+	// source of truth for both CSS filtering and package.json generation.
+	const augmentedNpm = { ...plan.npmPackages };
+	if (!augmentedNpm["tw-animate-css"]) augmentedNpm["tw-animate-css"] = "^1.4.0";
+	const availablePackages = new Set(Object.keys(augmentedNpm));
+	writeFileEnsuring(
+		path.join(targetDir, "app", "globals.css"),
+		buildGlobalsCssFromSource(sourceGlobalsCss, availablePackages),
+	);
 
 	// ---- 4b. Copy public/fonts/ (if any) ----
 	// VPK prototypes reference fonts via CSS variables (--font-sans,
@@ -358,10 +499,13 @@ function main() {
 	}
 
 	// ---- 7. Fill and write package.json from template ----
+	// `augmentedNpm` was built above in step 4 — it's the same set that
+	// drove CSS filtering, so dep list and resolved CSS imports stay in
+	// sync by construction.
 	const pkgTmpl = fs.readFileSync(path.join(SCAFFOLD_DIR, "package.json.tmpl"), "utf8");
 	const pkgFilled = substituteTemplate(pkgTmpl, {
 		TARGET_NAME: targetName,
-		DEPENDENCIES_JSON: buildDependenciesBlock(plan.npmPackages),
+		DEPENDENCIES_JSON: buildDependenciesBlock(augmentedNpm),
 	});
 	fs.writeFileSync(path.join(targetDir, "package.json"), pkgFilled);
 
@@ -379,6 +523,44 @@ function main() {
 	// ---- 9. Copy Micros deploy scaffold ----
 	if (fs.existsSync(MICROS_DIR)) {
 		copyTreeVerbatim(MICROS_DIR, targetDir);
+	}
+
+	// ---- 9b. Wire vpk-deploy skill access ----
+	// The extracted project needs BOTH paths to resolve:
+	//   - `/vpk-deploy` slash command (Claude Code looks in .claude/skills/)
+	//   - `pnpm run deploy:micros` (package.json calls ./scripts/deploy.sh)
+	// Symlink the skill directory into .claude/skills/vpk-deploy (relative
+	// target, so the pair stays portable if both projects move together)
+	// and create a scripts/ shim so the npm script resolves. The trade-off
+	// vs. copying files: symlinks stay in sync if VPK-Rovo ships fixes to
+	// deploy.sh; cost is a hard requirement that VPK-Rovo stays adjacent.
+	const deploySkillSrc = path.join(repoRoot, ".agents", "skills", "vpk-deploy");
+	if (fs.existsSync(deploySkillSrc)) {
+		const claudeSkillsDir = path.join(targetDir, ".claude", "skills");
+		ensureDir(claudeSkillsDir);
+		const skillLink = path.join(claudeSkillsDir, "vpk-deploy");
+		if (!fs.existsSync(skillLink)) {
+			fs.symlinkSync(
+				path.relative(claudeSkillsDir, deploySkillSrc),
+				skillLink,
+			);
+		}
+		// `scripts/deploy.sh` wrapper so `pnpm run deploy:micros` works and
+		// forwards any args the user passes (service name, version, env).
+		const scriptsDir = path.join(targetDir, "scripts");
+		ensureDir(scriptsDir);
+		const wrapperPath = path.join(scriptsDir, "deploy.sh");
+		fs.writeFileSync(
+			wrapperPath,
+			`#!/bin/bash
+# Auto-generated by /vpk-build. Forwards to the vpk-deploy skill's deploy.sh
+# via the .claude/skills/vpk-deploy symlink so the extracted project stays
+# aligned with VPK-Rovo's canonical deploy script.
+set -euo pipefail
+exec "$(dirname "$0")/../.claude/skills/vpk-deploy/scripts/deploy.sh" "$@"
+`,
+		);
+		fs.chmodSync(wrapperPath, 0o755);
 	}
 
 	// ---- 10. git init + initial commit ----

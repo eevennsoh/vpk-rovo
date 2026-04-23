@@ -103,6 +103,11 @@ export default function LiquidGlass({
 	const gaussianBlurRef = useRef<SVGFEGaussianBlurElement>(null);
 
 	const [svgSupported, setSvgSupported] = useState(false);
+	// `null` until mount — render uses the deterministic "no backdrop-filter"
+	// fallback on the server and first client render to match hydration.
+	const [backdropSupported, setBackdropSupported] = useState<boolean | null>(
+		null,
+	);
 
 	const generateDisplacementMap = useCallback(() => {
 		const rect = containerRef.current?.getBoundingClientRect();
@@ -169,6 +174,10 @@ export default function LiquidGlass({
 			return div.style.backdropFilter !== "";
 		};
 		setSvgSupported(check());
+		setBackdropSupported(
+			typeof CSS !== "undefined" &&
+				CSS.supports("backdrop-filter", "blur(10px)"),
+		);
 	}, [filterId]);
 
 	useEffect(() => {
@@ -198,20 +207,18 @@ export default function LiquidGlass({
 			backdropFilter: `url(#${filterId}) saturate(${saturation})`,
 			WebkitBackdropFilter: `url(#${filterId}) saturate(${saturation})`,
 		});
+	} else if (backdropSupported) {
+		Object.assign(containerStyle, {
+			background: "rgba(255, 255, 255, 0.18)",
+			backdropFilter: "blur(14px) saturate(1.4)",
+			WebkitBackdropFilter: "blur(14px) saturate(1.4)",
+		});
 	} else {
-		const supportsBackdrop =
-			typeof CSS !== "undefined" && CSS.supports("backdrop-filter", "blur(10px)");
-		if (supportsBackdrop) {
-			Object.assign(containerStyle, {
-				background: "rgba(255, 255, 255, 0.18)",
-				backdropFilter: "blur(14px) saturate(1.4)",
-				WebkitBackdropFilter: "blur(14px) saturate(1.4)",
-			});
-		} else {
-			Object.assign(containerStyle, {
-				background: "rgba(255, 255, 255, 0.4)",
-			});
-		}
+		// SSR + first client render land here; matches the
+		// `backdropSupported === null` state so hydration is consistent.
+		Object.assign(containerStyle, {
+			background: "rgba(255, 255, 255, 0.4)",
+		});
 	}
 
 	return (

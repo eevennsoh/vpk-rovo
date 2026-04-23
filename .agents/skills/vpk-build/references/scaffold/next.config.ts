@@ -6,6 +6,11 @@ import type { NextConfig } from "next";
 // /vpk-build's static-export deploy mode.
 const nextConfig: NextConfig = {
 	output: "export",
+	// Hide the floating "N" Next.js dev tools badge in the bottom-left of
+	// every page. Extracted prototypes are usually being demoed or embedded
+	// as iframes where the badge is visual noise. Re-enable if you need the
+	// hydration/build indicators while debugging.
+	devIndicators: false,
 	// Pin Turbopack's workspace root to the project directory. Without this,
 	// Next walks up the filesystem looking for a pnpm-lock.yaml and may find
 	// an unrelated lockfile in a parent directory (e.g. the user's home dir),

@@ -25,6 +25,8 @@ function isReactGrabDisabledPath(pathname: string | null): boolean {
 		|| pathname.startsWith("/make/")
 		|| pathname === "/preview/projects/make"
 		|| pathname.startsWith("/preview/projects/make/")
+		|| pathname === "/awake"
+		|| pathname.startsWith("/awake/")
 	);
 }
 

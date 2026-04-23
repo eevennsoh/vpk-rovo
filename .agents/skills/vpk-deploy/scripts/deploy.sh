@@ -6,8 +6,10 @@ set -euo pipefail
 echo "🚀 Prototype Deployment Helper"
 echo ""
 
-# Check if service name provided
-if [ -z "$1" ]; then
+# Check if service name provided.
+# Using ${1:-} (not $1) so `set -u` doesn't abort before we can print the
+# usage help when the user runs the script with no arguments.
+if [ -z "${1:-}" ]; then
   echo "❌ Please provide a service name"
   echo "Usage: ./scripts/deploy.sh <service-name> <version>"
   echo "Example: ./scripts/deploy.sh my-prototype 1.0.1"

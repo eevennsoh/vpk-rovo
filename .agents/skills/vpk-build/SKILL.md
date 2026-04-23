@@ -116,8 +116,92 @@ If any step fails, read the output for the specific cause:
 - **Typecheck failure**: most often an `@/` import that resolved into VPK but
   wasn't copied by the plan. Copy the file manually or widen the trace.
 - **Build failure**: typically a Tailwind semantic class that can't resolve.
-  Confirm `app/tailwind-theme.css` and `@atlaskit/tokens/css-reset.css` are
-  imported by `app/layout.tsx`.
+  Confirm `app/globals.css` is imported by `app/layout.tsx` — it's the file
+  that runs `@import "tailwindcss"` (required for v4 to emit utility
+  classes). The scaffold writes a generated `globals.css` that chains
+  tailwind-theme.css + shadcn-theme.css + tailwindcss + tw-animate-css.
+- **Blank / unstyled page at runtime**: the generated CSS has theme vars
+  but no utilities. Open the compiled CSS chunk in devtools — if you don't
+  see rules like `.flex { display: flex }` or `.bg-surface`, Tailwind never
+  ran. Either `globals.css` is missing its `@import "tailwindcss"` line or
+  the layout is importing `tailwind-theme.css` directly instead of
+  `globals.css`.
+- **Named fonts fall back to system sans (e.g. `'BBH Bartle'`,
+  `'DotGothic16'`, `'JetBrains Mono'` render as Helvetica)**: a component
+  references a font family by name but the layout doesn't load the `<link>`
+  that makes that family available. The scaffold emits the Atlassian Sans
+  DS-CDN preload + Google Fonts (`BBH Bartle`, `Bitcount Grid Single`,
+  `DotGothic16`, `JetBrains Mono`) by default. If you delete those to slim
+  the page, keep the families any component in your route references.
+- **Browser console logs "error checking the feature gate" once on load**:
+  the server-side `feature-flags-shim.ts` fired during SSR but nothing
+  installed the resolver on the client. The scaffold addresses this with
+  `app/feature-flags-shim-client.tsx` (a `"use client"` module) rendered as
+  `<FeatureFlagsShim />` inside `<body>`. If you see the warning after a
+  regeneration, confirm both files exist and the shim is mounted in the
+  layout — module-level side effects only run when the module is actually
+  imported from a client-side entry.
+
+## Ports
+
+Extracted projects default to `next dev -p 3001` so they coexist with
+VPK-Rovo on 3000. Override via `pnpm dev -- -p <port>` if you need to run
+multiple extracted projects side by side.
+
+## Dev tools badge
+
+`next.config.ts` ships with `devIndicators: false`, which hides the
+floating "N" Next.js dev tools badge in the bottom-left of every page.
+Extracted prototypes are usually being demoed or embedded as iframes
+where the badge is visual noise. Remove the flag if you want the
+hydration/build indicators back while debugging.
+
+## CSS pipeline the scaffold writes
+
+The extracted `app/layout.tsx` imports `app/globals.css`, which starts
+life as a **verbatim copy** of VPK-Rovo's `app/globals.css` (single
+source of truth) and then gets post-processed to strip any `@import` /
+`@source` directive whose package isn't resolvable in the extracted dep
+set. Stripped lines are replaced with a commented marker so diffs
+against the source stay readable.
+
+For `/awake`, which doesn't use shadcn preset / excalidraw / streamdown,
+the filtered file looks like:
+
+```css
+@import "./tailwind-theme.css";
+@import "./shadcn-theme.css";
+@import "tailwindcss" source(none);  /* <-- this emits utility classes */
+@import "tw-animate-css";
+/* vpk-build: stripped @import for missing dep "shadcn" */
+/* vpk-build: stripped @import for missing dep "@excalidraw/excalidraw" */
+@source "../app/**/*.{ts,tsx}";
+@source "../components/**/*.{ts,tsx}";
+@source "../lib/**/*.{ts,tsx}";
+/* vpk-build: stripped @source for missing dep "streamdown" */
+/* vpk-build: stripped @source for missing dep "@streamdown/code" */
+/* … more streamdown strips … */
+
+@layer base { /* body/a/h1–h6 copied verbatim from VPK-Rovo */ }
+@layer components { /* streamdown mermaid styling — harmless without streamdown */ }
+/* all of VPK-Rovo's unlayered overrides copied verbatim */
+```
+
+Always-kept packages (never stripped regardless of plan): `tailwindcss`,
+`@tailwindcss/postcss`, `tw-animate-css`. The scaffold auto-injects
+`tw-animate-css` into `package.json` because CSS `@import` statements
+aren't walked by the TypeScript trace.
+
+If a future route genuinely needs excalidraw / streamdown / katex /
+leaflet, the trace will find those packages in component imports and
+add them to `plan.npmPackages` — at which point the filter keeps their
+`@import` lines automatically on the next extraction. No skill changes
+needed.
+
+To manually re-enable a stripped directive after extraction (e.g. you're
+adding a dep by hand), replace the `/* vpk-build: stripped … */` marker
+with the original line from VPK-Rovo's `globals.css` and add the package
+to `package.json`.
 
 ### Deploy handoff (after Phase C passes)
 
@@ -125,6 +209,26 @@ If any step fails, read the output for the specific cause:
 cd ../vpk-<route-slug>/
 # /vpk-deploy --initial    # first time: creates service, sets env vars, deploys
 # pnpm run deploy:micros   # subsequent deploys (after .deploy.local exists)
+```
+
+The scaffold symlinks VPK-Rovo's `vpk-deploy` skill into
+`.claude/skills/vpk-deploy` (relative symlink) and writes a
+`scripts/deploy.sh` wrapper that forwards to it. This means:
+
+- `/vpk-deploy` resolves as a slash command from inside the extracted
+  project without requiring any manual setup
+- `pnpm run deploy:micros` works because the wrapper forwards `$@` to the
+  canonical skill script
+- If VPK-Rovo ships a fix to `deploy.sh`, extracted projects pick it up
+  on the next run — no re-scaffold needed
+
+The relative symlink breaks if VPK-Rovo moves and vpk-awake doesn't move
+with it. If that happens, re-symlink manually:
+
+```bash
+cd ../vpk-<route-slug>/
+rm .claude/skills/vpk-deploy
+ln -s ../../../VPK-rovo/.agents/skills/vpk-deploy .claude/skills/vpk-deploy
 ```
 
 ## Scripts
@@ -142,7 +246,11 @@ cd ../vpk-<route-slug>/
 
 - [`references/scaffold/`](references/scaffold/) — Static templates for the
   target project (`package.json.tmpl`, `next.config.ts`, `tsconfig.json`,
-  `app/layout.tsx.tmpl`, etc.).
+  `postcss.config.mjs`, `tailwind.config.ts`, `.gitignore`,
+  `README.md.tmpl`). The `app/layout.tsx` is NOT a static template —
+  `composeLayout()` in `scaffold-target.mjs` generates it dynamically so
+  provider nesting, metadata, font `<link>` tags, and the client-side
+  FeatureGates shim stay in one place.
 - [`references/micros/`](references/micros/) — Micros deploy scaffold
   (`service-descriptor.yml`, `backend/Dockerfile`, `backend/server.js`,
   `backend/package.json`).

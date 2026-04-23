@@ -28,11 +28,6 @@ export interface UseCitiesReturn {
 	removeCity: (cityId: string) => void;
 }
 
-interface InitialCitiesState {
-	cities: LockscreenLocation[];
-	selectedIndex: number;
-}
-
 function loadStoredState(): StoredCitiesState | null {
 	if (typeof window === "undefined") return null;
 	return readStoredCitiesState(window.localStorage);
@@ -52,28 +47,29 @@ function resolveStoredCities(
 	return resolved.length > 0 ? resolved : [...DEFAULT_PRESET_CITIES];
 }
 
-function getInitialCitiesState(): InitialCitiesState {
-	const stored = loadStoredState();
-	const cities = resolveStoredCities(stored);
-	return {
-		cities,
-		selectedIndex: stored
-			? clampSelectedIndex(stored.selectedIndex, cities.length)
-			: 0,
-	};
-}
-
 export function useCities(): UseCitiesReturn {
-	const [initialCitiesState] = useState(getInitialCitiesState);
-	const [cities, setCities] = useState<LockscreenLocation[]>(
-		initialCitiesState.cities,
-	);
-	const [selectedIndex, setSelectedIndexRaw] = useState(
-		initialCitiesState.selectedIndex,
-	);
+	// Start from SSR-safe defaults so server and first client render agree.
+	// Stored state is merged in after mount to avoid a hydration mismatch.
+	const [cities, setCities] = useState<LockscreenLocation[]>(() => [
+		...DEFAULT_PRESET_CITIES,
+	]);
+	const [selectedIndex, setSelectedIndexRaw] = useState(0);
+	const [hasHydrated, setHasHydrated] = useState(false);
 
 	useEffect(() => {
-		if (typeof window === "undefined") return;
+		const stored = loadStoredState();
+		if (stored) {
+			const resolved = resolveStoredCities(stored);
+			setCities(resolved);
+			setSelectedIndexRaw(
+				clampSelectedIndex(stored.selectedIndex, resolved.length),
+			);
+		}
+		setHasHydrated(true);
+	}, []);
+
+	useEffect(() => {
+		if (!hasHydrated) return;
 		try {
 			const payload: StoredCitiesState = {
 				cityIds: cities.map((c) => c.id),
@@ -86,7 +82,7 @@ export function useCities(): UseCitiesReturn {
 		} catch {
 			// Ignore quota / serialization errors.
 		}
-	}, [cities, selectedIndex]);
+	}, [cities, selectedIndex, hasHydrated]);
 
 	const setSelectedIndex = useCallback(
 		(index: number) => {
