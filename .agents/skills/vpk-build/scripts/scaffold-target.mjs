@@ -193,10 +193,6 @@ export default async function RootLayout({
 				))}
 			</head>
 			<body className={cn("min-h-svh bg-bg-neutral text-text antialiased font-sans", geist.variable, arkEsSolidLight.variable)}>
-				{/* Client-side FeatureGates shim — runs before any React hydration. */}
-				<Script id="feature-flags-shim" strategy="beforeInteractive">
-					{${JSON.stringify(clientShim)}}
-				</Script>
 				${body}
 			</body>
 		</html>
