@@ -121,13 +121,13 @@ function composeLayout({ targetName, routeSlug, providers }) {
 	}
 	body = `<ThemeWrapper>\n\t\t\t\t${body}\n\t\t\t</ThemeWrapper>`;
 
-	// Inline script that runs before React hydrates — disables FeatureGates
-	// on the client so @atlaskit/tokens code in client components doesn't
-	// throw "Client must be initialized" errors during rendering. We use
-	// next/script with strategy="beforeInteractive" because bare <script>
-	// tags inside Server Components trigger React warnings — next/script
-	// is the supported path for inline JS that must run before hydration.
-	const clientShim = `window.__PLATFORM_FEATURE_FLAGS__ = { booleanResolver: () => false };`;
+	// Note: we do NOT inject a client-side FeatureGates shim here. Both
+	// bare <script> tags and next/script in App Router trigger React's
+	// "Encountered a script tag while rendering" warning on every render
+	// in dev mode, which is louder than the one-time informational log
+	// that @atlaskit/tokens emits client-side when the flag can't be
+	// resolved. The server-side shim (via feature-flags-shim import below)
+	// covers SSR; the client log is harmless and appears at most once.
 
 	return `// IMPORTANT: this import MUST come first. It's a side-effect import that
 // installs a FeatureGates resolver on globalThis before @atlaskit/tokens
@@ -138,7 +138,6 @@ function composeLayout({ targetName, routeSlug, providers }) {
 import "./feature-flags-shim";
 
 import type { Metadata } from "next";
-import Script from "next/script";
 import { Geist } from "next/font/google";
 import localFont from "next/font/local";
 import { getThemeStyles } from "@atlaskit/tokens";
