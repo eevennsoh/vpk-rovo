@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import { getArtPageTitle } from "@/lib/project-page-title";
 
+const title = getArtPageTitle("awake");
+
 export const metadata: Metadata = {
-	title: getArtPageTitle("awake"),
+	title,
 	openGraph: {
-		title: `${getArtPageTitle("awake")} — VPK`,
+		title: `${title} — VPK`,
 	},
 };
 

@@ -23,6 +23,35 @@ function sortNavItemsByName(items: readonly NavItem[]): NavItem[] {
 		.sort(compareByNameNatural);
 }
 
+function createNavItem(
+	component: ComponentLike,
+	hrefPrefix: string,
+	resolveAds: (slug: string) => string | undefined,
+	adsTagVariantResolver?: (slug: string) => NavItem["adsTagVariant"],
+): NavItem {
+	return {
+		name: component.name,
+		href: `${hrefPrefix}${component.slug}`,
+		adsPackage: resolveAds(component.slug),
+		adsTagVariant: adsTagVariantResolver?.(component.slug),
+	};
+}
+
+function buildChildNavItems(
+	childSlugs: readonly string[],
+	componentsBySlug: ReadonlyMap<string, ComponentLike>,
+	hrefPrefix: string,
+	resolveAds: (slug: string) => string | undefined,
+	adsTagVariantResolver?: (slug: string) => NavItem["adsTagVariant"],
+): NavItem[] {
+	return childSlugs
+		.map((slug) => componentsBySlug.get(slug))
+		.filter((child): child is ComponentLike => child != null)
+		.map((child) =>
+			createNavItem(child, hrefPrefix, resolveAds, adsTagVariantResolver),
+		);
+}
+
 /**
  * Maps a parent slug to the slugs of its children.
  * Children will be nested under the parent in the sidebar.
@@ -104,15 +133,13 @@ export function buildNavItems(
 						name: toTitleCase(parentSlug),
 						href: `${hrefPrefix}${parentSlug}`,
 						expandOnly: true,
-						children: children
-							.map((slug) => componentsBySlug.get(slug))
-							.filter((child): child is ComponentLike => child != null)
-							.map((child) => ({
-								name: child.name,
-								href: `${hrefPrefix}${child.slug}`,
-								adsPackage: resolveAds(child.slug),
-								adsTagVariant: adsTagVariantResolver?.(child.slug),
-							})),
+						children: buildChildNavItems(
+							children,
+							componentsBySlug,
+							hrefPrefix,
+							resolveAds,
+							adsTagVariantResolver,
+						),
 					});
 				}
 			}
@@ -122,25 +149,23 @@ export function buildNavItems(
 		// Skip if this parent group was already emitted by an earlier child
 		if (emittedGroups.has(c.slug)) continue;
 
-		const item: NavItem = {
-			name: c.name,
-			href: `${hrefPrefix}${c.slug}`,
-			adsPackage: resolveAds(c.slug),
-			adsTagVariant: adsTagVariantResolver?.(c.slug),
-		};
+		const item = createNavItem(
+			c,
+			hrefPrefix,
+			resolveAds,
+			adsTagVariantResolver,
+		);
 
 		const childSlugsForParent = groups[c.slug];
 		if (childSlugsForParent) {
 			emittedGroups.add(c.slug);
-			item.children = childSlugsForParent
-				.map((slug) => componentsBySlug.get(slug))
-				.filter((child): child is ComponentLike => child != null)
-				.map((child) => ({
-					name: child.name,
-					href: `${hrefPrefix}${child.slug}`,
-					adsPackage: resolveAds(child.slug),
-					adsTagVariant: adsTagVariantResolver?.(child.slug),
-				}));
+			item.children = buildChildNavItems(
+				childSlugsForParent,
+				componentsBySlug,
+				hrefPrefix,
+				resolveAds,
+				adsTagVariantResolver,
+			);
 		}
 
 		items.push(item);
