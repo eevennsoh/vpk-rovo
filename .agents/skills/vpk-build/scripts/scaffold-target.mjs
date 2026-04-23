@@ -139,6 +139,8 @@ import "./feature-flags-shim";
 
 import type { Metadata } from "next";
 import Script from "next/script";
+import { Geist } from "next/font/google";
+import localFont from "next/font/local";
 import { getThemeStyles } from "@atlaskit/tokens";
 
 // Tailwind theme maps semantic classes (bg-surface, text-text-subtle, etc.)
@@ -147,7 +149,20 @@ import { getThemeStyles } from "@atlaskit/tokens";
 import "./tailwind-theme.css";
 
 import { ThemeWrapper } from "@/components/utils/theme-wrapper";
+import { cn } from "@/lib/utils";
 ${providerImports ? "\n" + providerImports + "\n" : ""}
+// Fonts — VPK prototypes reference --font-sans and --font-ark-es as CSS
+// variables. Without these declarations the fonts fall back to browser
+// defaults and the prototype's typography looks wrong (big display digits
+// in particular lose the ARK-ES character).
+const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
+
+const arkEsSolidLight = localFont({
+	src: "../public/fonts/ark-es/ARK-ES-SolidLight.woff",
+	variable: "--font-ark-es",
+	display: "swap",
+});
+
 const THEME_STATE = {
 	colorMode: "light" as const,
 	light: "light" as const,
@@ -178,7 +193,7 @@ export default async function RootLayout({
 					/>
 				))}
 			</head>
-			<body className="min-h-svh bg-bg-neutral text-text antialiased">
+			<body className={cn("min-h-svh bg-bg-neutral text-text antialiased font-sans", geist.variable, arkEsSolidLight.variable)}>
 				{/* Client-side FeatureGates shim — runs before any React hydration. */}
 				<Script id="feature-flags-shim" strategy="beforeInteractive">
 					{${JSON.stringify(clientShim)}}
@@ -315,6 +330,16 @@ function main() {
 	const themeCssSrc = path.join(repoRoot, "app", "tailwind-theme.css");
 	if (fs.existsSync(themeCssSrc)) {
 		copyFileVerbatim(themeCssSrc, path.join(targetDir, "app", "tailwind-theme.css"));
+	}
+
+	// ---- 4b. Copy public/fonts/ (if any) ----
+	// VPK prototypes reference fonts via CSS variables (--font-sans,
+	// --font-ark-es) set up in the root layout. Without copying the font
+	// files AND wiring them into the extracted layout, typography falls back
+	// to browser defaults and the prototype's visual identity looks off.
+	const fontsDir = path.join(repoRoot, "public", "fonts");
+	if (fs.existsSync(fontsDir)) {
+		copyTreeVerbatim(fontsDir, path.join(targetDir, "public", "fonts"));
 	}
 
 	// ---- 5. Copy public assets ----
