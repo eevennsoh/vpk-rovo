@@ -1,20 +1,6 @@
 ---
 name: vpk-build
-description: This skill should be used when the user asks to "build /<route>",
-  "extract /<route>", "carve out <route>", "standalone prototype from route",
-  "minimal route project", "sibling project from route", "spin out /<route>",
-  "split /<route> into its own project", "give /<route> its own deploy",
-  "make /<route> a separate app", "extract route as standalone", or in general
-  wants to take a single VPK-Rovo route (e.g. `/awake`, `/plan`, `/confluence`)
-  and turn it into a standalone sibling Next.js 16 project with only the
-  dependencies that one route actually uses. The produced project is
-  Git-initialized, installable, and deployable to Atlassian Micros via the
-  existing `/vpk-deploy` skill. Use this skill whenever the user points at a
-  route URL (e.g. `localhost:3000/awake`) and asks for a slimmed-down, separately
-  deployable version of that route — even if they don't say the word "extract"
-  or "build". Also triggers on "make /<route> its own repo", "how do I ship
-  just /<route>", "minimal version of /<route>", or similar wording focused on
-  isolating a single prototype.
+description: Extract a single VPK-Rovo route into a standalone, minimal Next.js 16 project deployable to Atlassian Micros. Use when the user asks to "build /<route>", "extract /<route>", "carve out /<route>", "standalone prototype from route", "minimal route project", "sibling project from route", "spin out /<route>", "split /<route> into its own project", "make /<route> a separate app", "make /<route> its own repo", "minimal version of /<route>", or points at a localhost route URL (e.g. localhost:3000/<route>) and wants it slimmed down into a separately deployable project. Works for any route at app/<route>/ — arts, projects, or future categories. Produces a Git-initialized sibling directory with only the npm deps the route transitively uses, context providers auto-wrapped in the layout, and a Micros deploy scaffold ready for /vpk-deploy.
 argument-hint: "<route-path> [target-name]"
 prerequisites: {}
 produces: ["../vpk-<route>/"]
@@ -29,15 +15,26 @@ produces: ["../vpk-<route>/"]
 
 ## Quick Start
 
+Works for any VPK route at `app/<route>/` — arts, projects, or any future
+category registered via `loadDemoComponent`.
+
 ```
-/vpk-build /awake                  # extracts to ../vpk-awake/
-/vpk-build /awake vpk-awake-demo   # custom target name
-/vpk-build /plan                   # extracts to ../vpk-plan/
+/vpk-build /<route>                    # default target: ../vpk-<route>/
+/vpk-build /<route> <custom-name>      # override target directory name
 ```
 
-**Typical result** (for `/awake`): ~55 files copied, ~8 npm deps in
-`package.json`, no backend, no AI SDK, no RovoChatProvider. Build and deploy
-independently of VPK-Rovo.
+**Examples across route types:**
+
+| Command | Route type | What gets extracted |
+|---|---|---|
+| `/vpk-build /awake` | Arts | Minimal: WebGL shaders + audio, no providers, no backend |
+| `/vpk-build /jira` | Project | Richer: compound contexts auto-wrapped (CreationMode, RovoChat, Sidebar, WorkItemModal) |
+| `/vpk-build /confluence` | Project | Similar shape to /jira; contexts detected automatically |
+| `/vpk-build /<anything>` | Any | Trace figures out what's needed; output scales to the route |
+
+The output size scales to what the route actually needs. Arts routes typically
+land at ~60 files and ~10 npm deps; project routes at ~100 files and ~15 npm
+deps. No per-route configuration is required — detection happens during Phase A.
 
 ## When to use vs. when to stay in VPK-Rovo
 
@@ -171,8 +168,8 @@ cd ../vpk-<route>/
 
 ## Out of scope (v1)
 
-- Auto-rewriting internal cross-route `<Link>` hrefs (warns instead).
-- Multi-route bundles — one route per extraction.
-- Routes that hit `/api/*` or need RovoDev backend — Phase A detects and errors
-  out with an explanation pointing to VPK's own deploy flow.
-- Non-Micros deploy targets (Vercel, Netlify, etc.) — Micros only for now.
+- **Auto-rewriting internal cross-route `<Link>` hrefs** — warns instead; user rewires manually.
+- **Multi-route bundles** — one route per extraction.
+- **Auto-generating backend for runtime API calls** — `apiCalls` detected in Phase A are surfaced as warnings. The scaffold proceeds and the project builds, but runtime `/api/*` calls (common in chat-based routes via `useChat`) will fail until a backend is wired up manually or the user adds proxy routes to VPK-Rovo.
+- **Provider dependency ordering** — auto-wrapped alphabetically. If a provider needs to be inside another because of a cross-dependency, user reorders the generated `app/layout.tsx`.
+- **Non-Micros deploy targets** (Vercel, Netlify, etc.) — Micros only for now; `references/micros/` is the only scaffold.

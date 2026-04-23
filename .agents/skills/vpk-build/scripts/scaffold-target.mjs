@@ -85,6 +85,99 @@ function toPascalCase(kebab) {
 		.join("");
 }
 
+// -------- Context + layout composition ----------------------------------
+
+/**
+ * Grep a context file's source for exported provider components. The VPK
+ * convention is `export function <Name>Provider(...) { ... }`. We return the
+ * set of Provider names to wrap the layout with.
+ */
+function parseProviderExports(source) {
+	const names = new Set();
+	const re = /export\s+function\s+([A-Z][A-Za-z0-9_]*Provider)\s*\(/g;
+	let match;
+	while ((match = re.exec(source)) !== null) names.add(match[1]);
+	return [...names];
+}
+
+/**
+ * Build a layout.tsx that injects @atlaskit/tokens CSS at runtime (the
+ * package ships no static CSS file — all tokens are generated via the
+ * getThemeStyles JS API), imports Tailwind's semantic theme, wraps with
+ * ThemeWrapper, and nests any detected providers. Providers wrap in
+ * alphabetical order (the order contextFiles came out of the trace);
+ * if a provider needs to be inside another, the user reorders manually.
+ */
+function composeLayout({ targetName, routeSlug, providers }) {
+	const providerImports = providers
+		.map(p => `import { ${p.name} } from "${p.importPath}";`)
+		.join("\n");
+
+	// Build nested JSX: outermost provider opens first, innermost wraps {children}.
+	let body = `{children}`;
+	for (let i = providers.length - 1; i >= 0; i--) {
+		const { name } = providers[i];
+		body = `<${name}>\n\t\t\t\t\t${body}\n\t\t\t\t</${name}>`;
+	}
+	body = `<ThemeWrapper>\n\t\t\t\t${body}\n\t\t\t</ThemeWrapper>`;
+
+	return `import type { Metadata } from "next";
+import { getThemeStyles } from "@atlaskit/tokens";
+
+// Tailwind theme maps semantic classes (bg-surface, text-text-subtle, etc.)
+// to --ds-* variables. Those variables are defined by the runtime-injected
+// styles below from getThemeStyles — they do NOT ship as a static .css file.
+import "./tailwind-theme.css";
+
+import { ThemeWrapper } from "@/components/utils/theme-wrapper";
+${providerImports ? "\n" + providerImports + "\n" : ""}
+// @atlaskit/tokens probes a global FeatureGates client during SSR. In a
+// standalone extracted project that client is never initialized, so we
+// supply a resolver that disables all feature flags (safe default: no
+// experimental themes/contrast modes).
+(globalThis as Record<string, unknown>).__PLATFORM_FEATURE_FLAGS__ ??= {
+	booleanResolver: () => false,
+};
+
+const THEME_STATE = {
+	colorMode: "light" as const,
+	light: "light" as const,
+	dark: "dark" as const,
+	spacing: "spacing" as const,
+	typography: "typography" as const,
+	shape: "shape" as const,
+};
+
+export const metadata: Metadata = {
+	title: "${targetName}",
+	description: "Extracted from VPK-Rovo /${routeSlug}",
+};
+
+export default async function RootLayout({
+	children,
+}: Readonly<{ children: React.ReactNode }>) {
+	const themeStyles = await getThemeStyles(THEME_STATE);
+
+	return (
+		<html lang="en" className="light" data-color-mode="light" suppressHydrationWarning>
+			<head>
+				{themeStyles.map((style) => (
+					<style
+						key={style.id}
+						{...style.attrs}
+						dangerouslySetInnerHTML={{ __html: style.css }}
+					/>
+				))}
+			</head>
+			<body className="min-h-svh bg-bg-neutral text-text antialiased">
+				${body}
+			</body>
+		</html>
+	);
+}
+`;
+}
+
 // -------- Copy helpers ---------------------------------------------------
 
 function ensureDir(dir) {
