@@ -3,7 +3,7 @@
 import * as React from "react";
 
 import { GlassTabs } from "@/components/ui/glass-tabs";
-import { ThemeToggle } from "@/components/utils/theme-wrapper";
+import { ThemeToggle, ThemeWrapper } from "@/components/utils/theme-wrapper";
 
 const GLASS_TAB_OPTIONS = [
 	{ value: "location", label: "Location" },
@@ -143,17 +143,19 @@ export default function GlassTabsDemo() {
 	}, []);
 
 	return (
-		<div className="relative flex h-screen w-full items-center justify-center overflow-hidden px-6 py-10">
-			<div className="absolute top-4 right-4">
-				<ThemeToggle />
+		<ThemeWrapper>
+			<div className="relative flex h-screen w-full items-center justify-center overflow-hidden px-6 py-10">
+				<div className="absolute top-4 right-4">
+					<ThemeToggle />
+				</div>
+				<GlassTabs
+					aria-label="Awake theme"
+					options={GLASS_TAB_OPTIONS}
+					value={value}
+					onChange={handleChange}
+					onHover={handleHover}
+				/>
 			</div>
-			<GlassTabs
-				aria-label="Awake theme"
-				options={GLASS_TAB_OPTIONS}
-				value={value}
-				onChange={handleChange}
-				onHover={handleHover}
-			/>
-		</div>
+		</ThemeWrapper>
 	);
 }
