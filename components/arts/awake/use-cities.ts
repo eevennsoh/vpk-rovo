@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
 	readStoredCitiesState,
@@ -13,6 +13,8 @@ import {
 	DEFAULT_PRESET_CITY,
 	PRESET_CITIES,
 } from "./preset-cities";
+
+const SELECTION_PERSIST_DEBOUNCE_MS = 150;
 
 export interface UseCitiesReturn {
 	cities: ReadonlyArray<LockscreenLocation>;
@@ -47,6 +49,17 @@ function resolveStoredCities(
 	return resolved.length > 0 ? resolved : [...DEFAULT_PRESET_CITIES];
 }
 
+function persistCitiesState(payload: StoredCitiesState) {
+	try {
+		window.localStorage.setItem(
+			WEATHER_CITY_STORAGE_KEY,
+			JSON.stringify(payload),
+		);
+	} catch {
+		// Ignore quota / serialization errors.
+	}
+}
+
 export function useCities(): UseCitiesReturn {
 	// Start from SSR-safe defaults so server and first client render agree.
 	// Stored state is merged in after mount to avoid a hydration mismatch.
@@ -55,6 +68,22 @@ export function useCities(): UseCitiesReturn {
 	]);
 	const [selectedIndex, setSelectedIndexRaw] = useState(0);
 	const [hasHydrated, setHasHydrated] = useState(false);
+	const persistTimeoutRef = useRef<number | null>(null);
+	const pendingPersistRef = useRef<StoredCitiesState | null>(null);
+	const lastPersistedCityIdsKeyRef = useRef<string | null>(null);
+
+	const clearPersistTimeout = useCallback(() => {
+		if (persistTimeoutRef.current === null) return;
+		window.clearTimeout(persistTimeoutRef.current);
+		persistTimeoutRef.current = null;
+	}, [persistTimeoutRef]);
+
+	const flushPendingPersist = useCallback(() => {
+		clearPersistTimeout();
+		if (!pendingPersistRef.current) return;
+		persistCitiesState(pendingPersistRef.current);
+		pendingPersistRef.current = null;
+	}, [clearPersistTimeout, pendingPersistRef]);
 
 	useEffect(() => {
 		const stored = loadStoredState();
@@ -70,19 +99,46 @@ export function useCities(): UseCitiesReturn {
 
 	useEffect(() => {
 		if (!hasHydrated) return;
-		try {
-			const payload: StoredCitiesState = {
-				cityIds: cities.map((c) => c.id),
-				selectedIndex,
-			};
-			window.localStorage.setItem(
-				WEATHER_CITY_STORAGE_KEY,
-				JSON.stringify(payload),
-			);
-		} catch {
-			// Ignore quota / serialization errors.
+		const payload: StoredCitiesState = {
+			cityIds: cities.map((c) => c.id),
+			selectedIndex,
+		};
+		const cityIdsKey = payload.cityIds.join("\u0000");
+		// City-list mutations are rare and user-committed, so persist them
+		// immediately. Selection previews fire on hover/drag, so debounce
+		// those writes off the pointer-move path.
+		const didCityListChange =
+			lastPersistedCityIdsKeyRef.current !== cityIdsKey;
+		pendingPersistRef.current = payload;
+		lastPersistedCityIdsKeyRef.current = cityIdsKey;
+
+		clearPersistTimeout();
+		if (didCityListChange) {
+			flushPendingPersist();
+			return;
 		}
-	}, [cities, selectedIndex, hasHydrated]);
+
+		persistTimeoutRef.current = window.setTimeout(() => {
+			flushPendingPersist();
+		}, SELECTION_PERSIST_DEBOUNCE_MS);
+
+		return () => {
+			clearPersistTimeout();
+		};
+	}, [
+		cities,
+		selectedIndex,
+		hasHydrated,
+		clearPersistTimeout,
+		flushPendingPersist,
+	]);
+
+	useEffect(() => {
+		return () => {
+			if (!hasHydrated) return;
+			flushPendingPersist();
+		};
+	}, [flushPendingPersist, hasHydrated]);
 
 	const setSelectedIndex = useCallback(
 		(index: number) => {
@@ -97,9 +153,9 @@ export function useCities(): UseCitiesReturn {
 				return prev;
 			}
 
-				const next = [...prev, city];
-				setSelectedIndexRaw(next.length - 1);
-				return next;
+			const next = [...prev, city];
+			setSelectedIndexRaw(next.length - 1);
+			return next;
 		});
 	}, []);
 
