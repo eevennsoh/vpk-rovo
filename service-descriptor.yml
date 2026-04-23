@@ -1,23 +1,20 @@
-# ⚠️  BEFORE DEPLOYING: Replace ALL instances of 'YOUR-SERVICE-NAME' with your actual service name
-# Your service name should be ≤26 chars, lowercase-with-hyphens (e.g., yourname-prototype)
-# Update lines: 11 (image), 16-22 (SSM paths), and 7 (email)
 description: "VPK Service"
 organization: Engineering Services
 notifications:
-  email: your-email@atlassian.com
+  email: esoh@atlassian.com
 buildNumber: ${VERSION}
 compose:
   app:
-    image: docker.atl-paas.net/YOUR-SERVICE-NAME
+    image: docker.atl-paas.net/vpk-rovo
     tag: app-${VERSION}
     ports:
       - "8080:8080"
     environment:
-      AI_GATEWAY_URL: ((ssm:/YOUR-SERVICE-NAME/AI_GATEWAY_URL))
-      AI_GATEWAY_USE_CASE_ID: ((ssm:/YOUR-SERVICE-NAME/AI_GATEWAY_USE_CASE_ID))
-      AI_GATEWAY_CLOUD_ID: ((ssm:/YOUR-SERVICE-NAME/AI_GATEWAY_CLOUD_ID))
-      AI_GATEWAY_USER_ID: ((ssm:/YOUR-SERVICE-NAME/AI_GATEWAY_USER_ID))
-      ASAP_PRIVATE_KEY: ((ssm:/YOUR-SERVICE-NAME/ASAP_PRIVATE_KEY))
-      ASAP_KID: ((ssm:/YOUR-SERVICE-NAME/ASAP_KID))
-      ASAP_ISSUER: ((ssm:/YOUR-SERVICE-NAME/ASAP_ISSUER))
+      AI_GATEWAY_URL: ((ssm:/vpk-rovo/AI_GATEWAY_URL))
+      AI_GATEWAY_USE_CASE_ID: ((ssm:/vpk-rovo/AI_GATEWAY_USE_CASE_ID))
+      AI_GATEWAY_CLOUD_ID: ((ssm:/vpk-rovo/AI_GATEWAY_CLOUD_ID))
+      AI_GATEWAY_USER_ID: ((ssm:/vpk-rovo/AI_GATEWAY_USER_ID))
+      ASAP_PRIVATE_KEY: ((ssm:/vpk-rovo/ASAP_PRIVATE_KEY))
+      ASAP_KID: ((ssm:/vpk-rovo/ASAP_KID))
+      ASAP_ISSUER: ((ssm:/vpk-rovo/ASAP_ISSUER))
       PORT: "8080"

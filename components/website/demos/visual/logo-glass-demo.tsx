@@ -61,7 +61,12 @@ function ImageUploadControl({
 
 	return (
 		<div className="space-y-2">
-			<Label className="text-xs font-medium text-text">Image</Label>
+			<div className="flex items-center gap-2">
+				<Label className="text-xs font-medium text-text">Image</Label>
+				<span className="text-[11px] text-text-subtlest">
+					Uses the Framer Path.svg asset when empty.
+				</span>
+			</div>
 			<div className="flex items-center gap-2">
 				{imageSrc ? (
 					<Image
@@ -217,8 +222,7 @@ export default function LogoGlassDemo() {
 	return (
 		<div className="flex w-full max-w-2xl flex-col" style={{ gap: token("space.400") }}>
 			<div
-				className="aspect-video w-full overflow-hidden rounded-lg"
-				style={{ boxShadow: token("elevation.shadow.raised") }}
+				className="mx-auto aspect-square w-full max-w-[25rem] overflow-hidden bg-black"
 			>
 				<LogoGlass
 					className="h-full w-full"

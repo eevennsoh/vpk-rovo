@@ -1,0 +1,15 @@
+# Replace all instances of YOUR-SERVICE-NAME before deploying.
+# Service name must be ≤26 chars, lowercase-with-hyphens.
+description: "Extracted VPK prototype"
+organization: Engineering Services
+notifications:
+  email: your-email@atlassian.com
+buildNumber: ${VERSION}
+compose:
+  app:
+    image: docker.atl-paas.net/YOUR-SERVICE-NAME
+    tag: app-${VERSION}
+    ports:
+      - "8080:8080"
+    environment:
+      PORT: "8080"

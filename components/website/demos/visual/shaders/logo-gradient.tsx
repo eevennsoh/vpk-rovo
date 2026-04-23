@@ -2,8 +2,13 @@
 
 import { useEffect, useRef } from "react";
 
+import {
+	buildLogoGradientHeightmapPixels,
+	createLogoGradientHeightmapCanvas,
+	LOGO_GRADIENT_DEFAULT_IMAGE_SRC,
+} from "./logo-gradient-heightmap";
+
 const MAX_COLORS = 8;
-const MAX_TEXTURE_DIMENSION = 1024;
 
 export const LOGO_GRADIENT_DEFAULT_COLORS = [
 	"#000000",
@@ -34,7 +39,7 @@ out vec4 fragColor;
 uniform vec2 u_resolution;
 uniform float u_time;
 uniform float u_pixelRatio;
-uniform sampler2D u_heightmap;
+uniform sampler2D u_image_heightmap;
 uniform vec4 u_colorBack;
 uniform vec4 u_colors[8];
 uniform int u_colors_length;
@@ -186,17 +191,17 @@ vec3 softGamutMap(vec3 linearRgb) {
 float blurDepth3x3(vec2 uv, vec2 dudx, vec2 dudy, vec2 texel, float radius) {
 	vec2 r = radius * texel;
 
-	float sum = 4.0 * textureGrad(u_heightmap, uv, dudx, dudy).r;
+	float sum = 4.0 * textureGrad(u_image_heightmap, uv, dudx, dudy).r;
 
-	sum += 2.0 * textureGrad(u_heightmap, uv + vec2(0.0, -r.y), dudx, dudy).r;
-	sum += 2.0 * textureGrad(u_heightmap, uv + vec2(0.0, r.y), dudx, dudy).r;
-	sum += 2.0 * textureGrad(u_heightmap, uv + vec2(-r.x, 0.0), dudx, dudy).r;
-	sum += 2.0 * textureGrad(u_heightmap, uv + vec2(r.x, 0.0), dudx, dudy).r;
+	sum += 2.0 * textureGrad(u_image_heightmap, uv + vec2(0.0, -r.y), dudx, dudy).r;
+	sum += 2.0 * textureGrad(u_image_heightmap, uv + vec2(0.0, r.y), dudx, dudy).r;
+	sum += 2.0 * textureGrad(u_image_heightmap, uv + vec2(-r.x, 0.0), dudx, dudy).r;
+	sum += 2.0 * textureGrad(u_image_heightmap, uv + vec2(r.x, 0.0), dudx, dudy).r;
 
-	sum += textureGrad(u_heightmap, uv + vec2(-r.x, -r.y), dudx, dudy).r;
-	sum += textureGrad(u_heightmap, uv + vec2(r.x, -r.y), dudx, dudy).r;
-	sum += textureGrad(u_heightmap, uv + vec2(-r.x, r.y), dudx, dudy).r;
-	sum += textureGrad(u_heightmap, uv + vec2(r.x, r.y), dudx, dudy).r;
+	sum += textureGrad(u_image_heightmap, uv + vec2(-r.x, -r.y), dudx, dudy).r;
+	sum += textureGrad(u_image_heightmap, uv + vec2(r.x, -r.y), dudx, dudy).r;
+	sum += textureGrad(u_image_heightmap, uv + vec2(-r.x, r.y), dudx, dudy).r;
+	sum += textureGrad(u_image_heightmap, uv + vec2(r.x, r.y), dudx, dudy).r;
 
 	return sum / 16.0;
 }
@@ -212,7 +217,7 @@ vec2 heightGrad(vec2 uv, vec2 dudx, vec2 dudy, vec2 texel, float blurRadius) {
 
 void main() {
 	vec2 uv = vec2(v_uv.x, 1.0 - v_uv.y);
-	vec2 texSize = vec2(textureSize(u_heightmap, 0));
+	vec2 texSize = vec2(textureSize(u_image_heightmap, 0));
 	float imgAspect = texSize.x / texSize.y;
 	float canvasAspect = u_resolution.x / u_resolution.y;
 
@@ -227,8 +232,8 @@ void main() {
 	vec2 dudx = dFdx(uv);
 	vec2 dudy = dFdy(uv);
 
-	vec4 hm = textureGrad(u_heightmap, uv, dudx, dudy);
-	float fw_b = 0.5 * fwidth(hm.b) * aaScale;
+	vec4 hm = textureGrad(u_image_heightmap, uv, dudx, dudy);
+	float fw_b = 0.5 * fwidth(hm.b);
 	float hardMask = smoothstep(0.5 - fw_b, 0.5 + fw_b, hm.b);
 	float opacity = hardMask * (1.0 - hm.g);
 
@@ -367,161 +372,6 @@ function hexToRgba(hex: string): [number, number, number, number] {
 	];
 }
 
-function fillRoundedRect(
-	ctx: CanvasRenderingContext2D,
-	x: number,
-	y: number,
-	width: number,
-	height: number,
-	radius: number,
-) {
-	const r = Math.min(radius, width / 2, height / 2);
-	ctx.beginPath();
-	ctx.moveTo(x + r, y);
-	ctx.lineTo(x + width - r, y);
-	ctx.arcTo(x + width, y, x + width, y + r, r);
-	ctx.lineTo(x + width, y + height - r);
-	ctx.arcTo(x + width, y + height, x + width - r, y + height, r);
-	ctx.lineTo(x + r, y + height);
-	ctx.arcTo(x, y + height, x, y + height - r, r);
-	ctx.lineTo(x, y + r);
-	ctx.arcTo(x, y, x + r, y, r);
-	ctx.closePath();
-	ctx.fill();
-}
-
-function createDefaultLogoSource(): HTMLCanvasElement {
-	const canvas = document.createElement("canvas");
-	canvas.width = 320;
-	canvas.height = 480;
-
-	const ctx = canvas.getContext("2d");
-	if (!ctx) return canvas;
-
-	ctx.clearRect(0, 0, canvas.width, canvas.height);
-	ctx.fillStyle = "#ffffff";
-	ctx.translate(canvas.width / 2, canvas.height / 2);
-	ctx.rotate((-12 * Math.PI) / 180);
-
-	const bars = [
-		{ x: -118, y: -176, width: 58, height: 352 },
-		{ x: -42, y: -138, width: 58, height: 276 },
-		{ x: 34, y: -100, width: 58, height: 200 },
-		{ x: 110, y: -62, width: 58, height: 124 },
-	];
-
-	for (const bar of bars) {
-		fillRoundedRect(ctx, bar.x, bar.y, bar.width, bar.height, 26);
-	}
-
-	return canvas;
-}
-
-function getSourceSize(source: HTMLCanvasElement | HTMLImageElement) {
-	if (source instanceof HTMLImageElement) {
-		return {
-			width: source.naturalWidth || source.width,
-			height: source.naturalHeight || source.height,
-		};
-	}
-
-	return {
-		width: source.width,
-		height: source.height,
-	};
-}
-
-function createHeightmapTexture(source: HTMLCanvasElement | HTMLImageElement) {
-	const { width: sourceWidth, height: sourceHeight } = getSourceSize(source);
-	const scale = Math.min(1, MAX_TEXTURE_DIMENSION / Math.max(sourceWidth, sourceHeight));
-	const width = Math.max(1, Math.round(sourceWidth * scale));
-	const height = Math.max(1, Math.round(sourceHeight * scale));
-
-	const sourceCanvas = document.createElement("canvas");
-	sourceCanvas.width = width;
-	sourceCanvas.height = height;
-
-	const sourceContext = sourceCanvas.getContext("2d");
-	if (!sourceContext) return sourceCanvas;
-
-	sourceContext.clearRect(0, 0, width, height);
-	sourceContext.drawImage(source, 0, 0, width, height);
-
-	const sourceImage = sourceContext.getImageData(0, 0, width, height);
-	const pixels = sourceImage.data;
-
-	let transparentPixelCount = 0;
-	for (let index = 3; index < pixels.length; index += 4) {
-		if (pixels[index] < 250) {
-			transparentPixelCount += 1;
-		}
-	}
-
-	const useLuminanceMask = transparentPixelCount === 0;
-
-	const maskCanvas = document.createElement("canvas");
-	maskCanvas.width = width;
-	maskCanvas.height = height;
-
-	const maskContext = maskCanvas.getContext("2d");
-	if (!maskContext) return sourceCanvas;
-
-	const maskImage = maskContext.createImageData(width, height);
-
-	for (let index = 0; index < pixels.length; index += 4) {
-		const alpha = pixels[index + 3] / 255;
-		const luminance =
-			(0.2126 * pixels[index] + 0.7152 * pixels[index + 1] + 0.0722 * pixels[index + 2]) / 255;
-		const maskValue = useLuminanceMask
-			? Math.max(0, Math.min(1, (0.9 - luminance) / 0.9))
-			: alpha;
-		const maskByte = Math.round(maskValue * 255);
-
-		maskImage.data[index] = 255;
-		maskImage.data[index + 1] = 255;
-		maskImage.data[index + 2] = 255;
-		maskImage.data[index + 3] = maskByte;
-	}
-
-	maskContext.putImageData(maskImage, 0, 0);
-
-	const blurCanvas = document.createElement("canvas");
-	blurCanvas.width = width;
-	blurCanvas.height = height;
-
-	const blurContext = blurCanvas.getContext("2d");
-	if (!blurContext) return maskCanvas;
-
-	blurContext.clearRect(0, 0, width, height);
-	blurContext.filter = `blur(${Math.max(10, Math.round(Math.min(width, height) * 0.04))}px)`;
-	blurContext.drawImage(maskCanvas, 0, 0);
-	blurContext.filter = "none";
-
-	const blurredImage = blurContext.getImageData(0, 0, width, height);
-
-	const heightmapCanvas = document.createElement("canvas");
-	heightmapCanvas.width = width;
-	heightmapCanvas.height = height;
-
-	const heightmapContext = heightmapCanvas.getContext("2d");
-	if (!heightmapContext) return maskCanvas;
-
-	const heightmap = heightmapContext.createImageData(width, height);
-
-	for (let index = 0; index < blurredImage.data.length; index += 4) {
-		const depthByte = blurredImage.data[index + 3];
-		const maskByte = maskImage.data[index + 3];
-
-		heightmap.data[index] = depthByte;
-		heightmap.data[index + 1] = 0;
-		heightmap.data[index + 2] = maskByte;
-		heightmap.data[index + 3] = 255;
-	}
-
-	heightmapContext.putImageData(heightmap, 0, 0);
-	return heightmapCanvas;
-}
-
 function getPalette(colors?: readonly string[]) {
 	const palette = (colors ?? LOGO_GRADIENT_DEFAULT_COLORS).slice(0, MAX_COLORS);
 	return palette.length > 0 ? palette : [...LOGO_GRADIENT_DEFAULT_COLORS];
@@ -646,7 +496,7 @@ export default function LogoGradient({
 		const colorBackLocation = gl.getUniformLocation(program, "u_colorBack");
 		const colorsLocation = gl.getUniformLocation(program, "u_colors[0]");
 		const colorsLengthLocation = gl.getUniformLocation(program, "u_colors_length");
-		const heightmapLocation = gl.getUniformLocation(program, "u_heightmap");
+		const heightmapLocation = gl.getUniformLocation(program, "u_image_heightmap");
 
 		gl.uniform1f(gl.getUniformLocation(program, "u_seed"), seed);
 		gl.uniform1f(gl.getUniformLocation(program, "u_speed"), speed);
@@ -692,8 +542,32 @@ export default function LogoGradient({
 			gl.uniform1i(heightmapLocation, 0);
 		}
 
+		const placeholderHeightmap = document.createElement("canvas");
+		placeholderHeightmap.width = 1;
+		placeholderHeightmap.height = 1;
+		const placeholderContext = placeholderHeightmap.getContext("2d");
+		if (placeholderContext) {
+			const placeholderImage = placeholderContext.createImageData(1, 1);
+			placeholderImage.data.set(
+				buildLogoGradientHeightmapPixels(new Uint8Array([0]), 1, 1),
+			);
+			placeholderContext.putImageData(placeholderImage, 0, 0);
+			gl.texImage2D(
+				gl.TEXTURE_2D,
+				0,
+				gl.RGBA,
+				gl.RGBA,
+				gl.UNSIGNED_BYTE,
+				placeholderHeightmap,
+			);
+		}
+
 		const uploadHeightmap = (source: HTMLCanvasElement | HTMLImageElement) => {
-			const heightmap = createHeightmapTexture(source);
+			const heightmap = createLogoGradientHeightmapCanvas(source);
+			if (!heightmap) {
+				return;
+			}
+
 			gl.bindTexture(gl.TEXTURE_2D, heightmapTexture);
 			gl.texImage2D(
 				gl.TEXTURE_2D,
@@ -705,18 +579,14 @@ export default function LogoGradient({
 			);
 		};
 
-		uploadHeightmap(createDefaultLogoSource());
-
 		let cancelled = false;
-		if (imageSrc) {
-			const image = new Image();
-			image.crossOrigin = "anonymous";
-			image.onload = () => {
-				if (cancelled) return;
-				uploadHeightmap(image);
-			};
-			image.src = imageSrc;
-		}
+		const image = new Image();
+		image.crossOrigin = "anonymous";
+		image.onload = () => {
+			if (cancelled) return;
+			uploadHeightmap(image);
+		};
+		image.src = imageSrc ?? LOGO_GRADIENT_DEFAULT_IMAGE_SRC;
 
 		const startTime = performance.now();
 		const render = () => {

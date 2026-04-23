@@ -43,7 +43,7 @@ export const VISUAL_DETAILS: Record<string, ComponentDetail> = {
 		description: "OkLCH color space gradient with turbulence, dither modes, and post-processing filters. Up to 8 palette colors.",
 	},
 	"logo-gradient": {
-		description: "Framer-derived logo shader that bends a heightmap silhouette into an animated multicolor gradient. Supports uploaded logo masks, up to 8 palette stops, directional or random motion, and contour/bevel tuning.",
+		description: "Framer-derived logo shader that bends an alpha-driven heightmap silhouette into an animated multicolor gradient. Supports uploaded logo masks, up to 8 palette stops, directional or random motion, and contour/bevel tuning.",
 		importStatement: `import LogoGradient from "@/components/website/demos/visual/shaders/logo-gradient";`,
 		usage: `<LogoGradient
 	colors={["#000000", "#0051FF", "#0DAAFF", "#BDE4FF"]}
@@ -52,7 +52,7 @@ export const VISUAL_DETAILS: Record<string, ComponentDetail> = {
 	scale={1.2}
 />`,
 		props: [
-			{ name: "imageSrc", type: "string", description: "Optional uploaded logo or mask image. Transparent SVG/PNG gives the cleanest silhouette; when omitted the demo uses a built-in abstract logo heightmap." },
+			{ name: "imageSrc", type: "string", description: "Optional uploaded logo or mask image. Transparent SVG/PNG gives the cleanest silhouette; when omitted the component uses Framer's default Path.svg asset." },
 			{ name: "colors", type: "string[]", default: `["#000000", "#0051FF", "#0DAAFF", "#BDE4FF"]`, description: "Gradient palette stops. Supports 1-8 colors and interpolates between them in Oklch." },
 			{ name: "colorBack", type: "string", default: `"#000000"`, description: "Background color behind and around the logo silhouette." },
 			{ name: "seed", type: "number", default: "6", description: "Seed used to rotate and phase the turbulence pattern." },
@@ -123,13 +123,13 @@ export const VISUAL_DETAILS: Record<string, ComponentDetail> = {
 		],
 	},
 	"logo-glass": {
-		description: "Framer-derived logo refraction shader that turns a logo heightmap into animated glass with domain-warped dispersion, contour bending, directional melt motion, and exposed lighting/filter controls.",
+		description: "Framer-derived logo refraction shader that turns an alpha-driven logo heightmap into animated glass with domain-warped dispersion, contour bending, directional melt motion, and exposed lighting/filter controls.",
 		importStatement: `import LogoGlass from "@/components/website/demos/visual/shaders/logo-glass";`,
 		usage: `<LogoGlass className="h-[320px] w-full" />
 
 <LogoGlass
 	className="h-[320px] w-full"
-	imageSrc="/1p/rovo.svg"
+	imageSrc="/website/logo-gradient-path.svg"
 	colorBack="#04070d"
 	colorB="#d8e0ff"
 	motionMode={1}
@@ -139,7 +139,7 @@ export const VISUAL_DETAILS: Record<string, ComponentDetail> = {
 />`,
 		props: [
 			{ name: "className", type: "string", description: "Canvas sizing classes. The shader fills the full width and height of its host." },
-			{ name: "imageSrc", type: "string", default: "\"/1p/rovo.svg\"", description: "Logo or heightmap image URL. Transparent SVG/PNG logos work best because the demo converts the source into the red/blue heightmap channels the shader expects." },
+			{ name: "imageSrc", type: "string", default: "\"/website/logo-gradient-path.svg\"", description: "Logo or heightmap image URL. Transparent SVG/PNG logos work best; when omitted the component uses Framer's default Path.svg asset and derives the heightmap through the Framer-style alpha pipeline." },
 			{ name: "colorBack", type: "string", default: "\"#000000\"", description: "Background color rendered behind the glass logo." },
 			{ name: "colorA", type: "string", default: "\"#000000\"", description: "Low-end tint for the glass refraction result." },
 			{ name: "colorB", type: "string", default: "\"#C9C9C9\"", description: "High-end tint blended into the refracted glass." },

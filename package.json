@@ -129,7 +129,6 @@
 		"zod": "^4.3.6"
 	},
 	"devDependencies": {
-		"@forge/bridge": "^5.15.1",
 		"@playwright/test": "^1.59.1",
 		"@react-grab/mcp": "^0.1.32",
 		"@tailwindcss/postcss": "^4.2.3",
@@ -168,12 +167,10 @@
 		],
 		"onlyBuiltDependencies": [
 			"agent-browser",
-			"better-sqlite3",
 			"edgedriver",
 			"esbuild",
 			"geckodriver",
 			"iframe-resizer",
-			"node-llama-cpp",
 			"protobufjs",
 			"react-grab",
 			"tree-sitter-go",

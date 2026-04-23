@@ -319,9 +319,6 @@ importers:
         specifier: ^4.3.6
         version: 4.3.6
     devDependencies:
-      '@forge/bridge':
-        specifier: ^5.15.1
-        version: 5.15.1(@types/react@19.2.14)(react@19.2.5)
       '@playwright/test':
         specifier: ^1.59.1
         version: 1.59.1
@@ -431,14 +428,6 @@ packages:
     resolution: {integrity: sha512-FSEVWXvwroExDXUu8qV6Wqp2X3D1nJ0Li4LFymCyvCVrm7I3lNfG0zZWSWvGU1RE7891eTnFTyh31L3igOwNKQ==, tarball: https://packages.atlassian.com/api/npm/npm-remote/@antfu/ni/-/ni-0.23.2.tgz}
     hasBin: true
 
-  '@atlaskit/adf-schema@48.0.0':
-    resolution: {integrity: sha512-zzPhx1zsiAL2zSR9APrw6CMNxAGMerjjNgc0AeqQWZjSuh4U18THv77o4buS9QPdUn2S8BztBNiEbB7bP9wNRw==, tarball: https://packages.atlassian.com/api/npm/npm-remote/@atlaskit/adf-schema/-/adf-schema-48.0.0.tgz}
-
-  '@atlaskit/atlassian-context@0.2.0':
-    resolution: {integrity: sha512-msLRSp0qck6eflkShplgyIoOogNKxKRc6QIWGQlSvKGxHQNEbLEkRGcDzdh8PuBxSs1gda7OqYrdtQYQiPbpTQ==, tarball: https://packages.atlassian.com/api/npm/npm-remote/@atlaskit/atlassian-context/-/atlassian-context-0.2.0.tgz}
-    peerDependencies:
-      react: ^18.2.0
-
   '@atlaskit/atlassian-context@0.8.0':
     resolution: {integrity: sha512-I4Rpupz2sfHumiLRMHG+emYM0dTSisuL0665lfou6k55jjhrLDDbfH1eBfCZV3qts/xIWnBxoSCaNpV2Vgg9ew==, tarball: https://packages.atlassian.com/api/npm/npm-remote/@atlaskit/atlassian-context/-/atlassian-context-0.8.0.tgz}
     peerDependencies:
@@ -449,21 +438,10 @@ packages:
     peerDependencies:
       react: ^18.2.0
 
-  '@atlaskit/ds-lib@2.7.0':
-    resolution: {integrity: sha512-+U4aPE2dBRFUBYWCM9vkrwJGrLAYVcK30ZpEiQDNpM2D7K41223TfEijC8azaN4VM3tsCgwSKBWwniloNxqYbA==, tarball: https://packages.atlassian.com/api/npm/npm-remote/@atlaskit/ds-lib/-/ds-lib-2.7.0.tgz}
-    peerDependencies:
-      react: ^16.8.0 || ^17.0.0 || ^18.0.0
-
   '@atlaskit/ds-lib@7.0.0':
     resolution: {integrity: sha512-Uqywr6YMi6uBpD0BtbRmG8f81fteRT7NBf62J8zzWPSs7u3Jq9G3Oruwm3y+57Dxv6IqfRwrS10WJARlCJdBLw==, tarball: https://packages.atlassian.com/api/npm/npm-remote/@atlaskit/ds-lib/-/ds-lib-7.0.0.tgz}
     peerDependencies:
       react: ^18.2.0 || ^19.0.0
-
-  '@atlaskit/editor-prosemirror@7.3.0':
-    resolution: {integrity: sha512-6KB4CuURZ+fU1DJMlmCox6q8T5ooVaCE+eZVrAlcODIfTyLu/wCvJfPJLOJUPZBvzCHqoWCebFmpu39uwUUleg==, tarball: https://packages.atlassian.com/api/npm/npm-remote/@atlaskit/editor-prosemirror/-/editor-prosemirror-7.3.0.tgz}
-
-  '@atlaskit/feature-gate-js-client@4.26.5':
-    resolution: {integrity: sha512-ZCcw7GP6WapqfP18Hr4q5+AZuI1k6pJECL9tyIw64JwG0GntMa3tTj/T8c5aqBIOagRQTw24lkM+Nt+agrRcnA==, tarball: https://packages.atlassian.com/api/npm/npm-remote/@atlaskit/feature-gate-js-client/-/feature-gate-js-client-4.26.5.tgz}
 
   '@atlaskit/feature-gate-js-client@5.5.11':
     resolution: {integrity: sha512-kD+qCh2lIKxXB9IemmKiB+QUI+YKSoDmJ+dTGLehwmav0mcpzpZjrFRc/sHIZ3XefXxob761t8svrakO0hqfPw==, tarball: https://packages.atlassian.com/api/npm/npm-remote/@atlaskit/feature-gate-js-client/-/feature-gate-js-client-5.5.11.tgz}
@@ -483,9 +461,6 @@ packages:
     peerDependencies:
       react: ^18.2.0
 
-  '@atlaskit/platform-feature-flags@0.3.0':
-    resolution: {integrity: sha512-/0u5fFJ0Rw2j4M5wzsXgaHO6Ey12oekPCDTRvmmAIp4GO9T2Swbl80bavLAPSOmSHMhHTSuvRxiJveZXfQ21IQ==, tarball: https://packages.atlassian.com/api/npm/npm-remote/@atlaskit/platform-feature-flags/-/platform-feature-flags-0.3.0.tgz}
-
   '@atlaskit/platform-feature-flags@1.1.3':
     resolution: {integrity: sha512-dRn6UvVmMF5+WXnv7ZlxKTV2rVQncI2TgM0KTGSqpHdD9LnogITWC/rFjzUuF/W8MBCEvpouGilukqhq6rASnw==, tarball: https://packages.atlassian.com/api/npm/npm-remote/@atlaskit/platform-feature-flags/-/platform-feature-flags-1.1.3.tgz}
 
@@ -503,11 +478,6 @@ packages:
     resolution: {integrity: sha512-ZT4M/faMnVzggTonlenLXyg7wwK+uLdJ4sV3OxmMzl9KmpBUveAXz6UkO6WU+e7yh7AGLdaQmZofzOqiB+am0Q==, tarball: https://packages.atlassian.com/api/npm/npm-remote/@atlaskit/tile/-/tile-1.0.8.tgz}
     peerDependencies:
       react: ^18.2.0
-
-  '@atlaskit/tokens@1.61.0':
-    resolution: {integrity: sha512-gRkBDZOaQffJHg9g+hYFgPjQ0Hz4XIDaK5WEttIGyhi2USsGsvDvUeED8liqcQNwssH/5UFxIFp3FmEwo0DoFA==, tarball: https://packages.atlassian.com/api/npm/npm-remote/@atlaskit/tokens/-/tokens-1.61.0.tgz}
-    peerDependencies:
-      react: ^16.8.0 || ^17.0.0 || ^18.0.0
 
   '@atlaskit/tokens@13.0.0':
     resolution: {integrity: sha512-uvokC3FBpcK/RiNdhohFw5N3RxPNKzDcLaitpIVV0v61YH3N4FtHz3yL/uoRL5XE+3RrD3g8+GXlgIOiPsuftQ==, tarball: https://packages.atlassian.com/api/npm/npm-remote/@atlaskit/tokens/-/tokens-13.0.0.tgz}
@@ -1011,21 +981,6 @@ packages:
 
   '@floating-ui/utils@0.2.11':
     resolution: {integrity: sha512-RiB/yIh78pcIxl6lLMG0CgBXAZ2Y0eVHqMPYugu+9U0AeT6YBeiJpf7lbdJNIugFP5SIjwNRgo4DhR1Qxi26Gg==, tarball: https://packages.atlassian.com/api/npm/npm-remote/@floating-ui/utils/-/utils-0.2.11.tgz}
-
-  '@forge/bridge@5.15.1':
-    resolution: {integrity: sha512-004++Q1sgFh6K/YCo1s/yNrKBK3SpaKOUDiqFgIMqRDWz22EgWkiN99vggvmnW8hp6LoK8Tay0PRGPCJhQ50BA==, tarball: https://packages.atlassian.com/api/npm/atlassian-npm/@forge/bridge/-/@forge/bridge-5.15.1.tgz}
-
-  '@forge/egress@2.3.2':
-    resolution: {integrity: sha512-p8ioX4qnAlRFln+hyH9kO0MmVCSOUg0bsIG9RAYK8KM2YaJb6EnKqbCvPMBTwegiua3vixBsnZmWDgPegSZh9Q==, tarball: https://packages.atlassian.com/api/npm/atlassian-npm/@forge/egress/-/@forge/egress-2.3.2.tgz}
-
-  '@forge/i18n@0.0.7':
-    resolution: {integrity: sha512-EKrQApcuI4k4AkUSeERkZv1dQaGjWsmB8i7ciDPtpDARPRH1sOrU+FSEOoA7b9FQ15++7Q144m94w/aMLCg5Gg==, tarball: https://packages.atlassian.com/api/npm/atlassian-npm/@forge/i18n/-/@forge/i18n-0.0.7.tgz}
-
-  '@forge/manifest@12.5.0':
-    resolution: {integrity: sha512-CZUeCkAN356jJf49atoy13sila++FKNI4j0gGuR7fKJROg3Fv+MCRXC3siIE7eB1bRd6YPu7u5KC7Z1vQRxd+A==, tarball: https://packages.atlassian.com/api/npm/atlassian-npm/@forge/manifest/-/@forge/manifest-12.5.0.tgz}
-
-  '@forge/resolver@1.7.1':
-    resolution: {integrity: sha512-xZUeAZSG1c4Fu05uXAze9pnZHqQ4fnfdkSaYKQjYNrj8Yo3FgkFKQ/WZ+K2iNDYsZk2s9UN3Vs3RtR1BVCFACg==, tarball: https://packages.atlassian.com/api/npm/atlassian-npm/@forge/resolver/-/@forge/resolver-1.7.1.tgz}
 
   '@hono/node-server@1.19.14':
     resolution: {integrity: sha512-GwtvgtXxnWsucXvbQXkRgqksiH2Qed37H9xHZocE5sA3N8O8O8/8FA3uclQXxXVzc9XBZuEOMK7+r02FmSpHtw==, tarball: https://packages.atlassian.com/api/npm/npm-remote/@hono/node-server/-/node-server-1.19.14.tgz}
@@ -2427,26 +2382,6 @@ packages:
   '@sec-ant/readable-stream@0.4.1':
     resolution: {integrity: sha512-831qok9r2t8AlxLko40y2ebgSDhenenCatLVeW/uBtnHPyhHOvG0C7TvfgecV+wHzIm5KUICgzmVpWS+IMEAeg==, tarball: https://packages.atlassian.com/api/npm/npm-remote/@sec-ant/readable-stream/-/readable-stream-0.4.1.tgz}
 
-  '@sentry-internal/tracing@7.106.0':
-    resolution: {integrity: sha512-O8Es6Sa/tP80nfl+8soNfWzeRNFcT484SvjLR8BS3pHM9KDAlwNXyoQhFr2BKNYL1irbq6UF6eku4xCnUKVmqA==, tarball: https://packages.atlassian.com/api/npm/npm-remote/@sentry-internal/tracing/-/tracing-7.106.0.tgz}
-    engines: {node: '>=8'}
-
-  '@sentry/core@7.106.0':
-    resolution: {integrity: sha512-Dc13XtnyFaXup2E4vCbzuG0QKAVjrJBk4qfGwvSJaTuopEaEWBs2MpK6hRzFhsz9S3T0La7c1F/62NptvTUWsQ==, tarball: https://packages.atlassian.com/api/npm/npm-remote/@sentry/core/-/core-7.106.0.tgz}
-    engines: {node: '>=8'}
-
-  '@sentry/node@7.106.0':
-    resolution: {integrity: sha512-4DIqbu5K7//lK/k2nV8lqKeGQzhu2T1OpJFmiUrjN6fUKWivGFjZrcmQDS7tvhAAyJezkL3LlrNU4tjPHUElPA==, tarball: https://packages.atlassian.com/api/npm/npm-remote/@sentry/node/-/node-7.106.0.tgz}
-    engines: {node: '>=8'}
-
-  '@sentry/types@7.106.0':
-    resolution: {integrity: sha512-oKTkDaL6P9xJC5/zHLRemHTWboUqRYjkJNaZCN63j4kJqGy56wee4vDtDese/NWWn4U4C1QV1h+Mifm2HmDcQg==, tarball: https://packages.atlassian.com/api/npm/npm-remote/@sentry/types/-/types-7.106.0.tgz}
-    engines: {node: '>=8'}
-
-  '@sentry/utils@7.106.0':
-    resolution: {integrity: sha512-bVsePsXLpFu/1sH4rpJrPcnVxW2fXXfGfGxKs6Bm+dkOMbuVTlk/KAzIbdjCDIpVlrMDJmMNEv5xgTFjgWDkjw==, tarball: https://packages.atlassian.com/api/npm/npm-remote/@sentry/utils/-/utils-7.106.0.tgz}
-    engines: {node: '>=8'}
-
   '@shikijs/core@3.23.0':
     resolution: {integrity: sha512-NSWQz0riNb67xthdm5br6lAkvpDJRTgB36fxlo37ZzM2yq0PQFFzbd8psqC2XMPgCzo1fW6cVi18+ArJ44wqgA==, tarball: https://packages.atlassian.com/api/npm/npm-remote/@shikijs/core/-/core-3.23.0.tgz}
 
@@ -3004,12 +2939,6 @@ packages:
   '@types/hast@3.0.4':
     resolution: {integrity: sha512-WPs+bbQw5aCj+x6laNGWLH3wviHtoCv/P3+otBhbOhJgG8qtpdAMlTCxLtsTWA7LH1Oh/bFCHsBn0TPS5m30EQ==, tarball: https://packages.atlassian.com/api/npm/npm-remote/@types/hast/-/hast-3.0.4.tgz}
 
-  '@types/history@4.7.11':
-    resolution: {integrity: sha512-qjDJRrmvBMiTx+jyLxvLfJU7UznFuokDv4f3WRuriHKERccVpFU+8XMQUAbDzoiJCsmexxRExQeMwwCdamSKDA==, tarball: https://packages.atlassian.com/api/npm/npm-remote/@types/history/-/history-4.7.11.tgz}
-
-  '@types/iframe-resizer@3.5.13':
-    resolution: {integrity: sha512-/Np2ntlOWd/NOHs23Mj7QlNEnZ6SL02AWWdYZLm4RQNukDdpqpagfMAdin5FvQDLngR8LWfh/qUnYxuDmR8BCg==, tarball: https://packages.atlassian.com/api/npm/npm-remote/@types/iframe-resizer/-/iframe-resizer-3.5.13.tgz}
-
   '@types/json-schema@7.0.15':
     resolution: {integrity: sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA==, tarball: https://packages.atlassian.com/api/npm/npm-remote/@types/json-schema/-/json-schema-7.0.15.tgz}
 
@@ -3022,17 +2951,8 @@ packages:
   '@types/leaflet@1.9.21':
     resolution: {integrity: sha512-TbAd9DaPGSnzp6QvtYngntMZgcRk+igFELwR2N99XZn7RXUdKgsXMR+28bUO0rPsWp8MIu/f47luLIQuSLYv/w==, tarball: https://packages.atlassian.com/api/npm/npm-remote/@types/leaflet/-/leaflet-1.9.21.tgz}
 
-  '@types/linkify-it@5.0.0':
-    resolution: {integrity: sha512-sVDA58zAw4eWAffKOaQH5/5j3XeayukzDk+ewSsnv3p4yJEZHCCzMDiZM8e0OUrRvmpGZ85jf4yDHkHsgBNr9Q==, tarball: https://packages.atlassian.com/api/npm/npm-remote/@types/linkify-it/-/linkify-it-5.0.0.tgz}
-
-  '@types/markdown-it@14.1.2':
-    resolution: {integrity: sha512-promo4eFwuiW+TfGxhi+0x3czqTYJkG8qB17ZUJiVF10Xm7NLVRSLUsfRTU/6h1e24VvRnXCx+hG7li58lkzog==, tarball: https://packages.atlassian.com/api/npm/npm-remote/@types/markdown-it/-/markdown-it-14.1.2.tgz}
-
   '@types/mdast@4.0.4':
     resolution: {integrity: sha512-kGaNbPh1k7AFzgpud/gMdvIm5xuECykRR+JnWKQno9TAXVa6WIVCGTPvYGekIDL4uwCZQSYbUxNBSb1aUo79oA==, tarball: https://packages.atlassian.com/api/npm/npm-remote/@types/mdast/-/mdast-4.0.4.tgz}
-
-  '@types/mdurl@2.0.0':
-    resolution: {integrity: sha512-RGdgjQUZba5p6QEFAVx2OGb8rQDL/cPRG7GiedRzMcJ1tYnUANBncjbSB1NRGwbvjcPeikRABz2nshyPk1bhWg==, tarball: https://packages.atlassian.com/api/npm/npm-remote/@types/mdurl/-/mdurl-2.0.0.tgz}
 
   '@types/ms@2.1.0':
     resolution: {integrity: sha512-GsCCIZDE/p3i96vtEqx+7dBUGXrc7zeSK3wwPHIaRThS+9OhWIXRqzs4d6k1SVU8g91DrNRWxWUGhp5KXQb2VA==, tarball: https://packages.atlassian.com/api/npm/npm-remote/@types/ms/-/ms-2.1.0.tgz}
@@ -3349,14 +3269,6 @@ packages:
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
 
-  ajv-formats@2.1.1:
-    resolution: {integrity: sha512-Wx0Kx52hxE7C18hkMEggYlEifqWZtYaRgouJor+WMdPnQyEK13vgEWyVNup7SoeeoLMsr4kf5h6dOW11I15MUA==, tarball: https://packages.atlassian.com/api/npm/npm-remote/ajv-formats/-/ajv-formats-2.1.1.tgz}
-    peerDependencies:
-      ajv: ^8.0.0
-    peerDependenciesMeta:
-      ajv:
-        optional: true
-
   ajv-formats@3.0.1:
     resolution: {integrity: sha512-8iUql50EUR+uUcdRQ3HDqa6EVyo3docL8g5WJ3FNcWmu62IbkGUue/pEyLBW8VGKKucTPgqeks4fIU1DA4yowQ==, tarball: https://packages.atlassian.com/api/npm/npm-remote/ajv-formats/-/ajv-formats-3.0.1.tgz}
     peerDependencies:
@@ -3644,13 +3556,6 @@ packages:
   character-reference-invalid@2.0.1:
     resolution: {integrity: sha512-iBZ4F4wRbyORVsu0jPV7gXkOsGYjGHPmAyv+HiHG8gi5PtC9KI2j1+v8/tlibRvjoWX027ypmG/n0HtO5t7unw==, tarball: https://packages.atlassian.com/api/npm/npm-remote/character-reference-invalid/-/character-reference-invalid-2.0.1.tgz}
 
-  cheerio-select@2.1.0:
-    resolution: {integrity: sha512-9v9kG0LvzrlcungtnJtpGNxY+fzECQKhK4EGJX2vByejiMX84MFNQw4UxPJl3bFbTMw+Dfs37XaIkCwTZfLh4g==, tarball: https://packages.atlassian.com/api/npm/npm-remote/cheerio-select/-/cheerio-select-2.1.0.tgz}
-
-  cheerio@1.2.0:
-    resolution: {integrity: sha512-WDrybc/gKFpTYQutKIK6UvfcuxijIZfMfXaYm8NMsPQxSYvf+13fXUJ4rztGGbJcBQ/GF55gvrZ0Bc0bj/mqvg==, tarball: https://packages.atlassian.com/api/npm/npm-remote/cheerio/-/cheerio-1.2.0.tgz}
-    engines: {node: '>=20.18.1'}
-
   chevrotain-allstar@0.3.1:
     resolution: {integrity: sha512-b7g+y9A0v4mxCW1qUhf3BSVPg+/NvGErk/dOkrDaHA0nQIQGAtrOjlX//9OQtRlSCy+x9rfB5N8yC71lH1nvMw==, tarball: https://packages.atlassian.com/api/npm/npm-remote/chevrotain-allstar/-/chevrotain-allstar-0.3.1.tgz}
     peerDependencies:
@@ -3885,9 +3790,6 @@ packages:
   css-color-keywords@1.0.0:
     resolution: {integrity: sha512-FyyrDHZKEjXDpNJYvVsV960FiqQyXc/LlYmsxl2BcdMb2WPx0OGRVgTg55rPSyLSNMqP52R9r8geSp7apN3Ofg==, tarball: https://packages.atlassian.com/api/npm/npm-remote/css-color-keywords/-/css-color-keywords-1.0.0.tgz}
     engines: {node: '>=4'}
-
-  css-color-names@0.0.4:
-    resolution: {integrity: sha512-zj5D7X1U2h2zsXOAM8EyUREBnnts6H+Jm+d1M2DbiQQcUtnqgQsMrdo8JW9R80YFUmIdBZeMu5wvYM7hcgWP/Q==, tarball: https://packages.atlassian.com/api/npm/npm-remote/css-color-names/-/css-color-names-0.0.4.tgz}
 
   css-gradient-parser@0.0.17:
     resolution: {integrity: sha512-w2Xy9UMMwlKtou0vlRnXvWglPAceXCTtcmVSo8ZBUvqCV5aXEFP/PC6d+I464810I9FT++UACwTD5511bmGPUg==, tarball: https://packages.atlassian.com/api/npm/npm-remote/css-gradient-parser/-/css-gradient-parser-0.0.17.tgz}
@@ -4288,9 +4190,6 @@ packages:
     resolution: {integrity: sha512-Q0n9HRi4m6JuGIV1eFlmvJB7ZEVxu93IrMyiMsGC0lrMJMWzRgx6WGquyfQgZVb31vhGgXnfmPNNXmxnOkRBrg==, tarball: https://packages.atlassian.com/api/npm/npm-remote/encodeurl/-/encodeurl-2.0.0.tgz}
     engines: {node: '>= 0.8'}
 
-  encoding-sniffer@0.2.1:
-    resolution: {integrity: sha512-5gvq20T6vfpekVtqrYQsSCFZ1wEg5+wW0/QaZMWkFr6BqD3NfKs0rLCx4rrVlSWJeZb5NBJgVLswK/w2MWU+Gw==, tarball: https://packages.atlassian.com/api/npm/npm-remote/encoding-sniffer/-/encoding-sniffer-0.2.1.tgz}
-
   end-of-stream@1.4.5:
     resolution: {integrity: sha512-ooEGc6HP26xXq/N+GCGOT0JKCLDGrq2bQUZrQ7gyrJiZANJ/8YDTxTpQBXGMn+WbIQXNVpyWymm7KYVICQnyOg==, tarball: https://packages.atlassian.com/api/npm/npm-remote/end-of-stream/-/end-of-stream-1.4.5.tgz}
 
@@ -4518,9 +4417,6 @@ packages:
   etag@1.8.1:
     resolution: {integrity: sha512-aIL5Fx7mawVa300al2BnEE4iNvo1qETxLrPI/o05L7z6go7fCw1J6EQmbK4FmJ2AS7kgVF/KEZWufBfdClMcPg==, tarball: https://packages.atlassian.com/api/npm/npm-remote/etag/-/etag-1.8.1.tgz}
     engines: {node: '>= 0.6'}
-
-  eventemitter2@4.1.2:
-    resolution: {integrity: sha512-erx0niBaTi8B7ywjGAcg8ilGNRl/xs/o4MO2ZMpRlpZ62mYzjGTBlOpxxRIrPQqBs9mbXkEux6aR+Sc5vQ/wUw==, tarball: https://packages.atlassian.com/api/npm/npm-remote/eventemitter2/-/eventemitter2-4.1.2.tgz}
 
   eventemitter3@4.0.7:
     resolution: {integrity: sha512-8guHBZCwKnFhYdHr2ysuRWErTwhoN2X8XELRlrRwpmfeY2jjuUN4taQMsULKUVo1K4DvZl+0pgfyoysHxvmvEw==, tarball: https://packages.atlassian.com/api/npm/npm-remote/eventemitter3/-/eventemitter3-4.0.7.tgz}
@@ -4809,10 +4705,6 @@ packages:
     resolution: {integrity: sha512-XxwI8EOhVQgWp6iDL+3b0r86f4d6AX6zSU55HfB4ydCEuXLXc5FcYeOu+nnGftS4TEju/11rt4KJPTMgbfmv4A==, tarball: https://packages.atlassian.com/api/npm/npm-remote/glob-parent/-/glob-parent-6.0.2.tgz}
     engines: {node: '>=10.13.0'}
 
-  glob@13.0.6:
-    resolution: {integrity: sha512-Wjlyrolmm8uDpm/ogGyXZXb1Z+Ca2B8NbJwqBVg0axK9GbBeoS7yGV6vjXnYdGm6X53iehEuxxbyiKp8QmN4Vw==, tarball: https://packages.atlassian.com/api/npm/npm-remote/glob/-/glob-13.0.6.tgz}
-    engines: {node: 18 || 20 || >=22}
-
   globals@16.4.0:
     resolution: {integrity: sha512-ob/2LcVVaVGCYN+r14cnwnoDPUufjiYgSqRhiFD0Q1iI4Odora5RE8Iv1D24hAz5oMophRGkGz+yuvQmmUMnMw==, tarball: https://packages.atlassian.com/api/npm/npm-remote/globals/-/globals-16.4.0.tgz}
     engines: {node: '>=18'}
@@ -5014,10 +4906,6 @@ packages:
 
   ieee754@1.2.1:
     resolution: {integrity: sha512-dcyqhDvX1C46lXZcVqCpK+FtMRQVdIMN6/Df5js2zouUsqG7I6sFxitIC+7KYK29KdXOLHdu9zL4sFnoVQnqaA==, tarball: https://packages.atlassian.com/api/npm/npm-remote/ieee754/-/ieee754-1.2.1.tgz}
-
-  iframe-resizer@4.4.5:
-    resolution: {integrity: sha512-U8bCywf/Gh07O69RXo6dXAzTtODQrxaHGHRI7Nt4ipXsuq6EMxVsOP/jjaP43YtXz/ibESS0uSVDN3sOGCzSmw==, tarball: https://packages.atlassian.com/api/npm/npm-remote/iframe-resizer/-/iframe-resizer-4.4.5.tgz}
-    engines: {node: '>=0.8.0'}
 
   ignore@5.3.2:
     resolution: {integrity: sha512-hsBTNUqQTDwkWtcdYI2i06Y/nUBEsNEDJKjWdigLvegy8kDuJAS8uRlpkkcQpyEXL0Z/pjDy5HBmMjRCJ2gq+g==, tarball: https://packages.atlassian.com/api/npm/npm-remote/ignore/-/ignore-5.3.2.tgz}
@@ -5570,14 +5458,8 @@ packages:
       canvas:
         optional: true
 
-  linkify-it@2.2.0:
-    resolution: {integrity: sha512-GnAl/knGn+i1U/wjBz3akz2stz+HrHLsxMwHQGofCDfPvlf+gDKN58UtfmUquTY4/MXeE2x7k19KQmeoZi94Iw==, tarball: https://packages.atlassian.com/api/npm/npm-remote/linkify-it/-/linkify-it-2.2.0.tgz}
-
   linkify-it@3.0.3:
     resolution: {integrity: sha512-ynTsyrFSdE5oZ/O9GEf00kPngmOfVwazR5GKDq6EYfhlpFug3J2zybX56a2PRRpc9P+FuSoGNAwjlbDs9jJBPQ==, tarball: https://packages.atlassian.com/api/npm/npm-remote/linkify-it/-/linkify-it-3.0.3.tgz}
-
-  linkify-it@5.0.0:
-    resolution: {integrity: sha512-5aHCbzQRADcdP+ATqnDuhhJ/MRIqDkZX5pyjFHRRysS8vZ5AbqGEoFIb6pYHPZ+L/OC2Lc+xT8uHVVR5CAK/wQ==, tarball: https://packages.atlassian.com/api/npm/npm-remote/linkify-it/-/linkify-it-5.0.0.tgz}
 
   linkifyjs@4.3.2:
     resolution: {integrity: sha512-NT1CJtq3hHIreOianA8aSXn6Cw0JzYOuDQbOrSPe7gqFnCpKP++MQe3ODgO3oh2GJFORkAAdqredOa60z63GbA==, tarball: https://packages.atlassian.com/api/npm/npm-remote/linkifyjs/-/linkifyjs-4.3.2.tgz}
@@ -5624,9 +5506,6 @@ packages:
   lodash.throttle@4.1.1:
     resolution: {integrity: sha512-wIkUCfVKpVsWo3JSZlc+8MB5it+2AN5W8J7YVMST30UrvcQNZ1Okbj+rbVniijTWE6FGYy4XJq/rHkas8qJMLQ==, tarball: https://packages.atlassian.com/api/npm/npm-remote/lodash.throttle/-/lodash.throttle-4.1.1.tgz}
 
-  lodash@4.18.1:
-    resolution: {integrity: sha512-dMInicTPVE8d1e5otfwmmjlxkZoUpiVLwyeTdUsi/Caj/gfzzblBcCE5sRHV/AsjuCmxWrte2TNGSYuCeCq+0Q==, tarball: https://packages.atlassian.com/api/npm/npm-remote/lodash/-/lodash-4.18.1.tgz}
-
   log-symbols@6.0.0:
     resolution: {integrity: sha512-i24m8rpwhmPIS4zscNzK6MSEhk0DUWa/8iYQWxhffV8jkI4Phvs3F+quL5xvS0gdQR0FyTCMMH33Y78dDTzzIw==, tarball: https://packages.atlassian.com/api/npm/npm-remote/log-symbols/-/log-symbols-6.0.0.tgz}
     engines: {node: '>=18'}
@@ -5653,10 +5532,6 @@ packages:
     resolution: {integrity: sha512-neJAj8GwF0e8EpycYIDFqEPcx9Qz4GUho20jWFR7YiFeXzF1YMLdxB36PypcTSPMA+4+LvgyMacYhlr18Zlymw==, tarball: https://packages.atlassian.com/api/npm/npm-remote/lowdb/-/lowdb-7.0.1.tgz}
     engines: {node: '>=18'}
 
-  lru-cache@11.3.5:
-    resolution: {integrity: sha512-NxVFwLAnrd9i7KUBxC4DrUhmgjzOs+1Qm50D3oF1/oL+r1NpZ4gA7xvG0/zJ8evR7zIKn4vLf7qTNduWFtCrRw==, tarball: https://packages.atlassian.com/api/npm/npm-remote/lru-cache/-/lru-cache-11.3.5.tgz}
-    engines: {node: 20 || >=22}
-
   lru-cache@5.1.1:
     resolution: {integrity: sha512-KpNARQA3Iwv+jTA0utUVVbrh+Jlrr1Fv0e56GGzAFOXN7dk/FviaDW8LHmK52DlcH4WP2n6gI8vN1aesBFgo9w==, tarball: https://packages.atlassian.com/api/npm/npm-remote/lru-cache/-/lru-cache-5.1.1.tgz}
 
@@ -5674,10 +5549,6 @@ packages:
 
   magic-string@0.30.21:
     resolution: {integrity: sha512-vd2F4YUyEXKGcLHoq+TEyCjxueSeHnFxyyjNp80yg0XV4vUhnDer/lvvlqM/arB5bXQN5K2/3oinyCRyx8T2CQ==, tarball: https://packages.atlassian.com/api/npm/npm-remote/magic-string/-/magic-string-0.30.21.tgz}
-
-  markdown-it@14.1.1:
-    resolution: {integrity: sha512-BuU2qnTti9YKgK5N+IeMubp14ZUKUUw7yeJbkjtosvHiP0AZ5c8IAgEMk79D0eC8F23r4Ac/q8cAIFdm2FtyoA==, tarball: https://packages.atlassian.com/api/npm/npm-remote/markdown-it/-/markdown-it-14.1.1.tgz}
-    hasBin: true
 
   markdown-table@3.0.4:
     resolution: {integrity: sha512-wiYz4+JrLyb/DqW2hkFJxP7Vd7JuTDm77fvbM8VfEQdmSMqcImWeeRbHwZjBjIFki/VaMK2BhFi7oUUZeM5bqw==, tarball: https://packages.atlassian.com/api/npm/npm-remote/markdown-table/-/markdown-table-3.0.4.tgz}
@@ -5747,9 +5618,6 @@ packages:
   mdast-util-to-string@4.0.0:
     resolution: {integrity: sha512-0H44vDimn51F0YwvxSJSm0eCDOJTRlmN0R1yBh4HLj9wiV1Dn0QoXGbvFAWj2hSItVTlCmBF1hqKlIyUBVFLPg==, tarball: https://packages.atlassian.com/api/npm/npm-remote/mdast-util-to-string/-/mdast-util-to-string-4.0.0.tgz}
 
-  mdurl@2.0.0:
-    resolution: {integrity: sha512-Lf+9+2r+Tdp5wXDXC4PcIBjTDtq4UKjCPMQhKIuzpJNW0b96kVqSwW0bT7FhRSfmAiFYgP+SCRvdrDozfh0U5w==, tarball: https://packages.atlassian.com/api/npm/npm-remote/mdurl/-/mdurl-2.0.0.tgz}
-
   media-chrome@4.19.0:
     resolution: {integrity: sha512-HWhDTwts+BSbdPkkB1VsJXp5kvL0IxY7xFT5tBwliM2+89kTPVTnHnev+9it2f9PweANjT/C8/C/S0PW9oyZbA==, tarball: https://packages.atlassian.com/api/npm/npm-remote/media-chrome/-/media-chrome-4.19.0.tgz}
 
@@ -5759,9 +5627,6 @@ packages:
   media-typer@1.1.0:
     resolution: {integrity: sha512-aisnrDP4GNe06UcKFnV5bfMNPBUw4jsLGaWwWfnH3v02GnBuXX2MCVn5RbrWo0j3pczUilYblq7fQ7Nw2t5XKw==, tarball: https://packages.atlassian.com/api/npm/npm-remote/media-typer/-/media-typer-1.1.0.tgz}
     engines: {node: '>= 0.8'}
-
-  memoize-one@6.0.0:
-    resolution: {integrity: sha512-rkpe71W0N0c0Xz6QD0eJETuWAJGnJ9afsl1srmwPrI+yBCkge5EycXXbYRyvL29zZVUWQCY7InPRCv3GDXuZNw==, tarball: https://packages.atlassian.com/api/npm/npm-remote/memoize-one/-/memoize-one-6.0.0.tgz}
 
   merge-descriptors@2.0.0:
     resolution: {integrity: sha512-Snk314V5ayFLhp3fkUREub6WtjBfPdCPY1Ln8/8munuLuiYhsABgBVWsozAG+MWMbVEvcdcpbi9R7ww22l9Q3g==, tarball: https://packages.atlassian.com/api/npm/npm-remote/merge-descriptors/-/merge-descriptors-2.0.0.tgz}
@@ -5905,16 +5770,8 @@ packages:
     resolution: {integrity: sha512-PXwfBhYu0hBCPw8Dn0E+WDYb7af3dSLVWKi3HGv84IdF4TyFoC0ysxFd0Goxw7nSv4T/PzEJQxsYsEiFCKo2BA==, tarball: https://packages.atlassian.com/api/npm/npm-remote/micromatch/-/micromatch-4.0.8.tgz}
     engines: {node: '>=8.6'}
 
-  mime-db@1.52.0:
-    resolution: {integrity: sha512-sPU4uV7dYlvtWJxwwxHD0PuihVNiE7TyAbQ5SWxDCB9mUYvOgroQOwYQQOKPJ8CIbE+1ETVlOoK1UC2nU3gYvg==, tarball: https://packages.atlassian.com/api/npm/npm-remote/mime-db/-/mime-db-1.52.0.tgz}
-    engines: {node: '>= 0.6'}
-
   mime-db@1.54.0:
     resolution: {integrity: sha512-aU5EJuIN2WDemCcAp2vFBfp/m4EAhWJnUNSSw0ixs7/kXbd6Pg64EmwJkNdFhB8aWt1sH2CTXrLxo/iAGV3oPQ==, tarball: https://packages.atlassian.com/api/npm/npm-remote/mime-db/-/mime-db-1.54.0.tgz}
-    engines: {node: '>= 0.6'}
-
-  mime-types@2.1.35:
-    resolution: {integrity: sha512-ZDY+bPm5zTTF+YpCrAU9nK0UgICYPT0QtT1NZWFv4s++TNkcgVaT0g6+4R2uI4MjQjzysHB1zxuWL50hzaeXiw==, tarball: https://packages.atlassian.com/api/npm/npm-remote/mime-types/-/mime-types-2.1.35.tgz}
     engines: {node: '>= 0.6'}
 
   mime-types@3.0.2:
@@ -6282,12 +6139,6 @@ packages:
   parse-svg-path@0.1.2:
     resolution: {integrity: sha512-JyPSBnkTJ0AI8GGJLfMXvKq42cj5c006fnLz6fXy6zfoVjJizi8BNTpu8on8ziI1cKy9d9DGNuY17Ce7wuejpQ==, tarball: https://packages.atlassian.com/api/npm/npm-remote/parse-svg-path/-/parse-svg-path-0.1.2.tgz}
 
-  parse5-htmlparser2-tree-adapter@7.1.0:
-    resolution: {integrity: sha512-ruw5xyKs6lrpo9x9rCZqZZnIUntICjQAd0Wsmp396Ul9lN/h+ifgVV1x1gZHi8euej6wTfpqX8j+BFQxF0NS/g==, tarball: https://packages.atlassian.com/api/npm/npm-remote/parse5-htmlparser2-tree-adapter/-/parse5-htmlparser2-tree-adapter-7.1.0.tgz}
-
-  parse5-parser-stream@7.1.2:
-    resolution: {integrity: sha512-JyeQc9iwFLn5TbvvqACIF/VXG6abODeB3Fwmv/TGdLk2LfbWkaySGY72at4+Ty7EkPZj854u4CrICqNk2qIbow==, tarball: https://packages.atlassian.com/api/npm/npm-remote/parse5-parser-stream/-/parse5-parser-stream-7.1.2.tgz}
-
   parse5@7.3.0:
     resolution: {integrity: sha512-IInvU7fabl34qmi9gY8XOVxhYyMyuH2xUNpb2q8/Y+7552KlejkRvqvD19nMoUW/uQGGbqNpA6Tufu5FL5BZgw==, tarball: https://packages.atlassian.com/api/npm/npm-remote/parse5/-/parse5-7.3.0.tgz}
 
@@ -6319,10 +6170,6 @@ packages:
 
   path-parse@1.0.7:
     resolution: {integrity: sha512-LDJzPVEEEPR+y48z93A0Ed0yXb8pAByGWo/k5YYdYgpY2/2EsOsksJrq7lOHxryrVOn1ejG6oAp8ahvOIQD8sw==, tarball: https://packages.atlassian.com/api/npm/npm-remote/path-parse/-/path-parse-1.0.7.tgz}
-
-  path-scurry@2.0.2:
-    resolution: {integrity: sha512-3O/iVVsJAPsOnpwWIeD+d6z/7PmqApyQePUtCndjatj/9I5LylHvt5qluFaBT3I5h3r1ejfR056c+FCv+NnNXg==, tarball: https://packages.atlassian.com/api/npm/npm-remote/path-scurry/-/path-scurry-2.0.2.tgz}
-    engines: {node: 18 || 20 || >=22}
 
   path-to-regexp@6.3.0:
     resolution: {integrity: sha512-Yhpw4T9C6hPpgPeA28us07OJeqZ5EzQTkbfwuhsUg0c237RomFoETJgmp2sa3F/41gfLE6G5cqcYwznmeEeOlQ==, tarball: https://packages.atlassian.com/api/npm/npm-remote/path-to-regexp/-/path-to-regexp-6.3.0.tgz}
@@ -6496,9 +6343,6 @@ packages:
   prosemirror-keymap@1.2.3:
     resolution: {integrity: sha512-4HucRlpiLd1IPQQXNqeo81BGtkY8Ai5smHhKW9jjPKRc2wQIxksg7Hl1tTI2IfT2B/LgX6bfYvXxEpJl7aKYKw==, tarball: https://packages.atlassian.com/api/npm/npm-remote/prosemirror-keymap/-/prosemirror-keymap-1.2.3.tgz}
 
-  prosemirror-markdown@1.13.2:
-    resolution: {integrity: sha512-FPD9rHPdA9fqzNmIIDhhnYQ6WgNoSWX9StUZ8LEKapaXU9i6XgykaHKhp6XMyXlOWetmaFgGDS/nu/w9/vUc5g==, tarball: https://packages.atlassian.com/api/npm/npm-remote/prosemirror-markdown/-/prosemirror-markdown-1.13.2.tgz}
-
   prosemirror-model@1.25.4:
     resolution: {integrity: sha512-PIM7E43PBxKce8OQeezAs9j4TP+5yDpZVbuurd1h5phUxEKIu+G2a+EUZzIC5nS1mJktDJWzbqS23n1tsAf5QA==, tarball: https://packages.atlassian.com/api/npm/npm-remote/prosemirror-model/-/prosemirror-model-1.25.4.tgz}
 
@@ -6511,20 +6355,8 @@ packages:
   prosemirror-tables@1.8.5:
     resolution: {integrity: sha512-V/0cDCsHKHe/tfWkeCmthNUcEp1IVO3p6vwN8XtwE9PZQLAZJigbw3QoraAdfJPir4NKJtNvOB8oYGKRl+t0Dw==, tarball: https://packages.atlassian.com/api/npm/npm-remote/prosemirror-tables/-/prosemirror-tables-1.8.5.tgz}
 
-  prosemirror-transform@1.10.5:
-    resolution: {integrity: sha512-RPDQCxIDhIBb1o36xxwsaeAvivO8VLJcgBtzmOwQ64bMtsVFh5SSuJ6dWSxO1UsHTiTXPCgQm3PDJt7p6IOLbw==, tarball: https://packages.atlassian.com/api/npm/npm-remote/prosemirror-transform/-/prosemirror-transform-1.10.5.tgz}
-
   prosemirror-transform@1.12.0:
     resolution: {integrity: sha512-GxboyN4AMIsoHNtz5uf2r2Ru551i5hWeCMD6E2Ib4Eogqoub0NflniaBPVQ4MrGE5yZ8JV9tUHg9qcZTTrcN4w==, tarball: https://packages.atlassian.com/api/npm/npm-remote/prosemirror-transform/-/prosemirror-transform-1.12.0.tgz}
-
-  prosemirror-utils@1.2.2:
-    resolution: {integrity: sha512-7a2MPf99oCW8/587rQYI1/snX71Ban40+apr1hLkY8TmU9YXd7JeR6QsmktcTisJURO3WRjxIia4lTMsYgZVOw==, tarball: https://packages.atlassian.com/api/npm/npm-remote/prosemirror-utils/-/prosemirror-utils-1.2.2.tgz}
-    peerDependencies:
-      prosemirror-model: ^1.19.2
-      prosemirror-state: ^1.4.3
-
-  prosemirror-view@1.41.5:
-    resolution: {integrity: sha512-UDQbIPnDrjE8tqUBbPmCOZgtd75htE6W3r0JCmY9bL6W1iemDM37MZEKC49d+tdQ0v/CKx4gjxLoLsfkD2NiZA==, tarball: https://packages.atlassian.com/api/npm/npm-remote/prosemirror-view/-/prosemirror-view-1.41.5.tgz}
 
   prosemirror-view@1.41.8:
     resolution: {integrity: sha512-TnKDdohEatgyZNGCDWIdccOHXhYloJwbwU+phw/a23KBvJIR9lWQWW7WHHK3vBdOLDNuF7TaX98GObUZOWkOnA==, tarball: https://packages.atlassian.com/api/npm/npm-remote/prosemirror-view/-/prosemirror-view-1.41.8.tgz}
@@ -6543,10 +6375,6 @@ packages:
 
   pump@3.0.4:
     resolution: {integrity: sha512-VS7sjc6KR7e1ukRFhQSY5LM2uBWAUPiOPa/A3mkKmiMwSmRFUITt0xuj+/lesgnCv+dPIEYlkzrcyXgquIHMcA==, tarball: https://packages.atlassian.com/api/npm/npm-remote/pump/-/pump-3.0.4.tgz}
-
-  punycode.js@2.3.1:
-    resolution: {integrity: sha512-uxFIHU0YlHYhDQtV4R9J6a52SLx28BCjT+4ieh7IGbgwVJWO+km431c4yRlREUAsAmt/uMjQUyQHNEPf0M39CA==, tarball: https://packages.atlassian.com/api/npm/npm-remote/punycode.js/-/punycode.js-2.3.1.tgz}
-    engines: {node: '>=6'}
 
   punycode@2.3.1:
     resolution: {integrity: sha512-vYt7UD1U9Wg6138shLtLOvdAu+8DsC/ilFtEVHcH+wydcSpNE20AfSOduf6MkRFahL5FY7X1oU7nKVZFtfq8Fg==, tarball: https://packages.atlassian.com/api/npm/npm-remote/punycode/-/punycode-2.3.1.tgz}
@@ -6667,16 +6495,6 @@ packages:
     peerDependencies:
       '@types/react': '*'
       react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0 || ^19.0.0-rc
-    peerDependenciesMeta:
-      '@types/react':
-        optional: true
-
-  react-uid@2.4.0:
-    resolution: {integrity: sha512-+MVs/25NrcZuGrmlVRWPOSsbS8y72GJOBsR7d68j3/wqOrRBF52U29XAw4+XSelw0Vm6s5VmGH5mCbTCPGVCVg==, tarball: https://packages.atlassian.com/api/npm/npm-remote/react-uid/-/react-uid-2.4.0.tgz}
-    engines: {node: '>=10'}
-    peerDependencies:
-      '@types/react': ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
-      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
     peerDependenciesMeta:
       '@types/react':
         optional: true
@@ -7504,9 +7322,6 @@ packages:
   uc.micro@1.0.6:
     resolution: {integrity: sha512-8Y75pvTYkLJW2hWQHXxoqRgV7qb9B+9vFEtidML+7koHUFapnVJAZ6cKs+Qjz5Aw3aZWHMC6u0wJE3At+nSGwA==, tarball: https://packages.atlassian.com/api/npm/npm-remote/uc.micro/-/uc.micro-1.0.6.tgz}
 
-  uc.micro@2.1.0:
-    resolution: {integrity: sha512-ARDJmphmdvUk6Glw7y9DQ2bFkKBHwQHLi2lsaH6PPmz/Ka9sFOBsBluozhDltWmnv9u/cF6Rt87znRTPV+yp/A==, tarball: https://packages.atlassian.com/api/npm/npm-remote/uc.micro/-/uc.micro-2.1.0.tgz}
-
   ufo@1.6.3:
     resolution: {integrity: sha512-yDJTmhydvl5lJzBmy/hyOAA0d+aqCBuwl818haVdYCRrWV84o7YyeVm4QlVHStqNrrJSTb6jKuFAVqAFsr+K3Q==, tarball: https://packages.atlassian.com/api/npm/npm-remote/ufo/-/ufo-1.6.3.tgz}
 
@@ -7519,10 +7334,6 @@ packages:
 
   undici-types@7.19.2:
     resolution: {integrity: sha512-qYVnV5OEm2AW8cJMCpdV20CDyaN3g0AjDlOGf1OW4iaDEx8MwdtChUp4zu4H0VP3nDRF/8RKWH+IPp9uW0YGZg==, tarball: https://packages.atlassian.com/api/npm/npm-remote/undici-types/-/undici-types-7.19.2.tgz}
-
-  undici@7.25.0:
-    resolution: {integrity: sha512-xXnp4kTyor2Zq+J1FfPI6Eq3ew5h6Vl0F/8d9XU5zZQf1tX9s2Su1/3PiMmUANFULpmksxkClamIZcaUqryHsQ==, tarball: https://packages.atlassian.com/api/npm/npm-remote/undici/-/undici-7.25.0.tgz}
-    engines: {node: '>=20.18.1'}
 
   unicode-properties@1.4.1:
     resolution: {integrity: sha512-CLjCCLQ6UuMxWnbIylkisbRj31qxHPAurvena/0iwSVbQ2G1VY5/HjV0IRabOEbDHlzZlRdCrD4NhB0JtU40Pg==, tarball: https://packages.atlassian.com/api/npm/npm-remote/unicode-properties/-/unicode-properties-1.4.1.tgz}
@@ -7628,10 +7439,6 @@ packages:
     resolution: {integrity: sha512-0/A9rDy9P7cJ+8w1c9WD9V//9Wj15Ce2MPz8Ri6032usz+NfePxx5AcN3bN+r6ZL6jEo066/yNYB3tn4pQEx+A==, tarball: https://packages.atlassian.com/api/npm/npm-remote/uuid/-/uuid-11.1.0.tgz}
     hasBin: true
 
-  uuid@9.0.1:
-    resolution: {integrity: sha512-b+1eJOlsR9K8HJpow9Ok3fiWOWSIcIzXodvv0rQjVoOVNpWMpxf1wZNpt4y9h10odCNrqnYp1OBzRktckBe3sA==, tarball: https://packages.atlassian.com/api/npm/npm-remote/uuid/-/uuid-9.0.1.tgz}
-    hasBin: true
-
   validate-npm-package-name@7.0.2:
     resolution: {integrity: sha512-hVDIBwsRruT73PbK7uP5ebUt+ezEtCmzZz3F59BSr2F6OVFnJ/6h8liuvdLrQ88Xmnk6/+xGGuq+pG9WwTuy3A==, tarball: https://packages.atlassian.com/api/npm/npm-remote/validate-npm-package-name/-/validate-npm-package-name-7.0.2.tgz}
     engines: {node: ^20.17.0 || >=22.9.0}
@@ -7717,15 +7524,6 @@ packages:
 
   webworkify@1.5.0:
     resolution: {integrity: sha512-AMcUeyXAhbACL8S2hqqdqOLqvJ8ylmIbNwUIqQujRSouf4+eUFaXbG6F1Rbu+srlJMmxQWsiU7mOJi0nMBfM1g==, tarball: https://packages.atlassian.com/api/npm/npm-remote/webworkify/-/webworkify-1.5.0.tgz}
-
-  whatwg-encoding@3.1.1:
-    resolution: {integrity: sha512-6qN4hJdMwfYBtE3YBTTHhoeuUrDBPZmbQaxWAqSALV/MeEnR5z1xd8UKud2RAkFoPkmB+hli1TZSnyi84xz1vQ==, tarball: https://packages.atlassian.com/api/npm/npm-remote/whatwg-encoding/-/whatwg-encoding-3.1.1.tgz}
-    engines: {node: '>=18'}
-    deprecated: Use @exodus/bytes instead for a more spec-conformant and faster implementation
-
-  whatwg-mimetype@4.0.0:
-    resolution: {integrity: sha512-QaKxh0eNIi2mE9p2vEdzfagOKHCcj1pJ56EEHGQOVxp8r9/iszLUUV7v89x9O1p/T+NlTM5W7jW6+cz4Fq1YVg==, tarball: https://packages.atlassian.com/api/npm/npm-remote/whatwg-mimetype/-/whatwg-mimetype-4.0.0.tgz}
-    engines: {node: '>=18'}
 
   whatwg-url@5.0.0:
     resolution: {integrity: sha512-saE57nupxk6v3HY35+jzBwYa0rKSy0XR8JSxZPwgLr7ys0IBzhGviA1/TUGJLmSVqs8pb9AnvICXEuOHLprYTw==, tarball: https://packages.atlassian.com/api/npm/npm-remote/whatwg-url/-/whatwg-url-5.0.0.tgz}
@@ -7941,22 +7739,6 @@ snapshots:
 
   '@antfu/ni@0.23.2': {}
 
-  '@atlaskit/adf-schema@48.0.0(react@19.2.5)':
-    dependencies:
-      '@atlaskit/editor-prosemirror': 7.3.0
-      '@atlaskit/feature-gate-js-client': 4.26.5(react@19.2.5)
-      '@babel/runtime': 7.29.2
-      css-color-names: 0.0.4
-      linkify-it: 2.2.0
-      memoize-one: 6.0.0
-    transitivePeerDependencies:
-      - react
-
-  '@atlaskit/atlassian-context@0.2.0(react@19.2.5)':
-    dependencies:
-      '@babel/runtime': 7.29.2
-      react: 19.2.5
-
   '@atlaskit/atlassian-context@0.8.0(react@19.2.5)':
     dependencies:
       '@babel/runtime': 7.29.2
@@ -7971,46 +7753,12 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@atlaskit/ds-lib@2.7.0(@types/react@19.2.14)(react@19.2.5)':
-    dependencies:
-      '@atlaskit/platform-feature-flags': 0.3.0
-      '@babel/runtime': 7.29.2
-      bind-event-listener: 3.0.0
-      react: 19.2.5
-      react-uid: 2.4.0(@types/react@19.2.14)(react@19.2.5)
-    transitivePeerDependencies:
-      - '@types/react'
-
   '@atlaskit/ds-lib@7.0.0(react@19.2.5)':
     dependencies:
       '@babel/runtime': 7.29.2
       bind-event-listener: 3.0.0
       react: 19.2.5
       tiny-invariant: 1.3.3
-
-  '@atlaskit/editor-prosemirror@7.3.0':
-    dependencies:
-      '@babel/runtime': 7.29.2
-      prosemirror-commands: 1.7.1
-      prosemirror-dropcursor: 1.8.2
-      prosemirror-history: 1.5.0
-      prosemirror-keymap: 1.2.3
-      prosemirror-markdown: 1.13.2
-      prosemirror-model: 1.25.4
-      prosemirror-state: 1.4.4
-      prosemirror-transform: 1.10.5
-      prosemirror-utils: 1.2.2(prosemirror-model@1.25.4)(prosemirror-state@1.4.4)
-      prosemirror-view: 1.41.5
-
-  '@atlaskit/feature-gate-js-client@4.26.5(react@19.2.5)':
-    dependencies:
-      '@atlaskit/atlassian-context': 0.2.0(react@19.2.5)
-      '@babel/runtime': 7.29.2
-      '@statsig/client-core': 3.32.6
-      '@statsig/js-client': 3.32.6
-      eventemitter2: 4.1.2
-    transitivePeerDependencies:
-      - react
 
   '@atlaskit/feature-gate-js-client@5.5.11(react@19.2.5)':
     dependencies:
@@ -8054,10 +7802,6 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@atlaskit/platform-feature-flags@0.3.0':
-    dependencies:
-      '@babel/runtime': 7.29.2
-
   '@atlaskit/platform-feature-flags@1.1.3(react@19.2.5)':
     dependencies:
       '@atlaskit/feature-gate-js-client': 5.5.11(react@19.2.5)
@@ -8091,19 +7835,6 @@ snapshots:
       '@compiled/react': 0.20.0(react@19.2.5)
       react: 19.2.5
     transitivePeerDependencies:
-      - supports-color
-
-  '@atlaskit/tokens@1.61.0(@types/react@19.2.14)(react@19.2.5)':
-    dependencies:
-      '@atlaskit/ds-lib': 2.7.0(@types/react@19.2.14)(react@19.2.5)
-      '@atlaskit/platform-feature-flags': 0.3.0
-      '@babel/runtime': 7.29.2
-      '@babel/traverse': 7.29.0
-      '@babel/types': 7.29.0
-      bind-event-listener: 3.0.0
-      react: 19.2.5
-    transitivePeerDependencies:
-      - '@types/react'
       - supports-color
 
   '@atlaskit/tokens@13.0.0(react@19.2.5)':
@@ -8654,43 +8385,6 @@ snapshots:
       react-dom: 19.2.5(react@19.2.5)
 
   '@floating-ui/utils@0.2.11': {}
-
-  '@forge/bridge@5.15.1(@types/react@19.2.14)(react@19.2.5)':
-    dependencies:
-      '@atlaskit/adf-schema': 48.0.0(react@19.2.5)
-      '@atlaskit/tokens': 1.61.0(@types/react@19.2.14)(react@19.2.5)
-      '@forge/egress': 2.3.2
-      '@forge/i18n': 0.0.7
-      '@forge/manifest': 12.5.0
-      '@forge/resolver': 1.7.1
-      '@types/history': 4.7.11
-      '@types/iframe-resizer': 3.5.13
-      iframe-resizer: 4.4.5
-      uuid: 9.0.1
-    transitivePeerDependencies:
-      - '@types/react'
-      - react
-      - supports-color
-
-  '@forge/egress@2.3.2': {}
-
-  '@forge/i18n@0.0.7':
-    dependencies:
-      lodash: 4.18.1
-
-  '@forge/manifest@12.5.0':
-    dependencies:
-      '@forge/i18n': 0.0.7
-      '@sentry/node': 7.106.0
-      ajv: 8.18.0
-      ajv-formats: 2.1.1(ajv@8.18.0)
-      cheerio: 1.2.0
-      glob: 13.0.6
-      lodash: 4.18.1
-      mime-types: 2.1.35
-      yaml: 2.8.3
-
-  '@forge/resolver@1.7.1': {}
 
   '@hono/node-server@1.19.14(hono@4.12.14)':
     dependencies:
@@ -9997,30 +9691,6 @@ snapshots:
 
   '@sec-ant/readable-stream@0.4.1': {}
 
-  '@sentry-internal/tracing@7.106.0':
-    dependencies:
-      '@sentry/core': 7.106.0
-      '@sentry/types': 7.106.0
-      '@sentry/utils': 7.106.0
-
-  '@sentry/core@7.106.0':
-    dependencies:
-      '@sentry/types': 7.106.0
-      '@sentry/utils': 7.106.0
-
-  '@sentry/node@7.106.0':
-    dependencies:
-      '@sentry-internal/tracing': 7.106.0
-      '@sentry/core': 7.106.0
-      '@sentry/types': 7.106.0
-      '@sentry/utils': 7.106.0
-
-  '@sentry/types@7.106.0': {}
-
-  '@sentry/utils@7.106.0':
-    dependencies:
-      '@sentry/types': 7.106.0
-
   '@shikijs/core@3.23.0':
     dependencies:
       '@shikijs/types': 3.23.0
@@ -10643,10 +10313,6 @@ snapshots:
     dependencies:
       '@types/unist': 3.0.3
 
-  '@types/history@4.7.11': {}
-
-  '@types/iframe-resizer@3.5.13': {}
-
   '@types/json-schema@7.0.15': {}
 
   '@types/json5@0.0.29': {}
@@ -10657,18 +10323,9 @@ snapshots:
     dependencies:
       '@types/geojson': 7946.0.16
 
-  '@types/linkify-it@5.0.0': {}
-
-  '@types/markdown-it@14.1.2':
-    dependencies:
-      '@types/linkify-it': 5.0.0
-      '@types/mdurl': 2.0.0
-
   '@types/mdast@4.0.4':
     dependencies:
       '@types/unist': 3.0.3
-
-  '@types/mdurl@2.0.0': {}
 
   '@types/ms@2.1.0': {}
 
@@ -10977,10 +10634,6 @@ snapshots:
       '@opentelemetry/api': 1.9.0
       zod: 4.3.6
 
-  ajv-formats@2.1.1(ajv@8.18.0):
-    optionalDependencies:
-      ajv: 8.18.0
-
   ajv-formats@3.0.1(ajv@8.18.0):
     optionalDependencies:
       ajv: 8.18.0
@@ -11288,29 +10941,6 @@ snapshots:
 
   character-reference-invalid@2.0.1: {}
 
-  cheerio-select@2.1.0:
-    dependencies:
-      boolbase: 1.0.0
-      css-select: 5.2.2
-      css-what: 6.2.2
-      domelementtype: 2.3.0
-      domhandler: 5.0.3
-      domutils: 3.2.2
-
-  cheerio@1.2.0:
-    dependencies:
-      cheerio-select: 2.1.0
-      dom-serializer: 2.0.0
-      domhandler: 5.0.3
-      domutils: 3.2.2
-      encoding-sniffer: 0.2.1
-      htmlparser2: 10.1.0
-      parse5: 7.3.0
-      parse5-htmlparser2-tree-adapter: 7.1.0
-      parse5-parser-stream: 7.1.2
-      undici: 7.25.0
-      whatwg-mimetype: 4.0.0
-
   chevrotain-allstar@0.3.1(chevrotain@11.0.3):
     dependencies:
       chevrotain: 11.0.3
@@ -11529,8 +11159,6 @@ snapshots:
   css-box-shadow@1.0.0-3: {}
 
   css-color-keywords@1.0.0: {}
-
-  css-color-names@0.0.4: {}
 
   css-gradient-parser@0.0.17: {}
 
@@ -11936,11 +11564,6 @@ snapshots:
 
   encodeurl@2.0.0: {}
 
-  encoding-sniffer@0.2.1:
-    dependencies:
-      iconv-lite: 0.6.3
-      whatwg-encoding: 3.1.1
-
   end-of-stream@1.4.5:
     dependencies:
       once: 1.4.0
@@ -12319,8 +11942,6 @@ snapshots:
 
   etag@1.8.1: {}
 
-  eventemitter2@4.1.2: {}
-
   eventemitter3@4.0.7: {}
 
   eventemitter3@5.0.4: {}
@@ -12661,12 +12282,6 @@ snapshots:
     dependencies:
       is-glob: 4.0.3
 
-  glob@13.0.6:
-    dependencies:
-      minimatch: 10.2.5
-      minipass: 7.1.3
-      path-scurry: 2.0.2
-
   globals@16.4.0: {}
 
   globalthis@1.0.4:
@@ -12931,8 +12546,6 @@ snapshots:
       safer-buffer: 2.1.2
 
   ieee754@1.2.1: {}
-
-  iframe-resizer@4.4.5: {}
 
   ignore@5.3.2: {}
 
@@ -13450,17 +13063,9 @@ snapshots:
       htmlparser2: 10.1.0
       uhyphen: 0.2.0
 
-  linkify-it@2.2.0:
-    dependencies:
-      uc.micro: 1.0.6
-
   linkify-it@3.0.3:
     dependencies:
       uc.micro: 1.0.6
-
-  linkify-it@5.0.0:
-    dependencies:
-      uc.micro: 2.1.0
 
   linkifyjs@4.3.2: {}
 
@@ -13503,8 +13108,6 @@ snapshots:
 
   lodash.throttle@4.1.1: {}
 
-  lodash@4.18.1: {}
-
   log-symbols@6.0.0:
     dependencies:
       chalk: 5.6.2
@@ -13529,8 +13132,6 @@ snapshots:
     dependencies:
       steno: 4.0.2
 
-  lru-cache@11.3.5: {}
-
   lru-cache@5.1.1:
     dependencies:
       yallist: 3.1.1
@@ -13548,15 +13149,6 @@ snapshots:
   magic-string@0.30.21:
     dependencies:
       '@jridgewell/sourcemap-codec': 1.5.5
-
-  markdown-it@14.1.1:
-    dependencies:
-      argparse: 2.0.1
-      entities: 4.5.0
-      linkify-it: 5.0.0
-      mdurl: 2.0.0
-      punycode.js: 2.3.1
-      uc.micro: 2.1.0
 
   markdown-table@3.0.4: {}
 
@@ -13736,8 +13328,6 @@ snapshots:
     dependencies:
       '@types/mdast': 4.0.4
 
-  mdurl@2.0.0: {}
-
   media-chrome@4.19.0(react@19.2.5):
     dependencies:
       ce-la-react: 0.3.2(react@19.2.5)
@@ -13747,8 +13337,6 @@ snapshots:
   media-engine@1.0.3: {}
 
   media-typer@1.1.0: {}
-
-  memoize-one@6.0.0: {}
 
   merge-descriptors@2.0.0: {}
 
@@ -14024,13 +13612,7 @@ snapshots:
       braces: 3.0.3
       picomatch: 2.3.2
 
-  mime-db@1.52.0: {}
-
   mime-db@1.54.0: {}
-
-  mime-types@2.1.35:
-    dependencies:
-      mime-db: 1.52.0
 
   mime-types@3.0.2:
     dependencies:
@@ -14458,15 +14040,6 @@ snapshots:
 
   parse-svg-path@0.1.2: {}
 
-  parse5-htmlparser2-tree-adapter@7.1.0:
-    dependencies:
-      domhandler: 5.0.3
-      parse5: 7.3.0
-
-  parse5-parser-stream@7.1.2:
-    dependencies:
-      parse5: 7.3.0
-
   parse5@7.3.0:
     dependencies:
       entities: 6.0.1
@@ -14486,11 +14059,6 @@ snapshots:
   path-key@4.0.0: {}
 
   path-parse@1.0.7: {}
-
-  path-scurry@2.0.2:
-    dependencies:
-      lru-cache: 11.3.5
-      minipass: 7.1.3
 
   path-to-regexp@6.3.0: {}
 
@@ -14687,12 +14255,6 @@ snapshots:
       prosemirror-state: 1.4.4
       w3c-keyname: 2.2.8
 
-  prosemirror-markdown@1.13.2:
-    dependencies:
-      '@types/markdown-it': 14.1.2
-      markdown-it: 14.1.1
-      prosemirror-model: 1.25.4
-
   prosemirror-model@1.25.4:
     dependencies:
       orderedmap: 2.1.1
@@ -14717,24 +14279,9 @@ snapshots:
       prosemirror-transform: 1.12.0
       prosemirror-view: 1.41.8
 
-  prosemirror-transform@1.10.5:
-    dependencies:
-      prosemirror-model: 1.25.4
-
   prosemirror-transform@1.12.0:
     dependencies:
       prosemirror-model: 1.25.4
-
-  prosemirror-utils@1.2.2(prosemirror-model@1.25.4)(prosemirror-state@1.4.4):
-    dependencies:
-      prosemirror-model: 1.25.4
-      prosemirror-state: 1.4.4
-
-  prosemirror-view@1.41.5:
-    dependencies:
-      prosemirror-model: 1.25.4
-      prosemirror-state: 1.4.4
-      prosemirror-transform: 1.10.5
 
   prosemirror-view@1.41.8:
     dependencies:
@@ -14768,8 +14315,6 @@ snapshots:
     dependencies:
       end-of-stream: 1.4.5
       once: 1.4.0
-
-  punycode.js@2.3.1: {}
 
   punycode@2.3.1: {}
 
@@ -14883,13 +14428,6 @@ snapshots:
   react-style-singleton@2.2.3(@types/react@19.2.14)(react@19.2.5):
     dependencies:
       get-nonce: 1.0.1
-      react: 19.2.5
-      tslib: 2.8.1
-    optionalDependencies:
-      '@types/react': 19.2.14
-
-  react-uid@2.4.0(@types/react@19.2.14)(react@19.2.5):
-    dependencies:
       react: 19.2.5
       tslib: 2.8.1
     optionalDependencies:
@@ -15941,8 +15479,6 @@ snapshots:
 
   uc.micro@1.0.6: {}
 
-  uc.micro@2.1.0: {}
-
   ufo@1.6.3: {}
 
   uhyphen@0.2.0: {}
@@ -15955,8 +15491,6 @@ snapshots:
       which-boxed-primitive: 1.1.1
 
   undici-types@7.19.2: {}
-
-  undici@7.25.0: {}
 
   unicode-properties@1.4.1:
     dependencies:
@@ -16088,8 +15622,6 @@ snapshots:
 
   uuid@11.1.0: {}
 
-  uuid@9.0.1: {}
-
   validate-npm-package-name@7.0.2: {}
 
   vary@1.1.2: {}
@@ -16182,12 +15714,6 @@ snapshots:
       sdp: 3.2.2
 
   webworkify@1.5.0: {}
-
-  whatwg-encoding@3.1.1:
-    dependencies:
-      iconv-lite: 0.6.3
-
-  whatwg-mimetype@4.0.0: {}
 
   whatwg-url@5.0.0:
     dependencies:

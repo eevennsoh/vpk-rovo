@@ -15,7 +15,6 @@ import {
 } from "./shader-color-controls";
 import LogoGradient, {
 	LOGO_GRADIENT_DEFAULT_BACKGROUND,
-	LOGO_GRADIENT_DEFAULT_COLORS,
 } from "./shaders/logo-gradient";
 
 function ImageUploadControl({
@@ -40,7 +39,7 @@ function ImageUploadControl({
 			<div className="flex items-center gap-2">
 				<Label className="text-xs font-medium text-text">Image</Label>
 				<span className="text-[11px] text-text-subtlest">
-					Uses the built-in logo when empty.
+					Uses the Framer Path.svg asset when empty.
 				</span>
 			</div>
 			<div className="flex items-center gap-2">
@@ -90,16 +89,23 @@ function ImageUploadControl({
 	);
 }
 
-const DEFAULT_COLORS = [...LOGO_GRADIENT_DEFAULT_COLORS];
+const DEMO_DEFAULT_COLORS = [
+	"#000000",
+	"#1868DB",
+	"#FCA700",
+	"#AF59E1",
+	"#6A9A23",
+];
+const DEMO_DEFAULT_ANGLE = 100;
 
 export default function LogoGradientDemo() {
 	const [imageSrc, setImageSrc] = useState<string | undefined>(undefined);
-	const [colors, setColors] = useState<string[]>(DEFAULT_COLORS);
+	const [colors, setColors] = useState<string[]>(DEMO_DEFAULT_COLORS);
 	const [colorBack, setColorBack] = useState(LOGO_GRADIENT_DEFAULT_BACKGROUND);
 	const [seed, setSeed] = useState(6);
 	const [speed, setSpeed] = useState(0.6);
 	const [motionMode, setMotionMode] = useState<"0" | "1">("0");
-	const [angle, setAngle] = useState(20);
+	const [angle, setAngle] = useState(DEMO_DEFAULT_ANGLE);
 	const [scale, setScale] = useState(1.2);
 	const [turbAmp, setTurbAmp] = useState(0.21);
 	const [turbFreq, setTurbFreq] = useState(1.15);
@@ -144,8 +150,7 @@ export default function LogoGradientDemo() {
 	return (
 		<div className="flex w-full max-w-2xl flex-col" style={{ gap: token("space.400") }}>
 			<div
-				className="mx-auto aspect-[2/3] w-full max-w-sm overflow-hidden rounded-lg"
-				style={{ boxShadow: token("elevation.shadow.raised") }}
+				className="mx-auto aspect-square w-full max-w-[25rem] overflow-hidden bg-black"
 			>
 				<LogoGradient
 					imageSrc={imageSrc}
@@ -171,7 +176,7 @@ export default function LogoGradientDemo() {
 					id="logo-gradient-colors"
 					label="Colors"
 					value={colors}
-					defaultValue={DEFAULT_COLORS}
+					defaultValue={DEMO_DEFAULT_COLORS}
 					onChange={setColors}
 					allowAddRemove
 					maxColors={8}
@@ -217,7 +222,7 @@ export default function LogoGradientDemo() {
 					id="logo-gradient-angle"
 					label="Angle"
 					value={angle}
-					defaultValue={20}
+					defaultValue={DEMO_DEFAULT_ANGLE}
 					min={0}
 					max={360}
 					step={1}

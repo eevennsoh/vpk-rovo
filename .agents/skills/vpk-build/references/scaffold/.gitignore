@@ -1,0 +1,26 @@
+node_modules/
+
+# Next build output
+.next/
+out/
+
+# Environment and deploy secrets
+*.local
+.env*.local
+.deploy.local
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# TypeScript incremental build info
+*.tsbuildinfo
+next-env.d.ts

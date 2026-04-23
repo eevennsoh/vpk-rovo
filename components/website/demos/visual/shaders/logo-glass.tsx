@@ -2,7 +2,13 @@
 
 import { useEffect, useRef } from "react";
 
-const DEFAULT_LOGO_GLASS_IMAGE_SRC = "/1p/rovo.svg";
+import {
+	buildLogoGradientHeightmapPixels,
+	createLogoGradientHeightmapCanvas,
+	LOGO_GRADIENT_DEFAULT_IMAGE_SRC,
+} from "./logo-gradient-heightmap";
+
+const DEFAULT_LOGO_GLASS_IMAGE_SRC = LOGO_GRADIENT_DEFAULT_IMAGE_SRC;
 
 const VERTEX_SHADER = `#version 300 es
 precision highp float;
@@ -354,10 +360,6 @@ void main() {
 }
 `;
 
-function clamp01(value: number): number {
-	return Math.min(Math.max(value, 0), 1);
-}
-
 function hexToRgba(color: string): [number, number, number, number] {
 	const normalized = color.trim();
 	if (/^#[0-9a-f]{3}$/i.test(normalized)) {
@@ -395,84 +397,6 @@ function hexToRgba(color: string): [number, number, number, number] {
 		];
 	}
 	return [0, 0, 0, 1];
-}
-
-function createFallbackLogoSourceCanvas(): HTMLCanvasElement {
-	const canvas = document.createElement("canvas");
-	canvas.width = 256;
-	canvas.height = 96;
-
-	const context = canvas.getContext("2d");
-	if (!context) {
-		return canvas;
-	}
-
-	context.clearRect(0, 0, canvas.width, canvas.height);
-	context.fillStyle = "#ffffff";
-	context.font = "700 58px Arial, sans-serif";
-	context.textAlign = "center";
-	context.textBaseline = "middle";
-	context.fillText("VPK", canvas.width / 2, canvas.height / 2 + 2);
-
-	return canvas;
-}
-
-function buildHeightmapCanvas(source: HTMLCanvasElement | HTMLImageElement): HTMLCanvasElement {
-	const width = Math.max(1, "naturalWidth" in source ? source.naturalWidth : source.width);
-	const height = Math.max(1, "naturalHeight" in source ? source.naturalHeight : source.height);
-
-	const inputCanvas = document.createElement("canvas");
-	inputCanvas.width = width;
-	inputCanvas.height = height;
-
-	const inputContext = inputCanvas.getContext("2d", { willReadFrequently: true });
-	if (!inputContext) {
-		return inputCanvas;
-	}
-
-	inputContext.clearRect(0, 0, width, height);
-	inputContext.drawImage(source, 0, 0, width, height);
-
-	const sourceImage = inputContext.getImageData(0, 0, width, height);
-	let sourceHasTransparency = false;
-	for (let index = 3; index < sourceImage.data.length; index += 4) {
-		if (sourceImage.data[index] < 250) {
-			sourceHasTransparency = true;
-			break;
-		}
-	}
-
-	const outputCanvas = document.createElement("canvas");
-	outputCanvas.width = width;
-	outputCanvas.height = height;
-	const outputContext = outputCanvas.getContext("2d");
-	if (!outputContext) {
-		return outputCanvas;
-	}
-
-	const outputImage = outputContext.createImageData(width, height);
-	for (let index = 0; index < sourceImage.data.length; index += 4) {
-		const red = sourceImage.data[index] / 255;
-		const green = sourceImage.data[index + 1] / 255;
-		const blue = sourceImage.data[index + 2] / 255;
-		const alpha = sourceImage.data[index + 3] / 255;
-		const luminance = red * 0.2126 + green * 0.7152 + blue * 0.0722;
-		const mask = sourceHasTransparency ? alpha : 1 - luminance;
-		const depth = clamp01(mask);
-		const channel = Math.round(depth * 255);
-
-		outputImage.data[index] = channel;
-		outputImage.data[index + 1] = 0;
-		outputImage.data[index + 2] = channel;
-		outputImage.data[index + 3] = 255;
-	}
-
-	outputContext.putImageData(outputImage, 0, 0);
-	return outputCanvas;
-}
-
-function createFallbackHeightmapCanvas(): HTMLCanvasElement {
-	return buildHeightmapCanvas(createFallbackLogoSourceCanvas());
 }
 
 export interface LogoGlassProps {
@@ -659,17 +583,32 @@ export default function LogoGlass({
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 		gl.uniform1i(gl.getUniformLocation(program, "u_image_heightmap"), 0);
-		gl.texImage2D(
-			gl.TEXTURE_2D,
-			0,
-			gl.RGBA,
-			gl.RGBA,
-			gl.UNSIGNED_BYTE,
-			createFallbackHeightmapCanvas(),
-		);
+
+		const placeholderHeightmap = document.createElement("canvas");
+		placeholderHeightmap.width = 1;
+		placeholderHeightmap.height = 1;
+		const placeholderContext = placeholderHeightmap.getContext("2d");
+		if (placeholderContext) {
+			const placeholderImage = placeholderContext.createImageData(1, 1);
+			placeholderImage.data.set(
+				buildLogoGradientHeightmapPixels(new Uint8Array([0]), 1, 1),
+			);
+			placeholderContext.putImageData(placeholderImage, 0, 0);
+			gl.texImage2D(
+				gl.TEXTURE_2D,
+				0,
+				gl.RGBA,
+				gl.RGBA,
+				gl.UNSIGNED_BYTE,
+				placeholderHeightmap,
+			);
+		}
 
 		let disposed = false;
-		const applyHeightmapTexture = (heightmap: HTMLCanvasElement) => {
+		const applyHeightmapTexture = (heightmap: HTMLCanvasElement | undefined) => {
+			if (!heightmap) {
+				return;
+			}
 			gl.bindTexture(gl.TEXTURE_2D, texture);
 			gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, heightmap);
 		};
@@ -682,13 +621,7 @@ export default function LogoGlass({
 				if (disposed) {
 					return;
 				}
-				applyHeightmapTexture(buildHeightmapCanvas(image));
-			};
-			image.onerror = () => {
-				if (disposed) {
-					return;
-				}
-				applyHeightmapTexture(createFallbackHeightmapCanvas());
+				applyHeightmapTexture(createLogoGradientHeightmapCanvas(image));
 			};
 			image.src = resolvedImageSrc;
 		}
