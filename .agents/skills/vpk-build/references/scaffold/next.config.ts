@@ -1,14 +1,4 @@
 import type { NextConfig } from "next";
-import { fileURLToPath } from "node:url";
-import { dirname } from "node:path";
-
-// Pin Turbopack's workspace root to this project. Without this, Next walks
-// up the filesystem looking for a pnpm-lock.yaml and may find an unrelated
-// lockfile in a parent directory (e.g. the user's home dir), producing a
-// confusing "multiple lockfiles detected" warning and potentially
-// misbehaving caching. Pointing root at __dirname locks resolution to the
-// extracted project's own boundaries.
-const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // Extracted prototype: always builds as a static export so the Micros
 // Express wrapper can serve it as plain files. No dev proxy, no API routes.
@@ -16,8 +6,15 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // /vpk-build's static-export deploy mode.
 const nextConfig: NextConfig = {
 	output: "export",
+	// Pin Turbopack's workspace root to the project directory. Without this,
+	// Next walks up the filesystem looking for a pnpm-lock.yaml and may find
+	// an unrelated lockfile in a parent directory (e.g. the user's home dir),
+	// producing a "multiple lockfiles detected" warning.
+	// Using process.cwd() here (rather than __dirname via fileURLToPath)
+	// because adding ESM-only syntax like import.meta.url to next.config.ts
+	// makes Next's transpiler emit a CJS/ESM mismatch that fails to load.
 	turbopack: {
-		root: __dirname,
+		root: process.cwd(),
 	},
 	images: {
 		// Static export has no server, so Next's default image optimizer is
