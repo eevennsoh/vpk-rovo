@@ -5,6 +5,7 @@ import * as React from "react";
 import { useTheme } from "@/components/utils/theme-wrapper";
 import Bands from "@/components/website/demos/visual/shaders/bands";
 import LiquidGradient from "@/components/website/demos/visual/shaders/liquid-gradient";
+import Particles from "@/components/website/demos/visual/shaders/particles";
 import Rings from "@/components/website/demos/visual/shaders/rings";
 import Noise, {
 	type NoiseBlendMode,
@@ -24,6 +25,7 @@ import {
 	GLASS_TABS_SQUIRCLE_STYLE,
 } from "@/components/ui/glass-tabs-motion";
 import { Cctv } from "@/components/animate-ui/icons/cctv";
+import { Spinner } from "@/components/ui/spinner";
 import {
 	ReturnIcon,
 } from "@/components/ui/vpk-icons";
@@ -609,7 +611,7 @@ function WeatherKeyboardHints({
 						</span>
 						{showWakeShortcut ? (
 							<span className="inline-flex flex-col items-center gap-0.5 sm:flex-row sm:gap-1">
-								<Kbd className="font-sans">W</Kbd>
+								<Kbd className="font-sans">w</Kbd>
 								<span>awake</span>
 							</span>
 						) : null}
@@ -671,7 +673,7 @@ const GRID_ANCHOR_SMALL: SizeAnchor = {
 	temperatureWidth: 196,
 	pillHeight: 220,
 	gridCellSize: 8,
-	timeFontPx: 52,
+	timeFontPx: 48,
 	humidityFontPx: 44,
 	temperatureFontPx: 48,
 	weatherIconSize: 36,
@@ -690,7 +692,7 @@ const GRID_ANCHOR_LARGE: SizeAnchor = {
 	temperatureWidth: 300,
 	pillHeight: 320,
 	gridCellSize: 12,
-	timeFontPx: 84,
+	timeFontPx: 80,
 	humidityFontPx: 72,
 	temperatureFontPx: 80,
 	weatherIconSize: 56,
@@ -715,7 +717,7 @@ const ROW_ANCHOR_SMALL: SizeAnchor = {
 	temperatureWidth: 300,
 	pillHeight: 320,
 	gridCellSize: 12,
-	timeFontPx: 84,
+	timeFontPx: 80,
 	humidityFontPx: 72,
 	temperatureFontPx: 80,
 	weatherIconSize: 56,
@@ -735,7 +737,7 @@ const ROW_ANCHOR_LARGE: SizeAnchor = {
 	temperatureWidth: 400,
 	pillHeight: 380,
 	gridCellSize: 14,
-	timeFontPx: 104,
+	timeFontPx: 96,
 	humidityFontPx: 88,
 	temperatureFontPx: 96,
 	weatherIconSize: 72,
@@ -898,6 +900,7 @@ interface WeatherTimeCardProps {
 	debossTextShadow: string;
 	debossDotShadow: string;
 	shader: ShaderConfig;
+	particlesSpeedRef: React.RefObject<number>;
 }
 
 function WeatherTimeCard({
@@ -917,6 +920,7 @@ function WeatherTimeCard({
 	debossTextShadow,
 	debossDotShadow,
 	shader,
+	particlesSpeedRef,
 }: WeatherTimeCardProps) {
 	const clock = useLocationClock(timezone);
 	return (
@@ -924,11 +928,36 @@ function WeatherTimeCard({
 			className="flex flex-col"
 			style={{ width: sizes.timeWidth, height: sizes.pillHeight }}
 			background={
-				<LiquidGradient
-					className="h-full w-full"
-					colors={shader.colors}
-					{...shader.time}
-				/>
+				<>
+					<LiquidGradient
+						className="h-full w-full"
+						colors={shader.timeColors}
+						{...shader.time}
+					/>
+					{/*
+					 * Particles must live in the SAME stacking context as the
+					 * gradient for `mix-blend-mode: soft-light` to see the
+					 * gradient as a backdrop. The overlay slot creates its
+					 * own stacking context via `z-10`, which isolates blend
+					 * modes — blending there would compose against empty
+					 * space and render as an opaque rectangle.
+					 *
+					 * bgColor is 50% gray (soft-light neutral), so empty
+					 * canvas pixels are identity over the gradient and only
+					 * star pixels brighten it — no per-star halos.
+					 */}
+					<div
+						aria-hidden="true"
+						className="absolute inset-0"
+						style={{ mixBlendMode: "soft-light" }}
+					>
+						<Particles
+							className="h-full w-full"
+							{...shader.particles}
+							speedRef={particlesSpeedRef}
+						/>
+					</div>
+				</>
 			}
 			overlay={
 				<>
@@ -967,7 +996,18 @@ function WeatherTimeCard({
 				>
 					Time
 				</span>
-					<div className="flex flex-col items-center gap-0">
+					<div
+						className="flex flex-col items-center gap-0"
+						style={{
+							// Ark-ES display glyphs render visually higher in
+							// their em-box than DotGothic16/Bitcount (used in
+							// humid/temp), so nudge the time stack down a
+							// touch to optically align with the other tiles.
+							// Proportional to the responsive font size so the
+							// offset tracks across breakpoints.
+							transform: `translateY(${sizes.timeFontPx * 0.06}px)`,
+						}}
+					>
 						<DigitDisplay
 							weight={180}
 							tracking={-0.04}
@@ -1055,6 +1095,7 @@ function SelectedWeatherClock({
 	debossTextShadow,
 	debossDotShadow,
 	shader,
+	particlesSpeedRef,
 	timeClassName,
 	dateClassName,
 	onFooterAnimationComplete,
@@ -1096,6 +1137,7 @@ function SelectedWeatherClock({
 					debossTextShadow={debossTextShadow}
 					debossDotShadow={debossDotShadow}
 					shader={shader}
+					particlesSpeedRef={particlesSpeedRef}
 				/>
 			</motion.div>
 
@@ -1158,6 +1200,29 @@ export default function Weather({
 			return;
 		}
 		setShaderConfig(getRandomShaderConfig());
+	}, [selected.id]);
+
+	// Particles "warp drop-in": on mount and on every city cycle, the
+	// particle speed starts fast (random in [0.6, 1.0]) and eases down
+	// to 0.05 over 2s via ease-out-cubic. The Particles shader reads
+	// from this ref every frame, so mutating `.current` updates the
+	// animation without forcing a WebGL re-init.
+	const particlesSpeedRef = React.useRef(0.05);
+	React.useEffect(() => {
+		const startSpeed = 0.6 + Math.random() * 0.4;
+		const targetSpeed = 0.05;
+		const durationMs = 2000;
+		const t0 = performance.now();
+		particlesSpeedRef.current = startSpeed;
+		let rafId = 0;
+		const tick = () => {
+			const t = Math.min((performance.now() - t0) / durationMs, 1);
+			const eased = 1 - Math.pow(1 - t, 3);
+			particlesSpeedRef.current = startSpeed + (targetSpeed - startSpeed) * eased;
+			if (t < 1) rafId = requestAnimationFrame(tick);
+		};
+		rafId = requestAnimationFrame(tick);
+		return () => cancelAnimationFrame(rafId);
 	}, [selected.id]);
 
 	const { measureRef, layout: fluidLayout } = useFluidWeatherLayout();
@@ -1750,6 +1815,7 @@ export default function Weather({
 						debossTextShadow={debossTextShadow}
 						debossDotShadow={debossDotShadow}
 						shader={shaderConfig}
+						particlesSpeedRef={particlesSpeedRef}
 						timeClassName={isRowLayout ? "col-start-2 row-start-1" : "col-start-2 row-start-1"}
 						dateClassName={cn(
 							isRowLayout
@@ -1819,25 +1885,35 @@ export default function Weather({
 								Humid %
 							</span>
 							<div className="flex flex-col items-center gap-0">
-									{(weather.humidity === null
-										? ["—", "—"]
-										: String(Math.round(weather.humidity)).split("")
-									).map((digit, i) => (
-										<DigitDisplay
-											key={i}
-											weight={400}
-											tracking={-0.04}
+									{weather.humidity === null ? (
+										<div
+											className="flex items-center justify-center"
 											style={{
+												width: sizes.humidityFontPx * 0.7,
+												height: sizes.humidityFontPx * 0.7,
 												color: cutoutFillColor,
-												lineHeight: 0.92,
-												fontFamily: "'DotGothic16', sans-serif",
-												fontSize: sizes.humidityFontPx,
-												textShadow: cutoutTextShadow,
 											}}
 										>
-											{digit}
-										</DigitDisplay>
-									))}
+											<Spinner className="size-full" label="Loading humidity" />
+										</div>
+									) : (
+										String(Math.round(weather.humidity)).split("").map((digit, i) => (
+											<DigitDisplay
+												key={i}
+												weight={400}
+												tracking={-0.04}
+												style={{
+													color: cutoutFillColor,
+													lineHeight: 0.92,
+													fontFamily: "'DotGothic16', sans-serif",
+													fontSize: sizes.humidityFontPx,
+													textShadow: cutoutTextShadow,
+												}}
+											>
+												{digit}
+											</DigitDisplay>
+										))
+									)}
 								</div>
 							<span
 								className="absolute"
@@ -1915,30 +1991,45 @@ export default function Weather({
 								Temp °C
 							</span>
 							<div className="flex flex-col items-center gap-0">
-									<DigitDisplay
-										weight={200}
-										tracking={-0.04}
-										style={{
-											color: cutoutFillColor,
-											lineHeight: 0.92,
-											fontFamily: "'Bitcount Grid Single', sans-serif",
-											fontSize: sizes.temperatureFontPx,
-											textShadow: cutoutTextShadow,
-										}}
-									>
-										{temperature}
-									</DigitDisplay>
-									<div
-										className="-mt-1 flex items-center gap-1"
-										style={{ filter: cutoutIconFilter }}
-									>
-										<WeatherIcon
-											weatherCode={weather.weatherCode}
-											isDay={weather.isDay}
-											size={sizes.weatherIconSize}
-											style={{ color: cutoutFillColor }}
-										/>
-									</div>
+									{weather.temperatureCelsius === null ? (
+										<div
+											className="flex items-center justify-center"
+											style={{
+												width: sizes.temperatureFontPx * 0.7,
+												height: sizes.temperatureFontPx * 0.7,
+												color: cutoutFillColor,
+											}}
+										>
+											<Spinner className="size-full" label="Loading temperature" />
+										</div>
+									) : (
+										<>
+											<DigitDisplay
+												weight={200}
+												tracking={-0.04}
+												style={{
+													color: cutoutFillColor,
+													lineHeight: 0.92,
+													fontFamily: "'Bitcount Grid Single', sans-serif",
+													fontSize: sizes.temperatureFontPx,
+													textShadow: cutoutTextShadow,
+												}}
+											>
+												{temperature}
+											</DigitDisplay>
+											<div
+												className="-mt-1 flex items-center gap-1"
+												style={{ filter: cutoutIconFilter }}
+											>
+												<WeatherIcon
+													weatherCode={weather.weatherCode}
+													isDay={weather.isDay}
+													size={sizes.weatherIconSize}
+													style={{ color: cutoutFillColor }}
+												/>
+											</div>
+										</>
+									)}
 								</div>
 							<span
 								className="absolute"

@@ -43,12 +43,40 @@ interface TemperatureShaderParams {
 	blend: number;
 }
 
+export interface ParticlesParams {
+	bgColor: string;
+	// Pinned on per user request — the time card's star layer only ever
+	// runs in warp mode. The literal `true` type prevents accidental flips.
+	warp: true;
+	// Pinned to Reverse (`1`). The shader maps `> 0.5 → -1.0` so value 1
+	// pulls stars toward the viewer; value 0 would push them away.
+	warpDirection: 1;
+	speed: number;
+	scale: number;
+	layers: number;
+	brightness: number;
+	glow: number;
+	tunnelRadius: number;
+	fadeRadius: number;
+	blur: number;
+	customColor: true;
+	colorR: number;
+	colorG: number;
+	colorB: number;
+}
+
 export interface ShaderConfig {
 	colors: string[];
 	colorsTuple: [string, string, string, string];
+	// Three-color subset used only by the Time shader (LiquidGradient). A
+	// fresh triplet is chosen from the brand 4 on every reroll; the
+	// humidity and temperature shaders keep the full 4-color palette.
+	timeColors: string[];
 	time: TimeShaderParams;
 	humidity: HumidityShaderParams;
 	temperature: TemperatureShaderParams;
+	// Overlaid on top of the Time shader with soft-light blending.
+	particles: ParticlesParams;
 }
 
 // Stable singleton references. Passed by reference to shaders so their
@@ -81,6 +109,7 @@ const BASE = {
 	},
 	humidity: {
 		speed: 0.3,
+		ephemeralAmp: 0.04,
 		lensScale: 3.7,
 		lensSpacingX: 1,
 		lensSpacingY: 0.01,
@@ -113,12 +142,28 @@ function clamp(n: number, lo: number, hi: number): number {
 	return Math.max(lo, Math.min(hi, n));
 }
 
+// Partial Fisher–Yates: pick `count` distinct indices in [0, length),
+// uniformly at random. Used to choose which brand hexes feed the Time
+// shader on a given roll.
+function pickDistinctIndices(length: number, count: number): number[] {
+	const pool = Array.from({ length }, (_, i) => i);
+	const out: number[] = [];
+	for (let i = 0; i < count; i++) {
+		const j = i + Math.floor(Math.random() * (length - i));
+		[pool[i], pool[j]] = [pool[j], pool[i]];
+		out.push(pool[i]);
+	}
+	return out;
+}
+
 // Produce a fresh random config. Non-deterministic by design — each call
 // yields a new look. The palette stays fixed to the Rovo brand 4.
 export function getRandomShaderConfig(): ShaderConfig {
+	const timeIdx = pickDistinctIndices(BRAND_COLORS.length, 3);
 	return {
 		colors: BRAND_COLORS,
 		colorsTuple: BRAND_COLORS_TUPLE,
+		timeColors: timeIdx.map((i) => BRAND_COLORS[i]),
 		time: {
 			seed: Math.floor(Math.random() * 10000),
 			speed: clamp(jitterPct(BASE.time.speed, 0.5), 0.12, 0.6),
@@ -126,19 +171,27 @@ export function getRandomShaderConfig(): ShaderConfig {
 			scale: clamp(jitterPct(BASE.time.scale, 0.35), 0.25, 0.65),
 			turbAmp: clamp(jitterPct(BASE.time.turbAmp, 0.4), 0.3, 1),
 			turbFreq: clamp(jitterPct(BASE.time.turbFreq, 0.5), 0.05, 0.2),
-			turbIter: BASE.time.turbIter,
+			// Integer in [5, 10]. Shader's internal `for (j = 2; j < 13; j++)`
+			// makes 2–12 the meaningful band; 5–10 keeps enough turbulence
+			// detail without spiking the per-frame cost at the high end or
+			// flattening the gradient at the low end.
+			turbIter: 5 + Math.floor(Math.random() * 6),
 			waveFreq: clamp(jitterPct(BASE.time.waveFreq, 0.35), 2, 6),
-			exposure: clamp(jitterPct(BASE.time.exposure, 0.15), 0.85, 1.35),
-			contrast: clamp(jitterPct(BASE.time.contrast, 0.15), 0.85, 1.35),
-			saturation: clamp(jitterPct(BASE.time.saturation, 0.12), 0.8, 1.2),
+			exposure: BASE.time.exposure,
+			contrast: BASE.time.contrast,
+			saturation: BASE.time.saturation,
 		},
 		humidity: {
 			seed: Math.floor(Math.random() * 10000),
 			speed: clamp(jitterPct(BASE.humidity.speed, 0.6), 0.1, 0.7),
-			ephemeralAmp: clamp(Math.random() * 0.08, 0, 0.08),
+			ephemeralAmp: clamp(jitterPct(BASE.humidity.ephemeralAmp, 0.5), 0, 0.08),
 			lensScale: clamp(jitterPct(BASE.humidity.lensScale, 0.25), 2.6, 4.8),
 			lensSpacingX: clamp(jitterPct(BASE.humidity.lensSpacingX, 0.3), 0.7, 1.4),
-			lensSpacingY: BASE.humidity.lensSpacingY,
+			// Uniform sample in [0.005, 0.04]. Controls the vertical period
+			// of the lens pattern; center was 0.01 (very dense bands), and
+			// this range spans ~half that to ~4× — enough to flex between
+			// tight and loose bands without flipping the look entirely.
+			lensSpacingY: 0.005 + Math.random() * 0.035,
 			lensRadius: clamp(jitterPct(BASE.humidity.lensRadius, 0.2), 0.45, 0.72),
 			dispersionStrength: clamp(jitterPct(BASE.humidity.dispersionStrength, 0.4), 0.2, 0.65),
 			edgeDisp: clamp(jitterPct(BASE.humidity.edgeDisp, 0.35), 1.2, 2.8),
@@ -152,6 +205,48 @@ export function getRandomShaderConfig(): ShaderConfig {
 			amplitude: clamp(jitterPct(BASE.temperature.amplitude, 0.3), 1, 2.4),
 			softness: clamp(jitterPct(BASE.temperature.softness, 0.25), 0.9, 2),
 			blend: clamp(jitterPct(BASE.temperature.blend, 0.3), 0.3, 0.75),
+		},
+		// Centers come from the UI preset the user shared. Only `warp` and
+		// `customColor` are pinned; everything else rolls.
+		particles: {
+			// 50% gray — the soft-light neutral. Every pixel on the
+			// particles canvas is at least `rgb = 0.5`; star contributions
+			// add on top. When the parent div applies
+			// `mix-blend-mode: soft-light` to the whole canvas, empty
+			// pixels (exactly gray) render the gradient identically and
+			// star pixels (above gray) brighten it. No dim-rgb edges, so
+			// no per-star halos.
+			bgColor: "#808080",
+			warp: true,
+			warpDirection: 1,
+			// Fixed at the ramp's rest value. The actual per-frame speed is
+			// driven by a ref from the Weather component, which ramps from
+			// a fast random value down to this over ~2s on every mount /
+			// city cycle. This field only sets the initial WebGL uniform
+			// for the first frame before the ref takes over.
+			speed: 0.05,
+			scale: clamp(jitterPct(0.5, 0.4), 0.3, 0.8),
+			layers: 10 + Math.floor(Math.random() * 16),
+			// Tuned down — the particles are a subtle highlight over the
+			// gradient, not the subject. Soft-light already dampens output
+			// (|top − 0.5| × gradient response), so a brightness near 0.5
+			// reads as a gentle shimmer rather than a dominant starfield.
+			brightness: clamp(jitterPct(0.5, 0.3), 0.3, 0.7),
+			glow: clamp(jitterPct(0.7, 0.25), 0.4, 0.95),
+			tunnelRadius: clamp(jitterPct(2, 0.35), 1.2, 3),
+			fadeRadius: clamp(jitterPct(1.2, 0.3), 0.8, 1.8),
+			blur: clamp(jitterPct(0.05, 0.8), 0.02, 0.15),
+			customColor: true,
+			// Per-channel phase offsets inside the shader's `cos(i + offset)`.
+			// Equal values → stars read white; diverging values decorrelate
+			// the channels and produce a per-city tint. At ±50% the max
+			// inter-channel phase difference is ~3 rad (~170°), enough for a
+			// clearly visible hue shift between cities while keeping stars
+			// mostly pale (saturation rides on how far apart R/G/B fall, not
+			// how far from 3 they are).
+			colorR: clamp(jitterPct(3, 0.5), 1.5, 4.5),
+			colorG: clamp(jitterPct(3, 0.5), 1.5, 4.5),
+			colorB: clamp(jitterPct(3, 0.5), 1.5, 4.5),
 		},
 	};
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type RefObject } from "react";
 
 const VERTEX_SHADER = `#version 300 es
 precision highp float;
@@ -121,11 +121,12 @@ void main() {
 
 function hexToRgba(hex: string): [number, number, number, number] {
 	const h = hex.replace("#", "");
+	const a = h.length >= 8 ? parseInt(h.substring(6, 8), 16) / 255 : 1.0;
 	return [
 		parseInt(h.substring(0, 2), 16) / 255,
 		parseInt(h.substring(2, 4), 16) / 255,
 		parseInt(h.substring(4, 6), 16) / 255,
-		1.0,
+		a,
 	];
 }
 
@@ -133,6 +134,15 @@ interface ParticlesProps {
 	className?: string;
 	bgColor?: string;
 	speed?: number;
+	/**
+	 * Optional live-speed ref. When provided, the render loop reads
+	 * `speedRef.current` each frame and pushes it into the `u_speed`
+	 * uniform, overriding `speed`. Changing `speedRef.current` does NOT
+	 * trigger a re-init of the WebGL program, so this is the supported
+	 * way to animate speed without thrashing the shader on every change.
+	 * Pass a stable ref object; mutate `.current` from the outside.
+	 */
+	speedRef?: RefObject<number>;
 	scale?: number;
 	layers?: number;
 	brightness?: number;
@@ -156,6 +166,7 @@ export default function Particles({
 	className,
 	bgColor = "#000000",
 	speed = 0.6,
+	speedRef,
 	scale = 1,
 	layers = 30,
 	brightness = 0.8,
@@ -209,8 +220,10 @@ export default function Particles({
 
 		const uRes = gl.getUniformLocation(prog, "u_resolution");
 		const uTime = gl.getUniformLocation(prog, "u_time");
+		const uSpeed = gl.getUniformLocation(prog, "u_speed");
 
-		gl.uniform1f(gl.getUniformLocation(prog, "u_speed"), speed);
+		// u_speed is pinned to 1.0 below (see render loop comment);
+		// `speed` gets folded into the integrated virtualTime instead.
 		gl.uniform1f(gl.getUniformLocation(prog, "u_scale"), scale);
 		gl.uniform1f(gl.getUniformLocation(prog, "u_layer"), layers);
 		gl.uniform1f(gl.getUniformLocation(prog, "u_brightness"), brightness);
@@ -232,8 +245,23 @@ export default function Particles({
 		const [bgR, bgG, bgB, bgA] = hexToRgba(bgColor);
 		gl.uniform4f(gl.getUniformLocation(prog, "u_bgColor"), bgR, bgG, bgB, bgA);
 
-		const start = performance.now();
+		// We push INTEGRATED time to `u_time` and hold `u_speed` at 1.0 so
+		// that the shader's `t = u_time * u_speed` resolves to
+		// `∫speed(τ)dτ`. Integrating guarantees `t` is monotonically
+		// increasing even while `speedRef.current` is ramping down —
+		// otherwise `timeSinceMount × currentSpeed` can briefly decrease
+		// when speed decays faster than time grows, causing the warp
+		// direction to visibly reverse mid-ramp.
+		gl.uniform1f(uSpeed, 1.0);
+		let lastFrame = performance.now();
+		let virtualTime = 0;
 		const render = () => {
+			const now = performance.now();
+			const dt = (now - lastFrame) / 1000;
+			lastFrame = now;
+			const currentSpeed = speedRef ? speedRef.current : speed;
+			virtualTime += currentSpeed * dt;
+
 			const dpr = window.devicePixelRatio || 1;
 			const w = canvas.clientWidth * dpr;
 			const h = canvas.clientHeight * dpr;
@@ -243,13 +271,17 @@ export default function Particles({
 				gl.viewport(0, 0, w, h);
 			}
 			gl.uniform2f(uRes, w, h);
-			gl.uniform1f(uTime, (performance.now() - start) / 1000);
+			gl.uniform1f(uTime, virtualTime);
 			gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 			animRef.current = requestAnimationFrame(render);
 		};
 		animRef.current = requestAnimationFrame(render);
 
 		return () => cancelAnimationFrame(animRef.current);
+		// speedRef intentionally excluded — it's read inside the render
+		// loop each frame, so including it would needlessly re-init WebGL
+		// whenever the caller swaps the ref object.
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [bgColor, speed, scale, layers, brightness, glow, blur, starSize, direction, blink, randomize, warp, warpDirection, tunnelRadius, fadeRadius, customColor, colorR, colorG, colorB]);
 
 	return (
