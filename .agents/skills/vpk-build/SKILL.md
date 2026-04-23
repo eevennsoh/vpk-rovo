@@ -211,24 +211,58 @@ cd ../vpk-<route-slug>/
 # pnpm run deploy:micros   # subsequent deploys (after .deploy.local exists)
 ```
 
-The scaffold symlinks VPK-Rovo's `vpk-deploy` skill into
-`.claude/skills/vpk-deploy` (relative symlink) and writes a
-`scripts/deploy.sh` wrapper that forwards to it. This means:
+The scaffold mirrors VPK-Rovo's canonical-source layout so the wired
+skills are discoverable by every orchestrator (Claude Code, Cursor,
+Codex):
 
-- `/vpk-deploy` resolves as a slash command from inside the extracted
-  project without requiring any manual setup
-- `pnpm run deploy:micros` works because the wrapper forwards `$@` to the
-  canonical skill script
-- If VPK-Rovo ships a fix to `deploy.sh`, extracted projects pick it up
-  on the next run — no re-scaffold needed
+```
+<target>/
+├── .agents/
+│   └── skills/
+│       ├── vpk-setup  → <VPK-Rovo>/.agents/skills/vpk-setup
+│       └── vpk-deploy → <VPK-Rovo>/.agents/skills/vpk-deploy
+├── .claude/skills  → ../.agents/skills
+├── .cursor/skills  → ../.agents/skills
+├── .codex/skills   → ../.agents/skills
+└── scripts/
+    └── deploy.sh   # forwards to .agents/skills/vpk-deploy/scripts/deploy.sh
+```
 
-The relative symlink breaks if VPK-Rovo moves and vpk-awake doesn't move
-with it. If that happens, re-symlink manually:
+Wired skills (allow-list in `scripts/scaffold-target.mjs` →
+`WIRED_SKILLS`):
+
+- `vpk-setup` — generates `.env.local`, `.asap-config`, and the session
+  token needed by deploy. Prerequisite for `/vpk-deploy`.
+- `vpk-deploy` — Micros deployment flow. Reads `.deploy.local` on fast
+  redeploys.
+
+Only a small allow-list is wired intentionally: other VPK skills
+(`vpk-build`, `vpk-design`, `vpk-tidy`, `vpk-component`, etc.) assume
+VPK's own component library, Figma pipeline, or provider contexts —
+they don't apply inside a standalone extraction. Add a future skill by
+appending to the `WIRED_SKILLS` array.
+
+This wiring means:
+
+- `/vpk-setup` and `/vpk-deploy` both resolve as slash commands in any
+  orchestrator that looks in `.agents/skills/` or its provider-specific
+  mirror, without manual setup
+- `pnpm run deploy:micros` works because `scripts/deploy.sh` forwards
+  `$@` to the canonical skill script
+- If VPK-Rovo ships a fix to any wired skill, every extracted project
+  picks it up on the next run — no re-scaffold needed
+
+The canonical symlinks are relative
+(`../../../VPK-rovo/.agents/skills/<skill>`), so they break if VPK-Rovo
+moves and the extracted project doesn't move with it. If that happens,
+re-symlink manually:
 
 ```bash
 cd ../vpk-<route-slug>/
-rm .claude/skills/vpk-deploy
-ln -s ../../../VPK-rovo/.agents/skills/vpk-deploy .claude/skills/vpk-deploy
+for s in vpk-setup vpk-deploy; do
+  rm -f ".agents/skills/$s"
+  ln -s "../../../VPK-rovo/.agents/skills/$s" ".agents/skills/$s"
+done
 ```
 
 ## Scripts

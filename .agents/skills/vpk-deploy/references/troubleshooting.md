@@ -27,8 +27,12 @@
 | "scripts/build-export.sh not found"       | Use updated Dockerfile with inline build commands                    |
 | Turbopack processes api.bak folder        | Use `rm -rf app/api` not `mv app/api app/api.bak`                    |
 | **Push Issues**                           |                                                                      |
-| "User is unauthorized to upload"          | Run `docker login docker.atl-paas.net` before push                   |
+| "User is unauthorized to upload"          | `atlas packages secrets -t docker -i <token>` to refresh keychain creds (see "Docker push 401" below) |
 | Permission grant doesn't work             | Wait 1-2 minutes after `atlas packages permission grant`, then retry |
+| **Region / Subnet Issues**                |                                                                      |
+| ALB CREATE_FAILED "Not enough IP space"   | Check subnet free IPs; switch env to `pdev-apse2` (see "Subnet IP exhaustion" below) |
+| Stale stash after env switch              | Stashes are per-env. Re-stash all 7 vars under the new `-e <env>`    |
+| Status stuck CREATE_IN_PROGRESS           | Micros API lags 1–3 min behind CFN. Check AWS truth: `aws cloudformation describe-stacks --region <r> --query 'Stacks[].StackStatus'` |
 | **Import/Build Issues**                   |                                                                      |
 | "Can't resolve @/components/..."          | Check file casing matches import (macOS is case-insensitive)         |
 | **Redeploy Issues**                       |                                                                      |
@@ -54,3 +58,116 @@ npm install
 This creates a proper npm lockfile with resolved registry URLs instead of pnpm symlinks.
 
 **Prevention:** Always use `npm install` (not pnpm) when working in the `backend/` directory. The backend is a separate npm project that runs independently in Docker.
+
+## Fix: Subnet IP exhaustion (`ALB CREATE_FAILED`)
+
+**Symptom:** `atlas micros service deploy` rolls back; CFN events show:
+
+```
+ALB CREATE_FAILED: Not enough IP space available in subnet-xxxxxxxxx.
+ELB requires at least 8 free IP addresses in each subnet.
+```
+
+**Root cause:** ALBs require ≥8 free IPs **per AZ subnet** they're placed in. Public subnets in `pdev-west2` are routinely near full because pdev is a shared sandbox with many short-lived stacks.
+
+**Diagnosis — check actual capacity (don't retry blindly):**
+
+```bash
+# 1. Assume read-only AWS creds (browser SSO, ~1 min)
+atlas micros role assume user -s <your-service> -e pdev-west2 \
+  -o env --disable-export -f /tmp/creds.env
+set -a; source /tmp/creds.env; set +a
+
+# 2. Check the failing subnet + its sister subnets in the same VPC
+VPC=$(aws ec2 describe-subnets --region us-west-2 \
+  --subnet-ids <subnet-from-error> --query 'Subnets[0].VpcId' --output text)
+
+aws ec2 describe-subnets --region us-west-2 \
+  --filters Name=vpc-id,Values=$VPC \
+  --query 'Subnets[].{AZ:AvailabilityZone,Free:AvailableIpAddressCount,CIDR:CidrBlock,Subnet:SubnetId} | sort_by(@, &AZ)' \
+  --output table
+```
+
+If **every public subnet is below 8 free**, retrying west2 is hopeless. If one or two AZs show ≥8, a retry has a chance — but other deploys race for the same pool.
+
+**Fix — switch to pdev-apse2 (the only other pdev env):**
+
+`pdev-apse2` (Sydney, ap-southeast-2) sits in the **same AWS account** as `pdev-west2`, so the same SSO creds work for cross-region queries. It typically has 50–4000+ free IPs per subnet.
+
+```bash
+# 1. Update local config
+sed -i '' 's/^ENV=.*/ENV="pdev-apse2"/' .deploy.local
+
+# 2. Re-stash all 7 env vars in pdev-apse2 (stashes are per-env, NOT auto-copied)
+#    Use a JSON file to handle the multiline ASAP_PRIVATE_KEY cleanly:
+python3 -c "
+import re, json
+keys=['AI_GATEWAY_URL','AI_GATEWAY_USE_CASE_ID','AI_GATEWAY_CLOUD_ID',
+      'AI_GATEWAY_USER_ID','ASAP_KID','ASAP_ISSUER','ASAP_PRIVATE_KEY']
+env={}
+for line in open('.env.local'):
+    m=re.match(r'^([A-Z_][A-Z0-9_]*)=(.*)$', line.rstrip())
+    if m and m.group(1) in keys: env[m.group(1)]=m.group(2)
+print(json.dumps(env))
+" > /tmp/stash.json
+atlas micros stash set -s <your-service> -e pdev-apse2 -f /tmp/stash.json -y
+rm /tmp/stash.json
+atlas micros stash list -s <your-service> -e pdev-apse2  # verify 7 keys
+
+# 3. Bump version + redeploy with explicit env arg
+./scripts/deploy.sh <your-service> 1.0.2 pdev-apse2
+```
+
+**Prevention:** Once your service exists in both envs, you can deploy to either by passing the env as the 3rd arg. Keep `pdev-apse2` "warm" by occasionally redeploying there so the env-vars stash and Micros service record stay current.
+
+## Fix: Docker push 401 ("unauthorized to upload")
+
+**Symptom:** During the `docker push` step, you see:
+
+```
+unauthorized: User is unauthorized to upload to docker-private-local/<svc>/_uploads/...
+```
+
+even though the previous push succeeded with the same token.
+
+**Root cause:** macOS Keychain–stored docker creds become stale or get cleared. `docker login docker.atl-paas.net` may report "Login Succeeded" but write an empty entry — Artifactory then 401s the push.
+
+**Fix — re-issue the docker keychain entry via atlas packages:**
+
+```bash
+# Use the DOCKER_PASSWORD identity token from .deploy.local
+source .deploy.local
+atlas packages secrets -t docker -i "$DOCKER_PASSWORD"
+
+# Verify with a manual push of an already-built tag
+docker push docker.atl-paas.net/<your-service>:app-<version>
+```
+
+`atlas packages secrets` writes to the keychain in the format Artifactory expects, including any required scope tokens. If this still fails, the namespace may be unowned and require a `permission claim` — but that's rare for personal prototypes; check with `atlas packages permission list --namespace=<svc> --artifact-type=docker`.
+
+**Note:** `atlas packages permission grant` only refreshes server-side ACLs; it does NOT update your local keychain. The two commands solve different problems.
+
+## Fix: Deploy verification lag
+
+**Symptom:** Deploy script exits "successfully" or with a benign event-stream timeout, but `atlas micros service show` keeps reporting `[CREATE_IN_PROGRESS]` for several minutes. URL stays "not yet set".
+
+**Root cause:** Micros consumes CloudFormation events via SQS and reconciles the deployment registry asynchronously. Propagation lag is typically 1–3 minutes.
+
+**Fix — get ground truth from AWS directly:**
+
+```bash
+atlas micros role assume user -s <svc> -e <env> -o env --disable-export -f /tmp/creds.env
+set -a; source /tmp/creds.env; set +a
+
+# Find your stack (Micros prefixes it with the service name and deployment ID)
+aws cloudformation list-stacks --region <region> \
+  --query 'StackSummaries[?contains(StackName, `<svc>`)][].{Name:StackName,Status:StackStatus}' \
+  --output table
+
+# Then check the parent stack's status
+aws cloudformation describe-stacks --region <region> \
+  --stack-name <parent-stack-name> \
+  --query 'Stacks[].{Status:StackStatus,Updated:LastUpdatedTime}' --output table
+```
+
+If AWS reports `CREATE_COMPLETE`, the deployment is **done** — Micros' UI/CLI will catch up shortly. The ALB DNS name is in the stack's outputs (`URL`, `StackUrl`) and the friendly hostname `<svc>.<region>.platdev.atl-paas.net` will start resolving as soon as Route53 propagates (~30–60s after `ServiceDNS CREATE_COMPLETE`).

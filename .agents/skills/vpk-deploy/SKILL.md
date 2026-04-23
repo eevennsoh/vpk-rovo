@@ -1,20 +1,15 @@
 ---
 name: vpk-deploy
-description: This skill should be used when the user asks to "deploy", "deploy to Micros",
-  "push to production", "ship to production", "deploy my prototype", "push my changes",
-  "check deployment status", "redeploy changes", "set up deployment", "go live", "publish",
-  "make it live", "host this", "put this online", "release", "launch",
-  "how do I deploy", "how do I ship this", or wants to deploy their VPK prototype to
-  Atlassian Micros infrastructure. Also triggered by errors like "deployment failed",
-  "deploy error", "build failed on Micros". Auto-detects initial vs redeploy workflows.
+description: This skill should be used when the user asks to "deploy", "deploy to
+  Micros", "push to production", "ship to production", "deploy my prototype", "push
+  my changes", "check deployment status", "redeploy changes", "set up deployment",
+  "go live", "publish", "make it live", "host this", "put this online", "release",
+  "launch", "how do I deploy", "how do I ship this", or wants to deploy their VPK
+  prototype to Atlassian Micros infrastructure. Also triggered by errors like "deployment
+  failed", "deploy error", "build failed on Micros". Auto-detects initial vs redeploy
+  workflows.
 disable-model-invocation: true
-argument-hint: "[--status] [--initial] [--redeploy]"
-prerequisites:
-  skills: [vpk-setup]
-  files: [.env.local, .asap-config]
-produces: [.deploy.local]
 ---
-
 # VPK Deploy - Deploy to Micros
 
 **Goal:** Deploy the prototype to Atlassian Micros infrastructure.
@@ -332,20 +327,51 @@ Use the deploy script from this skill's scripts directory:
 # Example
 ./.agents/skills/vpk-deploy/scripts/deploy.sh my-prototype 1.0.1
 
-# Default environment: pdev-west2
+# Default environment: pdev-west2 (override via 3rd arg or `ENV=` in .deploy.local)
 ```
 
 The script will:
 
-1. Validate service name length (≤26 chars)
+1. Validate service name length (≤26 chars) and that `$ENV` is a known pdev env
 2. Check if service-descriptor.yml has been updated from placeholder
-3. Detect if service exists (update) or needs creation (new)
-4. Verify all required environment variables are set
+3. Detect if service exists *in the chosen env* (update) or needs creation (new)
+4. Verify all 7 required env vars are stashed *in that env* (uses `stash list`, since `stash get` doesn't exist)
 5. Build Docker image with `--platform linux/amd64`
-6. Push to `docker.atl-paas.net`
+6. Push to `docker.atl-paas.net` (re-auth via `atlas packages secrets -t docker -i <token>` if needed)
 7. Deploy using `atlas micros service deploy`
 
 For manual deployment commands, see [references/guide-manual-deployment.md](references/guide-manual-deployment.md).
+
+### Choosing an Environment (pdev-west2 vs pdev-apse2)
+
+There are exactly **two** pdev environments:
+
+| Env          | AWS Region        | When to use                                                          |
+| ------------ | ----------------- | -------------------------------------------------------------------- |
+| `pdev-west2` | `us-west-2`       | Default. Lowest latency for SF/Sydney mixed teams; most popular.     |
+| `pdev-apse2` | `ap-southeast-2`  | Fallback when west2 has subnet/IP exhaustion. Very low pdev usage.   |
+
+**`pdev-west2` is currently subject to ALB subnet IP exhaustion.** ALBs need ≥8 free IPs per AZ subnet, and the public subnets in west2 routinely sit at 0–10 free. If you see this CFN error:
+
+```
+ALB CREATE_FAILED: Not enough IP space available in subnet-xxxxxxxxx.
+ELB requires at least 8 free IP addresses in each subnet.
+```
+
+**Don't retry blindly.** First check actual capacity (see `references/troubleshooting.md` → "Subnet IP exhaustion"). If west2 is exhausted, switch to `pdev-apse2`:
+
+```bash
+# 1. Update .deploy.local (the script reads ENV from here when no 3rd arg given)
+sed -i '' 's/^ENV=.*/ENV="pdev-apse2"/' .deploy.local
+
+# 2. Re-stash all 7 env vars in the new env (stashes are per-env, not copied)
+#    See Step 3.6 above; substitute -e pdev-apse2 in every command.
+
+# 3. Re-run deploy with explicit env arg (or just `./scripts/deploy.sh <svc> <ver>`)
+./scripts/deploy.sh my-prototype 1.0.2 pdev-apse2
+```
+
+> **Heads-up:** Both `pdev-west2` and `pdev-apse2` resolve to the *same* AWS account, so once you've assumed creds via `atlas micros role assume user -e pdev-west2`, the same `aws` CLI session works for `--region ap-southeast-2` queries. Useful for cross-region capacity checks.
 
 ## Deployment Checklist
 
@@ -392,9 +418,18 @@ For common deployment issues (health check failures, Docker auth, ASAP key forma
 
 ## URLs After Deployment
 
-- **Frontend:** `https://<service-name>.us-west-2.platdev.atl-paas.net`
-- **Health:** `https://<service-name>.us-west-2.platdev.atl-paas.net/api/health`
+The DNS pattern is `https://<service-name>.<aws-region>.platdev.atl-paas.net` and the URL is **internal** — you need Atlassian VPN to reach it.
+
+| Env          | Frontend URL                                                |
+| ------------ | ----------------------------------------------------------- |
+| `pdev-west2` | `https://<service-name>.us-west-2.platdev.atl-paas.net`     |
+| `pdev-apse2` | `https://<service-name>.ap-southeast-2.platdev.atl-paas.net`|
+
+- **Health:** append `/api/health` (or `/healthcheck` per your `service-descriptor.yml`)
 - **Microscope:** `https://microscope.prod.atl-paas.net/services/<service-name>`
+- **Splunk logs:** `https://go.atlassian.com/logs/<env>/<service-name>`
+
+> **Verification lag:** `atlas micros service show` may report `CREATE_IN_PROGRESS` for 1–3 minutes after AWS CloudFormation has reached `CREATE_COMPLETE`. For ground truth use `aws cloudformation describe-stacks --region <region> --stack-name <stack> --query 'Stacks[].StackStatus'` (after `atlas micros role assume user -s <svc> -e <env> -o env -f /tmp/creds.env && source /tmp/creds.env`).
 
 ## References
 
