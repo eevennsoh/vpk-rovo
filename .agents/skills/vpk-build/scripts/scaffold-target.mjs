@@ -123,7 +123,10 @@ function composeLayout({ targetName, routeSlug, providers }) {
 
 	// Inline script that runs before React hydrates — disables FeatureGates
 	// on the client so @atlaskit/tokens code in client components doesn't
-	// throw "Client must be initialized" errors during rendering.
+	// throw "Client must be initialized" errors during rendering. We use
+	// next/script with strategy="beforeInteractive" because bare <script>
+	// tags inside Server Components trigger React warnings — next/script
+	// is the supported path for inline JS that must run before hydration.
 	const clientShim = `window.__PLATFORM_FEATURE_FLAGS__ = { booleanResolver: () => false };`;
 
 	return `// IMPORTANT: this import MUST come first. It's a side-effect import that
@@ -135,6 +138,7 @@ function composeLayout({ targetName, routeSlug, providers }) {
 import "./feature-flags-shim";
 
 import type { Metadata } from "next";
+import Script from "next/script";
 import { getThemeStyles } from "@atlaskit/tokens";
 
 // Tailwind theme maps semantic classes (bg-surface, text-text-subtle, etc.)
@@ -166,8 +170,6 @@ export default async function RootLayout({
 	return (
 		<html lang="en" className="light" data-color-mode="light" suppressHydrationWarning>
 			<head>
-				{/* Client-side FeatureGates shim — must run before any React hydration. */}
-				<script dangerouslySetInnerHTML={{ __html: ${JSON.stringify(clientShim)} }} />
 				{themeStyles.map((style) => (
 					<style
 						key={style.id}
@@ -177,6 +179,10 @@ export default async function RootLayout({
 				))}
 			</head>
 			<body className="min-h-svh bg-bg-neutral text-text antialiased">
+				{/* Client-side FeatureGates shim — runs before any React hydration. */}
+				<Script id="feature-flags-shim" strategy="beforeInteractive">
+					{${JSON.stringify(clientShim)}}
+				</Script>
 				${body}
 			</body>
 		</html>
