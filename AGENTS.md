@@ -131,7 +131,7 @@ In VPK feature code, use ADS semantic naming (`bg-surface-raised`, `text-text-su
 ### Development
 
 - Install dependencies: `pnpm install`
-- First-time MCP setup: `acli rovodev` (interactive, approve MCP servers, then Ctrl+C)
+- First-time RovoDev bootstrap: run `pnpm run rovodev` (or `acli rovodev`) once, copy the printed `ROVODEV_SESSION_TOKEN` into `.env.local`, then restart the stack
 - Start everything: `pnpm run rovodev` (starts 1 rovodev serve instance + backend + frontend; use `pnpm run rovodev -- 6` for full pool)
 - Start frontend + backend only: `pnpm run dev` (requires rovodev serve already running)
 - Start RovoDev Serve only: `pnpm run dev:rovodev`
