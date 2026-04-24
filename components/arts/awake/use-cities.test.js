@@ -18,13 +18,22 @@ let useCitiesModulePromise;
 
 function createStorage(initialValues = {}) {
 	const values = new Map(Object.entries(initialValues));
+	const writes = [];
 
 	return {
 		getItem(key) {
 			return values.get(key) ?? null;
 		},
 		setItem(key, value) {
-			values.set(key, String(value));
+			const stringValue = String(value);
+			values.set(key, stringValue);
+			writes.push({ key, value: stringValue });
+		},
+		getWrites() {
+			return [...writes];
+		},
+		clearWrites() {
+			writes.length = 0;
 		},
 	};
 }
@@ -311,3 +320,46 @@ test("useCities shifts focus left when removing a city before the current select
 	);
 });
 
+test("useCities coalesces rapid selection previews into one persisted write", async (t) => {
+	const harness = await renderUseCities({
+		[WEATHER_CITY_STORAGE_KEY]: JSON.stringify({
+			cityIds: ["sydney", "tokyo", "new-york"],
+			selectedIndex: 0,
+		}),
+	});
+	t.after(async () => {
+		await harness.cleanup();
+	});
+
+	harness.storage.clearWrites();
+
+	await harness.run((cities) => {
+		cities.setSelectedIndex(1);
+	});
+	await harness.run((cities) => {
+		cities.setSelectedIndex(2);
+	});
+	await harness.run((cities) => {
+		cities.setSelectedIndex(1);
+	});
+
+	assert.equal(
+		harness.storage.getWrites().length,
+		0,
+		"selection previews should not synchronously hit localStorage",
+	);
+
+	await act(async () => {
+		await new Promise((resolve) => setTimeout(resolve, 200));
+	});
+
+	assert.deepEqual(
+		harness.storage.getWrites().map(({ value }) => JSON.parse(value)),
+		[
+			{
+				cityIds: ["sydney", "tokyo", "new-york"],
+				selectedIndex: 1,
+			},
+		],
+	);
+});
