@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { CityRailEditor } from "@/components/arts/awake/city-popover";
 import { useCities } from "@/components/arts/awake/use-cities";
-import { ThemeToggle } from "@/components/utils/theme-wrapper";
+import { ThemeToggle, ThemeWrapper } from "@/components/utils/theme-wrapper";
 
 const CITY_RAIL_TRACK_INSET = 24;
 const SLIDER_RAIL_WIDTH = 170;
@@ -105,30 +105,32 @@ export default function GlassSliderDemo() {
 	}, [cities.length, isCityManagerOpen, selectedIndex, setSelectedIndex]);
 
 	return (
-		<div className="relative flex min-h-screen w-full items-center justify-center overflow-hidden px-6 py-8">
-			<div
-				className="relative z-10"
-				style={{
-					width: SLIDER_RAIL_WIDTH + CITY_RAIL_TRACK_INSET,
-					height: SLIDER_HEIGHT,
-				}}
-			>
-				<CityRailEditor
-					cities={cities}
-					selectedIndex={selectedIndex}
-					setSelectedIndex={setSelectedIndex}
-					addCity={addCity}
-					removeCity={removeCity}
-					openRequestKey={openRequestKey}
-					onOpenChange={handleOpenChange}
-					keyboardNavigationPulseKey={keyboardNavigationPulseKey}
-					width={SLIDER_RAIL_WIDTH + CITY_RAIL_TRACK_INSET}
-					height={SLIDER_HEIGHT}
-				/>
+		<ThemeWrapper>
+			<div className="relative flex min-h-screen w-full items-center justify-center overflow-hidden px-6 py-8">
+				<div
+					className="relative z-10"
+					style={{
+						width: SLIDER_RAIL_WIDTH + CITY_RAIL_TRACK_INSET,
+						height: SLIDER_HEIGHT,
+					}}
+				>
+					<CityRailEditor
+						cities={cities}
+						selectedIndex={selectedIndex}
+						setSelectedIndex={setSelectedIndex}
+						addCity={addCity}
+						removeCity={removeCity}
+						openRequestKey={openRequestKey}
+						onOpenChange={handleOpenChange}
+						keyboardNavigationPulseKey={keyboardNavigationPulseKey}
+						width={SLIDER_RAIL_WIDTH + CITY_RAIL_TRACK_INSET}
+						height={SLIDER_HEIGHT}
+					/>
+				</div>
+				<div className="absolute top-4 right-4 z-20">
+					<ThemeToggle />
+				</div>
 			</div>
-			<div className="absolute top-4 right-4 z-20">
-				<ThemeToggle />
-			</div>
-		</div>
+		</ThemeWrapper>
 	);
 }
