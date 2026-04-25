@@ -19,7 +19,7 @@ function CommentAction({
 			type="button"
 			data-slot="comment-action"
 			className={cn(
-				"text-text-subtle cursor-pointer bg-transparent text-sm font-medium leading-5",
+				"text-text-subtle bg-transparent text-sm font-medium leading-5",
 				"hover:underline",
 				className,
 			)}

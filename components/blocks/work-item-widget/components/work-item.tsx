@@ -47,7 +47,7 @@ export function WorkItemRow({ item, isLast, onClick }: Readonly<WorkItemRowProps
 			type="button"
 			onClick={() => onClick(item)}
 			className={cn(
-				"flex w-full cursor-pointer flex-col gap-[var(--ds-space-075)] text-left",
+				"flex w-full flex-col gap-[var(--ds-space-075)] text-left",
 				"hover:bg-bg-neutral-subtle-hovered focus-visible:outline-2 focus-visible:outline-border-focused focus-visible:-outline-offset-2",
 				!isLast && "border-b border-border",
 			)}

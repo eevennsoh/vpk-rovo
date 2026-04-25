@@ -35,7 +35,6 @@ export default function FloatingRovoButton({
             border-radius: ${token("radius.xlarge")};
             background-color: var(--button-bg, ${token("color.background.neutral.bold")});
             border: none;
-            cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;

@@ -14,7 +14,6 @@ function ShareMenuItem({ label, onClick }: Readonly<ShareMenuItemProps>) {
 			type="button"
 			onClick={onClick}
 			className="w-full rounded-md border-none bg-transparent p-2 text-left text-sm hover:bg-bg-neutral-hovered"
-			style={{ cursor: "pointer" }}
 		>
 			{label}
 		</button>

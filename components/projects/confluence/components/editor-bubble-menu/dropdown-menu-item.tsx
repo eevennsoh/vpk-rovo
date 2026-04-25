@@ -28,7 +28,6 @@ export function DropdownMenuItem({
 				padding: token("space.100"),
 				border: "none",
 				background: isSelected ? token("color.background.selected") : "transparent",
-				cursor: "pointer",
 				textAlign: "left",
 				borderRadius: "0px",
 				color: isSelected ? token("color.text.selected") : "inherit",

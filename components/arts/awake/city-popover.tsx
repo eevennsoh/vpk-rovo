@@ -808,7 +808,7 @@ export function CityRailEditor({
 								whileTap={{ scale: 0.82 }}
 								transition={{ type: "spring", duration: 0.4, bounce: 0.55 }}
 								style={{ willChange: "transform" }}
-								className="relative isolate flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border border-transparent text-text transition-colors focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-3 focus-visible:outline-none"
+								className="relative isolate flex h-7 w-7 items-center justify-center rounded-full border border-transparent text-text transition-colors focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-3 focus-visible:outline-none"
 								aria-label={isOpen ? "Close city manager" : "Add city"}
 								aria-expanded={isOpen}
 							>
@@ -875,7 +875,7 @@ export function CityRailEditor({
 									transition={{ type: "spring", duration: 0.4, bounce: 0.55 }}
 									style={{ willChange: "transform" }}
 									className={cn(
-										"relative isolate flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border border-transparent text-text transition-colors",
+										"relative isolate flex h-7 w-7 items-center justify-center rounded-full border border-transparent text-text transition-colors",
 										// The liquid-glass backdrop + the icon
 										// emboss are the only chip styling — no
 										// hover/press background fill, since the

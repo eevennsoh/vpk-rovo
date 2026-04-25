@@ -37,7 +37,6 @@ export default function FilterListItem({ item, isSelected, onClick }: Readonly<F
 				alignItems: "center",
 				justifyContent: "space-between",
 				padding: `${token("space.100")} ${token("space.150")}`,
-				cursor: "pointer",
 				backgroundColor: isSelected ? token("color.background.selected") : "transparent",
 				borderLeft: isSelected ? `3px solid ${token("color.border.brand")}` : "3px solid transparent",
 				transition: "background-color 0.15s",

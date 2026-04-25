@@ -51,7 +51,6 @@ export default function SearchResultCard({
 							font: token("font.body.large"),
 							color: token("color.text.brand"),
 							textDecoration: isTitleHovered ? "underline" : "none",
-							cursor: "pointer",
 							background: "none",
 							border: "none",
 							padding: 0,

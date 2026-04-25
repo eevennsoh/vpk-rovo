@@ -118,7 +118,7 @@ const lozengeVariants = cva(
 )
 
 const lozengeTriggerVariants = cva(
-	"inline-flex w-fit max-w-[200px] shrink-0 items-center overflow-hidden whitespace-nowrap border font-normal select-none cursor-pointer outline-none transition-[background-color,border-color,color,opacity] duration-200 ease-out focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-3 disabled:pointer-events-none disabled:opacity-(--opacity-disabled)",
+	"inline-flex w-fit max-w-[200px] shrink-0 items-center overflow-hidden whitespace-nowrap border font-normal select-none outline-none transition-[background-color,border-color,color,opacity] duration-200 ease-out focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-3 disabled:pointer-events-none disabled:opacity-(--opacity-disabled)",
 	{
 		variants: {
 			variant: lozengeTriggerToneClasses,

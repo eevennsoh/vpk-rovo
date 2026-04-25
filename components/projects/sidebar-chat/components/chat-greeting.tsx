@@ -37,7 +37,7 @@ function SkillListItem({
 		<button
 			type="button"
 			onClick={onClick}
-			className="flex w-full cursor-pointer items-center gap-3 rounded-lg p-[var(--ds-space-075)] transition-colors hover:bg-bg-neutral-subtle-hovered"
+			className="flex w-full items-center gap-3 rounded-lg p-[var(--ds-space-075)] transition-colors hover:bg-bg-neutral-subtle-hovered"
 		>
 			<IconTile
 				size="medium"

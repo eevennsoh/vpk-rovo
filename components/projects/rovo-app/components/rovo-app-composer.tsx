@@ -533,7 +533,7 @@ function RovoAppComposerInner({
 													onClick={() => onRemoveQueuedPrompt?.(queuedPrompt.id)}
 													size="icon-sm"
 													variant="ghost"
-													className="size-7 cursor-pointer rounded-full text-icon-subtle opacity-0 transition-opacity group-hover:opacity-100"
+													className="size-7 rounded-full text-icon-subtle opacity-0 transition-opacity group-hover:opacity-100"
 												>
 													<DeleteIcon label="" size="small" />
 												</Button>
@@ -698,7 +698,7 @@ function RovoAppComposerInner({
 										>
 											<button
 												aria-label="Stop live voice"
-												className="flex h-8 w-20 cursor-pointer items-center gap-1.5 overflow-hidden rounded-md border border-border bg-background pl-2 pr-2 text-icon-subtle transition-colors hover:bg-bg-neutral-hovered active:bg-bg-neutral-pressed"
+												className="flex h-8 w-20 items-center gap-1.5 overflow-hidden rounded-md border border-border bg-background pl-2 pr-2 text-icon-subtle transition-colors hover:bg-bg-neutral-hovered active:bg-bg-neutral-pressed"
 												onClick={handleToggleRealtimeVoice}
 												type="button"
 											>
@@ -826,7 +826,7 @@ function RovoAppComposerInner({
 											aria-selected={index === highlightedIndex}
 											data-slash-item
 											className={cn(
-												"flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm text-text transition-colors",
+												"flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-text transition-colors",
 												index === highlightedIndex
 													? "bg-bg-neutral-subtle-hovered"
 													: "hover:bg-bg-neutral-subtle-hovered active:bg-bg-neutral-subtle-pressed",

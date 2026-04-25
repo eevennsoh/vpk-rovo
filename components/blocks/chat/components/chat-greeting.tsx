@@ -25,7 +25,6 @@ const listItemStyles = {
 	padding: token("space.075"),
 	borderRadius: token("radius.large"),
 	width: "100%",
-	cursor: "pointer",
 	transition: "background-color 0.1s ease",
 } as const;
 

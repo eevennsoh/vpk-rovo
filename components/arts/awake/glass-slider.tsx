@@ -1331,7 +1331,7 @@ export function GlassSlider({
 								type="button"
 								tabIndex={-1}
 								aria-label={`Select ${tickLabel}`}
-								className="pointer-events-auto absolute left-0 right-0 cursor-pointer bg-transparent outline-none"
+								className="pointer-events-auto absolute left-0 right-0 bg-transparent outline-none"
 								style={{
 									top: `${topPct}%`,
 									height: `${rowHeightPct}%`,

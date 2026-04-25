@@ -451,7 +451,7 @@ function WakeLockControl({
 								// shape stays visible against any backdrop —
 								// this replaces the border that the
 								// LiquidGlass shell used to draw.
-								"relative flex size-9 cursor-pointer items-center justify-center overflow-hidden",
+								"relative flex size-9 items-center justify-center overflow-hidden",
 								// Border traces the squircle outline only in the
 								// off state — when toggled on, the Rings shader
 								// fills the squircle and the border would

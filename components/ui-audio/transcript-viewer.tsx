@@ -341,7 +341,7 @@ function TranscriptViewerPlayPauseButton({
       size="icon"
       aria-label={isPlaying ? "Pause audio" : "Play audio"}
       data-playing={isPlaying}
-      className={cn("cursor-pointer", className)}
+      className={className}
       onClick={handleClick}
       {...props}
     >

@@ -106,7 +106,7 @@ export function MicSelector({
             size="sm"
             aria-label="Select microphone"
             className={cn(
-              "flex w-48 cursor-pointer items-center gap-1.5 text-text-subtle hover:bg-bg-neutral-subtle-hovered hover:text-text active:bg-bg-neutral-subtle-pressed",
+              "flex w-48 items-center gap-1.5 text-text-subtle hover:bg-bg-neutral-subtle-hovered hover:text-text active:bg-bg-neutral-subtle-pressed",
               className
             )}
             disabled={loading || disabled}

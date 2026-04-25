@@ -118,7 +118,6 @@ const expandButtonStyle: CSSProperties = {
 	marginLeft: "auto",
 	background: "none",
 	border: "none",
-	cursor: "pointer",
 	fontSize: 12,
 	color: "var(--color-text-subtlest, var(--ds-text-subtlest, #6b778c))",
 	padding: "2px 6px",
@@ -182,7 +181,6 @@ const sendButtonStyle: CSSProperties = {
 	color: "var(--ds-text-inverse, #ffffff)",
 	fontSize: 13,
 	fontWeight: 600,
-	cursor: "pointer",
 };
 
 const cancelButtonStyle: CSSProperties = {
@@ -193,7 +191,6 @@ const cancelButtonStyle: CSSProperties = {
 	color: "var(--color-text, var(--ds-text, #b6c2cf))",
 	fontSize: 13,
 	fontWeight: 600,
-	cursor: "pointer",
 };
 
 const landingStyle: CSSProperties = {
@@ -943,7 +940,6 @@ export default function ToolsInvocationDemo(): ReactElement {
 										background: "var(--color-surface-raised, var(--ds-surface-raised, #22272b))",
 										color: "var(--color-text, var(--ds-text, #b6c2cf))",
 										fontSize: 13,
-										cursor: "pointer",
 									}}
 								>
 									{s}

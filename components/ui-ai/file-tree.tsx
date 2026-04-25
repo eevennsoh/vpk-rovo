@@ -155,7 +155,7 @@ export function FileTreeFolder({
             <CollapsibleTrigger
               render={
                 <button
-                  className="flex shrink-0 cursor-pointer items-center border-none bg-transparent p-0"
+                  className="flex shrink-0 items-center border-none bg-transparent p-0"
                   type="button"
                 />
               }
@@ -169,7 +169,7 @@ export function FileTreeFolder({
               />
             </CollapsibleTrigger>
             <button
-              className="flex min-w-0 flex-1 cursor-pointer items-center gap-1 border-none bg-transparent p-0 text-left"
+              className="flex min-w-0 flex-1 items-center gap-1 border-none bg-transparent p-0 text-left"
               onClick={handleSelect}
               type="button"
             >

@@ -390,7 +390,7 @@ export default function AgentsProgress({
 		<div
 			className={cn(
 				"group/card w-full max-w-sm overflow-hidden rounded-2xl bg-surface-raised shadow-sm transition-shadow duration-200 hover:shadow-xl",
-				isInteractive ? "cursor-pointer" : "cursor-default",
+				!isInteractive && "cursor-default",
 				className
 			)}
 			onClick={isInteractive ? handleCardActivate : undefined}
@@ -455,7 +455,7 @@ export default function AgentsProgress({
 								aria-label="Delete run"
 								variant="ghost"
 								size="icon"
-								className="cursor-pointer rounded-full text-icon-subtle hover:text-icon"
+								className="rounded-full text-icon-subtle hover:text-icon"
 								onClick={onDelete}
 							>
 								<DeleteIcon size="small" label="" />

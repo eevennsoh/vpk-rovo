@@ -45,7 +45,7 @@ export function BrowserScreenshotPart({
 			className={cn(
 				"group block max-w-[480px] overflow-hidden rounded-lg border border-border",
 				"bg-surface-sunken transition-shadow hover:shadow-md",
-				onFocusBrowserPanel ? "cursor-pointer" : "cursor-default",
+				!onFocusBrowserPanel && "cursor-default",
 			)}
 		>
 			{screenshotSrc ? (

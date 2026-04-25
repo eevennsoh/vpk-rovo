@@ -179,7 +179,6 @@
 .tiptap-editor .editor-link {
 	color: var(--ds-link, #0052cc);
 	text-decoration: none;
-	cursor: pointer;
 }
 
 .tiptap-editor a:hover,

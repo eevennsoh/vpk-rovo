@@ -284,7 +284,7 @@ export default function TaskProgress({
 					<div
 						className={cn(
 							"group/card w-full overflow-hidden rounded-xl bg-surface-raised shadow-xl transition-shadow duration-200 hover:shadow-2xl",
-							isInteractive ? "cursor-pointer" : "cursor-default",
+							!isInteractive && "cursor-default",
 							className
 						)}
 						onClick={isInteractive ? handleCardActivate : undefined}
@@ -377,7 +377,7 @@ export default function TaskProgress({
 												aria-label="Delete run"
 												variant="ghost"
 												size="icon"
-												className="cursor-pointer rounded-full text-icon-subtle hover:text-icon"
+												className="rounded-full text-icon-subtle hover:text-icon"
 												onClick={(e) => {
 													e.stopPropagation();
 													onDelete();

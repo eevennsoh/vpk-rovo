@@ -261,7 +261,7 @@ export function GlassTabs<TValue extends string>({
 							onPointerEnter={() => handleOptionPointerEnter(index)}
 							onKeyDown={(event) => handleOptionKeyDown(event, index)}
 							className={cn(
-								"relative z-10 cursor-pointer px-2.5 py-1",
+								"relative z-10 px-2.5 py-1",
 								"text-[11px] font-medium uppercase tracking-[0.2em]",
 								"outline-none transition-colors duration-normal",
 								isActive || isHovered ? "text-text" : "text-text-subtle",

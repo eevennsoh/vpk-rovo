@@ -262,7 +262,7 @@ export function WebsiteSidebarNav({
 				<button
 					onClick={() => setSidebarOpen(!sidebarOpen)}
 					aria-label={sidebarOpen ? "Close sidebar" : "Open sidebar"}
-					className="flex items-center justify-center p-2 rounded-md text-text-subtle bg-transparent border-none cursor-pointer transition-colors hover:bg-bg-neutral hover:text-text"
+					className="flex items-center justify-center p-2 rounded-md text-text-subtle bg-transparent border-none transition-colors hover:bg-bg-neutral hover:text-text"
 				>
 					<MenuIcon label="Toggle sidebar" size="medium" />
 				</button>
@@ -318,7 +318,7 @@ export function WebsiteSidebarNav({
 								aria-label={adsOnly ? "Show all components" : "Show ADS components only"}
 								aria-pressed={adsOnly}
 								className={cn(
-									"rounded-sm px-1.5 py-1 text-[10px] font-semibold leading-tight border cursor-pointer transition-colors",
+									"rounded-sm px-1.5 py-1 text-[10px] font-semibold leading-tight border transition-colors",
 									adsOnly
 										? "bg-bg-discovery-subtler text-text-discovery border-transparent"
 										: "bg-transparent text-text-subtlest border-border hover:text-text-subtle hover:border-border-bold",
@@ -387,7 +387,7 @@ export function WebsiteSidebarNav({
 										<button
 											onClick={() => toggleSection(section.title)}
 											aria-label={sectionOpen ? `Collapse ${section.title}` : `Expand ${section.title}`}
-											className="flex items-center justify-center rounded-md text-text-subtle bg-transparent border-none cursor-pointer transition-colors hover:bg-bg-neutral hover:text-text"
+											className="flex items-center justify-center rounded-md text-text-subtle bg-transparent border-none transition-colors hover:bg-bg-neutral hover:text-text"
 											style={{ width: 36, height: 36 }}
 										>
 											<span
@@ -547,7 +547,7 @@ function NavGroupItem({
 							render={
 								<button
 									aria-label={isGroupOpen ? `Collapse ${item.name}` : `Expand ${item.name}`}
-									className="flex items-center justify-center rounded-md text-text-subtle bg-transparent border-none cursor-pointer transition-colors hover:bg-bg-neutral hover:text-text"
+									className="flex items-center justify-center rounded-md text-text-subtle bg-transparent border-none transition-colors hover:bg-bg-neutral hover:text-text"
 									style={{ width: 36, height: 36 }}
 								/>
 							}

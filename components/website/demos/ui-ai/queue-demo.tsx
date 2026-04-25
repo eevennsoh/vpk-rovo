@@ -243,7 +243,7 @@ export function QueueDemoPromptQueue() {
 										onClick={() => handleRemove(prompt.id)}
 										size="icon-sm"
 										variant="ghost"
-										className="size-7 cursor-pointer rounded-full text-icon-subtle opacity-0 transition-opacity group-hover:opacity-100"
+										className="size-7 rounded-full text-icon-subtle opacity-0 transition-opacity group-hover:opacity-100"
 									>
 										<DeleteIcon label="" size="small" />
 									</Button>

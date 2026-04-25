@@ -81,7 +81,7 @@ export const MOCK_PREVIEW_HTML = `
   <h1 style="font-size:1.5rem;font-weight:bold;margin-bottom:1rem">Todo App</h1>
   <div style="display:flex;gap:0.5rem;margin-bottom:1rem">
     <input placeholder="Add a new todo..." style="flex:1;border:1px solid #d1d5db;border-radius:0.375rem;padding:0.5rem 0.75rem" />
-    <button style="background:#3b82f6;color:white;padding:0.5rem 1rem;border-radius:0.375rem;border:none;cursor:pointer">Add</button>
+    <button style="background:#3b82f6;color:white;padding:0.5rem 1rem;border-radius:0.375rem;border:none">Add</button>
   </div>
   <ul style="list-style:none;padding:0;display:flex;flex-direction:column;gap:0.5rem">
     <li style="display:flex;align-items:center;gap:0.5rem;border:1px solid #e5e7eb;border-radius:0.375rem;padding:0.75rem;cursor:pointer">

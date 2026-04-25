@@ -112,7 +112,7 @@ function MenuItem({
 			aria-disabled={disabled || undefined}
 			disabled={disabled}
 			className={cn(
-				"flex w-full cursor-pointer items-start gap-3 rounded-sm px-3 py-2 text-left text-[13px] leading-5 transition-colors",
+				"flex w-full items-start gap-3 rounded-sm px-3 py-2 text-left text-[13px] leading-5 transition-colors",
 				"hover:bg-bg-neutral-subtle-hovered active:bg-bg-neutral-subtle-pressed",
 				"focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-3 focus-visible:outline-none",
 				"disabled:pointer-events-none disabled:opacity-(--opacity-disabled)",
@@ -170,7 +170,7 @@ function MenuLinkItem({
 			data-slot="menu-link-item"
 			role="menuitem"
 			className={cn(
-				"flex w-full cursor-pointer items-start gap-3 rounded-sm px-3 py-2 text-left text-[13px] leading-5 no-underline transition-colors",
+				"flex w-full items-start gap-3 rounded-sm px-3 py-2 text-left text-[13px] leading-5 no-underline transition-colors",
 				"hover:bg-bg-neutral-subtle-hovered active:bg-bg-neutral-subtle-pressed",
 				"focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-3 focus-visible:outline-none",
 				"[div[data-spacing=compact]_&]:py-1",

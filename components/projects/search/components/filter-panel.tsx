@@ -66,7 +66,6 @@ export default function FilterPanel({ selectedFilter, onFilterChange }: Readonly
 							alignItems: "center",
 							gap: token("space.150"),
 							padding: `${token("space.100")} ${token("space.250")}`,
-							cursor: "pointer",
 							transition: "background-color 0.15s",
 							background: "none",
 							border: "none",
