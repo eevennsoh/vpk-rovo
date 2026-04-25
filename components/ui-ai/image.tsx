@@ -12,10 +12,12 @@ export function Image({
 	uint8Array: _uint8Array,
 	mediaType,
 	className,
+	alt = "",
 	...props
 }: Readonly<ImageProps>) {
 	return (
 		<img
+			alt={alt}
 			src={`data:${mediaType};base64,${base64}`}
 			className={cn("h-auto max-w-full overflow-hidden rounded-md", className)}
 			{...props}

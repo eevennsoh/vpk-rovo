@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
 	type AgentState,
 	BarVisualizer,
@@ -40,10 +40,6 @@ function BarVisualizerPreview({
 	description?: string;
 }>) {
 	const [state, setState] = useState<AgentState>(initialState);
-
-	useEffect(() => {
-		setState(initialState);
-	}, [initialState]);
 
 	return (
 		<Card className="mx-auto w-full max-w-xl gap-6 py-6">

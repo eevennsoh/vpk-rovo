@@ -4,8 +4,8 @@ import * as React from 'react';
 import { motion, type Variants } from 'motion/react';
 
 import {
-  getVariants,
   useAnimateIconContext,
+  useVariants,
   IconWrapper,
   type IconProps,
 } from '@/components/animate-ui/icons/icon';
@@ -51,7 +51,7 @@ const animations = {
 
 function IconComponent({ size, ...props }: CctvProps) {
   const { controls } = useAnimateIconContext();
-  const variants = getVariants(animations);
+  const variants = useVariants(animations);
 
   return (
     <motion.svg

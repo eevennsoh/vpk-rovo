@@ -614,11 +614,10 @@ function IconWrapper<T extends string>({
   );
 }
 
-function getVariants<
+function useVariants<
   V extends { default: T; [key: string]: T },
   T extends Record<string, Variants>,
 >(animations: V): T {
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   const { animation: animationType } = useAnimateIconContext();
 
   let result: T;
@@ -647,10 +646,9 @@ export {
   AnimateIcon,
   IconWrapper,
   useAnimateIconContext,
-  getVariants,
+  useVariants,
   type IconProps,
   type IconWrapperProps,
   type AnimateIconProps,
   type AnimateIconContextValue,
 };
-

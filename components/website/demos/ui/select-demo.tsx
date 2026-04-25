@@ -437,39 +437,39 @@ export function SelectDemoSmall() {
 	);
 }
 
+const SUBSCRIPTION_PLANS = [
+	{ name: "Free", price: "$0/mo", description: "For individuals getting started" },
+	{ name: "Pro", price: "$19/mo", description: "For professionals and small teams" },
+	{ name: "Enterprise", price: "$49/mo", description: "For large organizations" },
+] as const;
+
+function SelectPlanItem({ plan }: Readonly<{ plan: (typeof SUBSCRIPTION_PLANS)[number] }>) {
+	return (
+		<Item>
+			<ItemContent>
+				<ItemTitle>{plan.name}</ItemTitle>
+				<ItemDescription>
+					{plan.price} — {plan.description}
+				</ItemDescription>
+			</ItemContent>
+		</Item>
+	);
+}
+
 export function SelectDemoSubscriptionPlan() {
-	const plans = [
-		{ name: "Free", price: "$0/mo", description: "For individuals getting started" },
-		{ name: "Pro", price: "$19/mo", description: "For professionals and small teams" },
-		{ name: "Enterprise", price: "$49/mo", description: "For large organizations" },
-	];
-
-	function SelectPlanItem({ plan }: Readonly<{ plan: (typeof plans)[number] }>) {
-		return (
-			<Item>
-				<ItemContent>
-					<ItemTitle>{plan.name}</ItemTitle>
-					<ItemDescription>
-						{plan.price} — {plan.description}
-					</ItemDescription>
-				</ItemContent>
-			</Item>
-		);
-	}
-
 	return (
 		<Select
-			defaultValue={plans[0]}
-			itemToStringValue={(plan: (typeof plans)[number]) => plan.name}
+			defaultValue={SUBSCRIPTION_PLANS[0]}
+			itemToStringValue={(plan: (typeof SUBSCRIPTION_PLANS)[number]) => plan.name}
 		>
 			<SelectTrigger className="h-auto! w-72">
 				<SelectValue>
-					{(value: (typeof plans)[number]) => <SelectPlanItem plan={value} />}
+					{(value: (typeof SUBSCRIPTION_PLANS)[number]) => <SelectPlanItem plan={value} />}
 				</SelectValue>
 			</SelectTrigger>
 			<SelectContent>
 				<SelectGroup>
-					{plans.map((plan) => (
+					{SUBSCRIPTION_PLANS.map((plan) => (
 						<SelectItem key={plan.name} value={plan}>
 							<SelectPlanItem plan={plan} />
 						</SelectItem>

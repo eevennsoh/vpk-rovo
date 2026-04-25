@@ -78,7 +78,7 @@ interface RovoAppShellProps {
 	initialThreadId?: string | null;
 }
 
-const ROVO_APP_SIDEBAR_MOTION_DURATION_TOKEN = "--duration-medium";
+const ROVO_APP_SIDEBAR_MOTION_DURATION = "--duration-medium";
 const ROVO_APP_SIDEBAR_MOTION_FALLBACK_MS = 200;
 const ROVO_APP_SIDEBAR_MIN_WIDTH = 240;
 const ROVO_APP_SIDEBAR_MAX_WIDTH = 480;
@@ -212,6 +212,12 @@ type RealtimeVoiceShellResult = ReturnType<typeof useRealtimeVoice> & {
 };
 
 type TypedScrollAnchorSource = "none" | "standard" | "realtime";
+
+type ScrollActiveTimelineSelection = {
+	latestTimelineMessageId: string | null;
+	messageId: string;
+	runtimeThreadId: string | null;
+};
 
 function resolveRealtimeMutationId(result: RealtimeMessageMutationResult): string | null {
 	if (typeof result === "string" && result.trim()) {
@@ -505,7 +511,7 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 			() => {
 				setHoverRevealActive(false);
 			},
-			getCssDurationTokenMs(ROVO_APP_SIDEBAR_MOTION_DURATION_TOKEN, ROVO_APP_SIDEBAR_MOTION_FALLBACK_MS),
+			getCssDurationTokenMs(ROVO_APP_SIDEBAR_MOTION_DURATION, ROVO_APP_SIDEBAR_MOTION_FALLBACK_MS),
 		);
 	}, [clearHoverTimer]);
 
@@ -580,7 +586,7 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 	const [previewPrompt, setPreviewPrompt] = useState<string | null>(null);
 	const [prefillText, setPrefillText] = useState<string | null>(null);
 	const [voiceTranscript, setVoiceTranscript] = useState<string | null>(null);
-	const [scrollActiveTimelineId, setScrollActiveTimelineId] = useState<string | null>(null);
+	const [scrollActiveTimelineSelection, setScrollActiveTimelineSelection] = useState<ScrollActiveTimelineSelection | null>(null);
 	const [scrollAnchorMessageId, setScrollAnchorMessageId] = useState<string | null>(null);
 	const [scrollFollowMode, setScrollFollowMode] = useState<ConversationFollowMode>("bottom");
 	const [optimisticUserMessage, setOptimisticUserMessage] = useState<ReturnType<typeof createRovoAppUserMessage> | null>(null);
@@ -1547,7 +1553,23 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 		return deriveRovoAppTimelineItems(displayMessages);
 	}, [displayMessages]);
 	const latestTimelineMessageId = timelineItems[0]?.id ?? null;
+	const scrollActiveTimelineId = scrollActiveTimelineSelection
+		&& scrollActiveTimelineSelection.runtimeThreadId === chat.runtimeThreadId
+		&& scrollActiveTimelineSelection.latestTimelineMessageId === latestTimelineMessageId
+		? scrollActiveTimelineSelection.messageId
+		: null;
 	const activeTimelineMessageId = scrollActiveTimelineId ?? latestTimelineMessageId;
+	const handleScrollActiveTimelineChange = useCallback((messageId: string | null) => {
+		setScrollActiveTimelineSelection(
+			messageId
+				? {
+					latestTimelineMessageId,
+					messageId,
+					runtimeThreadId: chat.runtimeThreadId,
+				}
+				: null,
+		);
+	}, [chat.runtimeThreadId, latestTimelineMessageId]);
 
 	useEffect(() => {
 		if (!optimisticUserMessage) {
@@ -1580,10 +1602,6 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 	useEffect(() => {
 		activateTailFollowMode();
 	}, [activateTailFollowMode, chat.runtimeThreadId]);
-
-	useEffect(() => {
-		setScrollActiveTimelineId(null);
-	}, [chat.runtimeThreadId, latestTimelineMessageId]);
 
 	useEffect(() => {
 		if (typedScrollAnchorSourceRef.current !== "realtime" || !realtimeTypedResponseStartedRef.current) {
@@ -2095,7 +2113,7 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 					onOpenPlanPreview={handleOpenPlanPreview}
 					onRegisterArtifactCard={handleRegisterArtifactCard}
 					onRegenerate={chat.regenerateLatest}
-					onScrollActiveUserMessageChange={setScrollActiveTimelineId}
+					onScrollActiveUserMessageChange={handleScrollActiveTimelineChange}
 					onSelectSuggestion={chat.suggestedPrompt}
 					onSetEditingMessageId={chat.setEditingMessageId}
 					onVote={chat.voteOnMessage}
@@ -2292,7 +2310,7 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 					className="absolute right-3 top-5 z-20 hidden md:block"
 					items={timelineItems}
 					onSelectItem={(messageId) => {
-						setScrollActiveTimelineId(messageId);
+						handleScrollActiveTimelineChange(messageId);
 						setScrollAnchorMessageId(messageId);
 						setScrollFollowMode("target");
 					}}

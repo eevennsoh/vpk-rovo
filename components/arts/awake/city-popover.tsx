@@ -15,7 +15,7 @@ import {
 	useRef,
 	useState,
 } from "react";
-import type { CSSProperties } from "react";
+import type { CSSProperties, ChangeEvent } from "react";
 
 import {
 	Empty,
@@ -281,6 +281,10 @@ export function CityRailEditor({
 	const [hasManuallySelectedCity, setHasManuallySelectedCity] = useState(false);
 	const [search, setSearch] = useState("");
 	const [highlightedIndex, setHighlightedIndex] = useState(0);
+	const handleSearchChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+		setSearch(event.target.value);
+		setHighlightedIndex(0);
+	}, []);
 
 	// Hover-driven preview: just update the previewed index. Does NOT pin
 	// the city — the user has only moved the cursor across the slider, not
@@ -397,6 +401,7 @@ export function CityRailEditor({
 	useEffect(() => {
 		if (!isOpen) {
 			setSearch("");
+			setHighlightedIndex(0);
 			return;
 		}
 
@@ -450,10 +455,6 @@ export function CityRailEditor({
 		}
 		return merged;
 	}, [search, remoteCities]);
-
-	useEffect(() => {
-		setHighlightedIndex(0);
-	}, [filteredCities]);
 
 	// Keep row clicks aligned with keyboard Enter: toggle the city in place
 	// without dismissing the manager.
@@ -606,7 +607,7 @@ export function CityRailEditor({
 									ref={searchInputRef}
 									type="text"
 									value={search}
-									onChange={(event) => setSearch(event.target.value)}
+									onChange={handleSearchChange}
 									placeholder="Search cities..."
 									className="w-full bg-transparent text-sm text-text-subtlest outline-none placeholder:text-text-subtlest"
 								/>

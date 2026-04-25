@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils";
 import { token } from "@/lib/tokens";
 import { useSidebarResize } from "@/components/projects/rovo-app/hooks/use-sidebar-resize";
 
-const SIDEBAR_MOTION_DURATION_TOKEN = "--duration-medium";
+const SIDEBAR_MOTION_DURATION_CSS_VARIABLE = "--duration-medium";
 const SIDEBAR_MOTION_FALLBACK_MS = 200;
 const SIDEBAR_MIN_WIDTH = 240;
 const SIDEBAR_MAX_WIDTH = 480;
@@ -65,7 +65,7 @@ export function RovoAppSurfaceShell({ children }: Readonly<RovoAppSurfaceShellPr
 		clearHoverTimer();
 		hoverLeaveTimerRef.current = window.setTimeout(() => {
 			setHoverRevealActive(false);
-		}, getCssDurationTokenMs(SIDEBAR_MOTION_DURATION_TOKEN, SIDEBAR_MOTION_FALLBACK_MS));
+		}, getCssDurationTokenMs(SIDEBAR_MOTION_DURATION_CSS_VARIABLE, SIDEBAR_MOTION_FALLBACK_MS));
 	}, [clearHoverTimer]);
 
 	const handleSidebarHoverEnter = useCallback(() => {

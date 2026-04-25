@@ -53,6 +53,7 @@ function VoicePicker({
   const isControlled = open !== undefined
   const isOpen = isControlled ? open : internalOpen
   const setIsOpen = isControlled ? onOpenChange : setInternalOpen
+  const contentId = React.useId()
 
   const selectedVoice = voices.find((v) => v.voiceId === value)
 
@@ -69,6 +70,7 @@ function VoicePicker({
               }
               variant="outline"
               role="combobox"
+              aria-controls={contentId}
               aria-expanded={isOpen}
               className={cn("w-full justify-between text-text-subtle", className)}
             />
@@ -86,7 +88,7 @@ function VoicePicker({
           )}
           <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
         </PopoverTrigger>
-        <PopoverContent className="w-(--anchor-width) p-0">
+        <PopoverContent id={contentId} className="w-(--anchor-width) p-0">
           <Command>
             <CommandInput placeholder="Search voices..." />
             <CommandList>
