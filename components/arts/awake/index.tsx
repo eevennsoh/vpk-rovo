@@ -903,8 +903,12 @@ interface WeatherTimeCardProps {
 	particlesSpeedRef: React.RefObject<number>;
 }
 
+type SharedWeatherClockProps = Omit<WeatherTimeCardProps, "timezone"> & {
+	clock: LocationClock;
+};
+
 function WeatherTimeCard({
-	timezone,
+	clock,
 	sizes,
 	gridColor,
 	gridBlendMode,
@@ -921,8 +925,7 @@ function WeatherTimeCard({
 	debossDotShadow,
 	shader,
 	particlesSpeedRef,
-}: WeatherTimeCardProps) {
-	const clock = useLocationClock(timezone);
+}: SharedWeatherClockProps) {
 	return (
 		<WidgetCard
 			className="flex flex-col"
@@ -1121,7 +1124,7 @@ function SelectedWeatherClock({
 				style={{ willChange: "opacity, filter, transform" }}
 			>
 				<WeatherTimeCard
-					timezone={timezone}
+					clock={clock}
 					sizes={sizes}
 					gridColor={gridColor}
 					gridBlendMode={gridBlendMode}
