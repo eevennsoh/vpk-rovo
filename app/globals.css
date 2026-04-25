@@ -34,6 +34,11 @@
 		font: var(--ds-font-body);
 	}
 
+	button:not(:disabled),
+	[role="button"]:not(:disabled) {
+		cursor: pointer;
+	}
+
 	code,
 	kbd {
 		font-family: var(--ds-font-family-code);
