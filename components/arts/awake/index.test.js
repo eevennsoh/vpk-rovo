@@ -9,9 +9,17 @@ const WEATHER_SOURCE = fs.readFileSync(WEATHER_FILE, "utf8");
 const CITY_POPOVER_SOURCE = fs.readFileSync(CITY_POPOVER_FILE, "utf8");
 
 test("Weather keeps the ticking clock state out of the top-level scene", () => {
+	const timezoneClockHookMatches = WEATHER_SOURCE.match(
+		/useLocationClock\(timezone\)/g,
+	) ?? [];
 	assert.doesNotMatch(
 		WEATHER_SOURCE,
 		/const clock = useLocationClock\(selected\.timezone\);/,
+	);
+	assert.equal(
+		timezoneClockHookMatches.length,
+		1,
+		"selected weather chrome should share a single timezone clock",
 	);
 	assert.match(WEATHER_SOURCE, /function WeatherTimeCard\(/);
 	assert.match(WEATHER_SOURCE, /function WeatherDateSummary\(/);
@@ -22,6 +30,10 @@ test("Weather keeps the ticking clock state out of the top-level scene", () => {
 	assert.match(
 		WEATHER_SOURCE,
 		/const clock = useLocationClock\(timezone\);/,
+	);
+	assert.doesNotMatch(
+		WEATHER_SOURCE,
+		/function WeatherTimeCard\([\s\S]*?const clock = useLocationClock\(timezone\);[\s\S]*?function WeatherDateSummary\(/,
 	);
 	assert.match(
 		WEATHER_SOURCE,
