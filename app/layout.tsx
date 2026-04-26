@@ -10,7 +10,11 @@ import { DevRootTools } from "@/components/utils/dev-root-tools";
 import { Geist } from "next/font/google";
 import localFont from "next/font/local";
 import { cn } from "@/lib/utils";
-import { THEME_FAVICON_LINK_ATTR, THEME_FAVICON_LINKS } from "@/lib/theme-favicon";
+import {
+	THEME_FAVICON_FALLBACK_PATH,
+	THEME_FAVICON_LINK_ATTR,
+	THEME_FAVICON_LINKS,
+} from "@/lib/theme-favicon";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -82,14 +86,29 @@ export default async function RootLayout({
 (() => {
 	const root = document.documentElement;
 	const themeFaviconLinkAttr = ${JSON.stringify(THEME_FAVICON_LINK_ATTR)};
+	const themeFaviconFallbackPath = ${JSON.stringify(THEME_FAVICON_FALLBACK_PATH)};
 	const themeFaviconLinks = ${JSON.stringify(THEME_FAVICON_LINKS)};
 	const themeFaviconObserverKey = "__vpkThemeFaviconObserver";
 
 	const isThemeFaviconLink = (iconLink) => iconLink.getAttribute(themeFaviconLinkAttr) === "true";
 
+	const isThemeFaviconFallbackLink = (iconLink) => {
+		const href = iconLink.getAttribute("href");
+
+		if (!href) {
+			return false;
+		}
+
+		try {
+			return new URL(href, window.location.href).pathname === themeFaviconFallbackPath;
+		} catch {
+			return href === themeFaviconFallbackPath;
+		}
+	};
+
 	const removeCompetingFavicons = () => {
 		for (const iconLink of Array.from(document.querySelectorAll('link[rel~="icon"]'))) {
-			if (!isThemeFaviconLink(iconLink)) {
+			if (!isThemeFaviconLink(iconLink) && !isThemeFaviconFallbackLink(iconLink)) {
 				iconLink.remove();
 			}
 		}
