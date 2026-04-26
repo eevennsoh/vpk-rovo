@@ -10,11 +10,6 @@ import { DevRootTools } from "@/components/utils/dev-root-tools";
 import { Geist } from "next/font/google";
 import localFont from "next/font/local";
 import { cn } from "@/lib/utils";
-import {
-	THEME_FAVICON_FALLBACK_PATH,
-	THEME_FAVICON_LINK_ATTR,
-	THEME_FAVICON_LINKS,
-} from "@/lib/theme-favicon";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -85,85 +80,6 @@ export default async function RootLayout({
 	const preHydrationScript = `
 (() => {
 	const root = document.documentElement;
-	const themeFaviconLinkAttr = ${JSON.stringify(THEME_FAVICON_LINK_ATTR)};
-	const themeFaviconFallbackPath = ${JSON.stringify(THEME_FAVICON_FALLBACK_PATH)};
-	const themeFaviconLinks = ${JSON.stringify(THEME_FAVICON_LINKS)};
-	const themeFaviconObserverKey = "__vpkThemeFaviconObserver";
-
-	const isThemeFaviconLink = (iconLink) => iconLink.getAttribute(themeFaviconLinkAttr) === "true";
-
-	const isThemeFaviconFallbackLink = (iconLink) => {
-		const href = iconLink.getAttribute("href");
-
-		if (!href) {
-			return false;
-		}
-
-		try {
-			return new URL(href, window.location.href).pathname === themeFaviconFallbackPath;
-		} catch {
-			return href === themeFaviconFallbackPath;
-		}
-	};
-
-	const isCompetingFaviconNode = (node) => (
-		typeof node?.matches === "function" &&
-		typeof node?.getAttribute === "function" &&
-		node.matches('link[rel~="icon"]') &&
-		!isThemeFaviconLink(node) &&
-		!isThemeFaviconFallbackLink(node)
-	);
-
-	const removeCompetingFavicons = () => {
-		for (const iconLink of Array.from(document.querySelectorAll('link[rel~="icon"]'))) {
-			if (!isThemeFaviconLink(iconLink) && !isThemeFaviconFallbackLink(iconLink)) {
-				iconLink.remove();
-			}
-		}
-	};
-
-	const ensureThemeFaviconObserver = () => {
-		if (!("MutationObserver" in window) || window[themeFaviconObserverKey]) {
-			return;
-		}
-
-		window[themeFaviconObserverKey] = new MutationObserver((records) => {
-			const hasCompetingFaviconMutation = records.some((record) =>
-				Array.from(record.addedNodes).some(isCompetingFaviconNode)
-			);
-
-			if (!hasCompetingFaviconMutation) {
-				return;
-			}
-
-			removeCompetingFavicons();
-		});
-
-		window[themeFaviconObserverKey].observe(document.head, { childList: true });
-	};
-
-	const applyThemeFaviconLink = (linkConfig) => {
-		let faviconLink = document.getElementById(linkConfig.id);
-
-		if (!faviconLink || faviconLink.tagName !== "LINK") {
-			faviconLink = document.createElement("link");
-			faviconLink.id = linkConfig.id;
-			document.head.appendChild(faviconLink);
-		}
-
-		faviconLink.setAttribute(themeFaviconLinkAttr, "true");
-		faviconLink.setAttribute("rel", "icon");
-		faviconLink.setAttribute("type", "image/svg+xml");
-		faviconLink.setAttribute("sizes", "any");
-		faviconLink.setAttribute("href", linkConfig.href);
-		faviconLink.setAttribute("media", linkConfig.media);
-	};
-
-	const ensureThemeFavicons = () => {
-		removeCompetingFavicons();
-		themeFaviconLinks.forEach(applyThemeFaviconLink);
-		ensureThemeFaviconObserver();
-	};
 
 	// Embedded iframe detection — hide shell chrome before first paint
 	try { if (window.self !== window.top) root.dataset.embedded = ""; }
@@ -185,7 +101,6 @@ export default async function RootLayout({
 	root.classList.remove("light", "dark");
 	root.classList.add(resolvedColorMode);
 	root.style.colorScheme = resolvedColorMode;
-	ensureThemeFavicons();
 
 	if ("${process.env.NODE_ENV}" === "development") {
 		const appGlobalsChunkPattern = /\\/_next\\/static\\/chunks\\/app_globals_[^/]+\\.css(?:\\?.*)?$/;
@@ -265,6 +180,26 @@ export default async function RootLayout({
 		>
 			<head>
 				<script dangerouslySetInnerHTML={{ __html: preHydrationScript }} />
+				<link
+					rel="icon"
+					type="image/svg+xml"
+					sizes="any"
+					href="/website/favicon-fallback.svg"
+				/>
+				<link
+					rel="icon"
+					type="image/svg+xml"
+					sizes="any"
+					media="(prefers-color-scheme: light)"
+					href="/website/favicon-dark.svg"
+				/>
+				<link
+					rel="icon"
+					type="image/svg+xml"
+					sizes="any"
+					media="(prefers-color-scheme: dark)"
+					href="/website/favicon-light.svg"
+				/>
 				{themeStyles.map((themeStyle) => (
 					<style
 						key={themeStyle.id}

@@ -5,7 +5,6 @@ import { setGlobalTheme } from "@atlaskit/tokens";
 import DevicesIcon from "@atlaskit/icon/core/devices";
 import ThemeIcon from "@atlaskit/icon/core/theme";
 import { Button } from "@/components/ui/button";
-import { ensureThemeFavicons } from "@/lib/theme-favicon";
 import {
 	Select,
 	SelectContent,
@@ -97,7 +96,6 @@ export function ThemeWrapper({ children, defaultTheme = "system", storageKey = "
 				root.classList.remove("light", "dark");
 				root.classList.add(newActualTheme);
 				root.style.colorScheme = newActualTheme;
-				ensureThemeFavicons();
 			}
 		};
 
