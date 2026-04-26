@@ -47,9 +47,7 @@ export default function SourcesCarousel({ sources }: Readonly<SourcesCarouselPro
 					gap: token("space.200"),
 					overflowX: "auto",
 					scrollbarWidth: "none",
-					msOverflowStyle: "none",
 				}}
-				className="[&::-webkit-scrollbar]:hidden"
 			>
 				{sources.map((source) => (
 					<SourceCard key={source.id} source={source} />

@@ -4,16 +4,11 @@
 
 .hideScrollbar > div {
 	scrollbar-width: none;
-	-ms-overflow-style: none;
 	width: 100%;
 }
 
 .hideScrollbar > div > div {
 	width: 100%;
-}
-
-.hideScrollbar > div::-webkit-scrollbar {
-	display: none;
 }
 
 @keyframes latest-turn-enter {
