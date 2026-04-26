@@ -46,6 +46,19 @@ test("CityRailEditor keeps the manager open when mouse clicks toggle a city row"
 	);
 });
 
+test("CityRailEditor resets the highlighted result when search input changes or the manager closes", () => {
+	assert.match(
+		CITY_POPOVER_SOURCE,
+		/const handleSearchChange = useCallback\(\(event: ChangeEvent<HTMLInputElement>\) => \{\s*setSearch\(event\.target\.value\);\s*setHighlightedIndex\(0\);\s*\}, \[\]\);/s,
+	);
+	assert.match(
+		CITY_POPOVER_SOURCE,
+		/if \(!isOpen\) \{\s*setSearch\(""\);\s*setHighlightedIndex\(0\);\s*return;\s*\}/s,
+	);
+	assert.match(CITY_POPOVER_SOURCE, /value=\{search\}/);
+	assert.match(CITY_POPOVER_SOURCE, /onChange=\{handleSearchChange\}/);
+});
+
 test("CityRailEditor lets the city rows use the full list width", () => {
 	assert.match(
 		CITY_POPOVER_SOURCE,
