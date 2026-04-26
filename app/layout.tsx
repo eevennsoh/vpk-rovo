@@ -10,6 +10,7 @@ import { DevRootTools } from "@/components/utils/dev-root-tools";
 import { Geist } from "next/font/google";
 import localFont from "next/font/local";
 import { cn } from "@/lib/utils";
+import { THEME_FAVICON_LINK_ATTR, THEME_FAVICON_LINKS } from "@/lib/theme-favicon";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -80,6 +81,54 @@ export default async function RootLayout({
 	const preHydrationScript = `
 (() => {
 	const root = document.documentElement;
+	const themeFaviconLinkAttr = ${JSON.stringify(THEME_FAVICON_LINK_ATTR)};
+	const themeFaviconLinks = ${JSON.stringify(THEME_FAVICON_LINKS)};
+	const themeFaviconObserverKey = "__vpkThemeFaviconObserver";
+
+	const isThemeFaviconLink = (iconLink) => iconLink.getAttribute(themeFaviconLinkAttr) === "true";
+
+	const removeCompetingFavicons = () => {
+		for (const iconLink of Array.from(document.querySelectorAll('link[rel~="icon"]'))) {
+			if (!isThemeFaviconLink(iconLink)) {
+				iconLink.remove();
+			}
+		}
+	};
+
+	const ensureThemeFaviconObserver = () => {
+		if (!("MutationObserver" in window) || window[themeFaviconObserverKey]) {
+			return;
+		}
+
+		window[themeFaviconObserverKey] = new MutationObserver(() => {
+			removeCompetingFavicons();
+		});
+
+		window[themeFaviconObserverKey].observe(document.head, { childList: true });
+	};
+
+	const applyThemeFaviconLink = (linkConfig) => {
+		let faviconLink = document.getElementById(linkConfig.id);
+
+		if (!faviconLink || faviconLink.tagName !== "LINK") {
+			faviconLink = document.createElement("link");
+			faviconLink.id = linkConfig.id;
+			document.head.appendChild(faviconLink);
+		}
+
+		faviconLink.setAttribute(themeFaviconLinkAttr, "true");
+		faviconLink.setAttribute("rel", "icon");
+		faviconLink.setAttribute("type", "image/svg+xml");
+		faviconLink.setAttribute("sizes", "any");
+		faviconLink.setAttribute("href", linkConfig.href);
+		faviconLink.setAttribute("media", linkConfig.media);
+	};
+
+	const ensureThemeFavicons = () => {
+		removeCompetingFavicons();
+		themeFaviconLinks.forEach(applyThemeFaviconLink);
+		ensureThemeFaviconObserver();
+	};
 
 	// Embedded iframe detection — hide shell chrome before first paint
 	try { if (window.self !== window.top) root.dataset.embedded = ""; }
@@ -101,6 +150,7 @@ export default async function RootLayout({
 	root.classList.remove("light", "dark");
 	root.classList.add(resolvedColorMode);
 	root.style.colorScheme = resolvedColorMode;
+	ensureThemeFavicons();
 
 	if ("${process.env.NODE_ENV}" === "development") {
 		const appGlobalsChunkPattern = /\\/_next\\/static\\/chunks\\/app_globals_[^/]+\\.css(?:\\?.*)?$/;

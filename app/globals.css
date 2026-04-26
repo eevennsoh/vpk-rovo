@@ -28,7 +28,25 @@
 @layer base {
 	* {
 		@apply border-border outline-ring/50;
+		scrollbar-width: thin;
+		scrollbar-color: gray transparent;
 	}
+
+	*::-webkit-scrollbar {
+		width: 8px;
+		height: 8px;
+		background: transparent;
+	}
+
+	*::-webkit-scrollbar-thumb {
+		background-color: gray;
+		border-radius: 999px;
+	}
+
+	*::-webkit-scrollbar-track {
+		background: transparent;
+	}
+
 	body {
 		@apply bg-background text-foreground;
 		font: var(--ds-font-body);
