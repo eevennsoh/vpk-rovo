@@ -39,12 +39,32 @@ function isThemeFaviconFallbackLink(iconLink: Element) {
 	}
 }
 
+function asElement(node: Node) {
+	return typeof (node as Element).matches === "function" &&
+		typeof (node as Element).getAttribute === "function"
+		? node as Element
+		: null;
+}
+
+function isCompetingFaviconNode(node: Node) {
+	const element = asElement(node);
+	return (
+		element?.matches('link[rel~="icon"]') === true &&
+		!isThemeFaviconLink(element) &&
+		!isThemeFaviconFallbackLink(element)
+	);
+}
+
 function removeCompetingFavicons() {
 	for (const iconLink of Array.from(document.querySelectorAll('link[rel~="icon"]'))) {
 		if (!isThemeFaviconLink(iconLink) && !isThemeFaviconFallbackLink(iconLink)) {
 			iconLink.remove();
 		}
 	}
+}
+
+export function hasCompetingFaviconMutation(records: ReadonlyArray<Pick<MutationRecord, "addedNodes">>) {
+	return records.some((record) => Array.from(record.addedNodes).some(isCompetingFaviconNode));
 }
 
 function applyThemeFaviconLink(linkConfig: ThemeFaviconLink) {
@@ -75,7 +95,11 @@ function ensureThemeFaviconObserver() {
 		return;
 	}
 
-	faviconWindow[THEME_FAVICON_OBSERVER_KEY] = new MutationObserver(() => {
+	faviconWindow[THEME_FAVICON_OBSERVER_KEY] = new MutationObserver((records) => {
+		if (!hasCompetingFaviconMutation(records)) {
+			return;
+		}
+
 		removeCompetingFavicons();
 	});
 

@@ -106,6 +106,14 @@ export default async function RootLayout({
 		}
 	};
 
+	const isCompetingFaviconNode = (node) => (
+		typeof node?.matches === "function" &&
+		typeof node?.getAttribute === "function" &&
+		node.matches('link[rel~="icon"]') &&
+		!isThemeFaviconLink(node) &&
+		!isThemeFaviconFallbackLink(node)
+	);
+
 	const removeCompetingFavicons = () => {
 		for (const iconLink of Array.from(document.querySelectorAll('link[rel~="icon"]'))) {
 			if (!isThemeFaviconLink(iconLink) && !isThemeFaviconFallbackLink(iconLink)) {
@@ -119,7 +127,15 @@ export default async function RootLayout({
 			return;
 		}
 
-		window[themeFaviconObserverKey] = new MutationObserver(() => {
+		window[themeFaviconObserverKey] = new MutationObserver((records) => {
+			const hasCompetingFaviconMutation = records.some((record) =>
+				Array.from(record.addedNodes).some(isCompetingFaviconNode)
+			);
+
+			if (!hasCompetingFaviconMutation) {
+				return;
+			}
+
 			removeCompetingFavicons();
 		});
 
