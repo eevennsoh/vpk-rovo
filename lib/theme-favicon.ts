@@ -1,4 +1,5 @@
 export const THEME_FAVICON_LINK_ATTR = "data-vpk-theme-favicon";
+export const THEME_FAVICON_FALLBACK_PATH = "/favicon.ico";
 const THEME_FAVICON_OBSERVER_KEY = "__vpkThemeFaviconObserver";
 
 type ThemeFaviconWindow = Window & {
@@ -24,9 +25,23 @@ function isThemeFaviconLink(iconLink: Element) {
 	return iconLink.getAttribute(THEME_FAVICON_LINK_ATTR) === "true";
 }
 
+function isThemeFaviconFallbackLink(iconLink: Element) {
+	const href = iconLink.getAttribute("href");
+
+	if (!href) {
+		return false;
+	}
+
+	try {
+		return new URL(href, window.location.href).pathname === THEME_FAVICON_FALLBACK_PATH;
+	} catch {
+		return href === THEME_FAVICON_FALLBACK_PATH;
+	}
+}
+
 function removeCompetingFavicons() {
 	for (const iconLink of Array.from(document.querySelectorAll('link[rel~="icon"]'))) {
-		if (!isThemeFaviconLink(iconLink)) {
+		if (!isThemeFaviconLink(iconLink) && !isThemeFaviconFallbackLink(iconLink)) {
 			iconLink.remove();
 		}
 	}
