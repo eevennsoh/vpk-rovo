@@ -27,6 +27,13 @@ const arkEsSolidLight = localFont({
 };
 
 const THEME_STORAGE_KEY = "ui-theme";
+const APP_TITLE = "V—P—K: Venn Prototype Kit";
+const APP_DESCRIPTION = "A prototype kit to vibe code Atlassian products";
+
+type FaviconLink = {
+	href: string;
+	media?: string;
+};
 
 const THEME_STATE = {
 	colorMode: "auto" as const,
@@ -45,21 +52,27 @@ function getThemeDefaults() {
 	};
 }
 
+const FAVICON_LINKS: readonly FaviconLink[] = [
+	{ href: "/website/favicon-fallback.svg" },
+	{ href: "/website/favicon-dark.svg", media: "(prefers-color-scheme: light)" },
+	{ href: "/website/favicon-light.svg", media: "(prefers-color-scheme: dark)" },
+];
+
 export const metadata: Metadata = {
 	title: {
-		default: "V—P—K: Venn Prototype Kit",
+		default: APP_TITLE,
 		template: "%s — VPK",
 	},
-	description: "A prototype kit to vibe code Atlassian products",
+	description: APP_DESCRIPTION,
 	openGraph: {
-		title: "V—P—K: Venn Prototype Kit",
-		description: "A prototype kit to vibe code Atlassian products",
+		title: APP_TITLE,
+		description: APP_DESCRIPTION,
 		type: "website",
 	},
 	twitter: {
 		card: "summary",
-		title: "V—P—K: Venn Prototype Kit",
-		description: "A prototype kit to vibe code Atlassian products",
+		title: APP_TITLE,
+		description: APP_DESCRIPTION,
 	},
 };
 
@@ -165,41 +178,31 @@ export default async function RootLayout({
 	}
 
 	return (
-			<html
-				lang="en"
-				className={cn(
-					colorMode,
-					"font-sans",
-					geist.variable,
-					arkEsSolidLight.variable,
-				)}
-				data-theme={themeData}
-				data-color-mode={colorMode}
-				data-contrast-mode={contrastMode}
+		<html
+			lang="en"
+			className={cn(
+				colorMode,
+				"font-sans",
+				geist.variable,
+				arkEsSolidLight.variable,
+			)}
+			data-theme={themeData}
+			data-color-mode={colorMode}
+			data-contrast-mode={contrastMode}
 			suppressHydrationWarning
 		>
 			<head>
 				<script dangerouslySetInnerHTML={{ __html: preHydrationScript }} />
-				<link
-					rel="icon"
-					type="image/svg+xml"
-					sizes="any"
-					href="/website/favicon-fallback.svg"
-				/>
-				<link
-					rel="icon"
-					type="image/svg+xml"
-					sizes="any"
-					media="(prefers-color-scheme: light)"
-					href="/website/favicon-dark.svg"
-				/>
-				<link
-					rel="icon"
-					type="image/svg+xml"
-					sizes="any"
-					media="(prefers-color-scheme: dark)"
-					href="/website/favicon-light.svg"
-				/>
+				{FAVICON_LINKS.map(({ href, media }) => (
+					<link
+						key={media ?? href}
+						rel="icon"
+						type="image/svg+xml"
+						sizes="any"
+						media={media}
+						href={href}
+					/>
+				))}
 				{themeStyles.map((themeStyle) => (
 					<style
 						key={themeStyle.id}
