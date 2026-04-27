@@ -5,6 +5,7 @@ const test = require("node:test");
 
 const ROOT_LAYOUT_FILE = path.join(__dirname, "layout.tsx");
 const ROOT_LAYOUT_SOURCE = fs.readFileSync(ROOT_LAYOUT_FILE, "utf8");
+const ROOT_FAVICON_FILE = path.join(__dirname, "favicon.ico");
 
 const EXPECTED_FAVICON_LINKS = [
 	{ href: "/website/favicon-fallback.svg" },
@@ -94,4 +95,8 @@ test("RootLayout keeps the development stylesheet guard out of production pre-hy
 	);
 	assert.match(ROOT_LAYOUT_SOURCE, /\$\{devStylesheetGuardScript\}/);
 	assert.doesNotMatch(ROOT_LAYOUT_SOURCE, /"\$\{process\.env\.NODE_ENV\}" === "development"/);
+});
+
+test("RootLayout keeps a conventional root favicon fallback", () => {
+	assert.ok(fs.existsSync(ROOT_FAVICON_FILE), "expected app/favicon.ico to serve /favicon.ico");
 });
