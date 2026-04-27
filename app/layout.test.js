@@ -86,3 +86,12 @@ test("RootLayout exposes browser color-scheme favicon links", () => {
 	assert.deepEqual(getFaviconLinks(), EXPECTED_FAVICON_LINKS);
 	assert.doesNotMatch(ROOT_LAYOUT_SOURCE, /theme-favicon/);
 });
+
+test("RootLayout keeps the development stylesheet guard out of production pre-hydration output", () => {
+	assert.match(
+		ROOT_LAYOUT_SOURCE,
+		/const devStylesheetGuardScript = process\.env\.NODE_ENV === "development" \? `/,
+	);
+	assert.match(ROOT_LAYOUT_SOURCE, /\$\{devStylesheetGuardScript\}/);
+	assert.doesNotMatch(ROOT_LAYOUT_SOURCE, /"\$\{process\.env\.NODE_ENV\}" === "development"/);
+});
