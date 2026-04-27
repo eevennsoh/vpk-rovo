@@ -5,6 +5,7 @@ const test = require("node:test");
 
 const ROOT_LAYOUT_FILE = path.join(__dirname, "layout.tsx");
 const ROOT_LAYOUT_SOURCE = fs.readFileSync(ROOT_LAYOUT_FILE, "utf8");
+const ROOT_FAVICON_FILE = path.join(__dirname, "favicon.ico");
 
 const EXPECTED_FAVICON_LINKS = [
 	{ href: "/website/favicon-fallback.svg" },
@@ -85,4 +86,8 @@ test("RootLayout keeps the default favicon fallback before color-scheme icons", 
 test("RootLayout exposes browser color-scheme favicon links", () => {
 	assert.deepEqual(getFaviconLinks(), EXPECTED_FAVICON_LINKS);
 	assert.doesNotMatch(ROOT_LAYOUT_SOURCE, /theme-favicon/);
+});
+
+test("RootLayout keeps a conventional root favicon fallback", () => {
+	assert.ok(fs.existsSync(ROOT_FAVICON_FILE), "expected app/favicon.ico to serve /favicon.ico");
 });
