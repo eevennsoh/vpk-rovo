@@ -76,6 +76,15 @@ function getFaviconLinks() {
 	return getStaticFaviconLinks() ?? getInlineFaviconLinks();
 }
 
+function getDevStylesheetGuardScriptSource() {
+	const match = ROOT_LAYOUT_SOURCE.match(
+		/const devStylesheetGuardScript = process\.env\.NODE_ENV === "development" \? `([\s\S]*?)`\s*:\s*"";/,
+	);
+
+	assert.ok(match, "expected development stylesheet guard script");
+	return match[1];
+}
+
 test("RootLayout keeps the default favicon fallback before color-scheme icons", () => {
 	assert.deepEqual(
 		getFaviconLinks().map(({ href }) => href),
@@ -95,6 +104,26 @@ test("RootLayout keeps the development stylesheet guard out of production pre-hy
 	);
 	assert.match(ROOT_LAYOUT_SOURCE, /\$\{devStylesheetGuardScript\}/);
 	assert.doesNotMatch(ROOT_LAYOUT_SOURCE, /"\$\{process\.env\.NODE_ENV\}" === "development"/);
+});
+
+test("RootLayout keeps the development stylesheet guard scoped to app globals CSS preloads", () => {
+	const guardScript = getDevStylesheetGuardScriptSource();
+
+	assert.ok(
+		guardScript.includes(
+			"const appGlobalsChunkPattern = /\\\\/_next\\\\/static\\\\/chunks\\\\/app_globals_[^/]+\\\\.css",
+		),
+		"expected guard to target app globals CSS chunks",
+	);
+	assert.match(guardScript, /head\.querySelectorAll\('link\[as="style"\]\[href\]'\)/);
+	assert.match(guardScript, /preloadLink\.relList\.contains\("preload"\)/);
+	assert.match(guardScript, /ensureStylesheetLink\(href\)/);
+	assert.match(guardScript, /stylesheet\.rel = "stylesheet"/);
+	assert.match(
+		guardScript,
+		/stylesheet\.setAttribute\("data-vpk-dev-css-chunk-guard", "head-script"\)/,
+	);
+	assert.match(guardScript, /head\.appendChild\(stylesheet\)/);
 });
 
 test("RootLayout keeps a conventional root favicon fallback", () => {
