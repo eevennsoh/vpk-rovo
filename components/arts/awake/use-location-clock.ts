@@ -46,6 +46,17 @@ function classifyTimeOfDay(hourString: string): LocationClock["timeOfDay"] {
 export function useLocationClock(timezone: string): LocationClock {
 	const [now, setNow] = useState<Date | null>(null);
 
+	const { timeFormatter, dateFormatter } = useMemo(() => ({
+		timeFormatter: new Intl.DateTimeFormat("en-GB", {
+			...TIME_FORMAT_OPTIONS,
+			timeZone: timezone,
+		}),
+		dateFormatter: new Intl.DateTimeFormat("en-GB", {
+			...DATE_FORMAT_OPTIONS,
+			timeZone: timezone,
+		}),
+	}), [timezone]);
+
 	useEffect(() => {
 		setNow(new Date());
 		const interval = window.setInterval(() => {
@@ -72,15 +83,6 @@ export function useLocationClock(timezone: string): LocationClock {
 		}
 
 		try {
-			const timeFormatter = new Intl.DateTimeFormat("en-GB", {
-				...TIME_FORMAT_OPTIONS,
-				timeZone: timezone,
-			});
-			const dateFormatter = new Intl.DateTimeFormat("en-GB", {
-				...DATE_FORMAT_OPTIONS,
-				timeZone: timezone,
-			});
-
 			const timeParts = timeFormatter.formatToParts(now);
 			const dateParts = dateFormatter.formatToParts(now);
 
@@ -106,5 +108,5 @@ export function useLocationClock(timezone: string): LocationClock {
 		} catch {
 			return fallback;
 		}
-	}, [now, timezone]);
+	}, [dateFormatter, now, timeFormatter]);
 }
