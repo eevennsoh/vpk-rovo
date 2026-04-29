@@ -16,7 +16,7 @@ tracker:
     - Cancelled
     - Duplicate
 polling:
-  interval_ms: 60000
+  interval_ms: 10000
 workspace:
   root: $SYMPHONY_WORKSPACE_ROOT
 hooks:
@@ -43,8 +43,8 @@ hooks:
       corepack pnpm install --frozen-lockfile
     fi
 agent:
-  max_concurrent_agents: 3
-  max_turns: 12
+  max_concurrent_agents: 5
+  max_turns: 16
 codex:
   command: codex app-server
   approval_policy: on-request
