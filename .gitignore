@@ -103,10 +103,8 @@ secrets*
 .pypirc
 *service-account*.json
 
-# Task management (session-local working state)
-tasks/
-!app/api/plan/runs/*/tasks/
-!app/api/plan/runs/*/tasks/route.ts
+# Task management plans (project-scoped, source-controlled so Symphony
+# workers can read them in cloned workspaces)
 /backend/data/
 
 # IDE settings
