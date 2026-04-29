@@ -308,6 +308,28 @@ class WorkspaceManager {
 		return { removed: true, path: workspacePath };
 	}
 
+	async deleteRemoteBranchIfExists(branchName) {
+		const { stdout } = await this.execFile("git", ["ls-remote", "--heads", "origin", branchName], { cwd: this.repo });
+		if (!stdout.trim()) {
+			return { deleted: false, reason: "missing" };
+		}
+		await this.execFile("git", ["push", "origin", "--delete", branchName], { cwd: this.repo });
+		return { deleted: true };
+	}
+
+	async deleteLocalBranchIfExists(branchName) {
+		const { stdout } = await this.execFile("git", ["branch", "--format=%(refname:short)", "--list", branchName], { cwd: this.repo });
+		const branchExists = stdout
+			.split("\n")
+			.map((line) => line.trim())
+			.some((line) => line === branchName);
+		if (!branchExists) {
+			return { deleted: false, reason: "missing" };
+		}
+		await this.execFile("git", ["branch", "-d", branchName], { cwd: this.repo });
+		return { deleted: true };
+	}
+
 	async landIssue(issue) {
 		const workspacePath = this.getIssueWorkspacePath(issue);
 		const branchName = this.getBranchName(issue);
@@ -333,8 +355,14 @@ class WorkspaceManager {
 
 		const afterCommit = await this.getWorkspaceStatus(issue);
 		if (afterCommit.aheadCount <= 0) {
+			const remoteBranchCleanup = await this.deleteRemoteBranchIfExists(branchName);
 			const cleanup = await this.removeWorkspace(issue, { force: true });
+			const localBranchCleanup = await this.deleteLocalBranchIfExists(branchName);
 			return {
+				branchCleanup: {
+					local: localBranchCleanup,
+					remote: remoteBranchCleanup,
+				},
 				baseRef: this.baseRef,
 				branchName,
 				commitCreated,
@@ -349,10 +377,16 @@ class WorkspaceManager {
 		const pr = existingPr || await this.createPullRequest(issue, branchName, workspacePath);
 		await this.mergePullRequest(pr, workspacePath);
 		await this.syncBaseCheckout();
+		const remoteBranchCleanup = await this.deleteRemoteBranchIfExists(branchName);
 		const cleanup = await this.removeWorkspace(issue, { force: true });
+		const localBranchCleanup = await this.deleteLocalBranchIfExists(branchName);
 
 		return {
 			aheadCount: afterCommit.aheadCount,
+			branchCleanup: {
+				local: localBranchCleanup,
+				remote: remoteBranchCleanup,
+			},
 			baseRef: this.baseRef,
 			branchName,
 			commitCreated,

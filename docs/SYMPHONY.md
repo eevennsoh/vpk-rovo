@@ -56,7 +56,9 @@ Backlog -> Todo -> In Progress -> Human Review -> Done
 Symphony only starts issues in `Todo` or `In Progress` that have either the
 `symphony` or `codex` label. A successful Codex run moves the issue to
 `Human Review`, where a human can inspect `/tmp/symphony-workspaces/<ISSUE-ID>`
-or publish a PR before manually moving the issue to `Done`.
+before manually moving the issue to `Done`. Moving the issue to `Done` lands
+the PR, syncs `main`, removes the worktree, and deletes the local and remote
+Symphony branch refs.
 
 `dispatch.max_parallel` accepts either a positive integer or `infinite`. Use a
 number to cap concurrent Codex workers, or `infinite` to let Symphony dispatch

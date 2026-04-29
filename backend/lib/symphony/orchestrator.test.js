@@ -284,6 +284,10 @@ test("SymphonyOrchestrator lands Done issues and comments with PR status", async
 			events.push(["land", landIssue.identifier]);
 			return {
 				baseRef: "main",
+				branchCleanup: {
+					local: { deleted: true },
+					remote: { deleted: true },
+				},
 				branchName: "symphony/ENG-123",
 				commitCreated: true,
 				prNumber: 12,
@@ -319,6 +323,7 @@ test("SymphonyOrchestrator lands Done issues and comments with PR status", async
 	assert.equal(events[1][0], "comment");
 	assert.match(events[1][2], /Symphony landed ENG-123/);
 	assert.match(events[1][2], /PR: https:\/\/github.test\/pull\/12/);
+	assert.match(events[1][2], /Branch cleanup: deleted local branch; deleted remote branch\./);
 	assert.equal(snapshot.issues[0].status, "landed");
 	assert.equal(snapshot.issues[0].prUrl, "https://github.test/pull/12");
 });

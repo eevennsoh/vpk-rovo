@@ -140,6 +140,12 @@ test("WorkspaceManager lands dirty Done work through PR merge and local main syn
 				revListCalls += 1;
 				return { stderr: "", stdout: revListCalls === 1 ? "0\n" : "1\n" };
 			}
+			if (command === "git" && args[0] === "ls-remote") {
+				return { stderr: "", stdout: "abc123\trefs/heads/symphony/ENG-10-add-graph\n" };
+			}
+			if (command === "git" && args[0] === "branch" && args[1] === "--format=%(refname:short)") {
+				return { stderr: "", stdout: "symphony/ENG-10-add-graph\n" };
+			}
 			if (command === "gh" && args[0] === "pr" && args[1] === "list" && !calls.some((call) => call.command === "gh" && call.args[1] === "create")) {
 				return { stderr: "", stdout: "[]" };
 			}
@@ -169,6 +175,10 @@ test("WorkspaceManager lands dirty Done work through PR merge and local main syn
 
 	assert.equal(result.status, "merged");
 	assert.equal(result.commitCreated, true);
+	assert.deepEqual(result.branchCleanup, {
+		local: { deleted: true },
+		remote: { deleted: true },
+	});
 	assert.equal(result.prNumber, 10);
 	assert.equal(result.prUrl, "https://github.test/pull/10");
 	assert.ok(calls.some((call) => call.command === "git" && call.args.join(" ") === "add --all" && call.cwd === workspacePath));
@@ -177,7 +187,62 @@ test("WorkspaceManager lands dirty Done work through PR merge and local main syn
 	assert.ok(calls.some((call) => call.command === "gh" && call.args.join(" ").startsWith("pr create --base main --head symphony/ENG-10-add-graph")));
 	assert.ok(calls.some((call) => call.command === "gh" && call.args.join(" ") === "pr merge 10 --merge"));
 	assert.ok(calls.some((call) => call.command === "git" && call.args.join(" ") === "pull --ff-only origin main" && call.cwd === tempDir));
+	assert.ok(calls.some((call) => call.command === "git" && call.args.join(" ") === "push origin --delete symphony/ENG-10-add-graph"));
 	assert.ok(calls.some((call) => call.command === "git" && call.args[0] === "worktree" && call.args[1] === "remove" && call.args[2] === workspacePath && call.args.includes("--force")));
+	assert.ok(calls.some((call) => call.command === "git" && call.args.join(" ") === "branch -d symphony/ENG-10-add-graph"));
+});
+
+test("WorkspaceManager cleans branch refs when a Done workspace has no remaining ahead commits", async () => {
+	const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "symphony-workspace-no-changes-test-"));
+	const workspacePath = path.join(tempDir, "worktrees", "ENG-13-already-merged");
+	fs.mkdirSync(workspacePath, { recursive: true });
+	const calls = [];
+	const manager = new WorkspaceManager({
+		baseRef: "main",
+		branchPrefix: "symphony/",
+		execFile: async (command, args, options) => {
+			calls.push({ args, command, cwd: options.cwd });
+			if (command === "git" && args[0] === "rev-parse") {
+				return { stderr: "", stdout: "main\n" };
+			}
+			if (command === "git" && args[0] === "status") {
+				return { stderr: "", stdout: "" };
+			}
+			if (command === "git" && args[0] === "rev-list" && args.includes("--left-right")) {
+				return { stderr: "", stdout: "0\t0\n" };
+			}
+			if (command === "git" && args[0] === "rev-list") {
+				return { stderr: "", stdout: "0\n" };
+			}
+			if (command === "git" && args[0] === "ls-remote") {
+				return { stderr: "", stdout: "abc123\trefs/heads/symphony/ENG-13-already-merged\n" };
+			}
+			if (command === "git" && args[0] === "branch" && args[1] === "--format=%(refname:short)") {
+				return { stderr: "", stdout: "symphony/ENG-13-already-merged\n" };
+			}
+			return { stderr: "", stdout: "" };
+		},
+		hooks: { timeoutMs: 1000 },
+		repo: tempDir,
+		root: path.join(tempDir, "worktrees"),
+		runHook: async () => ({ skipped: true }),
+	});
+
+	const result = await manager.landIssue({
+		id: "issue-id",
+		identifier: "ENG-13",
+		slug: "ENG-13-already-merged",
+		title: "Already merged",
+	});
+
+	assert.equal(result.status, "no_changes");
+	assert.deepEqual(result.branchCleanup, {
+		local: { deleted: true },
+		remote: { deleted: true },
+	});
+	assert.equal(calls.some((call) => call.command === "gh"), false);
+	assert.ok(calls.some((call) => call.command === "git" && call.args.join(" ") === "push origin --delete symphony/ENG-13-already-merged"));
+	assert.ok(calls.some((call) => call.command === "git" && call.args.join(" ") === "branch -d symphony/ENG-13-already-merged"));
 });
 
 test("WorkspaceManager blocks landing when the base checkout is dirty", async () => {

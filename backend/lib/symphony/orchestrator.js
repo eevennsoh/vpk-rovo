@@ -54,6 +54,7 @@ function mergeIssues(issues) {
 }
 
 function formatLandingSuccessComment(issue, result) {
+	const branchCleanupSummary = formatBranchCleanupSummary(result.branchCleanup);
 	if (result.status === "missing") {
 		return [
 			`Symphony reviewed ${issue.identifier} after it moved to Done.`,
@@ -68,6 +69,7 @@ function formatLandingSuccessComment(issue, result) {
 			"",
 			"No branch commits or uncommitted worktree changes were found, so there was no PR to create.",
 			result.workspaceRemoved ? "The Symphony worktree was cleaned up." : "",
+			branchCleanupSummary,
 		].filter(Boolean).join("\n");
 	}
 
@@ -80,7 +82,17 @@ function formatLandingSuccessComment(issue, result) {
 		`Branch: ${result.branchName}`,
 		`Merged back to origin/${result.baseRef || "main"} and fast-forwarded the local checkout.`,
 		result.workspaceRemoved ? "The Symphony worktree was cleaned up." : "",
+		branchCleanupSummary,
 	].filter(Boolean).join("\n");
+}
+
+function formatBranchCleanupSummary(branchCleanup) {
+	if (!branchCleanup) {
+		return "";
+	}
+	const local = branchCleanup.local?.deleted ? "deleted local branch" : "local branch already absent";
+	const remote = branchCleanup.remote?.deleted ? "deleted remote branch" : "remote branch already absent";
+	return `Branch cleanup: ${local}; ${remote}.`;
 }
 
 class SymphonyOrchestrator {
