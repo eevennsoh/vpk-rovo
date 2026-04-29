@@ -83,7 +83,7 @@ function resolveInside(rootPath, ...segments) {
 	return candidatePath;
 }
 
-function listFiles(rootPath, relativeDir, shouldInclude) {
+function listFiles(rootPath, relativeDir, shouldInclude, shouldDescend = () => true) {
 	const basePath = resolveInside(rootPath, relativeDir);
 	let entries;
 	try {
@@ -104,7 +104,9 @@ function listFiles(rootPath, relativeDir, shouldInclude) {
 		const fullPath = path.join(basePath, entry.name);
 		const relativePath = toPosixPath(path.relative(rootPath, fullPath));
 		if (entry.isDirectory()) {
-			files.push(...listFiles(rootPath, relativePath, shouldInclude));
+			if (shouldDescend(fullPath, relativePath)) {
+				files.push(...listFiles(rootPath, relativePath, shouldInclude, shouldDescend));
+			}
 			continue;
 		}
 
@@ -137,15 +139,12 @@ function buildFileEntry(filePath, vaultRoot, baseDir) {
 
 function listRaw() {
 	const vaultRoot = getVaultRoot();
-	return listFiles(vaultRoot, "raw", (filePath, relativePath) => {
-		const rawRelativePath = relativePath.slice("raw/".length);
-		const [firstSegment] = rawRelativePath.split("/");
-		if (firstSegment === "assets") {
-			return false;
-		}
-
-		return RAW_SOURCE_EXTENSIONS.has(path.extname(filePath).toLowerCase());
-	}).map((filePath) => buildFileEntry(filePath, vaultRoot, "raw"));
+	return listFiles(
+		vaultRoot,
+		"raw",
+		(filePath) => RAW_SOURCE_EXTENSIONS.has(path.extname(filePath).toLowerCase()),
+		(_dirPath, relativePath) => relativePath !== "raw/assets" && !relativePath.startsWith("raw/assets/"),
+	).map((filePath) => buildFileEntry(filePath, vaultRoot, "raw"));
 }
 
 function listWiki() {
