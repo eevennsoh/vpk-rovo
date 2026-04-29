@@ -118,14 +118,14 @@ function listFiles(rootPath, relativeDir, shouldInclude, shouldDescend = () => t
 	return files;
 }
 
-function removeMarkdownExtension(value) {
-	return value.replace(/\.m(?:arkdown|d)$/iu, "");
+function removeContentExtension(value) {
+	return value.replace(/\.(?:html?|m(?:arkdown|d)|txt)$/iu, "");
 }
 
 function buildFileEntry(filePath, vaultRoot, baseDir) {
 	const basePath = resolveInside(vaultRoot, baseDir);
 	const stats = fs.statSync(filePath);
-	const slug = removeMarkdownExtension(toPosixPath(path.relative(basePath, filePath)));
+	const slug = removeContentExtension(toPosixPath(path.relative(basePath, filePath)));
 
 	return {
 		name: path.basename(filePath),
@@ -290,7 +290,7 @@ function readPage(slug) {
 		frontmatter: parsed.frontmatter,
 		path: pagePath,
 		relativePath: toPosixPath(path.relative(vaultRoot, pagePath)),
-		slug: removeMarkdownExtension(toPosixPath(path.relative(wikiRoot, pagePath))),
+		slug: removeContentExtension(toPosixPath(path.relative(wikiRoot, pagePath))),
 		updatedAt: stats.mtime.toISOString(),
 	};
 }
