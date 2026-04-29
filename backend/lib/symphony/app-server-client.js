@@ -313,9 +313,18 @@ class CodexAppServerClient extends EventEmitter {
 
 		return new Promise((resolve, reject) => {
 			const timeout = setTimeout(() => {
-				this.off("event", onEvent);
+				cleanup();
 				reject(new SymphonyAgentError("Timed out waiting for Codex turn completion", { turnId, timeoutMs }));
 			}, timeoutMs);
+			const cleanup = () => {
+				clearTimeout(timeout);
+				this.off("event", onEvent);
+				this.off("exit", onExit);
+			};
+			const onExit = ({ code, signal }) => {
+				cleanup();
+				reject(new SymphonyAgentError("Codex app-server stopped before turn completed", { code, signal, turnId }));
+			};
 			const onEvent = (message) => {
 				if (message.method !== "turn/completed") {
 					return;
@@ -324,11 +333,11 @@ class CodexAppServerClient extends EventEmitter {
 				if (turnId && turn?.id !== turnId) {
 					return;
 				}
-				clearTimeout(timeout);
-				this.off("event", onEvent);
+				cleanup();
 				resolve(turn);
 			};
 			this.on("event", onEvent);
+			this.on("exit", onExit);
 		});
 	}
 }

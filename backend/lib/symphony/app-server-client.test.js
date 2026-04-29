@@ -175,3 +175,33 @@ test("CodexAppServerClient waits for asynchronous turn/completed notification", 
 	assert.equal(result.text, "async done");
 	assert.equal(result.success, true);
 });
+
+test("CodexAppServerClient rejects pending turn wait when app-server exits", async () => {
+	const child = createFakeChild((message, fakeChild) => {
+		if (message.method === "thread/start") {
+			fakeChild.stdout.write(`${JSON.stringify({ id: message.id, result: { thread: { id: "thread-stop" } } })}\n`);
+			return;
+		}
+		if (message.method === "turn/start") {
+			fakeChild.stdout.write(`${JSON.stringify({ id: message.id, result: { turn: { id: "turn-stop", status: "running" } } })}\n`);
+			setImmediate(() => fakeChild.emit("exit", null, "SIGTERM"));
+		}
+	});
+	const client = new CodexAppServerClient({ spawn: () => child });
+	const config = {
+		agent: {
+			approvalPolicy: "never",
+			approvalsReviewer: "auto_review",
+			model: null,
+			reasoningEffort: null,
+			sandbox: "workspace-write",
+			serviceName: "symphony",
+		},
+	};
+
+	await client.startThread({ config, cwd: "/repo", developerInstructions: "", issue: { identifier: "ENG-3" } });
+	await assert.rejects(
+		() => client.runTurn({ config, cwd: "/repo", input: "stop" }),
+		/Codex app-server stopped before turn completed/,
+	);
+});

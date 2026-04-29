@@ -11,7 +11,7 @@ function createStatusServer(orchestrator) {
 		}
 		if (req.url === "/status") {
 			res.writeHead(200, { "Content-Type": "application/json" });
-			res.end(JSON.stringify(orchestrator.snapshot(), null, 2));
+			res.end(JSON.stringify(orchestrator.status ? orchestrator.status() : orchestrator.snapshot(), null, 2));
 			return;
 		}
 
