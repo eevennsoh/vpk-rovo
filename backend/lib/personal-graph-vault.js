@@ -101,7 +101,7 @@ function getConfiguredVault(configPath) {
 function inspectVaultRoot(configuredRoot, source) {
 	if (!configuredRoot) {
 		return {
-			message: `Choose a Personal Graph vault folder or set ${VAULT_ENV_KEY}.`,
+			message: "Choose a Personal Graph vault folder to get started.",
 			rawDirectoryExists: false,
 			root: null,
 			source: null,
