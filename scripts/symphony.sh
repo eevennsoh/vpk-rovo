@@ -5,8 +5,8 @@ usage() {
 	cat <<'EOF'
 Usage: pnpm run symphony -- [--port <port>] [--logs-root <path>]
 
-Runs the upstream OpenAI Symphony Elixir implementation against this repo's
-WORKFLOW.elixir.md template.
+Runs the upstream OpenAI Symphony reference implementation against this repo's
+WORKFLOW.md template.
 
 Required configuration:
   LINEAR_API_KEY                  Linear personal API key
@@ -16,7 +16,7 @@ Optional configuration:
   LINEAR_ASSIGNEE                 Limit polling to a Linear assignee id/email, or "me"
   SYMPHONY_SOURCE_REPO_URL        Repo cloned into each issue workspace
   SYMPHONY_WORKSPACE_ROOT         Issue workspace root
-  SYMPHONY_ELIXIR_DIR             Local clone/cache of openai/symphony
+  SYMPHONY_DIR                    Local clone/cache of openai/symphony
   SYMPHONY_UPSTREAM_REPO          Upstream Symphony git URL
   SYMPHONY_RUNTIME_DIR            Rendered workflow and default logs directory
 
@@ -89,7 +89,7 @@ load_env_var LINEAR_ASSIGNEE
 load_env_var SYMPHONY_LINEAR_PROJECT_SLUG
 load_env_var SYMPHONY_SOURCE_REPO_URL
 load_env_var SYMPHONY_WORKSPACE_ROOT
-load_env_var SYMPHONY_ELIXIR_DIR
+load_env_var SYMPHONY_DIR
 load_env_var SYMPHONY_UPSTREAM_REPO
 load_env_var SYMPHONY_RUNTIME_DIR
 
@@ -111,21 +111,21 @@ case "$SYMPHONY_LINEAR_PROJECT_SLUG" in
 esac
 
 if ! command -v mise >/dev/null 2>&1; then
-	echo "mise is required for upstream Symphony Elixir. Install it from https://mise.jdx.dev/." >&2
+	echo "mise is required for upstream Symphony. Install it from https://mise.jdx.dev/." >&2
 	exit 1
 fi
 
 export SYMPHONY_SOURCE_REPO_URL="${SYMPHONY_SOURCE_REPO_URL:-$(git -C "$repo_root" remote get-url origin)}"
-export SYMPHONY_WORKSPACE_ROOT="${SYMPHONY_WORKSPACE_ROOT:-/tmp/symphony-elixir-workspaces}"
+export SYMPHONY_WORKSPACE_ROOT="${SYMPHONY_WORKSPACE_ROOT:-/tmp/symphony-workspaces}"
 
 upstream_repo="${SYMPHONY_UPSTREAM_REPO:-https://github.com/openai/symphony.git}"
-upstream_dir="$(resolve_repo_path "${SYMPHONY_ELIXIR_DIR:-.tmp/symphony-elixir/openai-symphony}")"
-runtime_dir="$(resolve_repo_path "${SYMPHONY_RUNTIME_DIR:-.tmp/symphony-elixir/runtime}")"
-runtime_workflow="$runtime_dir/WORKFLOW.elixir.md"
+upstream_dir="$(resolve_repo_path "${SYMPHONY_DIR:-.tmp/symphony/openai-symphony}")"
+runtime_dir="$(resolve_repo_path "${SYMPHONY_RUNTIME_DIR:-.tmp/symphony/runtime}")"
+runtime_workflow="$runtime_dir/WORKFLOW.md"
 logs_root="$runtime_dir/log"
 
 if [ -e "$upstream_dir" ] && [ ! -d "$upstream_dir/.git" ]; then
-	echo "SYMPHONY_ELIXIR_DIR exists but is not a git clone: $upstream_dir" >&2
+	echo "SYMPHONY_DIR exists but is not a git clone: $upstream_dir" >&2
 	exit 1
 fi
 
@@ -138,7 +138,7 @@ fi
 
 mkdir -p "$runtime_dir"
 sed "s/__SYMPHONY_LINEAR_PROJECT_SLUG__/$SYMPHONY_LINEAR_PROJECT_SLUG/g" \
-	"$repo_root/WORKFLOW.elixir.md" > "$runtime_workflow"
+	"$repo_root/WORKFLOW.md" > "$runtime_workflow"
 
 cd "$upstream_dir/elixir"
 mise trust
@@ -147,7 +147,7 @@ mise exec -- mix setup
 mise exec -- mix build
 
 exec mise exec -- ./bin/symphony \
+	"$runtime_workflow" \
 	--i-understand-that-this-will-be-running-without-the-usual-guardrails \
 	--logs-root "$logs_root" \
-	"$@" \
-	"$runtime_workflow"
+	"$@"

@@ -279,3 +279,15 @@ Mark promoted entries with `[Promoted]` prefix — see vpk-lesson skill for deta
   matching the explicit copy requirement.
 - **Rule:** When a user asks for a specific control label, remove any derived
   status suffixes from that label unless they explicitly ask to keep them.
+
+### 2026-04-29 - Use plain Symphony names after the Option 2 migration
+
+- **What happened:** The repo kept `elixir` suffixes in local Symphony file,
+  script, path, and environment variable names after the older Option 1
+  implementation had been removed.
+- **Why:** The names were useful during migration, but they became misleading
+  once upstream Symphony was the only implementation path.
+- **Rule:** When only the upstream Symphony reference implementation remains,
+  use plain repo-owned names such as `WORKFLOW.md`, `scripts/symphony.sh`,
+  `SYMPHONY_DIR`, and neutral `/tmp/symphony-*` paths. Reserve `elixir` only
+  for the upstream repository subdirectory that must be executed.

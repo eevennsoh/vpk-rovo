@@ -78,15 +78,15 @@ Continuation context:
 ## Operating Contract
 
 Use the repository copy provided by Symphony. Do not touch any other checkout.
-Read `AGENTS.md`, `WORKFLOW.elixir.md`, and any issue-specific files before
+Read `AGENTS.md`, `WORKFLOW.md`, and any issue-specific files before
 editing. Keep changes narrow, preserve unrelated local edits, and validate
 before reporting success.
 
-This upstream Elixir Symphony path exposes a raw `linear_graphql` tool during
-Codex app-server sessions. Use it for Linear reads, comments, attachments, and
-state changes. Keep a single active `## Codex Workpad` Linear comment current
-with plan, acceptance criteria, validation, decisions, blockers, branch, PR,
-and final handoff notes.
+This Symphony path exposes a raw `linear_graphql` tool during Codex app-server
+sessions. Use it for Linear reads, comments, attachments, and state changes.
+Keep a single active `## Codex Workpad` Linear comment current with plan,
+acceptance criteria, validation, decisions, blockers, branch, PR, and final
+handoff notes.
 
 ## Status Map
 
