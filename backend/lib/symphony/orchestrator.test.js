@@ -111,6 +111,42 @@ test("formatIssueCommentsMarkdown preserves recent Linear context in chronologic
 	assert.match(markdown, /- 2026-04-29T02:00:00.000Z by Reviewer/);
 });
 
+test("formatIssueCommentsMarkdown keeps prompt history bounded", () => {
+	const comments = [
+		{
+			body: "dropped oldest one",
+			createdAt: "2026-04-29T00:00:00.000Z",
+			user: { name: "Oldest" },
+		},
+		{
+			body: "dropped oldest two",
+			createdAt: "2026-04-29T00:01:00.000Z",
+			user: { name: "Older" },
+		},
+		...Array.from({ length: 24 }, (_value, index) => ({
+			body: `kept comment ${index + 1}`,
+			createdAt: `2026-04-29T00:${String(index + 2).padStart(2, "0")}:00.000Z`,
+			user: { email: "reviewer@example.com" },
+		})),
+		{
+			body: "x".repeat(4005),
+			createdAt: "2026-04-29T00:26:00.000Z",
+			user: null,
+		},
+	];
+
+	const markdown = formatIssueCommentsMarkdown(comments);
+
+	assert.equal(markdown.match(/^- /gm)?.length, 25);
+	assert.doesNotMatch(markdown, /dropped oldest one/);
+	assert.doesNotMatch(markdown, /dropped oldest two/);
+	assert.match(markdown, /kept comment 1/);
+	assert.match(markdown, /reviewer@example\.com/);
+	assert.match(markdown, /Unknown author/);
+	assert.match(markdown, /\[comment truncated\]/);
+	assert.equal(markdown.includes("x".repeat(4001)), false);
+});
+
 test("SymphonyOrchestrator dispatches an active issue through workspace and agent", async () => {
 	const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "symphony-orchestrator-test-"));
 	const issue = {
