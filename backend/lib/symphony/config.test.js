@@ -34,6 +34,7 @@ test("normalizeWorkflowConfig applies defaults and resolves paths", () => {
 	assert.equal(config.tracker.team, "ENG");
 	assert.equal(config.workspace.root, "/tmp/symphony-test/workspaces");
 	assert.equal(config.dispatch.maxParallel, 2);
+	assert.deepEqual(config.tracker.landingStates, ["Done"]);
 	assert.equal(config.agent.approvalPolicy, "never");
 	assert.equal(config.agent.sandbox, "workspace-write");
 });

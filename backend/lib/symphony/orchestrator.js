@@ -53,6 +53,36 @@ function mergeIssues(issues) {
 	return Array.from(byKey.values());
 }
 
+function formatLandingSuccessComment(issue, result) {
+	if (result.status === "missing") {
+		return [
+			`Symphony reviewed ${issue.identifier} after it moved to Done.`,
+			"",
+			"No Symphony worktree was found, so there was nothing to land.",
+		].join("\n");
+	}
+
+	if (result.status === "no_changes") {
+		return [
+			`Symphony reviewed ${issue.identifier} after it moved to Done.`,
+			"",
+			"No branch commits or uncommitted worktree changes were found, so there was no PR to create.",
+			result.workspaceRemoved ? "The Symphony worktree was cleaned up." : "",
+		].filter(Boolean).join("\n");
+	}
+
+	return [
+		`Symphony landed ${issue.identifier}.`,
+		"",
+		result.commitCreated ? "Committed pending worktree changes before opening the PR." : "No uncommitted worktree changes were present; landing used existing branch commits.",
+		result.reusedPullRequest ? "Reused the existing open PR for the Symphony branch." : "Created a new PR for the Symphony branch.",
+		result.prUrl ? `PR: ${result.prUrl}` : "",
+		`Branch: ${result.branchName}`,
+		`Merged back to origin/${result.baseRef || "main"} and fast-forwarded the local checkout.`,
+		result.workspaceRemoved ? "The Symphony worktree was cleaned up." : "",
+	].filter(Boolean).join("\n");
+}
+
 class SymphonyOrchestrator {
 	constructor(options) {
 		this.workflowRuntime = options.workflowRuntime;
@@ -116,6 +146,11 @@ class SymphonyOrchestrator {
 		return this.config.tracker.terminalStates.includes(stateName);
 	}
 
+	isLandingIssue(issue) {
+		const stateName = issue.stateName || issue.state?.name || "";
+		return this.config.tracker.landingStates.includes(stateName);
+	}
+
 	isRetryReady(record) {
 		return !record.retryAfterMs || record.retryAfterMs <= this.clock();
 	}
@@ -155,6 +190,10 @@ class SymphonyOrchestrator {
 	async reconcileIssue(issue) {
 		const record = this.getRecord(issue);
 		if (this.isTerminalIssue(issue)) {
+			if (this.isLandingIssue(issue)) {
+				await this.landTerminalIssue(issue, record);
+				return;
+			}
 			await this.cleanupTerminalIssue(issue, record);
 			return;
 		}
@@ -195,6 +234,46 @@ class SymphonyOrchestrator {
 		record.status = "cleaned";
 		record.cleanedAtMs = this.clock();
 		record.updatedAt = this.clock();
+	}
+
+	async landTerminalIssue(issue, record) {
+		if (record.status === "landed" || record.status === "cleaned") {
+			return;
+		}
+		if (!this.isRetryReady(record)) {
+			return;
+		}
+
+		const issueWithSlug = record.slug ? { ...issue, slug: record.slug } : issue;
+		record.landingAttempt = (record.landingAttempt || 0) + 1;
+		record.status = "landing";
+		record.updatedAt = this.clock();
+
+		try {
+			const result = await this.workspaceManager.landIssue(issueWithSlug);
+			record.landedAtMs = this.clock();
+			record.landing = result;
+			record.prNumber = result.prNumber || record.prNumber || null;
+			record.prUrl = result.prUrl || record.prUrl || null;
+			record.status = result.status === "merged" ? "landed" : "cleaned";
+			record.updatedAt = this.clock();
+			await this.linearClient.createComment(issue.id, formatLandingSuccessComment(issueWithSlug, result));
+		} catch (error) {
+			record.status = "landing_failed";
+			record.error = error.message;
+			record.retryAfterMs = this.clock() + computeBackoffMs(record.landingAttempt, this.config);
+			record.updatedAt = this.clock();
+			await this.linearClient.createComment(
+				issue.id,
+				[
+					`Symphony could not land ${issue.identifier}.`,
+					"",
+					error.message,
+					"",
+					`Next retry: ${new Date(record.retryAfterMs).toISOString()}`,
+				].join("\n"),
+			);
+		}
 	}
 
 	async dispatchIssue(issue, record) {

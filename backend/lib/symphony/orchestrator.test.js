@@ -30,6 +30,7 @@ function baseConfig(root) {
 			doneState: "Done",
 			failedState: null,
 			inProgressState: "In Progress",
+			landingStates: ["Done"],
 			labels: ["symphony"],
 			team: "ENG",
 			terminalStates: ["Done"],
@@ -189,24 +190,26 @@ test("SymphonyOrchestrator dispatches unlimited workers concurrently", async () 
 	);
 });
 
-test("SymphonyOrchestrator polls terminal states and cleans completed workspaces", async () => {
+test("SymphonyOrchestrator polls non-landing terminal states and cleans completed workspaces", async () => {
 	const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "symphony-orchestrator-cleanup-test-"));
 	const issue = {
 		description: "",
 		id: "issue-id",
 		identifier: "ENG-123",
-		stateName: "Done",
+		stateName: "Canceled",
 		title: "Completed feature",
 	};
 	const searches = [];
 	const events = [];
+	const config = baseConfig(tempDir);
+	config.tracker.terminalStates = ["Canceled"];
 	const linearClient = {
 		async createComment() {
 			events.push(["comment"]);
 		},
 		async searchIssues({ stateNames }) {
 			searches.push(stateNames);
-			return stateNames.includes("Done") ? [issue] : [];
+			return stateNames.includes("Canceled") ? [issue] : [];
 		},
 		async updateIssueState(_issueId, stateName) {
 			events.push(["state", stateName]);
@@ -229,6 +232,75 @@ test("SymphonyOrchestrator polls terminal states and cleans completed workspaces
 		agentFactory: () => {
 			throw new Error("terminal issues should not start agents");
 		},
+		config,
+		linearClient,
+		stateFile: path.join(tempDir, "state.json"),
+		workflowRuntime: {
+			current: { body: "", config: {} },
+			reloadIfChanged() {
+				return false;
+			},
+		},
+		workspaceManager,
+	});
+
+	const snapshot = await orchestrator.pollOnce();
+
+	assert.deepEqual(searches, [["Todo"], ["Canceled"]]);
+	assert.deepEqual(events, [["cleanup", "ENG-123"]]);
+	assert.equal(snapshot.issues[0].status, "cleaned");
+});
+
+test("SymphonyOrchestrator lands Done issues and comments with PR status", async () => {
+	const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "symphony-orchestrator-landing-test-"));
+	const issue = {
+		description: "",
+		id: "issue-id",
+		identifier: "ENG-123",
+		stateName: "Done",
+		title: "Completed feature",
+	};
+	const events = [];
+	const linearClient = {
+		async createComment(issueId, body) {
+			events.push(["comment", issueId, body]);
+		},
+		async searchIssues({ stateNames }) {
+			return stateNames.includes("Done") ? [issue] : [];
+		},
+		async updateIssueState(_issueId, stateName) {
+			events.push(["state", stateName]);
+		},
+	};
+	const workspaceManager = {
+		async cleanup() {
+			events.push(["cleanup"]);
+		},
+		async createOrReuse() {
+			events.push(["workspace"]);
+			return { branchName: "symphony/ENG-123", path: tempDir };
+		},
+		async landIssue(landIssue) {
+			events.push(["land", landIssue.identifier]);
+			return {
+				baseRef: "main",
+				branchName: "symphony/ENG-123",
+				commitCreated: true,
+				prNumber: 12,
+				prUrl: "https://github.test/pull/12",
+				reusedPullRequest: false,
+				status: "merged",
+				workspaceRemoved: true,
+			};
+		},
+		async runPostFailure() {},
+		async runPostSuccess() {},
+		async runPreStart() {},
+	};
+	const orchestrator = new SymphonyOrchestrator({
+		agentFactory: () => {
+			throw new Error("Done issues should land without starting agents");
+		},
 		config: baseConfig(tempDir),
 		linearClient,
 		stateFile: path.join(tempDir, "state.json"),
@@ -243,7 +315,10 @@ test("SymphonyOrchestrator polls terminal states and cleans completed workspaces
 
 	const snapshot = await orchestrator.pollOnce();
 
-	assert.deepEqual(searches, [["Todo"], ["Done"]]);
-	assert.deepEqual(events, [["cleanup", "ENG-123"]]);
-	assert.equal(snapshot.issues[0].status, "cleaned");
+	assert.deepEqual(events[0], ["land", "ENG-123"]);
+	assert.equal(events[1][0], "comment");
+	assert.match(events[1][2], /Symphony landed ENG-123/);
+	assert.match(events[1][2], /PR: https:\/\/github.test\/pull\/12/);
+	assert.equal(snapshot.issues[0].status, "landed");
+	assert.equal(snapshot.issues[0].prUrl, "https://github.test/pull/12");
 });

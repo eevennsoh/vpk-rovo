@@ -110,3 +110,139 @@ test("issueEnv exposes stable hook variables", () => {
 		SYMPHONY_WORKSPACE: "/tmp/w",
 	});
 });
+
+test("WorkspaceManager lands dirty Done work through PR merge and local main sync", async () => {
+	const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "symphony-workspace-land-test-"));
+	const workspacePath = path.join(tempDir, "worktrees", "ENG-10-add-graph");
+	fs.mkdirSync(workspacePath, { recursive: true });
+	const calls = [];
+	let workspaceStatusCalls = 0;
+	let revListCalls = 0;
+	const manager = new WorkspaceManager({
+		baseRef: "main",
+		branchPrefix: "symphony/",
+		execFile: async (command, args, options) => {
+			calls.push({ args, command, cwd: options.cwd });
+			if (command === "git" && args[0] === "rev-parse") {
+				return { stderr: "", stdout: "main\n" };
+			}
+			if (command === "git" && args[0] === "status" && options.cwd === tempDir) {
+				return { stderr: "", stdout: "" };
+			}
+			if (command === "git" && args[0] === "status" && options.cwd === workspacePath) {
+				workspaceStatusCalls += 1;
+				return { stderr: "", stdout: workspaceStatusCalls === 1 ? " M app/page.tsx\n?? app/new.tsx\n" : "" };
+			}
+			if (command === "git" && args[0] === "rev-list" && args.includes("--left-right")) {
+				return { stderr: "", stdout: "0\t0\n" };
+			}
+			if (command === "git" && args[0] === "rev-list") {
+				revListCalls += 1;
+				return { stderr: "", stdout: revListCalls === 1 ? "0\n" : "1\n" };
+			}
+			if (command === "gh" && args[0] === "pr" && args[1] === "list" && !calls.some((call) => call.command === "gh" && call.args[1] === "create")) {
+				return { stderr: "", stdout: "[]" };
+			}
+			if (command === "gh" && args[0] === "pr" && args[1] === "create") {
+				return { stderr: "", stdout: "https://github.test/pull/10\n" };
+			}
+			if (command === "gh" && args[0] === "pr" && args[1] === "list") {
+				return {
+					stderr: "",
+					stdout: JSON.stringify([{ number: 10, title: "ENG-10: Add graph", url: "https://github.test/pull/10" }]),
+				};
+			}
+			return { stderr: "", stdout: "" };
+		},
+		hooks: { timeoutMs: 1000 },
+		repo: tempDir,
+		root: path.join(tempDir, "worktrees"),
+		runHook: async () => ({ skipped: true }),
+	});
+
+	const result = await manager.landIssue({
+		id: "issue-id",
+		identifier: "ENG-10",
+		title: "Add graph",
+		url: "https://linear.test/ENG-10",
+	});
+
+	assert.equal(result.status, "merged");
+	assert.equal(result.commitCreated, true);
+	assert.equal(result.prNumber, 10);
+	assert.equal(result.prUrl, "https://github.test/pull/10");
+	assert.ok(calls.some((call) => call.command === "git" && call.args.join(" ") === "add --all" && call.cwd === workspacePath));
+	assert.ok(calls.some((call) => call.command === "git" && call.args[0] === "commit" && call.args.at(-1) === "ENG-10: Add graph"));
+	assert.ok(calls.some((call) => call.command === "git" && call.args.join(" ") === "push -u origin symphony/ENG-10-add-graph"));
+	assert.ok(calls.some((call) => call.command === "gh" && call.args.join(" ").startsWith("pr create --base main --head symphony/ENG-10-add-graph")));
+	assert.ok(calls.some((call) => call.command === "gh" && call.args.join(" ") === "pr merge 10 --merge"));
+	assert.ok(calls.some((call) => call.command === "git" && call.args.join(" ") === "pull --ff-only origin main" && call.cwd === tempDir));
+	assert.ok(calls.some((call) => call.command === "git" && call.args[0] === "worktree" && call.args[1] === "remove" && call.args[2] === workspacePath && call.args.includes("--force")));
+});
+
+test("WorkspaceManager blocks landing when the base checkout is dirty", async () => {
+	const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "symphony-workspace-land-block-test-"));
+	const workspacePath = path.join(tempDir, "worktrees", "ENG-11-dirty-base");
+	fs.mkdirSync(workspacePath, { recursive: true });
+	const calls = [];
+	const manager = new WorkspaceManager({
+		baseRef: "main",
+		branchPrefix: "symphony/",
+		execFile: async (command, args, options) => {
+			calls.push({ args, command, cwd: options.cwd });
+			if (command === "git" && args[0] === "rev-parse") {
+				return { stderr: "", stdout: "main\n" };
+			}
+			if (command === "git" && args[0] === "status" && options.cwd === tempDir) {
+				return { stderr: "", stdout: " M WORKFLOW.md\n" };
+			}
+			return { stderr: "", stdout: "" };
+		},
+		hooks: { timeoutMs: 1000 },
+		repo: tempDir,
+		root: path.join(tempDir, "worktrees"),
+		runHook: async () => ({ skipped: true }),
+	});
+
+	await assert.rejects(
+		() => manager.landIssue({ id: "issue-id", identifier: "ENG-11", slug: "ENG-11-dirty-base", title: "Dirty base" }),
+		/Cannot land Symphony work while .* has uncommitted changes/,
+	);
+	assert.equal(calls.some((call) => call.command === "gh"), false);
+	assert.equal(calls.some((call) => call.command === "git" && call.args[0] === "commit"), false);
+});
+
+test("WorkspaceManager blocks landing when the base checkout has unpushed commits", async () => {
+	const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "symphony-workspace-land-ahead-test-"));
+	const workspacePath = path.join(tempDir, "worktrees", "ENG-12-ahead-base");
+	fs.mkdirSync(workspacePath, { recursive: true });
+	const calls = [];
+	const manager = new WorkspaceManager({
+		baseRef: "main",
+		branchPrefix: "symphony/",
+		execFile: async (command, args, options) => {
+			calls.push({ args, command, cwd: options.cwd });
+			if (command === "git" && args[0] === "rev-parse") {
+				return { stderr: "", stdout: "main\n" };
+			}
+			if (command === "git" && args[0] === "status" && options.cwd === tempDir) {
+				return { stderr: "", stdout: "" };
+			}
+			if (command === "git" && args[0] === "rev-list" && args.includes("--left-right")) {
+				return { stderr: "", stdout: "1\t0\n" };
+			}
+			return { stderr: "", stdout: "" };
+		},
+		hooks: { timeoutMs: 1000 },
+		repo: tempDir,
+		root: path.join(tempDir, "worktrees"),
+		runHook: async () => ({ skipped: true }),
+	});
+
+	await assert.rejects(
+		() => manager.landIssue({ id: "issue-id", identifier: "ENG-12", slug: "ENG-12-ahead-base", title: "Ahead base" }),
+		/Cannot land Symphony work while main has unpushed commits/,
+	);
+	assert.equal(calls.some((call) => call.command === "gh"), false);
+	assert.equal(calls.some((call) => call.command === "git" && call.args[0] === "commit"), false);
+});

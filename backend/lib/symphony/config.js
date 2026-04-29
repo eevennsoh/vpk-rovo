@@ -6,6 +6,7 @@ const { SymphonyConfigError } = require("./errors");
 
 const DEFAULT_ACTIVE_STATES = ["Todo", "Backlog", "Ready"];
 const DEFAULT_TERMINAL_STATES = ["Done", "Canceled", "Cancelled"];
+const DEFAULT_LANDING_STATES = ["Done"];
 const DEFAULT_POLL_INTERVAL_MS = 60_000;
 const DEFAULT_MAX_PARALLEL = 1;
 const DEFAULT_HOOK_TIMEOUT_MS = 120_000;
@@ -123,6 +124,7 @@ function normalizeWorkflowConfig(rawConfig, options = {}) {
 	const apiKey = tracker.api_key || env.LINEAR_API_KEY;
 	const activeStates = asArray(tracker.active_states, DEFAULT_ACTIVE_STATES);
 	const terminalStates = asArray(tracker.terminal_states, DEFAULT_TERMINAL_STATES);
+	const landingStates = asArray(firstDefined(tracker.landing_states, tracker.landingStates), DEFAULT_LANDING_STATES);
 
 	return {
 		name: typeof config.name === "string" && config.name.trim() ? config.name.trim() : "symphony",
@@ -132,6 +134,7 @@ function normalizeWorkflowConfig(rawConfig, options = {}) {
 			endpoint: tracker.endpoint || "https://api.linear.app/graphql",
 			activeStates,
 			terminalStates,
+			landingStates,
 			labels: asArray(tracker.labels),
 			inProgressState: tracker.in_progress_state || tracker.inProgressState || "In Progress",
 			doneState: tracker.done_state || tracker.doneState || "Done",
@@ -182,6 +185,7 @@ function normalizeWorkflowConfig(rawConfig, options = {}) {
 
 module.exports = {
 	DEFAULT_ACTIVE_STATES,
+	DEFAULT_LANDING_STATES,
 	DEFAULT_TERMINAL_STATES,
 	normalizeWorkflowConfig,
 	resolveEnvReferences,
