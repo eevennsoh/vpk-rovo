@@ -21,7 +21,7 @@ tracker:
   team: $LINEAR_TEAM_KEY
   active_states: [Todo, In Progress]
   terminal_states: [Done, Canceled]
-  labels: [symphony, codex]
+  labels: [Codex]
   in_progress_state: In Progress
   done_state: Human Review
 workspace:
@@ -53,8 +53,8 @@ Recommended Linear flow for this repo:
 Backlog -> Todo -> In Progress -> Human Review -> Done
 ```
 
-Symphony only starts issues in `Todo` or `In Progress` that have either the
-`symphony` or `codex` label. A successful Codex run moves the issue to
+Symphony only starts issues in `Todo` or `In Progress` that have the `Codex`
+label. A successful Codex run moves the issue to
 `Human Review`, where a human can inspect `/tmp/symphony-workspaces/<ISSUE-ID>`
 before manually moving the issue to `Done`. Moving the issue to `Done` lands
 the PR, syncs `main`, removes the worktree, and deletes the local and remote

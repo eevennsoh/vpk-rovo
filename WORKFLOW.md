@@ -6,7 +6,7 @@ tracker:
   active_states: [Todo, In Progress]
   terminal_states: [Done, Closed, Canceled, Cancelled, Duplicate]
   landing_states: [Done]
-  labels: [codex]
+  labels: [Codex]
   in_progress_state: In Progress
   done_state: Human Review
 
