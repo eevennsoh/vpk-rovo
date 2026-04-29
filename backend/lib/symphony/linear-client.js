@@ -16,11 +16,31 @@ const ISSUE_FIELDS = `
 	state { name type }
 	assignee { id name email }
 	labels { nodes { id name } }
+	comments(last: 25, orderBy: createdAt) {
+		nodes {
+			id
+			body
+			createdAt
+			updatedAt
+			user { id name email }
+		}
+	}
 `;
+
+function normalizeComment(comment) {
+	return {
+		body: typeof comment?.body === "string" ? comment.body : "",
+		createdAt: comment?.createdAt || "",
+		id: comment?.id || "",
+		updatedAt: comment?.updatedAt || "",
+		user: comment?.user || null,
+	};
+}
 
 function normalizeIssue(issue) {
 	return {
 		...issue,
+		comments: Array.isArray(issue?.comments?.nodes) ? issue.comments.nodes.map(normalizeComment) : [],
 		stateName: issue?.state?.name || "",
 		labels: Array.isArray(issue?.labels?.nodes) ? issue.labels.nodes.map((label) => label.name).filter(Boolean) : [],
 	};

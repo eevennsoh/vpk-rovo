@@ -8,7 +8,7 @@ const path = require("node:path");
 const test = require("node:test");
 const { SymphonyEventLog } = require("./event-log");
 const { createStatusServer } = require("./http-server");
-const { SymphonyOrchestrator, computeBackoffMs } = require("./orchestrator");
+const { SymphonyOrchestrator, computeBackoffMs, formatIssueCommentsMarkdown } = require("./orchestrator");
 
 function baseConfig(root) {
 	return {
@@ -80,9 +80,35 @@ test("computeBackoffMs caps exponential retry delay", () => {
 	assert.equal(computeBackoffMs(8, config), 1000);
 });
 
+test("formatIssueCommentsMarkdown preserves recent Linear context in chronological order", () => {
+	const markdown = formatIssueCommentsMarkdown([
+		{
+			body: "Second note",
+			createdAt: "2026-04-29T02:00:00.000Z",
+			user: { name: "Reviewer" },
+		},
+		{
+			body: "## Codex Workpad\nCurrent plan goes here.",
+			createdAt: "2026-04-29T01:00:00.000Z",
+			user: { name: "Codex" },
+		},
+	]);
+
+	assert.match(markdown, /^- 2026-04-29T01:00:00.000Z by Codex/);
+	assert.match(markdown, /## Codex Workpad/);
+	assert.match(markdown, /- 2026-04-29T02:00:00.000Z by Reviewer/);
+});
+
 test("SymphonyOrchestrator dispatches an active issue through workspace and agent", async () => {
 	const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "symphony-orchestrator-test-"));
 	const issue = {
+		comments: [
+			{
+				body: "Human rework note",
+				createdAt: "2026-04-29T03:00:00.000Z",
+				user: { name: "Reviewer" },
+			},
+		],
 		description: "Implement it",
 		id: "issue-id",
 		identifier: "ENG-123",
@@ -141,7 +167,7 @@ test("SymphonyOrchestrator dispatches an active issue through workspace and agen
 			current: {
 				body: "Developer instructions",
 				config: {
-					prompt: "{{ issue.identifier }} {{ issue.title }} attempt {{ attempt }}",
+					prompt: "{{ issue.identifier }} {{ issue.title }} attempt {{ attempt }}\n{{ issue.commentsMarkdown }}",
 				},
 			},
 			reloadIfChanged() {
@@ -156,7 +182,8 @@ test("SymphonyOrchestrator dispatches an active issue through workspace and agen
 	assert.deepEqual(events[0], ["workspace"]);
 	assert.deepEqual(events[1], ["preStart"]);
 	assert.deepEqual(events[2], ["state", "issue-id", "In Progress"]);
-	assert.deepEqual(events[5], ["runTurn", "ENG-123 Add feature attempt 1"]);
+	assert.match(events[5][1], /ENG-123 Add feature attempt 1/);
+	assert.match(events[5][1], /Human rework note/);
 	assert.deepEqual(events.at(-2), ["state", "issue-id", "Done"]);
 	assert.equal(snapshot.issues[0].status, "succeeded");
 	assert.equal(snapshot.issues[0].threadId, "thread-1");

@@ -14,11 +14,46 @@ function sleep(ms) {
 	return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+const MAX_PROMPT_COMMENT_BODY_CHARS = 4000;
+
+function sortCommentsByCreatedAt(comments) {
+	return [...comments].sort((left, right) => {
+		const leftTime = Date.parse(left.createdAt || "") || 0;
+		const rightTime = Date.parse(right.createdAt || "") || 0;
+		return leftTime - rightTime;
+	});
+}
+
+function formatIssueCommentsMarkdown(comments, limit = 25) {
+	if (!Array.isArray(comments) || !comments.length) {
+		return "";
+	}
+
+	return sortCommentsByCreatedAt(comments)
+		.slice(-limit)
+		.map((comment) => {
+			const author = comment.user?.name || comment.user?.email || "Unknown author";
+			const createdAt = comment.createdAt || "unknown date";
+			const rawBody = (comment.body || "").trim();
+			const body = rawBody.length > MAX_PROMPT_COMMENT_BODY_CHARS
+				? `${rawBody.slice(0, MAX_PROMPT_COMMENT_BODY_CHARS)}\n[comment truncated]`
+				: rawBody;
+			const indentedBody = body
+				? body.split(/\r?\n/).map((line) => `  ${line}`).join("\n")
+				: "  (empty comment)";
+			return `- ${createdAt} by ${author}\n${indentedBody}`;
+		})
+		.join("\n\n");
+}
+
 function issueScope(issue, attempt) {
+	const comments = Array.isArray(issue.comments) ? issue.comments : [];
 	return {
 		attempt,
 		issue: {
 			...issue,
+			comments,
+			commentsMarkdown: formatIssueCommentsMarkdown(comments),
 			description: issue.description || "",
 			labels: issue.labels || [],
 			state: issue.stateName || issue.state?.name || "",
@@ -912,5 +947,6 @@ module.exports = {
 	SymphonyOrchestrator,
 	buildDefaultPrompt,
 	computeBackoffMs,
+	formatIssueCommentsMarkdown,
 	issueScope,
 };

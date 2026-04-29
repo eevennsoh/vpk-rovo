@@ -65,6 +65,13 @@ before manually moving the issue to `Done`. Moving the issue to `Done` lands
 the PR, syncs `main`, removes the worktree, and deletes the local and remote
 Symphony branch refs.
 
+Each worker prompt includes the issue description plus recent Linear comments.
+Workers also get a `linear_graphql` dynamic tool, so they can refresh Linear
+context during a run. Keep one `## Codex Workpad` comment on the issue for
+durable run state: current plan, decisions, validation, open questions, and
+handoff notes. Later Symphony runs can recover that context when an issue moves
+through review, rework, or another active state.
+
 `dispatch.max_parallel` accepts either a positive integer or `infinite`. Use a
 number to cap concurrent Codex workers, or `infinite` to let Symphony dispatch
 all currently eligible issues in one poll.
@@ -98,6 +105,8 @@ What is already in place:
   still working in it.
 - Workflow front matter is re-normalized after reload, so updated labels,
   states, dispatch limits, hooks, and Codex settings affect later polls.
+- Worker prompts include recent Linear comments, and the `linear_graphql`
+  dynamic tool lets Codex refresh or update issue context during a run.
 - The durable JSONL event log records dispatch, thread and turn IDs, state
   transitions, retries, landing, cleanup, PR details, and errors.
 - The `/status` endpoint groups active, queued, retrying, succeeded, landing,

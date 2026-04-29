@@ -31,7 +31,20 @@ agent:
 prompt: |-
   Work on Linear issue {{ issue.identifier }}: {{ issue.title }}
 
+  ## Description
+
   {{ issue.description }}
+
+  {% if issue.commentsMarkdown %}
+  ## Recent Linear comments
+
+  {{ issue.commentsMarkdown }}
+
+  {% endif %}
+  Linear comments are durable context. If a `## Codex Workpad` comment exists,
+  read it as the current run state before editing. If you create or change
+  implementation state that future runs need, update that workpad comment with
+  the current plan, decisions, validation, and open questions.
 
   Keep the change narrow, preserve unrelated local edits, run relevant tests,
   and summarize what changed.
@@ -49,3 +62,7 @@ Use the repository workspace provided by Symphony. Read the relevant local
 context before editing, make the smallest correct change for the Linear issue,
 and validate the change before reporting success. If the issue is ambiguous,
 leave a clear Linear comment instead of guessing.
+
+Use the `linear_graphql` tool when you need fresh Linear context during a run.
+Keep a single `## Codex Workpad` comment current so later Symphony runs can
+recover the task state after issue state changes, rework, or human review.

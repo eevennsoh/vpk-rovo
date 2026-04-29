@@ -69,6 +69,8 @@ test("CodexAppServerClient sends initialize, thread/start, and turn/start reques
 	assert.equal(result.text, "done");
 	assert.equal(seen[1].method, "thread/start");
 	assert.equal(seen[1].params.approvalPolicy, "never");
+	assert.deepEqual(seen[1].params.dynamicTools.map((tool) => tool.name), ["linear_graphql"]);
+	assert.equal(seen[1].params.dynamicTools[0].inputSchema.required[0], "query");
 	assert.equal(seen[1].params.experimentalRawEvents, false);
 	assert.equal(seen[2].params.input[0].text, "Fix ENG-1");
 	assert.deepEqual(seen[2].params.input[0].text_elements, []);
@@ -114,12 +116,25 @@ test("CodexAppServerClient handles Symphony dynamic Linear tool calls", async ()
 			},
 		}),
 	);
+	client.handleLine(
+		JSON.stringify({
+			id: 8,
+			method: "item/tool/call",
+			params: {
+				arguments: JSON.stringify({ query: "query Comments", variables: { issueId: "issue-1" } }),
+				tool: "linear_graphql",
+			},
+		}),
+	);
 
 	await new Promise((resolve) => setImmediate(resolve));
-	assert.equal(responses.length, 1);
+	assert.equal(responses.length, 2);
 	assert.equal(responses[0].id, 7);
 	assert.equal(responses[0].result.success, true);
 	assert.match(responses[0].result.contentItems[0].text, /query Test/);
+	assert.equal(responses[1].id, 8);
+	assert.equal(responses[1].result.success, true);
+	assert.match(responses[1].result.contentItems[0].text, /query Comments/);
 });
 
 test("CodexAppServerClient waits for asynchronous turn/completed notification", async () => {

@@ -5,6 +5,27 @@ const readline = require("readline");
 const { EventEmitter } = require("events");
 const { SymphonyAgentError } = require("./errors");
 
+const LINEAR_GRAPHQL_DYNAMIC_TOOL = {
+	description: "Run a Linear GraphQL query or mutation using Symphony's configured Linear API credentials.",
+	inputSchema: {
+		additionalProperties: false,
+		properties: {
+			query: {
+				description: "The Linear GraphQL query or mutation.",
+				type: "string",
+			},
+			variables: {
+				additionalProperties: true,
+				description: "Optional GraphQL variables.",
+				type: "object",
+			},
+		},
+		required: ["query"],
+		type: "object",
+	},
+	name: "linear_graphql",
+};
+
 function getTextFromTurn(turn) {
 	if (!turn || typeof turn !== "object") {
 		return "";
@@ -198,14 +219,17 @@ class CodexAppServerClient extends EventEmitter {
 	}
 
 	async handleDynamicTool(params) {
-		if (params.namespace === "symphony" && params.tool === "linear_graphql") {
+		const toolName = params.tool || params.name;
+		const namespace = params.namespace || "";
+		if (toolName === "linear_graphql" && (!namespace || namespace === "symphony")) {
 			if (!this.linearClient) {
 				return {
 					success: false,
 					contentItems: [{ type: "inputText", text: "linear_graphql is not configured" }],
 				};
 			}
-			const data = await this.linearClient.linearGraphql(params.arguments?.query, params.arguments?.variables || {});
+			const args = typeof params.arguments === "string" ? JSON.parse(params.arguments) : params.arguments || {};
+			const data = await this.linearClient.linearGraphql(args.query, args.variables || {});
 			return {
 				success: true,
 				contentItems: [{ type: "inputText", text: JSON.stringify(data, null, 2) }],
@@ -262,6 +286,7 @@ class CodexAppServerClient extends EventEmitter {
 			approvalsReviewer: config.agent.approvalsReviewer,
 			cwd,
 			developerInstructions,
+			dynamicTools: [LINEAR_GRAPHQL_DYNAMIC_TOOL],
 			model: config.agent.model,
 			experimentalRawEvents: false,
 			persistExtendedHistory: true,
