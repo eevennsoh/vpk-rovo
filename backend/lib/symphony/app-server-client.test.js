@@ -24,6 +24,19 @@ function createFakeChild(onRequest) {
 	return child;
 }
 
+function createAgentConfig() {
+	return {
+		agent: {
+			approvalPolicy: "never",
+			approvalsReviewer: "auto_review",
+			model: null,
+			reasoningEffort: null,
+			sandbox: "workspace-write",
+			serviceName: "symphony",
+		},
+	};
+}
+
 test("CodexAppServerClient sends initialize, thread/start, and turn/start requests", async () => {
 	const seen = [];
 	const child = createFakeChild((message, fakeChild) => {
@@ -49,16 +62,7 @@ test("CodexAppServerClient sends initialize, thread/start, and turn/start reques
 		command: "codex app-server",
 		spawn: () => child,
 	});
-	const config = {
-		agent: {
-			approvalPolicy: "never",
-			approvalsReviewer: "auto_review",
-			model: null,
-			reasoningEffort: null,
-			sandbox: "workspace-write",
-			serviceName: "symphony",
-		},
-	};
+	const config = createAgentConfig();
 
 	await client.initialize();
 	await client.startThread({ config, cwd: "/repo/worktree", developerInstructions: "Do the work.", issue: { identifier: "ENG-1" } });
@@ -245,16 +249,7 @@ test("CodexAppServerClient waits for asynchronous turn/completed notification", 
 		}
 	});
 	const client = new CodexAppServerClient({ spawn: () => child });
-	const config = {
-		agent: {
-			approvalPolicy: "never",
-			approvalsReviewer: "auto_review",
-			model: null,
-			reasoningEffort: null,
-			sandbox: "workspace-write",
-			serviceName: "symphony",
-		},
-	};
+	const config = createAgentConfig();
 
 	await client.initialize();
 	await client.startThread({ config, cwd: "/repo", developerInstructions: "", issue: { identifier: "ENG-2" } });
@@ -276,16 +271,7 @@ test("CodexAppServerClient rejects pending turn wait when app-server exits", asy
 		}
 	});
 	const client = new CodexAppServerClient({ spawn: () => child });
-	const config = {
-		agent: {
-			approvalPolicy: "never",
-			approvalsReviewer: "auto_review",
-			model: null,
-			reasoningEffort: null,
-			sandbox: "workspace-write",
-			serviceName: "symphony",
-		},
-	};
+	const config = createAgentConfig();
 
 	await client.startThread({ config, cwd: "/repo", developerInstructions: "", issue: { identifier: "ENG-3" } });
 	await assert.rejects(
