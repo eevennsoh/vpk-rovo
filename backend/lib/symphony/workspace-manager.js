@@ -16,6 +16,24 @@ function sanitizePathSegment(value) {
 	return segment.slice(0, 120);
 }
 
+function slugifyTitle(title) {
+	return String(title || "")
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, "-")
+		.replace(/^-+|-+$/g, "")
+		.slice(0, 50)
+		.replace(/-+$/, "");
+}
+
+function buildIssueSlug(issue) {
+	if (issue.slug) {
+		return issue.slug;
+	}
+	const identifier = issue.identifier || issue.id;
+	const titleSlug = slugifyTitle(issue.title);
+	return titleSlug ? `${identifier}-${titleSlug}` : identifier;
+}
+
 function issueEnv(issue, workspacePath) {
 	return {
 		SYMPHONY_ISSUE_ID: issue.id || "",
@@ -90,11 +108,11 @@ class WorkspaceManager {
 	}
 
 	getIssueWorkspacePath(issue) {
-		return path.join(this.root, sanitizePathSegment(issue.identifier || issue.id));
+		return path.join(this.root, sanitizePathSegment(buildIssueSlug(issue)));
 	}
 
 	getBranchName(issue) {
-		return `${this.branchPrefix}${sanitizePathSegment(issue.identifier || issue.id)}`;
+		return `${this.branchPrefix}${sanitizePathSegment(buildIssueSlug(issue))}`;
 	}
 
 	async ensureRoot() {
@@ -159,7 +177,9 @@ class WorkspaceManager {
 
 module.exports = {
 	WorkspaceManager,
+	buildIssueSlug,
 	issueEnv,
 	runHook,
 	sanitizePathSegment,
+	slugifyTitle,
 };

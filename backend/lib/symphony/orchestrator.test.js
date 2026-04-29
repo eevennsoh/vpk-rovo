@@ -188,3 +188,62 @@ test("SymphonyOrchestrator dispatches unlimited workers concurrently", async () 
 		["succeeded", "succeeded"],
 	);
 });
+
+test("SymphonyOrchestrator polls terminal states and cleans completed workspaces", async () => {
+	const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "symphony-orchestrator-cleanup-test-"));
+	const issue = {
+		description: "",
+		id: "issue-id",
+		identifier: "ENG-123",
+		stateName: "Done",
+		title: "Completed feature",
+	};
+	const searches = [];
+	const events = [];
+	const linearClient = {
+		async createComment() {
+			events.push(["comment"]);
+		},
+		async searchIssues({ stateNames }) {
+			searches.push(stateNames);
+			return stateNames.includes("Done") ? [issue] : [];
+		},
+		async updateIssueState(_issueId, stateName) {
+			events.push(["state", stateName]);
+		},
+	};
+	const workspaceManager = {
+		async cleanup(cleanupIssue) {
+			events.push(["cleanup", cleanupIssue.identifier]);
+			return { path: tempDir, removed: true };
+		},
+		async createOrReuse() {
+			events.push(["workspace"]);
+			return { branchName: "symphony/ENG-123", path: tempDir };
+		},
+		async runPostFailure() {},
+		async runPostSuccess() {},
+		async runPreStart() {},
+	};
+	const orchestrator = new SymphonyOrchestrator({
+		agentFactory: () => {
+			throw new Error("terminal issues should not start agents");
+		},
+		config: baseConfig(tempDir),
+		linearClient,
+		stateFile: path.join(tempDir, "state.json"),
+		workflowRuntime: {
+			current: { body: "", config: {} },
+			reloadIfChanged() {
+				return false;
+			},
+		},
+		workspaceManager,
+	});
+
+	const snapshot = await orchestrator.pollOnce();
+
+	assert.deepEqual(searches, [["Todo"], ["Done"]]);
+	assert.deepEqual(events, [["cleanup", "ENG-123"]]);
+	assert.equal(snapshot.issues[0].status, "cleaned");
+});

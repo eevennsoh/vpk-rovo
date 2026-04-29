@@ -68,14 +68,15 @@ class LinearClient {
 		return payload.data;
 	}
 
-	async searchIssues({ team, activeStates, labels = [], first = 25 }) {
+	async searchIssues({ team, activeStates, stateNames, labels = [], first = 25 }) {
+		const states = stateNames || activeStates || [];
 		const query = `
-			query SymphonyIssues($team: String!, $activeStates: [String!], $first: Int!) {
+			query SymphonyIssues($team: String!, $stateNames: [String!], $first: Int!) {
 				issues(
 					first: $first,
 					filter: {
 						team: { key: { eq: $team } },
-						state: { name: { in: $activeStates } }
+						state: { name: { in: $stateNames } }
 					},
 					orderBy: updatedAt
 				) {
@@ -84,8 +85,8 @@ class LinearClient {
 			}
 		`;
 		const data = await this.request(query, {
-			activeStates,
 			first,
+			stateNames: states,
 			team,
 		});
 		const normalized = (data?.issues?.nodes || []).map(normalizeIssue);

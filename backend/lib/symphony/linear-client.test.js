@@ -50,6 +50,7 @@ test("LinearClient filters configured labels client-side after GraphQL state que
 	const body = JSON.parse(requests[0].request.body);
 	assert.equal(requests[0].request.headers.Authorization, "lin_123");
 	assert.equal(body.variables.team, "ENG");
+	assert.deepEqual(body.variables.stateNames, ["Todo"]);
 	assert.equal(body.variables.labels, undefined);
 	assert.deepEqual(issues.map((issue) => issue.identifier), ["ENG-1"]);
 });

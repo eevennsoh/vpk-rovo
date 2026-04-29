@@ -3,6 +3,7 @@
 const fs = require("fs");
 const path = require("path");
 const { renderStrictTemplate } = require("./workflow");
+const { slugifyTitle } = require("./workspace-manager");
 
 function nowMs() {
 	return Date.now();
@@ -40,6 +41,18 @@ function computeBackoffMs(attempt, config) {
 	return Math.min(raw, config.dispatch.backoffMaxMs);
 }
 
+function mergeIssues(issues) {
+	const byKey = new Map();
+	for (const issue of issues) {
+		const key = issue.id || issue.identifier;
+		if (!key || byKey.has(key)) {
+			continue;
+		}
+		byKey.set(key, issue);
+	}
+	return Array.from(byKey.values());
+}
+
 class SymphonyOrchestrator {
 	constructor(options) {
 		this.workflowRuntime = options.workflowRuntime;
@@ -62,6 +75,9 @@ class SymphonyOrchestrator {
 		}
 		const payload = JSON.parse(fs.readFileSync(this.stateFile, "utf8"));
 		for (const [identifier, record] of Object.entries(payload.issues || {})) {
+			if (!record.slug && record.workspacePath) {
+				record.slug = path.basename(record.workspacePath);
+			}
 			this.records.set(identifier, record);
 		}
 	}
@@ -107,11 +123,19 @@ class SymphonyOrchestrator {
 	async pollOnce(options = {}) {
 		const waitForDispatch = options.waitForDispatch ?? true;
 		this.workflowRuntime.reloadIfChanged?.();
-		const issues = await this.linearClient.searchIssues({
-			activeStates: this.config.tracker.activeStates,
-			labels: this.config.tracker.labels,
-			team: this.config.tracker.team,
-		});
+		const [activeIssues, terminalIssues] = await Promise.all([
+			this.linearClient.searchIssues({
+				labels: this.config.tracker.labels,
+				stateNames: this.config.tracker.activeStates,
+				team: this.config.tracker.team,
+			}),
+			this.linearClient.searchIssues({
+				labels: this.config.tracker.labels,
+				stateNames: this.config.tracker.terminalStates,
+				team: this.config.tracker.team,
+			}),
+		]);
+		const issues = mergeIssues([...activeIssues, ...terminalIssues]);
 
 		const dispatched = [];
 		for (const issue of issues) {
@@ -166,7 +190,8 @@ class SymphonyOrchestrator {
 		if (record.completedAtMs && this.clock() - record.completedAtMs < this.config.workspace.ttlMs) {
 			return;
 		}
-		await this.workspaceManager.cleanup(issue);
+		const issueWithSlug = record.slug ? { ...issue, slug: record.slug } : issue;
+		await this.workspaceManager.cleanup(issueWithSlug);
 		record.status = "cleaned";
 		record.cleanedAtMs = this.clock();
 		record.updatedAt = this.clock();
@@ -183,10 +208,16 @@ class SymphonyOrchestrator {
 			return;
 		}
 
-		const workspace = await this.workspaceManager.createOrReuse(issue);
+		if (!record.slug) {
+			const titleSlug = slugifyTitle(issue.title);
+			record.slug = titleSlug ? `${issue.identifier}-${titleSlug}` : issue.identifier;
+		}
+		const issueWithSlug = { ...issue, slug: record.slug };
+
+		const workspace = await this.workspaceManager.createOrReuse(issueWithSlug);
 		record.workspacePath = workspace.path;
 		record.branchName = workspace.branchName;
-		await this.workspaceManager.runPreStart(issue, workspace.path);
+		await this.workspaceManager.runPreStart(issueWithSlug, workspace.path);
 		await this.linearClient.updateIssueState(issue.id, this.config.tracker.inProgressState);
 
 		const renderedPrompt = this.renderPrompt(issue, record.attempt);
@@ -217,9 +248,9 @@ class SymphonyOrchestrator {
 			if (!result.success) {
 				throw new Error("Codex turn did not complete successfully");
 			}
-			await this.handleSuccess(issue, record, workspace.path, result);
+			await this.handleSuccess(issueWithSlug, record, workspace.path, result);
 		} catch (error) {
-			await this.handleFailure(issue, record, workspace.path, error);
+			await this.handleFailure(issueWithSlug, record, workspace.path, error);
 		} finally {
 			agent.stop?.();
 		}
