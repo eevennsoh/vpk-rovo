@@ -1,56 +1,67 @@
 # Symphony
 
-Symphony is implemented as a local Linear-to-Codex daemon under
-`backend/lib/symphony`. It follows the OpenAI Symphony service shape: a
-workflow file provides YAML front matter plus Markdown instructions, Linear is
-the tracker source of truth, each issue gets a dedicated git worktree, and each
-run is executed through `codex app-server`.
+VPK-rovo uses OpenAI's upstream Elixir Symphony implementation as the only
+Symphony harness. The older local Node-based Linear-to-Codex daemon was removed
+so there is a single operational path.
 
-This is intentionally a Codex-only VPK harness. OpenAI Symphony is the
-behavioral reference, but this repo's `WORKFLOW.md` schema is local and
-canonical; it is not a provider-neutral or strict upstream Symphony spec
-implementation.
+The repo-owned files are:
 
-Run one polling pass:
+- `WORKFLOW.elixir.md`: VPK-specific workflow template for upstream Symphony
+  Elixir.
+- `scripts/symphony-elixir.sh`: wrapper that clones or updates
+  `openai/symphony`, installs the Elixir runtime through `mise`, renders a
+  runtime workflow with your Linear project slug, and launches `./bin/symphony`.
+- `pnpm run symphony`: default repo entrypoint for the Elixir harness.
+- `.agents/skills/linear/SKILL.md`: guidance for the raw `linear_graphql` tool
+  that upstream Symphony injects into Codex app-server sessions.
+
+## Configuration
+
+Required local configuration:
 
 ```bash
-pnpm run symphony -- --workflow WORKFLOW.md --once
+LINEAR_API_KEY=lin_api_<your-personal-api-key>
+SYMPHONY_LINEAR_PROJECT_SLUG=<linear-project-slug>
 ```
 
-Required configuration can be in workflow front matter or environment:
+`LINEAR_API_KEY` can live in `.env.local` or the shell environment. The project
+slug comes from the Linear project URL.
 
-```yaml
----
-tracker:
-  api_key: $LINEAR_API_KEY
-  team: $LINEAR_TEAM_KEY
-  active_states: [Todo, In Progress]
-  terminal_states: [Done, Canceled]
-  labels: [Codex]
-  in_progress_state: In Progress
-  done_state: Human Review
-workspace:
-  repo: .
-  root: /tmp/symphony-workspaces
-agent:
-  command: codex app-server
-  approval_policy: on-request
-  approvals_reviewer: auto_review
-  sandbox: workspace-write
-dispatch:
-  max_parallel: infinite
----
+The upstream Elixir implementation polls Linear by project slug and state. It
+does not support the removed Node daemon's team-key plus label filter. Use a
+dedicated Linear project or set `LINEAR_ASSIGNEE=me` if you need a narrower
+evaluation surface.
+
+Optional overrides:
+
+```bash
+LINEAR_ASSIGNEE=me
+SYMPHONY_SOURCE_REPO_URL=git@github.com:eevennsoh/VPK-rovo.git
+SYMPHONY_WORKSPACE_ROOT=/tmp/symphony-elixir-workspaces
+SYMPHONY_ELIXIR_DIR=.tmp/symphony-elixir/openai-symphony
+SYMPHONY_RUNTIME_DIR=.tmp/symphony-elixir/runtime
 ```
 
-The CLI loads `.env.local` and then `.env` before it reads the workflow. Both
-files are gitignored in this repo, so you can keep local Linear credentials
-there instead of exporting them in every shell.
+## Run
 
-The local Codex app-server may enforce policy requirements from the active
-Codex account or workspace. This repo's `WORKFLOW.md` uses
-`approval_policy: on-request`, `approvals_reviewer: auto_review`, and
-`sandbox: workspace-write` so the daemon can run under those requirements while
-still routing approval decisions through app-server.
+Run with the optional Phoenix dashboard:
+
+```bash
+pnpm run symphony -- --port 4567
+```
+
+Run without the dashboard:
+
+```bash
+pnpm run symphony
+```
+
+The current upstream Elixir CLI requires the
+`--i-understand-that-this-will-be-running-without-the-usual-guardrails` flag.
+`scripts/symphony-elixir.sh` passes that flag explicitly so the package script
+can run unattended after you provide the Linear configuration.
+
+## Workflow
 
 Recommended Linear flow for this repo:
 
@@ -58,90 +69,23 @@ Recommended Linear flow for this repo:
 Backlog -> Todo -> In Progress -> Human Review -> Rework -> Human Review -> Merging -> Done
 ```
 
-Symphony only starts issues in `Todo`, `In Progress`, or `Rework` that have the
-`Codex` label. A successful Codex run validates the work, creates or reuses a
-draft GitHub PR, updates the durable `## Codex Workpad` comment, and moves the
-issue to `Human Review`, where a human can inspect
-`/tmp/symphony-workspaces/<ISSUE-ID>` and the PR. Move the issue to `Rework`
-when follow-up changes are needed. Move the issue to `Merging` only when you
-want Symphony to verify merge gates, mark the PR ready if needed, merge it,
-sync `main`, move the issue to `Done`, remove the worktree, and delete the
-local and remote Symphony branch refs.
+`WORKFLOW.elixir.md` encodes the worker behavior:
 
-Each worker prompt includes the issue description, recent Linear comments, the
-durable workpad, and the current Symphony run context: branch, workspace, PR,
-thread, turn count, validation status, and blockers. Workers get typed Linear
-dynamic tools (`linear_issue_get`, `linear_workpad_upsert`, and
-`linear_state_set`) plus raw `linear_graphql`, so they can refresh or update
-Linear context during a run. Worker turns must not move issues to `Merging` or
-`Done`; those states remain the human merge trigger and Symphony's post-merge
-transition.
+- `Todo`: move to `In Progress`, create or update the `## Codex Workpad`, and
+  start work.
+- `In Progress`: continue implementation from the workpad.
+- `Rework`: inspect reviewer comments and PR feedback, fix the requested
+  changes, and return to `Human Review` only after validation.
+- `Human Review`: wait for a human decision; do not start new implementation.
+- `Merging`: land the already-reviewed PR, sync with `origin/main`, and move
+  the Linear issue to `Done` only after the merge succeeds.
+- `Done`, `Closed`, `Canceled`, `Cancelled`, `Duplicate`: terminal states.
 
-`dispatch.max_parallel` accepts either a positive integer or `infinite`. Use a
-number to cap concurrent Codex workers, or `infinite` to let Symphony dispatch
-all currently eligible issues in one poll.
+Workers should keep one active `## Codex Workpad` comment current with plan,
+acceptance criteria, validation, decisions, blockers, branch, PR, and final
+handoff notes.
 
-Each run appends structured events to
-`/tmp/symphony-workspaces/.symphony-events.jsonl` by default. If
-`dispatch.status_port` is set, `/status` groups active, queued, retrying,
-observed, review, landing, landed, blocked, failed, and cleaned runs from both
-in-memory state and the durable event log.
-
-## Harness engineering assessment
-
-This assessment uses OpenAI's
-[Harness engineering](https://openai.com/index/harness-engineering/) write-up
-as the comparison point. The current repo is a Codex-specific harness with
-durable orchestration history and a human-review landing checkpoint.
-
-What is already in place:
-
-- `WORKFLOW.md` keeps the Linear state contract, dispatch policy, sandbox,
-  approval policy, and prompt template in version control with the repo.
-- Each eligible Linear issue gets a deterministic git worktree and
-  `symphony/` branch, so workers have isolated editable state.
-- Successful active-state runs validate the branch, prepare a draft PR, and move
-  issues to `Human Review`; moving an issue to `Merging` verifies merge gates,
-  lands the PR, syncs `main`, moves the issue to `Done`, and removes the
-  Symphony worktree and branch refs.
-- `AGENTS.md` acts as a repo map and routes agents to deeper `.agents` docs,
-  rules, skills, and validation workflows instead of relying on memory.
-- Terminal-state polls stop any active Codex run before landing or cleanup, so
-  the daemon does not remove or merge a workspace while `codex app-server` is
-  still working in it.
-- Workflow front matter is re-normalized after reload, so updated labels,
-  states, dispatch limits, hooks, and Codex settings affect later polls.
-- Worker prompts include recent Linear comments, durable workpad content, and
-  run context; typed Linear tools plus `linear_graphql` let Codex refresh or
-  update issue context during a run.
-- Validation commands run under Symphony after Codex turns, so handoff status is
-  based on orchestrator-observed command results instead of agent prose.
-- GitHub merge gates check review decision and status checks before merging.
-- The durable JSONL event log records dispatch, thread and turn IDs, state
-  transitions, retries, landing, cleanup, PR details, and errors.
-- The `/status` endpoint groups active, queued, observed, retrying, review,
-  landing, landed, blocked, failed, and cleaned runs from memory plus durable
-  history.
-- Linear handoff comments include Codex thread IDs, workspace paths, branch
-  names, validation commands when reported, post-success hook output when
-  configured, and UI proof artifacts when reported.
-- The Symphony implementation has targeted unit coverage for workflow parsing,
-  config normalization, app-server calls, lifecycle cancellation, orchestration,
-  workspace creation, landing, status summaries, event history, and branch
-  cleanup.
-
-Remaining opportunities are incremental:
-
-1. Add a small documentation freshness check for `AGENTS.md`, `WORKFLOW.md`,
-   and `docs/SYMPHONY.md`. The repo has good local guidance, but there is no
-   mechanical guard that catches stale commands, missing links, or drift between
-   the workflow file and its documentation.
-2. Track recurring agent pain points as lightweight quality/debt and plan
-   artifacts. `AGENTS-LESSONS.md` captures corrections, but there is no rollup
-   that turns repeated failures into prioritized harness improvements or records
-   active and completed execution plans for complex agent work.
-3. Add optional per-run validation hooks in `WORKFLOW.md` once the team wants a
-   stronger gate. A narrow first step is a post-success hook that records
-   `pnpm run lint`, `pnpm run typecheck`, and any targeted `node --test`
-   commands the worker reports, without blocking human review on unrelated
-   existing failures.
+Only the upstream `linear` skill is copied into this repo. The upstream
+`commit`, `push`, `pull`, and `land` skills are tuned for the `openai/symphony`
+repo's own validation commands, so VPK-specific branch, validation, PR, and
+merge instructions live directly in `WORKFLOW.elixir.md`.

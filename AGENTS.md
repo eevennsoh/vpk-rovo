@@ -41,7 +41,7 @@ Prefer reading these references over relying on pre-trained knowledge.
 | Architecture overview                  | `.agents/docs/architecture-overview.md`                     |
 | Extended workflows                     | `.agents/docs/workflows-extended.md`                        |
 | cmux inter-agent messaging             | `.agents/docs/cmux-messaging.md`                            |
-| Symphony orchestrator                  | `docs/SYMPHONY.md`, `WORKFLOW.md`, `backend/lib/symphony/*.js` |
+| Symphony orchestrator                  | `docs/SYMPHONY.md`, `WORKFLOW.elixir.md`, `scripts/symphony-elixir.sh` |
 
 **Global Skills** — installed agent skills (outside repo):
 
