@@ -2,9 +2,12 @@
 
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
+const http = require("node:http");
 const os = require("node:os");
 const path = require("node:path");
 const test = require("node:test");
+const { SymphonyEventLog } = require("./event-log");
+const { createStatusServer } = require("./http-server");
 const { SymphonyOrchestrator, computeBackoffMs } = require("./orchestrator");
 
 function baseConfig(root) {
@@ -40,6 +43,35 @@ function baseConfig(root) {
 			ttlMs: 0,
 		},
 	};
+}
+
+function readEvents(root) {
+	const filePath = path.join(root, ".symphony-events.jsonl");
+	if (!fs.existsSync(filePath)) {
+		return [];
+	}
+	return fs.readFileSync(filePath, "utf8").split(/\r?\n/).filter(Boolean).map((line) => JSON.parse(line));
+}
+
+function requestJson(server, pathname) {
+	return new Promise((resolve, reject) => {
+		const { port } = server.address();
+		const req = http.get({ hostname: "127.0.0.1", path: pathname, port }, (res) => {
+			let body = "";
+			res.setEncoding("utf8");
+			res.on("data", (chunk) => {
+				body += chunk;
+			});
+			res.on("end", () => {
+				try {
+					resolve({ body: JSON.parse(body), statusCode: res.statusCode });
+				} catch (error) {
+					reject(error);
+				}
+			});
+		});
+		req.on("error", reject);
+	});
 }
 
 test("computeBackoffMs caps exponential retry delay", () => {
@@ -128,6 +160,7 @@ test("SymphonyOrchestrator dispatches an active issue through workspace and agen
 	assert.deepEqual(events.at(-2), ["state", "issue-id", "Done"]);
 	assert.equal(snapshot.issues[0].status, "succeeded");
 	assert.equal(snapshot.issues[0].threadId, "thread-1");
+	assert.ok(readEvents(tempDir).some((event) => event.type === "run_succeeded" && event.threadId === "thread-1"));
 });
 
 test("SymphonyOrchestrator dispatches unlimited workers concurrently", async () => {
@@ -190,6 +223,208 @@ test("SymphonyOrchestrator dispatches unlimited workers concurrently", async () 
 	);
 });
 
+test("SymphonyOrchestrator stops an active Codex run before terminal cleanup", async () => {
+	const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "symphony-orchestrator-stop-test-"));
+	const issue = {
+		description: "",
+		id: "issue-id",
+		identifier: "ENG-77",
+		stateName: "Todo",
+		title: "Cancel while running",
+	};
+	const events = [];
+	let currentState = "Todo";
+	let rejectTurn;
+	let resolveRunStarted;
+	const runStarted = new Promise((resolve) => {
+		resolveRunStarted = resolve;
+	});
+	const linearClient = {
+		async createComment(_issueId, body) {
+			events.push(["comment", body]);
+		},
+		async searchIssues({ stateNames }) {
+			issue.stateName = currentState;
+			return stateNames.includes(currentState) ? [issue] : [];
+		},
+		async updateIssueState(_issueId, stateName) {
+			events.push(["state", stateName]);
+		},
+	};
+	const workspaceManager = {
+		async cleanup(cleanupIssue) {
+			events.push(["cleanup", cleanupIssue.identifier]);
+			return { path: tempDir, removed: true };
+		},
+		async createOrReuse() {
+			events.push(["workspace"]);
+			return { branchName: "symphony/ENG-77", path: tempDir };
+		},
+		async runPostFailure() {
+			events.push(["postFailure"]);
+		},
+		async runPostSuccess() {},
+		async runPreStart() {},
+	};
+	let stopped = false;
+	const agent = {
+		async initialize() {},
+		async runTurn() {
+			resolveRunStarted();
+			return new Promise((_resolve, reject) => {
+				rejectTurn = reject;
+			});
+		},
+		async startThread() {
+			this.threadId = "thread-stop";
+		},
+		stop() {
+			if (stopped) {
+				return;
+			}
+			stopped = true;
+			events.push(["stop"]);
+			rejectTurn?.(new Error("stopped by test"));
+		},
+	};
+	const config = baseConfig(tempDir);
+	config.tracker.terminalStates = ["Canceled"];
+	config.tracker.landingStates = ["Done"];
+	const orchestrator = new SymphonyOrchestrator({
+		agentFactory: () => agent,
+		config,
+		linearClient,
+		stateFile: path.join(tempDir, "state.json"),
+		workflowRuntime: {
+			current: { body: "", config: {} },
+			reloadIfChanged() {
+				return false;
+			},
+		},
+		workspaceManager,
+	});
+
+	await orchestrator.pollOnce({ waitForDispatch: false });
+	await runStarted;
+	currentState = "Canceled";
+	const snapshot = await orchestrator.pollOnce();
+
+	assert.ok(stopped);
+	assert.ok(events.findIndex((event) => event[0] === "stop") < events.findIndex((event) => event[0] === "cleanup"));
+	assert.equal(events.some((event) => event[0] === "postFailure"), false);
+	assert.equal(events.some((event) => event[0] === "comment" && /failed/i.test(event[1])), false);
+	assert.equal(snapshot.issues[0].status, "cleaned");
+	const eventTypes = readEvents(tempDir).map((event) => event.type);
+	assert.ok(eventTypes.includes("agent_stop_requested"));
+	assert.ok(eventTypes.includes("run_stopped"));
+	assert.ok(eventTypes.includes("cleanup_succeeded"));
+});
+
+test("SymphonyOrchestrator reloads workflow front matter before polling", async () => {
+	const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "symphony-orchestrator-reload-test-"));
+	const initialConfig = baseConfig(tempDir);
+	const nextConfig = baseConfig(tempDir);
+	nextConfig.dispatch.maxParallel = Number.POSITIVE_INFINITY;
+	nextConfig.tracker.activeStates = ["Ready"];
+	nextConfig.tracker.labels = ["codex"];
+	nextConfig.tracker.terminalStates = ["Closed"];
+	const searches = [];
+	const linearClient = {
+		async createComment() {},
+		async searchIssues(search) {
+			searches.push(search);
+			return [];
+		},
+		async updateIssueState() {},
+	};
+	let reloaded = false;
+	const orchestrator = new SymphonyOrchestrator({
+		agentFactory: () => {
+			throw new Error("no issues should dispatch");
+		},
+		config: initialConfig,
+		linearClient,
+		reloadRuntimeConfig() {
+			return { config: nextConfig };
+		},
+		stateFile: path.join(tempDir, "state.json"),
+		workflowRuntime: {
+			current: { body: "", config: {} },
+			reloadIfChanged() {
+				if (reloaded) {
+					return false;
+				}
+				reloaded = true;
+				return true;
+			},
+		},
+		workspaceManager: {},
+	});
+
+	await orchestrator.pollOnce();
+
+	assert.deepEqual(searches[0], { labels: ["codex"], stateNames: ["Ready"], team: "ENG" });
+	assert.deepEqual(searches[1], { labels: ["codex"], stateNames: ["Closed"], team: "ENG" });
+	assert.equal(orchestrator.config.dispatch.maxParallel, Number.POSITIVE_INFINITY);
+	assert.ok(readEvents(tempDir).some((event) => event.type === "workflow_reloaded"));
+});
+
+test("SymphonyOrchestrator records failed runs and retry scheduling", async () => {
+	const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "symphony-orchestrator-failure-log-test-"));
+	const issue = {
+		description: "",
+		id: "issue-id",
+		identifier: "ENG-500",
+		stateName: "Todo",
+		title: "Fail run",
+	};
+	const linearClient = {
+		async createComment() {},
+		async searchIssues({ stateNames }) {
+			return stateNames.includes("Todo") ? [issue] : [];
+		},
+		async updateIssueState() {},
+	};
+	const workspaceManager = {
+		async cleanup() {},
+		async createOrReuse() {
+			return { branchName: "symphony/ENG-500", path: tempDir };
+		},
+		async runPostFailure() {},
+		async runPostSuccess() {},
+		async runPreStart() {},
+	};
+	const orchestrator = new SymphonyOrchestrator({
+		agentFactory: () => ({
+			async initialize() {},
+			async runTurn() {
+				throw new Error("boom");
+			},
+			async startThread() {
+				this.threadId = "thread-fail";
+			},
+			stop() {},
+		}),
+		config: baseConfig(tempDir),
+		linearClient,
+		stateFile: path.join(tempDir, "state.json"),
+		workflowRuntime: {
+			current: { body: "", config: {} },
+			reloadIfChanged() {
+				return false;
+			},
+		},
+		workspaceManager,
+	});
+
+	const snapshot = await orchestrator.pollOnce();
+
+	assert.equal(snapshot.issues[0].status, "failed");
+	const eventTypes = readEvents(tempDir).map((event) => event.type);
+	assert.ok(eventTypes.includes("run_failed"));
+	assert.ok(eventTypes.includes("retry_scheduled"));
+});
+
 test("SymphonyOrchestrator polls non-landing terminal states and cleans completed workspaces", async () => {
 	const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "symphony-orchestrator-cleanup-test-"));
 	const issue = {
@@ -249,6 +484,7 @@ test("SymphonyOrchestrator polls non-landing terminal states and cleans complete
 	assert.deepEqual(searches, [["Todo"], ["Canceled"]]);
 	assert.deepEqual(events, [["cleanup", "ENG-123"]]);
 	assert.equal(snapshot.issues[0].status, "cleaned");
+	assert.ok(readEvents(tempDir).some((event) => event.type === "cleanup_succeeded" && event.issueIdentifier === "ENG-123"));
 });
 
 test("SymphonyOrchestrator lands Done issues and comments with PR status", async () => {
@@ -326,4 +562,58 @@ test("SymphonyOrchestrator lands Done issues and comments with PR status", async
 	assert.match(events[1][2], /Branch cleanup: deleted local branch; deleted remote branch\./);
 	assert.equal(snapshot.issues[0].status, "landed");
 	assert.equal(snapshot.issues[0].prUrl, "https://github.test/pull/12");
+	const eventTypes = readEvents(tempDir).map((event) => event.type);
+	assert.ok(eventTypes.includes("pr_created"));
+	assert.ok(eventTypes.includes("pr_merged"));
+	assert.ok(readEvents(tempDir).some((event) => event.type === "landing_succeeded" && event.prUrl === "https://github.test/pull/12"));
+});
+
+test("status server includes durable event history after restart", async () => {
+	const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "symphony-status-test-"));
+	const eventLog = new SymphonyEventLog({
+		clock: () => Date.parse("2026-04-29T00:00:00.000Z"),
+		root: tempDir,
+	});
+	eventLog.append({
+		branchName: "symphony/ENG-9",
+		issueIdentifier: "ENG-9",
+		prUrl: "https://github.test/pull/9",
+		status: "landed",
+		type: "landing_succeeded",
+		workspacePath: path.join(tempDir, "ENG-9"),
+	});
+	const orchestrator = new SymphonyOrchestrator({
+		agentFactory: () => {
+			throw new Error("status test should not dispatch");
+		},
+		config: baseConfig(tempDir),
+		eventLog,
+		linearClient: {
+			async createComment() {},
+			async searchIssues() {
+				return [];
+			},
+			async updateIssueState() {},
+		},
+		stateFile: path.join(tempDir, "state.json"),
+		workflowRuntime: {
+			current: { body: "", config: {} },
+			reloadIfChanged() {
+				return false;
+			},
+		},
+		workspaceManager: {},
+	});
+	const server = createStatusServer(orchestrator);
+	await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+	try {
+		const response = await requestJson(server, "/status");
+		assert.equal(response.statusCode, 200);
+		assert.equal(response.body.counts.landed, 1);
+		assert.equal(response.body.groups.landed[0].identifier, "ENG-9");
+		assert.equal(response.body.groups.landed[0].prUrl, "https://github.test/pull/9");
+		assert.equal(response.body.recentEvents[0].type, "landing_succeeded");
+	} finally {
+		await new Promise((resolve) => server.close(resolve));
+	}
 });
