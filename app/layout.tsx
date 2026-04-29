@@ -76,21 +76,12 @@ export const metadata: Metadata = {
 	},
 };
 
-export default async function RootLayout({
-	children,
-}: Readonly<{
-	children: React.ReactNode;
-}>) {
-	const { themeData, colorMode, contrastMode } = getThemeDefaults();
-
-	let ssrAutoScript = "";
-	try {
-		ssrAutoScript = getSSRAutoScript("auto") ?? "";
-	} catch {
-		// Feature gate client may not be initialized
+function getDevStylesheetGuardScript(): string {
+	if (process.env.NODE_ENV !== "development") {
+		return "";
 	}
 
-	const devStylesheetGuardScript = process.env.NODE_ENV === "development" ? `
+	return `
 	const appGlobalsChunkPattern = /\\/_next\\/static\\/chunks\\/app_globals_[^/]+\\.css(?:\\?.*)?$/;
 	const head = document.head;
 
@@ -140,8 +131,24 @@ export default async function RootLayout({
 			ensureStylesheetLink(href);
 		}
 	}
-` : "";
+`;
+}
 
+export default async function RootLayout({
+	children,
+}: Readonly<{
+	children: React.ReactNode;
+}>) {
+	const { themeData, colorMode, contrastMode } = getThemeDefaults();
+
+	let ssrAutoScript = "";
+	try {
+		ssrAutoScript = getSSRAutoScript("auto") ?? "";
+	} catch {
+		// Feature gate client may not be initialized
+	}
+
+	const devStylesheetGuardScript = getDevStylesheetGuardScript();
 	const preHydrationScript = `
 (() => {
 	const root = document.documentElement;
