@@ -20,6 +20,8 @@ Optional configuration:
   SYMPHONY_DIR                    Local clone/cache of openai/symphony
   SYMPHONY_UPSTREAM_REPO          Upstream Symphony git URL
   SYMPHONY_RUNTIME_DIR            Rendered workflow and default logs directory
+  SYMPHONY_MERGE_GUARD            Set to 0 to disable Done/open-PR recovery
+  SYMPHONY_MERGE_GUARD_INTERVAL_MS Polling interval for merge guard
 
 Example:
   SYMPHONY_LINEAR_PROJECT_SLUG=my-project pnpm run symphony -- --port 4567
@@ -94,6 +96,8 @@ load_env_var SYMPHONY_ENV_LOCAL_SOURCE
 load_env_var SYMPHONY_DIR
 load_env_var SYMPHONY_UPSTREAM_REPO
 load_env_var SYMPHONY_RUNTIME_DIR
+load_env_var SYMPHONY_MERGE_GUARD
+load_env_var SYMPHONY_MERGE_GUARD_INTERVAL_MS
 
 if [ -z "${LINEAR_API_KEY:-}" ]; then
 	echo "LINEAR_API_KEY is required. Add it to .env.local or export it in the shell." >&2
@@ -141,9 +145,27 @@ else
 	git -C "$upstream_dir" pull --ff-only
 fi
 
-mkdir -p "$runtime_dir"
+mkdir -p "$runtime_dir" "$logs_root"
 sed "s/__SYMPHONY_LINEAR_PROJECT_SLUG__/$SYMPHONY_LINEAR_PROJECT_SLUG/g" \
 	"$repo_root/WORKFLOW.md" > "$runtime_workflow"
+
+merge_guard_pid=""
+cleanup_merge_guard() {
+	if [ -n "$merge_guard_pid" ] && kill -0 "$merge_guard_pid" >/dev/null 2>&1; then
+		kill "$merge_guard_pid" >/dev/null 2>&1 || true
+		wait "$merge_guard_pid" >/dev/null 2>&1 || true
+	fi
+}
+
+if [ "${SYMPHONY_MERGE_GUARD:-1}" != "0" ]; then
+	merge_guard_interval_ms="${SYMPHONY_MERGE_GUARD_INTERVAL_MS:-10000}"
+	node "$repo_root/scripts/symphony-merge-guard.js" \
+		--watch \
+		--interval-ms "$merge_guard_interval_ms" \
+		>> "$logs_root/merge-guard.log" 2>&1 &
+	merge_guard_pid="$!"
+	trap cleanup_merge_guard EXIT INT TERM
+fi
 
 cd "$upstream_dir/elixir"
 mise trust
@@ -151,7 +173,7 @@ mise install
 mise exec -- mix setup
 mise exec -- mix build
 
-exec mise exec -- ./bin/symphony \
+mise exec -- ./bin/symphony \
 	"$runtime_workflow" \
 	--i-understand-that-this-will-be-running-without-the-usual-guardrails \
 	--logs-root "$logs_root" \

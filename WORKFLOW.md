@@ -107,6 +107,9 @@ decision in the workpad.
 - `Merging`: land the already-reviewed PR, sync with `origin/main`, and move
   the Linear issue to `Done` only after the merge succeeds.
 - `Done`, `Closed`, `Canceled`, `Cancelled`, `Duplicate`: terminal states.
+  Moving an issue to `Done` before GitHub reports the PR merged will stop the
+  active worker. The runner's merge guard moves such issues back to `Merging`
+  when it sees an attached PR that is still open.
 
 ## Execution Rules
 
@@ -143,7 +146,11 @@ decision in the workpad.
    normal implementation turn.
 13. In `Merging`, verify the branch is current with `origin/main`, checks are
     green, and review feedback is resolved. Then squash-merge the PR, sync
-    `main`, clean up the issue branch when safe, and move the issue to `Done`.
+    `main`, clean up the issue branch when safe, re-read the PR with
+    `gh pr view --json state,mergedAt,mergeCommit`, and move the issue to
+    `Done` only when the PR state is merged and `mergedAt` is non-null. If the
+    PR is still open, keep the issue in `Merging` and record the blocker in the
+    workpad.
 
 Final response must report completed actions, validation, PR URL if available,
 and blockers only. Do not include user-facing next steps unless blocked.

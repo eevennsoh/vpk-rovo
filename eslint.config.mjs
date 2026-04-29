@@ -12,7 +12,9 @@ const eslintConfig = defineConfig([
 		"out/**",
 		"build/**",
 		".expect/**",
+		".tmp/**",
 		".venv/**",
+		"tmp/**",
 		"next-env.d.ts",
 		// Generated runtime assets; linting bundled vendor code is noisy and not actionable.
 		"public/vad/**",

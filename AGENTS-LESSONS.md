@@ -291,3 +291,17 @@ Mark promoted entries with `[Promoted]` prefix — see vpk-lesson skill for deta
   use plain repo-owned names such as `WORKFLOW.md`, `scripts/symphony.sh`,
   `SYMPHONY_DIR`, and neutral `/tmp/symphony-*` paths. Reserve `elixir` only
   for the upstream repository subdirectory that must be executed.
+
+### 2026-04-30 - Guard Symphony merge turns against premature Done moves
+
+- **What happened:** A Symphony issue was moved from `Merging` to `Done` while
+  its GitHub PR was still open, so the orchestrator treated the issue as
+  terminal and stopped the active merge worker before it could run the final PR
+  merge.
+- **Why:** The workflow relied on operator discipline and prompt instructions
+  to keep `Done` reserved for already-merged PRs, but Linear allowed the state
+  transition before GitHub confirmed a merge.
+- **Rule:** In Symphony workflows, protect merge handoff with a runner-side
+  guard: if an issue is `Done` while its attached GitHub PR is still open, move
+  it back to `Merging`. Workers must also verify `gh pr view --json
+  state,mergedAt,mergeCommit` before setting `Done`.

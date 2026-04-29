@@ -89,6 +89,12 @@ Workers should keep one active `## Codex Workpad` comment current with plan,
 acceptance criteria, validation, decisions, blockers, branch, PR, and final
 handoff notes.
 
+The local runner also starts `scripts/symphony-merge-guard.js` by default. It
+polls for `Done` issues in the configured project whose attached GitHub PR is
+still open, and moves them back to `Merging` so a premature terminal transition
+does not kill the merge worker. Set `SYMPHONY_MERGE_GUARD=0` to disable it, or
+`SYMPHONY_MERGE_GUARD_INTERVAL_MS` to change the guard interval.
+
 ## Harness engineering
 
 The Symphony setup treats the repo as the agent harness. `AGENTS.md` defines
