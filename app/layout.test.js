@@ -77,8 +77,15 @@ function getFaviconLinks() {
 }
 
 function getDevStylesheetGuardScriptSource() {
-	const match = ROOT_LAYOUT_SOURCE.match(
-		/const devStylesheetGuardScript = process\.env\.NODE_ENV === "development" \? `([\s\S]*?)`\s*:\s*"";/,
+	const start = ROOT_LAYOUT_SOURCE.indexOf("function getDevStylesheetGuardScript(): string {");
+	const end = ROOT_LAYOUT_SOURCE.indexOf("export default async function RootLayout");
+
+	assert.notEqual(start, -1, "expected development stylesheet guard helper");
+	assert.notEqual(end, -1, "expected root layout after development stylesheet guard helper");
+
+	const helperSource = ROOT_LAYOUT_SOURCE.slice(start, end);
+	const match = helperSource.match(
+		/return `([\s\S]*?)`;\s*}/,
 	);
 
 	assert.ok(match, "expected development stylesheet guard script");
