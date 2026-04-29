@@ -33,6 +33,10 @@ hooks:
     else
       git checkout -B "$branch_name"
     fi
+    if [ -n "${SYMPHONY_ENV_LOCAL_SOURCE:-}" ] && [ -f "$SYMPHONY_ENV_LOCAL_SOURCE" ]; then
+      cp "$SYMPHONY_ENV_LOCAL_SOURCE" .env.local
+      chmod 600 .env.local
+    fi
     if command -v pnpm >/dev/null 2>&1; then
       pnpm install --frozen-lockfile
     else
@@ -88,6 +92,11 @@ Keep a single active `## Codex Workpad` Linear comment current with plan,
 acceptance criteria, validation, decisions, blockers, branch, PR, and final
 handoff notes.
 
+Treat this workflow as a harness, not just a prompt. If the repo lacks the
+documentation, setup step, test, log surface, or browser/a11y check needed to
+verify the issue, improve the harness as part of the change and record the
+decision in the workpad.
+
 ## Status Map
 
 - `Todo`: move to `In Progress`, create or update the workpad, then implement.
@@ -102,26 +111,37 @@ handoff notes.
 ## Execution Rules
 
 1. Start by fetching fresh Linear issue details and reading or creating the
-   `## Codex Workpad` comment.
+   `## Codex Workpad` comment. Keep these headings current: `Plan`,
+   `Acceptance criteria`, `Evidence`, `Validation`, `Decisions`, `Branch`,
+   `PR`, and `Handoff`.
 2. For `Todo`, transition the issue to `In Progress` before code changes.
 3. Record a compact environment stamp in the workpad:
    `<host>:<abs-workdir>@<short-sha>`.
 4. Reproduce or inspect the requested behavior before editing whenever the
    issue is a bug or visible UI change.
-5. Create a branch named `symphony/{{ issue.identifier }}` unless a current
+5. Build a narrow acceptance checklist from the Linear issue and update it when
+   investigation changes the real requirement.
+6. Create a branch named `symphony/{{ issue.identifier }}` unless a current
    branch already exists for this issue.
-6. Run the validation required by `AGENTS.md` for the touched surface. The
+7. Prefer harness-level fixes when a failure is caused by missing setup,
+   confusing docs, weak tests, or unobservable app state. Keep product changes
+   scoped to the issue.
+8. For UI or browser-visible work, use the repo's local runtime, `pnpm ports`,
+   `/agent-browser`, screenshots, and accessibility checks from `AGENTS.md`.
+   For backend or agent-loop work, inspect live logs and add targeted
+   `node --test ...` coverage when possible.
+9. Run the validation required by `AGENTS.md` for the touched surface. The
    default repo-wide checks are `pnpm run lint` and `pnpm run typecheck`; add
    targeted `node --test ...` or browser/a11y checks when relevant.
-7. Commit the final change, push it to `origin`, and create or update a GitHub
+10. Commit the final change, push it to `origin`, and create or update a GitHub
    PR. Add the PR URL to the Linear issue as an attachment when possible.
-8. Before moving to `Human Review`, inspect PR comments, inline review
+11. Before moving to `Human Review`, inspect PR comments, inline review
    comments, and checks. Resolve actionable feedback or explicitly reply with a
    justified pushback.
-9. Move the issue to `Human Review` only after implementation, PR publication,
+12. Move the issue to `Human Review` only after implementation, PR publication,
    and validation are complete. Do not move it to `Merging` or `Done` from a
    normal implementation turn.
-10. In `Merging`, verify the branch is current with `origin/main`, checks are
+13. In `Merging`, verify the branch is current with `origin/main`, checks are
     green, and review feedback is resolved. Then squash-merge the PR, sync
     `main`, clean up the issue branch when safe, and move the issue to `Done`.
 

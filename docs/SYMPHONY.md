@@ -36,9 +36,15 @@ Optional overrides:
 LINEAR_ASSIGNEE=me
 SYMPHONY_SOURCE_REPO_URL=git@github.com:eevennsoh/VPK-rovo.git
 SYMPHONY_WORKSPACE_ROOT=/tmp/symphony-workspaces
+SYMPHONY_ENV_LOCAL_SOURCE=/absolute/path/to/VPK-rovo/.env.local
 SYMPHONY_DIR=.tmp/symphony/openai-symphony
 SYMPHONY_RUNTIME_DIR=.tmp/symphony/runtime
 ```
+
+`SYMPHONY_ENV_LOCAL_SOURCE` is optional, but recommended for local runs. When
+set, the workspace hook copies that file into each issue workspace as
+`.env.local`, so workers can boot the VPK app and run browser or accessibility
+checks instead of relying only on static validation.
 
 ## Run
 
@@ -82,6 +88,28 @@ Backlog -> Todo -> In Progress -> Human Review -> Rework -> Human Review -> Merg
 Workers should keep one active `## Codex Workpad` comment current with plan,
 acceptance criteria, validation, decisions, blockers, branch, PR, and final
 handoff notes.
+
+## Harness engineering
+
+The Symphony setup treats the repo as the agent harness. `AGENTS.md` defines
+the repository map, `WORKFLOW.md` defines the worker loop, and
+`scripts/symphony.sh` creates a repeatable workspace before the agent starts.
+The goal is to make the app legible, bootable, and verifiable for each worker.
+
+Each issue workspace gets these harness affordances:
+
+- A fresh clone on a predictable `symphony/<issue-id>` branch.
+- Dependencies installed with `pnpm install --frozen-lockfile`.
+- An optional `.env.local` copy from `SYMPHONY_ENV_LOCAL_SOURCE`.
+- A persistent Linear `## Codex Workpad` for plans, acceptance criteria,
+  evidence, validation, decisions, branch, PR, and handoff state.
+- Required validation from `AGENTS.md`, plus targeted tests, browser checks,
+  screenshots, and accessibility checks for touched surfaces.
+
+When a worker discovers a missing setup step, weak documentation, poor
+observability, or a missing regression test, the worker must improve the
+harness as part of the issue instead of papering over the gap in a one-off
+answer.
 
 Only the upstream `linear` skill is copied into this repo. The upstream
 `commit`, `push`, `pull`, and `land` skills are tuned for the `openai/symphony`

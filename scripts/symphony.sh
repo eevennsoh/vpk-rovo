@@ -16,6 +16,7 @@ Optional configuration:
   LINEAR_ASSIGNEE                 Limit polling to a Linear assignee id/email, or "me"
   SYMPHONY_SOURCE_REPO_URL        Repo cloned into each issue workspace
   SYMPHONY_WORKSPACE_ROOT         Issue workspace root
+  SYMPHONY_ENV_LOCAL_SOURCE       Local env file copied into each issue workspace
   SYMPHONY_DIR                    Local clone/cache of openai/symphony
   SYMPHONY_UPSTREAM_REPO          Upstream Symphony git URL
   SYMPHONY_RUNTIME_DIR            Rendered workflow and default logs directory
@@ -89,6 +90,7 @@ load_env_var LINEAR_ASSIGNEE
 load_env_var SYMPHONY_LINEAR_PROJECT_SLUG
 load_env_var SYMPHONY_SOURCE_REPO_URL
 load_env_var SYMPHONY_WORKSPACE_ROOT
+load_env_var SYMPHONY_ENV_LOCAL_SOURCE
 load_env_var SYMPHONY_DIR
 load_env_var SYMPHONY_UPSTREAM_REPO
 load_env_var SYMPHONY_RUNTIME_DIR
@@ -117,6 +119,9 @@ fi
 
 export SYMPHONY_SOURCE_REPO_URL="${SYMPHONY_SOURCE_REPO_URL:-$(git -C "$repo_root" remote get-url origin)}"
 export SYMPHONY_WORKSPACE_ROOT="${SYMPHONY_WORKSPACE_ROOT:-/tmp/symphony-workspaces}"
+if [ -z "${SYMPHONY_ENV_LOCAL_SOURCE:-}" ] && [ -f "$repo_root/.env.local" ]; then
+	export SYMPHONY_ENV_LOCAL_SOURCE="$repo_root/.env.local"
+fi
 
 upstream_repo="${SYMPHONY_UPSTREAM_REPO:-https://github.com/openai/symphony.git}"
 upstream_dir="$(resolve_repo_path "${SYMPHONY_DIR:-.tmp/symphony/openai-symphony}")"
