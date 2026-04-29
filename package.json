@@ -24,7 +24,7 @@
 		"generate:prompt": "node --experimental-strip-types scripts/generate-catalog-prompt.js",
 		"dev:stt": ".venv/bin/python scripts/stt-server.py",
 		"dev:stt:install": "python3 -m venv .venv && .venv/bin/pip install -r scripts/stt-requirements.txt",
-		"symphony": "node scripts/symphony.js"
+		"symphony": "./scripts/symphony-elixir.sh"
 	},
 	"dependencies": {
 		"@ai-sdk/openai-compatible": "^2.0.41",
