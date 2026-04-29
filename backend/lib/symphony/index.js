@@ -55,6 +55,8 @@ function createSymphonyService(options = {}) {
 			options.agentFactory ||
 			((runtime) => new CodexAppServerClient({
 				command: runtime.config.agent.command,
+				config: runtime.config,
+				issue: runtime.issue,
 				linearClient: runtime.linearClient,
 				logger: options.logger,
 			})),

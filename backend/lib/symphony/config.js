@@ -4,9 +4,10 @@ const os = require("os");
 const path = require("path");
 const { SymphonyConfigError } = require("./errors");
 
-const DEFAULT_ACTIVE_STATES = ["Todo", "Backlog", "Ready"];
-const DEFAULT_TERMINAL_STATES = ["Done", "Canceled", "Cancelled"];
-const DEFAULT_LANDING_STATES = ["Done"];
+const DEFAULT_ACTIVE_STATES = ["Todo", "In Progress", "Rework"];
+const DEFAULT_TERMINAL_STATES = ["Done", "Closed", "Canceled", "Cancelled", "Duplicate"];
+const DEFAULT_LANDING_STATES = ["Merging"];
+const DEFAULT_VALIDATION_COMMANDS = ["pnpm run lint", "pnpm run typecheck"];
 const DEFAULT_POLL_INTERVAL_MS = 60_000;
 const DEFAULT_MAX_PARALLEL = 1;
 const DEFAULT_HOOK_TIMEOUT_MS = 120_000;
@@ -119,6 +120,8 @@ function normalizeWorkflowConfig(rawConfig, options = {}) {
 	const hooks = isRecord(config.hooks) ? config.hooks : {};
 	const agent = isRecord(config.agent) ? config.agent : {};
 	const dispatch = isRecord(config.dispatch) ? config.dispatch : {};
+	const github = isRecord(config.github) ? config.github : {};
+	const validation = isRecord(config.validation) ? config.validation : {};
 
 	const team = tracker.team || config.team || env.LINEAR_TEAM_KEY;
 	const apiKey = tracker.api_key || env.LINEAR_API_KEY;
@@ -137,6 +140,9 @@ function normalizeWorkflowConfig(rawConfig, options = {}) {
 			landingStates,
 			labels: asArray(tracker.labels),
 			inProgressState: tracker.in_progress_state || tracker.inProgressState || "In Progress",
+			reviewState: tracker.review_state || tracker.reviewState || "Human Review",
+			reworkState: tracker.rework_state || tracker.reworkState || "Rework",
+			mergeState: tracker.merge_state || tracker.mergeState || "Merging",
 			doneState: tracker.done_state || tracker.doneState || "Done",
 			failedState: tracker.failed_state || tracker.failedState || null,
 		},
@@ -164,6 +170,15 @@ function normalizeWorkflowConfig(rawConfig, options = {}) {
 			sandbox: agent.sandbox || "workspace-write",
 			serviceName: agent.service_name || agent.serviceName || "symphony",
 		},
+		validation: {
+			commands: asArray(firstDefined(validation.commands, validation.command), DEFAULT_VALIDATION_COMMANDS),
+			timeoutMs: positiveInteger(firstDefined(validation.timeout_ms, validation.timeoutMs), DEFAULT_HOOK_TIMEOUT_MS, "validation.timeout_ms"),
+		},
+		github: {
+			requireNoUnresolvedReviews: github.require_no_unresolved_reviews ?? github.requireNoUnresolvedReviews ?? true,
+			requireGreenChecks: github.require_green_checks ?? github.requireGreenChecks ?? true,
+			allowNoChecks: github.allow_no_checks ?? github.allowNoChecks ?? true,
+		},
 		dispatch: {
 			pollIntervalMs: positiveInteger(
 				firstDefined(dispatch.poll_interval_ms, dispatch.pollIntervalMs),
@@ -178,6 +193,7 @@ function normalizeWorkflowConfig(rawConfig, options = {}) {
 			backoffBaseMs: positiveInteger(firstDefined(dispatch.backoff_base_ms, dispatch.backoffBaseMs), 30_000, "dispatch.backoff_base_ms"),
 			backoffMaxMs: positiveInteger(firstDefined(dispatch.backoff_max_ms, dispatch.backoffMaxMs), 30 * 60 * 1000, "dispatch.backoff_max_ms"),
 			statusPort: dispatch.status_port || dispatch.statusPort || null,
+			observe: Boolean(dispatch.observe),
 			dryRun: Boolean(dispatch.dry_run || dispatch.dryRun),
 		},
 	};
@@ -187,6 +203,7 @@ module.exports = {
 	DEFAULT_ACTIVE_STATES,
 	DEFAULT_LANDING_STATES,
 	DEFAULT_TERMINAL_STATES,
+	DEFAULT_VALIDATION_COMMANDS,
 	normalizeWorkflowConfig,
 	resolveEnvReferences,
 	resolvePath,

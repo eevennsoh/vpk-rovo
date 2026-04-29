@@ -55,22 +55,27 @@ still routing approval decisions through app-server.
 Recommended Linear flow for this repo:
 
 ```text
-Backlog -> Todo -> In Progress -> Human Review -> Done
+Backlog -> Todo -> In Progress -> Human Review -> Rework -> Human Review -> Merging -> Done
 ```
 
-Symphony only starts issues in `Todo` or `In Progress` that have the `Codex`
-label. A successful Codex run moves the issue to
-`Human Review`, where a human can inspect `/tmp/symphony-workspaces/<ISSUE-ID>`
-before manually moving the issue to `Done`. Moving the issue to `Done` lands
-the PR, syncs `main`, removes the worktree, and deletes the local and remote
-Symphony branch refs.
+Symphony only starts issues in `Todo`, `In Progress`, or `Rework` that have the
+`Codex` label. A successful Codex run validates the work, creates or reuses a
+draft GitHub PR, updates the durable `## Codex Workpad` comment, and moves the
+issue to `Human Review`, where a human can inspect
+`/tmp/symphony-workspaces/<ISSUE-ID>` and the PR. Move the issue to `Rework`
+when follow-up changes are needed. Move the issue to `Merging` only when you
+want Symphony to verify merge gates, mark the PR ready if needed, merge it,
+sync `main`, move the issue to `Done`, remove the worktree, and delete the
+local and remote Symphony branch refs.
 
-Each worker prompt includes the issue description plus recent Linear comments.
-Workers also get a `linear_graphql` dynamic tool, so they can refresh Linear
-context during a run. Keep one `## Codex Workpad` comment on the issue for
-durable run state: current plan, decisions, validation, open questions, and
-handoff notes. Later Symphony runs can recover that context when an issue moves
-through review, rework, or another active state.
+Each worker prompt includes the issue description, recent Linear comments, the
+durable workpad, and the current Symphony run context: branch, workspace, PR,
+thread, turn count, validation status, and blockers. Workers get typed Linear
+dynamic tools (`linear_issue_get`, `linear_workpad_upsert`, and
+`linear_state_set`) plus raw `linear_graphql`, so they can refresh or update
+Linear context during a run. Worker turns must not move issues to `Merging` or
+`Done`; those states remain the human merge trigger and Symphony's post-merge
+transition.
 
 `dispatch.max_parallel` accepts either a positive integer or `infinite`. Use a
 number to cap concurrent Codex workers, or `infinite` to let Symphony dispatch
@@ -79,8 +84,8 @@ all currently eligible issues in one poll.
 Each run appends structured events to
 `/tmp/symphony-workspaces/.symphony-events.jsonl` by default. If
 `dispatch.status_port` is set, `/status` groups active, queued, retrying,
-succeeded, landing, landed, failed, and cleaned runs from both in-memory state
-and the durable event log.
+observed, review, landing, landed, blocked, failed, and cleaned runs from both
+in-memory state and the durable event log.
 
 ## Harness engineering assessment
 
@@ -95,9 +100,10 @@ What is already in place:
   approval policy, and prompt template in version control with the repo.
 - Each eligible Linear issue gets a deterministic git worktree and
   `symphony/` branch, so workers have isolated editable state.
-- Successful active-state runs move issues to `Human Review`; moving an issue
-  to `Done` lands the branch through a GitHub PR, syncs `main`, and removes
-  the Symphony worktree and branch refs.
+- Successful active-state runs validate the branch, prepare a draft PR, and move
+  issues to `Human Review`; moving an issue to `Merging` verifies merge gates,
+  lands the PR, syncs `main`, moves the issue to `Done`, and removes the
+  Symphony worktree and branch refs.
 - `AGENTS.md` acts as a repo map and routes agents to deeper `.agents` docs,
   rules, skills, and validation workflows instead of relying on memory.
 - Terminal-state polls stop any active Codex run before landing or cleanup, so
@@ -105,12 +111,17 @@ What is already in place:
   still working in it.
 - Workflow front matter is re-normalized after reload, so updated labels,
   states, dispatch limits, hooks, and Codex settings affect later polls.
-- Worker prompts include recent Linear comments, and the `linear_graphql`
-  dynamic tool lets Codex refresh or update issue context during a run.
+- Worker prompts include recent Linear comments, durable workpad content, and
+  run context; typed Linear tools plus `linear_graphql` let Codex refresh or
+  update issue context during a run.
+- Validation commands run under Symphony after Codex turns, so handoff status is
+  based on orchestrator-observed command results instead of agent prose.
+- GitHub merge gates check review decision and status checks before merging.
 - The durable JSONL event log records dispatch, thread and turn IDs, state
   transitions, retries, landing, cleanup, PR details, and errors.
-- The `/status` endpoint groups active, queued, retrying, succeeded, landing,
-  landed, failed, and cleaned runs from memory plus durable history.
+- The `/status` endpoint groups active, queued, observed, retrying, review,
+  landing, landed, blocked, failed, and cleaned runs from memory plus durable
+  history.
 - Linear handoff comments include Codex thread IDs, workspace paths, branch
   names, validation commands when reported, post-success hook output when
   configured, and UI proof artifacts when reported.

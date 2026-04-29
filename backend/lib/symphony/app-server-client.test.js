@@ -69,7 +69,12 @@ test("CodexAppServerClient sends initialize, thread/start, and turn/start reques
 	assert.equal(result.text, "done");
 	assert.equal(seen[1].method, "thread/start");
 	assert.equal(seen[1].params.approvalPolicy, "never");
-	assert.deepEqual(seen[1].params.dynamicTools.map((tool) => tool.name), ["linear_graphql"]);
+	assert.deepEqual(seen[1].params.dynamicTools.map((tool) => tool.name), [
+		"linear_graphql",
+		"linear_issue_get",
+		"linear_workpad_upsert",
+		"linear_state_set",
+	]);
 	assert.equal(seen[1].params.dynamicTools[0].inputSchema.required[0], "query");
 	assert.equal(seen[1].params.experimentalRawEvents, false);
 	assert.equal(seen[2].params.input[0].text, "Fix ENG-1");
@@ -96,9 +101,27 @@ test("CodexAppServerClient handles Symphony dynamic Linear tool calls", async ()
 		responses.push(message);
 	});
 	const client = new CodexAppServerClient({
+		config: {
+			tracker: {
+				doneState: "Done",
+				landingStates: ["Merging"],
+				mergeState: "Merging",
+				terminalStates: ["Done"],
+			},
+		},
+		issue: { id: "issue-1", identifier: "ENG-1" },
 		linearClient: {
+			async getIssue(issueId) {
+				return { id: issueId, identifier: "ENG-1" };
+			},
 			async linearGraphql(query, variables) {
 				return { query, variables };
+			},
+			async updateIssueState(issueId, stateName) {
+				return { id: issueId, stateName };
+			},
+			async upsertWorkpadComment(issueId, body) {
+				return { body, id: "comment-1", issueId };
 			},
 		},
 		spawn: () => child,
@@ -126,15 +149,65 @@ test("CodexAppServerClient handles Symphony dynamic Linear tool calls", async ()
 			},
 		}),
 	);
+	client.handleLine(
+		JSON.stringify({
+			id: 9,
+			method: "item/tool/call",
+			params: {
+				arguments: {},
+				tool: "linear_issue_get",
+			},
+		}),
+	);
+	client.handleLine(
+		JSON.stringify({
+			id: 10,
+			method: "item/tool/call",
+			params: {
+				arguments: { body: "## Codex Workpad\nState" },
+				tool: "linear_workpad_upsert",
+			},
+		}),
+	);
+	client.handleLine(
+		JSON.stringify({
+			id: 11,
+			method: "item/tool/call",
+			params: {
+				arguments: { stateName: "Human Review" },
+				tool: "linear_state_set",
+			},
+		}),
+	);
+	client.handleLine(
+		JSON.stringify({
+			id: 12,
+			method: "item/tool/call",
+			params: {
+				arguments: { stateName: "Merging" },
+				tool: "linear_state_set",
+			},
+		}),
+	);
 
 	await new Promise((resolve) => setImmediate(resolve));
-	assert.equal(responses.length, 2);
+	responses.sort((left, right) => left.id - right.id);
+	assert.equal(responses.length, 6);
 	assert.equal(responses[0].id, 7);
 	assert.equal(responses[0].result.success, true);
 	assert.match(responses[0].result.contentItems[0].text, /query Test/);
 	assert.equal(responses[1].id, 8);
 	assert.equal(responses[1].result.success, true);
 	assert.match(responses[1].result.contentItems[0].text, /query Comments/);
+	assert.equal(responses[2].id, 9);
+	assert.match(responses[2].result.contentItems[0].text, /ENG-1/);
+	assert.equal(responses[3].id, 10);
+	assert.match(responses[3].result.contentItems[0].text, /Codex Workpad/);
+	assert.equal(responses[4].id, 11);
+	assert.match(responses[4].result.contentItems[0].text, /Human Review/);
+	assert.equal(responses[5].id, 12);
+	assert.equal(responses[5].result.success, false);
+	assert.match(responses[5].result.contentItems[0].text, /reserved/);
 });
 
 test("CodexAppServerClient waits for asynchronous turn/completed notification", async () => {

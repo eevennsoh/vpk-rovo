@@ -3,6 +3,7 @@
 const fs = require("fs");
 const path = require("path");
 const { SymphonyEventLog } = require("./event-log");
+const { findWorkpadComment } = require("./linear-client");
 const { renderStrictTemplate } = require("./workflow");
 const { slugifyTitle } = require("./workspace-manager");
 
@@ -46,8 +47,145 @@ function formatIssueCommentsMarkdown(comments, limit = 25) {
 		.join("\n\n");
 }
 
-function issueScope(issue, attempt) {
+function getIssueStateName(issue) {
+	return issue.stateName || issue.state?.name || "";
+}
+
+function formatValidationMarkdown(validation) {
+	if (!validation?.commands?.length) {
+		return "";
+	}
+	return validation.commands.map((result) => {
+		const status = result.ok ? "passed" : "failed";
+		const exitCode = result.exitCode === null || result.exitCode === undefined ? "" : ` exit ${result.exitCode}`;
+		return `- ${status}: ${result.command}${exitCode}`;
+	}).join("\n");
+}
+
+function formatPullRequestMarkdown(prStatus) {
+	if (!prStatus) {
+		return "";
+	}
+	const lines = [];
+	if (prStatus.url) {
+		lines.push(`PR: ${prStatus.url}`);
+	}
+	lines.push(`PR draft: ${prStatus.isDraft ? "yes" : "no"}`);
+	if (prStatus.reviewDecision) {
+		lines.push(`Review decision: ${prStatus.reviewDecision}`);
+	}
+	if (prStatus.mergeStateStatus) {
+		lines.push(`Merge state: ${prStatus.mergeStateStatus}`);
+	}
+	if (prStatus.checks?.length) {
+		lines.push("Checks:");
+		for (const check of prStatus.checks.slice(0, 10)) {
+			const name = check.name || check.workflowName || "unknown check";
+			const state = [check.status, check.conclusion].filter(Boolean).join("/");
+			lines.push(`- ${name}: ${state || "unknown"}`);
+		}
+	}
+	if (prStatus.latestReviews?.length) {
+		lines.push("Latest reviews:");
+		for (const review of prStatus.latestReviews.slice(-5)) {
+			const author = review.author ? ` by ${review.author}` : "";
+			const submittedAt = review.submittedAt ? ` at ${review.submittedAt}` : "";
+			lines.push(`- ${review.state || "review"}${author}${submittedAt}`);
+			if (review.body) {
+				lines.push(`  ${review.body}`);
+			}
+		}
+	}
+	if (prStatus.comments?.length) {
+		lines.push("Recent PR comments:");
+		for (const comment of prStatus.comments.slice(-5)) {
+			const author = comment.author ? ` by ${comment.author}` : "";
+			const createdAt = comment.createdAt ? ` at ${comment.createdAt}` : "";
+			lines.push(`- Comment${author}${createdAt}`);
+			if (comment.body) {
+				lines.push(`  ${comment.body}`);
+			}
+		}
+	}
+	return lines.join("\n");
+}
+
+function formatRunContextMarkdown(record = {}) {
+	const lines = [];
+	if (record.branchName) {
+		lines.push(`Branch: ${record.branchName}`);
+	}
+	if (record.workspacePath) {
+		lines.push(`Workspace: ${record.workspacePath}`);
+	}
+	if (record.prUrl) {
+		lines.push(`PR: ${record.prUrl}`);
+	}
+	if (record.threadId) {
+		lines.push(`Codex thread: ${record.threadId}`);
+	}
+	if (record.turnCount || record.attempt) {
+		lines.push(`Turns used: ${record.turnCount || 0}`);
+	}
+	if (record.workspaceStatus) {
+		lines.push(`Workspace dirty: ${record.workspaceStatus.dirty ? "yes" : "no"}`);
+		lines.push(`Workspace ahead commits: ${record.workspaceStatus.aheadCount || 0}`);
+	}
+	const validationMarkdown = formatValidationMarkdown(record.validation);
+	if (validationMarkdown) {
+		lines.push("Validation:");
+		lines.push(validationMarkdown);
+	}
+	const prMarkdown = formatPullRequestMarkdown(record.prStatus);
+	if (prMarkdown) {
+		lines.push("Pull request:");
+		lines.push(prMarkdown);
+	}
+	if (record.lastBlocker) {
+		lines.push(`Latest blocker: ${record.lastBlocker}`);
+	}
+	return lines.join("\n");
+}
+
+function buildWorkpadBody(issue, record = {}, extra = {}) {
+	const validationMarkdown = formatValidationMarkdown(record.validation);
+	return [
+		"## Codex Workpad",
+		"",
+		"### Current state",
+		`- Linear state: ${extra.stateName || getIssueStateName(issue) || "unknown"}`,
+		record.status ? `- Symphony status: ${record.status}` : "",
+		record.branchName ? `- Branch: ${record.branchName}` : "",
+		record.workspacePath ? `- Workspace: ${record.workspacePath}` : "",
+		record.prUrl ? `- PR: ${record.prUrl}` : "",
+		record.threadId ? `- Codex thread: ${record.threadId}` : "",
+		"",
+		"### Validation",
+		validationMarkdown || "- Not run yet.",
+		record.prStatus ? `\n### Pull request\n${formatPullRequestMarkdown(record.prStatus)}` : "",
+		"",
+		"### Decisions and handoff",
+		extra.note || record.lastText || "- No handoff notes recorded yet.",
+		record.lastBlocker ? `\n### Blockers\n- ${record.lastBlocker}` : "",
+	].filter(Boolean).join("\n");
+}
+
+function getValidationMergeBlocker(config, record = {}) {
+	if (!config.validation.commands.length) {
+		return "";
+	}
+	if (!record.validation?.commands?.length) {
+		return "Cannot merge Symphony pull request because configured validation has not run.";
+	}
+	if (!record.validation.ok) {
+		return "Cannot merge Symphony pull request because configured validation has not passed.";
+	}
+	return "";
+}
+
+function issueScope(issue, attempt, record = {}) {
 	const comments = Array.isArray(issue.comments) ? issue.comments : [];
+	const workpad = findWorkpadComment(comments);
 	return {
 		attempt,
 		issue: {
@@ -56,7 +194,10 @@ function issueScope(issue, attempt) {
 			commentsMarkdown: formatIssueCommentsMarkdown(comments),
 			description: issue.description || "",
 			labels: issue.labels || [],
-			state: issue.stateName || issue.state?.name || "",
+			state: getIssueStateName(issue),
+			runContextMarkdown: formatRunContextMarkdown(record),
+			workpad: workpad?.body || "",
+			workpadCommentId: workpad?.id || "",
 		},
 	};
 }
@@ -181,6 +322,21 @@ function formatRunSuccessComment(record, result, proof) {
 	].join("").trim();
 }
 
+function formatHumanReviewComment(record, result, proof) {
+	const hasBlocker = Boolean(record.lastBlocker || record.validation?.ok === false);
+	const lines = [
+		hasBlocker ? "Symphony moved this issue to Human Review with blockers." : "Symphony moved this issue to Human Review.",
+		result.text ? `\n${result.text}` : "",
+		record.lastBlocker ? `\nBlocker: ${record.lastBlocker}` : "",
+		record.prUrl ? `\nPR: ${record.prUrl}` : "",
+		record.threadId ? `\nCodex thread: ${record.threadId}` : "",
+		record.workspacePath ? `\nWorkspace: ${record.workspacePath}` : "",
+		record.branchName ? `\nBranch: ${record.branchName}` : "",
+		...formatHandoffProof(proof).map((line) => `\n${line}`),
+	];
+	return lines.join("").trim();
+}
+
 function formatLandingSuccessComment(issue, result, record = {}) {
 	const branchCleanupSummary = formatBranchCleanupSummary(result.branchCleanup);
 	const metadata = [
@@ -190,7 +346,7 @@ function formatLandingSuccessComment(issue, result, record = {}) {
 	].filter(Boolean);
 	if (result.status === "missing") {
 		return [
-			`Symphony reviewed ${issue.identifier} after it moved to Done.`,
+			`Symphony reviewed ${issue.identifier} after it moved to Merging.`,
 			"",
 			"No Symphony worktree was found, so there was nothing to land.",
 			...metadata,
@@ -199,7 +355,7 @@ function formatLandingSuccessComment(issue, result, record = {}) {
 
 	if (result.status === "no_changes") {
 		return [
-			`Symphony reviewed ${issue.identifier} after it moved to Done.`,
+			`Symphony reviewed ${issue.identifier} after it moved to Merging.`,
 			"",
 			"No branch commits or uncommitted worktree changes were found, so there was no PR to create.",
 			result.workspaceRemoved ? "The Symphony worktree was cleaned up." : "",
@@ -231,20 +387,43 @@ function formatBranchCleanupSummary(branchCleanup) {
 	return `Branch cleanup: ${local}; ${remote}.`;
 }
 
+const ISSUE_EVENT_STATUSES = new Set([
+	"blocked",
+	"cleaned",
+	"failed",
+	"landed",
+	"landing",
+	"max_turns_review",
+	"observed",
+	"queued",
+	"review",
+	"review_ready",
+	"retrying",
+	"running",
+	"stopping",
+	"succeeded",
+]);
+
 function statusFromEvent(event) {
-	if (event.status && event.status !== "completed") {
-		return event.status;
-	}
 	switch (event.type) {
 		case "dispatch_started":
 		case "thread_started":
+		case "thread_resumed":
 			return "running";
+		case "context_refreshed":
+			return ISSUE_EVENT_STATUSES.has(event.status) ? event.status : null;
 		case "issue_queued":
 			return "queued";
+		case "dispatch_observed":
+			return "observed";
 		case "retry_scheduled":
 			return "retrying";
+		case "validation_completed":
+			return null;
 		case "run_succeeded":
 			return "succeeded";
+		case "review_ready":
+			return "review";
 		case "landing_started":
 			return "landing";
 		case "landing_succeeded":
@@ -252,10 +431,12 @@ function statusFromEvent(event) {
 		case "run_failed":
 		case "landing_failed":
 			return "failed";
+		case "merge_blocked":
+			return "blocked";
 		case "cleanup_succeeded":
 			return "cleaned";
 		default:
-			return null;
+			return ISSUE_EVENT_STATUSES.has(event.status) ? event.status : null;
 	}
 }
 
@@ -272,10 +453,16 @@ function categorizeStatus(record, running, now) {
 			return "active";
 		case "queued":
 			return "queued";
+		case "observed":
+			return "observed";
 		case "retrying":
 			return "retrying";
 		case "succeeded":
 			return "succeeded";
+		case "review":
+		case "review_ready":
+		case "max_turns_review":
+			return "review";
 		case "landing":
 			return "landing";
 		case "landed":
@@ -283,6 +470,8 @@ function categorizeStatus(record, running, now) {
 		case "failed":
 		case "landing_failed":
 			return "failed";
+		case "blocked":
+			return "blocked";
 		case "cleaned":
 			return "cleaned";
 		default:
@@ -299,8 +488,15 @@ function summarizeStatusRecord(record) {
 		prUrl: record.prUrl || null,
 		retryAfterMs: record.retryAfterMs || null,
 		status: record.status,
+		linearState: record.linearState || null,
+		latestBlocker: record.lastBlocker || null,
+		maxTurns: record.maxTurns || null,
+		staleRunningAgeMs: record.status === "running" && record.startedAtMs ? Date.now() - record.startedAtMs : null,
 		threadId: record.threadId || null,
 		turnId: record.turnId || null,
+		turnCount: record.turnCount || 0,
+		validationStatus: record.validation ? (record.validation.ok ? "passed" : "failed") : null,
+		workpadPresent: Boolean(record.workpadCommentId || record.workpadPresent),
 		updatedAt: record.updatedAt || null,
 		workspacePath: record.workspacePath || null,
 	};
@@ -425,13 +621,18 @@ class SymphonyOrchestrator {
 	}
 
 	isTerminalIssue(issue) {
-		const stateName = issue.stateName || issue.state?.name || "";
+		const stateName = getIssueStateName(issue);
 		return this.config.tracker.terminalStates.includes(stateName);
 	}
 
 	isLandingIssue(issue) {
-		const stateName = issue.stateName || issue.state?.name || "";
+		const stateName = getIssueStateName(issue);
 		return this.config.tracker.landingStates.includes(stateName);
+	}
+
+	isActiveIssue(issue) {
+		const stateName = getIssueStateName(issue);
+		return this.config.tracker.activeStates.includes(stateName);
 	}
 
 	isRetryReady(record) {
@@ -441,10 +642,15 @@ class SymphonyOrchestrator {
 	async pollOnce(options = {}) {
 		const waitForDispatch = options.waitForDispatch ?? true;
 		this.reloadRuntimeIfChanged();
-		const [activeIssues, terminalIssues] = await Promise.all([
+		const [activeIssues, landingIssues, terminalIssues] = await Promise.all([
 			this.linearClient.searchIssues({
 				labels: this.config.tracker.labels,
 				stateNames: this.config.tracker.activeStates,
+				team: this.config.tracker.team,
+			}),
+			this.linearClient.searchIssues({
+				labels: this.config.tracker.labels,
+				stateNames: this.config.tracker.landingStates,
 				team: this.config.tracker.team,
 			}),
 			this.linearClient.searchIssues({
@@ -453,7 +659,7 @@ class SymphonyOrchestrator {
 				team: this.config.tracker.team,
 			}),
 		]);
-		const issues = mergeIssues([...activeIssues, ...terminalIssues]);
+		const issues = mergeIssues([...activeIssues, ...landingIssues, ...terminalIssues]);
 
 		const dispatched = [];
 		for (const issue of issues) {
@@ -472,13 +678,17 @@ class SymphonyOrchestrator {
 
 	async reconcileIssue(issue) {
 		const record = this.getRecord(issue);
+		record.linearState = getIssueStateName(issue);
+		if (this.isLandingIssue(issue)) {
+			if (this.running.has(record.identifier)) {
+				await this.stopRunningIssue(issue, record, `Issue moved to ${getIssueStateName(issue) || "landing"}`);
+			}
+			await this.landTerminalIssue(issue, record);
+			return;
+		}
 		if (this.isTerminalIssue(issue)) {
 			if (this.running.has(record.identifier)) {
-				await this.stopRunningIssue(issue, record, `Issue moved to ${issue.stateName || issue.state?.name || "terminal"}`);
-			}
-			if (this.isLandingIssue(issue)) {
-				await this.landTerminalIssue(issue, record);
-				return;
+				await this.stopRunningIssue(issue, record, `Issue moved to ${getIssueStateName(issue) || "terminal"}`);
 			}
 			await this.cleanupTerminalIssue(issue, record);
 			return;
@@ -570,6 +780,9 @@ class SymphonyOrchestrator {
 		if (record.status === "cleaned") {
 			return;
 		}
+		if (record.status === "landed" && record.landing?.workspaceRemoved) {
+			return;
+		}
 		if (record.completedAtMs && this.clock() - record.completedAtMs < this.config.workspace.ttlMs) {
 			return;
 		}
@@ -610,7 +823,14 @@ class SymphonyOrchestrator {
 		});
 
 		try {
-			const result = await this.workspaceManager.landIssue(issueWithSlug);
+			const validationBlocker = getValidationMergeBlocker(this.config, record);
+			if (validationBlocker) {
+				throw new Error(validationBlocker);
+			}
+			const result = await this.workspaceManager.landIssue(issueWithSlug, {
+				github: this.config.github,
+				validation: record.validation,
+			});
 			record.landedAtMs = this.clock();
 			record.landing = result;
 			record.prNumber = result.prNumber || record.prNumber || null;
@@ -643,14 +863,22 @@ class SymphonyOrchestrator {
 				workspaceRemoved: Boolean(result.workspaceRemoved),
 			});
 			await this.linearClient.createComment(issue.id, formatLandingSuccessComment(issueWithSlug, result, record));
+			await this.linearClient.updateIssueState(issue.id, this.config.tracker.doneState);
+			record.linearState = this.config.tracker.doneState;
+			await this.upsertWorkpad(issueWithSlug, record, result.prUrl ? `Merged ${result.prUrl}.` : "Issue reached terminal Done state.");
+			this.recordEvent("state_transition", issueWithSlug, {
+				stateName: this.config.tracker.doneState,
+				status: record.status,
+				workspacePath: result.path || record.workspacePath || null,
+			});
 		} catch (error) {
-			record.status = "landing_failed";
+			record.status = "blocked";
 			record.error = error.message;
-			record.retryAfterMs = this.clock() + computeBackoffMs(record.landingAttempt, this.config);
+			record.lastBlocker = error.message;
+			record.retryAfterMs = null;
 			record.updatedAt = this.clock();
-			this.recordEvent("landing_failed", issueWithSlug, {
+			this.recordEvent("merge_blocked", issueWithSlug, {
 				error: error.message,
-				retryAfterMs: record.retryAfterMs,
 				status: record.status,
 				workspacePath: record.workspacePath || null,
 			});
@@ -661,36 +889,207 @@ class SymphonyOrchestrator {
 					"",
 					error.message,
 					"",
-					`Next retry: ${new Date(record.retryAfterMs).toISOString()}`,
+					"Resolve the blocker or PR feedback, then move the issue back to Merging when it is ready to land.",
 				].join("\n"),
 			);
+			await this.upsertWorkpad(issueWithSlug, record, error.message);
+			await this.linearClient.updateIssueState(issue.id, this.config.tracker.reviewState);
+			record.linearState = this.config.tracker.reviewState;
 		}
+	}
+
+	async getFreshIssue(issue) {
+		if (!issue?.id || !this.linearClient.getIssue) {
+			return issue;
+		}
+		try {
+			return await this.linearClient.getIssue(issue.id);
+		} catch (error) {
+			this.recordEvent("issue_refresh_failed", issue, {
+				error: error.message,
+			});
+			return issue;
+		}
+	}
+
+	async upsertWorkpad(issue, record, note = "") {
+		const body = buildWorkpadBody(issue, record, {
+			note,
+			stateName: record.linearState || getIssueStateName(issue),
+		});
+		if (!this.linearClient.upsertWorkpadComment) {
+			return null;
+		}
+		try {
+			const comment = await this.linearClient.upsertWorkpadComment(issue.id, body);
+			record.workpadCommentId = comment?.id || record.workpadCommentId || null;
+			record.workpadPresent = true;
+			this.recordEvent("workpad_updated", issue, {
+				commentId: record.workpadCommentId,
+				status: record.status,
+				workspacePath: record.workspacePath || null,
+			});
+			return comment;
+		} catch (error) {
+			this.recordEvent("workpad_update_failed", issue, {
+				error: error.message,
+				status: record.status,
+			});
+			return null;
+		}
+	}
+
+	async startOrResumeAgent(agent, issue, record, workspacePath) {
+		await agent.initialize();
+		if (record.threadId && typeof agent.resumeThread === "function") {
+			try {
+				await agent.resumeThread({
+					config: this.config,
+					cwd: workspacePath,
+					developerInstructions: this.workflowRuntime.current.body,
+					threadId: record.threadId,
+				});
+				this.recordEvent("thread_resumed", issue, {
+					threadId: agent.threadId || record.threadId,
+					workspacePath,
+				});
+				return;
+			} catch (error) {
+				this.recordEvent("thread_resume_failed", issue, {
+					error: error.message,
+					threadId: record.threadId,
+					workspacePath,
+				});
+			}
+		}
+		await agent.startThread({
+			config: this.config,
+			cwd: workspacePath,
+			developerInstructions: this.workflowRuntime.current.body,
+			issue,
+		});
+		this.recordEvent("thread_started", issue, {
+			threadId: agent.threadId,
+			workspacePath,
+		});
+	}
+
+	async runValidation(issue, record, workspacePath) {
+		const validation = await this.workspaceManager.runValidationCommands(
+			issue,
+			this.config.validation.commands,
+			workspacePath,
+			this.config.validation.timeoutMs,
+		);
+		record.validation = validation;
+		record.updatedAt = this.clock();
+		this.recordEvent("validation_completed", issue, {
+			status: validation.ok ? "passed" : "failed",
+			validation,
+			workspacePath,
+		});
+		return validation;
+	}
+
+	async refreshRunContext(issue, record, workspacePath) {
+		try {
+			if (this.workspaceManager.getWorkspaceStatus) {
+				const workspaceStatus = await this.workspaceManager.getWorkspaceStatus(issue);
+				record.workspaceStatus = workspaceStatus;
+				record.workspacePath = workspaceStatus.path || workspacePath || record.workspacePath || null;
+				record.branchName = workspaceStatus.branchName || record.branchName || null;
+			}
+			if (this.workspaceManager.getPullRequestContext) {
+				const prContext = await this.workspaceManager.getPullRequestContext(issue);
+				record.prStatus = prContext?.pr || null;
+				record.prNumber = prContext?.pr?.number || record.prNumber || null;
+				record.prUrl = prContext?.pr?.url || record.prUrl || null;
+			}
+			record.contextRefreshedAt = new Date(this.clock()).toISOString();
+			this.recordEvent("context_refreshed", issue, {
+				branchName: record.branchName || null,
+				prNumber: record.prNumber || null,
+				prUrl: record.prUrl || null,
+				status: record.status,
+				workspacePath: record.workspacePath || workspacePath || null,
+			});
+		} catch (error) {
+			this.recordEvent("context_refresh_failed", issue, {
+				error: error.message,
+				status: record.status,
+				workspacePath: workspacePath || record.workspacePath || null,
+			});
+		}
+	}
+
+	async prepareHumanReview(issue, record, workspacePath, note = "") {
+		if (record.status !== "max_turns_review") {
+			record.status = "review";
+		}
+		record.updatedAt = this.clock();
+		const workpadBody = buildWorkpadBody(issue, record, { note });
+		const review = await this.workspaceManager.prepareReviewPullRequest(issue, {
+			threadId: record.threadId,
+			validation: record.validation,
+			workpad: workpadBody,
+			workspacePath,
+		});
+		record.prNumber = review.prNumber || record.prNumber || null;
+		record.prUrl = review.prUrl || record.prUrl || null;
+		record.review = review;
+		if (record.status !== "max_turns_review") {
+			record.status = review.status === "no_changes" ? "review_ready" : "review";
+		}
+		await this.refreshRunContext(issue, record, workspacePath);
+		await this.upsertWorkpad(issue, record, note);
+		this.recordEvent("review_ready", issue, {
+			branchName: review.branchName || record.branchName || null,
+			prNumber: record.prNumber,
+			prUrl: record.prUrl,
+			status: record.status,
+			workspacePath,
+		});
+		await this.linearClient.createComment(
+			issue.id,
+			formatHumanReviewComment(record, { text: note || record.lastText || "" }, record.proof),
+		);
+		await this.linearClient.updateIssueState(issue.id, this.config.tracker.reviewState);
+		record.linearState = this.config.tracker.reviewState;
+		this.recordEvent("state_transition", issue, {
+			stateName: this.config.tracker.reviewState,
+			status: record.status,
+			threadId: record.threadId || null,
+			workspacePath,
+		});
 	}
 
 	async dispatchIssue(issue, record) {
 		record.attempt += 1;
-		record.status = this.config.dispatch.dryRun ? "dry_run" : "running";
+		record.status = this.config.dispatch.dryRun || this.config.dispatch.observe ? "observed" : "running";
 		record.startedAtMs = this.clock();
+		record.retryAfterMs = null;
 		record.updatedAt = this.clock();
 		this.recordEvent("dispatch_started", issue, {
 			attempt: record.attempt,
 			status: record.status,
 		});
 
-		if (this.config.dispatch.dryRun) {
-			this.logger.info?.("[symphony] dry run dispatch", { issue: issue.identifier });
-			this.recordEvent("dispatch_dry_run", issue, {
-				attempt: record.attempt,
-				status: record.status,
-			});
-			return;
-		}
-
 		if (!record.slug) {
 			const titleSlug = slugifyTitle(issue.title);
 			record.slug = titleSlug ? `${issue.identifier}-${titleSlug}` : issue.identifier;
 		}
 		const issueWithSlug = { ...issue, slug: record.slug };
+
+		if (this.config.dispatch.dryRun || this.config.dispatch.observe) {
+			const workspaceStatus = await this.workspaceManager.getWorkspaceStatus?.(issueWithSlug);
+			this.logger.info?.("[symphony] observe dispatch", { issue: issue.identifier });
+			this.recordEvent("dispatch_observed", issueWithSlug, {
+				attempt: record.attempt,
+				status: record.status,
+				workspaceStatus: workspaceStatus || null,
+			});
+			return;
+		}
 
 		let agent = null;
 		let workspacePath = "";
@@ -709,13 +1108,13 @@ class SymphonyOrchestrator {
 			await this.workspaceManager.runPreStart(issueWithSlug, workspace.path);
 			this.throwIfStopRequested(record);
 			await this.linearClient.updateIssueState(issue.id, this.config.tracker.inProgressState);
+			record.linearState = this.config.tracker.inProgressState;
 			this.recordEvent("state_transition", issueWithSlug, {
 				stateName: this.config.tracker.inProgressState,
 				status: record.status,
 				workspacePath: workspace.path,
 			});
 
-			const renderedPrompt = this.renderPrompt(issue, record.attempt);
 			agent = this.agentFactory({
 				config: this.config,
 				issue,
@@ -728,39 +1127,83 @@ class SymphonyOrchestrator {
 			}
 
 			this.throwIfStopRequested(record);
-			await agent.initialize();
-			await agent.startThread({
-				config: this.config,
-				cwd: workspace.path,
-				developerInstructions: this.workflowRuntime.current.body,
-				issue,
-			});
+			await this.startOrResumeAgent(agent, issueWithSlug, record, workspace.path);
 			record.threadId = agent.threadId || record.threadId || null;
-			this.recordEvent("thread_started", issueWithSlug, {
-				threadId: record.threadId,
-				workspacePath: workspace.path,
-			});
-			this.throwIfStopRequested(record);
-			const result = await agent.runTurn({
-				config: this.config,
-				cwd: workspace.path,
-				input: renderedPrompt,
-			});
-			this.throwIfStopRequested(record);
 
-			record.threadId = result.threadId;
-			record.turnId = result.turnId;
-			record.lastText = result.text || "";
-			this.recordEvent("turn_completed", issueWithSlug, {
-				status: result.success ? "completed" : "failed",
-				threadId: result.threadId || null,
-				turnId: result.turnId || null,
-				workspacePath: workspace.path,
-			});
-			if (!result.success) {
-				throw new Error("Codex turn did not complete successfully");
+			for (let turnIndex = 0; turnIndex < this.config.agent.maxTurns; turnIndex += 1) {
+				this.throwIfStopRequested(record);
+				const currentIssue = await this.getFreshIssue(issueWithSlug);
+				record.linearState = getIssueStateName(currentIssue) || record.linearState;
+				const currentWorkpad = findWorkpadComment(currentIssue.comments || []);
+				record.workpadCommentId = currentWorkpad?.id || record.workpadCommentId || null;
+				record.workpadPresent = Boolean(currentWorkpad || record.workpadPresent);
+				if (!this.isActiveIssue(currentIssue)) {
+					this.recordEvent("active_loop_stopped", issueWithSlug, {
+						stateName: record.linearState,
+						status: record.status,
+						workspacePath: workspace.path,
+					});
+					return;
+				}
+
+				await this.refreshRunContext({ ...currentIssue, slug: record.slug }, record, workspace.path);
+				record.turnCount = (record.turnCount || 0) + 1;
+				record.maxTurns = this.config.agent.maxTurns;
+				const renderedPrompt = this.renderPrompt({ ...currentIssue, slug: record.slug }, record.attempt, record);
+				const result = await agent.runTurn({
+					config: this.config,
+					cwd: workspace.path,
+					input: renderedPrompt,
+				});
+				this.throwIfStopRequested(record);
+
+				record.threadId = result.threadId || record.threadId;
+				record.turnId = result.turnId;
+				record.lastText = result.text || "";
+				this.recordEvent("turn_completed", issueWithSlug, {
+					status: result.success ? "completed" : "failed",
+					threadId: result.threadId || null,
+					turnCount: record.turnCount,
+					turnId: result.turnId || null,
+					workspacePath: workspace.path,
+				});
+				if (!result.success) {
+					throw new Error("Codex turn did not complete successfully");
+				}
+
+				const refreshedIssue = await this.getFreshIssue(issueWithSlug);
+				record.linearState = getIssueStateName(refreshedIssue) || record.linearState;
+				const refreshedWorkpad = findWorkpadComment(refreshedIssue.comments || []);
+				record.workpadCommentId = refreshedWorkpad?.id || record.workpadCommentId || null;
+				record.workpadPresent = Boolean(refreshedWorkpad || record.workpadPresent);
+				await this.refreshRunContext({ ...refreshedIssue, slug: record.slug }, record, workspace.path);
+				if (!this.isActiveIssue(refreshedIssue)) {
+					this.recordEvent("active_loop_stopped", issueWithSlug, {
+						stateName: record.linearState,
+						status: record.status,
+						workspacePath: workspace.path,
+					});
+					return;
+				}
+
+				const validation = await this.runValidation(issueWithSlug, record, workspace.path);
+				const textProof = extractProofFromText(result.text);
+				record.proof = {
+					...textProof,
+					validationCommands: validation.commands.map((command) => command.command),
+				};
+				if (validation.ok) {
+					record.error = null;
+					record.lastBlocker = null;
+					await this.prepareHumanReview(issueWithSlug, record, workspace.path, result.text);
+					return;
+				}
+				record.lastBlocker = "Validation failed.";
+				await this.upsertWorkpad(issueWithSlug, record, "Validation failed; another Codex turn should fix the reported errors.");
 			}
-			await this.handleSuccess(issueWithSlug, record, workspace.path, result);
+			record.status = "max_turns_review";
+			record.lastBlocker = record.lastBlocker || "Reached the maximum configured Codex turns.";
+			await this.prepareHumanReview(issueWithSlug, record, workspace.path, record.lastBlocker);
 		} catch (error) {
 			if (error instanceof SymphonyRunStoppedError || this.isStopRequested(record)) {
 				await this.handleStopped(issueWithSlug, record, workspacePath || record.workspacePath, error);
@@ -772,12 +1215,12 @@ class SymphonyOrchestrator {
 		}
 	}
 
-	renderPrompt(issue, attempt) {
+	renderPrompt(issue, attempt, record = {}) {
 		const workflowPrompt = this.workflowRuntime.current.config.prompt;
 		if (!workflowPrompt) {
 			return buildDefaultPrompt(issue, attempt);
 		}
-		return renderStrictTemplate(workflowPrompt, issueScope(issue, attempt));
+		return renderStrictTemplate(workflowPrompt, issueScope(issue, attempt, record));
 	}
 
 	async handleSuccess(issue, record, workspacePath, result) {
@@ -885,12 +1328,17 @@ class SymphonyOrchestrator {
 				...previous,
 				branchName: event.branchName || previous.branchName || null,
 				identifier: event.issueIdentifier,
+				lastBlocker: event.error || event.blocker || previous.lastBlocker || null,
+				linearState: event.stateName || previous.linearState || null,
+				maxTurns: event.maxTurns || previous.maxTurns || null,
 				prNumber: event.prNumber || previous.prNumber || null,
 				prUrl: event.prUrl || previous.prUrl || null,
 				status,
 				threadId: event.threadId || previous.threadId || null,
+				turnCount: event.turnCount || previous.turnCount || 0,
 				turnId: event.turnId || previous.turnId || null,
 				updatedAt: Date.parse(event.timestamp) || null,
+				validation: event.validation || previous.validation || null,
 				workspacePath: event.workspacePath || previous.workspacePath || null,
 			});
 		}
@@ -903,10 +1351,13 @@ class SymphonyOrchestrator {
 		const groups = {
 			active: [],
 			queued: [],
+			observed: [],
 			retrying: [],
+			review: [],
 			succeeded: [],
 			landing: [],
 			landed: [],
+			blocked: [],
 			failed: [],
 			cleaned: [],
 			other: [],

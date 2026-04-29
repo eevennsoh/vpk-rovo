@@ -26,6 +26,68 @@ const LINEAR_GRAPHQL_DYNAMIC_TOOL = {
 	name: "linear_graphql",
 };
 
+const LINEAR_ISSUE_GET_DYNAMIC_TOOL = {
+	description: "Fetch the current Linear issue, including recent comments and workflow state.",
+	inputSchema: {
+		additionalProperties: false,
+		properties: {
+			issueId: {
+				description: "Optional Linear issue id. Defaults to the current Symphony issue.",
+				type: "string",
+			},
+		},
+		type: "object",
+	},
+	name: "linear_issue_get",
+};
+
+const LINEAR_WORKPAD_UPSERT_DYNAMIC_TOOL = {
+	description: "Create or update the single durable Linear comment headed '## Codex Workpad' for the current issue.",
+	inputSchema: {
+		additionalProperties: false,
+		properties: {
+			body: {
+				description: "Full Markdown body for the workpad. It must start with '## Codex Workpad'.",
+				type: "string",
+			},
+			issueId: {
+				description: "Optional Linear issue id. Defaults to the current Symphony issue.",
+				type: "string",
+			},
+		},
+		required: ["body"],
+		type: "object",
+	},
+	name: "linear_workpad_upsert",
+};
+
+const LINEAR_STATE_SET_DYNAMIC_TOOL = {
+	description: "Move the current Linear issue to a named workflow state.",
+	inputSchema: {
+		additionalProperties: false,
+		properties: {
+			issueId: {
+				description: "Optional Linear issue id. Defaults to the current Symphony issue.",
+				type: "string",
+			},
+			stateName: {
+				description: "Linear workflow state name.",
+				type: "string",
+			},
+		},
+		required: ["stateName"],
+		type: "object",
+	},
+	name: "linear_state_set",
+};
+
+const DYNAMIC_TOOLS = [
+	LINEAR_GRAPHQL_DYNAMIC_TOOL,
+	LINEAR_ISSUE_GET_DYNAMIC_TOOL,
+	LINEAR_WORKPAD_UPSERT_DYNAMIC_TOOL,
+	LINEAR_STATE_SET_DYNAMIC_TOOL,
+];
+
 function getTextFromTurn(turn) {
 	if (!turn || typeof turn !== "object") {
 		return "";
@@ -74,8 +136,10 @@ class CodexAppServerClient extends EventEmitter {
 	constructor(options = {}) {
 		super();
 		this.command = options.command || "codex app-server";
+		this.config = options.config || null;
 		this.spawn = options.spawn || childProcess.spawn;
 		this.linearClient = options.linearClient || null;
+		this.issue = options.issue || null;
 		this.logger = options.logger || console;
 		this.nextId = 1;
 		this.pending = new Map();
@@ -221,7 +285,13 @@ class CodexAppServerClient extends EventEmitter {
 	async handleDynamicTool(params) {
 		const toolName = params.tool || params.name;
 		const namespace = params.namespace || "";
-		if (toolName === "linear_graphql" && (!namespace || namespace === "symphony")) {
+		if (namespace && namespace !== "symphony") {
+			return {
+				success: false,
+				contentItems: [{ type: "inputText", text: `Unknown Symphony tool namespace: ${namespace}` }],
+			};
+		}
+		if (toolName === "linear_graphql") {
 			if (!this.linearClient) {
 				return {
 					success: false,
@@ -233,6 +303,64 @@ class CodexAppServerClient extends EventEmitter {
 			return {
 				success: true,
 				contentItems: [{ type: "inputText", text: JSON.stringify(data, null, 2) }],
+			};
+		}
+		if (!this.linearClient) {
+			return {
+				success: false,
+				contentItems: [{ type: "inputText", text: `${toolName} is not configured` }],
+			};
+		}
+		const args = typeof params.arguments === "string" ? JSON.parse(params.arguments) : params.arguments || {};
+		const issueId = args.issueId || this.issue?.id;
+		if (toolName === "linear_issue_get") {
+			if (!issueId) {
+				return { success: false, contentItems: [{ type: "inputText", text: "issueId is required" }] };
+			}
+			const issue = await this.linearClient.getIssue(issueId);
+			return {
+				success: true,
+				contentItems: [{ type: "inputText", text: JSON.stringify(issue, null, 2) }],
+			};
+		}
+		if (toolName === "linear_workpad_upsert") {
+			if (!issueId) {
+				return { success: false, contentItems: [{ type: "inputText", text: "issueId is required" }] };
+			}
+			const body = String(args.body || "").trim();
+			if (!/^## Codex Workpad\b/.test(body)) {
+				return { success: false, contentItems: [{ type: "inputText", text: "Workpad body must start with '## Codex Workpad'" }] };
+			}
+			const comment = await this.linearClient.upsertWorkpadComment(issueId, body);
+			return {
+				success: true,
+				contentItems: [{ type: "inputText", text: JSON.stringify(comment, null, 2) }],
+			};
+		}
+		if (toolName === "linear_state_set") {
+			if (!issueId) {
+				return { success: false, contentItems: [{ type: "inputText", text: "issueId is required" }] };
+			}
+			const stateName = String(args.stateName || "").trim();
+			if (!stateName) {
+				return { success: false, contentItems: [{ type: "inputText", text: "stateName is required" }] };
+			}
+			const reservedStates = new Set([
+				...(this.config?.tracker?.landingStates || []),
+				...(this.config?.tracker?.terminalStates || []),
+				this.config?.tracker?.mergeState,
+				this.config?.tracker?.doneState,
+			].filter(Boolean));
+			if (reservedStates.has(stateName)) {
+				return {
+					success: false,
+					contentItems: [{ type: "inputText", text: `State ${stateName} is reserved for human-gated Symphony transitions` }],
+				};
+			}
+			const issue = await this.linearClient.updateIssueState(issueId, stateName);
+			return {
+				success: true,
+				contentItems: [{ type: "inputText", text: JSON.stringify(issue, null, 2) }],
 			};
 		}
 
@@ -281,12 +409,13 @@ class CodexAppServerClient extends EventEmitter {
 	}
 
 	async startThread({ cwd, config, developerInstructions, issue }) {
+		this.config = config;
 		const response = await this.request("thread/start", {
 			approvalPolicy: config.agent.approvalPolicy,
 			approvalsReviewer: config.agent.approvalsReviewer,
 			cwd,
 			developerInstructions,
-			dynamicTools: [LINEAR_GRAPHQL_DYNAMIC_TOOL],
+			dynamicTools: DYNAMIC_TOOLS,
 			model: config.agent.model,
 			experimentalRawEvents: false,
 			persistExtendedHistory: true,
@@ -301,10 +430,32 @@ class CodexAppServerClient extends EventEmitter {
 		return response;
 	}
 
+	async resumeThread({ cwd, config, developerInstructions, threadId }) {
+		this.config = config;
+		const response = await this.request("thread/resume", {
+			approvalPolicy: config.agent.approvalPolicy,
+			approvalsReviewer: config.agent.approvalsReviewer,
+			cwd,
+			developerInstructions,
+			dynamicTools: DYNAMIC_TOOLS,
+			excludeTurns: true,
+			model: config.agent.model,
+			sandbox: config.agent.sandbox,
+			serviceName: config.agent.serviceName,
+			threadId,
+		});
+		this.threadId = response?.thread?.id || response?.threadId || threadId || null;
+		if (!this.threadId) {
+			throw new SymphonyAgentError("Codex app-server did not resume a thread", { threadId });
+		}
+		return response;
+	}
+
 	async runTurn({ input, config, cwd }) {
 		if (!this.threadId) {
 			throw new SymphonyAgentError("Cannot start a turn before starting a thread");
 		}
+		this.config = config;
 
 		const response = await this.request("turn/start", {
 			approvalPolicy: config.agent.approvalPolicy,

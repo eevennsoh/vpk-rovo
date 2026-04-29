@@ -33,10 +33,22 @@ function baseConfig(root) {
 			doneState: "Done",
 			failedState: null,
 			inProgressState: "In Progress",
-			landingStates: ["Done"],
+			landingStates: ["Merging"],
 			labels: ["symphony"],
+			mergeState: "Merging",
+			reviewState: "Human Review",
+			reworkState: "Rework",
 			team: "ENG",
 			terminalStates: ["Done"],
+		},
+		github: {
+			allowNoChecks: true,
+			requireGreenChecks: true,
+			requireNoUnresolvedReviews: true,
+		},
+		validation: {
+			commands: ["pnpm run lint"],
+			timeoutMs: 1000,
 		},
 		workspace: {
 			root,
@@ -120,11 +132,18 @@ test("SymphonyOrchestrator dispatches an active issue through workspace and agen
 		async createComment(issueId, body) {
 			events.push(["comment", issueId, body]);
 		},
+		async getIssue() {
+			return issue;
+		},
 		async searchIssues() {
 			return [issue];
 		},
 		async updateIssueState(issueId, stateName) {
 			events.push(["state", issueId, stateName]);
+		},
+		async upsertWorkpadComment(issueId, body) {
+			events.push(["workpad", issueId, body]);
+			return { body, id: "workpad-1" };
 		},
 	};
 	const workspaceManager = {
@@ -141,6 +160,14 @@ test("SymphonyOrchestrator dispatches an active issue through workspace and agen
 		},
 		async runPreStart() {
 			events.push(["preStart"]);
+		},
+		async runValidationCommands() {
+			events.push(["validation"]);
+			return { commands: [{ command: "pnpm run lint", ok: true }], ok: true };
+		},
+		async prepareReviewPullRequest() {
+			events.push(["reviewPr"]);
+			return { branchName: "symphony/ENG-123", prNumber: 1, prUrl: "https://github.test/pull/1", status: "review_ready" };
 		},
 	};
 	const agent = {
@@ -184,10 +211,12 @@ test("SymphonyOrchestrator dispatches an active issue through workspace and agen
 	assert.deepEqual(events[2], ["state", "issue-id", "In Progress"]);
 	assert.match(events[5][1], /ENG-123 Add feature attempt 1/);
 	assert.match(events[5][1], /Human rework note/);
-	assert.deepEqual(events.at(-2), ["state", "issue-id", "Done"]);
-	assert.equal(snapshot.issues[0].status, "succeeded");
+	assert.ok(events.some((event) => event[0] === "validation"));
+	assert.ok(events.some((event) => event[0] === "reviewPr"));
+	assert.deepEqual(events.at(-2), ["state", "issue-id", "Human Review"]);
+	assert.equal(snapshot.issues[0].status, "review");
 	assert.equal(snapshot.issues[0].threadId, "thread-1");
-	assert.ok(readEvents(tempDir).some((event) => event.type === "run_succeeded" && event.threadId === "thread-1"));
+	assert.ok(readEvents(tempDir).some((event) => event.type === "review_ready" && event.prUrl === "https://github.test/pull/1"));
 });
 
 test("SymphonyOrchestrator dispatches unlimited workers concurrently", async () => {
@@ -202,10 +231,16 @@ test("SymphonyOrchestrator dispatches unlimited workers concurrently", async () 
 	config.dispatch.maxParallel = Number.POSITIVE_INFINITY;
 	const linearClient = {
 		async createComment() {},
+		async getIssue(issueId) {
+			return issues.find((issue) => issue.id === issueId);
+		},
 		async searchIssues() {
 			return issues;
 		},
 		async updateIssueState() {},
+		async upsertWorkpadComment() {
+			return { id: "workpad" };
+		},
 	};
 	const workspaceManager = {
 		async cleanup() {},
@@ -215,6 +250,12 @@ test("SymphonyOrchestrator dispatches unlimited workers concurrently", async () 
 		async runPostFailure() {},
 		async runPostSuccess() {},
 		async runPreStart() {},
+		async runValidationCommands() {
+			return { commands: [{ command: "pnpm run lint", ok: true }], ok: true };
+		},
+		async prepareReviewPullRequest(issue) {
+			return { branchName: `symphony/${issue.identifier}`, prUrl: `https://github.test/${issue.identifier}`, status: "review_ready" };
+		},
 	};
 	const orchestrator = new SymphonyOrchestrator({
 		agentFactory: ({ issue }) => ({
@@ -246,8 +287,172 @@ test("SymphonyOrchestrator dispatches unlimited workers concurrently", async () 
 	assert.equal(maxActiveTurns, 2);
 	assert.deepEqual(
 		snapshot.issues.map((issue) => issue.status),
-		["succeeded", "succeeded"],
+		["review", "review"],
 	);
+});
+
+test("SymphonyOrchestrator moves max-turn active loops to Human Review with blockers", async () => {
+	const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "symphony-orchestrator-max-turns-test-"));
+	const issue = {
+		comments: [],
+		description: "",
+		id: "issue-id",
+		identifier: "ENG-44",
+		stateName: "Todo",
+		title: "Needs retries",
+	};
+	const events = [];
+	let turns = 0;
+	const config = baseConfig(tempDir);
+	config.agent.maxTurns = 2;
+	const linearClient = {
+		async createComment(issueId, body) {
+			events.push(["comment", issueId, body]);
+		},
+		async getIssue() {
+			return issue;
+		},
+		async searchIssues({ stateNames }) {
+			return stateNames.includes("Todo") ? [issue] : [];
+		},
+		async updateIssueState(_issueId, stateName) {
+			events.push(["state", stateName]);
+		},
+		async upsertWorkpadComment(issueId, body) {
+			events.push(["workpad", issueId, body]);
+			return { body, id: "workpad-1" };
+		},
+	};
+	const workspaceManager = {
+		async cleanup() {},
+		async createOrReuse() {
+			return { branchName: "symphony/ENG-44", path: tempDir };
+		},
+		async prepareReviewPullRequest() {
+			events.push(["reviewPr"]);
+			return { branchName: "symphony/ENG-44", prNumber: 44, prUrl: "https://github.test/pull/44", status: "review_ready" };
+		},
+		async runPostFailure() {},
+		async runPreStart() {},
+		async runValidationCommands() {
+			return { commands: [{ command: "pnpm run lint", exitCode: 1, ok: false }], ok: false };
+		},
+	};
+	const orchestrator = new SymphonyOrchestrator({
+		agentFactory: () => ({
+			async initialize() {},
+			async runTurn() {
+				turns += 1;
+				return { success: true, text: `attempt ${turns}`, threadId: "thread-44", turnId: `turn-${turns}` };
+			},
+			async startThread() {
+				this.threadId = "thread-44";
+			},
+			stop() {},
+		}),
+		config,
+		linearClient,
+		stateFile: path.join(tempDir, "state.json"),
+		workflowRuntime: {
+			current: { body: "", config: {} },
+			reloadIfChanged() {
+				return false;
+			},
+		},
+		workspaceManager,
+	});
+
+	const snapshot = await orchestrator.pollOnce();
+
+	assert.equal(turns, 2);
+	assert.equal(snapshot.issues[0].status, "max_turns_review");
+	assert.equal(snapshot.issues[0].lastBlocker, "Validation failed.");
+	assert.ok(events.some((event) => event[0] === "comment" && /Human Review with blockers/.test(event[2])));
+	assert.ok(events.some((event) => event[0] === "state" && event[1] === "Human Review"));
+	assert.ok(readEvents(tempDir).some((event) => event.type === "validation_completed" && event.validation.commands[0].exitCode === 1));
+});
+
+test("SymphonyOrchestrator continues active turns until validation passes", async () => {
+	const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "symphony-orchestrator-validation-loop-test-"));
+	const issue = {
+		comments: [],
+		description: "",
+		id: "issue-id",
+		identifier: "ENG-45",
+		stateName: "Todo",
+		title: "Fix validation",
+	};
+	const events = [];
+	let turns = 0;
+	let validations = 0;
+	const linearClient = {
+		async createComment(issueId, body) {
+			events.push(["comment", issueId, body]);
+		},
+		async getIssue() {
+			return issue;
+		},
+		async searchIssues({ stateNames }) {
+			return stateNames.includes("Todo") ? [issue] : [];
+		},
+		async updateIssueState(_issueId, stateName) {
+			events.push(["state", stateName]);
+		},
+		async upsertWorkpadComment(issueId, body) {
+			events.push(["workpad", issueId, body]);
+			return { body, id: "workpad-1" };
+		},
+	};
+	const workspaceManager = {
+		async cleanup() {},
+		async createOrReuse() {
+			return { branchName: "symphony/ENG-45", path: tempDir };
+		},
+		async prepareReviewPullRequest() {
+			return { branchName: "symphony/ENG-45", prNumber: 45, prUrl: "https://github.test/pull/45", status: "review_ready" };
+		},
+		async runPostFailure() {},
+		async runPreStart() {},
+		async runValidationCommands() {
+			validations += 1;
+			return {
+				commands: [{ command: "pnpm run lint", exitCode: validations === 1 ? 1 : 0, ok: validations !== 1 }],
+				ok: validations !== 1,
+			};
+		},
+	};
+	const orchestrator = new SymphonyOrchestrator({
+		agentFactory: () => ({
+			async initialize() {},
+			async runTurn() {
+				turns += 1;
+				return { success: true, text: `attempt ${turns}`, threadId: "thread-45", turnId: `turn-${turns}` };
+			},
+			async startThread() {
+				this.threadId = "thread-45";
+			},
+			stop() {},
+		}),
+		config: baseConfig(tempDir),
+		linearClient,
+		stateFile: path.join(tempDir, "state.json"),
+		workflowRuntime: {
+			current: { body: "", config: {} },
+			reloadIfChanged() {
+				return false;
+			},
+		},
+		workspaceManager,
+	});
+
+	const snapshot = await orchestrator.pollOnce();
+
+	assert.equal(turns, 2);
+	assert.equal(snapshot.issues[0].status, "review");
+	assert.equal(snapshot.issues[0].lastBlocker, null);
+	assert.ok(events.some((event) => event[0] === "comment" && /moved this issue to Human Review\./.test(event[2])));
+	assert.equal(events.some((event) => event[0] === "comment" && /with blockers/.test(event[2])), false);
+	assert.ok(readEvents(tempDir).filter((event) => event.type === "validation_completed").length >= 2);
 });
 
 test("SymphonyOrchestrator stops an active Codex run before terminal cleanup", async () => {
@@ -269,6 +474,10 @@ test("SymphonyOrchestrator stops an active Codex run before terminal cleanup", a
 	const linearClient = {
 		async createComment(_issueId, body) {
 			events.push(["comment", body]);
+		},
+		async getIssue() {
+			issue.stateName = currentState;
+			return issue;
 		},
 		async searchIssues({ stateNames }) {
 			issue.stateName = currentState;
@@ -316,7 +525,7 @@ test("SymphonyOrchestrator stops an active Codex run before terminal cleanup", a
 	};
 	const config = baseConfig(tempDir);
 	config.tracker.terminalStates = ["Canceled"];
-	config.tracker.landingStates = ["Done"];
+	config.tracker.landingStates = ["Merging"];
 	const orchestrator = new SymphonyOrchestrator({
 		agentFactory: () => agent,
 		config,
@@ -391,7 +600,8 @@ test("SymphonyOrchestrator reloads workflow front matter before polling", async 
 	await orchestrator.pollOnce();
 
 	assert.deepEqual(searches[0], { labels: ["codex"], stateNames: ["Ready"], team: "ENG" });
-	assert.deepEqual(searches[1], { labels: ["codex"], stateNames: ["Closed"], team: "ENG" });
+	assert.deepEqual(searches[1], { labels: ["codex"], stateNames: ["Merging"], team: "ENG" });
+	assert.deepEqual(searches[2], { labels: ["codex"], stateNames: ["Closed"], team: "ENG" });
 	assert.equal(orchestrator.config.dispatch.maxParallel, Number.POSITIVE_INFINITY);
 	assert.ok(readEvents(tempDir).some((event) => event.type === "workflow_reloaded"));
 });
@@ -407,6 +617,9 @@ test("SymphonyOrchestrator records failed runs and retry scheduling", async () =
 	};
 	const linearClient = {
 		async createComment() {},
+		async getIssue() {
+			return issue;
+		},
 		async searchIssues({ stateNames }) {
 			return stateNames.includes("Todo") ? [issue] : [];
 		},
@@ -508,19 +721,19 @@ test("SymphonyOrchestrator polls non-landing terminal states and cleans complete
 
 	const snapshot = await orchestrator.pollOnce();
 
-	assert.deepEqual(searches, [["Todo"], ["Canceled"]]);
+	assert.deepEqual(searches, [["Todo"], ["Merging"], ["Canceled"]]);
 	assert.deepEqual(events, [["cleanup", "ENG-123"]]);
 	assert.equal(snapshot.issues[0].status, "cleaned");
 	assert.ok(readEvents(tempDir).some((event) => event.type === "cleanup_succeeded" && event.issueIdentifier === "ENG-123"));
 });
 
-test("SymphonyOrchestrator lands Done issues and comments with PR status", async () => {
+test("SymphonyOrchestrator lands Merging issues and comments with PR status", async () => {
 	const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "symphony-orchestrator-landing-test-"));
 	const issue = {
 		description: "",
 		id: "issue-id",
 		identifier: "ENG-123",
-		stateName: "Done",
+		stateName: "Merging",
 		title: "Completed feature",
 	};
 	const events = [];
@@ -529,7 +742,7 @@ test("SymphonyOrchestrator lands Done issues and comments with PR status", async
 			events.push(["comment", issueId, body]);
 		},
 		async searchIssues({ stateNames }) {
-			return stateNames.includes("Done") ? [issue] : [];
+			return stateNames.includes("Merging") ? [issue] : [];
 		},
 		async updateIssueState(_issueId, stateName) {
 			events.push(["state", stateName]);
@@ -564,9 +777,73 @@ test("SymphonyOrchestrator lands Done issues and comments with PR status", async
 		async runPostSuccess() {},
 		async runPreStart() {},
 	};
+		const orchestrator = new SymphonyOrchestrator({
+			agentFactory: () => {
+				throw new Error("Done issues should land without starting agents");
+		},
+		config: baseConfig(tempDir),
+		linearClient,
+		stateFile: path.join(tempDir, "state.json"),
+		workflowRuntime: {
+			current: { body: "", config: {} },
+			reloadIfChanged() {
+				return false;
+			},
+			},
+			workspaceManager,
+		});
+		orchestrator.getRecord(issue).validation = { commands: [{ command: "pnpm run lint", ok: true }], ok: true };
+
+		const snapshot = await orchestrator.pollOnce();
+
+	assert.deepEqual(events[0], ["land", "ENG-123"]);
+	assert.equal(events[1][0], "comment");
+	assert.match(events[1][2], /Symphony landed ENG-123/);
+	assert.match(events[1][2], /PR: https:\/\/github.test\/pull\/12/);
+	assert.match(events[1][2], /Branch cleanup: deleted local branch; deleted remote branch\./);
+	assert.deepEqual(events[2], ["state", "Done"]);
+	assert.equal(snapshot.issues[0].status, "landed");
+	assert.equal(snapshot.issues[0].prUrl, "https://github.test/pull/12");
+	const eventTypes = readEvents(tempDir).map((event) => event.type);
+	assert.ok(eventTypes.includes("pr_created"));
+	assert.ok(eventTypes.includes("pr_merged"));
+		assert.ok(readEvents(tempDir).some((event) => event.type === "landing_succeeded" && event.prUrl === "https://github.test/pull/12"));
+	});
+
+test("SymphonyOrchestrator moves blocked Merging issues back to Human Review", async () => {
+	const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "symphony-orchestrator-merge-block-test-"));
+	const issue = {
+		description: "",
+		id: "issue-id",
+		identifier: "ENG-124",
+		stateName: "Merging",
+		title: "Blocked feature",
+	};
+	const events = [];
+	const linearClient = {
+		async createComment(issueId, body) {
+			events.push(["comment", issueId, body]);
+		},
+		async searchIssues({ stateNames }) {
+			return stateNames.includes("Merging") ? [issue] : [];
+		},
+		async updateIssueState(_issueId, stateName) {
+			events.push(["state", stateName]);
+		},
+		async upsertWorkpadComment(issueId, body) {
+			events.push(["workpad", issueId, body]);
+			return { body, id: "workpad-1" };
+		},
+	};
+	const workspaceManager = {
+		async cleanup() {},
+		async landIssue() {
+			throw new Error("GitHub review decision is CHANGES_REQUESTED.");
+		},
+	};
 	const orchestrator = new SymphonyOrchestrator({
 		agentFactory: () => {
-			throw new Error("Done issues should land without starting agents");
+			throw new Error("Merging issues should not start agents");
 		},
 		config: baseConfig(tempDir),
 		linearClient,
@@ -579,20 +856,16 @@ test("SymphonyOrchestrator lands Done issues and comments with PR status", async
 		},
 		workspaceManager,
 	});
+	orchestrator.getRecord(issue).validation = { commands: [{ command: "pnpm run lint", ok: true }], ok: true };
 
 	const snapshot = await orchestrator.pollOnce();
 
-	assert.deepEqual(events[0], ["land", "ENG-123"]);
-	assert.equal(events[1][0], "comment");
-	assert.match(events[1][2], /Symphony landed ENG-123/);
-	assert.match(events[1][2], /PR: https:\/\/github.test\/pull\/12/);
-	assert.match(events[1][2], /Branch cleanup: deleted local branch; deleted remote branch\./);
-	assert.equal(snapshot.issues[0].status, "landed");
-	assert.equal(snapshot.issues[0].prUrl, "https://github.test/pull/12");
-	const eventTypes = readEvents(tempDir).map((event) => event.type);
-	assert.ok(eventTypes.includes("pr_created"));
-	assert.ok(eventTypes.includes("pr_merged"));
-	assert.ok(readEvents(tempDir).some((event) => event.type === "landing_succeeded" && event.prUrl === "https://github.test/pull/12"));
+	assert.ok(events.some((event) => event[0] === "comment" && /could not land ENG-124/.test(event[2])));
+	assert.ok(events.some((event) => event[0] === "workpad" && /CHANGES_REQUESTED/.test(event[2])));
+	assert.ok(events.some((event) => event[0] === "state" && event[1] === "Human Review"));
+	assert.equal(snapshot.issues[0].status, "blocked");
+	assert.equal(snapshot.issues[0].retryAfterMs, null);
+	assert.ok(readEvents(tempDir).some((event) => event.type === "merge_blocked" && /CHANGES_REQUESTED/.test(event.error)));
 });
 
 test("status server includes durable event history after restart", async () => {

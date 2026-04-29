@@ -46,6 +46,10 @@ function normalizeIssue(issue) {
 	};
 }
 
+function findWorkpadComment(comments = []) {
+	return comments.find((comment) => /^## Codex Workpad\b/.test((comment.body || "").trim())) || null;
+}
+
 class LinearClient {
 	constructor(options) {
 		this.apiKey = options.apiKey;
@@ -116,6 +120,18 @@ class LinearClient {
 		return normalized.filter((issue) => labels.some((label) => issue.labels.includes(label)));
 	}
 
+	async getIssue(issueId) {
+		const data = await this.request(
+			`
+				query SymphonyIssue($id: String!) {
+					issue(id: $id) { ${ISSUE_FIELDS} }
+				}
+			`,
+			{ id: issueId },
+		);
+		return normalizeIssue(data?.issue || {});
+	}
+
 	async updateIssueState(issueId, stateName) {
 		if (!stateName) {
 			return null;
@@ -171,12 +187,43 @@ class LinearClient {
 		return data?.commentCreate?.comment || null;
 	}
 
+	async updateComment(commentId, body) {
+		if (!commentId || !body) {
+			return null;
+		}
+		const data = await this.request(
+			`
+				mutation SymphonyCommentUpdate($commentId: String!, $body: String!) {
+					commentUpdate(id: $commentId, input: { body: $body }) {
+						success
+						comment { id body createdAt updatedAt }
+					}
+				}
+			`,
+			{ body, commentId },
+		);
+		return data?.commentUpdate?.comment || null;
+	}
+
+	async upsertWorkpadComment(issueId, body) {
+		if (!body) {
+			return null;
+		}
+		const issue = await this.getIssue(issueId);
+		const workpad = findWorkpadComment(issue.comments);
+		if (workpad?.id) {
+			return this.updateComment(workpad.id, body);
+		}
+		return this.createComment(issueId, body);
+	}
+
 	async linearGraphql(query, variables = {}) {
 		return this.request(query, variables);
 	}
 }
 
 module.exports = {
+	findWorkpadComment,
 	LinearClient,
 	normalizeIssue,
 };

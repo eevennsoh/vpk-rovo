@@ -111,7 +111,7 @@ test("issueEnv exposes stable hook variables", () => {
 	});
 });
 
-test("WorkspaceManager lands dirty Done work through PR merge and local main sync", async () => {
+test("WorkspaceManager lands dirty Merging work through existing PR merge and local main sync", async () => {
 	const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "symphony-workspace-land-test-"));
 	const workspacePath = path.join(tempDir, "worktrees", "ENG-10-add-graph");
 	fs.mkdirSync(workspacePath, { recursive: true });
@@ -146,16 +146,23 @@ test("WorkspaceManager lands dirty Done work through PR merge and local main syn
 			if (command === "git" && args[0] === "branch" && args[1] === "--format=%(refname:short)") {
 				return { stderr: "", stdout: "symphony/ENG-10-add-graph\n" };
 			}
-			if (command === "gh" && args[0] === "pr" && args[1] === "list" && !calls.some((call) => call.command === "gh" && call.args[1] === "create")) {
-				return { stderr: "", stdout: "[]" };
-			}
-			if (command === "gh" && args[0] === "pr" && args[1] === "create") {
-				return { stderr: "", stdout: "https://github.test/pull/10\n" };
-			}
 			if (command === "gh" && args[0] === "pr" && args[1] === "list") {
 				return {
 					stderr: "",
-					stdout: JSON.stringify([{ number: 10, title: "ENG-10: Add graph", url: "https://github.test/pull/10" }]),
+					stdout: JSON.stringify([{ isDraft: true, number: 10, title: "ENG-10: Add graph", url: "https://github.test/pull/10" }]),
+				};
+			}
+			if (command === "gh" && args[0] === "pr" && args[1] === "view") {
+				return {
+					stderr: "",
+					stdout: JSON.stringify({
+						isDraft: true,
+						number: 10,
+						reviewDecision: "APPROVED",
+						statusCheckRollup: [],
+						title: "ENG-10: Add graph",
+						url: "https://github.test/pull/10",
+					}),
 				};
 			}
 			return { stderr: "", stdout: "" };
@@ -184,7 +191,8 @@ test("WorkspaceManager lands dirty Done work through PR merge and local main syn
 	assert.ok(calls.some((call) => call.command === "git" && call.args.join(" ") === "add --all" && call.cwd === workspacePath));
 	assert.ok(calls.some((call) => call.command === "git" && call.args[0] === "commit" && call.args.at(-1) === "ENG-10: Add graph"));
 	assert.ok(calls.some((call) => call.command === "git" && call.args.join(" ") === "push -u origin symphony/ENG-10-add-graph"));
-	assert.ok(calls.some((call) => call.command === "gh" && call.args.join(" ").startsWith("pr create --base main --head symphony/ENG-10-add-graph")));
+	assert.equal(calls.some((call) => call.command === "gh" && call.args[1] === "create"), false);
+	assert.ok(calls.some((call) => call.command === "gh" && call.args.join(" ") === "pr ready 10"));
 	assert.ok(calls.some((call) => call.command === "gh" && call.args.join(" ") === "pr merge 10 --merge"));
 	assert.ok(calls.some((call) => call.command === "git" && call.args.join(" ") === "pull --ff-only origin main" && call.cwd === tempDir));
 	assert.ok(calls.some((call) => call.command === "git" && call.args.join(" ") === "push origin --delete symphony/ENG-10-add-graph"));
@@ -243,6 +251,105 @@ test("WorkspaceManager cleans branch refs when a Done workspace has no remaining
 	assert.equal(calls.some((call) => call.command === "gh"), false);
 	assert.ok(calls.some((call) => call.command === "git" && call.args.join(" ") === "push origin --delete symphony/ENG-13-already-merged"));
 	assert.ok(calls.some((call) => call.command === "git" && call.args.join(" ") === "branch -d symphony/ENG-13-already-merged"));
+});
+
+test("WorkspaceManager prepares a draft review PR and updates its body", async () => {
+	const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "symphony-workspace-review-test-"));
+	const workspacePath = path.join(tempDir, "worktrees", "ENG-20-review-ready");
+	fs.mkdirSync(workspacePath, { recursive: true });
+	const calls = [];
+	let workspaceStatusCalls = 0;
+	let revListCalls = 0;
+	const manager = new WorkspaceManager({
+		baseRef: "main",
+		branchPrefix: "symphony/",
+		execFile: async (command, args, options) => {
+			calls.push({ args, command, cwd: options.cwd });
+			if (command === "git" && args[0] === "status") {
+				workspaceStatusCalls += 1;
+				return { stderr: "", stdout: workspaceStatusCalls === 1 ? " M app/page.tsx\n" : "" };
+			}
+			if (command === "git" && args[0] === "rev-list") {
+				revListCalls += 1;
+				return { stderr: "", stdout: revListCalls === 1 ? "0\n" : "1\n" };
+			}
+			if (command === "gh" && args[0] === "pr" && args[1] === "list" && !calls.some((call) => call.command === "gh" && call.args[1] === "create")) {
+				return { stderr: "", stdout: "[]" };
+			}
+			if (command === "gh" && args[0] === "pr" && args[1] === "create") {
+				return { stderr: "", stdout: "https://github.test/pull/20\n" };
+			}
+			if (command === "gh" && args[0] === "pr" && args[1] === "list") {
+				return {
+					stderr: "",
+					stdout: JSON.stringify([{ isDraft: true, number: 20, title: "ENG-20: Review ready", url: "https://github.test/pull/20" }]),
+				};
+			}
+			return { stderr: "", stdout: "" };
+		},
+		hooks: { timeoutMs: 1000 },
+		repo: tempDir,
+		root: path.join(tempDir, "worktrees"),
+		runHook: async () => ({ skipped: true }),
+	});
+
+	const result = await manager.prepareReviewPullRequest(
+		{ id: "issue-id", identifier: "ENG-20", slug: "ENG-20-review-ready", title: "Review ready", url: "https://linear.test/ENG-20" },
+		{ validation: { commands: [{ command: "pnpm run lint", ok: true }] }, workpad: "## Codex Workpad\nReady", workspacePath },
+	);
+
+	assert.equal(result.status, "review_ready");
+	assert.equal(result.prNumber, 20);
+	assert.ok(calls.some((call) => call.command === "gh" && call.args.join(" ").startsWith("pr create --draft --base main")));
+	assert.ok(calls.some((call) => call.command === "gh" && call.args.join(" ").startsWith("pr edit 20 --body")));
+});
+
+test("WorkspaceManager blocks merge when required checks are not green", async () => {
+	const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "symphony-workspace-gate-test-"));
+	const workspacePath = path.join(tempDir, "worktrees", "ENG-30-gated");
+	fs.mkdirSync(workspacePath, { recursive: true });
+	const manager = new WorkspaceManager({
+		baseRef: "main",
+		branchPrefix: "symphony/",
+		execFile: async (command, args) => {
+			if (command === "git" && args[0] === "rev-parse") {
+				return { stderr: "", stdout: "main\n" };
+			}
+			if (command === "git" && args[0] === "status") {
+				return { stderr: "", stdout: "" };
+			}
+			if (command === "git" && args[0] === "rev-list" && args.includes("--left-right")) {
+				return { stderr: "", stdout: "0\t0\n" };
+			}
+			if (command === "git" && args[0] === "rev-list") {
+				return { stderr: "", stdout: "1\n" };
+			}
+			if (command === "gh" && args[0] === "pr" && args[1] === "list") {
+				return { stderr: "", stdout: JSON.stringify([{ number: 30, url: "https://github.test/pull/30" }]) };
+			}
+			if (command === "gh" && args[0] === "pr" && args[1] === "view") {
+				return {
+					stderr: "",
+					stdout: JSON.stringify({
+						isDraft: false,
+						number: 30,
+						reviewDecision: "APPROVED",
+						statusCheckRollup: [{ conclusion: "FAILURE", name: "lint", status: "COMPLETED" }],
+					}),
+				};
+			}
+			return { stderr: "", stdout: "" };
+		},
+		hooks: { timeoutMs: 1000 },
+		repo: tempDir,
+		root: path.join(tempDir, "worktrees"),
+		runHook: async () => ({ skipped: true }),
+	});
+
+	await assert.rejects(
+		() => manager.landIssue({ id: "issue-id", identifier: "ENG-30", slug: "ENG-30-gated", title: "Gated" }, { github: { allowNoChecks: true, requireGreenChecks: true, requireNoUnresolvedReviews: true } }),
+		/GitHub check is not green: lint/,
+	);
 });
 
 test("WorkspaceManager blocks landing when the base checkout is dirty", async () => {
