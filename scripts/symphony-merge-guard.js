@@ -221,16 +221,14 @@ async function moveIssueToMerging(issue) {
 	);
 }
 
-async function inspectIssue(issue) {
+async function inspectIssue(issue, { fetchPullRequest = fetchGitHubPullRequest } = {}) {
 	const attachments = issue.attachments.nodes
 		.map((attachment) => extractGitHubPullRequest(attachment.url))
 		.filter(Boolean);
 
-	const pullRequests = [];
-	for (const pullRequest of attachments) {
-		const details = await fetchGitHubPullRequest(pullRequest);
-		pullRequests.push(details);
-	}
+	const pullRequests = await Promise.all(
+		attachments.map((pullRequest) => fetchPullRequest(pullRequest)),
+	);
 
 	return {
 		issue,
@@ -307,6 +305,7 @@ if (require.main === module) {
 
 module.exports = {
 	extractGitHubPullRequest,
+	inspectIssue,
 	isOpenPullRequest,
 	parseArgs,
 	shouldMoveIssueBackToMerging,

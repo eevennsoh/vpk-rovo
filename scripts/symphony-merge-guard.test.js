@@ -3,6 +3,7 @@ const assert = require("node:assert/strict");
 
 const {
 	extractGitHubPullRequest,
+	inspectIssue,
 	isOpenPullRequest,
 	parseArgs,
 	shouldMoveIssueBackToMerging,
@@ -40,6 +41,47 @@ test("shouldMoveIssueBackToMerging only recovers Done issues with open PRs", () 
 	assert.equal(shouldMoveIssueBackToMerging(doneIssue, [openPr]), true);
 	assert.equal(shouldMoveIssueBackToMerging(doneIssue, [mergedPr]), false);
 	assert.equal(shouldMoveIssueBackToMerging(reviewIssue, [openPr]), false);
+});
+
+test("inspectIssue checks attached pull requests in parallel", async () => {
+	const started = [];
+	const resolvers = new Map();
+	const issue = {
+		state: { name: "Done" },
+		attachments: {
+			nodes: [
+				{ url: "https://github.com/eevennsoh/VPK-rovo/pull/57" },
+				{ url: "https://github.com/eevennsoh/VPK-rovo/pull/58" },
+				{ url: "https://github.com/eevennsoh/VPK-rovo/pull/59" },
+			],
+		},
+	};
+
+	const inspectPromise = inspectIssue(issue, {
+		fetchPullRequest(pullRequest) {
+			started.push(pullRequest.number);
+			return new Promise((resolve) => {
+				resolvers.set(pullRequest.number, resolve);
+			});
+		},
+	});
+
+	await new Promise((resolve) => {
+		setImmediate(resolve);
+	});
+
+	assert.deepEqual(started, [57, 58, 59]);
+
+	for (const [number, resolve] of resolvers) {
+		resolve({ merged_at: "2026-04-29T14:00:00Z", number, state: "closed" });
+	}
+
+	const result = await inspectPromise;
+	assert.deepEqual(
+		result.pullRequests.map((pullRequest) => pullRequest.number),
+		[57, 58, 59],
+	);
+	assert.equal(result.shouldMove, false);
 });
 
 test("parseArgs enables watch, dry run, and interval", () => {
