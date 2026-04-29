@@ -137,6 +137,7 @@ const {
 const {
 	createWikiRouteHandlers,
 } = require("./lib/wiki-route-handlers");
+const personalGraphRoutes = require("./lib/personal-graph-routes");
 const {
 	inferRovoAppArtifactKindFromContent,
 } = require("./lib/rovo-app-artifact-kind");
@@ -13463,6 +13464,7 @@ app.post("/api/wiki/memory-explorer/deck", wikiRouteHandlers.handleWikiMemoryDec
 app.delete("/api/wiki/memories/:scope/blocks/:blockId", wikiRouteHandlers.handleWikiMemoryBlockDelete);
 app.delete("/api/wiki/memories/proposals/:proposalId", wikiRouteHandlers.handleWikiMemoryProposalDelete);
 app.post("/api/wiki/sync", wikiRouteHandlers.handleWikiSync);
+app.use("/api/personal-graph", personalGraphRoutes);
 
 app.post("/api/jobs", async (req, res) => {
 	try {

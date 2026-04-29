@@ -10,7 +10,7 @@ export const ART_DETAILS: Record<string, ComponentDetail> = {
 	},
 	"personal-graph": {
 		description:
-			"Personal Graph art project route scaffold. The visual system will be filled in once the design direction is specified.",
+			"Obsidian-backed Personal Graph inspired by Nicholas Spisak's second-brain, Karpathy's LLM Wiki pattern, and Tobi Lutke's qmd: a live vault graph where raw captures, source notes, entities, concepts, and synthesis pages can be read as one connected workspace.",
 		demoLayout: {
 			previewHeight: "fixed",
 		},

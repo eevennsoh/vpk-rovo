@@ -131,6 +131,20 @@ paths:
 - `GET  /api/apps/:slug` — get app
 - `DELETE /api/apps/:slug` — delete app
 
+### Personal Graph
+
+- `GET  /api/personal-graph/vault` — get local vault selection/status
+- `POST /api/personal-graph/vault/select` — open the local folder picker and persist the vault selection
+- `GET  /api/personal-graph/explorer` — build graph nodes/edges from raw and wiki files
+- `GET  /api/personal-graph/page/*slug` — read a wiki page
+- `PUT  /api/personal-graph/page/*slug` — write a wiki page
+- `POST /api/personal-graph/raw` — write a raw source
+- `GET  /api/personal-graph/unprocessed-count` — count raw sources not recorded in the ingest log
+- `POST /api/personal-graph/capture` — capture a URL into a raw source
+- `GET  /api/personal-graph/search` — qmd/grep search
+- `GET  /api/personal-graph/log` — read ingest log entries
+- `POST /api/personal-graph/ingest` — stream librarian ingest events
+
 ### Misc
 
 - `POST /api/ticket-classify` — classify ticket
@@ -214,6 +228,16 @@ Forward to backend. Grouped by feature:
 - `app/api/web-proxy/route.ts`
 - `app/api/apps/route.ts`
 - `app/api/apps/[slug]/route.ts`
+- `app/api/personal-graph/vault/route.ts`
+- `app/api/personal-graph/vault/select/route.ts`
+- `app/api/personal-graph/explorer/route.ts`
+- `app/api/personal-graph/page/[...slug]/route.ts`
+- `app/api/personal-graph/raw/route.ts`
+- `app/api/personal-graph/unprocessed-count/route.ts`
+- `app/api/personal-graph/capture/route.ts`
+- `app/api/personal-graph/search/route.ts`
+- `app/api/personal-graph/log/route.ts`
+- `app/api/personal-graph/ingest/route.ts`
 - `app/api/ticket-classify/route.ts`
 - `app/api/standup/route.ts`
 - `app/api/sprint-board/tasks/route.ts`
