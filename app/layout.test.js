@@ -91,8 +91,9 @@ test("RootLayout exposes browser color-scheme favicon links", () => {
 test("RootLayout keeps the development stylesheet guard out of production pre-hydration output", () => {
 	assert.match(
 		ROOT_LAYOUT_SOURCE,
-		/const devStylesheetGuardScript = process\.env\.NODE_ENV === "development" \? `/,
+		/function getDevStylesheetGuardScript\(\): string \{\s*if \(process\.env\.NODE_ENV !== "development"\) \{\s*return "";/,
 	);
+	assert.match(ROOT_LAYOUT_SOURCE, /const devStylesheetGuardScript = getDevStylesheetGuardScript\(\);/);
 	assert.match(ROOT_LAYOUT_SOURCE, /\$\{devStylesheetGuardScript\}/);
 	assert.doesNotMatch(ROOT_LAYOUT_SOURCE, /"\$\{process\.env\.NODE_ENV\}" === "development"/);
 });
