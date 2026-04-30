@@ -240,6 +240,11 @@ html[data-embedded] [data-shell-chrome] {
 }
 
 /* Website sidebar layout — push main content to clear the fixed sidebar */
+.website-main-content {
+	margin-left: 48px; /* rail only */
+	transition: margin-left var(--duration-slow) var(--ease-in-out);
+}
+
 @media (min-width: 768px) {
 	body:has(aside[data-sidebar-open="true"]) .website-main-content {
 		margin-left: 304px; /* 48px rail + 256px panel */
@@ -248,10 +253,6 @@ html[data-embedded] [data-shell-chrome] {
 	body:has(aside[data-sidebar-open="false"]) .website-main-content {
 		margin-left: 48px; /* rail only */
 	}
-}
-
-.website-main-content {
-	transition: margin-left var(--duration-slow) var(--ease-in-out);
 }
 
 /* ADS Logo dark-mode fix — some @atlaskit/logo SVGs ship with hardcoded
