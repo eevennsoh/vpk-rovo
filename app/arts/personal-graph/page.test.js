@@ -24,6 +24,13 @@ const DEMO_SOURCE = fs.readFileSync(
 	),
 	"utf8",
 );
+const SURFACE_SOURCE = fs.readFileSync(
+	path.join(
+		__dirname,
+		"../../../components/arts/personal-graph/personal-graph-surface.tsx",
+	),
+	"utf8",
+);
 
 test("Personal Graph route loads the arts demo registry entry", () => {
 	assert.match(
@@ -50,4 +57,12 @@ test("Personal Graph is registered as an arts project", () => {
 		DEMO_SOURCE,
 		/import PersonalGraph from "@\/components\/arts\/personal-graph";/,
 	);
+});
+
+test("Personal Graph header exposes the app theme toggle", () => {
+	assert.match(
+		SURFACE_SOURCE,
+		/import \{ ThemeToggle \} from "@\/components\/utils\/theme-wrapper";/,
+	);
+	assert.match(SURFACE_SOURCE, /<ThemeToggle \/>/);
 });

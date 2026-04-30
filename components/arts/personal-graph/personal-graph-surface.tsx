@@ -6,6 +6,7 @@ import BranchIcon from "@atlaskit/icon/core/branch";
 import CrossIcon from "@atlaskit/icon/core/cross";
 import RefreshIcon from "@atlaskit/icon/core/refresh";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/utils/theme-wrapper";
 import { cn } from "@/lib/utils";
 import { useVaultExplorer } from "./hooks/use-vault-explorer";
 import { PersonalGraphDropzone } from "./personal-graph-dropzone";
@@ -112,6 +113,7 @@ export function PersonalGraphSurface({
 					>
 						<RefreshIcon label="" />
 					</Button>
+					<ThemeToggle />
 				</div>
 			</header>
 
