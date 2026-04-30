@@ -137,6 +137,29 @@ function sanitizeHermesSkillMarkdown(markdown) {
 	].join("\n");
 }
 
+async function ensureRovodevSkillsSymlink({
+	repoRoot,
+	sharedSkillsDir = path.join(repoRoot, ".agents", "skills"),
+	targetSkillsDir = path.join(repoRoot, ".rovodev", "skills"),
+} = {}) {
+	if (!repoRoot) {
+		throw new Error("repoRoot is required.");
+	}
+
+	await fs.mkdir(sharedSkillsDir, { recursive: true });
+	await fs.mkdir(path.dirname(targetSkillsDir), { recursive: true });
+	await fs.rm(targetSkillsDir, { recursive: true, force: true });
+
+	const linkTarget = path.relative(path.dirname(targetSkillsDir), sharedSkillsDir) || ".";
+	await fs.symlink(linkTarget, targetSkillsDir, "dir");
+
+	return {
+		linkTarget,
+		sharedSkillsDir,
+		targetSkillsDir,
+	};
+}
+
 async function syncRovodevSkillsOverlay({
 	hermesSkillsDir,
 	targetSkillsDir,
@@ -206,6 +229,7 @@ async function syncRovodevSkillsOverlay({
 }
 
 module.exports = {
+	ensureRovodevSkillsSymlink,
 	parseHermesSkillMarkdown,
 	sanitizeHermesSkillMarkdown,
 	syncRovodevSkillsOverlay,

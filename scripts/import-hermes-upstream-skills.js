@@ -10,7 +10,7 @@ const {
 	buildGitHubTreeApiUrl,
 	importHermesUpstreamSkills,
 } = require("../backend/lib/hermes-upstream-skills-import");
-const { syncRovodevSkillsOverlay } = require("../backend/lib/rovodev-skills-overlay");
+const { ensureRovodevSkillsSymlink } = require("../backend/lib/rovodev-skills-overlay");
 
 const AGENT_BROWSER_MAX_BUFFER_BYTES = 16 * 1024 * 1024;
 
@@ -201,16 +201,16 @@ async function main() {
 		].join("\n"),
 	);
 
-	const overlayResult = await syncRovodevSkillsOverlay({
-		hermesSkillsDir: path.join(options.vendorRootDir, "skills"),
-		targetSkillsDir: path.join(path.resolve(__dirname, ".."), ".rovodev", "skills"),
+	const symlinkResult = await ensureRovodevSkillsSymlink({
+		repoRoot: path.resolve(__dirname, ".."),
 	});
 	console.log(
 		[
 			"",
-			"Synced RovoDev-only skills overlay:",
-			`Hermes skill roots: ${overlayResult.hermesCount}`,
-			`Target: ${overlayResult.targetSkillsDir}`,
+			"Ensured RovoDev skills symlink:",
+			`Target: ${symlinkResult.targetSkillsDir}`,
+			`Link: ${symlinkResult.linkTarget}`,
+			`Shared skills: ${symlinkResult.sharedSkillsDir}`,
 		].join("\n"),
 	);
 }

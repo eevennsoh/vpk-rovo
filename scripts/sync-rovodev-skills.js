@@ -2,25 +2,23 @@
 
 const path = require("node:path");
 
-const { syncRovodevSkillsOverlay } = require("../backend/lib/rovodev-skills-overlay");
+const { ensureRovodevSkillsSymlink } = require("../backend/lib/rovodev-skills-overlay");
 
 async function main() {
 	const repoRoot = path.resolve(__dirname, "..");
-	const result = await syncRovodevSkillsOverlay({
-		hermesSkillsDir: path.join(repoRoot, ".agents", "vendor", "hermes-agent", "skills"),
-		targetSkillsDir: path.join(repoRoot, ".rovodev", "skills"),
-	});
+	const result = await ensureRovodevSkillsSymlink({ repoRoot });
 
 	console.log(
 		[
-			`Synced .rovodev/skills overlay at ${result.targetSkillsDir}`,
-			`Hermes skill roots: ${result.hermesCount}`,
-			`Total entries: ${result.totalCount}`,
+			"Ensured .rovodev/skills symlink.",
+			`Target: ${result.targetSkillsDir}`,
+			`Link: ${result.linkTarget}`,
+			`Shared skills: ${result.sharedSkillsDir}`,
 		].join("\n"),
 	);
 }
 
 main().catch((error) => {
-	console.error(`Failed to sync .rovodev/skills: ${error.message}`);
+	console.error(`Failed to ensure .rovodev/skills symlink: ${error.message}`);
 	process.exitCode = 1;
 });

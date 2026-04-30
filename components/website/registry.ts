@@ -7627,6 +7627,9 @@ const VISUAL_DEMOS: Record<string, ComponentType> = {
     () => import("./demos/visual/glass-slider-demo"),
     { ssr: false },
   ),
+  graph: dynamic(() => import("./demos/visual/graph-demo"), {
+    ssr: false,
+  }),
   "liquid-glass": dynamic(() => import("./demos/visual/liquid-glass-demo"), {
     ssr: false,
   }),

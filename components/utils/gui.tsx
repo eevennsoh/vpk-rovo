@@ -276,7 +276,14 @@ function GUIPanel({ title, values, defaultOpen = true, children }: GUIPanelProps
 						</button>
 					</span>
 				</div>
-				{open ? children : null}
+				{open ? (
+					<div
+						className="max-h-[min(48svh,32rem)] overflow-y-auto overscroll-contain pr-2"
+						data-gui-panel-scroll="true"
+					>
+						{children}
+					</div>
+				) : null}
 			</div>
 			</TooltipProvider>
 		</GUIPanelContext>

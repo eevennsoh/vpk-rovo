@@ -1,1 +1,0 @@
-../../../.agents/vendor/hermes-agent/skills/productivity/powerpoint/editing.md

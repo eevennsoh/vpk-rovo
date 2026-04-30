@@ -8,7 +8,7 @@ export const UTILITY_DETAILS: Record<string, ComponentDetail> = {
 	},
 	gui: {
 		description:
-			"A reusable compound component for building interactive animation and parameter control panels. Includes a slider/input control row (GUI.Control) and a card wrapper with copy-values button (GUI.Panel). Used by Shimmer and Generative Card demo pages.",
+			"A reusable compound component for building interactive animation and parameter control panels. Includes a slider/input control row (GUI.Control) and a card wrapper with copy-values button plus capped, scrollable content (GUI.Panel). Used by Shimmer and Generative Card demo pages.",
 		demoLayout: { previewContentWidth: "full" },
 		usage: `import { GUI } from "@/components/utils/gui";
 
@@ -39,7 +39,7 @@ export const UTILITY_DETAILS: Record<string, ComponentDetail> = {
 		],
 		subComponents: [
 			{ name: "GUI.Control", description: "A single parameter row with label, undo button, number input, slider, and min/max range labels." },
-			{ name: "GUI.Panel", description: "Collapsible card wrapper with a title, copy-values button, chevron toggle, and content area for controls." },
+			{ name: "GUI.Panel", description: "Collapsible card wrapper with a title, copy-values button, chevron toggle, and capped scroll area for controls." },
 		],
 	},
 	"streamdown": {

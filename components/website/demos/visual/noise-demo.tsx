@@ -5,14 +5,15 @@ import { useMemo, useState } from "react";
 import { GUI } from "@/components/utils/gui";
 import { token } from "@/lib/tokens";
 
+import { NoisePreviewSurface } from "./noise-preview-surface";
 import { ShaderColorInput } from "./shader-color-controls";
-import Noise, { BLEND_MODE_TYPES, type NoiseBlendMode } from "./shaders/noise";
+import { BLEND_MODE_TYPES, type NoiseBlendMode } from "./shaders/noise";
 
-const DEFAULT_OPACITY = 0.18;
-const DEFAULT_GRAIN_SIZE = 140;
+const DEFAULT_OPACITY = 0.36;
+const DEFAULT_GRAIN_SIZE = 96;
 const DEFAULT_SEED = 7;
-const DEFAULT_COLOR = "#292A2E";
-const DEFAULT_BLEND_MODE: NoiseBlendMode = "soft-light";
+const DEFAULT_COLOR = "#FFFFFF";
+const DEFAULT_BLEND_MODE: NoiseBlendMode = "overlay";
 
 export default function NoiseDemo() {
 	const [opacity, setOpacity] = useState(DEFAULT_OPACITY);
@@ -36,19 +37,13 @@ export default function NoiseDemo() {
 				className="w-full overflow-hidden rounded-lg"
 				style={{ boxShadow: token("elevation.shadow.raised") }}
 			>
-				<div
-					className="relative w-full overflow-hidden bg-surface"
-					style={{ height: 400 }}
-				>
-					<Noise
-						className="absolute inset-0"
-						opacity={opacity}
-						grainSize={grainSize}
-						seed={seed}
-						color={color}
-						blendMode={blendMode}
-					/>
-				</div>
+				<NoisePreviewSurface
+					opacity={opacity}
+					grainSize={grainSize}
+					seed={seed}
+					color={color}
+					blendMode={blendMode}
+				/>
 			</div>
 
 			<GUI.Panel title="Noise controls" values={config}>

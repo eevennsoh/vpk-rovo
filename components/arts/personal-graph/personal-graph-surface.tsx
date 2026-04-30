@@ -1,45 +1,35 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { useCallback, useEffect, useState } from "react";
 import BranchIcon from "@atlaskit/icon/core/branch";
 import CrossIcon from "@atlaskit/icon/core/cross";
 import RefreshIcon from "@atlaskit/icon/core/refresh";
+import SettingsIcon from "@atlaskit/icon/core/settings";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/utils/theme-wrapper";
 import { cn } from "@/lib/utils";
 import { useVaultExplorer } from "./hooks/use-vault-explorer";
+import type { NeuralGraphParams } from "./lib/neural-graph/params";
+import { loadStoredNeuralGraphParams, saveStoredNeuralGraphParams } from "./lib/neural-graph/params";
 import { PersonalGraphDropzone } from "./personal-graph-dropzone";
 import { PersonalGraphIngestButton } from "./personal-graph-ingest-button";
 import { PersonalGraphLog } from "./personal-graph-log";
-import { PersonalGraphPage } from "./personal-graph-page";
+import { PersonalGraphNeuralCanvas } from "./personal-graph-neural-canvas";
+import { PersonalGraphNeuralControls } from "./personal-graph-neural-controls";
 import { PersonalGraphSearch } from "./personal-graph-search";
-import { PersonalGraphSigma } from "./personal-graph-sigma";
 import { PersonalGraphVaultPicker } from "./personal-graph-vault-picker";
 
 type PersonalGraphSurfaceProps = React.ComponentProps<"main">;
-
-function isReadableWikiNode(kind: string, missing: boolean) {
-	return kind !== "raw" && !missing;
-}
 
 export function PersonalGraphSurface({
 	className,
 	...props
 }: Readonly<PersonalGraphSurfaceProps>) {
 	const { error, explorer, isLoading, refresh } = useVaultExplorer();
-	const reduceMotion = useReducedMotion();
 	const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 	const [refreshKey, setRefreshKey] = useState(0);
-	const panelRef = useRef<HTMLElement | null>(null);
-	const selectedNode = useMemo(
-		() => explorer?.nodes.find((node) => node.id === selectedNodeId) ?? null,
-		[explorer?.nodes, selectedNodeId],
-	);
-	const selectedSlug =
-		selectedNode && isReadableWikiNode(selectedNode.kind, selectedNode.missing)
-			? selectedNode.slug
-			: null;
+	const [isParameterPanelOpen, setIsParameterPanelOpen] = useState(false);
+	const [neuralParams, setNeuralParams] = useState<NeuralGraphParams>(() => loadStoredNeuralGraphParams());
 
 	const handleSelectNode = useCallback((nodeId: string) => {
 		setSelectedNodeId(nodeId);
@@ -48,6 +38,9 @@ export function PersonalGraphSurface({
 		setRefreshKey((current) => current + 1);
 		void refresh();
 	}, [refresh]);
+	const handleNeuralParamsChange = useCallback((params: NeuralGraphParams) => {
+		setNeuralParams(params);
+	}, []);
 
 	useEffect(() => {
 		if (!selectedNodeId) {
@@ -66,19 +59,14 @@ export function PersonalGraphSurface({
 		};
 	}, [selectedNodeId]);
 
+	useEffect(() => {
+		saveStoredNeuralGraphParams(neuralParams);
+	}, [neuralParams]);
+
 	return (
 		<main
 			aria-label="Personal Graph"
 			className={cn("relative min-h-svh overflow-hidden bg-surface text-text", className)}
-			onPointerDownCapture={(event) => {
-				if (!selectedNodeId || !panelRef.current) {
-					return;
-				}
-				const target = event.target instanceof Node ? event.target : null;
-				if (target && !panelRef.current.contains(target)) {
-					setSelectedNodeId(null);
-				}
-			}}
 			{...props}
 		>
 			<header className="absolute inset-x-0 top-0 z-20 grid grid-cols-[1fr_auto_1fr] items-center gap-4 border-b border-border bg-surface/90 px-5 py-3 backdrop-blur">
@@ -113,18 +101,49 @@ export function PersonalGraphSurface({
 					>
 						<RefreshIcon label="" />
 					</Button>
+					<Button
+						aria-expanded={isParameterPanelOpen}
+						aria-label="Graph parameters"
+						onClick={() => setIsParameterPanelOpen((current) => !current)}
+						size="icon-sm"
+						variant="outline"
+					>
+						<SettingsIcon label="" />
+					</Button>
 					<ThemeToggle />
 				</div>
 			</header>
 
 			<section className="absolute inset-0 pt-[57px]" aria-label="Vault graph">
-				<PersonalGraphSigma
+				<PersonalGraphNeuralCanvas
 					explorer={explorer}
 					isLoading={isLoading}
+					onClearSelection={() => setSelectedNodeId(null)}
 					onSelectNode={handleSelectNode}
+					params={neuralParams}
 					selectedNodeId={selectedNodeId}
 				/>
 			</section>
+
+			{isParameterPanelOpen ? (
+				<aside
+					aria-label="Neural graph parameters"
+					className="absolute right-4 top-[73px] z-40 max-h-[calc(100svh-96px)] w-[min(320px,calc(100vw-32px))] overflow-y-auto rounded-md border border-border bg-surface-overlay/95 p-4 shadow-xl backdrop-blur"
+				>
+					<div className="mb-4 flex items-center justify-between gap-3">
+						<p className="text-xs font-semibold text-text">Neural graph</p>
+						<Button
+							aria-label="Close graph parameters"
+							onClick={() => setIsParameterPanelOpen(false)}
+							size="icon-sm"
+							variant="ghost"
+						>
+							<CrossIcon label="" />
+						</Button>
+					</div>
+					<PersonalGraphNeuralControls onChange={handleNeuralParamsChange} params={neuralParams} />
+				</aside>
+			) : null}
 
 			<section className="absolute bottom-4 left-4 z-20 w-[min(360px,calc(100vw-32px))] space-y-3" aria-label="Raw source ingestion">
 				<PersonalGraphDropzone onRawAdded={handleRefreshAll} />
@@ -155,31 +174,6 @@ export function PersonalGraphSurface({
 					})}
 				</ul>
 			</details>
-
-			<AnimatePresence>
-				{selectedNodeId ? (
-					<motion.aside
-						ref={panelRef}
-						animate={{ opacity: 1, x: 0 }}
-						className="absolute bottom-4 right-4 top-[73px] z-30 flex w-[min(460px,calc(100vw-32px))] flex-col overflow-hidden rounded-md border border-border bg-surface-raised shadow-lg"
-						exit={{ opacity: 0, x: 24 }}
-						initial={{ opacity: 0, x: 24 }}
-						transition={reduceMotion ? { duration: 0 } : { duration: 0.2, ease: [0.4, 0, 0, 1] }}
-					>
-						<div className="absolute right-3 top-3 z-10">
-							<Button
-								aria-label="Close page panel"
-								onClick={() => setSelectedNodeId(null)}
-								size="icon-sm"
-								variant="ghost"
-							>
-								<CrossIcon label="" />
-							</Button>
-						</div>
-						<PersonalGraphPage node={selectedNode} slug={selectedSlug} />
-					</motion.aside>
-				) : null}
-			</AnimatePresence>
 		</main>
 	);
 }

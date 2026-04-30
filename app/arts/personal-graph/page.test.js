@@ -31,6 +31,55 @@ const SURFACE_SOURCE = fs.readFileSync(
 	),
 	"utf8",
 );
+const NEURAL_CANVAS_SOURCE = fs.readFileSync(
+	path.join(
+		__dirname,
+		"../../../components/arts/personal-graph/personal-graph-neural-canvas.tsx",
+	),
+	"utf8",
+);
+const NEURAL_CONTROLS_SOURCE = fs.readFileSync(
+	path.join(
+		__dirname,
+		"../../../components/arts/personal-graph/personal-graph-neural-controls.tsx",
+	),
+	"utf8",
+);
+const NEURAL_PARAMS_SOURCE = fs.readFileSync(
+	path.join(
+		__dirname,
+		"../../../components/arts/personal-graph/lib/neural-graph/params.ts",
+	),
+	"utf8",
+);
+const NEURAL_STORE_SOURCE = fs.readFileSync(
+	path.join(
+		__dirname,
+		"../../../components/arts/personal-graph/lib/neural-graph/store.ts",
+	),
+	"utf8",
+);
+const NEURAL_LAYOUT_SOURCE = fs.readFileSync(
+	path.join(
+		__dirname,
+		"../../../components/arts/personal-graph/lib/neural-graph/layout.ts",
+	),
+	"utf8",
+);
+const NEURAL_CAMERA_SOURCE = fs.readFileSync(
+	path.join(
+		__dirname,
+		"../../../components/arts/personal-graph/lib/neural-graph/camera.ts",
+	),
+	"utf8",
+);
+const NEURAL_INTERACTION_SOURCE = fs.readFileSync(
+	path.join(
+		__dirname,
+		"../../../components/arts/personal-graph/lib/neural-graph/interaction.ts",
+	),
+	"utf8",
+);
 
 test("Personal Graph route loads the arts demo registry entry", () => {
 	assert.match(
@@ -65,4 +114,52 @@ test("Personal Graph header exposes the app theme toggle", () => {
 		/import \{ ThemeToggle \} from "@\/components\/utils\/theme-wrapper";/,
 	);
 	assert.match(SURFACE_SOURCE, /<ThemeToggle \/>/);
+});
+
+test("Personal Graph keeps the owned canvas renderer accessible", () => {
+	assert.match(SURFACE_SOURCE, /<details className="sr-only" open>/);
+	assert.match(SURFACE_SOURCE, /<PersonalGraphNeuralCanvas/);
+	assert.doesNotMatch(SURFACE_SOURCE, /PersonalGraphSigma/);
+	assert.match(NEURAL_CANVAS_SOURCE, /data-neural-graph-renderer="owned-canvas"/);
+	assert.match(NEURAL_CANVAS_SOURCE, /<canvas aria-hidden="true"/);
+	assert.match(NEURAL_CANVAS_SOURCE, /<SelectedNodeOverlay/);
+});
+
+test("Personal Graph decomposes graphology, ForceAtlas2, and Sigma concepts without runtime Sigma", () => {
+	assert.match(NEURAL_STORE_SOURCE, /nodesById = new Map/);
+	assert.match(NEURAL_STORE_SOURCE, /adjacency = new Map/);
+	assert.match(NEURAL_LAYOUT_SOURCE, /RELAXATION_ITERATIONS/);
+	assert.match(NEURAL_LAYOUT_SOURCE, /repulsion/);
+	assert.match(NEURAL_CAMERA_SOURCE, /worldToViewport/);
+	assert.match(NEURAL_CAMERA_SOURCE, /viewportToWorld/);
+	assert.match(NEURAL_INTERACTION_SOURCE, /hitTestNeuralNode/);
+	assert.doesNotMatch(NEURAL_CANVAS_SOURCE, /from "sigma"/);
+	assert.doesNotMatch(NEURAL_CANVAS_SOURCE, /from "graphology"/);
+});
+
+test("Personal Graph exposes a hidden Neural Burst parameter panel", () => {
+	assert.match(SURFACE_SOURCE, /isParameterPanelOpen/);
+	assert.match(SURFACE_SOURCE, /aria-label="Graph parameters"/);
+	assert.match(SURFACE_SOURCE, /<PersonalGraphNeuralControls/);
+	assert.match(NEURAL_CONTROLS_SOURCE, /NEURAL_GRAPH_PARAM_SECTIONS/);
+	assert.match(NEURAL_PARAMS_SOURCE, /speed: 0\.8/);
+	assert.match(NEURAL_PARAMS_SOURCE, /amplitude: 0\.15/);
+	assert.match(NEURAL_PARAMS_SOURCE, /coneAngle: 75/);
+	assert.match(NEURAL_PARAMS_SOURCE, /nodeColor: "#6b5ce7"/);
+	assert.match(NEURAL_PARAMS_SOURCE, /localStorage/);
+});
+
+test("Personal Graph focuses and clears selection through the owned interaction layer", () => {
+	assert.match(NEURAL_CANVAS_SOURCE, /focusNeuralCameraOnPoint/);
+	assert.match(NEURAL_CANVAS_SOURCE, /hitTestNeuralNode/);
+	assert.match(NEURAL_CANVAS_SOURCE, /onClearSelection\(\)/);
+	assert.match(SURFACE_SOURCE, /onClearSelection=\{\(\) => setSelectedNodeId\(null\)\}/);
+});
+
+test("Personal Graph owned renderer supports pan and zoom without Sigma events", () => {
+	assert.match(NEURAL_CANVAS_SOURCE, /panNeuralCamera/);
+	assert.match(NEURAL_CANVAS_SOURCE, /zoomNeuralCameraAtPoint/);
+	assert.match(NEURAL_CANVAS_SOURCE, /onPointerMove/);
+	assert.match(NEURAL_CANVAS_SOURCE, /onWheel/);
+	assert.doesNotMatch(NEURAL_CANVAS_SOURCE, /sigma\.on/);
 });

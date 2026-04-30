@@ -5,6 +5,7 @@ const path = require("node:path");
 const test = require("node:test");
 
 const {
+	ensureRovodevSkillsSymlink,
 	parseHermesSkillMarkdown,
 	sanitizeHermesSkillMarkdown,
 	syncRovodevSkillsOverlay,
@@ -18,6 +19,28 @@ async function withTempDir(fn) {
 		await fs.rm(tempDir, { recursive: true, force: true });
 	}
 }
+
+test("ensureRovodevSkillsSymlink replaces existing skill directory with relative symlink", async () => {
+	await withTempDir(async (tempDir) => {
+		const repoRoot = path.join(tempDir, "repo");
+		const sharedSkillsDir = path.join(repoRoot, ".agents", "skills");
+		const rovodevSkillsDir = path.join(repoRoot, ".rovodev", "skills");
+
+		await fs.mkdir(path.join(sharedSkillsDir, "vpk-tidy"), { recursive: true });
+		await fs.mkdir(path.join(rovodevSkillsDir, "old-custom-skill"), { recursive: true });
+
+		const result = await ensureRovodevSkillsSymlink({ repoRoot });
+
+		assert.equal(result.targetSkillsDir, rovodevSkillsDir);
+		assert.equal(result.sharedSkillsDir, sharedSkillsDir);
+		assert.equal(result.linkTarget, "../.agents/skills");
+		assert.equal(await fs.readlink(rovodevSkillsDir), "../.agents/skills");
+		assert.deepEqual(
+			(await fs.readdir(rovodevSkillsDir)).filter((entry) => entry !== ".DS_Store"),
+			["vpk-tidy"],
+		);
+	});
+});
 
 test("parseHermesSkillMarkdown extracts name, description, and body from Hermes frontmatter", () => {
 	const parsed = parseHermesSkillMarkdown([

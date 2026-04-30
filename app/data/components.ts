@@ -381,6 +381,7 @@ export const VISUAL_COMPONENTS: ComponentEntry[] = sortEntriesByName([
 		"Glass Slider",
 		"@/components/arts/awake/glass-slider",
 	),
+	visualComponent("graph", "Graph", "@/components/website/demos/visual/graph"),
 		visualComponent("holo", "Holo", "@/components/website/demos/visual/shaders/holo"),
 		visualComponent("mesh", "Mesh SVG", "@/components/website/demos/visual/shaders/mesh"),
 		visualComponent("mesh-02", "Mesh", "@/components/website/demos/visual/shaders/mesh2"),
