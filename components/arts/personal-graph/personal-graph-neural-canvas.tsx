@@ -16,7 +16,7 @@ import {
 } from "./lib/neural-graph/camera";
 import { hitTestNeuralNode, isMeaningfulDrag } from "./lib/neural-graph/interaction";
 import { computeNeuralGraphLayout, type NeuralGraphLayout, type NeuralLayoutNode } from "./lib/neural-graph/layout";
-import type { NeuralGraphParams } from "./lib/neural-graph/params";
+import { shouldAnimateNeuralGraph, type NeuralGraphParams } from "./lib/neural-graph/params";
 import { createNeuralGraphStore, getSelectedNeighborhood, type NeuralGraphStore } from "./lib/neural-graph/store";
 import { drawNeuralGraph } from "./lib/neural-graph/renderer";
 import type { VaultExplorer } from "./lib/personal-graph-types";
@@ -145,6 +145,7 @@ export function PersonalGraphNeuralCanvas({
 	const dragStartRef = useRef<NeuralPoint | null>(null);
 	const lastPointerRef = useRef<NeuralPoint | null>(null);
 	const layoutRef = useRef<NeuralGraphLayout | null>(null);
+	const requestRenderRef = useRef<() => void>(() => {});
 	const selectedOverlayRef = useRef<SelectedOverlayState | null>(null);
 	const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
 	const hoveredNodeIdRef = useRef<string | null>(null);
@@ -184,6 +185,7 @@ export function PersonalGraphNeuralCanvas({
 		if (!context) return;
 
 		let animationFrame = 0;
+		let staticFrame = 0;
 		const pixelRatio = window.devicePixelRatio || 1;
 		canvas.width = Math.max(1, Math.floor(viewport.width * pixelRatio));
 		canvas.height = Math.max(1, Math.floor(viewport.height * pixelRatio));
@@ -191,6 +193,7 @@ export function PersonalGraphNeuralCanvas({
 		canvas.style.height = `${viewport.height}px`;
 
 		const startedAt = performance.now();
+		const shouldLoop = shouldAnimateNeuralGraph(params, reduceMotion);
 		const render = (now: number) => {
 			context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
 			const layout = computeNeuralGraphLayout({
@@ -224,11 +227,31 @@ export function PersonalGraphNeuralCanvas({
 				setSelectedOverlay(nextOverlay);
 			}
 
-			animationFrame = window.requestAnimationFrame(render);
+			if (shouldLoop) {
+				animationFrame = window.requestAnimationFrame(render);
+			}
 		};
 
-		animationFrame = window.requestAnimationFrame(render);
-		return () => window.cancelAnimationFrame(animationFrame);
+		requestRenderRef.current = () => {
+			if (shouldLoop || staticFrame) {
+				return;
+			}
+
+			staticFrame = window.requestAnimationFrame((now) => {
+				staticFrame = 0;
+				render(now);
+			});
+		};
+
+		requestRenderRef.current();
+		if (shouldLoop) {
+			animationFrame = window.requestAnimationFrame(render);
+		}
+		return () => {
+			requestRenderRef.current = () => {};
+			window.cancelAnimationFrame(animationFrame);
+			window.cancelAnimationFrame(staticFrame);
+		};
 	}, [actualTheme, params, reduceMotion, selectedNodeId, store, viewport]);
 
 	useEffect(() => {
@@ -236,6 +259,7 @@ export function PersonalGraphNeuralCanvas({
 			cameraRef.current = createNeuralCamera({ zoom: cameraRef.current.zoom });
 			selectedOverlayRef.current = null;
 			setSelectedOverlay(null);
+			requestRenderRef.current();
 			return;
 		}
 
@@ -248,6 +272,7 @@ export function PersonalGraphNeuralCanvas({
 			point: node,
 			viewport,
 		});
+		requestRenderRef.current();
 	}, [params, selectedNodeId, viewport]);
 
 	const updateHover = useCallback((point: NeuralPoint) => {
@@ -264,6 +289,8 @@ export function PersonalGraphNeuralCanvas({
 			viewport,
 		});
 		setHoveredNodeId(hit?.node.id ?? null);
+		hoveredNodeIdRef.current = hit?.node.id ?? null;
+		requestRenderRef.current();
 	}, [params, viewport]);
 
 	const handlePointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
@@ -283,6 +310,7 @@ export function PersonalGraphNeuralCanvas({
 				y: point.y - lastPointerRef.current.y,
 			};
 			cameraRef.current = panNeuralCamera(cameraRef.current, delta);
+			requestRenderRef.current();
 		} else {
 			updateHover(point);
 		}
@@ -327,6 +355,7 @@ export function PersonalGraphNeuralCanvas({
 			pointer: getPointerPoint(event),
 			viewport,
 		});
+		requestRenderRef.current();
 	}, [params, viewport]);
 
 	const cursorClass = isPanning ? "cursor-grabbing" : hoveredNodeId ? "cursor-pointer" : "cursor-grab";
@@ -337,7 +366,11 @@ export function PersonalGraphNeuralCanvas({
 				className={cn("relative h-full w-full touch-none", cursorClass)}
 				onPointerDown={handlePointerDown}
 				onPointerLeave={() => {
-					if (!isPanningRef.current) setHoveredNodeId(null);
+					if (!isPanningRef.current) {
+						hoveredNodeIdRef.current = null;
+						setHoveredNodeId(null);
+						requestRenderRef.current();
+					}
 				}}
 				onPointerMove={handlePointerMove}
 				onPointerUp={handlePointerUp}
