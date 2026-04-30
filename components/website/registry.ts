@@ -7590,6 +7590,9 @@ const VISUAL_DEMOS: Record<string, ComponentType> = {
   }),
   color: dynamic(() => import("./demos/visual/color-demo"), { ssr: false }),
   shadow: dynamic(() => import("./demos/visual/shadow-demo"), { ssr: false }),
+  "shadow-overlay": dynamic(() => import("./demos/visual/shadow-overlay-demo"), {
+    ssr: false,
+  }),
   squircle: dynamic(() => import("./demos/visual/squircle-demo"), {
     ssr: false,
   }),
