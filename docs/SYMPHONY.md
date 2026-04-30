@@ -99,9 +99,39 @@ Backlog -> Todo -> In Progress -> Human Review -> Rework -> Human Review -> Merg
   the Linear issue to `Done` only after the merge succeeds.
 - `Done`, `Closed`, `Canceled`, `Cancelled`, `Duplicate`: terminal states.
 
-Workers should keep one active `## Codex Workpad` comment current with plan,
-acceptance criteria, validation, decisions, blockers, branch, PR, and final
-handoff notes.
+Workers should keep one active `## Codex Workpad` comment current with selected
+skills, plan, acceptance criteria, validation, decisions, blockers, branch, PR,
+and final handoff notes.
+
+### Skill routing
+
+`WORKFLOW.md` uses workpad-enforced skill routing. Before edits, each worker
+records a `Selected Skills` section in the `## Codex Workpad`, with one line per
+skill and a short rationale. The selected skills act as phase checklists for the
+work; they do not change the upstream Symphony runtime or add new wrapper
+behavior.
+
+VPK-rovo references the globally installed phase skills from
+[agent-skills](https://github.com/addyosmani/agent-skills/tree/main/skills) by
+name. The repo does not vendor those full skill files. If a named skill is not
+available in a worker environment, the worker records the unavailable skill and
+continues with the routing policy in `WORKFLOW.md` instead of blocking the run.
+
+The state-to-skill policy is intentionally narrow:
+
+- `Todo`: start with `context-engineering`; add refinement, spec, or planning
+  skills only when the issue is vague or broad.
+- `In Progress`: start with `incremental-implementation`; add debugging, UI,
+  API, or source-driven skills according to the touched surface.
+- `Rework`: start with `code-review-and-quality`; add security, performance, or
+  debugging skills only when feedback requires them.
+- `Merging`: use `git-workflow-and-versioning`; add CI or shipping skills only
+  when checks, deployment, or release readiness are in scope.
+- `Backlog`, `Human Review`, and terminal states: select no implementation
+  skills.
+- Any code-changing state includes `test-driven-development` as the default
+  validation guardrail. Browser-visible changes also use VPK-rovo's
+  `/agent-browser`, screenshot, and accessibility checks from `AGENTS.md`.
 
 ## Runtime knobs
 
@@ -203,8 +233,8 @@ Each issue workspace gets these harness affordances:
 - An optional `.env.local` copy from `SYMPHONY_ENV_LOCAL_SOURCE`.
 - A final pre-removal archive note with workspace path, branch, commit, and
   dirty state.
-- A persistent Linear `## Codex Workpad` for plans, acceptance criteria,
-  evidence, validation, decisions, branch, PR, and handoff state.
+- A persistent Linear `## Codex Workpad` for selected skills, plans, acceptance
+  criteria, evidence, validation, decisions, branch, PR, and handoff state.
 - Required validation from `AGENTS.md`, plus targeted tests, browser checks,
   screenshots, and accessibility checks for touched surfaces.
 
@@ -215,7 +245,7 @@ answer.
 
 Only the upstream `linear` skill is copied into this repo. The upstream
 `commit`, `push`, `pull`, and `land` skills are tuned for the `openai/symphony`
-repo's own validation commands, so VPK-specific branch, validation, PR, and
-merge instructions live directly in `WORKFLOW.md`. The workflow uses Codex's
-`never` approval policy inside the workspace-write sandbox so Symphony can run
-without waiting for interactive approval prompts.
+repo's own validation commands, so VPK-specific branch, validation, PR, merge,
+and phase-skill routing instructions live directly in `WORKFLOW.md`. The
+workflow uses Codex's `never` approval policy inside the workspace-write sandbox
+so Symphony can run without waiting for interactive approval prompts.

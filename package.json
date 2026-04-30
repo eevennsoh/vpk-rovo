@@ -78,6 +78,7 @@
 		"@tobilu/qmd": "^2.1.0",
 		"@visual-json/core": "^0.4.0",
 		"@visual-json/react": "^0.4.0",
+		"@web-kits/audio": "^0.1.0",
 		"@xyflow/react": "^12.10.2",
 		"agent-browser": "^0.26.0",
 		"agentation": "^3.0.2",

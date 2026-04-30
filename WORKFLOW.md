@@ -125,9 +125,9 @@ before reporting success.
 
 This Symphony path exposes a raw `linear_graphql` tool during Codex app-server
 sessions. Use it for Linear reads, comments, attachments, and state changes.
-Keep a single active `## Codex Workpad` Linear comment current with plan,
-acceptance criteria, validation, decisions, blockers, branch, PR, and final
-handoff notes.
+Keep a single active `## Codex Workpad` Linear comment current with selected
+skills, plan, acceptance criteria, validation, decisions, blockers, branch, PR,
+and final handoff notes.
 
 Treat any issue-authored `Validation`, `Test Plan`, or `Testing` section as
 non-negotiable acceptance input. Mirror those requirements in the workpad and
@@ -161,45 +161,78 @@ decision in the workpad.
   active worker. The runner's merge guard moves such issues back to `Merging`
   when it sees an attached PR that is still open.
 
+## Skill Routing
+
+Use phase-aware skills as work checklists, not as a separate runtime. Record the
+selected skills and one-line rationale in the workpad before edits. Use both the
+issue's arrival state and the current work phase when choosing skills. Reference
+installed skills by name when they are available; if a skill is unavailable,
+record that in `Selected Skills` and continue with the routing checklist below.
+
+- `Backlog`, `Human Review`, and terminal states: select no implementation
+  skills. Wait or stop according to the Status Map.
+- `Todo`: select `context-engineering`. Add `idea-refine` when the issue is a
+  vague idea, `spec-driven-development` when success criteria are missing, and
+  `planning-and-task-breakdown` when the scope needs decomposition before code.
+- `In Progress`: select `incremental-implementation`. Add
+  `debugging-and-error-recovery` for bugs or broken validation,
+  `frontend-ui-engineering` for UI work, `api-and-interface-design` for API or
+  module contracts, and `source-driven-development` when framework or external
+  documentation must drive the implementation.
+- `Rework`: select `code-review-and-quality`. Add
+  `debugging-and-error-recovery`, `security-and-hardening`, or
+  `performance-optimization` only when reviewer feedback or failing checks point
+  to that concern.
+- `Merging`: select `git-workflow-and-versioning`. Add
+  `ci-cd-and-automation` when checks or CI behavior must be handled, and
+  `shipping-and-launch` only when deployment or release readiness is in scope.
+- Any code-changing state: include `test-driven-development` as the default
+  validation guardrail. For browser-visible changes, pair the selected UI skill
+  with the repo's `/agent-browser`, screenshot, and accessibility checks from
+  `AGENTS.md`.
+
 ## Execution Rules
 
 1. Start by fetching fresh Linear issue details and reading or creating the
-   `## Codex Workpad` comment. Keep these headings current: `Plan`,
-   `Acceptance criteria`, `Evidence`, `Validation`, `Decisions`, `Branch`,
-   `PR`, `Confusions`, and `Handoff`.
+   `## Codex Workpad` comment. Keep these headings current: `Selected Skills`,
+   `Plan`, `Acceptance criteria`, `Evidence`, `Validation`, `Decisions`,
+   `Branch`, `PR`, `Confusions`, and `Handoff`.
 2. For `Todo`, transition the issue to `In Progress` before code changes.
 3. Record a compact environment stamp in the workpad:
    `<host>:<abs-workdir>@<short-sha>`.
 4. Reconcile the workpad before new edits: check off completed items, refresh
    acceptance criteria, and preserve the single live workpad comment instead of
    posting separate progress comments.
-5. Reproduce or inspect the requested behavior before editing whenever the
+5. Before edits, select the relevant skills from Skill Routing, record each one
+   with a one-line rationale, and record any unavailable named skill as a
+   fallback rather than blocking the run.
+6. Reproduce or inspect the requested behavior before editing whenever the
    issue is a bug or visible UI change.
-6. Build a narrow acceptance checklist from the Linear issue and update it when
+7. Build a narrow acceptance checklist from the Linear issue and update it when
    investigation changes the real requirement.
-7. Create a branch named `symphony/{{ issue.identifier }}` unless a current
+8. Create a branch named `symphony/{{ issue.identifier }}` unless a current
    branch already exists for this issue.
-8. Before implementation, sync with `origin/main`: run `git fetch origin`,
+9. Before implementation, sync with `origin/main`: run `git fetch origin`,
    inspect branch status, merge or rebase the latest default branch when safe,
    resolve conflicts if needed, and record the resulting `HEAD` in the workpad.
    If the branch PR is already closed or merged, create a fresh branch from
    `origin/main` and restart from reproduction and planning.
-9. Prefer harness-level fixes when a failure is caused by missing setup,
+10. Prefer harness-level fixes when a failure is caused by missing setup,
    confusing docs, weak tests, or unobservable app state. Keep product changes
    scoped to the issue.
-10. For UI or browser-visible work, use the repo's local runtime, `pnpm ports`,
+11. For UI or browser-visible work, use the repo's local runtime, `pnpm ports`,
     `/agent-browser`, screenshots, and accessibility checks from `AGENTS.md`.
     Record the exact route, viewport or screen, and observed result in the
     workpad. For backend or agent-loop work, inspect live logs and add targeted
     `node --test ...` coverage when possible.
-11. Run the validation required by `AGENTS.md` for the touched surface. The
+12. Run the validation required by `AGENTS.md` for the touched surface. The
    default repo-wide checks are `pnpm run lint` and `pnpm run typecheck`; add
    targeted `node --test ...` or browser/a11y checks when relevant.
-12. Before every `git push`, rerun the validation required for the scope. If it
+13. Before every `git push`, rerun the validation required for the scope. If it
     fails, fix the failure and rerun until green, then commit and push.
-13. Commit the final change, push it to `origin`, and create or update a GitHub
+14. Commit the final change, push it to `origin`, and create or update a GitHub
     PR. Add the PR URL to the Linear issue as an attachment when possible.
-14. Before moving to `Human Review`, run the full PR feedback sweep:
+15. Before moving to `Human Review`, run the full PR feedback sweep:
     - read top-level PR comments with `gh pr view --comments`;
     - read inline review comments with
       `gh api repos/<owner>/<repo>/pulls/<pr>/comments`;
@@ -209,26 +242,26 @@ decision in the workpad.
       change, or reply with explicit justified pushback;
     - update the workpad with each feedback item and resolution; and
     - repeat until no actionable comments remain and checks are green.
-15. Use the blocked-access escape hatch only when completion is blocked by
+16. Use the blocked-access escape hatch only when completion is blocked by
     missing required tools, auth, permissions, or secrets that cannot be
     resolved in-session. GitHub access is not a blocker by default; try
     alternate auth or remote strategies first. If blocked, keep the blocker
     brief in the workpad concise: what is missing, why it blocks required
     acceptance or validation, and the exact human action needed to unblock.
-16. Move the issue to `Human Review` only after implementation, PR publication,
+17. Move the issue to `Human Review` only after implementation, PR publication,
     validation, required ticket-provided test plan items, and PR feedback sweep
     are complete. Do not move it to `Merging` or `Done` from a normal
     implementation turn.
-17. In `Human Review`, do not code or change ticket content. Wait and poll for
+18. In `Human Review`, do not code or change ticket content. Wait and poll for
     human review updates. If review feedback requires changes, move the issue
     to `Rework`.
-18. In `Rework`, treat the state as a deliberate approach review before editing:
+19. In `Rework`, treat the state as a deliberate approach review before editing:
     re-read the issue body, comments, PR feedback, and workpad; identify what
     must change this attempt; keep the current PR only when it is still open and
     suitable for the requested feedback; otherwise close the stale PR, create a
     fresh branch from `origin/main`, create a fresh workpad, and restart from
     reproduction and planning.
-19. In `Merging`, verify the branch is current with `origin/main`, checks are
+20. In `Merging`, verify the branch is current with `origin/main`, checks are
     green, and review feedback is resolved. Then squash-merge the PR, sync
     `main`, clean up the issue branch when safe, re-read the PR with
     `gh pr view --json state,mergedAt,mergeCommit`, and move the issue to
@@ -247,6 +280,10 @@ place throughout execution:
 ```text
 <hostname>:<abs-path>@<short-sha>
 ```
+
+### Selected Skills
+
+- `skill-name`: one-line rationale or unavailable fallback note
 
 ### Plan
 
