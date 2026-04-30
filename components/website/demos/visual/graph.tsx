@@ -9,6 +9,7 @@ import {
 	type NeuralGraphParams,
 	type NeuralGraphNodeShape,
 } from "@/components/arts/personal-graph/lib/neural-graph/params";
+import type { NeuralGraphThemeMode } from "@/components/arts/personal-graph/lib/neural-graph/renderer";
 import type {
 	VaultEdgeKind,
 	VaultExplorer,
@@ -19,6 +20,7 @@ import { token } from "@/lib/tokens";
 import { cn } from "@/lib/utils";
 
 interface GraphProps extends Omit<ComponentProps<"div">, "children"> {
+	background?: "default" | "transparent";
 	explorer?: VaultExplorer | null;
 	initialParams?: Partial<NeuralGraphParams>;
 	initialSelectedNodeId?: string | null;
@@ -27,7 +29,9 @@ interface GraphProps extends Omit<ComponentProps<"div">, "children"> {
 	onSelectedNodeIdChange?: (nodeId: string | null) => void;
 	params?: NeuralGraphParams;
 	selectedNodeId?: string | null;
+	showSelectionOverlay?: boolean;
 	showControls?: boolean;
+	themeMode?: NeuralGraphThemeMode;
 	variant?: "demo" | "fill";
 }
 
@@ -293,6 +297,7 @@ function GraphControls({ onChange, params }: Readonly<GraphControlsProps>) {
 }
 
 export default function Graph({
+	background = "default",
 	className,
 	explorer = VISUAL_GRAPH_EXPLORER,
 	initialParams = DEFAULT_NEURAL_GRAPH_PARAMS,
@@ -302,8 +307,10 @@ export default function Graph({
 	onSelectedNodeIdChange,
 	params: controlledParams,
 	selectedNodeId: controlledSelectedNodeId,
+	showSelectionOverlay = true,
 	showControls = true,
 	style,
+	themeMode,
 	variant = "demo",
 	...props
 }: Readonly<GraphProps>) {
@@ -312,6 +319,7 @@ export default function Graph({
 	const [uncontrolledParams, setUncontrolledParams] = useState<NeuralGraphParams>(() => clampNeuralGraphParams(initialParamsRef.current));
 	const [uncontrolledSelectedNodeId, setUncontrolledSelectedNodeId] = useState<string | null>(initialSelectedNodeIdRef.current);
 	const isFillVariant = variant === "fill";
+	const hasTransparentBackground = background === "transparent";
 	const isParamsControlled = controlledParams !== undefined;
 	const isSelectionControlled = controlledSelectedNodeId !== undefined;
 	const params = controlledParams ?? uncontrolledParams;
@@ -350,25 +358,30 @@ export default function Graph({
 			<div
 				className={cn(
 					isFillVariant
-						? "min-h-0 flex-1 overflow-hidden bg-surface"
+						? "min-h-0 flex-1 overflow-hidden"
 						: "w-full overflow-hidden rounded-lg",
+					hasTransparentBackground ? "bg-transparent" : "bg-surface",
 				)}
 				style={isFillVariant ? undefined : { boxShadow: token("elevation.shadow.raised") }}
 			>
 				<div
 					className={cn(
 						isFillVariant
-							? "h-full min-h-0 overflow-hidden bg-surface"
+							? "h-full min-h-0 overflow-hidden"
 							: "h-[min(70svh,520px)] min-h-[420px] overflow-hidden bg-surface",
+						isFillVariant ? (hasTransparentBackground ? "bg-transparent" : "bg-surface") : null,
 					)}
 				>
 					<PersonalGraphNeuralCanvas
+						background={background}
 						explorer={explorer}
 						isLoading={isLoading}
 						onClearSelection={handleClearSelection}
 						onSelectNode={handleSelectNode}
 						params={params}
 						selectedNodeId={selectedNodeId}
+						showSelectionOverlay={showSelectionOverlay}
+						themeMode={themeMode}
 					/>
 				</div>
 			</div>

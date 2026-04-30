@@ -3,8 +3,10 @@ import type { NeuralGraphLayout, NeuralLayoutNode } from "./layout";
 import type { NeuralGraphParams } from "./params";
 
 export type NeuralGraphThemeMode = "light" | "dark";
+export type NeuralGraphBackgroundMode = "default" | "transparent";
 
 export interface NeuralGraphRenderOptions {
+	background?: NeuralGraphBackgroundMode;
 	camera: NeuralCamera;
 	hoveredNodeId: string | null;
 	params: NeuralGraphParams;
@@ -212,7 +214,11 @@ export function drawNeuralGraph(
 	layout: NeuralGraphLayout,
 	options: NeuralGraphRenderOptions,
 ) {
-	drawBackground(ctx, options.viewport, options.params, options.theme);
+	if (options.background === "transparent") {
+		ctx.clearRect(0, 0, options.viewport.width, options.viewport.height);
+	} else {
+		drawBackground(ctx, options.viewport, options.params, options.theme);
+	}
 	drawRays(ctx, layout, options);
 	drawEdges(ctx, layout, options);
 	drawNodes(ctx, layout, options);

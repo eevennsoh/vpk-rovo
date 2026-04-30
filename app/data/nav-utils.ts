@@ -73,6 +73,7 @@ export const VISUAL_GROUPS: Record<string, string[]> = {
 		"displacement-map",
 		"dithering",
 		"edge-detect",
+		"melt",
 		"fluid",
 		"fluted-glass",
 		"fluted-glass-v2",

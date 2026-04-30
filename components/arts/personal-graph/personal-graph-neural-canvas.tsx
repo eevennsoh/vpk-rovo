@@ -18,16 +18,19 @@ import { hitTestNeuralNode, isMeaningfulDrag } from "./lib/neural-graph/interact
 import { computeNeuralGraphLayout, type NeuralGraphLayout, type NeuralLayoutNode } from "./lib/neural-graph/layout";
 import type { NeuralGraphParams } from "./lib/neural-graph/params";
 import { createNeuralGraphStore, getSelectedNeighborhood, type NeuralGraphStore } from "./lib/neural-graph/store";
-import { drawNeuralGraph } from "./lib/neural-graph/renderer";
+import { drawNeuralGraph, type NeuralGraphThemeMode } from "./lib/neural-graph/renderer";
 import type { VaultExplorer } from "./lib/personal-graph-types";
 
 interface PersonalGraphNeuralCanvasProps {
+	background?: "default" | "transparent";
 	explorer: VaultExplorer | null;
 	isLoading?: boolean;
 	onClearSelection: () => void;
 	onSelectNode: (nodeId: string) => void;
 	params: NeuralGraphParams;
 	selectedNodeId: string | null;
+	showSelectionOverlay?: boolean;
+	themeMode?: NeuralGraphThemeMode;
 }
 
 interface SelectedOverlayState {
@@ -130,14 +133,18 @@ function SelectedNodeOverlay({
 }
 
 export function PersonalGraphNeuralCanvas({
+	background = "default",
 	explorer,
 	isLoading = false,
 	onClearSelection,
 	onSelectNode,
 	params,
 	selectedNodeId,
+	showSelectionOverlay = true,
+	themeMode,
 }: Readonly<PersonalGraphNeuralCanvasProps>) {
 	const { actualTheme } = useTheme();
+	const renderTheme = themeMode ?? actualTheme;
 	const reduceMotion = Boolean(useReducedMotion());
 	const canvasRef = useRef<HTMLCanvasElement | null>(null);
 	const containerRef = useRef<HTMLDivElement | null>(null);
@@ -203,11 +210,12 @@ export function PersonalGraphNeuralCanvas({
 			});
 			layoutRef.current = layout;
 			drawNeuralGraph(context, layout, {
+				background,
 				camera: cameraRef.current,
 				hoveredNodeId: hoveredNodeIdRef.current,
 				params,
 				selectedNodeId,
-				theme: actualTheme,
+				theme: renderTheme,
 				viewport,
 			});
 
@@ -229,7 +237,7 @@ export function PersonalGraphNeuralCanvas({
 
 		animationFrame = window.requestAnimationFrame(render);
 		return () => window.cancelAnimationFrame(animationFrame);
-	}, [actualTheme, params, reduceMotion, selectedNodeId, store, viewport]);
+	}, [background, params, reduceMotion, renderTheme, selectedNodeId, store, viewport]);
 
 	useEffect(() => {
 		if (!selectedNodeId) {
@@ -330,9 +338,11 @@ export function PersonalGraphNeuralCanvas({
 	}, [params, viewport]);
 
 	const cursorClass = isPanning ? "cursor-grabbing" : hoveredNodeId ? "cursor-pointer" : "cursor-grab";
+	const backgroundClass = background === "transparent" ? "bg-transparent" : "bg-surface";
+	const statusTextClass = background === "transparent" ? "text-neutral-500" : "text-text-subtle";
 
 	return (
-		<div className="relative h-full min-h-[620px] overflow-hidden bg-surface" data-neural-graph-renderer="owned-canvas">
+		<div className={cn("relative h-full min-h-[620px] overflow-hidden", backgroundClass)} data-neural-graph-renderer="owned-canvas">
 			<div
 				className={cn("relative h-full w-full touch-none", cursorClass)}
 				onPointerDown={handlePointerDown}
@@ -346,14 +356,16 @@ export function PersonalGraphNeuralCanvas({
 			>
 				<canvas aria-hidden="true" className="block h-full w-full" ref={canvasRef} />
 			</div>
-			<SelectedNodeOverlay onSelectNode={onSelectNode} overlay={selectedOverlay} />
+			{showSelectionOverlay ? (
+				<SelectedNodeOverlay onSelectNode={onSelectNode} overlay={selectedOverlay} />
+			) : null}
 			{isLoading ? (
-				<div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center text-sm text-text-subtle">
+				<div className={cn("pointer-events-none absolute inset-0 z-40 flex items-center justify-center text-sm", statusTextClass)}>
 					Loading vault graph...
 				</div>
 			) : null}
 			{!isLoading && !hasGraph ? (
-				<div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center p-8 text-center text-sm text-text-subtle">
+				<div className={cn("pointer-events-none absolute inset-0 z-40 flex items-center justify-center p-8 text-center text-sm", statusTextClass)}>
 					No Personal Graph nodes are available. Choose a vault folder and refresh.
 				</div>
 			) : null}

@@ -31,6 +31,20 @@ const SURFACE_SOURCE = fs.readFileSync(
 	),
 	"utf8",
 );
+const BACKDROP_SOURCE = fs.readFileSync(
+	path.join(
+		__dirname,
+		"../../../components/arts/personal-graph/personal-graph-backdrop.tsx",
+	),
+	"utf8",
+);
+const SEARCH_SOURCE = fs.readFileSync(
+	path.join(
+		__dirname,
+		"../../../components/arts/personal-graph/personal-graph-search.tsx",
+	),
+	"utf8",
+);
 const GRAPH_SOURCE = fs.readFileSync(
 	path.join(
 		__dirname,
@@ -123,6 +137,35 @@ test("Personal Graph header exposes the app theme toggle", () => {
 	assert.match(SURFACE_SOURCE, /<ThemeToggle \/>/);
 });
 
+test("Personal Graph anchors the search and chat composer at the graph origin", () => {
+	assert.match(SURFACE_SOURCE, /aria-label="Personal Graph search and chat"/);
+	assert.match(SURFACE_SOURCE, /bottom-6 z-30 flex justify-center/);
+	assert.match(SURFACE_SOURCE, /bottom-\[6\.5rem\] top-\[84px\]/);
+	assert.match(SURFACE_SOURCE, /from-neutral-950\/35 to-transparent/);
+	assert.match(SURFACE_SOURCE, /<PersonalGraphSearch/);
+	assert.doesNotMatch(SURFACE_SOURCE, /grid-cols-\[1fr_auto_1fr\]/);
+	assert.match(SEARCH_SOURCE, /Ask or search your graph\.\.\./);
+	assert.match(SEARCH_SOURCE, /bottom-\[calc\(100%\+0\.75rem\)\]/);
+	assert.match(SEARCH_SOURCE, /ArrowUpRightIcon/);
+	assert.match(SEARCH_SOURCE, /aria-label="Ask or search Personal Graph"/);
+});
+
+test("Personal Graph uses editor-style surrounding chrome", () => {
+	assert.match(SURFACE_SOURCE, /aria-label="Capture queue"/);
+	assert.match(SURFACE_SOURCE, /aria-label="Knowledge Graph details"/);
+	assert.match(SURFACE_SOURCE, /PersonalGraphZoomControls/);
+	assert.match(SURFACE_SOURCE, /themeMode="light"/);
+	assert.match(SURFACE_SOURCE, /showSelectionOverlay=\{false\}/);
+	assert.match(SURFACE_SOURCE, /PERSONAL_GRAPH_EDITOR_COLOR_LOCK_STYLE/);
+	assert.match(SURFACE_SOURCE, /"--color-white": "#FFFFFF"/);
+	assert.match(SURFACE_SOURCE, /"--ds-text-inverse": "#FFFFFF"/);
+	assert.match(SURFACE_SOURCE, /style=\{\{ \.\.\.PERSONAL_GRAPH_EDITOR_COLOR_LOCK_STYLE, \.\.\.style \}\}/);
+	assert.match(SURFACE_SOURCE, /rounded-\[2px\] border border-neutral-950\/70 bg-white\/95/);
+	assert.match(SEARCH_SOURCE, /rounded-\[2px\] border border-neutral-950\/80 bg-white\/95/);
+	assert.match(SURFACE_SOURCE, /CopyIcon/);
+	assert.match(SURFACE_SOURCE, /TargetIcon/);
+});
+
 test("Personal Graph keeps the owned canvas renderer accessible", () => {
 	assert.match(SURFACE_SOURCE, /<details className="sr-only" open>/);
 	assert.match(
@@ -132,15 +175,35 @@ test("Personal Graph keeps the owned canvas renderer accessible", () => {
 	assert.match(SURFACE_SOURCE, /<Graph/);
 	assert.match(SURFACE_SOURCE, /variant="fill"/);
 	assert.match(SURFACE_SOURCE, /showControls=\{false\}/);
-	assert.match(SURFACE_SOURCE, /params=\{neuralParams\}/);
+	assert.match(SURFACE_SOURCE, /background="transparent"/);
+	assert.match(SURFACE_SOURCE, /params=\{renderedNeuralParams\}/);
 	assert.match(SURFACE_SOURCE, /selectedNodeId=\{selectedNodeId\}/);
 	assert.match(SURFACE_SOURCE, /onSelectedNodeIdChange=\{setSelectedNodeId\}/);
 	assert.doesNotMatch(SURFACE_SOURCE, /<PersonalGraphNeuralCanvas/);
 	assert.doesNotMatch(SURFACE_SOURCE, /PersonalGraphSigma/);
 	assert.match(GRAPH_SOURCE, /<PersonalGraphNeuralCanvas/);
 	assert.match(NEURAL_CANVAS_SOURCE, /data-neural-graph-renderer="owned-canvas"/);
+	assert.match(NEURAL_CANVAS_SOURCE, /backgroundClass = background === "transparent" \? "bg-transparent" : "bg-surface"/);
 	assert.match(NEURAL_CANVAS_SOURCE, /<canvas aria-hidden="true"/);
 	assert.match(NEURAL_CANVAS_SOURCE, /<SelectedNodeOverlay/);
+});
+
+test("Personal Graph uses a light editor canvas backdrop", () => {
+	assert.match(
+		SURFACE_SOURCE,
+		/import \{ PersonalGraphBackdrop \} from "\.\/personal-graph-backdrop";/,
+	);
+	assert.match(SURFACE_SOURCE, /<PersonalGraphBackdrop className="z-0" \/>/);
+	assert.doesNotMatch(SURFACE_SOURCE, /PersonalGraphAsciiOverlay/);
+	assert.match(BACKDROP_SOURCE, /data-personal-graph-editor-backdrop="light-grid"/);
+	assert.match(BACKDROP_SOURCE, /overflow-hidden bg-white/);
+	assert.match(BACKDROP_SOURCE, /backgroundImage:/);
+	assert.match(BACKDROP_SOURCE, /backgroundSize: "72px 72px"/);
+	assert.match(BACKDROP_SOURCE, /radial-gradient\(circle at 50% 75%/);
+	assert.doesNotMatch(BACKDROP_SOURCE, /LiquidGradient/);
+	assert.doesNotMatch(BACKDROP_SOURCE, /Ascii/);
+	assert.match(GRAPH_SOURCE, /background\?: "default" \| "transparent"/);
+	assert.match(NEURAL_CANVAS_SOURCE, /background\?: "default" \| "transparent"/);
 });
 
 test("Personal Graph decomposes graphology, ForceAtlas2, and Sigma concepts without runtime Sigma", () => {

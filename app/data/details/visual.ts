@@ -73,6 +73,29 @@ export const VISUAL_DETAILS: Record<string, ComponentDetail> = {
 			{ name: "style", type: "React.CSSProperties", description: "Inline styles merged onto the root overlay." },
 		],
 	},
+	"melt": {
+		description: "SVG-filter melt effect that combines fractal-noise feTurbulence with feDisplacementMap, then applies the warped result to any target through the CSS filter property.",
+		importStatement: `import Melt from "@/components/website/demos/visual/melt";`,
+		usage: `<Melt
+	scale={20}
+	frequencyX={0.012}
+	frequencyY={0.035}
+>
+	<div>Selectable text, an image, or an SVG target</div>
+</Melt>`,
+		props: [
+			{ name: "children", type: "React.ReactNode", description: "Target pixels to warp. The filter works on SVG, image, text, and regular DOM content." },
+			{ name: "scale", type: "number", default: "20", description: "feDisplacementMap scale. Controls the maximum number of pixels each sampled point can move." },
+			{ name: "frequencyX", type: "number", default: "0.012", description: "Horizontal feTurbulence baseFrequency value." },
+			{ name: "frequencyY", type: "number", default: "0.035", description: "Vertical feTurbulence baseFrequency value." },
+			{ name: "numOctaves", type: "number", default: "3", description: "Number of fractal-noise octaves used by feTurbulence." },
+			{ name: "seed", type: "number", default: "4", description: "feTurbulence seed used to stabilize the noise map." },
+			{ name: "animation", type: "{ enabled?: boolean; duration?: number; scaleFrom?: number; scaleTo?: number; frequencyXFrom?: number; frequencyXTo?: number; frequencyYFrom?: number; frequencyYTo?: number }", description: "Optional SVG attribute animation. The demo mirrors the reference 5s loop between from and to values." },
+			{ name: "filterId", type: "string", description: "Optional explicit SVG filter id. By default the component generates a stable React id." },
+			{ name: "className", type: "string", description: "Class names applied to the filtered target wrapper." },
+			{ name: "style", type: "React.CSSProperties", description: "Inline styles merged onto the filtered target wrapper. The component owns the CSS filter property." },
+		],
+	},
 	"graph": {
 		description: "Reusable graph canvas harvested from the Personal Graph surface, with the same neural layout, pan, zoom, selection, theme, and editable parameter controls.",
 		importStatement: `import Graph from "@/components/website/demos/visual/graph";`,
@@ -119,6 +142,7 @@ export const VISUAL_DETAILS: Record<string, ComponentDetail> = {
 />`,
 		props: [
 			{ name: "sourceMode", type: `"field" | "image"`, default: `"field"`, description: "VPK demo source selector. Shader Lab uses this pass over the composited input texture." },
+			{ name: "sourceColors", type: "readonly string[]", default: `["#05070F", "#1868DB", "#FCA700", "#AF59E1", "#66D9E8"]`, description: "Editable procedural field palette used when `sourceMode` is `field`; supports up to 8 colors." },
 			{ name: "imageSrc", type: "string", description: "Optional image URL used when `sourceMode` is `image`. When omitted, the shader uses a bundled default texture." },
 			{ name: "opacity", type: "number", default: "1", description: "Layer opacity used when compositing the ASCII output over the source." },
 			{ name: "blendMode", type: `"normal" | "multiply" | "screen" | "overlay" | "darken" | "lighten" | "color-dodge" | "color-burn" | "hard-light" | "soft-light" | "difference" | "exclusion" | "hue" | "saturation" | "color" | "luminosity"`, default: `"normal"`, description: "Shader Lab layer blend mode." },
@@ -134,15 +158,16 @@ export const VISUAL_DETAILS: Record<string, ComponentDetail> = {
 			{ name: "customChars", type: "string", default: `" .:-=+*#%@"`, description: "Glyph ramp used when `charset` is `custom`." },
 			{ name: "fontWeight", type: `"thin" | "regular" | "bold"`, default: `"regular"`, description: "Font weight used when generating the glyph atlas." },
 			{ name: "colorMode", type: `"source" | "monochrome" | "green-terminal"`, default: `"monochrome"`, description: "Determines whether glyphs use source color, tint-scaled monochrome, or terminal green. The demo exposes the website controls: source and monochrome." },
+			{ name: "colorSourceMode", type: `"source" | "luminance" | "lightness" | "red" | "green" | "blue"`, default: `"source"`, description: "Color source used when `colorMode` is `source`. `source` keeps full RGB; channel options isolate the selected signal." },
 			{ name: "monoColor", type: "string", default: `"#F5F5F0"`, description: "Monochrome tint color. Matches Shader Lab's `monoColor` parameter." },
 			{ name: "tint", type: "string", default: `"#F5F5F0"`, description: "Backward-compatible alias for `monoColor`." },
-			{ name: "backgroundColor", type: "string", default: `"#000000"`, description: "Background color used outside glyph strokes for monochrome and green-terminal modes." },
-			{ name: "bgOpacity", type: "number", default: "0", description: "Source background opacity used when `colorMode` is `source`." },
+			{ name: "backgroundColor", type: "string", default: `"#000000"`, description: "Background color used outside glyph strokes in every color mode." },
+			{ name: "bgOpacity", type: "number", default: "0", description: "Blends source color into the background when `colorMode` is `source`." },
 			{ name: "invert", type: "boolean", default: "false", description: "Inverts the luminance ramp before choosing glyphs." },
 			{ name: "directionBias", type: "number", default: "0", description: "Blends glyph selection from tone signal toward edge-gradient magnitude." },
 			{ name: "toneMapping", type: `"none" | "aces" | "reinhard" | "totos" | "cinematic"`, default: `"none"`, description: "Tone mapping applied before glyph and color signal extraction." },
 			{ name: "glyphSignalMode", type: `"luminance" | "lightness" | "red" | "green" | "blue"`, default: `"luminance"`, description: "Source channel used for glyph selection." },
-			{ name: "colorSignalMode", type: `"luminance" | "lightness" | "red" | "green" | "blue"`, default: `"luminance"`, description: "Source channel used to scale glyph color." },
+			{ name: "colorSignalMode", type: `"luminance" | "lightness" | "red" | "green" | "blue"`, default: `"luminance"`, description: "Source channel used to scale glyph color in monochrome and green-terminal modes." },
 			{ name: "signalBlackPoint", type: "number", default: "0", description: "Lower remap point for glyph and color signals." },
 			{ name: "signalWhitePoint", type: "number", default: "1", description: "Upper remap point for glyph and color signals." },
 			{ name: "signalGamma", type: "number", default: "1", description: "Gamma exponent used in signal remapping." },

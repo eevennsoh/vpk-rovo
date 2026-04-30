@@ -7,7 +7,7 @@ import ImageIcon from "@atlaskit/icon/core/image";
 
 import { GUI } from "@/components/utils/gui";
 import { Label } from "@/components/ui/label";
-import { ShaderColorInput } from "./shader-color-controls";
+import { ShaderColorInput, ShaderColorListControl } from "./shader-color-controls";
 import { token } from "@/lib/tokens";
 
 import Ascii, {
@@ -15,8 +15,11 @@ import Ascii, {
 	ASCII_COMPOSITE_MODES,
 	ASCII_CONTROL_BLEND_MODES,
 	ASCII_CONTROL_COLOR_MODES,
+	ASCII_COLOR_SOURCE_MODES,
+	ASCII_DEFAULT_SOURCE_COLORS,
 	ASCII_DEFAULT_CHARACTERS,
 	ASCII_FONT_WEIGHTS,
+	ASCII_MAX_SOURCE_COLORS,
 	ASCII_MASK_MODES,
 	ASCII_MASK_SOURCES,
 	ASCII_SIGNAL_MODES,
@@ -24,6 +27,7 @@ import Ascii, {
 	type AsciiBlendMode,
 	type AsciiCharset,
 	type AsciiColorMode,
+	type AsciiColorSourceMode,
 	type AsciiCompositeMode,
 	type AsciiFontWeight,
 	type AsciiMaskMode,
@@ -57,6 +61,7 @@ const CHARSET_OPTIONS = [
 ] as const;
 const FONT_WEIGHT_OPTIONS = optionsFromValues(ASCII_FONT_WEIGHTS);
 const COLOR_MODE_OPTIONS = optionsFromValues(ASCII_CONTROL_COLOR_MODES);
+const COLOR_SOURCE_OPTIONS = optionsFromValues(ASCII_COLOR_SOURCE_MODES);
 const MASK_SOURCE_OPTIONS = optionsFromValues(ASCII_MASK_SOURCES);
 const MASK_MODE_OPTIONS = optionsFromValues(ASCII_MASK_MODES);
 const SIGNAL_MODE_OPTIONS = optionsFromValues(ASCII_SIGNAL_MODES);
@@ -131,6 +136,7 @@ function ImageUploadControl({
 
 export default function AsciiDemo() {
 	const [sourceMode, setSourceMode] = useState<AsciiSourceMode>("field");
+	const [sourceColors, setSourceColors] = useState<string[]>([...ASCII_DEFAULT_SOURCE_COLORS]);
 	const [imageSrc, setImageSrc] = useState<string | undefined>(undefined);
 	const [opacity, setOpacity] = useState(1);
 	const [blendMode, setBlendMode] = useState<AsciiBlendMode>("normal");
@@ -142,7 +148,9 @@ export default function AsciiDemo() {
 	const [customChars, setCustomChars] = useState<string>(ASCII_DEFAULT_CHARACTERS);
 	const [fontWeight, setFontWeight] = useState<AsciiFontWeight>("regular");
 	const [colorMode, setColorMode] = useState<AsciiColorMode>("monochrome");
+	const [colorSourceMode, setColorSourceMode] = useState<AsciiColorSourceMode>("source");
 	const [monoColor, setMonoColor] = useState("#F5F5F0");
+	const [backgroundColor, setBackgroundColor] = useState("#000000");
 	const [invert, setInvert] = useState(false);
 	const [directionBias, setDirectionBias] = useState(0);
 	const [bgOpacity, setBgOpacity] = useState(0);
@@ -169,6 +177,7 @@ export default function AsciiDemo() {
 	const config = useMemo(
 		() => ({
 			sourceMode,
+			sourceColors,
 			opacity,
 			blendMode,
 			compositeMode,
@@ -179,7 +188,9 @@ export default function AsciiDemo() {
 			customChars,
 			fontWeight,
 			colorMode,
+			colorSourceMode,
 			monoColor,
+			backgroundColor,
 			invert,
 			directionBias,
 			bgOpacity,
@@ -204,6 +215,7 @@ export default function AsciiDemo() {
 			speed,
 		}),
 		[
+			backgroundColor,
 			bgOpacity,
 			blendMode,
 			bloomEnabled,
@@ -214,6 +226,7 @@ export default function AsciiDemo() {
 			cellSize,
 			charset,
 			colorMode,
+			colorSourceMode,
 			colorSignalMode,
 			compositeMode,
 			customChars,
@@ -235,6 +248,7 @@ export default function AsciiDemo() {
 			signalBlackPoint,
 			signalGamma,
 			signalWhitePoint,
+			sourceColors,
 			sourceMode,
 			speed,
 			toneMapping,
@@ -249,6 +263,7 @@ export default function AsciiDemo() {
 			>
 				<Ascii
 					sourceMode={sourceMode}
+					sourceColors={sourceColors}
 					imageSrc={imageSrc}
 					opacity={opacity}
 					blendMode={blendMode}
@@ -260,7 +275,9 @@ export default function AsciiDemo() {
 					customChars={customChars}
 					fontWeight={fontWeight}
 					colorMode={colorMode}
+					colorSourceMode={colorSourceMode}
 					monoColor={monoColor}
+					backgroundColor={backgroundColor}
 					invert={invert}
 					directionBias={directionBias}
 					bgOpacity={bgOpacity}
@@ -300,16 +317,27 @@ export default function AsciiDemo() {
 							<ImageUploadControl imageSrc={imageSrc} onChange={setImageSrc} />
 						) : null}
 						{sourceMode === "field" ? (
-							<GUI.Control
-								id="ascii-speed"
-								label="Source Speed"
-								value={speed}
-								defaultValue={1}
-								min={0}
-								max={3}
-								step={0.05}
-								onChange={setSpeed}
-							/>
+							<>
+								<GUI.Control
+									id="ascii-speed"
+									label="Source Speed"
+									value={speed}
+									defaultValue={1}
+									min={0}
+									max={3}
+									step={0.05}
+									onChange={setSpeed}
+								/>
+								<ShaderColorListControl
+									id="ascii-sourceColors"
+									label="Colors"
+									value={sourceColors}
+									defaultValue={ASCII_DEFAULT_SOURCE_COLORS}
+									onChange={setSourceColors}
+									allowAddRemove
+									maxColors={ASCII_MAX_SOURCE_COLORS}
+								/>
+							</>
 						) : null}
 					</GUI.Section>
 
@@ -426,6 +454,15 @@ export default function AsciiDemo() {
 							options={COLOR_MODE_OPTIONS}
 							onChange={(next) => setColorMode(next as AsciiColorMode)}
 						/>
+						{colorMode === "source" ? (
+							<GUI.Select
+								id="ascii-colorSourceMode"
+								label="Source Channel"
+								value={colorSourceMode}
+								options={COLOR_SOURCE_OPTIONS}
+								onChange={(next) => setColorSourceMode(next as AsciiColorSourceMode)}
+							/>
+						) : null}
 						{colorMode === "monochrome" ? (
 							<ShaderColorInput
 								id="ascii-monoColor"
@@ -435,6 +472,13 @@ export default function AsciiDemo() {
 								onChange={setMonoColor}
 							/>
 						) : null}
+						<ShaderColorInput
+							id="ascii-backgroundColor"
+							label="Background Color"
+							value={backgroundColor}
+							defaultValue="#000000"
+							onChange={setBackgroundColor}
+						/>
 						<GUI.Toggle
 							id="ascii-invert"
 							label="Invert"
@@ -454,7 +498,7 @@ export default function AsciiDemo() {
 						{colorMode === "source" ? (
 							<GUI.Control
 								id="ascii-bgOpacity"
-								label="Background"
+								label="Source Background"
 								value={bgOpacity}
 								defaultValue={0}
 								min={0}
@@ -480,13 +524,15 @@ export default function AsciiDemo() {
 							options={SIGNAL_MODE_OPTIONS}
 							onChange={(next) => setGlyphSignalMode(next as AsciiSignalMode)}
 						/>
-						<GUI.Select
-							id="ascii-colorSignalMode"
-							label="Color Signal"
-							value={colorSignalMode}
-							options={SIGNAL_MODE_OPTIONS}
-							onChange={(next) => setColorSignalMode(next as AsciiSignalMode)}
-						/>
+						{colorMode === "source" ? null : (
+							<GUI.Select
+								id="ascii-colorSignalMode"
+								label="Color Signal"
+								value={colorSignalMode}
+								options={SIGNAL_MODE_OPTIONS}
+								onChange={(next) => setColorSignalMode(next as AsciiSignalMode)}
+							/>
+						)}
 						<GUI.Control
 							id="ascii-blackPoint"
 							label="Black Point"

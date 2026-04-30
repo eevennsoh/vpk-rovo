@@ -7653,6 +7653,9 @@ const VISUAL_DEMOS: Record<string, ComponentType> = {
   "magnify-lens": dynamic(() => import("./demos/visual/magnify-lens-demo"), {
     ssr: false,
   }),
+  melt: dynamic(() => import("./demos/visual/melt-demo"), {
+    ssr: false,
+  }),
   "mesh-gradient": dynamic(() => import("./demos/visual/mesh-gradient-demo"), {
     ssr: false,
   }),

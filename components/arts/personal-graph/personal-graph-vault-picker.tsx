@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
-import FolderOpenIcon from "@atlaskit/icon/core/folder-open";
+import ChevronDownIcon from "@atlaskit/icon/core/chevron-down";
 import { Button } from "@/components/ui/button";
 import { useVaultSettings } from "./hooks/use-vault-settings";
 
@@ -37,7 +37,7 @@ export function PersonalGraphVaultPicker({
 	return (
 		<div className="flex min-w-0 items-center gap-2">
 			<p
-				className="hidden max-w-[180px] truncate text-xs text-text-subtle lg:block"
+				className="hidden max-w-[180px] truncate text-xs text-neutral-600 lg:block"
 				title={statusTitle}
 			>
 				{error ? error.message : folderName}
@@ -47,11 +47,12 @@ export function PersonalGraphVaultPicker({
 				disabled={isSelecting}
 				isLoading={isSelecting}
 				onClick={handleChooseVault}
+				className="h-11 rounded-[2px] border-neutral-950/70 bg-white px-4 text-sm font-normal text-neutral-950 shadow-none hover:bg-neutral-100"
 				size="sm"
 				variant="outline"
 			>
-				{isSelecting ? null : <FolderOpenIcon label="" />}
 				<span className="hidden sm:inline">{isLoading ? "Vault" : "Choose vault"}</span>
+				{isSelecting ? null : <ChevronDownIcon label="" />}
 			</Button>
 		</div>
 	);
