@@ -305,3 +305,59 @@ Mark promoted entries with `[Promoted]` prefix — see vpk-lesson skill for deta
   guard: if an issue is `Done` while its attached GitHub PR is still open, move
   it back to `Merging`. Workers must also verify `gh pr view --json
   state,mergedAt,mergeCommit` before setting `Done`.
+
+### 2026-04-30 - Put new visual routes where users scan the nav
+
+- **What happened:** A newly added visual component route was nested under the
+  virtual `Shaders` group, so it was not visible as its own left-nav item where
+  the user expected to find it.
+- **Why:** I grouped by implementation flavor instead of checking the actual
+  discoverability of the left navigation after wiring the route.
+- **Rule:** When adding a new component route, verify the left-nav placement
+  from the user's expected scan path. Only nest it under a virtual group when
+  that grouping is explicitly part of the request or clearly matches the
+  component category.
+
+### 2026-04-30 - Keep visual demos focused on the requested surface
+
+- **What happened:** A shadow overlay demo included decorative placeholder
+  rectangle cards even though the user only needed the overlay on a white
+  background.
+- **Why:** I added context to make the effect easier to see, but that changed
+  the requested visual surface.
+- **Rule:** When porting a visual component, keep the preview backdrop as simple
+  as the user requested. Do not add decorative mock UI or placeholder shapes
+  unless they ask for surrounding context.
+
+### 2026-04-30 - Make visual color swatches operable controls
+
+- **What happened:** A color control in a visual demo rendered a passive swatch
+  beside a text input, so the user could not click the swatch to choose a
+  color.
+- **Why:** I preserved support for CSS color strings but missed the expected
+  GUI-style picker interaction.
+- **Rule:** For visual demo color controls, provide a clickable color picker
+  plus text entry when free-form CSS color strings are allowed. Do not render a
+  passive swatch where users expect a control.
+
+### 2026-04-30 - Match upstream visual defaults before styling
+
+- **What happened:** A Framer shadow overlay port used an ADS blue-gray default
+  color and enabled noise, producing a green/blue tint that was not present in
+  the upstream Framer component screenshot.
+- **Why:** I normalized the demo toward local palette preferences instead of
+  preserving the upstream control values first.
+- **Rule:** For reverse-engineered visual components, copy upstream/default
+  control values before applying local styling. Check color, optional effects,
+  and disabled-by-default controls against the source screenshot or module.
+
+### 2026-04-30 - Match established demo radius
+
+- **What happened:** A visual demo preview used a custom 28px corner radius
+  instead of the smaller rounded corner convention used by adjacent visual
+  demos.
+- **Why:** I copied the radius from a different glass demo without checking the
+  local visual-demo pattern for this surface.
+- **Rule:** Before adding custom preview-frame radius, compare nearby demos in
+  the same category. Use established utility radii like `rounded-lg` unless
+  the component itself requires a different shape.

@@ -498,6 +498,7 @@ export const VISUAL_COMPONENTS: ComponentManifestEntry[] = sortEntriesByName([
 	visualComponent("typography", "Typography", "@/lib/tokens"),
 	visualComponent("color", "Color", "@/app/tailwind-theme.css\n@/app/shadcn-theme.css"),
 	visualComponent("shadow", "Shadow", "@/lib/tokens"),
+	visualComponent("shadow-overlay", "Shadow Overlay", "@/components/website/demos/visual/shadow-overlay"),
 	visualComponent("squircle", "Squircle", "@/components/website/demos/visual/shaders/squircle"),
 	visualComponent(
 		"particles",
