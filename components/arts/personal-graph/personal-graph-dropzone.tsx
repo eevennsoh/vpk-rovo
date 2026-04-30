@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import UploadIcon from "@atlaskit/icon/core/upload";
 import { captureUrl, writeRawSource } from "./lib/personal-graph-api";
 
 interface PersonalGraphDropzoneProps {
@@ -34,7 +35,8 @@ export function PersonalGraphDropzone({ onRawAdded }: Readonly<PersonalGraphDrop
 		<div
 			aria-describedby="personal-graph-dropzone-description"
 			aria-label="Drop raw source"
-			className="rounded-md border border-dashed border-border bg-surface/80 p-3 text-xs text-text-subtle outline-none focus-visible:border-border-selected focus-visible:ring-2 focus-visible:ring-ring/30 focus-within:border-border-selected focus-within:ring-2 focus-within:ring-ring/30"
+			className="rounded-[2px] border border-dashed border-neutral-950/60 bg-white p-4 text-sm text-neutral-700 outline-none transition-colors hover:bg-neutral-50 focus-visible:border-neutral-950 focus-visible:ring-2 focus-visible:ring-neutral-950/20 focus-within:border-neutral-950 focus-within:ring-2 focus-within:ring-neutral-950/20"
+			onClick={() => inputRef.current?.click()}
 			onDragOver={(event) => event.preventDefault()}
 			onDrop={(event) => {
 				event.preventDefault();
@@ -56,19 +58,12 @@ export function PersonalGraphDropzone({ onRawAdded }: Readonly<PersonalGraphDrop
 					inputRef.current?.click();
 				}
 			}}
-			role="region"
+			role="button"
 			tabIndex={0}
 		>
-			<div className="flex items-center justify-between gap-3">
+			<div className="flex items-center gap-3">
+				<UploadIcon label="" />
 				<span id="personal-graph-dropzone-description">{status ?? "Drop markdown, text, HTML, or paste a URL"}</span>
-				<button
-					aria-label="Add raw source"
-					className="rounded-md border border-border px-2 py-1 text-xs font-medium text-text outline-none focus-visible:border-border-selected focus-visible:ring-2 focus-visible:ring-ring/30"
-					onClick={() => inputRef.current?.click()}
-					type="button"
-				>
-					Add raw source
-				</button>
 			</div>
 			<input
 				accept=".md,.markdown,.txt,.html,.htm"

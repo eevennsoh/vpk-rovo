@@ -41,12 +41,16 @@ export const ASCII_MASK_MODES = ["multiply", "stencil"] as const;
 export const ASCII_FONT_WEIGHTS = ["thin", "regular", "bold"] as const;
 export const ASCII_COLOR_MODES = ["source", "monochrome", "green-terminal"] as const;
 export const ASCII_CONTROL_COLOR_MODES = ["source", "monochrome"] as const;
+export const ASCII_COLOR_SOURCE_MODES = ["source", "luminance", "lightness", "red", "green", "blue"] as const;
 export const ASCII_SIGNAL_MODES = ["luminance", "lightness", "red", "green", "blue"] as const;
 export const ASCII_TONE_MAPPING_MODES = ["none", "aces", "reinhard", "totos", "cinematic"] as const;
+export const ASCII_DEFAULT_SOURCE_COLORS = ["#05070F", "#1868DB", "#FCA700", "#AF59E1", "#66D9E8"] as const;
+export const ASCII_MAX_SOURCE_COLORS = 8;
 
 export type AsciiBlendMode = (typeof ASCII_BLEND_MODES)[number];
 export type AsciiCharset = keyof typeof ASCII_CHARSETS | "custom";
 export type AsciiColorMode = (typeof ASCII_COLOR_MODES)[number];
+export type AsciiColorSourceMode = (typeof ASCII_COLOR_SOURCE_MODES)[number];
 export type AsciiCompositeMode = (typeof ASCII_COMPOSITE_MODES)[number];
 export type AsciiFontWeight = (typeof ASCII_FONT_WEIGHTS)[number];
 export type AsciiMaskMode = (typeof ASCII_MASK_MODES)[number];
@@ -85,6 +89,7 @@ uniform float u_compositeMode;
 uniform float u_hue;
 uniform float u_saturation;
 uniform float u_colorMode;
+uniform float u_colorSourceMode;
 uniform float u_directionBias;
 uniform float u_glyphSignalMode;
 uniform float u_colorSignalMode;
@@ -107,25 +112,30 @@ uniform float u_bloomSoftness;
 uniform float u_bgOpacity;
 uniform float u_invert;
 uniform float u_speed;
+uniform float u_transparentBackground;
 uniform float u_time;
 uniform float u_atlasColumns;
 uniform float u_atlasRows;
 uniform float u_characterCount;
+uniform int u_sourceColorCount;
+uniform vec4 u_sourceColors[8];
 uniform vec3 u_tintColor;
 uniform vec3 u_backgroundColor;
 
-vec3 palette(float t) {
-	vec3 a = vec3(0.02, 0.04, 0.11);
-	vec3 b = vec3(0.08, 0.42, 0.88);
-	vec3 c = vec3(1.0, 0.64, 0.12);
-	vec3 d = vec3(0.64, 0.27, 0.96);
-	vec3 e = vec3(0.36, 0.78, 0.88);
+vec3 getSourceColor(int index) {
+	if (u_sourceColorCount < 1) return vec3(0.0);
+	int safeIndex = clamp(index, 0, u_sourceColorCount - 1);
+	return u_sourceColors[safeIndex].rgb;
+}
 
-	vec3 base = mix(a, b, smoothstep(0.0, 0.45, t));
-	base = mix(base, c, smoothstep(0.22, 0.68, t));
-	base = mix(base, d, smoothstep(0.55, 0.86, t));
-	base = mix(base, e, smoothstep(0.78, 1.0, t));
-	return base;
+vec3 palette(float t) {
+	if (u_sourceColorCount < 1) return vec3(0.0);
+	if (u_sourceColorCount < 2) return getSourceColor(0);
+	float scaledT = clamp(t, 0.0, 1.0) * float(u_sourceColorCount - 1);
+	int index = min(int(floor(scaledT)), u_sourceColorCount - 2);
+	float localT = fract(scaledT);
+	localT = localT * localT * (3.0 - 2.0 * localT);
+	return mix(getSourceColor(index), getSourceColor(index + 1), localT);
 }
 
 float luma(vec3 color) {
@@ -241,6 +251,18 @@ float shapedSignal(float rawSignal) {
 	float signalRange = max(u_signalWhitePoint - u_signalBlackPoint, 0.001);
 	float gammaExp = 1.0 / max(u_signalGamma, 0.1);
 	return pow(clamp((signal - u_signalBlackPoint) / signalRange, 0.0, 1.0), gammaExp);
+}
+
+vec3 sourceColorFromMode(vec3 color, float mode) {
+	if (mode < 0.5) return color;
+
+	float signalMode = mode - 1.0;
+	float signal = shapedSignal(signalValue(color, signalMode));
+
+	if (mode < 2.5) return vec3(signal);
+	if (mode < 3.5) return vec3(signal, 0.0, 0.0);
+	if (mode < 4.5) return vec3(0.0, signal, 0.0);
+	return vec3(0.0, 0.0, signal);
 }
 
 vec3 clipColor(vec3 color) {
@@ -360,10 +382,11 @@ void main() {
 
 	vec3 monochromeColor = u_tintColor * colorSignal;
 	vec3 greenTerminalColor = vec3(0.0, colorSignal, 0.0);
+	vec3 sourceGlyphColor = sourceColorFromMode(toneMapped, u_colorSourceMode);
 	vec3 glyphColor = u_colorMode < 0.5
-		? toneMapped
+		? sourceGlyphColor
 		: (u_colorMode < 1.5 ? monochromeColor : greenTerminalColor);
-	vec3 backgroundColor = u_colorMode < 0.5 ? toneMapped * u_bgOpacity : u_backgroundColor;
+	vec3 backgroundColor = u_colorMode < 0.5 ? mix(u_backgroundColor, sourceGlyphColor, u_bgOpacity) : u_backgroundColor;
 	vec3 asciiColor = mix(backgroundColor, glyphColor, finalMask);
 
 	float bloomThresholdRange = max(u_bloomSoftness * 0.5, 0.001);
@@ -383,8 +406,10 @@ void main() {
 	vec3 stencilMaskColor = toneMapped * step(0.5, maskStrength);
 	vec3 maskColor = u_maskMode > 0.5 ? stencilMaskColor : multiplyMaskColor;
 	vec3 finalColor = u_compositeMode > 0.5 ? maskColor : filterColor;
+	float outputAlpha = u_transparentBackground > 0.5 ? clamp(finalMask * u_layerOpacity, 0.0, 1.0) : 1.0;
+	vec3 outputColor = u_transparentBackground > 0.5 ? glyphColor : finalColor;
 
-	fragColor = vec4(clamp(finalColor, 0.0, 1.0), 1.0);
+	fragColor = vec4(clamp(outputColor, 0.0, 1.0), outputAlpha);
 }
 `;
 
@@ -436,7 +461,11 @@ function createAsciiAtlas(characters: string, fontWeight: AsciiFontWeight): Asci
 	return { canvas, columns, rows, characterCount: glyphs.length };
 }
 
-function createDefaultTexture(): HTMLCanvasElement {
+function rgbToCss(color: RGB): string {
+	return `rgb(${Math.round(color[0] * 255)} ${Math.round(color[1] * 255)} ${Math.round(color[2] * 255)})`;
+}
+
+function createDefaultTexture(sourceColorValues: readonly RGB[]): HTMLCanvasElement {
 	const canvas = document.createElement("canvas");
 	canvas.width = 768;
 	canvas.height = 512;
@@ -444,11 +473,10 @@ function createDefaultTexture(): HTMLCanvasElement {
 	if (!ctx) return canvas;
 
 	const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-	gradient.addColorStop(0, "#05070F");
-	gradient.addColorStop(0.18, "#1868DB");
-	gradient.addColorStop(0.42, "#FCA700");
-	gradient.addColorStop(0.68, "#AF59E1");
-	gradient.addColorStop(1, "#66D9E8");
+	const stops = Math.max(sourceColorValues.length - 1, 1);
+	sourceColorValues.forEach((color, index) => {
+		gradient.addColorStop(index / stops, rgbToCss(color));
+	});
 	ctx.fillStyle = gradient;
 	ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -477,8 +505,22 @@ function createDefaultTexture(): HTMLCanvasElement {
 	return canvas;
 }
 
-function parseHexColor(value: string, fallback: RGB): RGB {
+function resolveCssColorValue(value: string, depth = 0): string {
 	const normalized = value.trim();
+	if (depth > 6) return normalized;
+
+	const variable = /^var\(\s*(--[\w-]+)\s*(?:,\s*(.+))?\)$/i.exec(normalized);
+	if (!variable || typeof window === "undefined") return normalized;
+
+	const tokenValue = window.getComputedStyle(document.documentElement).getPropertyValue(variable[1]).trim();
+	if (tokenValue) return resolveCssColorValue(tokenValue, depth + 1);
+
+	const fallback = variable[2]?.trim();
+	return fallback ? resolveCssColorValue(fallback, depth + 1) : normalized;
+}
+
+function parseColor(value: string, fallback: RGB): RGB {
+	const normalized = resolveCssColorValue(value);
 	const short = /^#([0-9a-f]{3})$/i.exec(normalized);
 	if (short) {
 		return [
@@ -489,13 +531,44 @@ function parseHexColor(value: string, fallback: RGB): RGB {
 	}
 
 	const full = /^#([0-9a-f]{6})$/i.exec(normalized);
-	if (!full) return fallback;
+	if (full) {
+		return [
+			parseInt(full[1].slice(0, 2), 16) / 255,
+			parseInt(full[1].slice(2, 4), 16) / 255,
+			parseInt(full[1].slice(4, 6), 16) / 255,
+		];
+	}
+
+	const rgb = /^rgba?\(\s*([\d.]+)(?:\s*,\s*|\s+)([\d.]+)(?:\s*,\s*|\s+)([\d.]+)(?:\s*[,/]\s*[\d.]+%?)?\s*\)$/i.exec(normalized);
+	if (!rgb) return fallback;
 
 	return [
-		parseInt(full[1].slice(0, 2), 16) / 255,
-		parseInt(full[1].slice(2, 4), 16) / 255,
-		parseInt(full[1].slice(4, 6), 16) / 255,
+		Math.min(Number.parseFloat(rgb[1]) / 255, 1),
+		Math.min(Number.parseFloat(rgb[2]) / 255, 1),
+		Math.min(Number.parseFloat(rgb[3]) / 255, 1),
 	];
+}
+
+function resolveSourceColorValues(sourceColors?: readonly string[]): readonly RGB[] {
+	const colors = sourceColors?.slice(0, ASCII_MAX_SOURCE_COLORS) ?? [...ASCII_DEFAULT_SOURCE_COLORS];
+	const safeColors = colors.length > 0 ? colors : [...ASCII_DEFAULT_SOURCE_COLORS];
+	return safeColors.map((color, index) => {
+		const fallbackColor = ASCII_DEFAULT_SOURCE_COLORS[index % ASCII_DEFAULT_SOURCE_COLORS.length] ?? ASCII_DEFAULT_SOURCE_COLORS[0];
+		const fallback = parseColor(fallbackColor, [0, 0, 0]);
+		return parseColor(color, fallback);
+	});
+}
+
+function flattenSourceColorValues(colors: readonly RGB[]): Float32Array {
+	const data = new Float32Array(ASCII_MAX_SOURCE_COLORS * 4);
+	for (let index = 0; index < ASCII_MAX_SOURCE_COLORS; index += 1) {
+		const color = colors[index] ?? colors[colors.length - 1] ?? [0, 0, 0];
+		data[index * 4] = color[0];
+		data[index * 4 + 1] = color[1];
+		data[index * 4 + 2] = color[2];
+		data[index * 4 + 3] = 1;
+	}
+	return data;
 }
 
 function compileShader(gl: WebGL2RenderingContext, type: number, source: string): WebGLShader | null {
@@ -541,6 +614,7 @@ export interface AsciiProps {
 	style?: CSSProperties;
 	imageSrc?: string;
 	sourceMode?: AsciiSourceMode;
+	sourceColors?: readonly string[];
 	opacity?: number;
 	blendMode?: AsciiBlendMode;
 	compositeMode?: AsciiCompositeMode;
@@ -552,6 +626,7 @@ export interface AsciiProps {
 	customChars?: string;
 	fontWeight?: AsciiFontWeight;
 	colorMode?: AsciiColorMode;
+	colorSourceMode?: AsciiColorSourceMode;
 	monoColor?: string;
 	tint?: string;
 	backgroundColor?: string;
@@ -577,6 +652,7 @@ export interface AsciiProps {
 	bloomRadius?: number;
 	bloomSoftness?: number;
 	speed?: number;
+	transparentBackground?: boolean;
 }
 
 export default function Ascii({
@@ -584,6 +660,7 @@ export default function Ascii({
 	style,
 	imageSrc,
 	sourceMode = "field",
+	sourceColors,
 	opacity = 1,
 	blendMode = "normal",
 	compositeMode = "filter",
@@ -595,6 +672,7 @@ export default function Ascii({
 	customChars = ASCII_DEFAULT_CHARACTERS,
 	fontWeight = "regular",
 	colorMode = "monochrome",
+	colorSourceMode = "source",
 	monoColor,
 	tint,
 	backgroundColor = "#000000",
@@ -620,6 +698,7 @@ export default function Ascii({
 	bloomRadius = 6,
 	bloomSoftness = 0.35,
 	speed = 1,
+	transparentBackground = false,
 }: AsciiProps) {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const animRef = useRef<number>(0);
@@ -628,12 +707,17 @@ export default function Ascii({
 		[characters, charset, customChars],
 	);
 	const activeMonoColor = monoColor ?? tint ?? "#F5F5F0";
+	const sourceColorValues = useMemo(() => resolveSourceColorValues(sourceColors), [sourceColors]);
 
 	useEffect(() => {
 		const canvas = canvasRef.current;
 		if (!canvas) return;
 
-		const gl = canvas.getContext("webgl2", { antialias: false, alpha: false });
+		const gl = canvas.getContext("webgl2", {
+			alpha: transparentBackground,
+			antialias: false,
+			premultipliedAlpha: !transparentBackground,
+		});
 		if (!gl) return;
 
 		const vertexShader = compileShader(gl, gl.VERTEX_SHADER, VERTEX_SHADER);
@@ -670,7 +754,7 @@ export default function Ascii({
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 		gl.uniform1i(gl.getUniformLocation(program, "u_texture"), 0);
-		setTextureFromSource(gl, sourceTexture, createDefaultTexture());
+		setTextureFromSource(gl, sourceTexture, createDefaultTexture(sourceColorValues));
 
 		const atlas = createAsciiAtlas(activeCharacters, fontWeight);
 		const atlasTexture = gl.createTexture();
@@ -691,6 +775,7 @@ export default function Ascii({
 		gl.uniform1f(gl.getUniformLocation(program, "u_hue"), hue);
 		gl.uniform1f(gl.getUniformLocation(program, "u_saturation"), saturation);
 		gl.uniform1f(gl.getUniformLocation(program, "u_colorMode"), enumIndex(ASCII_COLOR_MODES, colorMode, 1));
+		gl.uniform1f(gl.getUniformLocation(program, "u_colorSourceMode"), enumIndex(ASCII_COLOR_SOURCE_MODES, colorSourceMode));
 		gl.uniform1f(gl.getUniformLocation(program, "u_directionBias"), directionBias);
 		gl.uniform1f(gl.getUniformLocation(program, "u_glyphSignalMode"), enumIndex(ASCII_SIGNAL_MODES, glyphSignalMode));
 		gl.uniform1f(gl.getUniformLocation(program, "u_colorSignalMode"), enumIndex(ASCII_SIGNAL_MODES, colorSignalMode));
@@ -713,12 +798,15 @@ export default function Ascii({
 		gl.uniform1f(gl.getUniformLocation(program, "u_bgOpacity"), bgOpacity);
 		gl.uniform1f(gl.getUniformLocation(program, "u_invert"), invert ? 1 : 0);
 		gl.uniform1f(gl.getUniformLocation(program, "u_speed"), speed);
+		gl.uniform1f(gl.getUniformLocation(program, "u_transparentBackground"), transparentBackground ? 1 : 0);
 		gl.uniform1f(gl.getUniformLocation(program, "u_atlasColumns"), atlas.columns);
 		gl.uniform1f(gl.getUniformLocation(program, "u_atlasRows"), atlas.rows);
 		gl.uniform1f(gl.getUniformLocation(program, "u_characterCount"), atlas.characterCount);
+		gl.uniform1i(gl.getUniformLocation(program, "u_sourceColorCount"), sourceColorValues.length);
+		gl.uniform4fv(gl.getUniformLocation(program, "u_sourceColors[0]"), flattenSourceColorValues(sourceColorValues));
 
-		const tintRGB = parseHexColor(activeMonoColor, [0.96, 0.96, 0.94]);
-		const backgroundRGB = parseHexColor(backgroundColor, [0, 0, 0]);
+		const tintRGB = parseColor(activeMonoColor, [0.96, 0.96, 0.94]);
+		const backgroundRGB = parseColor(backgroundColor, [0, 0, 0]);
 		gl.uniform3f(gl.getUniformLocation(program, "u_tintColor"), tintRGB[0], tintRGB[1], tintRGB[2]);
 		gl.uniform3f(gl.getUniformLocation(program, "u_backgroundColor"), backgroundRGB[0], backgroundRGB[1], backgroundRGB[2]);
 
@@ -780,6 +868,7 @@ export default function Ascii({
 		bgOpacity,
 		cellSize,
 		colorMode,
+		colorSourceMode,
 		colorSignalMode,
 		compositeMode,
 		directionBias,
@@ -800,8 +889,10 @@ export default function Ascii({
 		signalBlackPoint,
 		signalGamma,
 		signalWhitePoint,
+		sourceColorValues,
 		sourceMode,
 		speed,
+		transparentBackground,
 		toneMapping,
 	]);
 

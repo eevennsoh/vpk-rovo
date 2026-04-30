@@ -43,6 +43,9 @@ test("ASCII is registered as a visual shader component", () => {
 test("ASCII demo exposes the shader-lab style ASCII controls", () => {
 	assert.match(DEMO_SOURCE, /import Ascii/);
 	assert.match(DEMO_SOURCE, /ASCII_CONTROL_BLEND_MODES/);
+	assert.match(DEMO_SOURCE, /ASCII_COLOR_SOURCE_MODES/);
+	assert.match(DEMO_SOURCE, /ASCII_DEFAULT_SOURCE_COLORS/);
+	assert.match(DEMO_SOURCE, /ASCII_MAX_SOURCE_COLORS/);
 	assert.match(DEMO_SOURCE, /ASCII_TONE_MAPPING_MODES/);
 	assert.match(DEMO_SOURCE, /ASCII_MASK_SOURCES/);
 	assert.match(DEMO_SOURCE, /ASCII_MASK_MODES/);
@@ -53,10 +56,15 @@ test("ASCII demo exposes the shader-lab style ASCII controls", () => {
 	assert.match(DEMO_SOURCE, /label="Cell Size"/);
 	assert.match(DEMO_SOURCE, /label="Charset"/);
 	assert.match(DEMO_SOURCE, /label="Font Weight"/);
-	assert.match(DEMO_SOURCE, /label="Background"/);
+	assert.match(DEMO_SOURCE, /label="Background Color"/);
+	assert.match(DEMO_SOURCE, /label="Source Background"/);
 	assert.match(DEMO_SOURCE, /label="Tone Mapping"/);
 	assert.match(DEMO_SOURCE, /label="Glyph Signal"/);
 	assert.match(DEMO_SOURCE, /label="Color Signal"/);
+	assert.match(DEMO_SOURCE, /label="Source Channel"/);
+	assert.match(DEMO_SOURCE, /label="Colors"/);
+	assert.match(DEMO_SOURCE, /allowAddRemove/);
+	assert.match(DEMO_SOURCE, /colorMode === "source"/);
 	assert.match(DEMO_SOURCE, /label="Black Point"/);
 	assert.match(DEMO_SOURCE, /label="White Point"/);
 	assert.match(DEMO_SOURCE, /label="Invert"/);
@@ -74,4 +82,10 @@ test("ASCII shader uses a generated glyph atlas and luminance pass", () => {
 	assert.match(SHADER_SOURCE, /maskValue/);
 	assert.match(SHADER_SOURCE, /toneMap/);
 	assert.match(SHADER_SOURCE, /shapedSignal/);
+	assert.match(SHADER_SOURCE, /u_colorSourceMode/);
+	assert.match(SHADER_SOURCE, /sourceColorFromMode/);
+	assert.match(SHADER_SOURCE, /u_sourceColors/);
+	assert.match(SHADER_SOURCE, /u_sourceColorCount/);
+	assert.match(DETAILS_SOURCE, /colorSourceMode/);
+	assert.match(DETAILS_SOURCE, /sourceColors/);
 });
