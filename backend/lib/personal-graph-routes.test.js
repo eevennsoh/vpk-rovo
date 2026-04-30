@@ -10,6 +10,7 @@ const {
 	createCapturedResponse,
 	createInProcessRequest,
 } = require("./in-process-http");
+const personalGraphQmd = require("./personal-graph-qmd");
 const personalGraphRoutes = require("./personal-graph-routes");
 
 function createPersonalGraphTestApp() {
@@ -138,6 +139,27 @@ test("GET /api/personal-graph/vault is handled by the Personal Graph router", as
 	assert.equal(body.status, "unconfigured");
 	assert.equal(body.message, "Choose a Personal Graph vault folder to get started.");
 	assert.equal(body.error, undefined);
+});
+
+test("GET /api/personal-graph/search normalizes non-positive limits", async (t) => {
+	const originalSearch = personalGraphQmd.search;
+	const observedLimits = [];
+	personalGraphQmd.search = async (_query, options) => {
+		observedLimits.push(options.limit);
+		return [];
+	};
+	t.after(() => {
+		personalGraphQmd.search = originalSearch;
+	});
+
+	const response = await dispatch(createPersonalGraphTestApp(), {
+		url: "/api/personal-graph/search?q=graph&limit=-1",
+	});
+	const body = await response.json();
+
+	assert.equal(response.status, 200);
+	assert.deepEqual(body, { results: [] });
+	assert.deepEqual(observedLimits, [10]);
 });
 
 test("POST /api/personal-graph/raw accepts multipart file uploads into the selected vault", async (t) => {

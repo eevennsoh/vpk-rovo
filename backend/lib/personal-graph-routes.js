@@ -6,6 +6,7 @@ const { captureUrl } = require("./personal-graph-capture");
 const { buildExplorer } = require("./personal-graph-explorer");
 const librarian = require("./personal-graph-librarian");
 const qmd = require("./personal-graph-qmd");
+const { getPositiveInteger } = require("./shared-utils");
 const {
 	parseLogEntries,
 	readPage,
@@ -222,7 +223,7 @@ router.get("/search", async (req, res) => {
 		if (typeof query !== "string" || !query.trim()) {
 			return res.json({ backend: "none", results: [] });
 		}
-		const limit = Math.min(Number.parseInt(String(req.query.limit ?? "10"), 10) || 10, 25);
+		const limit = Math.min(getPositiveInteger(getFirstQueryValue(req.query.limit), 10), 25);
 		return res.json({ results: await qmd.search(query, { limit }) });
 	} catch (error) {
 		return res.status(getStatusForError(error)).json({
