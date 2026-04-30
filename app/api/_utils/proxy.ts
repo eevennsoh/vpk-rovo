@@ -43,6 +43,17 @@ export function buildErrorMessage(rawText: string): string {
 	return trimmedText;
 }
 
+async function isBackendApiRouteNotFoundResponse(
+	response: Response,
+	path: string,
+): Promise<boolean> {
+	if (response.status !== 404) {
+		return false;
+	}
+
+	return buildErrorMessage(await response.text()) === `API route not found: ${path}`;
+}
+
 export async function proxyToBackend(
 	options: Readonly<ProxyRequestOptions>
 ): Promise<NextResponse> {
@@ -65,12 +76,14 @@ export async function proxyToBackend(
 
 		response = (
 			await fetchBackend(options.path, {
-			method: options.method,
-			headers: {
-				"Content-Type": resolvedContentType,
-			},
-			body: resolvedBody,
-			signal: options.signal,
+				method: options.method,
+				headers: {
+					"Content-Type": resolvedContentType,
+				},
+				body: resolvedBody,
+				signal: options.signal,
+				shouldRetryResponse: (candidateResponse) =>
+					isBackendApiRouteNotFoundResponse(candidateResponse, options.path),
 			})
 		).response;
 	} catch (error) {

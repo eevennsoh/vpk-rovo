@@ -13,6 +13,21 @@ export interface BackendUrlCandidateOptions {
 	reservedPort?: number | string | null;
 }
 
+interface BackendResponseRetryContext {
+	backendPath: string;
+	backendUrl: string;
+	backendUrls: string[];
+	responseIndex: number;
+}
+
+interface FetchBackendInit extends RequestInit {
+	backendUrls?: string[];
+	shouldRetryResponse?: (
+		response: Response,
+		context: BackendResponseRetryContext,
+	) => boolean | Promise<boolean>;
+}
+
 function getNonEmptyString(value: string | null | undefined): string | null {
 	if (typeof value !== "string") {
 		return null;
@@ -102,14 +117,32 @@ export class BackendConnectionError extends Error {
 
 export async function fetchBackend(
 	backendPath: string,
-	init?: RequestInit,
+	init?: FetchBackendInit,
 ): Promise<{ backendUrl: string; response: Response }> {
-	const backendUrls = getBackendUrlCandidates();
+	const {
+		backendUrls: backendUrlOverrides,
+		shouldRetryResponse,
+		...fetchInit
+	} = init ?? {};
+	const backendUrls = backendUrlOverrides ?? getBackendUrlCandidates();
 	let lastError: unknown = new Error("Backend request failed");
 
-	for (const backendUrl of backendUrls) {
+	for (const [responseIndex, backendUrl] of backendUrls.entries()) {
 		try {
-			const response = await fetch(`${backendUrl}${backendPath}`, init);
+			const response = await fetch(`${backendUrl}${backendPath}`, fetchInit);
+			if (
+				responseIndex < backendUrls.length - 1 &&
+				shouldRetryResponse &&
+				await shouldRetryResponse(response.clone(), {
+					backendPath,
+					backendUrl,
+					backendUrls,
+					responseIndex,
+				})
+			) {
+				lastError = new Error(`Backend response requested retry: ${backendUrl}${backendPath}`);
+				continue;
+			}
 			return { backendUrl, response };
 		} catch (error) {
 			if (error instanceof Error && error.name === "AbortError") {
