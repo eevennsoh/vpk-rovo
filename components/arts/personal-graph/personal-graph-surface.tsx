@@ -7,6 +7,7 @@ import RefreshIcon from "@atlaskit/icon/core/refresh";
 import SettingsIcon from "@atlaskit/icon/core/settings";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/utils/theme-wrapper";
+import Graph from "@/components/website/demos/visual/graph";
 import { cn } from "@/lib/utils";
 import { useVaultExplorer } from "./hooks/use-vault-explorer";
 import type { NeuralGraphParams } from "./lib/neural-graph/params";
@@ -14,7 +15,6 @@ import { loadStoredNeuralGraphParams, saveStoredNeuralGraphParams } from "./lib/
 import { PersonalGraphDropzone } from "./personal-graph-dropzone";
 import { PersonalGraphIngestButton } from "./personal-graph-ingest-button";
 import { PersonalGraphLog } from "./personal-graph-log";
-import { PersonalGraphNeuralCanvas } from "./personal-graph-neural-canvas";
 import { PersonalGraphNeuralControls } from "./personal-graph-neural-controls";
 import { PersonalGraphSearch } from "./personal-graph-search";
 import { PersonalGraphVaultPicker } from "./personal-graph-vault-picker";
@@ -31,9 +31,6 @@ export function PersonalGraphSurface({
 	const [isParameterPanelOpen, setIsParameterPanelOpen] = useState(false);
 	const [neuralParams, setNeuralParams] = useState<NeuralGraphParams>(() => loadStoredNeuralGraphParams());
 
-	const handleSelectNode = useCallback((nodeId: string) => {
-		setSelectedNodeId(nodeId);
-	}, []);
 	const handleRefreshAll = useCallback(() => {
 		setRefreshKey((current) => current + 1);
 		void refresh();
@@ -115,13 +112,15 @@ export function PersonalGraphSurface({
 			</header>
 
 			<section className="absolute inset-0 pt-[57px]" aria-label="Vault graph">
-				<PersonalGraphNeuralCanvas
+				<Graph
+					className="h-full"
 					explorer={explorer}
 					isLoading={isLoading}
-					onClearSelection={() => setSelectedNodeId(null)}
-					onSelectNode={handleSelectNode}
+					onSelectedNodeIdChange={setSelectedNodeId}
 					params={neuralParams}
 					selectedNodeId={selectedNodeId}
+					showControls={false}
+					variant="fill"
 				/>
 			</section>
 

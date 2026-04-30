@@ -7599,7 +7599,96 @@ const VISUAL_DEMOS: Record<string, ComponentType> = {
   ascii: dynamic(() => import("./demos/visual/ascii-demo"), {
     ssr: false,
   }),
+  bloom: dynamic(() => import("./demos/visual/bloom-demo"), {
+    ssr: false,
+  }),
+  "circuit-bent": dynamic(() => import("./demos/visual/circuit-bent-demo"), {
+    ssr: false,
+  }),
+  "custom-shader": dynamic(() => import("./demos/visual/custom-shader-demo"), {
+    ssr: false,
+  }),
+  "directional-blur": dynamic(
+    () => import("./demos/visual/directional-blur-demo"),
+    { ssr: false },
+  ),
+  "chromatic-aberration": dynamic(
+    () => import("./demos/visual/chromatic-aberration-demo"),
+    { ssr: false },
+  ),
+  "chromatic-aberration-v2": dynamic(
+    () => import("./demos/visual/chromatic-aberration-v2-demo"),
+    { ssr: false },
+  ),
+  crt: dynamic(() => import("./demos/visual/crt-demo"), {
+    ssr: false,
+  }),
+  "displacement-map": dynamic(
+    () => import("./demos/visual/displacement-map-demo"),
+    { ssr: false },
+  ),
   dithering: dynamic(() => import("./demos/visual/dithering-demo"), {
+    ssr: false,
+  }),
+  "edge-detect": dynamic(() => import("./demos/visual/edge-detect-demo"), {
+    ssr: false,
+  }),
+  "fluted-glass": dynamic(
+    () => import("./demos/visual/fluted-glass-demo"),
+    { ssr: false },
+  ),
+  "fluted-glass-v2": dynamic(
+    () => import("./demos/visual/fluted-glass-v2-demo"),
+    { ssr: false },
+  ),
+  fluid: dynamic(() => import("./demos/visual/fluid-demo"), {
+    ssr: false,
+  }),
+  halftone: dynamic(() => import("./demos/visual/halftone-demo"), {
+    ssr: false,
+  }),
+  ink: dynamic(() => import("./demos/visual/ink-demo"), {
+    ssr: false,
+  }),
+  "magnify-lens": dynamic(() => import("./demos/visual/magnify-lens-demo"), {
+    ssr: false,
+  }),
+  "mesh-gradient": dynamic(() => import("./demos/visual/mesh-gradient-demo"), {
+    ssr: false,
+  }),
+  "particle-grid": dynamic(
+    () => import("./demos/visual/particle-grid-demo"),
+    { ssr: false },
+  ),
+  "pattern-tile": dynamic(() => import("./demos/visual/pattern-tile-demo"), {
+    ssr: false,
+  }),
+  "pattern-v2": dynamic(() => import("./demos/visual/pattern-v2-demo"), {
+    ssr: false,
+  }),
+  pixelation: dynamic(() => import("./demos/visual/pixelation-demo"), {
+    ssr: false,
+  }),
+  "pixel-sorting": dynamic(
+    () => import("./demos/visual/pixel-sorting-demo"),
+    { ssr: false },
+  ),
+  "pixel-trail": dynamic(() => import("./demos/visual/pixel-trail-demo"), {
+    ssr: false,
+  }),
+  plotter: dynamic(() => import("./demos/visual/plotter-demo"), {
+    ssr: false,
+  }),
+  posterize: dynamic(() => import("./demos/visual/posterize-demo"), {
+    ssr: false,
+  }),
+  slice: dynamic(() => import("./demos/visual/slice-demo"), {
+    ssr: false,
+  }),
+  smear: dynamic(() => import("./demos/visual/smear-demo"), {
+    ssr: false,
+  }),
+  threshold: dynamic(() => import("./demos/visual/threshold-demo"), {
     ssr: false,
   }),
   particles: dynamic(() => import("./demos/visual/particles-demo"), {
@@ -7625,10 +7714,6 @@ const VISUAL_DEMOS: Record<string, ComponentType> = {
   }),
   pixels: dynamic(() => import("./demos/visual/pixels-demo"), { ssr: false }),
   truchet: dynamic(() => import("./demos/visual/truchet-demo"), { ssr: false }),
-  "fluted-glass": dynamic(
-    () => import("./demos/visual/fluted-glass-demo"),
-    { ssr: false },
-  ),
   "glass-tabs": dynamic(() => import("./demos/visual/glass-tabs-demo"), {
     ssr: false,
   }),
@@ -7650,12 +7735,7 @@ const VISUAL_DEMOS: Record<string, ComponentType> = {
   "mesh-02": dynamic(() => import("./demos/visual/mesh-02-demo"), {
     ssr: false,
   }),
-	  "chromatic-aberration": dynamic(
-	    () => import("./demos/visual/chromatic-aberration-demo"),
-	    { ssr: false },
-	  ),
-	  pattern: dynamic(() => import("./demos/visual/pattern-demo"), { ssr: false }),
-	};
+};
 
 const CATEGORY_REGISTRIES: Record<string, Record<string, ComponentType>> = {
   visual: VISUAL_DEMOS,

@@ -93,9 +93,9 @@ export default function ChromaticAberrationDemo() {
 	);
 
 	return (
-		<div className="flex flex-col w-full max-w-2xl" style={{ gap: token("space.400") }}>
+		<div className="flex w-full max-w-2xl flex-col" style={{ gap: token("space.400") }}>
 			<div
-				className="w-full aspect-video rounded-lg overflow-hidden"
+				className="aspect-video w-full overflow-hidden rounded-lg"
 				style={{ boxShadow: token("elevation.shadow.raised") }}
 			>
 				<ChromaticAberration

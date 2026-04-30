@@ -361,3 +361,72 @@ Mark promoted entries with `[Promoted]` prefix — see vpk-lesson skill for deta
 - **Rule:** Before adding custom preview-frame radius, compare nearby demos in
   the same category. Use established utility radii like `rounded-lg` unless
   the component itself requires a different shape.
+
+### 2026-05-01 - Preserve existing visual demos when adding upstream variants
+
+- **What happened:** Adding Shader Lab shader routes reused existing VPK-rovo
+  visual demo slugs and displaced the previous chromatic aberration, fluted
+  glass, and pattern demos.
+- **Why:** I treated upstream names as direct replacements instead of auditing
+  which slugs already had local implementations.
+- **Rule:** Before adding third-party shader/demo ports, diff the existing
+  tracked demo files and preserve both implementations. Do not assume which
+  implementation should receive the variant suffix.
+
+### 2026-05-01 - Keep original shader demos on the base slug
+
+- **What happened:** After restoring displaced local shader demos, I initially
+  put the original VPK-rovo implementations under `-v2` and left the Shader
+  Lab ports on the base slugs.
+- **Why:** I interpreted `v2` as the recovered local variant instead of the new
+  Shader Lab variant.
+- **Rule:** When an existing VPK-rovo shader gets a newly ported third-party
+  version, keep the existing local shader on the original slug and put the new
+  third-party version under `-v2` unless the user says otherwise.
+
+### 2026-05-01 - Verify Shader Lab layers against the upstream registry
+
+- **What happened:** The Shader Lab visual demos shared one generic composition
+  and missed source-layer entries like Fluid, Pixel Trail, Magnify Lens, Mesh
+  Gradient, and Custom Shader.
+- **Why:** I treated the npm package effect list as complete without checking
+  the upstream editor layer picker and source-layer registry.
+- **Rule:** For third-party visual shader ports, inspect the upstream layer
+  picker, runtime type definitions, and registry/pass files before wiring the
+  VPK catalog. Preserve all upstream layer categories and use a source texture
+  that makes each pass visibly distinguishable.
+
+### 2026-05-01 - Render-test Shader Lab source layers with screenshots
+
+- **What happened:** Shader Lab effect demos appeared as black preview boxes
+  because the wrapper fed the WebGPU media pass an SVG source texture and
+  ordered the exported layer list source-first instead of effect-first.
+- **Why:** I validated only route loading and canvas presence, not the visible
+  rendered preview. I also missed that Shader Lab reverses exported
+  top-to-bottom layers before rendering.
+- **Rule:** For Shader Lab demos, use browser screenshots or route-level visual
+  sampling to verify nonblack output. Export layer arrays in Shader Lab's
+  top-to-bottom order and use PNG/WebP media sources for image layers.
+
+### 2026-05-01 - Separate source simulations from image-backed shader effects
+
+- **What happened:** After identifying Fluid as a distinct source simulation, I
+  kept spending time browser-testing its black-backed plume instead of moving
+  to the requested source-image UX fix.
+- **Why:** I treated all black previews as the same image-source failure even
+  after the evidence showed Fluid was using different runtime behavior.
+- **Rule:** When Shader Lab source simulations are intentionally different from
+  image-backed effects, stop retesting them once that distinction is clear.
+  Focus image-source fixes on layers that actually consume a media layer, and
+  give those layers a real PNG/WebP default plus upload controls.
+
+### 2026-05-01 - Keep non-shader visual demos out of the shader group
+
+- **What happened:** The restored CSS Pattern demo stayed named `Pattern` and
+  remained under the visual Shaders group even though it is a CSS background
+  tile generator, not a shader.
+- **Why:** I restored the displaced demo under its previous route without
+  rechecking whether the category still described the implementation.
+- **Rule:** When restoring or renaming visual demos, verify whether the
+  implementation is actually shader-based. Non-shader visual generators should
+  use a descriptive name and live outside the Shaders sidebar group.

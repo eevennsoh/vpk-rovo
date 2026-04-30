@@ -1,4 +1,45 @@
 import type { ComponentDetail } from "@/app/data/component-detail-types";
+import {
+	SHADER_LAB_RUNTIME_LAYER_TYPES,
+	type ShaderLabRuntimeEffectType,
+	type ShaderLabRuntimeLayerType,
+	createShaderLabEffectPropDocs,
+	getShaderLabEffectDescription,
+	getShaderLabEffectImportStatement,
+	getShaderLabEffectUsage,
+} from "@/components/website/demos/visual/shader-lab-effect-definitions";
+
+const SHADER_LAB_V2_EFFECT_TYPES = new Set<ShaderLabRuntimeEffectType>([
+	"chromatic-aberration",
+	"fluted-glass",
+	"pattern",
+]);
+
+function isShaderLabV2EffectType(layerType: ShaderLabRuntimeLayerType): layerType is ShaderLabRuntimeEffectType {
+	return SHADER_LAB_V2_EFFECT_TYPES.has(layerType as ShaderLabRuntimeEffectType);
+}
+
+function createShaderLabLayerDetail(layerType: ShaderLabRuntimeLayerType): ComponentDetail {
+	return {
+		description: getShaderLabEffectDescription(layerType),
+		importStatement: getShaderLabEffectImportStatement(),
+		usage: getShaderLabEffectUsage(layerType),
+		props: createShaderLabEffectPropDocs(layerType),
+	};
+}
+
+const SHADER_LAB_LAYER_DETAILS = Object.fromEntries(
+	SHADER_LAB_RUNTIME_LAYER_TYPES
+		.filter((layerType) => !isShaderLabV2EffectType(layerType))
+		.map((layerType) => [layerType, createShaderLabLayerDetail(layerType)]),
+) as Record<string, ComponentDetail>;
+
+const SHADER_LAB_V2_EFFECT_DETAILS = Object.fromEntries(
+	Array.from(SHADER_LAB_V2_EFFECT_TYPES).map((effectType) => [
+		`${effectType}-v2`,
+		createShaderLabLayerDetail(effectType),
+	]),
+) as Record<string, ComponentDetail>;
 
 export const VISUAL_DETAILS: Record<string, ComponentDetail> = {
 	"typography": {
@@ -208,7 +249,28 @@ export const VISUAL_DETAILS: Record<string, ComponentDetail> = {
 		description: "Truchet tile pattern driven by image luminance with arc SDFs, random rotation, and sampled or solid color modes.",
 	},
 	"fluted-glass": {
-		description: "Fluted glass refraction with bars, waves, zigzag, or seigaiha shapes, chromatic dispersion, blur, and frost.",
+		description: "VPK-rovo fluted glass refraction with bars, waves, zigzag, or seigaiha shapes, chromatic dispersion, blur, frost, and uploaded image support.",
+		importStatement: `import FlutedGlass from "@/components/website/demos/visual/shaders/fluted-glass";`,
+		usage: `<FlutedGlass
+	lensMode={0}
+	fluteShape={0}
+	fluteCount={16}
+	distortion={0.11}
+	dispersion={1.54}
+/>`,
+		props: [
+			{ name: "className", type: "string", description: "Optional class names applied to the canvas." },
+			{ name: "imageSrc", type: "string", description: "Optional source image URL. When omitted, the shader uses its generated demo texture." },
+			{ name: "lensMode", type: "0 | 1", default: "0", description: "Lens shape: 0 uses curved flutes, 1 uses cosine flutes." },
+			{ name: "fluteShape", type: "0 | 1 | 2 | 3", default: "0", description: "Flute layout: 0 bars, 1 waves, 2 zigzag, 3 seigaiha." },
+			{ name: "shapeFrequency", type: "number", default: "1", description: "Frequency for wave, zigzag, and seigaiha shape variation." },
+			{ name: "fluteCount", type: "number", default: "16", description: "Number of visible flutes across the surface." },
+			{ name: "flutePower", type: "number", default: "1.4", description: "Curvature exponent used by curved lens mode." },
+			{ name: "distortion", type: "number", default: "0.11", description: "Base refraction offset applied through the flute normals." },
+			{ name: "dispersion", type: "number", default: "1.54", description: "Chromatic separation multiplier for the red and blue channels." },
+			{ name: "blurSize", type: "number", default: "0", description: "Blur sample radius applied to the refracted image." },
+			{ name: "frostAmount", type: "number", default: "0", description: "Noise-driven frost offset mixed into each blur sample." },
+		],
 	},
 	"liquid-glass": {
 		description: "Apple-style liquid glass surface with real-time SVG displacement distortion, chromatic dispersion, a crisp hairline edge with inner specular highlights, a soft drop shadow, and backdrop-filter refraction.",
@@ -368,12 +430,55 @@ const [value, setValue] = React.useState<ThemeMode>("location");
 		description: "3D wireframe mesh with raymarched grid lines, seed-driven wave deformation, tilt camera, and configurable line style.",
 	},
 	"chromatic-aberration": {
-		description: "Spectral chromatic aberration with radial, horizontal, vertical, and swirl modes, animated pulse, and configurable radius.",
+		description: "VPK-rovo chromatic aberration shader with radial, horizontal, vertical, and swirl modes, uploaded image support, animated pulse, and swirl controls.",
+		importStatement: `import ChromaticAberration from "@/components/website/demos/visual/shaders/chromatic-aberration";`,
+		usage: `<ChromaticAberration
+	mode={3}
+	radius={60}
+	pulse={30}
+	swirl={3}
+/>`,
+		props: [
+			{ name: "imageSrc", type: "string", description: "Optional source image URL. When omitted, the shader uses its generated demo source." },
+			{ name: "mode", type: "0 | 1 | 2 | 3", default: "3", description: "Aberration mode: 0 radial, 1 horizontal, 2 vertical, 3 swirl." },
+			{ name: "radius", type: "number", default: "60", description: "Channel split radius." },
+			{ name: "pulse", type: "number", default: "30", description: "Animated pulse amount." },
+			{ name: "speed", type: "number", default: "0", description: "Pulse animation speed." },
+			{ name: "swirl", type: "number", default: "3", description: "Swirl strength when mode is 3." },
+			{ name: "swirlSpeed", type: "number", default: "0", description: "Swirl animation speed when mode is 3." },
+		],
 	},
-	"pattern": {
-		description: "CSS background pattern generator with 20 pattern types, two-color palette, animation, and configurable scale.",
+	"pattern-tile": {
+		description: "VPK-rovo CSS background pattern tile generator with 21 pattern types, two-color palette, blend/fill controls, and optional tile animation.",
+		importStatement: `import PatternTile from "@/components/website/demos/visual/pattern-tile";`,
+		usage: `<PatternTile
+	patternType="wave-lines"
+	front="#FFFFFF"
+	back="#22DDDD"
+	scale={10}
+	fill="tile"
+/>`,
+		props: [
+			{ name: "patternType", type: `"grid" | "wave-lines" | "clouds" | "wiggle" | "groovy" | "plus" | "circles" | "rectangles" | "lines" | "lines-vertical" | "diagonal" | "diagonal-two" | "blocks" | "wave" | "zigzag" | "polka" | "rhombus" | "stars" | "stars-two" | "paper" | "crosses"`, default: `"wave-lines"`, description: "Pattern preset used to build the CSS background image." },
+			{ name: "front", type: "string", default: `"#FFFFFF"`, description: "Foreground pattern color." },
+			{ name: "back", type: "string", default: `"#22DDDD"`, description: "Background color. Can be `transparent`." },
+			{ name: "scale", type: "number", default: "10", description: "Size multiplier for the generated pattern tiles." },
+			{ name: "radius", type: "number", default: "0", description: "Border radius applied to the pattern surface." },
+			{ name: "opacity", type: "number", default: "1", description: "Overall pattern opacity." },
+			{ name: "blendMode", type: `"normal" | "darken" | "multiply" | "color-burn" | "lighten" | "screen" | "plus-lighter" | "color-dodge" | "overlay" | "soft-light" | "hard-light" | "difference" | "exclusion" | "hue" | "saturation" | "color" | "luminosity"`, default: `"normal"`, description: "CSS background blend mode. `normal` lets pattern-specific defaults apply." },
+			{ name: "fill", type: `"fill" | "fit" | "stretch" | "tile"`, default: `"tile"`, description: "How the generated background image fills the container." },
+			{ name: "position", type: `"top-left" | "top-center" | "top-right" | "left" | "center" | "right" | "bottom-left" | "bottom-center" | "bottom-right"`, default: `"center"`, description: "Background position for non-tile fills." },
+			{ name: "shouldAnimate", type: "boolean", default: "false", description: "Enables looping background-position animation for animatable tiled patterns." },
+			{ name: "direction", type: `"left" | "right" | "top" | "bottom"`, default: `"left"`, description: "Scroll direction for non-wiggle animated patterns." },
+			{ name: "diagonal", type: "boolean", default: "true", description: "Diagonal direction toggle for wiggle animation." },
+			{ name: "duration", type: "number", default: "5", description: "Animation loop duration in seconds." },
+			{ name: "className", type: "string", description: "Optional class names applied to the pattern surface." },
+			{ name: "style", type: "React.CSSProperties", description: "Inline styles merged onto the pattern surface." },
+		],
 	},
 	"noise": {
 		description: "CSS-based tiling noise texture overlay with configurable opacity, grain size, and border radius.",
 	},
+	...SHADER_LAB_LAYER_DETAILS,
+	...SHADER_LAB_V2_EFFECT_DETAILS,
 };

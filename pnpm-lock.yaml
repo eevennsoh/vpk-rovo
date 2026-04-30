@@ -36,6 +36,9 @@ importers:
       '@base-ui/react':
         specifier: ^1.4.1
         version: 1.4.1(@date-fns/tz@1.4.1)(@types/react@19.2.14)(date-fns@4.1.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      '@basementstudio/shader-lab':
+        specifier: ^1.3.13
+        version: 1.3.13(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(three@0.184.0)
       '@dnd-kit/core':
         specifier: ^6.3.1
         version: 6.3.1(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
@@ -646,6 +649,13 @@ packages:
     peerDependenciesMeta:
       '@types/react':
         optional: true
+
+  '@basementstudio/shader-lab@1.3.13':
+    resolution: {integrity: sha512-RSEMCetqIjd9Kn7E8IO9jcbZLuC/U+b5lDobuiz7DYJtWAn4xmyangcXs4+HZviawRGm6aSVT4xbyBk7Dy3FTg==, tarball: https://packages.atlassian.com/api/npm/npm-remote/@basementstudio/shader-lab/-/shader-lab-1.3.13.tgz}
+    peerDependencies:
+      react: ^19.0.0
+      react-dom: ^19.0.0
+      three: ^0.183.0
 
   '@braintree/sanitize-url@6.0.2':
     resolution: {integrity: sha512-Tbsj02wXCbqGmzdnXNk0SOF19ChhRU70BsroIi4Pm6Ehp56in6vch94mfbdQ17DozxkL3BAVjbZ4Qc1a0HFRAg==, tarball: https://packages.atlassian.com/api/npm/npm-remote/@braintree/sanitize-url/-/sanitize-url-6.0.2.tgz}
@@ -7329,6 +7339,11 @@ packages:
       eslint: ^8.57.0 || ^9.0.0 || ^10.0.0
       typescript: '>=4.8.4 <6.1.0'
 
+  typescript@5.9.3:
+    resolution: {integrity: sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==, tarball: https://packages.atlassian.com/api/npm/npm-remote/typescript/-/typescript-5.9.3.tgz}
+    engines: {node: '>=14.17'}
+    hasBin: true
+
   typescript@6.0.3:
     resolution: {integrity: sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw==, tarball: https://packages.atlassian.com/api/npm/npm-remote/typescript/-/typescript-6.0.3.tgz}
     engines: {node: '>=14.17'}
@@ -8076,6 +8091,13 @@ snapshots:
       use-sync-external-store: 1.6.0(react@19.2.5)
     optionalDependencies:
       '@types/react': 19.2.14
+
+  '@basementstudio/shader-lab@1.3.13(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(three@0.184.0)':
+    dependencies:
+      react: 19.2.5
+      react-dom: 19.2.5(react@19.2.5)
+      three: 0.184.0
+      typescript: 5.9.3
 
   '@braintree/sanitize-url@6.0.2': {}
 
@@ -15505,6 +15527,8 @@ snapshots:
       typescript: 6.0.3
     transitivePeerDependencies:
       - supports-color
+
+  typescript@5.9.3: {}
 
   typescript@6.0.3: {}
 

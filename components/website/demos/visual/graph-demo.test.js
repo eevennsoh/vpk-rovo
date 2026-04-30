@@ -52,3 +52,12 @@ test("Graph visual follows the VPK visual demo control structure", () => {
 	assert.match(GRAPH_SOURCE, /data-visual-graph="true"/);
 	assert.doesNotMatch(GRAPH_SOURCE, /PersonalGraphNeuralControls/);
 });
+
+test("Graph visual can be embedded as the live Personal Graph renderer", () => {
+	assert.match(GRAPH_SOURCE, /variant\?: "demo" \| "fill"/);
+	assert.match(GRAPH_SOURCE, /params\?: NeuralGraphParams/);
+	assert.match(GRAPH_SOURCE, /selectedNodeId\?: string \| null/);
+	assert.match(GRAPH_SOURCE, /onSelectedNodeIdChange\?: \(nodeId: string \| null\) => void/);
+	assert.match(GRAPH_SOURCE, /isFillVariant \? "flex h-full w-full flex-col"/);
+	assert.match(GRAPH_SOURCE, /isLoading=\{isLoading\}/);
+});

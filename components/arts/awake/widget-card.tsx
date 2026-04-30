@@ -5,9 +5,9 @@ import {
 	formatCornerShapeSuperellipse,
 	SQUIRCLE_DEFAULT_SMOOTHNESS,
 } from "@/components/website/demos/visual/shaders/squircle-shape";
-import Pattern, {
+import PatternTile, {
 	type PatternBlendMode,
-} from "@/components/website/demos/visual/shaders/pattern";
+} from "@/components/website/demos/visual/pattern-tile";
 import { cn } from "@/lib/utils";
 
 interface WidgetCardProps {
@@ -87,7 +87,7 @@ interface WidgetGridOverlayProps {
 /**
  * Subtle pixel grid overlay used to give shader-backed cards a printed
  * "schematic" feel that matches the Framer reference. Backed by the shared
- * Pattern component (`patternType="grid"`) so the visual stays in sync with
+ * PatternTile component (`patternType="grid"`) so the visual stays in sync with
  * the pattern catalog, with a radial mask focusing the grid near the top of
  * the card.
  */
@@ -105,7 +105,7 @@ export function WidgetGridOverlay({
 				opacity,
 			}}
 		>
-			<Pattern
+			<PatternTile
 				patternType="grid"
 				front={color}
 				back="transparent"

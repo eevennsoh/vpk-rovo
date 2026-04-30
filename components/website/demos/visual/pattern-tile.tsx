@@ -61,7 +61,7 @@ export type PatternBlendMode =
 	| "color"
 	| "luminosity";
 
-export interface PatternProps {
+export interface PatternTileProps {
 	patternType?: PatternType;
 	front?: string;
 	back?: string;
@@ -356,7 +356,7 @@ function resolveFillRepeat(fill: PatternFill, patternRepeat?: string): string | 
 	}
 }
 
-export default function Pattern({
+export default function PatternTile({
 	patternType = "wave-lines",
 	front = "#FFFFFF",
 	back = "#22DDDD",
@@ -372,7 +372,7 @@ export default function Pattern({
 	duration = 5,
 	className,
 	style,
-}: PatternProps) {
+}: PatternTileProps) {
 	const { pattern, position: patternPos, size, repeat, blendMode: patternBlendMode, addBackground } =
 		buildPattern(patternType, front, back, scale);
 

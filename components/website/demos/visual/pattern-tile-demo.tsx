@@ -6,7 +6,7 @@ import { GUI } from "@/components/utils/gui";
 import { token } from "@/lib/tokens";
 
 import { ShaderColorInput } from "./shader-color-controls";
-import Pattern, {
+import PatternTile, {
 	ANIMATABLE_PATTERNS,
 	BLEND_MODE_TYPES,
 	FILL_TYPES,
@@ -17,7 +17,7 @@ import Pattern, {
 	type PatternFill,
 	type PatternPosition,
 	type PatternType,
-} from "./shaders/pattern";
+} from "./pattern-tile";
 
 const DEFAULT_PATTERN_TYPE: PatternType = "wave-lines";
 const DEFAULT_FRONT = "#FFFFFF";
@@ -44,7 +44,7 @@ const DIAGONAL_OPTIONS = [
 	{ value: "false", label: "Bottom-Right" },
 ] as const;
 
-export default function PatternDemo() {
+export default function PatternTileDemo() {
 	const [patternType, setPatternType] = useState<PatternType>(DEFAULT_PATTERN_TYPE);
 	const [front, setFront] = useState(DEFAULT_FRONT);
 	const [backColor, setBackColor] = useState(DEFAULT_BACK);
@@ -75,7 +75,7 @@ export default function PatternDemo() {
 				className="w-full overflow-hidden rounded-lg"
 				style={{ boxShadow: token("elevation.shadow.raised") }}
 			>
-				<Pattern
+				<PatternTile
 					patternType={patternType}
 					front={front}
 					back={back}
@@ -170,7 +170,7 @@ export default function PatternDemo() {
 					options={POSITION_TYPES}
 					onChange={(next) => setPosition(next as PatternPosition)}
 				/>
-				{canAnimate && isTile && (
+				{canAnimate && isTile ? (
 					<>
 						<GUI.Toggle
 							id="pattern-animate"
@@ -179,7 +179,7 @@ export default function PatternDemo() {
 							checked={shouldAnimate}
 							onChange={setShouldAnimate}
 						/>
-						{shouldAnimate && (
+						{shouldAnimate ? (
 							<>
 								{isWiggle ? (
 									<GUI.Select
@@ -213,9 +213,9 @@ export default function PatternDemo() {
 									onChange={setDuration}
 								/>
 							</>
-						)}
+						) : null}
 					</>
-				)}
+				) : null}
 			</GUI.Panel>
 		</div>
 	);

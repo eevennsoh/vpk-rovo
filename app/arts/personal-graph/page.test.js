@@ -31,6 +31,13 @@ const SURFACE_SOURCE = fs.readFileSync(
 	),
 	"utf8",
 );
+const GRAPH_SOURCE = fs.readFileSync(
+	path.join(
+		__dirname,
+		"../../../components/website/demos/visual/graph.tsx",
+	),
+	"utf8",
+);
 const NEURAL_CANVAS_SOURCE = fs.readFileSync(
 	path.join(
 		__dirname,
@@ -118,8 +125,19 @@ test("Personal Graph header exposes the app theme toggle", () => {
 
 test("Personal Graph keeps the owned canvas renderer accessible", () => {
 	assert.match(SURFACE_SOURCE, /<details className="sr-only" open>/);
-	assert.match(SURFACE_SOURCE, /<PersonalGraphNeuralCanvas/);
+	assert.match(
+		SURFACE_SOURCE,
+		/import Graph from "@\/components\/website\/demos\/visual\/graph";/,
+	);
+	assert.match(SURFACE_SOURCE, /<Graph/);
+	assert.match(SURFACE_SOURCE, /variant="fill"/);
+	assert.match(SURFACE_SOURCE, /showControls=\{false\}/);
+	assert.match(SURFACE_SOURCE, /params=\{neuralParams\}/);
+	assert.match(SURFACE_SOURCE, /selectedNodeId=\{selectedNodeId\}/);
+	assert.match(SURFACE_SOURCE, /onSelectedNodeIdChange=\{setSelectedNodeId\}/);
+	assert.doesNotMatch(SURFACE_SOURCE, /<PersonalGraphNeuralCanvas/);
 	assert.doesNotMatch(SURFACE_SOURCE, /PersonalGraphSigma/);
+	assert.match(GRAPH_SOURCE, /<PersonalGraphNeuralCanvas/);
 	assert.match(NEURAL_CANVAS_SOURCE, /data-neural-graph-renderer="owned-canvas"/);
 	assert.match(NEURAL_CANVAS_SOURCE, /<canvas aria-hidden="true"/);
 	assert.match(NEURAL_CANVAS_SOURCE, /<SelectedNodeOverlay/);
@@ -153,7 +171,9 @@ test("Personal Graph focuses and clears selection through the owned interaction 
 	assert.match(NEURAL_CANVAS_SOURCE, /focusNeuralCameraOnPoint/);
 	assert.match(NEURAL_CANVAS_SOURCE, /hitTestNeuralNode/);
 	assert.match(NEURAL_CANVAS_SOURCE, /onClearSelection\(\)/);
-	assert.match(SURFACE_SOURCE, /onClearSelection=\{\(\) => setSelectedNodeId\(null\)\}/);
+	assert.match(GRAPH_SOURCE, /onClearSelection=\{handleClearSelection\}/);
+	assert.match(GRAPH_SOURCE, /onSelectedNodeIdChange\?\.\(null\)/);
+	assert.match(SURFACE_SOURCE, /onSelectedNodeIdChange=\{setSelectedNodeId\}/);
 });
 
 test("Personal Graph owned renderer supports pan and zoom without Sigma events", () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState, type ComponentProps } from "react";
+import { useCallback, useRef, useState, type ComponentProps } from "react";
 import { PersonalGraphNeuralCanvas } from "@/components/arts/personal-graph/personal-graph-neural-canvas";
 import {
 	DEFAULT_NEURAL_GRAPH_PARAMS,
@@ -19,10 +19,16 @@ import { token } from "@/lib/tokens";
 import { cn } from "@/lib/utils";
 
 interface GraphProps extends Omit<ComponentProps<"div">, "children"> {
-	explorer?: VaultExplorer;
+	explorer?: VaultExplorer | null;
 	initialParams?: Partial<NeuralGraphParams>;
 	initialSelectedNodeId?: string | null;
+	isLoading?: boolean;
+	onParamsChange?: (params: NeuralGraphParams) => void;
+	onSelectedNodeIdChange?: (nodeId: string | null) => void;
+	params?: NeuralGraphParams;
+	selectedNodeId?: string | null;
 	showControls?: boolean;
+	variant?: "demo" | "fill";
 }
 
 interface GraphNodeDefinition {
@@ -291,27 +297,50 @@ export default function Graph({
 	explorer = VISUAL_GRAPH_EXPLORER,
 	initialParams = DEFAULT_NEURAL_GRAPH_PARAMS,
 	initialSelectedNodeId = null,
+	isLoading = false,
+	onParamsChange,
+	onSelectedNodeIdChange,
+	params: controlledParams,
+	selectedNodeId: controlledSelectedNodeId,
 	showControls = true,
 	style,
+	variant = "demo",
 	...props
 }: Readonly<GraphProps>) {
-	const [params, setParams] = useState<NeuralGraphParams>(() => clampNeuralGraphParams(initialParams));
-	const [selectedNodeId, setSelectedNodeId] = useState<string | null>(initialSelectedNodeId);
+	const initialParamsRef = useRef(initialParams);
+	const initialSelectedNodeIdRef = useRef(initialSelectedNodeId);
+	const [uncontrolledParams, setUncontrolledParams] = useState<NeuralGraphParams>(() => clampNeuralGraphParams(initialParamsRef.current));
+	const [uncontrolledSelectedNodeId, setUncontrolledSelectedNodeId] = useState<string | null>(initialSelectedNodeIdRef.current);
+	const isFillVariant = variant === "fill";
+	const isParamsControlled = controlledParams !== undefined;
+	const isSelectionControlled = controlledSelectedNodeId !== undefined;
+	const params = controlledParams ?? uncontrolledParams;
+	const selectedNodeId = isSelectionControlled ? controlledSelectedNodeId ?? null : uncontrolledSelectedNodeId;
 
 	const handleClearSelection = useCallback(() => {
-		setSelectedNodeId(null);
-	}, []);
+		if (!isSelectionControlled) {
+			setUncontrolledSelectedNodeId(null);
+		}
+		onSelectedNodeIdChange?.(null);
+	}, [isSelectionControlled, onSelectedNodeIdChange]);
 	const handleSelectNode = useCallback((nodeId: string) => {
-		setSelectedNodeId(nodeId);
-	}, []);
+		if (!isSelectionControlled) {
+			setUncontrolledSelectedNodeId(nodeId);
+		}
+		onSelectedNodeIdChange?.(nodeId);
+	}, [isSelectionControlled, onSelectedNodeIdChange]);
 	const handleParamsChange = useCallback((nextParams: NeuralGraphParams) => {
-		setParams(clampNeuralGraphParams(nextParams));
-	}, []);
+		const clampedParams = clampNeuralGraphParams(nextParams);
+		if (!isParamsControlled) {
+			setUncontrolledParams(clampedParams);
+		}
+		onParamsChange?.(clampedParams);
+	}, [isParamsControlled, onParamsChange]);
 
 	return (
 		<div
 			className={cn(
-				"flex w-full max-w-2xl flex-col",
+				isFillVariant ? "flex h-full w-full flex-col" : "flex w-full max-w-2xl flex-col",
 				className,
 			)}
 			data-visual-graph="true"
@@ -319,13 +348,23 @@ export default function Graph({
 			{...props}
 		>
 			<div
-				className="w-full overflow-hidden rounded-lg"
-				style={{ boxShadow: token("elevation.shadow.raised") }}
+				className={cn(
+					isFillVariant
+						? "min-h-0 flex-1 overflow-hidden bg-surface"
+						: "w-full overflow-hidden rounded-lg",
+				)}
+				style={isFillVariant ? undefined : { boxShadow: token("elevation.shadow.raised") }}
 			>
-				<div className="h-[min(70svh,520px)] min-h-[420px] overflow-hidden bg-surface">
+				<div
+					className={cn(
+						isFillVariant
+							? "h-full min-h-0 overflow-hidden bg-surface"
+							: "h-[min(70svh,520px)] min-h-[420px] overflow-hidden bg-surface",
+					)}
+				>
 					<PersonalGraphNeuralCanvas
 						explorer={explorer}
-						isLoading={false}
+						isLoading={isLoading}
 						onClearSelection={handleClearSelection}
 						onSelectNode={handleSelectNode}
 						params={params}
