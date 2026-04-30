@@ -155,6 +155,10 @@ export function createDefaultNeuralGraphParams(nodeCount = DEFAULT_NEURAL_GRAPH_
 	});
 }
 
+export function shouldAnimateNeuralGraph(params: NeuralGraphParams, reduceMotion = false) {
+	return !reduceMotion && params.amplitude > 0 && params.speed > 0;
+}
+
 export function loadStoredNeuralGraphParams(): NeuralGraphParams {
 	if (typeof window === "undefined") {
 		return DEFAULT_NEURAL_GRAPH_PARAMS;

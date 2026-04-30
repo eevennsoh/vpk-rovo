@@ -122,6 +122,15 @@ test("clampNeuralGraphParams clamps numbers, colors, radius order, and shapes", 
 	assert.equal(params.speed, 0);
 });
 
+test("shouldAnimateNeuralGraph skips static reduced-motion and zero-flow layouts", async () => {
+	const { DEFAULT_NEURAL_GRAPH_PARAMS, shouldAnimateNeuralGraph } = await paramsModule;
+
+	assert.equal(shouldAnimateNeuralGraph(DEFAULT_NEURAL_GRAPH_PARAMS), true);
+	assert.equal(shouldAnimateNeuralGraph(DEFAULT_NEURAL_GRAPH_PARAMS, true), false);
+	assert.equal(shouldAnimateNeuralGraph({ ...DEFAULT_NEURAL_GRAPH_PARAMS, amplitude: 0 }), false);
+	assert.equal(shouldAnimateNeuralGraph({ ...DEFAULT_NEURAL_GRAPH_PARAMS, speed: 0 }), false);
+});
+
 test("computeNeuralGraphLayout is deterministic and keeps selected nodes visible", async () => {
 	const { computeNeuralGraphLayout } = await layoutModule;
 	const { DEFAULT_NEURAL_GRAPH_PARAMS, clampNeuralGraphParams } = await paramsModule;
