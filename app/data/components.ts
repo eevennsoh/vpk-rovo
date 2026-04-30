@@ -362,6 +362,8 @@ export const VISUAL_COMPONENTS: ComponentEntry[] = sortEntriesByName([
 	visualComponent("shadow", "Shadow", "@/lib/tokens"),
 	visualComponent("shadow-overlay", "Shadow Overlay", "@/components/website/demos/visual/shadow-overlay"),
 	visualComponent("squircle", "Squircle", "@/components/website/demos/visual/shaders/squircle"),
+	visualComponent("ascii", "ASCII", "@/components/website/demos/visual/shaders/ascii"),
+	visualComponent("dithering", "Dithering", "@/components/website/demos/visual/shaders/dithering"),
 	visualComponent("particles", "Particles", "@/components/website/demos/visual/shaders/particles"),
 	visualComponent("pattern", "Pattern", "@/components/website/demos/visual/shaders/pattern"),
 	visualComponent("noise", "Noise", "@/components/website/demos/visual/shaders/noise"),

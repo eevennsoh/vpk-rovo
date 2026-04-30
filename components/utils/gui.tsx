@@ -164,6 +164,7 @@ function GUIControl({
 			) : null}
 			<Slider
 				aria-label={label}
+				className="px-2"
 				min={min}
 				max={max}
 				step={step}
@@ -174,7 +175,7 @@ function GUIControl({
 					onChange(clamp(numericValue, min, max));
 				}}
 			/>
-			<div className="flex justify-between font-mono text-[11px] text-text-subtlest">
+			<div className="flex justify-between px-2 font-mono text-[11px] text-text-subtlest">
 				<span>{formatValue(min, step, unit)}</span>
 				<span>{formatValue(max, step, unit)}</span>
 			</div>

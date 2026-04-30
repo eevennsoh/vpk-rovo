@@ -10,3 +10,8 @@ test("GUI.Panel gives every open control panel an inner scroll area", () => {
 	assert.match(GUI_SOURCE, /max-h-\[min\(48svh,32rem\)\] overflow-y-auto overscroll-contain/);
 	assert.match(GUI_SOURCE, /\{open \? \(\s*<div[\s\S]+data-gui-panel-scroll="true"[\s\S]+\{children\}/);
 });
+
+test("GUI.Control insets sliders so endpoint thumbs are not clipped", () => {
+	assert.match(GUI_SOURCE, /<Slider[\s\S]+aria-label=\{label\}[\s\S]+className="px-2"/);
+	assert.match(GUI_SOURCE, /className="flex justify-between px-2 font-mono/);
+});
