@@ -1,6 +1,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const express = require("express");
@@ -27,6 +28,20 @@ function createPersonalGraphTestApp() {
 	return app;
 }
 
+function setEnvValueForTest(t, key, value) {
+	const originalValue = process.env[key];
+	process.env[key] = value;
+
+	t.after(() => {
+		if (originalValue === undefined) {
+			delete process.env[key];
+			return;
+		}
+
+		process.env[key] = originalValue;
+	});
+}
+
 async function dispatch(app, { method = "GET", url }) {
 	const req = createInProcessRequest({
 		headers: { Accept: "application/json" },
@@ -51,16 +66,40 @@ async function dispatch(app, { method = "GET", url }) {
 	return res.toWebResponse();
 }
 
-test("GET /api/personal-graph/vault is handled by the Personal Graph router", async (t) => {
+async function listen(app, t) {
+	const server = app.listen(0, "127.0.0.1");
+	t.after(() => new Promise((resolve, reject) => {
+		server.close((error) => {
+			if (error) {
+				reject(error);
+				return;
+			}
+			resolve();
+		});
+	}));
+
+	await new Promise((resolve, reject) => {
+		server.once("listening", resolve);
+		server.once("error", reject);
+	});
+
+	const address = server.address();
+	assert.ok(address && typeof address === "object");
+	return `http://127.0.0.1:${address.port}`;
+}
+
+function configureVaultEnv(t, vaultRoot) {
 	const originalVault = process.env.PERSONAL_GRAPH_VAULT;
 	const originalSelectedVault = process.env.PERSONAL_GRAPH_SELECTED_VAULT;
 	const originalConfigPath = process.env.PERSONAL_GRAPH_VAULT_CONFIG_PATH;
-	process.env.PERSONAL_GRAPH_VAULT = "";
-	process.env.PERSONAL_GRAPH_SELECTED_VAULT = "";
-	process.env.PERSONAL_GRAPH_VAULT_CONFIG_PATH = path.join(
+	const configPath = path.join(
 		os.tmpdir(),
-		`personal-graph-route-test-${process.pid}.json`,
+		`personal-graph-route-test-${process.pid}-${Date.now()}.json`,
 	);
+	process.env.PERSONAL_GRAPH_VAULT = vaultRoot;
+	process.env.PERSONAL_GRAPH_SELECTED_VAULT = "";
+	process.env.PERSONAL_GRAPH_VAULT_CONFIG_PATH = configPath;
+
 	t.after(() => {
 		if (originalVault === undefined) {
 			delete process.env.PERSONAL_GRAPH_VAULT;
@@ -77,7 +116,19 @@ test("GET /api/personal-graph/vault is handled by the Personal Graph router", as
 		} else {
 			process.env.PERSONAL_GRAPH_VAULT_CONFIG_PATH = originalConfigPath;
 		}
+		fs.rmSync(configPath, { force: true });
+		fs.rmSync(vaultRoot, { force: true, recursive: true });
 	});
+}
+
+test("GET /api/personal-graph/vault is handled by the Personal Graph router", async (t) => {
+	setEnvValueForTest(t, "PERSONAL_GRAPH_VAULT", "");
+	setEnvValueForTest(t, "PERSONAL_GRAPH_SELECTED_VAULT", "");
+	setEnvValueForTest(
+		t,
+		"PERSONAL_GRAPH_VAULT_CONFIG_PATH",
+		path.join(os.tmpdir(), `personal-graph-route-test-${process.pid}.json`),
+	);
 
 	const response = await dispatch(createPersonalGraphTestApp(), {
 		url: "/api/personal-graph/vault",
@@ -109,4 +160,34 @@ test("GET /api/personal-graph/search normalizes non-positive limits", async (t) 
 	assert.equal(response.status, 200);
 	assert.deepEqual(body, { results: [] });
 	assert.deepEqual(observedLimits, [10]);
+});
+
+test("POST /api/personal-graph/raw accepts multipart file uploads into the selected vault", async (t) => {
+	const vaultRoot = fs.mkdtempSync(path.join(os.tmpdir(), "personal-graph-route-raw-"));
+	configureVaultEnv(t, vaultRoot);
+	const baseUrl = await listen(createPersonalGraphTestApp(), t);
+	const boundary = "----personal-graph-route-test";
+	const uploadBody = [
+		`--${boundary}`,
+		"Content-Disposition: form-data; name=\"file\"; filename=\"capture.txt\"",
+		"Content-Type: text/plain",
+		"",
+		"Captured source body.",
+		`--${boundary}--`,
+		"",
+	].join("\r\n");
+
+	const response = await fetch(`${baseUrl}/api/personal-graph/raw`, {
+		body: uploadBody,
+		headers: { "Content-Type": `multipart/form-data; boundary=${boundary}` },
+		method: "POST",
+	});
+	const body = await response.json();
+
+	assert.equal(response.status, 201);
+	assert.equal(body.relativePath, "raw/capture.txt");
+	assert.equal(
+		fs.readFileSync(path.join(vaultRoot, "raw", "capture.txt"), "utf8"),
+		"Captured source body.",
+	);
 });

@@ -500,6 +500,8 @@ export const VISUAL_COMPONENTS: ComponentManifestEntry[] = sortEntriesByName([
 	visualComponent("shadow", "Shadow", "@/lib/tokens"),
 	visualComponent("shadow-overlay", "Shadow Overlay", "@/components/website/demos/visual/shadow-overlay"),
 	visualComponent("squircle", "Squircle", "@/components/website/demos/visual/shaders/squircle"),
+	visualComponent("ascii", "ASCII", "@/components/website/demos/visual/shaders/ascii"),
+	visualComponent("dithering", "Dithering", "@/components/website/demos/visual/shaders/dithering"),
 	visualComponent(
 		"particles",
 		"Particles",
