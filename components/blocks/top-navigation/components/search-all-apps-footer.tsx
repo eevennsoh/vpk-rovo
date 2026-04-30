@@ -14,7 +14,7 @@ export default function SearchAllAppsFooter({
 		<div className="mt-2 border-t border-border px-2 py-2">
 			<button
 				type="button"
-				className="flex w-full items-center gap-3 rounded-md border-none bg-transparent px-3 py-2 text-left transition-colors duration-[var(--duration-normal)] ease-[var(--ease-out)] hover:bg-bg-neutral-subtle-hovered"
+				className="flex w-full items-center gap-3 rounded-md border-none bg-transparent px-3 py-2 text-left transition-colors duration-normal ease-out hover:bg-bg-neutral-subtle-hovered"
 				onClick={onClick}
 			>
 				<SearchIcon label="" color={token("color.icon")} />
