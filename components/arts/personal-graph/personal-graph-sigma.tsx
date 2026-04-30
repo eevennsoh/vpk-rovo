@@ -173,12 +173,7 @@ export function PersonalGraphSigma({
 			<div
 				aria-hidden="true"
 				ref={containerRef}
-				className="h-full w-full cursor-grab"
-				style={{
-					backgroundImage:
-						"linear-gradient(rgba(148, 163, 184, 0.12) 1px, transparent 1px), linear-gradient(90deg, rgba(148, 163, 184, 0.12) 1px, transparent 1px)",
-					backgroundSize: "44px 44px",
-				}}
+				className="h-full w-full cursor-grab bg-surface"
 			/>
 			{isLoading ? (
 				<div className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-text-subtle">
