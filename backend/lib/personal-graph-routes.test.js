@@ -26,6 +26,20 @@ function createPersonalGraphTestApp() {
 	return app;
 }
 
+function setEnvValueForTest(t, key, value) {
+	const originalValue = process.env[key];
+	process.env[key] = value;
+
+	t.after(() => {
+		if (originalValue === undefined) {
+			delete process.env[key];
+			return;
+		}
+
+		process.env[key] = originalValue;
+	});
+}
+
 async function dispatch(app, { method = "GET", url }) {
 	const req = createInProcessRequest({
 		headers: { Accept: "application/json" },
@@ -51,32 +65,13 @@ async function dispatch(app, { method = "GET", url }) {
 }
 
 test("GET /api/personal-graph/vault is handled by the Personal Graph router", async (t) => {
-	const originalVault = process.env.PERSONAL_GRAPH_VAULT;
-	const originalSelectedVault = process.env.PERSONAL_GRAPH_SELECTED_VAULT;
-	const originalConfigPath = process.env.PERSONAL_GRAPH_VAULT_CONFIG_PATH;
-	process.env.PERSONAL_GRAPH_VAULT = "";
-	process.env.PERSONAL_GRAPH_SELECTED_VAULT = "";
-	process.env.PERSONAL_GRAPH_VAULT_CONFIG_PATH = path.join(
-		os.tmpdir(),
-		`personal-graph-route-test-${process.pid}.json`,
+	setEnvValueForTest(t, "PERSONAL_GRAPH_VAULT", "");
+	setEnvValueForTest(t, "PERSONAL_GRAPH_SELECTED_VAULT", "");
+	setEnvValueForTest(
+		t,
+		"PERSONAL_GRAPH_VAULT_CONFIG_PATH",
+		path.join(os.tmpdir(), `personal-graph-route-test-${process.pid}.json`),
 	);
-	t.after(() => {
-		if (originalVault === undefined) {
-			delete process.env.PERSONAL_GRAPH_VAULT;
-		} else {
-			process.env.PERSONAL_GRAPH_VAULT = originalVault;
-		}
-		if (originalSelectedVault === undefined) {
-			delete process.env.PERSONAL_GRAPH_SELECTED_VAULT;
-		} else {
-			process.env.PERSONAL_GRAPH_SELECTED_VAULT = originalSelectedVault;
-		}
-		if (originalConfigPath === undefined) {
-			delete process.env.PERSONAL_GRAPH_VAULT_CONFIG_PATH;
-		} else {
-			process.env.PERSONAL_GRAPH_VAULT_CONFIG_PATH = originalConfigPath;
-		}
-	});
 
 	const response = await dispatch(createPersonalGraphTestApp(), {
 		url: "/api/personal-graph/vault",
