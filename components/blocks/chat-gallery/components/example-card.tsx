@@ -28,7 +28,7 @@ export default function ExampleCard({
 			onMouseLeave={() => onPreviewEnd?.()}
 			onFocus={() => onPreviewStart?.()}
 			onBlur={() => onPreviewEnd?.()}
-			className="flex h-[146px] flex-col items-start gap-2 rounded-xl border border-border bg-surface p-4 text-left shadow-none transition-all duration-medium ease-out hover:-translate-y-1 hover:border-transparent hover:shadow-[var(--ds-shadow-overlay)] focus-visible:-translate-y-1 focus-visible:border-transparent focus-visible:shadow-[var(--ds-shadow-overlay)] focus-visible:outline-2 focus-visible:outline-border-focused"
+			className="flex h-[146px] flex-col items-start gap-2 rounded-xl border border-border bg-surface p-4 text-left shadow-none transition-all duration-medium ease-out hover:-translate-y-1 hover:border-transparent hover:shadow-xl focus-visible:-translate-y-1 focus-visible:border-transparent focus-visible:shadow-xl focus-visible:outline-2 focus-visible:outline-border-focused"
 		>
 			<Image src={iconPath} alt="" width={32} height={32} />
 			<div

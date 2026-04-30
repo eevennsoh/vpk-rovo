@@ -19,7 +19,7 @@ export default function RecentItemCard({
 	return (
 		<button
 			type="button"
-			className="flex w-full flex-wrap items-start gap-3 rounded-md border-none bg-transparent px-3 py-2 text-left transition-colors duration-[var(--duration-normal)] ease-[var(--ease-out)] hover:bg-bg-neutral-subtle-hovered sm:flex-nowrap"
+			className="flex w-full flex-wrap items-start gap-3 rounded-md border-none bg-transparent px-3 py-2 text-left transition-colors duration-normal ease-out hover:bg-bg-neutral-subtle-hovered sm:flex-nowrap"
 			onClick={onClick}
 		>
 			<div className="mt-0.5">
