@@ -32,6 +32,13 @@ const SURFACE_SOURCE = fs.readFileSync(
 	),
 	"utf8",
 );
+const TITLE_SOURCE = fs.readFileSync(
+	path.join(
+		__dirname,
+		"../../../components/arts/personal-graph/personal-graph-title-scramble.tsx",
+	),
+	"utf8",
+);
 const BACKDROP_SOURCE = fs.readFileSync(
 	path.join(
 		__dirname,
@@ -43,6 +50,13 @@ const SEARCH_SOURCE = fs.readFileSync(
 	path.join(
 		__dirname,
 		"../../../components/arts/personal-graph/personal-graph-search.tsx",
+	),
+	"utf8",
+);
+const VAULT_PICKER_SOURCE = fs.readFileSync(
+	path.join(
+		__dirname,
+		"../../../components/arts/personal-graph/personal-graph-vault-picker.tsx",
 	),
 	"utf8",
 );
@@ -145,6 +159,12 @@ test("Personal Graph header exposes the app theme toggle", () => {
 	assert.match(SURFACE_SOURCE, /<ThemeToggle \/>/);
 });
 
+test("Personal Graph header keeps controls centered below the title", () => {
+	assert.match(SURFACE_SOURCE, /<div className="flex min-w-0 max-w-full flex-wrap items-center justify-center gap-2 text-center">/);
+	assert.doesNotMatch(SURFACE_SOURCE, /xl:absolute xl:right-0 xl:top-0 xl:justify-end/);
+	assert.doesNotMatch(VAULT_PICKER_SOURCE, /hidden max-w-\[180px\] truncate text-xs text-neutral-600 lg:block/);
+});
+
 test("Personal Graph header exposes the capture queue as a top nav popover", () => {
 	assert.match(
 		SURFACE_SOURCE,
@@ -170,10 +190,13 @@ test("Personal Graph header uses the display font lockup", () => {
 	assert.match(SURFACE_SOURCE, /var\(--font-affigere\)/);
 	assert.match(SURFACE_SOURCE, /var\(--font-departure-mono\)/);
 	assert.match(SURFACE_SOURCE, /<div className="mx-auto min-w-0 max-w-full text-center text-neutral-950">/);
-	assert.match(SURFACE_SOURCE, /className="text-\[3\.75rem\] uppercase leading-\[0\.8\] text-neutral-950/);
+	assert.match(SURFACE_SOURCE, /className="text-\[3\.75rem\] leading-\[0\.8\] text-neutral-950/);
+	assert.doesNotMatch(SURFACE_SOURCE, /uppercase leading-\[0\.8\]/);
 	assert.doesNotMatch(SURFACE_SOURCE, /className="[^"]*tracking-normal[^"]*"\s+style=\{PERSONAL_GRAPH_TITLE_FONT_STYLE\}/);
-	assert.match(SURFACE_SOURCE, /<span className="block">PERSONAL<\/span>/);
-	assert.match(SURFACE_SOURCE, /<span className="block">GRAPH<\/span>/);
+	assert.match(TITLE_SOURCE, /const PERSONAL_GRAPH_TITLE_TEXT = "PERSONAL\\nGRAPH";/);
+	assert.match(TITLE_SOURCE, /aria-label="PERSONAL GRAPH"/);
+	assert.match(TITLE_SOURCE, /whitespace-pre-line/);
+	assert.doesNotMatch(TITLE_SOURCE, /<span/);
 	assert.doesNotMatch(SURFACE_SOURCE, /BranchIcon/);
 });
 

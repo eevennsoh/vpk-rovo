@@ -9,23 +9,10 @@ interface PersonalGraphVaultPickerProps {
 	onVaultChanged: () => void;
 }
 
-function getFolderName(pathname: string | null) {
-	if (!pathname) {
-		return "No vault";
-	}
-
-	const segments = pathname.split("/").filter(Boolean);
-	return segments.at(-1) ?? pathname;
-}
-
 export function PersonalGraphVaultPicker({
 	onVaultChanged,
 }: Readonly<PersonalGraphVaultPickerProps>) {
-	const { error, isLoading, isSelecting, selectFolder, settings } = useVaultSettings();
-	const folderName = getFolderName(settings?.root ?? null);
-	const statusTitle = settings?.root
-		? `${settings.root}${settings.source === "env" ? " (from env fallback)" : ""}`
-		: settings?.message ?? "Choose a Personal Graph vault folder";
+	const { isLoading, isSelecting, selectFolder } = useVaultSettings();
 
 	const handleChooseVault = useCallback(async () => {
 		const nextSettings = await selectFolder();
@@ -36,12 +23,6 @@ export function PersonalGraphVaultPicker({
 
 	return (
 		<div className="flex min-w-0 items-center gap-2">
-			<p
-				className="hidden max-w-[180px] truncate text-xs text-neutral-600 lg:block"
-				title={statusTitle}
-			>
-				{error ? error.message : folderName}
-			</p>
 			<Button
 				aria-label="Choose Personal Graph vault folder"
 				disabled={isSelecting}

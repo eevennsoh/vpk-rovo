@@ -105,6 +105,7 @@
 		"linkedom": "^0.18.12",
 		"media-chrome": "^4.19.0",
 		"motion": "^12.38.0",
+		"motion-plus": "https://api.motion.dev/registry?package=motion-plus&version=2.11.2&token=fc0a8c2295343956b76bd070a01a9863c7a11d012c3983c9a7bf9720642e239f",
 		"nanoid": "^5.1.9",
 		"next": "16.2.4",
 		"next-themes": "^0.4.6",

@@ -25,6 +25,7 @@ import { PersonalGraphIngestButton } from "./personal-graph-ingest-button";
 import { PersonalGraphLog } from "./personal-graph-log";
 import { PersonalGraphNeuralControls } from "./personal-graph-neural-controls";
 import { PersonalGraphSearch } from "./personal-graph-search";
+import { PersonalGraphTitle } from "./personal-graph-title-scramble";
 import { PersonalGraphVaultPicker } from "./personal-graph-vault-picker";
 
 type PersonalGraphSurfaceProps = React.ComponentProps<"main">;
@@ -301,13 +302,10 @@ export function PersonalGraphSurface({
 			<header className="absolute inset-x-4 top-5 z-30 sm:inset-x-6 lg:inset-x-8">
 				<div className="relative flex flex-col items-center gap-4">
 					<div className="mx-auto min-w-0 max-w-full text-center text-neutral-950">
-						<h1
-							className="text-[3.75rem] uppercase leading-[0.8] text-neutral-950 min-[390px]:text-[4.5rem] sm:text-[6.25rem] lg:text-[7.75rem] xl:text-[8.75rem]"
+						<PersonalGraphTitle
+							className="text-[3.75rem] leading-[0.8] text-neutral-950 min-[390px]:text-[4.5rem] sm:text-[6.25rem] lg:text-[7.75rem] xl:text-[8.75rem]"
 							style={PERSONAL_GRAPH_TITLE_FONT_STYLE}
-						>
-							<span className="block">PERSONAL</span>
-							<span className="block">GRAPH</span>
-						</h1>
+						/>
 						<p
 							className="mt-5 truncate text-[1rem] leading-none tracking-normal text-neutral-950 sm:mt-6 sm:text-[1.4rem] lg:text-[1.55rem]"
 							style={PERSONAL_GRAPH_META_FONT_STYLE}
@@ -315,7 +313,7 @@ export function PersonalGraphSurface({
 							{getGraphStatsText(explorer)}
 						</p>
 					</div>
-					<div className="flex min-w-0 flex-wrap items-center justify-center gap-2 xl:absolute xl:right-0 xl:top-0 xl:justify-end">
+					<div className="flex min-w-0 max-w-full flex-wrap items-center justify-center gap-2 text-center">
 						{error ? (
 							<p className="max-w-[360px] truncate text-xs text-red-700">{error.message}</p>
 						) : null}

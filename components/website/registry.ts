@@ -7685,6 +7685,9 @@ const VISUAL_DEMOS: Record<string, ComponentType> = {
   posterize: dynamic(() => import("./demos/visual/posterize-demo"), {
     ssr: false,
   }),
+  "scramble-text": dynamic(() => import("./demos/visual/scramble-text-demo"), {
+    ssr: false,
+  }),
   slice: dynamic(() => import("./demos/visual/slice-demo"), {
     ssr: false,
   }),
