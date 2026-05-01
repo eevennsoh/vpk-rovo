@@ -30,7 +30,7 @@ type GUIPanelContextValue = Readonly<{
 const GUIPanelContext = createContext<GUIPanelContextValue | null>(null);
 
 /** Register value keys so GUI.Panel only copies values for mounted controls. */
-function useGUIValueKeys(valueKeys?: string | readonly string[]) {
+export function useGUIValueKeys(valueKeys?: string | readonly string[]) {
 	const ctx = use(GUIPanelContext);
 	const normalized = valueKeys == null ? [] : Array.isArray(valueKeys) ? valueKeys : [valueKeys];
 	const serialized = normalized.join("\0");
