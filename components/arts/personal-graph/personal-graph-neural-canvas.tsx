@@ -1,13 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useReducedMotion } from "motion/react";
+import { useMotionValue, useReducedMotion, useSpring } from "motion/react";
 import { useTheme } from "@/components/utils/theme-wrapper";
 import { cn } from "@/lib/utils";
 import {
 	createNeuralCamera,
 	focusNeuralCameraOnPoint,
 	panNeuralCamera,
+	viewportToWorld,
 	zoomNeuralCameraAtPoint,
 	worldToViewport,
 	type NeuralCamera,
@@ -41,6 +42,11 @@ interface SelectedOverlayState {
 }
 
 const EMPTY_VIEWPORT = { height: 620, width: 960 } satisfies NeuralViewport;
+
+const ZOOM_SPRING_CONFIG = { stiffness: 220, damping: 28, mass: 0.5, restDelta: 0.0005 } as const;
+const ZOOM_SPRING_INSTANT = { stiffness: 4000, damping: 200, mass: 0.05, restDelta: 0.0005 } as const;
+const FOCUS_SPRING_CONFIG = { stiffness: 160, damping: 24, mass: 0.7, restDelta: 0.0005 } as const;
+const FOCUS_SPRING_INSTANT = { stiffness: 4000, damping: 220, mass: 0.05, restDelta: 0.0005 } as const;
 
 function getPointerPoint(event: React.PointerEvent<HTMLDivElement> | React.WheelEvent<HTMLDivElement>): NeuralPoint {
 	const rect = event.currentTarget.getBoundingClientRect();
@@ -151,9 +157,15 @@ export function PersonalGraphNeuralCanvas({
 	const cameraRef = useRef<NeuralCamera>(createNeuralCamera());
 	const dragStartRef = useRef<NeuralPoint | null>(null);
 	const lastPointerRef = useRef<NeuralPoint | null>(null);
+	const wheelAnchorRef = useRef<NeuralPoint | null>(null);
 	const layoutRef = useRef<NeuralGraphLayout | null>(null);
 	const requestRenderRef = useRef<() => void>(() => {});
 	const selectedOverlayRef = useRef<SelectedOverlayState | null>(null);
+	const targetZoomMV = useMotionValue(cameraRef.current.zoom);
+	const smoothZoomMV = useSpring(targetZoomMV, reduceMotion ? ZOOM_SPRING_INSTANT : ZOOM_SPRING_CONFIG);
+	const targetFocusMV = useMotionValue(selectedNodeId ? 1 : 0);
+	const focusProgressMV = useSpring(targetFocusMV, reduceMotion ? FOCUS_SPRING_INSTANT : FOCUS_SPRING_CONFIG);
+	const focusProgressRef = useRef(selectedNodeId ? 1 : 0);
 	const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
 	const hoveredNodeIdRef = useRef<string | null>(null);
 	const [isPanning, setIsPanning] = useState(false);
@@ -204,6 +216,7 @@ export function PersonalGraphNeuralCanvas({
 		const render = (now: number) => {
 			context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
 			const layout = computeNeuralGraphLayout({
+				focusProgress: focusProgressRef.current,
 				params,
 				reduceMotion,
 				selectedNodeId,
@@ -215,6 +228,7 @@ export function PersonalGraphNeuralCanvas({
 			drawNeuralGraph(context, layout, {
 				background,
 				camera: cameraRef.current,
+				focusProgress: focusProgressRef.current,
 				hoveredNodeId: hoveredNodeIdRef.current,
 				params,
 				selectedNodeId,
@@ -263,15 +277,55 @@ export function PersonalGraphNeuralCanvas({
 	}, [background, params, reduceMotion, renderTheme, selectedNodeId, store, viewport]);
 
 	useEffect(() => {
+		targetFocusMV.set(selectedNodeId ? 1 : 0);
+	}, [selectedNodeId, targetFocusMV]);
+
+	useEffect(() => {
+		return focusProgressMV.on("change", (nextFocusProgress) => {
+			focusProgressRef.current = nextFocusProgress;
+			requestRenderRef.current();
+		});
+	}, [focusProgressMV]);
+
+	useEffect(() => {
+		return smoothZoomMV.on("change", (nextZoom) => {
+			const cam = cameraRef.current;
+			if (cam.zoom === nextZoom) return;
+			const anchor = wheelAnchorRef.current;
+			if (anchor) {
+				const before = viewportToWorld(anchor, cam, viewport, params);
+				const next = { ...cam, zoom: nextZoom };
+				const after = viewportToWorld(anchor, next, viewport, params);
+				cameraRef.current = {
+					...next,
+					x: next.x + before.x - after.x,
+					y: next.y + before.y - after.y,
+				};
+			} else {
+				cameraRef.current = { ...cam, zoom: nextZoom };
+			}
+			requestRenderRef.current();
+		});
+	}, [smoothZoomMV, params, viewport]);
+
+	useEffect(() => {
 		if (!selectedNodeId) {
 			cameraRef.current = createNeuralCamera({ zoom: cameraRef.current.zoom });
+			targetZoomMV.jump(cameraRef.current.zoom);
 			selectedOverlayRef.current = null;
 			setSelectedOverlay(null);
 			requestRenderRef.current();
 			return;
 		}
 
-		const layout = layoutRef.current;
+		const layout = layoutRef.current ?? computeNeuralGraphLayout({
+			focusProgress: focusProgressRef.current,
+			params,
+			reduceMotion,
+			selectedNodeId,
+			store,
+			viewport,
+		});
 		const node = layout?.nodesById.get(selectedNodeId);
 		if (!node) return;
 		cameraRef.current = focusNeuralCameraOnPoint({
@@ -280,8 +334,10 @@ export function PersonalGraphNeuralCanvas({
 			point: node,
 			viewport,
 		});
+		wheelAnchorRef.current = null;
+		targetZoomMV.jump(cameraRef.current.zoom);
 		requestRenderRef.current();
-	}, [params, selectedNodeId, viewport]);
+	}, [params, reduceMotion, selectedNodeId, store, targetZoomMV, viewport]);
 
 	const updateHover = useCallback((point: NeuralPoint) => {
 		const layout = layoutRef.current;
@@ -356,15 +412,18 @@ export function PersonalGraphNeuralCanvas({
 
 	const handleWheel = useCallback((event: React.WheelEvent<HTMLDivElement>) => {
 		event.preventDefault();
-		cameraRef.current = zoomNeuralCameraAtPoint({
-			camera: cameraRef.current,
+		const pointer = getPointerPoint(event);
+		wheelAnchorRef.current = pointer;
+		const target = zoomNeuralCameraAtPoint({
+			camera: { ...cameraRef.current, zoom: targetZoomMV.get() },
 			delta: event.deltaY,
+			deltaMode: event.deltaMode,
 			params,
-			pointer: getPointerPoint(event),
+			pointer,
 			viewport,
 		});
-		requestRenderRef.current();
-	}, [params, viewport]);
+		targetZoomMV.set(target.zoom);
+	}, [params, targetZoomMV, viewport]);
 
 	const cursorClass = isPanning ? "cursor-grabbing" : hoveredNodeId ? "cursor-pointer" : "cursor-grab";
 	const backgroundClass = background === "transparent" ? "bg-transparent" : "bg-surface";

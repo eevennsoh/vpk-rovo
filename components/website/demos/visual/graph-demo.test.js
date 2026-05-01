@@ -48,7 +48,7 @@ test("Graph visual follows the VPK visual demo control structure", () => {
 	assert.match(GRAPH_SOURCE, /NEURAL_GRAPH_PARAM_SECTIONS/);
 	assert.match(GRAPH_SOURCE, /DEFAULT_NEURAL_GRAPH_PARAMS/);
 	assert.match(GRAPH_SOURCE, /VISUAL_GRAPH_EXPLORER/);
-	assert.match(GRAPH_SOURCE, /max-w-2xl flex-col/);
+	assert.match(GRAPH_SOURCE, /max-w-4xl flex-col/);
 	assert.match(GRAPH_SOURCE, /data-visual-graph="true"/);
 	assert.doesNotMatch(GRAPH_SOURCE, /PersonalGraphNeuralControls/);
 });

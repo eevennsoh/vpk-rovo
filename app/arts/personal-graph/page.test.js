@@ -87,6 +87,13 @@ const NEURAL_LAYOUT_SOURCE = fs.readFileSync(
 	),
 	"utf8",
 );
+const NEURAL_RENDERER_SOURCE = fs.readFileSync(
+	path.join(
+		__dirname,
+		"../../../components/arts/personal-graph/lib/neural-graph/renderer.ts",
+	),
+	"utf8",
+);
 const NEURAL_CAMERA_SOURCE = fs.readFileSync(
 	path.join(
 		__dirname,
@@ -188,7 +195,7 @@ test("Personal Graph keeps the owned canvas renderer accessible", () => {
 	assert.match(NEURAL_CANVAS_SOURCE, /<SelectedNodeOverlay/);
 });
 
-test("Personal Graph uses a light editor canvas backdrop", () => {
+test("Personal Graph uses a plain light editor canvas backdrop", () => {
 	assert.match(
 		SURFACE_SOURCE,
 		/import \{ PersonalGraphBackdrop \} from "\.\/personal-graph-backdrop";/,
@@ -199,7 +206,7 @@ test("Personal Graph uses a light editor canvas backdrop", () => {
 	assert.match(BACKDROP_SOURCE, /overflow-hidden bg-white/);
 	assert.match(BACKDROP_SOURCE, /backgroundImage:/);
 	assert.match(BACKDROP_SOURCE, /backgroundSize: "72px 72px"/);
-	assert.match(BACKDROP_SOURCE, /radial-gradient\(circle at 50% 75%/);
+	assert.doesNotMatch(BACKDROP_SOURCE, /radial-gradient\(/);
 	assert.doesNotMatch(BACKDROP_SOURCE, /LiquidGradient/);
 	assert.doesNotMatch(BACKDROP_SOURCE, /Ascii/);
 	assert.match(GRAPH_SOURCE, /background\?: "default" \| "transparent"/);
@@ -232,6 +239,14 @@ test("Personal Graph exposes a hidden Neural Burst parameter panel", () => {
 
 test("Personal Graph focuses and clears selection through the owned interaction layer", () => {
 	assert.match(NEURAL_CANVAS_SOURCE, /focusNeuralCameraOnPoint/);
+	assert.match(NEURAL_CANVAS_SOURCE, /focusProgressRef/);
+	assert.match(NEURAL_CANVAS_SOURCE, /focusProgress: focusProgressRef\.current/);
+	assert.match(NEURAL_LAYOUT_SOURCE, /applySelectionFocusLayout/);
+	assert.match(NEURAL_LAYOUT_SOURCE, /getSelectedNeighborhood/);
+	assert.match(NEURAL_RENDERER_SOURCE, /getSelectedRelationshipIds/);
+	assert.match(NEURAL_RENDERER_SOURCE, /focusProgress > 0/);
+	assert.match(NEURAL_RENDERER_SOURCE, /drawOrganicEdgePath/);
+	assert.match(NEURAL_RENDERER_SOURCE, /bezierCurveTo/);
 	assert.match(NEURAL_CANVAS_SOURCE, /hitTestNeuralNode/);
 	assert.match(NEURAL_CANVAS_SOURCE, /onClearSelection\(\)/);
 	assert.match(GRAPH_SOURCE, /onClearSelection=\{handleClearSelection\}/);

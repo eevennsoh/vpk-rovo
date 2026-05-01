@@ -68,7 +68,7 @@ agent:
     Merging: 1
 codex:
   command: codex app-server
-  approval_policy: never
+  approval_policy: on-request
   thread_sandbox: workspace-write
   turn_timeout_ms: 3600000
   read_timeout_ms: 5000

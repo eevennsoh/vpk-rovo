@@ -247,5 +247,5 @@ Only the upstream `linear` skill is copied into this repo. The upstream
 `commit`, `push`, `pull`, and `land` skills are tuned for the `openai/symphony`
 repo's own validation commands, so VPK-specific branch, validation, PR, merge,
 and phase-skill routing instructions live directly in `WORKFLOW.md`. The
-workflow uses Codex's `never` approval policy inside the workspace-write sandbox
-so Symphony can run without waiting for interactive approval prompts.
+workflow uses Codex's `on-request` approval policy inside the workspace-write
+sandbox because the current Codex app-server requirements reject `never`.

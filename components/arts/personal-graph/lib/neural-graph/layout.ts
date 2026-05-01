@@ -1,6 +1,7 @@
 import type { NeuralPoint, NeuralViewport } from "./camera";
 import type { NeuralGraphParams } from "./params";
 import {
+	getSelectedNeighborhood,
 	getVisibleGraphEdges,
 	getVisibleGraphNodes,
 	type NeuralGraphEdge,
@@ -35,6 +36,15 @@ export interface NeuralGraphLayout {
 
 const DEG_TO_RAD = Math.PI / 180;
 const RELAXATION_ITERATIONS = 18;
+
+function lerp(start: number, end: number, progress: number) {
+	return start + (end - start) * progress;
+}
+
+function clampFocusProgress(value = 0) {
+	if (!Number.isFinite(value)) return 0;
+	return Math.min(1, Math.max(0, value));
+}
 
 function hashString(value: string) {
 	let hash = 2166136261;
@@ -160,7 +170,71 @@ function relaxLayout(nodes: NeuralLayoutNode[], edges: NeuralGraphEdge[], params
 	}
 }
 
+function applySelectionFocusLayout({
+	focusProgress,
+	nodes,
+	params,
+	selectedNodeId,
+	store,
+}: {
+	focusProgress?: number;
+	nodes: NeuralLayoutNode[];
+	params: NeuralGraphParams;
+	selectedNodeId: string | null;
+	store: NeuralGraphStore;
+}) {
+	const progress = clampFocusProgress(focusProgress);
+	if (!selectedNodeId || progress <= 0) return;
+
+	const selectedNode = nodes.find((node) => node.id === selectedNodeId);
+	if (!selectedNode) return;
+
+	const selectedAnchor = { x: selectedNode.x, y: selectedNode.y };
+	const visibleNodeIds = new Set(nodes.map((node) => node.id));
+	const focusNeighbors = getSelectedNeighborhood(store, selectedNodeId, nodes.length)
+		.filter(({ node }) => visibleNodeIds.has(node.id));
+	const neighborOrder = new Map(focusNeighbors.map(({ node }, index) => [node.id, index]));
+	const linkedCount = Math.max(1, focusNeighbors.length);
+	const ringRadiusX = params.spread * 0.34;
+	const ringRadiusY = params.spread * 0.24;
+	const maxArc = Math.PI * 0.9;
+	const angleStep = linkedCount <= 1 ? 0 : maxArc / (linkedCount - 1);
+	const startAngle = -Math.PI / 2 - angleStep * (linkedCount - 1) * 0.5;
+	const focusBlend = progress * 0.86;
+	const retreatBlend = progress * 0.92;
+
+	for (const node of nodes) {
+		if (node.id === selectedNodeId) {
+			continue;
+		}
+
+		const order = neighborOrder.get(node.id);
+		if (order !== undefined) {
+			const angle = startAngle + angleStep * order;
+			const targetX = selectedAnchor.x + Math.cos(angle) * ringRadiusX;
+			const targetY = selectedAnchor.y + Math.sin(angle) * ringRadiusY;
+			node.x = lerp(node.x, targetX, focusBlend);
+			node.y = lerp(node.y, targetY, focusBlend);
+			continue;
+		}
+
+		const dx = node.x - selectedAnchor.x;
+		const dy = node.y - selectedAnchor.y;
+		const distance = Math.hypot(dx, dy);
+		const fallbackX = signedHash(node.id, "focus-away-x");
+		const fallbackY = signedHash(node.id, "focus-away-y");
+		const unitX = distance > 1 ? dx / distance : fallbackX;
+		const unitY = distance > 1 ? dy / distance : fallbackY;
+		const push = params.spread * (0.44 + unitHash(node.id, "focus-away") * 0.28);
+		const targetX = node.x + unitX * push;
+		const targetY = node.y + unitY * push * 0.7;
+		node.x = lerp(node.x, targetX, retreatBlend);
+		node.y = lerp(node.y, targetY, retreatBlend);
+	}
+}
+
 export function computeNeuralGraphLayout({
+	focusProgress = 0,
 	params,
 	reduceMotion = false,
 	selectedNodeId,
@@ -168,6 +242,7 @@ export function computeNeuralGraphLayout({
 	time = 0,
 	viewport,
 }: {
+	focusProgress?: number;
 	params: NeuralGraphParams;
 	reduceMotion?: boolean;
 	selectedNodeId: string | null;
@@ -182,6 +257,13 @@ export function computeNeuralGraphLayout({
 	);
 
 	relaxLayout(layoutNodes, visibleEdges, params);
+	applySelectionFocusLayout({
+		focusProgress,
+		nodes: layoutNodes,
+		params,
+		selectedNodeId,
+		store,
+	});
 
 	const nodesById = new Map(layoutNodes.map((node) => [node.id, node]));
 	const layoutEdges = visibleEdges.flatMap((edge) => {

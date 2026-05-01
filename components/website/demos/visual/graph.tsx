@@ -1,6 +1,8 @@
 "use client";
 
-import { useCallback, useRef, useState, type ComponentProps } from "react";
+import { useCallback, useMemo, useRef, useState, type ComponentProps, type CSSProperties } from "react";
+import ChevronRightIcon from "@atlaskit/icon/core/chevron-right";
+import CrossIcon from "@atlaskit/icon/core/cross";
 import { PersonalGraphNeuralCanvas } from "@/components/arts/personal-graph/personal-graph-neural-canvas";
 import {
 	DEFAULT_NEURAL_GRAPH_PARAMS,
@@ -13,9 +15,12 @@ import type { NeuralGraphThemeMode } from "@/components/arts/personal-graph/lib/
 import type {
 	VaultEdgeKind,
 	VaultExplorer,
+	VaultNode,
 	VaultNodeKind,
 } from "@/components/arts/personal-graph/lib/personal-graph-types";
+import { Button } from "@/components/ui/button";
 import { GUI } from "@/components/utils/gui";
+import { ROVO_COLOR_SWATCHES } from "@/lib/rovo-colors";
 import { token } from "@/lib/tokens";
 import { cn } from "@/lib/utils";
 
@@ -37,6 +42,7 @@ interface GraphProps extends Omit<ComponentProps<"div">, "children"> {
 
 interface GraphNodeDefinition {
 	bodyPreview: string;
+	color: string;
 	id: string;
 	kind: VaultNodeKind;
 	relativePath: string;
@@ -50,6 +56,34 @@ interface GraphEdgeDefinition {
 	target: string;
 }
 
+const ROVO_GRAPH_COLORS = {
+	blue: ROVO_COLOR_SWATCHES[0].hex,
+	orange: ROVO_COLOR_SWATCHES[1].hex,
+	purple: ROVO_COLOR_SWATCHES[2].hex,
+	lime: ROVO_COLOR_SWATCHES[3].hex,
+	neutral: "#44546F",
+	white: "#FFFFFF",
+} as const;
+
+export const ROVO_GRAPH_DEFAULT_PARAMS: NeuralGraphParams = clampNeuralGraphParams({
+	...DEFAULT_NEURAL_GRAPH_PARAMS,
+	amplitude: 0.2,
+	coneAngle: 92,
+	depthZ: 42,
+	frequency: 1.2,
+	maxVisibleNodes: 96,
+	nodeColor: ROVO_GRAPH_COLORS.blue,
+	nodeSize: 3.2,
+	originOffset: 0,
+	originY: 0.8,
+	radiusMin: 24,
+	radiusMax: 88,
+	speed: 0.65,
+	spread: 420,
+	tiltX: -4,
+	tiltZ: -6,
+});
+
 const NODE_SHAPE_OPTIONS = [
 	{ value: "circle", label: "Circle" },
 	{ value: "square", label: "Square" },
@@ -59,123 +93,295 @@ const GENERATED_AT = "2026-04-30T00:00:00.000Z";
 
 const GRAPH_NODE_DEFINITIONS: GraphNodeDefinition[] = [
 	{
-		bodyPreview: "A reusable canvas renderer with pan, zoom, selection, and animated depth.",
-		id: "graph-canvas",
-		kind: "concept",
-		relativePath: "visual/graph/canvas.md",
-		title: "Graph canvas",
-	},
-	{
-		bodyPreview: "The editable set of flow, structure, cone, and node controls.",
-		id: "graph-parameters",
-		kind: "concept",
-		relativePath: "visual/graph/parameters.md",
-		title: "Graph parameters",
-	},
-	{
-		bodyPreview: "Graph data shaped like Personal Graph vault nodes and relationships.",
-		id: "vault-explorer",
-		kind: "source",
-		relativePath: "personal-graph/vault-explorer.md",
-		title: "Vault explorer",
-	},
-	{
-		bodyPreview: "Wiki pages, raw captures, synthesized notes, and entities in one graph.",
-		id: "personal-graph",
+		bodyPreview: "Signals from projects, pages, decisions, and people stitched into one living business map.",
+		color: ROVO_GRAPH_COLORS.blue,
+		id: "teamwork-graph",
 		kind: "synthesis",
-		relativePath: "personal-graph/index.md",
-		title: "Personal Graph",
+		relativePath: "rovo/teamwork-graph.md",
+		title: "Teamwork Graph",
 	},
 	{
-		bodyPreview: "Canvas drawing paths, labels, rays, node shapes, and active edges.",
-		id: "renderer",
+		bodyPreview: "Natural-language answers grounded in the work graph rather than a detached chat history.",
+		color: ROVO_GRAPH_COLORS.purple,
+		id: "rovo-chat",
 		kind: "concept",
-		relativePath: "visual/graph/renderer.md",
-		title: "Renderer",
+		relativePath: "rovo/chat.md",
+		title: "Rovo Chat",
 	},
 	{
-		bodyPreview: "Stable node placement with relaxation, repulsion, perspective, and motion.",
-		id: "layout",
+		bodyPreview: "A way to find the right artifact, owner, or decision across connected work systems.",
+		color: ROVO_GRAPH_COLORS.purple,
+		id: "rovo-search",
 		kind: "concept",
-		relativePath: "visual/graph/layout.md",
-		title: "Layout",
+		relativePath: "rovo/search.md",
+		title: "Rovo Search",
 	},
 	{
-		bodyPreview: "World-to-viewport transforms that keep zoom and focus interactions predictable.",
-		id: "camera",
+		bodyPreview: "Automated assistants that can inspect context, take action, and hand work back clearly.",
+		color: ROVO_GRAPH_COLORS.purple,
+		id: "rovo-agents",
 		kind: "concept",
-		relativePath: "visual/graph/camera.md",
-		title: "Camera",
+		relativePath: "rovo/agents.md",
+		title: "Rovo Agents",
 	},
 	{
-		bodyPreview: "Hit testing, drag thresholds, wheel zoom, and node selection behavior.",
-		id: "interaction",
-		kind: "concept",
-		relativePath: "visual/graph/interaction.md",
-		title: "Interaction",
-	},
-	{
-		bodyPreview: "Light and dark palette switching through the app theme wrapper.",
-		id: "theme",
-		kind: "entity",
-		relativePath: "visual/graph/theme.md",
-		title: "Theme",
-	},
-	{
-		bodyPreview: "Reader notes and backlinks that become graph edges.",
-		id: "wiki-links",
+		bodyPreview: "Issue state, ownership, sprint shape, and blockers feeding the graph as operational signal.",
+		color: ROVO_GRAPH_COLORS.orange,
+		id: "jira-work",
 		kind: "source",
-		relativePath: "vault/wiki-links.md",
-		title: "Wiki links",
+		relativePath: "sources/jira-work.md",
+		title: "Jira work",
 	},
 	{
-		bodyPreview: "Captured source material before it is summarized into wiki pages.",
-		id: "raw-sources",
-		kind: "raw",
-		relativePath: "raw/sources.md",
-		title: "Raw sources",
+		bodyPreview: "Plans, briefs, retros, and decisions that give the graph long-form team memory.",
+		color: ROVO_GRAPH_COLORS.orange,
+		id: "confluence-pages",
+		kind: "source",
+		relativePath: "sources/confluence-pages.md",
+		title: "Confluence pages",
 	},
 	{
-		bodyPreview: "QMD search and summary results that add context around selected nodes.",
-		id: "qmd-summaries",
+		bodyPreview: "Shared outcomes that help Rovo understand why the work matters, not just what changed.",
+		color: ROVO_GRAPH_COLORS.lime,
+		id: "project-goals",
 		kind: "entity",
-		relativePath: "personal-graph/qmd-summaries.md",
-		title: "QMD summaries",
+		relativePath: "work/project-goals.md",
+		title: "Project goals",
 	},
 	{
-		bodyPreview: "Source capture, ingestion, and refresh controls around the graph.",
-		id: "capture-flow",
+		bodyPreview: "The people, owners, reviewers, and experts connected to each work artifact.",
+		color: ROVO_GRAPH_COLORS.lime,
+		id: "team-owners",
 		kind: "entity",
-		relativePath: "personal-graph/capture-flow.md",
-		title: "Capture flow",
+		relativePath: "work/team-owners.md",
+		title: "Team owners",
 	},
 	{
-		bodyPreview: "Screen-reader fallback content for the same nodes and edges.",
-		id: "accessibility",
+		bodyPreview: "Recorded tradeoffs that let follow-up answers explain the path, not just the final result.",
+		color: ROVO_GRAPH_COLORS.orange,
+		id: "decisions",
 		kind: "concept",
-		relativePath: "visual/graph/accessibility.md",
-		title: "Accessibility",
+		relativePath: "knowledge/decisions.md",
+		title: "Decisions",
+	},
+	{
+		bodyPreview: "Documents and discussion distilled into reusable context cards for quick recall.",
+		color: ROVO_GRAPH_COLORS.purple,
+		id: "knowledge-cards",
+		kind: "synthesis",
+		relativePath: "knowledge/cards.md",
+		title: "Knowledge cards",
+	},
+	{
+		bodyPreview: "Customer notes, support themes, and requests that connect external need to internal work.",
+		color: ROVO_GRAPH_COLORS.neutral,
+		id: "customer-insights",
+		kind: "raw",
+		relativePath: "raw/customer-insights.md",
+		title: "Customer insights",
+	},
+	{
+		bodyPreview: "Near-real-time team discussion that helps identify emerging questions and unresolved blockers.",
+		color: ROVO_GRAPH_COLORS.neutral,
+		id: "team-signals",
+		kind: "source",
+		relativePath: "sources/team-signals.md",
+		title: "Team signals",
+	},
+	{
+		bodyPreview: "Milestones, risk, ownership, and launch readiness tied back to decisions and active work.",
+		color: ROVO_GRAPH_COLORS.lime,
+		id: "release-plan",
+		kind: "entity",
+		relativePath: "work/release-plan.md",
+		title: "Release plan",
+	},
+	{
+		bodyPreview: "Signals from status pages, tickets, and postmortems connected to active remediation work.",
+		color: ROVO_GRAPH_COLORS.neutral,
+		id: "incident-context",
+		kind: "raw",
+		relativePath: "raw/incident-context.md",
+		title: "Incident context",
+	},
+	{
+		bodyPreview: "Reusable playbooks that connect prior decisions to the next best operational step.",
+		color: ROVO_GRAPH_COLORS.blue,
+		id: "playbooks",
+		kind: "synthesis",
+		relativePath: "knowledge/playbooks.md",
+		title: "Playbooks",
+	},
+	{
+		bodyPreview: "A visible trail showing which sources shaped the answer and what should be checked next.",
+		color: ROVO_GRAPH_COLORS.blue,
+		id: "grounded-response",
+		kind: "concept",
+		relativePath: "rovo/grounded-response.md",
+		title: "Grounded response",
 	},
 ];
 
 const GRAPH_EDGE_DEFINITIONS: GraphEdgeDefinition[] = [
-	{ label: "renders", source: "personal-graph", target: "graph-canvas" },
-	{ label: "uses", source: "graph-canvas", target: "renderer" },
-	{ label: "projects", source: "graph-canvas", target: "layout" },
-	{ label: "frames", source: "graph-canvas", target: "camera" },
-	{ label: "handles", source: "graph-canvas", target: "interaction" },
-	{ label: "tunes", source: "graph-parameters", target: "layout" },
-	{ label: "styles", source: "graph-parameters", target: "renderer" },
-	{ label: "colors", source: "theme", target: "renderer", kind: "frontmatter_source" },
-	{ label: "feeds", source: "vault-explorer", target: "personal-graph" },
-	{ label: "links", source: "wiki-links", target: "vault-explorer" },
-	{ label: "captures", source: "raw-sources", target: "capture-flow" },
-	{ label: "summarizes", source: "capture-flow", target: "qmd-summaries" },
-	{ label: "enriches", source: "qmd-summaries", target: "personal-graph" },
-	{ label: "describes", source: "accessibility", target: "personal-graph" },
-	{ label: "focuses", source: "interaction", target: "camera" },
-	{ label: "selects", source: "interaction", target: "graph-parameters" },
+	{ label: "grounds", source: "teamwork-graph", target: "rovo-chat" },
+	{ label: "grounds", source: "teamwork-graph", target: "rovo-search" },
+	{ label: "guides", source: "teamwork-graph", target: "rovo-agents" },
+	{ label: "indexes", source: "jira-work", target: "teamwork-graph" },
+	{ label: "indexes", source: "confluence-pages", target: "teamwork-graph" },
+	{ label: "aligns", source: "project-goals", target: "jira-work" },
+	{ label: "owns", source: "team-owners", target: "jira-work" },
+	{ label: "records", source: "decisions", target: "confluence-pages" },
+	{ label: "summarizes", source: "knowledge-cards", target: "confluence-pages" },
+	{ label: "answers", source: "knowledge-cards", target: "rovo-chat" },
+	{ label: "finds", source: "rovo-search", target: "knowledge-cards" },
+	{ label: "acts", source: "rovo-agents", target: "playbooks" },
+	{ label: "prepares", source: "release-plan", target: "project-goals" },
+	{ label: "informs", source: "customer-insights", target: "project-goals", kind: "frontmatter_source" },
+	{ label: "raises", source: "team-signals", target: "decisions" },
+	{ label: "explains", source: "incident-context", target: "playbooks", kind: "frontmatter_source" },
+	{ label: "cites", source: "grounded-response", target: "teamwork-graph" },
+	{ label: "cites", source: "grounded-response", target: "decisions" },
+	{ label: "routes", source: "rovo-agents", target: "team-owners" },
+	{ label: "checks", source: "release-plan", target: "incident-context" },
 ];
+
+const GRAPH_NODE_MARKER_CLASSES: Record<VaultNodeKind, string> = {
+	concept: "rotate-45 rounded-[2px]",
+	entity: "rounded-full",
+	raw: "rounded-[2px]",
+	source: "rounded-full",
+	synthesis: "rotate-45 rounded-[2px]",
+};
+
+const GRAPH_KIND_COLORS: Record<VaultNodeKind, string> = {
+	concept: ROVO_GRAPH_COLORS.orange,
+	entity: ROVO_GRAPH_COLORS.lime,
+	raw: ROVO_GRAPH_COLORS.neutral,
+	source: ROVO_GRAPH_COLORS.blue,
+	synthesis: ROVO_GRAPH_COLORS.purple,
+};
+
+const GRAPH_STAGE_STYLE = {
+	backgroundColor: ROVO_GRAPH_COLORS.white,
+	boxShadow: token("elevation.shadow.raised"),
+} satisfies CSSProperties;
+
+const GRAPH_DETAILS_PANEL_STYLE = {
+	backgroundColor: "rgb(255 255 255 / 0.94)",
+	boxShadow: token("elevation.shadow.overlay"),
+	color: "#172B4D",
+} satisfies CSSProperties;
+
+function GraphNodeMarker({
+	className,
+	kind,
+}: Readonly<{
+	className?: string;
+	kind: VaultNodeKind;
+}>) {
+	return (
+		<span
+			aria-hidden="true"
+			className={cn("inline-block size-2.5 shrink-0", GRAPH_NODE_MARKER_CLASSES[kind], className)}
+			style={{ backgroundColor: GRAPH_KIND_COLORS[kind] }}
+		/>
+	);
+}
+
+function getSelectedGraphNode(explorer: VaultExplorer | null, selectedNodeId: string | null) {
+	if (!explorer || !selectedNodeId) return null;
+	return explorer.nodes.find((node) => node.id === selectedNodeId) ?? null;
+}
+
+function getRelatedGraphNodes(explorer: VaultExplorer | null, node: VaultNode | null) {
+	if (!explorer || !node) return [];
+	const nodesById = new Map(explorer.nodes.map((candidate) => [candidate.id, candidate]));
+	const relatedNodes = new Map<string, VaultNode>();
+
+	for (const edge of explorer.edges) {
+		const relatedId = edge.source === node.id ? edge.target : edge.target === node.id ? edge.source : null;
+		const relatedNode = relatedId ? nodesById.get(relatedId) : null;
+		if (relatedNode) {
+			relatedNodes.set(relatedNode.id, relatedNode);
+		}
+	}
+
+	return [...relatedNodes.values()].slice(0, 3);
+}
+
+function GraphDetailsPanel({
+	explorer,
+	node,
+	onClose,
+	onSelectNode,
+}: Readonly<{
+	explorer: VaultExplorer | null;
+	node: VaultNode;
+	onClose: () => void;
+	onSelectNode: (nodeId: string) => void;
+}>) {
+	const relatedNodes = getRelatedGraphNodes(explorer, node);
+
+	return (
+		<aside
+			aria-label="Graph node details"
+			className="absolute right-4 top-4 z-20 w-[min(300px,calc(100%-32px))] rounded-md border p-4 backdrop-blur"
+			style={GRAPH_DETAILS_PANEL_STYLE}
+		>
+			<div className="mb-4 flex items-start justify-between gap-3">
+				<h2 className="line-clamp-2 text-sm font-semibold leading-5">{node.title}</h2>
+				<Button
+					aria-label="Close graph details"
+					className="size-7 shrink-0 rounded-[2px] text-neutral-800 hover:bg-neutral-100"
+					onClick={onClose}
+					size="icon-sm"
+					variant="ghost"
+				>
+					<CrossIcon label="" />
+				</Button>
+			</div>
+			<div className="grid gap-3 border-b border-neutral-950/15 pb-4 text-sm">
+				<div className="flex items-center justify-between gap-3">
+					<span className="text-neutral-600">Kind</span>
+					<span className="flex items-center gap-2 font-medium">
+						<GraphNodeMarker kind={node.kind} />
+						{node.kind.replaceAll("_", " ")}
+					</span>
+				</div>
+				<div className="flex items-center justify-between gap-3">
+					<span className="text-neutral-600">Links</span>
+					<span className="font-medium">{node.connectionCount}</span>
+				</div>
+			</div>
+			<div className="border-b border-neutral-950/15 py-4">
+				<div className="mb-2 text-sm text-neutral-600">Excerpt</div>
+				<p className="line-clamp-4 text-sm leading-6 text-neutral-800">{node.bodyPreview || node.relativePath}</p>
+			</div>
+			{relatedNodes.length > 0 ? (
+				<div className="pt-4">
+					<div className="mb-2 text-sm text-neutral-600">Related pages</div>
+					<div className="space-y-2">
+						{relatedNodes.map((relatedNode) => (
+							<button
+								className="flex w-full items-center justify-between gap-3 rounded-[2px] border border-neutral-950/15 px-3 py-2 text-left text-sm text-neutral-950 transition-colors duration-normal ease-out hover:bg-neutral-100"
+								key={relatedNode.id}
+								onClick={() => onSelectNode(relatedNode.id)}
+								style={{ backgroundColor: ROVO_GRAPH_COLORS.white }}
+								type="button"
+							>
+								<span className="flex min-w-0 items-center gap-2">
+									<GraphNodeMarker kind={relatedNode.kind} />
+									<span className="truncate">{relatedNode.title}</span>
+								</span>
+								<ChevronRightIcon label="" />
+							</button>
+						))}
+					</div>
+				</div>
+			) : null}
+		</aside>
+	);
+}
 
 function countConnections(nodeId: string) {
 	return GRAPH_EDGE_DEFINITIONS.filter((edge) => edge.source === nodeId || edge.target === nodeId).length;
@@ -192,7 +398,7 @@ function buildVisualGraphExplorer(): VaultExplorer {
 			bodyPreview: node.bodyPreview,
 			connectionCount,
 			dangling: false,
-			frontmatter: { visual: "graph" },
+			frontmatter: { graphColor: node.color, visual: "graph" },
 			id: node.id,
 			kind: node.kind,
 			label: node.title,
@@ -236,11 +442,12 @@ function buildVisualGraphExplorer(): VaultExplorer {
 export const VISUAL_GRAPH_EXPLORER = buildVisualGraphExplorer();
 
 interface GraphControlsProps {
+	defaultParams: NeuralGraphParams;
 	onChange: (params: NeuralGraphParams) => void;
 	params: NeuralGraphParams;
 }
 
-function GraphControls({ onChange, params }: Readonly<GraphControlsProps>) {
+function GraphControls({ defaultParams, onChange, params }: Readonly<GraphControlsProps>) {
 	function updateParam(key: keyof NeuralGraphParams, value: number | string) {
 		onChange(clampNeuralGraphParams({ ...params, [key]: value }));
 	}
@@ -255,7 +462,7 @@ function GraphControls({ onChange, params }: Readonly<GraphControlsProps>) {
 				>
 					{section.params.map((definition) => {
 						const value = params[definition.key];
-						const defaultValue = DEFAULT_NEURAL_GRAPH_PARAMS[definition.key];
+						const defaultValue = defaultParams[definition.key];
 						if (typeof value !== "number" || typeof defaultValue !== "number") {
 							return null;
 						}
@@ -297,17 +504,17 @@ function GraphControls({ onChange, params }: Readonly<GraphControlsProps>) {
 }
 
 export default function Graph({
-	background = "default",
+	background = "transparent",
 	className,
 	explorer = VISUAL_GRAPH_EXPLORER,
-	initialParams = DEFAULT_NEURAL_GRAPH_PARAMS,
+	initialParams = ROVO_GRAPH_DEFAULT_PARAMS,
 	initialSelectedNodeId = null,
 	isLoading = false,
 	onParamsChange,
 	onSelectedNodeIdChange,
 	params: controlledParams,
 	selectedNodeId: controlledSelectedNodeId,
-	showSelectionOverlay = true,
+	showSelectionOverlay = false,
 	showControls = true,
 	style,
 	themeMode,
@@ -316,14 +523,19 @@ export default function Graph({
 }: Readonly<GraphProps>) {
 	const initialParamsRef = useRef(initialParams);
 	const initialSelectedNodeIdRef = useRef(initialSelectedNodeId);
-	const [uncontrolledParams, setUncontrolledParams] = useState<NeuralGraphParams>(() => clampNeuralGraphParams(initialParamsRef.current));
+	const defaultParams = useMemo(() => clampNeuralGraphParams(initialParamsRef.current), []);
+	const [uncontrolledParams, setUncontrolledParams] = useState<NeuralGraphParams>(() => defaultParams);
 	const [uncontrolledSelectedNodeId, setUncontrolledSelectedNodeId] = useState<string | null>(initialSelectedNodeIdRef.current);
 	const isFillVariant = variant === "fill";
 	const hasTransparentBackground = background === "transparent";
+	const fillVariantBackgroundClass = hasTransparentBackground ? "bg-transparent" : "bg-surface";
+	const previewBackgroundClass = isFillVariant ? fillVariantBackgroundClass : null;
+	const canvasThemeMode = themeMode ?? (!isFillVariant && hasTransparentBackground ? "light" : undefined);
 	const isParamsControlled = controlledParams !== undefined;
 	const isSelectionControlled = controlledSelectedNodeId !== undefined;
 	const params = controlledParams ?? uncontrolledParams;
 	const selectedNodeId = isSelectionControlled ? controlledSelectedNodeId ?? null : uncontrolledSelectedNodeId;
+	const selectedNode = useMemo(() => getSelectedGraphNode(explorer, selectedNodeId), [explorer, selectedNodeId]);
 
 	const handleClearSelection = useCallback(() => {
 		if (!isSelectionControlled) {
@@ -348,7 +560,7 @@ export default function Graph({
 	return (
 		<div
 			className={cn(
-				isFillVariant ? "flex h-full w-full flex-col" : "flex w-full max-w-2xl flex-col",
+				isFillVariant ? "flex h-full w-full flex-col" : "mx-auto flex w-full max-w-4xl flex-col",
 				className,
 			)}
 			data-visual-graph="true"
@@ -359,35 +571,45 @@ export default function Graph({
 				className={cn(
 					isFillVariant
 						? "min-h-0 flex-1 overflow-hidden"
-						: "w-full overflow-hidden rounded-lg",
-					hasTransparentBackground ? "bg-transparent" : "bg-surface",
+						: "relative w-full overflow-hidden rounded-lg border border-border",
+					previewBackgroundClass,
 				)}
-				style={isFillVariant ? undefined : { boxShadow: token("elevation.shadow.raised") }}
+				style={isFillVariant ? undefined : GRAPH_STAGE_STYLE}
 			>
 				<div
 					className={cn(
 						isFillVariant
 							? "h-full min-h-0 overflow-hidden"
-							: "h-[min(70svh,520px)] min-h-[420px] overflow-hidden bg-surface",
-						isFillVariant ? (hasTransparentBackground ? "bg-transparent" : "bg-surface") : null,
+							: "relative h-[min(70svh,560px)] min-h-[440px] overflow-hidden",
+						isFillVariant ? fillVariantBackgroundClass : null,
 					)}
 				>
-					<PersonalGraphNeuralCanvas
-						background={background}
-						explorer={explorer}
-						isLoading={isLoading}
-						onClearSelection={handleClearSelection}
-						onSelectNode={handleSelectNode}
-						params={params}
-						selectedNodeId={selectedNodeId}
-						showSelectionOverlay={showSelectionOverlay}
-						themeMode={themeMode}
-					/>
+					<div className="relative z-10 h-full">
+						<PersonalGraphNeuralCanvas
+							background={background}
+							explorer={explorer}
+							isLoading={isLoading}
+							onClearSelection={handleClearSelection}
+							onSelectNode={handleSelectNode}
+							params={params}
+							selectedNodeId={selectedNodeId}
+							showSelectionOverlay={showSelectionOverlay}
+							themeMode={canvasThemeMode}
+						/>
+					</div>
 				</div>
+				{selectedNode && !isFillVariant && !showSelectionOverlay ? (
+					<GraphDetailsPanel
+						explorer={explorer}
+						node={selectedNode}
+						onClose={handleClearSelection}
+						onSelectNode={handleSelectNode}
+					/>
+				) : null}
 			</div>
 
 			{showControls ? (
-				<GraphControls onChange={handleParamsChange} params={params} />
+				<GraphControls defaultParams={defaultParams} onChange={handleParamsChange} params={params} />
 			) : null}
 		</div>
 	);
