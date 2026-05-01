@@ -41,8 +41,6 @@ export interface ChatMessagesProps {
 	isStreaming?: boolean;
 	isSubmitPending?: boolean;
 	messageMode?: "plan" | "ask";
-	/** @deprecated Use centralized reasoning labels unless a surface-specific override is required. */
-	thinkingLabel?: string;
 	reasoningContent?: string;
 	streamingIndicatorVariant?: "thinking" | "reasoning-expanded";
 	streamingIndicatorMessages?: RovoUIMessage[];
@@ -120,7 +118,6 @@ export function ChatMessages({
 	isStreaming = false,
 	isSubmitPending = false,
 	messageMode = "plan",
-	thinkingLabel = getDefaultThinkingLabel(),
 	reasoningContent,
 	streamingIndicatorVariant = "thinking",
 	streamingIndicatorMessages,
@@ -139,6 +136,7 @@ export function ChatMessages({
 	);
 	const isPureMode = messageMode === "ask";
 	const shouldShowWidgetSections = showWidgetSectionsProp ?? !isPureMode;
+	const thinkingLabel = getDefaultThinkingLabel();
 
 	const lastAssistantMessageId = useMemo(() => {
 		for (let i = renderableMessages.length - 1; i >= 0; i--) {
@@ -276,6 +274,3 @@ export function ChatMessages({
 		</Conversation>
 	);
 }
-
-/** @deprecated Use the named export `ChatMessages` instead. */
-export default ChatMessages;
