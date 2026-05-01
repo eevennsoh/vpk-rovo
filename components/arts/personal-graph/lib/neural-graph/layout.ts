@@ -233,6 +233,22 @@ function applySelectionFocusLayout({
 	}
 }
 
+function createLayoutEdges(edges: NeuralGraphEdge[], nodesById: Map<string, NeuralLayoutNode>) {
+	const layoutEdges: NeuralLayoutEdge[] = [];
+
+	for (const edge of edges) {
+		const source = nodesById.get(edge.source);
+		const target = nodesById.get(edge.target);
+		if (!source || !target) {
+			continue;
+		}
+
+		layoutEdges.push({ edge, id: edge.id, source, target });
+	}
+
+	return layoutEdges;
+}
+
 export function computeNeuralGraphLayout({
 	focusProgress = 0,
 	params,
@@ -266,12 +282,7 @@ export function computeNeuralGraphLayout({
 	});
 
 	const nodesById = new Map(layoutNodes.map((node) => [node.id, node]));
-	const layoutEdges = visibleEdges.flatMap((edge) => {
-		const source = nodesById.get(edge.source);
-		const target = nodesById.get(edge.target);
-		if (!source || !target) return [];
-		return [{ edge, id: edge.id, source, target }];
-	});
+	const layoutEdges = createLayoutEdges(visibleEdges, nodesById);
 
 	return {
 		edges: layoutEdges,
