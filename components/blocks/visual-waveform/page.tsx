@@ -1085,10 +1085,10 @@ export default function VisualWaveformPage() {
 								valueKeys="idleNoiseGlowAmount"
 							/>
 							<ControlSectionLabel>Colors</ControlSectionLabel>
-							<ColorInput id="idle-c1" label="Color 1" value={idleColor1} defaultValue={D.idleColor1} onChange={setIdleColor1} />
-							<ColorInput id="idle-c2" label="Color 2" value={idleColor2} defaultValue={D.idleColor2} onChange={setIdleColor2} />
-							<ColorInput id="idle-c3" label="Color 3" value={idleColor3} defaultValue={D.idleColor3} onChange={setIdleColor3} />
-							<ColorInput id="idle-c4" label="Color 4" value={idleColor4} defaultValue={D.idleColor4} onChange={setIdleColor4} />
+							<ColorInput id="idle-c1" label="Color 1" value={idleColor1} defaultValue={D.idleColor1} onChange={setIdleColor1} valueKeys="idleColor1" />
+							<ColorInput id="idle-c2" label="Color 2" value={idleColor2} defaultValue={D.idleColor2} onChange={setIdleColor2} valueKeys="idleColor2" />
+							<ColorInput id="idle-c3" label="Color 3" value={idleColor3} defaultValue={D.idleColor3} onChange={setIdleColor3} valueKeys="idleColor3" />
+							<ColorInput id="idle-c4" label="Color 4" value={idleColor4} defaultValue={D.idleColor4} onChange={setIdleColor4} valueKeys="idleColor4" />
 						</GUI.Section>
 
 						<GUI.Section title="Speaking Motion">
@@ -1338,15 +1338,15 @@ export default function VisualWaveformPage() {
 								valueKeys="noiseGlowAmount"
 							/>
 							<ControlSectionLabel>User Colors</ControlSectionLabel>
-							<ColorInput id="user-c1" label="Color 1" value={userColor1} defaultValue={D.userColor1} onChange={setUserColor1} />
-							<ColorInput id="user-c2" label="Color 2" value={userColor2} defaultValue={D.userColor2} onChange={setUserColor2} />
-							<ColorInput id="user-c3" label="Color 3" value={userColor3} defaultValue={D.userColor3} onChange={setUserColor3} />
-							<ColorInput id="user-c4" label="Color 4" value={userColor4} defaultValue={D.userColor4} onChange={setUserColor4} />
+							<ColorInput id="user-c1" label="Color 1" value={userColor1} defaultValue={D.userColor1} onChange={setUserColor1} valueKeys="userColor1" />
+							<ColorInput id="user-c2" label="Color 2" value={userColor2} defaultValue={D.userColor2} onChange={setUserColor2} valueKeys="userColor2" />
+							<ColorInput id="user-c3" label="Color 3" value={userColor3} defaultValue={D.userColor3} onChange={setUserColor3} valueKeys="userColor3" />
+							<ColorInput id="user-c4" label="Color 4" value={userColor4} defaultValue={D.userColor4} onChange={setUserColor4} valueKeys="userColor4" />
 							<ControlSectionLabel>AI Colors</ControlSectionLabel>
-							<ColorInput id="ai-c1" label="Color 1" value={aiColor1} defaultValue={D.aiColor1} onChange={setAiColor1} />
-							<ColorInput id="ai-c2" label="Color 2" value={aiColor2} defaultValue={D.aiColor2} onChange={setAiColor2} />
-							<ColorInput id="ai-c3" label="Color 3" value={aiColor3} defaultValue={D.aiColor3} onChange={setAiColor3} />
-							<ColorInput id="ai-c4" label="Color 4" value={aiColor4} defaultValue={D.aiColor4} onChange={setAiColor4} />
+							<ColorInput id="ai-c1" label="Color 1" value={aiColor1} defaultValue={D.aiColor1} onChange={setAiColor1} valueKeys="aiColor1" />
+							<ColorInput id="ai-c2" label="Color 2" value={aiColor2} defaultValue={D.aiColor2} onChange={setAiColor2} valueKeys="aiColor2" />
+							<ColorInput id="ai-c3" label="Color 3" value={aiColor3} defaultValue={D.aiColor3} onChange={setAiColor3} valueKeys="aiColor3" />
+							<ColorInput id="ai-c4" label="Color 4" value={aiColor4} defaultValue={D.aiColor4} onChange={setAiColor4} valueKeys="aiColor4" />
 						</GUI.Section>
 					</GUI.Panel>
 				</div>

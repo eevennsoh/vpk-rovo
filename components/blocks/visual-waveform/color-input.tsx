@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useGUIValueKeys } from "@/components/utils/gui";
 
 import {
 	hexToRgbaUnit,
@@ -109,6 +110,7 @@ type ColorInputProps = Readonly<{
 	value: RGBAColor;
 	defaultValue?: RGBAColor;
 	onChange: (next: RGBAColor) => void;
+	valueKeys?: string | readonly string[];
 }>;
 
 export function ColorInput({
@@ -117,7 +119,9 @@ export function ColorInput({
 	value,
 	defaultValue,
 	onChange,
+	valueKeys,
 }: ColorInputProps) {
+	useGUIValueKeys(valueKeys);
 	const [format, setFormat] = useState<"hex" | "rgb" | "hsl">("hex");
 	const [open, setOpen] = useState(false);
 	const [hexDraft, setHexDraft] = useState(rgbaUnitToHex(value));
