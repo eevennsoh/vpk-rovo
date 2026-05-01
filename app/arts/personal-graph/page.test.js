@@ -195,7 +195,7 @@ test("Personal Graph keeps the owned canvas renderer accessible", () => {
 	assert.match(NEURAL_CANVAS_SOURCE, /<SelectedNodeOverlay/);
 });
 
-test("Personal Graph uses a light editor canvas backdrop", () => {
+test("Personal Graph uses a plain light editor canvas backdrop", () => {
 	assert.match(
 		SURFACE_SOURCE,
 		/import \{ PersonalGraphBackdrop \} from "\.\/personal-graph-backdrop";/,
@@ -206,7 +206,7 @@ test("Personal Graph uses a light editor canvas backdrop", () => {
 	assert.match(BACKDROP_SOURCE, /overflow-hidden bg-white/);
 	assert.match(BACKDROP_SOURCE, /backgroundImage:/);
 	assert.match(BACKDROP_SOURCE, /backgroundSize: "72px 72px"/);
-	assert.match(BACKDROP_SOURCE, /radial-gradient\(circle at 50% 75%/);
+	assert.doesNotMatch(BACKDROP_SOURCE, /radial-gradient\(/);
 	assert.doesNotMatch(BACKDROP_SOURCE, /LiquidGradient/);
 	assert.doesNotMatch(BACKDROP_SOURCE, /Ascii/);
 	assert.match(GRAPH_SOURCE, /background\?: "default" \| "transparent"/);
