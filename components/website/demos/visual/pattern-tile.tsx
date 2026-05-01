@@ -4,6 +4,23 @@ import { motion } from "motion/react";
 
 import { cn } from "@/lib/utils";
 
+import {
+	buildGridStrokeMaskImage,
+	type PatternStrokeOptions,
+} from "./pattern-tile-core";
+
+export {
+	STROKE_LINE_CAP_TYPES,
+	STROKE_LINE_JOIN_TYPES,
+	STROKE_STYLE_TYPES,
+} from "./pattern-tile-core";
+export type {
+	PatternStrokeLineCap,
+	PatternStrokeLineJoin,
+	PatternStrokeOptions,
+	PatternStrokeStyle,
+} from "./pattern-tile-core";
+
 export type PatternType =
 	| "grid"
 	| "wave-lines"
@@ -66,6 +83,7 @@ export interface PatternTileProps {
 	front?: string;
 	back?: string;
 	scale?: number;
+	stroke?: PatternStrokeOptions;
 	radius?: number;
 	opacity?: number;
 	blendMode?: PatternBlendMode;
@@ -171,8 +189,10 @@ function buildPattern(
 	front: string,
 	back: string,
 	scale: number,
+	stroke?: PatternStrokeOptions,
 ): {
 	pattern?: string;
+	maskPattern?: string;
 	position?: string;
 	size?: string;
 	repeat?: string;
@@ -183,6 +203,14 @@ function buildPattern(
 
 	switch (patternType) {
 		case "grid":
+			if (stroke) {
+				return {
+					maskPattern: buildGridStrokeMaskImage(scale, stroke),
+					size: `${scale}px ${scale}px`,
+					addBackground: back,
+				};
+			}
+
 			return {
 				pattern: `linear-gradient(${front} 1px, transparent 1px), linear-gradient(90deg, ${front} 1px, transparent 1px)`,
 				size: `${scale}px ${scale}px`,
@@ -361,6 +389,7 @@ export default function PatternTile({
 	front = "#FFFFFF",
 	back = "#22DDDD",
 	scale = 10,
+	stroke,
 	radius = 0,
 	opacity = 1,
 	blendMode = "normal" as PatternBlendMode,
@@ -373,13 +402,14 @@ export default function PatternTile({
 	className,
 	style,
 }: PatternTileProps) {
-	const { pattern, position: patternPos, size, repeat, blendMode: patternBlendMode, addBackground } =
-		buildPattern(patternType, front, back, scale);
+	const { pattern, maskPattern, position: patternPos, size, repeat, blendMode: patternBlendMode, addBackground } =
+		buildPattern(patternType, front, back, scale, stroke);
 
 	const resolvedSize = resolveFillSize(fill, size);
 	const resolvedRepeat = resolveFillRepeat(fill, repeat);
 	const resolvedBlendMode = blendMode !== "normal" ? blendMode : patternBlendMode;
 	const resolvedPosition = fill === "tile" ? (patternPos ?? POSITION_MAP[position]) : POSITION_MAP[position];
+	const usesStrokeMask = Boolean(maskPattern);
 
 	const animTarget =
 		shouldAnimate && fill === "tile" && ANIMATABLE_PATTERNS.includes(patternType)
@@ -388,14 +418,18 @@ export default function PatternTile({
 
 	return (
 		<motion.div
-			className={cn("h-full w-full", className)}
+			className={cn(
+				"h-full w-full",
+				usesStrokeMask ? "relative overflow-hidden" : null,
+				className,
+			)}
 			style={{
 				backgroundColor: addBackground ?? "transparent",
-				backgroundImage: pattern,
+				backgroundImage: usesStrokeMask ? undefined : pattern,
 				backgroundPosition: resolvedPosition,
 				backgroundSize: resolvedSize,
 				backgroundRepeat: resolvedRepeat,
-				backgroundBlendMode: resolvedBlendMode,
+				backgroundBlendMode: usesStrokeMask ? undefined : resolvedBlendMode,
 				borderRadius: `${radius}px`,
 				opacity,
 				...style,
@@ -412,6 +446,25 @@ export default function PatternTile({
 						}
 					: undefined
 			}
-		/>
+		>
+			{usesStrokeMask ? (
+				<div
+					aria-hidden="true"
+					className="pointer-events-none absolute inset-0"
+					style={{
+						backgroundColor: front,
+						maskImage: maskPattern,
+						maskPosition: resolvedPosition,
+						maskRepeat: resolvedRepeat,
+						maskSize: resolvedSize,
+						mixBlendMode: resolvedBlendMode as React.CSSProperties["mixBlendMode"],
+						WebkitMaskImage: maskPattern,
+						WebkitMaskPosition: resolvedPosition,
+						WebkitMaskRepeat: resolvedRepeat,
+						WebkitMaskSize: resolvedSize,
+					}}
+				/>
+			) : null}
+		</motion.div>
 	);
 }
