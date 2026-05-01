@@ -202,13 +202,20 @@ test("Personal Graph uses a plain light editor canvas backdrop", () => {
 	);
 	assert.match(SURFACE_SOURCE, /<PersonalGraphBackdrop className="z-0" \/>/);
 	assert.doesNotMatch(SURFACE_SOURCE, /PersonalGraphAsciiOverlay/);
+	assert.match(
+		BACKDROP_SOURCE,
+		/import Ascii from "@\/components\/website\/demos\/visual\/shaders\/ascii";/,
+	);
 	assert.match(BACKDROP_SOURCE, /data-personal-graph-editor-backdrop="light-grid"/);
+	assert.match(BACKDROP_SOURCE, /data-personal-graph-editor-backdrop="ascii-shader"/);
 	assert.match(BACKDROP_SOURCE, /overflow-hidden bg-white/);
 	assert.match(BACKDROP_SOURCE, /backgroundImage:/);
 	assert.match(BACKDROP_SOURCE, /backgroundSize: "72px 72px"/);
-	assert.doesNotMatch(BACKDROP_SOURCE, /radial-gradient\(/);
+	assert.match(BACKDROP_SOURCE, /radial-gradient\(ellipse at/);
+	assert.match(BACKDROP_SOURCE, /charset="binary"/);
+	assert.match(BACKDROP_SOURCE, /sourceColors=\{PERSONAL_GRAPH_ASCII_SOURCE_COLORS\}/);
+	assert.match(BACKDROP_SOURCE, /transparentBackground/);
 	assert.doesNotMatch(BACKDROP_SOURCE, /LiquidGradient/);
-	assert.doesNotMatch(BACKDROP_SOURCE, /Ascii/);
 	assert.match(GRAPH_SOURCE, /background\?: "default" \| "transparent"/);
 	assert.match(NEURAL_CANVAS_SOURCE, /background\?: "default" \| "transparent"/);
 });
@@ -245,8 +252,12 @@ test("Personal Graph focuses and clears selection through the owned interaction 
 	assert.match(NEURAL_LAYOUT_SOURCE, /getSelectedNeighborhood/);
 	assert.match(NEURAL_RENDERER_SOURCE, /getSelectedRelationshipIds/);
 	assert.match(NEURAL_RENDERER_SOURCE, /focusProgress > 0/);
-	assert.match(NEURAL_RENDERER_SOURCE, /drawOrganicEdgePath/);
+	assert.match(NEURAL_RENDERER_SOURCE, /drawOrganicRayPath/);
+	assert.match(NEURAL_RENDERER_SOURCE, /drawStraightEdgePath/);
+	assert.match(NEURAL_RENDERER_SOURCE, /getEdgeTerminalDirection/);
 	assert.match(NEURAL_RENDERER_SOURCE, /bezierCurveTo/);
+	assert.match(NEURAL_RENDERER_SOURCE, /lineTo/);
+	assert.doesNotMatch(NEURAL_RENDERER_SOURCE, /drawOrganicEdgePath/);
 	assert.match(NEURAL_CANVAS_SOURCE, /hitTestNeuralNode/);
 	assert.match(NEURAL_CANVAS_SOURCE, /onClearSelection\(\)/);
 	assert.match(GRAPH_SOURCE, /onClearSelection=\{handleClearSelection\}/);

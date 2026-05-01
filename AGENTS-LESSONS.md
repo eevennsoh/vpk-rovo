@@ -430,3 +430,14 @@ Mark promoted entries with `[Promoted]` prefix — see vpk-lesson skill for deta
 - **Rule:** When restoring or renaming visual demos, verify whether the
   implementation is actually shader-based. Non-shader visual generators should
   use a descriptive name and live outside the Shaders sidebar group.
+
+### 2026-05-01 - Curve only Personal Graph origin rays
+
+- **What happened:** After making graph connectors more organic, node-to-node
+  relationship edges also became curved when the desired treatment was only for
+  lines emerging from the prompt/origin node.
+- **Why:** I applied the curve treatment to both connector families instead of
+  preserving separate visual semantics for origin rays and relationship edges.
+- **Rule:** In Personal Graph, keep node-to-node relationship edges straight
+  unless the user explicitly asks otherwise. Reserve organic curved paths for
+  prompt/origin rays.

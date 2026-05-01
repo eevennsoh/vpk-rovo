@@ -1,4 +1,4 @@
-import { getNeuralOrigin, worldToViewport, type NeuralCamera, type NeuralViewport } from "./camera";
+import { getNeuralOrigin, worldToViewport, type NeuralCamera, type NeuralPoint, type NeuralViewport } from "./camera";
 import type { NeuralGraphLayout, NeuralLayoutEdge, NeuralLayoutNode } from "./layout";
 import type { NeuralGraphParams } from "./params";
 
@@ -83,23 +83,6 @@ function getIdleEdgeColor(edge: NeuralLayoutEdge, palette: (typeof PALETTES)[Neu
 	return graphColor ? colorWithAlpha(graphColor, 0.34) : palette.edge;
 }
 
-function hashString(value: string) {
-	let hash = 2166136261;
-	for (let index = 0; index < value.length; index += 1) {
-		hash ^= value.charCodeAt(index);
-		hash = Math.imul(hash, 16777619);
-	}
-	return hash >>> 0;
-}
-
-function unitHash(value: string, salt: string) {
-	return hashString(`${salt}:${value}`) / 0xffffffff;
-}
-
-function signedHash(value: string, salt: string) {
-	return unitHash(value, salt) * 2 - 1;
-}
-
 function lerp(start: number, end: number, progress: number) {
 	return start + (end - start) * progress;
 }
@@ -129,52 +112,51 @@ function getSelectedRelationshipIds(layout: NeuralGraphLayout, selectedNodeId: s
 	return { edgeIds, nodeIds };
 }
 
-function drawOrganicEdgePath(
-	ctx: CanvasRenderingContext2D,
-	edge: NeuralLayoutEdge,
-	source: ReturnType<typeof worldToViewport>,
-	target: ReturnType<typeof worldToViewport>,
+function getEdgeTerminalDirection(
+	source: NeuralPoint,
+	target: NeuralPoint,
 ) {
 	const dx = target.x - source.x;
 	const dy = target.y - source.y;
+	if (Math.abs(dy) >= Math.abs(dx)) {
+		return { x: 0, y: dy >= 0 ? 1 : -1 };
+	}
+	return { x: dx >= 0 ? 1 : -1, y: 0 };
+}
+
+function drawOrganicRayPath(
+	ctx: CanvasRenderingContext2D,
+	origin: NeuralPoint,
+	target: NeuralPoint,
+) {
+	const dx = target.x - origin.x;
+	const dy = target.y - origin.y;
 	const distance = Math.max(1, Math.hypot(dx, dy));
-	const normal = {
-		x: -dy / distance,
-		y: dx / distance,
-	};
-	const curveSide = signedHash(edge.id, "curve-side") >= 0 ? 1 : -1;
-	const curveAmount = Math.min(150, Math.max(22, distance * (0.14 + unitHash(edge.id, "curve-strength") * 0.18)));
-	const organicDrift = signedHash(edge.id, "curve-drift") * Math.min(42, distance * 0.08);
-	const sourceCurl = curveAmount * curveSide * (0.18 + unitHash(edge.id, "curve-source-curl") * 0.16);
-	const targetCurl = curveAmount * curveSide * (0.18 + unitHash(edge.id, "curve-target-curl") * 0.16);
-	const bodyBend = curveAmount * curveSide;
-	const split = 0.46 + signedHash(edge.id, "curve-split") * 0.08;
-	const mid = {
-		x: source.x + dx * split + normal.x * bodyBend + dx / distance * organicDrift * 0.18,
-		y: source.y + dy * split + normal.y * bodyBend + dy / distance * organicDrift * 0.18,
-	};
-	const sourceHandleDistance = distance * (0.16 + unitHash(edge.id, "curve-source-handle") * 0.08);
-	const targetHandleDistance = distance * (0.16 + unitHash(edge.id, "curve-target-handle") * 0.08);
-	const midHandleDistance = distance * (0.12 + unitHash(edge.id, "curve-mid-handle") * 0.08);
+	const sourceDirection = { x: 0, y: dy >= 0 ? 1 : -1 };
+	const targetDirection = getEdgeTerminalDirection(origin, target);
+	const sourceHandleDistance = Math.min(220, Math.max(58, distance * 0.38));
+	const targetHandleDistance = Math.min(180, Math.max(42, distance * 0.28));
 
 	ctx.beginPath();
-	ctx.moveTo(source.x, source.y);
+	ctx.moveTo(origin.x, origin.y);
 	ctx.bezierCurveTo(
-		source.x + dx / distance * sourceHandleDistance + normal.x * sourceCurl,
-		source.y + dy / distance * sourceHandleDistance + normal.y * sourceCurl,
-		mid.x - dx / distance * midHandleDistance + normal.x * bodyBend * 0.16,
-		mid.y - dy / distance * midHandleDistance + normal.y * bodyBend * 0.16 + organicDrift,
-		mid.x,
-		mid.y,
-	);
-	ctx.bezierCurveTo(
-		mid.x + dx / distance * midHandleDistance + normal.x * bodyBend * 0.1,
-		mid.y + dy / distance * midHandleDistance + normal.y * bodyBend * 0.1 - organicDrift * 0.55,
-		target.x - dx / distance * targetHandleDistance + normal.x * targetCurl,
-		target.y - dy / distance * targetHandleDistance + normal.y * targetCurl,
+		origin.x + sourceDirection.x * sourceHandleDistance,
+		origin.y + sourceDirection.y * sourceHandleDistance,
+		target.x - targetDirection.x * targetHandleDistance,
+		target.y - targetDirection.y * targetHandleDistance,
 		target.x,
 		target.y,
 	);
+}
+
+function drawStraightEdgePath(
+	ctx: CanvasRenderingContext2D,
+	source: NeuralPoint,
+	target: NeuralPoint,
+) {
+	ctx.beginPath();
+	ctx.moveTo(source.x, source.y);
+	ctx.lineTo(target.x, target.y);
 }
 
 function drawBackground(
@@ -216,9 +198,7 @@ function drawRays(
 		const isRelated = nodeIds.has(node.id);
 		const focusAlpha = focusProgress > 0 ? (isRelated ? lerp(1, 0.72, focusProgress) : lerp(1, 0.05, focusProgress)) : 1;
 		ctx.globalAlpha = (0.22 + node.depthScale * 0.32) * focusAlpha;
-		ctx.beginPath();
-		ctx.moveTo(origin.x, origin.y);
-		ctx.lineTo(point.x, point.y);
+		drawOrganicRayPath(ctx, origin, point);
 		ctx.stroke();
 	}
 	ctx.restore();
@@ -250,7 +230,7 @@ function drawEdges(
 		ctx.strokeStyle = active ? colorWithAlpha(getEdgeColor(edge, options), 0.56) : getIdleEdgeColor(edge, palette);
 		ctx.lineWidth = active ? lerp(1.6, 2.4, focusProgress) : 0.9;
 		ctx.globalAlpha = active ? lerp(0.76, 0.96, focusProgress) : inactiveAlpha;
-		drawOrganicEdgePath(ctx, edge, source, target);
+		drawStraightEdgePath(ctx, source, target);
 		ctx.stroke();
 	}
 	ctx.restore();
