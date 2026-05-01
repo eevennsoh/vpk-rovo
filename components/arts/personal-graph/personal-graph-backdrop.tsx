@@ -114,7 +114,7 @@ function PersonalGraphAsciiBackdrop() {
 				style={PERSONAL_GRAPH_SHADER_GRID_FADE_STYLE}
 			>
 				<PatternTile
-					className="text-neutral-100"
+					className="text-neutral-400"
 					patternType="grid"
 					front="currentColor"
 					back="transparent"
@@ -147,7 +147,7 @@ export function PersonalGraphBackdrop({
 		>
 			<div className="absolute inset-0" style={PERSONAL_GRAPH_GRID_FADE_STYLE}>
 				<PatternTile
-					className="text-neutral-100"
+					className="text-neutral-400"
 					patternType="grid"
 					front="currentColor"
 					back="transparent"
