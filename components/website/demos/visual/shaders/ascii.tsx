@@ -13,7 +13,6 @@ export const ASCII_CHARSETS = {
 export const ASCII_DEFAULT_CHARACTERS = ASCII_CHARSETS.light;
 
 const ASCII_ATLAS_TILE_SIZE = 64;
-const ASCII_ATLAS_MAX_COLUMNS = 16;
 
 export const ASCII_BLEND_MODES = [
 	"normal",
@@ -42,13 +41,15 @@ export const ASCII_FONT_WEIGHTS = ["thin", "regular", "bold"] as const;
 export const ASCII_COLOR_MODES = ["source", "monochrome", "green-terminal"] as const;
 export const ASCII_CONTROL_COLOR_MODES = ["source", "monochrome"] as const;
 export const ASCII_COLOR_SOURCE_MODES = ["source", "luminance", "lightness", "red", "green", "blue"] as const;
+export const ASCII_CHARACTER_MODES = ["signal", "sequence"] as const;
 export const ASCII_SIGNAL_MODES = ["luminance", "lightness", "red", "green", "blue"] as const;
 export const ASCII_TONE_MAPPING_MODES = ["none", "aces", "reinhard", "totos", "cinematic"] as const;
-export const ASCII_DEFAULT_SOURCE_COLORS = ["#05070F", "#1868DB", "#FCA700", "#AF59E1", "#66D9E8"] as const;
+export const ASCII_DEFAULT_SOURCE_COLORS = ["#1868DB", "#FCA700", "#AF59E1", "#6A9A23"] as const;
 export const ASCII_MAX_SOURCE_COLORS = 8;
 
 export type AsciiBlendMode = (typeof ASCII_BLEND_MODES)[number];
 export type AsciiCharset = keyof typeof ASCII_CHARSETS | "custom";
+export type AsciiCharacterMode = (typeof ASCII_CHARACTER_MODES)[number];
 export type AsciiColorMode = (typeof ASCII_COLOR_MODES)[number];
 export type AsciiColorSourceMode = (typeof ASCII_COLOR_SOURCE_MODES)[number];
 export type AsciiCompositeMode = (typeof ASCII_COMPOSITE_MODES)[number];
@@ -88,6 +89,7 @@ uniform float u_blendMode;
 uniform float u_compositeMode;
 uniform float u_hue;
 uniform float u_saturation;
+uniform float u_characterMode;
 uniform float u_colorMode;
 uniform float u_colorSourceMode;
 uniform float u_directionBias;
@@ -367,7 +369,9 @@ void main() {
 	float biasedGlyphSignal = mix(glyphSignal, gradMag, clamp(u_directionBias, 0.0, 1.0));
 
 	float characterCount = max(u_characterCount, 1.0);
-	float characterIndex = floor(clamp(biasedGlyphSignal * (characterCount - 1.0), 0.0, characterCount - 1.0));
+	float signalCharacterIndex = min(floor(clamp(biasedGlyphSignal, 0.0, 1.0) * characterCount), characterCount - 1.0);
+	float sequenceCharacterIndex = floor(mod(cellID.x + cellID.y * cellCount.x, characterCount));
+	float characterIndex = u_characterMode > 0.5 ? sequenceCharacterIndex : signalCharacterIndex;
 	vec2 atlasSize = vec2(max(u_atlasColumns, 1.0), max(u_atlasRows, 1.0));
 	vec2 atlasCell = vec2(mod(characterIndex, atlasSize.x), floor(characterIndex / atlasSize.x));
 	vec2 atlasUV = (atlasCell + vec2(cellUV.x, 1.0 - cellUV.y)) / atlasSize;
@@ -424,7 +428,7 @@ type RGB = readonly [number, number, number];
 
 function createAsciiAtlas(characters: string, fontWeight: AsciiFontWeight): AsciiAtlas {
 	const glyphs = Array.from(characters.length > 0 ? characters : " ");
-	const columns = Math.min(ASCII_ATLAS_MAX_COLUMNS, glyphs.length);
+	const columns = Math.max(Math.ceil(Math.sqrt(glyphs.length)), 1);
 	const rows = Math.max(Math.ceil(glyphs.length / columns), 1);
 	const canvas = document.createElement("canvas");
 	canvas.width = columns * ASCII_ATLAS_TILE_SIZE;
@@ -606,7 +610,11 @@ function resolveCharacters(charset: AsciiCharset, customChars: string, character
 		return customChars || characters || " ";
 	}
 
-	return ASCII_CHARSETS[charset] ?? characters ?? ASCII_DEFAULT_CHARACTERS;
+	if (characters !== undefined) {
+		return characters || " ";
+	}
+
+	return ASCII_CHARSETS[charset] ?? ASCII_DEFAULT_CHARACTERS;
 }
 
 export interface AsciiProps {
@@ -622,6 +630,7 @@ export interface AsciiProps {
 	saturation?: number;
 	cellSize?: number;
 	charset?: AsciiCharset;
+	characterMode?: AsciiCharacterMode;
 	characters?: string;
 	customChars?: string;
 	fontWeight?: AsciiFontWeight;
@@ -668,6 +677,7 @@ export default function Ascii({
 	saturation = 1,
 	cellSize = 12,
 	charset = "light",
+	characterMode,
 	characters,
 	customChars = ASCII_DEFAULT_CHARACTERS,
 	fontWeight = "regular",
@@ -706,6 +716,7 @@ export default function Ascii({
 		() => resolveCharacters(charset, customChars, characters),
 		[characters, charset, customChars],
 	);
+	const resolvedCharacterMode = characterMode ?? "signal";
 	const activeMonoColor = monoColor ?? tint ?? "#F5F5F0";
 	const sourceColorValues = useMemo(() => resolveSourceColorValues(sourceColors), [sourceColors]);
 
@@ -774,6 +785,7 @@ export default function Ascii({
 		gl.uniform1f(gl.getUniformLocation(program, "u_compositeMode"), enumIndex(ASCII_COMPOSITE_MODES, compositeMode));
 		gl.uniform1f(gl.getUniformLocation(program, "u_hue"), hue);
 		gl.uniform1f(gl.getUniformLocation(program, "u_saturation"), saturation);
+		gl.uniform1f(gl.getUniformLocation(program, "u_characterMode"), enumIndex(ASCII_CHARACTER_MODES, resolvedCharacterMode));
 		gl.uniform1f(gl.getUniformLocation(program, "u_colorMode"), enumIndex(ASCII_COLOR_MODES, colorMode, 1));
 		gl.uniform1f(gl.getUniformLocation(program, "u_colorSourceMode"), enumIndex(ASCII_COLOR_SOURCE_MODES, colorSourceMode));
 		gl.uniform1f(gl.getUniformLocation(program, "u_directionBias"), directionBias);
@@ -883,6 +895,7 @@ export default function Ascii({
 		opacity,
 		presenceSoftness,
 		presenceThreshold,
+		resolvedCharacterMode,
 		saturation,
 		shimmerAmount,
 		shimmerSpeed,

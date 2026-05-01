@@ -5,6 +5,7 @@ const test = require("node:test");
 
 const PAGE_SOURCE = fs.readFileSync(path.join(__dirname, "page.tsx"), "utf8");
 const LAYOUT_SOURCE = fs.readFileSync(path.join(__dirname, "layout.tsx"), "utf8");
+const ROOT_LAYOUT_SOURCE = fs.readFileSync(path.join(__dirname, "../../layout.tsx"), "utf8");
 const COMPONENTS_SOURCE = fs.readFileSync(
 	path.join(__dirname, "../../data/components.ts"),
 	"utf8",
@@ -144,10 +145,52 @@ test("Personal Graph header exposes the app theme toggle", () => {
 	assert.match(SURFACE_SOURCE, /<ThemeToggle \/>/);
 });
 
+test("Personal Graph header exposes the capture queue as a top nav popover", () => {
+	assert.match(
+		SURFACE_SOURCE,
+		/import UploadIcon from "@atlaskit\/icon\/core\/upload";/,
+	);
+	assert.match(
+		SURFACE_SOURCE,
+		/import \{ Popover, PopoverContent, PopoverTrigger \} from "@\/components\/ui\/popover";/,
+	);
+	assert.match(SURFACE_SOURCE, /const \[isCaptureQueueOpen, setIsCaptureQueueOpen\] = useState\(false\);/);
+	assert.match(SURFACE_SOURCE, /<Popover open=\{isCaptureQueueOpen\} onOpenChange=\{handleCaptureQueueOpenChange\}>/);
+	assert.match(SURFACE_SOURCE, /aria-label="Capture queue"/);
+	assert.match(SURFACE_SOURCE, /<UploadIcon label="" \/>/);
+	assert.match(SURFACE_SOURCE, /<PersonalGraphCaptureQueue onRawAdded=\{handleRefreshAll\} refreshKey=\{refreshKey\} \/>/);
+	assert.doesNotMatch(SURFACE_SOURCE, /bottom-6 left-6 z-20 hidden/);
+	assert.doesNotMatch(SURFACE_SOURCE, /Collapse capture queue/);
+});
+
+test("Personal Graph header uses the display font lockup", () => {
+	assert.match(ROOT_LAYOUT_SOURCE, /Affigere-Regular\.woff2/);
+	assert.match(ROOT_LAYOUT_SOURCE, /DepartureMono-Regular\.woff2/);
+	assert.match(SURFACE_SOURCE, /PERSONAL_GRAPH_TITLE_FONT_STYLE/);
+	assert.match(SURFACE_SOURCE, /var\(--font-affigere\)/);
+	assert.match(SURFACE_SOURCE, /var\(--font-departure-mono\)/);
+	assert.match(SURFACE_SOURCE, /<div className="mx-auto min-w-0 max-w-full text-center text-neutral-950">/);
+	assert.match(SURFACE_SOURCE, /className="text-\[3\.75rem\] uppercase leading-\[0\.8\] text-neutral-950/);
+	assert.doesNotMatch(SURFACE_SOURCE, /className="[^"]*tracking-normal[^"]*"\s+style=\{PERSONAL_GRAPH_TITLE_FONT_STYLE\}/);
+	assert.match(SURFACE_SOURCE, /<span className="block">PERSONAL<\/span>/);
+	assert.match(SURFACE_SOURCE, /<span className="block">GRAPH<\/span>/);
+	assert.doesNotMatch(SURFACE_SOURCE, /BranchIcon/);
+});
+
+test("Personal Graph omits the standalone zoom control rail", () => {
+	assert.doesNotMatch(SURFACE_SOURCE, /function PersonalGraphZoomControls/);
+	assert.doesNotMatch(SURFACE_SOURCE, /absolute bottom-6 left-6 z-30 hidden text-neutral-950 lg:block/);
+	assert.doesNotMatch(SURFACE_SOURCE, /contentClassName="flex h-full flex-col items-center gap-1 py-1"/);
+	assert.doesNotMatch(SURFACE_SOURCE, /aria-label="Zoom in"/);
+	assert.doesNotMatch(SURFACE_SOURCE, /aria-label="Zoom out"/);
+	assert.doesNotMatch(SURFACE_SOURCE, /Math\.round\(zoom \* 100\)/);
+	assert.doesNotMatch(SURFACE_SOURCE, /Reset graph view/);
+	assert.doesNotMatch(SURFACE_SOURCE, /TargetIcon/);
+});
+
 test("Personal Graph anchors the search and chat composer at the graph origin", () => {
 	assert.match(SURFACE_SOURCE, /aria-label="Personal Graph search and chat"/);
-	assert.match(SURFACE_SOURCE, /bottom-6 z-30 flex justify-center/);
-	assert.match(SURFACE_SOURCE, /bottom-\[6\.5rem\] top-\[84px\]/);
+	assert.match(SURFACE_SOURCE, /bottom-6 left-4 right-4 z-40 flex justify-center/);
 	assert.match(SURFACE_SOURCE, /from-neutral-950\/35 to-transparent/);
 	assert.match(SURFACE_SOURCE, /<PersonalGraphSearch/);
 	assert.doesNotMatch(SURFACE_SOURCE, /grid-cols-\[1fr_auto_1fr\]/);
@@ -157,20 +200,49 @@ test("Personal Graph anchors the search and chat composer at the graph origin", 
 	assert.match(SEARCH_SOURCE, /aria-label="Ask or search Personal Graph"/);
 });
 
+test("Personal Graph lets the graph renderer fill the route viewport behind the chrome", () => {
+	assert.match(SURFACE_SOURCE, /<section className="absolute inset-0 z-10" aria-label="Vault graph">/);
+	assert.doesNotMatch(SURFACE_SOURCE, /bottom-\[6\.5rem\] top-\[250px\]/);
+	assert.doesNotMatch(SURFACE_SOURCE, /sm:top-\[320px\] lg:top-\[360px\] xl:top-\[400px\]/);
+	assert.match(GRAPH_SOURCE, /isFillVariant \? "flex h-full w-full flex-col"/);
+	assert.match(NEURAL_CANVAS_SOURCE, /"relative h-full min-h-0 overflow-hidden"/);
+	assert.doesNotMatch(NEURAL_CANVAS_SOURCE, /min-h-\[620px\]/);
+});
+
 test("Personal Graph uses editor-style surrounding chrome", () => {
 	assert.match(SURFACE_SOURCE, /aria-label="Capture queue"/);
 	assert.match(SURFACE_SOURCE, /aria-label="Knowledge Graph details"/);
-	assert.match(SURFACE_SOURCE, /PersonalGraphZoomControls/);
+	assert.doesNotMatch(SURFACE_SOURCE, /PersonalGraphZoomControls/);
 	assert.match(SURFACE_SOURCE, /themeMode="light"/);
 	assert.match(SURFACE_SOURCE, /showSelectionOverlay=\{false\}/);
 	assert.match(SURFACE_SOURCE, /PERSONAL_GRAPH_EDITOR_COLOR_LOCK_STYLE/);
 	assert.match(SURFACE_SOURCE, /"--color-white": "#FFFFFF"/);
 	assert.match(SURFACE_SOURCE, /"--ds-text-inverse": "#FFFFFF"/);
 	assert.match(SURFACE_SOURCE, /style=\{\{ \.\.\.PERSONAL_GRAPH_EDITOR_COLOR_LOCK_STYLE, \.\.\.style \}\}/);
-	assert.match(SURFACE_SOURCE, /rounded-\[2px\] border border-neutral-950\/70 bg-white\/95/);
-	assert.match(SEARCH_SOURCE, /rounded-\[2px\] border border-neutral-950\/80 bg-white\/95/);
+	assert.match(SURFACE_SOURCE, /PersonalGraphGlassPanel/);
+	assert.match(SURFACE_SOURCE, /border-neutral-950\/8 bg-white\/5/);
+	assert.match(SEARCH_SOURCE, /rounded-2xl/);
 	assert.match(SURFACE_SOURCE, /CopyIcon/);
-	assert.match(SURFACE_SOURCE, /TargetIcon/);
+});
+
+test("Personal Graph leaves the page header transparent over the backdrop grid", () => {
+	assert.match(SURFACE_SOURCE, /<header className="absolute inset-x-4 top-5 z-30 sm:inset-x-6 lg:inset-x-8">/);
+	assert.match(SURFACE_SOURCE, /<header className="absolute inset-x-4 top-5 z-30 sm:inset-x-6 lg:inset-x-8">\s*<div className="relative flex flex-col items-center gap-4">/);
+	assert.doesNotMatch(
+		SURFACE_SOURCE,
+		/<header className="absolute inset-x-4 top-5 z-30 sm:inset-x-6 lg:inset-x-8">\s*<PersonalGraphGlassPanel contentClassName="relative flex flex-col items-center gap-4/,
+	);
+	assert.doesNotMatch(SURFACE_SOURCE, /contentClassName="relative flex flex-col items-center gap-4"/);
+});
+
+test("Personal Graph hides node details until a node is selected", () => {
+	assert.match(
+		SURFACE_SOURCE,
+		/const \[selectedNodeId, setSelectedNodeId\] = useState<string \| null>\(null\);/,
+	);
+	assert.match(SURFACE_SOURCE, /function getSelectedNode\(explorer: VaultExplorer \| null, selectedNodeId: string \| null\)/);
+	assert.match(SURFACE_SOURCE, /if \(!explorer \|\| !selectedNodeId\) return null;/);
+	assert.doesNotMatch(SURFACE_SOURCE, /right\.connectionCount - left\.connectionCount/);
 });
 
 test("Personal Graph keeps the owned canvas renderer accessible", () => {
@@ -183,7 +255,7 @@ test("Personal Graph keeps the owned canvas renderer accessible", () => {
 	assert.match(SURFACE_SOURCE, /variant="fill"/);
 	assert.match(SURFACE_SOURCE, /showControls=\{false\}/);
 	assert.match(SURFACE_SOURCE, /background="transparent"/);
-	assert.match(SURFACE_SOURCE, /params=\{renderedNeuralParams\}/);
+	assert.match(SURFACE_SOURCE, /params=\{neuralParams\}/);
 	assert.match(SURFACE_SOURCE, /selectedNodeId=\{selectedNodeId\}/);
 	assert.match(SURFACE_SOURCE, /onSelectedNodeIdChange=\{setSelectedNodeId\}/);
 	assert.doesNotMatch(SURFACE_SOURCE, /<PersonalGraphNeuralCanvas/);
@@ -208,12 +280,59 @@ test("Personal Graph uses a plain light editor canvas backdrop", () => {
 	);
 	assert.match(BACKDROP_SOURCE, /data-personal-graph-editor-backdrop="light-grid"/);
 	assert.match(BACKDROP_SOURCE, /data-personal-graph-editor-backdrop="ascii-shader"/);
+	assert.match(BACKDROP_SOURCE, /data-personal-graph-editor-backdrop="ascii-grid-overlay"/);
 	assert.match(BACKDROP_SOURCE, /overflow-hidden bg-white/);
-	assert.match(BACKDROP_SOURCE, /backgroundImage:/);
-	assert.match(BACKDROP_SOURCE, /backgroundSize: "72px 72px"/);
-	assert.match(BACKDROP_SOURCE, /radial-gradient\(ellipse at/);
-	assert.match(BACKDROP_SOURCE, /charset="binary"/);
-	assert.match(BACKDROP_SOURCE, /sourceColors=\{PERSONAL_GRAPH_ASCII_SOURCE_COLORS\}/);
+	assert.match(BACKDROP_SOURCE, /#000 42%, #000 100%/);
+	assert.doesNotMatch(BACKDROP_SOURCE, /bg-gradient-to-t from-white/);
+	assert.match(
+		BACKDROP_SOURCE,
+		/import PatternTile, \{ type PatternStrokeOptions \} from "@\/components\/website\/demos\/visual\/pattern-tile";/,
+	);
+	assert.match(
+		BACKDROP_SOURCE,
+		/import WaveGradient from "@\/components\/website\/demos\/visual\/shaders\/wave-gradient";/,
+	);
+	assert.match(BACKDROP_SOURCE, /patternType="grid"/);
+	assert.match(BACKDROP_SOURCE, /front=\{PERSONAL_GRAPH_GRID_COLOR\}/);
+	assert.match(BACKDROP_SOURCE, /const PERSONAL_GRAPH_GRID_COLOR = "var\(--ds-border\)";/);
+	assert.match(BACKDROP_SOURCE, /front=\{PERSONAL_GRAPH_GRID_OVERLAY_COLOR\}/);
+	assert.match(BACKDROP_SOURCE, /const PERSONAL_GRAPH_GRID_OVERLAY_COLOR = "var\(--ds-border-bold\)";/);
+	assert.match(BACKDROP_SOURCE, /const PERSONAL_GRAPH_GRID_FADE_STYLE = /);
+	assert.match(BACKDROP_SOURCE, /style=\{PERSONAL_GRAPH_GRID_FADE_STYLE\}/);
+	assert.match(BACKDROP_SOURCE, /const PERSONAL_GRAPH_SHADER_GRID_FADE_STYLE = /);
+	assert.match(BACKDROP_SOURCE, /style=\{PERSONAL_GRAPH_SHADER_GRID_FADE_STYLE\}/);
+	assert.match(BACKDROP_SOURCE, /transparent 76%/);
+	assert.match(BACKDROP_SOURCE, /transparent 62%/);
+	assert.match(BACKDROP_SOURCE, /back="transparent"/);
+	assert.match(BACKDROP_SOURCE, /scale=\{48\}/);
+	assert.match(BACKDROP_SOURCE, /style: "dashed"/);
+	assert.match(BACKDROP_SOURCE, /width: 0\.5/);
+	assert.match(BACKDROP_SOURCE, /dash: 3/);
+	assert.match(BACKDROP_SOURCE, /gap: 6/);
+	assert.match(BACKDROP_SOURCE, /<WaveGradient/);
+	assert.match(BACKDROP_SOURCE, /colors=\{PERSONAL_GRAPH_WAVE_COLORS\}/);
+	assert.match(BACKDROP_SOURCE, /const PERSONAL_GRAPH_WAVE_COLORS: \[string, string, string, string\]/);
+	assert.match(BACKDROP_SOURCE, /"#FFFFFF"/);
+	assert.doesNotMatch(BACKDROP_SOURCE, /radial-gradient\(ellipse at/);
+	assert.match(BACKDROP_SOURCE, /"#1868DB"/);
+	assert.match(BACKDROP_SOURCE, /"#FCA700"/);
+	assert.match(BACKDROP_SOURCE, /"#AF59E1"/);
+	assert.match(BACKDROP_SOURCE, /"#6A9A23"/);
+	assert.match(BACKDROP_SOURCE, /sourceMode="field"/);
+	assert.match(BACKDROP_SOURCE, /charset="custom"/);
+	assert.doesNotMatch(BACKDROP_SOURCE, /characterMode="sequence"/);
+	assert.match(BACKDROP_SOURCE, /customChars=" \.:-=\+\*#%@ROVO"/);
+	assert.match(BACKDROP_SOURCE, /colorMode="monochrome"/);
+	assert.match(BACKDROP_SOURCE, /monoColor="#44546F"/);
+	assert.doesNotMatch(BACKDROP_SOURCE, /colorMode="source"/);
+	assert.match(BACKDROP_SOURCE, /compositeMode="mask"/);
+	assert.match(BACKDROP_SOURCE, /speed=\{1\}/);
+	assert.match(BACKDROP_SOURCE, /sourceColors=\{PERSONAL_GRAPH_SHADER_COLORS\}/);
+	assert.match(BACKDROP_SOURCE, /signalBlackPoint=\{0\.1\}/);
+	assert.match(BACKDROP_SOURCE, /signalWhitePoint=\{0\.88\}/);
+	assert.match(BACKDROP_SOURCE, /signalGamma=\{0\.92\}/);
+	assert.match(BACKDROP_SOURCE, /presenceThreshold=\{0\.56\}/);
+	assert.match(BACKDROP_SOURCE, /presenceSoftness=\{0\.34\}/);
 	assert.match(BACKDROP_SOURCE, /transparentBackground/);
 	assert.doesNotMatch(BACKDROP_SOURCE, /LiquidGradient/);
 	assert.match(GRAPH_SOURCE, /background\?: "default" \| "transparent"/);

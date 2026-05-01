@@ -55,6 +55,11 @@ test("ASCII demo exposes the shader-lab style ASCII controls", () => {
 	assert.match(DEMO_SOURCE, /label="Mask Invert"/);
 	assert.match(DEMO_SOURCE, /label="Cell Size"/);
 	assert.match(DEMO_SOURCE, /label="Charset"/);
+	assert.match(DEMO_SOURCE, /DEFAULT_CHARSET_VALUES/);
+	assert.match(DEMO_SOURCE, /charsetCharacters/);
+	assert.match(DEMO_SOURCE, /activeCharsetCharacters/);
+	assert.match(DEMO_SOURCE, /label="Characters"/);
+	assert.match(DEMO_SOURCE, /characters=\{activeCharsetCharacters\}/);
 	assert.match(DEMO_SOURCE, /label="Font Weight"/);
 	assert.match(DEMO_SOURCE, /label="Background Color"/);
 	assert.match(DEMO_SOURCE, /label="Source Background"/);
@@ -72,10 +77,29 @@ test("ASCII demo exposes the shader-lab style ASCII controls", () => {
 	assert.match(DEMO_SOURCE, /ShaderColorInput/);
 });
 
+test("ASCII demo defaults to the requested source color palette", () => {
+	const requestedPalette = /\["#1868DB", "#FCA700", "#AF59E1", "#6A9A23"\]/;
+
+	assert.match(SHADER_SOURCE, new RegExp(`ASCII_DEFAULT_SOURCE_COLORS = ${requestedPalette.source}`));
+	assert.match(DETAILS_SOURCE, requestedPalette);
+	assert.doesNotMatch(SHADER_SOURCE, /"#05070F"/);
+	assert.doesNotMatch(SHADER_SOURCE, /"#66D9E8"/);
+});
+
 test("ASCII shader uses a generated glyph atlas and luminance pass", () => {
 	assert.match(SHADER_SOURCE, /createAsciiAtlas/);
 	assert.match(SHADER_SOURCE, /u_asciiAtlas/);
 	assert.match(SHADER_SOURCE, /u_characterCount/);
+	assert.match(SHADER_SOURCE, /ASCII_CHARACTER_MODES = \["signal", "sequence"\]/);
+	assert.match(SHADER_SOURCE, /characterMode \?\? "signal"/);
+	assert.doesNotMatch(SHADER_SOURCE, /charset === "custom" \? "sequence"/);
+	assert.match(SHADER_SOURCE, /u_characterMode/);
+	assert.match(SHADER_SOURCE, /floor\(clamp\(biasedGlyphSignal, 0\.0, 1\.0\) \* characterCount\)/);
+	assert.doesNotMatch(SHADER_SOURCE, /biasedGlyphSignal \* \(characterCount - 1\.0\)/);
+	assert.match(SHADER_SOURCE, /sequenceCharacterIndex = floor\(mod\(cellID\.x \+ cellID\.y \* cellCount\.x, characterCount\)\)/);
+	assert.match(SHADER_SOURCE, /u_characterMode > 0\.5 \? sequenceCharacterIndex : signalCharacterIndex/);
+	assert.match(SHADER_SOURCE, /Math\.ceil\(Math\.sqrt\(glyphs\.length\)\)/);
+	assert.doesNotMatch(SHADER_SOURCE, /ASCII_ATLAS_MAX_COLUMNS/);
 	assert.match(SHADER_SOURCE, /dot\(color, vec3\(0\.2126, 0\.7152, 0\.0722\)\)/);
 	assert.match(SHADER_SOURCE, /sampleCoverTexture/);
 	assert.match(SHADER_SOURCE, /blendColor/);

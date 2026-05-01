@@ -47,7 +47,7 @@ export function PersonalGraphVaultPicker({
 				disabled={isSelecting}
 				isLoading={isSelecting}
 				onClick={handleChooseVault}
-				className="h-11 rounded-[2px] border-neutral-950/70 bg-white px-4 text-sm font-normal text-neutral-950 shadow-none hover:bg-neutral-100"
+				className="h-10 rounded-full border-neutral-950 bg-neutral-950 px-4 text-sm font-medium text-white shadow-none hover:bg-neutral-800 disabled:border-neutral-950/5 disabled:bg-white/10 disabled:text-neutral-400"
 				size="sm"
 				variant="outline"
 			>

@@ -50,6 +50,7 @@ export interface LiquidGlassProps {
 	blur?: number;
 	displace?: number;
 	backgroundOpacity?: number;
+	fallbackBackgroundOpacity?: number;
 	saturation?: number;
 	distortionScale?: number;
 	dispersion?: number;
@@ -77,6 +78,7 @@ export default function LiquidGlass({
 	blur = 8,
 	displace = 5,
 	backgroundOpacity = 0,
+	fallbackBackgroundOpacity,
 	saturation = 1,
 	distortionScale = -90,
 	dispersion = 6,
@@ -209,7 +211,7 @@ export default function LiquidGlass({
 		});
 	} else if (backdropSupported) {
 		Object.assign(containerStyle, {
-			background: "rgba(255, 255, 255, 0.18)",
+			background: `rgba(255, 255, 255, ${fallbackBackgroundOpacity ?? 0.18})`,
 			backdropFilter: "blur(14px) saturate(1.4)",
 			WebkitBackdropFilter: "blur(14px) saturate(1.4)",
 		});
@@ -217,7 +219,7 @@ export default function LiquidGlass({
 		// SSR + first client render land here; matches the
 		// `backdropSupported === null` state so hydration is consistent.
 		Object.assign(containerStyle, {
-			background: "rgba(255, 255, 255, 0.4)",
+			background: `rgba(255, 255, 255, ${fallbackBackgroundOpacity ?? 0.4})`,
 		});
 	}
 

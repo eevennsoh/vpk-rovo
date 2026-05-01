@@ -27,13 +27,13 @@ export function PersonalGraphNeuralControls({
 	return (
 		<div className="space-y-5">
 			<div className="flex items-center justify-between gap-3">
-				<h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-subtle">Parameters</h2>
+				<h2 className="text-[11px] font-semibold uppercase text-text-subtle">Parameters</h2>
 				<span className="text-[10px] text-text-subtle">local preset</span>
 			</div>
 
 			{NEURAL_GRAPH_PARAM_SECTIONS.map((section) => (
-				<section className="space-y-3 border-t border-border pt-4" key={section.id}>
-					<h3 className="text-[10px] font-semibold uppercase tracking-[0.16em] text-text-subtle">{section.label}</h3>
+				<section className="space-y-3 border-t border-neutral-950/10 pt-4" key={section.id}>
+					<h3 className="text-[10px] font-semibold uppercase text-text-subtle">{section.label}</h3>
 					{section.params.map((definition) => {
 						const value = params[definition.key];
 						if (typeof value !== "number") return null;
@@ -46,7 +46,7 @@ export function PersonalGraphNeuralControls({
 								</span>
 								<input
 									aria-label={definition.label}
-									className="h-2 w-full accent-purple-500"
+									className="h-2 w-full accent-neutral-950"
 									max={definition.max}
 									min={definition.min}
 									onChange={(event) => updateParam(definition.key, Number(event.target.value))}
@@ -60,8 +60,8 @@ export function PersonalGraphNeuralControls({
 				</section>
 			))}
 
-			<section className="space-y-3 border-t border-border pt-4">
-				<h3 className="text-[10px] font-semibold uppercase tracking-[0.16em] text-text-subtle">Node Style</h3>
+			<section className="space-y-3 border-t border-neutral-950/10 pt-4">
+				<h3 className="text-[10px] font-semibold uppercase text-text-subtle">Node Style</h3>
 				<label className="block space-y-2">
 					<span className="flex items-center justify-between gap-3 text-xs">
 						<span className="font-medium text-text">Color</span>
@@ -70,14 +70,14 @@ export function PersonalGraphNeuralControls({
 					<div className="flex items-center gap-2">
 						<input
 							aria-label="Node color"
-							className="h-8 w-10 rounded border border-border bg-surface"
+							className="h-8 w-10 rounded-full border border-neutral-950/8 bg-white/5"
 							onChange={(event) => updateParam("nodeColor", event.target.value)}
 							type="color"
 							value={params.nodeColor}
 						/>
 						<input
 							aria-label="Node color hex"
-							className="h-8 min-w-0 flex-1 rounded border border-border bg-surface px-2 font-mono text-xs text-text"
+							className="h-8 min-w-0 flex-1 rounded-full border border-neutral-950/8 bg-white/5 px-3 font-mono text-xs text-text"
 							onChange={(event) => updateParam("nodeColor", event.target.value)}
 							value={params.nodeColor}
 						/>
@@ -88,8 +88,8 @@ export function PersonalGraphNeuralControls({
 						<button
 							className={
 								params.nodeShape === shape
-									? "rounded border border-border-selected bg-bg-selected px-3 py-2 text-xs font-medium text-text-selected"
-									: "rounded border border-border bg-surface px-3 py-2 text-xs font-medium text-text-subtle hover:bg-surface-hover"
+									? "rounded-full border border-neutral-950 bg-neutral-950 px-3 py-2 text-xs font-medium text-white"
+									: "rounded-full border border-neutral-950/8 bg-white/5 px-3 py-2 text-xs font-medium text-text-subtle hover:bg-white/20"
 							}
 							key={shape}
 							onClick={() => updateShape(shape)}

@@ -19,6 +19,18 @@ const arkEsSolidLight = localFont({
 	display: "swap",
 });
 
+const affigere = localFont({
+	src: "../public/fonts/affigere/Affigere-Regular.woff2",
+	variable: "--font-affigere",
+	display: "swap",
+});
+
+const departureMono = localFont({
+	src: "../public/fonts/DepartureMono/DepartureMono-Regular.woff2",
+	variable: "--font-departure-mono",
+	display: "swap",
+});
+
 // Prevent @atlaskit/tokens from falling back to uninitialized FeatureGates client.
 // Sets the resolver on the same global that @atlaskit/platform-feature-flags uses internally.
 // Returns false for all flags — increased-contrast themes stay disabled.
@@ -193,6 +205,8 @@ ${devStylesheetGuardScript}
 				"font-sans",
 				geist.variable,
 				arkEsSolidLight.variable,
+				affigere.variable,
+				departureMono.variable,
 			)}
 			data-theme={themeData}
 			data-color-mode={colorMode}

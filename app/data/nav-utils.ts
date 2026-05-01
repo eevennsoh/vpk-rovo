@@ -82,7 +82,7 @@ export const VISUAL_GROUPS: Record<string, string[]> = {
 		"magnify-lens",
 		"mesh-gradient",
 		"particle-grid",
-		"pattern-v2",
+		"pattern",
 		"pixelation",
 		"pixel-sorting",
 		"pixel-trail",

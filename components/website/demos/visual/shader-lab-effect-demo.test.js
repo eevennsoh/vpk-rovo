@@ -37,8 +37,8 @@ const PATTERN_TILE_DEMO_SOURCE = fs.readFileSync(
 	path.join(__dirname, "pattern-tile-demo.tsx"),
 	"utf8",
 );
-const PATTERN_V2_DEMO_SOURCE = fs.readFileSync(
-	path.join(__dirname, "pattern-v2-demo.tsx"),
+const PATTERN_DEMO_SOURCE = fs.readFileSync(
+	path.join(__dirname, "pattern-demo.tsx"),
 	"utf8",
 );
 
@@ -72,7 +72,7 @@ const SHADER_LAB_SOURCE_COUNTS = {
 	"pixel-trail": 5,
 };
 
-const SHADER_LAB_V2_EFFECTS = new Set(["chromatic-aberration", "fluted-glass", "pattern"]);
+const SHADER_LAB_V2_EFFECTS = new Set(["chromatic-aberration", "fluted-glass"]);
 
 function getShaderLabRouteSlug(effectType) {
 	return SHADER_LAB_V2_EFFECTS.has(effectType) ? `${effectType}-v2` : effectType;
@@ -164,13 +164,12 @@ test("Pattern Tile uses a non-shader route and source module", () => {
 	assert.ok(COMPONENTS_SOURCE.includes(`"${slug}"`), slug);
 	assert.ok(MANIFEST_SOURCE.includes(`"${slug}"`), slug);
 	assert.ok(DETAILS_SOURCE.includes(`"${slug}"`), slug);
-	assert.doesNotMatch(shaderGroupSource, /"pattern"\s*,/);
 	assert.doesNotMatch(shaderGroupSource, /"pattern-tile"\s*,/);
 	assert.match(PATTERN_TILE_DEMO_SOURCE, /from "\.\/pattern-tile"/);
 });
 
 test("Shader Lab variants use v2 routes for existing VPK shader names", () => {
-	for (const slug of ["chromatic-aberration-v2", "fluted-glass-v2", "pattern-v2"]) {
+	for (const slug of ["chromatic-aberration-v2", "fluted-glass-v2"]) {
 		assert.match(REGISTRY_SOURCE, new RegExp(`${JSON.stringify(slug)}: dynamic`), slug);
 		assert.ok(COMPONENTS_SOURCE.includes(`"${slug}"`), slug);
 		assert.ok(MANIFEST_SOURCE.includes(`"${slug}"`), slug);
@@ -179,6 +178,6 @@ test("Shader Lab variants use v2 routes for existing VPK shader names", () => {
 
 	assert.match(CHROMATIC_ABERRATION_V2_DEMO_SOURCE, /<ShaderLabEffect effectType="chromatic-aberration" \/>/);
 	assert.match(FLUTED_GLASS_V2_DEMO_SOURCE, /<ShaderLabEffect effectType="fluted-glass" \/>/);
-	assert.match(PATTERN_V2_DEMO_SOURCE, /<ShaderLabEffect effectType="pattern" \/>/);
+	assert.match(PATTERN_DEMO_SOURCE, /<ShaderLabEffect effectType="pattern" \/>/);
 	assert.match(DETAILS_SOURCE, /SHADER_LAB_V2_EFFECT_DETAILS/);
 });

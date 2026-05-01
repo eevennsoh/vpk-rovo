@@ -441,3 +441,69 @@ Mark promoted entries with `[Promoted]` prefix — see vpk-lesson skill for deta
 - **Rule:** In Personal Graph, keep node-to-node relationship edges straight
   unless the user explicitly asks otherwise. Reserve organic curved paths for
   prompt/origin rays.
+
+### 2026-05-01 - Treat ASCII custom text as sequence text
+
+- **What happened:** Extra text appended to the ASCII custom character input,
+  such as `ROVO`, did not reliably appear because the shader treated the whole
+  string as a luminance ramp.
+- **Why:** I assumed custom characters were only density glyphs, but user-entered
+  words need to loop through the full text string instead of depending on
+  signal buckets.
+- **Rule:** For ASCII custom text, preserve signal-based glyph ramps as an
+  explicit mode, but default custom charsets to sequential glyph selection so
+  every typed character can appear.
+
+### 2026-05-01 - Keep ASCII custom glyphs signal-driven by default
+
+- **What happened:** Defaulting custom ASCII text to sequence mode made added
+  characters stay in fixed grid positions instead of changing with each pixel
+  block like the built-in charsets.
+- **Why:** Sequence mode uses cell coordinates rather than the source signal, so
+  it is useful only as an explicit fixed-text pattern.
+- **Rule:** Keep custom ASCII charsets signal-driven by default; expose or pass
+  sequence mode only when the requested behavior is a fixed repeating text
+  pattern.
+
+### 2026-05-01 - Keep demo media out of embedded visual effects
+
+- **What happened:** I embedded the Pixel Trail effect into `/personal-graph`
+  with the Shader Lab demo's ambient image source, so the illustrative preview
+  image came along with the hover trail.
+- **Why:** I treated demo preview media as implementation input instead of
+  separating the effect behavior from the catalog's illustrative source asset.
+- **Rule:** When reusing a visual demo effect in a route surface, do not copy
+  its preview or placeholder media unless explicitly requested. Implement the
+  effect against the route background or a transparent generated layer.
+
+### 2026-05-01 - Bucket ASCII signal ramps across the full charset
+
+- **What happened:** The ASCII binary charset showed only `0` because the signal
+  ramp multiplied by `characterCount - 1`, making the final glyph reachable only
+  at an exact `1.0` signal.
+- **Why:** I treated the signal as an index interpolation value instead of
+  dividing the signal into equal glyph buckets.
+- **Rule:** For signal-driven ASCII glyph selection, bucket with
+  `floor(signal * characterCount)` clamped to the final index so every glyph,
+  especially two-character ramps like binary, can appear.
+
+### 2026-05-01 - Do not freeze shared ASCII shader consumers
+
+- **What happened:** `/personal-graph` imported the shared ASCII shader but
+  passed `characterMode="sequence"`, so glyphs stayed fixed to their grid cells
+  even after the shared shader default became signal-driven.
+- **Why:** I copied the explicit fixed-sequence demo mode into a route surface
+  where the expected behavior was the updated animated signal mode.
+- **Rule:** When a route consumes a shared shader, avoid overriding newly
+  corrected defaults unless the route explicitly needs different behavior; add
+  route tests that guard against stale local overrides.
+
+### 2026-05-01 - Keep Personal Graph header off the backdrop grid
+
+- **What happened:** The `/personal-graph` header sat inside a glass container
+  that visually masked the dashed backdrop grid.
+- **Why:** I treated the header like the floating controls instead of preserving
+  the canvas-like background behind the route title and top controls.
+- **Rule:** On `/personal-graph`, keep the page header as transparent layout
+  chrome. Use glass panels for popovers, inspector, and focused controls only
+  when the user asks for a framed surface.

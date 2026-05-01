@@ -530,7 +530,7 @@ export const VISUAL_COMPONENTS: ComponentManifestEntry[] = sortEntriesByName([
 		"@/components/website/demos/visual/shaders/particles",
 	),
 	visualComponent("pattern-tile", "Pattern Tile", "@/components/website/demos/visual/pattern-tile"),
-	visualComponent("pattern-v2", "Pattern v2", "@/components/website/demos/visual/shader-lab-effect-demo"),
+	visualComponent("pattern", "Pattern", "@/components/website/demos/visual/shader-lab-effect-demo"),
 	visualComponent("noise", "Noise", "@/components/website/demos/visual/shaders/noise"),
 	visualComponent(
 		"wave-gradient",

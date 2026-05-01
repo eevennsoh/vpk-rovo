@@ -7666,7 +7666,7 @@ const VISUAL_DEMOS: Record<string, ComponentType> = {
   "pattern-tile": dynamic(() => import("./demos/visual/pattern-tile-demo"), {
     ssr: false,
   }),
-  "pattern-v2": dynamic(() => import("./demos/visual/pattern-v2-demo"), {
+  pattern: dynamic(() => import("./demos/visual/pattern-demo"), {
     ssr: false,
   }),
   pixelation: dynamic(() => import("./demos/visual/pixelation-demo"), {

@@ -388,7 +388,7 @@ export const VISUAL_COMPONENTS: ComponentEntry[] = sortEntriesByName([
 	visualComponent("threshold", "Threshold", "@/components/website/demos/visual/shader-lab-effect-demo"),
 	visualComponent("particles", "Particles", "@/components/website/demos/visual/shaders/particles"),
 	visualComponent("pattern-tile", "Pattern Tile", "@/components/website/demos/visual/pattern-tile"),
-	visualComponent("pattern-v2", "Pattern v2", "@/components/website/demos/visual/shader-lab-effect-demo"),
+	visualComponent("pattern", "Pattern", "@/components/website/demos/visual/shader-lab-effect-demo"),
 	visualComponent("noise", "Noise", "@/components/website/demos/visual/shaders/noise"),
 	visualComponent("wave-gradient", "Wave Gradient", "@/components/website/demos/visual/shaders/wave-gradient"),
 	visualComponent("liquid-gradient", "Liquid Gradient", "@/components/website/demos/visual/shaders/liquid-gradient"),

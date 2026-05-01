@@ -66,6 +66,10 @@ const MASK_SOURCE_OPTIONS = optionsFromValues(ASCII_MASK_SOURCES);
 const MASK_MODE_OPTIONS = optionsFromValues(ASCII_MASK_MODES);
 const SIGNAL_MODE_OPTIONS = optionsFromValues(ASCII_SIGNAL_MODES);
 const TONE_MAPPING_OPTIONS = optionsFromValues(ASCII_TONE_MAPPING_MODES);
+const DEFAULT_CHARSET_VALUES: Record<AsciiCharset, string> = {
+	...ASCII_CHARSETS,
+	custom: ASCII_DEFAULT_CHARACTERS,
+};
 
 function ImageUploadControl({
 	imageSrc,
@@ -145,7 +149,7 @@ export default function AsciiDemo() {
 	const [saturation, setSaturation] = useState(1);
 	const [cellSize, setCellSize] = useState(12);
 	const [charset, setCharset] = useState<AsciiCharset>("light");
-	const [customChars, setCustomChars] = useState<string>(ASCII_DEFAULT_CHARACTERS);
+	const [charsetCharacters, setCharsetCharacters] = useState<Record<AsciiCharset, string>>(DEFAULT_CHARSET_VALUES);
 	const [fontWeight, setFontWeight] = useState<AsciiFontWeight>("regular");
 	const [colorMode, setColorMode] = useState<AsciiColorMode>("monochrome");
 	const [colorSourceMode, setColorSourceMode] = useState<AsciiColorSourceMode>("source");
@@ -173,6 +177,17 @@ export default function AsciiDemo() {
 	const [bloomRadius, setBloomRadius] = useState(6);
 	const [bloomSoftness, setBloomSoftness] = useState(0.35);
 	const [speed, setSpeed] = useState(1);
+	const activeCharsetCharacters = charsetCharacters[charset] ?? ASCII_DEFAULT_CHARACTERS;
+
+	const setActiveCharsetCharacters = useCallback(
+		(next: string) => {
+			setCharsetCharacters((prev) => ({
+				...prev,
+				[charset]: next,
+			}));
+		},
+		[charset],
+	);
 
 	const config = useMemo(
 		() => ({
@@ -185,7 +200,8 @@ export default function AsciiDemo() {
 			saturation,
 			cellSize,
 			charset,
-			customChars,
+			characters: activeCharsetCharacters,
+			customChars: charsetCharacters.custom,
 			fontWeight,
 			colorMode,
 			colorSourceMode,
@@ -215,6 +231,7 @@ export default function AsciiDemo() {
 			speed,
 		}),
 		[
+			activeCharsetCharacters,
 			backgroundColor,
 			bgOpacity,
 			blendMode,
@@ -229,7 +246,7 @@ export default function AsciiDemo() {
 			colorSourceMode,
 			colorSignalMode,
 			compositeMode,
-			customChars,
+			charsetCharacters.custom,
 			directionBias,
 			fontWeight,
 			glyphSignalMode,
@@ -272,7 +289,8 @@ export default function AsciiDemo() {
 					saturation={saturation}
 					cellSize={cellSize}
 					charset={charset}
-					customChars={customChars}
+					characters={activeCharsetCharacters}
+					customChars={charsetCharacters.custom}
 					fontWeight={fontWeight}
 					colorMode={colorMode}
 					colorSourceMode={colorSourceMode}
@@ -431,15 +449,13 @@ export default function AsciiDemo() {
 							options={CHARSET_OPTIONS}
 							onChange={(next) => setCharset(next as AsciiCharset)}
 						/>
-						{charset === "custom" ? (
-							<GUI.TextInput
-								id="ascii-customChars"
-								label="Custom Chars"
-								value={customChars}
-								placeholder={ASCII_DEFAULT_CHARACTERS}
-								onChange={setCustomChars}
-							/>
-						) : null}
+						<GUI.TextInput
+							id="ascii-characters"
+							label="Characters"
+							value={activeCharsetCharacters}
+							placeholder={ASCII_DEFAULT_CHARACTERS}
+							onChange={setActiveCharsetCharacters}
+						/>
 						<GUI.Select
 							id="ascii-fontWeight"
 							label="Font Weight"

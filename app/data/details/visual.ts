@@ -12,7 +12,6 @@ import {
 const SHADER_LAB_V2_EFFECT_TYPES = new Set<ShaderLabRuntimeEffectType>([
 	"chromatic-aberration",
 	"fluted-glass",
-	"pattern",
 ]);
 
 function isShaderLabV2EffectType(layerType: ShaderLabRuntimeLayerType): layerType is ShaderLabRuntimeEffectType {
@@ -142,7 +141,7 @@ export const VISUAL_DETAILS: Record<string, ComponentDetail> = {
 />`,
 		props: [
 			{ name: "sourceMode", type: `"field" | "image"`, default: `"field"`, description: "VPK demo source selector. Shader Lab uses this pass over the composited input texture." },
-			{ name: "sourceColors", type: "readonly string[]", default: `["#05070F", "#1868DB", "#FCA700", "#AF59E1", "#66D9E8"]`, description: "Editable procedural field palette used when `sourceMode` is `field`; supports up to 8 colors." },
+			{ name: "sourceColors", type: "readonly string[]", default: `["#1868DB", "#FCA700", "#AF59E1", "#6A9A23"]`, description: "Editable procedural field palette used when `sourceMode` is `field`; supports up to 8 colors." },
 			{ name: "imageSrc", type: "string", description: "Optional image URL used when `sourceMode` is `image`. When omitted, the shader uses a bundled default texture." },
 			{ name: "opacity", type: "number", default: "1", description: "Layer opacity used when compositing the ASCII output over the source." },
 			{ name: "blendMode", type: `"normal" | "multiply" | "screen" | "overlay" | "darken" | "lighten" | "color-dodge" | "color-burn" | "hard-light" | "soft-light" | "difference" | "exclusion" | "hue" | "saturation" | "color" | "luminosity"`, default: `"normal"`, description: "Shader Lab layer blend mode." },
@@ -154,8 +153,9 @@ export const VISUAL_DETAILS: Record<string, ComponentDetail> = {
 			{ name: "saturation", type: "number", default: "1", description: "Layer saturation multiplier." },
 			{ name: "cellSize", type: "number", default: "12", description: "ASCII cell size in CSS pixels." },
 			{ name: "charset", type: `"light" | "dense" | "binary" | "blocks" | "hatching" | "custom"`, default: `"light"`, description: "Built-in glyph ramp used for luminance mapping." },
-			{ name: "characters", type: "string", default: `" .:-=+*#%@"`, description: "Optional direct glyph ramp override kept for compatibility." },
-			{ name: "customChars", type: "string", default: `" .:-=+*#%@"`, description: "Glyph ramp used when `charset` is `custom`." },
+			{ name: "characterMode", type: `"signal" | "sequence"`, default: `"signal"`, description: "Controls whether glyphs are selected from the source signal or looped through the full character string by grid position." },
+			{ name: "characters", type: "string", default: `" .:-=+*#%@"`, description: "Optional direct glyph ramp override. In the demo this is editable for every charset preset." },
+			{ name: "customChars", type: "string", default: `" .:-=+*#%@"`, description: "Glyph string used when `charset` is `custom`; custom strings still map from the source signal by default." },
 			{ name: "fontWeight", type: `"thin" | "regular" | "bold"`, default: `"regular"`, description: "Font weight used when generating the glyph atlas." },
 			{ name: "colorMode", type: `"source" | "monochrome" | "green-terminal"`, default: `"monochrome"`, description: "Determines whether glyphs use source color, tint-scaled monochrome, or terminal green. The demo exposes the website controls: source and monochrome." },
 			{ name: "colorSourceMode", type: `"source" | "luminance" | "lightness" | "red" | "green" | "blue"`, default: `"source"`, description: "Color source used when `colorMode` is `source`. `source` keeps full RGB; channel options isolate the selected signal." },

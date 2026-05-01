@@ -1,27 +1,26 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import AddIcon from "@atlaskit/icon/core/add";
-import BranchIcon from "@atlaskit/icon/core/branch";
 import ChevronRightIcon from "@atlaskit/icon/core/chevron-right";
 import CopyIcon from "@atlaskit/icon/core/copy";
 import CrossIcon from "@atlaskit/icon/core/cross";
 import LinkExternalIcon from "@atlaskit/icon/core/link-external";
-import MinusIcon from "@atlaskit/icon/core/minus";
 import RefreshIcon from "@atlaskit/icon/core/refresh";
 import SettingsIcon from "@atlaskit/icon/core/settings";
 import ShowMoreHorizontalIcon from "@atlaskit/icon/core/show-more-horizontal";
-import TargetIcon from "@atlaskit/icon/core/target";
+import UploadIcon from "@atlaskit/icon/core/upload";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ThemeToggle } from "@/components/utils/theme-wrapper";
 import Graph from "@/components/website/demos/visual/graph";
 import { cn } from "@/lib/utils";
 import { useVaultExplorer } from "./hooks/use-vault-explorer";
 import type { NeuralGraphParams } from "./lib/neural-graph/params";
-import { clampNeuralGraphParams, loadStoredNeuralGraphParams, saveStoredNeuralGraphParams } from "./lib/neural-graph/params";
+import { loadStoredNeuralGraphParams, saveStoredNeuralGraphParams } from "./lib/neural-graph/params";
 import type { VaultExplorer, VaultNode, VaultNodeKind } from "./lib/personal-graph-types";
 import { PersonalGraphBackdrop } from "./personal-graph-backdrop";
 import { PersonalGraphDropzone } from "./personal-graph-dropzone";
+import { PersonalGraphGlassPanel } from "./personal-graph-glass-panel";
 import { PersonalGraphIngestButton } from "./personal-graph-ingest-button";
 import { PersonalGraphLog } from "./personal-graph-log";
 import { PersonalGraphNeuralControls } from "./personal-graph-neural-controls";
@@ -68,6 +67,15 @@ const NODE_KIND_MARKERS: Record<VaultNodeKind, string> = {
 	synthesis: "rotate-45 rounded-[2px] bg-blue-600",
 };
 
+const PERSONAL_GRAPH_TITLE_FONT_STYLE = {
+	fontFamily: "var(--font-affigere), Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif",
+	fontWeight: 400,
+} satisfies React.CSSProperties;
+
+const PERSONAL_GRAPH_META_FONT_STYLE = {
+	fontFamily: "var(--font-departure-mono), 'Courier New', monospace",
+} satisfies React.CSSProperties;
+
 function GraphNodeMarker({
 	className,
 	kind,
@@ -78,13 +86,9 @@ function GraphNodeMarker({
 	return <span aria-hidden="true" className={cn("inline-block size-3 shrink-0", NODE_KIND_MARKERS[kind], className)} />;
 }
 
-function getFeaturedNode(explorer: VaultExplorer | null, selectedNodeId: string | null) {
-	if (!explorer) return null;
-	return (
-		explorer.nodes.find((node) => node.id === selectedNodeId) ??
-		[...explorer.nodes].sort((left, right) => right.connectionCount - left.connectionCount)[0] ??
-		null
-	);
+function getSelectedNode(explorer: VaultExplorer | null, selectedNodeId: string | null) {
+	if (!explorer || !selectedNodeId) return null;
+	return explorer.nodes.find((node) => node.id === selectedNodeId) ?? null;
 }
 
 function getRelatedNodes(explorer: VaultExplorer | null, node: VaultNode | null) {
@@ -101,6 +105,12 @@ function getRelatedNodes(explorer: VaultExplorer | null, node: VaultNode | null)
 			return relatedNode ? [relatedNode] : [];
 		})
 		.slice(0, 3);
+}
+
+function getGraphStatsText(explorer: VaultExplorer | null) {
+	return explorer
+		? `${explorer.stats.wikiCount} wiki pages · ${explorer.stats.rawCount} raw sources`
+		: "Obsidian-backed second-brain graph";
 }
 
 function PersonalGraphInspector({
@@ -120,118 +130,110 @@ function PersonalGraphInspector({
 	return (
 		<aside
 			aria-label="Knowledge Graph details"
-			className="absolute right-6 top-[106px] z-30 hidden w-[min(330px,calc(100vw-48px))] rounded-[2px] border border-neutral-950/70 bg-white/95 p-5 text-neutral-950 shadow-lg backdrop-blur xl:block"
+			className="absolute right-6 top-[320px] z-30 hidden w-[min(340px,calc(100vw-48px))] text-neutral-950 lg:block xl:top-[112px]"
 		>
-			<div className="mb-5 flex items-start justify-between gap-4">
-				<h2 className="text-base font-semibold leading-5">{node.title}</h2>
-				<Button
-					aria-label="Close graph details"
-					className="size-7 rounded-[2px] text-neutral-950 hover:bg-neutral-100"
-					onClick={onClose}
-					size="icon-sm"
-					variant="ghost"
-				>
-					<CrossIcon label="" />
-				</Button>
-			</div>
-			<div className="border-b border-neutral-950/35 pb-4">
-				<div className="mb-3 text-sm text-neutral-600">Kind</div>
-				<div className="flex items-center gap-3 text-sm">
-					<GraphNodeMarker kind={node.kind} />
-					<span>{node.kind.replace("_", " ")}</span>
+			<PersonalGraphGlassPanel contentClassName="p-4" radius={24}>
+				<div className="mb-5 flex items-start justify-between gap-4">
+					<h2 className="text-base font-semibold leading-5">{node.title}</h2>
+					<Button
+						aria-label="Close graph details"
+						className="size-8 rounded-full bg-white/5 text-neutral-950 shadow-none hover:bg-white/20"
+						onClick={onClose}
+						size="icon-sm"
+						variant="ghost"
+					>
+						<CrossIcon label="" />
+					</Button>
 				</div>
-			</div>
-			<div className="border-b border-neutral-950/35 py-4">
-				<div className="mb-3 text-sm text-neutral-600">Links</div>
-				<div className="flex items-center justify-between text-sm">
-					<span>{node.connectionCount}</span>
-					<ChevronRightIcon label="" />
-				</div>
-			</div>
-			<div className="border-b border-neutral-950/35 py-4">
-				<div className="mb-2 text-sm text-neutral-600">Excerpt</div>
-				<p className="text-sm leading-6 text-neutral-800">{node.bodyPreview || node.relativePath}</p>
-			</div>
-			{relatedNodes.length > 0 ? (
-				<div className="py-4">
-					<div className="mb-3 text-sm text-neutral-600">Related pages</div>
-					<div className="space-y-2">
-						{relatedNodes.map((relatedNode) => (
-							<button
-								className="flex w-full items-center justify-between gap-3 rounded-[2px] border border-neutral-950/45 bg-white px-3 py-3 text-left text-sm hover:bg-neutral-100"
-								key={relatedNode.id}
-								onClick={() => onSelectNode(relatedNode.id)}
-								type="button"
-							>
-								<span className="flex min-w-0 items-center gap-3">
-									<GraphNodeMarker kind={relatedNode.kind} />
-									<span className="truncate">{relatedNode.title}</span>
-								</span>
-								<ChevronRightIcon label="" />
-							</button>
-						))}
+				<div className="border-b border-neutral-950/8 pb-4">
+					<div className="mb-3 text-xs font-medium text-neutral-500">Kind</div>
+					<div className="flex items-center gap-3 text-sm">
+						<GraphNodeMarker kind={node.kind} />
+						<span>{node.kind.replace("_", " ")}</span>
 					</div>
 				</div>
-			) : null}
-			<div className="mt-4 flex items-center justify-between gap-2 border-t border-neutral-950/35 pt-4">
-				<div className="flex gap-2">
+				<div className="border-b border-neutral-950/8 py-4">
+					<div className="mb-3 text-xs font-medium text-neutral-500">Links</div>
+					<div className="flex items-center justify-between text-sm">
+						<span>{node.connectionCount}</span>
+						<ChevronRightIcon label="" />
+					</div>
+				</div>
+				<div className="border-b border-neutral-950/8 py-4">
+					<div className="mb-2 text-xs font-medium text-neutral-500">Excerpt</div>
+					<p className="text-sm leading-6 text-neutral-800">{node.bodyPreview || node.relativePath}</p>
+				</div>
+				{relatedNodes.length > 0 ? (
+					<div className="py-4">
+						<div className="mb-3 text-xs font-medium text-neutral-500">Related pages</div>
+						<div className="space-y-2">
+							{relatedNodes.map((relatedNode) => (
+								<button
+									className="flex w-full items-center justify-between gap-3 rounded-2xl border border-neutral-950/8 bg-white/5 px-3 py-3 text-left text-sm transition-colors duration-normal hover:bg-white/20"
+									key={relatedNode.id}
+									onClick={() => onSelectNode(relatedNode.id)}
+									type="button"
+								>
+									<span className="flex min-w-0 items-center gap-3">
+										<GraphNodeMarker kind={relatedNode.kind} />
+										<span className="truncate">{relatedNode.title}</span>
+									</span>
+									<ChevronRightIcon label="" />
+								</button>
+							))}
+						</div>
+					</div>
+				) : null}
+				<div className="mt-4 flex items-center justify-between gap-2 border-t border-neutral-950/8 pt-4">
+					<div className="flex gap-2">
+						<Button
+							aria-label="Copy node title"
+							className="size-8 rounded-full bg-white/5 text-neutral-950 shadow-none hover:bg-white/20"
+							onClick={() => void navigator.clipboard?.writeText(node.title)}
+							size="icon-sm"
+							variant="ghost"
+						>
+							<CopyIcon label="" />
+						</Button>
+						<Button
+							aria-label="Open node source"
+							className="size-8 rounded-full bg-white/5 text-neutral-950 shadow-none hover:bg-white/20"
+							onClick={() => window.open(`/api/personal-graph/page/${node.slug}`, "_blank", "noopener,noreferrer")}
+							size="icon-sm"
+							variant="ghost"
+						>
+							<LinkExternalIcon label="" />
+						</Button>
+					</div>
 					<Button
-						aria-label="Copy node title"
-						className="size-8 rounded-[2px] text-neutral-950 hover:bg-neutral-100"
-						onClick={() => void navigator.clipboard?.writeText(node.title)}
+						aria-label="More graph detail actions"
+						className="size-8 rounded-full bg-white/5 text-neutral-950 shadow-none hover:bg-white/20"
 						size="icon-sm"
 						variant="ghost"
 					>
-						<CopyIcon label="" />
-					</Button>
-					<Button
-						aria-label="Open node source"
-						className="size-8 rounded-[2px] text-neutral-950 hover:bg-neutral-100"
-						onClick={() => window.open(`/api/personal-graph/page/${node.slug}`, "_blank", "noopener,noreferrer")}
-						size="icon-sm"
-						variant="ghost"
-					>
-						<LinkExternalIcon label="" />
+						<ShowMoreHorizontalIcon label="" />
 					</Button>
 				</div>
-				<Button
-					aria-label="More graph detail actions"
-					className="size-8 rounded-[2px] text-neutral-950 hover:bg-neutral-100"
-					size="icon-sm"
-					variant="ghost"
-				>
-					<ShowMoreHorizontalIcon label="" />
-				</Button>
-			</div>
+			</PersonalGraphGlassPanel>
 		</aside>
 	);
 }
 
-function PersonalGraphZoomControls({
-	onReset,
-	onZoomIn,
-	onZoomOut,
-	zoom,
+function PersonalGraphCaptureQueue({
+	onRawAdded,
+	refreshKey,
 }: Readonly<{
-	onReset: () => void;
-	onZoomIn: () => void;
-	onZoomOut: () => void;
-	zoom: number;
+	onRawAdded: () => void;
+	refreshKey: number;
 }>) {
 	return (
-		<div className="absolute bottom-6 right-6 z-30 hidden items-center gap-6 text-neutral-950 lg:flex">
-			<div className="flex h-11 items-center rounded-[2px] border border-neutral-950/70 bg-white/95 shadow-lg backdrop-blur">
-				<Button aria-label="Zoom out" className="size-10 rounded-none text-neutral-950 hover:bg-neutral-100" onClick={onZoomOut} size="icon" variant="ghost">
-					<MinusIcon label="" />
-				</Button>
-				<div className="flex h-full min-w-20 items-center justify-center border-x border-neutral-950/35 px-4 text-sm">{Math.round(zoom * 100)}%</div>
-				<Button aria-label="Zoom in" className="size-10 rounded-none text-neutral-950 hover:bg-neutral-100" onClick={onZoomIn} size="icon" variant="ghost">
-					<AddIcon label="" />
-				</Button>
+		<div className="space-y-4">
+			<div>
+				<h2 className="text-base font-semibold text-neutral-950">Capture queue</h2>
 			</div>
-			<Button aria-label="Reset graph view" className="size-11 rounded-[2px] border-neutral-950/70 bg-white/95 text-neutral-950 shadow-lg hover:bg-neutral-100" onClick={onReset} size="icon" variant="outline">
-				<TargetIcon label="" />
-			</Button>
+			<PersonalGraphDropzone onRawAdded={onRawAdded} />
+			<PersonalGraphIngestButton onDone={onRawAdded} refreshKey={refreshKey} />
+			<PersonalGraphLog refreshKey={refreshKey} />
 		</div>
 	);
 }
@@ -245,18 +247,9 @@ export function PersonalGraphSurface({
 	const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 	const [refreshKey, setRefreshKey] = useState(0);
 	const [isParameterPanelOpen, setIsParameterPanelOpen] = useState(false);
+	const [isCaptureQueueOpen, setIsCaptureQueueOpen] = useState(false);
 	const [neuralParams, setNeuralParams] = useState<NeuralGraphParams>(() => loadStoredNeuralGraphParams());
-	const [viewportZoom, setViewportZoom] = useState(1);
-	const displayedNode = useMemo(() => getFeaturedNode(explorer, selectedNodeId), [explorer, selectedNodeId]);
-	const renderedNeuralParams = useMemo(
-		() =>
-			clampNeuralGraphParams({
-				...neuralParams,
-				nodeSize: neuralParams.nodeSize * Math.sqrt(viewportZoom),
-				spread: neuralParams.spread * viewportZoom,
-			}),
-		[neuralParams, viewportZoom],
-	);
+	const displayedNode = useMemo(() => getSelectedNode(explorer, selectedNodeId), [explorer, selectedNodeId]);
 
 	const handleRefreshAll = useCallback(() => {
 		setRefreshKey((current) => current + 1);
@@ -264,6 +257,16 @@ export function PersonalGraphSurface({
 	}, [refresh]);
 	const handleNeuralParamsChange = useCallback((params: NeuralGraphParams) => {
 		setNeuralParams(params);
+	}, []);
+	const handleCaptureQueueOpenChange = useCallback((isOpen: boolean) => {
+		setIsCaptureQueueOpen(isOpen);
+		if (isOpen) {
+			setIsParameterPanelOpen(false);
+		}
+	}, []);
+	const handleToggleParameterPanel = useCallback(() => {
+		setIsParameterPanelOpen((current) => !current);
+		setIsCaptureQueueOpen(false);
 	}, []);
 
 	useEffect(() => {
@@ -295,57 +298,87 @@ export function PersonalGraphSurface({
 			{...props}
 		>
 			<PersonalGraphBackdrop className="z-0" />
-			<header className="absolute inset-x-0 top-0 z-20 flex items-center justify-between gap-4 px-6 py-6">
-				<div className="flex min-w-0 items-center gap-3">
-					<BranchIcon label="" />
-					<div className="min-w-0">
-						<h1 className="truncate text-base font-semibold leading-5 text-neutral-950">Personal Graph</h1>
-						<p className="truncate text-sm text-neutral-700">
-							{explorer
-								? `${explorer.stats.wikiCount} wiki pages · ${explorer.stats.rawCount} raw sources`
-								: "Obsidian-backed second-brain graph"}
+			<header className="absolute inset-x-4 top-5 z-30 sm:inset-x-6 lg:inset-x-8">
+				<div className="relative flex flex-col items-center gap-4">
+					<div className="mx-auto min-w-0 max-w-full text-center text-neutral-950">
+						<h1
+							className="text-[3.75rem] uppercase leading-[0.8] text-neutral-950 min-[390px]:text-[4.5rem] sm:text-[6.25rem] lg:text-[7.75rem] xl:text-[8.75rem]"
+							style={PERSONAL_GRAPH_TITLE_FONT_STYLE}
+						>
+							<span className="block">PERSONAL</span>
+							<span className="block">GRAPH</span>
+						</h1>
+						<p
+							className="mt-5 truncate text-[1rem] leading-none tracking-normal text-neutral-950 sm:mt-6 sm:text-[1.4rem] lg:text-[1.55rem]"
+							style={PERSONAL_GRAPH_META_FONT_STYLE}
+						>
+							{getGraphStatsText(explorer)}
 						</p>
 					</div>
-				</div>
-				<div className="flex items-center justify-end gap-2">
-					{error ? (
-						<p className="max-w-[360px] truncate text-xs text-red-700">{error.message}</p>
-					) : null}
-					<PersonalGraphVaultPicker onVaultChanged={handleRefreshAll} />
-					<Button
-						aria-label="Refresh graph"
-						className="size-11 rounded-[2px] border-neutral-950/70 bg-white text-neutral-950 shadow-none hover:bg-neutral-100"
-						disabled={isLoading}
-						onClick={handleRefreshAll}
-						size="icon"
-						variant="outline"
-					>
-						<RefreshIcon label="" />
-					</Button>
-					<Button
-						aria-expanded={isParameterPanelOpen}
-						aria-label="Graph parameters"
-						className="size-11 rounded-[2px] border-neutral-950/70 bg-white text-neutral-950 shadow-none hover:bg-neutral-100"
-						onClick={() => setIsParameterPanelOpen((current) => !current)}
-						size="icon"
-						variant="outline"
-					>
-						<SettingsIcon label="" />
-					</Button>
-					<div className="[&_[data-slot=button]]:size-11 [&_[data-slot=button]]:rounded-[2px] [&_[data-slot=button]]:border [&_[data-slot=button]]:border-neutral-950/70 [&_[data-slot=button]]:bg-white [&_[data-slot=button]]:text-neutral-950 [&_[data-slot=button]]:shadow-none [&_[data-slot=button]:hover]:bg-neutral-100">
-						<ThemeToggle />
+					<div className="flex min-w-0 flex-wrap items-center justify-center gap-2 xl:absolute xl:right-0 xl:top-0 xl:justify-end">
+						{error ? (
+							<p className="max-w-[360px] truncate text-xs text-red-700">{error.message}</p>
+						) : null}
+						<PersonalGraphVaultPicker onVaultChanged={handleRefreshAll} />
+						<Popover open={isCaptureQueueOpen} onOpenChange={handleCaptureQueueOpenChange}>
+							<PopoverTrigger
+								render={
+									<Button
+										aria-label="Capture queue"
+										className="size-10 rounded-full border-neutral-950/8 bg-white/5 text-neutral-950 shadow-none hover:bg-white/20"
+										size="icon"
+										variant="outline"
+									/>
+								}
+							>
+								<UploadIcon label="" />
+							</PopoverTrigger>
+							<PopoverContent
+								align="end"
+								aria-label="Capture queue"
+								className="w-[min(320px,calc(100vw-32px))] bg-transparent p-0 text-neutral-950 shadow-none"
+								sideOffset={10}
+							>
+								<PersonalGraphGlassPanel contentClassName="max-h-[min(70svh,560px)] overflow-y-auto p-4" radius={24}>
+									<PersonalGraphCaptureQueue onRawAdded={handleRefreshAll} refreshKey={refreshKey} />
+								</PersonalGraphGlassPanel>
+							</PopoverContent>
+						</Popover>
+						<Button
+							aria-label="Refresh graph"
+							className="size-10 rounded-full border-neutral-950/8 bg-white/5 text-neutral-950 shadow-none hover:bg-white/20"
+							disabled={isLoading}
+							onClick={handleRefreshAll}
+							size="icon"
+							variant="outline"
+						>
+							<RefreshIcon label="" />
+						</Button>
+						<Button
+							aria-expanded={isParameterPanelOpen}
+							aria-label="Graph parameters"
+							className="size-10 rounded-full border-neutral-950/8 bg-white/5 text-neutral-950 shadow-none hover:bg-white/20"
+							onClick={handleToggleParameterPanel}
+							size="icon"
+							variant="outline"
+						>
+							<SettingsIcon label="" />
+						</Button>
+						<div className="[&_[data-slot=button]]:size-10 [&_[data-slot=button]]:rounded-full [&_[data-slot=button]]:border [&_[data-slot=button]]:border-neutral-950/8 [&_[data-slot=button]]:bg-white/5 [&_[data-slot=button]]:text-neutral-950 [&_[data-slot=button]]:shadow-none [&_[data-slot=button]:hover]:bg-white/20">
+							<ThemeToggle />
+						</div>
 					</div>
 				</div>
 			</header>
 
-			<section className="absolute inset-x-0 bottom-[6.5rem] top-[84px] z-10 sm:bottom-[7.25rem]" aria-label="Vault graph">
+			<section className="absolute inset-0 z-10" aria-label="Vault graph">
 				<Graph
 					background="transparent"
 					className="h-full"
 					explorer={explorer}
 					isLoading={isLoading}
 					onSelectedNodeIdChange={setSelectedNodeId}
-					params={renderedNeuralParams}
+					params={neuralParams}
 					selectedNodeId={selectedNodeId}
 					showControls={false}
 					showSelectionOverlay={false}
@@ -356,7 +389,7 @@ export function PersonalGraphSurface({
 
 			<section
 				aria-label="Personal Graph search and chat"
-				className="pointer-events-none absolute inset-x-0 bottom-6 z-30 flex justify-center px-4 sm:bottom-8"
+				className="pointer-events-none absolute bottom-6 left-4 right-4 z-40 flex justify-center sm:bottom-8 lg:left-[360px] lg:right-[360px]"
 			>
 				<div className="pointer-events-auto relative w-full max-w-[760px]">
 					<div className="pointer-events-none absolute left-1/2 top-0 h-24 w-px -translate-x-1/2 -translate-y-full bg-gradient-to-t from-neutral-950/35 to-transparent" />
@@ -373,59 +406,31 @@ export function PersonalGraphSurface({
 			{isParameterPanelOpen ? (
 				<aside
 					aria-label="Neural graph parameters"
-					className="absolute right-6 top-[90px] z-40 max-h-[calc(100svh-112px)] w-[min(320px,calc(100vw-32px))] overflow-y-auto rounded-[2px] border border-neutral-950/70 bg-white/95 p-4 text-neutral-950 shadow-xl backdrop-blur"
+					className="absolute right-6 top-[320px] z-40 w-[min(320px,calc(100vw-32px))] text-neutral-950 xl:top-[112px]"
 				>
-					<div className="mb-4 flex items-center justify-between gap-3">
-						<p className="text-xs font-semibold text-neutral-950">Neural graph</p>
-						<Button
-							aria-label="Close graph parameters"
-							className="rounded-[2px] text-neutral-950 hover:bg-neutral-100"
-							onClick={() => setIsParameterPanelOpen(false)}
-							size="icon-sm"
-							variant="ghost"
-						>
-							<CrossIcon label="" />
-						</Button>
-					</div>
-					<PersonalGraphNeuralControls onChange={handleNeuralParamsChange} params={neuralParams} />
+					<PersonalGraphGlassPanel contentClassName="max-h-[calc(100svh-136px)] overflow-y-auto p-4" radius={24}>
+						<div className="mb-4 flex items-center justify-between gap-3">
+							<p className="text-xs font-semibold text-neutral-950">Neural graph</p>
+							<Button
+								aria-label="Close graph parameters"
+								className="size-8 rounded-full bg-white/5 text-neutral-950 shadow-none hover:bg-white/20"
+								onClick={() => setIsParameterPanelOpen(false)}
+								size="icon-sm"
+								variant="ghost"
+							>
+								<CrossIcon label="" />
+							</Button>
+						</div>
+						<PersonalGraphNeuralControls onChange={handleNeuralParamsChange} params={neuralParams} />
+					</PersonalGraphGlassPanel>
 				</aside>
 			) : null}
-
-			<section className="absolute bottom-6 left-6 z-20 hidden w-[312px] rounded-[2px] border border-neutral-950/70 bg-white/95 p-5 text-neutral-950 shadow-lg backdrop-blur lg:block" aria-label="Capture queue">
-				<div className="mb-4 flex items-center justify-between">
-					<h2 className="text-base font-semibold">Capture queue</h2>
-					<Button
-						aria-label="Collapse capture queue"
-						className="size-7 rounded-[2px] text-neutral-950 hover:bg-neutral-100"
-						size="icon-sm"
-						variant="ghost"
-					>
-						<span className="-rotate-90">
-							<ChevronRightIcon label="" />
-						</span>
-					</Button>
-				</div>
-				<div className="space-y-4">
-					<PersonalGraphDropzone onRawAdded={handleRefreshAll} />
-					<PersonalGraphIngestButton onDone={handleRefreshAll} refreshKey={refreshKey} />
-					<PersonalGraphLog refreshKey={refreshKey} />
-				</div>
-			</section>
 
 			<PersonalGraphInspector
 				explorer={explorer}
 				node={displayedNode}
 				onClose={() => setSelectedNodeId(null)}
 				onSelectNode={setSelectedNodeId}
-			/>
-			<PersonalGraphZoomControls
-				onReset={() => {
-					setSelectedNodeId(null);
-					setViewportZoom(1);
-				}}
-				onZoomIn={() => setViewportZoom((current) => Math.min(1.5, Number((current + 0.1).toFixed(2))))}
-				onZoomOut={() => setViewportZoom((current) => Math.max(0.7, Number((current - 0.1).toFixed(2))))}
-				zoom={viewportZoom}
 			/>
 
 			<details className="sr-only" open>

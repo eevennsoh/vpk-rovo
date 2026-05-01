@@ -1,17 +1,45 @@
 "use client";
 
 import Ascii from "@/components/website/demos/visual/shaders/ascii";
+import PatternTile, { type PatternStrokeOptions } from "@/components/website/demos/visual/pattern-tile";
+import WaveGradient from "@/components/website/demos/visual/shaders/wave-gradient";
 import { cn } from "@/lib/utils";
 
 type PersonalGraphBackdropProps = React.ComponentProps<"div">;
 
-const PERSONAL_GRAPH_ASCII_SOURCE_COLORS = [
-	"#061526",
-	"#0F4F9E",
-	"#58B7EB",
-	"#9AD58B",
-	"#EEF7E8",
-] as const;
+const PERSONAL_GRAPH_GRID_COLOR = "var(--ds-border)";
+const PERSONAL_GRAPH_GRID_OVERLAY_COLOR = "var(--ds-border-bold)";
+const PERSONAL_GRAPH_GRID_STROKE = {
+	style: "dashed",
+	width: 0.5,
+	dash: 3,
+	gap: 6,
+	dashOffset: 0,
+	lineCap: "butt",
+	lineJoin: "miter",
+	miterLimit: 4,
+} satisfies PatternStrokeOptions;
+const PERSONAL_GRAPH_GRID_FADE_STYLE = {
+	WebkitMaskImage: "linear-gradient(to bottom, #000 0%, #000 54%, rgba(0, 0, 0, 0.55) 64%, transparent 76%, transparent 100%)",
+	maskImage: "linear-gradient(to bottom, #000 0%, #000 54%, rgba(0, 0, 0, 0.55) 64%, transparent 76%, transparent 100%)",
+} satisfies React.CSSProperties;
+const PERSONAL_GRAPH_SHADER_GRID_FADE_STYLE = {
+	WebkitMaskImage: "linear-gradient(to bottom, rgba(0, 0, 0, 0.28) 0%, rgba(0, 0, 0, 0.12) 30%, transparent 62%, transparent 100%)",
+	maskImage: "linear-gradient(to bottom, rgba(0, 0, 0, 0.28) 0%, rgba(0, 0, 0, 0.12) 30%, transparent 62%, transparent 100%)",
+} satisfies React.CSSProperties;
+
+const PERSONAL_GRAPH_SHADER_COLORS: [string, string, string, string] = [
+	"#1868DB",
+	"#FCA700",
+	"#AF59E1",
+	"#6A9A23",
+];
+const PERSONAL_GRAPH_WAVE_COLORS: [string, string, string, string] = [
+	"#FFFFFF",
+	"#FFFFFF",
+	"#FFFFFF",
+	"#FFFFFF",
+];
 
 function PersonalGraphAsciiBackdrop() {
 	return (
@@ -20,36 +48,83 @@ function PersonalGraphAsciiBackdrop() {
 			className="pointer-events-none absolute inset-x-0 bottom-0 h-[34svh] min-h-[280px] max-h-[380px] overflow-hidden"
 			data-personal-graph-editor-backdrop="ascii-shader"
 			style={{
-				WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.66) 18%, #000 42%, #000 84%, transparent 100%)",
-				maskImage: "linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.66) 18%, #000 42%, #000 84%, transparent 100%)",
+				WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.66) 18%, #000 42%, #000 100%)",
+				maskImage: "linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.66) 18%, #000 42%, #000 100%)",
 			}}
 		>
-			<div
-				className="absolute inset-0"
-				style={{
-					background:
-						"radial-gradient(ellipse at 31% 72%, rgba(72, 167, 232, 0.66), transparent 43%), radial-gradient(ellipse at 66% 76%, rgba(106, 199, 131, 0.52), transparent 38%), linear-gradient(to bottom, rgba(255, 255, 255, 0), rgba(240, 249, 255, 0.52) 42%, rgba(246, 252, 241, 0.46))",
-				}}
+			<WaveGradient
+				className="absolute inset-0 opacity-55 mix-blend-multiply"
+				colors={PERSONAL_GRAPH_WAVE_COLORS}
+				seed={31}
+				speed={1.1}
+				freqX={0.85}
+				freqY={5.4}
+				angle={104}
+				amplitude={1.45}
+				softness={1.55}
+				blend={0.58}
 			/>
 			<Ascii
-				charset="binary"
-				className="absolute inset-0 opacity-80"
-				colorMode="monochrome"
-				monoColor="#FFFFFF"
-				sourceColors={PERSONAL_GRAPH_ASCII_SOURCE_COLORS}
+				sourceMode="field"
+				sourceColors={PERSONAL_GRAPH_SHADER_COLORS}
+				opacity={0.78}
+				blendMode="normal"
+				compositeMode="mask"
+				hue={0}
+				saturation={1}
 				cellSize={12}
-				opacity={0.58}
-				signalBlackPoint={0.04}
-				signalWhitePoint={0.9}
-				signalGamma={0.82}
-				presenceThreshold={0.24}
-				presenceSoftness={0.26}
-				directionBias={0.08}
-				shimmerAmount={0.08}
-				shimmerSpeed={0.38}
-				speed={0.16}
+				charset="custom"
+				customChars=" .:-=+*#%@ROVO"
+				fontWeight="regular"
+				className="absolute inset-0 opacity-90 mix-blend-multiply"
+				colorMode="monochrome"
+				monoColor="#44546F"
+				backgroundColor="#ffffff"
+				invert={false}
+				directionBias={0}
+				bgOpacity={0}
+				maskSource="luminance"
+				maskMode="multiply"
+				maskInvert={false}
+				toneMapping="none"
+				glyphSignalMode="luminance"
+				colorSignalMode="luminance"
+				signalBlackPoint={0.1}
+				signalWhitePoint={0.88}
+				signalGamma={0.92}
+				presenceThreshold={0.56}
+				presenceSoftness={0.34}
+				shimmerAmount={0}
+				shimmerSpeed={1}
+				bloomEnabled={false}
+				bloomIntensity={1.25}
+				bloomThreshold={0.6}
+				bloomRadius={6}
+				bloomSoftness={0.35}
+				speed={1}
 				transparentBackground
 			/>
+			<div
+				className="absolute inset-0"
+				data-personal-graph-editor-backdrop="ascii-grid-overlay"
+				style={PERSONAL_GRAPH_SHADER_GRID_FADE_STYLE}
+			>
+				<PatternTile
+					patternType="grid"
+					front={PERSONAL_GRAPH_GRID_OVERLAY_COLOR}
+					back="transparent"
+					scale={48}
+					stroke={PERSONAL_GRAPH_GRID_STROKE}
+					opacity={0.34}
+					blendMode="multiply"
+					fill="tile"
+					position="center"
+					shouldAnimate={false}
+					direction="left"
+					diagonal
+					duration={5}
+				/>
+			</div>
 		</div>
 	);
 }
@@ -65,16 +140,24 @@ export function PersonalGraphBackdrop({
 			data-personal-graph-editor-backdrop="light-grid"
 			{...props}
 		>
-			<div
-				className="absolute inset-0 opacity-80"
-				style={{
-					backgroundImage:
-						"linear-gradient(to right, rgba(9, 30, 66, 0.075) 1px, transparent 1px), linear-gradient(to bottom, rgba(9, 30, 66, 0.075) 1px, transparent 1px)",
-					backgroundSize: "72px 72px",
-				}}
-			/>
+			<div className="absolute inset-0" style={PERSONAL_GRAPH_GRID_FADE_STYLE}>
+				<PatternTile
+					patternType="grid"
+					front={PERSONAL_GRAPH_GRID_COLOR}
+					back="#FFFFFF"
+					scale={48}
+					stroke={PERSONAL_GRAPH_GRID_STROKE}
+					opacity={1}
+					blendMode="normal"
+					fill="tile"
+					position="center"
+					shouldAnimate={false}
+					direction="left"
+					diagonal
+					duration={5}
+				/>
+			</div>
 			<div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-white via-white/90 to-transparent" />
-			<div className="absolute inset-x-0 bottom-0 h-56 bg-gradient-to-t from-white via-white/95 to-transparent" />
 			<PersonalGraphAsciiBackdrop />
 		</div>
 	);

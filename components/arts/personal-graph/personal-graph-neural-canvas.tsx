@@ -430,7 +430,7 @@ export function PersonalGraphNeuralCanvas({
 	const statusTextClass = background === "transparent" ? "text-neutral-500" : "text-text-subtle";
 
 	return (
-		<div className={cn("relative h-full min-h-[620px] overflow-hidden", backgroundClass)} data-neural-graph-renderer="owned-canvas">
+		<div className={cn("relative h-full min-h-0 overflow-hidden", backgroundClass)} data-neural-graph-renderer="owned-canvas">
 			<div
 				className={cn("relative h-full w-full touch-none", cursorClass)}
 				onPointerDown={handlePointerDown}

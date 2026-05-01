@@ -2,6 +2,6 @@
 
 import { ShaderLabEffect } from "./shader-lab-effect-demo";
 
-export default function PatternV2Demo() {
+export default function PatternDemo() {
 	return <ShaderLabEffect effectType="pattern" />;
 }
