@@ -474,13 +474,14 @@ const [value, setValue] = React.useState<ThemeMode>("location");
 		],
 	},
 	"pattern-tile": {
-		description: "VPK-rovo CSS background pattern tile generator with 21 pattern types, two-color palette, blend/fill controls, and optional tile animation.",
+		description: "VPK-rovo CSS background pattern tile generator with 21 pattern types, two-color palette, blend/fill controls, grid stroke customization, and optional tile animation.",
 		importStatement: `import PatternTile from "@/components/website/demos/visual/pattern-tile";`,
 		usage: `<PatternTile
-	patternType="wave-lines"
+	patternType="grid"
 	front="#FFFFFF"
 	back="#22DDDD"
 	scale={10}
+	stroke={{ style: "dashed", width: 1, dash: 6, gap: 6 }}
 	fill="tile"
 />`,
 		props: [
@@ -488,6 +489,7 @@ const [value, setValue] = React.useState<ThemeMode>("location");
 			{ name: "front", type: "string", default: `"#FFFFFF"`, description: "Foreground pattern color." },
 			{ name: "back", type: "string", default: `"#22DDDD"`, description: "Background color. Can be `transparent`." },
 			{ name: "scale", type: "number", default: "10", description: "Size multiplier for the generated pattern tiles." },
+			{ name: "stroke", type: `{ style?: "solid" | "dashed"; width?: number; dash?: number; gap?: number; dashArray?: string; dashOffset?: number; lineCap?: "butt" | "round" | "square"; lineJoin?: "miter" | "round" | "bevel"; miterLimit?: number }`, description: "Optional grid stroke settings. When `patternType=\"grid\"`, customizes solid or dashed stroke rendering; `dashArray` accepts CSS stroke-dasharray values and overrides `dash`/`gap`." },
 			{ name: "radius", type: "number", default: "0", description: "Border radius applied to the pattern surface." },
 			{ name: "opacity", type: "number", default: "1", description: "Overall pattern opacity." },
 			{ name: "blendMode", type: `"normal" | "darken" | "multiply" | "color-burn" | "lighten" | "screen" | "plus-lighter" | "color-dodge" | "overlay" | "soft-light" | "hard-light" | "difference" | "exclusion" | "hue" | "saturation" | "color" | "luminosity"`, default: `"normal"`, description: "CSS background blend mode. `normal` lets pattern-specific defaults apply." },
