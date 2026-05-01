@@ -95,6 +95,35 @@ export const VISUAL_DETAILS: Record<string, ComponentDetail> = {
 			{ name: "style", type: "React.CSSProperties", description: "Inline styles merged onto the filtered target wrapper. The component owns the CSS filter property." },
 		],
 	},
+	"scramble-text": {
+		description: "Official Motion+ ScrambleText component. Letter-by-letter scramble that cycles random characters before each character settles on its target. The demo uses the exact charset, word lists, and stagger values from the official motion.dev examples (Normal, Hover, Stagger from center) plus a Playground tile with live GUI controls for every prop. The motion.dev reference charset is `!@#$%^&*()_+-=[]{}|;:,.<>?/~`░▒▓█▀▄■□▪▫●○◆◇◈◊※†‡` — punctuation + Unicode block-drawing chars for a glitchy texture.",
+		importStatement: `import { ScrambleText } from "motion-plus/react";
+import { stagger } from "motion/react";`,
+		usage: `// Normal — plays once on mount
+<ScrambleText duration={1}>Scramble text</ScrambleText>
+
+// Hover — perpetual scramble while active
+<span onPointerEnter={() => setHovered(true)} onPointerLeave={() => setHovered(false)}>
+	<ScrambleText active={hovered} duration={Infinity}>Hover me!</ScrambleText>
+</span>
+
+// Stagger from center
+<ScrambleText duration={1} delay={stagger(0.05, { from: "center" })}>
+	Stagger from center
+</ScrambleText>`,
+		props: [
+			{ name: "children", type: "string", description: "The text content to scramble. Spaces pass through unchanged." },
+			{ name: "as", type: "ElementType", default: '"span"', description: "The HTML element or component to render as. Polymorphic — pass any tag name or component." },
+			{ name: "active", type: "boolean", default: "true", description: "Whether the scramble animation is active. When true, characters scramble according to delay/duration. When false, characters reveal with stagger offsets preserved." },
+			{ name: "delay", type: "number | StaggerFunction", default: "0", description: "Delay before each character starts scrambling, in seconds. Pass a stagger function (e.g. stagger(0.1, { from: 'center' })) for per-character delays." },
+			{ name: "duration", type: "number | StaggerFunction", default: "1", description: "How long each character stays scrambled before revealing, in seconds. Pass Infinity to keep scrambling until active becomes false." },
+			{ name: "interval", type: "number", default: "0.05", description: "Seconds between random character switches while scrambling." },
+			{ name: "chars", type: "string | string[]", default: '"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"', description: "Characters to use for scrambling. String of characters, or an array of strings for emoji support." },
+			{ name: "onComplete", type: "() => void", description: "Callback fired when all characters have been revealed." },
+			{ name: "className", type: "string", description: "Custom className applied to the wrapper element." },
+			{ name: "style", type: "CSSProperties", description: "Custom inline styles." },
+		],
+	},
 	"graph": {
 		description: "Rovo-styled Teamwork Graph canvas with neural layout, pan, zoom, selection, theme, and editable parameter controls.",
 		importStatement: `import Graph from "@/components/website/demos/visual/graph";`,
@@ -142,7 +171,7 @@ export const VISUAL_DETAILS: Record<string, ComponentDetail> = {
 		props: [
 			{ name: "sourceMode", type: `"field" | "image"`, default: `"field"`, description: "VPK demo source selector. Shader Lab uses this pass over the composited input texture." },
 			{ name: "sourceColors", type: "readonly string[]", default: `["#1868DB", "#FCA700", "#AF59E1", "#6A9A23"]`, description: "Editable procedural field palette used when `sourceMode` is `field`; supports up to 8 colors." },
-			{ name: "imageSrc", type: "string", description: "Optional image URL used when `sourceMode` is `image`. When omitted, the shader uses a bundled default texture." },
+			{ name: "imageSrc", type: "string", description: "Optional image URL used when `sourceMode` is `image`. When omitted, image mode starts from an empty source rather than a bundled demo texture." },
 			{ name: "opacity", type: "number", default: "1", description: "Layer opacity used when compositing the ASCII output over the source." },
 			{ name: "blendMode", type: `"normal" | "multiply" | "screen" | "overlay" | "darken" | "lighten" | "color-dodge" | "color-burn" | "hard-light" | "soft-light" | "difference" | "exclusion" | "hue" | "saturation" | "color" | "luminosity"`, default: `"normal"`, description: "Shader Lab layer blend mode." },
 			{ name: "compositeMode", type: `"filter" | "mask"`, default: `"filter"`, description: "Whether the pass filters the source or behaves like a luminance mask." },
