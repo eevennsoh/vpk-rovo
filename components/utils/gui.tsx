@@ -19,6 +19,7 @@ import {
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { selectMountedGUIValues } from "@/components/utils/gui-values";
 import { cn } from "@/lib/utils";
 
 type GUIPanelContextValue = Readonly<{
@@ -195,14 +196,43 @@ function GUIPanel({ title, values, defaultOpen = true, children }: GUIPanelProps
 	const [copied, setCopied] = useState(false);
 	const [tooltipOpen, setTooltipOpen] = useState(false);
 	const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const registeredKeysRef = useRef<Map<string, number>>(new Map());
+	const [mountedValueKeys, setMountedValueKeys] = useState<readonly string[]>([]);
+
+	const syncMountedValueKeys = useCallback(() => {
+		setMountedValueKeys(Array.from(registeredKeysRef.current.keys()));
+	}, []);
+
+	const registerValueKeys = useCallback((keys: readonly string[]) => {
+		let changed = false;
+		for (const key of keys) {
+			const currentCount = registeredKeysRef.current.get(key) ?? 0;
+			registeredKeysRef.current.set(key, currentCount + 1);
+			if (currentCount === 0) changed = true;
+		}
+		if (changed) syncMountedValueKeys();
+	}, [syncMountedValueKeys]);
+
+	const unregisterValueKeys = useCallback((keys: readonly string[]) => {
+		let changed = false;
+		for (const key of keys) {
+			const currentCount = registeredKeysRef.current.get(key) ?? 0;
+			if (currentCount <= 1) {
+				if (registeredKeysRef.current.delete(key)) changed = true;
+			} else {
+				registeredKeysRef.current.set(key, currentCount - 1);
+			}
+		}
+		if (changed) syncMountedValueKeys();
+	}, [syncMountedValueKeys]);
 
 	const panelContext = useMemo<GUIPanelContextValue>(() => ({
-		registerKeys: () => {},
-		unregisterKeys: () => {},
-	}), []);
+		registerKeys: registerValueKeys,
+		unregisterKeys: unregisterValueKeys,
+	}), [registerValueKeys, unregisterValueKeys]);
 
 	const handleCopy = useCallback(() => {
-		const text = JSON.stringify(values, null, "\t");
+		const text = JSON.stringify(selectMountedGUIValues(values, mountedValueKeys), null, "\t");
 		navigator.clipboard.writeText(text).then(() => {
 			setCopied(true);
 			setTooltipOpen(true);
@@ -212,7 +242,7 @@ function GUIPanel({ title, values, defaultOpen = true, children }: GUIPanelProps
 				setTooltipOpen(false);
 			}, 1500);
 		});
-	}, [values]);
+	}, [mountedValueKeys, values]);
 
 	useEffect(() => {
 		return () => {
