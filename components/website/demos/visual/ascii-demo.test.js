@@ -26,6 +26,10 @@ const REGISTRY_SOURCE = fs.readFileSync(
 	"utf8",
 );
 
+function escapeRegExp(value) {
+	return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 test("ASCII is registered as a visual shader component", () => {
 	assert.match(
 		COMPONENTS_SOURCE,
@@ -42,6 +46,7 @@ test("ASCII is registered as a visual shader component", () => {
 
 test("ASCII demo exposes the shader-lab style ASCII controls", () => {
 	assert.match(DEMO_SOURCE, /import Ascii/);
+	assert.match(DEMO_SOURCE, /ASCII_BACKGROUND_MODES/);
 	assert.match(DEMO_SOURCE, /ASCII_CONTROL_BLEND_MODES/);
 	assert.match(DEMO_SOURCE, /ASCII_COLOR_SOURCE_MODES/);
 	assert.match(DEMO_SOURCE, /ASCII_DEFAULT_SOURCE_COLORS/);
@@ -53,7 +58,7 @@ test("ASCII demo exposes the shader-lab style ASCII controls", () => {
 	assert.match(DEMO_SOURCE, /label="Mode"/);
 	assert.match(DEMO_SOURCE, /label="Mask Mode"/);
 	assert.match(DEMO_SOURCE, /label="Mask Invert"/);
-	assert.match(DEMO_SOURCE, /label="Cell Size"/);
+	assert.match(DEMO_SOURCE, /label="Density"/);
 	assert.match(DEMO_SOURCE, /label="Charset"/);
 	assert.match(DEMO_SOURCE, /DEFAULT_CHARSET_VALUES/);
 	assert.match(DEMO_SOURCE, /charsetCharacters/);
@@ -61,8 +66,19 @@ test("ASCII demo exposes the shader-lab style ASCII controls", () => {
 	assert.match(DEMO_SOURCE, /label="Characters"/);
 	assert.match(DEMO_SOURCE, /characters=\{activeCharsetCharacters\}/);
 	assert.match(DEMO_SOURCE, /label="Font Weight"/);
+	assert.match(DEMO_SOURCE, /label="Brightness"/);
+	assert.match(DEMO_SOURCE, /label="Contrast"/);
+	assert.match(DEMO_SOURCE, /label="Character Opacity"/);
+	assert.match(DEMO_SOURCE, /label="Dot Grid Overlay"/);
+	assert.match(DEMO_SOURCE, /label="Randomize Characters"/);
+	assert.match(DEMO_SOURCE, /label="Animated ASCII"/);
+	assert.match(DEMO_SOURCE, /handleSourceModeChange/);
+	assert.match(DEMO_SOURCE, /applyImageBackgroundDefaults/);
 	assert.match(DEMO_SOURCE, /label="Background Color"/);
+	assert.match(DEMO_SOURCE, /label="Background Mode"/);
+	assert.match(DEMO_SOURCE, /label="Blur Radius"/);
 	assert.match(DEMO_SOURCE, /label="Source Background"/);
+	assert.match(DEMO_SOURCE, /label="Edge Emphasis"/);
 	assert.match(DEMO_SOURCE, /label="Tone Mapping"/);
 	assert.match(DEMO_SOURCE, /label="Glyph Signal"/);
 	assert.match(DEMO_SOURCE, /label="Color Signal"/);
@@ -72,9 +88,94 @@ test("ASCII demo exposes the shader-lab style ASCII controls", () => {
 	assert.match(DEMO_SOURCE, /colorMode === "source"/);
 	assert.match(DEMO_SOURCE, /label="Black Point"/);
 	assert.match(DEMO_SOURCE, /label="White Point"/);
+	assert.match(DEMO_SOURCE, /label="Coverage"/);
 	assert.match(DEMO_SOURCE, /label="Invert"/);
 	assert.match(DEMO_SOURCE, /label="Bloom"/);
+	assert.match(DEMO_SOURCE, /label="RGB Split"/);
+	assert.match(DEMO_SOURCE, /PercentControl/);
 	assert.match(DEMO_SOURCE, /ShaderColorInput/);
+});
+
+test("ASCII demo exposes ASCII Magic background, intensity, animation, and post-processing controls", () => {
+	for (const label of ["Blurred Image", "Solid Black", "Original Image", "None (Transparent)"]) {
+		assert.match(DEMO_SOURCE, new RegExp(`label: "${escapeRegExp(label)}"`));
+	}
+
+	for (const label of ["Coverage", "Edge Emphasis", "Density", "Brightness", "Contrast"]) {
+		assert.match(DEMO_SOURCE, new RegExp(`label="${escapeRegExp(label)}"`));
+	}
+
+	for (const label of [
+		"Color Overlay",
+		"Vignette",
+		"Scan Lines",
+		"CRT Curvature",
+		"Chromatic",
+		"Bloom",
+		"Character Bloom",
+		"Character Chromatic",
+		"Film Grain",
+		"Glitch",
+		"RGB Split",
+		"Blur",
+		"Pixelate",
+		"Halftone",
+		"Film Dust",
+	]) {
+		assert.match(DEMO_SOURCE, new RegExp(`label="${escapeRegExp(label)}"`));
+	}
+
+	assert.match(DEMO_SOURCE, /const \[animatedCharacters, setAnimatedCharacters\] = useState\(false\)/);
+	assert.match(DEMO_SOURCE, /label="Animated ASCII"[\s\S]*checked=\{animatedCharacters\}/);
+	assert.doesNotMatch(DEMO_SOURCE, /sourceMode === "field"[\s\S]{0,1200}label="Animated ASCII"/);
+	assert.match(DEMO_SOURCE, /IMAGE_BACKGROUND_OPACITY = 0\.61/);
+	assert.match(DEMO_SOURCE, /IMAGE_BACKGROUND_BLUR_RADIUS = 60/);
+	assert.match(DEMO_SOURCE, /setBackgroundMode\("blurred-image"\)/);
+	assert.match(DEMO_SOURCE, /setBackgroundMode\("solid-black"\)/);
+});
+
+test("ASCII shader implements ASCII Magic style creative controls", () => {
+	assert.match(SHADER_SOURCE, /ASCII_BACKGROUND_MODES = \["blurred-image", "solid-black", "original-image", "transparent"\]/);
+	assert.match(SHADER_SOURCE, /densityToCellSize/);
+	assert.match(SHADER_SOURCE, /edgeEmphasis/);
+	assert.match(SHADER_SOURCE, /1 - clampNumber\(coverage, 0, 1\)/);
+	assert.match(SHADER_SOURCE, /uniform float u_brightness/);
+	assert.match(SHADER_SOURCE, /uniform float u_contrast/);
+	assert.match(SHADER_SOURCE, /uniform float u_characterOpacity/);
+	assert.match(SHADER_SOURCE, /uniform float u_randomizeCharacters/);
+	assert.match(SHADER_SOURCE, /uniform float u_animatedCharacters/);
+	assert.match(SHADER_SOURCE, /uniform float u_dotGridOverlay/);
+	assert.match(SHADER_SOURCE, /uniform float u_backgroundMode/);
+	assert.match(SHADER_SOURCE, /uniform float u_backgroundBlurRadius/);
+	assert.match(SHADER_SOURCE, /uniform float u_colorOverlay/);
+	assert.match(SHADER_SOURCE, /uniform vec3 u_colorOverlayColor/);
+	assert.match(SHADER_SOURCE, /uniform float u_vignette/);
+	assert.match(SHADER_SOURCE, /uniform float u_scanLines/);
+	assert.match(SHADER_SOURCE, /uniform float u_crtCurvature/);
+	assert.match(SHADER_SOURCE, /uniform float u_chromatic/);
+	assert.match(SHADER_SOURCE, /uniform float u_characterBloom/);
+	assert.match(SHADER_SOURCE, /uniform float u_characterChromatic/);
+	assert.match(SHADER_SOURCE, /uniform float u_chromaticAberration/);
+	assert.match(SHADER_SOURCE, /uniform float u_rgbSplit/);
+	assert.match(SHADER_SOURCE, /uniform float u_glitch/);
+	assert.match(SHADER_SOURCE, /uniform float u_blur/);
+	assert.match(SHADER_SOURCE, /uniform float u_pixelate/);
+	assert.match(SHADER_SOURCE, /uniform float u_halftone/);
+	assert.match(SHADER_SOURCE, /uniform float u_filmGrain/);
+	assert.match(SHADER_SOURCE, /uniform float u_filmDust/);
+	assert.match(SHADER_SOURCE, /applyIntensity/);
+	assert.match(SHADER_SOURCE, /sampleBlurredSource/);
+	assert.match(SHADER_SOURCE, /backgroundFromMode/);
+	assert.match(SHADER_SOURCE, /resolveBackgroundModeIndex/);
+	assert.match(SHADER_SOURCE, /hash21/);
+	assert.match(SHADER_SOURCE, /applyDotGridOverlay/);
+	assert.match(SHADER_SOURCE, /applyCrtCurvature/);
+	assert.match(SHADER_SOURCE, /applyCharacterChromatic/);
+	assert.match(SHADER_SOURCE, /applyGlitch/);
+	assert.match(SHADER_SOURCE, /applyHalftone/);
+	assert.match(SHADER_SOURCE, /applyPostEffects/);
+	assert.match(SHADER_SOURCE, /max\(u_rgbSplit, u_chromaticAberration\)/);
+	assert.match(SHADER_SOURCE, /u_transparentBackground/);
 });
 
 test("ASCII demo defaults to the requested source color palette", () => {

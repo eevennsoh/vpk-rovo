@@ -42,12 +42,16 @@ export const ASCII_COLOR_MODES = ["source", "monochrome", "green-terminal"] as c
 export const ASCII_CONTROL_COLOR_MODES = ["source", "monochrome"] as const;
 export const ASCII_COLOR_SOURCE_MODES = ["source", "luminance", "lightness", "red", "green", "blue"] as const;
 export const ASCII_CHARACTER_MODES = ["signal", "sequence"] as const;
+export const ASCII_BACKGROUND_MODES = ["blurred-image", "solid-black", "original-image", "transparent"] as const;
 export const ASCII_SIGNAL_MODES = ["luminance", "lightness", "red", "green", "blue"] as const;
 export const ASCII_TONE_MAPPING_MODES = ["none", "aces", "reinhard", "totos", "cinematic"] as const;
 export const ASCII_DEFAULT_SOURCE_COLORS = ["#1868DB", "#FCA700", "#AF59E1", "#6A9A23"] as const;
 export const ASCII_MAX_SOURCE_COLORS = 8;
 
 export type AsciiBlendMode = (typeof ASCII_BLEND_MODES)[number];
+export type AsciiBackgroundMode = (typeof ASCII_BACKGROUND_MODES)[number];
+type LegacyAsciiBackgroundMode = "solid" | "source" | "blurred-source";
+type EffectAmount = boolean | number;
 export type AsciiCharset = keyof typeof ASCII_CHARSETS | "custom";
 export type AsciiCharacterMode = (typeof ASCII_CHARACTER_MODES)[number];
 export type AsciiColorMode = (typeof ASCII_COLOR_MODES)[number];
@@ -89,6 +93,8 @@ uniform float u_blendMode;
 uniform float u_compositeMode;
 uniform float u_hue;
 uniform float u_saturation;
+uniform float u_brightness;
+uniform float u_contrast;
 uniform float u_characterMode;
 uniform float u_colorMode;
 uniform float u_colorSourceMode;
@@ -104,6 +110,12 @@ uniform float u_signalWhitePoint;
 uniform float u_signalGamma;
 uniform float u_presenceThreshold;
 uniform float u_presenceSoftness;
+uniform float u_characterOpacity;
+uniform float u_randomizeCharacters;
+uniform float u_randomSeed;
+uniform float u_animatedCharacters;
+uniform float u_characterCycleSpeed;
+uniform float u_dotGridOverlay;
 uniform float u_shimmerAmount;
 uniform float u_shimmerSpeed;
 uniform float u_bloomEnabled;
@@ -112,6 +124,25 @@ uniform float u_bloomThreshold;
 uniform float u_bloomRadius;
 uniform float u_bloomSoftness;
 uniform float u_bgOpacity;
+uniform float u_backgroundMode;
+uniform float u_backgroundOpacity;
+uniform float u_backgroundBlurRadius;
+uniform float u_colorOverlay;
+uniform vec3 u_colorOverlayColor;
+uniform float u_vignette;
+uniform float u_scanLines;
+uniform float u_crtCurvature;
+uniform float u_chromatic;
+uniform float u_characterBloom;
+uniform float u_characterChromatic;
+uniform float u_chromaticAberration;
+uniform float u_rgbSplit;
+uniform float u_glitch;
+uniform float u_blur;
+uniform float u_pixelate;
+uniform float u_halftone;
+uniform float u_filmGrain;
+uniform float u_filmDust;
 uniform float u_invert;
 uniform float u_speed;
 uniform float u_transparentBackground;
@@ -142,6 +173,14 @@ vec3 palette(float t) {
 
 float luma(vec3 color) {
 	return dot(color, vec3(0.2126, 0.7152, 0.0722));
+}
+
+float hash21(vec2 p) {
+	return fract(sin(dot(p, vec2(127.1, 311.7)) + u_randomSeed * 17.13) * 43758.5453123);
+}
+
+float temporalHash(vec2 p, float rate) {
+	return hash21(p + floor(u_time * rate));
 }
 
 vec3 sourceField(vec2 uv, float time) {
@@ -190,6 +229,28 @@ vec3 sampleSource(vec2 uv) {
 		: sourceField(uv, u_time * u_speed);
 }
 
+vec3 sampleBlurredSource(vec2 uv, float radius) {
+	vec2 texel = vec2(radius) / max(u_resolution, vec2(1.0));
+	vec3 color = sampleSource(uv) * 4.0;
+	color += sampleSource(clamp(uv + vec2(texel.x, 0.0), 0.0, 1.0)) * 2.0;
+	color += sampleSource(clamp(uv - vec2(texel.x, 0.0), 0.0, 1.0)) * 2.0;
+	color += sampleSource(clamp(uv + vec2(0.0, texel.y), 0.0, 1.0)) * 2.0;
+	color += sampleSource(clamp(uv - vec2(0.0, texel.y), 0.0, 1.0)) * 2.0;
+	color += sampleSource(clamp(uv + texel, 0.0, 1.0));
+	color += sampleSource(clamp(uv - texel, 0.0, 1.0));
+	color += sampleSource(clamp(uv + vec2(texel.x, -texel.y), 0.0, 1.0));
+	color += sampleSource(clamp(uv + vec2(-texel.x, texel.y), 0.0, 1.0));
+	return color / 16.0;
+}
+
+vec2 applyCrtCurvature(vec2 uv) {
+	float amount = clamp(u_crtCurvature, 0.0, 1.0);
+	vec2 centered = uv * 2.0 - 1.0;
+	float radius = dot(centered, centered);
+	vec2 curved = uv + centered * radius * 0.085 * amount;
+	return clamp(mix(uv, curved, amount), vec2(0.0), vec2(1.0));
+}
+
 vec3 acesTonemap(vec3 color) {
 	float a = 2.51;
 	float b = 0.03;
@@ -230,6 +291,11 @@ vec3 toneMap(vec3 color) {
 	if (u_toneMappingMode < 2.5) return reinhardTonemap(color);
 	if (u_toneMappingMode < 3.5) return totosTonemap(color);
 	return cinematicTonemap(color);
+}
+
+vec3 applyIntensity(vec3 color) {
+	vec3 contrasted = (color - 0.5) * max(u_contrast, 0.0) + 0.5;
+	return clamp(contrasted + u_brightness, 0.0, 1.0);
 }
 
 float signalValue(vec3 color, float mode) {
@@ -343,17 +409,157 @@ vec3 applyLayerAdjustments(vec3 color) {
 	return rotateHue(saturated, radians(u_hue));
 }
 
+vec3 backgroundFromMode(vec2 uv, vec3 solidColor, vec3 sourceToneColor, vec3 sourceGlyphColor) {
+	if (u_backgroundMode < 0.5) {
+		vec3 blurredSource = applyIntensity(toneMap(sampleBlurredSource(uv, u_backgroundBlurRadius)));
+		return mix(solidColor, blurredSource, clamp(u_backgroundOpacity, 0.0, 1.0));
+	}
+
+	if (u_backgroundMode < 1.5 || u_backgroundMode > 2.5) {
+		return u_colorMode < 0.5
+			? mix(solidColor, sourceGlyphColor, clamp(u_bgOpacity, 0.0, 1.0))
+			: solidColor;
+	}
+
+	vec3 backgroundSource = sourceToneColor;
+	float backgroundMix = clamp(max(u_backgroundOpacity, u_bgOpacity), 0.0, 1.0);
+	return mix(solidColor, backgroundSource, backgroundMix);
+}
+
+vec3 applyCharacterChromatic(vec3 glyphColor, vec2 cellUV) {
+	float amount = clamp(u_characterChromatic, 0.0, 1.0);
+	float leftFringe = smoothstep(0.5, 0.0, cellUV.x);
+	float rightFringe = smoothstep(0.5, 1.0, cellUV.x);
+	vec3 fringed = glyphColor + vec3(rightFringe, 0.0, leftFringe) * glyphColor * 0.36;
+	fringed.g *= 1.0 - amount * 0.12;
+	return clamp(mix(glyphColor, fringed, amount), 0.0, 1.0);
+}
+
+vec3 applyDotGridOverlay(vec3 color, vec3 glyphColor, vec2 cellUV, float colorSignal) {
+	float edgeDistance = min(min(cellUV.x, 1.0 - cellUV.x), min(cellUV.y, 1.0 - cellUV.y));
+	float gridEdge = 1.0 - smoothstep(0.0, 0.075, edgeDistance);
+	float gridDot = 1.0 - smoothstep(0.04, 0.2, length(cellUV - 0.5));
+	float gridMask = clamp(gridEdge * 0.35 + gridDot * 0.65, 0.0, 1.0) * clamp(u_dotGridOverlay, 0.0, 1.0);
+	vec3 gridColor = max(color, glyphColor * (0.2 + colorSignal * 0.8));
+	return mix(color, gridColor, gridMask);
+}
+
+vec3 applyGlitch(vec3 color, vec2 uv, vec2 pixelCoord) {
+	float amount = clamp(u_glitch, 0.0, 1.0);
+	if (amount <= 0.001) return color;
+
+	float bandId = floor(uv.y * 28.0);
+	float bandGate = step(0.78, temporalHash(vec2(bandId, 19.0), 10.0));
+	float bandOffset = (temporalHash(vec2(bandId, 41.0), 12.0) - 0.5) * amount * 0.16 * bandGate;
+	vec2 glitchUV = clamp(uv + vec2(bandOffset, 0.0), vec2(0.0), vec2(1.0));
+	vec3 glitchSource = applyIntensity(toneMap(sampleSource(glitchUV)));
+	float digitalNoise = (hash21(floor(pixelCoord * vec2(0.2, 1.0)) + u_time * 38.0) - 0.5) * amount * 0.16;
+	vec3 glitched = vec3(glitchSource.r, color.g + digitalNoise, glitchSource.b);
+	return mix(color, glitched, clamp(amount * (0.25 + bandGate * 0.75), 0.0, 1.0));
+}
+
+vec3 applyHalftone(vec3 color, vec2 uv) {
+	float amount = clamp(u_halftone, 0.0, 1.0);
+	if (amount <= 0.001) return color;
+
+	float angle = 0.78539816;
+	mat2 rotation = mat2(cos(angle), -sin(angle), sin(angle), cos(angle));
+	vec2 halftoneUV = rotation * ((uv - 0.5) * u_resolution / 8.0);
+	vec2 dotUV = fract(halftoneUV) - 0.5;
+	float tone = clamp(luma(color), 0.0, 1.0);
+	float dotRadius = mix(0.08, 0.48, tone);
+	float dotMask = 1.0 - smoothstep(dotRadius, dotRadius + 0.08, length(dotUV));
+	vec3 halftoneColor = color * (0.34 + dotMask * 0.9);
+	return mix(color, halftoneColor, amount);
+}
+
+vec3 applyPostEffects(vec3 color, vec2 uv, vec2 sampleUV, vec2 pixelCoord) {
+	vec2 centered = uv * 2.0 - 1.0;
+	centered.x *= u_resolution.x / max(u_resolution.y, 1.0);
+
+	float pixelateAmount = clamp(u_pixelate, 0.0, 1.0);
+	if (pixelateAmount > 0.001) {
+		float pixelBlock = mix(2.0, 34.0, pixelateAmount);
+		vec2 pixelatedUV = (floor(uv * u_resolution / pixelBlock) + 0.5) * pixelBlock / max(u_resolution, vec2(1.0));
+		vec3 pixelatedSource = applyIntensity(toneMap(sampleSource(clamp(pixelatedUV, vec2(0.0), vec2(1.0)))));
+		color = mix(color, pixelatedSource, pixelateAmount * 0.42);
+	}
+
+	float blurAmount = clamp(u_blur, 0.0, 1.0);
+	if (blurAmount > 0.001) {
+		vec3 blurredSource = applyIntensity(toneMap(sampleBlurredSource(sampleUV, mix(2.0, 36.0, blurAmount))));
+		color = mix(color, blurredSource, blurAmount * 0.36);
+	}
+
+	float vignetteMask = smoothstep(1.28, 0.22, length(centered));
+	color = mix(color, color * vignetteMask, clamp(u_vignette, 0.0, 1.0));
+
+	float crtAmount = clamp(u_crtCurvature, 0.0, 1.0);
+	if (crtAmount > 0.001) {
+		float edgeFalloff = smoothstep(1.42, 0.72, length(centered));
+		color *= mix(1.0, 0.82 + edgeFalloff * 0.18, crtAmount);
+		color += vec3(0.02, 0.04, 0.08) * crtAmount * (1.0 - edgeFalloff);
+	}
+
+	float scanWave = 0.5 + 0.5 * sin(pixelCoord.y * 3.14159265);
+	color *= 1.0 - clamp(u_scanLines, 0.0, 1.0) * (0.08 + scanWave * 0.16);
+
+	float chromaticAmount = clamp(u_chromatic, 0.0, 1.0);
+	if (chromaticAmount > 0.001) {
+		vec2 chromaDirection = normalize(centered + vec2(0.0001));
+		vec2 chromaOffset = chromaDirection * chromaticAmount * 0.01;
+		vec3 warmSource = applyIntensity(toneMap(sampleSource(clamp(sampleUV + chromaOffset, 0.0, 1.0))));
+		vec3 coolSource = applyIntensity(toneMap(sampleSource(clamp(sampleUV - chromaOffset, 0.0, 1.0))));
+		color = mix(color, vec3(warmSource.r, color.g, coolSource.b), chromaticAmount * 0.72);
+	}
+
+	float splitAmount = clamp(max(u_rgbSplit, u_chromaticAberration), 0.0, 1.0);
+	if (splitAmount > 0.001) {
+		vec2 splitDirection = normalize(centered + vec2(0.0001));
+		vec2 splitOffset = splitDirection * splitAmount * 0.018;
+		vec3 redSource = applyIntensity(toneMap(sampleSource(clamp(sampleUV + splitOffset, 0.0, 1.0))));
+		vec3 blueSource = applyIntensity(toneMap(sampleSource(clamp(sampleUV - splitOffset, 0.0, 1.0))));
+		color.r = mix(color.r, redSource.r, splitAmount);
+		color.b = mix(color.b, blueSource.b, splitAmount);
+	}
+
+	color = applyGlitch(color, uv, pixelCoord);
+	color = applyHalftone(color, uv);
+
+	float overlayAmount = clamp(u_colorOverlay, 0.0, 1.0);
+	if (overlayAmount > 0.001) {
+		vec3 overlayColor = blendColor(color, u_colorOverlayColor, 3.0);
+		color = mix(color, overlayColor, overlayAmount * 0.74);
+	}
+
+	float grain = hash21(pixelCoord + u_time * 60.0) - 0.5;
+	color += grain * clamp(u_filmGrain, 0.0, 1.0);
+
+	float dustAmount = clamp(u_filmDust, 0.0, 1.0);
+	if (dustAmount > 0.001) {
+		vec2 dustCell = floor(pixelCoord * 0.38);
+		float dustSeed = floor(u_time * 8.0);
+		float whiteDust = step(0.992, hash21(dustCell + dustSeed));
+		float darkDust = step(0.994, hash21(dustCell + dustSeed + 37.0));
+		color = mix(color, vec3(1.0), whiteDust * dustAmount * 0.74);
+		color *= 1.0 - darkDust * dustAmount * 0.52;
+	}
+
+	return clamp(color, 0.0, 1.0);
+}
+
 void main() {
-	vec2 pixelCoord = v_uv * u_resolution;
+	vec2 effectUV = applyCrtCurvature(v_uv);
+	vec2 pixelCoord = effectUV * u_resolution;
 	float cellSize = max(u_cellSize * max(u_pixelRatio, 1.0), 1.0);
 	vec2 cellCount = max(floor(u_resolution / cellSize), vec2(1.0));
-	vec2 gridUV = v_uv * cellCount;
+	vec2 gridUV = effectUV * cellCount;
 	vec2 cellID = floor(gridUV);
 	vec2 cellUV = fract(gridUV);
 	vec2 sampleUV = (cellID + 0.5) / cellCount;
 
 	vec3 sourceColor = sampleSource(sampleUV);
-	vec3 toneMapped = toneMap(sourceColor);
+	vec3 toneMapped = applyIntensity(toneMap(sourceColor));
 	float rawGlyphSignal = signalValue(toneMapped, u_glyphSignalMode);
 	float rawColorSignal = signalValue(toneMapped, u_colorSignalMode);
 
@@ -372,6 +578,12 @@ void main() {
 	float signalCharacterIndex = min(floor(clamp(biasedGlyphSignal, 0.0, 1.0) * characterCount), characterCount - 1.0);
 	float sequenceCharacterIndex = floor(mod(cellID.x + cellID.y * cellCount.x, characterCount));
 	float characterIndex = u_characterMode > 0.5 ? sequenceCharacterIndex : signalCharacterIndex;
+	float cellPhase = hash21(cellID);
+	float randomCharacterIndex = floor(cellPhase * characterCount);
+	float randomGate = step(cellPhase, clamp(u_randomizeCharacters, 0.0, 1.0));
+	characterIndex = mix(characterIndex, randomCharacterIndex, randomGate);
+	float animatedOffset = floor(u_time * max(u_characterCycleSpeed, 0.0) + cellPhase * characterCount);
+	characterIndex = mod(characterIndex + animatedOffset * step(0.5, u_animatedCharacters), characterCount);
 	vec2 atlasSize = vec2(max(u_atlasColumns, 1.0), max(u_atlasRows, 1.0));
 	vec2 atlasCell = vec2(mod(characterIndex, atlasSize.x), floor(characterIndex / atlasSize.x));
 	vec2 atlasUV = (atlasCell + vec2(cellUV.x, 1.0 - cellUV.y)) / atlasSize;
@@ -379,10 +591,9 @@ void main() {
 
 	float halfSoft = max(u_presenceSoftness * 0.5, 0.001);
 	float presenceMask = smoothstep(u_presenceThreshold - halfSoft, u_presenceThreshold + halfSoft, biasedGlyphSignal);
-	float cellPhase = fract(sin(dot(cellID, vec2(12.9898, 78.233))) * 43758.5453);
 	float shimmerWave = sin(u_time * u_shimmerSpeed * 0.3 + cellPhase * 6.2831);
 	float shimmerOpacity = 1.0 - ((shimmerWave + 1.0) * 0.5 * clamp(u_shimmerAmount, 0.0, 1.0));
-	float finalMask = characterMask * presenceMask * shimmerOpacity;
+	float finalMask = characterMask * presenceMask * shimmerOpacity * clamp(u_characterOpacity, 0.0, 1.0);
 
 	vec3 monochromeColor = u_tintColor * colorSignal;
 	vec3 greenTerminalColor = vec3(0.0, colorSignal, 0.0);
@@ -390,7 +601,8 @@ void main() {
 	vec3 glyphColor = u_colorMode < 0.5
 		? sourceGlyphColor
 		: (u_colorMode < 1.5 ? monochromeColor : greenTerminalColor);
-	vec3 backgroundColor = u_colorMode < 0.5 ? mix(u_backgroundColor, sourceGlyphColor, u_bgOpacity) : u_backgroundColor;
+	glyphColor = applyCharacterChromatic(glyphColor, cellUV);
+	vec3 backgroundColor = backgroundFromMode(sampleUV, u_backgroundColor, toneMapped, sourceGlyphColor);
 	vec3 asciiColor = mix(backgroundColor, glyphColor, finalMask);
 
 	float bloomThresholdRange = max(u_bloomSoftness * 0.5, 0.001);
@@ -399,6 +611,8 @@ void main() {
 	float bloomRadius = clamp(u_bloomRadius / 24.0, 0.0, 1.0);
 	float cellGlow = 1.0 - smoothstep(max(0.04, 0.48 - bloomRadius * 0.42), 0.72, cellDistance);
 	asciiColor += glyphColor * bloomSignal * finalMask * cellGlow * u_bloomIntensity * u_bloomEnabled;
+	asciiColor += glyphColor * finalMask * cellGlow * (0.3 + colorSignal * 0.7) * clamp(u_characterBloom, 0.0, 1.0);
+	asciiColor = applyDotGridOverlay(asciiColor, glyphColor, cellUV, colorSignal);
 	asciiColor = applyLayerAdjustments(clamp(asciiColor, 0.0, 1.0));
 
 	vec3 blendedColor = blendColor(toneMapped, asciiColor, u_blendMode);
@@ -412,6 +626,7 @@ void main() {
 	vec3 finalColor = u_compositeMode > 0.5 ? maskColor : filterColor;
 	float outputAlpha = u_transparentBackground > 0.5 ? clamp(finalMask * u_layerOpacity, 0.0, 1.0) : 1.0;
 	vec3 outputColor = u_transparentBackground > 0.5 ? glyphColor : finalColor;
+	outputColor = applyPostEffects(outputColor, effectUV, sampleUV, pixelCoord);
 
 	fragColor = vec4(clamp(outputColor, 0.0, 1.0), outputAlpha);
 }
@@ -571,6 +786,30 @@ function enumIndex<const T extends readonly string[]>(values: T, value: T[number
 	return index === -1 ? fallback : index;
 }
 
+function clampNumber(value: number, min: number, max: number): number {
+	return Math.max(min, Math.min(max, value));
+}
+
+function densityToCellSize(density: number): number {
+	return 48 - clampNumber(density, 0, 1) * 44;
+}
+
+function resolveEffectAmount(value: EffectAmount | undefined): number {
+	if (typeof value === "boolean") return value ? 1 : 0;
+	return value ?? 0;
+}
+
+function resolveBackgroundModeIndex(backgroundMode: AsciiBackgroundMode | LegacyAsciiBackgroundMode): number {
+	if (backgroundMode === "blurred-source") return enumIndex(ASCII_BACKGROUND_MODES, "blurred-image");
+	if (backgroundMode === "solid") return enumIndex(ASCII_BACKGROUND_MODES, "solid-black");
+	if (backgroundMode === "source") return enumIndex(ASCII_BACKGROUND_MODES, "original-image");
+	return enumIndex(ASCII_BACKGROUND_MODES, backgroundMode);
+}
+
+function isTransparentBackgroundMode(backgroundMode: AsciiBackgroundMode | LegacyAsciiBackgroundMode): boolean {
+	return backgroundMode === "transparent";
+}
+
 function resolveCharacters(charset: AsciiCharset, customChars: string, characters?: string): string {
 	if (charset === "custom") {
 		return customChars || characters || " ";
@@ -605,19 +844,33 @@ export interface AsciiProps {
 	compositeMode?: AsciiCompositeMode;
 	hue?: number;
 	saturation?: number;
+	brightness?: number;
+	contrast?: number;
+	density?: number;
 	cellSize?: number;
 	charset?: AsciiCharset;
 	characterMode?: AsciiCharacterMode;
 	characters?: string;
 	customChars?: string;
+	characterOpacity?: number;
+	randomizeCharacters?: number;
+	randomSeed?: number;
+	animatedCharacters?: boolean;
+	characterCycleSpeed?: number;
+	dotGridOverlay?: number;
 	fontWeight?: AsciiFontWeight;
 	colorMode?: AsciiColorMode;
 	colorSourceMode?: AsciiColorSourceMode;
 	monoColor?: string;
 	tint?: string;
 	backgroundColor?: string;
+	backgroundMode?: AsciiBackgroundMode | LegacyAsciiBackgroundMode;
+	backgroundOpacity?: number;
+	backgroundBlurRadius?: number;
 	bgOpacity?: number;
 	invert?: boolean;
+	coverage?: number;
+	edgeEmphasis?: number;
 	directionBias?: number;
 	maskSource?: AsciiMaskSource;
 	maskMode?: AsciiMaskMode;
@@ -637,6 +890,22 @@ export interface AsciiProps {
 	bloomThreshold?: number;
 	bloomRadius?: number;
 	bloomSoftness?: number;
+	colorOverlay?: EffectAmount;
+	colorOverlayColor?: string;
+	vignette?: EffectAmount;
+	scanLines?: EffectAmount;
+	crtCurvature?: EffectAmount;
+	chromatic?: EffectAmount;
+	characterBloom?: EffectAmount;
+	characterChromatic?: EffectAmount;
+	chromaticAberration?: number;
+	rgbSplit?: EffectAmount;
+	glitch?: EffectAmount;
+	blur?: EffectAmount;
+	pixelate?: EffectAmount;
+	halftone?: EffectAmount;
+	filmGrain?: EffectAmount;
+	filmDust?: EffectAmount;
 	speed?: number;
 	transparentBackground?: boolean;
 }
@@ -652,20 +921,34 @@ export default function Ascii({
 	compositeMode = "filter",
 	hue = 0,
 	saturation = 1,
-	cellSize = 12,
+	brightness = 0,
+	contrast = 1,
+	density,
+	cellSize,
 	charset = "light",
 	characterMode,
 	characters,
 	customChars = ASCII_DEFAULT_CHARACTERS,
+	characterOpacity = 1,
+	randomizeCharacters = 0,
+	randomSeed = 0,
+	animatedCharacters = false,
+	characterCycleSpeed = 8,
+	dotGridOverlay = 0,
 	fontWeight = "regular",
 	colorMode = "monochrome",
 	colorSourceMode = "source",
 	monoColor,
 	tint,
 	backgroundColor = "#000000",
+	backgroundMode = "solid-black",
+	backgroundOpacity = 1,
+	backgroundBlurRadius = 60,
 	bgOpacity = 0,
 	invert = false,
-	directionBias = 0,
+	coverage,
+	edgeEmphasis,
+	directionBias,
 	maskSource = "luminance",
 	maskMode = "multiply",
 	maskInvert = false,
@@ -675,7 +958,7 @@ export default function Ascii({
 	signalBlackPoint = 0,
 	signalWhitePoint = 1,
 	signalGamma = 1,
-	presenceThreshold = 0,
+	presenceThreshold,
 	presenceSoftness = 0,
 	shimmerAmount = 0,
 	shimmerSpeed = 1,
@@ -684,6 +967,22 @@ export default function Ascii({
 	bloomThreshold = 0.6,
 	bloomRadius = 6,
 	bloomSoftness = 0.35,
+	colorOverlay = false,
+	colorOverlayColor = "#F5F5F0",
+	vignette = 0,
+	scanLines = 0,
+	crtCurvature = false,
+	chromatic = false,
+	characterBloom = false,
+	characterChromatic = false,
+	chromaticAberration = 0,
+	rgbSplit,
+	glitch = false,
+	blur = false,
+	pixelate = false,
+	halftone = false,
+	filmGrain = 0,
+	filmDust = false,
 	speed = 1,
 	transparentBackground = false,
 }: AsciiProps) {
@@ -694,6 +993,11 @@ export default function Ascii({
 		[characters, charset, customChars],
 	);
 	const resolvedCharacterMode = characterMode ?? "signal";
+	const resolvedCellSize = cellSize ?? (density === undefined ? 12 : densityToCellSize(density));
+	const resolvedDirectionBias = directionBias ?? edgeEmphasis ?? 0;
+	const resolvedPresenceThreshold = presenceThreshold ?? (coverage === undefined ? 0 : 1 - clampNumber(coverage, 0, 1));
+	const resolvedRgbSplit = rgbSplit ?? chromaticAberration;
+	const resolvedTransparentBackground = transparentBackground || isTransparentBackgroundMode(backgroundMode);
 	const activeMonoColor = monoColor ?? tint ?? "#F5F5F0";
 	const sourceColorValues = useMemo(() => resolveSourceColorValues(sourceColors), [sourceColors]);
 
@@ -702,9 +1006,9 @@ export default function Ascii({
 		if (!canvas) return;
 
 		const gl = canvas.getContext("webgl2", {
-			alpha: transparentBackground,
+			alpha: resolvedTransparentBackground,
 			antialias: false,
-			premultipliedAlpha: !transparentBackground,
+			premultipliedAlpha: !resolvedTransparentBackground,
 		});
 		if (!gl) return;
 
@@ -756,16 +1060,18 @@ export default function Ascii({
 		setTextureFromSource(gl, atlasTexture, atlas.canvas);
 
 		gl.uniform1f(gl.getUniformLocation(program, "u_sourceMode"), sourceMode === "image" ? 1 : 0);
-		gl.uniform1f(gl.getUniformLocation(program, "u_cellSize"), cellSize);
+		gl.uniform1f(gl.getUniformLocation(program, "u_cellSize"), resolvedCellSize);
 		gl.uniform1f(gl.getUniformLocation(program, "u_layerOpacity"), opacity);
 		gl.uniform1f(gl.getUniformLocation(program, "u_blendMode"), enumIndex(ASCII_BLEND_MODES, blendMode));
 		gl.uniform1f(gl.getUniformLocation(program, "u_compositeMode"), enumIndex(ASCII_COMPOSITE_MODES, compositeMode));
 		gl.uniform1f(gl.getUniformLocation(program, "u_hue"), hue);
 		gl.uniform1f(gl.getUniformLocation(program, "u_saturation"), saturation);
+		gl.uniform1f(gl.getUniformLocation(program, "u_brightness"), brightness);
+		gl.uniform1f(gl.getUniformLocation(program, "u_contrast"), contrast);
 		gl.uniform1f(gl.getUniformLocation(program, "u_characterMode"), enumIndex(ASCII_CHARACTER_MODES, resolvedCharacterMode));
 		gl.uniform1f(gl.getUniformLocation(program, "u_colorMode"), enumIndex(ASCII_COLOR_MODES, colorMode, 1));
 		gl.uniform1f(gl.getUniformLocation(program, "u_colorSourceMode"), enumIndex(ASCII_COLOR_SOURCE_MODES, colorSourceMode));
-		gl.uniform1f(gl.getUniformLocation(program, "u_directionBias"), directionBias);
+		gl.uniform1f(gl.getUniformLocation(program, "u_directionBias"), resolvedDirectionBias);
 		gl.uniform1f(gl.getUniformLocation(program, "u_glyphSignalMode"), enumIndex(ASCII_SIGNAL_MODES, glyphSignalMode));
 		gl.uniform1f(gl.getUniformLocation(program, "u_colorSignalMode"), enumIndex(ASCII_SIGNAL_MODES, colorSignalMode));
 		gl.uniform1f(gl.getUniformLocation(program, "u_maskSource"), enumIndex(ASCII_MASK_SOURCES, maskSource));
@@ -775,8 +1081,14 @@ export default function Ascii({
 		gl.uniform1f(gl.getUniformLocation(program, "u_signalBlackPoint"), signalBlackPoint);
 		gl.uniform1f(gl.getUniformLocation(program, "u_signalWhitePoint"), signalWhitePoint);
 		gl.uniform1f(gl.getUniformLocation(program, "u_signalGamma"), signalGamma);
-		gl.uniform1f(gl.getUniformLocation(program, "u_presenceThreshold"), presenceThreshold);
+		gl.uniform1f(gl.getUniformLocation(program, "u_presenceThreshold"), resolvedPresenceThreshold);
 		gl.uniform1f(gl.getUniformLocation(program, "u_presenceSoftness"), presenceSoftness);
+		gl.uniform1f(gl.getUniformLocation(program, "u_characterOpacity"), characterOpacity);
+		gl.uniform1f(gl.getUniformLocation(program, "u_randomizeCharacters"), randomizeCharacters);
+		gl.uniform1f(gl.getUniformLocation(program, "u_randomSeed"), randomSeed);
+		gl.uniform1f(gl.getUniformLocation(program, "u_animatedCharacters"), animatedCharacters ? 1 : 0);
+		gl.uniform1f(gl.getUniformLocation(program, "u_characterCycleSpeed"), characterCycleSpeed);
+		gl.uniform1f(gl.getUniformLocation(program, "u_dotGridOverlay"), dotGridOverlay);
 		gl.uniform1f(gl.getUniformLocation(program, "u_shimmerAmount"), shimmerAmount);
 		gl.uniform1f(gl.getUniformLocation(program, "u_shimmerSpeed"), shimmerSpeed);
 		gl.uniform1f(gl.getUniformLocation(program, "u_bloomEnabled"), bloomEnabled ? 1 : 0);
@@ -785,9 +1097,27 @@ export default function Ascii({
 		gl.uniform1f(gl.getUniformLocation(program, "u_bloomRadius"), bloomRadius);
 		gl.uniform1f(gl.getUniformLocation(program, "u_bloomSoftness"), bloomSoftness);
 		gl.uniform1f(gl.getUniformLocation(program, "u_bgOpacity"), bgOpacity);
+		gl.uniform1f(gl.getUniformLocation(program, "u_backgroundMode"), resolveBackgroundModeIndex(backgroundMode));
+		gl.uniform1f(gl.getUniformLocation(program, "u_backgroundOpacity"), backgroundOpacity);
+		gl.uniform1f(gl.getUniformLocation(program, "u_backgroundBlurRadius"), backgroundBlurRadius);
+		gl.uniform1f(gl.getUniformLocation(program, "u_colorOverlay"), resolveEffectAmount(colorOverlay));
+		gl.uniform1f(gl.getUniformLocation(program, "u_vignette"), resolveEffectAmount(vignette));
+		gl.uniform1f(gl.getUniformLocation(program, "u_scanLines"), resolveEffectAmount(scanLines));
+		gl.uniform1f(gl.getUniformLocation(program, "u_crtCurvature"), resolveEffectAmount(crtCurvature));
+		gl.uniform1f(gl.getUniformLocation(program, "u_chromatic"), resolveEffectAmount(chromatic));
+		gl.uniform1f(gl.getUniformLocation(program, "u_characterBloom"), resolveEffectAmount(characterBloom));
+		gl.uniform1f(gl.getUniformLocation(program, "u_characterChromatic"), resolveEffectAmount(characterChromatic));
+		gl.uniform1f(gl.getUniformLocation(program, "u_chromaticAberration"), chromaticAberration);
+		gl.uniform1f(gl.getUniformLocation(program, "u_rgbSplit"), resolveEffectAmount(resolvedRgbSplit));
+		gl.uniform1f(gl.getUniformLocation(program, "u_glitch"), resolveEffectAmount(glitch));
+		gl.uniform1f(gl.getUniformLocation(program, "u_blur"), resolveEffectAmount(blur));
+		gl.uniform1f(gl.getUniformLocation(program, "u_pixelate"), resolveEffectAmount(pixelate));
+		gl.uniform1f(gl.getUniformLocation(program, "u_halftone"), resolveEffectAmount(halftone));
+		gl.uniform1f(gl.getUniformLocation(program, "u_filmGrain"), resolveEffectAmount(filmGrain));
+		gl.uniform1f(gl.getUniformLocation(program, "u_filmDust"), resolveEffectAmount(filmDust));
 		gl.uniform1f(gl.getUniformLocation(program, "u_invert"), invert ? 1 : 0);
 		gl.uniform1f(gl.getUniformLocation(program, "u_speed"), speed);
-		gl.uniform1f(gl.getUniformLocation(program, "u_transparentBackground"), transparentBackground ? 1 : 0);
+		gl.uniform1f(gl.getUniformLocation(program, "u_transparentBackground"), resolvedTransparentBackground ? 1 : 0);
 		gl.uniform1f(gl.getUniformLocation(program, "u_atlasColumns"), atlas.columns);
 		gl.uniform1f(gl.getUniformLocation(program, "u_atlasRows"), atlas.rows);
 		gl.uniform1f(gl.getUniformLocation(program, "u_characterCount"), atlas.characterCount);
@@ -796,8 +1126,10 @@ export default function Ascii({
 
 		const tintRGB = parseColor(activeMonoColor, [0.96, 0.96, 0.94]);
 		const backgroundRGB = parseColor(backgroundColor, [0, 0, 0]);
+		const colorOverlayRGB = parseColor(colorOverlayColor, [0.96, 0.96, 0.94]);
 		gl.uniform3f(gl.getUniformLocation(program, "u_tintColor"), tintRGB[0], tintRGB[1], tintRGB[2]);
 		gl.uniform3f(gl.getUniformLocation(program, "u_backgroundColor"), backgroundRGB[0], backgroundRGB[1], backgroundRGB[2]);
+		gl.uniform3f(gl.getUniformLocation(program, "u_colorOverlayColor"), colorOverlayRGB[0], colorOverlayRGB[1], colorOverlayRGB[2]);
 
 		let disposed = false;
 		if (sourceMode === "image" && imageSrc) {
@@ -849,7 +1181,11 @@ export default function Ascii({
 	}, [
 		activeCharacters,
 		activeMonoColor,
+		animatedCharacters,
+		backgroundBlurRadius,
 		backgroundColor,
+		backgroundMode,
+		backgroundOpacity,
 		blendMode,
 		bloomEnabled,
 		bloomIntensity,
@@ -857,12 +1193,25 @@ export default function Ascii({
 		bloomSoftness,
 		bloomThreshold,
 		bgOpacity,
-		cellSize,
+		brightness,
+		characterCycleSpeed,
+		characterOpacity,
+		characterBloom,
+		characterChromatic,
+		chromatic,
+		chromaticAberration,
+		colorOverlay,
+		colorOverlayColor,
 		colorMode,
 		colorSourceMode,
 		colorSignalMode,
 		compositeMode,
-		directionBias,
+		contrast,
+		dotGridOverlay,
+		blur,
+		crtCurvature,
+		filmGrain,
+		filmDust,
 		fontWeight,
 		glyphSignalMode,
 		hue,
@@ -873,9 +1222,19 @@ export default function Ascii({
 		maskSource,
 		opacity,
 		presenceSoftness,
-		presenceThreshold,
+		glitch,
+		halftone,
+		pixelate,
+		randomizeCharacters,
+		randomSeed,
+		resolvedCellSize,
 		resolvedCharacterMode,
+		resolvedDirectionBias,
+		resolvedPresenceThreshold,
+		resolvedRgbSplit,
+		resolvedTransparentBackground,
 		saturation,
+		scanLines,
 		shimmerAmount,
 		shimmerSpeed,
 		signalBlackPoint,
@@ -884,8 +1243,8 @@ export default function Ascii({
 		sourceColorValues,
 		sourceMode,
 		speed,
-		transparentBackground,
 		toneMapping,
+		vignette,
 	]);
 
 	return (

@@ -11,6 +11,7 @@ import { ShaderColorInput, ShaderColorListControl } from "./shader-color-control
 import { token } from "@/lib/tokens";
 
 import Ascii, {
+	ASCII_BACKGROUND_MODES,
 	ASCII_CHARSETS,
 	ASCII_COMPOSITE_MODES,
 	ASCII_CONTROL_BLEND_MODES,
@@ -24,6 +25,7 @@ import Ascii, {
 	ASCII_MASK_SOURCES,
 	ASCII_SIGNAL_MODES,
 	ASCII_TONE_MAPPING_MODES,
+	type AsciiBackgroundMode,
 	type AsciiBlendMode,
 	type AsciiCharset,
 	type AsciiColorMode,
@@ -66,10 +68,53 @@ const MASK_SOURCE_OPTIONS = optionsFromValues(ASCII_MASK_SOURCES);
 const MASK_MODE_OPTIONS = optionsFromValues(ASCII_MASK_MODES);
 const SIGNAL_MODE_OPTIONS = optionsFromValues(ASCII_SIGNAL_MODES);
 const TONE_MAPPING_OPTIONS = optionsFromValues(ASCII_TONE_MAPPING_MODES);
+const BACKGROUND_MODE_OPTIONS = [
+	{ value: "blurred-image", label: "Blurred Image" },
+	{ value: "solid-black", label: "Solid Black" },
+	{ value: "original-image", label: "Original Image" },
+	{ value: "transparent", label: "None (Transparent)" },
+] satisfies ReadonlyArray<{ value: (typeof ASCII_BACKGROUND_MODES)[number]; label: string }>;
 const DEFAULT_CHARSET_VALUES: Record<AsciiCharset, string> = {
 	...ASCII_CHARSETS,
 	custom: ASCII_DEFAULT_CHARACTERS,
 };
+const DEFAULT_DENSITY = 0.82;
+const IMAGE_BACKGROUND_OPACITY = 0.61;
+const IMAGE_BACKGROUND_BLUR_RADIUS = 60;
+
+function PercentControl({
+	id,
+	label,
+	value,
+	defaultValue,
+	min = 0,
+	max = 1,
+	step = 0.01,
+	onChange,
+}: {
+	id: string;
+	label: string;
+	value: number;
+	defaultValue: number;
+	min?: number;
+	max?: number;
+	step?: number;
+	onChange: (next: number) => void;
+}) {
+	return (
+		<GUI.Control
+			id={id}
+			label={label}
+			value={value * 100}
+			defaultValue={defaultValue * 100}
+			min={min * 100}
+			max={max * 100}
+			step={step * 100}
+			unit="%"
+			onChange={(next) => onChange(next / 100)}
+		/>
+	);
+}
 
 function ImageUploadControl({
 	imageSrc,
@@ -147,16 +192,27 @@ export default function AsciiDemo() {
 	const [compositeMode, setCompositeMode] = useState<AsciiCompositeMode>("filter");
 	const [hue, setHue] = useState(0);
 	const [saturation, setSaturation] = useState(1);
-	const [cellSize, setCellSize] = useState(12);
+	const [brightness, setBrightness] = useState(0);
+	const [contrast, setContrast] = useState(1);
+	const [density, setDensity] = useState(DEFAULT_DENSITY);
 	const [charset, setCharset] = useState<AsciiCharset>("light");
 	const [charsetCharacters, setCharsetCharacters] = useState<Record<AsciiCharset, string>>(DEFAULT_CHARSET_VALUES);
+	const [characterOpacity, setCharacterOpacity] = useState(1);
+	const [randomizeCharacters, setRandomizeCharacters] = useState(0);
+	const [randomSeed, setRandomSeed] = useState(0);
+	const [animatedCharacters, setAnimatedCharacters] = useState(false);
+	const [characterCycleSpeed, setCharacterCycleSpeed] = useState(8);
+	const [dotGridOverlay, setDotGridOverlay] = useState(0);
 	const [fontWeight, setFontWeight] = useState<AsciiFontWeight>("regular");
 	const [colorMode, setColorMode] = useState<AsciiColorMode>("monochrome");
 	const [colorSourceMode, setColorSourceMode] = useState<AsciiColorSourceMode>("source");
 	const [monoColor, setMonoColor] = useState("#F5F5F0");
 	const [backgroundColor, setBackgroundColor] = useState("#000000");
+	const [backgroundMode, setBackgroundMode] = useState<AsciiBackgroundMode>("solid-black");
+	const [backgroundOpacity, setBackgroundOpacity] = useState(IMAGE_BACKGROUND_OPACITY);
+	const [backgroundBlurRadius, setBackgroundBlurRadius] = useState(IMAGE_BACKGROUND_BLUR_RADIUS);
 	const [invert, setInvert] = useState(false);
-	const [directionBias, setDirectionBias] = useState(0);
+	const [edgeEmphasis, setEdgeEmphasis] = useState(0);
 	const [bgOpacity, setBgOpacity] = useState(0);
 	const [maskSource, setMaskSource] = useState<AsciiMaskSource>("luminance");
 	const [maskMode, setMaskMode] = useState<AsciiMaskMode>("multiply");
@@ -167,7 +223,7 @@ export default function AsciiDemo() {
 	const [signalBlackPoint, setSignalBlackPoint] = useState(0);
 	const [signalWhitePoint, setSignalWhitePoint] = useState(1);
 	const [signalGamma, setSignalGamma] = useState(1);
-	const [presenceThreshold, setPresenceThreshold] = useState(0);
+	const [coverage, setCoverage] = useState(1);
 	const [presenceSoftness, setPresenceSoftness] = useState(0);
 	const [shimmerAmount, setShimmerAmount] = useState(0);
 	const [shimmerSpeed, setShimmerSpeed] = useState(1);
@@ -176,6 +232,21 @@ export default function AsciiDemo() {
 	const [bloomThreshold, setBloomThreshold] = useState(0.6);
 	const [bloomRadius, setBloomRadius] = useState(6);
 	const [bloomSoftness, setBloomSoftness] = useState(0.35);
+	const [colorOverlay, setColorOverlay] = useState(false);
+	const [colorOverlayColor, setColorOverlayColor] = useState("#F5F5F0");
+	const [vignette, setVignette] = useState(false);
+	const [scanLines, setScanLines] = useState(false);
+	const [crtCurvature, setCrtCurvature] = useState(false);
+	const [chromatic, setChromatic] = useState(false);
+	const [characterBloom, setCharacterBloom] = useState(false);
+	const [characterChromatic, setCharacterChromatic] = useState(false);
+	const [filmGrain, setFilmGrain] = useState(false);
+	const [glitch, setGlitch] = useState(false);
+	const [rgbSplit, setRgbSplit] = useState(false);
+	const [blur, setBlur] = useState(false);
+	const [pixelate, setPixelate] = useState(false);
+	const [halftone, setHalftone] = useState(false);
+	const [filmDust, setFilmDust] = useState(false);
 	const [speed, setSpeed] = useState(1);
 	const activeCharsetCharacters = charsetCharacters[charset] ?? ASCII_DEFAULT_CHARACTERS;
 
@@ -189,6 +260,37 @@ export default function AsciiDemo() {
 		[charset],
 	);
 
+	const applyImageBackgroundDefaults = useCallback(() => {
+		setBackgroundMode("blurred-image");
+		setBackgroundOpacity(IMAGE_BACKGROUND_OPACITY);
+		setBackgroundBlurRadius(IMAGE_BACKGROUND_BLUR_RADIUS);
+	}, []);
+
+	const handleSourceModeChange = useCallback(
+		(next: AsciiSourceMode) => {
+			setSourceMode(next);
+			if (next === "image") {
+				applyImageBackgroundDefaults();
+				return;
+			}
+			setBackgroundMode("solid-black");
+		},
+		[applyImageBackgroundDefaults],
+	);
+
+	const handleImageChange = useCallback(
+		(next: string | undefined) => {
+			setImageSrc(next);
+			if (next) {
+				setSourceMode("image");
+				applyImageBackgroundDefaults();
+				return;
+			}
+			setBackgroundMode("solid-black");
+		},
+		[applyImageBackgroundDefaults],
+	);
+
 	const config = useMemo(
 		() => ({
 			sourceMode,
@@ -198,17 +300,28 @@ export default function AsciiDemo() {
 			compositeMode,
 			hue,
 			saturation,
-			cellSize,
+			brightness,
+			contrast,
+			density,
 			charset,
 			characters: activeCharsetCharacters,
 			customChars: charsetCharacters.custom,
+			characterOpacity,
+			randomizeCharacters,
+			randomSeed,
+			animatedCharacters,
+			characterCycleSpeed,
+			dotGridOverlay,
 			fontWeight,
 			colorMode,
 			colorSourceMode,
 			monoColor,
 			backgroundColor,
+			backgroundMode,
+			backgroundOpacity,
+			backgroundBlurRadius,
 			invert,
-			directionBias,
+			edgeEmphasis,
 			bgOpacity,
 			maskSource,
 			maskMode,
@@ -219,7 +332,7 @@ export default function AsciiDemo() {
 			signalBlackPoint,
 			signalWhitePoint,
 			signalGamma,
-			presenceThreshold,
+			coverage,
 			presenceSoftness,
 			shimmerAmount,
 			shimmerSpeed,
@@ -228,28 +341,64 @@ export default function AsciiDemo() {
 			bloomThreshold,
 			bloomRadius,
 			bloomSoftness,
+			colorOverlay,
+			colorOverlayColor,
+			vignette,
+			scanLines,
+			crtCurvature,
+			chromatic,
+			characterBloom,
+			characterChromatic,
+			filmGrain,
+			glitch,
+			rgbSplit,
+			blur,
+			pixelate,
+			halftone,
+			filmDust,
 			speed,
 		}),
 		[
 			activeCharsetCharacters,
+			animatedCharacters,
+			backgroundBlurRadius,
 			backgroundColor,
+			backgroundMode,
+			backgroundOpacity,
 			bgOpacity,
 			blendMode,
+			blur,
 			bloomEnabled,
 			bloomIntensity,
 			bloomRadius,
 			bloomSoftness,
 			bloomThreshold,
-			cellSize,
+			brightness,
+			characterCycleSpeed,
+			characterBloom,
+			characterChromatic,
+			characterOpacity,
 			charset,
+			chromatic,
+			colorOverlay,
+			colorOverlayColor,
 			colorMode,
 			colorSourceMode,
 			colorSignalMode,
 			compositeMode,
+			contrast,
+			crtCurvature,
 			charsetCharacters.custom,
-			directionBias,
+			coverage,
+			density,
+			dotGridOverlay,
+			edgeEmphasis,
+			filmGrain,
+			filmDust,
 			fontWeight,
+			glitch,
 			glyphSignalMode,
+			halftone,
 			hue,
 			invert,
 			maskInvert,
@@ -258,8 +407,12 @@ export default function AsciiDemo() {
 			monoColor,
 			opacity,
 			presenceSoftness,
-			presenceThreshold,
+			pixelate,
+			randomizeCharacters,
+			randomSeed,
+			rgbSplit,
 			saturation,
+			scanLines,
 			shimmerAmount,
 			shimmerSpeed,
 			signalBlackPoint,
@@ -269,6 +422,7 @@ export default function AsciiDemo() {
 			sourceMode,
 			speed,
 			toneMapping,
+			vignette,
 		],
 	);
 
@@ -287,17 +441,28 @@ export default function AsciiDemo() {
 					compositeMode={compositeMode}
 					hue={hue}
 					saturation={saturation}
-					cellSize={cellSize}
+					brightness={brightness}
+					contrast={contrast}
+					density={density}
 					charset={charset}
 					characters={activeCharsetCharacters}
 					customChars={charsetCharacters.custom}
+					characterOpacity={characterOpacity}
+					randomizeCharacters={randomizeCharacters}
+					randomSeed={randomSeed}
+					animatedCharacters={animatedCharacters}
+					characterCycleSpeed={characterCycleSpeed}
+					dotGridOverlay={dotGridOverlay}
 					fontWeight={fontWeight}
 					colorMode={colorMode}
 					colorSourceMode={colorSourceMode}
 					monoColor={monoColor}
 					backgroundColor={backgroundColor}
+					backgroundMode={backgroundMode}
+					backgroundOpacity={backgroundOpacity}
+					backgroundBlurRadius={backgroundBlurRadius}
 					invert={invert}
-					directionBias={directionBias}
+					edgeEmphasis={edgeEmphasis}
 					bgOpacity={bgOpacity}
 					maskSource={maskSource}
 					maskMode={maskMode}
@@ -308,7 +473,7 @@ export default function AsciiDemo() {
 					signalBlackPoint={signalBlackPoint}
 					signalWhitePoint={signalWhitePoint}
 					signalGamma={signalGamma}
-					presenceThreshold={presenceThreshold}
+					coverage={coverage}
 					presenceSoftness={presenceSoftness}
 					shimmerAmount={shimmerAmount}
 					shimmerSpeed={shimmerSpeed}
@@ -317,6 +482,21 @@ export default function AsciiDemo() {
 					bloomThreshold={bloomThreshold}
 					bloomRadius={bloomRadius}
 					bloomSoftness={bloomSoftness}
+					colorOverlay={colorOverlay}
+					colorOverlayColor={colorOverlayColor}
+					vignette={vignette}
+					scanLines={scanLines}
+					crtCurvature={crtCurvature}
+					chromatic={chromatic}
+					characterBloom={characterBloom}
+					characterChromatic={characterChromatic}
+					filmGrain={filmGrain}
+					glitch={glitch}
+					rgbSplit={rgbSplit}
+					blur={blur}
+					pixelate={pixelate}
+					halftone={halftone}
+					filmDust={filmDust}
 					speed={speed}
 				/>
 			</div>
@@ -329,10 +509,10 @@ export default function AsciiDemo() {
 							label="Source"
 							value={sourceMode}
 							options={SOURCE_MODE_OPTIONS}
-							onChange={setSourceMode}
+							onChange={handleSourceModeChange}
 						/>
 						{sourceMode === "image" ? (
-							<ImageUploadControl imageSrc={imageSrc} onChange={setImageSrc} />
+							<ImageUploadControl imageSrc={imageSrc} onChange={handleImageChange} />
 						) : null}
 						{sourceMode === "field" ? (
 							<>
@@ -429,18 +609,38 @@ export default function AsciiDemo() {
 							step={0.01}
 							onChange={setSaturation}
 						/>
+						<PercentControl
+							id="ascii-brightness"
+							label="Brightness"
+							value={brightness}
+							defaultValue={0}
+							min={-1}
+							max={1}
+							step={0.01}
+							onChange={setBrightness}
+						/>
+						<PercentControl
+							id="ascii-contrast"
+							label="Contrast"
+							value={contrast}
+							defaultValue={1}
+							min={0}
+							max={3}
+							step={0.01}
+							onChange={setContrast}
+						/>
 					</GUI.Section>
 
 					<GUI.Section title="Settings">
-						<GUI.Control
-							id="ascii-cellSize"
-							label="Cell Size"
-							value={cellSize}
-							defaultValue={12}
-							min={4}
-							max={48}
-							step={1}
-							onChange={setCellSize}
+						<PercentControl
+							id="ascii-density"
+							label="Density"
+							value={density}
+							defaultValue={DEFAULT_DENSITY}
+							min={0}
+							max={1}
+							step={0.01}
+							onChange={setDensity}
 						/>
 						<GUI.Select
 							id="ascii-charset"
@@ -463,6 +663,66 @@ export default function AsciiDemo() {
 							options={FONT_WEIGHT_OPTIONS}
 							onChange={(next) => setFontWeight(next as AsciiFontWeight)}
 						/>
+						<GUI.Control
+							id="ascii-characterOpacity"
+							label="Character Opacity"
+							value={characterOpacity}
+							defaultValue={1}
+							min={0}
+							max={1}
+							step={0.01}
+							onChange={setCharacterOpacity}
+						/>
+						<GUI.Control
+							id="ascii-dotGridOverlay"
+							label="Dot Grid Overlay"
+							value={dotGridOverlay}
+							defaultValue={0}
+							min={0}
+							max={1}
+							step={0.01}
+							onChange={setDotGridOverlay}
+						/>
+						<GUI.Control
+							id="ascii-randomizeCharacters"
+							label="Randomize Characters"
+							value={randomizeCharacters}
+							defaultValue={0}
+							min={0}
+							max={1}
+							step={0.01}
+							onChange={setRandomizeCharacters}
+						/>
+						{randomizeCharacters > 0 ? (
+							<GUI.Control
+								id="ascii-randomSeed"
+								label="Random Seed"
+								value={randomSeed}
+								defaultValue={0}
+								min={0}
+								max={100}
+								step={1}
+								onChange={setRandomSeed}
+							/>
+						) : null}
+						<GUI.Toggle
+							id="ascii-animatedCharacters"
+							label="Animated ASCII"
+							checked={animatedCharacters}
+							onChange={setAnimatedCharacters}
+						/>
+						{animatedCharacters ? (
+							<GUI.Control
+								id="ascii-characterCycleSpeed"
+								label="Cycle Speed"
+								value={characterCycleSpeed}
+								defaultValue={8}
+								min={0}
+								max={24}
+								step={0.25}
+								onChange={setCharacterCycleSpeed}
+							/>
+						) : null}
 						<GUI.Select
 							id="ascii-colorMode"
 							label="Color Mode"
@@ -495,21 +755,52 @@ export default function AsciiDemo() {
 							defaultValue="#000000"
 							onChange={setBackgroundColor}
 						/>
+						<GUI.Select
+							id="ascii-backgroundMode"
+							label="Background Mode"
+							value={backgroundMode}
+							options={BACKGROUND_MODE_OPTIONS}
+							onChange={(next) => setBackgroundMode(next as AsciiBackgroundMode)}
+						/>
+						{backgroundMode === "blurred-image" || backgroundMode === "original-image" ? (
+							<GUI.Control
+								id="ascii-backgroundOpacity"
+								label="Background Opacity"
+								value={backgroundOpacity}
+								defaultValue={IMAGE_BACKGROUND_OPACITY}
+								min={0}
+								max={1}
+								step={0.01}
+								onChange={setBackgroundOpacity}
+							/>
+						) : null}
+						{backgroundMode === "blurred-image" ? (
+							<GUI.Control
+								id="ascii-backgroundBlurRadius"
+								label="Blur Radius"
+								value={backgroundBlurRadius}
+								defaultValue={IMAGE_BACKGROUND_BLUR_RADIUS}
+								min={0}
+								max={100}
+								step={1}
+								onChange={setBackgroundBlurRadius}
+							/>
+						) : null}
 						<GUI.Toggle
 							id="ascii-invert"
 							label="Invert"
 							checked={invert}
 							onChange={setInvert}
 						/>
-						<GUI.Control
-							id="ascii-directionBias"
-							label="Direction Bias"
-							value={directionBias}
+						<PercentControl
+							id="ascii-edgeEmphasis"
+							label="Edge Emphasis"
+							value={edgeEmphasis}
 							defaultValue={0}
 							min={0}
 							max={1}
 							step={0.01}
-							onChange={setDirectionBias}
+							onChange={setEdgeEmphasis}
 						/>
 						{colorMode === "source" ? (
 							<GUI.Control
@@ -582,15 +873,15 @@ export default function AsciiDemo() {
 					</GUI.Section>
 
 					<GUI.Section title="Presence">
-						<GUI.Control
-							id="ascii-presenceThreshold"
-							label="Threshold"
-							value={presenceThreshold}
-							defaultValue={0}
+						<PercentControl
+							id="ascii-coverage"
+							label="Coverage"
+							value={coverage}
+							defaultValue={1}
 							min={0}
 							max={1}
 							step={0.01}
-							onChange={setPresenceThreshold}
+							onChange={setCoverage}
 						/>
 						<GUI.Control
 							id="ascii-presenceSoftness"
@@ -627,7 +918,46 @@ export default function AsciiDemo() {
 						/>
 					</GUI.Section>
 
-					<GUI.Section title="Bloom">
+					<GUI.Section title="Post-Processing">
+						<GUI.Toggle
+							id="ascii-colorOverlay"
+							label="Color Overlay"
+							checked={colorOverlay}
+							onChange={setColorOverlay}
+						/>
+						{colorOverlay ? (
+							<ShaderColorInput
+								id="ascii-colorOverlayColor"
+								label="Overlay Color"
+								value={colorOverlayColor}
+								defaultValue="#F5F5F0"
+								onChange={setColorOverlayColor}
+							/>
+						) : null}
+						<GUI.Toggle
+							id="ascii-vignette"
+							label="Vignette"
+							checked={vignette}
+							onChange={setVignette}
+						/>
+						<GUI.Toggle
+							id="ascii-scanLines"
+							label="Scan Lines"
+							checked={scanLines}
+							onChange={setScanLines}
+						/>
+						<GUI.Toggle
+							id="ascii-crtCurvature"
+							label="CRT Curvature"
+							checked={crtCurvature}
+							onChange={setCrtCurvature}
+						/>
+						<GUI.Toggle
+							id="ascii-chromatic"
+							label="Chromatic"
+							checked={chromatic}
+							onChange={setChromatic}
+						/>
 						<GUI.Toggle
 							id="ascii-bloomEnabled"
 							label="Bloom"
@@ -678,6 +1008,60 @@ export default function AsciiDemo() {
 								/>
 							</>
 						) : null}
+						<GUI.Toggle
+							id="ascii-characterBloom"
+							label="Character Bloom"
+							checked={characterBloom}
+							onChange={setCharacterBloom}
+						/>
+						<GUI.Toggle
+							id="ascii-characterChromatic"
+							label="Character Chromatic"
+							checked={characterChromatic}
+							onChange={setCharacterChromatic}
+						/>
+						<GUI.Toggle
+							id="ascii-filmGrain"
+							label="Film Grain"
+							checked={filmGrain}
+							onChange={setFilmGrain}
+						/>
+						<GUI.Toggle
+							id="ascii-glitch"
+							label="Glitch"
+							checked={glitch}
+							onChange={setGlitch}
+						/>
+						<GUI.Toggle
+							id="ascii-rgbSplit"
+							label="RGB Split"
+							checked={rgbSplit}
+							onChange={setRgbSplit}
+						/>
+						<GUI.Toggle
+							id="ascii-blur"
+							label="Blur"
+							checked={blur}
+							onChange={setBlur}
+						/>
+						<GUI.Toggle
+							id="ascii-pixelate"
+							label="Pixelate"
+							checked={pixelate}
+							onChange={setPixelate}
+						/>
+						<GUI.Toggle
+							id="ascii-halftone"
+							label="Halftone"
+							checked={halftone}
+							onChange={setHalftone}
+						/>
+						<GUI.Toggle
+							id="ascii-filmDust"
+							label="Film Dust"
+							checked={filmDust}
+							onChange={setFilmDust}
+						/>
 					</GUI.Section>
 				</div>
 			</GUI.Panel>
