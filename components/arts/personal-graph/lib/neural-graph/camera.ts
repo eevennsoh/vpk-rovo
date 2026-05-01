@@ -79,22 +79,34 @@ export function panNeuralCamera(camera: NeuralCamera, delta: NeuralPoint): Neura
 	};
 }
 
+const DEFAULT_ZOOM_SENSITIVITY = 0.0015;
+const LINE_DELTA_TO_PIXELS = 16;
+const PAGE_DELTA_TO_PIXELS = 400;
+
+export function zoomDeltaToFactor(deltaY: number, deltaMode = 0, sensitivity = DEFAULT_ZOOM_SENSITIVITY) {
+	const scale = deltaMode === 1 ? LINE_DELTA_TO_PIXELS : deltaMode === 2 ? PAGE_DELTA_TO_PIXELS : 1;
+	return Math.exp(-deltaY * scale * sensitivity);
+}
+
 export function zoomNeuralCameraAtPoint({
 	camera,
 	delta,
+	deltaMode = 0,
 	params,
 	pointer,
+	sensitivity,
 	viewport,
 }: {
 	camera: NeuralCamera;
 	delta: number;
+	deltaMode?: number;
 	params: NeuralGraphParams;
 	pointer: NeuralPoint;
+	sensitivity?: number;
 	viewport: NeuralViewport;
 }): NeuralCamera {
 	const before = viewportToWorld(pointer, camera, viewport, params);
-	const zoomFactor = delta < 0 ? 1.12 : 0.88;
-	const zoom = clampZoom(camera, camera.zoom * zoomFactor);
+	const zoom = clampZoom(camera, camera.zoom * zoomDeltaToFactor(delta, deltaMode, sensitivity));
 	const nextCamera = { ...camera, zoom };
 	const after = viewportToWorld(pointer, nextCamera, viewport, params);
 

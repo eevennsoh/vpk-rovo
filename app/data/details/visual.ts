@@ -97,12 +97,12 @@ export const VISUAL_DETAILS: Record<string, ComponentDetail> = {
 		],
 	},
 	"graph": {
-		description: "Reusable graph canvas harvested from the Personal Graph surface, with the same neural layout, pan, zoom, selection, theme, and editable parameter controls.",
+		description: "Rovo-styled Teamwork Graph canvas with neural layout, pan, zoom, selection, theme, and editable parameter controls.",
 		importStatement: `import Graph from "@/components/website/demos/visual/graph";`,
 		usage: `<Graph />`,
 		props: [
 			{ name: "explorer", type: "VaultExplorer", description: "Optional graph data shaped like the Personal Graph explorer response. Defaults to the bundled visual sample graph." },
-			{ name: "initialParams", type: "Partial<NeuralGraphParams>", default: "DEFAULT_NEURAL_GRAPH_PARAMS", description: "Initial values for speed, amplitude, frequency, octaves, structure, cone, and node style controls." },
+			{ name: "initialParams", type: "Partial<NeuralGraphParams>", default: "ROVO_GRAPH_DEFAULT_PARAMS", description: "Initial values for speed, amplitude, frequency, octaves, structure, cone, and node style controls." },
 			{ name: "initialSelectedNodeId", type: "string | null", default: "null", description: "Node id to focus when the component first renders." },
 			{ name: "showControls", type: "boolean", default: "true", description: "Whether to render the VPK GUI controls under the canvas." },
 			{ name: "className", type: "string", description: "Optional classes merged onto the Graph wrapper." },

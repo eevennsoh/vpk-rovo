@@ -87,6 +87,13 @@ const NEURAL_LAYOUT_SOURCE = fs.readFileSync(
 	),
 	"utf8",
 );
+const NEURAL_RENDERER_SOURCE = fs.readFileSync(
+	path.join(
+		__dirname,
+		"../../../components/arts/personal-graph/lib/neural-graph/renderer.ts",
+	),
+	"utf8",
+);
 const NEURAL_CAMERA_SOURCE = fs.readFileSync(
 	path.join(
 		__dirname,
@@ -232,6 +239,14 @@ test("Personal Graph exposes a hidden Neural Burst parameter panel", () => {
 
 test("Personal Graph focuses and clears selection through the owned interaction layer", () => {
 	assert.match(NEURAL_CANVAS_SOURCE, /focusNeuralCameraOnPoint/);
+	assert.match(NEURAL_CANVAS_SOURCE, /focusProgressRef/);
+	assert.match(NEURAL_CANVAS_SOURCE, /focusProgress: focusProgressRef\.current/);
+	assert.match(NEURAL_LAYOUT_SOURCE, /applySelectionFocusLayout/);
+	assert.match(NEURAL_LAYOUT_SOURCE, /getSelectedNeighborhood/);
+	assert.match(NEURAL_RENDERER_SOURCE, /getSelectedRelationshipIds/);
+	assert.match(NEURAL_RENDERER_SOURCE, /focusProgress > 0/);
+	assert.match(NEURAL_RENDERER_SOURCE, /drawOrganicEdgePath/);
+	assert.match(NEURAL_RENDERER_SOURCE, /bezierCurveTo/);
 	assert.match(NEURAL_CANVAS_SOURCE, /hitTestNeuralNode/);
 	assert.match(NEURAL_CANVAS_SOURCE, /onClearSelection\(\)/);
 	assert.match(GRAPH_SOURCE, /onClearSelection=\{handleClearSelection\}/);
