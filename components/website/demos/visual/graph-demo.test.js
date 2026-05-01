@@ -5,6 +5,10 @@ const test = require("node:test");
 
 const GRAPH_SOURCE = fs.readFileSync(path.join(__dirname, "graph.tsx"), "utf8");
 const DEMO_SOURCE = fs.readFileSync(path.join(__dirname, "graph-demo.tsx"), "utf8");
+const RENDERER_SOURCE = fs.readFileSync(
+	path.join(__dirname, "../../../arts/personal-graph/lib/neural-graph/renderer.ts"),
+	"utf8",
+);
 const COMPONENTS_SOURCE = fs.readFileSync(
 	path.join(__dirname, "../../../../app/data/components.ts"),
 	"utf8",
@@ -60,4 +64,15 @@ test("Graph visual can be embedded as the live Personal Graph renderer", () => {
 	assert.match(GRAPH_SOURCE, /onSelectedNodeIdChange\?: \(nodeId: string \| null\) => void/);
 	assert.match(GRAPH_SOURCE, /isFillVariant \? "flex h-full w-full flex-col"/);
 	assert.match(GRAPH_SOURCE, /isLoading=\{isLoading\}/);
+});
+
+test("Graph renderer uses thicker connector strokes", () => {
+	assert.match(RENDERER_SOURCE, /const RAY_LINE_WIDTH = 1\.25;/);
+	assert.match(RENDERER_SOURCE, /active: 2\.2,/);
+	assert.match(RENDERER_SOURCE, /focused: 3\.2,/);
+	assert.match(RENDERER_SOURCE, /idle: 1\.35,/);
+	assert.match(
+		RENDERER_SOURCE,
+		/ctx\.lineWidth = active \? lerp\(EDGE_LINE_WIDTH\.active, EDGE_LINE_WIDTH\.focused, focusProgress\) : EDGE_LINE_WIDTH\.idle;/,
+	);
 });

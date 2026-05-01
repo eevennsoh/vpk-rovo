@@ -39,6 +39,13 @@ const PALETTES = {
 	},
 } as const;
 
+const RAY_LINE_WIDTH = 1.25;
+const EDGE_LINE_WIDTH = {
+	active: 2.2,
+	focused: 3.2,
+	idle: 1.35,
+} as const;
+
 function hexToRgb(hex: string) {
 	const normalized = hex.replace("#", "");
 	const value = Number.parseInt(normalized, 16);
@@ -191,7 +198,7 @@ function drawRays(
 	const focusProgress = getFocusProgress(options);
 	const { nodeIds } = getSelectedRelationshipIds(layout, options.selectedNodeId);
 	ctx.save();
-	ctx.lineWidth = 1;
+	ctx.lineWidth = RAY_LINE_WIDTH;
 	ctx.strokeStyle = PALETTES[options.theme].ray;
 	for (const node of layout.nodes) {
 		const point = worldToViewport(node, options.camera, options.viewport, options.params);
@@ -228,7 +235,7 @@ function drawEdges(
 		const active = focusProgress > 0 ? focusActive : hasFocus && isActiveEdge(edge.source.id, edge.target.id, options.selectedNodeId, options.hoveredNodeId);
 		const inactiveAlpha = focusProgress > 0 ? lerp(0.36, 0.04, focusProgress) : 0.36;
 		ctx.strokeStyle = active ? colorWithAlpha(getEdgeColor(edge, options), 0.56) : getIdleEdgeColor(edge, palette);
-		ctx.lineWidth = active ? lerp(1.6, 2.4, focusProgress) : 0.9;
+		ctx.lineWidth = active ? lerp(EDGE_LINE_WIDTH.active, EDGE_LINE_WIDTH.focused, focusProgress) : EDGE_LINE_WIDTH.idle;
 		ctx.globalAlpha = active ? lerp(0.76, 0.96, focusProgress) : inactiveAlpha;
 		drawStraightEdgePath(ctx, source, target);
 		ctx.stroke();
