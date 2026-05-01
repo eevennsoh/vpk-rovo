@@ -19,6 +19,7 @@ const cameraModule = import("./camera.ts");
 const interactionModule = import("./interaction.ts");
 const layoutModule = import("./layout.ts");
 const paramsModule = import("./params.ts");
+const rendererModule = import("./renderer.ts");
 const storeModule = import("./store.ts");
 
 function node(id, title, kind, connectionCount = 0) {
@@ -76,6 +77,38 @@ const explorer = {
 		wikiCount: 19,
 	},
 };
+
+function createRecordingCanvasContext() {
+	const calls = [];
+	const gradient = {
+		addColorStop: (...args) => calls.push(["addColorStop", ...args]),
+	};
+
+	return {
+		calls,
+		arc: (...args) => calls.push(["arc", ...args]),
+		beginPath: (...args) => calls.push(["beginPath", ...args]),
+		bezierCurveTo: (...args) => calls.push(["bezierCurveTo", ...args]),
+		clearRect: (...args) => calls.push(["clearRect", ...args]),
+		createLinearGradient: (...args) => {
+			calls.push(["createLinearGradient", ...args]);
+			return gradient;
+		},
+		createRadialGradient: (...args) => {
+			calls.push(["createRadialGradient", ...args]);
+			return gradient;
+		},
+		fill: (...args) => calls.push(["fill", ...args]),
+		fillRect: (...args) => calls.push(["fillRect", ...args]),
+		fillText: (...args) => calls.push(["fillText", ...args]),
+		lineTo: (...args) => calls.push(["lineTo", ...args]),
+		moveTo: (...args) => calls.push(["moveTo", ...args]),
+		rect: (...args) => calls.push(["rect", ...args]),
+		restore: (...args) => calls.push(["restore", ...args]),
+		save: (...args) => calls.push(["save", ...args]),
+		stroke: (...args) => calls.push(["stroke", ...args]),
+	};
+}
 
 test("createNeuralGraphStore builds deterministic adjacency and kind groups", async () => {
 	const { createNeuralGraphStore, getNodeNeighbors } = await storeModule;
@@ -146,6 +179,41 @@ test("computeNeuralGraphLayout is deterministic and keeps selected nodes visible
 	assert.deepEqual(
 		first.nodes.map(({ id, x, y }) => [id, Number(x.toFixed(3)), Number(y.toFixed(3))]),
 		second.nodes.map(({ id, x, y }) => [id, Number(x.toFixed(3)), Number(y.toFixed(3))]),
+	);
+});
+
+test("drawNeuralGraph clears transparent embeds without painting the default background", async () => {
+	const { createNeuralCamera } = await cameraModule;
+	const { DEFAULT_NEURAL_GRAPH_PARAMS } = await paramsModule;
+	const { drawNeuralGraph } = await rendererModule;
+	const viewport = { height: 480, width: 640 };
+	const ctx = createRecordingCanvasContext();
+
+	drawNeuralGraph(
+		ctx,
+		{
+			edges: [],
+			nodes: [],
+			nodesById: new Map(),
+			origin: { x: 0, y: 0 },
+			viewport,
+		},
+		{
+			background: "transparent",
+			camera: createNeuralCamera(),
+			focusProgress: 0,
+			hoveredNodeId: null,
+			params: DEFAULT_NEURAL_GRAPH_PARAMS,
+			selectedNodeId: null,
+			theme: "light",
+			viewport,
+		},
+	);
+
+	assert.deepEqual(ctx.calls[0], ["clearRect", 0, 0, viewport.width, viewport.height]);
+	assert.equal(
+		ctx.calls.some(([name]) => name === "createLinearGradient" || name === "createRadialGradient" || name === "fillRect"),
+		false,
 	);
 });
 
