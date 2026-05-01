@@ -23,13 +23,6 @@ export function PersonalGraphBackdrop({
 					backgroundSize: "72px 72px",
 				}}
 			/>
-			<div
-				className="absolute inset-0"
-				style={{
-					background:
-						"radial-gradient(circle at 50% 75%, rgba(24, 104, 219, 0.1), transparent 32%), radial-gradient(circle at 24% 26%, rgba(252, 167, 0, 0.12), transparent 28%)",
-				}}
-			/>
 			<div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-white via-white/90 to-transparent" />
 			<div className="absolute inset-x-0 bottom-0 h-56 bg-gradient-to-t from-white via-white/95 to-transparent" />
 		</div>
