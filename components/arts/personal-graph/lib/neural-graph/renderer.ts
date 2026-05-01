@@ -39,11 +39,11 @@ const PALETTES = {
 	},
 } as const;
 
-const RAY_LINE_WIDTH = 1.25;
+const RAY_LINE_WIDTH = 2;
 const EDGE_LINE_WIDTH = {
-	active: 2.2,
-	focused: 3.2,
-	idle: 1.35,
+	active: 2,
+	focused: 2,
+	idle: 2,
 } as const;
 
 function hexToRgb(hex: string) {

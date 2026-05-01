@@ -22,12 +22,12 @@ export function PersonalGraphLog({ refreshKey }: Readonly<{ refreshKey: number }
 	}
 
 	return (
-		<div className="border-t border-neutral-950/10 pt-4">
-			<div className="text-sm font-medium text-neutral-950">Recent ingests</div>
+		<div className="border-t border-border pt-4">
+			<div className="text-sm font-medium text-text">Recent ingests</div>
 			<div className="mt-2 space-y-2">
 				{entries.map((entry, index) => (
-					<div className="rounded-2xl bg-white/5 px-3 py-2 text-xs text-neutral-600" key={`${entry.source}-${entry.date}-${index}`}>
-						<div className="truncate text-neutral-950">{entry.source ?? entry.raw ?? "Log entry"}</div>
+					<div className="rounded-2xl bg-bg-neutral-subtle px-3 py-2 text-xs text-text-subtle" key={`${entry.source}-${entry.date}-${index}`}>
+						<div className="truncate text-text">{entry.source ?? entry.raw ?? "Log entry"}</div>
 						<div>{entry.date ? formatter.format(new Date(entry.date)) : "Undated"}</div>
 					</div>
 				))}

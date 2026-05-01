@@ -35,7 +35,7 @@ export function PersonalGraphDropzone({ onRawAdded }: Readonly<PersonalGraphDrop
 		<div
 			aria-describedby="personal-graph-dropzone-description"
 			aria-label="Drop raw source"
-			className="rounded-2xl border border-dashed border-neutral-950/10 bg-white/5 p-4 text-sm text-neutral-700 outline-none transition-colors duration-normal hover:bg-white/15 focus-visible:border-neutral-950/30 focus-visible:ring-2 focus-visible:ring-neutral-950/10 focus-within:border-neutral-950/30 focus-within:ring-2 focus-within:ring-neutral-950/10"
+			className="rounded-2xl border border-dashed border-border bg-bg-neutral-subtle p-4 text-sm text-text-subtle outline-none transition-colors duration-normal hover:bg-bg-neutral-subtle-hovered focus-visible:border-border-focused focus-visible:ring-2 focus-visible:ring-ring/30 focus-within:border-border-focused focus-within:ring-2 focus-within:ring-ring/30"
 			onClick={() => inputRef.current?.click()}
 			onDragOver={(event) => event.preventDefault()}
 			onDrop={(event) => {

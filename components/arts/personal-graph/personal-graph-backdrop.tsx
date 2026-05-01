@@ -3,15 +3,15 @@
 import Ascii from "@/components/website/demos/visual/shaders/ascii";
 import PatternTile, { type PatternStrokeOptions } from "@/components/website/demos/visual/pattern-tile";
 import WaveGradient from "@/components/website/demos/visual/shaders/wave-gradient";
+import { useTheme } from "@/components/utils/theme-wrapper";
 import { cn } from "@/lib/utils";
 
 type PersonalGraphBackdropProps = React.ComponentProps<"div">;
 
-const PERSONAL_GRAPH_GRID_COLOR = "var(--ds-border)";
-const PERSONAL_GRAPH_GRID_OVERLAY_COLOR = "var(--ds-border-bold)";
+const PERSONAL_GRAPH_SURFACE_COLOR = "var(--ds-surface)";
+const PERSONAL_GRAPH_ASCII_COLOR = "var(--ds-text-subtle)";
 const PERSONAL_GRAPH_GRID_STROKE = {
 	style: "dashed",
-	width: 0.5,
 	dash: 3,
 	gap: 6,
 	dashOffset: 0,
@@ -35,13 +35,15 @@ const PERSONAL_GRAPH_SHADER_COLORS: [string, string, string, string] = [
 	"#6A9A23",
 ];
 const PERSONAL_GRAPH_WAVE_COLORS: [string, string, string, string] = [
-	"#FFFFFF",
-	"#FFFFFF",
-	"#FFFFFF",
-	"#FFFFFF",
+	PERSONAL_GRAPH_SURFACE_COLOR,
+	PERSONAL_GRAPH_SURFACE_COLOR,
+	PERSONAL_GRAPH_SURFACE_COLOR,
+	PERSONAL_GRAPH_SURFACE_COLOR,
 ];
 
 function PersonalGraphAsciiBackdrop() {
+	const { actualTheme } = useTheme();
+
 	return (
 		<div
 			aria-hidden="true"
@@ -55,6 +57,7 @@ function PersonalGraphAsciiBackdrop() {
 			<WaveGradient
 				className="absolute inset-0 opacity-55 mix-blend-multiply"
 				colors={PERSONAL_GRAPH_WAVE_COLORS}
+				key={`personal-graph-wave-${actualTheme}`}
 				seed={31}
 				speed={1.1}
 				freqX={0.85}
@@ -65,6 +68,7 @@ function PersonalGraphAsciiBackdrop() {
 				blend={0.58}
 			/>
 			<Ascii
+				key={`personal-graph-ascii-${actualTheme}`}
 				sourceMode="field"
 				sourceColors={PERSONAL_GRAPH_SHADER_COLORS}
 				opacity={0.78}
@@ -78,8 +82,8 @@ function PersonalGraphAsciiBackdrop() {
 				fontWeight="regular"
 				className="absolute inset-0 opacity-90 mix-blend-multiply"
 				colorMode="monochrome"
-				monoColor="#44546F"
-				backgroundColor="#ffffff"
+				monoColor={PERSONAL_GRAPH_ASCII_COLOR}
+				backgroundColor={PERSONAL_GRAPH_SURFACE_COLOR}
 				invert={false}
 				directionBias={0}
 				bgOpacity={0}
@@ -110,13 +114,14 @@ function PersonalGraphAsciiBackdrop() {
 				style={PERSONAL_GRAPH_SHADER_GRID_FADE_STYLE}
 			>
 				<PatternTile
+					className="text-neutral-100"
 					patternType="grid"
-					front={PERSONAL_GRAPH_GRID_OVERLAY_COLOR}
+					front="currentColor"
 					back="transparent"
 					scale={48}
 					stroke={PERSONAL_GRAPH_GRID_STROKE}
 					opacity={0.34}
-					blendMode="multiply"
+					blendMode="normal"
 					fill="tile"
 					position="center"
 					shouldAnimate={false}
@@ -136,15 +141,16 @@ export function PersonalGraphBackdrop({
 	return (
 		<div
 			aria-hidden="true"
-			className={cn("pointer-events-none absolute inset-0 overflow-hidden bg-white", className)}
+			className={cn("pointer-events-none absolute inset-0 overflow-hidden bg-surface", className)}
 			data-personal-graph-editor-backdrop="light-grid"
 			{...props}
 		>
 			<div className="absolute inset-0" style={PERSONAL_GRAPH_GRID_FADE_STYLE}>
 				<PatternTile
+					className="text-neutral-100"
 					patternType="grid"
-					front={PERSONAL_GRAPH_GRID_COLOR}
-					back="#FFFFFF"
+					front="currentColor"
+					back="transparent"
 					scale={48}
 					stroke={PERSONAL_GRAPH_GRID_STROKE}
 					opacity={1}
@@ -157,7 +163,7 @@ export function PersonalGraphBackdrop({
 					duration={5}
 				/>
 			</div>
-			<div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-white via-white/90 to-transparent" />
+			<div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-surface via-surface/90 to-transparent" />
 			<PersonalGraphAsciiBackdrop />
 		</div>
 	);

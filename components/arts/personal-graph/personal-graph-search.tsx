@@ -29,19 +29,19 @@ export function PersonalGraphSearch({ className, onSelectSlug }: Readonly<Person
 			}}
 		>
 			<PersonalGraphGlassPanel contentClassName="flex min-h-14 items-center gap-3 px-3 py-2 sm:min-h-16 sm:gap-4 sm:px-4" radius={30}>
-				<div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/5 text-neutral-950 sm:size-10">
+				<div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-bg-neutral-subtle text-icon sm:size-10">
 					<SearchIcon label="" />
 				</div>
 				<input
 					aria-label="Ask or search Personal Graph"
-					className="min-w-0 flex-1 bg-transparent text-base text-neutral-950 outline-none placeholder:text-neutral-500 sm:text-lg"
+					className="min-w-0 flex-1 bg-transparent text-base text-text outline-none placeholder:text-text-subtlest sm:text-lg"
 					onChange={(event) => setQuery(event.target.value)}
 					placeholder="Ask or search your graph..."
 					value={query}
 				/>
 				<Button
 					aria-label="Open top search result"
-					className="size-10 rounded-full border-neutral-950 bg-neutral-950 text-white shadow-none hover:bg-neutral-800 disabled:border-neutral-950/5 disabled:bg-white/10 disabled:text-neutral-400 sm:size-11"
+					className="size-10 rounded-full border-transparent bg-bg-neutral-bold text-text-inverse shadow-none hover:bg-bg-neutral-bold-hovered disabled:border-transparent disabled:bg-bg-disabled disabled:text-text-disabled sm:size-11"
 					disabled={!firstResult}
 					size="icon-lg"
 					type="submit"
@@ -51,13 +51,13 @@ export function PersonalGraphSearch({ className, onSelectSlug }: Readonly<Person
 				</Button>
 			</PersonalGraphGlassPanel>
 			{query ? (
-				<div className="absolute bottom-[calc(100%+0.75rem)] left-0 right-0 z-40 text-neutral-950">
+				<div className="absolute bottom-[calc(100%+0.75rem)] left-0 right-0 z-40 text-text">
 					<PersonalGraphGlassPanel contentClassName="max-h-[min(42svh,320px)] overflow-auto p-1" radius={22}>
-						{status === "loading" ? <div className="px-3 py-2 text-xs text-neutral-500">Searching...</div> : null}
-						{status === "error" ? <div className="px-3 py-2 text-xs text-red-700">Search failed.</div> : null}
+						{status === "loading" ? <div className="px-3 py-2 text-xs text-text-subtlest">Searching...</div> : null}
+						{status === "error" ? <div className="px-3 py-2 text-xs text-text-danger">Search failed.</div> : null}
 						{results.map((result) => (
 							<button
-								className="block w-full rounded-2xl px-3 py-2 text-left transition-colors duration-normal hover:bg-white/20"
+								className="block w-full rounded-2xl px-3 py-2 text-left transition-colors duration-normal hover:bg-bg-neutral-subtle-hovered"
 								key={`${result.path}-${result.title}`}
 								onClick={() => {
 									onSelectSlug(result.slug);
@@ -65,12 +65,12 @@ export function PersonalGraphSearch({ className, onSelectSlug }: Readonly<Person
 								}}
 								type="button"
 							>
-								<div className="truncate text-xs font-medium text-neutral-950">{result.title}</div>
-								<div className="mt-1 line-clamp-2 text-xs text-neutral-600">{result.excerpt}</div>
+								<div className="truncate text-xs font-medium text-text">{result.title}</div>
+								<div className="mt-1 line-clamp-2 text-xs text-text-subtle">{result.excerpt}</div>
 							</button>
 						))}
 						{status === "ready" && results.length === 0 ? (
-							<div className="px-3 py-2 text-xs text-neutral-500">No results.</div>
+							<div className="px-3 py-2 text-xs text-text-subtlest">No results.</div>
 						) : null}
 					</PersonalGraphGlassPanel>
 				</div>

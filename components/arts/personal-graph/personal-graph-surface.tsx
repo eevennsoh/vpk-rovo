@@ -31,43 +31,13 @@ import { PersonalGraphTitle } from "./personal-graph-title-scramble";
 import { PersonalGraphVaultPicker } from "./personal-graph-vault-picker";
 
 type PersonalGraphSurfaceProps = React.ComponentProps<"main">;
-type PersonalGraphEditorStyle = React.CSSProperties & Record<`--${string}`, string>;
-
-const PERSONAL_GRAPH_EDITOR_COLOR_LOCK_STYLE = {
-	backgroundColor: "#FFFFFF",
-	color: "#1E1F21",
-	"--color-white": "#FFFFFF",
-	"--color-black": "#1E1F21",
-	"--color-neutral-50": "#FAFBFC",
-	"--color-neutral-100": "#F4F5F7",
-	"--color-neutral-200": "#DCDFE4",
-	"--color-neutral-300": "#B3B9C4",
-	"--color-neutral-400": "#8590A2",
-	"--color-neutral-500": "#758195",
-	"--color-neutral-600": "#626F86",
-	"--color-neutral-700": "#44546F",
-	"--color-neutral-800": "#2C3E5D",
-	"--color-neutral-900": "#172B4D",
-	"--color-neutral-950": "#1E1F21",
-	"--ds-text": "#1E1F21",
-	"--ds-text-inverse": "#FFFFFF",
-	"--ds-text-subtle": "#44546F",
-	"--ds-text-accent-gray-bolder": "#1E1F21",
-	"--ds-background-accent-gray-subtlest": "#F0F1F2",
-	"--ds-background-accent-gray-subtler": "#DCDFE4",
-	"--ds-background-accent-gray-subtler-pressed": "#B3B9C4",
-	"--ds-background-accent-gray-subtle": "#8590A2",
-	"--ds-background-accent-gray-bolder": "#626F86",
-	"--ds-background-accent-gray-bolder-hovered": "#44546F",
-	"--ds-background-accent-gray-bolder-pressed": "#2C3E5D",
-} satisfies PersonalGraphEditorStyle;
 
 const NODE_KIND_MARKERS: Record<VaultNodeKind, string> = {
-	concept: "rotate-45 rounded-[2px] bg-amber-400",
-	entity: "rounded-full bg-emerald-500",
+	concept: "rotate-45 rounded-[2px] bg-orange-300",
+	entity: "rounded-full bg-green-500",
 	raw: "rounded-[2px] bg-red-500",
 	source: "rounded-full bg-blue-600",
-	synthesis: "rotate-45 rounded-[2px] bg-blue-600",
+	synthesis: "rotate-45 rounded-[2px] bg-purple-600",
 };
 
 const PERSONAL_GRAPH_TITLE_FONT_STYLE = {
@@ -133,14 +103,14 @@ function PersonalGraphInspector({
 	return (
 		<aside
 			aria-label="Knowledge Graph details"
-			className="absolute right-6 top-[320px] z-30 hidden w-[min(340px,calc(100vw-48px))] text-neutral-950 lg:block xl:top-[112px]"
+			className="absolute right-6 top-[320px] z-30 hidden w-[min(340px,calc(100vw-48px))] text-text lg:block xl:top-[112px]"
 		>
 			<PersonalGraphGlassPanel contentClassName="p-4" radius={24}>
 				<div className="mb-5 flex items-start justify-between gap-4">
 					<h2 className="text-base font-semibold leading-5">{node.title}</h2>
 					<Button
 						aria-label="Close graph details"
-						className="size-8 rounded-full bg-white/5 text-neutral-950 shadow-none hover:bg-white/20"
+						className="size-8 rounded-full bg-bg-neutral-subtle text-text shadow-none hover:bg-bg-neutral-subtle-hovered"
 						onClick={onClose}
 						size="icon-sm"
 						variant="ghost"
@@ -148,31 +118,31 @@ function PersonalGraphInspector({
 						<CrossIcon label="" />
 					</Button>
 				</div>
-				<div className="border-b border-neutral-950/8 pb-4">
-					<div className="mb-3 text-xs font-medium text-neutral-500">Kind</div>
+				<div className="border-b border-border pb-4">
+					<div className="mb-3 text-xs font-medium text-text-subtlest">Kind</div>
 					<div className="flex items-center gap-3 text-sm">
 						<GraphNodeMarker kind={node.kind} />
 						<span>{node.kind.replace("_", " ")}</span>
 					</div>
 				</div>
-				<div className="border-b border-neutral-950/8 py-4">
-					<div className="mb-3 text-xs font-medium text-neutral-500">Links</div>
+				<div className="border-b border-border py-4">
+					<div className="mb-3 text-xs font-medium text-text-subtlest">Links</div>
 					<div className="flex items-center justify-between text-sm">
 						<span>{node.connectionCount}</span>
 						<ChevronRightIcon label="" />
 					</div>
 				</div>
-				<div className="border-b border-neutral-950/8 py-4">
-					<div className="mb-2 text-xs font-medium text-neutral-500">Excerpt</div>
-					<p className="text-sm leading-6 text-neutral-800">{node.bodyPreview || node.relativePath}</p>
+				<div className="border-b border-border py-4">
+					<div className="mb-2 text-xs font-medium text-text-subtlest">Excerpt</div>
+					<p className="text-sm leading-6 text-text-subtle">{node.bodyPreview || node.relativePath}</p>
 				</div>
 				{relatedNodes.length > 0 ? (
 					<div className="py-4">
-						<div className="mb-3 text-xs font-medium text-neutral-500">Related pages</div>
+						<div className="mb-3 text-xs font-medium text-text-subtlest">Related pages</div>
 						<div className="space-y-2">
 							{relatedNodes.map((relatedNode) => (
 								<button
-									className="flex w-full items-center justify-between gap-3 rounded-2xl border border-neutral-950/8 bg-white/5 px-3 py-3 text-left text-sm transition-colors duration-normal hover:bg-white/20"
+									className="flex w-full items-center justify-between gap-3 rounded-2xl border border-border bg-bg-neutral-subtle px-3 py-3 text-left text-sm text-text transition-colors duration-normal hover:bg-bg-neutral-subtle-hovered"
 									key={relatedNode.id}
 									onClick={() => onSelectNode(relatedNode.id)}
 									type="button"
@@ -187,11 +157,11 @@ function PersonalGraphInspector({
 						</div>
 					</div>
 				) : null}
-				<div className="mt-4 flex items-center justify-between gap-2 border-t border-neutral-950/8 pt-4">
+				<div className="mt-4 flex items-center justify-between gap-2 border-t border-border pt-4">
 					<div className="flex gap-2">
 						<Button
 							aria-label="Copy node title"
-							className="size-8 rounded-full bg-white/5 text-neutral-950 shadow-none hover:bg-white/20"
+							className="size-8 rounded-full bg-bg-neutral-subtle text-text shadow-none hover:bg-bg-neutral-subtle-hovered"
 							onClick={() => void navigator.clipboard?.writeText(node.title)}
 							size="icon-sm"
 							variant="ghost"
@@ -200,7 +170,7 @@ function PersonalGraphInspector({
 						</Button>
 						<Button
 							aria-label="Open node source"
-							className="size-8 rounded-full bg-white/5 text-neutral-950 shadow-none hover:bg-white/20"
+							className="size-8 rounded-full bg-bg-neutral-subtle text-text shadow-none hover:bg-bg-neutral-subtle-hovered"
 							onClick={() => window.open(`/api/personal-graph/page/${node.slug}`, "_blank", "noopener,noreferrer")}
 							size="icon-sm"
 							variant="ghost"
@@ -210,7 +180,7 @@ function PersonalGraphInspector({
 					</div>
 					<Button
 						aria-label="More graph detail actions"
-						className="size-8 rounded-full bg-white/5 text-neutral-950 shadow-none hover:bg-white/20"
+						className="size-8 rounded-full bg-bg-neutral-subtle text-text shadow-none hover:bg-bg-neutral-subtle-hovered"
 						size="icon-sm"
 						variant="ghost"
 					>
@@ -232,7 +202,7 @@ function PersonalGraphCaptureQueue({
 	return (
 		<div className="space-y-4">
 			<div>
-				<h2 className="text-base font-semibold text-neutral-950">Capture queue</h2>
+				<h2 className="text-base font-semibold text-text">Capture queue</h2>
 			</div>
 			<PersonalGraphDropzone onRawAdded={onRawAdded} />
 			<PersonalGraphIngestButton onDone={onRawAdded} refreshKey={refreshKey} />
@@ -304,8 +274,8 @@ export function PersonalGraphSurface({
 	return (
 		<main
 			aria-label="Personal Graph"
-			className={cn("relative isolate min-h-svh overflow-hidden bg-white text-neutral-950 dark:bg-white dark:text-neutral-950", className)}
-			style={{ ...PERSONAL_GRAPH_EDITOR_COLOR_LOCK_STYLE, ...style }}
+			className={cn("relative isolate min-h-svh overflow-hidden bg-surface text-text", className)}
+			style={style}
 			{...props}
 		>
 			<PersonalGraphBackdrop className="z-0" />
@@ -321,7 +291,7 @@ export function PersonalGraphSurface({
 					style={{ willChange: "transform" }}
 				>
 					<motion.div
-						className="mx-auto min-w-0 max-w-full text-center text-neutral-950"
+						className="mx-auto min-w-0 max-w-full text-center text-text"
 						initial={{ opacity: 0, y: 20, filter: "blur(20px)" }}
 						animate={{
 							opacity: isHeaderRevealed ? 1 : 0,
@@ -332,7 +302,7 @@ export function PersonalGraphSurface({
 						style={{ willChange: "filter, opacity" }}
 					>
 						<PersonalGraphTitle
-							className="leading-[0.8] text-neutral-950"
+							className="leading-[0.8] text-text"
 							style={PERSONAL_GRAPH_TITLE_FONT_STYLE}
 							initial={{ fontSize: "8rem" }}
 							animate={{ fontSize: isPostSettle ? "3rem" : "8rem" }}
@@ -340,7 +310,7 @@ export function PersonalGraphSurface({
 							play={isHeaderRevealed}
 						/>
 						<motion.p
-							className="truncate leading-none tracking-normal text-neutral-950"
+							className="truncate leading-none tracking-normal text-text"
 							style={{ ...PERSONAL_GRAPH_META_FONT_STYLE, willChange: "filter, opacity" }}
 							initial={{ opacity: 0, y: 15, filter: "blur(12px)", fontSize: "1.4rem", marginTop: "1rem" }}
 							animate={{
@@ -365,7 +335,7 @@ export function PersonalGraphSurface({
 						}}
 					>
 						{error ? (
-							<p className="max-w-[360px] truncate text-xs text-red-700">{error.message}</p>
+							<p className="max-w-[360px] truncate text-xs text-text-danger">{error.message}</p>
 						) : null}
 						<motion.div
 							variants={{
@@ -390,7 +360,7 @@ export function PersonalGraphSurface({
 									render={
 										<Button
 											aria-label="Capture queue"
-											className="size-10 rounded-full border-neutral-950/8 bg-white/5 text-neutral-950 shadow-none hover:bg-white/20"
+											className="size-10 rounded-full border-border bg-bg-neutral-subtle text-text shadow-none hover:bg-bg-neutral-subtle-hovered"
 											size="icon"
 											variant="outline"
 										/>
@@ -401,7 +371,7 @@ export function PersonalGraphSurface({
 								<PopoverContent
 									align="end"
 									aria-label="Capture queue"
-									className="w-[min(320px,calc(100vw-32px))] bg-transparent p-0 text-neutral-950 shadow-none"
+									className="w-[min(320px,calc(100vw-32px))] bg-transparent p-0 text-text shadow-none"
 									sideOffset={10}
 								>
 									<PersonalGraphGlassPanel contentClassName="max-h-[min(70svh,560px)] overflow-y-auto p-4" radius={24}>
@@ -420,7 +390,7 @@ export function PersonalGraphSurface({
 						>
 							<Button
 								aria-label="Refresh graph"
-								className="size-10 rounded-full border-neutral-950/8 bg-white/5 text-neutral-950 shadow-none hover:bg-white/20"
+								className="size-10 rounded-full border-border bg-bg-neutral-subtle text-text shadow-none hover:bg-bg-neutral-subtle-hovered"
 								disabled={isLoading}
 								onClick={handleRefreshAll}
 								size="icon"
@@ -440,7 +410,7 @@ export function PersonalGraphSurface({
 							<Button
 								aria-expanded={isParameterPanelOpen}
 								aria-label="Graph parameters"
-								className="size-10 rounded-full border-neutral-950/8 bg-white/5 text-neutral-950 shadow-none hover:bg-white/20"
+								className="size-10 rounded-full border-border bg-bg-neutral-subtle text-text shadow-none hover:bg-bg-neutral-subtle-hovered"
 								onClick={handleToggleParameterPanel}
 								size="icon"
 								variant="outline"
@@ -449,7 +419,7 @@ export function PersonalGraphSurface({
 							</Button>
 						</motion.div>
 						<motion.div
-							className="[&_[data-slot=button]]:size-10 [&_[data-slot=button]]:rounded-full [&_[data-slot=button]]:border [&_[data-slot=button]]:border-neutral-950/8 [&_[data-slot=button]]:bg-white/5 [&_[data-slot=button]]:text-neutral-950 [&_[data-slot=button]]:shadow-none [&_[data-slot=button]:hover]:bg-white/20"
+							className="[&_[data-slot=button]]:size-10 [&_[data-slot=button]]:rounded-full [&_[data-slot=button]]:border [&_[data-slot=button]]:border-border [&_[data-slot=button]]:bg-bg-neutral-subtle [&_[data-slot=button]]:text-text [&_[data-slot=button]]:shadow-none [&_[data-slot=button]:hover]:bg-bg-neutral-subtle-hovered"
 							variants={{
 								hidden: { opacity: 0, y: 10, filter: "blur(8px)" },
 								shown: { opacity: 1, y: 0, filter: "blur(0px)" },
@@ -475,7 +445,6 @@ export function PersonalGraphSurface({
 					clipPath: { duration: 1.2, ease: [0.16, 1, 0.3, 1] },
 					opacity: { duration: 0.8, ease: easeOut },
 				}}
-				style={{ willChange: "clip-path, opacity" }}
 			>
 				<div className="h-full" style={{ transform: "translateY(-10px)" }}>
 					<Graph
@@ -488,7 +457,6 @@ export function PersonalGraphSurface({
 						selectedNodeId={selectedNodeId}
 						showControls={false}
 						showSelectionOverlay={false}
-						themeMode="light"
 						variant="fill"
 					/>
 				</div>
@@ -506,10 +474,9 @@ export function PersonalGraphSurface({
 					opacity: { duration: 0.5, ease: easeOut },
 					bottom: { duration: 0.6, ease: easeOut },
 				}}
-				style={{ willChange: "opacity" }}
 			>
 				<div className="pointer-events-auto relative w-full max-w-[760px]">
-					<div className="pointer-events-none absolute left-1/2 top-0 z-10 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-neutral-950 shadow-lg" />
+					<div className="pointer-events-none absolute left-1/2 top-0 z-10 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-border-inverse bg-bg-neutral-bold shadow-lg" />
 					<PersonalGraphSearch
 						onSelectSlug={(slug) => {
 							const node = explorer?.nodes.find((candidate) => candidate.slug === slug);
@@ -522,14 +489,14 @@ export function PersonalGraphSurface({
 			{isParameterPanelOpen ? (
 				<aside
 					aria-label="Neural graph parameters"
-					className="absolute right-6 top-[320px] z-40 w-[min(320px,calc(100vw-32px))] text-neutral-950 xl:top-[112px]"
+					className="absolute right-6 top-[320px] z-40 w-[min(320px,calc(100vw-32px))] text-text xl:top-[112px]"
 				>
 					<PersonalGraphGlassPanel contentClassName="max-h-[calc(100svh-136px)] overflow-y-auto p-4" radius={24}>
 						<div className="mb-4 flex items-center justify-between gap-3">
-							<p className="text-xs font-semibold text-neutral-950">Neural graph</p>
+							<p className="text-xs font-semibold text-text">Neural graph</p>
 							<Button
 								aria-label="Close graph parameters"
-								className="size-8 rounded-full bg-white/5 text-neutral-950 shadow-none hover:bg-white/20"
+								className="size-8 rounded-full bg-bg-neutral-subtle text-text shadow-none hover:bg-bg-neutral-subtle-hovered"
 								onClick={() => setIsParameterPanelOpen(false)}
 								size="icon-sm"
 								variant="ghost"

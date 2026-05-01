@@ -13,7 +13,7 @@ interface PersonalGraphGlassPanelProps {
 	width?: number | string;
 }
 
-const PERSONAL_GRAPH_GLASS_SHADOW = "0 28px 80px -44px rgba(17, 18, 20, 0.54)";
+const PERSONAL_GRAPH_GLASS_SHADOW = "0 28px 80px -44px color-mix(in srgb, var(--ds-text) 54%, transparent)";
 
 export function PersonalGraphGlassPanel({
 	children,
@@ -27,12 +27,12 @@ export function PersonalGraphGlassPanel({
 		<LiquidGlass
 			backgroundOpacity={0.012}
 			blur={8}
-			borderColor="#111214"
+			borderColor="var(--ds-border-bold)"
 			borderOpacity={0.13}
 			borderRadius={radius}
 			borderWidth={0.05}
 			brightness={68}
-			className={cn("text-neutral-950", className)}
+			className={cn("text-text", className)}
 			dispersion={8}
 			displace={7}
 			distortionScale={-118}

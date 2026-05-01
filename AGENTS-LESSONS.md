@@ -6,6 +6,19 @@ Mark promoted entries with `[Promoted]` prefix — see vpk-lesson skill for deta
 
 ---
 
+### 2026-05-02 - Prefer Tailwind semantic classes over raw token strings in component styling
+
+- **What happened:** A Personal Graph backdrop adjustment passed raw
+  `var(--ds-...)` token strings into the grid pattern props even though a
+  Tailwind semantic utility could provide the same themed color.
+- **Why:** The patch treated CSS variables as the design-system API for a
+  React component surface instead of first checking whether the value could be
+  expressed with existing Tailwind token classes.
+- **Rule:** For component styling, prefer Tailwind semantic utilities such as
+  `text-blanket`, `bg-surface`, and `border-border-bold`. Use raw `--ds-*`
+  strings only when a lower-level canvas/shader API genuinely requires a color
+  value and there is no class-based path.
+
 ### 2026-03-24 - Use the Serve-native deferred flow for plan-mode tools
 
 - **What happened:** Rovo App repeatedly broke the planning chain by
@@ -507,3 +520,20 @@ Mark promoted entries with `[Promoted]` prefix — see vpk-lesson skill for deta
 - **Rule:** On `/personal-graph`, keep the page header as transparent layout
   chrome. Use glass panels for popovers, inspector, and focused controls only
   when the user asks for a framed surface.
+
+### 2026-05-02 - Use Tailwind-theme utilities for Personal Graph grid strokes
+
+- **What happened:** I tried raw `--ds-*` grid colors and then a shadcn semantic
+  text token while tuning the `/personal-graph` backdrop grid visibility.
+- **Why:** I focused on the resolved ADS color instead of the user's requirement
+  to use the existing Tailwind mapping in `app/tailwind-theme.css`.
+- **Rule:** When the user asks for a Tailwind-theme token on Personal Graph
+  pattern strokes, use the mapped utility class from `app/tailwind-theme.css`,
+  such as `text-neutral-400`, and let the token resolve by theme. This is still
+  the correct hook for `PatternTile front="currentColor"` because
+  `currentColor` reads CSS `color`; `border-*` utilities do not drive that
+  stroke paint path. Check the live computed value in both themes because the
+  ADS neutral ramp can invert in dark mode. If token changes do not visibly
+  affect the grid, inspect blend mode and opacity before trying more token
+  swaps; `mix-blend-mode: multiply` can flatten the visible delta on dark
+  surfaces.

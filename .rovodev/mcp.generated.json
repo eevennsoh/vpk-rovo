@@ -1,5 +1,9 @@
 {
 	"mcpServers": {
+		"figma-desktop": {
+			"url": "http://127.0.0.1:3845/mcp",
+			"transport": "http"
+		},
 		"forge-knowledge": {
 			"url": "https://mcp.atlassian.com/v1/forge/mcp",
 			"transport": "http"

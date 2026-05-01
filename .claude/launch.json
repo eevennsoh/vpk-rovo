@@ -1,0 +1,35 @@
+{
+	"version": "0.0.1",
+	"configurations": [
+		{
+			"name": "frontend",
+			"runtimeExecutable": "pnpm",
+			"runtimeArgs": ["run", "dev:frontend"],
+			"port": 3000
+		},
+		{
+			"name": "backend",
+			"runtimeExecutable": "pnpm",
+			"runtimeArgs": ["run", "dev:backend"],
+			"port": 8080
+		},
+		{
+			"name": "rovodev",
+			"runtimeExecutable": "pnpm",
+			"runtimeArgs": ["run", "dev:rovodev"],
+			"port": 8000
+		},
+		{
+			"name": "dev (frontend + backend)",
+			"runtimeExecutable": "pnpm",
+			"runtimeArgs": ["run", "dev"],
+			"port": 3000
+		},
+		{
+			"name": "rovodev-stack (all three)",
+			"runtimeExecutable": "pnpm",
+			"runtimeArgs": ["run", "rovodev"],
+			"port": 3000
+		}
+	]
+}

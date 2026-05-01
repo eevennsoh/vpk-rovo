@@ -427,7 +427,7 @@ export function PersonalGraphNeuralCanvas({
 
 	const cursorClass = isPanning ? "cursor-grabbing" : hoveredNodeId ? "cursor-pointer" : "cursor-grab";
 	const backgroundClass = background === "transparent" ? "bg-transparent" : "bg-surface";
-	const statusTextClass = background === "transparent" ? "text-neutral-500" : "text-text-subtle";
+	const statusTextClass = background === "transparent" ? "text-text-subtlest" : "text-text-subtle";
 
 	return (
 		<div className={cn("relative h-full min-h-0 overflow-hidden", backgroundClass)} data-neural-graph-renderer="owned-canvas">

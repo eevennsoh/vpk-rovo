@@ -125,13 +125,50 @@ void main() {
 }
 `;
 
-function hexToRgb(hex: string): [number, number, number] {
-	const h = hex.replace("#", "");
-	return [
-		parseInt(h.substring(0, 2), 16) / 255,
-		parseInt(h.substring(2, 4), 16) / 255,
-		parseInt(h.substring(4, 6), 16) / 255,
-	];
+function resolveCssColorValue(value: string, depth = 0): string {
+	const normalized = value.trim();
+	if (depth > 6) return normalized;
+
+	const variable = /^var\(\s*(--[\w-]+)\s*(?:,\s*(.+))?\)$/i.exec(normalized);
+	if (!variable || typeof window === "undefined") return normalized;
+
+	const tokenValue = window.getComputedStyle(document.documentElement).getPropertyValue(variable[1]).trim();
+	if (tokenValue) return resolveCssColorValue(tokenValue, depth + 1);
+
+	const fallback = variable[2]?.trim();
+	return fallback ? resolveCssColorValue(fallback, depth + 1) : normalized;
+}
+
+function colorToRgb(color: string): [number, number, number] {
+	const normalized = resolveCssColorValue(color);
+	const short = /^#([0-9a-f]{3})$/i.exec(normalized);
+	if (short) {
+		return [
+			parseInt(short[1][0] + short[1][0], 16) / 255,
+			parseInt(short[1][1] + short[1][1], 16) / 255,
+			parseInt(short[1][2] + short[1][2], 16) / 255,
+		];
+	}
+
+	const full = /^#([0-9a-f]{6})$/i.exec(normalized);
+	if (full) {
+		return [
+			parseInt(full[1].slice(0, 2), 16) / 255,
+			parseInt(full[1].slice(2, 4), 16) / 255,
+			parseInt(full[1].slice(4, 6), 16) / 255,
+		];
+	}
+
+	const rgb = /^rgba?\(\s*([\d.]+)(?:\s*,\s*|\s+)([\d.]+)(?:\s*,\s*|\s+)([\d.]+)(?:\s*[,/]\s*[\d.]+%?)?\s*\)$/i.exec(normalized);
+	if (rgb) {
+		return [
+			Math.min(Number.parseFloat(rgb[1]) / 255, 1),
+			Math.min(Number.parseFloat(rgb[2]) / 255, 1),
+			Math.min(Number.parseFloat(rgb[3]) / 255, 1),
+		];
+	}
+
+	return [1, 1, 1];
 }
 
 interface WaveGradientProps {
@@ -217,7 +254,7 @@ export default function WaveGradient({
 		gl.uniform1f(uBlend, blend);
 		gl.uniform1i(uColorsLen, colors.length);
 		colors.forEach((c, i) => {
-			const [r, g, b] = hexToRgb(c);
+			const [r, g, b] = colorToRgb(c);
 			gl.uniform4f(colorLocs[i], r, g, b, 1.0);
 		});
 

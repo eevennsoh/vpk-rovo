@@ -9,15 +9,26 @@ agent:
   # Temperature setting for AI model responses (0.0-1.0)
   temperature: 0.3
   # Model ID to use for the agent. See /models command to list available models.
-  modelId: anthropic:claude-opus-4-7
+  modelId: openai-responses-api:gpt-5.5-2026-04-23
   # Optional model variant key selected from dynamic configuration.
-  modelVariant: null
+  modelVariant: xhigh
   # Per-model inference parameter overrides keyed by model ID.
   inferenceConfig: null
   # Enable the deep planning tool for complex task planning
   enableDeepPlanTool: true
+  # Efficiency level controlling iteration limits. Options: low, medium
+  # (default), high, max.
+  efficiencyLevel: medium
   # Enable/disable subagents for task delegation
   enableSubagents: true
+  # Additional directories to search for skills, beyond the RovoDev-native paths
+  # (~/.rovodev/skills/, ~/.agents/skills/, project paths). The Agent Skills
+  # SKILL.md format is an open standard shared with Claude Code, OpenAI Codex
+  # CLI, and others; this lets users install a skill once and have it picked up
+  # across tools.   null  -> use defaults (~/.claude/skills, ~/.codex/skills).
+  # []    -> disable external skill discovery entirely.   list  -> replaces the
+  # defaults; supports ~ expansion.
+  externalSkillDirs: null
   # Enable/disable experimental features
   experimental:
     # Disable the built-in Atlassian MCP server so user can configure a custom
@@ -67,12 +78,13 @@ console:
     update_allowed_external_paths: true
   # Editing mode for the prompt session
   editingMode: EMACS
+  # Enable or disable cursor blinking in the input area. Defaults to true
+  # (blinking).
+  cursorBlink: true
   # Shell command to generate a command prompt that replaces the default '> '.
-  # For example, set 'STARSHIP_SHELL=rovodev starship prompt' to use Starship.
+  # For example, set 'STARSHIP_SHELL=rovo dev starship prompt' to use Starship.
   customCommandPrompt: null
-  # Color theme for syntax highlighting. Options: 'dark' (Dracula), 'light',
-  # 'auto' (detect system theme), or any [Pygments theme
-  # name](https://pygments.org/styles/)(e.g., 'monokai', 'solarized-light')
+  # Color theme for syntax highlighting, background color, etc.
   theme: dark
   # Maximum width of the console output in characters, or 'fill' to fill the
   # terminal width
@@ -82,6 +94,9 @@ console:
   # Automatically copy selected text to clipboard when text is selected in the
   # chat
   copyOnSelect: true
+  # When enabled, Enter inserts a newline and double-Enter submits the message.
+  # When disabled (default), Enter submits and Shift+Enter inserts a newline.
+  multilineInput: false
   # Compact older agent turns to reduce memory usage in long sessions. Only the
   # last 5 turns stay fully expanded.
   compactMode: true
@@ -111,6 +126,7 @@ mcp:
   - url:https://mcp.atlassian.com/v1/forge/mcp
   - url:https://mcp.atlassian.com/v1/ads/public/mcp
   - stdio:npx:open-websearch@latest
+  - url:http://127.0.0.1:3845/mcp
   - stdio:pnpm:exec qmd mcp
   - stdio:node:/Users/esoh/Documents/Labs/VPK-rovo/scripts/browser-workspace-mcp.js
   - stdio:node:/Users/esoh/Documents/Labs/VPK-rovo/scripts/wiki-capture-mcp.js
@@ -124,15 +140,24 @@ toolPermissions:
   default: ask
   # Permission settings for specific tools
   tools:
-    create_file: ask
-    delete_file: ask
+    create_file: allow
+    delete_file: allow
     move_file: ask
-    find_and_replace_code: ask
+    find_and_replace_code: allow
     open_files: allow
     expand_code_chunks: allow
     expand_folder: allow
     grep: allow
     fetchWebContent: allow
+    search: allow
+    ads_search_icons: allow
+    browser_navigate: allow
+    get_screenshot: allow
+    get_design_context: allow
+    browser_take_screenshot: allow
+    browser_snapshot: allow
+    browser_press_key: allow
+    atlassian_docs_search: allow
   bash:
     # Default permission for bash commands not explicitly listed
     default: ask
@@ -145,6 +170,32 @@ toolPermissions:
     - command: echo(\s.*)?
       permission: allow
     - command: pwd
+      permission: allow
+    - command: pnpm(\s.*)?
+      permission: allow
+    - command: find(\s.*)?
+      permission: allow
+    - command: npx(\s.*)?
+      permission: allow
+    - command: sed(\s.*)?
+      permission: allow
+    - command: awk(\s.*)?
+      permission: allow
+    - command: node(\s.*)?
+      permission: allow
+    - command: git(\s.*)?
+      permission: allow
+    - command: test(\s.*)?
+      permission: allow
+    - command: curl(\s.*)?
+      permission: allow
+    - command: head(\s.*)?
+      permission: allow
+    - command: tail(\s.*)?
+      permission: allow
+    - command: 'tail -10
+
+        pnpm exec tsc --noEmit -p tsconfig.json 2>&1'
       permission: allow
     # Run bash commands in a sandboxed environment - currently available for
     # MacOS and Linux only. Enabling this option for Windows will prevent the
@@ -162,12 +213,12 @@ toolPermissions:
 
 announcementTracking:
   announcementViewCounts:
-    0e2cf7dba34aada97088b0baf9fcb909: 1
+    908131f43586f75b4fef0df59675176e: 1
 
 sessionFeedback:
   permanentlyDisabled: false
   # ISO timestamp of the last provided feedback
-  lastFeedbackAsked: null
+  lastFeedbackAsked: '2026-04-22T15:34:36.046238+00:00'
 
 atlassianBillingSite:
   siteUrl: https://hello.atlassian.net
@@ -182,4 +233,22 @@ smartTasks:
 # Event Hooks configuration. See /hooks command to list available events.
 eventHooks:
   logFile: /Users/esoh/.rovodev/event_hooks.log
-  events: []
+  events:
+  - name: on_session_start
+    commands:
+    - command: /Users/esoh/.rovodev/hooks/cmux-hooks.sh on_session_start
+  - name: on_user_prompt
+    commands:
+    - command: /Users/esoh/.rovodev/hooks/cmux-hooks.sh on_user_prompt
+  - name: on_tool_start
+    commands:
+    - command: /Users/esoh/.rovodev/hooks/cmux-hooks.sh on_tool_start
+  - name: on_complete
+    commands:
+    - command: /Users/esoh/.rovodev/hooks/cmux-hooks.sh on_complete
+  - name: on_error
+    commands:
+    - command: /Users/esoh/.rovodev/hooks/cmux-hooks.sh on_error
+  - name: on_tool_permission
+    commands:
+    - command: /Users/esoh/.rovodev/hooks/cmux-hooks.sh on_tool_permission

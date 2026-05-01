@@ -67,10 +67,10 @@ test("Graph visual can be embedded as the live Personal Graph renderer", () => {
 });
 
 test("Graph renderer uses thicker connector strokes", () => {
-	assert.match(RENDERER_SOURCE, /const RAY_LINE_WIDTH = 1\.25;/);
-	assert.match(RENDERER_SOURCE, /active: 2\.2,/);
-	assert.match(RENDERER_SOURCE, /focused: 3\.2,/);
-	assert.match(RENDERER_SOURCE, /idle: 1\.35,/);
+	assert.match(RENDERER_SOURCE, /const RAY_LINE_WIDTH = 2;/);
+	assert.match(RENDERER_SOURCE, /active: 2,/);
+	assert.match(RENDERER_SOURCE, /focused: 2,/);
+	assert.match(RENDERER_SOURCE, /idle: 2,/);
 	assert.match(
 		RENDERER_SOURCE,
 		/ctx\.lineWidth = active \? lerp\(EDGE_LINE_WIDTH\.active, EDGE_LINE_WIDTH\.focused, focusProgress\) : EDGE_LINE_WIDTH\.idle;/,
