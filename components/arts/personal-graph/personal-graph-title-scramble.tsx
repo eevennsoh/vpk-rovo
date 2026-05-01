@@ -1,16 +1,53 @@
+"use client";
+
+import { useMemo } from "react";
+import { type HTMLMotionProps, motion, stagger } from "motion/react";
+import { ScrambleText } from "motion-plus/react";
+
 import { cn } from "@/lib/utils";
 
-interface PersonalGraphTitleProps {
-	className?: string;
-	style?: React.CSSProperties;
+const MOTION_SPECIAL_CHARS = "!@#$%^&*()_+-=[]{}|;:,.<>?/~`░▒▓█▀▄■□▪▫●○◆◇◈◊※†‡";
+const PER_CHAR_STAGGER_S = 0.1;
+const SCRAMBLE_DURATION_S = 1;
+
+interface PersonalGraphTitleProps extends HTMLMotionProps<"h1"> {
+	play?: boolean;
 }
 
-const PERSONAL_GRAPH_TITLE_TEXT = "PERSONAL\nGRAPH";
+export function PersonalGraphTitle({ className, play = true, ...motionProps }: Readonly<PersonalGraphTitleProps>) {
+	const centerStagger = useMemo(() => stagger(PER_CHAR_STAGGER_S, { from: "center" }), []);
 
-export function PersonalGraphTitle({ className, style }: Readonly<PersonalGraphTitleProps>) {
 	return (
-		<h1 aria-label="PERSONAL GRAPH" className={cn("whitespace-pre-line", className)} style={style}>
-			{PERSONAL_GRAPH_TITLE_TEXT}
-		</h1>
+		<motion.h1 aria-label="PERSONAL GRAPH" className={cn(className)} {...motionProps}>
+			{play ? (
+				<>
+					<ScrambleText
+						className="block"
+						duration={SCRAMBLE_DURATION_S}
+						delay={centerStagger}
+						chars={MOTION_SPECIAL_CHARS}
+					>
+						PERSONAL
+					</ScrambleText>
+					<ScrambleText
+						className="block"
+						duration={SCRAMBLE_DURATION_S}
+						delay={centerStagger}
+						chars={MOTION_SPECIAL_CHARS}
+					>
+						GRAPH
+					</ScrambleText>
+				</>
+			) : (
+				<>
+					<span aria-hidden className="block">
+						PERSONAL
+					</span>
+					<span aria-hidden className="block">
+						GRAPH
+					</span>
+				</>
+			)}
+		</motion.h1>
 	);
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { motion } from "motion/react";
 import ChevronRightIcon from "@atlaskit/icon/core/chevron-right";
 import CopyIcon from "@atlaskit/icon/core/copy";
 import CrossIcon from "@atlaskit/icon/core/cross";
@@ -14,6 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { ThemeToggle } from "@/components/utils/theme-wrapper";
 import Graph from "@/components/website/demos/visual/graph";
 import { cn } from "@/lib/utils";
+import { usePersonalGraphIntro } from "./hooks/use-personal-graph-intro";
 import { useVaultExplorer } from "./hooks/use-vault-explorer";
 import type { NeuralGraphParams } from "./lib/neural-graph/params";
 import { loadStoredNeuralGraphParams, saveStoredNeuralGraphParams } from "./lib/neural-graph/params";
@@ -245,6 +247,14 @@ export function PersonalGraphSurface({
 	...props
 }: Readonly<PersonalGraphSurfaceProps>) {
 	const { error, explorer, isLoading, refresh } = useVaultExplorer();
+	const { phase } = usePersonalGraphIntro();
+	const isHeaderRevealed = phase === "title" || phase === "subtext" || phase === "controls" || phase === "settle" || phase === "search" || phase === "graph" || phase === "done";
+	const isSubtextRevealed = phase === "subtext" || phase === "controls" || phase === "settle" || phase === "search" || phase === "graph" || phase === "done";
+	const isControlsRevealed = phase === "controls" || phase === "settle" || phase === "search" || phase === "graph" || phase === "done";
+	const isPostSettle = phase === "settle" || phase === "search" || phase === "graph" || phase === "done";
+	const isSearchRevealed = phase === "search" || phase === "graph" || phase === "done";
+	const isGraphRevealed = phase === "graph" || phase === "done";
+	const easeOut: [number, number, number, number] = [0, 0.4, 0, 1];
 	const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 	const [refreshKey, setRefreshKey] = useState(0);
 	const [isParameterPanelOpen, setIsParameterPanelOpen] = useState(false);
@@ -299,99 +309,207 @@ export function PersonalGraphSurface({
 			{...props}
 		>
 			<PersonalGraphBackdrop className="z-0" />
-			<header className="absolute inset-x-4 top-5 z-30 sm:inset-x-6 lg:inset-x-8">
-				<div className="relative flex flex-col items-center gap-4">
-					<div className="mx-auto min-w-0 max-w-full text-center text-neutral-950">
+			<header className="absolute inset-x-4 top-6 z-30 sm:inset-x-6 lg:inset-x-8">
+				<motion.div
+					className="relative flex flex-col items-center"
+					initial={{ y: "35svh", gap: "24px" }}
+					animate={{ y: isPostSettle ? 0 : "35svh", gap: isPostSettle ? "16px" : "24px" }}
+					transition={{
+						default: { type: "spring", stiffness: 220, damping: 30 },
+						gap: { duration: 0.45, ease: easeOut },
+					}}
+					style={{ willChange: "transform" }}
+				>
+					<motion.div
+						className="mx-auto min-w-0 max-w-full text-center text-neutral-950"
+						initial={{ opacity: 0, y: 20, filter: "blur(20px)" }}
+						animate={{
+							opacity: isHeaderRevealed ? 1 : 0,
+							y: isHeaderRevealed ? 0 : 20,
+							filter: isHeaderRevealed ? "blur(0px)" : "blur(20px)",
+						}}
+						transition={{ duration: 1.0, ease: easeOut }}
+						style={{ willChange: "filter, opacity" }}
+					>
 						<PersonalGraphTitle
-							className="text-[3.75rem] leading-[0.8] text-neutral-950 min-[390px]:text-[4.5rem] sm:text-[6.25rem] lg:text-[7.75rem] xl:text-[8.75rem]"
+							className="leading-[0.8] text-neutral-950"
 							style={PERSONAL_GRAPH_TITLE_FONT_STYLE}
+							initial={{ fontSize: "8rem" }}
+							animate={{ fontSize: isPostSettle ? "3rem" : "8rem" }}
+							transition={{ duration: 1.0, ease: easeOut }}
+							play={isHeaderRevealed}
 						/>
-						<p
-							className="mt-5 truncate text-[1rem] leading-none tracking-normal text-neutral-950 sm:mt-6 sm:text-[1.4rem] lg:text-[1.55rem]"
-							style={PERSONAL_GRAPH_META_FONT_STYLE}
+						<motion.p
+							className="truncate leading-none tracking-normal text-neutral-950"
+							style={{ ...PERSONAL_GRAPH_META_FONT_STYLE, willChange: "filter, opacity" }}
+							initial={{ opacity: 0, y: 15, filter: "blur(12px)", fontSize: "1.4rem", marginTop: "1rem" }}
+							animate={{
+								opacity: isSubtextRevealed ? 1 : 0,
+								y: isSubtextRevealed ? 0 : 15,
+								filter: isSubtextRevealed ? "blur(0px)" : "blur(12px)",
+								fontSize: isPostSettle ? "0.75rem" : "1.4rem",
+								marginTop: isPostSettle ? "0.5rem" : "1rem",
+							}}
+							transition={{ duration: 0.5, ease: easeOut }}
 						>
 							{getGraphStatsText(explorer)}
-						</p>
-					</div>
-					<div className="flex min-w-0 max-w-full flex-wrap items-center justify-center gap-2 text-center">
+						</motion.p>
+					</motion.div>
+					<motion.div
+						className="flex min-w-0 max-w-full flex-wrap items-center justify-center gap-2 text-center"
+						initial="hidden"
+						animate={isControlsRevealed ? "shown" : "hidden"}
+						variants={{
+							hidden: {},
+							shown: { transition: { staggerChildren: 0.06, delayChildren: 0 } },
+						}}
+					>
 						{error ? (
 							<p className="max-w-[360px] truncate text-xs text-red-700">{error.message}</p>
 						) : null}
-						<PersonalGraphVaultPicker onVaultChanged={handleRefreshAll} />
-						<Popover open={isCaptureQueueOpen} onOpenChange={handleCaptureQueueOpenChange}>
-							<PopoverTrigger
-								render={
-									<Button
-										aria-label="Capture queue"
-										className="size-10 rounded-full border-neutral-950/8 bg-white/5 text-neutral-950 shadow-none hover:bg-white/20"
-										size="icon"
-										variant="outline"
-									/>
-								}
-							>
-								<UploadIcon label="" />
-							</PopoverTrigger>
-							<PopoverContent
-								align="end"
-								aria-label="Capture queue"
-								className="w-[min(320px,calc(100vw-32px))] bg-transparent p-0 text-neutral-950 shadow-none"
-								sideOffset={10}
-							>
-								<PersonalGraphGlassPanel contentClassName="max-h-[min(70svh,560px)] overflow-y-auto p-4" radius={24}>
-									<PersonalGraphCaptureQueue onRawAdded={handleRefreshAll} refreshKey={refreshKey} />
-								</PersonalGraphGlassPanel>
-							</PopoverContent>
-						</Popover>
-						<Button
-							aria-label="Refresh graph"
-							className="size-10 rounded-full border-neutral-950/8 bg-white/5 text-neutral-950 shadow-none hover:bg-white/20"
-							disabled={isLoading}
-							onClick={handleRefreshAll}
-							size="icon"
-							variant="outline"
+						<motion.div
+							variants={{
+								hidden: { opacity: 0, y: 10, filter: "blur(8px)" },
+								shown: { opacity: 1, y: 0, filter: "blur(0px)" },
+							}}
+							transition={{ duration: 0.4, ease: easeOut }}
+							style={{ willChange: "transform, filter, opacity" }}
 						>
-							<RefreshIcon label="" />
-						</Button>
-						<Button
-							aria-expanded={isParameterPanelOpen}
-							aria-label="Graph parameters"
-							className="size-10 rounded-full border-neutral-950/8 bg-white/5 text-neutral-950 shadow-none hover:bg-white/20"
-							onClick={handleToggleParameterPanel}
-							size="icon"
-							variant="outline"
+							<PersonalGraphVaultPicker onVaultChanged={handleRefreshAll} />
+						</motion.div>
+						<motion.div
+							variants={{
+								hidden: { opacity: 0, y: 10, filter: "blur(8px)" },
+								shown: { opacity: 1, y: 0, filter: "blur(0px)" },
+							}}
+							transition={{ duration: 0.4, ease: easeOut }}
+							style={{ willChange: "transform, filter, opacity" }}
 						>
-							<SettingsIcon label="" />
-						</Button>
-						<div className="[&_[data-slot=button]]:size-10 [&_[data-slot=button]]:rounded-full [&_[data-slot=button]]:border [&_[data-slot=button]]:border-neutral-950/8 [&_[data-slot=button]]:bg-white/5 [&_[data-slot=button]]:text-neutral-950 [&_[data-slot=button]]:shadow-none [&_[data-slot=button]:hover]:bg-white/20">
+							<Popover open={isCaptureQueueOpen} onOpenChange={handleCaptureQueueOpenChange}>
+								<PopoverTrigger
+									render={
+										<Button
+											aria-label="Capture queue"
+											className="size-10 rounded-full border-neutral-950/8 bg-white/5 text-neutral-950 shadow-none hover:bg-white/20"
+											size="icon"
+											variant="outline"
+										/>
+									}
+								>
+									<UploadIcon label="" />
+								</PopoverTrigger>
+								<PopoverContent
+									align="end"
+									aria-label="Capture queue"
+									className="w-[min(320px,calc(100vw-32px))] bg-transparent p-0 text-neutral-950 shadow-none"
+									sideOffset={10}
+								>
+									<PersonalGraphGlassPanel contentClassName="max-h-[min(70svh,560px)] overflow-y-auto p-4" radius={24}>
+										<PersonalGraphCaptureQueue onRawAdded={handleRefreshAll} refreshKey={refreshKey} />
+									</PersonalGraphGlassPanel>
+								</PopoverContent>
+							</Popover>
+						</motion.div>
+						<motion.div
+							variants={{
+								hidden: { opacity: 0, y: 10, filter: "blur(8px)" },
+								shown: { opacity: 1, y: 0, filter: "blur(0px)" },
+							}}
+							transition={{ duration: 0.4, ease: easeOut }}
+							style={{ willChange: "transform, filter, opacity" }}
+						>
+							<Button
+								aria-label="Refresh graph"
+								className="size-10 rounded-full border-neutral-950/8 bg-white/5 text-neutral-950 shadow-none hover:bg-white/20"
+								disabled={isLoading}
+								onClick={handleRefreshAll}
+								size="icon"
+								variant="outline"
+							>
+								<RefreshIcon label="" />
+							</Button>
+						</motion.div>
+						<motion.div
+							variants={{
+								hidden: { opacity: 0, y: 10, filter: "blur(8px)" },
+								shown: { opacity: 1, y: 0, filter: "blur(0px)" },
+							}}
+							transition={{ duration: 0.4, ease: easeOut }}
+							style={{ willChange: "transform, filter, opacity" }}
+						>
+							<Button
+								aria-expanded={isParameterPanelOpen}
+								aria-label="Graph parameters"
+								className="size-10 rounded-full border-neutral-950/8 bg-white/5 text-neutral-950 shadow-none hover:bg-white/20"
+								onClick={handleToggleParameterPanel}
+								size="icon"
+								variant="outline"
+							>
+								<SettingsIcon label="" />
+							</Button>
+						</motion.div>
+						<motion.div
+							className="[&_[data-slot=button]]:size-10 [&_[data-slot=button]]:rounded-full [&_[data-slot=button]]:border [&_[data-slot=button]]:border-neutral-950/8 [&_[data-slot=button]]:bg-white/5 [&_[data-slot=button]]:text-neutral-950 [&_[data-slot=button]]:shadow-none [&_[data-slot=button]:hover]:bg-white/20"
+							variants={{
+								hidden: { opacity: 0, y: 10, filter: "blur(8px)" },
+								shown: { opacity: 1, y: 0, filter: "blur(0px)" },
+							}}
+							transition={{ duration: 0.4, ease: easeOut }}
+							style={{ willChange: "transform, filter, opacity" }}
+						>
 							<ThemeToggle />
-						</div>
-					</div>
-				</div>
+						</motion.div>
+					</motion.div>
+				</motion.div>
 			</header>
 
-			<section className="absolute inset-0 z-10" aria-label="Vault graph">
-				<Graph
-					background="transparent"
-					className="h-full"
-					explorer={explorer}
-					isLoading={isLoading}
-					onSelectedNodeIdChange={setSelectedNodeId}
-					params={neuralParams}
-					selectedNodeId={selectedNodeId}
-					showControls={false}
-					showSelectionOverlay={false}
-					themeMode="light"
-					variant="fill"
-				/>
-			</section>
+			<motion.section
+				className="absolute inset-0 z-10"
+				aria-label="Vault graph"
+				initial={{ clipPath: "circle(0% at 50% 92%)", opacity: 0.4 }}
+				animate={{
+					clipPath: isGraphRevealed ? "circle(180% at 50% 92%)" : "circle(0% at 50% 92%)",
+					opacity: isGraphRevealed ? 1 : 0.4,
+				}}
+				transition={{
+					clipPath: { duration: 1.2, ease: [0.16, 1, 0.3, 1] },
+					opacity: { duration: 0.8, ease: easeOut },
+				}}
+				style={{ willChange: "clip-path, opacity" }}
+			>
+				<div className="h-full" style={{ transform: "translateY(-10px)" }}>
+					<Graph
+						background="transparent"
+						className="h-full"
+						explorer={explorer}
+						isLoading={isLoading}
+						onSelectedNodeIdChange={setSelectedNodeId}
+						params={neuralParams}
+						selectedNodeId={selectedNodeId}
+						showControls={false}
+						showSelectionOverlay={false}
+						themeMode="light"
+						variant="fill"
+					/>
+				</div>
+			</motion.section>
 
-			<section
+			<motion.section
 				aria-label="Personal Graph search and chat"
-				className="pointer-events-none absolute bottom-6 left-4 right-4 z-40 flex justify-center sm:bottom-8 lg:left-[360px] lg:right-[360px]"
+				className="pointer-events-none absolute left-4 right-4 z-40 flex justify-center sm:inset-x-6 lg:left-[360px] lg:right-[360px]"
+				initial={{ opacity: 0, bottom: -120 }}
+				animate={{
+					opacity: isSearchRevealed ? 1 : 0,
+					bottom: isSearchRevealed ? 24 : -120,
+				}}
+				transition={{
+					opacity: { duration: 0.5, ease: easeOut },
+					bottom: { duration: 0.6, ease: easeOut },
+				}}
+				style={{ willChange: "opacity" }}
 			>
 				<div className="pointer-events-auto relative w-full max-w-[760px]">
-					<div className="pointer-events-none absolute left-1/2 top-0 h-24 w-px -translate-x-1/2 -translate-y-full bg-gradient-to-t from-neutral-950/35 to-transparent" />
-					<div className="pointer-events-none absolute left-1/2 top-0 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-neutral-950 shadow-lg" />
+					<div className="pointer-events-none absolute left-1/2 top-0 z-10 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-neutral-950 shadow-lg" />
 					<PersonalGraphSearch
 						onSelectSlug={(slug) => {
 							const node = explorer?.nodes.find((candidate) => candidate.slug === slug);
@@ -399,7 +517,7 @@ export function PersonalGraphSurface({
 						}}
 					/>
 				</div>
-			</section>
+			</motion.section>
 
 			{isParameterPanelOpen ? (
 				<aside
