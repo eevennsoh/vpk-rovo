@@ -420,7 +420,7 @@ export default function PatternTile({
 		<motion.div
 			className={cn(
 				"h-full w-full",
-				usesStrokeMask ? "relative overflow-hidden" : null,
+				usesStrokeMask ? "relative isolate overflow-hidden" : null,
 				className,
 			)}
 			style={{
