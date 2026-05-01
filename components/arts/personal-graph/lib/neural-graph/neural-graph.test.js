@@ -116,12 +116,30 @@ test("createNeuralGraphStore builds deterministic adjacency and kind groups", as
 
 	assert.equal(store.nodesById.get("selected").degree, 19);
 	assert.deepEqual(
+		store.rankedNodes.slice(0, 3).map((item) => item.id),
+		["selected", "gamma", "beta"],
+	);
+	assert.deepEqual(
 		getNodeNeighbors(store, "selected").slice(0, 3).map(({ node }) => node.id),
 		["gamma", "beta", "alpha"],
 	);
 	assert.deepEqual(
 		(store.kindGroups.get("raw") ?? []).map((item) => item.id),
 		["gamma"],
+	);
+});
+
+test("getVisibleGraphNodes reuses the precomputed ranked node order under caps", async () => {
+	const { createNeuralGraphStore, getVisibleGraphNodes } = await storeModule;
+	const store = createNeuralGraphStore(explorer);
+	const alpha = store.nodesById.get("alpha");
+	const extra = store.nodesById.get("extra-0");
+
+	store.rankedNodes = [alpha, extra, ...store.rankedNodes.filter((item) => item !== alpha && item !== extra)];
+
+	assert.deepEqual(
+		getVisibleGraphNodes(store, null, 2).map((item) => item.id),
+		[alpha, extra].sort((left, right) => left.index - right.index).map((item) => item.id),
 	);
 });
 
