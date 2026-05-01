@@ -249,6 +249,9 @@ importers:
       motion:
         specifier: ^12.38.0
         version: 12.38.0(@emotion/is-prop-valid@1.4.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      motion-plus:
+        specifier: https://api.motion.dev/registry?package=motion-plus&version=2.11.2&token=fc0a8c2295343956b76bd070a01a9863c7a11d012c3983c9a7bf9720642e239f
+        version: https://api.motion.dev/registry?package=motion-plus&version=2.11.2&token=fc0a8c2295343956b76bd070a01a9863c7a11d012c3983c9a7bf9720642e239f(@emotion/is-prop-valid@1.4.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       nanoid:
         specifier: ^5.1.9
         version: 5.1.9
@@ -5845,6 +5848,21 @@ packages:
 
   motion-dom@12.38.0:
     resolution: {integrity: sha512-pdkHLD8QYRp8VfiNLb8xIBJis1byQ9gPT3Jnh2jqfFtAsWUA3dEepDlsWe/xMpO8McV+VdpKVcp+E+TGJEtOoA==, tarball: https://packages.atlassian.com/api/npm/npm-remote/motion-dom/-/motion-dom-12.38.0.tgz}
+
+  motion-plus-dom@2.11.2:
+    resolution: {integrity: sha512-WNXCn7XRS7H5ZJiwceJMbNjXbhVwjhQquJn/3LuyPkwMcxtOtQmc+cCas46bNpYNfKCyJs94oN9XRcBWmT2LxQ==, tarball: https://packages.atlassian.com/api/npm/npm-remote/motion-plus-dom/-/motion-plus-dom-2.11.2.tgz}
+
+  motion-plus@https://api.motion.dev/registry?package=motion-plus&version=2.11.2&token=fc0a8c2295343956b76bd070a01a9863c7a11d012c3983c9a7bf9720642e239f:
+    resolution: {integrity: sha512-WAmMJ8YMJvXSbdyzg9d7SESp+WrlbN39Svbxf/nVqoX7ZBhlHMt/Y/4jtozmnVWyDh3oN1DDdYlj89JBE7PqeQ==, tarball: https://api.motion.dev/registry?package=motion-plus&version=2.11.2&token=fc0a8c2295343956b76bd070a01a9863c7a11d012c3983c9a7bf9720642e239f}
+    version: 2.11.2
+    peerDependencies:
+      react: ^18.0.0 || ^19.0.0
+      react-dom: ^18.0.0 || ^19.0.0
+    peerDependenciesMeta:
+      react:
+        optional: true
+      react-dom:
+        optional: true
 
   motion-utils@12.36.0:
     resolution: {integrity: sha512-eHWisygbiwVvf6PZ1vhaHCLamvkSbPIeAYxWUuL3a2PD/TROgE7FvfHWTIH4vMl798QLfMw15nRqIaRDXTlYRg==, tarball: https://packages.atlassian.com/api/npm/npm-remote/motion-utils/-/motion-utils-12.36.0.tgz}
@@ -13707,6 +13725,28 @@ snapshots:
   motion-dom@12.38.0:
     dependencies:
       motion-utils: 12.36.0
+
+  motion-plus-dom@2.11.2(@emotion/is-prop-valid@1.4.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5):
+    dependencies:
+      motion: 12.38.0(@emotion/is-prop-valid@1.4.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      motion-dom: 12.38.0
+      motion-utils: 12.36.0
+    transitivePeerDependencies:
+      - '@emotion/is-prop-valid'
+      - react
+      - react-dom
+
+  motion-plus@https://api.motion.dev/registry?package=motion-plus&version=2.11.2&token=fc0a8c2295343956b76bd070a01a9863c7a11d012c3983c9a7bf9720642e239f(@emotion/is-prop-valid@1.4.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5):
+    dependencies:
+      motion: 12.38.0(@emotion/is-prop-valid@1.4.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      motion-dom: 12.38.0
+      motion-plus-dom: 2.11.2(@emotion/is-prop-valid@1.4.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      motion-utils: 12.36.0
+    optionalDependencies:
+      react: 19.2.5
+      react-dom: 19.2.5(react@19.2.5)
+    transitivePeerDependencies:
+      - '@emotion/is-prop-valid'
 
   motion-utils@12.36.0: {}
 

@@ -86,6 +86,15 @@ test("ASCII demo defaults to the requested source color palette", () => {
 	assert.doesNotMatch(SHADER_SOURCE, /"#66D9E8"/);
 });
 
+test("ASCII image mode does not keep the generated VPK backdrop as a fallback", () => {
+	assert.match(SHADER_SOURCE, /createEmptyTexture/);
+	assert.match(SHADER_SOURCE, /sourceMode === "image" && imageSrc/);
+	assert.match(SHADER_SOURCE, /shouldUseAnonymousCrossOrigin\(imageSrc\)/);
+	assert.doesNotMatch(SHADER_SOURCE, /createDefaultTexture/);
+	assert.doesNotMatch(SHADER_SOURCE, /fillText\("VPK"/);
+	assert.match(DETAILS_SOURCE, /image mode starts from an empty source rather than a bundled demo texture/);
+});
+
 test("ASCII shader uses a generated glyph atlas and luminance pass", () => {
 	assert.match(SHADER_SOURCE, /createAsciiAtlas/);
 	assert.match(SHADER_SOURCE, /u_asciiAtlas/);

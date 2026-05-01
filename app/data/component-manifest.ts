@@ -521,6 +521,7 @@ export const VISUAL_COMPONENTS: ComponentManifestEntry[] = sortEntriesByName([
 	visualComponent("pixel-trail", "Pixel Trail", "@/components/website/demos/visual/shader-lab-effect-demo"),
 	visualComponent("plotter", "Plotter", "@/components/website/demos/visual/shader-lab-effect-demo"),
 	visualComponent("posterize", "Posterize", "@/components/website/demos/visual/shader-lab-effect-demo"),
+	visualComponent("scramble-text", "Scramble Text", "motion-plus/react"),
 	visualComponent("slice", "Slice", "@/components/website/demos/visual/shader-lab-effect-demo"),
 	visualComponent("smear", "Smear", "@/components/website/demos/visual/shader-lab-effect-demo"),
 	visualComponent("threshold", "Threshold", "@/components/website/demos/visual/shader-lab-effect-demo"),

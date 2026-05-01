@@ -465,46 +465,12 @@ function createAsciiAtlas(characters: string, fontWeight: AsciiFontWeight): Asci
 	return { canvas, columns, rows, characterCount: glyphs.length };
 }
 
-function rgbToCss(color: RGB): string {
-	return `rgb(${Math.round(color[0] * 255)} ${Math.round(color[1] * 255)} ${Math.round(color[2] * 255)})`;
-}
-
-function createDefaultTexture(sourceColorValues: readonly RGB[]): HTMLCanvasElement {
+function createEmptyTexture(): HTMLCanvasElement {
 	const canvas = document.createElement("canvas");
-	canvas.width = 768;
-	canvas.height = 512;
+	canvas.width = 1;
+	canvas.height = 1;
 	const ctx = canvas.getContext("2d");
-	if (!ctx) return canvas;
-
-	const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-	const stops = Math.max(sourceColorValues.length - 1, 1);
-	sourceColorValues.forEach((color, index) => {
-		gradient.addColorStop(index / stops, rgbToCss(color));
-	});
-	ctx.fillStyle = gradient;
-	ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-	const marks = [
-		{ x: 180, y: 120, radius: 96, color: "#FFFFFF", alpha: 0.34 },
-		{ x: 520, y: 140, radius: 130, color: "#91FFCC", alpha: 0.42 },
-		{ x: 380, y: 340, radius: 180, color: "#FF4040", alpha: 0.32 },
-		{ x: 650, y: 420, radius: 90, color: "#00001A", alpha: 0.52 },
-	];
-
-	for (const mark of marks) {
-		ctx.globalAlpha = mark.alpha;
-		ctx.beginPath();
-		ctx.arc(mark.x, mark.y, mark.radius, 0, Math.PI * 2);
-		ctx.fillStyle = mark.color;
-		ctx.fill();
-	}
-
-	ctx.globalAlpha = 1;
-	ctx.fillStyle = "rgba(255, 255, 255, 0.62)";
-	ctx.font = '700 136px "JetBrains Mono", Menlo, Consolas, monospace';
-	ctx.textAlign = "center";
-	ctx.textBaseline = "middle";
-	ctx.fillText("VPK", canvas.width / 2, canvas.height / 2 + 8);
+	ctx?.clearRect(0, 0, canvas.width, canvas.height);
 
 	return canvas;
 }
@@ -615,6 +581,17 @@ function resolveCharacters(charset: AsciiCharset, customChars: string, character
 	}
 
 	return ASCII_CHARSETS[charset] ?? ASCII_DEFAULT_CHARACTERS;
+}
+
+function shouldUseAnonymousCrossOrigin(src: string): boolean {
+	if (typeof window === "undefined") return false;
+
+	try {
+		const url = new URL(src, window.location.href);
+		return (url.protocol === "http:" || url.protocol === "https:") && url.origin !== window.location.origin;
+	} catch {
+		return false;
+	}
 }
 
 export interface AsciiProps {
@@ -765,7 +742,7 @@ export default function Ascii({
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 		gl.uniform1i(gl.getUniformLocation(program, "u_texture"), 0);
-		setTextureFromSource(gl, sourceTexture, createDefaultTexture(sourceColorValues));
+		setTextureFromSource(gl, sourceTexture, createEmptyTexture());
 
 		const atlas = createAsciiAtlas(activeCharacters, fontWeight);
 		const atlasTexture = gl.createTexture();
@@ -823,9 +800,11 @@ export default function Ascii({
 		gl.uniform3f(gl.getUniformLocation(program, "u_backgroundColor"), backgroundRGB[0], backgroundRGB[1], backgroundRGB[2]);
 
 		let disposed = false;
-		if (imageSrc) {
+		if (sourceMode === "image" && imageSrc) {
 			const image = new window.Image();
-			image.crossOrigin = "anonymous";
+			if (shouldUseAnonymousCrossOrigin(imageSrc)) {
+				image.crossOrigin = "anonymous";
+			}
 			image.onload = () => {
 				if (disposed) return;
 				gl.activeTexture(gl.TEXTURE0);
