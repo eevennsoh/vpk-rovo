@@ -423,24 +423,10 @@ function stripLeadingMarkdownRule(value: string): string {
 export interface PlanTabContentProps {
 	description: string;
 	markdown?: string;
-	/** @deprecated Tasks are no longer displayed in the plan card. Kept for caller compatibility. */
-	tasks?: PlanTask[];
-	/** @deprecated Task display labels are no longer used. Kept for caller compatibility. */
-	taskDisplayLabels?: Readonly<Record<string, string>>;
-	/** @deprecated No longer used. */
-	revealedCount?: number;
-	/** @deprecated No longer used — only summary is shown. */
-	defaultValue?: "summary" | "tasks";
 	emptySummaryMessage?: string;
 	summaryShowMoreLabel?: string;
-	/** @deprecated No longer used. */
-	taskListShowMoreLabel?: string;
 	className?: string;
-	/** @deprecated No longer used — tabs have been removed. */
-	tabsListClassName?: string;
 	summaryTabContentClassName?: string;
-	/** @deprecated No longer used. */
-	tasksTabContentClassName?: string;
 }
 
 export const PlanTabContent = ({
