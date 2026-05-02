@@ -87,6 +87,16 @@
 	--color-text-discovery-bolder: var(--ds-text-discovery-bolder); /* #48245D */
 	--color-text-information: var(--ds-text-information); /* #1558BC */
 	--color-text-information-bolder: var(--ds-text-information-bolder); /* #123263 */
+	--color-text-accent-red-bolder: var(--ds-text-accent-red-bolder);
+	--color-text-accent-orange-bolder: var(--ds-text-accent-orange-bolder);
+	--color-text-accent-yellow-bolder: var(--ds-text-accent-yellow-bolder);
+	--color-text-accent-lime-bolder: var(--ds-text-accent-lime-bolder);
+	--color-text-accent-green-bolder: var(--ds-text-accent-green-bolder);
+	--color-text-accent-teal-bolder: var(--ds-text-accent-teal-bolder);
+	--color-text-accent-blue-bolder: var(--ds-text-accent-blue-bolder);
+	--color-text-accent-purple-bolder: var(--ds-text-accent-purple-bolder);
+	--color-text-accent-magenta-bolder: var(--ds-text-accent-magenta-bolder);
+	--color-text-accent-gray-bolder: var(--ds-text-accent-gray-bolder);
 
 	/* -----------------------------------------------------------------
 	   Icon Colors
@@ -104,6 +114,16 @@
 	--color-icon-success: var(--ds-icon-success); /* #6A9A23 */
 	--color-icon-discovery: var(--ds-icon-discovery); /* #AF59E1 */
 	--color-icon-information: var(--ds-icon-information); /* #357DE8 */
+	--color-icon-accent-red: var(--ds-icon-accent-red);
+	--color-icon-accent-orange: var(--ds-icon-accent-orange);
+	--color-icon-accent-yellow: var(--ds-icon-accent-yellow);
+	--color-icon-accent-lime: var(--ds-icon-accent-lime);
+	--color-icon-accent-green: var(--ds-icon-accent-green);
+	--color-icon-accent-teal: var(--ds-icon-accent-teal);
+	--color-icon-accent-blue: var(--ds-icon-accent-blue);
+	--color-icon-accent-purple: var(--ds-icon-accent-purple);
+	--color-icon-accent-magenta: var(--ds-icon-accent-magenta);
+	--color-icon-accent-gray: var(--ds-icon-accent-gray);
 
 	/* -----------------------------------------------------------------
 	   Link Colors
@@ -126,6 +146,16 @@
 	--color-border-success: var(--ds-border-success); /* #6A9A23 */
 	--color-border-discovery: var(--ds-border-discovery); /* #AF59E1 */
 	--color-border-information: var(--ds-border-information); /* #357DE8 */
+	--color-border-accent-red: var(--ds-border-accent-red);
+	--color-border-accent-orange: var(--ds-border-accent-orange);
+	--color-border-accent-yellow: var(--ds-border-accent-yellow);
+	--color-border-accent-lime: var(--ds-border-accent-lime);
+	--color-border-accent-green: var(--ds-border-accent-green);
+	--color-border-accent-teal: var(--ds-border-accent-teal);
+	--color-border-accent-blue: var(--ds-border-accent-blue);
+	--color-border-accent-purple: var(--ds-border-accent-purple);
+	--color-border-accent-magenta: var(--ds-border-accent-magenta);
+	--color-border-accent-gray: var(--ds-border-accent-gray);
 
 	/* -----------------------------------------------------------------
 	   Background Status Colors — subtle
@@ -164,6 +194,40 @@
 	--color-bg-information-subtler: var(--ds-background-information-subtler); /* #CFE1FD */
 	--color-bg-information-subtler-hovered: var(--ds-background-information-subtler-hovered); /* #ADCBFB */
 	--color-bg-information-subtler-pressed: var(--ds-background-information-subtler-pressed); /* #8FB8F6 */
+
+	/* -----------------------------------------------------------------
+	   Background Accent Colors — subtler
+	   ----------------------------------------------------------------- */
+	--color-bg-accent-red-subtler: var(--ds-background-accent-red-subtler);
+	--color-bg-accent-red-subtler-hovered: var(--ds-background-accent-red-subtler-hovered);
+	--color-bg-accent-red-subtler-pressed: var(--ds-background-accent-red-subtler-pressed);
+	--color-bg-accent-orange-subtler: var(--ds-background-accent-orange-subtler);
+	--color-bg-accent-orange-subtler-hovered: var(--ds-background-accent-orange-subtler-hovered);
+	--color-bg-accent-orange-subtler-pressed: var(--ds-background-accent-orange-subtler-pressed);
+	--color-bg-accent-yellow-subtler: var(--ds-background-accent-yellow-subtler);
+	--color-bg-accent-yellow-subtler-hovered: var(--ds-background-accent-yellow-subtler-hovered);
+	--color-bg-accent-yellow-subtler-pressed: var(--ds-background-accent-yellow-subtler-pressed);
+	--color-bg-accent-lime-subtler: var(--ds-background-accent-lime-subtler);
+	--color-bg-accent-lime-subtler-hovered: var(--ds-background-accent-lime-subtler-hovered);
+	--color-bg-accent-lime-subtler-pressed: var(--ds-background-accent-lime-subtler-pressed);
+	--color-bg-accent-green-subtler: var(--ds-background-accent-green-subtler);
+	--color-bg-accent-green-subtler-hovered: var(--ds-background-accent-green-subtler-hovered);
+	--color-bg-accent-green-subtler-pressed: var(--ds-background-accent-green-subtler-pressed);
+	--color-bg-accent-teal-subtler: var(--ds-background-accent-teal-subtler);
+	--color-bg-accent-teal-subtler-hovered: var(--ds-background-accent-teal-subtler-hovered);
+	--color-bg-accent-teal-subtler-pressed: var(--ds-background-accent-teal-subtler-pressed);
+	--color-bg-accent-blue-subtler: var(--ds-background-accent-blue-subtler);
+	--color-bg-accent-blue-subtler-hovered: var(--ds-background-accent-blue-subtler-hovered);
+	--color-bg-accent-blue-subtler-pressed: var(--ds-background-accent-blue-subtler-pressed);
+	--color-bg-accent-purple-subtler: var(--ds-background-accent-purple-subtler);
+	--color-bg-accent-purple-subtler-hovered: var(--ds-background-accent-purple-subtler-hovered);
+	--color-bg-accent-purple-subtler-pressed: var(--ds-background-accent-purple-subtler-pressed);
+	--color-bg-accent-magenta-subtler: var(--ds-background-accent-magenta-subtler);
+	--color-bg-accent-magenta-subtler-hovered: var(--ds-background-accent-magenta-subtler-hovered);
+	--color-bg-accent-magenta-subtler-pressed: var(--ds-background-accent-magenta-subtler-pressed);
+	--color-bg-accent-gray-subtlest: var(--ds-background-accent-gray-subtlest);
+	--color-bg-accent-gray-subtlest-hovered: var(--ds-background-accent-gray-subtlest-hovered);
+	--color-bg-accent-gray-subtlest-pressed: var(--ds-background-accent-gray-subtlest-pressed);
 
 	/* -----------------------------------------------------------------
 	   Background Neutral / Selected / Brand

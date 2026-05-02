@@ -12,86 +12,86 @@ import { Spinner } from "@/components/ui/spinner"
 import { cn } from "@/lib/utils"
 
 const lozengeToneClasses = {
-	neutral: "border-border-bold bg-bg-neutral text-text-subtle",
-	success: "border-border-success bg-bg-success text-text-success",
-	danger: "border-border-danger bg-bg-danger text-text-danger",
-	information: "border-border-information bg-bg-information text-text-information",
-	discovery: "border-border-discovery bg-bg-discovery text-text-discovery",
-	warning: "border-border-warning bg-bg-warning text-text-warning",
+	neutral: "border-border-bold bg-bg-neutral text-text",
+	success: "border-border-success bg-bg-success-subtler text-text-success-bolder",
+	danger: "border-border-danger bg-bg-danger-subtler text-text-danger-bolder",
+	information: "border-border-information bg-bg-information-subtler text-text-information-bolder",
+	discovery: "border-border-discovery bg-bg-discovery-subtler text-text-discovery-bolder",
+	warning: "border-border-warning bg-bg-warning-subtler text-text-warning-bolder",
 	"accent-red":
-		"border-red-200 bg-red-100 text-red-900 dark:border-red-500 dark:bg-red-900 dark:text-red-100",
+		"border-border-accent-red bg-bg-accent-red-subtler text-text-accent-red-bolder",
 	"accent-orange":
-		"border-orange-200 bg-orange-100 text-orange-900 dark:border-orange-400 dark:bg-orange-900 dark:text-orange-100",
+		"border-border-accent-orange bg-bg-accent-orange-subtler text-text-accent-orange-bolder",
 	"accent-yellow":
-		"border-yellow-200 bg-yellow-100 text-yellow-900 dark:border-yellow-800 dark:bg-yellow-900 dark:text-yellow-100",
+		"border-border-accent-yellow bg-bg-accent-yellow-subtler text-text-accent-yellow-bolder",
 	"accent-lime":
-		"border-lime-200 bg-lime-100 text-lime-900 dark:border-lime-400 dark:bg-lime-900 dark:text-lime-100",
+		"border-border-accent-lime bg-bg-accent-lime-subtler text-text-accent-lime-bolder",
 	"accent-green":
-		"border-green-200 bg-green-100 text-green-900 dark:border-green-500 dark:bg-green-800 dark:text-green-100",
+		"border-border-accent-green bg-bg-accent-green-subtler text-text-accent-green-bolder",
 	"accent-teal":
-		"border-teal-200 bg-teal-100 text-teal-900 dark:border-teal-500 dark:bg-teal-800 dark:text-teal-100",
+		"border-border-accent-teal bg-bg-accent-teal-subtler text-text-accent-teal-bolder",
 	"accent-blue":
-		"border-blue-200 bg-blue-100 text-blue-900 dark:border-blue-500 dark:bg-blue-900 dark:text-blue-100",
+		"border-border-accent-blue bg-bg-accent-blue-subtler text-text-accent-blue-bolder",
 	"accent-purple":
-		"border-purple-200 bg-purple-100 text-purple-900 dark:border-purple-500 dark:bg-purple-900 dark:text-purple-100",
+		"border-border-accent-purple bg-bg-accent-purple-subtler text-text-accent-purple-bolder",
 	"accent-magenta":
-		"border-pink-200 bg-pink-100 text-pink-900 dark:border-pink-500 dark:bg-pink-900 dark:text-pink-100",
+		"border-border-accent-magenta bg-bg-accent-magenta-subtler text-text-accent-magenta-bolder",
 	"accent-gray":
-		"border-neutral-200 bg-neutral-100 text-neutral-900 dark:border-neutral-500 dark:bg-neutral-900 dark:text-neutral-100",
+		"border-border-accent-gray bg-bg-accent-gray-subtlest text-text-accent-gray-bolder",
 } as const
 
 const lozengeLeadingIconToneClasses = {
-	neutral: "text-icon-subtle",
+	neutral: "text-icon-subtlest",
 	success: "text-icon-success",
 	danger: "text-icon-danger",
 	information: "text-icon-information",
 	discovery: "text-icon-discovery",
 	warning: "text-icon-warning",
-	"accent-red": "text-red-700 dark:text-red-400",
-	"accent-orange": "text-orange-700 dark:text-orange-400",
-	"accent-yellow": "text-yellow-700 dark:text-yellow-400",
-	"accent-lime": "text-lime-700 dark:text-lime-400",
-	"accent-green": "text-green-700 dark:text-green-400",
-	"accent-teal": "text-teal-700 dark:text-teal-400",
-	"accent-blue": "text-blue-700 dark:text-blue-400",
-	"accent-purple": "text-purple-700 dark:text-purple-400",
-	"accent-magenta": "text-pink-700 dark:text-pink-400",
-	"accent-gray": "text-neutral-700 dark:text-neutral-300",
+	"accent-red": "text-icon-accent-red",
+	"accent-orange": "text-icon-accent-orange",
+	"accent-yellow": "text-icon-accent-yellow",
+	"accent-lime": "text-icon-accent-lime",
+	"accent-green": "text-icon-accent-green",
+	"accent-teal": "text-icon-accent-teal",
+	"accent-blue": "text-icon-accent-blue",
+	"accent-purple": "text-icon-accent-purple",
+	"accent-magenta": "text-icon-accent-magenta",
+	"accent-gray": "text-icon-accent-gray",
 } as const
 
 const lozengeTriggerToneClasses = {
 	neutral:
-		"border-border-bold bg-bg-neutral text-text-subtle hover:bg-bg-neutral-hovered active:bg-bg-neutral-pressed data-[selected=true]:bg-bg-neutral-hovered",
+		"border-border-bold bg-bg-neutral text-text hover:bg-bg-neutral-hovered active:bg-bg-neutral-pressed data-[selected=true]:bg-bg-neutral-pressed",
 	success:
-		"border-border-success bg-bg-success text-text-success hover:bg-bg-success-hovered active:bg-bg-success-pressed data-[selected=true]:bg-bg-success-hovered",
+		"border-border-success bg-bg-success-subtler text-text-success-bolder hover:bg-bg-success-subtler-hovered active:bg-bg-success-subtler-pressed data-[selected=true]:bg-bg-success-subtler-pressed",
 	danger:
-		"border-border-danger bg-bg-danger text-text-danger hover:bg-bg-danger-hovered active:bg-bg-danger-pressed data-[selected=true]:bg-bg-danger-hovered",
+		"border-border-danger bg-bg-danger-subtler text-text-danger-bolder hover:bg-bg-danger-subtler-hovered active:bg-bg-danger-subtler-pressed data-[selected=true]:bg-bg-danger-subtler-pressed",
 	information:
-		"border-border-information bg-bg-information text-text-information hover:bg-bg-information-hovered active:bg-bg-information-pressed data-[selected=true]:bg-bg-information-hovered",
+		"border-border-information bg-bg-information-subtler text-text-information-bolder hover:bg-bg-information-subtler-hovered active:bg-bg-information-subtler-pressed data-[selected=true]:bg-bg-information-subtler-pressed",
 	discovery:
-		"border-border-discovery bg-bg-discovery text-text-discovery hover:bg-bg-discovery-hovered active:bg-bg-discovery-pressed data-[selected=true]:bg-bg-discovery-hovered",
+		"border-border-discovery bg-bg-discovery-subtler text-text-discovery-bolder hover:bg-bg-discovery-subtler-hovered active:bg-bg-discovery-subtler-pressed data-[selected=true]:bg-bg-discovery-subtler-pressed",
 	warning:
-		"border-border-warning bg-bg-warning text-text-warning hover:bg-bg-warning-hovered active:bg-bg-warning-pressed data-[selected=true]:bg-bg-warning-hovered",
+		"border-border-warning bg-bg-warning-subtler text-text-warning-bolder hover:bg-bg-warning-subtler-hovered active:bg-bg-warning-subtler-pressed data-[selected=true]:bg-bg-warning-subtler-pressed",
 	"accent-red":
-		"border-red-200 bg-red-100 text-red-900 hover:bg-red-200 active:bg-red-300 data-[selected=true]:bg-red-200 dark:border-red-500 dark:bg-red-900 dark:text-red-100 dark:hover:border-red-300 dark:hover:bg-red-700 dark:active:border-red-200 dark:active:bg-red-600 dark:data-[selected=true]:border-red-200 dark:data-[selected=true]:bg-red-600",
+		"border-border-accent-red bg-bg-accent-red-subtler text-text-accent-red-bolder hover:bg-bg-accent-red-subtler-hovered active:bg-bg-accent-red-subtler-pressed data-[selected=true]:bg-bg-accent-red-subtler-pressed",
 	"accent-orange":
-		"border-orange-200 bg-orange-100 text-orange-900 hover:bg-orange-200 active:bg-orange-300 data-[selected=true]:bg-orange-200 dark:border-orange-400 dark:bg-orange-900 dark:text-orange-100 dark:hover:border-orange-200 dark:hover:bg-orange-700 dark:active:border-orange-100 dark:active:bg-orange-600 dark:data-[selected=true]:border-orange-100 dark:data-[selected=true]:bg-orange-600",
+		"border-border-accent-orange bg-bg-accent-orange-subtler text-text-accent-orange-bolder hover:bg-bg-accent-orange-subtler-hovered active:bg-bg-accent-orange-subtler-pressed data-[selected=true]:bg-bg-accent-orange-subtler-pressed",
 	"accent-yellow":
-		"border-yellow-200 bg-yellow-100 text-yellow-900 hover:bg-yellow-200 active:bg-yellow-300 data-[selected=true]:bg-yellow-200 dark:border-yellow-800 dark:bg-yellow-900 dark:text-yellow-100 dark:hover:border-yellow-700 dark:hover:bg-yellow-800 dark:active:border-yellow-600 dark:active:bg-yellow-700 dark:data-[selected=true]:border-yellow-600 dark:data-[selected=true]:bg-yellow-700",
+		"border-border-accent-yellow bg-bg-accent-yellow-subtler text-text-accent-yellow-bolder hover:bg-bg-accent-yellow-subtler-hovered active:bg-bg-accent-yellow-subtler-pressed data-[selected=true]:bg-bg-accent-yellow-subtler-pressed",
 	"accent-lime":
-		"border-lime-200 bg-lime-100 text-lime-900 hover:bg-lime-200 active:bg-lime-300 data-[selected=true]:bg-lime-200 dark:border-lime-400 dark:bg-lime-900 dark:text-lime-100 dark:hover:border-lime-300 dark:hover:bg-lime-700 dark:active:border-lime-200 dark:active:bg-lime-600 dark:data-[selected=true]:border-lime-200 dark:data-[selected=true]:bg-lime-600",
+		"border-border-accent-lime bg-bg-accent-lime-subtler text-text-accent-lime-bolder hover:bg-bg-accent-lime-subtler-hovered active:bg-bg-accent-lime-subtler-pressed data-[selected=true]:bg-bg-accent-lime-subtler-pressed",
 	"accent-green":
-		"border-green-200 bg-green-100 text-green-900 hover:bg-green-200 active:bg-green-300 data-[selected=true]:bg-green-200 dark:border-green-500 dark:bg-green-800 dark:text-green-100 dark:hover:border-green-300 dark:hover:bg-green-700 dark:active:border-green-200 dark:active:bg-green-600 dark:data-[selected=true]:border-green-200 dark:data-[selected=true]:bg-green-600",
+		"border-border-accent-green bg-bg-accent-green-subtler text-text-accent-green-bolder hover:bg-bg-accent-green-subtler-hovered active:bg-bg-accent-green-subtler-pressed data-[selected=true]:bg-bg-accent-green-subtler-pressed",
 	"accent-teal":
-		"border-teal-200 bg-teal-100 text-teal-900 hover:bg-teal-200 active:bg-teal-300 data-[selected=true]:bg-teal-200 dark:border-teal-500 dark:bg-teal-800 dark:text-teal-100 dark:hover:border-teal-300 dark:hover:bg-teal-700 dark:active:border-teal-200 dark:active:bg-teal-600 dark:data-[selected=true]:border-teal-200 dark:data-[selected=true]:bg-teal-600",
+		"border-border-accent-teal bg-bg-accent-teal-subtler text-text-accent-teal-bolder hover:bg-bg-accent-teal-subtler-hovered active:bg-bg-accent-teal-subtler-pressed data-[selected=true]:bg-bg-accent-teal-subtler-pressed",
 	"accent-blue":
-		"border-blue-200 bg-blue-100 text-blue-900 hover:bg-blue-200 active:bg-blue-300 data-[selected=true]:bg-blue-200 dark:border-blue-500 dark:bg-blue-900 dark:text-blue-100 dark:hover:border-blue-300 dark:hover:bg-blue-700 dark:active:border-blue-200 dark:active:bg-blue-600 dark:data-[selected=true]:border-blue-200 dark:data-[selected=true]:bg-blue-600",
+		"border-border-accent-blue bg-bg-accent-blue-subtler text-text-accent-blue-bolder hover:bg-bg-accent-blue-subtler-hovered active:bg-bg-accent-blue-subtler-pressed data-[selected=true]:bg-bg-accent-blue-subtler-pressed",
 	"accent-purple":
-		"border-purple-200 bg-purple-100 text-purple-900 hover:bg-purple-200 active:bg-purple-300 data-[selected=true]:bg-purple-200 dark:border-purple-500 dark:bg-purple-900 dark:text-purple-100 dark:hover:border-purple-300 dark:hover:bg-purple-700 dark:active:border-purple-200 dark:active:bg-purple-600 dark:data-[selected=true]:border-purple-200 dark:data-[selected=true]:bg-purple-600",
+		"border-border-accent-purple bg-bg-accent-purple-subtler text-text-accent-purple-bolder hover:bg-bg-accent-purple-subtler-hovered active:bg-bg-accent-purple-subtler-pressed data-[selected=true]:bg-bg-accent-purple-subtler-pressed",
 	"accent-magenta":
-		"border-pink-200 bg-pink-100 text-pink-900 hover:bg-pink-200 active:bg-pink-300 data-[selected=true]:bg-pink-200 dark:border-pink-500 dark:bg-pink-900 dark:text-pink-100 dark:hover:border-pink-300 dark:hover:bg-pink-700 dark:active:border-pink-200 dark:active:bg-pink-600 dark:data-[selected=true]:border-pink-200 dark:data-[selected=true]:bg-pink-600",
+		"border-border-accent-magenta bg-bg-accent-magenta-subtler text-text-accent-magenta-bolder hover:bg-bg-accent-magenta-subtler-hovered active:bg-bg-accent-magenta-subtler-pressed data-[selected=true]:bg-bg-accent-magenta-subtler-pressed",
 	"accent-gray":
-		"border-neutral-200 bg-neutral-100 text-neutral-900 hover:bg-neutral-200 active:bg-neutral-300 data-[selected=true]:bg-neutral-200 dark:border-neutral-500 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:border-neutral-300 dark:hover:bg-neutral-700 dark:active:border-neutral-200 dark:active:bg-neutral-600 dark:data-[selected=true]:border-neutral-200 dark:data-[selected=true]:bg-neutral-600",
+		"border-border-accent-gray bg-bg-accent-gray-subtlest text-text-accent-gray-bolder hover:bg-bg-accent-gray-subtlest-hovered active:bg-bg-accent-gray-subtlest-pressed data-[selected=true]:bg-bg-accent-gray-subtlest-pressed",
 } as const
 
 const lozengeVariants = cva(

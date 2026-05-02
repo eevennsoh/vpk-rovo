@@ -349,24 +349,34 @@
 	--drop-shadow-2xl: 0 25px 25px rgb(0 0 0 / 0.15);
 
 	/* -----------------------------------------------------------------
-	   Motion Easing (ADS 40-family)
+	   Motion Easing — mapped to ADS motion.easing.* tokens
 	   ----------------------------------------------------------------- */
-	--ease-linear: cubic-bezier(0, 0, 1, 1);
-	--ease-in: cubic-bezier(0.6, 0.01, 0.8, 0.6);
-	--ease-out: cubic-bezier(0, 0.4, 0, 1);
-	--ease-in-out: cubic-bezier(0.4, 0, 0, 1);
-	--ease-cubic: cubic-bezier(0.33, 1, 0.68, 1);
+	--ease-linear: cubic-bezier(0, 0, 1, 1); /* Tailwind default; no ADS equivalent */
+	--ease-in: cubic-bezier(0.6, 0, 0.8, 0.6); /* motion.easing.in.practical */
+	--ease-out: cubic-bezier(0, 0.4, 0, 1); /* motion.easing.out.bold */
+	--ease-out-practical: cubic-bezier(0.4, 1, 0.6, 1); /* motion.easing.out.practical */
+	--ease-in-out: cubic-bezier(0.4, 0, 0, 1); /* motion.easing.inout.bold */
+	--ease-spring: linear(
+		0, 0.021, 0.058, 0.107, 0.164, 0.227, 0.292, 0.359, 0.425, 0.49, 0.552, 0.61, 0.664, 0.714,
+		0.759, 0.8, 0.837, 0.869, 0.898, 0.922, 0.943, 0.961, 0.976, 0.988, 0.998, 1.006, 1.013,
+		1.017, 1.02, 1.023, 1.024, 1.024, 1.024, 1.024, 1.023, 1.022, 1.02, 1.019, 1.017, 1.015,
+		1.014, 1.012, 1.011, 1.009, 1.008, 1.007, 1.006, 1.005, 1.004, 1.003, 1.002, 1.002, 1.001,
+		1.001, 1.001, 1, 1, 1, 1, 1, 0.999, 0.999, 0.999, 0.999, 1
+	); /* motion.easing.spring */
 
 	/* -----------------------------------------------------------------
-	   Duration
+	   Duration — mapped to ADS motion.duration.* tokens
+	   ADS-name aliases (xxshort/xshort/short/medium/long/xlong/xxlong)
+	   live alongside Tailwind-friendly names for ergonomics.
 	   ----------------------------------------------------------------- */
-	--duration-instant: 50ms;
-	--duration-fast: 100ms;
-	--duration-normal: 150ms;
-	--duration-medium: 200ms;
-	--duration-slow: 250ms;
-	--duration-slower: 400ms;
-	--duration-slowest: 600ms;
+	--duration-instant: 0ms; /* motion.duration.instant */
+	--duration-xxshort: 50ms; /* motion.duration.xxshort */
+	--duration-fast: 100ms; /* motion.duration.xshort */
+	--duration-normal: 150ms; /* motion.duration.short */
+	--duration-medium: 200ms; /* motion.duration.medium */
+	--duration-slow: 250ms; /* motion.duration.long */
+	--duration-slower: 400ms; /* motion.duration.xlong */
+	--duration-slowest: 600ms; /* motion.duration.xxlong */
 
 	/* -----------------------------------------------------------------
 	   Animations
@@ -378,7 +388,7 @@
 	--animate-modal-show: modalShow var(--duration-medium) var(--ease-in-out) forwards;
 	--animate-modal-hide: modalHide var(--duration-medium) var(--ease-in-out) forwards;
 	--animate-flag-show: flagShow 150ms var(--ease-in-out) forwards;
-	--animate-flag-hide: flagHide 100ms var(--ease-cubic) forwards;
+	--animate-flag-hide: flagHide 100ms var(--ease-out-practical) forwards;
 	--animate-progress-indeterminate: progressIndeterminate 1.5s ease-in-out infinite;
 
 	@keyframes spin {
@@ -611,7 +621,7 @@
 
 	.active-press:active {
 		transform: scale(0.98);
-		transition: transform var(--duration-instant) var(--ease-out);
+		transition: transform var(--duration-xxshort) var(--ease-out);
 	}
 
 	/* Stagger entrance */
