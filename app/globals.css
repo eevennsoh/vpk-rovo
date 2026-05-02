@@ -8,6 +8,11 @@
    4. tailwindcss        - Generate utilities from collected themes
    ================================================================= */
 
+/* Lock cascade layer order before any @import runs. This pins Tailwind's
+   expected theme/base/components/utilities order even if imported files
+   introduce layer blocks in a different source order. */
+@layer theme, base, components, utilities;
+
 @import "./tailwind-theme.css";
 @import "./shadcn-theme.css";
 @import "tailwindcss" source(none);
@@ -180,9 +185,19 @@
 	}
 }
 
-/* Translucent menu surface — frosted glass popup treatment.
-   Unlayered so it beats Tailwind utilities like bg-popover in the cascade.
-   Plain CSS to avoid Tailwind compilation indirection. */
+/* -----------------------------------------------------------------
+   Translucent menu surface — frosted glass popup treatment
+
+   Intentionally unlayered. The descendant rules (item :focus / [data-highlighted],
+   separator background, trigger :focus background) deliberately override the
+   focus utilities applied by Base UI menu items (e.g. `focus:bg-accent` on
+   DropdownMenuItem from shadcn). Those utilities live in @layer utilities
+   and beat any non-!important rule in @layer components — verified empirically:
+   when the block is layered, focused items render solid `bg-accent` blue
+   instead of the intended translucent grey. Two valid fixes existed —
+   sprinkle !important across every descendant, or keep the block unlayered;
+   the latter is simpler and matches the original intent of the design.
+   ----------------------------------------------------------------- */
 .cn-menu-translucent {
 	animation: none !important;
 	background-color: color-mix(in oklab, var(--ds-surface-overlay) 55%, transparent) !important;
@@ -190,7 +205,6 @@
 	backdrop-filter: blur(16px) saturate(1.8);
 }
 
-/* Translucent menu — descendant item/separator/trigger hover overrides */
 .cn-menu-translucent [data-slot$="-item"]:focus,
 .cn-menu-translucent [data-slot$="-item"][data-highlighted] {
 	background-color: color-mix(in oklab, var(--ds-text) 10%, transparent);
@@ -227,29 +241,9 @@
 /* -----------------------------------------------------------------
    Unlayered Overrides
 
-   Rules below are intentionally outside @layer.
-
-   Background: under Next.js 16 + Tailwind 4 + Turbopack, the
-   compiled CSS does not emit an explicit
-   `@layer theme, base, components, utilities;` declaration, so the
-   cascade order is determined by FIRST-APPEARANCE of each layer
-   name. When source files declare `@layer components { ... }` at
-   multiple call sites (e.g. one block in `globals.css` AND another
-   in an imported theme file), the resulting bundle can place
-   `components` before `base`, which inverts the expected cascade —
-   per CSS Cascade L5, layer order beats specificity, so a base-layer
-   `* { margin: 0 }` can win against a components-layer
-   `.foo { margin-left: 48px }`. Keeping these rules unlayered makes
-   them immune to that ordering risk.
-
-   Status (Next.js 16.2.4 + Tailwind 4.2.4, 2026-05): with all
-   `@layer components` content consolidated into `globals.css` and
-   the rest expressed via `@utility`, the compiled cascade is
-   currently correct (`theme < base < components < utilities`).
-   These unlayered rules are belt-and-suspenders insurance against
-   future imports introducing additional `@layer components` blocks.
-   A follow-up task may relocate them into `@layer components`
-   after a comprehensive cross-page check.
+   Rules below are intentionally outside @layer. The explicit layer-order
+   statement above pins the expected cascade, but these global escape hatches
+   still need to beat generated utilities and pre-hydration flashes reliably.
    ----------------------------------------------------------------- */
 
 /* Embedded iframe — hide shell chrome before React hydration to prevent flash.
