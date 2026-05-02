@@ -227,10 +227,29 @@
 /* -----------------------------------------------------------------
    Unlayered Overrides
 
-   Rules below are intentionally outside @layer. Turbopack may
-   reorder CSS chunks, which can cause @layer rules to lose
-   specificity against Tailwind's base resets. Keeping these
-   unlayered guarantees they always win regardless of chunk order.
+   Rules below are intentionally outside @layer.
+
+   Background: under Next.js 16 + Tailwind 4 + Turbopack, the
+   compiled CSS does not emit an explicit
+   `@layer theme, base, components, utilities;` declaration, so the
+   cascade order is determined by FIRST-APPEARANCE of each layer
+   name. When source files declare `@layer components { ... }` at
+   multiple call sites (e.g. one block in `globals.css` AND another
+   in an imported theme file), the resulting bundle can place
+   `components` before `base`, which inverts the expected cascade —
+   per CSS Cascade L5, layer order beats specificity, so a base-layer
+   `* { margin: 0 }` can win against a components-layer
+   `.foo { margin-left: 48px }`. Keeping these rules unlayered makes
+   them immune to that ordering risk.
+
+   Status (Next.js 16.2.4 + Tailwind 4.2.4, 2026-05): with all
+   `@layer components` content consolidated into `globals.css` and
+   the rest expressed via `@utility`, the compiled cascade is
+   currently correct (`theme < base < components < utilities`).
+   These unlayered rules are belt-and-suspenders insurance against
+   future imports introducing additional `@layer components` blocks.
+   A follow-up task may relocate them into `@layer components`
+   after a comprehensive cross-page check.
    ----------------------------------------------------------------- */
 
 /* Embedded iframe — hide shell chrome before React hydration to prevent flash.
@@ -239,7 +258,8 @@ html[data-embedded] [data-shell-chrome] {
 	display: none !important;
 }
 
-/* Website sidebar layout — push main content to clear the fixed sidebar */
+/* Website sidebar layout — push main content to clear the fixed sidebar.
+   Kept unlayered: see "Unlayered Overrides" comment above. */
 .website-main-content {
 	margin-left: 48px; /* rail only */
 	transition: margin-left var(--duration-slow) var(--ease-in-out);
@@ -271,107 +291,6 @@ html[data-embedded] [data-shell-chrome] {
 	scrollbar-color: transparent transparent;
 	&[data-scrolling] {
 		scrollbar-color: color-mix(in oklab, currentColor 20%, transparent) transparent;
-	}
-}
-
-/* -----------------------------------------------------------------
-   Browser Preview Overlay — Expect-style cursor, glow, and label
-   ----------------------------------------------------------------- */
-
-/* Cursor entrance — scale up from 40% */
-@keyframes expect-cursor-in {
-	from {
-		opacity: 0;
-		transform: scale(0.4);
-	}
-	to {
-		opacity: 1;
-		transform: scale(1);
-	}
-}
-
-/* Cursor glow — pulsing drop-shadow around cursor SVG */
-@keyframes expect-cursor-glow {
-	0%,
-	100% {
-		filter: drop-shadow(0 0 8px rgba(64, 156, 250, 0.6)) drop-shadow(0 0 16px rgba(64, 156, 250, 0.3));
-	}
-	50% {
-		filter: drop-shadow(0 0 4px rgba(64, 156, 250, 0.3)) drop-shadow(0 0 8px rgba(64, 156, 250, 0.1));
-	}
-}
-
-/* Browser artifact border glow — soft pulsing glow around the pane when active */
-@keyframes expect-border-glow {
-	0%,
-	100% {
-		box-shadow:
-			inset 0 0 0 1px rgba(64, 156, 250, 0.35),
-			0 0 20px 2px rgba(64, 156, 250, 0.2),
-			0 0 40px 4px rgba(64, 156, 250, 0.08);
-	}
-	50% {
-		box-shadow:
-			inset 0 0 0 1px rgba(64, 156, 250, 0.15),
-			0 0 10px 1px rgba(64, 156, 250, 0.1),
-			0 0 20px 2px rgba(64, 156, 250, 0.03);
-	}
-}
-
-/* Full-screen halo — inset box-shadow pulse around viewport edges */
-@keyframes expect-glow-pulse {
-	0%,
-	100% {
-		box-shadow: inset 0 0 40px 12px rgba(64, 156, 250, 0.5);
-	}
-	50% {
-		box-shadow: inset 0 0 25px 6px rgba(64, 156, 250, 0.2);
-	}
-}
-
-/* Star dot orbit — 4 satellite dots in label indicator */
-@keyframes expect-dot-orbit {
-	0% {
-		opacity: 0.12;
-		transform: scale(0.85);
-	}
-	35% {
-		opacity: 1;
-		transform: scale(1.15);
-	}
-	65% {
-		opacity: 0.5;
-		transform: scale(0.95);
-	}
-	100% {
-		opacity: 0.12;
-		transform: scale(0.85);
-	}
-}
-
-/* Star dot center — single center dot in label indicator */
-@keyframes expect-dot-center {
-	0% {
-		opacity: 0.3;
-		transform: scale(0.9);
-	}
-	50% {
-		opacity: 1;
-		transform: scale(1.1);
-	}
-	100% {
-		opacity: 0.3;
-		transform: scale(0.9);
-	}
-}
-
-/* Text shimmer — gradient sweep across label text */
-@keyframes expect-text-shimmer {
-	0% {
-		background-position: -200% 0;
-	}
-	100% {
-		background-position: 200% 0;
 	}
 }
 

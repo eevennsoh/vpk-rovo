@@ -55,7 +55,7 @@ function StarDots() {
 			{positions.map((pos, i) => (
 				<div
 					key={i}
-					className="absolute rounded-full"
+					className="animate-expect-dot-orbit absolute rounded-full"
 					style={{
 						width: 4,
 						height: 4,
@@ -64,12 +64,13 @@ function StarDots() {
 						top: "50%",
 						marginLeft: pos.x - 2,
 						marginTop: pos.y - 2,
-						animation: `expect-dot-orbit ${configs[i].duration} ease-in-out ${configs[i].delay} infinite`,
+						animationDuration: configs[i].duration,
+						animationDelay: configs[i].delay,
 					}}
 				/>
 			))}
 			<div
-				className="absolute rounded-full"
+				className="animate-expect-dot-center absolute rounded-full"
 				style={{
 					width: 4,
 					height: 4,
@@ -78,7 +79,6 @@ function StarDots() {
 					top: "50%",
 					marginLeft: -2,
 					marginTop: -2,
-					animation: "expect-dot-center 2.2s ease-in-out 0.5s infinite",
 				}}
 			/>
 		</div>
@@ -119,9 +119,8 @@ export function BrowserPreviewOverlay({
 		>
 			{/* Full-screen halo — inset box-shadow pulse around viewport edges */}
 			<div
-				className="absolute inset-0"
+				className="animate-expect-glow-pulse absolute inset-0"
 				style={{
-					animation: "expect-glow-pulse 2s ease-in-out infinite",
 					willChange: "box-shadow",
 					contain: "strict",
 					transform: "translateZ(0)",
@@ -144,12 +143,7 @@ export function BrowserPreviewOverlay({
 					transition={{ duration: 0.3, ease: EXPO_OUT }}
 				>
 					{/* Cursor glow pulse — pulsing drop-shadow */}
-					<div
-						style={{
-							animation:
-								"expect-cursor-glow 2s ease-in-out infinite",
-						}}
-					>
+					<div className="animate-expect-cursor-glow">
 						{/* Blue pointer cursor — black fill with blue stroke border (paintOrder renders stroke behind fill) */}
 						<svg
 							viewBox="0 0 32 32"
@@ -204,6 +198,7 @@ export function BrowserPreviewOverlay({
 								>
 									<StarDots />
 									<span
+										className="animate-expect-text-shimmer"
 										style={{
 											background:
 												"linear-gradient(90deg, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.85) 35%, #fff 50%, rgba(255,255,255,0.85) 65%, rgba(255,255,255,0.85) 100%)",
@@ -211,8 +206,6 @@ export function BrowserPreviewOverlay({
 											WebkitBackgroundClip: "text",
 											WebkitTextFillColor:
 												"transparent",
-											animation:
-												"expect-text-shimmer 4s ease-in-out infinite",
 										}}
 									>
 										{overlayState.activity.label}

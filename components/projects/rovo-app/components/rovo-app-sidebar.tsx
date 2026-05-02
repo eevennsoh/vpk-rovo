@@ -540,13 +540,13 @@ export function RovoAppSidebar({
 							<SidebarGroup className="flex flex-1 items-center justify-center p-0">
 								<SidebarGroupContent>
 									<div className="flex w-full flex-col items-center gap-4 px-6 text-center">
-										<div className="stagger-fade-in flex w-full flex-col items-center gap-1">
+										<div className="animate-stagger-fade-in flex w-full flex-col items-center gap-1">
 											<Heading as="h3" size="xsmall">
 												Get started
 											</Heading>
 											<p className="text-sm text-text-subtle">Start a conversation to get going.</p>
 										</div>
-										<div className="stagger-fade-in" style={{ animationDelay: "0.06s" }}>
+										<div className="animate-stagger-fade-in" style={{ animationDelay: "0.06s" }}>
 											<Button onClick={onNewChat} variant="outline">
 												Chat
 											</Button>

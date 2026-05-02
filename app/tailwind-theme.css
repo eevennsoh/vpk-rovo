@@ -390,6 +390,17 @@
 	--animate-flag-show: flagShow 150ms var(--ease-in-out) forwards;
 	--animate-flag-hide: flagHide 100ms var(--ease-out-practical) forwards;
 	--animate-progress-indeterminate: progressIndeterminate 1.5s ease-in-out infinite;
+	--animate-stagger-fade-in: stagger-fade-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+	--animate-blur-in: blur-in 220ms ease-out both;
+	--animate-progress-rovo-indeterminate: progressRovoIndeterminate 1.5s cubic-bezier(0.35, 0, 0.15, 1) infinite;
+	--animate-rovo-band-pulse: rovoBandPulse 1.3s cubic-bezier(0.45, 0, 0.15, 1) infinite;
+	--animate-rovo-band-traverse: rovoBandTraverse 1.5s linear infinite;
+	--animate-expect-cursor-glow: expect-cursor-glow 2s ease-in-out infinite;
+	--animate-expect-border-glow: expect-border-glow 2s ease-in-out infinite;
+	--animate-expect-glow-pulse: expect-glow-pulse 2s ease-in-out infinite;
+	--animate-expect-dot-orbit: expect-dot-orbit 1.5s ease-in-out infinite;
+	--animate-expect-dot-center: expect-dot-center 2.2s ease-in-out 0.5s infinite;
+	--animate-expect-text-shimmer: expect-text-shimmer 4s ease-in-out infinite;
 
 	@keyframes spin {
 		to {
@@ -503,145 +514,216 @@
 			filter: blur(0);
 		}
 	}
-}
 
-@keyframes progressRovoIndeterminate {
-	0% {
-		left: -60%;
+	/* -----------------------------------------------------------------
+	   Rovo progress bands — used by ProgressRovo indeterminate state
+	   ----------------------------------------------------------------- */
+	@keyframes progressRovoIndeterminate {
+		0% {
+			left: -60%;
+		}
+		100% {
+			left: 110%;
+		}
 	}
-	100% {
-		left: 110%;
-	}
-}
 
-@keyframes rovoBandPulse {
-	0%,
-	100% {
-		flex: 1;
+	@keyframes rovoBandPulse {
+		0%,
+		100% {
+			flex: 1;
+		}
+		50% {
+			flex: 3;
+		}
 	}
-	50% {
-		flex: 3;
-	}
-}
 
-@keyframes rovoBandPulseScale {
-	0%,
-	100% {
-		transform: scaleX(1);
+	@keyframes rovoBandTraverse {
+		0% {
+			transform: translateX(-50%);
+		}
+		100% {
+			transform: translateX(0);
+		}
 	}
-	50% {
-		transform: scaleX(1.8);
-	}
-}
 
-@keyframes rovoBandTraverse {
-	0% {
-		transform: translateX(-50%);
+	/* -----------------------------------------------------------------
+	   Browser-preview overlay (Expect-style cursor, glow, label)
+	   Consumers in BrowserPreviewOverlay + RovoAppBrowserArtifact.
+	   `expect-dot-orbit` consumers override duration/delay via inline
+	   style — register a default config here for discoverability.
+	   ----------------------------------------------------------------- */
+	@keyframes expect-cursor-glow {
+		0%,
+		100% {
+			filter: drop-shadow(0 0 8px rgba(64, 156, 250, 0.6)) drop-shadow(0 0 16px rgba(64, 156, 250, 0.3));
+		}
+		50% {
+			filter: drop-shadow(0 0 4px rgba(64, 156, 250, 0.3)) drop-shadow(0 0 8px rgba(64, 156, 250, 0.1));
+		}
 	}
-	100% {
-		transform: translateX(0);
+
+	@keyframes expect-border-glow {
+		0%,
+		100% {
+			box-shadow:
+				inset 0 0 0 1px rgba(64, 156, 250, 0.35),
+				0 0 20px 2px rgba(64, 156, 250, 0.2),
+				0 0 40px 4px rgba(64, 156, 250, 0.08);
+		}
+		50% {
+			box-shadow:
+				inset 0 0 0 1px rgba(64, 156, 250, 0.15),
+				0 0 10px 1px rgba(64, 156, 250, 0.1),
+				0 0 20px 2px rgba(64, 156, 250, 0.03);
+		}
+	}
+
+	@keyframes expect-glow-pulse {
+		0%,
+		100% {
+			box-shadow: inset 0 0 40px 12px rgba(64, 156, 250, 0.5);
+		}
+		50% {
+			box-shadow: inset 0 0 25px 6px rgba(64, 156, 250, 0.2);
+		}
+	}
+
+	@keyframes expect-dot-orbit {
+		0% {
+			opacity: 0.12;
+			transform: scale(0.85);
+		}
+		35% {
+			opacity: 1;
+			transform: scale(1.15);
+		}
+		65% {
+			opacity: 0.5;
+			transform: scale(0.95);
+		}
+		100% {
+			opacity: 0.12;
+			transform: scale(0.85);
+		}
+	}
+
+	@keyframes expect-dot-center {
+		0% {
+			opacity: 0.3;
+			transform: scale(0.9);
+		}
+		50% {
+			opacity: 1;
+			transform: scale(1.1);
+		}
+		100% {
+			opacity: 0.3;
+			transform: scale(0.9);
+		}
+	}
+
+	@keyframes expect-text-shimmer {
+		0% {
+			background-position: -200% 0;
+		}
+		100% {
+			background-position: 200% 0;
+		}
 	}
 }
 
 /* =====================================================================
-   Motion Component Classes
+   Motion Component Utilities
+
+   Custom @utility blocks compose with Tailwind variants — `dark:hover-elevate`,
+   `md:scroll-fade-in`, `hover:active-press` all work. The `stagger-fade-in`
+   and `blur-in` animations are NOT defined here: they're auto-generated as
+   `animate-stagger-fade-in` and `animate-blur-in` from --animate-* theme
+   tokens above.
    ===================================================================== */
 
-@layer components {
-	/* Scroll reveal — add 'visible' class via IntersectionObserver */
-	.scroll-fade-in {
-		opacity: 0;
-		transform: translateY(30px);
-		transition:
-			opacity var(--duration-slowest) var(--ease-in-out),
-			transform var(--duration-slowest) var(--ease-in-out);
-	}
+@utility scroll-fade-in {
+	opacity: 0;
+	transform: translateY(30px);
+	transition:
+		opacity var(--duration-slowest) var(--ease-in-out),
+		transform var(--duration-slowest) var(--ease-in-out);
 
-	.scroll-fade-in.visible {
+	&.visible {
 		opacity: 1;
 		transform: translateY(0);
 	}
+}
 
-	.scroll-scale-in {
-		opacity: 0;
-		transform: scale(0.95);
-		transition:
-			opacity var(--duration-slowest) var(--ease-in-out),
-			transform var(--duration-slowest) var(--ease-in-out);
-	}
+@utility scroll-scale-in {
+	opacity: 0;
+	transform: scale(0.95);
+	transition:
+		opacity var(--duration-slowest) var(--ease-in-out),
+		transform var(--duration-slowest) var(--ease-in-out);
 
-	.scroll-scale-in.visible {
+	&.visible {
 		opacity: 1;
 		transform: scale(1);
 	}
+}
 
-	.scroll-slide-left {
-		opacity: 0;
-		transform: translateX(-40px);
-		transition:
-			opacity var(--duration-slowest) var(--ease-in-out),
-			transform var(--duration-slowest) var(--ease-in-out);
-	}
+@utility scroll-slide-left {
+	opacity: 0;
+	transform: translateX(-40px);
+	transition:
+		opacity var(--duration-slowest) var(--ease-in-out),
+		transform var(--duration-slowest) var(--ease-in-out);
 
-	.scroll-slide-left.visible {
+	&.visible {
 		opacity: 1;
 		transform: translateX(0);
 	}
+}
 
-	.scroll-slide-right {
-		opacity: 0;
-		transform: translateX(40px);
-		transition:
-			opacity var(--duration-slowest) var(--ease-in-out),
-			transform var(--duration-slowest) var(--ease-in-out);
-	}
+@utility scroll-slide-right {
+	opacity: 0;
+	transform: translateX(40px);
+	transition:
+		opacity var(--duration-slowest) var(--ease-in-out),
+		transform var(--duration-slowest) var(--ease-in-out);
 
-	.scroll-slide-right.visible {
+	&.visible {
 		opacity: 1;
 		transform: translateX(0);
 	}
+}
 
-	/* Interactive hover/active states */
-	.hover-elevate {
-		position: relative;
-		transition: transform var(--duration-fast) var(--ease-out);
-	}
+@utility hover-elevate {
+	position: relative;
+	transition: transform var(--duration-fast) var(--ease-out);
 
-	.hover-elevate:hover {
+	&:hover {
 		transform: translateY(-2px);
 	}
+}
 
-	.hover-scale {
-		transition: transform var(--duration-normal) var(--ease-out);
-	}
+@utility hover-scale {
+	transition: transform var(--duration-normal) var(--ease-out);
 
-	.hover-scale:hover {
+	&:hover {
 		transform: scale(1.02);
 	}
+}
 
-	.active-press:active {
+@utility active-press {
+	&:active {
 		transform: scale(0.98);
 		transition: transform var(--duration-xxshort) var(--ease-out);
 	}
+}
 
-	/* Stagger entrance */
-	.stagger-fade-in {
-		animation: stagger-fade-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
-	}
+@utility parallax-slow {
+	will-change: transform;
+	transition: transform 0.1s linear;
+}
 
-	/* Blur-in */
-	.animate-blur-in {
-		animation: blur-in 220ms ease-out both;
-	}
-
-	/* Parallax — apply transform via JS scroll handler */
-	.parallax-slow {
-		will-change: transform;
-		transition: transform 0.1s linear;
-	}
-
-	.parallax-medium {
-		will-change: transform;
-		transition: transform 0.15s linear;
-	}
+@utility parallax-medium {
+	will-change: transform;
+	transition: transform 0.15s linear;
 }

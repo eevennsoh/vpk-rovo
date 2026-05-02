@@ -36,20 +36,16 @@ function ProgressRovo({ value, isIndeterminate = false, className, ...props }: R
 				{isIndeterminate ? (
 					<motion.span
 						key="indeterminate"
-						className="absolute inset-y-0 flex w-[80%] overflow-hidden rounded-full"
-						style={{
-							animation: "progressRovoIndeterminate 1.5s cubic-bezier(0.35, 0, 0.15, 1) infinite",
-						}}
+						className="animate-progress-rovo-indeterminate absolute inset-y-0 flex w-[80%] overflow-hidden rounded-full"
 						exit={{ opacity: 0 }}
 						transition={{ duration: 0.15 }}
 					>
 						{ROVO_BANDS.map((band) => (
 							<span
 								key={band.color}
-								className="h-full min-w-0"
+								className="animate-rovo-band-pulse h-full min-w-0"
 								style={{
 									backgroundColor: band.color,
-									animation: "rovoBandPulse 1.3s cubic-bezier(0.45, 0, 0.15, 1) infinite",
 									animationDelay: band.delay,
 									flex: 1,
 								}}
@@ -73,10 +69,9 @@ function ProgressRovo({ value, isIndeterminate = false, className, ...props }: R
 						transition={{ duration: 0.3, ease: [0, 0.4, 0, 1] }}
 					>
 						<span
-							className="flex h-full"
+							className="animate-rovo-band-traverse flex h-full"
 							style={{
 								width: "200%",
-								animation: "rovoBandTraverse 1.5s linear infinite",
 								willChange: "transform",
 							}}
 						>
