@@ -7,26 +7,22 @@ import CopyIcon from "@atlaskit/icon/core/copy";
 import CrossIcon from "@atlaskit/icon/core/cross";
 import LinkExternalIcon from "@atlaskit/icon/core/link-external";
 import RefreshIcon from "@atlaskit/icon/core/refresh";
-import SettingsIcon from "@atlaskit/icon/core/settings";
 import ShowMoreHorizontalIcon from "@atlaskit/icon/core/show-more-horizontal";
 import UploadIcon from "@atlaskit/icon/core/upload";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ThemeToggle } from "@/components/utils/theme-wrapper";
 import Graph, { ROVO_GRAPH_DEFAULT_PARAMS } from "@/components/website/demos/visual/graph";
-import { token } from "@/lib/tokens";
 import { cn } from "@/lib/utils";
 import { usePersonalGraphIntro } from "./hooks/use-personal-graph-intro";
 import { useVaultExplorer } from "./hooks/use-vault-explorer";
-import type { NeuralGraphParams } from "./lib/neural-graph/params";
-import { loadStoredNeuralGraphParams, saveStoredNeuralGraphParams } from "./lib/neural-graph/params";
 import type { VaultExplorer, VaultNode, VaultNodeKind } from "./lib/personal-graph-types";
 import { PersonalGraphBackdrop } from "./personal-graph-backdrop";
+import type { PersonalGraphControlFlyoutAction } from "./personal-graph-control-flyout";
 import { PersonalGraphDropzone } from "./personal-graph-dropzone";
 import { PersonalGraphGlassPanel } from "./personal-graph-glass-panel";
 import { PersonalGraphIngestButton } from "./personal-graph-ingest-button";
 import { PersonalGraphLog } from "./personal-graph-log";
-import { PersonalGraphNeuralControls } from "./personal-graph-neural-controls";
 import { PersonalGraphSearch } from "./personal-graph-search";
 import { PersonalGraphTitle } from "./personal-graph-title-scramble";
 import { PersonalGraphVaultPicker } from "./personal-graph-vault-picker";
@@ -49,8 +45,6 @@ const PERSONAL_GRAPH_TITLE_FONT_STYLE = {
 const PERSONAL_GRAPH_META_FONT_STYLE = {
 	fontFamily: "var(--font-departure-mono), 'Courier New', monospace",
 } satisfies React.CSSProperties;
-
-const PERSONAL_GRAPH_NEURAL_PARAMS_STORAGE_KEY = "personal-graph-neural-params:rovo-graph-v2";
 
 function GraphNodeMarker({
 	className,
@@ -233,40 +227,88 @@ export function PersonalGraphSurface({
 	const { phase } = usePersonalGraphIntro();
 	const isHeaderRevealed = phase === "title" || phase === "subtext" || phase === "controls" || phase === "settle" || phase === "search" || phase === "graph" || phase === "done";
 	const isSubtextRevealed = phase === "subtext" || phase === "controls" || phase === "settle" || phase === "search" || phase === "graph" || phase === "done";
-	const isControlsRevealed = phase === "controls" || phase === "settle" || phase === "search" || phase === "graph" || phase === "done";
 	const isPostSettle = phase === "settle" || phase === "search" || phase === "graph" || phase === "done";
 	const isSearchRevealed = phase === "search" || phase === "graph" || phase === "done";
 	const isGraphRevealed = phase === "graph" || phase === "done";
 	const easeOut: [number, number, number, number] = [0, 0.4, 0, 1];
 	const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 	const [refreshKey, setRefreshKey] = useState(0);
-	const [isParameterPanelOpen, setIsParameterPanelOpen] = useState(false);
 	const [isCaptureQueueOpen, setIsCaptureQueueOpen] = useState(false);
-	const [neuralParams, setNeuralParams] = useState<NeuralGraphParams>(() =>
-		loadStoredNeuralGraphParams({
-			defaultParams: ROVO_GRAPH_DEFAULT_PARAMS,
-			storageKey: PERSONAL_GRAPH_NEURAL_PARAMS_STORAGE_KEY,
-		}),
-	);
 	const displayedNode = useMemo(() => getSelectedNode(explorer, selectedNodeId), [explorer, selectedNodeId]);
 
 	const handleRefreshAll = useCallback(() => {
 		setRefreshKey((current) => current + 1);
 		void refresh();
 	}, [refresh]);
-	const handleNeuralParamsChange = useCallback((params: NeuralGraphParams) => {
-		setNeuralParams(params);
-	}, []);
 	const handleCaptureQueueOpenChange = useCallback((isOpen: boolean) => {
 		setIsCaptureQueueOpen(isOpen);
-		if (isOpen) {
-			setIsParameterPanelOpen(false);
-		}
 	}, []);
-	const handleToggleParameterPanel = useCallback(() => {
-		setIsParameterPanelOpen((current) => !current);
-		setIsCaptureQueueOpen(false);
-	}, []);
+
+	const flyoutActions = useMemo<ReadonlyArray<PersonalGraphControlFlyoutAction>>(
+		() => [
+			{
+				key: "vault",
+				label: "Choose vault",
+				render: <PersonalGraphVaultPicker onVaultChanged={handleRefreshAll} />,
+			},
+			{
+				key: "capture",
+				label: "Capture queue",
+				render: (
+					<Popover open={isCaptureQueueOpen} onOpenChange={handleCaptureQueueOpenChange}>
+						<PopoverTrigger
+							render={
+								<Button
+									aria-label="Capture queue"
+									className="size-10 rounded-full border-border bg-bg-neutral-subtle text-text shadow-none hover:bg-bg-neutral-subtle-hovered"
+									size="icon"
+									variant="outline"
+								/>
+							}
+						>
+							<UploadIcon label="" />
+						</PopoverTrigger>
+						<PopoverContent
+							align="end"
+							aria-label="Capture queue"
+							className="w-[min(320px,calc(100vw-32px))] bg-transparent p-0 text-text shadow-none"
+							sideOffset={10}
+						>
+							<PersonalGraphGlassPanel contentClassName="max-h-[min(70svh,560px)] overflow-y-auto p-4" radius={24}>
+								<PersonalGraphCaptureQueue onRawAdded={handleRefreshAll} refreshKey={refreshKey} />
+							</PersonalGraphGlassPanel>
+						</PopoverContent>
+					</Popover>
+				),
+			},
+			{
+				key: "refresh",
+				label: "Refresh graph",
+				render: (
+					<Button
+						aria-label="Refresh graph"
+						className="size-10 rounded-full border-border bg-bg-neutral-subtle text-text shadow-none hover:bg-bg-neutral-subtle-hovered"
+						disabled={isLoading}
+						onClick={handleRefreshAll}
+						size="icon"
+						variant="outline"
+					>
+						<RefreshIcon label="" />
+					</Button>
+				),
+			},
+			{
+				key: "theme",
+				label: "Theme",
+				render: (
+					<div className="[&_[data-slot=button]]:size-10 [&_[data-slot=button]]:rounded-full [&_[data-slot=button]]:border [&_[data-slot=button]]:border-border [&_[data-slot=button]]:bg-bg-neutral-subtle [&_[data-slot=button]]:text-text [&_[data-slot=button]]:shadow-none [&_[data-slot=button]:hover]:bg-bg-neutral-subtle-hovered">
+						<ThemeToggle />
+					</div>
+				),
+			},
+		],
+		[handleRefreshAll, handleCaptureQueueOpenChange, isCaptureQueueOpen, isLoading, refreshKey],
+	);
 
 	useEffect(() => {
 		if (!selectedNodeId) {
@@ -284,10 +326,6 @@ export function PersonalGraphSurface({
 			window.removeEventListener("keydown", handleKeyDown);
 		};
 	}, [selectedNodeId]);
-
-	useEffect(() => {
-		saveStoredNeuralGraphParams(neuralParams, PERSONAL_GRAPH_NEURAL_PARAMS_STORAGE_KEY);
-	}, [neuralParams]);
 
 	return (
 		<main
@@ -343,111 +381,16 @@ export function PersonalGraphSurface({
 							{getGraphStatsText(explorer)}
 						</motion.p>
 					</motion.div>
-					<motion.div
-						className="flex min-w-0 max-w-full flex-wrap items-center justify-center gap-2 text-center"
-						initial="hidden"
-						animate={isControlsRevealed ? "shown" : "hidden"}
-						variants={{
-							hidden: {},
-							shown: { transition: { staggerChildren: 0.06, delayChildren: 0 } },
-						}}
-					>
-						{error ? (
-							<p className="max-w-[360px] truncate text-xs text-text-danger">{error.message}</p>
-						) : null}
-						<motion.div
-							variants={{
-								hidden: { opacity: 0, y: 10, filter: "blur(8px)" },
-								shown: { opacity: 1, y: 0, filter: "blur(0px)" },
-							}}
+					{error ? (
+						<motion.p
+							className="max-w-[360px] truncate text-xs text-text-danger"
+							initial={{ opacity: 0 }}
+							animate={{ opacity: isSubtextRevealed ? 1 : 0 }}
 							transition={{ duration: 0.4, ease: easeOut }}
-							style={{ willChange: "transform, filter, opacity" }}
 						>
-							<PersonalGraphVaultPicker onVaultChanged={handleRefreshAll} />
-						</motion.div>
-						<motion.div
-							variants={{
-								hidden: { opacity: 0, y: 10, filter: "blur(8px)" },
-								shown: { opacity: 1, y: 0, filter: "blur(0px)" },
-							}}
-							transition={{ duration: 0.4, ease: easeOut }}
-							style={{ willChange: "transform, filter, opacity" }}
-						>
-							<Popover open={isCaptureQueueOpen} onOpenChange={handleCaptureQueueOpenChange}>
-								<PopoverTrigger
-									render={
-										<Button
-											aria-label="Capture queue"
-											className="size-10 rounded-full border-border bg-bg-neutral-subtle text-text shadow-none hover:bg-bg-neutral-subtle-hovered"
-											size="icon"
-											variant="outline"
-										/>
-									}
-								>
-									<UploadIcon label="" />
-								</PopoverTrigger>
-								<PopoverContent
-									align="end"
-									aria-label="Capture queue"
-									className="w-[min(320px,calc(100vw-32px))] bg-transparent p-0 text-text shadow-none"
-									sideOffset={10}
-								>
-									<PersonalGraphGlassPanel contentClassName="max-h-[min(70svh,560px)] overflow-y-auto p-4" radius={24}>
-										<PersonalGraphCaptureQueue onRawAdded={handleRefreshAll} refreshKey={refreshKey} />
-									</PersonalGraphGlassPanel>
-								</PopoverContent>
-							</Popover>
-						</motion.div>
-						<motion.div
-							variants={{
-								hidden: { opacity: 0, y: 10, filter: "blur(8px)" },
-								shown: { opacity: 1, y: 0, filter: "blur(0px)" },
-							}}
-							transition={{ duration: 0.4, ease: easeOut }}
-							style={{ willChange: "transform, filter, opacity" }}
-						>
-							<Button
-								aria-label="Refresh graph"
-								className="size-10 rounded-full border-border bg-bg-neutral-subtle text-text shadow-none hover:bg-bg-neutral-subtle-hovered"
-								disabled={isLoading}
-								onClick={handleRefreshAll}
-								size="icon"
-								variant="outline"
-							>
-								<RefreshIcon label="" />
-							</Button>
-						</motion.div>
-						<motion.div
-							variants={{
-								hidden: { opacity: 0, y: 10, filter: "blur(8px)" },
-								shown: { opacity: 1, y: 0, filter: "blur(0px)" },
-							}}
-							transition={{ duration: 0.4, ease: easeOut }}
-							style={{ willChange: "transform, filter, opacity" }}
-						>
-							<Button
-								aria-expanded={isParameterPanelOpen}
-								aria-label="Graph parameters"
-								className="size-10 rounded-full border-border bg-bg-neutral-subtle text-text shadow-none hover:bg-bg-neutral-subtle-hovered"
-								onClick={handleToggleParameterPanel}
-								size="icon"
-								variant="outline"
-							>
-								<SettingsIcon label="" color={token("color.icon.subtle")} />
-							</Button>
-						</motion.div>
-						<motion.div
-							className="[&_[data-slot=button]]:size-10 [&_[data-slot=button]]:rounded-full [&_[data-slot=button]]:border [&_[data-slot=button]]:border-border [&_[data-slot=button]]:bg-bg-neutral-subtle [&_[data-slot=button]]:text-text [&_[data-slot=button]]:shadow-none [&_[data-slot=button]:hover]:bg-bg-neutral-subtle-hovered"
-							variants={{
-								hidden: { opacity: 0, y: 10, filter: "blur(8px)" },
-								shown: { opacity: 1, y: 0, filter: "blur(0px)" },
-							}}
-							transition={{ duration: 0.4, ease: easeOut }}
-							style={{ willChange: "transform, filter, opacity" }}
-						>
-							<ThemeToggle />
-						</motion.div>
-					</motion.div>
+							{error.message}
+						</motion.p>
+					) : null}
 				</motion.div>
 			</header>
 
@@ -471,7 +414,7 @@ export function PersonalGraphSurface({
 						explorer={explorer}
 						isLoading={isLoading}
 						onSelectedNodeIdChange={setSelectedNodeId}
-						params={neuralParams}
+						params={ROVO_GRAPH_DEFAULT_PARAMS}
 						selectedNodeId={selectedNodeId}
 						showControls={false}
 						showSelectionOverlay={false}
@@ -497,8 +440,7 @@ export function PersonalGraphSurface({
 					<PersonalGraphPromptTailConnector />
 					<div className="pointer-events-none absolute left-1/2 top-0 z-10 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-border-inverse bg-bg-neutral-bold shadow-lg" />
 					<PersonalGraphSearch
-						isSettingsOpen={isParameterPanelOpen}
-						onOpenSettings={handleToggleParameterPanel}
+						flyoutActions={flyoutActions}
 						onSelectSlug={(slug) => {
 							const node = explorer?.nodes.find((candidate) => candidate.slug === slug);
 							if (node) setSelectedNodeId(node.id);
@@ -506,29 +448,6 @@ export function PersonalGraphSurface({
 					/>
 				</div>
 			</motion.section>
-
-			{isParameterPanelOpen ? (
-				<aside
-					aria-label="Neural graph parameters"
-					className="absolute right-6 top-[320px] z-40 w-[min(320px,calc(100vw-32px))] text-text xl:top-[112px]"
-				>
-					<PersonalGraphGlassPanel contentClassName="max-h-[calc(100svh-136px)] overflow-y-auto p-4" radius={24}>
-						<div className="mb-4 flex items-center justify-between gap-3">
-							<p className="text-xs font-semibold text-text">Neural graph</p>
-							<Button
-								aria-label="Close graph parameters"
-								className="size-8 rounded-full bg-bg-neutral-subtle text-text shadow-none hover:bg-bg-neutral-subtle-hovered"
-								onClick={() => setIsParameterPanelOpen(false)}
-								size="icon-sm"
-								variant="ghost"
-							>
-								<CrossIcon label="" />
-							</Button>
-						</div>
-						<PersonalGraphNeuralControls onChange={handleNeuralParamsChange} params={neuralParams} />
-					</PersonalGraphGlassPanel>
-				</aside>
-			) : null}
 
 			<PersonalGraphInspector
 				explorer={explorer}

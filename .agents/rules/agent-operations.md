@@ -1,11 +1,10 @@
 ---
-description: Skills, parallel work model, agent teams, behavioral rules, lessons tracking
-globs: .agents/skills/**, .agents/agents/**, AGENTS-LESSONS.md
+description: Skills, parallel work model, agent teams, behavioral rules
+globs: .agents/skills/**, .agents/agents/**
 alwaysApply: false
 paths:
   - ".agents/skills/**"
   - ".agents/agents/**"
-  - "AGENTS-LESSONS.md"
 ---
 
 # Agent Operations
@@ -31,10 +30,10 @@ Current VPK skills (see Appendix for details):
 - `/vpk-setup`
 - `/vpk-deploy`
 - `/vpk-design`
+- `/vpk-symphony`
 - `/vpk-tidy`
 - `/vpk-component`
 - `/vpk-component-ext`
-- `/vpk-lesson`
 
 > **Note:** Slash commands (e.g., `/vpk-deploy`) are Cursor IDE features. In other environments, reference the skill definitions in `.agents/skills/` directly.
 
@@ -80,15 +79,6 @@ Detailed ownership and phase guidance is in `## Appendix -> Agent Team Workflow 
 - If implementation gets unstable, stop and re-plan instead of patching repeatedly.
 - Before completion, perform a staff-level quality gate: root-cause fixes, clean architecture, no band-aids.
 - When fixing a bug, add a regression test that reproduces the original failure.
-
-## Lessons Tracking
-
-Maintain `AGENTS-LESSONS.md`:
-
-- Append after every user correction
-- Record prevention rule, not just the symptom
-- Review at session start for relevant patterns
-- Promote recurring lessons into the most specific canonical instruction file: `AGENTS.md` for broad repo-wide rules, `.agents/rules/*.md` for contextual gotchas and surface-specific conventions
 
 ## Local Overrides
 

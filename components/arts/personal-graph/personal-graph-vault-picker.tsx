@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
-import ChevronDownIcon from "@atlaskit/icon/core/chevron-down";
+import FolderClosedIcon from "@atlaskit/icon/core/folder-closed";
 import { Button } from "@/components/ui/button";
 import { useVaultSettings } from "./hooks/use-vault-settings";
 
@@ -12,7 +12,7 @@ interface PersonalGraphVaultPickerProps {
 export function PersonalGraphVaultPicker({
 	onVaultChanged,
 }: Readonly<PersonalGraphVaultPickerProps>) {
-	const { isLoading, isSelecting, selectFolder } = useVaultSettings();
+	const { isSelecting, selectFolder } = useVaultSettings();
 
 	const handleChooseVault = useCallback(async () => {
 		const nextSettings = await selectFolder();
@@ -22,19 +22,16 @@ export function PersonalGraphVaultPicker({
 	}, [onVaultChanged, selectFolder]);
 
 	return (
-		<div className="flex min-w-0 items-center gap-2">
-			<Button
-				aria-label="Choose Personal Graph vault folder"
-				disabled={isSelecting}
-				isLoading={isSelecting}
-				onClick={handleChooseVault}
-				className="h-10 rounded-full border-transparent bg-bg-neutral-bold px-4 text-sm font-medium text-text-inverse shadow-none hover:bg-bg-neutral-bold-hovered disabled:border-transparent disabled:bg-bg-disabled disabled:text-text-disabled"
-				size="sm"
-				variant="outline"
-			>
-				<span className="hidden sm:inline">{isLoading ? "Vault" : "Choose vault"}</span>
-				{isSelecting ? null : <ChevronDownIcon label="" />}
-			</Button>
-		</div>
+		<Button
+			aria-label="Choose Personal Graph vault folder"
+			className="size-10 rounded-full border-border bg-bg-neutral-subtle text-text shadow-none hover:bg-bg-neutral-subtle-hovered disabled:border-transparent disabled:bg-bg-disabled disabled:text-text-disabled"
+			disabled={isSelecting}
+			isLoading={isSelecting}
+			onClick={handleChooseVault}
+			size="icon"
+			variant="outline"
+		>
+			<FolderClosedIcon label="" />
+		</Button>
 	);
 }

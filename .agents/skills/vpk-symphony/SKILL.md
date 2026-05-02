@@ -1,17 +1,18 @@
 ---
-name: linear
+name: vpk-symphony
 description: |
-  Use Symphony's `linear_graphql` client tool for raw Linear GraphQL
-  operations such as issue lookup, state changes, comment editing, and upload
-  flows during upstream Symphony Elixir app-server sessions.
+  Use VPK-rovo's Symphony `linear_graphql` client tool for raw Linear GraphQL
+  operations such as issue lookup, state changes, comment editing, PR
+  attachments, and workpad maintenance during upstream Symphony app-server
+  sessions.
 ---
 
-# Linear GraphQL
+# VPK Symphony
 
-Use this skill for raw Linear GraphQL work during Symphony app-server sessions.
-It expects the `linear_graphql` client tool exposed by upstream Symphony
-Elixir. That tool reuses Symphony's configured Linear authentication for the
-session.
+Use this skill for VPK-rovo Symphony control-plane work that needs raw Linear
+GraphQL during Symphony app-server sessions. It expects the `linear_graphql`
+client tool exposed by upstream Symphony. That tool reuses Symphony's configured
+Linear authentication for the session.
 
 Tool input:
 
