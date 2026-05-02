@@ -4,7 +4,15 @@ export interface NeuralGraphParams {
 	amplitude: number;
 	coneAngle: number;
 	depthZ: number;
+	edgeOpacity: number;
+	edgeOpacityActive: number;
+	edgeWidth: number;
 	frequency: number;
+	glowIntensity: number;
+	glowSize: number;
+	hoverScale: number;
+	labelMetaSize: number;
+	labelSize: number;
 	maxVisibleNodes: number;
 	nodeColor: string;
 	nodeShape: NeuralGraphNodeShape;
@@ -15,19 +23,44 @@ export interface NeuralGraphParams {
 	perspective: number;
 	radiusMax: number;
 	radiusMin: number;
+	rayOpacity: number;
+	rayWidth: number;
+	selectedScale: number;
+	showEdges: boolean;
+	showLabels: boolean;
+	showRays: boolean;
 	speed: number;
 	spread: number;
 	tiltX: number;
 	tiltZ: number;
 }
 
-export interface NeuralGraphParamDefinition {
-	key: keyof NeuralGraphParams;
+export type NeuralGraphNumberKey = {
+	[K in keyof NeuralGraphParams]: NeuralGraphParams[K] extends number ? K : never;
+}[keyof NeuralGraphParams];
+
+export type NeuralGraphBooleanKey = {
+	[K in keyof NeuralGraphParams]: NeuralGraphParams[K] extends boolean ? K : never;
+}[keyof NeuralGraphParams];
+
+export interface NeuralGraphNumberParamDefinition {
+	kind: "number";
+	key: NeuralGraphNumberKey;
 	label: string;
 	max: number;
 	min: number;
 	step: number;
 }
+
+export interface NeuralGraphBooleanParamDefinition {
+	kind: "boolean";
+	key: NeuralGraphBooleanKey;
+	label: string;
+}
+
+export type NeuralGraphParamDefinition =
+	| NeuralGraphNumberParamDefinition
+	| NeuralGraphBooleanParamDefinition;
 
 export interface NeuralGraphParamSection {
 	id: string;
@@ -39,7 +72,15 @@ export const DEFAULT_NEURAL_GRAPH_PARAMS: NeuralGraphParams = {
 	amplitude: 0.15,
 	coneAngle: 75,
 	depthZ: 30,
+	edgeOpacity: 0.36,
+	edgeOpacityActive: 0.76,
+	edgeWidth: 2,
 	frequency: 1.5,
+	glowIntensity: 0.28,
+	glowSize: 4.2,
+	hoverScale: 1.42,
+	labelMetaSize: 10,
+	labelSize: 13,
 	maxVisibleNodes: 86,
 	nodeColor: "#6b5ce7",
 	nodeShape: "circle",
@@ -50,6 +91,12 @@ export const DEFAULT_NEURAL_GRAPH_PARAMS: NeuralGraphParams = {
 	perspective: 1000,
 	radiusMax: 100,
 	radiusMin: 50,
+	rayOpacity: 0.22,
+	rayWidth: 2,
+	selectedScale: 1.85,
+	showEdges: true,
+	showLabels: true,
+	showRays: true,
 	speed: 0.8,
 	spread: 520,
 	tiltX: 0,
@@ -61,49 +108,92 @@ export const NEURAL_GRAPH_PARAM_SECTIONS: NeuralGraphParamSection[] = [
 		id: "flow",
 		label: "Flow",
 		params: [
-			{ key: "speed", label: "Speed", max: 3, min: 0, step: 0.1 },
-			{ key: "amplitude", label: "Amplitude", max: 0.5, min: 0, step: 0.01 },
-			{ key: "frequency", label: "Frequency", max: 5, min: 0.5, step: 0.1 },
-			{ key: "octaves", label: "Octaves", max: 4, min: 1, step: 1 },
+			{ kind: "number", key: "speed", label: "Speed", max: 3, min: 0, step: 0.1 },
+			{ kind: "number", key: "amplitude", label: "Amplitude", max: 0.5, min: 0, step: 0.01 },
+			{ kind: "number", key: "frequency", label: "Frequency", max: 5, min: 0.5, step: 0.1 },
+			{ kind: "number", key: "octaves", label: "Octaves", max: 4, min: 1, step: 1 },
 		],
 	},
 	{
 		id: "structure",
 		label: "Structure",
 		params: [
-			{ key: "spread", label: "Spread", max: 800, min: 100, step: 10 },
-			{ key: "perspective", label: "Perspective", max: 2000, min: 200, step: 50 },
-			{ key: "originY", label: "Origin Y", max: 1.5, min: 0.5, step: 0.05 },
-			{ key: "originOffset", label: "Origin Offset", max: 200, min: -200, step: 10 },
+			{ kind: "number", key: "spread", label: "Spread", max: 800, min: 100, step: 10 },
+			{ kind: "number", key: "perspective", label: "Perspective", max: 2000, min: 200, step: 50 },
+			{ kind: "number", key: "originY", label: "Origin Y", max: 1.5, min: 0.5, step: 0.05 },
+			{ kind: "number", key: "originOffset", label: "Origin Offset", max: 200, min: -200, step: 10 },
 		],
 	},
 	{
 		id: "cone",
 		label: "Cone",
 		params: [
-			{ key: "coneAngle", label: "Cone Angle", max: 180, min: 5, step: 1 },
-			{ key: "tiltX", label: "Tilt X", max: 90, min: -90, step: 1 },
-			{ key: "tiltZ", label: "Tilt Z", max: 90, min: -90, step: 1 },
-			{ key: "radiusMin", label: "Radius Min %", max: 100, min: 0, step: 1 },
-			{ key: "radiusMax", label: "Radius Max %", max: 100, min: 0, step: 1 },
-			{ key: "depthZ", label: "Depth (Z)", max: 100, min: 0, step: 1 },
+			{ kind: "number", key: "coneAngle", label: "Cone Angle", max: 180, min: 5, step: 1 },
+			{ kind: "number", key: "tiltX", label: "Tilt X", max: 90, min: -90, step: 1 },
+			{ kind: "number", key: "tiltZ", label: "Tilt Z", max: 90, min: -90, step: 1 },
+			{ kind: "number", key: "radiusMin", label: "Radius Min %", max: 100, min: 0, step: 1 },
+			{ kind: "number", key: "radiusMax", label: "Radius Max %", max: 100, min: 0, step: 1 },
+			{ kind: "number", key: "depthZ", label: "Depth (Z)", max: 100, min: 0, step: 1 },
 		],
 	},
 	{
 		id: "nodes",
 		label: "Nodes",
 		params: [
-			{ key: "maxVisibleNodes", label: "Count", max: 200, min: 10, step: 1 },
-			{ key: "nodeSize", label: "Size", max: 8, min: 0.5, step: 0.5 },
+			{ kind: "number", key: "maxVisibleNodes", label: "Count", max: 200, min: 10, step: 1 },
+			{ kind: "number", key: "nodeSize", label: "Size", max: 8, min: 0.5, step: 0.5 },
+		],
+	},
+	{
+		id: "edges",
+		label: "Edges",
+		params: [
+			{ kind: "boolean", key: "showEdges", label: "Show edges" },
+			{ kind: "number", key: "edgeOpacity", label: "Idle opacity", max: 1, min: 0, step: 0.02 },
+			{ kind: "number", key: "edgeOpacityActive", label: "Active opacity", max: 1, min: 0, step: 0.02 },
+			{ kind: "number", key: "edgeWidth", label: "Width", max: 6, min: 0.5, step: 0.5 },
+		],
+	},
+	{
+		id: "rays",
+		label: "Rays",
+		params: [
+			{ kind: "boolean", key: "showRays", label: "Show rays" },
+			{ kind: "number", key: "rayOpacity", label: "Opacity", max: 1, min: 0, step: 0.02 },
+			{ kind: "number", key: "rayWidth", label: "Width", max: 6, min: 0.5, step: 0.5 },
+		],
+	},
+	{
+		id: "hover",
+		label: "Hover & selection",
+		params: [
+			{ kind: "number", key: "hoverScale", label: "Hover scale", max: 4, min: 1, step: 0.05 },
+			{ kind: "number", key: "selectedScale", label: "Selected scale", max: 5, min: 1, step: 0.05 },
+			{ kind: "number", key: "glowSize", label: "Glow size", max: 10, min: 1, step: 0.1 },
+			{ kind: "number", key: "glowIntensity", label: "Glow intensity", max: 1, min: 0, step: 0.02 },
+		],
+	},
+	{
+		id: "labels",
+		label: "Labels",
+		params: [
+			{ kind: "boolean", key: "showLabels", label: "Show labels" },
+			{ kind: "number", key: "labelSize", label: "Title size", max: 24, min: 8, step: 1 },
+			{ kind: "number", key: "labelMetaSize", label: "Meta size", max: 18, min: 6, step: 1 },
 		],
 	},
 ];
 
-const PARAM_DEFINITIONS = new Map<keyof NeuralGraphParams, NeuralGraphParamDefinition>(
-	NEURAL_GRAPH_PARAM_SECTIONS.flatMap((section) => section.params).map((definition) => [
-		definition.key,
-		definition,
-	]),
+const NUMBER_PARAM_DEFINITIONS = new Map<NeuralGraphNumberKey, NeuralGraphNumberParamDefinition>(
+	NEURAL_GRAPH_PARAM_SECTIONS.flatMap((section) => section.params)
+		.filter((definition): definition is NeuralGraphNumberParamDefinition => definition.kind === "number")
+		.map((definition) => [definition.key, definition]),
+);
+
+const BOOLEAN_PARAM_KEYS = new Set<NeuralGraphBooleanKey>(
+	NEURAL_GRAPH_PARAM_SECTIONS.flatMap((section) => section.params)
+		.filter((definition): definition is NeuralGraphBooleanParamDefinition => definition.kind === "boolean")
+		.map((definition) => definition.key),
 );
 
 const STORAGE_KEY = "personal-graph-neural-params";
@@ -114,7 +204,7 @@ export function clamp(value: number, min: number, max: number) {
 	return Math.min(max, Math.max(min, value));
 }
 
-function clampToStep(value: number, definition: NeuralGraphParamDefinition) {
+function clampToStep(value: number, definition: NeuralGraphNumberParamDefinition) {
 	const clamped = clamp(value, definition.min, definition.max);
 	const step = definition.step || 1;
 	return Number((Math.round((clamped - definition.min) / step) * step + definition.min).toFixed(4));
@@ -132,11 +222,16 @@ export function clampNeuralGraphParams(input: Partial<NeuralGraphParams> = {}): 
 	const next = { ...DEFAULT_NEURAL_GRAPH_PARAMS, ...input };
 	const clamped: NeuralGraphParams = { ...DEFAULT_NEURAL_GRAPH_PARAMS };
 
-	for (const [key, definition] of PARAM_DEFINITIONS) {
+	for (const [key, definition] of NUMBER_PARAM_DEFINITIONS) {
 		const value = next[key];
 		if (typeof value === "number") {
-			(clamped as Record<keyof NeuralGraphParams, unknown>)[key] = clampToStep(value, definition);
+			clamped[key] = clampToStep(value, definition);
 		}
+	}
+
+	for (const key of BOOLEAN_PARAM_KEYS) {
+		const value = next[key];
+		clamped[key] = typeof value === "boolean" ? value : DEFAULT_NEURAL_GRAPH_PARAMS[key];
 	}
 
 	if (clamped.radiusMin > clamped.radiusMax) {

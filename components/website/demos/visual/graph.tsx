@@ -448,7 +448,7 @@ interface GraphControlsProps {
 }
 
 function GraphControls({ defaultParams, onChange, params }: Readonly<GraphControlsProps>) {
-	function updateParam(key: keyof NeuralGraphParams, value: number | string) {
+	function updateParam(key: keyof NeuralGraphParams, value: number | string | boolean) {
 		onChange(clampNeuralGraphParams({ ...params, [key]: value }));
 	}
 
@@ -461,12 +461,21 @@ function GraphControls({ defaultParams, onChange, params }: Readonly<GraphContro
 					title={section.label}
 				>
 					{section.params.map((definition) => {
-						const value = params[definition.key];
-						const defaultValue = defaultParams[definition.key];
-						if (typeof value !== "number" || typeof defaultValue !== "number") {
-							return null;
+						if (definition.kind === "boolean") {
+							const value = params[definition.key];
+							return (
+								<GUI.Toggle
+									checked={value}
+									id={`graph-${definition.key}`}
+									key={definition.key}
+									label={definition.label}
+									onChange={(nextValue) => updateParam(definition.key, nextValue)}
+								/>
+							);
 						}
 
+						const value = params[definition.key];
+						const defaultValue = defaultParams[definition.key];
 						return (
 							<GUI.Control
 								defaultValue={defaultValue}

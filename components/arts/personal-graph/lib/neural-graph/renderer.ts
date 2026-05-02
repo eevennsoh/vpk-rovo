@@ -39,12 +39,13 @@ const PALETTES = {
 	},
 } as const;
 
-const RAY_LINE_WIDTH = 2;
-const EDGE_LINE_WIDTH = {
-	active: 2,
-	focused: 2,
-	idle: 2,
-} as const;
+function getEdgeLineWidth(params: NeuralGraphParams) {
+	return {
+		active: params.edgeWidth,
+		focused: params.edgeWidth,
+		idle: params.edgeWidth,
+	};
+}
 
 function hexToRgb(hex: string) {
 	const normalized = hex.replace("#", "");
@@ -92,6 +93,11 @@ function getIdleEdgeColor(edge: NeuralLayoutEdge, palette: (typeof PALETTES)[Neu
 
 function lerp(start: number, end: number, progress: number) {
 	return start + (end - start) * progress;
+}
+
+function clampAlpha(value: number) {
+	if (!Number.isFinite(value)) return 0;
+	return Math.min(1, Math.max(0, value));
 }
 
 function getFocusProgress(options: NeuralGraphRenderOptions) {
@@ -194,17 +200,18 @@ function drawRays(
 	layout: NeuralGraphLayout,
 	options: NeuralGraphRenderOptions,
 ) {
+	if (!options.params.showRays) return;
 	const origin = getNeuralOrigin(options.viewport, options.params);
 	const focusProgress = getFocusProgress(options);
 	const { nodeIds } = getSelectedRelationshipIds(layout, options.selectedNodeId);
 	ctx.save();
-	ctx.lineWidth = RAY_LINE_WIDTH;
+	ctx.lineWidth = options.params.rayWidth;
 	ctx.strokeStyle = PALETTES[options.theme].ray;
 	for (const node of layout.nodes) {
 		const point = worldToViewport(node, options.camera, options.viewport, options.params);
 		const isRelated = nodeIds.has(node.id);
 		const focusAlpha = focusProgress > 0 ? (isRelated ? lerp(1, 0.72, focusProgress) : lerp(1, 0.05, focusProgress)) : 1;
-		ctx.globalAlpha = (0.22 + node.depthScale * 0.32) * focusAlpha;
+		ctx.globalAlpha = clampAlpha((options.params.rayOpacity + node.depthScale * 0.32) * focusAlpha);
 		drawOrganicRayPath(ctx, origin, point);
 		ctx.stroke();
 	}
@@ -221,7 +228,11 @@ function drawEdges(
 	layout: NeuralGraphLayout,
 	options: NeuralGraphRenderOptions,
 ) {
+	if (!options.params.showEdges) return;
 	const palette = PALETTES[options.theme];
+	const edgeWidths = getEdgeLineWidth(options.params);
+	const idleOpacity = options.params.edgeOpacity;
+	const activeOpacity = options.params.edgeOpacityActive;
 	const focusProgress = getFocusProgress(options);
 	const { edgeIds } = getSelectedRelationshipIds(layout, options.selectedNodeId);
 	const edges = [...layout.edges].sort((left, right) => Number(edgeIds.has(left.id)) - Number(edgeIds.has(right.id)));
@@ -233,10 +244,10 @@ function drawEdges(
 		const hasFocus = Boolean(options.selectedNodeId ?? options.hoveredNodeId);
 		const focusActive = focusProgress > 0 && edgeIds.has(edge.id);
 		const active = focusProgress > 0 ? focusActive : hasFocus && isActiveEdge(edge.source.id, edge.target.id, options.selectedNodeId, options.hoveredNodeId);
-		const inactiveAlpha = focusProgress > 0 ? lerp(0.36, 0.04, focusProgress) : 0.36;
+		const inactiveAlpha = focusProgress > 0 ? lerp(idleOpacity, idleOpacity * 0.11, focusProgress) : idleOpacity;
 		ctx.strokeStyle = active ? colorWithAlpha(getEdgeColor(edge, options), 0.56) : getIdleEdgeColor(edge, palette);
-		ctx.lineWidth = active ? lerp(EDGE_LINE_WIDTH.active, EDGE_LINE_WIDTH.focused, focusProgress) : EDGE_LINE_WIDTH.idle;
-		ctx.globalAlpha = active ? lerp(0.76, 0.96, focusProgress) : inactiveAlpha;
+		ctx.lineWidth = active ? lerp(edgeWidths.active, edgeWidths.focused, focusProgress) : edgeWidths.idle;
+		ctx.globalAlpha = active ? lerp(activeOpacity, Math.min(1, activeOpacity + 0.2), focusProgress) : inactiveAlpha;
 		drawStraightEdgePath(ctx, source, target);
 		ctx.stroke();
 	}
@@ -278,6 +289,12 @@ function drawNodes(
 		return left.z - right.z;
 	});
 
+	const hoverScale = options.params.hoverScale;
+	const selectedScale = options.params.selectedScale;
+	const selectedScaleMax = selectedScale + 0.5;
+	const glowSize = options.params.glowSize;
+	const glowIntensity = options.params.glowIntensity;
+	const glowIntensityRelated = glowIntensity * 0.5;
 	for (const node of sortedNodes) {
 		const nodeColor = getNodeColor(node, options);
 		const isSelected = node.id === options.selectedNodeId;
@@ -286,7 +303,7 @@ function drawNodes(
 		const focusAlpha = focusProgress > 0 ? (isSelected ? 1 : isRelated ? lerp(1, 0.9, focusProgress) : lerp(1, 0.14, focusProgress)) : 1;
 		const relatedScale = focusProgress > 0 && isRelated ? lerp(1, 1.22, focusProgress) : 1;
 		const inactiveScale = focusProgress > 0 && !isRelated ? lerp(1, 0.7, focusProgress) : 1;
-		const activeScale = isSelected ? lerp(1.85, 2.35, focusProgress) : isHovered ? 1.42 : relatedScale * inactiveScale;
+		const activeScale = isSelected ? lerp(selectedScale, selectedScaleMax, focusProgress) : isHovered ? hoverScale : relatedScale * inactiveScale;
 		const radius = Math.max(2.5, node.baseSize * node.depthScale * options.camera.zoom * activeScale);
 		const alpha = Math.min(1, node.alpha * (isSelected || isHovered ? 1 : 0.82) * focusAlpha);
 
@@ -294,12 +311,12 @@ function drawNodes(
 		ctx.globalAlpha = alpha;
 		if (isSelected || isHovered || (focusProgress > 0 && isRelated)) {
 			const point = worldToViewport(node, options.camera, options.viewport, options.params);
-			const glow = ctx.createRadialGradient(point.x, point.y, 0, point.x, point.y, radius * 4.2);
-			glow.addColorStop(0, colorWithAlpha(nodeColor, isSelected || isHovered ? 0.28 : 0.14));
+			const glow = ctx.createRadialGradient(point.x, point.y, 0, point.x, point.y, radius * glowSize);
+			glow.addColorStop(0, colorWithAlpha(nodeColor, isSelected || isHovered ? glowIntensity : glowIntensityRelated));
 			glow.addColorStop(1, "rgba(0, 0, 0, 0)");
 			ctx.fillStyle = glow;
 			ctx.beginPath();
-			ctx.arc(point.x, point.y, radius * 4.2, 0, Math.PI * 2);
+			ctx.arc(point.x, point.y, radius * glowSize, 0, Math.PI * 2);
 			ctx.fill();
 		}
 		ctx.fillStyle = node.node.missing || node.node.dangling ? colorWithAlpha(nodeColor, 0.5) : nodeColor;
@@ -323,6 +340,7 @@ function drawLabels(
 	layout: NeuralGraphLayout,
 	options: NeuralGraphRenderOptions,
 ) {
+	if (!options.params.showLabels) return;
 	const palette = PALETTES[options.theme];
 	const activeNodeId = options.selectedNodeId ?? options.hoveredNodeId;
 	if (!activeNodeId) return;
@@ -330,13 +348,15 @@ function drawLabels(
 	const active = layout.nodesById.get(activeNodeId);
 	if (!active) return;
 
+	const labelSize = options.params.labelSize;
+	const metaSize = options.params.labelMetaSize;
 	const point = worldToViewport(active, options.camera, options.viewport, options.params);
 	ctx.save();
-	ctx.font = "600 13px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+	ctx.font = `600 ${labelSize}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
 	ctx.fillStyle = palette.label;
 	ctx.textBaseline = "bottom";
 	ctx.fillText(active.node.title, point.x + 12, point.y - 10);
-	ctx.font = "500 10px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+	ctx.font = `500 ${metaSize}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
 	ctx.fillStyle = palette.labelSubtle;
 	ctx.textBaseline = "top";
 	ctx.fillText(`${active.node.kind} · ${active.node.degree} links`, point.x + 12, point.y - 8);
