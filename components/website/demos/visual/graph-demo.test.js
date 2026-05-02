@@ -30,6 +30,14 @@ const REGISTRY_SOURCE = fs.readFileSync(
 	"utf8",
 );
 
+function getGraphDetailsSource() {
+	const start = DETAILS_SOURCE.indexOf('"graph": {');
+	const end = DETAILS_SOURCE.indexOf('\n\t"squircle": {', start);
+	assert.notEqual(start, -1);
+	assert.notEqual(end, -1);
+	return DETAILS_SOURCE.slice(start, end);
+}
+
 test("Graph is registered as a visual component", () => {
 	assert.match(
 		COMPONENTS_SOURCE,
@@ -62,12 +70,27 @@ test("Graph visual follows the VPK visual demo control structure", () => {
 });
 
 test("Graph visual can be embedded as the live Personal Graph renderer", () => {
+	const graphDetailsSource = getGraphDetailsSource();
+
 	assert.match(GRAPH_SOURCE, /variant\?: "demo" \| "fill"/);
 	assert.match(GRAPH_SOURCE, /params\?: NeuralGraphParams/);
 	assert.match(GRAPH_SOURCE, /selectedNodeId\?: string \| null/);
 	assert.match(GRAPH_SOURCE, /onSelectedNodeIdChange\?: \(nodeId: string \| null\) => void/);
 	assert.match(GRAPH_SOURCE, /isFillVariant \? "flex h-full w-full flex-col"/);
 	assert.match(GRAPH_SOURCE, /isLoading=\{isLoading\}/);
+	for (const propName of [
+		"background",
+		"params",
+		"onParamsChange",
+		"selectedNodeId",
+		"onSelectedNodeIdChange",
+		"showSelectionOverlay",
+		"themeMode",
+		"variant",
+	]) {
+		assert.match(graphDetailsSource, new RegExp(`name: "${propName}"`));
+	}
+	assert.match(graphDetailsSource, /flow, structure, cone, node, edge, ray, hover, label, and node style controls/);
 });
 
 test("Graph renderer keeps the default connector stroke width at 2 via params", () => {
