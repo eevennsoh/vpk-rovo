@@ -2,18 +2,26 @@
 
 import { useState } from "react";
 import ArrowUpRightIcon from "@atlaskit/icon/core/arrow-up-right";
-import SearchIcon from "@atlaskit/icon/core/search";
+import SettingsIcon from "@atlaskit/icon/core/settings";
 import { Button } from "@/components/ui/button";
+import { token } from "@/lib/tokens";
 import { cn } from "@/lib/utils";
 import { useVaultSearch } from "./hooks/use-vault-search";
 import { PersonalGraphGlassPanel } from "./personal-graph-glass-panel";
 
 interface PersonalGraphSearchProps {
 	className?: string;
+	isSettingsOpen: boolean;
+	onOpenSettings: () => void;
 	onSelectSlug: (slug: string) => void;
 }
 
-export function PersonalGraphSearch({ className, onSelectSlug }: Readonly<PersonalGraphSearchProps>) {
+export function PersonalGraphSearch({
+	className,
+	isSettingsOpen,
+	onOpenSettings,
+	onSelectSlug,
+}: Readonly<PersonalGraphSearchProps>) {
 	const [query, setQuery] = useState("");
 	const { results, status } = useVaultSearch(query);
 	const firstResult = results[0];
@@ -28,22 +36,31 @@ export function PersonalGraphSearch({ className, onSelectSlug }: Readonly<Person
 				setQuery("");
 			}}
 		>
-			<PersonalGraphGlassPanel contentClassName="flex min-h-14 items-center gap-3 px-3 py-2 sm:min-h-16 sm:gap-4 sm:px-4" radius={30}>
-				<div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-bg-neutral-subtle text-icon sm:size-10">
-					<SearchIcon label="" />
-				</div>
+			<PersonalGraphGlassPanel contentClassName="flex h-16 items-center gap-2 p-4 pl-6" radius={30}>
 				<input
 					aria-label="Ask or search Personal Graph"
-					className="min-w-0 flex-1 bg-transparent text-base text-text outline-none placeholder:text-text-subtlest sm:text-lg"
+					className="min-w-0 flex-1 bg-transparent text-text outline-none placeholder:text-text-subtlest"
 					onChange={(event) => setQuery(event.target.value)}
 					placeholder="Ask or search your graph..."
+					style={{ font: token("font.body") }}
 					value={query}
 				/>
 				<Button
+					aria-expanded={isSettingsOpen}
+					aria-label="Open graph parameters"
+					className="size-8 rounded-full border-0 text-text shadow-none hover:bg-bg-neutral-subtle-hovered"
+					onClick={onOpenSettings}
+					size="icon"
+					type="button"
+					variant="ghost"
+				>
+					<SettingsIcon label="" />
+				</Button>
+				<Button
 					aria-label="Open top search result"
-					className="size-10 rounded-full border-transparent bg-bg-neutral-bold text-text-inverse shadow-none hover:bg-bg-neutral-bold-hovered disabled:border-transparent disabled:bg-bg-disabled disabled:text-text-disabled sm:size-11"
+					className="size-8 rounded-full border-transparent bg-bg-neutral-bold text-text-inverse shadow-none hover:bg-bg-neutral-bold-hovered disabled:border-transparent disabled:bg-bg-disabled disabled:text-text-disabled"
 					disabled={!firstResult}
-					size="icon-lg"
+					size="icon"
 					type="submit"
 					variant="outline"
 				>

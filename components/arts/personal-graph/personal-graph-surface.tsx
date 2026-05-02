@@ -13,7 +13,7 @@ import UploadIcon from "@atlaskit/icon/core/upload";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ThemeToggle } from "@/components/utils/theme-wrapper";
-import Graph from "@/components/website/demos/visual/graph";
+import Graph, { ROVO_GRAPH_DEFAULT_PARAMS } from "@/components/website/demos/visual/graph";
 import { cn } from "@/lib/utils";
 import { usePersonalGraphIntro } from "./hooks/use-personal-graph-intro";
 import { useVaultExplorer } from "./hooks/use-vault-explorer";
@@ -49,6 +49,8 @@ const PERSONAL_GRAPH_META_FONT_STYLE = {
 	fontFamily: "var(--font-departure-mono), 'Courier New', monospace",
 } satisfies React.CSSProperties;
 
+const PERSONAL_GRAPH_NEURAL_PARAMS_STORAGE_KEY = "personal-graph-neural-params:rovo-graph-v2";
+
 function GraphNodeMarker({
 	className,
 	kind,
@@ -57,6 +59,16 @@ function GraphNodeMarker({
 	kind: VaultNodeKind;
 }>) {
 	return <span aria-hidden="true" className={cn("inline-block size-3 shrink-0", NODE_KIND_MARKERS[kind], className)} />;
+}
+
+function PersonalGraphPromptTailConnector() {
+	return (
+		<div
+			aria-hidden="true"
+			className="pointer-events-none absolute left-1/2 top-[-7rem] z-[1] h-[7.375rem] w-px -translate-x-1/2 bg-gradient-to-b from-transparent via-blue-400/45 to-blue-600/70"
+			data-personal-graph-tail-connector="prompt"
+		/>
+	);
 }
 
 function getSelectedNode(explorer: VaultExplorer | null, selectedNodeId: string | null) {
@@ -229,7 +241,12 @@ export function PersonalGraphSurface({
 	const [refreshKey, setRefreshKey] = useState(0);
 	const [isParameterPanelOpen, setIsParameterPanelOpen] = useState(false);
 	const [isCaptureQueueOpen, setIsCaptureQueueOpen] = useState(false);
-	const [neuralParams, setNeuralParams] = useState<NeuralGraphParams>(() => loadStoredNeuralGraphParams());
+	const [neuralParams, setNeuralParams] = useState<NeuralGraphParams>(() =>
+		loadStoredNeuralGraphParams({
+			defaultParams: ROVO_GRAPH_DEFAULT_PARAMS,
+			storageKey: PERSONAL_GRAPH_NEURAL_PARAMS_STORAGE_KEY,
+		}),
+	);
 	const displayedNode = useMemo(() => getSelectedNode(explorer, selectedNodeId), [explorer, selectedNodeId]);
 
 	const handleRefreshAll = useCallback(() => {
@@ -268,7 +285,7 @@ export function PersonalGraphSurface({
 	}, [selectedNodeId]);
 
 	useEffect(() => {
-		saveStoredNeuralGraphParams(neuralParams);
+		saveStoredNeuralGraphParams(neuralParams, PERSONAL_GRAPH_NEURAL_PARAMS_STORAGE_KEY);
 	}, [neuralParams]);
 
 	return (
@@ -476,8 +493,11 @@ export function PersonalGraphSurface({
 				}}
 			>
 				<div className="pointer-events-auto relative w-full max-w-[760px]">
+					<PersonalGraphPromptTailConnector />
 					<div className="pointer-events-none absolute left-1/2 top-0 z-10 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-border-inverse bg-bg-neutral-bold shadow-lg" />
 					<PersonalGraphSearch
+						isSettingsOpen={isParameterPanelOpen}
+						onOpenSettings={handleToggleParameterPanel}
 						onSelectSlug={(slug) => {
 							const node = explorer?.nodes.find((candidate) => candidate.slug === slug);
 							if (node) setSelectedNodeId(node.id);

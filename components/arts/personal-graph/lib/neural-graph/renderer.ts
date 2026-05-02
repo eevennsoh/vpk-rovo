@@ -1,6 +1,15 @@
+import type { VaultNodeKind } from "../personal-graph-types";
 import { getNeuralOrigin, worldToViewport, type NeuralCamera, type NeuralPoint, type NeuralViewport } from "./camera";
 import type { NeuralGraphLayout, NeuralLayoutEdge, NeuralLayoutNode } from "./layout";
 import type { NeuralGraphParams } from "./params";
+
+const KIND_COLOR_PARAM_KEY: Record<VaultNodeKind, keyof NeuralGraphParams> = {
+	concept: "colorConcept",
+	entity: "colorEntity",
+	raw: "colorRaw",
+	source: "colorSource",
+	synthesis: "colorSynthesis",
+};
 
 export type NeuralGraphThemeMode = "light" | "dark";
 export type NeuralGraphBackgroundMode = "default" | "transparent";
@@ -71,8 +80,17 @@ function getNodeGraphColor(node: NeuralLayoutNode) {
 	return isHexColor(graphColor) ? graphColor : null;
 }
 
+function getKindColor(kind: VaultNodeKind, params: NeuralGraphParams) {
+	const value = params[KIND_COLOR_PARAM_KEY[kind]];
+	return isHexColor(value) ? value : null;
+}
+
 function getNodeColor(node: NeuralLayoutNode, options: NeuralGraphRenderOptions) {
-	return getNodeGraphColor(node) ?? options.params.nodeColor;
+	return (
+		getKindColor(node.node.kind, options.params)
+		?? getNodeGraphColor(node)
+		?? options.params.nodeColor
+	);
 }
 
 function getEdgeColor(edge: NeuralLayoutEdge, options: NeuralGraphRenderOptions) {
@@ -86,7 +104,14 @@ function getEdgeColor(edge: NeuralLayoutEdge, options: NeuralGraphRenderOptions)
 	return getNodeColor(activeNode, options);
 }
 
-function getIdleEdgeColor(edge: NeuralLayoutEdge, palette: (typeof PALETTES)[NeuralGraphThemeMode]) {
+function getIdleEdgeColor(
+	edge: NeuralLayoutEdge,
+	palette: (typeof PALETTES)[NeuralGraphThemeMode],
+	params: NeuralGraphParams,
+) {
+	const kindColor =
+		getKindColor(edge.source.node.kind, params) ?? getKindColor(edge.target.node.kind, params);
+	if (kindColor) return colorWithAlpha(kindColor, 0.34);
 	const graphColor = getNodeGraphColor(edge.source) ?? getNodeGraphColor(edge.target);
 	return graphColor ? colorWithAlpha(graphColor, 0.34) : palette.edge;
 }
@@ -195,13 +220,20 @@ function drawBackground(
 	ctx.fillRect(0, 0, viewport.width, viewport.height);
 }
 
+function getRayOrigin(viewport: NeuralViewport, params: NeuralGraphParams) {
+	return {
+		...getNeuralOrigin(viewport, params),
+		y: viewport.height * params.rayOriginY,
+	};
+}
+
 function drawRays(
 	ctx: CanvasRenderingContext2D,
 	layout: NeuralGraphLayout,
 	options: NeuralGraphRenderOptions,
 ) {
 	if (!options.params.showRays) return;
-	const origin = getNeuralOrigin(options.viewport, options.params);
+	const origin = getRayOrigin(options.viewport, options.params);
 	const focusProgress = getFocusProgress(options);
 	const { nodeIds } = getSelectedRelationshipIds(layout, options.selectedNodeId);
 	ctx.save();
@@ -245,7 +277,7 @@ function drawEdges(
 		const focusActive = focusProgress > 0 && edgeIds.has(edge.id);
 		const active = focusProgress > 0 ? focusActive : hasFocus && isActiveEdge(edge.source.id, edge.target.id, options.selectedNodeId, options.hoveredNodeId);
 		const inactiveAlpha = focusProgress > 0 ? lerp(idleOpacity, idleOpacity * 0.11, focusProgress) : idleOpacity;
-		ctx.strokeStyle = active ? colorWithAlpha(getEdgeColor(edge, options), 0.56) : getIdleEdgeColor(edge, palette);
+		ctx.strokeStyle = active ? colorWithAlpha(getEdgeColor(edge, options), 0.56) : getIdleEdgeColor(edge, palette, options.params);
 		ctx.lineWidth = active ? lerp(edgeWidths.active, edgeWidths.focused, focusProgress) : edgeWidths.idle;
 		ctx.globalAlpha = active ? lerp(activeOpacity, Math.min(1, activeOpacity + 0.2), focusProgress) : inactiveAlpha;
 		drawStraightEdgePath(ctx, source, target);
@@ -304,9 +336,9 @@ function drawNodes(
 			if (isSelected) {
 				focusAlpha = 1;
 			} else if (isRelated) {
-				focusAlpha = lerp(1, 0.9, focusProgress);
+				focusAlpha = lerp(1, options.params.nodeOpacityRelated, focusProgress);
 			} else {
-				focusAlpha = lerp(1, 0.14, focusProgress);
+				focusAlpha = lerp(1, options.params.nodeOpacityFocused, focusProgress);
 			}
 		}
 		const relatedScale = focusProgress > 0 && isRelated ? lerp(1, 1.22, focusProgress) : 1;
@@ -318,7 +350,7 @@ function drawNodes(
 			activeScale = hoverScale;
 		}
 		const radius = Math.max(2.5, node.baseSize * node.depthScale * options.camera.zoom * activeScale);
-		const alpha = Math.min(1, node.alpha * (isSelected || isHovered ? 1 : 0.82) * focusAlpha);
+		const alpha = Math.min(1, node.alpha * (isSelected || isHovered ? 1 : options.params.nodeOpacity) * focusAlpha);
 		const point = worldToViewport(node, options.camera, options.viewport, options.params);
 
 		ctx.save();

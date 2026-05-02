@@ -54,6 +54,13 @@ const SEARCH_SOURCE = fs.readFileSync(
 	),
 	"utf8",
 );
+const GLASS_PANEL_SOURCE = fs.readFileSync(
+	path.join(
+		__dirname,
+		"../../../components/arts/personal-graph/personal-graph-glass-panel.tsx",
+	),
+	"utf8",
+);
 const VAULT_PICKER_SOURCE = fs.readFileSync(
 	path.join(
 		__dirname,
@@ -221,9 +228,26 @@ test("Personal Graph anchors the search and chat composer at the graph origin", 
 	assert.match(SURFACE_SOURCE, /<PersonalGraphSearch/);
 	assert.doesNotMatch(SURFACE_SOURCE, /grid-cols-\[1fr_auto_1fr\]/);
 	assert.match(SEARCH_SOURCE, /Ask or search your graph\.\.\./);
+	assert.match(SEARCH_SOURCE, /contentClassName="flex h-16 items-center gap-2 p-4 pl-6"/);
+	assert.match(GLASS_PANEL_SOURCE, /\[&>div\]:p-0/);
+	assert.doesNotMatch(SEARCH_SOURCE, /SearchIcon/);
+	assert.match(SEARCH_SOURCE, /import \{ token \} from "@\/lib\/tokens";/);
+	assert.match(SEARCH_SOURCE, /className="min-w-0 flex-1 bg-transparent text-text outline-none placeholder:text-text-subtlest"/);
+	assert.match(SEARCH_SOURCE, /style=\{\{ font: token\("font\.body"\) \}\}/);
+	assert.doesNotMatch(SEARCH_SOURCE, /text-base text-text/);
+	assert.doesNotMatch(SEARCH_SOURCE, /sm:text-lg/);
 	assert.match(SEARCH_SOURCE, /bottom-\[calc\(100%\+0\.75rem\)\]/);
 	assert.match(SEARCH_SOURCE, /ArrowUpRightIcon/);
+	assert.match(SEARCH_SOURCE, /SettingsIcon/);
 	assert.match(SEARCH_SOURCE, /aria-label="Ask or search Personal Graph"/);
+	assert.match(SEARCH_SOURCE, /aria-label="Open graph parameters"/);
+	assert.match(SEARCH_SOURCE, /aria-label="Open graph parameters"[\s\S]*aria-label="Open top search result"/);
+	assert.match(SEARCH_SOURCE, /aria-label="Open graph parameters"[\s\S]*className="size-8 rounded-full border-0 text-text shadow-none hover:bg-bg-neutral-subtle-hovered"/);
+	assert.match(SEARCH_SOURCE, /aria-label="Open graph parameters"[\s\S]*variant="ghost"/);
+	assert.doesNotMatch(SEARCH_SOURCE, /aria-label="Open graph parameters"[\s\S]*className="[^"]*border-border/);
+	assert.match(SEARCH_SOURCE, /aria-label="Open top search result"[\s\S]*className="size-8 rounded-full border-transparent/);
+	assert.match(SURFACE_SOURCE, /isSettingsOpen=\{isParameterPanelOpen\}/);
+	assert.match(SURFACE_SOURCE, /onOpenSettings=\{handleToggleParameterPanel\}/);
 });
 
 test("Personal Graph lets the graph renderer fill the route viewport behind the chrome", () => {
@@ -277,12 +301,20 @@ test("Personal Graph keeps the owned canvas renderer accessible", () => {
 	assert.match(SURFACE_SOURCE, /<details className="sr-only" open>/);
 	assert.match(
 		SURFACE_SOURCE,
-		/import Graph from "@\/components\/website\/demos\/visual\/graph";/,
+		/import Graph, \{ ROVO_GRAPH_DEFAULT_PARAMS \} from "@\/components\/website\/demos\/visual\/graph";/,
 	);
 	assert.match(SURFACE_SOURCE, /<Graph/);
 	assert.match(SURFACE_SOURCE, /variant="fill"/);
 	assert.match(SURFACE_SOURCE, /showControls=\{false\}/);
 	assert.match(SURFACE_SOURCE, /background="transparent"/);
+	assert.match(SURFACE_SOURCE, /defaultParams: ROVO_GRAPH_DEFAULT_PARAMS/);
+	assert.match(SURFACE_SOURCE, /PERSONAL_GRAPH_NEURAL_PARAMS_STORAGE_KEY/);
+	assert.match(GRAPH_SOURCE, /nodeShape: "square"/);
+	assert.match(GRAPH_SOURCE, /nodeSize: 8/);
+	assert.match(GRAPH_SOURCE, /rayOriginY: 0\.95/);
+	assert.match(SURFACE_SOURCE, /function PersonalGraphPromptTailConnector/);
+	assert.match(SURFACE_SOURCE, /data-personal-graph-tail-connector="prompt"/);
+	assert.match(SURFACE_SOURCE, /top-\[-7rem\]/);
 	assert.match(SURFACE_SOURCE, /params=\{neuralParams\}/);
 	assert.match(SURFACE_SOURCE, /selectedNodeId=\{selectedNodeId\}/);
 	assert.match(SURFACE_SOURCE, /onSelectedNodeIdChange=\{setSelectedNodeId\}/);
@@ -357,7 +389,8 @@ test("Personal Graph uses a theme-aware editor canvas backdrop", () => {
 	assert.match(BACKDROP_SOURCE, /const PERSONAL_GRAPH_WAVE_COLORS: \[string, string, string, string\]/);
 	assert.match(BACKDROP_SOURCE, /PERSONAL_GRAPH_SURFACE_COLOR,\s+PERSONAL_GRAPH_SURFACE_COLOR,\s+PERSONAL_GRAPH_SURFACE_COLOR,\s+PERSONAL_GRAPH_SURFACE_COLOR,/);
 	assert.match(BACKDROP_SOURCE, /key=\{`personal-graph-wave-\$\{actualTheme\}`\}/);
-	assert.match(BACKDROP_SOURCE, /from-surface via-surface\/90 to-transparent/);
+	assert.doesNotMatch(BACKDROP_SOURCE, /absolute inset-x-0 top-0 h-32/);
+	assert.doesNotMatch(BACKDROP_SOURCE, /bg-gradient-to-b from-surface via-surface\/90 to-transparent/);
 	assert.doesNotMatch(BACKDROP_SOURCE, /radial-gradient\(ellipse at/);
 	assert.match(BACKDROP_SOURCE, /"#1868DB"/);
 	assert.match(BACKDROP_SOURCE, /"#FCA700"/);
@@ -409,6 +442,9 @@ test("Personal Graph exposes a hidden Neural Burst parameter panel", () => {
 	assert.match(NEURAL_PARAMS_SOURCE, /coneAngle: 75/);
 	assert.match(NEURAL_PARAMS_SOURCE, /nodeColor: "#6b5ce7"/);
 	assert.match(NEURAL_PARAMS_SOURCE, /localStorage/);
+	assert.match(NEURAL_PARAMS_SOURCE, /defaultParams = DEFAULT_NEURAL_GRAPH_PARAMS/);
+	assert.match(NEURAL_PARAMS_SOURCE, /storageKey = DEFAULT_STORAGE_KEY/);
+	assert.match(SURFACE_SOURCE, /saveStoredNeuralGraphParams\(neuralParams, PERSONAL_GRAPH_NEURAL_PARAMS_STORAGE_KEY\)/);
 });
 
 test("Personal Graph focuses and clears selection through the owned interaction layer", () => {
