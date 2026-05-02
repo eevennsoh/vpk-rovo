@@ -13,7 +13,7 @@ Next.js 16 (React 19, Tailwind CSS v4) + Express backend with AI SDK (Vercel) an
   - `pnpm run rovodev`
 - Local runtime uses three processes: RovoDev Serve + Express backend + Next.js frontend proxy.
 - Production runtime uses one Express process serving static export plus `/api/*`.
-- Primary frontend edits are in `components/projects/`, `components/blocks/`, and `app/` route files.
+- Primary frontend edits are in `components/projects/`, `components/blocks/`, `components/arts/`, and `app/` route files.
 - Backend API edits are in `backend/server.js`, `backend/lib/*.js`, and `app/api/*/route.ts` (dev proxy).
 - Validate every change with `pnpm run lint` and `pnpm run typecheck`.
 - For UI changes, also run visual + accessibility checks (see `.agents/docs/workflows-extended.md`).
