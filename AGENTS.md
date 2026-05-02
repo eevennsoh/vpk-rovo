@@ -33,7 +33,6 @@ Prefer reading these references over relying on pre-trained knowledge.
 | Figma-to-code pipeline                 | `.agents/skills/vpk-design/SKILL.md`                        |
 | Deployment guide                       | `.agents/skills/vpk-deploy/references/guide-deployment.md`  |
 | Setup walkthrough                      | `.agents/skills/vpk-setup/references/guide-setup.md`        |
-| Session corrections log                | `AGENTS-LESSONS.md`                                         |
 | AI SDK chat integration                | `rovo/config.js`, `app/contexts/context-rovo-chat.tsx`      |
 | AI Gateway helpers                     | `backend/lib/ai-gateway-helpers.js`                         |
 | RovoDev Serve gateway (agent loop)     | `backend/lib/rovodev-gateway.js`, `backend/lib/rovodev-client.js` |
@@ -204,10 +203,6 @@ Two runtime modes: **dev** (Next.js proxy + Express + RovoDev Serve) and **prod*
 - When fixing a bug, add a regression test that reproduces the original failure.
 - Before marking work complete, verify: root cause addressed (not symptoms), no leftover workarounds, no dead code introduced, lint + typecheck pass.
 
-### Agent Process
-
-- Maintain `AGENTS-LESSONS.md`: append after every user correction, record the prevention rule.
-
 > Skills, parallel work model, and agent teams reference loads automatically from `.claude/rules/` when editing skill/agent files.
 
 ## cmux Inter-Agent Messaging
@@ -233,6 +228,6 @@ The following `.agents/rules/` files load automatically when editing matching fi
 | `gotchas-react.md` | `**/*.tsx` | State updates, derived state, CSS gap |
 | `motion-base-ui.md` | `*.tsx`, `*.jsx` | Animating Base UI with Motion |
 | `motion-react.md` | `*.tsx`, `*.jsx` | Motion for React patterns |
-| `agent-operations.md` | `.agents/skills/**`, `.agents/agents/**`, `AGENTS-LESSONS.md` | Skills, parallel work, agent teams |
+| `agent-operations.md` | `.agents/skills/**`, `.agents/agents/**` | Skills, parallel work, agent teams |
 | `appendix-reference.md` | `backend/**`, `app/contexts/**`, `app/providers.tsx`, `.agents/skills/**` | Dir structure, env vars, providers, skills catalog |
 | `browser-screenshots.mdc` | `*` (always) | Keep browser screenshots out of workspace root |

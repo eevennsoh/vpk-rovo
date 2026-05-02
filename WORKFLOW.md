@@ -124,7 +124,8 @@ editing. Keep changes narrow, preserve unrelated local edits, and validate
 before reporting success.
 
 This Symphony path exposes a raw `linear_graphql` tool during Codex app-server
-sessions. Use it for Linear reads, comments, attachments, and state changes.
+sessions. Use the repo-local `vpk-symphony` skill for Linear reads, comments,
+attachments, state changes, and workpad maintenance through that tool.
 Keep a single active `## Codex Workpad` Linear comment current with selected
 skills, plan, acceptance criteria, validation, decisions, blockers, branch, PR,
 and final handoff notes.

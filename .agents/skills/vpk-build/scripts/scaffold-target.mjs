@@ -542,7 +542,7 @@ export function FeatureFlagsShim() {
 	//
 	// Allow-list of skills wired into extractions. Explicit > "symlink the
 	// whole skills dir" because most VPK skills (vpk-build itself, vpk-tidy,
-	// vpk-design, vpk-component, vpk-component-ext, vpk-forge) assume VPK's
+	// vpk-design, vpk-component, vpk-component-ext) assume VPK's
 	// own component library, Figma pipeline, or provider contexts — they
 	// don't apply inside an extracted standalone. Wire only the skills a
 	// user would reasonably invoke from the extracted project:

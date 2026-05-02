@@ -232,13 +232,6 @@ const BOOLEAN_PARAM_KEYS = new Set<NeuralGraphBooleanKey>(
 		.map((definition) => definition.key),
 );
 
-const DEFAULT_STORAGE_KEY = "personal-graph-neural-params";
-
-interface NeuralGraphStorageOptions {
-	defaultParams?: NeuralGraphParams;
-	storageKey?: string;
-}
-
 export function clamp(value: number, min: number, max: number) {
 	if (!Number.isFinite(value)) return min;
 	if (max < min) return min;
@@ -297,27 +290,4 @@ export function createDefaultNeuralGraphParams(nodeCount = DEFAULT_NEURAL_GRAPH_
 
 export function shouldAnimateNeuralGraph(params: NeuralGraphParams, reduceMotion = false) {
 	return !reduceMotion && params.amplitude > 0 && params.speed > 0;
-}
-
-export function loadStoredNeuralGraphParams({
-	defaultParams = DEFAULT_NEURAL_GRAPH_PARAMS,
-	storageKey = DEFAULT_STORAGE_KEY,
-}: NeuralGraphStorageOptions = {}): NeuralGraphParams {
-	const fallbackParams = clampNeuralGraphParams(defaultParams);
-	if (typeof window === "undefined") {
-		return fallbackParams;
-	}
-
-	try {
-		const raw = window.localStorage.getItem(storageKey);
-		if (!raw) return fallbackParams;
-		return clampNeuralGraphParams({ ...fallbackParams, ...JSON.parse(raw) });
-	} catch {
-		return fallbackParams;
-	}
-}
-
-export function saveStoredNeuralGraphParams(params: NeuralGraphParams, storageKey = DEFAULT_STORAGE_KEY) {
-	if (typeof window === "undefined") return;
-	window.localStorage.setItem(storageKey, JSON.stringify(clampNeuralGraphParams(params)));
 }

@@ -11,8 +11,9 @@ The repo-owned files are:
   installs the runtime through `mise`, renders a runtime workflow with your
   Linear project slug, and launches `./bin/symphony`.
 - `pnpm run symphony`: default repo entrypoint for Symphony.
-- `.agents/skills/linear/SKILL.md`: guidance for the raw `linear_graphql` tool
-  that upstream Symphony injects into Codex app-server sessions.
+- `.agents/skills/vpk-symphony/SKILL.md`: guidance for the raw
+  `linear_graphql` tool that upstream Symphony injects into Codex app-server
+  sessions.
 
 ## Configuration
 

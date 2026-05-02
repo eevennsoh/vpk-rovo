@@ -1,30 +1,42 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ArrowUpRightIcon from "@atlaskit/icon/core/arrow-up-right";
-import SettingsIcon from "@atlaskit/icon/core/settings";
 import { Button } from "@/components/ui/button";
 import { token } from "@/lib/tokens";
 import { cn } from "@/lib/utils";
 import { useVaultSearch } from "./hooks/use-vault-search";
+import {
+	PersonalGraphControlFlyoutActions,
+	PersonalGraphControlFlyoutTrigger,
+	type PersonalGraphControlFlyoutAction,
+} from "./personal-graph-control-flyout";
 import { PersonalGraphGlassPanel } from "./personal-graph-glass-panel";
 
 interface PersonalGraphSearchProps {
 	className?: string;
-	isSettingsOpen: boolean;
-	onOpenSettings: () => void;
+	flyoutActions: ReadonlyArray<PersonalGraphControlFlyoutAction>;
 	onSelectSlug: (slug: string) => void;
 }
 
 export function PersonalGraphSearch({
 	className,
-	isSettingsOpen,
-	onOpenSettings,
+	flyoutActions,
 	onSelectSlug,
 }: Readonly<PersonalGraphSearchProps>) {
 	const [query, setQuery] = useState("");
+	const [isFlyoutOpen, setIsFlyoutOpen] = useState(false);
 	const { results, status } = useVaultSearch(query);
 	const firstResult = results[0];
+
+	useEffect(() => {
+		if (!isFlyoutOpen) return;
+		function handleKeyDown(event: KeyboardEvent) {
+			if (event.key === "Escape") setIsFlyoutOpen(false);
+		}
+		window.addEventListener("keydown", handleKeyDown);
+		return () => window.removeEventListener("keydown", handleKeyDown);
+	}, [isFlyoutOpen]);
 
 	return (
 		<form
@@ -36,6 +48,11 @@ export function PersonalGraphSearch({
 				setQuery("");
 			}}
 		>
+			<PersonalGraphControlFlyoutActions
+				actions={flyoutActions}
+				className="right-[72px] top-1/2"
+				isOpen={isFlyoutOpen}
+			/>
 			<PersonalGraphGlassPanel contentClassName="flex h-16 items-center gap-2 p-4 pl-6" radius={30}>
 				<input
 					aria-label="Ask or search Personal Graph"
@@ -45,17 +62,10 @@ export function PersonalGraphSearch({
 					style={{ font: token("font.body") }}
 					value={query}
 				/>
-				<Button
-					aria-expanded={isSettingsOpen}
-					aria-label="Open graph parameters"
-					className="size-8 rounded-full border-0 text-text shadow-none hover:bg-bg-neutral-subtle-hovered"
-					onClick={onOpenSettings}
-					size="icon"
-					type="button"
-					variant="ghost"
-				>
-					<SettingsIcon label="" />
-				</Button>
+				<PersonalGraphControlFlyoutTrigger
+					isOpen={isFlyoutOpen}
+					onToggle={() => setIsFlyoutOpen((current) => !current)}
+				/>
 				<Button
 					aria-label="Open top search result"
 					className="size-8 rounded-full border-transparent bg-bg-neutral-bold text-text-inverse shadow-none hover:bg-bg-neutral-bold-hovered disabled:border-transparent disabled:bg-bg-disabled disabled:text-text-disabled"
