@@ -266,7 +266,10 @@
 	}
 }
 
-/* Scrollbar hidden by default, revealed while actively scrolling */
+/* Scrollbar hidden by default, revealed while actively scrolling.
+   Uses Firefox-style `scrollbar-color` / `scrollbar-width` (Chromium 121+,
+   Safari 18.2+, Firefox always). Older browsers degrade to the default
+   scrollbar — visible at all times, but functional. */
 @utility scrollbar-auto-hide {
 	scrollbar-width: thin;
 	scrollbar-gutter: stable both-edges;

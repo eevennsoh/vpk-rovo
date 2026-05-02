@@ -30,6 +30,33 @@ CSS variables in `shadcn-theme.css` use `--color-*` which Tailwind v4 maps as:
 
 The double-prefix (e.g., `bg-bg-*`, `text-text-*`) is correct Tailwind v4 behavior.
 
+## Authoring Custom CSS Classes
+
+Tailwind v4 replaced `@layer components` with the `@utility` API for utility-shaped classes. Pick the directive based on what the rule targets:
+
+| Rule shape | Directive | Why |
+|---|---|---|
+| Class applied directly to elements (`.cn-menu-translucent`, `.scrollbar-auto-hide`) | `@utility name { … }` in `app/globals.css` (or `app/tailwind-theme.css`) | Auto-routes to the utilities layer with property-count-aware sorting. Composes with Tailwind variants (`hover:`, `focus:`, `dark:`, `md:`). |
+| Raw selectors with no class name (`[data-streamdown="mermaid-block"] > div`, `[data-sonner-toast]:focus-visible`) | `@layer components { … }` in `app/globals.css` | `@utility` requires a name. These rules target framework-emitted DOM that we can't add classes to. |
+| Global escape hatches with `!important` (`html[data-embedded] [data-shell-chrome]`, `@media (prefers-reduced-motion)`) | Unlayered (no wrapper) | `!important` reverses cascade — unlayered `!important` beats every layered `!important`. Right behavior for accessibility hammers and pre-hydration anti-flash rules. |
+
+**`@utility` with descendants:** Use `&` nesting. Tailwind v4's compiler handles it correctly.
+
+```css
+@utility cn-menu-translucent {
+  backdrop-filter: blur(16px) saturate(1.8);
+
+  & [data-slot$="-item"]:focus,
+  & [data-slot$="-item"][data-highlighted] {
+    background-color: color-mix(in oklab, var(--ds-text) 10%, transparent) !important;
+  }
+}
+```
+
+**Why the `!important`:** `@utility` blocks live in `@layer utilities` and sort by property count. A multi-property utility sorts *earlier* than 1-property utilities like Base UI's `focus:bg-accent`, so the descendant focus rule loses without `!important`. Adding `!important` keeps the override stable regardless of sort order. Use sparingly — only when overriding utilities applied to descendants by external libraries (Base UI, shadcn).
+
+**Layer cascade order is locked in `globals.css`:** the `@layer theme, base, components, utilities;` statement at the top pre-declares positions before any import. Subsequent `@layer components { … }` blocks anywhere in the bundle just append to that layer in the locked position. Don't move that statement; if you remove all `@layer components` content, you can delete it, but right now `globals.css` has streamdown + sonner rules that need it.
+
 ## Special-Purpose Radius Tokens
 
 In addition to the standard `rounded-xs` through `rounded-4xl` size scale, VPK maps these special ADS radius tokens:
