@@ -80,12 +80,20 @@ const explorer = {
 
 function createRecordingCanvasContext() {
 	const calls = [];
+	let globalAlpha = 1;
 	const gradient = {
 		addColorStop: (...args) => calls.push(["addColorStop", ...args]),
 	};
 
 	return {
 		calls,
+		get globalAlpha() {
+			return globalAlpha;
+		},
+		set globalAlpha(value) {
+			globalAlpha = value;
+			calls.push(["globalAlpha", value]);
+		},
 		arc: (...args) => calls.push(["arc", ...args]),
 		beginPath: (...args) => calls.push(["beginPath", ...args]),
 		bezierCurveTo: (...args) => calls.push(["bezierCurveTo", ...args]),
@@ -215,6 +223,47 @@ test("drawNeuralGraph clears transparent embeds without painting the default bac
 		ctx.calls.some(([name]) => name === "createLinearGradient" || name === "createRadialGradient" || name === "fillRect"),
 		false,
 	);
+});
+
+test("drawNeuralGraph clamps boosted ray opacity to valid canvas alpha", async () => {
+	const { createNeuralCamera } = await cameraModule;
+	const { DEFAULT_NEURAL_GRAPH_PARAMS, clampNeuralGraphParams } = await paramsModule;
+	const { computeNeuralGraphLayout } = await layoutModule;
+	const { drawNeuralGraph } = await rendererModule;
+	const { createNeuralGraphStore } = await storeModule;
+	const viewport = { height: 700, width: 1000 };
+	const store = createNeuralGraphStore(explorer);
+	const params = clampNeuralGraphParams({
+		...DEFAULT_NEURAL_GRAPH_PARAMS,
+		rayOpacity: 1,
+	});
+	const layout = computeNeuralGraphLayout({
+		params,
+		selectedNodeId: null,
+		store,
+		viewport,
+	});
+	const ctx = createRecordingCanvasContext();
+
+	drawNeuralGraph(ctx, layout, {
+		background: "transparent",
+		camera: createNeuralCamera(),
+		focusProgress: 0,
+		hoveredNodeId: null,
+		params,
+		selectedNodeId: null,
+		theme: "light",
+		viewport,
+	});
+
+	const alphaValues = ctx.calls
+		.filter(([name]) => name === "globalAlpha")
+		.map(([, value]) => value);
+
+	assert.ok(alphaValues.length > 0);
+	for (const value of alphaValues) {
+		assert.ok(value >= 0 && value <= 1, `expected ${value} to stay within canvas globalAlpha bounds`);
+	}
 });
 
 test("camera transforms round-trip and focus selected points", async () => {

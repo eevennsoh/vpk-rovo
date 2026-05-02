@@ -95,6 +95,11 @@ function lerp(start: number, end: number, progress: number) {
 	return start + (end - start) * progress;
 }
 
+function clampAlpha(value: number) {
+	if (!Number.isFinite(value)) return 0;
+	return Math.min(1, Math.max(0, value));
+}
+
 function getFocusProgress(options: NeuralGraphRenderOptions) {
 	if (!options.selectedNodeId || !Number.isFinite(options.focusProgress)) return 0;
 	return Math.min(1, Math.max(0, options.focusProgress));
@@ -206,7 +211,7 @@ function drawRays(
 		const point = worldToViewport(node, options.camera, options.viewport, options.params);
 		const isRelated = nodeIds.has(node.id);
 		const focusAlpha = focusProgress > 0 ? (isRelated ? lerp(1, 0.72, focusProgress) : lerp(1, 0.05, focusProgress)) : 1;
-		ctx.globalAlpha = (options.params.rayOpacity + node.depthScale * 0.32) * focusAlpha;
+		ctx.globalAlpha = clampAlpha((options.params.rayOpacity + node.depthScale * 0.32) * focusAlpha);
 		drawOrganicRayPath(ctx, origin, point);
 		ctx.stroke();
 	}
