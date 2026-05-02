@@ -42,6 +42,7 @@ export const ASCII_COLOR_MODES = ["source", "monochrome", "green-terminal"] as c
 export const ASCII_CONTROL_COLOR_MODES = ["source", "monochrome"] as const;
 export const ASCII_COLOR_SOURCE_MODES = ["source", "luminance", "lightness", "red", "green", "blue"] as const;
 export const ASCII_CHARACTER_MODES = ["signal", "sequence"] as const;
+export const ASCII_ANIMATION_STYLES = ["wave", "cascade-left-right", "cascade-right-left", "cascade-top-bottom", "reveal", "pulse"] as const;
 export const ASCII_BACKGROUND_MODES = ["blurred-image", "solid-black", "original-image", "transparent"] as const;
 export const ASCII_SIGNAL_MODES = ["luminance", "lightness", "red", "green", "blue"] as const;
 export const ASCII_TONE_MAPPING_MODES = ["none", "aces", "reinhard", "totos", "cinematic"] as const;
@@ -53,6 +54,7 @@ export type AsciiBackgroundMode = (typeof ASCII_BACKGROUND_MODES)[number];
 type LegacyAsciiBackgroundMode = "solid" | "source" | "blurred-source";
 type EffectAmount = boolean | number;
 export type AsciiCharset = keyof typeof ASCII_CHARSETS | "custom";
+export type AsciiAnimationStyle = (typeof ASCII_ANIMATION_STYLES)[number];
 export type AsciiCharacterMode = (typeof ASCII_CHARACTER_MODES)[number];
 export type AsciiColorMode = (typeof ASCII_COLOR_MODES)[number];
 export type AsciiColorSourceMode = (typeof ASCII_COLOR_SOURCE_MODES)[number];
@@ -114,6 +116,9 @@ uniform float u_characterOpacity;
 uniform float u_randomizeCharacters;
 uniform float u_randomSeed;
 uniform float u_animatedCharacters;
+uniform float u_animationStyle;
+uniform float u_animationIntensity;
+uniform float u_animationRandomness;
 uniform float u_characterCycleSpeed;
 uniform float u_dotGridOverlay;
 uniform float u_shimmerAmount;
@@ -129,18 +134,25 @@ uniform float u_backgroundOpacity;
 uniform float u_backgroundBlurRadius;
 uniform float u_colorOverlay;
 uniform vec3 u_colorOverlayColor;
+uniform float u_colorOverlayBlendMode;
 uniform float u_vignette;
 uniform float u_scanLines;
 uniform float u_crtCurvature;
 uniform float u_chromatic;
+uniform float u_chromaticOffset;
 uniform float u_characterBloom;
 uniform float u_characterChromatic;
+uniform float u_characterChromaticOffset;
 uniform float u_chromaticAberration;
 uniform float u_rgbSplit;
+uniform float u_rgbSplitOffset;
 uniform float u_glitch;
 uniform float u_blur;
+uniform float u_blurRadius;
 uniform float u_pixelate;
+uniform float u_pixelateSize;
 uniform float u_halftone;
+uniform float u_halftoneSize;
 uniform float u_filmGrain;
 uniform float u_filmDust;
 uniform float u_invert;
@@ -426,15 +438,6 @@ vec3 backgroundFromMode(vec2 uv, vec3 solidColor, vec3 sourceToneColor, vec3 sou
 	return mix(solidColor, backgroundSource, backgroundMix);
 }
 
-vec3 applyCharacterChromatic(vec3 glyphColor, vec2 cellUV) {
-	float amount = clamp(u_characterChromatic, 0.0, 1.0);
-	float leftFringe = smoothstep(0.5, 0.0, cellUV.x);
-	float rightFringe = smoothstep(0.5, 1.0, cellUV.x);
-	vec3 fringed = glyphColor + vec3(rightFringe, 0.0, leftFringe) * glyphColor * 0.36;
-	fringed.g *= 1.0 - amount * 0.12;
-	return clamp(mix(glyphColor, fringed, amount), 0.0, 1.0);
-}
-
 vec3 applyDotGridOverlay(vec3 color, vec3 glyphColor, vec2 cellUV, float colorSignal) {
 	float edgeDistance = min(min(cellUV.x, 1.0 - cellUV.x), min(cellUV.y, 1.0 - cellUV.y));
 	float gridEdge = 1.0 - smoothstep(0.0, 0.075, edgeDistance);
@@ -464,7 +467,7 @@ vec3 applyHalftone(vec3 color, vec2 uv) {
 
 	float angle = 0.78539816;
 	mat2 rotation = mat2(cos(angle), -sin(angle), sin(angle), cos(angle));
-	vec2 halftoneUV = rotation * ((uv - 0.5) * u_resolution / 8.0);
+	vec2 halftoneUV = rotation * ((uv - 0.5) * u_resolution / clamp(u_halftoneSize, 2.0, 20.0));
 	vec2 dotUV = fract(halftoneUV) - 0.5;
 	float tone = clamp(luma(color), 0.0, 1.0);
 	float dotRadius = mix(0.08, 0.48, tone);
@@ -473,87 +476,76 @@ vec3 applyHalftone(vec3 color, vec2 uv) {
 	return mix(color, halftoneColor, amount);
 }
 
-vec3 applyPostEffects(vec3 color, vec2 uv, vec2 sampleUV, vec2 pixelCoord) {
-	vec2 centered = uv * 2.0 - 1.0;
-	centered.x *= u_resolution.x / max(u_resolution.y, 1.0);
+struct AsciiRender {
+	vec3 color;
+	float alpha;
+	float characterMask;
+};
 
-	float pixelateAmount = clamp(u_pixelate, 0.0, 1.0);
-	if (pixelateAmount > 0.001) {
-		float pixelBlock = mix(2.0, 34.0, pixelateAmount);
-		vec2 pixelatedUV = (floor(uv * u_resolution / pixelBlock) + 0.5) * pixelBlock / max(u_resolution, vec2(1.0));
-		vec3 pixelatedSource = applyIntensity(toneMap(sampleSource(clamp(pixelatedUV, vec2(0.0), vec2(1.0)))));
-		color = mix(color, pixelatedSource, pixelateAmount * 0.42);
-	}
+float animationStylePhase(vec2 cellID, vec2 cellCount, vec2 sampleUV, float cellPhase) {
+	float horizontalPhase = cellCount.x <= 1.0 ? 0.0 : cellID.x / max(cellCount.x - 1.0, 1.0);
+	float verticalPhase = cellCount.y <= 1.0 ? 0.0 : 1.0 - (cellID.y / max(cellCount.y - 1.0, 1.0));
+	float wavePhase = fract(sampleUV.x * 0.85 + sin(sampleUV.y * 12.5663706) * 0.12 + 1.0);
 
-	float blurAmount = clamp(u_blur, 0.0, 1.0);
-	if (blurAmount > 0.001) {
-		vec3 blurredSource = applyIntensity(toneMap(sampleBlurredSource(sampleUV, mix(2.0, 36.0, blurAmount))));
-		color = mix(color, blurredSource, blurAmount * 0.36);
-	}
-
-	float vignetteMask = smoothstep(1.28, 0.22, length(centered));
-	color = mix(color, color * vignetteMask, clamp(u_vignette, 0.0, 1.0));
-
-	float crtAmount = clamp(u_crtCurvature, 0.0, 1.0);
-	if (crtAmount > 0.001) {
-		float edgeFalloff = smoothstep(1.42, 0.72, length(centered));
-		color *= mix(1.0, 0.82 + edgeFalloff * 0.18, crtAmount);
-		color += vec3(0.02, 0.04, 0.08) * crtAmount * (1.0 - edgeFalloff);
-	}
-
-	float scanWave = 0.5 + 0.5 * sin(pixelCoord.y * 3.14159265);
-	color *= 1.0 - clamp(u_scanLines, 0.0, 1.0) * (0.08 + scanWave * 0.16);
-
-	float chromaticAmount = clamp(u_chromatic, 0.0, 1.0);
-	if (chromaticAmount > 0.001) {
-		vec2 chromaDirection = normalize(centered + vec2(0.0001));
-		vec2 chromaOffset = chromaDirection * chromaticAmount * 0.01;
-		vec3 warmSource = applyIntensity(toneMap(sampleSource(clamp(sampleUV + chromaOffset, 0.0, 1.0))));
-		vec3 coolSource = applyIntensity(toneMap(sampleSource(clamp(sampleUV - chromaOffset, 0.0, 1.0))));
-		color = mix(color, vec3(warmSource.r, color.g, coolSource.b), chromaticAmount * 0.72);
-	}
-
-	float splitAmount = clamp(max(u_rgbSplit, u_chromaticAberration), 0.0, 1.0);
-	if (splitAmount > 0.001) {
-		vec2 splitDirection = normalize(centered + vec2(0.0001));
-		vec2 splitOffset = splitDirection * splitAmount * 0.018;
-		vec3 redSource = applyIntensity(toneMap(sampleSource(clamp(sampleUV + splitOffset, 0.0, 1.0))));
-		vec3 blueSource = applyIntensity(toneMap(sampleSource(clamp(sampleUV - splitOffset, 0.0, 1.0))));
-		color.r = mix(color.r, redSource.r, splitAmount);
-		color.b = mix(color.b, blueSource.b, splitAmount);
-	}
-
-	color = applyGlitch(color, uv, pixelCoord);
-	color = applyHalftone(color, uv);
-
-	float overlayAmount = clamp(u_colorOverlay, 0.0, 1.0);
-	if (overlayAmount > 0.001) {
-		vec3 overlayColor = blendColor(color, u_colorOverlayColor, 3.0);
-		color = mix(color, overlayColor, overlayAmount * 0.74);
-	}
-
-	float grain = hash21(pixelCoord + u_time * 60.0) - 0.5;
-	color += grain * clamp(u_filmGrain, 0.0, 1.0);
-
-	float dustAmount = clamp(u_filmDust, 0.0, 1.0);
-	if (dustAmount > 0.001) {
-		vec2 dustCell = floor(pixelCoord * 0.38);
-		float dustSeed = floor(u_time * 8.0);
-		float whiteDust = step(0.992, hash21(dustCell + dustSeed));
-		float darkDust = step(0.994, hash21(dustCell + dustSeed + 37.0));
-		color = mix(color, vec3(1.0), whiteDust * dustAmount * 0.74);
-		color *= 1.0 - darkDust * dustAmount * 0.52;
-	}
-
-	return clamp(color, 0.0, 1.0);
+	if (u_animationStyle < 0.5) return wavePhase;
+	if (u_animationStyle < 1.5) return horizontalPhase;
+	if (u_animationStyle < 2.5) return 1.0 - horizontalPhase;
+	if (u_animationStyle < 3.5) return verticalPhase;
+	if (u_animationStyle < 4.5) return horizontalPhase;
+	return cellPhase;
 }
 
-void main() {
-	vec2 effectUV = applyCrtCurvature(v_uv);
-	vec2 pixelCoord = effectUV * u_resolution;
+float animationPhaseWithRandomness(float phase, float cellPhase) {
+	return fract(mix(phase, cellPhase, clamp(u_animationRandomness, 0.0, 1.0) * 0.65));
+}
+
+float animationWrappedDistance(float phase, float progress) {
+	return abs(fract(phase - progress + 0.5) - 0.5);
+}
+
+float animationMaskMultiplier(float phase, float cellPhase, float characterCount) {
+	float animationActive = step(0.5, u_animatedCharacters);
+	float intensity = clamp(u_animationIntensity, 0.0, 1.0) * animationActive;
+	float randomness = clamp(u_animationRandomness, 0.0, 1.0);
+	if (intensity <= 0.001) return 1.0;
+
+	float styledPhase = animationPhaseWithRandomness(phase, cellPhase);
+	float progress = fract(u_time * max(u_characterCycleSpeed, 0.0) / max(characterCount, 1.0));
+
+	if (u_animationStyle < 0.5) {
+		float wave = 0.5 + 0.5 * sin((styledPhase - progress) * 6.2831853);
+		float waveMask = mix(0.52, 1.14, wave);
+		return mix(1.0, waveMask, intensity * 0.82);
+	}
+
+	if (u_animationStyle < 3.5) {
+		float sweepWidth = mix(0.34, 0.14, intensity);
+		float sweepDistance = animationWrappedDistance(styledPhase, progress);
+		float sweepHead = 1.0 - smoothstep(0.035, sweepWidth, sweepDistance);
+		float sweepMask = 0.38 + sweepHead * 0.86;
+		return mix(1.0, sweepMask, intensity);
+	}
+
+	if (u_animationStyle > 3.5 && u_animationStyle < 4.5) {
+		float revealHead = progress * 1.24 - 0.12;
+		float revealMask = 1.0 - smoothstep(revealHead, revealHead + 0.14, styledPhase);
+		return mix(1.0, revealMask, intensity);
+	}
+
+	if (u_animationStyle > 4.5) {
+		float pulsePhase = u_time * max(u_characterCycleSpeed, 0.0) * 0.55 + styledPhase * 6.2831853 + cellPhase * randomness * 6.2831853;
+		float pulse = 0.42 + 0.58 * (0.5 + 0.5 * sin(pulsePhase));
+		return mix(1.0, pulse, intensity);
+	}
+
+	return 1.0;
+}
+
+AsciiRender renderAsciiBase(vec2 effectUV) {
+	vec2 safeUV = clamp(effectUV, vec2(0.0), vec2(1.0));
 	float cellSize = max(u_cellSize * max(u_pixelRatio, 1.0), 1.0);
 	vec2 cellCount = max(floor(u_resolution / cellSize), vec2(1.0));
-	vec2 gridUV = effectUV * cellCount;
+	vec2 gridUV = safeUV * cellCount;
 	vec2 cellID = floor(gridUV);
 	vec2 cellUV = fract(gridUV);
 	vec2 sampleUV = (cellID + 0.5) / cellCount;
@@ -582,7 +574,10 @@ void main() {
 	float randomCharacterIndex = floor(cellPhase * characterCount);
 	float randomGate = step(cellPhase, clamp(u_randomizeCharacters, 0.0, 1.0));
 	characterIndex = mix(characterIndex, randomCharacterIndex, randomGate);
-	float animatedOffset = floor(u_time * max(u_characterCycleSpeed, 0.0) + cellPhase * characterCount);
+	float animationPhase = animationStylePhase(cellID, cellCount, sampleUV, cellPhase);
+	float styledAnimationPhase = animationPhaseWithRandomness(animationPhase, cellPhase);
+	float animationPhaseOffset = styledAnimationPhase * clamp(u_animationIntensity, 0.0, 1.0) * characterCount;
+	float animatedOffset = floor(u_time * max(u_characterCycleSpeed, 0.0) + animationPhaseOffset);
 	characterIndex = mod(characterIndex + animatedOffset * step(0.5, u_animatedCharacters), characterCount);
 	vec2 atlasSize = vec2(max(u_atlasColumns, 1.0), max(u_atlasRows, 1.0));
 	vec2 atlasCell = vec2(mod(characterIndex, atlasSize.x), floor(characterIndex / atlasSize.x));
@@ -593,7 +588,8 @@ void main() {
 	float presenceMask = smoothstep(u_presenceThreshold - halfSoft, u_presenceThreshold + halfSoft, biasedGlyphSignal);
 	float shimmerWave = sin(u_time * u_shimmerSpeed * 0.3 + cellPhase * 6.2831);
 	float shimmerOpacity = 1.0 - ((shimmerWave + 1.0) * 0.5 * clamp(u_shimmerAmount, 0.0, 1.0));
-	float finalMask = characterMask * presenceMask * shimmerOpacity * clamp(u_characterOpacity, 0.0, 1.0);
+	float animationMask = animationMaskMultiplier(animationPhase, cellPhase, characterCount);
+	float finalMask = characterMask * presenceMask * shimmerOpacity * animationMask * clamp(u_characterOpacity, 0.0, 1.0);
 
 	vec3 monochromeColor = u_tintColor * colorSignal;
 	vec3 greenTerminalColor = vec3(0.0, colorSignal, 0.0);
@@ -601,7 +597,6 @@ void main() {
 	vec3 glyphColor = u_colorMode < 0.5
 		? sourceGlyphColor
 		: (u_colorMode < 1.5 ? monochromeColor : greenTerminalColor);
-	glyphColor = applyCharacterChromatic(glyphColor, cellUV);
 	vec3 backgroundColor = backgroundFromMode(sampleUV, u_backgroundColor, toneMapped, sourceGlyphColor);
 	vec3 asciiColor = mix(backgroundColor, glyphColor, finalMask);
 
@@ -626,9 +621,174 @@ void main() {
 	vec3 finalColor = u_compositeMode > 0.5 ? maskColor : filterColor;
 	float outputAlpha = u_transparentBackground > 0.5 ? clamp(finalMask * u_layerOpacity, 0.0, 1.0) : 1.0;
 	vec3 outputColor = u_transparentBackground > 0.5 ? glyphColor : finalColor;
-	outputColor = applyPostEffects(outputColor, effectUV, sampleUV, pixelCoord);
 
-	fragColor = vec4(clamp(outputColor, 0.0, 1.0), outputAlpha);
+	return AsciiRender(clamp(outputColor, 0.0, 1.0), outputAlpha, finalMask);
+}
+
+vec2 effectPixelOffset(vec2 direction, float pixels) {
+	return direction * pixels * max(u_pixelRatio, 1.0) / max(u_resolution, vec2(1.0));
+}
+
+AsciiRender sampleRenderedBaseRender(vec2 uv) {
+	return renderAsciiBase(clamp(uv, vec2(0.0), vec2(1.0)));
+}
+
+vec3 sampleRenderedBase(vec2 uv) {
+	return sampleRenderedBaseRender(uv).color;
+}
+
+vec3 sampleBlurredRender(vec2 uv, float radius) {
+	vec2 texel = effectPixelOffset(vec2(1.0), radius);
+	vec3 color = sampleRenderedBase(uv) * 4.0;
+	color += sampleRenderedBase(uv + vec2(texel.x, 0.0)) * 2.0;
+	color += sampleRenderedBase(uv - vec2(texel.x, 0.0)) * 2.0;
+	color += sampleRenderedBase(uv + vec2(0.0, texel.y)) * 2.0;
+	color += sampleRenderedBase(uv - vec2(0.0, texel.y)) * 2.0;
+	color += sampleRenderedBase(uv + texel);
+	color += sampleRenderedBase(uv - texel);
+	color += sampleRenderedBase(uv + vec2(texel.x, -texel.y));
+	color += sampleRenderedBase(uv + vec2(-texel.x, texel.y));
+	return color / 16.0;
+}
+
+vec3 applyRenderedChannelSplit(vec3 color, vec2 uv, vec2 offset, float amount) {
+	vec3 redSample = sampleRenderedBase(uv + offset);
+	vec3 greenSample = sampleRenderedBase(uv);
+	vec3 blueSample = sampleRenderedBase(uv - offset);
+	vec3 splitColor = vec3(redSample.r, greenSample.g, blueSample.b);
+	return mix(color, splitColor, clamp(amount, 0.0, 1.0));
+}
+
+vec3 applyCharacterChannelSplit(vec3 color, vec2 uv, vec2 offset, float amount) {
+	AsciiRender redRender = sampleRenderedBaseRender(uv + offset);
+	AsciiRender greenRender = sampleRenderedBaseRender(uv);
+	AsciiRender blueRender = sampleRenderedBaseRender(uv - offset);
+	vec3 splitColor = vec3(redRender.color.r, greenRender.color.g, blueRender.color.b);
+	float splitMask = max(max(redRender.characterMask, greenRender.characterMask), blueRender.characterMask);
+	return mix(color, splitColor, clamp(amount, 0.0, 1.0) * clamp(splitMask, 0.0, 1.0));
+}
+
+vec3 applyFilmDust(vec3 color, vec2 uv, vec2 pixelCoord) {
+	float dustAmount = clamp(u_filmDust, 0.0, 1.0);
+	if (dustAmount <= 0.001) {
+		return color;
+	}
+
+	float dustFrame = floor(u_time * 0.45);
+	vec2 dustCellSize = vec2(34.0, 27.0);
+	vec2 dustCell = floor(pixelCoord / dustCellSize);
+	vec2 dustCellUV = fract(pixelCoord / dustCellSize);
+	vec2 dustFleckCenter = vec2(
+		hash21(dustCell + vec2(4.7, 19.3) + dustFrame * 11.0),
+		hash21(dustCell + vec2(27.1, 5.9) + dustFrame * 11.0)
+	);
+	float dustFleckGate = step(0.996 - dustAmount * 0.012, hash21(dustCell + dustFrame * 17.0));
+	float dustFleckRadius = mix(0.028, 0.088, hash21(dustCell + vec2(2.1, 9.4)));
+	vec2 dustFleckStretch = vec2(mix(0.62, 1.72, hash21(dustCell + vec2(13.6, 1.8))), 1.0);
+	float dustFleck = 1.0 - smoothstep(dustFleckRadius * 0.35, dustFleckRadius, length((dustCellUV - dustFleckCenter) * dustFleckStretch));
+	float brightFleck = dustFleck * dustFleckGate * step(0.47, hash21(dustCell + vec2(8.2, 31.0)));
+	float darkFleck = dustFleck * dustFleckGate * (1.0 - step(0.47, hash21(dustCell + vec2(8.2, 31.0))));
+	color = mix(color, vec3(1.0), brightFleck * dustAmount * 0.48);
+	color *= 1.0 - darkFleck * dustAmount * 0.58;
+
+	float dustScratchFrame = floor(u_time * 0.22);
+	float dustScratch = 0.0;
+	for (int i = 0; i < 4; i++) {
+		float scratchIndex = float(i);
+		float scratchSeed = hash21(vec2(scratchIndex * 19.0 + 3.0, dustScratchFrame));
+		float scratchActive = step(0.82 - dustAmount * 0.22, scratchSeed);
+		float scratchLength = mix(0.12, 0.46, hash21(vec2(scratchIndex + 7.0, dustScratchFrame + 2.0)));
+		float scratchTop = hash21(vec2(scratchIndex + 29.0, dustScratchFrame + 5.0)) * (1.0 - scratchLength);
+		float scratchX = hash21(vec2(scratchIndex + 43.0, dustScratchFrame + 11.0));
+		float scratchTilt = (hash21(vec2(scratchIndex + 61.0, dustScratchFrame + 17.0)) - 0.5) * 0.034;
+		float scratchWidth = mix(0.72, 1.55, hash21(vec2(scratchIndex + 83.0, dustScratchFrame + 23.0))) / max(u_resolution.x, 1.0);
+		float xAtY = scratchX + (uv.y - scratchTop) * scratchTilt;
+		float lineMask = 1.0 - smoothstep(scratchWidth, scratchWidth * 3.8, abs(uv.x - xAtY));
+		float segmentMask = smoothstep(scratchTop, scratchTop + 0.018, uv.y) *
+			(1.0 - smoothstep(scratchTop + scratchLength - 0.026, scratchTop + scratchLength, uv.y));
+		float scratchBand = floor((uv.y - scratchTop) * mix(52.0, 88.0, scratchSeed));
+		float scratchBreak = step(0.18, hash21(vec2(scratchBand, scratchIndex * 31.0 + dustScratchFrame)));
+		dustScratch = max(dustScratch, lineMask * segmentMask * scratchBreak * scratchActive);
+	}
+	color = mix(color, vec3(0.94), dustScratch * dustAmount * 0.36);
+
+	return color;
+}
+
+vec3 applyPostEffects(vec3 color, vec2 uv, vec2 pixelCoord) {
+	vec2 centered = uv * 2.0 - 1.0;
+	centered.x *= u_resolution.x / max(u_resolution.y, 1.0);
+
+	float pixelateAmount = clamp(u_pixelate, 0.0, 1.0);
+	if (pixelateAmount > 0.001) {
+		float pixelBlock = clamp(u_pixelateSize, 2.0, 30.0);
+		vec2 pixelatedUV = (floor(uv * u_resolution / pixelBlock) + 0.5) * pixelBlock / max(u_resolution, vec2(1.0));
+		vec3 pixelatedRender = sampleRenderedBase(pixelatedUV);
+		color = mix(color, pixelatedRender, pixelateAmount);
+	}
+
+	float blurAmount = clamp(u_blur, 0.0, 1.0);
+	if (blurAmount > 0.001) {
+		vec3 blurredRender = sampleBlurredRender(uv, clamp(u_blurRadius, 1.0, 20.0));
+		color = mix(color, blurredRender, blurAmount);
+	}
+
+	float vignetteMask = smoothstep(1.28, 0.22, length(centered));
+	color = mix(color, color * vignetteMask, clamp(u_vignette, 0.0, 1.0));
+
+	float crtAmount = clamp(u_crtCurvature, 0.0, 1.0);
+	if (crtAmount > 0.001) {
+		float edgeFalloff = smoothstep(1.42, 0.72, length(centered));
+		color *= mix(1.0, 0.82 + edgeFalloff * 0.18, crtAmount);
+		color += vec3(0.02, 0.04, 0.08) * crtAmount * (1.0 - edgeFalloff);
+	}
+
+	float scanWave = 0.5 + 0.5 * sin(pixelCoord.y * 3.14159265);
+	color *= 1.0 - clamp(u_scanLines, 0.0, 1.0) * (0.08 + scanWave * 0.16);
+
+	float chromaticAmount = clamp(u_chromatic, 0.0, 1.0);
+	if (chromaticAmount > 0.001) {
+		vec2 chromaDirection = normalize(centered + vec2(0.0001));
+		vec2 chromaOffset = effectPixelOffset(chromaDirection, clamp(u_chromaticOffset, 1.0, 20.0));
+		color = applyRenderedChannelSplit(color, uv, chromaOffset, chromaticAmount);
+	}
+
+	float characterChromaticAmount = clamp(u_characterChromatic, 0.0, 1.0);
+	if (characterChromaticAmount > 0.001) {
+		vec2 characterOffset = effectPixelOffset(vec2(1.0, 0.0), clamp(u_characterChromaticOffset, 1.0, 20.0));
+		color = applyCharacterChannelSplit(color, uv, characterOffset, characterChromaticAmount);
+	}
+
+	float splitAmount = clamp(max(u_rgbSplit, u_chromaticAberration), 0.0, 1.0);
+	if (splitAmount > 0.001) {
+		vec2 splitOffset = effectPixelOffset(vec2(1.0, 0.0), clamp(u_rgbSplitOffset, 1.0, 20.0));
+		color = applyRenderedChannelSplit(color, uv, splitOffset, splitAmount);
+	}
+
+	color = applyGlitch(color, uv, pixelCoord);
+	color = applyHalftone(color, uv);
+
+	float overlayAmount = clamp(u_colorOverlay, 0.0, 1.0);
+	if (overlayAmount > 0.001) {
+		vec3 overlayColor = blendColor(color, u_colorOverlayColor, u_colorOverlayBlendMode);
+		color = mix(color, overlayColor, overlayAmount);
+	}
+
+	float grain = hash21(pixelCoord + u_time * 60.0) - 0.5;
+	color += grain * clamp(u_filmGrain, 0.0, 1.0);
+
+	color = applyFilmDust(color, uv, pixelCoord);
+
+	return clamp(color, 0.0, 1.0);
+}
+
+void main() {
+	vec2 effectUV = applyCrtCurvature(v_uv);
+	vec2 pixelCoord = effectUV * u_resolution;
+	AsciiRender baseRender = renderAsciiBase(effectUV);
+	vec3 outputColor = applyPostEffects(baseRender.color, effectUV, pixelCoord);
+
+	fragColor = vec4(clamp(outputColor, 0.0, 1.0), baseRender.alpha);
 }
 `;
 
@@ -856,6 +1016,10 @@ export interface AsciiProps {
 	randomizeCharacters?: number;
 	randomSeed?: number;
 	animatedCharacters?: boolean;
+	animationPlaying?: boolean;
+	animationStyle?: AsciiAnimationStyle;
+	animationIntensity?: number;
+	animationRandomness?: number;
 	characterCycleSpeed?: number;
 	dotGridOverlay?: number;
 	fontWeight?: AsciiFontWeight;
@@ -892,18 +1056,25 @@ export interface AsciiProps {
 	bloomSoftness?: number;
 	colorOverlay?: EffectAmount;
 	colorOverlayColor?: string;
+	colorOverlayBlendMode?: AsciiBlendMode;
 	vignette?: EffectAmount;
 	scanLines?: EffectAmount;
 	crtCurvature?: EffectAmount;
 	chromatic?: EffectAmount;
+	chromaticOffset?: number;
 	characterBloom?: EffectAmount;
 	characterChromatic?: EffectAmount;
+	characterChromaticOffset?: number;
 	chromaticAberration?: number;
 	rgbSplit?: EffectAmount;
+	rgbSplitOffset?: number;
 	glitch?: EffectAmount;
 	blur?: EffectAmount;
+	blurRadius?: number;
 	pixelate?: EffectAmount;
+	pixelateSize?: number;
 	halftone?: EffectAmount;
+	halftoneSize?: number;
 	filmGrain?: EffectAmount;
 	filmDust?: EffectAmount;
 	speed?: number;
@@ -933,6 +1104,10 @@ export default function Ascii({
 	randomizeCharacters = 0,
 	randomSeed = 0,
 	animatedCharacters = false,
+	animationPlaying = true,
+	animationStyle = "wave",
+	animationIntensity = 0.83,
+	animationRandomness = 0.5,
 	characterCycleSpeed = 8,
 	dotGridOverlay = 0,
 	fontWeight = "regular",
@@ -969,18 +1144,25 @@ export default function Ascii({
 	bloomSoftness = 0.35,
 	colorOverlay = false,
 	colorOverlayColor = "#F5F5F0",
+	colorOverlayBlendMode = "multiply",
 	vignette = 0,
 	scanLines = 0,
 	crtCurvature = false,
 	chromatic = false,
+	chromaticOffset = 3,
 	characterBloom = false,
 	characterChromatic = false,
+	characterChromaticOffset = 3,
 	chromaticAberration = 0,
 	rgbSplit,
+	rgbSplitOffset = 2,
 	glitch = false,
 	blur = false,
+	blurRadius = 2,
 	pixelate = false,
+	pixelateSize = 4,
 	halftone = false,
+	halftoneSize = 4,
 	filmGrain = 0,
 	filmDust = false,
 	speed = 1,
@@ -988,6 +1170,7 @@ export default function Ascii({
 }: AsciiProps) {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const animRef = useRef<number>(0);
+	const elapsedTimeRef = useRef(0);
 	const activeCharacters = useMemo(
 		() => resolveCharacters(charset, customChars, characters),
 		[characters, charset, customChars],
@@ -1087,6 +1270,9 @@ export default function Ascii({
 		gl.uniform1f(gl.getUniformLocation(program, "u_randomizeCharacters"), randomizeCharacters);
 		gl.uniform1f(gl.getUniformLocation(program, "u_randomSeed"), randomSeed);
 		gl.uniform1f(gl.getUniformLocation(program, "u_animatedCharacters"), animatedCharacters ? 1 : 0);
+		gl.uniform1f(gl.getUniformLocation(program, "u_animationStyle"), enumIndex(ASCII_ANIMATION_STYLES, animationStyle));
+		gl.uniform1f(gl.getUniformLocation(program, "u_animationIntensity"), animationIntensity);
+		gl.uniform1f(gl.getUniformLocation(program, "u_animationRandomness"), animationRandomness);
 		gl.uniform1f(gl.getUniformLocation(program, "u_characterCycleSpeed"), characterCycleSpeed);
 		gl.uniform1f(gl.getUniformLocation(program, "u_dotGridOverlay"), dotGridOverlay);
 		gl.uniform1f(gl.getUniformLocation(program, "u_shimmerAmount"), shimmerAmount);
@@ -1101,18 +1287,25 @@ export default function Ascii({
 		gl.uniform1f(gl.getUniformLocation(program, "u_backgroundOpacity"), backgroundOpacity);
 		gl.uniform1f(gl.getUniformLocation(program, "u_backgroundBlurRadius"), backgroundBlurRadius);
 		gl.uniform1f(gl.getUniformLocation(program, "u_colorOverlay"), resolveEffectAmount(colorOverlay));
+		gl.uniform1f(gl.getUniformLocation(program, "u_colorOverlayBlendMode"), enumIndex(ASCII_BLEND_MODES, colorOverlayBlendMode));
 		gl.uniform1f(gl.getUniformLocation(program, "u_vignette"), resolveEffectAmount(vignette));
 		gl.uniform1f(gl.getUniformLocation(program, "u_scanLines"), resolveEffectAmount(scanLines));
 		gl.uniform1f(gl.getUniformLocation(program, "u_crtCurvature"), resolveEffectAmount(crtCurvature));
 		gl.uniform1f(gl.getUniformLocation(program, "u_chromatic"), resolveEffectAmount(chromatic));
+		gl.uniform1f(gl.getUniformLocation(program, "u_chromaticOffset"), chromaticOffset);
 		gl.uniform1f(gl.getUniformLocation(program, "u_characterBloom"), resolveEffectAmount(characterBloom));
 		gl.uniform1f(gl.getUniformLocation(program, "u_characterChromatic"), resolveEffectAmount(characterChromatic));
+		gl.uniform1f(gl.getUniformLocation(program, "u_characterChromaticOffset"), characterChromaticOffset);
 		gl.uniform1f(gl.getUniformLocation(program, "u_chromaticAberration"), chromaticAberration);
 		gl.uniform1f(gl.getUniformLocation(program, "u_rgbSplit"), resolveEffectAmount(resolvedRgbSplit));
+		gl.uniform1f(gl.getUniformLocation(program, "u_rgbSplitOffset"), rgbSplitOffset);
 		gl.uniform1f(gl.getUniformLocation(program, "u_glitch"), resolveEffectAmount(glitch));
 		gl.uniform1f(gl.getUniformLocation(program, "u_blur"), resolveEffectAmount(blur));
+		gl.uniform1f(gl.getUniformLocation(program, "u_blurRadius"), blurRadius);
 		gl.uniform1f(gl.getUniformLocation(program, "u_pixelate"), resolveEffectAmount(pixelate));
+		gl.uniform1f(gl.getUniformLocation(program, "u_pixelateSize"), pixelateSize);
 		gl.uniform1f(gl.getUniformLocation(program, "u_halftone"), resolveEffectAmount(halftone));
+		gl.uniform1f(gl.getUniformLocation(program, "u_halftoneSize"), halftoneSize);
 		gl.uniform1f(gl.getUniformLocation(program, "u_filmGrain"), resolveEffectAmount(filmGrain));
 		gl.uniform1f(gl.getUniformLocation(program, "u_filmDust"), resolveEffectAmount(filmDust));
 		gl.uniform1f(gl.getUniformLocation(program, "u_invert"), invert ? 1 : 0);
@@ -1148,7 +1341,15 @@ export default function Ascii({
 		const uResolution = gl.getUniformLocation(program, "u_resolution");
 		const uPixelRatio = gl.getUniformLocation(program, "u_pixelRatio");
 		const uTime = gl.getUniformLocation(program, "u_time");
+		let previousFrameMs: number | null = null;
 		const render = (timeMs = 0) => {
+			if (previousFrameMs === null) previousFrameMs = timeMs;
+			const frameDelta = Math.min(Math.max((timeMs - previousFrameMs) * 0.001, 0), 0.1);
+			previousFrameMs = timeMs;
+			if (animationPlaying) {
+				elapsedTimeRef.current += frameDelta;
+			}
+
 			const dpr = window.devicePixelRatio || 1;
 			const width = Math.max(Math.floor(canvas.clientWidth * dpr), 1);
 			const height = Math.max(Math.floor(canvas.clientHeight * dpr), 1);
@@ -1161,7 +1362,7 @@ export default function Ascii({
 
 			gl.uniform2f(uResolution, width, height);
 			gl.uniform1f(uPixelRatio, dpr);
-			gl.uniform1f(uTime, timeMs * 0.001);
+			gl.uniform1f(uTime, elapsedTimeRef.current);
 			gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 			animRef.current = requestAnimationFrame(render);
 		};
@@ -1182,6 +1383,10 @@ export default function Ascii({
 		activeCharacters,
 		activeMonoColor,
 		animatedCharacters,
+		animationIntensity,
+		animationPlaying,
+		animationRandomness,
+		animationStyle,
 		backgroundBlurRadius,
 		backgroundColor,
 		backgroundMode,
@@ -1198,9 +1403,12 @@ export default function Ascii({
 		characterOpacity,
 		characterBloom,
 		characterChromatic,
+		characterChromaticOffset,
 		chromatic,
+		chromaticOffset,
 		chromaticAberration,
 		colorOverlay,
+		colorOverlayBlendMode,
 		colorOverlayColor,
 		colorMode,
 		colorSourceMode,
@@ -1209,6 +1417,7 @@ export default function Ascii({
 		contrast,
 		dotGridOverlay,
 		blur,
+		blurRadius,
 		crtCurvature,
 		filmGrain,
 		filmDust,
@@ -1224,7 +1433,9 @@ export default function Ascii({
 		presenceSoftness,
 		glitch,
 		halftone,
+		halftoneSize,
 		pixelate,
+		pixelateSize,
 		randomizeCharacters,
 		randomSeed,
 		resolvedCellSize,
@@ -1233,6 +1444,7 @@ export default function Ascii({
 		resolvedPresenceThreshold,
 		resolvedRgbSplit,
 		resolvedTransparentBackground,
+		rgbSplitOffset,
 		saturation,
 		scanLines,
 		shimmerAmount,

@@ -1,9 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import CrossIcon from "@atlaskit/icon/core/cross";
 import ImageIcon from "@atlaskit/icon/core/image";
+import VideoPlayIcon from "@atlaskit/icon/core/video-play";
+import VideoStopIcon from "@atlaskit/icon/core/video-stop";
 
 import { GUI } from "@/components/utils/gui";
 import { Label } from "@/components/ui/label";
@@ -11,6 +13,7 @@ import { ShaderColorInput, ShaderColorListControl } from "./shader-color-control
 import { token } from "@/lib/tokens";
 
 import Ascii, {
+	ASCII_ANIMATION_STYLES,
 	ASCII_BACKGROUND_MODES,
 	ASCII_CHARSETS,
 	ASCII_COMPOSITE_MODES,
@@ -28,6 +31,7 @@ import Ascii, {
 	type AsciiBackgroundMode,
 	type AsciiBlendMode,
 	type AsciiCharset,
+	type AsciiAnimationStyle,
 	type AsciiColorMode,
 	type AsciiColorSourceMode,
 	type AsciiCompositeMode,
@@ -43,6 +47,15 @@ const SOURCE_MODE_OPTIONS = [
 	{ value: "field", label: "Field" },
 	{ value: "image", label: "Image" },
 ] as const;
+
+const ANIMATION_STYLE_OPTIONS = [
+	{ value: "wave", label: "Wave" },
+	{ value: "cascade-left-right", label: "Cascade Left -> Right" },
+	{ value: "cascade-right-left", label: "Cascade Right -> Left" },
+	{ value: "cascade-top-bottom", label: "Cascade Top -> Bottom" },
+	{ value: "reveal", label: "Reveal" },
+	{ value: "pulse", label: "Pulse" },
+] satisfies ReadonlyArray<{ value: (typeof ASCII_ANIMATION_STYLES)[number]; label: string }>;
 
 function titleize(value: string): string {
 	return value
@@ -79,8 +92,71 @@ const DEFAULT_CHARSET_VALUES: Record<AsciiCharset, string> = {
 	custom: ASCII_DEFAULT_CHARACTERS,
 };
 const DEFAULT_DENSITY = 0.82;
+const DEFAULT_PREVIEW_ASPECT_RATIO = "16 / 9";
 const IMAGE_BACKGROUND_OPACITY = 0.61;
 const IMAGE_BACKGROUND_BLUR_RADIUS = 60;
+const DEFAULT_ANIMATION_SPEED_SECONDS = 4.3;
+const DEFAULT_ANIMATION_INTENSITY = 0.83;
+const DEFAULT_ANIMATION_RANDOMNESS = 0.5;
+const DEFAULT_COLOR_OVERLAY_OPACITY = 0.3;
+const DEFAULT_VIGNETTE_INTENSITY = 0.5;
+const DEFAULT_SCAN_LINES_INTENSITY = 0.4;
+const DEFAULT_CRT_CURVATURE_INTENSITY = 0.3;
+const DEFAULT_CHROMATIC_OFFSET = 3;
+const DEFAULT_BLOOM_INTENSITY = 0.4;
+const DEFAULT_BLOOM_THRESHOLD = 0.6;
+const DEFAULT_BLOOM_RADIUS = 6;
+const DEFAULT_BLOOM_SOFTNESS = 0.35;
+const DEFAULT_CHARACTER_BLOOM_INTENSITY = 0.6;
+const DEFAULT_CHARACTER_CHROMATIC_OFFSET = 3;
+const DEFAULT_FILM_GRAIN_INTENSITY = 0.3;
+const DEFAULT_GLITCH_INTENSITY = 0.2;
+const DEFAULT_RGB_SPLIT_OFFSET = 2;
+const DEFAULT_BLUR_RADIUS = 2;
+const DEFAULT_PIXELATE_SIZE = 4;
+const DEFAULT_HALFTONE_SIZE = 4;
+const DEFAULT_FILM_DUST_DENSITY = 0.2;
+const COLOR_OVERLAY_BLEND_OPTIONS = [
+	{ value: "multiply", label: "Multiply" },
+	{ value: "overlay", label: "Overlay" },
+	{ value: "screen", label: "Screen" },
+	{ value: "color", label: "Color" },
+	{ value: "hue", label: "Hue" },
+	{ value: "saturation", label: "Saturation" },
+	{ value: "luminosity", label: "Luminosity" },
+	{ value: "soft-light", label: "Soft Light" },
+	{ value: "hard-light", label: "Hard Light" },
+	{ value: "color-burn", label: "Color Burn" },
+	{ value: "color-dodge", label: "Color Dodge" },
+] satisfies ReadonlyArray<{ value: AsciiBlendMode; label: string }>;
+
+function animationDurationToCycleSpeed(durationSeconds: number, characterCount: number): number {
+	return characterCount / Math.max(durationSeconds, 0.1);
+}
+
+interface UploadedImage {
+	src: string;
+	width: number;
+	height: number;
+}
+
+function loadUploadedImageDimensions(src: string): Promise<Pick<UploadedImage, "width" | "height">> {
+	return new Promise((resolve, reject) => {
+		const image = new window.Image();
+		image.onload = () => {
+			resolve({
+				width: Math.max(image.naturalWidth, 1),
+				height: Math.max(image.naturalHeight, 1),
+			});
+		};
+		image.onerror = () => reject(new Error("Unable to read uploaded image dimensions."));
+		image.src = src;
+	});
+}
+
+function getPreviewAspectRatio(image: UploadedImage | undefined): string {
+	return image ? `${image.width} / ${image.height}` : DEFAULT_PREVIEW_ASPECT_RATIO;
+}
 
 function PercentControl({
 	id,
@@ -117,18 +193,24 @@ function PercentControl({
 }
 
 function ImageUploadControl({
-	imageSrc,
+	image,
 	onChange,
 }: {
-	imageSrc: string | undefined;
-	onChange: (next: string | undefined) => void;
+	image: UploadedImage | undefined;
+	onChange: (next: UploadedImage | undefined) => void;
 }) {
 	const inputRef = useRef<HTMLInputElement>(null);
 
 	const handleFile = useCallback(
-		(file: File) => {
-			const url = URL.createObjectURL(file);
-			onChange(url);
+		async (file: File) => {
+			const src = URL.createObjectURL(file);
+			try {
+				const dimensions = await loadUploadedImageDimensions(src);
+				onChange({ src, ...dimensions });
+			} catch {
+				URL.revokeObjectURL(src);
+				onChange(undefined);
+			}
 		},
 		[onChange],
 	);
@@ -137,9 +219,9 @@ function ImageUploadControl({
 		<div className="space-y-2">
 			<Label className="text-xs font-medium text-text">Image</Label>
 			<div className="flex items-center gap-2">
-				{imageSrc ? (
+				{image ? (
 					<Image
-						src={imageSrc}
+						src={image.src}
 						alt="Source"
 						width={36}
 						height={36}
@@ -156,9 +238,9 @@ function ImageUploadControl({
 					onClick={() => inputRef.current?.click()}
 					className="h-7 rounded border border-border bg-transparent px-3 text-xs text-text transition-colors hover:bg-bg-neutral"
 				>
-					{imageSrc ? "Change" : "Upload"}
+					{image ? "Change" : "Upload"}
 				</button>
-				{imageSrc ? (
+				{image ? (
 					<button
 						type="button"
 						onClick={() => onChange(undefined)}
@@ -174,7 +256,7 @@ function ImageUploadControl({
 					className="hidden"
 					onChange={(event) => {
 						const file = event.currentTarget.files?.[0];
-						if (file) handleFile(file);
+						if (file) void handleFile(file);
 						event.currentTarget.value = "";
 					}}
 				/>
@@ -183,10 +265,55 @@ function ImageUploadControl({
 	);
 }
 
+function AnimationPlaybackControl({
+	playing,
+	onChange,
+}: {
+	playing: boolean;
+	onChange: (next: boolean) => void;
+}) {
+	const options = [
+		{ value: true, label: "Play", icon: VideoPlayIcon },
+		{ value: false, label: "Stop", icon: VideoStopIcon },
+	] as const;
+
+	return (
+		<div className="space-y-1.5">
+			<Label className="text-xs font-medium text-text">Playback</Label>
+			<div
+				role="group"
+				aria-label="Playback"
+				className="inline-flex w-fit max-w-full flex-wrap items-center gap-0.5 rounded-md bg-bg-neutral p-0.5"
+			>
+				{options.map((option) => {
+					const Icon = option.icon;
+					const selected = playing === option.value;
+					return (
+						<button
+							key={option.label}
+							type="button"
+							aria-pressed={selected}
+							onClick={() => onChange(option.value)}
+							className={`flex items-center gap-1 whitespace-nowrap rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
+								selected
+									? "bg-surface text-text shadow-sm"
+									: "text-text-subtle hover:text-text"
+							}`}
+						>
+							<Icon label="" size="small" />
+							{option.label}
+						</button>
+					);
+				})}
+			</div>
+		</div>
+	);
+}
+
 export default function AsciiDemo() {
 	const [sourceMode, setSourceMode] = useState<AsciiSourceMode>("field");
 	const [sourceColors, setSourceColors] = useState<string[]>([...ASCII_DEFAULT_SOURCE_COLORS]);
-	const [imageSrc, setImageSrc] = useState<string | undefined>(undefined);
+	const [uploadedImage, setUploadedImage] = useState<UploadedImage | undefined>(undefined);
 	const [opacity, setOpacity] = useState(1);
 	const [blendMode, setBlendMode] = useState<AsciiBlendMode>("normal");
 	const [compositeMode, setCompositeMode] = useState<AsciiCompositeMode>("filter");
@@ -201,7 +328,11 @@ export default function AsciiDemo() {
 	const [randomizeCharacters, setRandomizeCharacters] = useState(0);
 	const [randomSeed, setRandomSeed] = useState(0);
 	const [animatedCharacters, setAnimatedCharacters] = useState(false);
-	const [characterCycleSpeed, setCharacterCycleSpeed] = useState(8);
+	const [animationPlaying, setAnimationPlaying] = useState(true);
+	const [animationStyle, setAnimationStyle] = useState<AsciiAnimationStyle>("wave");
+	const [animationSpeedSeconds, setAnimationSpeedSeconds] = useState(DEFAULT_ANIMATION_SPEED_SECONDS);
+	const [animationIntensity, setAnimationIntensity] = useState(DEFAULT_ANIMATION_INTENSITY);
+	const [animationRandomness, setAnimationRandomness] = useState(DEFAULT_ANIMATION_RANDOMNESS);
 	const [dotGridOverlay, setDotGridOverlay] = useState(0);
 	const [fontWeight, setFontWeight] = useState<AsciiFontWeight>("regular");
 	const [colorMode, setColorMode] = useState<AsciiColorMode>("monochrome");
@@ -228,27 +359,52 @@ export default function AsciiDemo() {
 	const [shimmerAmount, setShimmerAmount] = useState(0);
 	const [shimmerSpeed, setShimmerSpeed] = useState(1);
 	const [bloomEnabled, setBloomEnabled] = useState(false);
-	const [bloomIntensity, setBloomIntensity] = useState(1.25);
-	const [bloomThreshold, setBloomThreshold] = useState(0.6);
-	const [bloomRadius, setBloomRadius] = useState(6);
-	const [bloomSoftness, setBloomSoftness] = useState(0.35);
+	const [bloomIntensity, setBloomIntensity] = useState(DEFAULT_BLOOM_INTENSITY);
 	const [colorOverlay, setColorOverlay] = useState(false);
 	const [colorOverlayColor, setColorOverlayColor] = useState("#F5F5F0");
+	const [colorOverlayOpacity, setColorOverlayOpacity] = useState(DEFAULT_COLOR_OVERLAY_OPACITY);
+	const [colorOverlayBlendMode, setColorOverlayBlendMode] = useState<AsciiBlendMode>("multiply");
 	const [vignette, setVignette] = useState(false);
+	const [vignetteIntensity, setVignetteIntensity] = useState(DEFAULT_VIGNETTE_INTENSITY);
 	const [scanLines, setScanLines] = useState(false);
+	const [scanLinesIntensity, setScanLinesIntensity] = useState(DEFAULT_SCAN_LINES_INTENSITY);
 	const [crtCurvature, setCrtCurvature] = useState(false);
+	const [crtCurvatureIntensity, setCrtCurvatureIntensity] = useState(DEFAULT_CRT_CURVATURE_INTENSITY);
 	const [chromatic, setChromatic] = useState(false);
+	const [chromaticOffset, setChromaticOffset] = useState(DEFAULT_CHROMATIC_OFFSET);
 	const [characterBloom, setCharacterBloom] = useState(false);
+	const [characterBloomIntensity, setCharacterBloomIntensity] = useState(DEFAULT_CHARACTER_BLOOM_INTENSITY);
 	const [characterChromatic, setCharacterChromatic] = useState(false);
+	const [characterChromaticOffset, setCharacterChromaticOffset] = useState(DEFAULT_CHARACTER_CHROMATIC_OFFSET);
 	const [filmGrain, setFilmGrain] = useState(false);
+	const [filmGrainIntensity, setFilmGrainIntensity] = useState(DEFAULT_FILM_GRAIN_INTENSITY);
 	const [glitch, setGlitch] = useState(false);
+	const [glitchIntensity, setGlitchIntensity] = useState(DEFAULT_GLITCH_INTENSITY);
 	const [rgbSplit, setRgbSplit] = useState(false);
+	const [rgbSplitOffset, setRgbSplitOffset] = useState(DEFAULT_RGB_SPLIT_OFFSET);
 	const [blur, setBlur] = useState(false);
+	const [blurRadius, setBlurRadius] = useState(DEFAULT_BLUR_RADIUS);
 	const [pixelate, setPixelate] = useState(false);
+	const [pixelateSize, setPixelateSize] = useState(DEFAULT_PIXELATE_SIZE);
 	const [halftone, setHalftone] = useState(false);
+	const [halftoneSize, setHalftoneSize] = useState(DEFAULT_HALFTONE_SIZE);
 	const [filmDust, setFilmDust] = useState(false);
+	const [filmDustDensity, setFilmDustDensity] = useState(DEFAULT_FILM_DUST_DENSITY);
 	const [speed, setSpeed] = useState(1);
+	const uploadedImageSrc = uploadedImage?.src;
+	const previousUploadedImageSrcRef = useRef<string | undefined>(undefined);
 	const activeCharsetCharacters = charsetCharacters[charset] ?? ASCII_DEFAULT_CHARACTERS;
+	const resolvedCharacterCycleSpeed = animationDurationToCycleSpeed(animationSpeedSeconds, activeCharsetCharacters.length);
+	const previewAspectRatio = getPreviewAspectRatio(uploadedImage);
+
+	useEffect(() => {
+		return () => {
+			const previousSrc = previousUploadedImageSrcRef.current;
+			if (previousSrc) {
+				URL.revokeObjectURL(previousSrc);
+			}
+		};
+	}, []);
 
 	const setActiveCharsetCharacters = useCallback(
 		(next: string) => {
@@ -279,8 +435,13 @@ export default function AsciiDemo() {
 	);
 
 	const handleImageChange = useCallback(
-		(next: string | undefined) => {
-			setImageSrc(next);
+		(next: UploadedImage | undefined) => {
+			const previousSrc = previousUploadedImageSrcRef.current;
+			if (previousSrc && previousSrc !== next?.src) {
+				URL.revokeObjectURL(previousSrc);
+			}
+			previousUploadedImageSrcRef.current = next?.src;
+			setUploadedImage(next);
 			if (next) {
 				setSourceMode("image");
 				applyImageBackgroundDefaults();
@@ -295,6 +456,7 @@ export default function AsciiDemo() {
 		() => ({
 			sourceMode,
 			sourceColors,
+			previewAspectRatio,
 			opacity,
 			blendMode,
 			compositeMode,
@@ -310,7 +472,12 @@ export default function AsciiDemo() {
 			randomizeCharacters,
 			randomSeed,
 			animatedCharacters,
-			characterCycleSpeed,
+			animationPlaying,
+			animationStyle,
+			animationSpeedSeconds,
+			animationIntensity,
+			animationRandomness,
+			characterCycleSpeed: resolvedCharacterCycleSpeed,
 			dotGridOverlay,
 			fontWeight,
 			colorMode,
@@ -338,29 +505,49 @@ export default function AsciiDemo() {
 			shimmerSpeed,
 			bloomEnabled,
 			bloomIntensity,
-			bloomThreshold,
-			bloomRadius,
-			bloomSoftness,
+			bloomThreshold: DEFAULT_BLOOM_THRESHOLD,
+			bloomRadius: DEFAULT_BLOOM_RADIUS,
+			bloomSoftness: DEFAULT_BLOOM_SOFTNESS,
 			colorOverlay,
 			colorOverlayColor,
+			colorOverlayOpacity,
+			colorOverlayBlendMode,
 			vignette,
+			vignetteIntensity,
 			scanLines,
+			scanLinesIntensity,
 			crtCurvature,
+			crtCurvatureIntensity,
 			chromatic,
+			chromaticOffset,
 			characterBloom,
+			characterBloomIntensity,
 			characterChromatic,
+			characterChromaticOffset,
 			filmGrain,
+			filmGrainIntensity,
 			glitch,
+			glitchIntensity,
 			rgbSplit,
+			rgbSplitOffset,
 			blur,
+			blurRadius,
 			pixelate,
+			pixelateSize,
 			halftone,
+			halftoneSize,
 			filmDust,
+			filmDustDensity,
 			speed,
 		}),
 		[
 			activeCharsetCharacters,
 			animatedCharacters,
+			animationIntensity,
+			animationPlaying,
+			animationRandomness,
+			animationSpeedSeconds,
+			animationStyle,
 			backgroundBlurRadius,
 			backgroundColor,
 			backgroundMode,
@@ -368,37 +555,45 @@ export default function AsciiDemo() {
 			bgOpacity,
 			blendMode,
 			blur,
+			blurRadius,
 			bloomEnabled,
 			bloomIntensity,
-			bloomRadius,
-			bloomSoftness,
-			bloomThreshold,
 			brightness,
-			characterCycleSpeed,
+			resolvedCharacterCycleSpeed,
 			characterBloom,
+			characterBloomIntensity,
 			characterChromatic,
+			characterChromaticOffset,
 			characterOpacity,
 			charset,
 			chromatic,
+			chromaticOffset,
 			colorOverlay,
+			colorOverlayBlendMode,
 			colorOverlayColor,
+			colorOverlayOpacity,
 			colorMode,
 			colorSourceMode,
 			colorSignalMode,
 			compositeMode,
 			contrast,
 			crtCurvature,
+			crtCurvatureIntensity,
 			charsetCharacters.custom,
 			coverage,
 			density,
 			dotGridOverlay,
 			edgeEmphasis,
 			filmGrain,
+			filmGrainIntensity,
 			filmDust,
+			filmDustDensity,
 			fontWeight,
 			glitch,
+			glitchIntensity,
 			glyphSignalMode,
 			halftone,
+			halftoneSize,
 			hue,
 			invert,
 			maskInvert,
@@ -408,11 +603,14 @@ export default function AsciiDemo() {
 			opacity,
 			presenceSoftness,
 			pixelate,
+			pixelateSize,
 			randomizeCharacters,
 			randomSeed,
 			rgbSplit,
+			rgbSplitOffset,
 			saturation,
 			scanLines,
+			scanLinesIntensity,
 			shimmerAmount,
 			shimmerSpeed,
 			signalBlackPoint,
@@ -420,22 +618,24 @@ export default function AsciiDemo() {
 			signalWhitePoint,
 			sourceColors,
 			sourceMode,
+			previewAspectRatio,
 			speed,
 			toneMapping,
 			vignette,
+			vignetteIntensity,
 		],
 	);
 
 	return (
 		<div className="flex w-full max-w-2xl flex-col" style={{ gap: token("space.400") }}>
 			<div
-				className="aspect-video w-full overflow-hidden rounded-lg"
-				style={{ boxShadow: token("elevation.shadow.raised") }}
+				className="w-full overflow-hidden rounded-lg"
+				style={{ aspectRatio: previewAspectRatio, boxShadow: token("elevation.shadow.raised") }}
 			>
 				<Ascii
 					sourceMode={sourceMode}
 					sourceColors={sourceColors}
-					imageSrc={imageSrc}
+					imageSrc={uploadedImageSrc}
 					opacity={opacity}
 					blendMode={blendMode}
 					compositeMode={compositeMode}
@@ -451,7 +651,11 @@ export default function AsciiDemo() {
 					randomizeCharacters={randomizeCharacters}
 					randomSeed={randomSeed}
 					animatedCharacters={animatedCharacters}
-					characterCycleSpeed={characterCycleSpeed}
+					animationPlaying={animationPlaying}
+					animationStyle={animationStyle}
+					animationIntensity={animationIntensity}
+					animationRandomness={animationRandomness}
+					characterCycleSpeed={resolvedCharacterCycleSpeed}
 					dotGridOverlay={dotGridOverlay}
 					fontWeight={fontWeight}
 					colorMode={colorMode}
@@ -479,24 +683,31 @@ export default function AsciiDemo() {
 					shimmerSpeed={shimmerSpeed}
 					bloomEnabled={bloomEnabled}
 					bloomIntensity={bloomIntensity}
-					bloomThreshold={bloomThreshold}
-					bloomRadius={bloomRadius}
-					bloomSoftness={bloomSoftness}
-					colorOverlay={colorOverlay}
+					bloomThreshold={DEFAULT_BLOOM_THRESHOLD}
+					bloomRadius={DEFAULT_BLOOM_RADIUS}
+					bloomSoftness={DEFAULT_BLOOM_SOFTNESS}
+					colorOverlay={colorOverlay ? colorOverlayOpacity : 0}
 					colorOverlayColor={colorOverlayColor}
-					vignette={vignette}
-					scanLines={scanLines}
-					crtCurvature={crtCurvature}
+					colorOverlayBlendMode={colorOverlayBlendMode}
+					vignette={vignette ? vignetteIntensity : 0}
+					scanLines={scanLines ? scanLinesIntensity : 0}
+					crtCurvature={crtCurvature ? crtCurvatureIntensity : 0}
 					chromatic={chromatic}
-					characterBloom={characterBloom}
+					chromaticOffset={chromaticOffset}
+					characterBloom={characterBloom ? characterBloomIntensity : 0}
 					characterChromatic={characterChromatic}
-					filmGrain={filmGrain}
-					glitch={glitch}
+					characterChromaticOffset={characterChromaticOffset}
+					filmGrain={filmGrain ? filmGrainIntensity : 0}
+					glitch={glitch ? glitchIntensity : 0}
 					rgbSplit={rgbSplit}
+					rgbSplitOffset={rgbSplitOffset}
 					blur={blur}
+					blurRadius={blurRadius}
 					pixelate={pixelate}
+					pixelateSize={pixelateSize}
 					halftone={halftone}
-					filmDust={filmDust}
+					halftoneSize={halftoneSize}
+					filmDust={filmDust ? filmDustDensity : 0}
 					speed={speed}
 				/>
 			</div>
@@ -512,30 +723,18 @@ export default function AsciiDemo() {
 							onChange={handleSourceModeChange}
 						/>
 						{sourceMode === "image" ? (
-							<ImageUploadControl imageSrc={imageSrc} onChange={handleImageChange} />
+							<ImageUploadControl image={uploadedImage} onChange={handleImageChange} />
 						) : null}
 						{sourceMode === "field" ? (
-							<>
-								<GUI.Control
-									id="ascii-speed"
-									label="Source Speed"
-									value={speed}
-									defaultValue={1}
-									min={0}
-									max={3}
-									step={0.05}
-									onChange={setSpeed}
-								/>
-								<ShaderColorListControl
-									id="ascii-sourceColors"
-									label="Colors"
-									value={sourceColors}
-									defaultValue={ASCII_DEFAULT_SOURCE_COLORS}
-									onChange={setSourceColors}
-									allowAddRemove
-									maxColors={ASCII_MAX_SOURCE_COLORS}
-								/>
-							</>
+							<ShaderColorListControl
+								id="ascii-sourceColors"
+								label="Colors"
+								value={sourceColors}
+								defaultValue={ASCII_DEFAULT_SOURCE_COLORS}
+								onChange={setSourceColors}
+								allowAddRemove
+								maxColors={ASCII_MAX_SOURCE_COLORS}
+							/>
 						) : null}
 					</GUI.Section>
 
@@ -705,24 +904,6 @@ export default function AsciiDemo() {
 								onChange={setRandomSeed}
 							/>
 						) : null}
-						<GUI.Toggle
-							id="ascii-animatedCharacters"
-							label="Animated ASCII"
-							checked={animatedCharacters}
-							onChange={setAnimatedCharacters}
-						/>
-						{animatedCharacters ? (
-							<GUI.Control
-								id="ascii-characterCycleSpeed"
-								label="Cycle Speed"
-								value={characterCycleSpeed}
-								defaultValue={8}
-								min={0}
-								max={24}
-								step={0.25}
-								onChange={setCharacterCycleSpeed}
-							/>
-						) : null}
 						<GUI.Select
 							id="ascii-colorMode"
 							label="Color Mode"
@@ -816,6 +997,103 @@ export default function AsciiDemo() {
 						) : null}
 					</GUI.Section>
 
+					<GUI.Section title="Animation">
+						<GUI.Toggle
+							id="ascii-animatedCharacters"
+							label="Animated ASCII"
+							checked={animatedCharacters}
+							onChange={setAnimatedCharacters}
+						/>
+						<AnimationPlaybackControl
+							playing={animationPlaying}
+							onChange={setAnimationPlaying}
+						/>
+						<GUI.Select
+							id="ascii-animationStyle"
+							label="Animation Style"
+							value={animationStyle}
+							options={ANIMATION_STYLE_OPTIONS}
+							onChange={(next) => {
+								setAnimationStyle(next as AsciiAnimationStyle);
+								setAnimatedCharacters(true);
+							}}
+						/>
+						<GUI.Control
+							id="ascii-animationSpeedSeconds"
+							label="Speed"
+							value={animationSpeedSeconds}
+							defaultValue={DEFAULT_ANIMATION_SPEED_SECONDS}
+							min={0.5}
+							max={10}
+							step={0.1}
+							unit="s"
+							onChange={(next) => {
+								setAnimationSpeedSeconds(next);
+								setAnimatedCharacters(true);
+							}}
+						/>
+						<PercentControl
+							id="ascii-animationIntensity"
+							label="Intensity"
+							value={animationIntensity}
+							defaultValue={DEFAULT_ANIMATION_INTENSITY}
+							min={0}
+							max={1}
+							step={0.01}
+							onChange={(next) => {
+								setAnimationIntensity(next);
+								setAnimatedCharacters(true);
+							}}
+						/>
+						<PercentControl
+							id="ascii-animationRandomness"
+							label="Randomness"
+							value={animationRandomness}
+							defaultValue={DEFAULT_ANIMATION_RANDOMNESS}
+							min={0}
+							max={1}
+							step={0.01}
+							onChange={(next) => {
+								setAnimationRandomness(next);
+								setAnimatedCharacters(true);
+							}}
+						/>
+						{sourceMode === "field" ? (
+							<GUI.Control
+								id="ascii-sourceSpeed"
+								label="Source Speed"
+								value={speed}
+								defaultValue={1}
+								min={0}
+								max={3}
+								step={0.05}
+								onChange={setSpeed}
+							/>
+						) : null}
+						<GUI.Control
+							id="ascii-shimmerAmount"
+							label="Shimmer Amount"
+							value={shimmerAmount}
+							defaultValue={0}
+							min={0}
+							max={1}
+							step={0.01}
+							onChange={setShimmerAmount}
+						/>
+						{shimmerAmount > 0 ? (
+							<GUI.Control
+								id="ascii-shimmerSpeed"
+								label="Shimmer Speed"
+								value={shimmerSpeed}
+								defaultValue={1}
+								min={0}
+								max={10}
+								step={0.1}
+								onChange={setShimmerSpeed}
+							/>
+						) : null}
+					</GUI.Section>
+
 					<GUI.Section title="Signal">
 						<GUI.Select
 							id="ascii-toneMapping"
@@ -895,29 +1173,6 @@ export default function AsciiDemo() {
 						/>
 					</GUI.Section>
 
-					<GUI.Section title="Shimmer">
-						<GUI.Control
-							id="ascii-shimmerAmount"
-							label="Amount"
-							value={shimmerAmount}
-							defaultValue={0}
-							min={0}
-							max={1}
-							step={0.01}
-							onChange={setShimmerAmount}
-						/>
-						<GUI.Control
-							id="ascii-shimmerSpeed"
-							label="Speed"
-							value={shimmerSpeed}
-							defaultValue={1}
-							min={0}
-							max={10}
-							step={0.1}
-							onChange={setShimmerSpeed}
-						/>
-					</GUI.Section>
-
 					<GUI.Section title="Post-Processing">
 						<GUI.Toggle
 							id="ascii-colorOverlay"
@@ -926,13 +1181,32 @@ export default function AsciiDemo() {
 							onChange={setColorOverlay}
 						/>
 						{colorOverlay ? (
-							<ShaderColorInput
-								id="ascii-colorOverlayColor"
-								label="Overlay Color"
-								value={colorOverlayColor}
-								defaultValue="#F5F5F0"
-								onChange={setColorOverlayColor}
-							/>
+							<>
+								<ShaderColorInput
+									id="ascii-colorOverlayColor"
+									label="Color"
+									value={colorOverlayColor}
+									defaultValue="#F5F5F0"
+									onChange={setColorOverlayColor}
+								/>
+								<PercentControl
+									id="ascii-colorOverlayOpacity"
+									label="Opacity"
+									value={colorOverlayOpacity}
+									defaultValue={DEFAULT_COLOR_OVERLAY_OPACITY}
+									min={0}
+									max={1}
+									step={0.01}
+									onChange={setColorOverlayOpacity}
+								/>
+								<GUI.Select
+									id="ascii-colorOverlayBlendMode"
+									label="Blend"
+									value={colorOverlayBlendMode}
+									options={COLOR_OVERLAY_BLEND_OPTIONS}
+									onChange={(next) => setColorOverlayBlendMode(next as AsciiBlendMode)}
+								/>
+							</>
 						) : null}
 						<GUI.Toggle
 							id="ascii-vignette"
@@ -940,24 +1214,72 @@ export default function AsciiDemo() {
 							checked={vignette}
 							onChange={setVignette}
 						/>
+						{vignette ? (
+							<PercentControl
+								id="ascii-vignetteIntensity"
+								label="Intensity"
+								value={vignetteIntensity}
+								defaultValue={DEFAULT_VIGNETTE_INTENSITY}
+								min={0}
+								max={1}
+								step={0.01}
+								onChange={setVignetteIntensity}
+							/>
+						) : null}
 						<GUI.Toggle
 							id="ascii-scanLines"
 							label="Scan Lines"
 							checked={scanLines}
 							onChange={setScanLines}
 						/>
+						{scanLines ? (
+							<PercentControl
+								id="ascii-scanLinesIntensity"
+								label="Intensity"
+								value={scanLinesIntensity}
+								defaultValue={DEFAULT_SCAN_LINES_INTENSITY}
+								min={0}
+								max={1}
+								step={0.01}
+								onChange={setScanLinesIntensity}
+							/>
+						) : null}
 						<GUI.Toggle
 							id="ascii-crtCurvature"
 							label="CRT Curvature"
 							checked={crtCurvature}
 							onChange={setCrtCurvature}
 						/>
+						{crtCurvature ? (
+							<PercentControl
+								id="ascii-crtCurvatureIntensity"
+								label="Intensity"
+								value={crtCurvatureIntensity}
+								defaultValue={DEFAULT_CRT_CURVATURE_INTENSITY}
+								min={0}
+								max={1}
+								step={0.01}
+								onChange={setCrtCurvatureIntensity}
+							/>
+						) : null}
 						<GUI.Toggle
 							id="ascii-chromatic"
 							label="Chromatic"
 							checked={chromatic}
 							onChange={setChromatic}
 						/>
+						{chromatic ? (
+							<GUI.Control
+								id="ascii-chromaticOffset"
+								label="RGB Offset"
+								value={chromaticOffset}
+								defaultValue={DEFAULT_CHROMATIC_OFFSET}
+								min={1}
+								max={20}
+								step={1}
+								onChange={setChromaticOffset}
+							/>
+						) : null}
 						<GUI.Toggle
 							id="ascii-bloomEnabled"
 							label="Bloom"
@@ -965,48 +1287,16 @@ export default function AsciiDemo() {
 							onChange={setBloomEnabled}
 						/>
 						{bloomEnabled ? (
-							<>
-								<GUI.Control
-									id="ascii-bloomIntensity"
-									label="Intensity"
-									value={bloomIntensity}
-									defaultValue={1.25}
-									min={0}
-									max={8}
-									step={0.01}
-									onChange={setBloomIntensity}
-								/>
-								<GUI.Control
-									id="ascii-bloomThreshold"
-									label="Threshold"
-									value={bloomThreshold}
-									defaultValue={0.6}
-									min={0}
-									max={1}
-									step={0.01}
-									onChange={setBloomThreshold}
-								/>
-								<GUI.Control
-									id="ascii-bloomRadius"
-									label="Radius"
-									value={bloomRadius}
-									defaultValue={6}
-									min={0}
-									max={24}
-									step={0.25}
-									onChange={setBloomRadius}
-								/>
-								<GUI.Control
-									id="ascii-bloomSoftness"
-									label="Softness"
-									value={bloomSoftness}
-									defaultValue={0.35}
-									min={0}
-									max={1}
-									step={0.01}
-									onChange={setBloomSoftness}
-								/>
-							</>
+							<PercentControl
+								id="ascii-bloomIntensity"
+								label="Intensity"
+								value={bloomIntensity}
+								defaultValue={DEFAULT_BLOOM_INTENSITY}
+								min={0}
+								max={1}
+								step={0.01}
+								onChange={setBloomIntensity}
+							/>
 						) : null}
 						<GUI.Toggle
 							id="ascii-characterBloom"
@@ -1014,54 +1304,162 @@ export default function AsciiDemo() {
 							checked={characterBloom}
 							onChange={setCharacterBloom}
 						/>
+						{characterBloom ? (
+							<PercentControl
+								id="ascii-characterBloomIntensity"
+								label="Intensity"
+								value={characterBloomIntensity}
+								defaultValue={DEFAULT_CHARACTER_BLOOM_INTENSITY}
+								min={0}
+								max={1}
+								step={0.01}
+								onChange={setCharacterBloomIntensity}
+							/>
+						) : null}
 						<GUI.Toggle
 							id="ascii-characterChromatic"
 							label="Character Chromatic"
 							checked={characterChromatic}
 							onChange={setCharacterChromatic}
 						/>
+						{characterChromatic ? (
+							<GUI.Control
+								id="ascii-characterChromaticOffset"
+								label="RGB Offset"
+								value={characterChromaticOffset}
+								defaultValue={DEFAULT_CHARACTER_CHROMATIC_OFFSET}
+								min={1}
+								max={20}
+								step={1}
+								onChange={setCharacterChromaticOffset}
+							/>
+						) : null}
 						<GUI.Toggle
 							id="ascii-filmGrain"
 							label="Film Grain"
 							checked={filmGrain}
 							onChange={setFilmGrain}
 						/>
+						{filmGrain ? (
+							<PercentControl
+								id="ascii-filmGrainIntensity"
+								label="Intensity"
+								value={filmGrainIntensity}
+								defaultValue={DEFAULT_FILM_GRAIN_INTENSITY}
+								min={0}
+								max={1}
+								step={0.01}
+								onChange={setFilmGrainIntensity}
+							/>
+						) : null}
 						<GUI.Toggle
 							id="ascii-glitch"
 							label="Glitch"
 							checked={glitch}
 							onChange={setGlitch}
 						/>
+						{glitch ? (
+							<PercentControl
+								id="ascii-glitchIntensity"
+								label="Intensity"
+								value={glitchIntensity}
+								defaultValue={DEFAULT_GLITCH_INTENSITY}
+								min={0}
+								max={1}
+								step={0.01}
+								onChange={setGlitchIntensity}
+							/>
+						) : null}
 						<GUI.Toggle
 							id="ascii-rgbSplit"
 							label="RGB Split"
 							checked={rgbSplit}
 							onChange={setRgbSplit}
 						/>
+						{rgbSplit ? (
+							<GUI.Control
+								id="ascii-rgbSplitOffset"
+								label="RGB Offset"
+								value={rgbSplitOffset}
+								defaultValue={DEFAULT_RGB_SPLIT_OFFSET}
+								min={1}
+								max={20}
+								step={1}
+								onChange={setRgbSplitOffset}
+							/>
+						) : null}
 						<GUI.Toggle
 							id="ascii-blur"
 							label="Blur"
 							checked={blur}
 							onChange={setBlur}
 						/>
+						{blur ? (
+							<GUI.Control
+								id="ascii-blurRadius"
+								label="Radius"
+								value={blurRadius}
+								defaultValue={DEFAULT_BLUR_RADIUS}
+								min={1}
+								max={20}
+								step={1}
+								onChange={setBlurRadius}
+							/>
+						) : null}
 						<GUI.Toggle
 							id="ascii-pixelate"
 							label="Pixelate"
 							checked={pixelate}
 							onChange={setPixelate}
 						/>
+						{pixelate ? (
+							<GUI.Control
+								id="ascii-pixelateSize"
+								label="Size"
+								value={pixelateSize}
+								defaultValue={DEFAULT_PIXELATE_SIZE}
+								min={2}
+								max={30}
+								step={1}
+								onChange={setPixelateSize}
+							/>
+						) : null}
 						<GUI.Toggle
 							id="ascii-halftone"
 							label="Halftone"
 							checked={halftone}
 							onChange={setHalftone}
 						/>
+						{halftone ? (
+							<GUI.Control
+								id="ascii-halftoneSize"
+								label="Size"
+								value={halftoneSize}
+								defaultValue={DEFAULT_HALFTONE_SIZE}
+								min={2}
+								max={20}
+								step={1}
+								onChange={setHalftoneSize}
+							/>
+						) : null}
 						<GUI.Toggle
 							id="ascii-filmDust"
 							label="Film Dust"
 							checked={filmDust}
 							onChange={setFilmDust}
 						/>
+						{filmDust ? (
+							<PercentControl
+								id="ascii-filmDustDensity"
+								label="Density"
+								value={filmDustDensity}
+								defaultValue={DEFAULT_FILM_DUST_DENSITY}
+								min={0}
+								max={1}
+								step={0.01}
+								onChange={setFilmDustDensity}
+							/>
+						) : null}
 					</GUI.Section>
 				</div>
 			</GUI.Panel>

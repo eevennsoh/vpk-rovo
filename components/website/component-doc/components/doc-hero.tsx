@@ -107,9 +107,13 @@ export function DocHero({ name, description, category, importPath, adsLinks, ads
 						<code
 							key={path}
 							style={{
+								display: "block",
+								maxWidth: "100%",
 								fontSize: "13px",
 								color: token("color.text.subtlest"),
 								fontFamily: "monospace",
+								overflowWrap: "anywhere",
+								wordBreak: "break-word",
 							}}
 						>
 							{path}

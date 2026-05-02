@@ -308,7 +308,7 @@ function GUIPanel({ title, values, defaultOpen = true, children }: GUIPanelProps
 				</div>
 				{open ? (
 					<div
-						className="max-h-[min(48svh,32rem)] space-y-4 overflow-y-auto overscroll-contain py-1 pr-2 pl-1"
+						className="max-h-[min(48svh,32rem)] space-y-4 overflow-x-hidden overflow-y-auto overscroll-contain py-1 pr-2 pl-1"
 						data-gui-panel-scroll="true"
 					>
 						{children}
