@@ -185,87 +185,73 @@
 	}
 }
 
-/* -----------------------------------------------------------------
-   Translucent menu surface — frosted glass popup treatment
+/* Translucent menu surface — frosted glass popup treatment.
 
-   Intentionally unlayered. The descendant rules (item :focus / [data-highlighted],
-   separator background, trigger :focus background) deliberately override the
-   focus utilities applied by Base UI menu items (e.g. `focus:bg-accent` on
-   DropdownMenuItem from shadcn). Those utilities live in @layer utilities
-   and beat any non-!important rule in @layer components — verified empirically:
-   when the block is layered, focused items render solid `bg-accent` blue
-   instead of the intended translucent grey. Two valid fixes existed —
-   sprinkle !important across every descendant, or keep the block unlayered;
-   the latter is simpler and matches the original intent of the design.
-   ----------------------------------------------------------------- */
-.cn-menu-translucent {
+   Defined as @utility per Tailwind v4 idiom. Every descendant rule uses
+   !important because Tailwind sorts @utility blocks by property count, so
+   a multi-property utility sorts earlier than 1-property utilities like
+   `focus:bg-accent` applied by Base UI DropdownMenuItem — without !important,
+   focused items would render solid bg-accent blue instead of translucent grey.
+   !important reverses cascade ordering for these declarations and keeps the
+   intended frosted-glass look stable. */
+@utility cn-menu-translucent {
 	animation: none !important;
 	background-color: color-mix(in oklab, var(--ds-surface-overlay) 55%, transparent) !important;
 	-webkit-backdrop-filter: blur(16px) saturate(1.8);
 	backdrop-filter: blur(16px) saturate(1.8);
-}
 
-.cn-menu-translucent [data-slot$="-item"]:focus,
-.cn-menu-translucent [data-slot$="-item"][data-highlighted] {
-	background-color: color-mix(in oklab, var(--ds-text) 10%, transparent);
-}
+	& [data-slot$="-item"]:focus,
+	& [data-slot$="-item"][data-highlighted] {
+		background-color: color-mix(in oklab, var(--ds-text) 10%, transparent) !important;
+	}
 
-.cn-menu-translucent [data-slot$="-separator"] {
-	background-color: color-mix(in oklab, var(--ds-text) 5%, transparent);
-}
+	& [data-slot$="-separator"] {
+		background-color: color-mix(in oklab, var(--ds-text) 5%, transparent) !important;
+	}
 
-.cn-menu-translucent [data-slot$="-trigger"]:focus {
-	background-color: color-mix(in oklab, var(--ds-text) 10%, transparent);
-}
+	& [data-slot$="-trigger"]:focus {
+		background-color: color-mix(in oklab, var(--ds-text) 10%, transparent) !important;
+	}
 
-.cn-menu-translucent [data-slot$="-trigger"][aria-expanded="true"] {
-	background-color: color-mix(in oklab, var(--ds-text) 10%, transparent) !important;
-}
+	& [data-slot$="-trigger"][aria-expanded="true"] {
+		background-color: color-mix(in oklab, var(--ds-text) 10%, transparent) !important;
+	}
 
-.cn-menu-translucent [data-variant="destructive"]:focus {
-	background-color: color-mix(in oklab, var(--ds-text) 10%, transparent) !important;
-}
+	& [data-variant="destructive"]:focus {
+		background-color: color-mix(in oklab, var(--ds-text) 10%, transparent) !important;
+	}
 
-.cn-menu-translucent [data-variant="destructive"] {
-	color: var(--ds-text-danger) !important;
-}
+	& [data-variant="destructive"] {
+		color: var(--ds-text-danger) !important;
+	}
 
-.cn-menu-translucent [data-variant="destructive"] * {
-	color: var(--ds-text-danger) !important;
-}
+	& [data-variant="destructive"] * {
+		color: var(--ds-text-danger) !important;
+	}
 
-.cn-menu-translucent [data-variant="destructive"] svg {
-	color: var(--ds-icon-danger) !important;
-}
-
-/* -----------------------------------------------------------------
-   Unlayered Overrides
-
-   Rules below are intentionally outside @layer. The explicit layer-order
-   statement above pins the expected cascade, but these global escape hatches
-   still need to beat generated utilities and pre-hydration flashes reliably.
-   ----------------------------------------------------------------- */
-
-/* Embedded iframe — hide shell chrome before React hydration to prevent flash.
-   Pre-hydration script sets data-embedded on <html> inside iframes. */
-html[data-embedded] [data-shell-chrome] {
-	display: none !important;
+	& [data-variant="destructive"] svg {
+		color: var(--ds-icon-danger) !important;
+	}
 }
 
 /* Website sidebar layout — push main content to clear the fixed sidebar.
-   Kept unlayered: see "Unlayered Overrides" comment above. */
-.website-main-content {
+   Invariant: do not stack ml-* utilities on .website-main-content elements.
+   The body:has() rule below has 1 property and would tie with `ml-N` on
+   property-count sort; source-order tiebreak would let the Tailwind utility
+   win and break the sidebar layout. Verified clean in app/home-content.tsx,
+   app/arts/page.tsx, app/components/layout.tsx (all use the class alone). */
+@utility website-main-content {
 	margin-left: 48px; /* rail only */
 	transition: margin-left var(--duration-slow) var(--ease-in-out);
-}
 
-@media (min-width: 768px) {
-	body:has(aside[data-sidebar-open="true"]) .website-main-content {
-		margin-left: 304px; /* 48px rail + 256px panel */
-	}
+	@media (min-width: 768px) {
+		body:has(aside[data-sidebar-open="true"]) & {
+			margin-left: 304px; /* 48px rail + 256px panel */
+		}
 
-	body:has(aside[data-sidebar-open="false"]) .website-main-content {
-		margin-left: 48px; /* rail only */
+		body:has(aside[data-sidebar-open="false"]) & {
+			margin-left: 48px; /* rail only */
+		}
 	}
 }
 
@@ -274,18 +260,39 @@ html[data-embedded] [data-shell-chrome] {
    to a light value, but the path-level fill overrides inheritance.
    Only applied via `.ads-logo-inverse` when actualTheme is "dark".
    Tile-style logos use CSS-variable fills and are excluded. */
-.ads-logo-inverse > [role="img"] > svg path:not([fill^="var"]) {
-	fill: currentColor;
+@utility ads-logo-inverse {
+	& > [role="img"] > svg path:not([fill^="var"]) {
+		fill: currentColor;
+	}
 }
 
 /* Scrollbar hidden by default, revealed while actively scrolling */
-.scrollbar-auto-hide {
+@utility scrollbar-auto-hide {
 	scrollbar-width: thin;
 	scrollbar-gutter: stable both-edges;
 	scrollbar-color: transparent transparent;
+
 	&[data-scrolling] {
 		scrollbar-color: color-mix(in oklab, currentColor 20%, transparent) transparent;
 	}
+}
+
+/* -----------------------------------------------------------------
+   Unlayered Overrides
+
+   Two rules genuinely cannot move into @utility:
+   1. data-shell-chrome is targeted via attribute, not a class — there is
+      nothing to name as a utility. Stays raw + unlayered.
+   2. The prefers-reduced-motion override is a global a11y hammer applied
+      via `*` and `!important`. !important reverses the layer cascade, so
+      keeping it unlayered guarantees it beats every layered !important
+      (animation/transition libraries, etc.) without exception.
+   ----------------------------------------------------------------- */
+
+/* Embedded iframe — hide shell chrome before React hydration to prevent flash.
+   Pre-hydration script sets data-embedded on <html> inside iframes. */
+html[data-embedded] [data-shell-chrome] {
+	display: none !important;
 }
 
 /* Reduced motion — respects user preferences */
