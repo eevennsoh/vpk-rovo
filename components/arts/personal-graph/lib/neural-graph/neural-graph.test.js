@@ -53,6 +53,46 @@ function edge(source, target, kind = "wiki_link") {
 	};
 }
 
+function layoutNode(id, x) {
+	return {
+		alpha: 1,
+		baseSize: 4,
+		depthScale: 1,
+		id,
+		node: {
+			degree: 1,
+			dangling: false,
+			id,
+			kind: "concept",
+			missing: false,
+			original: { frontmatter: {} },
+			title: id,
+		},
+		phase: 0,
+		x,
+		y: 0,
+		z: 0,
+	};
+}
+
+function layoutEdge(id, source, target) {
+	return {
+		edge: {
+			id,
+			index: 0,
+			kind: "wiki_link",
+			label: "link",
+			original: {},
+			source: source.id,
+			target: target.id,
+			weight: 1,
+		},
+		id,
+		source,
+		target,
+	};
+}
+
 const explorer = {
 	edges: [
 		edge("selected", "beta", "frontmatter_source"),
@@ -282,6 +322,56 @@ test("drawNeuralGraph clamps boosted ray opacity to valid canvas alpha", async (
 	for (const value of alphaValues) {
 		assert.ok(value >= 0 && value <= 1, `expected ${value} to stay within canvas globalAlpha bounds`);
 	}
+});
+
+test("drawNeuralGraph keeps idle edge order and layers selected edges last", async () => {
+	const { createNeuralCamera } = await cameraModule;
+	const { DEFAULT_NEURAL_GRAPH_PARAMS } = await paramsModule;
+	const { drawNeuralGraph } = await rendererModule;
+	const viewport = { height: 200, width: 300 };
+	const selected = layoutNode("selected", 0);
+	const neighbor = layoutNode("neighbor", 80);
+	const idleSource = layoutNode("idle-source", -80);
+	const idleTarget = layoutNode("idle-target", -40);
+	const layout = {
+		edges: [
+			layoutEdge("active", selected, neighbor),
+			layoutEdge("idle", idleSource, idleTarget),
+		],
+		nodes: [selected, neighbor, idleSource, idleTarget],
+		nodesById: new Map([
+			[selected.id, selected],
+			[neighbor.id, neighbor],
+			[idleSource.id, idleSource],
+			[idleTarget.id, idleTarget],
+		]),
+		origin: { x: 0, y: 0 },
+		viewport,
+	};
+	const params = {
+		...DEFAULT_NEURAL_GRAPH_PARAMS,
+		showLabels: false,
+		showRays: false,
+	};
+	const getDrawnEdgeTargets = (selectedNodeId) => {
+		const ctx = createRecordingCanvasContext();
+		drawNeuralGraph(ctx, layout, {
+			background: "transparent",
+			camera: createNeuralCamera(),
+			focusProgress: selectedNodeId ? 1 : 0,
+			hoveredNodeId: null,
+			params,
+			selectedNodeId,
+			theme: "light",
+			viewport,
+		});
+		return ctx.calls
+			.filter(([name]) => name === "lineTo")
+			.map(([, x]) => Number(x.toFixed(3)));
+	};
+
+	assert.deepEqual(getDrawnEdgeTargets(null), [230, 110]);
+	assert.deepEqual(getDrawnEdgeTargets("selected"), [110, 230]);
 });
 
 test("camera transforms round-trip and focus selected points", async () => {
