@@ -6,6 +6,29 @@ Mark promoted entries with `[Promoted]` prefix — see vpk-lesson skill for deta
 
 ---
 
+### 2026-05-02 - Never stack a `dark:` variant on Tailwind `neutral-*` (or other ADS-mapped) classes
+
+- **What happened:** Tried to subdue the Personal Graph grid texture by
+  swapping `text-neutral-400` for `text-neutral-200 dark:text-neutral-800`.
+  The change had almost no visible effect in light mode, and the dark
+  variant pulled dark mode to a completely different luminance rung than
+  intended.
+- **Why:** In `app/tailwind-theme.css`, Tailwind's `neutral-50` … `neutral-950`
+  scale is remapped to ADS gray tokens (`--ds-background-accent-gray-*`),
+  which already auto-flip with the `light`/`dark` class on `<html>`. So
+  `text-neutral-100` in light mode resolves to a near-white gray, and the
+  same `text-neutral-100` in dark mode auto-flips to a near-surface dark
+  gray — same semantic rung, theme-correct value. Adding `dark:text-neutral-X`
+  double-handles the flip and breaks the design intent.
+- **Rule:** Use a single ADS-mapped neutral class for both modes — e.g.
+  `text-neutral-100`, never `text-neutral-200 dark:text-neutral-800`. Lower
+  rung numbers = closer to the surface (subtler) in *both* modes; higher rung
+  numbers = farther from the surface in both modes. This is the inverse of
+  vanilla Tailwind, where rung numbers track absolute luminance. The same
+  rule applies to any other utility class whose CSS variable is already a
+  themed ADS token (check `app/tailwind-theme.css` and `app/shadcn-theme.css`
+  before reaching for `dark:`).
+
 ### 2026-05-02 - Prefer Tailwind semantic classes over raw token strings in component styling
 
 - **What happened:** A Personal Graph backdrop adjustment passed raw

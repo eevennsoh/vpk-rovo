@@ -308,7 +308,7 @@ test("Personal Graph uses a theme-aware editor canvas backdrop", () => {
 	);
 	assert.match(BACKDROP_SOURCE, /data-personal-graph-editor-backdrop="light-grid"/);
 	assert.match(BACKDROP_SOURCE, /data-personal-graph-editor-backdrop="ascii-shader"/);
-	assert.match(BACKDROP_SOURCE, /data-personal-graph-editor-backdrop="ascii-grid-overlay"/);
+	assert.doesNotMatch(BACKDROP_SOURCE, /data-personal-graph-editor-backdrop="ascii-grid-overlay"/);
 	assert.match(BACKDROP_SOURCE, /overflow-hidden bg-surface/);
 	assert.match(BACKDROP_SOURCE, /#000 42%, #000 100%/);
 	assert.doesNotMatch(BACKDROP_SOURCE, /bg-gradient-to-t from-white/);
@@ -326,7 +326,7 @@ test("Personal Graph uses a theme-aware editor canvas backdrop", () => {
 		/import \{ useTheme \} from "@\/components\/utils\/theme-wrapper";/,
 	);
 	assert.match(BACKDROP_SOURCE, /patternType="grid"/);
-	assert.match(BACKDROP_SOURCE, /className="text-neutral-400"/);
+	assert.match(BACKDROP_SOURCE, /className="text-border"/);
 	assert.match(BACKDROP_SOURCE, /front="currentColor"/);
 	assert.match(BACKDROP_SOURCE, /back="transparent"/);
 	assert.match(TAILWIND_THEME_SOURCE, /--color-neutral-400: var\(--ds-chart-gray-bold\);/);
@@ -340,12 +340,12 @@ test("Personal Graph uses a theme-aware editor canvas backdrop", () => {
 	assert.doesNotMatch(BACKDROP_SOURCE, /const PERSONAL_GRAPH_GRID_COLOR = "var\(--ds-border\)";/);
 	assert.doesNotMatch(BACKDROP_SOURCE, /className="text-text-subtlest"/);
 	assert.doesNotMatch(BACKDROP_SOURCE, /className="text-blanket"/);
-	assert.match(BACKDROP_SOURCE, /const PERSONAL_GRAPH_GRID_FADE_STYLE = /);
-	assert.match(BACKDROP_SOURCE, /style=\{PERSONAL_GRAPH_GRID_FADE_STYLE\}/);
-	assert.match(BACKDROP_SOURCE, /const PERSONAL_GRAPH_SHADER_GRID_FADE_STYLE = /);
-	assert.match(BACKDROP_SOURCE, /style=\{PERSONAL_GRAPH_SHADER_GRID_FADE_STYLE\}/);
+	assert.match(BACKDROP_SOURCE, /const PERSONAL_GRAPH_GRID_MASK = /);
+	assert.match(BACKDROP_SOURCE, /WebkitMaskImage: PERSONAL_GRAPH_GRID_MASK/);
+	assert.doesNotMatch(BACKDROP_SOURCE, /PERSONAL_GRAPH_GRID_FADE_STYLE/);
+	assert.doesNotMatch(BACKDROP_SOURCE, /PERSONAL_GRAPH_SHADER_GRID_FADE_STYLE/);
 	assert.match(BACKDROP_SOURCE, /transparent 76%/);
-	assert.match(BACKDROP_SOURCE, /transparent 62%/);
+	assert.doesNotMatch(BACKDROP_SOURCE, /transparent 62%/);
 	assert.match(BACKDROP_SOURCE, /back="transparent"/);
 	assert.match(BACKDROP_SOURCE, /scale=\{48\}/);
 	assert.match(BACKDROP_SOURCE, /style: "dashed"/);
@@ -363,18 +363,18 @@ test("Personal Graph uses a theme-aware editor canvas backdrop", () => {
 	assert.match(BACKDROP_SOURCE, /"#FCA700"/);
 	assert.match(BACKDROP_SOURCE, /"#AF59E1"/);
 	assert.match(BACKDROP_SOURCE, /"#6A9A23"/);
-	assert.match(BACKDROP_SOURCE, /sourceMode="field"/);
+	assert.doesNotMatch(BACKDROP_SOURCE, /sourceMode="field"/);
 	assert.match(BACKDROP_SOURCE, /charset="custom"/);
 	assert.doesNotMatch(BACKDROP_SOURCE, /characterMode="sequence"/);
 	assert.match(BACKDROP_SOURCE, /customChars=" \.:-=\+\*#%@ROVO"/);
-	assert.match(BACKDROP_SOURCE, /colorMode="monochrome"/);
+	assert.doesNotMatch(BACKDROP_SOURCE, /colorMode="monochrome"/);
 	assert.match(BACKDROP_SOURCE, /const PERSONAL_GRAPH_ASCII_COLOR = "var\(--ds-text-subtle\)";/);
 	assert.match(BACKDROP_SOURCE, /monoColor=\{PERSONAL_GRAPH_ASCII_COLOR\}/);
 	assert.match(BACKDROP_SOURCE, /backgroundColor=\{PERSONAL_GRAPH_SURFACE_COLOR\}/);
 	assert.match(BACKDROP_SOURCE, /key=\{`personal-graph-ascii-\$\{actualTheme\}`\}/);
 	assert.doesNotMatch(BACKDROP_SOURCE, /colorMode="source"/);
 	assert.match(BACKDROP_SOURCE, /compositeMode="mask"/);
-	assert.match(BACKDROP_SOURCE, /speed=\{1\}/);
+	assert.doesNotMatch(BACKDROP_SOURCE, /speed=\{1\}/);
 	assert.match(BACKDROP_SOURCE, /sourceColors=\{PERSONAL_GRAPH_SHADER_COLORS\}/);
 	assert.match(BACKDROP_SOURCE, /signalBlackPoint=\{0\.1\}/);
 	assert.match(BACKDROP_SOURCE, /signalWhitePoint=\{0\.88\}/);

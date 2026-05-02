@@ -19,14 +19,7 @@ const PERSONAL_GRAPH_GRID_STROKE = {
 	lineJoin: "miter",
 	miterLimit: 4,
 } satisfies PatternStrokeOptions;
-const PERSONAL_GRAPH_GRID_FADE_STYLE = {
-	WebkitMaskImage: "linear-gradient(to bottom, #000 0%, #000 54%, rgba(0, 0, 0, 0.55) 64%, transparent 76%, transparent 100%)",
-	maskImage: "linear-gradient(to bottom, #000 0%, #000 54%, rgba(0, 0, 0, 0.55) 64%, transparent 76%, transparent 100%)",
-} satisfies React.CSSProperties;
-const PERSONAL_GRAPH_SHADER_GRID_FADE_STYLE = {
-	WebkitMaskImage: "linear-gradient(to bottom, rgba(0, 0, 0, 0.28) 0%, rgba(0, 0, 0, 0.12) 30%, transparent 62%, transparent 100%)",
-	maskImage: "linear-gradient(to bottom, rgba(0, 0, 0, 0.28) 0%, rgba(0, 0, 0, 0.12) 30%, transparent 62%, transparent 100%)",
-} satisfies React.CSSProperties;
+const PERSONAL_GRAPH_GRID_MASK = "linear-gradient(to bottom, #000 0%, #000 54%, rgba(0, 0, 0, 0.55) 64%, transparent 76%, transparent 100%)";
 
 const PERSONAL_GRAPH_SHADER_COLORS: [string, string, string, string] = [
 	"#1868DB",
@@ -69,67 +62,21 @@ function PersonalGraphAsciiBackdrop() {
 			/>
 			<Ascii
 				key={`personal-graph-ascii-${actualTheme}`}
-				sourceMode="field"
 				sourceColors={PERSONAL_GRAPH_SHADER_COLORS}
 				opacity={0.78}
-				blendMode="normal"
 				compositeMode="mask"
-				hue={0}
-				saturation={1}
-				cellSize={12}
 				charset="custom"
 				customChars=" .:-=+*#%@ROVO"
-				fontWeight="regular"
 				className="absolute inset-0 opacity-90 mix-blend-multiply"
-				colorMode="monochrome"
 				monoColor={PERSONAL_GRAPH_ASCII_COLOR}
 				backgroundColor={PERSONAL_GRAPH_SURFACE_COLOR}
-				invert={false}
-				directionBias={0}
-				bgOpacity={0}
-				maskSource="luminance"
-				maskMode="multiply"
-				maskInvert={false}
-				toneMapping="none"
-				glyphSignalMode="luminance"
-				colorSignalMode="luminance"
 				signalBlackPoint={0.1}
 				signalWhitePoint={0.88}
 				signalGamma={0.92}
 				presenceThreshold={0.56}
 				presenceSoftness={0.34}
-				shimmerAmount={0}
-				shimmerSpeed={1}
-				bloomEnabled={false}
-				bloomIntensity={1.25}
-				bloomThreshold={0.6}
-				bloomRadius={6}
-				bloomSoftness={0.35}
-				speed={1}
 				transparentBackground
 			/>
-			<div
-				className="absolute inset-0"
-				data-personal-graph-editor-backdrop="ascii-grid-overlay"
-				style={PERSONAL_GRAPH_SHADER_GRID_FADE_STYLE}
-			>
-				<PatternTile
-					className="text-neutral-100"
-					patternType="grid"
-					front="currentColor"
-					back="transparent"
-					scale={48}
-					stroke={PERSONAL_GRAPH_GRID_STROKE}
-					opacity={0.34}
-					blendMode="normal"
-					fill="tile"
-					position="center"
-					shouldAnimate={false}
-					direction="left"
-					diagonal
-					duration={5}
-				/>
-			</div>
 		</div>
 	);
 }
@@ -145,24 +92,15 @@ export function PersonalGraphBackdrop({
 			data-personal-graph-editor-backdrop="light-grid"
 			{...props}
 		>
-			<div className="absolute inset-0" style={PERSONAL_GRAPH_GRID_FADE_STYLE}>
-				<PatternTile
-					className="text-neutral-100"
-					patternType="grid"
-					front="currentColor"
-					back="transparent"
-					scale={48}
-					stroke={PERSONAL_GRAPH_GRID_STROKE}
-					opacity={1}
-					blendMode="normal"
-					fill="tile"
-					position="center"
-					shouldAnimate={false}
-					direction="left"
-					diagonal
-					duration={5}
-				/>
-			</div>
+			<PatternTile
+				className="text-border"
+				style={{ WebkitMaskImage: PERSONAL_GRAPH_GRID_MASK, maskImage: PERSONAL_GRAPH_GRID_MASK }}
+				patternType="grid"
+				front="currentColor"
+				back="transparent"
+				scale={48}
+				stroke={PERSONAL_GRAPH_GRID_STROKE}
+			/>
 			<div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-surface via-surface/90 to-transparent" />
 			<PersonalGraphAsciiBackdrop />
 		</div>
