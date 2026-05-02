@@ -3,29 +3,11 @@
 import { useEffect, useState } from "react";
 import { useReducedMotion } from "motion/react";
 
-export type PersonalGraphIntroPhase =
-	| "title"
-	| "subtext"
-	| "controls"
-	| "settle"
-	| "search"
-	| "graph"
-	| "done";
-
-interface PhaseStep {
-	phase: PersonalGraphIntroPhase;
-	at: number;
-}
-
-const PHASE_TIMELINE: ReadonlyArray<PhaseStep> = [
-	{ phase: "title", at: 0 },
-	{ phase: "subtext", at: 500 },
-	{ phase: "controls", at: 900 },
-	{ phase: "settle", at: 1700 },
-	{ phase: "search", at: 2000 },
-	{ phase: "graph", at: 2400 },
-	{ phase: "done", at: 3700 },
-];
+import {
+	getPersonalGraphIntroPhaseAt,
+	PERSONAL_GRAPH_INTRO_TIMELINE,
+	type PersonalGraphIntroPhase,
+} from "./intro-phase";
 
 interface UsePersonalGraphIntroResult {
 	phase: PersonalGraphIntroPhase;
@@ -38,12 +20,12 @@ export function usePersonalGraphIntro(): UsePersonalGraphIntroResult {
 
 	useEffect(() => {
 		if (prefersReducedMotion) {
-			setPhase("done");
+			setPhase(getPersonalGraphIntroPhaseAt(0, prefersReducedMotion));
 			return;
 		}
 
 		const timeouts: ReturnType<typeof setTimeout>[] = [];
-		for (const step of PHASE_TIMELINE) {
+		for (const step of PERSONAL_GRAPH_INTRO_TIMELINE) {
 			if (step.at === 0) {
 				setPhase(step.phase);
 				continue;
