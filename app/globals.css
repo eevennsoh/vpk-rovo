@@ -8,13 +8,9 @@
    4. tailwindcss        - Generate utilities from collected themes
    ================================================================= */
 
-/* Lock layer cascade order before any @import runs.
-   Without this, tailwind-theme.css's `@layer components { … }` (which is
-   imported before `tailwindcss`) declares the components layer first,
-   placing it ahead of theme/base/utilities. That cascade puts preflight
-   (in @layer base) above @layer components, so component rules lose to
-   `* { margin: 0 }` and similar resets. Pre-declaring the order pins
-   each layer to its intended position regardless of import order. */
+/* Lock cascade layer order before any @import runs. This pins Tailwind's
+   expected theme/base/components/utilities order even if imported files
+   introduce layer blocks in a different source order. */
 @layer theme, base, components, utilities;
 
 @import "./tailwind-theme.css";
@@ -187,52 +183,6 @@
 	[data-sonner-toast][data-styled="false"]:focus-visible {
 		box-shadow: none;
 	}
-
-	/* Embedded iframe — hide shell chrome before React hydration to prevent flash.
-	   Pre-hydration script sets data-embedded on <html> inside iframes. */
-	html[data-embedded] [data-shell-chrome] {
-		display: none !important;
-	}
-
-	/* Website sidebar layout — push main content to clear the fixed sidebar.
-	   The body:has() compound selector below has higher specificity than any
-	   single ml-* utility, but layer ordering — not specificity — is what
-	   guarantees this wins; consumers must not add ml-* utilities to the
-	   same element (verified: app/home-content.tsx, app/arts/page.tsx,
-	   app/components/layout.tsx all use only "website-main-content"). */
-	.website-main-content {
-		margin-left: 48px; /* rail only */
-		transition: margin-left var(--duration-slow) var(--ease-in-out);
-	}
-
-	@media (min-width: 768px) {
-		body:has(aside[data-sidebar-open="true"]) .website-main-content {
-			margin-left: 304px; /* 48px rail + 256px panel */
-		}
-
-		body:has(aside[data-sidebar-open="false"]) .website-main-content {
-			margin-left: 48px; /* rail only */
-		}
-	}
-
-	/* ADS Logo dark-mode fix — some @atlaskit/logo SVGs ship with hardcoded
-	   fill="#101214" on <path> elements. In dark mode the wrapper sets `color`
-	   to a light value, but the path-level fill overrides inheritance.
-	   Only applied via `.ads-logo-inverse` when actualTheme is "dark".
-	   Tile-style logos use CSS-variable fills and are excluded. */
-	.ads-logo-inverse > [role="img"] > svg path:not([fill^="var"]) {
-		fill: currentColor;
-	}
-
-	/* Scrollbar hidden by default, revealed while actively scrolling */
-	.scrollbar-auto-hide {
-		scrollbar-width: thin;
-		scrollbar-gutter: stable both-edges;
-		scrollbar-color: transparent transparent;
-		&[data-scrolling] {
-			scrollbar-color: color-mix(in oklab, currentColor 20%, transparent) transparent;
-		}
-	}
 }
 
 /* -----------------------------------------------------------------
@@ -289,109 +239,52 @@
 }
 
 /* -----------------------------------------------------------------
-   Browser Preview Overlay — Expect-style cursor, glow, and label
+   Unlayered Overrides
 
-   Intentionally unlayered: this block is @keyframes definitions
-   (referenced by name, layer-agnostic) plus a prefers-reduced-motion
-   override that uses !important. For !important rules, layer order
-   is reversed — unlayered !important beats every layered !important,
-   which is the right behavior for an a11y-driven motion override.
+   Rules below are intentionally outside @layer. The explicit layer-order
+   statement above pins the expected cascade, but these global escape hatches
+   still need to beat generated utilities and pre-hydration flashes reliably.
    ----------------------------------------------------------------- */
 
-/* Cursor entrance — scale up from 40% */
-@keyframes expect-cursor-in {
-	from {
-		opacity: 0;
-		transform: scale(0.4);
+/* Embedded iframe — hide shell chrome before React hydration to prevent flash.
+   Pre-hydration script sets data-embedded on <html> inside iframes. */
+html[data-embedded] [data-shell-chrome] {
+	display: none !important;
+}
+
+/* Website sidebar layout — push main content to clear the fixed sidebar.
+   Kept unlayered: see "Unlayered Overrides" comment above. */
+.website-main-content {
+	margin-left: 48px; /* rail only */
+	transition: margin-left var(--duration-slow) var(--ease-in-out);
+}
+
+@media (min-width: 768px) {
+	body:has(aside[data-sidebar-open="true"]) .website-main-content {
+		margin-left: 304px; /* 48px rail + 256px panel */
 	}
-	to {
-		opacity: 1;
-		transform: scale(1);
+
+	body:has(aside[data-sidebar-open="false"]) .website-main-content {
+		margin-left: 48px; /* rail only */
 	}
 }
 
-/* Cursor glow — pulsing drop-shadow around cursor SVG */
-@keyframes expect-cursor-glow {
-	0%,
-	100% {
-		filter: drop-shadow(0 0 8px rgba(64, 156, 250, 0.6)) drop-shadow(0 0 16px rgba(64, 156, 250, 0.3));
-	}
-	50% {
-		filter: drop-shadow(0 0 4px rgba(64, 156, 250, 0.3)) drop-shadow(0 0 8px rgba(64, 156, 250, 0.1));
-	}
+/* ADS Logo dark-mode fix — some @atlaskit/logo SVGs ship with hardcoded
+   fill="#101214" on <path> elements. In dark mode the wrapper sets `color`
+   to a light value, but the path-level fill overrides inheritance.
+   Only applied via `.ads-logo-inverse` when actualTheme is "dark".
+   Tile-style logos use CSS-variable fills and are excluded. */
+.ads-logo-inverse > [role="img"] > svg path:not([fill^="var"]) {
+	fill: currentColor;
 }
 
-/* Browser artifact border glow — soft pulsing glow around the pane when active */
-@keyframes expect-border-glow {
-	0%,
-	100% {
-		box-shadow:
-			inset 0 0 0 1px rgba(64, 156, 250, 0.35),
-			0 0 20px 2px rgba(64, 156, 250, 0.2),
-			0 0 40px 4px rgba(64, 156, 250, 0.08);
-	}
-	50% {
-		box-shadow:
-			inset 0 0 0 1px rgba(64, 156, 250, 0.15),
-			0 0 10px 1px rgba(64, 156, 250, 0.1),
-			0 0 20px 2px rgba(64, 156, 250, 0.03);
-	}
-}
-
-/* Full-screen halo — inset box-shadow pulse around viewport edges */
-@keyframes expect-glow-pulse {
-	0%,
-	100% {
-		box-shadow: inset 0 0 40px 12px rgba(64, 156, 250, 0.5);
-	}
-	50% {
-		box-shadow: inset 0 0 25px 6px rgba(64, 156, 250, 0.2);
-	}
-}
-
-/* Star dot orbit — 4 satellite dots in label indicator */
-@keyframes expect-dot-orbit {
-	0% {
-		opacity: 0.12;
-		transform: scale(0.85);
-	}
-	35% {
-		opacity: 1;
-		transform: scale(1.15);
-	}
-	65% {
-		opacity: 0.5;
-		transform: scale(0.95);
-	}
-	100% {
-		opacity: 0.12;
-		transform: scale(0.85);
-	}
-}
-
-/* Star dot center — single center dot in label indicator */
-@keyframes expect-dot-center {
-	0% {
-		opacity: 0.3;
-		transform: scale(0.9);
-	}
-	50% {
-		opacity: 1;
-		transform: scale(1.1);
-	}
-	100% {
-		opacity: 0.3;
-		transform: scale(0.9);
-	}
-}
-
-/* Text shimmer — gradient sweep across label text */
-@keyframes expect-text-shimmer {
-	0% {
-		background-position: -200% 0;
-	}
-	100% {
-		background-position: 200% 0;
+/* Scrollbar hidden by default, revealed while actively scrolling */
+.scrollbar-auto-hide {
+	scrollbar-width: thin;
+	scrollbar-gutter: stable both-edges;
+	scrollbar-color: transparent transparent;
+	&[data-scrolling] {
+		scrollbar-color: color-mix(in oklab, currentColor 20%, transparent) transparent;
 	}
 }
 
@@ -419,18 +312,13 @@
    CSS for React <ViewTransition> component animations.
    Class names match the enter/exit/share string props.
    Uses project motion tokens for timing consistency.
-
-   Layered into @layer components: ::view-transition-* pseudo-elements
-   have no competing Tailwind utilities, and the --vt-duration-* custom
-   properties on :root resolve via inheritance regardless of layer.
    ----------------------------------------------------------------- */
 
-@layer components {
-	:root {
-		--vt-duration-exit: var(--duration-normal); /* 150ms */
-		--vt-duration-enter: var(--duration-medium); /* 200ms */
-		--vt-duration-move: var(--duration-slower); /* 400ms */
-	}
+:root {
+	--vt-duration-exit: var(--duration-normal); /* 150ms */
+	--vt-duration-enter: var(--duration-medium); /* 200ms */
+	--vt-duration-move: var(--duration-slower); /* 400ms */
+}
 
 /* Shared keyframes */
 @keyframes vt-fade {
@@ -575,5 +463,4 @@
 ::view-transition-new(persistent-header),
 ::view-transition-new(persistent-sidebar) {
 	animation: none;
-}
 }
