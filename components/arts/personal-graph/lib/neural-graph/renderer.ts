@@ -256,12 +256,11 @@ function drawEdges(
 
 function drawNodeShape(
 	ctx: CanvasRenderingContext2D,
-	node: NeuralLayoutNode,
+	point: NeuralPoint,
 	radius: number,
-	options: NeuralGraphRenderOptions,
+	shape: NeuralGraphParams["nodeShape"],
 ) {
-	const point = worldToViewport(node, options.camera, options.viewport, options.params);
-	if (options.params.nodeShape === "square") {
+	if (shape === "square") {
 		ctx.fillRect(point.x - radius, point.y - radius, radius * 2, radius * 2);
 		return;
 	}
@@ -300,17 +299,31 @@ function drawNodes(
 		const isSelected = node.id === options.selectedNodeId;
 		const isHovered = node.id === options.hoveredNodeId;
 		const isRelated = nodeIds.has(node.id);
-		const focusAlpha = focusProgress > 0 ? (isSelected ? 1 : isRelated ? lerp(1, 0.9, focusProgress) : lerp(1, 0.14, focusProgress)) : 1;
+		let focusAlpha = 1;
+		if (focusProgress > 0) {
+			if (isSelected) {
+				focusAlpha = 1;
+			} else if (isRelated) {
+				focusAlpha = lerp(1, 0.9, focusProgress);
+			} else {
+				focusAlpha = lerp(1, 0.14, focusProgress);
+			}
+		}
 		const relatedScale = focusProgress > 0 && isRelated ? lerp(1, 1.22, focusProgress) : 1;
 		const inactiveScale = focusProgress > 0 && !isRelated ? lerp(1, 0.7, focusProgress) : 1;
-		const activeScale = isSelected ? lerp(selectedScale, selectedScaleMax, focusProgress) : isHovered ? hoverScale : relatedScale * inactiveScale;
+		let activeScale = relatedScale * inactiveScale;
+		if (isSelected) {
+			activeScale = lerp(selectedScale, selectedScaleMax, focusProgress);
+		} else if (isHovered) {
+			activeScale = hoverScale;
+		}
 		const radius = Math.max(2.5, node.baseSize * node.depthScale * options.camera.zoom * activeScale);
 		const alpha = Math.min(1, node.alpha * (isSelected || isHovered ? 1 : 0.82) * focusAlpha);
+		const point = worldToViewport(node, options.camera, options.viewport, options.params);
 
 		ctx.save();
 		ctx.globalAlpha = alpha;
 		if (isSelected || isHovered || (focusProgress > 0 && isRelated)) {
-			const point = worldToViewport(node, options.camera, options.viewport, options.params);
 			const glow = ctx.createRadialGradient(point.x, point.y, 0, point.x, point.y, radius * glowSize);
 			glow.addColorStop(0, colorWithAlpha(nodeColor, isSelected || isHovered ? glowIntensity : glowIntensityRelated));
 			glow.addColorStop(1, "rgba(0, 0, 0, 0)");
@@ -320,10 +333,9 @@ function drawNodes(
 			ctx.fill();
 		}
 		ctx.fillStyle = node.node.missing || node.node.dangling ? colorWithAlpha(nodeColor, 0.5) : nodeColor;
-		drawNodeShape(ctx, node, radius, options);
+		drawNodeShape(ctx, point, radius, options.params.nodeShape);
 		ctx.lineWidth = isSelected ? lerp(1.8, 2.6, focusProgress) : isRelated ? lerp(1, 1.35, focusProgress) : 1;
 		ctx.strokeStyle = isSelected ? "rgba(255, 255, 255, 0.92)" : colorWithAlpha(nodeColor, isRelated ? lerp(0.42, 0.74, focusProgress) : 0.42);
-		const point = worldToViewport(node, options.camera, options.viewport, options.params);
 		ctx.beginPath();
 		if (options.params.nodeShape === "square") {
 			ctx.rect(point.x - radius, point.y - radius, radius * 2, radius * 2);
