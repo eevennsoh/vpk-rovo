@@ -6,6 +6,17 @@ Mark promoted entries with `[Promoted]` prefix — see vpk-lesson skill for deta
 
 ---
 
+### 2026-05-02 - Do not add a top fade over the Personal Graph grid
+
+- **What happened:** The `/personal-graph` backdrop had an absolute top
+  `bg-gradient-to-b` overlay that faded the dashed editor grid behind the
+  title and controls.
+- **Why:** A prior visual polish pass masked the grid to soften the header
+  area after the route had already moved toward transparent page chrome.
+- **Rule:** On `/personal-graph`, keep the top header/backdrop area unmasked.
+  Do not reintroduce a top surface gradient over the dashed grid unless the
+  user explicitly asks for that fade.
+
 ### 2026-05-02 - Never stack a `dark:` variant on Tailwind `neutral-*` (or other ADS-mapped) classes
 
 - **What happened:** Tried to subdue the Personal Graph grid texture by
@@ -628,3 +639,35 @@ Mark promoted entries with `[Promoted]` prefix — see vpk-lesson skill for deta
 - **Rule:** When a control is part of a copied/reference control surface, keep it
   discoverable. If changing it should imply activation, wire the edit to enable
   the dependent effect instead of hiding the control.
+
+### 2026-05-02 - Route-owned graph params can mask shared visual defaults
+
+- **What happened:** `/personal-graph` used the shared visual `Graph` wrapper
+  but controlled its params from the Personal Graph storage defaults, so the
+  latest visual graph preset such as square nodes was bypassed.
+- **Why:** I verified the import path but missed that controlled `params`
+  override the wrapper's `initialParams` defaults.
+- **Rule:** When checking whether a route picked up a shared component visual
+  change, verify both the import wiring and any controlled props or persisted
+  local state that can mask the shared component defaults.
+
+### 2026-05-02 - Keep graph-body origin separate from ray-tail origin
+
+- **What happened:** The Personal Graph ray tail ended above the prompt input
+  dot, but moving `originY` would also move the visible graph cluster.
+- **Why:** The renderer used the same origin for node projection and ray
+  convergence, so a tail-alignment tweak could not be made independently.
+- **Rule:** For graph-tail alignment around route chrome, keep node projection
+  parameters and decorative ray-tail parameters separate. Tune the ray origin
+  first when the graph body is already correctly positioned.
+
+### 2026-05-02 - Prompt chrome can mask graph-tail alignment
+
+- **What happened:** The ray-tail origin was numerically aligned to the prompt
+  dot, but the input glass/blur still made the final segment read as detached.
+- **Why:** I measured canvas geometry without accounting for the route chrome
+  stacking and masking over the ray convergence point.
+- **Rule:** When graph rays need to connect to a route control, verify the
+  visible stacking result, not only the canvas coordinate. If the control masks
+  the canvas, add a route-level connector under the anchor dot and bump the
+  stored preset key so stale localStorage cannot preserve the old alignment.

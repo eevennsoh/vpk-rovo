@@ -32,7 +32,7 @@ export function PersonalGraphGlassPanel({
 			borderRadius={radius}
 			borderWidth={0.05}
 			brightness={68}
-			className={cn("text-text", className)}
+			className={cn("text-text [&>div]:p-0", className)}
 			dispersion={8}
 			displace={7}
 			distortionScale={-118}

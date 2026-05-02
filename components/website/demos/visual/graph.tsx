@@ -68,6 +68,11 @@ const ROVO_GRAPH_COLORS = {
 export const ROVO_GRAPH_DEFAULT_PARAMS: NeuralGraphParams = clampNeuralGraphParams({
 	...DEFAULT_NEURAL_GRAPH_PARAMS,
 	amplitude: 0.2,
+	colorConcept: ROVO_GRAPH_COLORS.orange,
+	colorEntity: ROVO_GRAPH_COLORS.lime,
+	colorRaw: ROVO_GRAPH_COLORS.neutral,
+	colorSource: ROVO_GRAPH_COLORS.blue,
+	colorSynthesis: ROVO_GRAPH_COLORS.purple,
 	coneAngle: 92,
 	depthZ: 42,
 	edgeOpacity: 0.4,
@@ -81,6 +86,9 @@ export const ROVO_GRAPH_DEFAULT_PARAMS: NeuralGraphParams = clampNeuralGraphPara
 	labelSize: 13,
 	maxVisibleNodes: 96,
 	nodeColor: ROVO_GRAPH_COLORS.blue,
+	nodeOpacity: 0.82,
+	nodeOpacityFocused: 0.14,
+	nodeOpacityRelated: 0.9,
 	nodeShape: "square",
 	nodeSize: 8,
 	octaves: 3,
@@ -90,6 +98,7 @@ export const ROVO_GRAPH_DEFAULT_PARAMS: NeuralGraphParams = clampNeuralGraphPara
 	radiusMax: 100,
 	radiusMin: 60,
 	rayOpacity: 0.22,
+	rayOriginY: 0.95,
 	rayWidth: 2,
 	selectedScale: 1.85,
 	showEdges: true,
@@ -510,10 +519,49 @@ function GraphControls({ defaultParams, onChange, params }: Readonly<GraphContro
 				</GUI.Section>
 			))}
 
-			<GUI.Section title="Node style">
+			<GUI.Section borderTop title="Kind colors">
+				<GUI.TextInput
+					id="graph-color-synthesis"
+					label="Synthesis"
+					description="Distilled outputs (graph, knowledge cards, playbooks)"
+					value={params.colorSynthesis}
+					onChange={(nextColor) => updateParam("colorSynthesis", nextColor)}
+				/>
+				<GUI.TextInput
+					id="graph-color-concept"
+					label="Concept"
+					description="Ideas and abstractions (chat, search, decisions)"
+					value={params.colorConcept}
+					onChange={(nextColor) => updateParam("colorConcept", nextColor)}
+				/>
+				<GUI.TextInput
+					id="graph-color-source"
+					label="Source"
+					description="External feeders (Jira, Confluence, signals)"
+					value={params.colorSource}
+					onChange={(nextColor) => updateParam("colorSource", nextColor)}
+				/>
+				<GUI.TextInput
+					id="graph-color-entity"
+					label="Entity"
+					description="Owners, goals, and named things"
+					value={params.colorEntity}
+					onChange={(nextColor) => updateParam("colorEntity", nextColor)}
+				/>
+				<GUI.TextInput
+					id="graph-color-raw"
+					label="Raw"
+					description="Unprocessed material (insights, incidents)"
+					value={params.colorRaw}
+					onChange={(nextColor) => updateParam("colorRaw", nextColor)}
+				/>
+			</GUI.Section>
+
+			<GUI.Section borderTop title="Node style">
 				<GUI.TextInput
 					id="graph-node-color"
-					label="Node color"
+					label="Fallback color"
+					description="Used when a node has no kind"
 					value={params.nodeColor}
 					onChange={(nextColor) => updateParam("nodeColor", nextColor)}
 				/>

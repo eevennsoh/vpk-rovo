@@ -2,6 +2,11 @@ export type NeuralGraphNodeShape = "circle" | "square";
 
 export interface NeuralGraphParams {
 	amplitude: number;
+	colorConcept: string;
+	colorEntity: string;
+	colorRaw: string;
+	colorSource: string;
+	colorSynthesis: string;
 	coneAngle: number;
 	depthZ: number;
 	edgeOpacity: number;
@@ -15,6 +20,9 @@ export interface NeuralGraphParams {
 	labelSize: number;
 	maxVisibleNodes: number;
 	nodeColor: string;
+	nodeOpacity: number;
+	nodeOpacityFocused: number;
+	nodeOpacityRelated: number;
 	nodeShape: NeuralGraphNodeShape;
 	nodeSize: number;
 	octaves: number;
@@ -24,6 +32,7 @@ export interface NeuralGraphParams {
 	radiusMax: number;
 	radiusMin: number;
 	rayOpacity: number;
+	rayOriginY: number;
 	rayWidth: number;
 	selectedScale: number;
 	showEdges: boolean;
@@ -34,6 +43,14 @@ export interface NeuralGraphParams {
 	tiltX: number;
 	tiltZ: number;
 }
+
+export const NEURAL_GRAPH_KIND_COLOR_PARAM_KEYS = [
+	"colorConcept",
+	"colorEntity",
+	"colorRaw",
+	"colorSource",
+	"colorSynthesis",
+] as const satisfies ReadonlyArray<keyof NeuralGraphParams>;
 
 export type NeuralGraphNumberKey = {
 	[K in keyof NeuralGraphParams]: NeuralGraphParams[K] extends number ? K : never;
@@ -70,6 +87,11 @@ export interface NeuralGraphParamSection {
 
 export const DEFAULT_NEURAL_GRAPH_PARAMS: NeuralGraphParams = {
 	amplitude: 0.15,
+	colorConcept: "#FCA700",
+	colorEntity: "#6A9A23",
+	colorRaw: "#44546F",
+	colorSource: "#1868DB",
+	colorSynthesis: "#AF59E1",
 	coneAngle: 75,
 	depthZ: 30,
 	edgeOpacity: 0.36,
@@ -83,6 +105,9 @@ export const DEFAULT_NEURAL_GRAPH_PARAMS: NeuralGraphParams = {
 	labelSize: 13,
 	maxVisibleNodes: 86,
 	nodeColor: "#6b5ce7",
+	nodeOpacity: 0.82,
+	nodeOpacityFocused: 0.14,
+	nodeOpacityRelated: 0.9,
 	nodeShape: "circle",
 	nodeSize: 2.5,
 	octaves: 3,
@@ -92,6 +117,7 @@ export const DEFAULT_NEURAL_GRAPH_PARAMS: NeuralGraphParams = {
 	radiusMax: 100,
 	radiusMin: 50,
 	rayOpacity: 0.22,
+	rayOriginY: 1.05,
 	rayWidth: 2,
 	selectedScale: 1.85,
 	showEdges: true,
@@ -159,6 +185,7 @@ export const NEURAL_GRAPH_PARAM_SECTIONS: NeuralGraphParamSection[] = [
 		label: "Rays",
 		params: [
 			{ kind: "boolean", key: "showRays", label: "Show rays" },
+			{ kind: "number", key: "rayOriginY", label: "Tail Y", max: 1.5, min: 0.5, step: 0.05 },
 			{ kind: "number", key: "rayOpacity", label: "Opacity", max: 1, min: 0, step: 0.02 },
 			{ kind: "number", key: "rayWidth", label: "Width", max: 6, min: 0.5, step: 0.5 },
 		],
@@ -171,6 +198,15 @@ export const NEURAL_GRAPH_PARAM_SECTIONS: NeuralGraphParamSection[] = [
 			{ kind: "number", key: "selectedScale", label: "Selected scale", max: 5, min: 1, step: 0.05 },
 			{ kind: "number", key: "glowSize", label: "Glow size", max: 10, min: 1, step: 0.1 },
 			{ kind: "number", key: "glowIntensity", label: "Glow intensity", max: 1, min: 0, step: 0.02 },
+		],
+	},
+	{
+		id: "nodeOpacity",
+		label: "Node opacity",
+		params: [
+			{ kind: "number", key: "nodeOpacity", label: "Idle", max: 1, min: 0, step: 0.02 },
+			{ kind: "number", key: "nodeOpacityRelated", label: "Related (when focused)", max: 1, min: 0, step: 0.02 },
+			{ kind: "number", key: "nodeOpacityFocused", label: "Faded (when focused)", max: 1, min: 0, step: 0.02 },
 		],
 	},
 	{
@@ -196,7 +232,12 @@ const BOOLEAN_PARAM_KEYS = new Set<NeuralGraphBooleanKey>(
 		.map((definition) => definition.key),
 );
 
-const STORAGE_KEY = "personal-graph-neural-params";
+const DEFAULT_STORAGE_KEY = "personal-graph-neural-params";
+
+interface NeuralGraphStorageOptions {
+	defaultParams?: NeuralGraphParams;
+	storageKey?: string;
+}
 
 export function clamp(value: number, min: number, max: number) {
 	if (!Number.isFinite(value)) return min;
@@ -240,6 +281,10 @@ export function clampNeuralGraphParams(input: Partial<NeuralGraphParams> = {}): 
 
 	clamped.nodeShape = isNodeShape(next.nodeShape) ? next.nodeShape : DEFAULT_NEURAL_GRAPH_PARAMS.nodeShape;
 	clamped.nodeColor = isHexColor(next.nodeColor) ? next.nodeColor : DEFAULT_NEURAL_GRAPH_PARAMS.nodeColor;
+	for (const key of NEURAL_GRAPH_KIND_COLOR_PARAM_KEYS) {
+		const value = next[key];
+		clamped[key] = isHexColor(value) ? value : DEFAULT_NEURAL_GRAPH_PARAMS[key];
+	}
 
 	return clamped;
 }
@@ -254,21 +299,25 @@ export function shouldAnimateNeuralGraph(params: NeuralGraphParams, reduceMotion
 	return !reduceMotion && params.amplitude > 0 && params.speed > 0;
 }
 
-export function loadStoredNeuralGraphParams(): NeuralGraphParams {
+export function loadStoredNeuralGraphParams({
+	defaultParams = DEFAULT_NEURAL_GRAPH_PARAMS,
+	storageKey = DEFAULT_STORAGE_KEY,
+}: NeuralGraphStorageOptions = {}): NeuralGraphParams {
+	const fallbackParams = clampNeuralGraphParams(defaultParams);
 	if (typeof window === "undefined") {
-		return DEFAULT_NEURAL_GRAPH_PARAMS;
+		return fallbackParams;
 	}
 
 	try {
-		const raw = window.localStorage.getItem(STORAGE_KEY);
-		if (!raw) return DEFAULT_NEURAL_GRAPH_PARAMS;
-		return clampNeuralGraphParams(JSON.parse(raw));
+		const raw = window.localStorage.getItem(storageKey);
+		if (!raw) return fallbackParams;
+		return clampNeuralGraphParams({ ...fallbackParams, ...JSON.parse(raw) });
 	} catch {
-		return DEFAULT_NEURAL_GRAPH_PARAMS;
+		return fallbackParams;
 	}
 }
 
-export function saveStoredNeuralGraphParams(params: NeuralGraphParams) {
+export function saveStoredNeuralGraphParams(params: NeuralGraphParams, storageKey = DEFAULT_STORAGE_KEY) {
 	if (typeof window === "undefined") return;
-	window.localStorage.setItem(STORAGE_KEY, JSON.stringify(clampNeuralGraphParams(params)));
+	window.localStorage.setItem(storageKey, JSON.stringify(clampNeuralGraphParams(params)));
 }

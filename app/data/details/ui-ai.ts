@@ -790,7 +790,7 @@ import {
 
 		plan: {
 			description:
-				"A composable collapsible plan card with two supported patterns: tasks-only and summary+tasks tabs. Includes shimmer-ready title/description rendering, markdown summary content, numbered task lists with overflow handling, and optional footer actions.",
+				"A composable collapsible plan card with supported summary and tasks-only patterns. Includes shimmer-ready title/description rendering, markdown summary content, numbered task lists with overflow handling, and optional footer actions.",
 			usage: `import {
   Plan,
   PlanHeader,
@@ -820,10 +820,6 @@ import { Button } from "@/components/ui/button";
   <PlanContent className="pb-0">
     <PlanTabContent
       description={planSummaryMarkdown}
-      tasks={[
-        { id: "task-1", label: "Set up the database schema", blockedBy: [], agent: "Strategist" },
-        { id: "task-2", label: "Implement the API endpoints", blockedBy: ["task-1"], agent: "Copywriter" },
-      ]}
     />
     <PlanFooter className="justify-end gap-2">
       <Button variant="outline">Open preview</Button>
@@ -852,7 +848,7 @@ import { Button } from "@/components/ui/button";
 				{ name: "PlanAction", description: "Legacy action slot used by custom headers." },
 				{ name: "PlanChevronTrigger", description: "Legacy chevron toggle button for custom plan headers." },
 				{ name: "PlanContent", description: "Collapsible content area." },
-				{ name: "PlanTabContent", description: "Built-in make-style tabbed plan body with Summary and Tasks navigation. Accepts `description`, `tasks`, and optional layout overrides." },
+				{ name: "PlanTabContent", description: "Built-in markdown summary body. Accepts `description`, optional `markdown`, and summary layout overrides." },
 				{ name: "PlanSummary", description: "Markdown summary renderer with collapsed overflow treatment. Accepts `summary`, optional `emptyMessage`, and optional `showMoreLabel` props." },
 				{ name: "PlanAgentBar", description: "Agent count row with people icon. Accepts `agents` string array." },
 				{ name: "PlanTaskList", description: "Ordered list with overflow detection and \"Show more\" button. Accepts optional `showMoreLabel`; expansion state is shared with `PlanSummary`." },
@@ -861,7 +857,7 @@ import { Button } from "@/components/ui/button";
 				{ name: "PlanFooter", description: "Bottom section for actions." },
 			],
 			examples: [
-				{ title: "Summary + tasks", description: "Tabbed plan card variant with markdown summary and task list tabs.", demoSlug: "plan-demo-summary-and-tasks" },
+				{ title: "Summary", description: "Plan card variant with markdown summary content.", demoSlug: "plan-demo-summary-and-tasks" },
 				{ title: "Tasks only", description: "Classic plan card with task list content only.", demoSlug: "plan-demo-tasks-only" },
 			],
 		},

@@ -1,6 +1,15 @@
+import type { VaultNodeKind } from "../personal-graph-types";
 import { getNeuralOrigin, worldToViewport, type NeuralCamera, type NeuralPoint, type NeuralViewport } from "./camera";
 import type { NeuralGraphLayout, NeuralLayoutEdge, NeuralLayoutNode } from "./layout";
 import type { NeuralGraphParams } from "./params";
+
+const KIND_COLOR_PARAM_KEY: Record<VaultNodeKind, keyof NeuralGraphParams> = {
+	concept: "colorConcept",
+	entity: "colorEntity",
+	raw: "colorRaw",
+	source: "colorSource",
+	synthesis: "colorSynthesis",
+};
 
 export type NeuralGraphThemeMode = "light" | "dark";
 export type NeuralGraphBackgroundMode = "default" | "transparent";
@@ -71,8 +80,17 @@ function getNodeGraphColor(node: NeuralLayoutNode) {
 	return isHexColor(graphColor) ? graphColor : null;
 }
 
+function getKindColor(kind: VaultNodeKind, params: NeuralGraphParams) {
+	const value = params[KIND_COLOR_PARAM_KEY[kind]];
+	return isHexColor(value) ? value : null;
+}
+
 function getNodeColor(node: NeuralLayoutNode, options: NeuralGraphRenderOptions) {
-	return getNodeGraphColor(node) ?? options.params.nodeColor;
+	return (
+		getKindColor(node.node.kind, options.params)
+		?? getNodeGraphColor(node)
+		?? options.params.nodeColor
+	);
 }
 
 function getEdgeColor(edge: NeuralLayoutEdge, options: NeuralGraphRenderOptions) {
@@ -86,7 +104,14 @@ function getEdgeColor(edge: NeuralLayoutEdge, options: NeuralGraphRenderOptions)
 	return getNodeColor(activeNode, options);
 }
 
-function getIdleEdgeColor(edge: NeuralLayoutEdge, palette: (typeof PALETTES)[NeuralGraphThemeMode]) {
+function getIdleEdgeColor(
+	edge: NeuralLayoutEdge,
+	palette: (typeof PALETTES)[NeuralGraphThemeMode],
+	params: NeuralGraphParams,
+) {
+	const kindColor =
+		getKindColor(edge.source.node.kind, params) ?? getKindColor(edge.target.node.kind, params);
+	if (kindColor) return colorWithAlpha(kindColor, 0.34);
 	const graphColor = getNodeGraphColor(edge.source) ?? getNodeGraphColor(edge.target);
 	return graphColor ? colorWithAlpha(graphColor, 0.34) : palette.edge;
 }
@@ -105,11 +130,21 @@ function getFocusProgress(options: NeuralGraphRenderOptions) {
 	return Math.min(1, Math.max(0, options.focusProgress));
 }
 
+interface SelectedRelationshipIds {
+	edgeIds: ReadonlySet<string>;
+	nodeIds: ReadonlySet<string>;
+}
+
+const EMPTY_SELECTED_RELATIONSHIP_IDS: SelectedRelationshipIds = {
+	edgeIds: new Set<string>(),
+	nodeIds: new Set<string>(),
+};
+
 function getSelectedRelationshipIds(layout: NeuralGraphLayout, selectedNodeId: string | null) {
 	const edgeIds = new Set<string>();
 	const nodeIds = new Set<string>();
 	if (!selectedNodeId) {
-		return { edgeIds, nodeIds };
+		return EMPTY_SELECTED_RELATIONSHIP_IDS;
 	}
 
 	nodeIds.add(selectedNodeId);
@@ -195,21 +230,28 @@ function drawBackground(
 	ctx.fillRect(0, 0, viewport.width, viewport.height);
 }
 
+function getRayOrigin(viewport: NeuralViewport, params: NeuralGraphParams) {
+	return {
+		...getNeuralOrigin(viewport, params),
+		y: viewport.height * params.rayOriginY,
+	};
+}
+
 function drawRays(
 	ctx: CanvasRenderingContext2D,
 	layout: NeuralGraphLayout,
 	options: NeuralGraphRenderOptions,
+	selectedRelationships: SelectedRelationshipIds,
 ) {
 	if (!options.params.showRays) return;
-	const origin = getNeuralOrigin(options.viewport, options.params);
+	const origin = getRayOrigin(options.viewport, options.params);
 	const focusProgress = getFocusProgress(options);
-	const { nodeIds } = getSelectedRelationshipIds(layout, options.selectedNodeId);
 	ctx.save();
 	ctx.lineWidth = options.params.rayWidth;
 	ctx.strokeStyle = PALETTES[options.theme].ray;
 	for (const node of layout.nodes) {
 		const point = worldToViewport(node, options.camera, options.viewport, options.params);
-		const isRelated = nodeIds.has(node.id);
+		const isRelated = selectedRelationships.nodeIds.has(node.id);
 		const focusAlpha = focusProgress > 0 ? (isRelated ? lerp(1, 0.72, focusProgress) : lerp(1, 0.05, focusProgress)) : 1;
 		ctx.globalAlpha = clampAlpha((options.params.rayOpacity + node.depthScale * 0.32) * focusAlpha);
 		drawOrganicRayPath(ctx, origin, point);
@@ -227,6 +269,7 @@ function drawEdges(
 	ctx: CanvasRenderingContext2D,
 	layout: NeuralGraphLayout,
 	options: NeuralGraphRenderOptions,
+	selectedRelationships: SelectedRelationshipIds,
 ) {
 	if (!options.params.showEdges) return;
 	const palette = PALETTES[options.theme];
@@ -234,18 +277,19 @@ function drawEdges(
 	const idleOpacity = options.params.edgeOpacity;
 	const activeOpacity = options.params.edgeOpacityActive;
 	const focusProgress = getFocusProgress(options);
-	const { edgeIds } = getSelectedRelationshipIds(layout, options.selectedNodeId);
-	const edges = [...layout.edges].sort((left, right) => Number(edgeIds.has(left.id)) - Number(edgeIds.has(right.id)));
+	const edges = selectedRelationships.edgeIds.size > 0
+		? [...layout.edges].sort((left, right) => Number(selectedRelationships.edgeIds.has(left.id)) - Number(selectedRelationships.edgeIds.has(right.id)))
+		: layout.edges;
 	ctx.save();
 	ctx.lineCap = "round";
 	for (const edge of edges) {
 		const source = worldToViewport(edge.source, options.camera, options.viewport, options.params);
 		const target = worldToViewport(edge.target, options.camera, options.viewport, options.params);
 		const hasFocus = Boolean(options.selectedNodeId ?? options.hoveredNodeId);
-		const focusActive = focusProgress > 0 && edgeIds.has(edge.id);
+		const focusActive = focusProgress > 0 && selectedRelationships.edgeIds.has(edge.id);
 		const active = focusProgress > 0 ? focusActive : hasFocus && isActiveEdge(edge.source.id, edge.target.id, options.selectedNodeId, options.hoveredNodeId);
 		const inactiveAlpha = focusProgress > 0 ? lerp(idleOpacity, idleOpacity * 0.11, focusProgress) : idleOpacity;
-		ctx.strokeStyle = active ? colorWithAlpha(getEdgeColor(edge, options), 0.56) : getIdleEdgeColor(edge, palette);
+		ctx.strokeStyle = active ? colorWithAlpha(getEdgeColor(edge, options), 0.56) : getIdleEdgeColor(edge, palette, options.params);
 		ctx.lineWidth = active ? lerp(edgeWidths.active, edgeWidths.focused, focusProgress) : edgeWidths.idle;
 		ctx.globalAlpha = active ? lerp(activeOpacity, Math.min(1, activeOpacity + 0.2), focusProgress) : inactiveAlpha;
 		drawStraightEdgePath(ctx, source, target);
@@ -274,12 +318,12 @@ function drawNodes(
 	ctx: CanvasRenderingContext2D,
 	layout: NeuralGraphLayout,
 	options: NeuralGraphRenderOptions,
+	selectedRelationships: SelectedRelationshipIds,
 ) {
 	const focusProgress = getFocusProgress(options);
-	const { nodeIds } = getSelectedRelationshipIds(layout, options.selectedNodeId);
 	const getDrawRank = (node: NeuralLayoutNode) => {
 		if (node.id === options.selectedNodeId) return 2;
-		if (nodeIds.has(node.id)) return 1;
+		if (selectedRelationships.nodeIds.has(node.id)) return 1;
 		return 0;
 	};
 	const sortedNodes = [...layout.nodes].sort((left, right) => {
@@ -298,15 +342,15 @@ function drawNodes(
 		const nodeColor = getNodeColor(node, options);
 		const isSelected = node.id === options.selectedNodeId;
 		const isHovered = node.id === options.hoveredNodeId;
-		const isRelated = nodeIds.has(node.id);
+		const isRelated = selectedRelationships.nodeIds.has(node.id);
 		let focusAlpha = 1;
 		if (focusProgress > 0) {
 			if (isSelected) {
 				focusAlpha = 1;
 			} else if (isRelated) {
-				focusAlpha = lerp(1, 0.9, focusProgress);
+				focusAlpha = lerp(1, options.params.nodeOpacityRelated, focusProgress);
 			} else {
-				focusAlpha = lerp(1, 0.14, focusProgress);
+				focusAlpha = lerp(1, options.params.nodeOpacityFocused, focusProgress);
 			}
 		}
 		const relatedScale = focusProgress > 0 && isRelated ? lerp(1, 1.22, focusProgress) : 1;
@@ -318,7 +362,7 @@ function drawNodes(
 			activeScale = hoverScale;
 		}
 		const radius = Math.max(2.5, node.baseSize * node.depthScale * options.camera.zoom * activeScale);
-		const alpha = Math.min(1, node.alpha * (isSelected || isHovered ? 1 : 0.82) * focusAlpha);
+		const alpha = Math.min(1, node.alpha * (isSelected || isHovered ? 1 : options.params.nodeOpacity) * focusAlpha);
 		const point = worldToViewport(node, options.camera, options.viewport, options.params);
 
 		ctx.save();
@@ -380,13 +424,15 @@ export function drawNeuralGraph(
 	layout: NeuralGraphLayout,
 	options: NeuralGraphRenderOptions,
 ) {
+	const selectedRelationships = getSelectedRelationshipIds(layout, options.selectedNodeId);
+
 	if (options.background === "transparent") {
 		ctx.clearRect(0, 0, options.viewport.width, options.viewport.height);
 	} else {
 		drawBackground(ctx, options.viewport, options.params, options.theme);
 	}
-	drawRays(ctx, layout, options);
-	drawEdges(ctx, layout, options);
-	drawNodes(ctx, layout, options);
+	drawRays(ctx, layout, options, selectedRelationships);
+	drawEdges(ctx, layout, options, selectedRelationships);
+	drawNodes(ctx, layout, options, selectedRelationships);
 	drawLabels(ctx, layout, options);
 }

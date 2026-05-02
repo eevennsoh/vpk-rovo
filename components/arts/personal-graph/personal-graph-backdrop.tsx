@@ -101,7 +101,6 @@ export function PersonalGraphBackdrop({
 				scale={48}
 				stroke={PERSONAL_GRAPH_GRID_STROKE}
 			/>
-			<div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-surface via-surface/90 to-transparent" />
 			<PersonalGraphAsciiBackdrop />
 		</div>
 	);
