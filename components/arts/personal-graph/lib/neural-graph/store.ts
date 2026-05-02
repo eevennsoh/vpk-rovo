@@ -38,6 +38,7 @@ export interface NeuralGraphStore {
 	kindGroups: Map<VaultNodeKind, NeuralGraphNode[]>;
 	nodes: NeuralGraphNode[];
 	nodesById: Map<string, NeuralGraphNode>;
+	rankedNodes: NeuralGraphNode[];
 }
 
 const KIND_ORDER: Record<VaultNodeKind, number> = {
@@ -146,6 +147,8 @@ export function createNeuralGraphStore(explorer: VaultExplorer | null): NeuralGr
 		kindGroups.set(kind, [...group].sort(compareNeuralNodes));
 	}
 
+	const rankedNodes = [...nodes].sort(compareNeuralNodes);
+
 	return {
 		adjacency,
 		edges,
@@ -153,6 +156,7 @@ export function createNeuralGraphStore(explorer: VaultExplorer | null): NeuralGr
 		kindGroups,
 		nodes,
 		nodesById,
+		rankedNodes,
 	};
 }
 
@@ -187,8 +191,7 @@ export function getVisibleGraphNodes(
 		}
 	}
 
-	const candidates = [...store.nodes].sort(compareNeuralNodes);
-	for (const node of candidates) {
+	for (const node of store.rankedNodes) {
 		if (required.size >= visibleCount) break;
 		required.set(node.id, node);
 	}
