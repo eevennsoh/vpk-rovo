@@ -90,6 +90,7 @@ If instructions overlap, use this precedence:
 - Conditional rendering: use ternary (`cond ? <X /> : null`), not `&&` patterns that can render `0`
 - Use semantic token classes before raw CSS variables
 - Do not introduce new `bg-[var(--ds-...)]` / `text-[var(--ds-...)]` patterns in VPK components
+- Custom CSS classes: prefer `@utility name { … }` (Tailwind v4 idiom) over `@layer components`. Full rules in `.agents/rules/token-priority.md`.
 
 ## Engineering Standards
 
@@ -180,6 +181,10 @@ static export used by deployment.
 - Dev API calls traverse Next.js proxy then Express; debug both layers.
 - No directories are excluded from TypeScript type-checking (only `node_modules`). All errors are visible and trackable.
 - Never import transitive pnpm dependencies directly — pnpm's strict isolation only allows imports from `package.json` direct dependencies. Use internal mechanisms (e.g., `globalThis.__PLATFORM_FEATURE_FLAGS__`) or add the package explicitly.
+- Do not remove the `@layer theme, base, components, utilities;` statement at the top of `app/globals.css` — it pre-declares cascade layer order; without it `@layer components` can declare too early (via `tailwind-theme.css`) and lose to preflight resets.
+- Theme switches via `setGlobalTheme()` from `@atlaskit/tokens` (sets `data-color-mode` + `--ds-*` vars), not Tailwind's `dark:` variant alone. Toggling the `dark` class on `<html>` won't update ADS tokens.
+- Fresh worktrees need their own `pnpm install` — `node_modules` does not share across worktrees.
+- Fresh worktrees also need `.env.local` copied from the main checkout — it's gitignored, so credentials (e.g. `ROVODEV_SESSION_TOKEN`) don't propagate automatically. Run `cp ../../../.env.local .env.local` from the worktree root (the main checkout sits three directories up under `.claude/worktrees/<name>/`), or symlink it.
 
 ## Architecture
 
