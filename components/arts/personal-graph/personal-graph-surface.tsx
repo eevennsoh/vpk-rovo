@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ThemeToggle } from "@/components/utils/theme-wrapper";
 import Graph from "@/components/website/demos/visual/graph";
+import { token } from "@/lib/tokens";
 import { cn } from "@/lib/utils";
 import { usePersonalGraphIntro } from "./hooks/use-personal-graph-intro";
 import { useVaultExplorer } from "./hooks/use-vault-explorer";
@@ -415,7 +416,7 @@ export function PersonalGraphSurface({
 								size="icon"
 								variant="outline"
 							>
-								<SettingsIcon label="" />
+								<SettingsIcon label="" color={token("color.icon.subtle")} />
 							</Button>
 						</motion.div>
 						<motion.div
