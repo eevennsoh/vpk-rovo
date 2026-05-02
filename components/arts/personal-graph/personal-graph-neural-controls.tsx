@@ -35,8 +35,8 @@ export function PersonalGraphNeuralControls({
 				<section className="space-y-3 border-t border-border pt-4" key={section.id}>
 					<h3 className="text-[10px] font-semibold uppercase text-text-subtle">{section.label}</h3>
 					{section.params.map((definition) => {
+						if (definition.kind !== "number") return null;
 						const value = params[definition.key];
-						if (typeof value !== "number") return null;
 
 						return (
 							<label className="block space-y-2" key={definition.key}>

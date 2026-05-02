@@ -9,6 +9,10 @@ const RENDERER_SOURCE = fs.readFileSync(
 	path.join(__dirname, "../../../arts/personal-graph/lib/neural-graph/renderer.ts"),
 	"utf8",
 );
+const PARAMS_SOURCE = fs.readFileSync(
+	path.join(__dirname, "../../../arts/personal-graph/lib/neural-graph/params.ts"),
+	"utf8",
+);
 const COMPONENTS_SOURCE = fs.readFileSync(
 	path.join(__dirname, "../../../../app/data/components.ts"),
 	"utf8",
@@ -66,13 +70,30 @@ test("Graph visual can be embedded as the live Personal Graph renderer", () => {
 	assert.match(GRAPH_SOURCE, /isLoading=\{isLoading\}/);
 });
 
-test("Graph renderer uses thicker connector strokes", () => {
-	assert.match(RENDERER_SOURCE, /const RAY_LINE_WIDTH = 2;/);
-	assert.match(RENDERER_SOURCE, /active: 2,/);
-	assert.match(RENDERER_SOURCE, /focused: 2,/);
-	assert.match(RENDERER_SOURCE, /idle: 2,/);
+test("Graph renderer keeps the default connector stroke width at 2 via params", () => {
+	assert.match(PARAMS_SOURCE, /edgeWidth: 2,/);
+	assert.match(PARAMS_SOURCE, /rayWidth: 2,/);
+	assert.match(RENDERER_SOURCE, /ctx\.lineWidth = options\.params\.rayWidth;/);
+	assert.match(RENDERER_SOURCE, /const edgeWidths = getEdgeLineWidth\(options\.params\);/);
 	assert.match(
 		RENDERER_SOURCE,
-		/ctx\.lineWidth = active \? lerp\(EDGE_LINE_WIDTH\.active, EDGE_LINE_WIDTH\.focused, focusProgress\) : EDGE_LINE_WIDTH\.idle;/,
+		/ctx\.lineWidth = active \? lerp\(edgeWidths\.active, edgeWidths\.focused, focusProgress\) : edgeWidths\.idle;/,
 	);
+});
+
+test("Graph renderer exposes hover, ray, edge, and label toggles through params", () => {
+	assert.match(RENDERER_SOURCE, /if \(!options\.params\.showRays\) return;/);
+	assert.match(RENDERER_SOURCE, /if \(!options\.params\.showEdges\) return;/);
+	assert.match(RENDERER_SOURCE, /if \(!options\.params\.showLabels\) return;/);
+	assert.match(RENDERER_SOURCE, /options\.params\.hoverScale/);
+	assert.match(RENDERER_SOURCE, /options\.params\.selectedScale/);
+	assert.match(RENDERER_SOURCE, /options\.params\.glowSize/);
+	assert.match(RENDERER_SOURCE, /options\.params\.glowIntensity/);
+	assert.match(RENDERER_SOURCE, /options\.params\.labelSize/);
+	assert.match(RENDERER_SOURCE, /options\.params\.labelMetaSize/);
+});
+
+test("Graph controls render booleans as toggles", () => {
+	assert.match(GRAPH_SOURCE, /GUI\.Toggle/);
+	assert.match(GRAPH_SOURCE, /definition\.kind === "boolean"/);
 });
