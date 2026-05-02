@@ -560,3 +560,71 @@ Mark promoted entries with `[Promoted]` prefix — see vpk-lesson skill for deta
   affect the grid, inspect blend mode and opacity before trying more token
   swaps; `mix-blend-mode: multiply` can flatten the visible delta on dark
   surfaces.
+
+### 2026-05-02 - Mirror live effect parameters, not just toggle labels
+
+- **What happened:** I initially treated the ASCII Magic post-processing list as
+  mostly toggle parity, missing that Chromatic and several adjacent effects each
+  expose inline strength, offset, size, opacity, or blend controls.
+- **Why:** I stopped at the visible effect names instead of checking the full
+  control shape and default ranges before implementing the demo surface.
+- **Rule:** When matching an external controls panel, capture each control's
+  nested parameters, ranges, and defaults before coding; do not collapse
+  parameterized effects into bare toggles.
+
+### 2026-05-02 - Separate nested scrollbars from page overflow
+
+- **What happened:** I identified the shader GUI panel as the horizontal
+  scrollbar source but did not account for the document-level scrollbar caused
+  by long component-doc import paths.
+- **Why:** I stopped after measuring the nested GUI scrollport instead of also
+  checking `documentElement.scrollWidth` and the top document-level overflow
+  contributors.
+- **Rule:** For visible horizontal-scrollbar bugs, measure both the nested
+  scroll container and the document root. Fix every active overflow contributor
+  before calling the issue resolved.
+
+### 2026-05-02 - Post effects must sample the rendered shader output
+
+- **What happened:** The ASCII Magic-inspired RGB Offset and Blur controls were
+  wired to source-image sampling, so the sliders did not visibly split rendered
+  ASCII channels or blur the final glyph layer.
+- **Why:** I implemented single-pass approximations from the source texture
+  instead of resampling the rendered ASCII composition inside the shader.
+- **Rule:** For post-processing controls, verify whether the target effect acts
+  on the final rendered layer. If it does, add a rendered-output sampling helper
+  rather than reusing raw source texture samples.
+
+### 2026-05-02 - Film dust should read as held artifacts
+
+- **What happened:** The ASCII Film Dust effect reseeded dense speckles several
+  times per second, which made the parameter look like falling snow instead of
+  film dirt.
+- **Why:** I treated dust as generic temporal noise instead of checking the
+  reference behavior for sparse flecks and slow, held scratches.
+- **Rule:** For analog post-processing effects, verify the motion character in
+  the reference before coding. Film dust should use sparse held-frame flecks and
+  scratches, not fast full-frame random speckle reseeding.
+
+### 2026-05-02 - Hide inactive animation-specific controls
+
+- **What happened:** The ASCII Animation Style select was visible while
+  Animated ASCII was off, so users could change cascade options that had no
+  visible effect.
+- **Why:** I grouped all animation-related controls together without separating
+  global playback controls from controls that only affect animated glyph
+  cycling.
+- **Rule:** Controls that depend on a toggle should either be hidden or visibly
+  disabled until the dependency is active. For animation styles, also verify
+  that each option produces a distinct visible motion pattern, not only a minor
+  phase offset.
+
+### 2026-05-02 - Keep animation modes discoverable
+
+- **What happened:** Hiding the ASCII Animation Style controls behind Animated
+  ASCII made the animation mode selector disappear from the animation section.
+- **Why:** I fixed the no-op control state by removing controls instead of
+  preserving the complete animation control surface.
+- **Rule:** When a control is part of a copied/reference control surface, keep it
+  discoverable. If changing it should imply activation, wire the edit to enable
+  the dependent effect instead of hiding the control.
