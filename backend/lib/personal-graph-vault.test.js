@@ -8,6 +8,7 @@ const test = require("node:test");
 
 const {
 	appendLog,
+	clearVaultConfig,
 	getVaultSettings,
 	getVaultRoot,
 	listRaw,
@@ -245,6 +246,36 @@ test("local folder picker config takes priority over env fallback", (t) => {
 	assert.equal(settings.root, selectedRoot);
 	assert.equal(settings.source, "folder-picker");
 	assert.equal(getVaultRoot(), selectedRoot);
+});
+
+test("clearVaultConfig removes the folder picker config and selected env override", (t) => {
+	const originalConfigPath = process.env.PERSONAL_GRAPH_VAULT_CONFIG_PATH;
+	const originalSelectedVault = process.env.PERSONAL_GRAPH_SELECTED_VAULT;
+	const originalVault = process.env.PERSONAL_GRAPH_VAULT;
+	const configPath = path.join(os.tmpdir(), `personal-graph-clear-${process.pid}.json`);
+	const envRoot = createFixtureVault();
+	const selectedRoot = createFixtureVault();
+
+	process.env.PERSONAL_GRAPH_VAULT_CONFIG_PATH = configPath;
+	process.env.PERSONAL_GRAPH_VAULT = envRoot;
+	delete process.env.PERSONAL_GRAPH_SELECTED_VAULT;
+
+	t.after(() => {
+		restoreEnvValue("PERSONAL_GRAPH_VAULT_CONFIG_PATH", originalConfigPath);
+		restoreEnvValue("PERSONAL_GRAPH_SELECTED_VAULT", originalSelectedVault);
+		restoreVaultEnv(originalVault);
+		fs.rmSync(configPath, { force: true });
+		fs.rmSync(envRoot, { force: true, recursive: true });
+		fs.rmSync(selectedRoot, { force: true, recursive: true });
+	});
+
+	writeVaultConfig(selectedRoot);
+
+	const settings = clearVaultConfig();
+	assert.equal(fs.existsSync(configPath), false);
+	assert.equal(process.env.PERSONAL_GRAPH_SELECTED_VAULT, undefined);
+	assert.equal(settings.root, envRoot);
+	assert.equal(settings.source, "env");
 });
 
 test("selectVaultRoot persists a macOS folder selection", async (t) => {

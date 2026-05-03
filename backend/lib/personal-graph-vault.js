@@ -421,13 +421,7 @@ function writeVaultConfig(vaultRoot, options = {}) {
 
 function clearVaultConfig(options = {}) {
 	const configPath = getConfigPath(options.configPath);
-	try {
-		fs.rmSync(configPath, { force: true });
-	} catch (error) {
-		if (error?.code !== "ENOENT") {
-			throw error;
-		}
-	}
+	fs.rmSync(configPath, { force: true });
 	delete process.env[SELECTED_VAULT_ENV_KEY];
 	return getVaultSettings(options);
 }
