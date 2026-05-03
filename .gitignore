@@ -16,9 +16,10 @@
 # testing
 /coverage
 
-# screenshots (Playwright MCP)
+# browser automation artifacts
 /screenshots
 /public/screenshots/
+.playwright-cli/
 
 # output
 /output

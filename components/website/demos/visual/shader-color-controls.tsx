@@ -56,6 +56,7 @@ function ResetButton({ ariaLabel, disabled, onClick }: ResetButtonProps) {
 type ShaderColorInputProps = Readonly<{
 	id: string;
 	label: string;
+	description?: string;
 	value: string;
 	defaultValue?: string;
 	disabled?: boolean;
@@ -65,6 +66,7 @@ type ShaderColorInputProps = Readonly<{
 export function ShaderColorInput({
 	id,
 	label,
+	description,
 	value,
 	defaultValue,
 	disabled,
@@ -111,6 +113,11 @@ export function ShaderColorInput({
 					className="h-7 flex-1 text-xs"
 				/>
 			</div>
+			{description ? (
+				<p className="text-[12px] leading-4 text-text-subtlest">
+					{description}
+				</p>
+			) : null}
 		</div>
 	);
 }

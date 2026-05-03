@@ -11,6 +11,8 @@ The repo-owned files are:
   installs the runtime through `mise`, renders a runtime workflow with your
   Linear project slug, and launches `./bin/symphony`.
 - `pnpm run symphony`: default repo entrypoint for Symphony.
+- `.playwright/cli.config.json`: Playwright CLI defaults for browser evidence
+  produced by Symphony workers.
 - `.agents/skills/vpk-symphony/SKILL.md`: guidance for the raw
   `linear_graphql` tool that upstream Symphony injects into Codex app-server
   sessions.
@@ -131,8 +133,30 @@ The state-to-skill policy is intentionally narrow:
 - `Backlog`, `Human Review`, and terminal states: select no implementation
   skills.
 - Any code-changing state includes `test-driven-development` as the default
-  validation guardrail. Browser-visible changes also use VPK-rovo's
-  `/agent-browser`, screenshot, and accessibility checks from `AGENTS.md`.
+  validation guardrail. Browser-visible changes also use `playwright-cli`,
+  screenshots or WebM recordings, traces for unexpected failures, and
+  accessibility checks from `AGENTS.md`.
+
+### Browser evidence
+
+Symphony workers use Playwright CLI for browser-visible proof. The checked-in
+`.playwright/cli.config.json` makes Playwright CLI write local artifacts under
+`output/playwright/`, which is ignored by git. Workers create issue-scoped
+subdirectories such as `output/playwright/VEN-123/` and use an issue-scoped
+browser session name such as `symphony-VEN-123`.
+
+Before moving an issue to `Human Review`, browser-visible work must include the
+happy path and the meaningful expected failure or error-state scenarios. A short
+WebM walkthrough is preferred for successful user-facing flows. Screenshots are
+enough for stable states. Traces are preferred for unexpected failures because
+they include DOM snapshots, console output, network details, and action timing.
+
+Workers upload the required artifacts to the single active `## Codex Workpad`
+comment through the repo-local `vpk-symphony` Linear upload flow. A Playwright
+failure caused by the implementation keeps the issue in `In Progress` or
+`Rework` while the worker fixes and reruns the scenario. `Human Review` is only
+used for a Playwright blocker when the blocker is external, such as missing
+browser dependencies, missing credentials, or unavailable required test data.
 
 ## Runtime knobs
 

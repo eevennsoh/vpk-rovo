@@ -31,6 +31,7 @@ export interface NeuralGraphParams {
 	perspective: number;
 	radiusMax: number;
 	radiusMin: number;
+	rayColor: string;
 	rayOpacity: number;
 	rayOriginY: number;
 	rayWidth: number;
@@ -60,6 +61,11 @@ export type NeuralGraphBooleanKey = {
 	[K in keyof NeuralGraphParams]: NeuralGraphParams[K] extends boolean ? K : never;
 }[keyof NeuralGraphParams];
 
+export type NeuralGraphHexColorKey =
+	| (typeof NEURAL_GRAPH_KIND_COLOR_PARAM_KEYS)[number]
+	| "nodeColor"
+	| "rayColor";
+
 export interface NeuralGraphNumberParamDefinition {
 	kind: "number";
 	key: NeuralGraphNumberKey;
@@ -75,9 +81,17 @@ export interface NeuralGraphBooleanParamDefinition {
 	label: string;
 }
 
+export interface NeuralGraphColorParamDefinition {
+	kind: "color";
+	key: NeuralGraphHexColorKey;
+	label: string;
+	description?: string;
+}
+
 export type NeuralGraphParamDefinition =
 	| NeuralGraphNumberParamDefinition
-	| NeuralGraphBooleanParamDefinition;
+	| NeuralGraphBooleanParamDefinition
+	| NeuralGraphColorParamDefinition;
 
 export interface NeuralGraphParamSection {
 	id: string;
@@ -116,7 +130,8 @@ export const DEFAULT_NEURAL_GRAPH_PARAMS: NeuralGraphParams = {
 	perspective: 1000,
 	radiusMax: 100,
 	radiusMin: 50,
-	rayOpacity: 0.22,
+	rayColor: "#6B5CE7",
+	rayOpacity: 0.02,
 	rayOriginY: 1.05,
 	rayWidth: 2,
 	selectedScale: 1.85,
@@ -185,6 +200,7 @@ export const NEURAL_GRAPH_PARAM_SECTIONS: NeuralGraphParamSection[] = [
 		label: "Rays",
 		params: [
 			{ kind: "boolean", key: "showRays", label: "Show rays" },
+			{ kind: "color", key: "rayColor", label: "Color", description: "Tint of the fan strokes radiating from the tail" },
 			{ kind: "number", key: "rayOriginY", label: "Tail Y", max: 1.5, min: 0.5, step: 0.05 },
 			{ kind: "number", key: "rayOpacity", label: "Opacity", max: 1, min: 0, step: 0.02 },
 			{ kind: "number", key: "rayWidth", label: "Width", max: 6, min: 0.5, step: 0.5 },
@@ -274,6 +290,7 @@ export function clampNeuralGraphParams(input: Partial<NeuralGraphParams> = {}): 
 
 	clamped.nodeShape = isNodeShape(next.nodeShape) ? next.nodeShape : DEFAULT_NEURAL_GRAPH_PARAMS.nodeShape;
 	clamped.nodeColor = isHexColor(next.nodeColor) ? next.nodeColor : DEFAULT_NEURAL_GRAPH_PARAMS.nodeColor;
+	clamped.rayColor = isHexColor(next.rayColor) ? next.rayColor : DEFAULT_NEURAL_GRAPH_PARAMS.rayColor;
 	for (const key of NEURAL_GRAPH_KIND_COLOR_PARAM_KEYS) {
 		const value = next[key];
 		clamped[key] = isHexColor(value) ? value : DEFAULT_NEURAL_GRAPH_PARAMS[key];
