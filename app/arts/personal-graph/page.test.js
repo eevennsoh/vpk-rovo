@@ -61,10 +61,10 @@ const GLASS_PANEL_SOURCE = fs.readFileSync(
 	),
 	"utf8",
 );
-const VAULT_PICKER_SOURCE = fs.readFileSync(
+const CONTROL_FLYOUT_SOURCE = fs.readFileSync(
 	path.join(
 		__dirname,
-		"../../../components/arts/personal-graph/personal-graph-vault-picker.tsx",
+		"../../../components/arts/personal-graph/personal-graph-control-flyout.tsx",
 	),
 	"utf8",
 );
@@ -79,13 +79,6 @@ const NEURAL_CANVAS_SOURCE = fs.readFileSync(
 	path.join(
 		__dirname,
 		"../../../components/arts/personal-graph/personal-graph-neural-canvas.tsx",
-	),
-	"utf8",
-);
-const NEURAL_CONTROLS_SOURCE = fs.readFileSync(
-	path.join(
-		__dirname,
-		"../../../components/arts/personal-graph/personal-graph-neural-controls.tsx",
 	),
 	"utf8",
 );
@@ -159,33 +152,42 @@ test("Personal Graph is registered as an arts project", () => {
 	);
 });
 
-test("Personal Graph header exposes the app theme toggle", () => {
+test("Personal Graph control flyout exposes the app theme toggle", () => {
 	assert.match(
 		SURFACE_SOURCE,
-		/import \{ ThemeToggle \} from "@\/components\/utils\/theme-wrapper";/,
+		/import \{ useTheme \} from "@\/components\/utils\/theme-wrapper";/,
 	);
-	assert.match(SURFACE_SOURCE, /<ThemeToggle \/>/);
+	assert.match(SURFACE_SOURCE, /const \{ actualTheme, setTheme, theme \} = useTheme\(\);/);
+	assert.match(SURFACE_SOURCE, /const handleToggleTheme = useCallback/);
+	assert.match(SURFACE_SOURCE, /key: "theme"/);
+	assert.match(SURFACE_SOURCE, /label: themeLabel/);
+	assert.match(SURFACE_SOURCE, /aria-label=\{themeLabel\}/);
+	assert.match(SURFACE_SOURCE, /onClick=\{handleToggleTheme\}/);
 });
 
 test("Personal Graph header keeps controls centered below the title", () => {
-	assert.match(SURFACE_SOURCE, /className="flex min-w-0 max-w-full flex-wrap items-center justify-center gap-2 text-center"/);
+	assert.match(SURFACE_SOURCE, /className="relative flex flex-col items-center"/);
+	assert.match(SEARCH_SOURCE, /<PersonalGraphControlFlyoutTrigger/);
+	assert.match(SEARCH_SOURCE, /<PersonalGraphControlFlyoutActions/);
 	assert.doesNotMatch(SURFACE_SOURCE, /xl:absolute xl:right-0 xl:top-0 xl:justify-end/);
-	assert.doesNotMatch(VAULT_PICKER_SOURCE, /hidden max-w-\[180px\] truncate text-xs text-neutral-600 lg:block/);
+	assert.doesNotMatch(SURFACE_SOURCE, /personal-graph-vault-picker/);
 });
 
-test("Personal Graph header exposes the capture queue as a top nav popover", () => {
-	assert.match(
-		SURFACE_SOURCE,
-		/import UploadIcon from "@atlaskit\/icon\/core\/upload";/,
-	);
+test("Personal Graph exposes the capture queue inside the control flyout", () => {
 	assert.match(
 		SURFACE_SOURCE,
 		/import \{ Popover, PopoverContent, PopoverTrigger \} from "@\/components\/ui\/popover";/,
 	);
+	assert.match(
+		SURFACE_SOURCE,
+		/PixelIngestIcon/,
+	);
 	assert.match(SURFACE_SOURCE, /const \[isCaptureQueueOpen, setIsCaptureQueueOpen\] = useState\(false\);/);
+	assert.match(SURFACE_SOURCE, /key: "capture"/);
+	assert.match(SURFACE_SOURCE, /label: "Capture queue"/);
 	assert.match(SURFACE_SOURCE, /<Popover open=\{isCaptureQueueOpen\} onOpenChange=\{handleCaptureQueueOpenChange\}>/);
 	assert.match(SURFACE_SOURCE, /aria-label="Capture queue"/);
-	assert.match(SURFACE_SOURCE, /<UploadIcon label="" \/>/);
+	assert.match(SURFACE_SOURCE, /<PixelIngestIcon \/>/);
 	assert.match(SURFACE_SOURCE, /<PersonalGraphCaptureQueue onRawAdded=\{handleRefreshAll\} refreshKey=\{refreshKey\} \/>/);
 	assert.doesNotMatch(SURFACE_SOURCE, /bottom-6 left-6 z-20 hidden/);
 	assert.doesNotMatch(SURFACE_SOURCE, /Collapse capture queue/);
@@ -237,17 +239,13 @@ test("Personal Graph anchors the search and chat composer at the graph origin", 
 	assert.doesNotMatch(SEARCH_SOURCE, /text-base text-text/);
 	assert.doesNotMatch(SEARCH_SOURCE, /sm:text-lg/);
 	assert.match(SEARCH_SOURCE, /bottom-\[calc\(100%\+0\.75rem\)\]/);
-	assert.match(SEARCH_SOURCE, /ArrowUpRightIcon/);
-	assert.match(SEARCH_SOURCE, /SettingsIcon/);
+	assert.match(SEARCH_SOURCE, /PixelArrowRightIcon/);
+	assert.match(SEARCH_SOURCE, /PersonalGraphControlFlyoutTrigger/);
+	assert.match(SEARCH_SOURCE, /PersonalGraphControlFlyoutActions/);
 	assert.match(SEARCH_SOURCE, /aria-label="Ask or search Personal Graph"/);
-	assert.match(SEARCH_SOURCE, /aria-label="Open graph parameters"/);
-	assert.match(SEARCH_SOURCE, /aria-label="Open graph parameters"[\s\S]*aria-label="Open top search result"/);
-	assert.match(SEARCH_SOURCE, /aria-label="Open graph parameters"[\s\S]*className="size-8 rounded-full border-0 text-text shadow-none hover:bg-bg-neutral-subtle-hovered"/);
-	assert.match(SEARCH_SOURCE, /aria-label="Open graph parameters"[\s\S]*variant="ghost"/);
-	assert.doesNotMatch(SEARCH_SOURCE, /aria-label="Open graph parameters"[\s\S]*className="[^"]*border-border/);
-	assert.match(SEARCH_SOURCE, /aria-label="Open top search result"[\s\S]*className="size-8 rounded-full border-transparent/);
-	assert.match(SURFACE_SOURCE, /isSettingsOpen=\{isParameterPanelOpen\}/);
-	assert.match(SURFACE_SOURCE, /onOpenSettings=\{handleToggleParameterPanel\}/);
+	assert.match(SEARCH_SOURCE, /aria-label="Open top search result"[\s\S]*className="size-8 rounded-full border-0 text-text-subtle/);
+	assert.doesNotMatch(SEARCH_SOURCE, /aria-label="Open graph parameters"/);
+	assert.match(SEARCH_SOURCE, /actions=\{flyoutActions\}/);
 });
 
 test("Personal Graph lets the graph renderer fill the route viewport behind the chrome", () => {
@@ -272,7 +270,7 @@ test("Personal Graph uses theme-aware editor-style surrounding chrome", () => {
 	assert.match(SURFACE_SOURCE, /style=\{style\}/);
 	assert.match(SURFACE_SOURCE, /PersonalGraphGlassPanel/);
 	assert.match(SURFACE_SOURCE, /border-border bg-bg-neutral-subtle/);
-	assert.match(SEARCH_SOURCE, /bg-bg-neutral-bold text-text-inverse/);
+	assert.match(SEARCH_SOURCE, /bg-transparent text-text/);
 	assert.match(SEARCH_SOURCE, /rounded-2xl/);
 	assert.match(SURFACE_SOURCE, /CopyIcon/);
 });
@@ -307,15 +305,14 @@ test("Personal Graph keeps the owned canvas renderer accessible", () => {
 	assert.match(SURFACE_SOURCE, /variant="fill"/);
 	assert.match(SURFACE_SOURCE, /showControls=\{false\}/);
 	assert.match(SURFACE_SOURCE, /background="transparent"/);
-	assert.match(SURFACE_SOURCE, /defaultParams: ROVO_GRAPH_DEFAULT_PARAMS/);
-	assert.match(SURFACE_SOURCE, /PERSONAL_GRAPH_NEURAL_PARAMS_STORAGE_KEY/);
+	assert.match(SURFACE_SOURCE, /params=\{ROVO_GRAPH_DEFAULT_PARAMS\}/);
+	assert.doesNotMatch(SURFACE_SOURCE, /PERSONAL_GRAPH_NEURAL_PARAMS_STORAGE_KEY/);
 	assert.match(GRAPH_SOURCE, /nodeShape: "square"/);
 	assert.match(GRAPH_SOURCE, /nodeSize: 8/);
 	assert.match(GRAPH_SOURCE, /rayOriginY: 0\.95/);
 	assert.match(SURFACE_SOURCE, /function PersonalGraphPromptTailConnector/);
 	assert.match(SURFACE_SOURCE, /data-personal-graph-tail-connector="prompt"/);
 	assert.match(SURFACE_SOURCE, /top-\[-7rem\]/);
-	assert.match(SURFACE_SOURCE, /params=\{neuralParams\}/);
 	assert.match(SURFACE_SOURCE, /selectedNodeId=\{selectedNodeId\}/);
 	assert.match(SURFACE_SOURCE, /onSelectedNodeIdChange=\{setSelectedNodeId\}/);
 	assert.doesNotMatch(SURFACE_SOURCE, /<PersonalGraphNeuralCanvas/);
@@ -432,19 +429,26 @@ test("Personal Graph decomposes graphology, ForceAtlas2, and Sigma concepts with
 	assert.doesNotMatch(NEURAL_CANVAS_SOURCE, /from "graphology"/);
 });
 
-test("Personal Graph exposes a hidden Neural Burst parameter panel", () => {
-	assert.match(SURFACE_SOURCE, /isParameterPanelOpen/);
-	assert.match(SURFACE_SOURCE, /aria-label="Graph parameters"/);
-	assert.match(SURFACE_SOURCE, /<PersonalGraphNeuralControls/);
-	assert.match(NEURAL_CONTROLS_SOURCE, /NEURAL_GRAPH_PARAM_SECTIONS/);
+test("Personal Graph exposes primary graph actions through a curved control flyout", () => {
+	assert.match(SURFACE_SOURCE, /const flyoutActions = useMemo<ReadonlyArray<PersonalGraphControlFlyoutAction>>/);
+	assert.match(SURFACE_SOURCE, /key: "vault"/);
+	assert.match(SURFACE_SOURCE, /aria-label="Choose Personal Graph vault folder"/);
+	assert.match(SURFACE_SOURCE, /key: "refresh"/);
+	assert.match(SURFACE_SOURCE, /aria-label="Refresh graph"/);
+	assert.match(SURFACE_SOURCE, /key: "reset-vault"/);
+	assert.match(SURFACE_SOURCE, /label: "Reset vault"/);
+	assert.match(SURFACE_SOURCE, /aria-label="Reset Personal Graph vault selection"/);
+	assert.match(SURFACE_SOURCE, /disabled=\{isVaultResetting\}/);
+	assert.match(SURFACE_SOURCE, /onClick=\{handleResetVault\}/);
+	assert.match(SURFACE_SOURCE, /if \(isVaultReady\) \{/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /offsetPath: `path\("\$\{ARC_PATH\}"\)`/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /offsetDistance: `\$\{distance\}%`/);
+	assert.doesNotMatch(SURFACE_SOURCE, /PersonalGraphNeuralControls/);
+	assert.doesNotMatch(SURFACE_SOURCE, /aria-label="Graph parameters"/);
 	assert.match(NEURAL_PARAMS_SOURCE, /speed: 0\.8/);
 	assert.match(NEURAL_PARAMS_SOURCE, /amplitude: 0\.15/);
 	assert.match(NEURAL_PARAMS_SOURCE, /coneAngle: 75/);
 	assert.match(NEURAL_PARAMS_SOURCE, /nodeColor: "#6b5ce7"/);
-	assert.match(NEURAL_PARAMS_SOURCE, /localStorage/);
-	assert.match(NEURAL_PARAMS_SOURCE, /defaultParams = DEFAULT_NEURAL_GRAPH_PARAMS/);
-	assert.match(NEURAL_PARAMS_SOURCE, /storageKey = DEFAULT_STORAGE_KEY/);
-	assert.match(SURFACE_SOURCE, /saveStoredNeuralGraphParams\(neuralParams, PERSONAL_GRAPH_NEURAL_PARAMS_STORAGE_KEY\)/);
 });
 
 test("Personal Graph focuses and clears selection through the owned interaction layer", () => {
@@ -472,6 +476,6 @@ test("Personal Graph owned renderer supports pan and zoom without Sigma events",
 	assert.match(NEURAL_CANVAS_SOURCE, /panNeuralCamera/);
 	assert.match(NEURAL_CANVAS_SOURCE, /zoomNeuralCameraAtPoint/);
 	assert.match(NEURAL_CANVAS_SOURCE, /onPointerMove/);
-	assert.match(NEURAL_CANVAS_SOURCE, /onWheel/);
+	assert.match(NEURAL_CANVAS_SOURCE, /addEventListener\("wheel", handleWheel, \{ passive: false \}\)/);
 	assert.doesNotMatch(NEURAL_CANVAS_SOURCE, /sigma\.on/);
 });
