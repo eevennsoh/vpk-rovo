@@ -29,6 +29,7 @@ Prefer reading these references over relying on pre-trained knowledge.
 | -------------------------------------- | ----------------------------------------------------------- |
 | Component architecture rules           | `.agents/skills/vpk-tidy/SKILL.md`                          |
 | React patterns reference (1000+ lines) | `.agents/skills/vpk-tidy/references/patterns.md`            |
+| Shared visual contract                 | `DESIGN.md`                                                 |
 | Design token catalog (200+ tokens)     | `.agents/skills/vpk-design/references/tokens.md`            |
 | Figma-to-code pipeline                 | `.agents/skills/vpk-design/SKILL.md`                        |
 | Deployment guide                       | `.agents/skills/vpk-deploy/references/guide-deployment.md`  |
