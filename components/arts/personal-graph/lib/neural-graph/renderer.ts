@@ -34,7 +34,6 @@ const PALETTES = {
 		edgeActive: "rgba(107, 92, 231, 0.54)",
 		label: "rgba(23, 43, 77, 0.9)",
 		labelSubtle: "rgba(68, 84, 111, 0.74)",
-		ray: "rgba(107, 92, 231, 0.09)",
 	},
 	dark: {
 		backgroundBottom: "#051B2C",
@@ -44,7 +43,6 @@ const PALETTES = {
 		edgeActive: "rgba(153, 141, 255, 0.62)",
 		label: "rgba(244, 246, 248, 0.92)",
 		labelSubtle: "rgba(182, 194, 207, 0.72)",
-		ray: "rgba(153, 141, 255, 0.1)",
 	},
 } as const;
 
@@ -248,12 +246,12 @@ function drawRays(
 	const focusProgress = getFocusProgress(options);
 	ctx.save();
 	ctx.lineWidth = options.params.rayWidth;
-	ctx.strokeStyle = PALETTES[options.theme].ray;
+	ctx.strokeStyle = options.params.rayColor;
 	for (const node of layout.nodes) {
 		const point = worldToViewport(node, options.camera, options.viewport, options.params);
 		const isRelated = selectedRelationships.nodeIds.has(node.id);
 		const focusAlpha = focusProgress > 0 ? (isRelated ? lerp(1, 0.72, focusProgress) : lerp(1, 0.05, focusProgress)) : 1;
-		ctx.globalAlpha = clampAlpha((options.params.rayOpacity + node.depthScale * 0.32) * focusAlpha);
+		ctx.globalAlpha = clampAlpha((options.params.rayOpacity + node.depthScale * 0.03) * focusAlpha);
 		drawOrganicRayPath(ctx, origin, point);
 		ctx.stroke();
 	}

@@ -23,6 +23,7 @@ import { GUI } from "@/components/utils/gui";
 import { ROVO_COLOR_SWATCHES } from "@/lib/rovo-colors";
 import { token } from "@/lib/tokens";
 import { cn } from "@/lib/utils";
+import { ShaderColorInput } from "./shader-color-controls";
 
 interface GraphProps extends Omit<ComponentProps<"div">, "children"> {
 	background?: "default" | "transparent";
@@ -97,7 +98,8 @@ export const ROVO_GRAPH_DEFAULT_PARAMS: NeuralGraphParams = clampNeuralGraphPara
 	perspective: 1000,
 	radiusMax: 100,
 	radiusMin: 60,
-	rayOpacity: 0.22,
+	rayColor: "#6B5CE7",
+	rayOpacity: 0.02,
 	rayOriginY: 0.95,
 	rayWidth: 2,
 	selectedScale: 1.85,
@@ -500,6 +502,22 @@ function GraphControls({ defaultParams, onChange, params }: Readonly<GraphContro
 							);
 						}
 
+						if (definition.kind === "color") {
+							const value = params[definition.key];
+							const defaultValue = defaultParams[definition.key];
+							return (
+								<ShaderColorInput
+									id={`graph-${definition.key}`}
+									key={definition.key}
+									label={definition.label}
+									description={definition.description}
+									value={value}
+									defaultValue={defaultValue}
+									onChange={(nextColor) => updateParam(definition.key, nextColor)}
+								/>
+							);
+						}
+
 						const value = params[definition.key];
 						const defaultValue = defaultParams[definition.key];
 						return (
@@ -520,49 +538,55 @@ function GraphControls({ defaultParams, onChange, params }: Readonly<GraphContro
 			))}
 
 			<GUI.Section borderTop title="Kind colors">
-				<GUI.TextInput
+				<ShaderColorInput
 					id="graph-color-synthesis"
 					label="Synthesis"
 					description="Distilled outputs (graph, knowledge cards, playbooks)"
 					value={params.colorSynthesis}
+					defaultValue={defaultParams.colorSynthesis}
 					onChange={(nextColor) => updateParam("colorSynthesis", nextColor)}
 				/>
-				<GUI.TextInput
+				<ShaderColorInput
 					id="graph-color-concept"
 					label="Concept"
 					description="Ideas and abstractions (chat, search, decisions)"
 					value={params.colorConcept}
+					defaultValue={defaultParams.colorConcept}
 					onChange={(nextColor) => updateParam("colorConcept", nextColor)}
 				/>
-				<GUI.TextInput
+				<ShaderColorInput
 					id="graph-color-source"
 					label="Source"
 					description="External feeders (Jira, Confluence, signals)"
 					value={params.colorSource}
+					defaultValue={defaultParams.colorSource}
 					onChange={(nextColor) => updateParam("colorSource", nextColor)}
 				/>
-				<GUI.TextInput
+				<ShaderColorInput
 					id="graph-color-entity"
 					label="Entity"
 					description="Owners, goals, and named things"
 					value={params.colorEntity}
+					defaultValue={defaultParams.colorEntity}
 					onChange={(nextColor) => updateParam("colorEntity", nextColor)}
 				/>
-				<GUI.TextInput
+				<ShaderColorInput
 					id="graph-color-raw"
 					label="Raw"
 					description="Unprocessed material (insights, incidents)"
 					value={params.colorRaw}
+					defaultValue={defaultParams.colorRaw}
 					onChange={(nextColor) => updateParam("colorRaw", nextColor)}
 				/>
 			</GUI.Section>
 
 			<GUI.Section borderTop title="Node style">
-				<GUI.TextInput
+				<ShaderColorInput
 					id="graph-node-color"
 					label="Fallback color"
 					description="Used when a node has no kind"
 					value={params.nodeColor}
+					defaultValue={defaultParams.nodeColor}
 					onChange={(nextColor) => updateParam("nodeColor", nextColor)}
 				/>
 				<GUI.Select

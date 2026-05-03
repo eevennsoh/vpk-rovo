@@ -138,6 +138,78 @@ mutation UpdateComment($id: String!, $body: String!) {
 }
 ```
 
+## Playwright Evidence Uploads
+
+Use this flow when a Symphony worker needs to attach browser evidence from
+`playwright-cli` to the existing `## Codex Workpad` comment.
+
+Rules:
+
+- Prefer updating the existing workpad comment over creating a new comment.
+- Upload success and failure artifacts required by `WORKFLOW.md`.
+- Keep local artifacts under `output/playwright/<issue-identifier>/`.
+- Use `video/webm` for `.webm`, `image/png` for `.png`, `image/jpeg` for
+  `.jpg` or `.jpeg`, and `application/octet-stream` for Playwright traces when
+  no more specific content type is available.
+- Do not include signed upload URLs in the workpad. Include only the returned
+  `assetUrl`.
+
+Upload one file:
+
+1. Get the local file size:
+
+```bash
+wc -c < output/playwright/VEN-123/happy-path.webm
+```
+
+2. Request a signed upload URL:
+
+```graphql
+mutation FileUpload(
+  $filename: String!
+  $contentType: String!
+  $size: Int!
+  $makePublic: Boolean
+) {
+  fileUpload(
+    filename: $filename
+    contentType: $contentType
+    size: $size
+    makePublic: $makePublic
+  ) {
+    success
+    uploadFile {
+      uploadUrl
+      assetUrl
+      headers {
+        key
+        value
+      }
+    }
+  }
+}
+```
+
+3. Upload the local bytes with the exact returned headers:
+
+```bash
+curl -X PUT \
+  -H "Header-Name: Header Value" \
+  --data-binary @output/playwright/VEN-123/happy-path.webm \
+  "<uploadUrl>"
+```
+
+4. Update the existing workpad comment with a scenario table:
+
+```md
+### Evidence
+
+| Scenario | Expected result | Actual result | Artifact |
+| --- | --- | --- | --- |
+| Happy path | User completes the flow | Passed | [video.webm](<assetUrl>) |
+| Error state | Error message is visible | Passed | [screenshot.png](<assetUrl>) |
+```
+
 Attach a GitHub PR:
 
 ```graphql

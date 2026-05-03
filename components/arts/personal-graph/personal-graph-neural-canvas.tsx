@@ -48,7 +48,7 @@ const ZOOM_SPRING_INSTANT = { stiffness: 4000, damping: 200, mass: 0.05, restDel
 const FOCUS_SPRING_CONFIG = { stiffness: 160, damping: 24, mass: 0.7, restDelta: 0.0005 } as const;
 const FOCUS_SPRING_INSTANT = { stiffness: 4000, damping: 220, mass: 0.05, restDelta: 0.0005 } as const;
 
-function getPointerPoint(event: React.PointerEvent<HTMLDivElement> | React.WheelEvent<HTMLDivElement>): NeuralPoint {
+function getPointerPoint(event: React.PointerEvent<HTMLDivElement>): NeuralPoint {
 	const rect = event.currentTarget.getBoundingClientRect();
 	return {
 		x: event.clientX - rect.left,
@@ -410,9 +410,15 @@ export function PersonalGraphNeuralCanvas({
 		}
 	}, [onClearSelection, onSelectNode, params, updateHover, viewport]);
 
-	const handleWheel = useCallback((event: React.WheelEvent<HTMLDivElement>) => {
+	const handleWheel = useCallback((event: WheelEvent) => {
 		event.preventDefault();
-		const pointer = getPointerPoint(event);
+		const container = containerRef.current;
+		if (!container) return;
+		const rect = container.getBoundingClientRect();
+		const pointer: NeuralPoint = {
+			x: event.clientX - rect.left,
+			y: event.clientY - rect.top,
+		};
 		wheelAnchorRef.current = pointer;
 		const target = zoomNeuralCameraAtPoint({
 			camera: { ...cameraRef.current, zoom: targetZoomMV.get() },
@@ -424,6 +430,13 @@ export function PersonalGraphNeuralCanvas({
 		});
 		targetZoomMV.set(target.zoom);
 	}, [params, targetZoomMV, viewport]);
+
+	useEffect(() => {
+		const container = containerRef.current;
+		if (!container) return;
+		container.addEventListener("wheel", handleWheel, { passive: false });
+		return () => container.removeEventListener("wheel", handleWheel);
+	}, [handleWheel]);
 
 	const cursorClass = isPanning ? "cursor-grabbing" : hoveredNodeId ? "cursor-pointer" : "cursor-grab";
 	const backgroundClass = background === "transparent" ? "bg-transparent" : "bg-surface";
@@ -443,7 +456,6 @@ export function PersonalGraphNeuralCanvas({
 				}}
 				onPointerMove={handlePointerMove}
 				onPointerUp={handlePointerUp}
-				onWheel={handleWheel}
 				ref={containerRef}
 			>
 				<canvas aria-hidden="true" className="block h-full w-full" ref={canvasRef} />

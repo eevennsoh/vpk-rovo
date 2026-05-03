@@ -189,8 +189,48 @@ record that in `Selected Skills` and continue with the routing checklist below.
   `shipping-and-launch` only when deployment or release readiness is in scope.
 - Any code-changing state: include `test-driven-development` as the default
   validation guardrail. For browser-visible changes, pair the selected UI skill
-  with the repo's `/agent-browser`, screenshot, and accessibility checks from
-  `AGENTS.md`.
+  with `playwright-cli` for browser evidence, plus screenshot and accessibility
+  checks from `AGENTS.md`.
+
+### Playwright evidence policy
+
+Use Playwright CLI as the default browser evidence path for browser-visible
+implementation and rework. The repo carries `.playwright/cli.config.json`, so
+Playwright CLI writes artifacts under `output/playwright/` by default. Those
+artifacts are local evidence files and must not be committed.
+
+For each browser-visible issue:
+
+1. Use an issue-scoped browser session name:
+   `PLAYWRIGHT_CLI_SESSION=symphony-{{ issue.identifier }}`.
+2. Save scenario artifacts under
+   `output/playwright/{{ issue.identifier }}/`.
+3. Capture the happy path and every meaningful expected failure or error-state
+   scenario named by the issue, implementation, or acceptance criteria.
+4. Prefer a short WebM walkthrough for successful user-facing flows. Use
+   screenshots for stable UI states. Use traces for unexpected failures because
+   traces preserve DOM snapshots, console output, network details, and action
+   timing.
+5. When failure states require deterministic setup, use `playwright-cli route`
+   or `playwright-cli run-code` to mock network errors, slow responses, invalid
+   responses, or empty data.
+6. Upload every required artifact to the existing `## Codex Workpad` comment
+   through the `vpk-symphony` Linear upload flow. Do not create separate media
+   comments unless the workpad cannot be updated.
+7. Record this table in the workpad `Evidence` section:
+
+   ```md
+   | Scenario | Expected result | Actual result | Artifact |
+   | --- | --- | --- | --- |
+   | Happy path | <expected> | Passed | [video.webm](<asset-url>) |
+   | Error state | <expected> | Passed | [screenshot.png](<asset-url>) |
+   ```
+
+If Playwright exposes a product or implementation failure, keep the issue in
+`In Progress` or `Rework`, attach the failure artifact to the workpad, fix the
+failure, and rerun the scenario. Move to `Human Review` with a Playwright
+blocker only when the blocker is external, such as missing browser dependencies,
+missing credentials, or unavailable required test data.
 
 ## Execution Rules
 
@@ -222,10 +262,11 @@ record that in `Selected Skills` and continue with the routing checklist below.
    confusing docs, weak tests, or unobservable app state. Keep product changes
    scoped to the issue.
 11. For UI or browser-visible work, use the repo's local runtime, `pnpm ports`,
-    `/agent-browser`, screenshots, and accessibility checks from `AGENTS.md`.
-    Record the exact route, viewport or screen, and observed result in the
-    workpad. For backend or agent-loop work, inspect live logs and add targeted
-    `node --test ...` coverage when possible.
+    `playwright-cli`, screenshots or WebM recordings, traces for unexpected
+    failures, and accessibility checks from `AGENTS.md`. Record the exact route,
+    viewport or screen, scenario, expected result, observed result, and uploaded
+    artifact link in the workpad. For backend or agent-loop work, inspect live
+    logs and add targeted `node --test ...` coverage when possible.
 12. Run the validation required by `AGENTS.md` for the touched surface. The
    default repo-wide checks are `pnpm run lint` and `pnpm run typecheck`; add
    targeted `node --test ...` or browser/a11y checks when relevant.
@@ -243,6 +284,8 @@ record that in `Selected Skills` and continue with the routing checklist below.
       change, or reply with explicit justified pushback;
     - update the workpad with each feedback item and resolution; and
     - repeat until no actionable comments remain and checks are green.
+    For browser-visible work, the Playwright evidence policy must also be
+    complete before this transition.
 16. Use the blocked-access escape hatch only when completion is blocked by
     missing required tools, auth, permissions, or secrets that cannot be
     resolved in-session. GitHub access is not a blocker by default; try
