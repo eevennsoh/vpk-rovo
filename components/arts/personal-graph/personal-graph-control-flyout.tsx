@@ -147,7 +147,7 @@ export function PersonalGraphControlFlyoutActions({
 								>
 									<motion.span
 										animate={{ opacity: 1, x: 0 }}
-										className="pointer-events-none absolute right-[calc(100%+12px)] top-1/2 -translate-y-1/2 whitespace-nowrap rounded-md bg-bg-neutral-bold px-3 py-1.5 text-xs text-text-inverse shadow-md"
+										className="pointer-events-none absolute right-[calc(100%+12px)] top-1/2 hidden -translate-y-1/2 whitespace-nowrap rounded-md bg-bg-neutral-bold px-3 py-1.5 text-xs text-text-inverse shadow-md sm:block"
 										exit={{ opacity: 0, x: 8 }}
 										initial={{ opacity: 0, x: 8 }}
 										style={{ willChange: "transform, opacity" }}
