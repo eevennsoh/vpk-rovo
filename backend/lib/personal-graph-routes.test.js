@@ -119,6 +119,8 @@ function configureVaultEnv(t, vaultRoot) {
 		fs.rmSync(configPath, { force: true });
 		fs.rmSync(vaultRoot, { force: true, recursive: true });
 	});
+
+	return configPath;
 }
 
 test("GET /api/personal-graph/vault is handled by the Personal Graph router", async (t) => {
@@ -190,4 +192,40 @@ test("POST /api/personal-graph/raw accepts multipart file uploads into the selec
 		fs.readFileSync(path.join(vaultRoot, "raw", "capture.txt"), "utf8"),
 		"Captured source body.",
 	);
+});
+
+test("POST /api/personal-graph/vault/reset clears folder picker state without deleting vault files", async (t) => {
+	const fallbackRoot = fs.mkdtempSync(path.join(os.tmpdir(), "personal-graph-route-reset-fallback-"));
+	const selectedRoot = fs.mkdtempSync(path.join(os.tmpdir(), "personal-graph-route-reset-selected-"));
+	const configPath = configureVaultEnv(t, fallbackRoot);
+	const selectedRawPath = path.join(selectedRoot, "raw", "capture.md");
+	fs.mkdirSync(path.dirname(selectedRawPath), { recursive: true });
+	fs.writeFileSync(selectedRawPath, "selected vault source", "utf8");
+	fs.writeFileSync(configPath, JSON.stringify({ vaultRoot: selectedRoot }), "utf8");
+	process.env.PERSONAL_GRAPH_SELECTED_VAULT = selectedRoot;
+	t.after(() => {
+		fs.rmSync(selectedRoot, { force: true, recursive: true });
+	});
+
+	const beforeResponse = await dispatch(createPersonalGraphTestApp(), {
+		url: "/api/personal-graph/vault",
+	});
+	const beforeBody = await beforeResponse.json();
+	assert.equal(beforeResponse.status, 200);
+	assert.equal(beforeBody.root, selectedRoot);
+	assert.equal(beforeBody.source, "folder-picker");
+
+	const resetResponse = await dispatch(createPersonalGraphTestApp(), {
+		method: "POST",
+		url: "/api/personal-graph/vault/reset",
+	});
+	const resetBody = await resetResponse.json();
+
+	assert.equal(resetResponse.status, 200);
+	assert.equal(resetBody.root, fallbackRoot);
+	assert.equal(resetBody.source, "env");
+	assert.equal(resetBody.status, "ready");
+	assert.equal(process.env.PERSONAL_GRAPH_SELECTED_VAULT, undefined);
+	assert.equal(fs.existsSync(configPath), false);
+	assert.equal(fs.readFileSync(selectedRawPath, "utf8"), "selected vault source");
 });
