@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import ArrowUpRightIcon from "@atlaskit/icon/core/arrow-up-right";
 import { Button } from "@/components/ui/button";
 import { token } from "@/lib/tokens";
 import { cn } from "@/lib/utils";
@@ -12,6 +11,7 @@ import {
 	type PersonalGraphControlFlyoutAction,
 } from "./personal-graph-control-flyout";
 import { PersonalGraphGlassPanel } from "./personal-graph-glass-panel";
+import { PixelArrowRightIcon } from "./personal-graph-pixel-icons";
 
 interface PersonalGraphSearchProps {
 	className?: string;
@@ -68,13 +68,13 @@ export function PersonalGraphSearch({
 				/>
 				<Button
 					aria-label="Open top search result"
-					className="size-8 rounded-full border-transparent bg-bg-neutral-bold text-text-inverse shadow-none hover:bg-bg-neutral-bold-hovered disabled:border-transparent disabled:bg-bg-disabled disabled:text-text-disabled"
+					className="size-8 rounded-full border-0 text-text-subtle shadow-none hover:bg-bg-neutral-subtle-hovered [&_svg]:text-icon-subtle"
 					disabled={!firstResult}
 					size="icon"
 					type="submit"
-					variant="outline"
+					variant="ghost"
 				>
-					<ArrowUpRightIcon label="" />
+					<PixelArrowRightIcon />
 				</Button>
 			</PersonalGraphGlassPanel>
 			{query ? (

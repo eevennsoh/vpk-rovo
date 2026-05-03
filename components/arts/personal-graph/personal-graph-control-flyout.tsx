@@ -1,11 +1,10 @@
 "use client";
 
 import type { ReactNode } from "react";
-import CrossIcon from "@atlaskit/icon/core/cross";
-import SettingsIcon from "@atlaskit/icon/core/settings";
 import { AnimatePresence, motion, type Transition } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { PixelCloseIcon, PixelConfigureIcon } from "./personal-graph-pixel-icons";
 
 export interface PersonalGraphControlFlyoutAction {
 	key: string;
@@ -17,8 +16,14 @@ const TRIGGER_TRANSITION: Transition = { type: "spring", stiffness: 500, damping
 const ITEM_TRANSITION: Transition = { type: "spring", stiffness: 400, damping: 22 };
 const STAGGER_INTERVAL = 0.05;
 
-const ARC_PATH = "M 0 0 C 20 -90, 50 -190, 120 -280";
-const ARC_TRAVEL_PERCENT = 90;
+// Cubic bezier curving up and to the right — closer to Motion's reference (~21° top tilt)
+// than the dramatic sweep (~56°), settling around ~30° at the top.
+// Combined with offsetRotate: "auto 90deg" on each item, the buttons (and their child labels)
+// rotate along the path tangent. End-tangent ~(82, -145) yields ~30° clockwise tilt at the top.
+const ARC_PATH = "M 0 0 C 0 -92, 20 -185, 102 -330";
+// Travel% chosen so consecutive actions are spaced ~48px (40px button + 8px gap) along the arc.
+// Approximate arc length ≈ 335. 335 * 0.72 / 5 ≈ 48.2 → ≈ 8px visual gap preserved.
+const ARC_TRAVEL_PERCENT = 72;
 
 interface PersonalGraphControlFlyoutTriggerProps {
 	className?: string;
@@ -42,7 +47,8 @@ export function PersonalGraphControlFlyoutTrigger({
 				aria-expanded={isOpen}
 				aria-label={isOpen ? "Close graph controls" : "Open graph controls"}
 				className={cn(
-					"size-8 rounded-full border-0 text-text shadow-none hover:bg-bg-neutral-subtle-hovered",
+					"size-8 rounded-full border-0 text-text-subtle shadow-none hover:bg-bg-neutral-subtle-hovered",
+					"aria-expanded:bg-transparent aria-expanded:text-text-subtle aria-expanded:border-transparent [&_svg]:text-icon-subtle aria-expanded:[&_svg]:text-icon-subtle",
 					className,
 				)}
 				onClick={onToggle}
@@ -50,7 +56,7 @@ export function PersonalGraphControlFlyoutTrigger({
 				type="button"
 				variant="ghost"
 			>
-				{isOpen ? <CrossIcon label="" /> : <SettingsIcon label="" />}
+				{isOpen ? <PixelCloseIcon /> : <PixelConfigureIcon />}
 			</Button>
 		</motion.span>
 	);
@@ -87,7 +93,7 @@ export function PersonalGraphControlFlyoutActions({
 									key={action.key}
 									style={{
 										offsetPath: `path("${ARC_PATH}")`,
-										offsetRotate: "0deg",
+										offsetRotate: "auto 90deg",
 										offsetAnchor: "center center",
 										willChange: "transform, opacity",
 									}}
@@ -99,7 +105,7 @@ export function PersonalGraphControlFlyoutActions({
 										exit={{ opacity: 0, x: 8 }}
 										initial={{ opacity: 0, x: 8 }}
 										style={{ willChange: "transform, opacity" }}
-										transition={{ delay: index * STAGGER_INTERVAL + 0.1, duration: 0.2 }}
+										transition={{ delay: index * STAGGER_INTERVAL + 0.1, duration: 0.15 }}
 									>
 										{action.label}
 									</motion.span>

@@ -58,6 +58,14 @@ export function selectVaultFolder() {
 	});
 }
 
+export function resetVaultFolder() {
+	return fetchJson<VaultSettings>("/api/personal-graph/vault/reset", {
+		body: JSON.stringify({}),
+		headers: { "Content-Type": "application/json" },
+		method: "POST",
+	});
+}
+
 export function fetchPage(slug: string, options: { signal?: AbortSignal } = {}) {
 	return fetchJson<PageBody>(
 		`/api/personal-graph/page/${slug.split("/").map(encodeURIComponent).join("/")}`,

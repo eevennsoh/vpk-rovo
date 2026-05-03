@@ -1,14 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { fetchVaultSettings, selectVaultFolder } from "../lib/personal-graph-api";
+import { fetchVaultSettings, resetVaultFolder, selectVaultFolder } from "../lib/personal-graph-api";
 import type { VaultSettings } from "../lib/personal-graph-types";
 
 interface VaultSettingsState {
 	error: Error | null;
 	isLoading: boolean;
+	isResetting: boolean;
 	isSelecting: boolean;
 	refresh: () => Promise<void>;
+	resetFolder: () => Promise<VaultSettings | null>;
 	selectFolder: () => Promise<VaultSettings | null>;
 	settings: VaultSettings | null;
 }
@@ -18,6 +20,7 @@ export function useVaultSettings(): VaultSettingsState {
 	const [error, setError] = useState<Error | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
 	const [isSelecting, setIsSelecting] = useState(false);
+	const [isResetting, setIsResetting] = useState(false);
 
 	const refresh = useCallback(async () => {
 		const controller = new AbortController();
@@ -54,6 +57,21 @@ export function useVaultSettings(): VaultSettingsState {
 		}
 	}, []);
 
+	const resetFolder = useCallback(async () => {
+		setIsResetting(true);
+		try {
+			const nextSettings = await resetVaultFolder();
+			setSettings(nextSettings);
+			setError(null);
+			return nextSettings;
+		} catch (nextError) {
+			setError(nextError instanceof Error ? nextError : new Error(String(nextError)));
+			return null;
+		} finally {
+			setIsResetting(false);
+		}
+	}, []);
+
 	useEffect(() => {
 		void refresh();
 	}, [refresh]);
@@ -61,8 +79,10 @@ export function useVaultSettings(): VaultSettingsState {
 	return {
 		error,
 		isLoading,
+		isResetting,
 		isSelecting,
 		refresh,
+		resetFolder,
 		selectFolder,
 		settings,
 	};

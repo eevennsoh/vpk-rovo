@@ -419,6 +419,19 @@ function writeVaultConfig(vaultRoot, options = {}) {
 	return settings;
 }
 
+function clearVaultConfig(options = {}) {
+	const configPath = getConfigPath(options.configPath);
+	try {
+		fs.rmSync(configPath, { force: true });
+	} catch (error) {
+		if (error?.code !== "ENOENT") {
+			throw error;
+		}
+	}
+	delete process.env[SELECTED_VAULT_ENV_KEY];
+	return getVaultSettings(options);
+}
+
 function runExecFile(execFileImpl, command, args, options) {
 	return new Promise((resolve, reject) => {
 		execFileImpl(command, args, options, (error, stdout, stderr) => {
@@ -604,6 +617,7 @@ function unprocessedRawSources() {
 
 module.exports = {
 	appendLog,
+	clearVaultConfig,
 	getVaultSettings,
 	getVaultRoot,
 	listRaw,

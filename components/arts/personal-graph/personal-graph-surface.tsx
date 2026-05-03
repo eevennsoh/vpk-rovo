@@ -6,16 +6,15 @@ import ChevronRightIcon from "@atlaskit/icon/core/chevron-right";
 import CopyIcon from "@atlaskit/icon/core/copy";
 import CrossIcon from "@atlaskit/icon/core/cross";
 import LinkExternalIcon from "@atlaskit/icon/core/link-external";
-import RefreshIcon from "@atlaskit/icon/core/refresh";
 import ShowMoreHorizontalIcon from "@atlaskit/icon/core/show-more-horizontal";
-import UploadIcon from "@atlaskit/icon/core/upload";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ThemeToggle } from "@/components/utils/theme-wrapper";
+import { useTheme } from "@/components/utils/theme-wrapper";
 import Graph, { ROVO_GRAPH_DEFAULT_PARAMS } from "@/components/website/demos/visual/graph";
 import { cn } from "@/lib/utils";
 import { usePersonalGraphIntro } from "./hooks/use-personal-graph-intro";
 import { useVaultExplorer } from "./hooks/use-vault-explorer";
+import { useVaultSettings } from "./hooks/use-vault-settings";
 import type { VaultExplorer, VaultNode, VaultNodeKind } from "./lib/personal-graph-types";
 import { PersonalGraphBackdrop } from "./personal-graph-backdrop";
 import type { PersonalGraphControlFlyoutAction } from "./personal-graph-control-flyout";
@@ -23,9 +22,17 @@ import { PersonalGraphDropzone } from "./personal-graph-dropzone";
 import { PersonalGraphGlassPanel } from "./personal-graph-glass-panel";
 import { PersonalGraphIngestButton } from "./personal-graph-ingest-button";
 import { PersonalGraphLog } from "./personal-graph-log";
+import {
+	PixelDarkIcon,
+	PixelIngestIcon,
+	PixelLightIcon,
+	PixelRefreshIcon,
+	PixelResetIcon,
+	PixelSystemIcon,
+	PixelVaultIcon,
+} from "./personal-graph-pixel-icons";
 import { PersonalGraphSearch } from "./personal-graph-search";
 import { PersonalGraphTitle } from "./personal-graph-title-scramble";
-import { PersonalGraphVaultPicker } from "./personal-graph-vault-picker";
 
 type PersonalGraphSurfaceProps = React.ComponentProps<"main">;
 
@@ -224,6 +231,14 @@ export function PersonalGraphSurface({
 	...props
 }: Readonly<PersonalGraphSurfaceProps>) {
 	const { error, explorer, isLoading, refresh } = useVaultExplorer();
+	const {
+		isResetting: isVaultResetting,
+		isSelecting: isVaultSelecting,
+		resetFolder: resetVault,
+		selectFolder: selectVault,
+		settings: vaultSettings,
+	} = useVaultSettings();
+	const { actualTheme, setTheme, theme } = useTheme();
 	const { phase } = usePersonalGraphIntro();
 	const isHeaderRevealed = phase === "title" || phase === "subtext" || phase === "controls" || phase === "settle" || phase === "search" || phase === "graph" || phase === "done";
 	const isSubtextRevealed = phase === "subtext" || phase === "controls" || phase === "settle" || phase === "search" || phase === "graph" || phase === "done";
@@ -243,13 +258,49 @@ export function PersonalGraphSurface({
 	const handleCaptureQueueOpenChange = useCallback((isOpen: boolean) => {
 		setIsCaptureQueueOpen(isOpen);
 	}, []);
+	const handleChooseVault = useCallback(async () => {
+		const next = await selectVault();
+		if (next?.status === "ready") {
+			handleRefreshAll();
+		}
+	}, [handleRefreshAll, selectVault]);
+	const handleResetVault = useCallback(async () => {
+		const next = await resetVault();
+		if (next) {
+			handleRefreshAll();
+		}
+	}, [handleRefreshAll, resetVault]);
+	const handleToggleTheme = useCallback(() => {
+		if (theme === "light") {
+			setTheme("dark");
+		} else if (theme === "dark") {
+			setTheme("system");
+		} else {
+			setTheme("light");
+		}
+	}, [setTheme, theme]);
 
-	const flyoutActions = useMemo<ReadonlyArray<PersonalGraphControlFlyoutAction>>(
-		() => [
+	const isVaultReady = vaultSettings?.status === "ready";
+	const themeLabel = theme === "system" ? "System theme" : theme === "dark" ? "Dark theme" : "Light theme";
+
+	const flyoutActions = useMemo<ReadonlyArray<PersonalGraphControlFlyoutAction>>(() => {
+		const actions: PersonalGraphControlFlyoutAction[] = [
 			{
 				key: "vault",
 				label: "Choose vault",
-				render: <PersonalGraphVaultPicker onVaultChanged={handleRefreshAll} />,
+				render: (
+					<Button
+						aria-label="Choose Personal Graph vault folder"
+						className="size-10 rounded-full border-border bg-bg-neutral-subtle text-text shadow-none hover:bg-bg-neutral-subtle-hovered disabled:border-transparent disabled:bg-bg-disabled disabled:text-text-disabled [&_svg]:text-icon-subtle"
+						disabled={isVaultSelecting}
+						isLoading={isVaultSelecting}
+						onClick={handleChooseVault}
+						size="icon"
+						variant="outline"
+					>
+						<PixelVaultIcon />
+					</Button>
+				),
 			},
 			{
 				key: "capture",
@@ -260,13 +311,13 @@ export function PersonalGraphSurface({
 							render={
 								<Button
 									aria-label="Capture queue"
-									className="size-10 rounded-full border-border bg-bg-neutral-subtle text-text shadow-none hover:bg-bg-neutral-subtle-hovered"
+									className="size-10 rounded-full border-border bg-bg-neutral-subtle text-text shadow-none hover:bg-bg-neutral-subtle-hovered [&_svg]:text-icon-subtle"
 									size="icon"
 									variant="outline"
 								/>
 							}
 						>
-							<UploadIcon label="" />
+							<PixelIngestIcon />
 						</PopoverTrigger>
 						<PopoverContent
 							align="end"
@@ -287,28 +338,70 @@ export function PersonalGraphSurface({
 				render: (
 					<Button
 						aria-label="Refresh graph"
-						className="size-10 rounded-full border-border bg-bg-neutral-subtle text-text shadow-none hover:bg-bg-neutral-subtle-hovered"
+						className="size-10 rounded-full border-border bg-bg-neutral-subtle text-text shadow-none hover:bg-bg-neutral-subtle-hovered [&_svg]:text-icon-subtle"
 						disabled={isLoading}
 						onClick={handleRefreshAll}
 						size="icon"
 						variant="outline"
 					>
-						<RefreshIcon label="" />
+						<PixelRefreshIcon />
 					</Button>
 				),
 			},
 			{
 				key: "theme",
-				label: "Theme",
+				label: themeLabel,
 				render: (
-					<div className="[&_[data-slot=button]]:size-10 [&_[data-slot=button]]:rounded-full [&_[data-slot=button]]:border [&_[data-slot=button]]:border-border [&_[data-slot=button]]:bg-bg-neutral-subtle [&_[data-slot=button]]:text-text [&_[data-slot=button]]:shadow-none [&_[data-slot=button]:hover]:bg-bg-neutral-subtle-hovered">
-						<ThemeToggle />
-					</div>
+					<Button
+						aria-label={themeLabel}
+						className="size-10 rounded-full border-border bg-bg-neutral-subtle text-text shadow-none hover:bg-bg-neutral-subtle-hovered [&_svg]:text-icon-subtle"
+						onClick={handleToggleTheme}
+						size="icon"
+						variant="outline"
+					>
+						{theme === "system" ? <PixelSystemIcon /> : actualTheme === "dark" ? <PixelDarkIcon /> : <PixelLightIcon />}
+					</Button>
 				),
 			},
-		],
-		[handleRefreshAll, handleCaptureQueueOpenChange, isCaptureQueueOpen, isLoading, refreshKey],
-	);
+		];
+
+		if (isVaultReady) {
+			actions.push({
+				key: "reset-vault",
+				label: "Reset vault",
+				render: (
+					<Button
+						aria-label="Reset Personal Graph vault selection"
+						className="size-10 rounded-full border-border bg-bg-neutral-subtle text-text shadow-none hover:bg-bg-neutral-subtle-hovered disabled:border-transparent disabled:bg-bg-disabled disabled:text-text-disabled [&_svg]:text-icon-subtle"
+						disabled={isVaultResetting}
+						isLoading={isVaultResetting}
+						onClick={handleResetVault}
+						size="icon"
+						variant="outline"
+					>
+						<PixelResetIcon />
+					</Button>
+				),
+			});
+		}
+
+		return actions;
+	}, [
+		actualTheme,
+		handleCaptureQueueOpenChange,
+		handleChooseVault,
+		handleRefreshAll,
+		handleResetVault,
+		handleToggleTheme,
+		isCaptureQueueOpen,
+		isLoading,
+		isVaultReady,
+		isVaultResetting,
+		isVaultSelecting,
+		refreshKey,
+		theme,
+		themeLabel,
+	]);
 
 	useEffect(() => {
 		if (!selectedNodeId) {

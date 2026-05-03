@@ -8,6 +8,7 @@ const librarian = require("./personal-graph-librarian");
 const qmd = require("./personal-graph-qmd");
 const { getPositiveInteger } = require("./shared-utils");
 const {
+	clearVaultConfig,
 	parseLogEntries,
 	readPage,
 	getVaultSettings,
@@ -76,6 +77,18 @@ router.post("/vault/select", async (_req, res) => {
 				? "Folder selection was cancelled."
 				: "Failed to select Personal Graph vault folder",
 			code: error?.code ?? "PERSONAL_GRAPH_VAULT_SELECT_FAILED",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+router.post("/vault/reset", (_req, res) => {
+	try {
+		return res.json(clearVaultConfig());
+	} catch (error) {
+		return res.status(getStatusForError(error)).json({
+			error: "Failed to reset Personal Graph vault selection",
+			code: error?.code ?? "PERSONAL_GRAPH_VAULT_RESET_FAILED",
 			details: error instanceof Error ? error.message : String(error),
 		});
 	}
