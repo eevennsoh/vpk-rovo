@@ -555,8 +555,7 @@ export function PersonalGraphSurface({
 				onSelectNode={setSelectedNodeId}
 			/>
 
-			<details className="sr-only" open>
-				<summary>Personal Graph text fallback</summary>
+			<section className="sr-only" aria-label="Personal Graph text fallback">
 				<h2>Nodes</h2>
 				<ul aria-label="Personal Graph nodes">
 					{(explorer?.nodes ?? []).map((node) => (
@@ -577,7 +576,7 @@ export function PersonalGraphSurface({
 						);
 					})}
 				</ul>
-			</details>
+			</section>
 		</main>
 	);
 }
