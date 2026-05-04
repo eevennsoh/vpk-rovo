@@ -53,7 +53,7 @@ export function PersonalGraphSearch({
 				className="right-[72px] top-1/2"
 				isOpen={isFlyoutOpen}
 			/>
-			<PersonalGraphGlassPanel contentClassName="flex h-16 items-center gap-2 p-4 pl-6" radius={30}>
+			<PersonalGraphGlassPanel className="relative z-10" contentClassName="flex h-16 items-center gap-2 p-4 pl-6" radius={30}>
 				<input
 					aria-label="Ask or search Personal Graph"
 					className="min-w-0 flex-1 bg-transparent text-text outline-none placeholder:text-text-subtlest"

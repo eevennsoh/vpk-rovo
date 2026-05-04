@@ -1,7 +1,7 @@
 "use client";
 
 import type { CSSProperties, ReactNode } from "react";
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -24,6 +24,9 @@ function buildColorMix(color: string, opacity: number): string {
 const DROP_SHADOW = "0 8px 30px -12px rgba(0, 0, 0, 0.18)";
 const INNER_HIGHLIGHT_TOP = "inset 0 1px 0 rgba(255, 255, 255, 0.7)";
 const INNER_HIGHLIGHT_BOTTOM = "inset 0 -1px 0 rgba(0, 0, 0, 0.05)";
+const FALLBACK_BACKDROP_FILTER = "blur(14px) saturate(1.4)";
+const useIsomorphicLayoutEffect =
+	typeof window === "undefined" ? useEffect : useLayoutEffect;
 
 function buildBoxShadow(
 	hairlineColor: string,
@@ -105,11 +108,12 @@ export default function LiquidGlass({
 	const gaussianBlurRef = useRef<SVGFEGaussianBlurElement>(null);
 
 	const [svgSupported, setSvgSupported] = useState(false);
-	// `null` until mount — render uses the deterministic "no backdrop-filter"
-	// fallback on the server and first client render to match hydration.
+	// `null` until mount — render uses the deterministic CSS blur fallback on
+	// the server and first client render to avoid a transparent hydration flash.
 	const [backdropSupported, setBackdropSupported] = useState<boolean | null>(
 		null,
 	);
+	const [filterReady, setFilterReady] = useState(false);
 
 	const generateDisplacementMap = useCallback(() => {
 		const rect = containerRef.current?.getBoundingClientRect();
@@ -139,11 +143,15 @@ export default function LiquidGlass({
 
 	const updateDisplacementMap = useCallback(() => {
 		const href = generateDisplacementMap();
-		if (!href) return;
+		if (!href) {
+			setFilterReady(false);
+			return;
+		}
 		feImageRef.current?.setAttribute("href", href);
+		setFilterReady(true);
 	}, [generateDisplacementMap]);
 
-	useEffect(() => {
+	useIsomorphicLayoutEffect(() => {
 		updateDisplacementMap();
 
 		const channelScales = buildLiquidGlassChannelScales(distortionScale, dispersion, {
@@ -165,7 +173,7 @@ export default function LiquidGlass({
 		gaussianBlurRef.current?.setAttribute("stdDeviation", blur.toString());
 	}, [updateDisplacementMap, distortionScale, dispersion, chromaticOffsetR, chromaticOffsetG, chromaticOffsetB, blur]);
 
-	useEffect(() => {
+	useIsomorphicLayoutEffect(() => {
 		const check = () => {
 			if (typeof window === "undefined" || typeof document === "undefined") return false;
 			const isWebkit = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
@@ -203,7 +211,7 @@ export default function LiquidGlass({
 		boxShadow: buildBoxShadow(hairlineColor, dropShadow),
 	};
 
-	if (svgSupported) {
+	if (svgSupported && filterReady) {
 		Object.assign(containerStyle, {
 			background: `hsl(0 0% 100% / ${backgroundOpacity})`,
 			backdropFilter: `url(#${filterId}) saturate(${saturation})`,
@@ -212,12 +220,16 @@ export default function LiquidGlass({
 	} else if (backdropSupported) {
 		Object.assign(containerStyle, {
 			background: `rgba(255, 255, 255, ${fallbackBackgroundOpacity ?? 0.18})`,
-			backdropFilter: "blur(14px) saturate(1.4)",
-			WebkitBackdropFilter: "blur(14px) saturate(1.4)",
+			backdropFilter: FALLBACK_BACKDROP_FILTER,
+			WebkitBackdropFilter: FALLBACK_BACKDROP_FILTER,
+		});
+	} else if (backdropSupported === null) {
+		Object.assign(containerStyle, {
+			background: `rgba(255, 255, 255, ${fallbackBackgroundOpacity ?? 0.18})`,
+			backdropFilter: FALLBACK_BACKDROP_FILTER,
+			WebkitBackdropFilter: FALLBACK_BACKDROP_FILTER,
 		});
 	} else {
-		// SSR + first client render land here; matches the
-		// `backdropSupported === null` state so hydration is consistent.
 		Object.assign(containerStyle, {
 			background: `rgba(255, 255, 255, ${fallbackBackgroundOpacity ?? 0.4})`,
 		});

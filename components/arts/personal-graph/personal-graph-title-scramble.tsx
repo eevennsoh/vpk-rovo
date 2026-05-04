@@ -22,7 +22,7 @@ export function PersonalGraphTitle({ className, play = true, ...motionProps }: R
 			{play ? (
 				<>
 					<ScrambleText
-						className="block"
+						className="block whitespace-nowrap"
 						duration={SCRAMBLE_DURATION_S}
 						delay={centerStagger}
 						chars={MOTION_SPECIAL_CHARS}
@@ -30,7 +30,7 @@ export function PersonalGraphTitle({ className, play = true, ...motionProps }: R
 						PERSONAL
 					</ScrambleText>
 					<ScrambleText
-						className="block"
+						className="block whitespace-nowrap"
 						duration={SCRAMBLE_DURATION_S}
 						delay={centerStagger}
 						chars={MOTION_SPECIAL_CHARS}
@@ -40,10 +40,10 @@ export function PersonalGraphTitle({ className, play = true, ...motionProps }: R
 				</>
 			) : (
 				<>
-					<span aria-hidden className="block">
+					<span aria-hidden className="block whitespace-nowrap">
 						PERSONAL
 					</span>
-					<span aria-hidden className="block">
+					<span aria-hidden className="block whitespace-nowrap">
 						GRAPH
 					</span>
 				</>
