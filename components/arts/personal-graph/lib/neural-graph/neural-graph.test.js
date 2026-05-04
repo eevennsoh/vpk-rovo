@@ -121,6 +121,7 @@ const explorer = {
 function createRecordingCanvasContext() {
 	const calls = [];
 	let globalAlpha = 1;
+	let strokeStyle = "#000000";
 	const gradient = {
 		addColorStop: (...args) => calls.push(["addColorStop", ...args]),
 	};
@@ -133,6 +134,13 @@ function createRecordingCanvasContext() {
 		set globalAlpha(value) {
 			globalAlpha = value;
 			calls.push(["globalAlpha", value]);
+		},
+		get strokeStyle() {
+			return strokeStyle;
+		},
+		set strokeStyle(value) {
+			strokeStyle = value;
+			calls.push(["strokeStyle", value]);
 		},
 		arc: (...args) => calls.push(["arc", ...args]),
 		beginPath: (...args) => calls.push(["beginPath", ...args]),
@@ -210,6 +218,7 @@ test("clampNeuralGraphParams clamps numbers, colors, radius order, and shapes", 
 		nodeShape: "triangle",
 		radiusMax: 20,
 		radiusMin: 80,
+		rayColor: "not-a-color",
 		speed: -10,
 	});
 
@@ -218,6 +227,7 @@ test("clampNeuralGraphParams clamps numbers, colors, radius order, and shapes", 
 	assert.equal(params.nodeShape, "circle");
 	assert.equal(params.radiusMin, 20);
 	assert.equal(params.radiusMax, 20);
+	assert.equal(params.rayColor, "#6B5CE7");
 	assert.equal(params.speed, 0);
 });
 
@@ -322,6 +332,44 @@ test("drawNeuralGraph clamps boosted ray opacity to valid canvas alpha", async (
 	for (const value of alphaValues) {
 		assert.ok(value >= 0 && value <= 1, `expected ${value} to stay within canvas globalAlpha bounds`);
 	}
+});
+
+test("drawNeuralGraph uses the configured ray color for fan strokes", async () => {
+	const { createNeuralCamera } = await cameraModule;
+	const { DEFAULT_NEURAL_GRAPH_PARAMS, clampNeuralGraphParams } = await paramsModule;
+	const { computeNeuralGraphLayout } = await layoutModule;
+	const { drawNeuralGraph } = await rendererModule;
+	const { createNeuralGraphStore } = await storeModule;
+	const viewport = { height: 700, width: 1000 };
+	const store = createNeuralGraphStore(explorer);
+	const params = clampNeuralGraphParams({
+		...DEFAULT_NEURAL_GRAPH_PARAMS,
+		rayColor: "#123ABC",
+		rayOpacity: 1,
+	});
+	const layout = computeNeuralGraphLayout({
+		params,
+		selectedNodeId: null,
+		store,
+		viewport,
+	});
+	const ctx = createRecordingCanvasContext();
+
+	drawNeuralGraph(ctx, layout, {
+		background: "transparent",
+		camera: createNeuralCamera(),
+		focusProgress: 0,
+		hoveredNodeId: null,
+		params,
+		selectedNodeId: null,
+		theme: "light",
+		viewport,
+	});
+
+	assert.deepEqual(
+		ctx.calls.find(([name]) => name === "strokeStyle"),
+		["strokeStyle", "#123ABC"],
+	);
 });
 
 test("drawNeuralGraph keeps idle edge order and layers selected edges last", async () => {
