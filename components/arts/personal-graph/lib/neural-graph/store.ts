@@ -102,7 +102,12 @@ export function createNeuralGraphStore(explorer: VaultExplorer | null): NeuralGr
 		};
 		nodesById.set(node.id, graphNode);
 		adjacency.set(node.id, []);
-		kindGroups.set(node.kind, [...(kindGroups.get(node.kind) ?? []), graphNode]);
+		const kindGroup = kindGroups.get(node.kind);
+		if (kindGroup) {
+			kindGroup.push(graphNode);
+		} else {
+			kindGroups.set(node.kind, [graphNode]);
+		}
 		return graphNode;
 	});
 

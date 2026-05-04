@@ -191,6 +191,8 @@ test("createNeuralGraphStore builds deterministic adjacency and kind groups", as
 		(store.kindGroups.get("raw") ?? []).map((item) => item.id),
 		["gamma"],
 	);
+	assert.equal(store.kindGroups.get("concept")?.length, 17);
+	assert.equal(store.kindGroups.get("concept")?.[0].id, "selected");
 });
 
 test("getVisibleGraphNodes reuses the precomputed ranked node order under caps", async () => {
