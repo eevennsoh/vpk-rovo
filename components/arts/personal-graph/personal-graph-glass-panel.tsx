@@ -14,8 +14,8 @@ interface PersonalGraphGlassPanelProps {
 }
 
 const PERSONAL_GRAPH_GLASS_SHADOW = "0 28px 80px -44px color-mix(in srgb, var(--ds-text) 54%, transparent)";
-const PERSONAL_GRAPH_GLASS_BACKGROUND_OPACITY = 0.006;
-const PERSONAL_GRAPH_GLASS_FALLBACK_BACKGROUND_OPACITY = 0.18;
+const PERSONAL_GRAPH_GLASS_BACKGROUND_OPACITY = 0.003;
+const PERSONAL_GRAPH_GLASS_FALLBACK_BACKGROUND_OPACITY = 0.12;
 
 export function PersonalGraphGlassPanel({
 	children,
@@ -28,21 +28,21 @@ export function PersonalGraphGlassPanel({
 	return (
 		<LiquidGlass
 			backgroundOpacity={PERSONAL_GRAPH_GLASS_BACKGROUND_OPACITY}
-			blur={8}
+			blur={5}
 			borderColor="var(--ds-border-bold)"
 			borderOpacity={0.05}
 			borderRadius={radius}
 			borderWidth={0.05}
-			brightness={54}
+			brightness={50}
 			className={cn("text-text [&>div]:p-0", className)}
-			dispersion={6}
-			displace={5}
-			distortionScale={-96}
+			dispersion={4}
+			displace={3}
+			distortionScale={-64}
 			dropShadow={PERSONAL_GRAPH_GLASS_SHADOW}
 			fallbackBackgroundOpacity={PERSONAL_GRAPH_GLASS_FALLBACK_BACKGROUND_OPACITY}
 			height={height}
-			opacity={0.9}
-			saturation={1.08}
+			opacity={0.88}
+			saturation={1.03}
 			width={width}
 		>
 			<div className={cn("h-full w-full", contentClassName)}>{children}</div>

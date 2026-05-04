@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useRef, type ReactNode } from "react";
-import { AnimatePresence, motion, type Transition } from "motion/react";
+import { useCallback, useLayoutEffect, useRef, type ReactNode } from "react";
+import { AnimatePresence, motion, useIsPresent, type Transition } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { PersonalGraphGlassPanel } from "./personal-graph-glass-panel";
@@ -16,7 +16,10 @@ export interface PersonalGraphControlFlyoutAction {
 const TRIGGER_TRANSITION: Transition = { type: "spring", stiffness: 500, damping: 30 };
 const ITEM_TRANSITION: Transition = { type: "spring", stiffness: 400, damping: 22 };
 const STAGGER_INTERVAL = 0.05;
-const ARC_ORIGIN_VISIBILITY_THRESHOLD_PERCENT = 5;
+const ARC_ORIGIN_VISIBILITY_THRESHOLD_PERCENT = 14;
+const ARC_EXIT_BEHIND_TRIGGER_THRESHOLD_PERCENT = 40;
+const ACTION_ACTIVE_Z_INDEX = 40;
+const ACTION_BEHIND_TRIGGER_Z_INDEX = 0;
 
 // Cubic bezier curving up and to the right — closer to Motion's reference (~21° top tilt)
 // than the dramatic sweep (~56°), settling around ~30° at the top.
@@ -77,13 +80,25 @@ function PersonalGraphControlFlyoutActionItem({
 	label,
 }: Readonly<PersonalGraphControlFlyoutActionItemProps>) {
 	const itemRef = useRef<HTMLDivElement>(null);
+	const isPresent = useIsPresent();
 	const updateOriginVisibility = useCallback((offsetDistance: unknown) => {
 		const item = itemRef.current;
 		if (!item) return;
-		const isAtOrigin = getOffsetDistancePercent(offsetDistance) < ARC_ORIGIN_VISIBILITY_THRESHOLD_PERCENT;
-		item.style.visibility = isAtOrigin ? "hidden" : "";
-		item.style.pointerEvents = isAtOrigin ? "none" : "";
-	}, []);
+		const distancePercent = getOffsetDistancePercent(offsetDistance);
+		const isOpeningAtOrigin = isPresent && distancePercent < ARC_ORIGIN_VISIBILITY_THRESHOLD_PERCENT;
+		const isExitingNearTrigger = !isPresent && distancePercent < ARC_EXIT_BEHIND_TRIGGER_THRESHOLD_PERCENT;
+		item.style.zIndex = isExitingNearTrigger
+			? ACTION_BEHIND_TRIGGER_Z_INDEX.toString()
+			: ACTION_ACTIVE_Z_INDEX.toString();
+		item.style.visibility = isOpeningAtOrigin ? "hidden" : "";
+		item.style.pointerEvents = isOpeningAtOrigin || isExitingNearTrigger ? "none" : "";
+	}, [isPresent]);
+
+	useLayoutEffect(() => {
+		const item = itemRef.current;
+		if (!item || isPresent) return;
+		updateOriginVisibility(getComputedStyle(item).offsetDistance);
+	}, [isPresent, updateOriginVisibility]);
 
 	return (
 		<motion.div
@@ -100,6 +115,7 @@ function PersonalGraphControlFlyoutActionItem({
 				offsetAnchor: "center center",
 				visibility: "hidden",
 				willChange: "transform",
+				zIndex: ACTION_ACTIVE_Z_INDEX,
 			}}
 			transition={{ ...ITEM_TRANSITION, delay: index * STAGGER_INTERVAL }}
 		>
@@ -122,7 +138,7 @@ export function PersonalGraphControlFlyoutTrigger({
 	return (
 		<motion.span
 			animate={{ rotate: isOpen ? 90 : 0 }}
-			className="inline-flex"
+			className="relative z-50 inline-flex"
 			style={{ willChange: "transform" }}
 			transition={TRIGGER_TRANSITION}
 		>
@@ -159,7 +175,7 @@ export function PersonalGraphControlFlyoutActions({
 	return (
 		<div
 			aria-hidden={!isOpen}
-			className={cn("pointer-events-none absolute z-40", className)}
+			className={cn("pointer-events-none absolute", className)}
 			style={{ width: 0, height: 0 }}
 		>
 			<AnimatePresence>
