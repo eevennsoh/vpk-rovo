@@ -53,6 +53,12 @@ const PERSONAL_GRAPH_META_FONT_STYLE = {
 	fontFamily: "var(--font-departure-mono), 'Courier New', monospace",
 } satisfies React.CSSProperties;
 
+const PERSONAL_GRAPH_TITLE_SCRAMBLE_LINE_CHAR_COUNT = 8;
+const PERSONAL_GRAPH_INITIAL_TITLE_SIZE =
+	`min(8rem, calc((100cqw - 1rem) / ${PERSONAL_GRAPH_TITLE_SCRAMBLE_LINE_CHAR_COUNT}))`;
+const PERSONAL_GRAPH_SETTLED_TITLE_SIZE =
+	`min(3rem, calc((100cqw - 1rem) / ${PERSONAL_GRAPH_TITLE_SCRAMBLE_LINE_CHAR_COUNT}))`;
+
 function GraphNodeMarker({
 	className,
 	kind,
@@ -244,7 +250,7 @@ export function PersonalGraphSurface({
 	const isSubtextRevealed = phase === "subtext" || phase === "controls" || phase === "settle" || phase === "search" || phase === "graph" || phase === "done";
 	const isPostSettle = phase === "settle" || phase === "search" || phase === "graph" || phase === "done";
 	const isSearchRevealed = phase === "search" || phase === "graph" || phase === "done";
-	const isGraphRevealed = phase === "graph" || phase === "done";
+	const isGraphRevealed = isSearchRevealed;
 	const easeOut: [number, number, number, number] = [0, 0.4, 0, 1];
 	const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 	const [refreshKey, setRefreshKey] = useState(0);
@@ -440,7 +446,7 @@ export function PersonalGraphSurface({
 					style={{ willChange: "transform" }}
 				>
 					<motion.div
-						className="mx-auto min-w-0 max-w-full text-center text-text"
+						className="mx-auto w-full min-w-0 max-w-full text-center text-text [container-type:inline-size]"
 						initial={{ opacity: 0, y: 20, filter: "blur(20px)" }}
 						animate={{
 							opacity: isHeaderRevealed ? 1 : 0,
@@ -453,8 +459,10 @@ export function PersonalGraphSurface({
 						<PersonalGraphTitle
 							className="leading-[0.8] text-text"
 							style={PERSONAL_GRAPH_TITLE_FONT_STYLE}
-							initial={{ fontSize: "8rem" }}
-							animate={{ fontSize: isPostSettle ? "3rem" : "8rem" }}
+							initial={{ fontSize: PERSONAL_GRAPH_INITIAL_TITLE_SIZE }}
+							animate={{
+								fontSize: isPostSettle ? PERSONAL_GRAPH_SETTLED_TITLE_SIZE : PERSONAL_GRAPH_INITIAL_TITLE_SIZE,
+							}}
 							transition={{ duration: 1.0, ease: easeOut }}
 							play={isHeaderRevealed}
 						/>
@@ -519,13 +527,11 @@ export function PersonalGraphSurface({
 			<motion.section
 				aria-label="Personal Graph search and chat"
 				className="pointer-events-none absolute left-4 right-4 z-40 flex justify-center sm:inset-x-6 lg:left-[360px] lg:right-[360px]"
-				initial={{ opacity: 0, bottom: -120 }}
+				initial={{ bottom: -120 }}
 				animate={{
-					opacity: isSearchRevealed ? 1 : 0,
 					bottom: isSearchRevealed ? 24 : -120,
 				}}
 				transition={{
-					opacity: { duration: 0.5, ease: easeOut },
 					bottom: { duration: 0.6, ease: easeOut },
 				}}
 			>

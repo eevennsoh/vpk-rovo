@@ -8,14 +8,131 @@ const CONTROL_FLYOUT_SOURCE = fs.readFileSync(
 	"utf8",
 );
 
-test("Personal Graph flyout label chips stay off narrow viewports", () => {
+test("Personal Graph flyout label chips are visible on narrow viewports", () => {
 	assert.match(
 		CONTROL_FLYOUT_SOURCE,
-		/className="pointer-events-none absolute right-\[calc\(100%\+12px\)\] top-1\/2 hidden -translate-y-1\/2 whitespace-nowrap rounded-md bg-bg-neutral-bold px-3 py-1\.5 text-xs text-text-inverse shadow-md sm:block"/,
+		/className="pointer-events-none absolute right-\[calc\(100%\+12px\)\] top-1\/2 -translate-y-1\/2 whitespace-nowrap rounded-md bg-bg-neutral-bold px-3 py-1\.5 text-xs text-text-inverse shadow-md"/,
 	);
-	assert.match(CONTROL_FLYOUT_SOURCE, /aria-label=\{action\.label\}/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /label=\{action\.label\}/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /aria-label=\{label\}/);
+	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /hidden -translate-y-1\/2/);
+	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /sm:block/);
 	assert.doesNotMatch(
 		CONTROL_FLYOUT_SOURCE,
 		/rounded-lg border border-border bg-bg-neutral-subtle px-2\.5 py-1 text-xs font-medium text-text shadow-sm/,
 	);
+});
+
+test("Personal Graph flyout action buttons reuse the shared glass panel at stable size", () => {
+	assert.match(
+		CONTROL_FLYOUT_SOURCE,
+		/import \{ PersonalGraphGlassPanel \} from "\.\/personal-graph-glass-panel";/,
+	);
+	assert.match(CONTROL_FLYOUT_SOURCE, /<PersonalGraphGlassPanel/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /className="rounded-full"/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /contentClassName="flex size-8 items-center justify-center"/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /height=\{32\}/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /radius=\{9999\}/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /width=\{32\}/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /\[&_button\]:size-8/);
+	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /type LiquidGlassProps/);
+	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /const ACTION_GLASS_PROPS/);
+	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /<LiquidGlass/);
+	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /backgroundOpacity: 1,/);
+});
+
+test("Personal Graph flyout arc motion does not blur, fade, or scale glass buttons", () => {
+	assert.match(
+		CONTROL_FLYOUT_SOURCE,
+		/animate=\{\{ offsetDistance: `\$\{distance\}%` \}\}/,
+	);
+	assert.match(CONTROL_FLYOUT_SOURCE, /initial=\{\{ offsetDistance: "0%" \}\}/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /exit=\{\{ offsetDistance: "0%" \}\}/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /willChange: "transform"/);
+	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /ACTION_STAGGER_BLUR_FILTER/);
+	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /ACTION_STAGGER_REST_FILTER/);
+	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /filter: /);
+	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /opacity: 1, scale: 1/);
+	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /opacity: 0, scale: 0\.3/);
+	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /scale: 1/);
+	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /scale: 0\.3/);
+});
+
+test("Personal Graph flyout action motion uses direct index staggering", () => {
+	assert.match(CONTROL_FLYOUT_SOURCE, /transition=\{\{ \.\.\.ITEM_TRANSITION, delay: index \* STAGGER_INTERVAL \}\}/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /transition=\{\{ delay: index \* STAGGER_INTERVAL \+ 0\.1, duration: 0\.15 \}\}/);
+	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /function getFlyoutActionEnterDelay/);
+	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /function getFlyoutActionExitDelay/);
+	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /actionCount=\{actions\.length\}/);
+	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /delay: enterDelay/);
+	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /delay: exitDelay/);
+});
+
+test("Personal Graph flyout action buttons stay hidden while stacked at the arc origin", () => {
+	assert.match(CONTROL_FLYOUT_SOURCE, /const ARC_ORIGIN_VISIBILITY_THRESHOLD_PERCENT = 14;/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /const ARC_EXIT_BEHIND_TRIGGER_THRESHOLD_PERCENT = 40;/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /const ACTION_ACTIVE_Z_INDEX = 40;/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /const ACTION_BEHIND_TRIGGER_Z_INDEX = 0;/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /function PersonalGraphControlFlyoutActionItem/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /onUpdate=\{\(latest\) => updateOriginVisibility\(latest\.offsetDistance\)\}/);
+	assert.match(
+		CONTROL_FLYOUT_SOURCE,
+		/const isOpeningAtOrigin = isPresent && distancePercent < ARC_ORIGIN_VISIBILITY_THRESHOLD_PERCENT;/,
+	);
+	assert.match(CONTROL_FLYOUT_SOURCE, /visibility: "hidden"/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /item\.style\.visibility = isOpeningAtOrigin \? "hidden" : "";/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /item\.style\.pointerEvents = isOpeningAtOrigin \|\| isExitingNearTrigger \? "none" : "";/);
+});
+
+test("Personal Graph flyout action buttons reverse fully while sliding behind the trigger", () => {
+	assert.match(
+		CONTROL_FLYOUT_SOURCE,
+		/import \{ AnimatePresence, motion, useIsPresent, type Transition \} from "motion\/react";/,
+	);
+	assert.match(
+		CONTROL_FLYOUT_SOURCE,
+		/import \{ useCallback, useLayoutEffect, useRef, type ReactNode \} from "react";/,
+	);
+	assert.match(CONTROL_FLYOUT_SOURCE, /const isPresent = useIsPresent\(\);/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /exit=\{\{ offsetDistance: "0%" \}\}/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /onUpdate=\{\(latest\) => updateOriginVisibility\(latest\.offsetDistance\)\}/);
+	assert.match(
+		CONTROL_FLYOUT_SOURCE,
+		/const isExitingNearTrigger = !isPresent && distancePercent < ARC_EXIT_BEHIND_TRIGGER_THRESHOLD_PERCENT;/,
+	);
+	assert.match(
+		CONTROL_FLYOUT_SOURCE,
+		/item\.style\.zIndex = isExitingNearTrigger\s+\? ACTION_BEHIND_TRIGGER_Z_INDEX\.toString\(\)\s+: ACTION_ACTIVE_Z_INDEX\.toString\(\);/,
+	);
+	assert.match(CONTROL_FLYOUT_SOURCE, /\[&_button_svg\]:text-icon-subtle/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /zIndex: ACTION_ACTIVE_Z_INDEX,/);
+	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /personal-graph-flyout-action-icon-opacity/);
+	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /personal-graph-flyout-action-visual-opacity/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /item\.style\.visibility = isOpeningAtOrigin \? "hidden" : "";/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /useLayoutEffect\(\(\) => \{/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /if \(!item \|\| isPresent\) return;/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /updateOriginVisibility\(getComputedStyle\(item\)\.offsetDistance\);/);
+	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /item\.style\.opacity = "0";/);
+	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /item\.style\.visibility = isExitingNearTrigger/);
+});
+
+test("Personal Graph flyout trigger remains a two-state settings or close button", () => {
+	assert.match(
+		CONTROL_FLYOUT_SOURCE,
+		/aria-label=\{isOpen \? "Close graph controls" : "Open graph controls"\}/,
+	);
+	assert.match(
+		CONTROL_FLYOUT_SOURCE,
+		/\{isOpen \? <PixelCloseIcon \/> : <PixelConfigureIcon \/>\}/,
+	);
+	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /action\.render[^]*PersonalGraphControlFlyoutTrigger/);
+});
+
+test("Personal Graph flyout actions layer active items above the raised trigger", () => {
+	assert.match(
+		CONTROL_FLYOUT_SOURCE,
+		/className=\{cn\("pointer-events-none absolute", className\)\}/,
+	);
+	assert.match(CONTROL_FLYOUT_SOURCE, /className="relative z-50 inline-flex"/);
+	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /pointer-events-none absolute z-40/);
 });

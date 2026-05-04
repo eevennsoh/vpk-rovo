@@ -120,14 +120,22 @@ const explorer = {
 
 function createRecordingCanvasContext() {
 	const calls = [];
+	let fillStyle = "";
 	let globalAlpha = 1;
-	let strokeStyle = "#000000";
+	let strokeStyle = "";
 	const gradient = {
 		addColorStop: (...args) => calls.push(["addColorStop", ...args]),
 	};
 
 	return {
 		calls,
+		get fillStyle() {
+			return fillStyle;
+		},
+		set fillStyle(value) {
+			fillStyle = value;
+			calls.push(["fillStyle", value]);
+		},
 		get globalAlpha() {
 			return globalAlpha;
 		},
@@ -213,8 +221,13 @@ test("getVisibleGraphNodes preserves selected node and selected neighborhood und
 test("clampNeuralGraphParams clamps numbers, colors, radius order, and shapes", async () => {
 	const { clampNeuralGraphParams } = await paramsModule;
 	const params = clampNeuralGraphParams({
+		edgeColor: "#010203",
+		edgeHoverColor: "blue",
+		edgeSelectedColor: "#040506",
 		maxVisibleNodes: 900,
 		nodeColor: "purple",
+		nodeHoverColor: "#ABCDEF",
+		nodeSelectedColor: "gold",
 		nodeShape: "triangle",
 		radiusMax: 20,
 		radiusMin: 80,
@@ -222,8 +235,13 @@ test("clampNeuralGraphParams clamps numbers, colors, radius order, and shapes", 
 		speed: -10,
 	});
 
+	assert.equal(params.edgeColor, "#010203");
+	assert.equal(params.edgeHoverColor, "#1868DB");
+	assert.equal(params.edgeSelectedColor, "#040506");
 	assert.equal(params.maxVisibleNodes, 200);
 	assert.equal(params.nodeColor, "#6b5ce7");
+	assert.equal(params.nodeHoverColor, "#ABCDEF");
+	assert.equal(params.nodeSelectedColor, "#AF59E1");
 	assert.equal(params.nodeShape, "circle");
 	assert.equal(params.radiusMin, 20);
 	assert.equal(params.radiusMax, 20);
@@ -420,6 +438,59 @@ test("drawNeuralGraph keeps idle edge order and layers selected edges last", asy
 
 	assert.deepEqual(getDrawnEdgeTargets(null), [230, 110]);
 	assert.deepEqual(getDrawnEdgeTargets("selected"), [110, 230]);
+});
+
+test("drawNeuralGraph applies separate node and edge colors for default, hover, and selected states", async () => {
+	const { createNeuralCamera } = await cameraModule;
+	const { DEFAULT_NEURAL_GRAPH_PARAMS } = await paramsModule;
+	const { drawNeuralGraph } = await rendererModule;
+	const viewport = { height: 200, width: 300 };
+	const selected = layoutNode("selected", 0);
+	const neighbor = layoutNode("neighbor", 80);
+	const layout = {
+		edges: [layoutEdge("active", selected, neighbor)],
+		nodes: [selected, neighbor],
+		nodesById: new Map([
+			[selected.id, selected],
+			[neighbor.id, neighbor],
+		]),
+		origin: { x: 0, y: 0 },
+		viewport,
+	};
+	const params = {
+		...DEFAULT_NEURAL_GRAPH_PARAMS,
+		colorConcept: "#111111",
+		edgeColor: "#222222",
+		edgeHoverColor: "#333333",
+		edgeSelectedColor: "#444444",
+		nodeColor: "#555555",
+		nodeHoverColor: "#666666",
+		nodeSelectedColor: "#777777",
+		showLabels: false,
+		showRays: false,
+	};
+	const render = (hoveredNodeId, selectedNodeId, focusProgress) => {
+		const ctx = createRecordingCanvasContext();
+		drawNeuralGraph(ctx, layout, {
+			background: "transparent",
+			camera: createNeuralCamera(),
+			focusProgress,
+			hoveredNodeId,
+			params,
+			selectedNodeId,
+			theme: "light",
+			viewport,
+		});
+		return ctx.calls;
+	};
+
+	const defaultCalls = render(null, null, 0);
+	assert.ok(defaultCalls.some(([name, value]) => name === "strokeStyle" && value === "#222222"));
+	assert.ok(defaultCalls.some(([name, value]) => name === "fillStyle" && value === "#111111"));
+	assert.ok(render("selected", null, 0).some(([name, value]) => name === "strokeStyle" && value === "#333333"));
+	assert.ok(render(null, "selected", 1).some(([name, value]) => name === "strokeStyle" && value === "#444444"));
+	assert.ok(render("selected", null, 0).some(([name, value]) => name === "fillStyle" && value === "#666666"));
+	assert.ok(render(null, "selected", 1).some(([name, value]) => name === "fillStyle" && value === "#777777"));
 });
 
 test("camera transforms round-trip and focus selected points", async () => {

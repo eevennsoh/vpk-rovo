@@ -9,8 +9,11 @@ export interface NeuralGraphParams {
 	colorSynthesis: string;
 	coneAngle: number;
 	depthZ: number;
+	edgeColor: string;
+	edgeHoverColor: string;
 	edgeOpacity: number;
 	edgeOpacityActive: number;
+	edgeSelectedColor: string;
 	edgeWidth: number;
 	frequency: number;
 	glowIntensity: number;
@@ -20,9 +23,11 @@ export interface NeuralGraphParams {
 	labelSize: number;
 	maxVisibleNodes: number;
 	nodeColor: string;
+	nodeHoverColor: string;
 	nodeOpacity: number;
 	nodeOpacityFocused: number;
 	nodeOpacityRelated: number;
+	nodeSelectedColor: string;
 	nodeShape: NeuralGraphNodeShape;
 	nodeSize: number;
 	octaves: number;
@@ -53,6 +58,18 @@ export const NEURAL_GRAPH_KIND_COLOR_PARAM_KEYS = [
 	"colorSynthesis",
 ] as const satisfies ReadonlyArray<keyof NeuralGraphParams>;
 
+export const NEURAL_GRAPH_NODE_COLOR_PARAM_KEYS = [
+	"nodeColor",
+	"nodeHoverColor",
+	"nodeSelectedColor",
+] as const satisfies ReadonlyArray<keyof NeuralGraphParams>;
+
+export const NEURAL_GRAPH_EDGE_COLOR_PARAM_KEYS = [
+	"edgeColor",
+	"edgeHoverColor",
+	"edgeSelectedColor",
+] as const satisfies ReadonlyArray<keyof NeuralGraphParams>;
+
 export type NeuralGraphNumberKey = {
 	[K in keyof NeuralGraphParams]: NeuralGraphParams[K] extends number ? K : never;
 }[keyof NeuralGraphParams];
@@ -63,7 +80,8 @@ export type NeuralGraphBooleanKey = {
 
 export type NeuralGraphHexColorKey =
 	| (typeof NEURAL_GRAPH_KIND_COLOR_PARAM_KEYS)[number]
-	| "nodeColor"
+	| (typeof NEURAL_GRAPH_NODE_COLOR_PARAM_KEYS)[number]
+	| (typeof NEURAL_GRAPH_EDGE_COLOR_PARAM_KEYS)[number]
 	| "rayColor";
 
 export interface NeuralGraphNumberParamDefinition {
@@ -108,8 +126,11 @@ export const DEFAULT_NEURAL_GRAPH_PARAMS: NeuralGraphParams = {
 	colorSynthesis: "#AF59E1",
 	coneAngle: 75,
 	depthZ: 30,
+	edgeColor: "#8590A2",
+	edgeHoverColor: "#1868DB",
 	edgeOpacity: 0.36,
 	edgeOpacityActive: 0.76,
+	edgeSelectedColor: "#AF59E1",
 	edgeWidth: 2,
 	frequency: 1.5,
 	glowIntensity: 0.28,
@@ -119,9 +140,11 @@ export const DEFAULT_NEURAL_GRAPH_PARAMS: NeuralGraphParams = {
 	labelSize: 13,
 	maxVisibleNodes: 86,
 	nodeColor: "#6b5ce7",
+	nodeHoverColor: "#FCA700",
 	nodeOpacity: 0.82,
 	nodeOpacityFocused: 0.14,
 	nodeOpacityRelated: 0.9,
+	nodeSelectedColor: "#AF59E1",
 	nodeShape: "circle",
 	nodeSize: 2.5,
 	octaves: 3,
@@ -183,6 +206,8 @@ export const NEURAL_GRAPH_PARAM_SECTIONS: NeuralGraphParamSection[] = [
 		params: [
 			{ kind: "number", key: "maxVisibleNodes", label: "Count", max: 200, min: 10, step: 1 },
 			{ kind: "number", key: "nodeSize", label: "Size", max: 8, min: 0.5, step: 0.5 },
+			{ kind: "color", key: "nodeHoverColor", label: "Hover color", description: "Fill and glow color for the hovered node" },
+			{ kind: "color", key: "nodeSelectedColor", label: "Selected color", description: "Fill and glow color for the selected node" },
 		],
 	},
 	{
@@ -190,6 +215,9 @@ export const NEURAL_GRAPH_PARAM_SECTIONS: NeuralGraphParamSection[] = [
 		label: "Edges",
 		params: [
 			{ kind: "boolean", key: "showEdges", label: "Show edges" },
+			{ kind: "color", key: "edgeColor", label: "Default color", description: "Connector color when no node is hovered or selected" },
+			{ kind: "color", key: "edgeHoverColor", label: "Hover color", description: "Connector color for links touching the hovered node" },
+			{ kind: "color", key: "edgeSelectedColor", label: "Selected color", description: "Connector color for links touching the selected node" },
 			{ kind: "number", key: "edgeOpacity", label: "Idle opacity", max: 1, min: 0, step: 0.02 },
 			{ kind: "number", key: "edgeOpacityActive", label: "Active opacity", max: 1, min: 0, step: 0.02 },
 			{ kind: "number", key: "edgeWidth", label: "Width", max: 6, min: 0.5, step: 0.5 },
@@ -289,9 +317,12 @@ export function clampNeuralGraphParams(input: Partial<NeuralGraphParams> = {}): 
 	}
 
 	clamped.nodeShape = isNodeShape(next.nodeShape) ? next.nodeShape : DEFAULT_NEURAL_GRAPH_PARAMS.nodeShape;
-	clamped.nodeColor = isHexColor(next.nodeColor) ? next.nodeColor : DEFAULT_NEURAL_GRAPH_PARAMS.nodeColor;
 	clamped.rayColor = isHexColor(next.rayColor) ? next.rayColor : DEFAULT_NEURAL_GRAPH_PARAMS.rayColor;
-	for (const key of NEURAL_GRAPH_KIND_COLOR_PARAM_KEYS) {
+	for (const key of [
+		...NEURAL_GRAPH_KIND_COLOR_PARAM_KEYS,
+		...NEURAL_GRAPH_NODE_COLOR_PARAM_KEYS,
+		...NEURAL_GRAPH_EDGE_COLOR_PARAM_KEYS,
+	] as const) {
 		const value = next[key];
 		clamped[key] = isHexColor(value) ? value : DEFAULT_NEURAL_GRAPH_PARAMS[key];
 	}

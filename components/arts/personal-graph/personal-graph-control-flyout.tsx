@@ -1,12 +1,10 @@
 "use client";
 
-import type { ReactNode } from "react";
-import { AnimatePresence, motion, type Transition } from "motion/react";
-import LiquidGlass, {
-	type LiquidGlassProps,
-} from "@/components/website/demos/visual/shaders/liquid-glass";
+import { useCallback, useLayoutEffect, useRef, type ReactNode } from "react";
+import { AnimatePresence, motion, useIsPresent, type Transition } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { PersonalGraphGlassPanel } from "./personal-graph-glass-panel";
 import { PixelCloseIcon, PixelConfigureIcon } from "./personal-graph-pixel-icons";
 
 export interface PersonalGraphControlFlyoutAction {
@@ -18,35 +16,23 @@ export interface PersonalGraphControlFlyoutAction {
 const TRIGGER_TRANSITION: Transition = { type: "spring", stiffness: 500, damping: 30 };
 const ITEM_TRANSITION: Transition = { type: "spring", stiffness: 400, damping: 22 };
 const STAGGER_INTERVAL = 0.05;
+const ARC_ORIGIN_VISIBILITY_THRESHOLD_PERCENT = 14;
+const ARC_EXIT_BEHIND_TRIGGER_THRESHOLD_PERCENT = 40;
+const ACTION_ACTIVE_Z_INDEX = 40;
+const ACTION_BEHIND_TRIGGER_Z_INDEX = 0;
 
 // Cubic bezier curving up and to the right — closer to Motion's reference (~21° top tilt)
 // than the dramatic sweep (~56°), settling around ~30° at the top.
 // Combined with offsetRotate: "auto 90deg" on each item, the buttons (and their child labels)
 // rotate along the path tangent. End-tangent ~(82, -145) yields ~30° clockwise tilt at the top.
 const ARC_PATH = "M 0 0 C 0 -92, 20 -185, 102 -330";
-// Travel% chosen so consecutive actions are spaced ~48px (40px button + 8px gap) along the arc.
-// Approximate arc length ≈ 335. 335 * 0.72 / 5 ≈ 48.2 → ≈ 8px visual gap preserved.
+// Travel% chosen so consecutive actions are spaced ~48px along the arc.
+// Approximate arc length ≈ 335. 335 * 0.72 / 5 ≈ 48.2.
 const ARC_TRAVEL_PERCENT = 72;
 
-const ACTION_GLASS_PROPS: Partial<LiquidGlassProps> = {
-	borderRadius: 9999,
-	borderWidth: 0.05,
-	brightness: 54,
-	opacity: 0.9,
-	blur: 4,
-	backgroundOpacity: 0.16,
-	fallbackBackgroundOpacity: 0.18,
-	saturation: 1.08,
-	distortionScale: -48,
-	dispersion: 4,
-	borderColor: "var(--ds-border)",
-	borderOpacity: 0.85,
-	dropShadow: "0 18px 42px -28px color-mix(in srgb, var(--ds-text) 66%, transparent)",
-};
-
 const ACTION_GLASS_BUTTON_CLASS_NAME = cn(
-	"relative isolate inline-flex size-10 items-center justify-center rounded-full",
-	"[&_button]:relative [&_button]:z-10 [&_button]:size-10",
+	"relative isolate inline-flex size-8 items-center justify-center rounded-full",
+	"[&_button]:relative [&_button]:z-10 [&_button]:size-8",
 	"[&_button]:rounded-full [&_button]:border-transparent [&_button]:bg-transparent",
 	"[&_button]:text-text [&_button]:shadow-none",
 	"[&_button:hover]:bg-transparent [&_button:active]:bg-transparent",
@@ -60,14 +46,81 @@ function PersonalGraphControlFlyoutActionGlass({
 }: Readonly<{ children: ReactNode }>) {
 	return (
 		<span className={ACTION_GLASS_BUTTON_CLASS_NAME}>
-			<LiquidGlass
-				{...ACTION_GLASS_PROPS}
-				className="pointer-events-none absolute inset-0 -z-10 rounded-full"
-				height="100%"
-				width="100%"
-			/>
-			{children}
+			<PersonalGraphGlassPanel
+				className="rounded-full"
+				contentClassName="flex size-8 items-center justify-center"
+				height={32}
+				radius={9999}
+				width={32}
+			>
+				{children}
+			</PersonalGraphGlassPanel>
 		</span>
+	);
+}
+
+function getOffsetDistancePercent(offsetDistance: unknown): number {
+	if (typeof offsetDistance === "number") return offsetDistance;
+	if (typeof offsetDistance !== "string") return 0;
+	const parsedDistance = Number.parseFloat(offsetDistance);
+	return Number.isFinite(parsedDistance) ? parsedDistance : 0;
+}
+
+interface PersonalGraphControlFlyoutActionItemProps {
+	children: ReactNode;
+	distance: number;
+	index: number;
+	label: string;
+}
+
+function PersonalGraphControlFlyoutActionItem({
+	children,
+	distance,
+	index,
+	label,
+}: Readonly<PersonalGraphControlFlyoutActionItemProps>) {
+	const itemRef = useRef<HTMLDivElement>(null);
+	const isPresent = useIsPresent();
+	const updateOriginVisibility = useCallback((offsetDistance: unknown) => {
+		const item = itemRef.current;
+		if (!item) return;
+		const distancePercent = getOffsetDistancePercent(offsetDistance);
+		const isOpeningAtOrigin = isPresent && distancePercent < ARC_ORIGIN_VISIBILITY_THRESHOLD_PERCENT;
+		const isExitingNearTrigger = !isPresent && distancePercent < ARC_EXIT_BEHIND_TRIGGER_THRESHOLD_PERCENT;
+		item.style.zIndex = isExitingNearTrigger
+			? ACTION_BEHIND_TRIGGER_Z_INDEX.toString()
+			: ACTION_ACTIVE_Z_INDEX.toString();
+		item.style.visibility = isOpeningAtOrigin ? "hidden" : "";
+		item.style.pointerEvents = isOpeningAtOrigin || isExitingNearTrigger ? "none" : "";
+	}, [isPresent]);
+
+	useLayoutEffect(() => {
+		const item = itemRef.current;
+		if (!item || isPresent) return;
+		updateOriginVisibility(getComputedStyle(item).offsetDistance);
+	}, [isPresent, updateOriginVisibility]);
+
+	return (
+		<motion.div
+			animate={{ offsetDistance: `${distance}%` }}
+			aria-label={label}
+			className="pointer-events-auto absolute"
+			exit={{ offsetDistance: "0%" }}
+			initial={{ offsetDistance: "0%" }}
+			onUpdate={(latest) => updateOriginVisibility(latest.offsetDistance)}
+			ref={itemRef}
+			style={{
+				offsetPath: `path("${ARC_PATH}")`,
+				offsetRotate: "auto 90deg",
+				offsetAnchor: "center center",
+				visibility: "hidden",
+				willChange: "transform",
+				zIndex: ACTION_ACTIVE_Z_INDEX,
+			}}
+			transition={{ ...ITEM_TRANSITION, delay: index * STAGGER_INTERVAL }}
+		>
+			{children}
+		</motion.div>
 	);
 }
 
@@ -85,7 +138,7 @@ export function PersonalGraphControlFlyoutTrigger({
 	return (
 		<motion.span
 			animate={{ rotate: isOpen ? 90 : 0 }}
-			className="inline-flex"
+			className="relative z-50 inline-flex"
 			style={{ willChange: "transform" }}
 			transition={TRIGGER_TRANSITION}
 		>
@@ -122,7 +175,7 @@ export function PersonalGraphControlFlyoutActions({
 	return (
 		<div
 			aria-hidden={!isOpen}
-			className={cn("pointer-events-none absolute z-40", className)}
+			className={cn("pointer-events-none absolute", className)}
 			style={{ width: 0, height: 0 }}
 		>
 			<AnimatePresence>
@@ -130,24 +183,15 @@ export function PersonalGraphControlFlyoutActions({
 					? actions.map((action, index) => {
 							const distance = ((index + 1) / actions.length) * ARC_TRAVEL_PERCENT;
 							return (
-								<motion.div
-									animate={{ offsetDistance: `${distance}%`, opacity: 1, scale: 1 }}
-									aria-label={action.label}
-									className="pointer-events-auto absolute"
-									exit={{ offsetDistance: "0%", opacity: 0, scale: 0.3 }}
-									initial={{ offsetDistance: "0%", opacity: 0, scale: 0.3 }}
+								<PersonalGraphControlFlyoutActionItem
+									distance={distance}
+									index={index}
 									key={action.key}
-									style={{
-										offsetPath: `path("${ARC_PATH}")`,
-										offsetRotate: "auto 90deg",
-										offsetAnchor: "center center",
-										willChange: "transform, opacity",
-									}}
-									transition={{ ...ITEM_TRANSITION, delay: index * STAGGER_INTERVAL }}
+									label={action.label}
 								>
 									<motion.span
 										animate={{ opacity: 1, x: 0 }}
-										className="pointer-events-none absolute right-[calc(100%+12px)] top-1/2 hidden -translate-y-1/2 whitespace-nowrap rounded-md bg-bg-neutral-bold px-3 py-1.5 text-xs text-text-inverse shadow-md sm:block"
+										className="pointer-events-none absolute right-[calc(100%+12px)] top-1/2 -translate-y-1/2 whitespace-nowrap rounded-md bg-bg-neutral-bold px-3 py-1.5 text-xs text-text-inverse shadow-md"
 										exit={{ opacity: 0, x: 8 }}
 										initial={{ opacity: 0, x: 8 }}
 										style={{ willChange: "transform, opacity" }}
@@ -158,7 +202,7 @@ export function PersonalGraphControlFlyoutActions({
 									<PersonalGraphControlFlyoutActionGlass>
 										{action.render}
 									</PersonalGraphControlFlyoutActionGlass>
-								</motion.div>
+								</PersonalGraphControlFlyoutActionItem>
 							);
 						})
 					: null}

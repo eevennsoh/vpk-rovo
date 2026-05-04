@@ -131,7 +131,7 @@ import { stagger } from "motion/react";`,
 		props: [
 			{ name: "explorer", type: "VaultExplorer", description: "Optional graph data shaped like the Personal Graph explorer response. Defaults to the bundled visual sample graph." },
 			{ name: "background", type: '"default" | "transparent"', default: '"transparent"', description: "Canvas background mode. Transparent embeds skip the built-in surface fill." },
-			{ name: "initialParams", type: "Partial<NeuralGraphParams>", default: "ROVO_GRAPH_DEFAULT_PARAMS", description: "Initial values for flow, structure, cone, node, edge, ray, hover, label, and node style controls." },
+			{ name: "initialParams", type: "Partial<NeuralGraphParams>", default: "ROVO_GRAPH_DEFAULT_PARAMS", description: "Initial values for flow, structure, cone, node state, edge state, ray, hover, label, and node style controls." },
 			{ name: "initialSelectedNodeId", type: "string | null", default: "null", description: "Node id to focus when the component first renders." },
 			{ name: "isLoading", type: "boolean", default: "false", description: "Marks the graph as loading while preserving the canvas contract." },
 			{ name: "params", type: "NeuralGraphParams", description: "Controlled render parameters for live embeds. Pair with onParamsChange when controls are shown." },

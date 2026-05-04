@@ -199,15 +199,28 @@ test("Personal Graph header uses the display font lockup", () => {
 	assert.match(SURFACE_SOURCE, /PERSONAL_GRAPH_TITLE_FONT_STYLE/);
 	assert.match(SURFACE_SOURCE, /var\(--font-affigere\)/);
 	assert.match(SURFACE_SOURCE, /var\(--font-departure-mono\)/);
-	assert.match(SURFACE_SOURCE, /className="mx-auto min-w-0 max-w-full text-center text-text"/);
+	assert.match(SURFACE_SOURCE, /PERSONAL_GRAPH_TITLE_SCRAMBLE_LINE_CHAR_COUNT = 8/);
+	assert.match(SURFACE_SOURCE, /PERSONAL_GRAPH_INITIAL_TITLE_SIZE/);
+	assert.match(SURFACE_SOURCE, /PERSONAL_GRAPH_SETTLED_TITLE_SIZE/);
+	assert.match(SURFACE_SOURCE, /100cqw - 1rem/);
+	assert.match(
+		SURFACE_SOURCE,
+		/className="mx-auto w-full min-w-0 max-w-full text-center text-text \[container-type:inline-size\]"/,
+	);
 	assert.match(SURFACE_SOURCE, /className="leading-\[0\.8\] text-text"/);
+	assert.match(SURFACE_SOURCE, /initial=\{\{ fontSize: PERSONAL_GRAPH_INITIAL_TITLE_SIZE \}\}/);
+	assert.match(
+		SURFACE_SOURCE,
+		/fontSize: isPostSettle \? PERSONAL_GRAPH_SETTLED_TITLE_SIZE : PERSONAL_GRAPH_INITIAL_TITLE_SIZE/,
+	);
 	assert.doesNotMatch(SURFACE_SOURCE, /uppercase leading-\[0\.8\]/);
 	assert.doesNotMatch(SURFACE_SOURCE, /className="[^"]*tracking-normal[^"]*"\s+style=\{PERSONAL_GRAPH_TITLE_FONT_STYLE\}/);
 	assert.match(TITLE_SOURCE, /<ScrambleText/);
 	assert.match(TITLE_SOURCE, />\s*PERSONAL\s*<\/ScrambleText>/);
 	assert.match(TITLE_SOURCE, />\s*GRAPH\s*<\/ScrambleText>/);
+	assert.match(TITLE_SOURCE, /className="block whitespace-nowrap"/);
 	assert.match(TITLE_SOURCE, /aria-label="PERSONAL GRAPH"/);
-	assert.match(TITLE_SOURCE, /aria-hidden className="block"/);
+	assert.match(TITLE_SOURCE, /aria-hidden className="block whitespace-nowrap"/);
 	assert.doesNotMatch(SURFACE_SOURCE, /BranchIcon/);
 });
 
@@ -225,11 +238,18 @@ test("Personal Graph omits the standalone zoom control rail", () => {
 test("Personal Graph anchors the search and chat composer at the graph origin", () => {
 	assert.match(SURFACE_SOURCE, /aria-label="Personal Graph search and chat"/);
 	assert.match(SURFACE_SOURCE, /left-4 right-4 z-40 flex justify-center/);
+	assert.match(SURFACE_SOURCE, /initial=\{\{ bottom: -120 \}\}/);
 	assert.match(SURFACE_SOURCE, /bottom: isSearchRevealed \? 24 : -120/);
+	assert.doesNotMatch(SURFACE_SOURCE, /opacity: isSearchRevealed \? 1 : 0/);
+	assert.doesNotMatch(SURFACE_SOURCE, /opacity: \{ duration: 0\.5, ease: easeOut \}/);
 	assert.match(SURFACE_SOURCE, /border-border-inverse bg-bg-neutral-bold/);
 	assert.match(SURFACE_SOURCE, /<PersonalGraphSearch/);
 	assert.doesNotMatch(SURFACE_SOURCE, /grid-cols-\[1fr_auto_1fr\]/);
 	assert.match(SEARCH_SOURCE, /Ask or search your graph\.\.\./);
+	assert.match(
+		SEARCH_SOURCE,
+		/<PersonalGraphGlassPanel[\s\S]*className="relative z-10"[\s\S]*contentClassName="flex h-16 items-center gap-2 p-4 pl-6"[\s\S]*radius=\{30\}/,
+	);
 	assert.match(SEARCH_SOURCE, /contentClassName="flex h-16 items-center gap-2 p-4 pl-6"/);
 	assert.match(GLASS_PANEL_SOURCE, /\[&>div\]:p-0/);
 	assert.doesNotMatch(SEARCH_SOURCE, /SearchIcon/);
@@ -250,6 +270,7 @@ test("Personal Graph anchors the search and chat composer at the graph origin", 
 
 test("Personal Graph lets the graph renderer fill the route viewport behind the chrome", () => {
 	assert.match(SURFACE_SOURCE, /<motion\.section\s+className="absolute inset-0 z-10"\s+aria-label="Vault graph"/);
+	assert.match(SURFACE_SOURCE, /const isGraphRevealed = isSearchRevealed;/);
 	assert.doesNotMatch(SURFACE_SOURCE, /bottom-\[6\.5rem\] top-\[250px\]/);
 	assert.doesNotMatch(SURFACE_SOURCE, /sm:top-\[320px\] lg:top-\[360px\] xl:top-\[400px\]/);
 	assert.match(GRAPH_SOURCE, /isFillVariant \? "flex h-full w-full flex-col"/);

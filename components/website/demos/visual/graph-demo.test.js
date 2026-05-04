@@ -90,7 +90,7 @@ test("Graph visual can be embedded as the live Personal Graph renderer", () => {
 	]) {
 		assert.match(graphDetailsSource, new RegExp(`name: "${propName}"`));
 	}
-	assert.match(graphDetailsSource, /flow, structure, cone, node, edge, ray, hover, label, and node style controls/);
+	assert.match(graphDetailsSource, /flow, structure, cone, node state, edge state, ray, hover, label, and node style controls/);
 });
 
 test("Graph renderer keeps the default connector stroke width at 2 via params", () => {
@@ -114,10 +114,30 @@ test("Graph renderer exposes hover, ray, edge, and label toggles through params"
 	assert.match(RENDERER_SOURCE, /viewport\.height \* params\.rayOriginY/);
 	assert.match(RENDERER_SOURCE, /options\.params\.hoverScale/);
 	assert.match(RENDERER_SOURCE, /options\.params\.selectedScale/);
+	assert.match(RENDERER_SOURCE, /options\.params\.nodeHoverColor/);
+	assert.match(RENDERER_SOURCE, /options\.params\.nodeSelectedColor/);
+	assert.match(RENDERER_SOURCE, /options\.params\.edgeColor/);
+	assert.match(RENDERER_SOURCE, /options\.params\.edgeHoverColor/);
+	assert.match(RENDERER_SOURCE, /options\.params\.edgeSelectedColor/);
 	assert.match(RENDERER_SOURCE, /options\.params\.glowSize/);
 	assert.match(RENDERER_SOURCE, /options\.params\.glowIntensity/);
 	assert.match(RENDERER_SOURCE, /options\.params\.labelSize/);
 	assert.match(RENDERER_SOURCE, /options\.params\.labelMetaSize/);
+});
+
+test("Graph controls expose node and edge state color fields", () => {
+	for (const expected of [
+		/{ kind: "color", key: "nodeHoverColor", label: "Hover color"/,
+		/{ kind: "color", key: "nodeSelectedColor", label: "Selected color"/,
+		/{ kind: "color", key: "edgeColor", label: "Default color"/,
+		/{ kind: "color", key: "edgeHoverColor", label: "Hover color"/,
+		/{ kind: "color", key: "edgeSelectedColor", label: "Selected color"/,
+	]) {
+		assert.match(PARAMS_SOURCE, expected);
+	}
+	assert.match(GRAPH_SOURCE, /<GUI\.Section borderTop title="Default node colors">/);
+	assert.match(GRAPH_SOURCE, /id="graph-node-color"/);
+	assert.match(GRAPH_SOURCE, /label="Fallback"/);
 });
 
 test("Graph controls render booleans as toggles", () => {
