@@ -317,7 +317,8 @@ test("Personal Graph hides node details until a node is selected", () => {
 });
 
 test("Personal Graph keeps the owned canvas renderer accessible", () => {
-	assert.match(SURFACE_SOURCE, /<details className="sr-only" open>/);
+	assert.match(SURFACE_SOURCE, /<section className="sr-only" aria-label="Personal Graph text fallback">/);
+	assert.doesNotMatch(SURFACE_SOURCE, /<summary>/);
 	assert.match(
 		SURFACE_SOURCE,
 		/import Graph, \{ ROVO_GRAPH_DEFAULT_PARAMS \} from "@\/components\/website\/demos\/visual\/graph";/,
