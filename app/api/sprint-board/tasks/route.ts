@@ -18,9 +18,23 @@ interface UpdateTaskRequest {
  * Handle task operations: move, update, create
  */
 export async function POST(request: NextRequest) {
+	let body: unknown;
 	try {
-		const body = await request.json();
-		const { action } = body;
+		body = await request.json();
+	} catch {
+		return NextResponse.json(
+			{
+				success: false,
+				error: "Invalid JSON request body",
+				details: "Request body must be valid JSON.",
+			},
+			{ status: 400 }
+		);
+	}
+
+	try {
+		const bodyRecord = body && typeof body === "object" ? body as { action?: unknown } : {};
+		const { action } = bodyRecord;
 
 		switch (action) {
 			case "move":
