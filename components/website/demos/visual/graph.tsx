@@ -537,7 +537,7 @@ function GraphControls({ defaultParams, onChange, params }: Readonly<GraphContro
 				</GUI.Section>
 			))}
 
-			<GUI.Section borderTop title="Kind colors">
+			<GUI.Section borderTop title="Default node colors">
 				<ShaderColorInput
 					id="graph-color-synthesis"
 					label="Synthesis"
@@ -578,17 +578,17 @@ function GraphControls({ defaultParams, onChange, params }: Readonly<GraphContro
 					defaultValue={defaultParams.colorRaw}
 					onChange={(nextColor) => updateParam("colorRaw", nextColor)}
 				/>
-			</GUI.Section>
-
-			<GUI.Section borderTop title="Node style">
 				<ShaderColorInput
 					id="graph-node-color"
-					label="Fallback color"
-					description="Used when a node has no kind"
+					label="Fallback"
+					description="Used when a node has no kind color"
 					value={params.nodeColor}
 					defaultValue={defaultParams.nodeColor}
 					onChange={(nextColor) => updateParam("nodeColor", nextColor)}
 				/>
+			</GUI.Section>
+
+			<GUI.Section borderTop title="Node style">
 				<GUI.Select
 					id="graph-node-shape"
 					label="Node shape"

@@ -30,8 +30,6 @@ const PALETTES = {
 		backgroundBottom: "#DDF3FF",
 		backgroundMid: "#F5F6F2",
 		backgroundTop: "#FFD08A",
-		edge: "rgba(107, 92, 231, 0.18)",
-		edgeActive: "rgba(107, 92, 231, 0.54)",
 		label: "rgba(23, 43, 77, 0.9)",
 		labelSubtle: "rgba(68, 84, 111, 0.74)",
 	},
@@ -39,8 +37,6 @@ const PALETTES = {
 		backgroundBottom: "#051B2C",
 		backgroundMid: "#111722",
 		backgroundTop: "#291D33",
-		edge: "rgba(153, 141, 255, 0.16)",
-		edgeActive: "rgba(153, 141, 255, 0.62)",
 		label: "rgba(244, 246, 248, 0.92)",
 		labelSubtle: "rgba(182, 194, 207, 0.72)",
 	},
@@ -83,7 +79,7 @@ function getKindColor(kind: VaultNodeKind, params: NeuralGraphParams) {
 	return isHexColor(value) ? value : null;
 }
 
-function getNodeColor(node: NeuralLayoutNode, options: NeuralGraphRenderOptions) {
+function getDefaultNodeColor(node: NeuralLayoutNode, options: NeuralGraphRenderOptions) {
 	return (
 		getKindColor(node.node.kind, options.params)
 		?? getNodeGraphColor(node)
@@ -91,27 +87,15 @@ function getNodeColor(node: NeuralLayoutNode, options: NeuralGraphRenderOptions)
 	);
 }
 
-function getEdgeColor(edge: NeuralLayoutEdge, options: NeuralGraphRenderOptions) {
-	const activeNodeId = options.selectedNodeId ?? options.hoveredNodeId;
-	const activeNode =
-		activeNodeId === edge.source.id
-			? edge.source
-			: activeNodeId === edge.target.id
-				? edge.target
-				: edge.source;
-	return getNodeColor(activeNode, options);
-}
-
-function getIdleEdgeColor(
-	edge: NeuralLayoutEdge,
-	palette: (typeof PALETTES)[NeuralGraphThemeMode],
-	params: NeuralGraphParams,
+function getNodeColor(
+	node: NeuralLayoutNode,
+	options: NeuralGraphRenderOptions,
+	isSelected: boolean,
+	isHovered: boolean,
 ) {
-	const kindColor =
-		getKindColor(edge.source.node.kind, params) ?? getKindColor(edge.target.node.kind, params);
-	if (kindColor) return colorWithAlpha(kindColor, 0.34);
-	const graphColor = getNodeGraphColor(edge.source) ?? getNodeGraphColor(edge.target);
-	return graphColor ? colorWithAlpha(graphColor, 0.34) : palette.edge;
+	if (isSelected) return options.params.nodeSelectedColor;
+	if (isHovered) return options.params.nodeHoverColor;
+	return getDefaultNodeColor(node, options);
 }
 
 function lerp(start: number, end: number, progress: number) {
@@ -263,6 +247,20 @@ function isActiveEdge(sourceId: string, targetId: string, selectedNodeId: string
 	return activeNodeId === null || sourceId === activeNodeId || targetId === activeNodeId;
 }
 
+function getEdgeColor(edge: NeuralLayoutEdge, options: NeuralGraphRenderOptions, selectedRelationships: SelectedRelationshipIds) {
+	if (options.selectedNodeId && selectedRelationships.edgeIds.has(edge.id)) {
+		return options.params.edgeSelectedColor;
+	}
+	if (
+		!options.selectedNodeId
+		&& options.hoveredNodeId
+		&& isActiveEdge(edge.source.id, edge.target.id, null, options.hoveredNodeId)
+	) {
+		return options.params.edgeHoverColor;
+	}
+	return options.params.edgeColor;
+}
+
 function drawEdges(
 	ctx: CanvasRenderingContext2D,
 	layout: NeuralGraphLayout,
@@ -270,7 +268,6 @@ function drawEdges(
 	selectedRelationships: SelectedRelationshipIds,
 ) {
 	if (!options.params.showEdges) return;
-	const palette = PALETTES[options.theme];
 	const edgeWidths = getEdgeLineWidth(options.params);
 	const idleOpacity = options.params.edgeOpacity;
 	const activeOpacity = options.params.edgeOpacityActive;
@@ -287,7 +284,7 @@ function drawEdges(
 		const focusActive = focusProgress > 0 && selectedRelationships.edgeIds.has(edge.id);
 		const active = focusProgress > 0 ? focusActive : hasFocus && isActiveEdge(edge.source.id, edge.target.id, options.selectedNodeId, options.hoveredNodeId);
 		const inactiveAlpha = focusProgress > 0 ? lerp(idleOpacity, idleOpacity * 0.11, focusProgress) : idleOpacity;
-		ctx.strokeStyle = active ? colorWithAlpha(getEdgeColor(edge, options), 0.56) : getIdleEdgeColor(edge, palette, options.params);
+		ctx.strokeStyle = getEdgeColor(edge, options, selectedRelationships);
 		ctx.lineWidth = active ? lerp(edgeWidths.active, edgeWidths.focused, focusProgress) : edgeWidths.idle;
 		ctx.globalAlpha = active ? lerp(activeOpacity, Math.min(1, activeOpacity + 0.2), focusProgress) : inactiveAlpha;
 		drawStraightEdgePath(ctx, source, target);
@@ -337,9 +334,9 @@ function drawNodes(
 	const glowIntensity = options.params.glowIntensity;
 	const glowIntensityRelated = glowIntensity * 0.5;
 	for (const node of sortedNodes) {
-		const nodeColor = getNodeColor(node, options);
 		const isSelected = node.id === options.selectedNodeId;
 		const isHovered = node.id === options.hoveredNodeId;
+		const nodeColor = getNodeColor(node, options, isSelected, isHovered);
 		const isRelated = selectedRelationships.nodeIds.has(node.id);
 		let focusAlpha = 1;
 		if (focusProgress > 0) {

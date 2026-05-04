@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import AddIcon from "@atlaskit/icon/core/add";
 import CrossIcon from "@atlaskit/icon/core/cross";
 import UndoIcon from "@atlaskit/icon/core/undo";
@@ -72,9 +73,23 @@ export function ShaderColorInput({
 	disabled,
 	onChange,
 }: ShaderColorInputProps) {
+	const [textDraft, setTextDraft] = useState<string | null>(null);
+	const displayValue = textDraft ?? value;
 	const isDefault = defaultValue == null
 		? true
-		: normalizeColorValue(value) === normalizeColorValue(defaultValue);
+		: normalizeColorValue(displayValue) === normalizeColorValue(defaultValue);
+
+	function commitPickerValue(nextColor: string) {
+		setTextDraft(null);
+		onChange(nextColor);
+	}
+
+	function commitTextValue(nextValue: string) {
+		setTextDraft(nextValue);
+		if (isHexColor(nextValue)) {
+			onChange(nextValue);
+		}
+	}
 
 	return (
 		<div className={cn("space-y-2", disabled && "pointer-events-none opacity-40")}>
@@ -87,7 +102,10 @@ export function ShaderColorInput({
 						<ResetButton
 							ariaLabel={`Reset ${label}`}
 							disabled={isDefault || !!disabled}
-							onClick={() => onChange(defaultValue)}
+							onClick={() => {
+								setTextDraft(null);
+								onChange(defaultValue);
+							}}
 						/>
 					</div>
 				) : null}
@@ -98,15 +116,21 @@ export function ShaderColorInput({
 					type="color"
 					aria-label={`${label} color`}
 					value={resolvePickerValue(value, defaultValue)}
-					onChange={(event) => onChange(event.currentTarget.value)}
+					onChange={(event) => commitPickerValue(event.currentTarget.value)}
 					disabled={disabled}
 					className="size-7 shrink-0 cursor-pointer rounded border border-border bg-transparent p-0"
 				/>
 				<Input
 					id={`${id}-text`}
 					type="text"
-					value={value}
-					onChange={(event) => onChange(event.currentTarget.value)}
+					value={displayValue}
+					onChange={(event) => commitTextValue(event.currentTarget.value)}
+					onFocus={() => {
+						setTextDraft(value);
+					}}
+					onBlur={() => {
+						setTextDraft(null);
+					}}
 					disabled={disabled}
 					isCompact
 					isMonospaced
