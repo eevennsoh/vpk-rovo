@@ -84,6 +84,13 @@ export type NeuralGraphHexColorKey =
 	| (typeof NEURAL_GRAPH_EDGE_COLOR_PARAM_KEYS)[number]
 	| "rayColor";
 
+const NEURAL_GRAPH_COLOR_PARAM_KEYS = [
+	"rayColor",
+	...NEURAL_GRAPH_KIND_COLOR_PARAM_KEYS,
+	...NEURAL_GRAPH_NODE_COLOR_PARAM_KEYS,
+	...NEURAL_GRAPH_EDGE_COLOR_PARAM_KEYS,
+] as const satisfies ReadonlyArray<NeuralGraphHexColorKey>;
+
 export interface NeuralGraphNumberParamDefinition {
 	kind: "number";
 	key: NeuralGraphNumberKey;
@@ -317,12 +324,7 @@ export function clampNeuralGraphParams(input: Partial<NeuralGraphParams> = {}): 
 	}
 
 	clamped.nodeShape = isNodeShape(next.nodeShape) ? next.nodeShape : DEFAULT_NEURAL_GRAPH_PARAMS.nodeShape;
-	clamped.rayColor = isHexColor(next.rayColor) ? next.rayColor : DEFAULT_NEURAL_GRAPH_PARAMS.rayColor;
-	for (const key of [
-		...NEURAL_GRAPH_KIND_COLOR_PARAM_KEYS,
-		...NEURAL_GRAPH_NODE_COLOR_PARAM_KEYS,
-		...NEURAL_GRAPH_EDGE_COLOR_PARAM_KEYS,
-	] as const) {
+	for (const key of NEURAL_GRAPH_COLOR_PARAM_KEYS) {
 		const value = next[key];
 		clamped[key] = isHexColor(value) ? value : DEFAULT_NEURAL_GRAPH_PARAMS[key];
 	}
