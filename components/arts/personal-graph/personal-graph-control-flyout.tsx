@@ -16,7 +16,7 @@ export interface PersonalGraphControlFlyoutAction {
 const TRIGGER_TRANSITION: Transition = { type: "spring", stiffness: 500, damping: 30 };
 const ITEM_TRANSITION: Transition = { type: "spring", stiffness: 400, damping: 22 };
 const STAGGER_INTERVAL = 0.05;
-const ARC_ORIGIN_VISIBILITY_THRESHOLD_PERCENT = 14;
+const ARC_ORIGIN_VISIBILITY_THRESHOLD_PERCENT = 10;
 const ARC_EXIT_BEHIND_TRIGGER_THRESHOLD_PERCENT = 40;
 const ACTION_ACTIVE_Z_INDEX = 40;
 const ACTION_BEHIND_TRIGGER_Z_INDEX = 0;
@@ -26,9 +26,9 @@ const ACTION_BEHIND_TRIGGER_Z_INDEX = 0;
 // Combined with offsetRotate: "auto 90deg" on each item, the buttons (and their child labels)
 // rotate along the path tangent. End-tangent ~(82, -145) yields ~30° clockwise tilt at the top.
 const ARC_PATH = "M 0 0 C 0 -92, 20 -185, 102 -330";
-// Travel% chosen so consecutive actions are spaced ~48px along the arc.
-// Approximate arc length ≈ 335. 335 * 0.72 / 5 ≈ 48.2.
-const ARC_TRAVEL_PERCENT = 72;
+// Step% chosen so consecutive 32px controls are spaced ~44px center-to-center,
+// leaving a ~12px visual gap along the arc.
+const ARC_ACTION_STEP_PERCENT = 12.6;
 
 const ACTION_GLASS_BUTTON_CLASS_NAME = cn(
 	"relative isolate inline-flex size-8 items-center justify-center rounded-full",
@@ -181,7 +181,7 @@ export function PersonalGraphControlFlyoutActions({
 			<AnimatePresence>
 				{isOpen
 					? actions.map((action, index) => {
-							const distance = ((index + 1) / actions.length) * ARC_TRAVEL_PERCENT;
+							const distance = (index + 1) * ARC_ACTION_STEP_PERCENT;
 							return (
 								<PersonalGraphControlFlyoutActionItem
 									distance={distance}

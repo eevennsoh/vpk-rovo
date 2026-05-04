@@ -199,10 +199,12 @@ test("Personal Graph header uses the display font lockup", () => {
 	assert.match(SURFACE_SOURCE, /PERSONAL_GRAPH_TITLE_FONT_STYLE/);
 	assert.match(SURFACE_SOURCE, /var\(--font-affigere\)/);
 	assert.match(SURFACE_SOURCE, /var\(--font-departure-mono\)/);
-	assert.match(SURFACE_SOURCE, /PERSONAL_GRAPH_TITLE_SCRAMBLE_LINE_CHAR_COUNT = 8/);
+	assert.match(SURFACE_SOURCE, /PERSONAL_GRAPH_TITLE_LONGEST_LINE_WIDTH_EM = 3\.15/);
+	assert.match(SURFACE_SOURCE, /PERSONAL_GRAPH_SETTLED_TITLE_SCRAMBLE_LINE_CHAR_COUNT = 8/);
 	assert.match(SURFACE_SOURCE, /PERSONAL_GRAPH_INITIAL_TITLE_SIZE/);
 	assert.match(SURFACE_SOURCE, /PERSONAL_GRAPH_SETTLED_TITLE_SIZE/);
-	assert.match(SURFACE_SOURCE, /100cqw - 1rem/);
+	assert.match(SURFACE_SOURCE, /min\(8rem, calc\(\(100svw - 3rem\) \/ \$\{PERSONAL_GRAPH_TITLE_LONGEST_LINE_WIDTH_EM\}\)\)/);
+	assert.match(SURFACE_SOURCE, /min\(3rem, calc\(\(100cqw - 1rem\) \/ \$\{PERSONAL_GRAPH_SETTLED_TITLE_SCRAMBLE_LINE_CHAR_COUNT\}\)\)/);
 	assert.match(
 		SURFACE_SOURCE,
 		/className="mx-auto w-full min-w-0 max-w-full text-center text-text \[container-type:inline-size\]"/,
@@ -331,7 +333,7 @@ test("Personal Graph keeps the owned canvas renderer accessible", () => {
 	assert.doesNotMatch(SURFACE_SOURCE, /PERSONAL_GRAPH_NEURAL_PARAMS_STORAGE_KEY/);
 	assert.match(GRAPH_SOURCE, /nodeShape: "square"/);
 	assert.match(GRAPH_SOURCE, /nodeSize: 8/);
-	assert.match(GRAPH_SOURCE, /rayOriginY: 0\.95/);
+	assert.match(GRAPH_SOURCE, /rayOriginY: 1/);
 	assert.match(SURFACE_SOURCE, /function PersonalGraphPromptTailConnector/);
 	assert.match(SURFACE_SOURCE, /data-personal-graph-tail-connector="prompt"/);
 	assert.match(SURFACE_SOURCE, /top-\[-7rem\]/);

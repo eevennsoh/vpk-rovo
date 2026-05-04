@@ -108,7 +108,7 @@ test("Graph renderer exposes hover, ray, edge, and label toggles through params"
 	assert.match(RENDERER_SOURCE, /if \(!options\.params\.showRays\) return;/);
 	assert.match(RENDERER_SOURCE, /if \(!options\.params\.showEdges\) return;/);
 	assert.match(RENDERER_SOURCE, /if \(!options\.params\.showLabels\) return;/);
-	assert.match(GRAPH_SOURCE, /rayOriginY: 0\.95/);
+	assert.match(GRAPH_SOURCE, /rayOriginY: 1/);
 	assert.match(PARAMS_SOURCE, /key: "rayOriginY", label: "Tail Y"/);
 	assert.match(RENDERER_SOURCE, /function getRayOrigin/);
 	assert.match(RENDERER_SOURCE, /viewport\.height \* params\.rayOriginY/);

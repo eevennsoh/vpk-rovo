@@ -61,15 +61,18 @@ test("Personal Graph flyout arc motion does not blur, fade, or scale glass butto
 test("Personal Graph flyout action motion uses direct index staggering", () => {
 	assert.match(CONTROL_FLYOUT_SOURCE, /transition=\{\{ \.\.\.ITEM_TRANSITION, delay: index \* STAGGER_INTERVAL \}\}/);
 	assert.match(CONTROL_FLYOUT_SOURCE, /transition=\{\{ delay: index \* STAGGER_INTERVAL \+ 0\.1, duration: 0\.15 \}\}/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /const ARC_ACTION_STEP_PERCENT = 12\.6;/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /const distance = \(index \+ 1\) \* ARC_ACTION_STEP_PERCENT;/);
 	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /function getFlyoutActionEnterDelay/);
 	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /function getFlyoutActionExitDelay/);
 	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /actionCount=\{actions\.length\}/);
+	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /ARC_TRAVEL_PERCENT/);
 	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /delay: enterDelay/);
 	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /delay: exitDelay/);
 });
 
 test("Personal Graph flyout action buttons stay hidden while stacked at the arc origin", () => {
-	assert.match(CONTROL_FLYOUT_SOURCE, /const ARC_ORIGIN_VISIBILITY_THRESHOLD_PERCENT = 14;/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /const ARC_ORIGIN_VISIBILITY_THRESHOLD_PERCENT = 10;/);
 	assert.match(CONTROL_FLYOUT_SOURCE, /const ARC_EXIT_BEHIND_TRIGGER_THRESHOLD_PERCENT = 40;/);
 	assert.match(CONTROL_FLYOUT_SOURCE, /const ACTION_ACTIVE_Z_INDEX = 40;/);
 	assert.match(CONTROL_FLYOUT_SOURCE, /const ACTION_BEHIND_TRIGGER_Z_INDEX = 0;/);

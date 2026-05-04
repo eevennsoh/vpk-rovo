@@ -53,11 +53,12 @@ const PERSONAL_GRAPH_META_FONT_STYLE = {
 	fontFamily: "var(--font-departure-mono), 'Courier New', monospace",
 } satisfies React.CSSProperties;
 
-const PERSONAL_GRAPH_TITLE_SCRAMBLE_LINE_CHAR_COUNT = 8;
+const PERSONAL_GRAPH_TITLE_LONGEST_LINE_WIDTH_EM = 3.15;
+const PERSONAL_GRAPH_SETTLED_TITLE_SCRAMBLE_LINE_CHAR_COUNT = 8;
 const PERSONAL_GRAPH_INITIAL_TITLE_SIZE =
-	`min(8rem, calc((100cqw - 1rem) / ${PERSONAL_GRAPH_TITLE_SCRAMBLE_LINE_CHAR_COUNT}))`;
+	`min(8rem, calc((100svw - 3rem) / ${PERSONAL_GRAPH_TITLE_LONGEST_LINE_WIDTH_EM}))`;
 const PERSONAL_GRAPH_SETTLED_TITLE_SIZE =
-	`min(3rem, calc((100cqw - 1rem) / ${PERSONAL_GRAPH_TITLE_SCRAMBLE_LINE_CHAR_COUNT}))`;
+	`min(3rem, calc((100cqw - 1rem) / ${PERSONAL_GRAPH_SETTLED_TITLE_SCRAMBLE_LINE_CHAR_COUNT}))`;
 
 function GraphNodeMarker({
 	className,
