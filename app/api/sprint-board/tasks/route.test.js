@@ -57,3 +57,20 @@ test("POST /api/sprint-board/tasks rejects malformed JSON as a client error", as
 		details: "Request body must be valid JSON.",
 	});
 });
+
+test("POST /api/sprint-board/tasks treats null JSON as an invalid client request", async (t) => {
+	const { POST } = await loadBundledRoute(t);
+
+	const response = await POST(new Request("http://localhost/api/sprint-board/tasks", {
+		body: "null",
+		headers: { "Content-Type": "application/json" },
+		method: "POST",
+	}));
+
+	assert.equal(response.status, 400);
+	assert.deepEqual(await response.json(), {
+		success: false,
+		error: "Invalid action",
+		details: "Action must be one of: move, update",
+	});
+});
