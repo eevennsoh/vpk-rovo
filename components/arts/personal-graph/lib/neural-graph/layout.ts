@@ -80,8 +80,8 @@ function waveNoise(
 
 	const interactionProgress = clampInteractionProgress(interaction, reduceMotion);
 	const velocity = Math.max(0, interaction?.velocity ?? 0);
-	const speed = params.speed * (1 + interactionProgress * (0.65 + velocity * 0.55));
-	const amplitude = params.amplitude * (1 + interactionProgress * 0.55);
+	const speed = params.speed * (1 + interactionProgress * (0.42 + velocity * 0.3));
+	const amplitude = params.amplitude * (1 + interactionProgress * 0.32);
 	let x = 0;
 	let y = 0;
 	let weight = 1;
@@ -117,17 +117,17 @@ function createInitialNode(
 	const pointerY = interaction?.pointer ? interaction.pointer.y / Math.max(1, viewport.height) - 0.5 : 0;
 	const breath = Math.sin(time * (1.2 + velocity * 1.6) + unitHash(node.id, "breath") * Math.PI * 2)
 		* interactionProgress
-		* 0.035;
-	const effectiveSpread = params.spread * (1 + interactionProgress * 0.08 + breath);
-	const coneAngle = params.coneAngle * (1 + interactionProgress * 0.1) * DEG_TO_RAD;
+		* 0.02;
+	const effectiveSpread = params.spread * (1 + interactionProgress * 0.045 + breath);
+	const coneAngle = params.coneAngle * (1 + interactionProgress * 0.05) * DEG_TO_RAD;
 	const angleJitter = signedHash(node.id, "angle") * coneAngle * 0.08;
-	const angle = -Math.PI / 2 + (t - 0.5) * coneAngle + angleJitter + params.tiltZ * DEG_TO_RAD * 0.1 + pointerX * interactionProgress * 0.16;
+	const angle = -Math.PI / 2 + (t - 0.5) * coneAngle + angleJitter + params.tiltZ * DEG_TO_RAD * 0.1 + pointerX * interactionProgress * 0.075;
 	const radiusRange = Math.max(0, params.radiusMax - params.radiusMin) / 100;
 	const radiusMin = params.radiusMin / 100;
 	const radius = effectiveSpread * (radiusMin + unitHash(node.id, "radius") * radiusRange);
 	const z = signedHash(node.id, "depth") * params.depthZ;
 	const depthScale = params.perspective / Math.max(1, params.perspective + z);
-	const tiltOffset = Math.sin(params.tiltX * DEG_TO_RAD) * z * 0.4 + pointerY * interactionProgress * params.spread * 0.025;
+	const tiltOffset = Math.sin(params.tiltX * DEG_TO_RAD) * z * 0.4 + pointerY * interactionProgress * params.spread * 0.012;
 	const flow = waveNoise(node, params, time, reduceMotion, interaction);
 
 	return {
@@ -157,7 +157,7 @@ function relaxLayout(
 	const velocity = nodes.map(() => ({ x: 0, y: 0 }));
 	const restById = new Map(nodes.map((node) => [node.id, { x: node.x, y: node.y }]));
 	const attraction = 0.0038;
-	const repulsion = params.spread * (1 + interactionProgress * 0.12) * 0.028;
+	const repulsion = params.spread * (1 + interactionProgress * 0.06) * 0.028;
 	const gravity = 0.018;
 
 	for (let iteration = 0; iteration < RELAXATION_ITERATIONS; iteration += 1) {

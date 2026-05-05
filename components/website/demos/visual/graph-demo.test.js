@@ -114,7 +114,7 @@ test("Graph visual can be embedded as the live Personal Graph renderer", () => {
 test("Graph renderer keeps the default connector stroke width at 2 via params", () => {
 	assert.match(PARAMS_SOURCE, /edgeWidth: 2,/);
 	assert.match(PARAMS_SOURCE, /rayWidth: 2,/);
-	assert.match(RENDERER_SOURCE, /ctx\.lineWidth = options\.params\.rayWidth \* \(1 \+ emphasis \* 1\.65\);/);
+	assert.match(RENDERER_SOURCE, /ctx\.lineWidth = options\.params\.rayWidth;/);
 	assert.match(RENDERER_SOURCE, /const edgeWidths = getEdgeLineWidth\(options\.params\);/);
 	assert.match(
 		RENDERER_SOURCE,

@@ -339,8 +339,9 @@ function drawRays(
 			? Math.min(1.5, Math.max(0, options.rayElastic.progress))
 			: 0;
 		const emphasis = activeRayProgress * Math.max(0, options.interaction?.rayEmphasis ?? 1);
-		ctx.lineWidth = options.params.rayWidth * (1 + emphasis * 1.65);
-		ctx.globalAlpha = clampAlpha((options.params.rayOpacity + node.depthScale * 0.03 + interactionIntensity * 0.025) * focusAlpha + emphasis * 0.32);
+		const baseAlpha = (options.params.rayOpacity + node.depthScale * 0.03 + interactionIntensity * 0.025) * focusAlpha;
+		ctx.lineWidth = options.params.rayWidth;
+		ctx.globalAlpha = clampAlpha(activeRayProgress > 0 ? lerp(baseAlpha, 1, Math.min(1, emphasis)) : baseAlpha);
 		drawOrganicRayPath(ctx, getElasticRayCurve(getOrganicRayCurve(origin, point), options));
 		ctx.stroke();
 	}

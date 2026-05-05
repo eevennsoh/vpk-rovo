@@ -23,6 +23,8 @@ import {
 	EMPTY_NEURAL_GRAPH_INTERACTION_STATE,
 	getNeuralInteractionTargetIntensity,
 	getNeuralPointerVelocity,
+	getSmoothedNeuralGraphInteractionState,
+	type NeuralGraphInteractionHitTarget,
 	type NeuralGraphInteractionSettings,
 	type NeuralGraphInteractionState,
 	type NeuralPointerVelocity,
@@ -76,8 +78,13 @@ const ZOOM_SPRING_INSTANT = { stiffness: 4000, damping: 200, mass: 0.05, restDel
 const FOCUS_SPRING_CONFIG = { stiffness: 160, damping: 24, mass: 0.7, restDelta: 0.0005 } as const;
 const FOCUS_SPRING_INSTANT = { stiffness: 4000, damping: 220, mass: 0.05, restDelta: 0.0005 } as const;
 const RAY_ELASTIC_SPRING_INSTANT = { stiffness: 4000, damping: 220, mass: 0.05, restDelta: 0.0005 } as const;
-const INTERACTION_SPRING_CONFIG = { stiffness: 150, damping: 20, mass: 0.72, restDelta: 0.001 } as const;
+const INTERACTION_SPRING_CONFIG = { stiffness: 92, damping: 28, mass: 0.9, restDelta: 0.001 } as const;
 const INTERACTION_SPRING_INSTANT = { stiffness: 4000, damping: 220, mass: 0.05, restDelta: 0.001 } as const;
+const INTERACTION_SMOOTHING_BY_TARGET: Record<NeuralGraphInteractionHitTarget, number> = {
+	node: 0.12,
+	none: 0.16,
+	ray: 0.24,
+};
 
 const HOVER_TRANSITION_TAU_SECONDS = 0.05;
 const HOVER_PROGRESS_SETTLE_EPSILON = 0.001;
@@ -690,9 +697,9 @@ export function PersonalGraphNeuralCanvas({
 			targetInteractionIntensityMV.set(0);
 			return;
 		}
-		const hasHit = Boolean(activeNodeId ?? activeRayId);
-		interactionRef.current = {
-			...interactionRef.current,
+		const target: NeuralGraphInteractionHitTarget = activeRayId ? "ray" : activeNodeId ? "node" : "none";
+		const nextInteraction = {
+			...cloneInteractionState(interactionRef.current),
 			activeNodeId: activeNodeId ?? null,
 			activeRayNodeId: activeRayId ?? null,
 			flowBoost: settings.flowBoost,
@@ -703,9 +710,14 @@ export function PersonalGraphNeuralCanvas({
 			velocity: velocity.normalized,
 			velocityPxPerSecond: velocity.pxPerSecond,
 		};
+		interactionRef.current = getSmoothedNeuralGraphInteractionState({
+			current: interactionRef.current,
+			next: nextInteraction,
+			smoothing: INTERACTION_SMOOTHING_BY_TARGET[target],
+		});
 		targetInteractionIntensityMV.set(getNeuralInteractionTargetIntensity({
-			hasHit,
 			settings,
+			target,
 			velocity: velocity.normalized,
 		}));
 	}, [reduceMotion, targetInteractionIntensityMV]);

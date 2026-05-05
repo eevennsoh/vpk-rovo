@@ -470,6 +470,7 @@ test("interaction settings clamp and pointer velocity map to vivid target intens
 		clampNeuralGraphInteractionSettings,
 		getNeuralInteractionTargetIntensity,
 		getNeuralPointerVelocity,
+		getSmoothedNeuralGraphInteractionState,
 	} = await interactionDynamicsModule;
 	const settings = clampNeuralGraphInteractionSettings({
 		flowBoost: 9,
@@ -490,6 +491,35 @@ test("interaction settings clamp and pointer velocity map to vivid target intens
 		to: { x: 240, y: 80 },
 		viewport: { height: 400, width: 800 },
 	});
+	const nodeIntensity = getNeuralInteractionTargetIntensity({ settings, target: "node", velocity: fast.normalized });
+	const rayIntensity = getNeuralInteractionTargetIntensity({ settings, target: "ray", velocity: fast.normalized });
+	const smoothed = getSmoothedNeuralGraphInteractionState({
+		current: {
+			activeNodeId: "alpha",
+			activeRayNodeId: null,
+			flowBoost: 0.85,
+			intensity: 0.5,
+			pointer: { x: 100, y: 100 },
+			rayDistance: 30,
+			rayEmphasis: 1,
+			rayProgress: 0.2,
+			velocity: 0.1,
+			velocityPxPerSecond: 120,
+		},
+		next: {
+			activeNodeId: "beta",
+			activeRayNodeId: null,
+			flowBoost: 0.85,
+			intensity: 0.7,
+			pointer: { x: 300, y: 180 },
+			rayDistance: 10,
+			rayEmphasis: 1,
+			rayProgress: 0.8,
+			velocity: 0.9,
+			velocityPxPerSecond: 900,
+		},
+		smoothing: 0.25,
+	});
 
 	assert.equal(settings.flowBoost, 1.5);
 	assert.equal(settings.intensity, 1.5);
@@ -498,7 +528,11 @@ test("interaction settings clamp and pointer velocity map to vivid target intens
 	assert.equal(settings.rayEmphasis, 1.5);
 	assert.ok(DEFAULT_NEURAL_GRAPH_INTERACTION_SETTINGS.nodeSoundEnabled);
 	assert.ok(fast.normalized > slow.normalized);
-	assert.ok(getNeuralInteractionTargetIntensity({ hasHit: true, settings, velocity: fast.normalized }) > getNeuralInteractionTargetIntensity({ hasHit: false, settings, velocity: slow.normalized }));
+	assert.ok(rayIntensity > nodeIntensity);
+	assert.ok(nodeIntensity > getNeuralInteractionTargetIntensity({ settings, target: "none", velocity: slow.normalized }));
+	assert.deepEqual(smoothed.pointer, { x: 150, y: 120 });
+	assert.equal(smoothed.activeNodeId, "beta");
+	assert.ok(smoothed.velocity > 0.1 && smoothed.velocity < 0.9);
 });
 
 test("neural graph color helpers translate legacy hex colors to ADS token variables", async () => {
@@ -961,7 +995,7 @@ test("drawNeuralGraph bends ray curves with the elastic hover field", async () =
 	assert.deepEqual(disabled, neutral);
 });
 
-test("drawNeuralGraph thickens and brightens the touched ray", async () => {
+test("drawNeuralGraph brightens the touched ray without changing width", async () => {
 	const { createNeuralCamera } = await cameraModule;
 	const { DEFAULT_NEURAL_GRAPH_PARAMS } = await paramsModule;
 	const { drawNeuralGraph } = await rendererModule;
@@ -1003,7 +1037,7 @@ test("drawNeuralGraph thickens and brightens the touched ray", async () => {
 			intensity: 0.8,
 			pointer: { x: 170, y: 160 },
 			rayDistance: 1,
-			rayEmphasis: 0.9,
+			rayEmphasis: 1,
 			rayProgress: 0.7,
 			velocity: 0.7,
 			velocityPxPerSecond: 900,
@@ -1027,9 +1061,9 @@ test("drawNeuralGraph thickens and brightens the touched ray", async () => {
 		.filter(([name]) => name === "globalAlpha")
 		.map(([, value]) => value);
 
-	assert.ok(Math.max(...lineWidths) > params.rayWidth * 2);
 	assert.ok(lineWidths.includes(params.rayWidth));
-	assert.ok(Math.max(...alphaValues) > 0.25);
+	assert.ok(Math.max(...lineWidths) <= params.rayWidth);
+	assert.equal(Math.max(...alphaValues), 1);
 });
 
 test("drawNeuralGraph resolves design-token colors before drawing on canvas", async () => {

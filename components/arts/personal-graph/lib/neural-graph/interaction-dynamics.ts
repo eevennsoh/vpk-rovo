@@ -28,6 +28,8 @@ export interface NeuralPointerVelocity {
 	pxPerSecond: number;
 }
 
+export type NeuralGraphInteractionHitTarget = "none" | "node" | "ray";
+
 export const DEFAULT_NEURAL_GRAPH_INTERACTION_SETTINGS: NeuralGraphInteractionSettings = {
 	enabled: true,
 	flowBoost: 0.85,
@@ -35,7 +37,7 @@ export const DEFAULT_NEURAL_GRAPH_INTERACTION_SETTINGS: NeuralGraphInteractionSe
 	nodeSoundCooldownMs: 95,
 	nodeSoundEnabled: true,
 	nodeSoundVolume: 0.7,
-	rayEmphasis: 0.9,
+	rayEmphasis: 1,
 };
 
 export const EMPTY_NEURAL_GRAPH_INTERACTION_STATE: NeuralGraphInteractionState = {
@@ -53,6 +55,10 @@ export const EMPTY_NEURAL_GRAPH_INTERACTION_STATE: NeuralGraphInteractionState =
 
 function clamp(value: number, min: number, max: number): number {
 	return Math.max(min, Math.min(max, value));
+}
+
+function lerp(from: number, to: number, amount: number): number {
+	return from + (to - from) * amount;
 }
 
 export function clampNeuralGraphInteractionSettings(
@@ -89,6 +95,35 @@ export function clampNeuralGraphInteractionSettings(
 	};
 }
 
+export function getSmoothedNeuralGraphInteractionState({
+	current,
+	next,
+	smoothing,
+}: {
+	current: NeuralGraphInteractionState;
+	next: NeuralGraphInteractionState;
+	smoothing: number;
+}): NeuralGraphInteractionState {
+	const amount = clamp(smoothing, 0, 1);
+	const pointer = next.pointer
+		? current.pointer
+			? {
+				x: lerp(current.pointer.x, next.pointer.x, amount),
+				y: lerp(current.pointer.y, next.pointer.y, amount),
+			}
+			: { ...next.pointer }
+		: null;
+
+	return {
+		...next,
+		pointer,
+		rayDistance: lerp(current.rayDistance, next.rayDistance, amount),
+		rayProgress: lerp(current.rayProgress, next.rayProgress, amount),
+		velocity: lerp(current.velocity, next.velocity, amount),
+		velocityPxPerSecond: lerp(current.velocityPxPerSecond, next.velocityPxPerSecond, amount),
+	};
+}
+
 export function getNeuralPointerVelocity({
 	elapsedMs,
 	from,
@@ -115,17 +150,17 @@ export function getNeuralPointerVelocity({
 }
 
 export function getNeuralInteractionTargetIntensity({
-	hasHit,
 	settings,
+	target,
 	velocity,
 }: {
-	hasHit: boolean;
 	settings: NeuralGraphInteractionSettings;
+	target: NeuralGraphInteractionHitTarget;
 	velocity: number;
 }): number {
 	if (!settings.enabled || settings.intensity <= 0) return 0;
 	const normalizedVelocity = clamp(velocity, 0, 1);
-	const hitBase = hasHit ? 0.28 : 0;
-	const velocityWeight = hasHit ? 0.72 : 0.5;
+	const hitBase = target === "ray" ? 0.26 : target === "node" ? 0.08 : 0;
+	const velocityWeight = target === "ray" ? 0.66 : target === "node" ? 0.3 : 0.42;
 	return clamp((hitBase + normalizedVelocity * velocityWeight) * settings.intensity, 0, 1.5);
 }
