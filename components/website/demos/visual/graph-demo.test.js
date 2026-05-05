@@ -100,7 +100,7 @@ test("Graph visual can be embedded as the live Personal Graph renderer", () => {
 	]) {
 		assert.match(graphDetailsSource, new RegExp(`name: "${propName}"`));
 	}
-	assert.match(graphDetailsSource, /flow, structure, cone, token-backed node and edge color states, ray, origin node, hover, label, and node style controls/);
+	assert.match(graphDetailsSource, /flow, structure, cone, icon-token node type colors, edge color states, signal streaks, ray, origin node, hover, label, and node style controls/);
 });
 
 test("Graph renderer keeps the default connector stroke width at 2 via params", () => {
@@ -131,8 +131,8 @@ test("Graph renderer exposes hover, ray, edge, and label toggles through params"
 	assert.doesNotMatch(NEURAL_CANVAS_SOURCE, /border-2/);
 	assert.match(RENDERER_SOURCE, /options\.params\.hoverScale/);
 	assert.match(RENDERER_SOURCE, /options\.params\.selectedScale/);
-	assert.match(RENDERER_SOURCE, /options\.params\.nodeHoverColor/);
-	assert.match(RENDERER_SOURCE, /options\.params\.nodeSelectedColor/);
+	assert.match(RENDERER_SOURCE, /function getNodeTypeColor/);
+	assert.match(RENDERER_SOURCE, /function shouldRevealNodeTypeColors/);
 	assert.match(RENDERER_SOURCE, /options\.params\.edgeColor/);
 	assert.match(RENDERER_SOURCE, /options\.params\.edgeHoverColor/);
 	assert.match(RENDERER_SOURCE, /options\.params\.edgeSelectedColor/);
@@ -142,10 +142,8 @@ test("Graph renderer exposes hover, ray, edge, and label toggles through params"
 	assert.match(RENDERER_SOURCE, /options\.params\.labelMetaSize/);
 });
 
-test("Graph controls expose node and edge state color fields", () => {
+test("Graph controls expose node type and edge state color fields", () => {
 	for (const expected of [
-		/{ kind: "color", key: "nodeHoverColor", label: "Hover color"/,
-		/{ kind: "color", key: "nodeSelectedColor", label: "Selected color"/,
 		/{ kind: "number", key: "nodeRadius", label: "Radius"/,
 		/{ kind: "color", key: "edgeColor", label: "Default color"/,
 		/{ kind: "color", key: "edgeHoverColor", label: "Hover color"/,
@@ -153,9 +151,11 @@ test("Graph controls expose node and edge state color fields", () => {
 	]) {
 		assert.match(PARAMS_SOURCE, expected);
 	}
-	assert.match(GRAPH_SOURCE, /<GUI\.Section borderTop title="Default node colors">/);
+	assert.doesNotMatch(PARAMS_SOURCE, /{ kind: "color", key: "nodeHoverColor"/);
+	assert.doesNotMatch(PARAMS_SOURCE, /{ kind: "color", key: "nodeSelectedColor"/);
+	assert.match(GRAPH_SOURCE, /<GUI\.Section borderTop title="Node type colors">/);
 	assert.match(GRAPH_SOURCE, /id="graph-node-color"/);
-	assert.match(GRAPH_SOURCE, /label="Fallback"/);
+	assert.match(GRAPH_SOURCE, /label="Idle"/);
 });
 
 test("Graph color controls use design token selectors instead of hex-only pickers", () => {
@@ -165,17 +165,22 @@ test("Graph color controls use design token selectors instead of hex-only picker
 	assert.match(GRAPH_SOURCE, /useGUIValueKeys\(valueKey\)/);
 	assert.match(GRAPH_SOURCE, /<Select[\s\S]*value=\{selectedOption\.value\}[\s\S]*onValueChange=\{\(nextValue\) => \{/);
 	assert.match(GRAPH_SOURCE, /style=\{\{ backgroundColor: option\.value \}\}/);
-	assert.match(COLORS_SOURCE, /color\.background\.accent\.blue\.bolder/);
-	assert.match(COLORS_SOURCE, /color\.chart\.purple\.bolder/);
+	assert.match(GRAPH_SOURCE, /<SelectItem key=\{option\.value\} value=\{option\.value\}>[\s\S]*className="size-3 shrink-0 self-center rounded-full border border-border"/);
+	assert.match(COLORS_SOURCE, /token: "color\.icon"/);
+	for (const accent of ["red", "orange", "yellow", "lime", "green", "teal", "blue", "purple", "magenta", "gray"]) {
+		assert.match(COLORS_SOURCE, new RegExp(`token: "color\\.icon\\.accent\\.${accent}"`));
+	}
+	assert.doesNotMatch(COLORS_SOURCE, /token: "color\.(?:background|chart)\./);
 	assert.match(GRAPH_SOURCE, /colorConcept: ROVO_GRAPH_COLORS\.orange/);
 	assert.match(GRAPH_SOURCE, /colorEntity: ROVO_GRAPH_COLORS\.lime/);
-	assert.match(GRAPH_SOURCE, /colorRaw: ROVO_GRAPH_COLORS\.neutral/);
+	assert.match(GRAPH_SOURCE, /colorRaw: ROVO_GRAPH_COLORS\.gray/);
 	assert.match(GRAPH_SOURCE, /colorSource: ROVO_GRAPH_COLORS\.blue/);
 	assert.match(GRAPH_SOURCE, /colorSynthesis: ROVO_GRAPH_COLORS\.purple/);
-	assert.match(GRAPH_SOURCE, /edgeColor: "var\(--ds-chart-gray-boldest\)"/);
-	assert.match(GRAPH_SOURCE, /nodeHoverColor: "var\(--ds-background-accent-orange-subtle\)"/);
+	assert.match(GRAPH_SOURCE, /nodeColor: ROVO_GRAPH_COLORS\.default/);
+	assert.match(GRAPH_SOURCE, /edgeColor: ROVO_GRAPH_COLORS\.gray/);
 	assert.match(GRAPH_SOURCE, /frontmatter: \{ graphColor: node\.color, visual: "graph" \}/);
-	assert.doesNotMatch(GRAPH_SOURCE, /colorConcept: "var\(--ds-text\)"/);
+	assert.doesNotMatch(RENDERER_SOURCE, /options\.params\.nodeHoverColor/);
+	assert.doesNotMatch(RENDERER_SOURCE, /options\.params\.nodeSelectedColor/);
 	assert.doesNotMatch(GRAPH_SOURCE, /colorConcept: "#292A2E"/);
 	assert.doesNotMatch(GRAPH_SOURCE, /edgeColor: "#4B4D51"/);
 });
@@ -190,10 +195,36 @@ test("Graph controls expose origin node visual fields", () => {
 		assert.match(PARAMS_SOURCE, expected);
 	}
 	assert.match(GRAPH_SOURCE, /originMarkerSize: 12/);
-	assert.match(GRAPH_SOURCE, /originMarkerColor: "var\(--ds-text\)"/);
-	assert.match(GRAPH_SOURCE, /nodeRadius: 2/);
+	assert.match(GRAPH_SOURCE, /originMarkerColor: ROVO_GRAPH_COLORS\.default/);
+	assert.match(GRAPH_SOURCE, /nodeRadius: 0/);
 	assert.doesNotMatch(PARAMS_SOURCE, /originMarkerBorderColor/);
 	assert.doesNotMatch(PARAMS_SOURCE, /Origin border/);
+});
+
+test("Graph controls expose signal streak parameters", () => {
+	for (const expected of [
+		/{ kind: "boolean", key: "showSignals", label: "Show signals"/,
+		/{ kind: "color", key: "signalColor", label: "Color"/,
+		/{ kind: "number", key: "signalOpacity", label: "Opacity"/,
+		/{ kind: "number", key: "signalWidth", label: "Width"/,
+		/{ kind: "number", key: "signalFrequency", label: "Frequency"/,
+		/{ kind: "number", key: "signalLength", label: "Length"/,
+		/NEURAL_GRAPH_SIGNAL_COLOR_PARAM_KEYS/,
+	]) {
+		assert.match(PARAMS_SOURCE, expected);
+	}
+	assert.match(GRAPH_SOURCE, /showSignals: true/);
+	assert.match(GRAPH_SOURCE, /signalColor: ROVO_GRAPH_COLORS\.purple/);
+	assert.match(GRAPH_SOURCE, /signalFrequency: 1/);
+	assert.match(GRAPH_SOURCE, /signalLength: 0\.22/);
+	assert.match(GRAPH_SOURCE, /signalOpacity: 1/);
+	assert.match(GRAPH_SOURCE, /signalWidth: 3\.5/);
+	assert.match(RENDERER_SOURCE, /options\.params\.signalColor/);
+	assert.match(RENDERER_SOURCE, /options\.params\.signalFrequency/);
+	assert.match(RENDERER_SOURCE, /options\.params\.signalLength/);
+	assert.match(RENDERER_SOURCE, /options\.params\.signalOpacity/);
+	assert.match(RENDERER_SOURCE, /options\.params\.signalWidth/);
+	assert.match(DETAILS_SOURCE, /signal streaks/);
 });
 
 test("Graph controls render booleans as toggles", () => {

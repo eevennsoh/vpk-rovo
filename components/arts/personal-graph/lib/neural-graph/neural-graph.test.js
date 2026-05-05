@@ -20,6 +20,7 @@ const colorsModule = import("./colors.ts");
 const interactionModule = import("./interaction.ts");
 const layoutModule = import("./layout.ts");
 const paramsModule = import("./params.ts");
+const responsiveParamsModule = import("./responsive-params.ts");
 const rendererModule = import("./renderer.ts");
 const storeModule = import("./store.ts");
 
@@ -239,21 +240,31 @@ test("clampNeuralGraphParams clamps numbers, colors, radius order, and shapes", 
 		radiusMax: 20,
 		radiusMin: 80,
 		rayColor: "not-a-color",
+		signalColor: "#070809",
+		signalFrequency: 20,
+		signalLength: 2,
+		signalOpacity: 2,
+		signalWidth: -2,
 		speed: -10,
 	});
 
 	assert.equal(params.edgeColor, "#010203");
-	assert.equal(params.edgeHoverColor, "var(--ds-background-accent-blue-bolder)");
+	assert.equal(params.edgeHoverColor, "var(--ds-icon-accent-blue)");
 	assert.equal(params.edgeSelectedColor, "#040506");
 	assert.equal(params.maxVisibleNodes, 200);
-	assert.equal(params.nodeColor, "var(--ds-chart-purple-bolder)");
+	assert.equal(params.nodeColor, "var(--ds-icon)");
 	assert.equal(params.nodeHoverColor, "#ABCDEF");
 	assert.equal(params.nodeRadius, 16);
-	assert.equal(params.nodeSelectedColor, "var(--ds-chart-purple-bolder)");
+	assert.equal(params.nodeSelectedColor, "var(--ds-icon-accent-purple)");
 	assert.equal(params.nodeShape, "circle");
 	assert.equal(params.radiusMin, 20);
 	assert.equal(params.radiusMax, 20);
-	assert.equal(params.rayColor, "var(--ds-chart-purple-bolder)");
+	assert.equal(params.rayColor, "var(--ds-icon-accent-purple)");
+	assert.equal(params.signalColor, "#070809");
+	assert.equal(params.signalFrequency, 4);
+	assert.equal(params.signalLength, 0.6);
+	assert.equal(params.signalOpacity, 1);
+	assert.equal(params.signalWidth, 0.5);
 	assert.equal(params.speed, 0);
 });
 
@@ -263,25 +274,28 @@ test("neural graph color helpers translate legacy hex colors to ADS token variab
 		normalizeNeuralGraphColorValue,
 		resolveNeuralGraphCssColorValue,
 	} = await colorsModule;
-	const fallback = "var(--ds-text)";
+	const fallback = "var(--ds-icon)";
 	const expectations = [
-		["#292A2E", "var(--ds-text)", "color.text"],
-		["#172B4D", "var(--ds-text)", "color.text"],
-		["#44546F", "var(--ds-text-subtle)", "color.text.subtle"],
-		["#8590A2", "var(--ds-chart-gray-bold)", "color.chart.gray.bold"],
-		["#4B4D51", "var(--ds-chart-gray-boldest)", "color.chart.gray.boldest"],
-		["#1868DB", "var(--ds-background-accent-blue-bolder)", "color.background.accent.blue.bolder"],
-		["#FCA700", "var(--ds-background-accent-orange-subtle)", "color.background.accent.orange.subtle"],
-		["#AF59E1", "var(--ds-chart-purple-bolder)", "color.chart.purple.bolder"],
-		["#6B5CE7", "var(--ds-chart-purple-bolder)", "color.chart.purple.bolder"],
-		["#6A9A23", "var(--ds-chart-lime-bold)", "color.chart.lime.bold"],
+		["#292A2E", "var(--ds-icon)", "color.icon"],
+		["#172B4D", "var(--ds-icon)", "color.icon"],
+		["#C9372C", "var(--ds-icon-accent-red)", "color.icon.accent.red"],
+		["#FCA700", "var(--ds-icon-accent-orange)", "color.icon.accent.orange"],
+		["#B38600", "var(--ds-icon-accent-yellow)", "color.icon.accent.yellow"],
+		["#6A9A23", "var(--ds-icon-accent-lime)", "color.icon.accent.lime"],
+		["#22A06B", "var(--ds-icon-accent-green)", "color.icon.accent.green"],
+		["#2898BD", "var(--ds-icon-accent-teal)", "color.icon.accent.teal"],
+		["#1868DB", "var(--ds-icon-accent-blue)", "color.icon.accent.blue"],
+		["#AF59E1", "var(--ds-icon-accent-purple)", "color.icon.accent.purple"],
+		["#6B5CE7", "var(--ds-icon-accent-purple)", "color.icon.accent.purple"],
+		["#CD519D", "var(--ds-icon-accent-magenta)", "color.icon.accent.magenta"],
+		["#4B4D51", "var(--ds-icon-accent-gray)", "color.icon.accent.gray"],
 	];
 
 	for (const [hex, tokenValue, tokenName] of expectations) {
 		assert.equal(normalizeNeuralGraphColorValue(hex, fallback), tokenValue);
 		assert.equal(getNeuralGraphColorTokenOption(hex).token, tokenName);
 	}
-	assert.equal(resolveNeuralGraphCssColorValue("var(--ds-chart-purple-bolder)"), "#AF59E1");
+	assert.equal(resolveNeuralGraphCssColorValue("var(--ds-icon-accent-purple)"), "#AF59E1");
 });
 
 test("drawNeuralGraph rounds square nodes with the shared node radius param", async () => {
@@ -321,13 +335,89 @@ test("drawNeuralGraph rounds square nodes with the shared node radius param", as
 	assert.equal(ctx.calls.some(([name]) => name === "fillRect"), false);
 });
 
-test("shouldAnimateNeuralGraph skips static reduced-motion and zero-flow layouts", async () => {
+test("shouldAnimateNeuralGraph skips static reduced-motion layouts while preserving signal motion", async () => {
 	const { DEFAULT_NEURAL_GRAPH_PARAMS, shouldAnimateNeuralGraph } = await paramsModule;
 
 	assert.equal(shouldAnimateNeuralGraph(DEFAULT_NEURAL_GRAPH_PARAMS), true);
 	assert.equal(shouldAnimateNeuralGraph(DEFAULT_NEURAL_GRAPH_PARAMS, true), false);
-	assert.equal(shouldAnimateNeuralGraph({ ...DEFAULT_NEURAL_GRAPH_PARAMS, amplitude: 0 }), false);
-	assert.equal(shouldAnimateNeuralGraph({ ...DEFAULT_NEURAL_GRAPH_PARAMS, speed: 0 }), false);
+	assert.equal(shouldAnimateNeuralGraph({ ...DEFAULT_NEURAL_GRAPH_PARAMS, amplitude: 0 }), true);
+	assert.equal(shouldAnimateNeuralGraph({ ...DEFAULT_NEURAL_GRAPH_PARAMS, speed: 0 }), true);
+	assert.equal(shouldAnimateNeuralGraph({ ...DEFAULT_NEURAL_GRAPH_PARAMS, amplitude: 0, showSignals: false }), false);
+	assert.equal(shouldAnimateNeuralGraph({ ...DEFAULT_NEURAL_GRAPH_PARAMS, signalFrequency: 0, speed: 0 }), false);
+});
+
+test("responsive Personal Graph params tighten compact viewports", async () => {
+	const { DEFAULT_NEURAL_GRAPH_PARAMS } = await paramsModule;
+	const { getResponsivePersonalGraphParams } = await responsiveParamsModule;
+
+	const params = getResponsivePersonalGraphParams({ height: 700, width: 390 }, DEFAULT_NEURAL_GRAPH_PARAMS);
+
+	assert.ok(params.spread < DEFAULT_NEURAL_GRAPH_PARAMS.spread);
+	assert.ok(params.maxVisibleNodes < DEFAULT_NEURAL_GRAPH_PARAMS.maxVisibleNodes);
+	assert.ok(params.labelSize < DEFAULT_NEURAL_GRAPH_PARAMS.labelSize);
+	assert.equal(params.showLabels, false);
+});
+
+test("responsive Personal Graph params preserve wide desktop density", async () => {
+	const { DEFAULT_NEURAL_GRAPH_PARAMS } = await paramsModule;
+	const {
+		RESPONSIVE_PERSONAL_GRAPH_NUMERIC_PARAM_KEYS,
+		RESPONSIVE_PERSONAL_GRAPH_WIDTHS,
+		getResponsivePersonalGraphParams,
+	} = await responsiveParamsModule;
+
+	const params = getResponsivePersonalGraphParams(
+		{ height: 900, width: RESPONSIVE_PERSONAL_GRAPH_WIDTHS.wide + 120 },
+		DEFAULT_NEURAL_GRAPH_PARAMS,
+	);
+
+	for (const key of RESPONSIVE_PERSONAL_GRAPH_NUMERIC_PARAM_KEYS) {
+		assert.equal(params[key], DEFAULT_NEURAL_GRAPH_PARAMS[key], key);
+	}
+	assert.equal(params.showLabels, true);
+});
+
+test("responsive Personal Graph params interpolate numeric values without changing token colors", async () => {
+	const { DEFAULT_NEURAL_GRAPH_PARAMS } = await paramsModule;
+	const { RESPONSIVE_PERSONAL_GRAPH_WIDTHS, getResponsivePersonalGraphParams } = await responsiveParamsModule;
+	const medium = getResponsivePersonalGraphParams(
+		{ height: 760, width: RESPONSIVE_PERSONAL_GRAPH_WIDTHS.medium },
+		DEFAULT_NEURAL_GRAPH_PARAMS,
+	);
+	const midpoint = getResponsivePersonalGraphParams(
+		{ height: 760, width: (RESPONSIVE_PERSONAL_GRAPH_WIDTHS.medium + RESPONSIVE_PERSONAL_GRAPH_WIDTHS.wide) / 2 },
+		DEFAULT_NEURAL_GRAPH_PARAMS,
+	);
+	const wide = getResponsivePersonalGraphParams(
+		{ height: 760, width: RESPONSIVE_PERSONAL_GRAPH_WIDTHS.wide },
+		DEFAULT_NEURAL_GRAPH_PARAMS,
+	);
+
+	assert.ok(midpoint.spread > medium.spread);
+	assert.ok(midpoint.spread < wide.spread);
+	assert.ok(midpoint.maxVisibleNodes > medium.maxVisibleNodes);
+	assert.ok(midpoint.maxVisibleNodes < wide.maxVisibleNodes);
+	assert.equal(midpoint.colorConcept, DEFAULT_NEURAL_GRAPH_PARAMS.colorConcept);
+	assert.equal(midpoint.colorEntity, DEFAULT_NEURAL_GRAPH_PARAMS.colorEntity);
+	assert.equal(midpoint.edgeColor, DEFAULT_NEURAL_GRAPH_PARAMS.edgeColor);
+	assert.equal(midpoint.nodeColor, DEFAULT_NEURAL_GRAPH_PARAMS.nodeColor);
+});
+
+test("responsive Personal Graph params do not animate before measurement or for reduced motion", async () => {
+	const { shouldAnimateResponsivePersonalGraphParams } = await responsiveParamsModule;
+
+	assert.equal(
+		shouldAnimateResponsivePersonalGraphParams({ hasMeasuredViewport: false, prefersReducedMotion: false }),
+		false,
+	);
+	assert.equal(
+		shouldAnimateResponsivePersonalGraphParams({ hasMeasuredViewport: true, prefersReducedMotion: true }),
+		false,
+	);
+	assert.equal(
+		shouldAnimateResponsivePersonalGraphParams({ hasMeasuredViewport: true, prefersReducedMotion: false }),
+		true,
+	);
 });
 
 test("computeNeuralGraphLayout is deterministic and keeps selected nodes visible", async () => {
@@ -551,7 +641,7 @@ test("drawNeuralGraph resolves design-token colors before drawing on canvas", as
 	const store = createNeuralGraphStore(explorer);
 	const params = clampNeuralGraphParams({
 		...DEFAULT_NEURAL_GRAPH_PARAMS,
-		rayColor: "var(--ds-chart-purple-bolder)",
+		rayColor: "var(--ds-icon-accent-purple)",
 		rayOpacity: 1,
 	});
 	const layout = computeNeuralGraphLayout({
@@ -568,7 +658,7 @@ test("drawNeuralGraph resolves design-token colors before drawing on canvas", as
 		focusProgress: 0,
 		hoveredNodeId: null,
 		params,
-		resolveColor: (color) => color === "var(--ds-chart-purple-bolder)" ? "#B56AF0" : color,
+		resolveColor: (color) => color === "var(--ds-icon-accent-purple)" ? "#B56AF0" : color,
 		selectedNodeId: null,
 		theme: "light",
 		viewport,
@@ -630,13 +720,73 @@ test("drawNeuralGraph keeps idle edge order and layers selected edges last", asy
 	assert.deepEqual(getDrawnEdgeTargets("selected"), [110, 230]);
 });
 
-test("drawNeuralGraph applies separate node and edge colors for default, hover, and selected states", async () => {
+test("drawNeuralGraph traces momentary signal streaks along animated edges", async () => {
+	const { createNeuralCamera } = await cameraModule;
+	const { DEFAULT_NEURAL_GRAPH_PARAMS } = await paramsModule;
+	const { drawNeuralGraph } = await rendererModule;
+	const viewport = { height: 200, width: 300 };
+	const source = layoutNode("source", 0);
+	const target = layoutNode("target", 80);
+	const layout = {
+		edges: [layoutEdge("signal", source, target)],
+		nodes: [source, target],
+		nodesById: new Map([
+			[source.id, source],
+			[target.id, target],
+		]),
+		origin: { x: 0, y: 0 },
+		viewport,
+	};
+	const params = {
+		...DEFAULT_NEURAL_GRAPH_PARAMS,
+		showLabels: false,
+		showRays: false,
+	};
+	const render = (animationTime, overrides = {}) => {
+		const ctx = createRecordingCanvasContext();
+		drawNeuralGraph(ctx, layout, {
+			animationTime,
+			background: "transparent",
+			camera: createNeuralCamera(),
+			focusProgress: 0,
+			hoveredNodeId: null,
+			params: { ...params, ...overrides },
+			selectedNodeId: null,
+			theme: "light",
+			viewport,
+		});
+		return ctx.calls;
+	};
+
+	assert.equal(render(undefined).some(([name]) => name === "createLinearGradient"), false);
+
+	const animatedCalls = render(0.8);
+	assert.ok(animatedCalls.some(([name]) => name === "createLinearGradient"));
+	assert.ok(
+		animatedCalls.some(([name, , value]) => (
+			name === "addColorStop"
+			&& typeof value === "string"
+			&& value.startsWith("rgba(175, 89, 225,")
+		)),
+	);
+	assert.equal(render(0.8, { showSignals: false }).some(([name]) => name === "createLinearGradient"), false);
+	assert.ok(
+		render(0.8, { signalColor: "#123ABC", signalOpacity: 0.5 }).some(([name, , value]) => (
+			name === "addColorStop"
+			&& typeof value === "string"
+			&& value.startsWith("rgba(18, 58, 188,")
+		)),
+	);
+});
+
+test("drawNeuralGraph reveals node type colors during hover and selection", async () => {
 	const { createNeuralCamera } = await cameraModule;
 	const { DEFAULT_NEURAL_GRAPH_PARAMS } = await paramsModule;
 	const { drawNeuralGraph } = await rendererModule;
 	const viewport = { height: 200, width: 300 };
 	const selected = layoutNode("selected", 0);
 	const neighbor = layoutNode("neighbor", 80);
+	neighbor.node.kind = "entity";
 	const layout = {
 		edges: [layoutEdge("active", selected, neighbor)],
 		nodes: [selected, neighbor],
@@ -650,6 +800,7 @@ test("drawNeuralGraph applies separate node and edge colors for default, hover, 
 	const params = {
 		...DEFAULT_NEURAL_GRAPH_PARAMS,
 		colorConcept: "#111111",
+		colorEntity: "#888888",
 		edgeColor: "#222222",
 		edgeHoverColor: "#333333",
 		edgeSelectedColor: "#444444",
@@ -676,11 +827,18 @@ test("drawNeuralGraph applies separate node and edge colors for default, hover, 
 
 	const defaultCalls = render(null, null, 0);
 	assert.ok(defaultCalls.some(([name, value]) => name === "strokeStyle" && value === "#222222"));
-	assert.ok(defaultCalls.some(([name, value]) => name === "fillStyle" && value === "#111111"));
+	assert.ok(defaultCalls.some(([name, value]) => name === "fillStyle" && value === "#555555"));
+	assert.equal(defaultCalls.some(([name, value]) => name === "fillStyle" && value === "#111111"), false);
 	assert.ok(render("selected", null, 0).some(([name, value]) => name === "strokeStyle" && value === "#333333"));
 	assert.ok(render(null, "selected", 1).some(([name, value]) => name === "strokeStyle" && value === "#444444"));
-	assert.ok(render("selected", null, 0).some(([name, value]) => name === "fillStyle" && value === "#666666"));
-	assert.ok(render(null, "selected", 1).some(([name, value]) => name === "fillStyle" && value === "#777777"));
+	const hoverCalls = render("selected", null, 0);
+	assert.ok(hoverCalls.some(([name, value]) => name === "fillStyle" && value === "#111111"));
+	assert.ok(hoverCalls.some(([name, value]) => name === "fillStyle" && value === "#888888"));
+	assert.equal(hoverCalls.some(([name, value]) => name === "fillStyle" && value === "#666666"), false);
+	const selectedCalls = render(null, "selected", 1);
+	assert.ok(selectedCalls.some(([name, value]) => name === "fillStyle" && value === "#111111"));
+	assert.ok(selectedCalls.some(([name, value]) => name === "fillStyle" && value === "#888888"));
+	assert.equal(selectedCalls.some(([name, value]) => name === "fillStyle" && value === "#777777"), false);
 });
 
 test("camera transforms round-trip and focus selected points", async () => {

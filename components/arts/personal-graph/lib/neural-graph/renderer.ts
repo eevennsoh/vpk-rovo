@@ -16,6 +16,7 @@ export type NeuralGraphThemeMode = "light" | "dark";
 export type NeuralGraphBackgroundMode = "default" | "transparent";
 
 export interface NeuralGraphRenderOptions {
+	animationTime?: number;
 	background?: NeuralGraphBackgroundMode;
 	camera: NeuralCamera;
 	focusProgress: number;
@@ -52,6 +53,12 @@ function getEdgeLineWidth(params: NeuralGraphParams) {
 		idle: params.edgeWidth,
 	};
 }
+
+const SIGNAL_ACTIVE_RATIO = 0.18;
+const SIGNAL_HEAD_ALPHA = 0.95;
+const SIGNAL_MIN_EDGE_LENGTH = 18;
+const SIGNAL_SEGMENT_MAX = 72;
+const SIGNAL_SEGMENT_MIN = 22;
 
 function getResolvedColor(color: string, options: NeuralGraphRenderOptions) {
 	if (options.resolveColor) return options.resolveColor(color);
@@ -93,7 +100,7 @@ function getKindColor(kind: VaultNodeKind, options: NeuralGraphRenderOptions) {
 	return isNeuralGraphColorValue(value) ? getResolvedColor(value, options) : null;
 }
 
-function getDefaultNodeColor(node: NeuralLayoutNode, options: NeuralGraphRenderOptions) {
+function getNodeTypeColor(node: NeuralLayoutNode, options: NeuralGraphRenderOptions) {
 	return (
 		getKindColor(node.node.kind, options)
 		?? getNodeGraphColor(node, options)
@@ -101,24 +108,38 @@ function getDefaultNodeColor(node: NeuralLayoutNode, options: NeuralGraphRenderO
 	);
 }
 
+function shouldRevealNodeTypeColors(options: NeuralGraphRenderOptions) {
+	return options.hoveredNodeId !== null || options.selectedNodeId !== null;
+}
+
 function getNodeColor(
 	node: NeuralLayoutNode,
 	options: NeuralGraphRenderOptions,
-	isSelected: boolean,
-	isHovered: boolean,
 ) {
-	if (isSelected) return getResolvedColor(options.params.nodeSelectedColor, options);
-	if (isHovered) return getResolvedColor(options.params.nodeHoverColor, options);
-	return getDefaultNodeColor(node, options);
+	if (shouldRevealNodeTypeColors(options)) return getNodeTypeColor(node, options);
+	return getResolvedColor(options.params.nodeColor, options);
 }
 
 function lerp(start: number, end: number, progress: number) {
 	return start + (end - start) * progress;
 }
 
+function smoothProgress(progress: number) {
+	return progress * progress * (3 - 2 * progress);
+}
+
 function clampAlpha(value: number) {
 	if (!Number.isFinite(value)) return 0;
 	return Math.min(1, Math.max(0, value));
+}
+
+function hashStringToUnit(value: string) {
+	let hash = 2166136261;
+	for (let index = 0; index < value.length; index += 1) {
+		hash ^= value.charCodeAt(index);
+		hash = Math.imul(hash, 16777619);
+	}
+	return (hash >>> 0) / 4294967295;
 }
 
 function getFocusProgress(options: NeuralGraphRenderOptions) {
@@ -308,6 +329,90 @@ function drawEdges(
 	ctx.restore();
 }
 
+function getSignalStreakProgress(edge: NeuralLayoutEdge, options: NeuralGraphRenderOptions) {
+	const animationTime = options.animationTime;
+	if (typeof animationTime !== "number" || !Number.isFinite(animationTime)) return null;
+
+	const cycleSeed = hashStringToUnit(`${edge.id}:cycle`);
+	const phaseSeed = hashStringToUnit(`${edge.id}:phase`);
+	const cycleDuration = 2.25 + cycleSeed * 3.1;
+	const cycleProgress = ((animationTime * Math.max(0, options.params.signalFrequency) + phaseSeed * cycleDuration) % cycleDuration) / cycleDuration;
+	if (cycleProgress > SIGNAL_ACTIVE_RATIO) return null;
+
+	const progress = cycleProgress / SIGNAL_ACTIVE_RATIO;
+	return {
+		alpha: Math.sin(progress * Math.PI),
+		forward: hashStringToUnit(`${edge.id}:direction`) >= 0.5,
+		progress: smoothProgress(progress),
+	};
+}
+
+function interpolatePoint(source: NeuralPoint, target: NeuralPoint, progress: number) {
+	return {
+		x: lerp(source.x, target.x, progress),
+		y: lerp(source.y, target.y, progress),
+	};
+}
+
+function drawSignalStreaks(
+	ctx: CanvasRenderingContext2D,
+	layout: NeuralGraphLayout,
+	options: NeuralGraphRenderOptions,
+) {
+	if (
+		!options.params.showEdges
+		|| !options.params.showSignals
+		|| options.params.signalFrequency <= 0
+		|| options.params.signalOpacity <= 0
+		|| layout.edges.length === 0
+	) return;
+
+	const signalColor = getResolvedColor(options.params.signalColor, options);
+	ctx.save();
+	ctx.lineCap = "round";
+	ctx.lineWidth = options.params.signalWidth;
+	ctx.shadowBlur = Math.max(8, options.params.signalWidth * 2.3);
+	ctx.shadowColor = colorWithAlpha(signalColor, 0.72 * options.params.signalOpacity);
+
+	for (const edge of layout.edges) {
+		const signal = getSignalStreakProgress(edge, options);
+		if (!signal) continue;
+
+		const source = worldToViewport(edge.source, options.camera, options.viewport, options.params);
+		const target = worldToViewport(edge.target, options.camera, options.viewport, options.params);
+		const distance = Math.hypot(target.x - source.x, target.y - source.y);
+		if (distance < SIGNAL_MIN_EDGE_LENGTH) continue;
+
+		const segmentProgress = Math.min(
+			SIGNAL_SEGMENT_MAX,
+			Math.max(SIGNAL_SEGMENT_MIN, distance * options.params.signalLength),
+		) / distance;
+		const headProgress = signal.forward ? signal.progress : 1 - signal.progress;
+		const tailProgress = signal.forward
+			? Math.max(0, headProgress - segmentProgress)
+			: Math.min(1, headProgress + segmentProgress);
+		const tail = interpolatePoint(source, target, tailProgress);
+		const head = interpolatePoint(source, target, headProgress);
+		const gradient = ctx.createLinearGradient(tail.x, tail.y, head.x, head.y);
+		const alpha = clampAlpha(signal.alpha * options.params.signalOpacity);
+
+		gradient.addColorStop(0, colorWithAlpha(signalColor, 0));
+		gradient.addColorStop(0.64, colorWithAlpha(signalColor, alpha * 0.62));
+		gradient.addColorStop(1, colorWithAlpha(signalColor, alpha * SIGNAL_HEAD_ALPHA));
+
+		ctx.strokeStyle = gradient;
+		ctx.globalAlpha = 1;
+		drawStraightEdgePath(ctx, tail, head);
+		ctx.stroke();
+
+		ctx.fillStyle = colorWithAlpha(signalColor, alpha * 0.72);
+		ctx.beginPath();
+		ctx.arc(head.x, head.y, ctx.lineWidth * 0.88, 0, Math.PI * 2);
+		ctx.fill();
+	}
+	ctx.restore();
+}
+
 function drawNodeShape(
 	ctx: CanvasRenderingContext2D,
 	point: NeuralPoint,
@@ -380,7 +485,7 @@ function drawNodes(
 	for (const node of sortedNodes) {
 		const isSelected = node.id === options.selectedNodeId;
 		const isHovered = node.id === options.hoveredNodeId;
-		const nodeColor = getNodeColor(node, options, isSelected, isHovered);
+		const nodeColor = getNodeColor(node, options);
 		const isRelated = selectedRelationships.nodeIds.has(node.id);
 		let focusAlpha = 1;
 		if (focusProgress > 0) {
@@ -472,6 +577,7 @@ export function drawNeuralGraph(
 	}
 	drawRays(ctx, layout, options, selectedRelationships);
 	drawEdges(ctx, layout, options, selectedRelationships);
+	drawSignalStreaks(ctx, layout, options);
 	drawNodes(ctx, layout, options, selectedRelationships);
 	drawLabels(ctx, layout, options);
 }

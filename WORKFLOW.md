@@ -270,6 +270,10 @@ missing credentials, or unavailable required test data.
 12. Run the validation required by `AGENTS.md` for the touched surface. The
    default repo-wide checks are `pnpm run lint` and `pnpm run typecheck`; add
    targeted `node --test ...` or browser/a11y checks when relevant.
+   The GitHub Actions workflow in `.github/workflows/ci.yml` mirrors the default
+   repo-wide gate as `CI / Lint and typecheck`. Treat that check as the remote
+   confirmation for PR handoff and merge once the workflow exists on the pushed
+   branch.
 13. Before every `git push`, rerun the validation required for the scope. If it
     fails, fix the failure and rerun until green, then commit and push.
 14. Commit the final change, push it to `origin`, and create or update a GitHub
@@ -279,7 +283,8 @@ missing credentials, or unavailable required test data.
     - read inline review comments with
       `gh api repos/<owner>/<repo>/pulls/<pr>/comments`;
     - read review summaries and states with `gh pr view --json reviews`;
-    - check PR checks;
+    - check PR checks with `gh pr checks` and require `CI / Lint and typecheck`
+      to pass when reported;
     - address every actionable human or bot comment with a code/test/docs
       change, or reply with explicit justified pushback;
     - update the workpad with each feedback item and resolution; and
@@ -305,13 +310,13 @@ missing credentials, or unavailable required test data.
     suitable for the requested feedback; otherwise close the stale PR, create a
     fresh branch from `origin/main`, create a fresh workpad, and restart from
     reproduction and planning.
-20. In `Merging`, verify the branch is current with `origin/main`, checks are
-    green, and review feedback is resolved. Then squash-merge the PR, sync
-    `main`, clean up the issue branch when safe, re-read the PR with
-    `gh pr view --json state,mergedAt,mergeCommit`, and move the issue to
-    `Done` only when the PR state is merged and `mergedAt` is non-null. If the
-    PR is still open, keep the issue in `Merging` and record the blocker in the
-    workpad.
+20. In `Merging`, verify the branch is current with `origin/main`, `CI / Lint
+    and typecheck` is green when reported, and review feedback is resolved. Then
+    squash-merge the PR, sync `main`, clean up the issue branch when safe,
+    re-read the PR with `gh pr view --json state,mergedAt,mergeCommit`, and move
+    the issue to `Done` only when the PR state is merged and `mergedAt` is
+    non-null. If the PR is still open or the CI check is pending/failing, keep
+    the issue in `Merging` and record the blocker in the workpad.
 
 ## Workpad Template
 
@@ -345,6 +350,8 @@ place throughout execution:
 ### Validation
 
 - [ ] targeted tests: `<command>`
+- [ ] repo checks: `pnpm run lint`, `pnpm run typecheck`
+- [ ] GitHub checks: `CI / Lint and typecheck` `<passed|pending|failed|not yet available>`
 
 ### Decisions
 

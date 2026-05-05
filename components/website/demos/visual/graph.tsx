@@ -72,11 +72,12 @@ interface GraphEdgeDefinition {
 }
 
 const ROVO_GRAPH_COLORS = {
-	blue: "var(--ds-background-accent-blue-bolder)",
-	lime: "var(--ds-chart-lime-bold)",
-	neutral: "var(--ds-text-subtle)",
-	orange: "var(--ds-background-accent-orange-subtle)",
-	purple: "var(--ds-chart-purple-bolder)",
+	blue: "var(--ds-icon-accent-blue)",
+	default: "var(--ds-icon)",
+	gray: "var(--ds-icon-accent-gray)",
+	lime: "var(--ds-icon-accent-lime)",
+	orange: "var(--ds-icon-accent-orange)",
+	purple: "var(--ds-icon-accent-purple)",
 	surface: "var(--ds-surface)",
 } as const;
 
@@ -85,16 +86,16 @@ export const ROVO_GRAPH_DEFAULT_PARAMS: NeuralGraphParams = clampNeuralGraphPara
 	amplitude: 0.2,
 	colorConcept: ROVO_GRAPH_COLORS.orange,
 	colorEntity: ROVO_GRAPH_COLORS.lime,
-	colorRaw: ROVO_GRAPH_COLORS.neutral,
+	colorRaw: ROVO_GRAPH_COLORS.gray,
 	colorSource: ROVO_GRAPH_COLORS.blue,
 	colorSynthesis: ROVO_GRAPH_COLORS.purple,
 	coneAngle: 92,
 	depthZ: 42,
-	edgeColor: "var(--ds-chart-gray-boldest)",
-	edgeHoverColor: "var(--ds-chart-gray-boldest)",
+	edgeColor: ROVO_GRAPH_COLORS.gray,
+	edgeHoverColor: ROVO_GRAPH_COLORS.gray,
 	edgeOpacity: 0.2,
 	edgeOpacityActive: 1,
-	edgeSelectedColor: "var(--ds-chart-gray-boldest)",
+	edgeSelectedColor: ROVO_GRAPH_COLORS.gray,
 	edgeWidth: 2,
 	frequency: 1.2,
 	glowIntensity: 0,
@@ -103,24 +104,22 @@ export const ROVO_GRAPH_DEFAULT_PARAMS: NeuralGraphParams = clampNeuralGraphPara
 	labelMetaSize: 10,
 	labelSize: 13,
 	maxVisibleNodes: 96,
-	nodeColor: "var(--ds-text)",
-	nodeHoverColor: "var(--ds-background-accent-orange-subtle)",
+	nodeColor: ROVO_GRAPH_COLORS.default,
 	nodeOpacity: 1,
 	nodeOpacityFocused: 1,
 	nodeOpacityRelated: 1,
-	nodeSelectedColor: "var(--ds-chart-purple-bolder)",
-	nodeRadius: 2,
+	nodeRadius: 0,
 	nodeShape: "square",
 	nodeSize: 8,
 	octaves: 3,
-	originMarkerColor: "var(--ds-text)",
+	originMarkerColor: ROVO_GRAPH_COLORS.default,
 	originMarkerSize: 12,
 	originOffset: 0,
 	originY: 0.8,
 	perspective: 1000,
 	radiusMax: 100,
 	radiusMin: 60,
-	rayColor: "var(--ds-chart-gray-boldest)",
+	rayColor: ROVO_GRAPH_COLORS.gray,
 	rayOpacity: 0.02,
 	rayOriginY: 1,
 	rayWidth: 2,
@@ -129,6 +128,12 @@ export const ROVO_GRAPH_DEFAULT_PARAMS: NeuralGraphParams = clampNeuralGraphPara
 	showLabels: true,
 	showOriginMarker: true,
 	showRays: true,
+	showSignals: true,
+	signalColor: ROVO_GRAPH_COLORS.purple,
+	signalFrequency: 1,
+	signalLength: 0.22,
+	signalOpacity: 1,
+	signalWidth: 3.5,
 	speed: 0.7,
 	spread: 600,
 	tiltX: -4,
@@ -145,7 +150,7 @@ const GENERATED_AT = "2026-04-30T00:00:00.000Z";
 const GRAPH_NODE_DEFINITIONS: GraphNodeDefinition[] = [
 	{
 		bodyPreview: "Signals from projects, pages, decisions, and people stitched into one living business map.",
-		color: ROVO_GRAPH_COLORS.blue,
+		color: ROVO_GRAPH_COLORS.default,
 		id: "teamwork-graph",
 		kind: "synthesis",
 		relativePath: "rovo/teamwork-graph.md",
@@ -153,7 +158,7 @@ const GRAPH_NODE_DEFINITIONS: GraphNodeDefinition[] = [
 	},
 	{
 		bodyPreview: "Natural-language answers grounded in the work graph rather than a detached chat history.",
-		color: ROVO_GRAPH_COLORS.purple,
+		color: ROVO_GRAPH_COLORS.default,
 		id: "rovo-chat",
 		kind: "concept",
 		relativePath: "rovo/chat.md",
@@ -161,7 +166,7 @@ const GRAPH_NODE_DEFINITIONS: GraphNodeDefinition[] = [
 	},
 	{
 		bodyPreview: "A way to find the right artifact, owner, or decision across connected work systems.",
-		color: ROVO_GRAPH_COLORS.purple,
+		color: ROVO_GRAPH_COLORS.default,
 		id: "rovo-search",
 		kind: "concept",
 		relativePath: "rovo/search.md",
@@ -169,7 +174,7 @@ const GRAPH_NODE_DEFINITIONS: GraphNodeDefinition[] = [
 	},
 	{
 		bodyPreview: "Automated assistants that can inspect context, take action, and hand work back clearly.",
-		color: ROVO_GRAPH_COLORS.purple,
+		color: ROVO_GRAPH_COLORS.default,
 		id: "rovo-agents",
 		kind: "concept",
 		relativePath: "rovo/agents.md",
@@ -177,7 +182,7 @@ const GRAPH_NODE_DEFINITIONS: GraphNodeDefinition[] = [
 	},
 	{
 		bodyPreview: "Issue state, ownership, sprint shape, and blockers feeding the graph as operational signal.",
-		color: ROVO_GRAPH_COLORS.orange,
+		color: ROVO_GRAPH_COLORS.default,
 		id: "jira-work",
 		kind: "source",
 		relativePath: "sources/jira-work.md",
@@ -185,7 +190,7 @@ const GRAPH_NODE_DEFINITIONS: GraphNodeDefinition[] = [
 	},
 	{
 		bodyPreview: "Plans, briefs, retros, and decisions that give the graph long-form team memory.",
-		color: ROVO_GRAPH_COLORS.orange,
+		color: ROVO_GRAPH_COLORS.default,
 		id: "confluence-pages",
 		kind: "source",
 		relativePath: "sources/confluence-pages.md",
@@ -193,7 +198,7 @@ const GRAPH_NODE_DEFINITIONS: GraphNodeDefinition[] = [
 	},
 	{
 		bodyPreview: "Shared outcomes that help Rovo understand why the work matters, not just what changed.",
-		color: ROVO_GRAPH_COLORS.lime,
+		color: ROVO_GRAPH_COLORS.default,
 		id: "project-goals",
 		kind: "entity",
 		relativePath: "work/project-goals.md",
@@ -201,7 +206,7 @@ const GRAPH_NODE_DEFINITIONS: GraphNodeDefinition[] = [
 	},
 	{
 		bodyPreview: "The people, owners, reviewers, and experts connected to each work artifact.",
-		color: ROVO_GRAPH_COLORS.lime,
+		color: ROVO_GRAPH_COLORS.default,
 		id: "team-owners",
 		kind: "entity",
 		relativePath: "work/team-owners.md",
@@ -209,7 +214,7 @@ const GRAPH_NODE_DEFINITIONS: GraphNodeDefinition[] = [
 	},
 	{
 		bodyPreview: "Recorded tradeoffs that let follow-up answers explain the path, not just the final result.",
-		color: ROVO_GRAPH_COLORS.orange,
+		color: ROVO_GRAPH_COLORS.default,
 		id: "decisions",
 		kind: "concept",
 		relativePath: "knowledge/decisions.md",
@@ -217,7 +222,7 @@ const GRAPH_NODE_DEFINITIONS: GraphNodeDefinition[] = [
 	},
 	{
 		bodyPreview: "Documents and discussion distilled into reusable context cards for quick recall.",
-		color: ROVO_GRAPH_COLORS.purple,
+		color: ROVO_GRAPH_COLORS.default,
 		id: "knowledge-cards",
 		kind: "synthesis",
 		relativePath: "knowledge/cards.md",
@@ -225,7 +230,7 @@ const GRAPH_NODE_DEFINITIONS: GraphNodeDefinition[] = [
 	},
 	{
 		bodyPreview: "Customer notes, support themes, and requests that connect external need to internal work.",
-		color: ROVO_GRAPH_COLORS.neutral,
+		color: ROVO_GRAPH_COLORS.default,
 		id: "customer-insights",
 		kind: "raw",
 		relativePath: "raw/customer-insights.md",
@@ -233,7 +238,7 @@ const GRAPH_NODE_DEFINITIONS: GraphNodeDefinition[] = [
 	},
 	{
 		bodyPreview: "Near-real-time team discussion that helps identify emerging questions and unresolved blockers.",
-		color: ROVO_GRAPH_COLORS.neutral,
+		color: ROVO_GRAPH_COLORS.default,
 		id: "team-signals",
 		kind: "source",
 		relativePath: "sources/team-signals.md",
@@ -241,7 +246,7 @@ const GRAPH_NODE_DEFINITIONS: GraphNodeDefinition[] = [
 	},
 	{
 		bodyPreview: "Milestones, risk, ownership, and launch readiness tied back to decisions and active work.",
-		color: ROVO_GRAPH_COLORS.lime,
+		color: ROVO_GRAPH_COLORS.default,
 		id: "release-plan",
 		kind: "entity",
 		relativePath: "work/release-plan.md",
@@ -249,7 +254,7 @@ const GRAPH_NODE_DEFINITIONS: GraphNodeDefinition[] = [
 	},
 	{
 		bodyPreview: "Signals from status pages, tickets, and postmortems connected to active remediation work.",
-		color: ROVO_GRAPH_COLORS.neutral,
+		color: ROVO_GRAPH_COLORS.default,
 		id: "incident-context",
 		kind: "raw",
 		relativePath: "raw/incident-context.md",
@@ -257,7 +262,7 @@ const GRAPH_NODE_DEFINITIONS: GraphNodeDefinition[] = [
 	},
 	{
 		bodyPreview: "Reusable playbooks that connect prior decisions to the next best operational step.",
-		color: ROVO_GRAPH_COLORS.blue,
+		color: ROVO_GRAPH_COLORS.default,
 		id: "playbooks",
 		kind: "synthesis",
 		relativePath: "knowledge/playbooks.md",
@@ -265,7 +270,7 @@ const GRAPH_NODE_DEFINITIONS: GraphNodeDefinition[] = [
 	},
 	{
 		bodyPreview: "A visible trail showing which sources shaped the answer and what should be checked next.",
-		color: ROVO_GRAPH_COLORS.blue,
+		color: ROVO_GRAPH_COLORS.default,
 		id: "grounded-response",
 		kind: "concept",
 		relativePath: "rovo/grounded-response.md",
@@ -305,11 +310,11 @@ const GRAPH_NODE_MARKER_CLASSES: Record<VaultNodeKind, string> = {
 };
 
 const GRAPH_KIND_COLORS: Record<VaultNodeKind, string> = {
-	concept: ROVO_GRAPH_COLORS.orange,
-	entity: ROVO_GRAPH_COLORS.lime,
-	raw: ROVO_GRAPH_COLORS.neutral,
-	source: ROVO_GRAPH_COLORS.blue,
-	synthesis: ROVO_GRAPH_COLORS.purple,
+	concept: ROVO_GRAPH_COLORS.default,
+	entity: ROVO_GRAPH_COLORS.default,
+	raw: ROVO_GRAPH_COLORS.default,
+	source: ROVO_GRAPH_COLORS.default,
+	synthesis: ROVO_GRAPH_COLORS.default,
 };
 
 const GRAPH_STAGE_STYLE = {
@@ -576,7 +581,7 @@ function GraphColorTokenControl({
 							<SelectItem key={option.value} value={option.value}>
 								<span
 									aria-hidden="true"
-									className="size-3 shrink-0 rounded-full border border-border"
+									className="size-3 shrink-0 self-center rounded-full border border-border"
 									style={{ backgroundColor: option.value }}
 								/>
 								<span className="flex min-w-0 flex-col">
@@ -669,7 +674,7 @@ function GraphControls({ defaultParams, onChange, params }: Readonly<GraphContro
 				</GUI.Section>
 			))}
 
-			<GUI.Section borderTop title="Default node colors">
+			<GUI.Section borderTop title="Node type colors">
 				<GraphColorTokenControl
 					id="graph-color-synthesis"
 					label="Synthesis"
@@ -717,8 +722,8 @@ function GraphControls({ defaultParams, onChange, params }: Readonly<GraphContro
 				/>
 				<GraphColorTokenControl
 					id="graph-node-color"
-					label="Fallback"
-					description="Used when a node has no kind color"
+					label="Idle"
+					description="Default node fill before hover or selection reveals type colors"
 					value={params.nodeColor}
 					defaultValue={defaultParams.nodeColor}
 					valueKey="nodeColor"

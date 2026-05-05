@@ -275,6 +275,7 @@ export function PersonalGraphNeuralCanvas({
 		const startedAt = performance.now();
 		const shouldLoop = shouldAnimateNeuralGraph(params, reduceMotion);
 		const render = (now: number) => {
+			const elapsedSeconds = reduceMotion ? undefined : (now - startedAt) / 1000;
 			context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
 			const layout = computeNeuralGraphLayout({
 				focusProgress: focusProgressRef.current,
@@ -282,11 +283,12 @@ export function PersonalGraphNeuralCanvas({
 				reduceMotion,
 				selectedNodeId,
 				store,
-				time: reduceMotion ? 0 : (now - startedAt) / 1000,
+				time: elapsedSeconds ?? 0,
 				viewport,
 			});
 			layoutRef.current = layout;
 			drawNeuralGraph(context, layout, {
+				animationTime: elapsedSeconds,
 				background,
 				camera: cameraRef.current,
 				focusProgress: focusProgressRef.current,

@@ -50,6 +50,12 @@ export interface NeuralGraphParams {
 	showLabels: boolean;
 	showOriginMarker: boolean;
 	showRays: boolean;
+	showSignals: boolean;
+	signalColor: string;
+	signalFrequency: number;
+	signalLength: number;
+	signalOpacity: number;
+	signalWidth: number;
 	speed: number;
 	spread: number;
 	tiltX: number;
@@ -80,6 +86,10 @@ export const NEURAL_GRAPH_ORIGIN_COLOR_PARAM_KEYS = [
 	"originMarkerColor",
 ] as const satisfies ReadonlyArray<keyof NeuralGraphParams>;
 
+export const NEURAL_GRAPH_SIGNAL_COLOR_PARAM_KEYS = [
+	"signalColor",
+] as const satisfies ReadonlyArray<keyof NeuralGraphParams>;
+
 export type NeuralGraphNumberKey = {
 	[K in keyof NeuralGraphParams]: NeuralGraphParams[K] extends number ? K : never;
 }[keyof NeuralGraphParams];
@@ -93,11 +103,13 @@ export type NeuralGraphColorKey =
 	| (typeof NEURAL_GRAPH_NODE_COLOR_PARAM_KEYS)[number]
 	| (typeof NEURAL_GRAPH_EDGE_COLOR_PARAM_KEYS)[number]
 	| (typeof NEURAL_GRAPH_ORIGIN_COLOR_PARAM_KEYS)[number]
+	| (typeof NEURAL_GRAPH_SIGNAL_COLOR_PARAM_KEYS)[number]
 	| "rayColor";
 
 const NEURAL_GRAPH_COLOR_PARAM_KEYS = [
 	"rayColor",
 	...NEURAL_GRAPH_ORIGIN_COLOR_PARAM_KEYS,
+	...NEURAL_GRAPH_SIGNAL_COLOR_PARAM_KEYS,
 	...NEURAL_GRAPH_KIND_COLOR_PARAM_KEYS,
 	...NEURAL_GRAPH_NODE_COLOR_PARAM_KEYS,
 	...NEURAL_GRAPH_EDGE_COLOR_PARAM_KEYS,
@@ -139,18 +151,18 @@ export interface NeuralGraphParamSection {
 
 export const DEFAULT_NEURAL_GRAPH_PARAMS: NeuralGraphParams = {
 	amplitude: 0.15,
-	colorConcept: "var(--ds-background-accent-orange-subtle)",
-	colorEntity: "var(--ds-chart-lime-bold)",
-	colorRaw: "var(--ds-chart-gray-boldest)",
-	colorSource: "var(--ds-background-accent-blue-bolder)",
-	colorSynthesis: "var(--ds-chart-purple-bolder)",
+	colorConcept: "var(--ds-icon-accent-orange)",
+	colorEntity: "var(--ds-icon-accent-lime)",
+	colorRaw: "var(--ds-icon-accent-gray)",
+	colorSource: "var(--ds-icon-accent-blue)",
+	colorSynthesis: "var(--ds-icon-accent-purple)",
 	coneAngle: 75,
 	depthZ: 30,
-	edgeColor: "var(--ds-chart-gray-bold)",
-	edgeHoverColor: "var(--ds-background-accent-blue-bolder)",
+	edgeColor: "var(--ds-icon-accent-gray)",
+	edgeHoverColor: "var(--ds-icon-accent-blue)",
 	edgeOpacity: 0.36,
 	edgeOpacityActive: 0.76,
-	edgeSelectedColor: "var(--ds-chart-purple-bolder)",
+	edgeSelectedColor: "var(--ds-icon-accent-purple)",
 	edgeWidth: 2,
 	frequency: 1.5,
 	glowIntensity: 0.28,
@@ -159,24 +171,24 @@ export const DEFAULT_NEURAL_GRAPH_PARAMS: NeuralGraphParams = {
 	labelMetaSize: 10,
 	labelSize: 13,
 	maxVisibleNodes: 86,
-	nodeColor: "var(--ds-chart-purple-bolder)",
-	nodeHoverColor: "var(--ds-background-accent-orange-subtle)",
+	nodeColor: "var(--ds-icon)",
+	nodeHoverColor: "var(--ds-icon-accent-orange)",
 	nodeOpacity: 0.82,
 	nodeOpacityFocused: 0.14,
 	nodeOpacityRelated: 0.9,
-	nodeSelectedColor: "var(--ds-chart-purple-bolder)",
+	nodeSelectedColor: "var(--ds-icon-accent-purple)",
 	nodeRadius: 2,
 	nodeShape: "circle",
 	nodeSize: 2.5,
 	octaves: 3,
-	originMarkerColor: "var(--ds-text)",
+	originMarkerColor: "var(--ds-icon)",
 	originMarkerSize: 12,
 	originOffset: 0,
 	originY: 1.05,
 	perspective: 1000,
 	radiusMax: 100,
 	radiusMin: 50,
-	rayColor: "var(--ds-chart-purple-bolder)",
+	rayColor: "var(--ds-icon-accent-purple)",
 	rayOpacity: 0.02,
 	rayOriginY: 1.05,
 	rayWidth: 2,
@@ -185,6 +197,12 @@ export const DEFAULT_NEURAL_GRAPH_PARAMS: NeuralGraphParams = {
 	showLabels: true,
 	showOriginMarker: true,
 	showRays: true,
+	showSignals: true,
+	signalColor: "var(--ds-icon-accent-purple)",
+	signalFrequency: 1,
+	signalLength: 0.22,
+	signalOpacity: 1,
+	signalWidth: 3.5,
 	speed: 0.8,
 	spread: 520,
 	tiltX: 0,
@@ -231,8 +249,6 @@ export const NEURAL_GRAPH_PARAM_SECTIONS: NeuralGraphParamSection[] = [
 			{ kind: "number", key: "maxVisibleNodes", label: "Count", max: 200, min: 10, step: 1 },
 			{ kind: "number", key: "nodeSize", label: "Size", max: 8, min: 0.5, step: 0.5 },
 			{ kind: "number", key: "nodeRadius", label: "Radius", max: 16, min: 0, step: 1, unit: "px" },
-			{ kind: "color", key: "nodeHoverColor", label: "Hover color", description: "Fill and glow color for the hovered node" },
-			{ kind: "color", key: "nodeSelectedColor", label: "Selected color", description: "Fill and glow color for the selected node" },
 		],
 	},
 	{
@@ -246,6 +262,18 @@ export const NEURAL_GRAPH_PARAM_SECTIONS: NeuralGraphParamSection[] = [
 			{ kind: "number", key: "edgeOpacity", label: "Idle opacity", max: 1, min: 0, step: 0.02 },
 			{ kind: "number", key: "edgeOpacityActive", label: "Active opacity", max: 1, min: 0, step: 0.02 },
 			{ kind: "number", key: "edgeWidth", label: "Width", max: 6, min: 0.5, step: 0.5 },
+		],
+	},
+	{
+		id: "signals",
+		label: "Signals",
+		params: [
+			{ kind: "boolean", key: "showSignals", label: "Show signals" },
+			{ kind: "color", key: "signalColor", label: "Color", description: "Tint of the momentary node-to-node signal streaks" },
+			{ kind: "number", key: "signalOpacity", label: "Opacity", max: 1, min: 0, step: 0.02 },
+			{ kind: "number", key: "signalWidth", label: "Width", max: 10, min: 0.5, step: 0.5 },
+			{ kind: "number", key: "signalFrequency", label: "Frequency", max: 4, min: 0, step: 0.1 },
+			{ kind: "number", key: "signalLength", label: "Length", max: 0.6, min: 0.05, step: 0.01 },
 		],
 	},
 	{
@@ -356,5 +384,7 @@ export function createDefaultNeuralGraphParams(nodeCount = DEFAULT_NEURAL_GRAPH_
 }
 
 export function shouldAnimateNeuralGraph(params: NeuralGraphParams, reduceMotion = false) {
-	return !reduceMotion && params.amplitude > 0 && params.speed > 0;
+	const shouldAnimateLayout = params.amplitude > 0 && params.speed > 0;
+	const shouldAnimateSignals = params.showEdges && params.showSignals && params.signalFrequency > 0 && params.signalOpacity > 0;
+	return !reduceMotion && (shouldAnimateLayout || shouldAnimateSignals);
 }

@@ -11,6 +11,8 @@ The repo-owned files are:
   installs the runtime through `mise`, renders a runtime workflow with your
   Linear project slug, and launches `./bin/symphony`.
 - `pnpm run symphony`: default repo entrypoint for Symphony.
+- `.github/workflows/ci.yml`: GitHub Actions workflow that runs the remote
+  `CI / Lint and typecheck` PR check.
 - `.playwright/cli.config.json`: Playwright CLI defaults for browser evidence
   produced by Symphony workers.
 - `.agents/skills/vpk-symphony/SKILL.md`: guidance for the raw
@@ -99,7 +101,8 @@ Backlog -> Todo -> In Progress -> Human Review -> Rework -> Human Review -> Merg
   from a fresh branch based on `origin/main`.
 - `Human Review`: wait for a human decision; do not start new implementation.
 - `Merging`: land the already-reviewed PR, sync with `origin/main`, and move
-  the Linear issue to `Done` only after the merge succeeds.
+  the Linear issue to `Done` only after the remote CI check is green and the
+  merge succeeds.
 - `Done`, `Closed`, `Canceled`, `Cancelled`, `Duplicate`: terminal states.
 
 Workers should keep one active `## Codex Workpad` comment current with selected
@@ -196,7 +199,8 @@ review-safe:
   of expanding the current issue.
 - Run a PR feedback sweep before `Human Review`: top-level comments, inline
   comments, review summaries, and checks must be resolved or explicitly
-  answered.
+  answered. For this repo, the default remote PR check is `CI / Lint and
+  typecheck`, backed by `.github/workflows/ci.yml`.
 - Use the blocked-access escape hatch only for missing required tools, auth,
   permissions, or secrets that cannot be resolved in-session.
 - Keep progress and handoff notes in the single active workpad comment instead
@@ -262,6 +266,8 @@ Each issue workspace gets these harness affordances:
   criteria, evidence, validation, decisions, branch, PR, and handoff state.
 - Required validation from `AGENTS.md`, plus targeted tests, browser checks,
   screenshots, and accessibility checks for touched surfaces.
+- Remote PR verification through GitHub Actions: `CI / Lint and typecheck`
+  installs dependencies, runs `pnpm run lint`, and runs `pnpm run typecheck`.
 
 When a worker discovers a missing setup step, weak documentation, poor
 observability, or a missing regression test, the worker must improve the

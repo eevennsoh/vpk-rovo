@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { motion } from "motion/react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { motion, useMotionValue, useReducedMotion, useSpring } from "motion/react";
 import ChevronRightIcon from "@atlaskit/icon/core/chevron-right";
 import CopyIcon from "@atlaskit/icon/core/copy";
 import CrossIcon from "@atlaskit/icon/core/cross";
@@ -15,6 +15,13 @@ import { cn } from "@/lib/utils";
 import { usePersonalGraphIntro } from "./hooks/use-personal-graph-intro";
 import { useVaultExplorer } from "./hooks/use-vault-explorer";
 import { useVaultSettings } from "./hooks/use-vault-settings";
+import {
+	RESPONSIVE_PERSONAL_GRAPH_WIDTHS,
+	getResponsivePersonalGraphParams,
+	shouldAnimateResponsivePersonalGraphParams,
+	type ResponsivePersonalGraphViewport,
+} from "./lib/neural-graph/responsive-params";
+import type { NeuralGraphParams } from "./lib/neural-graph/params";
 import type { VaultExplorer, VaultNode, VaultNodeKind } from "./lib/personal-graph-types";
 import { PersonalGraphBackdrop } from "./personal-graph-backdrop";
 import type { PersonalGraphControlFlyoutAction } from "./personal-graph-control-flyout";
@@ -73,6 +80,22 @@ const PERSONAL_GRAPH_TAIL_BOTTOM_OFFSET_PX =
 	PERSONAL_GRAPH_TAIL_PROMPT_GAP_PX +
 	PERSONAL_GRAPH_TAIL_MARKER_SIZE_PX / 2 +
 	PERSONAL_GRAPH_STAGE_TRANSLATE_Y_PX;
+const PERSONAL_GRAPH_RESPONSIVE_PARAMS_SPRING = {
+	damping: 28,
+	mass: 0.7,
+	restDelta: 0.5,
+	stiffness: 150,
+} as const;
+const PERSONAL_GRAPH_RESPONSIVE_PARAMS_INSTANT = {
+	damping: 200,
+	mass: 0.05,
+	restDelta: 0.5,
+	stiffness: 4000,
+} as const;
+const PERSONAL_GRAPH_RESPONSIVE_INITIAL_VIEWPORT = {
+	height: 720,
+	width: RESPONSIVE_PERSONAL_GRAPH_WIDTHS.wide,
+} satisfies ResponsivePersonalGraphViewport;
 
 function GraphNodeMarker({
 	className,
@@ -109,6 +132,90 @@ function getGraphStatsText(explorer: VaultExplorer | null) {
 	return explorer
 		? `${explorer.stats.wikiCount} wiki pages · ${explorer.stats.rawCount} raw sources`
 		: "Obsidian-backed second-brain graph";
+}
+
+function useResponsivePersonalGraphParams(stageRef: React.RefObject<HTMLDivElement | null>) {
+	const reduceMotion = Boolean(useReducedMotion());
+	const targetWidthMV = useMotionValue<number>(PERSONAL_GRAPH_RESPONSIVE_INITIAL_VIEWPORT.width);
+	const smoothWidthMV = useSpring(
+		targetWidthMV,
+		reduceMotion ? PERSONAL_GRAPH_RESPONSIVE_PARAMS_INSTANT : PERSONAL_GRAPH_RESPONSIVE_PARAMS_SPRING,
+	);
+	const didMeasureViewportRef = useRef(false);
+	const viewportRef = useRef<ResponsivePersonalGraphViewport>(PERSONAL_GRAPH_RESPONSIVE_INITIAL_VIEWPORT);
+	const [viewport, setViewport] = useState<ResponsivePersonalGraphViewport>(PERSONAL_GRAPH_RESPONSIVE_INITIAL_VIEWPORT);
+	const [params, setParams] = useState<NeuralGraphParams>(() =>
+		getResponsivePersonalGraphParams(PERSONAL_GRAPH_RESPONSIVE_INITIAL_VIEWPORT, ROVO_GRAPH_DEFAULT_PARAMS),
+	);
+
+	useEffect(() => {
+		const stageElement = stageRef.current;
+		if (!stageElement) {
+			return;
+		}
+
+		function updateViewport() {
+			const currentStageElement = stageRef.current;
+			if (!currentStageElement) {
+				return;
+			}
+
+			const rect = currentStageElement.getBoundingClientRect();
+			const nextViewport = {
+				height: Math.max(1, rect.height),
+				width: Math.max(1, rect.width),
+			} satisfies ResponsivePersonalGraphViewport;
+
+			setViewport((currentViewport) => {
+				if (
+					Math.abs(currentViewport.height - nextViewport.height) < 1 &&
+					Math.abs(currentViewport.width - nextViewport.width) < 1
+				) {
+					return currentViewport;
+				}
+
+				return nextViewport;
+			});
+		}
+
+		updateViewport();
+		if (typeof ResizeObserver === "undefined") {
+			window.addEventListener("resize", updateViewport);
+			return () => {
+				window.removeEventListener("resize", updateViewport);
+			};
+		}
+
+		const resizeObserver = new ResizeObserver(updateViewport);
+		resizeObserver.observe(stageElement);
+		return () => resizeObserver.disconnect();
+	}, [stageRef]);
+
+	useEffect(() => {
+		return smoothWidthMV.on("change", (width) => {
+			setParams(getResponsivePersonalGraphParams({ ...viewportRef.current, width }, ROVO_GRAPH_DEFAULT_PARAMS));
+		});
+	}, [smoothWidthMV]);
+
+	useEffect(() => {
+		viewportRef.current = viewport;
+		const shouldAnimateParams = shouldAnimateResponsivePersonalGraphParams({
+			hasMeasuredViewport: didMeasureViewportRef.current,
+			prefersReducedMotion: reduceMotion,
+		});
+
+		if (!shouldAnimateParams) {
+			targetWidthMV.jump(viewport.width);
+			smoothWidthMV.jump(viewport.width);
+			setParams(getResponsivePersonalGraphParams(viewport, ROVO_GRAPH_DEFAULT_PARAMS));
+			didMeasureViewportRef.current = true;
+			return;
+		}
+
+		targetWidthMV.set(viewport.width);
+	}, [reduceMotion, smoothWidthMV, targetWidthMV, viewport]);
+
+	return params;
 }
 
 function PersonalGraphInspector({
@@ -260,6 +367,8 @@ export function PersonalGraphSurface({
 	const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 	const [refreshKey, setRefreshKey] = useState(0);
 	const [isCaptureQueueOpen, setIsCaptureQueueOpen] = useState(false);
+	const graphStageRef = useRef<HTMLDivElement | null>(null);
+	const responsiveGraphParams = useResponsivePersonalGraphParams(graphStageRef);
 	const displayedNode = useMemo(() => getSelectedNode(explorer, selectedNodeId), [explorer, selectedNodeId]);
 
 	const handleRefreshAll = useCallback(() => {
@@ -517,14 +626,18 @@ export function PersonalGraphSurface({
 					opacity: { duration: 0.8, ease: easeOut },
 				}}
 			>
-				<div className="h-full" style={{ transform: `translateY(${PERSONAL_GRAPH_STAGE_TRANSLATE_Y_PX}px)` }}>
+				<div
+					className="h-full"
+					ref={graphStageRef}
+					style={{ transform: `translateY(${PERSONAL_GRAPH_STAGE_TRANSLATE_Y_PX}px)` }}
+				>
 					<Graph
 						background="transparent"
 						className="h-full"
 						explorer={explorer}
 						isLoading={isLoading}
 						onSelectedNodeIdChange={setSelectedNodeId}
-						params={ROVO_GRAPH_DEFAULT_PARAMS}
+						params={responsiveGraphParams}
 						rayOriginBottomOffset={PERSONAL_GRAPH_TAIL_BOTTOM_OFFSET_PX}
 						selectedNodeId={selectedNodeId}
 						showControls={false}

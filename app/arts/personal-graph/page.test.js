@@ -89,6 +89,13 @@ const NEURAL_PARAMS_SOURCE = fs.readFileSync(
 	),
 	"utf8",
 );
+const RESPONSIVE_PARAMS_SOURCE = fs.readFileSync(
+	path.join(
+		__dirname,
+		"../../../components/arts/personal-graph/lib/neural-graph/responsive-params.ts",
+	),
+	"utf8",
+);
 const NEURAL_STORE_SOURCE = fs.readFileSync(
 	path.join(
 		__dirname,
@@ -351,7 +358,7 @@ test("Personal Graph keeps the owned canvas renderer accessible", () => {
 	assert.match(SURFACE_SOURCE, /variant="fill"/);
 	assert.match(SURFACE_SOURCE, /showControls=\{false\}/);
 	assert.match(SURFACE_SOURCE, /background="transparent"/);
-	assert.match(SURFACE_SOURCE, /params=\{ROVO_GRAPH_DEFAULT_PARAMS\}/);
+	assert.match(SURFACE_SOURCE, /params=\{responsiveGraphParams\}/);
 	assert.match(SURFACE_SOURCE, /rayOriginBottomOffset=\{PERSONAL_GRAPH_TAIL_BOTTOM_OFFSET_PX\}/);
 	assert.match(GRAPH_SOURCE, /rayOriginBottomOffset\?: number;/);
 	assert.match(GRAPH_SOURCE, /rayOriginBottomOffset=\{rayOriginBottomOffset\}/);
@@ -378,6 +385,27 @@ test("Personal Graph keeps the owned canvas renderer accessible", () => {
 	assert.match(NEURAL_CANVAS_SOURCE, /backgroundClass = background === "transparent" \? "bg-transparent" : "bg-surface"/);
 	assert.match(NEURAL_CANVAS_SOURCE, /<canvas aria-hidden="true"/);
 	assert.match(NEURAL_CANVAS_SOURCE, /<SelectedNodeOverlay/);
+});
+
+test("Personal Graph derives responsive graph params from the route stage", () => {
+	assert.match(SURFACE_SOURCE, /function useResponsivePersonalGraphParams/);
+	assert.match(SURFACE_SOURCE, /new ResizeObserver\(updateViewport\)/);
+	assert.match(SURFACE_SOURCE, /const responsiveGraphParams = useResponsivePersonalGraphParams\(graphStageRef\);/);
+	assert.match(SURFACE_SOURCE, /ref=\{graphStageRef\}/);
+	assert.match(SURFACE_SOURCE, /getResponsivePersonalGraphParams\(viewport, ROVO_GRAPH_DEFAULT_PARAMS\)/);
+	assert.match(SURFACE_SOURCE, /shouldAnimateResponsivePersonalGraphParams/);
+	assert.match(SURFACE_SOURCE, /const targetWidthMV = useMotionValue<number>/);
+	assert.match(SURFACE_SOURCE, /const smoothWidthMV = useSpring/);
+	assert.match(SURFACE_SOURCE, /smoothWidthMV\.on\("change"/);
+	assert.match(SURFACE_SOURCE, /targetWidthMV\.jump\(viewport\.width\)/);
+	assert.match(SURFACE_SOURCE, /smoothWidthMV\.jump\(viewport\.width\)/);
+	assert.match(SURFACE_SOURCE, /targetWidthMV\.set\(viewport\.width\)/);
+	assert.match(SURFACE_SOURCE, /useReducedMotion/);
+	assert.doesNotMatch(SURFACE_SOURCE, /onUpdate: \(width\)/);
+	assert.match(RESPONSIVE_PARAMS_SOURCE, /RESPONSIVE_PERSONAL_GRAPH_WIDTHS/);
+	assert.match(RESPONSIVE_PARAMS_SOURCE, /export function getResponsivePersonalGraphParams/);
+	assert.match(RESPONSIVE_PARAMS_SOURCE, /showLabels: width >= 430/);
+	assert.doesNotMatch(SURFACE_SOURCE, /params=\{ROVO_GRAPH_DEFAULT_PARAMS\}/);
 });
 
 test("Personal Graph uses a theme-aware editor canvas backdrop", () => {
@@ -504,7 +532,7 @@ test("Personal Graph exposes primary graph actions through a curved control flyo
 	assert.match(NEURAL_PARAMS_SOURCE, /speed: 0\.8/);
 	assert.match(NEURAL_PARAMS_SOURCE, /amplitude: 0\.15/);
 	assert.match(NEURAL_PARAMS_SOURCE, /coneAngle: 75/);
-	assert.match(NEURAL_PARAMS_SOURCE, /nodeColor: "var\(--ds-chart-purple-bolder\)"/);
+	assert.match(NEURAL_PARAMS_SOURCE, /nodeColor: "var\(--ds-icon\)"/);
 });
 
 test("Personal Graph focuses and clears selection through the owned interaction layer", () => {
