@@ -17,6 +17,11 @@ import {
 	type NeuralGraphParams,
 	type NeuralGraphNodeShape,
 } from "@/components/arts/personal-graph/lib/neural-graph/params";
+import {
+	DEFAULT_NEURAL_RAY_SOUND_SETTINGS,
+	clampNeuralRaySoundSettings,
+	type NeuralRaySoundSettings,
+} from "@/components/arts/personal-graph/lib/neural-graph/ray-sound";
 import type { NeuralGraphThemeMode } from "@/components/arts/personal-graph/lib/neural-graph/renderer";
 import type {
 	VaultEdgeKind,
@@ -48,6 +53,7 @@ interface GraphProps extends Omit<ComponentProps<"div">, "children"> {
 	onSelectedNodeIdChange?: (nodeId: string | null) => void;
 	params?: NeuralGraphParams;
 	rayOriginBottomOffset?: number;
+	raySoundSettings?: Partial<NeuralRaySoundSettings>;
 	selectedNodeId?: string | null;
 	showSelectionOverlay?: boolean;
 	showControls?: boolean;
@@ -504,8 +510,11 @@ export const VISUAL_GRAPH_EXPLORER = buildVisualGraphExplorer();
 
 interface GraphControlsProps {
 	defaultParams: NeuralGraphParams;
+	defaultRaySoundSettings: NeuralRaySoundSettings;
 	onChange: (params: NeuralGraphParams) => void;
+	onRaySoundChange: (settings: NeuralRaySoundSettings) => void;
 	params: NeuralGraphParams;
+	raySoundSettings: NeuralRaySoundSettings;
 }
 
 interface GraphColorTokenControlProps {
@@ -615,13 +624,33 @@ function GraphColorTokenControl({
 	);
 }
 
-function GraphControls({ defaultParams, onChange, params }: Readonly<GraphControlsProps>) {
+function GraphControls({
+	defaultParams,
+	defaultRaySoundSettings,
+	onChange,
+	onRaySoundChange,
+	params,
+	raySoundSettings,
+}: Readonly<GraphControlsProps>) {
 	function updateParam(key: keyof NeuralGraphParams, value: number | string | boolean) {
 		onChange(clampNeuralGraphParams({ ...params, [key]: value }));
 	}
 
+	function updateRaySoundSettings(nextSettings: Partial<NeuralRaySoundSettings>) {
+		onRaySoundChange(clampNeuralRaySoundSettings({ ...raySoundSettings, ...nextSettings }));
+	}
+
 	return (
-		<GUI.Panel title="Graph controls" values={{ ...params }}>
+		<GUI.Panel
+			title="Graph controls"
+			values={{
+				...params,
+				raySoundCooldownMs: raySoundSettings.cooldownMs,
+				raySoundEnabled: raySoundSettings.enabled,
+				raySoundPitchSpread: raySoundSettings.pitchSpread,
+				raySoundVolume: raySoundSettings.volume,
+			}}
+		>
 			{NEURAL_GRAPH_PARAM_SECTIONS.map((section, sectionIndex) => (
 				<GUI.Section
 					borderTop={sectionIndex > 0}
@@ -678,6 +707,51 @@ function GraphControls({ defaultParams, onChange, params }: Readonly<GraphContro
 					})}
 				</GUI.Section>
 			))}
+
+			<GUI.Section borderTop title="Ray sound">
+				<GUI.Toggle
+					checked={raySoundSettings.enabled}
+					id="graph-ray-sound-enabled"
+					label="Sound enabled"
+					onChange={(nextEnabled) => updateRaySoundSettings({ enabled: nextEnabled })}
+					valueKeys="raySoundEnabled"
+				/>
+				<GUI.Control
+					defaultValue={defaultRaySoundSettings.volume}
+					id="graph-ray-sound-volume"
+					label="Volume"
+					max={1}
+					min={0}
+					onChange={(nextVolume) => updateRaySoundSettings({ volume: nextVolume })}
+					step={0.01}
+					value={raySoundSettings.volume}
+					valueKeys="raySoundVolume"
+				/>
+				<GUI.Control
+					defaultValue={defaultRaySoundSettings.cooldownMs}
+					id="graph-ray-sound-cooldown"
+					label="Cooldown"
+					max={240}
+					min={0}
+					onChange={(nextCooldown) => updateRaySoundSettings({ cooldownMs: nextCooldown })}
+					step={5}
+					unit="ms"
+					value={raySoundSettings.cooldownMs}
+					valueKeys="raySoundCooldownMs"
+				/>
+				<GUI.Control
+					defaultValue={defaultRaySoundSettings.pitchSpread}
+					id="graph-ray-sound-pitch-spread"
+					label="Pitch spread"
+					max={36}
+					min={0}
+					onChange={(nextPitchSpread) => updateRaySoundSettings({ pitchSpread: nextPitchSpread })}
+					step={1}
+					unit="st"
+					value={raySoundSettings.pitchSpread}
+					valueKeys="raySoundPitchSpread"
+				/>
+			</GUI.Section>
 
 			<GUI.Section borderTop title="Node type colors">
 				<GraphColorTokenControl
@@ -760,6 +834,7 @@ export default function Graph({
 	onSelectedNodeIdChange,
 	params: controlledParams,
 	rayOriginBottomOffset,
+	raySoundSettings: explicitRaySoundSettings,
 	selectedNodeId: controlledSelectedNodeId,
 	showSelectionOverlay = false,
 	showControls = true,
@@ -773,6 +848,7 @@ export default function Graph({
 	const defaultParams = useMemo(() => clampNeuralGraphParams(initialParamsRef.current), []);
 	const [uncontrolledParams, setUncontrolledParams] = useState<NeuralGraphParams>(() => defaultParams);
 	const [uncontrolledSelectedNodeId, setUncontrolledSelectedNodeId] = useState<string | null>(initialSelectedNodeIdRef.current);
+	const [demoRaySoundSettings, setDemoRaySoundSettings] = useState<NeuralRaySoundSettings>(() => DEFAULT_NEURAL_RAY_SOUND_SETTINGS);
 	const isFillVariant = variant === "fill";
 	const hasTransparentBackground = background === "transparent";
 	const fillVariantBackgroundClass = hasTransparentBackground ? "bg-transparent" : "bg-surface";
@@ -782,6 +858,11 @@ export default function Graph({
 	const isSelectionControlled = controlledSelectedNodeId !== undefined;
 	const rawParams = controlledParams ?? uncontrolledParams;
 	const params = useMemo(() => clampNeuralGraphParams(rawParams), [rawParams]);
+	const controlledRaySoundSettings = useMemo(
+		() => explicitRaySoundSettings ? clampNeuralRaySoundSettings(explicitRaySoundSettings) : undefined,
+		[explicitRaySoundSettings],
+	);
+	const canvasRaySoundSettings = showControls ? demoRaySoundSettings : controlledRaySoundSettings;
 	const selectedNodeId = isSelectionControlled ? controlledSelectedNodeId ?? null : uncontrolledSelectedNodeId;
 	const selectedNode = useMemo(() => getSelectedGraphNode(explorer, selectedNodeId), [explorer, selectedNodeId]);
 
@@ -841,6 +922,7 @@ export default function Graph({
 							onSelectNode={handleSelectNode}
 							params={params}
 							rayOriginBottomOffset={rayOriginBottomOffset}
+							raySoundSettings={canvasRaySoundSettings}
 							selectedNodeId={selectedNodeId}
 							showSelectionOverlay={showSelectionOverlay}
 							themeMode={canvasThemeMode}
@@ -858,7 +940,14 @@ export default function Graph({
 			</div>
 
 			{showControls ? (
-				<GraphControls defaultParams={defaultParams} onChange={handleParamsChange} params={params} />
+				<GraphControls
+					defaultParams={defaultParams}
+					defaultRaySoundSettings={DEFAULT_NEURAL_RAY_SOUND_SETTINGS}
+					onChange={handleParamsChange}
+					onRaySoundChange={setDemoRaySoundSettings}
+					params={params}
+					raySoundSettings={demoRaySoundSettings}
+				/>
 			) : null}
 		</div>
 	);

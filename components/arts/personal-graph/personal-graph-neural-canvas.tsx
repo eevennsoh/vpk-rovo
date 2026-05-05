@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useMotionValue, useReducedMotion, useSpring } from "motion/react";
+import { ensureReady, type PlayOptions } from "@web-kits/audio";
+import { useSound } from "@web-kits/audio/react";
 import { useTheme } from "@/components/utils/theme-wrapper";
 import { cn } from "@/lib/utils";
 import {
@@ -15,10 +17,18 @@ import {
 	type NeuralPoint,
 	type NeuralViewport,
 } from "./lib/neural-graph/camera";
-import { hitTestNeuralNode, hitTestNeuralRay, isMeaningfulDrag } from "./lib/neural-graph/interaction";
+import { hitTestNeuralNode, hitTestNeuralRay, isMeaningfulDrag, type NeuralRayHitTestResult } from "./lib/neural-graph/interaction";
 import { resolveNeuralGraphCssColorValue } from "./lib/neural-graph/colors";
 import { computeNeuralGraphLayout, type NeuralGraphLayout, type NeuralLayoutNode } from "./lib/neural-graph/layout";
 import { shouldAnimateNeuralGraph, type NeuralGraphParams } from "./lib/neural-graph/params";
+import {
+	INITIAL_NEURAL_RAY_SOUND_TRIGGER_STATE,
+	NEURAL_RAY_SOUND_DEFINITION,
+	getNeuralRaySoundPlayOptions,
+	getNextNeuralRaySoundTriggerState,
+	shouldTriggerNeuralRaySound,
+	type NeuralRaySoundSettings,
+} from "./lib/neural-graph/ray-sound";
 import { createNeuralGraphStore, getSelectedNeighborhood, type NeuralGraphStore } from "./lib/neural-graph/store";
 import { drawNeuralGraph, type NeuralGraphThemeMode, type NeuralRayElasticState } from "./lib/neural-graph/renderer";
 import type { VaultExplorer } from "./lib/personal-graph-types";
@@ -31,6 +41,7 @@ interface PersonalGraphNeuralCanvasProps {
 	onSelectNode: (nodeId: string) => void;
 	params: NeuralGraphParams;
 	rayOriginBottomOffset?: number;
+	raySoundSettings?: NeuralRaySoundSettings;
 	selectedNodeId: string | null;
 	showSelectionOverlay?: boolean;
 	themeMode?: NeuralGraphThemeMode;
@@ -206,6 +217,7 @@ export function PersonalGraphNeuralCanvas({
 	onSelectNode,
 	params,
 	rayOriginBottomOffset,
+	raySoundSettings,
 	selectedNodeId,
 	showSelectionOverlay = true,
 	themeMode,
@@ -248,6 +260,10 @@ export function PersonalGraphNeuralCanvas({
 		point: { x: 0, y: 0 },
 		progress: 0,
 	});
+	const raySoundPlayOptionsRef = useRef<PlayOptions>({});
+	const playRaySound = useSound(NEURAL_RAY_SOUND_DEFINITION, raySoundPlayOptionsRef.current);
+	const raySoundSettingsRef = useRef<NeuralRaySoundSettings | undefined>(raySoundSettings);
+	const raySoundTriggerStateRef = useRef(INITIAL_NEURAL_RAY_SOUND_TRIGGER_STATE);
 	const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
 	const hoveredNodeIdRef = useRef<string | null>(null);
 	const hoverProgressByNodeRef = useRef<Map<string, number>>(new Map());
@@ -265,6 +281,13 @@ export function PersonalGraphNeuralCanvas({
 	useEffect(() => {
 		hoveredNodeIdRef.current = hoveredNodeId;
 	}, [hoveredNodeId]);
+
+	useEffect(() => {
+		raySoundSettingsRef.current = raySoundSettings;
+		if (!raySoundSettings?.enabled) {
+			raySoundTriggerStateRef.current = INITIAL_NEURAL_RAY_SOUND_TRIGGER_STATE;
+		}
+	}, [raySoundSettings]);
 
 	useEffect(() => {
 		const container = containerRef.current;
@@ -515,11 +538,63 @@ export function PersonalGraphNeuralCanvas({
 		requestRenderRef.current();
 	}, [params, reduceMotion, selectedNodeId, store, targetZoomMV, viewport]);
 
-	const updateHover = useCallback((point: NeuralPoint) => {
+	const resetRaySoundTrigger = useCallback(() => {
+		raySoundTriggerStateRef.current = getNextNeuralRaySoundTriggerState({
+			didPlay: false,
+			nodeId: null,
+			now: performance.now(),
+			state: raySoundTriggerStateRef.current,
+		});
+	}, []);
+
+	const prepareRaySound = useCallback(() => {
+		const settings = raySoundSettingsRef.current;
+		if (!settings?.enabled || settings.volume <= 0) return;
+		void ensureReady({ latencyHint: "interactive" }).catch(() => {});
+	}, []);
+
+	const triggerRaySound = useCallback((rayHit: NeuralRayHitTestResult, point: NeuralPoint) => {
+		const settings = raySoundSettingsRef.current;
+		if (!settings) return;
+
+		const now = performance.now();
+		const state = raySoundTriggerStateRef.current;
+		const didPlay = shouldTriggerNeuralRaySound({
+			nodeId: rayHit.node.id,
+			now,
+			settings,
+			state,
+		});
+		raySoundTriggerStateRef.current = getNextNeuralRaySoundTriggerState({
+			didPlay,
+			nodeId: rayHit.node.id,
+			now,
+			state,
+		});
+		if (!didPlay) return;
+
+		const playOptions = getNeuralRaySoundPlayOptions({
+			hit: rayHit,
+			params,
+			pointer: point,
+			settings,
+			viewport,
+		});
+
+		void ensureReady({ latencyHint: "interactive" }).then(() => {
+			if (!raySoundSettingsRef.current?.enabled) return;
+			Object.assign(raySoundPlayOptionsRef.current, playOptions);
+			playRaySound();
+		}).catch(() => {});
+	}, [params, playRaySound, viewport]);
+
+	const updateHover = useCallback((point: NeuralPoint, options: { allowRaySound?: boolean } = {}) => {
+		const allowRaySound = options.allowRaySound ?? true;
 		const layout = layoutRef.current;
 		if (!layout) {
 			setHoveredNodeId(null);
 			targetRayElasticProgressMV.set(0);
+			resetRaySoundTrigger();
 			return;
 		}
 		const hit = hitTestNeuralNode({
@@ -537,6 +612,7 @@ export function PersonalGraphNeuralCanvas({
 			|| params.rayElasticStrength <= 0
 		) {
 			targetRayElasticProgressMV.set(0);
+			resetRaySoundTrigger();
 		} else {
 			const rayHit = hitTestNeuralRay({
 				camera: cameraRef.current,
@@ -550,8 +626,12 @@ export function PersonalGraphNeuralCanvas({
 				targetRayElasticXMV.set(point.x);
 				targetRayElasticYMV.set(point.y);
 				targetRayElasticProgressMV.set(1);
+				if (allowRaySound) {
+					triggerRaySound(rayHit, point);
+				}
 			} else {
 				targetRayElasticProgressMV.set(0);
+				resetRaySoundTrigger();
 			}
 		}
 		setHoveredNodeId(hit?.node.id ?? null);
@@ -561,20 +641,23 @@ export function PersonalGraphNeuralCanvas({
 		params,
 		rayOriginY,
 		reduceMotion,
+		resetRaySoundTrigger,
 		targetRayElasticProgressMV,
 		targetRayElasticXMV,
 		targetRayElasticYMV,
+		triggerRaySound,
 		viewport,
 	]);
 
 	const handlePointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
 		const point = getPointerPoint(event);
+		prepareRaySound();
 		dragStartRef.current = point;
 		lastPointerRef.current = point;
 		isPanningRef.current = true;
 		setIsPanning(true);
 		event.currentTarget.setPointerCapture(event.pointerId);
-	}, []);
+	}, [prepareRaySound]);
 
 	const handlePointerMove = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
 		const point = getPointerPoint(event);
@@ -599,7 +682,7 @@ export function PersonalGraphNeuralCanvas({
 		setIsPanning(false);
 		dragStartRef.current = null;
 		lastPointerRef.current = null;
-		updateHover(point);
+		updateHover(point, { allowRaySound: !dragged });
 
 		if (!dragged) {
 			const layout = layoutRef.current;
@@ -662,6 +745,7 @@ export function PersonalGraphNeuralCanvas({
 						hoveredNodeIdRef.current = null;
 						setHoveredNodeId(null);
 						targetRayElasticProgressMV.set(0);
+						resetRaySoundTrigger();
 						requestRenderRef.current();
 					}
 				}}

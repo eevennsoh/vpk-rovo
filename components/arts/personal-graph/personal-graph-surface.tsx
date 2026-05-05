@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { usePersonalGraphIntro } from "./hooks/use-personal-graph-intro";
 import { useVaultExplorer } from "./hooks/use-vault-explorer";
 import { useVaultSettings } from "./hooks/use-vault-settings";
+import { DEFAULT_NEURAL_RAY_SOUND_SETTINGS } from "./lib/neural-graph/ray-sound";
 import {
 	RESPONSIVE_PERSONAL_GRAPH_WIDTHS,
 	getResponsivePersonalGraphParams,
@@ -639,6 +640,7 @@ export function PersonalGraphSurface({
 						onSelectedNodeIdChange={setSelectedNodeId}
 						params={responsiveGraphParams}
 						rayOriginBottomOffset={PERSONAL_GRAPH_TAIL_BOTTOM_OFFSET_PX}
+						raySoundSettings={DEFAULT_NEURAL_RAY_SOUND_SETTINGS}
 						selectedNodeId={selectedNodeId}
 						showControls={false}
 						showSelectionOverlay={false}

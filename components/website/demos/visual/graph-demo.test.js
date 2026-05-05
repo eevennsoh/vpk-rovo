@@ -17,6 +17,10 @@ const PARAMS_SOURCE = fs.readFileSync(
 	path.join(__dirname, "../../../arts/personal-graph/lib/neural-graph/params.ts"),
 	"utf8",
 );
+const RAY_SOUND_SOURCE = fs.readFileSync(
+	path.join(__dirname, "../../../arts/personal-graph/lib/neural-graph/ray-sound.ts"),
+	"utf8",
+);
 const COLORS_SOURCE = fs.readFileSync(
 	path.join(__dirname, "../../../arts/personal-graph/lib/neural-graph/colors.ts"),
 	"utf8",
@@ -66,7 +70,7 @@ test("Graph demo renders the reusable Graph visual", () => {
 
 test("Graph visual follows the VPK visual demo control structure", () => {
 	assert.match(GRAPH_SOURCE, /PersonalGraphNeuralCanvas/);
-	assert.match(GRAPH_SOURCE, /GUI\.Panel title="Graph controls"/);
+	assert.match(GRAPH_SOURCE, /title="Graph controls"/);
 	assert.match(GRAPH_SOURCE, /GUI\.Control/);
 	assert.match(GRAPH_SOURCE, /GUI\.Select/);
 	assert.match(GRAPH_SOURCE, /NEURAL_GRAPH_PARAM_SECTIONS/);
@@ -83,6 +87,7 @@ test("Graph visual can be embedded as the live Personal Graph renderer", () => {
 
 	assert.match(GRAPH_SOURCE, /variant\?: "demo" \| "fill"/);
 	assert.match(GRAPH_SOURCE, /params\?: NeuralGraphParams/);
+	assert.match(GRAPH_SOURCE, /raySoundSettings\?: Partial<NeuralRaySoundSettings>/);
 	assert.match(GRAPH_SOURCE, /selectedNodeId\?: string \| null/);
 	assert.match(GRAPH_SOURCE, /onSelectedNodeIdChange\?: \(nodeId: string \| null\) => void/);
 	assert.match(GRAPH_SOURCE, /isFillVariant \? "flex h-full w-full flex-col"/);
@@ -92,6 +97,7 @@ test("Graph visual can be embedded as the live Personal Graph renderer", () => {
 		"params",
 		"onParamsChange",
 		"rayOriginBottomOffset",
+		"raySoundSettings",
 		"selectedNodeId",
 		"onSelectedNodeIdChange",
 		"showSelectionOverlay",
@@ -151,6 +157,30 @@ test("Graph renderer exposes hover, ray, edge, and label toggles through params"
 	assert.match(RENDERER_SOURCE, /options\.params\.glowIntensity/);
 	assert.match(RENDERER_SOURCE, /options\.params\.labelSize/);
 	assert.match(RENDERER_SOURCE, /options\.params\.labelMetaSize/);
+});
+
+test("Graph ray sound controls stay demo-local and outside visual params", () => {
+	assert.match(GRAPH_SOURCE, /DEFAULT_NEURAL_RAY_SOUND_SETTINGS/);
+	assert.match(GRAPH_SOURCE, /type NeuralRaySoundSettings/);
+	assert.match(GRAPH_SOURCE, /title="Ray sound"/);
+	assert.match(GRAPH_SOURCE, /label="Sound enabled"/);
+	assert.match(GRAPH_SOURCE, /label="Volume"/);
+	assert.match(GRAPH_SOURCE, /label="Cooldown"/);
+	assert.match(GRAPH_SOURCE, /label="Pitch spread"/);
+	assert.match(GRAPH_SOURCE, /const canvasRaySoundSettings = showControls \? demoRaySoundSettings : controlledRaySoundSettings;/);
+	assert.match(GRAPH_SOURCE, /raySoundSettings=\{canvasRaySoundSettings\}/);
+	assert.match(NEURAL_CANVAS_SOURCE, /raySoundSettings\?: NeuralRaySoundSettings/);
+	assert.match(NEURAL_CANVAS_SOURCE, /NEURAL_RAY_SOUND_DEFINITION/);
+	assert.match(NEURAL_CANVAS_SOURCE, /useSound\(NEURAL_RAY_SOUND_DEFINITION/);
+	assert.match(NEURAL_CANVAS_SOURCE, /ensureReady\(\{ latencyHint: "interactive" \}\)/);
+	assert.match(NEURAL_CANVAS_SOURCE, /shouldTriggerNeuralRaySound/);
+	assert.match(RAY_SOUND_SOURCE, /export interface NeuralRaySoundSettings/);
+	assert.match(RAY_SOUND_SOURCE, /getNeuralRaySoundPlayOptions/);
+	assert.match(RAY_SOUND_SOURCE, /rayElasticRadius/);
+	assert.match(RAY_SOUND_SOURCE, /rayElasticStrength/);
+	assert.match(RAY_SOUND_SOURCE, /rayElasticDamping/);
+	assert.match(RAY_SOUND_SOURCE, /rayElasticTension/);
+	assert.doesNotMatch(PARAMS_SOURCE, /raySound/);
 });
 
 test("Graph controls expose node type and edge state color fields", () => {
@@ -250,5 +280,8 @@ test("Graph controls render booleans as toggles", () => {
 test("Graph normalizes runtime params before rendering controls", () => {
 	assert.match(GRAPH_SOURCE, /const rawParams = controlledParams \?\? uncontrolledParams;/);
 	assert.match(GRAPH_SOURCE, /const params = useMemo\(\(\) => clampNeuralGraphParams\(rawParams\), \[rawParams\]\);/);
-	assert.match(GRAPH_SOURCE, /<GraphControls defaultParams=\{defaultParams\} onChange=\{handleParamsChange\} params=\{params\} \/>/);
+	assert.match(GRAPH_SOURCE, /<GraphControls/);
+	assert.match(GRAPH_SOURCE, /defaultParams=\{defaultParams\}/);
+	assert.match(GRAPH_SOURCE, /onChange=\{handleParamsChange\}/);
+	assert.match(GRAPH_SOURCE, /params=\{params\}/);
 });
