@@ -1,6 +1,7 @@
 import type { VaultNodeKind } from "../personal-graph-types";
 import { getNeuralOrigin, worldToViewport, type NeuralCamera, type NeuralPoint, type NeuralViewport } from "./camera";
 import { getNeuralGraphColorFallback, isNeuralGraphColorValue } from "./colors";
+import { getClosestPointOnOrganicRay, getOrganicRayCurve, type NeuralRayCurve } from "./interaction";
 import type { NeuralGraphLayout, NeuralLayoutEdge, NeuralLayoutNode } from "./layout";
 import type { NeuralGraphParams } from "./params";
 
@@ -15,6 +16,11 @@ const KIND_COLOR_PARAM_KEY: Record<VaultNodeKind, keyof NeuralGraphParams> = {
 export type NeuralGraphThemeMode = "light" | "dark";
 export type NeuralGraphBackgroundMode = "default" | "transparent";
 
+export interface NeuralRayElasticState {
+	point: NeuralPoint;
+	progress: number;
+}
+
 export interface NeuralGraphRenderOptions {
 	animationTime?: number;
 	background?: NeuralGraphBackgroundMode;
@@ -23,6 +29,7 @@ export interface NeuralGraphRenderOptions {
 	hoveredNodeId: string | null;
 	hoverProgressByNode?: ReadonlyMap<string, number>;
 	params: NeuralGraphParams;
+	rayElastic?: NeuralRayElasticState | null;
 	rayOriginY?: number;
 	resolveColor?: (color: string) => string;
 	selectedNodeId: string | null;
@@ -178,40 +185,63 @@ function getSelectedRelationshipIds(layout: NeuralGraphLayout, selectedNodeId: s
 	return { edgeIds, nodeIds };
 }
 
-function getEdgeTerminalDirection(
-	source: NeuralPoint,
-	target: NeuralPoint,
-) {
-	const dx = target.x - source.x;
-	const dy = target.y - source.y;
-	if (Math.abs(dy) >= Math.abs(dx)) {
-		return { x: 0, y: dy >= 0 ? 1 : -1 };
-	}
-	return { x: dx >= 0 ? 1 : -1, y: 0 };
+function getFallbackNormal(curve: NeuralRayCurve) {
+	const dx = curve.target.x - curve.origin.x;
+	const dy = curve.target.y - curve.origin.y;
+	const distance = Math.hypot(dx, dy);
+	if (distance <= 0.001) return { x: 0, y: -1 };
+	return { x: -dy / distance, y: dx / distance };
 }
 
-function drawOrganicRayPath(
-	ctx: CanvasRenderingContext2D,
-	origin: NeuralPoint,
-	target: NeuralPoint,
-) {
-	const dx = target.x - origin.x;
-	const dy = target.y - origin.y;
-	const distance = Math.max(1, Math.hypot(dx, dy));
-	const sourceDirection = { x: 0, y: dy >= 0 ? 1 : -1 };
-	const targetDirection = getEdgeTerminalDirection(origin, target);
-	const sourceHandleDistance = Math.min(220, Math.max(58, distance * 0.38));
-	const targetHandleDistance = Math.min(180, Math.max(42, distance * 0.28));
+function getElasticRayCurve(
+	curve: NeuralRayCurve,
+	options: NeuralGraphRenderOptions,
+): NeuralRayCurve {
+	const elastic = options.rayElastic;
+	const strength = options.params.rayElasticStrength;
+	const radius = options.params.rayElasticRadius;
+	if (!elastic || elastic.progress <= 0 || strength <= 0 || radius <= 0) return curve;
 
+	const closest = getClosestPointOnOrganicRay(curve, elastic.point);
+	if (closest.distance > radius) return curve;
+
+	const falloff = smoothProgress(1 - closest.distance / radius);
+	const force = strength * falloff * elastic.progress;
+	if (force <= 0.001) return curve;
+
+	const dx = elastic.point.x - closest.point.x;
+	const dy = elastic.point.y - closest.point.y;
+	const distance = Math.hypot(dx, dy);
+	const fallbackNormal = getFallbackNormal(curve);
+	const direction = distance > 0.001
+		? { x: dx / distance, y: dy / distance }
+		: fallbackNormal;
+	const sourceWeight = Math.max(0, 1 - Math.abs(closest.progress - 0.35) / 0.55);
+	const targetWeight = Math.max(0, 1 - Math.abs(closest.progress - 0.65) / 0.55);
+
+	return {
+		...curve,
+		sourceControl: {
+			x: curve.sourceControl.x + direction.x * force * sourceWeight,
+			y: curve.sourceControl.y + direction.y * force * sourceWeight,
+		},
+		targetControl: {
+			x: curve.targetControl.x + direction.x * force * targetWeight,
+			y: curve.targetControl.y + direction.y * force * targetWeight,
+		},
+	};
+}
+
+function drawOrganicRayPath(ctx: CanvasRenderingContext2D, curve: NeuralRayCurve) {
 	ctx.beginPath();
-	ctx.moveTo(origin.x, origin.y);
+	ctx.moveTo(curve.origin.x, curve.origin.y);
 	ctx.bezierCurveTo(
-		origin.x + sourceDirection.x * sourceHandleDistance,
-		origin.y + sourceDirection.y * sourceHandleDistance,
-		target.x - targetDirection.x * targetHandleDistance,
-		target.y - targetDirection.y * targetHandleDistance,
-		target.x,
-		target.y,
+		curve.sourceControl.x,
+		curve.sourceControl.y,
+		curve.targetControl.x,
+		curve.targetControl.y,
+		curve.target.x,
+		curve.target.y,
 	);
 }
 
@@ -273,7 +303,7 @@ function drawRays(
 		const isRelated = selectedRelationships.nodeIds.has(node.id);
 		const focusAlpha = focusProgress > 0 ? (isRelated ? lerp(1, 0.72, focusProgress) : lerp(1, 0.05, focusProgress)) : 1;
 		ctx.globalAlpha = clampAlpha((options.params.rayOpacity + node.depthScale * 0.03) * focusAlpha);
-		drawOrganicRayPath(ctx, origin, point);
+		drawOrganicRayPath(ctx, getElasticRayCurve(getOrganicRayCurve(origin, point), options));
 		ctx.stroke();
 	}
 	ctx.restore();

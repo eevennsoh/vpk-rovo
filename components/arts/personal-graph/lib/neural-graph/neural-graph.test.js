@@ -256,6 +256,10 @@ test("clampNeuralGraphParams clamps numbers, colors, radius order, and shapes", 
 		radiusMax: 20,
 		radiusMin: 80,
 		rayColor: "not-a-color",
+		rayElasticDamping: 999,
+		rayElasticRadius: 999,
+		rayElasticStrength: -10,
+		rayElasticTension: 1,
 		signalColor: "#070809",
 		signalFrequency: 20,
 		signalGlowEnabled: true,
@@ -277,6 +281,10 @@ test("clampNeuralGraphParams clamps numbers, colors, radius order, and shapes", 
 	assert.equal(params.radiusMin, 20);
 	assert.equal(params.radiusMax, 20);
 	assert.equal(params.rayColor, "var(--ds-icon-accent-purple)");
+	assert.equal(params.rayElasticDamping, 80);
+	assert.equal(params.rayElasticRadius, 220);
+	assert.equal(params.rayElasticStrength, 0);
+	assert.equal(params.rayElasticTension, 60);
 	assert.equal(params.signalColor, "#070809");
 	assert.equal(params.signalFrequency, 4);
 	assert.equal(params.signalGlowEnabled, true);
@@ -666,6 +674,51 @@ test("drawNeuralGraph uses the configured ray color for fan strokes", async () =
 	);
 });
 
+test("drawNeuralGraph bends ray curves with the elastic hover field", async () => {
+	const { createNeuralCamera } = await cameraModule;
+	const { DEFAULT_NEURAL_GRAPH_PARAMS } = await paramsModule;
+	const { drawNeuralGraph } = await rendererModule;
+	const viewport = { height: 200, width: 300 };
+	const graphNode = layoutNode("ray-target", 0);
+	graphNode.y = -100;
+	const layout = {
+		edges: [],
+		nodes: [graphNode],
+		nodesById: new Map([[graphNode.id, graphNode]]),
+		origin: { x: 0, y: 0 },
+		viewport,
+	};
+	const params = {
+		...DEFAULT_NEURAL_GRAPH_PARAMS,
+		showEdges: false,
+		showLabels: false,
+		showRays: true,
+		showSignals: false,
+	};
+	const renderRayControls = (overrides = {}, rayElastic = null) => {
+		const ctx = createRecordingCanvasContext();
+		drawNeuralGraph(ctx, layout, {
+			background: "transparent",
+			camera: createNeuralCamera(),
+			focusProgress: 0,
+			hoveredNodeId: null,
+			params: { ...params, ...overrides },
+			rayElastic,
+			selectedNodeId: null,
+			theme: "light",
+			viewport,
+		});
+		return ctx.calls.find(([name]) => name === "bezierCurveTo").slice(1);
+	};
+	const elasticPoint = { x: viewport.width / 2 + 30, y: viewport.height * 0.8 };
+	const neutral = renderRayControls();
+	const elastic = renderRayControls({}, { point: elasticPoint, progress: 1 });
+	const disabled = renderRayControls({ rayElasticStrength: 0 }, { point: elasticPoint, progress: 1 });
+
+	assert.notDeepEqual(elastic, neutral);
+	assert.deepEqual(disabled, neutral);
+});
+
 test("drawNeuralGraph resolves design-token colors before drawing on canvas", async () => {
 	const { createNeuralCamera } = await cameraModule;
 	const { DEFAULT_NEURAL_GRAPH_PARAMS, clampNeuralGraphParams } = await paramsModule;
@@ -934,5 +987,62 @@ test("hitTestNeuralNode returns the nearest rendered node", async () => {
 			viewport,
 		}).node.id,
 		"selected",
+	);
+});
+
+test("hitTestNeuralRay detects origin rays without treating graph edges as rays", async () => {
+	const { createNeuralCamera, getNeuralOrigin, worldToViewport } = await cameraModule;
+	const {
+		getCubicBezierPoint,
+		getOrganicRayCurve,
+		hitTestNeuralRay,
+	} = await interactionModule;
+	const { DEFAULT_NEURAL_GRAPH_PARAMS } = await paramsModule;
+	const viewport = { height: 200, width: 300 };
+	const camera = createNeuralCamera();
+	const source = layoutNode("source", -80);
+	source.y = -100;
+	const target = layoutNode("target", 80);
+	target.y = -100;
+	const layout = {
+		edges: [layoutEdge("source-target", source, target)],
+		nodes: [source, target],
+		nodesById: new Map([
+			[source.id, source],
+			[target.id, target],
+		]),
+		origin: { x: 0, y: 0 },
+		viewport,
+	};
+	const origin = {
+		...getNeuralOrigin(viewport, DEFAULT_NEURAL_GRAPH_PARAMS),
+		y: viewport.height * DEFAULT_NEURAL_GRAPH_PARAMS.rayOriginY,
+	};
+	const sourcePoint = worldToViewport(source, camera, viewport, DEFAULT_NEURAL_GRAPH_PARAMS);
+	const rayPoint = getCubicBezierPoint(getOrganicRayCurve(origin, sourcePoint), 0.5);
+	const edgeMidpoint = {
+		x: viewport.width / 2,
+		y: sourcePoint.y,
+	};
+
+	assert.equal(
+		hitTestNeuralRay({
+			camera,
+			layout,
+			params: DEFAULT_NEURAL_GRAPH_PARAMS,
+			point: rayPoint,
+			viewport,
+		}).node.id,
+		"source",
+	);
+	assert.equal(
+		hitTestNeuralRay({
+			camera,
+			layout,
+			params: DEFAULT_NEURAL_GRAPH_PARAMS,
+			point: edgeMidpoint,
+			viewport,
+		}),
+		null,
 	);
 });

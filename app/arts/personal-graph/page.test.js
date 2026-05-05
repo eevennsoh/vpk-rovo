@@ -553,7 +553,8 @@ test("Personal Graph focuses and clears selection through the owned interaction 
 	assert.match(NEURAL_RENDERER_SOURCE, /focusProgress > 0/);
 	assert.match(NEURAL_RENDERER_SOURCE, /drawOrganicRayPath/);
 	assert.match(NEURAL_RENDERER_SOURCE, /drawStraightEdgePath/);
-	assert.match(NEURAL_RENDERER_SOURCE, /getEdgeTerminalDirection/);
+	assert.match(NEURAL_INTERACTION_SOURCE, /getEdgeTerminalDirection/);
+	assert.match(NEURAL_RENDERER_SOURCE, /getOrganicRayCurve/);
 	assert.match(NEURAL_RENDERER_SOURCE, /bezierCurveTo/);
 	assert.match(NEURAL_RENDERER_SOURCE, /lineTo/);
 	assert.doesNotMatch(NEURAL_RENDERER_SOURCE, /drawOrganicEdgePath/);

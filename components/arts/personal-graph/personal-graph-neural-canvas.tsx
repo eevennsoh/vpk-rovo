@@ -15,12 +15,12 @@ import {
 	type NeuralPoint,
 	type NeuralViewport,
 } from "./lib/neural-graph/camera";
-import { hitTestNeuralNode, isMeaningfulDrag } from "./lib/neural-graph/interaction";
+import { hitTestNeuralNode, hitTestNeuralRay, isMeaningfulDrag } from "./lib/neural-graph/interaction";
 import { resolveNeuralGraphCssColorValue } from "./lib/neural-graph/colors";
 import { computeNeuralGraphLayout, type NeuralGraphLayout, type NeuralLayoutNode } from "./lib/neural-graph/layout";
 import { shouldAnimateNeuralGraph, type NeuralGraphParams } from "./lib/neural-graph/params";
 import { createNeuralGraphStore, getSelectedNeighborhood, type NeuralGraphStore } from "./lib/neural-graph/store";
-import { drawNeuralGraph, type NeuralGraphThemeMode } from "./lib/neural-graph/renderer";
+import { drawNeuralGraph, type NeuralGraphThemeMode, type NeuralRayElasticState } from "./lib/neural-graph/renderer";
 import type { VaultExplorer } from "./lib/personal-graph-types";
 
 interface PersonalGraphNeuralCanvasProps {
@@ -49,6 +49,7 @@ const ZOOM_SPRING_CONFIG = { stiffness: 220, damping: 28, mass: 0.5, restDelta: 
 const ZOOM_SPRING_INSTANT = { stiffness: 4000, damping: 200, mass: 0.05, restDelta: 0.0005 } as const;
 const FOCUS_SPRING_CONFIG = { stiffness: 160, damping: 24, mass: 0.7, restDelta: 0.0005 } as const;
 const FOCUS_SPRING_INSTANT = { stiffness: 4000, damping: 220, mass: 0.05, restDelta: 0.0005 } as const;
+const RAY_ELASTIC_SPRING_INSTANT = { stiffness: 4000, damping: 220, mass: 0.05, restDelta: 0.0005 } as const;
 
 const HOVER_TRANSITION_TAU_SECONDS = 0.05;
 const HOVER_PROGRESS_SETTLE_EPSILON = 0.001;
@@ -226,6 +227,27 @@ export function PersonalGraphNeuralCanvas({
 	const targetFocusMV = useMotionValue(selectedNodeId ? 1 : 0);
 	const focusProgressMV = useSpring(targetFocusMV, reduceMotion ? FOCUS_SPRING_INSTANT : FOCUS_SPRING_CONFIG);
 	const focusProgressRef = useRef(selectedNodeId ? 1 : 0);
+	const targetRayElasticXMV = useMotionValue(0);
+	const targetRayElasticYMV = useMotionValue(0);
+	const targetRayElasticProgressMV = useMotionValue(0);
+	const rayElasticSpringConfig = useMemo(
+		() => reduceMotion
+			? RAY_ELASTIC_SPRING_INSTANT
+			: {
+				stiffness: params.rayElasticTension,
+				damping: params.rayElasticDamping,
+				mass: 0.55,
+				restDelta: 0.001,
+			},
+		[params.rayElasticDamping, params.rayElasticTension, reduceMotion],
+	);
+	const smoothRayElasticXMV = useSpring(targetRayElasticXMV, rayElasticSpringConfig);
+	const smoothRayElasticYMV = useSpring(targetRayElasticYMV, rayElasticSpringConfig);
+	const smoothRayElasticProgressMV = useSpring(targetRayElasticProgressMV, rayElasticSpringConfig);
+	const rayElasticRef = useRef<NeuralRayElasticState>({
+		point: { x: 0, y: 0 },
+		progress: 0,
+	});
 	const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
 	const hoveredNodeIdRef = useRef<string | null>(null);
 	const hoverProgressByNodeRef = useRef<Map<string, number>>(new Map());
@@ -333,6 +355,7 @@ export function PersonalGraphNeuralCanvas({
 				hoveredNodeId: hoveredNodeIdRef.current,
 				hoverProgressByNode,
 				params,
+				rayElastic: !reduceMotion && rayElasticRef.current.progress > 0 ? rayElasticRef.current : null,
 				rayOriginY,
 				resolveColor: resolveGraphColor,
 				selectedNodeId,
@@ -394,6 +417,53 @@ export function PersonalGraphNeuralCanvas({
 	}, [focusProgressMV]);
 
 	useEffect(() => {
+		return smoothRayElasticXMV.on("change", (nextX) => {
+			rayElasticRef.current = {
+				...rayElasticRef.current,
+				point: { ...rayElasticRef.current.point, x: nextX },
+			};
+			requestRenderRef.current();
+		});
+	}, [smoothRayElasticXMV]);
+
+	useEffect(() => {
+		return smoothRayElasticYMV.on("change", (nextY) => {
+			rayElasticRef.current = {
+				...rayElasticRef.current,
+				point: { ...rayElasticRef.current.point, y: nextY },
+			};
+			requestRenderRef.current();
+		});
+	}, [smoothRayElasticYMV]);
+
+	useEffect(() => {
+		return smoothRayElasticProgressMV.on("change", (nextProgress) => {
+			rayElasticRef.current = {
+				...rayElasticRef.current,
+				progress: nextProgress < 0.001 ? 0 : nextProgress,
+			};
+			requestRenderRef.current();
+		});
+	}, [smoothRayElasticProgressMV]);
+
+	useEffect(() => {
+		if (
+			reduceMotion
+			|| !params.showRays
+			|| params.rayElasticRadius <= 0
+			|| params.rayElasticStrength <= 0
+		) {
+			targetRayElasticProgressMV.set(0);
+		}
+	}, [
+		params.rayElasticRadius,
+		params.rayElasticStrength,
+		params.showRays,
+		reduceMotion,
+		targetRayElasticProgressMV,
+	]);
+
+	useEffect(() => {
 		return smoothZoomMV.on("change", (nextZoom) => {
 			const cam = cameraRef.current;
 			if (cam.zoom === nextZoom) return;
@@ -449,6 +519,7 @@ export function PersonalGraphNeuralCanvas({
 		const layout = layoutRef.current;
 		if (!layout) {
 			setHoveredNodeId(null);
+			targetRayElasticProgressMV.set(0);
 			return;
 		}
 		const hit = hitTestNeuralNode({
@@ -458,10 +529,43 @@ export function PersonalGraphNeuralCanvas({
 			point,
 			viewport,
 		});
+		if (
+			hit
+			|| reduceMotion
+			|| !params.showRays
+			|| params.rayElasticRadius <= 0
+			|| params.rayElasticStrength <= 0
+		) {
+			targetRayElasticProgressMV.set(0);
+		} else {
+			const rayHit = hitTestNeuralRay({
+				camera: cameraRef.current,
+				layout,
+				params,
+				point,
+				rayOriginY,
+				viewport,
+			});
+			if (rayHit) {
+				targetRayElasticXMV.set(point.x);
+				targetRayElasticYMV.set(point.y);
+				targetRayElasticProgressMV.set(1);
+			} else {
+				targetRayElasticProgressMV.set(0);
+			}
+		}
 		setHoveredNodeId(hit?.node.id ?? null);
 		hoveredNodeIdRef.current = hit?.node.id ?? null;
 		requestRenderRef.current();
-	}, [params, viewport]);
+	}, [
+		params,
+		rayOriginY,
+		reduceMotion,
+		targetRayElasticProgressMV,
+		targetRayElasticXMV,
+		targetRayElasticYMV,
+		viewport,
+	]);
 
 	const handlePointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
 		const point = getPointerPoint(event);
@@ -557,6 +661,7 @@ export function PersonalGraphNeuralCanvas({
 					if (!isPanningRef.current) {
 						hoveredNodeIdRef.current = null;
 						setHoveredNodeId(null);
+						targetRayElasticProgressMV.set(0);
 						requestRenderRef.current();
 					}
 				}}

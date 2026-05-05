@@ -100,7 +100,7 @@ test("Graph visual can be embedded as the live Personal Graph renderer", () => {
 	]) {
 		assert.match(graphDetailsSource, new RegExp(`name: "${propName}"`));
 	}
-	assert.match(graphDetailsSource, /flow, structure, cone, icon-token node type colors, edge color states, signal streaks, ray, origin node, hover, label, and node style controls/);
+	assert.match(graphDetailsSource, /flow, structure, cone, icon-token node type colors, edge color states, signal streaks, ray elasticity, origin node, hover, label, and node style controls/);
 });
 
 test("Graph renderer keeps the default connector stroke width at 2 via params", () => {
@@ -119,8 +119,19 @@ test("Graph renderer exposes hover, ray, edge, and label toggles through params"
 	assert.match(RENDERER_SOURCE, /if \(!options\.params\.showEdges\) return;/);
 	assert.match(RENDERER_SOURCE, /if \(!options\.params\.showLabels\) return;/);
 	assert.match(GRAPH_SOURCE, /rayOriginY: 1/);
+	assert.match(GRAPH_SOURCE, /rayElasticStrength: 26/);
+	assert.match(GRAPH_SOURCE, /rayElasticRadius: 96/);
+	assert.match(GRAPH_SOURCE, /rayElasticTension: 220/);
+	assert.match(GRAPH_SOURCE, /rayElasticDamping: 24/);
 	assert.match(PARAMS_SOURCE, /key: "rayOriginY", label: "Tail Y"/);
+	assert.match(PARAMS_SOURCE, /key: "rayElasticStrength", label: "Elastic strength"/);
+	assert.match(PARAMS_SOURCE, /key: "rayElasticRadius", label: "Elastic radius"/);
+	assert.match(PARAMS_SOURCE, /key: "rayElasticTension", label: "Elastic tension"/);
+	assert.match(PARAMS_SOURCE, /key: "rayElasticDamping", label: "Elastic damping"/);
 	assert.match(RENDERER_SOURCE, /function getRayOrigin/);
+	assert.match(RENDERER_SOURCE, /function getElasticRayCurve/);
+	assert.match(NEURAL_CANVAS_SOURCE, /hitTestNeuralRay/);
+	assert.match(NEURAL_CANVAS_SOURCE, /rayElastic: !reduceMotion && rayElasticRef\.current\.progress > 0 \? rayElasticRef\.current : null/);
 	assert.match(RENDERER_SOURCE, /viewport\.height \* params\.rayOriginY/);
 	assert.match(NEURAL_CANVAS_SOURCE, /data-neural-graph-origin-node="true"/);
 	assert.match(NEURAL_CANVAS_SOURCE, /style=\{getOriginMarkerStyleForViewport\(params, viewport, rayOriginBottomOffset\)\}/);
