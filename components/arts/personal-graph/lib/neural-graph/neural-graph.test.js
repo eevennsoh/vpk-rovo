@@ -375,9 +375,13 @@ test("node hover sound trigger state blooms on node entry with cooldown protecti
 
 	assert.equal(shouldTriggerNeuralNodeSound({ nodeId: "alpha", now: 140, settings, state }), false);
 	assert.equal(shouldTriggerNeuralNodeSound({ nodeId: "beta", now: 50, settings, state }), false);
+	state = getNextNeuralNodeSoundTriggerState({ didPlay: false, nodeId: "beta", now: 50, state });
+	assert.equal(shouldTriggerNeuralNodeSound({ nodeId: "beta", now: 100, settings, state }), true);
+	state = getNextNeuralNodeSoundTriggerState({ didPlay: true, nodeId: "beta", now: 100, state });
 	state = getNextNeuralNodeSoundTriggerState({ didPlay: false, nodeId: null, now: 120, state });
 
-	assert.equal(shouldTriggerNeuralNodeSound({ nodeId: "alpha", now: 140, settings, state }), true);
+	assert.equal(shouldTriggerNeuralNodeSound({ nodeId: "alpha", now: 190, settings, state }), false);
+	assert.equal(shouldTriggerNeuralNodeSound({ nodeId: "alpha", now: 200, settings, state }), true);
 	assert.equal(shouldTriggerNeuralNodeSound({
 		nodeId: "beta",
 		now: 240,

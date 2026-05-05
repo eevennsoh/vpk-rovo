@@ -224,9 +224,16 @@ export function getNextNeuralNodeSoundTriggerState({
 		};
 	}
 
+	if (!didPlay) {
+		return {
+			...state,
+			wasOnNode: true,
+		};
+	}
+
 	return {
 		lastNodeId: nodeId,
-		lastPlayedAt: didPlay ? now : state.lastPlayedAt,
+		lastPlayedAt: now,
 		wasOnNode: true,
 	};
 }
