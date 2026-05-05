@@ -1,4 +1,5 @@
 import type { NeuralPoint, NeuralViewport } from "./camera";
+import type { NeuralGraphInteractionState } from "./interaction-dynamics";
 import type { NeuralGraphParams } from "./params";
 import {
 	getSelectedNeighborhood,
@@ -46,6 +47,11 @@ function clampFocusProgress(value = 0) {
 	return Math.min(1, Math.max(0, value));
 }
 
+function clampInteractionProgress(interaction: NeuralGraphInteractionState | null | undefined, reduceMotion: boolean) {
+	if (reduceMotion || !interaction) return 0;
+	return Math.min(1.5, Math.max(0, interaction.intensity)) * Math.max(0, interaction.flowBoost);
+}
+
 function hashString(value: string) {
 	let hash = 2166136261;
 	for (let index = 0; index < value.length; index += 1) {
@@ -63,9 +69,19 @@ function signedHash(value: string, salt: string) {
 	return unitHash(value, salt) * 2 - 1;
 }
 
-function waveNoise(node: NeuralGraphNode, params: NeuralGraphParams, time: number, reduceMotion: boolean) {
+function waveNoise(
+	node: NeuralGraphNode,
+	params: NeuralGraphParams,
+	time: number,
+	reduceMotion: boolean,
+	interaction?: NeuralGraphInteractionState | null,
+) {
 	if (reduceMotion || params.amplitude <= 0 || params.speed <= 0) return { x: 0, y: 0 };
 
+	const interactionProgress = clampInteractionProgress(interaction, reduceMotion);
+	const velocity = Math.max(0, interaction?.velocity ?? 0);
+	const speed = params.speed * (1 + interactionProgress * (0.65 + velocity * 0.55));
+	const amplitude = params.amplitude * (1 + interactionProgress * 0.55);
 	let x = 0;
 	let y = 0;
 	let weight = 1;
@@ -73,14 +89,14 @@ function waveNoise(node: NeuralGraphNode, params: NeuralGraphParams, time: numbe
 
 	for (let octave = 0; octave < params.octaves; octave += 1) {
 		const phase = unitHash(node.id, `phase-${octave}`) * Math.PI * 2;
-		const tick = time * params.speed * frequency + phase;
+		const tick = time * speed * frequency + phase;
 		x += Math.cos(tick) * weight;
 		y += Math.sin(tick * 0.84 + phase) * weight;
 		weight *= 0.5;
 		frequency *= 1.72;
 	}
 
-	const scale = params.spread * params.amplitude * 0.1;
+	const scale = params.spread * amplitude * 0.1;
 	return { x: x * scale, y: y * scale };
 }
 
@@ -91,18 +107,28 @@ function createInitialNode(
 	params: NeuralGraphParams,
 	time: number,
 	reduceMotion: boolean,
+	viewport: NeuralViewport,
+	interaction?: NeuralGraphInteractionState | null,
 ): NeuralLayoutNode {
 	const t = total <= 1 ? 0.5 : index / (total - 1);
-	const coneAngle = params.coneAngle * DEG_TO_RAD;
+	const interactionProgress = clampInteractionProgress(interaction, reduceMotion);
+	const velocity = Math.max(0, interaction?.velocity ?? 0);
+	const pointerX = interaction?.pointer ? interaction.pointer.x / Math.max(1, viewport.width) - 0.5 : 0;
+	const pointerY = interaction?.pointer ? interaction.pointer.y / Math.max(1, viewport.height) - 0.5 : 0;
+	const breath = Math.sin(time * (1.2 + velocity * 1.6) + unitHash(node.id, "breath") * Math.PI * 2)
+		* interactionProgress
+		* 0.035;
+	const effectiveSpread = params.spread * (1 + interactionProgress * 0.08 + breath);
+	const coneAngle = params.coneAngle * (1 + interactionProgress * 0.1) * DEG_TO_RAD;
 	const angleJitter = signedHash(node.id, "angle") * coneAngle * 0.08;
-	const angle = -Math.PI / 2 + (t - 0.5) * coneAngle + angleJitter + params.tiltZ * DEG_TO_RAD * 0.1;
+	const angle = -Math.PI / 2 + (t - 0.5) * coneAngle + angleJitter + params.tiltZ * DEG_TO_RAD * 0.1 + pointerX * interactionProgress * 0.16;
 	const radiusRange = Math.max(0, params.radiusMax - params.radiusMin) / 100;
 	const radiusMin = params.radiusMin / 100;
-	const radius = params.spread * (radiusMin + unitHash(node.id, "radius") * radiusRange);
+	const radius = effectiveSpread * (radiusMin + unitHash(node.id, "radius") * radiusRange);
 	const z = signedHash(node.id, "depth") * params.depthZ;
 	const depthScale = params.perspective / Math.max(1, params.perspective + z);
-	const tiltOffset = Math.sin(params.tiltX * DEG_TO_RAD) * z * 0.4;
-	const flow = waveNoise(node, params, time, reduceMotion);
+	const tiltOffset = Math.sin(params.tiltX * DEG_TO_RAD) * z * 0.4 + pointerY * interactionProgress * params.spread * 0.025;
+	const flow = waveNoise(node, params, time, reduceMotion, interaction);
 
 	return {
 		alpha: 1,
@@ -117,14 +143,21 @@ function createInitialNode(
 	};
 }
 
-function relaxLayout(nodes: NeuralLayoutNode[], edges: NeuralGraphEdge[], params: NeuralGraphParams) {
+function relaxLayout(
+	nodes: NeuralLayoutNode[],
+	edges: NeuralGraphEdge[],
+	params: NeuralGraphParams,
+	interaction?: NeuralGraphInteractionState | null,
+	reduceMotion = false,
+) {
 	if (nodes.length < 2) return;
 
+	const interactionProgress = clampInteractionProgress(interaction, reduceMotion);
 	const indexById = new Map(nodes.map((node, index) => [node.id, index]));
 	const velocity = nodes.map(() => ({ x: 0, y: 0 }));
 	const restById = new Map(nodes.map((node) => [node.id, { x: node.x, y: node.y }]));
 	const attraction = 0.0038;
-	const repulsion = params.spread * 0.028;
+	const repulsion = params.spread * (1 + interactionProgress * 0.12) * 0.028;
 	const gravity = 0.018;
 
 	for (let iteration = 0; iteration < RELAXATION_ITERATIONS; iteration += 1) {
@@ -251,6 +284,7 @@ function createLayoutEdges(edges: NeuralGraphEdge[], nodesById: Map<string, Neur
 
 export function computeNeuralGraphLayout({
 	focusProgress = 0,
+	interaction = null,
 	params,
 	reduceMotion = false,
 	selectedNodeId,
@@ -259,6 +293,7 @@ export function computeNeuralGraphLayout({
 	viewport,
 }: {
 	focusProgress?: number;
+	interaction?: NeuralGraphInteractionState | null;
 	params: NeuralGraphParams;
 	reduceMotion?: boolean;
 	selectedNodeId: string | null;
@@ -269,10 +304,10 @@ export function computeNeuralGraphLayout({
 	const visibleNodes = getVisibleGraphNodes(store, selectedNodeId, params.maxVisibleNodes);
 	const visibleEdges = getVisibleGraphEdges(store, visibleNodes);
 	const layoutNodes = visibleNodes.map((node, index) =>
-		createInitialNode(node, index, visibleNodes.length, params, time, reduceMotion),
+		createInitialNode(node, index, visibleNodes.length, params, time, reduceMotion, viewport, interaction),
 	);
 
-	relaxLayout(layoutNodes, visibleEdges, params);
+	relaxLayout(layoutNodes, visibleEdges, params, interaction, reduceMotion);
 	applySelectionFocusLayout({
 		focusProgress,
 		nodes: layoutNodes,

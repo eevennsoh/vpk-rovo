@@ -19,14 +19,28 @@ import {
 } from "./lib/neural-graph/camera";
 import { hitTestNeuralNode, hitTestNeuralRay, isMeaningfulDrag, type NeuralRayHitTestResult } from "./lib/neural-graph/interaction";
 import { resolveNeuralGraphCssColorValue } from "./lib/neural-graph/colors";
+import {
+	EMPTY_NEURAL_GRAPH_INTERACTION_STATE,
+	getNeuralInteractionTargetIntensity,
+	getNeuralPointerVelocity,
+	type NeuralGraphInteractionSettings,
+	type NeuralGraphInteractionState,
+	type NeuralPointerVelocity,
+} from "./lib/neural-graph/interaction-dynamics";
 import { computeNeuralGraphLayout, type NeuralGraphLayout, type NeuralLayoutNode } from "./lib/neural-graph/layout";
 import { shouldAnimateNeuralGraph, type NeuralGraphParams } from "./lib/neural-graph/params";
 import {
+	INITIAL_NEURAL_NODE_SOUND_TRIGGER_STATE,
 	INITIAL_NEURAL_RAY_SOUND_TRIGGER_STATE,
+	NEURAL_NODE_HOVER_SOUND_DEFINITION,
 	NEURAL_RAY_SOUND_DEFINITION,
+	getNeuralNodeSoundPlayOptions,
 	getNeuralRaySoundPlayOptions,
+	getNextNeuralNodeSoundTriggerState,
 	getNextNeuralRaySoundTriggerState,
+	shouldTriggerNeuralNodeSound,
 	shouldTriggerNeuralRaySound,
+	type NeuralNodeSoundSettings,
 	type NeuralRaySoundSettings,
 } from "./lib/neural-graph/ray-sound";
 import { createNeuralGraphStore, getSelectedNeighborhood, type NeuralGraphStore } from "./lib/neural-graph/store";
@@ -37,6 +51,7 @@ interface PersonalGraphNeuralCanvasProps {
 	background?: "default" | "transparent";
 	explorer: VaultExplorer | null;
 	isLoading?: boolean;
+	interactionSettings?: NeuralGraphInteractionSettings;
 	onClearSelection: () => void;
 	onSelectNode: (nodeId: string) => void;
 	params: NeuralGraphParams;
@@ -61,9 +76,18 @@ const ZOOM_SPRING_INSTANT = { stiffness: 4000, damping: 200, mass: 0.05, restDel
 const FOCUS_SPRING_CONFIG = { stiffness: 160, damping: 24, mass: 0.7, restDelta: 0.0005 } as const;
 const FOCUS_SPRING_INSTANT = { stiffness: 4000, damping: 220, mass: 0.05, restDelta: 0.0005 } as const;
 const RAY_ELASTIC_SPRING_INSTANT = { stiffness: 4000, damping: 220, mass: 0.05, restDelta: 0.0005 } as const;
+const INTERACTION_SPRING_CONFIG = { stiffness: 150, damping: 20, mass: 0.72, restDelta: 0.001 } as const;
+const INTERACTION_SPRING_INSTANT = { stiffness: 4000, damping: 220, mass: 0.05, restDelta: 0.001 } as const;
 
 const HOVER_TRANSITION_TAU_SECONDS = 0.05;
 const HOVER_PROGRESS_SETTLE_EPSILON = 0.001;
+
+function cloneInteractionState(state: NeuralGraphInteractionState): NeuralGraphInteractionState {
+	return {
+		...state,
+		pointer: state.pointer ? { ...state.pointer } : null,
+	};
+}
 
 function formatSignedPixels(value: number): string {
 	if (value < 0) return `- ${Math.abs(value)}px`;
@@ -213,6 +237,7 @@ export function PersonalGraphNeuralCanvas({
 	background = "default",
 	explorer,
 	isLoading = false,
+	interactionSettings,
 	onClearSelection,
 	onSelectNode,
 	params,
@@ -256,14 +281,33 @@ export function PersonalGraphNeuralCanvas({
 	const smoothRayElasticXMV = useSpring(targetRayElasticXMV, rayElasticSpringConfig);
 	const smoothRayElasticYMV = useSpring(targetRayElasticYMV, rayElasticSpringConfig);
 	const smoothRayElasticProgressMV = useSpring(targetRayElasticProgressMV, rayElasticSpringConfig);
+	const targetInteractionIntensityMV = useMotionValue(0);
+	const smoothInteractionIntensityMV = useSpring(
+		targetInteractionIntensityMV,
+		reduceMotion ? INTERACTION_SPRING_INSTANT : INTERACTION_SPRING_CONFIG,
+	);
 	const rayElasticRef = useRef<NeuralRayElasticState>({
 		point: { x: 0, y: 0 },
 		progress: 0,
 	});
+	const interactionRef = useRef<NeuralGraphInteractionState>(cloneInteractionState(EMPTY_NEURAL_GRAPH_INTERACTION_STATE));
+	const pointerVelocityRef = useRef<{
+		point: NeuralPoint | null;
+		time: number | null;
+		velocity: NeuralPointerVelocity;
+	}>({
+		point: null,
+		time: null,
+		velocity: { normalized: 0, pxPerSecond: 0 },
+	});
 	const raySoundPlayOptionsRef = useRef<PlayOptions>({});
+	const nodeSoundPlayOptionsRef = useRef<PlayOptions>({});
 	const playRaySound = useSound(NEURAL_RAY_SOUND_DEFINITION, raySoundPlayOptionsRef.current);
+	const playNodeSound = useSound(NEURAL_NODE_HOVER_SOUND_DEFINITION, nodeSoundPlayOptionsRef.current);
+	const interactionSettingsRef = useRef<NeuralGraphInteractionSettings | undefined>(interactionSettings);
 	const raySoundSettingsRef = useRef<NeuralRaySoundSettings | undefined>(raySoundSettings);
 	const raySoundTriggerStateRef = useRef(INITIAL_NEURAL_RAY_SOUND_TRIGGER_STATE);
+	const nodeSoundTriggerStateRef = useRef(INITIAL_NEURAL_NODE_SOUND_TRIGGER_STATE);
 	const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
 	const hoveredNodeIdRef = useRef<string | null>(null);
 	const hoverProgressByNodeRef = useRef<Map<string, number>>(new Map());
@@ -288,6 +332,15 @@ export function PersonalGraphNeuralCanvas({
 			raySoundTriggerStateRef.current = INITIAL_NEURAL_RAY_SOUND_TRIGGER_STATE;
 		}
 	}, [raySoundSettings]);
+
+	useEffect(() => {
+		interactionSettingsRef.current = interactionSettings;
+		if (!interactionSettings?.enabled) {
+			interactionRef.current = cloneInteractionState(EMPTY_NEURAL_GRAPH_INTERACTION_STATE);
+			nodeSoundTriggerStateRef.current = INITIAL_NEURAL_NODE_SOUND_TRIGGER_STATE;
+			targetInteractionIntensityMV.set(0);
+		}
+	}, [interactionSettings, targetInteractionIntensityMV]);
 
 	useEffect(() => {
 		const container = containerRef.current;
@@ -360,6 +413,7 @@ export function PersonalGraphNeuralCanvas({
 			context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
 			const layout = computeNeuralGraphLayout({
 				focusProgress: focusProgressRef.current,
+				interaction: interactionRef.current,
 				params,
 				reduceMotion,
 				selectedNodeId,
@@ -377,6 +431,7 @@ export function PersonalGraphNeuralCanvas({
 				focusProgress: focusProgressRef.current,
 				hoveredNodeId: hoveredNodeIdRef.current,
 				hoverProgressByNode,
+				interaction: interactionRef.current,
 				params,
 				rayElastic: !reduceMotion && rayElasticRef.current.progress > 0 ? rayElasticRef.current : null,
 				rayOriginY,
@@ -461,13 +516,28 @@ export function PersonalGraphNeuralCanvas({
 
 	useEffect(() => {
 		return smoothRayElasticProgressMV.on("change", (nextProgress) => {
+			const settled = nextProgress < 0.001;
 			rayElasticRef.current = {
 				...rayElasticRef.current,
-				progress: nextProgress < 0.001 ? 0 : nextProgress,
+				nodeId: settled ? null : rayElasticRef.current.nodeId,
+				progress: settled ? 0 : nextProgress,
 			};
 			requestRenderRef.current();
 		});
 	}, [smoothRayElasticProgressMV]);
+
+	useEffect(() => {
+		return smoothInteractionIntensityMV.on("change", (nextIntensity) => {
+			const settled = nextIntensity < 0.001;
+			interactionRef.current = {
+				...interactionRef.current,
+				activeNodeId: settled ? null : interactionRef.current.activeNodeId,
+				activeRayNodeId: settled ? null : interactionRef.current.activeRayNodeId,
+				intensity: settled ? 0 : nextIntensity,
+			};
+			requestRenderRef.current();
+		});
+	}, [smoothInteractionIntensityMV]);
 
 	useEffect(() => {
 		if (
@@ -485,6 +555,12 @@ export function PersonalGraphNeuralCanvas({
 		reduceMotion,
 		targetRayElasticProgressMV,
 	]);
+
+	useEffect(() => {
+		if (reduceMotion || !interactionSettings?.enabled) {
+			targetInteractionIntensityMV.set(0);
+		}
+	}, [interactionSettings, reduceMotion, targetInteractionIntensityMV]);
 
 	useEffect(() => {
 		return smoothZoomMV.on("change", (nextZoom) => {
@@ -519,6 +595,7 @@ export function PersonalGraphNeuralCanvas({
 
 		const layout = layoutRef.current ?? computeNeuralGraphLayout({
 			focusProgress: focusProgressRef.current,
+			interaction: interactionRef.current,
 			params,
 			reduceMotion,
 			selectedNodeId,
@@ -547,11 +624,110 @@ export function PersonalGraphNeuralCanvas({
 		});
 	}, []);
 
-	const prepareRaySound = useCallback(() => {
-		const settings = raySoundSettingsRef.current;
-		if (!settings?.enabled || settings.volume <= 0) return;
-		void ensureReady({ latencyHint: "interactive" }).catch(() => {});
+	const resetNodeSoundTrigger = useCallback(() => {
+		nodeSoundTriggerStateRef.current = getNextNeuralNodeSoundTriggerState({
+			didPlay: false,
+			nodeId: null,
+			now: performance.now(),
+			state: nodeSoundTriggerStateRef.current,
+		});
 	}, []);
+
+	const getNodeSoundSettings = useCallback((): NeuralNodeSoundSettings | null => {
+		const settings = interactionSettingsRef.current;
+		if (!settings) return null;
+		return {
+			cooldownMs: settings.nodeSoundCooldownMs,
+			enabled: settings.enabled && settings.nodeSoundEnabled,
+			volume: settings.nodeSoundVolume,
+		};
+	}, []);
+
+	const prepareGraphSound = useCallback(() => {
+		const raySettings = raySoundSettingsRef.current;
+		const nodeSettings = getNodeSoundSettings();
+		if (
+			(!raySettings?.enabled || raySettings.volume <= 0)
+			&& (!nodeSettings?.enabled || nodeSettings.volume <= 0)
+		) return;
+		void ensureReady({ latencyHint: "interactive" }).catch(() => {});
+	}, [getNodeSoundSettings]);
+
+	const getPointerActivity = useCallback((point: NeuralPoint): NeuralPointerVelocity => {
+		const now = performance.now();
+		const previous = pointerVelocityRef.current;
+		const velocity = getNeuralPointerVelocity({
+			elapsedMs: previous.time === null ? 0 : now - previous.time,
+			from: previous.point,
+			to: point,
+			viewport,
+		});
+		pointerVelocityRef.current = {
+			point,
+			time: now,
+			velocity,
+		};
+		return velocity;
+	}, [viewport]);
+
+	const updateInteractionTarget = useCallback(({
+		activeNodeId,
+		activeRayId,
+		point,
+		rayDistance = 0,
+		rayProgress = 0,
+		velocity,
+	}: {
+		activeNodeId?: string | null;
+		activeRayId?: string | null;
+		point: NeuralPoint | null;
+		rayDistance?: number;
+		rayProgress?: number;
+		velocity: NeuralPointerVelocity;
+	}) => {
+		const settings = interactionSettingsRef.current;
+		if (!settings?.enabled || reduceMotion) {
+			targetInteractionIntensityMV.set(0);
+			return;
+		}
+		const hasHit = Boolean(activeNodeId ?? activeRayId);
+		interactionRef.current = {
+			...interactionRef.current,
+			activeNodeId: activeNodeId ?? null,
+			activeRayNodeId: activeRayId ?? null,
+			flowBoost: settings.flowBoost,
+			pointer: point,
+			rayDistance,
+			rayEmphasis: settings.rayEmphasis,
+			rayProgress,
+			velocity: velocity.normalized,
+			velocityPxPerSecond: velocity.pxPerSecond,
+		};
+		targetInteractionIntensityMV.set(getNeuralInteractionTargetIntensity({
+			hasHit,
+			settings,
+			velocity: velocity.normalized,
+		}));
+	}, [reduceMotion, targetInteractionIntensityMV]);
+
+	const resetInteractionTarget = useCallback(() => {
+		pointerVelocityRef.current = {
+			point: null,
+			time: null,
+			velocity: { normalized: 0, pxPerSecond: 0 },
+		};
+		interactionRef.current = {
+			...interactionRef.current,
+			activeNodeId: null,
+			activeRayNodeId: null,
+			pointer: null,
+			rayDistance: 0,
+			rayProgress: 0,
+			velocity: 0,
+			velocityPxPerSecond: 0,
+		};
+		targetInteractionIntensityMV.set(0);
+	}, [targetInteractionIntensityMV]);
 
 	const triggerRaySound = useCallback((rayHit: NeuralRayHitTestResult, point: NeuralPoint) => {
 		const settings = raySoundSettingsRef.current;
@@ -588,13 +764,51 @@ export function PersonalGraphNeuralCanvas({
 		}).catch(() => {});
 	}, [params, playRaySound, viewport]);
 
-	const updateHover = useCallback((point: NeuralPoint, options: { allowRaySound?: boolean } = {}) => {
-		const allowRaySound = options.allowRaySound ?? true;
+	const triggerNodeSound = useCallback((hit: NonNullable<ReturnType<typeof hitTestNeuralNode>>, point: NeuralPoint) => {
+		const settings = getNodeSoundSettings();
+		if (!settings) return;
+
+		const now = performance.now();
+		const state = nodeSoundTriggerStateRef.current;
+		const didPlay = shouldTriggerNeuralNodeSound({
+			nodeId: hit.node.id,
+			now,
+			settings,
+			state,
+		});
+		nodeSoundTriggerStateRef.current = getNextNeuralNodeSoundTriggerState({
+			didPlay,
+			nodeId: hit.node.id,
+			now,
+			state,
+		});
+		if (!didPlay) return;
+
+		const playOptions = getNeuralNodeSoundPlayOptions({
+			hit,
+			pointer: point,
+			settings,
+			viewport,
+		});
+
+		void ensureReady({ latencyHint: "interactive" }).then(() => {
+			const latestSettings = getNodeSoundSettings();
+			if (!latestSettings?.enabled) return;
+			Object.assign(nodeSoundPlayOptionsRef.current, playOptions);
+			playNodeSound();
+		}).catch(() => {});
+	}, [getNodeSoundSettings, playNodeSound, viewport]);
+
+	const updateHover = useCallback((point: NeuralPoint, options: { allowSound?: boolean; velocity?: NeuralPointerVelocity } = {}) => {
+		const allowSound = options.allowSound ?? true;
+		const velocity = options.velocity ?? pointerVelocityRef.current.velocity;
 		const layout = layoutRef.current;
 		if (!layout) {
 			setHoveredNodeId(null);
 			targetRayElasticProgressMV.set(0);
+			updateInteractionTarget({ point, velocity });
 			resetRaySoundTrigger();
+			resetNodeSoundTrigger();
 			return;
 		}
 		const hit = hitTestNeuralNode({
@@ -604,6 +818,9 @@ export function PersonalGraphNeuralCanvas({
 			point,
 			viewport,
 		});
+		if (hit && allowSound) {
+			triggerNodeSound(hit, point);
+		}
 		if (
 			hit
 			|| reduceMotion
@@ -612,7 +829,15 @@ export function PersonalGraphNeuralCanvas({
 			|| params.rayElasticStrength <= 0
 		) {
 			targetRayElasticProgressMV.set(0);
+			updateInteractionTarget({
+				activeNodeId: hit?.node.id ?? null,
+				point,
+				velocity,
+			});
 			resetRaySoundTrigger();
+			if (!hit) {
+				resetNodeSoundTrigger();
+			}
 		} else {
 			const rayHit = hitTestNeuralRay({
 				camera: cameraRef.current,
@@ -623,15 +848,33 @@ export function PersonalGraphNeuralCanvas({
 				viewport,
 			});
 			if (rayHit) {
+				rayElasticRef.current = {
+					...rayElasticRef.current,
+					distance: rayHit.distance,
+					hitProgress: rayHit.progress,
+					intensity: Math.max(0.2, velocity.normalized),
+					nodeId: rayHit.node.id,
+					velocity: velocity.normalized,
+				};
 				targetRayElasticXMV.set(point.x);
 				targetRayElasticYMV.set(point.y);
 				targetRayElasticProgressMV.set(1);
-				if (allowRaySound) {
+				updateInteractionTarget({
+					activeRayId: rayHit.node.id,
+					point,
+					rayDistance: rayHit.distance,
+					rayProgress: rayHit.progress,
+					velocity,
+				});
+				if (allowSound) {
 					triggerRaySound(rayHit, point);
 				}
+				resetNodeSoundTrigger();
 			} else {
 				targetRayElasticProgressMV.set(0);
+				updateInteractionTarget({ point, velocity });
 				resetRaySoundTrigger();
+				resetNodeSoundTrigger();
 			}
 		}
 		setHoveredNodeId(hit?.node.id ?? null);
@@ -641,48 +884,59 @@ export function PersonalGraphNeuralCanvas({
 		params,
 		rayOriginY,
 		reduceMotion,
+		resetNodeSoundTrigger,
 		resetRaySoundTrigger,
 		targetRayElasticProgressMV,
 		targetRayElasticXMV,
 		targetRayElasticYMV,
+		triggerNodeSound,
 		triggerRaySound,
+		updateInteractionTarget,
 		viewport,
 	]);
 
 	const handlePointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
 		const point = getPointerPoint(event);
-		prepareRaySound();
+		prepareGraphSound();
+		pointerVelocityRef.current = {
+			point,
+			time: performance.now(),
+			velocity: { normalized: 0, pxPerSecond: 0 },
+		};
 		dragStartRef.current = point;
 		lastPointerRef.current = point;
 		isPanningRef.current = true;
 		setIsPanning(true);
 		event.currentTarget.setPointerCapture(event.pointerId);
-	}, [prepareRaySound]);
+	}, [prepareGraphSound]);
 
 	const handlePointerMove = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
 		const point = getPointerPoint(event);
+		const velocity = getPointerActivity(point);
 		if (isPanningRef.current && lastPointerRef.current) {
 			const delta = {
 				x: point.x - lastPointerRef.current.x,
 				y: point.y - lastPointerRef.current.y,
 			};
 			cameraRef.current = panNeuralCamera(cameraRef.current, delta);
+			updateInteractionTarget({ point, velocity });
 			requestRenderRef.current();
 		} else {
-			updateHover(point);
+			updateHover(point, { velocity });
 		}
 		lastPointerRef.current = point;
-	}, [updateHover]);
+	}, [getPointerActivity, updateHover, updateInteractionTarget]);
 
 	const handlePointerUp = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
 		const point = getPointerPoint(event);
+		const velocity = getPointerActivity(point);
 		const start = dragStartRef.current;
 		const dragged = start ? isMeaningfulDrag(start, point) : false;
 		isPanningRef.current = false;
 		setIsPanning(false);
 		dragStartRef.current = null;
 		lastPointerRef.current = null;
-		updateHover(point, { allowRaySound: !dragged });
+		updateHover(point, { allowSound: !dragged, velocity });
 
 		if (!dragged) {
 			const layout = layoutRef.current;
@@ -701,7 +955,7 @@ export function PersonalGraphNeuralCanvas({
 				onClearSelection();
 			}
 		}
-	}, [onClearSelection, onSelectNode, params, updateHover, viewport]);
+	}, [getPointerActivity, onClearSelection, onSelectNode, params, updateHover, viewport]);
 
 	const handleWheel = useCallback((event: WheelEvent) => {
 		event.preventDefault();
@@ -745,7 +999,9 @@ export function PersonalGraphNeuralCanvas({
 						hoveredNodeIdRef.current = null;
 						setHoveredNodeId(null);
 						targetRayElasticProgressMV.set(0);
+						resetInteractionTarget();
 						resetRaySoundTrigger();
+						resetNodeSoundTrigger();
 						requestRenderRef.current();
 					}
 				}}

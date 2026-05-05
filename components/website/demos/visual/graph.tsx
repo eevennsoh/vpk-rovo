@@ -10,6 +10,11 @@ import {
 	getNeuralGraphColorTokenOption,
 } from "@/components/arts/personal-graph/lib/neural-graph/colors";
 import {
+	DEFAULT_NEURAL_GRAPH_INTERACTION_SETTINGS,
+	clampNeuralGraphInteractionSettings,
+	type NeuralGraphInteractionSettings,
+} from "@/components/arts/personal-graph/lib/neural-graph/interaction-dynamics";
+import {
 	DEFAULT_NEURAL_GRAPH_PARAMS,
 	NEURAL_GRAPH_PARAM_SECTIONS,
 	clampNeuralGraphParams,
@@ -51,6 +56,7 @@ interface GraphProps extends Omit<ComponentProps<"div">, "children"> {
 	isLoading?: boolean;
 	onParamsChange?: (params: NeuralGraphParams) => void;
 	onSelectedNodeIdChange?: (nodeId: string | null) => void;
+	interactionSettings?: Partial<NeuralGraphInteractionSettings>;
 	params?: NeuralGraphParams;
 	rayOriginBottomOffset?: number;
 	raySoundSettings?: Partial<NeuralRaySoundSettings>;
@@ -509,10 +515,13 @@ function buildVisualGraphExplorer(): VaultExplorer {
 export const VISUAL_GRAPH_EXPLORER = buildVisualGraphExplorer();
 
 interface GraphControlsProps {
+	defaultInteractionSettings: NeuralGraphInteractionSettings;
 	defaultParams: NeuralGraphParams;
 	defaultRaySoundSettings: NeuralRaySoundSettings;
 	onChange: (params: NeuralGraphParams) => void;
+	onInteractionChange: (settings: NeuralGraphInteractionSettings) => void;
 	onRaySoundChange: (settings: NeuralRaySoundSettings) => void;
+	interactionSettings: NeuralGraphInteractionSettings;
 	params: NeuralGraphParams;
 	raySoundSettings: NeuralRaySoundSettings;
 }
@@ -625,15 +634,22 @@ function GraphColorTokenControl({
 }
 
 function GraphControls({
+	defaultInteractionSettings,
 	defaultParams,
 	defaultRaySoundSettings,
 	onChange,
+	onInteractionChange,
 	onRaySoundChange,
+	interactionSettings,
 	params,
 	raySoundSettings,
 }: Readonly<GraphControlsProps>) {
 	function updateParam(key: keyof NeuralGraphParams, value: number | string | boolean) {
 		onChange(clampNeuralGraphParams({ ...params, [key]: value }));
+	}
+
+	function updateInteractionSettings(nextSettings: Partial<NeuralGraphInteractionSettings>) {
+		onInteractionChange(clampNeuralGraphInteractionSettings({ ...interactionSettings, ...nextSettings }));
 	}
 
 	function updateRaySoundSettings(nextSettings: Partial<NeuralRaySoundSettings>) {
@@ -645,6 +661,13 @@ function GraphControls({
 			title="Graph controls"
 			values={{
 				...params,
+				graphInteractionEnabled: interactionSettings.enabled,
+				graphInteractionFlowBoost: interactionSettings.flowBoost,
+				graphInteractionIntensity: interactionSettings.intensity,
+				graphInteractionNodeSoundCooldownMs: interactionSettings.nodeSoundCooldownMs,
+				graphInteractionNodeSoundEnabled: interactionSettings.nodeSoundEnabled,
+				graphInteractionNodeSoundVolume: interactionSettings.nodeSoundVolume,
+				graphInteractionRayEmphasis: interactionSettings.rayEmphasis,
 				raySoundCooldownMs: raySoundSettings.cooldownMs,
 				raySoundEnabled: raySoundSettings.enabled,
 				raySoundPitchSpread: raySoundSettings.pitchSpread,
@@ -707,6 +730,79 @@ function GraphControls({
 					})}
 				</GUI.Section>
 			))}
+
+			<GUI.Section borderTop title="Interaction">
+				<GUI.Toggle
+					checked={interactionSettings.enabled}
+					id="graph-interaction-enabled"
+					label="Interaction enabled"
+					onChange={(nextEnabled) => updateInteractionSettings({ enabled: nextEnabled })}
+					valueKeys="graphInteractionEnabled"
+				/>
+				<GUI.Control
+					defaultValue={defaultInteractionSettings.intensity}
+					id="graph-interaction-intensity"
+					label="Interaction intensity"
+					max={1.5}
+					min={0}
+					onChange={(nextIntensity) => updateInteractionSettings({ intensity: nextIntensity })}
+					step={0.01}
+					value={interactionSettings.intensity}
+					valueKeys="graphInteractionIntensity"
+				/>
+				<GUI.Control
+					defaultValue={defaultInteractionSettings.flowBoost}
+					id="graph-interaction-flow-boost"
+					label="Flow boost"
+					max={1.5}
+					min={0}
+					onChange={(nextFlowBoost) => updateInteractionSettings({ flowBoost: nextFlowBoost })}
+					step={0.01}
+					value={interactionSettings.flowBoost}
+					valueKeys="graphInteractionFlowBoost"
+				/>
+				<GUI.Control
+					defaultValue={defaultInteractionSettings.rayEmphasis}
+					id="graph-interaction-ray-emphasis"
+					label="Ray emphasis"
+					max={1.5}
+					min={0}
+					onChange={(nextRayEmphasis) => updateInteractionSettings({ rayEmphasis: nextRayEmphasis })}
+					step={0.01}
+					value={interactionSettings.rayEmphasis}
+					valueKeys="graphInteractionRayEmphasis"
+				/>
+				<GUI.Toggle
+					checked={interactionSettings.nodeSoundEnabled}
+					id="graph-node-sound-enabled"
+					label="Node sound enabled"
+					onChange={(nextEnabled) => updateInteractionSettings({ nodeSoundEnabled: nextEnabled })}
+					valueKeys="graphInteractionNodeSoundEnabled"
+				/>
+				<GUI.Control
+					defaultValue={defaultInteractionSettings.nodeSoundVolume}
+					id="graph-node-sound-volume"
+					label="Node volume"
+					max={1}
+					min={0}
+					onChange={(nextVolume) => updateInteractionSettings({ nodeSoundVolume: nextVolume })}
+					step={0.01}
+					value={interactionSettings.nodeSoundVolume}
+					valueKeys="graphInteractionNodeSoundVolume"
+				/>
+				<GUI.Control
+					defaultValue={defaultInteractionSettings.nodeSoundCooldownMs}
+					id="graph-node-sound-cooldown"
+					label="Node cooldown"
+					max={240}
+					min={0}
+					onChange={(nextCooldown) => updateInteractionSettings({ nodeSoundCooldownMs: nextCooldown })}
+					step={5}
+					unit="ms"
+					value={interactionSettings.nodeSoundCooldownMs}
+					valueKeys="graphInteractionNodeSoundCooldownMs"
+				/>
+			</GUI.Section>
 
 			<GUI.Section borderTop title="Ray sound">
 				<GUI.Toggle
@@ -830,6 +926,7 @@ export default function Graph({
 	initialParams = ROVO_GRAPH_DEFAULT_PARAMS,
 	initialSelectedNodeId = null,
 	isLoading = false,
+	interactionSettings: explicitInteractionSettings,
 	onParamsChange,
 	onSelectedNodeIdChange,
 	params: controlledParams,
@@ -848,6 +945,7 @@ export default function Graph({
 	const defaultParams = useMemo(() => clampNeuralGraphParams(initialParamsRef.current), []);
 	const [uncontrolledParams, setUncontrolledParams] = useState<NeuralGraphParams>(() => defaultParams);
 	const [uncontrolledSelectedNodeId, setUncontrolledSelectedNodeId] = useState<string | null>(initialSelectedNodeIdRef.current);
+	const [demoInteractionSettings, setDemoInteractionSettings] = useState<NeuralGraphInteractionSettings>(() => DEFAULT_NEURAL_GRAPH_INTERACTION_SETTINGS);
 	const [demoRaySoundSettings, setDemoRaySoundSettings] = useState<NeuralRaySoundSettings>(() => DEFAULT_NEURAL_RAY_SOUND_SETTINGS);
 	const isFillVariant = variant === "fill";
 	const hasTransparentBackground = background === "transparent";
@@ -862,7 +960,12 @@ export default function Graph({
 		() => explicitRaySoundSettings ? clampNeuralRaySoundSettings(explicitRaySoundSettings) : undefined,
 		[explicitRaySoundSettings],
 	);
+	const controlledInteractionSettings = useMemo(
+		() => explicitInteractionSettings ? clampNeuralGraphInteractionSettings(explicitInteractionSettings) : undefined,
+		[explicitInteractionSettings],
+	);
 	const canvasRaySoundSettings = showControls ? demoRaySoundSettings : controlledRaySoundSettings;
+	const canvasInteractionSettings = showControls ? demoInteractionSettings : controlledInteractionSettings;
 	const selectedNodeId = isSelectionControlled ? controlledSelectedNodeId ?? null : uncontrolledSelectedNodeId;
 	const selectedNode = useMemo(() => getSelectedGraphNode(explorer, selectedNodeId), [explorer, selectedNodeId]);
 
@@ -918,6 +1021,7 @@ export default function Graph({
 							background={background}
 							explorer={explorer}
 							isLoading={isLoading}
+							interactionSettings={canvasInteractionSettings}
 							onClearSelection={handleClearSelection}
 							onSelectNode={handleSelectNode}
 							params={params}
@@ -942,9 +1046,12 @@ export default function Graph({
 			{showControls ? (
 				<GraphControls
 					defaultParams={defaultParams}
+					defaultInteractionSettings={DEFAULT_NEURAL_GRAPH_INTERACTION_SETTINGS}
 					defaultRaySoundSettings={DEFAULT_NEURAL_RAY_SOUND_SETTINGS}
 					onChange={handleParamsChange}
+					onInteractionChange={setDemoInteractionSettings}
 					onRaySoundChange={setDemoRaySoundSettings}
+					interactionSettings={demoInteractionSettings}
 					params={params}
 					raySoundSettings={demoRaySoundSettings}
 				/>

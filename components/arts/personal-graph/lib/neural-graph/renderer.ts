@@ -1,6 +1,7 @@
 import type { VaultNodeKind } from "../personal-graph-types";
 import { getNeuralOrigin, worldToViewport, type NeuralCamera, type NeuralPoint, type NeuralViewport } from "./camera";
 import { getNeuralGraphColorFallback, isNeuralGraphColorValue } from "./colors";
+import type { NeuralGraphInteractionState } from "./interaction-dynamics";
 import { getClosestPointOnOrganicRay, getOrganicRayCurve, type NeuralRayCurve } from "./interaction";
 import type { NeuralGraphLayout, NeuralLayoutEdge, NeuralLayoutNode } from "./layout";
 import type { NeuralGraphParams } from "./params";
@@ -17,8 +18,13 @@ export type NeuralGraphThemeMode = "light" | "dark";
 export type NeuralGraphBackgroundMode = "default" | "transparent";
 
 export interface NeuralRayElasticState {
+	distance?: number;
+	hitProgress?: number;
+	intensity?: number;
+	nodeId?: string | null;
 	point: NeuralPoint;
 	progress: number;
+	velocity?: number;
 }
 
 export interface NeuralGraphRenderOptions {
@@ -28,6 +34,7 @@ export interface NeuralGraphRenderOptions {
 	focusProgress: number;
 	hoveredNodeId: string | null;
 	hoverProgressByNode?: ReadonlyMap<string, number>;
+	interaction?: NeuralGraphInteractionState | null;
 	params: NeuralGraphParams;
 	rayElastic?: NeuralRayElasticState | null;
 	rayOriginY?: number;
@@ -152,6 +159,12 @@ function clampAlpha(value: number) {
 	return Math.min(1, Math.max(0, value));
 }
 
+function getInteractionIntensity(options: NeuralGraphRenderOptions) {
+	const interaction = options.interaction;
+	if (!interaction) return 0;
+	return Math.min(1.5, Math.max(0, interaction.intensity)) * Math.max(0, interaction.flowBoost);
+}
+
 function hashStringToUnit(value: string) {
 	let hash = 2166136261;
 	for (let index = 0; index < value.length; index += 1) {
@@ -217,7 +230,8 @@ function getElasticRayCurve(
 	if (closest.distance > radius) return curve;
 
 	const falloff = smoothProgress(1 - closest.distance / radius);
-	const force = strength * falloff * elastic.progress;
+	const velocityBoost = 1 + Math.max(0, elastic.velocity ?? 0) * 0.68;
+	const force = strength * 1.34 * falloff * elastic.progress * velocityBoost;
 	if (force <= 0.001) return curve;
 
 	const dx = elastic.point.x - closest.point.x;
@@ -227,18 +241,25 @@ function getElasticRayCurve(
 	const direction = distance > 0.001
 		? { x: dx / distance, y: dy / distance }
 		: fallbackNormal;
-	const sourceWeight = Math.max(0, 1 - Math.abs(closest.progress - 0.35) / 0.55);
-	const targetWeight = Math.max(0, 1 - Math.abs(closest.progress - 0.65) / 0.55);
+	const anchorProgress = Math.min(1, Math.max(0, elastic.hitProgress ?? closest.progress));
+	const sourceAnchor = Math.max(0.18, anchorProgress - 0.18);
+	const targetAnchor = Math.min(0.9, anchorProgress + 0.18);
+	const sourceWeight = Math.max(0, 1 - Math.abs(closest.progress - sourceAnchor) / 0.6);
+	const targetWeight = Math.max(0, 1 - Math.abs(closest.progress - targetAnchor) / 0.6);
+	const ripple = Math.sin((closest.progress - anchorProgress) * Math.PI * 3.2)
+		* force
+		* 0.26
+		* Math.max(0, elastic.velocity ?? 0);
 
 	return {
 		...curve,
 		sourceControl: {
-			x: curve.sourceControl.x + direction.x * force * sourceWeight,
-			y: curve.sourceControl.y + direction.y * force * sourceWeight,
+			x: curve.sourceControl.x + direction.x * force * sourceWeight + fallbackNormal.x * ripple * sourceWeight,
+			y: curve.sourceControl.y + direction.y * force * sourceWeight + fallbackNormal.y * ripple * sourceWeight,
 		},
 		targetControl: {
-			x: curve.targetControl.x + direction.x * force * targetWeight,
-			y: curve.targetControl.y + direction.y * force * targetWeight,
+			x: curve.targetControl.x + direction.x * force * targetWeight - fallbackNormal.x * ripple * targetWeight,
+			y: curve.targetControl.y + direction.y * force * targetWeight - fallbackNormal.y * ripple * targetWeight,
 		},
 	};
 }
@@ -306,14 +327,20 @@ function drawRays(
 	if (!options.params.showRays) return;
 	const origin = getRayOrigin(options.viewport, options.params, options.rayOriginY);
 	const focusProgress = getFocusProgress(options);
+	const interactionIntensity = getInteractionIntensity(options);
 	ctx.save();
-	ctx.lineWidth = options.params.rayWidth;
+	ctx.lineCap = "round";
 	ctx.strokeStyle = getResolvedColor(options.params.rayColor, options);
 	for (const node of layout.nodes) {
 		const point = worldToViewport(node, options.camera, options.viewport, options.params);
 		const isRelated = selectedRelationships.nodeIds.has(node.id);
 		const focusAlpha = focusProgress > 0 ? (isRelated ? lerp(1, 0.72, focusProgress) : lerp(1, 0.05, focusProgress)) : 1;
-		ctx.globalAlpha = clampAlpha((options.params.rayOpacity + node.depthScale * 0.03) * focusAlpha);
+		const activeRayProgress = options.rayElastic?.nodeId === node.id
+			? Math.min(1.5, Math.max(0, options.rayElastic.progress))
+			: 0;
+		const emphasis = activeRayProgress * Math.max(0, options.interaction?.rayEmphasis ?? 1);
+		ctx.lineWidth = options.params.rayWidth * (1 + emphasis * 1.65);
+		ctx.globalAlpha = clampAlpha((options.params.rayOpacity + node.depthScale * 0.03 + interactionIntensity * 0.025) * focusAlpha + emphasis * 0.32);
 		drawOrganicRayPath(ctx, getElasticRayCurve(getOrganicRayCurve(origin, point), options));
 		ctx.stroke();
 	}
@@ -378,7 +405,8 @@ function getSignalStreakProgress(edge: NeuralLayoutEdge, options: NeuralGraphRen
 	const cycleSeed = hashStringToUnit(`${edge.id}:cycle`);
 	const phaseSeed = hashStringToUnit(`${edge.id}:phase`);
 	const cycleDuration = 2.25 + cycleSeed * 3.1;
-	const cycleProgress = ((animationTime * Math.max(0, options.params.signalFrequency) + phaseSeed * cycleDuration) % cycleDuration) / cycleDuration;
+	const boostedFrequency = Math.max(0, options.params.signalFrequency) * (1 + getInteractionIntensity(options) * 1.15);
+	const cycleProgress = ((animationTime * boostedFrequency + phaseSeed * cycleDuration) % cycleDuration) / cycleDuration;
 	if (cycleProgress > SIGNAL_ACTIVE_RATIO) return null;
 
 	const progress = cycleProgress / SIGNAL_ACTIVE_RATIO;

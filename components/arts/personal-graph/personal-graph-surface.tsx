@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { usePersonalGraphIntro } from "./hooks/use-personal-graph-intro";
 import { useVaultExplorer } from "./hooks/use-vault-explorer";
 import { useVaultSettings } from "./hooks/use-vault-settings";
+import { DEFAULT_NEURAL_GRAPH_INTERACTION_SETTINGS } from "./lib/neural-graph/interaction-dynamics";
 import { DEFAULT_NEURAL_RAY_SOUND_SETTINGS } from "./lib/neural-graph/ray-sound";
 import {
 	RESPONSIVE_PERSONAL_GRAPH_WIDTHS,
@@ -637,6 +638,7 @@ export function PersonalGraphSurface({
 						className="h-full"
 						explorer={explorer}
 						isLoading={isLoading}
+						interactionSettings={DEFAULT_NEURAL_GRAPH_INTERACTION_SETTINGS}
 						onSelectedNodeIdChange={setSelectedNodeId}
 						params={responsiveGraphParams}
 						rayOriginBottomOffset={PERSONAL_GRAPH_TAIL_BOTTOM_OFFSET_PX}
