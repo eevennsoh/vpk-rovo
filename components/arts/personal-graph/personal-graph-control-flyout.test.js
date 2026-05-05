@@ -41,38 +41,42 @@ test("Personal Graph flyout action buttons reuse the shared glass panel at stabl
 	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /backgroundOpacity: 1,/);
 });
 
-test("Personal Graph flyout arc motion does not blur, fade, or scale glass buttons", () => {
-	assert.match(
-		CONTROL_FLYOUT_SOURCE,
-		/animate=\{\{ offsetDistance: `\$\{distance\}%` \}\}/,
-	);
-	assert.match(CONTROL_FLYOUT_SOURCE, /initial=\{\{ offsetDistance: "0%" \}\}/);
-	assert.match(CONTROL_FLYOUT_SOURCE, /exit=\{\{ offsetDistance: "0%" \}\}/);
+test("Personal Graph flyout arc motion scales the existing glass item", () => {
+	assert.match(CONTROL_FLYOUT_SOURCE, /offsetDistance: `\$\{distance\}%`/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /initial=\{\{ offsetDistance: "0%", scale: ACTION_SCALE_INITIAL \}\}/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /offsetDistance: "0%"/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /const ACTION_SCALE_INITIAL = 0\.34;/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /scale: 1/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /scale: ACTION_SCALE_INITIAL/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /transformOrigin: "center"/);
 	assert.match(CONTROL_FLYOUT_SOURCE, /willChange: "transform"/);
 	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /ACTION_STAGGER_BLUR_FILTER/);
 	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /ACTION_STAGGER_REST_FILTER/);
 	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /filter: /);
-	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /opacity: 1, scale: 1/);
 	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /opacity: 0, scale: 0\.3/);
-	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /scale: 1/);
 	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /scale: 0\.3/);
+	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /className="block origin-center"/);
 });
 
-test("Personal Graph flyout action motion uses direct index staggering", () => {
-	assert.match(CONTROL_FLYOUT_SOURCE, /transition=\{\{ \.\.\.ITEM_TRANSITION, delay: index \* STAGGER_INTERVAL \}\}/);
+test("Personal Graph flyout action motion exits in the same near-to-far order", () => {
+	assert.match(CONTROL_FLYOUT_SOURCE, /function getFlyoutActionEnterDelay\(index: number\): number/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /return index \* STAGGER_INTERVAL;/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /function getFlyoutActionExitDelay\(index: number\): number/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /return getFlyoutActionEnterDelay\(index\);/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /const enterDelay = getFlyoutActionEnterDelay\(index\);/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /const exitDelay = getFlyoutActionExitDelay\(index\);/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /transition: \{ \.\.\.ITEM_TRANSITION, delay: enterDelay \}/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /transition: \{ \.\.\.ITEM_TRANSITION, delay: exitDelay \}/);
 	assert.match(CONTROL_FLYOUT_SOURCE, /transition=\{\{ delay: index \* STAGGER_INTERVAL \+ 0\.1, duration: 0\.15 \}\}/);
 	assert.match(CONTROL_FLYOUT_SOURCE, /const ARC_ACTION_STEP_PERCENT = 12\.6;/);
 	assert.match(CONTROL_FLYOUT_SOURCE, /const distance = \(index \+ 1\) \* ARC_ACTION_STEP_PERCENT;/);
-	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /function getFlyoutActionEnterDelay/);
-	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /function getFlyoutActionExitDelay/);
 	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /actionCount=\{actions\.length\}/);
+	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /actionCount - 1 - index/);
 	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /ARC_TRAVEL_PERCENT/);
-	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /delay: enterDelay/);
-	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /delay: exitDelay/);
 });
 
 test("Personal Graph flyout action buttons stay hidden while stacked at the arc origin", () => {
-	assert.match(CONTROL_FLYOUT_SOURCE, /const ARC_ORIGIN_VISIBILITY_THRESHOLD_PERCENT = 10;/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /const ARC_ORIGIN_VISIBILITY_THRESHOLD_PERCENT = 2;/);
 	assert.match(CONTROL_FLYOUT_SOURCE, /const ARC_EXIT_BEHIND_TRIGGER_THRESHOLD_PERCENT = 40;/);
 	assert.match(CONTROL_FLYOUT_SOURCE, /const ACTION_ACTIVE_Z_INDEX = 40;/);
 	assert.match(CONTROL_FLYOUT_SOURCE, /const ACTION_BEHIND_TRIGGER_Z_INDEX = 0;/);
@@ -97,7 +101,7 @@ test("Personal Graph flyout action buttons reverse fully while sliding behind th
 		/import \{ useCallback, useLayoutEffect, useRef, type ReactNode \} from "react";/,
 	);
 	assert.match(CONTROL_FLYOUT_SOURCE, /const isPresent = useIsPresent\(\);/);
-	assert.match(CONTROL_FLYOUT_SOURCE, /exit=\{\{ offsetDistance: "0%" \}\}/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /offsetDistance: "0%"/);
 	assert.match(CONTROL_FLYOUT_SOURCE, /onUpdate=\{\(latest\) => updateOriginVisibility\(latest\.offsetDistance\)\}/);
 	assert.match(
 		CONTROL_FLYOUT_SOURCE,

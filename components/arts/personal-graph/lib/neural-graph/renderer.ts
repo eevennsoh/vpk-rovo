@@ -1,5 +1,6 @@
 import type { VaultNodeKind } from "../personal-graph-types";
 import { getNeuralOrigin, worldToViewport, type NeuralCamera, type NeuralPoint, type NeuralViewport } from "./camera";
+import { getNeuralGraphColorFallback, isNeuralGraphColorValue } from "./colors";
 import type { NeuralGraphLayout, NeuralLayoutEdge, NeuralLayoutNode } from "./layout";
 import type { NeuralGraphParams } from "./params";
 
@@ -20,6 +21,8 @@ export interface NeuralGraphRenderOptions {
 	focusProgress: number;
 	hoveredNodeId: string | null;
 	params: NeuralGraphParams;
+	rayOriginY?: number;
+	resolveColor?: (color: string) => string;
 	selectedNodeId: string | null;
 	theme: NeuralGraphThemeMode;
 	viewport: NeuralViewport;
@@ -50,8 +53,23 @@ function getEdgeLineWidth(params: NeuralGraphParams) {
 	};
 }
 
-function hexToRgb(hex: string) {
-	const normalized = hex.replace("#", "");
+function getResolvedColor(color: string, options: NeuralGraphRenderOptions) {
+	if (options.resolveColor) return options.resolveColor(color);
+	if (/^rgba?\(/i.test(color.trim())) return color;
+	return getNeuralGraphColorFallback(color);
+}
+
+function colorToRgb(color: string) {
+	const rgbMatch = color.match(/^rgba?\(\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)/i);
+	if (rgbMatch) {
+		return {
+			b: Math.round(Number(rgbMatch[3])),
+			g: Math.round(Number(rgbMatch[2])),
+			r: Math.round(Number(rgbMatch[1])),
+		};
+	}
+
+	const normalized = color.replace("#", "");
 	const value = Number.parseInt(normalized, 16);
 	return {
 		b: value & 255,
@@ -60,30 +78,26 @@ function hexToRgb(hex: string) {
 	};
 }
 
-function colorWithAlpha(hex: string, alpha: number) {
-	const rgb = hexToRgb(hex);
+function colorWithAlpha(color: string, alpha: number) {
+	const rgb = colorToRgb(color);
 	return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
 }
 
-function isHexColor(value: unknown): value is string {
-	return typeof value === "string" && /^#[0-9a-fA-F]{6}$/.test(value);
-}
-
-function getNodeGraphColor(node: NeuralLayoutNode) {
+function getNodeGraphColor(node: NeuralLayoutNode, options: NeuralGraphRenderOptions) {
 	const graphColor = node.node.original.frontmatter.graphColor;
-	return isHexColor(graphColor) ? graphColor : null;
+	return isNeuralGraphColorValue(graphColor) ? getResolvedColor(graphColor, options) : null;
 }
 
-function getKindColor(kind: VaultNodeKind, params: NeuralGraphParams) {
-	const value = params[KIND_COLOR_PARAM_KEY[kind]];
-	return isHexColor(value) ? value : null;
+function getKindColor(kind: VaultNodeKind, options: NeuralGraphRenderOptions) {
+	const value = options.params[KIND_COLOR_PARAM_KEY[kind]];
+	return isNeuralGraphColorValue(value) ? getResolvedColor(value, options) : null;
 }
 
 function getDefaultNodeColor(node: NeuralLayoutNode, options: NeuralGraphRenderOptions) {
 	return (
-		getKindColor(node.node.kind, options.params)
-		?? getNodeGraphColor(node)
-		?? options.params.nodeColor
+		getKindColor(node.node.kind, options)
+		?? getNodeGraphColor(node, options)
+		?? getResolvedColor(options.params.nodeColor, options)
 	);
 }
 
@@ -93,8 +107,8 @@ function getNodeColor(
 	isSelected: boolean,
 	isHovered: boolean,
 ) {
-	if (isSelected) return options.params.nodeSelectedColor;
-	if (isHovered) return options.params.nodeHoverColor;
+	if (isSelected) return getResolvedColor(options.params.nodeSelectedColor, options);
+	if (isHovered) return getResolvedColor(options.params.nodeHoverColor, options);
 	return getDefaultNodeColor(node, options);
 }
 
@@ -194,6 +208,7 @@ function drawBackground(
 	viewport: NeuralViewport,
 	params: NeuralGraphParams,
 	theme: NeuralGraphThemeMode,
+	resolveColor?: NeuralGraphRenderOptions["resolveColor"],
 ) {
 	const palette = PALETTES[theme];
 	const background = ctx.createLinearGradient(0, 0, 0, viewport.height);
@@ -205,17 +220,17 @@ function drawBackground(
 
 	const origin = getNeuralOrigin(viewport, params);
 	const glow = ctx.createRadialGradient(origin.x, origin.y, 0, origin.x, origin.y, Math.max(viewport.width, viewport.height));
-	glow.addColorStop(0, colorWithAlpha(params.nodeColor, theme === "dark" ? 0.24 : 0.18));
+	glow.addColorStop(0, colorWithAlpha(resolveColor?.(params.nodeColor) ?? params.nodeColor, theme === "dark" ? 0.24 : 0.18));
 	glow.addColorStop(0.36, theme === "dark" ? "rgba(80, 180, 255, 0.18)" : "rgba(128, 215, 255, 0.34)");
 	glow.addColorStop(1, "rgba(0, 0, 0, 0)");
 	ctx.fillStyle = glow;
 	ctx.fillRect(0, 0, viewport.width, viewport.height);
 }
 
-function getRayOrigin(viewport: NeuralViewport, params: NeuralGraphParams) {
+function getRayOrigin(viewport: NeuralViewport, params: NeuralGraphParams, rayOriginY?: number) {
 	return {
 		...getNeuralOrigin(viewport, params),
-		y: viewport.height * params.rayOriginY,
+		y: rayOriginY ?? viewport.height * params.rayOriginY,
 	};
 }
 
@@ -226,11 +241,11 @@ function drawRays(
 	selectedRelationships: SelectedRelationshipIds,
 ) {
 	if (!options.params.showRays) return;
-	const origin = getRayOrigin(options.viewport, options.params);
+	const origin = getRayOrigin(options.viewport, options.params, options.rayOriginY);
 	const focusProgress = getFocusProgress(options);
 	ctx.save();
 	ctx.lineWidth = options.params.rayWidth;
-	ctx.strokeStyle = options.params.rayColor;
+	ctx.strokeStyle = getResolvedColor(options.params.rayColor, options);
 	for (const node of layout.nodes) {
 		const point = worldToViewport(node, options.camera, options.viewport, options.params);
 		const isRelated = selectedRelationships.nodeIds.has(node.id);
@@ -249,16 +264,16 @@ function isActiveEdge(sourceId: string, targetId: string, selectedNodeId: string
 
 function getEdgeColor(edge: NeuralLayoutEdge, options: NeuralGraphRenderOptions, selectedRelationships: SelectedRelationshipIds) {
 	if (options.selectedNodeId && selectedRelationships.edgeIds.has(edge.id)) {
-		return options.params.edgeSelectedColor;
+		return getResolvedColor(options.params.edgeSelectedColor, options);
 	}
 	if (
 		!options.selectedNodeId
 		&& options.hoveredNodeId
 		&& isActiveEdge(edge.source.id, edge.target.id, null, options.hoveredNodeId)
 	) {
-		return options.params.edgeHoverColor;
+		return getResolvedColor(options.params.edgeHoverColor, options);
 	}
-	return options.params.edgeColor;
+	return getResolvedColor(options.params.edgeColor, options);
 }
 
 function drawEdges(
@@ -297,16 +312,45 @@ function drawNodeShape(
 	ctx: CanvasRenderingContext2D,
 	point: NeuralPoint,
 	radius: number,
-	shape: NeuralGraphParams["nodeShape"],
+	params: NeuralGraphParams,
 ) {
-	if (shape === "square") {
-		ctx.fillRect(point.x - radius, point.y - radius, radius * 2, radius * 2);
+	ctx.beginPath();
+	if (params.nodeShape === "square") {
+		drawSquareNodePath(ctx, point, radius, params.nodeRadius);
+		ctx.fill();
 		return;
 	}
 
-	ctx.beginPath();
 	ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
 	ctx.fill();
+}
+
+function drawSquareNodePath(
+	ctx: CanvasRenderingContext2D,
+	point: NeuralPoint,
+	radius: number,
+	nodeRadius: number,
+) {
+	const diameter = radius * 2;
+	const x = point.x - radius;
+	const y = point.y - radius;
+	const cornerRadius = Math.min(radius, Math.max(0, nodeRadius));
+
+	if (cornerRadius === 0) {
+		ctx.rect(x, y, diameter, diameter);
+		return;
+	}
+
+	ctx.moveTo(x + cornerRadius, y);
+	ctx.lineTo(x + diameter - cornerRadius, y);
+	ctx.quadraticCurveTo(x + diameter, y, x + diameter, y + cornerRadius);
+	ctx.lineTo(x + diameter, y + diameter - cornerRadius);
+	ctx.quadraticCurveTo(x + diameter, y + diameter, x + diameter - cornerRadius, y + diameter);
+	ctx.lineTo(x + cornerRadius, y + diameter);
+	ctx.quadraticCurveTo(x, y + diameter, x, y + diameter - cornerRadius);
+	ctx.lineTo(x, y + cornerRadius);
+	ctx.quadraticCurveTo(x, y, x + cornerRadius, y);
+	ctx.closePath();
 }
 
 function drawNodes(
@@ -371,13 +415,13 @@ function drawNodes(
 			ctx.arc(point.x, point.y, radius * glowSize, 0, Math.PI * 2);
 			ctx.fill();
 		}
-		ctx.fillStyle = node.node.missing || node.node.dangling ? colorWithAlpha(nodeColor, 0.5) : nodeColor;
-		drawNodeShape(ctx, point, radius, options.params.nodeShape);
+		ctx.fillStyle = nodeColor;
+		drawNodeShape(ctx, point, radius, options.params);
 		ctx.lineWidth = isSelected ? lerp(1.8, 2.6, focusProgress) : isRelated ? lerp(1, 1.35, focusProgress) : 1;
 		ctx.strokeStyle = isSelected ? "rgba(255, 255, 255, 0.92)" : colorWithAlpha(nodeColor, isRelated ? lerp(0.42, 0.74, focusProgress) : 0.42);
 		ctx.beginPath();
 		if (options.params.nodeShape === "square") {
-			ctx.rect(point.x - radius, point.y - radius, radius * 2, radius * 2);
+			drawSquareNodePath(ctx, point, radius, options.params.nodeRadius);
 		} else {
 			ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
 		}
@@ -424,7 +468,7 @@ export function drawNeuralGraph(
 	if (options.background === "transparent") {
 		ctx.clearRect(0, 0, options.viewport.width, options.viewport.height);
 	} else {
-		drawBackground(ctx, options.viewport, options.params, options.theme);
+		drawBackground(ctx, options.viewport, options.params, options.theme, options.resolveColor);
 	}
 	drawRays(ctx, layout, options, selectedRelationships);
 	drawEdges(ctx, layout, options, selectedRelationships);

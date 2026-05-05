@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useMotionValue, useReducedMotion, useSpring } from "motion/react";
 import { useTheme } from "@/components/utils/theme-wrapper";
 import { cn } from "@/lib/utils";
@@ -16,6 +16,7 @@ import {
 	type NeuralViewport,
 } from "./lib/neural-graph/camera";
 import { hitTestNeuralNode, isMeaningfulDrag } from "./lib/neural-graph/interaction";
+import { resolveNeuralGraphCssColorValue } from "./lib/neural-graph/colors";
 import { computeNeuralGraphLayout, type NeuralGraphLayout, type NeuralLayoutNode } from "./lib/neural-graph/layout";
 import { shouldAnimateNeuralGraph, type NeuralGraphParams } from "./lib/neural-graph/params";
 import { createNeuralGraphStore, getSelectedNeighborhood, type NeuralGraphStore } from "./lib/neural-graph/store";
@@ -29,6 +30,7 @@ interface PersonalGraphNeuralCanvasProps {
 	onClearSelection: () => void;
 	onSelectNode: (nodeId: string) => void;
 	params: NeuralGraphParams;
+	rayOriginBottomOffset?: number;
 	selectedNodeId: string | null;
 	showSelectionOverlay?: boolean;
 	themeMode?: NeuralGraphThemeMode;
@@ -47,6 +49,60 @@ const ZOOM_SPRING_CONFIG = { stiffness: 220, damping: 28, mass: 0.5, restDelta: 
 const ZOOM_SPRING_INSTANT = { stiffness: 4000, damping: 200, mass: 0.05, restDelta: 0.0005 } as const;
 const FOCUS_SPRING_CONFIG = { stiffness: 160, damping: 24, mass: 0.7, restDelta: 0.0005 } as const;
 const FOCUS_SPRING_INSTANT = { stiffness: 4000, damping: 220, mass: 0.05, restDelta: 0.0005 } as const;
+
+function formatSignedPixels(value: number): string {
+	if (value < 0) return `- ${Math.abs(value)}px`;
+	return `+ ${value}px`;
+}
+
+function getOriginMarkerInset(params: NeuralGraphParams, viewport?: NeuralViewport) {
+	const inset = params.originMarkerSize / 2;
+	return viewport ? Math.min(inset, viewport.height / 2) : inset;
+}
+
+function getOriginMarkerVisualStyle(params: NeuralGraphParams): CSSProperties {
+	return {
+		backgroundColor: params.originMarkerColor,
+		borderRadius: params.nodeShape === "square" ? params.nodeRadius : 9999,
+		height: params.originMarkerSize,
+		width: params.originMarkerSize,
+	};
+}
+
+function getOriginMarkerStyle(params: NeuralGraphParams): CSSProperties {
+	const markerInset = getOriginMarkerInset(params);
+	return {
+		...getOriginMarkerVisualStyle(params),
+		left: `calc(50% ${formatSignedPixels(params.originOffset)})`,
+		top: `clamp(${markerInset}px, ${params.rayOriginY * 100}%, calc(100% - ${markerInset}px))`,
+	};
+}
+
+function getRayOriginY({
+	params,
+	rayOriginBottomOffset,
+	viewport,
+}: {
+	params: NeuralGraphParams;
+	rayOriginBottomOffset?: number;
+	viewport: NeuralViewport;
+}) {
+	if (typeof rayOriginBottomOffset !== "number") return viewport.height * params.rayOriginY;
+	const markerInset = getOriginMarkerInset(params, viewport);
+	return Math.min(
+		viewport.height - markerInset,
+		Math.max(markerInset, viewport.height - rayOriginBottomOffset),
+	);
+}
+
+function getOriginMarkerStyleForViewport(params: NeuralGraphParams, viewport: NeuralViewport, rayOriginBottomOffset?: number): CSSProperties {
+	if (typeof rayOriginBottomOffset !== "number") return getOriginMarkerStyle(params);
+	return {
+		...getOriginMarkerVisualStyle(params),
+		left: `calc(50% ${formatSignedPixels(params.originOffset)})`,
+		top: getRayOriginY({ params, rayOriginBottomOffset, viewport }),
+	};
+}
 
 function getPointerPoint(event: React.PointerEvent<HTMLDivElement>): NeuralPoint {
 	const rect = event.currentTarget.getBoundingClientRect();
@@ -145,6 +201,7 @@ export function PersonalGraphNeuralCanvas({
 	onClearSelection,
 	onSelectNode,
 	params,
+	rayOriginBottomOffset,
 	selectedNodeId,
 	showSelectionOverlay = true,
 	themeMode,
@@ -174,6 +231,10 @@ export function PersonalGraphNeuralCanvas({
 	const [viewport, setViewport] = useState<NeuralViewport>(EMPTY_VIEWPORT);
 	const store = useMemo(() => createNeuralGraphStore(explorer), [explorer]);
 	const hasGraph = store.nodes.length > 0;
+	const rayOriginY = getRayOriginY({ params, rayOriginBottomOffset, viewport });
+	const resolveGraphColor = useCallback((color: string) => {
+		return resolveNeuralGraphCssColorValue(color, containerRef.current);
+	}, []);
 
 	useEffect(() => {
 		hoveredNodeIdRef.current = hoveredNodeId;
@@ -231,6 +292,8 @@ export function PersonalGraphNeuralCanvas({
 				focusProgress: focusProgressRef.current,
 				hoveredNodeId: hoveredNodeIdRef.current,
 				params,
+				rayOriginY,
+				resolveColor: resolveGraphColor,
 				selectedNodeId,
 				theme: renderTheme,
 				viewport,
@@ -274,7 +337,7 @@ export function PersonalGraphNeuralCanvas({
 			window.cancelAnimationFrame(animationFrame);
 			window.cancelAnimationFrame(staticFrame);
 		};
-	}, [background, params, reduceMotion, renderTheme, selectedNodeId, store, viewport]);
+	}, [background, params, rayOriginY, reduceMotion, renderTheme, resolveGraphColor, selectedNodeId, store, viewport]);
 
 	useEffect(() => {
 		targetFocusMV.set(selectedNodeId ? 1 : 0);
@@ -460,6 +523,14 @@ export function PersonalGraphNeuralCanvas({
 			>
 				<canvas aria-hidden="true" className="block h-full w-full" ref={canvasRef} />
 			</div>
+			{params.showRays && params.showOriginMarker ? (
+				<div
+					aria-hidden="true"
+					className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-1/2 shadow-lg"
+					data-neural-graph-origin-node="true"
+					style={getOriginMarkerStyleForViewport(params, viewport, rayOriginBottomOffset)}
+				/>
+			) : null}
 			{showSelectionOverlay ? (
 				<SelectedNodeOverlay onSelectNode={onSelectNode} overlay={selectedOverlay} />
 			) : null}

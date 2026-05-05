@@ -105,7 +105,7 @@ function createInitialNode(
 	const flow = waveNoise(node, params, time, reduceMotion);
 
 	return {
-		alpha: node.missing || node.dangling ? 0.64 : 1,
+		alpha: 1,
 		baseSize: Math.max(3, params.nodeSize + Math.sqrt(Math.max(1, node.degree)) * 0.85),
 		depthScale,
 		id: node.id,

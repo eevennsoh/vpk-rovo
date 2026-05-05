@@ -3,11 +3,17 @@
 import { useCallback, useMemo, useRef, useState, type ComponentProps, type CSSProperties } from "react";
 import ChevronRightIcon from "@atlaskit/icon/core/chevron-right";
 import CrossIcon from "@atlaskit/icon/core/cross";
+import UndoIcon from "@atlaskit/icon/core/undo";
 import { PersonalGraphNeuralCanvas } from "@/components/arts/personal-graph/personal-graph-neural-canvas";
+import {
+	NEURAL_GRAPH_COLOR_TOKEN_OPTIONS,
+	getNeuralGraphColorTokenOption,
+} from "@/components/arts/personal-graph/lib/neural-graph/colors";
 import {
 	DEFAULT_NEURAL_GRAPH_PARAMS,
 	NEURAL_GRAPH_PARAM_SECTIONS,
 	clampNeuralGraphParams,
+	type NeuralGraphColorKey,
 	type NeuralGraphParams,
 	type NeuralGraphNodeShape,
 } from "@/components/arts/personal-graph/lib/neural-graph/params";
@@ -19,11 +25,18 @@ import type {
 	VaultNodeKind,
 } from "@/components/arts/personal-graph/lib/personal-graph-types";
 import { Button } from "@/components/ui/button";
-import { GUI } from "@/components/utils/gui";
-import { ROVO_COLOR_SWATCHES } from "@/lib/rovo-colors";
+import { Label } from "@/components/ui/label";
+import {
+	Select,
+	SelectContent,
+	SelectGroup,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+import { GUI, useGUIValueKeys } from "@/components/utils/gui";
 import { token } from "@/lib/tokens";
 import { cn } from "@/lib/utils";
-import { ShaderColorInput } from "./shader-color-controls";
 
 interface GraphProps extends Omit<ComponentProps<"div">, "children"> {
 	background?: "default" | "transparent";
@@ -34,6 +47,7 @@ interface GraphProps extends Omit<ComponentProps<"div">, "children"> {
 	onParamsChange?: (params: NeuralGraphParams) => void;
 	onSelectedNodeIdChange?: (nodeId: string | null) => void;
 	params?: NeuralGraphParams;
+	rayOriginBottomOffset?: number;
 	selectedNodeId?: string | null;
 	showSelectionOverlay?: boolean;
 	showControls?: boolean;
@@ -58,29 +72,29 @@ interface GraphEdgeDefinition {
 }
 
 const ROVO_GRAPH_COLORS = {
-	blue: ROVO_COLOR_SWATCHES[0].hex,
-	orange: ROVO_COLOR_SWATCHES[1].hex,
-	purple: ROVO_COLOR_SWATCHES[2].hex,
-	lime: ROVO_COLOR_SWATCHES[3].hex,
-	neutral: "#44546F",
-	white: "#FFFFFF",
+	blue: "var(--ds-background-accent-blue-bolder)",
+	lime: "var(--ds-chart-lime-bold)",
+	neutral: "var(--ds-text-subtle)",
+	orange: "var(--ds-background-accent-orange-subtle)",
+	purple: "var(--ds-chart-purple-bolder)",
+	surface: "var(--ds-surface)",
 } as const;
 
 export const ROVO_GRAPH_DEFAULT_PARAMS: NeuralGraphParams = clampNeuralGraphParams({
 	...DEFAULT_NEURAL_GRAPH_PARAMS,
 	amplitude: 0.2,
-	colorConcept: "#292A2E",
-	colorEntity: "#292A2E",
-	colorRaw: "#292A2E",
-	colorSource: "#292A2E",
-	colorSynthesis: "#292A2E",
+	colorConcept: ROVO_GRAPH_COLORS.orange,
+	colorEntity: ROVO_GRAPH_COLORS.lime,
+	colorRaw: ROVO_GRAPH_COLORS.neutral,
+	colorSource: ROVO_GRAPH_COLORS.blue,
+	colorSynthesis: ROVO_GRAPH_COLORS.purple,
 	coneAngle: 92,
 	depthZ: 42,
-	edgeColor: "#4B4D51",
-	edgeHoverColor: "#4B4D51",
+	edgeColor: "var(--ds-chart-gray-boldest)",
+	edgeHoverColor: "var(--ds-chart-gray-boldest)",
 	edgeOpacity: 0.2,
 	edgeOpacityActive: 1,
-	edgeSelectedColor: "#4B4D51",
+	edgeSelectedColor: "var(--ds-chart-gray-boldest)",
 	edgeWidth: 2,
 	frequency: 1.2,
 	glowIntensity: 0,
@@ -89,27 +103,31 @@ export const ROVO_GRAPH_DEFAULT_PARAMS: NeuralGraphParams = clampNeuralGraphPara
 	labelMetaSize: 10,
 	labelSize: 13,
 	maxVisibleNodes: 96,
-	nodeColor: "#292A2E",
-	nodeHoverColor: "#FCA700",
+	nodeColor: "var(--ds-text)",
+	nodeHoverColor: "var(--ds-background-accent-orange-subtle)",
 	nodeOpacity: 1,
 	nodeOpacityFocused: 1,
 	nodeOpacityRelated: 1,
-	nodeSelectedColor: "#AF59E1",
+	nodeSelectedColor: "var(--ds-chart-purple-bolder)",
+	nodeRadius: 2,
 	nodeShape: "square",
 	nodeSize: 8,
 	octaves: 3,
+	originMarkerColor: "var(--ds-text)",
+	originMarkerSize: 12,
 	originOffset: 0,
 	originY: 0.8,
 	perspective: 1000,
 	radiusMax: 100,
 	radiusMin: 60,
-	rayColor: "#4B4D51",
+	rayColor: "var(--ds-chart-gray-boldest)",
 	rayOpacity: 0.02,
 	rayOriginY: 1,
 	rayWidth: 2,
 	selectedScale: 1.5,
 	showEdges: true,
 	showLabels: true,
+	showOriginMarker: true,
 	showRays: true,
 	speed: 0.7,
 	spread: 600,
@@ -295,14 +313,14 @@ const GRAPH_KIND_COLORS: Record<VaultNodeKind, string> = {
 };
 
 const GRAPH_STAGE_STYLE = {
-	backgroundColor: ROVO_GRAPH_COLORS.white,
+	backgroundColor: ROVO_GRAPH_COLORS.surface,
 	boxShadow: token("elevation.shadow.raised"),
 } satisfies CSSProperties;
 
 const GRAPH_DETAILS_PANEL_STYLE = {
-	backgroundColor: "rgb(255 255 255 / 0.94)",
+	backgroundColor: "color-mix(in srgb, var(--ds-surface-overlay) 94%, transparent)",
 	boxShadow: token("elevation.shadow.overlay"),
-	color: "#172B4D",
+	color: "var(--ds-text)",
 } satisfies CSSProperties;
 
 function GraphNodeMarker({
@@ -399,7 +417,7 @@ function GraphDetailsPanel({
 								className="flex w-full items-center justify-between gap-3 rounded-[2px] border border-neutral-950/15 px-3 py-2 text-left text-sm text-neutral-950 transition-colors duration-normal ease-out hover:bg-neutral-100"
 								key={relatedNode.id}
 								onClick={() => onSelectNode(relatedNode.id)}
-								style={{ backgroundColor: ROVO_GRAPH_COLORS.white }}
+								style={{ backgroundColor: ROVO_GRAPH_COLORS.surface }}
 								type="button"
 							>
 								<span className="flex min-w-0 items-center gap-2">
@@ -480,6 +498,113 @@ interface GraphControlsProps {
 	params: NeuralGraphParams;
 }
 
+interface GraphColorTokenControlProps {
+	defaultValue: string;
+	description?: string;
+	id: string;
+	label: string;
+	onChange: (nextColor: string) => void;
+	value: string;
+	valueKey: NeuralGraphColorKey;
+}
+
+function getComparableGraphColorValue(value: string): string {
+	return getNeuralGraphColorTokenOption(value)?.value ?? value.trim().toLowerCase();
+}
+
+function GraphColorTokenControl({
+	defaultValue,
+	description,
+	id,
+	label,
+	onChange,
+	value,
+	valueKey,
+}: Readonly<GraphColorTokenControlProps>) {
+	useGUIValueKeys(valueKey);
+	const selectedOption = getNeuralGraphColorTokenOption(value)
+		?? getNeuralGraphColorTokenOption(defaultValue)
+		?? NEURAL_GRAPH_COLOR_TOKEN_OPTIONS[0];
+	const defaultOption = getNeuralGraphColorTokenOption(defaultValue);
+	const isDefault = getComparableGraphColorValue(value) === getComparableGraphColorValue(defaultValue);
+
+	return (
+		<div className="space-y-2">
+			<div className="flex items-center gap-2">
+				<Label htmlFor={`${id}-select`} className="text-xs font-medium text-text">
+					{label}
+				</Label>
+				<div className="ml-auto">
+					<button
+						type="button"
+						aria-label={`Reset ${label}`}
+						disabled={isDefault}
+						onClick={() => onChange(defaultValue)}
+						className="flex size-7 shrink-0 items-center justify-center rounded text-icon-subtle transition-colors hover:bg-bg-neutral hover:text-icon disabled:pointer-events-none disabled:opacity-0"
+					>
+						<UndoIcon label="" size="small" />
+					</button>
+				</div>
+			</div>
+			<Select
+				value={selectedOption.value}
+				onValueChange={(nextValue) => {
+					if (typeof nextValue === "string") {
+						onChange(nextValue);
+					}
+				}}
+			>
+				<SelectTrigger
+					id={`${id}-select`}
+					size="sm"
+					className="w-full min-w-0"
+				>
+					<SelectValue className="min-w-0">
+						<span className="flex min-w-0 items-center gap-2">
+							<span
+								aria-hidden="true"
+								className="size-3 shrink-0 rounded-full border border-border"
+								style={{ backgroundColor: selectedOption.value }}
+							/>
+							<span className="truncate">{selectedOption.label}</span>
+						</span>
+					</SelectValue>
+				</SelectTrigger>
+				<SelectContent align="start" className="min-w-64">
+					<SelectGroup>
+						{NEURAL_GRAPH_COLOR_TOKEN_OPTIONS.map((option) => (
+							<SelectItem key={option.value} value={option.value}>
+								<span
+									aria-hidden="true"
+									className="size-3 shrink-0 rounded-full border border-border"
+									style={{ backgroundColor: option.value }}
+								/>
+								<span className="flex min-w-0 flex-col">
+									<span className="truncate">{option.label}</span>
+									<span className="truncate font-mono text-[11px] text-text-subtlest">
+										{option.token}
+									</span>
+								</span>
+							</SelectItem>
+						))}
+					</SelectGroup>
+				</SelectContent>
+			</Select>
+			<div className="space-y-1">
+				{description ? (
+					<p className="text-[12px] leading-4 text-text-subtlest">
+						{description}
+					</p>
+				) : null}
+				<p className="font-mono text-[11px] leading-4 text-text-subtlest">
+					{selectedOption.token} · {selectedOption.lightHex}
+					{defaultOption && defaultOption.value !== selectedOption.value ? ` · default ${defaultOption.token}` : ""}
+				</p>
+			</div>
+		</div>
+	);
+}
+
 function GraphControls({ defaultParams, onChange, params }: Readonly<GraphControlsProps>) {
 	function updateParam(key: keyof NeuralGraphParams, value: number | string | boolean) {
 		onChange(clampNeuralGraphParams({ ...params, [key]: value }));
@@ -511,13 +636,14 @@ function GraphControls({ defaultParams, onChange, params }: Readonly<GraphContro
 							const value = params[definition.key];
 							const defaultValue = defaultParams[definition.key];
 							return (
-								<ShaderColorInput
+								<GraphColorTokenControl
 									id={`graph-${definition.key}`}
 									key={definition.key}
 									label={definition.label}
 									description={definition.description}
 									value={value}
 									defaultValue={defaultValue}
+									valueKey={definition.key}
 									onChange={(nextColor) => updateParam(definition.key, nextColor)}
 								/>
 							);
@@ -535,6 +661,7 @@ function GraphControls({ defaultParams, onChange, params }: Readonly<GraphContro
 								min={definition.min}
 								onChange={(nextValue) => updateParam(definition.key, nextValue)}
 								step={definition.step}
+								unit={definition.unit}
 								value={value}
 							/>
 						);
@@ -543,52 +670,58 @@ function GraphControls({ defaultParams, onChange, params }: Readonly<GraphContro
 			))}
 
 			<GUI.Section borderTop title="Default node colors">
-				<ShaderColorInput
+				<GraphColorTokenControl
 					id="graph-color-synthesis"
 					label="Synthesis"
 					description="Distilled outputs (graph, knowledge cards, playbooks)"
 					value={params.colorSynthesis}
 					defaultValue={defaultParams.colorSynthesis}
+					valueKey="colorSynthesis"
 					onChange={(nextColor) => updateParam("colorSynthesis", nextColor)}
 				/>
-				<ShaderColorInput
+				<GraphColorTokenControl
 					id="graph-color-concept"
 					label="Concept"
 					description="Ideas and abstractions (chat, search, decisions)"
 					value={params.colorConcept}
 					defaultValue={defaultParams.colorConcept}
+					valueKey="colorConcept"
 					onChange={(nextColor) => updateParam("colorConcept", nextColor)}
 				/>
-				<ShaderColorInput
+				<GraphColorTokenControl
 					id="graph-color-source"
 					label="Source"
 					description="External feeders (Jira, Confluence, signals)"
 					value={params.colorSource}
 					defaultValue={defaultParams.colorSource}
+					valueKey="colorSource"
 					onChange={(nextColor) => updateParam("colorSource", nextColor)}
 				/>
-				<ShaderColorInput
+				<GraphColorTokenControl
 					id="graph-color-entity"
 					label="Entity"
 					description="Owners, goals, and named things"
 					value={params.colorEntity}
 					defaultValue={defaultParams.colorEntity}
+					valueKey="colorEntity"
 					onChange={(nextColor) => updateParam("colorEntity", nextColor)}
 				/>
-				<ShaderColorInput
+				<GraphColorTokenControl
 					id="graph-color-raw"
 					label="Raw"
 					description="Unprocessed material (insights, incidents)"
 					value={params.colorRaw}
 					defaultValue={defaultParams.colorRaw}
+					valueKey="colorRaw"
 					onChange={(nextColor) => updateParam("colorRaw", nextColor)}
 				/>
-				<ShaderColorInput
+				<GraphColorTokenControl
 					id="graph-node-color"
 					label="Fallback"
 					description="Used when a node has no kind color"
 					value={params.nodeColor}
 					defaultValue={defaultParams.nodeColor}
+					valueKey="nodeColor"
 					onChange={(nextColor) => updateParam("nodeColor", nextColor)}
 				/>
 			</GUI.Section>
@@ -616,6 +749,7 @@ export default function Graph({
 	onParamsChange,
 	onSelectedNodeIdChange,
 	params: controlledParams,
+	rayOriginBottomOffset,
 	selectedNodeId: controlledSelectedNodeId,
 	showSelectionOverlay = false,
 	showControls = true,
@@ -695,6 +829,7 @@ export default function Graph({
 							onClearSelection={handleClearSelection}
 							onSelectNode={handleSelectNode}
 							params={params}
+							rayOriginBottomOffset={rayOriginBottomOffset}
 							selectedNodeId={selectedNodeId}
 							showSelectionOverlay={showSelectionOverlay}
 							themeMode={canvasThemeMode}

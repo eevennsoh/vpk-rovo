@@ -16,7 +16,8 @@ export interface PersonalGraphControlFlyoutAction {
 const TRIGGER_TRANSITION: Transition = { type: "spring", stiffness: 500, damping: 30 };
 const ITEM_TRANSITION: Transition = { type: "spring", stiffness: 400, damping: 22 };
 const STAGGER_INTERVAL = 0.05;
-const ARC_ORIGIN_VISIBILITY_THRESHOLD_PERCENT = 10;
+const ACTION_SCALE_INITIAL = 0.34;
+const ARC_ORIGIN_VISIBILITY_THRESHOLD_PERCENT = 2;
 const ARC_EXIT_BEHIND_TRIGGER_THRESHOLD_PERCENT = 40;
 const ACTION_ACTIVE_Z_INDEX = 40;
 const ACTION_BEHIND_TRIGGER_Z_INDEX = 0;
@@ -66,6 +67,14 @@ function getOffsetDistancePercent(offsetDistance: unknown): number {
 	return Number.isFinite(parsedDistance) ? parsedDistance : 0;
 }
 
+function getFlyoutActionEnterDelay(index: number): number {
+	return index * STAGGER_INTERVAL;
+}
+
+function getFlyoutActionExitDelay(index: number): number {
+	return getFlyoutActionEnterDelay(index);
+}
+
 interface PersonalGraphControlFlyoutActionItemProps {
 	children: ReactNode;
 	distance: number;
@@ -81,6 +90,8 @@ function PersonalGraphControlFlyoutActionItem({
 }: Readonly<PersonalGraphControlFlyoutActionItemProps>) {
 	const itemRef = useRef<HTMLDivElement>(null);
 	const isPresent = useIsPresent();
+	const enterDelay = getFlyoutActionEnterDelay(index);
+	const exitDelay = getFlyoutActionExitDelay(index);
 	const updateOriginVisibility = useCallback((offsetDistance: unknown) => {
 		const item = itemRef.current;
 		if (!item) return;
@@ -102,22 +113,30 @@ function PersonalGraphControlFlyoutActionItem({
 
 	return (
 		<motion.div
-			animate={{ offsetDistance: `${distance}%` }}
+			animate={{
+				offsetDistance: `${distance}%`,
+				scale: 1,
+				transition: { ...ITEM_TRANSITION, delay: enterDelay },
+			}}
 			aria-label={label}
 			className="pointer-events-auto absolute"
-			exit={{ offsetDistance: "0%" }}
-			initial={{ offsetDistance: "0%" }}
+			exit={{
+				offsetDistance: "0%",
+				scale: ACTION_SCALE_INITIAL,
+				transition: { ...ITEM_TRANSITION, delay: exitDelay },
+			}}
+			initial={{ offsetDistance: "0%", scale: ACTION_SCALE_INITIAL }}
 			onUpdate={(latest) => updateOriginVisibility(latest.offsetDistance)}
 			ref={itemRef}
 			style={{
 				offsetPath: `path("${ARC_PATH}")`,
 				offsetRotate: "auto 90deg",
 				offsetAnchor: "center center",
+				transformOrigin: "center",
 				visibility: "hidden",
 				willChange: "transform",
 				zIndex: ACTION_ACTIVE_Z_INDEX,
 			}}
-			transition={{ ...ITEM_TRANSITION, delay: index * STAGGER_INTERVAL }}
 		>
 			{children}
 		</motion.div>
