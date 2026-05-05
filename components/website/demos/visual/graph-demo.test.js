@@ -87,6 +87,7 @@ test("Graph visual can be embedded as the live Personal Graph renderer", () => {
 
 	assert.match(GRAPH_SOURCE, /variant\?: "demo" \| "fill"/);
 	assert.match(GRAPH_SOURCE, /params\?: NeuralGraphParams/);
+	assert.match(GRAPH_SOURCE, /interactionSettings\?: Partial<NeuralGraphInteractionSettings>/);
 	assert.match(GRAPH_SOURCE, /raySoundSettings\?: Partial<NeuralRaySoundSettings>/);
 	assert.match(GRAPH_SOURCE, /selectedNodeId\?: string \| null/);
 	assert.match(GRAPH_SOURCE, /onSelectedNodeIdChange\?: \(nodeId: string \| null\) => void/);
@@ -94,6 +95,7 @@ test("Graph visual can be embedded as the live Personal Graph renderer", () => {
 	assert.match(GRAPH_SOURCE, /isLoading=\{isLoading\}/);
 	for (const propName of [
 		"background",
+		"interactionSettings",
 		"params",
 		"onParamsChange",
 		"rayOriginBottomOffset",
@@ -160,26 +162,46 @@ test("Graph renderer exposes hover, ray, edge, and label toggles through params"
 });
 
 test("Graph ray sound controls stay demo-local and outside visual params", () => {
+	assert.match(GRAPH_SOURCE, /DEFAULT_NEURAL_GRAPH_INTERACTION_SETTINGS/);
 	assert.match(GRAPH_SOURCE, /DEFAULT_NEURAL_RAY_SOUND_SETTINGS/);
+	assert.match(GRAPH_SOURCE, /type NeuralGraphInteractionSettings/);
 	assert.match(GRAPH_SOURCE, /type NeuralRaySoundSettings/);
+	assert.match(GRAPH_SOURCE, /title="Interaction"/);
+	assert.match(GRAPH_SOURCE, /label="Interaction enabled"/);
+	assert.match(GRAPH_SOURCE, /label="Interaction intensity"/);
+	assert.match(GRAPH_SOURCE, /label="Flow boost"/);
+	assert.match(GRAPH_SOURCE, /label="Ray emphasis"/);
+	assert.match(GRAPH_SOURCE, /label="Node sound enabled"/);
+	assert.match(GRAPH_SOURCE, /label="Node volume"/);
+	assert.match(GRAPH_SOURCE, /label="Node cooldown"/);
 	assert.match(GRAPH_SOURCE, /title="Ray sound"/);
 	assert.match(GRAPH_SOURCE, /label="Sound enabled"/);
 	assert.match(GRAPH_SOURCE, /label="Volume"/);
 	assert.match(GRAPH_SOURCE, /label="Cooldown"/);
 	assert.match(GRAPH_SOURCE, /label="Pitch spread"/);
+	assert.match(GRAPH_SOURCE, /const canvasInteractionSettings = showControls \? demoInteractionSettings : controlledInteractionSettings;/);
 	assert.match(GRAPH_SOURCE, /const canvasRaySoundSettings = showControls \? demoRaySoundSettings : controlledRaySoundSettings;/);
+	assert.match(GRAPH_SOURCE, /interactionSettings=\{canvasInteractionSettings\}/);
 	assert.match(GRAPH_SOURCE, /raySoundSettings=\{canvasRaySoundSettings\}/);
+	assert.match(NEURAL_CANVAS_SOURCE, /interactionSettings\?: NeuralGraphInteractionSettings/);
 	assert.match(NEURAL_CANVAS_SOURCE, /raySoundSettings\?: NeuralRaySoundSettings/);
+	assert.match(NEURAL_CANVAS_SOURCE, /NEURAL_NODE_HOVER_SOUND_DEFINITION/);
 	assert.match(NEURAL_CANVAS_SOURCE, /NEURAL_RAY_SOUND_DEFINITION/);
+	assert.match(NEURAL_CANVAS_SOURCE, /useSound\(NEURAL_NODE_HOVER_SOUND_DEFINITION/);
 	assert.match(NEURAL_CANVAS_SOURCE, /useSound\(NEURAL_RAY_SOUND_DEFINITION/);
 	assert.match(NEURAL_CANVAS_SOURCE, /ensureReady\(\{ latencyHint: "interactive" \}\)/);
+	assert.match(NEURAL_CANVAS_SOURCE, /shouldTriggerNeuralNodeSound/);
 	assert.match(NEURAL_CANVAS_SOURCE, /shouldTriggerNeuralRaySound/);
 	assert.match(RAY_SOUND_SOURCE, /export interface NeuralRaySoundSettings/);
+	assert.match(RAY_SOUND_SOURCE, /NEURAL_NODE_HOVER_SOUND_DEFINITION/);
+	assert.match(RAY_SOUND_SOURCE, /getNeuralNodeSoundPlayOptions/);
 	assert.match(RAY_SOUND_SOURCE, /getNeuralRaySoundPlayOptions/);
 	assert.match(RAY_SOUND_SOURCE, /rayElasticRadius/);
 	assert.match(RAY_SOUND_SOURCE, /rayElasticStrength/);
 	assert.match(RAY_SOUND_SOURCE, /rayElasticDamping/);
 	assert.match(RAY_SOUND_SOURCE, /rayElasticTension/);
+	assert.doesNotMatch(PARAMS_SOURCE, /InteractionSettings/);
+	assert.doesNotMatch(PARAMS_SOURCE, /nodeSound/);
 	assert.doesNotMatch(PARAMS_SOURCE, /raySound/);
 });
 

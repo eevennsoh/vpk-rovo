@@ -166,6 +166,7 @@ test("Personal Graph control flyout exposes the app theme toggle", () => {
 	);
 	assert.match(SURFACE_SOURCE, /const \{ actualTheme, setTheme, theme \} = useTheme\(\);/);
 	assert.match(SURFACE_SOURCE, /const handleToggleTheme = useCallback/);
+	assert.match(SURFACE_SOURCE, /const themeLabel = theme === "system" \? "System theme" : theme === "dark" \? "Dark theme" : "Light theme";/);
 	assert.match(SURFACE_SOURCE, /key: "theme"/);
 	assert.match(SURFACE_SOURCE, /label: themeLabel/);
 	assert.match(SURFACE_SOURCE, /aria-label=\{themeLabel\}/);
@@ -191,9 +192,9 @@ test("Personal Graph exposes the capture queue inside the control flyout", () =>
 	);
 	assert.match(SURFACE_SOURCE, /const \[isCaptureQueueOpen, setIsCaptureQueueOpen\] = useState\(false\);/);
 	assert.match(SURFACE_SOURCE, /key: "capture"/);
-	assert.match(SURFACE_SOURCE, /label: "Capture queue"/);
+	assert.match(SURFACE_SOURCE, /label: "Add data"/);
 	assert.match(SURFACE_SOURCE, /<Popover open=\{isCaptureQueueOpen\} onOpenChange=\{handleCaptureQueueOpenChange\}>/);
-	assert.match(SURFACE_SOURCE, /aria-label="Capture queue"/);
+	assert.match(SURFACE_SOURCE, /aria-label="Add data"/);
 	assert.match(SURFACE_SOURCE, /<PixelIngestIcon \/>/);
 	assert.match(SURFACE_SOURCE, /<PersonalGraphCaptureQueue onRawAdded=\{handleRefreshAll\} refreshKey=\{refreshKey\} \/>/);
 	assert.doesNotMatch(SURFACE_SOURCE, /bottom-6 left-6 z-20 hidden/);
@@ -310,7 +311,7 @@ test("Personal Graph lets the graph renderer fill the route viewport behind the 
 });
 
 test("Personal Graph uses theme-aware editor-style surrounding chrome", () => {
-	assert.match(SURFACE_SOURCE, /aria-label="Capture queue"/);
+	assert.match(SURFACE_SOURCE, /aria-label="Add data"/);
 	assert.match(SURFACE_SOURCE, /aria-label="Knowledge Graph details"/);
 	assert.doesNotMatch(SURFACE_SOURCE, /PersonalGraphZoomControls/);
 	assert.doesNotMatch(SURFACE_SOURCE, /themeMode="light"/);
@@ -363,14 +364,20 @@ test("Personal Graph keeps the owned canvas renderer accessible", () => {
 	assert.match(SURFACE_SOURCE, /background="transparent"/);
 	assert.match(SURFACE_SOURCE, /params=\{responsiveGraphParams\}/);
 	assert.match(SURFACE_SOURCE, /rayOriginBottomOffset=\{PERSONAL_GRAPH_TAIL_BOTTOM_OFFSET_PX\}/);
+	assert.match(SURFACE_SOURCE, /DEFAULT_NEURAL_GRAPH_INTERACTION_SETTINGS/);
+	assert.match(SURFACE_SOURCE, /interactionSettings=\{DEFAULT_NEURAL_GRAPH_INTERACTION_SETTINGS\}/);
 	assert.match(SURFACE_SOURCE, /DEFAULT_NEURAL_RAY_SOUND_SETTINGS/);
 	assert.match(SURFACE_SOURCE, /raySoundSettings=\{DEFAULT_NEURAL_RAY_SOUND_SETTINGS\}/);
 	assert.match(GRAPH_SOURCE, /rayOriginBottomOffset\?: number;/);
+	assert.match(GRAPH_SOURCE, /interactionSettings\?: Partial<NeuralGraphInteractionSettings>;/);
 	assert.match(GRAPH_SOURCE, /raySoundSettings\?: Partial<NeuralRaySoundSettings>;/);
 	assert.match(GRAPH_SOURCE, /rayOriginBottomOffset=\{rayOriginBottomOffset\}/);
+	assert.match(GRAPH_SOURCE, /const canvasInteractionSettings = showControls \? demoInteractionSettings : controlledInteractionSettings;/);
 	assert.match(GRAPH_SOURCE, /const canvasRaySoundSettings = showControls \? demoRaySoundSettings : controlledRaySoundSettings;/);
+	assert.match(GRAPH_SOURCE, /interactionSettings=\{canvasInteractionSettings\}/);
 	assert.match(GRAPH_SOURCE, /raySoundSettings=\{canvasRaySoundSettings\}/);
 	assert.match(NEURAL_CANVAS_SOURCE, /rayOriginBottomOffset\?: number;/);
+	assert.match(NEURAL_CANVAS_SOURCE, /interactionSettings\?: NeuralGraphInteractionSettings/);
 	assert.match(NEURAL_CANVAS_SOURCE, /raySoundSettings\?: NeuralRaySoundSettings/);
 	assert.match(NEURAL_CANVAS_SOURCE, /function getRayOriginY/);
 	assert.match(NEURAL_CANVAS_SOURCE, /viewport\.height - rayOriginBottomOffset/);
@@ -530,12 +537,14 @@ test("Personal Graph decomposes graphology, ForceAtlas2, and Sigma concepts with
 test("Personal Graph exposes primary graph actions through a curved control flyout", () => {
 	assert.match(SURFACE_SOURCE, /const flyoutActions = useMemo<ReadonlyArray<PersonalGraphControlFlyoutAction>>/);
 	assert.match(SURFACE_SOURCE, /key: "vault"/);
-	assert.match(SURFACE_SOURCE, /aria-label="Choose Personal Graph vault folder"/);
+	assert.match(SURFACE_SOURCE, /label: "Choose data"/);
+	assert.match(SURFACE_SOURCE, /aria-label="Choose data"/);
 	assert.match(SURFACE_SOURCE, /key: "refresh"/);
-	assert.match(SURFACE_SOURCE, /aria-label="Refresh graph"/);
+	assert.match(SURFACE_SOURCE, /label: "Synthesize insights"/);
+	assert.match(SURFACE_SOURCE, /aria-label="Synthesize insights"/);
 	assert.match(SURFACE_SOURCE, /key: "reset-vault"/);
-	assert.match(SURFACE_SOURCE, /label: "Reset vault"/);
-	assert.match(SURFACE_SOURCE, /aria-label="Reset Personal Graph vault selection"/);
+	assert.match(SURFACE_SOURCE, /label: "Refresh data"/);
+	assert.match(SURFACE_SOURCE, /aria-label="Refresh data"/);
 	assert.match(SURFACE_SOURCE, /disabled=\{isVaultResetting\}/);
 	assert.match(SURFACE_SOURCE, /onClick=\{handleResetVault\}/);
 	assert.match(SURFACE_SOURCE, /if \(isVaultReady\) \{/);

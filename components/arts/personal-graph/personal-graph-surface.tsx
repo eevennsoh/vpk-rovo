@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { usePersonalGraphIntro } from "./hooks/use-personal-graph-intro";
 import { useVaultExplorer } from "./hooks/use-vault-explorer";
 import { useVaultSettings } from "./hooks/use-vault-settings";
+import { DEFAULT_NEURAL_GRAPH_INTERACTION_SETTINGS } from "./lib/neural-graph/interaction-dynamics";
 import { DEFAULT_NEURAL_RAY_SOUND_SETTINGS } from "./lib/neural-graph/ray-sound";
 import {
 	RESPONSIVE_PERSONAL_GRAPH_WIDTHS,
@@ -335,7 +336,7 @@ function PersonalGraphCaptureQueue({
 	return (
 		<div className="space-y-4">
 			<div>
-				<h2 className="text-base font-semibold text-text">Capture queue</h2>
+				<h2 className="text-base font-semibold text-text">Add data</h2>
 			</div>
 			<PersonalGraphDropzone onRawAdded={onRawAdded} />
 			<PersonalGraphIngestButton onDone={onRawAdded} refreshKey={refreshKey} />
@@ -408,12 +409,12 @@ export function PersonalGraphSurface({
 		const actions: PersonalGraphControlFlyoutAction[] = [
 			{
 				key: "vault",
-				label: "Choose vault",
+				label: "Choose data",
 				render: (
 					<Button
-						aria-label="Choose Personal Graph vault folder"
-						className="size-10 rounded-full border-border bg-bg-neutral-subtle text-text shadow-none hover:bg-bg-neutral-subtle-hovered disabled:border-transparent disabled:bg-bg-disabled disabled:text-text-disabled [&_svg]:text-icon-subtle"
-						disabled={isVaultSelecting}
+						aria-label="Choose data"
+							className="size-10 rounded-full border-border bg-bg-neutral-subtle text-text shadow-none hover:bg-bg-neutral-subtle-hovered disabled:border-transparent disabled:bg-bg-disabled disabled:text-text-disabled [&_svg]:text-icon-subtle"
+							disabled={isVaultSelecting}
 						isLoading={isVaultSelecting}
 						onClick={handleChooseVault}
 						size="icon"
@@ -425,13 +426,13 @@ export function PersonalGraphSurface({
 			},
 			{
 				key: "capture",
-				label: "Capture queue",
+				label: "Add data",
 				render: (
 					<Popover open={isCaptureQueueOpen} onOpenChange={handleCaptureQueueOpenChange}>
 						<PopoverTrigger
 							render={
 								<Button
-									aria-label="Capture queue"
+									aria-label="Add data"
 									className="size-10 rounded-full border-border bg-bg-neutral-subtle text-text shadow-none hover:bg-bg-neutral-subtle-hovered [&_svg]:text-icon-subtle"
 									size="icon"
 									variant="outline"
@@ -442,7 +443,7 @@ export function PersonalGraphSurface({
 						</PopoverTrigger>
 						<PopoverContent
 							align="end"
-							aria-label="Capture queue"
+							aria-label="Add data"
 							className="w-[min(320px,calc(100vw-32px))] bg-transparent p-0 text-text shadow-none"
 							sideOffset={10}
 						>
@@ -455,10 +456,10 @@ export function PersonalGraphSurface({
 			},
 			{
 				key: "refresh",
-				label: "Refresh graph",
+				label: "Synthesize insights",
 				render: (
 					<Button
-						aria-label="Refresh graph"
+						aria-label="Synthesize insights"
 						className="size-10 rounded-full border-border bg-bg-neutral-subtle text-text shadow-none hover:bg-bg-neutral-subtle-hovered [&_svg]:text-icon-subtle"
 						disabled={isLoading}
 						onClick={handleRefreshAll}
@@ -489,12 +490,12 @@ export function PersonalGraphSurface({
 		if (isVaultReady) {
 			actions.push({
 				key: "reset-vault",
-				label: "Reset vault",
+				label: "Refresh data",
 				render: (
 					<Button
-						aria-label="Reset Personal Graph vault selection"
-						className="size-10 rounded-full border-border bg-bg-neutral-subtle text-text shadow-none hover:bg-bg-neutral-subtle-hovered disabled:border-transparent disabled:bg-bg-disabled disabled:text-text-disabled [&_svg]:text-icon-subtle"
-						disabled={isVaultResetting}
+						aria-label="Refresh data"
+							className="size-10 rounded-full border-border bg-bg-neutral-subtle text-text shadow-none hover:bg-bg-neutral-subtle-hovered disabled:border-transparent disabled:bg-bg-disabled disabled:text-text-disabled [&_svg]:text-icon-subtle"
+							disabled={isVaultResetting}
 						isLoading={isVaultResetting}
 						onClick={handleResetVault}
 						size="icon"
@@ -637,6 +638,7 @@ export function PersonalGraphSurface({
 						className="h-full"
 						explorer={explorer}
 						isLoading={isLoading}
+						interactionSettings={DEFAULT_NEURAL_GRAPH_INTERACTION_SETTINGS}
 						onSelectedNodeIdChange={setSelectedNodeId}
 						params={responsiveGraphParams}
 						rayOriginBottomOffset={PERSONAL_GRAPH_TAIL_BOTTOM_OFFSET_PX}

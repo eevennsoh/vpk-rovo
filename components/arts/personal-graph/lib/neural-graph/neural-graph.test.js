@@ -18,6 +18,7 @@ registerHooks({
 const cameraModule = import("./camera.ts");
 const colorsModule = import("./colors.ts");
 const interactionModule = import("./interaction.ts");
+const interactionDynamicsModule = import("./interaction-dynamics.ts");
 const layoutModule = import("./layout.ts");
 const paramsModule = import("./params.ts");
 const raySoundModule = import("./ray-sound.ts");
@@ -126,6 +127,7 @@ function createRecordingCanvasContext() {
 	const calls = [];
 	let fillStyle = "";
 	let globalAlpha = 1;
+	let lineWidth = 1;
 	let shadowBlur = 0;
 	let shadowColor = "";
 	let strokeStyle = "";
@@ -148,6 +150,13 @@ function createRecordingCanvasContext() {
 		set globalAlpha(value) {
 			globalAlpha = value;
 			calls.push(["globalAlpha", value]);
+		},
+		get lineWidth() {
+			return lineWidth;
+		},
+		set lineWidth(value) {
+			lineWidth = value;
+			calls.push(["lineWidth", value]);
 		},
 		get shadowBlur() {
 			return shadowBlur;
@@ -298,6 +307,7 @@ test("clampNeuralGraphParams clamps numbers, colors, radius order, and shapes", 
 test("ray sound settings and definition stay within UI sound bounds", async () => {
 	const {
 		NEURAL_RAY_SOUND_DEFINITION,
+		NEURAL_NODE_HOVER_SOUND_DEFINITION,
 		clampNeuralRaySoundSettings,
 	} = await raySoundModule;
 	const settings = clampNeuralRaySoundSettings({
@@ -311,12 +321,15 @@ test("ray sound settings and definition stay within UI sound bounds", async () =
 	assert.equal(settings.enabled, true);
 	assert.equal(settings.pitchSpread, 36);
 	assert.equal(settings.volume, 1);
+	assert.equal(NEURAL_RAY_SOUND_DEFINITION.effects.some((effect) => effect.type === "compressor"), true);
 	assert.equal(NEURAL_RAY_SOUND_DEFINITION.source.type, "sine");
 	assert.equal(NEURAL_RAY_SOUND_DEFINITION.source.fm.ratio, 3.5);
 	assert.ok(NEURAL_RAY_SOUND_DEFINITION.source.fm.depth <= 300);
 	assert.ok(NEURAL_RAY_SOUND_DEFINITION.envelope.decay <= 0.1);
 	assert.ok(NEURAL_RAY_SOUND_DEFINITION.envelope.release <= 0.02);
-	assert.ok(NEURAL_RAY_SOUND_DEFINITION.gain <= 0.35);
+	assert.ok(NEURAL_RAY_SOUND_DEFINITION.gain <= 0.5);
+	assert.equal(Array.isArray(NEURAL_NODE_HOVER_SOUND_DEFINITION.layers), true);
+	assert.equal(NEURAL_NODE_HOVER_SOUND_DEFINITION.effects.some((effect) => effect.type === "compressor"), true);
 });
 
 test("ray sound trigger state plucks new rays with cooldown protection", async () => {
@@ -344,6 +357,35 @@ test("ray sound trigger state plucks new rays with cooldown protection", async (
 		nodeId: "gamma",
 		now: 240,
 		settings: { ...settings, enabled: false },
+		state,
+	}), false);
+});
+
+test("node hover sound trigger state blooms on node entry with cooldown protection", async () => {
+	const {
+		INITIAL_NEURAL_NODE_SOUND_TRIGGER_STATE,
+		getNextNeuralNodeSoundTriggerState,
+		shouldTriggerNeuralNodeSound,
+	} = await raySoundModule;
+	const settings = { cooldownMs: 95, enabled: true, volume: 0.7 };
+	let state = INITIAL_NEURAL_NODE_SOUND_TRIGGER_STATE;
+
+	assert.equal(shouldTriggerNeuralNodeSound({ nodeId: "alpha", now: 0, settings, state }), true);
+	state = getNextNeuralNodeSoundTriggerState({ didPlay: true, nodeId: "alpha", now: 0, state });
+
+	assert.equal(shouldTriggerNeuralNodeSound({ nodeId: "alpha", now: 140, settings, state }), false);
+	assert.equal(shouldTriggerNeuralNodeSound({ nodeId: "beta", now: 50, settings, state }), false);
+	state = getNextNeuralNodeSoundTriggerState({ didPlay: false, nodeId: "beta", now: 50, state });
+	assert.equal(shouldTriggerNeuralNodeSound({ nodeId: "beta", now: 100, settings, state }), true);
+	state = getNextNeuralNodeSoundTriggerState({ didPlay: true, nodeId: "beta", now: 100, state });
+	state = getNextNeuralNodeSoundTriggerState({ didPlay: false, nodeId: null, now: 120, state });
+
+	assert.equal(shouldTriggerNeuralNodeSound({ nodeId: "alpha", now: 190, settings, state }), false);
+	assert.equal(shouldTriggerNeuralNodeSound({ nodeId: "alpha", now: 200, settings, state }), true);
+	assert.equal(shouldTriggerNeuralNodeSound({
+		nodeId: "beta",
+		now: 240,
+		settings: { ...settings, volume: 0 },
 		state,
 	}), false);
 });
@@ -394,6 +436,107 @@ test("ray sound play options map elastic parameters to pitch, rate, pan, and vel
 	assert.ok(soft.pan < 0);
 	assert.ok(tight.pan > 0);
 	assert.ok(tight.volume <= 1);
+});
+
+test("node hover sound play options map node identity and hit position", async () => {
+	const { getNeuralNodeSoundPlayOptions } = await raySoundModule;
+	const viewport = { height: 400, width: 800 };
+	const settings = { cooldownMs: 95, enabled: true, volume: 0.7 };
+	const entityNode = layoutNode("entity-node", 0);
+	entityNode.node = {
+		...entityNode.node,
+		degree: 12,
+		kind: "entity",
+	};
+	const nearSource = getNeuralNodeSoundPlayOptions({
+		hit: { distance: 2, node: layoutNode("source-node", 0) },
+		pointer: { x: 80, y: 140 },
+		settings,
+		viewport,
+	});
+	const farEntity = getNeuralNodeSoundPlayOptions({
+		hit: { distance: 40, node: entityNode },
+		pointer: { x: 720, y: 140 },
+		settings,
+		viewport,
+	});
+
+	assert.ok(nearSource.pan < 0);
+	assert.ok(farEntity.pan > 0);
+	assert.notEqual(nearSource.detune, farEntity.detune);
+	assert.ok(nearSource.volume > farEntity.volume);
+	assert.ok(farEntity.playbackRate >= nearSource.playbackRate);
+});
+
+test("interaction settings clamp and pointer velocity map to vivid target intensity", async () => {
+	const {
+		DEFAULT_NEURAL_GRAPH_INTERACTION_SETTINGS,
+		clampNeuralGraphInteractionSettings,
+		getNeuralInteractionTargetIntensity,
+		getNeuralPointerVelocity,
+		getSmoothedNeuralGraphInteractionState,
+	} = await interactionDynamicsModule;
+	const settings = clampNeuralGraphInteractionSettings({
+		flowBoost: 9,
+		intensity: 4,
+		nodeSoundCooldownMs: -40,
+		nodeSoundVolume: 4,
+		rayEmphasis: 3,
+	});
+	const slow = getNeuralPointerVelocity({
+		elapsedMs: 100,
+		from: { x: 10, y: 10 },
+		to: { x: 14, y: 10 },
+		viewport: { height: 400, width: 800 },
+	});
+	const fast = getNeuralPointerVelocity({
+		elapsedMs: 16,
+		from: { x: 10, y: 10 },
+		to: { x: 240, y: 80 },
+		viewport: { height: 400, width: 800 },
+	});
+	const nodeIntensity = getNeuralInteractionTargetIntensity({ settings, target: "node", velocity: fast.normalized });
+	const rayIntensity = getNeuralInteractionTargetIntensity({ settings, target: "ray", velocity: fast.normalized });
+	const smoothed = getSmoothedNeuralGraphInteractionState({
+		current: {
+			activeNodeId: "alpha",
+			activeRayNodeId: null,
+			flowBoost: 0.85,
+			intensity: 0.5,
+			pointer: { x: 100, y: 100 },
+			rayDistance: 30,
+			rayEmphasis: 1,
+			rayProgress: 0.2,
+			velocity: 0.1,
+			velocityPxPerSecond: 120,
+		},
+		next: {
+			activeNodeId: "beta",
+			activeRayNodeId: null,
+			flowBoost: 0.85,
+			intensity: 0.7,
+			pointer: { x: 300, y: 180 },
+			rayDistance: 10,
+			rayEmphasis: 1,
+			rayProgress: 0.8,
+			velocity: 0.9,
+			velocityPxPerSecond: 900,
+		},
+		smoothing: 0.25,
+	});
+
+	assert.equal(settings.flowBoost, 1.5);
+	assert.equal(settings.intensity, 1.5);
+	assert.equal(settings.nodeSoundCooldownMs, 0);
+	assert.equal(settings.nodeSoundVolume, 1);
+	assert.equal(settings.rayEmphasis, 1.5);
+	assert.ok(DEFAULT_NEURAL_GRAPH_INTERACTION_SETTINGS.nodeSoundEnabled);
+	assert.ok(fast.normalized > slow.normalized);
+	assert.ok(rayIntensity > nodeIntensity);
+	assert.ok(nodeIntensity > getNeuralInteractionTargetIntensity({ settings, target: "none", velocity: slow.normalized }));
+	assert.deepEqual(smoothed.pointer, { x: 150, y: 120 });
+	assert.equal(smoothed.activeNodeId, "beta");
+	assert.ok(smoothed.velocity > 0.1 && smoothed.velocity < 0.9);
 });
 
 test("neural graph color helpers translate legacy hex colors to ADS token variables", async () => {
@@ -581,6 +724,41 @@ test("computeNeuralGraphLayout is deterministic and keeps selected nodes visible
 		first.nodes.map(({ id, x, y }) => [id, Number(x.toFixed(3)), Number(y.toFixed(3))]),
 		second.nodes.map(({ id, x, y }) => [id, Number(x.toFixed(3)), Number(y.toFixed(3))]),
 	);
+});
+
+test("computeNeuralGraphLayout applies transient cursor flow without mutating params", async () => {
+	const { computeNeuralGraphLayout } = await layoutModule;
+	const { DEFAULT_NEURAL_GRAPH_PARAMS, clampNeuralGraphParams } = await paramsModule;
+	const { createNeuralGraphStore } = await storeModule;
+	const store = createNeuralGraphStore(explorer);
+	const params = clampNeuralGraphParams({ ...DEFAULT_NEURAL_GRAPH_PARAMS, maxVisibleNodes: 10 });
+	const viewport = { height: 700, width: 1000 };
+	const neutral = computeNeuralGraphLayout({ params, selectedNodeId: null, store, time: 1, viewport });
+	const active = computeNeuralGraphLayout({
+		interaction: {
+			activeNodeId: "selected",
+			activeRayNodeId: null,
+			flowBoost: 0.85,
+			intensity: 0.9,
+			pointer: { x: 880, y: 120 },
+			rayDistance: 0,
+			rayEmphasis: 0.9,
+			rayProgress: 0,
+			velocity: 0.8,
+			velocityPxPerSecond: 980,
+		},
+		params,
+		selectedNodeId: null,
+		store,
+		time: 1,
+		viewport,
+	});
+
+	assert.notDeepEqual(
+		active.nodes.map(({ id, x, y }) => [id, Number(x.toFixed(3)), Number(y.toFixed(3))]),
+		neutral.nodes.map(({ id, x, y }) => [id, Number(x.toFixed(3)), Number(y.toFixed(3))]),
+	);
+	assert.equal(params.speed, DEFAULT_NEURAL_GRAPH_PARAMS.speed);
 });
 
 test("computeNeuralGraphLayout keeps missing and dangling nodes fully opaque", async () => {
@@ -819,6 +997,77 @@ test("drawNeuralGraph bends ray curves with the elastic hover field", async () =
 
 	assert.notDeepEqual(elastic, neutral);
 	assert.deepEqual(disabled, neutral);
+});
+
+test("drawNeuralGraph brightens the touched ray without changing width", async () => {
+	const { createNeuralCamera } = await cameraModule;
+	const { DEFAULT_NEURAL_GRAPH_PARAMS } = await paramsModule;
+	const { drawNeuralGraph } = await rendererModule;
+	const viewport = { height: 200, width: 300 };
+	const activeNode = layoutNode("ray-target", 0);
+	activeNode.y = -100;
+	const idleNode = layoutNode("idle-target", 80);
+	idleNode.y = -120;
+	const layout = {
+		edges: [],
+		nodes: [activeNode, idleNode],
+		nodesById: new Map([
+			[activeNode.id, activeNode],
+			[idleNode.id, idleNode],
+		]),
+		origin: { x: 0, y: 0 },
+		viewport,
+	};
+	const params = {
+		...DEFAULT_NEURAL_GRAPH_PARAMS,
+		rayOpacity: 0.02,
+		rayWidth: 2,
+		showEdges: false,
+		showLabels: false,
+		showRays: true,
+		showSignals: false,
+	};
+	const ctx = createRecordingCanvasContext();
+
+	drawNeuralGraph(ctx, layout, {
+		background: "transparent",
+		camera: createNeuralCamera(),
+		focusProgress: 0,
+		hoveredNodeId: null,
+		interaction: {
+			activeNodeId: null,
+			activeRayNodeId: activeNode.id,
+			flowBoost: 0.85,
+			intensity: 0.8,
+			pointer: { x: 170, y: 160 },
+			rayDistance: 1,
+			rayEmphasis: 1,
+			rayProgress: 0.7,
+			velocity: 0.7,
+			velocityPxPerSecond: 900,
+		},
+		params,
+		rayElastic: {
+			hitProgress: 0.7,
+			nodeId: activeNode.id,
+			point: { x: 170, y: 160 },
+			progress: 1,
+			velocity: 0.7,
+		},
+		selectedNodeId: null,
+		theme: "light",
+		viewport,
+	});
+	const lineWidths = ctx.calls
+		.filter(([name]) => name === "lineWidth")
+		.map(([, value]) => value);
+	const alphaValues = ctx.calls
+		.filter(([name]) => name === "globalAlpha")
+		.map(([, value]) => value);
+
+	assert.ok(lineWidths.includes(params.rayWidth));
+	assert.ok(Math.max(...lineWidths) <= params.rayWidth);
+	assert.equal(Math.max(...alphaValues), 1);
 });
 
 test("drawNeuralGraph resolves design-token colors before drawing on canvas", async () => {
