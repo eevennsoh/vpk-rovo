@@ -20,6 +20,7 @@ const colorsModule = import("./colors.ts");
 const interactionModule = import("./interaction.ts");
 const layoutModule = import("./layout.ts");
 const paramsModule = import("./params.ts");
+const raySoundModule = import("./ray-sound.ts");
 const responsiveParamsModule = import("./responsive-params.ts");
 const rendererModule = import("./renderer.ts");
 const storeModule = import("./store.ts");
@@ -292,6 +293,107 @@ test("clampNeuralGraphParams clamps numbers, colors, radius order, and shapes", 
 	assert.equal(params.signalOpacity, 1);
 	assert.equal(params.signalWidth, 0.5);
 	assert.equal(params.speed, 0);
+});
+
+test("ray sound settings and definition stay within UI sound bounds", async () => {
+	const {
+		NEURAL_RAY_SOUND_DEFINITION,
+		clampNeuralRaySoundSettings,
+	} = await raySoundModule;
+	const settings = clampNeuralRaySoundSettings({
+		cooldownMs: -10,
+		enabled: true,
+		pitchSpread: 99,
+		volume: 4,
+	});
+
+	assert.equal(settings.cooldownMs, 0);
+	assert.equal(settings.enabled, true);
+	assert.equal(settings.pitchSpread, 36);
+	assert.equal(settings.volume, 1);
+	assert.equal(NEURAL_RAY_SOUND_DEFINITION.source.type, "sine");
+	assert.equal(NEURAL_RAY_SOUND_DEFINITION.source.fm.ratio, 3.5);
+	assert.ok(NEURAL_RAY_SOUND_DEFINITION.source.fm.depth <= 300);
+	assert.ok(NEURAL_RAY_SOUND_DEFINITION.envelope.decay <= 0.1);
+	assert.ok(NEURAL_RAY_SOUND_DEFINITION.envelope.release <= 0.02);
+	assert.ok(NEURAL_RAY_SOUND_DEFINITION.gain <= 0.35);
+});
+
+test("ray sound trigger state plucks new rays with cooldown protection", async () => {
+	const {
+		DEFAULT_NEURAL_RAY_SOUND_SETTINGS,
+		INITIAL_NEURAL_RAY_SOUND_TRIGGER_STATE,
+		getNextNeuralRaySoundTriggerState,
+		shouldTriggerNeuralRaySound,
+	} = await raySoundModule;
+	const settings = { ...DEFAULT_NEURAL_RAY_SOUND_SETTINGS, cooldownMs: 70 };
+	let state = INITIAL_NEURAL_RAY_SOUND_TRIGGER_STATE;
+
+	assert.equal(shouldTriggerNeuralRaySound({ nodeId: "alpha", now: 0, settings, state }), true);
+	state = getNextNeuralRaySoundTriggerState({ didPlay: true, nodeId: "alpha", now: 0, state });
+
+	assert.equal(shouldTriggerNeuralRaySound({ nodeId: "alpha", now: 90, settings, state }), false);
+	assert.equal(shouldTriggerNeuralRaySound({ nodeId: "beta", now: 40, settings, state }), false);
+	state = getNextNeuralRaySoundTriggerState({ didPlay: false, nodeId: "beta", now: 40, state });
+	assert.equal(shouldTriggerNeuralRaySound({ nodeId: "beta", now: 90, settings, state }), true);
+	state = getNextNeuralRaySoundTriggerState({ didPlay: true, nodeId: "beta", now: 90, state });
+	state = getNextNeuralRaySoundTriggerState({ didPlay: false, nodeId: null, now: 110, state });
+
+	assert.equal(shouldTriggerNeuralRaySound({ nodeId: "beta", now: 170, settings, state }), true);
+	assert.equal(shouldTriggerNeuralRaySound({
+		nodeId: "gamma",
+		now: 240,
+		settings: { ...settings, enabled: false },
+		state,
+	}), false);
+});
+
+test("ray sound play options map elastic parameters to pitch, rate, pan, and velocity", async () => {
+	const {
+		DEFAULT_NEURAL_RAY_SOUND_SETTINGS,
+		getNeuralRaySoundPlayOptions,
+	} = await raySoundModule;
+	const { DEFAULT_NEURAL_GRAPH_PARAMS } = await paramsModule;
+	const baseHit = {
+		distance: 2,
+		node: layoutNode("alpha", 0),
+		point: { x: 200, y: 120 },
+		progress: 0.75,
+	};
+	const viewport = { height: 400, width: 800 };
+	const soft = getNeuralRaySoundPlayOptions({
+		hit: baseHit,
+		params: {
+			...DEFAULT_NEURAL_GRAPH_PARAMS,
+			rayElasticDamping: 8,
+			rayElasticRadius: 220,
+			rayElasticStrength: 8,
+			rayElasticTension: 60,
+		},
+		pointer: { x: 80, y: 120 },
+		settings: DEFAULT_NEURAL_RAY_SOUND_SETTINGS,
+		viewport,
+	});
+	const tight = getNeuralRaySoundPlayOptions({
+		hit: { ...baseHit, node: layoutNode("beta", 0), progress: 0.95 },
+		params: {
+			...DEFAULT_NEURAL_GRAPH_PARAMS,
+			rayElasticDamping: 80,
+			rayElasticRadius: 20,
+			rayElasticStrength: 80,
+			rayElasticTension: 600,
+		},
+		pointer: { x: 720, y: 120 },
+		settings: DEFAULT_NEURAL_RAY_SOUND_SETTINGS,
+		viewport,
+	});
+
+	assert.ok(soft.detune < tight.detune);
+	assert.ok(soft.playbackRate < tight.playbackRate);
+	assert.ok(soft.velocity < tight.velocity);
+	assert.ok(soft.pan < 0);
+	assert.ok(tight.pan > 0);
+	assert.ok(tight.volume <= 1);
 });
 
 test("neural graph color helpers translate legacy hex colors to ADS token variables", async () => {

@@ -363,9 +363,15 @@ test("Personal Graph keeps the owned canvas renderer accessible", () => {
 	assert.match(SURFACE_SOURCE, /background="transparent"/);
 	assert.match(SURFACE_SOURCE, /params=\{responsiveGraphParams\}/);
 	assert.match(SURFACE_SOURCE, /rayOriginBottomOffset=\{PERSONAL_GRAPH_TAIL_BOTTOM_OFFSET_PX\}/);
+	assert.match(SURFACE_SOURCE, /DEFAULT_NEURAL_RAY_SOUND_SETTINGS/);
+	assert.match(SURFACE_SOURCE, /raySoundSettings=\{DEFAULT_NEURAL_RAY_SOUND_SETTINGS\}/);
 	assert.match(GRAPH_SOURCE, /rayOriginBottomOffset\?: number;/);
+	assert.match(GRAPH_SOURCE, /raySoundSettings\?: Partial<NeuralRaySoundSettings>;/);
 	assert.match(GRAPH_SOURCE, /rayOriginBottomOffset=\{rayOriginBottomOffset\}/);
+	assert.match(GRAPH_SOURCE, /const canvasRaySoundSettings = showControls \? demoRaySoundSettings : controlledRaySoundSettings;/);
+	assert.match(GRAPH_SOURCE, /raySoundSettings=\{canvasRaySoundSettings\}/);
 	assert.match(NEURAL_CANVAS_SOURCE, /rayOriginBottomOffset\?: number;/);
+	assert.match(NEURAL_CANVAS_SOURCE, /raySoundSettings\?: NeuralRaySoundSettings/);
 	assert.match(NEURAL_CANVAS_SOURCE, /function getRayOriginY/);
 	assert.match(NEURAL_CANVAS_SOURCE, /viewport\.height - rayOriginBottomOffset/);
 	assert.match(NEURAL_RENDERER_SOURCE, /rayOriginY\?: number;/);
