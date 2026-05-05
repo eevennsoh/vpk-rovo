@@ -37,6 +37,10 @@ export interface NeuralGraphRenderOptions {
 	viewport: NeuralViewport;
 }
 
+type NeuralGraphFrameRenderOptions = NeuralGraphRenderOptions & {
+	resolvedColorCache?: Map<string, string>;
+};
+
 const PALETTES = {
 	light: {
 		backgroundBottom: "#DDF3FF",
@@ -68,10 +72,17 @@ const SIGNAL_MIN_EDGE_LENGTH = 18;
 const SIGNAL_SEGMENT_MAX = 72;
 const SIGNAL_SEGMENT_MIN = 22;
 
-function getResolvedColor(color: string, options: NeuralGraphRenderOptions) {
-	if (options.resolveColor) return options.resolveColor(color);
-	if (/^rgba?\(/i.test(color.trim())) return color;
-	return getNeuralGraphColorFallback(color);
+function getResolvedColor(color: string, options: NeuralGraphFrameRenderOptions) {
+	const cached = options.resolvedColorCache?.get(color);
+	if (cached !== undefined) return cached;
+
+	const resolved = options.resolveColor
+		? options.resolveColor(color)
+		: /^rgba?\(/i.test(color.trim())
+			? color
+			: getNeuralGraphColorFallback(color);
+	options.resolvedColorCache?.set(color, resolved);
+	return resolved;
 }
 
 function colorToRgb(color: string) {
@@ -610,16 +621,20 @@ export function drawNeuralGraph(
 	layout: NeuralGraphLayout,
 	options: NeuralGraphRenderOptions,
 ) {
+	const frameOptions: NeuralGraphFrameRenderOptions = {
+		...options,
+		resolvedColorCache: new Map(),
+	};
 	const selectedRelationships = getSelectedRelationshipIds(layout, options.selectedNodeId);
 
-	if (options.background === "transparent") {
-		ctx.clearRect(0, 0, options.viewport.width, options.viewport.height);
+	if (frameOptions.background === "transparent") {
+		ctx.clearRect(0, 0, frameOptions.viewport.width, frameOptions.viewport.height);
 	} else {
-		drawBackground(ctx, options.viewport, options.params, options.theme, options.resolveColor);
+		drawBackground(ctx, frameOptions.viewport, frameOptions.params, frameOptions.theme, (color) => getResolvedColor(color, frameOptions));
 	}
-	drawRays(ctx, layout, options, selectedRelationships);
-	drawEdges(ctx, layout, options, selectedRelationships);
-	drawSignalStreaks(ctx, layout, options);
-	drawNodes(ctx, layout, options, selectedRelationships);
-	drawLabels(ctx, layout, options);
+	drawRays(ctx, layout, frameOptions, selectedRelationships);
+	drawEdges(ctx, layout, frameOptions, selectedRelationships);
+	drawSignalStreaks(ctx, layout, frameOptions);
+	drawNodes(ctx, layout, frameOptions, selectedRelationships);
+	drawLabels(ctx, layout, frameOptions);
 }
