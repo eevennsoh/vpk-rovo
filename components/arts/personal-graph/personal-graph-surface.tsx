@@ -55,10 +55,24 @@ const PERSONAL_GRAPH_META_FONT_STYLE = {
 
 const PERSONAL_GRAPH_TITLE_LONGEST_LINE_WIDTH_EM = 3.15;
 const PERSONAL_GRAPH_SETTLED_TITLE_SCRAMBLE_LINE_CHAR_COUNT = 8;
+const PERSONAL_GRAPH_HEADER_INITIAL_Y = "35svh";
+const PERSONAL_GRAPH_HEADER_SETTLED_Y = "0px";
+const PERSONAL_GRAPH_TITLE_INK_TOP_PADDING = "48px";
 const PERSONAL_GRAPH_INITIAL_TITLE_SIZE =
 	`min(8rem, calc((100svw - 3rem) / ${PERSONAL_GRAPH_TITLE_LONGEST_LINE_WIDTH_EM}))`;
 const PERSONAL_GRAPH_SETTLED_TITLE_SIZE =
 	`min(3rem, calc((100cqw - 1rem) / ${PERSONAL_GRAPH_SETTLED_TITLE_SCRAMBLE_LINE_CHAR_COUNT}))`;
+const PERSONAL_GRAPH_PROMPT_INPUT_BOTTOM_PX = 24;
+const PERSONAL_GRAPH_PROMPT_INPUT_HEIGHT_PX = 64;
+const PERSONAL_GRAPH_TAIL_PROMPT_GAP_PX = 8;
+const PERSONAL_GRAPH_TAIL_MARKER_SIZE_PX = ROVO_GRAPH_DEFAULT_PARAMS.originMarkerSize;
+const PERSONAL_GRAPH_STAGE_TRANSLATE_Y_PX = -10;
+const PERSONAL_GRAPH_TAIL_BOTTOM_OFFSET_PX =
+	PERSONAL_GRAPH_PROMPT_INPUT_BOTTOM_PX +
+	PERSONAL_GRAPH_PROMPT_INPUT_HEIGHT_PX +
+	PERSONAL_GRAPH_TAIL_PROMPT_GAP_PX +
+	PERSONAL_GRAPH_TAIL_MARKER_SIZE_PX / 2 +
+	PERSONAL_GRAPH_STAGE_TRANSLATE_Y_PX;
 
 function GraphNodeMarker({
 	className,
@@ -68,16 +82,6 @@ function GraphNodeMarker({
 	kind: VaultNodeKind;
 }>) {
 	return <span aria-hidden="true" className={cn("inline-block size-3 shrink-0", NODE_KIND_MARKERS[kind], className)} />;
-}
-
-function PersonalGraphPromptTailConnector() {
-	return (
-		<div
-			aria-hidden="true"
-			className="pointer-events-none absolute left-1/2 top-[-7rem] z-[1] h-[7.375rem] w-px -translate-x-1/2 bg-gradient-to-b from-transparent via-blue-400/45 to-blue-600/70"
-			data-personal-graph-tail-connector="prompt"
-		/>
-	);
 }
 
 function getSelectedNode(explorer: VaultExplorer | null, selectedNodeId: string | null) {
@@ -438,10 +442,13 @@ export function PersonalGraphSurface({
 			<header className="absolute inset-x-4 top-6 z-30 sm:inset-x-6 lg:inset-x-8">
 				<motion.div
 					className="relative flex flex-col items-center"
-					initial={{ y: "35svh", gap: "24px" }}
-					animate={{ y: isPostSettle ? 0 : "35svh", gap: isPostSettle ? "16px" : "24px" }}
+					initial={{ y: PERSONAL_GRAPH_HEADER_INITIAL_Y, gap: "24px" }}
+					animate={{
+						y: isPostSettle ? PERSONAL_GRAPH_HEADER_SETTLED_Y : PERSONAL_GRAPH_HEADER_INITIAL_Y,
+						gap: isPostSettle ? "16px" : "24px",
+					}}
 					transition={{
-						default: { type: "spring", stiffness: 220, damping: 30 },
+						y: { duration: 0.7, ease: easeOut },
 						gap: { duration: 0.45, ease: easeOut },
 					}}
 					style={{ willChange: "transform" }}
@@ -460,9 +467,10 @@ export function PersonalGraphSurface({
 						<PersonalGraphTitle
 							className="leading-[0.8] text-text"
 							style={PERSONAL_GRAPH_TITLE_FONT_STYLE}
-							initial={{ fontSize: PERSONAL_GRAPH_INITIAL_TITLE_SIZE }}
+							initial={{ fontSize: PERSONAL_GRAPH_INITIAL_TITLE_SIZE, paddingTop: PERSONAL_GRAPH_TITLE_INK_TOP_PADDING }}
 							animate={{
 								fontSize: isPostSettle ? PERSONAL_GRAPH_SETTLED_TITLE_SIZE : PERSONAL_GRAPH_INITIAL_TITLE_SIZE,
+								paddingTop: PERSONAL_GRAPH_TITLE_INK_TOP_PADDING,
 							}}
 							transition={{ duration: 1.0, ease: easeOut }}
 							play={isHeaderRevealed}
@@ -509,7 +517,7 @@ export function PersonalGraphSurface({
 					opacity: { duration: 0.8, ease: easeOut },
 				}}
 			>
-				<div className="h-full" style={{ transform: "translateY(-10px)" }}>
+				<div className="h-full" style={{ transform: `translateY(${PERSONAL_GRAPH_STAGE_TRANSLATE_Y_PX}px)` }}>
 					<Graph
 						background="transparent"
 						className="h-full"
@@ -517,6 +525,7 @@ export function PersonalGraphSurface({
 						isLoading={isLoading}
 						onSelectedNodeIdChange={setSelectedNodeId}
 						params={ROVO_GRAPH_DEFAULT_PARAMS}
+						rayOriginBottomOffset={PERSONAL_GRAPH_TAIL_BOTTOM_OFFSET_PX}
 						selectedNodeId={selectedNodeId}
 						showControls={false}
 						showSelectionOverlay={false}
@@ -537,8 +546,6 @@ export function PersonalGraphSurface({
 				}}
 			>
 				<div className="pointer-events-auto relative w-full max-w-[760px]">
-					<PersonalGraphPromptTailConnector />
-					<div className="pointer-events-none absolute left-1/2 top-0 z-10 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-border-inverse bg-bg-neutral-bold shadow-lg" />
 					<PersonalGraphSearch
 						flyoutActions={flyoutActions}
 						onSelectSlug={(slug) => {

@@ -1,3 +1,5 @@
+import { normalizeNeuralGraphColorValue } from "./colors";
+
 export type NeuralGraphNodeShape = "circle" | "square";
 
 export interface NeuralGraphParams {
@@ -28,9 +30,12 @@ export interface NeuralGraphParams {
 	nodeOpacityFocused: number;
 	nodeOpacityRelated: number;
 	nodeSelectedColor: string;
+	nodeRadius: number;
 	nodeShape: NeuralGraphNodeShape;
 	nodeSize: number;
 	octaves: number;
+	originMarkerColor: string;
+	originMarkerSize: number;
 	originOffset: number;
 	originY: number;
 	perspective: number;
@@ -43,6 +48,7 @@ export interface NeuralGraphParams {
 	selectedScale: number;
 	showEdges: boolean;
 	showLabels: boolean;
+	showOriginMarker: boolean;
 	showRays: boolean;
 	speed: number;
 	spread: number;
@@ -70,6 +76,10 @@ export const NEURAL_GRAPH_EDGE_COLOR_PARAM_KEYS = [
 	"edgeSelectedColor",
 ] as const satisfies ReadonlyArray<keyof NeuralGraphParams>;
 
+export const NEURAL_GRAPH_ORIGIN_COLOR_PARAM_KEYS = [
+	"originMarkerColor",
+] as const satisfies ReadonlyArray<keyof NeuralGraphParams>;
+
 export type NeuralGraphNumberKey = {
 	[K in keyof NeuralGraphParams]: NeuralGraphParams[K] extends number ? K : never;
 }[keyof NeuralGraphParams];
@@ -78,18 +88,20 @@ export type NeuralGraphBooleanKey = {
 	[K in keyof NeuralGraphParams]: NeuralGraphParams[K] extends boolean ? K : never;
 }[keyof NeuralGraphParams];
 
-export type NeuralGraphHexColorKey =
+export type NeuralGraphColorKey =
 	| (typeof NEURAL_GRAPH_KIND_COLOR_PARAM_KEYS)[number]
 	| (typeof NEURAL_GRAPH_NODE_COLOR_PARAM_KEYS)[number]
 	| (typeof NEURAL_GRAPH_EDGE_COLOR_PARAM_KEYS)[number]
+	| (typeof NEURAL_GRAPH_ORIGIN_COLOR_PARAM_KEYS)[number]
 	| "rayColor";
 
 const NEURAL_GRAPH_COLOR_PARAM_KEYS = [
 	"rayColor",
+	...NEURAL_GRAPH_ORIGIN_COLOR_PARAM_KEYS,
 	...NEURAL_GRAPH_KIND_COLOR_PARAM_KEYS,
 	...NEURAL_GRAPH_NODE_COLOR_PARAM_KEYS,
 	...NEURAL_GRAPH_EDGE_COLOR_PARAM_KEYS,
-] as const satisfies ReadonlyArray<NeuralGraphHexColorKey>;
+] as const satisfies ReadonlyArray<NeuralGraphColorKey>;
 
 export interface NeuralGraphNumberParamDefinition {
 	kind: "number";
@@ -98,6 +110,7 @@ export interface NeuralGraphNumberParamDefinition {
 	max: number;
 	min: number;
 	step: number;
+	unit?: string;
 }
 
 export interface NeuralGraphBooleanParamDefinition {
@@ -108,7 +121,7 @@ export interface NeuralGraphBooleanParamDefinition {
 
 export interface NeuralGraphColorParamDefinition {
 	kind: "color";
-	key: NeuralGraphHexColorKey;
+	key: NeuralGraphColorKey;
 	label: string;
 	description?: string;
 }
@@ -126,18 +139,18 @@ export interface NeuralGraphParamSection {
 
 export const DEFAULT_NEURAL_GRAPH_PARAMS: NeuralGraphParams = {
 	amplitude: 0.15,
-	colorConcept: "#FCA700",
-	colorEntity: "#6A9A23",
-	colorRaw: "#44546F",
-	colorSource: "#1868DB",
-	colorSynthesis: "#AF59E1",
+	colorConcept: "var(--ds-background-accent-orange-subtle)",
+	colorEntity: "var(--ds-chart-lime-bold)",
+	colorRaw: "var(--ds-chart-gray-boldest)",
+	colorSource: "var(--ds-background-accent-blue-bolder)",
+	colorSynthesis: "var(--ds-chart-purple-bolder)",
 	coneAngle: 75,
 	depthZ: 30,
-	edgeColor: "#8590A2",
-	edgeHoverColor: "#1868DB",
+	edgeColor: "var(--ds-chart-gray-bold)",
+	edgeHoverColor: "var(--ds-background-accent-blue-bolder)",
 	edgeOpacity: 0.36,
 	edgeOpacityActive: 0.76,
-	edgeSelectedColor: "#AF59E1",
+	edgeSelectedColor: "var(--ds-chart-purple-bolder)",
 	edgeWidth: 2,
 	frequency: 1.5,
 	glowIntensity: 0.28,
@@ -146,27 +159,31 @@ export const DEFAULT_NEURAL_GRAPH_PARAMS: NeuralGraphParams = {
 	labelMetaSize: 10,
 	labelSize: 13,
 	maxVisibleNodes: 86,
-	nodeColor: "#6b5ce7",
-	nodeHoverColor: "#FCA700",
+	nodeColor: "var(--ds-chart-purple-bolder)",
+	nodeHoverColor: "var(--ds-background-accent-orange-subtle)",
 	nodeOpacity: 0.82,
 	nodeOpacityFocused: 0.14,
 	nodeOpacityRelated: 0.9,
-	nodeSelectedColor: "#AF59E1",
+	nodeSelectedColor: "var(--ds-chart-purple-bolder)",
+	nodeRadius: 2,
 	nodeShape: "circle",
 	nodeSize: 2.5,
 	octaves: 3,
+	originMarkerColor: "var(--ds-text)",
+	originMarkerSize: 12,
 	originOffset: 0,
 	originY: 1.05,
 	perspective: 1000,
 	radiusMax: 100,
 	radiusMin: 50,
-	rayColor: "#6B5CE7",
+	rayColor: "var(--ds-chart-purple-bolder)",
 	rayOpacity: 0.02,
 	rayOriginY: 1.05,
 	rayWidth: 2,
 	selectedScale: 1.85,
 	showEdges: true,
 	showLabels: true,
+	showOriginMarker: true,
 	showRays: true,
 	speed: 0.8,
 	spread: 520,
@@ -213,6 +230,7 @@ export const NEURAL_GRAPH_PARAM_SECTIONS: NeuralGraphParamSection[] = [
 		params: [
 			{ kind: "number", key: "maxVisibleNodes", label: "Count", max: 200, min: 10, step: 1 },
 			{ kind: "number", key: "nodeSize", label: "Size", max: 8, min: 0.5, step: 0.5 },
+			{ kind: "number", key: "nodeRadius", label: "Radius", max: 16, min: 0, step: 1, unit: "px" },
 			{ kind: "color", key: "nodeHoverColor", label: "Hover color", description: "Fill and glow color for the hovered node" },
 			{ kind: "color", key: "nodeSelectedColor", label: "Selected color", description: "Fill and glow color for the selected node" },
 		],
@@ -235,10 +253,13 @@ export const NEURAL_GRAPH_PARAM_SECTIONS: NeuralGraphParamSection[] = [
 		label: "Rays",
 		params: [
 			{ kind: "boolean", key: "showRays", label: "Show rays" },
+			{ kind: "boolean", key: "showOriginMarker", label: "Show origin node" },
 			{ kind: "color", key: "rayColor", label: "Color", description: "Tint of the fan strokes radiating from the tail" },
 			{ kind: "number", key: "rayOriginY", label: "Tail Y", max: 1.5, min: 0.5, step: 0.05 },
 			{ kind: "number", key: "rayOpacity", label: "Opacity", max: 1, min: 0, step: 0.02 },
 			{ kind: "number", key: "rayWidth", label: "Width", max: 6, min: 0.5, step: 0.5 },
+			{ kind: "number", key: "originMarkerSize", label: "Origin size", max: 32, min: 4, step: 1 },
+			{ kind: "color", key: "originMarkerColor", label: "Origin color", description: "Fill color for the graph origin node" },
 		],
 	},
 	{
@@ -299,10 +320,6 @@ function isNodeShape(value: unknown): value is NeuralGraphNodeShape {
 	return value === "circle" || value === "square";
 }
 
-function isHexColor(value: unknown): value is string {
-	return typeof value === "string" && /^#[0-9a-fA-F]{6}$/.test(value);
-}
-
 export function clampNeuralGraphParams(input: Partial<NeuralGraphParams> = {}): NeuralGraphParams {
 	const next = { ...DEFAULT_NEURAL_GRAPH_PARAMS, ...input };
 	const clamped: NeuralGraphParams = { ...DEFAULT_NEURAL_GRAPH_PARAMS };
@@ -326,7 +343,7 @@ export function clampNeuralGraphParams(input: Partial<NeuralGraphParams> = {}): 
 	clamped.nodeShape = isNodeShape(next.nodeShape) ? next.nodeShape : DEFAULT_NEURAL_GRAPH_PARAMS.nodeShape;
 	for (const key of NEURAL_GRAPH_COLOR_PARAM_KEYS) {
 		const value = next[key];
-		clamped[key] = isHexColor(value) ? value : DEFAULT_NEURAL_GRAPH_PARAMS[key];
+		clamped[key] = normalizeNeuralGraphColorValue(value, DEFAULT_NEURAL_GRAPH_PARAMS[key]);
 	}
 
 	return clamped;

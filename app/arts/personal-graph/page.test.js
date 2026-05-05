@@ -201,6 +201,9 @@ test("Personal Graph header uses the display font lockup", () => {
 	assert.match(SURFACE_SOURCE, /var\(--font-departure-mono\)/);
 	assert.match(SURFACE_SOURCE, /PERSONAL_GRAPH_TITLE_LONGEST_LINE_WIDTH_EM = 3\.15/);
 	assert.match(SURFACE_SOURCE, /PERSONAL_GRAPH_SETTLED_TITLE_SCRAMBLE_LINE_CHAR_COUNT = 8/);
+	assert.match(SURFACE_SOURCE, /PERSONAL_GRAPH_HEADER_INITIAL_Y = "35svh"/);
+	assert.match(SURFACE_SOURCE, /PERSONAL_GRAPH_HEADER_SETTLED_Y = "0px"/);
+	assert.match(SURFACE_SOURCE, /PERSONAL_GRAPH_TITLE_INK_TOP_PADDING = "48px"/);
 	assert.match(SURFACE_SOURCE, /PERSONAL_GRAPH_INITIAL_TITLE_SIZE/);
 	assert.match(SURFACE_SOURCE, /PERSONAL_GRAPH_SETTLED_TITLE_SIZE/);
 	assert.match(SURFACE_SOURCE, /min\(8rem, calc\(\(100svw - 3rem\) \/ \$\{PERSONAL_GRAPH_TITLE_LONGEST_LINE_WIDTH_EM\}\)\)/);
@@ -210,11 +213,12 @@ test("Personal Graph header uses the display font lockup", () => {
 		/className="mx-auto w-full min-w-0 max-w-full text-center text-text \[container-type:inline-size\]"/,
 	);
 	assert.match(SURFACE_SOURCE, /className="leading-\[0\.8\] text-text"/);
-	assert.match(SURFACE_SOURCE, /initial=\{\{ fontSize: PERSONAL_GRAPH_INITIAL_TITLE_SIZE \}\}/);
+	assert.match(SURFACE_SOURCE, /initial=\{\{ fontSize: PERSONAL_GRAPH_INITIAL_TITLE_SIZE, paddingTop: PERSONAL_GRAPH_TITLE_INK_TOP_PADDING \}\}/);
 	assert.match(
 		SURFACE_SOURCE,
 		/fontSize: isPostSettle \? PERSONAL_GRAPH_SETTLED_TITLE_SIZE : PERSONAL_GRAPH_INITIAL_TITLE_SIZE/,
 	);
+	assert.match(SURFACE_SOURCE, /paddingTop: PERSONAL_GRAPH_TITLE_INK_TOP_PADDING/);
 	assert.doesNotMatch(SURFACE_SOURCE, /uppercase leading-\[0\.8\]/);
 	assert.doesNotMatch(SURFACE_SOURCE, /className="[^"]*tracking-normal[^"]*"\s+style=\{PERSONAL_GRAPH_TITLE_FONT_STYLE\}/);
 	assert.match(TITLE_SOURCE, /<ScrambleText/);
@@ -242,9 +246,24 @@ test("Personal Graph anchors the search and chat composer at the graph origin", 
 	assert.match(SURFACE_SOURCE, /left-4 right-4 z-40 flex justify-center/);
 	assert.match(SURFACE_SOURCE, /initial=\{\{ bottom: -120 \}\}/);
 	assert.match(SURFACE_SOURCE, /bottom: isSearchRevealed \? 24 : -120/);
+	assert.match(SURFACE_SOURCE, /const PERSONAL_GRAPH_PROMPT_INPUT_BOTTOM_PX = 24;/);
+	assert.match(SURFACE_SOURCE, /const PERSONAL_GRAPH_PROMPT_INPUT_HEIGHT_PX = 64;/);
+	assert.match(SURFACE_SOURCE, /const PERSONAL_GRAPH_TAIL_PROMPT_GAP_PX = 8;/);
+	assert.match(SURFACE_SOURCE, /const PERSONAL_GRAPH_TAIL_MARKER_SIZE_PX = ROVO_GRAPH_DEFAULT_PARAMS\.originMarkerSize;/);
+	assert.match(SURFACE_SOURCE, /const PERSONAL_GRAPH_STAGE_TRANSLATE_Y_PX = -10;/);
+	assert.match(
+		SURFACE_SOURCE,
+		/PERSONAL_GRAPH_PROMPT_INPUT_BOTTOM_PX \+\s+PERSONAL_GRAPH_PROMPT_INPUT_HEIGHT_PX \+\s+PERSONAL_GRAPH_TAIL_PROMPT_GAP_PX \+\s+PERSONAL_GRAPH_TAIL_MARKER_SIZE_PX \/ 2 \+\s+PERSONAL_GRAPH_STAGE_TRANSLATE_Y_PX;/,
+	);
+	assert.match(SURFACE_SOURCE, /transform: `translateY\(\$\{PERSONAL_GRAPH_STAGE_TRANSLATE_Y_PX\}px\)`/);
 	assert.doesNotMatch(SURFACE_SOURCE, /opacity: isSearchRevealed \? 1 : 0/);
 	assert.doesNotMatch(SURFACE_SOURCE, /opacity: \{ duration: 0\.5, ease: easeOut \}/);
-	assert.match(SURFACE_SOURCE, /border-border-inverse bg-bg-neutral-bold/);
+	assert.doesNotMatch(SURFACE_SOURCE, /border-border-inverse bg-bg-neutral-bold/);
+	assert.match(NEURAL_CANVAS_SOURCE, /backgroundColor: params\.originMarkerColor/);
+	assert.match(NEURAL_CANVAS_SOURCE, /height: params\.originMarkerSize/);
+	assert.match(NEURAL_CANVAS_SOURCE, /borderRadius: params\.nodeShape === "square" \? params\.nodeRadius : 9999/);
+	assert.doesNotMatch(NEURAL_CANVAS_SOURCE, /originMarkerBorderColor/);
+	assert.doesNotMatch(NEURAL_CANVAS_SOURCE, /border-2/);
 	assert.match(SURFACE_SOURCE, /<PersonalGraphSearch/);
 	assert.doesNotMatch(SURFACE_SOURCE, /grid-cols-\[1fr_auto_1fr\]/);
 	assert.match(SEARCH_SOURCE, /Ask or search your graph\.\.\./);
@@ -301,6 +320,9 @@ test("Personal Graph uses theme-aware editor-style surrounding chrome", () => {
 test("Personal Graph leaves the page header transparent over the backdrop grid", () => {
 	assert.match(SURFACE_SOURCE, /<header className="absolute inset-x-4 top-6 z-30 sm:inset-x-6 lg:inset-x-8">/);
 	assert.match(SURFACE_SOURCE, /<header className="absolute inset-x-4 top-6 z-30 sm:inset-x-6 lg:inset-x-8">\s*<motion\.div\s+className="relative flex flex-col items-center"/);
+	assert.match(SURFACE_SOURCE, /initial=\{\{ y: PERSONAL_GRAPH_HEADER_INITIAL_Y, gap: "24px" \}\}/);
+	assert.match(SURFACE_SOURCE, /y: isPostSettle \? PERSONAL_GRAPH_HEADER_SETTLED_Y : PERSONAL_GRAPH_HEADER_INITIAL_Y/);
+	assert.match(SURFACE_SOURCE, /y: \{ duration: 0\.7, ease: easeOut \}/);
 	assert.doesNotMatch(
 		SURFACE_SOURCE,
 		/<header className="absolute inset-x-4 top-6 z-30 sm:inset-x-6 lg:inset-x-8">\s*<PersonalGraphGlassPanel contentClassName="relative flex flex-col items-center gap-4/,
@@ -330,19 +352,29 @@ test("Personal Graph keeps the owned canvas renderer accessible", () => {
 	assert.match(SURFACE_SOURCE, /showControls=\{false\}/);
 	assert.match(SURFACE_SOURCE, /background="transparent"/);
 	assert.match(SURFACE_SOURCE, /params=\{ROVO_GRAPH_DEFAULT_PARAMS\}/);
+	assert.match(SURFACE_SOURCE, /rayOriginBottomOffset=\{PERSONAL_GRAPH_TAIL_BOTTOM_OFFSET_PX\}/);
+	assert.match(GRAPH_SOURCE, /rayOriginBottomOffset\?: number;/);
+	assert.match(GRAPH_SOURCE, /rayOriginBottomOffset=\{rayOriginBottomOffset\}/);
+	assert.match(NEURAL_CANVAS_SOURCE, /rayOriginBottomOffset\?: number;/);
+	assert.match(NEURAL_CANVAS_SOURCE, /function getRayOriginY/);
+	assert.match(NEURAL_CANVAS_SOURCE, /viewport\.height - rayOriginBottomOffset/);
+	assert.match(NEURAL_RENDERER_SOURCE, /rayOriginY\?: number;/);
+	assert.match(NEURAL_RENDERER_SOURCE, /rayOriginY \?\? viewport\.height \* params\.rayOriginY/);
 	assert.doesNotMatch(SURFACE_SOURCE, /PERSONAL_GRAPH_NEURAL_PARAMS_STORAGE_KEY/);
 	assert.match(GRAPH_SOURCE, /nodeShape: "square"/);
 	assert.match(GRAPH_SOURCE, /nodeSize: 8/);
+	assert.match(GRAPH_SOURCE, /originMarkerSize: 12/);
 	assert.match(GRAPH_SOURCE, /rayOriginY: 1/);
-	assert.match(SURFACE_SOURCE, /function PersonalGraphPromptTailConnector/);
-	assert.match(SURFACE_SOURCE, /data-personal-graph-tail-connector="prompt"/);
-	assert.match(SURFACE_SOURCE, /top-\[-7rem\]/);
+	assert.doesNotMatch(SURFACE_SOURCE, /PersonalGraphPromptTailConnector/);
+	assert.doesNotMatch(SURFACE_SOURCE, /data-personal-graph-tail-connector/);
 	assert.match(SURFACE_SOURCE, /selectedNodeId=\{selectedNodeId\}/);
 	assert.match(SURFACE_SOURCE, /onSelectedNodeIdChange=\{setSelectedNodeId\}/);
 	assert.doesNotMatch(SURFACE_SOURCE, /<PersonalGraphNeuralCanvas/);
 	assert.doesNotMatch(SURFACE_SOURCE, /PersonalGraphSigma/);
 	assert.match(GRAPH_SOURCE, /<PersonalGraphNeuralCanvas/);
 	assert.match(NEURAL_CANVAS_SOURCE, /data-neural-graph-renderer="owned-canvas"/);
+	assert.match(NEURAL_CANVAS_SOURCE, /data-neural-graph-origin-node="true"/);
+	assert.match(NEURAL_CANVAS_SOURCE, /params\.showRays && params\.showOriginMarker \? \(/);
 	assert.match(NEURAL_CANVAS_SOURCE, /backgroundClass = background === "transparent" \? "bg-transparent" : "bg-surface"/);
 	assert.match(NEURAL_CANVAS_SOURCE, /<canvas aria-hidden="true"/);
 	assert.match(NEURAL_CANVAS_SOURCE, /<SelectedNodeOverlay/);
@@ -472,7 +504,7 @@ test("Personal Graph exposes primary graph actions through a curved control flyo
 	assert.match(NEURAL_PARAMS_SOURCE, /speed: 0\.8/);
 	assert.match(NEURAL_PARAMS_SOURCE, /amplitude: 0\.15/);
 	assert.match(NEURAL_PARAMS_SOURCE, /coneAngle: 75/);
-	assert.match(NEURAL_PARAMS_SOURCE, /nodeColor: "#6b5ce7"/);
+	assert.match(NEURAL_PARAMS_SOURCE, /nodeColor: "var\(--ds-chart-purple-bolder\)"/);
 });
 
 test("Personal Graph focuses and clears selection through the owned interaction layer", () => {

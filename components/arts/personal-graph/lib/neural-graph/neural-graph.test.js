@@ -16,13 +16,14 @@ registerHooks({
 });
 
 const cameraModule = import("./camera.ts");
+const colorsModule = import("./colors.ts");
 const interactionModule = import("./interaction.ts");
 const layoutModule = import("./layout.ts");
 const paramsModule = import("./params.ts");
 const rendererModule = import("./renderer.ts");
 const storeModule = import("./store.ts");
 
-function node(id, title, kind, connectionCount = 0) {
+function node(id, title, kind, connectionCount = 0, overrides = {}) {
 	return {
 		bodyPreview: `${title} preview`,
 		connectionCount,
@@ -38,6 +39,7 @@ function node(id, title, kind, connectionCount = 0) {
 		slug: title.toLowerCase(),
 		title,
 		updatedAt: null,
+		...overrides,
 	};
 }
 
@@ -153,6 +155,7 @@ function createRecordingCanvasContext() {
 		arc: (...args) => calls.push(["arc", ...args]),
 		beginPath: (...args) => calls.push(["beginPath", ...args]),
 		bezierCurveTo: (...args) => calls.push(["bezierCurveTo", ...args]),
+		closePath: (...args) => calls.push(["closePath", ...args]),
 		clearRect: (...args) => calls.push(["clearRect", ...args]),
 		createLinearGradient: (...args) => {
 			calls.push(["createLinearGradient", ...args]);
@@ -167,6 +170,7 @@ function createRecordingCanvasContext() {
 		fillText: (...args) => calls.push(["fillText", ...args]),
 		lineTo: (...args) => calls.push(["lineTo", ...args]),
 		moveTo: (...args) => calls.push(["moveTo", ...args]),
+		quadraticCurveTo: (...args) => calls.push(["quadraticCurveTo", ...args]),
 		rect: (...args) => calls.push(["rect", ...args]),
 		restore: (...args) => calls.push(["restore", ...args]),
 		save: (...args) => calls.push(["save", ...args]),
@@ -227,6 +231,7 @@ test("clampNeuralGraphParams clamps numbers, colors, radius order, and shapes", 
 		maxVisibleNodes: 900,
 		nodeColor: "purple",
 		nodeHoverColor: "#ABCDEF",
+		nodeRadius: 900,
 		nodeSelectedColor: "gold",
 		nodeShape: "triangle",
 		radiusMax: 20,
@@ -236,17 +241,82 @@ test("clampNeuralGraphParams clamps numbers, colors, radius order, and shapes", 
 	});
 
 	assert.equal(params.edgeColor, "#010203");
-	assert.equal(params.edgeHoverColor, "#1868DB");
+	assert.equal(params.edgeHoverColor, "var(--ds-background-accent-blue-bolder)");
 	assert.equal(params.edgeSelectedColor, "#040506");
 	assert.equal(params.maxVisibleNodes, 200);
-	assert.equal(params.nodeColor, "#6b5ce7");
+	assert.equal(params.nodeColor, "var(--ds-chart-purple-bolder)");
 	assert.equal(params.nodeHoverColor, "#ABCDEF");
-	assert.equal(params.nodeSelectedColor, "#AF59E1");
+	assert.equal(params.nodeRadius, 16);
+	assert.equal(params.nodeSelectedColor, "var(--ds-chart-purple-bolder)");
 	assert.equal(params.nodeShape, "circle");
 	assert.equal(params.radiusMin, 20);
 	assert.equal(params.radiusMax, 20);
-	assert.equal(params.rayColor, "#6B5CE7");
+	assert.equal(params.rayColor, "var(--ds-chart-purple-bolder)");
 	assert.equal(params.speed, 0);
+});
+
+test("neural graph color helpers translate legacy hex colors to ADS token variables", async () => {
+	const {
+		getNeuralGraphColorTokenOption,
+		normalizeNeuralGraphColorValue,
+		resolveNeuralGraphCssColorValue,
+	} = await colorsModule;
+	const fallback = "var(--ds-text)";
+	const expectations = [
+		["#292A2E", "var(--ds-text)", "color.text"],
+		["#172B4D", "var(--ds-text)", "color.text"],
+		["#44546F", "var(--ds-text-subtle)", "color.text.subtle"],
+		["#8590A2", "var(--ds-chart-gray-bold)", "color.chart.gray.bold"],
+		["#4B4D51", "var(--ds-chart-gray-boldest)", "color.chart.gray.boldest"],
+		["#1868DB", "var(--ds-background-accent-blue-bolder)", "color.background.accent.blue.bolder"],
+		["#FCA700", "var(--ds-background-accent-orange-subtle)", "color.background.accent.orange.subtle"],
+		["#AF59E1", "var(--ds-chart-purple-bolder)", "color.chart.purple.bolder"],
+		["#6B5CE7", "var(--ds-chart-purple-bolder)", "color.chart.purple.bolder"],
+		["#6A9A23", "var(--ds-chart-lime-bold)", "color.chart.lime.bold"],
+	];
+
+	for (const [hex, tokenValue, tokenName] of expectations) {
+		assert.equal(normalizeNeuralGraphColorValue(hex, fallback), tokenValue);
+		assert.equal(getNeuralGraphColorTokenOption(hex).token, tokenName);
+	}
+	assert.equal(resolveNeuralGraphCssColorValue("var(--ds-chart-purple-bolder)"), "#AF59E1");
+});
+
+test("drawNeuralGraph rounds square nodes with the shared node radius param", async () => {
+	const { createNeuralCamera } = await cameraModule;
+	const { DEFAULT_NEURAL_GRAPH_PARAMS } = await paramsModule;
+	const { drawNeuralGraph } = await rendererModule;
+	const viewport = { height: 200, width: 300 };
+	const graphNode = layoutNode("rounded", 0);
+	const layout = {
+		edges: [],
+		nodes: [graphNode],
+		nodesById: new Map([[graphNode.id, graphNode]]),
+		origin: { x: 0, y: 0 },
+		viewport,
+	};
+	const params = {
+		...DEFAULT_NEURAL_GRAPH_PARAMS,
+		nodeRadius: 6,
+		nodeShape: "square",
+		showLabels: false,
+		showRays: false,
+	};
+	const ctx = createRecordingCanvasContext();
+
+	drawNeuralGraph(ctx, layout, {
+		background: "transparent",
+		camera: createNeuralCamera(),
+		focusProgress: 0,
+		hoveredNodeId: null,
+		params,
+		selectedNodeId: null,
+		theme: "light",
+		viewport,
+	});
+
+	assert.ok(ctx.calls.some(([name]) => name === "quadraticCurveTo"));
+	assert.equal(ctx.calls.some(([name]) => name === "fillRect"), false);
 });
 
 test("shouldAnimateNeuralGraph skips static reduced-motion and zero-flow layouts", async () => {
@@ -274,6 +344,39 @@ test("computeNeuralGraphLayout is deterministic and keeps selected nodes visible
 		first.nodes.map(({ id, x, y }) => [id, Number(x.toFixed(3)), Number(y.toFixed(3))]),
 		second.nodes.map(({ id, x, y }) => [id, Number(x.toFixed(3)), Number(y.toFixed(3))]),
 	);
+});
+
+test("computeNeuralGraphLayout keeps missing and dangling nodes fully opaque", async () => {
+	const { computeNeuralGraphLayout } = await layoutModule;
+	const { DEFAULT_NEURAL_GRAPH_PARAMS } = await paramsModule;
+	const { createNeuralGraphStore } = await storeModule;
+	const viewport = { height: 700, width: 1000 };
+	const missingExplorer = {
+		edges: [],
+		generatedAt: "2026-04-30T00:00:00.000Z",
+		nodes: [
+			node("missing", "Missing", "concept", 0, {
+				dangling: true,
+				missing: true,
+			}),
+		],
+		stats: {
+			danglingCount: 1,
+			edgeCount: 0,
+			nodeCount: 1,
+			rawCount: 0,
+			wikiCount: 1,
+		},
+	};
+	const store = createNeuralGraphStore(missingExplorer);
+	const layout = computeNeuralGraphLayout({
+		params: DEFAULT_NEURAL_GRAPH_PARAMS,
+		selectedNodeId: null,
+		store,
+		viewport,
+	});
+
+	assert.equal(layout.nodesById.get("missing").alpha, 1);
 });
 
 test("drawNeuralGraph clears transparent embeds without painting the default background", async () => {
@@ -308,6 +411,52 @@ test("drawNeuralGraph clears transparent embeds without painting the default bac
 	assert.equal(
 		ctx.calls.some(([name]) => name === "createLinearGradient" || name === "createRadialGradient" || name === "fillRect"),
 		false,
+	);
+});
+
+test("drawNeuralGraph fills missing and dangling nodes with full node color", async () => {
+	const { createNeuralCamera } = await cameraModule;
+	const { DEFAULT_NEURAL_GRAPH_PARAMS } = await paramsModule;
+	const { drawNeuralGraph } = await rendererModule;
+	const viewport = { height: 200, width: 300 };
+	const graphNode = layoutNode("missing", 0);
+	graphNode.node.dangling = true;
+	graphNode.node.missing = true;
+	const layout = {
+		edges: [],
+		nodes: [graphNode],
+		nodesById: new Map([[graphNode.id, graphNode]]),
+		origin: { x: 0, y: 0 },
+		viewport,
+	};
+	const params = {
+		...DEFAULT_NEURAL_GRAPH_PARAMS,
+		colorConcept: "#292A2E",
+		nodeOpacity: 1,
+		showLabels: false,
+		showRays: false,
+	};
+	const ctx = createRecordingCanvasContext();
+
+	drawNeuralGraph(ctx, layout, {
+		background: "transparent",
+		camera: createNeuralCamera(),
+		focusProgress: 0,
+		hoveredNodeId: null,
+		params,
+		selectedNodeId: null,
+		theme: "light",
+		viewport,
+	});
+
+	assert.ok(ctx.calls.some(([name, value]) => name === "fillStyle" && value === "#292A2E"));
+	assert.equal(
+		ctx.calls.some(([name, value]) => name === "fillStyle" && typeof value === "string" && value.includes("0.5")),
+		false,
+	);
+	assert.deepEqual(
+		ctx.calls.filter(([name]) => name === "globalAlpha").map(([, value]) => value),
+		[1],
 	);
 });
 
@@ -387,6 +536,45 @@ test("drawNeuralGraph uses the configured ray color for fan strokes", async () =
 	assert.deepEqual(
 		ctx.calls.find(([name]) => name === "strokeStyle"),
 		["strokeStyle", "#123ABC"],
+	);
+});
+
+test("drawNeuralGraph resolves design-token colors before drawing on canvas", async () => {
+	const { createNeuralCamera } = await cameraModule;
+	const { DEFAULT_NEURAL_GRAPH_PARAMS, clampNeuralGraphParams } = await paramsModule;
+	const { computeNeuralGraphLayout } = await layoutModule;
+	const { drawNeuralGraph } = await rendererModule;
+	const { createNeuralGraphStore } = await storeModule;
+	const viewport = { height: 700, width: 1000 };
+	const store = createNeuralGraphStore(explorer);
+	const params = clampNeuralGraphParams({
+		...DEFAULT_NEURAL_GRAPH_PARAMS,
+		rayColor: "var(--ds-chart-purple-bolder)",
+		rayOpacity: 1,
+	});
+	const layout = computeNeuralGraphLayout({
+		params,
+		selectedNodeId: null,
+		store,
+		viewport,
+	});
+	const ctx = createRecordingCanvasContext();
+
+	drawNeuralGraph(ctx, layout, {
+		background: "transparent",
+		camera: createNeuralCamera(),
+		focusProgress: 0,
+		hoveredNodeId: null,
+		params,
+		resolveColor: (color) => color === "var(--ds-chart-purple-bolder)" ? "#B56AF0" : color,
+		selectedNodeId: null,
+		theme: "light",
+		viewport,
+	});
+
+	assert.deepEqual(
+		ctx.calls.find(([name]) => name === "strokeStyle"),
+		["strokeStyle", "#B56AF0"],
 	);
 });
 
