@@ -232,7 +232,7 @@ test("Personal Graph header uses the display font lockup", () => {
 	assert.match(TITLE_SOURCE, />\s*PERSONAL\s*<\/ScrambleText>/);
 	assert.match(TITLE_SOURCE, />\s*GRAPH\s*<\/ScrambleText>/);
 	assert.match(TITLE_SOURCE, /className="block whitespace-nowrap"/);
-	assert.match(TITLE_SOURCE, /aria-label="PERSONAL GRAPH"/);
+	assert.match(TITLE_SOURCE, /aria-label="Personal Graph"/);
 	assert.match(TITLE_SOURCE, /aria-hidden className="block whitespace-nowrap"/);
 	assert.doesNotMatch(SURFACE_SOURCE, /BranchIcon/);
 });
