@@ -392,8 +392,11 @@ import { stagger } from "motion/react";`,
 	width={300}
 	height={200}
 	borderRadius={30}
-	distortionScale={-120}
-	dispersion={10}
+	distortionScale={-180}
+	redOffset={50}
+	greenOffset={-1}
+	blueOffset={-19}
+	yChannel="G"
 	backgroundOpacity={0.1}
 >
 	<p className="text-sm text-text">Content inside the glass</p>
@@ -411,7 +414,12 @@ import { stagger } from "motion/react";`,
 			{ name: "backgroundOpacity", type: "number", default: "0", description: "Background frost opacity (0 = clear, 1 = fully frosted)." },
 			{ name: "saturation", type: "number", default: "1", description: "Backdrop-filter saturation multiplier." },
 			{ name: "distortionScale", type: "number", default: "-90", description: "Base displacement scale applied to the center channel." },
-			{ name: "dispersion", type: "number", default: "6", description: "Offsets the red and blue channels around the base scale for chromatic separation." },
+			{ name: "dispersion", type: "number", default: "6", description: "Legacy VPK uniform boost added to every channel before per-channel offsets. Set to 0 for ReactBits scale parity." },
+			{ name: "redOffset", type: "number", default: "0", description: "ReactBits-compatible red channel displacement offset added to the base scale." },
+			{ name: "greenOffset", type: "number", default: "0", description: "ReactBits-compatible green channel displacement offset added to the base scale." },
+			{ name: "blueOffset", type: "number", default: "0", description: "ReactBits-compatible blue channel displacement offset added to the base scale." },
+			{ name: "xChannel", type: `"R" | "G" | "B"`, default: `"R"`, description: "Displacement-map channel selector for the x axis." },
+			{ name: "yChannel", type: `"R" | "G" | "B"`, default: `"B"`, description: "Displacement-map channel selector for the y axis. Use \"G\" to match ReactBits GlassSurface." },
 			{ name: "borderOpacity", type: "number", default: "0.35", description: "Opacity of the inset hairline edge." },
 			{ name: "borderColor", type: "string", default: "\"#000000\"", description: "Color of the inset hairline edge." },
 			{ name: "className", type: "string", description: "Additional CSS class names." },

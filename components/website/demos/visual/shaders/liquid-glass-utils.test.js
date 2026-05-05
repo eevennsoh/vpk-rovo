@@ -38,6 +38,17 @@ test("dispersion adds a uniform boost to every channel scale (Framer behavior)",
 	);
 });
 
+test("channel offsets match ReactBits GlassSurface scale math when dispersion is zero", () => {
+	assert.deepEqual(
+		buildLiquidGlassChannelScales(-180, 0, { red: 50, green: -1, blue: -19 }),
+		{
+			red: -130,
+			green: -181,
+			blue: -199,
+		},
+	);
+});
+
 test("per-channel chromatic offsets shift each channel scale independently", () => {
 	assert.deepEqual(
 		buildLiquidGlassChannelScales(-90, 6, { red: -10, green: 0, blue: 10 }),

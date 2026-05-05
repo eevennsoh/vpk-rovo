@@ -22,9 +22,11 @@ const DEFAULT_BLUR = 8;
 const DEFAULT_DISPLACE = 5;
 const DEFAULT_BG_OPACITY = 0;
 const DEFAULT_SATURATION = 1;
-const DEFAULT_DISTORTION_SCALE = -90;
-const DEFAULT_DISPERSION = 6;
-const DEFAULT_CHROMATIC_OFFSET = 0;
+const DEFAULT_DISTORTION_SCALE = -180;
+const DEFAULT_DISPERSION = 0;
+const DEFAULT_RED_OFFSET = 50;
+const DEFAULT_GREEN_OFFSET = -1;
+const DEFAULT_BLUE_OFFSET = -19;
 const DEFAULT_BORDER_OPACITY = 0.35;
 
 export default function LiquidGlassDemo() {
@@ -40,9 +42,9 @@ export default function LiquidGlassDemo() {
 	const [saturation, setSaturation] = useState(DEFAULT_SATURATION);
 	const [distortionScale, setDistortionScale] = useState(DEFAULT_DISTORTION_SCALE);
 	const [dispersion, setDispersion] = useState(DEFAULT_DISPERSION);
-	const [chromaticOffsetR, setChromaticOffsetR] = useState(DEFAULT_CHROMATIC_OFFSET);
-	const [chromaticOffsetG, setChromaticOffsetG] = useState(DEFAULT_CHROMATIC_OFFSET);
-	const [chromaticOffsetB, setChromaticOffsetB] = useState(DEFAULT_CHROMATIC_OFFSET);
+	const [redOffset, setRedOffset] = useState(DEFAULT_RED_OFFSET);
+	const [greenOffset, setGreenOffset] = useState(DEFAULT_GREEN_OFFSET);
+	const [blueOffset, setBlueOffset] = useState(DEFAULT_BLUE_OFFSET);
 	const [borderOpacity, setBorderOpacity] = useState(DEFAULT_BORDER_OPACITY);
 
 	const dragRef = useRef<{ startX: number; startY: number; originX: number; originY: number } | null>(null);
@@ -84,12 +86,12 @@ export default function LiquidGlassDemo() {
 			saturation,
 			distortionScale,
 			dispersion,
-			chromaticOffsetR,
-			chromaticOffsetG,
-			chromaticOffsetB,
+			redOffset,
+			greenOffset,
+			blueOffset,
 			borderOpacity,
 		}),
-		[backgroundOpacity, blur, borderOpacity, borderRadius, borderWidth, brightness, chromaticOffsetB, chromaticOffsetG, chromaticOffsetR, displace, dispersion, distortionScale, height, opacity, saturation, width],
+		[backgroundOpacity, blueOffset, blur, borderOpacity, borderRadius, borderWidth, brightness, displace, dispersion, distortionScale, greenOffset, height, opacity, redOffset, saturation, width],
 	);
 
 	return (
@@ -139,9 +141,11 @@ export default function LiquidGlassDemo() {
 							saturation={saturation}
 							distortionScale={distortionScale}
 							dispersion={dispersion}
-							chromaticOffsetR={chromaticOffsetR}
-							chromaticOffsetG={chromaticOffsetG}
-							chromaticOffsetB={chromaticOffsetB}
+							redOffset={redOffset}
+							greenOffset={greenOffset}
+							blueOffset={blueOffset}
+							xChannel="R"
+							yChannel="G"
 							borderOpacity={borderOpacity}
 						/>
 					</div>
@@ -205,32 +209,32 @@ export default function LiquidGlassDemo() {
 				<GUI.Control
 					id="lg-chromatic-offset-r"
 					label="Red offset"
-					value={chromaticOffsetR}
-					defaultValue={DEFAULT_CHROMATIC_OFFSET}
+					value={redOffset}
+					defaultValue={DEFAULT_RED_OFFSET}
 					min={-50}
 					max={50}
 					step={1}
-					onChange={setChromaticOffsetR}
+					onChange={setRedOffset}
 				/>
 				<GUI.Control
 					id="lg-chromatic-offset-g"
 					label="Green offset"
-					value={chromaticOffsetG}
-					defaultValue={DEFAULT_CHROMATIC_OFFSET}
+					value={greenOffset}
+					defaultValue={DEFAULT_GREEN_OFFSET}
 					min={-50}
 					max={50}
 					step={1}
-					onChange={setChromaticOffsetG}
+					onChange={setGreenOffset}
 				/>
 				<GUI.Control
 					id="lg-chromatic-offset-b"
 					label="Blue offset"
-					value={chromaticOffsetB}
-					defaultValue={DEFAULT_CHROMATIC_OFFSET}
+					value={blueOffset}
+					defaultValue={DEFAULT_BLUE_OFFSET}
 					min={-50}
 					max={50}
 					step={1}
-					onChange={setChromaticOffsetB}
+					onChange={setBlueOffset}
 				/>
 				<GUI.Control
 					id="lg-border-width"

@@ -56,13 +56,18 @@ export interface LiquidGlassProps {
 	fallbackBackgroundOpacity?: number;
 	saturation?: number;
 	distortionScale?: number;
+	/** Legacy VPK additive boost applied uniformly before per-channel offsets. */
 	dispersion?: number;
-	/** Per-channel chromatic offsets added on top of the base displacement scale. Use these
-	 * to introduce chromatic-aberration fringes on the red, green, or blue channel
-	 * independently. All default to 0 (no offset, matching Framer's reference). */
+	/** Per-channel chromatic offsets matching ReactBits GlassSurface prop names. */
+	redOffset?: number;
+	greenOffset?: number;
+	blueOffset?: number;
+	/** Backwards-compatible aliases for older VPK demos. */
 	chromaticOffsetR?: number;
 	chromaticOffsetG?: number;
 	chromaticOffsetB?: number;
+	xChannel?: "R" | "G" | "B";
+	yChannel?: "R" | "G" | "B";
 	borderOpacity?: number;
 	borderColor?: string;
 	dropShadow?: string | false;
@@ -85,9 +90,14 @@ export default function LiquidGlass({
 	saturation = 1,
 	distortionScale = -90,
 	dispersion = 6,
-	chromaticOffsetR = 0,
-	chromaticOffsetG = 0,
-	chromaticOffsetB = 0,
+	redOffset,
+	greenOffset,
+	blueOffset,
+	chromaticOffsetR,
+	chromaticOffsetG,
+	chromaticOffsetB,
+	xChannel = "R",
+	yChannel = "B",
 	borderOpacity = 0.35,
 	borderColor = "#000000",
 	dropShadow = DROP_SHADOW,
@@ -155,9 +165,9 @@ export default function LiquidGlass({
 		updateDisplacementMap();
 
 		const channelScales = buildLiquidGlassChannelScales(distortionScale, dispersion, {
-			red: chromaticOffsetR,
-			green: chromaticOffsetG,
-			blue: chromaticOffsetB,
+			red: redOffset ?? chromaticOffsetR,
+			green: greenOffset ?? chromaticOffsetG,
+			blue: blueOffset ?? chromaticOffsetB,
 		});
 		for (const [ref, scale] of [
 			[dispRedRef, channelScales.red],
@@ -166,12 +176,12 @@ export default function LiquidGlass({
 		] as const) {
 			if (!ref.current) continue;
 			ref.current.setAttribute("scale", scale.toString());
-			ref.current.setAttribute("xChannelSelector", "R");
-			ref.current.setAttribute("yChannelSelector", "B");
+			ref.current.setAttribute("xChannelSelector", xChannel);
+			ref.current.setAttribute("yChannelSelector", yChannel);
 		}
 
 		gaussianBlurRef.current?.setAttribute("stdDeviation", blur.toString());
-	}, [updateDisplacementMap, distortionScale, dispersion, chromaticOffsetR, chromaticOffsetG, chromaticOffsetB, blur]);
+	}, [updateDisplacementMap, distortionScale, dispersion, redOffset, greenOffset, blueOffset, chromaticOffsetR, chromaticOffsetG, chromaticOffsetB, xChannel, yChannel, blur]);
 
 	useIsomorphicLayoutEffect(() => {
 		const check = () => {
