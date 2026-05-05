@@ -278,6 +278,9 @@ test("Personal Graph anchors the search and chat composer at the graph origin", 
 		SEARCH_SOURCE,
 		/<PersonalGraphGlassPanel[\s\S]*className="relative z-10"[\s\S]*contentClassName="flex h-16 items-center gap-2 p-4 pl-6"[\s\S]*radius=\{30\}/,
 	);
+	assert.match(SEARCH_SOURCE, /PERSONAL_GRAPH_CHROMATIC_RGB_GLASS_PROPS/);
+	assert.match(SEARCH_SOURCE, /glassProps=\{PERSONAL_GRAPH_CHROMATIC_RGB_GLASS_PROPS\}/);
+	assert.doesNotMatch(SEARCH_SOURCE, /chromaticEdge/);
 	assert.match(SEARCH_SOURCE, /contentClassName="flex h-16 items-center gap-2 p-4 pl-6"/);
 	assert.match(GLASS_PANEL_SOURCE, /\[&>div\]:p-0/);
 	assert.doesNotMatch(SEARCH_SOURCE, /SearchIcon/);

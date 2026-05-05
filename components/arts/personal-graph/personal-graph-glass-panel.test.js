@@ -36,3 +36,22 @@ test("Personal Graph glass panel uses the requested liquid glass tuning", () => 
 	assert.doesNotMatch(GLASS_PANEL_SOURCE, /brightness=\{68\}/);
 	assert.doesNotMatch(GLASS_PANEL_SOURCE, /distortionScale=\{-118\}/);
 });
+
+test("Personal Graph glass panel exposes the chromatic RGB preset", () => {
+	assert.match(GLASS_PANEL_SOURCE, /export const PERSONAL_GRAPH_CHROMATIC_RGB_GLASS_PROPS = \{/);
+	assert.match(GLASS_PANEL_SOURCE, /blur: 4,/);
+	assert.doesNotMatch(GLASS_PANEL_SOURCE, /blur: 0\.45,/);
+	assert.match(GLASS_PANEL_SOURCE, /displace: 5,/);
+	assert.match(GLASS_PANEL_SOURCE, /distortionScale: -180,/);
+	assert.match(GLASS_PANEL_SOURCE, /dispersion: 0,/);
+	assert.match(GLASS_PANEL_SOURCE, /redOffset: 50,/);
+	assert.match(GLASS_PANEL_SOURCE, /greenOffset: -1,/);
+	assert.match(GLASS_PANEL_SOURCE, /blueOffset: -19,/);
+	assert.match(GLASS_PANEL_SOURCE, /xChannel: "R",/);
+	assert.match(GLASS_PANEL_SOURCE, /yChannel: "G",/);
+	assert.match(GLASS_PANEL_SOURCE, /glassProps\?: PersonalGraphGlassTuningProps;/);
+	assert.match(GLASS_PANEL_SOURCE, /\{\.\.\.glassProps\}/);
+	assert.doesNotMatch(GLASS_PANEL_SOURCE, /chromaticEdge/);
+	assert.doesNotMatch(GLASS_PANEL_SOURCE, /PERSONAL_GRAPH_CHROMATIC_EDGE_STYLE/);
+	assert.doesNotMatch(GLASS_PANEL_SOURCE, /data-personal-graph-chromatic-edge/);
+});

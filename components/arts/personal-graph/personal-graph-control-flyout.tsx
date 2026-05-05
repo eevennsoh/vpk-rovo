@@ -4,7 +4,10 @@ import { useCallback, useLayoutEffect, useRef, type ReactNode } from "react";
 import { AnimatePresence, motion, useIsPresent, type Transition } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { PersonalGraphGlassPanel } from "./personal-graph-glass-panel";
+import {
+	PERSONAL_GRAPH_CHROMATIC_RGB_GLASS_PROPS,
+	PersonalGraphGlassPanel,
+} from "./personal-graph-glass-panel";
 import { PixelCloseIcon, PixelConfigureIcon } from "./personal-graph-pixel-icons";
 
 export interface PersonalGraphControlFlyoutAction {
@@ -50,6 +53,7 @@ function PersonalGraphControlFlyoutActionGlass({
 			<PersonalGraphGlassPanel
 				className="rounded-full"
 				contentClassName="flex size-8 items-center justify-center"
+				glassProps={PERSONAL_GRAPH_CHROMATIC_RGB_GLASS_PROPS}
 				height={32}
 				radius={9999}
 				width={32}

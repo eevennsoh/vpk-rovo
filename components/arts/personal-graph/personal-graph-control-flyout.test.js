@@ -26,11 +26,13 @@ test("Personal Graph flyout label chips are visible on narrow viewports", () => 
 test("Personal Graph flyout action buttons reuse the shared glass panel at stable size", () => {
 	assert.match(
 		CONTROL_FLYOUT_SOURCE,
-		/import \{ PersonalGraphGlassPanel \} from "\.\/personal-graph-glass-panel";/,
+		/import \{\s+PERSONAL_GRAPH_CHROMATIC_RGB_GLASS_PROPS,\s+PersonalGraphGlassPanel,\s+\} from "\.\/personal-graph-glass-panel";/,
 	);
 	assert.match(CONTROL_FLYOUT_SOURCE, /<PersonalGraphGlassPanel/);
 	assert.match(CONTROL_FLYOUT_SOURCE, /className="rounded-full"/);
 	assert.match(CONTROL_FLYOUT_SOURCE, /contentClassName="flex size-8 items-center justify-center"/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /glassProps=\{PERSONAL_GRAPH_CHROMATIC_RGB_GLASS_PROPS\}/);
+	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /chromaticEdge/);
 	assert.match(CONTROL_FLYOUT_SOURCE, /height=\{32\}/);
 	assert.match(CONTROL_FLYOUT_SOURCE, /radius=\{9999\}/);
 	assert.match(CONTROL_FLYOUT_SOURCE, /width=\{32\}/);
