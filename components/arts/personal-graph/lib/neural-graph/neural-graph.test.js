@@ -860,6 +860,57 @@ test("drawNeuralGraph resolves design-token colors before drawing on canvas", as
 	);
 });
 
+test("drawNeuralGraph resolves each repeated design token once per frame", async () => {
+	const { createNeuralCamera } = await cameraModule;
+	const { DEFAULT_NEURAL_GRAPH_PARAMS } = await paramsModule;
+	const { drawNeuralGraph } = await rendererModule;
+	const viewport = { height: 240, width: 360 };
+	const alpha = layoutNode("alpha", -80);
+	const beta = layoutNode("beta", 0);
+	const gamma = layoutNode("gamma", 80);
+	const layout = {
+		edges: [
+			layoutEdge("alpha-beta", alpha, beta),
+			layoutEdge("beta-gamma", beta, gamma),
+			layoutEdge("gamma-alpha", gamma, alpha),
+		],
+		nodes: [alpha, beta, gamma],
+		nodesById: new Map([
+			[alpha.id, alpha],
+			[beta.id, beta],
+			[gamma.id, gamma],
+		]),
+		origin: { x: 0, y: 0 },
+		viewport,
+	};
+	const callsByColor = new Map();
+	const ctx = createRecordingCanvasContext();
+
+	drawNeuralGraph(ctx, layout, {
+		animationTime: 0,
+		background: "transparent",
+		camera: createNeuralCamera(),
+		focusProgress: 0,
+		hoveredNodeId: null,
+		params: DEFAULT_NEURAL_GRAPH_PARAMS,
+		resolveColor: (color) => {
+			callsByColor.set(color, (callsByColor.get(color) ?? 0) + 1);
+			return color === "var(--ds-icon)" ? "#172B4D" : "#6554C0";
+		},
+		selectedNodeId: null,
+		theme: "light",
+		viewport,
+	});
+
+	assert.equal(callsByColor.get("var(--ds-icon)"), 1);
+	assert.equal(callsByColor.get("var(--ds-icon-accent-gray)"), 1);
+	assert.equal(callsByColor.get("var(--ds-icon-accent-purple)"), 1);
+	assert.equal(
+		[...callsByColor.values()].reduce((total, count) => total + count, 0),
+		3,
+	);
+});
+
 test("drawNeuralGraph keeps idle edge order and layers selected edges last", async () => {
 	const { createNeuralCamera } = await cameraModule;
 	const { DEFAULT_NEURAL_GRAPH_PARAMS } = await paramsModule;

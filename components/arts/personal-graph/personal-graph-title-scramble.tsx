@@ -18,7 +18,7 @@ export function PersonalGraphTitle({ className, play = true, ...motionProps }: R
 	const centerStagger = useMemo(() => stagger(PER_CHAR_STAGGER_S, { from: "center" }), []);
 
 	return (
-		<motion.h1 aria-label="PERSONAL GRAPH" className={cn(className)} {...motionProps}>
+		<motion.h1 aria-label="Personal Graph" className={cn(className)} {...motionProps}>
 			{play ? (
 				<>
 					<ScrambleText
