@@ -227,7 +227,7 @@ export default function LiquidGlass({
 			backdropFilter: `url(#${filterId}) saturate(${saturation})`,
 			WebkitBackdropFilter: `url(#${filterId}) saturate(${saturation})`,
 		});
-	} else if (backdropSupported !== false) {
+	} else if (backdropSupported === null || backdropSupported) {
 		Object.assign(containerStyle, {
 			background: `rgba(255, 255, 255, ${fallbackBackgroundOpacity ?? 0.18})`,
 			backdropFilter: FALLBACK_BACKDROP_FILTER,
