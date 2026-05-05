@@ -115,9 +115,16 @@ export function getNextNeuralRaySoundTriggerState({
 		};
 	}
 
+	if (!didPlay) {
+		return {
+			...state,
+			wasOnRay: true,
+		};
+	}
+
 	return {
 		lastNodeId: nodeId,
-		lastPlayedAt: didPlay ? now : state.lastPlayedAt,
+		lastPlayedAt: now,
 		wasOnRay: true,
 	};
 }

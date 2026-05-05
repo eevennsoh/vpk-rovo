@@ -334,6 +334,7 @@ test("ray sound trigger state plucks new rays with cooldown protection", async (
 
 	assert.equal(shouldTriggerNeuralRaySound({ nodeId: "alpha", now: 90, settings, state }), false);
 	assert.equal(shouldTriggerNeuralRaySound({ nodeId: "beta", now: 40, settings, state }), false);
+	state = getNextNeuralRaySoundTriggerState({ didPlay: false, nodeId: "beta", now: 40, state });
 	assert.equal(shouldTriggerNeuralRaySound({ nodeId: "beta", now: 90, settings, state }), true);
 	state = getNextNeuralRaySoundTriggerState({ didPlay: true, nodeId: "beta", now: 90, state });
 	state = getNextNeuralRaySoundTriggerState({ didPlay: false, nodeId: null, now: 110, state });
