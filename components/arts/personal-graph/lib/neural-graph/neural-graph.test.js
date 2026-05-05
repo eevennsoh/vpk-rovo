@@ -125,6 +125,8 @@ function createRecordingCanvasContext() {
 	const calls = [];
 	let fillStyle = "";
 	let globalAlpha = 1;
+	let shadowBlur = 0;
+	let shadowColor = "";
 	let strokeStyle = "";
 	const gradient = {
 		addColorStop: (...args) => calls.push(["addColorStop", ...args]),
@@ -145,6 +147,20 @@ function createRecordingCanvasContext() {
 		set globalAlpha(value) {
 			globalAlpha = value;
 			calls.push(["globalAlpha", value]);
+		},
+		get shadowBlur() {
+			return shadowBlur;
+		},
+		set shadowBlur(value) {
+			shadowBlur = value;
+			calls.push(["shadowBlur", value]);
+		},
+		get shadowColor() {
+			return shadowColor;
+		},
+		set shadowColor(value) {
+			shadowColor = value;
+			calls.push(["shadowColor", value]);
 		},
 		get strokeStyle() {
 			return strokeStyle;
@@ -242,6 +258,7 @@ test("clampNeuralGraphParams clamps numbers, colors, radius order, and shapes", 
 		rayColor: "not-a-color",
 		signalColor: "#070809",
 		signalFrequency: 20,
+		signalGlowEnabled: true,
 		signalLength: 2,
 		signalOpacity: 2,
 		signalWidth: -2,
@@ -262,6 +279,7 @@ test("clampNeuralGraphParams clamps numbers, colors, radius order, and shapes", 
 	assert.equal(params.rayColor, "var(--ds-icon-accent-purple)");
 	assert.equal(params.signalColor, "#070809");
 	assert.equal(params.signalFrequency, 4);
+	assert.equal(params.signalGlowEnabled, true);
 	assert.equal(params.signalLength, 0.6);
 	assert.equal(params.signalOpacity, 1);
 	assert.equal(params.signalWidth, 0.5);
@@ -377,30 +395,47 @@ test("responsive Personal Graph params preserve wide desktop density", async () 
 	assert.equal(params.showLabels, true);
 });
 
-test("responsive Personal Graph params interpolate numeric values without changing token colors", async () => {
+test("responsive Personal Graph params interpolate numeric values without changing shared visual treatment", async () => {
 	const { DEFAULT_NEURAL_GRAPH_PARAMS } = await paramsModule;
 	const { RESPONSIVE_PERSONAL_GRAPH_WIDTHS, getResponsivePersonalGraphParams } = await responsiveParamsModule;
+	const baseParams = {
+		...DEFAULT_NEURAL_GRAPH_PARAMS,
+		edgeColor: "#444444",
+		nodeColor: "#222222",
+		signalColor: "var(--ds-icon)",
+		signalFrequency: 0.5,
+		signalGlowEnabled: false,
+		signalLength: 0.5,
+		signalOpacity: 1,
+		signalWidth: 1,
+	};
 	const medium = getResponsivePersonalGraphParams(
 		{ height: 760, width: RESPONSIVE_PERSONAL_GRAPH_WIDTHS.medium },
-		DEFAULT_NEURAL_GRAPH_PARAMS,
+		baseParams,
 	);
 	const midpoint = getResponsivePersonalGraphParams(
 		{ height: 760, width: (RESPONSIVE_PERSONAL_GRAPH_WIDTHS.medium + RESPONSIVE_PERSONAL_GRAPH_WIDTHS.wide) / 2 },
-		DEFAULT_NEURAL_GRAPH_PARAMS,
+		baseParams,
 	);
 	const wide = getResponsivePersonalGraphParams(
 		{ height: 760, width: RESPONSIVE_PERSONAL_GRAPH_WIDTHS.wide },
-		DEFAULT_NEURAL_GRAPH_PARAMS,
+		baseParams,
 	);
 
 	assert.ok(midpoint.spread > medium.spread);
 	assert.ok(midpoint.spread < wide.spread);
 	assert.ok(midpoint.maxVisibleNodes > medium.maxVisibleNodes);
 	assert.ok(midpoint.maxVisibleNodes < wide.maxVisibleNodes);
-	assert.equal(midpoint.colorConcept, DEFAULT_NEURAL_GRAPH_PARAMS.colorConcept);
-	assert.equal(midpoint.colorEntity, DEFAULT_NEURAL_GRAPH_PARAMS.colorEntity);
-	assert.equal(midpoint.edgeColor, DEFAULT_NEURAL_GRAPH_PARAMS.edgeColor);
-	assert.equal(midpoint.nodeColor, DEFAULT_NEURAL_GRAPH_PARAMS.nodeColor);
+	assert.equal(midpoint.colorConcept, baseParams.colorConcept);
+	assert.equal(midpoint.colorEntity, baseParams.colorEntity);
+	assert.equal(midpoint.edgeColor, baseParams.edgeColor);
+	assert.equal(midpoint.nodeColor, baseParams.nodeColor);
+	assert.equal(midpoint.signalColor, baseParams.signalColor);
+	assert.equal(midpoint.signalFrequency, baseParams.signalFrequency);
+	assert.equal(midpoint.signalGlowEnabled, baseParams.signalGlowEnabled);
+	assert.equal(midpoint.signalLength, baseParams.signalLength);
+	assert.equal(midpoint.signalOpacity, baseParams.signalOpacity);
+	assert.equal(midpoint.signalWidth, baseParams.signalWidth);
 });
 
 test("responsive Personal Graph params do not animate before measurement or for reduced motion", async () => {
@@ -727,12 +762,19 @@ test("drawNeuralGraph traces momentary signal streaks along animated edges", asy
 	const viewport = { height: 200, width: 300 };
 	const source = layoutNode("source", 0);
 	const target = layoutNode("target", 80);
+	const freeSource = layoutNode("free-source", -80);
+	const freeTarget = layoutNode("free-target", -20);
 	const layout = {
-		edges: [layoutEdge("signal", source, target)],
-		nodes: [source, target],
+		edges: [
+			layoutEdge("signal", source, target),
+			layoutEdge("free-6", freeSource, freeTarget),
+		],
+		nodes: [source, target, freeSource, freeTarget],
 		nodesById: new Map([
 			[source.id, source],
 			[target.id, target],
+			[freeSource.id, freeSource],
+			[freeTarget.id, freeTarget],
 		]),
 		origin: { x: 0, y: 0 },
 		viewport,
@@ -742,16 +784,16 @@ test("drawNeuralGraph traces momentary signal streaks along animated edges", asy
 		showLabels: false,
 		showRays: false,
 	};
-	const render = (animationTime, overrides = {}) => {
+	const render = (animationTime, overrides = {}, selectedNodeId = null, hoveredNodeId = null) => {
 		const ctx = createRecordingCanvasContext();
 		drawNeuralGraph(ctx, layout, {
 			animationTime,
 			background: "transparent",
 			camera: createNeuralCamera(),
-			focusProgress: 0,
-			hoveredNodeId: null,
+			focusProgress: selectedNodeId ? 1 : 0,
+			hoveredNodeId,
 			params: { ...params, ...overrides },
-			selectedNodeId: null,
+			selectedNodeId,
 			theme: "light",
 			viewport,
 		});
@@ -761,7 +803,8 @@ test("drawNeuralGraph traces momentary signal streaks along animated edges", asy
 	assert.equal(render(undefined).some(([name]) => name === "createLinearGradient"), false);
 
 	const animatedCalls = render(0.8);
-	assert.ok(animatedCalls.some(([name]) => name === "createLinearGradient"));
+	assert.equal(animatedCalls.filter(([name]) => name === "createLinearGradient").length, 2);
+	assert.equal(animatedCalls.some(([name]) => name === "shadowBlur"), false);
 	assert.ok(
 		animatedCalls.some(([name, , value]) => (
 			name === "addColorStop"
@@ -769,7 +812,10 @@ test("drawNeuralGraph traces momentary signal streaks along animated edges", asy
 			&& value.startsWith("rgba(175, 89, 225,")
 		)),
 	);
+	assert.ok(render(0.8, { signalGlowEnabled: true }).some(([name]) => name === "shadowBlur"));
 	assert.equal(render(0.8, { showSignals: false }).some(([name]) => name === "createLinearGradient"), false);
+	assert.equal(render(0.8, {}, null, "source").filter(([name]) => name === "createLinearGradient").length, 1);
+	assert.equal(render(0.8, {}, "source").filter(([name]) => name === "createLinearGradient").length, 1);
 	assert.ok(
 		render(0.8, { signalColor: "#123ABC", signalOpacity: 0.5 }).some(([name, , value]) => (
 			name === "addColorStop"

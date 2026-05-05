@@ -21,6 +21,7 @@ export interface NeuralGraphRenderOptions {
 	camera: NeuralCamera;
 	focusProgress: number;
 	hoveredNodeId: string | null;
+	hoverProgressByNode?: ReadonlyMap<string, number>;
 	params: NeuralGraphParams;
 	rayOriginY?: number;
 	resolveColor?: (color: string) => string;
@@ -371,10 +372,19 @@ function drawSignalStreaks(
 	ctx.save();
 	ctx.lineCap = "round";
 	ctx.lineWidth = options.params.signalWidth;
-	ctx.shadowBlur = Math.max(8, options.params.signalWidth * 2.3);
-	ctx.shadowColor = colorWithAlpha(signalColor, 0.72 * options.params.signalOpacity);
+	if (options.params.signalGlowEnabled) {
+		ctx.shadowBlur = Math.max(8, options.params.signalWidth * 2.3);
+		ctx.shadowColor = colorWithAlpha(signalColor, 0.72 * options.params.signalOpacity);
+	}
 
 	for (const edge of layout.edges) {
+		if (
+			(options.selectedNodeId || options.hoveredNodeId)
+			&& isActiveEdge(edge.source.id, edge.target.id, options.selectedNodeId, options.hoveredNodeId)
+		) {
+			continue;
+		}
+
 		const signal = getSignalStreakProgress(edge, options);
 		if (!signal) continue;
 
@@ -499,12 +509,14 @@ function drawNodes(
 		}
 		const relatedScale = focusProgress > 0 && isRelated ? lerp(1, 1.22, focusProgress) : 1;
 		const inactiveScale = focusProgress > 0 && !isRelated ? lerp(1, 0.7, focusProgress) : 1;
-		let activeScale = relatedScale * inactiveScale;
+		const hoverProgress = options.hoverProgressByNode?.get(node.id) ?? (isHovered ? 1 : 0);
+		let baseScale = relatedScale * inactiveScale;
 		if (isSelected) {
-			activeScale = lerp(selectedScale, selectedScaleMax, focusProgress);
-		} else if (isHovered) {
-			activeScale = hoverScale;
+			baseScale = lerp(selectedScale, selectedScaleMax, focusProgress);
 		}
+		const activeScale = !isSelected && hoverProgress > 0
+			? lerp(baseScale, hoverScale, hoverProgress)
+			: baseScale;
 		const radius = Math.max(2.5, node.baseSize * node.depthScale * options.camera.zoom * activeScale);
 		const alpha = Math.min(1, node.alpha * (isSelected || isHovered ? 1 : options.params.nodeOpacity) * focusAlpha);
 		const point = worldToViewport(node, options.camera, options.viewport, options.params);

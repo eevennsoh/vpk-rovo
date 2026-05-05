@@ -204,6 +204,7 @@ test("Graph controls expose origin node visual fields", () => {
 test("Graph controls expose signal streak parameters", () => {
 	for (const expected of [
 		/{ kind: "boolean", key: "showSignals", label: "Show signals"/,
+		/{ kind: "boolean", key: "signalGlowEnabled", label: "Glow"/,
 		/{ kind: "color", key: "signalColor", label: "Color"/,
 		/{ kind: "number", key: "signalOpacity", label: "Opacity"/,
 		/{ kind: "number", key: "signalWidth", label: "Width"/,
@@ -214,20 +215,29 @@ test("Graph controls expose signal streak parameters", () => {
 		assert.match(PARAMS_SOURCE, expected);
 	}
 	assert.match(GRAPH_SOURCE, /showSignals: true/);
-	assert.match(GRAPH_SOURCE, /signalColor: ROVO_GRAPH_COLORS\.purple/);
-	assert.match(GRAPH_SOURCE, /signalFrequency: 1/);
-	assert.match(GRAPH_SOURCE, /signalLength: 0\.22/);
+	assert.match(GRAPH_SOURCE, /signalColor: ROVO_GRAPH_COLORS\.default/);
+	assert.match(GRAPH_SOURCE, /signalFrequency: 0\.5/);
+	assert.match(GRAPH_SOURCE, /signalGlowEnabled: false/);
+	assert.match(GRAPH_SOURCE, /signalLength: 0\.5/);
 	assert.match(GRAPH_SOURCE, /signalOpacity: 1/);
-	assert.match(GRAPH_SOURCE, /signalWidth: 3\.5/);
+	assert.match(GRAPH_SOURCE, /signalWidth: 1/);
 	assert.match(RENDERER_SOURCE, /options\.params\.signalColor/);
 	assert.match(RENDERER_SOURCE, /options\.params\.signalFrequency/);
+	assert.match(RENDERER_SOURCE, /options\.params\.signalGlowEnabled/);
 	assert.match(RENDERER_SOURCE, /options\.params\.signalLength/);
 	assert.match(RENDERER_SOURCE, /options\.params\.signalOpacity/);
 	assert.match(RENDERER_SOURCE, /options\.params\.signalWidth/);
+	assert.match(RENDERER_SOURCE, /options\.selectedNodeId \|\| options\.hoveredNodeId/);
 	assert.match(DETAILS_SOURCE, /signal streaks/);
 });
 
 test("Graph controls render booleans as toggles", () => {
 	assert.match(GRAPH_SOURCE, /GUI\.Toggle/);
 	assert.match(GRAPH_SOURCE, /definition\.kind === "boolean"/);
+});
+
+test("Graph normalizes runtime params before rendering controls", () => {
+	assert.match(GRAPH_SOURCE, /const rawParams = controlledParams \?\? uncontrolledParams;/);
+	assert.match(GRAPH_SOURCE, /const params = useMemo\(\(\) => clampNeuralGraphParams\(rawParams\), \[rawParams\]\);/);
+	assert.match(GRAPH_SOURCE, /<GraphControls defaultParams=\{defaultParams\} onChange=\{handleParamsChange\} params=\{params\} \/>/);
 });

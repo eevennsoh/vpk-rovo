@@ -50,6 +50,9 @@ const ZOOM_SPRING_INSTANT = { stiffness: 4000, damping: 200, mass: 0.05, restDel
 const FOCUS_SPRING_CONFIG = { stiffness: 160, damping: 24, mass: 0.7, restDelta: 0.0005 } as const;
 const FOCUS_SPRING_INSTANT = { stiffness: 4000, damping: 220, mass: 0.05, restDelta: 0.0005 } as const;
 
+const HOVER_TRANSITION_TAU_SECONDS = 0.05;
+const HOVER_PROGRESS_SETTLE_EPSILON = 0.001;
+
 function formatSignedPixels(value: number): string {
 	if (value < 0) return `- ${Math.abs(value)}px`;
 	return `+ ${value}px`;
@@ -225,6 +228,7 @@ export function PersonalGraphNeuralCanvas({
 	const focusProgressRef = useRef(selectedNodeId ? 1 : 0);
 	const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
 	const hoveredNodeIdRef = useRef<string | null>(null);
+	const hoverProgressByNodeRef = useRef<Map<string, number>>(new Map());
 	const [isPanning, setIsPanning] = useState(false);
 	const isPanningRef = useRef(false);
 	const [selectedOverlay, setSelectedOverlay] = useState<SelectedOverlayState | null>(null);
@@ -266,6 +270,8 @@ export function PersonalGraphNeuralCanvas({
 
 		let animationFrame = 0;
 		let staticFrame = 0;
+		let lastHoverFrameTime: number | null = null;
+		const hoverProgressByNode = hoverProgressByNodeRef.current;
 		const pixelRatio = window.devicePixelRatio || 1;
 		canvas.width = Math.max(1, Math.floor(viewport.width * pixelRatio));
 		canvas.height = Math.max(1, Math.floor(viewport.height * pixelRatio));
@@ -274,6 +280,36 @@ export function PersonalGraphNeuralCanvas({
 
 		const startedAt = performance.now();
 		const shouldLoop = shouldAnimateNeuralGraph(params, reduceMotion);
+		const advanceHoverProgress = (now: number, layoutNodeIds: ReadonlySet<string>): boolean => {
+			const hoveredId = hoveredNodeIdRef.current;
+			const dt = lastHoverFrameTime === null ? 0 : Math.min(0.1, (now - lastHoverFrameTime) / 1000);
+			lastHoverFrameTime = now;
+			const decayFactor = reduceMotion ? 1 : (dt > 0 ? 1 - Math.exp(-dt / HOVER_TRANSITION_TAU_SECONDS) : 0);
+			let transitionActive = false;
+
+			for (const id of [...hoverProgressByNode.keys()]) {
+				if (!layoutNodeIds.has(id)) hoverProgressByNode.delete(id);
+			}
+
+			const candidateIds = new Set<string>(hoverProgressByNode.keys());
+			if (hoveredId && layoutNodeIds.has(hoveredId)) candidateIds.add(hoveredId);
+
+			for (const id of candidateIds) {
+				const target = id === hoveredId ? 1 : 0;
+				const current = hoverProgressByNode.get(id) ?? 0;
+				const next = decayFactor >= 1 ? target : current + (target - current) * decayFactor;
+				const settled = Math.abs(next - target) < HOVER_PROGRESS_SETTLE_EPSILON;
+				const resolved = settled ? target : next;
+				if (resolved <= 0) {
+					hoverProgressByNode.delete(id);
+				} else {
+					hoverProgressByNode.set(id, resolved);
+				}
+				if (!settled) transitionActive = true;
+			}
+
+			return transitionActive;
+		};
 		const render = (now: number) => {
 			const elapsedSeconds = reduceMotion ? undefined : (now - startedAt) / 1000;
 			context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
@@ -287,12 +323,15 @@ export function PersonalGraphNeuralCanvas({
 				viewport,
 			});
 			layoutRef.current = layout;
+			const layoutNodeIds = new Set(layout.nodes.map((entry) => entry.id));
+			const hoverTransitionActive = advanceHoverProgress(now, layoutNodeIds);
 			drawNeuralGraph(context, layout, {
 				animationTime: elapsedSeconds,
 				background,
 				camera: cameraRef.current,
 				focusProgress: focusProgressRef.current,
 				hoveredNodeId: hoveredNodeIdRef.current,
+				hoverProgressByNode,
 				params,
 				rayOriginY,
 				resolveColor: resolveGraphColor,
@@ -314,8 +353,10 @@ export function PersonalGraphNeuralCanvas({
 				setSelectedOverlay(nextOverlay);
 			}
 
-			if (shouldLoop) {
+			if (shouldLoop || hoverTransitionActive) {
 				animationFrame = window.requestAnimationFrame(render);
+			} else {
+				lastHoverFrameTime = null;
 			}
 		};
 

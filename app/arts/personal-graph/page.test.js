@@ -210,7 +210,7 @@ test("Personal Graph header uses the display font lockup", () => {
 	assert.match(SURFACE_SOURCE, /PERSONAL_GRAPH_SETTLED_TITLE_SCRAMBLE_LINE_CHAR_COUNT = 8/);
 	assert.match(SURFACE_SOURCE, /PERSONAL_GRAPH_HEADER_INITIAL_Y = "35svh"/);
 	assert.match(SURFACE_SOURCE, /PERSONAL_GRAPH_HEADER_SETTLED_Y = "0px"/);
-	assert.match(SURFACE_SOURCE, /PERSONAL_GRAPH_TITLE_INK_TOP_PADDING = "48px"/);
+	assert.match(SURFACE_SOURCE, /PERSONAL_GRAPH_TITLE_INK_TOP_PADDING = "0px"/);
 	assert.match(SURFACE_SOURCE, /PERSONAL_GRAPH_INITIAL_TITLE_SIZE/);
 	assert.match(SURFACE_SOURCE, /PERSONAL_GRAPH_SETTLED_TITLE_SIZE/);
 	assert.match(SURFACE_SOURCE, /min\(8rem, calc\(\(100svw - 3rem\) \/ \$\{PERSONAL_GRAPH_TITLE_LONGEST_LINE_WIDTH_EM\}\)\)/);
@@ -372,6 +372,11 @@ test("Personal Graph keeps the owned canvas renderer accessible", () => {
 	assert.match(GRAPH_SOURCE, /nodeSize: 8/);
 	assert.match(GRAPH_SOURCE, /originMarkerSize: 12/);
 	assert.match(GRAPH_SOURCE, /rayOriginY: 1/);
+	assert.match(GRAPH_SOURCE, /signalColor: ROVO_GRAPH_COLORS\.default/);
+	assert.match(GRAPH_SOURCE, /signalFrequency: 0\.5/);
+	assert.match(GRAPH_SOURCE, /signalGlowEnabled: false/);
+	assert.match(GRAPH_SOURCE, /signalLength: 0\.5/);
+	assert.match(GRAPH_SOURCE, /signalWidth: 1/);
 	assert.doesNotMatch(SURFACE_SOURCE, /PersonalGraphPromptTailConnector/);
 	assert.doesNotMatch(SURFACE_SOURCE, /data-personal-graph-tail-connector/);
 	assert.match(SURFACE_SOURCE, /selectedNodeId=\{selectedNodeId\}/);

@@ -129,11 +129,12 @@ export const ROVO_GRAPH_DEFAULT_PARAMS: NeuralGraphParams = clampNeuralGraphPara
 	showOriginMarker: true,
 	showRays: true,
 	showSignals: true,
-	signalColor: ROVO_GRAPH_COLORS.purple,
-	signalFrequency: 1,
-	signalLength: 0.22,
+	signalColor: ROVO_GRAPH_COLORS.default,
+	signalFrequency: 0.5,
+	signalGlowEnabled: false,
+	signalLength: 0.5,
 	signalOpacity: 1,
-	signalWidth: 3.5,
+	signalWidth: 1,
 	speed: 0.7,
 	spread: 600,
 	tiltX: -4,
@@ -775,7 +776,8 @@ export default function Graph({
 	const canvasThemeMode = themeMode ?? (!isFillVariant && hasTransparentBackground ? "light" : undefined);
 	const isParamsControlled = controlledParams !== undefined;
 	const isSelectionControlled = controlledSelectedNodeId !== undefined;
-	const params = controlledParams ?? uncontrolledParams;
+	const rawParams = controlledParams ?? uncontrolledParams;
+	const params = useMemo(() => clampNeuralGraphParams(rawParams), [rawParams]);
 	const selectedNodeId = isSelectionControlled ? controlledSelectedNodeId ?? null : uncontrolledSelectedNodeId;
 	const selectedNode = useMemo(() => getSelectedGraphNode(explorer, selectedNodeId), [explorer, selectedNodeId]);
 

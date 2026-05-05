@@ -53,6 +53,7 @@ export interface NeuralGraphParams {
 	showSignals: boolean;
 	signalColor: string;
 	signalFrequency: number;
+	signalGlowEnabled: boolean;
 	signalLength: number;
 	signalOpacity: number;
 	signalWidth: number;
@@ -200,6 +201,7 @@ export const DEFAULT_NEURAL_GRAPH_PARAMS: NeuralGraphParams = {
 	showSignals: true,
 	signalColor: "var(--ds-icon-accent-purple)",
 	signalFrequency: 1,
+	signalGlowEnabled: false,
 	signalLength: 0.22,
 	signalOpacity: 1,
 	signalWidth: 3.5,
@@ -269,6 +271,7 @@ export const NEURAL_GRAPH_PARAM_SECTIONS: NeuralGraphParamSection[] = [
 		label: "Signals",
 		params: [
 			{ kind: "boolean", key: "showSignals", label: "Show signals" },
+			{ kind: "boolean", key: "signalGlowEnabled", label: "Glow" },
 			{ kind: "color", key: "signalColor", label: "Color", description: "Tint of the momentary node-to-node signal streaks" },
 			{ kind: "number", key: "signalOpacity", label: "Opacity", max: 1, min: 0, step: 0.02 },
 			{ kind: "number", key: "signalWidth", label: "Width", max: 10, min: 0.5, step: 0.5 },
