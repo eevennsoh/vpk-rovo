@@ -60,21 +60,21 @@ function createFixtureVault() {
 	return vaultRoot;
 }
 
-function restoreVaultEnv(originalVault) {
-	if (originalVault === undefined) {
-		delete process.env.PERSONAL_GRAPH_VAULT;
+function restoreSelectedVaultEnv(originalSelectedVault) {
+	if (originalSelectedVault === undefined) {
+		delete process.env.PERSONAL_GRAPH_SELECTED_VAULT;
 		return;
 	}
-	process.env.PERSONAL_GRAPH_VAULT = originalVault;
+	process.env.PERSONAL_GRAPH_SELECTED_VAULT = originalSelectedVault;
 }
 
 test("buildExplorer maps wiki pages, raw sources, wikilinks, and dangling nodes", (t) => {
-	const originalVault = process.env.PERSONAL_GRAPH_VAULT;
+	const originalSelectedVault = process.env.PERSONAL_GRAPH_SELECTED_VAULT;
 	const vaultRoot = createFixtureVault();
-	process.env.PERSONAL_GRAPH_VAULT = vaultRoot;
+	process.env.PERSONAL_GRAPH_SELECTED_VAULT = vaultRoot;
 
 	t.after(() => {
-		restoreVaultEnv(originalVault);
+		restoreSelectedVaultEnv(originalSelectedVault);
 		fs.rmSync(vaultRoot, { force: true, recursive: true });
 	});
 

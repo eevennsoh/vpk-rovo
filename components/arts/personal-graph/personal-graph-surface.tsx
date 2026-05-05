@@ -98,6 +98,8 @@ const PERSONAL_GRAPH_RESPONSIVE_INITIAL_VIEWPORT = {
 	height: 720,
 	width: RESPONSIVE_PERSONAL_GRAPH_WIDTHS.wide,
 } satisfies ResponsivePersonalGraphViewport;
+const PERSONAL_GRAPH_RESET_FLYOUT_COLLAPSE_DELAY_MS = 420;
+const PERSONAL_GRAPH_UNCONFIGURED_BYLINE = "Select a folder to get started.";
 
 function GraphNodeMarker({
 	className,
@@ -359,17 +361,26 @@ export function PersonalGraphSurface({
 		settings: vaultSettings,
 	} = useVaultSettings();
 	const { actualTheme, setTheme, theme } = useTheme();
-	const { phase } = usePersonalGraphIntro();
+	const [introReplayKey, setIntroReplayKey] = useState(0);
+	const [flyoutCollapseKey, setFlyoutCollapseKey] = useState(0);
+	const [isResetFlyoutCollapsing, setIsResetFlyoutCollapsing] = useState(false);
+	const { phase } = usePersonalGraphIntro(introReplayKey);
 	const isHeaderRevealed = phase === "title" || phase === "subtext" || phase === "controls" || phase === "settle" || phase === "search" || phase === "graph" || phase === "done";
 	const isSubtextRevealed = phase === "subtext" || phase === "controls" || phase === "settle" || phase === "search" || phase === "graph" || phase === "done";
-	const isPostSettle = phase === "settle" || phase === "search" || phase === "graph" || phase === "done";
-	const isSearchRevealed = phase === "search" || phase === "graph" || phase === "done";
+	const isIntroSettled = phase === "settle" || phase === "search" || phase === "graph" || phase === "done";
+	const isVaultReady = vaultSettings?.status === "ready";
+	const isVaultReadyForLayout = isVaultReady || isResetFlyoutCollapsing;
+	const shouldShowVaultOnboarding = Boolean(vaultSettings) && !isVaultReadyForLayout;
+	const isPostSettle = isVaultReadyForLayout && isIntroSettled;
+	const isSearchRevealed = isVaultReadyForLayout && (phase === "search" || phase === "graph" || phase === "done");
 	const isGraphRevealed = isSearchRevealed;
 	const easeOut: [number, number, number, number] = [0, 0.4, 0, 1];
+	const shouldReduceMotion = Boolean(useReducedMotion());
 	const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 	const [refreshKey, setRefreshKey] = useState(0);
 	const [isCaptureQueueOpen, setIsCaptureQueueOpen] = useState(false);
 	const graphStageRef = useRef<HTMLDivElement | null>(null);
+	const resetFlyoutCollapseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const responsiveGraphParams = useResponsivePersonalGraphParams(graphStageRef);
 	const displayedNode = useMemo(() => getSelectedNode(explorer, selectedNodeId), [explorer, selectedNodeId]);
 
@@ -387,11 +398,29 @@ export function PersonalGraphSurface({
 		}
 	}, [handleRefreshAll, selectVault]);
 	const handleResetVault = useCallback(async () => {
+		setFlyoutCollapseKey((current) => current + 1);
+		setIsResetFlyoutCollapsing(true);
+		if (resetFlyoutCollapseTimerRef.current) {
+			clearTimeout(resetFlyoutCollapseTimerRef.current);
+			resetFlyoutCollapseTimerRef.current = null;
+		}
+
 		const next = await resetVault();
 		if (next) {
-			handleRefreshAll();
+			setSelectedNodeId(null);
+			setIsCaptureQueueOpen(false);
+			const collapseDelay = shouldReduceMotion ? 0 : PERSONAL_GRAPH_RESET_FLYOUT_COLLAPSE_DELAY_MS;
+			resetFlyoutCollapseTimerRef.current = setTimeout(() => {
+				resetFlyoutCollapseTimerRef.current = null;
+				setIsResetFlyoutCollapsing(false);
+				setIntroReplayKey((current) => current + 1);
+				handleRefreshAll();
+			}, collapseDelay);
+			return;
 		}
-	}, [handleRefreshAll, resetVault]);
+
+		setIsResetFlyoutCollapsing(false);
+	}, [handleRefreshAll, resetVault, shouldReduceMotion]);
 	const handleToggleTheme = useCallback(() => {
 		if (theme === "light") {
 			setTheme("dark");
@@ -402,29 +431,19 @@ export function PersonalGraphSurface({
 		}
 	}, [setTheme, theme]);
 
-	const isVaultReady = vaultSettings?.status === "ready";
+	const graphStatusText = isVaultReadyForLayout
+		? getGraphStatsText(explorer)
+		: vaultSettings?.status === "unconfigured"
+			? PERSONAL_GRAPH_UNCONFIGURED_BYLINE
+			: vaultSettings?.message ?? getGraphStatsText(explorer);
+	const visibleError = shouldShowVaultOnboarding ? null : error;
 	const themeLabel = theme === "system" ? "System theme" : theme === "dark" ? "Dark theme" : "Light theme";
 
 	const flyoutActions = useMemo<ReadonlyArray<PersonalGraphControlFlyoutAction>>(() => {
-		const actions: PersonalGraphControlFlyoutAction[] = [
-			{
-				key: "vault",
-				label: "Choose data",
-				render: (
-					<Button
-						aria-label="Choose data"
-							className="size-10 rounded-full border-border bg-bg-neutral-subtle text-text shadow-none hover:bg-bg-neutral-subtle-hovered disabled:border-transparent disabled:bg-bg-disabled disabled:text-text-disabled [&_svg]:text-icon-subtle"
-							disabled={isVaultSelecting}
-						isLoading={isVaultSelecting}
-						onClick={handleChooseVault}
-						size="icon"
-						variant="outline"
-					>
-						<PixelVaultIcon />
-					</Button>
-				),
-			},
-			{
+		const actions: PersonalGraphControlFlyoutAction[] = [];
+
+		if (isVaultReady) {
+			actions.push({
 				key: "capture",
 				label: "Add data",
 				render: (
@@ -453,13 +472,13 @@ export function PersonalGraphSurface({
 						</PopoverContent>
 					</Popover>
 				),
-			},
-			{
+			});
+			actions.push({
 				key: "refresh",
-				label: "Synthesize insights",
+				label: "Refresh",
 				render: (
 					<Button
-						aria-label="Synthesize insights"
+						aria-label="Refresh"
 						className="size-10 rounded-full border-border bg-bg-neutral-subtle text-text shadow-none hover:bg-bg-neutral-subtle-hovered [&_svg]:text-icon-subtle"
 						disabled={isLoading}
 						onClick={handleRefreshAll}
@@ -469,33 +488,34 @@ export function PersonalGraphSurface({
 						<PixelRefreshIcon />
 					</Button>
 				),
-			},
-			{
-				key: "theme",
-				label: themeLabel,
-				render: (
-					<Button
-						aria-label={themeLabel}
-						className="size-10 rounded-full border-border bg-bg-neutral-subtle text-text shadow-none hover:bg-bg-neutral-subtle-hovered [&_svg]:text-icon-subtle"
-						onClick={handleToggleTheme}
-						size="icon"
-						variant="outline"
-					>
-						{theme === "system" ? <PixelSystemIcon /> : actualTheme === "dark" ? <PixelDarkIcon /> : <PixelLightIcon />}
-					</Button>
-				),
-			},
-		];
+			});
+		}
+
+		actions.push({
+			key: "theme",
+			label: themeLabel,
+			render: (
+				<Button
+					aria-label={themeLabel}
+					className="size-10 rounded-full border-border bg-bg-neutral-subtle text-text shadow-none hover:bg-bg-neutral-subtle-hovered [&_svg]:text-icon-subtle"
+					onClick={handleToggleTheme}
+					size="icon"
+					variant="outline"
+				>
+					{theme === "system" ? <PixelSystemIcon /> : actualTheme === "dark" ? <PixelDarkIcon /> : <PixelLightIcon />}
+				</Button>
+			),
+		});
 
 		if (isVaultReady) {
 			actions.push({
-				key: "reset-vault",
-				label: "Refresh data",
+				key: "clear-vault",
+				label: "Reset",
 				render: (
 					<Button
-						aria-label="Refresh data"
-							className="size-10 rounded-full border-border bg-bg-neutral-subtle text-text shadow-none hover:bg-bg-neutral-subtle-hovered disabled:border-transparent disabled:bg-bg-disabled disabled:text-text-disabled [&_svg]:text-icon-subtle"
-							disabled={isVaultResetting}
+						aria-label="Reset"
+						className="size-10 rounded-full border-border bg-bg-neutral-subtle text-text shadow-none hover:bg-bg-neutral-subtle-hovered disabled:border-transparent disabled:bg-bg-disabled disabled:text-text-disabled [&_svg]:text-icon-subtle"
+						disabled={isVaultResetting}
 						isLoading={isVaultResetting}
 						onClick={handleResetVault}
 						size="icon"
@@ -511,7 +531,6 @@ export function PersonalGraphSurface({
 	}, [
 		actualTheme,
 		handleCaptureQueueOpenChange,
-		handleChooseVault,
 		handleRefreshAll,
 		handleResetVault,
 		handleToggleTheme,
@@ -519,7 +538,6 @@ export function PersonalGraphSurface({
 		isLoading,
 		isVaultReady,
 		isVaultResetting,
-		isVaultSelecting,
 		refreshKey,
 		theme,
 		themeLabel,
@@ -541,6 +559,14 @@ export function PersonalGraphSurface({
 			window.removeEventListener("keydown", handleKeyDown);
 		};
 	}, [selectedNodeId]);
+
+	useEffect(() => {
+		return () => {
+			if (resetFlyoutCollapseTimerRef.current) {
+				clearTimeout(resetFlyoutCollapseTimerRef.current);
+			}
+		};
+	}, []);
 
 	return (
 		<main
@@ -576,6 +602,7 @@ export function PersonalGraphSurface({
 						style={{ willChange: "filter, opacity" }}
 					>
 						<PersonalGraphTitle
+							key={`personal-graph-title-${introReplayKey}`}
 							className="leading-[0.8] text-text"
 							style={PERSONAL_GRAPH_TITLE_FONT_STYLE}
 							initial={{ fontSize: PERSONAL_GRAPH_INITIAL_TITLE_SIZE, paddingTop: PERSONAL_GRAPH_TITLE_INK_TOP_PADDING }}
@@ -599,18 +626,42 @@ export function PersonalGraphSurface({
 							}}
 							transition={{ duration: 0.5, ease: easeOut }}
 						>
-							{getGraphStatsText(explorer)}
+							{graphStatusText}
 						</motion.p>
 					</motion.div>
-					{error ? (
+					{visibleError ? (
 						<motion.p
 							className="max-w-[360px] truncate text-xs text-text-danger"
 							initial={{ opacity: 0 }}
 							animate={{ opacity: isSubtextRevealed ? 1 : 0 }}
 							transition={{ duration: 0.4, ease: easeOut }}
 						>
-							{error.message}
+							{visibleError.message}
 						</motion.p>
+					) : null}
+					{shouldShowVaultOnboarding ? (
+						<motion.div
+							initial={{ opacity: 0, y: 12, filter: "blur(12px)" }}
+							animate={{
+								opacity: isSubtextRevealed ? 1 : 0,
+								y: isSubtextRevealed ? 0 : 12,
+								filter: isSubtextRevealed ? "blur(0px)" : "blur(12px)",
+							}}
+							transition={{ duration: 0.45, ease: easeOut }}
+						>
+							<Button
+								aria-label="Choose Personal Graph vault folder"
+								className="rounded-full border-border bg-bg-neutral-subtle px-4 text-text shadow-none hover:bg-bg-neutral-subtle-hovered disabled:border-transparent disabled:bg-bg-disabled disabled:text-text-disabled [&_svg]:text-icon-subtle"
+								disabled={isVaultSelecting}
+								isLoading={isVaultSelecting}
+								onClick={handleChooseVault}
+								size="sm"
+								variant="outline"
+							>
+								<PixelVaultIcon />
+								Choose vault folder
+							</Button>
+						</motion.div>
 					) : null}
 				</motion.div>
 			</header>
@@ -664,7 +715,9 @@ export function PersonalGraphSurface({
 			>
 				<div className="pointer-events-auto relative w-full max-w-[760px]">
 					<PersonalGraphSearch
+						collapseFlyoutKey={flyoutCollapseKey}
 						flyoutActions={flyoutActions}
+						isFlyoutDisabled={isResetFlyoutCollapsing}
 						onSelectSlug={(slug) => {
 							const node = explorer?.nodes.find((candidate) => candidate.slug === slug);
 							if (node) setSelectedNodeId(node.id);

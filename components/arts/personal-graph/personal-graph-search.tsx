@@ -18,19 +18,27 @@ import { PixelArrowRightIcon } from "./personal-graph-pixel-icons";
 
 interface PersonalGraphSearchProps {
 	className?: string;
+	collapseFlyoutKey?: number;
 	flyoutActions: ReadonlyArray<PersonalGraphControlFlyoutAction>;
+	isFlyoutDisabled?: boolean;
 	onSelectSlug: (slug: string) => void;
 }
 
 export function PersonalGraphSearch({
 	className,
+	collapseFlyoutKey = 0,
 	flyoutActions,
+	isFlyoutDisabled = false,
 	onSelectSlug,
 }: Readonly<PersonalGraphSearchProps>) {
 	const [query, setQuery] = useState("");
 	const [isFlyoutOpen, setIsFlyoutOpen] = useState(false);
 	const { results, status } = useVaultSearch(query);
 	const firstResult = results[0];
+
+	useEffect(() => {
+		setIsFlyoutOpen(false);
+	}, [collapseFlyoutKey, isFlyoutDisabled]);
 
 	useEffect(() => {
 		if (!isFlyoutOpen) return;
@@ -71,8 +79,11 @@ export function PersonalGraphSearch({
 					value={query}
 				/>
 				<PersonalGraphControlFlyoutTrigger
+					disabled={isFlyoutDisabled}
 					isOpen={isFlyoutOpen}
-					onToggle={() => setIsFlyoutOpen((current) => !current)}
+					onToggle={() => {
+						if (!isFlyoutDisabled) setIsFlyoutOpen((current) => !current);
+					}}
 				/>
 				<Button
 					aria-label="Open top search result"

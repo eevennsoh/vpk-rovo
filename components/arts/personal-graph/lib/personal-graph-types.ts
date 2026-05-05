@@ -47,7 +47,7 @@ export interface VaultSettings {
 	message: string;
 	rawDirectoryExists: boolean;
 	root: string | null;
-	source: "env" | "folder-picker" | null;
+	source: "folder-picker" | null;
 	status: "ready" | "missing" | "invalid" | "unconfigured";
 	wikiDirectoryExists: boolean;
 }

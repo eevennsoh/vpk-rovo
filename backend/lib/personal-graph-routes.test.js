@@ -88,7 +88,7 @@ async function listen(app, t) {
 	return `http://127.0.0.1:${address.port}`;
 }
 
-function configureVaultEnv(t, vaultRoot) {
+function configureSelectedVault(t, vaultRoot) {
 	const originalVault = process.env.PERSONAL_GRAPH_VAULT;
 	const originalSelectedVault = process.env.PERSONAL_GRAPH_SELECTED_VAULT;
 	const originalConfigPath = process.env.PERSONAL_GRAPH_VAULT_CONFIG_PATH;
@@ -96,8 +96,8 @@ function configureVaultEnv(t, vaultRoot) {
 		os.tmpdir(),
 		`personal-graph-route-test-${process.pid}-${Date.now()}.json`,
 	);
-	process.env.PERSONAL_GRAPH_VAULT = vaultRoot;
-	process.env.PERSONAL_GRAPH_SELECTED_VAULT = "";
+	delete process.env.PERSONAL_GRAPH_VAULT;
+	process.env.PERSONAL_GRAPH_SELECTED_VAULT = vaultRoot;
 	process.env.PERSONAL_GRAPH_VAULT_CONFIG_PATH = configPath;
 
 	t.after(() => {
@@ -124,13 +124,14 @@ function configureVaultEnv(t, vaultRoot) {
 }
 
 test("GET /api/personal-graph/vault is handled by the Personal Graph router", async (t) => {
-	setEnvValueForTest(t, "PERSONAL_GRAPH_VAULT", "");
+	const configPath = path.join(os.tmpdir(), `personal-graph-route-test-${process.pid}.json`);
+	fs.rmSync(configPath, { force: true });
+	t.after(() => {
+		fs.rmSync(configPath, { force: true });
+	});
+	setEnvValueForTest(t, "PERSONAL_GRAPH_VAULT", "/tmp/ignored-personal-graph-env-vault");
 	setEnvValueForTest(t, "PERSONAL_GRAPH_SELECTED_VAULT", "");
-	setEnvValueForTest(
-		t,
-		"PERSONAL_GRAPH_VAULT_CONFIG_PATH",
-		path.join(os.tmpdir(), `personal-graph-route-test-${process.pid}.json`),
-	);
+	setEnvValueForTest(t, "PERSONAL_GRAPH_VAULT_CONFIG_PATH", configPath);
 
 	const response = await dispatch(createPersonalGraphTestApp(), {
 		url: "/api/personal-graph/vault",
@@ -139,7 +140,7 @@ test("GET /api/personal-graph/vault is handled by the Personal Graph router", as
 
 	assert.equal(response.status, 200);
 	assert.equal(body.status, "unconfigured");
-	assert.equal(body.message, "Choose a Personal Graph vault folder to get started.");
+	assert.equal(body.message, "Select a folder to get started.");
 	assert.equal(body.error, undefined);
 });
 
@@ -166,7 +167,7 @@ test("GET /api/personal-graph/search normalizes non-positive limits", async (t) 
 
 test("POST /api/personal-graph/raw accepts multipart file uploads into the selected vault", async (t) => {
 	const vaultRoot = fs.mkdtempSync(path.join(os.tmpdir(), "personal-graph-route-raw-"));
-	configureVaultEnv(t, vaultRoot);
+	configureSelectedVault(t, vaultRoot);
 	const baseUrl = await listen(createPersonalGraphTestApp(), t);
 	const boundary = "----personal-graph-route-test";
 	const uploadBody = [
@@ -195,15 +196,17 @@ test("POST /api/personal-graph/raw accepts multipart file uploads into the selec
 });
 
 test("POST /api/personal-graph/vault/reset clears folder picker state without deleting vault files", async (t) => {
-	const fallbackRoot = fs.mkdtempSync(path.join(os.tmpdir(), "personal-graph-route-reset-fallback-"));
+	const envRoot = fs.mkdtempSync(path.join(os.tmpdir(), "personal-graph-route-reset-env-"));
 	const selectedRoot = fs.mkdtempSync(path.join(os.tmpdir(), "personal-graph-route-reset-selected-"));
-	const configPath = configureVaultEnv(t, fallbackRoot);
+	const configPath = configureSelectedVault(t, selectedRoot);
 	const selectedRawPath = path.join(selectedRoot, "raw", "capture.md");
 	fs.mkdirSync(path.dirname(selectedRawPath), { recursive: true });
 	fs.writeFileSync(selectedRawPath, "selected vault source", "utf8");
 	fs.writeFileSync(configPath, JSON.stringify({ vaultRoot: selectedRoot }), "utf8");
+	process.env.PERSONAL_GRAPH_VAULT = envRoot;
 	process.env.PERSONAL_GRAPH_SELECTED_VAULT = selectedRoot;
 	t.after(() => {
+		fs.rmSync(envRoot, { force: true, recursive: true });
 		fs.rmSync(selectedRoot, { force: true, recursive: true });
 	});
 
@@ -222,9 +225,9 @@ test("POST /api/personal-graph/vault/reset clears folder picker state without de
 	const resetBody = await resetResponse.json();
 
 	assert.equal(resetResponse.status, 200);
-	assert.equal(resetBody.root, fallbackRoot);
-	assert.equal(resetBody.source, "env");
-	assert.equal(resetBody.status, "ready");
+	assert.equal(resetBody.root, null);
+	assert.equal(resetBody.source, null);
+	assert.equal(resetBody.status, "unconfigured");
 	assert.equal(process.env.PERSONAL_GRAPH_SELECTED_VAULT, undefined);
 	assert.equal(fs.existsSync(configPath), false);
 	assert.equal(fs.readFileSync(selectedRawPath, "utf8"), "selected vault source");

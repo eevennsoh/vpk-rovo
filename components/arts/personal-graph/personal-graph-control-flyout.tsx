@@ -149,12 +149,14 @@ function PersonalGraphControlFlyoutActionItem({
 
 interface PersonalGraphControlFlyoutTriggerProps {
 	className?: string;
+	disabled?: boolean;
 	isOpen: boolean;
 	onToggle: () => void;
 }
 
 export function PersonalGraphControlFlyoutTrigger({
 	className,
+	disabled = false,
 	isOpen,
 	onToggle,
 }: Readonly<PersonalGraphControlFlyoutTriggerProps>) {
@@ -173,6 +175,7 @@ export function PersonalGraphControlFlyoutTrigger({
 					"aria-expanded:bg-transparent aria-expanded:text-text-subtle aria-expanded:border-transparent [&_svg]:text-icon-subtle aria-expanded:[&_svg]:text-icon-subtle",
 					className,
 				)}
+				disabled={disabled}
 				onClick={onToggle}
 				size="icon"
 				type="button"

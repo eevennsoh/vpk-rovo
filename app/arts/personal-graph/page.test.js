@@ -226,6 +226,12 @@ test("Personal Graph header uses the display font lockup", () => {
 		SURFACE_SOURCE,
 		/fontSize: isPostSettle \? PERSONAL_GRAPH_SETTLED_TITLE_SIZE : PERSONAL_GRAPH_INITIAL_TITLE_SIZE/,
 	);
+	assert.match(SURFACE_SOURCE, /const isIntroSettled = phase === "settle"/);
+	assert.match(SURFACE_SOURCE, /const isVaultReadyForLayout = isVaultReady \|\| isResetFlyoutCollapsing;/);
+	assert.match(SURFACE_SOURCE, /const isPostSettle = isVaultReadyForLayout && isIntroSettled;/);
+	assert.match(SURFACE_SOURCE, /const PERSONAL_GRAPH_UNCONFIGURED_BYLINE = "Select a folder to get started\.";/);
+	assert.match(SURFACE_SOURCE, /vaultSettings\?\.status === "unconfigured"\s+\? PERSONAL_GRAPH_UNCONFIGURED_BYLINE/);
+	assert.match(SURFACE_SOURCE, /key=\{`personal-graph-title-\$\{introReplayKey\}`\}/);
 	assert.match(SURFACE_SOURCE, /paddingTop: PERSONAL_GRAPH_TITLE_INK_TOP_PADDING/);
 	assert.doesNotMatch(SURFACE_SOURCE, /uppercase leading-\[0\.8\]/);
 	assert.doesNotMatch(SURFACE_SOURCE, /className="[^"]*tracking-normal[^"]*"\s+style=\{PERSONAL_GRAPH_TITLE_FONT_STYLE\}/);
@@ -253,6 +259,7 @@ test("Personal Graph anchors the search and chat composer at the graph origin", 
 	assert.match(SURFACE_SOURCE, /aria-label="Personal Graph search and chat"/);
 	assert.match(SURFACE_SOURCE, /left-4 right-4 z-40 flex justify-center/);
 	assert.match(SURFACE_SOURCE, /initial=\{\{ bottom: -120 \}\}/);
+	assert.match(SURFACE_SOURCE, /const isSearchRevealed = isVaultReadyForLayout && \(phase === "search"/);
 	assert.match(SURFACE_SOURCE, /bottom: isSearchRevealed \? 24 : -120/);
 	assert.match(SURFACE_SOURCE, /const PERSONAL_GRAPH_PROMPT_INPUT_BOTTOM_PX = 24;/);
 	assert.match(SURFACE_SOURCE, /const PERSONAL_GRAPH_PROMPT_INPUT_HEIGHT_PX = 64;/);
@@ -294,6 +301,12 @@ test("Personal Graph anchors the search and chat composer at the graph origin", 
 	assert.match(SEARCH_SOURCE, /PixelArrowRightIcon/);
 	assert.match(SEARCH_SOURCE, /PersonalGraphControlFlyoutTrigger/);
 	assert.match(SEARCH_SOURCE, /PersonalGraphControlFlyoutActions/);
+	assert.match(SEARCH_SOURCE, /collapseFlyoutKey\?: number/);
+	assert.match(SEARCH_SOURCE, /isFlyoutDisabled\?: boolean/);
+	assert.match(SEARCH_SOURCE, /setIsFlyoutOpen\(false\);/);
+	assert.match(SURFACE_SOURCE, /collapseFlyoutKey=\{flyoutCollapseKey\}/);
+	assert.match(SURFACE_SOURCE, /isFlyoutDisabled=\{isResetFlyoutCollapsing\}/);
+	assert.match(SEARCH_SOURCE, /disabled=\{isFlyoutDisabled\}/);
 	assert.match(SEARCH_SOURCE, /aria-label="Ask or search Personal Graph"/);
 	assert.match(SEARCH_SOURCE, /aria-label="Open top search result"[\s\S]*className="size-8 rounded-full border-0 text-text-subtle/);
 	assert.doesNotMatch(SEARCH_SOURCE, /aria-label="Open graph parameters"/);
@@ -536,17 +549,31 @@ test("Personal Graph decomposes graphology, ForceAtlas2, and Sigma concepts with
 
 test("Personal Graph exposes primary graph actions through a curved control flyout", () => {
 	assert.match(SURFACE_SOURCE, /const flyoutActions = useMemo<ReadonlyArray<PersonalGraphControlFlyoutAction>>/);
-	assert.match(SURFACE_SOURCE, /key: "vault"/);
-	assert.match(SURFACE_SOURCE, /label: "Choose data"/);
-	assert.match(SURFACE_SOURCE, /aria-label="Choose data"/);
+	assert.doesNotMatch(SURFACE_SOURCE, /label: "Choose data"/);
+	assert.doesNotMatch(SURFACE_SOURCE, /aria-label="Choose data"/);
+	assert.match(SURFACE_SOURCE, /aria-label="Choose Personal Graph vault folder"/);
+	assert.match(SURFACE_SOURCE, /shouldShowVaultOnboarding/);
 	assert.match(SURFACE_SOURCE, /key: "refresh"/);
-	assert.match(SURFACE_SOURCE, /label: "Synthesize insights"/);
-	assert.match(SURFACE_SOURCE, /aria-label="Synthesize insights"/);
-	assert.match(SURFACE_SOURCE, /key: "reset-vault"/);
-	assert.match(SURFACE_SOURCE, /label: "Refresh data"/);
-	assert.match(SURFACE_SOURCE, /aria-label="Refresh data"/);
+	assert.match(SURFACE_SOURCE, /label: "Refresh"/);
+	assert.match(SURFACE_SOURCE, /aria-label="Refresh"/);
+	assert.match(SURFACE_SOURCE, /key: "clear-vault"/);
+	assert.match(SURFACE_SOURCE, /label: "Reset"/);
+	assert.match(SURFACE_SOURCE, /aria-label="Reset"/);
 	assert.match(SURFACE_SOURCE, /disabled=\{isVaultResetting\}/);
 	assert.match(SURFACE_SOURCE, /onClick=\{handleResetVault\}/);
+	assert.match(SURFACE_SOURCE, /const PERSONAL_GRAPH_RESET_FLYOUT_COLLAPSE_DELAY_MS = 420;/);
+	assert.match(
+		SURFACE_SOURCE,
+		/setFlyoutCollapseKey\(\(current\) => current \+ 1\);\s+setIsResetFlyoutCollapsing\(true\);/,
+	);
+	assert.match(SURFACE_SOURCE, /const collapseDelay = shouldReduceMotion \? 0 : PERSONAL_GRAPH_RESET_FLYOUT_COLLAPSE_DELAY_MS;/);
+	assert.match(
+		SURFACE_SOURCE,
+		/setTimeout\(\(\) => \{[\s\S]*setIsResetFlyoutCollapsing\(false\);[\s\S]*setIntroReplayKey\(\(current\) => current \+ 1\);[\s\S]*handleRefreshAll\(\);/,
+	);
+	assert.match(SURFACE_SOURCE, /setSelectedNodeId\(null\);/);
+	assert.match(SURFACE_SOURCE, /setIsCaptureQueueOpen\(false\);/);
+	assert.match(SURFACE_SOURCE, /setIntroReplayKey\(\(current\) => current \+ 1\);/);
 	assert.match(SURFACE_SOURCE, /if \(isVaultReady\) \{/);
 	assert.match(CONTROL_FLYOUT_SOURCE, /offsetPath: `path\("\$\{ARC_PATH\}"\)`/);
 	assert.match(CONTROL_FLYOUT_SOURCE, /offsetDistance: `\$\{distance\}%`/);

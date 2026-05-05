@@ -14,15 +14,15 @@ process.env.PERSONAL_GRAPH_VAULT_CONFIG_PATH = TEST_VAULT_CONFIG_PATH;
 delete process.env.PERSONAL_GRAPH_SELECTED_VAULT;
 
 function withVault(t) {
-	const originalVault = process.env.PERSONAL_GRAPH_VAULT;
+	const originalSelectedVault = process.env.PERSONAL_GRAPH_SELECTED_VAULT;
 	const vaultRoot = fs.mkdtempSync(path.join(os.tmpdir(), "personal-graph-librarian-"));
 	fs.mkdirSync(path.join(vaultRoot, "raw"), { recursive: true });
 	fs.mkdirSync(path.join(vaultRoot, "wiki", "sources"), { recursive: true });
 	fs.writeFileSync(path.join(vaultRoot, "raw", "source.md"), "---\ntitle: Source\n---\n\nRaw body.", "utf8");
-	process.env.PERSONAL_GRAPH_VAULT = vaultRoot;
+	process.env.PERSONAL_GRAPH_SELECTED_VAULT = vaultRoot;
 	t.after(() => {
-		if (originalVault === undefined) delete process.env.PERSONAL_GRAPH_VAULT;
-		else process.env.PERSONAL_GRAPH_VAULT = originalVault;
+		if (originalSelectedVault === undefined) delete process.env.PERSONAL_GRAPH_SELECTED_VAULT;
+		else process.env.PERSONAL_GRAPH_SELECTED_VAULT = originalSelectedVault;
 		fs.rmSync(vaultRoot, { force: true, recursive: true });
 	});
 	return vaultRoot;

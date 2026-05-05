@@ -14,11 +14,12 @@ interface UsePersonalGraphIntroResult {
 	isReducedMotion: boolean;
 }
 
-export function usePersonalGraphIntro(): UsePersonalGraphIntroResult {
+export function usePersonalGraphIntro(replayKey = 0): UsePersonalGraphIntroResult {
 	const prefersReducedMotion = useReducedMotion() ?? false;
 	const [phase, setPhase] = useState<PersonalGraphIntroPhase>("title");
 
 	useEffect(() => {
+		setPhase("title");
 		if (prefersReducedMotion) {
 			setPhase(getPersonalGraphIntroPhaseAt(0, prefersReducedMotion));
 			return;
@@ -42,7 +43,7 @@ export function usePersonalGraphIntro(): UsePersonalGraphIntroResult {
 				clearTimeout(id);
 			}
 		};
-	}, [prefersReducedMotion]);
+	}, [prefersReducedMotion, replayKey]);
 
 	return { phase, isReducedMotion: prefersReducedMotion };
 }

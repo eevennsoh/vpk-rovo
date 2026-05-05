@@ -4,14 +4,11 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { execFile } = require("node:child_process");
 
-const VAULT_ENV_KEY = "PERSONAL_GRAPH_VAULT";
 const SELECTED_VAULT_ENV_KEY = "PERSONAL_GRAPH_SELECTED_VAULT";
 const CONFIG_PATH_ENV_KEY = "PERSONAL_GRAPH_VAULT_CONFIG_PATH";
-const ENV_LOCAL_PATH = path.join(__dirname, "..", "..", ".env.local");
 const LOCAL_CONFIG_PATH = path.join(__dirname, "..", "..", ".tmp", "personal-graph", "vault.json");
 const RAW_SOURCE_EXTENSIONS = new Set([".html", ".htm", ".md", ".markdown", ".txt"]);
 
-let dotenvLoaded = false;
 let appendLogQueue = Promise.resolve();
 
 function getNonEmptyString(value) {
@@ -21,20 +18,6 @@ function getNonEmptyString(value) {
 
 	const trimmed = value.trim();
 	return trimmed.length > 0 ? trimmed : null;
-}
-
-function loadEnvLocalIfNeeded() {
-	if (dotenvLoaded || getNonEmptyString(process.env[VAULT_ENV_KEY])) {
-		return;
-	}
-
-	dotenvLoaded = true;
-	try {
-		require("dotenv").config({ path: ENV_LOCAL_PATH, quiet: true });
-	} catch {
-		// The standalone smoke command should work when dotenv is installed,
-		// but backend callers may also provide the env var directly.
-	}
 }
 
 function createVaultNotFoundError(reason, cause) {
@@ -78,8 +61,6 @@ function readLocalVaultConfig(configPath) {
 }
 
 function getConfiguredVault(configPath) {
-	loadEnvLocalIfNeeded();
-
 	const selectedRoot = getNonEmptyString(process.env[SELECTED_VAULT_ENV_KEY]);
 	if (selectedRoot) {
 		return { configuredRoot: selectedRoot, source: "folder-picker" };
@@ -90,18 +71,13 @@ function getConfiguredVault(configPath) {
 		return { configuredRoot: localRoot, source: "folder-picker" };
 	}
 
-	const configuredRoot = getNonEmptyString(process.env[VAULT_ENV_KEY]);
-	if (configuredRoot) {
-		return { configuredRoot, source: "env" };
-	}
-
 	return { configuredRoot: null, source: null };
 }
 
 function inspectVaultRoot(configuredRoot, source) {
 	if (!configuredRoot) {
 		return {
-			message: "Choose a Personal Graph vault folder to get started.",
+			message: "Select a folder to get started.",
 			rawDirectoryExists: false,
 			root: null,
 			source: null,

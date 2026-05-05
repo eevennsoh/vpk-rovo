@@ -95,13 +95,13 @@ function createFixtureVault() {
 	return vaultRoot;
 }
 
-function restoreVaultEnv(originalVault) {
-	if (originalVault === undefined) {
-		delete process.env.PERSONAL_GRAPH_VAULT;
+function restoreSelectedVaultEnv(originalSelectedVault) {
+	if (originalSelectedVault === undefined) {
+		delete process.env.PERSONAL_GRAPH_SELECTED_VAULT;
 		return;
 	}
 
-	process.env.PERSONAL_GRAPH_VAULT = originalVault;
+	process.env.PERSONAL_GRAPH_SELECTED_VAULT = originalSelectedVault;
 }
 
 function restoreEnvValue(key, originalValue) {
@@ -118,11 +118,11 @@ function toPosixPath(value) {
 }
 
 test("listRaw skips the raw/assets subtree before traversal", (t) => {
-	const originalVault = process.env.PERSONAL_GRAPH_VAULT;
+	const originalSelectedVault = process.env.PERSONAL_GRAPH_SELECTED_VAULT;
 	const originalReaddirSync = fs.readdirSync;
 	const vaultRoot = createFixtureVault();
 
-	process.env.PERSONAL_GRAPH_VAULT = vaultRoot;
+	process.env.PERSONAL_GRAPH_SELECTED_VAULT = vaultRoot;
 	fs.readdirSync = function patchedReaddirSync(targetPath, options) {
 		const relativePath = toPosixPath(path.relative(vaultRoot, targetPath));
 		if (relativePath === "raw/assets" || relativePath.startsWith("raw/assets/")) {
@@ -133,7 +133,7 @@ test("listRaw skips the raw/assets subtree before traversal", (t) => {
 	};
 
 	t.after(() => {
-		restoreVaultEnv(originalVault);
+		restoreSelectedVaultEnv(originalSelectedVault);
 		fs.readdirSync = originalReaddirSync;
 		fs.rmSync(vaultRoot, { force: true, recursive: true });
 	});
@@ -145,12 +145,12 @@ test("listRaw skips the raw/assets subtree before traversal", (t) => {
 });
 
 test("listRaw and listWiki return stable vault file shapes", (t) => {
-	const originalVault = process.env.PERSONAL_GRAPH_VAULT;
+	const originalSelectedVault = process.env.PERSONAL_GRAPH_SELECTED_VAULT;
 	const vaultRoot = createFixtureVault();
-	process.env.PERSONAL_GRAPH_VAULT = vaultRoot;
+	process.env.PERSONAL_GRAPH_SELECTED_VAULT = vaultRoot;
 
 	t.after(() => {
-		restoreVaultEnv(originalVault);
+		restoreSelectedVaultEnv(originalSelectedVault);
 		fs.rmSync(vaultRoot, { force: true, recursive: true });
 	});
 
@@ -181,12 +181,12 @@ test("listRaw and listWiki return stable vault file shapes", (t) => {
 });
 
 test("readPage keeps original content while parsing frontmatter", (t) => {
-	const originalVault = process.env.PERSONAL_GRAPH_VAULT;
+	const originalSelectedVault = process.env.PERSONAL_GRAPH_SELECTED_VAULT;
 	const vaultRoot = createFixtureVault();
-	process.env.PERSONAL_GRAPH_VAULT = vaultRoot;
+	process.env.PERSONAL_GRAPH_SELECTED_VAULT = vaultRoot;
 
 	t.after(() => {
-		restoreVaultEnv(originalVault);
+		restoreSelectedVaultEnv(originalSelectedVault);
 		fs.rmSync(vaultRoot, { force: true, recursive: true });
 	});
 
@@ -203,12 +203,12 @@ test("readPage keeps original content while parsing frontmatter", (t) => {
 });
 
 test("missing vault throws VAULT_NOT_FOUND", (t) => {
-	const originalVault = process.env.PERSONAL_GRAPH_VAULT;
+	const originalSelectedVault = process.env.PERSONAL_GRAPH_SELECTED_VAULT;
 	const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "personal-graph-missing-vault-"));
-	process.env.PERSONAL_GRAPH_VAULT = path.join(tempRoot, "missing");
+	process.env.PERSONAL_GRAPH_SELECTED_VAULT = path.join(tempRoot, "missing");
 
 	t.after(() => {
-		restoreVaultEnv(originalVault);
+		restoreSelectedVaultEnv(originalSelectedVault);
 		fs.rmSync(tempRoot, { force: true, recursive: true });
 	});
 
@@ -218,24 +218,19 @@ test("missing vault throws VAULT_NOT_FOUND", (t) => {
 	);
 });
 
-test("local folder picker config takes priority over env fallback", (t) => {
+test("local folder picker config is used without a selected env override", (t) => {
 	const originalConfigPath = process.env.PERSONAL_GRAPH_VAULT_CONFIG_PATH;
 	const originalSelectedVault = process.env.PERSONAL_GRAPH_SELECTED_VAULT;
-	const originalVault = process.env.PERSONAL_GRAPH_VAULT;
 	const configPath = path.join(os.tmpdir(), `personal-graph-config-priority-${process.pid}.json`);
-	const envRoot = createFixtureVault();
 	const selectedRoot = createFixtureVault();
 
 	process.env.PERSONAL_GRAPH_VAULT_CONFIG_PATH = configPath;
-	process.env.PERSONAL_GRAPH_VAULT = envRoot;
 	delete process.env.PERSONAL_GRAPH_SELECTED_VAULT;
 
 	t.after(() => {
 		restoreEnvValue("PERSONAL_GRAPH_VAULT_CONFIG_PATH", originalConfigPath);
 		restoreEnvValue("PERSONAL_GRAPH_SELECTED_VAULT", originalSelectedVault);
-		restoreVaultEnv(originalVault);
 		fs.rmSync(configPath, { force: true });
-		fs.rmSync(envRoot, { force: true, recursive: true });
 		fs.rmSync(selectedRoot, { force: true, recursive: true });
 	});
 
@@ -246,6 +241,35 @@ test("local folder picker config takes priority over env fallback", (t) => {
 	assert.equal(settings.root, selectedRoot);
 	assert.equal(settings.source, "folder-picker");
 	assert.equal(getVaultRoot(), selectedRoot);
+});
+
+test("PERSONAL_GRAPH_VAULT does not configure a vault without a folder picker selection", (t) => {
+	const originalConfigPath = process.env.PERSONAL_GRAPH_VAULT_CONFIG_PATH;
+	const originalSelectedVault = process.env.PERSONAL_GRAPH_SELECTED_VAULT;
+	const originalVault = process.env.PERSONAL_GRAPH_VAULT;
+	const configPath = path.join(os.tmpdir(), `personal-graph-env-ignored-${process.pid}.json`);
+	const envRoot = createFixtureVault();
+
+	process.env.PERSONAL_GRAPH_VAULT_CONFIG_PATH = configPath;
+	process.env.PERSONAL_GRAPH_VAULT = envRoot;
+	delete process.env.PERSONAL_GRAPH_SELECTED_VAULT;
+
+	t.after(() => {
+		restoreEnvValue("PERSONAL_GRAPH_VAULT_CONFIG_PATH", originalConfigPath);
+		restoreEnvValue("PERSONAL_GRAPH_SELECTED_VAULT", originalSelectedVault);
+		restoreEnvValue("PERSONAL_GRAPH_VAULT", originalVault);
+		fs.rmSync(configPath, { force: true });
+		fs.rmSync(envRoot, { force: true, recursive: true });
+	});
+
+	const settings = getVaultSettings();
+	assert.equal(settings.root, null);
+	assert.equal(settings.source, null);
+	assert.equal(settings.status, "unconfigured");
+	assert.throws(
+		() => getVaultRoot(),
+		(error) => error?.code === "VAULT_NOT_FOUND" && /Select a folder to get started/u.test(error.message),
+	);
 });
 
 test("clearVaultConfig removes the folder picker config and selected env override", (t) => {
@@ -263,7 +287,7 @@ test("clearVaultConfig removes the folder picker config and selected env overrid
 	t.after(() => {
 		restoreEnvValue("PERSONAL_GRAPH_VAULT_CONFIG_PATH", originalConfigPath);
 		restoreEnvValue("PERSONAL_GRAPH_SELECTED_VAULT", originalSelectedVault);
-		restoreVaultEnv(originalVault);
+		restoreEnvValue("PERSONAL_GRAPH_VAULT", originalVault);
 		fs.rmSync(configPath, { force: true });
 		fs.rmSync(envRoot, { force: true, recursive: true });
 		fs.rmSync(selectedRoot, { force: true, recursive: true });
@@ -274,8 +298,9 @@ test("clearVaultConfig removes the folder picker config and selected env overrid
 	const settings = clearVaultConfig();
 	assert.equal(fs.existsSync(configPath), false);
 	assert.equal(process.env.PERSONAL_GRAPH_SELECTED_VAULT, undefined);
-	assert.equal(settings.root, envRoot);
-	assert.equal(settings.source, "env");
+	assert.equal(settings.root, null);
+	assert.equal(settings.source, null);
+	assert.equal(settings.status, "unconfigured");
 });
 
 test("selectVaultRoot persists a macOS folder selection", async (t) => {
@@ -324,12 +349,12 @@ test("malformed frontmatter falls back without throwing", () => {
 });
 
 test("writePage and writeRaw round-trip inside vault roots", (t) => {
-	const originalVault = process.env.PERSONAL_GRAPH_VAULT;
+	const originalSelectedVault = process.env.PERSONAL_GRAPH_SELECTED_VAULT;
 	const vaultRoot = createFixtureVault();
-	process.env.PERSONAL_GRAPH_VAULT = vaultRoot;
+	process.env.PERSONAL_GRAPH_SELECTED_VAULT = vaultRoot;
 
 	t.after(() => {
-		restoreVaultEnv(originalVault);
+		restoreSelectedVaultEnv(originalSelectedVault);
 		fs.rmSync(vaultRoot, { force: true, recursive: true });
 	});
 
@@ -344,12 +369,12 @@ test("writePage and writeRaw round-trip inside vault roots", (t) => {
 });
 
 test("writePage rejects markdown without frontmatter", (t) => {
-	const originalVault = process.env.PERSONAL_GRAPH_VAULT;
+	const originalSelectedVault = process.env.PERSONAL_GRAPH_SELECTED_VAULT;
 	const vaultRoot = createFixtureVault();
-	process.env.PERSONAL_GRAPH_VAULT = vaultRoot;
+	process.env.PERSONAL_GRAPH_SELECTED_VAULT = vaultRoot;
 
 	t.after(() => {
-		restoreVaultEnv(originalVault);
+		restoreSelectedVaultEnv(originalSelectedVault);
 		fs.rmSync(vaultRoot, { force: true, recursive: true });
 	});
 
@@ -360,12 +385,12 @@ test("writePage rejects markdown without frontmatter", (t) => {
 });
 
 test("appendLog serializes entries and unprocessedRawSources reads ingest state", async (t) => {
-	const originalVault = process.env.PERSONAL_GRAPH_VAULT;
+	const originalSelectedVault = process.env.PERSONAL_GRAPH_SELECTED_VAULT;
 	const vaultRoot = createFixtureVault();
-	process.env.PERSONAL_GRAPH_VAULT = vaultRoot;
+	process.env.PERSONAL_GRAPH_SELECTED_VAULT = vaultRoot;
 
 	t.after(() => {
-		restoreVaultEnv(originalVault);
+		restoreSelectedVaultEnv(originalSelectedVault);
 		fs.rmSync(vaultRoot, { force: true, recursive: true });
 	});
 

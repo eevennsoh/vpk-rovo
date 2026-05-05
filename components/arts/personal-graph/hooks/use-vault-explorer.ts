@@ -27,6 +27,7 @@ export function useVaultExplorer(): VaultExplorerState {
 			if (nextError instanceof Error && nextError.name === "AbortError") {
 				return;
 			}
+			setExplorer(null);
 			setError(nextError instanceof Error ? nextError : new Error(String(nextError)));
 		} finally {
 			setIsLoading(false);
