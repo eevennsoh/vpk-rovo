@@ -160,6 +160,11 @@ static export used by deployment.
 - Browser coverage lives under `tests/**/*.spec.ts` with `@playwright/test`;
   run targeted specs with `pnpm exec playwright test <spec>` after
   `pnpm install`.
+- GitHub Actions runs `.github/workflows/ci.yml` on PRs, pushes to `main`, and
+  manual dispatch. The remote `CI / Lint and typecheck` check installs with
+  `pnpm install --frozen-lockfile`, then runs `pnpm run lint` and
+  `pnpm run typecheck`; treat it as PR confirmation, not a substitute for local
+  validation.
 - For UI changes, keep the observational checks too: `pnpm run lint`, `pnpm run
   typecheck`, visual checks via `/agent-browser`, and accessibility checks via
   `ads_analyze_a11y` / `ads_analyze_localhost_a11y`.
