@@ -42,6 +42,10 @@ export interface NeuralGraphParams {
 	radiusMax: number;
 	radiusMin: number;
 	rayColor: string;
+	rayElasticDamping: number;
+	rayElasticRadius: number;
+	rayElasticStrength: number;
+	rayElasticTension: number;
 	rayOpacity: number;
 	rayOriginY: number;
 	rayWidth: number;
@@ -190,6 +194,10 @@ export const DEFAULT_NEURAL_GRAPH_PARAMS: NeuralGraphParams = {
 	radiusMax: 100,
 	radiusMin: 50,
 	rayColor: "var(--ds-icon-accent-purple)",
+	rayElasticDamping: 24,
+	rayElasticRadius: 96,
+	rayElasticStrength: 26,
+	rayElasticTension: 220,
 	rayOpacity: 0.02,
 	rayOriginY: 1.05,
 	rayWidth: 2,
@@ -289,6 +297,10 @@ export const NEURAL_GRAPH_PARAM_SECTIONS: NeuralGraphParamSection[] = [
 			{ kind: "number", key: "rayOriginY", label: "Tail Y", max: 1.5, min: 0.5, step: 0.05 },
 			{ kind: "number", key: "rayOpacity", label: "Opacity", max: 1, min: 0, step: 0.02 },
 			{ kind: "number", key: "rayWidth", label: "Width", max: 6, min: 0.5, step: 0.5 },
+			{ kind: "number", key: "rayElasticStrength", label: "Elastic strength", max: 80, min: 0, step: 1, unit: "px" },
+			{ kind: "number", key: "rayElasticRadius", label: "Elastic radius", max: 220, min: 0, step: 2, unit: "px" },
+			{ kind: "number", key: "rayElasticTension", label: "Elastic tension", max: 600, min: 60, step: 10 },
+			{ kind: "number", key: "rayElasticDamping", label: "Elastic damping", max: 80, min: 6, step: 1 },
 			{ kind: "number", key: "originMarkerSize", label: "Origin size", max: 32, min: 4, step: 1 },
 			{ kind: "color", key: "originMarkerColor", label: "Origin color", description: "Fill color for the graph origin node" },
 		],
