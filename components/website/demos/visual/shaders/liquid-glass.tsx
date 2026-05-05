@@ -227,13 +227,7 @@ export default function LiquidGlass({
 			backdropFilter: `url(#${filterId}) saturate(${saturation})`,
 			WebkitBackdropFilter: `url(#${filterId}) saturate(${saturation})`,
 		});
-	} else if (backdropSupported) {
-		Object.assign(containerStyle, {
-			background: `rgba(255, 255, 255, ${fallbackBackgroundOpacity ?? 0.18})`,
-			backdropFilter: FALLBACK_BACKDROP_FILTER,
-			WebkitBackdropFilter: FALLBACK_BACKDROP_FILTER,
-		});
-	} else if (backdropSupported === null) {
+	} else if (backdropSupported !== false) {
 		Object.assign(containerStyle, {
 			background: `rgba(255, 255, 255, ${fallbackBackgroundOpacity ?? 0.18})`,
 			backdropFilter: FALLBACK_BACKDROP_FILTER,
