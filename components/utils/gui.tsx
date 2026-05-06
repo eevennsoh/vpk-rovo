@@ -325,29 +325,42 @@ type GUIToggleProps = Readonly<{
 	label: string;
 	description?: string;
 	checked: boolean;
+	disabled?: boolean;
 	onChange: (next: boolean) => void;
 	valueKeys?: string | readonly string[];
 }>;
 
-function GUIToggle({ id, label, description, checked, onChange, valueKeys }: GUIToggleProps) {
+function GUIToggle({ id, label, description, checked, disabled = false, onChange, valueKeys }: GUIToggleProps) {
 	useGUIValueKeys(valueKeys);
 	const switchId = `${id}-toggle`;
 
 	return (
 		<div className="space-y-1">
 			<div className="flex items-center justify-between gap-2">
-				<Label htmlFor={switchId} className="text-xs font-medium text-text">
+				<Label
+					htmlFor={switchId}
+					className={cn(
+						"text-xs font-medium text-text",
+						disabled ? "text-text-disabled" : null,
+					)}
+				>
 					{label}
 				</Label>
 				<Switch
 					id={switchId}
 					checked={checked}
+					disabled={disabled}
 					onCheckedChange={onChange}
 					label={label}
 				/>
 			</div>
 			{description ? (
-				<p className="text-[12px] leading-4 text-text-subtlest">
+				<p
+					className={cn(
+						"text-[12px] leading-4 text-text-subtlest",
+						disabled ? "text-text-disabled" : null,
+					)}
+				>
 					{description}
 				</p>
 			) : null}

@@ -1,20 +1,21 @@
 "use client";
 
-import { memo, useCallback, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { GUI } from "@/components/utils/gui";
 import { token } from "@/lib/tokens";
 
-import LiquidGlass from "./shaders/liquid-glass";
+import LiquidGlass, { type LiquidGlassPointerInput } from "./shaders/liquid-glass";
+import { LiquidGlassButton } from "./shaders/liquid-glass-button";
 import WaveGradient from "./shaders/wave-gradient";
 
 const StableBackground = memo(function StableBackground() {
 	return <WaveGradient className="absolute inset-0 h-full w-full" />;
 });
 
-const DEFAULT_WIDTH = 200;
-const DEFAULT_HEIGHT = 400;
-const DEFAULT_BORDER_RADIUS = 50;
+const DEFAULT_WIDTH = 300;
+const DEFAULT_HEIGHT = 190;
+const DEFAULT_BORDER_RADIUS = 32;
 const DEFAULT_BORDER_WIDTH = 0.05;
 const DEFAULT_BRIGHTNESS = 50;
 const DEFAULT_OPACITY = 0.93;
@@ -28,6 +29,26 @@ const DEFAULT_RED_OFFSET = 50;
 const DEFAULT_GREEN_OFFSET = -1;
 const DEFAULT_BLUE_OFFSET = -19;
 const DEFAULT_BORDER_OPACITY = 0.35;
+const DEFAULT_POINTER_LAYERS = false;
+const DEFAULT_POINTER_CONTAINER_TRACKING = false;
+const DEFAULT_POINTER_ACTIVATION_RADIUS = 180;
+const DEFAULT_BUTTON_ELASTICITY = 0.35;
+const DEFAULT_BUTTON_MAGNET_DISTANCE = 10;
+const DEFAULT_BUTTON_HOVER_AREA = 24;
+const DEFAULT_BUTTON_PRESS_SCALE = 0.92;
+
+type DragTarget = "surface" | "button";
+
+interface DragPosition {
+	x: number;
+	y: number;
+}
+
+interface DragState extends DragPosition {
+	target: DragTarget;
+	startX: number;
+	startY: number;
+}
 
 export default function LiquidGlassDemo() {
 	const [width, setWidth] = useState(DEFAULT_WIDTH);
@@ -46,31 +67,142 @@ export default function LiquidGlassDemo() {
 	const [greenOffset, setGreenOffset] = useState(DEFAULT_GREEN_OFFSET);
 	const [blueOffset, setBlueOffset] = useState(DEFAULT_BLUE_OFFSET);
 	const [borderOpacity, setBorderOpacity] = useState(DEFAULT_BORDER_OPACITY);
+	const [pointerLayers, setPointerLayers] = useState(DEFAULT_POINTER_LAYERS);
+	const [pointerContainerTracking, setPointerContainerTracking] = useState(
+		DEFAULT_POINTER_CONTAINER_TRACKING,
+	);
+	const [pointerActivationRadius, setPointerActivationRadius] = useState(
+		DEFAULT_POINTER_ACTIVATION_RADIUS,
+	);
+	const [buttonElasticity, setButtonElasticity] = useState(DEFAULT_BUTTON_ELASTICITY);
+	const [buttonMagnetDistance, setButtonMagnetDistance] = useState(
+		DEFAULT_BUTTON_MAGNET_DISTANCE,
+	);
+	const [buttonHoverArea, setButtonHoverArea] = useState(DEFAULT_BUTTON_HOVER_AREA);
+	const [buttonPressScale, setButtonPressScale] = useState(DEFAULT_BUTTON_PRESS_SCALE);
+	const [surfacePosition, setSurfacePosition] = useState<DragPosition>({
+		x: -90,
+		y: 0,
+	});
+	const [buttonPosition, setButtonPosition] = useState<DragPosition>({
+		x: 190,
+		y: 0,
+	});
+	const [surfacePointerInput, setSurfacePointerInput] =
+		useState<LiquidGlassPointerInput | null>(null);
 
-	const dragRef = useRef<{ startX: number; startY: number; originX: number; originY: number } | null>(null);
-	const [position, setPosition] = useState({ x: 0, y: 0 });
+	const previewRef = useRef<HTMLDivElement>(null);
+	const surfaceRef = useRef<HTMLDivElement>(null);
+	const dragRef = useRef<DragState | null>(null);
+	const lastClientPointerRef = useRef<DragPosition | null>(null);
 
-	const onPointerDown = useCallback((e: React.PointerEvent) => {
-		e.currentTarget.setPointerCapture(e.pointerId);
-		dragRef.current = {
-			startX: e.clientX,
-			startY: e.clientY,
-			originX: position.x,
-			originY: position.y,
+	const getSurfacePointerInput = useCallback((
+		clientX: number,
+		clientY: number,
+	): LiquidGlassPointerInput | null => {
+		const activeElement = pointerContainerTracking
+			? previewRef.current
+			: surfaceRef.current;
+		if (!activeElement) return null;
+		const rect = activeElement.getBoundingClientRect();
+		return {
+			kind: "client",
+			x: clientX,
+			y: clientY,
+			active:
+				clientX >= rect.left &&
+				clientX <= rect.right &&
+				clientY >= rect.top &&
+				clientY <= rect.bottom,
 		};
-	}, [position]);
+	}, [pointerContainerTracking]);
 
-	const onPointerMove = useCallback((e: React.PointerEvent) => {
-		if (!dragRef.current) return;
-		setPosition({
-			x: dragRef.current.originX + (e.clientX - dragRef.current.startX),
-			y: dragRef.current.originY + (e.clientY - dragRef.current.startY),
-		});
+	const startDrag = useCallback((
+		target: DragTarget,
+		event: React.PointerEvent<HTMLElement>,
+	) => {
+		event.currentTarget.setPointerCapture(event.pointerId);
+		const origin = target === "surface" ? surfacePosition : buttonPosition;
+		dragRef.current = {
+			target,
+			startX: event.clientX,
+			startY: event.clientY,
+			x: origin.x,
+			y: origin.y,
+		};
+	}, [buttonPosition, surfacePosition]);
+
+	const moveDrag = useCallback((event: React.PointerEvent<HTMLElement>) => {
+		const drag = dragRef.current;
+		if (!drag) return;
+		const nextPosition = {
+			x: drag.x + event.clientX - drag.startX,
+			y: drag.y + event.clientY - drag.startY,
+		};
+		if (drag.target === "surface") {
+			setSurfacePosition(nextPosition);
+		} else {
+			setButtonPosition(nextPosition);
+		}
 	}, []);
 
-	const onPointerUp = useCallback(() => {
+	const stopDrag = useCallback(() => {
 		dragRef.current = null;
 	}, []);
+
+	const handlePointerLayersChange = useCallback((nextPointerLayers: boolean) => {
+		setPointerLayers(nextPointerLayers);
+		if (!nextPointerLayers) {
+			setPointerContainerTracking(false);
+		}
+	}, []);
+
+	useEffect(() => {
+		const deactivateSurfacePointer = () => {
+			const previous = lastClientPointerRef.current;
+			setSurfacePointerInput(
+				previous
+					? {
+							kind: "client",
+							x: previous.x,
+							y: previous.y,
+							active: false,
+						}
+					: null,
+			);
+		};
+		const handlePointerMove = (event: PointerEvent) => {
+			lastClientPointerRef.current = {
+				x: event.clientX,
+				y: event.clientY,
+			};
+			if (pointerLayers) {
+				setSurfacePointerInput(getSurfacePointerInput(event.clientX, event.clientY));
+			}
+		};
+
+		window.addEventListener("pointermove", handlePointerMove, { passive: true });
+		window.addEventListener("pointercancel", deactivateSurfacePointer);
+		window.addEventListener("blur", deactivateSurfacePointer);
+		return () => {
+			window.removeEventListener("pointermove", handlePointerMove);
+			window.removeEventListener("pointercancel", deactivateSurfacePointer);
+			window.removeEventListener("blur", deactivateSurfacePointer);
+		};
+	}, [getSurfacePointerInput, pointerLayers]);
+
+	useEffect(() => {
+		if (!pointerLayers) {
+			setSurfacePointerInput(null);
+			return;
+		}
+		const lastClientPointer = lastClientPointerRef.current;
+		setSurfacePointerInput(
+			lastClientPointer
+				? getSurfacePointerInput(lastClientPointer.x, lastClientPointer.y)
+				: null,
+		);
+	}, [getSurfacePointerInput, pointerLayers]);
 
 	const config = useMemo(
 		() => ({
@@ -90,8 +222,15 @@ export default function LiquidGlassDemo() {
 			greenOffset,
 			blueOffset,
 			borderOpacity,
+			pointerLayers,
+			pointerContainerTracking,
+			pointerActivationRadius,
+			buttonElasticity,
+			buttonMagnetDistance,
+			buttonHoverArea,
+			buttonPressScale,
 		}),
-		[backgroundOpacity, blueOffset, blur, borderOpacity, borderRadius, borderWidth, brightness, displace, dispersion, distortionScale, greenOffset, height, opacity, redOffset, saturation, width],
+		[backgroundOpacity, blueOffset, blur, borderOpacity, borderRadius, borderWidth, brightness, buttonElasticity, buttonHoverArea, buttonMagnetDistance, buttonPressScale, displace, dispersion, distortionScale, greenOffset, height, opacity, pointerActivationRadius, pointerContainerTracking, pointerLayers, redOffset, saturation, width],
 	);
 
 	return (
@@ -105,6 +244,7 @@ export default function LiquidGlassDemo() {
 				}}
 			>
 				<div
+					ref={previewRef}
 					className="relative flex w-full items-center justify-center overflow-hidden px-6 py-8"
 					style={{
 						minHeight: 420,
@@ -117,16 +257,17 @@ export default function LiquidGlassDemo() {
 						</div>
 					</div>
 					<div
+						ref={surfaceRef}
 						className="absolute z-10 cursor-grab select-none active:cursor-grabbing"
 						style={{
-							left: `calc(50% - ${width / 2}px + ${position.x}px)`,
-							top: `calc(50% - ${height / 2}px + ${position.y}px)`,
+							left: `calc(50% - ${width / 2}px + ${surfacePosition.x}px)`,
+							top: `calc(50% - ${height / 2}px + ${surfacePosition.y}px)`,
 							touchAction: "none",
 						}}
-						onPointerDown={onPointerDown}
-						onPointerMove={onPointerMove}
-						onPointerUp={onPointerUp}
-						onPointerCancel={onPointerUp}
+						onPointerDown={(event) => startDrag("surface", event)}
+						onPointerMove={moveDrag}
+						onPointerUp={stopDrag}
+						onPointerCancel={stopDrag}
 					>
 						<LiquidGlass
 							width={width}
@@ -147,6 +288,31 @@ export default function LiquidGlassDemo() {
 							xChannel="R"
 							yChannel="G"
 							borderOpacity={borderOpacity}
+							pointerLayers={pointerLayers}
+							pointerInput={pointerLayers ? surfacePointerInput : null}
+							pointerActivationRadius={pointerActivationRadius}
+						/>
+					</div>
+					<div
+						className="absolute z-20 w-max cursor-grab select-none active:cursor-grabbing"
+						style={{
+							left: `calc(50% + ${buttonPosition.x}px)`,
+							top: `calc(50% + ${buttonPosition.y}px)`,
+							transform: "translate(-50%, -50%)",
+							touchAction: "none",
+						}}
+					>
+						<LiquidGlassButton
+							aria-label="Interactive glass button"
+							elasticity={buttonElasticity}
+							magnetDistance={buttonMagnetDistance}
+							hoverArea={buttonHoverArea}
+							pressScale={buttonPressScale}
+							className="w-28"
+							onPointerDown={(event) => startDrag("button", event)}
+							onPointerMove={moveDrag}
+							onPointerUp={stopDrag}
+							onPointerCancel={stopDrag}
 						/>
 					</div>
 				</div>
@@ -317,6 +483,82 @@ export default function LiquidGlassDemo() {
 					step={0.01}
 					onChange={setBorderOpacity}
 				/>
+				<GUI.Section title="Pointer layers">
+					<GUI.Toggle
+						id="lg-pointer-layers"
+						label="Advanced edge layer"
+						description="Adds an opt-in token-colored edge sheen without moving the glass surface."
+						checked={pointerLayers}
+						onChange={handlePointerLayersChange}
+					/>
+					<GUI.Toggle
+						id="lg-pointer-container-tracking"
+						label="Stage tracking"
+						description={
+							pointerLayers
+								? "Tracks pointer movement over the whole preview stage instead of only the glass card."
+								: "Requires Advanced edge layer because it only changes where the edge sheen reads pointer input."
+						}
+						checked={pointerLayers && pointerContainerTracking}
+						disabled={!pointerLayers}
+						onChange={setPointerContainerTracking}
+					/>
+					<GUI.Control
+						id="lg-pointer-activation-radius"
+						label="Pointer radius"
+						value={pointerActivationRadius}
+						defaultValue={DEFAULT_POINTER_ACTIVATION_RADIUS}
+						min={0}
+						max={360}
+						step={1}
+						unit="px"
+						onChange={setPointerActivationRadius}
+					/>
+				</GUI.Section>
+				<GUI.Section title="Button controls">
+					<GUI.Control
+						id="lg-button-elasticity"
+						label="Elasticity"
+						value={buttonElasticity}
+						defaultValue={DEFAULT_BUTTON_ELASTICITY}
+						min={0}
+						max={1}
+						step={0.01}
+						onChange={setButtonElasticity}
+					/>
+					<GUI.Control
+						id="lg-button-magnet-distance"
+						label="Magnet distance"
+						value={buttonMagnetDistance}
+						defaultValue={DEFAULT_BUTTON_MAGNET_DISTANCE}
+						min={0}
+						max={40}
+						step={1}
+						unit="px"
+						onChange={setButtonMagnetDistance}
+					/>
+					<GUI.Control
+						id="lg-button-hover-area"
+						label="Hover area"
+						value={buttonHoverArea}
+						defaultValue={DEFAULT_BUTTON_HOVER_AREA}
+						min={0}
+						max={96}
+						step={1}
+						unit="px"
+						onChange={setButtonHoverArea}
+					/>
+					<GUI.Control
+						id="lg-button-press-scale"
+						label="Press scale"
+						value={buttonPressScale}
+						defaultValue={DEFAULT_BUTTON_PRESS_SCALE}
+						min={0.75}
+						max={1}
+						step={0.01}
+						onChange={setButtonPressScale}
+					/>
+				</GUI.Section>
 			</GUI.Panel>
 		</div>
 	);
