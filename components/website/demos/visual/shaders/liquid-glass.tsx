@@ -1,6 +1,6 @@
 "use client";
 
-import type { CSSProperties, ReactNode } from "react";
+import type { CSSProperties, ReactNode, RefObject } from "react";
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 
 import { cn } from "@/lib/utils";
@@ -25,6 +25,10 @@ const DROP_SHADOW = "0 8px 30px -12px rgba(0, 0, 0, 0.18)";
 const INNER_HIGHLIGHT_TOP = "inset 0 1px 0 rgba(255, 255, 255, 0.7)";
 const INNER_HIGHLIGHT_BOTTOM = "inset 0 -1px 0 rgba(0, 0, 0, 0.05)";
 const FALLBACK_BACKDROP_FILTER = "blur(14px) saturate(1.4)";
+const DEFAULT_POINTER_ACTIVATION_RADIUS = 180;
+const DEFAULT_POINTER_EDGE_COLOR = "color-mix(in srgb, var(--ds-surface-overlay) 72%, var(--ds-text) 28%)";
+const DEFAULT_POINTER_SPOT_COLOR = "color-mix(in srgb, var(--ds-surface-overlay) 88%, var(--ds-text-inverse) 12%)";
+const POINTER_LAYER_TRANSITION = "opacity 160ms ease-out";
 const useIsomorphicLayoutEffect =
 	typeof window === "undefined" ? useEffect : useLayoutEffect;
 
@@ -40,6 +44,110 @@ function buildBoxShadow(
 	]
 		.filter(Boolean)
 		.join(", ");
+}
+
+export interface LiquidGlassPointerLayer {
+	type: "edge" | "spot";
+	color?: string;
+	opacity?: number;
+	blendMode?: CSSProperties["mixBlendMode"];
+	size?: number | string;
+}
+
+export interface LiquidGlassPointerInput {
+	kind: "client" | "local";
+	x: number;
+	y: number;
+	active?: boolean;
+}
+
+const DEFAULT_POINTER_LAYERS: readonly LiquidGlassPointerLayer[] = [
+	{
+		type: "edge",
+		color: DEFAULT_POINTER_EDGE_COLOR,
+		opacity: 0.42,
+		blendMode: "screen",
+		size: 1.5,
+	},
+];
+
+function formatCssLength(value: number | string | undefined, fallback: string): string {
+	if (value === undefined) return fallback;
+	return typeof value === "number" ? `${value}px` : value;
+}
+
+function roundCssNumber(value: number): number {
+	return Math.round(value * 1000) / 1000;
+}
+
+function buildLayerColor(color: string, opacity: number): string {
+	const safeOpacity = clamp(opacity, 0, 1);
+	if (safeOpacity <= 0) return "transparent";
+	if (safeOpacity >= 1) return color;
+	return `color-mix(in srgb, ${color} ${roundCssNumber(safeOpacity * 100)}%, transparent)`;
+}
+
+function getPointerStrength(
+	x: number,
+	y: number,
+	width: number,
+	height: number,
+	activationRadius: number,
+): number {
+	if (activationRadius <= 0) return 0;
+	const edgeDistanceX = x < 0 ? -x : x > width ? x - width : 0;
+	const edgeDistanceY = y < 0 ? -y : y > height ? y - height : 0;
+	const edgeDistance = Math.hypot(edgeDistanceX, edgeDistanceY);
+	return clamp(1 - edgeDistance / activationRadius, 0, 1);
+}
+
+function getPointerAngle(x: number, y: number, width: number, height: number): number {
+	const centerX = width / 2;
+	const centerY = height / 2;
+	const dx = x - centerX;
+	const dy = y - centerY;
+	return roundCssNumber(90 + (Math.atan2(dy, dx) * 180) / Math.PI);
+}
+
+function getResolvedPointerLayers(
+	pointerLayers: boolean | readonly LiquidGlassPointerLayer[],
+): readonly LiquidGlassPointerLayer[] {
+	if (pointerLayers === true) return DEFAULT_POINTER_LAYERS;
+	if (pointerLayers === false) return [];
+	return pointerLayers;
+}
+
+function buildPointerLayerStyle(layer: LiquidGlassPointerLayer): CSSProperties {
+	const opacity = layer.opacity ?? 1;
+	const commonStyle: CSSProperties = {
+		position: "absolute",
+		inset: 0,
+		zIndex: 1,
+		borderRadius: "inherit",
+		pointerEvents: "none",
+		opacity: "var(--liquid-glass-pointer-strength, 0)",
+		transition: POINTER_LAYER_TRANSITION,
+		mixBlendMode: layer.blendMode ?? "screen",
+	};
+
+	if (layer.type === "edge") {
+		const color = buildLayerColor(layer.color ?? DEFAULT_POINTER_EDGE_COLOR, opacity);
+		return {
+			...commonStyle,
+			padding: formatCssLength(layer.size, "1.5px"),
+			background: `linear-gradient(var(--liquid-glass-pointer-angle, 135deg), transparent 0%, ${color} 42%, transparent 72%)`,
+			WebkitMask: "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
+			WebkitMaskComposite: "xor",
+			maskComposite: "exclude",
+		};
+	}
+
+	const color = buildLayerColor(layer.color ?? DEFAULT_POINTER_SPOT_COLOR, opacity);
+	const size = formatCssLength(layer.size, "180px");
+	return {
+		...commonStyle,
+		background: `radial-gradient(circle ${size} at var(--liquid-glass-pointer-x, 50%) var(--liquid-glass-pointer-y, 50%), ${color} 0%, transparent 68%)`,
+	};
 }
 
 export interface LiquidGlassProps {
@@ -71,6 +179,10 @@ export interface LiquidGlassProps {
 	borderOpacity?: number;
 	borderColor?: string;
 	dropShadow?: string | false;
+	pointerLayers?: boolean | readonly LiquidGlassPointerLayer[];
+	mouseContainer?: RefObject<HTMLElement | null> | null;
+	pointerInput?: LiquidGlassPointerInput | null;
+	pointerActivationRadius?: number;
 	className?: string;
 	style?: CSSProperties;
 }
@@ -101,6 +213,10 @@ export default function LiquidGlass({
 	borderOpacity = 0.35,
 	borderColor = "#000000",
 	dropShadow = DROP_SHADOW,
+	pointerLayers = false,
+	mouseContainer = null,
+	pointerInput = null,
+	pointerActivationRadius = DEFAULT_POINTER_ACTIVATION_RADIUS,
 	className,
 	style,
 }: LiquidGlassProps) {
@@ -124,11 +240,13 @@ export default function LiquidGlass({
 		null,
 	);
 	const [filterReady, setFilterReady] = useState(false);
+	const resolvedPointerLayers = getResolvedPointerLayers(pointerLayers);
+	const pointerTrackingEnabled = resolvedPointerLayers.length > 0 || pointerInput !== null;
 
 	const generateDisplacementMap = useCallback(() => {
-		const rect = containerRef.current?.getBoundingClientRect();
-		const w = rect?.width ?? 0;
-		const h = rect?.height ?? 0;
+		const el = containerRef.current;
+		const w = el?.offsetWidth ?? 0;
+		const h = el?.offsetHeight ?? 0;
 
 		if (w <= 0 || h <= 0) {
 			return null;
@@ -150,6 +268,35 @@ export default function LiquidGlass({
 			blurFilterId,
 		});
 	}, [blueGradId, blurFilterId, borderRadius, borderWidth, brightness, displace, opacity, redGradId]);
+
+	const setPointerInactive = useCallback(() => {
+		const el = containerRef.current;
+		if (!el) return;
+		el.style.setProperty("--liquid-glass-pointer-strength", "0");
+	}, []);
+
+	const updatePointerFromLocal = useCallback((x: number, y: number, active: boolean) => {
+		const el = containerRef.current;
+		if (!el) return;
+		const width = el.offsetWidth;
+		const height = el.offsetHeight;
+		if (width <= 0 || height <= 0) return;
+
+		const strength = active
+			? getPointerStrength(x, y, width, height, pointerActivationRadius)
+			: 0;
+		el.style.setProperty("--liquid-glass-pointer-x", `${roundCssNumber(x)}px`);
+		el.style.setProperty("--liquid-glass-pointer-y", `${roundCssNumber(y)}px`);
+		el.style.setProperty("--liquid-glass-pointer-strength", String(roundCssNumber(strength)));
+		el.style.setProperty("--liquid-glass-pointer-angle", `${getPointerAngle(x, y, width, height)}deg`);
+	}, [pointerActivationRadius]);
+
+	const updatePointerFromClient = useCallback((clientX: number, clientY: number, active: boolean) => {
+		const el = containerRef.current;
+		if (!el) return;
+		const rect = el.getBoundingClientRect();
+		updatePointerFromLocal(clientX - rect.left, clientY - rect.top, active);
+	}, [updatePointerFromLocal]);
 
 	const updateDisplacementMap = useCallback(() => {
 		const href = generateDisplacementMap();
@@ -212,6 +359,35 @@ export default function LiquidGlass({
 		requestAnimationFrame(updateDisplacementMap);
 	}, [width, height, updateDisplacementMap]);
 
+	useEffect(() => {
+		if (!pointerTrackingEnabled || !pointerInput) return;
+		const active = pointerInput.active ?? true;
+		if (pointerInput.kind === "local") {
+			updatePointerFromLocal(pointerInput.x, pointerInput.y, active);
+		} else {
+			updatePointerFromClient(pointerInput.x, pointerInput.y, active);
+		}
+	}, [pointerInput, pointerTrackingEnabled, updatePointerFromClient, updatePointerFromLocal]);
+
+	useEffect(() => {
+		if (!pointerTrackingEnabled || pointerInput) return;
+		const target = mouseContainer?.current ?? containerRef.current;
+		if (!target) return;
+
+		const handlePointerMove = (event: PointerEvent) => {
+			updatePointerFromClient(event.clientX, event.clientY, true);
+		};
+		const handlePointerLeave = () => {
+			setPointerInactive();
+		};
+		target.addEventListener("pointermove", handlePointerMove, { passive: true });
+		target.addEventListener("pointerleave", handlePointerLeave);
+		return () => {
+			target.removeEventListener("pointermove", handlePointerMove);
+			target.removeEventListener("pointerleave", handlePointerLeave);
+		};
+	}, [mouseContainer, pointerInput, pointerTrackingEnabled, setPointerInactive, updatePointerFromClient]);
+
 	const hairlineColor = buildColorMix(borderColor, borderOpacity);
 	const containerStyle: CSSProperties = {
 		...style,
@@ -219,7 +395,11 @@ export default function LiquidGlass({
 		height,
 		borderRadius,
 		boxShadow: buildBoxShadow(hairlineColor, dropShadow),
-	};
+		"--liquid-glass-pointer-x": "50%",
+		"--liquid-glass-pointer-y": "50%",
+		"--liquid-glass-pointer-strength": "0",
+		"--liquid-glass-pointer-angle": "135deg",
+	} as CSSProperties;
 
 	if (svgSupported && filterReady) {
 		Object.assign(containerStyle, {
@@ -280,6 +460,18 @@ export default function LiquidGlass({
 					</filter>
 				</defs>
 			</svg>
+
+			{resolvedPointerLayers.length > 0 ? (
+				<>
+					{resolvedPointerLayers.map((layer, index) => (
+						<span
+							key={`${layer.type}-${index}`}
+							aria-hidden="true"
+							style={buildPointerLayerStyle(layer)}
+						/>
+					))}
+				</>
+			) : null}
 
 			{children ? (
 				<div className="relative z-3 flex h-full w-full items-center justify-center rounded-[inherit] p-2">

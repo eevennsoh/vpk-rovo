@@ -386,8 +386,9 @@ import { stagger } from "motion/react";`,
 		],
 	},
 	"liquid-glass": {
-		description: "Apple-style liquid glass surface with real-time SVG displacement distortion, chromatic dispersion, a crisp hairline edge with inner specular highlights, a soft drop shadow, and backdrop-filter refraction.",
-		importStatement: `import LiquidGlass from "@/components/website/demos/visual/shaders/liquid-glass";`,
+		description: "Apple-style liquid glass surface with real-time SVG displacement distortion, chromatic dispersion, a crisp hairline edge with inner specular highlights, a soft drop shadow, and backdrop-filter refraction. Use LiquidGlass for static cards and panels; use LiquidGlassButton when the surface itself should be an interactive button.",
+		importStatement: `import LiquidGlass from "@/components/website/demos/visual/shaders/liquid-glass";
+import { LiquidGlassButton } from "@/components/website/demos/visual/shaders/liquid-glass-button";`,
 		usage: `<LiquidGlass width={200} height={400} borderRadius={50} />
 
 <LiquidGlass
@@ -402,7 +403,9 @@ import { stagger } from "motion/react";`,
 	backgroundOpacity={0.1}
 >
 	<p className="text-sm text-text">Content inside the glass</p>
-</LiquidGlass>`,
+</LiquidGlass>
+
+<LiquidGlassButton aria-label="Interactive glass button" className="w-28" />`,
 		props: [
 			{ name: "children", type: "React.ReactNode", description: "Content displayed inside the glass surface." },
 			{ name: "width", type: "number | string", default: "200", description: "Width of the glass surface (pixels or CSS value)." },
@@ -411,8 +414,8 @@ import { stagger } from "motion/react";`,
 			{ name: "borderWidth", type: "number", default: "0.05", description: "Border width factor for the displacement map inset." },
 			{ name: "brightness", type: "number", default: "50", description: "Brightness percentage (0–100) for the displacement map." },
 			{ name: "opacity", type: "number", default: "0.93", description: "Opacity of the displacement map inner fill." },
-			{ name: "blur", type: "number", default: "8", description: "Softens the displacement map inner transition in output pixels." },
-			{ name: "displace", type: "number", default: "0", description: "Output Gaussian blur (stdDeviation) on the refracted result." },
+			{ name: "blur", type: "number", default: "8", description: "Output Gaussian blur (stdDeviation) on the refracted result." },
+			{ name: "displace", type: "number", default: "5", description: "Softens the displacement map inner transition in output pixels." },
 			{ name: "backgroundOpacity", type: "number", default: "0", description: "Background frost opacity (0 = clear, 1 = fully frosted)." },
 			{ name: "saturation", type: "number", default: "1", description: "Backdrop-filter saturation multiplier." },
 			{ name: "distortionScale", type: "number", default: "-90", description: "Base displacement scale applied to the center channel." },
@@ -424,6 +427,15 @@ import { stagger } from "motion/react";`,
 			{ name: "yChannel", type: `"R" | "G" | "B"`, default: `"B"`, description: "Displacement-map channel selector for the y axis. Use \"G\" to match ReactBits GlassSurface." },
 			{ name: "borderOpacity", type: "number", default: "0.35", description: "Opacity of the inset hairline edge." },
 			{ name: "borderColor", type: "string", default: "\"#000000\"", description: "Color of the inset hairline edge." },
+			{ name: "pointerLayers", type: "boolean | LiquidGlassPointerLayer[]", default: "false", description: "Advanced opt-in pointer-reactive visual layer. Pass true for the default VPK edge sheen or an array for custom layer tuning." },
+			{ name: "mouseContainer", type: "RefObject<HTMLElement | null> | null", default: "null", description: "Optional external element used for pointer tracking when the glass should react to a larger surface." },
+			{ name: "pointerInput", type: "{ kind: \"client\" | \"local\"; x: number; y: number; active?: boolean } | null", default: "null", description: "Optional externally controlled pointer coordinates. Client coordinates are converted from the viewport into the glass surface." },
+			{ name: "pointerActivationRadius", type: "number", default: "180", description: "Distance in pixels outside the glass edge where pointer layers fade out." },
+			{ name: "LiquidGlassButton.glassProps", type: "Partial<LiquidGlassProps>", description: "Overrides the LiquidGlass backdrop inside the interactive button." },
+			{ name: "LiquidGlassButton.elasticity", type: "number", default: "0.35", description: "Amount of pill stretch and perpendicular compression while the pointer is near the button." },
+			{ name: "LiquidGlassButton.magnetDistance", type: "number", default: "10", description: "Maximum magnetic translation in pixels toward the pointer." },
+			{ name: "LiquidGlassButton.hoverArea", type: "number", default: "24", description: "Pointer activation distance outside the button bounds." },
+			{ name: "LiquidGlassButton.pressScale", type: "number", default: "0.92", description: "Uniform spring scale applied while pressing the button." },
 			{ name: "className", type: "string", description: "Additional CSS class names." },
 			{ name: "style", type: "React.CSSProperties", description: "Inline styles object." },
 		],
