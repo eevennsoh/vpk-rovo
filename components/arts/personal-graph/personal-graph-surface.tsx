@@ -703,8 +703,10 @@ export function PersonalGraphSurface({
 			</motion.section>
 
 			<motion.section
+				aria-hidden={!isSearchRevealed}
 				aria-label="Personal Graph search and chat"
 				className="pointer-events-none absolute left-4 right-4 z-40 flex justify-center sm:inset-x-6 lg:left-[360px] lg:right-[360px]"
+				inert={!isSearchRevealed}
 				initial={{ bottom: -120 }}
 				animate={{
 					bottom: isSearchRevealed ? 24 : -120,
