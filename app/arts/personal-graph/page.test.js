@@ -257,6 +257,8 @@ test("Personal Graph omits the standalone zoom control rail", () => {
 
 test("Personal Graph anchors the search and chat composer at the graph origin", () => {
 	assert.match(SURFACE_SOURCE, /aria-label="Personal Graph search and chat"/);
+	assert.match(SURFACE_SOURCE, /aria-hidden=\{!isSearchRevealed\}/);
+	assert.match(SURFACE_SOURCE, /inert=\{!isSearchRevealed\}/);
 	assert.match(SURFACE_SOURCE, /left-4 right-4 z-40 flex justify-center/);
 	assert.match(SURFACE_SOURCE, /initial=\{\{ bottom: -120 \}\}/);
 	assert.match(SURFACE_SOURCE, /const isSearchRevealed = isVaultReadyForLayout && \(phase === "search"/);
