@@ -142,7 +142,7 @@ export function PersonalGraphControlFlyoutTrigger({
 				aria-expanded={isOpen}
 				aria-label={isOpen ? "Close graph controls" : "Open graph controls"}
 				className={cn(
-					"aria-expanded:!bg-transparent aria-expanded:!text-text-subtle aria-expanded:!border-transparent aria-expanded:[&_svg]:!text-icon-subtle",
+					"rounded-full aria-expanded:!bg-transparent aria-expanded:!text-text-subtle aria-expanded:!border-transparent aria-expanded:[&_svg]:!text-icon-subtle",
 					className,
 				)}
 				disabled={disabled}

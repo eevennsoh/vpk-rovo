@@ -88,6 +88,7 @@ export function PersonalGraphSearch({
 				/>
 				<Button
 					aria-label="Open top search result"
+					className="rounded-full"
 					disabled={!firstResult}
 					size="icon"
 					type="submit"

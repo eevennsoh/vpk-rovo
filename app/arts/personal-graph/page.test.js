@@ -328,7 +328,7 @@ test("Personal Graph anchors the search and chat composer at the graph origin", 
 	assert.match(SEARCH_SOURCE, /aria-label="Ask or search Personal Graph"/);
 	assert.match(
 		SEARCH_SOURCE,
-		/<Button[\s\S]*aria-label="Open top search result"[\s\S]*size="icon"[\s\S]*variant="ghost"/,
+		/<Button[\s\S]*aria-label="Open top search result"[\s\S]*className="rounded-full"[\s\S]*size="icon"[\s\S]*variant="ghost"/,
 	);
 	assert.doesNotMatch(SEARCH_SOURCE, /PersonalGraphLiquidGlassIconButton/);
 	assert.doesNotMatch(SEARCH_SOURCE, /PERSONAL_GRAPH_SEARCH_ICON_BUTTON_CLASS_NAME/);
