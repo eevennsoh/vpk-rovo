@@ -378,12 +378,7 @@ function drawEdges(
 	const idleOpacity = options.params.edgeOpacity;
 	const activeOpacity = options.params.edgeOpacityActive;
 	const focusProgress = getFocusProgress(options);
-	const edges = selectedRelationships.edgeIds.size > 0
-		? [...layout.edges].sort((left, right) => Number(selectedRelationships.edgeIds.has(left.id)) - Number(selectedRelationships.edgeIds.has(right.id)))
-		: layout.edges;
-	ctx.save();
-	ctx.lineCap = "round";
-	for (const edge of edges) {
+	const drawEdge = (edge: NeuralLayoutEdge) => {
 		const source = worldToViewport(edge.source, options.camera, options.viewport, options.params);
 		const target = worldToViewport(edge.target, options.camera, options.viewport, options.params);
 		const hasFocus = Boolean(options.selectedNodeId ?? options.hoveredNodeId);
@@ -395,6 +390,21 @@ function drawEdges(
 		ctx.globalAlpha = active ? lerp(activeOpacity, Math.min(1, activeOpacity + 0.2), focusProgress) : inactiveAlpha;
 		drawStraightEdgePath(ctx, source, target);
 		ctx.stroke();
+	};
+
+	ctx.save();
+	ctx.lineCap = "round";
+	if (selectedRelationships.edgeIds.size > 0) {
+		for (const edge of layout.edges) {
+			if (!selectedRelationships.edgeIds.has(edge.id)) drawEdge(edge);
+		}
+		for (const edge of layout.edges) {
+			if (selectedRelationships.edgeIds.has(edge.id)) drawEdge(edge);
+		}
+	} else {
+		for (const edge of layout.edges) {
+			drawEdge(edge);
+		}
 	}
 	ctx.restore();
 }

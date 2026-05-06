@@ -1210,6 +1210,58 @@ test("drawNeuralGraph keeps idle edge order and layers selected edges last", asy
 	assert.deepEqual(getDrawnEdgeTargets("selected"), [110, 230]);
 });
 
+test("drawNeuralGraph layers selected edges without sorting the edge array", async () => {
+	const { createNeuralCamera } = await cameraModule;
+	const { DEFAULT_NEURAL_GRAPH_PARAMS } = await paramsModule;
+	const { drawNeuralGraph } = await rendererModule;
+	const viewport = { height: 200, width: 300 };
+	const selected = layoutNode("selected", 0);
+	const nodes = Array.from({ length: 21 }, (_, index) => layoutNode(`node-${index}`, index * 8));
+	const edges = Array.from({ length: 20 }, (_, index) => {
+		const source = index < 4 ? selected : nodes[index];
+		const target = nodes[index + 1] ?? nodes[0];
+		return layoutEdge(`edge-${index}`, source, target);
+	});
+	const layout = {
+		edges,
+		nodes: [],
+		nodesById: new Map(),
+		origin: { x: 0, y: 0 },
+		viewport,
+	};
+	const originalSort = Array.prototype.sort;
+	let edgeSorts = 0;
+
+	Array.prototype.sort = function sortWithEdgeCounter(compareFn) {
+		if (this.length > 0 && this[0] && typeof this[0] === "object" && "source" in this[0] && "target" in this[0]) {
+			edgeSorts += 1;
+		}
+		return originalSort.call(this, compareFn);
+	};
+
+	try {
+		drawNeuralGraph(createRecordingCanvasContext(), layout, {
+			background: "transparent",
+			camera: createNeuralCamera(),
+			focusProgress: 1,
+			hoveredNodeId: null,
+			params: {
+				...DEFAULT_NEURAL_GRAPH_PARAMS,
+				showLabels: false,
+				showRays: false,
+				showSignals: false,
+			},
+			selectedNodeId: "selected",
+			theme: "light",
+			viewport,
+		});
+	} finally {
+		Array.prototype.sort = originalSort;
+	}
+
+	assert.equal(edgeSorts, 0);
+});
+
 test("drawNeuralGraph traces momentary signal streaks along animated edges", async () => {
 	const { createNeuralCamera } = await cameraModule;
 	const { DEFAULT_NEURAL_GRAPH_PARAMS } = await paramsModule;
