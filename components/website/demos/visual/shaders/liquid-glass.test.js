@@ -11,6 +11,10 @@ const LIQUID_GLASS_BUTTON_SOURCE = fs.readFileSync(
 	path.join(__dirname, "liquid-glass-button.tsx"),
 	"utf8",
 );
+const LIQUID_GLASS_DEMO_SOURCE = fs.readFileSync(
+	path.join(__dirname, "../liquid-glass-demo.tsx"),
+	"utf8",
+);
 
 test("LiquidGlass starts with a deterministic blur fallback before support detection", () => {
 	assert.match(
@@ -69,6 +73,16 @@ test("LiquidGlass keeps pointer-reactive layers opt-in", () => {
 	);
 });
 
+test("LiquidGlass demo enables advanced layer and stage tracking by default", () => {
+	assert.match(LIQUID_GLASS_DEMO_SOURCE, /const DEFAULT_POINTER_LAYERS = true;/);
+	assert.match(LIQUID_GLASS_DEMO_SOURCE, /const DEFAULT_POINTER_CONTAINER_TRACKING = true;/);
+	assert.match(LIQUID_GLASS_DEMO_SOURCE, /useState\(DEFAULT_POINTER_LAYERS\)/);
+	assert.match(
+		LIQUID_GLASS_DEMO_SOURCE,
+		/useState\(\s+DEFAULT_POINTER_CONTAINER_TRACKING,\s+\)/,
+	);
+});
+
 test("LiquidGlass pointer defaults use VPK token colors instead of copied overlays", () => {
 	const pointerDefaultsStart = LIQUID_GLASS_SOURCE.indexOf("const DEFAULT_POINTER_EDGE_COLOR");
 	const pointerDefaultsEnd = LIQUID_GLASS_SOURCE.indexOf("const useIsomorphicLayoutEffect");
@@ -115,4 +129,23 @@ test("LiquidGlassButton owns semantic button interaction and motion", () => {
 	assert.match(LIQUID_GLASS_BUTTON_SOURCE, /--liquid-glass-button-strength/);
 	assert.match(LIQUID_GLASS_BUTTON_SOURCE, /--liquid-glass-button-pressed/);
 	assert.match(LIQUID_GLASS_BUTTON_SOURCE, /pointer-events-none absolute inset-0/);
+});
+
+test("LiquidGlassButton composes an external ref for render-target usage", () => {
+	assert.match(
+		LIQUID_GLASS_BUTTON_SOURCE,
+		/import type \{[\s\S]*Ref,[\s\S]*\} from "react";/,
+	);
+	assert.match(
+		LIQUID_GLASS_BUTTON_SOURCE,
+		/function setComposedButtonRef\(ref: Ref<HTMLButtonElement> \| undefined, node: HTMLButtonElement \| null\)/,
+	);
+	assert.match(LIQUID_GLASS_BUTTON_SOURCE, /ref: externalRef/);
+	assert.match(
+		LIQUID_GLASS_BUTTON_SOURCE,
+		/const composedButtonRef = useCallback\(\(node: HTMLButtonElement \| null\) => \{/,
+	);
+	assert.match(LIQUID_GLASS_BUTTON_SOURCE, /buttonRef\.current = node;/);
+	assert.match(LIQUID_GLASS_BUTTON_SOURCE, /setComposedButtonRef\(externalRef, node\);/);
+	assert.match(LIQUID_GLASS_BUTTON_SOURCE, /ref=\{composedButtonRef\}/);
 });

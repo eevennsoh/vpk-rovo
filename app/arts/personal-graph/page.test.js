@@ -289,10 +289,18 @@ test("Personal Graph anchors the search and chat composer at the graph origin", 
 		/<PersonalGraphGlassPanel[\s\S]*className="relative z-10"[\s\S]*contentClassName="flex h-16 items-center gap-2 p-4 pl-6"[\s\S]*radius=\{30\}/,
 	);
 	assert.match(SEARCH_SOURCE, /PERSONAL_GRAPH_CHROMATIC_RGB_GLASS_PROPS/);
-	assert.match(SEARCH_SOURCE, /glassProps=\{PERSONAL_GRAPH_CHROMATIC_RGB_GLASS_PROPS\}/);
+	assert.match(SEARCH_SOURCE, /mouseContainer: searchStageRef/);
+	assert.match(SEARCH_SOURCE, /pointerActivationRadius: 220/);
+	assert.match(SEARCH_SOURCE, /pointerLayers: true/);
 	assert.doesNotMatch(SEARCH_SOURCE, /chromaticEdge/);
 	assert.match(SEARCH_SOURCE, /contentClassName="flex h-16 items-center gap-2 p-4 pl-6"/);
 	assert.match(GLASS_PANEL_SOURCE, /\[&>div\]:p-0/);
+	assert.match(GLASS_PANEL_SOURCE, /export function PersonalGraphLiquidGlassIconButton/);
+	assert.match(GLASS_PANEL_SOURCE, /<LiquidGlassButton/);
+	assert.match(GLASS_PANEL_SOURCE, /PERSONAL_GRAPH_LIQUID_GLASS_ICON_BUTTON_PROPS/);
+	assert.match(GLASS_PANEL_SOURCE, /hoverArea=\{28\}/);
+	assert.match(GLASS_PANEL_SOURCE, /magnetDistance=\{8\}/);
+	assert.match(GLASS_PANEL_SOURCE, /pressScale=\{0\.9\}/);
 	assert.doesNotMatch(SEARCH_SOURCE, /SearchIcon/);
 	assert.match(SEARCH_SOURCE, /import \{ token \} from "@\/lib\/tokens";/);
 	assert.match(SEARCH_SOURCE, /className="min-w-0 flex-1 bg-transparent text-text outline-none placeholder:text-text-subtlest"/);
@@ -310,7 +318,12 @@ test("Personal Graph anchors the search and chat composer at the graph origin", 
 	assert.match(SURFACE_SOURCE, /isFlyoutDisabled=\{isResetFlyoutCollapsing\}/);
 	assert.match(SEARCH_SOURCE, /disabled=\{isFlyoutDisabled\}/);
 	assert.match(SEARCH_SOURCE, /aria-label="Ask or search Personal Graph"/);
-	assert.match(SEARCH_SOURCE, /aria-label="Open top search result"[\s\S]*className="size-8 rounded-full border-0 text-text-subtle/);
+	assert.match(SEARCH_SOURCE, /<PersonalGraphLiquidGlassIconButton[\s\S]*aria-label="Open top search result"/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /<PersonalGraphLiquidGlassIconButton[\s\S]*aria-expanded=\{isOpen\}/);
+	assert.match(SURFACE_SOURCE, /render:\s*\(\s*<PersonalGraphLiquidGlassIconButton[\s\S]*aria-label="Refresh"/);
+	assert.match(SURFACE_SOURCE, /render:\s*\(\s*<PersonalGraphLiquidGlassIconButton[\s\S]*aria-label=\{themeLabel\}/);
+	assert.match(SURFACE_SOURCE, /render:\s*\(\s*<PersonalGraphLiquidGlassIconButton[\s\S]*aria-label="Reset"/);
+	assert.match(SURFACE_SOURCE, /<PopoverTrigger[\s\S]*render=\{[\s\S]*<PersonalGraphLiquidGlassIconButton[\s\S]*aria-label="Add data"/);
 	assert.doesNotMatch(SEARCH_SOURCE, /aria-label="Open graph parameters"/);
 	assert.match(SEARCH_SOURCE, /actions=\{flyoutActions\}/);
 });

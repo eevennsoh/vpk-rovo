@@ -28,7 +28,10 @@ import type { VaultExplorer, VaultNode, VaultNodeKind } from "./lib/personal-gra
 import { PersonalGraphBackdrop } from "./personal-graph-backdrop";
 import type { PersonalGraphControlFlyoutAction } from "./personal-graph-control-flyout";
 import { PersonalGraphDropzone } from "./personal-graph-dropzone";
-import { PersonalGraphGlassPanel } from "./personal-graph-glass-panel";
+import {
+	PersonalGraphGlassPanel,
+	PersonalGraphLiquidGlassIconButton,
+} from "./personal-graph-glass-panel";
 import { PersonalGraphIngestButton } from "./personal-graph-ingest-button";
 import { PersonalGraphLog } from "./personal-graph-log";
 import {
@@ -450,11 +453,9 @@ export function PersonalGraphSurface({
 					<Popover open={isCaptureQueueOpen} onOpenChange={handleCaptureQueueOpenChange}>
 						<PopoverTrigger
 							render={
-								<Button
+								<PersonalGraphLiquidGlassIconButton
 									aria-label="Add data"
-									className="size-10 rounded-full border-border bg-bg-neutral-subtle text-text shadow-none hover:bg-bg-neutral-subtle-hovered [&_svg]:text-icon-subtle"
-									size="icon"
-									variant="outline"
+									type="button"
 								/>
 							}
 						>
@@ -477,16 +478,13 @@ export function PersonalGraphSurface({
 				key: "refresh",
 				label: "Refresh",
 				render: (
-					<Button
+					<PersonalGraphLiquidGlassIconButton
 						aria-label="Refresh"
-						className="size-10 rounded-full border-border bg-bg-neutral-subtle text-text shadow-none hover:bg-bg-neutral-subtle-hovered [&_svg]:text-icon-subtle"
 						disabled={isLoading}
 						onClick={handleRefreshAll}
-						size="icon"
-						variant="outline"
 					>
 						<PixelRefreshIcon />
-					</Button>
+					</PersonalGraphLiquidGlassIconButton>
 				),
 			});
 		}
@@ -495,15 +493,12 @@ export function PersonalGraphSurface({
 			key: "theme",
 			label: themeLabel,
 			render: (
-				<Button
+				<PersonalGraphLiquidGlassIconButton
 					aria-label={themeLabel}
-					className="size-10 rounded-full border-border bg-bg-neutral-subtle text-text shadow-none hover:bg-bg-neutral-subtle-hovered [&_svg]:text-icon-subtle"
 					onClick={handleToggleTheme}
-					size="icon"
-					variant="outline"
 				>
 					{theme === "system" ? <PixelSystemIcon /> : actualTheme === "dark" ? <PixelDarkIcon /> : <PixelLightIcon />}
-				</Button>
+				</PersonalGraphLiquidGlassIconButton>
 			),
 		});
 
@@ -512,17 +507,14 @@ export function PersonalGraphSurface({
 				key: "clear-vault",
 				label: "Reset",
 				render: (
-					<Button
+					<PersonalGraphLiquidGlassIconButton
 						aria-label="Reset"
-						className="size-10 rounded-full border-border bg-bg-neutral-subtle text-text shadow-none hover:bg-bg-neutral-subtle-hovered disabled:border-transparent disabled:bg-bg-disabled disabled:text-text-disabled [&_svg]:text-icon-subtle"
 						disabled={isVaultResetting}
 						isLoading={isVaultResetting}
 						onClick={handleResetVault}
-						size="icon"
-						variant="outline"
 					>
 						<PixelResetIcon />
-					</Button>
+					</PersonalGraphLiquidGlassIconButton>
 				),
 			});
 		}

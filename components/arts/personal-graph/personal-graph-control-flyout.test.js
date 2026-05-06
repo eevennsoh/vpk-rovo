@@ -21,64 +21,36 @@ test("Personal Graph flyout label chips stay off narrow viewports", () => {
 	);
 });
 
-test("Personal Graph flyout action buttons reuse the shared glass panel at stable size", () => {
+test("Personal Graph flyout action buttons render shared liquid-glass buttons directly", () => {
 	assert.match(
 		CONTROL_FLYOUT_SOURCE,
-		/import \{\s+PERSONAL_GRAPH_CHROMATIC_RGB_GLASS_PROPS,\s+PersonalGraphGlassPanel,\s+\} from "\.\/personal-graph-glass-panel";/,
+		/import \{ PersonalGraphLiquidGlassIconButton \} from "\.\/personal-graph-glass-panel";/,
 	);
-	assert.match(CONTROL_FLYOUT_SOURCE, /<PersonalGraphGlassPanel/);
-	assert.match(CONTROL_FLYOUT_SOURCE, /className="rounded-full"/);
-	assert.match(CONTROL_FLYOUT_SOURCE, /contentClassName="flex size-8 items-center justify-center"/);
-	assert.match(CONTROL_FLYOUT_SOURCE, /glassProps=\{PERSONAL_GRAPH_CHROMATIC_RGB_GLASS_PROPS\}/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /<PersonalGraphLiquidGlassIconButton/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /\{action\.render\}/);
 	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /chromaticEdge/);
-	assert.match(CONTROL_FLYOUT_SOURCE, /height=\{32\}/);
-	assert.match(CONTROL_FLYOUT_SOURCE, /radius=\{9999\}/);
-	assert.match(CONTROL_FLYOUT_SOURCE, /width=\{32\}/);
-	assert.match(CONTROL_FLYOUT_SOURCE, /\[&_button\]:size-8/);
+	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /<PersonalGraphGlassPanel/);
+	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /PersonalGraphControlFlyoutActionGlass/);
 	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /type LiquidGlassProps/);
 	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /const ACTION_GLASS_PROPS/);
 	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /<LiquidGlass/);
 	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /backgroundOpacity: 1,/);
 });
 
-test("Personal Graph flyout action magnet treats the label and button as one unit", () => {
-	assert.match(CONTROL_FLYOUT_SOURCE, /const ACTION_MAGNET_DISTANCE = 10;/);
+test("Personal Graph flyout avoids stacking route-local magnet motion on liquid-glass buttons", () => {
+	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /const ACTION_MAGNET_DISTANCE/);
 	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /ACTION_MAGNET_ICON_DISTANCE/);
-	assert.match(CONTROL_FLYOUT_SOURCE, /const ACTION_MAGNET_HOVER_AREA = 24;/);
-	assert.match(
-		CONTROL_FLYOUT_SOURCE,
-		/const ACTION_MAGNET_SPRING = \{\s+damping: 50,\s+stiffness: 900,\s+mass: 0\.5,\s+restDelta: 0\.001,\s+\} as const;/,
-	);
-	assert.match(CONTROL_FLYOUT_SOURCE, /function getActionMagnetRect\(element: HTMLSpanElement\): DOMRect/);
-	assert.match(CONTROL_FLYOUT_SOURCE, /\[data-personal-graph-flyout-label\]/);
-	assert.match(CONTROL_FLYOUT_SOURCE, /const left = Math\.min\(actionRect\.left, labelRect\.left\);/);
-	assert.match(CONTROL_FLYOUT_SOURCE, /const right = Math\.max\(actionRect\.right, labelRect\.right\);/);
-	assert.match(CONTROL_FLYOUT_SOURCE, /return DOMRect\.fromRect\(/);
-	assert.match(CONTROL_FLYOUT_SOURCE, /function usePersonalGraphFlyoutActionMagnet\(\)/);
-	assert.match(CONTROL_FLYOUT_SOURCE, /const shouldReduceMotion = useReducedMotion\(\);/);
-	assert.match(CONTROL_FLYOUT_SOURCE, /const actionMagnetX = useMotionValue\(0\);/);
-	assert.match(CONTROL_FLYOUT_SOURCE, /const actionMagnetY = useMotionValue\(0\);/);
-	assert.match(CONTROL_FLYOUT_SOURCE, /const actionSpringX = useSpring\(actionMagnetX, ACTION_MAGNET_SPRING\);/);
-	assert.match(CONTROL_FLYOUT_SOURCE, /const actionSpringY = useSpring\(actionMagnetY, ACTION_MAGNET_SPRING\);/);
-	assert.match(CONTROL_FLYOUT_SOURCE, /const rect = getActionMagnetRect\(element\);/);
-	assert.match(CONTROL_FLYOUT_SOURCE, /event\.clientX >= rect\.left - ACTION_MAGNET_HOVER_AREA/);
-	assert.match(CONTROL_FLYOUT_SOURCE, /event\.clientY <= rect\.bottom \+ ACTION_MAGNET_HOVER_AREA/);
-	assert.match(CONTROL_FLYOUT_SOURCE, /const ratioX = Math\.max\(-1, Math\.min\(1, dx \/ \(rect\.width \/ 2\)\)\);/);
-	assert.match(CONTROL_FLYOUT_SOURCE, /const ratioY = Math\.max\(-1, Math\.min\(1, dy \/ \(rect\.height \/ 2\)\)\);/);
-	assert.match(CONTROL_FLYOUT_SOURCE, /actionMagnetX\.set\(ratioX \* ACTION_MAGNET_DISTANCE\);/);
-	assert.match(CONTROL_FLYOUT_SOURCE, /actionMagnetY\.set\(ratioY \* ACTION_MAGNET_DISTANCE\);/);
-	assert.match(CONTROL_FLYOUT_SOURCE, /document\.addEventListener\("mousemove", handleMove, \{ passive: true \}\);/);
-	assert.match(CONTROL_FLYOUT_SOURCE, /document\.removeEventListener\("mousemove", handleMove\);/);
-	assert.match(
-		CONTROL_FLYOUT_SOURCE,
-		/if \(shouldReduceMotion\) \{\s+actionMagnetX\.set\(0\);\s+actionMagnetY\.set\(0\);\s+return;\s+\}/,
-	);
-	assert.match(CONTROL_FLYOUT_SOURCE, /function PersonalGraphControlFlyoutActionMagnet/);
+	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /ACTION_MAGNET_HOVER_AREA/);
+	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /ACTION_MAGNET_SPRING/);
+	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /function getActionMagnetRect/);
+	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /function usePersonalGraphFlyoutActionMagnet/);
+	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /function PersonalGraphControlFlyoutActionMagnet/);
+	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /document\.addEventListener\("mousemove"/);
+	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /useMotionValue/);
+	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /useSpring/);
+	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /useReducedMotion/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /data-personal-graph-flyout-label/);
 	assert.match(CONTROL_FLYOUT_SOURCE, /className="relative inline-flex items-center justify-center"/);
-	assert.match(CONTROL_FLYOUT_SOURCE, /style=\{\{ \.\.\.magnetStyle, willChange: "transform" \}\}/);
-	assert.match(CONTROL_FLYOUT_SOURCE, /x: actionSpringX,/);
-	assert.match(CONTROL_FLYOUT_SOURCE, /y: actionSpringY,/);
-	assert.match(CONTROL_FLYOUT_SOURCE, /<PersonalGraphControlFlyoutActionMagnet>/);
 	assert.match(CONTROL_FLYOUT_SOURCE, /data-personal-graph-flyout-label=""/);
 	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /--personal-graph-flyout-icon/);
 	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /PersonalGraphControlFlyoutTrigger[\s\S]*usePersonalGraphFlyoutActionMagnet/);
@@ -137,11 +109,11 @@ test("Personal Graph flyout action buttons stay hidden while stacked at the arc 
 test("Personal Graph flyout action buttons reverse fully while sliding behind the trigger", () => {
 	assert.match(
 		CONTROL_FLYOUT_SOURCE,
-		/import \{\s+AnimatePresence,\s+motion,\s+useIsPresent,\s+useMotionValue,\s+useReducedMotion,\s+useSpring,\s+type MotionStyle,\s+type Transition,\s+\} from "motion\/react";/,
+		/import \{\s+AnimatePresence,\s+motion,\s+useIsPresent,\s+type Transition,\s+\} from "motion\/react";/,
 	);
 	assert.match(
 		CONTROL_FLYOUT_SOURCE,
-		/import \{ useCallback, useEffect, useLayoutEffect, useRef, type ReactNode \} from "react";/,
+		/import \{ useCallback, useLayoutEffect, useRef, type ReactNode \} from "react";/,
 	);
 	assert.match(CONTROL_FLYOUT_SOURCE, /const isPresent = useIsPresent\(\);/);
 	assert.match(CONTROL_FLYOUT_SOURCE, /offsetDistance: "0%"/);
@@ -154,7 +126,7 @@ test("Personal Graph flyout action buttons reverse fully while sliding behind th
 		CONTROL_FLYOUT_SOURCE,
 		/item\.style\.zIndex = isExitingNearTrigger\s+\? ACTION_BEHIND_TRIGGER_Z_INDEX\.toString\(\)\s+: ACTION_ACTIVE_Z_INDEX\.toString\(\);/,
 	);
-	assert.match(CONTROL_FLYOUT_SOURCE, /\[&_button_svg\]:text-icon-subtle/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /<PersonalGraphLiquidGlassIconButton/);
 	assert.match(CONTROL_FLYOUT_SOURCE, /zIndex: ACTION_ACTIVE_Z_INDEX,/);
 	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /personal-graph-flyout-action-icon-opacity/);
 	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /personal-graph-flyout-action-visual-opacity/);

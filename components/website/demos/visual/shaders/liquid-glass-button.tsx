@@ -12,6 +12,7 @@ import type {
 	KeyboardEvent,
 	PointerEvent as ReactPointerEvent,
 	ReactNode,
+	Ref,
 } from "react";
 import { useCallback, useEffect, useRef } from "react";
 
@@ -80,6 +81,15 @@ function getPointerAngle(x: number, y: number, width: number, height: number): n
 	return roundCssNumber(90 + (Math.atan2(dy, dx) * 180) / Math.PI);
 }
 
+function setComposedButtonRef(ref: Ref<HTMLButtonElement> | undefined, node: HTMLButtonElement | null) {
+	if (!ref) return;
+	if (typeof ref === "function") {
+		ref(node);
+		return;
+	}
+	ref.current = node;
+}
+
 export interface LiquidGlassButtonProps
 	extends HTMLMotionProps<"button"> {
 	children?: ReactNode;
@@ -93,6 +103,7 @@ export interface LiquidGlassButtonProps
 export function LiquidGlassButton({
 	children,
 	className,
+	ref: externalRef,
 	style,
 	type = "button",
 	disabled = false,
@@ -112,6 +123,10 @@ export function LiquidGlassButton({
 }: Readonly<LiquidGlassButtonProps>) {
 	const shouldReduceMotion = useReducedMotion();
 	const buttonRef = useRef<HTMLButtonElement>(null);
+	const composedButtonRef = useCallback((node: HTMLButtonElement | null) => {
+		buttonRef.current = node;
+		setComposedButtonRef(externalRef, node);
+	}, [externalRef]);
 	const magnetX = useMotionValue(0);
 	const magnetY = useMotionValue(0);
 	const elasticScaleX = useMotionValue(1);
@@ -226,7 +241,7 @@ export function LiquidGlassButton({
 
 	return (
 		<motion.button
-			ref={buttonRef}
+			ref={composedButtonRef}
 			type={type}
 			disabled={disabled}
 			whileTap={disabled || shouldReduceMotion ? undefined : { scale: pressScale }}
