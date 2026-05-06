@@ -1,7 +1,16 @@
 "use client";
 
-import { useCallback, useLayoutEffect, useRef, type ReactNode } from "react";
-import { AnimatePresence, motion, useIsPresent, type Transition } from "motion/react";
+import { useCallback, useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
+import {
+	AnimatePresence,
+	motion,
+	useIsPresent,
+	useMotionValue,
+	useReducedMotion,
+	useSpring,
+	type MotionStyle,
+	type Transition,
+} from "motion/react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -24,6 +33,14 @@ const ARC_ORIGIN_VISIBILITY_THRESHOLD_PERCENT = 2;
 const ARC_EXIT_BEHIND_TRIGGER_THRESHOLD_PERCENT = 40;
 const ACTION_ACTIVE_Z_INDEX = 40;
 const ACTION_BEHIND_TRIGGER_Z_INDEX = 0;
+const ACTION_MAGNET_DISTANCE = 10;
+const ACTION_MAGNET_HOVER_AREA = 24;
+const ACTION_MAGNET_SPRING = {
+	damping: 50,
+	stiffness: 900,
+	mass: 0.5,
+	restDelta: 0.001,
+} as const;
 
 // Cubic bezier curving up and to the right — closer to Motion's reference (~21° top tilt)
 // than the dramatic sweep (~56°), settling around ~30° at the top.
@@ -44,6 +61,108 @@ const ACTION_GLASS_BUTTON_CLASS_NAME = cn(
 	"[&_button:disabled]:bg-transparent [&_button:disabled]:text-text-disabled",
 	"[&_button_svg]:text-icon-subtle",
 );
+
+function getActionMagnetRect(element: HTMLSpanElement): DOMRect {
+	const actionRect = element.getBoundingClientRect();
+	const label = element.querySelector<HTMLSpanElement>(
+		"[data-personal-graph-flyout-label]",
+	);
+	const labelRect = label?.getBoundingClientRect();
+
+	if (
+		!labelRect ||
+		labelRect.width <= 0 ||
+		labelRect.height <= 0
+	) {
+		return actionRect;
+	}
+
+	const left = Math.min(actionRect.left, labelRect.left);
+	const top = Math.min(actionRect.top, labelRect.top);
+	const right = Math.max(actionRect.right, labelRect.right);
+	const bottom = Math.max(actionRect.bottom, labelRect.bottom);
+
+	return DOMRect.fromRect({
+		x: left,
+		y: top,
+		width: right - left,
+		height: bottom - top,
+	});
+}
+
+function usePersonalGraphFlyoutActionMagnet() {
+	const shouldReduceMotion = useReducedMotion();
+	const actionRef = useRef<HTMLSpanElement>(null);
+	const actionMagnetX = useMotionValue(0);
+	const actionMagnetY = useMotionValue(0);
+	const actionSpringX = useSpring(actionMagnetX, ACTION_MAGNET_SPRING);
+	const actionSpringY = useSpring(actionMagnetY, ACTION_MAGNET_SPRING);
+
+	useEffect(() => {
+		if (shouldReduceMotion) {
+			actionMagnetX.set(0);
+			actionMagnetY.set(0);
+			return;
+		}
+		if (typeof document === "undefined") return;
+
+		const handleMove = (event: MouseEvent) => {
+			const element = actionRef.current;
+			if (!element) return;
+			const rect = getActionMagnetRect(element);
+			if (rect.width <= 0 || rect.height <= 0) return;
+
+			const isWithinActivation =
+				event.clientX >= rect.left - ACTION_MAGNET_HOVER_AREA &&
+				event.clientX <= rect.right + ACTION_MAGNET_HOVER_AREA &&
+				event.clientY >= rect.top - ACTION_MAGNET_HOVER_AREA &&
+				event.clientY <= rect.bottom + ACTION_MAGNET_HOVER_AREA;
+
+			if (isWithinActivation) {
+				const dx = event.clientX - (rect.left + rect.width / 2);
+				const dy = event.clientY - (rect.top + rect.height / 2);
+				const ratioX = Math.max(-1, Math.min(1, dx / (rect.width / 2)));
+				const ratioY = Math.max(-1, Math.min(1, dy / (rect.height / 2)));
+				actionMagnetX.set(ratioX * ACTION_MAGNET_DISTANCE);
+				actionMagnetY.set(ratioY * ACTION_MAGNET_DISTANCE);
+				return;
+			}
+
+			actionMagnetX.set(0);
+			actionMagnetY.set(0);
+		};
+
+		document.addEventListener("mousemove", handleMove, { passive: true });
+		return () => {
+			document.removeEventListener("mousemove", handleMove);
+			actionMagnetX.set(0);
+			actionMagnetY.set(0);
+		};
+	}, [shouldReduceMotion, actionMagnetX, actionMagnetY]);
+
+	const magnetStyle: MotionStyle = {
+		x: actionSpringX,
+		y: actionSpringY,
+	};
+
+	return { actionRef, magnetStyle };
+}
+
+function PersonalGraphControlFlyoutActionMagnet({
+	children,
+}: Readonly<{ children: ReactNode }>) {
+	const { actionRef, magnetStyle } = usePersonalGraphFlyoutActionMagnet();
+
+	return (
+		<motion.span
+			className="relative inline-flex items-center justify-center"
+			ref={actionRef}
+			style={{ ...magnetStyle, willChange: "transform" }}
+		>
+			{children}
+		</motion.span>
+	);
+}
 
 function PersonalGraphControlFlyoutActionGlass({
 	children,
@@ -215,19 +334,22 @@ export function PersonalGraphControlFlyoutActions({
 									key={action.key}
 									label={action.label}
 								>
-									<motion.span
-										animate={{ opacity: 1, x: 0 }}
-										className="pointer-events-none absolute right-[calc(100%+12px)] top-1/2 hidden -translate-y-1/2 whitespace-nowrap rounded-md bg-bg-neutral-bold px-3 py-1.5 text-xs text-text-inverse shadow-md sm:block"
-										exit={{ opacity: 0, x: 8 }}
-										initial={{ opacity: 0, x: 8 }}
-										style={{ willChange: "transform, opacity" }}
-										transition={{ delay: index * STAGGER_INTERVAL + 0.1, duration: 0.15 }}
-									>
-										{action.label}
-									</motion.span>
-									<PersonalGraphControlFlyoutActionGlass>
-										{action.render}
-									</PersonalGraphControlFlyoutActionGlass>
+									<PersonalGraphControlFlyoutActionMagnet>
+										<motion.span
+											animate={{ opacity: 1, x: 0 }}
+											className="pointer-events-none absolute right-[calc(100%+12px)] top-1/2 hidden -translate-y-1/2 whitespace-nowrap rounded-md bg-bg-neutral-bold px-3 py-1.5 text-xs text-text-inverse shadow-md sm:block"
+											data-personal-graph-flyout-label=""
+											exit={{ opacity: 0, x: 8 }}
+											initial={{ opacity: 0, x: 8 }}
+											style={{ willChange: "transform, opacity" }}
+											transition={{ delay: index * STAGGER_INTERVAL + 0.1, duration: 0.15 }}
+										>
+											{action.label}
+										</motion.span>
+										<PersonalGraphControlFlyoutActionGlass>
+											{action.render}
+										</PersonalGraphControlFlyoutActionGlass>
+									</PersonalGraphControlFlyoutActionMagnet>
 								</PersonalGraphControlFlyoutActionItem>
 							);
 						})

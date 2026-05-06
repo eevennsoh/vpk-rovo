@@ -41,6 +41,49 @@ test("Personal Graph flyout action buttons reuse the shared glass panel at stabl
 	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /backgroundOpacity: 1,/);
 });
 
+test("Personal Graph flyout action magnet treats the label and button as one unit", () => {
+	assert.match(CONTROL_FLYOUT_SOURCE, /const ACTION_MAGNET_DISTANCE = 10;/);
+	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /ACTION_MAGNET_ICON_DISTANCE/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /const ACTION_MAGNET_HOVER_AREA = 24;/);
+	assert.match(
+		CONTROL_FLYOUT_SOURCE,
+		/const ACTION_MAGNET_SPRING = \{\s+damping: 50,\s+stiffness: 900,\s+mass: 0\.5,\s+restDelta: 0\.001,\s+\} as const;/,
+	);
+	assert.match(CONTROL_FLYOUT_SOURCE, /function getActionMagnetRect\(element: HTMLSpanElement\): DOMRect/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /\[data-personal-graph-flyout-label\]/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /const left = Math\.min\(actionRect\.left, labelRect\.left\);/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /const right = Math\.max\(actionRect\.right, labelRect\.right\);/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /return DOMRect\.fromRect\(/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /function usePersonalGraphFlyoutActionMagnet\(\)/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /const shouldReduceMotion = useReducedMotion\(\);/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /const actionMagnetX = useMotionValue\(0\);/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /const actionMagnetY = useMotionValue\(0\);/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /const actionSpringX = useSpring\(actionMagnetX, ACTION_MAGNET_SPRING\);/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /const actionSpringY = useSpring\(actionMagnetY, ACTION_MAGNET_SPRING\);/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /const rect = getActionMagnetRect\(element\);/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /event\.clientX >= rect\.left - ACTION_MAGNET_HOVER_AREA/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /event\.clientY <= rect\.bottom \+ ACTION_MAGNET_HOVER_AREA/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /const ratioX = Math\.max\(-1, Math\.min\(1, dx \/ \(rect\.width \/ 2\)\)\);/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /const ratioY = Math\.max\(-1, Math\.min\(1, dy \/ \(rect\.height \/ 2\)\)\);/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /actionMagnetX\.set\(ratioX \* ACTION_MAGNET_DISTANCE\);/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /actionMagnetY\.set\(ratioY \* ACTION_MAGNET_DISTANCE\);/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /document\.addEventListener\("mousemove", handleMove, \{ passive: true \}\);/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /document\.removeEventListener\("mousemove", handleMove\);/);
+	assert.match(
+		CONTROL_FLYOUT_SOURCE,
+		/if \(shouldReduceMotion\) \{\s+actionMagnetX\.set\(0\);\s+actionMagnetY\.set\(0\);\s+return;\s+\}/,
+	);
+	assert.match(CONTROL_FLYOUT_SOURCE, /function PersonalGraphControlFlyoutActionMagnet/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /className="relative inline-flex items-center justify-center"/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /style=\{\{ \.\.\.magnetStyle, willChange: "transform" \}\}/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /x: actionSpringX,/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /y: actionSpringY,/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /<PersonalGraphControlFlyoutActionMagnet>/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /data-personal-graph-flyout-label=""/);
+	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /--personal-graph-flyout-icon/);
+	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /PersonalGraphControlFlyoutTrigger[\s\S]*usePersonalGraphFlyoutActionMagnet/);
+});
+
 test("Personal Graph flyout arc motion scales the existing glass item", () => {
 	assert.match(CONTROL_FLYOUT_SOURCE, /offsetDistance: `\$\{distance\}%`/);
 	assert.match(CONTROL_FLYOUT_SOURCE, /initial=\{\{ offsetDistance: "0%", scale: ACTION_SCALE_INITIAL \}\}/);
@@ -94,11 +137,11 @@ test("Personal Graph flyout action buttons stay hidden while stacked at the arc 
 test("Personal Graph flyout action buttons reverse fully while sliding behind the trigger", () => {
 	assert.match(
 		CONTROL_FLYOUT_SOURCE,
-		/import \{ AnimatePresence, motion, useIsPresent, type Transition \} from "motion\/react";/,
+		/import \{\s+AnimatePresence,\s+motion,\s+useIsPresent,\s+useMotionValue,\s+useReducedMotion,\s+useSpring,\s+type MotionStyle,\s+type Transition,\s+\} from "motion\/react";/,
 	);
 	assert.match(
 		CONTROL_FLYOUT_SOURCE,
-		/import \{ useCallback, useLayoutEffect, useRef, type ReactNode \} from "react";/,
+		/import \{ useCallback, useEffect, useLayoutEffect, useRef, type ReactNode \} from "react";/,
 	);
 	assert.match(CONTROL_FLYOUT_SOURCE, /const isPresent = useIsPresent\(\);/);
 	assert.match(CONTROL_FLYOUT_SOURCE, /offsetDistance: "0%"/);
