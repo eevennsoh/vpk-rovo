@@ -29,6 +29,7 @@ const DEFAULT_POINTER_ACTIVATION_RADIUS = 180;
 const DEFAULT_POINTER_EDGE_COLOR = "color-mix(in srgb, var(--ds-surface-overlay) 72%, var(--ds-text) 28%)";
 const DEFAULT_POINTER_SPOT_COLOR = "color-mix(in srgb, var(--ds-surface-overlay) 88%, var(--ds-text-inverse) 12%)";
 const POINTER_LAYER_TRANSITION = "opacity 160ms ease-out";
+const POINTER_SMOOTHING_REST_DELTA = 0.01;
 const useIsomorphicLayoutEffect =
 	typeof window === "undefined" ? useEffect : useLayoutEffect;
 
@@ -61,6 +62,13 @@ export interface LiquidGlassPointerInput {
 	active?: boolean;
 }
 
+interface LiquidGlassPointerState {
+	angle: number;
+	strength: number;
+	x: number;
+	y: number;
+}
+
 const DEFAULT_POINTER_LAYERS: readonly LiquidGlassPointerLayer[] = [
 	{
 		type: "edge",
@@ -78,6 +86,33 @@ function formatCssLength(value: number | string | undefined, fallback: string): 
 
 function roundCssNumber(value: number): number {
 	return Math.round(value * 1000) / 1000;
+}
+
+function getShortestAngleDelta(from: number, to: number): number {
+	return ((((to - from) % 360) + 540) % 360) - 180;
+}
+
+function getSmoothedPointerState(
+	current: LiquidGlassPointerState,
+	target: LiquidGlassPointerState,
+	amount: number,
+): LiquidGlassPointerState {
+	return {
+		angle: current.angle + getShortestAngleDelta(current.angle, target.angle) * amount,
+		strength: current.strength + (target.strength - current.strength) * amount,
+		x: current.x + (target.x - current.x) * amount,
+		y: current.y + (target.y - current.y) * amount,
+	};
+}
+
+function isPointerStateSettled(
+	current: LiquidGlassPointerState,
+	target: LiquidGlassPointerState,
+): boolean {
+	return Math.abs(current.x - target.x) < POINTER_SMOOTHING_REST_DELTA
+		&& Math.abs(current.y - target.y) < POINTER_SMOOTHING_REST_DELTA
+		&& Math.abs(current.strength - target.strength) < POINTER_SMOOTHING_REST_DELTA
+		&& Math.abs(getShortestAngleDelta(current.angle, target.angle)) < POINTER_SMOOTHING_REST_DELTA;
 }
 
 function buildLayerColor(color: string, opacity: number): string {
@@ -183,6 +218,7 @@ export interface LiquidGlassProps {
 	mouseContainer?: RefObject<HTMLElement | null> | null;
 	pointerInput?: LiquidGlassPointerInput | null;
 	pointerActivationRadius?: number;
+	pointerSmoothing?: number;
 	className?: string;
 	style?: CSSProperties;
 }
@@ -217,6 +253,7 @@ export default function LiquidGlass({
 	mouseContainer = null,
 	pointerInput = null,
 	pointerActivationRadius = DEFAULT_POINTER_ACTIVATION_RADIUS,
+	pointerSmoothing = 1,
 	className,
 	style,
 }: LiquidGlassProps) {
@@ -232,6 +269,9 @@ export default function LiquidGlass({
 	const dispGreenRef = useRef<SVGFEDisplacementMapElement>(null);
 	const dispBlueRef = useRef<SVGFEDisplacementMapElement>(null);
 	const gaussianBlurRef = useRef<SVGFEGaussianBlurElement>(null);
+	const pointerAnimationFrameRef = useRef<number | null>(null);
+	const pointerCurrentRef = useRef<LiquidGlassPointerState | null>(null);
+	const pointerTargetRef = useRef<LiquidGlassPointerState | null>(null);
 
 	const [svgSupported, setSvgSupported] = useState(false);
 	// `null` until mount — render uses the deterministic CSS blur fallback on
@@ -269,11 +309,68 @@ export default function LiquidGlass({
 		});
 	}, [blueGradId, blurFilterId, borderRadius, borderWidth, brightness, displace, opacity, redGradId]);
 
-	const setPointerInactive = useCallback(() => {
+	const writePointerState = useCallback((state: LiquidGlassPointerState) => {
 		const el = containerRef.current;
 		if (!el) return;
-		el.style.setProperty("--liquid-glass-pointer-strength", "0");
+		el.style.setProperty("--liquid-glass-pointer-x", `${roundCssNumber(state.x)}px`);
+		el.style.setProperty("--liquid-glass-pointer-y", `${roundCssNumber(state.y)}px`);
+		el.style.setProperty("--liquid-glass-pointer-strength", String(roundCssNumber(state.strength)));
+		el.style.setProperty("--liquid-glass-pointer-angle", `${roundCssNumber(state.angle)}deg`);
 	}, []);
+
+	const schedulePointerState = useCallback((target: LiquidGlassPointerState) => {
+		const smoothingAmount = clamp(pointerSmoothing, 0.01, 1);
+		pointerTargetRef.current = target;
+
+		if (smoothingAmount >= 1) {
+			if (pointerAnimationFrameRef.current !== null) {
+				cancelAnimationFrame(pointerAnimationFrameRef.current);
+				pointerAnimationFrameRef.current = null;
+			}
+			pointerCurrentRef.current = target;
+			writePointerState(target);
+			return;
+		}
+
+		if (!pointerCurrentRef.current) {
+			pointerCurrentRef.current = target;
+			writePointerState(target);
+			return;
+		}
+
+		if (pointerAnimationFrameRef.current !== null) return;
+
+		const animatePointer = () => {
+			const current = pointerCurrentRef.current;
+			const latestTarget = pointerTargetRef.current;
+			if (!current || !latestTarget) {
+				pointerAnimationFrameRef.current = null;
+				return;
+			}
+
+			const next = getSmoothedPointerState(current, latestTarget, smoothingAmount);
+			const settled = isPointerStateSettled(next, latestTarget);
+			const resolvedNext = settled ? latestTarget : next;
+			pointerCurrentRef.current = resolvedNext;
+			writePointerState(resolvedNext);
+			pointerAnimationFrameRef.current = settled
+				? null
+				: requestAnimationFrame(animatePointer);
+		};
+
+		pointerAnimationFrameRef.current = requestAnimationFrame(animatePointer);
+	}, [pointerSmoothing, writePointerState]);
+
+	const setPointerInactive = useCallback(() => {
+		const current = pointerCurrentRef.current ?? pointerTargetRef.current;
+		if (!current) {
+			const el = containerRef.current;
+			if (!el) return;
+			el.style.setProperty("--liquid-glass-pointer-strength", "0");
+			return;
+		}
+		schedulePointerState({ ...current, strength: 0 });
+	}, [schedulePointerState]);
 
 	const updatePointerFromLocal = useCallback((x: number, y: number, active: boolean) => {
 		const el = containerRef.current;
@@ -285,11 +382,13 @@ export default function LiquidGlass({
 		const strength = active
 			? getPointerStrength(x, y, width, height, pointerActivationRadius)
 			: 0;
-		el.style.setProperty("--liquid-glass-pointer-x", `${roundCssNumber(x)}px`);
-		el.style.setProperty("--liquid-glass-pointer-y", `${roundCssNumber(y)}px`);
-		el.style.setProperty("--liquid-glass-pointer-strength", String(roundCssNumber(strength)));
-		el.style.setProperty("--liquid-glass-pointer-angle", `${getPointerAngle(x, y, width, height)}deg`);
-	}, [pointerActivationRadius]);
+		schedulePointerState({
+			angle: getPointerAngle(x, y, width, height),
+			strength,
+			x,
+			y,
+		});
+	}, [pointerActivationRadius, schedulePointerState]);
 
 	const updatePointerFromClient = useCallback((clientX: number, clientY: number, active: boolean) => {
 		const el = containerRef.current;
@@ -358,6 +457,13 @@ export default function LiquidGlass({
 	useEffect(() => {
 		requestAnimationFrame(updateDisplacementMap);
 	}, [width, height, updateDisplacementMap]);
+
+	useEffect(() => {
+		return () => {
+			if (pointerAnimationFrameRef.current === null) return;
+			cancelAnimationFrame(pointerAnimationFrameRef.current);
+		};
+	}, []);
 
 	useEffect(() => {
 		if (!pointerTrackingEnabled || !pointerInput) return;

@@ -31,6 +31,7 @@ import { PersonalGraphDropzone } from "./personal-graph-dropzone";
 import {
 	PersonalGraphGlassPanel,
 	PersonalGraphLiquidGlassIconButton,
+	PersonalGraphLiquidGlassStageProvider,
 } from "./personal-graph-glass-panel";
 import { PersonalGraphIngestButton } from "./personal-graph-ingest-button";
 import { PersonalGraphLog } from "./personal-graph-log";
@@ -382,6 +383,7 @@ export function PersonalGraphSurface({
 	const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 	const [refreshKey, setRefreshKey] = useState(0);
 	const [isCaptureQueueOpen, setIsCaptureQueueOpen] = useState(false);
+	const liquidGlassStageRef = useRef<HTMLElement | null>(null);
 	const graphStageRef = useRef<HTMLDivElement | null>(null);
 	const resetFlyoutCollapseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const responsiveGraphParams = useResponsivePersonalGraphParams(graphStageRef);
@@ -564,191 +566,194 @@ export function PersonalGraphSurface({
 		<main
 			aria-label="Personal Graph"
 			className={cn("relative isolate min-h-svh overflow-hidden bg-surface text-text", className)}
+			ref={liquidGlassStageRef}
 			style={style}
 			{...props}
 		>
-			<PersonalGraphBackdrop className="z-0" />
-			<header className="absolute inset-x-4 top-6 z-30 sm:inset-x-6 lg:inset-x-8">
-				<motion.div
-					className="relative flex flex-col items-center"
-					initial={{ y: PERSONAL_GRAPH_HEADER_INITIAL_Y, gap: "24px" }}
-					animate={{
-						y: isPostSettle ? PERSONAL_GRAPH_HEADER_SETTLED_Y : PERSONAL_GRAPH_HEADER_INITIAL_Y,
-						gap: isPostSettle ? "16px" : "24px",
-					}}
-					transition={{
-						y: { duration: 0.7, ease: easeOut },
-						gap: { duration: 0.45, ease: easeOut },
-					}}
-					style={{ willChange: "transform" }}
-				>
+			<PersonalGraphLiquidGlassStageProvider stageRef={liquidGlassStageRef}>
+				<PersonalGraphBackdrop className="z-0" />
+				<header className="absolute inset-x-4 top-6 z-30 sm:inset-x-6 lg:inset-x-8">
 					<motion.div
-						className="mx-auto w-full min-w-0 max-w-full text-center text-text [container-type:inline-size]"
-						initial={{ opacity: 0, y: 20, filter: "blur(20px)" }}
+						className="relative flex flex-col items-center"
+						initial={{ y: PERSONAL_GRAPH_HEADER_INITIAL_Y, gap: "24px" }}
 						animate={{
-							opacity: isHeaderRevealed ? 1 : 0,
-							y: isHeaderRevealed ? 0 : 20,
-							filter: isHeaderRevealed ? "blur(0px)" : "blur(20px)",
+							y: isPostSettle ? PERSONAL_GRAPH_HEADER_SETTLED_Y : PERSONAL_GRAPH_HEADER_INITIAL_Y,
+							gap: isPostSettle ? "16px" : "24px",
 						}}
-						transition={{ duration: 1.0, ease: easeOut }}
-						style={{ willChange: "filter, opacity" }}
+						transition={{
+							y: { duration: 0.7, ease: easeOut },
+							gap: { duration: 0.45, ease: easeOut },
+						}}
+						style={{ willChange: "transform" }}
 					>
-						<PersonalGraphTitle
-							key={`personal-graph-title-${introReplayKey}`}
-							className="leading-[0.8] text-text"
-							style={PERSONAL_GRAPH_TITLE_FONT_STYLE}
-							initial={{ fontSize: PERSONAL_GRAPH_INITIAL_TITLE_SIZE, paddingTop: PERSONAL_GRAPH_TITLE_INK_TOP_PADDING }}
+						<motion.div
+							className="mx-auto w-full min-w-0 max-w-full text-center text-text [container-type:inline-size]"
+							initial={{ opacity: 0, y: 20, filter: "blur(20px)" }}
 							animate={{
-								fontSize: isPostSettle ? PERSONAL_GRAPH_SETTLED_TITLE_SIZE : PERSONAL_GRAPH_INITIAL_TITLE_SIZE,
-								paddingTop: PERSONAL_GRAPH_TITLE_INK_TOP_PADDING,
+								opacity: isHeaderRevealed ? 1 : 0,
+								y: isHeaderRevealed ? 0 : 20,
+								filter: isHeaderRevealed ? "blur(0px)" : "blur(20px)",
 							}}
 							transition={{ duration: 1.0, ease: easeOut }}
-							play={isHeaderRevealed}
-						/>
-						<motion.p
-							className="truncate leading-none tracking-normal text-text"
-							style={{ ...PERSONAL_GRAPH_META_FONT_STYLE, willChange: "filter, opacity" }}
-							initial={{ opacity: 0, y: 15, filter: "blur(12px)", fontSize: "1.4rem", marginTop: "1rem" }}
-							animate={{
-								opacity: isSubtextRevealed ? 1 : 0,
-								y: isSubtextRevealed ? 0 : 15,
-								filter: isSubtextRevealed ? "blur(0px)" : "blur(12px)",
-								fontSize: isPostSettle ? "0.75rem" : "1.4rem",
-								marginTop: isPostSettle ? "0.5rem" : "1rem",
-							}}
-							transition={{ duration: 0.5, ease: easeOut }}
+							style={{ willChange: "filter, opacity" }}
 						>
-							{graphStatusText}
-						</motion.p>
-					</motion.div>
-					{visibleError ? (
-						<motion.p
-							className="max-w-[360px] truncate text-xs text-text-danger"
-							initial={{ opacity: 0 }}
-							animate={{ opacity: isSubtextRevealed ? 1 : 0 }}
-							transition={{ duration: 0.4, ease: easeOut }}
-						>
-							{visibleError.message}
-						</motion.p>
-					) : null}
-					{shouldShowVaultOnboarding ? (
-						<motion.div
-							initial={{ opacity: 0, y: 12, filter: "blur(12px)" }}
-							animate={{
-								opacity: isSubtextRevealed ? 1 : 0,
-								y: isSubtextRevealed ? 0 : 12,
-								filter: isSubtextRevealed ? "blur(0px)" : "blur(12px)",
-							}}
-							transition={{ duration: 0.45, ease: easeOut }}
-						>
-							<Button
-								aria-label="Choose Personal Graph vault folder"
-								className="rounded-full border-border bg-bg-neutral-subtle px-4 text-text shadow-none hover:bg-bg-neutral-subtle-hovered disabled:border-transparent disabled:bg-bg-disabled disabled:text-text-disabled [&_svg]:text-icon-subtle"
-								disabled={isVaultSelecting}
-								isLoading={isVaultSelecting}
-								onClick={handleChooseVault}
-								size="sm"
-								variant="outline"
+							<PersonalGraphTitle
+								key={`personal-graph-title-${introReplayKey}`}
+								className="leading-[0.8] text-text"
+								style={PERSONAL_GRAPH_TITLE_FONT_STYLE}
+								initial={{ fontSize: PERSONAL_GRAPH_INITIAL_TITLE_SIZE, paddingTop: PERSONAL_GRAPH_TITLE_INK_TOP_PADDING }}
+								animate={{
+									fontSize: isPostSettle ? PERSONAL_GRAPH_SETTLED_TITLE_SIZE : PERSONAL_GRAPH_INITIAL_TITLE_SIZE,
+									paddingTop: PERSONAL_GRAPH_TITLE_INK_TOP_PADDING,
+								}}
+								transition={{ duration: 1.0, ease: easeOut }}
+								play={isHeaderRevealed}
+							/>
+							<motion.p
+								className="truncate leading-none tracking-normal text-text"
+								style={{ ...PERSONAL_GRAPH_META_FONT_STYLE, willChange: "filter, opacity" }}
+								initial={{ opacity: 0, y: 15, filter: "blur(12px)", fontSize: "1.4rem", marginTop: "1rem" }}
+								animate={{
+									opacity: isSubtextRevealed ? 1 : 0,
+									y: isSubtextRevealed ? 0 : 15,
+									filter: isSubtextRevealed ? "blur(0px)" : "blur(12px)",
+									fontSize: isPostSettle ? "0.75rem" : "1.4rem",
+									marginTop: isPostSettle ? "0.5rem" : "1rem",
+								}}
+								transition={{ duration: 0.5, ease: easeOut }}
 							>
-								<PixelVaultIcon />
-								Choose vault folder
-							</Button>
+								{graphStatusText}
+							</motion.p>
 						</motion.div>
-					) : null}
-				</motion.div>
-			</header>
+						{visibleError ? (
+							<motion.p
+								className="max-w-[360px] truncate text-xs text-text-danger"
+								initial={{ opacity: 0 }}
+								animate={{ opacity: isSubtextRevealed ? 1 : 0 }}
+								transition={{ duration: 0.4, ease: easeOut }}
+							>
+								{visibleError.message}
+							</motion.p>
+						) : null}
+						{shouldShowVaultOnboarding ? (
+							<motion.div
+								initial={{ opacity: 0, y: 12, filter: "blur(12px)" }}
+								animate={{
+									opacity: isSubtextRevealed ? 1 : 0,
+									y: isSubtextRevealed ? 0 : 12,
+									filter: isSubtextRevealed ? "blur(0px)" : "blur(12px)",
+								}}
+								transition={{ duration: 0.45, ease: easeOut }}
+							>
+								<Button
+									aria-label="Choose Personal Graph vault folder"
+									className="rounded-full border-border bg-bg-neutral-subtle px-4 text-text shadow-none hover:bg-bg-neutral-subtle-hovered disabled:border-transparent disabled:bg-bg-disabled disabled:text-text-disabled [&_svg]:text-icon-subtle"
+									disabled={isVaultSelecting}
+									isLoading={isVaultSelecting}
+									onClick={handleChooseVault}
+									size="sm"
+									variant="outline"
+								>
+									<PixelVaultIcon />
+									Choose vault folder
+								</Button>
+							</motion.div>
+						) : null}
+					</motion.div>
+				</header>
 
-			<motion.section
-				className="absolute inset-0 z-10"
-				aria-label="Vault graph"
-				initial={{ clipPath: "circle(0% at 50% 92%)", opacity: 0.4 }}
-				animate={{
-					clipPath: isGraphRevealed ? "circle(180% at 50% 92%)" : "circle(0% at 50% 92%)",
-					opacity: isGraphRevealed ? 1 : 0.4,
-				}}
-				transition={{
-					clipPath: { duration: 1.2, ease: [0.16, 1, 0.3, 1] },
-					opacity: { duration: 0.8, ease: easeOut },
-				}}
-			>
-				<div
-					className="h-full"
-					ref={graphStageRef}
-					style={{ transform: `translateY(${PERSONAL_GRAPH_STAGE_TRANSLATE_Y_PX}px)` }}
+				<motion.section
+					className="absolute inset-0 z-10"
+					aria-label="Vault graph"
+					initial={{ clipPath: "circle(0% at 50% 92%)", opacity: 0.4 }}
+					animate={{
+						clipPath: isGraphRevealed ? "circle(180% at 50% 92%)" : "circle(0% at 50% 92%)",
+						opacity: isGraphRevealed ? 1 : 0.4,
+					}}
+					transition={{
+						clipPath: { duration: 1.2, ease: [0.16, 1, 0.3, 1] },
+						opacity: { duration: 0.8, ease: easeOut },
+					}}
 				>
-					<Graph
-						background="transparent"
+					<div
 						className="h-full"
-						explorer={explorer}
-						isLoading={isLoading}
-						interactionSettings={DEFAULT_NEURAL_GRAPH_INTERACTION_SETTINGS}
-						onSelectedNodeIdChange={setSelectedNodeId}
-						params={responsiveGraphParams}
-						rayOriginBottomOffset={PERSONAL_GRAPH_TAIL_BOTTOM_OFFSET_PX}
-						raySoundSettings={DEFAULT_NEURAL_RAY_SOUND_SETTINGS}
-						selectedNodeId={selectedNodeId}
-						showControls={false}
-						showSelectionOverlay={false}
-						variant="fill"
-					/>
-				</div>
-			</motion.section>
+						ref={graphStageRef}
+						style={{ transform: `translateY(${PERSONAL_GRAPH_STAGE_TRANSLATE_Y_PX}px)` }}
+					>
+						<Graph
+							background="transparent"
+							className="h-full"
+							explorer={explorer}
+							isLoading={isLoading}
+							interactionSettings={DEFAULT_NEURAL_GRAPH_INTERACTION_SETTINGS}
+							onSelectedNodeIdChange={setSelectedNodeId}
+							params={responsiveGraphParams}
+							rayOriginBottomOffset={PERSONAL_GRAPH_TAIL_BOTTOM_OFFSET_PX}
+							raySoundSettings={DEFAULT_NEURAL_RAY_SOUND_SETTINGS}
+							selectedNodeId={selectedNodeId}
+							showControls={false}
+							showSelectionOverlay={false}
+							variant="fill"
+						/>
+					</div>
+				</motion.section>
 
-			<motion.section
-				aria-hidden={!isSearchRevealed}
-				aria-label="Personal Graph search and chat"
-				className="pointer-events-none absolute left-4 right-4 z-40 flex justify-center sm:inset-x-6 lg:left-[360px] lg:right-[360px]"
-				inert={!isSearchRevealed}
-				initial={{ bottom: -120 }}
-				animate={{
-					bottom: isSearchRevealed ? 24 : -120,
-				}}
-				transition={{
-					bottom: { duration: 0.6, ease: easeOut },
-				}}
-			>
-				<div className="pointer-events-auto relative w-full max-w-[760px]">
-					<PersonalGraphSearch
-						collapseFlyoutKey={flyoutCollapseKey}
-						flyoutActions={flyoutActions}
-						isFlyoutDisabled={isResetFlyoutCollapsing}
-						onSelectSlug={(slug) => {
-							const node = explorer?.nodes.find((candidate) => candidate.slug === slug);
-							if (node) setSelectedNodeId(node.id);
-						}}
-					/>
-				</div>
-			</motion.section>
+				<motion.section
+					aria-hidden={!isSearchRevealed}
+					aria-label="Personal Graph search and chat"
+					className="pointer-events-none absolute left-4 right-4 z-40 flex justify-center sm:inset-x-6 lg:left-[360px] lg:right-[360px]"
+					inert={!isSearchRevealed}
+					initial={{ bottom: -120 }}
+					animate={{
+						bottom: isSearchRevealed ? 24 : -120,
+					}}
+					transition={{
+						bottom: { duration: 0.6, ease: easeOut },
+					}}
+				>
+					<div className="pointer-events-auto relative w-full max-w-[760px]">
+						<PersonalGraphSearch
+							collapseFlyoutKey={flyoutCollapseKey}
+							flyoutActions={flyoutActions}
+							isFlyoutDisabled={isResetFlyoutCollapsing}
+							onSelectSlug={(slug) => {
+								const node = explorer?.nodes.find((candidate) => candidate.slug === slug);
+								if (node) setSelectedNodeId(node.id);
+							}}
+						/>
+					</div>
+				</motion.section>
 
-			<PersonalGraphInspector
-				explorer={explorer}
-				node={displayedNode}
-				onClose={() => setSelectedNodeId(null)}
-				onSelectNode={setSelectedNodeId}
-			/>
+				<PersonalGraphInspector
+					explorer={explorer}
+					node={displayedNode}
+					onClose={() => setSelectedNodeId(null)}
+					onSelectNode={setSelectedNodeId}
+				/>
 
-			<section className="sr-only" aria-label="Personal Graph text fallback">
-				<h2>Nodes</h2>
-				<ul aria-label="Personal Graph nodes">
-					{(explorer?.nodes ?? []).map((node) => (
-						<li key={node.id}>
-							{node.title} ({node.kind}) - {node.connectionCount} connections
-						</li>
-					))}
-				</ul>
-				<h2>Edges</h2>
-				<ul aria-label="Personal Graph edges">
-					{(explorer?.edges ?? []).map((edge) => {
-						const source = explorer?.nodes.find((node) => node.id === edge.source)?.title ?? edge.source;
-						const target = explorer?.nodes.find((node) => node.id === edge.target)?.title ?? edge.target;
-						return (
-							<li key={edge.id}>
-								{source} to {target} ({edge.kind})
+				<section className="sr-only" aria-label="Personal Graph text fallback">
+					<h2>Nodes</h2>
+					<ul aria-label="Personal Graph nodes">
+						{(explorer?.nodes ?? []).map((node) => (
+							<li key={node.id}>
+								{node.title} ({node.kind}) - {node.connectionCount} connections
 							</li>
-						);
-					})}
-				</ul>
-			</section>
+						))}
+					</ul>
+					<h2>Edges</h2>
+					<ul aria-label="Personal Graph edges">
+						{(explorer?.edges ?? []).map((edge) => {
+							const source = explorer?.nodes.find((node) => node.id === edge.source)?.title ?? edge.source;
+							const target = explorer?.nodes.find((node) => node.id === edge.target)?.title ?? edge.target;
+							return (
+								<li key={edge.id}>
+									{source} to {target} ({edge.kind})
+								</li>
+							);
+						})}
+					</ul>
+				</section>
+			</PersonalGraphLiquidGlassStageProvider>
 		</main>
 	);
 }

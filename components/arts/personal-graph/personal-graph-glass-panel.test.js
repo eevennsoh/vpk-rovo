@@ -8,50 +8,94 @@ const GLASS_PANEL_SOURCE = fs.readFileSync(
 	"utf8",
 );
 
-test("Personal Graph glass panel uses visible liquid glass fallback before SVG filter is ready", () => {
+test("Personal Graph glass surfaces use the demo glass values with chromatic RGB offsets", () => {
 	assert.match(
 		GLASS_PANEL_SOURCE,
-		/const PERSONAL_GRAPH_GLASS_FALLBACK_BACKGROUND_OPACITY = 0\.12;/,
+		/import \{ Button, type ButtonProps \} from "@\/components\/ui\/button";/,
 	);
 	assert.match(
 		GLASS_PANEL_SOURCE,
-		/fallbackBackgroundOpacity=\{PERSONAL_GRAPH_GLASS_FALLBACK_BACKGROUND_OPACITY\}/,
+		/import \{[\s\S]*LIQUID_GLASS_BUTTON_DEFAULT_GLASS_PROPS,[\s\S]*\} from "@\/components\/website\/demos\/visual\/shaders\/liquid-glass-button";/,
 	);
-	assert.doesNotMatch(GLASS_PANEL_SOURCE, /fallbackBackgroundOpacity=\{0\.055\}/);
-	assert.doesNotMatch(GLASS_PANEL_SOURCE, /const PERSONAL_GRAPH_GLASS_FALLBACK_BACKGROUND_OPACITY = 0\.18;/);
-});
-
-test("Personal Graph glass panel uses the requested liquid glass tuning", () => {
-	assert.match(GLASS_PANEL_SOURCE, /const PERSONAL_GRAPH_GLASS_BACKGROUND_OPACITY = 0\.003;/);
-	assert.match(GLASS_PANEL_SOURCE, /backgroundOpacity=\{PERSONAL_GRAPH_GLASS_BACKGROUND_OPACITY\}/);
-	assert.match(GLASS_PANEL_SOURCE, /blur=\{5\}/);
-	assert.match(GLASS_PANEL_SOURCE, /borderOpacity=\{0\.05\}/);
-	assert.match(GLASS_PANEL_SOURCE, /brightness=\{50\}/);
-	assert.match(GLASS_PANEL_SOURCE, /dispersion=\{4\}/);
-	assert.match(GLASS_PANEL_SOURCE, /displace=\{3\}/);
-	assert.match(GLASS_PANEL_SOURCE, /distortionScale=\{-64\}/);
-	assert.match(GLASS_PANEL_SOURCE, /opacity=\{0\.88\}/);
-	assert.match(GLASS_PANEL_SOURCE, /saturation=\{1\.03\}/);
-	assert.doesNotMatch(GLASS_PANEL_SOURCE, /const PERSONAL_GRAPH_GLASS_BACKGROUND_OPACITY = 0\.006;/);
-	assert.doesNotMatch(GLASS_PANEL_SOURCE, /brightness=\{68\}/);
-	assert.doesNotMatch(GLASS_PANEL_SOURCE, /distortionScale=\{-118\}/);
-});
-
-test("Personal Graph glass panel exposes the chromatic RGB preset", () => {
-	assert.match(GLASS_PANEL_SOURCE, /export const PERSONAL_GRAPH_CHROMATIC_RGB_GLASS_PROPS = \{/);
-	assert.match(GLASS_PANEL_SOURCE, /blur: 4,/);
-	assert.doesNotMatch(GLASS_PANEL_SOURCE, /blur: 0\.45,/);
-	assert.match(GLASS_PANEL_SOURCE, /displace: 5,/);
-	assert.match(GLASS_PANEL_SOURCE, /distortionScale: -180,/);
-	assert.match(GLASS_PANEL_SOURCE, /dispersion: 0,/);
-	assert.match(GLASS_PANEL_SOURCE, /redOffset: 50,/);
-	assert.match(GLASS_PANEL_SOURCE, /greenOffset: -1,/);
-	assert.match(GLASS_PANEL_SOURCE, /blueOffset: -19,/);
-	assert.match(GLASS_PANEL_SOURCE, /xChannel: "R",/);
-	assert.match(GLASS_PANEL_SOURCE, /yChannel: "G",/);
+	assert.match(
+		GLASS_PANEL_SOURCE,
+		/export const PERSONAL_GRAPH_DEMO_GLASS_PROPS = \{\s+\.\.\.LIQUID_GLASS_BUTTON_DEFAULT_GLASS_PROPS,\s+displace: 5,\s+redOffset: 0,\s+greenOffset: 0,\s+blueOffset: 0,\s+xChannel: "R",\s+yChannel: "G",\s+\} satisfies PersonalGraphGlassTuningProps;/,
+	);
+	assert.match(
+		GLASS_PANEL_SOURCE,
+		/export const PERSONAL_GRAPH_CHROMATIC_RGB_GLASS_PROPS = \{\s+\.\.\.PERSONAL_GRAPH_DEMO_GLASS_PROPS,\s+distortionScale: -180,\s+dispersion: 0,\s+redOffset: 50,\s+greenOffset: -1,\s+blueOffset: -19,\s+\} satisfies PersonalGraphGlassTuningProps;/,
+	);
+	assert.match(
+		GLASS_PANEL_SOURCE,
+		/<LiquidGlass[\s\S]*\{\.\.\.PERSONAL_GRAPH_CHROMATIC_RGB_GLASS_PROPS\}[\s\S]*borderRadius=\{radius\}/,
+	);
+	assert.match(
+		GLASS_PANEL_SOURCE,
+		/const PERSONAL_GRAPH_LIQUID_GLASS_ICON_BUTTON_PROPS = \{\s+\.\.\.PERSONAL_GRAPH_CHROMATIC_RGB_GLASS_PROPS,\s+backgroundOpacity: 0,\s+borderOpacity: 0,\s+fallbackBackgroundOpacity: 0,\s+\} satisfies Partial<LiquidGlassProps>;/,
+	);
 	assert.match(GLASS_PANEL_SOURCE, /glassProps\?: PersonalGraphGlassTuningProps;/);
 	assert.match(GLASS_PANEL_SOURCE, /\{\.\.\.glassProps\}/);
+	assert.doesNotMatch(GLASS_PANEL_SOURCE, /backgroundOpacity=\{PERSONAL_GRAPH_GLASS_BACKGROUND_OPACITY\}/);
+	assert.doesNotMatch(GLASS_PANEL_SOURCE, /distortionScale=\{-64\}/);
 	assert.doesNotMatch(GLASS_PANEL_SOURCE, /chromaticEdge/);
 	assert.doesNotMatch(GLASS_PANEL_SOURCE, /PERSONAL_GRAPH_CHROMATIC_EDGE_STYLE/);
 	assert.doesNotMatch(GLASS_PANEL_SOURCE, /data-personal-graph-chromatic-edge/);
+});
+
+test("Personal Graph liquid glass icon buttons preserve the previous icon glyph size", () => {
+	assert.match(GLASS_PANEL_SOURCE, /import \{ Button, type ButtonProps \} from "@\/components\/ui\/button";/);
+	assert.match(GLASS_PANEL_SOURCE, /PersonalGraphLiquidGlassIconButton/);
+	assert.match(GLASS_PANEL_SOURCE, /size="icon"/);
+	assert.match(GLASS_PANEL_SOURCE, /className=\{cn\(/);
+});
+
+test("Personal Graph liquid glass icon buttons use shared ghost chrome without selected-state fill", () => {
+	assert.match(GLASS_PANEL_SOURCE, /<Button/);
+	assert.match(GLASS_PANEL_SOURCE, /variant="ghost"/);
+	assert.match(GLASS_PANEL_SOURCE, /size="icon"/);
+	assert.match(
+		GLASS_PANEL_SOURCE,
+		/aria-expanded:!bg-transparent aria-expanded:!text-text-subtle aria-expanded:!border-transparent aria-expanded:\[&_svg\]:!text-icon-subtle/,
+	);
+	assert.doesNotMatch(GLASS_PANEL_SOURCE, /<LiquidGlassButton/);
+	assert.doesNotMatch(GLASS_PANEL_SOURCE, /buttonVariants/);
+	assert.doesNotMatch(GLASS_PANEL_SOURCE, /pointerFill=\{false\}/);
+	assert.doesNotMatch(GLASS_PANEL_SOURCE, /PERSONAL_GRAPH_SEARCH_ICON_BUTTON_CLASS_NAME/);
+	assert.doesNotMatch(GLASS_PANEL_SOURCE, /PERSONAL_GRAPH_SEARCH_ICON_BUTTON_GLASS_PROPS/);
+	assert.doesNotMatch(GLASS_PANEL_SOURCE, /dark:aria-expanded:bg-bg-selected/);
+	assert.doesNotMatch(GLASS_PANEL_SOURCE, /className: "!shadow-none dark:hidden"/);
+	assert.doesNotMatch(GLASS_PANEL_SOURCE, /pointerLayers: false/);
+	assert.doesNotMatch(GLASS_PANEL_SOURCE, /borderWidth: 0/);
+});
+
+test("Personal Graph liquid glass wrappers enable stage pointer tracking by default", () => {
+	assert.match(
+		GLASS_PANEL_SOURCE,
+		/import \{[\s\S]*createContext,[\s\S]*use,[\s\S]*useCallback,[\s\S]*useEffect,[\s\S]*useRef,[\s\S]*type ReactNode,[\s\S]*type RefObject,[\s\S]*\} from "react";/,
+	);
+	assert.match(
+		GLASS_PANEL_SOURCE,
+		/const PERSONAL_GRAPH_LIQUID_GLASS_POINTER_ACTIVATION_RADIUS = Number\.POSITIVE_INFINITY;/,
+	);
+	assert.match(
+		GLASS_PANEL_SOURCE,
+		/const PERSONAL_GRAPH_LIQUID_GLASS_POINTER_SMOOTHING = 0\.2;/,
+	);
+	assert.match(GLASS_PANEL_SOURCE, /const PersonalGraphLiquidGlassStageContext = createContext/);
+	assert.match(GLASS_PANEL_SOURCE, /export function PersonalGraphLiquidGlassStageProvider/);
+	assert.match(GLASS_PANEL_SOURCE, /mouseContainer: stageRef/);
+	assert.match(GLASS_PANEL_SOURCE, /pointerLayers: true/);
+	assert.match(GLASS_PANEL_SOURCE, /pointerSmoothing: PERSONAL_GRAPH_LIQUID_GLASS_POINTER_SMOOTHING/);
+	assert.match(GLASS_PANEL_SOURCE, /const buttonRef = useRef<HTMLButtonElement>\(null\);/);
+	assert.match(GLASS_PANEL_SOURCE, /const smoothingAmount = clamp\(\s+PERSONAL_GRAPH_LIQUID_GLASS_POINTER_SMOOTHING,/);
+	assert.match(GLASS_PANEL_SOURCE, /target\.addEventListener\("pointermove", handlePointerMove, \{ passive: true \}\);/);
+	assert.match(GLASS_PANEL_SOURCE, /--liquid-glass-button-strength/);
+	assert.match(
+		GLASS_PANEL_SOURCE,
+		/<LiquidGlass[\s\S]*\{\.\.\.getPersonalGraphStageTrackingGlassProps\(stageRef\)\}/,
+	);
+	assert.match(
+		GLASS_PANEL_SOURCE,
+		/const resolvedGlassProps = \{[\s\S]*\.\.\.stageTrackingGlassProps,[\s\S]*\.\.\.glassProps,[\s\S]*\} satisfies PersonalGraphGlassTuningProps;/,
+	);
 });

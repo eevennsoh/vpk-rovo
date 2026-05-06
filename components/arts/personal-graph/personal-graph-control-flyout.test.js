@@ -21,13 +21,13 @@ test("Personal Graph flyout label chips stay off narrow viewports", () => {
 	);
 });
 
-test("Personal Graph flyout action buttons render shared liquid-glass buttons directly", () => {
+test("Personal Graph flyout action buttons render provided controls directly", () => {
 	assert.match(
 		CONTROL_FLYOUT_SOURCE,
-		/import \{ PersonalGraphLiquidGlassIconButton \} from "\.\/personal-graph-glass-panel";/,
+		/import \{ Button \} from "@\/components\/ui\/button";/,
 	);
-	assert.match(CONTROL_FLYOUT_SOURCE, /<PersonalGraphLiquidGlassIconButton/);
 	assert.match(CONTROL_FLYOUT_SOURCE, /\{action\.render\}/);
+	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /PersonalGraphLiquidGlassIconButton/);
 	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /chromaticEdge/);
 	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /<PersonalGraphGlassPanel/);
 	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /PersonalGraphControlFlyoutActionGlass/);
@@ -126,7 +126,7 @@ test("Personal Graph flyout action buttons reverse fully while sliding behind th
 		CONTROL_FLYOUT_SOURCE,
 		/item\.style\.zIndex = isExitingNearTrigger\s+\? ACTION_BEHIND_TRIGGER_Z_INDEX\.toString\(\)\s+: ACTION_ACTIVE_Z_INDEX\.toString\(\);/,
 	);
-	assert.match(CONTROL_FLYOUT_SOURCE, /<PersonalGraphLiquidGlassIconButton/);
+	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /<PersonalGraphLiquidGlassIconButton/);
 	assert.match(CONTROL_FLYOUT_SOURCE, /zIndex: ACTION_ACTIVE_Z_INDEX,/);
 	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /personal-graph-flyout-action-icon-opacity/);
 	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /personal-graph-flyout-action-visual-opacity/);
@@ -143,6 +143,14 @@ test("Personal Graph flyout trigger remains a two-state settings or close button
 		CONTROL_FLYOUT_SOURCE,
 		/aria-label=\{isOpen \? "Close graph controls" : "Open graph controls"\}/,
 	);
+	assert.match(CONTROL_FLYOUT_SOURCE, /<Button/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /variant="ghost"/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /size="icon"/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /aria-expanded:!bg-transparent/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /className,\s+\)\}/);
+	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /PERSONAL_GRAPH_SEARCH_ICON_BUTTON_CLASS_NAME/);
+	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /glassProps=\{PERSONAL_GRAPH_SEARCH_ICON_BUTTON_GLASS_PROPS\}/);
+	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /magnetDistance=\{0\}/);
 	assert.match(
 		CONTROL_FLYOUT_SOURCE,
 		/\{isOpen \? <PixelCloseIcon \/> : <PixelConfigureIcon \/>\}/,

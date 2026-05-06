@@ -7,8 +7,8 @@ import {
 	useIsPresent,
 	type Transition,
 } from "motion/react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { PersonalGraphLiquidGlassIconButton } from "./personal-graph-glass-panel";
 import { PixelCloseIcon, PixelConfigureIcon } from "./personal-graph-pixel-icons";
 
 export interface PersonalGraphControlFlyoutAction {
@@ -138,19 +138,21 @@ export function PersonalGraphControlFlyoutTrigger({
 			style={{ willChange: "transform" }}
 			transition={TRIGGER_TRANSITION}
 		>
-			<PersonalGraphLiquidGlassIconButton
+			<Button
 				aria-expanded={isOpen}
 				aria-label={isOpen ? "Close graph controls" : "Open graph controls"}
 				className={cn(
-					"aria-expanded:text-text-subtle aria-expanded:border-transparent aria-expanded:[&_svg]:text-icon-subtle",
+					"aria-expanded:!bg-transparent aria-expanded:!text-text-subtle aria-expanded:!border-transparent aria-expanded:[&_svg]:!text-icon-subtle",
 					className,
 				)}
 				disabled={disabled}
 				onClick={onToggle}
+				size="icon"
 				type="button"
+				variant="ghost"
 			>
 				{isOpen ? <PixelCloseIcon /> : <PixelConfigureIcon />}
-			</PersonalGraphLiquidGlassIconButton>
+			</Button>
 		</motion.span>
 	);
 }

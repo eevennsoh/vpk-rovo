@@ -36,7 +36,8 @@ const SCALE_SPRING = {
 	damping: 36,
 	mass: 0.32,
 } as const;
-const DEFAULT_BUTTON_GLASS_PROPS: Partial<LiquidGlassProps> = {
+const BUTTON_POINTER_SMOOTHING_REST_DELTA = 0.01;
+export const LIQUID_GLASS_BUTTON_DEFAULT_GLASS_PROPS = {
 	borderRadius: BUTTON_RADIUS,
 	borderWidth: 0.05,
 	brightness: 50,
@@ -49,7 +50,7 @@ const DEFAULT_BUTTON_GLASS_PROPS: Partial<LiquidGlassProps> = {
 	borderColor: "var(--ds-border)",
 	borderOpacity: 1,
 	dropShadow: false,
-};
+} satisfies Partial<LiquidGlassProps>;
 
 function clamp(value: number, min: number, max: number): number {
 	return Math.min(Math.max(value, min), max);
@@ -57,6 +58,40 @@ function clamp(value: number, min: number, max: number): number {
 
 function roundCssNumber(value: number): number {
 	return Math.round(value * 1000) / 1000;
+}
+
+function getShortestAngleDelta(from: number, to: number): number {
+	return ((((to - from) % 360) + 540) % 360) - 180;
+}
+
+interface LiquidGlassButtonPointerState {
+	angle: number;
+	strength: number;
+	x: number;
+	y: number;
+}
+
+function getSmoothedButtonPointerState(
+	current: LiquidGlassButtonPointerState,
+	target: LiquidGlassButtonPointerState,
+	amount: number,
+): LiquidGlassButtonPointerState {
+	return {
+		angle: current.angle + getShortestAngleDelta(current.angle, target.angle) * amount,
+		strength: current.strength + (target.strength - current.strength) * amount,
+		x: current.x + (target.x - current.x) * amount,
+		y: current.y + (target.y - current.y) * amount,
+	};
+}
+
+function isButtonPointerStateSettled(
+	current: LiquidGlassButtonPointerState,
+	target: LiquidGlassButtonPointerState,
+): boolean {
+	return Math.abs(current.x - target.x) < BUTTON_POINTER_SMOOTHING_REST_DELTA
+		&& Math.abs(current.y - target.y) < BUTTON_POINTER_SMOOTHING_REST_DELTA
+		&& Math.abs(current.strength - target.strength) < BUTTON_POINTER_SMOOTHING_REST_DELTA
+		&& Math.abs(getShortestAngleDelta(current.angle, target.angle)) < BUTTON_POINTER_SMOOTHING_REST_DELTA;
 }
 
 function getPointerStrength(
@@ -97,6 +132,7 @@ export interface LiquidGlassButtonProps
 	elasticity?: number;
 	magnetDistance?: number;
 	hoverArea?: number;
+	pointerFill?: boolean;
 	pressScale?: number;
 }
 
@@ -111,6 +147,7 @@ export function LiquidGlassButton({
 	elasticity = DEFAULT_ELASTICITY,
 	magnetDistance = DEFAULT_MAGNET_DISTANCE,
 	hoverArea = DEFAULT_HOVER_AREA,
+	pointerFill = true,
 	pressScale = DEFAULT_PRESS_SCALE,
 	onBlur,
 	onKeyDown,
@@ -123,6 +160,9 @@ export function LiquidGlassButton({
 }: Readonly<LiquidGlassButtonProps>) {
 	const shouldReduceMotion = useReducedMotion();
 	const buttonRef = useRef<HTMLButtonElement>(null);
+	const pointerAnimationFrameRef = useRef<number | null>(null);
+	const pointerCurrentRef = useRef<LiquidGlassButtonPointerState | null>(null);
+	const pointerTargetRef = useRef<LiquidGlassButtonPointerState | null>(null);
 	const composedButtonRef = useCallback((node: HTMLButtonElement | null) => {
 		buttonRef.current = node;
 		setComposedButtonRef(externalRef, node);
@@ -136,46 +176,136 @@ export function LiquidGlassButton({
 	const springScaleX = useSpring(elasticScaleX, SCALE_SPRING);
 	const springScaleY = useSpring(elasticScaleY, SCALE_SPRING);
 
-	const resetMotion = useCallback(() => {
+	const {
+		children: glassChildren,
+		className: glassClassName,
+		style: glassStyle,
+		width: glassWidth,
+		height: glassHeight,
+		mouseContainer: glassMouseContainer = null,
+		pointerActivationRadius: glassPointerActivationRadius,
+		pointerInput: glassPointerInput = null,
+		pointerLayers: glassPointerLayers,
+		pointerSmoothing: glassPointerSmoothing,
+		...restGlassProps
+	} = glassProps ?? {};
+	void glassChildren;
+
+	const edgePointerTrackingEnabled = (
+		glassPointerInput !== null
+			|| (glassPointerLayers !== undefined && glassPointerLayers !== false)
+	);
+	const edgePointerActivationRadius = glassPointerActivationRadius ?? hoverArea;
+	const edgePointerSmoothing = glassPointerSmoothing ?? 1;
+
+	const resetMagnetMotion = useCallback(() => {
 		magnetX.set(0);
 		magnetY.set(0);
 		elasticScaleX.set(1);
 		elasticScaleY.set(1);
-		const button = buttonRef.current;
-		if (!button) return;
-		button.style.setProperty("--liquid-glass-button-strength", "0");
-		button.style.setProperty("--liquid-glass-button-pressed", "0");
 	}, [elasticScaleX, elasticScaleY, magnetX, magnetY]);
 
-	const updatePointer = useCallback(
-		(clientX: number, clientY: number) => {
+	const writeButtonPointerState = useCallback((state: LiquidGlassButtonPointerState) => {
+		const button = buttonRef.current;
+		if (!button) return;
+		button.style.setProperty("--liquid-glass-button-pointer-x", `${roundCssNumber(state.x)}px`);
+		button.style.setProperty("--liquid-glass-button-pointer-y", `${roundCssNumber(state.y)}px`);
+		button.style.setProperty("--liquid-glass-button-strength", String(roundCssNumber(state.strength)));
+		button.style.setProperty("--liquid-glass-button-angle", `${roundCssNumber(state.angle)}deg`);
+	}, []);
+
+	const scheduleButtonPointerState = useCallback((target: LiquidGlassButtonPointerState) => {
+		const smoothingAmount = clamp(edgePointerSmoothing, 0.01, 1);
+		pointerTargetRef.current = target;
+
+		if (smoothingAmount >= 1) {
+			if (pointerAnimationFrameRef.current !== null) {
+				cancelAnimationFrame(pointerAnimationFrameRef.current);
+				pointerAnimationFrameRef.current = null;
+			}
+			pointerCurrentRef.current = target;
+			writeButtonPointerState(target);
+			return;
+		}
+
+		if (!pointerCurrentRef.current) {
+			pointerCurrentRef.current = target;
+			writeButtonPointerState(target);
+			return;
+		}
+
+		if (pointerAnimationFrameRef.current !== null) return;
+
+		const animatePointer = () => {
+			const current = pointerCurrentRef.current;
+			const latestTarget = pointerTargetRef.current;
+			if (!current || !latestTarget) {
+				pointerAnimationFrameRef.current = null;
+				return;
+			}
+
+			const next = getSmoothedButtonPointerState(current, latestTarget, smoothingAmount);
+			const settled = isButtonPointerStateSettled(next, latestTarget);
+			const resolvedNext = settled ? latestTarget : next;
+			pointerCurrentRef.current = resolvedNext;
+			writeButtonPointerState(resolvedNext);
+			pointerAnimationFrameRef.current = settled
+				? null
+				: requestAnimationFrame(animatePointer);
+		};
+
+		pointerAnimationFrameRef.current = requestAnimationFrame(animatePointer);
+	}, [edgePointerSmoothing, writeButtonPointerState]);
+
+	const setButtonPointerInactive = useCallback(() => {
+		const current = pointerCurrentRef.current ?? pointerTargetRef.current;
+		if (!current) {
+			const button = buttonRef.current;
+			if (!button) return;
+			button.style.setProperty("--liquid-glass-button-strength", "0");
+			return;
+		}
+		scheduleButtonPointerState({ ...current, strength: 0 });
+	}, [scheduleButtonPointerState]);
+
+	const resetMotion = useCallback(() => {
+		resetMagnetMotion();
+		setButtonPointerInactive();
+		const button = buttonRef.current;
+		if (!button) return;
+		button.style.setProperty("--liquid-glass-button-pressed", "0");
+	}, [resetMagnetMotion, setButtonPointerInactive]);
+
+	const updateLocalPointer = useCallback(
+		(x: number, y: number, edgeActive: boolean, edgeActivationRadius: number) => {
 			const button = buttonRef.current;
 			if (!button) return;
 			const rect = button.getBoundingClientRect();
 			if (rect.width <= 0 || rect.height <= 0) return;
 
-			const x = clientX - rect.left;
-			const y = clientY - rect.top;
-			const strength = disabled
+			const angle = getPointerAngle(x, y, rect.width, rect.height);
+			const edgeStrength = disabled || !edgeActive
+				? 0
+				: getPointerStrength(x, y, rect.width, rect.height, edgeActivationRadius);
+			const magnetStrength = disabled
 				? 0
 				: getPointerStrength(x, y, rect.width, rect.height, hoverArea);
-			button.style.setProperty("--liquid-glass-button-pointer-x", `${roundCssNumber(x)}px`);
-			button.style.setProperty("--liquid-glass-button-pointer-y", `${roundCssNumber(y)}px`);
-			button.style.setProperty("--liquid-glass-button-strength", String(roundCssNumber(strength)));
-			button.style.setProperty("--liquid-glass-button-angle", `${getPointerAngle(x, y, rect.width, rect.height)}deg`);
+			scheduleButtonPointerState({
+				angle,
+				strength: edgeStrength,
+				x,
+				y,
+			});
 
-			if (disabled || shouldReduceMotion || strength <= 0) {
-				magnetX.set(0);
-				magnetY.set(0);
-				elasticScaleX.set(1);
-				elasticScaleY.set(1);
+			if (disabled || shouldReduceMotion || magnetStrength <= 0) {
+				resetMagnetMotion();
 				return;
 			}
 
 			const normalizedX = clamp((x - rect.width / 2) / (rect.width / 2), -1, 1);
 			const normalizedY = clamp((y - rect.height / 2) / (rect.height / 2), -1, 1);
-			magnetX.set(normalizedX * magnetDistance * strength);
-			magnetY.set(normalizedY * magnetDistance * strength);
+			magnetX.set(normalizedX * magnetDistance * magnetStrength);
+			magnetY.set(normalizedY * magnetDistance * magnetStrength);
 
 			const stretchX = Math.abs(normalizedX) * elasticity;
 			const stretchY = Math.abs(normalizedY) * elasticity;
@@ -191,8 +321,25 @@ export function LiquidGlassButton({
 			magnetDistance,
 			magnetX,
 			magnetY,
+			resetMagnetMotion,
+			scheduleButtonPointerState,
 			shouldReduceMotion,
 		],
+	);
+
+	const updatePointer = useCallback(
+		(clientX: number, clientY: number, edgeActive: boolean, edgeActivationRadius: number) => {
+			const button = buttonRef.current;
+			if (!button) return;
+			const rect = button.getBoundingClientRect();
+			updateLocalPointer(
+				clientX - rect.left,
+				clientY - rect.top,
+				edgeActive,
+				edgeActivationRadius,
+			);
+		},
+		[updateLocalPointer],
 	);
 
 	const setPressed = useCallback((pressed: boolean) => {
@@ -207,24 +354,73 @@ export function LiquidGlassButton({
 			resetMotion();
 			return;
 		}
+		if (edgePointerTrackingEnabled) return;
 		const handlePointerMove = (event: PointerEvent) => {
-			updatePointer(event.clientX, event.clientY);
+			updatePointer(event.clientX, event.clientY, true, hoverArea);
 		};
 		document.addEventListener("pointermove", handlePointerMove, { passive: true });
 		return () => {
 			document.removeEventListener("pointermove", handlePointerMove);
 		};
-	}, [disabled, resetMotion, updatePointer]);
+	}, [disabled, edgePointerTrackingEnabled, hoverArea, resetMotion, updatePointer]);
 
-	const {
-		children: glassChildren,
-		className: glassClassName,
-		style: glassStyle,
-		width: glassWidth,
-		height: glassHeight,
-		...restGlassProps
-	} = glassProps ?? {};
-	void glassChildren;
+	useEffect(() => {
+		if (disabled || !edgePointerTrackingEnabled || !glassPointerInput) return;
+		const active = glassPointerInput.active ?? true;
+		if (glassPointerInput.kind === "local") {
+			updateLocalPointer(
+				glassPointerInput.x,
+				glassPointerInput.y,
+				active,
+				edgePointerActivationRadius,
+			);
+		} else {
+			updatePointer(
+				glassPointerInput.x,
+				glassPointerInput.y,
+				active,
+				edgePointerActivationRadius,
+			);
+		}
+	}, [
+		disabled,
+		edgePointerActivationRadius,
+		edgePointerTrackingEnabled,
+		glassPointerInput,
+		updateLocalPointer,
+		updatePointer,
+	]);
+
+	useEffect(() => {
+		if (disabled || !edgePointerTrackingEnabled || glassPointerInput) return;
+		const target = glassMouseContainer?.current ?? buttonRef.current;
+		if (!target) return;
+
+		const handlePointerMove = (event: PointerEvent) => {
+			updatePointer(event.clientX, event.clientY, true, edgePointerActivationRadius);
+		};
+		target.addEventListener("pointermove", handlePointerMove, { passive: true });
+		target.addEventListener("pointerleave", setButtonPointerInactive);
+		return () => {
+			target.removeEventListener("pointermove", handlePointerMove);
+			target.removeEventListener("pointerleave", setButtonPointerInactive);
+		};
+	}, [
+		disabled,
+		edgePointerActivationRadius,
+		edgePointerTrackingEnabled,
+		glassMouseContainer,
+		glassPointerInput,
+		setButtonPointerInactive,
+		updatePointer,
+	]);
+
+	useEffect(() => {
+		return () => {
+			if (pointerAnimationFrameRef.current === null) return;
+			cancelAnimationFrame(pointerAnimationFrameRef.current);
+		};
+	}, []);
 
 	const motionStyle = {
 		...style,
@@ -276,7 +472,11 @@ export function LiquidGlassButton({
 				onPointerDown?.(event);
 			}}
 			onPointerLeave={(event: ReactPointerEvent<HTMLButtonElement>) => {
-				resetMotion();
+				if (edgePointerTrackingEnabled) {
+					resetMagnetMotion();
+				} else {
+					resetMotion();
+				}
 				onPointerLeave?.(event);
 			}}
 			onPointerUp={(event: ReactPointerEvent<HTMLButtonElement>) => {
@@ -290,8 +490,13 @@ export function LiquidGlassButton({
 			{...props}
 		>
 			<LiquidGlass
-				{...DEFAULT_BUTTON_GLASS_PROPS}
+				{...LIQUID_GLASS_BUTTON_DEFAULT_GLASS_PROPS}
 				{...restGlassProps}
+				mouseContainer={glassMouseContainer}
+				pointerActivationRadius={glassPointerActivationRadius}
+				pointerInput={glassPointerInput}
+				pointerLayers={glassPointerLayers}
+				pointerSmoothing={glassPointerSmoothing}
 				width={glassWidth ?? "100%"}
 				height={glassHeight ?? "100%"}
 				className={cn("pointer-events-none absolute inset-0", glassClassName)}
@@ -308,7 +513,9 @@ export function LiquidGlassButton({
 					background:
 						"color-mix(in srgb, var(--ds-surface-overlay) 70%, transparent)",
 					opacity:
-						"calc(var(--liquid-glass-button-strength, 0) * 0.14 + var(--liquid-glass-button-pressed, 0) * 0.12)",
+						pointerFill
+							? "calc(var(--liquid-glass-button-strength, 0) * 0.14 + var(--liquid-glass-button-pressed, 0) * 0.12)"
+							: "calc(var(--liquid-glass-button-pressed, 0) * 0.12)",
 					zIndex: 1,
 				}}
 			/>

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { token } from "@/lib/tokens";
 import { cn } from "@/lib/utils";
 import { useVaultSearch } from "./hooks/use-vault-search";
@@ -10,9 +11,7 @@ import {
 	type PersonalGraphControlFlyoutAction,
 } from "./personal-graph-control-flyout";
 import {
-	PERSONAL_GRAPH_CHROMATIC_RGB_GLASS_PROPS,
 	PersonalGraphGlassPanel,
-	PersonalGraphLiquidGlassIconButton,
 } from "./personal-graph-glass-panel";
 import { PixelArrowRightIcon } from "./personal-graph-pixel-icons";
 
@@ -33,7 +32,6 @@ export function PersonalGraphSearch({
 }: Readonly<PersonalGraphSearchProps>) {
 	const [query, setQuery] = useState("");
 	const [isFlyoutOpen, setIsFlyoutOpen] = useState(false);
-	const searchStageRef = useRef<HTMLFormElement>(null);
 	const { results, status } = useVaultSearch(query);
 	const firstResult = results[0];
 
@@ -53,7 +51,6 @@ export function PersonalGraphSearch({
 	return (
 		<form
 			className={cn("relative w-full", className)}
-			ref={searchStageRef}
 			onSubmit={(event) => {
 				event.preventDefault();
 				if (!firstResult) return;
@@ -70,10 +67,7 @@ export function PersonalGraphSearch({
 				className="relative z-10"
 				contentClassName="flex h-16 items-center gap-2 p-4 pl-6"
 				glassProps={{
-					...PERSONAL_GRAPH_CHROMATIC_RGB_GLASS_PROPS,
-					mouseContainer: searchStageRef,
-					pointerActivationRadius: 220,
-					pointerLayers: true,
+					backgroundOpacity: 0.08,
 				}}
 				radius={30}
 			>
@@ -92,13 +86,15 @@ export function PersonalGraphSearch({
 						if (!isFlyoutDisabled) setIsFlyoutOpen((current) => !current);
 					}}
 				/>
-				<PersonalGraphLiquidGlassIconButton
+				<Button
 					aria-label="Open top search result"
 					disabled={!firstResult}
+					size="icon"
 					type="submit"
+					variant="ghost"
 				>
 					<PixelArrowRightIcon />
-				</PersonalGraphLiquidGlassIconButton>
+				</Button>
 			</PersonalGraphGlassPanel>
 			{query ? (
 				<div className="absolute bottom-[calc(100%+0.75rem)] left-0 right-0 z-40 text-text">

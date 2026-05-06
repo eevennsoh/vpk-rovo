@@ -62,6 +62,7 @@ type GUIControlProps = Readonly<{
 	min: number;
 	max: number;
 	step: number;
+	disabled?: boolean;
 	unit?: string;
 	onChange: (next: number) => void;
 	valueKeys?: string | readonly string[];
@@ -76,6 +77,7 @@ function GUIControl({
 	min,
 	max,
 	step,
+	disabled = false,
 	unit,
 	onChange,
 	valueKeys,
@@ -99,7 +101,13 @@ function GUIControl({
 	return (
 		<div className="space-y-2">
 			<div className="flex items-center gap-2">
-				<Label htmlFor={`${id}-input`} className="text-xs font-medium text-text">
+				<Label
+					htmlFor={`${id}-input`}
+					className={cn(
+						"text-xs font-medium text-text",
+						disabled ? "text-text-disabled" : null,
+					)}
+				>
 					{label}
 				</Label>
 				<div className="ml-auto flex shrink-0 items-center gap-1">
@@ -107,7 +115,7 @@ function GUIControl({
 						<button
 							type="button"
 							aria-label={`Reset ${label} to ${defaultValue}`}
-							disabled={isDefault}
+							disabled={disabled || isDefault}
 							onClick={() => {
 								onChange(defaultValue);
 								setLocalInput(null);
@@ -123,6 +131,7 @@ function GUIControl({
 						type="text"
 						inputMode="decimal"
 						isCompact
+						disabled={disabled}
 						value={displayValue}
 						onChange={(event) => {
 							commitRaw(event.currentTarget.value);
@@ -152,19 +161,30 @@ function GUIControl({
 						className="h-7 w-20 text-right font-mono text-xs tabular-nums"
 					/>
 					{unit ? (
-						<span className="text-right text-[11px] text-text-subtle">
+						<span
+							className={cn(
+								"text-right text-[11px] text-text-subtle",
+								disabled ? "text-text-disabled" : null,
+							)}
+						>
 							{unit}
 						</span>
 					) : null}
 				</div>
 			</div>
 			{description ? (
-				<p className="text-[12px] leading-4 text-text-subtlest">
+				<p
+					className={cn(
+						"text-[12px] leading-4 text-text-subtlest",
+						disabled ? "text-text-disabled" : null,
+					)}
+				>
 					{description}
 				</p>
 			) : null}
 			<Slider
 				aria-label={label}
+				disabled={disabled}
 				min={min}
 				max={max}
 				step={step}
@@ -175,7 +195,12 @@ function GUIControl({
 					onChange(clamp(numericValue, min, max));
 				}}
 			/>
-			<div className="flex justify-between font-mono text-[11px] text-text-subtlest">
+			<div
+				className={cn(
+					"flex justify-between font-mono text-[11px] text-text-subtlest",
+					disabled ? "text-text-disabled" : null,
+				)}
+			>
 				<span>{formatValue(min, step, unit)}</span>
 				<span>{formatValue(max, step, unit)}</span>
 			</div>

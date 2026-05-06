@@ -288,20 +288,28 @@ test("Personal Graph anchors the search and chat composer at the graph origin", 
 		SEARCH_SOURCE,
 		/<PersonalGraphGlassPanel[\s\S]*className="relative z-10"[\s\S]*contentClassName="flex h-16 items-center gap-2 p-4 pl-6"[\s\S]*radius=\{30\}/,
 	);
-	assert.match(SEARCH_SOURCE, /PERSONAL_GRAPH_CHROMATIC_RGB_GLASS_PROPS/);
-	assert.match(SEARCH_SOURCE, /mouseContainer: searchStageRef/);
-	assert.match(SEARCH_SOURCE, /pointerActivationRadius: 220/);
-	assert.match(SEARCH_SOURCE, /pointerLayers: true/);
+	assert.match(SEARCH_SOURCE, /glassProps=\{\{\s+backgroundOpacity: 0\.08,\s+\}\}/);
+	assert.doesNotMatch(SEARCH_SOURCE, /PERSONAL_GRAPH_CHROMATIC_RGB_GLASS_PROPS/);
+	assert.doesNotMatch(SEARCH_SOURCE, /searchStageRef/);
+	assert.doesNotMatch(SEARCH_SOURCE, /mouseContainer: searchStageRef/);
 	assert.doesNotMatch(SEARCH_SOURCE, /chromaticEdge/);
 	assert.match(SEARCH_SOURCE, /contentClassName="flex h-16 items-center gap-2 p-4 pl-6"/);
 	assert.match(GLASS_PANEL_SOURCE, /\[&>div\]:p-0/);
 	assert.match(GLASS_PANEL_SOURCE, /export function PersonalGraphLiquidGlassIconButton/);
-	assert.match(GLASS_PANEL_SOURCE, /<LiquidGlassButton/);
+	assert.match(GLASS_PANEL_SOURCE, /<Button/);
+	assert.match(GLASS_PANEL_SOURCE, /variant="ghost"/);
+	assert.match(GLASS_PANEL_SOURCE, /size="icon"/);
 	assert.match(GLASS_PANEL_SOURCE, /PERSONAL_GRAPH_LIQUID_GLASS_ICON_BUTTON_PROPS/);
-	assert.match(GLASS_PANEL_SOURCE, /hoverArea=\{28\}/);
-	assert.match(GLASS_PANEL_SOURCE, /magnetDistance=\{8\}/);
-	assert.match(GLASS_PANEL_SOURCE, /pressScale=\{0\.9\}/);
+	assert.match(GLASS_PANEL_SOURCE, /PERSONAL_GRAPH_DEMO_GLASS_PROPS/);
+	assert.match(GLASS_PANEL_SOURCE, /PERSONAL_GRAPH_CHROMATIC_RGB_GLASS_PROPS/);
+	assert.match(GLASS_PANEL_SOURCE, /LIQUID_GLASS_BUTTON_DEFAULT_GLASS_PROPS/);
+	assert.match(GLASS_PANEL_SOURCE, /pointerLayers: true/);
+	assert.match(GLASS_PANEL_SOURCE, /pointerActivationRadius: PERSONAL_GRAPH_LIQUID_GLASS_POINTER_ACTIVATION_RADIUS/);
+	assert.match(GLASS_PANEL_SOURCE, /--liquid-glass-button-strength/);
+	assert.doesNotMatch(GLASS_PANEL_SOURCE, /<LiquidGlassButton/);
+	assert.doesNotMatch(GLASS_PANEL_SOURCE, /magnetDistance=\{8\}/);
 	assert.doesNotMatch(SEARCH_SOURCE, /SearchIcon/);
+	assert.match(SEARCH_SOURCE, /import \{ Button \} from "@\/components\/ui\/button";/);
 	assert.match(SEARCH_SOURCE, /import \{ token \} from "@\/lib\/tokens";/);
 	assert.match(SEARCH_SOURCE, /className="min-w-0 flex-1 bg-transparent text-text outline-none placeholder:text-text-subtlest"/);
 	assert.match(SEARCH_SOURCE, /style=\{\{ font: token\("font\.body"\) \}\}/);
@@ -318,14 +326,53 @@ test("Personal Graph anchors the search and chat composer at the graph origin", 
 	assert.match(SURFACE_SOURCE, /isFlyoutDisabled=\{isResetFlyoutCollapsing\}/);
 	assert.match(SEARCH_SOURCE, /disabled=\{isFlyoutDisabled\}/);
 	assert.match(SEARCH_SOURCE, /aria-label="Ask or search Personal Graph"/);
-	assert.match(SEARCH_SOURCE, /<PersonalGraphLiquidGlassIconButton[\s\S]*aria-label="Open top search result"/);
-	assert.match(CONTROL_FLYOUT_SOURCE, /<PersonalGraphLiquidGlassIconButton[\s\S]*aria-expanded=\{isOpen\}/);
+	assert.match(
+		SEARCH_SOURCE,
+		/<Button[\s\S]*aria-label="Open top search result"[\s\S]*size="icon"[\s\S]*variant="ghost"/,
+	);
+	assert.doesNotMatch(SEARCH_SOURCE, /PersonalGraphLiquidGlassIconButton/);
+	assert.doesNotMatch(SEARCH_SOURCE, /PERSONAL_GRAPH_SEARCH_ICON_BUTTON_CLASS_NAME/);
+	assert.doesNotMatch(SEARCH_SOURCE, /PERSONAL_GRAPH_SEARCH_ICON_BUTTON_GLASS_PROPS/);
+	assert.match(
+		CONTROL_FLYOUT_SOURCE,
+		/<Button[\s\S]*aria-expanded=\{isOpen\}[\s\S]*size="icon"[\s\S]*variant="ghost"/,
+	);
+	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /PersonalGraphLiquidGlassIconButton/);
+	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /PERSONAL_GRAPH_SEARCH_ICON_BUTTON_CLASS_NAME/);
+	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /PERSONAL_GRAPH_SEARCH_ICON_BUTTON_GLASS_PROPS/);
 	assert.match(SURFACE_SOURCE, /render:\s*\(\s*<PersonalGraphLiquidGlassIconButton[\s\S]*aria-label="Refresh"/);
 	assert.match(SURFACE_SOURCE, /render:\s*\(\s*<PersonalGraphLiquidGlassIconButton[\s\S]*aria-label=\{themeLabel\}/);
 	assert.match(SURFACE_SOURCE, /render:\s*\(\s*<PersonalGraphLiquidGlassIconButton[\s\S]*aria-label="Reset"/);
 	assert.match(SURFACE_SOURCE, /<PopoverTrigger[\s\S]*render=\{[\s\S]*<PersonalGraphLiquidGlassIconButton[\s\S]*aria-label="Add data"/);
 	assert.doesNotMatch(SEARCH_SOURCE, /aria-label="Open graph parameters"/);
 	assert.match(SEARCH_SOURCE, /actions=\{flyoutActions\}/);
+});
+
+test("Personal Graph enables liquid glass stage tracking for route glass UI", () => {
+	assert.match(
+		SURFACE_SOURCE,
+		/import \{[\s\S]*PersonalGraphLiquidGlassStageProvider,[\s\S]*\} from "\.\/personal-graph-glass-panel";/,
+	);
+	assert.match(SURFACE_SOURCE, /const liquidGlassStageRef = useRef<HTMLElement \| null>\(null\);/);
+	assert.match(SURFACE_SOURCE, /ref=\{liquidGlassStageRef\}/);
+	assert.match(
+		SURFACE_SOURCE,
+		/<PersonalGraphLiquidGlassStageProvider stageRef=\{liquidGlassStageRef\}>/,
+	);
+	assert.match(
+		GLASS_PANEL_SOURCE,
+		/const PERSONAL_GRAPH_LIQUID_GLASS_POINTER_ACTIVATION_RADIUS = Number\.POSITIVE_INFINITY;/,
+	);
+	assert.match(GLASS_PANEL_SOURCE, /const PersonalGraphLiquidGlassStageContext = createContext/);
+	assert.match(GLASS_PANEL_SOURCE, /mouseContainer: stageRef/);
+	assert.match(GLASS_PANEL_SOURCE, /pointerLayers: true/);
+	assert.match(GLASS_PANEL_SOURCE, /pointerSmoothing: PERSONAL_GRAPH_LIQUID_GLASS_POINTER_SMOOTHING/);
+	assert.match(GLASS_PANEL_SOURCE, /<LiquidGlass[\s\S]*\{\.\.\.getPersonalGraphStageTrackingGlassProps\(stageRef\)\}/);
+	assert.match(
+		GLASS_PANEL_SOURCE,
+		/const resolvedGlassProps = \{[\s\S]*\.\.\.stageTrackingGlassProps,[\s\S]*\.\.\.glassProps,[\s\S]*\} satisfies PersonalGraphGlassTuningProps;/,
+	);
+	assert.match(GLASS_PANEL_SOURCE, /target\.addEventListener\("pointermove", handlePointerMove, \{ passive: true \}\);/);
 });
 
 test("Personal Graph lets the graph renderer fill the route viewport behind the chrome", () => {
