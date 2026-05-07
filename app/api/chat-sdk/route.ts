@@ -19,7 +19,12 @@ export async function POST(request: NextRequest) {
 	try {
 		const { body, errorResponse } = await readJsonBody(request);
 		if (errorResponse) {
-			return errorResponse;
+			return new NextResponse(buildErrorMessage(await errorResponse.text()), {
+				status: errorResponse.status,
+				headers: {
+					"Content-Type": "text/plain; charset=utf-8",
+				},
+			});
 		}
 
 		const { response } = await fetchBackend("/api/chat-sdk", {
