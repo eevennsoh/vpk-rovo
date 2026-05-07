@@ -121,6 +121,83 @@ export async function fetchLog(options: { signal?: AbortSignal } = {}) {
 	return data.entries;
 }
 
+export interface GraphSourceState {
+	source: "vault" | "twg";
+	generatedAt: string | null;
+}
+
+export type TwgChatFrame =
+	| { type: "thinking"; step: number }
+	| { type: "tool"; name: string; args: { slice: string; params: Record<string, unknown> } }
+	| { type: "tool_result"; count: number; summary: string; error?: string }
+	| { type: "text_delta"; delta: string }
+	| { type: "graph"; explorer: VaultExplorer }
+	| { type: "error"; error: string }
+	| { type: "done" };
+
+export interface TwgChatMessage {
+	role: "user" | "assistant";
+	content: string;
+}
+
+export function fetchActiveSource(options: { signal?: AbortSignal } = {}) {
+	return fetchJson<GraphSourceState>("/api/personal-graph/source", { signal: options.signal });
+}
+
+export function setActiveSource(source: "vault" | "twg") {
+	return fetchJson<GraphSourceState>("/api/personal-graph/source", {
+		body: JSON.stringify({ source }),
+		headers: { "Content-Type": "application/json" },
+		method: "POST",
+	});
+}
+
+export function refreshTwg(options: { signal?: AbortSignal } = {}) {
+	return fetchJson<VaultExplorer>("/api/personal-graph/twg/refresh", {
+		body: "{}",
+		headers: { "Content-Type": "application/json" },
+		method: "POST",
+		signal: options.signal,
+	});
+}
+
+export async function* streamTwgChat(
+	body: { messages: TwgChatMessage[] },
+	options: { signal?: AbortSignal } = {},
+): AsyncGenerator<TwgChatFrame> {
+	const response = await fetch("/api/personal-graph/twg/chat", {
+		body: JSON.stringify(body),
+		headers: { "Content-Type": "application/json" },
+		method: "POST",
+		signal: options.signal,
+	});
+	if (!response.ok || !response.body) {
+		throw new Error(await response.text());
+	}
+	const reader = response.body.getReader();
+	const decoder = new TextDecoder();
+	let buffer = "";
+	while (true) {
+		const { done, value } = await reader.read();
+		if (done) break;
+		buffer += decoder.decode(value, { stream: true });
+		const lines = buffer.split("\n");
+		buffer = lines.pop() ?? "";
+		for (const line of lines) {
+			const trimmed = line.trim();
+			if (!trimmed) continue;
+			try {
+				yield JSON.parse(trimmed) as TwgChatFrame;
+			} catch {}
+		}
+	}
+	if (buffer.trim()) {
+		try {
+			yield JSON.parse(buffer.trim()) as TwgChatFrame;
+		} catch {}
+	}
+}
+
 export async function* streamLibrarian(
 	body: { confirmToken?: string; sourcePath?: string },
 ): AsyncGenerator<LibrarianStreamEvent> {

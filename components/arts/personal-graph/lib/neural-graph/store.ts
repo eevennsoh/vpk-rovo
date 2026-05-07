@@ -85,7 +85,12 @@ export function createNeuralGraphStore(explorer: VaultExplorer | null): NeuralGr
 	const adjacency = new Map<string, NeuralGraphNeighbor[]>();
 	const kindGroups = new Map<VaultNodeKind, NeuralGraphNode[]>();
 
-	const nodes = [...(explorer?.nodes ?? [])].sort(compareNodes).map((node, index) => {
+	const nodes = [...(explorer?.nodes ?? [])].sort(compareNodes).flatMap((node) => {
+		if (nodesById.has(node.id)) {
+			return [];
+		}
+
+		const index = nodesById.size;
 		const graphNode: NeuralGraphNode = {
 			bodyPreview: node.bodyPreview,
 			dangling: node.dangling,
@@ -108,7 +113,7 @@ export function createNeuralGraphStore(explorer: VaultExplorer | null): NeuralGr
 		} else {
 			kindGroups.set(node.kind, [graphNode]);
 		}
-		return graphNode;
+		return [graphNode];
 	});
 
 	const edges = [...(explorer?.edges ?? [])]

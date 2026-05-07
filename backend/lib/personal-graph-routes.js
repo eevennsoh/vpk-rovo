@@ -6,6 +6,10 @@ const { captureUrl } = require("./personal-graph-capture");
 const { buildExplorer } = require("./personal-graph-explorer");
 const librarian = require("./personal-graph-librarian");
 const qmd = require("./personal-graph-qmd");
+const { getActiveSource, setActiveSource } = require("./personal-graph-source-state");
+const { clearCache, readCache, writeCache } = require("./personal-graph-twg-cache");
+const { handleTwgChat } = require("./personal-graph-twg-chat");
+const { TwgAuthError, TwgNotFoundError, buildTwgExplorer } = require("./personal-graph-twg-source");
 const { getPositiveInteger } = require("./shared-utils");
 const {
 	clearVaultConfig,
@@ -27,6 +31,12 @@ function getWildcardRouteValue(value) {
 }
 
 function getStatusForError(error) {
+	if (error?.code === "TWG_AUTH_REQUIRED") {
+		return 401;
+	}
+	if (error?.code === "TWG_NOT_FOUND") {
+		return 503;
+	}
 	if (error?.code === "VAULT_NOT_FOUND") {
 		return 503;
 	}
@@ -141,15 +151,99 @@ async function streamIterable(res, iterable) {
 	}
 }
 
-router.get("/explorer", (_req, res) => {
+async function getTwgExplorerCachedOrFresh({ signal } = {}) {
+	const cached = readCache();
+	if (cached) return cached;
+	const fresh = await buildTwgExplorer({ signal });
+	writeCache(fresh);
+	return fresh;
+}
+
+router.get("/explorer", async (req, res) => {
+	const source = getActiveSource();
 	try {
+		if (source === "twg") {
+			return res.json(await getTwgExplorerCachedOrFresh({ signal: req.signal }));
+		}
 		return res.json(buildExplorer());
 	} catch (error) {
-		return res.status(getStatusForError(error)).json({
-			error: "Failed to build Personal Graph explorer",
+		const status = getStatusForError(error);
+		const errorBody = {
+			error: error instanceof TwgAuthError
+				? "twg_auth_required"
+				: error instanceof TwgNotFoundError
+					? "twg_not_found"
+					: "Failed to build Personal Graph explorer",
 			code: error?.code ?? "PERSONAL_GRAPH_EXPLORER_FAILED",
 			details: error instanceof Error ? error.message : String(error),
+		};
+		if (error instanceof TwgAuthError) {
+			errorBody.remediation = "Run `twg login` and retry.";
+		}
+		return res.status(status).json(errorBody);
+	}
+});
+
+router.get("/source", (_req, res) => {
+	try {
+		const source = getActiveSource();
+		const cached = source === "twg" ? readCache() : null;
+		return res.json({ source, generatedAt: cached?.generatedAt ?? null });
+	} catch (error) {
+		return res.status(500).json({
+			error: "Failed to read graph source",
+			code: error?.code ?? "PERSONAL_GRAPH_SOURCE_READ_FAILED",
+			details: error instanceof Error ? error.message : String(error),
 		});
+	}
+});
+
+router.post("/source", (req, res) => {
+	try {
+		const requestedSource = typeof req.body?.source === "string" ? req.body.source : "";
+		const next = setActiveSource(requestedSource);
+		const cached = next === "twg" ? readCache() : null;
+		return res.json({ source: next, generatedAt: cached?.generatedAt ?? null });
+	} catch (error) {
+		return res.status(400).json({
+			error: "Failed to set graph source",
+			code: error?.code ?? "PERSONAL_GRAPH_SOURCE_WRITE_FAILED",
+			details: error instanceof Error ? error.message : String(error),
+		});
+	}
+});
+
+router.post("/twg/chat", async (req, res) => {
+	try {
+		await handleTwgChat(req, res);
+	} catch (error) {
+		if (!res.headersSent) {
+			res.status(500).json({
+				error: "Failed to handle TWG chat",
+				code: error?.code ?? "PERSONAL_GRAPH_TWG_CHAT_FAILED",
+				details: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+});
+
+router.post("/twg/refresh", async (req, res) => {
+	try {
+		clearCache();
+		const fresh = await buildTwgExplorer({ signal: req.signal });
+		writeCache(fresh);
+		return res.json(fresh);
+	} catch (error) {
+		const status = getStatusForError(error);
+		const errorBody = {
+			error: error instanceof TwgAuthError ? "twg_auth_required" : "Failed to refresh TWG explorer",
+			code: error?.code ?? "PERSONAL_GRAPH_TWG_REFRESH_FAILED",
+			details: error instanceof Error ? error.message : String(error),
+		};
+		if (error instanceof TwgAuthError) {
+			errorBody.remediation = "Run `twg login` and retry.";
+		}
+		return res.status(status).json(errorBody);
 	}
 });
 

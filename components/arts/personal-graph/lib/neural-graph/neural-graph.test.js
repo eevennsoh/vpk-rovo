@@ -226,6 +226,39 @@ test("createNeuralGraphStore builds deterministic adjacency and kind groups", as
 	assert.equal(store.kindGroups.get("concept")?.[0].id, "selected");
 });
 
+test("createNeuralGraphStore suppresses duplicate node and edge ids", async () => {
+	const { createNeuralGraphStore, getNodeNeighbors } = await storeModule;
+	const workedOnEdge = {
+		...edge("selected", "beta", "frontmatter_source"),
+		id: "worked-on:selected->beta",
+		label: "worked on",
+	};
+	const duplicateExplorer = {
+		edges: [workedOnEdge, { ...workedOnEdge }],
+		generatedAt: "2026-04-30T00:00:00.000Z",
+		nodes: [
+			node("selected", "Selected", "concept", 1),
+			node("selected", "Selected", "concept", 1),
+			node("beta", "Beta", "entity", 1),
+		],
+		stats: {
+			danglingCount: 0,
+			edgeCount: 2,
+			nodeCount: 3,
+			rawCount: 0,
+			wikiCount: 2,
+		},
+	};
+	const store = createNeuralGraphStore(duplicateExplorer);
+
+	assert.equal(store.nodes.length, 2);
+	assert.equal(store.nodes.filter(({ id }) => id === "selected").length, 1);
+	assert.equal(store.edges.length, 1);
+	assert.equal(store.edgesById.size, 1);
+	assert.equal(getNodeNeighbors(store, "selected").length, 1);
+	assert.equal(getNodeNeighbors(store, "beta").length, 1);
+});
+
 test("getVisibleGraphNodes reuses the precomputed ranked node order under caps", async () => {
 	const { createNeuralGraphStore, getVisibleGraphNodes } = await storeModule;
 	const store = createNeuralGraphStore(explorer);

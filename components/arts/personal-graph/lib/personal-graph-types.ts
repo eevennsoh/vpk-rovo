@@ -1,17 +1,31 @@
 export type VaultNodeKind = "source" | "entity" | "concept" | "synthesis" | "raw";
 
-export type VaultEdgeKind = "wiki_link" | "frontmatter_source";
+export type GraphProvider = "vault" | "twg";
+
+export type VaultEdgeKind =
+	| "wiki_link"
+	| "frontmatter_source"
+	| "worked-on"
+	| "mentioned-in"
+	| "viewed"
+	| "reports-to"
+	| "aligned-to"
+	| "member-of"
+	| "attended"
+	| "reviewed";
 
 export interface VaultNode {
 	bodyPreview: string;
 	connectionCount: number;
 	dangling: boolean;
+	externalUrl: string | null;
 	frontmatter: Record<string, unknown>;
 	id: string;
 	kind: VaultNodeKind;
 	label: string;
 	missing: boolean;
 	path: string | null;
+	provider: GraphProvider;
 	relativePath: string;
 	size: number;
 	slug: string;

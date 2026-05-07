@@ -325,10 +325,15 @@ test("Personal Graph anchors the search and chat composer at the graph origin", 
 	assert.match(SURFACE_SOURCE, /collapseFlyoutKey=\{flyoutCollapseKey\}/);
 	assert.match(SURFACE_SOURCE, /isFlyoutDisabled=\{isResetFlyoutCollapsing\}/);
 	assert.match(SEARCH_SOURCE, /disabled=\{isFlyoutDisabled\}/);
-	assert.match(SEARCH_SOURCE, /aria-label="Ask or search Personal Graph"/);
+	assert.match(SEARCH_SOURCE, /aria-label=\{isTwgMode \? "Ask or search Team Work Graph" : "Ask or search Personal Graph"\}/);
+	assert.match(SEARCH_SOURCE, /useVaultSearch\(isTwgMode \? "" : query\)/);
+	assert.match(SEARCH_SOURCE, /const canAskTwg = isTwgMode && Boolean\(onAskChat\) && Boolean\(trimmedQuery\);/);
+	assert.match(SEARCH_SOURCE, /onAskChat\(trimmedQuery\);/);
+	assert.match(SEARCH_SOURCE, /aria-label=\{isTwgMode \? "Submit TWG prompt" : "Open top search result"\}/);
+	assert.match(SEARCH_SOURCE, /disabled=\{isSubmitDisabled\}/);
 	assert.match(
 		SEARCH_SOURCE,
-		/<Button[\s\S]*aria-label="Open top search result"[\s\S]*className="rounded-full"[\s\S]*size="icon"[\s\S]*variant="ghost"/,
+		/<Button[\s\S]*aria-label=\{isTwgMode \? "Submit TWG prompt" : "Open top search result"\}[\s\S]*className="rounded-full"[\s\S]*size="icon"[\s\S]*variant="ghost"/,
 	);
 	assert.doesNotMatch(SEARCH_SOURCE, /PersonalGraphLiquidGlassIconButton/);
 	assert.doesNotMatch(SEARCH_SOURCE, /PERSONAL_GRAPH_SEARCH_ICON_BUTTON_CLASS_NAME/);
@@ -429,6 +434,16 @@ test("Personal Graph hides node details until a node is selected", () => {
 test("Personal Graph keeps the owned canvas renderer accessible", () => {
 	assert.match(SURFACE_SOURCE, /<section className="sr-only" aria-label="Personal Graph text fallback">/);
 	assert.doesNotMatch(SURFACE_SOURCE, /<summary>/);
+	assert.match(
+		SURFACE_SOURCE,
+		/import \{ createNeuralGraphStore \} from "\.\/lib\/neural-graph\/store";/,
+	);
+	assert.match(
+		SURFACE_SOURCE,
+		/const accessibleGraph = useMemo\(\(\) => createNeuralGraphStore\(explorer\), \[explorer\]\);/,
+	);
+	assert.match(SURFACE_SOURCE, /accessibleGraph\.edges\.map/);
+	assert.doesNotMatch(SURFACE_SOURCE, /\(explorer\?\.edges \?\? \[\]\)\.map/);
 	assert.match(
 		SURFACE_SOURCE,
 		/import Graph, \{ ROVO_GRAPH_DEFAULT_PARAMS \} from "@\/components\/website\/demos\/visual\/graph";/,

@@ -16,24 +16,46 @@ import {
 import { PixelArrowRightIcon } from "./personal-graph-pixel-icons";
 
 interface PersonalGraphSearchProps {
+	chatError?: string | null;
+	assistantMessage?: string | null;
+	chatStatus?: "idle" | "streaming" | "done" | "error";
 	className?: string;
 	collapseFlyoutKey?: number;
 	flyoutActions: ReadonlyArray<PersonalGraphControlFlyoutAction>;
 	isFlyoutDisabled?: boolean;
+	mode?: "vault" | "twg";
+	onAskChat?: (prompt: string) => void;
 	onSelectSlug: (slug: string) => void;
 }
 
 export function PersonalGraphSearch({
+	chatError = null,
+	assistantMessage = null,
+	chatStatus = "idle",
 	className,
 	collapseFlyoutKey = 0,
 	flyoutActions,
 	isFlyoutDisabled = false,
+	mode = "vault",
+	onAskChat,
 	onSelectSlug,
 }: Readonly<PersonalGraphSearchProps>) {
 	const [query, setQuery] = useState("");
 	const [isFlyoutOpen, setIsFlyoutOpen] = useState(false);
-	const { results, status } = useVaultSearch(query);
+	const isTwgMode = mode === "twg";
+	const { results, status } = useVaultSearch(isTwgMode ? "" : query);
 	const firstResult = results[0];
+	const trimmedQuery = query.trim();
+	const canAskTwg = isTwgMode && Boolean(onAskChat) && Boolean(trimmedQuery);
+	const isSubmitDisabled = isTwgMode
+		? !canAskTwg || chatStatus === "streaming"
+		: !firstResult;
+	const placeholder = isTwgMode
+		? "Ask a question or search your work…"
+		: "Ask or search your graph...";
+	const shouldShowChatPanel = isTwgMode && (Boolean(chatError) || Boolean(assistantMessage) || chatStatus === "streaming");
+	const chatPanelTitle = chatError ? "TWG error" : chatStatus === "streaming" ? "Thinking…" : "Answer";
+	const chatPanelText = chatError ?? assistantMessage ?? "";
 
 	useEffect(() => {
 		setIsFlyoutOpen(false);
@@ -53,6 +75,11 @@ export function PersonalGraphSearch({
 			className={cn("relative w-full", className)}
 			onSubmit={(event) => {
 				event.preventDefault();
+				if (canAskTwg && onAskChat) {
+					onAskChat(trimmedQuery);
+					setQuery("");
+					return;
+				}
 				if (!firstResult) return;
 				onSelectSlug(firstResult.slug);
 				setQuery("");
@@ -72,10 +99,10 @@ export function PersonalGraphSearch({
 				radius={30}
 			>
 				<input
-					aria-label="Ask or search Personal Graph"
+					aria-label={isTwgMode ? "Ask or search Team Work Graph" : "Ask or search Personal Graph"}
 					className="min-w-0 flex-1 bg-transparent text-text outline-none placeholder:text-text-subtlest"
 					onChange={(event) => setQuery(event.target.value)}
-					placeholder="Ask or search your graph..."
+					placeholder={placeholder}
 					style={{ font: token("font.body") }}
 					value={query}
 				/>
@@ -87,9 +114,9 @@ export function PersonalGraphSearch({
 					}}
 				/>
 				<Button
-					aria-label="Open top search result"
+					aria-label={isTwgMode ? "Submit TWG prompt" : "Open top search result"}
 					className="rounded-full"
-					disabled={!firstResult}
+					disabled={isSubmitDisabled}
 					size="icon"
 					type="submit"
 					variant="ghost"
@@ -97,7 +124,19 @@ export function PersonalGraphSearch({
 					<PixelArrowRightIcon />
 				</Button>
 			</PersonalGraphGlassPanel>
-			{query ? (
+			{shouldShowChatPanel ? (
+				<div className="absolute bottom-[calc(100%+0.75rem)] left-0 right-0 z-40 text-text">
+					<PersonalGraphGlassPanel contentClassName="space-y-2 p-4" radius={22}>
+						<div className={cn("text-[10px] uppercase tracking-wide text-text-subtlest", chatError ? "text-text-danger" : null)}>
+							{chatPanelTitle}
+						</div>
+						<p className={cn("whitespace-pre-wrap text-sm leading-6 text-text", chatError ? "text-text-danger" : null)}>
+							{chatPanelText}
+						</p>
+					</PersonalGraphGlassPanel>
+				</div>
+			) : null}
+			{!isTwgMode && query ? (
 				<div className="absolute bottom-[calc(100%+0.75rem)] left-0 right-0 z-40 text-text">
 					<PersonalGraphGlassPanel contentClassName="max-h-[min(42svh,320px)] overflow-auto p-1" radius={22}>
 						{status === "loading" ? <div className="px-3 py-2 text-xs text-text-subtlest">Searching...</div> : null}
