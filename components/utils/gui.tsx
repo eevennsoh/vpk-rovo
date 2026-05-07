@@ -317,6 +317,7 @@ function GUIPanel({ title, values, defaultOpen = true, children }: GUIPanelProps
 						<button
 							type="button"
 							aria-label={open ? "Collapse controls" : "Expand controls"}
+							aria-expanded={open}
 							onClick={() => setOpen((prev) => !prev)}
 							className="flex items-center"
 						>
@@ -533,6 +534,7 @@ function GUISection({ title, defaultOpen = true, borderTop = true, children }: G
 			{borderTop ? <div className="border-t border-border pt-4" /> : null}
 			<button
 				type="button"
+				aria-expanded={open}
 				onClick={() => setOpen((prev) => !prev)}
 				className="flex w-full items-center justify-between pb-1"
 			>
