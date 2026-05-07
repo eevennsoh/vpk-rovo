@@ -431,6 +431,16 @@ test("Personal Graph keeps the owned canvas renderer accessible", () => {
 	assert.doesNotMatch(SURFACE_SOURCE, /<summary>/);
 	assert.match(
 		SURFACE_SOURCE,
+		/import \{ createNeuralGraphStore \} from "\.\/lib\/neural-graph\/store";/,
+	);
+	assert.match(
+		SURFACE_SOURCE,
+		/const accessibleGraph = useMemo\(\(\) => createNeuralGraphStore\(explorer\), \[explorer\]\);/,
+	);
+	assert.match(SURFACE_SOURCE, /accessibleGraph\.edges\.map/);
+	assert.doesNotMatch(SURFACE_SOURCE, /\(explorer\?\.edges \?\? \[\]\)\.map/);
+	assert.match(
+		SURFACE_SOURCE,
 		/import Graph, \{ ROVO_GRAPH_DEFAULT_PARAMS \} from "@\/components\/website\/demos\/visual\/graph";/,
 	);
 	assert.match(SURFACE_SOURCE, /<Graph/);

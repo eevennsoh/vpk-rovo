@@ -23,6 +23,7 @@ import {
 	shouldAnimateResponsivePersonalGraphParams,
 	type ResponsivePersonalGraphViewport,
 } from "./lib/neural-graph/responsive-params";
+import { createNeuralGraphStore } from "./lib/neural-graph/store";
 import type { NeuralGraphParams } from "./lib/neural-graph/params";
 import type { VaultExplorer, VaultNode, VaultNodeKind } from "./lib/personal-graph-types";
 import { PersonalGraphBackdrop } from "./personal-graph-backdrop";
@@ -387,6 +388,7 @@ export function PersonalGraphSurface({
 	const graphStageRef = useRef<HTMLDivElement | null>(null);
 	const resetFlyoutCollapseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const responsiveGraphParams = useResponsivePersonalGraphParams(graphStageRef);
+	const accessibleGraph = useMemo(() => createNeuralGraphStore(explorer), [explorer]);
 	const displayedNode = useMemo(() => getSelectedNode(explorer, selectedNodeId), [explorer, selectedNodeId]);
 
 	const handleRefreshAll = useCallback(() => {
@@ -734,17 +736,17 @@ export function PersonalGraphSurface({
 				<section className="sr-only" aria-label="Personal Graph text fallback">
 					<h2>Nodes</h2>
 					<ul aria-label="Personal Graph nodes">
-						{(explorer?.nodes ?? []).map((node) => (
+						{accessibleGraph.nodes.map((node) => (
 							<li key={node.id}>
-								{node.title} ({node.kind}) - {node.connectionCount} connections
+								{node.title} ({node.kind}) - {node.degree} connections
 							</li>
 						))}
 					</ul>
 					<h2>Edges</h2>
 					<ul aria-label="Personal Graph edges">
-						{(explorer?.edges ?? []).map((edge) => {
-							const source = explorer?.nodes.find((node) => node.id === edge.source)?.title ?? edge.source;
-							const target = explorer?.nodes.find((node) => node.id === edge.target)?.title ?? edge.target;
+						{accessibleGraph.edges.map((edge) => {
+							const source = accessibleGraph.nodesById.get(edge.source)?.title ?? edge.source;
+							const target = accessibleGraph.nodesById.get(edge.target)?.title ?? edge.target;
 							return (
 								<li key={edge.id}>
 									{source} to {target} ({edge.kind})
