@@ -17,7 +17,8 @@ Next.js 16 (React 19, Tailwind CSS v4) + Express backend with AI SDK (Vercel) an
 - Backend API edits are in `backend/server.js`, `backend/lib/*.js`, and `app/api/*/route.ts` (dev proxy).
 - Validate every change with `pnpm run lint` and `pnpm run typecheck`.
 - For UI changes, also run visual + accessibility checks (see `.agents/docs/workflows-extended.md`).
-- Browser automation uses `/agent-browser` (`npx agent-browser`) — not direct Playwright MCP tools.
+- Browser automation for general UI work uses `/agent-browser` (`npx agent-browser`) — not direct Playwright MCP tools.
+- Symphony browser evidence is the exception: use `playwright-cli` so issue-scoped screenshots, WebM recordings, and traces land under ignored `output/playwright/` for the workpad flow, as specified in `WORKFLOW.md` and `docs/SYMPHONY.md`.
 
 ## Documentation Index
 
