@@ -6,11 +6,17 @@ const test = require("node:test");
 const ROOT = path.join(__dirname, "../../../..");
 const SCRIBBLES_SOURCE = fs.readFileSync(path.join(__dirname, "scribbles.tsx"), "utf8");
 const DEMO_SOURCE = fs.readFileSync(path.join(__dirname, "scribbles-demo.tsx"), "utf8");
+const SOURCE_SOURCE = fs.readFileSync(path.join(__dirname, "scribbles-source.ts"), "utf8");
 const REGISTRY_SOURCE = fs.readFileSync(path.join(ROOT, "components/website/registry.ts"), "utf8");
 const COMPONENTS_SOURCE = fs.readFileSync(path.join(ROOT, "app/data/components.ts"), "utf8");
 const MANIFEST_SOURCE = fs.readFileSync(path.join(ROOT, "app/data/component-manifest.ts"), "utf8");
 const NAV_UTILS_SOURCE = fs.readFileSync(path.join(ROOT, "app/data/nav-utils.ts"), "utf8");
 const DETAILS_SOURCE = fs.readFileSync(path.join(ROOT, "app/data/details/visual.ts"), "utf8");
+const {
+	DEFAULT_SCRIBBLES_SVG_SOURCE,
+	DEFAULT_SCRIBBLES_SVG_SRC,
+	isScribblesSvgFile,
+} = require("./scribbles-source.ts");
 
 test("Scribbles exposes the hand-drawn SVG filter shape", () => {
 	assert.match(SCRIBBLES_SOURCE, /<feTurbulence/);
@@ -32,7 +38,6 @@ test("Scribbles keeps the line-boil animation reduced-motion aware", () => {
 
 test("Scribbles demo exposes the expected GUI controls", () => {
 	for (const expected of [
-		"DEFAULT_SCRIBBLES_SVG_SRC",
 		"SCRIBBLES_DEFAULT_SCALE",
 		"SCRIBBLES_DEFAULT_BASE_FREQUENCY",
 		"SCRIBBLES_DEFAULT_NUM_OCTAVES",
@@ -43,7 +48,7 @@ test("Scribbles demo exposes the expected GUI controls", () => {
 		assert.ok(DEMO_SOURCE.includes(expected), expected);
 	}
 
-	assert.match(DEMO_SOURCE, /DEFAULT_SCRIBBLES_SVG_SRC = "\/illustration-ai\/chat\/light\.svg"/);
+	assert.match(SOURCE_SOURCE, /DEFAULT_SCRIBBLES_SVG_SRC = "\/illustration-ai\/chat\/light\.svg"/);
 	assert.match(DEMO_SOURCE, /title="Source"/);
 	assert.match(DEMO_SOURCE, /accept="image\/svg\+xml,\.svg"/);
 	assert.match(DEMO_SOURCE, /aria-label="Reset to default SVG"/);
@@ -57,6 +62,23 @@ test("Scribbles demo exposes the expected GUI controls", () => {
 	assert.match(DEMO_SOURCE, /label="amount"/);
 	assert.match(DEMO_SOURCE, /label="frame interval"/);
 	assert.match(DEMO_SOURCE, /unit="ms"/);
+});
+
+test("Scribbles SVG source defaults to the catalog asset", () => {
+	assert.equal(DEFAULT_SCRIBBLES_SVG_SRC, "/illustration-ai/chat/light.svg");
+	assert.deepEqual(DEFAULT_SCRIBBLES_SVG_SOURCE, {
+		src: "/illustration-ai/chat/light.svg",
+		name: "illustration-ai/chat/light.svg",
+		uploaded: false,
+	});
+});
+
+test("Scribbles SVG upload accepts only SVG files", () => {
+	assert.equal(isScribblesSvgFile({ type: "image/svg+xml", name: "from-clipboard" }), true);
+	assert.equal(isScribblesSvgFile({ type: "", name: "sketch.SVG" }), true);
+	assert.equal(isScribblesSvgFile({ type: "application/octet-stream", name: "vector.svg" }), true);
+	assert.equal(isScribblesSvgFile({ type: "image/png", name: "diagram.png" }), false);
+	assert.equal(isScribblesSvgFile({ type: "image/svg", name: "diagram.png" }), false);
 });
 
 test("Scribbles demo uses a real SVG asset instead of the inline placeholder illustration", () => {

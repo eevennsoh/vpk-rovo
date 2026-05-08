@@ -17,27 +17,14 @@ import Scribbles, {
 	SCRIBBLES_DEFAULT_SCALE,
 	SCRIBBLES_DEFAULT_SEED,
 } from "./scribbles";
-
-const DEFAULT_SCRIBBLES_SVG_SRC = "/illustration-ai/chat/light.svg";
-
-type ScribblesSvgSource = Readonly<{
-	src: string;
-	name: string;
-	uploaded: boolean;
-}>;
-
-const DEFAULT_SCRIBBLES_SVG_SOURCE: ScribblesSvgSource = {
-	src: DEFAULT_SCRIBBLES_SVG_SRC,
-	name: "illustration-ai/chat/light.svg",
-	uploaded: false,
-};
+import {
+	DEFAULT_SCRIBBLES_SVG_SOURCE,
+	isScribblesSvgFile,
+	type ScribblesSvgSource,
+} from "./scribbles-source";
 
 function formatFrequency(value: number): string {
 	return value.toFixed(3);
-}
-
-function isSvgFile(file: File): boolean {
-	return file.type === "image/svg+xml" || file.name.toLowerCase().endsWith(".svg");
 }
 
 interface ScribblesSourceImageProps {
@@ -165,7 +152,7 @@ export default function ScribblesDemo() {
 	}, []);
 
 	const uploadSvgSource = useCallback((file: File) => {
-		if (!isSvgFile(file)) return;
+		if (!isScribblesSvgFile(file)) return;
 		const url = URL.createObjectURL(file);
 		if (uploadedSvgUrlRef.current) {
 			URL.revokeObjectURL(uploadedSvgUrlRef.current);
