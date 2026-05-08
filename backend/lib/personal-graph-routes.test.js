@@ -439,6 +439,30 @@ test("POST /api/personal-graph/twg/expand requires a cached TWG explorer", async
 	assert.equal(body.code, "TWG_CACHE_REQUIRED");
 });
 
+test("POST /api/personal-graph/twg/refresh preserves cached explorer when refresh fails", async (t) => {
+	const { cachePath } = configureTwgEnv(t);
+	const cachedExplorer = createCachedTwgExplorer();
+	fs.writeFileSync(cachePath, JSON.stringify(cachedExplorer), "utf8");
+	const originalBuildTwgExplorer = twgSource.buildTwgExplorer;
+	twgSource.buildTwgExplorer = async () => {
+		throw new Error("temporary twg failure");
+	};
+	t.after(() => {
+		twgSource.buildTwgExplorer = originalBuildTwgExplorer;
+	});
+
+	const response = await fetch(`${await listen(createPersonalGraphTestApp(), t)}/api/personal-graph/twg/refresh`, {
+		body: JSON.stringify({}),
+		headers: { "Content-Type": "application/json" },
+		method: "POST",
+	});
+	const body = await response.json();
+
+	assert.equal(response.status, 500);
+	assert.equal(body.code, "PERSONAL_GRAPH_TWG_REFRESH_FAILED");
+	assert.equal(JSON.parse(fs.readFileSync(cachePath, "utf8")).generatedAt, cachedExplorer.generatedAt);
+});
+
 test("POST /api/personal-graph/twg/expand maps missing cached nodes to a client error", async (t) => {
 	const { cachePath } = configureTwgEnv(t);
 	fs.writeFileSync(cachePath, JSON.stringify(createCachedTwgExplorer()), "utf8");
@@ -617,7 +641,7 @@ test("POST /api/personal-graph/summarize uses cached TWG explorer without refres
 	assert.equal(events.find((event) => event.type === "summary").summary, "TWG summary");
 });
 
-test("POST /api/personal-graph/summarize aborts the previous in-flight run", async (t) => {
+test("POST /api/personal-graph/summarize aborts the previous in-flight run for the same client", async (t) => {
 	createSummaryVault(t);
 	let firstStarted;
 	const firstStartedPromise = new Promise((resolve) => {
@@ -652,13 +676,13 @@ test("POST /api/personal-graph/summarize aborts the previous in-flight run", asy
 
 	const baseUrl = await listen(createPersonalGraphTestApp(), t);
 	const firstResponsePromise = fetch(`${baseUrl}/api/personal-graph/summarize`, {
-		body: JSON.stringify({ action: "summary", length: "short", nodeId: "raw:source" }),
+		body: JSON.stringify({ action: "summary", clientId: "summary-client-a", length: "short", nodeId: "raw:source" }),
 		headers: { "Content-Type": "application/json" },
 		method: "POST",
 	});
 	await firstStartedPromise;
 	const secondResponse = await fetch(`${baseUrl}/api/personal-graph/summarize`, {
-		body: JSON.stringify({ action: "summary", length: "medium", nodeId: "raw:source" }),
+		body: JSON.stringify({ action: "summary", clientId: "summary-client-a", length: "medium", nodeId: "raw:source" }),
 		headers: { "Content-Type": "application/json" },
 		method: "POST",
 	});
@@ -668,4 +692,63 @@ test("POST /api/personal-graph/summarize aborts the previous in-flight run", asy
 
 	assert.equal(firstAborted, true);
 	assert.equal(secondEvents.find((event) => event.type === "summary").summary, "Latest summary");
+});
+
+test("POST /api/personal-graph/summarize keeps other clients' in-flight runs alive", async (t) => {
+	createSummaryVault(t);
+	let firstStarted;
+	const firstStartedPromise = new Promise((resolve) => {
+		firstStarted = resolve;
+	});
+	let releaseFirst;
+	const releaseFirstPromise = new Promise((resolve) => {
+		releaseFirst = resolve;
+	});
+	let firstAborted = false;
+	const originalSummarizeSelection = summaryContext.summarizeSelection;
+	let callCount = 0;
+	summaryContext.summarizeSelection = async ({ signal }) => {
+		callCount += 1;
+		if (callCount === 1) {
+			firstStarted();
+			signal.addEventListener("abort", () => {
+				firstAborted = true;
+				releaseFirst();
+			}, { once: true });
+			await releaseFirstPromise;
+			return {
+				inputKind: "vault-file",
+				summary: "First summary",
+				takeaways: ["First"],
+			};
+		}
+		return {
+			inputKind: "vault-file",
+			summary: "Second summary",
+			takeaways: ["Second"],
+		};
+	};
+	t.after(() => {
+		summaryContext.summarizeSelection = originalSummarizeSelection;
+	});
+
+	const baseUrl = await listen(createPersonalGraphTestApp(), t);
+	const firstResponsePromise = fetch(`${baseUrl}/api/personal-graph/summarize`, {
+		body: JSON.stringify({ action: "summary", clientId: "summary-client-a", length: "short", nodeId: "raw:source" }),
+		headers: { "Content-Type": "application/json" },
+		method: "POST",
+	});
+	await firstStartedPromise;
+	const secondResponse = await fetch(`${baseUrl}/api/personal-graph/summarize`, {
+		body: JSON.stringify({ action: "summary", clientId: "summary-client-b", length: "medium", nodeId: "raw:source" }),
+		headers: { "Content-Type": "application/json" },
+		method: "POST",
+	});
+	const secondEvents = await readSseEvents(secondResponse);
+	assert.equal(firstAborted, false);
+	assert.equal(secondEvents.find((event) => event.type === "summary").summary, "Second summary");
+
+	releaseFirst();
+	const firstEvents = await readSseEvents(await firstResponsePromise);
+	assert.equal(firstEvents.find((event) => event.type === "summary").summary, "First summary");
 });

@@ -248,6 +248,7 @@ export async function* streamLibrarian(
 export async function* streamPersonalGraphSummarize(
 	body: {
 		action: "summary" | "deck";
+		clientId?: string;
 		length: PersonalGraphSummaryLength;
 		nodeId: string;
 		summary?: string;
