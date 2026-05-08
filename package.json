@@ -81,7 +81,7 @@
 		"@visual-json/react": "^0.4.0",
 		"@web-kits/audio": "^0.1.0",
 		"@xyflow/react": "^12.10.2",
-		"agent-browser": "^0.26.0",
+		"agent-browser": "^0.27.0",
 		"agentation": "^3.0.2",
 		"agentation-mcp": "^1.2.0",
 		"ai": "^6.0.172",
