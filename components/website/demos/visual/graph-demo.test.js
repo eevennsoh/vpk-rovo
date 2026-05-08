@@ -73,6 +73,7 @@ test("Graph visual follows the VPK visual demo control structure", () => {
 	assert.match(GRAPH_SOURCE, /title="Graph controls"/);
 	assert.match(GRAPH_SOURCE, /GUI\.Control/);
 	assert.match(GRAPH_SOURCE, /GUI\.Select/);
+	assert.match(GRAPH_SOURCE, /LAYOUT_SHAPE_OPTIONS/);
 	assert.match(GRAPH_SOURCE, /NEURAL_GRAPH_PARAM_SECTIONS/);
 	assert.match(GRAPH_SOURCE, /DEFAULT_NEURAL_GRAPH_PARAMS/);
 	assert.match(GRAPH_SOURCE, /VISUAL_GRAPH_EXPLORER/);
@@ -113,7 +114,7 @@ test("Graph visual can be embedded as the live Personal Graph renderer", () => {
 	]) {
 		assert.match(graphDetailsSource, new RegExp(`name: "${propName}"`));
 	}
-	assert.match(graphDetailsSource, /flow, structure, cone, icon-token node type colors, edge color states, signal streaks, ray elasticity, origin node, hover, label, and node style controls/);
+	assert.match(graphDetailsSource, /flow, structure, radial, cone, icon-token node type colors, edge color states, signal streaks, ray elasticity, origin node, hover, label, and node style controls/);
 });
 
 test("Graph renderer keeps the default connector stroke width at 2 via params", () => {
@@ -132,11 +133,16 @@ test("Graph renderer exposes hover, ray, edge, and label toggles through params"
 	assert.match(RENDERER_SOURCE, /if \(!options\.params\.showEdges\) return;/);
 	assert.match(RENDERER_SOURCE, /if \(!options\.params\.showLabels\) return;/);
 	assert.match(GRAPH_SOURCE, /rayOriginY: 1/);
+	assert.match(GRAPH_SOURCE, /layoutShape: "radialCluster"/);
+	assert.match(GRAPH_SOURCE, /radialArcAngle: 284/);
+	assert.match(GRAPH_SOURCE, /radialDepthCurve: 0\.8/);
 	assert.match(GRAPH_SOURCE, /rayElasticStrength: 26/);
 	assert.match(GRAPH_SOURCE, /rayElasticRadius: 96/);
 	assert.match(GRAPH_SOURCE, /rayElasticTension: 220/);
 	assert.match(GRAPH_SOURCE, /rayElasticDamping: 24/);
 	assert.match(PARAMS_SOURCE, /key: "rayOriginY", label: "Tail Y"/);
+	assert.match(PARAMS_SOURCE, /key: "radialArcAngle", label: "Arc Angle"/);
+	assert.match(PARAMS_SOURCE, /key: "radialDepthCurve", label: "Depth Curve"/);
 	assert.match(PARAMS_SOURCE, /key: "rayElasticStrength", label: "Elastic strength"/);
 	assert.match(PARAMS_SOURCE, /key: "rayElasticRadius", label: "Elastic radius"/);
 	assert.match(PARAMS_SOURCE, /key: "rayElasticTension", label: "Elastic tension"/);

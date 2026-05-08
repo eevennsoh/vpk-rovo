@@ -19,6 +19,7 @@ import {
 	NEURAL_GRAPH_PARAM_SECTIONS,
 	clampNeuralGraphParams,
 	type NeuralGraphColorKey,
+	type NeuralGraphLayoutShape,
 	type NeuralGraphParams,
 	type NeuralGraphNodeShape,
 } from "@/components/arts/personal-graph/lib/neural-graph/params";
@@ -117,6 +118,7 @@ export const ROVO_GRAPH_DEFAULT_PARAMS: NeuralGraphParams = clampNeuralGraphPara
 	hoverScale: 1.5,
 	labelMetaSize: 10,
 	labelSize: 13,
+	layoutShape: "radialCluster",
 	maxVisibleNodes: 96,
 	nodeColor: ROVO_GRAPH_COLORS.default,
 	nodeOpacity: 1,
@@ -141,6 +143,8 @@ export const ROVO_GRAPH_DEFAULT_PARAMS: NeuralGraphParams = clampNeuralGraphPara
 	rayOpacity: 0.02,
 	rayOriginY: 1,
 	rayWidth: 2,
+	radialArcAngle: 284,
+	radialDepthCurve: 0.8,
 	selectedScale: 1.5,
 	showEdges: true,
 	showLabels: true,
@@ -163,6 +167,11 @@ const NODE_SHAPE_OPTIONS = [
 	{ value: "circle", label: "Circle" },
 	{ value: "square", label: "Square" },
 ] as const satisfies ReadonlyArray<{ value: NeuralGraphNodeShape; label: string }>;
+
+const LAYOUT_SHAPE_OPTIONS = [
+	{ value: "radialCluster", label: "Radial cluster" },
+	{ value: "cone", label: "Cone" },
+] as const satisfies ReadonlyArray<{ value: NeuralGraphLayoutShape; label: string }>;
 
 const GENERATED_AT = "2026-04-30T00:00:00.000Z";
 
@@ -678,9 +687,20 @@ function GraphControls({
 				raySoundVolume: raySoundSettings.volume,
 			}}
 		>
-			{NEURAL_GRAPH_PARAM_SECTIONS.map((section, sectionIndex) => (
+			<GUI.Section borderTop={false} title="Layout">
+				<GUI.Select
+					id="graph-layout-shape"
+					label="Shape"
+					value={params.layoutShape}
+					options={LAYOUT_SHAPE_OPTIONS}
+					onChange={(nextShape) => updateParam("layoutShape", nextShape)}
+					valueKeys="layoutShape"
+				/>
+			</GUI.Section>
+
+			{NEURAL_GRAPH_PARAM_SECTIONS.map((section) => (
 				<GUI.Section
-					borderTop={sectionIndex > 0}
+					borderTop={true}
 					key={section.id}
 					title={section.label}
 				>

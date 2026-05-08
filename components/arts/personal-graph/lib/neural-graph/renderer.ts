@@ -1,9 +1,12 @@
 import type { VaultNodeKind } from "../personal-graph-types";
 import { getNeuralOrigin, worldToViewport, type NeuralCamera, type NeuralPoint, type NeuralViewport } from "./camera";
 import { getNeuralGraphColorFallback, isNeuralGraphColorValue } from "./colors";
-import type { NeuralGraphInteractionState } from "./interaction-dynamics";
+import {
+	isRayOnlyNeuralGraphInteraction,
+	type NeuralGraphInteractionState,
+} from "./interaction-dynamics";
 import { getClosestPointOnOrganicRay, getOrganicRayCurve, type NeuralRayCurve } from "./interaction";
-import type { NeuralGraphLayout, NeuralLayoutEdge, NeuralLayoutNode } from "./layout";
+import type { NeuralGraphLayout, NeuralLayoutEdge, NeuralLayoutNode, NeuralLayoutTreeBranch } from "./layout";
 import { getPersonalGraphNodeTypeAccentToken } from "./node-type-colors";
 import type { NeuralGraphParams } from "./params";
 
@@ -167,7 +170,7 @@ function clampAlpha(value: number) {
 
 function getInteractionIntensity(options: NeuralGraphRenderOptions) {
 	const interaction = options.interaction;
-	if (!interaction) return 0;
+	if (!interaction || isRayOnlyNeuralGraphInteraction(interaction)) return 0;
 	return Math.min(1.5, Math.max(0, interaction.intensity)) * Math.max(0, interaction.flowBoost);
 }
 
@@ -213,6 +216,10 @@ function getSelectedRelationshipIds(layout: NeuralGraphLayout, selectedNodeId: s
 	}
 
 	return { edgeIds, nodeIds };
+}
+
+function getDrawableGraphEdges(layout: NeuralGraphLayout) {
+	return layout.treeBranches?.length ? layout.crossEdges ?? [] : layout.edges;
 }
 
 function getFallbackNormal(curve: NeuralRayCurve) {
@@ -324,6 +331,86 @@ function getRayOrigin(viewport: NeuralViewport, params: NeuralGraphParams, rayOr
 	};
 }
 
+function getRadialBranchSource(
+	branch: NeuralLayoutTreeBranch,
+	origin: NeuralPoint,
+	options: NeuralGraphRenderOptions,
+) {
+	return branch.source
+		? worldToViewport(branch.source, options.camera, options.viewport, options.params)
+		: origin;
+}
+
+function getPolarPoint(origin: NeuralPoint, angle: number, radius: number): NeuralPoint {
+	return {
+		x: origin.x + Math.cos(angle) * radius,
+		y: origin.y + Math.sin(angle) * radius,
+	};
+}
+
+function drawRadialBranchPath(
+	ctx: CanvasRenderingContext2D,
+	origin: NeuralPoint,
+	source: NeuralPoint,
+	target: NeuralPoint,
+) {
+	const sourceRadius = Math.hypot(source.x - origin.x, source.y - origin.y);
+	const targetRadius = Math.hypot(target.x - origin.x, target.y - origin.y);
+	const sourceAngle = sourceRadius <= 0.001 ? Math.atan2(target.y - origin.y, target.x - origin.x) : Math.atan2(source.y - origin.y, source.x - origin.x);
+	const targetAngle = Math.atan2(target.y - origin.y, target.x - origin.x);
+	const controlRadius = lerp(sourceRadius, targetRadius, 0.5);
+	const sourceControl = getPolarPoint(origin, sourceAngle, controlRadius);
+	const targetControl = getPolarPoint(origin, targetAngle, controlRadius);
+
+	ctx.beginPath();
+	ctx.moveTo(source.x, source.y);
+	ctx.bezierCurveTo(sourceControl.x, sourceControl.y, targetControl.x, targetControl.y, target.x, target.y);
+}
+
+function drawRadialBranches(
+	ctx: CanvasRenderingContext2D,
+	layout: NeuralGraphLayout,
+	options: NeuralGraphRenderOptions,
+	selectedRelationships: SelectedRelationshipIds,
+) {
+	const branches = layout.treeBranches ?? [];
+	if (branches.length === 0) return;
+
+	const origin = getRayOrigin(options.viewport, options.params, options.rayOriginY);
+	const focusProgress = getFocusProgress(options);
+	const activeNodeId = options.selectedNodeId ?? options.hoveredNodeId;
+	const baseAlpha = Math.max(0.08, options.params.rayOpacity * 4.5, options.params.edgeOpacity * 0.56);
+	const activeAlpha = Math.max(baseAlpha, options.params.edgeOpacityActive);
+	const rayColor = getResolvedColor(options.params.rayColor, options);
+	const selectedColor = getResolvedColor(options.params.edgeSelectedColor, options);
+	const hoverColor = getResolvedColor(options.params.edgeHoverColor, options);
+
+	ctx.save();
+	ctx.lineCap = "round";
+	ctx.lineWidth = options.params.rayWidth;
+
+	for (const branch of branches) {
+		const target = worldToViewport(branch.target, options.camera, options.viewport, options.params);
+		const source = getRadialBranchSource(branch, origin, options);
+		const isRelated = selectedRelationships.nodeIds.has(branch.targetId)
+			|| Boolean(branch.sourceId && selectedRelationships.nodeIds.has(branch.sourceId));
+		const isSelectedEdge = Boolean(branch.edge && selectedRelationships.edgeIds.has(branch.edge.id));
+		const isActive = Boolean(activeNodeId && (branch.targetId === activeNodeId || branch.sourceId === activeNodeId || isSelectedEdge));
+		const focusAlpha = focusProgress > 0
+			? isRelated
+				? lerp(1, 0.82, focusProgress)
+				: lerp(1, 0.1, focusProgress)
+			: 1;
+
+		ctx.globalAlpha = clampAlpha((isActive ? activeAlpha : baseAlpha) * focusAlpha);
+		ctx.strokeStyle = isSelectedEdge ? selectedColor : isActive ? hoverColor : rayColor;
+		drawRadialBranchPath(ctx, origin, source, target);
+		ctx.stroke();
+	}
+
+	ctx.restore();
+}
+
 function drawRays(
 	ctx: CanvasRenderingContext2D,
 	layout: NeuralGraphLayout,
@@ -331,6 +418,10 @@ function drawRays(
 	selectedRelationships: SelectedRelationshipIds,
 ) {
 	if (!options.params.showRays) return;
+	if (layout.treeBranches?.length) {
+		drawRadialBranches(ctx, layout, options, selectedRelationships);
+		return;
+	}
 	const origin = getRayOrigin(options.viewport, options.params, options.rayOriginY);
 	const focusProgress = getFocusProgress(options);
 	const interactionIntensity = getInteractionIntensity(options);
@@ -380,6 +471,7 @@ function drawEdges(
 	selectedRelationships: SelectedRelationshipIds,
 ) {
 	if (!options.params.showEdges) return;
+	const edges = getDrawableGraphEdges(layout);
 	const edgeWidths = getEdgeLineWidth(options.params);
 	const idleOpacity = options.params.edgeOpacity;
 	const activeOpacity = options.params.edgeOpacityActive;
@@ -401,14 +493,14 @@ function drawEdges(
 	ctx.save();
 	ctx.lineCap = "round";
 	if (selectedRelationships.edgeIds.size > 0) {
-		for (const edge of layout.edges) {
+		for (const edge of edges) {
 			if (!selectedRelationships.edgeIds.has(edge.id)) drawEdge(edge);
 		}
-		for (const edge of layout.edges) {
+		for (const edge of edges) {
 			if (selectedRelationships.edgeIds.has(edge.id)) drawEdge(edge);
 		}
 	} else {
-		for (const edge of layout.edges) {
+		for (const edge of edges) {
 			drawEdge(edge);
 		}
 	}
@@ -446,12 +538,13 @@ function drawSignalStreaks(
 	layout: NeuralGraphLayout,
 	options: NeuralGraphRenderOptions,
 ) {
+	const edges = getDrawableGraphEdges(layout);
 	if (
 		!options.params.showEdges
 		|| !options.params.showSignals
 		|| options.params.signalFrequency <= 0
 		|| options.params.signalOpacity <= 0
-		|| layout.edges.length === 0
+		|| edges.length === 0
 	) return;
 
 	const signalColor = getResolvedColor(options.params.signalColor, options);
@@ -463,7 +556,7 @@ function drawSignalStreaks(
 		ctx.shadowColor = colorWithAlpha(signalColor, 0.72 * options.params.signalOpacity);
 	}
 
-	for (const edge of layout.edges) {
+	for (const edge of edges) {
 		if (
 			(options.selectedNodeId || options.hoveredNodeId)
 			&& isActiveEdge(edge.source.id, edge.target.id, options.selectedNodeId, options.hoveredNodeId)
@@ -574,6 +667,7 @@ function drawNodes(
 
 	const selectedScale = options.params.selectedScale;
 	const selectedScaleMax = selectedScale + 0.5;
+	const hoverScale = options.params.hoverScale;
 	const glowSize = options.params.glowSize;
 	const glowIntensity = options.params.glowIntensity;
 	const glowIntensityRelated = glowIntensity * 0.5;
@@ -604,12 +698,13 @@ function drawNodes(
 		ctx.save();
 		ctx.globalAlpha = alpha;
 		if (isSelected || isHovered || (focusProgress > 0 && isRelated)) {
-			const glow = ctx.createRadialGradient(point.x, point.y, 0, point.x, point.y, radius * glowSize);
+			const glowRadius = radius * glowSize * (isHovered ? hoverScale : 1);
+			const glow = ctx.createRadialGradient(point.x, point.y, 0, point.x, point.y, glowRadius);
 			glow.addColorStop(0, colorWithAlpha(nodeColor, isSelected || isHovered ? glowIntensity : glowIntensityRelated));
 			glow.addColorStop(1, "rgba(0, 0, 0, 0)");
 			ctx.fillStyle = glow;
 			ctx.beginPath();
-			ctx.arc(point.x, point.y, radius * glowSize, 0, Math.PI * 2);
+			ctx.arc(point.x, point.y, glowRadius, 0, Math.PI * 2);
 			ctx.fill();
 		}
 		ctx.fillStyle = nodeColor;

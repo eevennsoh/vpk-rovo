@@ -53,6 +53,12 @@ export const EMPTY_NEURAL_GRAPH_INTERACTION_STATE: NeuralGraphInteractionState =
 	velocityPxPerSecond: 0,
 };
 
+export function isRayOnlyNeuralGraphInteraction(
+	interaction: NeuralGraphInteractionState | null | undefined,
+): boolean {
+	return Boolean(interaction?.activeRayNodeId && !interaction.activeNodeId);
+}
+
 function clamp(value: number, min: number, max: number): number {
 	return Math.max(min, Math.min(max, value));
 }

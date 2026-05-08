@@ -794,6 +794,132 @@ test("computeNeuralGraphLayout is deterministic and keeps selected nodes visible
 	);
 });
 
+test("computeNeuralGraphLayout arranges radial cluster leaves on a shared outer radius", async () => {
+	const { computeNeuralGraphLayout } = await layoutModule;
+	const { DEFAULT_NEURAL_GRAPH_PARAMS, clampNeuralGraphParams } = await paramsModule;
+	const { createNeuralGraphStore } = await storeModule;
+	const treeExplorer = {
+		edges: [
+			edge("root", "alpha"),
+			edge("root", "beta"),
+			edge("beta", "gamma"),
+			edge("beta", "delta"),
+		],
+		generatedAt: "2026-04-30T00:00:00.000Z",
+		nodes: [
+			node("root", "Root", "synthesis", 2),
+			node("alpha", "Alpha", "concept", 1),
+			node("beta", "Beta", "entity", 3),
+			node("gamma", "Gamma", "raw", 1),
+			node("delta", "Delta", "source", 1),
+		],
+		stats: { danglingCount: 0, edgeCount: 4, nodeCount: 5, rawCount: 1, wikiCount: 4 },
+	};
+	const params = clampNeuralGraphParams({
+		...DEFAULT_NEURAL_GRAPH_PARAMS,
+		amplitude: 0,
+		layoutShape: "radialCluster",
+		maxVisibleNodes: 10,
+		radialArcAngle: 180,
+		speed: 0,
+		spread: 400,
+	});
+	const layout = computeNeuralGraphLayout({
+		params,
+		selectedNodeId: "root",
+		store: createNeuralGraphStore(treeExplorer),
+		viewport: { height: 700, width: 1000 },
+	});
+	const radius = (nodeId) => {
+		const node = layout.nodesById.get(nodeId);
+		return Number(Math.hypot(node.x, node.y).toFixed(3));
+	};
+
+	assert.equal(layout.layoutShape, "radialCluster");
+	assert.equal(layout.treeBranches.filter((branch) => branch.sourceId === null).at(0).targetId, "root");
+	assert.deepEqual(layout.treeBranches.map((branch) => branch.targetId).sort(), ["alpha", "beta", "delta", "gamma", "root"]);
+	assert.equal(radius("alpha"), radius("gamma"));
+	assert.equal(radius("gamma"), radius("delta"));
+	assert.ok(radius("root") < radius("beta"));
+	assert.ok(radius("beta") < radius("alpha"));
+});
+
+test("computeNeuralGraphLayout keeps radial cycles as cross-links without duplicating nodes", async () => {
+	const { computeNeuralGraphLayout } = await layoutModule;
+	const { DEFAULT_NEURAL_GRAPH_PARAMS, clampNeuralGraphParams } = await paramsModule;
+	const { createNeuralGraphStore } = await storeModule;
+	const cycleExplorer = {
+		edges: [
+			edge("root", "alpha"),
+			edge("alpha", "beta"),
+			edge("beta", "root"),
+		],
+		generatedAt: "2026-04-30T00:00:00.000Z",
+		nodes: [
+			node("root", "Root", "synthesis", 2),
+			node("alpha", "Alpha", "concept", 2),
+			node("beta", "Beta", "entity", 2),
+		],
+		stats: { danglingCount: 0, edgeCount: 3, nodeCount: 3, rawCount: 0, wikiCount: 3 },
+	};
+	const params = clampNeuralGraphParams({
+		...DEFAULT_NEURAL_GRAPH_PARAMS,
+		amplitude: 0,
+		layoutShape: "radialCluster",
+		maxVisibleNodes: 10,
+		speed: 0,
+	});
+	const layout = computeNeuralGraphLayout({
+		params,
+		selectedNodeId: "root",
+		store: createNeuralGraphStore(cycleExplorer),
+		viewport: { height: 700, width: 1000 },
+	});
+
+	assert.deepEqual(layout.nodes.map((item) => item.id).sort(), ["alpha", "beta", "root"]);
+	assert.equal(new Set(layout.nodes.map((item) => item.id)).size, 3);
+	assert.equal(layout.treeBranches.length, 3);
+	assert.equal(layout.crossEdges.length, 1);
+	assert.equal(layout.edges.length, 3);
+});
+
+test("computeNeuralGraphLayout gives disconnected radial components separate origin branches", async () => {
+	const { computeNeuralGraphLayout } = await layoutModule;
+	const { DEFAULT_NEURAL_GRAPH_PARAMS, clampNeuralGraphParams } = await paramsModule;
+	const { createNeuralGraphStore } = await storeModule;
+	const forestExplorer = {
+		edges: [
+			edge("root", "alpha"),
+			edge("orphan", "leaf"),
+		],
+		generatedAt: "2026-04-30T00:00:00.000Z",
+		nodes: [
+			node("root", "Root", "synthesis", 1),
+			node("alpha", "Alpha", "concept", 1),
+			node("orphan", "Orphan", "entity", 1),
+			node("leaf", "Leaf", "source", 1),
+		],
+		stats: { danglingCount: 0, edgeCount: 2, nodeCount: 4, rawCount: 0, wikiCount: 4 },
+	};
+	const params = clampNeuralGraphParams({
+		...DEFAULT_NEURAL_GRAPH_PARAMS,
+		amplitude: 0,
+		layoutShape: "radialCluster",
+		maxVisibleNodes: 10,
+		speed: 0,
+	});
+	const layout = computeNeuralGraphLayout({
+		params,
+		selectedNodeId: null,
+		store: createNeuralGraphStore(forestExplorer),
+		viewport: { height: 700, width: 1000 },
+	});
+
+	const originBranches = layout.treeBranches.filter((branch) => branch.sourceId === null);
+	assert.equal(originBranches.length, 2);
+	assert.equal(new Set(originBranches.map((branch) => branch.targetId)).size, 2);
+});
+
 test("smoothNeuralGraphLayout eases animated node movement while preserving edge bindings", async () => {
 	const { smoothNeuralGraphLayout } = await layoutModule;
 	const viewport = { height: 200, width: 300 };
@@ -890,6 +1016,40 @@ test("computeNeuralGraphLayout applies transient cursor flow without mutating pa
 		neutral.nodes.map(({ id, x, y }) => [id, Number(x.toFixed(3)), Number(y.toFixed(3))]),
 	);
 	assert.equal(params.speed, DEFAULT_NEURAL_GRAPH_PARAMS.speed);
+});
+
+test("computeNeuralGraphLayout keeps ray-only hover motion out of node layout", async () => {
+	const { computeNeuralGraphLayout } = await layoutModule;
+	const { DEFAULT_NEURAL_GRAPH_PARAMS, clampNeuralGraphParams } = await paramsModule;
+	const { createNeuralGraphStore } = await storeModule;
+	const store = createNeuralGraphStore(explorer);
+	const params = clampNeuralGraphParams({ ...DEFAULT_NEURAL_GRAPH_PARAMS, maxVisibleNodes: 10 });
+	const viewport = { height: 700, width: 1000 };
+	const neutral = computeNeuralGraphLayout({ params, selectedNodeId: null, store, time: 1, viewport });
+	const rayOnly = computeNeuralGraphLayout({
+		interaction: {
+			activeNodeId: null,
+			activeRayNodeId: "selected",
+			flowBoost: 0.85,
+			intensity: 0.9,
+			pointer: { x: 880, y: 120 },
+			rayDistance: 12,
+			rayEmphasis: 1,
+			rayProgress: 0.72,
+			velocity: 0.8,
+			velocityPxPerSecond: 980,
+		},
+		params,
+		selectedNodeId: null,
+		store,
+		time: 1,
+		viewport,
+	});
+
+	assert.deepEqual(
+		rayOnly.nodes.map(({ id, x, y }) => [id, Number(x.toFixed(3)), Number(y.toFixed(3))]),
+		neutral.nodes.map(({ id, x, y }) => [id, Number(x.toFixed(3)), Number(y.toFixed(3))]),
+	);
 });
 
 test("computeNeuralGraphLayout keeps missing and dangling nodes fully opaque", async () => {
@@ -1083,6 +1243,69 @@ test("drawNeuralGraph uses the configured ray color for fan strokes", async () =
 		ctx.calls.find(([name]) => name === "strokeStyle"),
 		["strokeStyle", "#123ABC"],
 	);
+});
+
+test("drawNeuralGraph renders radial branches separately from cross-links", async () => {
+	const { createNeuralCamera } = await cameraModule;
+	const { DEFAULT_NEURAL_GRAPH_PARAMS } = await paramsModule;
+	const { drawNeuralGraph } = await rendererModule;
+	const viewport = { height: 300, width: 400 };
+	const root = { ...layoutNode("root", 0), y: -80 };
+	const child = { ...layoutNode("child", 80), y: -160 };
+	const sibling = { ...layoutNode("sibling", -80), y: -160 };
+	const treeEdge = layoutEdge("root-child", root, child);
+	const crossEdge = layoutEdge("child-sibling", child, sibling);
+	const layout = {
+		crossEdges: [crossEdge],
+		edges: [treeEdge, crossEdge],
+		layoutShape: "radialCluster",
+		nodes: [root, child, sibling],
+		nodesById: new Map([
+			[root.id, root],
+			[child.id, child],
+			[sibling.id, sibling],
+		]),
+		origin: { x: 0, y: 0 },
+		treeBranches: [
+			{
+				edge: null,
+				id: "origin-root",
+				source: null,
+				sourceId: null,
+				target: root,
+				targetId: root.id,
+			},
+			{
+				edge: treeEdge.edge,
+				id: treeEdge.id,
+				source: root,
+				sourceId: root.id,
+				target: child,
+				targetId: child.id,
+			},
+		],
+		viewport,
+	};
+	const ctx = createRecordingCanvasContext();
+
+	drawNeuralGraph(ctx, layout, {
+		background: "transparent",
+		camera: createNeuralCamera(),
+		focusProgress: 0,
+		hoveredNodeId: null,
+		params: {
+			...DEFAULT_NEURAL_GRAPH_PARAMS,
+			layoutShape: "radialCluster",
+			showLabels: false,
+			showSignals: false,
+		},
+		selectedNodeId: null,
+		theme: "light",
+		viewport,
+	});
+
+	assert.equal(ctx.calls.filter(([name]) => name === "bezierCurveTo").length, 2);
+	assert.ok(ctx.calls.some(([name]) => name === "lineTo"));
 });
 
 test("drawNeuralGraph bends ray curves with the elastic hover field", async () => {

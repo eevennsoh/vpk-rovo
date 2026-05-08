@@ -637,6 +637,9 @@ test("Personal Graph keeps the owned canvas renderer accessible", () => {
 	assert.match(NEURAL_RENDERER_SOURCE, /rayOriginY \?\? viewport\.height \* params\.rayOriginY/);
 	assert.doesNotMatch(SURFACE_SOURCE, /PERSONAL_GRAPH_NEURAL_PARAMS_STORAGE_KEY/);
 	assert.match(GRAPH_SOURCE, /nodeShape: "square"/);
+	assert.match(GRAPH_SOURCE, /layoutShape: "radialCluster"/);
+	assert.match(GRAPH_SOURCE, /radialArcAngle: 284/);
+	assert.match(GRAPH_SOURCE, /radialDepthCurve: 0\.8/);
 	assert.match(GRAPH_SOURCE, /nodeSize: 8/);
 	assert.match(GRAPH_SOURCE, /originMarkerSize: 12/);
 	assert.match(GRAPH_SOURCE, /rayOriginY: 1/);

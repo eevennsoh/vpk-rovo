@@ -1,5 +1,8 @@
 import type { NeuralPoint, NeuralViewport } from "./camera";
-import type { NeuralGraphInteractionState } from "./interaction-dynamics";
+import {
+	isRayOnlyNeuralGraphInteraction,
+	type NeuralGraphInteractionState,
+} from "./interaction-dynamics";
 import type { NeuralGraphParams } from "./params";
 import {
 	getSelectedNeighborhood,
@@ -27,11 +30,23 @@ export interface NeuralLayoutEdge {
 	target: NeuralLayoutNode;
 }
 
+export interface NeuralLayoutTreeBranch {
+	edge: NeuralGraphEdge | null;
+	id: string;
+	source: NeuralLayoutNode | null;
+	sourceId: string | null;
+	target: NeuralLayoutNode;
+	targetId: string;
+}
+
 export interface NeuralGraphLayout {
+	crossEdges?: NeuralLayoutEdge[];
 	edges: NeuralLayoutEdge[];
+	layoutShape?: "cone" | "radialCluster";
 	nodes: NeuralLayoutNode[];
 	nodesById: Map<string, NeuralLayoutNode>;
 	origin: NeuralPoint;
+	treeBranches?: NeuralLayoutTreeBranch[];
 	viewport: NeuralViewport;
 }
 
@@ -48,7 +63,7 @@ function clampFocusProgress(value = 0) {
 }
 
 function clampInteractionProgress(interaction: NeuralGraphInteractionState | null | undefined, reduceMotion: boolean) {
-	if (reduceMotion || !interaction) return 0;
+	if (reduceMotion || !interaction || isRayOnlyNeuralGraphInteraction(interaction)) return 0;
 	return Math.min(1.5, Math.max(0, interaction.intensity)) * Math.max(0, interaction.flowBoost);
 }
 
@@ -140,6 +155,365 @@ function createInitialNode(
 		x: Math.cos(angle) * radius * depthScale + flow.x,
 		y: Math.sin(angle) * radius * depthScale + tiltOffset + flow.y,
 		z,
+	};
+}
+
+interface RadialClusterTreeNode {
+	angle: number;
+	children: RadialClusterTreeNode[];
+	depth: number;
+	edge: NeuralGraphEdge | null;
+	leafCount: number;
+	node: NeuralGraphNode;
+	parentId: string | null;
+	radius: number;
+}
+
+function getVisibleNeighbors({
+	nodeId,
+	store,
+	visibleNodeIds,
+}: {
+	nodeId: string;
+	store: NeuralGraphStore;
+	visibleNodeIds: ReadonlySet<string>;
+}) {
+	return (store.adjacency.get(nodeId) ?? [])
+		.filter(({ node }) => visibleNodeIds.has(node.id));
+}
+
+function getRadialClusterRootCandidates({
+	selectedNodeId,
+	store,
+	visibleNodeIds,
+}: {
+	selectedNodeId: string | null;
+	store: NeuralGraphStore;
+	visibleNodeIds: ReadonlySet<string>;
+}) {
+	const selected = selectedNodeId ? store.nodesById.get(selectedNodeId) : null;
+	const candidates: NeuralGraphNode[] = [];
+	if (selected && visibleNodeIds.has(selected.id)) {
+		candidates.push(selected);
+	}
+
+	for (const node of store.rankedNodes) {
+		if (!visibleNodeIds.has(node.id) || node.id === selected?.id) continue;
+		candidates.push(node);
+	}
+
+	return candidates;
+}
+
+function buildRadialClusterForest({
+	selectedNodeId,
+	store,
+	visibleNodeIds,
+}: {
+	selectedNodeId: string | null;
+	store: NeuralGraphStore;
+	visibleNodeIds: ReadonlySet<string>;
+}) {
+	const visitedNodeIds = new Set<string>();
+	const roots: RadialClusterTreeNode[] = [];
+
+	function visitNode(
+		node: NeuralGraphNode,
+		parentId: string | null,
+		edge: NeuralGraphEdge | null,
+		depth: number,
+	): RadialClusterTreeNode {
+		visitedNodeIds.add(node.id);
+		const treeNode: RadialClusterTreeNode = {
+			angle: 0,
+			children: [],
+			depth,
+			edge,
+			leafCount: 1,
+			node,
+			parentId,
+			radius: 0,
+		};
+
+		for (const neighbor of getVisibleNeighbors({ nodeId: node.id, store, visibleNodeIds })) {
+			if (neighbor.node.id === parentId || visitedNodeIds.has(neighbor.node.id)) {
+				continue;
+			}
+			treeNode.children.push(visitNode(neighbor.node, node.id, neighbor.edge, depth + 1));
+		}
+
+		return treeNode;
+	}
+
+	for (const rootCandidate of getRadialClusterRootCandidates({ selectedNodeId, store, visibleNodeIds })) {
+		if (visitedNodeIds.has(rootCandidate.id)) continue;
+		roots.push(visitNode(rootCandidate, null, null, 1));
+	}
+
+	return roots;
+}
+
+function countRadialLeaves(node: RadialClusterTreeNode): number {
+	if (node.children.length === 0) {
+		node.leafCount = 1;
+		return node.leafCount;
+	}
+
+	node.leafCount = node.children.reduce((sum, child) => sum + countRadialLeaves(child), 0);
+	return node.leafCount;
+}
+
+function getMaxRadialDepth(node: RadialClusterTreeNode): number {
+	return node.children.reduce(
+		(maxDepth, child) => Math.max(maxDepth, getMaxRadialDepth(child)),
+		node.depth,
+	);
+}
+
+function assignRadialLeafAngles({
+	arcAngle,
+	endAngle,
+	nextLeafIndex,
+	node,
+	startAngle,
+	totalLeaves,
+}: {
+	arcAngle: number;
+	endAngle: number;
+	nextLeafIndex: { current: number };
+	node: RadialClusterTreeNode;
+	startAngle: number;
+	totalLeaves: number;
+}) {
+	if (node.children.length === 0) {
+		node.angle = totalLeaves <= 1
+			? (startAngle + endAngle) / 2
+			: startAngle + (arcAngle * nextLeafIndex.current) / (totalLeaves - 1);
+		nextLeafIndex.current += 1;
+		return node.angle;
+	}
+
+	let weightedAngle = 0;
+	for (const child of node.children) {
+		const childAngle = assignRadialLeafAngles({
+			arcAngle,
+			endAngle,
+			nextLeafIndex,
+			node: child,
+			startAngle,
+			totalLeaves,
+		});
+		weightedAngle += childAngle * child.leafCount;
+	}
+	node.angle = weightedAngle / Math.max(1, node.leafCount);
+	return node.angle;
+}
+
+function assignRadialRadii({
+	maxDepth,
+	node,
+	outerRadius,
+	params,
+	rootRadius,
+}: {
+	maxDepth: number;
+	node: RadialClusterTreeNode;
+	outerRadius: number;
+	params: NeuralGraphParams;
+	rootRadius: number;
+}) {
+	if (node.children.length === 0) {
+		node.radius = outerRadius;
+	} else {
+		const depthProgress = maxDepth <= 1 ? 1 : (node.depth - 1) / Math.max(1, maxDepth - 1);
+		const curvedProgress = Math.pow(Math.max(0, Math.min(1, depthProgress)), params.radialDepthCurve);
+		node.radius = lerp(rootRadius, outerRadius, curvedProgress);
+	}
+
+	for (const child of node.children) {
+		assignRadialRadii({ maxDepth, node: child, outerRadius, params, rootRadius });
+	}
+}
+
+function flattenRadialClusterForest(roots: RadialClusterTreeNode[]) {
+	const flattened: RadialClusterTreeNode[] = [];
+
+	function collect(node: RadialClusterTreeNode) {
+		flattened.push(node);
+		for (const child of node.children) {
+			collect(child);
+		}
+	}
+
+	for (const root of roots) {
+		collect(root);
+	}
+
+	return flattened;
+}
+
+function createRadialLayoutNode({
+	interaction,
+	node,
+	params,
+	reduceMotion,
+	time,
+	viewport,
+}: {
+	interaction?: NeuralGraphInteractionState | null;
+	node: RadialClusterTreeNode;
+	params: NeuralGraphParams;
+	reduceMotion: boolean;
+	time: number;
+	viewport: NeuralViewport;
+}): NeuralLayoutNode {
+	const interactionProgress = clampInteractionProgress(interaction, reduceMotion);
+	const pointerX = interaction?.pointer ? interaction.pointer.x / Math.max(1, viewport.width) - 0.5 : 0;
+	const pointerY = interaction?.pointer ? interaction.pointer.y / Math.max(1, viewport.height) - 0.5 : 0;
+	const z = signedHash(node.node.id, "radial-depth") * params.depthZ * 0.44;
+	const depthScale = params.perspective / Math.max(1, params.perspective + z);
+	const angle = node.angle + params.tiltZ * DEG_TO_RAD * 0.035 + pointerX * interactionProgress * 0.035;
+	const flow = waveNoise(node.node, params, time, reduceMotion, interaction);
+	const flowScale = params.layoutShape === "radialCluster" ? 0.18 : 1;
+	const tiltOffset = Math.sin(params.tiltX * DEG_TO_RAD) * z * 0.16 + pointerY * interactionProgress * params.spread * 0.006;
+
+	return {
+		alpha: 1,
+		baseSize: Math.max(3, params.nodeSize + Math.sqrt(Math.max(1, node.node.degree)) * 0.85),
+		depthScale,
+		id: node.node.id,
+		node: node.node,
+		phase: unitHash(node.node.id, "phase"),
+		x: Math.cos(angle) * node.radius + flow.x * flowScale,
+		y: Math.sin(angle) * node.radius + flow.y * flowScale + tiltOffset,
+		z,
+	};
+}
+
+function createLayoutTreeBranches(
+	branches: ReadonlyArray<NeuralLayoutTreeBranch>,
+	nodesById: Map<string, NeuralLayoutNode>,
+) {
+	const layoutBranches: NeuralLayoutTreeBranch[] = [];
+
+	for (const branch of branches) {
+		const target = nodesById.get(branch.targetId);
+		const source = branch.sourceId ? nodesById.get(branch.sourceId) ?? null : null;
+		if (!target || (branch.sourceId && !source)) {
+			continue;
+		}
+		layoutBranches.push({
+			...branch,
+			source,
+			target,
+		});
+	}
+
+	return layoutBranches;
+}
+
+function computeRadialClusterLayout({
+	focusProgress,
+	interaction,
+	params,
+	reduceMotion,
+	selectedNodeId,
+	store,
+	time,
+	viewport,
+	visibleEdges,
+	visibleNodes,
+}: {
+	focusProgress?: number;
+	interaction?: NeuralGraphInteractionState | null;
+	params: NeuralGraphParams;
+	reduceMotion: boolean;
+	selectedNodeId: string | null;
+	store: NeuralGraphStore;
+	time: number;
+	viewport: NeuralViewport;
+	visibleEdges: NeuralGraphEdge[];
+	visibleNodes: NeuralGraphNode[];
+}): NeuralGraphLayout {
+	const visibleNodeIds = new Set(visibleNodes.map((node) => node.id));
+	const forest = buildRadialClusterForest({ selectedNodeId, store, visibleNodeIds });
+	for (const root of forest) {
+		countRadialLeaves(root);
+	}
+	const totalLeaves = forest.reduce((sum, root) => sum + root.leafCount, 0);
+	const arcAngle = Math.min(360, Math.max(60, params.radialArcAngle)) * DEG_TO_RAD;
+	const startAngle = -Math.PI / 2 - arcAngle / 2;
+	const endAngle = -Math.PI / 2 + arcAngle / 2;
+	const nextLeafIndex = { current: 0 };
+	const outerRadius = params.spread * Math.max(0.2, params.radiusMax / 100);
+	const rootRadius = Math.min(
+		outerRadius * 0.34,
+		params.spread * Math.max(0.08, params.radiusMin / 100) * 0.42,
+	);
+	const maxDepth = forest.reduce((depth, root) => Math.max(depth, getMaxRadialDepth(root)), 1);
+
+	for (const root of forest) {
+		assignRadialLeafAngles({
+			arcAngle,
+			endAngle,
+			nextLeafIndex,
+			node: root,
+			startAngle,
+			totalLeaves,
+		});
+		assignRadialRadii({ maxDepth, node: root, outerRadius, params, rootRadius });
+	}
+
+	const treeNodes = flattenRadialClusterForest(forest);
+	const layoutNodes = treeNodes.map((node) =>
+		createRadialLayoutNode({ interaction, node, params, reduceMotion, time, viewport }),
+	);
+	const nodesById = new Map(layoutNodes.map((node) => [node.id, node]));
+	const treeEdgeIds = new Set<string>();
+	const treeBranchTemplates: NeuralLayoutTreeBranch[] = [];
+
+	for (const treeNode of treeNodes) {
+		if (treeNode.edge) {
+			treeEdgeIds.add(treeNode.edge.id);
+		}
+		const target = nodesById.get(treeNode.node.id);
+		const source = treeNode.parentId ? nodesById.get(treeNode.parentId) ?? null : null;
+		if (!target) continue;
+		treeBranchTemplates.push({
+			edge: treeNode.edge,
+			id: treeNode.edge?.id ?? `origin-${treeNode.node.id}`,
+			source,
+			sourceId: treeNode.parentId,
+			target,
+			targetId: treeNode.node.id,
+		});
+	}
+
+	const layoutEdges = createLayoutEdges(visibleEdges, nodesById);
+	const crossEdges = createLayoutEdges(
+		visibleEdges.filter((edge) => !treeEdgeIds.has(edge.id)),
+		nodesById,
+	);
+
+	applySelectionFocusLayout({
+		focusProgress,
+		nodes: layoutNodes,
+		params,
+		selectedNodeId,
+		store,
+	});
+
+	const focusedNodesById = new Map(layoutNodes.map((node) => [node.id, node]));
+
+	return {
+		crossEdges: createLayoutEdges(crossEdges.map((edge) => edge.edge), focusedNodesById),
+		edges: createLayoutEdges(layoutEdges.map((edge) => edge.edge), focusedNodesById),
+		layoutShape: "radialCluster",
+		nodes: layoutNodes,
+		nodesById: focusedNodesById,
+		origin: { x: 0, y: 0 },
+		treeBranches: createLayoutTreeBranches(treeBranchTemplates, focusedNodesById),
+		viewport,
 	};
 }
 
@@ -316,9 +690,11 @@ export function smoothNeuralGraphLayout({
 
 	return {
 		...next,
+		crossEdges: next.crossEdges ? createLayoutEdges(next.crossEdges.map((edge) => edge.edge), nodesById) : undefined,
 		edges: createLayoutEdges(next.edges.map((edge) => edge.edge), nodesById),
 		nodes,
 		nodesById,
+		treeBranches: next.treeBranches ? createLayoutTreeBranches(next.treeBranches, nodesById) : undefined,
 	};
 }
 
@@ -346,9 +722,11 @@ export function pinNeuralGraphNodePosition({
 
 	return {
 		...layout,
+		crossEdges: layout.crossEdges ? createLayoutEdges(layout.crossEdges.map((edge) => edge.edge), nodesById) : undefined,
 		edges: createLayoutEdges(layout.edges.map((edge) => edge.edge), nodesById),
 		nodes,
 		nodesById,
+		treeBranches: layout.treeBranches ? createLayoutTreeBranches(layout.treeBranches, nodesById) : undefined,
 	};
 }
 
@@ -373,6 +751,21 @@ export function computeNeuralGraphLayout({
 }): NeuralGraphLayout {
 	const visibleNodes = getVisibleGraphNodes(store, selectedNodeId, params.maxVisibleNodes);
 	const visibleEdges = getVisibleGraphEdges(store, visibleNodes);
+	if (params.layoutShape === "radialCluster") {
+		return computeRadialClusterLayout({
+			focusProgress,
+			interaction,
+			params,
+			reduceMotion,
+			selectedNodeId,
+			store,
+			time,
+			viewport,
+			visibleEdges,
+			visibleNodes,
+		});
+	}
+
 	const layoutNodes = visibleNodes.map((node, index) =>
 		createInitialNode(node, index, visibleNodes.length, params, time, reduceMotion, viewport, interaction),
 	);
@@ -391,6 +784,7 @@ export function computeNeuralGraphLayout({
 
 	return {
 		edges: layoutEdges,
+		layoutShape: "cone",
 		nodes: layoutNodes,
 		nodesById,
 		origin: { x: 0, y: 0 },

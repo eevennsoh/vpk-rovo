@@ -1,6 +1,7 @@
 import { normalizeNeuralGraphColorValue } from "./colors";
 
 export type NeuralGraphNodeShape = "circle" | "square";
+export type NeuralGraphLayoutShape = "cone" | "radialCluster";
 
 export interface NeuralGraphParams {
 	amplitude: number;
@@ -23,6 +24,7 @@ export interface NeuralGraphParams {
 	hoverScale: number;
 	labelMetaSize: number;
 	labelSize: number;
+	layoutShape: NeuralGraphLayoutShape;
 	maxVisibleNodes: number;
 	nodeColor: string;
 	nodeHoverColor: string;
@@ -49,6 +51,8 @@ export interface NeuralGraphParams {
 	rayOpacity: number;
 	rayOriginY: number;
 	rayWidth: number;
+	radialArcAngle: number;
+	radialDepthCurve: number;
 	selectedScale: number;
 	showEdges: boolean;
 	showLabels: boolean;
@@ -175,6 +179,7 @@ export const DEFAULT_NEURAL_GRAPH_PARAMS: NeuralGraphParams = {
 	hoverScale: 1.42,
 	labelMetaSize: 10,
 	labelSize: 13,
+	layoutShape: "cone",
 	maxVisibleNodes: 86,
 	nodeColor: "var(--ds-icon)",
 	nodeHoverColor: "var(--ds-icon-accent-orange)",
@@ -201,6 +206,8 @@ export const DEFAULT_NEURAL_GRAPH_PARAMS: NeuralGraphParams = {
 	rayOpacity: 0.02,
 	rayOriginY: 1.05,
 	rayWidth: 2,
+	radialArcAngle: 240,
+	radialDepthCurve: 0.85,
 	selectedScale: 1.85,
 	showEdges: true,
 	showLabels: true,
@@ -238,6 +245,14 @@ export const NEURAL_GRAPH_PARAM_SECTIONS: NeuralGraphParamSection[] = [
 			{ kind: "number", key: "perspective", label: "Perspective", max: 2000, min: 200, step: 50 },
 			{ kind: "number", key: "originY", label: "Origin Y", max: 1.5, min: 0.5, step: 0.05 },
 			{ kind: "number", key: "originOffset", label: "Origin Offset", max: 200, min: -200, step: 10 },
+		],
+	},
+	{
+		id: "radial",
+		label: "Radial",
+		params: [
+			{ kind: "number", key: "radialArcAngle", label: "Arc Angle", max: 360, min: 60, step: 1 },
+			{ kind: "number", key: "radialDepthCurve", label: "Depth Curve", max: 1.5, min: 0.35, step: 0.05 },
 		],
 	},
 	{
@@ -363,6 +378,10 @@ function isNodeShape(value: unknown): value is NeuralGraphNodeShape {
 	return value === "circle" || value === "square";
 }
 
+function isLayoutShape(value: unknown): value is NeuralGraphLayoutShape {
+	return value === "cone" || value === "radialCluster";
+}
+
 export function clampNeuralGraphParams(input: Partial<NeuralGraphParams> = {}): NeuralGraphParams {
 	const next = { ...DEFAULT_NEURAL_GRAPH_PARAMS, ...input };
 	const clamped: NeuralGraphParams = { ...DEFAULT_NEURAL_GRAPH_PARAMS };
@@ -384,6 +403,7 @@ export function clampNeuralGraphParams(input: Partial<NeuralGraphParams> = {}): 
 	}
 
 	clamped.nodeShape = isNodeShape(next.nodeShape) ? next.nodeShape : DEFAULT_NEURAL_GRAPH_PARAMS.nodeShape;
+	clamped.layoutShape = isLayoutShape(next.layoutShape) ? next.layoutShape : DEFAULT_NEURAL_GRAPH_PARAMS.layoutShape;
 	for (const key of NEURAL_GRAPH_COLOR_PARAM_KEYS) {
 		const value = next[key];
 		clamped[key] = normalizeNeuralGraphColorValue(value, DEFAULT_NEURAL_GRAPH_PARAMS[key]);
