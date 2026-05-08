@@ -265,3 +265,6 @@ Start all three (including RovoDev): `pnpm run rovodev`
 - `pnpm run dev` starts both backend and frontend via `concurrently`; do not run `pnpm run rovodev` at the same time or you'll get port conflicts.
 - The `pnpm install` warning about ignored build scripts (better-sqlite3, node-llama-cpp) is expected and does not affect the application — these are transitive deps from optional features.
 - Health endpoint: `curl http://localhost:8080/api/health` — returns JSON with service status and auth config summary.
+- The `rovodev` CLI (RovoDev Serve) is not available in cloud VMs — use `pnpm run dev` instead of `pnpm run rovodev`. AI chat streaming won't work without RovoDev, but all UI, component docs, and non-chat API routes function normally.
+- AI Gateway endpoints require outbound HTTPS to `ai-gateway.us-east-1.staging.atl-paas.net`. If the cloud VM has restricted egress, gateway-backed features (image/sound/suggestions/chat-title) will return null/empty results gracefully.
+- When writing `ASAP_PRIVATE_KEY` to `.env.local`, the value already includes surrounding double quotes and literal `\n` escape sequences — do not add extra quotes around it or you'll get "Maximum call stack size exceeded" from Next.js env parsing.
