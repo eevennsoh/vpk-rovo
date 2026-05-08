@@ -1,8 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchExplorer } from "../lib/personal-graph-api";
 import type { VaultExplorer } from "../lib/personal-graph-types";
+
+interface UseVaultExplorerOptions {
+	enabled?: boolean;
+}
 
 interface VaultExplorerState {
 	error: Error | null;
@@ -11,12 +15,24 @@ interface VaultExplorerState {
 	refresh: () => Promise<void>;
 }
 
-export function useVaultExplorer(): VaultExplorerState {
+export function useVaultExplorer({ enabled = true }: UseVaultExplorerOptions = {}): VaultExplorerState {
 	const [explorer, setExplorer] = useState<VaultExplorer | null>(null);
 	const [error, setError] = useState<Error | null>(null);
-	const [isLoading, setIsLoading] = useState(true);
+	const [isLoading, setIsLoading] = useState(enabled);
+	const enabledRef = useRef(enabled);
+
+	useEffect(() => {
+		enabledRef.current = enabled;
+	}, [enabled]);
 
 	const refresh = useCallback(async () => {
+		if (!enabledRef.current) {
+			setExplorer(null);
+			setError(null);
+			setIsLoading(false);
+			return;
+		}
+
 		const controller = new AbortController();
 		setIsLoading(true);
 		try {
@@ -35,8 +51,15 @@ export function useVaultExplorer(): VaultExplorerState {
 	}, []);
 
 	useEffect(() => {
+		if (!enabled) {
+			setExplorer(null);
+			setError(null);
+			setIsLoading(false);
+			return;
+		}
+
 		void refresh();
-	}, [refresh]);
+	}, [enabled, refresh]);
 
 	useEffect(() => {
 		function handleFocus() {

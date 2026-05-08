@@ -68,6 +68,13 @@ const SUMMARY_HOOK_SOURCE = fs.readFileSync(
 	),
 	"utf8",
 );
+const VAULT_EXPLORER_HOOK_SOURCE = fs.readFileSync(
+	path.join(
+		__dirname,
+		"../../../components/arts/personal-graph/hooks/use-vault-explorer.ts",
+	),
+	"utf8",
+);
 const PERSONAL_GRAPH_API_SOURCE = fs.readFileSync(
 	path.join(
 		__dirname,
@@ -485,6 +492,22 @@ test("Personal Graph clears TWG expansion state on graph resets and filter chang
 	assert.match(SURFACE_SOURCE, /previousSourceRef\.current = source;[\s\S]*setChatExplorer\(null\);[\s\S]*clearTwgExpansionState\(\);/);
 });
 
+test("Personal Graph does not fetch the vault explorer before a vault is ready", () => {
+	assert.match(SURFACE_SOURCE, /const explorerEnabled = isTwgMode \|\| vaultSettings\?\.status === "ready";/);
+	assert.match(SURFACE_SOURCE, /useVaultExplorer\(\{ enabled: explorerEnabled \}\)/);
+	assert.match(VAULT_EXPLORER_HOOK_SOURCE, /interface UseVaultExplorerOptions \{[\s\S]*enabled\?: boolean;[\s\S]*\}/);
+	assert.match(VAULT_EXPLORER_HOOK_SOURCE, /const enabledRef = useRef\(enabled\);/);
+	assert.match(VAULT_EXPLORER_HOOK_SOURCE, /enabledRef\.current = enabled;/);
+	assert.match(
+		VAULT_EXPLORER_HOOK_SOURCE,
+		/if \(!enabledRef\.current\) \{[\s\S]*setExplorer\(null\);[\s\S]*setError\(null\);[\s\S]*setIsLoading\(false\);[\s\S]*return;[\s\S]*\}/,
+	);
+	assert.match(
+		VAULT_EXPLORER_HOOK_SOURCE,
+		/useEffect\(\(\) => \{[\s\S]*if \(!enabled\) \{[\s\S]*setExplorer\(null\);[\s\S]*setError\(null\);[\s\S]*setIsLoading\(false\);[\s\S]*return;[\s\S]*\}[\s\S]*void refresh\(\);[\s\S]*\}, \[enabled, refresh\]\);/,
+	);
+});
+
 test("Personal Graph enables liquid glass stage tracking for route glass UI", () => {
 	assert.match(
 		SURFACE_SOURCE,
@@ -770,6 +793,15 @@ test("Personal Graph exposes primary graph actions through a curved control flyo
 	assert.match(SURFACE_SOURCE, /<PersonalGraphSourcePicker/);
 	assert.match(SOURCE_PICKER_SOURCE, /aria-label="Choose Personal Graph vault folder"/);
 	assert.match(SURFACE_SOURCE, /shouldShowVaultOnboarding/);
+	assert.match(SURFACE_SOURCE, /const \[isTwgConnecting, setIsTwgConnecting\] = useState\(false\);/);
+	assert.match(SURFACE_SOURCE, /const isTwgReady = isTwgMode && Boolean\(twgGeneratedAt\) && !isTwgConnecting && !isTwgAuthError;/);
+	assert.match(SURFACE_SOURCE, /isTwgMode && \(!twgGeneratedAt \|\| isTwgConnecting\)/);
+	assert.match(
+		SURFACE_SOURCE,
+		/setIsTwgConnecting\(true\);[\s\S]*const next = await setSource\("twg"\);[\s\S]*await refreshTwg\(\);[\s\S]*await handleRefreshAll\(\);[\s\S]*setIsTwgConnecting\(false\);/,
+	);
+	assert.match(SURFACE_SOURCE, /isBusy=\{isVaultSelecting \|\| isSourceSwitching \|\| isTwgConnecting\}/);
+	assert.match(SURFACE_SOURCE, /isTwgConnecting[\s\S]*\? "Connecting to Team Work Graph…"/);
 	assert.match(SURFACE_SOURCE, /key: "refresh"/);
 	assert.match(SURFACE_SOURCE, /label: "Refresh"/);
 	assert.match(SURFACE_SOURCE, /aria-label="Refresh"/);
@@ -786,7 +818,11 @@ test("Personal Graph exposes primary graph actions through a curved control flyo
 	assert.match(SURFACE_SOURCE, /const collapseDelay = shouldReduceMotion \? 0 : PERSONAL_GRAPH_RESET_FLYOUT_COLLAPSE_DELAY_MS;/);
 	assert.match(
 		SURFACE_SOURCE,
-		/setTimeout\(\(\) => \{[\s\S]*setIsResetFlyoutCollapsing\(false\);[\s\S]*setIntroReplayKey\(\(current\) => current \+ 1\);[\s\S]*handleRefreshAll\(\);/,
+		/setTimeout\(\(\) => \{[\s\S]*setIsResetFlyoutCollapsing\(false\);[\s\S]*setIntroReplayKey\(\(current\) => current \+ 1\);[\s\S]*\}, collapseDelay\);/,
+	);
+	assert.doesNotMatch(
+		SURFACE_SOURCE,
+		/setTimeout\(\(\) => \{[\s\S]*handleRefreshAll\(\);[\s\S]*\}, collapseDelay\);/,
 	);
 	assert.match(SURFACE_SOURCE, /setSelectedNodeId\(null\);/);
 	assert.match(SURFACE_SOURCE, /setIsCaptureQueueOpen\(false\);/);

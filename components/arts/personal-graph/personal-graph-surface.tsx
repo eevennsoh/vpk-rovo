@@ -429,7 +429,6 @@ export function PersonalGraphSurface({
 	style,
 	...props
 }: Readonly<PersonalGraphSurfaceProps>) {
-	const { error, explorer: rawExplorer, isLoading, refresh } = useVaultExplorer();
 	const {
 		isResetting: isVaultResetting,
 		isSelecting: isVaultSelecting,
@@ -446,6 +445,8 @@ export function PersonalGraphSurface({
 		source,
 	} = useGraphSource();
 	const isTwgMode = source === "twg";
+	const explorerEnabled = isTwgMode || vaultSettings?.status === "ready";
+	const { error, explorer: rawExplorer, isLoading, refresh } = useVaultExplorer({ enabled: explorerEnabled });
 	const [chatExplorer, setChatExplorer] = useState<VaultExplorer | null>(null);
 	const [expandedExplorer, setExpandedExplorer] = useState<VaultExplorer | null>(null);
 	const [expandingTwgNodeIds, setExpandingTwgNodeIds] = useState<ReadonlySet<string>>(() => new Set());
@@ -463,17 +464,18 @@ export function PersonalGraphSurface({
 	const [introReplayKey, setIntroReplayKey] = useState(0);
 	const [flyoutCollapseKey, setFlyoutCollapseKey] = useState(0);
 	const [isResetFlyoutCollapsing, setIsResetFlyoutCollapsing] = useState(false);
+	const [isTwgConnecting, setIsTwgConnecting] = useState(false);
 	const { phase } = usePersonalGraphIntro(introReplayKey);
 	const isHeaderRevealed = phase === "title" || phase === "subtext" || phase === "controls" || phase === "settle" || phase === "search" || phase === "graph" || phase === "done";
 	const isSubtextRevealed = phase === "subtext" || phase === "controls" || phase === "settle" || phase === "search" || phase === "graph" || phase === "done";
 	const isIntroSettled = phase === "settle" || phase === "search" || phase === "graph" || phase === "done";
 	const isVaultReady = vaultSettings?.status === "ready";
-	const isTwgReady = isTwgMode && Boolean(twgGeneratedAt) && !isTwgAuthError;
+	const isTwgReady = isTwgMode && Boolean(twgGeneratedAt) && !isTwgConnecting && !isTwgAuthError;
 	const isReady = isTwgMode ? isTwgReady : isVaultReady;
 	const isVaultReadyForLayout = isReady || isResetFlyoutCollapsing;
 	const shouldShowVaultOnboarding = Boolean(vaultSettings) && !isVaultReadyForLayout && !isTwgMode;
 	const shouldShowSourcePicker =
-		!isVaultReadyForLayout && !isTwgAuthError && (vaultSettings?.status === "unconfigured" || (isTwgMode && !twgGeneratedAt));
+		!isVaultReadyForLayout && !isTwgAuthError && (vaultSettings?.status === "unconfigured" || (isTwgMode && (!twgGeneratedAt || isTwgConnecting)));
 	const isPostSettle = isVaultReadyForLayout && isIntroSettled;
 	const isSearchRevealed = isVaultReadyForLayout && (phase === "search" || phase === "graph" || phase === "done");
 	const isGraphRevealed = isSearchRevealed;
@@ -526,12 +528,17 @@ export function PersonalGraphSurface({
 		}
 	}, [clearTwgExpansionState, handleRefreshAll, selectVault, setSource]);
 	const handleConnectTwg = useCallback(async () => {
-		clearTwgExpansionState();
-		setChatExplorer(null);
-		const next = await setSource("twg");
-		if (next?.source === "twg") {
-			await refreshTwg();
-			handleRefreshAll();
+		setIsTwgConnecting(true);
+		try {
+			clearTwgExpansionState();
+			setChatExplorer(null);
+			const next = await setSource("twg");
+			if (next?.source === "twg") {
+				await refreshTwg();
+				await handleRefreshAll();
+			}
+		} finally {
+			setIsTwgConnecting(false);
 		}
 	}, [clearTwgExpansionState, handleRefreshAll, refreshTwg, setSource]);
 	const handleAskChat = useCallback((prompt: string) => {
@@ -567,7 +574,6 @@ export function PersonalGraphSurface({
 				resetFlyoutCollapseTimerRef.current = null;
 				setIsResetFlyoutCollapsing(false);
 				setIntroReplayKey((current) => current + 1);
-				handleRefreshAll();
 			}, collapseDelay);
 			return;
 		}
@@ -581,13 +587,12 @@ export function PersonalGraphSurface({
 				resetFlyoutCollapseTimerRef.current = null;
 				setIsResetFlyoutCollapsing(false);
 				setIntroReplayKey((current) => current + 1);
-				handleRefreshAll();
 			}, collapseDelay);
 			return;
 		}
 
 		setIsResetFlyoutCollapsing(false);
-	}, [clearTwgExpansionState, handleRefreshAll, isTwgMode, resetVault, setSource, shouldReduceMotion, twgChat]);
+	}, [clearTwgExpansionState, isTwgMode, resetVault, setSource, shouldReduceMotion, twgChat]);
 	const handleToggleTheme = useCallback(() => {
 		if (theme === "light") {
 			setTheme("dark");
@@ -602,7 +607,9 @@ export function PersonalGraphSurface({
 		? isTwgMode
 			? getTwgGraphStatsText(explorer, twgGeneratedAt)
 			: getGraphStatsText(explorer)
-		: shouldShowSourcePicker
+		: isTwgConnecting
+			? "Connecting to Team Work Graph…"
+			: shouldShowSourcePicker
 			? PERSONAL_GRAPH_UNCONFIGURED_BYLINE
 			: isTwgMode
 				? "Connecting to Team Work Graph…"
@@ -906,7 +913,7 @@ export function PersonalGraphSurface({
 								transition={{ duration: 0.45, ease: easeOut }}
 							>
 								<PersonalGraphSourcePicker
-									isBusy={isVaultSelecting || isSourceSwitching}
+									isBusy={isVaultSelecting || isSourceSwitching || isTwgConnecting}
 									onPickTwg={handleConnectTwg}
 									onPickVault={handleChooseVault}
 								/>
