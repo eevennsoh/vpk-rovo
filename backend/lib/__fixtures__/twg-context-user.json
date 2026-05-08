@@ -1,0 +1,247 @@
+{
+	"apiVersion": "v2",
+	"command": "context.user",
+	"request": {
+		"command": "twg context user",
+		"identifier": "me",
+		"detail": "summary",
+		"since": "P7D",
+		"relationships": null,
+		"types": null,
+		"first": 50,
+		"after": null
+	},
+	"data": {
+		"object": {
+			"ari": "ari:cloud:identity::user/557058:47cd8d5d-89de-445e-9e6a-875cd3c36974",
+			"type": "AtlassianAccountUser",
+			"name": "Ee Venn Soh"
+		},
+		"relationshipSummary": [
+			{
+				"relationshipName": "atlassian_user_contributed_to_confluence_page",
+				"direction": "outbound",
+				"targetType": "ConfluencePage",
+				"count": 4,
+				"targets": [
+					{
+						"ari": "ari:cloud:confluence:a436116f-02ce-4520-8fbb-7301462a1674:page/2974719190",
+						"type": "ConfluencePage"
+					},
+					{
+						"ari": "ari:cloud:confluence:a436116f-02ce-4520-8fbb-7301462a1674:page/5632532039",
+						"type": "ConfluencePage"
+					}
+				]
+			},
+			{
+				"relationshipName": "atlassian_user_contributed_to_confluence_blogpost",
+				"direction": "outbound",
+				"targetType": "ConfluenceBlogPost",
+				"count": 1,
+				"targets": [
+					{
+						"ari": "ari:cloud:confluence:a436116f-02ce-4520-8fbb-7301462a1674:blogpost/4403298514",
+						"type": "ConfluenceBlogPost"
+					}
+				]
+			},
+			{
+				"relationshipName": "atlassian_user_contributed_to_confluence_whiteboard",
+				"direction": "outbound",
+				"targetType": "ConfluenceWhiteboard",
+				"count": 9,
+				"targets": [
+					{
+						"ari": "ari:cloud:confluence:a436116f-02ce-4520-8fbb-7301462a1674:whiteboard/6083047267",
+						"type": "ConfluenceWhiteboard"
+					},
+					{
+						"ari": "ari:cloud:confluence:a436116f-02ce-4520-8fbb-7301462a1674:whiteboard/6340405089",
+						"type": "ConfluenceWhiteboard"
+					}
+				]
+			},
+			{
+				"relationshipName": "atlassian_user_viewed_confluence_page",
+				"direction": "outbound",
+				"targetType": "ConfluencePage",
+				"count": 31,
+				"targets": [
+					{
+						"ari": "ari:cloud:confluence:a436116f-02ce-4520-8fbb-7301462a1674:page/337740216",
+						"type": "ConfluencePage"
+					},
+					{
+						"ari": "ari:cloud:confluence:a436116f-02ce-4520-8fbb-7301462a1674:page/609899846",
+						"type": "ConfluencePage"
+					}
+				]
+			},
+			{
+				"relationshipName": "atlassian_user_viewed_confluence_blogpost",
+				"direction": "outbound",
+				"targetType": "ConfluenceBlogPost",
+				"count": 3,
+				"targets": [
+					{
+						"ari": "ari:cloud:confluence:a436116f-02ce-4520-8fbb-7301462a1674:blogpost/6894290061",
+						"type": "ConfluenceBlogPost"
+					},
+					{
+						"ari": "ari:cloud:confluence:a436116f-02ce-4520-8fbb-7301462a1674:blogpost/6934333436",
+						"type": "ConfluenceBlogPost"
+					}
+				]
+			},
+			{
+				"relationshipName": "atlassian_user_owns_confluence_page",
+				"direction": "outbound",
+				"targetType": "ConfluencePage",
+				"count": 1,
+				"targets": [
+					{
+						"ari": "ari:cloud:confluence:a436116f-02ce-4520-8fbb-7301462a1674:page/195116060",
+						"type": "ConfluencePage"
+					}
+				]
+			},
+			{
+				"relationshipName": "atlassian_user_mentioned_in_confluence_page",
+				"direction": "outbound",
+				"targetType": "ConfluencePage",
+				"count": 41,
+				"targets": [
+					{
+						"ari": "ari:cloud:confluence:a436116f-02ce-4520-8fbb-7301462a1674:page/2974719190",
+						"type": "ConfluencePage"
+					},
+					{
+						"ari": "ari:cloud:confluence:a436116f-02ce-4520-8fbb-7301462a1674:page/5291964221",
+						"type": "ConfluencePage"
+					}
+				]
+			},
+			{
+				"relationshipName": "atlassian_user_created_jira_work_item",
+				"direction": "outbound",
+				"targetType": "JiraIssue",
+				"count": 1,
+				"targets": [
+					{
+						"ari": "ari:cloud:jira:dd7c08c5-5a8a-4ec5-857e-3f916d37fd10:issue/1932029",
+						"type": "JiraIssue",
+						"name": "Thanks for all the hard work on helping out with the presso!",
+						"url": "https://peopleops.atlassian.net/browse/KUDOS-545493"
+					}
+				]
+			},
+			{
+				"relationshipName": "atlassian_user_updated_jira_work_item",
+				"direction": "outbound",
+				"targetType": "JiraIssue",
+				"count": 1,
+				"targets": [
+					{
+						"ari": "ari:cloud:jira:dd7c08c5-5a8a-4ec5-857e-3f916d37fd10:issue/1932029",
+						"type": "JiraIssue",
+						"name": "Thanks for all the hard work on helping out with the presso!",
+						"url": "https://peopleops.atlassian.net/browse/KUDOS-545493"
+					}
+				]
+			},
+			{
+				"relationshipName": "atlassian_user_viewed_jira_work_item",
+				"direction": "outbound",
+				"targetType": "JiraIssue",
+				"count": 1,
+				"targets": [
+					{
+						"ari": "ari:cloud:jira:DUMMY-158c8204-ff3b-47c2-adbb-a0906ccc722b:issue/967187",
+						"type": "JiraIssue",
+						"name": "TeamUS26 Demo Bugs",
+						"url": "https://product-fabric.atlassian.net/browse/ROVOFE-2838"
+					}
+				]
+			},
+			{
+				"relationshipName": "atlassian_user_reported_jira_work_item",
+				"direction": "outbound",
+				"targetType": "JiraIssue",
+				"count": 1,
+				"targets": [
+					{
+						"ari": "ari:cloud:jira:dd7c08c5-5a8a-4ec5-857e-3f916d37fd10:issue/1932029",
+						"type": "JiraIssue",
+						"name": "Thanks for all the hard work on helping out with the presso!",
+						"url": "https://peopleops.atlassian.net/browse/KUDOS-545493"
+					}
+				]
+			},
+			{
+				"relationshipName": "atlassian_user_viewed_loom_video",
+				"direction": "outbound",
+				"targetType": "LoomVideo",
+				"count": 7,
+				"targets": [
+					{
+						"ari": "ari:cloud:loom:a436116f-02ce-4520-8fbb-7301462a1674:video/activation/1621dc1f-3702-4525-84ba-fad829566798/2d04eeea01264aeeb9a32731f5d4e4c0",
+						"type": "LoomVideo",
+						"name": "Why not use Replit?",
+						"url": "https://www.loom.com/share/2d04eeea01264aeeb9a32731f5d4e4c0"
+					},
+					{
+						"ari": "ari:cloud:loom:a436116f-02ce-4520-8fbb-7301462a1674:video/activation/1621dc1f-3702-4525-84ba-fad829566798/abc67448a8274c84b391d712614d5ae5",
+						"type": "LoomVideo",
+						"name": "TeamworkGraph Site Copy and Flow Update",
+						"url": "https://www.loom.com/share/abc67448a8274c84b391d712614d5ae5"
+					}
+				]
+			},
+			{
+				"relationshipName": "atlassian_user_reacted_to_loom_video",
+				"direction": "outbound",
+				"targetType": "LoomVideo",
+				"count": 1,
+				"targets": [
+					{
+						"ari": "ari:cloud:loom:a436116f-02ce-4520-8fbb-7301462a1674:video/activation/1621dc1f-3702-4525-84ba-fad829566798/abc67448a8274c84b391d712614d5ae5",
+						"type": "LoomVideo",
+						"name": "TeamworkGraph Site Copy and Flow Update",
+						"url": "https://www.loom.com/share/abc67448a8274c84b391d712614d5ae5"
+					}
+				]
+			},
+			{
+				"relationshipName": "atlassian_user_invited_to_loom_meeting",
+				"direction": "outbound",
+				"targetType": "LoomMeeting",
+				"count": 13,
+				"targets": [
+					{
+						"ari": "ari:cloud:loom:a436116f-02ce-4520-8fbb-7301462a1674:meeting/activation/1621dc1f-3702-4525-84ba-fad829566798/f1d1514a-ec05-43f1-9f4f-8c53324cee19",
+						"type": "LoomMeeting",
+						"name": "Daily standup [AI Solution Keynote]"
+					},
+					{
+						"ari": "ari:cloud:loom:a436116f-02ce-4520-8fbb-7301462a1674:meeting/activation/1621dc1f-3702-4525-84ba-fad829566798/1dd77e90-a3ff-4c21-aa67-e73b4d49d84e",
+						"type": "LoomMeeting",
+						"name": "AI create standup"
+					}
+				]
+			}
+		],
+		"pagination": {
+			"hasNextPage": false,
+			"endCursor": null
+		}
+	},
+	"meta": {
+		"resourceClass": "projection",
+		"sourceMode": "native",
+		"resourceType": "context.user"
+	},
+	"warnings": [
+		"Partial result: 3 relationship branches could not be loaded. Other branches returned successfully."
+	]
+}

@@ -139,11 +139,20 @@ async function executeActionPlan(plan, raw) {
 	return { logEntry, pagesWritten };
 }
 
-async function* run({ confirmation = false, qmdImpl = qmd, sourcePath, summarizeImpl = summarize.summarizeRaw, aiGatewayProvider } = {}) {
+async function* run({
+	confirmation = false,
+	qmdImpl = qmd,
+	sourcePath,
+	summarizeImpl = summarize.summarizeRaw,
+	summaryOverride,
+	aiGatewayProvider,
+} = {}) {
 	yield { stage: "reading", sourcePath, type: "stage" };
 	const raw = vault.readRaw(sourcePath);
 	yield { sourcePath: raw.relativePath, stage: "summarizing", type: "stage" };
-	const summary = await summarizeImpl({ content: raw.content, kind: path.extname(raw.relativePath).slice(1) || "markdown" });
+	const summary = summaryOverride
+		? summarize.validateSummaryShape(summaryOverride)
+		: await summarizeImpl({ content: raw.content, kind: path.extname(raw.relativePath).slice(1) || "markdown" });
 	yield { stage: "summarizing", summary: summary.summary, takeaways: summary.takeaways, type: "summary" };
 	yield { stage: "linking", type: "stage" };
 	const related = await qmdImpl.relatedPages(summary.summary, { limit: 8 });

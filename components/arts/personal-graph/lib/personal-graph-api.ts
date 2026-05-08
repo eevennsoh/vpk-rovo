@@ -3,8 +3,11 @@ import type {
 	LibrarianStreamEvent,
 	LogEntry,
 	PageBody,
+	PersonalGraphSummarizeEvent,
+	PersonalGraphSummaryLength,
 	QmdResult,
 	RawSourceWriteResult,
+	TwgNodeExpandResult,
 	UnprocessedRawSources,
 	VaultExplorer,
 	VaultSettings,
@@ -121,8 +124,99 @@ export async function fetchLog(options: { signal?: AbortSignal } = {}) {
 	return data.entries;
 }
 
+export interface GraphSourceState {
+	source: "vault" | "twg";
+	generatedAt: string | null;
+}
+
+export type TwgChatFrame =
+	| { type: "thinking"; step: number }
+	| { type: "tool"; name: string; args: { slice: string; params: Record<string, unknown> } }
+	| { type: "tool_result"; count: number; summary: string; error?: string }
+	| { type: "text_delta"; delta: string }
+	| { type: "graph"; explorer: VaultExplorer }
+	| { type: "error"; error: string }
+	| { type: "done" };
+
+export interface TwgChatMessage {
+	role: "user" | "assistant";
+	content: string;
+}
+
+export function fetchActiveSource(options: { signal?: AbortSignal } = {}) {
+	return fetchJson<GraphSourceState>("/api/personal-graph/source", { signal: options.signal });
+}
+
+export function setActiveSource(source: "vault" | "twg") {
+	return fetchJson<GraphSourceState>("/api/personal-graph/source", {
+		body: JSON.stringify({ source }),
+		headers: { "Content-Type": "application/json" },
+		method: "POST",
+	});
+}
+
+export function refreshTwg(options: { signal?: AbortSignal } = {}) {
+	return fetchJson<VaultExplorer>("/api/personal-graph/twg/refresh", {
+		body: "{}",
+		headers: { "Content-Type": "application/json" },
+		method: "POST",
+		signal: options.signal,
+	});
+}
+
+export function expandTwgNode(nodeId: string, options: { signal?: AbortSignal } = {}) {
+	return fetchJson<TwgNodeExpandResult>("/api/personal-graph/twg/expand", {
+		body: JSON.stringify({ nodeId }),
+		headers: { "Content-Type": "application/json" },
+		method: "POST",
+		signal: options.signal,
+	});
+}
+
+export async function* streamTwgChat(
+	body: { messages: TwgChatMessage[] },
+	options: { signal?: AbortSignal } = {},
+): AsyncGenerator<TwgChatFrame> {
+	const response = await fetch("/api/personal-graph/twg/chat", {
+		body: JSON.stringify(body),
+		headers: { "Content-Type": "application/json" },
+		method: "POST",
+		signal: options.signal,
+	});
+	if (!response.ok || !response.body) {
+		throw new Error(await response.text());
+	}
+	const reader = response.body.getReader();
+	const decoder = new TextDecoder();
+	let buffer = "";
+	while (true) {
+		const { done, value } = await reader.read();
+		if (done) break;
+		buffer += decoder.decode(value, { stream: true });
+		const lines = buffer.split("\n");
+		buffer = lines.pop() ?? "";
+		for (const line of lines) {
+			const trimmed = line.trim();
+			if (!trimmed) continue;
+			try {
+				yield JSON.parse(trimmed) as TwgChatFrame;
+			} catch {}
+		}
+	}
+	if (buffer.trim()) {
+		try {
+			yield JSON.parse(buffer.trim()) as TwgChatFrame;
+		} catch {}
+	}
+}
+
+interface SummaryOverride {
+	summary: string;
+	takeaways: string[];
+}
+
 export async function* streamLibrarian(
-	body: { confirmToken?: string; sourcePath?: string },
+	body: { confirmToken?: string; sourcePath?: string; summaryOverride?: SummaryOverride },
 ): AsyncGenerator<LibrarianStreamEvent> {
 	const query = body.confirmToken ? `?confirm=${encodeURIComponent(body.confirmToken)}` : "";
 	const response = await fetch(`/api/personal-graph/ingest${query}`, {
@@ -146,6 +240,43 @@ export async function* streamLibrarian(
 			const line = chunk.split("\n").find((entry) => entry.startsWith("data:"));
 			if (line) {
 				yield JSON.parse(line.slice(5).trim()) as LibrarianStreamEvent;
+			}
+		}
+	}
+}
+
+export async function* streamPersonalGraphSummarize(
+	body: {
+		action: "summary" | "deck";
+		length: PersonalGraphSummaryLength;
+		nodeId: string;
+		summary?: string;
+		takeaways?: string[];
+	},
+	options: { signal?: AbortSignal } = {},
+): AsyncGenerator<PersonalGraphSummarizeEvent> {
+	const response = await fetch("/api/personal-graph/summarize", {
+		body: JSON.stringify(body),
+		headers: { Accept: "text/event-stream", "Content-Type": "application/json" },
+		method: "POST",
+		signal: options.signal,
+	});
+	if (!response.ok || !response.body) {
+		throw new Error(await response.text());
+	}
+	const reader = response.body.getReader();
+	const decoder = new TextDecoder();
+	let buffer = "";
+	while (true) {
+		const { done, value } = await reader.read();
+		if (done) break;
+		buffer += decoder.decode(value, { stream: true });
+		const chunks = buffer.split("\n\n");
+		buffer = chunks.pop() ?? "";
+		for (const chunk of chunks) {
+			const line = chunk.split("\n").find((entry) => entry.startsWith("data:"));
+			if (line) {
+				yield JSON.parse(line.slice(5).trim()) as PersonalGraphSummarizeEvent;
 			}
 		}
 	}

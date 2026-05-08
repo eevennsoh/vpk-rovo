@@ -4,6 +4,7 @@ import { getNeuralGraphColorFallback, isNeuralGraphColorValue } from "./colors";
 import type { NeuralGraphInteractionState } from "./interaction-dynamics";
 import { getClosestPointOnOrganicRay, getOrganicRayCurve, type NeuralRayCurve } from "./interaction";
 import type { NeuralGraphLayout, NeuralLayoutEdge, NeuralLayoutNode } from "./layout";
+import { getPersonalGraphNodeTypeAccentToken } from "./node-type-colors";
 import type { NeuralGraphParams } from "./params";
 
 const KIND_COLOR_PARAM_KEY: Record<VaultNodeKind, keyof NeuralGraphParams> = {
@@ -33,7 +34,6 @@ export interface NeuralGraphRenderOptions {
 	camera: NeuralCamera;
 	focusProgress: number;
 	hoveredNodeId: string | null;
-	hoverProgressByNode?: ReadonlyMap<string, number>;
 	interaction?: NeuralGraphInteractionState | null;
 	params: NeuralGraphParams;
 	rayElastic?: NeuralRayElasticState | null;
@@ -121,6 +121,11 @@ function getNodeGraphColor(node: NeuralLayoutNode, options: NeuralGraphRenderOpt
 	return isNeuralGraphColorValue(graphColor) ? getResolvedColor(graphColor, options) : null;
 }
 
+function getNodeMetadataTypeColor(node: NeuralLayoutNode, options: NeuralGraphRenderOptions) {
+	const accentToken = getPersonalGraphNodeTypeAccentToken(node.node.original);
+	return isNeuralGraphColorValue(accentToken) ? getResolvedColor(accentToken, options) : null;
+}
+
 function getKindColor(kind: VaultNodeKind, options: NeuralGraphRenderOptions) {
 	const value = options.params[KIND_COLOR_PARAM_KEY[kind]];
 	return isNeuralGraphColorValue(value) ? getResolvedColor(value, options) : null;
@@ -128,7 +133,8 @@ function getKindColor(kind: VaultNodeKind, options: NeuralGraphRenderOptions) {
 
 function getNodeTypeColor(node: NeuralLayoutNode, options: NeuralGraphRenderOptions) {
 	return (
-		getKindColor(node.node.kind, options)
+		getNodeMetadataTypeColor(node, options)
+		?? getKindColor(node.node.kind, options)
 		?? getNodeGraphColor(node, options)
 		?? getResolvedColor(options.params.nodeColor, options)
 	);
@@ -566,7 +572,6 @@ function drawNodes(
 		return left.z - right.z;
 	});
 
-	const hoverScale = options.params.hoverScale;
 	const selectedScale = options.params.selectedScale;
 	const selectedScaleMax = selectedScale + 0.5;
 	const glowSize = options.params.glowSize;
@@ -587,17 +592,12 @@ function drawNodes(
 				focusAlpha = lerp(1, options.params.nodeOpacityFocused, focusProgress);
 			}
 		}
-		const relatedScale = focusProgress > 0 && isRelated ? lerp(1, 1.22, focusProgress) : 1;
 		const inactiveScale = focusProgress > 0 && !isRelated ? lerp(1, 0.7, focusProgress) : 1;
-		const hoverProgress = options.hoverProgressByNode?.get(node.id) ?? (isHovered ? 1 : 0);
-		let baseScale = relatedScale * inactiveScale;
+		let baseScale = inactiveScale;
 		if (isSelected) {
 			baseScale = lerp(selectedScale, selectedScaleMax, focusProgress);
 		}
-		const activeScale = !isSelected && hoverProgress > 0
-			? lerp(baseScale, hoverScale, hoverProgress)
-			: baseScale;
-		const radius = Math.max(2.5, node.baseSize * node.depthScale * options.camera.zoom * activeScale);
+		const radius = Math.max(2.5, node.baseSize * node.depthScale * options.camera.zoom * baseScale);
 		const alpha = Math.min(1, node.alpha * (isSelected || isHovered ? 1 : options.params.nodeOpacity) * focusAlpha);
 		const point = worldToViewport(node, options.camera, options.viewport, options.params);
 

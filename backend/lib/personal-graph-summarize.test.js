@@ -1,26 +1,184 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
 const test = require("node:test");
 
-const { summarizeRaw } = require("./personal-graph-summarize");
+const {
+	normalizeSummaryOutput,
+	resolveSummarizeBinary,
+	runSummarizeCli,
+	summarizeRawWithGateway,
+} = require("./personal-graph-summarize");
+const {
+	assertVaultBoundPath,
+	createSelectionSummarizeInput,
+} = require("./personal-graph-summary-context");
 
-test("summarizeRaw returns validated gateway JSON", async () => {
+function execFileOk(assertCall, stdout = "# Summary\n\n- One\n- Two") {
+	return (command, args, options, callback) => {
+		assertCall(command, args, options);
+		queueMicrotask(() => callback(null, stdout, ""));
+	};
+}
+
+function execFileError(error) {
+	return (_command, _args, _options, callback) => {
+		queueMicrotask(() => callback(error, "", error.stderr ?? ""));
+	};
+}
+
+test("resolveSummarizeBinary prefers the repo-local binary", () => {
+	const repoRoot = path.join(os.tmpdir(), "personal-graph-summarize-bin");
+	const expected = path.join(repoRoot, "node_modules", ".bin", process.platform === "win32" ? "summarize.cmd" : "summarize");
+	assert.equal(
+		resolveSummarizeBinary({
+			fsImpl: {
+				existsSync: (candidate) => candidate === expected,
+				readFileSync: fs.readFileSync,
+			},
+			repoRoot,
+		}),
+		expected,
+	);
+});
+
+test("runSummarizeCli passes length, model, timeout, and plain output flags", async (t) => {
+	const originalModel = process.env.PERSONAL_GRAPH_SUMMARIZE_MODEL;
+	process.env.PERSONAL_GRAPH_SUMMARIZE_MODEL = "openai/gpt-5-mini";
+	t.after(() => {
+		if (originalModel === undefined) delete process.env.PERSONAL_GRAPH_SUMMARIZE_MODEL;
+		else process.env.PERSONAL_GRAPH_SUMMARIZE_MODEL = originalModel;
+	});
+
+	const result = await runSummarizeCli({
+		execFileImpl: execFileOk((_command, args, options) => {
+			assert.equal(args[0], "/tmp/input.md");
+			assert.deepEqual(args.slice(1, 7), ["--length", "short", "--model", "openai/gpt-5-mini", "--timeout", "1234ms"]);
+			assert.ok(args.includes("--plain"));
+			assert.ok(args.includes("--no-color"));
+			assert.equal(options.timeout, 1234);
+		}),
+		input: "/tmp/input.md",
+		length: "short",
+		timeoutMs: 1234,
+	});
+
+	assert.equal(result.summary, "# Summary\n\n- One\n- Two");
+	assert.deepEqual(result.takeaways, ["One", "Two"]);
+});
+
+test("runSummarizeCli reports abort, timeout, and non-zero failures clearly", async () => {
+	await assert.rejects(
+		() => runSummarizeCli({
+			execFileImpl: execFileError(Object.assign(new Error("aborted"), { code: "ABORT_ERR" })),
+			input: "/tmp/input.md",
+		}),
+		(error) => error?.code === "SUMMARIZE_ABORTED",
+	);
+	await assert.rejects(
+		() => runSummarizeCli({
+			execFileImpl: execFileError(Object.assign(new Error("timed out"), { code: "ETIMEDOUT" })),
+			input: "/tmp/input.md",
+			timeoutMs: 5,
+		}),
+		(error) => error?.code === "SUMMARIZE_TIMEOUT",
+	);
+	await assert.rejects(
+		() => runSummarizeCli({
+			execFileImpl: execFileError(Object.assign(new Error("exit 1"), { stderr: "bad key" })),
+			input: "/tmp/input.md",
+		}),
+		(error) => error?.code === "SUMMARIZE_FAILED" && /bad key/u.test(error.message),
+	);
+});
+
+test("normalizeSummaryOutput rejects empty CLI output", () => {
+	assert.throws(
+		() => normalizeSummaryOutput(" \n "),
+		(error) => error?.code === "MALFORMED_SUMMARY",
+	);
+});
+
+test("vault-bound summary input rejects paths outside the configured vault", (t) => {
+	const originalSelectedVault = process.env.PERSONAL_GRAPH_SELECTED_VAULT;
+	const vaultRoot = fs.mkdtempSync(path.join(os.tmpdir(), "personal-graph-summarize-vault-"));
+	process.env.PERSONAL_GRAPH_SELECTED_VAULT = vaultRoot;
+	t.after(() => {
+		if (originalSelectedVault === undefined) delete process.env.PERSONAL_GRAPH_SELECTED_VAULT;
+		else process.env.PERSONAL_GRAPH_SELECTED_VAULT = originalSelectedVault;
+		fs.rmSync(vaultRoot, { force: true, recursive: true });
+	});
+
+	assert.equal(assertVaultBoundPath(path.join(vaultRoot, "raw", "source.md")), path.join(vaultRoot, "raw", "source.md"));
+	assert.throws(
+		() => assertVaultBoundPath(path.join(os.tmpdir(), "outside.md")),
+		(error) => error?.code === "VAULT_PATH_OUTSIDE_ROOT",
+	);
+});
+
+test("captured URL raw nodes forward the original frontmatter URL to summarize", (t) => {
+	const originalSelectedVault = process.env.PERSONAL_GRAPH_SELECTED_VAULT;
+	const vaultRoot = fs.mkdtempSync(path.join(os.tmpdir(), "personal-graph-summarize-url-"));
+	fs.mkdirSync(path.join(vaultRoot, "raw"), { recursive: true });
+	fs.writeFileSync(
+		path.join(vaultRoot, "raw", "capture.md"),
+		"---\ntitle: Capture\nurl: https://example.com/article\n---\n\nCaptured body.",
+		"utf8",
+	);
+	process.env.PERSONAL_GRAPH_SELECTED_VAULT = vaultRoot;
+	t.after(() => {
+		if (originalSelectedVault === undefined) delete process.env.PERSONAL_GRAPH_SELECTED_VAULT;
+		else process.env.PERSONAL_GRAPH_SELECTED_VAULT = originalSelectedVault;
+		fs.rmSync(vaultRoot, { force: true, recursive: true });
+	});
+
+	const prepared = createSelectionSummarizeInput({
+		edges: [],
+		generatedAt: "2026-05-07T00:00:00.000Z",
+		nodes: [{
+			bodyPreview: "",
+			connectionCount: 0,
+			dangling: false,
+			externalUrl: null,
+			frontmatter: {},
+			id: "raw:capture",
+			kind: "raw",
+			label: "capture.md",
+			missing: false,
+			path: path.join(vaultRoot, "raw", "capture.md"),
+			provider: "vault",
+			relativePath: "raw/capture.md",
+			size: 10,
+			slug: "capture",
+			title: "capture.md",
+			updatedAt: null,
+		}],
+		stats: { danglingCount: 0, edgeCount: 0, nodeCount: 1, rawCount: 1, wikiCount: 0 },
+	}, "raw:capture");
+
+	assert.equal(prepared.input, "https://example.com/article");
+	assert.equal(prepared.inputKind, "url");
+});
+
+test("legacy gateway summarizer remains available for tests", async () => {
 	const aiGatewayProvider = {
 		generateText: async () => JSON.stringify({ summary: "Short summary", takeaways: ["One", "Two", "Three"] }),
 	};
-	assert.deepEqual(await summarizeRaw({ content: "Body" }, { aiGatewayProvider }), {
+	assert.deepEqual(await summarizeRawWithGateway({ content: "Body" }, { aiGatewayProvider }), {
 		summary: "Short summary",
 		takeaways: ["One", "Two", "Three"],
 	});
 });
 
-test("summarizeRaw throws typed error on malformed JSON shape", async () => {
+test("legacy gateway summarizer throws typed error on malformed JSON shape", async () => {
 	const aiGatewayProvider = {
 		generateText: async () => JSON.stringify({ nope: true }),
 	};
 	await assert.rejects(
-		() => summarizeRaw({ content: "Body" }, { aiGatewayProvider }),
+		() => summarizeRawWithGateway({ content: "Body" }, { aiGatewayProvider }),
 		(error) => error?.code === "MALFORMED_SUMMARY",
 	);
 });

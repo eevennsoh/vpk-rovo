@@ -9,10 +9,13 @@ import LinkExternalIcon from "@atlaskit/icon/core/link-external";
 import ShowMoreHorizontalIcon from "@atlaskit/icon/core/show-more-horizontal";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Spinner } from "@/components/ui/spinner";
 import { useTheme } from "@/components/utils/theme-wrapper";
 import Graph, { ROVO_GRAPH_DEFAULT_PARAMS } from "@/components/website/demos/visual/graph";
 import { cn } from "@/lib/utils";
+import { useGraphSource } from "./hooks/use-graph-source";
 import { usePersonalGraphIntro } from "./hooks/use-personal-graph-intro";
+import { useTwgChat } from "./hooks/use-twg-chat";
 import { useVaultExplorer } from "./hooks/use-vault-explorer";
 import { useVaultSettings } from "./hooks/use-vault-settings";
 import { DEFAULT_NEURAL_GRAPH_INTERACTION_SETTINGS } from "./lib/neural-graph/interaction-dynamics";
@@ -24,6 +27,8 @@ import {
 	type ResponsivePersonalGraphViewport,
 } from "./lib/neural-graph/responsive-params";
 import { createNeuralGraphStore } from "./lib/neural-graph/store";
+import { expandTwgNode } from "./lib/personal-graph-api";
+import { mergeSelectedNodeExpansion } from "./lib/personal-graph-explorer-merge";
 import type { NeuralGraphParams } from "./lib/neural-graph/params";
 import type { VaultExplorer, VaultNode, VaultNodeKind } from "./lib/personal-graph-types";
 import { PersonalGraphBackdrop } from "./personal-graph-backdrop";
@@ -43,10 +48,12 @@ import {
 	PixelRefreshIcon,
 	PixelResetIcon,
 	PixelSystemIcon,
-	PixelVaultIcon,
 } from "./personal-graph-pixel-icons";
 import { PersonalGraphSearch } from "./personal-graph-search";
+import { PersonalGraphSourcePicker } from "./personal-graph-source-picker";
+import { PersonalGraphSummaryPanel } from "./personal-graph-summary-panel";
 import { PersonalGraphTitle } from "./personal-graph-title-scramble";
+import { PersonalGraphTwgAuthError } from "./personal-graph-twg-auth-error";
 
 type PersonalGraphSurfaceProps = React.ComponentProps<"main">;
 
@@ -123,11 +130,18 @@ function getSelectedNode(explorer: VaultExplorer | null, selectedNodeId: string 
 
 function getRelatedNodes(explorer: VaultExplorer | null, node: VaultNode | null) {
 	if (!explorer || !node) return [];
-	const relatedIds = explorer.edges.flatMap((edge) => {
-		if (edge.source === node.id) return [edge.target];
-		if (edge.target === node.id) return [edge.source];
-		return [];
-	});
+	const seenRelatedIds = new Set<string>();
+	const relatedIds: string[] = [];
+	for (const edge of explorer.edges) {
+		const neighborId = edge.source === node.id
+			? edge.target
+			: edge.target === node.id
+				? edge.source
+				: null;
+		if (neighborId === null || seenRelatedIds.has(neighborId)) continue;
+		seenRelatedIds.add(neighborId);
+		relatedIds.push(neighborId);
+	}
 	const nodesById = new Map(explorer.nodes.map((candidate) => [candidate.id, candidate]));
 	return relatedIds
 		.flatMap((nodeId) => {
@@ -141,6 +155,36 @@ function getGraphStatsText(explorer: VaultExplorer | null) {
 	return explorer
 		? `${explorer.stats.wikiCount} wiki pages · ${explorer.stats.rawCount} raw sources`
 		: "Obsidian-backed second-brain graph";
+}
+
+function formatRelativeTime(iso: string | null): string | null {
+	if (!iso) return null;
+	const then = new Date(iso).getTime();
+	if (Number.isNaN(then)) return null;
+	const seconds = Math.max(0, Math.round((Date.now() - then) / 1000));
+	if (seconds < 60) return "just now";
+	const minutes = Math.round(seconds / 60);
+	if (minutes < 60) return `${minutes}m ago`;
+	const hours = Math.round(minutes / 60);
+	if (hours < 24) return `${hours}h ago`;
+	const days = Math.round(hours / 24);
+	return `${days}d ago`;
+}
+
+function getTwgGraphStatsText(explorer: VaultExplorer | null, generatedAt: string | null) {
+	if (!explorer) return "Team Work Graph view";
+	const byKind = new Map<string, number>();
+	for (const node of explorer.nodes) {
+		byKind.set(node.kind, (byKind.get(node.kind) ?? 0) + 1);
+	}
+	const counts = [
+		byKind.get("source") ? `${byKind.get("source")} artifacts` : null,
+		byKind.get("entity") ? `${byKind.get("entity")} people` : null,
+	].filter(Boolean).join(" · ");
+	const updated = formatRelativeTime(generatedAt);
+	return [counts || `${explorer.stats.nodeCount} items`, updated && `updated ${updated}`]
+		.filter(Boolean)
+		.join(" · ");
 }
 
 function useResponsivePersonalGraphParams(stageRef: React.RefObject<HTMLDivElement | null>) {
@@ -229,17 +273,20 @@ function useResponsivePersonalGraphParams(stageRef: React.RefObject<HTMLDivEleme
 
 function PersonalGraphInspector({
 	explorer,
+	isExpanding = false,
 	node,
 	onClose,
 	onSelectNode,
 }: Readonly<{
 	explorer: VaultExplorer | null;
+	isExpanding?: boolean;
 	node: VaultNode | null;
 	onClose: () => void;
 	onSelectNode: (nodeId: string) => void;
 }>) {
 	if (!node) return null;
 	const relatedNodes = getRelatedNodes(explorer, node);
+	const showRelatedSection = isExpanding || relatedNodes.length > 0;
 
 	return (
 		<aside
@@ -277,25 +324,38 @@ function PersonalGraphInspector({
 					<div className="mb-2 text-xs font-medium text-text-subtlest">Excerpt</div>
 					<p className="text-sm leading-6 text-text-subtle">{node.bodyPreview || node.relativePath}</p>
 				</div>
-				{relatedNodes.length > 0 ? (
+				{showRelatedSection ? (
 					<div className="py-4">
 						<div className="mb-3 text-xs font-medium text-text-subtlest">Related pages</div>
-						<div className="space-y-2">
-							{relatedNodes.map((relatedNode) => (
-								<button
-									className="flex w-full items-center justify-between gap-3 rounded-2xl border border-border bg-bg-neutral-subtle px-3 py-3 text-left text-sm text-text transition-colors duration-normal hover:bg-bg-neutral-subtle-hovered"
-									key={relatedNode.id}
-									onClick={() => onSelectNode(relatedNode.id)}
-									type="button"
-								>
-									<span className="flex min-w-0 items-center gap-3">
-										<GraphNodeMarker kind={relatedNode.kind} />
-										<span className="truncate">{relatedNode.title}</span>
-									</span>
-									<ChevronRightIcon label="" />
-								</button>
-							))}
-						</div>
+						{isExpanding ? (
+							<div
+								aria-live="polite"
+								className="mb-2 flex items-center gap-2 text-xs text-text-subtle"
+								data-personal-graph-related-loading="true"
+								role="status"
+							>
+								<Spinner label="Expanding related pages" size="xs" />
+								<span>Expanding…</span>
+							</div>
+						) : null}
+						{relatedNodes.length > 0 ? (
+							<div className="space-y-2">
+								{relatedNodes.map((relatedNode) => (
+									<button
+										className="flex w-full items-center justify-between gap-3 rounded-2xl border border-border bg-bg-neutral-subtle px-3 py-3 text-left text-sm text-text transition-colors duration-normal hover:bg-bg-neutral-subtle-hovered"
+										key={relatedNode.id}
+										onClick={() => onSelectNode(relatedNode.id)}
+										type="button"
+									>
+										<span className="flex min-w-0 items-center gap-3">
+											<GraphNodeMarker kind={relatedNode.kind} />
+											<span className="truncate">{relatedNode.title}</span>
+										</span>
+										<ChevronRightIcon label="" />
+									</button>
+								))}
+							</div>
+						) : null}
 					</div>
 				) : null}
 				<div className="mt-4 flex items-center justify-between gap-2 border-t border-border pt-4">
@@ -309,15 +369,27 @@ function PersonalGraphInspector({
 						>
 							<CopyIcon label="" />
 						</Button>
-						<Button
-							aria-label="Open node source"
-							className="size-8 rounded-full bg-bg-neutral-subtle text-text shadow-none hover:bg-bg-neutral-subtle-hovered"
-							onClick={() => window.open(`/api/personal-graph/page/${node.slug}`, "_blank", "noopener,noreferrer")}
-							size="icon-sm"
-							variant="ghost"
-						>
-							<LinkExternalIcon label="" />
-						</Button>
+						{node.externalUrl ? (
+							<Button
+								aria-label="Open node source"
+								className="size-8 rounded-full bg-bg-neutral-subtle text-text shadow-none hover:bg-bg-neutral-subtle-hovered"
+								onClick={() => window.open(node.externalUrl as string, "_blank", "noopener,noreferrer")}
+								size="icon-sm"
+								variant="ghost"
+							>
+								<LinkExternalIcon label="" />
+							</Button>
+						) : node.provider === "vault" ? (
+							<Button
+								aria-label="Open node source"
+								className="size-8 rounded-full bg-bg-neutral-subtle text-text shadow-none hover:bg-bg-neutral-subtle-hovered"
+								onClick={() => window.open(`/api/personal-graph/page/${node.slug}`, "_blank", "noopener,noreferrer")}
+								size="icon-sm"
+								variant="ghost"
+							>
+								<LinkExternalIcon label="" />
+							</Button>
+						) : null}
 					</div>
 					<Button
 						aria-label="More graph detail actions"
@@ -357,7 +429,7 @@ export function PersonalGraphSurface({
 	style,
 	...props
 }: Readonly<PersonalGraphSurfaceProps>) {
-	const { error, explorer, isLoading, refresh } = useVaultExplorer();
+	const { error, explorer: rawExplorer, isLoading, refresh } = useVaultExplorer();
 	const {
 		isResetting: isVaultResetting,
 		isSelecting: isVaultSelecting,
@@ -365,6 +437,28 @@ export function PersonalGraphSurface({
 		selectFolder: selectVault,
 		settings: vaultSettings,
 	} = useVaultSettings();
+	const {
+		generatedAt: twgGeneratedAt,
+		isSwitching: isSourceSwitching,
+		refresh: refreshSource,
+		refreshTwg,
+		setSource,
+		source,
+	} = useGraphSource();
+	const isTwgMode = source === "twg";
+	const [chatExplorer, setChatExplorer] = useState<VaultExplorer | null>(null);
+	const [expandedExplorer, setExpandedExplorer] = useState<VaultExplorer | null>(null);
+	const [expandingTwgNodeIds, setExpandingTwgNodeIds] = useState<ReadonlySet<string>>(() => new Set());
+	const explorer = isTwgMode ? (chatExplorer ?? expandedExplorer ?? rawExplorer) : rawExplorer;
+	const twgChat = useTwgChat({
+		onGraph: (focusedExplorer) => {
+			if (focusedExplorer.nodes.length > 0) {
+				setChatExplorer(focusedExplorer);
+			}
+		},
+	});
+	const lastAssistantMessage = twgChat.messages.findLast((message) => message.role === "assistant")?.content ?? null;
+	const isTwgAuthError = isTwgMode && Boolean(error) && /twg_auth_required/iu.test(error?.message ?? "");
 	const { actualTheme, setTheme, theme } = useTheme();
 	const [introReplayKey, setIntroReplayKey] = useState(0);
 	const [flyoutCollapseKey, setFlyoutCollapseKey] = useState(0);
@@ -374,8 +468,12 @@ export function PersonalGraphSurface({
 	const isSubtextRevealed = phase === "subtext" || phase === "controls" || phase === "settle" || phase === "search" || phase === "graph" || phase === "done";
 	const isIntroSettled = phase === "settle" || phase === "search" || phase === "graph" || phase === "done";
 	const isVaultReady = vaultSettings?.status === "ready";
-	const isVaultReadyForLayout = isVaultReady || isResetFlyoutCollapsing;
-	const shouldShowVaultOnboarding = Boolean(vaultSettings) && !isVaultReadyForLayout;
+	const isTwgReady = isTwgMode && Boolean(twgGeneratedAt) && !isTwgAuthError;
+	const isReady = isTwgMode ? isTwgReady : isVaultReady;
+	const isVaultReadyForLayout = isReady || isResetFlyoutCollapsing;
+	const shouldShowVaultOnboarding = Boolean(vaultSettings) && !isVaultReadyForLayout && !isTwgMode;
+	const shouldShowSourcePicker =
+		!isVaultReadyForLayout && !isTwgAuthError && (vaultSettings?.status === "unconfigured" || (isTwgMode && !twgGeneratedAt));
 	const isPostSettle = isVaultReadyForLayout && isIntroSettled;
 	const isSearchRevealed = isVaultReadyForLayout && (phase === "search" || phase === "graph" || phase === "done");
 	const isGraphRevealed = isSearchRevealed;
@@ -387,29 +485,91 @@ export function PersonalGraphSurface({
 	const liquidGlassStageRef = useRef<HTMLElement | null>(null);
 	const graphStageRef = useRef<HTMLDivElement | null>(null);
 	const resetFlyoutCollapseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const explorerRef = useRef<VaultExplorer | null>(null);
+	const chatExplorerRef = useRef<VaultExplorer | null>(null);
+	const expandedTwgNodeIdsRef = useRef<Set<string>>(new Set());
+	const expandingTwgNodeIdsRef = useRef<Set<string>>(new Set());
+	const twgExpansionGenerationRef = useRef(0);
+	const previousSourceRef = useRef(source);
 	const responsiveGraphParams = useResponsivePersonalGraphParams(graphStageRef);
 	const accessibleGraph = useMemo(() => createNeuralGraphStore(explorer), [explorer]);
 	const displayedNode = useMemo(() => getSelectedNode(explorer, selectedNodeId), [explorer, selectedNodeId]);
+	const isExpandingDisplayedNode =
+		isTwgMode && displayedNode?.provider === "twg" && expandingTwgNodeIds.has(displayedNode.id);
 
-	const handleRefreshAll = useCallback(() => {
+	const clearTwgExpansionState = useCallback(() => {
+		twgExpansionGenerationRef.current += 1;
+		expandedTwgNodeIdsRef.current.clear();
+		expandingTwgNodeIdsRef.current.clear();
+		setExpandingTwgNodeIds(new Set());
+		setExpandedExplorer(null);
+	}, []);
+	const handleRefreshAll = useCallback(async () => {
 		setRefreshKey((current) => current + 1);
-		void refresh();
-	}, [refresh]);
+		setChatExplorer(null);
+		if (isTwgMode) {
+			await refreshTwg();
+		}
+		await refresh();
+		clearTwgExpansionState();
+	}, [clearTwgExpansionState, isTwgMode, refresh, refreshTwg]);
 	const handleCaptureQueueOpenChange = useCallback((isOpen: boolean) => {
 		setIsCaptureQueueOpen(isOpen);
 	}, []);
 	const handleChooseVault = useCallback(async () => {
+		clearTwgExpansionState();
+		await setSource("vault");
+		setChatExplorer(null);
 		const next = await selectVault();
 		if (next?.status === "ready") {
 			handleRefreshAll();
 		}
-	}, [handleRefreshAll, selectVault]);
+	}, [clearTwgExpansionState, handleRefreshAll, selectVault, setSource]);
+	const handleConnectTwg = useCallback(async () => {
+		clearTwgExpansionState();
+		setChatExplorer(null);
+		const next = await setSource("twg");
+		if (next?.source === "twg") {
+			await refreshTwg();
+			handleRefreshAll();
+		}
+	}, [clearTwgExpansionState, handleRefreshAll, refreshTwg, setSource]);
+	const handleAskChat = useCallback((prompt: string) => {
+		void twgChat.send(prompt);
+	}, [twgChat]);
+	const handleClearChatFilter = useCallback(() => {
+		setChatExplorer(null);
+		clearTwgExpansionState();
+		void refresh();
+	}, [clearTwgExpansionState, refresh]);
+	const handleRetryTwg = useCallback(async () => {
+		await refreshTwg();
+		await refreshSource();
+		handleRefreshAll();
+	}, [handleRefreshAll, refreshSource, refreshTwg]);
 	const handleResetVault = useCallback(async () => {
 		setFlyoutCollapseKey((current) => current + 1);
 		setIsResetFlyoutCollapsing(true);
 		if (resetFlyoutCollapseTimerRef.current) {
 			clearTimeout(resetFlyoutCollapseTimerRef.current);
 			resetFlyoutCollapseTimerRef.current = null;
+		}
+
+		setChatExplorer(null);
+		clearTwgExpansionState();
+		twgChat.stop();
+		if (isTwgMode) {
+			await setSource("vault");
+			setSelectedNodeId(null);
+			setIsCaptureQueueOpen(false);
+			const collapseDelay = shouldReduceMotion ? 0 : PERSONAL_GRAPH_RESET_FLYOUT_COLLAPSE_DELAY_MS;
+			resetFlyoutCollapseTimerRef.current = setTimeout(() => {
+				resetFlyoutCollapseTimerRef.current = null;
+				setIsResetFlyoutCollapsing(false);
+				setIntroReplayKey((current) => current + 1);
+				handleRefreshAll();
+			}, collapseDelay);
+			return;
 		}
 
 		const next = await resetVault();
@@ -427,7 +587,7 @@ export function PersonalGraphSurface({
 		}
 
 		setIsResetFlyoutCollapsing(false);
-	}, [handleRefreshAll, resetVault, shouldReduceMotion]);
+	}, [clearTwgExpansionState, handleRefreshAll, isTwgMode, resetVault, setSource, shouldReduceMotion, twgChat]);
 	const handleToggleTheme = useCallback(() => {
 		if (theme === "light") {
 			setTheme("dark");
@@ -439,11 +599,15 @@ export function PersonalGraphSurface({
 	}, [setTheme, theme]);
 
 	const graphStatusText = isVaultReadyForLayout
-		? getGraphStatsText(explorer)
-		: vaultSettings?.status === "unconfigured"
+		? isTwgMode
+			? getTwgGraphStatsText(explorer, twgGeneratedAt)
+			: getGraphStatsText(explorer)
+		: shouldShowSourcePicker
 			? PERSONAL_GRAPH_UNCONFIGURED_BYLINE
-			: vaultSettings?.message ?? getGraphStatsText(explorer);
-	const visibleError = shouldShowVaultOnboarding ? null : error;
+			: isTwgMode
+				? "Connecting to Team Work Graph…"
+				: vaultSettings?.message ?? getGraphStatsText(explorer);
+	const visibleError = shouldShowVaultOnboarding || shouldShowSourcePicker || isTwgAuthError ? null : error;
 	const themeLabel = theme === "system" ? "System theme" : theme === "dark" ? "Dark theme" : "Light theme";
 
 	const flyoutActions = useMemo<ReadonlyArray<PersonalGraphControlFlyoutAction>>(() => {
@@ -478,6 +642,8 @@ export function PersonalGraphSurface({
 					</Popover>
 				),
 			});
+		}
+		if (isReady) {
 			actions.push({
 				key: "refresh",
 				label: "Refresh",
@@ -506,7 +672,7 @@ export function PersonalGraphSurface({
 			),
 		});
 
-		if (isVaultReady) {
+		if (isReady) {
 			actions.push({
 				key: "clear-vault",
 				label: "Reset",
@@ -532,12 +698,100 @@ export function PersonalGraphSurface({
 		handleToggleTheme,
 		isCaptureQueueOpen,
 		isLoading,
+		isReady,
 		isVaultReady,
 		isVaultResetting,
 		refreshKey,
 		theme,
 		themeLabel,
 	]);
+
+	useEffect(() => {
+		explorerRef.current = explorer;
+	}, [explorer]);
+
+	useEffect(() => {
+		chatExplorerRef.current = chatExplorer;
+	}, [chatExplorer]);
+
+	useEffect(() => {
+		if (previousSourceRef.current === source) {
+			return;
+		}
+		previousSourceRef.current = source;
+		setChatExplorer(null);
+		clearTwgExpansionState();
+	}, [clearTwgExpansionState, source]);
+
+	useEffect(() => {
+		if (!isTwgMode || !selectedNodeId || isLoading) {
+			return;
+		}
+
+		const selectedNode = explorerRef.current?.nodes.find((node) => node.id === selectedNodeId);
+		if (!selectedNode || selectedNode.provider !== "twg") {
+			return;
+		}
+		if (expandedTwgNodeIdsRef.current.has(selectedNodeId) || expandingTwgNodeIdsRef.current.has(selectedNodeId)) {
+			return;
+		}
+
+		const controller = new AbortController();
+		const expansionGeneration = twgExpansionGenerationRef.current;
+		expandingTwgNodeIdsRef.current.add(selectedNodeId);
+		setExpandingTwgNodeIds((current) => {
+			if (current.has(selectedNodeId)) return current;
+			const next = new Set(current);
+			next.add(selectedNodeId);
+			return next;
+		});
+
+		void expandTwgNode(selectedNodeId, { signal: controller.signal })
+			.then((result) => {
+				if (controller.signal.aborted || expansionGeneration !== twgExpansionGenerationRef.current) {
+					return;
+				}
+
+				expandedTwgNodeIdsRef.current.add(selectedNodeId);
+				expandedTwgNodeIdsRef.current.add(result.expandedNodeId);
+
+				const currentChatExplorer = chatExplorerRef.current;
+				if (currentChatExplorer) {
+					if (currentChatExplorer.nodes.some((node) => node.id === selectedNodeId)) {
+						setChatExplorer((current) =>
+							current ? mergeSelectedNodeExpansion(current, result.explorer, selectedNodeId) : current,
+						);
+						return;
+					}
+					setChatExplorer(null);
+				}
+
+				setExpandedExplorer(result.explorer);
+			})
+			.catch((nextError) => {
+				if (controller.signal.aborted || expansionGeneration !== twgExpansionGenerationRef.current) {
+					return;
+				}
+				expandedTwgNodeIdsRef.current.add(selectedNodeId);
+				console.warn("TWG node expansion failed", nextError);
+			})
+			.finally(() => {
+				expandingTwgNodeIdsRef.current.delete(selectedNodeId);
+				if (expansionGeneration !== twgExpansionGenerationRef.current) {
+					return;
+				}
+				setExpandingTwgNodeIds((current) => {
+					if (!current.has(selectedNodeId)) return current;
+					const next = new Set(current);
+					next.delete(selectedNodeId);
+					return next;
+				});
+			});
+
+		return () => {
+			controller.abort();
+		};
+	}, [isLoading, isTwgMode, selectedNodeId]);
 
 	useEffect(() => {
 		if (!selectedNodeId) {
@@ -555,6 +809,10 @@ export function PersonalGraphSurface({
 			window.removeEventListener("keydown", handleKeyDown);
 		};
 	}, [selectedNodeId]);
+
+	useEffect(() => {
+		void refresh();
+	}, [refresh, source, twgGeneratedAt]);
 
 	useEffect(() => {
 		return () => {
@@ -637,7 +895,7 @@ export function PersonalGraphSurface({
 								{visibleError.message}
 							</motion.p>
 						) : null}
-						{shouldShowVaultOnboarding ? (
+						{shouldShowSourcePicker ? (
 							<motion.div
 								initial={{ opacity: 0, y: 12, filter: "blur(12px)" }}
 								animate={{
@@ -647,18 +905,24 @@ export function PersonalGraphSurface({
 								}}
 								transition={{ duration: 0.45, ease: easeOut }}
 							>
-								<Button
-									aria-label="Choose Personal Graph vault folder"
-									className="rounded-full border-border bg-bg-neutral-subtle px-4 text-text shadow-none hover:bg-bg-neutral-subtle-hovered disabled:border-transparent disabled:bg-bg-disabled disabled:text-text-disabled [&_svg]:text-icon-subtle"
-									disabled={isVaultSelecting}
-									isLoading={isVaultSelecting}
-									onClick={handleChooseVault}
-									size="sm"
-									variant="outline"
-								>
-									<PixelVaultIcon />
-									Choose vault folder
-								</Button>
+								<PersonalGraphSourcePicker
+									isBusy={isVaultSelecting || isSourceSwitching}
+									onPickTwg={handleConnectTwg}
+									onPickVault={handleChooseVault}
+								/>
+							</motion.div>
+						) : null}
+						{isTwgAuthError ? (
+							<motion.div
+								initial={{ opacity: 0, y: 12, filter: "blur(12px)" }}
+								animate={{
+									opacity: isSubtextRevealed ? 1 : 0,
+									y: isSubtextRevealed ? 0 : 12,
+									filter: isSubtextRevealed ? "blur(0px)" : "blur(12px)",
+								}}
+								transition={{ duration: 0.45, ease: easeOut }}
+							>
+								<PersonalGraphTwgAuthError isRetrying={isLoading} onRetry={handleRetryTwg} />
 							</motion.div>
 						) : null}
 					</motion.div>
@@ -715,10 +979,19 @@ export function PersonalGraphSurface({
 					}}
 				>
 					<div className="pointer-events-auto relative w-full max-w-[760px]">
+						<PersonalGraphSummaryPanel
+							node={displayedNode}
+							onConfirmed={handleRefreshAll}
+						/>
 						<PersonalGraphSearch
+							assistantMessage={isTwgMode ? lastAssistantMessage : null}
+							chatError={isTwgMode ? twgChat.error : null}
+							chatStatus={isTwgMode ? twgChat.status : "idle"}
 							collapseFlyoutKey={flyoutCollapseKey}
 							flyoutActions={flyoutActions}
 							isFlyoutDisabled={isResetFlyoutCollapsing}
+							mode={isTwgMode ? "twg" : "vault"}
+							onAskChat={isTwgMode ? handleAskChat : undefined}
 							onSelectSlug={(slug) => {
 								const node = explorer?.nodes.find((candidate) => candidate.slug === slug);
 								if (node) setSelectedNodeId(node.id);
@@ -729,10 +1002,24 @@ export function PersonalGraphSurface({
 
 				<PersonalGraphInspector
 					explorer={explorer}
+					isExpanding={isExpandingDisplayedNode}
 					node={displayedNode}
 					onClose={() => setSelectedNodeId(null)}
 					onSelectNode={setSelectedNodeId}
 				/>
+				{chatExplorer ? (
+					<div className="pointer-events-auto absolute left-4 top-6 z-40 lg:left-8">
+						<Button
+							aria-label="Clear chat filter"
+							className="rounded-full border-border bg-bg-neutral-subtle text-text shadow-none hover:bg-bg-neutral-subtle-hovered"
+							onClick={handleClearChatFilter}
+							size="sm"
+							variant="outline"
+						>
+							Clear filter
+						</Button>
+					</div>
+				) : null}
 
 				<section className="sr-only" aria-label="Personal Graph text fallback">
 					<h2>Nodes</h2>

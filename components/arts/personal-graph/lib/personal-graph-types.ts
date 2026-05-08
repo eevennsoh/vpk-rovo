@@ -1,17 +1,32 @@
 export type VaultNodeKind = "source" | "entity" | "concept" | "synthesis" | "raw";
 
-export type VaultEdgeKind = "wiki_link" | "frontmatter_source";
+export type GraphProvider = "vault" | "twg";
+
+export type VaultEdgeKind =
+	| "wiki_link"
+	| "frontmatter_source"
+	| "worked-on"
+	| "mentioned-in"
+	| "viewed"
+	| "reports-to"
+	| "aligned-to"
+	| "member-of"
+	| "attended"
+	| "reviewed"
+	| "related";
 
 export interface VaultNode {
 	bodyPreview: string;
 	connectionCount: number;
 	dangling: boolean;
+	externalUrl: string | null;
 	frontmatter: Record<string, unknown>;
 	id: string;
 	kind: VaultNodeKind;
 	label: string;
 	missing: boolean;
 	path: string | null;
+	provider: GraphProvider;
 	relativePath: string;
 	size: number;
 	slug: string;
@@ -41,6 +56,13 @@ export interface VaultExplorer {
 		rawCount: number;
 		wikiCount: number;
 	};
+}
+
+export interface TwgNodeExpandResult {
+	addedEdgeCount: number;
+	addedNodeCount: number;
+	expandedNodeId: string;
+	explorer: VaultExplorer;
 }
 
 export interface VaultSettings {
@@ -107,3 +129,21 @@ export type LibrarianStreamEvent =
 	| { stage: "awaiting-confirmation"; token: string; type: "confirmation" }
 	| { logEntry: LogEntry; pagesWritten: string[]; stage: "done"; type: "done" }
 	| { error: string; stage: "error"; type: "error" };
+
+export type PersonalGraphSummaryLength = "short" | "medium" | "long";
+
+export type PersonalGraphSummarizeEvent =
+	| { action: "summary" | "deck"; nodeId: string; source?: GraphProvider; stage: string; type: "stage"; length?: PersonalGraphSummaryLength }
+	| {
+		action: "summary";
+		inputKind: "url" | "vault-file" | "context-file";
+		length: PersonalGraphSummaryLength;
+		nodeId: string;
+		stage: string;
+		summary: string;
+		takeaways: string[];
+		type: "summary";
+	}
+	| { action: "deck"; deck: string; nodeId: string; stage: string; type: "deck" }
+	| { action: "summary" | "deck"; nodeId: string; source?: GraphProvider; stage: "done"; type: "done" }
+	| { code?: string; error: string; stage: "error"; type: "error" };
