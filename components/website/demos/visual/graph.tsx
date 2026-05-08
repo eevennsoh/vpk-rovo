@@ -27,6 +27,7 @@ import {
 	clampNeuralRaySoundSettings,
 	type NeuralRaySoundSettings,
 } from "@/components/arts/personal-graph/lib/neural-graph/ray-sound";
+import { createNeuralGraphStore, type NeuralGraphStore } from "@/components/arts/personal-graph/lib/neural-graph/store";
 import type { NeuralGraphThemeMode } from "@/components/arts/personal-graph/lib/neural-graph/renderer";
 import type {
 	VaultEdgeKind,
@@ -63,6 +64,7 @@ interface GraphProps extends Omit<ComponentProps<"div">, "children"> {
 	selectedNodeId?: string | null;
 	showSelectionOverlay?: boolean;
 	showControls?: boolean;
+	store?: NeuralGraphStore;
 	themeMode?: NeuralGraphThemeMode;
 	variant?: "demo" | "fill";
 }
@@ -938,6 +940,7 @@ export default function Graph({
 	showSelectionOverlay = false,
 	showControls = true,
 	style,
+	store: providedStore,
 	themeMode,
 	variant = "demo",
 	...props
@@ -969,6 +972,7 @@ export default function Graph({
 	const canvasRaySoundSettings = showControls ? demoRaySoundSettings : controlledRaySoundSettings;
 	const canvasInteractionSettings = showControls ? demoInteractionSettings : controlledInteractionSettings;
 	const selectedNodeId = isSelectionControlled ? controlledSelectedNodeId ?? null : uncontrolledSelectedNodeId;
+	const graphStore = useMemo(() => providedStore ?? createNeuralGraphStore(explorer), [explorer, providedStore]);
 	const selectedNode = useMemo(() => getSelectedGraphNode(explorer, selectedNodeId), [explorer, selectedNodeId]);
 
 	const handleClearSelection = useCallback(() => {
@@ -1031,6 +1035,7 @@ export default function Graph({
 							raySoundSettings={canvasRaySoundSettings}
 							selectedNodeId={selectedNodeId}
 							showSelectionOverlay={showSelectionOverlay}
+							store={graphStore}
 							themeMode={canvasThemeMode}
 						/>
 					</div>

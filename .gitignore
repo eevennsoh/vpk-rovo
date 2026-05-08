@@ -20,6 +20,11 @@
 /screenshots
 /public/screenshots/
 .playwright-cli/
+.bg-shell/
+.tmp-agent-browser-home/
+.tmp-*.cjs
+.tmp-*.mjs
+test-results/
 
 # output
 /output

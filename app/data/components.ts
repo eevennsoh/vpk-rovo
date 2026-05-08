@@ -361,6 +361,7 @@ export const VISUAL_COMPONENTS: ComponentEntry[] = sortEntriesByName([
 	visualComponent("color", "Color", "@/app/tailwind-theme.css\n@/app/shadcn-theme.css"),
 	visualComponent("shadow", "Shadow", "@/lib/tokens"),
 	visualComponent("shadow-overlay", "Shadow Overlay", "@/components/website/demos/visual/shadow-overlay"),
+	visualComponent("scribbles", "Scribbles", "@/components/website/demos/visual/scribbles"),
 	visualComponent("melt", "Melt", "@/components/website/demos/visual/melt"),
 	visualComponent("squircle", "Squircle", "@/components/website/demos/visual/shaders/squircle"),
 	visualComponent("ascii", "ASCII", "@/components/website/demos/visual/shaders/ascii"),

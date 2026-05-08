@@ -155,7 +155,7 @@ export interface NeuralGraphParamSection {
 }
 
 export const DEFAULT_NEURAL_GRAPH_PARAMS: NeuralGraphParams = {
-	amplitude: 0.12,
+	amplitude: 0.15,
 	colorConcept: "var(--ds-icon-accent-orange)",
 	colorEntity: "var(--ds-icon-accent-lime)",
 	colorRaw: "var(--ds-icon-accent-gray)",
@@ -213,7 +213,7 @@ export const DEFAULT_NEURAL_GRAPH_PARAMS: NeuralGraphParams = {
 	signalLength: 0.22,
 	signalOpacity: 1,
 	signalWidth: 3.5,
-	speed: 0.6,
+	speed: 0.8,
 	spread: 520,
 	tiltX: 0,
 	tiltZ: 0,

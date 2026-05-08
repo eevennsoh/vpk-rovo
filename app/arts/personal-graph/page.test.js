@@ -575,6 +575,7 @@ test("Personal Graph keeps the owned canvas renderer accessible", () => {
 		/const accessibleGraph = useMemo\(\(\) => createNeuralGraphStore\(explorer\), \[explorer\]\);/,
 	);
 	assert.match(SURFACE_SOURCE, /accessibleGraph\.edges\.map/);
+	assert.match(SURFACE_SOURCE, /store=\{accessibleGraph\}/);
 	assert.doesNotMatch(SURFACE_SOURCE, /\(explorer\?\.edges \?\? \[\]\)\.map/);
 	assert.match(
 		SURFACE_SOURCE,
@@ -596,11 +597,17 @@ test("Personal Graph keeps the owned canvas renderer accessible", () => {
 	assert.match(GRAPH_SOURCE, /rayOriginBottomOffset=\{rayOriginBottomOffset\}/);
 	assert.match(GRAPH_SOURCE, /const canvasInteractionSettings = showControls \? demoInteractionSettings : controlledInteractionSettings;/);
 	assert.match(GRAPH_SOURCE, /const canvasRaySoundSettings = showControls \? demoRaySoundSettings : controlledRaySoundSettings;/);
+	assert.match(GRAPH_SOURCE, /store\?: NeuralGraphStore;/);
+	assert.match(GRAPH_SOURCE, /const graphStore = useMemo\(\(\) => providedStore \?\? createNeuralGraphStore\(explorer\), \[explorer, providedStore\]\);/);
 	assert.match(GRAPH_SOURCE, /interactionSettings=\{canvasInteractionSettings\}/);
 	assert.match(GRAPH_SOURCE, /raySoundSettings=\{canvasRaySoundSettings\}/);
+	assert.match(GRAPH_SOURCE, /store=\{graphStore\}/);
 	assert.match(NEURAL_CANVAS_SOURCE, /rayOriginBottomOffset\?: number;/);
 	assert.match(NEURAL_CANVAS_SOURCE, /interactionSettings\?: NeuralGraphInteractionSettings/);
 	assert.match(NEURAL_CANVAS_SOURCE, /raySoundSettings\?: NeuralRaySoundSettings/);
+	assert.match(NEURAL_CANVAS_SOURCE, /store\?: NeuralGraphStore;/);
+	assert.match(NEURAL_CANVAS_SOURCE, /store: providedStore/);
+	assert.match(NEURAL_CANVAS_SOURCE, /const store = useMemo\(\(\) => providedStore \?\? createNeuralGraphStore\(explorer\), \[explorer, providedStore\]\);/);
 	assert.match(NEURAL_CANVAS_SOURCE, /function getRayOriginY/);
 	assert.match(NEURAL_CANVAS_SOURCE, /viewport\.height - rayOriginBottomOffset/);
 	assert.match(NEURAL_RENDERER_SOURCE, /rayOriginY\?: number;/);

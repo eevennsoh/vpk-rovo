@@ -959,6 +959,7 @@ export function PersonalGraphSurface({
 							selectedNodeId={selectedNodeId}
 							showControls={false}
 							showSelectionOverlay={false}
+							store={accessibleGraph}
 							variant="fill"
 						/>
 					</div>

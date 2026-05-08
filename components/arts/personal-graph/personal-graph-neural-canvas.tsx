@@ -62,6 +62,7 @@ interface PersonalGraphNeuralCanvasProps {
 	raySoundSettings?: NeuralRaySoundSettings;
 	selectedNodeId: string | null;
 	showSelectionOverlay?: boolean;
+	store?: NeuralGraphStore;
 	themeMode?: NeuralGraphThemeMode;
 }
 
@@ -260,6 +261,7 @@ export function PersonalGraphNeuralCanvas({
 	raySoundSettings,
 	selectedNodeId,
 	showSelectionOverlay = true,
+	store: providedStore,
 	themeMode,
 }: Readonly<PersonalGraphNeuralCanvasProps>) {
 	const { actualTheme } = useTheme();
@@ -329,7 +331,7 @@ export function PersonalGraphNeuralCanvas({
 	const isPanningRef = useRef(false);
 	const [selectedOverlay, setSelectedOverlay] = useState<SelectedOverlayState | null>(null);
 	const [viewport, setViewport] = useState<NeuralViewport>(EMPTY_VIEWPORT);
-	const store = useMemo(() => createNeuralGraphStore(explorer), [explorer]);
+	const store = useMemo(() => providedStore ?? createNeuralGraphStore(explorer), [explorer, providedStore]);
 	const hasGraph = store.nodes.length > 0;
 	const rayOriginY = getRayOriginY({ params, rayOriginBottomOffset, viewport });
 	const resolveGraphColor = useCallback((color: string) => {

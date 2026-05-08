@@ -720,10 +720,10 @@
 
 @utility parallax-slow {
 	will-change: transform;
-	transition: transform 0.1s linear;
+	transition: transform var(--duration-fast) var(--ease-linear);
 }
 
 @utility parallax-medium {
 	will-change: transform;
-	transition: transform 0.15s linear;
+	transition: transform var(--duration-normal) var(--ease-linear);
 }

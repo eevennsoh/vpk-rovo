@@ -93,6 +93,11 @@ test("Graph visual can be embedded as the live Personal Graph renderer", () => {
 	assert.match(GRAPH_SOURCE, /onSelectedNodeIdChange\?: \(nodeId: string \| null\) => void/);
 	assert.match(GRAPH_SOURCE, /isFillVariant \? "flex h-full w-full flex-col"/);
 	assert.match(GRAPH_SOURCE, /isLoading=\{isLoading\}/);
+	assert.match(GRAPH_SOURCE, /store\?: NeuralGraphStore;/);
+	assert.match(GRAPH_SOURCE, /const graphStore = useMemo\(\(\) => providedStore \?\? createNeuralGraphStore\(explorer\), \[explorer, providedStore\]\);/);
+	assert.match(GRAPH_SOURCE, /store=\{graphStore\}/);
+	assert.match(NEURAL_CANVAS_SOURCE, /store\?: NeuralGraphStore;/);
+	assert.match(NEURAL_CANVAS_SOURCE, /const store = useMemo\(\(\) => providedStore \?\? createNeuralGraphStore\(explorer\), \[explorer, providedStore\]\);/);
 	for (const propName of [
 		"background",
 		"interactionSettings",
