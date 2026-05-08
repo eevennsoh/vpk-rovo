@@ -12,7 +12,8 @@ export type VaultEdgeKind =
 	| "aligned-to"
 	| "member-of"
 	| "attended"
-	| "reviewed";
+	| "reviewed"
+	| "related";
 
 export interface VaultNode {
 	bodyPreview: string;
@@ -55,6 +56,13 @@ export interface VaultExplorer {
 		rawCount: number;
 		wikiCount: number;
 	};
+}
+
+export interface TwgNodeExpandResult {
+	addedEdgeCount: number;
+	addedNodeCount: number;
+	expandedNodeId: string;
+	explorer: VaultExplorer;
 }
 
 export interface VaultSettings {
@@ -121,3 +129,21 @@ export type LibrarianStreamEvent =
 	| { stage: "awaiting-confirmation"; token: string; type: "confirmation" }
 	| { logEntry: LogEntry; pagesWritten: string[]; stage: "done"; type: "done" }
 	| { error: string; stage: "error"; type: "error" };
+
+export type PersonalGraphSummaryLength = "short" | "medium" | "long";
+
+export type PersonalGraphSummarizeEvent =
+	| { action: "summary" | "deck"; nodeId: string; source?: GraphProvider; stage: string; type: "stage"; length?: PersonalGraphSummaryLength }
+	| {
+		action: "summary";
+		inputKind: "url" | "vault-file" | "context-file";
+		length: PersonalGraphSummaryLength;
+		nodeId: string;
+		stage: string;
+		summary: string;
+		takeaways: string[];
+		type: "summary";
+	}
+	| { action: "deck"; deck: string; nodeId: string; stage: string; type: "deck" }
+	| { action: "summary" | "deck"; nodeId: string; source?: GraphProvider; stage: "done"; type: "done" }
+	| { code?: string; error: string; stage: "error"; type: "error" };

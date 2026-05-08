@@ -282,6 +282,76 @@ function createLayoutEdges(edges: NeuralGraphEdge[], nodesById: Map<string, Neur
 	return layoutEdges;
 }
 
+function blendLayoutNode(current: NeuralLayoutNode, next: NeuralLayoutNode, amount: number): NeuralLayoutNode {
+	return {
+		...next,
+		alpha: lerp(current.alpha, next.alpha, amount),
+		baseSize: lerp(current.baseSize, next.baseSize, amount),
+		depthScale: lerp(current.depthScale, next.depthScale, amount),
+		x: lerp(current.x, next.x, amount),
+		y: lerp(current.y, next.y, amount),
+		z: lerp(current.z, next.z, amount),
+	};
+}
+
+export function smoothNeuralGraphLayout({
+	amount,
+	current,
+	next,
+}: {
+	amount: number;
+	current: NeuralGraphLayout | null | undefined;
+	next: NeuralGraphLayout;
+}): NeuralGraphLayout {
+	if (!current) return next;
+	const blendAmount = clampFocusProgress(amount);
+	if (blendAmount >= 1) return next;
+	if (blendAmount <= 0) return current;
+
+	const nodes = next.nodes.map((node) => {
+		const currentNode = current.nodesById.get(node.id);
+		return currentNode ? blendLayoutNode(currentNode, node, blendAmount) : node;
+	});
+	const nodesById = new Map(nodes.map((node) => [node.id, node]));
+
+	return {
+		...next,
+		edges: createLayoutEdges(next.edges.map((edge) => edge.edge), nodesById),
+		nodes,
+		nodesById,
+	};
+}
+
+export function pinNeuralGraphNodePosition({
+	layout,
+	nodeId,
+	position,
+}: {
+	layout: NeuralGraphLayout;
+	nodeId: string | null | undefined;
+	position: NeuralLayoutNode | null | undefined;
+}): NeuralGraphLayout {
+	if (!nodeId || !position || !layout.nodesById.has(nodeId)) return layout;
+
+	const nodes = layout.nodes.map((node) => node.id === nodeId
+		? {
+			...node,
+			depthScale: position.depthScale,
+			x: position.x,
+			y: position.y,
+			z: position.z,
+		}
+		: node);
+	const nodesById = new Map(nodes.map((node) => [node.id, node]));
+
+	return {
+		...layout,
+		edges: createLayoutEdges(layout.edges.map((edge) => edge.edge), nodesById),
+		nodes,
+		nodesById,
+	};
+}
+
 export function computeNeuralGraphLayout({
 	focusProgress = 0,
 	interaction = null,

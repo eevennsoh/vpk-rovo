@@ -3,6 +3,11 @@
 const { spawn } = require("node:child_process");
 
 const TWG_BIN = process.env.TWG_BIN || "twg";
+const DEFAULT_TWG_DEPTH = 2;
+const DEFAULT_TWG_FANOUT_LIMIT = 10;
+const DEFAULT_TWG_DEPTH_ENV_KEY = "PERSONAL_GRAPH_TWG_DEFAULT_DEPTH";
+const FANOUT_LIMIT_ENV_KEY = "PERSONAL_GRAPH_TWG_FANOUT_LIMIT";
+const GENERIC_EDGE_KIND = "related";
 
 const RELATIONSHIP_TO_EDGE_KIND = new Map([
 	["atlassian_user_contributed_to_confluence_page", "worked-on"],
@@ -32,8 +37,18 @@ const TARGET_TYPE_TO_NODE_KIND = new Map([
 	["ConfluenceWhiteboard", "source"],
 	["ConfluenceComment", "source"],
 	["JiraIssue", "source"],
+	["JiraWorkItem", "source"],
 	["LoomVideo", "source"],
 	["LoomMeeting", "source"],
+]);
+
+const TARGET_TYPE_TO_CONTEXT_ROUTE = new Map([
+	["AtlassianAccountUser", ["context", "user"]],
+	["ConfluencePage", ["context", "confluence", "page"]],
+	["ConfluenceBlogPost", ["context", "confluence", "blogpost"]],
+	["ConfluenceWhiteboard", ["context", "confluence", "whiteboard"]],
+	["JiraIssue", ["context", "jira", "workitem"]],
+	["JiraWorkItem", ["context", "jira", "workitem"]],
 ]);
 
 function prettifyType(type) {
@@ -47,43 +62,145 @@ function deriveTitleFromAri(ari, type) {
 	return `${prettifyType(type)} ${tail}`;
 }
 
-function mapTargetToNode(target) {
-	if (!target || typeof target !== "object" || typeof target.ari !== "string" || !target.ari) {
+function getNonEmptyString(value) {
+	if (typeof value !== "string") return null;
+	const trimmed = value.trim();
+	return trimmed ? trimmed : null;
+}
+
+function getPositiveIntegerFromEnv(key, fallback) {
+	const rawValue = getNonEmptyString(process.env[key]);
+	if (!rawValue) return fallback;
+	const parsed = Number.parseInt(rawValue, 10);
+	return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function getDefaultDepth() {
+	return Math.min(2, getPositiveIntegerFromEnv(DEFAULT_TWG_DEPTH_ENV_KEY, DEFAULT_TWG_DEPTH));
+}
+
+function getFanoutLimit() {
+	return getPositiveIntegerFromEnv(FANOUT_LIMIT_ENV_KEY, DEFAULT_TWG_FANOUT_LIMIT);
+}
+
+function getNodeType(node) {
+	return getNonEmptyString(node?.frontmatter?.type) ?? getNonEmptyString(node?.type);
+}
+
+function mapObjectToNode(object, { fallbackTitle = null } = {}) {
+	if (!object || typeof object !== "object" || typeof object.ari !== "string" || !object.ari) {
 		return null;
 	}
-	const kind = TARGET_TYPE_TO_NODE_KIND.get(target.type) ?? "source";
-	const name = typeof target.name === "string" && target.name.trim() ? target.name.trim() : null;
-	const title = name ?? deriveTitleFromAri(target.ari, target.type);
-	const externalUrl = typeof target.url === "string" && target.url.trim() ? target.url.trim() : null;
+	const kind = TARGET_TYPE_TO_NODE_KIND.get(object.type) ?? "source";
+	const name = getNonEmptyString(object.name);
+	const title = name ?? fallbackTitle ?? deriveTitleFromAri(object.ari, object.type);
+	const externalUrl = getNonEmptyString(object.url);
 	return {
-		bodyPreview: name ? "" : prettifyType(target.type),
+		bodyPreview: name ? "" : prettifyType(object.type),
 		connectionCount: 0,
 		dangling: false,
 		externalUrl,
-		frontmatter: { ari: target.ari, type: target.type ?? null },
-		id: target.ari,
+		frontmatter: { ari: object.ari, type: object.type ?? null },
+		id: object.ari,
 		kind,
 		label: title,
 		missing: false,
 		path: null,
 		provider: "twg",
-		relativePath: target.ari,
+		relativePath: object.ari,
 		size: 1,
-		slug: encodeURIComponent(target.ari),
+		slug: encodeURIComponent(object.ari),
 		title,
 		updatedAt: null,
 	};
+}
+
+function classifyRelationshipToEdgeKind(relationshipName) {
+	const mapped = RELATIONSHIP_TO_EDGE_KIND.get(relationshipName);
+	if (mapped) return mapped;
+
+	const normalized = String(relationshipName ?? "").toLowerCase().replace(/[^a-z0-9]+/gu, "_");
+	if (/mentioned/u.test(normalized)) return "mentioned-in";
+	if (/viewed|reacted/u.test(normalized)) return "viewed";
+	if (/invited|attended|meeting/u.test(normalized)) return "attended";
+	if (/reports?_to|manager/u.test(normalized)) return "reports-to";
+	if (/aligned|goal|project/u.test(normalized)) return "aligned-to";
+	if (/member|belongs_to|team/u.test(normalized)) return "member-of";
+	if (/review|approved|approver/u.test(normalized)) return "reviewed";
+	if (/contributed|created|updated|assigned|reported|owned|owns/u.test(normalized)) return "worked-on";
+	return GENERIC_EDGE_KIND;
+}
+
+function formatRelationshipLabel(relationshipName) {
+	return String(relationshipName ?? "related")
+		.replace(/^atlassian_user_/u, "")
+		.replace(/^atlassian_/u, "")
+		.replace(/_/gu, " ");
 }
 
 function buildEdge(sourceId, targetId, edgeKind, relationshipName) {
 	return {
 		id: `${edgeKind}:${sourceId}->${targetId}`,
 		kind: edgeKind,
-		label: relationshipName.replace(/^atlassian_user_/u, "").replace(/_/gu, " "),
-		metadata: { relationship: relationshipName },
+		label: formatRelationshipLabel(relationshipName),
+		metadata: { relationship: relationshipName, relationships: [relationshipName] },
 		relationKinds: [edgeKind],
 		source: sourceId,
 		target: targetId,
+	};
+}
+
+function mergeEdgeMetadata(existing, next) {
+	const relationships = new Set([
+		...(Array.isArray(existing.metadata?.relationships) ? existing.metadata.relationships : []),
+		existing.metadata?.relationship,
+		...(Array.isArray(next.metadata?.relationships) ? next.metadata.relationships : []),
+		next.metadata?.relationship,
+	].filter((value) => typeof value === "string" && value.trim()));
+	return {
+		...existing,
+		label: existing.label || next.label,
+		metadata: {
+			...existing.metadata,
+			...next.metadata,
+			relationship: existing.metadata?.relationship ?? next.metadata?.relationship,
+			relationships: [...relationships],
+		},
+		relationKinds: [...new Set([...existing.relationKinds, ...next.relationKinds])],
+	};
+}
+
+function finalizeExplorer(nodesById, edgeEntries, generatedAt = new Date().toISOString()) {
+	const edgesById = new Map();
+	for (const edge of edgeEntries) {
+		if (!edge || typeof edge.id !== "string") continue;
+		const existing = edgesById.get(edge.id);
+		edgesById.set(edge.id, existing ? mergeEdgeMetadata(existing, edge) : edge);
+	}
+
+	const nodes = [...nodesById.values()].map((node) => ({ ...node, connectionCount: 0 }));
+	const finalizedNodesById = new Map(nodes.map((node) => [node.id, node]));
+	const edges = [...edgesById.values()].filter((edge) => (
+		finalizedNodesById.has(edge.source) && finalizedNodesById.has(edge.target)
+	));
+	for (const edge of edges) {
+		const sourceNode = finalizedNodesById.get(edge.source);
+		const targetNode = finalizedNodesById.get(edge.target);
+		if (sourceNode) sourceNode.connectionCount += 1;
+		if (targetNode) targetNode.connectionCount += 1;
+	}
+
+	return {
+		edges,
+		generatedAt,
+		nodes,
+		stats: {
+			danglingCount: nodes.filter((node) => node.dangling).length,
+			edgeCount: edges.length,
+			nodeCount: nodes.length,
+			rawCount: nodes.filter((node) => node.kind === "raw").length,
+			wikiCount: nodes.filter((node) => node.kind !== "entity" && node.kind !== "raw").length,
+		},
 	};
 }
 
@@ -100,73 +217,36 @@ function normalizeContextResponse(payload) {
 		throw new Error("twg context payload missing `data.object.ari`");
 	}
 
-	const rootNode = {
-		bodyPreview: "",
-		connectionCount: 0,
-		dangling: false,
-		externalUrl: null,
-		frontmatter: { ari: rootObject.ari, type: rootObject.type ?? null },
-		id: rootObject.ari,
-		kind: "entity",
-		label: rootObject.name ?? "You",
-		missing: false,
-		path: null,
-		provider: "twg",
-		relativePath: rootObject.ari,
-		size: 1,
-		slug: encodeURIComponent(rootObject.ari),
-		title: rootObject.name ?? "You",
-		updatedAt: null,
-	};
+	const rootNode = mapObjectToNode(rootObject, {
+		fallbackTitle: rootObject.type === "AtlassianAccountUser" ? "You" : null,
+	});
 
 	const nodesById = new Map([[rootNode.id, rootNode]]);
-	const edges = [];
-	const droppedRelationships = new Set();
+	const edgeEntries = [];
 
 	const relationships = Array.isArray(data.relationshipSummary) ? data.relationshipSummary : [];
 	for (const relationship of relationships) {
 		if (!relationship || typeof relationship.relationshipName !== "string") continue;
-		const edgeKind = RELATIONSHIP_TO_EDGE_KIND.get(relationship.relationshipName);
-		if (!edgeKind) {
-			droppedRelationships.add(relationship.relationshipName);
-			continue;
-		}
+		const edgeKind = classifyRelationshipToEdgeKind(relationship.relationshipName);
 		const targets = Array.isArray(relationship.targets) ? relationship.targets : [];
 		for (const target of targets) {
-			const node = mapTargetToNode(target);
+			const node = mapObjectToNode(target);
 			if (!node) continue;
 			const existing = nodesById.get(node.id);
 			if (!existing) {
 				nodesById.set(node.id, node);
 			}
-			edges.push(buildEdge(rootNode.id, node.id, edgeKind, relationship.relationshipName));
+			const isInbound = relationship.direction === "inbound";
+			edgeEntries.push(buildEdge(
+				isInbound ? node.id : rootNode.id,
+				isInbound ? rootNode.id : node.id,
+				edgeKind,
+				relationship.relationshipName,
+			));
 		}
 	}
 
-	for (const droppedName of droppedRelationships) {
-		console.warn(`[personal-graph-twg] dropping unmapped relationship: ${droppedName}`);
-	}
-
-	for (const edge of edges) {
-		const sourceNode = nodesById.get(edge.source);
-		const targetNode = nodesById.get(edge.target);
-		if (sourceNode) sourceNode.connectionCount += 1;
-		if (targetNode) targetNode.connectionCount += 1;
-	}
-
-	const nodes = [...nodesById.values()];
-	return {
-		edges,
-		generatedAt: new Date().toISOString(),
-		nodes,
-		stats: {
-			danglingCount: 0,
-			edgeCount: edges.length,
-			nodeCount: nodes.length,
-			rawCount: 0,
-			wikiCount: nodes.filter((node) => node.kind !== "entity").length,
-		},
-	};
+	return finalizeExplorer(nodesById, edgeEntries);
 }
 
 class TwgAuthError extends Error {
@@ -245,9 +325,132 @@ async function fetchContextUser({ signal, since = "7d", spawnImpl } = {}) {
 	return parseJsonOrThrow(stdout, args);
 }
 
-async function buildTwgExplorer({ signal, since, spawnImpl } = {}) {
+function getTwgContextArgsForNode(node) {
+	const nodeType = getNodeType(node);
+	const ari = getNonEmptyString(node?.id) ?? getNonEmptyString(node?.frontmatter?.ari);
+	if (!nodeType || !ari) {
+		return null;
+	}
+	const route = TARGET_TYPE_TO_CONTEXT_ROUTE.get(nodeType);
+	if (!route) {
+		return null;
+	}
+	return [...route, ari];
+}
+
+async function fetchContextForNode(node, { signal, since = "7d", spawnImpl } = {}) {
+	const routeArgs = getTwgContextArgsForNode(node);
+	if (!routeArgs) {
+		return null;
+	}
+	const args = [...routeArgs, "--output", "json", "--since", since];
+	const stdout = await runTwg(args, { signal, spawnImpl });
+	return parseJsonOrThrow(stdout, args);
+}
+
+function hasBetterNodeHydration(nextNode, existingNode) {
+	if (!existingNode) return true;
+	if (!existingNode.externalUrl && nextNode.externalUrl) return true;
+	if (!getNonEmptyString(existingNode.title) && getNonEmptyString(nextNode.title)) return true;
+	if (existingNode.title === deriveTitleFromAri(existingNode.id, existingNode.frontmatter?.type) && nextNode.title !== existingNode.title) {
+		return true;
+	}
+	if (!getNonEmptyString(existingNode.bodyPreview) && getNonEmptyString(nextNode.bodyPreview)) return true;
+	return false;
+}
+
+function mergeTwgNodes(existingNode, nextNode) {
+	if (!existingNode) return nextNode;
+	const preferNext = hasBetterNodeHydration(nextNode, existingNode);
+	const base = preferNext ? { ...existingNode, ...nextNode } : { ...nextNode, ...existingNode };
+	return {
+		...base,
+		connectionCount: 0,
+		dangling: Boolean(existingNode.dangling && nextNode.dangling),
+		externalUrl: existingNode.externalUrl || nextNode.externalUrl || null,
+		frontmatter: {
+			...(existingNode.frontmatter && typeof existingNode.frontmatter === "object" ? existingNode.frontmatter : {}),
+			...(nextNode.frontmatter && typeof nextNode.frontmatter === "object" ? nextNode.frontmatter : {}),
+		},
+		label: preferNext && nextNode.label ? nextNode.label : existingNode.label || nextNode.label,
+		provider: "twg",
+		title: preferNext && nextNode.title ? nextNode.title : existingNode.title || nextNode.title,
+	};
+}
+
+function mergeTwgExplorers(base, expansion) {
+	const nodesById = new Map();
+	for (const node of [...(base?.nodes ?? []), ...(expansion?.nodes ?? [])]) {
+		if (!node || typeof node.id !== "string") continue;
+		nodesById.set(node.id, mergeTwgNodes(nodesById.get(node.id), node));
+	}
+	return finalizeExplorer(nodesById, [...(base?.edges ?? []), ...(expansion?.edges ?? [])]);
+}
+
+function getSupportedExpansionNodes(explorer, rootNodeId, fanoutLimit) {
+	const limit = Math.max(0, fanoutLimit);
+	return (explorer.nodes ?? [])
+		.filter((node) => node.id !== rootNodeId && getTwgContextArgsForNode(node))
+		.slice(0, limit);
+}
+
+async function buildTwgExplorer({ depth, fanoutLimit, signal, since, spawnImpl } = {}) {
 	const payload = await fetchContextUser({ signal, since, spawnImpl });
-	return normalizeContextResponse(payload);
+	let explorer = normalizeContextResponse(payload);
+	const resolvedDepth = depth === undefined ? getDefaultDepth() : Math.min(2, Math.max(1, Number.parseInt(depth, 10) || 1));
+	if (resolvedDepth < 2) {
+		return explorer;
+	}
+
+	const rootNodeId = payload?.data?.object?.ari;
+	const resolvedFanoutLimit = fanoutLimit === undefined ? getFanoutLimit() : Math.max(0, Number.parseInt(fanoutLimit, 10) || 0);
+	for (const node of getSupportedExpansionNodes(explorer, rootNodeId, resolvedFanoutLimit)) {
+		const expansionPayload = await fetchContextForNode(node, { signal, since, spawnImpl });
+		if (!expansionPayload) continue;
+		explorer = mergeTwgExplorers(explorer, normalizeContextResponse(expansionPayload));
+	}
+	return explorer;
+}
+
+async function expandTwgExplorerNode({ explorer, nodeId, signal, since, spawnImpl } = {}) {
+	if (!explorer || typeof explorer !== "object") {
+		const error = new Error("Team Work Graph expansion requires a cached explorer.");
+		error.code = "TWG_CACHE_REQUIRED";
+		throw error;
+	}
+	const resolvedNodeId = getNonEmptyString(nodeId);
+	if (!resolvedNodeId) {
+		const error = new Error("A TWG nodeId is required.");
+		error.code = "NODE_SELECTION_REQUIRED";
+		throw error;
+	}
+	const node = (explorer.nodes ?? []).find((entry) => entry.id === resolvedNodeId);
+	if (!node) {
+		const error = new Error(`TWG node not found: ${resolvedNodeId}`);
+		error.code = "NODE_NOT_FOUND";
+		throw error;
+	}
+
+	const routeArgs = getTwgContextArgsForNode(node);
+	if (!routeArgs) {
+		return {
+			addedEdgeCount: 0,
+			addedNodeCount: 0,
+			expandedNodeId: resolvedNodeId,
+			explorer,
+		};
+	}
+
+	const beforeNodeIds = new Set((explorer.nodes ?? []).map((entry) => entry.id));
+	const beforeEdgeIds = new Set((explorer.edges ?? []).map((entry) => entry.id));
+	const payload = await fetchContextForNode(node, { signal, since, spawnImpl });
+	const merged = mergeTwgExplorers(explorer, normalizeContextResponse(payload));
+	return {
+		addedEdgeCount: merged.edges.filter((edge) => !beforeEdgeIds.has(edge.id)).length,
+		addedNodeCount: merged.nodes.filter((entry) => !beforeNodeIds.has(entry.id)).length,
+		expandedNodeId: resolvedNodeId,
+		explorer: merged,
+	};
 }
 
 async function fetchSlice(slice, params = {}, { signal, spawnImpl } = {}) {
@@ -258,12 +461,22 @@ async function fetchSlice(slice, params = {}, { signal, spawnImpl } = {}) {
 }
 
 module.exports = {
+	DEFAULT_TWG_DEPTH,
+	DEFAULT_TWG_DEPTH_ENV_KEY,
+	DEFAULT_TWG_FANOUT_LIMIT,
+	FANOUT_LIMIT_ENV_KEY,
+	GENERIC_EDGE_KIND,
 	RELATIONSHIP_TO_EDGE_KIND,
+	TARGET_TYPE_TO_CONTEXT_ROUTE,
 	TARGET_TYPE_TO_NODE_KIND,
 	TwgAuthError,
 	TwgNotFoundError,
 	buildTwgExplorer,
+	expandTwgExplorerNode,
+	fetchContextForNode,
 	fetchContextUser,
 	fetchSlice,
+	getTwgContextArgsForNode,
+	mergeTwgExplorers,
 	normalizeContextResponse,
 };

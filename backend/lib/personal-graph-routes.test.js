@@ -12,6 +12,8 @@ const {
 } = require("./in-process-http");
 const personalGraphQmd = require("./personal-graph-qmd");
 const personalGraphRoutes = require("./personal-graph-routes");
+const summaryContext = require("./personal-graph-summary-context");
+const twgSource = require("./personal-graph-twg-source");
 
 function createPersonalGraphTestApp() {
 	const app = express();
@@ -243,6 +245,34 @@ function configureTwgEnv(t) {
 	return { sourcePath, cachePath };
 }
 
+function createCachedTwgExplorer() {
+	return {
+		edges: [],
+		generatedAt: "2026-05-07T10:00:00.000Z",
+		nodes: [
+			{
+				bodyPreview: "",
+				connectionCount: 0,
+				dangling: false,
+				externalUrl: null,
+				frontmatter: { type: "ConfluencePage" },
+				id: "ari:cloud:confluence:site:page/1",
+				kind: "source",
+				label: "Page",
+				missing: false,
+				path: null,
+				provider: "twg",
+				relativePath: "ari:cloud:confluence:site:page/1",
+				size: 1,
+				slug: "ari%3Acloud%3Aconfluence%3Asite%3Apage%2F1",
+				title: "Page",
+				updatedAt: null,
+			},
+		],
+		stats: { danglingCount: 0, edgeCount: 0, nodeCount: 1, rawCount: 0, wikiCount: 1 },
+	};
+}
+
 test("GET /api/personal-graph/source defaults to vault when no state file exists", async (t) => {
 	configureTwgEnv(t);
 	const response = await dispatch(createPersonalGraphTestApp(), {
@@ -297,6 +327,139 @@ test("GET /api/personal-graph/explorer returns cached TWG payload when source is
 	assert.equal(body.nodes.length, 1);
 });
 
+test("POST /api/personal-graph/twg/expand expands a cached TWG explorer and updates cache", async (t) => {
+	const { cachePath } = configureTwgEnv(t);
+	const cachedExplorer = createCachedTwgExplorer();
+	fs.writeFileSync(cachePath, JSON.stringify(cachedExplorer), "utf8");
+	const originalExpand = twgSource.expandTwgExplorerNode;
+	twgSource.expandTwgExplorerNode = async ({ explorer, nodeId }) => {
+		assert.equal(explorer.generatedAt, cachedExplorer.generatedAt);
+		assert.equal(nodeId, "ari:cloud:confluence:site:page/1");
+		const merged = {
+			...explorer,
+			edges: [
+				{
+					id: "mentioned-in:ari:cloud:confluence:site:page/1->ari:cloud:jira:site:issue/2",
+					kind: "mentioned-in",
+					label: "mentioned",
+					metadata: {},
+					relationKinds: ["mentioned-in"],
+					source: "ari:cloud:confluence:site:page/1",
+					target: "ari:cloud:jira:site:issue/2",
+				},
+			],
+			nodes: [
+				...explorer.nodes,
+				{
+					...explorer.nodes[0],
+					frontmatter: { type: "JiraIssue" },
+					id: "ari:cloud:jira:site:issue/2",
+					label: "JRA-2",
+					relativePath: "ari:cloud:jira:site:issue/2",
+					slug: "ari%3Acloud%3Ajira%3Asite%3Aissue%2F2",
+					title: "JRA-2",
+				},
+			],
+			stats: { danglingCount: 0, edgeCount: 1, nodeCount: 2, rawCount: 0, wikiCount: 2 },
+		};
+		return {
+			addedEdgeCount: 1,
+			addedNodeCount: 1,
+			expandedNodeId: nodeId,
+			explorer: merged,
+		};
+	};
+	t.after(() => {
+		twgSource.expandTwgExplorerNode = originalExpand;
+	});
+
+	const response = await fetch(`${await listen(createPersonalGraphTestApp(), t)}/api/personal-graph/twg/expand`, {
+		body: JSON.stringify({ nodeId: "ari:cloud:confluence:site:page/1" }),
+		headers: { "Content-Type": "application/json" },
+		method: "POST",
+	});
+	const body = await response.json();
+
+	assert.equal(response.status, 200);
+	assert.equal(body.expandedNodeId, "ari:cloud:confluence:site:page/1");
+	assert.equal(body.addedNodeCount, 1);
+	assert.equal(body.addedEdgeCount, 1);
+	assert.equal(body.explorer.nodes.length, 2);
+	assert.equal(JSON.parse(fs.readFileSync(cachePath, "utf8")).nodes.length, 2);
+});
+
+test("POST /api/personal-graph/twg/expand requires a cached TWG explorer", async (t) => {
+	configureTwgEnv(t);
+	const response = await fetch(`${await listen(createPersonalGraphTestApp(), t)}/api/personal-graph/twg/expand`, {
+		body: JSON.stringify({ nodeId: "ari:cloud:confluence:site:page/1" }),
+		headers: { "Content-Type": "application/json" },
+		method: "POST",
+	});
+	const body = await response.json();
+
+	assert.equal(response.status, 409);
+	assert.equal(body.code, "TWG_CACHE_REQUIRED");
+});
+
+test("POST /api/personal-graph/twg/expand maps missing cached nodes to a client error", async (t) => {
+	const { cachePath } = configureTwgEnv(t);
+	fs.writeFileSync(cachePath, JSON.stringify(createCachedTwgExplorer()), "utf8");
+	const originalExpand = twgSource.expandTwgExplorerNode;
+	twgSource.expandTwgExplorerNode = async () => {
+		const error = new Error("missing");
+		error.code = "NODE_NOT_FOUND";
+		throw error;
+	};
+	t.after(() => {
+		twgSource.expandTwgExplorerNode = originalExpand;
+	});
+
+	const response = await fetch(`${await listen(createPersonalGraphTestApp(), t)}/api/personal-graph/twg/expand`, {
+		body: JSON.stringify({ nodeId: "missing" }),
+		headers: { "Content-Type": "application/json" },
+		method: "POST",
+	});
+	const body = await response.json();
+
+	assert.equal(response.status, 400);
+	assert.equal(body.code, "NODE_NOT_FOUND");
+});
+
+test("POST /api/personal-graph/twg/expand maps TWG auth and not-found errors", async (t) => {
+	const { cachePath } = configureTwgEnv(t);
+	fs.writeFileSync(cachePath, JSON.stringify(createCachedTwgExplorer()), "utf8");
+	const originalExpand = twgSource.expandTwgExplorerNode;
+	const baseUrl = await listen(createPersonalGraphTestApp(), t);
+	t.after(() => {
+		twgSource.expandTwgExplorerNode = originalExpand;
+	});
+
+	twgSource.expandTwgExplorerNode = async () => {
+		throw new twgSource.TwgAuthError("login required");
+	};
+	const authResponse = await fetch(`${baseUrl}/api/personal-graph/twg/expand`, {
+		body: JSON.stringify({ nodeId: "ari:cloud:confluence:site:page/1" }),
+		headers: { "Content-Type": "application/json" },
+		method: "POST",
+	});
+	const authBody = await authResponse.json();
+	assert.equal(authResponse.status, 401);
+	assert.equal(authBody.error, "twg_auth_required");
+	assert.equal(authBody.remediation, "Run `twg login` and retry.");
+
+	twgSource.expandTwgExplorerNode = async () => {
+		throw new twgSource.TwgNotFoundError("twg missing");
+	};
+	const missingResponse = await fetch(`${baseUrl}/api/personal-graph/twg/expand`, {
+		body: JSON.stringify({ nodeId: "ari:cloud:confluence:site:page/1" }),
+		headers: { "Content-Type": "application/json" },
+		method: "POST",
+	});
+	const missingBody = await missingResponse.json();
+	assert.equal(missingResponse.status, 503);
+	assert.equal(missingBody.error, "twg_not_found");
+});
+
 test("GET /api/personal-graph/source includes generatedAt when TWG cache is present", async (t) => {
 	const { sourcePath, cachePath } = configureTwgEnv(t);
 	fs.writeFileSync(sourcePath, JSON.stringify({ source: "twg" }), "utf8");
@@ -307,4 +470,164 @@ test("GET /api/personal-graph/source includes generatedAt when TWG cache is pres
 	const body = await response.json();
 	assert.equal(body.source, "twg");
 	assert.equal(body.generatedAt, "2026-05-07T10:00:00.000Z");
+});
+
+function createSummaryVault(t) {
+	const vaultRoot = fs.mkdtempSync(path.join(os.tmpdir(), "personal-graph-summary-route-"));
+	configureSelectedVault(t, vaultRoot);
+	setEnvValueForTest(t, "PERSONAL_GRAPH_SOURCE_PATH", path.join(vaultRoot, "source-state.json"));
+	fs.mkdirSync(path.join(vaultRoot, "raw"), { recursive: true });
+	fs.mkdirSync(path.join(vaultRoot, "wiki", "sources"), { recursive: true });
+	fs.writeFileSync(
+		path.join(vaultRoot, "raw", "source.md"),
+		"---\ntitle: Raw Source\n---\n\nRaw body.",
+		"utf8",
+	);
+	fs.writeFileSync(
+		path.join(vaultRoot, "wiki", "sources", "source.md"),
+		"---\ntitle: Source Page\ntype: source\nsources:\n  - raw/source.md\n---\n\n# Source Page\n\n[[entities/Thing]]",
+		"utf8",
+	);
+	return vaultRoot;
+}
+
+async function readSseEvents(response) {
+	const text = await response.text();
+	return text
+		.split("\n\n")
+		.map((chunk) => chunk.trim())
+		.filter(Boolean)
+		.map((chunk) => JSON.parse(chunk.replace(/^data:\s*/u, "")));
+}
+
+test("POST /api/personal-graph/summarize requires a selected node", async (t) => {
+	createSummaryVault(t);
+	const baseUrl = await listen(createPersonalGraphTestApp(), t);
+	const response = await fetch(`${baseUrl}/api/personal-graph/summarize`, {
+		body: JSON.stringify({ action: "summary", length: "short", nodeId: "" }),
+		headers: { "Content-Type": "application/json" },
+		method: "POST",
+	});
+	const events = await readSseEvents(response);
+	assert.equal(response.status, 200);
+	assert.equal(events.at(-1).type, "error");
+	assert.equal(events.at(-1).code, "NODE_SELECTION_REQUIRED");
+});
+
+test("POST /api/personal-graph/summarize streams selected vault context", async (t) => {
+	createSummaryVault(t);
+	const originalSummarizeSelection = summaryContext.summarizeSelection;
+	summaryContext.summarizeSelection = async ({ explorer, length, nodeId }) => {
+		assert.equal(nodeId, "raw:source");
+		assert.equal(length, "long");
+		assert.ok(explorer.nodes.some((node) => node.id === "wiki:sources/source"));
+		return {
+			inputKind: "vault-file",
+			summary: "Vault summary",
+			takeaways: ["A", "B"],
+		};
+	};
+	t.after(() => {
+		summaryContext.summarizeSelection = originalSummarizeSelection;
+	});
+
+	const response = await fetch(`${await listen(createPersonalGraphTestApp(), t)}/api/personal-graph/summarize`, {
+		body: JSON.stringify({ action: "summary", length: "long", nodeId: "raw:source" }),
+		headers: { "Content-Type": "application/json" },
+		method: "POST",
+	});
+	const events = await readSseEvents(response);
+	assert.equal(events.some((event) => event.type === "stage" && event.stage === "summarizing"), true);
+	const summaryEvent = events.find((event) => event.type === "summary");
+	assert.equal(summaryEvent.summary, "Vault summary");
+	assert.deepEqual(summaryEvent.takeaways, ["A", "B"]);
+	assert.equal(events.at(-1).type, "done");
+});
+
+test("POST /api/personal-graph/summarize uses cached TWG explorer without refreshing", async (t) => {
+	const { sourcePath, cachePath } = configureTwgEnv(t);
+	fs.writeFileSync(sourcePath, JSON.stringify({ source: "twg" }), "utf8");
+	fs.writeFileSync(cachePath, JSON.stringify({
+		edges: [{ id: "edge:me->page", kind: "worked-on", label: "worked on", metadata: {}, relationKinds: ["worked-on"], source: "me", target: "page" }],
+		generatedAt: "2026-05-07T10:00:00.000Z",
+		nodes: [
+			{ bodyPreview: "", connectionCount: 1, dangling: false, externalUrl: null, frontmatter: {}, id: "me", kind: "entity", label: "Me", missing: false, path: null, provider: "twg", relativePath: "me", size: 1, slug: "me", title: "Me", updatedAt: null },
+			{ bodyPreview: "Page", connectionCount: 1, dangling: false, externalUrl: "https://example.com", frontmatter: {}, id: "page", kind: "source", label: "Page", missing: false, path: null, provider: "twg", relativePath: "page", size: 1, slug: "page", title: "Page", updatedAt: null },
+		],
+		stats: { danglingCount: 0, edgeCount: 1, nodeCount: 2, rawCount: 0, wikiCount: 1 },
+	}), "utf8");
+	const originalSummarizeSelection = summaryContext.summarizeSelection;
+	summaryContext.summarizeSelection = async ({ explorer, nodeId }) => {
+		assert.equal(nodeId, "page");
+		assert.equal(explorer.generatedAt, "2026-05-07T10:00:00.000Z");
+		return {
+			inputKind: "context-file",
+			summary: "TWG summary",
+			takeaways: ["Work item"],
+		};
+	};
+	t.after(() => {
+		summaryContext.summarizeSelection = originalSummarizeSelection;
+	});
+
+	const response = await fetch(`${await listen(createPersonalGraphTestApp(), t)}/api/personal-graph/summarize`, {
+		body: JSON.stringify({ action: "summary", length: "medium", nodeId: "page" }),
+		headers: { "Content-Type": "application/json" },
+		method: "POST",
+	});
+	const events = await readSseEvents(response);
+	assert.equal(events.find((event) => event.type === "summary").summary, "TWG summary");
+});
+
+test("POST /api/personal-graph/summarize aborts the previous in-flight run", async (t) => {
+	createSummaryVault(t);
+	let firstStarted;
+	const firstStartedPromise = new Promise((resolve) => {
+		firstStarted = resolve;
+	});
+	let firstAborted = false;
+	const originalSummarizeSelection = summaryContext.summarizeSelection;
+	let callCount = 0;
+	summaryContext.summarizeSelection = async ({ signal }) => {
+		callCount += 1;
+		if (callCount === 1) {
+			firstStarted();
+			await new Promise((resolve) => {
+				signal.addEventListener("abort", () => {
+					firstAborted = true;
+					resolve();
+				}, { once: true });
+			});
+			const error = new Error("aborted");
+			error.code = "SUMMARIZE_ABORTED";
+			throw error;
+		}
+		return {
+			inputKind: "vault-file",
+			summary: "Latest summary",
+			takeaways: ["Latest"],
+		};
+	};
+	t.after(() => {
+		summaryContext.summarizeSelection = originalSummarizeSelection;
+	});
+
+	const baseUrl = await listen(createPersonalGraphTestApp(), t);
+	const firstResponsePromise = fetch(`${baseUrl}/api/personal-graph/summarize`, {
+		body: JSON.stringify({ action: "summary", length: "short", nodeId: "raw:source" }),
+		headers: { "Content-Type": "application/json" },
+		method: "POST",
+	});
+	await firstStartedPromise;
+	const secondResponse = await fetch(`${baseUrl}/api/personal-graph/summarize`, {
+		body: JSON.stringify({ action: "summary", length: "medium", nodeId: "raw:source" }),
+		headers: { "Content-Type": "application/json" },
+		method: "POST",
+	});
+	const secondEvents = await readSseEvents(secondResponse);
+	const firstResponse = await firstResponsePromise;
+	await readSseEvents(firstResponse);
+
+	assert.equal(firstAborted, true);
+	assert.equal(secondEvents.find((event) => event.type === "summary").summary, "Latest summary");
 });

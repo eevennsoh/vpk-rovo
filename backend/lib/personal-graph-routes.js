@@ -7,9 +7,10 @@ const { buildExplorer } = require("./personal-graph-explorer");
 const librarian = require("./personal-graph-librarian");
 const qmd = require("./personal-graph-qmd");
 const { getActiveSource, setActiveSource } = require("./personal-graph-source-state");
+const summaryContext = require("./personal-graph-summary-context");
 const { clearCache, readCache, writeCache } = require("./personal-graph-twg-cache");
 const { handleTwgChat } = require("./personal-graph-twg-chat");
-const { TwgAuthError, TwgNotFoundError, buildTwgExplorer } = require("./personal-graph-twg-source");
+const twgSource = require("./personal-graph-twg-source");
 const { getPositiveInteger } = require("./shared-utils");
 const {
 	clearVaultConfig,
@@ -55,6 +56,12 @@ function getStatusForError(error) {
 	if (error?.code === "CONFIRMATION_NOT_FOUND") {
 		return 404;
 	}
+	if (error?.code === "NODE_SELECTION_REQUIRED" || error?.code === "NODE_NOT_FOUND" || error?.code === "INVALID_SUMMARY_LENGTH") {
+		return 400;
+	}
+	if (error?.code === "TWG_CACHE_REQUIRED") {
+		return 409;
+	}
 	if (error?.code === "VAULT_SELECTION_CANCELLED") {
 		return 400;
 	}
@@ -65,6 +72,7 @@ function getStatusForError(error) {
 }
 
 const router = express.Router();
+let activeSummarizeRun = null;
 
 router.get("/vault", (_req, res) => {
 	try {
@@ -142,6 +150,7 @@ async function streamIterable(res, iterable) {
 		}
 	} catch (error) {
 		sendSse(res, {
+			code: error?.code ?? "PERSONAL_GRAPH_STREAM_FAILED",
 			error: error instanceof Error ? error.message : String(error),
 			stage: "error",
 			type: "error",
@@ -151,10 +160,97 @@ async function streamIterable(res, iterable) {
 	}
 }
 
+function getActiveExplorerForSummary() {
+	const source = getActiveSource();
+	if (source === "twg") {
+		const cached = readCache();
+		if (!cached) {
+			const error = new Error("Team Work Graph summary requires a cached explorer. Refresh TWG first.");
+			error.code = "TWG_CACHE_REQUIRED";
+			throw error;
+		}
+		return { explorer: cached, source };
+	}
+	return { explorer: buildExplorer(), source };
+}
+
+function normalizeSummaryRequestBody(body) {
+	const action = body?.action === "deck" ? "deck" : body?.action === "summary" ? "summary" : null;
+	if (!action) {
+		const error = new Error("Personal Graph summarize action must be `summary` or `deck`.");
+		error.code = "INVALID_SUMMARY_ACTION";
+		throw error;
+	}
+	return {
+		action,
+		length: body?.length ?? "medium",
+		nodeId: typeof body?.nodeId === "string" ? body.nodeId : "",
+		summary: typeof body?.summary === "string" ? body.summary : "",
+		takeaways: Array.isArray(body?.takeaways)
+			? body.takeaways.filter((entry) => typeof entry === "string" && entry.trim())
+			: [],
+	};
+}
+
+async function* runSummarizeStream(body) {
+	const request = normalizeSummaryRequestBody(body);
+	const controller = new AbortController();
+	if (activeSummarizeRun) {
+		activeSummarizeRun.abort();
+	}
+	activeSummarizeRun = controller;
+
+	try {
+		yield { action: request.action, nodeId: request.nodeId, stage: "validating", type: "stage" };
+		const { explorer, source } = getActiveExplorerForSummary();
+		if (request.action === "deck") {
+			const selection = summaryContext.getSelectedNodeContext(explorer, request.nodeId);
+			const deck = summaryContext.buildMarpDeck({
+				length: request.length,
+				selection,
+				summary: request.summary,
+				takeaways: request.takeaways,
+			});
+			yield {
+				action: "deck",
+				deck,
+				nodeId: request.nodeId,
+				stage: "deck",
+				type: "deck",
+			};
+			yield { action: "deck", nodeId: request.nodeId, source, stage: "done", type: "done" };
+			return;
+		}
+
+		yield { action: "summary", length: request.length, nodeId: request.nodeId, source, stage: "summarizing", type: "stage" };
+		const result = await summaryContext.summarizeSelection({
+			explorer,
+			length: request.length,
+			nodeId: request.nodeId,
+			signal: controller.signal,
+		});
+		yield {
+			action: "summary",
+			inputKind: result.inputKind,
+			length: request.length,
+			nodeId: request.nodeId,
+			stage: "summarizing",
+			summary: result.summary,
+			takeaways: result.takeaways,
+			type: "summary",
+		};
+		yield { action: "summary", nodeId: request.nodeId, source, stage: "done", type: "done" };
+	} finally {
+		if (activeSummarizeRun === controller) {
+			activeSummarizeRun = null;
+		}
+	}
+}
+
 async function getTwgExplorerCachedOrFresh({ signal } = {}) {
 	const cached = readCache();
 	if (cached) return cached;
-	const fresh = await buildTwgExplorer({ signal });
+	const fresh = await twgSource.buildTwgExplorer({ signal });
 	writeCache(fresh);
 	return fresh;
 }
@@ -169,15 +265,15 @@ router.get("/explorer", async (req, res) => {
 	} catch (error) {
 		const status = getStatusForError(error);
 		const errorBody = {
-			error: error instanceof TwgAuthError
+			error: error instanceof twgSource.TwgAuthError
 				? "twg_auth_required"
-				: error instanceof TwgNotFoundError
+				: error instanceof twgSource.TwgNotFoundError
 					? "twg_not_found"
 					: "Failed to build Personal Graph explorer",
 			code: error?.code ?? "PERSONAL_GRAPH_EXPLORER_FAILED",
 			details: error instanceof Error ? error.message : String(error),
 		};
-		if (error instanceof TwgAuthError) {
+		if (error instanceof twgSource.TwgAuthError) {
 			errorBody.remediation = "Run `twg login` and retry.";
 		}
 		return res.status(status).json(errorBody);
@@ -230,17 +326,50 @@ router.post("/twg/chat", async (req, res) => {
 router.post("/twg/refresh", async (req, res) => {
 	try {
 		clearCache();
-		const fresh = await buildTwgExplorer({ signal: req.signal });
+		const fresh = await twgSource.buildTwgExplorer({ signal: req.signal });
 		writeCache(fresh);
 		return res.json(fresh);
 	} catch (error) {
 		const status = getStatusForError(error);
 		const errorBody = {
-			error: error instanceof TwgAuthError ? "twg_auth_required" : "Failed to refresh TWG explorer",
+			error: error instanceof twgSource.TwgAuthError ? "twg_auth_required" : "Failed to refresh TWG explorer",
 			code: error?.code ?? "PERSONAL_GRAPH_TWG_REFRESH_FAILED",
 			details: error instanceof Error ? error.message : String(error),
 		};
-		if (error instanceof TwgAuthError) {
+		if (error instanceof twgSource.TwgAuthError) {
+			errorBody.remediation = "Run `twg login` and retry.";
+		}
+		return res.status(status).json(errorBody);
+	}
+});
+
+router.post("/twg/expand", async (req, res) => {
+	try {
+		const cached = readCache();
+		if (!cached) {
+			const error = new Error("Team Work Graph expansion requires a cached explorer. Refresh TWG first.");
+			error.code = "TWG_CACHE_REQUIRED";
+			throw error;
+		}
+		const result = await twgSource.expandTwgExplorerNode({
+			explorer: cached,
+			nodeId: req.body?.nodeId,
+			signal: req.signal,
+		});
+		writeCache(result.explorer);
+		return res.json(result);
+	} catch (error) {
+		const status = getStatusForError(error);
+		const errorBody = {
+			error: error instanceof twgSource.TwgAuthError
+				? "twg_auth_required"
+				: error instanceof twgSource.TwgNotFoundError
+					? "twg_not_found"
+					: "Failed to expand TWG explorer node",
+			code: error?.code ?? "PERSONAL_GRAPH_TWG_EXPAND_FAILED",
+			details: error instanceof Error ? error.message : String(error),
+		};
+		if (error instanceof twgSource.TwgAuthError) {
 			errorBody.remediation = "Run `twg login` and retry.";
 		}
 		return res.status(status).json(errorBody);
@@ -353,6 +482,10 @@ router.get("/log", (_req, res) => {
 	}
 });
 
+router.post("/summarize", async (req, res) => {
+	return streamIterable(res, runSummarizeStream(req.body));
+});
+
 router.post("/ingest", async (req, res) => {
 	const confirmToken = typeof req.query?.confirm === "string"
 		? req.query.confirm
@@ -367,7 +500,14 @@ router.post("/ingest", async (req, res) => {
 	if (!sourcePath) {
 		return res.status(400).json({ error: "A sourcePath is required." });
 	}
-	return streamIterable(res, librarian.run({ sourcePath }));
+	const summaryOverride = req.body?.summaryOverride && typeof req.body.summaryOverride === "object"
+		? req.body.summaryOverride
+		: null;
+	return streamIterable(res, librarian.run({
+		confirmation: Boolean(summaryOverride),
+		sourcePath,
+		summaryOverride,
+	}));
 });
 
 module.exports = router;

@@ -60,6 +60,38 @@ test("run does not duplicate log entries for the same raw source", async (t) => 
 	assert.equal(logText.split("\n").length, 1);
 });
 
+test("run accepts a summary override, skips CLI summarization, and still links and writes", async (t) => {
+	const vaultRoot = withVault(t);
+	let didCallSummarize = false;
+	let relatedQuery = "";
+	const events = [];
+	for await (const event of run({
+		confirmation: true,
+		qmdImpl: {
+			relatedPages: async (query) => {
+				relatedQuery = query;
+				return [{ excerpt: "Related", path: "wiki/related.md", score: 1, slug: "related", title: "Related" }];
+			},
+		},
+		sourcePath: "raw/source.md",
+		summarizeImpl: async () => {
+			didCallSummarize = true;
+			return { summary: "Should not run", takeaways: [] };
+		},
+		summaryOverride: { summary: "Preview summary", takeaways: ["One", "Two"] },
+	})) {
+		events.push(event);
+	}
+
+	assert.equal(didCallSummarize, false);
+	assert.equal(relatedQuery, "Preview summary");
+	assert.ok(events.some((event) => event.type === "summary" && event.summary === "Preview summary"));
+	assert.ok(events.some((event) => event.type === "related"));
+	assert.equal(events.at(-1).type, "done");
+	assert.ok(fs.existsSync(path.join(vaultRoot, "wiki", "sources", "source.md")));
+	assert.match(fs.readFileSync(path.join(vaultRoot, "wiki", "log.md"), "utf8"), /"source":"raw\/source.md"/u);
+});
+
 test("run normalizes executed log status after confirmation", async (t) => {
 	const vaultRoot = withVault(t);
 	for await (const event of run({

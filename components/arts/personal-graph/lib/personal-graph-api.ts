@@ -3,8 +3,11 @@ import type {
 	LibrarianStreamEvent,
 	LogEntry,
 	PageBody,
+	PersonalGraphSummarizeEvent,
+	PersonalGraphSummaryLength,
 	QmdResult,
 	RawSourceWriteResult,
+	TwgNodeExpandResult,
 	UnprocessedRawSources,
 	VaultExplorer,
 	VaultSettings,
@@ -161,6 +164,15 @@ export function refreshTwg(options: { signal?: AbortSignal } = {}) {
 	});
 }
 
+export function expandTwgNode(nodeId: string, options: { signal?: AbortSignal } = {}) {
+	return fetchJson<TwgNodeExpandResult>("/api/personal-graph/twg/expand", {
+		body: JSON.stringify({ nodeId }),
+		headers: { "Content-Type": "application/json" },
+		method: "POST",
+		signal: options.signal,
+	});
+}
+
 export async function* streamTwgChat(
 	body: { messages: TwgChatMessage[] },
 	options: { signal?: AbortSignal } = {},
@@ -198,8 +210,13 @@ export async function* streamTwgChat(
 	}
 }
 
+interface SummaryOverride {
+	summary: string;
+	takeaways: string[];
+}
+
 export async function* streamLibrarian(
-	body: { confirmToken?: string; sourcePath?: string },
+	body: { confirmToken?: string; sourcePath?: string; summaryOverride?: SummaryOverride },
 ): AsyncGenerator<LibrarianStreamEvent> {
 	const query = body.confirmToken ? `?confirm=${encodeURIComponent(body.confirmToken)}` : "";
 	const response = await fetch(`/api/personal-graph/ingest${query}`, {
@@ -223,6 +240,43 @@ export async function* streamLibrarian(
 			const line = chunk.split("\n").find((entry) => entry.startsWith("data:"));
 			if (line) {
 				yield JSON.parse(line.slice(5).trim()) as LibrarianStreamEvent;
+			}
+		}
+	}
+}
+
+export async function* streamPersonalGraphSummarize(
+	body: {
+		action: "summary" | "deck";
+		length: PersonalGraphSummaryLength;
+		nodeId: string;
+		summary?: string;
+		takeaways?: string[];
+	},
+	options: { signal?: AbortSignal } = {},
+): AsyncGenerator<PersonalGraphSummarizeEvent> {
+	const response = await fetch("/api/personal-graph/summarize", {
+		body: JSON.stringify(body),
+		headers: { Accept: "text/event-stream", "Content-Type": "application/json" },
+		method: "POST",
+		signal: options.signal,
+	});
+	if (!response.ok || !response.body) {
+		throw new Error(await response.text());
+	}
+	const reader = response.body.getReader();
+	const decoder = new TextDecoder();
+	let buffer = "";
+	while (true) {
+		const { done, value } = await reader.read();
+		if (done) break;
+		buffer += decoder.decode(value, { stream: true });
+		const chunks = buffer.split("\n\n");
+		buffer = chunks.pop() ?? "";
+		for (const chunk of chunks) {
+			const line = chunk.split("\n").find((entry) => entry.startsWith("data:"));
+			if (line) {
+				yield JSON.parse(line.slice(5).trim()) as PersonalGraphSummarizeEvent;
 			}
 		}
 	}

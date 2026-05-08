@@ -16,6 +16,7 @@ registerHooks({
 });
 
 const cameraModule = import("./camera.ts");
+const cameraFitModule = import("./camera-fit.ts");
 const colorsModule = import("./colors.ts");
 const interactionModule = import("./interaction.ts");
 const interactionDynamicsModule = import("./interaction-dynamics.ts");
@@ -24,6 +25,7 @@ const paramsModule = import("./params.ts");
 const raySoundModule = import("./ray-sound.ts");
 const responsiveParamsModule = import("./responsive-params.ts");
 const rendererModule = import("./renderer.ts");
+const nodeTypeColorsModule = import("./node-type-colors.ts");
 const storeModule = import("./store.ts");
 
 function node(id, title, kind, connectionCount = 0, overrides = {}) {
@@ -602,6 +604,39 @@ test("neural graph color helpers translate legacy hex colors to ADS token variab
 	assert.equal(resolveNeuralGraphCssColorValue("var(--ds-icon-accent-purple)"), "#AF59E1");
 });
 
+test("personal graph node type colors use TWG metadata before broad graph kinds", async () => {
+	const {
+		getPersonalGraphNodeTypeAccentToken,
+		getPersonalGraphNodeTypeCategory,
+	} = await nodeTypeColorsModule;
+
+	const confluencePage = node("page", "Design notes", "source", 1, {
+		frontmatter: { type: "ConfluencePage" },
+		provider: "twg",
+	});
+	const jiraIssue = node("ari:cloud:jira:site:issue/123", "ABC-123", "source", 1, {
+		frontmatter: {},
+		provider: "twg",
+	});
+	const accountUser = node("user", "Ada", "entity", 1, {
+		frontmatter: { type: "AtlassianAccountUser" },
+		provider: "twg",
+	});
+	const vaultConcept = node("wiki:concepts/Graph", "Graph", "concept", 1, {
+		frontmatter: { type: "concept" },
+		provider: "vault",
+	});
+
+	assert.equal(getPersonalGraphNodeTypeCategory(confluencePage), "confluence");
+	assert.equal(getPersonalGraphNodeTypeAccentToken(confluencePage), "var(--ds-icon-accent-blue)");
+	assert.equal(getPersonalGraphNodeTypeCategory(jiraIssue), "jira");
+	assert.equal(getPersonalGraphNodeTypeAccentToken(jiraIssue), "var(--ds-icon-accent-purple)");
+	assert.equal(getPersonalGraphNodeTypeCategory(accountUser), "person");
+	assert.equal(getPersonalGraphNodeTypeAccentToken(accountUser), "var(--ds-icon-accent-lime)");
+	assert.equal(getPersonalGraphNodeTypeCategory(vaultConcept), "concept");
+	assert.equal(getPersonalGraphNodeTypeAccentToken(vaultConcept), null);
+});
+
 test("drawNeuralGraph rounds square nodes with the shared node radius param", async () => {
 	const { createNeuralCamera } = await cameraModule;
 	const { DEFAULT_NEURAL_GRAPH_PARAMS } = await paramsModule;
@@ -757,6 +792,69 @@ test("computeNeuralGraphLayout is deterministic and keeps selected nodes visible
 		first.nodes.map(({ id, x, y }) => [id, Number(x.toFixed(3)), Number(y.toFixed(3))]),
 		second.nodes.map(({ id, x, y }) => [id, Number(x.toFixed(3)), Number(y.toFixed(3))]),
 	);
+});
+
+test("smoothNeuralGraphLayout eases animated node movement while preserving edge bindings", async () => {
+	const { smoothNeuralGraphLayout } = await layoutModule;
+	const viewport = { height: 200, width: 300 };
+	const currentAlpha = layoutNode("alpha", 0);
+	const currentBeta = layoutNode("beta", 100);
+	const current = {
+		edges: [layoutEdge("alpha-beta", currentAlpha, currentBeta)],
+		nodes: [currentAlpha, currentBeta],
+		nodesById: new Map([
+			[currentAlpha.id, currentAlpha],
+			[currentBeta.id, currentBeta],
+		]),
+		origin: { x: 0, y: 0 },
+		viewport,
+	};
+	const nextAlpha = layoutNode("alpha", 80);
+	const nextBeta = layoutNode("beta", 180);
+	const next = {
+		edges: [layoutEdge("alpha-beta", nextAlpha, nextBeta)],
+		nodes: [nextAlpha, nextBeta],
+		nodesById: new Map([
+			[nextAlpha.id, nextAlpha],
+			[nextBeta.id, nextBeta],
+		]),
+		origin: { x: 0, y: 0 },
+		viewport,
+	};
+
+	const smoothed = smoothNeuralGraphLayout({ amount: 0.25, current, next });
+
+	assert.equal(smoothed.nodesById.get("alpha").x, 20);
+	assert.equal(smoothed.nodesById.get("beta").x, 120);
+	assert.equal(smoothed.edges[0].source, smoothed.nodesById.get("alpha"));
+	assert.equal(smoothed.edges[0].target, smoothed.nodesById.get("beta"));
+});
+
+test("pinNeuralGraphNodePosition freezes one node and rebinds connected edges", async () => {
+	const { pinNeuralGraphNodePosition } = await layoutModule;
+	const viewport = { height: 200, width: 300 };
+	const source = layoutNode("source", 80);
+	const target = layoutNode("target", 180);
+	const layout = {
+		edges: [layoutEdge("source-target", source, target)],
+		nodes: [source, target],
+		nodesById: new Map([
+			[source.id, source],
+			[target.id, target],
+		]),
+		origin: { x: 0, y: 0 },
+		viewport,
+	};
+	const frozen = { ...layoutNode("source", 24), depthScale: 0.8, y: -42, z: 12 };
+
+	const pinned = pinNeuralGraphNodePosition({ layout, nodeId: "source", position: frozen });
+
+	assert.equal(pinned.nodesById.get("source").x, 24);
+	assert.equal(pinned.nodesById.get("source").y, -42);
+	assert.equal(pinned.nodesById.get("source").z, 12);
+	assert.equal(pinned.nodesById.get("target").x, 180);
+	assert.equal(pinned.edges[0].source, pinned.nodesById.get("source"));
+	assert.equal(pinned.edges[0].target, pinned.nodesById.get("target"));
 });
 
 test("computeNeuralGraphLayout applies transient cursor flow without mutating params", async () => {
@@ -1427,6 +1525,95 @@ test("drawNeuralGraph reveals node type colors during hover and selection", asyn
 	assert.equal(selectedCalls.some(([name, value]) => name === "fillStyle" && value === "#777777"), false);
 });
 
+test("drawNeuralGraph keeps selected scale exclusive to the selected node", async () => {
+	const { createNeuralCamera } = await cameraModule;
+	const { DEFAULT_NEURAL_GRAPH_PARAMS } = await paramsModule;
+	const { drawNeuralGraph } = await rendererModule;
+	const viewport = { height: 200, width: 300 };
+	const selected = layoutNode("selected", 0);
+	const root = layoutNode("root", 80);
+	root.node.kind = "entity";
+	const layout = {
+		edges: [layoutEdge("active", selected, root)],
+		nodes: [selected, root],
+		nodesById: new Map([
+			[selected.id, selected],
+			[root.id, root],
+		]),
+		origin: { x: 0, y: 0 },
+		viewport,
+	};
+	const params = {
+		...DEFAULT_NEURAL_GRAPH_PARAMS,
+		glowIntensity: 0,
+		nodeRadius: 0,
+		nodeShape: "square",
+		selectedScale: 2,
+		showLabels: false,
+		showRays: false,
+	};
+	const ctx = createRecordingCanvasContext();
+
+	drawNeuralGraph(ctx, layout, {
+		background: "transparent",
+		camera: createNeuralCamera(),
+		focusProgress: 1,
+		hoveredNodeId: null,
+		params,
+		selectedNodeId: "selected",
+		theme: "light",
+		viewport,
+	});
+
+	const rectWidths = ctx.calls
+		.filter(([name]) => name === "rect")
+		.map(([, , , width]) => width);
+
+	assert.deepEqual(rectWidths, [8, 8, 20, 20]);
+});
+
+test("drawNeuralGraph keeps hovered nodes stationary while showing hover affordance", async () => {
+	const { createNeuralCamera } = await cameraModule;
+	const { DEFAULT_NEURAL_GRAPH_PARAMS } = await paramsModule;
+	const { drawNeuralGraph } = await rendererModule;
+	const viewport = { height: 200, width: 300 };
+	const hovered = layoutNode("hovered", 0);
+	const layout = {
+		edges: [],
+		nodes: [hovered],
+		nodesById: new Map([[hovered.id, hovered]]),
+		origin: { x: 0, y: 0 },
+		viewport,
+	};
+	const params = {
+		...DEFAULT_NEURAL_GRAPH_PARAMS,
+		hoverScale: 4,
+		nodeRadius: 0,
+		nodeShape: "square",
+		showLabels: false,
+		showRays: false,
+	};
+	const ctx = createRecordingCanvasContext();
+
+	drawNeuralGraph(ctx, layout, {
+		background: "transparent",
+		camera: createNeuralCamera(),
+		focusProgress: 0,
+		hoveredNodeId: "hovered",
+		params,
+		selectedNodeId: null,
+		theme: "light",
+		viewport,
+	});
+
+	const rectWidths = ctx.calls
+		.filter(([name]) => name === "rect")
+		.map(([, , , width]) => width);
+
+	assert.deepEqual(rectWidths, [8, 8]);
+	assert.ok(ctx.calls.some(([name]) => name === "createRadialGradient"));
+});
+
 test("camera transforms round-trip and focus selected points", async () => {
 	const { createNeuralCamera, focusNeuralCameraOnPoint, viewportToWorld, worldToViewport } = await cameraModule;
 	const { DEFAULT_NEURAL_GRAPH_PARAMS } = await paramsModule;
@@ -1532,4 +1719,175 @@ test("hitTestNeuralRay detects origin rays without treating graph edges as rays"
 		}),
 		null,
 	);
+});
+
+test("fitNeuralCameraToLayout scales an oversized layout down so all nodes stay within the canvas padding", async () => {
+	const { createNeuralCamera, worldToViewport } = await cameraModule;
+	const { NEURAL_GRAPH_FIT_PADDING, fitNeuralCameraToLayout } = await cameraFitModule;
+	const { DEFAULT_NEURAL_GRAPH_PARAMS } = await paramsModule;
+	const viewport = { height: 600, width: 800 };
+	const nodes = [
+		{ ...layoutNode("left", -2000), y: -1500 },
+		{ ...layoutNode("right", 2000), y: 1500 },
+	];
+	const layout = {
+		edges: [],
+		nodes,
+		nodesById: new Map(nodes.map((node) => [node.id, node])),
+		origin: { x: 0, y: 0 },
+		viewport,
+	};
+
+	const fitted = fitNeuralCameraToLayout({
+		camera: createNeuralCamera(),
+		layout,
+		params: DEFAULT_NEURAL_GRAPH_PARAMS,
+		viewport,
+	});
+
+	assert.ok(fitted.zoom < 1, `expected scale-down zoom but got ${fitted.zoom}`);
+	for (const node of nodes) {
+		const screen = worldToViewport(node, fitted, viewport, DEFAULT_NEURAL_GRAPH_PARAMS);
+		assert.ok(
+			screen.x >= NEURAL_GRAPH_FIT_PADDING - 0.5 && screen.x <= viewport.width - NEURAL_GRAPH_FIT_PADDING + 0.5,
+			`node ${node.id} x ${screen.x} outside padded canvas`,
+		);
+		assert.ok(
+			screen.y >= NEURAL_GRAPH_FIT_PADDING - 0.5 && screen.y <= viewport.height - NEURAL_GRAPH_FIT_PADDING + 0.5,
+			`node ${node.id} y ${screen.y} outside padded canvas`,
+		);
+	}
+});
+
+test("fitNeuralCameraToLayout scales a tiny layout up while keeping nodes within the padded canvas", async () => {
+	const { createNeuralCamera, worldToViewport } = await cameraModule;
+	const { NEURAL_GRAPH_FIT_PADDING, fitNeuralCameraToLayout } = await cameraFitModule;
+	const { DEFAULT_NEURAL_GRAPH_PARAMS } = await paramsModule;
+	const viewport = { height: 600, width: 800 };
+	const nodes = [
+		{ ...layoutNode("left", -10), y: -8 },
+		{ ...layoutNode("right", 10), y: 8 },
+	];
+	const layout = {
+		edges: [],
+		nodes,
+		nodesById: new Map(nodes.map((node) => [node.id, node])),
+		origin: { x: 0, y: 0 },
+		viewport,
+	};
+
+	const fitted = fitNeuralCameraToLayout({
+		camera: createNeuralCamera(),
+		layout,
+		params: DEFAULT_NEURAL_GRAPH_PARAMS,
+		viewport,
+	});
+
+	assert.ok(fitted.zoom > 1, `expected scale-up zoom but got ${fitted.zoom}`);
+	const center = worldToViewport({ x: 0, y: 0 }, fitted, viewport, DEFAULT_NEURAL_GRAPH_PARAMS);
+	assert.ok(Math.abs(center.x - viewport.width / 2) < 0.5);
+	assert.ok(Math.abs(center.y - viewport.height / 2) < 0.5);
+	for (const node of nodes) {
+		const screen = worldToViewport(node, fitted, viewport, DEFAULT_NEURAL_GRAPH_PARAMS);
+		assert.ok(
+			screen.x >= NEURAL_GRAPH_FIT_PADDING - 0.5 && screen.x <= viewport.width - NEURAL_GRAPH_FIT_PADDING + 0.5,
+			`node ${node.id} x ${screen.x} outside padded canvas`,
+		);
+		assert.ok(
+			screen.y >= NEURAL_GRAPH_FIT_PADDING - 0.5 && screen.y <= viewport.height - NEURAL_GRAPH_FIT_PADDING + 0.5,
+			`node ${node.id} y ${screen.y} outside padded canvas`,
+		);
+	}
+});
+
+test("fitNeuralCameraToLayout returns finite cameras for empty and single-node layouts", async () => {
+	const { createNeuralCamera, worldToViewport } = await cameraModule;
+	const { fitNeuralCameraToLayout } = await cameraFitModule;
+	const { DEFAULT_NEURAL_GRAPH_PARAMS } = await paramsModule;
+	const viewport = { height: 600, width: 800 };
+
+	const emptyFitted = fitNeuralCameraToLayout({
+		camera: createNeuralCamera(),
+		layout: { edges: [], nodes: [], nodesById: new Map(), origin: { x: 0, y: 0 }, viewport },
+		params: DEFAULT_NEURAL_GRAPH_PARAMS,
+		viewport,
+	});
+
+	assert.ok(Number.isFinite(emptyFitted.zoom));
+	assert.ok(Number.isFinite(emptyFitted.x));
+	assert.ok(Number.isFinite(emptyFitted.y));
+	assert.ok(emptyFitted.zoom > 0);
+
+	const single = { ...layoutNode("only", 42), y: -17 };
+	const singleFitted = fitNeuralCameraToLayout({
+		camera: createNeuralCamera(),
+		layout: {
+			edges: [],
+			nodes: [single],
+			nodesById: new Map([[single.id, single]]),
+			origin: { x: 0, y: 0 },
+			viewport,
+		},
+		params: DEFAULT_NEURAL_GRAPH_PARAMS,
+		viewport,
+	});
+
+	assert.equal(singleFitted.zoom, 1);
+	const screen = worldToViewport(single, singleFitted, viewport, DEFAULT_NEURAL_GRAPH_PARAMS);
+	assert.ok(Math.abs(screen.x - viewport.width / 2) < 0.5);
+	assert.ok(Math.abs(screen.y - viewport.height / 2) < 0.5);
+});
+
+test("fitNeuralCameraToLayout damps small animated bounds changes", async () => {
+	const { createNeuralCamera } = await cameraModule;
+	const { fitNeuralCameraToLayout } = await cameraFitModule;
+	const { DEFAULT_NEURAL_GRAPH_PARAMS } = await paramsModule;
+	const viewport = { height: 600, width: 800 };
+	const createLayout = (offset) => {
+		const nodes = [
+			{ ...layoutNode("left", -120 + offset), y: -80 },
+			{ ...layoutNode("right", 120 + offset), y: 80 },
+		];
+		return {
+			edges: [],
+			nodes,
+			nodesById: new Map(nodes.map((node) => [node.id, node])),
+			origin: { x: 0, y: 0 },
+			viewport,
+		};
+	};
+	const fitted = fitNeuralCameraToLayout({
+		camera: createNeuralCamera(),
+		layout: createLayout(0),
+		params: DEFAULT_NEURAL_GRAPH_PARAMS,
+		viewport,
+	});
+	const tinyShift = fitNeuralCameraToLayout({
+		camera: fitted,
+		layout: createLayout(0.2),
+		params: DEFAULT_NEURAL_GRAPH_PARAMS,
+		positionDeadbandPx: 1,
+		smoothing: 0.2,
+		viewport,
+		zoomDeadband: 0.01,
+	});
+	const target = fitNeuralCameraToLayout({
+		camera: fitted,
+		layout: createLayout(80),
+		params: DEFAULT_NEURAL_GRAPH_PARAMS,
+		viewport,
+	});
+	const dampedShift = fitNeuralCameraToLayout({
+		camera: fitted,
+		layout: createLayout(80),
+		params: DEFAULT_NEURAL_GRAPH_PARAMS,
+		positionDeadbandPx: 0.1,
+		smoothing: 0.25,
+		viewport,
+	});
+
+	assert.equal(tinyShift.x, fitted.x);
+	assert.equal(tinyShift.zoom, fitted.zoom);
+	assert.ok(dampedShift.x > fitted.x);
+	assert.ok(dampedShift.x < target.x);
 });

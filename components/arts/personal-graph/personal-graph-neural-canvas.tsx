@@ -17,6 +17,7 @@ import {
 	type NeuralPoint,
 	type NeuralViewport,
 } from "./lib/neural-graph/camera";
+import { fitNeuralCameraToLayout } from "./lib/neural-graph/camera-fit";
 import { hitTestNeuralNode, hitTestNeuralRay, isMeaningfulDrag, type NeuralRayHitTestResult } from "./lib/neural-graph/interaction";
 import { resolveNeuralGraphCssColorValue } from "./lib/neural-graph/colors";
 import {
@@ -29,7 +30,7 @@ import {
 	type NeuralGraphInteractionState,
 	type NeuralPointerVelocity,
 } from "./lib/neural-graph/interaction-dynamics";
-import { computeNeuralGraphLayout, type NeuralGraphLayout, type NeuralLayoutNode } from "./lib/neural-graph/layout";
+import { computeNeuralGraphLayout, pinNeuralGraphNodePosition, smoothNeuralGraphLayout, type NeuralGraphLayout, type NeuralLayoutNode } from "./lib/neural-graph/layout";
 import { shouldAnimateNeuralGraph, type NeuralGraphParams } from "./lib/neural-graph/params";
 import {
 	INITIAL_NEURAL_NODE_SOUND_TRIGGER_STATE,
@@ -78,16 +79,23 @@ const ZOOM_SPRING_INSTANT = { stiffness: 4000, damping: 200, mass: 0.05, restDel
 const FOCUS_SPRING_CONFIG = { stiffness: 160, damping: 24, mass: 0.7, restDelta: 0.0005 } as const;
 const FOCUS_SPRING_INSTANT = { stiffness: 4000, damping: 220, mass: 0.05, restDelta: 0.0005 } as const;
 const RAY_ELASTIC_SPRING_INSTANT = { stiffness: 4000, damping: 220, mass: 0.05, restDelta: 0.0005 } as const;
-const INTERACTION_SPRING_CONFIG = { stiffness: 92, damping: 28, mass: 0.9, restDelta: 0.001 } as const;
+const INTERACTION_SPRING_CONFIG = { stiffness: 72, damping: 30, mass: 1, restDelta: 0.001 } as const;
 const INTERACTION_SPRING_INSTANT = { stiffness: 4000, damping: 220, mass: 0.05, restDelta: 0.001 } as const;
 const INTERACTION_SMOOTHING_BY_TARGET: Record<NeuralGraphInteractionHitTarget, number> = {
-	node: 0.12,
-	none: 0.16,
-	ray: 0.24,
+	node: 0.1,
+	none: 0.12,
+	ray: 0.18,
 };
+const LAYOUT_SMOOTHING_MS = 95;
+const CAMERA_FIT_SMOOTHING_MS = 520;
+const CAMERA_FIT_POSITION_DEADBAND_PX = 1.5;
+const CAMERA_FIT_ZOOM_DEADBAND = 0.003;
 
-const HOVER_TRANSITION_TAU_SECONDS = 0.05;
-const HOVER_PROGRESS_SETTLE_EPSILON = 0.001;
+function getFrameBlend(elapsedMs: number, smoothingMs: number) {
+	if (!Number.isFinite(elapsedMs) || elapsedMs <= 0) return 1;
+	if (!Number.isFinite(smoothingMs) || smoothingMs <= 0) return 1;
+	return 1 - Math.exp(-elapsedMs / smoothingMs);
+}
 
 function cloneInteractionState(state: NeuralGraphInteractionState): NeuralGraphInteractionState {
 	return {
@@ -317,7 +325,6 @@ export function PersonalGraphNeuralCanvas({
 	const nodeSoundTriggerStateRef = useRef(INITIAL_NEURAL_NODE_SOUND_TRIGGER_STATE);
 	const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
 	const hoveredNodeIdRef = useRef<string | null>(null);
-	const hoverProgressByNodeRef = useRef<Map<string, number>>(new Map());
 	const [isPanning, setIsPanning] = useState(false);
 	const isPanningRef = useRef(false);
 	const [selectedOverlay, setSelectedOverlay] = useState<SelectedOverlayState | null>(null);
@@ -375,50 +382,23 @@ export function PersonalGraphNeuralCanvas({
 
 		let animationFrame = 0;
 		let staticFrame = 0;
-		let lastHoverFrameTime: number | null = null;
-		const hoverProgressByNode = hoverProgressByNodeRef.current;
 		const pixelRatio = window.devicePixelRatio || 1;
 		canvas.width = Math.max(1, Math.floor(viewport.width * pixelRatio));
 		canvas.height = Math.max(1, Math.floor(viewport.height * pixelRatio));
 		canvas.style.width = `${viewport.width}px`;
 		canvas.style.height = `${viewport.height}px`;
+		layoutRef.current = null;
 
 		const startedAt = performance.now();
 		const shouldLoop = shouldAnimateNeuralGraph(params, reduceMotion);
-		const advanceHoverProgress = (now: number, layoutNodeIds: ReadonlySet<string>): boolean => {
-			const hoveredId = hoveredNodeIdRef.current;
-			const dt = lastHoverFrameTime === null ? 0 : Math.min(0.1, (now - lastHoverFrameTime) / 1000);
-			lastHoverFrameTime = now;
-			const decayFactor = reduceMotion ? 1 : (dt > 0 ? 1 - Math.exp(-dt / HOVER_TRANSITION_TAU_SECONDS) : 0);
-			let transitionActive = false;
-
-			for (const id of [...hoverProgressByNode.keys()]) {
-				if (!layoutNodeIds.has(id)) hoverProgressByNode.delete(id);
-			}
-
-			const candidateIds = new Set<string>(hoverProgressByNode.keys());
-			if (hoveredId && layoutNodeIds.has(hoveredId)) candidateIds.add(hoveredId);
-
-			for (const id of candidateIds) {
-				const target = id === hoveredId ? 1 : 0;
-				const current = hoverProgressByNode.get(id) ?? 0;
-				const next = decayFactor >= 1 ? target : current + (target - current) * decayFactor;
-				const settled = Math.abs(next - target) < HOVER_PROGRESS_SETTLE_EPSILON;
-				const resolved = settled ? target : next;
-				if (resolved <= 0) {
-					hoverProgressByNode.delete(id);
-				} else {
-					hoverProgressByNode.set(id, resolved);
-				}
-				if (!settled) transitionActive = true;
-			}
-
-			return transitionActive;
-		};
+		let previousFrameAt: number | null = null;
 		const render = (now: number) => {
 			const elapsedSeconds = reduceMotion ? undefined : (now - startedAt) / 1000;
+			const elapsedFrameMs = previousFrameAt === null ? 16.67 : Math.min(80, Math.max(0, now - previousFrameAt));
+			previousFrameAt = now;
+			const previousLayout = layoutRef.current;
 			context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
-			const layout = computeNeuralGraphLayout({
+			const targetLayout = computeNeuralGraphLayout({
 				focusProgress: focusProgressRef.current,
 				interaction: interactionRef.current,
 				params,
@@ -428,16 +408,42 @@ export function PersonalGraphNeuralCanvas({
 				time: elapsedSeconds ?? 0,
 				viewport,
 			});
+			const hoveredNodeId = hoveredNodeIdRef.current;
+			const hoveredNodePosition = hoveredNodeId ? previousLayout?.nodesById.get(hoveredNodeId) : undefined;
+			const shouldFreezeHoveredNode = Boolean(hoveredNodeId && hoveredNodePosition);
+			const lockedTargetLayout = shouldFreezeHoveredNode
+				? pinNeuralGraphNodePosition({
+					layout: targetLayout,
+					nodeId: hoveredNodeId,
+					position: hoveredNodePosition,
+				})
+				: targetLayout;
+			const shouldSmoothFrame = shouldLoop && !reduceMotion && previousLayout !== null;
+			const layout = shouldSmoothFrame
+				? smoothNeuralGraphLayout({
+					amount: getFrameBlend(elapsedFrameMs, LAYOUT_SMOOTHING_MS),
+					current: previousLayout,
+					next: lockedTargetLayout,
+				})
+				: lockedTargetLayout;
 			layoutRef.current = layout;
-			const layoutNodeIds = new Set(layout.nodes.map((entry) => entry.id));
-			const hoverTransitionActive = advanceHoverProgress(now, layoutNodeIds);
+			if (!shouldFreezeHoveredNode) {
+				cameraRef.current = fitNeuralCameraToLayout({
+					camera: cameraRef.current,
+					layout,
+					params,
+					positionDeadbandPx: shouldSmoothFrame ? CAMERA_FIT_POSITION_DEADBAND_PX : 0,
+					smoothing: shouldSmoothFrame ? getFrameBlend(elapsedFrameMs, CAMERA_FIT_SMOOTHING_MS) : 1,
+					viewport,
+					zoomDeadband: shouldSmoothFrame ? CAMERA_FIT_ZOOM_DEADBAND : 0,
+				});
+			}
 			drawNeuralGraph(context, layout, {
 				animationTime: elapsedSeconds,
 				background,
 				camera: cameraRef.current,
 				focusProgress: focusProgressRef.current,
 				hoveredNodeId: hoveredNodeIdRef.current,
-				hoverProgressByNode,
 				interaction: interactionRef.current,
 				params,
 				rayElastic: !reduceMotion && rayElasticRef.current.progress > 0 ? rayElasticRef.current : null,
@@ -461,10 +467,10 @@ export function PersonalGraphNeuralCanvas({
 				setSelectedOverlay(nextOverlay);
 			}
 
-			if (shouldLoop || hoverTransitionActive) {
+			if (shouldLoop) {
 				animationFrame = window.requestAnimationFrame(render);
 			} else {
-				lastHoverFrameTime = null;
+				animationFrame = 0;
 			}
 		};
 
@@ -722,7 +728,7 @@ export function PersonalGraphNeuralCanvas({
 		}));
 	}, [reduceMotion, targetInteractionIntensityMV]);
 
-	const resetInteractionTarget = useCallback(() => {
+	const resetInteractionTarget = useCallback((options: { instant?: boolean } = {}) => {
 		pointerVelocityRef.current = {
 			point: null,
 			time: null,
@@ -738,8 +744,13 @@ export function PersonalGraphNeuralCanvas({
 			velocity: 0,
 			velocityPxPerSecond: 0,
 		};
+		if (options.instant) {
+			targetInteractionIntensityMV.jump(0);
+			smoothInteractionIntensityMV.jump(0);
+			return;
+		}
 		targetInteractionIntensityMV.set(0);
-	}, [targetInteractionIntensityMV]);
+	}, [smoothInteractionIntensityMV, targetInteractionIntensityMV]);
 
 	const triggerRaySound = useCallback((rayHit: NeuralRayHitTestResult, point: NeuralPoint) => {
 		const settings = raySoundSettingsRef.current;
@@ -833,23 +844,24 @@ export function PersonalGraphNeuralCanvas({
 		if (hit && allowSound) {
 			triggerNodeSound(hit, point);
 		}
-		if (
-			hit
-			|| reduceMotion
+		if (hit) {
+			targetRayElasticProgressMV.set(0);
+			resetInteractionTarget({ instant: true });
+			resetRaySoundTrigger();
+		} else if (
+			reduceMotion
 			|| !params.showRays
 			|| params.rayElasticRadius <= 0
 			|| params.rayElasticStrength <= 0
 		) {
 			targetRayElasticProgressMV.set(0);
 			updateInteractionTarget({
-				activeNodeId: hit?.node.id ?? null,
+				activeNodeId: null,
 				point,
 				velocity,
 			});
 			resetRaySoundTrigger();
-			if (!hit) {
-				resetNodeSoundTrigger();
-			}
+			resetNodeSoundTrigger();
 		} else {
 			const rayHit = hitTestNeuralRay({
 				camera: cameraRef.current,
@@ -897,6 +909,7 @@ export function PersonalGraphNeuralCanvas({
 		rayOriginY,
 		reduceMotion,
 		resetNodeSoundTrigger,
+		resetInteractionTarget,
 		resetRaySoundTrigger,
 		targetRayElasticProgressMV,
 		targetRayElasticXMV,

@@ -54,6 +54,34 @@ const SEARCH_SOURCE = fs.readFileSync(
 	),
 	"utf8",
 );
+const SUMMARY_PANEL_SOURCE = fs.readFileSync(
+	path.join(
+		__dirname,
+		"../../../components/arts/personal-graph/personal-graph-summary-panel.tsx",
+	),
+	"utf8",
+);
+const SUMMARY_HOOK_SOURCE = fs.readFileSync(
+	path.join(
+		__dirname,
+		"../../../components/arts/personal-graph/hooks/use-personal-graph-summary.ts",
+	),
+	"utf8",
+);
+const PERSONAL_GRAPH_API_SOURCE = fs.readFileSync(
+	path.join(
+		__dirname,
+		"../../../components/arts/personal-graph/lib/personal-graph-api.ts",
+	),
+	"utf8",
+);
+const EXPLORER_MERGE_SOURCE = fs.readFileSync(
+	path.join(
+		__dirname,
+		"../../../components/arts/personal-graph/lib/personal-graph-explorer-merge.ts",
+	),
+	"utf8",
+);
 const GLASS_PANEL_SOURCE = fs.readFileSync(
 	path.join(
 		__dirname,
@@ -65,6 +93,13 @@ const CONTROL_FLYOUT_SOURCE = fs.readFileSync(
 	path.join(
 		__dirname,
 		"../../../components/arts/personal-graph/personal-graph-control-flyout.tsx",
+	),
+	"utf8",
+);
+const SOURCE_PICKER_SOURCE = fs.readFileSync(
+	path.join(
+		__dirname,
+		"../../../components/arts/personal-graph/personal-graph-source-picker.tsx",
 	),
 	"utf8",
 );
@@ -227,10 +262,11 @@ test("Personal Graph header uses the display font lockup", () => {
 		/fontSize: isPostSettle \? PERSONAL_GRAPH_SETTLED_TITLE_SIZE : PERSONAL_GRAPH_INITIAL_TITLE_SIZE/,
 	);
 	assert.match(SURFACE_SOURCE, /const isIntroSettled = phase === "settle"/);
-	assert.match(SURFACE_SOURCE, /const isVaultReadyForLayout = isVaultReady \|\| isResetFlyoutCollapsing;/);
+	assert.match(SURFACE_SOURCE, /const isReady = isTwgMode \? isTwgReady : isVaultReady;/);
+	assert.match(SURFACE_SOURCE, /const isVaultReadyForLayout = isReady \|\| isResetFlyoutCollapsing;/);
 	assert.match(SURFACE_SOURCE, /const isPostSettle = isVaultReadyForLayout && isIntroSettled;/);
 	assert.match(SURFACE_SOURCE, /const PERSONAL_GRAPH_UNCONFIGURED_BYLINE = "Select a folder to get started\.";/);
-	assert.match(SURFACE_SOURCE, /vaultSettings\?\.status === "unconfigured"\s+\? PERSONAL_GRAPH_UNCONFIGURED_BYLINE/);
+	assert.match(SURFACE_SOURCE, /shouldShowSourcePicker\s+\? PERSONAL_GRAPH_UNCONFIGURED_BYLINE/);
 	assert.match(SURFACE_SOURCE, /key=\{`personal-graph-title-\$\{introReplayKey\}`\}/);
 	assert.match(SURFACE_SOURCE, /paddingTop: PERSONAL_GRAPH_TITLE_INK_TOP_PADDING/);
 	assert.doesNotMatch(SURFACE_SOURCE, /uppercase leading-\[0\.8\]/);
@@ -351,6 +387,102 @@ test("Personal Graph anchors the search and chat composer at the graph origin", 
 	assert.match(SURFACE_SOURCE, /<PopoverTrigger[\s\S]*render=\{[\s\S]*<PersonalGraphLiquidGlassIconButton[\s\S]*aria-label="Add data"/);
 	assert.doesNotMatch(SEARCH_SOURCE, /aria-label="Open graph parameters"/);
 	assert.match(SEARCH_SOURCE, /actions=\{flyoutActions\}/);
+});
+
+test("Personal Graph exposes selected-node summarize controls above the composer", () => {
+	assert.match(SURFACE_SOURCE, /import \{ PersonalGraphSummaryPanel \} from "\.\/personal-graph-summary-panel";/);
+	assert.match(SURFACE_SOURCE, /<PersonalGraphSummaryPanel[\s\S]*node=\{displayedNode\}[\s\S]*onConfirmed=\{handleRefreshAll\}/);
+	assert.match(SUMMARY_PANEL_SOURCE, /Selected node summary/);
+	assert.match(SUMMARY_PANEL_SOURCE, /Short/);
+	assert.match(SUMMARY_PANEL_SOURCE, /Medium/);
+	assert.match(SUMMARY_PANEL_SOURCE, /Long/);
+	assert.match(SUMMARY_PANEL_SOURCE, /aria-pressed=\{summary\.length === option\.value\}/);
+	assert.match(SUMMARY_PANEL_SOURCE, /Markdown summary/);
+	assert.match(SUMMARY_PANEL_SOURCE, /Takeaways/);
+	assert.match(SUMMARY_PANEL_SOURCE, /node\.provider === "vault" && node\.kind === "raw"/);
+	assert.match(SUMMARY_PANEL_SOURCE, />\s*Confirm\s*</);
+	assert.match(SUMMARY_PANEL_SOURCE, /Generate slides/);
+	assert.match(SUMMARY_PANEL_SOURCE, /Download \.md/);
+	assert.match(SUMMARY_HOOK_SOURCE, /abortRef\.current\?\.abort\(\);/);
+	assert.match(SUMMARY_HOOK_SOURCE, /streamPersonalGraphSummarize\(\s+\{\s+action: "summary", length: nextLength, nodeId \}/);
+	assert.match(SUMMARY_HOOK_SOURCE, /streamPersonalGraphSummarize\(\s+\{\s+action: "deck", length, nodeId, summary, takeaways \}/);
+	assert.match(SUMMARY_HOOK_SOURCE, /summaryOverride: \{ summary, takeaways \}/);
+	assert.match(PERSONAL_GRAPH_API_SOURCE, /\/api\/personal-graph\/summarize/);
+});
+
+test("Personal Graph lazily expands selected TWG nodes without blocking selection", () => {
+	assert.match(PERSONAL_GRAPH_API_SOURCE, /export function expandTwgNode\(nodeId: string/);
+	assert.match(PERSONAL_GRAPH_API_SOURCE, /\/api\/personal-graph\/twg\/expand/);
+	assert.match(PERSONAL_GRAPH_API_SOURCE, /body: JSON\.stringify\(\{ nodeId \}\)/);
+	assert.match(SURFACE_SOURCE, /import \{ expandTwgNode \} from "\.\/lib\/personal-graph-api";/);
+	assert.match(SURFACE_SOURCE, /import \{ mergeSelectedNodeExpansion \} from "\.\/lib\/personal-graph-explorer-merge";/);
+	assert.match(SURFACE_SOURCE, /const \[expandedExplorer, setExpandedExplorer\] = useState<VaultExplorer \| null>\(null\);/);
+	assert.match(SURFACE_SOURCE, /const explorer = isTwgMode \? \(chatExplorer \?\? expandedExplorer \?\? rawExplorer\) : rawExplorer;/);
+	assert.match(SURFACE_SOURCE, /expandedTwgNodeIdsRef = useRef<Set<string>>\(new Set\(\)\);/);
+	assert.match(SURFACE_SOURCE, /expandingTwgNodeIdsRef = useRef<Set<string>>\(new Set\(\)\);/);
+	assert.match(SURFACE_SOURCE, /if \(!isTwgMode \|\| !selectedNodeId \|\| isLoading\)/);
+	assert.match(SURFACE_SOURCE, /selectedNode\.provider !== "twg"/);
+	assert.match(SURFACE_SOURCE, /expandTwgNode\(selectedNodeId, \{ signal: controller\.signal \}\)/);
+	assert.match(SURFACE_SOURCE, /setChatExplorer\(\(current\) =>[\s\S]*mergeSelectedNodeExpansion\(current, result\.explorer, selectedNodeId\)/);
+	assert.match(SURFACE_SOURCE, /setExpandedExplorer\(result\.explorer\);/);
+	assert.match(SURFACE_SOURCE, /expandedTwgNodeIdsRef\.current\.add\(selectedNodeId\);/);
+	assert.match(SURFACE_SOURCE, /console\.warn\("TWG node expansion failed", nextError\);/);
+	assert.match(EXPLORER_MERGE_SOURCE, /export function mergeSelectedNodeExpansion/);
+	assert.match(EXPLORER_MERGE_SOURCE, /edge\.source === selectedNodeId/);
+	assert.match(EXPLORER_MERGE_SOURCE, /edge\.target === selectedNodeId/);
+});
+
+test("Personal Graph surfaces a per-node loading indicator while a TWG expansion is pending", () => {
+	assert.match(
+		SURFACE_SOURCE,
+		/import \{ Spinner \} from "@\/components\/ui\/spinner";/,
+	);
+	assert.match(
+		SURFACE_SOURCE,
+		/const \[expandingTwgNodeIds, setExpandingTwgNodeIds\] = useState<ReadonlySet<string>>\(\(\) => new Set\(\)\);/,
+	);
+	assert.match(
+		SURFACE_SOURCE,
+		/setExpandingTwgNodeIds\(\(current\) => \{[\s\S]*if \(current\.has\(selectedNodeId\)\) return current;[\s\S]*next\.add\(selectedNodeId\);/,
+	);
+	assert.match(
+		SURFACE_SOURCE,
+		/setExpandingTwgNodeIds\(\(current\) => \{[\s\S]*if \(!current\.has\(selectedNodeId\)\) return current;[\s\S]*next\.delete\(selectedNodeId\);/,
+	);
+	assert.match(SURFACE_SOURCE, /setExpandingTwgNodeIds\(new Set\(\)\);/);
+	assert.match(
+		SURFACE_SOURCE,
+		/const isExpandingDisplayedNode =\s+isTwgMode && displayedNode\?\.provider === "twg" && expandingTwgNodeIds\.has\(displayedNode\.id\);/,
+	);
+	assert.match(SURFACE_SOURCE, /isExpanding=\{isExpandingDisplayedNode\}/);
+	assert.match(SURFACE_SOURCE, /isExpanding\?: boolean;/);
+	assert.match(SURFACE_SOURCE, /const showRelatedSection = isExpanding \|\| relatedNodes\.length > 0;/);
+	assert.match(SURFACE_SOURCE, /showRelatedSection \? \(/);
+	assert.match(SURFACE_SOURCE, /<Spinner label="Expanding related pages" size="xs" \/>/);
+	assert.match(SURFACE_SOURCE, /data-personal-graph-related-loading="true"/);
+	assert.match(SURFACE_SOURCE, /<span>Expanding…<\/span>/);
+});
+
+test("Personal Graph dedupes related neighbor ids before slicing", () => {
+	assert.match(SURFACE_SOURCE, /const seenRelatedIds = new Set<string>\(\);/);
+	assert.match(SURFACE_SOURCE, /seenRelatedIds\.has\(neighborId\)/);
+	assert.match(SURFACE_SOURCE, /seenRelatedIds\.add\(neighborId\);/);
+	assert.doesNotMatch(
+		SURFACE_SOURCE,
+		/const relatedIds = explorer\.edges\.flatMap\(\(edge\) => \{[\s\S]*if \(edge\.source === node\.id\) return \[edge\.target\];[\s\S]*if \(edge\.target === node\.id\) return \[edge\.source\];/,
+	);
+});
+
+test("Personal Graph clears TWG expansion state on graph resets and filter changes", () => {
+	assert.match(SURFACE_SOURCE, /const clearTwgExpansionState = useCallback/);
+	assert.match(SURFACE_SOURCE, /twgExpansionGenerationRef\.current \+= 1;/);
+	assert.match(SURFACE_SOURCE, /expandedTwgNodeIdsRef\.current\.clear\(\);/);
+	assert.match(SURFACE_SOURCE, /expandingTwgNodeIdsRef\.current\.clear\(\);/);
+	assert.match(SURFACE_SOURCE, /setExpandedExplorer\(null\);/);
+	assert.match(SURFACE_SOURCE, /const handleClearChatFilter = useCallback\(\(\) => \{[\s\S]*clearTwgExpansionState\(\);[\s\S]*void refresh\(\);/);
+	assert.match(SURFACE_SOURCE, /const handleResetVault = useCallback\(async \(\) => \{[\s\S]*clearTwgExpansionState\(\);[\s\S]*twgChat\.stop\(\);/);
+	assert.match(SURFACE_SOURCE, /if \(previousSourceRef\.current === source\)/);
+	assert.match(SURFACE_SOURCE, /previousSourceRef\.current = source;[\s\S]*setChatExplorer\(null\);[\s\S]*clearTwgExpansionState\(\);/);
 });
 
 test("Personal Graph enables liquid glass stage tracking for route glass UI", () => {
@@ -628,7 +760,8 @@ test("Personal Graph exposes primary graph actions through a curved control flyo
 	assert.match(SURFACE_SOURCE, /const flyoutActions = useMemo<ReadonlyArray<PersonalGraphControlFlyoutAction>>/);
 	assert.doesNotMatch(SURFACE_SOURCE, /label: "Choose data"/);
 	assert.doesNotMatch(SURFACE_SOURCE, /aria-label="Choose data"/);
-	assert.match(SURFACE_SOURCE, /aria-label="Choose Personal Graph vault folder"/);
+	assert.match(SURFACE_SOURCE, /<PersonalGraphSourcePicker/);
+	assert.match(SOURCE_PICKER_SOURCE, /aria-label="Choose Personal Graph vault folder"/);
 	assert.match(SURFACE_SOURCE, /shouldShowVaultOnboarding/);
 	assert.match(SURFACE_SOURCE, /key: "refresh"/);
 	assert.match(SURFACE_SOURCE, /label: "Refresh"/);

@@ -9,6 +9,7 @@ import LinkExternalIcon from "@atlaskit/icon/core/link-external";
 import ShowMoreHorizontalIcon from "@atlaskit/icon/core/show-more-horizontal";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Spinner } from "@/components/ui/spinner";
 import { useTheme } from "@/components/utils/theme-wrapper";
 import Graph, { ROVO_GRAPH_DEFAULT_PARAMS } from "@/components/website/demos/visual/graph";
 import { cn } from "@/lib/utils";
@@ -26,6 +27,8 @@ import {
 	type ResponsivePersonalGraphViewport,
 } from "./lib/neural-graph/responsive-params";
 import { createNeuralGraphStore } from "./lib/neural-graph/store";
+import { expandTwgNode } from "./lib/personal-graph-api";
+import { mergeSelectedNodeExpansion } from "./lib/personal-graph-explorer-merge";
 import type { NeuralGraphParams } from "./lib/neural-graph/params";
 import type { VaultExplorer, VaultNode, VaultNodeKind } from "./lib/personal-graph-types";
 import { PersonalGraphBackdrop } from "./personal-graph-backdrop";
@@ -48,6 +51,7 @@ import {
 } from "./personal-graph-pixel-icons";
 import { PersonalGraphSearch } from "./personal-graph-search";
 import { PersonalGraphSourcePicker } from "./personal-graph-source-picker";
+import { PersonalGraphSummaryPanel } from "./personal-graph-summary-panel";
 import { PersonalGraphTitle } from "./personal-graph-title-scramble";
 import { PersonalGraphTwgAuthError } from "./personal-graph-twg-auth-error";
 
@@ -126,11 +130,18 @@ function getSelectedNode(explorer: VaultExplorer | null, selectedNodeId: string 
 
 function getRelatedNodes(explorer: VaultExplorer | null, node: VaultNode | null) {
 	if (!explorer || !node) return [];
-	const relatedIds = explorer.edges.flatMap((edge) => {
-		if (edge.source === node.id) return [edge.target];
-		if (edge.target === node.id) return [edge.source];
-		return [];
-	});
+	const seenRelatedIds = new Set<string>();
+	const relatedIds: string[] = [];
+	for (const edge of explorer.edges) {
+		const neighborId = edge.source === node.id
+			? edge.target
+			: edge.target === node.id
+				? edge.source
+				: null;
+		if (neighborId === null || seenRelatedIds.has(neighborId)) continue;
+		seenRelatedIds.add(neighborId);
+		relatedIds.push(neighborId);
+	}
 	const nodesById = new Map(explorer.nodes.map((candidate) => [candidate.id, candidate]));
 	return relatedIds
 		.flatMap((nodeId) => {
@@ -262,17 +273,20 @@ function useResponsivePersonalGraphParams(stageRef: React.RefObject<HTMLDivEleme
 
 function PersonalGraphInspector({
 	explorer,
+	isExpanding = false,
 	node,
 	onClose,
 	onSelectNode,
 }: Readonly<{
 	explorer: VaultExplorer | null;
+	isExpanding?: boolean;
 	node: VaultNode | null;
 	onClose: () => void;
 	onSelectNode: (nodeId: string) => void;
 }>) {
 	if (!node) return null;
 	const relatedNodes = getRelatedNodes(explorer, node);
+	const showRelatedSection = isExpanding || relatedNodes.length > 0;
 
 	return (
 		<aside
@@ -310,25 +324,38 @@ function PersonalGraphInspector({
 					<div className="mb-2 text-xs font-medium text-text-subtlest">Excerpt</div>
 					<p className="text-sm leading-6 text-text-subtle">{node.bodyPreview || node.relativePath}</p>
 				</div>
-				{relatedNodes.length > 0 ? (
+				{showRelatedSection ? (
 					<div className="py-4">
 						<div className="mb-3 text-xs font-medium text-text-subtlest">Related pages</div>
-						<div className="space-y-2">
-							{relatedNodes.map((relatedNode) => (
-								<button
-									className="flex w-full items-center justify-between gap-3 rounded-2xl border border-border bg-bg-neutral-subtle px-3 py-3 text-left text-sm text-text transition-colors duration-normal hover:bg-bg-neutral-subtle-hovered"
-									key={relatedNode.id}
-									onClick={() => onSelectNode(relatedNode.id)}
-									type="button"
-								>
-									<span className="flex min-w-0 items-center gap-3">
-										<GraphNodeMarker kind={relatedNode.kind} />
-										<span className="truncate">{relatedNode.title}</span>
-									</span>
-									<ChevronRightIcon label="" />
-								</button>
-							))}
-						</div>
+						{isExpanding ? (
+							<div
+								aria-live="polite"
+								className="mb-2 flex items-center gap-2 text-xs text-text-subtle"
+								data-personal-graph-related-loading="true"
+								role="status"
+							>
+								<Spinner label="Expanding related pages" size="xs" />
+								<span>Expanding…</span>
+							</div>
+						) : null}
+						{relatedNodes.length > 0 ? (
+							<div className="space-y-2">
+								{relatedNodes.map((relatedNode) => (
+									<button
+										className="flex w-full items-center justify-between gap-3 rounded-2xl border border-border bg-bg-neutral-subtle px-3 py-3 text-left text-sm text-text transition-colors duration-normal hover:bg-bg-neutral-subtle-hovered"
+										key={relatedNode.id}
+										onClick={() => onSelectNode(relatedNode.id)}
+										type="button"
+									>
+										<span className="flex min-w-0 items-center gap-3">
+											<GraphNodeMarker kind={relatedNode.kind} />
+											<span className="truncate">{relatedNode.title}</span>
+										</span>
+										<ChevronRightIcon label="" />
+									</button>
+								))}
+							</div>
+						) : null}
 					</div>
 				) : null}
 				<div className="mt-4 flex items-center justify-between gap-2 border-t border-border pt-4">
@@ -420,7 +447,9 @@ export function PersonalGraphSurface({
 	} = useGraphSource();
 	const isTwgMode = source === "twg";
 	const [chatExplorer, setChatExplorer] = useState<VaultExplorer | null>(null);
-	const explorer = chatExplorer ?? rawExplorer;
+	const [expandedExplorer, setExpandedExplorer] = useState<VaultExplorer | null>(null);
+	const [expandingTwgNodeIds, setExpandingTwgNodeIds] = useState<ReadonlySet<string>>(() => new Set());
+	const explorer = isTwgMode ? (chatExplorer ?? expandedExplorer ?? rawExplorer) : rawExplorer;
 	const twgChat = useTwgChat({
 		onGraph: (focusedExplorer) => {
 			if (focusedExplorer.nodes.length > 0) {
@@ -456,10 +485,25 @@ export function PersonalGraphSurface({
 	const liquidGlassStageRef = useRef<HTMLElement | null>(null);
 	const graphStageRef = useRef<HTMLDivElement | null>(null);
 	const resetFlyoutCollapseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const explorerRef = useRef<VaultExplorer | null>(null);
+	const chatExplorerRef = useRef<VaultExplorer | null>(null);
+	const expandedTwgNodeIdsRef = useRef<Set<string>>(new Set());
+	const expandingTwgNodeIdsRef = useRef<Set<string>>(new Set());
+	const twgExpansionGenerationRef = useRef(0);
+	const previousSourceRef = useRef(source);
 	const responsiveGraphParams = useResponsivePersonalGraphParams(graphStageRef);
 	const accessibleGraph = useMemo(() => createNeuralGraphStore(explorer), [explorer]);
 	const displayedNode = useMemo(() => getSelectedNode(explorer, selectedNodeId), [explorer, selectedNodeId]);
+	const isExpandingDisplayedNode =
+		isTwgMode && displayedNode?.provider === "twg" && expandingTwgNodeIds.has(displayedNode.id);
 
+	const clearTwgExpansionState = useCallback(() => {
+		twgExpansionGenerationRef.current += 1;
+		expandedTwgNodeIdsRef.current.clear();
+		expandingTwgNodeIdsRef.current.clear();
+		setExpandingTwgNodeIds(new Set());
+		setExpandedExplorer(null);
+	}, []);
 	const handleRefreshAll = useCallback(async () => {
 		setRefreshKey((current) => current + 1);
 		setChatExplorer(null);
@@ -467,32 +511,37 @@ export function PersonalGraphSurface({
 			await refreshTwg();
 		}
 		await refresh();
-	}, [isTwgMode, refresh, refreshTwg]);
+		clearTwgExpansionState();
+	}, [clearTwgExpansionState, isTwgMode, refresh, refreshTwg]);
 	const handleCaptureQueueOpenChange = useCallback((isOpen: boolean) => {
 		setIsCaptureQueueOpen(isOpen);
 	}, []);
 	const handleChooseVault = useCallback(async () => {
+		clearTwgExpansionState();
 		await setSource("vault");
 		setChatExplorer(null);
 		const next = await selectVault();
 		if (next?.status === "ready") {
 			handleRefreshAll();
 		}
-	}, [handleRefreshAll, selectVault, setSource]);
+	}, [clearTwgExpansionState, handleRefreshAll, selectVault, setSource]);
 	const handleConnectTwg = useCallback(async () => {
+		clearTwgExpansionState();
 		setChatExplorer(null);
 		const next = await setSource("twg");
 		if (next?.source === "twg") {
 			await refreshTwg();
 			handleRefreshAll();
 		}
-	}, [handleRefreshAll, refreshTwg, setSource]);
+	}, [clearTwgExpansionState, handleRefreshAll, refreshTwg, setSource]);
 	const handleAskChat = useCallback((prompt: string) => {
 		void twgChat.send(prompt);
 	}, [twgChat]);
 	const handleClearChatFilter = useCallback(() => {
 		setChatExplorer(null);
-	}, []);
+		clearTwgExpansionState();
+		void refresh();
+	}, [clearTwgExpansionState, refresh]);
 	const handleRetryTwg = useCallback(async () => {
 		await refreshTwg();
 		await refreshSource();
@@ -507,6 +556,7 @@ export function PersonalGraphSurface({
 		}
 
 		setChatExplorer(null);
+		clearTwgExpansionState();
 		twgChat.stop();
 		if (isTwgMode) {
 			await setSource("vault");
@@ -537,7 +587,7 @@ export function PersonalGraphSurface({
 		}
 
 		setIsResetFlyoutCollapsing(false);
-	}, [handleRefreshAll, isTwgMode, resetVault, setSource, shouldReduceMotion, twgChat]);
+	}, [clearTwgExpansionState, handleRefreshAll, isTwgMode, resetVault, setSource, shouldReduceMotion, twgChat]);
 	const handleToggleTheme = useCallback(() => {
 		if (theme === "light") {
 			setTheme("dark");
@@ -655,6 +705,93 @@ export function PersonalGraphSurface({
 		theme,
 		themeLabel,
 	]);
+
+	useEffect(() => {
+		explorerRef.current = explorer;
+	}, [explorer]);
+
+	useEffect(() => {
+		chatExplorerRef.current = chatExplorer;
+	}, [chatExplorer]);
+
+	useEffect(() => {
+		if (previousSourceRef.current === source) {
+			return;
+		}
+		previousSourceRef.current = source;
+		setChatExplorer(null);
+		clearTwgExpansionState();
+	}, [clearTwgExpansionState, source]);
+
+	useEffect(() => {
+		if (!isTwgMode || !selectedNodeId || isLoading) {
+			return;
+		}
+
+		const selectedNode = explorerRef.current?.nodes.find((node) => node.id === selectedNodeId);
+		if (!selectedNode || selectedNode.provider !== "twg") {
+			return;
+		}
+		if (expandedTwgNodeIdsRef.current.has(selectedNodeId) || expandingTwgNodeIdsRef.current.has(selectedNodeId)) {
+			return;
+		}
+
+		const controller = new AbortController();
+		const expansionGeneration = twgExpansionGenerationRef.current;
+		expandingTwgNodeIdsRef.current.add(selectedNodeId);
+		setExpandingTwgNodeIds((current) => {
+			if (current.has(selectedNodeId)) return current;
+			const next = new Set(current);
+			next.add(selectedNodeId);
+			return next;
+		});
+
+		void expandTwgNode(selectedNodeId, { signal: controller.signal })
+			.then((result) => {
+				if (controller.signal.aborted || expansionGeneration !== twgExpansionGenerationRef.current) {
+					return;
+				}
+
+				expandedTwgNodeIdsRef.current.add(selectedNodeId);
+				expandedTwgNodeIdsRef.current.add(result.expandedNodeId);
+
+				const currentChatExplorer = chatExplorerRef.current;
+				if (currentChatExplorer) {
+					if (currentChatExplorer.nodes.some((node) => node.id === selectedNodeId)) {
+						setChatExplorer((current) =>
+							current ? mergeSelectedNodeExpansion(current, result.explorer, selectedNodeId) : current,
+						);
+						return;
+					}
+					setChatExplorer(null);
+				}
+
+				setExpandedExplorer(result.explorer);
+			})
+			.catch((nextError) => {
+				if (controller.signal.aborted || expansionGeneration !== twgExpansionGenerationRef.current) {
+					return;
+				}
+				expandedTwgNodeIdsRef.current.add(selectedNodeId);
+				console.warn("TWG node expansion failed", nextError);
+			})
+			.finally(() => {
+				expandingTwgNodeIdsRef.current.delete(selectedNodeId);
+				if (expansionGeneration !== twgExpansionGenerationRef.current) {
+					return;
+				}
+				setExpandingTwgNodeIds((current) => {
+					if (!current.has(selectedNodeId)) return current;
+					const next = new Set(current);
+					next.delete(selectedNodeId);
+					return next;
+				});
+			});
+
+		return () => {
+			controller.abort();
+		};
+	}, [isLoading, isTwgMode, selectedNodeId]);
 
 	useEffect(() => {
 		if (!selectedNodeId) {
@@ -841,6 +978,10 @@ export function PersonalGraphSurface({
 					}}
 				>
 					<div className="pointer-events-auto relative w-full max-w-[760px]">
+						<PersonalGraphSummaryPanel
+							node={displayedNode}
+							onConfirmed={handleRefreshAll}
+						/>
 						<PersonalGraphSearch
 							assistantMessage={isTwgMode ? lastAssistantMessage : null}
 							chatError={isTwgMode ? twgChat.error : null}
@@ -860,6 +1001,7 @@ export function PersonalGraphSurface({
 
 				<PersonalGraphInspector
 					explorer={explorer}
+					isExpanding={isExpandingDisplayedNode}
 					node={displayedNode}
 					onClose={() => setSelectedNodeId(null)}
 					onSelectNode={setSelectedNodeId}
