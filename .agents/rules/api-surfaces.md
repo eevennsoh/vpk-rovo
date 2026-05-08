@@ -10,6 +10,12 @@ paths:
 
 # API Surfaces
 
+## Dev Proxy JSON Contracts
+
+- When a `POST` route consumes JSON before proxying, use `readJsonBody()` or a route-local wrapper around it instead of manual `request.json()` / `JSON.parse()` handling.
+- Add or keep focused route tests for malformed JSON. The test should assert the public error shape for that route and prove the backend/proxy call is not reached.
+- Match the route's existing response contract: most dev proxy routes return JSON errors, while transport-specific routes such as `app/api/chat-sdk/route.ts` intentionally normalize client-body errors to `text/plain`.
+
 ## Backend (`backend/server.js`)
 
 ### Chat
