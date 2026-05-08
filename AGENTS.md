@@ -136,7 +136,7 @@ In VPK feature code, use ADS semantic naming (`bg-surface-raised`, `text-text-su
 - Install dependencies: `pnpm install`
 - First-time RovoDev bootstrap: run `pnpm run rovodev` (or `acli rovodev`) once, copy the printed `ROVODEV_SESSION_TOKEN` into `.env.local`, then restart the stack
 - Start everything: `pnpm run rovodev` (starts 1 rovodev serve instance + backend + frontend; use `pnpm run rovodev -- 6` for full pool)
-- Start frontend + backend only: `pnpm run dev` (requires rovodev serve already running)
+- Start frontend + backend only: `pnpm run dev` (chat still requires RovoDev Serve already running)
 - Start RovoDev Serve only: `pnpm run dev:rovodev`
 - Start frontend only: `pnpm run dev:frontend`
 - Start backend only: `pnpm run dev:backend`
@@ -250,7 +250,7 @@ The following `.agents/rules/` files load automatically when editing matching fi
 | RovoDev Serve | `pnpm run dev:rovodev` | 8000 | Only for AI chat |
 
 Start frontend + backend together: `pnpm run dev`
-Start all three (including RovoDev): `pnpm run rovodev`
+Start all three locally when the RovoDev CLI is available: `pnpm run rovodev`
 
 ### Running checks
 
