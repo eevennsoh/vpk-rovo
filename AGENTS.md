@@ -238,3 +238,34 @@ The following `.agents/rules/` files load automatically when editing matching fi
 | `agent-operations.md` | `.agents/skills/**`, `.agents/agents/**` | Skills, parallel work, agent teams |
 | `appendix-reference.md` | `backend/**`, `app/contexts/**`, `app/providers.tsx`, `.agents/skills/**` | Dir structure, env vars, providers, skills catalog |
 | `browser-screenshots.mdc` | `*` (always) | Keep browser screenshots out of workspace root |
+
+## Cursor Cloud specific instructions
+
+### Services overview
+
+| Service | Command | Default Port | Required? |
+|---------|---------|-------------|-----------|
+| Next.js Frontend | `pnpm run dev:frontend` | 3000 | Yes |
+| Express Backend | `pnpm run dev:backend` | 8080 | Yes |
+| RovoDev Serve | `pnpm run dev:rovodev` | 8000 | Only for AI chat |
+
+Start frontend + backend together: `pnpm run dev`
+Start all three (including RovoDev): `pnpm run rovodev`
+
+### Running checks
+
+- Lint: `pnpm run lint`
+- Typecheck: `pnpm run typecheck`
+- Build: `pnpm run build`
+- No single `pnpm test`; run targeted `node --test` against specific `.test.js`/`.test.ts` files
+
+### Non-obvious caveats
+
+- The `.env.local` file is created from `.env.local.example` on first setup. The dev servers (backend + frontend) start without AI Gateway credentials — the UI renders fully but AI chat features return errors without `ROVODEV_SESSION_TOKEN` and RovoDev Serve running.
+- Backend port is written to `.dev-backend-port`, frontend to `.dev-frontend-port` at startup — these are useful for verifying which ports are in use.
+- `pnpm run dev` starts both backend and frontend via `concurrently`; do not run `pnpm run rovodev` at the same time or you'll get port conflicts.
+- The `pnpm install` warning about ignored build scripts (better-sqlite3, node-llama-cpp) is expected and does not affect the application — these are transitive deps from optional features.
+- Health endpoint: `curl http://localhost:8080/api/health` — returns JSON with service status and auth config summary.
+- The `rovodev` CLI (RovoDev Serve) is not available in cloud VMs — use `pnpm run dev` instead of `pnpm run rovodev`. AI chat streaming won't work without RovoDev, but all UI, component docs, and non-chat API routes function normally.
+- AI Gateway endpoints require outbound HTTPS to `ai-gateway.us-east-1.staging.atl-paas.net`. If the cloud VM has restricted egress, gateway-backed features (image/sound/suggestions/chat-title) will return null/empty results gracefully.
+- When writing `ASAP_PRIVATE_KEY` to `.env.local`, the value already includes surrounding double quotes and literal `\n` escape sequences — do not add extra quotes around it or you'll get "Maximum call stack size exceeded" from Next.js env parsing.
