@@ -85,11 +85,10 @@ export function createNeuralGraphStore(explorer: VaultExplorer | null): NeuralGr
 	const adjacency = new Map<string, NeuralGraphNeighbor[]>();
 	const kindGroups = new Map<VaultNodeKind, NeuralGraphNode[]>();
 
-	const nodes = [...(explorer?.nodes ?? [])].sort(compareNodes).flatMap((node) => {
-		if (nodesById.has(node.id)) {
-			return [];
-		}
-
+	const sortedNodes = [...(explorer?.nodes ?? [])].sort(compareNodes);
+	const nodes: NeuralGraphNode[] = [];
+	for (const node of sortedNodes) {
+		if (nodesById.has(node.id)) continue;
 		const index = nodesById.size;
 		const graphNode: NeuralGraphNode = {
 			bodyPreview: node.bodyPreview,
@@ -113,29 +112,31 @@ export function createNeuralGraphStore(explorer: VaultExplorer | null): NeuralGr
 		} else {
 			kindGroups.set(node.kind, [graphNode]);
 		}
-		return [graphNode];
-	});
+		nodes.push(graphNode);
+	}
 
-	const edges = [...(explorer?.edges ?? [])]
-		.sort((left, right) => left.id.localeCompare(right.id))
-		.flatMap((edge) => {
-			if (!nodesById.has(edge.source) || !nodesById.has(edge.target) || edgesById.has(edge.id)) {
-				return [];
-			}
+	const sortedEdges = [...(explorer?.edges ?? [])].sort((left, right) =>
+		left.id.localeCompare(right.id),
+	);
+	const edges: NeuralGraphEdge[] = [];
+	for (const edge of sortedEdges) {
+		if (!nodesById.has(edge.source) || !nodesById.has(edge.target) || edgesById.has(edge.id)) {
+			continue;
+		}
 
-			const graphEdge: NeuralGraphEdge = {
-				id: edge.id,
-				index: edgesById.size,
-				kind: edge.kind,
-				label: edge.label,
-				original: edge,
-				source: edge.source,
-				target: edge.target,
-				weight: getEdgeWeight(edge),
-			};
-			edgesById.set(edge.id, graphEdge);
-			return [graphEdge];
-		});
+		const graphEdge: NeuralGraphEdge = {
+			id: edge.id,
+			index: edgesById.size,
+			kind: edge.kind,
+			label: edge.label,
+			original: edge,
+			source: edge.source,
+			target: edge.target,
+			weight: getEdgeWeight(edge),
+		};
+		edgesById.set(edge.id, graphEdge);
+		edges.push(graphEdge);
+	}
 
 	for (const edge of edges) {
 		const source = nodesById.get(edge.source);
