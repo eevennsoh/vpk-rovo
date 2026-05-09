@@ -298,7 +298,7 @@ test("Personal Graph omits the standalone zoom control rail", () => {
 	assert.doesNotMatch(SURFACE_SOURCE, /TargetIcon/);
 });
 
-test("Personal Graph anchors the search and chat composer at the graph origin", () => {
+test("Personal Graph keeps the search and chat composer separate from the centered graph origin", () => {
 	assert.match(SURFACE_SOURCE, /aria-label="Personal Graph search and chat"/);
 	assert.match(SURFACE_SOURCE, /aria-hidden=\{!isSearchRevealed\}/);
 	assert.match(SURFACE_SOURCE, /inert=\{!isSearchRevealed\}/);
@@ -316,6 +316,7 @@ test("Personal Graph anchors the search and chat composer at the graph origin", 
 		/PERSONAL_GRAPH_PROMPT_INPUT_BOTTOM_PX \+\s+PERSONAL_GRAPH_PROMPT_INPUT_HEIGHT_PX \+\s+PERSONAL_GRAPH_TAIL_PROMPT_GAP_PX \+\s+PERSONAL_GRAPH_TAIL_MARKER_SIZE_PX \/ 2 \+\s+PERSONAL_GRAPH_STAGE_TRANSLATE_Y_PX;/,
 	);
 	assert.match(SURFACE_SOURCE, /transform: `translateY\(\$\{PERSONAL_GRAPH_STAGE_TRANSLATE_Y_PX\}px\)`/);
+	assert.match(SURFACE_SOURCE, /rayOriginBottomOffset=\{PERSONAL_GRAPH_RAY_TAIL_BOTTOM_OFFSET_PX\}/);
 	assert.doesNotMatch(SURFACE_SOURCE, /opacity: isSearchRevealed \? 1 : 0/);
 	assert.doesNotMatch(SURFACE_SOURCE, /opacity: \{ duration: 0\.5, ease: easeOut \}/);
 	assert.doesNotMatch(SURFACE_SOURCE, /border-border-inverse bg-bg-neutral-bold/);
@@ -609,7 +610,7 @@ test("Personal Graph keeps the owned canvas renderer accessible", () => {
 	assert.match(SURFACE_SOURCE, /showControls=\{false\}/);
 	assert.match(SURFACE_SOURCE, /background="transparent"/);
 	assert.match(SURFACE_SOURCE, /params=\{responsiveGraphParams\}/);
-	assert.match(SURFACE_SOURCE, /rayOriginBottomOffset=\{PERSONAL_GRAPH_TAIL_BOTTOM_OFFSET_PX\}/);
+	assert.match(SURFACE_SOURCE, /rayOriginBottomOffset=\{PERSONAL_GRAPH_RAY_TAIL_BOTTOM_OFFSET_PX\}/);
 	assert.match(SURFACE_SOURCE, /DEFAULT_NEURAL_GRAPH_INTERACTION_SETTINGS/);
 	assert.match(SURFACE_SOURCE, /interactionSettings=\{DEFAULT_NEURAL_GRAPH_INTERACTION_SETTINGS\}/);
 	assert.match(SURFACE_SOURCE, /DEFAULT_NEURAL_RAY_SOUND_SETTINGS/);
@@ -635,14 +636,17 @@ test("Personal Graph keeps the owned canvas renderer accessible", () => {
 	assert.match(NEURAL_CANVAS_SOURCE, /viewport\.height - rayOriginBottomOffset/);
 	assert.match(NEURAL_RENDERER_SOURCE, /rayOriginY\?: number;/);
 	assert.match(NEURAL_RENDERER_SOURCE, /rayOriginY \?\? viewport\.height \* params\.rayOriginY/);
+	assert.match(NEURAL_RENDERER_SOURCE, /function drawRadialRayTails/);
+	assert.match(NEURAL_RENDERER_SOURCE, /const origin = getNeuralOrigin\(options\.viewport, options\.params\);/);
 	assert.doesNotMatch(SURFACE_SOURCE, /PERSONAL_GRAPH_NEURAL_PARAMS_STORAGE_KEY/);
 	assert.match(GRAPH_SOURCE, /nodeShape: "square"/);
 	assert.match(GRAPH_SOURCE, /layoutShape: "radialCluster"/);
-	assert.match(GRAPH_SOURCE, /radialArcAngle: 284/);
+	assert.match(GRAPH_SOURCE, /radialArcAngle: 360/);
 	assert.match(GRAPH_SOURCE, /radialDepthCurve: 0\.8/);
-	assert.match(GRAPH_SOURCE, /nodeSize: 8/);
+	assert.match(GRAPH_SOURCE, /nodeSize: 4/);
 	assert.match(GRAPH_SOURCE, /originMarkerSize: 12/);
-	assert.match(GRAPH_SOURCE, /rayOriginY: 1/);
+	assert.match(GRAPH_SOURCE, /originY: 0\.52/);
+	assert.match(GRAPH_SOURCE, /rayOriginY: 0\.52/);
 	assert.match(GRAPH_SOURCE, /signalColor: ROVO_GRAPH_COLORS\.default/);
 	assert.match(GRAPH_SOURCE, /signalFrequency: 0\.5/);
 	assert.match(GRAPH_SOURCE, /signalGlowEnabled: false/);
@@ -680,7 +684,7 @@ test("Personal Graph derives responsive graph params from the route stage", () =
 	assert.doesNotMatch(SURFACE_SOURCE, /onUpdate: \(width\)/);
 	assert.match(RESPONSIVE_PARAMS_SOURCE, /RESPONSIVE_PERSONAL_GRAPH_WIDTHS/);
 	assert.match(RESPONSIVE_PARAMS_SOURCE, /export function getResponsivePersonalGraphParams/);
-	assert.match(RESPONSIVE_PARAMS_SOURCE, /showLabels: width >= 430/);
+	assert.match(RESPONSIVE_PARAMS_SOURCE, /showLabels: width >= 700/);
 	assert.doesNotMatch(SURFACE_SOURCE, /params=\{ROVO_GRAPH_DEFAULT_PARAMS\}/);
 });
 

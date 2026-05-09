@@ -6,6 +6,10 @@ export const NEURAL_GRAPH_FIT_PADDING = 48;
 
 const NEURAL_GRAPH_FIT_MIN_ZOOM = 0.1;
 const NEURAL_GRAPH_FIT_MAX_ZOOM = 4;
+const NEURAL_GRAPH_RADIAL_FIT_MAX_ZOOM = 0.84;
+const NEURAL_GRAPH_RADIAL_LABEL_FIT_PADDING_MAX = 360;
+const NEURAL_GRAPH_RADIAL_LABEL_FIT_PADDING_MIN = 160;
+const NEURAL_GRAPH_RADIAL_LABEL_FIT_PADDING_RATIO = 0.3;
 const ZERO_EXTENT_EPSILON = 0.0001;
 
 function lerp(start: number, end: number, progress: number) {
@@ -58,6 +62,18 @@ function clampPadding(padding: number, viewport: NeuralViewport) {
 	if (!Number.isFinite(padding) || padding < 0) return 0;
 	const ceiling = Math.max(0, Math.min(viewport.width, viewport.height) / 2 - 1);
 	return Math.min(padding, ceiling);
+}
+
+function getRadialFitPadding(safePadding: number, viewport: NeuralViewport, params: NeuralGraphParams) {
+	if (!params.showLabels || viewport.width < 700) return safePadding;
+	const viewportScaledPadding = Math.min(viewport.width, viewport.height) * NEURAL_GRAPH_RADIAL_LABEL_FIT_PADDING_RATIO;
+	return Math.max(
+		safePadding,
+		Math.min(
+			NEURAL_GRAPH_RADIAL_LABEL_FIT_PADDING_MAX,
+			Math.max(NEURAL_GRAPH_RADIAL_LABEL_FIT_PADDING_MIN, viewportScaledPadding),
+		),
+	);
 }
 
 function getScreenSpaceCameraDelta(camera: NeuralCamera, target: NeuralCamera) {
@@ -131,6 +147,36 @@ export function fitNeuralCameraToLayout({
 	const availableHeight = Math.max(1, viewport.height - safePadding * 2);
 	const rawWidth = bounds.maxX - bounds.minX;
 	const rawHeight = bounds.maxY - bounds.minY;
+	if (layout.layoutShape === "radialCluster") {
+		const radialPadding = getRadialFitPadding(safePadding, viewport, params);
+		const originViewport = {
+			x: origin.x,
+			y: origin.y,
+		};
+		const zoomCandidates: number[] = [];
+		if (bounds.minX < 0) zoomCandidates.push(Math.max(1, originViewport.x - radialPadding) / Math.abs(bounds.minX));
+		if (bounds.maxX > 0) zoomCandidates.push(Math.max(1, viewport.width - originViewport.x - radialPadding) / bounds.maxX);
+		if (bounds.minY < 0) zoomCandidates.push(Math.max(1, originViewport.y - radialPadding) / Math.abs(bounds.minY));
+		if (bounds.maxY > 0) zoomCandidates.push(Math.max(1, viewport.height - originViewport.y - radialPadding) / bounds.maxY);
+		const zoom = clampFitZoom(Math.min(
+			NEURAL_GRAPH_RADIAL_FIT_MAX_ZOOM,
+			zoomCandidates.length ? Math.min(...zoomCandidates) : NEURAL_GRAPH_RADIAL_FIT_MAX_ZOOM,
+		));
+		const target = {
+			...camera,
+			x: (origin.x - originViewport.x) / zoom,
+			y: (origin.y - originViewport.y) / zoom,
+			zoom,
+		};
+
+		return settleCameraFit({
+			amount: smoothing,
+			camera,
+			positionDeadbandPx,
+			target,
+			zoomDeadband,
+		});
+	}
 	const worldCenterX = (bounds.minX + bounds.maxX) / 2;
 	const worldCenterY = (bounds.minY + bounds.maxY) / 2;
 

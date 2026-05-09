@@ -88,7 +88,7 @@ const PERSONAL_GRAPH_PROMPT_INPUT_HEIGHT_PX = 64;
 const PERSONAL_GRAPH_TAIL_PROMPT_GAP_PX = 8;
 const PERSONAL_GRAPH_TAIL_MARKER_SIZE_PX = ROVO_GRAPH_DEFAULT_PARAMS.originMarkerSize;
 const PERSONAL_GRAPH_STAGE_TRANSLATE_Y_PX = -10;
-const PERSONAL_GRAPH_TAIL_BOTTOM_OFFSET_PX =
+const PERSONAL_GRAPH_RAY_TAIL_BOTTOM_OFFSET_PX =
 	PERSONAL_GRAPH_PROMPT_INPUT_BOTTOM_PX +
 	PERSONAL_GRAPH_PROMPT_INPUT_HEIGHT_PX +
 	PERSONAL_GRAPH_TAIL_PROMPT_GAP_PX +
@@ -961,7 +961,7 @@ export function PersonalGraphSurface({
 							interactionSettings={DEFAULT_NEURAL_GRAPH_INTERACTION_SETTINGS}
 							onSelectedNodeIdChange={setSelectedNodeId}
 							params={responsiveGraphParams}
-							rayOriginBottomOffset={PERSONAL_GRAPH_TAIL_BOTTOM_OFFSET_PX}
+							rayOriginBottomOffset={PERSONAL_GRAPH_RAY_TAIL_BOTTOM_OFFSET_PX}
 							raySoundSettings={DEFAULT_NEURAL_RAY_SOUND_SETTINGS}
 							selectedNodeId={selectedNodeId}
 							showControls={false}

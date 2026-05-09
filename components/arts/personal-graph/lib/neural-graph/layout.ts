@@ -51,7 +51,9 @@ export interface NeuralGraphLayout {
 }
 
 const DEG_TO_RAD = Math.PI / 180;
+const FULL_RADIAL_ARC_EPSILON = 0.001;
 const RELAXATION_ITERATIONS = 18;
+const TAU = Math.PI * 2;
 
 function lerp(start: number, end: number, progress: number) {
 	return start + (end - start) * progress;
@@ -82,6 +84,10 @@ function unitHash(value: string, salt: string) {
 
 function signedHash(value: string, salt: string) {
 	return unitHash(value, salt) * 2 - 1;
+}
+
+function isFullRadialArc(arcAngle: number) {
+	return arcAngle >= TAU - FULL_RADIAL_ARC_EPSILON;
 }
 
 function waveNoise(
@@ -217,14 +223,13 @@ function buildRadialClusterForest({
 	const visitedNodeIds = new Set<string>();
 	const roots: RadialClusterTreeNode[] = [];
 
-	function visitNode(
+	function createTreeNode(
 		node: NeuralGraphNode,
 		parentId: string | null,
 		edge: NeuralGraphEdge | null,
 		depth: number,
 	): RadialClusterTreeNode {
-		visitedNodeIds.add(node.id);
-		const treeNode: RadialClusterTreeNode = {
+		return {
 			angle: 0,
 			children: [],
 			depth,
@@ -234,20 +239,27 @@ function buildRadialClusterForest({
 			parentId,
 			radius: 0,
 		};
-
-		for (const neighbor of getVisibleNeighbors({ nodeId: node.id, store, visibleNodeIds })) {
-			if (neighbor.node.id === parentId || visitedNodeIds.has(neighbor.node.id)) {
-				continue;
-			}
-			treeNode.children.push(visitNode(neighbor.node, node.id, neighbor.edge, depth + 1));
-		}
-
-		return treeNode;
 	}
 
 	for (const rootCandidate of getRadialClusterRootCandidates({ selectedNodeId, store, visibleNodeIds })) {
 		if (visitedNodeIds.has(rootCandidate.id)) continue;
-		roots.push(visitNode(rootCandidate, null, null, 1));
+		const root = createTreeNode(rootCandidate, null, null, 1);
+		const queue = [root];
+		visitedNodeIds.add(rootCandidate.id);
+		roots.push(root);
+
+		for (let queueIndex = 0; queueIndex < queue.length; queueIndex += 1) {
+			const treeNode = queue[queueIndex];
+			for (const neighbor of getVisibleNeighbors({ nodeId: treeNode.node.id, store, visibleNodeIds })) {
+				if (neighbor.node.id === treeNode.parentId || visitedNodeIds.has(neighbor.node.id)) {
+					continue;
+				}
+				const child = createTreeNode(neighbor.node, treeNode.node.id, neighbor.edge, treeNode.depth + 1);
+				treeNode.children.push(child);
+				visitedNodeIds.add(neighbor.node.id);
+				queue.push(child);
+			}
+		}
 	}
 
 	return roots;
@@ -272,40 +284,48 @@ function getMaxRadialDepth(node: RadialClusterTreeNode): number {
 
 function assignRadialLeafAngles({
 	arcAngle,
-	endAngle,
 	nextLeafIndex,
 	node,
 	startAngle,
 	totalLeaves,
 }: {
 	arcAngle: number;
-	endAngle: number;
 	nextLeafIndex: { current: number };
 	node: RadialClusterTreeNode;
 	startAngle: number;
 	totalLeaves: number;
 }) {
 	if (node.children.length === 0) {
-		node.angle = totalLeaves <= 1
-			? (startAngle + endAngle) / 2
-			: startAngle + (arcAngle * nextLeafIndex.current) / (totalLeaves - 1);
+		if (totalLeaves <= 1) {
+			node.angle = startAngle + arcAngle / 2;
+		} else if (isFullRadialArc(arcAngle)) {
+			node.angle = startAngle + (arcAngle * nextLeafIndex.current) / totalLeaves;
+		} else {
+			node.angle = startAngle + (arcAngle * nextLeafIndex.current) / (totalLeaves - 1);
+		}
 		nextLeafIndex.current += 1;
 		return node.angle;
 	}
 
-	let weightedAngle = 0;
+	let weightedX = 0;
+	let weightedY = 0;
+	let fallbackAngle = 0;
 	for (const child of node.children) {
 		const childAngle = assignRadialLeafAngles({
 			arcAngle,
-			endAngle,
 			nextLeafIndex,
 			node: child,
 			startAngle,
 			totalLeaves,
 		});
-		weightedAngle += childAngle * child.leafCount;
+		weightedX += Math.cos(childAngle) * child.leafCount;
+		weightedY += Math.sin(childAngle) * child.leafCount;
+		fallbackAngle += childAngle * child.leafCount;
 	}
-	node.angle = weightedAngle / Math.max(1, node.leafCount);
+	const vectorLength = Math.hypot(weightedX, weightedY);
+	node.angle = vectorLength > 0.0001
+		? Math.atan2(weightedY, weightedX)
+		: fallbackAngle / Math.max(1, node.leafCount);
 	return node.angle;
 }
 
@@ -443,7 +463,6 @@ function computeRadialClusterLayout({
 	const totalLeaves = forest.reduce((sum, root) => sum + root.leafCount, 0);
 	const arcAngle = Math.min(360, Math.max(60, params.radialArcAngle)) * DEG_TO_RAD;
 	const startAngle = -Math.PI / 2 - arcAngle / 2;
-	const endAngle = -Math.PI / 2 + arcAngle / 2;
 	const nextLeafIndex = { current: 0 };
 	const outerRadius = params.spread * Math.max(0.2, params.radiusMax / 100);
 	const rootRadius = Math.min(
@@ -455,7 +474,6 @@ function computeRadialClusterLayout({
 	for (const root of forest) {
 		assignRadialLeafAngles({
 			arcAngle,
-			endAngle,
 			nextLeafIndex,
 			node: root,
 			startAngle,

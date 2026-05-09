@@ -222,6 +222,10 @@ function getDrawableGraphEdges(layout: NeuralGraphLayout) {
 	return layout.treeBranches?.length ? layout.crossEdges ?? [] : layout.edges;
 }
 
+function isRadialClusterLayout(layout: NeuralGraphLayout) {
+	return layout.layoutShape === "radialCluster";
+}
+
 function getFallbackNormal(curve: NeuralRayCurve) {
 	const dx = curve.target.x - curve.origin.x;
 	const dy = curve.target.y - curve.origin.y;
@@ -348,6 +352,13 @@ function getPolarPoint(origin: NeuralPoint, angle: number, radius: number): Neur
 	};
 }
 
+function getShortestAngleDelta(startAngle: number, endAngle: number) {
+	let delta = endAngle - startAngle;
+	while (delta > Math.PI) delta -= Math.PI * 2;
+	while (delta < -Math.PI) delta += Math.PI * 2;
+	return delta;
+}
+
 function drawRadialBranchPath(
 	ctx: CanvasRenderingContext2D,
 	origin: NeuralPoint,
@@ -360,7 +371,8 @@ function drawRadialBranchPath(
 	const targetAngle = Math.atan2(target.y - origin.y, target.x - origin.x);
 	const controlRadius = lerp(sourceRadius, targetRadius, 0.5);
 	const sourceControl = getPolarPoint(origin, sourceAngle, controlRadius);
-	const targetControl = getPolarPoint(origin, targetAngle, controlRadius);
+	const angleDelta = getShortestAngleDelta(sourceAngle, targetAngle);
+	const targetControl = getPolarPoint(origin, sourceAngle + angleDelta, controlRadius);
 
 	ctx.beginPath();
 	ctx.moveTo(source.x, source.y);
@@ -376,10 +388,10 @@ function drawRadialBranches(
 	const branches = layout.treeBranches ?? [];
 	if (branches.length === 0) return;
 
-	const origin = getRayOrigin(options.viewport, options.params, options.rayOriginY);
+	const origin = getNeuralOrigin(options.viewport, options.params);
 	const focusProgress = getFocusProgress(options);
 	const activeNodeId = options.selectedNodeId ?? options.hoveredNodeId;
-	const baseAlpha = Math.max(0.08, options.params.rayOpacity * 4.5, options.params.edgeOpacity * 0.56);
+	const baseAlpha = Math.max(0.24, options.params.rayOpacity * 6, options.params.edgeOpacity * 1.25);
 	const activeAlpha = Math.max(baseAlpha, options.params.edgeOpacityActive);
 	const rayColor = getResolvedColor(options.params.rayColor, options);
 	const selectedColor = getResolvedColor(options.params.edgeSelectedColor, options);
@@ -387,7 +399,7 @@ function drawRadialBranches(
 
 	ctx.save();
 	ctx.lineCap = "round";
-	ctx.lineWidth = options.params.rayWidth;
+	ctx.lineWidth = Math.max(options.params.rayWidth * 0.9, options.params.edgeWidth * 0.62);
 
 	for (const branch of branches) {
 		const target = worldToViewport(branch.target, options.camera, options.viewport, options.params);
@@ -411,6 +423,41 @@ function drawRadialBranches(
 	ctx.restore();
 }
 
+function drawRadialRayTails(
+	ctx: CanvasRenderingContext2D,
+	layout: NeuralGraphLayout,
+	options: NeuralGraphRenderOptions,
+	selectedRelationships: SelectedRelationshipIds,
+) {
+	const leafNodeIds = getRadialLeafNodeIds(layout);
+	if (leafNodeIds.size === 0) return;
+
+	const origin = getRayOrigin(options.viewport, options.params, options.rayOriginY);
+	const focusProgress = getFocusProgress(options);
+	const interactionIntensity = getInteractionIntensity(options);
+	ctx.save();
+	ctx.lineCap = "round";
+	ctx.lineWidth = options.params.rayWidth;
+	ctx.strokeStyle = getResolvedColor(options.params.rayColor, options);
+
+	for (const node of layout.nodes) {
+		if (!leafNodeIds.has(node.id)) continue;
+		const point = worldToViewport(node, options.camera, options.viewport, options.params);
+		const isRelated = selectedRelationships.nodeIds.has(node.id);
+		const focusAlpha = focusProgress > 0 ? (isRelated ? lerp(1, 0.72, focusProgress) : lerp(1, 0.05, focusProgress)) : 1;
+		const activeRayProgress = options.rayElastic?.nodeId === node.id
+			? Math.min(1.5, Math.max(0, options.rayElastic.progress))
+			: 0;
+		const emphasis = activeRayProgress * Math.max(0, options.interaction?.rayEmphasis ?? 1);
+		const baseAlpha = (options.params.rayOpacity + node.depthScale * 0.018 + interactionIntensity * 0.016) * focusAlpha;
+		ctx.globalAlpha = clampAlpha(activeRayProgress > 0 ? lerp(baseAlpha, 0.72, Math.min(1, emphasis)) : baseAlpha);
+		drawOrganicRayPath(ctx, getElasticRayCurve(getOrganicRayCurve(origin, point), options));
+		ctx.stroke();
+	}
+
+	ctx.restore();
+}
+
 function drawRays(
 	ctx: CanvasRenderingContext2D,
 	layout: NeuralGraphLayout,
@@ -418,7 +465,8 @@ function drawRays(
 	selectedRelationships: SelectedRelationshipIds,
 ) {
 	if (!options.params.showRays) return;
-	if (layout.treeBranches?.length) {
+	if (isRadialClusterLayout(layout)) {
+		drawRadialRayTails(ctx, layout, options, selectedRelationships);
 		drawRadialBranches(ctx, layout, options, selectedRelationships);
 		return;
 	}
@@ -472,20 +520,27 @@ function drawEdges(
 ) {
 	if (!options.params.showEdges) return;
 	const edges = getDrawableGraphEdges(layout);
+	const radialCluster = isRadialClusterLayout(layout);
+	const hasFocus = radialCluster ? Boolean(options.selectedNodeId) : Boolean(options.selectedNodeId ?? options.hoveredNodeId);
+	const crossLinkOpacityScale = radialCluster ? (hasFocus ? 0.1 : 0) : 1;
 	const edgeWidths = getEdgeLineWidth(options.params);
-	const idleOpacity = options.params.edgeOpacity;
-	const activeOpacity = options.params.edgeOpacityActive;
+	const idleOpacity = options.params.edgeOpacity * crossLinkOpacityScale;
+	const activeOpacity = options.params.edgeOpacityActive * (radialCluster ? 0.34 : 1);
+	const idleLineWidth = radialCluster ? edgeWidths.idle * 0.42 : edgeWidths.idle;
+	const activeLineWidth = radialCluster ? edgeWidths.active * 0.72 : edgeWidths.active;
+	const focusedLineWidth = radialCluster ? edgeWidths.focused * 0.72 : edgeWidths.focused;
 	const focusProgress = getFocusProgress(options);
 	const drawEdge = (edge: NeuralLayoutEdge) => {
 		const source = worldToViewport(edge.source, options.camera, options.viewport, options.params);
 		const target = worldToViewport(edge.target, options.camera, options.viewport, options.params);
-		const hasFocus = Boolean(options.selectedNodeId ?? options.hoveredNodeId);
 		const focusActive = focusProgress > 0 && selectedRelationships.edgeIds.has(edge.id);
 		const active = focusProgress > 0 ? focusActive : hasFocus && isActiveEdge(edge.source.id, edge.target.id, options.selectedNodeId, options.hoveredNodeId);
 		const inactiveAlpha = focusProgress > 0 ? lerp(idleOpacity, idleOpacity * 0.11, focusProgress) : idleOpacity;
+		const alpha = active ? lerp(activeOpacity, Math.min(1, activeOpacity + 0.2), focusProgress) : inactiveAlpha;
+		if (alpha <= 0.001) return;
 		ctx.strokeStyle = getEdgeColor(edge, options, selectedRelationships);
-		ctx.lineWidth = active ? lerp(edgeWidths.active, edgeWidths.focused, focusProgress) : edgeWidths.idle;
-		ctx.globalAlpha = active ? lerp(activeOpacity, Math.min(1, activeOpacity + 0.2), focusProgress) : inactiveAlpha;
+		ctx.lineWidth = active ? lerp(activeLineWidth, focusedLineWidth, focusProgress) : idleLineWidth;
+		ctx.globalAlpha = alpha;
 		drawStraightEdgePath(ctx, source, target);
 		ctx.stroke();
 	};
@@ -539,21 +594,24 @@ function drawSignalStreaks(
 	options: NeuralGraphRenderOptions,
 ) {
 	const edges = getDrawableGraphEdges(layout);
+	const radialCluster = isRadialClusterLayout(layout);
 	if (
 		!options.params.showEdges
 		|| !options.params.showSignals
 		|| options.params.signalFrequency <= 0
 		|| options.params.signalOpacity <= 0
 		|| edges.length === 0
+		|| (radialCluster && !options.selectedNodeId)
 	) return;
 
 	const signalColor = getResolvedColor(options.params.signalColor, options);
+	const signalOpacity = options.params.signalOpacity * (radialCluster ? 0.05 : 1);
 	ctx.save();
 	ctx.lineCap = "round";
 	ctx.lineWidth = options.params.signalWidth;
 	if (options.params.signalGlowEnabled) {
 		ctx.shadowBlur = Math.max(8, options.params.signalWidth * 2.3);
-		ctx.shadowColor = colorWithAlpha(signalColor, 0.72 * options.params.signalOpacity);
+		ctx.shadowColor = colorWithAlpha(signalColor, 0.72 * signalOpacity);
 	}
 
 	for (const edge of edges) {
@@ -583,7 +641,7 @@ function drawSignalStreaks(
 		const tail = interpolatePoint(source, target, tailProgress);
 		const head = interpolatePoint(source, target, headProgress);
 		const gradient = ctx.createLinearGradient(tail.x, tail.y, head.x, head.y);
-		const alpha = clampAlpha(signal.alpha * options.params.signalOpacity);
+		const alpha = clampAlpha(signal.alpha * signalOpacity);
 
 		gradient.addColorStop(0, colorWithAlpha(signalColor, 0));
 		gradient.addColorStop(0.64, colorWithAlpha(signalColor, alpha * 0.62));
@@ -728,6 +786,10 @@ function drawLabels(
 	options: NeuralGraphRenderOptions,
 ) {
 	if (!options.params.showLabels) return;
+	if (isRadialClusterLayout(layout)) {
+		drawRadialLabels(ctx, layout, options);
+		return;
+	}
 	const palette = PALETTES[options.theme];
 	const activeNodeId = options.selectedNodeId ?? options.hoveredNodeId;
 	if (!activeNodeId) return;
@@ -750,6 +812,66 @@ function drawLabels(
 	ctx.restore();
 }
 
+const RADIAL_LABEL_ALL_NODES_MIN_WIDTH = 700;
+const RADIAL_LABEL_OFFSET = 11;
+
+function getRadialLeafNodeIds(layout: NeuralGraphLayout) {
+	const branchSourceIds = new Set<string>();
+	for (const branch of layout.treeBranches ?? []) {
+		if (branch.sourceId) branchSourceIds.add(branch.sourceId);
+	}
+	return new Set(
+		layout.nodes
+			.filter((node) => !branchSourceIds.has(node.id))
+			.map((node) => node.id),
+	);
+}
+
+function drawRadialLabels(
+	ctx: CanvasRenderingContext2D,
+	layout: NeuralGraphLayout,
+	options: NeuralGraphRenderOptions,
+) {
+	const palette = PALETTES[options.theme];
+	const activeNodeId = options.selectedNodeId ?? options.hoveredNodeId;
+	const shouldDrawAllLabels = options.viewport.width >= RADIAL_LABEL_ALL_NODES_MIN_WIDTH;
+	const leafNodeIds = getRadialLeafNodeIds(layout);
+	const nodes = shouldDrawAllLabels
+		? layout.nodes.filter((node) => leafNodeIds.has(node.id))
+		: activeNodeId
+			? layout.nodes.filter((node) => node.id === activeNodeId)
+			: [];
+	if (nodes.length === 0) return;
+
+	const origin = getNeuralOrigin(options.viewport, options.params);
+	const labelSize = shouldDrawAllLabels ? options.params.labelSize : Math.max(10, options.params.labelSize - 1);
+	ctx.save();
+	ctx.font = `500 ${labelSize}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+	ctx.fillStyle = palette.label;
+	ctx.textBaseline = "middle";
+
+	for (const node of nodes) {
+		const point = worldToViewport(node, options.camera, options.viewport, options.params);
+		const angle = Math.atan2(point.y - origin.y, point.x - origin.x);
+		const isLeft = Math.cos(angle) < 0;
+		const offset = RADIAL_LABEL_OFFSET + Math.max(4, node.baseSize * options.camera.zoom);
+		const labelPoint = {
+			x: point.x + Math.cos(angle) * offset,
+			y: point.y + Math.sin(angle) * offset,
+		};
+
+		ctx.save();
+		ctx.globalAlpha = node.id === activeNodeId ? 0.96 : 0.78;
+		ctx.translate(labelPoint.x, labelPoint.y);
+		ctx.rotate(isLeft ? angle + Math.PI : angle);
+		ctx.textAlign = isLeft ? "right" : "left";
+		ctx.fillText(node.node.title, isLeft ? -6 : 6, 0);
+		ctx.restore();
+	}
+
+	ctx.restore();
+}
+
 export function drawNeuralGraph(
 	ctx: CanvasRenderingContext2D,
 	layout: NeuralGraphLayout,
@@ -766,9 +888,15 @@ export function drawNeuralGraph(
 	} else {
 		drawBackground(ctx, frameOptions.viewport, frameOptions.params, frameOptions.theme, (color) => getResolvedColor(color, frameOptions));
 	}
-	drawRays(ctx, layout, frameOptions, selectedRelationships);
-	drawEdges(ctx, layout, frameOptions, selectedRelationships);
-	drawSignalStreaks(ctx, layout, frameOptions);
+	if (isRadialClusterLayout(layout)) {
+		drawEdges(ctx, layout, frameOptions, selectedRelationships);
+		drawSignalStreaks(ctx, layout, frameOptions);
+		drawRays(ctx, layout, frameOptions, selectedRelationships);
+	} else {
+		drawRays(ctx, layout, frameOptions, selectedRelationships);
+		drawEdges(ctx, layout, frameOptions, selectedRelationships);
+		drawSignalStreaks(ctx, layout, frameOptions);
+	}
 	drawNodes(ctx, layout, frameOptions, selectedRelationships);
 	drawLabels(ctx, layout, frameOptions);
 }

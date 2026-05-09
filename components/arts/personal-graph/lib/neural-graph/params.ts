@@ -206,7 +206,7 @@ export const DEFAULT_NEURAL_GRAPH_PARAMS: NeuralGraphParams = {
 	rayOpacity: 0.02,
 	rayOriginY: 1.05,
 	rayWidth: 2,
-	radialArcAngle: 240,
+	radialArcAngle: 360,
 	radialDepthCurve: 0.85,
 	selectedScale: 1.85,
 	showEdges: true,

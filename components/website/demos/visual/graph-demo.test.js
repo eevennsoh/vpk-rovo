@@ -124,7 +124,7 @@ test("Graph renderer keeps the default connector stroke width at 2 via params", 
 	assert.match(RENDERER_SOURCE, /const edgeWidths = getEdgeLineWidth\(options\.params\);/);
 	assert.match(
 		RENDERER_SOURCE,
-		/ctx\.lineWidth = active \? lerp\(edgeWidths\.active, edgeWidths\.focused, focusProgress\) : edgeWidths\.idle;/,
+		/ctx\.lineWidth = active \? lerp\(activeLineWidth, focusedLineWidth, focusProgress\) : idleLineWidth;/,
 	);
 });
 
@@ -132,9 +132,10 @@ test("Graph renderer exposes hover, ray, edge, and label toggles through params"
 	assert.match(RENDERER_SOURCE, /if \(!options\.params\.showRays\) return;/);
 	assert.match(RENDERER_SOURCE, /if \(!options\.params\.showEdges\) return;/);
 	assert.match(RENDERER_SOURCE, /if \(!options\.params\.showLabels\) return;/);
-	assert.match(GRAPH_SOURCE, /rayOriginY: 1/);
+	assert.match(GRAPH_SOURCE, /originY: 0\.52/);
+	assert.match(GRAPH_SOURCE, /rayOriginY: 0\.52/);
 	assert.match(GRAPH_SOURCE, /layoutShape: "radialCluster"/);
-	assert.match(GRAPH_SOURCE, /radialArcAngle: 284/);
+	assert.match(GRAPH_SOURCE, /radialArcAngle: 360/);
 	assert.match(GRAPH_SOURCE, /radialDepthCurve: 0\.8/);
 	assert.match(GRAPH_SOURCE, /rayElasticStrength: 26/);
 	assert.match(GRAPH_SOURCE, /rayElasticRadius: 96/);
