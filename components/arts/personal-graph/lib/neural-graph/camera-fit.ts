@@ -152,23 +152,19 @@ export function fitNeuralCameraToLayout({
 	const rawHeight = bounds.maxY - bounds.minY;
 	if (layout.layoutShape === "radialCluster" && boundsNodes === layout.nodes) {
 		const radialPadding = getRadialFitPadding(safePadding, viewport, params);
-		const originViewport = {
-			x: origin.x,
-			y: origin.y,
-		};
 		const zoomCandidates: number[] = [];
-		if (bounds.minX < 0) zoomCandidates.push(Math.max(1, originViewport.x - radialPadding) / Math.abs(bounds.minX));
-		if (bounds.maxX > 0) zoomCandidates.push(Math.max(1, viewport.width - originViewport.x - radialPadding) / bounds.maxX);
-		if (bounds.minY < 0) zoomCandidates.push(Math.max(1, originViewport.y - radialPadding) / Math.abs(bounds.minY));
-		if (bounds.maxY > 0) zoomCandidates.push(Math.max(1, viewport.height - originViewport.y - radialPadding) / bounds.maxY);
+		if (bounds.minX < 0) zoomCandidates.push(Math.max(1, origin.x - radialPadding) / Math.abs(bounds.minX));
+		if (bounds.maxX > 0) zoomCandidates.push(Math.max(1, viewport.width - origin.x - radialPadding) / bounds.maxX);
+		if (bounds.minY < 0) zoomCandidates.push(Math.max(1, origin.y - radialPadding) / Math.abs(bounds.minY));
+		if (bounds.maxY > 0) zoomCandidates.push(Math.max(1, viewport.height - origin.y - radialPadding) / bounds.maxY);
 		const zoom = clampFitZoom(Math.min(
 			NEURAL_GRAPH_RADIAL_FIT_MAX_ZOOM,
 			zoomCandidates.length ? Math.min(...zoomCandidates) : NEURAL_GRAPH_RADIAL_FIT_MAX_ZOOM,
 		));
 		const target = {
 			...camera,
-			x: (origin.x - originViewport.x) / zoom,
-			y: (origin.y - originViewport.y) / zoom,
+			x: 0,
+			y: 0,
 			zoom,
 		};
 
