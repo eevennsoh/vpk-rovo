@@ -172,6 +172,7 @@ export function PersonalGraphControlFlyoutActions({
 		<div
 			aria-hidden={!isOpen}
 			className={cn("pointer-events-none absolute", className)}
+			inert={!isOpen}
 			style={{ width: 0, height: 0 }}
 		>
 			<AnimatePresence>

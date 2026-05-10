@@ -95,6 +95,8 @@ test("Personal Graph flyout action buttons stay hidden while stacked at the arc 
 	assert.match(CONTROL_FLYOUT_SOURCE, /const ARC_EXIT_BEHIND_TRIGGER_THRESHOLD_PERCENT = 40;/);
 	assert.match(CONTROL_FLYOUT_SOURCE, /const ACTION_ACTIVE_Z_INDEX = 40;/);
 	assert.match(CONTROL_FLYOUT_SOURCE, /const ACTION_BEHIND_TRIGGER_Z_INDEX = 0;/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /aria-hidden=\{!isOpen\}/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /inert=\{!isOpen\}/);
 	assert.match(CONTROL_FLYOUT_SOURCE, /function PersonalGraphControlFlyoutActionItem/);
 	assert.match(CONTROL_FLYOUT_SOURCE, /onUpdate=\{\(latest\) => updateOriginVisibility\(latest\.offsetDistance\)\}/);
 	assert.match(
