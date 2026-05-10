@@ -1558,6 +1558,17 @@ export default function Weather({
 		isWakeLockActive &&
 		!isWakeLockReturnReminderVisible;
 
+	const scheduleWakeLockReturnReminder = React.useCallback(() => {
+		setIsWakeLockReturnReminderVisible(true);
+		if (wakeLockReturnReminderTimeoutRef.current !== null) {
+			clearTimeout(wakeLockReturnReminderTimeoutRef.current);
+		}
+		wakeLockReturnReminderTimeoutRef.current = setTimeout(() => {
+			setIsWakeLockReturnReminderVisible(false);
+			wakeLockReturnReminderTimeoutRef.current = null;
+		}, 3000);
+	}, []);
+
 	React.useEffect(() => {
 		const previousStatus = previousWakeLockStatusRef.current;
 		previousWakeLockStatusRef.current = wakeLockStatus;
@@ -1576,14 +1587,7 @@ export default function Weather({
 			wakeLockStatus === "active" &&
 			isWakeLockActive
 		) {
-			setIsWakeLockReturnReminderVisible(true);
-			if (wakeLockReturnReminderTimeoutRef.current !== null) {
-				clearTimeout(wakeLockReturnReminderTimeoutRef.current);
-			}
-			wakeLockReturnReminderTimeoutRef.current = setTimeout(() => {
-				setIsWakeLockReturnReminderVisible(false);
-				wakeLockReturnReminderTimeoutRef.current = null;
-			}, 3000);
+			scheduleWakeLockReturnReminder();
 			return;
 		}
 
@@ -1594,7 +1598,7 @@ export default function Weather({
 			}
 			setIsWakeLockReturnReminderVisible(false);
 		}
-	}, [isWakeLockActive, isWakeLockEnabled, isWakeLockReturnReminderVisible, wakeLockStatus]);
+	}, [isWakeLockActive, isWakeLockEnabled, isWakeLockReturnReminderVisible, scheduleWakeLockReturnReminder, wakeLockStatus]);
 
 	React.useEffect(() => {
 		return () => {

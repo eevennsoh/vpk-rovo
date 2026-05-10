@@ -75,15 +75,19 @@ const PERSONAL_GRAPH_META_FONT_STYLE = {
 	fontFamily: "var(--font-departure-mono), 'Courier New', monospace",
 } satisfies React.CSSProperties;
 
-const PERSONAL_GRAPH_TITLE_LONGEST_LINE_WIDTH_EM = 3.15;
 const PERSONAL_GRAPH_SETTLED_TITLE_SCRAMBLE_LINE_CHAR_COUNT = 8;
+const PERSONAL_GRAPH_TITLE_LINE_COUNT = 2;
+const PERSONAL_GRAPH_TITLE_LINE_HEIGHT = 0.8;
 const PERSONAL_GRAPH_HEADER_INITIAL_Y = "35svh";
 const PERSONAL_GRAPH_HEADER_SETTLED_Y = "0px";
 const PERSONAL_GRAPH_TITLE_INK_TOP_PADDING = "0px";
-const PERSONAL_GRAPH_INITIAL_TITLE_SIZE =
-	`min(8rem, calc((100svw - 3rem) / ${PERSONAL_GRAPH_TITLE_LONGEST_LINE_WIDTH_EM}))`;
 const PERSONAL_GRAPH_SETTLED_TITLE_SIZE =
 	`min(3rem, calc((100cqw - 1rem) / ${PERSONAL_GRAPH_SETTLED_TITLE_SCRAMBLE_LINE_CHAR_COUNT}))`;
+const PERSONAL_GRAPH_INITIAL_TITLE_SCALE = 2.4;
+const PERSONAL_GRAPH_SETTLED_TITLE_RESERVED_HEIGHT =
+	`calc(${PERSONAL_GRAPH_SETTLED_TITLE_SIZE} * ${PERSONAL_GRAPH_TITLE_LINE_HEIGHT} * ${PERSONAL_GRAPH_TITLE_LINE_COUNT})`;
+const PERSONAL_GRAPH_INITIAL_TITLE_RESERVED_HEIGHT =
+	`calc(${PERSONAL_GRAPH_SETTLED_TITLE_SIZE} * ${PERSONAL_GRAPH_TITLE_LINE_HEIGHT} * ${PERSONAL_GRAPH_TITLE_LINE_COUNT} * ${PERSONAL_GRAPH_INITIAL_TITLE_SCALE})`;
 const PERSONAL_GRAPH_PROMPT_INPUT_BOTTOM_PX = 24;
 const PERSONAL_GRAPH_PROMPT_INPUT_HEIGHT_PX = 64;
 const PERSONAL_GRAPH_TAIL_PROMPT_GAP_PX = 8;
@@ -896,18 +900,33 @@ export function PersonalGraphSurface({
 							transition={{ duration: 1.0, ease: easeOut }}
 							style={{ willChange: "filter, opacity" }}
 						>
-							<PersonalGraphTitle
-								key={`personal-graph-title-${introReplayKey}`}
-								className="leading-[0.8] text-text"
-								style={PERSONAL_GRAPH_TITLE_FONT_STYLE}
-								initial={{ fontSize: PERSONAL_GRAPH_INITIAL_TITLE_SIZE, paddingTop: PERSONAL_GRAPH_TITLE_INK_TOP_PADDING }}
-								animate={{
-									fontSize: isPostSettle ? PERSONAL_GRAPH_SETTLED_TITLE_SIZE : PERSONAL_GRAPH_INITIAL_TITLE_SIZE,
-									paddingTop: PERSONAL_GRAPH_TITLE_INK_TOP_PADDING,
+							<div
+								className="flex justify-center"
+								style={{
+									minHeight: isPostSettle
+										? PERSONAL_GRAPH_SETTLED_TITLE_RESERVED_HEIGHT
+										: PERSONAL_GRAPH_INITIAL_TITLE_RESERVED_HEIGHT,
 								}}
-								transition={{ duration: 1.0, ease: easeOut }}
-								play={isHeaderRevealed}
-							/>
+							>
+								<PersonalGraphTitle
+									key={`personal-graph-title-${introReplayKey}`}
+									className="text-text"
+									style={{
+										...PERSONAL_GRAPH_TITLE_FONT_STYLE,
+										fontSize: PERSONAL_GRAPH_SETTLED_TITLE_SIZE,
+										lineHeight: PERSONAL_GRAPH_TITLE_LINE_HEIGHT,
+										paddingTop: PERSONAL_GRAPH_TITLE_INK_TOP_PADDING,
+										transformOrigin: "center top",
+										willChange: "transform",
+									}}
+									initial={{ scale: PERSONAL_GRAPH_INITIAL_TITLE_SCALE }}
+									animate={{
+										scale: isPostSettle ? 1 : PERSONAL_GRAPH_INITIAL_TITLE_SCALE,
+									}}
+									transition={{ duration: 1.0, ease: easeOut }}
+									play={isHeaderRevealed}
+								/>
+							</div>
 							<motion.p
 								className="truncate leading-none tracking-normal text-text"
 								style={{ ...PERSONAL_GRAPH_META_FONT_STYLE, willChange: "filter, opacity" }}

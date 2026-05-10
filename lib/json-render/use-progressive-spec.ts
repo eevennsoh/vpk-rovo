@@ -90,6 +90,8 @@ export function useProgressiveSpec(
 
 		// Schedule remaining elements one per frame
 		let index = batchSize;
+		let frameId: number | null = null;
+		let timeoutId: ReturnType<typeof setTimeout> | null = null;
 		const scheduleNext = () => {
 			if (cancelled) return;
 
@@ -114,17 +116,31 @@ export function useProgressiveSpec(
 				} as Spec;
 			});
 
-			requestAnimationFrame(() => {
-				setTimeout(scheduleNext, intervalMs);
+			frameId = requestAnimationFrame(() => {
+				frameId = null;
+				timeoutId = setTimeout(() => {
+					timeoutId = null;
+					scheduleNext();
+				}, intervalMs);
 			});
 		};
 
-		requestAnimationFrame(() => {
-			setTimeout(scheduleNext, intervalMs);
+		frameId = requestAnimationFrame(() => {
+			frameId = null;
+			timeoutId = setTimeout(() => {
+				timeoutId = null;
+				scheduleNext();
+			}, intervalMs);
 		});
 
 		return () => {
 			cancelled = true;
+			if (frameId !== null) {
+				cancelAnimationFrame(frameId);
+			}
+			if (timeoutId !== null) {
+				clearTimeout(timeoutId);
+			}
 		};
 	}, [spec, enabled, intervalMs]);
 

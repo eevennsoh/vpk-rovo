@@ -1,5 +1,6 @@
 const assert = require("node:assert/strict");
 const path = require("node:path");
+const { loadCjsModuleFromText } = require(path.join(process.cwd(), "scripts/lib/esbuild-cjs-loader.js"));
 const test = require("node:test");
 const esbuild = require("esbuild");
 
@@ -38,15 +39,7 @@ async function loadRovoAppBrowserArtifactHarness() {
 		write: false,
 	});
 
-	const compiledModule = { exports: {} };
-	const compileModule = new Function(
-		"require",
-		"module",
-		"exports",
-		result.outputFiles[0].text,
-	);
-	compileModule(require, compiledModule, compiledModule.exports);
-	return compiledModule.exports;
+	return loadCjsModuleFromText(result.outputFiles[0].text);
 }
 
 test("RovoAppBrowserArtifact renders the inline preview as a passive surface", async () => {

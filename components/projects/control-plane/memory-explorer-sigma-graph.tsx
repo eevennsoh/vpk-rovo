@@ -201,15 +201,18 @@ export function MemoryExplorerSigmaGraph({
 			zIndex: true,
 		});
 
-		sigma.on("clickNode", ({ node }) => {
+		const handleClickNode = ({ node }: { node: string }) => {
 			onSelectNode(node);
-		});
-		sigma.on("enterNode", () => {
+		};
+		const handleEnterNode = () => {
 			container.style.cursor = "pointer";
-		});
-		sigma.on("leaveNode", () => {
+		};
+		const handleLeaveNode = () => {
 			container.style.cursor = "grab";
-		});
+		};
+		sigma.on("clickNode", handleClickNode);
+		sigma.on("enterNode", handleEnterNode);
+		sigma.on("leaveNode", handleLeaveNode);
 
 		sigmaRef.current = sigma;
 		applySelectionStyling(graph, selectedNodeId);
@@ -217,6 +220,9 @@ export function MemoryExplorerSigmaGraph({
 		void sigma.getCamera().animatedReset({ duration: 300 });
 
 		return () => {
+			sigma.off("clickNode", handleClickNode);
+			sigma.off("enterNode", handleEnterNode);
+			sigma.off("leaveNode", handleLeaveNode);
 			sigma.kill();
 			sigmaRef.current = null;
 			graphRef.current = null;

@@ -27,6 +27,7 @@ interface AppLayoutProps {
 function useIsEmbedded(explicit: boolean): boolean {
 	const [auto, setAuto] = useState(false);
 	useEffect(() => {
+		let timeout: ReturnType<typeof setTimeout> | null = null;
 		let nextAuto = false;
 		if (document.documentElement.dataset.embedded !== undefined) {
 			nextAuto = true;
@@ -52,11 +53,14 @@ function useIsEmbedded(explicit: boolean): boolean {
 		if (typeof queueMicrotask === "function") {
 			queueMicrotask(syncEmbeddedState);
 		} else {
-			setTimeout(syncEmbeddedState, 0);
+			timeout = setTimeout(syncEmbeddedState, 0);
 		}
 
 		return () => {
 			cancelled = true;
+			if (timeout !== null) {
+				clearTimeout(timeout);
+			}
 		};
 	}, []);
 	return explicit || auto;

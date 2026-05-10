@@ -1,5 +1,6 @@
 const assert = require("node:assert/strict");
 const path = require("node:path");
+const { loadCjsModuleFromText } = require(path.join(process.cwd(), "scripts/lib/esbuild-cjs-loader.js"));
 const test = require("node:test");
 const esbuild = require("esbuild");
 
@@ -10,7 +11,7 @@ async function loadRovoAppLayoutHarness() {
 				import React from "react";
 				import { renderToString } from "react-dom/server";
 				import RovoAppLayout from "./app/rovo-app/layout.tsx";
-				import { useRovoChat } from "./app/contexts/context-rovo-chat.tsx";
+				import { RovoChatProvider, useRovoChat } from "./app/contexts/context-rovo-chat.tsx";
 				import { useRovoAppQueue } from "./app/rovo-app/rovo-app-queue-provider.tsx";
 
 				function Consumer() {
@@ -27,9 +28,13 @@ async function loadRovoAppLayoutHarness() {
 				export function renderLayout() {
 					return renderToString(
 						React.createElement(
-							RovoAppLayout,
+							RovoChatProvider,
 							null,
-							React.createElement(Consumer),
+							React.createElement(
+								RovoAppLayout,
+								null,
+								React.createElement(Consumer),
+							),
 						),
 					);
 				}
@@ -48,18 +53,10 @@ async function loadRovoAppLayoutHarness() {
 		write: false,
 	});
 
-	const compiledModule = { exports: {} };
-	const compileModule = new Function(
-		"require",
-		"module",
-		"exports",
-		result.outputFiles[0].text,
-	);
-	compileModule(require, compiledModule, compiledModule.exports);
-	return compiledModule.exports;
+	return loadCjsModuleFromText(result.outputFiles[0].text);
 }
 
-test("RovoAppLayout provides chat and queue context to nested consumers", async () => {
+test("RovoAppLayout composes queue context with the root chat provider", async () => {
 	const harness = await loadRovoAppLayoutHarness();
 
 	assert.equal(harness.renderLayout(), "<div>0</div>");

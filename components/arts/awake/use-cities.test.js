@@ -14,6 +14,7 @@ import {
 } from "./city-storage.ts";
 
 const require = createRequire(import.meta.url);
+const { loadCjsModuleFromText } = require(path.join(process.cwd(), "scripts/lib/esbuild-cjs-loader.js"));
 let useCitiesModulePromise;
 
 function createStorage(initialValues = {}) {
@@ -198,15 +199,7 @@ async function loadUseCitiesModule() {
 				write: false,
 			})
 			.then((result) => {
-				const compiledModule = { exports: {} };
-				const compileModule = new Function(
-					"require",
-					"module",
-					"exports",
-					result.outputFiles[0].text,
-				);
-				compileModule(require, compiledModule, compiledModule.exports);
-				return compiledModule.exports;
+				return loadCjsModuleFromText(result.outputFiles[0].text);
 			});
 	}
 

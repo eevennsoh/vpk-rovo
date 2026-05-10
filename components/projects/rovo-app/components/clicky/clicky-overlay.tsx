@@ -276,6 +276,7 @@ export function ClickyOverlay({
 	}, [isActive]);
 
 	// Full pointing cycle: fly → hold → fade → return → idle
+	// react-doctor-disable-next-line react-doctor/effect-needs-cleanup
 	useEffect(() => {
 		if (!isPointing || !pointTarget) {
 			if (!isPointing) {
@@ -288,7 +289,7 @@ export function ClickyOverlay({
 					setBubbleOpacity(1);
 				});
 			}
-			return;
+			return clearAllTimers;
 		}
 
 		// Compute target in viewport-space

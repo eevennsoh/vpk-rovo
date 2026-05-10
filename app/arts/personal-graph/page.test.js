@@ -249,25 +249,32 @@ test("Personal Graph header uses the display font lockup", () => {
 	assert.match(SURFACE_SOURCE, /PERSONAL_GRAPH_TITLE_FONT_STYLE/);
 	assert.match(SURFACE_SOURCE, /var\(--font-affigere\)/);
 	assert.match(SURFACE_SOURCE, /var\(--font-departure-mono\)/);
-	assert.match(SURFACE_SOURCE, /PERSONAL_GRAPH_TITLE_LONGEST_LINE_WIDTH_EM = 3\.15/);
 	assert.match(SURFACE_SOURCE, /PERSONAL_GRAPH_SETTLED_TITLE_SCRAMBLE_LINE_CHAR_COUNT = 8/);
+	assert.match(SURFACE_SOURCE, /PERSONAL_GRAPH_TITLE_LINE_COUNT = 2/);
+	assert.match(SURFACE_SOURCE, /PERSONAL_GRAPH_TITLE_LINE_HEIGHT = 0\.8/);
 	assert.match(SURFACE_SOURCE, /PERSONAL_GRAPH_HEADER_INITIAL_Y = "35svh"/);
 	assert.match(SURFACE_SOURCE, /PERSONAL_GRAPH_HEADER_SETTLED_Y = "0px"/);
 	assert.match(SURFACE_SOURCE, /PERSONAL_GRAPH_TITLE_INK_TOP_PADDING = "0px"/);
-	assert.match(SURFACE_SOURCE, /PERSONAL_GRAPH_INITIAL_TITLE_SIZE/);
 	assert.match(SURFACE_SOURCE, /PERSONAL_GRAPH_SETTLED_TITLE_SIZE/);
-	assert.match(SURFACE_SOURCE, /min\(8rem, calc\(\(100svw - 3rem\) \/ \$\{PERSONAL_GRAPH_TITLE_LONGEST_LINE_WIDTH_EM\}\)\)/);
+	assert.match(SURFACE_SOURCE, /PERSONAL_GRAPH_INITIAL_TITLE_SCALE = 2\.4/);
+	assert.match(SURFACE_SOURCE, /PERSONAL_GRAPH_SETTLED_TITLE_RESERVED_HEIGHT/);
+	assert.match(SURFACE_SOURCE, /PERSONAL_GRAPH_INITIAL_TITLE_RESERVED_HEIGHT/);
 	assert.match(SURFACE_SOURCE, /min\(3rem, calc\(\(100cqw - 1rem\) \/ \$\{PERSONAL_GRAPH_SETTLED_TITLE_SCRAMBLE_LINE_CHAR_COUNT\}\)\)/);
 	assert.match(
 		SURFACE_SOURCE,
 		/className="mx-auto w-full min-w-0 max-w-full text-center text-text \[container-type:inline-size\]"/,
 	);
-	assert.match(SURFACE_SOURCE, /className="leading-\[0\.8\] text-text"/);
-	assert.match(SURFACE_SOURCE, /initial=\{\{ fontSize: PERSONAL_GRAPH_INITIAL_TITLE_SIZE, paddingTop: PERSONAL_GRAPH_TITLE_INK_TOP_PADDING \}\}/);
+	assert.match(SURFACE_SOURCE, /className="flex justify-center"/);
 	assert.match(
 		SURFACE_SOURCE,
-		/fontSize: isPostSettle \? PERSONAL_GRAPH_SETTLED_TITLE_SIZE : PERSONAL_GRAPH_INITIAL_TITLE_SIZE/,
+		/minHeight: isPostSettle\s+\? PERSONAL_GRAPH_SETTLED_TITLE_RESERVED_HEIGHT\s+: PERSONAL_GRAPH_INITIAL_TITLE_RESERVED_HEIGHT/,
 	);
+	assert.match(SURFACE_SOURCE, /className="text-text"/);
+	assert.match(SURFACE_SOURCE, /fontSize: PERSONAL_GRAPH_SETTLED_TITLE_SIZE/);
+	assert.match(SURFACE_SOURCE, /lineHeight: PERSONAL_GRAPH_TITLE_LINE_HEIGHT/);
+	assert.match(SURFACE_SOURCE, /transformOrigin: "center top"/);
+	assert.match(SURFACE_SOURCE, /initial=\{\{ scale: PERSONAL_GRAPH_INITIAL_TITLE_SCALE \}\}/);
+	assert.match(SURFACE_SOURCE, /scale: isPostSettle \? 1 : PERSONAL_GRAPH_INITIAL_TITLE_SCALE/);
 	assert.match(SURFACE_SOURCE, /const isIntroSettled = phase === "settle"/);
 	assert.match(SURFACE_SOURCE, /const isReady = isTwgMode \? isTwgReady : isVaultReady;/);
 	assert.match(SURFACE_SOURCE, /const isVaultReadyForLayout = isReady \|\| isResetFlyoutCollapsing;/);

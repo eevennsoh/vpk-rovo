@@ -434,20 +434,28 @@ export default function CursorDemoBlock() {
 
 	// Animation sequence on mount
 	useEffect(() => {
-		const runAnimation = async () => {
-			await new Promise((resolve) => {
-				setTimeout(resolve, 500)
+		let cancelled = false
+		const timeouts = new Set<ReturnType<typeof setTimeout>>()
+		const wait = (delay: number) =>
+			new Promise<void>((resolve) => {
+				const timeout = setTimeout(() => {
+					timeouts.delete(timeout)
+					resolve()
+				}, delay)
+				timeouts.add(timeout)
 			})
+
+		const runAnimation = async () => {
+			await wait(500)
+			if (cancelled) return
 
 			await streamMessage(mockMessages[0])
-			await new Promise((resolve) => {
-				setTimeout(resolve, 800)
-			})
+			await wait(800)
+			if (cancelled) return
 
 			await streamMessage(mockMessages[1])
-			await new Promise((resolve) => {
-				setTimeout(resolve, 500)
-			})
+			await wait(500)
+			if (cancelled) return
 
 			setTasks((prev) =>
 				prev.map((task) =>
@@ -456,14 +464,22 @@ export default function CursorDemoBlock() {
 			)
 
 			await streamTerminal()
+			if (cancelled) return
 
-			await new Promise((resolve) => {
-				setTimeout(resolve, 300)
-			})
+			await wait(300)
+			if (cancelled) return
 			setShowCheckpoint(true)
 		}
 
 		runAnimation()
+
+		return () => {
+			cancelled = true
+			for (const timeout of timeouts) {
+				clearTimeout(timeout)
+			}
+			timeouts.clear()
+		}
 	}, [streamMessage, streamTerminal])
 
 	const handleChatTextChange = useCallback(

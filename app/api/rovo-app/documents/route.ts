@@ -6,13 +6,14 @@ import { readJsonBody } from "@/app/api/_utils/read-json-body";
 export async function GET(request: NextRequest) {
 	const threadId = request.nextUrl.searchParams.get("threadId");
 	const documentId = request.nextUrl.searchParams.get("documentId");
-	const params = new URLSearchParams();
+	const queryEntries: [string, string][] = [];
 	if (threadId) {
-		params.set("threadId", threadId);
+		queryEntries.push(["threadId", threadId]);
 	}
 	if (documentId) {
-		params.set("documentId", documentId);
+		queryEntries.push(["documentId", documentId]);
 	}
+	const params = new URLSearchParams(queryEntries);
 	const query = params.toString();
 	const response = await proxyToBackend({
 		method: "GET",

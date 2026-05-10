@@ -812,6 +812,20 @@ export function RovoChatProvider({
 	// media generation (image/audio) independently from the SSE stream. If the
 	// stream drops before the backend emits loading:false, this ref keeps the
 	// queue blocked so the next message is not sent prematurely.
+	const scheduleMediaGenerationTimeout = useCallback(() => {
+		if (mediaGenerationTimeoutRef.current !== null) {
+			clearTimeout(mediaGenerationTimeoutRef.current);
+		}
+		mediaGenerationTimeoutRef.current = setTimeout(() => {
+			mediaGenerationTimeoutRef.current = null;
+			if (isMediaGeneratingRef.current) {
+				isMediaGeneratingRef.current = false;
+				setIsMediaGenerating(false);
+				queueTick();
+			}
+		}, MEDIA_GENERATION_TIMEOUT_MS);
+	}, [queueTick]);
+
 	useEffect(() => {
 		for (let i = rawUiMessages.length - 1; i >= 0; i--) {
 			const msg = rawUiMessages[i];
@@ -842,25 +856,14 @@ export function RovoChatProvider({
 			if (latestMediaLoadingPart.loading && !isMediaGeneratingRef.current) {
 				isMediaGeneratingRef.current = true;
 				setIsMediaGenerating(true);
-
-				if (mediaGenerationTimeoutRef.current !== null) {
-					clearTimeout(mediaGenerationTimeoutRef.current);
-				}
-				mediaGenerationTimeoutRef.current = setTimeout(() => {
-					mediaGenerationTimeoutRef.current = null;
-					if (isMediaGeneratingRef.current) {
-						isMediaGeneratingRef.current = false;
-						setIsMediaGenerating(false);
-						queueTick();
-					}
-				}, MEDIA_GENERATION_TIMEOUT_MS);
+				scheduleMediaGenerationTimeout();
 			} else if (!latestMediaLoadingPart.loading && isMediaGeneratingRef.current) {
 				clearMediaGenerating();
 				queueTick();
 			}
 			break;
 		}
-	}, [rawUiMessages, queueTick, clearMediaGenerating]);
+	}, [rawUiMessages, queueTick, clearMediaGenerating, scheduleMediaGenerationTimeout]);
 
 	const uiMessages = useMemo(() => {
 		if (!submissionErrorMessage) {

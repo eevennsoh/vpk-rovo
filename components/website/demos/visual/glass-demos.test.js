@@ -1,5 +1,6 @@
 const assert = require("node:assert/strict");
 const path = require("node:path");
+const { loadCjsModuleFromText } = require(path.join(process.cwd(), "scripts/lib/esbuild-cjs-loader.js"));
 const test = require("node:test");
 const esbuild = require("esbuild");
 
@@ -29,15 +30,7 @@ async function renderDemoMarkup(entryPoint, sourcefile) {
 		write: false,
 	});
 
-	const compiledModule = { exports: {} };
-	const compileModule = new Function(
-		"require",
-		"module",
-		"exports",
-		result.outputFiles[0].text,
-	);
-	compileModule(require, compiledModule, compiledModule.exports);
-	return compiledModule.exports.renderDemo();
+	return loadCjsModuleFromText(result.outputFiles[0].text).renderDemo();
 }
 
 test("GlassTabsDemo renders the control without the extra showcase copy or card wrapper", async () => {

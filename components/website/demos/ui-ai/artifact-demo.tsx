@@ -139,8 +139,8 @@ const SPLIT_BREAKPOINT = 800;
 
 export function ArtifactDemoCodePreview() {
 	const [isOpen, setIsOpen] = useState(false);
-	const [document] = useState(createMockDocument);
-	const [draftContent, setDraftContent] = useState(document.versions[1]?.content ?? "");
+	const [artifactDocument] = useState(createMockDocument);
+	const [draftContent, setDraftContent] = useState(artifactDocument.versions[1]?.content ?? "");
 	const [mode, setMode] = useState<"preview" | "edit">("preview");
 	const [selectedVersionId, setSelectedVersionId] = useState<string | null>("v2");
 	const [cursorMode, setCursorMode] = useState(false);
@@ -165,8 +165,8 @@ export function ArtifactDemoCodePreview() {
 		refreshPositions,
 	} = useArtifactAnnotations({
 		active: cursorMode && isOpen,
-		documentId: document.id,
-		documentKind: document.kind,
+		documentId: artifactDocument.id,
+		documentKind: artifactDocument.kind,
 		documentVersionId: selectedVersionId,
 		containerRef: contentRef,
 	});
@@ -221,13 +221,13 @@ export function ArtifactDemoCodePreview() {
 
 	const handleVersionChange = useCallback((versionId: string | null) => {
 		setSelectedVersionId(versionId);
-		const version = document.versions.find((v) => v.id === versionId);
+		const version = artifactDocument.versions.find((v) => v.id === versionId);
 		if (version) {
 			setDraftContent(version.content);
 		}
 		setMode("preview");
 		refreshPositions();
-	}, [document.versions, refreshPositions]);
+	}, [artifactDocument.versions, refreshPositions]);
 
 	const handleSave = useCallback(async () => {
 		setMode("preview");
@@ -239,10 +239,10 @@ export function ArtifactDemoCodePreview() {
 
 	const artifactPanel = (
 		<ArtifactPanel
-			annotations={annotations}
-			contentRef={contentRef}
-			cursorMode={cursorMode}
-			document={document}
+				annotations={annotations}
+				contentRef={contentRef}
+				cursorMode={cursorMode}
+				document={artifactDocument}
 			draftContent={draftContent}
 			mode={mode}
 			onAddComment={addComment}

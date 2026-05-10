@@ -109,10 +109,14 @@ export function MorphingRovoShape({
 
 	useEffect(() => {
 		cancelledRef.current = false;
+		let initialDelayTimeout: ReturnType<typeof setTimeout> | null = null;
 
 		async function loop() {
 			// Small initial delay to ensure mount is complete
-			await new Promise((resolve) => setTimeout(resolve, 50));
+			await new Promise((resolve) => {
+				initialDelayTimeout = setTimeout(resolve, 50);
+			});
+			initialDelayTimeout = null;
 
 			while (!cancelledRef.current) {
 				for (let i = 1; i <= 4; i++) {
@@ -132,6 +136,9 @@ export function MorphingRovoShape({
 
 		return () => {
 			cancelledRef.current = true;
+			if (initialDelayTimeout !== null) {
+				clearTimeout(initialDelayTimeout);
+			}
 			progress.stop();
 		};
 	}, [progress, duration, ease]);
