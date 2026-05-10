@@ -443,6 +443,43 @@ test("buildTwgExplorer respects an aborted signal", async () => {
 	assert.equal(spawnedSignal, controller.signal, "signal forwarded to spawn");
 });
 
+test("buildTwgExplorer rejects when aborted during artifact title hydration", async () => {
+	const controller = new AbortController();
+	const rootPayload = createContextPayload(ROOT_USER, [
+		{
+			direction: "outbound",
+			relationshipName: "atlassian_user_contributed_to_confluence_page",
+			targets: [PAGE_ONE],
+		},
+	]);
+	let hydrationSpawned = false;
+	const spawnImpl = (_bin, args, options = {}) => {
+		const child = new EventEmitter();
+		child.stdout = new EventEmitter();
+		child.stderr = new EventEmitter();
+		if (args[0] === "context") {
+			queueMicrotask(() => {
+				child.stdout.emit("data", Buffer.from(JSON.stringify(rootPayload)));
+				child.emit("close", 0);
+			});
+			return child;
+		}
+
+		hydrationSpawned = true;
+		options.signal?.addEventListener("abort", () => {
+			child.emit("error", Object.assign(new Error("aborted during hydration"), { name: "AbortError" }));
+		});
+		queueMicrotask(() => controller.abort(new Error("request aborted")));
+		return child;
+	};
+
+	await assert.rejects(
+		buildTwgExplorer({ depth: 1, signal: controller.signal, spawnImpl }),
+		/request aborted/u,
+	);
+	assert.equal(hydrationSpawned, true);
+});
+
 test("expandTwgExplorerNode merges a selected supported node expansion", async () => {
 	const explorer = normalizeContextResponse(createContextPayload(ROOT_USER, [
 		{
