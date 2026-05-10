@@ -8,8 +8,16 @@ export type PersonalGraphSummaryStatus = "idle" | "running" | "done" | "error";
 export type PersonalGraphDeckStatus = "idle" | "running" | "done" | "error";
 export type PersonalGraphConfirmStatus = "idle" | "running" | "done" | "error";
 
+function createSummaryClientId() {
+	if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+		return crypto.randomUUID();
+	}
+	return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+}
+
 export function usePersonalGraphSummary(nodeId: string | null) {
 	const abortRef = useRef<AbortController | null>(null);
+	const clientIdRef = useRef("");
 	const [deck, setDeck] = useState("");
 	const [deckStatus, setDeckStatus] = useState<PersonalGraphDeckStatus>("idle");
 	const [error, setError] = useState<string | null>(null);
@@ -47,6 +55,7 @@ export function usePersonalGraphSummary(nodeId: string | null) {
 
 	const generateSummary = useCallback(async (nextLength: PersonalGraphSummaryLength) => {
 		if (!nodeId) return;
+		clientIdRef.current ||= createSummaryClientId();
 		abort();
 		const controller = new AbortController();
 		abortRef.current = controller;
@@ -61,7 +70,7 @@ export function usePersonalGraphSummary(nodeId: string | null) {
 
 		try {
 			for await (const event of streamPersonalGraphSummarize(
-				{ action: "summary", length: nextLength, nodeId },
+				{ action: "summary", clientId: clientIdRef.current, length: nextLength, nodeId },
 				{ signal: controller.signal },
 			)) {
 				if (event.type === "stage") {
@@ -95,6 +104,7 @@ export function usePersonalGraphSummary(nodeId: string | null) {
 
 	const generateDeck = useCallback(async () => {
 		if (!nodeId || !summary) return;
+		clientIdRef.current ||= createSummaryClientId();
 		abort();
 		const controller = new AbortController();
 		abortRef.current = controller;
@@ -104,7 +114,7 @@ export function usePersonalGraphSummary(nodeId: string | null) {
 
 		try {
 			for await (const event of streamPersonalGraphSummarize(
-				{ action: "deck", length, nodeId, summary, takeaways },
+				{ action: "deck", clientId: clientIdRef.current, length, nodeId, summary, takeaways },
 				{ signal: controller.signal },
 			)) {
 				if (event.type === "deck") {

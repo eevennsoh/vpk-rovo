@@ -8,7 +8,7 @@ const librarian = require("./personal-graph-librarian");
 const qmd = require("./personal-graph-qmd");
 const { getActiveSource, setActiveSource } = require("./personal-graph-source-state");
 const summaryContext = require("./personal-graph-summary-context");
-const { clearCache, readCache, writeCache } = require("./personal-graph-twg-cache");
+const { readCache, writeCache } = require("./personal-graph-twg-cache");
 const { handleTwgChat } = require("./personal-graph-twg-chat");
 const twgSource = require("./personal-graph-twg-source");
 const { getPositiveInteger } = require("./shared-utils");
@@ -72,7 +72,7 @@ function getStatusForError(error) {
 }
 
 const router = express.Router();
-let activeSummarizeRun = null;
+const activeSummarizeRuns = new Map();
 let activeTwgCacheHydration = null;
 const DEFAULT_CACHED_TWG_ARTIFACT_TITLE_HYDRATION_LIMIT = 32;
 const CACHED_TWG_ARTIFACT_TITLE_HYDRATION_LIMIT_ENV_KEY = "PERSONAL_GRAPH_TWG_CACHED_ARTIFACT_HYDRATION_LIMIT";
@@ -217,6 +217,9 @@ function normalizeSummaryRequestBody(body) {
 	}
 	return {
 		action,
+		clientId: typeof body?.clientId === "string" && body.clientId.trim()
+			? body.clientId.trim().slice(0, 128)
+			: "default",
 		length: body?.length ?? "medium",
 		nodeId: typeof body?.nodeId === "string" ? body.nodeId : "",
 		summary: typeof body?.summary === "string" ? body.summary : "",
@@ -229,10 +232,11 @@ function normalizeSummaryRequestBody(body) {
 async function* runSummarizeStream(body) {
 	const request = normalizeSummaryRequestBody(body);
 	const controller = new AbortController();
-	if (activeSummarizeRun) {
-		activeSummarizeRun.abort();
+	const previousController = activeSummarizeRuns.get(request.clientId);
+	if (previousController) {
+		previousController.abort();
 	}
-	activeSummarizeRun = controller;
+	activeSummarizeRuns.set(request.clientId, controller);
 
 	try {
 		yield { action: request.action, nodeId: request.nodeId, stage: "validating", type: "stage" };
@@ -275,8 +279,8 @@ async function* runSummarizeStream(body) {
 		};
 		yield { action: "summary", nodeId: request.nodeId, source, stage: "done", type: "done" };
 	} finally {
-		if (activeSummarizeRun === controller) {
-			activeSummarizeRun = null;
+		if (activeSummarizeRuns.get(request.clientId) === controller) {
+			activeSummarizeRuns.delete(request.clientId);
 		}
 	}
 }
@@ -362,7 +366,6 @@ router.post("/twg/chat", async (req, res) => {
 
 router.post("/twg/refresh", async (req, res) => {
 	try {
-		clearCache();
 		const fresh = await twgSource.buildTwgExplorer({ signal: req.signal });
 		writeCache(fresh);
 		return res.json(fresh);

@@ -412,8 +412,9 @@ test("Personal Graph exposes selected-node summarize controls above the composer
 	assert.match(SUMMARY_PANEL_SOURCE, /Generate slides/);
 	assert.match(SUMMARY_PANEL_SOURCE, /Download \.md/);
 	assert.match(SUMMARY_HOOK_SOURCE, /abortRef\.current\?\.abort\(\);/);
-	assert.match(SUMMARY_HOOK_SOURCE, /streamPersonalGraphSummarize\(\s+\{\s+action: "summary", length: nextLength, nodeId \}/);
-	assert.match(SUMMARY_HOOK_SOURCE, /streamPersonalGraphSummarize\(\s+\{\s+action: "deck", length, nodeId, summary, takeaways \}/);
+	assert.match(SUMMARY_HOOK_SOURCE, /clientIdRef = useRef\(""\)/);
+	assert.match(SUMMARY_HOOK_SOURCE, /streamPersonalGraphSummarize\(\s+\{\s+action: "summary", clientId: clientIdRef\.current, length: nextLength, nodeId \}/);
+	assert.match(SUMMARY_HOOK_SOURCE, /streamPersonalGraphSummarize\(\s+\{\s+action: "deck", clientId: clientIdRef\.current, length, nodeId, summary, takeaways \}/);
 	assert.match(SUMMARY_HOOK_SOURCE, /summaryOverride: \{ summary, takeaways \}/);
 	assert.match(PERSONAL_GRAPH_API_SOURCE, /\/api\/personal-graph\/summarize/);
 });
