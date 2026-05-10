@@ -423,7 +423,7 @@ export function PersonalGraphLiquidGlassIconButton({
 						"linear-gradient(var(--liquid-glass-button-angle, 135deg), transparent 0%, color-mix(in srgb, var(--ds-surface-overlay) 52%, var(--ds-text-inverse) 48%) 42%, transparent 72%)",
 					opacity:
 						"calc(var(--liquid-glass-button-strength, 0) * 0.48 + var(--liquid-glass-button-pressed, 0) * 0.18)",
-					transition: "opacity 160ms ease-out",
+					transition: "opacity var(--duration-normal) var(--ease-out)",
 					WebkitMask:
 						"linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
 					WebkitMaskComposite: "xor",
