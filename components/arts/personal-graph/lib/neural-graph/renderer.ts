@@ -5,7 +5,7 @@ import {
 	isRayOnlyNeuralGraphInteraction,
 	type NeuralGraphInteractionState,
 } from "./interaction-dynamics";
-import { getClosestPointOnOrganicRay, getOrganicRayCurve, type NeuralRayCurve } from "./interaction";
+import { getClosestPointOnOrganicRay, getNodeViewportRadius, getOrganicRayCurve, type NeuralRayCurve } from "./interaction";
 import type { NeuralGraphLayout, NeuralLayoutEdge, NeuralLayoutNode, NeuralLayoutTreeBranch } from "./layout";
 import { getPersonalGraphNodeTypeAccentToken } from "./node-type-colors";
 import type { NeuralGraphParams } from "./params";
@@ -38,6 +38,8 @@ export interface NeuralGraphRenderOptions {
 	focusProgress: number;
 	hoveredNodeId: string | null;
 	interaction?: NeuralGraphInteractionState | null;
+	labelNodeId?: string | null;
+	labelRevealProgress?: number;
 	params: NeuralGraphParams;
 	rayElastic?: NeuralRayElasticState | null;
 	rayOriginY?: number;
@@ -145,6 +147,18 @@ function getNodeTypeColor(node: NeuralLayoutNode, options: NeuralGraphRenderOpti
 
 function shouldRevealNodeTypeColors(options: NeuralGraphRenderOptions) {
 	return options.hoveredNodeId !== null || options.selectedNodeId !== null;
+}
+
+function getLabelNodeId(options: NeuralGraphRenderOptions) {
+	return options.labelNodeId ?? options.hoveredNodeId;
+}
+
+function getLabelRevealProgress(options: NeuralGraphRenderOptions) {
+	return clampAlpha(options.labelRevealProgress ?? (options.hoveredNodeId ? 1 : 0));
+}
+
+function shouldRevealLabels(options: NeuralGraphRenderOptions) {
+	return getLabelRevealProgress(options) > 0.001 && getLabelNodeId(options) !== null;
 }
 
 function getNodeColor(
@@ -723,8 +737,6 @@ function drawNodes(
 		return left.z - right.z;
 	});
 
-	const selectedScale = options.params.selectedScale;
-	const selectedScaleMax = selectedScale + 0.5;
 	const hoverScale = options.params.hoverScale;
 	const glowSize = options.params.glowSize;
 	const glowIntensity = options.params.glowIntensity;
@@ -744,12 +756,7 @@ function drawNodes(
 				focusAlpha = lerp(1, options.params.nodeOpacityFocused, focusProgress);
 			}
 		}
-		const inactiveScale = focusProgress > 0 && !isRelated ? lerp(1, 0.7, focusProgress) : 1;
-		let baseScale = inactiveScale;
-		if (isSelected) {
-			baseScale = lerp(selectedScale, selectedScaleMax, focusProgress);
-		}
-		const radius = Math.max(2.5, node.baseSize * node.depthScale * options.camera.zoom * baseScale);
+			const radius = getNodeViewportRadius(node, options.camera, options.params, options.selectedNodeId);
 		const alpha = Math.min(1, node.alpha * (isSelected || isHovered ? 1 : options.params.nodeOpacity) * focusAlpha);
 		const point = worldToViewport(node, options.camera, options.viewport, options.params);
 
@@ -786,12 +793,14 @@ function drawLabels(
 	options: NeuralGraphRenderOptions,
 ) {
 	if (!options.params.showLabels) return;
+	if (!shouldRevealLabels(options)) return;
+	const revealProgress = smoothProgress(getLabelRevealProgress(options));
 	if (isRadialClusterLayout(layout)) {
-		drawRadialLabels(ctx, layout, options);
+		drawRadialLabels(ctx, layout, options, revealProgress);
 		return;
 	}
 	const palette = PALETTES[options.theme];
-	const activeNodeId = options.selectedNodeId ?? options.hoveredNodeId;
+	const activeNodeId = getLabelNodeId(options);
 	if (!activeNodeId) return;
 
 	const active = layout.nodesById.get(activeNodeId);
@@ -801,14 +810,15 @@ function drawLabels(
 	const metaSize = options.params.labelMetaSize;
 	const point = worldToViewport(active, options.camera, options.viewport, options.params);
 	ctx.save();
+	ctx.globalAlpha = revealProgress;
 	ctx.font = `600 ${labelSize}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
 	ctx.fillStyle = palette.label;
 	ctx.textBaseline = "bottom";
-	ctx.fillText(active.node.title, point.x + 12, point.y - 10);
+	ctx.fillText(active.node.title, point.x + 12, point.y - 10 + (1 - revealProgress) * 4);
 	ctx.font = `500 ${metaSize}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
 	ctx.fillStyle = palette.labelSubtle;
 	ctx.textBaseline = "top";
-	ctx.fillText(`${active.node.kind} · ${active.node.degree} links`, point.x + 12, point.y - 8);
+	ctx.fillText(`${active.node.kind} · ${active.node.degree} links`, point.x + 12, point.y - 8 + (1 - revealProgress) * 4);
 	ctx.restore();
 }
 
@@ -831,9 +841,10 @@ function drawRadialLabels(
 	ctx: CanvasRenderingContext2D,
 	layout: NeuralGraphLayout,
 	options: NeuralGraphRenderOptions,
+	revealProgress: number,
 ) {
 	const palette = PALETTES[options.theme];
-	const activeNodeId = options.selectedNodeId ?? options.hoveredNodeId;
+	const activeNodeId = getLabelNodeId(options);
 	const shouldDrawAllLabels = options.viewport.width >= RADIAL_LABEL_ALL_NODES_MIN_WIDTH;
 	const leafNodeIds = getRadialLeafNodeIds(layout);
 	const nodes = shouldDrawAllLabels
@@ -854,14 +865,14 @@ function drawRadialLabels(
 		const point = worldToViewport(node, options.camera, options.viewport, options.params);
 		const angle = Math.atan2(point.y - origin.y, point.x - origin.x);
 		const isLeft = Math.cos(angle) < 0;
-		const offset = RADIAL_LABEL_OFFSET + Math.max(4, node.baseSize * options.camera.zoom);
+		const offset = RADIAL_LABEL_OFFSET + Math.max(4, node.baseSize * options.camera.zoom) + (1 - revealProgress) * 6;
 		const labelPoint = {
 			x: point.x + Math.cos(angle) * offset,
 			y: point.y + Math.sin(angle) * offset,
 		};
 
 		ctx.save();
-		ctx.globalAlpha = node.id === activeNodeId ? 0.96 : 0.78;
+		ctx.globalAlpha = (node.id === activeNodeId ? 0.96 : 0.78) * revealProgress;
 		ctx.translate(labelPoint.x, labelPoint.y);
 		ctx.rotate(isLeft ? angle + Math.PI : angle);
 		ctx.textAlign = isLeft ? "right" : "left";

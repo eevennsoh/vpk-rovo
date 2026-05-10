@@ -146,6 +146,19 @@ export function getResponsivePersonalGraphParams(
 	});
 }
 
+export function areResponsivePersonalGraphParamsEqual(
+	currentParams: NeuralGraphParams,
+	nextParams: NeuralGraphParams,
+) {
+	for (const key of Object.keys(nextParams) as Array<keyof NeuralGraphParams>) {
+		if (!Object.is(currentParams[key], nextParams[key])) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
 export function shouldAnimateResponsivePersonalGraphParams({
 	hasMeasuredViewport,
 	prefersReducedMotion,

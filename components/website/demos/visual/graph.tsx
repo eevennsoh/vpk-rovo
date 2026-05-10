@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState, type ComponentProps, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps, type CSSProperties } from "react";
 import ChevronRightIcon from "@atlaskit/icon/core/chevron-right";
 import CrossIcon from "@atlaskit/icon/core/cross";
 import UndoIcon from "@atlaskit/icon/core/undo";
@@ -28,7 +28,11 @@ import {
 	clampNeuralRaySoundSettings,
 	type NeuralRaySoundSettings,
 } from "@/components/arts/personal-graph/lib/neural-graph/ray-sound";
-import { createNeuralGraphStore, type NeuralGraphStore } from "@/components/arts/personal-graph/lib/neural-graph/store";
+import {
+	createNeuralGraphStore,
+	getDefaultNeuralGraphSelectedNodeId,
+	type NeuralGraphStore,
+} from "@/components/arts/personal-graph/lib/neural-graph/store";
 import type { NeuralGraphThemeMode } from "@/components/arts/personal-graph/lib/neural-graph/renderer";
 import type {
 	VaultEdgeKind,
@@ -991,16 +995,29 @@ export default function Graph({
 	);
 	const canvasRaySoundSettings = showControls ? demoRaySoundSettings : controlledRaySoundSettings;
 	const canvasInteractionSettings = showControls ? demoInteractionSettings : controlledInteractionSettings;
-	const selectedNodeId = isSelectionControlled ? controlledSelectedNodeId ?? null : uncontrolledSelectedNodeId;
 	const graphStore = useMemo(() => providedStore ?? createNeuralGraphStore(explorer), [explorer, providedStore]);
+	const fallbackSelectedNodeId = getDefaultNeuralGraphSelectedNodeId(graphStore);
+	const rawSelectedNodeId = isSelectionControlled ? controlledSelectedNodeId ?? null : uncontrolledSelectedNodeId;
+	const selectedNodeId = rawSelectedNodeId && graphStore.nodesById.has(rawSelectedNodeId)
+		? rawSelectedNodeId
+		: fallbackSelectedNodeId;
 	const selectedNode = useMemo(() => getSelectedGraphNode(explorer, selectedNodeId), [explorer, selectedNodeId]);
+
+	useEffect(() => {
+		if (rawSelectedNodeId === selectedNodeId) return;
+		if (isSelectionControlled) {
+			onSelectedNodeIdChange?.(selectedNodeId);
+			return;
+		}
+		setUncontrolledSelectedNodeId(selectedNodeId);
+	}, [isSelectionControlled, onSelectedNodeIdChange, rawSelectedNodeId, selectedNodeId]);
 
 	const handleClearSelection = useCallback(() => {
 		if (!isSelectionControlled) {
-			setUncontrolledSelectedNodeId(null);
+			setUncontrolledSelectedNodeId(fallbackSelectedNodeId);
 		}
-		onSelectedNodeIdChange?.(null);
-	}, [isSelectionControlled, onSelectedNodeIdChange]);
+		onSelectedNodeIdChange?.(fallbackSelectedNodeId);
+	}, [fallbackSelectedNodeId, isSelectionControlled, onSelectedNodeIdChange]);
 	const handleSelectNode = useCallback((nodeId: string) => {
 		if (!isSelectionControlled) {
 			setUncontrolledSelectedNodeId(nodeId);

@@ -73,6 +73,40 @@ function getStatusForError(error) {
 
 const router = express.Router();
 let activeSummarizeRun = null;
+let activeTwgCacheHydration = null;
+const DEFAULT_CACHED_TWG_ARTIFACT_TITLE_HYDRATION_LIMIT = 32;
+const CACHED_TWG_ARTIFACT_TITLE_HYDRATION_LIMIT_ENV_KEY = "PERSONAL_GRAPH_TWG_CACHED_ARTIFACT_HYDRATION_LIMIT";
+
+function getCachedTwgArtifactTitleHydrationLimit() {
+	return getPositiveInteger(
+		process.env[CACHED_TWG_ARTIFACT_TITLE_HYDRATION_LIMIT_ENV_KEY],
+		DEFAULT_CACHED_TWG_ARTIFACT_TITLE_HYDRATION_LIMIT,
+	);
+}
+
+function scheduleCachedTwgArtifactTitleHydration(cached) {
+	if (activeTwgCacheHydration) {
+		return;
+	}
+
+	activeTwgCacheHydration = (async () => {
+		try {
+			const hydrated = await twgSource.hydrateTwgArtifactTitles(cached, {
+				limit: getCachedTwgArtifactTitleHydrationLimit(),
+			});
+			if (hydrated !== cached) {
+				writeCache(hydrated);
+			}
+		} catch (error) {
+			console.warn(
+				"Failed to hydrate cached TWG artifact titles:",
+				error instanceof Error ? error.message : String(error),
+			);
+		} finally {
+			activeTwgCacheHydration = null;
+		}
+	})();
+}
 
 router.get("/vault", (_req, res) => {
 	try {
@@ -249,7 +283,10 @@ async function* runSummarizeStream(body) {
 
 async function getTwgExplorerCachedOrFresh({ signal } = {}) {
 	const cached = readCache();
-	if (cached) return cached;
+	if (cached) {
+		scheduleCachedTwgArtifactTitleHydration(cached);
+		return cached;
+	}
 	const fresh = await twgSource.buildTwgExplorer({ signal });
 	writeCache(fresh);
 	return fresh;

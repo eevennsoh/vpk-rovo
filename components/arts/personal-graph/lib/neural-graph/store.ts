@@ -184,6 +184,10 @@ export function getSelectedNeighborhood(
 	return getNodeNeighbors(store, selectedNodeId).slice(0, Math.max(0, limit));
 }
 
+export function getDefaultNeuralGraphSelectedNodeId(store: NeuralGraphStore): string | null {
+	return store.rankedNodes[0]?.id ?? null;
+}
+
 export function getVisibleGraphNodes(
 	store: NeuralGraphStore,
 	selectedNodeId: string | null,

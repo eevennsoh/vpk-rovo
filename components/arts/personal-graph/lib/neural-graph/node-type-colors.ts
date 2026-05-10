@@ -2,9 +2,13 @@ import type { VaultNode, VaultNodeKind } from "../personal-graph-types";
 
 export type PersonalGraphNodeTypeCategory =
 	| VaultNodeKind
-	| "confluence"
+	| "confluence-blogpost"
+	| "confluence-page"
+	| "confluence-space"
+	| "confluence-whiteboard"
 	| "jira"
-	| "loom"
+	| "loom-meeting"
+	| "loom-video"
 	| "person";
 
 const GRAPH_KIND_CATEGORIES = new Set<PersonalGraphNodeTypeCategory>([
@@ -16,9 +20,13 @@ const GRAPH_KIND_CATEGORIES = new Set<PersonalGraphNodeTypeCategory>([
 ]);
 
 const NODE_TYPE_ACCENT_TOKENS: Partial<Record<PersonalGraphNodeTypeCategory, string>> = {
-	confluence: "var(--ds-icon-accent-blue)",
+	"confluence-blogpost": "var(--ds-icon-accent-green)",
+	"confluence-page": "var(--ds-icon-accent-blue)",
+	"confluence-space": "var(--ds-icon-accent-gray)",
+	"confluence-whiteboard": "var(--ds-icon-accent-teal)",
 	jira: "var(--ds-icon-accent-purple)",
-	loom: "var(--ds-icon-accent-magenta)",
+	"loom-meeting": "var(--ds-icon-accent-orange)",
+	"loom-video": "var(--ds-icon-accent-magenta)",
 	person: "var(--ds-icon-accent-lime)",
 };
 
@@ -55,9 +63,15 @@ function getCategoryFromValue(value: string): PersonalGraphNodeTypeCategory | nu
 	) {
 		return "person";
 	}
-	if (normalized.includes("confluence")) return "confluence";
+	if (normalized.includes("confluenceblogpost") || normalized.includes("blogpost")) return "confluence-blogpost";
+	if (normalized.includes("confluencewhiteboard") || normalized.includes("whiteboard")) return "confluence-whiteboard";
+	if (normalized.includes("confluencespace")) return "confluence-space";
+	if (normalized.includes("confluencepage")) return "confluence-page";
+	if (normalized.includes("confluence")) return "confluence-page";
 	if (normalized.includes("jira") || normalized.includes("issue") || normalized.includes("workitem")) return "jira";
-	if (normalized.includes("loom")) return "loom";
+	if (normalized.includes("loommeeting")) return "loom-meeting";
+	if (normalized.includes("loomvideo")) return "loom-video";
+	if (normalized.includes("loom")) return "loom-video";
 	if (normalized === "source" || normalized === "sources") return "source";
 	if (normalized === "entity" || normalized === "entities") return "entity";
 	if (normalized === "concept" || normalized === "concepts") return "concept";

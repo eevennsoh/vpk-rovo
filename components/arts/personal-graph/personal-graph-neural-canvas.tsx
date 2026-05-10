@@ -8,7 +8,6 @@ import { useTheme } from "@/components/utils/theme-wrapper";
 import { cn } from "@/lib/utils";
 import {
 	createNeuralCamera,
-	focusNeuralCameraOnPoint,
 	panNeuralCamera,
 	viewportToWorld,
 	zoomNeuralCameraAtPoint,
@@ -46,7 +45,7 @@ import {
 	type NeuralNodeSoundSettings,
 	type NeuralRaySoundSettings,
 } from "./lib/neural-graph/ray-sound";
-import { createNeuralGraphStore, getSelectedNeighborhood, type NeuralGraphStore } from "./lib/neural-graph/store";
+import { createNeuralGraphStore, getNodeNeighbors, getSelectedNeighborhood, type NeuralGraphStore } from "./lib/neural-graph/store";
 import { drawNeuralGraph, type NeuralGraphThemeMode, type NeuralRayElasticState } from "./lib/neural-graph/renderer";
 import type { VaultExplorer } from "./lib/personal-graph-types";
 
@@ -79,6 +78,8 @@ const ZOOM_SPRING_CONFIG = { stiffness: 220, damping: 28, mass: 0.5, restDelta: 
 const ZOOM_SPRING_INSTANT = { stiffness: 4000, damping: 200, mass: 0.05, restDelta: 0.0005 } as const;
 const FOCUS_SPRING_CONFIG = { stiffness: 160, damping: 24, mass: 0.7, restDelta: 0.0005 } as const;
 const FOCUS_SPRING_INSTANT = { stiffness: 4000, damping: 220, mass: 0.05, restDelta: 0.0005 } as const;
+const LABEL_REVEAL_SPRING_CONFIG = { stiffness: 260, damping: 34, mass: 0.45, restDelta: 0.001 } as const;
+const LABEL_REVEAL_SPRING_INSTANT = { stiffness: 4000, damping: 220, mass: 0.05, restDelta: 0.001 } as const;
 const RAY_ELASTIC_SPRING_INSTANT = { stiffness: 4000, damping: 220, mass: 0.05, restDelta: 0.0005 } as const;
 const INTERACTION_SPRING_CONFIG = { stiffness: 72, damping: 30, mass: 1, restDelta: 0.001 } as const;
 const INTERACTION_SPRING_INSTANT = { stiffness: 4000, damping: 220, mass: 0.05, restDelta: 0.001 } as const;
@@ -208,6 +209,70 @@ function shouldUpdateOverlay(current: SelectedOverlayState | null, next: Selecte
 	);
 }
 
+function getSelectedCameraFitNodes({
+	layout,
+	selectedNodeId,
+	store,
+}: {
+	layout: NeuralGraphLayout;
+	selectedNodeId: string | null;
+	store: NeuralGraphStore;
+}): NeuralLayoutNode[] | null {
+	if (!selectedNodeId) return null;
+	const selectedNode = layout.nodesById.get(selectedNodeId);
+	if (!selectedNode) return null;
+
+	const fitNodesById = new Map<string, NeuralLayoutNode>([[selectedNode.id, selectedNode]]);
+	for (const { node } of getNodeNeighbors(store, selectedNodeId)) {
+		const layoutNode = layout.nodesById.get(node.id);
+		if (layoutNode) {
+			fitNodesById.set(layoutNode.id, layoutNode);
+		}
+	}
+
+	return [...fitNodesById.values()];
+}
+
+function getCameraFitTarget({
+	interaction,
+	layout,
+	params,
+	reduceMotion,
+	selectedNodeId,
+	store,
+	time,
+	viewport,
+}: {
+	interaction: NeuralGraphInteractionState | null;
+	layout: NeuralGraphLayout;
+	params: NeuralGraphParams;
+	reduceMotion: boolean;
+	selectedNodeId: string | null;
+	store: NeuralGraphStore;
+	time: number;
+	viewport: NeuralViewport;
+}): { fitLayout: NeuralGraphLayout; fitNodes: NeuralLayoutNode[] | null } {
+	if (!selectedNodeId) {
+		return { fitLayout: layout, fitNodes: null };
+	}
+
+	const fitLayout = computeNeuralGraphLayout({
+		focusProgress: 1,
+		interaction,
+		params,
+		reduceMotion,
+		selectedNodeId,
+		store,
+		time,
+		viewport,
+	});
+
+	return {
+		fitLayout,
+		fitNodes: getSelectedCameraFitNodes({ layout: fitLayout, selectedNodeId, store }),
+	};
+}
+
 function SelectedNodeOverlay({
 	onSelectNode,
 	overlay,
@@ -281,6 +346,10 @@ export function PersonalGraphNeuralCanvas({
 	const targetFocusMV = useMotionValue(selectedNodeId ? 1 : 0);
 	const focusProgressMV = useSpring(targetFocusMV, reduceMotion ? FOCUS_SPRING_INSTANT : FOCUS_SPRING_CONFIG);
 	const focusProgressRef = useRef(selectedNodeId ? 1 : 0);
+	const targetLabelRevealMV = useMotionValue(0);
+	const labelRevealProgressMV = useSpring(targetLabelRevealMV, reduceMotion ? LABEL_REVEAL_SPRING_INSTANT : LABEL_REVEAL_SPRING_CONFIG);
+	const labelRevealProgressRef = useRef(0);
+	const labelNodeIdRef = useRef<string | null>(null);
 	const targetRayElasticXMV = useMotionValue(0);
 	const targetRayElasticYMV = useMotionValue(0);
 	const targetRayElasticProgressMV = useMotionValue(0);
@@ -430,9 +499,20 @@ export function PersonalGraphNeuralCanvas({
 				: lockedTargetLayout;
 			layoutRef.current = layout;
 			if (!shouldFreezeHoveredNode) {
+				const { fitLayout, fitNodes } = getCameraFitTarget({
+					interaction: interactionRef.current,
+					layout,
+					params,
+					reduceMotion,
+					selectedNodeId,
+					store,
+					time: elapsedSeconds ?? 0,
+					viewport,
+				});
 				cameraRef.current = fitNeuralCameraToLayout({
 					camera: cameraRef.current,
-					layout,
+					fitNodes,
+					layout: fitLayout,
 					params,
 					positionDeadbandPx: shouldSmoothFrame ? CAMERA_FIT_POSITION_DEADBAND_PX : 0,
 					smoothing: shouldSmoothFrame ? getFrameBlend(elapsedFrameMs, CAMERA_FIT_SMOOTHING_MS) : 1,
@@ -447,6 +527,8 @@ export function PersonalGraphNeuralCanvas({
 				focusProgress: focusProgressRef.current,
 				hoveredNodeId: hoveredNodeIdRef.current,
 				interaction: interactionRef.current,
+				labelNodeId: labelNodeIdRef.current,
+				labelRevealProgress: labelRevealProgressRef.current,
 				params,
 				rayElastic: !reduceMotion && rayElasticRef.current.progress > 0 ? rayElasticRef.current : null,
 				rayOriginY,
@@ -508,6 +590,17 @@ export function PersonalGraphNeuralCanvas({
 			requestRenderRef.current();
 		});
 	}, [focusProgressMV]);
+
+	useEffect(() => {
+		return labelRevealProgressMV.on("change", (nextProgress) => {
+			const settled = nextProgress < 0.001;
+			labelRevealProgressRef.current = settled ? 0 : nextProgress;
+			if (settled && !hoveredNodeIdRef.current) {
+				labelNodeIdRef.current = null;
+			}
+			requestRenderRef.current();
+		});
+	}, [labelRevealProgressMV]);
 
 	useEffect(() => {
 		return smoothRayElasticXMV.on("change", (nextX) => {
@@ -608,8 +701,8 @@ export function PersonalGraphNeuralCanvas({
 			return;
 		}
 
-		const layout = layoutRef.current ?? computeNeuralGraphLayout({
-			focusProgress: focusProgressRef.current,
+		const layout = computeNeuralGraphLayout({
+			focusProgress: 1,
 			interaction: interactionRef.current,
 			params,
 			reduceMotion,
@@ -617,12 +710,13 @@ export function PersonalGraphNeuralCanvas({
 			store,
 			viewport,
 		});
-		const node = layout?.nodesById.get(selectedNodeId);
-		if (!node) return;
-		cameraRef.current = focusNeuralCameraOnPoint({
+		const fitNodes = getSelectedCameraFitNodes({ layout, selectedNodeId, store });
+		if (!fitNodes) return;
+		cameraRef.current = fitNeuralCameraToLayout({
 			camera: cameraRef.current,
+			fitNodes,
+			layout,
 			params,
-			point: node,
 			viewport,
 		});
 		wheelAnchorRef.current = null;
@@ -830,6 +924,7 @@ export function PersonalGraphNeuralCanvas({
 		const layout = layoutRef.current;
 		if (!layout) {
 			setHoveredNodeId(null);
+			targetLabelRevealMV.set(0);
 			targetRayElasticProgressMV.set(0);
 			updateInteractionTarget({ point, velocity });
 			resetRaySoundTrigger();
@@ -841,6 +936,7 @@ export function PersonalGraphNeuralCanvas({
 			layout,
 			params,
 			point,
+			selectedNodeId,
 			viewport,
 		});
 		if (hit && allowSound) {
@@ -903,8 +999,13 @@ export function PersonalGraphNeuralCanvas({
 				resetNodeSoundTrigger();
 			}
 		}
-		setHoveredNodeId(hit?.node.id ?? null);
-		hoveredNodeIdRef.current = hit?.node.id ?? null;
+		const nextHoveredNodeId = hit?.node.id ?? null;
+		if (nextHoveredNodeId) {
+			labelNodeIdRef.current = nextHoveredNodeId;
+		}
+		targetLabelRevealMV.set(nextHoveredNodeId ? 1 : 0);
+		setHoveredNodeId(nextHoveredNodeId);
+		hoveredNodeIdRef.current = nextHoveredNodeId;
 		requestRenderRef.current();
 	}, [
 		params,
@@ -913,6 +1014,8 @@ export function PersonalGraphNeuralCanvas({
 		resetNodeSoundTrigger,
 		resetInteractionTarget,
 		resetRaySoundTrigger,
+		selectedNodeId,
+		targetLabelRevealMV,
 		targetRayElasticProgressMV,
 		targetRayElasticXMV,
 		targetRayElasticYMV,
@@ -968,13 +1071,14 @@ export function PersonalGraphNeuralCanvas({
 		if (!dragged) {
 			const layout = layoutRef.current;
 			const hit = layout
-				? hitTestNeuralNode({
-					camera: cameraRef.current,
-					layout,
-					params,
-					point,
-					viewport,
-				})
+					? hitTestNeuralNode({
+						camera: cameraRef.current,
+						layout,
+						params,
+						point,
+						selectedNodeId,
+						viewport,
+					})
 				: null;
 			if (hit) {
 				onSelectNode(hit.node.id);
@@ -982,7 +1086,7 @@ export function PersonalGraphNeuralCanvas({
 				onClearSelection();
 			}
 		}
-	}, [getPointerActivity, onClearSelection, onSelectNode, params, updateHover, viewport]);
+	}, [getPointerActivity, onClearSelection, onSelectNode, params, selectedNodeId, updateHover, viewport]);
 
 	const handleWheel = useCallback((event: WheelEvent) => {
 		event.preventDefault();
@@ -1025,6 +1129,7 @@ export function PersonalGraphNeuralCanvas({
 					if (!isPanningRef.current) {
 						hoveredNodeIdRef.current = null;
 						setHoveredNodeId(null);
+						targetLabelRevealMV.set(0);
 						targetRayElasticProgressMV.set(0);
 						resetInteractionTarget();
 						resetRaySoundTrigger();

@@ -67,6 +67,21 @@ function createSpawnImplForPayloads(payloads, calls = []) {
 	};
 }
 
+function createSpawnImplForArgs(resolvePayload, calls = []) {
+	return (_bin, args) => {
+		calls.push(args);
+		const payload = resolvePayload(args);
+		const child = new EventEmitter();
+		child.stdout = new EventEmitter();
+		child.stderr = new EventEmitter();
+		queueMicrotask(() => {
+			child.stdout.emit("data", Buffer.from(JSON.stringify(payload)));
+			child.emit("close", 0);
+		});
+		return child;
+	};
+}
+
 const ROOT_USER = {
 	ari: "ari:cloud:identity::user/me",
 	name: "Me",
@@ -278,9 +293,77 @@ test("mergeTwgExplorers de-dupes edges and keeps better target hydration", () =>
 test("buildTwgExplorer wires CLI output through normalize", async () => {
 	const stdout = JSON.stringify(FIXTURE);
 	const spawnImpl = createFakeChild({ stdout });
-	const explorer = await buildTwgExplorer({ spawnImpl });
+	const explorer = await buildTwgExplorer({ hydrateArtifactTitles: false, spawnImpl });
 	assert.ok(explorer.nodes.length > 1);
 	assert.equal(explorer.nodes[0].provider, "twg");
+});
+
+test("buildTwgExplorer hydrates Confluence artifact titles from native get commands", async () => {
+	const rootPayload = createContextPayload(ROOT_USER, [
+		{
+			direction: "outbound",
+			relationshipName: "atlassian_user_contributed_to_confluence_page",
+			targets: [PAGE_ONE],
+		},
+		{
+			direction: "outbound",
+			relationshipName: "atlassian_user_contributed_to_confluence_blogpost",
+			targets: [BLOG_ONE],
+		},
+		{
+			direction: "outbound",
+			relationshipName: "atlassian_user_contributed_to_confluence_whiteboard",
+			targets: [WHITEBOARD_ONE],
+		},
+	]);
+	const calls = [];
+	const spawnImpl = createSpawnImplForArgs((args) => {
+		if (args[0] === "context") return rootPayload;
+		if (args[1] === "page") {
+			return {
+				data: {
+					id: PAGE_ONE.ari,
+					links: { base: "https://hello.atlassian.net/wiki", webUi: "/spaces/ENG/pages/1/Roadmap" },
+					title: "Roadmap",
+				},
+			};
+		}
+		if (args[1] === "blog") {
+			return {
+				data: {
+					_links: { base: "https://hello.atlassian.net/wiki", webui: "/spaces/ENG/blog/3/Launch" },
+					id: "3",
+					title: "Launch update",
+				},
+			};
+		}
+		if (args[1] === "whiteboard") {
+			return {
+				data: {
+					id: "5",
+					title: "System sketch",
+					webUrl: "https://hello.atlassian.net/wiki/spaces/ENG/whiteboard/5",
+				},
+			};
+		}
+		throw new Error(`Unexpected fake twg call: ${args.join(" ")}`);
+	}, calls);
+
+	const explorer = await buildTwgExplorer({ depth: 1, spawnImpl });
+	const page = explorer.nodes.find((node) => node.id === PAGE_ONE.ari);
+	const blog = explorer.nodes.find((node) => node.id === BLOG_ONE.ari);
+	const whiteboard = explorer.nodes.find((node) => node.id === WHITEBOARD_ONE.ari);
+
+	assert.equal(page.title, "Roadmap");
+	assert.equal(page.label, "Roadmap");
+	assert.equal(page.externalUrl, "https://hello.atlassian.net/wiki/spaces/ENG/pages/1/Roadmap");
+	assert.equal(blog.title, "Launch update");
+	assert.equal(blog.externalUrl, "https://hello.atlassian.net/wiki/spaces/ENG/blog/3/Launch");
+	assert.equal(whiteboard.title, "System sketch");
+	assert.equal(whiteboard.externalUrl, "https://hello.atlassian.net/wiki/spaces/ENG/whiteboard/5");
+	assert.ok(calls.some((args) => args.join(" ") === `confluence page get --page 1 --site site --body none --comments none --skip-ancestors --output json`));
+	assert.ok(calls.some((args) => args.join(" ") === `confluence blog get 3 --site site --output json`));
+	assert.ok(calls.some((args) => args.join(" ") === `confluence whiteboard get 5 --site site --output json`));
 });
 
 test("buildTwgExplorer expands a bounded depth-2 TWG explorer", async () => {
@@ -308,7 +391,7 @@ test("buildTwgExplorer expands a bounded depth-2 TWG explorer", async () => {
 	const calls = [];
 	const spawnImpl = createSpawnImplForPayloads([rootPayload, pageExpansion, issueExpansion], calls);
 
-	const explorer = await buildTwgExplorer({ fanoutLimit: 2, spawnImpl });
+	const explorer = await buildTwgExplorer({ fanoutLimit: 2, hydrateArtifactTitles: false, spawnImpl });
 
 	assert.equal(calls.length, 3);
 	assert.deepEqual(calls[0].slice(0, 3), ["context", "user", "me"]);
@@ -425,7 +508,7 @@ test("expandTwgExplorerNode rejects missing cached nodes", async () => {
 test("fetchSlice('context-user') is an alias of buildTwgExplorer", async () => {
 	const stdout = JSON.stringify(FIXTURE);
 	const spawnImpl = createFakeChild({ stdout });
-	const explorer = await fetchSlice("context-user", {}, { spawnImpl });
+	const explorer = await fetchSlice("context-user", {}, { hydrateArtifactTitles: false, spawnImpl });
 	assert.ok(explorer.nodes.length > 1);
 });
 

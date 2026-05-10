@@ -22,11 +22,12 @@ import { DEFAULT_NEURAL_GRAPH_INTERACTION_SETTINGS } from "./lib/neural-graph/in
 import { DEFAULT_NEURAL_RAY_SOUND_SETTINGS } from "./lib/neural-graph/ray-sound";
 import {
 	RESPONSIVE_PERSONAL_GRAPH_WIDTHS,
+	areResponsivePersonalGraphParamsEqual,
 	getResponsivePersonalGraphParams,
 	shouldAnimateResponsivePersonalGraphParams,
 	type ResponsivePersonalGraphViewport,
 } from "./lib/neural-graph/responsive-params";
-import { createNeuralGraphStore } from "./lib/neural-graph/store";
+import { createNeuralGraphStore, getDefaultNeuralGraphSelectedNodeId } from "./lib/neural-graph/store";
 import { expandTwgNode } from "./lib/personal-graph-api";
 import { mergeSelectedNodeExpansion } from "./lib/personal-graph-explorer-merge";
 import type { NeuralGraphParams } from "./lib/neural-graph/params";
@@ -200,6 +201,12 @@ function useResponsivePersonalGraphParams(stageRef: React.RefObject<HTMLDivEleme
 	const [params, setParams] = useState<NeuralGraphParams>(() =>
 		getResponsivePersonalGraphParams(PERSONAL_GRAPH_RESPONSIVE_INITIAL_VIEWPORT, ROVO_GRAPH_DEFAULT_PARAMS),
 	);
+	const setResponsiveParamsForViewport = useCallback((nextViewport: ResponsivePersonalGraphViewport) => {
+		setParams((currentParams) => {
+			const nextParams = getResponsivePersonalGraphParams(nextViewport, ROVO_GRAPH_DEFAULT_PARAMS);
+			return areResponsivePersonalGraphParamsEqual(currentParams, nextParams) ? currentParams : nextParams;
+		});
+	}, []);
 
 	useEffect(() => {
 		const stageElement = stageRef.current;
@@ -246,9 +253,9 @@ function useResponsivePersonalGraphParams(stageRef: React.RefObject<HTMLDivEleme
 
 	useEffect(() => {
 		return smoothWidthMV.on("change", (width) => {
-			setParams(getResponsivePersonalGraphParams({ ...viewportRef.current, width }, ROVO_GRAPH_DEFAULT_PARAMS));
+			setResponsiveParamsForViewport({ ...viewportRef.current, width });
 		});
-	}, [smoothWidthMV]);
+	}, [setResponsiveParamsForViewport, smoothWidthMV]);
 
 	useEffect(() => {
 		viewportRef.current = viewport;
@@ -260,13 +267,13 @@ function useResponsivePersonalGraphParams(stageRef: React.RefObject<HTMLDivEleme
 		if (!shouldAnimateParams) {
 			targetWidthMV.jump(viewport.width);
 			smoothWidthMV.jump(viewport.width);
-			setParams(getResponsivePersonalGraphParams(viewport, ROVO_GRAPH_DEFAULT_PARAMS));
+			setResponsiveParamsForViewport(viewport);
 			didMeasureViewportRef.current = true;
 			return;
 		}
 
 		targetWidthMV.set(viewport.width);
-	}, [reduceMotion, smoothWidthMV, targetWidthMV, viewport]);
+	}, [reduceMotion, setResponsiveParamsForViewport, smoothWidthMV, targetWidthMV, viewport]);
 
 	return params;
 }
@@ -495,9 +502,21 @@ export function PersonalGraphSurface({
 	const previousSourceRef = useRef(source);
 	const responsiveGraphParams = useResponsivePersonalGraphParams(graphStageRef);
 	const accessibleGraph = useMemo(() => createNeuralGraphStore(explorer), [explorer]);
+	const defaultSelectedNodeId = getDefaultNeuralGraphSelectedNodeId(accessibleGraph);
 	const displayedNode = useMemo(() => getSelectedNode(explorer, selectedNodeId), [explorer, selectedNodeId]);
 	const isExpandingDisplayedNode =
 		isTwgMode && displayedNode?.provider === "twg" && expandingTwgNodeIds.has(displayedNode.id);
+
+	useEffect(() => {
+		setSelectedNodeId((current) => {
+			if (current && accessibleGraph.nodesById.has(current)) return current;
+			return defaultSelectedNodeId;
+		});
+	}, [accessibleGraph, defaultSelectedNodeId]);
+
+	const selectDefaultNode = useCallback(() => {
+		setSelectedNodeId(defaultSelectedNodeId);
+	}, [defaultSelectedNodeId]);
 
 	const clearTwgExpansionState = useCallback(() => {
 		twgExpansionGenerationRef.current += 1;
@@ -807,7 +826,7 @@ export function PersonalGraphSurface({
 
 		function handleKeyDown(event: KeyboardEvent) {
 			if (event.key === "Escape") {
-				setSelectedNodeId(null);
+				selectDefaultNode();
 			}
 		}
 
@@ -815,7 +834,7 @@ export function PersonalGraphSurface({
 		return () => {
 			window.removeEventListener("keydown", handleKeyDown);
 		};
-	}, [selectedNodeId]);
+	}, [selectDefaultNode, selectedNodeId]);
 
 	useEffect(() => {
 		void refresh();
@@ -1007,13 +1026,13 @@ export function PersonalGraphSurface({
 					</div>
 				</motion.section>
 
-				<PersonalGraphInspector
-					explorer={explorer}
-					isExpanding={isExpandingDisplayedNode}
-					node={displayedNode}
-					onClose={() => setSelectedNodeId(null)}
-					onSelectNode={setSelectedNodeId}
-				/>
+					<PersonalGraphInspector
+						explorer={explorer}
+						isExpanding={isExpandingDisplayedNode}
+						node={displayedNode}
+						onClose={selectDefaultNode}
+						onSelectNode={setSelectedNodeId}
+					/>
 				{chatExplorer ? (
 					<div className="pointer-events-auto absolute left-4 top-6 z-40 lg:left-8">
 						<Button

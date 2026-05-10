@@ -151,8 +151,14 @@ export function createNeuralPointerState(): NeuralPointerState {
 	};
 }
 
-export function getNodeViewportRadius(node: NeuralLayoutNode, camera: NeuralCamera, params: NeuralGraphParams) {
-	return Math.max(5, node.baseSize * params.nodeSize * node.depthScale * camera.zoom);
+export function getNodeViewportRadius(
+	node: NeuralLayoutNode,
+	camera: NeuralCamera,
+	params: NeuralGraphParams,
+	selectedNodeId?: string | null,
+) {
+	const scale = node.id === selectedNodeId ? params.selectedScale : 1;
+	return Math.max(2.5, params.nodeSize * camera.zoom * scale);
 }
 
 export function hitTestNeuralNode({
@@ -160,19 +166,21 @@ export function hitTestNeuralNode({
 	layout,
 	params,
 	point,
+	selectedNodeId,
 	viewport,
 }: {
 	camera: NeuralCamera;
 	layout: NeuralGraphLayout;
 	params: NeuralGraphParams;
 	point: NeuralPoint;
+	selectedNodeId?: string | null;
 	viewport: NeuralViewport;
 }): NeuralHitTestResult | null {
 	let best: NeuralHitTestResult | null = null;
 
 	for (const node of layout.nodes) {
 		const screen = worldToViewport(node, camera, viewport, params);
-		const radius = getNodeViewportRadius(node, camera, params) + 8;
+		const radius = getNodeViewportRadius(node, camera, params, selectedNodeId) + 8;
 		const distance = Math.hypot(point.x - screen.x, point.y - screen.y);
 		if (distance > radius) continue;
 		if (!best || distance < best.distance) {

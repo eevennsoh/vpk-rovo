@@ -121,6 +121,10 @@ function waveNoise(
 	return { x: x * scale, y: y * scale };
 }
 
+function getLayoutNodeBaseSize(params: NeuralGraphParams) {
+	return Math.max(2.5, params.nodeSize);
+}
+
 function createInitialNode(
 	node: NeuralGraphNode,
 	index: number,
@@ -153,7 +157,7 @@ function createInitialNode(
 
 	return {
 		alpha: 1,
-		baseSize: Math.max(3, params.nodeSize + Math.sqrt(Math.max(1, node.degree)) * 0.85),
+		baseSize: getLayoutNodeBaseSize(params),
 		depthScale,
 		id: node.id,
 		node,
@@ -399,7 +403,7 @@ function createRadialLayoutNode({
 
 	return {
 		alpha: 1,
-		baseSize: Math.max(3, params.nodeSize + Math.sqrt(Math.max(1, node.node.degree)) * 0.85),
+		baseSize: getLayoutNodeBaseSize(params),
 		depthScale,
 		id: node.node.id,
 		node: node.node,
@@ -613,6 +617,9 @@ function applySelectionFocusLayout({
 
 	const selectedNode = nodes.find((node) => node.id === selectedNodeId);
 	if (!selectedNode) return;
+
+	selectedNode.x = lerp(selectedNode.x, 0, progress);
+	selectedNode.y = lerp(selectedNode.y, 0, progress);
 
 	const selectedAnchor = { x: selectedNode.x, y: selectedNode.y };
 	const visibleNodeIds = new Set(nodes.map((node) => node.id));

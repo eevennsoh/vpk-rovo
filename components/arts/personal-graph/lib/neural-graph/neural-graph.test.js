@@ -225,8 +225,8 @@ function createRecordingCanvasContext() {
 	};
 }
 
-test("createNeuralGraphStore builds deterministic adjacency and kind groups", async () => {
-	const { createNeuralGraphStore, getNodeNeighbors } = await storeModule;
+test("createNeuralGraphStore builds deterministic adjacency, kind groups, and default selection", async () => {
+	const { createNeuralGraphStore, getDefaultNeuralGraphSelectedNodeId, getNodeNeighbors } = await storeModule;
 	const store = createNeuralGraphStore(explorer);
 
 	assert.equal(store.nodesById.get("selected").degree, 19);
@@ -234,6 +234,7 @@ test("createNeuralGraphStore builds deterministic adjacency and kind groups", as
 		store.rankedNodes.slice(0, 3).map((item) => item.id),
 		["selected", "gamma", "beta"],
 	);
+	assert.equal(getDefaultNeuralGraphSelectedNodeId(store), "selected");
 	assert.deepEqual(
 		getNodeNeighbors(store, "selected").slice(0, 3).map(({ node }) => node.id),
 		["gamma", "beta", "alpha"],
@@ -633,8 +634,28 @@ test("personal graph node type colors use TWG metadata before broad graph kinds"
 		frontmatter: { type: "ConfluencePage" },
 		provider: "twg",
 	});
+	const confluenceWhiteboard = node("whiteboard", "Sketch", "source", 1, {
+		frontmatter: { type: "ConfluenceWhiteboard" },
+		provider: "twg",
+	});
+	const confluenceBlogPost = node("blog", "Launch update", "source", 1, {
+		frontmatter: { type: "ConfluenceBlogPost" },
+		provider: "twg",
+	});
+	const confluenceSpace = node("space", "Project space", "source", 1, {
+		frontmatter: { type: "ConfluenceSpace" },
+		provider: "twg",
+	});
 	const jiraIssue = node("ari:cloud:jira:site:issue/123", "ABC-123", "source", 1, {
 		frontmatter: {},
+		provider: "twg",
+	});
+	const loomMeeting = node("meeting", "Standup", "source", 1, {
+		frontmatter: { type: "LoomMeeting" },
+		provider: "twg",
+	});
+	const loomVideo = node("video", "Demo", "source", 1, {
+		frontmatter: { type: "LoomVideo" },
 		provider: "twg",
 	});
 	const accountUser = node("user", "Ada", "entity", 1, {
@@ -646,10 +667,20 @@ test("personal graph node type colors use TWG metadata before broad graph kinds"
 		provider: "vault",
 	});
 
-	assert.equal(getPersonalGraphNodeTypeCategory(confluencePage), "confluence");
+	assert.equal(getPersonalGraphNodeTypeCategory(confluencePage), "confluence-page");
 	assert.equal(getPersonalGraphNodeTypeAccentToken(confluencePage), "var(--ds-icon-accent-blue)");
+	assert.equal(getPersonalGraphNodeTypeCategory(confluenceWhiteboard), "confluence-whiteboard");
+	assert.equal(getPersonalGraphNodeTypeAccentToken(confluenceWhiteboard), "var(--ds-icon-accent-teal)");
+	assert.equal(getPersonalGraphNodeTypeCategory(confluenceBlogPost), "confluence-blogpost");
+	assert.equal(getPersonalGraphNodeTypeAccentToken(confluenceBlogPost), "var(--ds-icon-accent-green)");
+	assert.equal(getPersonalGraphNodeTypeCategory(confluenceSpace), "confluence-space");
+	assert.equal(getPersonalGraphNodeTypeAccentToken(confluenceSpace), "var(--ds-icon-accent-gray)");
 	assert.equal(getPersonalGraphNodeTypeCategory(jiraIssue), "jira");
 	assert.equal(getPersonalGraphNodeTypeAccentToken(jiraIssue), "var(--ds-icon-accent-purple)");
+	assert.equal(getPersonalGraphNodeTypeCategory(loomMeeting), "loom-meeting");
+	assert.equal(getPersonalGraphNodeTypeAccentToken(loomMeeting), "var(--ds-icon-accent-orange)");
+	assert.equal(getPersonalGraphNodeTypeCategory(loomVideo), "loom-video");
+	assert.equal(getPersonalGraphNodeTypeAccentToken(loomVideo), "var(--ds-icon-accent-magenta)");
 	assert.equal(getPersonalGraphNodeTypeCategory(accountUser), "person");
 	assert.equal(getPersonalGraphNodeTypeAccentToken(accountUser), "var(--ds-icon-accent-lime)");
 	assert.equal(getPersonalGraphNodeTypeCategory(vaultConcept), "concept");
@@ -778,6 +809,19 @@ test("responsive Personal Graph params interpolate numeric values without changi
 	assert.equal(midpoint.signalWidth, baseParams.signalWidth);
 });
 
+test("responsive Personal Graph params compare by value before writing React state", async () => {
+	const { DEFAULT_NEURAL_GRAPH_PARAMS } = await paramsModule;
+	const { areResponsivePersonalGraphParamsEqual, getResponsivePersonalGraphParams } = await responsiveParamsModule;
+	const viewport = { height: 760, width: 820 };
+	const params = getResponsivePersonalGraphParams(viewport, DEFAULT_NEURAL_GRAPH_PARAMS);
+	const sameParams = getResponsivePersonalGraphParams(viewport, DEFAULT_NEURAL_GRAPH_PARAMS);
+	const changedParams = getResponsivePersonalGraphParams({ ...viewport, width: 390 }, DEFAULT_NEURAL_GRAPH_PARAMS);
+
+	assert.equal(params === sameParams, false);
+	assert.equal(areResponsivePersonalGraphParamsEqual(params, sameParams), true);
+	assert.equal(areResponsivePersonalGraphParamsEqual(params, changedParams), false);
+});
+
 test("responsive Personal Graph params do not animate before measurement or for reduced motion", async () => {
 	const { shouldAnimateResponsivePersonalGraphParams } = await responsiveParamsModule;
 
@@ -861,6 +905,33 @@ test("computeNeuralGraphLayout arranges radial cluster leaves on a shared outer 
 	assert.equal(radius("gamma"), radius("delta"));
 	assert.ok(radius("root") < radius("beta"));
 	assert.ok(radius("beta") < radius("alpha"));
+});
+
+test("computeNeuralGraphLayout pins the selected radial node to the graph center with uniform base sizes", async () => {
+	const { computeNeuralGraphLayout } = await layoutModule;
+	const { DEFAULT_NEURAL_GRAPH_PARAMS } = await paramsModule;
+	const { createNeuralGraphStore } = await storeModule;
+	const store = createNeuralGraphStore(explorer);
+	const params = {
+		...DEFAULT_NEURAL_GRAPH_PARAMS,
+		layoutShape: "radialCluster",
+		maxVisibleNodes: 16,
+		nodeSize: 4,
+		spread: 360,
+	};
+	const layout = computeNeuralGraphLayout({
+		focusProgress: 1,
+		params,
+		selectedNodeId: "selected",
+		store,
+		viewport: { height: 700, width: 1000 },
+	});
+	const selected = layout.nodesById.get("selected");
+
+	assert.ok(selected);
+	assert.ok(Math.abs(selected.x) < 0.001);
+	assert.ok(Math.abs(selected.y) < 0.001);
+	assert.deepEqual([...new Set(layout.nodes.map((item) => item.baseSize))], [4]);
 });
 
 test("computeNeuralGraphLayout distributes full-circle radial leaves without duplicating endpoints", async () => {
@@ -1445,7 +1516,7 @@ test("drawNeuralGraph renders radial branches separately from cross-links", asyn
 	assert.ok(firstCrossLinkAlpha < firstBranchAlpha);
 });
 
-test("drawNeuralGraph draws rotated outer labels for radial leaves", async () => {
+test("drawNeuralGraph reveals rotated outer labels for radial leaves only while hovering", async () => {
 	const { createNeuralCamera } = await cameraModule;
 	const { DEFAULT_NEURAL_GRAPH_PARAMS } = await paramsModule;
 	const { drawNeuralGraph } = await rendererModule;
@@ -1501,32 +1572,92 @@ test("drawNeuralGraph draws rotated outer labels for radial leaves", async () =>
 		],
 		viewport,
 	};
-	const ctx = createRecordingCanvasContext();
+	const render = (hoveredNodeId) => {
+		const ctx = createRecordingCanvasContext();
+		drawNeuralGraph(ctx, layout, {
+			background: "transparent",
+			camera: createNeuralCamera(),
+			focusProgress: 0,
+			hoveredNodeId,
+			params: {
+				...DEFAULT_NEURAL_GRAPH_PARAMS,
+				layoutShape: "radialCluster",
+				showEdges: false,
+				showLabels: true,
+				showRays: false,
+				showSignals: false,
+			},
+			selectedNodeId: null,
+			theme: "light",
+			viewport,
+		});
+		return ctx.calls;
+	};
 
-	drawNeuralGraph(ctx, layout, {
-		background: "transparent",
-		camera: createNeuralCamera(),
-		focusProgress: 0,
-		hoveredNodeId: null,
-		params: {
-			...DEFAULT_NEURAL_GRAPH_PARAMS,
-			layoutShape: "radialCluster",
-			showEdges: false,
-			showLabels: true,
-			showRays: false,
-			showSignals: false,
-		},
-		selectedNodeId: null,
-		theme: "light",
-		viewport,
-	});
+	const idleCalls = render(null);
+	assert.equal(idleCalls.some(([name]) => name === "fillText"), false);
 
 	assert.deepEqual(
-		ctx.calls.filter(([name]) => name === "fillText").map(([, text]) => text).sort(),
+		render("child").filter(([name]) => name === "fillText").map(([, text]) => text).sort(),
 		["Child", "Sibling"],
 	);
-	assert.ok(ctx.calls.some(([name]) => name === "rotate"));
-	assert.ok(ctx.calls.some(([name, value]) => name === "textAlign" && value === "right"));
+	const hoverCalls = render("child");
+	assert.ok(hoverCalls.some(([name]) => name === "rotate"));
+	assert.ok(hoverCalls.some(([name, value]) => name === "textAlign" && value === "right"));
+});
+
+test("drawNeuralGraph hides standard labels until a node is hovered", async () => {
+	const { createNeuralCamera } = await cameraModule;
+	const { DEFAULT_NEURAL_GRAPH_PARAMS } = await paramsModule;
+	const { drawNeuralGraph } = await rendererModule;
+	const viewport = { height: 260, width: 420 };
+	const graphNode = {
+		...layoutNode("hovered", 0),
+		node: { ...layoutNode("hovered", 0).node, title: "Hover target" },
+	};
+	const layout = {
+		edges: [],
+		nodes: [graphNode],
+		nodesById: new Map([[graphNode.id, graphNode]]),
+		origin: { x: 0, y: 0 },
+		viewport,
+	};
+	const params = {
+		...DEFAULT_NEURAL_GRAPH_PARAMS,
+		showEdges: false,
+		showLabels: true,
+		showRays: false,
+		showSignals: false,
+	};
+	const render = (hoveredNodeId, selectedNodeId = null, labelRevealProgress = undefined, labelNodeId = undefined) => {
+		const ctx = createRecordingCanvasContext();
+		drawNeuralGraph(ctx, layout, {
+			background: "transparent",
+			camera: createNeuralCamera(),
+			focusProgress: selectedNodeId ? 1 : 0,
+			hoveredNodeId,
+			labelNodeId,
+			labelRevealProgress,
+			params,
+			selectedNodeId,
+			theme: "light",
+			viewport,
+		});
+		return ctx.calls;
+	};
+
+	assert.equal(render(null).some(([name]) => name === "fillText"), false);
+	assert.equal(render(null, "hovered").some(([name]) => name === "fillText"), false);
+	assert.deepEqual(
+		render("hovered").filter(([name]) => name === "fillText").map(([, text]) => text),
+		["Hover target", "concept · 1 links"],
+	);
+	const fadeOutCalls = render(null, null, 0.5, "hovered");
+	assert.deepEqual(
+		fadeOutCalls.filter(([name]) => name === "fillText").map(([, text]) => text),
+		["Hover target", "concept · 1 links"],
+	);
+	assert.ok(fadeOutCalls.some(([name, value]) => name === "globalAlpha" && value > 0 && value < 1));
 });
 
 test("drawNeuralGraph keeps radial branches centered while ray tails start at the prompt origin", async () => {
@@ -2048,20 +2179,23 @@ test("drawNeuralGraph reveals node type colors during hover and selection", asyn
 	assert.equal(selectedCalls.some(([name, value]) => name === "fillStyle" && value === "#777777"), false);
 });
 
-test("drawNeuralGraph keeps selected scale exclusive to the selected node", async () => {
+test("drawNeuralGraph uses exactly two node radii while one node is selected", async () => {
 	const { createNeuralCamera } = await cameraModule;
 	const { DEFAULT_NEURAL_GRAPH_PARAMS } = await paramsModule;
 	const { drawNeuralGraph } = await rendererModule;
 	const viewport = { height: 200, width: 300 };
-	const selected = layoutNode("selected", 0);
-	const root = layoutNode("root", 80);
+	const selected = { ...layoutNode("selected", 0), baseSize: 11, depthScale: 2 };
+	const root = { ...layoutNode("root", 80), baseSize: 20, depthScale: 0.5 };
+	const distant = { ...layoutNode("distant", -80), baseSize: 3, depthScale: 1.8 };
 	root.node.kind = "entity";
+	distant.node.kind = "raw";
 	const layout = {
 		edges: [layoutEdge("active", selected, root)],
-		nodes: [selected, root],
+		nodes: [selected, root, distant],
 		nodesById: new Map([
 			[selected.id, selected],
 			[root.id, root],
+			[distant.id, distant],
 		]),
 		origin: { x: 0, y: 0 },
 		viewport,
@@ -2069,6 +2203,7 @@ test("drawNeuralGraph keeps selected scale exclusive to the selected node", asyn
 	const params = {
 		...DEFAULT_NEURAL_GRAPH_PARAMS,
 		glowIntensity: 0,
+		nodeSize: 4,
 		nodeRadius: 0,
 		nodeShape: "square",
 		selectedScale: 2,
@@ -2092,7 +2227,8 @@ test("drawNeuralGraph keeps selected scale exclusive to the selected node", asyn
 		.filter(([name]) => name === "rect")
 		.map(([, , , width]) => width);
 
-	assert.deepEqual(rectWidths, [8, 8, 20, 20]);
+	assert.deepEqual([...new Set(rectWidths)].sort((left, right) => left - right), [8, 16]);
+	assert.deepEqual(rectWidths, [8, 8, 8, 8, 16, 16]);
 });
 
 test("drawNeuralGraph keeps hovered nodes stationary while showing hover affordance", async () => {
@@ -2133,7 +2269,7 @@ test("drawNeuralGraph keeps hovered nodes stationary while showing hover afforda
 		.filter(([name]) => name === "rect")
 		.map(([, , , width]) => width);
 
-	assert.deepEqual(rectWidths, [8, 8]);
+	assert.deepEqual(rectWidths, [5, 5]);
 	assert.ok(ctx.calls.some(([name]) => name === "createRadialGradient"));
 });
 
@@ -2181,10 +2317,50 @@ test("hitTestNeuralNode returns the nearest rendered node", async () => {
 			layout,
 			params: DEFAULT_NEURAL_GRAPH_PARAMS,
 			point,
+			selectedNodeId: "selected",
 			viewport,
 		}).node.id,
 		"selected",
 	);
+});
+
+test("hitTestNeuralNode uses the same selected radius as the renderer", async () => {
+	const { createNeuralCamera, worldToViewport } = await cameraModule;
+	const { hitTestNeuralNode } = await interactionModule;
+	const { DEFAULT_NEURAL_GRAPH_PARAMS } = await paramsModule;
+	const viewport = { height: 220, width: 300 };
+	const camera = createNeuralCamera();
+	const selected = layoutNode("selected", 0);
+	const layout = {
+		edges: [],
+		nodes: [selected],
+		nodesById: new Map([[selected.id, selected]]),
+		origin: { x: 0, y: 0 },
+		viewport,
+	};
+	const params = {
+		...DEFAULT_NEURAL_GRAPH_PARAMS,
+		nodeSize: 4,
+		selectedScale: 3,
+	};
+	const center = worldToViewport(selected, camera, viewport, params);
+	const selectedOnlyPoint = { x: center.x + 16, y: center.y };
+
+	assert.equal(hitTestNeuralNode({
+		camera,
+		layout,
+		params,
+		point: selectedOnlyPoint,
+		viewport,
+	}), null);
+	assert.equal(hitTestNeuralNode({
+		camera,
+		layout,
+		params,
+		point: selectedOnlyPoint,
+		selectedNodeId: "selected",
+		viewport,
+	})?.node.id, "selected");
 });
 
 test("hitTestNeuralRay detects origin rays without treating graph edges as rays", async () => {
@@ -2400,6 +2576,58 @@ test("fitNeuralCameraToLayout keeps radial clusters pulled back when they alread
 	assert.ok(Math.abs(origin.x - viewport.width / 2) < 0.5);
 	assert.ok(Math.abs(origin.y - viewport.height / 2) < 0.5);
 	assert.ok(fitted.zoom <= 0.85, `expected radial camera to pull back, got zoom ${fitted.zoom}`);
+});
+
+test("fitNeuralCameraToLayout fits a selected radial neighborhood when fit nodes are provided", async () => {
+	const { createNeuralCamera, worldToViewport } = await cameraModule;
+	const { NEURAL_GRAPH_FIT_PADDING, fitNeuralCameraToLayout } = await cameraFitModule;
+	const { DEFAULT_NEURAL_GRAPH_PARAMS } = await paramsModule;
+	const viewport = { height: 720, width: 1280 };
+	const params = { ...DEFAULT_NEURAL_GRAPH_PARAMS, originY: 0.5, showLabels: false };
+	const selected = { ...layoutNode("selected", 260), y: -40 };
+	const neighbor = { ...layoutNode("neighbor", 420), y: 120 };
+	const nodes = [
+		{ ...layoutNode("left", -640), y: -360 },
+		selected,
+		neighbor,
+		{ ...layoutNode("right", 720), y: 380 },
+	];
+	const layout = {
+		edges: [],
+		layoutShape: "radialCluster",
+		nodes,
+		nodesById: new Map(nodes.map((node) => [node.id, node])),
+		origin: { x: 0, y: 0 },
+		treeBranches: [],
+		viewport,
+	};
+
+	const fullFit = fitNeuralCameraToLayout({
+		camera: createNeuralCamera(),
+		layout,
+		params,
+		viewport,
+	});
+	const selectedFit = fitNeuralCameraToLayout({
+		camera: createNeuralCamera(),
+		fitNodes: [selected, neighbor],
+		layout,
+		params,
+		viewport,
+	});
+
+	assert.ok(selectedFit.zoom > fullFit.zoom, `expected selected fit ${selectedFit.zoom} to exceed full fit ${fullFit.zoom}`);
+	for (const node of [selected, neighbor]) {
+		const screen = worldToViewport(node, selectedFit, viewport, params);
+		assert.ok(
+			screen.x >= NEURAL_GRAPH_FIT_PADDING - 0.5 && screen.x <= viewport.width - NEURAL_GRAPH_FIT_PADDING + 0.5,
+			`focused node ${node.id} x ${screen.x} outside padded canvas`,
+		);
+		assert.ok(
+			screen.y >= NEURAL_GRAPH_FIT_PADDING - 0.5 && screen.y <= viewport.height - NEURAL_GRAPH_FIT_PADDING + 0.5,
+			`focused node ${node.id} y ${screen.y} outside padded canvas`,
+		);
+	}
 });
 
 test("fitNeuralCameraToLayout returns finite cameras for empty and single-node layouts", async () => {

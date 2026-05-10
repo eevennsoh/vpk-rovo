@@ -119,6 +119,7 @@ function settleCameraFit({
 
 export function fitNeuralCameraToLayout({
 	camera,
+	fitNodes,
 	layout,
 	padding = NEURAL_GRAPH_FIT_PADDING,
 	params,
@@ -128,6 +129,7 @@ export function fitNeuralCameraToLayout({
 	zoomDeadband = 0,
 }: {
 	camera: NeuralCamera;
+	fitNodes?: ReadonlyArray<NeuralLayoutNode> | null;
 	layout: NeuralGraphLayout;
 	padding?: number;
 	params: NeuralGraphParams;
@@ -137,7 +139,8 @@ export function fitNeuralCameraToLayout({
 	zoomDeadband?: number;
 }): NeuralCamera {
 	const origin = getNeuralOrigin(viewport, params);
-	const bounds = getNeuralLayoutBounds(layout.nodes);
+	const boundsNodes = fitNodes && fitNodes.length > 0 ? fitNodes : layout.nodes;
+	const bounds = getNeuralLayoutBounds(boundsNodes);
 	if (!bounds) {
 		return { ...camera, x: 0, y: 0, zoom: clampFitZoom(1) };
 	}
@@ -147,7 +150,7 @@ export function fitNeuralCameraToLayout({
 	const availableHeight = Math.max(1, viewport.height - safePadding * 2);
 	const rawWidth = bounds.maxX - bounds.minX;
 	const rawHeight = bounds.maxY - bounds.minY;
-	if (layout.layoutShape === "radialCluster") {
+	if (layout.layoutShape === "radialCluster" && boundsNodes === layout.nodes) {
 		const radialPadding = getRadialFitPadding(safePadding, viewport, params);
 		const originViewport = {
 			x: origin.x,

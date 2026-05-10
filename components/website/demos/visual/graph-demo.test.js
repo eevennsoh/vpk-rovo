@@ -9,6 +9,10 @@ const RENDERER_SOURCE = fs.readFileSync(
 	path.join(__dirname, "../../../arts/personal-graph/lib/neural-graph/renderer.ts"),
 	"utf8",
 );
+const INTERACTION_SOURCE = fs.readFileSync(
+	path.join(__dirname, "../../../arts/personal-graph/lib/neural-graph/interaction.ts"),
+	"utf8",
+);
 const NEURAL_CANVAS_SOURCE = fs.readFileSync(
 	path.join(__dirname, "../../../arts/personal-graph/personal-graph-neural-canvas.tsx"),
 	"utf8",
@@ -96,6 +100,8 @@ test("Graph visual can be embedded as the live Personal Graph renderer", () => {
 	assert.match(GRAPH_SOURCE, /isLoading=\{isLoading\}/);
 	assert.match(GRAPH_SOURCE, /store\?: NeuralGraphStore;/);
 	assert.match(GRAPH_SOURCE, /const graphStore = useMemo\(\(\) => providedStore \?\? createNeuralGraphStore\(explorer\), \[explorer, providedStore\]\);/);
+	assert.match(GRAPH_SOURCE, /const fallbackSelectedNodeId = getDefaultNeuralGraphSelectedNodeId\(graphStore\);/);
+	assert.match(GRAPH_SOURCE, /onSelectedNodeIdChange\?\.\(fallbackSelectedNodeId\)/);
 	assert.match(GRAPH_SOURCE, /store=\{graphStore\}/);
 	assert.match(NEURAL_CANVAS_SOURCE, /store\?: NeuralGraphStore;/);
 	assert.match(NEURAL_CANVAS_SOURCE, /const store = useMemo\(\(\) => providedStore \?\? createNeuralGraphStore\(explorer\), \[explorer, providedStore\]\);/);
@@ -161,7 +167,8 @@ test("Graph renderer exposes hover, ray, edge, and label toggles through params"
 	assert.match(NEURAL_CANVAS_SOURCE, /height: params\.originMarkerSize/);
 	assert.doesNotMatch(NEURAL_CANVAS_SOURCE, /border-2/);
 	assert.match(RENDERER_SOURCE, /options\.params\.hoverScale/);
-	assert.match(RENDERER_SOURCE, /options\.params\.selectedScale/);
+	assert.match(RENDERER_SOURCE, /getNodeViewportRadius\(node, options\.camera, options\.params, options\.selectedNodeId\)/);
+	assert.match(INTERACTION_SOURCE, /params\.selectedScale/);
 	assert.match(RENDERER_SOURCE, /function getNodeTypeColor/);
 	assert.match(RENDERER_SOURCE, /function shouldRevealNodeTypeColors/);
 	assert.match(RENDERER_SOURCE, /options\.params\.edgeColor/);
@@ -302,7 +309,7 @@ test("Graph controls expose signal streak parameters", () => {
 	assert.match(RENDERER_SOURCE, /options\.params\.signalLength/);
 	assert.match(RENDERER_SOURCE, /options\.params\.signalOpacity/);
 	assert.match(RENDERER_SOURCE, /options\.params\.signalWidth/);
-	assert.match(RENDERER_SOURCE, /options\.selectedNodeId \|\| options\.hoveredNodeId/);
+	assert.match(RENDERER_SOURCE, /shouldRevealNodeTypeColors/);
 	assert.match(DETAILS_SOURCE, /signal streaks/);
 });
 

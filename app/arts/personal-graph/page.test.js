@@ -577,13 +577,15 @@ test("Personal Graph leaves the page header transparent over the backdrop grid",
 	assert.doesNotMatch(SURFACE_SOURCE, /contentClassName="relative flex flex-col items-center gap-4"/);
 });
 
-test("Personal Graph hides node details until a node is selected", () => {
-	assert.match(
-		SURFACE_SOURCE,
-		/const \[selectedNodeId, setSelectedNodeId\] = useState<string \| null>\(null\);/,
-	);
+test("Personal Graph falls back to the top-ranked node selection when graph data exists", () => {
+	assert.match(SURFACE_SOURCE, /const defaultSelectedNodeId = getDefaultNeuralGraphSelectedNodeId\(accessibleGraph\);/);
+	assert.match(SURFACE_SOURCE, /if \(current && accessibleGraph\.nodesById\.has\(current\)\) return current;/);
+	assert.match(SURFACE_SOURCE, /return defaultSelectedNodeId;/);
+	assert.match(SURFACE_SOURCE, /const selectDefaultNode = useCallback/);
 	assert.match(SURFACE_SOURCE, /function getSelectedNode\(explorer: VaultExplorer \| null, selectedNodeId: string \| null\)/);
 	assert.match(SURFACE_SOURCE, /if \(!explorer \|\| !selectedNodeId\) return null;/);
+	assert.match(NEURAL_STORE_SOURCE, /function getDefaultNeuralGraphSelectedNodeId/);
+	assert.match(NEURAL_STORE_SOURCE, /store\.rankedNodes\[0\]\?\.id \?\? null/);
 	assert.doesNotMatch(SURFACE_SOURCE, /right\.connectionCount - left\.connectionCount/);
 });
 
@@ -592,7 +594,7 @@ test("Personal Graph keeps the owned canvas renderer accessible", () => {
 	assert.doesNotMatch(SURFACE_SOURCE, /<summary>/);
 	assert.match(
 		SURFACE_SOURCE,
-		/import \{ createNeuralGraphStore \} from "\.\/lib\/neural-graph\/store";/,
+		/import \{ createNeuralGraphStore, getDefaultNeuralGraphSelectedNodeId \} from "\.\/lib\/neural-graph\/store";/,
 	);
 	assert.match(
 		SURFACE_SOURCE,
@@ -672,11 +674,13 @@ test("Personal Graph derives responsive graph params from the route stage", () =
 	assert.match(SURFACE_SOURCE, /new ResizeObserver\(updateViewport\)/);
 	assert.match(SURFACE_SOURCE, /const responsiveGraphParams = useResponsivePersonalGraphParams\(graphStageRef\);/);
 	assert.match(SURFACE_SOURCE, /ref=\{graphStageRef\}/);
-	assert.match(SURFACE_SOURCE, /getResponsivePersonalGraphParams\(viewport, ROVO_GRAPH_DEFAULT_PARAMS\)/);
+	assert.match(SURFACE_SOURCE, /setResponsiveParamsForViewport\(viewport\)/);
 	assert.match(SURFACE_SOURCE, /shouldAnimateResponsivePersonalGraphParams/);
 	assert.match(SURFACE_SOURCE, /const targetWidthMV = useMotionValue<number>/);
 	assert.match(SURFACE_SOURCE, /const smoothWidthMV = useSpring/);
 	assert.match(SURFACE_SOURCE, /smoothWidthMV\.on\("change"/);
+	assert.match(SURFACE_SOURCE, /setParams\(\(currentParams\) => \{/);
+	assert.match(SURFACE_SOURCE, /areResponsivePersonalGraphParamsEqual\(currentParams, nextParams\)/);
 	assert.match(SURFACE_SOURCE, /targetWidthMV\.jump\(viewport\.width\)/);
 	assert.match(SURFACE_SOURCE, /smoothWidthMV\.jump\(viewport\.width\)/);
 	assert.match(SURFACE_SOURCE, /targetWidthMV\.set\(viewport\.width\)/);
@@ -846,7 +850,11 @@ test("Personal Graph exposes primary graph actions through a curved control flyo
 });
 
 test("Personal Graph focuses and clears selection through the owned interaction layer", () => {
-	assert.match(NEURAL_CANVAS_SOURCE, /focusNeuralCameraOnPoint/);
+	assert.doesNotMatch(NEURAL_CANVAS_SOURCE, /focusNeuralCameraOnPoint/);
+	assert.match(NEURAL_CANVAS_SOURCE, /getSelectedCameraFitNodes/);
+	assert.match(NEURAL_CANVAS_SOURCE, /getNodeNeighbors/);
+	assert.match(NEURAL_CANVAS_SOURCE, /fitNodes/);
+	assert.match(NEURAL_CANVAS_SOURCE, /focusProgress: 1/);
 	assert.match(NEURAL_CANVAS_SOURCE, /focusProgressRef/);
 	assert.match(NEURAL_CANVAS_SOURCE, /focusProgress: focusProgressRef\.current/);
 	assert.match(NEURAL_LAYOUT_SOURCE, /applySelectionFocusLayout/);
@@ -861,9 +869,11 @@ test("Personal Graph focuses and clears selection through the owned interaction 
 	assert.match(NEURAL_RENDERER_SOURCE, /lineTo/);
 	assert.doesNotMatch(NEURAL_RENDERER_SOURCE, /drawOrganicEdgePath/);
 	assert.match(NEURAL_CANVAS_SOURCE, /hitTestNeuralNode/);
+	assert.match(NEURAL_CANVAS_SOURCE, /selectedNodeId,\s+viewport,/);
 	assert.match(NEURAL_CANVAS_SOURCE, /onClearSelection\(\)/);
 	assert.match(GRAPH_SOURCE, /onClearSelection=\{handleClearSelection\}/);
-	assert.match(GRAPH_SOURCE, /onSelectedNodeIdChange\?\.\(null\)/);
+	assert.match(GRAPH_SOURCE, /onSelectedNodeIdChange\?\.\(fallbackSelectedNodeId\)/);
+	assert.match(SURFACE_SOURCE, /onClose=\{selectDefaultNode\}/);
 	assert.match(SURFACE_SOURCE, /onSelectedNodeIdChange=\{setSelectedNodeId\}/);
 });
 

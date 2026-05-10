@@ -5,8 +5,11 @@ const { spawn } = require("node:child_process");
 const TWG_BIN = process.env.TWG_BIN || "twg";
 const DEFAULT_TWG_DEPTH = 2;
 const DEFAULT_TWG_FANOUT_LIMIT = 10;
+const ARTIFACT_TITLE_HYDRATION_CONCURRENCY = 8;
+const ARTIFACT_TITLE_HYDRATION_TIMEOUT_MS = 20000;
 const DEFAULT_TWG_DEPTH_ENV_KEY = "PERSONAL_GRAPH_TWG_DEFAULT_DEPTH";
 const FANOUT_LIMIT_ENV_KEY = "PERSONAL_GRAPH_TWG_FANOUT_LIMIT";
+const HYDRATION_TIMEOUT_ENV_KEY = "PERSONAL_GRAPH_TWG_ARTIFACT_HYDRATION_TIMEOUT_MS";
 const GENERIC_EDGE_KIND = "related";
 
 const RELATIONSHIP_TO_EDGE_KIND = new Map([
@@ -56,6 +59,16 @@ function prettifyType(type) {
 	return String(type).replace(/([a-z])([A-Z])/gu, "$1 $2");
 }
 
+function parseConfluenceAri(ari) {
+	if (typeof ari !== "string") return null;
+	const match = ari.match(/^ari:cloud:confluence:([^:]+):([^/]+)\/(.+)$/u);
+	if (!match) return null;
+	return {
+		cloudId: match[1],
+		resourceId: match[3],
+	};
+}
+
 function deriveTitleFromAri(ari, type) {
 	if (typeof ari !== "string" || !ari) return prettifyType(type);
 	const tail = ari.split("/").filter(Boolean).at(-1) ?? ari;
@@ -87,16 +100,24 @@ function getNodeType(node) {
 	return getNonEmptyString(node?.frontmatter?.type) ?? getNonEmptyString(node?.type);
 }
 
+function getObjectDisplayTitle(object) {
+	return (
+		getNonEmptyString(object?.name) ??
+		getNonEmptyString(object?.title) ??
+		getNonEmptyString(object?.displayName)
+	);
+}
+
 function mapObjectToNode(object, { fallbackTitle = null } = {}) {
 	if (!object || typeof object !== "object" || typeof object.ari !== "string" || !object.ari) {
 		return null;
 	}
 	const kind = TARGET_TYPE_TO_NODE_KIND.get(object.type) ?? "source";
-	const name = getNonEmptyString(object.name);
-	const title = name ?? fallbackTitle ?? deriveTitleFromAri(object.ari, object.type);
+	const displayTitle = getObjectDisplayTitle(object);
+	const title = displayTitle ?? fallbackTitle ?? deriveTitleFromAri(object.ari, object.type);
 	const externalUrl = getNonEmptyString(object.url);
 	return {
-		bodyPreview: name ? "" : prettifyType(object.type),
+		bodyPreview: displayTitle ? "" : prettifyType(object.type),
 		connectionCount: 0,
 		dangling: false,
 		externalUrl,
@@ -113,6 +134,155 @@ function mapObjectToNode(object, { fallbackTitle = null } = {}) {
 		title,
 		updatedAt: null,
 	};
+}
+
+function getConfluenceArtifactArgs(node) {
+	const nodeType = getNodeType(node);
+	const ari = getNonEmptyString(node?.frontmatter?.ari) ?? getNonEmptyString(node?.id);
+	const parsedAri = parseConfluenceAri(ari);
+	const resourceId = parsedAri?.resourceId ?? getNonEmptyString(node?.id);
+	if (!resourceId) return null;
+
+	const siteArgs = parsedAri?.cloudId ? ["--site", parsedAri.cloudId] : [];
+	if (nodeType === "ConfluencePage") {
+		return [
+			"confluence",
+			"page",
+			"get",
+			"--page",
+			resourceId,
+			...siteArgs,
+			"--body",
+			"none",
+			"--comments",
+			"none",
+			"--skip-ancestors",
+			"--output",
+			"json",
+		];
+	}
+	if (nodeType === "ConfluenceBlogPost") {
+		return ["confluence", "blog", "get", resourceId, ...siteArgs, "--output", "json"];
+	}
+	if (nodeType === "ConfluenceWhiteboard") {
+		return ["confluence", "whiteboard", "get", resourceId, ...siteArgs, "--output", "json"];
+	}
+	if (nodeType === "ConfluenceSpace") {
+		return ["confluence", "space", "get", resourceId, ...siteArgs, "--output", "json"];
+	}
+	return null;
+}
+
+function getWebUrlFromArtifactData(data) {
+	const webUrl = getNonEmptyString(data?.webUrl) ?? getNonEmptyString(data?.url);
+	if (webUrl) return webUrl;
+
+	const links = data?.links && typeof data.links === "object" ? data.links : data?._links;
+	const base = getNonEmptyString(links?.base);
+	const webUi = getNonEmptyString(links?.webUi) ?? getNonEmptyString(links?.webui);
+	if (base && webUi) return `${base}${webUi}`;
+	return null;
+}
+
+function hasDerivedArtifactTitle(node) {
+	const nodeType = getNodeType(node);
+	const ari = getNonEmptyString(node?.frontmatter?.ari) ?? getNonEmptyString(node?.id);
+	const title = getNonEmptyString(node?.title) ?? getNonEmptyString(node?.label);
+	return Boolean(nodeType && ari && title === deriveTitleFromAri(ari, nodeType));
+}
+
+function shouldHydrateArtifactTitle(node) {
+	return Boolean(getConfluenceArtifactArgs(node) && (!getNonEmptyString(node?.title) || hasDerivedArtifactTitle(node)));
+}
+
+function createArtifactHydrationSignal(parentSignal) {
+	const controller = new AbortController();
+	let parentAbortHandler = null;
+	const timeout = setTimeout(() => {
+		controller.abort(new Error("TWG artifact title hydration timed out"));
+	}, getPositiveIntegerFromEnv(HYDRATION_TIMEOUT_ENV_KEY, ARTIFACT_TITLE_HYDRATION_TIMEOUT_MS));
+
+	if (parentSignal?.aborted) {
+		controller.abort(parentSignal.reason);
+	} else if (parentSignal) {
+		parentAbortHandler = () => controller.abort(parentSignal.reason);
+		parentSignal.addEventListener("abort", parentAbortHandler, { once: true });
+	}
+
+	return {
+		clear() {
+			clearTimeout(timeout);
+			if (parentAbortHandler) {
+				parentSignal.removeEventListener("abort", parentAbortHandler);
+			}
+		},
+		signal: controller.signal,
+	};
+}
+
+async function hydrateArtifactNode(node, { signal, spawnImpl } = {}) {
+	const args = getConfluenceArtifactArgs(node);
+	if (!args) return node;
+	const hydrationSignal = createArtifactHydrationSignal(signal);
+	try {
+		const stdout = await runTwg(args, { signal: hydrationSignal.signal, spawnImpl });
+		const payload = parseJsonOrThrow(stdout, args);
+		const data = payload?.data && typeof payload.data === "object" ? payload.data : {};
+		const title = getNonEmptyString(data.title) ?? getNonEmptyString(data.name);
+		const externalUrl = getWebUrlFromArtifactData(data);
+		if (!title && !externalUrl) return node;
+		return {
+			...node,
+			bodyPreview: title ? "" : node.bodyPreview,
+			externalUrl: externalUrl ?? node.externalUrl,
+			label: title ?? node.label,
+			title: title ?? node.title,
+		};
+	} catch {
+		return node;
+	} finally {
+		hydrationSignal.clear();
+	}
+}
+
+async function mapWithConcurrency(items, limit, mapper) {
+	const results = new Array(items.length);
+	let nextIndex = 0;
+	const workerCount = Math.min(Math.max(1, limit), items.length);
+	await Promise.all(Array.from({ length: workerCount }, async () => {
+		while (nextIndex < items.length) {
+			const currentIndex = nextIndex;
+			nextIndex += 1;
+			results[currentIndex] = await mapper(items[currentIndex], currentIndex);
+		}
+	}));
+	return results;
+}
+
+function getArtifactTitleHydrationTargets(nodes, limit) {
+	const targets = nodes
+		.filter(shouldHydrateArtifactTitle)
+		.sort((left, right) => (
+			(right.connectionCount ?? 0) - (left.connectionCount ?? 0) ||
+			String(left.title ?? left.id).localeCompare(String(right.title ?? right.id))
+		));
+	const resolvedLimit = Number.isInteger(limit) && limit > 0 ? limit : targets.length;
+	return targets.slice(0, resolvedLimit);
+}
+
+async function hydrateTwgArtifactTitles(explorer, { limit, signal, spawnImpl } = {}) {
+	const nodes = Array.isArray(explorer?.nodes) ? explorer.nodes : [];
+	const targets = getArtifactTitleHydrationTargets(nodes, limit);
+	if (targets.length === 0) return explorer;
+
+	const hydratedNodes = await mapWithConcurrency(
+		targets,
+		ARTIFACT_TITLE_HYDRATION_CONCURRENCY,
+		(node) => hydrateArtifactNode(node, { signal, spawnImpl }),
+	);
+	const hydratedNodesById = new Map(hydratedNodes.map((node) => [node.id, node]));
+	const nodesById = new Map(nodes.map((node) => [node.id, hydratedNodesById.get(node.id) ?? node]));
+	return finalizeExplorer(nodesById, explorer.edges ?? [], explorer.generatedAt);
 }
 
 function classifyRelationshipToEdgeKind(relationshipName) {
@@ -394,12 +564,12 @@ function getSupportedExpansionNodes(explorer, rootNodeId, fanoutLimit) {
 		.slice(0, limit);
 }
 
-async function buildTwgExplorer({ depth, fanoutLimit, signal, since, spawnImpl } = {}) {
+async function buildTwgExplorer({ depth, fanoutLimit, hydrateArtifactTitles = true, signal, since, spawnImpl } = {}) {
 	const payload = await fetchContextUser({ signal, since, spawnImpl });
 	let explorer = normalizeContextResponse(payload);
 	const resolvedDepth = depth === undefined ? getDefaultDepth() : Math.min(2, Math.max(1, Number.parseInt(depth, 10) || 1));
 	if (resolvedDepth < 2) {
-		return explorer;
+		return hydrateArtifactTitles ? hydrateTwgArtifactTitles(explorer, { signal, spawnImpl }) : explorer;
 	}
 
 	const rootNodeId = payload?.data?.object?.ari;
@@ -409,10 +579,10 @@ async function buildTwgExplorer({ depth, fanoutLimit, signal, since, spawnImpl }
 		if (!expansionPayload) continue;
 		explorer = mergeTwgExplorers(explorer, normalizeContextResponse(expansionPayload));
 	}
-	return explorer;
+	return hydrateArtifactTitles ? hydrateTwgArtifactTitles(explorer, { signal, spawnImpl }) : explorer;
 }
 
-async function expandTwgExplorerNode({ explorer, nodeId, signal, since, spawnImpl } = {}) {
+async function expandTwgExplorerNode({ explorer, hydrateArtifactTitles = true, nodeId, signal, since, spawnImpl } = {}) {
 	if (!explorer || typeof explorer !== "object") {
 		const error = new Error("Team Work Graph expansion requires a cached explorer.");
 		error.code = "TWG_CACHE_REQUIRED";
@@ -445,17 +615,18 @@ async function expandTwgExplorerNode({ explorer, nodeId, signal, since, spawnImp
 	const beforeEdgeIds = new Set((explorer.edges ?? []).map((entry) => entry.id));
 	const payload = await fetchContextForNode(node, { signal, since, spawnImpl });
 	const merged = mergeTwgExplorers(explorer, normalizeContextResponse(payload));
+	const hydrated = hydrateArtifactTitles ? await hydrateTwgArtifactTitles(merged, { signal, spawnImpl }) : merged;
 	return {
-		addedEdgeCount: merged.edges.filter((edge) => !beforeEdgeIds.has(edge.id)).length,
-		addedNodeCount: merged.nodes.filter((entry) => !beforeNodeIds.has(entry.id)).length,
+		addedEdgeCount: hydrated.edges.filter((edge) => !beforeEdgeIds.has(edge.id)).length,
+		addedNodeCount: hydrated.nodes.filter((entry) => !beforeNodeIds.has(entry.id)).length,
 		expandedNodeId: resolvedNodeId,
-		explorer: merged,
+		explorer: hydrated,
 	};
 }
 
-async function fetchSlice(slice, params = {}, { signal, spawnImpl } = {}) {
+async function fetchSlice(slice, params = {}, { hydrateArtifactTitles = true, signal, spawnImpl } = {}) {
 	if (slice === "context-user") {
-		return buildTwgExplorer({ signal, since: params.since, spawnImpl });
+		return buildTwgExplorer({ hydrateArtifactTitles, signal, since: params.since, spawnImpl });
 	}
 	throw new Error(`Unknown TWG slice: ${slice}`);
 }
@@ -477,6 +648,7 @@ module.exports = {
 	fetchContextUser,
 	fetchSlice,
 	getTwgContextArgsForNode,
+	hydrateTwgArtifactTitles,
 	mergeTwgExplorers,
 	normalizeContextResponse,
 };

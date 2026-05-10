@@ -327,6 +327,44 @@ test("GET /api/personal-graph/explorer returns cached TWG payload when source is
 	assert.equal(body.nodes.length, 1);
 });
 
+test("GET /api/personal-graph/explorer hydrates stale cached TWG artifact titles", async (t) => {
+	const { sourcePath, cachePath } = configureTwgEnv(t);
+	fs.writeFileSync(sourcePath, JSON.stringify({ source: "twg" }), "utf8");
+	const cachedExplorer = createCachedTwgExplorer();
+	cachedExplorer.nodes[0].label = "Confluence Page 1";
+	cachedExplorer.nodes[0].title = "Confluence Page 1";
+	fs.writeFileSync(cachePath, JSON.stringify(cachedExplorer), "utf8");
+
+	const originalHydrate = twgSource.hydrateTwgArtifactTitles;
+	twgSource.hydrateTwgArtifactTitles = async (explorer, options) => {
+		assert.equal(options.limit, 32);
+		return {
+			...explorer,
+			nodes: explorer.nodes.map((node) => ({
+				...node,
+				externalUrl: "https://hello.atlassian.net/wiki/spaces/ENG/pages/1/Roadmap",
+				label: "Roadmap",
+				title: "Roadmap",
+			})),
+		};
+	};
+	t.after(() => {
+		twgSource.hydrateTwgArtifactTitles = originalHydrate;
+	});
+
+	const response = await dispatch(createPersonalGraphTestApp(), {
+		url: "/api/personal-graph/explorer",
+	});
+	const body = await response.json();
+	await new Promise((resolve) => setImmediate(resolve));
+	const persisted = JSON.parse(fs.readFileSync(cachePath, "utf8"));
+
+	assert.equal(response.status, 200);
+	assert.equal(body.nodes[0].title, "Confluence Page 1");
+	assert.equal(persisted.nodes[0].title, "Roadmap");
+	assert.equal(persisted.nodes[0].externalUrl, "https://hello.atlassian.net/wiki/spaces/ENG/pages/1/Roadmap");
+});
+
 test("POST /api/personal-graph/twg/expand expands a cached TWG explorer and updates cache", async (t) => {
 	const { cachePath } = configureTwgEnv(t);
 	const cachedExplorer = createCachedTwgExplorer();
