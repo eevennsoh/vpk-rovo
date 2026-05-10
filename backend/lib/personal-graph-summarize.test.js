@@ -10,7 +10,6 @@ const {
 	normalizeSummaryOutput,
 	resolveSummarizeBinary,
 	runSummarizeCli,
-	summarizeRawWithGateway,
 } = require("./personal-graph-summarize");
 const {
 	assertVaultBoundPath,
@@ -161,24 +160,4 @@ test("captured URL raw nodes forward the original frontmatter URL to summarize",
 
 	assert.equal(prepared.input, "https://example.com/article");
 	assert.equal(prepared.inputKind, "url");
-});
-
-test("legacy gateway summarizer remains available for tests", async () => {
-	const aiGatewayProvider = {
-		generateText: async () => JSON.stringify({ summary: "Short summary", takeaways: ["One", "Two", "Three"] }),
-	};
-	assert.deepEqual(await summarizeRawWithGateway({ content: "Body" }, { aiGatewayProvider }), {
-		summary: "Short summary",
-		takeaways: ["One", "Two", "Three"],
-	});
-});
-
-test("legacy gateway summarizer throws typed error on malformed JSON shape", async () => {
-	const aiGatewayProvider = {
-		generateText: async () => JSON.stringify({ nope: true }),
-	};
-	await assert.rejects(
-		() => summarizeRawWithGateway({ content: "Body" }, { aiGatewayProvider }),
-		(error) => error?.code === "MALFORMED_SUMMARY",
-	);
 });

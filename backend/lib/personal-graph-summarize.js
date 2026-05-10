@@ -4,8 +4,6 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { execFile } = require("node:child_process");
 
-const { createAIGatewayProvider } = require("./ai-gateway-provider");
-
 const SUMMARY_LENGTHS = new Set(["short", "medium", "long"]);
 const DEFAULT_SUMMARIZE_MODEL = "auto";
 const DEFAULT_SUMMARIZE_TIMEOUT_MS = 180000;
@@ -14,12 +12,6 @@ const SUMMARIZE_TIMEOUT_ENV_KEY = "PERSONAL_GRAPH_SUMMARIZE_TIMEOUT_MS";
 const SUMMARIZE_BIN_ENV_KEY = "PERSONAL_GRAPH_SUMMARIZE_BIN";
 const REPO_ROOT = path.join(__dirname, "..", "..");
 const TEMP_ROOT = path.join(REPO_ROOT, ".tmp", "personal-graph", "summarize");
-
-const SUMMARIZE_PROMPT = [
-	"Summarize this raw source for a personal second-brain librarian.",
-	"Return JSON only with shape {\"takeaways\":[string,string,string,string,string],\"summary\":\"string\"}.",
-	"Use 3 to 5 concise takeaways. Do not include markdown fences.",
-].join("\n");
 
 function getNonEmptyString(value) {
 	if (typeof value !== "string") {
@@ -257,18 +249,6 @@ async function summarizeRaw({ content, input, kind = "markdown", length = "mediu
 	}
 }
 
-function parseJsonObject(text) {
-	try {
-		return JSON.parse(text);
-	} catch {
-		const match = String(text).match(/\{[\s\S]*\}/u);
-		if (match) {
-			return JSON.parse(match[0]);
-		}
-		throw new Error("Model response was not valid JSON.");
-	}
-}
-
 function validateSummaryShape(value) {
 	if (!value || typeof value !== "object") {
 		const error = new Error("Summary response was not an object.");
@@ -286,41 +266,17 @@ function validateSummaryShape(value) {
 	return { summary: value.summary.trim(), takeaways };
 }
 
-async function summarizeRawWithGateway({ content, kind = "markdown", provider } = {}, { aiGatewayProvider } = {}) {
-	const gateway = aiGatewayProvider ?? createAIGatewayProvider({ logger: console });
-	try {
-		const text = await gateway.generateText({
-			maxOutputTokens: 900,
-			prompt: `Kind: ${kind}\n\n${content}`,
-			provider,
-			system: SUMMARIZE_PROMPT,
-			temperature: 0.2,
-		});
-		return validateSummaryShape(parseJsonObject(text));
-	} catch (error) {
-		if (error?.code === "MALFORMED_SUMMARY") {
-			throw error;
-		}
-		const wrapped = new Error(`Failed to summarize raw source: ${error instanceof Error ? error.message : String(error)}`);
-		wrapped.code = "SUMMARIZE_FAILED";
-		wrapped.cause = error;
-		throw wrapped;
-	}
-}
-
 module.exports = {
 	DEFAULT_SUMMARIZE_MODEL,
 	DEFAULT_SUMMARIZE_TIMEOUT_MS,
 	SUMMARIZE_BIN_ENV_KEY,
 	SUMMARIZE_MODEL_ENV_KEY,
-	SUMMARIZE_PROMPT,
 	SUMMARIZE_TIMEOUT_ENV_KEY,
 	normalizeSummaryLength,
 	normalizeSummaryOutput,
 	resolveSummarizeBinary,
 	runSummarizeCli,
 	summarizeRaw,
-	summarizeRawWithGateway,
 	validateSummaryShape,
 	writeTemporarySummaryInput,
 };
