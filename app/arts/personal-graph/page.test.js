@@ -683,6 +683,23 @@ test("Personal Graph keeps the owned canvas renderer accessible", () => {
 	assert.match(NEURAL_CANVAS_SOURCE, /<SelectedNodeOverlay/);
 });
 
+test("Personal Graph reuses the settled focused layout when fitting the selected-node camera", () => {
+	assert.match(NEURAL_CANVAS_SOURCE, /const FOCUS_PROGRESS_SETTLED_EPSILON = 0\.001;/);
+	assert.match(NEURAL_CANVAS_SOURCE, /fullyFocusedLayout\?: NeuralGraphLayout \| null;/);
+	assert.match(
+		NEURAL_CANVAS_SOURCE,
+		/const fitLayout = fullyFocusedLayout \?\? computeNeuralGraphLayout\(\{[\s\S]*?focusProgress: 1,/,
+	);
+	assert.match(
+		NEURAL_CANVAS_SOURCE,
+		/focusProgressRef\.current >= 1 - FOCUS_PROGRESS_SETTLED_EPSILON &&[\s\S]*?layoutFocusNodeId === selectedNodeId[\s\S]*?\? lockedTargetLayout[\s\S]*?: null;/,
+	);
+	assert.match(
+		NEURAL_CANVAS_SOURCE,
+		/focusProgressRef\.current = settledHidden \? 0 : settledShown \? 1 : nextFocusProgress;/,
+	);
+});
+
 test("Personal Graph derives responsive graph params from the route stage", () => {
 	assert.match(SURFACE_SOURCE, /function useResponsivePersonalGraphParams/);
 	assert.match(SURFACE_SOURCE, /new ResizeObserver\(updateViewport\)/);
@@ -879,7 +896,7 @@ test("Personal Graph focuses and clears selection through the owned interaction 
 	assert.match(NEURAL_LAYOUT_SOURCE, /selectedNodeId: focusNodeId \?\? selectedNodeId/);
 	assert.match(NEURAL_CANVAS_SOURCE, /selectedNodeIdRef\.current = selectedNodeId;/);
 	assert.match(NEURAL_CANVAS_SOURCE, /if \(selectedNodeId\) \{\s+layoutFocusNodeIdRef\.current = selectedNodeId;/);
-	assert.match(NEURAL_CANVAS_SOURCE, /if \(settled && !selectedNodeIdRef\.current\) \{/);
+	assert.match(NEURAL_CANVAS_SOURCE, /if \(settledHidden && !selectedNodeIdRef\.current\) \{/);
 	assert.doesNotMatch(NEURAL_CANVAS_SOURCE, /cameraRef\.current = createNeuralCamera\(\{ zoom: cameraRef\.current\.zoom \}\);/);
 	assert.match(NEURAL_CANVAS_SOURCE, /const shouldFreezeHoveredNode = Boolean\(hoveredNodeId && hoveredNodePosition\);/);
 	assert.match(NEURAL_CANVAS_SOURCE, /hoveredNodeIdRef\.current = null;/);
