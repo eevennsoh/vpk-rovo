@@ -14,6 +14,8 @@ paths:
 
 - When a `POST` route consumes JSON before proxying, use `readJsonBody()` or a route-local wrapper around it instead of manual `request.json()` / `JSON.parse()` handling.
 - Add or keep focused route tests for malformed JSON. The test should assert the public error shape for that route and prove the backend/proxy call is not reached.
+- When a proxy route rewrites query params, path params, or JSON field names before forwarding, add or keep a focused route test that proves the forwarded request shape. Cover the exact behavior that lives in the proxy layer, not just the backend handler behind it.
+- Prefer `app/api/**/route.test.js` coverage when the contract risk is in the Next.js proxy route. Backend tests alone do not prove that the proxy preserved the public request contract.
 - Match the route's existing response contract: most dev proxy routes return JSON errors, while transport-specific routes such as `app/api/chat-sdk/route.ts` intentionally normalize client-body errors to `text/plain`.
 
 ## Backend (`backend/server.js`)
