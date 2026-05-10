@@ -239,6 +239,9 @@ async function hydrateArtifactNode(node, { signal, spawnImpl } = {}) {
 			title: title ?? node.title,
 		};
 	} catch {
+		if (signal?.aborted) {
+			throw signal.reason ?? new Error("TWG artifact title hydration aborted");
+		}
 		return node;
 	} finally {
 		hydrationSignal.clear();
