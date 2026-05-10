@@ -92,6 +92,7 @@ const LAYOUT_SMOOTHING_MS = 95;
 const CAMERA_FIT_SMOOTHING_MS = 520;
 const CAMERA_FIT_POSITION_DEADBAND_PX = 1.5;
 const CAMERA_FIT_ZOOM_DEADBAND = 0.003;
+const FOCUS_PROGRESS_SETTLED_EPSILON = 0.001;
 
 function getFrameBlend(elapsedMs: number, smoothingMs: number) {
 	if (!Number.isFinite(elapsedMs) || elapsedMs <= 0) return 1;
@@ -234,6 +235,7 @@ function getSelectedCameraFitNodes({
 }
 
 function getCameraFitTarget({
+	fullyFocusedLayout,
 	interaction,
 	layout,
 	params,
@@ -243,6 +245,7 @@ function getCameraFitTarget({
 	time,
 	viewport,
 }: {
+	fullyFocusedLayout?: NeuralGraphLayout | null;
 	interaction: NeuralGraphInteractionState | null;
 	layout: NeuralGraphLayout;
 	params: NeuralGraphParams;
@@ -256,7 +259,7 @@ function getCameraFitTarget({
 		return { fitLayout: layout, fitNodes: null };
 	}
 
-	const fitLayout = computeNeuralGraphLayout({
+	const fitLayout = fullyFocusedLayout ?? computeNeuralGraphLayout({
 		focusProgress: 1,
 		interaction,
 		params,
@@ -504,7 +507,14 @@ export function PersonalGraphNeuralCanvas({
 				: lockedTargetLayout;
 			layoutRef.current = layout;
 			if (!shouldFreezeHoveredNode) {
+				const fullyFocusedLayout = (
+					focusProgressRef.current >= 1 - FOCUS_PROGRESS_SETTLED_EPSILON &&
+					layoutFocusNodeId === selectedNodeId
+				)
+					? lockedTargetLayout
+					: null;
 				const { fitLayout, fitNodes } = getCameraFitTarget({
+					fullyFocusedLayout,
 					interaction: interactionRef.current,
 					layout,
 					params,
@@ -596,9 +606,10 @@ export function PersonalGraphNeuralCanvas({
 
 	useEffect(() => {
 		return focusProgressMV.on("change", (nextFocusProgress) => {
-			const settled = nextFocusProgress < 0.001;
-			focusProgressRef.current = settled ? 0 : nextFocusProgress;
-			if (settled && !selectedNodeIdRef.current) {
+			const settledHidden = nextFocusProgress < FOCUS_PROGRESS_SETTLED_EPSILON;
+			const settledShown = nextFocusProgress >= 1 - FOCUS_PROGRESS_SETTLED_EPSILON;
+			focusProgressRef.current = settledHidden ? 0 : settledShown ? 1 : nextFocusProgress;
+			if (settledHidden && !selectedNodeIdRef.current) {
 				layoutFocusNodeIdRef.current = null;
 			}
 			requestRenderRef.current();
