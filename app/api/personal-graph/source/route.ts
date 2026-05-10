@@ -1,4 +1,5 @@
 import { proxyToBackend } from "@/app/api/_utils/proxy";
+import { readJsonBody } from "@/app/api/_utils/read-json-body";
 
 export async function GET() {
 	return proxyToBackend({
@@ -8,10 +9,17 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-	const rawBody = await request.text();
+	const { body, errorResponse } = await readJsonBody(request, {
+		defaultBody: {},
+		required: false,
+	});
+	if (errorResponse) {
+		return errorResponse;
+	}
+
 	return proxyToBackend({
 		method: "POST",
 		path: "/api/personal-graph/source",
-		rawBody,
+		body: body ?? {},
 	});
 }
