@@ -857,6 +857,34 @@ test("computeNeuralGraphLayout is deterministic and keeps selected nodes visible
 	);
 });
 
+test("computeNeuralGraphLayout keeps returning focus separate from visible selection", async () => {
+	const { computeNeuralGraphLayout } = await layoutModule;
+	const { DEFAULT_NEURAL_GRAPH_PARAMS, clampNeuralGraphParams } = await paramsModule;
+	const { createNeuralGraphStore } = await storeModule;
+	const store = createNeuralGraphStore(explorer);
+	const params = clampNeuralGraphParams({
+		...DEFAULT_NEURAL_GRAPH_PARAMS,
+		layoutShape: "radialCluster",
+		maxVisibleNodes: 5,
+	});
+	const viewport = { height: 700, width: 1000 };
+	const neutral = computeNeuralGraphLayout({ params, selectedNodeId: null, store, viewport });
+	const returning = computeNeuralGraphLayout({
+		focusNodeId: "external-focus",
+		focusProgress: 0.5,
+		params,
+		selectedNodeId: null,
+		store,
+		viewport,
+	});
+
+	assert.deepEqual(
+		returning.nodes.map((node) => node.id),
+		neutral.nodes.map((node) => node.id),
+	);
+	assert.equal(returning.nodesById.has("external-focus"), false);
+});
+
 test("computeNeuralGraphLayout arranges radial cluster leaves on a shared outer radius", async () => {
 	const { computeNeuralGraphLayout } = await layoutModule;
 	const { DEFAULT_NEURAL_GRAPH_PARAMS, clampNeuralGraphParams } = await paramsModule;

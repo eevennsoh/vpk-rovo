@@ -95,13 +95,17 @@ test("Graph visual can be embedded as the live Personal Graph renderer", () => {
 	assert.match(GRAPH_SOURCE, /interactionSettings\?: Partial<NeuralGraphInteractionSettings>/);
 	assert.match(GRAPH_SOURCE, /raySoundSettings\?: Partial<NeuralRaySoundSettings>/);
 	assert.match(GRAPH_SOURCE, /selectedNodeId\?: string \| null/);
+	assert.match(GRAPH_SOURCE, /allowEmptySelection\?: boolean;/);
 	assert.match(GRAPH_SOURCE, /onSelectedNodeIdChange\?: \(nodeId: string \| null\) => void/);
 	assert.match(GRAPH_SOURCE, /isFillVariant \? "flex h-full w-full flex-col"/);
 	assert.match(GRAPH_SOURCE, /isLoading=\{isLoading\}/);
 	assert.match(GRAPH_SOURCE, /store\?: NeuralGraphStore;/);
 	assert.match(GRAPH_SOURCE, /const graphStore = useMemo\(\(\) => providedStore \?\? createNeuralGraphStore\(explorer\), \[explorer, providedStore\]\);/);
 	assert.match(GRAPH_SOURCE, /const fallbackSelectedNodeId = getDefaultNeuralGraphSelectedNodeId\(graphStore\);/);
-	assert.match(GRAPH_SOURCE, /onSelectedNodeIdChange\?\.\(fallbackSelectedNodeId\)/);
+	assert.match(GRAPH_SOURCE, /function resolveGraphSelectedNodeId\(/);
+	assert.match(GRAPH_SOURCE, /if \(allowEmptySelection\) return null;/);
+	assert.match(GRAPH_SOURCE, /const nextSelectedNodeId = allowEmptySelection \? null : fallbackSelectedNodeId;/);
+	assert.match(GRAPH_SOURCE, /onSelectedNodeIdChange\?\.\(nextSelectedNodeId\)/);
 	assert.match(GRAPH_SOURCE, /store=\{graphStore\}/);
 	assert.match(NEURAL_CANVAS_SOURCE, /store\?: NeuralGraphStore;/);
 	assert.match(NEURAL_CANVAS_SOURCE, /const store = useMemo\(\(\) => providedStore \?\? createNeuralGraphStore\(explorer\), \[explorer, providedStore\]\);/);

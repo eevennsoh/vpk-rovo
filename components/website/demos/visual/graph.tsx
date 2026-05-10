@@ -67,6 +67,7 @@ interface GraphProps extends Omit<ComponentProps<"div">, "children"> {
 	rayOriginBottomOffset?: number;
 	raySoundSettings?: Partial<NeuralRaySoundSettings>;
 	selectedNodeId?: string | null;
+	allowEmptySelection?: boolean;
 	showSelectionOverlay?: boolean;
 	showControls?: boolean;
 	store?: NeuralGraphStore;
@@ -379,6 +380,17 @@ function GraphNodeMarker({
 function getSelectedGraphNode(explorer: VaultExplorer | null, selectedNodeId: string | null) {
 	if (!explorer || !selectedNodeId) return null;
 	return explorer.nodes.find((node) => node.id === selectedNodeId) ?? null;
+}
+
+function resolveGraphSelectedNodeId(
+	rawSelectedNodeId: string | null,
+	graphStore: NeuralGraphStore,
+	fallbackSelectedNodeId: string | null,
+	allowEmptySelection: boolean,
+) {
+	if (rawSelectedNodeId && graphStore.nodesById.has(rawSelectedNodeId)) return rawSelectedNodeId;
+	if (allowEmptySelection) return null;
+	return fallbackSelectedNodeId;
 }
 
 function getRelatedGraphNodes(explorer: VaultExplorer | null, node: VaultNode | null) {
@@ -961,6 +973,7 @@ export default function Graph({
 	rayOriginBottomOffset,
 	raySoundSettings: explicitRaySoundSettings,
 	selectedNodeId: controlledSelectedNodeId,
+	allowEmptySelection = false,
 	showSelectionOverlay = false,
 	showControls = true,
 	style,
@@ -998,9 +1011,12 @@ export default function Graph({
 	const graphStore = useMemo(() => providedStore ?? createNeuralGraphStore(explorer), [explorer, providedStore]);
 	const fallbackSelectedNodeId = getDefaultNeuralGraphSelectedNodeId(graphStore);
 	const rawSelectedNodeId = isSelectionControlled ? controlledSelectedNodeId ?? null : uncontrolledSelectedNodeId;
-	const selectedNodeId = rawSelectedNodeId && graphStore.nodesById.has(rawSelectedNodeId)
-		? rawSelectedNodeId
-		: fallbackSelectedNodeId;
+	const selectedNodeId = resolveGraphSelectedNodeId(
+		rawSelectedNodeId,
+		graphStore,
+		fallbackSelectedNodeId,
+		allowEmptySelection,
+	);
 	const selectedNode = useMemo(() => getSelectedGraphNode(explorer, selectedNodeId), [explorer, selectedNodeId]);
 
 	useEffect(() => {
@@ -1013,11 +1029,12 @@ export default function Graph({
 	}, [isSelectionControlled, onSelectedNodeIdChange, rawSelectedNodeId, selectedNodeId]);
 
 	const handleClearSelection = useCallback(() => {
+		const nextSelectedNodeId = allowEmptySelection ? null : fallbackSelectedNodeId;
 		if (!isSelectionControlled) {
-			setUncontrolledSelectedNodeId(fallbackSelectedNodeId);
+			setUncontrolledSelectedNodeId(nextSelectedNodeId);
 		}
-		onSelectedNodeIdChange?.(fallbackSelectedNodeId);
-	}, [fallbackSelectedNodeId, isSelectionControlled, onSelectedNodeIdChange]);
+		onSelectedNodeIdChange?.(nextSelectedNodeId);
+	}, [allowEmptySelection, fallbackSelectedNodeId, isSelectionControlled, onSelectedNodeIdChange]);
 	const handleSelectNode = useCallback((nodeId: string) => {
 		if (!isSelectionControlled) {
 			setUncontrolledSelectedNodeId(nodeId);

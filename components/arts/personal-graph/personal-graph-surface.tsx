@@ -27,7 +27,7 @@ import {
 	shouldAnimateResponsivePersonalGraphParams,
 	type ResponsivePersonalGraphViewport,
 } from "./lib/neural-graph/responsive-params";
-import { createNeuralGraphStore, getDefaultNeuralGraphSelectedNodeId } from "./lib/neural-graph/store";
+import { createNeuralGraphStore } from "./lib/neural-graph/store";
 import { expandTwgNode } from "./lib/personal-graph-api";
 import { mergeSelectedNodeExpansion } from "./lib/personal-graph-explorer-merge";
 import type { NeuralGraphParams } from "./lib/neural-graph/params";
@@ -489,6 +489,7 @@ export function PersonalGraphSurface({
 	const easeOut: [number, number, number, number] = [0, 0.4, 0, 1];
 	const shouldReduceMotion = Boolean(useReducedMotion());
 	const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+	const [isInspectorOpen, setIsInspectorOpen] = useState(false);
 	const [refreshKey, setRefreshKey] = useState(0);
 	const [isCaptureQueueOpen, setIsCaptureQueueOpen] = useState(false);
 	const liquidGlassStageRef = useRef<HTMLElement | null>(null);
@@ -502,21 +503,31 @@ export function PersonalGraphSurface({
 	const previousSourceRef = useRef(source);
 	const responsiveGraphParams = useResponsivePersonalGraphParams(graphStageRef);
 	const accessibleGraph = useMemo(() => createNeuralGraphStore(explorer), [explorer]);
-	const defaultSelectedNodeId = getDefaultNeuralGraphSelectedNodeId(accessibleGraph);
 	const displayedNode = useMemo(() => getSelectedNode(explorer, selectedNodeId), [explorer, selectedNodeId]);
 	const isExpandingDisplayedNode =
 		isTwgMode && displayedNode?.provider === "twg" && expandingTwgNodeIds.has(displayedNode.id);
 
 	useEffect(() => {
-		setSelectedNodeId((current) => {
-			if (current && accessibleGraph.nodesById.has(current)) return current;
-			return defaultSelectedNodeId;
-		});
-	}, [accessibleGraph, defaultSelectedNodeId]);
+		if (selectedNodeId && !accessibleGraph.nodesById.has(selectedNodeId)) {
+			setSelectedNodeId(null);
+			setIsInspectorOpen(false);
+		}
+	}, [accessibleGraph, selectedNodeId]);
 
-	const selectDefaultNode = useCallback(() => {
-		setSelectedNodeId(defaultSelectedNodeId);
-	}, [defaultSelectedNodeId]);
+	const handleSelectedNodeIdChange = useCallback((nodeId: string | null) => {
+		setSelectedNodeId(nodeId);
+		setIsInspectorOpen(Boolean(nodeId));
+	}, []);
+
+	const handleSelectRelatedNode = useCallback((nodeId: string) => {
+		setSelectedNodeId(nodeId);
+		setIsInspectorOpen(true);
+	}, []);
+
+	const handleCloseInspector = useCallback(() => {
+		setIsInspectorOpen(false);
+		setSelectedNodeId(null);
+	}, []);
 
 	const clearTwgExpansionState = useCallback(() => {
 		twgExpansionGenerationRef.current += 1;
@@ -584,6 +595,7 @@ export function PersonalGraphSurface({
 		setChatExplorer(null);
 		clearTwgExpansionState();
 		twgChat.stop();
+		setIsInspectorOpen(false);
 		if (isTwgMode) {
 			await setSource("vault");
 			setSelectedNodeId(null);
@@ -746,6 +758,7 @@ export function PersonalGraphSurface({
 		}
 		previousSourceRef.current = source;
 		setChatExplorer(null);
+		setIsInspectorOpen(false);
 		clearTwgExpansionState();
 	}, [clearTwgExpansionState, source]);
 
@@ -820,13 +833,13 @@ export function PersonalGraphSurface({
 	}, [isLoading, isTwgMode, selectedNodeId]);
 
 	useEffect(() => {
-		if (!selectedNodeId) {
+		if (!isInspectorOpen) {
 			return;
 		}
 
 		function handleKeyDown(event: KeyboardEvent) {
 			if (event.key === "Escape") {
-				selectDefaultNode();
+				handleCloseInspector();
 			}
 		}
 
@@ -834,7 +847,7 @@ export function PersonalGraphSurface({
 		return () => {
 			window.removeEventListener("keydown", handleKeyDown);
 		};
-	}, [selectDefaultNode, selectedNodeId]);
+	}, [handleCloseInspector, isInspectorOpen]);
 
 	useEffect(() => {
 		void refresh();
@@ -973,12 +986,13 @@ export function PersonalGraphSurface({
 						style={{ transform: `translateY(${PERSONAL_GRAPH_STAGE_TRANSLATE_Y_PX}px)` }}
 					>
 						<Graph
+							allowEmptySelection
 							background="transparent"
 							className="h-full"
 							explorer={explorer}
 							isLoading={isLoading}
 							interactionSettings={DEFAULT_NEURAL_GRAPH_INTERACTION_SETTINGS}
-							onSelectedNodeIdChange={setSelectedNodeId}
+							onSelectedNodeIdChange={handleSelectedNodeIdChange}
 							params={responsiveGraphParams}
 							rayOriginBottomOffset={PERSONAL_GRAPH_RAY_TAIL_BOTTOM_OFFSET_PX}
 							raySoundSettings={DEFAULT_NEURAL_RAY_SOUND_SETTINGS}
@@ -1006,7 +1020,7 @@ export function PersonalGraphSurface({
 				>
 					<div className="pointer-events-auto relative w-full max-w-[760px]">
 						<PersonalGraphSummaryPanel
-							node={displayedNode}
+							node={isInspectorOpen ? displayedNode : null}
 							onConfirmed={handleRefreshAll}
 						/>
 						<PersonalGraphSearch
@@ -1020,19 +1034,22 @@ export function PersonalGraphSurface({
 							onAskChat={isTwgMode ? handleAskChat : undefined}
 							onSelectSlug={(slug) => {
 								const node = explorer?.nodes.find((candidate) => candidate.slug === slug);
-								if (node) setSelectedNodeId(node.id);
+								if (node) {
+									setSelectedNodeId(node.id);
+									setIsInspectorOpen(true);
+								}
 							}}
 						/>
 					</div>
 				</motion.section>
 
-					<PersonalGraphInspector
-						explorer={explorer}
-						isExpanding={isExpandingDisplayedNode}
-						node={displayedNode}
-						onClose={selectDefaultNode}
-						onSelectNode={setSelectedNodeId}
-					/>
+				<PersonalGraphInspector
+					explorer={explorer}
+					isExpanding={isExpandingDisplayedNode}
+					node={isInspectorOpen ? displayedNode : null}
+					onClose={handleCloseInspector}
+					onSelectNode={handleSelectRelatedNode}
+				/>
 				{chatExplorer ? (
 					<div className="pointer-events-auto absolute left-4 top-6 z-40 lg:left-8">
 						<Button

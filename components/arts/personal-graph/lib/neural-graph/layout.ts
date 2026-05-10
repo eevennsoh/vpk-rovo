@@ -437,6 +437,7 @@ function createLayoutTreeBranches(
 }
 
 function computeRadialClusterLayout({
+	focusNodeId,
 	focusProgress,
 	interaction,
 	params,
@@ -448,6 +449,7 @@ function computeRadialClusterLayout({
 	visibleEdges,
 	visibleNodes,
 }: {
+	focusNodeId?: string | null;
 	focusProgress?: number;
 	interaction?: NeuralGraphInteractionState | null;
 	params: NeuralGraphParams;
@@ -521,7 +523,7 @@ function computeRadialClusterLayout({
 		focusProgress,
 		nodes: layoutNodes,
 		params,
-		selectedNodeId,
+		selectedNodeId: focusNodeId ?? selectedNodeId,
 		store,
 	});
 
@@ -756,6 +758,7 @@ export function pinNeuralGraphNodePosition({
 }
 
 export function computeNeuralGraphLayout({
+	focusNodeId,
 	focusProgress = 0,
 	interaction = null,
 	params,
@@ -765,6 +768,7 @@ export function computeNeuralGraphLayout({
 	time = 0,
 	viewport,
 }: {
+	focusNodeId?: string | null;
 	focusProgress?: number;
 	interaction?: NeuralGraphInteractionState | null;
 	params: NeuralGraphParams;
@@ -778,6 +782,7 @@ export function computeNeuralGraphLayout({
 	const visibleEdges = getVisibleGraphEdges(store, visibleNodes);
 	if (params.layoutShape === "radialCluster") {
 		return computeRadialClusterLayout({
+			focusNodeId,
 			focusProgress,
 			interaction,
 			params,
@@ -800,7 +805,7 @@ export function computeNeuralGraphLayout({
 		focusProgress,
 		nodes: layoutNodes,
 		params,
-		selectedNodeId,
+		selectedNodeId: focusNodeId ?? selectedNodeId,
 		store,
 	});
 

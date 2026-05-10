@@ -399,7 +399,7 @@ test("Personal Graph keeps the search and chat composer separate from the center
 
 test("Personal Graph exposes selected-node summarize controls above the composer", () => {
 	assert.match(SURFACE_SOURCE, /import \{ PersonalGraphSummaryPanel \} from "\.\/personal-graph-summary-panel";/);
-	assert.match(SURFACE_SOURCE, /<PersonalGraphSummaryPanel[\s\S]*node=\{displayedNode\}[\s\S]*onConfirmed=\{handleRefreshAll\}/);
+	assert.match(SURFACE_SOURCE, /<PersonalGraphSummaryPanel[\s\S]*node=\{isInspectorOpen \? displayedNode : null\}[\s\S]*onConfirmed=\{handleRefreshAll\}/);
 	assert.match(SUMMARY_PANEL_SOURCE, /Selected node summary/);
 	assert.match(SUMMARY_PANEL_SOURCE, /Short/);
 	assert.match(SUMMARY_PANEL_SOURCE, /Medium/);
@@ -578,11 +578,12 @@ test("Personal Graph leaves the page header transparent over the backdrop grid",
 	assert.doesNotMatch(SURFACE_SOURCE, /contentClassName="relative flex flex-col items-center gap-4"/);
 });
 
-test("Personal Graph falls back to the top-ranked node selection when graph data exists", () => {
-	assert.match(SURFACE_SOURCE, /const defaultSelectedNodeId = getDefaultNeuralGraphSelectedNodeId\(accessibleGraph\);/);
-	assert.match(SURFACE_SOURCE, /if \(current && accessibleGraph\.nodesById\.has\(current\)\) return current;/);
-	assert.match(SURFACE_SOURCE, /return defaultSelectedNodeId;/);
-	assert.match(SURFACE_SOURCE, /const selectDefaultNode = useCallback/);
+test("Personal Graph keeps the idle radial graph unselected until explicit node selection", () => {
+	assert.doesNotMatch(SURFACE_SOURCE, /const defaultSelectedNodeId = getDefaultNeuralGraphSelectedNodeId\(accessibleGraph\);/);
+	assert.match(SURFACE_SOURCE, /if \(selectedNodeId && !accessibleGraph\.nodesById\.has\(selectedNodeId\)\) \{/);
+	assert.match(SURFACE_SOURCE, /setSelectedNodeId\(null\);/);
+	assert.match(SURFACE_SOURCE, /setIsInspectorOpen\(false\);/);
+	assert.match(SURFACE_SOURCE, /allowEmptySelection/);
 	assert.match(SURFACE_SOURCE, /function getSelectedNode\(explorer: VaultExplorer \| null, selectedNodeId: string \| null\)/);
 	assert.match(SURFACE_SOURCE, /if \(!explorer \|\| !selectedNodeId\) return null;/);
 	assert.match(NEURAL_STORE_SOURCE, /function getDefaultNeuralGraphSelectedNodeId/);
@@ -595,7 +596,7 @@ test("Personal Graph keeps the owned canvas renderer accessible", () => {
 	assert.doesNotMatch(SURFACE_SOURCE, /<summary>/);
 	assert.match(
 		SURFACE_SOURCE,
-		/import \{ createNeuralGraphStore, getDefaultNeuralGraphSelectedNodeId \} from "\.\/lib\/neural-graph\/store";/,
+		/import \{ createNeuralGraphStore \} from "\.\/lib\/neural-graph\/store";/,
 	);
 	assert.match(
 		SURFACE_SOURCE,
@@ -618,6 +619,11 @@ test("Personal Graph keeps the owned canvas renderer accessible", () => {
 	assert.match(SURFACE_SOURCE, /interactionSettings=\{DEFAULT_NEURAL_GRAPH_INTERACTION_SETTINGS\}/);
 	assert.match(SURFACE_SOURCE, /DEFAULT_NEURAL_RAY_SOUND_SETTINGS/);
 	assert.match(SURFACE_SOURCE, /raySoundSettings=\{DEFAULT_NEURAL_RAY_SOUND_SETTINGS\}/);
+	assert.match(SURFACE_SOURCE, /allowEmptySelection/);
+	assert.match(GRAPH_SOURCE, /allowEmptySelection\?: boolean;/);
+	assert.match(GRAPH_SOURCE, /allowEmptySelection = false/);
+	assert.match(GRAPH_SOURCE, /function resolveGraphSelectedNodeId\(/);
+	assert.match(GRAPH_SOURCE, /if \(allowEmptySelection\) return null;/);
 	assert.match(GRAPH_SOURCE, /rayOriginBottomOffset\?: number;/);
 	assert.match(GRAPH_SOURCE, /interactionSettings\?: Partial<NeuralGraphInteractionSettings>;/);
 	assert.match(GRAPH_SOURCE, /raySoundSettings\?: Partial<NeuralRaySoundSettings>;/);
@@ -658,7 +664,7 @@ test("Personal Graph keeps the owned canvas renderer accessible", () => {
 	assert.doesNotMatch(SURFACE_SOURCE, /PersonalGraphPromptTailConnector/);
 	assert.doesNotMatch(SURFACE_SOURCE, /data-personal-graph-tail-connector/);
 	assert.match(SURFACE_SOURCE, /selectedNodeId=\{selectedNodeId\}/);
-	assert.match(SURFACE_SOURCE, /onSelectedNodeIdChange=\{setSelectedNodeId\}/);
+	assert.match(SURFACE_SOURCE, /onSelectedNodeIdChange=\{handleSelectedNodeIdChange\}/);
 	assert.doesNotMatch(SURFACE_SOURCE, /<PersonalGraphNeuralCanvas/);
 	assert.doesNotMatch(SURFACE_SOURCE, /PersonalGraphSigma/);
 	assert.match(GRAPH_SOURCE, /<PersonalGraphNeuralCanvas/);
@@ -856,8 +862,24 @@ test("Personal Graph focuses and clears selection through the owned interaction 
 	assert.match(NEURAL_CANVAS_SOURCE, /getNodeNeighbors/);
 	assert.match(NEURAL_CANVAS_SOURCE, /fitNodes/);
 	assert.match(NEURAL_CANVAS_SOURCE, /focusProgress: 1/);
+	assert.match(NEURAL_CANVAS_SOURCE, /const selectedNodeIdRef = useRef<string \| null>\(selectedNodeId\);/);
+	assert.match(NEURAL_CANVAS_SOURCE, /const layoutFocusNodeIdRef = useRef<string \| null>\(selectedNodeId\);/);
+	assert.match(NEURAL_CANVAS_SOURCE, /const layoutFocusNodeId = layoutFocusNodeIdRef\.current;/);
 	assert.match(NEURAL_CANVAS_SOURCE, /focusProgressRef/);
 	assert.match(NEURAL_CANVAS_SOURCE, /focusProgress: focusProgressRef\.current/);
+	assert.match(NEURAL_CANVAS_SOURCE, /focusNodeId: layoutFocusNodeId/);
+	assert.match(NEURAL_LAYOUT_SOURCE, /focusNodeId\?: string \| null;/);
+	assert.match(NEURAL_LAYOUT_SOURCE, /selectedNodeId: focusNodeId \?\? selectedNodeId/);
+	assert.match(NEURAL_CANVAS_SOURCE, /selectedNodeIdRef\.current = selectedNodeId;/);
+	assert.match(NEURAL_CANVAS_SOURCE, /if \(selectedNodeId\) \{\s+layoutFocusNodeIdRef\.current = selectedNodeId;/);
+	assert.match(NEURAL_CANVAS_SOURCE, /if \(settled && !selectedNodeIdRef\.current\) \{/);
+	assert.doesNotMatch(NEURAL_CANVAS_SOURCE, /cameraRef\.current = createNeuralCamera\(\{ zoom: cameraRef\.current\.zoom \}\);/);
+	assert.match(NEURAL_CANVAS_SOURCE, /const shouldFreezeHoveredNode = Boolean\(hoveredNodeId && hoveredNodePosition\);/);
+	assert.match(NEURAL_CANVAS_SOURCE, /hoveredNodeIdRef\.current = null;/);
+	assert.match(NEURAL_CANVAS_SOURCE, /setHoveredNodeId\(null\);/);
+	assert.match(NEURAL_CANVAS_SOURCE, /targetLabelRevealMV\.set\(0\);/);
+	assert.match(NEURAL_CANVAS_SOURCE, /targetRayElasticProgressMV\.set\(0\);/);
+	assert.match(NEURAL_CANVAS_SOURCE, /resetInteractionTarget\(\);/);
 	assert.match(NEURAL_LAYOUT_SOURCE, /applySelectionFocusLayout/);
 	assert.match(NEURAL_LAYOUT_SOURCE, /getSelectedNeighborhood/);
 	assert.match(NEURAL_RENDERER_SOURCE, /getSelectedRelationshipIds/);
@@ -873,9 +895,9 @@ test("Personal Graph focuses and clears selection through the owned interaction 
 	assert.match(NEURAL_CANVAS_SOURCE, /selectedNodeId,\s+viewport,/);
 	assert.match(NEURAL_CANVAS_SOURCE, /onClearSelection\(\)/);
 	assert.match(GRAPH_SOURCE, /onClearSelection=\{handleClearSelection\}/);
-	assert.match(GRAPH_SOURCE, /onSelectedNodeIdChange\?\.\(fallbackSelectedNodeId\)/);
-	assert.match(SURFACE_SOURCE, /onClose=\{selectDefaultNode\}/);
-	assert.match(SURFACE_SOURCE, /onSelectedNodeIdChange=\{setSelectedNodeId\}/);
+	assert.match(GRAPH_SOURCE, /const nextSelectedNodeId = allowEmptySelection \? null : fallbackSelectedNodeId;/);
+	assert.match(SURFACE_SOURCE, /onClose=\{handleCloseInspector\}/);
+	assert.match(SURFACE_SOURCE, /onSelectedNodeIdChange=\{handleSelectedNodeIdChange\}/);
 });
 
 test("Personal Graph owned renderer supports pan and zoom without Sigma events", () => {

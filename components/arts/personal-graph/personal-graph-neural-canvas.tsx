@@ -341,6 +341,8 @@ export function PersonalGraphNeuralCanvas({
 	const layoutRef = useRef<NeuralGraphLayout | null>(null);
 	const requestRenderRef = useRef<() => void>(() => {});
 	const selectedOverlayRef = useRef<SelectedOverlayState | null>(null);
+	const selectedNodeIdRef = useRef<string | null>(selectedNodeId);
+	const layoutFocusNodeIdRef = useRef<string | null>(selectedNodeId);
 	const targetZoomMV = useMotionValue(cameraRef.current.zoom);
 	const smoothZoomMV = useSpring(targetZoomMV, reduceMotion ? ZOOM_SPRING_INSTANT : ZOOM_SPRING_CONFIG);
 	const targetFocusMV = useMotionValue(selectedNodeId ? 1 : 0);
@@ -468,8 +470,11 @@ export function PersonalGraphNeuralCanvas({
 			const elapsedFrameMs = previousFrameAt === null ? 16.67 : Math.min(80, Math.max(0, now - previousFrameAt));
 			previousFrameAt = now;
 			const previousLayout = layoutRef.current;
+			const selectedNodeId = selectedNodeIdRef.current;
+			const layoutFocusNodeId = layoutFocusNodeIdRef.current;
 			context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
 			const targetLayout = computeNeuralGraphLayout({
+				focusNodeId: layoutFocusNodeId,
 				focusProgress: focusProgressRef.current,
 				interaction: interactionRef.current,
 				params,
@@ -578,15 +583,24 @@ export function PersonalGraphNeuralCanvas({
 			window.cancelAnimationFrame(animationFrame);
 			window.cancelAnimationFrame(staticFrame);
 		};
-	}, [background, params, rayOriginY, reduceMotion, renderTheme, resolveGraphColor, selectedNodeId, store, viewport]);
+	}, [background, params, rayOriginY, reduceMotion, renderTheme, resolveGraphColor, store, viewport]);
 
 	useEffect(() => {
+		selectedNodeIdRef.current = selectedNodeId;
+		if (selectedNodeId) {
+			layoutFocusNodeIdRef.current = selectedNodeId;
+		}
 		targetFocusMV.set(selectedNodeId ? 1 : 0);
+		requestRenderRef.current();
 	}, [selectedNodeId, targetFocusMV]);
 
 	useEffect(() => {
 		return focusProgressMV.on("change", (nextFocusProgress) => {
-			focusProgressRef.current = nextFocusProgress;
+			const settled = nextFocusProgress < 0.001;
+			focusProgressRef.current = settled ? 0 : nextFocusProgress;
+			if (settled && !selectedNodeIdRef.current) {
+				layoutFocusNodeIdRef.current = null;
+			}
 			requestRenderRef.current();
 		});
 	}, [focusProgressMV]);
@@ -670,6 +684,30 @@ export function PersonalGraphNeuralCanvas({
 		}
 	}, [interactionSettings, reduceMotion, targetInteractionIntensityMV]);
 
+	const resetInteractionTarget = useCallback((options: { instant?: boolean } = {}) => {
+		pointerVelocityRef.current = {
+			point: null,
+			time: null,
+			velocity: { normalized: 0, pxPerSecond: 0 },
+		};
+		interactionRef.current = {
+			...interactionRef.current,
+			activeNodeId: null,
+			activeRayNodeId: null,
+			pointer: null,
+			rayDistance: 0,
+			rayProgress: 0,
+			velocity: 0,
+			velocityPxPerSecond: 0,
+		};
+		if (options.instant) {
+			targetInteractionIntensityMV.jump(0);
+			smoothInteractionIntensityMV.jump(0);
+			return;
+		}
+		targetInteractionIntensityMV.set(0);
+	}, [smoothInteractionIntensityMV, targetInteractionIntensityMV]);
+
 	useEffect(() => {
 		return smoothZoomMV.on("change", (nextZoom) => {
 			const cam = cameraRef.current;
@@ -693,8 +731,12 @@ export function PersonalGraphNeuralCanvas({
 
 	useEffect(() => {
 		if (!selectedNodeId) {
-			cameraRef.current = createNeuralCamera({ zoom: cameraRef.current.zoom });
-			targetZoomMV.jump(cameraRef.current.zoom);
+			hoveredNodeIdRef.current = null;
+			labelNodeIdRef.current = null;
+			setHoveredNodeId(null);
+			targetLabelRevealMV.set(0);
+			targetRayElasticProgressMV.set(0);
+			resetInteractionTarget();
 			selectedOverlayRef.current = null;
 			setSelectedOverlay(null);
 			requestRenderRef.current();
@@ -722,7 +764,17 @@ export function PersonalGraphNeuralCanvas({
 		wheelAnchorRef.current = null;
 		targetZoomMV.jump(cameraRef.current.zoom);
 		requestRenderRef.current();
-	}, [params, reduceMotion, selectedNodeId, store, targetZoomMV, viewport]);
+	}, [
+		params,
+		reduceMotion,
+		resetInteractionTarget,
+		selectedNodeId,
+		store,
+		targetLabelRevealMV,
+		targetRayElasticProgressMV,
+		targetZoomMV,
+		viewport,
+	]);
 
 	const resetRaySoundTrigger = useCallback(() => {
 		raySoundTriggerStateRef.current = getNextNeuralRaySoundTriggerState({
@@ -823,30 +875,6 @@ export function PersonalGraphNeuralCanvas({
 			velocity: velocity.normalized,
 		}));
 	}, [reduceMotion, targetInteractionIntensityMV]);
-
-	const resetInteractionTarget = useCallback((options: { instant?: boolean } = {}) => {
-		pointerVelocityRef.current = {
-			point: null,
-			time: null,
-			velocity: { normalized: 0, pxPerSecond: 0 },
-		};
-		interactionRef.current = {
-			...interactionRef.current,
-			activeNodeId: null,
-			activeRayNodeId: null,
-			pointer: null,
-			rayDistance: 0,
-			rayProgress: 0,
-			velocity: 0,
-			velocityPxPerSecond: 0,
-		};
-		if (options.instant) {
-			targetInteractionIntensityMV.jump(0);
-			smoothInteractionIntensityMV.jump(0);
-			return;
-		}
-		targetInteractionIntensityMV.set(0);
-	}, [smoothInteractionIntensityMV, targetInteractionIntensityMV]);
 
 	const triggerRaySound = useCallback((rayHit: NeuralRayHitTestResult, point: NeuralPoint) => {
 		const settings = raySoundSettingsRef.current;
