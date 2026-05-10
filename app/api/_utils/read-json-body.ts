@@ -1,4 +1,4 @@
-import { type NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
 interface ReadJsonBodyResult<T> {
 	body: T | null;
@@ -11,7 +11,7 @@ interface ReadJsonBodyOptions<T> {
 }
 
 export async function readJsonBody<T = unknown>(
-	request: NextRequest,
+	request: Request,
 	options: Readonly<ReadJsonBodyOptions<T>> = {},
 ): Promise<ReadJsonBodyResult<T>> {
 	const rawBody = await request.text();
