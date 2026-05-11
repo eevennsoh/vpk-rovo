@@ -61,7 +61,15 @@ const slugSchema = z
 
 const noRemoteUrl = value => {
 	if (typeof value !== "string") return true;
-	return !/^(?:https?:)?\/\//i.test(value.trim());
+	const trimmed = value.trim();
+	return !/^(?:https?:)?\/\//i.test(trimmed);
+};
+
+const localHrefSchema = value => {
+	if (!noRemoteUrl(value)) return false;
+	const trimmed = value.trim();
+	if (trimmed.length === 0) return false;
+	return !/^[a-z][a-z0-9+.-]*:/i.test(trimmed);
 };
 
 const sectionSchema = z
@@ -78,7 +86,7 @@ const sectionSchema = z
 					body: z.string().optional(),
 					status: z.string().optional(),
 					meta: z.string().optional(),
-					href: z.string().refine(noRemoteUrl, "Remote links are not allowed in generated cards").optional(),
+					href: z.string().refine(localHrefSchema, "Only local card links are allowed").optional(),
 				}),
 			)
 			.optional(),

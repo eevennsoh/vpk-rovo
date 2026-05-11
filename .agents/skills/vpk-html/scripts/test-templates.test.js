@@ -90,6 +90,52 @@ test("schema rejects missing required fields and remote assets", async () => {
 	);
 });
 
+test("schema only allows local card links", async () => {
+	const { renderPayloadSchema } = await loadModules();
+	const basePayload = {
+		template: "one-pager",
+		title: "Local links",
+		sections: [
+			{
+				type: "section",
+				cards: [
+					{
+						title: "Safe output",
+						href: "output/one-pager.html",
+					},
+					{
+						title: "Safe anchor",
+						href: "#section-summary",
+					},
+				],
+			},
+		],
+	};
+
+	assert.equal(renderPayloadSchema.parse(basePayload).sections[0].cards.length, 2);
+
+	for (const href of ["javascript:alert(1)", "data:text/html,boom", "//example.test/doc.html"]) {
+		assert.throws(
+			() =>
+				renderPayloadSchema.parse({
+					...basePayload,
+					sections: [
+						{
+							type: "section",
+							cards: [
+								{
+									title: "Unsafe link",
+									href,
+								},
+							],
+						},
+					],
+				}),
+			/Only local card links are allowed/i,
+		);
+	}
+});
+
 test("renderer refuses overwrite unless --overwrite is supplied", async () => {
 	const { buildExamplePayload, getTemplateDefinition } = await loadModules();
 	const tempDir = fs.mkdtempSync(path.join(SKILL_ROOT, ".tmp-overwrite-"));
