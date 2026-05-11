@@ -2,6 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { execFileSync } = require("node:child_process");
 const fs = require("node:fs");
+const os = require("node:os");
 const path = require("node:path");
 
 const SKILL_ROOT = path.resolve(__dirname, "..");
@@ -171,6 +172,39 @@ test("renderer refuses overwrite unless --overwrite is supplied", async () => {
 				stdio: "pipe",
 			},
 		);
+	} finally {
+		fs.rmSync(tempDir, { recursive: true, force: true });
+	}
+});
+
+test("renderer rejects output paths outside the repository", async () => {
+	const { buildExamplePayload, getTemplateDefinition } = await loadModules();
+	const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "vpk-html-outside-"));
+	const inputPath = path.join(tempDir, "payload.json");
+	const outputPath = path.join(tempDir, "escape.html");
+
+	try {
+		fs.writeFileSync(
+			inputPath,
+			JSON.stringify(buildExamplePayload(getTemplateDefinition("one-pager")), null, "\t"),
+			"utf8",
+		);
+
+		assert.throws(
+			() =>
+				execFileSync(process.execPath, [RENDER_CLI, "--input", inputPath, "--out", outputPath], {
+					cwd: path.resolve(SKILL_ROOT, "../../.."),
+					stdio: "pipe",
+				}),
+			error => {
+				assert.match(
+					error.stderr.toString(),
+					/Output path must stay inside the repository/i,
+				);
+				return true;
+			},
+		);
+		assert.equal(fs.existsSync(outputPath), false);
 	} finally {
 		fs.rmSync(tempDir, { recursive: true, force: true });
 	}
