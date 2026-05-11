@@ -15,7 +15,7 @@
   @page {
     size: A4;
     margin: 12mm 15mm 12mm 15mm;
-    background: #ffffff;
+    background: var(--parchment);
   }
 
   @page:first {
@@ -41,7 +41,7 @@
   }
 
   :root {
-    --parchment: #ffffff;
+    --parchment: #fafaf5;
     --ivory:     #fafafa;
     --near-black:#292a2e;
     --dark-warm: #3a3d42;
@@ -505,7 +505,7 @@
 
 
   /* vpk-html identity overrides */
-  html { background: #ffffff; }
+  html { background: var(--parchment); }
   body {
     background:
       linear-gradient(90deg, rgba(11, 18, 14, 0.018) 1px, transparent 1px),

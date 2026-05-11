@@ -9,10 +9,11 @@ Use this skill only when the user explicitly invokes `/vpk-html`. Opening a
 Markdown file, asking for HTML in natural language, or mentioning documents is
 not enough to activate it.
 
-**Architecture:** kami-style template editing. The skill ships 8 HTML
-templates at `assets/templates/`. To produce a document, copy a template into
-a working directory and fill its `{{placeholders}}`. The renderer is a
-validator, not a JSON-to-HTML compiler.
+**Architecture:** kami-style template editing. The skill ships 28 HTML
+templates at `assets/templates/`: 8 base document shells plus 20 Phase 2
+engineering shells mapped from the `html-effectiveness` use-case catalog. To
+produce a document, copy a template into a working directory and fill its
+`{{placeholders}}`. The renderer is a validator, not a JSON-to-HTML compiler.
 
 ---
 
@@ -47,6 +48,34 @@ Never ask all four as a checklist.
 | "release notes / changelog" | Changelog | `changelog.html` |
 
 If unsure, ask a one-liner about the scenario rather than guess.
+
+### Engineering templates (Phase 2)
+
+Use these when the user asks for an engineering workflow surface rather than a
+general-purpose document.
+
+| User says | Document | Template |
+|---|---|---|
+| "technical approach comparison / implementation options" | Exploration · Code Approaches | `exploration-code-approaches.html` |
+| "visual directions / UI concept comparison" | Exploration · Visual Designs | `exploration-visual-designs.html` |
+| "code review / PR review / review findings" | Code Review · Pull Request | `code-review-pr.html` |
+| "explain this code / codebase map / module walkthrough" | Code Understanding | `code-understanding.html` |
+| "design system / token contract / component system" | Design System | `design-system.html` |
+| "component variants / UI state matrix / component spec" | Component Variants | `component-variants.html` |
+| "motion prototype / animation concept" | Prototype · Animation | `prototype-animation.html` |
+| "interaction prototype / UI behavior prototype" | Prototype · Interaction | `prototype-interaction.html` |
+| "engineering deck / technical slides" | Engineering Slide Deck | `slide-deck.html` |
+| "SVG illustration brief / technical illustration" | SVG Illustrations | `svg-illustrations.html` |
+| "status report / weekly update / project update" | Status Report | `status-report.html` |
+| "incident report / postmortem / outage report" | Incident Report | `incident-report.html` |
+| "flowchart / decision flow / process diagram" | Flowchart Diagram | `flowchart-diagram.html` |
+| "feature explainer / technical research brief" | Research · Feature Explainer | `research-feature-explainer.html` |
+| "concept explainer / technical concept / research note" | Research · Concept Explainer | `research-concept-explainer.html` |
+| "implementation plan / engineering plan / rollout plan" | Implementation Plan | `implementation-plan.html` |
+| "PR writeup / pull request description / change summary" | Pull Request Writeup | `pr-writeup.html` |
+| "triage board / issue board / bug triage" | Editor · Triage Board | `editor-triage-board.html` |
+| "feature flag matrix / rollout controls / flag plan" | Editor · Feature Flags | `editor-feature-flags.html` |
+| "prompt tuning / prompt eval / AI instruction editor" | Editor · Prompt Tuner | `editor-prompt-tuner.html` |
 
 ### Diagrams (primitives, not a separate template type)
 
@@ -227,6 +256,9 @@ node .agents/skills/vpk-html/scripts/port-diagrams.mjs
 
 # Re-port kami's curated demos
 node .agents/skills/vpk-html/scripts/port-demos.mjs
+
+# Regenerate original Phase 2 shells from the html-effectiveness use-case map
+node .agents/skills/vpk-html/scripts/port-html-effectiveness.mjs
 ```
 
 ---
@@ -234,21 +266,52 @@ node .agents/skills/vpk-html/scripts/port-demos.mjs
 ## Identity
 
 Editorial / engineering manual. Tuned to read like a printed reference book
-translated to the screen — closest aesthetic neighbour is
-[makingsoftware.com](https://www.makingsoftware.com/).
+translated to the screen — implementation cousin is
+[aiengineeringfromscratch.com](https://aiengineeringfromscratch.com/) (which
+itself is built in the [makingsoftware.com](https://www.makingsoftware.com/)
+lineage).
 
-- **Surface:** parchment `#FBFBFB` — warm off-white, never pure `#ffffff`
-- **Ink:** near-black `#0A0A0A` body text, `#757575` for secondary metadata
-- **Accent (brand):** ink-blue `#1B3FE5` — masthead, links, diagram strokes; ≤5% of any page
-- **Accent (margin):** warning red `#D14E3E` — reserved for figure tags and gutter labels only, not for error states
-- **Display / masthead:** Geist Pixel (Square variant) on the cover title and first `h1` in a section, in `#1B3FE5`
-- **Body:** Source Serif 4 → Georgia → system serif fallback chain; 16px on screen, 10.5pt in print, line-height 1.7
-- **Margin labels / eyebrows / figure tags:** Geist Pixel + Geist Mono, 10px, uppercase, letter-spacing 0.18em, `#D14E3E`
+**Light mode (default):**
+
+- **Surface:** parchment `#fafaf5` — warm cream paper, never pure `#ffffff`
+- **Raised surface:** `#f3f1e8` (for cards / callouts when they need to lift)
+- **Ink:** `var(--near-black)` = `#0A0A0A` body, `#757575` secondary metadata
+- **Accent (brand):** blueprint `#3553ff` — masthead, headings, links, diagram strokes
+- **Margin / figure tags:** also `#3553ff` — uppercase, letter-spaced, 10px
+- **Paper-rule background:** `radial-gradient(rgba(26,26,26,0.08) 1px, transparent 1px); background-size: 16px 16px;` — subtle dotted paper texture
+- **Hard shadow:** `3px 3px 0 var(--near-black)` — chunky offset, no blur. Reserved for opt-in `.card / .callout / .takeaway / .surface-raised / .shadow-hard`. Other surfaces are flat.
+
+**Dark mode** (activate via `<html data-theme="dark">`):
+
+- **Surface:** `#0a0d1a` deep navy paper
+- **Raised surface:** `#131830`
+- **Ink:** `#e8e6dc` warm cream body, `#a8a6a0` secondary
+- **Accent:** `#6b8eff` — brighter periwinkle blue (legibility against navy)
+
+**Fonts** (Geist family only, all self-hosted in `assets/fonts/`):
+
+- **Display / masthead / all headings (h1-h6) / margin labels:** Geist Pixel (Square variant), uppercase, letter-spacing 0.02-0.04em, in `var(--brand)`
+- **Body:** Geist Sans, 18px screen / 10.5pt print, line-height 1.62
 - **Mono / code:** Geist Mono
-- **Frames:** none. No section borders, no rounded corners, no box-shadow. Hierarchy comes from typography, position, weight, and a single dotted divider rule after the masthead.
-- **Drop cap:** serif, 48px, 600-weight, on the first paragraph after each section break
+
+**Type scale (screen):**
+
+| Role | Size | Family | Color |
+|---|---|---|---|
+| Cover title / masthead | 56px | Geist Pixel | brand |
+| h1 (chapter title) | 36px | Geist Pixel | brand |
+| h2 (section) | 26px | Geist Pixel | brand |
+| h3 | 18px | Geist Pixel | brand |
+| h4-h6 | 14px | Geist Pixel | ink |
+| Body, p, li | 18px | Geist Sans | ink |
+| Margin label / fig-tag | 10px | Geist Pixel | brand |
+
+**Other identity rules:**
+
+- **Drop cap:** Geist, 48px, 600-weight, on the first paragraph after each section break (works in both modes via `var(--near-black)`)
 - **Dotted divider:** `radial-gradient` row of 1px dots, 8px pitch, applied to `<hr>` after the masthead
-- **Type scale on screen:** body 16px, h2 18px, h3/h4 16px, h5/h6 14px — hierarchy carried by family contrast (Geist Pixel masthead vs serif body) and weight (400 body vs 600 headings), not size
+- **ASCII rule:** apply class `.ascii-rule` to `<hr>` for a bright blueprint dotted separator (two-layer repeating-linear-gradient)
+- **Frames:** sections, articles, figures, tables are flat by default. Cards / callouts opt in to hard shadow + 1px ink border.
 
 ### Side stripes are banned
 

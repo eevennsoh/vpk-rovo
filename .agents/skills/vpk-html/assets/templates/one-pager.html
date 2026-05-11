@@ -2,8 +2,8 @@
 <!-- ==================================================================
      TEMPLATE · one pager (vpk-html · Making Software identity)
      Ported from kami's editorial template library, restyled with the
-     Making Software design language: warm paper (#FBFBFB), warm ink
-     (#0A0A0A), electric accent-blue (#1B3FE5), accent-warning red
+     Making Software design language: warm paper (#fafaf5), warm ink
+     (#0A0A0A), electric accent-blue (#3553ff), accent-warning red
      (#D14E3E) for figure tags, ink-muted (#757575) for captions.
      Geist Pixel (Square) masthead, Geist Sans body, Geist Mono labels, 16px throughout
      (hierarchy via family + weight + color, not size).
@@ -24,7 +24,7 @@
   @page {
     size: A4;
     margin: 15mm 18mm 15mm 18mm;
-    background: #FBFBFB;
+    background: #fafaf5;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -45,19 +45,19 @@
   }
 
   :root {
-    --parchment: #FBFBFB;
-    --ivory:     #FBFBFB;
+    --parchment: #fafaf5;
+    --ivory:     #f3f1e8;
     --sand:      #E0E0E0;
     --near-black:#0A0A0A;
     --dark-warm: #2A2A2A;
     --olive:     #525252;
     --stone:     #757575;
-    --brand:     #1B3FE5;
+    --brand:     #3553ff;
     --border:    #E0E0E0;
     --border-soft:#E0E0E0;
     --tag-bg:    #D5DDF8;
 
-    --serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+    --serif: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
     --sans: var(--serif);
   }
 
@@ -305,7 +305,7 @@
   /* ===== vpk-html identity overrides (Making Software language) ===== */
 
   /* Paper background — warm off-white, never pure white. No grid, no banding. */
-  html, body { background: #FBFBFB !important; }
+  html, body { background: var(--parchment) !important; color: var(--near-black) !important; }
 
   /* Strip all section chrome: no borders, no shadows, no rounded corners,
      no section background colors. Per Making Software refuses-list. */
@@ -335,21 +335,21 @@
   /* 4-size type scale: 10 / 12 / 14 / 16px. Body is 16px, all headings are 16px.
      Hierarchy comes from family + weight + color + position. */
   body, p, li, dd, dt, blockquote, td, th, .body, .lead, .prose {
-    font-family: "Source Serif 4", Georgia, "Times New Roman", serif !important;
+    font-family: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif !important;
     font-size: 18px !important;
     line-height: 1.62 !important;
-    color: #0A0A0A !important;
+    color: var(--near-black) !important;
   }
   h1, h2, h3, h4, h5, h6,
   .cover-title, .doc-title, .resume-name, .deck-cover .title,
   .hero h1, .title-block h1, .equity-header .ticker, .letter-subject,
   .section-title {
-    font-family: "Source Serif 4", Georgia, "Times New Roman", serif !important;
+    font-family: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif !important;
     font-size: 16px !important;
     line-height: 1.8 !important;
     font-weight: 600 !important;
     letter-spacing: 0 !important;
-    color: #0A0A0A !important;
+    color: var(--near-black) !important;
     margin: 0 !important;
   }
 
@@ -358,7 +358,7 @@
   .hero h1, .doc-title h1,
   .resume-name {
     font-family: "Geist Pixel", "Geist Mono", ui-monospace, "SFMono-Regular", Consolas, monospace !important;
-    color: #1B3FE5 !important;
+    color: #3553ff !important;
     font-weight: 400 !important;
     text-transform: uppercase !important;
     letter-spacing: 0.02em !important;
@@ -375,14 +375,14 @@
     line-height: 14px !important;
     letter-spacing: 0.18em !important;
     text-transform: uppercase !important;
-    color: #D14E3E !important;
+    color: var(--brand) !important;
     font-weight: 400 !important;
   }
 
   /* Secondary metadata / captions: 14px, ink-muted. */
   .caption, .meta, .footnote, .annotation, .subtitle, .cover-sub, .cover-meta,
   .doc-meta, .release-meta, .stage-detail, .stage-meta {
-    font-family: "Source Serif 4", Georgia, "Times New Roman", serif !important;
+    font-family: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif !important;
     font-size: 14px !important;
     line-height: 22px !important;
     color: #757575 !important;
@@ -390,7 +390,7 @@
 
   /* Links: same accent-blue as masthead. No underline by default; underline on hover. */
   a, a:visited {
-    color: #1B3FE5 !important;
+    color: #3553ff !important;
     text-decoration: none !important;
   }
   a:hover {
@@ -400,12 +400,12 @@
   }
 
   /* Emphasis: italic preferred; bold reserved for headings. */
-  .hl, mark, strong { color: #1B3FE5 !important; background: transparent !important; font-weight: 600 !important; }
-  em, i { font-style: italic !important; color: #0A0A0A !important; }
+  .hl, mark, strong { color: #3553ff !important; background: transparent !important; font-weight: 600 !important; }
+  em, i { font-style: italic !important; color: var(--near-black) !important; }
 
   /* Dotted rule utility (Making Software signature separator). */
   .dotted-rule, .vpk-dotted-rule {
-    background-image: radial-gradient(circle, #0A0A0A 1px, transparent 1px) !important;
+    background-image: radial-gradient(circle, var(--near-black) 1px, transparent 1px) !important;
     background-size: 8px 8px !important;
     background-repeat: repeat-x !important;
     background-position: 0 50% !important;
@@ -419,8 +419,8 @@
   section > p:first-child::first-letter,
   .lead::first-letter,
   .cover + p::first-letter {
-    font-family: "Source Serif 4", Georgia, "Times New Roman", serif !important;
-    color: #0A0A0A !important;
+    font-family: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif !important;
+    color: var(--near-black) !important;
     float: left !important;
     font-size: 48px !important;
     line-height: 1 !important;
@@ -429,51 +429,126 @@
     font-weight: 600 !important;
   }
 
+  /* aiefs additions: blueprint scale + paper-rule + hard shadows. */
+  :root {
+    --blueprint: var(--brand);
+    --blueprint-tint: rgba(53, 83, 255, 0.08);
+    --blueprint-tint-strong: rgba(53, 83, 255, 0.18);
+    --paper-rule: rgba(26, 26, 26, 0.08);
+    --shadow-hard: 3px 3px 0 var(--near-black);
+    --shadow-hard-lg: 5px 5px 0 var(--near-black);
+  }
+
+  /* Dark mode tokens. Activate via <html data-theme="dark">. */
+  [data-theme="dark"] {
+    --parchment: #0a0d1a;
+    --ivory: #131830;
+    --near-black: #e8e6dc;
+    --dark-warm: #c8c6c0;
+    --olive: #a8a6a0;
+    --stone: #7a7878;
+    --brand: #6b8eff;
+    --blueprint: #6b8eff;
+    --blueprint-tint: rgba(107, 142, 255, 0.12);
+    --blueprint-tint-strong: rgba(107, 142, 255, 0.22);
+    --border: rgba(232, 230, 220, 0.18);
+    --border-soft: rgba(232, 230, 220, 0.18);
+    --paper-rule: rgba(232, 230, 220, 0.08);
+    --tag-bg: rgba(107, 142, 255, 0.2);
+  }
+
   /* ──────────────────────────────────────────────────────────────────
-     Making-Software screen mode.
-     Body + section headings at ~16px, hierarchy carried by weight,
-     family, color, and position. Masthead / cover-title is sized by
-     the masthead override block above and is untouched here.
-     Print rules (above) remain as authored.
+     aiefs-aligned screen mode.
+     Paper-rule background, Geist Pixel headings in blueprint, body 18px
+     Geist sans, hard shadows reserved for opt-in cards / callouts only.
+     Print rules above remain as authored.
      ────────────────────────────────────────────────────────────────── */
   @media screen {
     body {
-      font-size: 16px;
-      line-height: 1.7;
+      background-color: var(--parchment);
+      background-image: radial-gradient(var(--paper-rule) 1px, transparent 1px);
+      background-size: 16px 16px;
+      background-attachment: fixed;
+      font-size: 18px;
+      line-height: 1.62;
+      transition: background-color 0.2s, color 0.2s;
+      max-width: 1200px;
     }
     p, li, dt, dd, blockquote {
-      font-size: 16px;
-      line-height: 1.7;
+      font-size: 18px;
+      line-height: 1.62;
+    }
+    h1 {
+      font-family: "Geist Pixel", "Geist Mono", ui-monospace, monospace !important;
+      font-weight: 400 !important;
+      text-transform: uppercase !important;
+      letter-spacing: 0.02em !important;
+      color: var(--brand) !important;
+      font-size: 36px !important;
+      line-height: 1.05 !important;
+      margin: 48px 0 16px 0 !important;
     }
     h2 {
-      font-size: 18px;
-      line-height: 1.4;
-      font-weight: 600;
-      margin: 32px 0 12px 0;
+      font-family: "Geist Pixel", "Geist Mono", ui-monospace, monospace !important;
+      font-weight: 400 !important;
+      text-transform: uppercase !important;
+      letter-spacing: 0.02em !important;
+      color: var(--brand) !important;
+      font-size: 26px !important;
+      line-height: 1.1 !important;
+      margin: 40px 0 16px 0 !important;
     }
-    h3, h4 {
-      font-size: 16px;
-      line-height: 1.5;
-      font-weight: 600;
-      margin: 24px 0 8px 0;
+    h3 {
+      font-family: "Geist Pixel", "Geist Mono", ui-monospace, monospace !important;
+      font-weight: 400 !important;
+      text-transform: uppercase !important;
+      letter-spacing: 0.04em !important;
+      color: var(--brand) !important;
+      font-size: 18px !important;
+      line-height: 1.2 !important;
+      margin: 28px 0 10px 0 !important;
     }
-    h5, h6 {
-      font-size: 14px;
-      line-height: 1.5;
-      font-weight: 600;
-      margin: 20px 0 6px 0;
+    h4, h5, h6 {
+      font-family: "Geist Pixel", "Geist Mono", ui-monospace, monospace !important;
+      font-weight: 400 !important;
+      text-transform: uppercase !important;
+      letter-spacing: 0.06em !important;
+      color: var(--near-black) !important;
+      font-size: 14px !important;
+      line-height: 1.3 !important;
+      margin: 20px 0 8px 0 !important;
     }
-    /* No frames, no shadows, no rounded corners on editorial surfaces. */
-    section, article, aside, figure, .card, .callout, .toc, table,
+    /* Flat editorial surfaces by default. */
+    section, article, aside, figure, .toc, table,
     .stage, .case, .release, .entry, .panel, .block {
       box-shadow: none;
       border-radius: 0;
     }
-    /* Restore a comfortable reading column when the page is wider than ~720px. */
-    body {
-      max-width: 1100px;
+    /* Opt-in chunky shadow for cards / callouts. */
+    .card, .callout, .takeaway, .surface-raised, .shadow-hard {
+      background: var(--ivory);
+      box-shadow: var(--shadow-hard);
+      border: 1px solid var(--near-black);
+      padding: 16px;
+      margin: 24px 0;
+      border-radius: 0;
     }
-    /* Margin tags can opt into a rotated, gutter-set position. */
+    /* ASCII rule — blueprint dotted separator. */
+    .ascii-rule, hr.ascii {
+      display: block;
+      width: 100%;
+      height: 6px;
+      margin: 32px 0;
+      border: 0;
+      background-image:
+        repeating-linear-gradient(to right, var(--brand) 0, var(--brand) 4px, transparent 4px, transparent 8px),
+        repeating-linear-gradient(to right, transparent 0, transparent 8px, var(--blueprint-tint-strong) 8px, var(--blueprint-tint-strong) 14px);
+      background-size: 100% 3px, 100% 3px;
+      background-position: 0 0, 0 3px;
+      background-repeat: no-repeat;
+      user-select: none;
+    }
+    /* Margin tags can opt into rotated, gutter-set position. */
     .figure-tag.vertical, .margin-label.vertical, .gutter-tag {
       writing-mode: vertical-rl;
       transform: rotate(180deg);
@@ -481,9 +556,10 @@
       text-transform: uppercase;
       font-family: "Geist Pixel", "Geist Mono", ui-monospace, monospace;
       font-size: 10px;
-      color: #D14E3E;
+      color: var(--brand);
     }
   }
+
 </style>
 </head>
 <body>

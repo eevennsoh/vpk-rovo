@@ -25,9 +25,11 @@ unambiguous.
 
 ## What you get
 
-- **8 document templates** at `assets/templates/`: one-pager, long-doc, letter,
-  portfolio, resume, slides, equity-report, changelog. Each is a complete
-  standalone HTML file with inline CSS and fonts.
+- **28 document templates** at `assets/templates/`: 8 base document shells
+  plus 20 Phase 2 engineering templates patterned after the
+  [ThariqS/html-effectiveness](https://github.com/ThariqS/html-effectiveness)
+  use-case catalog. Each is a complete standalone HTML file with inline CSS
+  and fonts.
 - **14 SVG diagram primitives** at `assets/diagrams/` — architecture, flowchart,
   swimlane, tree, waterfall, candlestick, and friends. Extract the `<svg>` block
   and embed inside any long-form template.
@@ -75,6 +77,7 @@ node scripts/ensure-fonts.mjs                     # fetch fonts to assets/fonts/
 node scripts/port-templates.mjs                   # re-port templates from kami
 node scripts/port-diagrams.mjs                    # re-port diagrams from kami
 node scripts/port-demos.mjs                       # re-port kami's curated demos
+node scripts/port-html-effectiveness.mjs          # regenerate Phase 2 engineering templates
 node scripts/rescue-demos.mjs                     # regenerate the 4 vpk-native demos
 ```
 
@@ -87,13 +90,13 @@ node scripts/rescue-demos.mjs                     # regenerate the 4 vpk-native 
 | `README.md` | This file |
 | `index.html` | Marketing landing page |
 | `LICENSE`, `llms.txt`, `.gitignore`, `.claude-plugin/` | Top-level metadata |
-| `assets/templates/` | The 8 kami-architected HTML templates (one per doc type) |
+| `assets/templates/` | 28 offline HTML templates: 8 base document shells + 20 Phase 2 engineering shells |
 | `assets/diagrams/` | 14 standalone SVG diagram primitives |
 | `assets/demos/` | 8 curated showcase outputs (4 kami-ported + 4 vpk-native) |
 | `assets/fonts/` | Geist Sans, Geist Mono, Geist Pixel (inlined as base64 at port time) |
 | `assets/images/` | Skill identity (logo) |
 | `references/` | Anti-patterns, diagrams, resume-writing, writing, design, production, source-policy, accessibility, theme.css, tokens.json |
-| `scripts/` | build (validator), check-html, port-*.mjs (re-port from kami), rescue-demos (regenerate vpk demos), ensure-fonts |
+| `scripts/` | build (validator), check-html, port-*.mjs, rescue-demos (regenerate vpk demos), ensure-fonts |
 
 ## Rules of the road
 
@@ -111,8 +114,10 @@ node scripts/rescue-demos.mjs                     # regenerate the 4 vpk-native 
 
 ## How vpk-html relates to kami
 
-vpk-html adopted kami's template-edit architecture (Phase 1, May 2026). The
-visual identity diverges; the workflow does not.
+vpk-html adopted kami's template-edit architecture (Phase 1, May 2026). Phase
+2 adds original engineering-focused shells mapped from the
+`html-effectiveness` use cases into the same offline template-edit workflow.
+The visual identity diverges; the workflow does not.
 
 | | vpk-html | kami |
 |---|---|---|
@@ -123,24 +128,36 @@ visual identity diverges; the workflow does not.
 | Render pipeline | Template edit (kami-style) | Template edit |
 | Build toolchain | Node ESM | Python (WeasyPrint, python-pptx) |
 | Output | Single offline HTML | HTML + PDF + optional PPTX + PNG |
-| Templates | 8 (kami-ported) | 8 |
+| Templates | 28 (8 kami-ported base shells + 20 original Phase 2 engineering shells) | 8 |
 | Diagrams | 14 SVG primitives (kami-ported) | 14 SVG primitives |
 | Languages | EN | CN primary, EN, JA best-effort |
 
-A future Phase 2 will port engineering-focused templates from
+## Phase 2 engineering templates
+
+The Phase 2 generator maps the 20 engineering document patterns from
 [ThariqS/html-effectiveness](https://github.com/ThariqS/html-effectiveness)
-into this same template-edit shell.
+into vpk-html shells for approach exploration, code review, code
+understanding, design-system specs, component variants, prototypes, status and
+incident reports, research explainers, implementation plans, PR writeups, and
+editor-style triage/flag/prompt worksheets.
+
+These files are original vpk-html template shells. They reference the upstream
+pattern file visibly, but do not copy upstream HTML, CSS, or prose.
 
 ## License
 
-Inherits the VPK-Rovo monorepo license. The 8 HTML templates and 14 diagram
-primitives in `assets/templates/` and `assets/diagrams/` are ported from
-[tw93/kami](https://github.com/tw93/Kami) (MIT) and re-skinned with vpk-html's
-visual identity; the layout structure and SVG geometry are kami's work.
+Inherits the VPK-Rovo monorepo license. The 8 base HTML templates and 14
+diagram primitives in `assets/templates/` and `assets/diagrams/` are ported
+from [tw93/kami](https://github.com/tw93/Kami) (MIT) and re-skinned with
+vpk-html's visual identity; the layout structure and SVG geometry are kami's
+work. The 20 Phase 2 engineering templates are original vpk-html shells based
+on the `html-effectiveness` use-case catalog.
 
 ## Acknowledgements
 
 - Kami by [@tw93](https://github.com/tw93) — template architecture, diagram
   primitives, demo curation, and the broader idea of constraint-based document
   design systems for AI agents.
+- html-effectiveness by [@ThariqS](https://github.com/ThariqS) — engineering
+  document use-case catalog that informed the Phase 2 template set.
 - Geist, Geist Mono, and Geist Pixel by [Vercel](https://vercel.com/font) (SIL OFL).

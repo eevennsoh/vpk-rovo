@@ -16,6 +16,34 @@ follow, e.g. `/vpk-html resume`, `/vpk-html one-pager`.
 | Investment memo / valuation / equity research | `assets/templates/equity-report.html` |
 | Release notes / changelog | `assets/templates/changelog.html` |
 
+## Engineering templates (Phase 2)
+
+These original shells map the document patterns from
+`ThariqS/html-effectiveness` into the same offline template-edit workflow.
+
+| User intent | Template |
+|---|---|
+| Compare technical implementation approaches | `assets/templates/exploration-code-approaches.html` |
+| Compare UI / visual design directions | `assets/templates/exploration-visual-designs.html` |
+| Pull request review findings | `assets/templates/code-review-pr.html` |
+| Explain a code path or module | `assets/templates/code-understanding.html` |
+| Design system / token contract | `assets/templates/design-system.html` |
+| Component variant matrix | `assets/templates/component-variants.html` |
+| Motion / animation prototype spec | `assets/templates/prototype-animation.html` |
+| Interaction prototype spec | `assets/templates/prototype-interaction.html` |
+| Engineering slide deck plan | `assets/templates/slide-deck.html` |
+| SVG / technical illustration brief | `assets/templates/svg-illustrations.html` |
+| Engineering status report | `assets/templates/status-report.html` |
+| Incident report / postmortem | `assets/templates/incident-report.html` |
+| Flowchart / process diagram plan | `assets/templates/flowchart-diagram.html` |
+| Feature explainer / capability research | `assets/templates/research-feature-explainer.html` |
+| Concept explainer / technical research note | `assets/templates/research-concept-explainer.html` |
+| Implementation plan / rollout plan | `assets/templates/implementation-plan.html` |
+| Pull request writeup | `assets/templates/pr-writeup.html` |
+| Static triage board snapshot | `assets/templates/editor-triage-board.html` |
+| Feature flag matrix / rollout controls | `assets/templates/editor-feature-flags.html` |
+| Prompt tuning / prompt eval worksheet | `assets/templates/editor-prompt-tuner.html` |
+
 ## Diagrams (embed inside the templates above)
 
 | Data shape / intent | Diagram |
@@ -83,23 +111,26 @@ node .agents/skills/vpk-html/scripts/build.mjs --verify docs/html/<slug>.html
 
 ## Identity
 
-Editorial / engineering manual — closest neighbour: [makingsoftware.com](https://www.makingsoftware.com/).
+Editorial / engineering manual — implementation cousin: [aiengineeringfromscratch.com](https://aiengineeringfromscratch.com/) (built in the [makingsoftware.com](https://www.makingsoftware.com/) lineage).
 
-- Surface: parchment `#FBFBFB` (never pure `#ffffff`)
-- Ink: `#0A0A0A` body, `#757575` secondary
-- Brand: ink-blue `#1B3FE5` (masthead, links; ≤5% per page)
-- Margin tag: warning red `#D14E3E` (figure tags + gutter labels only)
-- Display: Geist Pixel (Square) on masthead in `#1B3FE5`
-- Body: Source Serif 4 → Georgia → system serif fallback; 16px screen / 10.5pt print, line-height 1.7
-- Margin labels / eyebrows / figure tags: Geist Pixel + Geist Mono, 10px, uppercase, 0.18em letter-spacing
-- Mono / code: Geist Mono
-- Frames: none — no borders, no shadows, no rounded corners on sections
-- Drop cap: serif, 48px, on first paragraph after section break
-- Dotted divider: `<hr>` styled as radial-gradient row of 1px dots
-- Type scale (screen): body 16px / h2 18px / h3-h4 16px / h5-h6 14px — hierarchy via weight + family + position, not size
-- `long-doc.html` only: `.spread` primitive for two-column prose-left + figure-right with vertical `.gutter-tag`
+**Light (default):** parchment `#fafaf5`, ink `#0A0A0A`, blueprint `#3553ff`, raised `#f3f1e8`.
+**Dark** (`<html data-theme="dark">`): paper `#0a0d1a`, ink `#e8e6dc`, blueprint `#6b8eff`, raised `#131830`.
 
-**Side stripes are banned** — no colored `border-left/right` > 1px on cards, callouts, or lists.
+- Fonts (Geist family only): **Geist Pixel** for all headings, masthead, margin labels, figure tags; **Geist Sans** body 18px / line-height 1.62; **Geist Mono** code
+- All headings: uppercase, letter-spaced, in `var(--brand)`
+- Body bg: warm paper + subtle dotted texture via `radial-gradient(var(--paper-rule) 1px, transparent 1px); background-size: 16px 16px;`
+- Type scale: cover-title 56px / h1 36px / h2 26px / h3 18px / h4-h6 14px / body+p 18px / fig-label 10px
+- Hard shadows opt-in: add `.card / .callout / .takeaway / .surface-raised / .shadow-hard` for `box-shadow: 3px 3px 0 var(--near-black)` + 1px ink border
+- ASCII rule: `<hr class="ascii">` for bright blueprint dotted separator
+- Dotted divider: `<hr>` styled via radial-gradient row of 1px dots
+- `long-doc.html` only: `.spread` two-column primitive (prose left ~42%, figure right ~58%) with vertical `.gutter-tag` for FIG_NN labels
+
+**Bans:** no `border-left/right > 1px` colored side stripes; no `#ffffff` or `#000000` literals — use `var(--parchment)` / `var(--near-black)`.
+
+**Activate dark mode in any rendered doc:**
+```js
+document.documentElement.setAttribute('data-theme', 'dark');
+```
 
 ## Reference reading order
 

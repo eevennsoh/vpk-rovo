@@ -3,7 +3,7 @@
      TEMPLATE · long doc (vpk-html · Making Software identity)
      Ported from kami's editorial template library, restyled with the
      Making Software design language: warm paper (#FBFBFB), warm ink
-     (#0A0A0A), electric accent-blue (#1B3FE5), accent-warning red
+     (#0A0A0A), electric accent-blue (#3553ff), accent-warning red
      (#D14E3E) for figure tags, ink-muted (#757575) for captions.
      Geist Pixel (Square) masthead, Geist Sans body, Geist Mono labels, 16px throughout
      (hierarchy via family + weight + color, not size).
@@ -25,7 +25,7 @@
   @page {
     size: A4;
     margin: 20mm 22mm 22mm 22mm;
-    background: #FBFBFB;
+    background: var(--parchment);
 
     @top-right {
       content: string(section-title);
@@ -65,13 +65,13 @@
   }
 
   :root {
-    --parchment: #FBFBFB;
-    --ivory:     #FBFBFB;
+    --parchment: #fafaf5;
+    --ivory:     #f3f1e8;
     --near-black:#0A0A0A;
     --dark-warm: #2A2A2A;
     --olive:     #525252;
     --stone:     #757575;
-    --brand:     #1B3FE5;
+    --brand:     #3553ff;
     --border:    #E0E0E0;
     --border-soft:#E0E0E0;
     --tag-bg:    #D5DDF8;
@@ -385,7 +385,7 @@
   /* ===== vpk-html identity overrides (Making Software language) ===== */
 
   /* Paper background — warm off-white, never pure white. No grid, no banding. */
-  html, body { background: #FBFBFB !important; }
+  html, body { background: var(--parchment) !important; color: var(--near-black) !important; }
 
   /* Strip all section chrome: no borders, no shadows, no rounded corners,
      no section background colors. Per Making Software refuses-list. */
@@ -438,7 +438,7 @@
   .hero h1:first-child, .doc-title h1:first-child,
   .resume-name {
     font-family: "Geist Pixel", "Geist Mono", ui-monospace, "SFMono-Regular", Consolas, monospace !important;
-    color: #1B3FE5 !important;
+    color: #3553ff !important;
     font-weight: 400 !important;
     text-transform: uppercase !important;
     letter-spacing: 0.02em !important;
@@ -467,7 +467,7 @@
 
   /* Links: same accent-blue as masthead. No underline by default; underline on hover. */
   a, a:visited {
-    color: #1B3FE5 !important;
+    color: #3553ff !important;
     text-decoration: none !important;
   }
   a:hover {
@@ -477,7 +477,7 @@
   }
 
   /* Emphasis: italic preferred; bold reserved for headings. */
-  .hl, mark, strong { color: #1B3FE5 !important; background: transparent !important; font-weight: 600 !important; }
+  .hl, mark, strong { color: #3553ff !important; background: transparent !important; font-weight: 600 !important; }
   em, i { font-style: italic !important; color: #0A0A0A !important; }
 
   /* Dotted rule utility (Making Software signature separator). */
