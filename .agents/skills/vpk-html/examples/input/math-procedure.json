@@ -1,0 +1,89 @@
+{
+	"template": "math-procedure",
+	"title": "Math Procedure Example",
+	"slug": "example-math-procedure",
+	"subtitle": "Worked method or algorithm with common mistakes.",
+	"audience": "VPK developers",
+	"theme": {
+		"initialMode": "light",
+		"allowToggle": true
+	},
+	"sections": [
+		{
+			"type": "overview",
+			"kicker": "math",
+			"heading": "Math Procedure in use",
+			"body": "This procedure walks through solving a quadratic equation by factoring, including decision points and common mistakes.",
+			"cards": [
+				{
+					"title": "Goal",
+					"body": "Solve x^2 - 5x + 6 = 0.",
+					"status": "problem"
+				},
+				{
+					"title": "Pattern",
+					"body": "Find two numbers that multiply to 6 and add to -5.",
+					"status": "strategy"
+				},
+				{
+					"title": "Answer",
+					"body": "x = 2 or x = 3.",
+					"status": "result"
+				}
+			]
+		},
+		{
+			"type": "procedure",
+			"heading": "Procedure",
+			"steps": [
+				{
+					"title": "Identify coefficients",
+					"body": "For x^2 - 5x + 6, the product target is 6 and the sum target is -5."
+				},
+				{
+					"title": "Find factor pair",
+					"body": "-2 and -3 multiply to 6 and add to -5."
+				},
+				{
+					"title": "Rewrite",
+					"body": "x^2 - 5x + 6 = (x - 2)(x - 3)."
+				},
+				{
+					"title": "Use zero product rule",
+					"body": "Set each factor to zero, so x = 2 or x = 3."
+				}
+			]
+		},
+		{
+			"type": "mistakes",
+			"heading": "Common mistakes",
+			"table": {
+				"headers": [
+					"Mistake",
+					"Correction"
+				],
+				"rows": [
+					[
+						"Using 2 and 3",
+						"Signs must make the middle term -5x"
+					],
+					[
+						"Stopping at factors",
+						"Solve each factor for x"
+					],
+					[
+						"Ignoring both roots",
+						"A quadratic can have two solutions"
+					]
+				]
+			}
+		}
+	],
+	"sources": [],
+	"assets": [],
+	"options": {
+		"print": true,
+		"interactive": true,
+		"useAlgebrica": false
+	}
+}

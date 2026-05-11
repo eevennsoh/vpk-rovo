@@ -1,0 +1,104 @@
+{
+	"template": "code-understanding",
+	"title": "Code Understanding Example",
+	"slug": "example-code-understanding",
+	"subtitle": "Explain a module map, data flow, or code path.",
+	"audience": "VPK developers",
+	"theme": {
+		"initialMode": "light",
+		"allowToggle": true
+	},
+	"sections": [
+		{
+			"type": "overview",
+			"kicker": "html-effectiveness",
+			"heading": "Code Understanding in use",
+			"body": "Use this template to explain a code path with a compact module map, a data flow diagram, and the files a maintainer should read first.",
+			"cards": [
+				{
+					"title": "Payload builder",
+					"body": "Creates validated examples for each template id and keeps the gallery deterministic.",
+					"status": "source"
+				},
+				{
+					"title": "Renderer",
+					"body": "Converts structured sections into a single offline HTML document with embedded CSS and script.",
+					"status": "transform"
+				},
+				{
+					"title": "Checker",
+					"body": "Validates that generated output contains the expected shell, tokens, and template marker.",
+					"status": "gate"
+				}
+			]
+		},
+		{
+			"type": "flow",
+			"heading": "Render flow",
+			"diagram": {
+				"type": "architecture",
+				"title": "Payload to portable HTML",
+				"nodes": [
+					"Template id",
+					"Example payload",
+					"Renderer",
+					"HTML file",
+					"Static check"
+				],
+				"edges": [
+					[
+						"Template id",
+						"Example payload"
+					],
+					[
+						"Example payload",
+						"Renderer"
+					],
+					[
+						"Renderer",
+						"HTML file"
+					],
+					[
+						"HTML file",
+						"Static check"
+					]
+				]
+			}
+		},
+		{
+			"type": "files",
+			"heading": "Files to read first",
+			"table": {
+				"headers": [
+					"File",
+					"Purpose"
+				],
+				"rows": [
+					[
+						"templates/catalog.mjs",
+						"Defines template ids, labels, families, and interaction promises"
+					],
+					[
+						"schemas/render-payload.schema.mjs",
+						"Defines the safe portable payload contract"
+					],
+					[
+						"scripts/render.mjs",
+						"Owns HTML, CSS, and interaction rendering"
+					],
+					[
+						"scripts/example-payloads.mjs",
+						"Owns demo quality for the gallery"
+					]
+				]
+			}
+		}
+	],
+	"sources": [],
+	"assets": [],
+	"options": {
+		"print": true,
+		"interactive": true,
+		"useAlgebrica": false
+	}
+}

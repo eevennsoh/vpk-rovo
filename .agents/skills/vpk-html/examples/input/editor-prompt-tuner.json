@@ -1,0 +1,65 @@
+{
+	"template": "editor-prompt-tuner",
+	"title": "Prompt Tuner Example",
+	"slug": "example-editor-prompt-tuner",
+	"subtitle": "Tune prompts with a live preview and export controls.",
+	"audience": "VPK developers",
+	"theme": {
+		"initialMode": "light",
+		"allowToggle": true
+	},
+	"sections": [
+		{
+			"type": "overview",
+			"kicker": "html-effectiveness",
+			"heading": "Prompt Tuner in use",
+			"body": "This editor shows a prompt-tuning surface with roles, constraints, and an output preview rather than an empty textarea.",
+			"cards": [
+				{
+					"title": "Instruction",
+					"body": "Render a white light-mode VPK HTML demo using existing token names.",
+					"status": "system"
+				},
+				{
+					"title": "Constraint",
+					"body": "No remote assets, no unresolved placeholders, and no generated examples without substance.",
+					"status": "guardrail"
+				},
+				{
+					"title": "Preview",
+					"body": "A reader should understand the template from the rendered page alone.",
+					"status": "output"
+				}
+			]
+		},
+		{
+			"type": "editor",
+			"heading": "Editable prompt payload",
+			"body": "Tune the prompt JSON and export the result for a rendering run.",
+			"cards": [
+				{
+					"title": "System",
+					"body": "Use VPK semantic tokens and light-mode white surfaces.",
+					"status": "role"
+				},
+				{
+					"title": "Developer",
+					"body": "Prefer structured sections over raw HTML unless a figure needs inline SVG.",
+					"status": "role"
+				},
+				{
+					"title": "User",
+					"body": "Make the clickable demos show real content.",
+					"status": "role"
+				}
+			]
+		}
+	],
+	"sources": [],
+	"assets": [],
+	"options": {
+		"print": false,
+		"interactive": true,
+		"useAlgebrica": false
+	}
+}

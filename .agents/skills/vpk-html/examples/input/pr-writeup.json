@@ -1,0 +1,53 @@
+{
+	"template": "pr-writeup",
+	"title": "PR Writeup Example",
+	"slug": "example-pr-writeup",
+	"subtitle": "Prepare a concise PR handoff for reviewers.",
+	"audience": "VPK developers",
+	"theme": {
+		"initialMode": "light",
+		"allowToggle": true
+	},
+	"sections": [
+		{
+			"type": "overview",
+			"kicker": "html-effectiveness",
+			"heading": "PR Writeup in use",
+			"body": "This writeup is the artifact a reviewer should see after the gallery work lands: concise change scope, concrete validation, and visible risks.",
+			"cards": [
+				{
+					"title": "Changed",
+					"body": "Rebuilt the template fixture generator with content-rich examples for all gallery cards.",
+					"status": "summary"
+				},
+				{
+					"title": "Validated",
+					"body": "Renderer tests, static HTML checks, lint, typecheck, and browser click checks.",
+					"status": "checks"
+				},
+				{
+					"title": "Risk",
+					"body": "Trusted HTML examples are intentionally local and static; they must not become a path for user-supplied raw HTML.",
+					"status": "watch"
+				}
+			]
+		},
+		{
+			"type": "details",
+			"heading": "PR body draft",
+			"code": "## Summary\n- Make vpk-html example gallery cards clickable\n- Replace generic fixtures with template-specific demo content\n- Align portable light tokens with VPK/ADS white surfaces\n\n## Validation\n- node --test .agents/skills/vpk-html/scripts/test-templates.test.js\n- pnpm run lint\n- pnpm run typecheck"
+		},
+		{
+			"type": "sources",
+			"heading": "Example data policy",
+			"body": "This demo uses invented project data so the template shape is visible without depending on private tickets, customer names, or live metrics."
+		}
+	],
+	"sources": [],
+	"assets": [],
+	"options": {
+		"print": true,
+		"interactive": false,
+		"useAlgebrica": false
+	}
+}

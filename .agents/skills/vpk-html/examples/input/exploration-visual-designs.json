@@ -1,0 +1,85 @@
+{
+	"template": "exploration-visual-designs",
+	"title": "Visual Directions Example",
+	"slug": "example-exploration-visual-designs",
+	"subtitle": "Compare visual directions and interaction tone.",
+	"audience": "VPK developers",
+	"theme": {
+		"initialMode": "light",
+		"allowToggle": true
+	},
+	"sections": [
+		{
+			"type": "overview",
+			"kicker": "html-effectiveness",
+			"heading": "Visual Directions in use",
+			"body": "This template compares visual directions with enough specificity that a reviewer can discuss density, tone, and affordances instead of reacting to a blank moodboard.",
+			"cards": [
+				{
+					"title": "Editorial white",
+					"body": "Large type, white page surfaces, restrained rules, and source notes. Closest fit for Making Software-style explainers.",
+					"status": "direction A"
+				},
+				{
+					"title": "Workbench",
+					"body": "Compact panels, token swatches, small controls, and dense comparison tables for repeated tool use.",
+					"status": "direction B"
+				},
+				{
+					"title": "Teaching canvas",
+					"body": "Diagram-first composition with callouts, progressive examples, and print-friendly hierarchy.",
+					"status": "direction C"
+				}
+			]
+		},
+		{
+			"type": "visuals",
+			"heading": "Direction thumbnails",
+			"trustedHtml": "<div class=\"vpk-demo-grid\">\n\t<div class=\"vpk-demo-panel\">\n\t\t<p class=\"vpk-eyebrow\">Editorial white</p>\n\t\t<div class=\"vpk-mini-browser\"><strong>Prompt engineering without the fog</strong><span>Lead, example, diagram, references.</span></div>\n\t</div>\n\t<div class=\"vpk-demo-panel\">\n\t\t<p class=\"vpk-eyebrow\">Workbench</p>\n\t\t<div class=\"vpk-meter\"><span style=\"width: 72%\"></span></div>\n\t\t<div class=\"vpk-badge-row\"><span class=\"vpk-badge\">tokens</span><span class=\"vpk-badge\">states</span><span class=\"vpk-badge\">export</span></div>\n\t</div>\n\t<div class=\"vpk-demo-panel\">\n\t\t<p class=\"vpk-eyebrow\">Teaching canvas</p>\n\t\t<svg viewBox=\"0 0 260 120\" role=\"img\" aria-label=\"Teaching canvas thumbnail\"><path d=\"M30 70 C80 10 150 110 225 35\" fill=\"none\" stroke=\"var(--vpk-blueprint)\" stroke-width=\"5\"/><circle cx=\"30\" cy=\"70\" r=\"10\"/><circle cx=\"225\" cy=\"35\" r=\"10\"/></svg>\n\t</div>\n</div>"
+		},
+		{
+			"type": "criteria",
+			"heading": "Review criteria",
+			"table": {
+				"headers": [
+					"Criterion",
+					"Editorial white",
+					"Workbench",
+					"Teaching canvas"
+				],
+				"rows": [
+					[
+						"First read",
+						"Strong",
+						"Medium",
+						"Strong"
+					],
+					[
+						"Repeated editing",
+						"Medium",
+						"Strong",
+						"Medium"
+					],
+					[
+						"Diagram clarity",
+						"Medium",
+						"Medium",
+						"Strong"
+					]
+				]
+			}
+		},
+		{
+			"type": "sources",
+			"heading": "Example data policy",
+			"body": "This demo uses invented project data so the template shape is visible without depending on private tickets, customer names, or live metrics."
+		}
+	],
+	"sources": [],
+	"assets": [],
+	"options": {
+		"print": true,
+		"interactive": true,
+		"useAlgebrica": false
+	}
+}

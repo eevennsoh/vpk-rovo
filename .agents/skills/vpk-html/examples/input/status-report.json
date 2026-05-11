@@ -1,0 +1,80 @@
+{
+	"template": "status-report",
+	"title": "Status Report Example",
+	"slug": "example-status-report",
+	"subtitle": "Summarize project status, changes, and next actions.",
+	"audience": "VPK developers",
+	"theme": {
+		"initialMode": "light",
+		"allowToggle": true
+	},
+	"sections": [
+		{
+			"type": "overview",
+			"kicker": "html-effectiveness",
+			"heading": "Status Report in use",
+			"body": "This report summarizes the state of a fictional gallery refresh so the template demonstrates real status mechanics instead of generic validation cards.",
+			"cards": [
+				{
+					"title": "Scope",
+					"body": "33 template examples regenerated with content-specific sections.",
+					"status": "green"
+				},
+				{
+					"title": "Validation",
+					"body": "Static checks pass locally; browser checks focus on clickability and light surfaces.",
+					"status": "green"
+				},
+				{
+					"title": "Risk",
+					"body": "Future template additions need matching example content and a guard test.",
+					"status": "yellow"
+				}
+			]
+		},
+		{
+			"type": "metrics",
+			"heading": "Status metrics",
+			"table": {
+				"headers": [
+					"Metric",
+					"Current",
+					"Target"
+				],
+				"rows": [
+					[
+						"Clickable gallery cards",
+						"33",
+						"33"
+					],
+					[
+						"Templates with rich examples",
+						"33",
+						"33"
+					],
+					[
+						"Remote runtime assets",
+						"0",
+						"0"
+					]
+				]
+			}
+		},
+		{
+			"type": "next",
+			"heading": "Next actions",
+			"items": [
+				"Review the five representative outputs visually.",
+				"Keep placeholder-content assertions in the test suite.",
+				"Use the gallery as a reference when adding a new template."
+			]
+		}
+	],
+	"sources": [],
+	"assets": [],
+	"options": {
+		"print": true,
+		"interactive": false,
+		"useAlgebrica": false
+	}
+}

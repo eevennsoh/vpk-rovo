@@ -1,0 +1,71 @@
+{
+	"template": "math-proof",
+	"title": "Math Proof Example",
+	"slug": "example-math-proof",
+	"subtitle": "Proof walkthrough with assumptions and transformations.",
+	"audience": "VPK developers",
+	"theme": {
+		"initialMode": "light",
+		"allowToggle": true
+	},
+	"sections": [
+		{
+			"type": "overview",
+			"kicker": "math",
+			"heading": "Math Proof in use",
+			"body": "This proof walkthrough demonstrates a complete claim with assumptions, visual intuition, algebraic transformation, and conclusion.",
+			"cards": [
+				{
+					"title": "Claim",
+					"body": "The sum of the first n odd numbers is n^2.",
+					"status": "theorem"
+				},
+				{
+					"title": "Domain",
+					"body": "n is a positive integer.",
+					"status": "assumption"
+				},
+				{
+					"title": "Method",
+					"body": "Use induction and a square-growth intuition.",
+					"status": "proof"
+				}
+			]
+		},
+		{
+			"type": "proof",
+			"heading": "Proof steps",
+			"steps": [
+				{
+					"title": "Base case",
+					"body": "For n = 1, the sum is 1, and 1^2 = 1."
+				},
+				{
+					"title": "Inductive assumption",
+					"body": "Assume 1 + 3 + ... + (2k - 1) = k^2."
+				},
+				{
+					"title": "Add the next odd number",
+					"body": "The next odd number is 2k + 1, so the next sum is k^2 + 2k + 1.",
+					"code": "k^2 + 2k + 1 = (k + 1)^2"
+				},
+				{
+					"title": "Conclusion",
+					"body": "The statement holds for k + 1, so it holds for all positive integers n."
+				}
+			]
+		},
+		{
+			"type": "visual",
+			"heading": "Square intuition",
+			"trustedHtml": "<div class=\"vpk-equation\">1 + 3 + 5 + ... + (2n - 1) = n^2</div>\n<div class=\"vpk-mini-grid\" aria-label=\"Square growth diagram\"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>"
+		}
+	],
+	"sources": [],
+	"assets": [],
+	"options": {
+		"print": true,
+		"interactive": true,
+		"useAlgebrica": false
+	}
+}

@@ -1,0 +1,71 @@
+{
+	"template": "portfolio",
+	"title": "Portfolio Example",
+	"slug": "example-portfolio",
+	"subtitle": "Case studies and work samples.",
+	"audience": "VPK developers",
+	"theme": {
+		"initialMode": "light",
+		"allowToggle": true
+	},
+	"sections": [
+		{
+			"type": "overview",
+			"kicker": "print",
+			"heading": "Portfolio in use",
+			"body": "This portfolio example presents three fictional case studies so the template demonstrates work samples and outcomes.",
+			"cards": [
+				{
+					"title": "Portable HTML gallery",
+					"body": "Converted a route list into a navigable documentation gallery with representative examples.",
+					"status": "case study"
+				},
+				{
+					"title": "Token alignment",
+					"body": "Mapped standalone CSS variables back to VPK and ADS semantic values.",
+					"status": "case study"
+				},
+				{
+					"title": "Static validation",
+					"body": "Added tests that protect against placeholder examples and broken gallery links.",
+					"status": "case study"
+				}
+			]
+		},
+		{
+			"type": "case-studies",
+			"heading": "Case study matrix",
+			"table": {
+				"headers": [
+					"Case",
+					"Challenge",
+					"Outcome"
+				],
+				"rows": [
+					[
+						"Gallery",
+						"Examples looked empty",
+						"Every card opens a specific demo"
+					],
+					[
+						"Theme",
+						"Light mode looked warm",
+						"White VPK surfaces"
+					],
+					[
+						"Quality",
+						"Smoke tests missed substance",
+						"Content guard tests"
+					]
+				]
+			}
+		}
+	],
+	"sources": [],
+	"assets": [],
+	"options": {
+		"print": true,
+		"interactive": false,
+		"useAlgebrica": false
+	}
+}
