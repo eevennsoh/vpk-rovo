@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import AiGenerativeTextSummaryIcon from "@atlaskit/icon/core/ai-generative-text-summary";
 import DownloadIcon from "@atlaskit/icon/core/download";
 import RefreshIcon from "@atlaskit/icon/core/refresh";
@@ -48,6 +48,7 @@ export function PersonalGraphSummaryPanel({
 	onWorkWindowChange,
 	workWindow = "7d",
 }: Readonly<PersonalGraphSummaryPanelProps>) {
+	const articleFrameRef = useRef<HTMLIFrameElement | null>(null);
 	const summary = usePersonalGraphSummary(node, explorer);
 
 	useEffect(() => {
@@ -55,6 +56,10 @@ export function PersonalGraphSummaryPanel({
 		const handleSelectNode: (nodeId: string) => void = onSelectNode;
 
 		function handleMessage(event: MessageEvent) {
+			const expectedSource = articleFrameRef.current?.contentWindow;
+			if (!expectedSource || event.source !== expectedSource || event.origin !== "null") {
+				return;
+			}
 			const data = event.data as { nodeId?: unknown; type?: unknown };
 			if (data?.type !== "personal-graph-select-node" || typeof data.nodeId !== "string") {
 				return;
@@ -215,6 +220,7 @@ export function PersonalGraphSummaryPanel({
 				<div className="mt-4 overflow-hidden rounded-md border border-border bg-surface">
 					<iframe
 						className="h-[min(58svh,620px)] w-full bg-surface"
+						ref={articleFrameRef}
 						sandbox="allow-popups allow-scripts"
 						srcDoc={summary.summaryHtml}
 						title="Personal Graph summary article"

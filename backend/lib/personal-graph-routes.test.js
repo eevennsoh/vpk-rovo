@@ -654,6 +654,59 @@ test("POST /api/personal-graph/summarize reuses cached articles and bypasses on 
 	assert.equal(callCount, 2);
 });
 
+test("POST /api/personal-graph/summarize bounds cached article entries", async (t) => {
+	createSummaryVault(t);
+	setEnvValueForTest(t, "PERSONAL_GRAPH_SUMMARY_ARTICLE_CACHE_MAX_ENTRIES", "2");
+	const originalCreateSourceFingerprint = summaryContext.createSourceFingerprint;
+	const originalSummarizeSelection = summaryContext.summarizeSelection;
+	const fingerprints = ["article-a", "article-b", "article-c", "article-a"];
+	let callCount = 0;
+	summaryContext.createSourceFingerprint = () => fingerprints.shift() ?? "article-a";
+	summaryContext.summarizeSelection = async () => {
+		callCount += 1;
+		return {
+			inputKind: "vault-file",
+			summary: `# Bounded article ${callCount}\n\n## What this is\nBounded body`,
+		};
+	};
+	t.after(() => {
+		summaryContext.createSourceFingerprint = originalCreateSourceFingerprint;
+		summaryContext.summarizeSelection = originalSummarizeSelection;
+	});
+
+	const baseUrl = await listen(createPersonalGraphTestApp(), t);
+	const requestBody = { action: "summary", clientId: "bounded-cache-client", length: "short", nodeId: "raw:source" };
+	const firstResponse = await fetch(`${baseUrl}/api/personal-graph/summarize`, {
+		body: JSON.stringify(requestBody),
+		headers: { "Content-Type": "application/json" },
+		method: "POST",
+	});
+	const secondResponse = await fetch(`${baseUrl}/api/personal-graph/summarize`, {
+		body: JSON.stringify(requestBody),
+		headers: { "Content-Type": "application/json" },
+		method: "POST",
+	});
+	const thirdResponse = await fetch(`${baseUrl}/api/personal-graph/summarize`, {
+		body: JSON.stringify(requestBody),
+		headers: { "Content-Type": "application/json" },
+		method: "POST",
+	});
+	const repeatedFirstResponse = await fetch(`${baseUrl}/api/personal-graph/summarize`, {
+		body: JSON.stringify(requestBody),
+		headers: { "Content-Type": "application/json" },
+		method: "POST",
+	});
+
+	await readSseEvents(firstResponse);
+	await readSseEvents(secondResponse);
+	await readSseEvents(thirdResponse);
+	const repeatedFirstEvents = await readSseEvents(repeatedFirstResponse);
+
+	assert.equal(repeatedFirstEvents.find((event) => event.type === "article").cache, "miss");
+	assert.equal(repeatedFirstEvents.find((event) => event.type === "article").articleMarkdown, "# Bounded article 4\n\n## What this is\nBounded body");
+	assert.equal(callCount, 4);
+});
+
 test("POST /api/personal-graph/summarize uses cached TWG explorer without refreshing", async (t) => {
 	const { sourcePath, cachePath } = configureTwgEnv(t);
 	fs.writeFileSync(sourcePath, JSON.stringify({ source: "twg" }), "utf8");

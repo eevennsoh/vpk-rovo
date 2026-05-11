@@ -77,6 +77,8 @@ const summaryArticleCache = new Map();
 let activeTwgCacheHydration = null;
 const DEFAULT_CACHED_TWG_ARTIFACT_TITLE_HYDRATION_LIMIT = 32;
 const CACHED_TWG_ARTIFACT_TITLE_HYDRATION_LIMIT_ENV_KEY = "PERSONAL_GRAPH_TWG_CACHED_ARTIFACT_HYDRATION_LIMIT";
+const DEFAULT_SUMMARY_ARTICLE_CACHE_MAX_ENTRIES = 64;
+const SUMMARY_ARTICLE_CACHE_MAX_ENTRIES_ENV_KEY = "PERSONAL_GRAPH_SUMMARY_ARTICLE_CACHE_MAX_ENTRIES";
 const DEFAULT_TWG_SUMMARY_WORK_WINDOW = "7d";
 
 function getCachedTwgArtifactTitleHydrationLimit() {
@@ -84,6 +86,31 @@ function getCachedTwgArtifactTitleHydrationLimit() {
 		process.env[CACHED_TWG_ARTIFACT_TITLE_HYDRATION_LIMIT_ENV_KEY],
 		DEFAULT_CACHED_TWG_ARTIFACT_TITLE_HYDRATION_LIMIT,
 	);
+}
+
+function getSummaryArticleCacheMaxEntries() {
+	return getPositiveInteger(
+		process.env[SUMMARY_ARTICLE_CACHE_MAX_ENTRIES_ENV_KEY],
+		DEFAULT_SUMMARY_ARTICLE_CACHE_MAX_ENTRIES,
+	);
+}
+
+function getSummaryArticleCacheEntry(cacheKey) {
+	const cached = summaryArticleCache.get(cacheKey);
+	if (!cached) return null;
+	summaryArticleCache.delete(cacheKey);
+	summaryArticleCache.set(cacheKey, cached);
+	return cached;
+}
+
+function setSummaryArticleCacheEntry(cacheKey, article) {
+	summaryArticleCache.set(cacheKey, article);
+	const maxEntries = getSummaryArticleCacheMaxEntries();
+	while (summaryArticleCache.size > maxEntries) {
+		const oldestKey = summaryArticleCache.keys().next().value;
+		if (oldestKey === undefined) break;
+		summaryArticleCache.delete(oldestKey);
+	}
 }
 
 function scheduleCachedTwgArtifactTitleHydration(cached) {
@@ -318,7 +345,7 @@ async function* runSummarizeStream(body) {
 			source,
 			sourceFingerprint,
 		});
-		const cachedArticle = request.bypassCache ? null : summaryArticleCache.get(cacheKey);
+		const cachedArticle = request.bypassCache ? null : getSummaryArticleCacheEntry(cacheKey);
 
 		yield { action: "summary", length: request.length, nodeId: request.nodeId, source, stage: "enriching", type: "stage" };
 		if (cachedArticle) {
@@ -348,7 +375,7 @@ async function* runSummarizeStream(body) {
 			signal: controller.signal,
 		});
 		const articleMarkdown = result.summary;
-		summaryArticleCache.set(cacheKey, {
+		setSummaryArticleCacheEntry(cacheKey, {
 			articleMarkdown,
 			inputKind: result.inputKind,
 		});

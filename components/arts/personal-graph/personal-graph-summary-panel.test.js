@@ -35,6 +35,10 @@ test("Personal Graph summary panel supports TWG setup guidance and work window r
 	assert.match(SUMMARY_PANEL_SOURCE, /onWorkWindowChange\?\.\(event\.target\.value\)/);
 	assert.match(SUMMARY_PANEL_SOURCE, /twg login/);
 	assert.match(SUMMARY_PANEL_SOURCE, /never accepts passwords, OAuth tokens, API tokens, or Authorization headers/);
+	assert.match(SUMMARY_PANEL_SOURCE, /articleFrameRef\.current\?\.contentWindow/);
+	assert.match(SUMMARY_PANEL_SOURCE, /event\.source !== expectedSource/);
+	assert.match(SUMMARY_PANEL_SOURCE, /event\.origin !== "null"/);
 	assert.match(SUMMARY_PANEL_SOURCE, /type !== "personal-graph-select-node"/);
 	assert.match(SUMMARY_PANEL_SOURCE, /handleSelectNode\(data\.nodeId\)/);
+	assert.match(SUMMARY_PANEL_SOURCE, /ref=\{articleFrameRef\}/);
 });
