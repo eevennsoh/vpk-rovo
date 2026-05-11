@@ -1,0 +1,98 @@
+{
+	"template": "exploration-code-approaches",
+	"title": "Code Approaches Example",
+	"slug": "example-exploration-code-approaches",
+	"subtitle": "Compare implementation approaches and recommend one path.",
+	"audience": "VPK developers",
+	"theme": {
+		"initialMode": "light",
+		"allowToggle": true
+	},
+	"sections": [
+		{
+			"type": "overview",
+			"kicker": "html-effectiveness",
+			"heading": "Code Approaches in use",
+			"body": "Use this output when a user needs to compare credible implementation paths before code is written. The example weighs a static-export renderer, a route-backed preview, and a hybrid payload pipeline.",
+			"cards": [
+				{
+					"title": "Static renderer",
+					"body": "Best when the artifact must be portable, reviewable, and safe to attach to a PR.",
+					"status": "recommended"
+				},
+				{
+					"title": "Route-backed preview",
+					"body": "Best when the artifact depends on app state, auth, or live product components.",
+					"status": "situational"
+				},
+				{
+					"title": "Hybrid payload",
+					"body": "Best when source material should be structured once, then rendered into several formats.",
+					"status": "scalable"
+				}
+			]
+		},
+		{
+			"type": "comparison",
+			"heading": "Decision matrix",
+			"table": {
+				"headers": [
+					"Approach",
+					"Strength",
+					"Cost",
+					"Use when"
+				],
+				"rows": [
+					[
+						"Single-file HTML",
+						"Zero runtime dependencies",
+						"Limited app component reuse",
+						"The artifact must travel through email, Slack, or PR comments"
+					],
+					[
+						"Next.js route",
+						"Can reuse VPK components",
+						"Needs a dev server or deployment",
+						"The demo is part of the product surface"
+					],
+					[
+						"Payload plus renderer",
+						"Repeatable and testable",
+						"Requires schema design",
+						"The same material needs gallery, print, and handoff outputs"
+					]
+				]
+			}
+		},
+		{
+			"type": "recommendation",
+			"heading": "Recommended path",
+			"steps": [
+				{
+					"title": "Normalize source material",
+					"body": "Extract title, audience, sections, diagrams, sources, and print requirements before choosing layout details."
+				},
+				{
+					"title": "Render as portable HTML",
+					"body": "Use the VPK HTML shell when the artifact needs to be opened offline or attached outside the app."
+				},
+				{
+					"title": "Promote only proven patterns",
+					"body": "Move a pattern into the main app only after a demo shows that the interaction and reading rhythm work."
+				}
+			]
+		},
+		{
+			"type": "sources",
+			"heading": "Example data policy",
+			"body": "This demo uses invented project data so the template shape is visible without depending on private tickets, customer names, or live metrics."
+		}
+	],
+	"sources": [],
+	"assets": [],
+	"options": {
+		"print": true,
+		"interactive": true,
+		"useAlgebrica": false
+	}
+}

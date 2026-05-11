@@ -1,0 +1,76 @@
+{
+	"template": "component-variants",
+	"title": "Component Variants Example",
+	"slug": "example-component-variants",
+	"subtitle": "Show component variants, states, and notes.",
+	"audience": "VPK developers",
+	"theme": {
+		"initialMode": "light",
+		"allowToggle": true
+	},
+	"sections": [
+		{
+			"type": "overview",
+			"kicker": "html-effectiveness",
+			"heading": "Component Variants in use",
+			"body": "This template demonstrates variants and states by showing concrete button-like controls, selected cards, and disabled rows in one place.",
+			"cards": [
+				{
+					"title": "Primary",
+					"body": "Use for the one action that moves the artifact forward.",
+					"status": "action"
+				},
+				{
+					"title": "Subtle",
+					"body": "Use for navigation, secondary commands, and dismissive actions.",
+					"status": "secondary"
+				},
+				{
+					"title": "Danger",
+					"body": "Use only where destructive intent is clear from surrounding copy.",
+					"status": "destructive"
+				}
+			]
+		},
+		{
+			"type": "variants",
+			"heading": "Variant gallery",
+			"trustedHtml": "<div class=\"vpk-variant-grid\">\n\t<div class=\"vpk-variant is-primary\"><span>Primary</span><button type=\"button\">Render</button></div>\n\t<div class=\"vpk-variant\"><span>Subtle</span><button type=\"button\">Preview</button></div>\n\t<div class=\"vpk-variant is-danger\"><span>Danger</span><button type=\"button\">Delete</button></div>\n\t<div class=\"vpk-variant is-disabled\"><span>Disabled</span><button type=\"button\" disabled>Queued</button></div>\n</div>"
+		},
+		{
+			"type": "states",
+			"heading": "State matrix",
+			"table": {
+				"headers": [
+					"State",
+					"Visual signal",
+					"Behavior"
+				],
+				"rows": [
+					[
+						"Default",
+						"White surface, neutral border",
+						"Available for pointer and keyboard"
+					],
+					[
+						"Selected",
+						"Brand border and information background",
+						"Persists after selection"
+					],
+					[
+						"Disabled",
+						"Muted text and reduced contrast",
+						"Skipped by interaction logic"
+					]
+				]
+			}
+		}
+	],
+	"sources": [],
+	"assets": [],
+	"options": {
+		"print": true,
+		"interactive": true,
+		"useAlgebrica": false
+	}
+}

@@ -1,0 +1,70 @@
+{
+	"template": "editor-feature-flags",
+	"title": "Feature Flags Example",
+	"slug": "example-editor-feature-flags",
+	"subtitle": "Edit feature flag states and export JSON.",
+	"audience": "VPK developers",
+	"theme": {
+		"initialMode": "light",
+		"allowToggle": true
+	},
+	"sections": [
+		{
+			"type": "overview",
+			"kicker": "html-effectiveness",
+			"heading": "Feature Flags in use",
+			"body": "This editor demonstrates feature-flag data with ownership, rollout state, and export-ready JSON.",
+			"cards": [
+				{
+					"title": "html.gallery.links",
+					"body": "Enables anchor cards in the generated gallery.",
+					"status": "on"
+				},
+				{
+					"title": "html.examples.rich",
+					"body": "Requires each template to provide a representative demo.",
+					"status": "on"
+				},
+				{
+					"title": "html.remote.assets",
+					"body": "Remote assets remain rejected for portable artifacts.",
+					"status": "off"
+				}
+			]
+		},
+		{
+			"type": "flags",
+			"heading": "Flag overview",
+			"trustedHtml": "<div class=\"vpk-demo-grid\">\n\t<div class=\"vpk-demo-panel vpk-flag-on\"><strong>html.gallery.links</strong><span>on for all examples</span></div>\n\t<div class=\"vpk-demo-panel vpk-flag-on\"><strong>html.examples.rich</strong><span>on in gallery builds</span></div>\n\t<div class=\"vpk-demo-panel vpk-flag-off\"><strong>html.remote.assets</strong><span>off by policy</span></div>\n</div>"
+		},
+		{
+			"type": "editor",
+			"heading": "Editable flag payload",
+			"body": "Use export to validate that the edited flag JSON is still parseable.",
+			"cards": [
+				{
+					"title": "html.gallery.links",
+					"body": "true",
+					"status": "enabled"
+				},
+				{
+					"title": "html.examples.rich",
+					"body": "true",
+					"status": "enabled"
+				},
+				{
+					"title": "html.remote.assets",
+					"body": "false",
+					"status": "disabled"
+				}
+			]
+		}
+	],
+	"sources": [],
+	"assets": [],
+	"options": {
+		"print": false,
+		"interactive": true,
+		"useAlgebrica": false
+	}
+}

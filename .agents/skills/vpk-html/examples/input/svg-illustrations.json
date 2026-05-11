@@ -1,0 +1,53 @@
+{
+	"template": "svg-illustrations",
+	"title": "SVG Illustrations Example",
+	"slug": "example-svg-illustrations",
+	"subtitle": "Render a reusable inline SVG figure sheet.",
+	"audience": "VPK developers",
+	"theme": {
+		"initialMode": "light",
+		"allowToggle": true
+	},
+	"sections": [
+		{
+			"type": "overview",
+			"kicker": "html-effectiveness",
+			"heading": "SVG Illustrations in use",
+			"body": "This example proves the template can carry real inline SVG illustration work, not just a note that SVG might exist.",
+			"cards": [
+				{
+					"title": "Figure sheet",
+					"body": "Several reusable primitives are shown in one printable layout.",
+					"status": "svg"
+				},
+				{
+					"title": "Accessible title",
+					"body": "Each SVG uses role and title text so it has a usable name.",
+					"status": "a11y"
+				},
+				{
+					"title": "Token colors",
+					"body": "Strokes and fills use the portable VPK CSS variables.",
+					"status": "theme"
+				}
+			]
+		},
+		{
+			"type": "figures",
+			"heading": "Inline SVG figure sheet",
+			"trustedHtml": "<div class=\"vpk-figure-sheet\">\n\t<figure>\n\t\t<svg viewBox=\"0 0 240 150\" role=\"img\" aria-labelledby=\"svg-stack-title\"><title id=\"svg-stack-title\">Layer stack illustration</title><rect x=\"35\" y=\"28\" width=\"145\" height=\"42\" rx=\"0\"/><rect x=\"55\" y=\"55\" width=\"145\" height=\"42\" rx=\"0\"/><rect x=\"75\" y=\"82\" width=\"145\" height=\"42\" rx=\"0\"/><path d=\"M48 49h86M68 76h86M88 103h86\"/></svg>\n\t\t<figcaption>Layer stack</figcaption>\n\t</figure>\n\t<figure>\n\t\t<svg viewBox=\"0 0 240 150\" role=\"img\" aria-labelledby=\"svg-agent-title\"><title id=\"svg-agent-title\">Agent loop illustration</title><circle cx=\"70\" cy=\"72\" r=\"30\"/><circle cx=\"170\" cy=\"72\" r=\"30\"/><path d=\"M102 72h35\"/><path d=\"M130 62l12 10-12 10\"/><path d=\"M170 104C132 132 83 119 70 104\"/></svg>\n\t\t<figcaption>Agent loop</figcaption>\n\t</figure>\n\t<figure>\n\t\t<svg viewBox=\"0 0 240 150\" role=\"img\" aria-labelledby=\"svg-chart-title\"><title id=\"svg-chart-title\">Small chart illustration</title><path d=\"M35 118h175\"/><path d=\"M48 118V35\"/><rect x=\"66\" y=\"75\" width=\"24\" height=\"43\"/><rect x=\"108\" y=\"52\" width=\"24\" height=\"66\"/><rect x=\"150\" y=\"34\" width=\"24\" height=\"84\"/><path d=\"M66 68l54-24 54 16\" fill=\"none\"/></svg>\n\t\t<figcaption>Metric story</figcaption>\n\t</figure>\n</div>"
+		},
+		{
+			"type": "snippet",
+			"heading": "Portable SVG pattern",
+			"code": "<svg viewBox=\"0 0 240 150\" role=\"img\" aria-labelledby=\"title-id\">\\n\\t<title id=\"title-id\">Descriptive title</title>\\n\\t<path d=\"M35 118h175\" />\\n</svg>"
+		}
+	],
+	"sources": [],
+	"assets": [],
+	"options": {
+		"print": true,
+		"interactive": true,
+		"useAlgebrica": false
+	}
+}

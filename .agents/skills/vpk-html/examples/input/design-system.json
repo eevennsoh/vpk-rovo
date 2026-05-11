@@ -1,0 +1,81 @@
+{
+	"template": "design-system",
+	"title": "Design System Example",
+	"slug": "example-design-system",
+	"subtitle": "Document tokens, components, and design rules.",
+	"audience": "VPK developers",
+	"theme": {
+		"initialMode": "light",
+		"allowToggle": true
+	},
+	"sections": [
+		{
+			"type": "overview",
+			"kicker": "html-effectiveness",
+			"heading": "Design System in use",
+			"body": "This design-system example documents the portable token layer that vpk-html can embed when it cannot import the app stylesheet. The values mirror established VPK/ADS aliases rather than inventing a cream paper palette.",
+			"cards": [
+				{
+					"title": "Surface",
+					"body": "#FFFFFF mirrors bg-surface and bg-surface-raised in VPK light mode.",
+					"status": "token"
+				},
+				{
+					"title": "Text",
+					"body": "#292A2E and #505258 mirror text-text and text-text-subtle.",
+					"status": "token"
+				},
+				{
+					"title": "Brand",
+					"body": "#1868DB mirrors text-text-brand and selected/link affordances.",
+					"status": "token"
+				}
+			]
+		},
+		{
+			"type": "tokens",
+			"heading": "Token swatches",
+			"trustedHtml": "<div class=\"vpk-token-swatch-grid\">\n\t<div class=\"vpk-token-swatch\"><span style=\"background:#FFFFFF\"></span><strong>surface</strong><code>#FFFFFF</code><small>bg-surface</small></div>\n\t<div class=\"vpk-token-swatch\"><span style=\"background:#F0F1F2\"></span><strong>muted</strong><code>#F0F1F2</code><small>bg-muted</small></div>\n\t<div class=\"vpk-token-swatch\"><span style=\"background:#292A2E\"></span><strong>text</strong><code>#292A2E</code><small>text-text</small></div>\n\t<div class=\"vpk-token-swatch\"><span style=\"background:#1868DB\"></span><strong>brand</strong><code>#1868DB</code><small>text-text-brand</small></div>\n\t<div class=\"vpk-token-swatch\"><span style=\"background:#E9F2FE\"></span><strong>info</strong><code>#E9F2FE</code><small>bg-bg-information</small></div>\n\t<div class=\"vpk-token-swatch\"><span style=\"background:#FFF5DB\"></span><strong>warning</strong><code>#FFF5DB</code><small>bg-bg-warning</small></div>\n</div>"
+		},
+		{
+			"type": "rules",
+			"heading": "Authoring rules",
+			"table": {
+				"headers": [
+					"Need",
+					"VPK class",
+					"Portable HTML token"
+				],
+				"rows": [
+					[
+						"Page background",
+						"bg-surface",
+						"--vpk-paper-background"
+					],
+					[
+						"Raised card",
+						"bg-surface-raised",
+						"--vpk-surface-raised"
+					],
+					[
+						"Subtle text",
+						"text-text-subtle",
+						"--vpk-muted-text"
+					],
+					[
+						"Focus ring",
+						"ring-ring",
+						"--vpk-focus-ring"
+					]
+				]
+			}
+		}
+	],
+	"sources": [],
+	"assets": [],
+	"options": {
+		"print": true,
+		"interactive": true,
+		"useAlgebrica": false
+	}
+}

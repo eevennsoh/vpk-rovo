@@ -1,0 +1,72 @@
+{
+	"template": "math-interactive",
+	"title": "Math Interactive Example",
+	"slug": "example-math-interactive",
+	"subtitle": "Manipulable math concept demo.",
+	"audience": "VPK developers",
+	"theme": {
+		"initialMode": "light",
+		"allowToggle": true
+	},
+	"sections": [
+		{
+			"type": "overview",
+			"kicker": "math",
+			"heading": "Math Interactive in use",
+			"body": "This interactive math demo pairs sliders with an inline SVG slope visualization so the page demonstrates a manipulable concept.",
+			"cards": [
+				{
+					"title": "Rise",
+					"body": "Adjust the vertical change.",
+					"status": "slider"
+				},
+				{
+					"title": "Run",
+					"body": "Adjust the horizontal change.",
+					"status": "slider"
+				},
+				{
+					"title": "Readout",
+					"body": "Use the equation panel to connect movement to notation.",
+					"status": "concept"
+				}
+			]
+		},
+		{
+			"type": "controls",
+			"heading": "Slope controls",
+			"body": "The controls are local range inputs. This demo keeps the math visible even without a runtime framework.",
+			"controls": [
+				{
+					"label": "Rise",
+					"value": "4",
+					"min": -8,
+					"max": 8
+				},
+				{
+					"label": "Run",
+					"value": "6",
+					"min": 1,
+					"max": 10
+				}
+			],
+			"trustedHtml": "<div class=\"vpk-slope-demo\">\n\t<svg viewBox=\"0 0 320 180\" role=\"img\" aria-label=\"Slope triangle demonstration\">\n\t\t<path d=\"M40 140H280M40 20V140\" />\n\t\t<path d=\"M78 126L246 54\" class=\"vpk-strong-line\" />\n\t\t<path d=\"M78 126H246V54Z\" class=\"vpk-fill-soft\" />\n\t\t<text x=\"156\" y=\"150\">run = 6</text>\n\t\t<text x=\"254\" y=\"92\">rise = 4</text>\n\t</svg>\n\t<div class=\"vpk-equation\">slope = rise / run = 4 / 6 = 2 / 3</div>\n</div>"
+		},
+		{
+			"type": "questions",
+			"heading": "Check understanding",
+			"items": [
+				"What happens to the line when rise is negative?",
+				"Why can run not be zero in this slope model?",
+				"Which slider changes steepness more for the same absolute movement?"
+			]
+		}
+	],
+	"sources": [],
+	"assets": [],
+	"options": {
+		"print": false,
+		"interactive": true,
+		"useAlgebrica": false
+	}
+}

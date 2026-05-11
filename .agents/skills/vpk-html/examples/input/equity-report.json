@@ -1,0 +1,76 @@
+{
+	"template": "equity-report",
+	"title": "Equity Report Example",
+	"slug": "example-equity-report",
+	"subtitle": "Investment memo or valuation note with sourced claims.",
+	"audience": "VPK developers",
+	"theme": {
+		"initialMode": "light",
+		"allowToggle": true
+	},
+	"sections": [
+		{
+			"type": "overview",
+			"kicker": "print",
+			"heading": "Equity Report in use",
+			"body": "This equity-report demo uses fictional company data to show valuation sections, assumptions, and source notes without making real investment claims.",
+			"cards": [
+				{
+					"title": "Base case",
+					"body": "Revenue grows steadily as template usage expands across internal review workflows.",
+					"status": "illustrative"
+				},
+				{
+					"title": "Upside",
+					"body": "More artifacts move from ad hoc markdown into validated HTML handoffs.",
+					"status": "illustrative"
+				},
+				{
+					"title": "Downside",
+					"body": "If examples stay shallow, adoption remains limited to renderer smoke tests.",
+					"status": "illustrative"
+				}
+			]
+		},
+		{
+			"type": "valuation",
+			"heading": "Illustrative scenario table",
+			"table": {
+				"headers": [
+					"Scenario",
+					"Adoption",
+					"Quality signal"
+				],
+				"rows": [
+					[
+						"Downside",
+						"Low",
+						"Examples are generic"
+					],
+					[
+						"Base",
+						"Moderate",
+						"Examples demonstrate each template"
+					],
+					[
+						"Upside",
+						"High",
+						"Examples become reusable project handoffs"
+					]
+				]
+			}
+		},
+		{
+			"type": "sources",
+			"heading": "Example data policy",
+			"body": "This demo uses invented project data so the template shape is visible without depending on private tickets, customer names, or live metrics."
+		}
+	],
+	"sources": [],
+	"assets": [],
+	"options": {
+		"print": true,
+		"interactive": false,
+		"useAlgebrica": false
+	}
+}

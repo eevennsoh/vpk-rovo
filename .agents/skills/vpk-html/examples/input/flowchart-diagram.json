@@ -1,0 +1,105 @@
+{
+	"template": "flowchart-diagram",
+	"title": "Flowchart Diagram Example",
+	"slug": "example-flowchart-diagram",
+	"subtitle": "Show an annotated flowchart with explanatory notes.",
+	"audience": "VPK developers",
+	"theme": {
+		"initialMode": "light",
+		"allowToggle": true
+	},
+	"sections": [
+		{
+			"type": "overview",
+			"kicker": "html-effectiveness",
+			"heading": "Flowchart Diagram in use",
+			"body": "This flowchart shows the expected diagram payload: named nodes, explicit edges, explanatory notes, and a decision table around the graphic.",
+			"cards": [
+				{
+					"title": "Source",
+					"body": "Collect notes, code references, and constraints before layout begins.",
+					"status": "input"
+				},
+				{
+					"title": "Distill",
+					"body": "Reduce the material to nodes, edges, labels, and review questions.",
+					"status": "transform"
+				},
+				{
+					"title": "Validate",
+					"body": "Check that the graphic remains readable in light mode and print.",
+					"status": "output"
+				}
+			]
+		},
+		{
+			"type": "diagram",
+			"heading": "Artifact production flow",
+			"body": "The same structured data can render as an inline SVG diagram in the single-file artifact.",
+			"diagram": {
+				"type": "flowchart",
+				"title": "Artifact production flow",
+				"nodes": [
+					"Raw notes",
+					"Payload",
+					"Renderer",
+					"HTML",
+					"Review"
+				],
+				"edges": [
+					[
+						"Raw notes",
+						"Payload"
+					],
+					[
+						"Payload",
+						"Renderer"
+					],
+					[
+						"Renderer",
+						"HTML"
+					],
+					[
+						"HTML",
+						"Review"
+					]
+				]
+			}
+		},
+		{
+			"type": "annotations",
+			"heading": "Node annotations",
+			"table": {
+				"headers": [
+					"Node",
+					"Question to answer"
+				],
+				"rows": [
+					[
+						"Raw notes",
+						"What source material is trustworthy enough to render?"
+					],
+					[
+						"Payload",
+						"Which section types represent the material without custom code?"
+					],
+					[
+						"Renderer",
+						"Does the output stay offline and accessible?"
+					],
+					[
+						"Review",
+						"Can a reader act without opening the repository?"
+					]
+				]
+			}
+		}
+	],
+	"sources": [],
+	"assets": [],
+	"options": {
+		"print": true,
+		"interactive": true,
+		"useAlgebrica": false
+	}
+}

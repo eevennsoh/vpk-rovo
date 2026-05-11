@@ -1,0 +1,89 @@
+{
+	"template": "implementation-plan",
+	"title": "Implementation Plan Example",
+	"slug": "example-implementation-plan",
+	"subtitle": "Plan milestones, risks, validation gates, and ownership.",
+	"audience": "VPK developers",
+	"theme": {
+		"initialMode": "light",
+		"allowToggle": true
+	},
+	"sections": [
+		{
+			"type": "overview",
+			"kicker": "html-effectiveness",
+			"heading": "Implementation Plan in use",
+			"body": "This plan turns a broad UI request into ordered work that can be validated in a pull request. It includes milestones, gates, and concrete reviewer focus.",
+			"cards": [
+				{
+					"title": "Scope",
+					"body": "Replace placeholder examples with template-specific fixtures and regenerate the gallery.",
+					"status": "in scope"
+				},
+				{
+					"title": "Out of scope",
+					"body": "No remote assets, no app route dependency, and no private project data.",
+					"status": "guardrail"
+				},
+				{
+					"title": "Done",
+					"body": "Every clickable card opens a useful sample page with real sections and visual substance.",
+					"status": "acceptance"
+				}
+			]
+		},
+		{
+			"type": "milestones",
+			"heading": "Milestones",
+			"steps": [
+				{
+					"title": "Replace generic fixture content",
+					"body": "Build richer payloads for all templates, with focused data and expected visual primitives."
+				},
+				{
+					"title": "Regenerate tracked examples",
+					"body": "Run the gallery builder so input JSON and output HTML stay in sync."
+				},
+				{
+					"title": "Verify clickability and light mode",
+					"body": "Check anchor cards, white surfaces, representative SVG/diagram pages, lint, and typecheck."
+				}
+			]
+		},
+		{
+			"type": "gates",
+			"heading": "Validation gates",
+			"table": {
+				"headers": [
+					"Gate",
+					"Command or check"
+				],
+				"rows": [
+					[
+						"Schema and renderer",
+						"node --test .agents/skills/vpk-html/scripts/test-templates.test.js"
+					],
+					[
+						"Repo lint",
+						"pnpm run lint"
+					],
+					[
+						"Repo types",
+						"pnpm run typecheck"
+					],
+					[
+						"Browser evidence",
+						"Gallery has 33 clickable template cards in light mode"
+					]
+				]
+			}
+		}
+	],
+	"sources": [],
+	"assets": [],
+	"options": {
+		"print": true,
+		"interactive": true,
+		"useAlgebrica": false
+	}
+}

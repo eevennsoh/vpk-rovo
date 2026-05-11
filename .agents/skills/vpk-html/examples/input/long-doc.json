@@ -1,0 +1,62 @@
+{
+	"template": "long-doc",
+	"title": "Long Document Example",
+	"slug": "example-long-doc",
+	"subtitle": "Long-form editorial chapter, report, or essay.",
+	"audience": "VPK developers",
+	"theme": {
+		"initialMode": "light",
+		"allowToggle": true
+	},
+	"sections": [
+		{
+			"type": "overview",
+			"kicker": "print",
+			"heading": "Long Document in use",
+			"body": "This long-form document demonstrates a chapter rhythm with sections, tables, diagrams, and source policy notes.",
+			"cards": [
+				{
+					"title": "Chapter 1",
+					"body": "Why portable HTML artifacts help review workflows.",
+					"status": "context"
+				},
+				{
+					"title": "Chapter 2",
+					"body": "How schemas, templates, and static checks keep output predictable.",
+					"status": "mechanics"
+				},
+				{
+					"title": "Chapter 3",
+					"body": "How examples should teach the template catalog.",
+					"status": "practice"
+				}
+			]
+		},
+		{
+			"type": "chapter",
+			"heading": "Portable artifacts",
+			"body": "A portable artifact should be useful after it leaves the app. It needs readable hierarchy, local assets, visible source notes, and enough embedded interaction to demonstrate the idea without a server."
+		},
+		{
+			"type": "chapter",
+			"heading": "Template evidence",
+			"body": "A template proves itself by showing the data it expects. Reports should include status data, diagrams should include diagrams, and editor demos should include editable JSON."
+		},
+		{
+			"type": "appendix",
+			"heading": "Checklist",
+			"items": [
+				"Does the page answer what the template is for?",
+				"Does it include representative visual structure?",
+				"Can it be understood in light mode and print?"
+			]
+		}
+	],
+	"sources": [],
+	"assets": [],
+	"options": {
+		"print": true,
+		"interactive": false,
+		"useAlgebrica": false
+	}
+}

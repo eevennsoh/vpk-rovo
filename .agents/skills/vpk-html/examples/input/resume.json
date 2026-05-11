@@ -1,0 +1,67 @@
+{
+	"template": "resume",
+	"title": "Resume Example",
+	"slug": "example-resume",
+	"subtitle": "Resume or CV with data-first bullets.",
+	"audience": "VPK developers",
+	"theme": {
+		"initialMode": "light",
+		"allowToggle": true
+	},
+	"sections": [
+		{
+			"type": "overview",
+			"kicker": "print",
+			"heading": "Resume in use",
+			"body": "This resume example uses structured achievements and capability groups rather than a blank profile shell.",
+			"cards": [
+				{
+					"title": "VPK HTML Skill",
+					"body": "Built portable artifact renderer with schema validation, embedded assets, and tracked examples.",
+					"status": "project"
+				},
+				{
+					"title": "Design Systems",
+					"body": "Mapped standalone CSS to semantic token values and avoided product-specific palette drift.",
+					"status": "skill"
+				},
+				{
+					"title": "Quality",
+					"body": "Added tests for templates, gallery links, static checks, and attribution requirements.",
+					"status": "skill"
+				}
+			]
+		},
+		{
+			"type": "experience",
+			"heading": "Experience highlights",
+			"table": {
+				"headers": [
+					"Area",
+					"Example"
+				],
+				"rows": [
+					[
+						"Frontend",
+						"Rendered accessible single-file HTML from structured payloads"
+					],
+					[
+						"Design",
+						"Aligned offline theme values with VPK semantic tokens"
+					],
+					[
+						"Testing",
+						"Guarded generated examples against placeholder regressions"
+					]
+				]
+			}
+		}
+	],
+	"sources": [],
+	"assets": [],
+	"options": {
+		"print": true,
+		"interactive": false,
+		"useAlgebrica": false
+	}
+}

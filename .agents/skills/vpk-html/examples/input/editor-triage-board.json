@@ -1,0 +1,65 @@
+{
+	"template": "editor-triage-board",
+	"title": "Triage Board Example",
+	"slug": "example-editor-triage-board",
+	"subtitle": "Create a keyboard-operable ticket triage board.",
+	"audience": "VPK developers",
+	"theme": {
+		"initialMode": "light",
+		"allowToggle": true
+	},
+	"sections": [
+		{
+			"type": "overview",
+			"kicker": "html-effectiveness",
+			"heading": "Triage Board in use",
+			"body": "This editor demo gives the textarea meaningful triage-board data and shows the board shape a user would expect to export.",
+			"cards": [
+				{
+					"title": "Needs design review",
+					"body": "Light-mode gallery spacing and click targets need visual confirmation.",
+					"status": "review"
+				},
+				{
+					"title": "Ready to land",
+					"body": "Schema change allows local card hrefs and rejects remote card links.",
+					"status": "ready"
+				},
+				{
+					"title": "Blocked",
+					"body": "Browser evidence must be refreshed after regeneration.",
+					"status": "blocked"
+				}
+			]
+		},
+		{
+			"type": "editor",
+			"heading": "Editable triage payload",
+			"body": "Edit the JSON, export it, and copy it into an issue or handoff note.",
+			"cards": [
+				{
+					"title": "Needs design review",
+					"body": "Confirm gallery surfaces are white and cards are visibly actionable.",
+					"status": "review"
+				},
+				{
+					"title": "Ready to land",
+					"body": "Renderer tests pass with all template fixtures.",
+					"status": "ready"
+				},
+				{
+					"title": "Blocked",
+					"body": "No blocker in this demo payload.",
+					"status": "clear"
+				}
+			]
+		}
+	],
+	"sources": [],
+	"assets": [],
+	"options": {
+		"print": false,
+		"interactive": true,
+		"useAlgebrica": false
+	}
+}
