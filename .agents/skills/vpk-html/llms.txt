@@ -1,0 +1,86 @@
+# vpk-html
+
+> Terminal × blueprint document design skill for AI agents. Built on kami's
+> template-edit architecture: the LLM copies an HTML template, fills
+> {{placeholders}} with real content, and ships a single offline HTML file.
+
+## Identity
+
+- Surface: white paper (#FFFFFF) with a 24px grid overlay
+- Accent: ink-blue #1868DB (the only chromatic accent, capped at ~5% of page)
+- Display: Geist Pixel (Square)
+- Body: Geist Sans
+- Mono: Geist Mono
+- Frame: 2px ink-black border + hard 1px shadow
+
+All 3 fonts are inlined as base64 data URIs in every template, so filled
+documents are fully portable.
+
+## Invocation
+
+Strict — only on the literal `/vpk-html` command. Opening a Markdown file or
+asking for HTML in natural language does not trigger the skill.
+
+Optional doc-type hints: `/vpk-html resume`, `/vpk-html one-pager`,
+`/vpk-html slides`.
+
+## Capabilities
+
+- 8 HTML document templates (one-pager, long-doc, letter, portfolio, resume,
+  slides, equity-report, changelog) at assets/templates/
+- 14 standalone SVG diagram primitives at assets/diagrams/
+- 8 curated showcase demos at assets/demos/ (4 kami-ported + 4 vpk-native)
+- 3 LLM-facing reference docs: anti-patterns, diagrams selection, resume-writing
+- Single offline HTML output — no remote fonts, stylesheets, scripts, or images
+
+## Key files
+
+- SKILL.md — Agent-facing skill manifest (kami Step 1–7 workflow)
+- README.md — Human-facing introduction
+- CHEATSHEET.md — Route table mapping user intent → template file
+- index.html — Marketing landing page
+- assets/templates/*.html — 8 kami-architected document templates
+- assets/diagrams/*.html — 14 SVG diagram primitives
+- assets/demos/ — 8 curated showcase documents
+- references/anti-patterns.md — 6 AI-output failure modes (consult before drafting)
+- references/diagrams.md — Diagram selection guide + focal rule
+- references/resume-writing.md — Resume quality bar (Action + Scope + Result + Outcome)
+- references/writing.md — General prose rules + per-doc-type quality bars
+- references/design.md — Visual identity rules
+- references/production.md — Troubleshooting (page overflow, font issues)
+- references/source-policy.md — Source attribution rules
+- references/accessibility.md — Accessibility expectations
+- references/theme.css — Token map
+- references/tokens.json — Programmatic token data
+
+## Commands
+
+- node scripts/build.mjs                            (validate all templates)
+- node scripts/build.mjs --check-placeholders <file>
+- node scripts/build.mjs --check-templates
+- node scripts/build.mjs --verify <file>
+- node scripts/check-html.mjs <file>
+- node scripts/ensure-fonts.mjs
+- node scripts/port-templates.mjs                   (re-port templates from kami)
+- node scripts/port-diagrams.mjs                    (re-port diagrams from kami)
+- node scripts/port-demos.mjs                       (re-port kami's curated demos)
+- node scripts/rescue-demos.mjs                     (regenerate vpk-native demos)
+
+## Workflow
+
+```
+1. Confirm /vpk-html invocation
+2. Extract intent (purpose / audience / constraint / success)
+3. Pick template from CHEATSHEET.md
+4. Source + material pass (for branded / fact-heavy docs)
+5. Distill raw content (if input is unstructured)
+6. Layout note (≤80 words, transparent)
+7. Copy template, fill placeholders
+8. Build & verify
+```
+
+## License
+
+Inherits the VPK-Rovo monorepo. The 8 HTML templates and 14 diagram primitives
+in assets/templates/ and assets/diagrams/ are ported from tw93/kami (MIT) and
+re-skinned with vpk-html's identity.

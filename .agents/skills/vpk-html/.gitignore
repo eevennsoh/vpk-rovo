@@ -1,0 +1,15 @@
+# vpk-html local artifacts
+# Generated outputs are committed (gallery thumbnails, demo PNGs, ported diagrams)
+# so the gallery renders without a build step. Anything below is local-only.
+
+.DS_Store
+*.log
+
+# Local payload scratch space (not part of the example fixture set)
+/local/
+/.tmp/
+
+# If a user runs render.mjs without --out, it defaults to docs/html/<slug>.html
+# at the repo root, not inside this skill — but if anyone redirects output here
+# during experimentation, keep it untracked.
+/output-scratch/

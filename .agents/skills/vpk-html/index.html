@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>vpk-html · Static document system for AI agents</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="vpk-html — terminal/blueprint document design system for AI agents. 33 templates, 14 diagram primitives, single-file offline HTML artifacts.">
+<meta name="generator" content="vpk-html">
+<link rel="icon" type="image/svg+xml" href="assets/images/logo.svg">
+<style>
+@font-face {
+	font-family: "Geist";
+	src: url("assets/fonts/Geist-Regular.woff2") format("woff2");
+	font-weight: 400;
+	font-style: normal;
+	font-display: swap;
+}
+@font-face {
+	font-family: "Geist Mono";
+	src: url("assets/fonts/GeistMono-Regular.woff2") format("woff2");
+	font-weight: 400;
+	font-style: normal;
+	font-display: swap;
+}
+@font-face {
+	font-family: "Geist Pixel";
+	src: url("assets/fonts/GeistPixel-Square.woff2") format("woff2");
+	font-weight: 400;
+	font-style: normal;
+	font-display: swap;
+}
+
+:root {
+	--paper: #ffffff;
+	--ink: #292a2e;
+	--muted: #505258;
+	--rule: #0b120e24;
+	--rule-bold: #292a2e;
+	--blueprint: #1868db;
+	--blueprint-tint: #e9f2fe;
+	--code-surface: #f0f1f2;
+	--shadow: 0 1px 1px rgba(9, 30, 66, 0.25), 0 0 1px rgba(9, 30, 66, 0.31);
+	--font-display: "Geist Pixel", "Geist Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+	--font-body: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+	--font-mono: "Geist Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { background: var(--paper); color: var(--ink); font-family: var(--font-body); line-height: 1.6; }
+
+body {
+	background:
+		linear-gradient(90deg, color-mix(in srgb, var(--rule) 8%, transparent) 1px, transparent 1px),
+		linear-gradient(0deg, color-mix(in srgb, var(--rule) 8%, transparent) 1px, transparent 1px),
+		var(--paper);
+	background-size: 24px 24px;
+	min-height: 100vh;
+}
+
+.page { margin: 0 auto; max-width: 1080px; padding: clamp(1.5rem, 3vw, 3rem); }
+
+a { color: var(--blueprint); text-decoration-thickness: 0.08em; text-underline-offset: 0.18em; }
+
+/* ============ Top nav ============ */
+.topnav {
+	align-items: center;
+	display: flex;
+	font-family: var(--font-mono);
+	font-size: 0.78rem;
+	gap: 0.75rem;
+	justify-content: space-between;
+	letter-spacing: 0.04em;
+	margin-bottom: 2.5rem;
+	text-transform: uppercase;
+}
+.topnav .brand { align-items: center; display: flex; gap: 0.5rem; }
+.topnav .brand img { display: block; height: 28px; width: 28px; }
+.topnav .links a { color: var(--ink); margin-left: 1rem; text-decoration: none; }
+.topnav .links a:hover { color: var(--blueprint); }
+
+/* ============ Hero ============ */
+.hero {
+	background: var(--paper);
+	border: 2px solid var(--rule-bold);
+	box-shadow: var(--shadow);
+	margin-bottom: 1.5rem;
+	padding: clamp(1.5rem, 4vw, 3rem);
+}
+.hero .eyebrow {
+	color: var(--muted);
+	font-family: var(--font-mono);
+	font-size: 0.72rem;
+	letter-spacing: 0.22em;
+	text-transform: uppercase;
+}
+.hero h1 {
+	font-family: var(--font-display);
+	font-size: clamp(3.5rem, 14vw, 9rem);
+	font-weight: 400;
+	line-height: 0.82;
+	margin: 0.5rem 0 1.1rem;
+	text-wrap: balance;
+}
+.hero .tagline {
+	font-family: var(--font-body);
+	font-size: clamp(1.05rem, 1.8vw, 1.25rem);
+	max-width: 56ch;
+}
+.hero-tokens {
+	border-top: 1px solid var(--rule);
+	display: grid;
+	font-family: var(--font-mono);
+	font-size: 0.78rem;
+	gap: 1rem;
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+	margin-top: 1.75rem;
+	padding-top: 1.25rem;
+}
+.hero-tokens b { display: block; font-weight: 400; letter-spacing: 0.16em; margin-bottom: 0.25rem; text-transform: uppercase; }
+.hero-tokens span { color: var(--muted); }
+
+/* ============ Section heads ============ */
+section { background: var(--paper); border: 2px solid var(--rule-bold); box-shadow: var(--shadow); margin-bottom: 1.5rem; padding: clamp(1.5rem, 3vw, 2.5rem); }
+.section-num { color: var(--muted); font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.18em; margin-bottom: 0.45rem; text-transform: uppercase; }
+.section-title { font-family: var(--font-display); font-size: clamp(2rem, 5vw, 3.4rem); font-weight: 400; line-height: 0.95; margin-bottom: 0.85rem; text-wrap: balance; }
+.section-lede { color: var(--muted); margin-bottom: 2rem; max-width: 62ch; }
+
+/* ============ Demos grid ============ */
+.demo-grid { display: grid; gap: 1.25rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); }
+.demo-card {
+	background: var(--paper);
+	border: 1px solid var(--rule-bold);
+	color: inherit;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	text-decoration: none;
+	transition: transform 200ms ease, box-shadow 200ms ease;
+}
+.demo-card:hover { box-shadow: var(--shadow); transform: translateY(-2px); }
+.demo-card .thumb { aspect-ratio: 16 / 10; background: var(--code-surface); border-bottom: 1px solid var(--rule-bold); overflow: hidden; }
+.demo-card .thumb img { display: block; height: 100%; object-fit: cover; object-position: top left; width: 100%; }
+.demo-card .body { padding: 0.85rem 1rem 1rem; }
+.demo-card .label { color: var(--muted); font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.18em; margin-bottom: 0.35rem; text-transform: uppercase; }
+.demo-card h3 { font-family: var(--font-body); font-size: 1.05rem; font-weight: 600; line-height: 1.3; margin-bottom: 0.3rem; }
+.demo-card .caption { color: var(--muted); font-size: 0.9rem; line-height: 1.45; }
+
+/* ============ Manifesto ============ */
+.rules { display: grid; gap: 0.75rem; list-style: none; }
+.rules li { align-items: baseline; display: grid; font-size: 0.98rem; gap: 0.85rem; grid-template-columns: 2.2rem 1fr; }
+.rules .n { color: var(--blueprint); font-family: var(--font-mono); font-size: 1.15rem; }
+
+/* ============ Color swatches ============ */
+.swatches { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr)); margin-bottom: 1.5rem; }
+.swatch { border: 1px solid var(--rule-bold); display: flex; flex-direction: column; }
+.swatch .chip { aspect-ratio: 3 / 2; border-bottom: 1px solid var(--rule-bold); }
+.swatch .info { padding: 0.65rem 0.85rem 0.75rem; }
+.swatch .name { font-family: var(--font-body); font-size: 0.95rem; font-weight: 600; line-height: 1.3; }
+.swatch .role { color: var(--muted); font-size: 0.82rem; line-height: 1.4; margin: 0.2rem 0 0.45rem; }
+.swatch .hex { color: var(--muted); font-family: var(--font-mono); font-size: 0.78rem; letter-spacing: 0.04em; }
+
+/* ============ Type sample ============ */
+.type-grid { display: grid; gap: 1.5rem; }
+.type-row { align-items: baseline; display: grid; gap: 1rem; grid-template-columns: 7rem 1fr 9rem; }
+.type-row .label { color: var(--muted); font-family: var(--font-mono); font-size: 0.74rem; letter-spacing: 0.16em; text-transform: uppercase; }
+.type-row .specs { color: var(--muted); font-family: var(--font-mono); font-size: 0.78rem; }
+.type-row .display { font-family: var(--font-display); font-size: clamp(2rem, 5vw, 3.2rem); line-height: 0.95; }
+.type-row .h1 { font-family: var(--font-display); font-size: 1.85rem; line-height: 1.05; }
+.type-row .h2 { font-family: var(--font-body); font-size: 1.25rem; font-weight: 600; }
+.type-row .body { font-family: var(--font-body); font-size: 1rem; }
+.type-row .mono { font-family: var(--font-mono); font-size: 0.9rem; }
+
+/* ============ Code blocks ============ */
+pre.code { background: var(--code-surface); border: 1px solid var(--rule); font-family: var(--font-mono); font-size: 0.86rem; line-height: 1.55; margin: 1rem 0; overflow-x: auto; padding: 0.9rem 1rem; }
+pre.code .c { color: var(--muted); }
+
+/* ============ Diagrams strip ============ */
+.diagrams-list { display: flex; flex-wrap: wrap; gap: 0.4rem; font-family: var(--font-mono); font-size: 0.82rem; }
+.diagrams-list a { background: var(--code-surface); border: 1px solid var(--rule); color: var(--ink); padding: 0.25rem 0.55rem; text-decoration: none; }
+.diagrams-list a:hover { background: var(--blueprint-tint); border-color: var(--blueprint); color: var(--blueprint); }
+
+/* ============ Footer ============ */
+footer { color: var(--muted); font-family: var(--font-mono); font-size: 0.78rem; letter-spacing: 0.04em; padding: 1.5rem 0 2rem; text-align: center; }
+footer a { color: var(--muted); text-decoration: none; }
+footer a:hover { color: var(--blueprint); }
+
+@media (max-width: 720px) {
+	.type-row { grid-template-columns: 1fr; }
+	.type-row .specs { order: 3; }
+}
+</style>
+</head>
+<body>
+<main class="page">
+
+<nav class="topnav">
+	<span class="brand"><img src="assets/images/logo.svg" alt=""><span>vpk-html</span></span>
+	<span class="links">
+		<a href="#templates">Templates</a>
+		<a href="#demos">Demos</a>
+		<a href="#diagrams">Diagrams</a>
+		<a href="#install">Install</a>
+		<a href="README.md">README</a>
+	</span>
+</nav>
+
+<!-- ============ HERO ============ -->
+<header class="hero">
+	<p class="eyebrow">Document Design System · v0.1.0 · 2026.05</p>
+	<h1>vpk-html</h1>
+	<p class="tagline">A terminal × blueprint document system for AI agents. Render structured payloads into single-file, offline HTML artifacts. Built for engineering work: PR writeups, code reviews, status reports, post-mortems, math handouts, prototypes, and editorial documents.</p>
+	<div class="hero-tokens">
+		<span><b>Surface</b>#ffffff</span>
+		<span><b>Accent</b>#1868DB</span>
+		<span><b>Display</b>Geist Pixel</span>
+		<span><b>Body</b>Geist Sans</span>
+	</div>
+</header>
+
+<!-- ============ 00 DEMOS ============ -->
+<section id="demos">
+	<p class="section-num">00 · See it</p>
+	<h2 class="section-title">Curated demos</h2>
+	<p class="section-lede">Eight curated showcases: four ported from <a href="https://github.com/tw93/Kami">kami</a> (Tesla equity report, Musk resume, Kaku portfolio, agent slides) and four vpk-native (Postgres migration, RAG explainer, Q2 status, auth incident). Each is content-rich — not a smoke test.</p>
+	<div class="demo-grid">
+		<a class="demo-card" href="assets/demos/demo-postgres-migration.html">
+			<div class="thumb"><img src="assets/demos/demo-postgres-migration.png" alt="Postgres migration PR writeup" loading="lazy"></div>
+			<div class="body">
+				<p class="label">PR Writeup</p>
+				<h3>Postgres 15 → 16 Migration</h3>
+				<p class="caption">Online cutover with logical replication, 7-day rollback window.</p>
+			</div>
+		</a>
+		<a class="demo-card" href="assets/demos/demo-rag-explainer.html">
+			<div class="thumb"><img src="assets/demos/demo-rag-explainer.png" alt="RAG architecture explainer" loading="lazy"></div>
+			<div class="body">
+				<p class="label">Research Explainer</p>
+				<h3>Retrieval-Augmented Generation</h3>
+				<p class="caption">Why retrieve before generate, and what that buys you.</p>
+			</div>
+		</a>
+		<a class="demo-card" href="assets/demos/demo-q2-status.html">
+			<div class="thumb"><img src="assets/demos/demo-q2-status.png" alt="Quarterly engineering status" loading="lazy"></div>
+			<div class="body">
+				<p class="label">Status Report</p>
+				<h3>Platform Team · Q2 2026</h3>
+				<p class="caption">Quarterly review — what shipped, what slipped, what's next.</p>
+			</div>
+		</a>
+		<a class="demo-card" href="assets/demos/demo-auth-incident.html">
+			<div class="thumb"><img src="assets/demos/demo-auth-incident.png" alt="Auth outage post-mortem" loading="lazy"></div>
+			<div class="body">
+				<p class="label">Incident Report</p>
+				<h3>Auth outage · 2026-05-04</h3>
+				<p class="caption">47-minute outage post-mortem with timeline + action items.</p>
+			</div>
+		</a>
+		<a class="demo-card" href="assets/demos/demo-tesla.html">
+			<div class="thumb"><img src="assets/demos/demo-tesla.png" alt="Tesla equity report" loading="lazy"></div>
+			<div class="body">
+				<p class="label">Equity Report · kami port</p>
+				<h3>Tesla Q1 2026</h3>
+				<p class="caption">Equity research note ported from kami, restyled with vpk identity.</p>
+			</div>
+		</a>
+		<a class="demo-card" href="assets/demos/demo-musk-resume.html">
+			<div class="thumb"><img src="assets/demos/demo-musk-resume.png" alt="Musk resume" loading="lazy"></div>
+			<div class="body">
+				<p class="label">Resume · kami port</p>
+				<h3>Founder CV</h3>
+				<p class="caption">Two-page founder resume, kami structure with vpk colors and pixel display.</p>
+			</div>
+		</a>
+		<a class="demo-card" href="assets/demos/demo-kaku.html">
+			<div class="thumb"><img src="assets/demos/demo-kaku.png" alt="Kaku portfolio" loading="lazy"></div>
+			<div class="body">
+				<p class="label">Portfolio · kami port</p>
+				<h3>Kaku terminal portfolio</h3>
+				<p class="caption">Multi-page portfolio with embedded product imagery.</p>
+			</div>
+		</a>
+		<a class="demo-card" href="assets/demos/demo-agent-slides.html">
+			<div class="thumb"><img src="assets/demos/demo-agent-slides.png" alt="Agent slides keynote" loading="lazy"></div>
+			<div class="body">
+				<p class="label">Slides · kami port</p>
+				<h3>Agent keynote · 7 slides</h3>
+				<p class="caption">Things you don't know about Agents — loops, harness, context, memory.</p>
+			</div>
+		</a>
+	</div>
+</section>
+
+<!-- ============ 0.5 TEMPLATES ============ -->
+<section id="templates">
+	<p class="section-num">01 · Templates</p>
+	<h2 class="section-title">Eight documents, one identity</h2>
+	<p class="section-lede">The skill ships 8 HTML templates at <code>assets/templates/</code>. Copy a template, fill its <code>{{placeholders}}</code> with real content, ship the resulting single-file HTML.</p>
+	<div class="demo-grid">
+		<a class="demo-card" href="assets/templates/one-pager.html"><div class="body"><p class="label">Brief</p><h3>One-Pager</h3><p class="caption">Executive summary, proposal, exec brief.</p></div></a>
+		<a class="demo-card" href="assets/templates/long-doc.html"><div class="body"><p class="label">Report</p><h3>Long-Doc</h3><p class="caption">White paper, chapter, long-form report.</p></div></a>
+		<a class="demo-card" href="assets/templates/letter.html"><div class="body"><p class="label">Correspondence</p><h3>Letter</h3><p class="caption">Memo, formal letter, cover letter.</p></div></a>
+		<a class="demo-card" href="assets/templates/portfolio.html"><div class="body"><p class="label">Showcase</p><h3>Portfolio</h3><p class="caption">Case studies, work samples, project gallery.</p></div></a>
+		<a class="demo-card" href="assets/templates/resume.html"><div class="body"><p class="label">Career</p><h3>Resume</h3><p class="caption">CV with Action + Scope + Result + Outcome bullets.</p></div></a>
+		<a class="demo-card" href="assets/templates/slides.html"><div class="body"><p class="label">Presentation</p><h3>Slides</h3><p class="caption">HTML deck for projection or PDF export.</p></div></a>
+		<a class="demo-card" href="assets/templates/equity-report.html"><div class="body"><p class="label">Finance</p><h3>Equity Report</h3><p class="caption">Investment memo, valuation note, research report.</p></div></a>
+		<a class="demo-card" href="assets/templates/changelog.html"><div class="body"><p class="label">Release</p><h3>Changelog</h3><p class="caption">Versioned release notes for any project.</p></div></a>
+	</div>
+</section>
+
+<!-- ============ 01 INSTALL ============ -->
+<section id="install">
+	<p class="section-num">02 · Usage</p>
+	<h2 class="section-title">Invoke &amp; fill</h2>
+	<p class="section-lede">In Cursor / Claude Code, prefix your prompt with <code>/vpk-html</code>. The skill picks a template from <a href="CHEATSHEET.md">CHEATSHEET.md</a>, distills your source material, copies the template, fills its placeholders, and validates the output. Single offline HTML file.</p>
+<pre class="code"><span class="c"># 1. Copy a template</span>
+cp .agents/skills/vpk-html/assets/templates/one-pager.html docs/html/my-doc.html
+
+<span class="c"># 2. Fill {{placeholders}} with real content (CSS stays untouched)</span>
+
+<span class="c"># 3. Validate placeholders</span>
+node .agents/skills/vpk-html/scripts/build.mjs --check-placeholders docs/html/my-doc.html
+
+<span class="c"># 4. Verify renders + fonts load + no console errors</span>
+node .agents/skills/vpk-html/scripts/build.mjs --verify docs/html/my-doc.html
+
+<span class="c"># Sanity-check the template library</span>
+node .agents/skills/vpk-html/scripts/build.mjs --check-templates</pre>
+</section>
+
+<!-- ============ 02 MANIFESTO ============ -->
+<section>
+	<p class="section-num">03 · Manifesto</p>
+	<h2 class="section-title">Design principles</h2>
+	<p class="section-lede">White paper canvas with a 24px grid overlay. Ink-blue as the only accent. Pixel display font for headlines, serif body for prose, mono for labels. Hard 2px borders. Single-file offline output.</p>
+	<ol class="rules">
+		<li><span class="n">1</span><p>Surface is white paper <code>#ffffff</code> with a faint 24px grid — engineering notebook, not editorial parchment.</p></li>
+		<li><span class="n">2</span><p>Accent is ink-blue <code>#1868DB</code> only. No second chromatic hue.</p></li>
+		<li><span class="n">3</span><p>Geist Pixel (Square) carries headlines. Geist Sans carries body. Geist Mono carries labels, code, metadata. Vercel's Geist typeface trio.</p></li>
+		<li><span class="n">4</span><p>Sections are framed with 2px ink-black borders + a hard 1px shadow. Blueprint feel, not soft card.</p></li>
+		<li><span class="n">5</span><p>Output is a single offline HTML file. No remote fonts, stylesheets, scripts, or images.</p></li>
+		<li><span class="n">6</span><p>Escape HTML by default. Use <code>trustedHtml</code> only when the template intentionally allows trusted markup.</p></li>
+		<li><span class="n">7</span><p>External research and copied material must appear in a visible <em>Sources and Credits</em> section.</p></li>
+		<li><span class="n">8</span><p>One template, one payload, one HTML file. No build graphs, no asset references back into the repo.</p></li>
+	</ol>
+</section>
+
+<!-- ============ 03 COLOR ============ -->
+<section>
+	<p class="section-num">04 · Color</p>
+	<h2 class="section-title">Restrained palette</h2>
+	<p class="section-lede">One accent + cool neutrals + semantic states. Ink-blue covers no more than 5% of any page — beyond that is clutter, not restraint.</p>
+
+	<div class="swatches">
+		<div class="swatch"><div class="chip" style="background:#ffffff;border-bottom:1px solid var(--rule-bold)"></div><div class="info"><p class="name">Paper</p><p class="role">Page background</p><span class="hex">#FFFFFF</span></div></div>
+		<div class="swatch"><div class="chip" style="background:#292a2e"></div><div class="info"><p class="name">Ink</p><p class="role">Body text · hard borders</p><span class="hex">#292A2E</span></div></div>
+		<div class="swatch"><div class="chip" style="background:#505258"></div><div class="info"><p class="name">Muted</p><p class="role">Subtle text · labels</p><span class="hex">#505258</span></div></div>
+		<div class="swatch"><div class="chip" style="background:#1868db"></div><div class="info"><p class="name">Blueprint</p><p class="role">Accent · links · focal node</p><span class="hex">#1868DB</span></div></div>
+		<div class="swatch"><div class="chip" style="background:#e9f2fe"></div><div class="info"><p class="name">Blueprint Tint</p><p class="role">Focal background · math highlight</p><span class="hex">#E9F2FE</span></div></div>
+		<div class="swatch"><div class="chip" style="background:#f0f1f2"></div><div class="info"><p class="name">Code Surface</p><p class="role">Code blocks · token chips</p><span class="hex">#F0F1F2</span></div></div>
+		<div class="swatch"><div class="chip" style="background:#5b7f24"></div><div class="info"><p class="name">Success</p><p class="role">Validation pass · positive delta</p><span class="hex">#5B7F24</span></div></div>
+		<div class="swatch"><div class="chip" style="background:#c9372c"></div><div class="info"><p class="name">Danger</p><p class="role">Error · regression</p><span class="hex">#C9372C</span></div></div>
+	</div>
+</section>
+
+<!-- ============ 04 TYPE ============ -->
+<section>
+	<p class="section-num">05 · Typography</p>
+	<h2 class="section-title">Type system</h2>
+	<p class="section-lede">Pixel display carries hierarchy, serif carries prose, mono carries function. Three fonts, no synthetic bold.</p>
+	<div class="type-grid">
+		<div class="type-row"><div class="label">Display</div><div class="display">Render structured material into one offline file</div><div class="specs">Geist Pixel<br>clamp(3rem, 12vw, 8rem)<br>line 0.82</div></div>
+		<div class="type-row"><div class="label">H1 Section</div><div class="h1">Color system · palette</div><div class="specs">Geist Pixel<br>1.85rem<br>line 1.05</div></div>
+		<div class="type-row"><div class="label">H2 Subsection</div><div class="h2">Tag tints · solid hex</div><div class="specs">Geist Sans<br>1.25rem · 600<br>line 1.3</div></div>
+		<div class="type-row"><div class="label">Body</div><div class="body">Accent-blue covers no more than 5 percent of any page. Beyond that is clutter, not restraint. Geist Sans is set at 16px with 1.8 line-height for paper rhythm.</div><div class="specs">Geist Sans<br>1rem · 400<br>line 1.8</div></div>
+		<div class="type-row"><div class="label">Mono</div><div class="mono">node scripts/build.mjs --verify file.html</div><div class="specs">Geist Mono<br>0.9rem · 400<br>line 1.55</div></div>
+	</div>
+</section>
+
+<!-- ============ 06 DIAGRAMS ============ -->
+<section id="diagrams">
+	<p class="section-num">06 · Diagrams</p>
+	<h2 class="section-title">14 SVG primitives</h2>
+	<p class="section-lede">Standalone diagram files ported from <a href="https://github.com/tw93/Kami">kami</a> and restyled with vpk-html's identity. The LLM extracts the <code>&lt;svg&gt;</code> block and embeds it inside a long-doc, portfolio, or design-system payload via <code>section.trustedHtml</code>.</p>
+	<p class="diagrams-list">
+		<a href="assets/diagrams/architecture.html">architecture</a>
+		<a href="assets/diagrams/flowchart.html">flowchart</a>
+		<a href="assets/diagrams/swimlane.html">swimlane</a>
+		<a href="assets/diagrams/state-machine.html">state-machine</a>
+		<a href="assets/diagrams/timeline.html">timeline</a>
+		<a href="assets/diagrams/tree.html">tree</a>
+		<a href="assets/diagrams/layer-stack.html">layer-stack</a>
+		<a href="assets/diagrams/quadrant.html">quadrant</a>
+		<a href="assets/diagrams/venn.html">venn</a>
+		<a href="assets/diagrams/bar-chart.html">bar-chart</a>
+		<a href="assets/diagrams/line-chart.html">line-chart</a>
+		<a href="assets/diagrams/donut-chart.html">donut-chart</a>
+		<a href="assets/diagrams/candlestick.html">candlestick</a>
+		<a href="assets/diagrams/waterfall.html">waterfall</a>
+	</p>
+</section>
+
+<footer>
+	<p>vpk-html · part of the <a href="https://github.com/eevennsoh">VPK-Rovo</a> monorepo · diagrams ported from <a href="https://github.com/tw93/Kami">kami</a></p>
+</footer>
+
+</main>
+</body>
+</html>

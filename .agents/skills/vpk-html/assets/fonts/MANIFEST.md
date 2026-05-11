@@ -4,6 +4,6 @@ These WOFF2 files are embedded as data URIs by the vpk-html renderer so generate
 
 | Family | File | Bytes | Source | License note |
 | --- | --- | ---: | --- | --- |
-| VT323 | VT323-Regular.woff2 | 22496 | Vendored from local VPK font assets for offline embedding in v1 examples. | Local repository font asset; replace with upstream VT323 WOFF2 before external distribution. |
-| Source Serif 4 | SourceSerif4-Regular.woff2 | 14556 | Vendored from local VPK font assets for offline embedding in v1 examples. | Local repository font asset; replace with upstream Source Serif 4 WOFF2 before external distribution. |
-| JetBrains Mono | JetBrainsMono-Regular.woff2 | 22496 | Vendored from local VPK font assets for offline embedding in v1 examples. | Local repository font asset; replace with upstream JetBrains Mono WOFF2 before external distribution. |
+| Geist | Geist-Regular.woff2 | 45172 | Vercel Geist (SIL OFL) via the official npm package. | SIL Open Font License 1.1. |
+| Geist Mono | GeistMono-Regular.woff2 | 50196 | Vercel Geist Mono (SIL OFL) via the official npm package. | SIL Open Font License 1.1. |
+| Geist Pixel | GeistPixel-Square.woff2 | 28616 | Vercel Geist Pixel · Square variant (SIL OFL) via the official npm package. | SIL Open Font License 1.1. |

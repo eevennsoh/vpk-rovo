@@ -1,0 +1,19 @@
+{
+	"name": "vpk-html",
+	"description": "Static HTML document design skill for Claude Code / Cursor.",
+	"owner": {
+		"name": "Ee Venn Soh",
+		"email": "esoh@atlassian.com"
+	},
+	"plugins": [
+		{
+			"name": "vpk-html",
+			"description": "Render structured payloads into offline, single-file HTML artifacts with a terminal × blueprint identity. Built for engineering work: PR writeups, code reviews, status reports, post-mortems, math handouts, prototypes, and editorial documents.",
+			"category": "documents",
+			"source": "./",
+			"homepage": "https://github.com/eevennsoh/vpk-rovo",
+			"skills": ["./"],
+			"strict": false
+		}
+	]
+}

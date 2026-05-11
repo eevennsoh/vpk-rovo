@@ -8,48 +8,54 @@ import { fileURLToPath } from "node:url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const SKILL_ROOT = path.resolve(__dirname, "..");
-const REPO_ROOT = path.resolve(SKILL_ROOT, "../../..");
 const FONT_DIR = path.join(SKILL_ROOT, "assets", "fonts");
 
+// Geist trio by Vercel (SIL OFL). Distributed via the official npm package.
+// Files are committed to assets/fonts/; this script re-fetches them only if
+// the local file is missing or empty.
 const FONT_SPECS = [
 	{
-		family: "VT323",
-		file: "VT323-Regular.woff2",
-		fallback: "public/fonts/DepartureMono/DepartureMono-Regular.woff2",
-		source: "Vendored from local VPK font assets for offline embedding in v1 examples.",
-		license: "Local repository font asset; replace with upstream VT323 WOFF2 before external distribution.",
+		family: "Geist",
+		file: "Geist-Regular.woff2",
+		url: "https://unpkg.com/geist@latest/dist/fonts/geist-sans/Geist-Regular.woff2",
+		source: "Vercel Geist (SIL OFL) via the official npm package.",
+		license: "SIL Open Font License 1.1.",
 	},
 	{
-		family: "Source Serif 4",
-		file: "SourceSerif4-Regular.woff2",
-		fallback: "public/fonts/affigere/Affigere-Regular.woff2",
-		source: "Vendored from local VPK font assets for offline embedding in v1 examples.",
-		license: "Local repository font asset; replace with upstream Source Serif 4 WOFF2 before external distribution.",
+		family: "Geist Mono",
+		file: "GeistMono-Regular.woff2",
+		url: "https://unpkg.com/geist@latest/dist/fonts/geist-mono/GeistMono-Regular.woff2",
+		source: "Vercel Geist Mono (SIL OFL) via the official npm package.",
+		license: "SIL Open Font License 1.1.",
 	},
 	{
-		family: "JetBrains Mono",
-		file: "JetBrainsMono-Regular.woff2",
-		fallback: "public/fonts/DepartureMono/DepartureMono-Regular.woff2",
-		source: "Vendored from local VPK font assets for offline embedding in v1 examples.",
-		license: "Local repository font asset; replace with upstream JetBrains Mono WOFF2 before external distribution.",
+		family: "Geist Pixel",
+		file: "GeistPixel-Square.woff2",
+		url: "https://unpkg.com/geist@latest/dist/fonts/geist-pixel/GeistPixel-Square.woff2",
+		source: "Vercel Geist Pixel · Square variant (SIL OFL) via the official npm package.",
+		license: "SIL Open Font License 1.1.",
 	},
 ];
 
-function ensureFont(spec) {
-	const target = path.join(FONT_DIR, spec.file);
-	const fallback = path.join(REPO_ROOT, spec.fallback);
+async function fetchUrl(url, target) {
+	const response = await fetch(url, { redirect: "follow" });
+	if (!response.ok) {
+		throw new Error(`Fetch failed for ${url}: HTTP ${response.status}`);
+	}
+	const buffer = Buffer.from(await response.arrayBuffer());
+	fs.writeFileSync(target, buffer);
+}
 
-	if (!fs.existsSync(target)) {
-		if (!fs.existsSync(fallback)) {
-			throw new Error(`Missing ${spec.file} and fallback ${spec.fallback}`);
-		}
-		fs.copyFileSync(fallback, target);
+async function ensureFont(spec) {
+	const target = path.join(FONT_DIR, spec.file);
+
+	if (!fs.existsSync(target) || fs.statSync(target).size === 0) {
+		console.log(`fetching ${spec.file} from ${spec.url}`);
+		await fetchUrl(spec.url, target);
 	}
 
 	const stats = fs.statSync(target);
-	if (stats.size === 0) {
-		throw new Error(`Font file is empty: ${spec.file}`);
-	}
+	if (stats.size === 0) throw new Error(`Font file is empty: ${spec.file}`);
 
 	return {
 		family: spec.family,
@@ -77,7 +83,8 @@ function writeManifest(entries) {
 async function main() {
 	try {
 		fs.mkdirSync(FONT_DIR, { recursive: true });
-		const entries = FONT_SPECS.map(ensureFont);
+		const entries = [];
+		for (const spec of FONT_SPECS) entries.push(await ensureFont(spec));
 		writeManifest(entries);
 		for (const entry of entries) {
 			console.log(`${entry.file} ${entry.bytes} bytes`);

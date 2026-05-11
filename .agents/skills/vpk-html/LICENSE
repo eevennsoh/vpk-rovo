@@ -1,0 +1,25 @@
+vpk-html
+========
+
+vpk-html is part of the VPK-Rovo monorepo and inherits its licensing terms.
+The VPK-Rovo monorepo is currently private; see the repository root for
+authoritative licensing.
+
+Third-party material
+====================
+
+The 14 SVG diagram primitives in `assets/diagrams/` are ported from
+tw93/kami (https://github.com/tw93/Kami) and re-skinned with vpk-html's
+visual identity. The SVG geometry is kami's work, used under the MIT License.
+
+  kami — Copyright (c) tw93
+  MIT License — https://github.com/tw93/Kami/blob/main/LICENSE
+
+The fonts shipped under `assets/fonts/` are licensed under the SIL Open Font
+License (OFL-1.1):
+
+  - Geist (Sans) by Vercel (SIL OFL) — https://vercel.com/font
+  - Geist Mono by Vercel (SIL OFL) — https://vercel.com/font
+  - Geist Pixel (Square variant) by Vercel (SIL OFL) — https://vercel.com/font
+
+Attribution is preserved in README.md.

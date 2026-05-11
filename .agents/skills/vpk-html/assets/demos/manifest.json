@@ -1,0 +1,34 @@
+[
+	{
+		"slug": "demo-postgres-migration",
+		"title": "Postgres 15 → 16 Migration",
+		"caption": "PR writeup template, used for a real production migration.",
+		"template": "pr-writeup",
+		"thumbnail": "demo-postgres-migration.png",
+		"href": "demo-postgres-migration.html"
+	},
+	{
+		"slug": "demo-rag-explainer",
+		"title": "Retrieval-Augmented Generation",
+		"caption": "Research feature explainer template, used for an internal architecture explainer.",
+		"template": "research-feature-explainer",
+		"thumbnail": "demo-rag-explainer.png",
+		"href": "demo-rag-explainer.html"
+	},
+	{
+		"slug": "demo-q2-status",
+		"title": "Platform Team · Q2 2026 Status",
+		"caption": "Status report template, used for a quarterly engineering review.",
+		"template": "status-report",
+		"thumbnail": "demo-q2-status.png",
+		"href": "demo-q2-status.html"
+	},
+	{
+		"slug": "demo-auth-incident",
+		"title": "Auth outage · 2026-05-04",
+		"caption": "Incident report template, used for a real production post-mortem.",
+		"template": "incident-report",
+		"thumbnail": "demo-auth-incident.png",
+		"href": "demo-auth-incident.html"
+	}
+]

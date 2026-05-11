@@ -9,9 +9,9 @@ business documents.
 Generated HTML declares these families and embeds local WOFF2 files as data
 URIs:
 
-- Display: `VT323`
-- Body: `Source Serif 4`
-- Mono: `JetBrains Mono`
+- Display: `Geist Pixel` (Square variant — Vercel)
+- Body: `Geist` / `Geist Sans` (Vercel)
+- Mono: `Geist Mono` (Vercel)
 
 System fallbacks remain in the CSS so the file is readable even if a browser
 declines a font face.

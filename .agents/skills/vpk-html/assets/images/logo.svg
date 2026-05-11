@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="vpk-html">
+  <title>vpk-html</title>
+  <!-- Tile -->
+  <rect x="2" y="2" width="60" height="60" fill="#ffffff" stroke="#292a2e" stroke-width="3" rx="2"/>
+  <!-- Grid underlay -->
+  <g fill="#dadcdf">
+    <rect x="14" y="14" width="1" height="36"/>
+    <rect x="22" y="14" width="1" height="36"/>
+    <rect x="30" y="14" width="1" height="36"/>
+    <rect x="38" y="14" width="1" height="36"/>
+    <rect x="46" y="14" width="1" height="36"/>
+    <rect x="14" y="22" width="36" height="1"/>
+    <rect x="14" y="30" width="36" height="1"/>
+    <rect x="14" y="38" width="36" height="1"/>
+  </g>
+  <!-- Pixel letter "v" at top-left of grid -->
+  <g fill="#292a2e">
+    <rect x="14" y="14" width="3" height="3"/>
+    <rect x="20" y="14" width="3" height="3"/>
+    <rect x="14" y="17" width="3" height="3"/>
+    <rect x="20" y="17" width="3" height="3"/>
+    <rect x="14" y="20" width="3" height="3"/>
+    <rect x="20" y="20" width="3" height="3"/>
+    <rect x="17" y="23" width="3" height="3"/>
+  </g>
+  <!-- Pixel letter "p" -->
+  <g fill="#292a2e">
+    <rect x="26" y="14" width="3" height="3"/>
+    <rect x="29" y="14" width="3" height="3"/>
+    <rect x="32" y="14" width="3" height="3"/>
+    <rect x="26" y="17" width="3" height="3"/>
+    <rect x="32" y="17" width="3" height="3"/>
+    <rect x="26" y="20" width="3" height="3"/>
+    <rect x="29" y="20" width="3" height="3"/>
+    <rect x="32" y="20" width="3" height="3"/>
+    <rect x="26" y="23" width="3" height="3"/>
+    <rect x="26" y="26" width="3" height="3"/>
+  </g>
+  <!-- Pixel letter "k" (ink-blue accent) -->
+  <g fill="#1868db">
+    <rect x="38" y="14" width="3" height="3"/>
+    <rect x="44" y="14" width="3" height="3"/>
+    <rect x="38" y="17" width="3" height="3"/>
+    <rect x="41" y="17" width="3" height="3"/>
+    <rect x="38" y="20" width="3" height="3"/>
+    <rect x="41" y="20" width="3" height="3"/>
+    <rect x="38" y="23" width="3" height="3"/>
+    <rect x="44" y="23" width="3" height="3"/>
+  </g>
+  <!-- Underscore -->
+  <rect x="14" y="44" width="36" height="2" fill="#292a2e"/>
+  <!-- Status dots -->
+  <circle cx="48" cy="52" r="2" fill="#1868db"/>
+  <circle cx="42" cy="52" r="2" fill="#dadcdf"/>
+  <circle cx="36" cy="52" r="2" fill="#dadcdf"/>
+</svg>
