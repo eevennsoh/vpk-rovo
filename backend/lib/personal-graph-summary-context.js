@@ -1,9 +1,13 @@
 "use strict";
 
+const crypto = require("node:crypto");
 const path = require("node:path");
 
 const summarize = require("./personal-graph-summarize");
 const vault = require("./personal-graph-vault");
+
+const SUMMARY_RENDERER_VERSION = "editorial-html-v1";
+const FORBIDDEN_READER_METADATA_PATTERN = /\b(?:id|kind|provider|relativePath|relative path|ari|frontmatter)\s*:/iu;
 
 function createSummaryContextError(message, code) {
 	const error = new Error(message);
@@ -77,32 +81,34 @@ function getSelectedNodeContext(explorer, nodeId) {
 	};
 }
 
-function formatFrontmatter(frontmatter) {
-	const entries = Object.entries(frontmatter ?? {})
-		.filter(([, value]) => value !== null && value !== undefined && String(value).trim() !== "")
-		.slice(0, 12);
-	if (entries.length === 0) {
-		return "";
+function getReadableNodeType(node) {
+	if (node.provider === "twg") {
+		const type = typeof node.frontmatter?.type === "string" ? node.frontmatter.type : node.kind;
+		return String(type)
+			.replace(/([a-z])([A-Z])/gu, "$1 $2")
+			.replace(/[-_]+/gu, " ")
+			.toLowerCase();
 	}
-	return entries.map(([key, value]) => `- ${key}: ${Array.isArray(value) ? value.join(", ") : String(value)}`).join("\n");
+	if (node.kind === "raw") return "raw source";
+	if (node.kind === "synthesis") return "synthesis note";
+	return `${node.kind} note`;
 }
 
-function formatNode(node) {
+function cleanPromptText(value, fallback = "Untitled source") {
+	const text = String(value ?? "").replace(/\s+/gu, " ").trim();
+	if (!text) return fallback;
+	return text.replace(FORBIDDEN_READER_METADATA_PATTERN, "").trim() || fallback;
+}
+
+function formatNodeForPrompt(node) {
 	const lines = [
-		`## ${node.title}`,
+		`## ${cleanPromptText(node.title)}`,
 		"",
-		`- id: ${node.id}`,
-		`- kind: ${node.kind}`,
-		`- provider: ${node.provider}`,
-		`- relative path: ${node.relativePath}`,
-		node.externalUrl ? `- url: ${node.externalUrl}` : null,
+		`- Readable source type: ${getReadableNodeType(node)}`,
+		node.externalUrl ? "- External source link is available." : null,
 		node.bodyPreview ? "" : null,
-		node.bodyPreview ? node.bodyPreview : null,
+		node.bodyPreview ? cleanPromptText(node.bodyPreview, "") : null,
 	];
-	const frontmatter = formatFrontmatter(node.frontmatter);
-	if (frontmatter) {
-		lines.push("", "### Frontmatter", "", frontmatter);
-	}
 	return lines.filter((line) => line !== null).join("\n");
 }
 
@@ -111,7 +117,7 @@ function buildSummaryContextMarkdown(selection) {
 		? selection.edges.map((edge) => {
 			const neighborId = edge.source === selection.selectedNode.id ? edge.target : edge.source;
 			const neighbor = selection.neighbors.find((node) => node.id === neighborId);
-			return `- ${edge.label}: ${selection.selectedNode.title} -> ${neighbor?.title ?? neighborId}`;
+			return `- ${cleanPromptText(edge.label, "related to")}: ${cleanPromptText(selection.selectedNode.title)} -> ${cleanPromptText(neighbor?.title ?? "Unknown neighbor")}`;
 		})
 		: ["- No one-hop graph neighbors."];
 
@@ -122,11 +128,11 @@ function buildSummaryContextMarkdown(selection) {
 		"",
 		"# Selected Node",
 		"",
-		formatNode(selection.selectedNode),
+		formatNodeForPrompt(selection.selectedNode),
 		"",
 		"# One-Hop Neighbors",
 		"",
-		...(selection.neighbors.length > 0 ? selection.neighbors.map(formatNode) : ["No direct neighbors."]),
+		...(selection.neighbors.length > 0 ? selection.neighbors.map(formatNodeForPrompt) : ["No direct neighbors."]),
 		"",
 		"# Relationships",
 		"",
@@ -137,14 +143,78 @@ function buildSummaryContextMarkdown(selection) {
 
 function buildSummaryPrompt(selection) {
 	return [
-		"You are summarizing a Personal Graph selected node for a second-brain workflow.",
-		"Use the selected node as the primary source and the one-hop graph neighbors only as supporting context.",
-		"Return markdown with a short heading, a useful summary, and 3-5 actionable takeaways.",
-		"Do not mention inaccessible files or claim unsupported facts.",
+		"You are writing an editorial Personal Graph article for a second-brain workflow.",
+		"Use only the selected node and supplied one-hop graph context. Do not invent images, links, people, dates, or relationships.",
+		"Use source titles and human-readable relationship labels. If evidence is thin, say so plainly.",
+		"Do not print raw IDs, ARIs, provider, kind, relativePath, frontmatter keys, YAML frontmatter, or implementation metadata.",
+		"Do not wrap the whole answer in a markdown code fence.",
+		"Return markdown using this section contract:",
+		"# <article title>",
+		"<short lede>",
+		"",
+		"## What this is",
+		"...",
+		"",
+		"## Why it matters",
+		"...",
+		"",
+		"## Connected work",
+		"...",
+		"",
+		"## Source evidence",
+		"...",
 		"",
 		"Graph context:",
 		buildSummaryContextMarkdown(selection),
 	].join("\n");
+}
+
+function stableJson(value) {
+	if (Array.isArray(value)) {
+		return `[${value.map(stableJson).join(",")}]`;
+	}
+	if (value && typeof value === "object") {
+		return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableJson(value[key])}`).join(",")}}`;
+	}
+	return JSON.stringify(value);
+}
+
+function hashValue(value) {
+	return crypto.createHash("sha256").update(stableJson(value)).digest("hex").slice(0, 24);
+}
+
+function getNodePreviewHash(node) {
+	return hashValue({
+		bodyPreview: node.bodyPreview ?? "",
+		title: node.title ?? "",
+	});
+}
+
+function createSourceFingerprint({ explorer, selection, source, workWindow = null } = {}) {
+	if (!selection?.selectedNode) {
+		throw createSummaryContextError("Selected node context is required to fingerprint a summary.", "NODE_SELECTION_REQUIRED");
+	}
+	const selectedNode = selection.selectedNode;
+	const neighborEntries = selection.neighbors.map((node) => ({
+		id: node.id,
+		preview: getNodePreviewHash(node),
+		title: node.title ?? "",
+		updatedAt: node.updatedAt ?? null,
+	}));
+	const payload = {
+		neighbors: neighborEntries,
+		node: {
+			id: selectedNode.id,
+			preview: getNodePreviewHash(selectedNode),
+			title: selectedNode.title ?? "",
+			updatedAt: selectedNode.updatedAt ?? null,
+		},
+		provider: source ?? selectedNode.provider,
+		rendererVersion: SUMMARY_RENDERER_VERSION,
+		twgGeneratedAt: (source ?? selectedNode.provider) === "twg" ? explorer?.generatedAt ?? null : null,
+		workWindow: (source ?? selectedNode.provider) === "twg" ? workWindow ?? "7d" : null,
+	};
+	return hashValue(payload);
 }
 
 function readSelectedVaultRawInput(node) {
@@ -279,10 +349,12 @@ async function summarizeSelection({
 }
 
 module.exports = {
+	SUMMARY_RENDERER_VERSION,
 	assertVaultBoundPath,
 	buildMarpDeck,
 	buildSummaryContextMarkdown,
 	buildSummaryPrompt,
+	createSourceFingerprint,
 	createSelectionSummarizeInput,
 	getSelectedNodeContext,
 	summarizeSelection,

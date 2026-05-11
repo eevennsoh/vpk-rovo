@@ -117,6 +117,7 @@ const PERSONAL_GRAPH_RESPONSIVE_INITIAL_VIEWPORT = {
 } satisfies ResponsivePersonalGraphViewport;
 const PERSONAL_GRAPH_RESET_FLYOUT_COLLAPSE_DELAY_MS = 420;
 const PERSONAL_GRAPH_UNCONFIGURED_BYLINE = "Select a folder to get started.";
+const PERSONAL_GRAPH_DEFAULT_TWG_WORK_WINDOW = "7d";
 
 function GraphNodeMarker({
 	className,
@@ -476,6 +477,7 @@ export function PersonalGraphSurface({
 	const [flyoutCollapseKey, setFlyoutCollapseKey] = useState(0);
 	const [isResetFlyoutCollapsing, setIsResetFlyoutCollapsing] = useState(false);
 	const [isTwgConnecting, setIsTwgConnecting] = useState(false);
+	const [twgWorkWindow, setTwgWorkWindow] = useState(PERSONAL_GRAPH_DEFAULT_TWG_WORK_WINDOW);
 	const { phase } = usePersonalGraphIntro(introReplayKey);
 	const isHeaderRevealed = phase === "title" || phase === "subtext" || phase === "controls" || phase === "settle" || phase === "search" || phase === "graph" || phase === "done";
 	const isSubtextRevealed = phase === "subtext" || phase === "controls" || phase === "settle" || phase === "search" || phase === "graph" || phase === "done";
@@ -544,11 +546,11 @@ export function PersonalGraphSurface({
 		setRefreshKey((current) => current + 1);
 		setChatExplorer(null);
 		if (isTwgMode) {
-			await refreshTwg();
+			await refreshTwg({ since: twgWorkWindow });
 		}
 		await refresh();
 		clearTwgExpansionState();
-	}, [clearTwgExpansionState, isTwgMode, refresh, refreshTwg]);
+	}, [clearTwgExpansionState, isTwgMode, refresh, refreshTwg, twgWorkWindow]);
 	const handleCaptureQueueOpenChange = useCallback((isOpen: boolean) => {
 		setIsCaptureQueueOpen(isOpen);
 	}, []);
@@ -568,13 +570,13 @@ export function PersonalGraphSurface({
 			setChatExplorer(null);
 			const next = await setSource("twg");
 			if (next?.source === "twg") {
-				await refreshTwg();
+				await refreshTwg({ since: twgWorkWindow });
 				await handleRefreshAll();
 			}
 		} finally {
 			setIsTwgConnecting(false);
 		}
-	}, [clearTwgExpansionState, handleRefreshAll, refreshTwg, setSource]);
+	}, [clearTwgExpansionState, handleRefreshAll, refreshTwg, setSource, twgWorkWindow]);
 	const handleAskChat = useCallback((prompt: string) => {
 		void twgChat.send(prompt);
 	}, [twgChat]);
@@ -584,10 +586,21 @@ export function PersonalGraphSurface({
 		void refresh();
 	}, [clearTwgExpansionState, refresh]);
 	const handleRetryTwg = useCallback(async () => {
-		await refreshTwg();
+		await refreshTwg({ since: twgWorkWindow });
 		await refreshSource();
 		handleRefreshAll();
-	}, [handleRefreshAll, refreshSource, refreshTwg]);
+	}, [handleRefreshAll, refreshSource, refreshTwg, twgWorkWindow]);
+	const handleTwgWorkWindowChange = useCallback((nextWorkWindow: string) => {
+		setTwgWorkWindow(nextWorkWindow);
+		if (!isTwgMode) {
+			return;
+		}
+		setChatExplorer(null);
+		clearTwgExpansionState();
+		void refreshTwg({ since: nextWorkWindow })
+			.then(refreshSource)
+			.then(refresh);
+	}, [clearTwgExpansionState, isTwgMode, refresh, refreshSource, refreshTwg]);
 	const handleResetVault = useCallback(async () => {
 		setFlyoutCollapseKey((current) => current + 1);
 		setIsResetFlyoutCollapsing(true);
@@ -1039,8 +1052,11 @@ export function PersonalGraphSurface({
 				>
 					<div className="pointer-events-auto relative w-full max-w-[760px]">
 						<PersonalGraphSummaryPanel
+							explorer={explorer}
 							node={isInspectorOpen ? displayedNode : null}
-							onConfirmed={handleRefreshAll}
+							onSelectNode={handleSelectRelatedNode}
+							onWorkWindowChange={handleTwgWorkWindowChange}
+							workWindow={twgWorkWindow}
 						/>
 						<PersonalGraphSearch
 							assistantMessage={isTwgMode ? lastAssistantMessage : null}

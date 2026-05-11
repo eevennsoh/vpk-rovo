@@ -14,7 +14,7 @@ interface UseGraphSourceState {
 	isLoading: boolean;
 	isSwitching: boolean;
 	refresh: () => Promise<void>;
-	refreshTwg: () => Promise<void>;
+	refreshTwg: (options?: { since?: string }) => Promise<void>;
 	setSource: (source: "vault" | "twg") => Promise<GraphSourceState | null>;
 	source: "vault" | "twg";
 }
@@ -55,9 +55,9 @@ export function useGraphSource(): UseGraphSourceState {
 		}
 	}, []);
 
-	const refreshTwgExplorer = useCallback(async () => {
+	const refreshTwgExplorer = useCallback(async (options: { since?: string } = {}) => {
 		try {
-			const explorer = await refreshTwg();
+			const explorer = await refreshTwg({ since: options.since });
 			setState((current) => ({ ...current, generatedAt: explorer.generatedAt }));
 			setError(null);
 		} catch (nextError) {

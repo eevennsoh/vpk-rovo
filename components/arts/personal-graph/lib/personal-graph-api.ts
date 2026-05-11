@@ -155,9 +155,9 @@ export function setActiveSource(source: "vault" | "twg") {
 	});
 }
 
-export function refreshTwg(options: { signal?: AbortSignal } = {}) {
+export function refreshTwg(options: { signal?: AbortSignal; since?: string } = {}) {
 	return fetchJson<VaultExplorer>("/api/personal-graph/twg/refresh", {
-		body: "{}",
+		body: JSON.stringify({ since: options.since }),
 		headers: { "Content-Type": "application/json" },
 		method: "POST",
 		signal: options.signal,
@@ -248,11 +248,13 @@ export async function* streamLibrarian(
 export async function* streamPersonalGraphSummarize(
 	body: {
 		action: "summary" | "deck";
+		bypassCache?: boolean;
 		clientId?: string;
 		length: PersonalGraphSummaryLength;
 		nodeId: string;
 		summary?: string;
 		takeaways?: string[];
+		workWindow?: string | null;
 	},
 	options: { signal?: AbortSignal } = {},
 ): AsyncGenerator<PersonalGraphSummarizeEvent> {

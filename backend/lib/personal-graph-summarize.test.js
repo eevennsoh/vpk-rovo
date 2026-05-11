@@ -13,7 +13,11 @@ const {
 } = require("./personal-graph-summarize");
 const {
 	assertVaultBoundPath,
+	buildSummaryContextMarkdown,
+	buildSummaryPrompt,
+	createSourceFingerprint,
 	createSelectionSummarizeInput,
+	getSelectedNodeContext,
 } = require("./personal-graph-summary-context");
 
 function execFileOk(assertCall, stdout = "# Summary\n\n- One\n- Two") {
@@ -160,4 +164,104 @@ test("captured URL raw nodes forward the original frontmatter URL to summarize",
 
 	assert.equal(prepared.input, "https://example.com/article");
 	assert.equal(prepared.inputKind, "url");
+});
+
+test("summary prompt uses editorial article contract without raw graph metadata", () => {
+	const explorer = {
+		edges: [{
+			id: "edge-1",
+			kind: "related",
+			label: "supports",
+			metadata: {},
+			relationKinds: ["related"],
+			source: "node:selected",
+			target: "node:neighbor",
+		}],
+		generatedAt: "2026-05-10T00:00:00.000Z",
+		nodes: [
+			{
+				bodyPreview: "Selected body preview.",
+				connectionCount: 1,
+				dangling: false,
+				externalUrl: "https://example.com/selected",
+				frontmatter: { provider: "vault", secret: "raw" },
+				id: "node:selected",
+				kind: "source",
+				label: "Selected",
+				missing: false,
+				path: null,
+				provider: "vault",
+				relativePath: "wiki/selected.md",
+				size: 1,
+				slug: "selected",
+				title: "Selected",
+				updatedAt: "2026-05-10T00:00:00.000Z",
+			},
+			{
+				bodyPreview: "Neighbor body preview.",
+				connectionCount: 1,
+				dangling: false,
+				externalUrl: null,
+				frontmatter: { kind: "raw" },
+				id: "node:neighbor",
+				kind: "concept",
+				label: "Neighbor",
+				missing: false,
+				path: null,
+				provider: "vault",
+				relativePath: "wiki/neighbor.md",
+				size: 1,
+				slug: "neighbor",
+				title: "Neighbor",
+				updatedAt: "2026-05-10T01:00:00.000Z",
+			},
+		],
+		stats: { danglingCount: 0, edgeCount: 1, nodeCount: 2, rawCount: 0, wikiCount: 2 },
+	};
+	const selection = getSelectedNodeContext(explorer, "node:selected");
+	const contextMarkdown = buildSummaryContextMarkdown(selection);
+	const prompt = buildSummaryPrompt(selection);
+
+	assert.match(prompt, /## What this is/u);
+	assert.match(prompt, /## Why it matters/u);
+	assert.match(prompt, /## Connected work/u);
+	assert.match(prompt, /## Source evidence/u);
+	assert.match(prompt, /Do not print raw IDs, ARIs, provider, kind, relativePath, frontmatter keys/u);
+	assert.doesNotMatch(contextMarkdown, /\b(?:id|kind|provider|relativePath|relative path|frontmatter)\s*:/iu);
+	assert.doesNotMatch(contextMarkdown, /node:selected/u);
+	assert.doesNotMatch(contextMarkdown, /wiki\/selected\.md/u);
+	assert.match(contextMarkdown, /supports: Selected -> Neighbor/u);
+});
+
+test("source fingerprint changes by length-independent source context", () => {
+	const baseNode = {
+		bodyPreview: "Selected body",
+		connectionCount: 0,
+		dangling: false,
+		externalUrl: null,
+		frontmatter: {},
+		id: "selected",
+		kind: "source",
+		label: "Selected",
+		missing: false,
+		path: null,
+		provider: "twg",
+		relativePath: "selected",
+		size: 1,
+		slug: "selected",
+		title: "Selected",
+		updatedAt: null,
+	};
+	const explorer = {
+		edges: [],
+		generatedAt: "2026-05-10T00:00:00.000Z",
+		nodes: [baseNode],
+		stats: { danglingCount: 0, edgeCount: 0, nodeCount: 1, rawCount: 0, wikiCount: 1 },
+	};
+	const selection = getSelectedNodeContext(explorer, "selected");
+	const first = createSourceFingerprint({ explorer, selection, source: "twg", workWindow: "7d" });
+	const second = createSourceFingerprint({ explorer, selection, source: "twg", workWindow: "14d" });
+
+	assert.notEqual(first, second);
+	assert.equal(first.length, 24);
 });
