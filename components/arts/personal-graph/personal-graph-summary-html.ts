@@ -1,4 +1,7 @@
-import { parsePersonalGraphSummaryMarkdown } from "./personal-graph-summary-markdown";
+import {
+	parsePersonalGraphSummaryMarkdown,
+	type PersonalGraphArticleMarkdown,
+} from "./personal-graph-summary-markdown";
 import type {
 	GraphProvider,
 	PersonalGraphSummaryLength,
@@ -256,8 +259,7 @@ function renderSourceCards(input: PersonalGraphSummaryHtmlInput) {
 	].join("\n");
 }
 
-function renderSections(input: PersonalGraphSummaryHtmlInput) {
-	const article = parsePersonalGraphSummaryMarkdown(input.articleMarkdown);
+function renderSections(input: PersonalGraphSummaryHtmlInput, article: PersonalGraphArticleMarkdown) {
 	const sections = article.sections.length > 0
 		? article.sections
 		: [{ body: input.articleMarkdown, heading: "Overview" }];
@@ -418,7 +420,7 @@ export function buildPersonalGraphSummaryHtmlDocument(input: PersonalGraphSummar
 		"</header>",
 		input.sourceNotice ? `<p class="notice">${escapeHtml(input.sourceNotice)}</p>` : "",
 		relationshipDiagram,
-		renderSections(input),
+		renderSections(input, article),
 		"</main>",
 		renderScript(),
 		"</body>",
