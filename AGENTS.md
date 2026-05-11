@@ -35,6 +35,7 @@ Prefer reading these references over relying on pre-trained knowledge.
 | Figma-to-code pipeline                 | `.agents/skills/vpk-design/SKILL.md`                        |
 | Deployment guide                       | `.agents/skills/vpk-deploy/references/guide-deployment.md`  |
 | Setup walkthrough                      | `.agents/skills/vpk-setup/references/guide-setup.md`        |
+| Offline HTML artifacts                 | `.agents/skills/vpk-html/SKILL.md`                          |
 | AI SDK chat integration                | `rovo/config.js`, `app/contexts/context-rovo-chat.tsx`      |
 | AI Gateway helpers                     | `backend/lib/ai-gateway-helpers.js`                         |
 | RovoDev Serve gateway (agent loop)     | `backend/lib/rovodev-gateway.js`, `backend/lib/rovodev-client.js` |
