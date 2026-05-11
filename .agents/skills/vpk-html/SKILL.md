@@ -259,6 +259,9 @@ node .agents/skills/vpk-html/scripts/port-demos.mjs
 
 # Regenerate original Phase 2 shells from the html-effectiveness use-case map
 node .agents/skills/vpk-html/scripts/port-html-effectiveness.mjs
+
+# Copy and restyle direct Phase 2 demo ports from assets/html-effectiveness/
+node .agents/skills/vpk-html/scripts/rescue-html-effectiveness-demos.mjs
 ```
 
 ---

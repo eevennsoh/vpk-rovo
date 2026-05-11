@@ -16,6 +16,41 @@ function collectMatches(regex, source) {
 	return matches;
 }
 
+export function collectColorTokenIssues(source, label = "document") {
+	if (/[/\\]assets[/\\]html-effectiveness[/\\]/.test(label)) return [];
+	if (/data-vpk-raw-colors-allowed=["']true["']/.test(source)) return [];
+
+	const stripped = source
+		.replace(/url\(["']?data:font\/woff2;base64,[^)]+?\)/g, "url(data:font/woff2;base64,...)")
+		.replace(/url\(["']?data:image\/[^)]+?\)/g, "url(data:image/...)")
+		.replace(/\[[^\]]+(?:fill|stroke)=["']#[0-9A-Fa-f]{3,8}["'][^\]]*\]/g, "[svg-color-selector]");
+
+	const issues = [];
+	const colorPattern = /#[0-9A-Fa-f]{3,8}\b|\b(?:rgb|rgba|hsl|hsla)\([^)]*\)/gi;
+	const lines = stripped.split("\n");
+	for (let index = 0; index < lines.length; index++) {
+		const line = lines[index];
+		const matches = [...line.matchAll(colorPattern)].map(match => match[0]);
+		if (matches.length === 0) continue;
+
+		const allowed =
+			/--vpk-[\w-]+\s*:/.test(line) ||
+			/--vpk-shadow\s*:/.test(line) ||
+			/var\(--ds-[\w-]+,\s*#[0-9A-Fa-f]{3,8}\)/.test(line) ||
+			/sourceMappingURL=/.test(line);
+
+		if (!allowed) {
+			issues.push(`line ${index + 1}: ${[...new Set(matches)].join(", ")}`);
+			if (issues.length >= 12) break;
+		}
+	}
+
+	if (issues.length > 0) {
+		return [`contains raw color literals outside the vpk semantic alias layer (${issues.join("; ")})`];
+	}
+	return [];
+}
+
 function hasAttribute(tag, attribute) {
 	return new RegExp(`\\s${attribute}(?:\\s*=|\\s|>)`, "i").test(tag);
 }
@@ -23,7 +58,7 @@ function hasAttribute(tag, attribute) {
 export function validateHtmlString(html, label = "document") {
 	const failures = [];
 
-	if (/{{[^}]+}}/.test(html)) {
+	if (/{{[^}]+}}/.test(html) && !/data-vpk-literal-double-braces="true"/.test(html)) {
 		failures.push("contains unresolved {{...}} placeholder tokens");
 	}
 
@@ -56,6 +91,8 @@ export function validateHtmlString(html, label = "document") {
 	if (!/<style>[\s\S]*<\/style>/i.test(html)) {
 		failures.push("does not contain inline CSS");
 	}
+
+	failures.push(...collectColorTokenIssues(html, label));
 
 	if (!/\[data-theme="dark"\]/.test(html) || !/color-scheme:\s*light dark/.test(html)) {
 		failures.push("does not contain the dark-mode token block");
@@ -122,6 +159,15 @@ export function validateHtmlString(html, label = "document") {
 export function validateHtmlFile(filePath) {
 	const html = fs.readFileSync(filePath, "utf8");
 	return validateHtmlString(html, filePath);
+}
+
+export function auditColorTokensFile(filePath) {
+	const html = fs.readFileSync(filePath, "utf8");
+	return {
+		ok: collectColorTokenIssues(html, filePath).length === 0,
+		label: filePath,
+		failures: collectColorTokenIssues(html, filePath),
+	};
 }
 
 async function main() {

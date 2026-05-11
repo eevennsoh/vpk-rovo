@@ -72,7 +72,7 @@ html {
 	color: var(--ink);
 	font-family: var(--font-body);
 	line-height: 1.6;
-	scroll-behavior: smooth;
+	scroll-behavior: auto;
 }
 
 body {
@@ -438,6 +438,141 @@ section {
 	line-height: 1.4;
 }
 
+.phase-demo-index {
+	border-top: 1px solid var(--rule-strong);
+	display: grid;
+	gap: 1.2rem;
+	margin-top: 2.4rem;
+	padding-top: 2rem;
+}
+
+.phase-demo-index.primary {
+	border-top: 0;
+	margin-top: 0;
+	order: -2;
+	padding-top: 0;
+}
+
+.phase-demo-intro {
+	display: grid;
+	gap: 0.45rem;
+	max-width: 70ch;
+}
+
+.phase-demo-intro h3 {
+	color: var(--blueprint);
+	font-family: var(--font-display);
+	font-size: clamp(1.7rem, 3.6vw, 2.6rem);
+	font-weight: 400;
+	line-height: 0.92;
+	text-transform: uppercase;
+}
+
+.phase-demo-intro p:last-child {
+	color: var(--muted);
+}
+
+.phase-demo-group {
+	border-top: 1px solid var(--rule);
+	display: grid;
+	gap: 1rem;
+	grid-template-columns: minmax(12rem, 0.32fr) minmax(0, 1fr);
+	padding-top: 1rem;
+}
+
+.phase-demo-head {
+	align-self: start;
+	display: grid;
+	gap: 0.35rem;
+	position: sticky;
+	top: 5rem;
+}
+
+.phase-demo-head h4 {
+	color: var(--ink);
+	font-size: 1rem;
+	font-weight: 600;
+	line-height: 1.25;
+}
+
+.phase-demo-head p {
+	color: var(--muted);
+	font-size: 0.86rem;
+	line-height: 1.4;
+}
+
+.phase-demo-count {
+	color: var(--blueprint);
+	font-family: var(--font-mono);
+	font-size: 0.72rem;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+}
+
+.phase-demo-list {
+	display: grid;
+	gap: 0;
+}
+
+.phase-demo-link {
+	border-top: 1px solid var(--rule);
+	color: inherit;
+	display: grid;
+	gap: 0.75rem;
+	grid-template-columns: minmax(10rem, 0.32fr) minmax(0, 1fr) minmax(12rem, 0.34fr);
+	padding: 0.85rem 0;
+	text-decoration: none;
+}
+
+.phase-demo-link:first-child {
+	border-top: 0;
+}
+
+.phase-demo-link:hover {
+	background: var(--blueprint-tint);
+}
+
+.phase-demo-link strong {
+	font-size: 0.98rem;
+	line-height: 1.25;
+}
+
+.phase-demo-link span {
+	color: var(--muted);
+	font-size: 0.9rem;
+	line-height: 1.45;
+}
+
+.phase-demo-link code {
+	color: var(--blueprint);
+	font-family: var(--font-mono);
+	font-size: 0.76rem;
+	line-height: 1.45;
+	overflow-wrap: anywhere;
+}
+
+.demo-gallery-intro {
+	border-top: 1px solid var(--rule-strong);
+	display: grid;
+	gap: 0.4rem;
+	margin-top: 2rem;
+	order: -1;
+	padding-top: 1.4rem;
+}
+
+.demo-gallery-intro h3 {
+	font-size: 1rem;
+	font-weight: 600;
+	line-height: 1.25;
+}
+
+.demo-gallery-intro p:last-child {
+	color: var(--muted);
+	font-size: 0.92rem;
+	line-height: 1.45;
+	max-width: 68ch;
+}
+
 /* ============ Workflow and references ============ */
 .steps {
 	counter-reset: step;
@@ -654,6 +789,14 @@ footer a:hover { color: var(--blueprint); }
 		grid-template-columns: repeat(2, minmax(0, 1fr));
 	}
 
+	.phase-demo-group {
+		grid-template-columns: 1fr;
+	}
+
+	.phase-demo-head {
+		position: static;
+	}
+
 	.catalog-group {
 		grid-template-columns: 1fr;
 	}
@@ -684,6 +827,7 @@ footer a:hover { color: var(--blueprint); }
 	.swatches,
 	.diagrams-list,
 	.catalog-row,
+	.phase-demo-link,
 	.type-row {
 		grid-template-columns: 1fr;
 	}
@@ -749,7 +893,7 @@ footer a:hover { color: var(--blueprint); }
 <div class="stat-strip" aria-label="Library statistics">
 	<div class="stat"><strong>28</strong><span>HTML templates</span></div>
 	<div class="stat"><strong>14</strong><span>SVG primitives</span></div>
-	<div class="stat"><strong>8</strong><span>Curated demos</span></div>
+	<div class="stat"><strong>28</strong><span>Demo outputs</span></div>
 	<div class="stat"><strong>1</strong><span>Offline file</span></div>
 </div>
 
@@ -971,9 +1115,201 @@ footer a:hover { color: var(--blueprint); }
 	<aside class="section-aside">
 		<p class="section-num">02 · See it</p>
 		<h2 class="section-title">Curated demos</h2>
-		<p class="section-lede">Eight content-rich showcases demonstrate the output surface. Four are vpk-native engineering examples; four are kami ports restyled with the vpk-html identity.</p>
+			<p class="section-lede">Twenty html-effectiveness demo ports now lead the section, grouped like the upstream index and restyled with the vpk-html visual shell. The original eight vpk-html screenshot-backed showcases remain below them.</p>
 	</aside>
 	<div class="section-body">
+		<div class="phase-demo-index primary" aria-label="Phase 2 engineering demos">
+			<div class="phase-demo-intro">
+				<p class="figure-label">Phase 2 · html-effectiveness pattern</p>
+				<h3>Engineering example index</h3>
+				<p>These demos keep the upstream HTML structure, JavaScript, and sample content, then apply the local vpk-html paper, blueprint, and Geist visual system.</p>
+			</div>
+			<article class="phase-demo-group" id="phase-exploration">
+				<div class="phase-demo-head">
+					<p class="phase-demo-count">3 demos</p>
+					<h4>Exploration &amp; Planning</h4>
+					<p>Fan out across approaches, compare the choices, then turn the selected direction into an implementation plan.</p>
+				</div>
+				<div class="phase-demo-list">
+					<a class="phase-demo-link" href="assets/demos/demo-exploration-code-approaches.html">
+						<strong>Three code approaches</strong>
+						<span>Side-by-side comparison of three ways to solve the same problem, with tradeoffs called out inline.</span>
+						<code>demo-exploration-code-approaches.html</code>
+					</a>
+					<a class="phase-demo-link" href="assets/demos/demo-exploration-visual-designs.html">
+						<strong>Visual design directions</strong>
+						<span>A handful of layout and palette options rendered live so you can react to them, not imagine them.</span>
+						<code>demo-exploration-visual-designs.html</code>
+					</a>
+					<a class="phase-demo-link" href="assets/demos/demo-implementation-plan.html">
+						<strong>Implementation plan</strong>
+						<span>Milestones on a timeline, a data-flow diagram, inline mockups, risky code, and a risk table.</span>
+						<code>demo-implementation-plan.html</code>
+					</a>
+				</div>
+			</article>
+			<article class="phase-demo-group" id="phase-review">
+				<div class="phase-demo-head">
+					<p class="phase-demo-count">3 demos</p>
+					<h4>Code Review &amp; Understanding</h4>
+					<p>Make diffs, module maps, and reviewer handoffs spatial enough to scan instead of flattening them into terminal output.</p>
+				</div>
+				<div class="phase-demo-list">
+					<a class="phase-demo-link" href="assets/demos/demo-code-review-pr.html">
+						<strong>Annotated pull request</strong>
+						<span>A diff rendered with margin notes, severity tags, and jump links.</span>
+						<code>demo-code-review-pr.html</code>
+					</a>
+					<a class="phase-demo-link" href="assets/demos/demo-pr-writeup.html">
+						<strong>PR writeup for reviewers</strong>
+						<span>The author's side: motivation, before/after, file-by-file tour, and where to focus review.</span>
+						<code>demo-pr-writeup.html</code>
+					</a>
+					<a class="phase-demo-link" href="assets/demos/demo-code-understanding.html">
+						<strong>Module map</strong>
+						<span>An unfamiliar package drawn as boxes and arrows, with the hot path highlighted and entry points listed.</span>
+						<code>demo-code-understanding.html</code>
+					</a>
+				</div>
+			</article>
+			<article class="phase-demo-group" id="phase-design">
+				<div class="phase-demo-head">
+					<p class="phase-demo-count">2 demos</p>
+					<h4>Design</h4>
+					<p>Render tokens, variants, and component contracts as reviewable sheets that can feed directly into implementation prompts.</p>
+				</div>
+				<div class="phase-demo-list">
+					<a class="phase-demo-link" href="assets/demos/demo-design-system.html">
+						<strong>Living design system</strong>
+						<span>Colors, type scale, and spacing tokens pulled from a repo and rendered as copyable swatches.</span>
+						<code>demo-design-system.html</code>
+					</a>
+					<a class="phase-demo-link" href="assets/demos/demo-component-variants.html">
+						<strong>Component variants</strong>
+						<span>Every size, state, and intent of one component laid out on a single sheet for review.</span>
+						<code>demo-component-variants.html</code>
+					</a>
+				</div>
+			</article>
+			<article class="phase-demo-group" id="phase-prototype">
+				<div class="phase-demo-head">
+					<p class="phase-demo-count">2 demos</p>
+					<h4>Prototyping</h4>
+					<p>Capture motion and interaction behavior as something a reviewer can feel before the production surface exists.</p>
+				</div>
+				<div class="phase-demo-list">
+					<a class="phase-demo-link" href="assets/demos/demo-prototype-animation.html">
+						<strong>Animation sandbox</strong>
+						<span>The transition in isolation with sliders for duration and easing.</span>
+						<code>demo-prototype-animation.html</code>
+					</a>
+					<a class="phase-demo-link" href="assets/demos/demo-prototype-interaction.html">
+						<strong>Clickable flow</strong>
+						<span>Four screens linked together, enough fidelity to feel whether the interaction is right.</span>
+						<code>demo-prototype-interaction.html</code>
+					</a>
+				</div>
+			</article>
+			<article class="phase-demo-group" id="phase-diagrams">
+				<div class="phase-demo-head">
+					<p class="phase-demo-count">2 demos</p>
+					<h4>Illustrations &amp; Diagrams</h4>
+					<p>Use inline SVG briefs and flowchart plans when a figure teaches the system faster than prose.</p>
+				</div>
+				<div class="phase-demo-list">
+					<a class="phase-demo-link" href="assets/demos/demo-svg-illustrations.html">
+						<strong>SVG figure sheet</strong>
+						<span>The diagrams for a blog post, drawn inline so they can be tweaked and copied out one by one.</span>
+						<code>demo-svg-illustrations.html</code>
+					</a>
+					<a class="phase-demo-link" href="assets/demos/demo-flowchart-diagram.html">
+						<strong>Annotated flowchart</strong>
+						<span>A deploy pipeline drawn as a real flowchart with timings and failure paths.</span>
+						<code>demo-flowchart-diagram.html</code>
+					</a>
+				</div>
+			</article>
+			<article class="phase-demo-group" id="phase-decks">
+				<div class="phase-demo-head">
+					<p class="phase-demo-count">1 demo</p>
+					<h4>Decks</h4>
+					<p>Turn technical source material into an assertion-evidence presentation plan before opening a slide tool.</p>
+				</div>
+				<div class="phase-demo-list">
+					<a class="phase-demo-link" href="assets/demos/demo-slide-deck.html">
+						<strong>Arrow-key slide deck</strong>
+						<span>A short presentation as one HTML file. Left and right to navigate, no build step.</span>
+						<code>demo-slide-deck.html</code>
+					</a>
+				</div>
+			</article>
+			<article class="phase-demo-group" id="phase-research">
+				<div class="phase-demo-head">
+					<p class="phase-demo-count">2 demos</p>
+					<h4>Research &amp; Learning</h4>
+					<p>Structure feature and concept explainers with examples, source trails, and misconceptions so the topic stays navigable.</p>
+				</div>
+				<div class="phase-demo-list">
+					<a class="phase-demo-link" href="assets/demos/demo-research-feature-explainer.html">
+						<strong>How a feature works</strong>
+						<span>A rate-limiting explainer with TL;DR, collapsible request-path steps, tabs, and FAQ.</span>
+						<code>demo-research-feature-explainer.html</code>
+					</a>
+					<a class="phase-demo-link" href="assets/demos/demo-research-concept-explainer.html">
+						<strong>Concept explainer</strong>
+						<span>Consistent hashing taught with a live ring, comparison table, and hover-linked glossary.</span>
+						<code>demo-research-concept-explainer.html</code>
+					</a>
+				</div>
+			</article>
+			<article class="phase-demo-group" id="phase-reports">
+				<div class="phase-demo-head">
+					<p class="phase-demo-count">2 demos</p>
+					<h4>Reports</h4>
+					<p>Give recurring engineering updates and postmortems enough structure that readers can skim without losing the facts.</p>
+				</div>
+				<div class="phase-demo-list">
+					<a class="phase-demo-link" href="assets/demos/demo-status-report.html">
+						<strong>Weekly status</strong>
+						<span>What shipped, what slipped, and a small chart formatted for a quick Monday skim.</span>
+						<code>demo-status-report.html</code>
+					</a>
+					<a class="phase-demo-link" href="assets/demos/demo-incident-report.html">
+						<strong>Incident timeline</strong>
+						<span>A postmortem with a minute-by-minute timeline, log excerpts, and follow-up checklist.</span>
+						<code>demo-incident-report.html</code>
+					</a>
+				</div>
+			</article>
+			<article class="phase-demo-group" id="phase-editors">
+				<div class="phase-demo-head">
+					<p class="phase-demo-count">3 demos</p>
+					<h4>Custom Editing Interfaces</h4>
+					<p>Model throwaway editors as static worksheets that keep the human in the loop and end with a clean exportable decision.</p>
+				</div>
+				<div class="phase-demo-list">
+					<a class="phase-demo-link" href="assets/demos/demo-editor-triage-board.html">
+						<strong>Ticket triage board</strong>
+						<span>Drag tickets across Now, Next, Later, and Cut, then copy the final ordering as markdown.</span>
+						<code>demo-editor-triage-board.html</code>
+					</a>
+					<a class="phase-demo-link" href="assets/demos/demo-editor-feature-flags.html">
+						<strong>Feature flag editor</strong>
+						<span>Toggles grouped by area, dependency warnings, and a copy-diff button for changed keys.</span>
+						<code>demo-editor-feature-flags.html</code>
+					</a>
+					<a class="phase-demo-link" href="assets/demos/demo-editor-prompt-tuner.html">
+						<strong>Prompt tuner</strong>
+						<span>Editable prompt template with highlighted slots and live sample re-rendering.</span>
+						<code>demo-editor-prompt-tuner.html</code>
+					</a>
+				</div>
+			</article>
+		</div>		<div class="demo-gallery-intro">
+			<p class="figure-label">Original screenshot set</p>
+			<h3>Eight visual showcases</h3>
+			<p>The original kami-ported demos remain available as screenshot-backed examples after the grouped engineering index.</p>
+		</div>
 		<div class="demo-wall">
 			<a class="demo-card" href="assets/demos/demo-postgres-migration.html">
 				<div class="thumb"><img src="assets/demos/demo-postgres-migration.png" alt="Postgres migration PR writeup" loading="lazy"></div>
@@ -1040,6 +1376,7 @@ footer a:hover { color: var(--blueprint); }
 				</div>
 			</a>
 		</div>
+
 	</div>
 </section>
 

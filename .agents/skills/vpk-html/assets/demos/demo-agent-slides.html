@@ -12,6 +12,9 @@
 <meta charset="UTF-8">
 <title>Things You Don't Know About Agents · Slides</title>
 <style>
+  :root { color-scheme: light dark; }
+  [data-theme="dark"] { color-scheme: dark; }
+
   /* Palatino is a system font; JetBrains Mono kept for code blocks */
   @page {
     size: A4 landscape;
@@ -320,6 +323,7 @@
 </style>
 </head>
 <body>
+<main aria-label="vpk-html demo">
 
 <!-- ═══════════ 01 · Cover ═══════════ -->
 <section class="slide cover">
@@ -332,7 +336,7 @@
   </div>
   <div class="cover-visual">
     <!-- Decorative loop mark: concentric arcs in brand + stone -->
-    <svg viewBox="0 0 260 260" xmlns="http://www.w3.org/2000/svg" style="width: 220pt;">
+    <svg aria-hidden="true" viewBox="0 0 260 260" xmlns="http://www.w3.org/2000/svg" style="width: 220pt;">
       <circle cx="130" cy="130" r="100" fill="none" stroke="#dadcdf" stroke-width="1"/>
       <circle cx="130" cy="130" r="72" fill="none" stroke="#dadcdf" stroke-width="1"/>
       <circle cx="130" cy="130" r="44" fill="#e9f2fe" stroke="#1868db" stroke-width="1.2"/>
@@ -375,7 +379,7 @@
            Ring r=192 grazes top/bottom nodes at their inner edges, passes through left/right.
            Q-curve arcs: control at tangent-axis outer corner, giving true quarter-circle sweep.
            Chevron marker (open path, not filled polygon). Core is the only focal element. -->
-      <svg viewBox="0 0 680 560" xmlns="http://www.w3.org/2000/svg">
+      <svg aria-hidden="true" viewBox="0 0 680 560" xmlns="http://www.w3.org/2000/svg">
         <!-- surroundings label -->
         <text x="340" y="12" text-anchor="middle" font-size="9" fill="#7a7c82" font-family="'JetBrains Mono', monospace" letter-spacing="1.5">TOOLS · HARNESS · EVALS · MEMORY</text>
 
@@ -484,7 +488,7 @@
     </div>
     <div class="diagram-col">
       <!-- Context: flat vs layered accuracy comparison -->
-      <svg viewBox="0 0 280 230" xmlns="http://www.w3.org/2000/svg">
+      <svg aria-hidden="true" viewBox="0 0 280 230" xmlns="http://www.w3.org/2000/svg">
         <!-- Background -->
         <rect width="280" height="230" fill="#ffffff"/>
         <!-- Title -->
@@ -599,5 +603,6 @@
   <div class="footer-mark">End of Deck</div>
 </section>
 
+</main>
 </body>
 </html>

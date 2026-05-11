@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /*
  * Ports the 14 kami diagram primitives from ~/.agents/skills/kami/assets/diagrams/
- * into vpk-html/assets/diagrams/, re-skinned with vpk-html's Making Software
- * identity (warm paper + electric blue + accent-warning red) and the Geist
- * typeface trio (Sans / Mono / Pixel-Square).
+ * into vpk-html/assets/diagrams/, re-skinned with vpk-html's semantic
+ * blueprint identity and the Geist typeface trio (Sans / Mono /
+ * Pixel-Square).
  *
  * The SVG geometry is preserved verbatim — only fills, strokes, fonts, and
  * surrounding chrome change. Run with: node scripts/port-diagrams.mjs
@@ -29,32 +29,32 @@ function inlineFont(filename) {
 	return `data:font/woff2;base64,${fs.readFileSync(filePath).toString("base64")}`;
 }
 
-// Palette mapping: kami → vpk-html (Making Software language).
+// Palette mapping: kami → vpk-html semantic aliases.
 const COLOR_MAP = {
-	"#f5f4ed": "#FBFBFB", // parchment → paper
-	"#F5F4ED": "#FBFBFB",
-	"#faf9f5": "#FBFBFB", // ivory → paper (collapse to single neutral)
-	"#FAF9F5": "#FBFBFB",
-	"#141413": "#0A0A0A", // near-black → ink
-	"#504e49": "#525252", // olive → mid gray
-	"#6b6a64": "#757575", // stone → ink-muted (50% ink)
-	"#1B365D": "#1B3FE5", // brand → accent-blue (electric)
-	"#1b365d": "#1B3FE5",
-	"#2D5A8A": "#1B3FE5", // ink-light collapses to accent
-	"#EEF2F7": "#E6EAFB", // brand-tint → blue-tint
-	"#eef2f7": "#E6EAFB",
-	"#e8e6dc": "#E0E0E0", // border (warm) → hairline neutral
-	"#E8E6DC": "#E0E0E0",
-	"#E9E8E1": "#EAEAEA",
-	"#EEEDE6": "#EFEFEF",
-	"#EAE9E2": "#E5E5E5",
-	"#DEDED7": "#E0E0E0",
-	"#E3E2DC": "#E0E0E0",
-	"#B2B1AC": "#BDBDBD",
-	"#B53333": "#D14E3E", // error → accent-warning
-	"#b53333": "#D14E3E",
-	"#30302E": "#2A2A2A",
-	"#30302e": "#2A2A2A",
+	"#f5f4ed": "var(--vpk-paper)",
+	"#F5F4ED": "var(--vpk-paper)",
+	"#faf9f5": "var(--vpk-paper)",
+	"#FAF9F5": "var(--vpk-paper)",
+	"#141413": "var(--vpk-ink)",
+	"#504e49": "var(--vpk-muted-text)",
+	"#6b6a64": "var(--vpk-subtlest-text)",
+	"#1B365D": "var(--vpk-blueprint)",
+	"#1b365d": "var(--vpk-blueprint)",
+	"#2D5A8A": "var(--vpk-focus-ring)",
+	"#EEF2F7": "var(--vpk-blueprint-tint)",
+	"#eef2f7": "var(--vpk-blueprint-tint)",
+	"#e8e6dc": "var(--vpk-rule)",
+	"#E8E6DC": "var(--vpk-rule)",
+	"#E9E8E1": "var(--vpk-surface-sunken)",
+	"#EEEDE6": "var(--vpk-surface-sunken)",
+	"#EAE9E2": "var(--vpk-surface-sunken)",
+	"#DEDED7": "var(--vpk-rule)",
+	"#E3E2DC": "var(--vpk-rule)",
+	"#B2B1AC": "var(--vpk-rule-strong)",
+	"#B53333": "var(--vpk-danger)",
+	"#b53333": "var(--vpk-danger)",
+	"#30302E": "var(--vpk-ink)",
+	"#30302e": "var(--vpk-ink)",
 };
 
 const GEIST_SANS = '"Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif';
@@ -88,16 +88,38 @@ function buildHead() {
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
-    --vpk-paper: #FBFBFB;
-    --vpk-ink: #0A0A0A;
-    --vpk-ink-muted: #757575;
-    --vpk-accent-blue: #1B3FE5;
-    --vpk-accent-warning: #D14E3E;
-    --vpk-rule: #E0E0E0;
+    color-scheme: light dark;
+    --vpk-paper: var(--ds-surface, #ffffff);
+    --vpk-surface-raised: var(--ds-surface-raised, #ffffff);
+    --vpk-surface-sunken: var(--ds-surface-sunken, #f0f1f2);
+    --vpk-ink: var(--ds-text, #292a2e);
+    --vpk-muted-text: var(--ds-text-subtle, #505258);
+    --vpk-subtlest-text: var(--ds-text-subtlest, #6b6e76);
+    --vpk-blueprint: var(--ds-background-brand-bold, #1868db);
+    --vpk-blueprint-tint: var(--ds-background-information, #e9f2fe);
+    --vpk-rule: var(--ds-border, #0b120e24);
+    --vpk-rule-strong: var(--ds-border-bold, #7d818a);
+    --vpk-focus-ring: var(--ds-border-focused, #4688ec);
+    --vpk-danger: var(--ds-background-danger-bold, #c9372c);
 
     --vpk-font-sans: ${GEIST_SANS};
     --vpk-font-mono: ${GEIST_MONO};
     --vpk-font-display: ${GEIST_PIXEL};
+  }
+
+  [data-theme="dark"] {
+    --vpk-paper: var(--ds-surface, #101214);
+    --vpk-surface-raised: var(--ds-surface-raised, #22272b);
+    --vpk-surface-sunken: var(--ds-surface-sunken, #161a1d);
+    --vpk-ink: var(--ds-text, #dee4ea);
+    --vpk-muted-text: var(--ds-text-subtle, #9fadbc);
+    --vpk-subtlest-text: var(--ds-text-subtlest, #738496);
+    --vpk-blueprint: var(--ds-background-brand-bold, #579dff);
+    --vpk-blueprint-tint: var(--ds-background-information, #09326c);
+    --vpk-rule: var(--ds-border, #a6c5e229);
+    --vpk-rule-strong: var(--ds-border-bold, #738496);
+    --vpk-focus-ring: var(--ds-border-focused, #579dff);
+    --vpk-danger: var(--ds-background-danger-bold, #f87168);
   }
 
   @font-face {
@@ -133,7 +155,7 @@ function buildHead() {
   }
 
   .eyebrow {
-    color: var(--vpk-accent-warning);
+    color: var(--vpk-blueprint);
     font-family: var(--vpk-font-mono);
     font-size: 10px;
     line-height: 14px;
@@ -143,7 +165,7 @@ function buildHead() {
   }
 
   h1 {
-    color: var(--vpk-accent-blue);
+    color: var(--vpk-blueprint);
     font-family: var(--vpk-font-display);
     font-size: 16px;
     line-height: 1.8;
@@ -157,7 +179,7 @@ function buildHead() {
 
   .caption {
     border-top: 1px solid var(--vpk-rule);
-    color: var(--vpk-ink-muted);
+    color: var(--vpk-muted-text);
     font-family: var(--vpk-font-sans);
     font-size: 14px;
     line-height: 22px;
@@ -202,8 +224,8 @@ function transform(rawHtml, slug, headBlock) {
 	const headerComment = `<!-- ==================================================================
      DIAGRAM · ${slug.replace(/-/g, " ")} (vpk-html palette)
      SVG primitive ported from kami's diagram library, restyled with the
-     vpk-html identity: Geist Pixel headline, Geist Sans body, warm paper
-     background, ink-blue (#1868DB) accent. Drop the <svg> block into a
+     vpk-html identity: Geist Pixel headline, Geist Sans body, semantic
+     brand-blue accent. Drop the <svg> block into a
      long-doc, portfolio, or design-system payload via section.trustedHtml.
      ================================================================== -->`;
 	const commentReplaced = titleReplaced.replace(/<!--[\s\S]*?-->\n?/, `${headerComment}\n`);

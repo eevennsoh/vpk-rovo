@@ -33,11 +33,11 @@ unambiguous.
 - **14 SVG diagram primitives** at `assets/diagrams/` — architecture, flowchart,
   swimlane, tree, waterfall, candlestick, and friends. Extract the `<svg>` block
   and embed inside any long-form template.
-- **8 curated demos** at `assets/demos/`:
-  - 4 ported from kami: Tesla equity report, Musk resume, Kaku portfolio, agent slides.
-  - 4 vpk-native: Postgres migration (long-doc), RAG explainer (long-doc),
-    Q2 status (one-pager), auth incident post-mortem (long-doc).
-- **A marketing landing page** at [`index.html`](index.html).
+- **28 demos** at `assets/demos/`:
+  - 8 screenshot-backed showcases: 4 ported from kami and 4 vpk-native.
+  - 20 Phase 2 ports from `html-effectiveness`, grouped first on the homepage
+    like the upstream demo index and restyled with the vpk-html visual shell.
+- **A reference-manual homepage** at [`index.html`](index.html).
 - **3 LLM-facing reference docs**: `anti-patterns.md`, `diagrams.md`,
   `resume-writing.md` — consult before drafting.
 
@@ -79,6 +79,7 @@ node scripts/port-diagrams.mjs                    # re-port diagrams from kami
 node scripts/port-demos.mjs                       # re-port kami's curated demos
 node scripts/port-html-effectiveness.mjs          # regenerate Phase 2 engineering templates
 node scripts/rescue-demos.mjs                     # regenerate the 4 vpk-native demos
+node scripts/rescue-html-effectiveness-demos.mjs  # copy + restyle direct Phase 2 upstream demo ports
 ```
 
 ## Directory map
@@ -92,7 +93,8 @@ node scripts/rescue-demos.mjs                     # regenerate the 4 vpk-native 
 | `LICENSE`, `llms.txt`, `.gitignore`, `.claude-plugin/` | Top-level metadata |
 | `assets/templates/` | 28 offline HTML templates: 8 base document shells + 20 Phase 2 engineering shells |
 | `assets/diagrams/` | 14 standalone SVG diagram primitives |
-| `assets/demos/` | 8 curated showcase outputs (4 kami-ported + 4 vpk-native) |
+| `assets/html-effectiveness/` | Snapshot of the 20 upstream html-effectiveness HTML demos plus index |
+| `assets/demos/` | 28 demo outputs: 8 screenshot-backed showcases + 20 restyled html-effectiveness ports |
 | `assets/fonts/` | Geist Sans, Geist Mono, Geist Pixel (inlined as base64 at port time) |
 | `assets/images/` | Skill identity (logo) |
 | `references/` | Anti-patterns, diagrams, resume-writing, writing, design, production, source-policy, accessibility, theme.css, tokens.json |
@@ -134,15 +136,25 @@ The visual identity diverges; the workflow does not.
 
 ## Phase 2 engineering templates
 
-The Phase 2 generator maps the 20 engineering document patterns from
+The Phase 2 template generator maps the 20 engineering document patterns from
 [ThariqS/html-effectiveness](https://github.com/ThariqS/html-effectiveness)
 into vpk-html shells for approach exploration, code review, code
 understanding, design-system specs, component variants, prototypes, status and
 incident reports, research explainers, implementation plans, PR writeups, and
 editor-style triage/flag/prompt worksheets.
 
-These files are original vpk-html template shells. They reference the upstream
-pattern file visibly, but do not copy upstream HTML, CSS, or prose.
+The Phase 2 demo generator copies the upstream HTML examples from
+`assets/html-effectiveness/` into the local `assets/demos/demo-*.html` paths,
+applies the vpk-html visual shell, and groups them on the homepage using the
+same category rhythm as `html-effectiveness`: Exploration & Planning, Code
+Review & Understanding, Design, Prototyping, Illustrations & Diagrams, Decks,
+Research & Learning, Reports, and Custom Editing Interfaces.
+
+The Phase 2 templates remain original vpk-html template shells. The Phase 2
+demos preserve upstream structure, JavaScript, and sample content, then add the
+local vpk-html overlay: embedded Geist font declarations, blueprint/paper
+tokens, source comments, a dark-token stub, and accessibility landmarks where
+the upstream page omitted them.
 
 ## License
 

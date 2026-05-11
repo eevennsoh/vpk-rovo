@@ -15,6 +15,7 @@ import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { collectColorTokenIssues } from "./check-html.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -26,8 +27,10 @@ const PLACEHOLDER_PATTERN = /\{\{[^}]+\}\}/g;
 // vpk identity check — required tokens that should appear in templates.
 const REQUIRED_FONT_FACES = ["Geist", "Geist Mono", "Geist Pixel"];
 const FORBIDDEN_KAMI_LEAKAGE = [
-	{ pattern: /#1B365D/i, label: "kami brand color #1B365D (should be vpk accent-blue #1B3FE5)" },
-	{ pattern: /#f5f4ed/i, label: "kami parchment #f5f4ed (should be vpk paper #FBFBFB)" },
+	{ pattern: /#1B365D/i, label: "kami brand color #1B365D (should use vpk semantic brand aliases)" },
+	{ pattern: /#3553ff/i, label: "legacy electric blueprint #3553ff (should use --vpk-blueprint)" },
+	{ pattern: /#1B3FE5/i, label: "legacy vpk accent-blue #1B3FE5 (should use --vpk-blueprint)" },
+	{ pattern: /#f5f4ed/i, label: "kami parchment #f5f4ed (should use --vpk-paper)" },
 	{ pattern: /TsangerJinKai02/, label: "kami CJK font TsangerJinKai02" },
 	{ pattern: /font-family:\s*Charter\b/, label: "kami Charter serif (should be Geist)" },
 	{ pattern: /cdn\.jsdelivr\.net|cdnjs|fonts\.googleapis|fonts\.gstatic/i, label: "remote font/asset URL (violates offline rule)" },
@@ -96,6 +99,8 @@ function checkTemplate(filePath) {
 	for (const { pattern, label } of FORBIDDEN_KAMI_LEAKAGE) {
 		if (pattern.test(content)) failures.push(`kami leakage: ${label}`);
 	}
+
+	failures.push(...collectColorTokenIssues(content, filePath));
 
 	if (!/<meta\s+name="generator"\s+content="vpk-html"/i.test(content)) {
 		failures.push("missing or wrong <meta name=\"generator\"> (should be \"vpk-html\")");
