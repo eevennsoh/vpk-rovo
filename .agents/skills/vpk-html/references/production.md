@@ -5,8 +5,7 @@ examples:
 
 ```bash
 node .agents/skills/vpk-html/scripts/ensure-fonts.mjs
-node .agents/skills/vpk-html/scripts/build-gallery.mjs
-node --test .agents/skills/vpk-html/scripts/test-templates.test.js
+node .agents/skills/vpk-html/scripts/build.mjs --check-templates
 pnpm run lint
 pnpm run typecheck
 ```
@@ -14,6 +13,7 @@ pnpm run typecheck
 Routine user renders require:
 
 ```bash
-node .agents/skills/vpk-html/scripts/render.mjs --input <payload.json>
+node .agents/skills/vpk-html/scripts/build.mjs --check-placeholders docs/html/<slug>.html
+node .agents/skills/vpk-html/scripts/build.mjs --verify docs/html/<slug>.html
 node .agents/skills/vpk-html/scripts/check-html.mjs docs/html/<slug>.html
 ```
