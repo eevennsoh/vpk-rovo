@@ -1,4 +1,8 @@
 const DAY_IN_MS = 1000 * 60 * 60 * 24;
+const DISPLAY_DATE_FORMATTERS = new Map<
+	Intl.DateTimeFormatOptions["dateStyle"],
+	Intl.DateTimeFormat
+>();
 
 function getParsedDate(dateStr: string): Date | null {
 	const parsedDate = new Date(dateStr);
@@ -26,7 +30,13 @@ export function formatDateForDisplay(
 		return getHydrationSafeDateFallback(dateStr);
 	}
 
-	return new Intl.DateTimeFormat("en-US", { dateStyle }).format(parsedDate);
+	let formatter = DISPLAY_DATE_FORMATTERS.get(dateStyle);
+	if (!formatter) {
+		formatter = new Intl.DateTimeFormat("en-US", { dateStyle });
+		DISPLAY_DATE_FORMATTERS.set(dateStyle, formatter);
+	}
+
+	return formatter.format(parsedDate);
 }
 
 export function formatRelativeDateForDisplay(dateStr: string): string {
