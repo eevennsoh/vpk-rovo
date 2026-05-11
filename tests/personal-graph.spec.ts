@@ -197,14 +197,12 @@ async function mockPersonalGraphApi(page: Page) {
 	await page.route("**/api/personal-graph/**", async (route) => {
 		const request = route.request();
 		const url = new URL(request.url());
-		console.log("Personal Graph route", request.method(), url.pathname);
 		const fulfillJson = async (body: unknown) => {
 			await route.fulfill({
 				body: JSON.stringify(body),
 				contentType: "application/json",
 				status: 200,
 			});
-			console.log("Personal Graph fulfilled", request.method(), url.pathname);
 		};
 		const fulfillSse = async (events: unknown[]) => {
 			await route.fulfill({
@@ -212,7 +210,6 @@ async function mockPersonalGraphApi(page: Page) {
 				contentType: "text/event-stream",
 				status: 200,
 			});
-			console.log("Personal Graph fulfilled", request.method(), url.pathname);
 		};
 
 		if (url.pathname === "/api/personal-graph/vault" || url.pathname === "/api/personal-graph/vault/select") {
@@ -262,18 +259,9 @@ async function mockPersonalGraphApi(page: Page) {
 }
 
 async function openMockedPersonalGraph(page: Page) {
-	page.on("console", (message) => {
-		console.log("Personal Graph console", message.type(), message.text());
-	});
 	await page.emulateMedia({ reducedMotion: "reduce" });
 	await mockPersonalGraphApi(page);
 	await page.goto(PERSONAL_GRAPH_URL, { waitUntil: "domcontentloaded" });
-	const directVaultStatus = await page.evaluate(async () => {
-		const response = await fetch("/api/personal-graph/vault");
-		const data = await response.json();
-		return { ok: response.ok, status: data.status };
-	});
-	console.log("Personal Graph direct vault fetch", directVaultStatus);
 
 	await expect(page.getByRole("heading", { name: "Personal Graph" })).toBeVisible({ timeout: 15000 });
 	await expect(page.locator("ul[aria-label='Personal Graph nodes'] li")).toHaveCount(3, { timeout: 15000 });

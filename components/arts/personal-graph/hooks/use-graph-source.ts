@@ -28,16 +28,13 @@ export function useGraphSource(): UseGraphSourceState {
 	const refresh = useCallback(async () => {
 		const controller = new AbortController();
 		setIsLoading(true);
-		console.log("[personal-graph] source refresh");
 		try {
 			const next = await fetchActiveSource({ signal: controller.signal });
-			console.log("[personal-graph] source loaded", next.source);
 			setState(next);
 			setError(null);
 		} catch (nextError) {
 			if (nextError instanceof Error && nextError.name === "AbortError") return;
 			setError(nextError instanceof Error ? nextError : new Error(String(nextError)));
-			console.log("[personal-graph] source error", nextError);
 		} finally {
 			setIsLoading(false);
 		}

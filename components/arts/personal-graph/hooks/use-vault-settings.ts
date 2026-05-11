@@ -25,10 +25,8 @@ export function useVaultSettings(): VaultSettingsState {
 	const refresh = useCallback(async () => {
 		const controller = new AbortController();
 		setIsLoading(true);
-		console.log("[personal-graph] vault settings refresh");
 		try {
 			const nextSettings = await fetchVaultSettings({ signal: controller.signal });
-			console.log("[personal-graph] vault settings loaded", nextSettings.status);
 			setSettings(nextSettings);
 			setError(null);
 		} catch (nextError) {
@@ -36,7 +34,6 @@ export function useVaultSettings(): VaultSettingsState {
 				return;
 			}
 			setError(nextError instanceof Error ? nextError : new Error(String(nextError)));
-			console.log("[personal-graph] vault settings error", nextError);
 		} finally {
 			setIsLoading(false);
 		}
