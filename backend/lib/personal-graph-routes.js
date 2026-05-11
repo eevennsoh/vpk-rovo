@@ -73,9 +73,11 @@ function getStatusForError(error) {
 
 const router = express.Router();
 const activeSummarizeRuns = new Map();
+const summaryArticleCache = new Map();
 let activeTwgCacheHydration = null;
 const DEFAULT_CACHED_TWG_ARTIFACT_TITLE_HYDRATION_LIMIT = 32;
 const CACHED_TWG_ARTIFACT_TITLE_HYDRATION_LIMIT_ENV_KEY = "PERSONAL_GRAPH_TWG_CACHED_ARTIFACT_HYDRATION_LIMIT";
+const DEFAULT_TWG_SUMMARY_WORK_WINDOW = "7d";
 
 function getCachedTwgArtifactTitleHydrationLimit() {
 	return getPositiveInteger(
@@ -194,18 +196,55 @@ async function streamIterable(res, iterable) {
 	}
 }
 
-function getActiveExplorerForSummary() {
+function normalizeTwgWorkWindow(value) {
+	if (typeof value !== "string") return DEFAULT_TWG_SUMMARY_WORK_WINDOW;
+	const trimmed = value.trim().toLowerCase();
+	return /^\d{1,3}[dwm]$/u.test(trimmed) ? trimmed : DEFAULT_TWG_SUMMARY_WORK_WINDOW;
+}
+
+function getSummaryCacheKey({ length, nodeId, source, sourceFingerprint }) {
+	return [
+		summaryContext.SUMMARY_RENDERER_VERSION,
+		source,
+		nodeId,
+		length,
+		sourceFingerprint,
+	].join(":");
+}
+
+async function getActiveExplorerForSummary({ nodeId, signal, workWindow } = {}) {
 	const source = getActiveSource();
 	if (source === "twg") {
 		const cached = readCache();
 		if (!cached) {
-			const error = new Error("Team Work Graph summary requires a cached explorer. Refresh TWG first.");
+			const error = new Error("Team Work Graph summary setup is required. Run `twg login`, refresh Team Work Graph, then retry.");
 			error.code = "TWG_CACHE_REQUIRED";
 			throw error;
 		}
-		return { explorer: cached, source };
+		try {
+			const expanded = await twgSource.expandTwgExplorerNode({
+				explorer: cached,
+				nodeId,
+				signal,
+				since: workWindow,
+			});
+			if (expanded.explorer !== cached) {
+				writeCache(expanded.explorer);
+			}
+			return { explorer: expanded.explorer, source, sourceNotice: null, workWindow };
+		} catch (error) {
+			if (error?.code === "NODE_NOT_FOUND" || error?.code === "NODE_SELECTION_REQUIRED") {
+				throw error;
+			}
+			return {
+				explorer: cached,
+				source,
+				sourceNotice: "Selected Team Work Graph expansion was unavailable, so this article uses the cached one-hop context.",
+				workWindow,
+			};
+		}
 	}
-	return { explorer: buildExplorer(), source };
+	return { explorer: buildExplorer(), source, sourceNotice: null, workWindow: null };
 }
 
 function normalizeSummaryRequestBody(body) {
@@ -217,6 +256,7 @@ function normalizeSummaryRequestBody(body) {
 	}
 	return {
 		action,
+		bypassCache: body?.bypassCache === true,
 		clientId: typeof body?.clientId === "string" && body.clientId.trim()
 			? body.clientId.trim().slice(0, 128)
 			: "default",
@@ -226,6 +266,7 @@ function normalizeSummaryRequestBody(body) {
 		takeaways: Array.isArray(body?.takeaways)
 			? body.takeaways.filter((entry) => typeof entry === "string" && entry.trim())
 			: [],
+		workWindow: normalizeTwgWorkWindow(body?.workWindow),
 	};
 }
 
@@ -240,7 +281,11 @@ async function* runSummarizeStream(body) {
 
 	try {
 		yield { action: request.action, nodeId: request.nodeId, stage: "validating", type: "stage" };
-		const { explorer, source } = getActiveExplorerForSummary();
+		const { explorer, source, sourceNotice, workWindow } = await getActiveExplorerForSummary({
+			nodeId: request.nodeId,
+			signal: controller.signal,
+			workWindow: request.workWindow,
+		});
 		if (request.action === "deck") {
 			const selection = summaryContext.getSelectedNodeContext(explorer, request.nodeId);
 			const deck = summaryContext.buildMarpDeck({
@@ -260,22 +305,66 @@ async function* runSummarizeStream(body) {
 			return;
 		}
 
-		yield { action: "summary", length: request.length, nodeId: request.nodeId, source, stage: "summarizing", type: "stage" };
+		const selection = summaryContext.getSelectedNodeContext(explorer, request.nodeId);
+		const sourceFingerprint = summaryContext.createSourceFingerprint({
+			explorer,
+			selection,
+			source,
+			workWindow,
+		});
+		const cacheKey = getSummaryCacheKey({
+			length: request.length,
+			nodeId: request.nodeId,
+			source,
+			sourceFingerprint,
+		});
+		const cachedArticle = request.bypassCache ? null : summaryArticleCache.get(cacheKey);
+
+		yield { action: "summary", length: request.length, nodeId: request.nodeId, source, stage: "enriching", type: "stage" };
+		if (cachedArticle) {
+			yield { action: "summary", length: request.length, nodeId: request.nodeId, source, stage: "rendering", type: "stage" };
+			yield {
+				action: "summary",
+				articleMarkdown: cachedArticle.articleMarkdown,
+				cache: "hit",
+				inputKind: cachedArticle.inputKind,
+				length: request.length,
+				nodeId: request.nodeId,
+				source,
+				sourceFingerprint,
+				sourceNotice,
+				type: "article",
+				workWindow,
+			};
+			yield { action: "summary", nodeId: request.nodeId, source, stage: "done", type: "done" };
+			return;
+		}
+
+		yield { action: "summary", length: request.length, nodeId: request.nodeId, source, stage: "writing", type: "stage" };
 		const result = await summaryContext.summarizeSelection({
 			explorer,
 			length: request.length,
 			nodeId: request.nodeId,
 			signal: controller.signal,
 		});
+		const articleMarkdown = result.summary;
+		summaryArticleCache.set(cacheKey, {
+			articleMarkdown,
+			inputKind: result.inputKind,
+		});
+		yield { action: "summary", length: request.length, nodeId: request.nodeId, source, stage: "rendering", type: "stage" };
 		yield {
 			action: "summary",
+			articleMarkdown,
+			cache: request.bypassCache ? "bypass" : "miss",
 			inputKind: result.inputKind,
 			length: request.length,
 			nodeId: request.nodeId,
-			stage: "summarizing",
-			summary: result.summary,
-			takeaways: result.takeaways,
-			type: "summary",
+			source,
+			sourceFingerprint,
+			sourceNotice,
+			type: "article",
+			workWindow,
 		};
 		yield { action: "summary", nodeId: request.nodeId, source, stage: "done", type: "done" };
 	} finally {
@@ -366,7 +455,10 @@ router.post("/twg/chat", async (req, res) => {
 
 router.post("/twg/refresh", async (req, res) => {
 	try {
-		const fresh = await twgSource.buildTwgExplorer({ signal: req.signal });
+		const fresh = await twgSource.buildTwgExplorer({
+			signal: req.signal,
+			since: normalizeTwgWorkWindow(req.body?.since),
+		});
 		writeCache(fresh);
 		return res.json(fresh);
 	} catch (error) {

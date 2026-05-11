@@ -1,12 +1,24 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { streamLibrarian, streamPersonalGraphSummarize } from "../lib/personal-graph-api";
-import type { LibrarianStreamEvent, PersonalGraphSummaryLength } from "../lib/personal-graph-types";
+import { streamPersonalGraphSummarize } from "../lib/personal-graph-api";
+import type {
+	PersonalGraphSummaryLength,
+	VaultExplorer,
+	VaultNode,
+} from "../lib/personal-graph-types";
+import {
+	buildPersonalGraphSummaryHtmlDocument,
+	getPersonalGraphSummaryHtmlContext,
+	type PersonalGraphSummaryHtmlDocument,
+} from "../personal-graph-summary-html";
 
 export type PersonalGraphSummaryStatus = "idle" | "running" | "done" | "error";
-export type PersonalGraphDeckStatus = "idle" | "running" | "done" | "error";
-export type PersonalGraphConfirmStatus = "idle" | "running" | "done" | "error";
+
+interface GenerateSummaryOptions {
+	bypassCache?: boolean;
+	workWindow?: string | null;
+}
 
 function createSummaryClientId() {
 	if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -15,19 +27,39 @@ function createSummaryClientId() {
 	return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
 }
 
-export function usePersonalGraphSummary(nodeId: string | null) {
+function getExplorerRevision(explorer: VaultExplorer | null, node: VaultNode | null) {
+	return [
+		explorer?.generatedAt ?? "no-explorer",
+		node?.id ?? "no-node",
+		node?.updatedAt ?? "no-updated-at",
+		node?.connectionCount ?? 0,
+	].join(":");
+}
+
+export function usePersonalGraphSummary(node: VaultNode | null, explorer: VaultExplorer | null) {
 	const abortRef = useRef<AbortController | null>(null);
 	const clientIdRef = useRef("");
-	const [deck, setDeck] = useState("");
-	const [deckStatus, setDeckStatus] = useState<PersonalGraphDeckStatus>("idle");
+	const explorerRef = useRef<VaultExplorer | null>(explorer);
+	const nodeRef = useRef<VaultNode | null>(node);
+	const [articleMarkdown, setArticleMarkdown] = useState("");
+	const [cacheStatus, setCacheStatus] = useState<"hit" | "miss" | "bypass" | null>(null);
+	const [document, setDocument] = useState<PersonalGraphSummaryHtmlDocument | null>(null);
 	const [error, setError] = useState<string | null>(null);
-	const [confirmEvents, setConfirmEvents] = useState<LibrarianStreamEvent[]>([]);
-	const [confirmStatus, setConfirmStatus] = useState<PersonalGraphConfirmStatus>("idle");
+	const [errorCode, setErrorCode] = useState<string | null>(null);
 	const [length, setLength] = useState<PersonalGraphSummaryLength>("medium");
+	const [sourceFingerprint, setSourceFingerprint] = useState("");
+	const [sourceNotice, setSourceNotice] = useState<string | null>(null);
 	const [stage, setStage] = useState("");
 	const [status, setStatus] = useState<PersonalGraphSummaryStatus>("idle");
-	const [summary, setSummary] = useState("");
-	const [takeaways, setTakeaways] = useState<string[]>([]);
+	const resetKey = getExplorerRevision(explorer, node);
+
+	useEffect(() => {
+		explorerRef.current = explorer;
+	}, [explorer]);
+
+	useEffect(() => {
+		nodeRef.current = node;
+	}, [node]);
 
 	const abort = useCallback(() => {
 		abortRef.current?.abort();
@@ -36,54 +68,85 @@ export function usePersonalGraphSummary(nodeId: string | null) {
 
 	const reset = useCallback(() => {
 		abort();
-		setDeck("");
-		setDeckStatus("idle");
+		setArticleMarkdown("");
+		setCacheStatus(null);
+		setDocument(null);
 		setError(null);
-		setConfirmEvents([]);
-		setConfirmStatus("idle");
+		setErrorCode(null);
+		setSourceFingerprint("");
+		setSourceNotice(null);
 		setStage("");
 		setStatus("idle");
-		setSummary("");
-		setTakeaways([]);
 	}, [abort]);
 
 	useEffect(() => {
 		reset();
-	}, [nodeId, reset]);
+	}, [reset, resetKey]);
 
 	useEffect(() => abort, [abort]);
 
-	const generateSummary = useCallback(async (nextLength: PersonalGraphSummaryLength) => {
-		if (!nodeId) return;
+	const generateSummary = useCallback(async (
+		nextLength: PersonalGraphSummaryLength,
+		options: GenerateSummaryOptions = {},
+	) => {
+		const currentNode = nodeRef.current;
+		if (!currentNode) return;
 		clientIdRef.current ||= createSummaryClientId();
 		abort();
 		const controller = new AbortController();
 		abortRef.current = controller;
-		setDeck("");
-		setDeckStatus("idle");
+		setArticleMarkdown("");
+		setCacheStatus(null);
+		setDocument(null);
 		setError(null);
+		setErrorCode(null);
 		setLength(nextLength);
+		setSourceFingerprint("");
+		setSourceNotice(null);
 		setStage("starting");
 		setStatus("running");
-		setSummary("");
-		setTakeaways([]);
 
 		try {
 			for await (const event of streamPersonalGraphSummarize(
-				{ action: "summary", clientId: clientIdRef.current, length: nextLength, nodeId },
+				{
+					action: "summary",
+					bypassCache: options.bypassCache,
+					clientId: clientIdRef.current,
+					length: nextLength,
+					nodeId: currentNode.id,
+					workWindow: options.workWindow,
+				},
 				{ signal: controller.signal },
 			)) {
 				if (event.type === "stage") {
 					setStage(event.stage);
 				}
-				if (event.type === "summary") {
-					setSummary(event.summary);
-					setTakeaways(event.takeaways);
+				if (event.type === "article") {
+					const summaryContext = getPersonalGraphSummaryHtmlContext(explorerRef.current, currentNode);
+					const generatedAt = new Date().toISOString();
+					const nextDocument = buildPersonalGraphSummaryHtmlDocument({
+						articleMarkdown: event.articleMarkdown,
+						edges: summaryContext.edges,
+						generatedAt,
+						length: event.length,
+						neighbors: summaryContext.neighbors,
+						node: currentNode,
+						provider: event.source,
+						sourceFingerprint: event.sourceFingerprint,
+						sourceNotice: event.sourceNotice,
+						workWindow: event.workWindow,
+					});
+					setArticleMarkdown(event.articleMarkdown);
+					setCacheStatus(event.cache);
+					setDocument(nextDocument);
+					setSourceFingerprint(event.sourceFingerprint);
+					setSourceNotice(event.sourceNotice ?? null);
 					setStatus("done");
-					setStage(event.stage);
+					setStage("done");
 				}
 				if (event.type === "error") {
 					setError(event.error);
+					setErrorCode(event.code ?? null);
 					setStatus("error");
 					setStage(event.stage);
 				}
@@ -93,6 +156,7 @@ export function usePersonalGraphSummary(nodeId: string | null) {
 				return;
 			}
 			setError(nextError instanceof Error ? nextError.message : String(nextError));
+			setErrorCode(null);
 			setStatus("error");
 			setStage("error");
 		} finally {
@@ -100,85 +164,22 @@ export function usePersonalGraphSummary(nodeId: string | null) {
 				abortRef.current = null;
 			}
 		}
-	}, [abort, nodeId]);
-
-	const generateDeck = useCallback(async () => {
-		if (!nodeId || !summary) return;
-		clientIdRef.current ||= createSummaryClientId();
-		abort();
-		const controller = new AbortController();
-		abortRef.current = controller;
-		setDeck("");
-		setDeckStatus("running");
-		setError(null);
-
-		try {
-			for await (const event of streamPersonalGraphSummarize(
-				{ action: "deck", clientId: clientIdRef.current, length, nodeId, summary, takeaways },
-				{ signal: controller.signal },
-			)) {
-				if (event.type === "deck") {
-					setDeck(event.deck);
-					setDeckStatus("done");
-				}
-				if (event.type === "error") {
-					setError(event.error);
-					setDeckStatus("error");
-				}
-			}
-		} catch (nextError) {
-			if (controller.signal.aborted) {
-				return;
-			}
-			setError(nextError instanceof Error ? nextError.message : String(nextError));
-			setDeckStatus("error");
-		} finally {
-			if (abortRef.current === controller) {
-				abortRef.current = null;
-			}
-		}
-	}, [abort, length, nodeId, summary, takeaways]);
-
-	const confirm = useCallback(async (sourcePath: string, onDone?: () => void) => {
-		if (!summary) return;
-		setConfirmEvents([]);
-		setConfirmStatus("running");
-		setError(null);
-		try {
-			for await (const event of streamLibrarian({
-				sourcePath,
-				summaryOverride: { summary, takeaways },
-			})) {
-				setConfirmEvents((current) => [...current, event]);
-				if (event.type === "done") {
-					setConfirmStatus("done");
-					onDone?.();
-				}
-				if (event.type === "error") {
-					setConfirmStatus("error");
-					setError(event.error);
-				}
-			}
-		} catch (nextError) {
-			setConfirmStatus("error");
-			setError(nextError instanceof Error ? nextError.message : String(nextError));
-		}
-	}, [summary, takeaways]);
+	}, [abort]);
 
 	return {
-		confirm,
-		confirmEvents,
-		confirmStatus,
-		deck,
-		deckStatus,
+		articleMarkdown,
+		cacheStatus,
 		error,
-		generateDeck,
+		errorCode,
+		exportFilename: document?.filename ?? "",
 		generateSummary,
 		length,
 		reset,
+		sourceFingerprint,
+		sourceNotice,
 		stage,
 		status,
-		summary,
-		takeaways,
+		summaryHtml: document?.html ?? "",
+		title: document?.title ?? "",
 	};
 }

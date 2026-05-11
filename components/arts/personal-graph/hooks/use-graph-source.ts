@@ -14,7 +14,7 @@ interface UseGraphSourceState {
 	isLoading: boolean;
 	isSwitching: boolean;
 	refresh: () => Promise<void>;
-	refreshTwg: () => Promise<void>;
+	refreshTwg: (options?: { since?: string }) => Promise<void>;
 	setSource: (source: "vault" | "twg") => Promise<GraphSourceState | null>;
 	source: "vault" | "twg";
 }
@@ -28,13 +28,16 @@ export function useGraphSource(): UseGraphSourceState {
 	const refresh = useCallback(async () => {
 		const controller = new AbortController();
 		setIsLoading(true);
+		console.log("[personal-graph] source refresh");
 		try {
 			const next = await fetchActiveSource({ signal: controller.signal });
+			console.log("[personal-graph] source loaded", next.source);
 			setState(next);
 			setError(null);
 		} catch (nextError) {
 			if (nextError instanceof Error && nextError.name === "AbortError") return;
 			setError(nextError instanceof Error ? nextError : new Error(String(nextError)));
+			console.log("[personal-graph] source error", nextError);
 		} finally {
 			setIsLoading(false);
 		}
@@ -55,9 +58,9 @@ export function useGraphSource(): UseGraphSourceState {
 		}
 	}, []);
 
-	const refreshTwgExplorer = useCallback(async () => {
+	const refreshTwgExplorer = useCallback(async (options: { since?: string } = {}) => {
 		try {
-			const explorer = await refreshTwg();
+			const explorer = await refreshTwg({ since: options.since });
 			setState((current) => ({ ...current, generatedAt: explorer.generatedAt }));
 			setError(null);
 		} catch (nextError) {

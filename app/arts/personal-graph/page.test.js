@@ -174,11 +174,13 @@ const NEURAL_INTERACTION_SOURCE = fs.readFileSync(
 	"utf8",
 );
 
-test("Personal Graph route loads the arts demo registry entry", () => {
+test("Personal Graph route renders the app directly while the registry keeps the catalog demo", () => {
 	assert.match(
 		PAGE_SOURCE,
-		/loadDemoComponent\("personal-graph", "arts"\)/,
+		/import PersonalGraph from "@\/components\/arts\/personal-graph";/,
 	);
+	assert.match(PAGE_SOURCE, /<PersonalGraph className="min-h-svh" \/>/);
+	assert.doesNotMatch(PAGE_SOURCE, /loadDemoComponent/);
 	assert.match(LAYOUT_SOURCE, /getArtPageTitle\("personal-graph"\)/);
 });
 
@@ -406,23 +408,31 @@ test("Personal Graph keeps the search and chat composer separate from the center
 
 test("Personal Graph exposes selected-node summarize controls above the composer", () => {
 	assert.match(SURFACE_SOURCE, /import \{ PersonalGraphSummaryPanel \} from "\.\/personal-graph-summary-panel";/);
-	assert.match(SURFACE_SOURCE, /<PersonalGraphSummaryPanel[\s\S]*node=\{isInspectorOpen \? displayedNode : null\}[\s\S]*onConfirmed=\{handleRefreshAll\}/);
+	assert.match(SURFACE_SOURCE, /<PersonalGraphSummaryPanel[\s\S]*explorer=\{explorer\}[\s\S]*node=\{isInspectorOpen \? displayedNode : null\}/);
+	assert.match(SURFACE_SOURCE, /onSelectNode=\{handleSelectRelatedNode\}/);
+	assert.match(SURFACE_SOURCE, /workWindow=\{twgWorkWindow\}/);
 	assert.match(SUMMARY_PANEL_SOURCE, /Selected node summary/);
 	assert.match(SUMMARY_PANEL_SOURCE, /Short/);
 	assert.match(SUMMARY_PANEL_SOURCE, /Medium/);
 	assert.match(SUMMARY_PANEL_SOURCE, /Long/);
 	assert.match(SUMMARY_PANEL_SOURCE, /aria-pressed=\{summary\.length === option\.value\}/);
-	assert.match(SUMMARY_PANEL_SOURCE, /Markdown summary/);
-	assert.match(SUMMARY_PANEL_SOURCE, /Takeaways/);
-	assert.match(SUMMARY_PANEL_SOURCE, /node\.provider === "vault" && node\.kind === "raw"/);
-	assert.match(SUMMARY_PANEL_SOURCE, />\s*Confirm\s*</);
-	assert.match(SUMMARY_PANEL_SOURCE, /Generate slides/);
-	assert.match(SUMMARY_PANEL_SOURCE, /Download \.md/);
+	assert.match(SUMMARY_PANEL_SOURCE, /Regenerate/);
+	assert.match(SUMMARY_PANEL_SOURCE, /Export HTML/);
+	assert.match(SUMMARY_PANEL_SOURCE, /sandbox="allow-popups allow-scripts"/);
+	assert.match(SUMMARY_PANEL_SOURCE, /srcDoc=\{summary\.summaryHtml\}/);
+	assert.doesNotMatch(SUMMARY_PANEL_SOURCE, /allow-same-origin/);
+	assert.doesNotMatch(SUMMARY_PANEL_SOURCE, /Markdown summary/);
+	assert.doesNotMatch(SUMMARY_PANEL_SOURCE, />\s*Confirm\s*</);
+	assert.doesNotMatch(SUMMARY_PANEL_SOURCE, /Generate slides/);
+	assert.doesNotMatch(SUMMARY_PANEL_SOURCE, /Download \.md/);
 	assert.match(SUMMARY_HOOK_SOURCE, /abortRef\.current\?\.abort\(\);/);
 	assert.match(SUMMARY_HOOK_SOURCE, /clientIdRef = useRef\(""\)/);
-	assert.match(SUMMARY_HOOK_SOURCE, /streamPersonalGraphSummarize\(\s+\{\s+action: "summary", clientId: clientIdRef\.current, length: nextLength, nodeId \}/);
-	assert.match(SUMMARY_HOOK_SOURCE, /streamPersonalGraphSummarize\(\s+\{\s+action: "deck", clientId: clientIdRef\.current, length, nodeId, summary, takeaways \}/);
-	assert.match(SUMMARY_HOOK_SOURCE, /summaryOverride: \{ summary, takeaways \}/);
+	assert.match(SUMMARY_HOOK_SOURCE, /action: "summary"/);
+	assert.match(SUMMARY_HOOK_SOURCE, /event\.type === "article"/);
+	assert.match(SUMMARY_HOOK_SOURCE, /buildPersonalGraphSummaryHtmlDocument/);
+	assert.match(SUMMARY_HOOK_SOURCE, /bypassCache: options\.bypassCache/);
+	assert.doesNotMatch(SUMMARY_HOOK_SOURCE, /action: "deck"/);
+	assert.doesNotMatch(SUMMARY_HOOK_SOURCE, /summaryOverride: \{ summary, takeaways \}/);
 	assert.match(PERSONAL_GRAPH_API_SOURCE, /\/api\/personal-graph\/summarize/);
 });
 
@@ -840,7 +850,7 @@ test("Personal Graph exposes primary graph actions through a curved control flyo
 	assert.match(SURFACE_SOURCE, /isTwgMode && \(!twgGeneratedAt \|\| isTwgConnecting\)/);
 	assert.match(
 		SURFACE_SOURCE,
-		/setIsTwgConnecting\(true\);[\s\S]*const next = await setSource\("twg"\);[\s\S]*await refreshTwg\(\);[\s\S]*await handleRefreshAll\(\);[\s\S]*setIsTwgConnecting\(false\);/,
+		/setIsTwgConnecting\(true\);[\s\S]*const next = await setSource\("twg"\);[\s\S]*await refreshTwg\(\{ since: twgWorkWindow \}\);[\s\S]*await handleRefreshAll\(\);[\s\S]*setIsTwgConnecting\(false\);/,
 	);
 	assert.match(SURFACE_SOURCE, /isBusy=\{isVaultSelecting \|\| isSourceSwitching \|\| isTwgConnecting\}/);
 	assert.match(SURFACE_SOURCE, /isTwgConnecting[\s\S]*\? "Connecting to Team Work Graph…"/);

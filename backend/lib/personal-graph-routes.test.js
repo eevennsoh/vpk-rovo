@@ -585,8 +585,7 @@ test("POST /api/personal-graph/summarize streams selected vault context", async 
 		assert.ok(explorer.nodes.some((node) => node.id === "wiki:sources/source"));
 		return {
 			inputKind: "vault-file",
-			summary: "Vault summary",
-			takeaways: ["A", "B"],
+			summary: "# Vault article\n\n## What this is\nVault summary",
 		};
 	};
 	t.after(() => {
@@ -599,11 +598,60 @@ test("POST /api/personal-graph/summarize streams selected vault context", async 
 		method: "POST",
 	});
 	const events = await readSseEvents(response);
-	assert.equal(events.some((event) => event.type === "stage" && event.stage === "summarizing"), true);
-	const summaryEvent = events.find((event) => event.type === "summary");
-	assert.equal(summaryEvent.summary, "Vault summary");
-	assert.deepEqual(summaryEvent.takeaways, ["A", "B"]);
+	assert.deepEqual(
+		events.filter((event) => event.type === "stage").map((event) => event.stage),
+		["validating", "enriching", "writing", "rendering"],
+	);
+	const summaryEvent = events.find((event) => event.type === "article");
+	assert.equal(summaryEvent.articleMarkdown, "# Vault article\n\n## What this is\nVault summary");
+	assert.equal(summaryEvent.cache, "miss");
+	assert.equal(summaryEvent.source, "vault");
+	assert.equal(typeof summaryEvent.sourceFingerprint, "string");
 	assert.equal(events.at(-1).type, "done");
+});
+
+test("POST /api/personal-graph/summarize reuses cached articles and bypasses on regenerate", async (t) => {
+	createSummaryVault(t);
+	const originalSummarizeSelection = summaryContext.summarizeSelection;
+	let callCount = 0;
+	summaryContext.summarizeSelection = async () => {
+		callCount += 1;
+		return {
+			inputKind: "vault-file",
+			summary: `# Cached article ${callCount}\n\n## What this is\nCached body`,
+		};
+	};
+	t.after(() => {
+		summaryContext.summarizeSelection = originalSummarizeSelection;
+	});
+
+	const baseUrl = await listen(createPersonalGraphTestApp(), t);
+	const requestBody = { action: "summary", clientId: "cache-client", length: "short", nodeId: "raw:source" };
+	const firstResponse = await fetch(`${baseUrl}/api/personal-graph/summarize`, {
+		body: JSON.stringify(requestBody),
+		headers: { "Content-Type": "application/json" },
+		method: "POST",
+	});
+	const firstEvents = await readSseEvents(firstResponse);
+	const secondResponse = await fetch(`${baseUrl}/api/personal-graph/summarize`, {
+		body: JSON.stringify(requestBody),
+		headers: { "Content-Type": "application/json" },
+		method: "POST",
+	});
+	const secondEvents = await readSseEvents(secondResponse);
+	const bypassResponse = await fetch(`${baseUrl}/api/personal-graph/summarize`, {
+		body: JSON.stringify({ ...requestBody, bypassCache: true }),
+		headers: { "Content-Type": "application/json" },
+		method: "POST",
+	});
+	const bypassEvents = await readSseEvents(bypassResponse);
+
+	assert.equal(firstEvents.find((event) => event.type === "article").cache, "miss");
+	assert.equal(secondEvents.find((event) => event.type === "article").cache, "hit");
+	assert.equal(secondEvents.find((event) => event.type === "article").articleMarkdown, "# Cached article 1\n\n## What this is\nCached body");
+	assert.equal(bypassEvents.find((event) => event.type === "article").cache, "bypass");
+	assert.equal(bypassEvents.find((event) => event.type === "article").articleMarkdown, "# Cached article 2\n\n## What this is\nCached body");
+	assert.equal(callCount, 2);
 });
 
 test("POST /api/personal-graph/summarize uses cached TWG explorer without refreshing", async (t) => {
@@ -624,8 +672,7 @@ test("POST /api/personal-graph/summarize uses cached TWG explorer without refres
 		assert.equal(explorer.generatedAt, "2026-05-07T10:00:00.000Z");
 		return {
 			inputKind: "context-file",
-			summary: "TWG summary",
-			takeaways: ["Work item"],
+			summary: "# TWG article\n\n## What this is\nTWG summary",
 		};
 	};
 	t.after(() => {
@@ -638,7 +685,74 @@ test("POST /api/personal-graph/summarize uses cached TWG explorer without refres
 		method: "POST",
 	});
 	const events = await readSseEvents(response);
-	assert.equal(events.find((event) => event.type === "summary").summary, "TWG summary");
+	const articleEvent = events.find((event) => event.type === "article");
+	assert.equal(articleEvent.articleMarkdown, "# TWG article\n\n## What this is\nTWG summary");
+	assert.equal(articleEvent.workWindow, "7d");
+});
+
+test("POST /api/personal-graph/summarize blocks TWG generation until setup exists", async (t) => {
+	const { sourcePath } = configureTwgEnv(t);
+	fs.writeFileSync(sourcePath, JSON.stringify({ source: "twg" }), "utf8");
+	const originalSummarizeSelection = summaryContext.summarizeSelection;
+	let didSummarize = false;
+	summaryContext.summarizeSelection = async () => {
+		didSummarize = true;
+		return { inputKind: "context-file", summary: "Should not run" };
+	};
+	t.after(() => {
+		summaryContext.summarizeSelection = originalSummarizeSelection;
+	});
+
+	const response = await fetch(`${await listen(createPersonalGraphTestApp(), t)}/api/personal-graph/summarize`, {
+		body: JSON.stringify({ action: "summary", length: "medium", nodeId: "page" }),
+		headers: { "Content-Type": "application/json" },
+		method: "POST",
+	});
+	const events = await readSseEvents(response);
+	const errorEvent = events.find((event) => event.type === "error");
+
+	assert.equal(errorEvent.code, "TWG_CACHE_REQUIRED");
+	assert.match(errorEvent.error, /twg login/u);
+	assert.equal(didSummarize, false);
+});
+
+test("POST /api/personal-graph/summarize degrades TWG expansion failures to limited context notice", async (t) => {
+	const { sourcePath, cachePath } = configureTwgEnv(t);
+	fs.writeFileSync(sourcePath, JSON.stringify({ source: "twg" }), "utf8");
+	fs.writeFileSync(cachePath, JSON.stringify({
+		edges: [{ id: "edge:me->page", kind: "worked-on", label: "worked on", metadata: {}, relationKinds: ["worked-on"], source: "me", target: "page" }],
+		generatedAt: "2026-05-07T10:00:00.000Z",
+		nodes: [
+			{ bodyPreview: "", connectionCount: 1, dangling: false, externalUrl: null, frontmatter: {}, id: "me", kind: "entity", label: "Me", missing: false, path: null, provider: "twg", relativePath: "me", size: 1, slug: "me", title: "Me", updatedAt: null },
+			{ bodyPreview: "Page", connectionCount: 1, dangling: false, externalUrl: "https://example.com", frontmatter: {}, id: "page", kind: "source", label: "Page", missing: false, path: null, provider: "twg", relativePath: "page", size: 1, slug: "page", title: "Page", updatedAt: null },
+		],
+		stats: { danglingCount: 0, edgeCount: 1, nodeCount: 2, rawCount: 0, wikiCount: 1 },
+	}), "utf8");
+	const originalExpand = twgSource.expandTwgExplorerNode;
+	const originalSummarizeSelection = summaryContext.summarizeSelection;
+	twgSource.expandTwgExplorerNode = async () => {
+		throw new twgSource.TwgAuthError("login required");
+	};
+	summaryContext.summarizeSelection = async () => ({
+		inputKind: "context-file",
+		summary: "# Limited TWG article\n\n## What this is\nLimited context",
+	});
+	t.after(() => {
+		twgSource.expandTwgExplorerNode = originalExpand;
+		summaryContext.summarizeSelection = originalSummarizeSelection;
+	});
+
+	const response = await fetch(`${await listen(createPersonalGraphTestApp(), t)}/api/personal-graph/summarize`, {
+		body: JSON.stringify({ action: "summary", length: "medium", nodeId: "page", workWindow: "14d" }),
+		headers: { "Content-Type": "application/json" },
+		method: "POST",
+	});
+	const events = await readSseEvents(response);
+	const articleEvent = events.find((event) => event.type === "article");
+
+	assert.equal(articleEvent.sourceNotice, "Selected Team Work Graph expansion was unavailable, so this article uses the cached one-hop context.");
+	assert.equal(articleEvent.workWindow, "14d");
+	assert.equal(articleEvent.articleMarkdown, "# Limited TWG article\n\n## What this is\nLimited context");
 });
 
 test("POST /api/personal-graph/summarize aborts the previous in-flight run for the same client", async (t) => {
@@ -666,8 +780,7 @@ test("POST /api/personal-graph/summarize aborts the previous in-flight run for t
 		}
 		return {
 			inputKind: "vault-file",
-			summary: "Latest summary",
-			takeaways: ["Latest"],
+			summary: "# Latest article\n\n## What this is\nLatest summary",
 		};
 	};
 	t.after(() => {
@@ -676,13 +789,13 @@ test("POST /api/personal-graph/summarize aborts the previous in-flight run for t
 
 	const baseUrl = await listen(createPersonalGraphTestApp(), t);
 	const firstResponsePromise = fetch(`${baseUrl}/api/personal-graph/summarize`, {
-		body: JSON.stringify({ action: "summary", clientId: "summary-client-a", length: "short", nodeId: "raw:source" }),
+		body: JSON.stringify({ action: "summary", bypassCache: true, clientId: "summary-client-a", length: "short", nodeId: "raw:source" }),
 		headers: { "Content-Type": "application/json" },
 		method: "POST",
 	});
 	await firstStartedPromise;
 	const secondResponse = await fetch(`${baseUrl}/api/personal-graph/summarize`, {
-		body: JSON.stringify({ action: "summary", clientId: "summary-client-a", length: "medium", nodeId: "raw:source" }),
+		body: JSON.stringify({ action: "summary", bypassCache: true, clientId: "summary-client-a", length: "medium", nodeId: "raw:source" }),
 		headers: { "Content-Type": "application/json" },
 		method: "POST",
 	});
@@ -691,7 +804,7 @@ test("POST /api/personal-graph/summarize aborts the previous in-flight run for t
 	await readSseEvents(firstResponse);
 
 	assert.equal(firstAborted, true);
-	assert.equal(secondEvents.find((event) => event.type === "summary").summary, "Latest summary");
+	assert.equal(secondEvents.find((event) => event.type === "article").articleMarkdown, "# Latest article\n\n## What this is\nLatest summary");
 });
 
 test("POST /api/personal-graph/summarize keeps other clients' in-flight runs alive", async (t) => {
@@ -718,14 +831,12 @@ test("POST /api/personal-graph/summarize keeps other clients' in-flight runs ali
 			await releaseFirstPromise;
 			return {
 				inputKind: "vault-file",
-				summary: "First summary",
-				takeaways: ["First"],
+				summary: "# First article\n\n## What this is\nFirst summary",
 			};
 		}
 		return {
 			inputKind: "vault-file",
-			summary: "Second summary",
-			takeaways: ["Second"],
+			summary: "# Second article\n\n## What this is\nSecond summary",
 		};
 	};
 	t.after(() => {
@@ -734,21 +845,21 @@ test("POST /api/personal-graph/summarize keeps other clients' in-flight runs ali
 
 	const baseUrl = await listen(createPersonalGraphTestApp(), t);
 	const firstResponsePromise = fetch(`${baseUrl}/api/personal-graph/summarize`, {
-		body: JSON.stringify({ action: "summary", clientId: "summary-client-a", length: "short", nodeId: "raw:source" }),
+		body: JSON.stringify({ action: "summary", bypassCache: true, clientId: "summary-client-a", length: "short", nodeId: "raw:source" }),
 		headers: { "Content-Type": "application/json" },
 		method: "POST",
 	});
 	await firstStartedPromise;
 	const secondResponse = await fetch(`${baseUrl}/api/personal-graph/summarize`, {
-		body: JSON.stringify({ action: "summary", clientId: "summary-client-b", length: "medium", nodeId: "raw:source" }),
+		body: JSON.stringify({ action: "summary", bypassCache: true, clientId: "summary-client-b", length: "medium", nodeId: "raw:source" }),
 		headers: { "Content-Type": "application/json" },
 		method: "POST",
 	});
 	const secondEvents = await readSseEvents(secondResponse);
 	assert.equal(firstAborted, false);
-	assert.equal(secondEvents.find((event) => event.type === "summary").summary, "Second summary");
+	assert.equal(secondEvents.find((event) => event.type === "article").articleMarkdown, "# Second article\n\n## What this is\nSecond summary");
 
 	releaseFirst();
 	const firstEvents = await readSseEvents(await firstResponsePromise);
-	assert.equal(firstEvents.find((event) => event.type === "summary").summary, "First summary");
+	assert.equal(firstEvents.find((event) => event.type === "article").articleMarkdown, "# First article\n\n## What this is\nFirst summary");
 });

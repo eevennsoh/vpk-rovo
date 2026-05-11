@@ -131,18 +131,35 @@ export type LibrarianStreamEvent =
 	| { error: string; stage: "error"; type: "error" };
 
 export type PersonalGraphSummaryLength = "short" | "medium" | "long";
+export type PersonalGraphSummaryStatusStage =
+	| "validating"
+	| "enriching"
+	| "writing"
+	| "rendering"
+	| "done";
 
 export type PersonalGraphSummarizeEvent =
-	| { action: "summary" | "deck"; nodeId: string; source?: GraphProvider; stage: string; type: "stage"; length?: PersonalGraphSummaryLength }
 	| {
 		action: "summary";
+		length: PersonalGraphSummaryLength;
+		nodeId: string;
+		source?: GraphProvider;
+		stage: PersonalGraphSummaryStatusStage;
+		type: "stage";
+	}
+	| { action: "deck"; nodeId: string; source?: GraphProvider; stage: string; type: "stage"; length?: PersonalGraphSummaryLength }
+	| {
+		action: "summary";
+		articleMarkdown: string;
+		cache: "hit" | "miss" | "bypass";
 		inputKind: "url" | "vault-file" | "context-file";
 		length: PersonalGraphSummaryLength;
 		nodeId: string;
-		stage: string;
-		summary: string;
-		takeaways: string[];
-		type: "summary";
+		source: GraphProvider;
+		sourceFingerprint: string;
+		sourceNotice?: string | null;
+		type: "article";
+		workWindow?: string | null;
 	}
 	| { action: "deck"; deck: string; nodeId: string; stage: string; type: "deck" }
 	| { action: "summary" | "deck"; nodeId: string; source?: GraphProvider; stage: "done"; type: "done" }
