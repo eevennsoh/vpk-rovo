@@ -148,8 +148,9 @@ test("Personal Graph flyout trigger remains a two-state settings or close button
 	assert.match(CONTROL_FLYOUT_SOURCE, /<Button/);
 	assert.match(CONTROL_FLYOUT_SOURCE, /variant="ghost"/);
 	assert.match(CONTROL_FLYOUT_SOURCE, /size="icon"/);
-	assert.match(CONTROL_FLYOUT_SOURCE, /rounded-full aria-expanded:!bg-transparent/);
-	assert.match(CONTROL_FLYOUT_SOURCE, /aria-expanded:!bg-transparent/);
+	assert.match(CONTROL_FLYOUT_SOURCE, /"rounded-full"/);
+	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /aria-expanded:!/);
+	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /aria-expanded:\[&_svg\]:!/);
 	assert.match(CONTROL_FLYOUT_SOURCE, /className,\s+\)\}/);
 	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /PERSONAL_GRAPH_SEARCH_ICON_BUTTON_CLASS_NAME/);
 	assert.doesNotMatch(CONTROL_FLYOUT_SOURCE, /glassProps=\{PERSONAL_GRAPH_SEARCH_ICON_BUTTON_GLASS_PROPS\}/);
