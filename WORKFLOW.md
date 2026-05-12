@@ -50,13 +50,16 @@ hooks:
     fi
 agent:
   max_concurrent_agents: 10
-  max_turns: 20
+  max_turns: 3
   max_concurrent_agents_by_state:
     Merging: 1
 codex:
   command: codex --config shell_environment_policy.inherit=all --config 'model="gpt-5.5"' --config model_reasoning_effort=xhigh app-server
-  approval_policy: never
+  approval_policy: on-request
   thread_sandbox: workspace-write
+  turn_timeout_ms: 300000
+  read_timeout_ms: 5000
+  stall_timeout_ms: 120000
   turn_sandbox_policy:
     type: workspaceWrite
 ---
@@ -70,7 +73,10 @@ Continuation context:
 - Resume from the current workspace state instead of restarting from scratch.
 - Do not repeat already-completed investigation or validation unless needed for new code changes.
 - Do not end the turn while the issue remains in an active state unless you are blocked by missing required permissions/secrets.
-  {% endif %}
+- If the previous turn completed but the issue stayed active, first move the
+  ticket out of `In Progress` with a clear handoff or blocker instead of
+  restarting broad investigation.
+{% endif %}
 
 Issue context:
 Identifier: {{ issue.identifier }}
@@ -106,6 +112,55 @@ Work only in the provided repository copy. Do not touch any other path.
 ## Prerequisite: Linear MCP or `linear_graphql` tool is available
 
 The agent should be able to talk to Linear, either via a configured Linear MCP server or injected `linear_graphql` tool. If none are present, stop and ask the user to configure Linear.
+
+## Execution rules
+
+1. Fetch fresh Linear issue details, then find or create the single
+   `## Codex Workpad` comment. Reuse the live unresolved workpad when one exists.
+2. Classify the issue before planning. If it asks only for an explanation,
+   answer, triage, codebase tour, or operational guidance and does not request a
+   repository change, treat it as answer-only work: use a small targeted
+   investigation, write the answer in the workpad `Handoff`, move the issue to
+   `Human Review`, and do not create a branch, commit, PR, or follow-up issue.
+3. If the current state is `Todo`, move it to `In Progress` before code changes.
+4. Record a compact environment stamp in the workpad:
+   `<host>:<abs-workdir>@<short-sha>`.
+5. Build a short workpad checklist from the issue description and current
+   comments. Treat issue-authored `Validation`, `Test Plan`, or `Testing`
+   sections as required acceptance input.
+6. Before editing, inspect or reproduce the requested behavior enough to make
+   the target explicit. Do not expand scope; file separate Backlog issues for
+   meaningful follow-up work.
+7. Keep tool output bounded. Do not run unbounded repo inventories or print large
+   directory/file lists. Do not run `rg --files` unless it is constrained by a
+   narrow path/pattern and line cap. Prefer exact `rg` searches and short `sed`
+   ranges. Keep ordinary command output under 4,000 tokens; raise that only for
+   one known file or test result that is required for the issue.
+8. Sync with `origin/main` before implementation when the branch is reusable.
+   If the current branch's PR is closed or merged, create a fresh
+   `symphony/{{ issue.identifier }}` branch from `origin/main`.
+9. Validate with the narrowest proof that covers the change:
+   - run targeted tests for touched code when tests exist;
+   - run dependency install only when the selected validation requires it;
+   - run `pnpm run lint`, `pnpm run typecheck`, browser, or accessibility checks
+     only when the issue, touched surface, or reviewer feedback requires them.
+10. Commit the final change, push the branch, and create or update the GitHub PR.
+   Attach the PR to Linear when possible and record it in the workpad.
+11. Before moving to `Human Review`, make sure issue-required validation is
+   complete, the branch is pushed, the PR is linked, and the workpad reflects the
+   current state. Do not run a full PR feedback sweep unless there is an attached
+   PR with existing feedback or the issue is in `Rework`.
+12. Use the blocked-access escape hatch only for missing required tools, auth,
+    permissions, or secrets that cannot be resolved in-session. Record the
+    blocker and exact unblock action in the workpad.
+13. Before ending a normal turn, move the issue out of active states unless it
+    truly requires another worker pass. Completed implementation or answer-only
+    work goes to `Human Review`; merged work goes to `Done`; blocked work records
+    the blocker and exact unblock action in the workpad.
+14. In `Merging`, verify the PR is current with `origin/main`, required checks
+    are green when reported, and review feedback is resolved. Merge only after
+    those gates pass; otherwise keep the issue in `Merging` and record the
+    blocker in the workpad.
 
 ## Default posture
 

@@ -79,6 +79,10 @@ mise exec -- mix build
 mise exec -- ./bin/symphony /path/to/WORKFLOW.md
 ```
 
+The wrapper renders `WORKFLOW.md` into `SYMPHONY_RUNTIME_DIR` at startup. After
+changing workflow front matter or prompt text, stop and restart Symphony so the
+running process uses a fresh rendered workflow.
+
 The wrapper also passes upstream Symphony the required
 `--i-understand-that-this-will-be-running-without-the-usual-guardrails` flag.
 With `--port`, upstream Symphony exposes:
@@ -113,6 +117,50 @@ customization in the YAML hooks plus the repository contract section.
 Workers keep exactly one active `## Codex Workpad` comment. The workpad should
 be concise and current: environment stamp, plan, acceptance criteria,
 validation, decisions, branch, PR, and handoff.
+
+Upstream Symphony re-dispatches an issue when a Codex turn completes while the
+issue is still in an active state. For that reason, VPK workers should not end a
+normal turn with completed or blocked work still in `In Progress`; they should
+write the handoff or blocker into the workpad and move the issue to
+`Human Review`.
+
+Answer-only issues, such as “explain this codebase” or operational questions,
+do not need a branch or PR. Workers should do a bounded targeted read, put the
+answer in the workpad handoff, and move the issue to `Human Review`.
+
+Validation is issue-specific. Workers should prefer the narrowest proof that
+covers the touched behavior. Run dependency installation, `pnpm run lint`,
+`pnpm run typecheck`, browser checks, accessibility checks, or PR feedback
+sweeps only when the issue, touched surface, existing PR feedback, or merge
+state requires them.
+
+Workers should also keep command output bounded. Avoid broad repository
+inventories and large file-list dumps; use exact searches and short file ranges
+so a small issue does not become a large repeated context window.
+
+## Runtime Knobs
+
+The workflow keeps the upstream defaults visible where local choices matter:
+
+- `polling.interval_ms`: `5000`, matching the upstream sample cadence.
+- `agent.max_concurrent_agents`: `10`, matching the upstream sample.
+- `agent.max_turns`: `3`, a local cap to stop one issue from running many
+  back-to-back Codex turns without human review.
+- `agent.max_concurrent_agents_by_state.Merging`: `1`, the only local per-state
+  cap, so merge work does not run in parallel across several issues.
+- `codex.command`: upstream-style `codex ... app-server` with inherited shell
+  environment plus explicit `gpt-5.5` and `xhigh` reasoning settings.
+- `codex.approval_policy`: `on-request`, because the local Codex app-server
+  cloud requirements currently reject `never` turn overrides. Smooth unattended
+  behavior comes from keeping the worker prompt and validation path narrow, not
+  from forcing a policy the runtime will refuse.
+- `codex.turn_timeout_ms`: `300000`, `codex.read_timeout_ms`: `5000`, and
+  `codex.stall_timeout_ms`: `120000`, local guards that prevent long-running or
+  silent turns from burning indefinitely.
+
+Upstream also supports SSH workers with `worker.ssh_hosts` and
+`worker.max_concurrent_agents_per_host`. VPK-rovo leaves those unset for local
+runs.
 
 ## Lifecycle Hooks
 
