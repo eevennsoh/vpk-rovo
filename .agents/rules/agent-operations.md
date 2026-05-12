@@ -30,10 +30,10 @@ Current VPK skills (see Appendix for details):
 - `/vpk-setup`
 - `/vpk-deploy`
 - `/vpk-design`
-- `/vpk-symphony`
 - `/vpk-tidy`
 - `/vpk-component`
 - `/vpk-component-ext`
+- Symphony worker skills: `/linear`, `/commit`, `/pull`, `/push`, `/land`, `/debug`
 
 > **Note:** Slash commands (e.g., `/vpk-deploy`) are Cursor IDE features. In other environments, reference the skill definitions in `.agents/skills/` directly.
 
