@@ -243,6 +243,9 @@ def filter_codex_comments(
     codex_comments = [c for c in comments if is_codex_bot_user(c.get("user", {}))]
     filtered: list[dict[str, Any]] = []
     for comment in codex_comments:
+        body = comment.get("body") or ""
+        if is_codex_review_signal_body(body):
+            continue
         created_time = comment_time(comment)
         if created_time is None:
             continue
@@ -289,10 +292,9 @@ def is_codex_review_body(body: str) -> bool:
 
 def is_codex_review_signal_body(body: str) -> bool:
     stripped = body.strip()
-    return (
-        is_codex_review_body(stripped)
-        or "Codex Review" in stripped
-        or "Useful? React" in stripped
+    first_line = stripped.splitlines()[0] if stripped else ""
+    return is_codex_review_body(stripped) or (
+        first_line.startswith("###") and "Codex Review" in first_line
     )
 
 
