@@ -1,9 +1,16 @@
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
 const test = require("node:test");
 
 const {
 	resolveRovoAppComposerResponseGradientState,
 } = require("./rovo-app-composer-response-gradient-state.ts");
+
+const COMPOSER_RESPONSE_GRADIENT_SOURCE = fs.readFileSync(
+	path.join(__dirname, "../components/rovo-app-composer-response-gradient.tsx"),
+	"utf8",
+);
 
 test("keeps the response gradient hidden when realtime voice is off", () => {
 	assert.deepEqual(
@@ -80,5 +87,16 @@ test("keeps the response gradient visible while audio is still speaking even aft
 			phase: "speaking",
 			visible: true,
 		},
+	);
+});
+
+test("samples the live waveform signal without cloning it inside the frame loop", () => {
+	assert.match(
+		COMPOSER_RESPONSE_GRADIENT_SOURCE,
+		/bars: signalRef\.current,/,
+	);
+	assert.doesNotMatch(
+		COMPOSER_RESPONSE_GRADIENT_SOURCE,
+		/bars: \[\.\.\.signalRef\.current\],/,
 	);
 });

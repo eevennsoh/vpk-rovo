@@ -360,7 +360,7 @@ export function RovoAppComposerResponseGradient({
 					for (let w = -windowSize; w <= windowSize; w++) {
 						const weight = 1 - (Math.abs(w) / (windowSize + 1));
 						smoothedSeriesValue += getWaveformSeriesValue({
-							bars: [...signalRef.current],
+							bars: signalRef.current,
 							index: index + w,
 							totalCount: barCount,
 						}) * weight;
