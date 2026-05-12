@@ -145,6 +145,77 @@ derive_github_repo() {
 	fi
 }
 
+normalize_git_url() {
+	local url="${1%.git}"
+	printf '%s\n' "$url"
+}
+
+canonical_path() {
+	local path="$1"
+
+	if [ -d "$path" ]; then
+		CDPATH= cd -- "$path" && pwd -P
+		return 0
+	fi
+
+	local parent
+	local name
+	parent="$(dirname -- "$path")"
+	name="$(basename -- "$path")"
+	parent="$(CDPATH= cd -- "$parent" && pwd -P)"
+	printf '%s/%s\n' "$parent" "$name"
+}
+
+ensure_safe_upstream_dir() {
+	local dir="$1"
+	local dir_real
+	local repo_real
+
+	dir_real="$(canonical_path "$dir")"
+	repo_real="$(canonical_path "$repo_root")"
+
+	if [ "$dir_real" = "/" ]; then
+		echo "SYMPHONY_UPSTREAM_DIR cannot be the filesystem root." >&2
+		exit 1
+	fi
+
+	if [ "$dir_real" = "$repo_real" ]; then
+		echo "SYMPHONY_UPSTREAM_DIR cannot point at this repo: $dir" >&2
+		exit 1
+	fi
+
+	case "$repo_real/" in
+		"$dir_real"/*)
+			echo "SYMPHONY_UPSTREAM_DIR cannot contain this repo: $dir" >&2
+			exit 1
+			;;
+	esac
+
+	if [ ! -d "$dir/.git" ]; then
+		return 0
+	fi
+
+	local current_origin
+	local current_repo
+	local expected_repo
+	current_origin="$(git -C "$dir" remote get-url origin 2>/dev/null || true)"
+	current_repo="$(derive_github_repo "$current_origin")"
+	expected_repo="$(derive_github_repo "$upstream_repo")"
+
+	if [ -n "$current_repo" ] && [ -n "$expected_repo" ]; then
+		if [ "$current_repo" = "$expected_repo" ]; then
+			return 0
+		fi
+	elif [ "$(normalize_git_url "$current_origin")" = "$(normalize_git_url "$upstream_repo")" ]; then
+		return 0
+	fi
+
+	echo "SYMPHONY_UPSTREAM_DIR already contains a different git repo: $dir" >&2
+	echo "Expected origin: $upstream_repo" >&2
+	echo "Current origin: ${current_origin:-<none>}" >&2
+	exit 1
+}
+
 export SYMPHONY_SOURCE_REPO_URL="${SYMPHONY_SOURCE_REPO_URL:-$(git -C "$repo_root" remote get-url origin)}"
 if [ -z "${SYMPHONY_GITHUB_REPO:-}" ]; then
 	SYMPHONY_GITHUB_REPO="$(derive_github_repo "$SYMPHONY_SOURCE_REPO_URL")"
@@ -162,13 +233,15 @@ runtime_dir="$(resolve_repo_path "${SYMPHONY_RUNTIME_DIR:-.tmp/symphony/runtime}
 runtime_workflow="$runtime_dir/WORKFLOW.md"
 logs_root="$runtime_dir/log"
 
+mkdir -p "$(dirname "$upstream_dir")"
+ensure_safe_upstream_dir "$upstream_dir"
+
 if [ -e "$upstream_dir" ] && [ ! -d "$upstream_dir/.git" ]; then
 	echo "SYMPHONY_UPSTREAM_DIR exists but is not a git clone: $upstream_dir" >&2
 	exit 1
 fi
 
 if [ ! -d "$upstream_dir/.git" ]; then
-	mkdir -p "$(dirname "$upstream_dir")"
 	git clone --depth 1 "$upstream_repo" "$upstream_dir"
 else
 	git -C "$upstream_dir" remote set-url origin "$upstream_repo"
