@@ -26,12 +26,15 @@ Optional doc-type hints: `/vpk-html resume`, `/vpk-html one-pager`,
 
 ## Capabilities
 
-- 8 HTML document templates (one-pager, long-doc, letter, portfolio, resume,
-  slides, equity-report, changelog) at assets/templates/
-- 14 standalone SVG diagram primitives at assets/diagrams/
-- 8 curated showcase demos at assets/demos/ (4 kami-ported + 4 vpk-native)
-- 3 LLM-facing reference docs: anti-patterns, diagrams selection, resume-writing
-- Single offline HTML output — no remote fonts, stylesheets, scripts, or images
+- 28 HTML document templates at assets/templates/: 8 base document shells plus
+  20 Phase 2 engineering shells mapped from the html-effectiveness use-case
+  catalog.
+- 14 standalone SVG diagram primitives at assets/diagrams/.
+- 28 demos at assets/demos/: 8 screenshot-backed showcases plus 20 restyled
+  html-effectiveness demo ports.
+- LLM-facing reference docs for anti-patterns, diagrams, writing,
+  resume-writing, design, production, source policy, accessibility, and tokens.
+- Single offline HTML output — no remote fonts, stylesheets, scripts, or images.
 
 ## Key files
 
@@ -39,9 +42,9 @@ Optional doc-type hints: `/vpk-html resume`, `/vpk-html one-pager`,
 - README.md — Human-facing introduction
 - CHEATSHEET.md — Route table mapping user intent → template file
 - index.html — Marketing landing page
-- assets/templates/*.html — 8 kami-architected document templates
+- assets/templates/*.html — 28 offline document templates
 - assets/diagrams/*.html — 14 SVG diagram primitives
-- assets/demos/ — 8 curated showcase documents
+- assets/demos/ — 28 curated and restyled showcase documents
 - references/anti-patterns.md — 6 AI-output failure modes (consult before drafting)
 - references/diagrams.md — Diagram selection guide + focal rule
 - references/resume-writing.md — Resume quality bar (Action + Scope + Result + Outcome)
@@ -64,7 +67,9 @@ Optional doc-type hints: `/vpk-html resume`, `/vpk-html one-pager`,
 - node scripts/port-templates.mjs                   (re-port templates from kami)
 - node scripts/port-diagrams.mjs                    (re-port diagrams from kami)
 - node scripts/port-demos.mjs                       (re-port kami's curated demos)
+- node scripts/port-html-effectiveness.mjs          (regenerate Phase 2 engineering templates)
 - node scripts/rescue-demos.mjs                     (regenerate vpk-native demos)
+- node scripts/rescue-html-effectiveness-demos.mjs  (copy + restyle Phase 2 upstream demo ports)
 
 ## Workflow
 
@@ -81,6 +86,8 @@ Optional doc-type hints: `/vpk-html resume`, `/vpk-html one-pager`,
 
 ## License
 
-Inherits the VPK-Rovo monorepo. The 8 HTML templates and 14 diagram primitives
-in assets/templates/ and assets/diagrams/ are ported from tw93/kami (MIT) and
-re-skinned with vpk-html's identity.
+Inherits the VPK-Rovo monorepo. The 8 base HTML templates and 14 diagram
+primitives in assets/templates/ and assets/diagrams/ are ported from tw93/kami
+(MIT) and re-skinned with vpk-html's identity. The 20 Phase 2 engineering
+templates are original vpk-html shells based on the html-effectiveness use-case
+catalog.
