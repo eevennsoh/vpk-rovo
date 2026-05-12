@@ -3,7 +3,7 @@
      DEMO · kaku (vpk-html palette)
      Ported from kami's curated demos library and restyled with the
      vpk-html identity: VT323 display headlines, Source Serif body, grid
-     background, ink-blue (#1868DB) accent. Layout, content, and SVG
+     background, blueprint (var(--vpk-blueprint)) accent. Layout, content, and SVG
      geometry are preserved verbatim from kami.
      Source: https://github.com/tw93/Kami
      ================================================================== -->
@@ -12,13 +12,77 @@
 <meta charset="UTF-8">
 <title>Kaku · ターミナルエミュレータ</title>
 <style>
-  :root { color-scheme: light dark; }
-  [data-theme="dark"] { color-scheme: dark; }
+  :root {
+	--vpk-paper: var(--ds-surface, #ffffff);
+	--vpk-paper-background: var(--ds-surface, #ffffff);
+	--vpk-surface-raised: var(--ds-surface-raised, #ffffff);
+	--vpk-surface-overlay: var(--ds-surface-overlay, #ffffff);
+	--vpk-surface-sunken: var(--ds-surface-sunken, #f0f1f2);
+	--vpk-ink: var(--ds-text, #292a2e);
+	--vpk-muted-text: var(--ds-text-subtle, #505258);
+	--vpk-subtlest-text: var(--ds-text-subtlest, #6b6e76);
+	--vpk-inverse-text: var(--ds-text-inverse, #ffffff);
+	--vpk-rule: var(--ds-border, #0b120e24);
+	--vpk-rule-strong: var(--ds-border-bold, #7d818a);
+	--vpk-blueprint: var(--ds-background-brand-bold, #1868db);
+	--vpk-link: var(--ds-link, #1868db);
+	--vpk-link-pressed: var(--ds-link-pressed, #1558bc);
+	--vpk-selected: var(--ds-background-selected, #e9f2fe);
+	--vpk-blueprint-tint: var(--ds-background-information, #e9f2fe);
+	--vpk-blueprint-tint-strong: var(--ds-background-information-hovered, #cfe1fd);
+	--vpk-focus-ring: var(--ds-border-focused, #4688ec);
+	--vpk-code-surface: var(--ds-background-neutral-subtle, #f0f1f2);
+	--vpk-code-ink: var(--ds-text, #292a2e);
+	--vpk-code-inverse: var(--ds-text-inverse, #ffffff);
+	--vpk-math-highlight: var(--ds-background-information, #e9f2fe);
+	--vpk-success: var(--ds-background-success-bold, #5b7f24);
+	--vpk-success-tint: var(--ds-background-success, #efffd6);
+	--vpk-warning: var(--ds-background-warning-bold, #fbc828);
+	--vpk-warning-tint: var(--ds-background-warning, #fff5db);
+	--vpk-danger: var(--ds-background-danger-bold, #c9372c);
+	--vpk-danger-tint: var(--ds-background-danger, #ffeceb);
+	--vpk-info: var(--ds-background-information-bold, #1868db);
+	--vpk-info-tint: var(--ds-background-information, #e9f2fe);
+	--vpk-paper-rule: color-mix(in srgb, var(--vpk-ink) 8%, transparent);
+	--vpk-shadow: var(--ds-shadow-raised, 0 1px 1px rgba(9, 30, 66, 0.25), 0 0 1px rgba(9, 30, 66, 0.31)); color-scheme: light dark; }
+  [data-theme="dark"] {
+	--vpk-paper: var(--ds-surface, #101214);
+	--vpk-paper-background: var(--ds-surface, #1d2125);
+	--vpk-surface-raised: var(--ds-surface-raised, #22272b);
+	--vpk-surface-overlay: var(--ds-surface-overlay, #282e33);
+	--vpk-surface-sunken: var(--ds-surface-sunken, #161a1d);
+	--vpk-ink: var(--ds-text, #dee4ea);
+	--vpk-muted-text: var(--ds-text-subtle, #9fadbc);
+	--vpk-subtlest-text: var(--ds-text-subtlest, #738496);
+	--vpk-inverse-text: var(--ds-text-inverse, #101214);
+	--vpk-rule: var(--ds-border, #a6c5e229);
+	--vpk-rule-strong: var(--ds-border-bold, #738496);
+	--vpk-blueprint: var(--ds-background-brand-bold, #579dff);
+	--vpk-link: var(--ds-link, #579dff);
+	--vpk-link-pressed: var(--ds-link-pressed, #85b8ff);
+	--vpk-selected: var(--ds-background-selected, #09326c);
+	--vpk-blueprint-tint: var(--ds-background-information, #09326c);
+	--vpk-blueprint-tint-strong: var(--ds-background-information-hovered, #0c418a);
+	--vpk-focus-ring: var(--ds-border-focused, #579dff);
+	--vpk-code-surface: var(--ds-background-neutral-subtle, #161a1d);
+	--vpk-code-ink: var(--ds-text, #dee4ea);
+	--vpk-code-inverse: var(--ds-text-inverse, #101214);
+	--vpk-math-highlight: var(--ds-background-information, #09326c);
+	--vpk-success: var(--ds-background-success-bold, #b3df72);
+	--vpk-success-tint: var(--ds-background-success, #1f4d3a);
+	--vpk-warning: var(--ds-background-warning-bold, #f5cd47);
+	--vpk-warning-tint: var(--ds-background-warning, #533f04);
+	--vpk-danger: var(--ds-background-danger-bold, #f87168);
+	--vpk-danger-tint: var(--ds-background-danger, #5d1f1a);
+	--vpk-info: var(--ds-background-information-bold, #579dff);
+	--vpk-info-tint: var(--ds-background-information, #09326c);
+	--vpk-paper-rule: color-mix(in srgb, var(--vpk-ink) 8%, transparent);
+	--vpk-shadow: var(--ds-shadow-raised, 0 1px 1px rgba(0, 0, 0, 0.32), 0 0 1px rgba(0, 0, 0, 0.42)); color-scheme: dark; }
 
   @page {
     size: A4;
     margin: 12mm 15mm 12mm 15mm;
-    background: var(--parchment);
+    background: var(--vpk-paper);
   }
 
   @page:first {
@@ -44,24 +108,24 @@
   }
 
   :root {
-    --parchment: #fafaf5;
-    --ivory:     #fafafa;
-    --near-black:#292a2e;
-    --dark-warm: #3a3d42;
-    --charcoal:  #4a4d52;
-    --olive:     #505258;
-    --stone:     #7a7c82;
-    --brand:     #1868db;
-    --border:    #dadcdf;
-    --border-soft:#dadcdf;
-    --tag-bg:    #d4e4fc;
+    --parchment: var(--vpk-paper);
+    --ivory:     var(--vpk-paper);
+    --near-black:var(--vpk-ink);
+    --dark-warm: var(--vpk-ink);
+    --charcoal:  var(--vpk-muted-text);
+    --olive:     var(--vpk-muted-text);
+    --stone:     var(--vpk-muted-text);
+    --brand:     var(--vpk-blueprint);
+    --border:    var(--vpk-rule);
+    --border-soft:var(--vpk-rule);
+    --tag-bg:    var(--vpk-blueprint-tint);
     --jp-serif:  "Geist", "Hiragino Sans", "Yu Gothic", "Noto Sans CJK JP", ui-sans-serif, system-ui, sans-serif;
   }
 
-  html, body { background: var(--parchment); }
+  html, body { background: var(--vpk-paper); }
 
   body {
-    color: var(--near-black);
+    color: var(--vpk-ink);
     font-family: var(--jp-serif);
     font-size: 10pt;
     line-height: 1.6;
@@ -75,8 +139,8 @@
   code {
     font-family: var(--jp-serif);
     font-size: 9pt;
-    background: var(--tag-bg);
-    color: var(--brand);
+    background: var(--vpk-blueprint-tint);
+    color: var(--vpk-blueprint);
     padding: 1pt 4pt;
     border-radius: 2pt;
   }
@@ -94,7 +158,7 @@
   .cover-top {
     font-family: var(--jp-serif);
     font-size: 10pt;
-    color: var(--brand);
+    color: var(--vpk-blueprint);
     letter-spacing: 1pt;
   }
   .cover-center {
@@ -107,19 +171,19 @@
     font-size: 64pt;
     font-weight: 500;
     line-height: 1.05;
-    color: var(--near-black);
+    color: var(--vpk-ink);
     letter-spacing: 1pt;
   }
   .cover-tagline {
     font-size: 16pt;
-    color: var(--olive);
+    color: var(--vpk-success);
     line-height: 1.5;
     max-width: 80%;
   }
   .cover-line {
     width: 80pt;
     height: 2pt;
-    background: var(--brand);
+    background: var(--vpk-blueprint);
     margin: 18pt 0 4pt 0;
   }
   .cover-meta {
@@ -127,10 +191,10 @@
     justify-content: space-between;
     align-items: flex-end;
     font-size: 10pt;
-    color: var(--stone);
+    color: var(--vpk-muted-text);
   }
   .cover-meta strong {
-    color: var(--dark-warm);
+    color: var(--vpk-ink);
     font-weight: 500;
   }
 
@@ -141,7 +205,7 @@
   }
   .section-eyebrow {
     font-size: 9pt;
-    color: var(--brand);
+    color: var(--vpk-blueprint);
     letter-spacing: 1pt;
     margin-bottom: 8pt;
   }
@@ -155,7 +219,7 @@
   .section-lead {
     font-size: 12pt;
     line-height: 1.55;
-    color: var(--dark-warm);
+    color: var(--vpk-ink);
     margin-bottom: 24pt;
   }
 
@@ -166,7 +230,7 @@
   }
   .about-body p {
     margin-bottom: 6pt;
-    color: var(--dark-warm);
+    color: var(--vpk-ink);
   }
   .about-body p:last-child {
     margin-bottom: 0;
@@ -180,8 +244,8 @@
     margin-bottom: 20pt;
   }
   .feature-card {
-    background: var(--ivory);
-    border: 0.5pt solid var(--border);
+    background: var(--vpk-surface-raised);
+    border: 0.5pt solid var(--vpk-rule);
     border-radius: 8pt;
     padding: 14pt 16pt;
     break-inside: avoid;
@@ -190,7 +254,7 @@
     font-family: var(--jp-serif);
     font-size: 13pt;
     font-weight: 500;
-    color: var(--near-black);
+    color: var(--vpk-ink);
     margin-bottom: 6pt;
   }
   .feature-card p {
@@ -204,8 +268,8 @@
     margin-bottom: 20pt;
   }
   .ai-mode {
-    background: var(--ivory);
-    border-left: 3pt solid var(--brand);
+    background: var(--vpk-surface-raised);
+    border-left: 3pt solid var(--vpk-blueprint);
     border-radius: 2pt;
     padding: 12pt 14pt;
     margin-bottom: 12pt;
@@ -215,7 +279,7 @@
     font-family: var(--jp-serif);
     font-size: 13pt;
     font-weight: 500;
-    color: var(--near-black);
+    color: var(--vpk-ink);
     margin-bottom: 6pt;
   }
   .ai-mode p {
@@ -227,8 +291,8 @@
   .ai-mode code {
     font-family: var(--jp-serif);
     font-size: 9pt;
-    background: var(--tag-bg);
-    color: var(--brand);
+    background: var(--vpk-blueprint-tint);
+    color: var(--vpk-blueprint);
     padding: 1pt 4pt;
     border-radius: 2pt;
   }
@@ -243,23 +307,23 @@
   .perf-table td {
     text-align: left;
     padding: 10pt 12pt;
-    border-bottom: 0.5pt solid var(--border-soft);
+    border-bottom: 0.5pt solid var(--vpk-rule);
     font-size: 9.5pt;
   }
   .perf-table th {
     font-weight: 500;
-    color: var(--stone);
+    color: var(--vpk-muted-text);
     font-size: 9pt;
   }
   .perf-table td:first-child {
     font-weight: 500;
-    color: var(--near-black);
+    color: var(--vpk-ink);
   }
   .perf-table td:nth-child(2) {
-    color: var(--olive);
+    color: var(--vpk-success);
   }
   .perf-table td:nth-child(3) {
-    color: var(--brand);
+    color: var(--vpk-blueprint);
     font-weight: 500;
   }
 
@@ -277,7 +341,7 @@
     font-family: var(--jp-serif);
     font-size: 24pt;
     font-weight: 500;
-    color: var(--brand);
+    color: var(--vpk-blueprint);
     line-height: 1;
     min-width: 32pt;
   }
@@ -285,7 +349,7 @@
     font-family: var(--jp-serif);
     font-size: 12pt;
     font-weight: 500;
-    color: var(--near-black);
+    color: var(--vpk-ink);
     margin-bottom: 4pt;
   }
   .install-content p {
@@ -296,13 +360,13 @@
   .install-content code {
     font-family: var(--jp-serif);
     font-size: 9pt;
-    background: var(--ivory);
-    border: 0.5pt solid var(--border);
+    background: var(--vpk-surface-raised);
+    border: 0.5pt solid var(--vpk-rule);
     padding: 8pt 10pt;
     border-radius: 4pt;
     display: block;
     margin-top: 6pt;
-    color: var(--near-black);
+    color: var(--vpk-ink);
   }
 
   /* ════════════ SHORTCUTS ════════════ */
@@ -316,7 +380,7 @@
     display: flex;
     justify-content: space-between;
     padding: 4pt 0;
-    border-bottom: 0.5pt solid var(--border-soft);
+    border-bottom: 0.5pt solid var(--vpk-rule);
     font-size: 9.5pt;
   }
   .shortcut-item span:first-child {
@@ -325,7 +389,7 @@
   .shortcut-item span:last-child {
     font-family: var(--jp-serif);
     font-size: 9pt;
-    color: var(--brand);
+    color: var(--vpk-blueprint);
   }
 
   /* ════════════ CONTACT ════════════ */
@@ -336,13 +400,13 @@
     font-family: var(--jp-serif);
     font-size: 32pt;
     font-weight: 500;
-    color: var(--near-black);
+    color: var(--vpk-ink);
     margin-bottom: 12pt;
   }
   .contact-line {
     width: 60pt;
     height: 2pt;
-    background: var(--brand);
+    background: var(--vpk-blueprint);
     margin-bottom: 20pt;
   }
   .contact-list {
@@ -356,12 +420,12 @@
     gap: 8pt;
   }
   .contact-list strong {
-    color: var(--stone);
+    color: var(--vpk-muted-text);
     font-weight: 500;
     min-width: 60pt;
   }
   .contact-list a {
-    color: var(--brand);
+    color: var(--vpk-blueprint);
     text-decoration: none;
   }
 
@@ -373,8 +437,8 @@
     margin-bottom: 14pt;
   }
   .about-metric {
-    background: var(--ivory);
-    border: 0.5pt solid var(--border);
+    background: var(--vpk-surface-raised);
+    border: 0.5pt solid var(--vpk-rule);
     border-radius: 8pt;
     padding: 10pt 14pt;
     text-align: center;
@@ -383,12 +447,12 @@
     font-family: var(--jp-serif);
     font-size: 18pt;
     font-weight: 500;
-    color: var(--brand);
+    color: var(--vpk-blueprint);
     line-height: 1.2;
   }
   .about-metric-label {
     font-size: 9pt;
-    color: var(--stone);
+    color: var(--vpk-muted-text);
     margin-top: 3pt;
   }
 
@@ -400,8 +464,8 @@
     margin-top: 20pt;
   }
   .tool-card {
-    background: var(--ivory);
-    border: 0.5pt solid var(--border);
+    background: var(--vpk-surface-raised);
+    border: 0.5pt solid var(--vpk-rule);
     border-radius: 8pt;
     padding: 13pt 15pt;
     break-inside: avoid;
@@ -410,7 +474,7 @@
     font-family: var(--jp-serif);
     font-size: 11pt;
     font-weight: 500;
-    color: var(--near-black);
+    color: var(--vpk-ink);
     margin-bottom: 5pt;
   }
   .tool-card p { font-size: 9pt; line-height: 1.45; color: var(--charcoal); margin-bottom: 7pt; }
@@ -418,8 +482,8 @@
     display: inline-block;
     font-family: var(--jp-serif);
     font-size: 9pt;
-    color: var(--brand);
-    background: var(--tag-bg);
+    color: var(--vpk-blueprint);
+    background: var(--vpk-blueprint-tint);
     padding: 1pt 5pt;
     border-radius: 2pt;
   }
@@ -434,17 +498,17 @@
   .config-table th, .config-table td {
     text-align: left;
     padding: 7pt 10pt;
-    border-bottom: 0.5pt solid var(--border-soft);
+    border-bottom: 0.5pt solid var(--vpk-rule);
   }
   .config-table th {
     font-weight: 500;
-    color: var(--stone);
+    color: var(--vpk-muted-text);
     font-size: 9pt;
   }
   .config-table td:first-child {
     font-family: var(--jp-serif);
     font-size: 9pt;
-    color: var(--brand);
+    color: var(--vpk-blueprint);
     white-space: nowrap;
   }
   .config-table td { color: var(--charcoal); }
@@ -457,8 +521,8 @@
     margin-bottom: 16pt;
   }
   .opt-card {
-    background: var(--ivory);
-    border: 0.5pt solid var(--border);
+    background: var(--vpk-surface-raised);
+    border: 0.5pt solid var(--vpk-rule);
     border-radius: 8pt;
     padding: 13pt 15pt;
     break-inside: avoid;
@@ -467,7 +531,7 @@
     font-family: var(--jp-serif);
     font-size: 11pt;
     font-weight: 500;
-    color: var(--near-black);
+    color: var(--vpk-ink);
     margin-bottom: 5pt;
   }
   .opt-card p { font-size: 9pt; line-height: 1.45; color: var(--charcoal); }
@@ -476,7 +540,7 @@
     margin-top: 16pt;
     border-radius: 8pt;
     overflow: hidden;
-    border: 0.5pt solid var(--border);
+    border: 0.5pt solid var(--vpk-rule);
   }
   .contact-screenshot img {
     display: block;
@@ -494,13 +558,13 @@
   .cli-table th, .cli-table td {
     text-align: left;
     padding: 5pt 10pt;
-    border-bottom: 0.5pt solid var(--border-soft);
+    border-bottom: 0.5pt solid var(--vpk-rule);
   }
-  .cli-table th { font-weight: 500; color: var(--stone); font-size: 9pt; }
+  .cli-table th { font-weight: 500; color: var(--vpk-muted-text); font-size: 9pt; }
   .cli-table td:first-child {
     font-family: var(--jp-serif);
     font-size: 9pt;
-    color: var(--brand);
+    color: var(--vpk-blueprint);
     white-space: nowrap;
     width: 120pt;
   }
@@ -508,18 +572,18 @@
 
 
   /* vpk-html identity overrides */
-  html { background: var(--parchment); }
+  html { background: var(--vpk-paper); }
   body {
     background:
-      linear-gradient(90deg, rgba(11, 18, 14, 0.018) 1px, transparent 1px),
-      linear-gradient(0deg, rgba(11, 18, 14, 0.018) 1px, transparent 1px),
-      #ffffff;
+      linear-gradient(90deg, color-mix(in srgb, var(--vpk-ink) 2%, transparent) 1px, transparent 1px),
+      linear-gradient(0deg, color-mix(in srgb, var(--vpk-ink) 2%, transparent) 1px, transparent 1px),
+      var(--vpk-surface-raised);
     background-size: 24px 24px;
   }
   /* Frame the document with vpk-html chrome when a kami .page or .frame exists */
   .page, .frame {
-    border: 2px solid #292a2e !important;
-    box-shadow: 0 1px 1px rgba(9, 30, 66, 0.25), 0 0 1px rgba(9, 30, 66, 0.31) !important;
+    border: 2px solid var(--vpk-ink) !important;
+    box-shadow: var(--vpk-shadow) !important;
   }
 </style>
 </head>
@@ -637,7 +701,7 @@
 <section>
   <div class="section-eyebrow">03 · AI ASSISTANT</div>
   <div class="section-title">Kaku AI アシスタント</div>
-  <div class="section-lead">Kaku には AI アシスタントを内蔵しています。2 つのモードで、ターミナル作業の主要な AI ユースケースをカバーします。<code style="font-size: 9pt;background:var(--tag-bg);color:var(--brand);padding:1pt 4pt;border-radius:2pt;">kaku ai</code> で設定パネルを開き、外部コーディングツールと Kaku Assistant を設定できます。</div>
+  <div class="section-lead">Kaku には AI アシスタントを内蔵しています。2 つのモードで、ターミナル作業の主要な AI ユースケースをカバーします。<code style="font-size: 9pt;background:var(--vpk-blueprint-tint);color:var(--vpk-blueprint);padding:1pt 4pt;border-radius:2pt;">kaku ai</code> で設定パネルを開き、外部コーディングツールと Kaku Assistant を設定できます。</div>
 
   <div class="ai-modes">
     <div class="ai-mode">
@@ -649,7 +713,7 @@
     <div class="ai-mode">
       <h3>自然言語からコマンド</h3>
       <p>プロンプトで <code># &lt;説明&gt;</code> を入力して Enter すると、Kaku が shell に渡す前に行を取得し、現在のディレクトリと git ブランチを添えて LLM に送信します。生成されたコマンドはプロンプトへ戻り、確認してから実行できます。</p>
-      <p style="font-size: 9pt;color:var(--brand);line-height:1.7;margin-top:4pt;">
+      <p style="font-size: 9pt;color:var(--vpk-blueprint);line-height:1.7;margin-top:4pt;">
         # list all files modified in the last 7 days<br>
         # find and kill the process on port 3000<br>
         # compress the src folder excluding node_modules
@@ -659,7 +723,7 @@
 
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:16pt;margin-top:4pt;">
     <div>
-      <div style="font-family:var(--jp-serif);font-size:11pt;font-weight:500;color:var(--near-black);margin-bottom:8pt;">assistant.toml 設定項目</div>
+      <div style="font-family:var(--jp-serif);font-size:11pt;font-weight:500;color:var(--vpk-ink);margin-bottom:8pt;">assistant.toml 設定項目</div>
       <table class="config-table">
         <tr><th>項目</th><th>説明</th></tr>
         <tr><td>enabled</td><td>true で有効 / false で無効</td></tr>
@@ -670,7 +734,7 @@
       </table>
     </div>
     <div>
-      <div style="font-family:var(--jp-serif);font-size:11pt;font-weight:500;color:var(--near-black);margin-bottom:8pt;">対応 AI コーディングツール</div>
+      <div style="font-family:var(--jp-serif);font-size:11pt;font-weight:500;color:var(--vpk-ink);margin-bottom:8pt;">対応 AI コーディングツール</div>
       <table class="config-table">
         <tr><th>ツール</th><th>説明</th></tr>
         <tr><td>claude</td><td>Claude Code · Anthropic</td></tr>
@@ -766,7 +830,7 @@
       <div class="install-num">3</div>
       <div class="install-content">
         <h3>設定カスタマイズ</h3>
-        <p><span style="font-size: 9pt;color:var(--brand);">Cmd + ,</span> で設定パネルを開くか、<span style="font-size: 9pt;color:var(--brand);">kaku config</span> で Lua 設定ファイルを編集します。</p>
+        <p><span style="font-size: 9pt;color:var(--vpk-blueprint);">Cmd + ,</span> で設定パネルを開くか、<span style="font-size: 9pt;color:var(--vpk-blueprint);">kaku config</span> で Lua 設定ファイルを編集します。</p>
       </div>
     </div>
   </div>
@@ -788,11 +852,11 @@
     <div class="shortcut-item"><span>画面クリア</span><span>Cmd + K</span></div>
   </div>
 
-  <div style="font-family:var(--jp-serif);font-size:11pt;font-weight:500;color:var(--near-black);margin:10pt 0 6pt;">CLI コマンド一覧</div>
+  <div style="font-family:var(--jp-serif);font-size:11pt;font-weight:500;color:var(--vpk-ink);margin:10pt 0 6pt;">CLI コマンド一覧</div>
   <table class="cli-table">
     <tr><th>コマンド</th><th>説明</th></tr>
     <tr><td>kaku ai</td><td>AI 設定パネルを開き、Kaku Assistant と外部コーディングツールを設定</td></tr>
-    <tr><td>kaku config</td><td>既定エディタで <code style="font-size: 9pt;color:var(--brand);">~/.config/kaku/kaku.lua</code> を開く</td></tr>
+    <tr><td>kaku config</td><td>既定エディタで <code style="font-size: 9pt;color:var(--vpk-blueprint);">~/.config/kaku/kaku.lua</code> を開く</td></tr>
     <tr><td>kaku doctor</td><td>診断を実行し、shell 連携、PATH、任意ツールの導入状態を確認</td></tr>
     <tr><td>kaku update</td><td>最新バージョンの確認と更新を実行</td></tr>
     <tr><td>kaku init</td><td>shell 連携を設定し、Starship / Delta / Lazygit / Yazi を任意で導入</td></tr>

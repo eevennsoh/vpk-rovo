@@ -21,6 +21,7 @@
 	--vpk-code-surface: var(--ds-background-neutral-subtle, #f0f1f2);
 	--vpk-code-ink: var(--ds-text, #292a2e);
 	--vpk-code-inverse: var(--ds-text-inverse, #ffffff);
+	--vpk-math-highlight: var(--ds-background-information, #e9f2fe);
 	--vpk-success: var(--ds-background-success-bold, #5b7f24);
 	--vpk-success-tint: var(--ds-background-success, #efffd6);
 	--vpk-warning: var(--ds-background-warning-bold, #fbc828);
@@ -55,6 +56,7 @@
 	--vpk-code-surface: var(--ds-background-neutral-subtle, #161a1d);
 	--vpk-code-ink: var(--ds-text, #dee4ea);
 	--vpk-code-inverse: var(--ds-text-inverse, #101214);
+	--vpk-math-highlight: var(--ds-background-information, #09326c);
 	--vpk-success: var(--ds-background-success-bold, #b3df72);
 	--vpk-success-tint: var(--ds-background-success, #1f4d3a);
 	--vpk-warning: var(--ds-background-warning-bold, #f5cd47);

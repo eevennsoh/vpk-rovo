@@ -2,9 +2,9 @@
 <!-- ==================================================================
      TEMPLATE · letter (vpk-html · Making Software identity)
      Ported from kami's editorial template library, restyled with the
-     Making Software design language: warm paper (#fafaf5), warm ink
-     (#0A0A0A), electric accent-blue (#3553ff), accent-warning red
-     (#D14E3E) for figure tags, ink-muted (#757575) for captions.
+     Making Software design language: semantic paper (`--vpk-paper`), warm ink
+     (var(--vpk-ink)), semantic blueprint accent (`--vpk-blueprint`), accent-warning red
+     (var(--vpk-danger)) for figure tags, ink-muted (var(--vpk-muted-text)) for captions.
      Geist Pixel (Square) masthead, Geist Sans body, Geist Mono labels, 16px throughout
      (hierarchy via family + weight + color, not size).
      No section borders. No shadows. No grid. No rounded corners.
@@ -24,7 +24,7 @@
   @page {
     size: A4;
     margin: 25mm 25mm 25mm 25mm;
-    background: #fafaf5;
+    background: var(--vpk-paper);
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -45,28 +45,60 @@
   }
 
   :root {
-    --parchment: #fafaf5;
-    --near-black:#0A0A0A;
-    --dark-warm: #2A2A2A;
-    --olive:     #525252;
-    --stone:     #757575;
-    --brand:     #3553ff;
-    --ivory:     #f3f1e8;
-    --border:    #E0E0E0;
-    --border-soft:#E0E0E0;
+	--vpk-paper: var(--ds-surface, #ffffff);
+	--vpk-paper-background: var(--ds-surface, #ffffff);
+	--vpk-surface-raised: var(--ds-surface-raised, #ffffff);
+	--vpk-surface-overlay: var(--ds-surface-overlay, #ffffff);
+	--vpk-surface-sunken: var(--ds-surface-sunken, #f0f1f2);
+	--vpk-ink: var(--ds-text, #292a2e);
+	--vpk-muted-text: var(--ds-text-subtle, #505258);
+	--vpk-subtlest-text: var(--ds-text-subtlest, #6b6e76);
+	--vpk-inverse-text: var(--ds-text-inverse, #ffffff);
+	--vpk-rule: var(--ds-border, #0b120e24);
+	--vpk-rule-strong: var(--ds-border-bold, #7d818a);
+	--vpk-blueprint: var(--ds-background-brand-bold, #1868db);
+	--vpk-link: var(--ds-link, #1868db);
+	--vpk-link-pressed: var(--ds-link-pressed, #1558bc);
+	--vpk-selected: var(--ds-background-selected, #e9f2fe);
+	--vpk-blueprint-tint: var(--ds-background-information, #e9f2fe);
+	--vpk-blueprint-tint-strong: var(--ds-background-information-hovered, #cfe1fd);
+	--vpk-focus-ring: var(--ds-border-focused, #4688ec);
+	--vpk-code-surface: var(--ds-background-neutral-subtle, #f0f1f2);
+	--vpk-code-ink: var(--ds-text, #292a2e);
+	--vpk-code-inverse: var(--ds-text-inverse, #ffffff);
+	--vpk-math-highlight: var(--ds-background-information, #e9f2fe);
+	--vpk-success: var(--ds-background-success-bold, #5b7f24);
+	--vpk-success-tint: var(--ds-background-success, #efffd6);
+	--vpk-warning: var(--ds-background-warning-bold, #fbc828);
+	--vpk-warning-tint: var(--ds-background-warning, #fff5db);
+	--vpk-danger: var(--ds-background-danger-bold, #c9372c);
+	--vpk-danger-tint: var(--ds-background-danger, #ffeceb);
+	--vpk-info: var(--ds-background-information-bold, #1868db);
+	--vpk-info-tint: var(--ds-background-information, #e9f2fe);
+	--vpk-paper-rule: color-mix(in srgb, var(--vpk-ink) 8%, transparent);
+	--vpk-shadow: var(--ds-shadow-raised, 0 1px 1px rgba(9, 30, 66, 0.25), 0 0 1px rgba(9, 30, 66, 0.31));
+    --parchment: var(--vpk-paper);
+    --near-black:var(--vpk-ink);
+    --dark-warm: var(--vpk-ink);
+    --olive:     var(--vpk-muted-text);
+    --stone:     var(--vpk-muted-text);
+    --brand:     var(--vpk-blueprint);
+    --ivory:     var(--vpk-surface-raised);
+    --border:    var(--vpk-rule);
+    --border-soft:var(--vpk-rule);
 
     --serif: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
     --sans: var(--serif);
   }
 
-  html, body { background: var(--parchment); }
+  html, body { background: var(--vpk-paper); }
 
   @media screen {
     body { max-width: 210mm; margin: 0 auto; padding: 25mm; }
   }
 
   body {
-    color: var(--near-black);
+    color: var(--vpk-ink);
     font-family: var(--serif);
     font-size: 11.5pt;
     line-height: 1.55;
@@ -77,20 +109,20 @@
     margin-bottom: 30pt;
     font-size: 10pt;
     line-height: 1.55;
-    color: var(--olive);
+    color: var(--vpk-success);
   }
   .letterhead .sender-name {
     font-size: 13pt;
     font-weight: 500;
-    color: var(--near-black);
+    color: var(--vpk-ink);
     margin-bottom: 4pt;
   }
-  .letterhead a { color: var(--dark-warm); text-decoration: none; }
+  .letterhead a { color: var(--vpk-ink); text-decoration: none; }
 
   .date {
     text-align: right;
     font-size: 10.5pt;
-    color: var(--olive);
+    color: var(--vpk-success);
     margin-bottom: 24pt;
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
@@ -103,7 +135,7 @@
   .recipient .to {
     font-family: var(--sans);
     font-size: 9pt;
-    color: var(--stone);
+    color: var(--vpk-muted-text);
     letter-spacing: 0.5pt;
     text-transform: uppercase;
     margin-bottom: 3pt;
@@ -112,11 +144,11 @@
   .recipient .name {
     font-size: 12pt;
     font-weight: 500;
-    color: var(--near-black);
+    color: var(--vpk-ink);
   }
   .recipient .org {
     font-size: 10.5pt;
-    color: var(--olive);
+    color: var(--vpk-success);
   }
 
   .subject {
@@ -127,7 +159,7 @@
   .subject .label {
     font-family: var(--sans);
     font-size: 9pt;
-    color: var(--brand);
+    color: var(--vpk-blueprint);
     letter-spacing: 1pt;
     text-transform: uppercase;
     margin-bottom: 3pt;
@@ -136,7 +168,7 @@
   .subject .title {
     font-size: 16pt;
     font-weight: 500;
-    color: var(--near-black);
+    color: var(--vpk-ink);
     line-height: 1.25;
     letter-spacing: -0.2pt;
   }
@@ -144,7 +176,7 @@
   .salutation {
     margin-bottom: 18pt;
     font-size: 12pt;
-    color: var(--near-black);
+    color: var(--vpk-ink);
   }
 
   .body-content p {
@@ -156,7 +188,7 @@
   .body-content p.indent { text-indent: 1.5em; }
 
   .body-content .hl {
-    color: var(--brand);
+    color: var(--vpk-blueprint);
     font-weight: 500;
   }
 
@@ -166,32 +198,32 @@
   }
   .closing .regards {
     margin-bottom: 30pt;
-    color: var(--near-black);
+    color: var(--vpk-ink);
   }
   .closing .signature {
     font-size: 14pt;
     font-weight: 500;
-    color: var(--near-black);
+    color: var(--vpk-ink);
     margin-bottom: 3pt;
   }
   .closing .signoff-meta {
     font-family: var(--sans);
     font-size: 10pt;
-    color: var(--olive);
+    color: var(--vpk-success);
     line-height: 1.5;
   }
 
   .attachments {
     margin-top: 36pt;
     padding-top: 10pt;
-    border-top: 0.5pt dotted var(--border);
+    border-top: 0.5pt dotted var(--vpk-rule);
     font-family: var(--sans);
     font-size: 9.5pt;
-    color: var(--stone);
+    color: var(--vpk-muted-text);
     line-height: 1.55;
   }
   .attachments .label {
-    color: var(--brand);
+    color: var(--vpk-blueprint);
     margin-right: 6pt;
     font-weight: 500;
     letter-spacing: 0.5pt;
@@ -217,14 +249,14 @@
   table th, .kami-table th {
     text-align: left;
     font-weight: 500;
-    color: var(--dark-warm);
+    color: var(--vpk-ink);
     padding: 5pt 8pt;
-    border-bottom: 1pt solid var(--border);
+    border-bottom: 1pt solid var(--vpk-rule);
     background: transparent;
   }
   table td, .kami-table td {
     padding: 4pt 8pt;
-    border-bottom: 0.3pt solid var(--border-soft);
+    border-bottom: 0.3pt solid var(--vpk-rule);
     vertical-align: top;
   }
   table.compact th, .kami-table.compact th { padding: 3pt 6pt; font-size: 8pt; }
@@ -234,17 +266,17 @@
   }
   table.financial th:not(:first-child), .kami-table.financial th:not(:first-child) { text-align: right; }
   table.striped tbody tr:nth-child(even) td, .kami-table.striped tbody tr:nth-child(even) td {
-    background: var(--ivory);
+    background: var(--vpk-surface-raised);
   }
   table .total td, .kami-table .total td {
-    font-weight: 500; border-top: 1pt solid var(--brand); border-bottom: none; color: var(--near-black);
+    font-weight: 500; border-top: 1pt solid var(--vpk-blueprint); border-bottom: none; color: var(--vpk-ink);
   }
 
 
   /* ===== vpk-html identity overrides (Making Software language) ===== */
 
   /* Paper background — warm off-white, never pure white. No grid, no banding. */
-  html, body { background: var(--parchment) !important; color: var(--near-black) !important; }
+  html, body { background: var(--vpk-paper) !important; color: var(--vpk-ink) !important; }
 
   /* Strip all section chrome: no borders, no shadows, no rounded corners,
      no section background colors. Per Making Software refuses-list. */
@@ -259,14 +291,14 @@
 
   /* Preserve a single hairline border ONLY on tables (they need column rules). */
   table, th, td {
-    border-color: #E0E0E0 !important;
+    border-color: var(--vpk-rule) !important;
     border-radius: 0 !important;
     box-shadow: none !important;
   }
 
   /* Hairline rule between sections — flat 1px, no inset, no shadow. */
   hr, .rule, .section-rule {
-    background: #E0E0E0 !important;
+    background: var(--vpk-rule) !important;
     border: 0 !important;
     height: 1px !important;
   }
@@ -277,7 +309,7 @@
     font-family: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif !important;
     font-size: 18px !important;
     line-height: 1.62 !important;
-    color: var(--near-black) !important;
+    color: var(--vpk-ink) !important;
   }
   h1, h2, h3, h4, h5, h6,
   .cover-title, .doc-title, .resume-name, .deck-cover .title,
@@ -288,7 +320,7 @@
     line-height: 1.8 !important;
     font-weight: 600 !important;
     letter-spacing: 0 !important;
-    color: var(--near-black) !important;
+    color: var(--vpk-ink) !important;
     margin: 0 !important;
   }
 
@@ -297,7 +329,7 @@
   .hero h1, .doc-title h1,
   .resume-name {
     font-family: "Geist Pixel", "Geist Mono", ui-monospace, "SFMono-Regular", Consolas, monospace !important;
-    color: #3553ff !important;
+    color: var(--vpk-blueprint) !important;
     font-weight: 400 !important;
     text-transform: uppercase !important;
     letter-spacing: 0.02em !important;
@@ -314,7 +346,7 @@
     line-height: 14px !important;
     letter-spacing: 0.18em !important;
     text-transform: uppercase !important;
-    color: var(--brand) !important;
+    color: var(--vpk-blueprint) !important;
     font-weight: 400 !important;
   }
 
@@ -324,12 +356,12 @@
     font-family: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif !important;
     font-size: 14px !important;
     line-height: 22px !important;
-    color: #757575 !important;
+    color: var(--vpk-muted-text) !important;
   }
 
   /* Links: same accent-blue as masthead. No underline by default; underline on hover. */
   a, a:visited {
-    color: #3553ff !important;
+    color: var(--vpk-blueprint) !important;
     text-decoration: none !important;
   }
   a:hover {
@@ -339,12 +371,12 @@
   }
 
   /* Emphasis: italic preferred; bold reserved for headings. */
-  .hl, mark, strong { color: #3553ff !important; background: transparent !important; font-weight: 600 !important; }
-  em, i { font-style: italic !important; color: var(--near-black) !important; }
+  .hl, mark, strong { color: var(--vpk-blueprint) !important; background: transparent !important; font-weight: 600 !important; }
+  em, i { font-style: italic !important; color: var(--vpk-ink) !important; }
 
   /* Dotted rule utility (Making Software signature separator). */
   .dotted-rule, .vpk-dotted-rule {
-    background-image: radial-gradient(circle, var(--near-black) 1px, transparent 1px) !important;
+    background-image: radial-gradient(circle, var(--vpk-ink) 1px, transparent 1px) !important;
     background-size: 8px 8px !important;
     background-repeat: repeat-x !important;
     background-position: 0 50% !important;
@@ -359,7 +391,7 @@
   .lead::first-letter,
   .cover + p::first-letter {
     font-family: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif !important;
-    color: var(--near-black) !important;
+    color: var(--vpk-ink) !important;
     float: left !important;
     font-size: 48px !important;
     line-height: 1 !important;
@@ -370,30 +402,62 @@
 
   /* aiefs additions: blueprint scale + paper-rule + hard shadows. */
   :root {
-    --blueprint: var(--brand);
-    --blueprint-tint: rgba(53, 83, 255, 0.08);
-    --blueprint-tint-strong: rgba(53, 83, 255, 0.18);
-    --paper-rule: rgba(26, 26, 26, 0.08);
-    --shadow-hard: 3px 3px 0 var(--near-black);
-    --shadow-hard-lg: 5px 5px 0 var(--near-black);
+    --blueprint: var(--vpk-blueprint);
+    --selected: color-mix(in srgb, var(--vpk-blueprint) 8%, transparent);
+    --selected-strong: color-mix(in srgb, var(--vpk-blueprint) 18%, transparent);
+    --paper-rule: color-mix(in srgb, var(--vpk-ink) 8%, transparent);
+    --shadow-hard: 3px 3px 0 var(--vpk-ink);
+    --shadow-hard-lg: 5px 5px 0 var(--vpk-ink);
   }
 
   /* Dark mode tokens. Activate via <html data-theme="dark">. */
   [data-theme="dark"] {
-    --parchment: #0a0d1a;
-    --ivory: #131830;
-    --near-black: #e8e6dc;
-    --dark-warm: #c8c6c0;
-    --olive: #a8a6a0;
-    --stone: #7a7878;
-    --brand: #6b8eff;
-    --blueprint: #6b8eff;
-    --blueprint-tint: rgba(107, 142, 255, 0.12);
-    --blueprint-tint-strong: rgba(107, 142, 255, 0.22);
-    --border: rgba(232, 230, 220, 0.18);
-    --border-soft: rgba(232, 230, 220, 0.18);
-    --paper-rule: rgba(232, 230, 220, 0.08);
-    --tag-bg: rgba(107, 142, 255, 0.2);
+	--vpk-paper: var(--ds-surface, #101214);
+	--vpk-paper-background: var(--ds-surface, #1d2125);
+	--vpk-surface-raised: var(--ds-surface-raised, #22272b);
+	--vpk-surface-overlay: var(--ds-surface-overlay, #282e33);
+	--vpk-surface-sunken: var(--ds-surface-sunken, #161a1d);
+	--vpk-ink: var(--ds-text, #dee4ea);
+	--vpk-muted-text: var(--ds-text-subtle, #9fadbc);
+	--vpk-subtlest-text: var(--ds-text-subtlest, #738496);
+	--vpk-inverse-text: var(--ds-text-inverse, #101214);
+	--vpk-rule: var(--ds-border, #a6c5e229);
+	--vpk-rule-strong: var(--ds-border-bold, #738496);
+	--vpk-blueprint: var(--ds-background-brand-bold, #579dff);
+	--vpk-link: var(--ds-link, #579dff);
+	--vpk-link-pressed: var(--ds-link-pressed, #85b8ff);
+	--vpk-selected: var(--ds-background-selected, #09326c);
+	--vpk-blueprint-tint: var(--ds-background-information, #09326c);
+	--vpk-blueprint-tint-strong: var(--ds-background-information-hovered, #0c418a);
+	--vpk-focus-ring: var(--ds-border-focused, #579dff);
+	--vpk-code-surface: var(--ds-background-neutral-subtle, #161a1d);
+	--vpk-code-ink: var(--ds-text, #dee4ea);
+	--vpk-code-inverse: var(--ds-text-inverse, #101214);
+	--vpk-math-highlight: var(--ds-background-information, #09326c);
+	--vpk-success: var(--ds-background-success-bold, #b3df72);
+	--vpk-success-tint: var(--ds-background-success, #1f4d3a);
+	--vpk-warning: var(--ds-background-warning-bold, #f5cd47);
+	--vpk-warning-tint: var(--ds-background-warning, #533f04);
+	--vpk-danger: var(--ds-background-danger-bold, #f87168);
+	--vpk-danger-tint: var(--ds-background-danger, #5d1f1a);
+	--vpk-info: var(--ds-background-information-bold, #579dff);
+	--vpk-info-tint: var(--ds-background-information, #09326c);
+	--vpk-paper-rule: color-mix(in srgb, var(--vpk-ink) 8%, transparent);
+	--vpk-shadow: var(--ds-shadow-raised, 0 1px 1px rgba(0, 0, 0, 0.32), 0 0 1px rgba(0, 0, 0, 0.42));
+    --parchment: var(--vpk-paper);
+    --ivory: var(--vpk-surface-raised);
+    --near-black: var(--vpk-ink);
+    --dark-warm: var(--vpk-muted-text);
+    --olive: var(--vpk-muted-text);
+    --stone: var(--vpk-subtlest-text);
+    --brand: var(--vpk-blueprint);
+    --blueprint: var(--vpk-blueprint);
+    --selected: color-mix(in srgb, var(--vpk-blueprint) 12%, transparent);
+    --selected-strong: color-mix(in srgb, var(--vpk-blueprint) 22%, transparent);
+    --border: color-mix(in srgb, var(--vpk-ink) 18%, transparent);
+    --border-soft: color-mix(in srgb, var(--vpk-ink) 18%, transparent);
+    --paper-rule: color-mix(in srgb, var(--vpk-ink) 8%, transparent);
+    --tag-bg: color-mix(in srgb, var(--vpk-blueprint) 20%, transparent);
   }
 
   /* ──────────────────────────────────────────────────────────────────
@@ -404,7 +468,7 @@
      ────────────────────────────────────────────────────────────────── */
   @media screen {
     body {
-      background-color: var(--parchment);
+      background-color: var(--vpk-paper);
       background-image: radial-gradient(var(--paper-rule) 1px, transparent 1px);
       background-size: 16px 16px;
       background-attachment: fixed;
@@ -422,7 +486,7 @@
       font-weight: 400 !important;
       text-transform: uppercase !important;
       letter-spacing: 0.02em !important;
-      color: var(--brand) !important;
+      color: var(--vpk-blueprint) !important;
       font-size: 36px !important;
       line-height: 1.05 !important;
       margin: 48px 0 16px 0 !important;
@@ -432,7 +496,7 @@
       font-weight: 400 !important;
       text-transform: uppercase !important;
       letter-spacing: 0.02em !important;
-      color: var(--brand) !important;
+      color: var(--vpk-blueprint) !important;
       font-size: 26px !important;
       line-height: 1.1 !important;
       margin: 40px 0 16px 0 !important;
@@ -442,7 +506,7 @@
       font-weight: 400 !important;
       text-transform: uppercase !important;
       letter-spacing: 0.04em !important;
-      color: var(--brand) !important;
+      color: var(--vpk-blueprint) !important;
       font-size: 18px !important;
       line-height: 1.2 !important;
       margin: 28px 0 10px 0 !important;
@@ -452,7 +516,7 @@
       font-weight: 400 !important;
       text-transform: uppercase !important;
       letter-spacing: 0.06em !important;
-      color: var(--near-black) !important;
+      color: var(--vpk-ink) !important;
       font-size: 14px !important;
       line-height: 1.3 !important;
       margin: 20px 0 8px 0 !important;
@@ -465,9 +529,9 @@
     }
     /* Opt-in chunky shadow for cards / callouts. */
     .card, .callout, .takeaway, .surface-raised, .shadow-hard {
-      background: var(--ivory);
+      background: var(--vpk-surface-raised);
       box-shadow: var(--shadow-hard);
-      border: 1px solid var(--near-black);
+      border: 1px solid var(--vpk-ink);
       padding: 16px;
       margin: 24px 0;
       border-radius: 0;
@@ -480,8 +544,8 @@
       margin: 32px 0;
       border: 0;
       background-image:
-        repeating-linear-gradient(to right, var(--brand) 0, var(--brand) 4px, transparent 4px, transparent 8px),
-        repeating-linear-gradient(to right, transparent 0, transparent 8px, var(--blueprint-tint-strong) 8px, var(--blueprint-tint-strong) 14px);
+        repeating-linear-gradient(to right, var(--vpk-blueprint) 0, var(--vpk-blueprint) 4px, transparent 4px, transparent 8px),
+        repeating-linear-gradient(to right, transparent 0, transparent 8px, var(--selected-strong) 8px, var(--selected-strong) 14px);
       background-size: 100% 3px, 100% 3px;
       background-position: 0 0, 0 3px;
       background-repeat: no-repeat;
@@ -495,7 +559,7 @@
       text-transform: uppercase;
       font-family: "Geist Pixel", "Geist Mono", ui-monospace, monospace;
       font-size: 10px;
-      color: var(--brand);
+      color: var(--vpk-blueprint);
     }
   }
 

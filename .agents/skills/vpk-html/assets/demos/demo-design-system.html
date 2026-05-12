@@ -29,20 +29,84 @@
   font-style: normal;
   font-display: swap;
 }
-:root { color-scheme: light dark; }
-[data-theme="dark"] { color-scheme: dark; }
+:root {
+	--vpk-paper: var(--ds-surface, #ffffff);
+	--vpk-paper-background: var(--ds-surface, #ffffff);
+	--vpk-surface-raised: var(--ds-surface-raised, #ffffff);
+	--vpk-surface-overlay: var(--ds-surface-overlay, #ffffff);
+	--vpk-surface-sunken: var(--ds-surface-sunken, #f0f1f2);
+	--vpk-ink: var(--ds-text, #292a2e);
+	--vpk-muted-text: var(--ds-text-subtle, #505258);
+	--vpk-subtlest-text: var(--ds-text-subtlest, #6b6e76);
+	--vpk-inverse-text: var(--ds-text-inverse, #ffffff);
+	--vpk-rule: var(--ds-border, #0b120e24);
+	--vpk-rule-strong: var(--ds-border-bold, #7d818a);
+	--vpk-blueprint: var(--ds-background-brand-bold, #1868db);
+	--vpk-link: var(--ds-link, #1868db);
+	--vpk-link-pressed: var(--ds-link-pressed, #1558bc);
+	--vpk-selected: var(--ds-background-selected, #e9f2fe);
+	--vpk-blueprint-tint: var(--ds-background-information, #e9f2fe);
+	--vpk-blueprint-tint-strong: var(--ds-background-information-hovered, #cfe1fd);
+	--vpk-focus-ring: var(--ds-border-focused, #4688ec);
+	--vpk-code-surface: var(--ds-background-neutral-subtle, #f0f1f2);
+	--vpk-code-ink: var(--ds-text, #292a2e);
+	--vpk-code-inverse: var(--ds-text-inverse, #ffffff);
+	--vpk-math-highlight: var(--ds-background-information, #e9f2fe);
+	--vpk-success: var(--ds-background-success-bold, #5b7f24);
+	--vpk-success-tint: var(--ds-background-success, #efffd6);
+	--vpk-warning: var(--ds-background-warning-bold, #fbc828);
+	--vpk-warning-tint: var(--ds-background-warning, #fff5db);
+	--vpk-danger: var(--ds-background-danger-bold, #c9372c);
+	--vpk-danger-tint: var(--ds-background-danger, #ffeceb);
+	--vpk-info: var(--ds-background-information-bold, #1868db);
+	--vpk-info-tint: var(--ds-background-information, #e9f2fe);
+	--vpk-paper-rule: color-mix(in srgb, var(--vpk-ink) 8%, transparent);
+	--vpk-shadow: var(--ds-shadow-raised, 0 1px 1px rgba(9, 30, 66, 0.25), 0 0 1px rgba(9, 30, 66, 0.31)); color-scheme: light dark; }
+[data-theme="dark"] {
+	--vpk-paper: var(--ds-surface, #101214);
+	--vpk-paper-background: var(--ds-surface, #1d2125);
+	--vpk-surface-raised: var(--ds-surface-raised, #22272b);
+	--vpk-surface-overlay: var(--ds-surface-overlay, #282e33);
+	--vpk-surface-sunken: var(--ds-surface-sunken, #161a1d);
+	--vpk-ink: var(--ds-text, #dee4ea);
+	--vpk-muted-text: var(--ds-text-subtle, #9fadbc);
+	--vpk-subtlest-text: var(--ds-text-subtlest, #738496);
+	--vpk-inverse-text: var(--ds-text-inverse, #101214);
+	--vpk-rule: var(--ds-border, #a6c5e229);
+	--vpk-rule-strong: var(--ds-border-bold, #738496);
+	--vpk-blueprint: var(--ds-background-brand-bold, #579dff);
+	--vpk-link: var(--ds-link, #579dff);
+	--vpk-link-pressed: var(--ds-link-pressed, #85b8ff);
+	--vpk-selected: var(--ds-background-selected, #09326c);
+	--vpk-blueprint-tint: var(--ds-background-information, #09326c);
+	--vpk-blueprint-tint-strong: var(--ds-background-information-hovered, #0c418a);
+	--vpk-focus-ring: var(--ds-border-focused, #579dff);
+	--vpk-code-surface: var(--ds-background-neutral-subtle, #161a1d);
+	--vpk-code-ink: var(--ds-text, #dee4ea);
+	--vpk-code-inverse: var(--ds-text-inverse, #101214);
+	--vpk-math-highlight: var(--ds-background-information, #09326c);
+	--vpk-success: var(--ds-background-success-bold, #b3df72);
+	--vpk-success-tint: var(--ds-background-success, #1f4d3a);
+	--vpk-warning: var(--ds-background-warning-bold, #f5cd47);
+	--vpk-warning-tint: var(--ds-background-warning, #533f04);
+	--vpk-danger: var(--ds-background-danger-bold, #f87168);
+	--vpk-danger-tint: var(--ds-background-danger, #5d1f1a);
+	--vpk-info: var(--ds-background-information-bold, #579dff);
+	--vpk-info-tint: var(--ds-background-information, #09326c);
+	--vpk-paper-rule: color-mix(in srgb, var(--vpk-ink) 8%, transparent);
+	--vpk-shadow: var(--ds-shadow-raised, 0 1px 1px rgba(0, 0, 0, 0.32), 0 0 1px rgba(0, 0, 0, 0.42)); color-scheme: dark; }
 
   :root {
-    --ivory: #FAF9F5;
-    --slate: #141413;
-    --clay: #D97757;
-    --oat: #E3DACC;
-    --olive: #788C5D;
-    --gray-100: #F0EEE6;
-    --gray-300: #D1CFC5;
-    --gray-500: #87867F;
-    --gray-700: #3D3D3A;
-    --white: #FFFFFF;
+    --ivory: var(--vpk-paper);
+    --slate: var(--vpk-ink);
+    --clay: var(--vpk-danger);
+    --oat: var(--vpk-blueprint-tint);
+    --olive: var(--vpk-success);
+    --gray-100: var(--vpk-surface-sunken);
+    --gray-300: var(--vpk-rule);
+    --gray-500: var(--vpk-muted-text);
+    --gray-700: var(--vpk-ink);
+    --white: var(--vpk-surface-raised);
 
     --serif: ui-serif, Georgia, serif;
     --sans: system-ui, -apple-system, sans-serif;
@@ -50,7 +114,7 @@
 
     --radius-panel: 12px;
     --radius-row: 8px;
-    --border: 1.5px solid var(--gray-300);
+    --border: 1.5px solid var(--vpk-rule);
   }
 
   * { box-sizing: border-box; }
@@ -58,8 +122,8 @@
   body {
     margin: 0;
     padding: 56px 24px 96px;
-    background: var(--ivory);
-    color: var(--slate);
+    background: var(--vpk-surface-raised);
+    color: var(--vpk-ink);
     font-family: var(--sans);
     font-size: 15px;
     line-height: 1.55;
@@ -80,14 +144,14 @@
   }
 
   header .sub {
-    color: var(--gray-500);
+    color: var(--vpk-muted-text);
     font-size: 14px;
     margin: 0 0 48px;
   }
   header .sub code {
     font-family: var(--mono);
     font-size: 13px;
-    background: var(--gray-100);
+    background: var(--vpk-surface-sunken);
     padding: 1px 5px;
     border-radius: 4px;
   }
@@ -103,7 +167,7 @@
   }
   hr.rule {
     border: none;
-    border-top: 1px solid var(--gray-300);
+    border-top: 1px solid var(--vpk-rule);
     margin: 0 0 28px;
   }
 
@@ -116,7 +180,7 @@
     font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    color: var(--gray-500);
+    color: var(--vpk-muted-text);
     margin-bottom: 12px;
   }
   .swatch-grid {
@@ -129,28 +193,28 @@
     width: 64px;
     height: 64px;
     border-radius: var(--radius-row);
-    border: var(--border);
+    border: var(--vpk-rule);
     margin-bottom: 8px;
   }
   .swatch .chip.no-border { border-color: transparent; }
   .swatch .hex {
     font-family: var(--mono);
     font-size: 12px;
-    color: var(--gray-700);
+    color: var(--vpk-ink);
     display: block;
   }
   .swatch .token {
     font-family: var(--mono);
     font-size: 11px;
-    color: var(--gray-500);
+    color: var(--vpk-muted-text);
     display: block;
   }
 
   /* ---------- Typography ---------- */
   .type-scale {
-    border: var(--border);
+    border: var(--vpk-rule);
     border-radius: var(--radius-panel);
-    background: var(--white);
+    background: var(--vpk-surface-raised);
     overflow: hidden;
   }
   .type-row {
@@ -159,7 +223,7 @@
     justify-content: space-between;
     gap: 24px;
     padding: 20px 24px;
-    border-bottom: 1px solid var(--gray-100);
+    border-bottom: 1px solid var(--vpk-surface-sunken);
   }
   .type-row:last-child { border-bottom: none; }
   .type-specimen {
@@ -168,17 +232,17 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    color: var(--slate);
+    color: var(--vpk-ink);
   }
   .type-meta {
     font-family: var(--mono);
     font-size: 12px;
-    color: var(--gray-500);
+    color: var(--vpk-muted-text);
     text-align: right;
     flex-shrink: 0;
   }
   .type-meta .name {
-    color: var(--gray-700);
+    color: var(--vpk-ink);
     display: block;
     margin-bottom: 2px;
   }
@@ -188,7 +252,7 @@
   .t-h2       { font-family: var(--serif); font-size: 24px; line-height: 1.3;  font-weight: 500; }
   .t-body     { font-family: var(--sans);  font-size: 16px; line-height: 1.55; font-weight: 430; }
   .t-small    { font-family: var(--sans);  font-size: 14px; line-height: 1.5;  font-weight: 430; }
-  .t-caption  { font-family: var(--sans);  font-size: 12px; line-height: 1.4;  font-weight: 500; color: var(--gray-500); }
+  .t-caption  { font-family: var(--sans);  font-size: 12px; line-height: 1.4;  font-weight: 500; color: var(--vpk-muted-text); }
 
   /* ---------- Spacing ---------- */
   .spacing-ruler {
@@ -196,8 +260,8 @@
     align-items: flex-end;
     gap: 28px;
     padding: 28px 24px;
-    background: var(--white);
-    border: var(--border);
+    background: var(--vpk-surface-raised);
+    border: var(--vpk-rule);
     border-radius: var(--radius-panel);
     overflow-x: auto;
   }
@@ -209,19 +273,19 @@
     flex-shrink: 0;
   }
   .space-bar {
-    background: var(--clay);
+    background: var(--vpk-blueprint);
     border-radius: 3px;
     height: 14px;
   }
   .space-label {
     font-family: var(--mono);
     font-size: 11px;
-    color: var(--gray-700);
+    color: var(--vpk-ink);
     text-align: center;
   }
   .space-label span {
     display: block;
-    color: var(--gray-500);
+    color: var(--vpk-muted-text);
   }
 
   /* ---------- Radius & Elevation ---------- */
@@ -234,8 +298,8 @@
   .radius-card {
     width: 120px;
     height: 88px;
-    background: var(--oat);
-    border: var(--border);
+    background: var(--vpk-blueprint-tint);
+    border: var(--vpk-rule);
     display: flex;
     align-items: flex-end;
     padding: 10px 12px;
@@ -243,14 +307,14 @@
   .radius-card .lbl {
     font-family: var(--mono);
     font-size: 11px;
-    color: var(--gray-700);
+    color: var(--vpk-ink);
   }
-  .radius-card .lbl span { color: var(--gray-500); display: block; }
+  .radius-card .lbl span { color: var(--vpk-muted-text); display: block; }
 
   .shadow-card {
     width: 160px;
     height: 96px;
-    background: var(--white);
+    background: var(--vpk-surface-raised);
     border-radius: var(--radius-panel);
     display: flex;
     align-items: flex-end;
@@ -259,9 +323,9 @@
   .shadow-card .lbl {
     font-family: var(--mono);
     font-size: 11px;
-    color: var(--gray-700);
+    color: var(--vpk-ink);
   }
-  .shadow-card .lbl span { color: var(--gray-500); display: block; }
+  .shadow-card .lbl span { color: var(--vpk-muted-text); display: block; }
 
   /* ---------- Core components ---------- */
   .component {
@@ -270,7 +334,7 @@
   .component-name {
     font-family: var(--mono);
     font-size: 12px;
-    color: var(--gray-500);
+    color: var(--vpk-muted-text);
     margin-bottom: 12px;
   }
   .component-stage {
@@ -279,8 +343,8 @@
     align-items: center;
     gap: 16px;
     padding: 24px;
-    background: var(--white);
-    border: var(--border);
+    background: var(--vpk-surface-raised);
+    border: var(--vpk-rule);
     border-radius: var(--radius-panel);
   }
 
@@ -299,14 +363,14 @@
     cursor: pointer;
     transition: background 0.12s ease, border-color 0.12s ease;
   }
-  .btn-primary   { background: var(--clay); color: var(--white); }
-  .btn-primary:hover { background: #C7684C; }
-  .btn-secondary { background: var(--white); color: var(--slate); border-color: var(--gray-300); }
-  .btn-secondary:hover { background: var(--gray-100); }
-  .btn-ghost     { background: transparent; color: var(--gray-700); }
-  .btn-ghost:hover { background: var(--gray-100); }
-  .btn-danger    { background: #B04A4A; color: var(--white); }
-  .btn-danger:hover { background: #9A3F3F; }
+  .btn-primary   { background: var(--vpk-blueprint); color: var(--vpk-surface-raised); }
+  .btn-primary:hover { background: var(--vpk-warning); }
+  .btn-secondary { background: var(--vpk-surface-raised); color: var(--vpk-ink); border-color: var(--vpk-rule); }
+  .btn-secondary:hover { background: var(--vpk-surface-sunken); }
+  .btn-ghost     { background: transparent; color: var(--vpk-ink); }
+  .btn-ghost:hover { background: var(--vpk-surface-sunken); }
+  .btn-danger    { background: var(--vpk-danger); color: var(--vpk-surface-raised); }
+  .btn-danger:hover { background: var(--vpk-danger); }
 
   /* Input */
   .input {
@@ -314,18 +378,18 @@
     padding: 0 12px;
     font-family: var(--sans);
     font-size: 14px;
-    color: var(--slate);
-    background: var(--white);
-    border: var(--border);
+    color: var(--vpk-ink);
+    background: var(--vpk-surface-raised);
+    border: var(--vpk-rule);
     border-radius: var(--radius-row);
     width: 260px;
     outline: none;
     transition: border-color 0.12s ease, box-shadow 0.12s ease;
   }
-  .input::placeholder { color: var(--gray-500); }
+  .input::placeholder { color: var(--vpk-muted-text); }
   .input:focus {
-    border-color: var(--clay);
-    box-shadow: 0 0 0 3px rgba(217, 119, 87, 0.15);
+    border-color: var(--vpk-blueprint);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--vpk-danger) 15%, transparent);
   }
 
   /* Checkbox */
@@ -341,24 +405,24 @@
     appearance: none;
     width: 18px;
     height: 18px;
-    border: var(--border);
+    border: var(--vpk-rule);
     border-radius: 5px;
-    background: var(--white);
+    background: var(--vpk-surface-raised);
     margin: 0;
     cursor: pointer;
     position: relative;
     transition: background 0.12s ease, border-color 0.12s ease;
   }
   .checkbox input:checked {
-    background: var(--clay);
-    border-color: var(--clay);
+    background: var(--vpk-blueprint);
+    border-color: var(--vpk-blueprint);
   }
   .checkbox input:checked::after {
     content: "";
     position: absolute;
     left: 5px; top: 1px;
     width: 5px; height: 10px;
-    border: solid var(--white);
+    border: solid var(--vpk-surface-raised);
     border-width: 0 2px 2px 0;
     transform: rotate(45deg);
   }
@@ -373,53 +437,53 @@
     font-weight: 500;
     border-radius: 999px;
   }
-  .badge-neutral { background: var(--gray-100); color: var(--gray-700); }
-  .badge-accent  { background: rgba(217, 119, 87, 0.14); color: var(--clay); }
-  .badge-success { background: rgba(120, 140, 93, 0.16); color: var(--olive); }
-  .badge-warning { background: rgba(199, 142, 63, 0.16); color: #A06A2A; }
+  .badge-neutral { background: var(--vpk-surface-sunken); color: var(--vpk-ink); }
+  .badge-accent  { background: color-mix(in srgb, var(--vpk-danger) 14%, transparent); color: var(--vpk-blueprint); }
+  .badge-success { background: color-mix(in srgb, var(--vpk-success) 16%, transparent); color: var(--vpk-success); }
+  .badge-warning { background: color-mix(in srgb, var(--vpk-warning) 16%, transparent); color: var(--vpk-warning); }
 /* vpk-html visual overlay: blueprint paper system over upstream demos. */
 :root {
-  --ivory: #fafaf5;
-  --paper: #fffef8;
-  --white: #fffef8;
-  --slate: #292a2e;
-  --near-black: #292a2e;
-  --gray-50: #f7f8f8;
-  --gray-100: #f0f1f2;
-  --gray-150: #f0f1f2;
-  --gray-200: #dadcdf;
-  --gray-300: #b8bec7;
-  --gray-500: #505258;
-  --gray-700: #292a2e;
-  --gray-800: #292a2e;
-  --g100: #f0f1f2;
-  --g200: #dadcdf;
-  --g300: #b8bec7;
-  --g500: #505258;
-  --g700: #292a2e;
-  --clay: #3553ff;
-  --clay-d: #1d34b8;
-  --oat: rgba(53, 83, 255, 0.10);
-  --olive: #5b7f24;
-  --rust: #c9372c;
-  --sky: #3553ff;
+  --ivory: var(--vpk-paper);
+  --paper: var(--vpk-surface-raised);
+  --white: var(--vpk-surface-raised);
+  --slate: var(--vpk-ink);
+  --near-black: var(--vpk-ink);
+  --gray-50: var(--vpk-surface-sunken);
+  --gray-100: var(--vpk-code-surface);
+  --gray-150: var(--vpk-code-surface);
+  --gray-200: var(--vpk-rule);
+  --gray-300: var(--vpk-rule);
+  --gray-500: var(--vpk-muted-text);
+  --gray-700: var(--vpk-ink);
+  --gray-800: var(--vpk-ink);
+  --g100: var(--vpk-code-surface);
+  --g200: var(--vpk-rule);
+  --g300: var(--vpk-rule);
+  --g500: var(--vpk-muted-text);
+  --g700: var(--vpk-ink);
+  --clay: var(--vpk-blueprint);
+  --clay-d: var(--vpk-link-pressed);
+  --oat: color-mix(in srgb, var(--vpk-blueprint) 10%, transparent);
+  --olive: var(--vpk-success);
+  --rust: var(--vpk-danger);
+  --sky: var(--vpk-blueprint);
   --serif: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono: "Geist Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
   --display: "Geist Pixel", "Geist Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
-  --border: 1px solid var(--gray-300);
+  --border: 1px solid var(--vpk-rule);
   --radius-panel: 0;
   --radius-row: 0;
-  --card-shadow: 4px 4px 0 rgba(53, 83, 255, 0.10);
+  --card-shadow: 4px 4px 0 color-mix(in srgb, var(--vpk-blueprint) 10%, transparent);
 }
 
 html,
 body {
   background:
-    radial-gradient(circle at 1px 1px, rgba(41, 42, 46, 0.08) 1px, transparent 0),
-    var(--ivory) !important;
+    radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--vpk-ink) 8%, transparent) 1px, transparent 0),
+    var(--vpk-surface-raised) !important;
   background-size: 16px 16px !important;
-  color: var(--slate) !important;
+  color: var(--vpk-ink) !important;
   font-family: var(--sans) !important;
   letter-spacing: 0 !important;
 }
@@ -445,7 +509,7 @@ h1,
 .title,
 .hero-title,
 .deck-title {
-  color: var(--clay) !important;
+  color: var(--vpk-blueprint) !important;
   font-family: var(--display) !important;
   font-weight: 400 !important;
   letter-spacing: 0.02em !important;
@@ -459,7 +523,7 @@ h4,
 .section-title,
 .card-title,
 .panel-title {
-  color: var(--slate) !important;
+  color: var(--vpk-ink) !important;
   font-family: var(--display) !important;
   font-weight: 400 !important;
   letter-spacing: 0.04em !important;
@@ -500,7 +564,7 @@ select {
 .tag,
 .badge,
 .stat-label {
-  color: var(--clay) !important;
+  color: var(--vpk-blueprint) !important;
   text-transform: uppercase !important;
 }
 
@@ -539,14 +603,14 @@ select {
   .option,
   .row-card
 ) {
-  background: color-mix(in srgb, var(--white) 94%, transparent) !important;
-  border-color: var(--gray-300) !important;
+  background: color-mix(in srgb, var(--vpk-surface-raised) 94%, transparent) !important;
+  border-color: var(--vpk-rule) !important;
   border-radius: 0 !important;
   box-shadow: var(--card-shadow) !important;
 }
 
 :is(.stage, .browser, .mock, .flow, .matrix, .table, table, .diff, .code, pre) {
-  border-color: var(--gray-300) !important;
+  border-color: var(--vpk-rule) !important;
   border-radius: 0 !important;
 }
 
@@ -555,8 +619,8 @@ pre,
 .diff,
 .code-block,
 .snippet {
-  background: #292a2e !important;
-  color: #f8f7ef !important;
+  background: var(--vpk-ink) !important;
+  color: var(--vpk-code-inverse) !important;
   font-family: var(--mono) !important;
   max-width: 100% !important;
   overflow-x: auto !important;
@@ -570,8 +634,8 @@ samp {
 
 a,
 a:visited {
-  color: var(--clay-d) !important;
-  text-decoration-color: color-mix(in srgb, var(--clay) 45%, transparent) !important;
+  color: var(--vpk-link-pressed) !important;
+  text-decoration-color: color-mix(in srgb, var(--vpk-blueprint) 45%, transparent) !important;
   text-underline-offset: 0.18em !important;
 }
 
@@ -579,11 +643,11 @@ button,
 .button,
 .btn,
 [role="button"] {
-  background: var(--clay) !important;
-  border: 1px solid var(--slate) !important;
+  background: var(--vpk-blueprint) !important;
+  border: 1px solid var(--vpk-ink) !important;
   border-radius: 0 !important;
-  box-shadow: 3px 3px 0 rgba(41, 42, 46, 0.22) !important;
-  color: #ffffff !important;
+  box-shadow: 3px 3px 0 color-mix(in srgb, var(--vpk-ink) 22%, transparent) !important;
+  color: var(--vpk-surface-raised) !important;
   font-family: var(--mono) !important;
   letter-spacing: 0.08em !important;
   text-transform: uppercase !important;
@@ -592,23 +656,23 @@ button,
 button.secondary,
 .button.secondary,
 .btn.secondary {
-  background: var(--white) !important;
-  color: var(--clay-d) !important;
+  background: var(--vpk-surface-raised) !important;
+  color: var(--vpk-link-pressed) !important;
 }
 
 input,
 textarea,
 select {
-  background: var(--white) !important;
-  border: 1px solid var(--gray-300) !important;
+  background: var(--vpk-surface-raised) !important;
+  border: 1px solid var(--vpk-rule) !important;
   border-radius: 0 !important;
-  color: var(--slate) !important;
+  color: var(--vpk-ink) !important;
 }
 
 table,
 th,
 td {
-  border-color: var(--gray-300) !important;
+  border-color: var(--vpk-rule) !important;
 }
 
 table {
@@ -618,8 +682,8 @@ table {
 th,
 .head,
 .table-head {
-  background: var(--oat) !important;
-  color: var(--slate) !important;
+  background: var(--vpk-blueprint-tint) !important;
+  color: var(--vpk-ink) !important;
 }
 
 .hl,
@@ -627,7 +691,7 @@ mark,
 strong,
 .active,
 .selected {
-  color: var(--clay-d) !important;
+  color: var(--vpk-link-pressed) !important;
 }
 
 mark,
@@ -635,8 +699,8 @@ mark,
 .pill,
 .tag,
 .badge {
-  background: var(--oat) !important;
-  border-color: color-mix(in srgb, var(--clay) 35%, var(--gray-300)) !important;
+  background: var(--vpk-blueprint-tint) !important;
+  border-color: color-mix(in srgb, var(--vpk-blueprint) 35%, var(--vpk-rule)) !important;
   border-radius: 0 !important;
 }
 
@@ -644,32 +708,32 @@ svg text {
   font-family: var(--mono) !important;
 }
 
-svg [fill="#D97757"],
-svg [fill="#B85C3E"],
-svg [fill="#d97757"],
-svg [fill="#b85c3e"] {
-  fill: var(--clay) !important;
+svg [fill="var(--vpk-danger)"],
+svg [fill="var(--vpk-danger)"],
+svg [fill="var(--vpk-danger)"],
+svg [fill="var(--vpk-danger)"] {
+  fill: var(--vpk-blueprint) !important;
 }
 
-svg [stroke="#D97757"],
-svg [stroke="#B85C3E"],
-svg [stroke="#d97757"],
-svg [stroke="#b85c3e"] {
-  stroke: var(--clay) !important;
+svg [stroke="var(--vpk-danger)"],
+svg [stroke="var(--vpk-danger)"],
+svg [stroke="var(--vpk-danger)"],
+svg [stroke="var(--vpk-danger)"] {
+  stroke: var(--vpk-blueprint) !important;
 }
 
-svg [fill="#E3DACC"],
-svg [fill="#F0EEE6"],
-svg [fill="#e3dacc"],
-svg [fill="#f0eee6"] {
-  fill: var(--oat) !important;
+svg [fill="var(--vpk-blueprint-tint)"],
+svg [fill="var(--vpk-surface-sunken)"],
+svg [fill="var(--vpk-blueprint-tint)"],
+svg [fill="var(--vpk-surface-sunken)"] {
+  fill: var(--vpk-blueprint-tint) !important;
 }
 
-svg [stroke="#E3DACC"],
-svg [stroke="#D1CFC5"],
-svg [stroke="#e3dacc"],
-svg [stroke="#d1cfc5"] {
-  stroke: var(--gray-300) !important;
+svg [stroke="var(--vpk-blueprint-tint)"],
+svg [stroke="var(--vpk-rule)"],
+svg [stroke="var(--vpk-blueprint-tint)"],
+svg [stroke="var(--vpk-rule)"] {
+  stroke: var(--vpk-rule) !important;
 }
 
 @media (max-width: 760px) {
@@ -767,23 +831,23 @@ svg [stroke="#d1cfc5"] {
       <div class="swatch-group-label">Primary</div>
       <div class="swatch-grid">
         <div class="swatch">
-          <div class="chip no-border" style="background:#D97757"></div>
-          <span class="hex">#D97757</span>
+          <div class="chip no-border" style="background:var(--vpk-danger)"></div>
+          <span class="hex">var(--vpk-danger)</span>
           <span class="token">--clay</span>
         </div>
         <div class="swatch">
-          <div class="chip no-border" style="background:#141413"></div>
-          <span class="hex">#141413</span>
+          <div class="chip no-border" style="background:var(--vpk-ink)"></div>
+          <span class="hex">var(--vpk-ink)</span>
           <span class="token">--slate</span>
         </div>
         <div class="swatch">
-          <div class="chip" style="background:#FAF9F5"></div>
-          <span class="hex">#FAF9F5</span>
+          <div class="chip" style="background:var(--vpk-paper)"></div>
+          <span class="hex">var(--vpk-paper)</span>
           <span class="token">--ivory</span>
         </div>
         <div class="swatch">
-          <div class="chip no-border" style="background:#E3DACC"></div>
-          <span class="hex">#E3DACC</span>
+          <div class="chip no-border" style="background:var(--vpk-blueprint-tint)"></div>
+          <span class="hex">var(--vpk-blueprint-tint)</span>
           <span class="token">--oat</span>
         </div>
       </div>
@@ -793,28 +857,28 @@ svg [stroke="#d1cfc5"] {
       <div class="swatch-group-label">Neutral</div>
       <div class="swatch-grid">
         <div class="swatch">
-          <div class="chip" style="background:#FFFFFF"></div>
-          <span class="hex">#FFFFFF</span>
+          <div class="chip" style="background:var(--vpk-surface-raised)"></div>
+          <span class="hex">var(--vpk-surface-raised)</span>
           <span class="token">--white</span>
         </div>
         <div class="swatch">
-          <div class="chip" style="background:#F0EEE6"></div>
-          <span class="hex">#F0EEE6</span>
+          <div class="chip" style="background:var(--vpk-surface-sunken)"></div>
+          <span class="hex">var(--vpk-surface-sunken)</span>
           <span class="token">--gray-100</span>
         </div>
         <div class="swatch">
-          <div class="chip no-border" style="background:#D1CFC5"></div>
-          <span class="hex">#D1CFC5</span>
+          <div class="chip no-border" style="background:var(--vpk-rule)"></div>
+          <span class="hex">var(--vpk-rule)</span>
           <span class="token">--gray-300</span>
         </div>
         <div class="swatch">
-          <div class="chip no-border" style="background:#87867F"></div>
-          <span class="hex">#87867F</span>
+          <div class="chip no-border" style="background:var(--vpk-muted-text)"></div>
+          <span class="hex">var(--vpk-muted-text)</span>
           <span class="token">--gray-500</span>
         </div>
         <div class="swatch">
-          <div class="chip no-border" style="background:#3D3D3A"></div>
-          <span class="hex">#3D3D3A</span>
+          <div class="chip no-border" style="background:var(--vpk-ink)"></div>
+          <span class="hex">var(--vpk-ink)</span>
           <span class="token">--gray-700</span>
         </div>
       </div>
@@ -824,23 +888,23 @@ svg [stroke="#d1cfc5"] {
       <div class="swatch-group-label">Semantic</div>
       <div class="swatch-grid">
         <div class="swatch">
-          <div class="chip no-border" style="background:#788C5D"></div>
-          <span class="hex">#788C5D</span>
+          <div class="chip no-border" style="background:var(--vpk-success)"></div>
+          <span class="hex">var(--vpk-success)</span>
           <span class="token">--success</span>
         </div>
         <div class="swatch">
-          <div class="chip no-border" style="background:#C78E3F"></div>
-          <span class="hex">#C78E3F</span>
+          <div class="chip no-border" style="background:var(--vpk-warning)"></div>
+          <span class="hex">var(--vpk-warning)</span>
           <span class="token">--warning</span>
         </div>
         <div class="swatch">
-          <div class="chip no-border" style="background:#B04A4A"></div>
-          <span class="hex">#B04A4A</span>
+          <div class="chip no-border" style="background:var(--vpk-danger)"></div>
+          <span class="hex">var(--vpk-danger)</span>
           <span class="token">--danger</span>
         </div>
         <div class="swatch">
-          <div class="chip no-border" style="background:#5C7CA3"></div>
-          <span class="hex">#5C7CA3</span>
+          <div class="chip no-border" style="background:var(--vpk-info)"></div>
+          <span class="hex">var(--vpk-info)</span>
           <span class="token">--info</span>
         </div>
       </div>
@@ -960,13 +1024,13 @@ svg [stroke="#d1cfc5"] {
     </div>
 
     <div class="token-row">
-      <div class="shadow-card" style="box-shadow:0 1px 2px rgba(20,20,19,0.06)">
+      <div class="shadow-card" style="box-shadow:0 1px 2px color-mix(in srgb, var(--vpk-ink) 6%, transparent)">
         <div class="lbl">--shadow-sm<span>0 1px 2px / 6%</span></div>
       </div>
-      <div class="shadow-card" style="box-shadow:0 4px 10px rgba(20,20,19,0.08)">
+      <div class="shadow-card" style="box-shadow:0 4px 10px color-mix(in srgb, var(--vpk-ink) 8%, transparent)">
         <div class="lbl">--shadow-md<span>0 4px 10px / 8%</span></div>
       </div>
-      <div class="shadow-card" style="box-shadow:0 12px 28px rgba(20,20,19,0.12)">
+      <div class="shadow-card" style="box-shadow:0 12px 28px color-mix(in srgb, var(--vpk-ink) 12%, transparent)">
         <div class="lbl">--shadow-lg<span>0 12px 28px / 12%</span></div>
       </div>
     </div>

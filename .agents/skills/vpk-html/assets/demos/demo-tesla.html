@@ -3,7 +3,7 @@
      DEMO · tesla (vpk-html palette)
      Ported from kami's curated demos library and restyled with the
      vpk-html identity: VT323 display headlines, Source Serif body, grid
-     background, ink-blue (#1868DB) accent. Layout, content, and SVG
+     background, blueprint (var(--vpk-blueprint)) accent. Layout, content, and SVG
      geometry are preserved verbatim from kami.
      Source: https://github.com/tw93/Kami
      ================================================================== -->
@@ -16,19 +16,83 @@
 <meta name="keywords" content="特斯拉, TSLA, Q1 2026, 财报, 投资分析, Robotaxi, 电动车">
 <meta name="generator" content="vpk-html">
 <style>
-  :root { color-scheme: light dark; }
-  [data-theme="dark"] { color-scheme: dark; }
+  :root {
+	--vpk-paper: var(--ds-surface, #ffffff);
+	--vpk-paper-background: var(--ds-surface, #ffffff);
+	--vpk-surface-raised: var(--ds-surface-raised, #ffffff);
+	--vpk-surface-overlay: var(--ds-surface-overlay, #ffffff);
+	--vpk-surface-sunken: var(--ds-surface-sunken, #f0f1f2);
+	--vpk-ink: var(--ds-text, #292a2e);
+	--vpk-muted-text: var(--ds-text-subtle, #505258);
+	--vpk-subtlest-text: var(--ds-text-subtlest, #6b6e76);
+	--vpk-inverse-text: var(--ds-text-inverse, #ffffff);
+	--vpk-rule: var(--ds-border, #0b120e24);
+	--vpk-rule-strong: var(--ds-border-bold, #7d818a);
+	--vpk-blueprint: var(--ds-background-brand-bold, #1868db);
+	--vpk-link: var(--ds-link, #1868db);
+	--vpk-link-pressed: var(--ds-link-pressed, #1558bc);
+	--vpk-selected: var(--ds-background-selected, #e9f2fe);
+	--vpk-blueprint-tint: var(--ds-background-information, #e9f2fe);
+	--vpk-blueprint-tint-strong: var(--ds-background-information-hovered, #cfe1fd);
+	--vpk-focus-ring: var(--ds-border-focused, #4688ec);
+	--vpk-code-surface: var(--ds-background-neutral-subtle, #f0f1f2);
+	--vpk-code-ink: var(--ds-text, #292a2e);
+	--vpk-code-inverse: var(--ds-text-inverse, #ffffff);
+	--vpk-math-highlight: var(--ds-background-information, #e9f2fe);
+	--vpk-success: var(--ds-background-success-bold, #5b7f24);
+	--vpk-success-tint: var(--ds-background-success, #efffd6);
+	--vpk-warning: var(--ds-background-warning-bold, #fbc828);
+	--vpk-warning-tint: var(--ds-background-warning, #fff5db);
+	--vpk-danger: var(--ds-background-danger-bold, #c9372c);
+	--vpk-danger-tint: var(--ds-background-danger, #ffeceb);
+	--vpk-info: var(--ds-background-information-bold, #1868db);
+	--vpk-info-tint: var(--ds-background-information, #e9f2fe);
+	--vpk-paper-rule: color-mix(in srgb, var(--vpk-ink) 8%, transparent);
+	--vpk-shadow: var(--ds-shadow-raised, 0 1px 1px rgba(9, 30, 66, 0.25), 0 0 1px rgba(9, 30, 66, 0.31)); color-scheme: light dark; }
+  [data-theme="dark"] {
+	--vpk-paper: var(--ds-surface, #101214);
+	--vpk-paper-background: var(--ds-surface, #1d2125);
+	--vpk-surface-raised: var(--ds-surface-raised, #22272b);
+	--vpk-surface-overlay: var(--ds-surface-overlay, #282e33);
+	--vpk-surface-sunken: var(--ds-surface-sunken, #161a1d);
+	--vpk-ink: var(--ds-text, #dee4ea);
+	--vpk-muted-text: var(--ds-text-subtle, #9fadbc);
+	--vpk-subtlest-text: var(--ds-text-subtlest, #738496);
+	--vpk-inverse-text: var(--ds-text-inverse, #101214);
+	--vpk-rule: var(--ds-border, #a6c5e229);
+	--vpk-rule-strong: var(--ds-border-bold, #738496);
+	--vpk-blueprint: var(--ds-background-brand-bold, #579dff);
+	--vpk-link: var(--ds-link, #579dff);
+	--vpk-link-pressed: var(--ds-link-pressed, #85b8ff);
+	--vpk-selected: var(--ds-background-selected, #09326c);
+	--vpk-blueprint-tint: var(--ds-background-information, #09326c);
+	--vpk-blueprint-tint-strong: var(--ds-background-information-hovered, #0c418a);
+	--vpk-focus-ring: var(--ds-border-focused, #579dff);
+	--vpk-code-surface: var(--ds-background-neutral-subtle, #161a1d);
+	--vpk-code-ink: var(--ds-text, #dee4ea);
+	--vpk-code-inverse: var(--ds-text-inverse, #101214);
+	--vpk-math-highlight: var(--ds-background-information, #09326c);
+	--vpk-success: var(--ds-background-success-bold, #b3df72);
+	--vpk-success-tint: var(--ds-background-success, #1f4d3a);
+	--vpk-warning: var(--ds-background-warning-bold, #f5cd47);
+	--vpk-warning-tint: var(--ds-background-warning, #533f04);
+	--vpk-danger: var(--ds-background-danger-bold, #f87168);
+	--vpk-danger-tint: var(--ds-background-danger, #5d1f1a);
+	--vpk-info: var(--ds-background-information-bold, #579dff);
+	--vpk-info-tint: var(--ds-background-information, #09326c);
+	--vpk-paper-rule: color-mix(in srgb, var(--vpk-ink) 8%, transparent);
+	--vpk-shadow: var(--ds-shadow-raised, 0 1px 1px rgba(0, 0, 0, 0.32), 0 0 1px rgba(0, 0, 0, 0.42)); color-scheme: dark; }
 
   @page {
     size: A4;
     margin: 12mm 16mm 12mm 16mm;
-    background: var(--parchment);
+    background: var(--vpk-paper);
 
     @bottom-center {
       content: counter(page) "  ·  特斯拉 Q1 2026 投资分析";
       font-family: "Geist", "Noto Sans CJK SC", ui-sans-serif, system-ui, sans-serif;
       font-size: 9pt;
-      color: #7a7c82;
+      color: var(--vpk-muted-text);
     }
   }
 
@@ -51,28 +115,28 @@
   }
 
   :root {
-    --parchment: #fafaf5;
-    --ivory:     #fafafa;
-    --near-black:#292a2e;
-    --dark-warm: #3a3d42;
-    --olive:     #505258;
-    --stone:     #7a7c82;
-    --brand:     #1868db;
-    --border:    #dadcdf;
-    --border-soft:#dadcdf;
-    --tag-bg:    #d4e4fc;
+    --parchment: var(--vpk-paper);
+    --ivory:     var(--vpk-paper);
+    --near-black:var(--vpk-ink);
+    --dark-warm: var(--vpk-ink);
+    --olive:     var(--vpk-muted-text);
+    --stone:     var(--vpk-muted-text);
+    --brand:     var(--vpk-blueprint);
+    --border:    var(--vpk-rule);
+    --border-soft:var(--vpk-rule);
+    --tag-bg:    var(--vpk-blueprint-tint);
     --serif: "Geist", "Noto Sans CJK SC", ui-sans-serif, system-ui, sans-serif;
     --sans: var(--serif);
   }
 
-  html, body { background: var(--parchment); }
+  html, body { background: var(--vpk-paper); }
 
   @media screen {
     body { max-width: 210mm; margin: 0 auto; padding: 12mm 16mm; }
   }
 
   body {
-    color: var(--near-black);
+    color: var(--vpk-ink);
     font-family: var(--serif);
     font-size: 9.5pt;
     line-height: 1.42;
@@ -80,7 +144,7 @@
   }
 
   strong { font-weight: 500; }
-  .hl { color: var(--brand); font-weight: 500; }
+  .hl { color: var(--vpk-blueprint); font-weight: 500; }
 
   /* ========== HEADER ========== */
   .report-header {
@@ -88,14 +152,14 @@
     justify-content: space-between;
     align-items: flex-start;
     margin-bottom: 12pt;
-    border-left: 2.5pt solid var(--brand);
+    border-left: 2.5pt solid var(--vpk-blueprint);
     border-radius: 1.5pt;
     padding-left: 8pt;
   }
   .ticker-block { flex: 1; }
   .ticker-eyebrow {
     font-size: 9pt;
-    color: var(--brand);
+    color: var(--vpk-blueprint);
     letter-spacing: 1pt;
     text-transform: uppercase;
     margin-bottom: 4pt;
@@ -104,13 +168,13 @@
     font-family: var(--serif);
     font-size: 24pt;
     font-weight: 500;
-    color: var(--near-black);
+    color: var(--vpk-ink);
     line-height: 1.15;
     margin-bottom: 4pt;
   }
   .ticker-sub {
     font-size: 10pt;
-    color: var(--olive);
+    color: var(--vpk-success);
     line-height: 1.4;
   }
   .price-block {
@@ -121,7 +185,7 @@
     font-family: var(--serif);
     font-size: 28pt;
     font-weight: 500;
-    color: var(--near-black);
+    color: var(--vpk-ink);
     line-height: 1;
     font-variant-numeric: tabular-nums;
   }
@@ -130,11 +194,11 @@
     font-weight: 500;
     margin-top: 2pt;
     font-variant-numeric: tabular-nums;
-    color: var(--stone);
+    color: var(--vpk-muted-text);
   }
   .price-date {
     font-size: 9pt;
-    color: var(--stone);
+    color: var(--vpk-muted-text);
     margin-top: 2pt;
   }
 
@@ -144,8 +208,8 @@
     gap: 14pt;
     margin-bottom: 14pt;
     padding: 4pt 0;
-    border-top: 0.3pt dotted var(--border);
-    border-bottom: 0.3pt dotted var(--border);
+    border-top: 0.3pt dotted var(--vpk-rule);
+    border-bottom: 0.3pt dotted var(--vpk-rule);
   }
   .metric {
     flex: 1;
@@ -157,13 +221,13 @@
     font-family: var(--serif);
     font-size: 16pt;
     font-weight: 500;
-    color: var(--brand);
+    color: var(--vpk-blueprint);
     line-height: 1;
     font-variant-numeric: tabular-nums;
   }
   .metric-label {
     font-size: 9pt;
-    color: var(--olive);
+    color: var(--vpk-success);
     line-height: 1.3;
   }
 
@@ -172,7 +236,7 @@
     font-family: var(--serif);
     font-size: 15pt;
     font-weight: 500;
-    color: var(--near-black);
+    color: var(--vpk-ink);
     margin: 9pt 0 3pt 0;
     break-after: avoid;
   }
@@ -180,7 +244,7 @@
   h3 {
     font-size: 12pt;
     font-weight: 500;
-    color: var(--dark-warm);
+    color: var(--vpk-ink);
     margin: 6pt 0 2pt 0;
     break-after: avoid;
   }
@@ -193,7 +257,7 @@
     line-height: 1.45;
   }
   ul li { margin-bottom: 1pt; }
-  ul li::marker { color: var(--brand); }
+  ul li::marker { color: var(--vpk-blueprint); }
 
   /* ========== TABLE ========== */
   table {
@@ -206,26 +270,26 @@
   table th {
     text-align: left;
     font-weight: 500;
-    color: var(--dark-warm);
+    color: var(--vpk-ink);
     padding: 5pt 8pt;
-    border-bottom: 1pt solid var(--border);
+    border-bottom: 1pt solid var(--vpk-rule);
     background: transparent;
   }
   table td {
     padding: 5pt 8pt;
-    border-bottom: 0.3pt solid var(--border-soft);
+    border-bottom: 0.3pt solid var(--vpk-rule);
     vertical-align: top;
   }
   table.financial td:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
   table.financial th:not(:first-child) { text-align: right; }
-  table.striped tbody tr:nth-child(even) td { background: var(--ivory); }
+  table.striped tbody tr:nth-child(even) td { background: var(--vpk-surface-raised); }
   table.compact th { padding: 4pt 6pt; font-size: 8.5pt; }
   table.compact td { padding: 3pt 6pt; font-size: 8.5pt; line-height: 1.4; }
 
   /* ========== CALLOUT ========== */
   .callout {
-    background: var(--ivory);
-    border-left: 2pt solid var(--brand);
+    background: var(--vpk-surface-raised);
+    border-left: 2pt solid var(--vpk-blueprint);
     padding: 8pt 12pt;
     border-radius: 3pt;
     margin: 8pt 0;
@@ -238,7 +302,7 @@
   figure svg { width: 100%; height: auto; max-height: 70mm; }
   figcaption {
     font-size: 9pt;
-    color: var(--stone);
+    color: var(--vpk-muted-text);
     margin-top: 4pt;
     text-align: center;
   }
@@ -252,26 +316,26 @@
   }
   .risk-item {
     padding: 5pt 9pt;
-    background: var(--ivory);
+    background: var(--vpk-surface-raised);
     border-radius: 3pt;
     break-inside: avoid;
   }
   .risk-label {
     font-size: 9pt;
     font-weight: 500;
-    color: var(--brand);
+    color: var(--vpk-blueprint);
     margin-bottom: 2pt;
   }
   .risk-desc {
     font-size: 9pt;
-    color: var(--olive);
+    color: var(--vpk-success);
     line-height: 1.42;
   }
 
   /* ========== ANALYST BOX ========== */
   .analyst-box {
-    background: var(--ivory);
-    border: 0.5pt solid var(--border);
+    background: var(--vpk-surface-raised);
+    border: 0.5pt solid var(--vpk-rule);
     border-radius: 4pt;
     padding: 8pt 12pt;
     margin: 6pt 0;
@@ -279,7 +343,7 @@
   }
   .analyst-label {
     font-size: 9pt;
-    color: var(--brand);
+    color: var(--vpk-blueprint);
     letter-spacing: 0.5pt;
     text-transform: uppercase;
     margin-bottom: 4pt;
@@ -289,27 +353,27 @@
   .report-footer {
     margin-top: 6pt;
     padding-top: 4pt;
-    border-top: 0.3pt dotted var(--border);
+    border-top: 0.3pt dotted var(--vpk-rule);
     font-size: 9pt;
-    color: var(--stone);
+    color: var(--vpk-muted-text);
     display: flex;
     justify-content: space-between;
   }
 
 
   /* vpk-html identity overrides */
-  html { background: var(--parchment); }
+  html { background: var(--vpk-paper); }
   body {
     background:
-      linear-gradient(90deg, rgba(11, 18, 14, 0.018) 1px, transparent 1px),
-      linear-gradient(0deg, rgba(11, 18, 14, 0.018) 1px, transparent 1px),
-      #ffffff;
+      linear-gradient(90deg, color-mix(in srgb, var(--vpk-ink) 2%, transparent) 1px, transparent 1px),
+      linear-gradient(0deg, color-mix(in srgb, var(--vpk-ink) 2%, transparent) 1px, transparent 1px),
+      var(--vpk-surface-raised);
     background-size: 24px 24px;
   }
   /* Frame the document with vpk-html chrome when a kami .page or .frame exists */
   .page, .frame {
-    border: 2px solid #292a2e !important;
-    box-shadow: 0 1px 1px rgba(9, 30, 66, 0.25), 0 0 1px rgba(9, 30, 66, 0.31) !important;
+    border: 2px solid var(--vpk-ink) !important;
+    box-shadow: var(--vpk-shadow) !important;
   }
 </style>
 </head>
@@ -320,7 +384,7 @@
 <div class="report-header">
   <div class="ticker-block">
     <div class="ticker-eyebrow">Q1 2026 财报点评</div>
-    <div class="ticker-name">特斯拉 <span style="font-size: 14pt; color: var(--stone);">TSLA</span></div>
+    <div class="ticker-name">特斯拉 <span style="font-size: 14pt; color: var(--vpk-muted-text);">TSLA</span></div>
     <div class="ticker-sub">汽车与能源 · NASDAQ · 利润率在恢复，但资本开支的账单到了</div>
   </div>
   <div class="price-block">
@@ -364,129 +428,129 @@
 <h2>近期价格走势</h2>
 <figure>
   <svg aria-hidden="true" viewBox="0 0 760 270" xmlns="http://www.w3.org/2000/svg">
-    <rect width="100%" height="100%" fill="#ffffff"/>
+    <rect width="100%" height="100%" fill="var(--vpk-surface-raised)"/>
 
     <!-- 网格：价格区间 335-410，图表区 x=56 y=20 w=660 h=220，基线 y=240 -->
     <!-- scale: 1 dollar = 2.93px (220/75) -->
-    <line x1="56" y1="240" x2="716" y2="240" stroke="#e8e7e1" stroke-width="0.8"/>
-    <line x1="56" y1="211" x2="716" y2="211" stroke="#e8e7e1" stroke-width="0.8"/>
-    <line x1="56" y1="181" x2="716" y2="181" stroke="#e8e7e1" stroke-width="0.8"/>
-    <line x1="56" y1="152" x2="716" y2="152" stroke="#e8e7e1" stroke-width="0.8"/>
-    <line x1="56" y1="123" x2="716" y2="123" stroke="#e8e7e1" stroke-width="0.8"/>
-    <line x1="56" y1="93"  x2="716" y2="93"  stroke="#e8e7e1" stroke-width="0.8"/>
-    <line x1="56" y1="64"  x2="716" y2="64"  stroke="#e8e7e1" stroke-width="0.8"/>
-    <line x1="56" y1="35"  x2="716" y2="35"  stroke="#e8e7e1" stroke-width="0.8"/>
+    <line x1="56" y1="240" x2="716" y2="240" stroke="var(--vpk-rule)" stroke-width="0.8"/>
+    <line x1="56" y1="211" x2="716" y2="211" stroke="var(--vpk-rule)" stroke-width="0.8"/>
+    <line x1="56" y1="181" x2="716" y2="181" stroke="var(--vpk-rule)" stroke-width="0.8"/>
+    <line x1="56" y1="152" x2="716" y2="152" stroke="var(--vpk-rule)" stroke-width="0.8"/>
+    <line x1="56" y1="123" x2="716" y2="123" stroke="var(--vpk-rule)" stroke-width="0.8"/>
+    <line x1="56" y1="93"  x2="716" y2="93"  stroke="var(--vpk-rule)" stroke-width="0.8"/>
+    <line x1="56" y1="64"  x2="716" y2="64"  stroke="var(--vpk-rule)" stroke-width="0.8"/>
+    <line x1="56" y1="35"  x2="716" y2="35"  stroke="var(--vpk-rule)" stroke-width="0.8"/>
 
     <!-- Y 轴标签 -->
-    <text x="48" y="244" fill="#7a7c82" font-size="9" text-anchor="end" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif">335</text>
-    <text x="48" y="215" fill="#7a7c82" font-size="9" text-anchor="end" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif">345</text>
-    <text x="48" y="185" fill="#7a7c82" font-size="9" text-anchor="end" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif">355</text>
-    <text x="48" y="156" fill="#7a7c82" font-size="9" text-anchor="end" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif">365</text>
-    <text x="48" y="127" fill="#7a7c82" font-size="9" text-anchor="end" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif">375</text>
-    <text x="48" y="97"  fill="#7a7c82" font-size="9" text-anchor="end" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif">385</text>
-    <text x="48" y="68"  fill="#7a7c82" font-size="9" text-anchor="end" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif">395</text>
-    <text x="48" y="39"  fill="#7a7c82" font-size="9" text-anchor="end" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif">405</text>
+    <text x="48" y="244" fill="var(--vpk-muted-text)" font-size="9" text-anchor="end" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif">335</text>
+    <text x="48" y="215" fill="var(--vpk-muted-text)" font-size="9" text-anchor="end" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif">345</text>
+    <text x="48" y="185" fill="var(--vpk-muted-text)" font-size="9" text-anchor="end" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif">355</text>
+    <text x="48" y="156" fill="var(--vpk-muted-text)" font-size="9" text-anchor="end" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif">365</text>
+    <text x="48" y="127" fill="var(--vpk-muted-text)" font-size="9" text-anchor="end" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif">375</text>
+    <text x="48" y="97"  fill="var(--vpk-muted-text)" font-size="9" text-anchor="end" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif">385</text>
+    <text x="48" y="68"  fill="var(--vpk-muted-text)" font-size="9" text-anchor="end" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif">395</text>
+    <text x="48" y="39"  fill="var(--vpk-muted-text)" font-size="9" text-anchor="end" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif">405</text>
 
     <!-- 20 K 线, y = 240 - (price-335)*2.93 -->
 
     <!-- Day 1 Mar 26: O=381.60 H=384.44 L=371.87 C=372.11 DOWN -->
-    <line x1="72" y1="95" x2="72" y2="132" stroke="#7a7c82" stroke-width="1.2"/>
-    <rect x="64" y="103" width="16" height="27" fill="#7a7c82" rx="1"/>
+    <line x1="72" y1="95" x2="72" y2="132" stroke="var(--vpk-muted-text)" stroke-width="1.2"/>
+    <rect x="64" y="103" width="16" height="27" fill="var(--vpk-muted-text)" rx="1"/>
 
     <!-- Day 2 Mar 27: O=369.69 H=369.86 L=359.47 C=361.83 DOWN -->
-    <line x1="105" y1="138" x2="105" y2="168" stroke="#7a7c82" stroke-width="1.2"/>
-    <rect x="97" y="138" width="16" height="23" fill="#7a7c82" rx="1"/>
+    <line x1="105" y1="138" x2="105" y2="168" stroke="var(--vpk-muted-text)" stroke-width="1.2"/>
+    <rect x="97" y="138" width="16" height="23" fill="var(--vpk-muted-text)" rx="1"/>
 
     <!-- Day 3 Mar 30: O=365.86 H=367.29 L=352.14 C=355.28 DOWN -->
-    <line x1="138" y1="146" x2="138" y2="190" stroke="#7a7c82" stroke-width="1.2"/>
-    <rect x="130" y="149" width="16" height="31" fill="#7a7c82" rx="1"/>
+    <line x1="138" y1="146" x2="138" y2="190" stroke="var(--vpk-muted-text)" stroke-width="1.2"/>
+    <rect x="130" y="149" width="16" height="31" fill="var(--vpk-muted-text)" rx="1"/>
 
     <!-- Day 4 Mar 31: O=361.51 H=373.33 L=361.00 C=371.75 UP -->
-    <line x1="171" y1="128" x2="171" y2="164" stroke="#1868db" stroke-width="1.2"/>
-    <rect x="163" y="132" width="16" height="30" fill="#1868db" rx="1"/>
+    <line x1="171" y1="128" x2="171" y2="164" stroke="var(--vpk-blueprint)" stroke-width="1.2"/>
+    <rect x="163" y="132" width="16" height="30" fill="var(--vpk-blueprint)" rx="1"/>
 
     <!-- Day 5 Apr 1: O=378.63 H=383.14 L=374.08 C=381.26 UP -->
-    <line x1="204" y1="99" x2="204" y2="126" stroke="#1868db" stroke-width="1.2"/>
-    <rect x="196" y="104" width="16" height="15" fill="#1868db" rx="1"/>
+    <line x1="204" y1="99" x2="204" y2="126" stroke="var(--vpk-blueprint)" stroke-width="1.2"/>
+    <rect x="196" y="104" width="16" height="15" fill="var(--vpk-blueprint)" rx="1"/>
 
     <!-- Day 6 Apr 2: O=364.20 H=370.28 L=359.03 C=360.59 DOWN -->
-    <line x1="237" y1="137" x2="237" y2="169" stroke="#7a7c82" stroke-width="1.2"/>
-    <rect x="229" y="143" width="16" height="18" fill="#7a7c82" rx="1"/>
+    <line x1="237" y1="137" x2="237" y2="169" stroke="var(--vpk-muted-text)" stroke-width="1.2"/>
+    <rect x="229" y="143" width="16" height="18" fill="var(--vpk-muted-text)" rx="1"/>
 
     <!-- Day 7 Apr 6: O=362.59 H=367.72 L=346.64 C=352.82 DOWN -->
-    <line x1="270" y1="144" x2="270" y2="206" stroke="#7a7c82" stroke-width="1.2"/>
-    <rect x="262" y="149" width="16" height="40" fill="#7a7c82" rx="1"/>
+    <line x1="270" y1="144" x2="270" y2="206" stroke="var(--vpk-muted-text)" stroke-width="1.2"/>
+    <rect x="262" y="149" width="16" height="40" fill="var(--vpk-muted-text)" rx="1"/>
 
     <!-- Day 8 Apr 7: O=346.44 H=348.02 L=337.24 C=346.65 UP -->
-    <line x1="303" y1="202" x2="303" y2="233" stroke="#1868db" stroke-width="1.2"/>
-    <rect x="295" y="202" width="16" height="15" fill="#1868db" rx="1"/>
+    <line x1="303" y1="202" x2="303" y2="233" stroke="var(--vpk-blueprint)" stroke-width="1.2"/>
+    <rect x="295" y="202" width="16" height="15" fill="var(--vpk-blueprint)" rx="1"/>
 
     <!-- Day 9 Apr 8: O=363.79 H=364.50 L=339.67 C=343.25 DOWN -->
-    <line x1="336" y1="154" x2="336" y2="226" stroke="#7a7c82" stroke-width="1.2"/>
-    <rect x="328" y="154" width="16" height="60" fill="#7a7c82" rx="1"/>
+    <line x1="336" y1="154" x2="336" y2="226" stroke="var(--vpk-muted-text)" stroke-width="1.2"/>
+    <rect x="328" y="154" width="16" height="60" fill="var(--vpk-muted-text)" rx="1"/>
 
     <!-- Day 10 Apr 9: O=343.15 H=348.88 L=337.25 C=345.62 UP -->
-    <line x1="369" y1="199" x2="369" y2="233" stroke="#1868db" stroke-width="1.2"/>
-    <rect x="361" y="209" width="16" height="17" fill="#1868db" rx="1"/>
+    <line x1="369" y1="199" x2="369" y2="233" stroke="var(--vpk-blueprint)" stroke-width="1.2"/>
+    <rect x="361" y="209" width="16" height="17" fill="var(--vpk-blueprint)" rx="1"/>
 
     <!-- Day 11 Apr 10: O=346.29 H=350.36 L=342.74 C=348.95 UP -->
-    <line x1="402" y1="195" x2="402" y2="217" stroke="#1868db" stroke-width="1.2"/>
-    <rect x="394" y="199" width="16" height="13" fill="#1868db" rx="1"/>
+    <line x1="402" y1="195" x2="402" y2="217" stroke="var(--vpk-blueprint)" stroke-width="1.2"/>
+    <rect x="394" y="199" width="16" height="13" fill="var(--vpk-blueprint)" rx="1"/>
 
     <!-- Day 12 Apr 13: O=350.07 H=356.35 L=348.57 C=352.42 UP -->
-    <line x1="435" y1="177" x2="435" y2="200" stroke="#1868db" stroke-width="1.2"/>
-    <rect x="427" y="189" width="16" height="7" fill="#1868db" rx="1"/>
+    <line x1="435" y1="177" x2="435" y2="200" stroke="var(--vpk-blueprint)" stroke-width="1.2"/>
+    <rect x="427" y="189" width="16" height="7" fill="var(--vpk-blueprint)" rx="1"/>
 
     <!-- Day 13 Apr 14: O=357.67 H=367.63 L=354.77 C=364.20 UP -->
-    <line x1="468" y1="144" x2="468" y2="182" stroke="#1868db" stroke-width="1.2"/>
-    <rect x="460" y="154" width="16" height="19" fill="#1868db" rx="1"/>
+    <line x1="468" y1="144" x2="468" y2="182" stroke="var(--vpk-blueprint)" stroke-width="1.2"/>
+    <rect x="460" y="154" width="16" height="19" fill="var(--vpk-blueprint)" rx="1"/>
 
     <!-- Day 14 Apr 15: O=366.83 H=394.65 L=362.50 C=391.95 UP -->
-    <line x1="501" y1="65" x2="501" y2="159" stroke="#1868db" stroke-width="1.2"/>
-    <rect x="493" y="73" width="16" height="74" fill="#1868db" rx="1"/>
+    <line x1="501" y1="65" x2="501" y2="159" stroke="var(--vpk-blueprint)" stroke-width="1.2"/>
+    <rect x="493" y="73" width="16" height="74" fill="var(--vpk-blueprint)" rx="1"/>
 
     <!-- Day 15 Apr 16: O=393.81 H=394.06 L=381.80 C=388.90 DOWN -->
-    <line x1="534" y1="67" x2="534" y2="103" stroke="#7a7c82" stroke-width="1.2"/>
-    <rect x="526" y="68" width="16" height="14" fill="#7a7c82" rx="1"/>
+    <line x1="534" y1="67" x2="534" y2="103" stroke="var(--vpk-muted-text)" stroke-width="1.2"/>
+    <rect x="526" y="68" width="16" height="14" fill="var(--vpk-muted-text)" rx="1"/>
 
     <!-- Day 16 Apr 17: O=395.92 H=409.28 L=391.65 C=400.62 UP -->
-    <line x1="567" y1="23" x2="567" y2="74" stroke="#1868db" stroke-width="1.2"/>
-    <rect x="559" y="48" width="16" height="14" fill="#1868db" rx="1"/>
+    <line x1="567" y1="23" x2="567" y2="74" stroke="var(--vpk-blueprint)" stroke-width="1.2"/>
+    <rect x="559" y="48" width="16" height="14" fill="var(--vpk-blueprint)" rx="1"/>
 
     <!-- Day 17 Apr 20: O=402.58 H=406.80 L=388.33 C=392.50 DOWN -->
-    <line x1="600" y1="30" x2="600" y2="84" stroke="#7a7c82" stroke-width="1.2"/>
-    <rect x="592" y="42" width="16" height="30" fill="#7a7c82" rx="1"/>
+    <line x1="600" y1="30" x2="600" y2="84" stroke="var(--vpk-muted-text)" stroke-width="1.2"/>
+    <rect x="592" y="42" width="16" height="30" fill="var(--vpk-muted-text)" rx="1"/>
 
     <!-- Day 18 Apr 21: O=393.00 H=393.95 L=385.22 C=386.42 DOWN -->
-    <line x1="633" y1="67" x2="633" y2="94" stroke="#7a7c82" stroke-width="1.2"/>
-    <rect x="625" y="70" width="16" height="19" fill="#7a7c82" rx="1"/>
+    <line x1="633" y1="67" x2="633" y2="94" stroke="var(--vpk-muted-text)" stroke-width="1.2"/>
+    <rect x="625" y="70" width="16" height="19" fill="var(--vpk-muted-text)" rx="1"/>
 
     <!-- Day 19 Apr 22: O=387.57 H=393.01 L=385.30 C=387.51 DOWN -->
-    <line x1="666" y1="70" x2="666" y2="94" stroke="#7a7c82" stroke-width="1.2"/>
-    <rect x="658" y="86" width="16" height="4" fill="#7a7c82" rx="1"/>
+    <line x1="666" y1="70" x2="666" y2="94" stroke="var(--vpk-muted-text)" stroke-width="1.2"/>
+    <rect x="658" y="86" width="16" height="4" fill="var(--vpk-muted-text)" rx="1"/>
 
     <!-- Day 20 Apr 23: O=375.28 H=386.00 L=368.39 C=373.72 DOWN -->
-    <line x1="699" y1="91" x2="699" y2="143" stroke="#7a7c82" stroke-width="1.2"/>
-    <rect x="691" y="101" width="16" height="22" fill="#7a7c82" rx="1"/>
+    <line x1="699" y1="91" x2="699" y2="143" stroke="var(--vpk-muted-text)" stroke-width="1.2"/>
+    <rect x="691" y="101" width="16" height="22" fill="var(--vpk-muted-text)" rx="1"/>
 
     <!-- X 轴 -->
-    <text x="72"  y="260" fill="#7a7c82" font-size="8" text-anchor="middle" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif">3/26</text>
-    <text x="237" y="260" fill="#7a7c82" font-size="8" text-anchor="middle" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif">4/2</text>
-    <text x="402" y="260" fill="#7a7c82" font-size="8" text-anchor="middle" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif">4/10</text>
-    <text x="567" y="260" fill="#7a7c82" font-size="8" text-anchor="middle" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif">4/17</text>
-    <text x="699" y="260" fill="#7a7c82" font-size="8" text-anchor="middle" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif">4/23</text>
+    <text x="72"  y="260" fill="var(--vpk-muted-text)" font-size="8" text-anchor="middle" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif">3/26</text>
+    <text x="237" y="260" fill="var(--vpk-muted-text)" font-size="8" text-anchor="middle" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif">4/2</text>
+    <text x="402" y="260" fill="var(--vpk-muted-text)" font-size="8" text-anchor="middle" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif">4/10</text>
+    <text x="567" y="260" fill="var(--vpk-muted-text)" font-size="8" text-anchor="middle" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif">4/17</text>
+    <text x="699" y="260" fill="var(--vpk-muted-text)" font-size="8" text-anchor="middle" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif">4/23</text>
 
     <!-- 财报标注 -->
-    <line x1="682" y1="24" x2="682" y2="82" stroke="#1868db" stroke-width="0.8" stroke-dasharray="3,2"/>
-    <text x="680" y="20" fill="#1868db" font-size="8" text-anchor="end" font-weight="500" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif">Earnings</text>
+    <line x1="682" y1="24" x2="682" y2="82" stroke="var(--vpk-blueprint)" stroke-width="0.8" stroke-dasharray="3,2"/>
+    <text x="680" y="20" fill="var(--vpk-blueprint)" font-size="8" text-anchor="end" font-weight="500" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif">Earnings</text>
 
     <!-- 图例 -->
-    <line x1="56" y1="280" x2="716" y2="280" stroke="#e8e7e1" stroke-width="0.8"/>
-    <rect x="56" y="290" width="10" height="10" fill="#1868db" rx="2"/>
-    <text x="72" y="299" fill="#505258" font-size="9" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif">Up</text>
-    <rect x="120" y="290" width="10" height="10" fill="#7a7c82" rx="2"/>
-    <text x="136" y="299" fill="#505258" font-size="9" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif">Down</text>
-    <text x="240" y="299" fill="#505258" font-size="9" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif">20 trading days | $337 - $409</text>
+    <line x1="56" y1="280" x2="716" y2="280" stroke="var(--vpk-rule)" stroke-width="0.8"/>
+    <rect x="56" y="290" width="10" height="10" fill="var(--vpk-blueprint)" rx="2"/>
+    <text x="72" y="299" fill="var(--vpk-muted-text)" font-size="9" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif">Up</text>
+    <rect x="120" y="290" width="10" height="10" fill="var(--vpk-muted-text)" rx="2"/>
+    <text x="136" y="299" fill="var(--vpk-muted-text)" font-size="9" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif">Down</text>
+    <text x="240" y="299" fill="var(--vpk-muted-text)" font-size="9" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif">20 trading days | $337 - $409</text>
   </svg>
   <figcaption>图 1. TSLA 近 20 个交易日走势（3/26 - 4/23）。4/17 冲高 $409 后回落，财报后因 capex 指引下跌。</figcaption>
 </figure>

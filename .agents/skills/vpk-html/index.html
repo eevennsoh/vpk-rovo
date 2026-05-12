@@ -31,19 +31,51 @@
 }
 
 :root {
+	--vpk-paper: var(--ds-surface, #ffffff);
+	--vpk-paper-background: var(--ds-surface, #ffffff);
+	--vpk-surface-raised: var(--ds-surface-raised, #ffffff);
+	--vpk-surface-overlay: var(--ds-surface-overlay, #ffffff);
+	--vpk-surface-sunken: var(--ds-surface-sunken, #f0f1f2);
+	--vpk-ink: var(--ds-text, #292a2e);
+	--vpk-muted-text: var(--ds-text-subtle, #505258);
+	--vpk-subtlest-text: var(--ds-text-subtlest, #6b6e76);
+	--vpk-inverse-text: var(--ds-text-inverse, #ffffff);
+	--vpk-rule: var(--ds-border, #0b120e24);
+	--vpk-rule-strong: var(--ds-border-bold, #7d818a);
+	--vpk-blueprint: var(--ds-background-brand-bold, #1868db);
+	--vpk-link: var(--ds-link, #1868db);
+	--vpk-link-pressed: var(--ds-link-pressed, #1558bc);
+	--vpk-selected: var(--ds-background-selected, #e9f2fe);
+	--vpk-blueprint-tint: var(--ds-background-information, #e9f2fe);
+	--vpk-blueprint-tint-strong: var(--ds-background-information-hovered, #cfe1fd);
+	--vpk-focus-ring: var(--ds-border-focused, #4688ec);
+	--vpk-code-surface: var(--ds-background-neutral-subtle, #f0f1f2);
+	--vpk-code-ink: var(--ds-text, #292a2e);
+	--vpk-code-inverse: var(--ds-text-inverse, #ffffff);
+	--vpk-math-highlight: var(--ds-background-information, #e9f2fe);
+	--vpk-success: var(--ds-background-success-bold, #5b7f24);
+	--vpk-success-tint: var(--ds-background-success, #efffd6);
+	--vpk-warning: var(--ds-background-warning-bold, #fbc828);
+	--vpk-warning-tint: var(--ds-background-warning, #fff5db);
+	--vpk-danger: var(--ds-background-danger-bold, #c9372c);
+	--vpk-danger-tint: var(--ds-background-danger, #ffeceb);
+	--vpk-info: var(--ds-background-information-bold, #1868db);
+	--vpk-info-tint: var(--ds-background-information, #e9f2fe);
+	--vpk-paper-rule: color-mix(in srgb, var(--vpk-ink) 8%, transparent);
+	--vpk-shadow: var(--ds-shadow-raised, 0 1px 1px rgba(9, 30, 66, 0.25), 0 0 1px rgba(9, 30, 66, 0.31));
 	color-scheme: light dark;
-	--paper: #fafaf5;
-	--paper-solid: #fffef8;
-	--ink: #292a2e;
-	--muted: #505258;
-	--rule: #0b120e24;
-	--rule-strong: #292a2e;
-	--blueprint: #3553ff;
-	--blueprint-ink: #1d34b8;
-	--blueprint-tint: rgba(53, 83, 255, 0.08);
-	--code-surface: #f0f1f2;
-	--success: #5b7f24;
-	--danger: #c9372c;
+	--paper: var(--vpk-paper);
+	--paper-solid: var(--vpk-surface-raised);
+	--ink: var(--vpk-ink);
+	--muted: var(--vpk-muted-text);
+	--rule: var(--vpk-rule);
+	--rule-strong: var(--vpk-ink);
+	--blueprint: var(--vpk-blueprint);
+	--link-pressed: var(--vpk-link-pressed);
+	--selected: color-mix(in srgb, var(--vpk-blueprint) 8%, transparent);
+	--code-surface: var(--vpk-code-surface);
+	--success: var(--vpk-success);
+	--danger: var(--vpk-danger);
 	--font-display: "Geist Pixel", "Geist Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
 	--font-body: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 	--font-mono: "Geist Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
@@ -51,25 +83,57 @@
 
 /* Dark mode tokens. Activate via <html data-theme="dark">. */
 [data-theme="dark"] {
-	--paper: #0a0d1a;
-	--paper-solid: #131830;
-	--ink: #e8e6dc;
-	--muted: #b7b9c5;
-	--rule: rgba(232, 230, 220, 0.18);
-	--rule-strong: #e8e6dc;
-	--blueprint: #6b8eff;
-	--blueprint-ink: #9fb4ff;
-	--blueprint-tint: rgba(107, 142, 255, 0.16);
-	--code-surface: #171c2d;
-	--success: #a4c76b;
-	--danger: #ff7a70;
+	--vpk-paper: var(--ds-surface, #101214);
+	--vpk-paper-background: var(--ds-surface, #1d2125);
+	--vpk-surface-raised: var(--ds-surface-raised, #22272b);
+	--vpk-surface-overlay: var(--ds-surface-overlay, #282e33);
+	--vpk-surface-sunken: var(--ds-surface-sunken, #161a1d);
+	--vpk-ink: var(--ds-text, #dee4ea);
+	--vpk-muted-text: var(--ds-text-subtle, #9fadbc);
+	--vpk-subtlest-text: var(--ds-text-subtlest, #738496);
+	--vpk-inverse-text: var(--ds-text-inverse, #101214);
+	--vpk-rule: var(--ds-border, #a6c5e229);
+	--vpk-rule-strong: var(--ds-border-bold, #738496);
+	--vpk-blueprint: var(--ds-background-brand-bold, #579dff);
+	--vpk-link: var(--ds-link, #579dff);
+	--vpk-link-pressed: var(--ds-link-pressed, #85b8ff);
+	--vpk-selected: var(--ds-background-selected, #09326c);
+	--vpk-blueprint-tint: var(--ds-background-information, #09326c);
+	--vpk-blueprint-tint-strong: var(--ds-background-information-hovered, #0c418a);
+	--vpk-focus-ring: var(--ds-border-focused, #579dff);
+	--vpk-code-surface: var(--ds-background-neutral-subtle, #161a1d);
+	--vpk-code-ink: var(--ds-text, #dee4ea);
+	--vpk-code-inverse: var(--ds-text-inverse, #101214);
+	--vpk-math-highlight: var(--ds-background-information, #09326c);
+	--vpk-success: var(--ds-background-success-bold, #b3df72);
+	--vpk-success-tint: var(--ds-background-success, #1f4d3a);
+	--vpk-warning: var(--ds-background-warning-bold, #f5cd47);
+	--vpk-warning-tint: var(--ds-background-warning, #533f04);
+	--vpk-danger: var(--ds-background-danger-bold, #f87168);
+	--vpk-danger-tint: var(--ds-background-danger, #5d1f1a);
+	--vpk-info: var(--ds-background-information-bold, #579dff);
+	--vpk-info-tint: var(--ds-background-information, #09326c);
+	--vpk-paper-rule: color-mix(in srgb, var(--vpk-ink) 8%, transparent);
+	--vpk-shadow: var(--ds-shadow-raised, 0 1px 1px rgba(0, 0, 0, 0.32), 0 0 1px rgba(0, 0, 0, 0.42));
+	--paper: var(--vpk-paper);
+	--paper-solid: var(--vpk-surface-raised);
+	--ink: var(--vpk-ink);
+	--muted: var(--vpk-muted-text);
+	--rule: color-mix(in srgb, var(--vpk-ink) 18%, transparent);
+	--rule-strong: var(--vpk-ink);
+	--blueprint: var(--vpk-blueprint);
+	--link-pressed: var(--vpk-link-pressed);
+	--selected: color-mix(in srgb, var(--vpk-blueprint) 16%, transparent);
+	--code-surface: var(--vpk-code-surface);
+	--success: var(--vpk-success);
+	--danger: var(--vpk-danger);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 html {
-	background: var(--paper);
-	color: var(--ink);
+	background: var(--vpk-paper);
+	color: var(--vpk-ink);
 	font-family: var(--font-body);
 	line-height: 1.6;
 	scroll-behavior: auto;
@@ -77,25 +141,25 @@ html {
 
 body {
 	background:
-		radial-gradient(circle at 1px 1px, rgba(41, 42, 46, 0.16) 1px, transparent 0),
-		linear-gradient(180deg, rgba(53, 83, 255, 0.04), transparent 18rem),
-		var(--paper);
+		radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--vpk-ink) 16%, transparent) 1px, transparent 0),
+		linear-gradient(180deg, color-mix(in srgb, var(--vpk-blueprint) 4%, transparent), transparent 18rem),
+		var(--vpk-paper);
 	background-size: 18px 18px, 100% 100%, auto;
 	min-height: 100vh;
 }
 
 a {
-	color: var(--blueprint-ink);
-	text-decoration-color: color-mix(in srgb, var(--blueprint) 45%, transparent);
+	color: var(--link-pressed);
+	text-decoration-color: color-mix(in srgb, var(--vpk-blueprint) 45%, transparent);
 	text-decoration-thickness: 0.08em;
 	text-underline-offset: 0.18em;
 }
 
-a:hover { color: var(--blueprint); }
+a:hover { color: var(--vpk-blueprint); }
 
 code {
-	background: var(--blueprint-tint);
-	border: 1px solid color-mix(in srgb, var(--blueprint) 18%, transparent);
+	background: var(--selected);
+	border: 1px solid color-mix(in srgb, var(--vpk-blueprint) 18%, transparent);
 	font-family: var(--font-mono);
 	font-size: 0.92em;
 	padding: 0.04rem 0.28rem;
@@ -111,8 +175,8 @@ code {
 .topnav {
 	align-items: center;
 	backdrop-filter: blur(14px);
-	background: color-mix(in srgb, var(--paper) 88%, transparent);
-	border-bottom: 1px solid var(--rule);
+	background: color-mix(in srgb, var(--vpk-paper) 88%, transparent);
+	border-bottom: 1px solid var(--vpk-rule);
 	display: flex;
 	font-family: var(--font-mono);
 	font-size: 0.74rem;
@@ -131,7 +195,7 @@ code {
 
 .brand {
 	align-items: center;
-	color: var(--ink);
+	color: var(--vpk-ink);
 	display: inline-flex;
 	gap: 0.55rem;
 	text-decoration: none;
@@ -152,15 +216,15 @@ code {
 }
 
 .links a {
-	color: var(--ink);
+	color: var(--vpk-ink);
 	text-decoration: none;
 }
 
-.links a:hover { color: var(--blueprint); }
+.links a:hover { color: var(--vpk-blueprint); }
 
 /* ============ Manual layout ============ */
 .hero {
-	border-bottom: 2px solid var(--rule-strong);
+	border-bottom: 2px solid var(--vpk-rule-strong);
 	display: grid;
 	gap: clamp(1.4rem, 4vw, 3rem);
 	grid-template-columns: minmax(0, 1.15fr) minmax(17rem, 0.55fr);
@@ -173,7 +237,7 @@ code {
 .meta-label,
 .catalog-kicker,
 .eyebrow {
-	color: var(--muted);
+	color: var(--vpk-muted-text);
 	font-family: var(--font-mono);
 	font-size: 0.72rem;
 	letter-spacing: 0.18em;
@@ -198,21 +262,21 @@ code {
 
 .hero-note {
 	align-self: end;
-	border: 1px solid var(--rule-strong);
-	background: var(--paper-solid);
+	border: 1px solid var(--vpk-rule-strong);
+	background: var(--vpk-surface-raised);
 	display: grid;
 	gap: 1rem;
 	padding: 1rem;
 }
 
 .hero-note p {
-	color: var(--muted);
+	color: var(--vpk-muted-text);
 	font-size: 0.9rem;
 	line-height: 1.5;
 }
 
 .system-card {
-	border-top: 1px solid var(--rule);
+	border-top: 1px solid var(--vpk-rule);
 	display: grid;
 	gap: 0.45rem;
 	padding-top: 0.85rem;
@@ -225,18 +289,19 @@ code {
 }
 
 .stat-strip {
-	border-bottom: 1px solid var(--rule-strong);
+	border-bottom: 1px solid var(--vpk-rule-strong);
 	display: grid;
 	grid-template-columns: repeat(4, minmax(0, 1fr));
 	margin-bottom: clamp(2rem, 5vw, 4rem);
 }
 
 .stat {
-	border-right: 1px solid var(--rule);
-	padding: 1rem 1rem 1.1rem 0;
+	border-right: 1px solid var(--vpk-rule);
+	padding: 1rem 1rem 1.1rem;
+	text-align: center;
 }
 
-.stat:last-child { border-right: 0; padding-right: 0; }
+.stat:last-child { border-right: 0; }
 
 .stat strong {
 	display: block;
@@ -247,7 +312,7 @@ code {
 }
 
 .stat span {
-	color: var(--muted);
+	color: var(--vpk-muted-text);
 	display: block;
 	font-family: var(--font-mono);
 	font-size: 0.72rem;
@@ -257,7 +322,7 @@ code {
 }
 
 section {
-	border-bottom: 1px solid var(--rule-strong);
+	border-bottom: 1px solid var(--vpk-rule-strong);
 	display: grid;
 	gap: clamp(1.4rem, 3vw, 2.5rem);
 	grid-template-columns: minmax(11rem, 0.32fr) minmax(0, 1fr);
@@ -284,7 +349,7 @@ section {
 }
 
 .section-lede {
-	color: var(--muted);
+	color: var(--vpk-muted-text);
 	font-size: 1rem;
 	max-width: 66ch;
 }
@@ -307,28 +372,28 @@ section {
 }
 
 .callout {
-	background: var(--blueprint-tint);
-	border-left: 3px solid var(--blueprint);
-	color: var(--muted);
+	background: var(--selected);
+	border-left: 3px solid var(--vpk-blueprint);
+	color: var(--vpk-muted-text);
 	font-size: 0.92rem;
 	padding: 0.9rem 1rem;
 }
 
 /* ============ Templates catalog ============ */
 .catalog {
-	border-top: 2px solid var(--rule-strong);
+	border-top: 2px solid var(--vpk-rule-strong);
 	display: grid;
 }
 
 .catalog-group {
-	border-bottom: 1px solid var(--rule-strong);
+	border-bottom: 1px solid var(--vpk-rule-strong);
 	display: grid;
 	grid-template-columns: minmax(10rem, 0.26fr) minmax(0, 1fr);
 }
 
 .catalog-head {
-	background: color-mix(in srgb, var(--blueprint-tint) 72%, transparent);
-	border-right: 1px solid var(--rule);
+	background: color-mix(in srgb, var(--selected) 72%, transparent);
+	border-right: 1px solid var(--vpk-rule);
 	padding: 1rem;
 }
 
@@ -346,7 +411,7 @@ section {
 
 .catalog-row {
 	align-items: start;
-	border-bottom: 1px solid var(--rule);
+	border-bottom: 1px solid var(--vpk-rule);
 	color: inherit;
 	display: grid;
 	gap: 1rem;
@@ -358,7 +423,7 @@ section {
 .catalog-row:last-child { border-bottom: 0; }
 
 .catalog-row:hover {
-	background: var(--paper-solid);
+	background: var(--vpk-surface-raised);
 	color: inherit;
 }
 
@@ -369,17 +434,18 @@ section {
 }
 
 .catalog-row p {
-	color: var(--muted);
+	color: var(--vpk-muted-text);
 	font-size: 0.92rem;
 	line-height: 1.45;
 }
 
 .path {
-	color: var(--blueprint-ink);
+	color: var(--link-pressed);
 	font-family: var(--font-mono);
 	font-size: 0.78rem;
 	line-height: 1.45;
-	overflow-wrap: anywhere;
+	min-width: 0;
+	overflow-wrap: break-word;
 }
 
 /* ============ Demos ============ */
@@ -390,8 +456,8 @@ section {
 }
 
 .demo-card {
-	background: var(--paper-solid);
-	border: 1px solid var(--rule-strong);
+	background: var(--vpk-surface-raised);
+	border: 1px solid var(--vpk-rule-strong);
 	color: inherit;
 	display: grid;
 	grid-template-rows: auto 1fr;
@@ -401,14 +467,14 @@ section {
 }
 
 .demo-card:hover {
-	box-shadow: 6px 6px 0 var(--blueprint-tint);
+	box-shadow: 6px 6px 0 var(--selected);
 	transform: translate(-2px, -2px);
 }
 
 .demo-card .thumb {
 	aspect-ratio: 16 / 10;
-	background: var(--code-surface);
-	border-bottom: 1px solid var(--rule-strong);
+	background: var(--vpk-code-surface);
+	border-bottom: 1px solid var(--vpk-rule-strong);
 	overflow: hidden;
 }
 
@@ -433,13 +499,13 @@ section {
 }
 
 .demo-card .caption {
-	color: var(--muted);
+	color: var(--vpk-muted-text);
 	font-size: 0.86rem;
 	line-height: 1.4;
 }
 
 .phase-demo-index {
-	border-top: 1px solid var(--rule-strong);
+	border-top: 1px solid var(--vpk-rule-strong);
 	display: grid;
 	gap: 1.2rem;
 	margin-top: 2.4rem;
@@ -460,7 +526,7 @@ section {
 }
 
 .phase-demo-intro h3 {
-	color: var(--blueprint);
+	color: var(--vpk-blueprint);
 	font-family: var(--font-display);
 	font-size: clamp(1.7rem, 3.6vw, 2.6rem);
 	font-weight: 400;
@@ -469,11 +535,11 @@ section {
 }
 
 .phase-demo-intro p:last-child {
-	color: var(--muted);
+	color: var(--vpk-muted-text);
 }
 
 .phase-demo-group {
-	border-top: 1px solid var(--rule);
+	border-top: 1px solid var(--vpk-rule);
 	display: grid;
 	gap: 1rem;
 	grid-template-columns: minmax(12rem, 0.32fr) minmax(0, 1fr);
@@ -489,20 +555,20 @@ section {
 }
 
 .phase-demo-head h4 {
-	color: var(--ink);
+	color: var(--vpk-ink);
 	font-size: 1rem;
 	font-weight: 600;
 	line-height: 1.25;
 }
 
 .phase-demo-head p {
-	color: var(--muted);
+	color: var(--vpk-muted-text);
 	font-size: 0.86rem;
 	line-height: 1.4;
 }
 
 .phase-demo-count {
-	color: var(--blueprint);
+	color: var(--vpk-blueprint);
 	font-family: var(--font-mono);
 	font-size: 0.72rem;
 	letter-spacing: 0.12em;
@@ -515,7 +581,7 @@ section {
 }
 
 .phase-demo-link {
-	border-top: 1px solid var(--rule);
+	border-top: 1px solid var(--vpk-rule);
 	color: inherit;
 	display: grid;
 	gap: 0.75rem;
@@ -529,7 +595,7 @@ section {
 }
 
 .phase-demo-link:hover {
-	background: var(--blueprint-tint);
+	background: var(--selected);
 }
 
 .phase-demo-link strong {
@@ -538,13 +604,13 @@ section {
 }
 
 .phase-demo-link span {
-	color: var(--muted);
+	color: var(--vpk-muted-text);
 	font-size: 0.9rem;
 	line-height: 1.45;
 }
 
 .phase-demo-link code {
-	color: var(--blueprint);
+	color: var(--vpk-blueprint);
 	font-family: var(--font-mono);
 	font-size: 0.76rem;
 	line-height: 1.45;
@@ -552,7 +618,7 @@ section {
 }
 
 .demo-gallery-intro {
-	border-top: 1px solid var(--rule-strong);
+	border-top: 1px solid var(--vpk-rule-strong);
 	display: grid;
 	gap: 0.4rem;
 	margin-top: 2rem;
@@ -567,7 +633,7 @@ section {
 }
 
 .demo-gallery-intro p:last-child {
-	color: var(--muted);
+	color: var(--vpk-muted-text);
 	font-size: 0.92rem;
 	line-height: 1.45;
 	max-width: 68ch;
@@ -581,7 +647,7 @@ section {
 }
 
 .step {
-	border-top: 1px solid var(--rule);
+	border-top: 1px solid var(--vpk-rule);
 	counter-increment: step;
 	display: grid;
 	gap: 1rem;
@@ -590,7 +656,7 @@ section {
 }
 
 .step::before {
-	color: var(--blueprint);
+	color: var(--vpk-blueprint);
 	content: counter(step, decimal-leading-zero);
 	font-family: var(--font-display);
 	font-size: 2.2rem;
@@ -605,31 +671,32 @@ section {
 }
 
 .step p {
-	color: var(--muted);
+	color: var(--vpk-muted-text);
 	font-size: 0.92rem;
 	line-height: 1.45;
 }
 
-pre.code {
-	background: var(--paper-solid);
-	border: 1px solid var(--rule-strong);
-	font-family: var(--font-mono);
-	font-size: 0.82rem;
-	line-height: 1.55;
-	overflow-x: auto;
-	padding: 1rem;
-}
+	pre.code {
+		background: var(--vpk-surface-raised);
+		border: 1px solid var(--vpk-rule-strong);
+		font-family: var(--font-mono);
+		font-size: 0.82rem;
+		line-height: 1.55;
+		overflow-wrap: anywhere;
+		padding: 1rem;
+		white-space: pre-wrap;
+	}
 
-pre.code .c { color: var(--muted); }
+pre.code .c { color: var(--vpk-muted-text); }
 
 .rules {
-	border-top: 2px solid var(--rule-strong);
+	border-top: 2px solid var(--vpk-rule-strong);
 	display: grid;
 	list-style: none;
 }
 
 .rules li {
-	border-bottom: 1px solid var(--rule);
+	border-bottom: 1px solid var(--vpk-rule);
 	display: grid;
 	font-size: 0.98rem;
 	gap: 1rem;
@@ -638,7 +705,7 @@ pre.code .c { color: var(--muted); }
 }
 
 .rules .n {
-	color: var(--blueprint);
+	color: var(--vpk-blueprint);
 	font-family: var(--font-display);
 	font-size: 2rem;
 	line-height: 0.85;
@@ -651,15 +718,15 @@ pre.code .c { color: var(--muted); }
 }
 
 .swatch {
-	background: var(--paper-solid);
-	border: 1px solid var(--rule-strong);
+	background: var(--vpk-surface-raised);
+	border: 1px solid var(--vpk-rule-strong);
 	display: flex;
 	flex-direction: column;
 }
 
 .swatch .chip {
 	aspect-ratio: 5 / 3;
-	border-bottom: 1px solid var(--rule-strong);
+	border-bottom: 1px solid var(--vpk-rule-strong);
 }
 
 .swatch .info { padding: 0.65rem 0.75rem 0.8rem; }
@@ -671,27 +738,27 @@ pre.code .c { color: var(--muted); }
 }
 
 .swatch .role {
-	color: var(--muted);
+	color: var(--vpk-muted-text);
 	font-size: 0.82rem;
 	line-height: 1.4;
 	margin: 0.18rem 0 0.45rem;
 }
 
 .swatch .hex {
-	color: var(--muted);
+	color: var(--vpk-muted-text);
 	font-family: var(--font-mono);
 	font-size: 0.76rem;
 	letter-spacing: 0.04em;
 }
 
 .type-grid {
-	border-top: 2px solid var(--rule-strong);
+	border-top: 2px solid var(--vpk-rule-strong);
 	display: grid;
 }
 
 .type-row {
 	align-items: baseline;
-	border-bottom: 1px solid var(--rule);
+	border-bottom: 1px solid var(--vpk-rule);
 	display: grid;
 	gap: 1rem;
 	grid-template-columns: 7rem minmax(0, 1fr) 10rem;
@@ -699,7 +766,7 @@ pre.code .c { color: var(--muted); }
 }
 
 .type-row .label {
-	color: var(--muted);
+	color: var(--vpk-muted-text);
 	font-family: var(--font-mono);
 	font-size: 0.72rem;
 	letter-spacing: 0.16em;
@@ -707,7 +774,7 @@ pre.code .c { color: var(--muted); }
 }
 
 .type-row .specs {
-	color: var(--muted);
+	color: var(--vpk-muted-text);
 	font-family: var(--font-mono);
 	font-size: 0.76rem;
 	line-height: 1.45;
@@ -740,9 +807,9 @@ pre.code .c { color: var(--muted); }
 }
 
 .diagrams-list a {
-	background: var(--paper-solid);
-	border: 1px solid var(--rule);
-	color: var(--ink);
+	background: var(--vpk-surface-raised);
+	border: 1px solid var(--vpk-rule);
+	color: var(--vpk-ink);
 	font-family: var(--font-mono);
 	font-size: 0.82rem;
 	overflow-wrap: anywhere;
@@ -751,13 +818,13 @@ pre.code .c { color: var(--muted); }
 }
 
 .diagrams-list a:hover {
-	background: var(--blueprint-tint);
-	border-color: var(--blueprint);
-	color: var(--blueprint-ink);
+	background: var(--selected);
+	border-color: var(--vpk-blueprint);
+	color: var(--link-pressed);
 }
 
 footer {
-	color: var(--muted);
+	color: var(--vpk-muted-text);
 	font-family: var(--font-mono);
 	font-size: 0.76rem;
 	letter-spacing: 0.04em;
@@ -766,11 +833,11 @@ footer {
 }
 
 footer a {
-	color: var(--muted);
+	color: var(--vpk-muted-text);
 	text-decoration: none;
 }
 
-footer a:hover { color: var(--blueprint); }
+footer a:hover { color: var(--vpk-blueprint); }
 
 @media (max-width: 980px) {
 	.hero,
@@ -802,8 +869,21 @@ footer a:hover { color: var(--blueprint); }
 	}
 
 	.catalog-head {
-		border-bottom: 1px solid var(--rule);
+		border-bottom: 1px solid var(--vpk-rule);
 		border-right: 0;
+	}
+}
+
+@media (max-width: 1100px) {
+	.catalog-row,
+	.phase-demo-link {
+		grid-template-columns: minmax(0, 0.7fr) minmax(0, 1fr);
+	}
+
+	.catalog-row .path,
+	.phase-demo-link code {
+		grid-column: 1 / -1;
+		margin-top: 0.15rem;
 	}
 }
 
@@ -833,9 +913,8 @@ footer a:hover { color: var(--blueprint); }
 	}
 
 	.stat {
-		border-bottom: 1px solid var(--rule);
+		border-bottom: 1px solid var(--vpk-rule);
 		border-right: 0;
-		padding-right: 0;
 	}
 
 	.stat:last-child {
@@ -1454,14 +1533,14 @@ node .agents/skills/vpk-html/scripts/build.mjs --check-templates</pre>
 	</aside>
 	<div class="section-body">
 		<div class="swatches">
-			<div class="swatch"><div class="chip" style="background:#fafaf5;border-bottom:1px solid var(--rule-strong)"></div><div class="info"><p class="name">Paper</p><p class="role">Page background</p><span class="hex">#FAFAF5</span></div></div>
-			<div class="swatch"><div class="chip" style="background:#292a2e"></div><div class="info"><p class="name">Ink</p><p class="role">Body text and hard rules</p><span class="hex">#292A2E</span></div></div>
-			<div class="swatch"><div class="chip" style="background:#505258"></div><div class="info"><p class="name">Muted</p><p class="role">Subtle text and labels</p><span class="hex">#505258</span></div></div>
-			<div class="swatch"><div class="chip" style="background:#3553ff"></div><div class="info"><p class="name">Blueprint</p><p class="role">Links and focal state</p><span class="hex">#3553FF</span></div></div>
-			<div class="swatch"><div class="chip" style="background:rgba(53,83,255,0.08)"></div><div class="info"><p class="name">Blueprint Tint</p><p class="role">Callouts and hover state</p><span class="hex">8% Blueprint</span></div></div>
-			<div class="swatch"><div class="chip" style="background:#f0f1f2"></div><div class="info"><p class="name">Code Surface</p><p class="role">Code blocks and chips</p><span class="hex">#F0F1F2</span></div></div>
-			<div class="swatch"><div class="chip" style="background:#5b7f24"></div><div class="info"><p class="name">Success</p><p class="role">Validation pass</p><span class="hex">#5B7F24</span></div></div>
-			<div class="swatch"><div class="chip" style="background:#c9372c"></div><div class="info"><p class="name">Danger</p><p class="role">Error or regression</p><span class="hex">#C9372C</span></div></div>
+			<div class="swatch"><div class="chip" style="background:var(--vpk-paper);border-bottom:1px solid var(--vpk-rule-strong)"></div><div class="info"><p class="name">Paper</p><p class="role">Page background</p><span class="hex">var(--vpk-paper)</span></div></div>
+			<div class="swatch"><div class="chip" style="background:var(--vpk-ink)"></div><div class="info"><p class="name">Ink</p><p class="role">Body text and hard rules</p><span class="hex">var(--vpk-ink)</span></div></div>
+			<div class="swatch"><div class="chip" style="background:var(--vpk-muted-text)"></div><div class="info"><p class="name">Muted</p><p class="role">Subtle text and labels</p><span class="hex">var(--vpk-muted-text)</span></div></div>
+			<div class="swatch"><div class="chip" style="background:var(--vpk-blueprint)"></div><div class="info"><p class="name">Blueprint</p><p class="role">Links and focal state</p><span class="hex">var(--vpk-blueprint)</span></div></div>
+			<div class="swatch"><div class="chip" style="background:color-mix(in srgb, var(--vpk-blueprint) 8%, transparent)"></div><div class="info"><p class="name">Blueprint Tint</p><p class="role">Callouts and hover state</p><span class="hex">8% Blueprint</span></div></div>
+			<div class="swatch"><div class="chip" style="background:var(--vpk-code-surface)"></div><div class="info"><p class="name">Code Surface</p><p class="role">Code blocks and chips</p><span class="hex">var(--vpk-code-surface)</span></div></div>
+			<div class="swatch"><div class="chip" style="background:var(--vpk-success)"></div><div class="info"><p class="name">Success</p><p class="role">Validation pass</p><span class="hex">var(--vpk-success)</span></div></div>
+			<div class="swatch"><div class="chip" style="background:var(--vpk-danger)"></div><div class="info"><p class="name">Danger</p><p class="role">Error or regression</p><span class="hex">var(--vpk-danger)</span></div></div>
 		</div>
 	</div>
 </section>

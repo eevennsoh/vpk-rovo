@@ -392,15 +392,41 @@ ${fontFaces}
 
 :root {
 \tcolor-scheme: light dark;
-\t--parchment: #fafaf5;
-\t--ivory: #f3f1e8;
-\t--near-black: #0A0A0A;
-\t--dark-warm: #2A2A2A;
-\t--olive: #525252;
-\t--stone: #757575;
-\t--brand: #3553ff;
-\t--border: #E0E0E0;
-\t--tag-bg: #D5DDF8;
+\t--vpk-paper: var(--ds-surface, #ffffff);
+\t--vpk-paper-background: var(--ds-surface, #ffffff);
+\t--vpk-surface-raised: var(--ds-surface-raised, #ffffff);
+\t--vpk-surface-overlay: var(--ds-surface-overlay, #ffffff);
+\t--vpk-surface-sunken: var(--ds-surface-sunken, #f0f1f2);
+\t--vpk-ink: var(--ds-text, #292a2e);
+\t--vpk-muted-text: var(--ds-text-subtle, #505258);
+\t--vpk-subtlest-text: var(--ds-text-subtlest, #6b6e76);
+\t--vpk-inverse-text: var(--ds-text-inverse, #ffffff);
+\t--vpk-rule: var(--ds-border, #0b120e24);
+\t--vpk-rule-strong: var(--ds-border-bold, #7d818a);
+\t--vpk-blueprint: var(--ds-background-brand-bold, #1868db);
+\t--vpk-link: var(--ds-link, #1868db);
+\t--vpk-link-pressed: var(--ds-link-pressed, #1558bc);
+\t--vpk-selected: var(--ds-background-selected, #e9f2fe);
+\t--vpk-blueprint-tint: var(--ds-background-information, #e9f2fe);
+\t--vpk-blueprint-tint-strong: var(--ds-background-information-hovered, #cfe1fd);
+\t--vpk-focus-ring: var(--ds-border-focused, #4688ec);
+\t--vpk-code-surface: var(--ds-background-neutral-subtle, #f0f1f2);
+\t--vpk-code-ink: var(--ds-text, #292a2e);
+\t--vpk-math-highlight: var(--ds-background-information, #e9f2fe);
+\t--vpk-success: var(--ds-background-success-bold, #5b7f24);
+\t--vpk-warning: var(--ds-background-warning-bold, #fbc828);
+\t--vpk-danger: var(--ds-background-danger-bold, #c9372c);
+\t--vpk-info: var(--ds-background-information-bold, #1868db);
+\t--vpk-paper-rule: color-mix(in srgb, var(--vpk-ink) 8%, transparent);
+\t--parchment: var(--vpk-paper);
+\t--ivory: var(--vpk-surface-raised);
+\t--near-black: var(--vpk-ink);
+\t--dark-warm: var(--vpk-ink);
+\t--olive: var(--vpk-muted-text);
+\t--stone: var(--vpk-subtlest-text);
+\t--brand: var(--vpk-blueprint);
+\t--border: var(--vpk-rule);
+\t--tag-bg: var(--vpk-blueprint-tint);
 \t--shadow-hard: 3px 3px 0 var(--near-black);
 \t--serif: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 \t--sans: var(--serif);
@@ -409,15 +435,32 @@ ${fontFaces}
 }
 
 [data-theme="dark"] {
-\t--parchment: #0a0d1a;
-\t--ivory: #131830;
-\t--near-black: #e8e6dc;
-\t--dark-warm: #f1efe4;
-\t--olive: #c7c6bd;
-\t--stone: #a8a6a0;
-\t--brand: #6b8eff;
-\t--border: rgba(232, 230, 220, 0.22);
-\t--tag-bg: rgba(107, 142, 255, 0.18);
+\t--vpk-paper: var(--ds-surface, #101214);
+\t--vpk-paper-background: var(--ds-surface, #1d2125);
+\t--vpk-surface-raised: var(--ds-surface-raised, #22272b);
+\t--vpk-surface-overlay: var(--ds-surface-overlay, #282e33);
+\t--vpk-surface-sunken: var(--ds-surface-sunken, #161a1d);
+\t--vpk-ink: var(--ds-text, #dee4ea);
+\t--vpk-muted-text: var(--ds-text-subtle, #9fadbc);
+\t--vpk-subtlest-text: var(--ds-text-subtlest, #738496);
+\t--vpk-inverse-text: var(--ds-text-inverse, #101214);
+\t--vpk-rule: var(--ds-border, #a6c5e229);
+\t--vpk-rule-strong: var(--ds-border-bold, #738496);
+\t--vpk-blueprint: var(--ds-background-brand-bold, #579dff);
+\t--vpk-link: var(--ds-link, #579dff);
+\t--vpk-link-pressed: var(--ds-link-pressed, #85b8ff);
+\t--vpk-selected: var(--ds-background-selected, #09326c);
+\t--vpk-blueprint-tint: var(--ds-background-information, #09326c);
+\t--vpk-blueprint-tint-strong: var(--ds-background-information-hovered, #0c418a);
+\t--vpk-focus-ring: var(--ds-border-focused, #579dff);
+\t--vpk-code-surface: var(--ds-background-neutral-subtle, #161a1d);
+\t--vpk-code-ink: var(--ds-text, #dee4ea);
+\t--vpk-math-highlight: var(--ds-background-information, #09326c);
+\t--vpk-success: var(--ds-background-success-bold, #b3df72);
+\t--vpk-warning: var(--ds-background-warning-bold, #f5cd47);
+\t--vpk-danger: var(--ds-background-danger-bold, #f87168);
+\t--vpk-info: var(--ds-background-information-bold, #579dff);
+\t--vpk-paper-rule: color-mix(in srgb, var(--vpk-ink) 8%, transparent);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -431,7 +474,7 @@ html {
 
 body {
 \tbackground:
-\t\tradial-gradient(circle at 1px 1px, rgba(26, 26, 26, 0.08) 1px, transparent 0),
+\t\tradial-gradient(circle at 1px 1px, var(--vpk-paper-rule) 1px, transparent 0),
 \t\tvar(--parchment);
 \tbackground-size: 16px 16px;
 \tfont-size: 18px;

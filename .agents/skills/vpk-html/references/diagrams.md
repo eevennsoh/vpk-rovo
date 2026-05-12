@@ -2,7 +2,7 @@
 
 vpk-html ships 14 standalone SVG diagram primitives at `assets/diagrams/*.html`,
 ported from [tw93/kami](https://github.com/tw93/Kami) and restyled with the
-vpk-html identity (white paper, 24px grid, ink-blue accent, hard 2px borders).
+vpk-html identity (semantic white paper, blueprint accent, and flat technical rules).
 
 ## How to use a diagram
 
@@ -18,7 +18,7 @@ template:
 {
 	"type": "figure",
 	"heading": "Production architecture",
-	"trustedHtml": "<figure><svg …>…</svg><figcaption>One ink-blue node marks the focal component.</figcaption></figure>"
+	"trustedHtml": "<figure><svg …>…</svg><figcaption>One blueprint node marks the focal component.</figcaption></figure>"
 }
 ```
 
@@ -75,29 +75,28 @@ If the data shape is ambiguous, pick by what the reader should learn.
 
 ## The focal rule
 
-Every diagram has *one* ink-blue element. That's the component, state, or value
+Every diagram has *one* blueprint element. That's the component, state, or value
 the reader should look at first. Everything else stays in cool neutrals. If you
-catch yourself coloring more than one node ink-blue, pick the most important
+catch yourself coloring more than one node blueprint, pick the most important
 and demote the rest.
 
 This single rule is why the accent actually means something. A page with five
-ink-blue boxes is decoration; a page with one is direction.
+blueprint boxes is decoration; a page with one is direction.
 
 ## Token map (inside the diagrams)
 
 The ported SVGs use vpk-html's palette directly:
 
-| Role | Token | Hex |
-|---|---|---|
-| Paper / SVG background | `--vpk-paper` | `#ffffff` |
-| Ink (default text, hard borders, primary stroke) | `--vpk-ink` | `#292a2e` |
-| Muted text, secondary strokes, default arrow heads | `--vpk-muted-text` | `#505258` |
-| Slightly lighter muted (external/system nodes) | (derived) | `#7a7c82` |
-| Accent / focal node fill | `--vpk-blueprint-tint` | `#e9f2fe` |
-| Accent / focal node stroke + primary arrow | `--vpk-blueprint` | `#1868db` |
-| Cool gray surface variants | (derived) | `#e8eaee`, `#eef0f2`, `#e0e3e6`, `#dadcdf` |
-| Faint grid dot pattern | (derived) | `#dde0e3` |
-| Error / regression | `--vpk-danger` | `#c9372c` |
+| Role | Token |
+|---|---|
+| Paper / SVG background | `--vpk-paper` |
+| Ink (default text, hard borders, primary stroke) | `--vpk-ink` |
+| Muted text, secondary strokes, default arrow heads | `--vpk-muted-text` / `--vpk-subtlest-text` |
+| Accent / focal node fill | `--vpk-blueprint-tint` |
+| Accent / focal node stroke + primary arrow | `--vpk-blueprint` |
+| Cool gray surface variants | `--vpk-surface-sunken`, `--vpk-rule`, `--vpk-rule-strong` |
+| Faint grid dot pattern | `--vpk-paper-rule` |
+| Error / regression | `--vpk-danger` |
 
 Display headlines above each diagram use **Geist Pixel** (Square variant).
 Labels inside the SVG use **Geist Mono**. The caption below uses **Geist Sans**.
@@ -108,7 +107,7 @@ When generating or selecting a diagram, watch for these failure modes:
 
 | Anti-pattern | Symptom | Fix |
 |---|---|---|
-| **Two accents** | More than one ink-blue node | Demote all but one to neutral |
+| **Two accents** | More than one blueprint node | Demote all but one to neutral |
 | **Decorative chart** | Pie or donut with 8+ slices | Switch to horizontal bar |
 | **Mystery axis** | Y-axis without units, X-axis without time anchor | Label both, or remove the chart |
 | **Bidirectional arrows everywhere** | Every node connected both ways | Pick a primary direction; the diagram is a story, not a map |

@@ -2,7 +2,7 @@
 /*
  * Ports kami's 4 demo HTML files from ~/.agents/skills/kami/assets/demos/
  * into vpk-html/assets/demos/, re-skinned with vpk-html's terminal/blueprint
- * identity (VT323 + Source Serif 4 + grid background + ink-blue accent).
+ * identity (Geist trio + semantic blueprint accent).
  *
  * Mirrors the port-diagrams.mjs pattern: layout/structure preserved verbatim,
  * only chrome (fonts, colors, @font-face blocks, font-family stacks) changes.
@@ -25,6 +25,7 @@ const SKILL_ROOT = path.resolve(__dirname, "..");
 const KAMI_ROOT = path.join(os.homedir(), ".agents/skills/kami");
 const KAMI_DEMOS = path.join(KAMI_ROOT, "assets/demos");
 const VPK_DEMOS = path.join(SKILL_ROOT, "assets/demos");
+const VPK_THEME_CSS = path.join(SKILL_ROOT, "references/theme.css");
 
 const DEMOS = [
 	"demo-agent-slides.html",
@@ -36,41 +37,41 @@ const DEMOS = [
 const IMAGE_FILES = ["kaku-action.jpg", "kaku-hero.jpg"];
 const COPIED_PNGS = ["equity-report-en.png"];
 
-// Palette mapping: kami → vpk-html. Case-insensitive variants included.
+// Palette mapping: kami → vpk-html semantic aliases. Case-insensitive variants included.
 const COLOR_MAP = {
-	"#f5f4ed": "#ffffff",
-	"#F5F4ED": "#ffffff",
-	"#faf9f5": "#fafafa",
-	"#FAF9F5": "#fafafa",
-	"#141413": "#292a2e",
-	"#3d3d3a": "#3a3d42",
-	"#3D3D3A": "#3a3d42",
-	"#4d4c48": "#4a4d52",
-	"#504e49": "#505258",
-	"#6b6a64": "#7a7c82",
-	"#1B365D": "#1868db",
-	"#1b365d": "#1868db",
-	"#2D5A8A": "#4688ec",
-	"#EEF2F7": "#e9f2fe",
-	"#eef2f7": "#e9f2fe",
-	"#E4ECF5": "#d4e4fc",
-	"#e4ecf5": "#d4e4fc",
-	"#D0DCE9": "#bcd2f7",
-	"#D6E1EE": "#c4d8f9",
-	"#e8e6dc": "#dadcdf",
-	"#E8E6DC": "#dadcdf",
-	"#e5e3d8": "#dadcdf",
-	"#E5E3D8": "#dadcdf",
-	"#DEDED7": "#dadcdf",
-	"#E3E2DC": "#dde0e3",
-	"#E9E8E1": "#e8eaee",
-	"#EEEDE6": "#eef0f2",
-	"#EAE9E2": "#e0e3e6",
-	"#B2B1AC": "#abb0b6",
-	"#B53333": "#c9372c",
-	"#b53333": "#c9372c",
-	"#30302E": "#3a3d42",
-	"#30302e": "#3a3d42",
+	"#f5f4ed": "var(--vpk-paper)",
+	"#F5F4ED": "var(--vpk-paper)",
+	"#faf9f5": "var(--vpk-paper)",
+	"#FAF9F5": "var(--vpk-paper)",
+	"#141413": "var(--vpk-ink)",
+	"#3d3d3a": "var(--vpk-ink)",
+	"#3D3D3A": "var(--vpk-ink)",
+	"#4d4c48": "var(--vpk-muted-text)",
+	"#504e49": "var(--vpk-muted-text)",
+	"#6b6a64": "var(--vpk-subtlest-text)",
+	"#1B365D": "var(--vpk-blueprint)",
+	"#1b365d": "var(--vpk-blueprint)",
+	"#2D5A8A": "var(--vpk-focus-ring)",
+	"#EEF2F7": "var(--vpk-blueprint-tint)",
+	"#eef2f7": "var(--vpk-blueprint-tint)",
+	"#E4ECF5": "var(--vpk-blueprint-tint)",
+	"#e4ecf5": "var(--vpk-blueprint-tint)",
+	"#D0DCE9": "var(--vpk-blueprint-tint-strong)",
+	"#D6E1EE": "var(--vpk-blueprint-tint-strong)",
+	"#e8e6dc": "var(--vpk-rule)",
+	"#E8E6DC": "var(--vpk-rule)",
+	"#e5e3d8": "var(--vpk-rule)",
+	"#E5E3D8": "var(--vpk-rule)",
+	"#DEDED7": "var(--vpk-rule)",
+	"#E3E2DC": "var(--vpk-rule)",
+	"#E9E8E1": "var(--vpk-surface-sunken)",
+	"#EEEDE6": "var(--vpk-surface-sunken)",
+	"#EAE9E2": "var(--vpk-surface-sunken)",
+	"#B2B1AC": "var(--vpk-rule-strong)",
+	"#B53333": "var(--vpk-danger)",
+	"#b53333": "var(--vpk-danger)",
+	"#30302E": "var(--vpk-ink)",
+	"#30302e": "var(--vpk-ink)",
 };
 
 // Inline Geist trio as base64 data URIs so demo HTML files are portable.
@@ -98,7 +99,14 @@ function buildVpkFontFace() {
     font-family: "Geist Pixel";
     src: url("${geistPixel}") format("woff2");
     font-weight: 400; font-style: normal; font-display: swap;
-  }`;
+}`;
+}
+
+function buildVpkThemeBlock() {
+	if (!fs.existsSync(VPK_THEME_CSS)) {
+		throw new Error(`Theme file not found: ${VPK_THEME_CSS}`);
+	}
+	return fs.readFileSync(VPK_THEME_CSS, "utf8").trim();
 }
 
 function rewriteColors(text) {
@@ -151,19 +159,20 @@ function rewriteFontStacks(text) {
 	return out;
 }
 
-function rewriteFontFaceBlocks(text, VPK_FONT_FACE) {
+function rewriteFontFaceBlocks(text, VPK_FONT_FACE, themeBlock) {
 	// Strip every kami @font-face block (single-line or multi-line) and inject
 	// vpk-html's @font-face declarations once, just before :root.
 	let out = text;
 
 	// Multi-line @font-face blocks
 	out = out.replace(/@font-face\s*\{[\s\S]*?\}\s*/g, "");
+	const injected = `${VPK_FONT_FACE}\n\n${themeBlock}`;
 
 	// Insert vpk-html font-face block before the first :root declaration.
 	if (/:root\s*\{/.test(out)) {
-		out = out.replace(/(:root\s*\{)/, `${VPK_FONT_FACE}\n\n  $1`);
+		out = out.replace(/(:root\s*\{)/, `${injected}\n\n  $1`);
 	} else if (/<style>/.test(out)) {
-		out = out.replace(/<style>/, `<style>\n${VPK_FONT_FACE}\n`);
+		out = out.replace(/<style>/, `<style>\n${injected}\n`);
 	}
 
 	return out;
@@ -173,8 +182,8 @@ function rewriteHeader(text, slug) {
 	const headerComment = `<!-- ==================================================================
      DEMO · ${slug.replace(/^demo-/, "").replace(/-/g, " ")} (vpk-html palette)
      Ported from kami's curated demos library and restyled with the
-     vpk-html identity: VT323 display headlines, Source Serif body, grid
-     background, ink-blue (#1868DB) accent. Layout, content, and SVG
+     vpk-html identity: Geist display/body/mono, semantic paper texture,
+     and blueprint accent. Layout, content, and SVG
      geometry are preserved verbatim from kami.
      Source: https://github.com/tw93/Kami
      ================================================================== -->`;
@@ -192,26 +201,25 @@ function rewriteBodyAccent(text) {
 	const gridOverride = `
 
   /* vpk-html identity overrides */
-  html { background: #ffffff; }
+  html { background: var(--vpk-paper); }
   body {
     background:
-      linear-gradient(90deg, rgba(11, 18, 14, 0.018) 1px, transparent 1px),
-      linear-gradient(0deg, rgba(11, 18, 14, 0.018) 1px, transparent 1px),
-      #ffffff;
-    background-size: 24px 24px;
+      radial-gradient(circle at 1px 1px, var(--vpk-paper-rule) 1px, transparent 0),
+      var(--vpk-paper);
+    background-size: 16px 16px;
   }
   /* Frame the document with vpk-html chrome when a kami .page or .frame exists */
   .page, .frame {
-    border: 2px solid #292a2e !important;
-    box-shadow: 0 1px 1px rgba(9, 30, 66, 0.25), 0 0 1px rgba(9, 30, 66, 0.31) !important;
+    border: 2px solid var(--vpk-ink) !important;
+    box-shadow: var(--vpk-shadow) !important;
   }
 `;
 	return text.replace(/<\/style>/, `${gridOverride}</style>`);
 }
 
-function transform(rawHtml, slug, fontFaceBlock) {
+function transform(rawHtml, slug, fontFaceBlock, themeBlock) {
 	let out = rawHtml;
-	out = rewriteFontFaceBlocks(out, fontFaceBlock);
+	out = rewriteFontFaceBlocks(out, fontFaceBlock, themeBlock);
 	out = rewriteFontStacks(out);
 	out = rewriteColors(out);
 	out = rewriteHeader(out, slug);
@@ -255,6 +263,7 @@ function main() {
 
 	console.log("Inlining Geist fonts as base64 data URIs…");
 	const fontFaceBlock = buildVpkFontFace();
+	const themeBlock = buildVpkThemeBlock();
 
 	for (const file of DEMOS) {
 		const slug = file.replace(/\.html$/, "");
@@ -265,7 +274,7 @@ function main() {
 			continue;
 		}
 		const raw = fs.readFileSync(sourcePath, "utf8");
-		fs.writeFileSync(targetPath, transform(raw, slug, fontFaceBlock), "utf8");
+		fs.writeFileSync(targetPath, transform(raw, slug, fontFaceBlock, themeBlock), "utf8");
 		console.log(`✓ ${slug}`);
 	}
 

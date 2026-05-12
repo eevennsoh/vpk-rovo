@@ -139,7 +139,7 @@ brand.
 | Logo | Any branded document | User file or official SVG/PNG |
 | Product image | Physical product / venue | Official image, user image, or marked gap |
 | UI screenshot | App / SaaS / website | Current screenshot, official product image |
-| Brand colors | Branded portfolio / one-pager | Official value, extracted asset value, or keep vpk ink-blue |
+| Brand colors | Branded portfolio / one-pager | Official value, extracted asset value, or keep the vpk blueprint semantic accent |
 
 If a required item is missing, use a compact gap table and ask once. Do not
 replace missing material with generic imagery, approximate logo drawings, or
@@ -276,24 +276,21 @@ lineage).
 
 **Light mode (default):**
 
-- **Surface:** parchment `#fafaf5` — warm cream paper, never pure `#ffffff`
-- **Raised surface:** `#f3f1e8` (for cards / callouts when they need to lift)
-- **Ink:** `var(--near-black)` = `#0A0A0A` body, `#757575` secondary metadata
-- **Accent (brand):** blueprint `#3553ff` — masthead, headings, links, diagram strokes
-- **Margin / figure tags:** also `#3553ff` — uppercase, letter-spaced, 10px
-- **Paper-rule background:** `radial-gradient(rgba(26,26,26,0.08) 1px, transparent 1px); background-size: 16px 16px;` — subtle dotted paper texture
-- **Hard shadow:** `3px 3px 0 var(--near-black)` — chunky offset, no blur. Reserved for opt-in `.card / .callout / .takeaway / .surface-raised / .shadow-hard`. Other surfaces are flat.
+- **Surface:** `--vpk-paper` — VPK/ADS semantic surface with an embedded offline fallback.
+- **Raised surface:** `--vpk-surface-raised` for cards / callouts when they need to lift.
+- **Ink:** `--vpk-ink` for body text and `--vpk-muted-text` / `--vpk-subtlest-text` for metadata.
+- **Accent (brand/info):** `--vpk-blueprint` — masthead, headings, links, and diagram focal strokes.
+- **Margin / figure tags:** `--vpk-blueprint` unless a status meaning requires `--vpk-success`, `--vpk-warning`, or `--vpk-danger`.
+- **Paper-rule background:** `radial-gradient(var(--vpk-paper-rule) 1px, transparent 1px); background-size: 16px 16px;` — subtle dotted paper texture.
+- **Hard shadow:** `var(--vpk-shadow)` — reserved for opt-in `.card / .callout / .takeaway / .surface-raised / .shadow-hard`. Other surfaces are flat.
 
 **Dark mode** (activate via `<html data-theme="dark">`):
 
-- **Surface:** `#0a0d1a` deep navy paper
-- **Raised surface:** `#131830`
-- **Ink:** `#e8e6dc` warm cream body, `#a8a6a0` secondary
-- **Accent:** `#6b8eff` — brighter periwinkle blue (legibility against navy)
+- **Surface / raised / ink / accent:** the same `--vpk-*` aliases switch to dark semantic fallbacks under `[data-theme="dark"]`.
 
 **Fonts** (Geist family only, all self-hosted in `assets/fonts/`):
 
-- **Display / masthead / all headings (h1-h6) / margin labels:** Geist Pixel (Square variant), uppercase, letter-spacing 0.02-0.04em, in `var(--brand)`
+- **Display / masthead / all headings (h1-h6) / margin labels:** Geist Pixel (Square variant), uppercase, letter-spacing 0.02-0.04em, in `var(--vpk-blueprint)`
 - **Body:** Geist Sans, 18px screen / 10.5pt print, line-height 1.62
 - **Mono / code:** Geist Mono
 

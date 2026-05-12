@@ -11,7 +11,7 @@
   @page {
     size: A4;
     margin: 11mm 13mm 11mm 13mm;
-    background: #fafaf5;
+    background: var(--vpk-paper);
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -33,32 +33,64 @@
   }
 
   :root {
-    --parchment: #fafaf5;
-    --ivory:     #f3f1e8;
-    --sand:      #E0E0E0;
-    --border:    #E0E0E0;
-    --border-soft: #E0E0E0;
-    --near-black: #0A0A0A;
-    --dark-warm: #2A2A2A;
-    --olive:     #525252;
-    --stone:     #757575;
-    --brand:     #3553ff;
-    --brand-tint: #E6EAFB;
-    --brand-tint-strong: #D5DDF8;
+	--vpk-paper: var(--ds-surface, #ffffff);
+	--vpk-paper-background: var(--ds-surface, #ffffff);
+	--vpk-surface-raised: var(--ds-surface-raised, #ffffff);
+	--vpk-surface-overlay: var(--ds-surface-overlay, #ffffff);
+	--vpk-surface-sunken: var(--ds-surface-sunken, #f0f1f2);
+	--vpk-ink: var(--ds-text, #292a2e);
+	--vpk-muted-text: var(--ds-text-subtle, #505258);
+	--vpk-subtlest-text: var(--ds-text-subtlest, #6b6e76);
+	--vpk-inverse-text: var(--ds-text-inverse, #ffffff);
+	--vpk-rule: var(--ds-border, #0b120e24);
+	--vpk-rule-strong: var(--ds-border-bold, #7d818a);
+	--vpk-blueprint: var(--ds-background-brand-bold, #1868db);
+	--vpk-link: var(--ds-link, #1868db);
+	--vpk-link-pressed: var(--ds-link-pressed, #1558bc);
+	--vpk-selected: var(--ds-background-selected, #e9f2fe);
+	--vpk-blueprint-tint: var(--ds-background-information, #e9f2fe);
+	--vpk-blueprint-tint-strong: var(--ds-background-information-hovered, #cfe1fd);
+	--vpk-focus-ring: var(--ds-border-focused, #4688ec);
+	--vpk-code-surface: var(--ds-background-neutral-subtle, #f0f1f2);
+	--vpk-code-ink: var(--ds-text, #292a2e);
+	--vpk-code-inverse: var(--ds-text-inverse, #ffffff);
+	--vpk-math-highlight: var(--ds-background-information, #e9f2fe);
+	--vpk-success: var(--ds-background-success-bold, #5b7f24);
+	--vpk-success-tint: var(--ds-background-success, #efffd6);
+	--vpk-warning: var(--ds-background-warning-bold, #fbc828);
+	--vpk-warning-tint: var(--ds-background-warning, #fff5db);
+	--vpk-danger: var(--ds-background-danger-bold, #c9372c);
+	--vpk-danger-tint: var(--ds-background-danger, #ffeceb);
+	--vpk-info: var(--ds-background-information-bold, #1868db);
+	--vpk-info-tint: var(--ds-background-information, #e9f2fe);
+	--vpk-paper-rule: color-mix(in srgb, var(--vpk-ink) 8%, transparent);
+	--vpk-shadow: var(--ds-shadow-raised, 0 1px 1px rgba(9, 30, 66, 0.25), 0 0 1px rgba(9, 30, 66, 0.31));
+    --parchment: var(--vpk-paper);
+    --ivory:     var(--vpk-surface-raised);
+    --sand:      var(--vpk-rule);
+    --border:    var(--vpk-rule);
+    --border-soft: var(--vpk-rule);
+    --near-black: var(--vpk-ink);
+    --dark-warm: var(--vpk-ink);
+    --olive:     var(--vpk-muted-text);
+    --stone:     var(--vpk-muted-text);
+    --brand:     var(--vpk-blueprint);
+    --brand-tint: var(--vpk-blueprint-tint);
+    --brand-tint-strong: var(--vpk-blueprint-tint);
 
     --serif: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
     --sans: var(--serif);
     --mono:  "Geist Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
   }
 
-  html, body { background: var(--parchment); }
+  html, body { background: var(--vpk-paper); }
 
   @media screen {
     body { max-width: 210mm; margin: 0 auto; padding: 11mm 13mm; }
   }
 
   body {
-    color: var(--near-black);
+    color: var(--vpk-ink);
     font-family: var(--serif);
     font-size: 9.4pt;
     line-height: 1.42;
@@ -70,7 +102,7 @@
   .serif { font-family: var(--serif); }
   .mono  { font-family: var(--mono); }
 
-  a { color: var(--brand); text-decoration: none; }
+  a { color: var(--vpk-blueprint); text-decoration: none; }
 
   /* HEADER */
   .header {
@@ -87,7 +119,7 @@
     font-size: 26pt;
     font-weight: 500;
     letter-spacing: -0.2pt;
-    color: var(--near-black);
+    color: var(--vpk-ink);
     line-height: 1;
     display: flex;
     align-items: baseline;
@@ -97,22 +129,22 @@
   .alias {
     font-size: 12.5pt;
     font-weight: 400;
-    color: var(--stone);
+    color: var(--vpk-muted-text);
   }
   .contact {
     text-align: right;
     font-size: 9pt;
-    color: var(--stone);
+    color: var(--vpk-muted-text);
     line-height: 1.5;
   }
   .contact .role {
-    color: var(--brand);
+    color: var(--vpk-blueprint);
     font-size: 10.5pt;
     font-weight: 500;
   }
-  .contact .sep { color: var(--border); margin: 0 0.4em; }
-  .contact a { color: var(--dark-warm); }
-  .contact .loc { color: var(--olive); font-weight: 500; }
+  .contact .sep { color: var(--vpk-rule); margin: 0 0.4em; }
+  .contact a { color: var(--vpk-ink); }
+  .contact .loc { color: var(--vpk-success); font-weight: 500; }
 
   /* METRICS */
   .metrics { display: flex; gap: 7mm; margin-bottom: 3mm; }
@@ -128,7 +160,7 @@
     font-family: var(--serif);
     font-size: 14pt;
     font-weight: 500;
-    color: var(--brand);
+    color: var(--vpk-blueprint);
     line-height: 1;
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
@@ -137,16 +169,16 @@
     font-size: 10.5pt;
     margin-left: 0.5mm;
     font-weight: 500;
-    color: var(--brand);
+    color: var(--vpk-blueprint);
   }
-  .metric-label { font-size: 9pt; color: var(--olive); line-height: 1.2; }
+  .metric-label { font-size: 9pt; color: var(--vpk-success); line-height: 1.2; }
 
   .metrics--stack .metric {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.5mm;
     padding-bottom: 2mm;
-    border-bottom: 0.3pt dotted var(--border);
+    border-bottom: 0.3pt dotted var(--vpk-rule);
   }
 
   /* SECTION TITLE */
@@ -154,7 +186,7 @@
     font-family: var(--serif);
     font-size: 13pt;
     font-weight: 500;
-    color: var(--near-black);
+    color: var(--vpk-ink);
     border-radius: 1.5pt;
     padding: 0 0 0 8pt;
     margin: 5mm 0 2mm 0;
@@ -167,15 +199,15 @@
     font-family: var(--sans);
     font-weight: 400;
     font-size: 9pt;
-    color: var(--stone);
+    color: var(--vpk-muted-text);
     letter-spacing: 0.2pt;
   }
   section:first-of-type .section-title { margin-top: 0; }
   .page-break > .section-title { margin-top: 0; }
 
   /* SUMMARY */
-  .summary { font-size: 9.4pt; line-height: 1.42; color: var(--near-black); }
-  .summary .hl { color: var(--brand); }
+  .summary { font-size: 9.4pt; line-height: 1.42; color: var(--vpk-ink); }
+  .summary .hl { color: var(--vpk-blueprint); }
 
   /* TIMELINE */
   .timeline { display: flex; gap: 7mm; margin-bottom: 2.5mm; }
@@ -187,22 +219,22 @@
   .tl-year {
     font-family: var(--serif);
     font-size: 11pt; font-weight: 500;
-    color: var(--brand); line-height: 1;
+    color: var(--vpk-blueprint); line-height: 1;
   }
   .tl-head {
     font-size: 11pt; font-weight: 500;
-    color: var(--near-black);
+    color: var(--vpk-ink);
   }
-  .tl-body { font-size: 9pt; color: var(--olive); line-height: 1.45; }
+  .tl-body { font-size: 9pt; color: var(--vpk-success); line-height: 1.45; }
 
   /* PROJECTS */
   .project {
     padding: 1.6mm 0;
-    border-top: 0.4pt solid var(--border-soft);
+    border-top: 0.4pt solid var(--vpk-rule);
     break-inside: avoid;
   }
   .project:first-of-type {
-    border-top: 0.4pt solid var(--border);
+    border-top: 0.4pt solid var(--vpk-rule);
     padding-top: 1.6mm;
   }
   .proj-head {
@@ -211,12 +243,12 @@
   }
   .proj-name {
     font-family: var(--serif);
-    font-size: 11pt; font-weight: 500; color: var(--near-black);
+    font-size: 11pt; font-weight: 500; color: var(--vpk-ink);
   }
-  .proj-kind { font-size: 11pt; color: var(--olive); }
+  .proj-kind { font-size: 11pt; color: var(--vpk-success); }
   .proj-role {
-    font-size: 9pt; color: var(--brand); font-weight: 500;
-    margin-left: auto; background: #E6EAFB;
+    font-size: 9pt; color: var(--vpk-blueprint); font-weight: 500;
+    margin-left: auto; background: var(--vpk-blueprint-tint);
     padding: 0.4mm 1.6mm; border-radius: 2pt; letter-spacing: 0.3pt;
     text-transform: uppercase;
   }
@@ -224,17 +256,17 @@
   .proj-row { display: table-row; }
   .proj-label {
     display: table-cell; width: 16mm;
-    font-size: 9pt; color: var(--brand);
+    font-size: 9pt; color: var(--vpk-blueprint);
     font-weight: 500; letter-spacing: 0.4pt;
     text-transform: uppercase;
     padding: 0.4mm 0 0.4mm 0; vertical-align: top;
   }
   .proj-text {
     display: table-cell; font-size: 9.2pt;
-    color: var(--near-black); line-height: 1.45;
+    color: var(--vpk-ink); line-height: 1.45;
     padding: 0 0 0.4mm 1mm;
   }
-  .proj-text .hl { color: var(--brand); }
+  .proj-text .hl { color: var(--vpk-blueprint); }
 
   /* PAGE 2 FORCE BREAK */
   .page-break { break-before: page; }
@@ -242,12 +274,12 @@
   /* OPEN SOURCE */
   .os-intro {
     font-size: 9.4pt; line-height: 1.45;
-    color: var(--near-black);
+    color: var(--vpk-ink);
     margin: 1.6mm 0 2.4mm 0;
     break-inside: avoid;
   }
-  .os-intro .hl { color: var(--brand); }
-  .os-intro .strong { color: var(--near-black); font-weight: 500; }
+  .os-intro .hl { color: var(--vpk-blueprint); }
+  .os-intro .strong { color: var(--vpk-ink); font-weight: 500; }
 
   .os-grid {
     display: grid;
@@ -257,7 +289,7 @@
   .os-item {
     display: flex; align-items: baseline;
     gap: 2.5mm; padding: 1.2mm 0;
-    border-bottom: 0.3pt dotted var(--border);
+    border-bottom: 0.3pt dotted var(--vpk-rule);
     break-inside: avoid;
   }
   .os-item:last-child,
@@ -267,15 +299,15 @@
     font-size: 10.5pt; font-weight: 500;
     flex-shrink: 0; min-width: 18mm;
   }
-  .os-name a { color: var(--brand); }
-  .os-desc { font-size: 9pt; color: var(--olive); line-height: 1.4; flex: 1; }
+  .os-name a { color: var(--vpk-blueprint); }
+  .os-desc { font-size: 9pt; color: var(--vpk-success); line-height: 1.4; flex: 1; }
   .os-star {
-    font-size: 9pt; color: var(--dark-warm);
+    font-size: 9pt; color: var(--vpk-ink);
     font-weight: 500; white-space: nowrap;
     flex-shrink: 0; min-width: 10mm; text-align: right;
     font-variant-numeric: tabular-nums;
   }
-  .os-star.big { color: var(--brand); font-size: 9.2pt; }
+  .os-star.big { color: var(--vpk-blueprint); font-size: 9.2pt; }
 
   .os-highlight {
     margin-top: 2.5mm;
@@ -283,13 +315,13 @@
     background: var(--brand-tint);
     border-radius: 2pt;
     font-size: 9pt; line-height: 1.45;
-    color: var(--near-black);
+    color: var(--vpk-ink);
     break-inside: avoid;
   }
-  .os-highlight .hl { color: var(--brand); }
+  .os-highlight .hl { color: var(--vpk-blueprint); }
   .os-highlight .tag {
     display: inline-block;
-    background: var(--brand); color: var(--ivory);
+    background: var(--vpk-blueprint); color: var(--vpk-surface-raised);
     font-size: 9pt; font-weight: 500;
     padding: 0.2mm 1.6mm; border-radius: 2pt;
     margin-right: 1.5mm; letter-spacing: 0.5pt;
@@ -308,19 +340,19 @@
   .conv-head {
     font-family: var(--serif);
     font-size: 10pt; font-weight: 500;
-    color: var(--near-black); margin-bottom: 1mm;
+    color: var(--vpk-ink); margin-bottom: 1mm;
     display: flex; align-items: baseline; gap: 2mm;
   }
   .conv-head .year {
-    color: var(--brand); font-weight: 500;
+    color: var(--vpk-blueprint); font-weight: 500;
     font-size: 9pt;
     font-variant-numeric: tabular-nums;
   }
   .conv-body {
-    font-size: 9pt; color: var(--olive);
+    font-size: 9pt; color: var(--vpk-success);
     line-height: 1.45;
   }
-  .conv-body .hl { color: var(--brand); }
+  .conv-body .hl { color: var(--vpk-blueprint); }
 
   /* IMPACT */
   .handle-strip {
@@ -330,36 +362,36 @@
   }
   .handle-strip .handle {
     font-family: var(--serif);
-    font-size: 10pt; font-weight: 500; color: var(--brand);
+    font-size: 10pt; font-weight: 500; color: var(--vpk-blueprint);
     flex-shrink: 0;
   }
-  .handle-strip .follower { font-size: 9pt; color: var(--stone); flex-shrink: 0; font-variant-numeric: tabular-nums; }
-  .handle-strip .desc { font-size: 9pt; color: var(--olive); line-height: 1.45; flex: 1; }
+  .handle-strip .follower { font-size: 9pt; color: var(--vpk-muted-text); flex-shrink: 0; font-variant-numeric: tabular-nums; }
+  .handle-strip .desc { font-size: 9pt; color: var(--vpk-success); line-height: 1.45; flex: 1; }
 
   .impact-grid { display: grid; grid-template-columns: 1.15fr 1fr; gap: 6mm; }
   .inf-block-title {
     margin-top: 2.5mm;
     font-family: var(--serif);
     font-size: 10pt; font-weight: 500;
-    color: var(--near-black);
+    color: var(--vpk-ink);
     margin-bottom: 1.5mm; padding-bottom: 0.5mm;
-    border-bottom: 0.3pt dotted var(--border);
+    border-bottom: 0.3pt dotted var(--vpk-rule);
     display: flex; align-items: baseline; gap: 2mm;
   }
   .inf-block-title .small {
     font-family: var(--sans);
-    font-size: 9pt; color: var(--stone);
+    font-size: 9pt; color: var(--vpk-muted-text);
     font-weight: 400;
   }
   .art-row {
     padding: 1.8mm 0;
-    border-bottom: 0.3pt dotted var(--border-soft);
+    border-bottom: 0.3pt dotted var(--vpk-rule);
   }
   .talk-row {
     display: flex; justify-content: space-between;
     align-items: flex-start;
     gap: 2mm; padding: 1.8mm 0;
-    border-bottom: 0.3pt dotted var(--border-soft);
+    border-bottom: 0.3pt dotted var(--vpk-rule);
   }
   .art-row:last-of-type, .talk-row:last-of-type { border-bottom: none; }
   .art-header {
@@ -368,18 +400,18 @@
     gap: 2mm;
   }
   .art-title, .talk-title {
-    font-size: 9.2pt; color: var(--near-black);
+    font-size: 9.2pt; color: var(--vpk-ink);
     font-weight: 500; line-height: 1.4;
     flex: 1 1 auto; min-width: 0;
   }
   .art-stats, .talk-venue {
-    font-size: 9pt; color: var(--stone);
+    font-size: 9pt; color: var(--vpk-muted-text);
     line-height: 1.4; margin-top: 0.6mm;
     white-space: nowrap;
   }
-  .art-stats .em-brand { color: var(--brand); }
+  .art-stats .em-brand { color: var(--vpk-blueprint); }
   .art-date, .talk-date {
-    font-size: 9pt; color: var(--stone);
+    font-size: 9pt; color: var(--vpk-muted-text);
     font-variant-numeric: tabular-nums;
     font-weight: 400;
     white-space: nowrap;
@@ -388,19 +420,19 @@
   /* SKILLS */
   .skill-row {
     display: flex; gap: 3mm; padding: 1.8mm 0;
-    border-bottom: 0.3pt dotted var(--border);
+    border-bottom: 0.3pt dotted var(--vpk-rule);
     align-items: baseline;
   }
   .skill-row:last-of-type { border-bottom: none; }
   .skill-label {
     font-size: 9pt; font-weight: 500;
-    color: var(--brand); letter-spacing: 0.5pt;
+    color: var(--vpk-blueprint); letter-spacing: 0.5pt;
     text-transform: uppercase;
     width: 32mm; flex-shrink: 0;
     line-height: 1.35;
   }
-  .skill-body { font-size: 9.2pt; color: var(--near-black); line-height: 1.45; flex: 1; }
-  .skill-body .em-brand { color: var(--brand); }
+  .skill-body { font-size: 9.2pt; color: var(--vpk-ink); line-height: 1.45; flex: 1; }
+  .skill-body .em-brand { color: var(--vpk-blueprint); }
 
   .no-break { break-inside: avoid; }
 
@@ -413,8 +445,8 @@
     font-family: var(--serif);
     font-weight: 500; font-size: 11pt;
   }
-  .edu-row .major { color: var(--olive); font-size: 9.4pt; }
-  .edu-row .date { color: var(--stone); font-variant-numeric: tabular-nums; font-size: 9pt; }
+  .edu-row .major { color: var(--vpk-success); font-size: 9.4pt; }
+  .edu-row .date { color: var(--vpk-muted-text); font-variant-numeric: tabular-nums; font-size: 9pt; }
 
   /* TABLE (kami-table) */
   table, .kami-table {
@@ -427,14 +459,14 @@
   table th, .kami-table th {
     text-align: left;
     font-weight: 500;
-    color: var(--dark-warm);
+    color: var(--vpk-ink);
     padding: 3pt 6pt;
-    border-bottom: 1pt solid var(--border);
+    border-bottom: 1pt solid var(--vpk-rule);
     background: transparent;
   }
   table td, .kami-table td {
     padding: 2pt 6pt;
-    border-bottom: 0.3pt solid var(--border-soft);
+    border-bottom: 0.3pt solid var(--vpk-rule);
     vertical-align: top;
   }
   table.compact th, .kami-table.compact th { padding: 2pt 4pt; font-size: 8pt; }
@@ -444,10 +476,10 @@
   }
   table.financial th:not(:first-child), .kami-table.financial th:not(:first-child) { text-align: right; }
   table.striped tbody tr:nth-child(even) td, .kami-table.striped tbody tr:nth-child(even) td {
-    background: var(--ivory);
+    background: var(--vpk-surface-raised);
   }
   table .total td, .kami-table .total td {
-    font-weight: 500; border-top: 1pt solid var(--brand); border-bottom: none; color: var(--near-black);
+    font-weight: 500; border-top: 1pt solid var(--vpk-blueprint); border-bottom: none; color: var(--vpk-ink);
   }
 
   /* DENSE VARIANT: add class="resume--dense" to <body> when 5+ projects overflow */
@@ -459,7 +491,7 @@
   /* ===== vpk-html identity overrides (Making Software language) ===== */
 
   /* Paper background — warm off-white, never pure white. No grid, no banding. */
-  html, body { background: var(--parchment) !important; color: var(--near-black) !important; }
+  html, body { background: var(--vpk-paper) !important; color: var(--vpk-ink) !important; }
 
   /* Strip all section chrome: no borders, no shadows, no rounded corners,
      no section background colors. Per Making Software refuses-list. */
@@ -474,14 +506,14 @@
 
   /* Preserve a single hairline border ONLY on tables (they need column rules). */
   table, th, td {
-    border-color: #E0E0E0 !important;
+    border-color: var(--vpk-rule) !important;
     border-radius: 0 !important;
     box-shadow: none !important;
   }
 
   /* Hairline rule between sections — flat 1px, no inset, no shadow. */
   hr, .rule, .section-rule {
-    background: #E0E0E0 !important;
+    background: var(--vpk-rule) !important;
     border: 0 !important;
     height: 1px !important;
   }
@@ -492,7 +524,7 @@
     font-family: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif !important;
     font-size: 18px !important;
     line-height: 1.62 !important;
-    color: var(--near-black) !important;
+    color: var(--vpk-ink) !important;
   }
   h1, h2, h3, h4, h5, h6,
   .cover-title, .doc-title, .resume-name, .deck-cover .title,
@@ -503,7 +535,7 @@
     line-height: 1.8 !important;
     font-weight: 600 !important;
     letter-spacing: 0 !important;
-    color: var(--near-black) !important;
+    color: var(--vpk-ink) !important;
     margin: 0 !important;
   }
 
@@ -512,7 +544,7 @@
   .hero h1, .doc-title h1,
   .resume-name {
     font-family: "Geist Pixel", "Geist Mono", ui-monospace, "SFMono-Regular", Consolas, monospace !important;
-    color: #3553ff !important;
+    color: var(--vpk-blueprint) !important;
     font-weight: 400 !important;
     text-transform: uppercase !important;
     letter-spacing: 0.02em !important;
@@ -529,7 +561,7 @@
     line-height: 14px !important;
     letter-spacing: 0.18em !important;
     text-transform: uppercase !important;
-    color: var(--brand) !important;
+    color: var(--vpk-blueprint) !important;
     font-weight: 400 !important;
   }
 
@@ -539,12 +571,12 @@
     font-family: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif !important;
     font-size: 14px !important;
     line-height: 22px !important;
-    color: #757575 !important;
+    color: var(--vpk-muted-text) !important;
   }
 
   /* Links: same accent-blue as masthead. No underline by default; underline on hover. */
   a, a:visited {
-    color: #3553ff !important;
+    color: var(--vpk-blueprint) !important;
     text-decoration: none !important;
   }
   a:hover {
@@ -554,12 +586,12 @@
   }
 
   /* Emphasis: italic preferred; bold reserved for headings. */
-  .hl, mark, strong { color: #3553ff !important; background: transparent !important; font-weight: 600 !important; }
-  em, i { font-style: italic !important; color: var(--near-black) !important; }
+  .hl, mark, strong { color: var(--vpk-blueprint) !important; background: transparent !important; font-weight: 600 !important; }
+  em, i { font-style: italic !important; color: var(--vpk-ink) !important; }
 
   /* Dotted rule utility (Making Software signature separator). */
   .dotted-rule, .vpk-dotted-rule {
-    background-image: radial-gradient(circle, var(--near-black) 1px, transparent 1px) !important;
+    background-image: radial-gradient(circle, var(--vpk-ink) 1px, transparent 1px) !important;
     background-size: 8px 8px !important;
     background-repeat: repeat-x !important;
     background-position: 0 50% !important;
@@ -574,7 +606,7 @@
   .lead::first-letter,
   .cover + p::first-letter {
     font-family: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif !important;
-    color: var(--near-black) !important;
+    color: var(--vpk-ink) !important;
     float: left !important;
     font-size: 48px !important;
     line-height: 1 !important;
@@ -585,30 +617,62 @@
 
   /* aiefs additions: blueprint scale + paper-rule + hard shadows. */
   :root {
-    --blueprint: var(--brand);
-    --blueprint-tint: rgba(53, 83, 255, 0.08);
-    --blueprint-tint-strong: rgba(53, 83, 255, 0.18);
-    --paper-rule: rgba(26, 26, 26, 0.08);
-    --shadow-hard: 3px 3px 0 var(--near-black);
-    --shadow-hard-lg: 5px 5px 0 var(--near-black);
+    --blueprint: var(--vpk-blueprint);
+    --selected: color-mix(in srgb, var(--vpk-blueprint) 8%, transparent);
+    --selected-strong: color-mix(in srgb, var(--vpk-blueprint) 18%, transparent);
+    --paper-rule: color-mix(in srgb, var(--vpk-ink) 8%, transparent);
+    --shadow-hard: 3px 3px 0 var(--vpk-ink);
+    --shadow-hard-lg: 5px 5px 0 var(--vpk-ink);
   }
 
   /* Dark mode tokens. Activate via <html data-theme="dark">. */
   [data-theme="dark"] {
-    --parchment: #0a0d1a;
-    --ivory: #131830;
-    --near-black: #e8e6dc;
-    --dark-warm: #c8c6c0;
-    --olive: #a8a6a0;
-    --stone: #7a7878;
-    --brand: #6b8eff;
-    --blueprint: #6b8eff;
-    --blueprint-tint: rgba(107, 142, 255, 0.12);
-    --blueprint-tint-strong: rgba(107, 142, 255, 0.22);
-    --border: rgba(232, 230, 220, 0.18);
-    --border-soft: rgba(232, 230, 220, 0.18);
-    --paper-rule: rgba(232, 230, 220, 0.08);
-    --tag-bg: rgba(107, 142, 255, 0.2);
+	--vpk-paper: var(--ds-surface, #101214);
+	--vpk-paper-background: var(--ds-surface, #1d2125);
+	--vpk-surface-raised: var(--ds-surface-raised, #22272b);
+	--vpk-surface-overlay: var(--ds-surface-overlay, #282e33);
+	--vpk-surface-sunken: var(--ds-surface-sunken, #161a1d);
+	--vpk-ink: var(--ds-text, #dee4ea);
+	--vpk-muted-text: var(--ds-text-subtle, #9fadbc);
+	--vpk-subtlest-text: var(--ds-text-subtlest, #738496);
+	--vpk-inverse-text: var(--ds-text-inverse, #101214);
+	--vpk-rule: var(--ds-border, #a6c5e229);
+	--vpk-rule-strong: var(--ds-border-bold, #738496);
+	--vpk-blueprint: var(--ds-background-brand-bold, #579dff);
+	--vpk-link: var(--ds-link, #579dff);
+	--vpk-link-pressed: var(--ds-link-pressed, #85b8ff);
+	--vpk-selected: var(--ds-background-selected, #09326c);
+	--vpk-blueprint-tint: var(--ds-background-information, #09326c);
+	--vpk-blueprint-tint-strong: var(--ds-background-information-hovered, #0c418a);
+	--vpk-focus-ring: var(--ds-border-focused, #579dff);
+	--vpk-code-surface: var(--ds-background-neutral-subtle, #161a1d);
+	--vpk-code-ink: var(--ds-text, #dee4ea);
+	--vpk-code-inverse: var(--ds-text-inverse, #101214);
+	--vpk-math-highlight: var(--ds-background-information, #09326c);
+	--vpk-success: var(--ds-background-success-bold, #b3df72);
+	--vpk-success-tint: var(--ds-background-success, #1f4d3a);
+	--vpk-warning: var(--ds-background-warning-bold, #f5cd47);
+	--vpk-warning-tint: var(--ds-background-warning, #533f04);
+	--vpk-danger: var(--ds-background-danger-bold, #f87168);
+	--vpk-danger-tint: var(--ds-background-danger, #5d1f1a);
+	--vpk-info: var(--ds-background-information-bold, #579dff);
+	--vpk-info-tint: var(--ds-background-information, #09326c);
+	--vpk-paper-rule: color-mix(in srgb, var(--vpk-ink) 8%, transparent);
+	--vpk-shadow: var(--ds-shadow-raised, 0 1px 1px rgba(0, 0, 0, 0.32), 0 0 1px rgba(0, 0, 0, 0.42));
+    --parchment: var(--vpk-paper);
+    --ivory: var(--vpk-surface-raised);
+    --near-black: var(--vpk-ink);
+    --dark-warm: var(--vpk-muted-text);
+    --olive: var(--vpk-muted-text);
+    --stone: var(--vpk-subtlest-text);
+    --brand: var(--vpk-blueprint);
+    --blueprint: var(--vpk-blueprint);
+    --selected: color-mix(in srgb, var(--vpk-blueprint) 12%, transparent);
+    --selected-strong: color-mix(in srgb, var(--vpk-blueprint) 22%, transparent);
+    --border: color-mix(in srgb, var(--vpk-ink) 18%, transparent);
+    --border-soft: color-mix(in srgb, var(--vpk-ink) 18%, transparent);
+    --paper-rule: color-mix(in srgb, var(--vpk-ink) 8%, transparent);
+    --tag-bg: color-mix(in srgb, var(--vpk-blueprint) 20%, transparent);
   }
 
   /* ──────────────────────────────────────────────────────────────────
@@ -619,7 +683,7 @@
      ────────────────────────────────────────────────────────────────── */
   @media screen {
     body {
-      background-color: var(--parchment);
+      background-color: var(--vpk-paper);
       background-image: radial-gradient(var(--paper-rule) 1px, transparent 1px);
       background-size: 16px 16px;
       background-attachment: fixed;
@@ -637,7 +701,7 @@
       font-weight: 400 !important;
       text-transform: uppercase !important;
       letter-spacing: 0.02em !important;
-      color: var(--brand) !important;
+      color: var(--vpk-blueprint) !important;
       font-size: 36px !important;
       line-height: 1.05 !important;
       margin: 48px 0 16px 0 !important;
@@ -647,7 +711,7 @@
       font-weight: 400 !important;
       text-transform: uppercase !important;
       letter-spacing: 0.02em !important;
-      color: var(--brand) !important;
+      color: var(--vpk-blueprint) !important;
       font-size: 26px !important;
       line-height: 1.1 !important;
       margin: 40px 0 16px 0 !important;
@@ -657,7 +721,7 @@
       font-weight: 400 !important;
       text-transform: uppercase !important;
       letter-spacing: 0.04em !important;
-      color: var(--brand) !important;
+      color: var(--vpk-blueprint) !important;
       font-size: 18px !important;
       line-height: 1.2 !important;
       margin: 28px 0 10px 0 !important;
@@ -667,7 +731,7 @@
       font-weight: 400 !important;
       text-transform: uppercase !important;
       letter-spacing: 0.06em !important;
-      color: var(--near-black) !important;
+      color: var(--vpk-ink) !important;
       font-size: 14px !important;
       line-height: 1.3 !important;
       margin: 20px 0 8px 0 !important;
@@ -680,9 +744,9 @@
     }
     /* Opt-in chunky shadow for cards / callouts. */
     .card, .callout, .takeaway, .surface-raised, .shadow-hard {
-      background: var(--ivory);
+      background: var(--vpk-surface-raised);
       box-shadow: var(--shadow-hard);
-      border: 1px solid var(--near-black);
+      border: 1px solid var(--vpk-ink);
       padding: 16px;
       margin: 24px 0;
       border-radius: 0;
@@ -695,8 +759,8 @@
       margin: 32px 0;
       border: 0;
       background-image:
-        repeating-linear-gradient(to right, var(--brand) 0, var(--brand) 4px, transparent 4px, transparent 8px),
-        repeating-linear-gradient(to right, transparent 0, transparent 8px, var(--blueprint-tint-strong) 8px, var(--blueprint-tint-strong) 14px);
+        repeating-linear-gradient(to right, var(--vpk-blueprint) 0, var(--vpk-blueprint) 4px, transparent 4px, transparent 8px),
+        repeating-linear-gradient(to right, transparent 0, transparent 8px, var(--selected-strong) 8px, var(--selected-strong) 14px);
       background-size: 100% 3px, 100% 3px;
       background-position: 0 0, 0 3px;
       background-repeat: no-repeat;
@@ -710,7 +774,7 @@
       text-transform: uppercase;
       font-family: "Geist Pixel", "Geist Mono", ui-monospace, monospace;
       font-size: 10px;
-      color: var(--brand);
+      color: var(--vpk-blueprint);
     }
   }
 
@@ -721,9 +785,9 @@
 <!-- ==================================================================
      TEMPLATE · resume (vpk-html · Making Software identity)
      Ported from kami's editorial template library, restyled with the
-     Making Software design language: warm paper (#fafaf5), warm ink
-     (#0A0A0A), electric accent-blue (#3553ff), accent-warning red
-     (#D14E3E) for figure tags, ink-muted (#757575) for captions.
+     Making Software design language: semantic paper (`--vpk-paper`), warm ink
+     (var(--vpk-ink)), semantic blueprint accent (`--vpk-blueprint`), accent-warning red
+     (var(--vpk-danger)) for figure tags, ink-muted (var(--vpk-muted-text)) for captions.
      Geist Pixel (Square) masthead, Geist Sans body, Geist Mono labels, 16px throughout
      (hierarchy via family + weight + color, not size).
      No section borders. No shadows. No grid. No rounded corners.

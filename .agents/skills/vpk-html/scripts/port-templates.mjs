@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /*
  * Ports kami's 8 EN HTML templates from ~/.agents/skills/kami/assets/templates/
- * into vpk-html/assets/templates/, re-skinned with vpk-html's identity
- * (warm paper + electric blue + Geist Sans body + Geist Mono labels +
- * Geist Pixel masthead).
+ * into vpk-html/assets/templates/, re-skinned with vpk-html's semantic
+ * blueprint identity (Geist Sans body + Geist Mono labels + Geist Pixel
+ * masthead).
  *
  * Layout, @page rules, and {{placeholders}} are preserved verbatim. Only
  * chrome (fonts, colors, @font-face blocks, font-family stacks) changes,
@@ -25,6 +25,7 @@ const KAMI_ROOT = path.join(os.homedir(), ".agents/skills/kami");
 const KAMI_TEMPLATES = path.join(KAMI_ROOT, "assets/templates");
 const VPK_TEMPLATES = path.join(SKILL_ROOT, "assets/templates");
 const VPK_FONTS_DIR = path.join(SKILL_ROOT, "assets/fonts");
+const VPK_THEME_CSS = path.join(SKILL_ROOT, "references/theme.css");
 
 // Inline fonts as base64 data URIs so filled documents are portable across
 // directories (kami uses ../fonts/ relative paths; we want a filled file in
@@ -50,46 +51,41 @@ const TEMPLATES = [
 	{ source: "changelog-en.html", slug: "changelog" },
 ];
 
-// Palette mapping: kami → vpk-html (Making Software design language).
-//   paper          #FBFBFB  warm off-white, never pure white
-//   ink            #0A0A0A  warm-tinted near-black
-//   ink-muted      #757575  50% ink, captions / margin labels
-//   accent-blue    #1B3FE5  electric blue, masthead / links / diagrams
-//   accent-warning #D14E3E  warm red, figure-tag margin labels only
+// Palette mapping: kami → vpk-html semantic aliases.
 const COLOR_MAP = {
-	"#f5f4ed": "#FBFBFB", // parchment → paper
-	"#F5F4ED": "#FBFBFB",
-	"#faf9f5": "#FBFBFB", // ivory → paper (collapse to single neutral)
-	"#FAF9F5": "#FBFBFB",
-	"#141413": "#0A0A0A", // near-black → ink
-	"#3d3d3a": "#2A2A2A", // dark-warm
-	"#3D3D3A": "#2A2A2A",
-	"#4d4c48": "#3D3D3D",
-	"#504e49": "#525252", // olive → mid gray
-	"#6b6a64": "#757575", // stone → ink-muted (50% ink)
-	"#1B365D": "#1B3FE5", // brand → accent-blue (electric)
-	"#1b365d": "#1B3FE5",
-	"#2D5A8A": "#1B3FE5", // ink-light collapses to same accent
-	"#EEF2F7": "#E6EAFB", // brand-tint → blue-tint (lighter)
-	"#eef2f7": "#E6EAFB",
-	"#E4ECF5": "#D5DDF8",
-	"#e4ecf5": "#D5DDF8",
-	"#D0DCE9": "#BFCBF6",
-	"#D6E1EE": "#C8D3F7",
-	"#e8e6dc": "#E0E0E0", // border (warm) → border (neutral hairline)
-	"#E8E6DC": "#E0E0E0",
-	"#e5e3d8": "#E0E0E0",
-	"#E5E3D8": "#E0E0E0",
-	"#DEDED7": "#E0E0E0",
-	"#E3E2DC": "#E0E0E0",
-	"#E9E8E1": "#EAEAEA",
-	"#EEEDE6": "#EFEFEF",
-	"#EAE9E2": "#E5E5E5",
-	"#B2B1AC": "#BDBDBD",
-	"#B53333": "#D14E3E", // error red → accent-warning
-	"#b53333": "#D14E3E",
-	"#30302E": "#2A2A2A",
-	"#30302e": "#2A2A2A",
+	"#f5f4ed": "var(--vpk-paper)",
+	"#F5F4ED": "var(--vpk-paper)",
+	"#faf9f5": "var(--vpk-paper)",
+	"#FAF9F5": "var(--vpk-paper)",
+	"#141413": "var(--vpk-ink)",
+	"#3d3d3a": "var(--vpk-ink)",
+	"#3D3D3A": "var(--vpk-ink)",
+	"#4d4c48": "var(--vpk-muted-text)",
+	"#504e49": "var(--vpk-muted-text)",
+	"#6b6a64": "var(--vpk-subtlest-text)",
+	"#1B365D": "var(--vpk-blueprint)",
+	"#1b365d": "var(--vpk-blueprint)",
+	"#2D5A8A": "var(--vpk-focus-ring)",
+	"#EEF2F7": "var(--vpk-blueprint-tint)",
+	"#eef2f7": "var(--vpk-blueprint-tint)",
+	"#E4ECF5": "var(--vpk-blueprint-tint)",
+	"#e4ecf5": "var(--vpk-blueprint-tint)",
+	"#D0DCE9": "var(--vpk-blueprint-tint-strong)",
+	"#D6E1EE": "var(--vpk-blueprint-tint-strong)",
+	"#e8e6dc": "var(--vpk-rule)",
+	"#E8E6DC": "var(--vpk-rule)",
+	"#e5e3d8": "var(--vpk-rule)",
+	"#E5E3D8": "var(--vpk-rule)",
+	"#DEDED7": "var(--vpk-rule)",
+	"#E3E2DC": "var(--vpk-rule)",
+	"#E9E8E1": "var(--vpk-surface-sunken)",
+	"#EEEDE6": "var(--vpk-surface-sunken)",
+	"#EAE9E2": "var(--vpk-surface-sunken)",
+	"#B2B1AC": "var(--vpk-rule-strong)",
+	"#B53333": "var(--vpk-danger)",
+	"#b53333": "var(--vpk-danger)",
+	"#30302E": "var(--vpk-ink)",
+	"#30302e": "var(--vpk-ink)",
 };
 
 // Replace kami's @font-face blocks with vpk-html's font set, inlined as
@@ -113,20 +109,25 @@ function buildVpkFontFace() {
     font-family: "Geist Pixel";
     src: url("${geistPixel}") format("woff2");
     font-weight: 400; font-style: normal; font-display: swap;
-  }`;
+}`;
 }
 
-// Making Software identity overrides: paper background, no chrome, 4-size scale,
+function buildVpkThemeBlock() {
+	if (!fs.existsSync(VPK_THEME_CSS)) {
+		throw new Error(`Theme file not found: ${VPK_THEME_CSS}`);
+	}
+	return fs.readFileSync(VPK_THEME_CSS, "utf8").trim();
+}
+
+// vpk-html identity overrides: semantic paper, no chrome, 4-size scale,
 // family + weight + color hierarchy instead of size hierarchy.
 const VPK_OVERRIDES = `
 
-  /* ===== vpk-html identity overrides (Making Software language) ===== */
+  /* ===== vpk-html identity overrides ===== */
 
-  /* Paper background — warm off-white, never pure white. No grid, no banding. */
-  html, body { background: #FBFBFB !important; }
+  html, body { background: var(--vpk-paper) !important; }
 
-  /* Strip all section chrome: no borders, no shadows, no rounded corners,
-     no section background colors. Per Making Software refuses-list. */
+  /* Strip section chrome unless a component opts into raised-surface treatment. */
   .frame, .page, section, .card, .metric, .metric-card,
   .header, .hero, .cover, .doc-cover,
   .quote, .pull-quote, .callout, .verdict, .tag, .pill {
@@ -138,14 +139,14 @@ const VPK_OVERRIDES = `
 
   /* Preserve a single hairline border ONLY on tables (they need column rules). */
   table, th, td {
-    border-color: #E0E0E0 !important;
+    border-color: var(--vpk-rule) !important;
     border-radius: 0 !important;
     box-shadow: none !important;
   }
 
   /* Hairline rule between sections — flat 1px, no inset, no shadow. */
   hr, .rule, .section-rule {
-    background: #E0E0E0 !important;
+    background: var(--vpk-rule) !important;
     border: 0 !important;
     height: 1px !important;
   }
@@ -156,7 +157,7 @@ const VPK_OVERRIDES = `
     font-family: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif !important;
     font-size: 16px !important;
     line-height: 1.8 !important;
-    color: #0A0A0A !important;
+    color: var(--vpk-ink) !important;
   }
   h1, h2, h3, h4, h5, h6,
   .cover-title, .doc-title, .resume-name, .deck-cover .title,
@@ -167,22 +168,22 @@ const VPK_OVERRIDES = `
     line-height: 1.8 !important;
     font-weight: 600 !important;
     letter-spacing: 0 !important;
-    color: #0A0A0A !important;
+    color: var(--vpk-ink) !important;
     margin: 0 !important;
   }
 
-  /* Masthead role: cover-title / first h1 carries the brand. Geist Pixel, accent-blue. */
+  /* Masthead role: cover-title / first h1 carries the semantic blueprint accent. */
   .cover h1:first-child, .cover-title:first-child,
   .hero h1:first-child, .doc-title h1:first-child,
   .resume-name {
     font-family: "Geist Pixel", "Geist Mono", ui-monospace, "SFMono-Regular", Consolas, monospace !important;
-    color: #1B3FE5 !important;
+    color: var(--vpk-blueprint) !important;
     font-weight: 400 !important;
     text-transform: uppercase !important;
     letter-spacing: 0.02em !important;
   }
 
-  /* Margin labels / eyebrows / figure tags: Geist Mono, 10–12px, accent-warning. */
+  /* Margin labels / eyebrows / figure tags: Geist Mono, 10-12px, blueprint. */
   .eyebrow, .label, .meta-mono, .kicker,
   .figure-tag, .margin-label, .fig-num, .stage-name {
     font-family: "Geist Pixel", "Geist Mono", ui-monospace, "SFMono-Regular", Consolas, monospace !important;
@@ -190,7 +191,7 @@ const VPK_OVERRIDES = `
     line-height: 14px !important;
     letter-spacing: 0.18em !important;
     text-transform: uppercase !important;
-    color: #D14E3E !important;
+    color: var(--vpk-blueprint) !important;
     font-weight: 400 !important;
   }
 
@@ -200,12 +201,12 @@ const VPK_OVERRIDES = `
     font-family: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif !important;
     font-size: 14px !important;
     line-height: 22px !important;
-    color: #757575 !important;
+    color: var(--vpk-muted-text) !important;
   }
 
-  /* Links: same accent-blue as masthead. No underline by default; underline on hover. */
+  /* Links: same semantic blueprint family as the masthead. */
   a, a:visited {
-    color: #1B3FE5 !important;
+    color: var(--vpk-link) !important;
     text-decoration: none !important;
   }
   a:hover {
@@ -215,12 +216,12 @@ const VPK_OVERRIDES = `
   }
 
   /* Emphasis: italic preferred; bold reserved for headings. */
-  .hl, mark, strong { color: #1B3FE5 !important; background: transparent !important; font-weight: 600 !important; }
-  em, i { font-style: italic !important; color: #0A0A0A !important; }
+  .hl, mark, strong { color: var(--vpk-blueprint) !important; background: transparent !important; font-weight: 600 !important; }
+  em, i { font-style: italic !important; color: var(--vpk-ink) !important; }
 
-  /* Dotted rule utility (Making Software signature separator). */
+  /* Dotted rule utility. */
   .dotted-rule, .vpk-dotted-rule {
-    background-image: radial-gradient(circle, #0A0A0A 1px, transparent 1px) !important;
+    background-image: radial-gradient(circle, var(--vpk-ink) 1px, transparent 1px) !important;
     background-size: 8px 8px !important;
     background-repeat: repeat-x !important;
     background-position: 0 50% !important;
@@ -235,7 +236,7 @@ const VPK_OVERRIDES = `
   .lead::first-letter,
   .cover + p::first-letter {
     font-family: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif !important;
-    color: #0A0A0A !important;
+    color: var(--vpk-ink) !important;
     float: left !important;
     font-size: 48px !important;
     line-height: 1 !important;
@@ -279,13 +280,14 @@ function rewriteFontStacks(text) {
 	return out;
 }
 
-function rewriteFontFaceBlocks(text, fontFaceBlock) {
+function rewriteFontFaceBlocks(text, fontFaceBlock, themeBlock) {
 	let out = text;
 	out = out.replace(/@font-face\s*\{[\s\S]*?\}\s*/g, "");
+	const injected = `${fontFaceBlock}\n\n${themeBlock}`;
 	if (/:root\s*\{/.test(out)) {
-		out = out.replace(/(:root\s*\{)/, `${fontFaceBlock}\n\n  $1`);
+		out = out.replace(/(:root\s*\{)/, `${injected}\n\n  $1`);
 	} else if (/<style>/.test(out)) {
-		out = out.replace(/<style>/, `<style>\n${fontFaceBlock}\n`);
+		out = out.replace(/<style>/, `<style>\n${injected}\n`);
 	}
 	return out;
 }
@@ -295,9 +297,9 @@ function rewriteHeader(text, slug) {
 	const headerComment = `<!-- ==================================================================
      TEMPLATE · ${friendly} (vpk-html · Making Software identity)
      Ported from kami's editorial template library, restyled with the
-     Making Software design language: warm paper (#FBFBFB), warm ink
-     (#0A0A0A), electric accent-blue (#1B3FE5), accent-warning red
-     (#D14E3E) for figure tags, ink-muted (#757575) for captions.
+     vpk-html semantic aliases: paper (var(--vpk-paper)), ink
+     (var(--vpk-ink)), blueprint accent (var(--vpk-blueprint)),
+     status accents, and muted text (var(--vpk-muted-text)).
      Geist Pixel (Square) masthead, Geist Sans body, Geist Mono labels, 16px throughout
      (hierarchy via family + weight + color, not size).
      No section borders. No shadows. No grid. No rounded corners.
@@ -319,9 +321,9 @@ function appendOverrides(text) {
 	return text.replace(/<\/style>/, `${VPK_OVERRIDES}</style>`);
 }
 
-function transform(rawHtml, slug, fontFaceBlock) {
+function transform(rawHtml, slug, fontFaceBlock, themeBlock) {
 	let out = rawHtml;
-	out = rewriteFontFaceBlocks(out, fontFaceBlock);
+	out = rewriteFontFaceBlocks(out, fontFaceBlock, themeBlock);
 	out = rewriteFontStacks(out);
 	out = rewriteColors(out);
 	out = rewriteHeader(out, slug);
@@ -339,6 +341,7 @@ function main() {
 
 	console.log("Inlining fonts as base64 data URIs…");
 	const fontFaceBlock = buildVpkFontFace();
+	const themeBlock = buildVpkThemeBlock();
 
 	for (const { source, slug } of TEMPLATES) {
 		const sourcePath = path.join(KAMI_TEMPLATES, source);
@@ -348,7 +351,7 @@ function main() {
 			continue;
 		}
 		const raw = fs.readFileSync(sourcePath, "utf8");
-		fs.writeFileSync(targetPath, transform(raw, slug, fontFaceBlock), "utf8");
+		fs.writeFileSync(targetPath, transform(raw, slug, fontFaceBlock, themeBlock), "utf8");
 		console.log(`✓ ${slug} (from ${source})`);
 	}
 

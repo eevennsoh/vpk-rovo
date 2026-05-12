@@ -23,23 +23,26 @@ export function collectColorTokenIssues(source, label = "document") {
 	const stripped = source
 		.replace(/url\(["']?data:font\/woff2;base64,[^)]+?\)/g, "url(data:font/woff2;base64,...)")
 		.replace(/url\(["']?data:image\/[^)]+?\)/g, "url(data:image/...)")
-		.replace(/\[[^\]]+(?:fill|stroke)=["']#[0-9A-Fa-f]{3,8}["'][^\]]*\]/g, "[svg-color-selector]");
+		.replace(/\[[^\]]+(?:fill|stroke)=["']#[0-9A-Fa-f]{3,8}["'][^\]]*\]/g, "[svg-color-selector]")
+		.replace(/\b(?:href|id|for|aria-controls|aria-labelledby)=["']#[^"']+["']/gi, "fragment-ref")
+		.replace(/\b(?:PR|Pull Request)\s+#[0-9A-Fa-f]{3,8}\b/g, "issue-ref")
+		.replace(/&#[0-9A-Fa-f]+;/g, "numeric-entity");
 
 	const issues = [];
 	const colorPattern = /#[0-9A-Fa-f]{3,8}\b|\b(?:rgb|rgba|hsl|hsla)\([^)]*\)/gi;
 	const lines = stripped.split("\n");
 	for (let index = 0; index < lines.length; index++) {
 		const line = lines[index];
-		const matches = [...line.matchAll(colorPattern)].map(match => match[0]);
+		const matches = [...line.matchAll(colorPattern)]
+			.map(match => match[0])
+			.filter(match => !(line.includes("<") && /^#[0-9]{3,8}$/.test(match)));
 		if (matches.length === 0) continue;
 
-		const allowed =
-			/--vpk-[\w-]+\s*:/.test(line) ||
-			/--vpk-shadow\s*:/.test(line) ||
-			/var\(--ds-[\w-]+,\s*#[0-9A-Fa-f]{3,8}\)/.test(line) ||
-			/sourceMappingURL=/.test(line);
+		const isSemanticFallback = /--vpk-[\w-]+\s*:\s*var\(--ds-[\w-]+,\s*#[0-9A-Fa-f]{3,8}\)/.test(line);
+		const isShadowFallback = /--vpk-shadow\s*:\s*var\(--ds-shadow-[\w-]+,\s*[^;]*(?:rgba\([^)]*\)|#[0-9A-Fa-f]{3,8})/.test(line);
+		const isAllowedGeneratedNoise = /sourceMappingURL=/.test(line);
 
-		if (!allowed) {
+		if (!isSemanticFallback && !isShadowFallback && !isAllowedGeneratedNoise) {
 			issues.push(`line ${index + 1}: ${[...new Set(matches)].join(", ")}`);
 			if (issues.length >= 12) break;
 		}

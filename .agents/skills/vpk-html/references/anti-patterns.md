@@ -41,7 +41,7 @@ Imitating the *surface* of a genre without inheriting its *substance*.
 |---|---|---|
 | Status report with only positive deltas | Every metric is up-and-to-the-right; nothing slipped | Real status reports include slippage. If everything went well, say why and what you learned. If nothing slipped, you're not reporting honestly. |
 | Resume with vague verbs | "Drove cross-functional alignment" | Replace with Action + Scope + Result + Outcome. "Led 3-person team that migrated 142 tables from pg15 to pg16 in 47 minutes, saving $48k/mo." |
-| Architecture diagram with every box ink-blue | The accent doesn't mean anything | Pick one focal node, demote the rest. (See `references/diagrams.md`.) |
+| Architecture diagram with every box blueprint | The accent doesn't mean anything | Pick one focal node, demote the rest. (See `references/diagrams.md`.) |
 | Post-mortem with no root cause | "Action: improve monitoring." | The action items are downstream of root cause, which is downstream of contributing factors. Don't skip the analysis. |
 
 > Mimicry passes a casual reader's "looks like the right shape" test. It

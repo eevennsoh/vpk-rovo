@@ -105,7 +105,7 @@ node .agents/skills/vpk-html/scripts/build.mjs --verify docs/html/<slug>.html
   <svg viewBox="0 0 960 460" xmlns="http://www.w3.org/2000/svg">
     <!-- pasted SVG content; replace {{System name}} etc. -->
   </svg>
-  <figcaption>One ink-blue node marks the focal component.</figcaption>
+  <figcaption>One blueprint node marks the focal component.</figcaption>
 </figure>
 ```
 
@@ -113,19 +113,19 @@ node .agents/skills/vpk-html/scripts/build.mjs --verify docs/html/<slug>.html
 
 Editorial / engineering manual — implementation cousin: [aiengineeringfromscratch.com](https://aiengineeringfromscratch.com/) (built in the [makingsoftware.com](https://www.makingsoftware.com/) lineage).
 
-**Light (default):** parchment `#fafaf5`, ink `#0A0A0A`, blueprint `#3553ff`, raised `#f3f1e8`.
-**Dark** (`<html data-theme="dark">`): paper `#0a0d1a`, ink `#e8e6dc`, blueprint `#6b8eff`, raised `#131830`.
+**Light (default):** `--vpk-paper`, `--vpk-ink`, `--vpk-blueprint`, and `--vpk-surface-raised` resolve through VPK/ADS semantic tokens with embedded offline fallbacks.
+**Dark** (`<html data-theme="dark">`): the same `--vpk-*` aliases switch to dark semantic fallbacks without importing runtime CSS.
 
 - Fonts (Geist family only): **Geist Pixel** for all headings, masthead, margin labels, figure tags; **Geist Sans** body 18px / line-height 1.62; **Geist Mono** code
 - All headings: uppercase, letter-spaced, in `var(--brand)`
-- Body bg: warm paper + subtle dotted texture via `radial-gradient(var(--paper-rule) 1px, transparent 1px); background-size: 16px 16px;`
+- Body bg: semantic paper + subtle dotted texture via `radial-gradient(var(--vpk-paper-rule) 1px, transparent 1px); background-size: 16px 16px;`
 - Type scale: cover-title 56px / h1 36px / h2 26px / h3 18px / h4-h6 14px / body+p 18px / fig-label 10px
 - Hard shadows opt-in: add `.card / .callout / .takeaway / .surface-raised / .shadow-hard` for `box-shadow: 3px 3px 0 var(--near-black)` + 1px ink border
 - ASCII rule: `<hr class="ascii">` for bright blueprint dotted separator
 - Dotted divider: `<hr>` styled via radial-gradient row of 1px dots
 - `long-doc.html` only: `.spread` two-column primitive (prose left ~42%, figure right ~58%) with vertical `.gutter-tag` for FIG_NN labels
 
-**Bans:** no `border-left/right > 1px` colored side stripes; no `#ffffff` or `#000000` literals — use `var(--parchment)` / `var(--near-black)`.
+**Bans:** no `border-left/right > 1px` colored side stripes; no raw color literals in authored/generated surfaces — use the `--vpk-*` aliases.
 
 **Activate dark mode in any rendered doc:**
 ```js

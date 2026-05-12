@@ -14,9 +14,9 @@ stay locked across all documents.
 - **Display font:** Geist Pixel (Square variant) for masthead / cover headlines.
 - **Body font:** Geist Sans for prose.
 - **Mono font:** Geist Mono for labels, code, eyebrows, figure tags.
-- **Surface:** warm off-white paper `#FBFBFB` (never pure white).
-- **Accent:** electric blue `#1B3FE5` — the only chromatic accent, capped at ~5% per page.
-- **Warning accent:** warm red `#D14E3E`, reserved for figure-tag margin labels.
+- **Surface:** `--vpk-paper`, backed by VPK/ADS surface semantics with offline fallbacks.
+- **Accent:** `--vpk-blueprint`, mapped to VPK/ADS brand/information blue.
+- **Status:** `--vpk-success`, `--vpk-warning`, `--vpk-danger`, and `--vpk-info` for meaning-bearing accents.
 - **No section chrome:** no borders, no shadows, no rounded corners, no grid background.
 
 The look is deliberately *terminal × engineering notebook*. Not warm and
@@ -123,8 +123,8 @@ The visual identity diverges; the workflow does not.
 
 | | vpk-html | kami |
 |---|---|---|
-| Surface | White paper + 24px grid | Warm parchment |
-| Accent | Ink-blue `#1868db` | Ink-blue `#1B365D` (deeper) |
+| Surface | Semantic white paper via `--vpk-paper` | Warm parchment |
+| Accent | Semantic brand/information blue via `--vpk-blueprint` | Ink-blue `#1B365D` (deeper) |
 | Display | Geist Pixel · Square (pixel/terminal) | Charter / TsangerJinKai02 (serif) |
 | Body | Geist Sans | Charter / TsangerJinKai02 |
 | Render pipeline | Template edit (kami-style) | Template edit |

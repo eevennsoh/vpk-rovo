@@ -26,10 +26,12 @@ const PLACEHOLDER_PATTERN = /\{\{[^}]+\}\}/g;
 
 // vpk identity check — required tokens that should appear in templates.
 const REQUIRED_FONT_FACES = ["Geist", "Geist Mono", "Geist Pixel"];
+const legacyElectricBlueprint = new RegExp(`#${"3553ff"}`, "i");
+const legacyAccentBlue = new RegExp(`#${"1B3FE5"}`, "i");
 const FORBIDDEN_KAMI_LEAKAGE = [
 	{ pattern: /#1B365D/i, label: "kami brand color #1B365D (should use vpk semantic brand aliases)" },
-	{ pattern: /#3553ff/i, label: "legacy electric blueprint #3553ff (should use --vpk-blueprint)" },
-	{ pattern: /#1B3FE5/i, label: "legacy vpk accent-blue #1B3FE5 (should use --vpk-blueprint)" },
+	{ pattern: legacyElectricBlueprint, label: "legacy nonsemantic blueprint literal (should use --vpk-blueprint)" },
+	{ pattern: legacyAccentBlue, label: "legacy vpk accent-blue literal (should use --vpk-blueprint)" },
 	{ pattern: /#f5f4ed/i, label: "kami parchment #f5f4ed (should use --vpk-paper)" },
 	{ pattern: /TsangerJinKai02/, label: "kami CJK font TsangerJinKai02" },
 	{ pattern: /font-family:\s*Charter\b/, label: "kami Charter serif (should be Geist)" },

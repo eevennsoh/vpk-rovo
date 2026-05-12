@@ -3,7 +3,7 @@
      DEMO · agent slides (vpk-html palette)
      Ported from kami's curated demos library and restyled with the
      vpk-html identity: VT323 display headlines, Source Serif body, grid
-     background, ink-blue (#1868DB) accent. Layout, content, and SVG
+     background, blueprint (var(--vpk-blueprint)) accent. Layout, content, and SVG
      geometry are preserved verbatim from kami.
      Source: https://github.com/tw93/Kami
      ================================================================== -->
@@ -12,14 +12,78 @@
 <meta charset="UTF-8">
 <title>Things You Don't Know About Agents · Slides</title>
 <style>
-  :root { color-scheme: light dark; }
-  [data-theme="dark"] { color-scheme: dark; }
+  :root {
+	--vpk-paper: var(--ds-surface, #ffffff);
+	--vpk-paper-background: var(--ds-surface, #ffffff);
+	--vpk-surface-raised: var(--ds-surface-raised, #ffffff);
+	--vpk-surface-overlay: var(--ds-surface-overlay, #ffffff);
+	--vpk-surface-sunken: var(--ds-surface-sunken, #f0f1f2);
+	--vpk-ink: var(--ds-text, #292a2e);
+	--vpk-muted-text: var(--ds-text-subtle, #505258);
+	--vpk-subtlest-text: var(--ds-text-subtlest, #6b6e76);
+	--vpk-inverse-text: var(--ds-text-inverse, #ffffff);
+	--vpk-rule: var(--ds-border, #0b120e24);
+	--vpk-rule-strong: var(--ds-border-bold, #7d818a);
+	--vpk-blueprint: var(--ds-background-brand-bold, #1868db);
+	--vpk-link: var(--ds-link, #1868db);
+	--vpk-link-pressed: var(--ds-link-pressed, #1558bc);
+	--vpk-selected: var(--ds-background-selected, #e9f2fe);
+	--vpk-blueprint-tint: var(--ds-background-information, #e9f2fe);
+	--vpk-blueprint-tint-strong: var(--ds-background-information-hovered, #cfe1fd);
+	--vpk-focus-ring: var(--ds-border-focused, #4688ec);
+	--vpk-code-surface: var(--ds-background-neutral-subtle, #f0f1f2);
+	--vpk-code-ink: var(--ds-text, #292a2e);
+	--vpk-code-inverse: var(--ds-text-inverse, #ffffff);
+	--vpk-math-highlight: var(--ds-background-information, #e9f2fe);
+	--vpk-success: var(--ds-background-success-bold, #5b7f24);
+	--vpk-success-tint: var(--ds-background-success, #efffd6);
+	--vpk-warning: var(--ds-background-warning-bold, #fbc828);
+	--vpk-warning-tint: var(--ds-background-warning, #fff5db);
+	--vpk-danger: var(--ds-background-danger-bold, #c9372c);
+	--vpk-danger-tint: var(--ds-background-danger, #ffeceb);
+	--vpk-info: var(--ds-background-information-bold, #1868db);
+	--vpk-info-tint: var(--ds-background-information, #e9f2fe);
+	--vpk-paper-rule: color-mix(in srgb, var(--vpk-ink) 8%, transparent);
+	--vpk-shadow: var(--ds-shadow-raised, 0 1px 1px rgba(9, 30, 66, 0.25), 0 0 1px rgba(9, 30, 66, 0.31)); color-scheme: light dark; }
+  [data-theme="dark"] {
+	--vpk-paper: var(--ds-surface, #101214);
+	--vpk-paper-background: var(--ds-surface, #1d2125);
+	--vpk-surface-raised: var(--ds-surface-raised, #22272b);
+	--vpk-surface-overlay: var(--ds-surface-overlay, #282e33);
+	--vpk-surface-sunken: var(--ds-surface-sunken, #161a1d);
+	--vpk-ink: var(--ds-text, #dee4ea);
+	--vpk-muted-text: var(--ds-text-subtle, #9fadbc);
+	--vpk-subtlest-text: var(--ds-text-subtlest, #738496);
+	--vpk-inverse-text: var(--ds-text-inverse, #101214);
+	--vpk-rule: var(--ds-border, #a6c5e229);
+	--vpk-rule-strong: var(--ds-border-bold, #738496);
+	--vpk-blueprint: var(--ds-background-brand-bold, #579dff);
+	--vpk-link: var(--ds-link, #579dff);
+	--vpk-link-pressed: var(--ds-link-pressed, #85b8ff);
+	--vpk-selected: var(--ds-background-selected, #09326c);
+	--vpk-blueprint-tint: var(--ds-background-information, #09326c);
+	--vpk-blueprint-tint-strong: var(--ds-background-information-hovered, #0c418a);
+	--vpk-focus-ring: var(--ds-border-focused, #579dff);
+	--vpk-code-surface: var(--ds-background-neutral-subtle, #161a1d);
+	--vpk-code-ink: var(--ds-text, #dee4ea);
+	--vpk-code-inverse: var(--ds-text-inverse, #101214);
+	--vpk-math-highlight: var(--ds-background-information, #09326c);
+	--vpk-success: var(--ds-background-success-bold, #b3df72);
+	--vpk-success-tint: var(--ds-background-success, #1f4d3a);
+	--vpk-warning: var(--ds-background-warning-bold, #f5cd47);
+	--vpk-warning-tint: var(--ds-background-warning, #533f04);
+	--vpk-danger: var(--ds-background-danger-bold, #f87168);
+	--vpk-danger-tint: var(--ds-background-danger, #5d1f1a);
+	--vpk-info: var(--ds-background-information-bold, #579dff);
+	--vpk-info-tint: var(--ds-background-information, #09326c);
+	--vpk-paper-rule: color-mix(in srgb, var(--vpk-ink) 8%, transparent);
+	--vpk-shadow: var(--ds-shadow-raised, 0 1px 1px rgba(0, 0, 0, 0.32), 0 0 1px rgba(0, 0, 0, 0.42)); color-scheme: dark; }
 
   /* Palatino is a system font; JetBrains Mono kept for code blocks */
   @page {
     size: A4 landscape;
     margin: 0;
-    background: var(--parchment);
+    background: var(--vpk-paper);
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -41,15 +105,15 @@
   }
 
   :root {
-    --parchment:  #ffffff;
-    --ivory:      #fafafa;
-    --near-black: #292a2e;
-    --dark-warm:  #3a3d42;
-    --olive:      #505258;
-    --stone:      #7a7c82;
-    --brand:      #1868db;
-    --brand-tint: #e9f2fe;
-    --border:     #dadcdf;
+    --parchment:  var(--vpk-surface-raised);
+    --ivory:      var(--vpk-paper);
+    --near-black: var(--vpk-ink);
+    --dark-warm:  var(--vpk-ink);
+    --olive:      var(--vpk-muted-text);
+    --stone:      var(--vpk-muted-text);
+    --brand:      var(--vpk-blueprint);
+    --brand-tint: var(--vpk-blueprint-tint);
+    --border:     var(--vpk-rule);
 
     --serif: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
     --sans: var(--serif);
@@ -57,7 +121,7 @@
   }
 
   body {
-    color: var(--near-black);
+    color: var(--vpk-ink);
     font-family: var(--serif);
   }
 
@@ -65,7 +129,7 @@
     width: 297mm;
     height: 210mm;
     padding: 18mm 22mm;
-    background: var(--parchment);
+    background: var(--vpk-paper);
     break-after: page;
     position: relative;
     display: flex;
@@ -78,7 +142,7 @@
     font-size: 9pt;
     letter-spacing: 2.5pt;
     text-transform: uppercase;
-    color: var(--stone);
+    color: var(--vpk-muted-text);
   }
 
   .page-num {
@@ -87,7 +151,7 @@
     right: 22mm;
     font-family: var(--mono);
     font-size: 9pt;
-    color: var(--stone);
+    color: var(--vpk-muted-text);
     letter-spacing: 0.5pt;
     font-variant-numeric: tabular-nums;
   }
@@ -98,7 +162,7 @@
     left: 22mm;
     font-family: var(--mono);
     font-size: 9pt;
-    color: var(--stone);
+    color: var(--vpk-muted-text);
     letter-spacing: 1.5pt;
     text-transform: uppercase;
   }
@@ -114,7 +178,7 @@
   .cover .mark {
     font-family: var(--mono);
     font-size: 10pt;
-    color: var(--brand);
+    color: var(--vpk-blueprint);
     letter-spacing: 3pt;
     text-transform: uppercase;
     margin-bottom: 22pt;
@@ -125,26 +189,26 @@
     font-weight: 500;
     line-height: 1.05;
     letter-spacing: -1.5pt;
-    color: var(--near-black);
+    color: var(--vpk-ink);
     margin-bottom: 16pt;
   }
   .cover .sub {
     font-family: var(--serif);
     font-size: 15pt;
-    color: var(--olive);
+    color: var(--vpk-success);
     line-height: 1.45;
     max-width: 34ch;
   }
   .cover .line {
     width: 60pt;
     height: 2pt;
-    background: var(--brand);
+    background: var(--vpk-blueprint);
     margin: 20pt 0 16pt 0;
   }
   .cover .meta {
     font-family: var(--sans);
     font-size: 10pt;
-    color: var(--stone);
+    color: var(--vpk-muted-text);
     letter-spacing: 0.4pt;
   }
   .cover-visual { display: flex; align-items: center; justify-content: center; }
@@ -162,7 +226,7 @@
     font-weight: 500;
     line-height: 1.1;
     letter-spacing: -0.6pt;
-    color: var(--near-black);
+    color: var(--vpk-ink);
     max-width: 24ch;
     margin-top: 6pt;
     margin-bottom: 28pt;
@@ -182,10 +246,10 @@
     font-family: var(--serif);
     font-size: 17pt;
     line-height: 1.45;
-    color: var(--dark-warm);
+    color: var(--vpk-ink);
     margin-bottom: 14pt;
   }
-  .claim .hl { color: var(--brand); }
+  .claim .hl { color: var(--vpk-blueprint); }
 
   ul.pts {
     list-style: none;
@@ -196,7 +260,7 @@
     font-family: var(--sans);
     font-size: 12.5pt;
     line-height: 1.5;
-    color: var(--dark-warm);
+    color: var(--vpk-ink);
     padding-left: 18pt;
     position: relative;
     margin-bottom: 9pt;
@@ -205,24 +269,24 @@
     content: counter(pts) ".";
     position: absolute;
     left: 0;
-    color: var(--brand);
+    color: var(--vpk-blueprint);
     font-weight: 500;
     font-variant-numeric: tabular-nums;
   }
-  ul.pts li .hl { color: var(--brand); font-weight: 500; }
+  ul.pts li .hl { color: var(--vpk-blueprint); font-weight: 500; }
 
   /* kami-native callout: transparent + single brand left bar */
   .callout {
     background: transparent;
-    border-left: 2pt solid var(--brand);
+    border-left: 2pt solid var(--vpk-blueprint);
     padding: 8pt 0 8pt 16pt;
     font-family: var(--serif);
     font-size: 14pt;
     line-height: 1.5;
-    color: var(--olive);
+    color: var(--vpk-success);
     margin-top: 4pt;
   }
-  .callout .hl { color: var(--brand); }
+  .callout .hl { color: var(--vpk-blueprint); }
 
   /* kami-native metrics: vertical stack, number above label.
      Stacked layout keeps all 3 numbers on one baseline regardless of label
@@ -232,7 +296,7 @@
     gap: 20pt;
     margin-top: 20pt;
     padding-top: 12pt;
-    border-top: 0.3pt dotted var(--border);
+    border-top: 0.3pt dotted var(--vpk-rule);
   }
   .metric {
     flex: 1;
@@ -244,7 +308,7 @@
     font-family: var(--serif);
     font-size: 32pt;
     font-weight: 500;
-    color: var(--brand);
+    color: var(--vpk-blueprint);
     line-height: 1;
     font-variant-numeric: tabular-nums;
     letter-spacing: -0.3pt;
@@ -252,7 +316,7 @@
   .metric .l {
     font-family: var(--sans);
     font-size: 10pt;
-    color: var(--olive);
+    color: var(--vpk-success);
     line-height: 1.4;
   }
 
@@ -271,54 +335,54 @@
     font-family: var(--serif);
     font-size: 52pt;
     font-weight: 500;
-    color: var(--near-black);
+    color: var(--vpk-ink);
     letter-spacing: -0.8pt;
     margin-bottom: 12pt;
   }
   .ending .sub {
     font-family: var(--serif);
     font-size: 17pt;
-    color: var(--olive);
+    color: var(--vpk-success);
     max-width: 44ch;
     line-height: 1.45;
   }
   .ending .line {
     width: 60pt;
     height: 1.5pt;
-    background: var(--brand);
+    background: var(--vpk-blueprint);
     margin: 22pt auto;
   }
 
   /* --- Code Card --- */
   .code-card {
-    background: var(--ivory);
-    border: 1px solid #e8e5da;
+    background: var(--vpk-surface-raised);
+    border: 1px solid var(--vpk-rule);
     border-radius: 6pt;
     padding: 14pt 18pt;
     font-family: var(--mono);
     font-size: 10pt;
     line-height: 1.55;
-    color: var(--near-black);
+    color: var(--vpk-ink);
     white-space: pre;
     overflow: hidden;
   }
-  .code-card .k { color: var(--brand); }
-  .code-card .c { color: #7a7c82; }
+  .code-card .k { color: var(--vpk-blueprint); }
+  .code-card .c { color: var(--vpk-muted-text); }
 
 
   /* vpk-html identity overrides */
-  html { background: var(--parchment); }
+  html { background: var(--vpk-paper); }
   body {
     background:
-      linear-gradient(90deg, rgba(11, 18, 14, 0.018) 1px, transparent 1px),
-      linear-gradient(0deg, rgba(11, 18, 14, 0.018) 1px, transparent 1px),
-      #ffffff;
+      linear-gradient(90deg, color-mix(in srgb, var(--vpk-ink) 2%, transparent) 1px, transparent 1px),
+      linear-gradient(0deg, color-mix(in srgb, var(--vpk-ink) 2%, transparent) 1px, transparent 1px),
+      var(--vpk-surface-raised);
     background-size: 24px 24px;
   }
   /* Frame the document with vpk-html chrome when a kami .page or .frame exists */
   .page, .frame {
-    border: 2px solid #292a2e !important;
-    box-shadow: 0 1px 1px rgba(9, 30, 66, 0.25), 0 0 1px rgba(9, 30, 66, 0.31) !important;
+    border: 2px solid var(--vpk-ink) !important;
+    box-shadow: var(--vpk-shadow) !important;
   }
 </style>
 </head>
@@ -337,17 +401,17 @@
   <div class="cover-visual">
     <!-- Decorative loop mark: concentric arcs in brand + stone -->
     <svg aria-hidden="true" viewBox="0 0 260 260" xmlns="http://www.w3.org/2000/svg" style="width: 220pt;">
-      <circle cx="130" cy="130" r="100" fill="none" stroke="#dadcdf" stroke-width="1"/>
-      <circle cx="130" cy="130" r="72" fill="none" stroke="#dadcdf" stroke-width="1"/>
-      <circle cx="130" cy="130" r="44" fill="#e9f2fe" stroke="#1868db" stroke-width="1.2"/>
+      <circle cx="130" cy="130" r="100" fill="none" stroke="var(--vpk-rule)" stroke-width="1"/>
+      <circle cx="130" cy="130" r="72" fill="none" stroke="var(--vpk-rule)" stroke-width="1"/>
+      <circle cx="130" cy="130" r="44" fill="var(--vpk-blueprint-tint)" stroke="var(--vpk-blueprint)" stroke-width="1.2"/>
       <!-- arc segments on outer ring to suggest cycle -->
-      <path d="M 130 30 A 100 100 0 0 1 230 130" fill="none" stroke="#1868db" stroke-width="2.2" stroke-linecap="round"/>
-      <path d="M 230 130 A 100 100 0 0 1 130 230" fill="none" stroke="#7a7c82" stroke-width="1.2" stroke-linecap="round"/>
-      <path d="M 130 230 A 100 100 0 0 1 30 130" fill="none" stroke="#7a7c82" stroke-width="1.2" stroke-linecap="round"/>
-      <path d="M 30 130 A 100 100 0 0 1 130 30" fill="none" stroke="#7a7c82" stroke-width="1.2" stroke-linecap="round"/>
+      <path d="M 130 30 A 100 100 0 0 1 230 130" fill="none" stroke="var(--vpk-blueprint)" stroke-width="2.2" stroke-linecap="round"/>
+      <path d="M 230 130 A 100 100 0 0 1 130 230" fill="none" stroke="var(--vpk-muted-text)" stroke-width="1.2" stroke-linecap="round"/>
+      <path d="M 130 230 A 100 100 0 0 1 30 130" fill="none" stroke="var(--vpk-muted-text)" stroke-width="1.2" stroke-linecap="round"/>
+      <path d="M 30 130 A 100 100 0 0 1 130 30" fill="none" stroke="var(--vpk-muted-text)" stroke-width="1.2" stroke-linecap="round"/>
       <!-- center label -->
-      <text x="130" y="125" text-anchor="middle" font-size="10" font-weight="500" fill="#292a2e" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif">Agent</text>
-      <text x="130" y="141" text-anchor="middle" font-size="8" fill="#1868db" font-family="'JetBrains Mono', monospace" letter-spacing="2">LOOP</text>
+      <text x="130" y="125" text-anchor="middle" font-size="10" font-weight="500" fill="var(--vpk-ink)" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif">Agent</text>
+      <text x="130" y="141" text-anchor="middle" font-size="8" fill="var(--vpk-blueprint)" font-family="'JetBrains Mono', monospace" letter-spacing="2">LOOP</text>
     </svg>
   </div>
   <div class="page-num">01</div>
@@ -381,52 +445,52 @@
            Chevron marker (open path, not filled polygon). Core is the only focal element. -->
       <svg aria-hidden="true" viewBox="0 0 680 560" xmlns="http://www.w3.org/2000/svg">
         <!-- surroundings label -->
-        <text x="340" y="12" text-anchor="middle" font-size="9" fill="#7a7c82" font-family="'JetBrains Mono', monospace" letter-spacing="1.5">TOOLS · HARNESS · EVALS · MEMORY</text>
+        <text x="340" y="12" text-anchor="middle" font-size="9" fill="var(--vpk-muted-text)" font-family="'JetBrains Mono', monospace" letter-spacing="1.5">TOOLS · HARNESS · EVALS · MEMORY</text>
 
-        <!-- dashed ink-blue ring -->
-        <circle cx="340" cy="280" r="192" fill="none" stroke="#1868db" stroke-width="1" stroke-dasharray="4 3"/>
+        <!-- dashed blueprint ring -->
+        <circle cx="340" cy="280" r="192" fill="none" stroke="var(--vpk-blueprint)" stroke-width="1" stroke-dasharray="4 3"/>
 
         <!-- PLAN: x=240 y=16 w=200 h=72 rx=8, center (340, 52) -->
-        <rect x="240" y="16" width="200" height="72" rx="8" fill="#ffffff" stroke="#292a2e" stroke-width="0.8"/>
-        <text x="340" y="52" text-anchor="middle" dominant-baseline="central" font-size="14" font-weight="500" fill="#292a2e" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif">PLAN</text>
+        <rect x="240" y="16" width="200" height="72" rx="8" fill="var(--vpk-surface-raised)" stroke="var(--vpk-ink)" stroke-width="0.8"/>
+        <text x="340" y="52" text-anchor="middle" dominant-baseline="central" font-size="14" font-weight="500" fill="var(--vpk-ink)" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif">PLAN</text>
 
         <!-- ACT: x=468 y=244 w=200 h=72 rx=8, center (568, 280) -->
-        <rect x="468" y="244" width="200" height="72" rx="8" fill="#ffffff" stroke="#292a2e" stroke-width="0.8"/>
-        <text x="568" y="280" text-anchor="middle" dominant-baseline="central" font-size="14" font-weight="500" fill="#292a2e" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif">ACT</text>
+        <rect x="468" y="244" width="200" height="72" rx="8" fill="var(--vpk-surface-raised)" stroke="var(--vpk-ink)" stroke-width="0.8"/>
+        <text x="568" y="280" text-anchor="middle" dominant-baseline="central" font-size="14" font-weight="500" fill="var(--vpk-ink)" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif">ACT</text>
 
         <!-- OBSERVE: x=240 y=472 w=200 h=72 rx=8, center (340, 508) -->
-        <rect x="240" y="472" width="200" height="72" rx="8" fill="#ffffff" stroke="#292a2e" stroke-width="0.8"/>
-        <text x="340" y="508" text-anchor="middle" dominant-baseline="central" font-size="14" font-weight="500" fill="#292a2e" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif">OBSERVE</text>
+        <rect x="240" y="472" width="200" height="72" rx="8" fill="var(--vpk-surface-raised)" stroke="var(--vpk-ink)" stroke-width="0.8"/>
+        <text x="340" y="508" text-anchor="middle" dominant-baseline="central" font-size="14" font-weight="500" fill="var(--vpk-ink)" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif">OBSERVE</text>
 
         <!-- REFLECT: x=12 y=244 w=200 h=72 rx=8, center (112, 280) -->
-        <rect x="12" y="244" width="200" height="72" rx="8" fill="#ffffff" stroke="#292a2e" stroke-width="0.8"/>
-        <text x="112" y="280" text-anchor="middle" dominant-baseline="central" font-size="14" font-weight="500" fill="#292a2e" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif">REFLECT</text>
+        <rect x="12" y="244" width="200" height="72" rx="8" fill="var(--vpk-surface-raised)" stroke="var(--vpk-ink)" stroke-width="0.8"/>
+        <text x="112" y="280" text-anchor="middle" dominant-baseline="central" font-size="14" font-weight="500" fill="var(--vpk-ink)" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif">REFLECT</text>
 
         <!-- center: focal CORE text -->
-        <text x="340" y="268" text-anchor="middle" dominant-baseline="central" font-size="16" font-weight="500" fill="#292a2e" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif">20 LOC</text>
-        <text x="340" y="292" text-anchor="middle" dominant-baseline="central" font-size="10" fill="#1868db" font-family="'JetBrains Mono', monospace" letter-spacing="1.5">CORE</text>
+        <text x="340" y="268" text-anchor="middle" dominant-baseline="central" font-size="16" font-weight="500" fill="var(--vpk-ink)" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif">20 LOC</text>
+        <text x="340" y="292" text-anchor="middle" dominant-baseline="central" font-size="10" fill="var(--vpk-blueprint)" font-family="'JetBrains Mono', monospace" letter-spacing="1.5">CORE</text>
 
         <!-- clockwise arcs (no marker-end; WeasyPrint ignores orient="auto").
              Arrowheads drawn manually as chevron paths below each arc. -->
         <!-- PLAN right-mid (440,52) → ACT top-mid (568,244) via (568,52) -->
-        <path d="M 440 52 Q 568 52 568 244" fill="none" stroke="#505258" stroke-width="1.5"/>
+        <path d="M 440 52 Q 568 52 568 244" fill="none" stroke="var(--vpk-muted-text)" stroke-width="1.5"/>
         <!-- chevron ↓ at (568, 244) -->
-        <path d="M 560 236 L 568 244 L 576 236" fill="none" stroke="#505258" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M 560 236 L 568 244 L 576 236" fill="none" stroke="var(--vpk-muted-text)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
 
         <!-- ACT bottom-mid (568,316) → OBSERVE right-mid (440,508) via (568,508) -->
-        <path d="M 568 316 Q 568 508 440 508" fill="none" stroke="#505258" stroke-width="1.5"/>
+        <path d="M 568 316 Q 568 508 440 508" fill="none" stroke="var(--vpk-muted-text)" stroke-width="1.5"/>
         <!-- chevron ← at (440, 508) -->
-        <path d="M 448 500 L 440 508 L 448 516" fill="none" stroke="#505258" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M 448 500 L 440 508 L 448 516" fill="none" stroke="var(--vpk-muted-text)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
 
         <!-- OBSERVE left-mid (240,508) → REFLECT bottom-mid (112,316) via (112,508) -->
-        <path d="M 240 508 Q 112 508 112 316" fill="none" stroke="#505258" stroke-width="1.5"/>
+        <path d="M 240 508 Q 112 508 112 316" fill="none" stroke="var(--vpk-muted-text)" stroke-width="1.5"/>
         <!-- chevron ↑ at (112, 316) -->
-        <path d="M 104 324 L 112 316 L 120 324" fill="none" stroke="#505258" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M 104 324 L 112 316 L 120 324" fill="none" stroke="var(--vpk-muted-text)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
 
         <!-- REFLECT top-mid (112,244) → PLAN left-mid (240,52) via (112,52) -->
-        <path d="M 112 244 Q 112 52 240 52" fill="none" stroke="#505258" stroke-width="1.5"/>
+        <path d="M 112 244 Q 112 52 240 52" fill="none" stroke="var(--vpk-muted-text)" stroke-width="1.5"/>
         <!-- chevron → at (240, 52) -->
-        <path d="M 232 44 L 240 52 L 232 60" fill="none" stroke="#505258" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M 232 44 L 240 52 L 232 60" fill="none" stroke="var(--vpk-muted-text)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
     </div>
   </div>
@@ -490,32 +554,32 @@
       <!-- Context: flat vs layered accuracy comparison -->
       <svg aria-hidden="true" viewBox="0 0 280 230" xmlns="http://www.w3.org/2000/svg">
         <!-- Background -->
-        <rect width="280" height="230" fill="#ffffff"/>
+        <rect width="280" height="230" fill="var(--vpk-surface-raised)"/>
         <!-- Title -->
-        <text x="140" y="18" text-anchor="middle" font-size="8.5" fill="#7a7c82" font-family="'JetBrains Mono', monospace" letter-spacing="1.5">LOADING STRATEGY vs ACCURACY</text>
+        <text x="140" y="18" text-anchor="middle" font-size="8.5" fill="var(--vpk-muted-text)" font-family="'JetBrains Mono', monospace" letter-spacing="1.5">LOADING STRATEGY vs ACCURACY</text>
         <!-- Y axis label -->
-        <text x="14" y="130" text-anchor="middle" font-size="8" fill="#505258" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif" transform="rotate(-90 14 130)">Accuracy</text>
+        <text x="14" y="130" text-anchor="middle" font-size="8" fill="var(--vpk-muted-text)" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif" transform="rotate(-90 14 130)">Accuracy</text>
         <!-- Y axis line -->
-        <line x1="36" y1="30" x2="36" y2="180" stroke="#505258" stroke-width="0.8"/>
+        <line x1="36" y1="30" x2="36" y2="180" stroke="var(--vpk-muted-text)" stroke-width="0.8"/>
         <!-- Y axis ticks -->
-        <line x1="30" y1="56" x2="36" y2="56" stroke="#505258" stroke-width="0.8"/>
-        <text x="26" y="59" text-anchor="end" font-size="8" fill="#7a7c82" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif">85%</text>
-        <line x1="30" y1="120" x2="36" y2="120" stroke="#505258" stroke-width="0.8"/>
-        <text x="26" y="123" text-anchor="end" font-size="8" fill="#7a7c82" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif">53%</text>
+        <line x1="30" y1="56" x2="36" y2="56" stroke="var(--vpk-muted-text)" stroke-width="0.8"/>
+        <text x="26" y="59" text-anchor="end" font-size="8" fill="var(--vpk-muted-text)" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif">85%</text>
+        <line x1="30" y1="120" x2="36" y2="120" stroke="var(--vpk-muted-text)" stroke-width="0.8"/>
+        <text x="26" y="123" text-anchor="end" font-size="8" fill="var(--vpk-muted-text)" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif">53%</text>
         <!-- X axis -->
-        <line x1="36" y1="180" x2="256" y2="180" stroke="#505258" stroke-width="0.8"/>
+        <line x1="36" y1="180" x2="256" y2="180" stroke="var(--vpk-muted-text)" stroke-width="0.8"/>
         <!-- bar 1: flat loading -->
-        <rect x="56" y="120" width="68" height="60" fill="#dadcdf" stroke="none"/>
-        <text x="90" y="112" text-anchor="middle" font-size="8" fill="#7a7c82" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif">53%</text>
-        <text x="90" y="198" text-anchor="middle" font-size="8.5" fill="#505258" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif">Flat</text>
-        <text x="90" y="209" text-anchor="middle" font-size="7.5" fill="#7a7c82" font-family="'JetBrains Mono', monospace">loading</text>
+        <rect x="56" y="120" width="68" height="60" fill="var(--vpk-rule)" stroke="none"/>
+        <text x="90" y="112" text-anchor="middle" font-size="8" fill="var(--vpk-muted-text)" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif">53%</text>
+        <text x="90" y="198" text-anchor="middle" font-size="8.5" fill="var(--vpk-muted-text)" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif">Flat</text>
+        <text x="90" y="209" text-anchor="middle" font-size="7.5" fill="var(--vpk-muted-text)" font-family="'JetBrains Mono', monospace">loading</text>
         <!-- bar 2: layered loading (brand) -->
-        <rect x="156" y="56" width="68" height="124" fill="#e9f2fe" stroke="#1868db" stroke-width="1"/>
-        <text x="190" y="48" text-anchor="middle" font-size="8" fill="#1868db" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif" font-weight="500">85%</text>
-        <text x="190" y="198" text-anchor="middle" font-size="8.5" fill="#1868db" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif" font-weight="500">Layered</text>
-        <text x="190" y="209" text-anchor="middle" font-size="7.5" fill="#1868db" font-family="'JetBrains Mono', monospace">loading</text>
+        <rect x="156" y="56" width="68" height="124" fill="var(--vpk-blueprint-tint)" stroke="var(--vpk-blueprint)" stroke-width="1"/>
+        <text x="190" y="48" text-anchor="middle" font-size="8" fill="var(--vpk-blueprint)" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif" font-weight="500">85%</text>
+        <text x="190" y="198" text-anchor="middle" font-size="8.5" fill="var(--vpk-blueprint)" font-family=""Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif" font-weight="500">Layered</text>
+        <text x="190" y="209" text-anchor="middle" font-size="7.5" fill="var(--vpk-blueprint)" font-family="'JetBrains Mono', monospace">loading</text>
         <!-- dotted line at 85 -->
-        <line x1="36" y1="56" x2="256" y2="56" stroke="#1868db" stroke-width="0.6" stroke-dasharray="3 3"/>
+        <line x1="36" y1="56" x2="256" y2="56" stroke="var(--vpk-blueprint)" stroke-width="0.6" stroke-dasharray="3 3"/>
       </svg>
     </div>
   </div>
