@@ -124,10 +124,15 @@ Optional environment variables:
 | Setup        | `/vpk-setup`        | Workflow | Interactive setup: asks mode (Both/RovoDev/AI Gateway), credentials, dev servers |
 | Deploy       | `/vpk-deploy`       | Workflow | Deploy to Atlassian Micros                            |
 | Design       | `/vpk-design`       | Workflow | Figma to VPK implementation with validation           |
-| Symphony     | `/vpk-symphony`     | Utility  | Use raw Linear GraphQL during Symphony sessions       |
 | Tidy         | `/vpk-tidy`         | Utility  | Refactor React components for reusability             |
 | Component    | `/vpk-component`    | Utility  | Map ADS components to VPK equivalents                 |
 | Component Ext | `/vpk-component-ext` | Utility  | Migrate custom AI components to ui-ai                 |
+
+Symphony worker skills:
+
+- `/linear`: raw Linear GraphQL via Symphony's injected `linear_graphql` tool.
+- `/commit`, `/pull`, `/push`, `/land`, `/debug`: upstream Symphony workflow
+  helpers customized for this repo.
 
 Figma pipeline agents:
 

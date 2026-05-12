@@ -5,8 +5,8 @@ usage() {
 	cat <<'EOF'
 Usage: pnpm run symphony -- [--port <port>] [--logs-root <path>]
 
-Runs the upstream OpenAI Symphony reference implementation against this repo's
-WORKFLOW.md template.
+Runs a freshly reset upstream OpenAI Symphony Elixir checkout against this
+repo's WORKFLOW.md template.
 
 Required configuration:
   LINEAR_API_KEY                  Linear personal API key
@@ -15,13 +15,14 @@ Required configuration:
 Optional configuration:
   LINEAR_ASSIGNEE                 Limit polling to a Linear assignee id/email, or "me"
   SYMPHONY_SOURCE_REPO_URL        Repo cloned into each issue workspace
+  SYMPHONY_GITHUB_REPO            GitHub repo slug used by upstream cleanup hooks
   SYMPHONY_WORKSPACE_ROOT         Issue workspace root
   SYMPHONY_ENV_LOCAL_SOURCE       Local env file copied into each issue workspace
-  SYMPHONY_DIR                    Local clone/cache of openai/symphony
   SYMPHONY_UPSTREAM_REPO          Upstream Symphony git URL
+  SYMPHONY_UPSTREAM_REF           Upstream ref fetched before every run
+  SYMPHONY_UPSTREAM_DIR           Local clone/cache of openai/symphony
+  SYMPHONY_DIR                    Backward-compatible alias for SYMPHONY_UPSTREAM_DIR
   SYMPHONY_RUNTIME_DIR            Rendered workflow and default logs directory
-  SYMPHONY_MERGE_GUARD            Set to 1 to enable Done/open-PR recovery
-  SYMPHONY_MERGE_GUARD_INTERVAL_MS Polling interval for merge guard
 
 Example:
   SYMPHONY_LINEAR_PROJECT_SLUG=my-project pnpm run symphony -- --port 4567
@@ -91,13 +92,14 @@ load_env_var LINEAR_API_KEY
 load_env_var LINEAR_ASSIGNEE
 load_env_var SYMPHONY_LINEAR_PROJECT_SLUG
 load_env_var SYMPHONY_SOURCE_REPO_URL
+load_env_var SYMPHONY_GITHUB_REPO
 load_env_var SYMPHONY_WORKSPACE_ROOT
 load_env_var SYMPHONY_ENV_LOCAL_SOURCE
+load_env_var SYMPHONY_UPSTREAM_DIR
 load_env_var SYMPHONY_DIR
 load_env_var SYMPHONY_UPSTREAM_REPO
+load_env_var SYMPHONY_UPSTREAM_REF
 load_env_var SYMPHONY_RUNTIME_DIR
-load_env_var SYMPHONY_MERGE_GUARD
-load_env_var SYMPHONY_MERGE_GUARD_INTERVAL_MS
 
 if [ -z "${LINEAR_API_KEY:-}" ]; then
 	echo "LINEAR_API_KEY is required. Add it to .env.local or export it in the shell." >&2
@@ -121,59 +123,159 @@ if ! command -v mise >/dev/null 2>&1; then
 	exit 1
 fi
 
+derive_github_repo() {
+	local url="$1"
+	local repo=""
+
+	case "$url" in
+		git@github.com:*)
+			repo="${url#git@github.com:}"
+			;;
+		https://github.com/*)
+			repo="${url#https://github.com/}"
+			;;
+		ssh://git@github.com/*)
+			repo="${url#ssh://git@github.com/}"
+			;;
+	esac
+
+	repo="${repo%.git}"
+	if [ -n "$repo" ]; then
+		printf '%s\n' "$repo"
+	fi
+}
+
+normalize_git_url() {
+	local url="${1%.git}"
+	printf '%s\n' "$url"
+}
+
+canonical_path() {
+	local path="$1"
+
+	if [ -d "$path" ]; then
+		CDPATH= cd -- "$path" && pwd -P
+		return 0
+	fi
+
+	local parent
+	local name
+	parent="$(dirname -- "$path")"
+	name="$(basename -- "$path")"
+	parent="$(CDPATH= cd -- "$parent" && pwd -P)"
+	printf '%s/%s\n' "$parent" "$name"
+}
+
+ensure_safe_upstream_dir() {
+	local dir="$1"
+	local dir_real
+	local repo_real
+
+	dir_real="$(canonical_path "$dir")"
+	repo_real="$(canonical_path "$repo_root")"
+
+	if [ "$dir_real" = "/" ]; then
+		echo "SYMPHONY_UPSTREAM_DIR cannot be the filesystem root." >&2
+		exit 1
+	fi
+
+	if [ "$dir_real" = "$repo_real" ]; then
+		echo "SYMPHONY_UPSTREAM_DIR cannot point at this repo: $dir" >&2
+		exit 1
+	fi
+
+	case "$repo_real/" in
+		"$dir_real"/*)
+			echo "SYMPHONY_UPSTREAM_DIR cannot contain this repo: $dir" >&2
+			exit 1
+			;;
+	esac
+
+	if [ ! -d "$dir/.git" ]; then
+		return 0
+	fi
+
+	local current_origin
+	local current_repo
+	local expected_repo
+	current_origin="$(git -C "$dir" remote get-url origin 2>/dev/null || true)"
+	current_repo="$(derive_github_repo "$current_origin")"
+	expected_repo="$(derive_github_repo "$upstream_repo")"
+
+	if [ -n "$current_repo" ] && [ -n "$expected_repo" ]; then
+		if [ "$current_repo" = "$expected_repo" ]; then
+			return 0
+		fi
+	elif [ "$(normalize_git_url "$current_origin")" = "$(normalize_git_url "$upstream_repo")" ]; then
+		return 0
+	fi
+
+	echo "SYMPHONY_UPSTREAM_DIR already contains a different git repo: $dir" >&2
+	echo "Expected origin: $upstream_repo" >&2
+	echo "Current origin: ${current_origin:-<none>}" >&2
+	exit 1
+}
+
 export SYMPHONY_SOURCE_REPO_URL="${SYMPHONY_SOURCE_REPO_URL:-$(git -C "$repo_root" remote get-url origin)}"
+if [ -z "${SYMPHONY_GITHUB_REPO:-}" ]; then
+	SYMPHONY_GITHUB_REPO="$(derive_github_repo "$SYMPHONY_SOURCE_REPO_URL")"
+	export SYMPHONY_GITHUB_REPO
+fi
 export SYMPHONY_WORKSPACE_ROOT="${SYMPHONY_WORKSPACE_ROOT:-/tmp/symphony-workspaces}"
 if [ -z "${SYMPHONY_ENV_LOCAL_SOURCE:-}" ] && [ -f "$repo_root/.env.local" ]; then
 	export SYMPHONY_ENV_LOCAL_SOURCE="$repo_root/.env.local"
 fi
 
 upstream_repo="${SYMPHONY_UPSTREAM_REPO:-https://github.com/openai/symphony.git}"
-upstream_dir="$(resolve_repo_path "${SYMPHONY_DIR:-.tmp/symphony/openai-symphony}")"
+upstream_ref="${SYMPHONY_UPSTREAM_REF:-main}"
+upstream_dir="$(resolve_repo_path "${SYMPHONY_UPSTREAM_DIR:-${SYMPHONY_DIR:-.tmp/symphony/openai-symphony}}")"
 runtime_dir="$(resolve_repo_path "${SYMPHONY_RUNTIME_DIR:-.tmp/symphony/runtime}")"
 runtime_workflow="$runtime_dir/WORKFLOW.md"
 logs_root="$runtime_dir/log"
 
+mkdir -p "$(dirname "$upstream_dir")"
+ensure_safe_upstream_dir "$upstream_dir"
+
 if [ -e "$upstream_dir" ] && [ ! -d "$upstream_dir/.git" ]; then
-	echo "SYMPHONY_DIR exists but is not a git clone: $upstream_dir" >&2
+	echo "SYMPHONY_UPSTREAM_DIR exists but is not a git clone: $upstream_dir" >&2
 	exit 1
 fi
 
 if [ ! -d "$upstream_dir/.git" ]; then
-	mkdir -p "$(dirname "$upstream_dir")"
 	git clone --depth 1 "$upstream_repo" "$upstream_dir"
 else
-	git -C "$upstream_dir" pull --ff-only
+	git -C "$upstream_dir" remote set-url origin "$upstream_repo"
+fi
+
+git -C "$upstream_dir" reset --hard
+git -C "$upstream_dir" clean -fdx
+git -C "$upstream_dir" fetch --depth 1 origin "$upstream_ref"
+git -C "$upstream_dir" checkout --detach FETCH_HEAD
+git -C "$upstream_dir" reset --hard FETCH_HEAD
+git -C "$upstream_dir" clean -fdx
+
+export SYMPHONY_ELIXIR_DIR="$upstream_dir/elixir"
+if [ ! -d "$SYMPHONY_ELIXIR_DIR" ]; then
+	echo "Upstream Symphony Elixir directory is missing: $SYMPHONY_ELIXIR_DIR" >&2
+	exit 1
 fi
 
 mkdir -p "$runtime_dir" "$logs_root"
 sed "s/__SYMPHONY_LINEAR_PROJECT_SLUG__/$SYMPHONY_LINEAR_PROJECT_SLUG/g" \
 	"$repo_root/WORKFLOW.md" > "$runtime_workflow"
 
-merge_guard_pid=""
-cleanup_merge_guard() {
-	if [ -n "$merge_guard_pid" ] && kill -0 "$merge_guard_pid" >/dev/null 2>&1; then
-		kill "$merge_guard_pid" >/dev/null 2>&1 || true
-		wait "$merge_guard_pid" >/dev/null 2>&1 || true
-	fi
-}
-
-if [ "${SYMPHONY_MERGE_GUARD:-0}" = "1" ]; then
-	merge_guard_interval_ms="${SYMPHONY_MERGE_GUARD_INTERVAL_MS:-10000}"
-	node "$repo_root/scripts/symphony-merge-guard.js" \
-		--watch \
-		--interval-ms "$merge_guard_interval_ms" \
-		>> "$logs_root/merge-guard.log" 2>&1 &
-	merge_guard_pid="$!"
-	trap cleanup_merge_guard EXIT INT TERM
-fi
-
-cd "$upstream_dir/elixir"
+cd "$SYMPHONY_ELIXIR_DIR"
 mise trust
 mise install
 mise exec -- mix setup
 mise exec -- mix build
 
-mise exec -- ./bin/symphony \
+if [ ! -x ./bin/symphony ]; then
+	echo "Upstream Symphony build did not produce ./bin/symphony" >&2
+	exit 1
+fi
+
+exec mise exec -- ./bin/symphony \
 	"$runtime_workflow" \
 	--i-understand-that-this-will-be-running-without-the-usual-guardrails \
 	--logs-root "$logs_root" \

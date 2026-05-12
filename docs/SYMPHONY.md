@@ -1,19 +1,22 @@
 # Symphony
 
-VPK-rovo runs OpenAI's upstream Symphony Elixir reference implementation through
-`pnpm run symphony`. The local repo owns only the wrapper, workflow template, and
-VPK-specific Linear guidance.
+VPK-rovo runs the upstream OpenAI Symphony Elixir reference implementation
+through `pnpm run symphony`. The local repo owns only the launcher, workflow
+template, and repo-specific Codex skills. The Elixir runtime itself is pulled
+from `openai/symphony` at startup.
+
+Upstream reference: <https://github.com/openai/symphony/blob/main/elixir/README.md>
 
 Repo-owned files:
 
 - `WORKFLOW.md`: VPK workflow template rendered for upstream Symphony.
-- `scripts/symphony.sh`: clones or updates `openai/symphony`, prepares the
-  Elixir runtime with `mise`, renders the workflow, and launches
-  `./bin/symphony`.
-- `.agents/skills/vpk-symphony/SKILL.md`: narrow guidance for the injected
-  `linear_graphql` app-server tool.
-- `scripts/symphony-merge-guard.js`: optional recovery tool for premature
-  `Done` transitions while an attached PR is still open.
+- `scripts/symphony.sh`: prepares a fresh upstream Elixir checkout, builds
+  `./bin/symphony`, renders the workflow, and launches the service.
+- `.agents/skills/linear/SKILL.md`: upstream-compatible raw Linear GraphQL
+  helper for the injected `linear_graphql` app-server tool.
+- `.agents/skills/commit`, `.agents/skills/pull`, `.agents/skills/push`,
+  `.agents/skills/land`, and `.agents/skills/debug`: repo-local skills used by
+  the upstream workflow prompt.
 
 ## Configuration
 
@@ -32,22 +35,23 @@ Optional overrides:
 ```bash
 LINEAR_ASSIGNEE=me
 SYMPHONY_SOURCE_REPO_URL=git@github.com:eevennsoh/VPK-rovo.git
+SYMPHONY_GITHUB_REPO=eevennsoh/VPK-rovo
 SYMPHONY_WORKSPACE_ROOT=/tmp/symphony-workspaces
 SYMPHONY_ENV_LOCAL_SOURCE=/absolute/path/to/VPK-rovo/.env.local
-SYMPHONY_DIR=.tmp/symphony/openai-symphony
+SYMPHONY_UPSTREAM_REPO=https://github.com/openai/symphony.git
+SYMPHONY_UPSTREAM_REF=main
+SYMPHONY_UPSTREAM_DIR=.tmp/symphony/openai-symphony
 SYMPHONY_RUNTIME_DIR=.tmp/symphony/runtime
-SYMPHONY_MERGE_GUARD=1
-SYMPHONY_MERGE_GUARD_INTERVAL_MS=10000
 ```
+
+`SYMPHONY_UPSTREAM_DIR` is reset to the requested upstream ref on every launch
+with `git fetch`, `git checkout --detach FETCH_HEAD`, `git reset --hard`, and
+`git clean -fdx`. This intentionally discards local edits inside the cached
+upstream checkout.
 
 `SYMPHONY_ENV_LOCAL_SOURCE` is optional. When set, the workspace hook copies it
 to each issue workspace as `.env.local`. The hook does not run `pnpm install`;
-workers install dependencies only when the issue-specific validation requires
-them.
-
-`SYMPHONY_MERGE_GUARD` defaults to off. Set it to `1` only for recovery runs
-where premature `Done` transitions should be moved back to `Merging` when an
-attached GitHub PR is still open.
+workers install dependencies only when issue-specific validation requires them.
 
 ## Run
 
@@ -63,11 +67,23 @@ Run without the dashboard:
 pnpm run symphony
 ```
 
+The wrapper follows the upstream Elixir README flow:
+
+```bash
+git clone https://github.com/openai/symphony
+cd symphony/elixir
+mise trust
+mise install
+mise exec -- mix setup
+mise exec -- mix build
+mise exec -- ./bin/symphony /path/to/WORKFLOW.md
+```
+
 The wrapper renders `WORKFLOW.md` into `SYMPHONY_RUNTIME_DIR` at startup. After
 changing workflow front matter or prompt text, stop and restart Symphony so the
 running process uses a fresh rendered workflow.
 
-The wrapper passes upstream Symphony the required
+The wrapper also passes upstream Symphony the required
 `--i-understand-that-this-will-be-running-without-the-usual-guardrails` flag.
 With `--port`, upstream Symphony exposes:
 
@@ -84,17 +100,17 @@ Recommended Linear flow:
 Backlog -> Todo -> In Progress -> Human Review -> Rework -> Human Review -> Merging -> Done
 ```
 
-`WORKFLOW.md` intentionally stays close to upstream Symphony:
+`WORKFLOW.md` is based on upstream `elixir/WORKFLOW.md` and keeps VPK-specific
+customization in the YAML hooks plus the repository contract section.
 
 - `Backlog`: not routed for implementation.
 - `Todo`: worker moves the issue to `In Progress`, creates or updates the
   `## Codex Workpad`, then starts.
 - `In Progress`: worker continues from the workpad.
-- `Human Review`: not active; a human decides whether to request rework or
-  move to merge.
-- `Rework`: active; worker handles reviewer feedback, validates, and returns to
+- `Human Review`: waits for human action.
+- `Rework`: worker handles reviewer feedback, validates, and returns to
   `Human Review`.
-- `Merging`: active; worker lands the reviewed PR and moves the issue to `Done`
+- `Merging`: worker follows the `land` skill and moves the issue to `Done`
   only after GitHub reports the PR merged.
 - `Done`, `Closed`, `Canceled`, `Cancelled`, `Duplicate`: terminal.
 
@@ -150,17 +166,15 @@ runs.
 
 `after_create` prepares an issue workspace by:
 
-- cloning the configured repo,
+- cloning `SYMPHONY_SOURCE_REPO_URL`,
 - checking out or creating `symphony/<issue-id>`,
 - copying `.env.local` when `SYMPHONY_ENV_LOCAL_SOURCE` is configured.
 
-It deliberately does not install dependencies. This avoids pre-agent retry loops
-from local Node or package-manager failures and lets each worker install only
-what its validation path needs.
-
-`before_remove` writes a small archive note under
-`$SYMPHONY_WORKSPACE_ROOT/.archive` with workspace path, branch, commit, and
-dirty state before upstream Symphony removes a terminal workspace.
+`before_remove` delegates terminal-workspace cleanup to upstream
+`mix workspace.before_remove` from the fresh Elixir checkout. The hook passes
+the VPK GitHub repo slug and issue branch name so upstream cleanup can close
+open PRs for branches whose Linear issues reached a terminal state without
+merge.
 
 ## Debugging
 
@@ -168,13 +182,13 @@ The wrapper writes upstream logs under `.tmp/symphony/runtime/log` by default.
 Start with the ticket key, then narrow to the Codex session:
 
 ```bash
-rg -n "issue_identifier=VEN-123" .tmp/symphony/runtime/log
-rg -o "session_id=[^ ;]+" .tmp/symphony/runtime/log | sort -u
-rg -n "session_id=<thread>-<turn>" .tmp/symphony/runtime/log
-rg -n "Issue stalled|turn_timeout|turn_failed|Codex session failed|Codex session ended with error" .tmp/symphony/runtime/log
+rg -n "issue_identifier=VEN-123" .tmp/symphony/runtime/log/symphony.log*
+rg -o "session_id=[^ ;]+" .tmp/symphony/runtime/log/symphony.log* | sort -u
+rg -n "session_id=<thread>-<turn>" .tmp/symphony/runtime/log/symphony.log*
+rg -n "Issue stalled|turn_timeout|turn_failed|Codex session failed|Codex session ended with error" .tmp/symphony/runtime/log/symphony.log*
 ```
 
 If a worker repeatedly fails before the first Codex turn, inspect
-`hook=after_create` and app-server startup lines first. If a worker burns time
+`hook=after_create` and app-server startup lines first. If a worker spends time
 inside a turn, inspect `thread/tokenUsage/updated`, `item/started`,
 `item/completed`, and Linear GraphQL errors around the same `session_id`.
