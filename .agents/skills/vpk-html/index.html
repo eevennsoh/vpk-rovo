@@ -201,12 +201,6 @@ code {
 	text-decoration: none;
 }
 
-.brand img {
-	display: block;
-	height: 26px;
-	width: 26px;
-}
-
 .links {
 	align-items: center;
 	display: flex;
@@ -388,21 +382,28 @@ section {
 .catalog-group {
 	border-bottom: 1px solid var(--vpk-rule-strong);
 	display: grid;
-	grid-template-columns: minmax(10rem, 0.26fr) minmax(0, 1fr);
+	grid-template-columns: minmax(0, 0.26fr) minmax(0, 1fr);
 }
 
 .catalog-head {
 	background: color-mix(in srgb, var(--selected) 72%, transparent);
 	border-right: 1px solid var(--vpk-rule);
+	min-width: 0;
 	padding: 1rem;
+}
+
+.catalog-head .catalog-kicker {
+	overflow-wrap: anywhere;
 }
 
 .catalog-head h3 {
 	font-family: var(--font-display);
-	font-size: 1.85rem;
+	font-size: clamp(1.4rem, 1.4vw + 0.6rem, 1.85rem);
 	font-weight: 400;
-	line-height: 0.95;
+	line-height: 1.05;
 	margin-top: 0.35rem;
+	overflow-wrap: anywhere;
+	text-wrap: balance;
 }
 
 .catalog-rows {
@@ -935,7 +936,7 @@ footer a:hover { color: var(--vpk-blueprint); }
 <main class="page">
 
 <nav class="topnav" aria-label="Primary">
-	<a class="brand" href="#"><img src="assets/images/logo.svg" alt=""><span>vpk-html</span></a>
+	<a class="brand" href="#"><span>vpk-html</span></a>
 	<span class="links">
 		<a href="#templates">Templates</a>
 		<a href="#demos">Demos</a>
