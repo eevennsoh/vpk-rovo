@@ -17,6 +17,7 @@ import os from "node:os";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
+import { buildFontFaceBlock, FONT_STACKS, KAMI_COLOR_MAP, readStylesCss } from "./shared.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -24,7 +25,6 @@ const SKILL_ROOT = path.resolve(__dirname, "..");
 const KAMI_ROOT = path.join(os.homedir(), ".agents/skills/kami");
 const KAMI_DEMOS = path.join(KAMI_ROOT, "assets/demos");
 const VPK_DEMOS = path.join(SKILL_ROOT, "assets/demos");
-const VPK_THEME_CSS = path.join(SKILL_ROOT, "references/theme.css");
 
 const DEMOS = [
 	"demo-agent-slides.html",
@@ -35,81 +35,9 @@ const DEMOS = [
 
 const IMAGE_FILES = ["kaku-action.jpg", "kaku-hero.jpg"];
 
-// Palette mapping: kami → vpk-html semantic aliases. Case-insensitive variants included.
-const COLOR_MAP = {
-	"#f5f4ed": "var(--vpk-paper)",
-	"#F5F4ED": "var(--vpk-paper)",
-	"#faf9f5": "var(--vpk-paper)",
-	"#FAF9F5": "var(--vpk-paper)",
-	"#141413": "var(--vpk-ink)",
-	"#3d3d3a": "var(--vpk-ink)",
-	"#3D3D3A": "var(--vpk-ink)",
-	"#4d4c48": "var(--vpk-muted-text)",
-	"#504e49": "var(--vpk-muted-text)",
-	"#6b6a64": "var(--vpk-subtlest-text)",
-	"#1B365D": "var(--vpk-blueprint)",
-	"#1b365d": "var(--vpk-blueprint)",
-	"#2D5A8A": "var(--vpk-focus-ring)",
-	"#EEF2F7": "var(--vpk-blueprint-tint)",
-	"#eef2f7": "var(--vpk-blueprint-tint)",
-	"#E4ECF5": "var(--vpk-blueprint-tint)",
-	"#e4ecf5": "var(--vpk-blueprint-tint)",
-	"#D0DCE9": "var(--vpk-blueprint-tint-strong)",
-	"#D6E1EE": "var(--vpk-blueprint-tint-strong)",
-	"#e8e6dc": "var(--vpk-rule)",
-	"#E8E6DC": "var(--vpk-rule)",
-	"#e5e3d8": "var(--vpk-rule)",
-	"#E5E3D8": "var(--vpk-rule)",
-	"#DEDED7": "var(--vpk-rule)",
-	"#E3E2DC": "var(--vpk-rule)",
-	"#E9E8E1": "var(--vpk-surface-sunken)",
-	"#EEEDE6": "var(--vpk-surface-sunken)",
-	"#EAE9E2": "var(--vpk-surface-sunken)",
-	"#B2B1AC": "var(--vpk-rule-strong)",
-	"#B53333": "var(--vpk-danger)",
-	"#b53333": "var(--vpk-danger)",
-	"#30302E": "var(--vpk-ink)",
-	"#30302e": "var(--vpk-ink)",
-};
-
-// Inline Geist trio as base64 data URIs so demo HTML files are portable.
-function inlineFont(filename) {
-	const filePath = path.join(SKILL_ROOT, "assets/fonts", filename);
-	if (!fs.existsSync(filePath)) throw new Error(`Font file not found: ${filePath}`);
-	return `data:font/woff2;base64,${fs.readFileSync(filePath).toString("base64")}`;
-}
-
-function buildVpkFontFace() {
-	const geistSans = inlineFont("Geist-Regular.woff2");
-	const geistMono = inlineFont("GeistMono-Regular.woff2");
-	const geistPixel = inlineFont("GeistPixel-Square.woff2");
-	return `  @font-face {
-    font-family: "Geist";
-    src: url("${geistSans}") format("woff2");
-    font-weight: 400; font-style: normal; font-display: swap;
-  }
-  @font-face {
-    font-family: "Geist Mono";
-    src: url("${geistMono}") format("woff2");
-    font-weight: 400; font-style: normal; font-display: swap;
-  }
-  @font-face {
-    font-family: "Geist Pixel";
-    src: url("${geistPixel}") format("woff2");
-    font-weight: 400; font-style: normal; font-display: swap;
-}`;
-}
-
-function buildVpkThemeBlock() {
-	if (!fs.existsSync(VPK_THEME_CSS)) {
-		throw new Error(`Theme file not found: ${VPK_THEME_CSS}`);
-	}
-	return fs.readFileSync(VPK_THEME_CSS, "utf8").trim();
-}
-
 function rewriteColors(text) {
 	let out = text;
-	for (const [from, to] of Object.entries(COLOR_MAP)) {
+	for (const [from, to] of Object.entries(KAMI_COLOR_MAP)) {
 		out = out.split(from).join(to);
 	}
 	return out;
@@ -121,11 +49,11 @@ function rewriteFontStacks(text) {
 	// Charter serif stack → Source Serif 4
 	out = out.replace(
 		/Charter,\s*Georgia,?\s*(Palatino,?\s*)?serif/g,
-		'"Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif',
+		FONT_STACKS.sans,
 	);
 	out = out.replace(
 		/Charter,\s*Georgia,\s*Palatino,\s*"Songti SC",\s*serif/g,
-		'"Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif',
+		FONT_STACKS.sans,
 	);
 
 	// TsangerJinKai02 (CN serif) → Source Serif 4 with CJK system fallback
@@ -147,11 +75,11 @@ function rewriteFontStacks(text) {
 	// Mono stack normalization
 	out = out.replace(
 		/"JetBrains Mono",\s*"SF Mono",\s*"Fira Code"[^;]*/g,
-		'"Geist Mono", ui-monospace, "SFMono-Regular", Consolas, monospace',
+		FONT_STACKS.mono,
 	);
 	out = out.replace(
 		/"JetBrains Mono",\s*"SF Mono",\s*Consolas,\s*monospace/g,
-		'"Geist Mono", ui-monospace, "SFMono-Regular", Consolas, monospace',
+		FONT_STACKS.mono,
 	);
 
 	return out;
@@ -249,8 +177,8 @@ function main() {
 	fs.mkdirSync(VPK_DEMOS, { recursive: true });
 
 	console.log("Inlining Geist fonts as base64 data URIs…");
-	const fontFaceBlock = buildVpkFontFace();
-	const themeBlock = buildVpkThemeBlock();
+	const fontFaceBlock = buildFontFaceBlock();
+	const themeBlock = readStylesCss();
 
 	for (const file of DEMOS) {
 		const slug = file.replace(/\.html$/, "");

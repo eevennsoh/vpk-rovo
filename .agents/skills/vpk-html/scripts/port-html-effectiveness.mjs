@@ -10,11 +10,11 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { buildFontFaceBlock, readStylesCss } from "./shared.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SKILL_ROOT = path.resolve(__dirname, "..");
 const TEMPLATES_DIR = path.join(SKILL_ROOT, "assets", "templates");
-const FONTS_DIR = path.join(SKILL_ROOT, "assets", "fonts");
 const UPSTREAM = "https://github.com/ThariqS/html-effectiveness";
 
 const CATALOG = [
@@ -320,35 +320,6 @@ const CATALOG = [
 	},
 ];
 
-function inlineFont(fileName) {
-	const filePath = path.join(FONTS_DIR, fileName);
-	return `data:font/woff2;base64,${fs.readFileSync(filePath).toString("base64")}`;
-}
-
-function fontFaceBlock() {
-	return `@font-face {
-\tfont-family: "Geist";
-\tsrc: url("${inlineFont("Geist-Regular.woff2")}") format("woff2");
-\tfont-weight: 400;
-\tfont-style: normal;
-\tfont-display: swap;
-}
-@font-face {
-\tfont-family: "Geist Mono";
-\tsrc: url("${inlineFont("GeistMono-Regular.woff2")}") format("woff2");
-\tfont-weight: 400;
-\tfont-style: normal;
-\tfont-display: swap;
-}
-@font-face {
-\tfont-family: "Geist Pixel";
-\tsrc: url("${inlineFont("GeistPixel-Square.woff2")}") format("woff2");
-\tfont-weight: 400;
-\tfont-style: normal;
-\tfont-display: swap;
-}`;
-}
-
 function renderSections(sections) {
 	return sections.map(([heading, prompts], index) => `\t<section>
 \t\t<p class="section-kicker">${String(index + 1).padStart(2, "0")} · ${heading}</p>
@@ -370,7 +341,7 @@ function renderStats(items) {
 	return items.map(item => `\t\t<div><strong>${item}</strong><span>metric</span></div>`).join("\n");
 }
 
-function renderTemplate(def, fontFaces) {
+function renderTemplate(def, sharedCss) {
 	return `<!doctype html>
 <!--
 TEMPLATE · ${def.title} (vpk-html Phase 2)
@@ -388,36 +359,9 @@ catalog. It does not copy upstream HTML, CSS, or prose.
 <meta name="generator" content="vpk-html">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-${fontFaces}
+${sharedCss}
 
 :root {
-\tcolor-scheme: light dark;
-\t--vpk-paper: var(--ds-surface, #ffffff);
-\t--vpk-paper-background: var(--ds-surface, #ffffff);
-\t--vpk-surface-raised: var(--ds-surface-raised, #ffffff);
-\t--vpk-surface-overlay: var(--ds-surface-overlay, #ffffff);
-\t--vpk-surface-sunken: var(--ds-surface-sunken, #f0f1f2);
-\t--vpk-ink: var(--ds-text, #292a2e);
-\t--vpk-muted-text: var(--ds-text-subtle, #505258);
-\t--vpk-subtlest-text: var(--ds-text-subtlest, #6b6e76);
-\t--vpk-inverse-text: var(--ds-text-inverse, #ffffff);
-\t--vpk-rule: var(--ds-border, #0b120e24);
-\t--vpk-rule-strong: var(--ds-border-bold, #7d818a);
-\t--vpk-blueprint: var(--ds-background-brand-bold, #1868db);
-\t--vpk-link: var(--ds-link, #1868db);
-\t--vpk-link-pressed: var(--ds-link-pressed, #1558bc);
-\t--vpk-selected: var(--ds-background-selected, #e9f2fe);
-\t--vpk-blueprint-tint: var(--ds-background-information, #e9f2fe);
-\t--vpk-blueprint-tint-strong: var(--ds-background-information-hovered, #cfe1fd);
-\t--vpk-focus-ring: var(--ds-border-focused, #4688ec);
-\t--vpk-code-surface: var(--ds-background-neutral-subtle, #f0f1f2);
-\t--vpk-code-ink: var(--ds-text, #292a2e);
-\t--vpk-math-highlight: var(--ds-background-information, #e9f2fe);
-\t--vpk-success: var(--ds-background-success-bold, #5b7f24);
-\t--vpk-warning: var(--ds-background-warning-bold, #fbc828);
-\t--vpk-danger: var(--ds-background-danger-bold, #c9372c);
-\t--vpk-info: var(--ds-background-information-bold, #1868db);
-\t--vpk-paper-rule: color-mix(in srgb, var(--vpk-ink) 8%, transparent);
 \t--parchment: var(--vpk-paper);
 \t--ivory: var(--vpk-surface-raised);
 \t--near-black: var(--vpk-ink);
@@ -432,35 +376,6 @@ ${fontFaces}
 \t--sans: var(--serif);
 \t--mono: "Geist Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
 \t--display: "Geist Pixel", var(--mono);
-}
-
-[data-theme="dark"] {
-\t--vpk-paper: var(--ds-surface, #101214);
-\t--vpk-paper-background: var(--ds-surface, #1d2125);
-\t--vpk-surface-raised: var(--ds-surface-raised, #22272b);
-\t--vpk-surface-overlay: var(--ds-surface-overlay, #282e33);
-\t--vpk-surface-sunken: var(--ds-surface-sunken, #161a1d);
-\t--vpk-ink: var(--ds-text, #dee4ea);
-\t--vpk-muted-text: var(--ds-text-subtle, #9fadbc);
-\t--vpk-subtlest-text: var(--ds-text-subtlest, #738496);
-\t--vpk-inverse-text: var(--ds-text-inverse, #101214);
-\t--vpk-rule: var(--ds-border, #a6c5e229);
-\t--vpk-rule-strong: var(--ds-border-bold, #738496);
-\t--vpk-blueprint: var(--ds-background-brand-bold, #579dff);
-\t--vpk-link: var(--ds-link, #579dff);
-\t--vpk-link-pressed: var(--ds-link-pressed, #85b8ff);
-\t--vpk-selected: var(--ds-background-selected, #09326c);
-\t--vpk-blueprint-tint: var(--ds-background-information, #09326c);
-\t--vpk-blueprint-tint-strong: var(--ds-background-information-hovered, #0c418a);
-\t--vpk-focus-ring: var(--ds-border-focused, #579dff);
-\t--vpk-code-surface: var(--ds-background-neutral-subtle, #161a1d);
-\t--vpk-code-ink: var(--ds-text, #dee4ea);
-\t--vpk-math-highlight: var(--ds-background-information, #09326c);
-\t--vpk-success: var(--ds-background-success-bold, #b3df72);
-\t--vpk-warning: var(--ds-background-warning-bold, #f5cd47);
-\t--vpk-danger: var(--ds-background-danger-bold, #f87168);
-\t--vpk-info: var(--ds-background-information-bold, #579dff);
-\t--vpk-paper-rule: color-mix(in srgb, var(--vpk-ink) 8%, transparent);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -704,10 +619,10 @@ ${renderChecklist(def.checklist)}
 
 function main() {
 	fs.mkdirSync(TEMPLATES_DIR, { recursive: true });
-	const fonts = fontFaceBlock();
+	const sharedCss = `${buildFontFaceBlock()}\n${readStylesCss()}`;
 	for (const entry of CATALOG) {
 		const target = path.join(TEMPLATES_DIR, `${entry.slug}.html`);
-		fs.writeFileSync(target, renderTemplate(entry, fonts), "utf8");
+		fs.writeFileSync(target, renderTemplate(entry, sharedCss), "utf8");
 		console.log(`wrote ${path.relative(process.cwd(), target)}`);
 	}
 	console.log(`${CATALOG.length} html-effectiveness template shells generated`);

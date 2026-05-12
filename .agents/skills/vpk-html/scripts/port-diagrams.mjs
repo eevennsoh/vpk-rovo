@@ -14,64 +14,26 @@ import os from "node:os";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
+import { buildFontFaceBlock, FONT_STACKS, KAMI_COLOR_MAP, readStylesCss } from "./shared.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const SKILL_ROOT = path.resolve(__dirname, "..");
-const VPK_FONTS_DIR = path.join(SKILL_ROOT, "assets/fonts");
 const KAMI_ROOT = path.join(os.homedir(), ".agents/skills/kami");
 const KAMI_DIAGRAMS = path.join(KAMI_ROOT, "assets/diagrams");
 const VPK_DIAGRAMS = path.join(SKILL_ROOT, "assets/diagrams");
-
-function inlineFont(filename) {
-	const filePath = path.join(VPK_FONTS_DIR, filename);
-	if (!fs.existsSync(filePath)) throw new Error(`Font file not found: ${filePath}`);
-	return `data:font/woff2;base64,${fs.readFileSync(filePath).toString("base64")}`;
-}
-
-// Palette mapping: kami → vpk-html semantic aliases.
-const COLOR_MAP = {
-	"#f5f4ed": "var(--vpk-paper)",
-	"#F5F4ED": "var(--vpk-paper)",
-	"#faf9f5": "var(--vpk-paper)",
-	"#FAF9F5": "var(--vpk-paper)",
-	"#141413": "var(--vpk-ink)",
-	"#504e49": "var(--vpk-muted-text)",
-	"#6b6a64": "var(--vpk-subtlest-text)",
-	"#1B365D": "var(--vpk-blueprint)",
-	"#1b365d": "var(--vpk-blueprint)",
-	"#2D5A8A": "var(--vpk-focus-ring)",
-	"#EEF2F7": "var(--vpk-blueprint-tint)",
-	"#eef2f7": "var(--vpk-blueprint-tint)",
-	"#e8e6dc": "var(--vpk-rule)",
-	"#E8E6DC": "var(--vpk-rule)",
-	"#E9E8E1": "var(--vpk-surface-sunken)",
-	"#EEEDE6": "var(--vpk-surface-sunken)",
-	"#EAE9E2": "var(--vpk-surface-sunken)",
-	"#DEDED7": "var(--vpk-rule)",
-	"#E3E2DC": "var(--vpk-rule)",
-	"#B2B1AC": "var(--vpk-rule-strong)",
-	"#B53333": "var(--vpk-danger)",
-	"#b53333": "var(--vpk-danger)",
-	"#30302E": "var(--vpk-ink)",
-	"#30302e": "var(--vpk-ink)",
-};
-
-const GEIST_SANS = '"Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif';
-const GEIST_MONO = '"Geist Mono", ui-monospace, "SFMono-Regular", Consolas, monospace';
-const GEIST_PIXEL = '"Geist Pixel", "Geist Mono", ui-monospace, "SFMono-Regular", Consolas, monospace';
 
 const FONT_REPLACEMENTS = [
 	{
 		// kami Charter serif stack (body) → Geist Sans.
 		pattern: /Charter,\s*Georgia,\s*Palatino,\s*serif/g,
-		replacement: GEIST_SANS,
+		replacement: FONT_STACKS.sans,
 	},
 	{
 		// kami JetBrains Mono stack with CJK fallbacks → Geist Mono.
 		pattern:
 			/'JetBrains Mono',\s*"SF Mono",\s*Consolas,\s*"TsangerJinKai02",\s*"Source Han Serif SC",\s*"Noto Serif CJK SC",\s*"Songti SC",\s*monospace/g,
-		replacement: GEIST_MONO,
+		replacement: FONT_STACKS.mono,
 	},
 	{
 		// Short JetBrains Mono refs inside SVG <text font-family="..."> attributes.
@@ -81,62 +43,18 @@ const FONT_REPLACEMENTS = [
 ];
 
 function buildHead() {
-	const geistSans = inlineFont("Geist-Regular.woff2");
-	const geistMono = inlineFont("GeistMono-Regular.woff2");
-	const geistPixel = inlineFont("GeistPixel-Square.woff2");
 	return `<style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+${readStylesCss()}
+
   :root {
-    color-scheme: light dark;
-    --vpk-paper: var(--ds-surface, #ffffff);
-    --vpk-surface-raised: var(--ds-surface-raised, #ffffff);
-    --vpk-surface-sunken: var(--ds-surface-sunken, #f0f1f2);
-    --vpk-ink: var(--ds-text, #292a2e);
-    --vpk-muted-text: var(--ds-text-subtle, #505258);
-    --vpk-subtlest-text: var(--ds-text-subtlest, #6b6e76);
-    --vpk-blueprint: var(--ds-background-brand-bold, #1868db);
-    --vpk-blueprint-tint: var(--ds-background-information, #e9f2fe);
-    --vpk-rule: var(--ds-border, #0b120e24);
-    --vpk-rule-strong: var(--ds-border-bold, #7d818a);
-    --vpk-focus-ring: var(--ds-border-focused, #4688ec);
-    --vpk-danger: var(--ds-background-danger-bold, #c9372c);
-
-    --vpk-font-sans: ${GEIST_SANS};
-    --vpk-font-mono: ${GEIST_MONO};
-    --vpk-font-display: ${GEIST_PIXEL};
+    --vpk-font-sans: ${FONT_STACKS.sans};
+    --vpk-font-mono: ${FONT_STACKS.mono};
+    --vpk-font-display: ${FONT_STACKS.display};
   }
 
-  [data-theme="dark"] {
-    --vpk-paper: var(--ds-surface, #101214);
-    --vpk-surface-raised: var(--ds-surface-raised, #22272b);
-    --vpk-surface-sunken: var(--ds-surface-sunken, #161a1d);
-    --vpk-ink: var(--ds-text, #dee4ea);
-    --vpk-muted-text: var(--ds-text-subtle, #9fadbc);
-    --vpk-subtlest-text: var(--ds-text-subtlest, #738496);
-    --vpk-blueprint: var(--ds-background-brand-bold, #579dff);
-    --vpk-blueprint-tint: var(--ds-background-information, #09326c);
-    --vpk-rule: var(--ds-border, #a6c5e229);
-    --vpk-rule-strong: var(--ds-border-bold, #738496);
-    --vpk-focus-ring: var(--ds-border-focused, #579dff);
-    --vpk-danger: var(--ds-background-danger-bold, #f87168);
-  }
-
-  @font-face {
-    font-family: "Geist";
-    src: url("${geistSans}") format("woff2");
-    font-weight: 400; font-style: normal; font-display: swap;
-  }
-  @font-face {
-    font-family: "Geist Mono";
-    src: url("${geistMono}") format("woff2");
-    font-weight: 400; font-style: normal; font-display: swap;
-  }
-  @font-face {
-    font-family: "Geist Pixel";
-    src: url("${geistPixel}") format("woff2");
-    font-weight: 400; font-style: normal; font-display: swap;
-  }
+${buildFontFaceBlock()}
 
   body {
     background: var(--vpk-paper);
@@ -192,7 +110,7 @@ function buildHead() {
 
 function rewriteColors(text) {
 	let out = text;
-	for (const [from, to] of Object.entries(COLOR_MAP)) {
+	for (const [from, to] of Object.entries(KAMI_COLOR_MAP)) {
 		out = out.split(from).join(to);
 	}
 	return out;

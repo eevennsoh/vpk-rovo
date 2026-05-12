@@ -12,12 +12,12 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { buildFontFaceBlock, readStylesCss } from "./shared.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SKILL_ROOT = path.resolve(__dirname, "..");
 const SOURCE_DIR = path.join(SKILL_ROOT, "assets", "html-effectiveness");
 const DEMOS_DIR = path.join(SKILL_ROOT, "assets", "demos");
-const FONTS_DIR = path.join(SKILL_ROOT, "assets", "fonts");
 
 const FILES = [
 	["01-exploration-code-approaches.html", "demo-exploration-code-approaches.html"],
@@ -42,50 +42,17 @@ const FILES = [
 	["20-editor-prompt-tuner.html", "demo-editor-prompt-tuner.html"],
 ];
 
-function fontFace(name, fileName) {
-	const data = fs.readFileSync(path.join(FONTS_DIR, fileName)).toString("base64");
-	return `@font-face {
-  font-family: "${name}";
-  src: url("data:font/woff2;base64,${data}") format("woff2");
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}`;
-}
-
 function validationCss() {
 	return `/* vpk-html validation shim: local fonts and offline checks. */
-${fontFace("Geist", "Geist-Regular.woff2")}
-${fontFace("Geist Mono", "GeistMono-Regular.woff2")}
-${fontFace("Geist Pixel", "GeistPixel-Square.woff2")}
-:root { color-scheme: light dark; }
-[data-theme="dark"] { color-scheme: dark; }
+${buildFontFaceBlock()}
 `;
 }
 
 function vpkVisualCss() {
 	return `/* vpk-html visual overlay: blueprint paper system over upstream demos. */
+${readStylesCss()}
+
 :root {
-  color-scheme: light dark;
-  --vpk-paper: var(--ds-surface, #ffffff);
-  --vpk-surface-raised: var(--ds-surface-raised, #ffffff);
-  --vpk-surface-sunken: var(--ds-surface-sunken, #f0f1f2);
-  --vpk-ink: var(--ds-text, #292a2e);
-  --vpk-muted-text: var(--ds-text-subtle, #505258);
-  --vpk-subtlest-text: var(--ds-text-subtlest, #6b6e76);
-  --vpk-inverse-text: var(--ds-text-inverse, #ffffff);
-  --vpk-rule: var(--ds-border, #0b120e24);
-  --vpk-rule-strong: var(--ds-border-bold, #7d818a);
-  --vpk-blueprint: var(--ds-background-brand-bold, #1868db);
-  --vpk-link: var(--ds-link, #1868db);
-  --vpk-link-pressed: var(--ds-link-pressed, #1558bc);
-  --vpk-blueprint-tint: var(--ds-background-information, #e9f2fe);
-  --vpk-blueprint-tint-strong: var(--ds-background-information-hovered, #cfe1fd);
-  --vpk-success: var(--ds-background-success-bold, #5b7f24);
-  --vpk-danger: var(--ds-background-danger-bold, #c9372c);
-  --vpk-code-surface: var(--ds-background-neutral-subtle, #f0f1f2);
-  --vpk-code-inverse: var(--ds-text-inverse, #ffffff);
-  --vpk-paper-rule: color-mix(in srgb, var(--vpk-ink) 8%, transparent);
   --ivory: var(--vpk-paper);
   --paper: var(--vpk-surface-raised);
   --white: var(--vpk-surface-raised);
@@ -118,28 +85,6 @@ function vpkVisualCss() {
   --radius-panel: 0;
   --radius-row: 0;
   --card-shadow: 4px 4px 0 var(--vpk-blueprint-tint);
-}
-
-[data-theme="dark"] {
-  --vpk-paper: var(--ds-surface, #101214);
-  --vpk-surface-raised: var(--ds-surface-raised, #22272b);
-  --vpk-surface-sunken: var(--ds-surface-sunken, #161a1d);
-  --vpk-ink: var(--ds-text, #dee4ea);
-  --vpk-muted-text: var(--ds-text-subtle, #9fadbc);
-  --vpk-subtlest-text: var(--ds-text-subtlest, #738496);
-  --vpk-inverse-text: var(--ds-text-inverse, #101214);
-  --vpk-rule: var(--ds-border, #a6c5e229);
-  --vpk-rule-strong: var(--ds-border-bold, #738496);
-  --vpk-blueprint: var(--ds-background-brand-bold, #579dff);
-  --vpk-link: var(--ds-link, #579dff);
-  --vpk-link-pressed: var(--ds-link-pressed, #85b8ff);
-  --vpk-blueprint-tint: var(--ds-background-information, #09326c);
-  --vpk-blueprint-tint-strong: var(--ds-background-information-hovered, #0c418a);
-  --vpk-success: var(--ds-background-success-bold, #b3df72);
-  --vpk-danger: var(--ds-background-danger-bold, #f87168);
-  --vpk-code-surface: var(--ds-background-neutral-subtle, #161a1d);
-  --vpk-code-inverse: var(--ds-text-inverse, #101214);
-  --vpk-paper-rule: color-mix(in srgb, var(--vpk-ink) 8%, transparent);
 }
 
 html,

@@ -17,6 +17,7 @@ import os from "node:os";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
+import { buildFontFaceBlock, FONT_STACKS, KAMI_COLOR_MAP, readStylesCss } from "./shared.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -24,20 +25,6 @@ const SKILL_ROOT = path.resolve(__dirname, "..");
 const KAMI_ROOT = path.join(os.homedir(), ".agents/skills/kami");
 const KAMI_TEMPLATES = path.join(KAMI_ROOT, "assets/templates");
 const VPK_TEMPLATES = path.join(SKILL_ROOT, "assets/templates");
-const VPK_FONTS_DIR = path.join(SKILL_ROOT, "assets/fonts");
-const VPK_THEME_CSS = path.join(SKILL_ROOT, "references/theme.css");
-
-// Inline fonts as base64 data URIs so filled documents are portable across
-// directories (kami uses ../fonts/ relative paths; we want a filled file in
-// docs/html/<slug>.html to work without symlinks or copy-along font dirs).
-function inlineFont(filename) {
-	const filePath = path.join(VPK_FONTS_DIR, filename);
-	if (!fs.existsSync(filePath)) {
-		throw new Error(`Font file not found: ${filePath}`);
-	}
-	const buffer = fs.readFileSync(filePath);
-	return `data:font/woff2;base64,${buffer.toString("base64")}`;
-}
 
 // Source filename → output slug. EN variants only; slides-weasy maps to slides.
 const TEMPLATES = [
@@ -50,74 +37,6 @@ const TEMPLATES = [
 	{ source: "equity-report-en.html", slug: "equity-report" },
 	{ source: "changelog-en.html", slug: "changelog" },
 ];
-
-// Palette mapping: kami → vpk-html semantic aliases.
-const COLOR_MAP = {
-	"#f5f4ed": "var(--vpk-paper)",
-	"#F5F4ED": "var(--vpk-paper)",
-	"#faf9f5": "var(--vpk-paper)",
-	"#FAF9F5": "var(--vpk-paper)",
-	"#141413": "var(--vpk-ink)",
-	"#3d3d3a": "var(--vpk-ink)",
-	"#3D3D3A": "var(--vpk-ink)",
-	"#4d4c48": "var(--vpk-muted-text)",
-	"#504e49": "var(--vpk-muted-text)",
-	"#6b6a64": "var(--vpk-subtlest-text)",
-	"#1B365D": "var(--vpk-blueprint)",
-	"#1b365d": "var(--vpk-blueprint)",
-	"#2D5A8A": "var(--vpk-focus-ring)",
-	"#EEF2F7": "var(--vpk-blueprint-tint)",
-	"#eef2f7": "var(--vpk-blueprint-tint)",
-	"#E4ECF5": "var(--vpk-blueprint-tint)",
-	"#e4ecf5": "var(--vpk-blueprint-tint)",
-	"#D0DCE9": "var(--vpk-blueprint-tint-strong)",
-	"#D6E1EE": "var(--vpk-blueprint-tint-strong)",
-	"#e8e6dc": "var(--vpk-rule)",
-	"#E8E6DC": "var(--vpk-rule)",
-	"#e5e3d8": "var(--vpk-rule)",
-	"#E5E3D8": "var(--vpk-rule)",
-	"#DEDED7": "var(--vpk-rule)",
-	"#E3E2DC": "var(--vpk-rule)",
-	"#E9E8E1": "var(--vpk-surface-sunken)",
-	"#EEEDE6": "var(--vpk-surface-sunken)",
-	"#EAE9E2": "var(--vpk-surface-sunken)",
-	"#B2B1AC": "var(--vpk-rule-strong)",
-	"#B53333": "var(--vpk-danger)",
-	"#b53333": "var(--vpk-danger)",
-	"#30302E": "var(--vpk-ink)",
-	"#30302e": "var(--vpk-ink)",
-};
-
-// Replace kami's @font-face blocks with vpk-html's font set, inlined as
-// base64 data URIs (single-file portability — no relative font paths).
-// vpk-html v4: Geist trio (Sans / Mono / Pixel-Square) by Vercel.
-function buildVpkFontFace() {
-	const geistSans = inlineFont("Geist-Regular.woff2");
-	const geistMono = inlineFont("GeistMono-Regular.woff2");
-	const geistPixel = inlineFont("GeistPixel-Square.woff2");
-	return `  @font-face {
-    font-family: "Geist";
-    src: url("${geistSans}") format("woff2");
-    font-weight: 400; font-style: normal; font-display: swap;
-  }
-  @font-face {
-    font-family: "Geist Mono";
-    src: url("${geistMono}") format("woff2");
-    font-weight: 400; font-style: normal; font-display: swap;
-  }
-  @font-face {
-    font-family: "Geist Pixel";
-    src: url("${geistPixel}") format("woff2");
-    font-weight: 400; font-style: normal; font-display: swap;
-}`;
-}
-
-function buildVpkThemeBlock() {
-	if (!fs.existsSync(VPK_THEME_CSS)) {
-		throw new Error(`Theme file not found: ${VPK_THEME_CSS}`);
-	}
-	return fs.readFileSync(VPK_THEME_CSS, "utf8").trim();
-}
 
 // vpk-html identity overrides: semantic paper, no chrome, 4-size scale,
 // family + weight + color hierarchy instead of size hierarchy.
@@ -248,7 +167,7 @@ const VPK_OVERRIDES = `
 
 function rewriteColors(text) {
 	let out = text;
-	for (const [from, to] of Object.entries(COLOR_MAP)) {
+	for (const [from, to] of Object.entries(KAMI_COLOR_MAP)) {
 		out = out.split(from).join(to);
 	}
 	return out;
@@ -256,16 +175,14 @@ function rewriteColors(text) {
 
 function rewriteFontStacks(text) {
 	let out = text;
-	const GEIST_SANS = '"Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif';
-	const GEIST_MONO = '"Geist Mono", ui-monospace, "SFMono-Regular", Consolas, monospace';
 
 	// kami's Charter serif stacks (multiple variants) → Geist Sans.
 	out = out.replace(
 		/Charter,\s*Georgia,\s*\n?\s*Palatino,\s*"Times New Roman",\s*serif/g,
-		GEIST_SANS,
+		FONT_STACKS.sans,
 	);
-	out = out.replace(/Charter,\s*Georgia,\s*Palatino,\s*serif/g, GEIST_SANS);
-	out = out.replace(/Charter,\s*Georgia,\s*Palatino,\s*"Songti SC",\s*serif/g, GEIST_SANS);
+	out = out.replace(/Charter,\s*Georgia,\s*Palatino,\s*serif/g, FONT_STACKS.sans);
+	out = out.replace(/Charter,\s*Georgia,\s*Palatino,\s*"Songti SC",\s*serif/g, FONT_STACKS.sans);
 	// TsangerJinKai02 (kami CN serif) → Geist Sans + CJK system fallback.
 	out = out.replace(
 		/"TsangerJinKai02"[^;]*serif/g,
@@ -275,8 +192,8 @@ function rewriteFontStacks(text) {
 	// anyway since templates inline fonts as base64; this just keeps strings consistent).
 	out = out.replace(/JetBrainsMono\.woff2/g, "GeistMono-Regular.woff2");
 	// kami's JetBrains Mono font-family stacks → Geist Mono.
-	out = out.replace(/"JetBrains Mono",\s*"SF Mono",\s*Consolas,\s*monospace/g, GEIST_MONO);
-	out = out.replace(/"JetBrains Mono",\s*"SF Mono",\s*"Fira Code"[^;]*/g, GEIST_MONO);
+	out = out.replace(/"JetBrains Mono",\s*"SF Mono",\s*Consolas,\s*monospace/g, FONT_STACKS.mono);
+	out = out.replace(/"JetBrains Mono",\s*"SF Mono",\s*"Fira Code"[^;]*/g, FONT_STACKS.mono);
 	return out;
 }
 
@@ -340,8 +257,8 @@ function main() {
 	fs.mkdirSync(VPK_TEMPLATES, { recursive: true });
 
 	console.log("Inlining fonts as base64 data URIs…");
-	const fontFaceBlock = buildVpkFontFace();
-	const themeBlock = buildVpkThemeBlock();
+	const fontFaceBlock = buildFontFaceBlock();
+	const themeBlock = readStylesCss();
 
 	for (const { source, slug } of TEMPLATES) {
 		const sourcePath = path.join(KAMI_TEMPLATES, source);

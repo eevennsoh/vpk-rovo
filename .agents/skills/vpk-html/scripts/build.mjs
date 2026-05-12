@@ -7,8 +7,10 @@
  * Usage:
  *   node scripts/build.mjs                          # run all checks on all templates
  *   node scripts/build.mjs --check-placeholders <file>
+ *   node scripts/build.mjs --sync                  # check CSS token drift
  *   node scripts/build.mjs --check-templates       # CSS / token / font sanity across templates
  *   node scripts/build.mjs --verify <file>         # Playwright render + load check
+ *   node scripts/build.mjs --write-styles          # regenerate styles.css from tokens.json
  */
 
 import fs from "node:fs";
@@ -16,6 +18,7 @@ import path from "node:path";
 import process from "node:process";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { collectColorTokenIssues } from "./check-html.mjs";
+import { checkStyleConsumers, checkStyleSource, writeStylesCssFromTokens } from "./shared.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -44,6 +47,8 @@ function parseArgs(argv) {
 	for (let i = 0; i < argv.length; i++) {
 		const arg = argv[i];
 		if (arg === "--check-placeholders") { args.mode = "placeholders"; args.file = argv[++i]; }
+		else if (arg === "--sync" || arg === "--check-theme") { args.mode = "sync"; }
+		else if (arg === "--write-styles" || arg === "--write-theme") { args.mode = "write-styles"; }
 		else if (arg === "--check-templates") { args.mode = "templates"; }
 		else if (arg === "--verify") { args.mode = "verify"; args.file = argv[++i]; }
 		else if (arg === "--help" || arg === "-h") { args.mode = "help"; }
@@ -88,6 +93,21 @@ function checkPlaceholders(filePath) {
 
 /* ============ --check-templates ============ */
 
+function syncCheck() {
+	const issues = [
+		...checkStyleSource(),
+		...checkStyleConsumers(),
+	];
+	if (issues.length === 0) {
+		console.log("OK: styles.css in sync with references/tokens.json and generated HTML");
+		return { ok: true, failures: 0 };
+	}
+
+	console.log("✗ shared CSS drift");
+	for (const issue of issues) console.log(`  ${issue}`);
+	return { ok: false, failures: issues.length };
+}
+
 function checkTemplate(filePath) {
 	const content = fs.readFileSync(filePath, "utf8");
 	const failures = [];
@@ -112,10 +132,11 @@ function checkTemplate(filePath) {
 }
 
 function checkTemplates() {
+	const syncResult = syncCheck();
 	const files = listTemplates();
 	if (files.length === 0) {
 		console.log(`No templates found in ${path.relative(process.cwd(), TEMPLATES_DIR)}`);
-		return { ok: true, total: 0, failures: 0 };
+		return { ok: syncResult.ok, total: 0, failures: syncResult.failures };
 	}
 	let failures = 0;
 	for (const file of files) {
@@ -130,7 +151,7 @@ function checkTemplates() {
 		}
 	}
 	console.log(`${files.length - failures}/${files.length} templates clean`);
-	return { ok: failures === 0, total: files.length, failures };
+	return { ok: syncResult.ok && failures === 0, total: files.length, failures: failures + syncResult.failures };
 }
 
 /* ============ --verify ============ */
@@ -201,8 +222,10 @@ function help() {
 Usage:
   node scripts/build.mjs                          # check all templates
   node scripts/build.mjs --check-placeholders <file>
+  node scripts/build.mjs --sync                    # check CSS token drift
   node scripts/build.mjs --check-templates
   node scripts/build.mjs --verify <file>
+  node scripts/build.mjs --write-styles
   node scripts/build.mjs --help`);
 }
 
@@ -215,6 +238,16 @@ async function main() {
 	if (args.mode === "placeholders") {
 		const result = checkPlaceholders(args.file);
 		if (!result.ok) process.exitCode = 1;
+		return;
+	}
+	if (args.mode === "sync") {
+		const result = syncCheck();
+		if (!result.ok) process.exitCode = 1;
+		return;
+	}
+	if (args.mode === "write-styles") {
+		writeStylesCssFromTokens();
+		console.log("✓ regenerated styles.css from references/tokens.json");
 		return;
 	}
 	if (args.mode === "templates") {

@@ -96,8 +96,9 @@ node scripts/rescue-html-effectiveness-demos.mjs  # copy + restyle direct Phase 
 | `assets/html-effectiveness/` | Snapshot of the 20 upstream html-effectiveness HTML demos plus index |
 | `assets/demos/` | Demo HTML outputs plus the embedded media needed by individual demos |
 | `assets/fonts/` | Geist Sans, Geist Mono, Geist Pixel (inlined as base64 at port time) |
-| `references/` | Anti-patterns, diagrams, resume-writing, writing, design, production, source-policy, accessibility, theme.css, tokens.json |
-| `scripts/` | build (validator), check-html, port-*.mjs, rescue-demos (regenerate vpk demos), ensure-fonts |
+| `styles.css` | Shared root stylesheet, matching Kami's top-level CSS contract |
+| `references/` | Anti-patterns, diagrams, resume-writing, writing, design, production, source-policy, accessibility, tokens.json |
+| `scripts/` | build (validator), check-html, shared helpers, port-*.mjs, rescue-demos (regenerate vpk demos), ensure-fonts |
 
 ## Rules of the road
 
@@ -106,6 +107,9 @@ node scripts/rescue-html-effectiveness-demos.mjs  # copy + restyle direct Phase 
   and it still renders identically.
 - **CSS stays untouched.** Templates ship with their CSS locked. Only the
   body content changes per document.
+- **Theme stays shared.** Author semantic colors in `references/tokens.json`,
+  mirror them to root `styles.css`, and import `scripts/shared.mjs` from
+  generators instead of hard-coding palette or font blocks per demo.
 - **Fill every placeholder.** Run `build.mjs --check-placeholders` before
   shipping. Unfilled `{{...}}` slots fail the check.
 - **Visible sources.** When external research or copied material is used,
@@ -132,6 +136,12 @@ The visual identity diverges; the workflow does not.
 | Templates | 28 (8 kami-ported base shells + 20 original Phase 2 engineering shells) | 8 |
 | Diagrams | 14 SVG primitives (kami-ported) | 14 SVG primitives |
 | Languages | EN | CN primary, EN, JA best-effort |
+
+vpk-html's theme source of truth is `references/tokens.json` -> root
+`styles.css`, with helpers in `scripts/shared.mjs`, matching Kami's
+`styles.css` + `references/tokens.json` + `scripts/shared.py` shape. After
+token edits, run `node .agents/skills/vpk-html/scripts/build.mjs --write-styles`,
+then `node .agents/skills/vpk-html/scripts/build.mjs --sync`.
 
 ## Phase 2 engineering templates
 

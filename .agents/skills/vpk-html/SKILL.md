@@ -245,6 +245,12 @@ node .agents/skills/vpk-html/scripts/check-html.mjs <slug>.html
 For template-library changes (color sweeps, font swaps, port-script edits):
 
 ```bash
+# Kami-style CSS token drift check
+node .agents/skills/vpk-html/scripts/build.mjs --sync
+
+# Regenerate styles.css after editing references/tokens.json
+node .agents/skills/vpk-html/scripts/build.mjs --write-styles
+
 # CSS / token / font sanity across all templates
 node .agents/skills/vpk-html/scripts/build.mjs --check-templates
 
@@ -265,6 +271,23 @@ node .agents/skills/vpk-html/scripts/rescue-html-effectiveness-demos.mjs
 ```
 
 ---
+
+## Shared Theme Contract
+
+vpk-html follows kami's constraint-system model, but the visual system is VPK's.
+Do not hard-code palettes or font faces independently in each demo, diagram, or
+template script.
+
+- Keep the visible shared stylesheet at root as `styles.css`, matching Kami's layout.
+- Author semantic colors once in `references/tokens.json`.
+- Regenerate `styles.css` with `node .agents/skills/vpk-html/scripts/build.mjs --write-styles`.
+- Use `scripts/shared.mjs` for generated CSS: `buildFontFaceBlock()`, `readStylesCss()`, `FONT_STACKS`, `KAMI_COLOR_MAP`, or `buildSharedCssBlock()`.
+- Run `node .agents/skills/vpk-html/scripts/build.mjs --sync` before and after any token/style edit.
+- Individual templates may define layout aliases such as `--brand`, `--paper`, or `--mono`, but those aliases must point back to shared `--vpk-*` variables.
+
+This keeps every future demo and template on the same colors, dark-mode
+fallbacks, font families, and reduced-motion rule without editing one inline
+CSS block at a time.
 
 ## Identity
 
@@ -341,8 +364,9 @@ The prose column is intentionally narrower (~42%) than the figure column
 (~58%). On screens narrower than 720px and in print, the spread collapses to
 a single column with the figure below.
 
-The full token map and font set live in `references/theme.css`. Templates
-already inline these — don't redefine them per document.
+The full token map and font set live in `references/tokens.json`,
+`styles.css`, and `scripts/shared.mjs`. Templates already inline the
+resolved theme block — don't redefine it per document.
 
 ---
 

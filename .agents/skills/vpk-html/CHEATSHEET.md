@@ -94,6 +94,20 @@ node .agents/skills/vpk-html/scripts/build.mjs --check-placeholders docs/html/<s
 node .agents/skills/vpk-html/scripts/build.mjs --verify docs/html/<slug>.html
 ```
 
+## Shared theme
+
+```bash
+# Check token JSON, root styles.css, and generated HTML are in sync
+node .agents/skills/vpk-html/scripts/build.mjs --sync
+
+# After editing references/tokens.json
+node .agents/skills/vpk-html/scripts/build.mjs --write-styles
+```
+
+Future templates, demos, and diagrams should import `scripts/shared.mjs` from
+their generator scripts instead of copying color maps, color variables, or font
+faces into each output path by hand.
+
 ## Embedding a diagram
 
 1. Open `.agents/skills/vpk-html/assets/diagrams/<type>.html`.

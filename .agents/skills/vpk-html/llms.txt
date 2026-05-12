@@ -53,13 +53,15 @@ Optional doc-type hints: `/vpk-html resume`, `/vpk-html one-pager`,
 - references/production.md — Troubleshooting (page overflow, font issues)
 - references/source-policy.md — Source attribution rules
 - references/accessibility.md — Accessibility expectations
-- references/theme.css — Token map
+- styles.css — Shared stylesheet token map
 - references/tokens.json — Programmatic token data
 
 ## Commands
 
 - node scripts/build.mjs                            (validate all templates)
 - node scripts/build.mjs --check-placeholders <file>
+- node scripts/build.mjs --sync                     (validate styles.css and generated HTML mirror tokens.json)
+- node scripts/build.mjs --write-styles             (regenerate styles.css from tokens.json)
 - node scripts/build.mjs --check-templates
 - node scripts/build.mjs --verify <file>
 - node scripts/check-html.mjs <file>

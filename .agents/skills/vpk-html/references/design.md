@@ -18,8 +18,8 @@ declines a font face.
 
 ## Tokens
 
-Tokens are authored once in `references/tokens.json` and mirrored in
-`references/theme.css`. The renderer embeds the resolved theme block in every
+Tokens are authored once in `references/tokens.json` and mirrored in root
+`styles.css`, matching Kami's top-level stylesheet shape. The renderer embeds the resolved theme block in every
 HTML document instead of letting individual templates own hard-coded palettes.
 
 Token groups cover paper/background, ink, muted text, blueprint accent, rule,
