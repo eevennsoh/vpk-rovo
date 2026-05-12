@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /*
  * Ports kami's 8 EN HTML templates from ~/.agents/skills/kami/assets/templates/
- * into vpk-html/assets/templates/, re-skinned with vpk-html's semantic
- * blueprint identity (Geist Sans body + Geist Mono labels + Geist Pixel
- * masthead).
+ * into vpk-html/assets/templates/, re-skinned with vpk-html's Atlassian
+ * deck identity (Charlie Text body + Charlie Display mastheads +
+ * Atlassian Mono numerals and code).
  *
  * Layout, @page rules, and {{placeholders}} are preserved verbatim. Only
  * chrome (fonts, colors, @font-face blocks, font-family stacks) changes,
@@ -38,13 +38,13 @@ const TEMPLATES = [
 	{ source: "changelog-en.html", slug: "changelog" },
 ];
 
-// vpk-html identity overrides: semantic paper, no chrome, 4-size scale,
-// family + weight + color hierarchy instead of size hierarchy.
+// vpk-html identity overrides: semantic deck canvas, flat editorial chrome,
+// and hierarchy from Charlie family + weight + placement.
 const VPK_OVERRIDES = `
 
-  /* ===== vpk-html identity overrides ===== */
+  /* ===== vpk-html Atlassian deck identity overrides ===== */
 
-  html, body { background: var(--paper) !important; }
+  html, body { background: var(--paper-background) !important; }
 
   /* Strip section chrome unless a component opts into raised-surface treatment. */
   .frame, .page, section, .card, .metric, .metric-card,
@@ -70,10 +70,8 @@ const VPK_OVERRIDES = `
     height: 1px !important;
   }
 
-  /* 4-size type scale: 10 / 12 / 14 / 16px. Body is 16px, all headings are 16px.
-     Hierarchy comes from family + weight + color + position. */
   body, p, li, dd, dt, blockquote, td, th, .body, .lead, .prose {
-    font-family: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif !important;
+    font-family: "Atlassian Mono Numeric", var(--font-body) !important;
     font-size: 16px !important;
     line-height: 1.8 !important;
     color: var(--ink) !important;
@@ -82,48 +80,48 @@ const VPK_OVERRIDES = `
   .cover-title, .doc-title, .resume-name, .deck-cover .title,
   .hero h1, .title-block h1, .equity-header .ticker, .letter-subject,
   .section-title {
-    font-family: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif !important;
+    font-family: var(--font-display) !important;
     font-size: 16px !important;
     line-height: 1.8 !important;
-    font-weight: 600 !important;
+    font-weight: 700 !important;
     letter-spacing: 0 !important;
     color: var(--ink) !important;
     margin: 0 !important;
   }
 
-  /* Masthead role: cover-title / first h1 carries the semantic blueprint accent. */
+  /* Masthead role: cover-title / first h1 carries the primary deck accent. */
   .cover h1:first-child, .cover-title:first-child,
   .hero h1:first-child, .doc-title h1:first-child,
   .resume-name {
-    font-family: "Geist Pixel", "Geist Mono", ui-monospace, "SFMono-Regular", Consolas, monospace !important;
-    color: var(--blueprint) !important;
-    font-weight: 400 !important;
-    text-transform: uppercase !important;
-    letter-spacing: 0.02em !important;
+    font-family: var(--font-display) !important;
+    color: var(--headline) !important;
+    font-weight: 900 !important;
+    text-transform: none !important;
+    letter-spacing: 0 !important;
   }
 
-  /* Margin labels / eyebrows / figure tags: Geist Mono, 10-12px, blueprint. */
+  /* Margin labels / eyebrows / figure tags: Atlassian Mono, 10-12px, primary blue. */
   .eyebrow, .label, .meta-mono, .kicker,
   .figure-tag, .margin-label, .fig-num, .stage-name {
-    font-family: "Geist Pixel", "Geist Mono", ui-monospace, "SFMono-Regular", Consolas, monospace !important;
+    font-family: var(--font-mono) !important;
     font-size: 10px !important;
     line-height: 14px !important;
-    letter-spacing: 0.18em !important;
+    letter-spacing: 0.08em !important;
     text-transform: uppercase !important;
-    color: var(--blueprint) !important;
+    color: var(--primary-blue) !important;
     font-weight: 400 !important;
   }
 
   /* Secondary metadata / captions: 14px, ink-muted. */
   .caption, .meta, .footnote, .annotation, .subtitle, .cover-sub, .cover-meta,
   .doc-meta, .release-meta, .stage-detail, .stage-meta {
-    font-family: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif !important;
+    font-family: "Atlassian Mono Numeric", var(--font-body) !important;
     font-size: 14px !important;
     line-height: 22px !important;
     color: var(--muted-text) !important;
   }
 
-  /* Links: same semantic blueprint family as the masthead. */
+  /* Links: primary blue with restrained editorial underline. */
   a, a:visited {
     color: var(--link) !important;
     text-decoration: none !important;
@@ -135,7 +133,7 @@ const VPK_OVERRIDES = `
   }
 
   /* Emphasis: italic preferred; bold reserved for headings. */
-  .hl, mark, strong { color: var(--blueprint) !important; background: transparent !important; font-weight: 600 !important; }
+  .hl, mark, strong { color: var(--primary-blue) !important; background: transparent !important; font-weight: 600 !important; }
   em, i { font-style: italic !important; color: var(--ink) !important; }
 
   /* Dotted rule utility. */
@@ -154,7 +152,7 @@ const VPK_OVERRIDES = `
   section > p:first-child::first-letter,
   .lead::first-letter,
   .cover + p::first-letter {
-    font-family: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif !important;
+    font-family: var(--font-display) !important;
     color: var(--ink) !important;
     float: left !important;
     font-size: 48px !important;
@@ -176,22 +174,22 @@ function rewriteColors(text) {
 function rewriteFontStacks(text) {
 	let out = text;
 
-	// kami's Charter serif stacks (multiple variants) → Geist Sans.
+	// kami's Charter serif stacks (multiple variants) → Charlie Text.
 	out = out.replace(
 		/Charter,\s*Georgia,\s*\n?\s*Palatino,\s*"Times New Roman",\s*serif/g,
 		FONT_STACKS.sans,
 	);
 	out = out.replace(/Charter,\s*Georgia,\s*Palatino,\s*serif/g, FONT_STACKS.sans);
 	out = out.replace(/Charter,\s*Georgia,\s*Palatino,\s*"Songti SC",\s*serif/g, FONT_STACKS.sans);
-	// TsangerJinKai02 (kami CN serif) → Geist Sans + CJK system fallback.
+	// TsangerJinKai02 (kami CN serif) → Charlie Text + CJK system fallback.
 	out = out.replace(
 		/"TsangerJinKai02"[^;]*serif/g,
-		'"Geist", "Noto Sans CJK SC", ui-sans-serif, system-ui, sans-serif',
+		'"Charlie Text", "Noto Sans CJK SC", ui-sans-serif, system-ui, sans-serif',
 	);
-	// kami's older JetBrainsMono.woff2 path → Geist Mono filename (the path is dead
+	// kami's older JetBrainsMono.woff2 path → Atlassian Mono filename (the path is dead
 	// anyway since templates inline fonts as base64; this just keeps strings consistent).
-	out = out.replace(/JetBrainsMono\.woff2/g, "GeistMono-Regular.woff2");
-	// kami's JetBrains Mono font-family stacks → Geist Mono.
+	out = out.replace(/JetBrainsMono\.woff2/g, "AtlassianMono.v2.ttf");
+	// kami's JetBrains Mono font-family stacks → Atlassian Mono.
 	out = out.replace(/"JetBrains Mono",\s*"SF Mono",\s*Consolas,\s*monospace/g, FONT_STACKS.mono);
 	out = out.replace(/"JetBrains Mono",\s*"SF Mono",\s*"Fira Code"[^;]*/g, FONT_STACKS.mono);
 	return out;
@@ -212,17 +210,16 @@ function rewriteFontFaceBlocks(text, fontFaceBlock, themeBlock) {
 function rewriteHeader(text, slug) {
 	const friendly = slug.replace(/-/g, " ");
 	const headerComment = `<!-- ==================================================================
-     TEMPLATE · ${friendly} (vpk-html · Making Software identity)
+     TEMPLATE · ${friendly} (vpk-html · Atlassian deck identity)
      Ported from kami's editorial template library, restyled with the
      vpk-html semantic aliases: paper (var(--paper)), ink
-     (var(--ink)), blueprint accent (var(--blueprint)),
+     (var(--ink)), primary blue (var(--primary-blue)),
      status accents, and muted text (var(--muted-text)).
-     Geist Pixel (Square) masthead, Geist Sans body, Geist Mono labels, 16px throughout
-     (hierarchy via family + weight + color, not size).
+     Charlie Display mastheads, Charlie Text body, Atlassian Mono numerals and labels.
      No section borders. No shadows. No grid. No rounded corners.
      Layout and double-curly placeholders preserved verbatim from kami.
      Source: https://github.com/tw93/Kami (MIT)
-     Design language: design-makingsoftware.md (extract from makingsoftware.com)
+     Design language: Atlassian deck/editorial language
      ================================================================== -->`;
 	let out = text;
 	out = out.replace(/<!--[\s\S]*?-->\n?/, `${headerComment}\n`);
@@ -240,9 +237,9 @@ function appendOverrides(text) {
 
 function transform(rawHtml, slug, fontFaceBlock, themeBlock) {
 	let out = rawHtml;
-	out = rewriteFontFaceBlocks(out, fontFaceBlock, themeBlock);
 	out = rewriteFontStacks(out);
 	out = rewriteColors(out);
+	out = rewriteFontFaceBlocks(out, fontFaceBlock, themeBlock);
 	out = stripSelfReferentialCustomProperties(out);
 	out = rewriteHeader(out, slug);
 	out = ensureFaviconLinks(out);

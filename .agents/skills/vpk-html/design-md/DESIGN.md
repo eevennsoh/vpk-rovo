@@ -769,7 +769,7 @@ Rules:
 - **MUST** use Charlie Display/Text **only** on marketing surfaces, onboarding welcome moments,
   brand promotion sections, and empty-state illustrations. See
   [Brand vs product](#brand-vs-product).
-- **MUST NOT** introduce third-party fonts (Inter, Geist, SF Pro, Roboto, Helvetica). The system
+- **MUST NOT** introduce third-party fonts (Inter, SF Pro, Roboto, Helvetica, or legacy web font families). The system
   fallback stack already covers platforms where Atlassian Sans is unavailable.
 
 ### Heading scale
@@ -1357,7 +1357,7 @@ values are in [Colors](#colors).
 | Error: reason + action                                                                                                                                                              | Error: "Oops, something went wrong. Please try again."                                                                                                        |
 | Empty state with next-step CTA                                                                                                                                                      | "No data" / "Nothing here yet"                                                                                                                                |
 | Official Atlassian icons at 16px (or mimic [Iconography and imagery](#iconography-and-imagery))                                                                                     | Material Symbols / Lucide / Heroicons                                                                                                                         |
-| Atlassian Sans in product                                                                                                                                                           | Inter / Geist / SF Pro / Roboto in product                                                                                                                    |
+| Atlassian Sans in product                                                                                                                                                           | Inter / SF Pro / Roboto / legacy web font families in product                                                                                                 |
 | Charlie on marketing surfaces                                                                                                                                                       | Charlie in product settings pages                                                                                                                             |
 | Focus ring per [Shapes](#shapes) → Focus ring                                                                                                                                       | `outline: none` with no replacement                                                                                                                           |
 | `prefers-reduced-motion` respected                                                                                                                                                  | Auto-playing loops on dashboards                                                                                                                              |

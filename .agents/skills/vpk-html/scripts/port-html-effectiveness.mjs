@@ -10,7 +10,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { buildFaviconLinkBlock, buildFontFaceBlock, readStylesCss } from "./shared.mjs";
+import { buildFaviconLinkBlock, buildFontFaceBlock, FONT_STACKS, readStylesCss } from "./shared.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SKILL_ROOT = path.resolve(__dirname, "..");
@@ -369,30 +369,31 @@ ${sharedCss}
 \t--dark-warm: var(--ink);
 \t--olive: var(--muted-text);
 \t--stone: var(--subtlest-text);
-\t--brand: var(--blueprint);
+\t--brand: var(--primary-blue);
 \t--border: var(--rule);
-\t--tag-bg: var(--blueprint-tint);
-\t--shadow-hard: 3px 3px 0 var(--near-black);
-\t--serif: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+\t--tag-bg: var(--primary-blue-tint);
+\t--shadow-hard: var(--shadow);
+\t--serif: ${FONT_STACKS.body};
 \t--sans: var(--serif);
-\t--mono: "Geist Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
-\t--display: "Geist Pixel", var(--mono);
+\t--mono: ${FONT_STACKS.mono};
+\t--display: ${FONT_STACKS.display};
+\t--numeric: ${FONT_STACKS.numeric};
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 html {
-\tbackground: var(--parchment);
+\tbackground: var(--paper-background);
 \tcolor: var(--near-black);
-\tfont-family: var(--serif);
+\tfont-family: "Atlassian Mono Numeric", var(--serif);
 \tline-height: 1.62;
 }
 
 body {
 \tbackground:
-\t\tradial-gradient(circle at 1px 1px, var(--paper-rule) 1px, transparent 0),
-\t\tvar(--parchment);
-\tbackground-size: 16px 16px;
+\t\tvar(--grid-background),
+\t\tvar(--paper-background);
+\tbackground-size: var(--grid-background-size);
 \tfont-size: 18px;
 \tmin-height: 100vh;
 }
@@ -422,7 +423,7 @@ a { color: var(--brand); text-decoration-thickness: 0.08em; text-underline-offse
 \tcolor: var(--brand);
 \tfont-family: var(--display);
 \tfont-size: 10px;
-\tletter-spacing: 0.16em;
+\tletter-spacing: 0.08em;
 \tline-height: 1.2;
 \ttext-transform: uppercase;
 }
@@ -432,10 +433,10 @@ h2,
 h3 {
 \tcolor: var(--brand);
 \tfont-family: var(--display);
-\tfont-weight: 400;
-\tletter-spacing: 0.02em;
-\tline-height: 0.95;
-\ttext-transform: uppercase;
+\tfont-weight: 900;
+\tletter-spacing: 0;
+\tline-height: 0.98;
+\ttext-transform: none;
 }
 
 h1 {
@@ -482,7 +483,7 @@ h1 {
 
 .stat strong {
 \tdisplay: block;
-\tfont-family: var(--mono);
+\tfont-family: var(--numeric);
 \tfont-size: 15px;
 \tfont-weight: 400;
 \tline-height: 1.35;

@@ -119,7 +119,7 @@ faces into each output path by hand.
   <svg viewBox="0 0 960 460" xmlns="http://www.w3.org/2000/svg">
     <!-- pasted SVG content; replace {{System name}} etc. -->
   </svg>
-  <figcaption>One blueprint node marks the focal component.</figcaption>
+  <figcaption>One primary-blue node marks the focal component.</figcaption>
 </figure>
 ```
 
@@ -127,15 +127,16 @@ faces into each output path by hand.
 
 Editorial / engineering manual — implementation cousin: [aiengineeringfromscratch.com](https://aiengineeringfromscratch.com/) (built in the [makingsoftware.com](https://www.makingsoftware.com/) lineage).
 
-**Light (default):** `--paper`, `--ink`, `--blueprint`, and `--surface-raised` resolve through VPK/ADS semantic tokens with embedded offline fallbacks.
+**Light (default):** `--paper`, `--ink`, `--primary-blue`, and `--surface-raised` resolve through VPK/ADS semantic tokens with embedded offline fallbacks.
 **Dark** (`<html data-theme="dark">`): the same unprefixed aliases switch to dark semantic fallbacks without importing runtime CSS.
 
-- Fonts (Geist family only): **Geist Pixel** for all headings, masthead, margin labels, figure tags; **Geist Sans** body 18px / line-height 1.62; **Geist Mono** code
-- All headings: uppercase, letter-spaced, in `var(--brand)`
-- Body bg: semantic paper + subtle dotted texture via `radial-gradient(var(--paper-rule) 1px, transparent 1px); background-size: 16px 16px;`
+- Fonts: **Charlie Display** for mastheads, slide titles, headline stats, and section heads; **Charlie Text** for body, labels, tables, and ordinary document text; **Atlassian Mono** for code, metrics, dates, counters, figure/table numbers, chart labels, and technical identifiers
+- Numerals: **Atlassian Mono Numeric** is embedded with `unicode-range: U+0030-0039` so digits inside Charlie text render in Atlassian Mono
+- All headings: Charlie Display, no negative tracking, in `var(--headline)` or `var(--primary-blue)`
+- Body bg: semantic paper + `var(--grid-background)` / `var(--grid-background-size)` dotted grid inspired by `image.098`
 - Type scale: cover-title 56px / h1 36px / h2 26px / h3 18px / h4-h6 14px / body+p 18px / fig-label 10px
 - Hard shadows opt-in: add `.card / .callout / .takeaway / .surface-raised / .shadow-hard` for `box-shadow: 3px 3px 0 var(--near-black)` + 1px ink border
-- ASCII rule: `<hr class="ascii">` for bright blueprint dotted separator
+- Deck rule: `<hr class="ascii">` for primary-blue dotted separator
 - Dotted divider: `<hr>` styled via radial-gradient row of 1px dots
 - `long-doc.html` only: `.spread` two-column primitive (prose left ~42%, figure right ~58%) with vertical `.gutter-tag` for FIG_NN labels
 

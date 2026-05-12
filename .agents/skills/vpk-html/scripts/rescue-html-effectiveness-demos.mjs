@@ -12,7 +12,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { buildFontFaceBlock, ensureFaviconLinks, readStylesCss } from "./shared.mjs";
+import { buildFontFaceBlock, ensureFaviconLinks, FONT_STACKS, KAMI_COLOR_MAP, readStylesCss } from "./shared.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SKILL_ROOT = path.resolve(__dirname, "..");
@@ -49,7 +49,7 @@ ${buildFontFaceBlock()}
 }
 
 function vpkVisualCss() {
-	return `/* vpk-html visual overlay: blueprint paper system over upstream demos. */
+	return `/* vpk-html visual overlay: Atlassian deck system over upstream demos. */
 ${readStylesCss()}
 
 :root {
@@ -71,30 +71,31 @@ ${readStylesCss()}
   --g300: var(--rule);
   --g500: var(--muted-text);
   --g700: var(--ink);
-  --clay: var(--blueprint);
+  --clay: var(--primary-blue);
   --clay-d: var(--link-pressed);
-  --oat: var(--blueprint-tint);
+  --oat: var(--primary-blue-tint);
   --olive: var(--success);
   --rust: var(--danger);
-  --sky: var(--blueprint);
-  --serif: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --mono: "Geist Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
-  --display: "Geist Pixel", "Geist Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+  --sky: var(--primary-blue);
+  --serif: ${FONT_STACKS.body};
+  --sans: ${FONT_STACKS.body};
+  --mono: ${FONT_STACKS.mono};
+  --display: ${FONT_STACKS.display};
+  --numeric: ${FONT_STACKS.numeric};
   --border: 1px solid var(--gray-300);
   --radius-panel: 0;
   --radius-row: 0;
-  --card-shadow: 4px 4px 0 var(--blueprint-tint);
+  --card-shadow: 4px 4px 0 var(--primary-blue-tint);
 }
 
 html,
 body {
   background:
-    radial-gradient(circle at 1px 1px, var(--paper-rule) 1px, transparent 0),
+    var(--grid-background),
     var(--ivory) !important;
-  background-size: 16px 16px !important;
+  background-size: var(--grid-background-size) !important;
   color: var(--slate) !important;
-  font-family: var(--sans) !important;
+  font-family: "Atlassian Mono Numeric", var(--sans) !important;
   letter-spacing: 0 !important;
 }
 
@@ -121,10 +122,10 @@ h1,
 .deck-title {
   color: var(--clay) !important;
   font-family: var(--display) !important;
-  font-weight: 400 !important;
-  letter-spacing: 0.02em !important;
-  line-height: 0.95 !important;
-  text-transform: uppercase !important;
+  font-weight: 900 !important;
+  letter-spacing: 0 !important;
+  line-height: 0.98 !important;
+  text-transform: none !important;
 }
 
 h2,
@@ -135,10 +136,10 @@ h4,
 .panel-title {
   color: var(--slate) !important;
   font-family: var(--display) !important;
-  font-weight: 400 !important;
-  letter-spacing: 0.04em !important;
+  font-weight: 700 !important;
+  letter-spacing: 0 !important;
   line-height: 1.08 !important;
-  text-transform: uppercase !important;
+  text-transform: none !important;
 }
 
 p,
@@ -166,6 +167,14 @@ select {
 .stat-label {
   font-family: var(--mono) !important;
   letter-spacing: 0.08em !important;
+}
+
+.num,
+.metric,
+.stat,
+.counter,
+svg text {
+  font-family: var(--numeric) !important;
 }
 
 .eyebrow,
@@ -305,7 +314,6 @@ strong,
 }
 
 mark,
-.chip,
 .pill,
 .tag,
 .badge {
@@ -429,6 +437,14 @@ function addGeneratorMeta(html) {
 	);
 }
 
+function rewriteSourceColors(html) {
+	let out = html;
+	for (const [from, to] of Object.entries(KAMI_COLOR_MAP)) {
+		out = out.split(from).join(to);
+	}
+	return out;
+}
+
 function addValidationCss(html) {
 	if (html.includes("vpk-html validation shim")) return html;
 	return html.replace(/<style>/i, `<style>\n${validationCss()}`);
@@ -481,7 +497,7 @@ function adapt(html, sourceFile) {
 					addValidationCss(
 						addGeneratorMeta(
 							markUpstreamDemo(
-								addSourceComment(html, sourceFile),
+								addSourceComment(rewriteSourceColors(html), sourceFile),
 							),
 						),
 					),

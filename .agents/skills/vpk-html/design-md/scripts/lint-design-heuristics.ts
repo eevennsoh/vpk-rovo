@@ -361,7 +361,7 @@ function main(): void {
 	const argv = process.argv.slice(2);
 	let format: 'text' | 'json' = 'text';
 	let includeMarkdown = false;
-	let includeValidateCode =
+	const includeValidateCode =
 		argv.includes('--validate-code') || argv.includes('--ads') || argv.includes('--with-ads');
 	const paths = argv.filter(
 		(arg) =>

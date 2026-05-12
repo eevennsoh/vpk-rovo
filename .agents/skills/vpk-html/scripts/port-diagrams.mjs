@@ -1,9 +1,8 @@
 #!/usr/bin/env node
 /*
  * Ports the 14 kami diagram primitives from ~/.agents/skills/kami/assets/diagrams/
- * into vpk-html/assets/diagrams/, re-skinned with vpk-html's semantic
- * blueprint identity and the Geist typeface trio (Sans / Mono /
- * Pixel-Square).
+ * into vpk-html/assets/diagrams/, re-skinned with vpk-html's Atlassian
+ * deck identity and Charlie / Atlassian Mono typefaces.
  *
  * The SVG geometry is preserved verbatim — only fills, strokes, fonts, and
  * surrounding chrome change. Run with: node scripts/port-diagrams.mjs
@@ -25,12 +24,12 @@ const VPK_DIAGRAMS = path.join(SKILL_ROOT, "assets/diagrams");
 
 const FONT_REPLACEMENTS = [
 	{
-		// kami Charter serif stack (body) → Geist Sans.
+		// kami Charter serif stack (body) → Charlie Text.
 		pattern: /Charter,\s*Georgia,\s*Palatino,\s*serif/g,
 		replacement: FONT_STACKS.sans,
 	},
 	{
-		// kami JetBrains Mono stack with CJK fallbacks → Geist Mono.
+		// kami JetBrains Mono stack with CJK fallbacks → Atlassian Mono.
 		pattern:
 			/'JetBrains Mono',\s*"SF Mono",\s*Consolas,\s*"TsangerJinKai02",\s*"Source Han Serif SC",\s*"Noto Serif CJK SC",\s*"Songti SC",\s*monospace/g,
 		replacement: FONT_STACKS.mono,
@@ -38,7 +37,7 @@ const FONT_REPLACEMENTS = [
 	{
 		// Short JetBrains Mono refs inside SVG <text font-family="..."> attributes.
 		pattern: /'JetBrains Mono',\s*monospace/g,
-		replacement: "'Geist Mono', monospace",
+		replacement: "'Atlassian Mono', monospace",
 	},
 ];
 
@@ -49,7 +48,7 @@ function buildHead() {
 ${readStylesCss()}
 
   :root {
-    --font-sans: ${FONT_STACKS.sans};
+    --font-sans: ${FONT_STACKS.body};
     --font-mono: ${FONT_STACKS.mono};
     --font-display: ${FONT_STACKS.display};
   }
@@ -57,9 +56,12 @@ ${readStylesCss()}
 ${buildFontFaceBlock()}
 
   body {
-    background: var(--paper);
+    background:
+      var(--grid-background),
+      var(--paper-background);
+    background-size: var(--grid-background-size);
     color: var(--ink);
-    font-family: var(--font-sans);
+    font-family: "Atlassian Mono Numeric", var(--font-sans);
     font-size: 16px;
     line-height: 1.8;
     min-height: 100vh;
@@ -73,7 +75,7 @@ ${buildFontFaceBlock()}
   }
 
   .eyebrow {
-    color: var(--blueprint);
+    color: var(--primary-blue);
     font-family: var(--font-mono);
     font-size: 10px;
     line-height: 14px;
@@ -83,13 +85,13 @@ ${buildFontFaceBlock()}
   }
 
   h1 {
-    color: var(--blueprint);
+    color: var(--headline);
     font-family: var(--font-display);
     font-size: 16px;
     line-height: 1.8;
-    font-weight: 400;
-    letter-spacing: 0.02em;
-    text-transform: uppercase;
+    font-weight: 900;
+    letter-spacing: 0;
+    text-transform: none;
     margin-bottom: 24px;
   }
 
@@ -125,8 +127,11 @@ function rewriteFonts(text) {
 }
 
 function transform(rawHtml, slug, headBlock) {
+	const sourceColored = rewriteColors(rawHtml);
+	const sourceFonted = rewriteFonts(sourceColored);
+
 	// Replace the <style>…</style> block wholesale with vpk-html chrome.
-	const styled = rawHtml.replace(/<style>[\s\S]*?<\/style>/, headBlock);
+	const styled = sourceFonted.replace(/<style>[\s\S]*?<\/style>/, headBlock);
 
 	// Rewrite the per-diagram eyebrow label so it identifies as vpk.
 	const eyebrowReplaced = styled.replace(
@@ -144,17 +149,13 @@ function transform(rawHtml, slug, headBlock) {
 	const headerComment = `<!-- ==================================================================
      DIAGRAM · ${slug.replace(/-/g, " ")} (vpk-html palette)
      SVG primitive ported from kami's diagram library, restyled with the
-     vpk-html identity: Geist Pixel headline, Geist Sans body, semantic
-     lime blueprint accent. Drop the <svg> block into a
+     vpk-html identity: Charlie Display headline, Charlie Text body,
+     primary blue focal accent. Drop the <svg> block into a
      long-doc, portfolio, or design-system payload via section.trustedHtml.
      ================================================================== -->`;
 	const commentReplaced = faviconed.replace(/<!--[\s\S]*?-->\n?/, `${headerComment}\n`);
 
-	// Now rewrite colors and fonts everywhere (including SVG).
-	const colored = rewriteColors(commentReplaced);
-	const fonted = rewriteFonts(colored);
-
-	return fonted;
+	return commentReplaced;
 }
 
 function main() {
@@ -165,7 +166,7 @@ function main() {
 	}
 	fs.mkdirSync(VPK_DIAGRAMS, { recursive: true });
 
-	console.log("Inlining Geist fonts as base64 data URIs…");
+	console.log("Inlining local Atlassian fonts as base64 data URIs…");
 	const headBlock = buildHead();
 
 	const files = fs.readdirSync(KAMI_DIAGRAMS).filter(name => name.endsWith(".html"));

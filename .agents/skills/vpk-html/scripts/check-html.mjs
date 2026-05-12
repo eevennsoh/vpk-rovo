@@ -22,9 +22,9 @@ export function collectColorTokenIssues(source, label = "document") {
 	if (/data-vpk-raw-colors-allowed=["']true["']/.test(source)) return [];
 
 	const stripped = source
-		.replace(/url\(["']?data:font\/woff2;base64,[^)]+?\)/g, "url(data:font/woff2;base64,...)")
+		.replace(/url\(["']?data:font\/(?:woff2|otf|ttf);base64,[^)]+?\)/g, "url(data:font/...,...)")
 		.replace(/url\(["']?data:image\/[^)]+?\)/g, "url(data:image/...)")
-		.replace(/\[[^\]]+(?:fill|stroke)=["']#[0-9A-Fa-f]{3,8}["'][^\]]*\]/g, "[svg-color-selector]")
+		.replace(/\[[^\]]*(?:fill|stroke)=["']#[0-9A-Fa-f]{3,8}["'][^\]]*\]/g, "[svg-color-selector]")
 		.replace(/\b(?:href|id|for|aria-controls|aria-labelledby)=["']#[^"']+["']/gi, "fragment-ref")
 		.replace(/\b(?:PR|Pull Request)\s+#[0-9A-Fa-f]{3,8}\b/g, "issue-ref")
 		.replace(/&#[0-9A-Fa-f]+;/g, "numeric-entity");
@@ -96,8 +96,8 @@ export function validateHtmlString(html, label = "document") {
 		}
 	}
 
-	if (!/@font-face[\s\S]+data:font\/woff2;base64,/.test(html)) {
-		failures.push("does not embed WOFF2 fonts as data URIs");
+	if (!/@font-face[\s\S]+data:font\/(?:woff2|otf|ttf);base64,/.test(html)) {
+		failures.push("does not embed local fonts as data URIs");
 	}
 
 	if (/<link\b[^>]*rel=["'][^"']*stylesheet/i.test(html)) {

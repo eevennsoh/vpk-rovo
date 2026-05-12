@@ -1,6 +1,6 @@
 ---
 name: vpk-html
-description: 'Use only when the user explicitly invokes /vpk-html. Render supplied material into an offline, single-file HTML artifact by filling a kami-architected template with the vpk-html terminal/blueprint identity.'
+description: 'Use only when the user explicitly invokes /vpk-html. Render supplied material into an offline, single-file HTML artifact by filling a kami-architected template with the vpk-html Atlassian deck identity.'
 ---
 
 # vpk-html
@@ -139,7 +139,7 @@ brand.
 | Logo | Any branded document | User file or official SVG/PNG |
 | Product image | Physical product / venue | Official image, user image, or marked gap |
 | UI screenshot | App / SaaS / website | Current screenshot, official product image |
-| Brand colors | Branded portfolio / one-pager | Official value, extracted asset value, or keep the vpk blueprint semantic accent |
+| Brand colors | Branded portfolio / one-pager | Official value, extracted asset value, or keep the vpk primary-blue semantic accent |
 
 If a required item is missing, use a compact gap table and ask once. Do not
 replace missing material with generic imagery, approximate logo drawings, or
@@ -291,49 +291,49 @@ CSS block at a time.
 
 ## Identity
 
-Editorial / engineering manual. Tuned to read like a printed reference book
-translated to the screen — implementation cousin is
-[aiengineeringfromscratch.com](https://aiengineeringfromscratch.com/) (which
-itself is built in the [makingsoftware.com](https://www.makingsoftware.com/)
-lineage).
+Atlassian deck / editorial manual. Tuned for concise strategy decks,
+engineering narratives, status readouts, and long-form technical briefs that
+still preserve the offline single-file HTML contract.
 
 **Light mode (default):**
 
-- **Surface:** `--paper` — VPK/ADS semantic surface with an embedded offline fallback.
+- **Surface:** `--paper` and `--paper-background` — neutral ADS-style canvas surfaces with embedded offline fallbacks.
 - **Raised surface:** `--surface-raised` for cards / callouts when they need to lift.
-- **Ink:** `--ink` for body text and `--muted-text` / `--subtlest-text` for metadata.
-- **Accent (lime):** `--blueprint` — masthead, headings, links, and diagram focal strokes.
-- **Margin / figure tags:** `--blueprint` unless a status meaning requires `--success`, `--warning`, or `--danger`.
-- **Paper-rule background:** `radial-gradient(var(--paper-rule) 1px, transparent 1px); background-size: 16px 16px;` — subtle dotted paper texture.
+- **Ink:** `--headline` for mastheads/stat heads, `--ink` / `--body-text` for body copy, and `--muted-text` / `--subtlest-text` for metadata.
+- **Primary blue:** `--primary-blue` — deck accent, links, and diagram focal strokes.
+- **Collection accents:** `--accent-lime`, `--accent-purple`, `--accent-saffron`, `--accent-orange`, `--accent-navy`, `--accent-green`, and `--accent-red` for charts, collection labels, diagrams, and status accents.
+- **Margin / figure tags:** `--primary-blue` unless a status meaning requires `--success`, `--warning`, or `--danger`.
+- **Grid background:** `var(--grid-background)` with `var(--grid-background-size)` — a light neutral dotted grid inspired by `image.098`, with matching dark-mode tokens.
 - **Hard shadow:** `var(--shadow)` — reserved for opt-in `.card / .callout / .takeaway / .surface-raised / .shadow-hard`. Other surfaces are flat.
 
 **Dark mode** (activate via `<html data-theme="dark">`):
 
 - **Surface / raised / ink / accent:** the same unprefixed aliases switch to dark semantic fallbacks under `[data-theme="dark"]`.
 
-**Fonts** (Geist family only, all self-hosted in `assets/fonts/`):
+**Fonts** (Charlie and Atlassian Mono, all self-hosted in `assets/fonts/`):
 
-- **Display / masthead / all headings (h1-h6) / margin labels:** Geist Pixel (Square variant), uppercase, letter-spacing 0.02-0.04em, in `var(--blueprint)`
-- **Body:** Geist Sans, 18px screen / 10.5pt print, line-height 1.62
-- **Mono / code:** Geist Mono
+- **Display:** Charlie Display for mastheads, slide titles, headline stats, and section heads.
+- **Body:** Charlie Text for prose, labels, ordinary UI/document text, and tables.
+- **Mono:** Atlassian Mono for code, metrics, dates, counters, figure numbers, table numbers, chart labels, and technical identifiers.
+- **Numerals:** Atlassian Mono Numeric is embedded with `unicode-range: U+0030-0039`; place it before Charlie Text/Display in mixed text stacks so visible digits render in Atlassian Mono while letters stay Charlie.
 
 **Type scale (screen):**
 
 | Role | Size | Family | Color |
 |---|---|---|---|
-| Cover title / masthead | 56px | Geist Pixel | brand |
-| h1 (chapter title) | 36px | Geist Pixel | brand |
-| h2 (section) | 26px | Geist Pixel | brand |
-| h3 | 18px | Geist Pixel | brand |
-| h4-h6 | 14px | Geist Pixel | ink |
-| Body, p, li | 18px | Geist Sans | ink |
-| Margin label / fig-tag | 10px | Geist Pixel | brand |
+| Cover title / masthead | 56px | Charlie Display | headline |
+| h1 (chapter title) | 36px | Charlie Display | headline / primary blue |
+| h2 (section) | 26px | Charlie Display | headline |
+| h3 | 18px | Charlie Display | ink |
+| h4-h6 | 14px | Charlie Display | ink |
+| Body, p, li | 18px | Charlie Text + numeric face | ink |
+| Margin label / fig-tag | 10px | Atlassian Mono | primary blue |
 
 **Other identity rules:**
 
-- **Drop cap:** Geist, 48px, 600-weight, on the first paragraph after each section break (works in both modes via `var(--near-black)`)
+- **Drop cap:** Charlie Display, 48px, 700-weight, on the first paragraph after each section break (works in both modes via `var(--near-black)`)
 - **Dotted divider:** `radial-gradient` row of 1px dots, 8px pitch, applied to `<hr>` after the masthead
-- **ASCII rule:** apply class `.ascii-rule` to `<hr>` for a bright blueprint dotted separator (two-layer repeating-linear-gradient)
+- **Deck rule:** apply class `.ascii-rule` to `<hr>` for a primary-blue dotted separator (two-layer repeating-linear-gradient)
 - **Frames:** sections, articles, figures, tables are flat by default. Cards / callouts opt in to hard shadow + 1px ink border.
 
 ### Side stripes are banned
@@ -386,7 +386,7 @@ resolved theme block — don't redefine it per document.
 
 - User wants Material / Fluent / Tailwind default — different visual language
 - Need dark / cyberpunk / futurist aesthetic (vpk-html is deliberately
-  anti-future, terminal-flavored)
-- Need saturated multi-color (vpk-html has one accent)
+  editorial and deck-like)
+- Need saturated freeform color (vpk-html uses ADS-style semantic accents)
 - Web dynamic app UI (vpk-html is for static documents)
 - Output must be PDF or PPTX (vpk-html is HTML-only)

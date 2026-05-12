@@ -15,11 +15,11 @@ visual identity. The SVG geometry is kami's work, used under the MIT License.
   kami — Copyright (c) tw93
   MIT License — https://github.com/tw93/Kami/blob/main/LICENSE
 
-The fonts shipped under `assets/fonts/` are licensed under the SIL Open Font
-License (OFL-1.1):
+The fonts shipped under `assets/fonts/` are committed local font assets used
+to preserve the offline HTML artifact contract:
 
-  - Geist (Sans) by Vercel (SIL OFL) — https://vercel.com/font
-  - Geist Mono by Vercel (SIL OFL) — https://vercel.com/font
-  - Geist Pixel (Square variant) by Vercel (SIL OFL) — https://vercel.com/font
+  - Charlie Display
+  - Charlie Text
+  - Atlassian Mono
 
 Attribution is preserved in README.md.

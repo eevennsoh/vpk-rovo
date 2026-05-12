@@ -1,19 +1,20 @@
 # vpk-html
 
-> Terminal × blueprint document design skill for AI agents. Built on kami's
+> Atlassian deck/editorial document design skill for AI agents. Built on kami's
 > template-edit architecture: the LLM copies an HTML template, fills
 > {{placeholders}} with real content, and ships a single offline HTML file.
 
 ## Identity
 
-- Surface: semantic paper via `--paper` with a subtle dotted overlay
-- Accent: `--blueprint` semantic lime (`#94C748` in light mode; the primary chromatic accent, capped at ~5% of page)
-- Display: Geist Pixel (Square)
-- Body: Geist Sans
-- Mono: Geist Mono
+- Surface: semantic paper via `--paper` and `--paper-background` with the `image.098`-style dotted grid
+- Accent: `--primary-blue` with ADS-style lime, purple, saffron, orange, navy, green, and red accents for collections, charts, diagrams, and status
+- Display: Charlie Display
+- Body: Charlie Text
+- Mono: Atlassian Mono
+- Numeric: Atlassian Mono Numeric with `unicode-range: U+0030-0039`
 - Frame: 2px ink-black border + hard 1px shadow
 
-All 3 fonts are inlined as base64 data URIs in every template, so filled
+Local font files are inlined as base64 data URIs in every template, so filled
 documents are fully portable.
 
 ## Invocation
