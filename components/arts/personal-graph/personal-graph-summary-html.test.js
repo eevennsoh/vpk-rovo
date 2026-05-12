@@ -91,6 +91,63 @@ Only supplied graph evidence is used.`,
 	assert.doesNotMatch(document.html, /sourceFingerprint/u);
 });
 
+test("Personal Graph summary HTML builder preserves evidence metadata while suppressing unsafe links", async () => {
+	const { buildPersonalGraphSummaryHtmlDocument } = await htmlModule;
+	const selected = node("selected", "Selected source", {
+		externalUrl: "https://example.com/selected",
+		frontmatter: { type: "ConfluencePage" },
+	});
+	const safeNeighbor = node("safe", "Safe neighbor", {
+		externalUrl: "https://example.com/safe",
+		frontmatter: { type: "JiraIssue" },
+		kind: "entity",
+	});
+	const unsafeNeighbor = node("unsafe", "Unsafe neighbor", {
+		externalUrl: "javascript:alert(1)",
+		kind: "raw",
+	});
+
+	const document = buildPersonalGraphSummaryHtmlDocument({
+		articleMarkdown: `# Launch & Risk
+The **summary** lede.
+
+## What this is
+Selected context.
+
+## Source evidence
+- Evidence one`,
+		edges: [edge("selected", "safe")],
+		generatedAt: "2026-05-12T00:00:00.000Z",
+		length: "medium",
+		neighbors: [safeNeighbor, unsafeNeighbor],
+		node: selected,
+		provider: "twg",
+		sourceFingerprint: "fingerprint",
+		sourceNotice: "TWG context is limited.",
+		workWindow: "last 7 days",
+	});
+
+	assert.equal(document.title, "Launch & Risk");
+	assert.equal(document.filename, "launch-risk.html");
+	assert.match(document.html, /<title>Launch &amp; Risk<\/title>/u);
+	assert.match(document.html, /<h1>Launch &amp; Risk<\/h1>/u);
+	assert.match(document.html, /<p class="lede">The <strong>summary<\/strong> lede\.<\/p>/u);
+	assert.match(document.html, /<h2 id="what-this-is">What this is<\/h2>/u);
+	assert.match(document.html, /TWG context is limited/u);
+	assert.match(document.html, /Team Work Graph/u);
+	assert.match(document.html, /last 7 days/u);
+	assert.match(document.html, /<text class="edge-label"[^>]*>supports<\/text>/u);
+	assert.deepEqual(
+		Array.from(document.html.matchAll(/data-node-id="([^"]+)"/gu), (match) => match[1]),
+		["selected", "safe", "unsafe"],
+	);
+	assert.deepEqual(
+		Array.from(document.html.matchAll(/<a class="source-card-link"[^>]*href="([^"]+)"/gu), (match) => match[1]),
+		["https://example.com/selected", "https://example.com/safe"],
+	);
+	assert.doesNotMatch(document.html, /javascript:alert/u);
+});
+
 test("Personal Graph summary HTML context derives one-hop neighbors from the selected node", async () => {
 	const { getPersonalGraphSummaryHtmlContext } = await htmlModule;
 	const selected = node("selected", "Selected");
