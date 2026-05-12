@@ -7,8 +7,7 @@
  * Mirrors the port-diagrams.mjs pattern: layout/structure preserved verbatim,
  * only chrome (fonts, colors, @font-face blocks, font-family stacks) changes.
  *
- * Also copies embedded images (kaku-action.jpg, kaku-hero.jpg) and the bonus
- * equity-report-en.png preview.
+ * Also copies embedded images (kaku-action.jpg, kaku-hero.jpg).
  *
  * Run: node scripts/port-demos.mjs
  */
@@ -35,7 +34,6 @@ const DEMOS = [
 ];
 
 const IMAGE_FILES = ["kaku-action.jpg", "kaku-hero.jpg"];
-const COPIED_PNGS = ["equity-report-en.png"];
 
 // Palette mapping: kami → vpk-html semantic aliases. Case-insensitive variants included.
 const COLOR_MAP = {
@@ -242,17 +240,6 @@ function copyImages() {
 	}
 }
 
-function copyExtraPngs() {
-	for (const file of COPIED_PNGS) {
-		const from = path.join(KAMI_DEMOS, file);
-		const to = path.join(VPK_DEMOS, file);
-		if (fs.existsSync(from)) {
-			fs.copyFileSync(from, to);
-			console.log(`  copy ${file}`);
-		}
-	}
-}
-
 function main() {
 	if (!fs.existsSync(KAMI_DEMOS)) {
 		console.error(`Kami demos not found at ${KAMI_DEMOS}`);
@@ -279,7 +266,6 @@ function main() {
 	}
 
 	copyImages();
-	copyExtraPngs();
 
 	console.log(`Ported ${DEMOS.length} demos → ${path.relative(process.cwd(), VPK_DEMOS)}`);
 }

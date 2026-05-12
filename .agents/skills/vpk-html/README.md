@@ -89,14 +89,13 @@ node scripts/rescue-html-effectiveness-demos.mjs  # copy + restyle direct Phase 
 | `SKILL.md` | Agent-facing skill manifest (workflow + rules) |
 | `CHEATSHEET.md` | Route table: user intent → template file |
 | `README.md` | This file |
-| `index.html` | Marketing landing page |
+| `index.html` | Local demo catalog |
 | `LICENSE`, `llms.txt`, `.gitignore`, `.claude-plugin/` | Top-level metadata |
 | `assets/templates/` | 28 offline HTML templates: 8 base document shells + 20 Phase 2 engineering shells |
 | `assets/diagrams/` | 14 standalone SVG diagram primitives |
 | `assets/html-effectiveness/` | Snapshot of the 20 upstream html-effectiveness HTML demos plus index |
-| `assets/demos/` | 28 demo outputs: 8 screenshot-backed showcases + 20 restyled html-effectiveness ports |
+| `assets/demos/` | Demo HTML outputs plus the embedded media needed by individual demos |
 | `assets/fonts/` | Geist Sans, Geist Mono, Geist Pixel (inlined as base64 at port time) |
-| `assets/images/` | Skill identity (logo) |
 | `references/` | Anti-patterns, diagrams, resume-writing, writing, design, production, source-policy, accessibility, theme.css, tokens.json |
 | `scripts/` | build (validator), check-html, port-*.mjs, rescue-demos (regenerate vpk demos), ensure-fonts |
 

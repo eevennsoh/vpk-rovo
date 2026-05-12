@@ -10,8 +10,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
-import { chromium } from "@playwright/test";
+import { fileURLToPath } from "node:url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -316,14 +315,7 @@ function clearOldJson(slug) {
 	if (fs.existsSync(p)) fs.unlinkSync(p);
 }
 
-async function captureThumbnail(page, htmlPath, pngPath) {
-	await page.goto(pathToFileURL(htmlPath).href, { waitUntil: "domcontentloaded", timeout: 15_000 });
-	try { await page.waitForLoadState("networkidle", { timeout: 3_000 }); } catch { /* fine */ }
-	await page.waitForTimeout(400);
-	await page.screenshot({ path: pngPath, clip: { x: 0, y: 0, width: 1280, height: 800 }, type: "png" });
-}
-
-async function main() {
+function main() {
 	const builds = [
 		["demo-postgres-migration", postgresMigration],
 		["demo-rag-explainer", ragExplainer],
@@ -338,24 +330,12 @@ async function main() {
 		clearOldJson(slug);
 	}
 
-	console.log("Capturing thumbnails…");
-	const browser = await chromium.launch();
-	const ctx = await browser.newContext({
-		viewport: { width: 1280, height: 800 },
-		deviceScaleFactor: 2,
-		colorScheme: "light",
-	});
-	const page = await ctx.newPage();
-	for (const [slug] of builds) {
-		const htmlPath = path.join(DEMOS_DIR, `${slug}.html`);
-		const pngPath = path.join(DEMOS_DIR, `${slug}.png`);
-		await captureThumbnail(page, htmlPath, pngPath);
-		console.log(`  thumb ${slug}`);
-	}
-	await ctx.close();
-	await browser.close();
-
-	console.log(`Rescued ${builds.length} demos as kami-style HTML with thumbnails.`);
+	console.log(`Rescued ${builds.length} demos as filled-template HTML.`);
 }
 
-main().catch(error => { console.error(error); process.exit(1); });
+try {
+	main();
+} catch (error) {
+	console.error(error);
+	process.exit(1);
+}
