@@ -103,7 +103,7 @@ export function getWaveformSeriesValue({
 	index,
 	totalCount,
 }: {
-	bars: number[];
+	bars: readonly number[];
 	index: number;
 	totalCount: number;
 }) {
