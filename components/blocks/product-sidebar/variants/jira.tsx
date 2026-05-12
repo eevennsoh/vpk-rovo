@@ -20,7 +20,6 @@ import SpacesIcon from "@atlaskit/icon-lab/core/spaces";
 import StarUnstarredIcon from "@atlaskit/icon/core/star-unstarred";
 import BoardIcon from "@atlaskit/icon/core/board";
 import FolderIcon from "@atlaskit/icon/core/folder-closed";
-import TaskIcon from "@atlaskit/icon/core/task";
 
 interface JiraSidebarProps {
 	selectedItem: string;
@@ -74,14 +73,6 @@ export function JiraSidebar({
 				isSelected={selectedItem === "Analytics"}
 				onClick={() => onSelectItem("Analytics")}
 			/>
-			<NavigationItem
-				icon={TaskIcon}
-				label="To-Do"
-				href="/todo"
-				isSelected={selectedItem === "To-Do"}
-				onClick={() => onSelectItem("To-Do")}
-			/>
-
 			<NavigationItemWithHoverChevron
 				icon={AppsIcon}
 				label="Apps"
