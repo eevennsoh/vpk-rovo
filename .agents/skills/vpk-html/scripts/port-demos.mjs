@@ -7,8 +7,6 @@
  * Mirrors the port-diagrams.mjs pattern: layout/structure preserved verbatim,
  * only chrome (fonts, colors, @font-face blocks, font-family stacks) changes.
  *
- * Also copies embedded images (kaku-action.jpg, kaku-hero.jpg).
- *
  * Run: node scripts/port-demos.mjs
  */
 
@@ -17,7 +15,7 @@ import os from "node:os";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
-import { buildFontFaceBlock, FONT_STACKS, KAMI_COLOR_MAP, readStylesCss } from "./shared.mjs";
+import { buildFontFaceBlock, ensureFaviconLinks, FONT_STACKS, KAMI_COLOR_MAP, readStylesCss } from "./shared.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -33,7 +31,38 @@ const DEMOS = [
 	"demo-tesla.html",
 ];
 
-const IMAGE_FILES = ["kaku-action.jpg", "kaku-hero.jpg"];
+const KAKU_HERO_FIGURE = `<svg viewBox="0 0 480 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Kaku terminal interface diagram with command output and AI recovery panel.">
+      <rect x="0.5" y="0.5" width="479" height="319" fill="none" stroke="var(--rule)"/>
+      <rect x="40" y="48" width="400" height="224" rx="8" fill="var(--surface-sunken)" stroke="var(--rule-strong)"/>
+      <rect x="40" y="48" width="400" height="34" rx="8" fill="var(--ink)"/>
+      <circle cx="62" cy="65" r="4" fill="var(--danger)"/>
+      <circle cx="78" cy="65" r="4" fill="var(--warning)"/>
+      <circle cx="94" cy="65" r="4" fill="var(--success)"/>
+      <text x="240" y="69" text-anchor="middle" font-family="Geist Mono, ui-monospace, monospace" font-size="10" fill="var(--inverse-text)">kaku</text>
+      <text x="64" y="112" font-family="Geist Mono, ui-monospace, monospace" font-size="12" fill="var(--blueprint)">$ kaku ai</text>
+      <text x="64" y="140" font-family="Geist Mono, ui-monospace, monospace" font-size="11" fill="var(--ink)">assistant.toml loaded</text>
+      <text x="64" y="162" font-family="Geist Mono, ui-monospace, monospace" font-size="11" fill="var(--muted-text)">mode: command recovery</text>
+      <rect x="246" y="104" width="154" height="82" rx="6" fill="var(--blueprint-tint)" stroke="var(--blueprint)"/>
+      <text x="323" y="134" text-anchor="middle" font-family="Geist Mono, ui-monospace, monospace" font-size="11" fill="var(--blueprint)">AI recovery</text>
+      <text x="323" y="156" text-anchor="middle" font-family="Geist Mono, ui-monospace, monospace" font-size="9" fill="var(--muted-text)">explain and patch</text>
+      <path d="M64 210h300" fill="none" stroke="var(--rule-strong)" stroke-width="1"/>
+      <text x="64" y="236" font-family="Geist Mono, ui-monospace, monospace" font-size="10" fill="var(--muted-text)">Cmd + Shift + E applies the suggested command</text>
+    </svg>`;
+
+const KAKU_ACTION_FIGURE = `<svg viewBox="0 0 480 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Kaku workflow from shell command to assistant suggestion and confirmed action.">
+      <rect x="0.5" y="0.5" width="479" height="319" fill="none" stroke="var(--rule)"/>
+      <rect x="42" y="96" width="112" height="74" rx="6" fill="var(--surface-sunken)" stroke="var(--rule-strong)"/>
+      <rect x="184" y="96" width="112" height="74" rx="6" fill="var(--blueprint-tint)" stroke="var(--blueprint)"/>
+      <rect x="326" y="96" width="112" height="74" rx="6" fill="var(--surface-sunken)" stroke="var(--rule-strong)"/>
+      <path d="M154 133h30M296 133h30" fill="none" stroke="var(--blueprint)" stroke-width="2"/>
+      <text x="98" y="126" text-anchor="middle" font-family="Geist Mono, ui-monospace, monospace" font-size="12" fill="var(--ink)">shell</text>
+      <text x="98" y="146" text-anchor="middle" font-family="Geist Mono, ui-monospace, monospace" font-size="9" fill="var(--muted-text)">failed command</text>
+      <text x="240" y="126" text-anchor="middle" font-family="Geist Mono, ui-monospace, monospace" font-size="12" fill="var(--blueprint)">assistant</text>
+      <text x="240" y="146" text-anchor="middle" font-family="Geist Mono, ui-monospace, monospace" font-size="9" fill="var(--muted-text)">safe suggestion</text>
+      <text x="382" y="126" text-anchor="middle" font-family="Geist Mono, ui-monospace, monospace" font-size="12" fill="var(--ink)">apply</text>
+      <text x="382" y="146" text-anchor="middle" font-family="Geist Mono, ui-monospace, monospace" font-size="9" fill="var(--muted-text)">confirmed action</text>
+      <text x="240" y="220" text-anchor="middle" font-family="Geist Mono, ui-monospace, monospace" font-size="10" fill="var(--muted-text)">Kaku keeps the loop inside the terminal session.</text>
+    </svg>`;
 
 function rewriteColors(text) {
 	let out = text;
@@ -127,20 +156,29 @@ function rewriteBodyAccent(text) {
 	const gridOverride = `
 
   /* vpk-html identity overrides */
-  html { background: var(--vpk-paper); }
+  html { background: var(--paper); }
   body {
     background:
-      radial-gradient(circle at 1px 1px, var(--vpk-paper-rule) 1px, transparent 0),
-      var(--vpk-paper);
+      radial-gradient(circle at 1px 1px, var(--paper-rule) 1px, transparent 0),
+      var(--paper);
     background-size: 16px 16px;
   }
   /* Frame the document with vpk-html chrome when a kami .page or .frame exists */
   .page, .frame {
-    border: 2px solid var(--vpk-ink) !important;
-    box-shadow: var(--vpk-shadow) !important;
+    border: 2px solid var(--ink) !important;
+    box-shadow: var(--shadow) !important;
   }
 `;
 	return text.replace(/<\/style>/, `${gridOverride}</style>`);
+}
+
+function rewriteKakuImageTags(text) {
+	const imageTagWithAlt = (altText) => new RegExp(`<${"img"}\\s+src="[^"]+"\\s+alt="${altText}"\\s*/?>`, "g");
+
+	return text
+		.replace(/\.contact-screenshot img/g, ".contact-screenshot svg")
+		.replace(imageTagWithAlt("Kaku terminal interface"), KAKU_HERO_FIGURE)
+		.replace(imageTagWithAlt("Kaku terminal in action"), KAKU_ACTION_FIGURE);
 }
 
 function transform(rawHtml, slug, fontFaceBlock, themeBlock) {
@@ -149,23 +187,10 @@ function transform(rawHtml, slug, fontFaceBlock, themeBlock) {
 	out = rewriteFontStacks(out);
 	out = rewriteColors(out);
 	out = rewriteHeader(out, slug);
+	out = ensureFaviconLinks(out);
+	out = rewriteKakuImageTags(out);
 	out = rewriteBodyAccent(out);
 	return out;
-}
-
-function copyImages() {
-	const sourceDir = path.join(KAMI_DEMOS, "images");
-	const destDir = path.join(VPK_DEMOS, "images");
-	if (!fs.existsSync(sourceDir)) return;
-	fs.mkdirSync(destDir, { recursive: true });
-	for (const file of IMAGE_FILES) {
-		const from = path.join(sourceDir, file);
-		const to = path.join(destDir, file);
-		if (fs.existsSync(from)) {
-			fs.copyFileSync(from, to);
-			console.log(`  copy images/${file}`);
-		}
-	}
 }
 
 function main() {
@@ -192,8 +217,6 @@ function main() {
 		fs.writeFileSync(targetPath, transform(raw, slug, fontFaceBlock, themeBlock), "utf8");
 		console.log(`✓ ${slug}`);
 	}
-
-	copyImages();
 
 	console.log(`Ported ${DEMOS.length} demos → ${path.relative(process.cwd(), VPK_DEMOS)}`);
 }

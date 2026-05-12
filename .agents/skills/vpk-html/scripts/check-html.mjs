@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
+import { collectFaviconIssues } from "./shared.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 
@@ -38,8 +39,8 @@ export function collectColorTokenIssues(source, label = "document") {
 			.filter(match => !(line.includes("<") && /^#[0-9]{3,8}$/.test(match)));
 		if (matches.length === 0) continue;
 
-		const isSemanticFallback = /--vpk-[\w-]+\s*:\s*var\(--ds-[\w-]+,\s*#[0-9A-Fa-f]{3,8}\)/.test(line);
-		const isShadowFallback = /--vpk-shadow\s*:\s*var\(--ds-shadow-[\w-]+,\s*[^;]*(?:rgba\([^)]*\)|#[0-9A-Fa-f]{3,8})/.test(line);
+		const isSemanticFallback = /--[\w-]+\s*:\s*var\(--ds-[\w-]+,\s*#[0-9A-Fa-f]{3,8}\)/.test(line);
+		const isShadowFallback = /--shadow\s*:\s*var\(--ds-shadow-[\w-]+,\s*[^;]*(?:rgba\([^)]*\)|#[0-9A-Fa-f]{3,8})/.test(line);
 		const isAllowedGeneratedNoise = /sourceMappingURL=/.test(line);
 
 		if (!isSemanticFallback && !isShadowFallback && !isAllowedGeneratedNoise) {
@@ -50,6 +51,22 @@ export function collectColorTokenIssues(source, label = "document") {
 
 	if (issues.length > 0) {
 		return [`contains raw color literals outside the vpk semantic alias layer (${issues.join("; ")})`];
+	}
+	return [];
+}
+
+export function collectSelfReferentialCustomPropertyIssues(source) {
+	const issues = [];
+	const lines = source.split("\n");
+	for (let index = 0; index < lines.length; index++) {
+		const match = lines[index].match(/^\s*(--[\w-]+)\s*:\s*var\(\1\);\s*$/);
+		if (!match) continue;
+		issues.push(`line ${index + 1}: ${match[1]}`);
+		if (issues.length >= 12) break;
+	}
+
+	if (issues.length > 0) {
+		return [`contains self-referential custom properties that invalidate theme tokens (${issues.join("; ")})`];
 	}
 	return [];
 }
@@ -96,6 +113,8 @@ export function validateHtmlString(html, label = "document") {
 	}
 
 	failures.push(...collectColorTokenIssues(html, label));
+	failures.push(...collectSelfReferentialCustomPropertyIssues(html));
+	failures.push(...collectFaviconIssues(html));
 
 	if (!/\[data-theme="dark"\]/.test(html) || !/color-scheme:\s*light dark/.test(html)) {
 		failures.push("does not contain the dark-mode token block");

@@ -89,14 +89,14 @@ The ported SVGs use vpk-html's palette directly:
 
 | Role | Token |
 |---|---|
-| Paper / SVG background | `--vpk-paper` |
-| Ink (default text, hard borders, primary stroke) | `--vpk-ink` |
-| Muted text, secondary strokes, default arrow heads | `--vpk-muted-text` / `--vpk-subtlest-text` |
-| Accent / focal node fill | `--vpk-blueprint-tint` |
-| Accent / focal node stroke + primary arrow | `--vpk-blueprint` |
-| Cool gray surface variants | `--vpk-surface-sunken`, `--vpk-rule`, `--vpk-rule-strong` |
-| Faint grid dot pattern | `--vpk-paper-rule` |
-| Error / regression | `--vpk-danger` |
+| Paper / SVG background | `--paper` |
+| Ink (default text, hard borders, primary stroke) | `--ink` |
+| Muted text, secondary strokes, default arrow heads | `--muted-text` / `--subtlest-text` |
+| Accent / focal node fill | `--blueprint-tint` |
+| Accent / focal node stroke + primary arrow | `--blueprint` |
+| Cool gray surface variants | `--surface-sunken`, `--rule`, `--rule-strong` |
+| Faint grid dot pattern | `--paper-rule` |
+| Error / regression | `--danger` |
 
 Display headlines above each diagram use **Geist Pixel** (Square variant).
 Labels inside the SVG use **Geist Mono**. The caption below uses **Geist Sans**.

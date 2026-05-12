@@ -2,9 +2,9 @@
 <!-- ==================================================================
      TEMPLATE · long doc (vpk-html · Making Software identity)
      Ported from kami's editorial template library, restyled with the
-     Making Software design language: semantic paper (`--vpk-paper`), warm ink
-     (var(--vpk-ink)), semantic blueprint accent (`--vpk-blueprint`), accent-warning red
-     (var(--vpk-danger)) for figure tags, ink-muted (var(--vpk-muted-text)) for captions.
+     Making Software design language: semantic paper (`--paper`), warm ink
+     (var(--ink)), semantic blueprint accent (`--blueprint`), accent-warning red
+     (var(--danger)) for figure tags, ink-muted (var(--muted-text)) for captions.
      Geist Pixel (Square) masthead, Geist Sans body, Geist Mono labels, 16px throughout
      (hierarchy via family + weight + color, not size).
      No section borders. No shadows. No grid. No rounded corners.
@@ -20,92 +20,96 @@
 <meta name="description" content="Why retrieve before you generate. RAG explainer for engineers new to the AI platform.">
 <meta name="keywords" content="RAG, retrieval, embeddings, AI platform, LLM">
 <meta name="generator" content="vpk-html">
+
+<link rel="icon" type="image/svg+xml" sizes="any" href="data:image/svg+xml,%3Csvg%20width%3D%2232%22%20height%3D%2232%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%228%22%20fill%3D%22%23121212%22%2F%3E%3Ccircle%20cx%3D%2211%22%20cy%3D%2221%22%20r%3D%225%22%20fill%3D%22white%22%2F%3E%3Ccircle%20cx%3D%2221%22%20cy%3D%2221%22%20r%3D%225%22%20fill%3D%22white%22%2F%3E%3Ccircle%20cx%3D%2211%22%20cy%3D%2211%22%20r%3D%225%22%20fill%3D%22white%22%2F%3E%3Ccircle%20cx%3D%2221%22%20cy%3D%2211%22%20r%3D%225%22%20fill%3D%22white%22%2F%3E%3C%2Fsvg%3E">
+<link rel="icon" type="image/svg+xml" sizes="any" media="(prefers-color-scheme: light)" href="data:image/svg+xml,%3Csvg%20width%3D%2232%22%20height%3D%2232%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Ccircle%20cx%3D%229%22%20cy%3D%2223%22%20r%3D%225%22%20fill%3D%22%23121212%22%2F%3E%3Ccircle%20cx%3D%2223%22%20cy%3D%2223%22%20r%3D%225%22%20fill%3D%22%23121212%22%2F%3E%3Ccircle%20cx%3D%229%22%20cy%3D%229%22%20r%3D%225%22%20fill%3D%22%23121212%22%2F%3E%3Ccircle%20cx%3D%2223%22%20cy%3D%229%22%20r%3D%225%22%20fill%3D%22%23121212%22%2F%3E%3C%2Fsvg%3E">
+<link rel="icon" type="image/svg+xml" sizes="any" media="(prefers-color-scheme: dark)" href="data:image/svg+xml,%3Csvg%20width%3D%2232%22%20height%3D%2232%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Ccircle%20cx%3D%229%22%20cy%3D%2223%22%20r%3D%225%22%20fill%3D%22white%22%20stroke%3D%22%23121212%22%20stroke-width%3D%221.25%22%2F%3E%3Ccircle%20cx%3D%2223%22%20cy%3D%2223%22%20r%3D%225%22%20fill%3D%22white%22%20stroke%3D%22%23121212%22%20stroke-width%3D%221.25%22%2F%3E%3Ccircle%20cx%3D%229%22%20cy%3D%229%22%20r%3D%225%22%20fill%3D%22white%22%20stroke%3D%22%23121212%22%20stroke-width%3D%221.25%22%2F%3E%3Ccircle%20cx%3D%2223%22%20cy%3D%229%22%20r%3D%225%22%20fill%3D%22white%22%20stroke%3D%22%23121212%22%20stroke-width%3D%221.25%22%2F%3E%3C%2Fsvg%3E">
 <style>
   :root {
-	--vpk-paper: var(--ds-surface, #ffffff);
-	--vpk-paper-background: var(--ds-surface, #ffffff);
-	--vpk-surface-raised: var(--ds-surface-raised, #ffffff);
-	--vpk-surface-overlay: var(--ds-surface-overlay, #ffffff);
-	--vpk-surface-sunken: var(--ds-surface-sunken, #f0f1f2);
-	--vpk-ink: var(--ds-text, #292a2e);
-	--vpk-muted-text: var(--ds-text-subtle, #505258);
-	--vpk-subtlest-text: var(--ds-text-subtlest, #6b6e76);
-	--vpk-inverse-text: var(--ds-text-inverse, #ffffff);
-	--vpk-rule: var(--ds-border, #0b120e24);
-	--vpk-rule-strong: var(--ds-border-bold, #7d818a);
-	--vpk-blueprint: var(--ds-background-brand-bold, #1868db);
-	--vpk-link: var(--ds-link, #1868db);
-	--vpk-link-pressed: var(--ds-link-pressed, #1558bc);
-	--vpk-selected: var(--ds-background-selected, #e9f2fe);
-	--vpk-blueprint-tint: var(--ds-background-information, #e9f2fe);
-	--vpk-blueprint-tint-strong: var(--ds-background-information-hovered, #cfe1fd);
-	--vpk-focus-ring: var(--ds-border-focused, #4688ec);
-	--vpk-code-surface: var(--ds-background-neutral-subtle, #f0f1f2);
-	--vpk-code-ink: var(--ds-text, #292a2e);
-	--vpk-code-inverse: var(--ds-text-inverse, #ffffff);
-	--vpk-math-highlight: var(--ds-background-information, #e9f2fe);
-	--vpk-success: var(--ds-background-success-bold, #5b7f24);
-	--vpk-success-tint: var(--ds-background-success, #efffd6);
-	--vpk-warning: var(--ds-background-warning-bold, #fbc828);
-	--vpk-warning-tint: var(--ds-background-warning, #fff5db);
-	--vpk-danger: var(--ds-background-danger-bold, #c9372c);
-	--vpk-danger-tint: var(--ds-background-danger, #ffeceb);
-	--vpk-info: var(--ds-background-information-bold, #1868db);
-	--vpk-info-tint: var(--ds-background-information, #e9f2fe);
-	--vpk-paper-rule: color-mix(in srgb, var(--vpk-ink) 8%, transparent);
-	--vpk-shadow: var(--ds-shadow-raised, 0 1px 1px rgba(9, 30, 66, 0.25), 0 0 1px rgba(9, 30, 66, 0.31)); color-scheme: light dark; }
+	--paper: var(--ds-surface, #ffffff);
+	--paper-background: var(--ds-surface, #ffffff);
+	--surface-raised: var(--ds-surface-raised, #ffffff);
+	--surface-overlay: var(--ds-surface-overlay, #ffffff);
+	--surface-sunken: var(--ds-surface-sunken, #f0f1f2);
+	--ink: var(--ds-text, #292a2e);
+	--muted-text: var(--ds-text-subtle, #505258);
+	--subtlest-text: var(--ds-text-subtlest, #6b6e76);
+	--inverse-text: var(--ds-text-inverse, #ffffff);
+	--rule: var(--ds-border, #0b120e24);
+	--rule-strong: var(--ds-border-bold, #7d818a);
+	--blueprint: var(--ds-background-accent-lime-subtle, #94c748);
+	--link: var(--ds-text-accent-lime, #4c6b1f);
+	--link-pressed: var(--ds-text-accent-lime-bolder, #37471f);
+	--selected: var(--ds-background-accent-lime-subtler, #d3f1a7);
+	--blueprint-tint: var(--ds-background-accent-lime-subtlest, #efffd6);
+	--blueprint-tint-strong: var(--ds-background-accent-lime-subtler, #d3f1a7);
+	--focus-ring: var(--ds-border-accent-lime, #6a9a23);
+	--code-surface: var(--ds-background-neutral-subtle, #f0f1f2);
+	--code-ink: var(--ds-text, #292a2e);
+	--code-inverse: var(--ds-text-inverse, #ffffff);
+	--math-highlight: var(--ds-background-accent-lime-subtlest, #efffd6);
+	--success: var(--ds-background-success-bold, #5b7f24);
+	--success-tint: var(--ds-background-success, #efffd6);
+	--warning: var(--ds-background-warning-bold, #fbc828);
+	--warning-tint: var(--ds-background-warning, #fff5db);
+	--danger: var(--ds-background-danger-bold, #c9372c);
+	--danger-tint: var(--ds-background-danger, #ffeceb);
+	--info: var(--ds-background-information-bold, #1868db);
+	--info-tint: var(--ds-background-information, #e9f2fe);
+	--paper-rule: color-mix(in srgb, var(--ink) 8%, transparent);
+	--shadow: var(--ds-shadow-raised, 0 1px 1px rgba(9, 30, 66, 0.25), 0 0 1px rgba(9, 30, 66, 0.31)); color-scheme: light dark; }
   [data-theme="dark"] {
-	--vpk-paper: var(--ds-surface, #101214);
-	--vpk-paper-background: var(--ds-surface, #1d2125);
-	--vpk-surface-raised: var(--ds-surface-raised, #22272b);
-	--vpk-surface-overlay: var(--ds-surface-overlay, #282e33);
-	--vpk-surface-sunken: var(--ds-surface-sunken, #161a1d);
-	--vpk-ink: var(--ds-text, #dee4ea);
-	--vpk-muted-text: var(--ds-text-subtle, #9fadbc);
-	--vpk-subtlest-text: var(--ds-text-subtlest, #738496);
-	--vpk-inverse-text: var(--ds-text-inverse, #101214);
-	--vpk-rule: var(--ds-border, #a6c5e229);
-	--vpk-rule-strong: var(--ds-border-bold, #738496);
-	--vpk-blueprint: var(--ds-background-brand-bold, #579dff);
-	--vpk-link: var(--ds-link, #579dff);
-	--vpk-link-pressed: var(--ds-link-pressed, #85b8ff);
-	--vpk-selected: var(--ds-background-selected, #09326c);
-	--vpk-blueprint-tint: var(--ds-background-information, #09326c);
-	--vpk-blueprint-tint-strong: var(--ds-background-information-hovered, #0c418a);
-	--vpk-focus-ring: var(--ds-border-focused, #579dff);
-	--vpk-code-surface: var(--ds-background-neutral-subtle, #161a1d);
-	--vpk-code-ink: var(--ds-text, #dee4ea);
-	--vpk-code-inverse: var(--ds-text-inverse, #101214);
-	--vpk-math-highlight: var(--ds-background-information, #09326c);
-	--vpk-success: var(--ds-background-success-bold, #b3df72);
-	--vpk-success-tint: var(--ds-background-success, #1f4d3a);
-	--vpk-warning: var(--ds-background-warning-bold, #f5cd47);
-	--vpk-warning-tint: var(--ds-background-warning, #533f04);
-	--vpk-danger: var(--ds-background-danger-bold, #f87168);
-	--vpk-danger-tint: var(--ds-background-danger, #5d1f1a);
-	--vpk-info: var(--ds-background-information-bold, #579dff);
-	--vpk-info-tint: var(--ds-background-information, #09326c);
-	--vpk-paper-rule: color-mix(in srgb, var(--vpk-ink) 8%, transparent);
-	--vpk-shadow: var(--ds-shadow-raised, 0 1px 1px rgba(0, 0, 0, 0.32), 0 0 1px rgba(0, 0, 0, 0.42)); color-scheme: dark; }
+	--paper: var(--ds-surface, #101214);
+	--paper-background: var(--ds-surface, #1d2125);
+	--surface-raised: var(--ds-surface-raised, #22272b);
+	--surface-overlay: var(--ds-surface-overlay, #282e33);
+	--surface-sunken: var(--ds-surface-sunken, #161a1d);
+	--ink: var(--ds-text, #dee4ea);
+	--muted-text: var(--ds-text-subtle, #9fadbc);
+	--subtlest-text: var(--ds-text-subtlest, #738496);
+	--inverse-text: var(--ds-text-inverse, #101214);
+	--rule: var(--ds-border, #a6c5e229);
+	--rule-strong: var(--ds-border-bold, #738496);
+	--blueprint: var(--ds-background-accent-lime-subtle, #4c6b1f);
+	--link: var(--ds-text-accent-lime, #b3df72);
+	--link-pressed: var(--ds-text-accent-lime-bolder, #d3f1a7);
+	--selected: var(--ds-background-accent-lime-subtler, #37471f);
+	--blueprint-tint: var(--ds-background-accent-lime-subtlest, #28311b);
+	--blueprint-tint-strong: var(--ds-background-accent-lime-subtler, #37471f);
+	--focus-ring: var(--ds-border-accent-lime, #82b536);
+	--code-surface: var(--ds-background-neutral-subtle, #161a1d);
+	--code-ink: var(--ds-text, #dee4ea);
+	--code-inverse: var(--ds-text-inverse, #101214);
+	--math-highlight: var(--ds-background-accent-lime-subtlest, #28311b);
+	--success: var(--ds-background-success-bold, #b3df72);
+	--success-tint: var(--ds-background-success, #1f4d3a);
+	--warning: var(--ds-background-warning-bold, #f5cd47);
+	--warning-tint: var(--ds-background-warning, #533f04);
+	--danger: var(--ds-background-danger-bold, #f87168);
+	--danger-tint: var(--ds-background-danger, #5d1f1a);
+	--info: var(--ds-background-information-bold, #579dff);
+	--info-tint: var(--ds-background-information, #09326c);
+	--paper-rule: color-mix(in srgb, var(--ink) 8%, transparent);
+	--shadow: var(--ds-shadow-raised, 0 1px 1px rgba(0, 0, 0, 0.32), 0 0 1px rgba(0, 0, 0, 0.42)); color-scheme: dark; }
 
   /* Palatino is a system font, no @font-face needed */
   @page {
     size: A4;
     margin: 20mm 22mm 22mm 22mm;
-    background: var(--vpk-paper);
+    background: var(--paper);
 
     @top-right {
       content: string(section-title);
       font-family: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
       font-size: 8pt;
-      color: var(--vpk-muted-text);
+      color: var(--muted-text);
     }
 
     @bottom-center {
       content: counter(page) "  ·  Retrieval-Augmented Generation";
       font-family: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
       font-size: 9pt;
-      color: var(--vpk-muted-text);
+      color: var(--muted-text);
     }
   }
   @page:first {
@@ -132,30 +136,30 @@
   }
 
   :root {
-    --parchment: var(--vpk-paper);
-    --ivory:     var(--vpk-surface-raised);
-    --near-black:var(--vpk-ink);
-    --dark-warm: var(--vpk-ink);
-    --olive:     var(--vpk-muted-text);
-    --stone:     var(--vpk-muted-text);
-    --brand:     var(--vpk-blueprint);
-    --border:    var(--vpk-rule);
-    --border-soft:var(--vpk-rule);
-    --tag-bg:    var(--vpk-blueprint-tint);
+    --parchment: var(--paper);
+    --ivory:     var(--surface-raised);
+    --near-black:var(--ink);
+    --dark-warm: var(--ink);
+    --olive:     var(--muted-text);
+    --stone:     var(--muted-text);
+    --brand:     var(--blueprint);
+    --border:    var(--rule);
+    --border-soft:var(--rule);
+    --tag-bg:    var(--blueprint-tint);
 
     --serif: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
     --sans: var(--serif);
     --mono:  "Geist Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
   }
 
-  html, body { background: var(--vpk-paper); }
+  html, body { background: var(--paper); }
 
   @media screen {
     body { max-width: 210mm; margin: 0 auto; padding: 20mm 22mm 22mm 22mm; }
   }
 
   body {
-    color: var(--vpk-ink);
+    color: var(--ink);
     font-family: var(--serif);
     font-size: 10.5pt;
     line-height: 1.55;
@@ -177,7 +181,7 @@
   .cover-eyebrow {
     font-family: var(--sans);
     font-size: 10pt;
-    color: var(--vpk-blueprint);
+    color: var(--blueprint);
     letter-spacing: 2pt;
     text-transform: uppercase;
     font-weight: 500;
@@ -186,7 +190,7 @@
   .cover-title {
     font-size: 40pt;
     font-weight: 500;
-    color: var(--vpk-ink);
+    color: var(--ink);
     line-height: 1.12;
     letter-spacing: -0.5pt;
     margin-bottom: 16pt;
@@ -194,7 +198,7 @@
   .cover-sub {
     font-family: var(--sans);
     font-size: 14pt;
-    color: var(--vpk-success);
+    color: var(--success);
     line-height: 1.45;
     max-width: 85%;
     margin-bottom: 30pt;
@@ -202,11 +206,11 @@
   .cover-meta {
     font-family: var(--sans);
     font-size: 10pt;
-    color: var(--vpk-muted-text);
+    color: var(--muted-text);
     line-height: 1.55;
     font-variant-numeric: tabular-nums;
   }
-  .cover-meta strong { color: var(--vpk-ink); font-weight: 500; }
+  .cover-meta strong { color: var(--ink); font-weight: 500; }
 
   /* TOC */
   .toc { break-after: page; }
@@ -214,7 +218,7 @@
     font-size: 22pt;
     font-weight: 500;
     margin-bottom: 14pt;
-    border-left: 2.5pt solid var(--vpk-blueprint);
+    border-left: 2.5pt solid var(--blueprint);
     border-radius: 1.5pt;
     padding-left: 8pt;
   }
@@ -223,23 +227,23 @@
     justify-content: space-between;
     align-items: baseline;
     padding: 6pt 0;
-    border-bottom: 0.3pt dotted var(--vpk-rule);
+    border-bottom: 0.3pt dotted var(--rule);
     font-size: 11pt;
   }
   .toc-item:last-of-type { border-bottom: none; }
   .toc-num {
-    color: var(--vpk-blueprint);
+    color: var(--blueprint);
     font-weight: 500;
     min-width: 30pt;
     font-variant-numeric: tabular-nums;
   }
   .toc-title {
     flex: 1;
-    color: var(--vpk-ink);
+    color: var(--ink);
     padding-left: 6pt;
   }
   .toc-page {
-    color: var(--vpk-muted-text);
+    color: var(--muted-text);
     font-variant-numeric: tabular-nums;
   }
 
@@ -250,10 +254,10 @@
     line-height: 1.15;
     letter-spacing: -0.3pt;
     margin: 0 0 10pt 0;
-    border-left: 2.5pt solid var(--vpk-blueprint);
+    border-left: 2.5pt solid var(--blueprint);
     border-radius: 1.5pt;
     padding-left: 8pt;
-    color: var(--vpk-ink);
+    color: var(--ink);
     break-after: avoid;
   }
   h2 {
@@ -261,7 +265,7 @@
     font-weight: 500;
     line-height: 1.25;
     margin: 24pt 0 8pt 0;
-    color: var(--vpk-ink);
+    color: var(--ink);
     break-after: avoid;
     string-set: section-title content();
   }
@@ -270,14 +274,14 @@
     font-weight: 500;
     line-height: 1.3;
     margin: 18pt 0 6pt 0;
-    color: var(--vpk-ink);
+    color: var(--ink);
     break-after: avoid;
   }
 
   .chapter-num {
     font-family: var(--sans);
     font-size: 10pt;
-    color: var(--vpk-blueprint);
+    color: var(--blueprint);
     letter-spacing: 1pt;
     text-transform: uppercase;
     font-weight: 500;
@@ -285,16 +289,16 @@
   }
 
   /* PARAGRAPHS */
-  p { margin: 0 0 10pt 0; line-height: 1.55; color: var(--vpk-ink); widows: 2; orphans: 2; }
+  p { margin: 0 0 10pt 0; line-height: 1.55; color: var(--ink); widows: 2; orphans: 2; }
 
   .lead {
     font-size: 12pt;
     line-height: 1.55;
-    color: var(--vpk-ink);
+    color: var(--ink);
     margin-bottom: 14pt;
   }
 
-  .hl { color: var(--vpk-blueprint); font-weight: 500; }
+  .hl { color: var(--blueprint); font-weight: 500; }
   strong { font-weight: 500; }
 
   /* LISTS */
@@ -303,15 +307,15 @@
     padding-left: 20pt;
     line-height: 1.55;
   }
-  ul li::marker { color: var(--vpk-blueprint); }
-  ol li::marker { color: var(--vpk-blueprint); font-weight: 500; }
+  ul li::marker { color: var(--blueprint); }
+  ol li::marker { color: var(--blueprint); font-weight: 500; }
 
   /* QUOTE */
   blockquote, .quote {
-    border-left: 2pt solid var(--vpk-blueprint);
+    border-left: 2pt solid var(--blueprint);
     margin: 12pt 0;
     padding: 4pt 0 4pt 16pt;
-    color: var(--vpk-success);
+    color: var(--success);
     line-height: 1.55;
     break-inside: avoid;
   }
@@ -319,7 +323,7 @@
     display: block;
     font-family: var(--sans);
     font-size: 9pt;
-    color: var(--vpk-muted-text);
+    color: var(--muted-text);
     margin-top: 4pt;
   }
 
@@ -327,21 +331,21 @@
   code {
     font-family: var(--mono);
     font-size: 9pt;
-    background: var(--vpk-surface-raised);
+    background: var(--surface-raised);
     padding: 1pt 4pt;
     border-radius: 2pt;
-    color: var(--vpk-ink);
+    color: var(--ink);
   }
   pre {
     font-family: var(--mono);
     font-size: 9pt;
     line-height: 1.5;
-    background: var(--vpk-surface-raised);
+    background: var(--surface-raised);
     border-radius: 4pt;
     padding: 10pt 14pt;
     margin: 10pt 0;
     white-space: pre-wrap;
-    color: var(--vpk-ink);
+    color: var(--ink);
     break-inside: avoid;
   }
   pre code { background: transparent; padding: 0; font-size: inherit; }
@@ -358,14 +362,14 @@
     text-align: left;
     font-family: var(--sans);
     font-weight: 500;
-    color: var(--vpk-ink);
+    color: var(--ink);
     padding: 6pt 8pt;
-    border-bottom: 1pt solid var(--vpk-rule);
-    background: var(--vpk-surface-raised);
+    border-bottom: 1pt solid var(--rule);
+    background: var(--surface-raised);
   }
   table td, .kami-table td {
     padding: 5pt 8pt;
-    border-bottom: 0.3pt solid var(--vpk-rule);
+    border-bottom: 0.3pt solid var(--rule);
     vertical-align: top;
   }
   table.compact th, .kami-table.compact th { padding: 3pt 6pt; font-size: 8pt; }
@@ -375,16 +379,16 @@
   }
   table.financial th:not(:first-child), .kami-table.financial th:not(:first-child) { text-align: right; }
   table.striped tbody tr:nth-child(even) td, .kami-table.striped tbody tr:nth-child(even) td {
-    background: var(--vpk-surface-raised);
+    background: var(--surface-raised);
   }
   table .total td, .kami-table .total td {
-    font-weight: 500; border-top: 1pt solid var(--vpk-blueprint); border-bottom: none; color: var(--vpk-ink);
+    font-weight: 500; border-top: 1pt solid var(--blueprint); border-bottom: none; color: var(--ink);
   }
 
   /* CALLOUT / TAKEAWAY */
   .callout {
-    background: var(--vpk-surface-raised);
-    border-left: 2pt solid var(--vpk-blueprint);
+    background: var(--surface-raised);
+    border-left: 2pt solid var(--blueprint);
     padding: 10pt 14pt;
     border-radius: 3pt;
     margin: 12pt 0;
@@ -396,14 +400,14 @@
     border-left: none;
     padding-left: 0;
     margin: 6pt 0;
-    color: var(--vpk-success);
+    color: var(--success);
   }
   .callout blockquote:first-child,
   .callout .quote:first-child { margin-top: 0; }
   .callout blockquote:last-child,
   .callout .quote:last-child  { margin-bottom: 0; }
   .takeaway {
-    background: var(--vpk-surface-raised);
+    background: var(--surface-raised);
     border-radius: 4pt;
     padding: 10pt 14pt;
     margin: 14pt 0;
@@ -412,7 +416,7 @@
   .takeaway-label {
     font-family: var(--sans);
     font-size: 9pt;
-    color: var(--vpk-blueprint);
+    color: var(--blueprint);
     letter-spacing: 1pt;
     text-transform: uppercase;
     font-weight: 500;
@@ -422,8 +426,8 @@
   /* TAG */
   .tag {
     display: inline-block;
-    background: var(--vpk-blueprint-tint);
-    color: var(--vpk-blueprint);
+    background: var(--blueprint-tint);
+    color: var(--blueprint);
     font-family: var(--sans);
     font-size: 9pt;
     font-weight: 500;
@@ -440,7 +444,7 @@
   figcaption {
     font-family: var(--sans);
     font-size: 9pt;
-    color: var(--vpk-muted-text);
+    color: var(--muted-text);
     margin-top: 6pt;
     text-align: center;
   }
@@ -452,7 +456,7 @@
   /* ===== vpk-html identity overrides (Making Software language) ===== */
 
   /* Paper background — warm off-white, never pure white. No grid, no banding. */
-  html, body { background: var(--vpk-paper) !important; color: var(--vpk-ink) !important; }
+  html, body { background: var(--paper) !important; color: var(--ink) !important; }
 
   /* Strip all section chrome: no borders, no shadows, no rounded corners,
      no section background colors. Per Making Software refuses-list. */
@@ -467,14 +471,14 @@
 
   /* Preserve a single hairline border ONLY on tables (they need column rules). */
   table, th, td {
-    border-color: var(--vpk-rule) !important;
+    border-color: var(--rule) !important;
     border-radius: 0 !important;
     box-shadow: none !important;
   }
 
   /* Hairline rule between sections — flat 1px, no inset, no shadow. */
   hr, .rule, .section-rule {
-    background: var(--vpk-rule) !important;
+    background: var(--rule) !important;
     border: 0 !important;
     height: 1px !important;
   }
@@ -485,7 +489,7 @@
     font-family: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif !important;
     font-size: 16px !important;
     line-height: 1.8 !important;
-    color: var(--vpk-ink) !important;
+    color: var(--ink) !important;
   }
   h1, h2, h3, h4, h5, h6,
   .cover-title, .doc-title, .resume-name, .deck-cover .title,
@@ -496,16 +500,16 @@
     line-height: 1.8 !important;
     font-weight: 600 !important;
     letter-spacing: 0 !important;
-    color: var(--vpk-ink) !important;
+    color: var(--ink) !important;
     margin: 0 !important;
   }
 
-  /* Masthead role: cover-title / first h1 carries the brand. Geist Pixel, accent-blue. */
+  /* Masthead role: cover-title / first h1 carries the brand. Geist Pixel, lime accent. */
   .cover h1:first-child, .cover-title:first-child,
   .hero h1:first-child, .doc-title h1:first-child,
   .resume-name {
     font-family: "Geist Pixel", "Geist Mono", ui-monospace, "SFMono-Regular", Consolas, monospace !important;
-    color: var(--vpk-blueprint) !important;
+    color: var(--blueprint) !important;
     font-weight: 400 !important;
     text-transform: uppercase !important;
     letter-spacing: 0.02em !important;
@@ -519,7 +523,7 @@
     line-height: 14px !important;
     letter-spacing: 0.18em !important;
     text-transform: uppercase !important;
-    color: var(--vpk-danger) !important;
+    color: var(--danger) !important;
     font-weight: 400 !important;
   }
 
@@ -529,12 +533,12 @@
     font-family: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif !important;
     font-size: 14px !important;
     line-height: 22px !important;
-    color: var(--vpk-muted-text) !important;
+    color: var(--muted-text) !important;
   }
 
-  /* Links: same accent-blue as masthead. No underline by default; underline on hover. */
+  /* Links: same lime accent as masthead. No underline by default; underline on hover. */
   a, a:visited {
-    color: var(--vpk-blueprint) !important;
+    color: var(--blueprint) !important;
     text-decoration: none !important;
   }
   a:hover {
@@ -544,12 +548,12 @@
   }
 
   /* Emphasis: italic preferred; bold reserved for headings. */
-  .hl, mark, strong { color: var(--vpk-blueprint) !important; background: transparent !important; font-weight: 600 !important; }
-  em, i { font-style: italic !important; color: var(--vpk-ink) !important; }
+  .hl, mark, strong { color: var(--blueprint) !important; background: transparent !important; font-weight: 600 !important; }
+  em, i { font-style: italic !important; color: var(--ink) !important; }
 
   /* Dotted rule utility (Making Software signature separator). */
   .dotted-rule, .vpk-dotted-rule {
-    background-image: radial-gradient(circle, var(--vpk-ink) 1px, transparent 1px) !important;
+    background-image: radial-gradient(circle, var(--ink) 1px, transparent 1px) !important;
     background-size: 8px 8px !important;
     background-repeat: repeat-x !important;
     background-position: 0 50% !important;
@@ -564,7 +568,7 @@
   .lead::first-letter,
   .cover + p::first-letter {
     font-family: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif !important;
-    color: var(--vpk-ink) !important;
+    color: var(--ink) !important;
     float: left !important;
     font-size: 48px !important;
     line-height: 1 !important;

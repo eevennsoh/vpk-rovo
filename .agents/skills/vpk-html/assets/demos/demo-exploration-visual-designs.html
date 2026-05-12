@@ -5,7 +5,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <meta name="generator" content="vpk-html"><title>Empty state — four visual directions</title>
+  <meta name="generator" content="vpk-html">
+<link rel="icon" type="image/svg+xml" sizes="any" href="data:image/svg+xml,%3Csvg%20width%3D%2232%22%20height%3D%2232%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%228%22%20fill%3D%22%23121212%22%2F%3E%3Ccircle%20cx%3D%2211%22%20cy%3D%2221%22%20r%3D%225%22%20fill%3D%22white%22%2F%3E%3Ccircle%20cx%3D%2221%22%20cy%3D%2221%22%20r%3D%225%22%20fill%3D%22white%22%2F%3E%3Ccircle%20cx%3D%2211%22%20cy%3D%2211%22%20r%3D%225%22%20fill%3D%22white%22%2F%3E%3Ccircle%20cx%3D%2221%22%20cy%3D%2211%22%20r%3D%225%22%20fill%3D%22white%22%2F%3E%3C%2Fsvg%3E">
+<link rel="icon" type="image/svg+xml" sizes="any" media="(prefers-color-scheme: light)" href="data:image/svg+xml,%3Csvg%20width%3D%2232%22%20height%3D%2232%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Ccircle%20cx%3D%229%22%20cy%3D%2223%22%20r%3D%225%22%20fill%3D%22%23121212%22%2F%3E%3Ccircle%20cx%3D%2223%22%20cy%3D%2223%22%20r%3D%225%22%20fill%3D%22%23121212%22%2F%3E%3Ccircle%20cx%3D%229%22%20cy%3D%229%22%20r%3D%225%22%20fill%3D%22%23121212%22%2F%3E%3Ccircle%20cx%3D%2223%22%20cy%3D%229%22%20r%3D%225%22%20fill%3D%22%23121212%22%2F%3E%3C%2Fsvg%3E">
+<link rel="icon" type="image/svg+xml" sizes="any" media="(prefers-color-scheme: dark)" href="data:image/svg+xml,%3Csvg%20width%3D%2232%22%20height%3D%2232%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Ccircle%20cx%3D%229%22%20cy%3D%2223%22%20r%3D%225%22%20fill%3D%22white%22%20stroke%3D%22%23121212%22%20stroke-width%3D%221.25%22%2F%3E%3Ccircle%20cx%3D%2223%22%20cy%3D%2223%22%20r%3D%225%22%20fill%3D%22white%22%20stroke%3D%22%23121212%22%20stroke-width%3D%221.25%22%2F%3E%3Ccircle%20cx%3D%229%22%20cy%3D%229%22%20r%3D%225%22%20fill%3D%22white%22%20stroke%3D%22%23121212%22%20stroke-width%3D%221.25%22%2F%3E%3Ccircle%20cx%3D%2223%22%20cy%3D%229%22%20r%3D%225%22%20fill%3D%22white%22%20stroke%3D%22%23121212%22%20stroke-width%3D%221.25%22%2F%3E%3C%2Fsvg%3E">
+<title>Empty state — four visual directions</title>
   <style>
 /* vpk-html validation shim: local fonts and offline checks. */
 @font-face {
@@ -30,83 +34,83 @@
   font-display: swap;
 }
 :root {
-	--vpk-paper: var(--ds-surface, #ffffff);
-	--vpk-paper-background: var(--ds-surface, #ffffff);
-	--vpk-surface-raised: var(--ds-surface-raised, #ffffff);
-	--vpk-surface-overlay: var(--ds-surface-overlay, #ffffff);
-	--vpk-surface-sunken: var(--ds-surface-sunken, #f0f1f2);
-	--vpk-ink: var(--ds-text, #292a2e);
-	--vpk-muted-text: var(--ds-text-subtle, #505258);
-	--vpk-subtlest-text: var(--ds-text-subtlest, #6b6e76);
-	--vpk-inverse-text: var(--ds-text-inverse, #ffffff);
-	--vpk-rule: var(--ds-border, #0b120e24);
-	--vpk-rule-strong: var(--ds-border-bold, #7d818a);
-	--vpk-blueprint: var(--ds-background-brand-bold, #1868db);
-	--vpk-link: var(--ds-link, #1868db);
-	--vpk-link-pressed: var(--ds-link-pressed, #1558bc);
-	--vpk-selected: var(--ds-background-selected, #e9f2fe);
-	--vpk-blueprint-tint: var(--ds-background-information, #e9f2fe);
-	--vpk-blueprint-tint-strong: var(--ds-background-information-hovered, #cfe1fd);
-	--vpk-focus-ring: var(--ds-border-focused, #4688ec);
-	--vpk-code-surface: var(--ds-background-neutral-subtle, #f0f1f2);
-	--vpk-code-ink: var(--ds-text, #292a2e);
-	--vpk-code-inverse: var(--ds-text-inverse, #ffffff);
-	--vpk-math-highlight: var(--ds-background-information, #e9f2fe);
-	--vpk-success: var(--ds-background-success-bold, #5b7f24);
-	--vpk-success-tint: var(--ds-background-success, #efffd6);
-	--vpk-warning: var(--ds-background-warning-bold, #fbc828);
-	--vpk-warning-tint: var(--ds-background-warning, #fff5db);
-	--vpk-danger: var(--ds-background-danger-bold, #c9372c);
-	--vpk-danger-tint: var(--ds-background-danger, #ffeceb);
-	--vpk-info: var(--ds-background-information-bold, #1868db);
-	--vpk-info-tint: var(--ds-background-information, #e9f2fe);
-	--vpk-paper-rule: color-mix(in srgb, var(--vpk-ink) 8%, transparent);
-	--vpk-shadow: var(--ds-shadow-raised, 0 1px 1px rgba(9, 30, 66, 0.25), 0 0 1px rgba(9, 30, 66, 0.31)); color-scheme: light dark; }
+	--paper: var(--ds-surface, #ffffff);
+	--paper-background: var(--ds-surface, #ffffff);
+	--surface-raised: var(--ds-surface-raised, #ffffff);
+	--surface-overlay: var(--ds-surface-overlay, #ffffff);
+	--surface-sunken: var(--ds-surface-sunken, #f0f1f2);
+	--ink: var(--ds-text, #292a2e);
+	--muted-text: var(--ds-text-subtle, #505258);
+	--subtlest-text: var(--ds-text-subtlest, #6b6e76);
+	--inverse-text: var(--ds-text-inverse, #ffffff);
+	--rule: var(--ds-border, #0b120e24);
+	--rule-strong: var(--ds-border-bold, #7d818a);
+	--blueprint: var(--ds-background-accent-lime-subtle, #94c748);
+	--link: var(--ds-text-accent-lime, #4c6b1f);
+	--link-pressed: var(--ds-text-accent-lime-bolder, #37471f);
+	--selected: var(--ds-background-accent-lime-subtler, #d3f1a7);
+	--blueprint-tint: var(--ds-background-accent-lime-subtlest, #efffd6);
+	--blueprint-tint-strong: var(--ds-background-accent-lime-subtler, #d3f1a7);
+	--focus-ring: var(--ds-border-accent-lime, #6a9a23);
+	--code-surface: var(--ds-background-neutral-subtle, #f0f1f2);
+	--code-ink: var(--ds-text, #292a2e);
+	--code-inverse: var(--ds-text-inverse, #ffffff);
+	--math-highlight: var(--ds-background-accent-lime-subtlest, #efffd6);
+	--success: var(--ds-background-success-bold, #5b7f24);
+	--success-tint: var(--ds-background-success, #efffd6);
+	--warning: var(--ds-background-warning-bold, #fbc828);
+	--warning-tint: var(--ds-background-warning, #fff5db);
+	--danger: var(--ds-background-danger-bold, #c9372c);
+	--danger-tint: var(--ds-background-danger, #ffeceb);
+	--info: var(--ds-background-information-bold, #1868db);
+	--info-tint: var(--ds-background-information, #e9f2fe);
+	--paper-rule: color-mix(in srgb, var(--ink) 8%, transparent);
+	--shadow: var(--ds-shadow-raised, 0 1px 1px rgba(9, 30, 66, 0.25), 0 0 1px rgba(9, 30, 66, 0.31)); color-scheme: light dark; }
 [data-theme="dark"] {
-	--vpk-paper: var(--ds-surface, #101214);
-	--vpk-paper-background: var(--ds-surface, #1d2125);
-	--vpk-surface-raised: var(--ds-surface-raised, #22272b);
-	--vpk-surface-overlay: var(--ds-surface-overlay, #282e33);
-	--vpk-surface-sunken: var(--ds-surface-sunken, #161a1d);
-	--vpk-ink: var(--ds-text, #dee4ea);
-	--vpk-muted-text: var(--ds-text-subtle, #9fadbc);
-	--vpk-subtlest-text: var(--ds-text-subtlest, #738496);
-	--vpk-inverse-text: var(--ds-text-inverse, #101214);
-	--vpk-rule: var(--ds-border, #a6c5e229);
-	--vpk-rule-strong: var(--ds-border-bold, #738496);
-	--vpk-blueprint: var(--ds-background-brand-bold, #579dff);
-	--vpk-link: var(--ds-link, #579dff);
-	--vpk-link-pressed: var(--ds-link-pressed, #85b8ff);
-	--vpk-selected: var(--ds-background-selected, #09326c);
-	--vpk-blueprint-tint: var(--ds-background-information, #09326c);
-	--vpk-blueprint-tint-strong: var(--ds-background-information-hovered, #0c418a);
-	--vpk-focus-ring: var(--ds-border-focused, #579dff);
-	--vpk-code-surface: var(--ds-background-neutral-subtle, #161a1d);
-	--vpk-code-ink: var(--ds-text, #dee4ea);
-	--vpk-code-inverse: var(--ds-text-inverse, #101214);
-	--vpk-math-highlight: var(--ds-background-information, #09326c);
-	--vpk-success: var(--ds-background-success-bold, #b3df72);
-	--vpk-success-tint: var(--ds-background-success, #1f4d3a);
-	--vpk-warning: var(--ds-background-warning-bold, #f5cd47);
-	--vpk-warning-tint: var(--ds-background-warning, #533f04);
-	--vpk-danger: var(--ds-background-danger-bold, #f87168);
-	--vpk-danger-tint: var(--ds-background-danger, #5d1f1a);
-	--vpk-info: var(--ds-background-information-bold, #579dff);
-	--vpk-info-tint: var(--ds-background-information, #09326c);
-	--vpk-paper-rule: color-mix(in srgb, var(--vpk-ink) 8%, transparent);
-	--vpk-shadow: var(--ds-shadow-raised, 0 1px 1px rgba(0, 0, 0, 0.32), 0 0 1px rgba(0, 0, 0, 0.42)); color-scheme: dark; }
+	--paper: var(--ds-surface, #101214);
+	--paper-background: var(--ds-surface, #1d2125);
+	--surface-raised: var(--ds-surface-raised, #22272b);
+	--surface-overlay: var(--ds-surface-overlay, #282e33);
+	--surface-sunken: var(--ds-surface-sunken, #161a1d);
+	--ink: var(--ds-text, #dee4ea);
+	--muted-text: var(--ds-text-subtle, #9fadbc);
+	--subtlest-text: var(--ds-text-subtlest, #738496);
+	--inverse-text: var(--ds-text-inverse, #101214);
+	--rule: var(--ds-border, #a6c5e229);
+	--rule-strong: var(--ds-border-bold, #738496);
+	--blueprint: var(--ds-background-accent-lime-subtle, #4c6b1f);
+	--link: var(--ds-text-accent-lime, #b3df72);
+	--link-pressed: var(--ds-text-accent-lime-bolder, #d3f1a7);
+	--selected: var(--ds-background-accent-lime-subtler, #37471f);
+	--blueprint-tint: var(--ds-background-accent-lime-subtlest, #28311b);
+	--blueprint-tint-strong: var(--ds-background-accent-lime-subtler, #37471f);
+	--focus-ring: var(--ds-border-accent-lime, #82b536);
+	--code-surface: var(--ds-background-neutral-subtle, #161a1d);
+	--code-ink: var(--ds-text, #dee4ea);
+	--code-inverse: var(--ds-text-inverse, #101214);
+	--math-highlight: var(--ds-background-accent-lime-subtlest, #28311b);
+	--success: var(--ds-background-success-bold, #b3df72);
+	--success-tint: var(--ds-background-success, #1f4d3a);
+	--warning: var(--ds-background-warning-bold, #f5cd47);
+	--warning-tint: var(--ds-background-warning, #533f04);
+	--danger: var(--ds-background-danger-bold, #f87168);
+	--danger-tint: var(--ds-background-danger, #5d1f1a);
+	--info: var(--ds-background-information-bold, #579dff);
+	--info-tint: var(--ds-background-information, #09326c);
+	--paper-rule: color-mix(in srgb, var(--ink) 8%, transparent);
+	--shadow: var(--ds-shadow-raised, 0 1px 1px rgba(0, 0, 0, 0.32), 0 0 1px rgba(0, 0, 0, 0.42)); color-scheme: dark; }
 
     :root {
-      --ivory:    var(--vpk-paper);
-      --slate:    var(--vpk-ink);
-      --clay:     var(--vpk-danger);
-      --oat:      var(--vpk-blueprint-tint);
-      --olive:    var(--vpk-success);
-      --gray-150: var(--vpk-surface-sunken);
-      --gray-300: var(--vpk-rule);
-      --gray-500: var(--vpk-muted-text);
-      --gray-700: var(--vpk-ink);
-      --white:    var(--vpk-surface-raised);
+      --ivory:    var(--paper);
+      --slate:    var(--ink);
+      --clay:     var(--danger);
+      --oat:      var(--blueprint-tint);
+      --olive:    var(--success);
+      --gray-150: var(--surface-sunken);
+      --gray-300: var(--rule);
+      --gray-500: var(--muted-text);
+      --gray-700: var(--ink);
+      --white:    var(--surface-raised);
 
       --serif: ui-serif, Georgia, 'Times New Roman', serif;
       --sans:  system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -117,8 +121,8 @@
 
     body {
       font-family: var(--sans);
-      background: var(--vpk-surface-raised);
-      color: var(--vpk-ink);
+      background: var(--surface-raised);
+      color: var(--ink);
       line-height: 1.55;
       -webkit-font-smoothing: antialiased;
       padding-bottom: 96px;
@@ -130,8 +134,8 @@
       position: sticky;
       top: 0;
       z-index: 10;
-      background: var(--vpk-surface-raised);
-      border-bottom: 1.5px solid var(--vpk-rule);
+      background: var(--surface-raised);
+      border-bottom: 1.5px solid var(--rule);
       padding: 14px 32px;
       display: flex;
       align-items: center;
@@ -143,7 +147,7 @@
       font-family: var(--mono);
       font-size: 12px;
       letter-spacing: 0.04em;
-      color: var(--vpk-muted-text);
+      color: var(--muted-text);
       margin-right: auto;
     }
 
@@ -154,39 +158,39 @@
     }
 
     .toolbar .field > span {
-      color: var(--vpk-ink);
+      color: var(--ink);
       font-weight: 500;
     }
 
     .seg {
       display: inline-flex;
-      border: 1.5px solid var(--vpk-rule);
+      border: 1.5px solid var(--rule);
       border-radius: 8px;
       overflow: hidden;
-      background: var(--vpk-surface-raised);
+      background: var(--surface-raised);
     }
 
     .seg label {
       padding: 6px 14px;
       cursor: pointer;
       font-size: 13px;
-      color: var(--vpk-ink);
+      color: var(--ink);
       user-select: none;
     }
 
     .seg label + label {
-      border-left: 1.5px solid var(--vpk-rule);
+      border-left: 1.5px solid var(--rule);
     }
 
     .seg input { display: none; }
 
     .seg input:checked + span {
-      color: var(--vpk-ink);
+      color: var(--ink);
       font-weight: 600;
     }
 
     .seg label:has(input:checked) {
-      background: var(--vpk-blueprint-tint);
+      background: var(--blueprint-tint);
     }
 
     /* ---------- page header ---------- */
@@ -206,7 +210,7 @@
       font-size: 12px;
       letter-spacing: 0.08em;
       text-transform: uppercase;
-      color: var(--vpk-muted-text);
+      color: var(--muted-text);
       margin-bottom: 12px;
     }
 
@@ -215,14 +219,14 @@
       font-weight: 500;
       font-size: 38px;
       line-height: 1.15;
-      color: var(--vpk-ink);
+      color: var(--ink);
       margin-bottom: 18px;
       letter-spacing: -0.01em;
     }
 
     .prompt-box {
-      background: var(--vpk-surface-sunken);
-      border: 1.5px solid var(--vpk-rule);
+      background: var(--surface-sunken);
+      border: 1.5px solid var(--rule);
       border-radius: 12px;
       padding: 16px 20px;
       font-size: 14.5px;
@@ -233,7 +237,7 @@
       font-size: 11px;
       text-transform: uppercase;
       letter-spacing: 0.06em;
-      color: var(--vpk-muted-text);
+      color: var(--muted-text);
       display: block;
       margin-bottom: 6px;
     }
@@ -251,8 +255,8 @@
     }
 
     .artboard {
-      background: var(--vpk-surface-raised);
-      border: 1.5px solid var(--vpk-rule);
+      background: var(--surface-raised);
+      border: 1.5px solid var(--rule);
       border-radius: 12px;
       padding: 20px;
       position: relative;
@@ -265,8 +269,8 @@
       font-family: var(--mono);
       font-size: 11px;
       letter-spacing: 0.02em;
-      background: var(--vpk-blueprint-tint);
-      color: var(--vpk-ink);
+      background: var(--blueprint-tint);
+      color: var(--ink);
       padding: 4px 10px;
       border-radius: 8px;
       z-index: 2;
@@ -275,8 +279,8 @@
     .stage {
       height: 280px;
       border-radius: 8px;
-      border: 1.5px solid var(--vpk-rule);
-      background: var(--vpk-surface-raised);
+      border: 1.5px solid var(--rule);
+      background: var(--surface-raised);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -286,14 +290,14 @@
     }
 
     .stage.dark {
-      background: var(--vpk-ink);
-      border-color: var(--vpk-ink);
+      background: var(--ink);
+      border-color: var(--ink);
     }
 
     .rationale {
       margin-top: 16px;
       font-size: 13px;
-      color: var(--vpk-muted-text);
+      color: var(--muted-text);
       line-height: 1.5;
     }
 
@@ -302,8 +306,8 @@
        Theme tokens flip when .stage.dark is present.
        ========================================================= */
 
-    .stage        { --fg: var(--vpk-ink); --muted: var(--vpk-muted-text); --line: var(--vpk-rule); --panel: var(--vpk-surface-raised); }
-    .stage.dark   { --fg: var(--vpk-surface-sunken);      --muted: var(--vpk-muted-text);         --line: var(--vpk-ink);         --panel: var(--vpk-ink);     }
+    .stage        { --fg: var(--ink); --muted: var(--muted-text); --line: var(--rule); --panel: var(--surface-raised); }
+    .stage.dark   { --fg: var(--surface-sunken);      --muted: var(--muted-text);         --line: var(--ink);         --panel: var(--ink);     }
 
     /* ---- A · Minimal ---- */
 
@@ -320,7 +324,7 @@
     }
     .es-a p {
       font-size: 13px;
-      color: var(--vpk-muted-text);
+      color: var(--muted-text);
       margin-bottom: 18px;
     }
     .es-a .btn {
@@ -352,19 +356,19 @@
     }
     .es-b p {
       font-size: 13px;
-      color: var(--vpk-muted-text);
+      color: var(--muted-text);
       margin-bottom: 16px;
     }
     .es-b .btn {
       display: inline-block;
       font-size: 13px;
       font-weight: 500;
-      color: var(--vpk-surface-raised);
-      background: var(--vpk-blueprint);
+      color: var(--surface-raised);
+      background: var(--blueprint);
       border-radius: 8px;
       padding: 8px 16px;
     }
-    .stage.dark .es-b .btn { color: var(--vpk-ink); background: var(--vpk-blueprint-tint); }
+    .stage.dark .es-b .btn { color: var(--ink); background: var(--blueprint-tint); }
 
     /* ---- C · Playful ---- */
 
@@ -388,18 +392,18 @@
     }
     .es-c .float .card:nth-child(1) { transform: rotate(-8deg) translate(-6px, 4px); opacity: 0.5; }
     .es-c .float .card:nth-child(2) { transform: rotate( 6deg) translate( 6px, 2px); opacity: 0.75; }
-    .es-c .float .card:nth-child(3) { background: var(--vpk-blueprint-tint); border-color: var(--vpk-blueprint-tint); }
-    .stage.dark .es-c .float .card:nth-child(3) { background: var(--vpk-blueprint); border-color: var(--vpk-blueprint); }
+    .es-c .float .card:nth-child(3) { background: var(--blueprint-tint); border-color: var(--blueprint-tint); }
+    .stage.dark .es-c .float .card:nth-child(3) { background: var(--blueprint); border-color: var(--blueprint); }
     .es-c .shadow {
       width: 44px;
       height: 8px;
       margin: -8px auto 22px;
       border-radius: 50%;
-      background: color-mix(in srgb, var(--vpk-ink) 12%, transparent);
+      background: color-mix(in srgb, var(--ink) 12%, transparent);
       filter: blur(2px);
       animation: shadow 3.2s ease-in-out infinite;
     }
-    .stage.dark .es-c .shadow { background: color-mix(in srgb, var(--vpk-ink) 50%, transparent); }
+    .stage.dark .es-c .shadow { background: color-mix(in srgb, var(--ink) 50%, transparent); }
     .es-c h3 {
       font-family: var(--serif);
       font-weight: 500;
@@ -409,7 +413,7 @@
     }
     .es-c p {
       font-size: 13px;
-      color: var(--vpk-muted-text);
+      color: var(--muted-text);
     }
 
     @keyframes bob {
@@ -460,57 +464,57 @@
       flex: 0 0 20px;
       height: 20px;
       border-radius: 50%;
-      background: var(--vpk-blueprint-tint);
-      color: var(--vpk-ink);
+      background: var(--blueprint-tint);
+      color: var(--ink);
       display: inline-flex;
       align-items: center;
       justify-content: center;
       margin-top: 1px;
     }
-    .es-d li span { color: var(--vpk-muted-text); display: block; font-size: 12px; margin-top: 2px; }
+    .es-d li span { color: var(--muted-text); display: block; font-size: 12px; margin-top: 2px; }
   /* vpk-html visual overlay: blueprint paper system over upstream demos. */
 :root {
-  --ivory: var(--vpk-paper);
-  --paper: var(--vpk-surface-raised);
-  --white: var(--vpk-surface-raised);
-  --slate: var(--vpk-ink);
-  --near-black: var(--vpk-ink);
-  --gray-50: var(--vpk-surface-sunken);
-  --gray-100: var(--vpk-code-surface);
-  --gray-150: var(--vpk-code-surface);
-  --gray-200: var(--vpk-rule);
-  --gray-300: var(--vpk-rule);
-  --gray-500: var(--vpk-muted-text);
-  --gray-700: var(--vpk-ink);
-  --gray-800: var(--vpk-ink);
-  --g100: var(--vpk-code-surface);
-  --g200: var(--vpk-rule);
-  --g300: var(--vpk-rule);
-  --g500: var(--vpk-muted-text);
-  --g700: var(--vpk-ink);
-  --clay: var(--vpk-blueprint);
-  --clay-d: var(--vpk-link-pressed);
-  --oat: color-mix(in srgb, var(--vpk-blueprint) 10%, transparent);
-  --olive: var(--vpk-success);
-  --rust: var(--vpk-danger);
-  --sky: var(--vpk-blueprint);
+  --ivory: var(--paper);
+  --paper: var(--surface-raised);
+  --white: var(--surface-raised);
+  --slate: var(--ink);
+  --near-black: var(--ink);
+  --gray-50: var(--surface-sunken);
+  --gray-100: var(--code-surface);
+  --gray-150: var(--code-surface);
+  --gray-200: var(--rule);
+  --gray-300: var(--rule);
+  --gray-500: var(--muted-text);
+  --gray-700: var(--ink);
+  --gray-800: var(--ink);
+  --g100: var(--code-surface);
+  --g200: var(--rule);
+  --g300: var(--rule);
+  --g500: var(--muted-text);
+  --g700: var(--ink);
+  --clay: var(--blueprint);
+  --clay-d: var(--link-pressed);
+  --oat: color-mix(in srgb, var(--blueprint) 10%, transparent);
+  --olive: var(--success);
+  --rust: var(--danger);
+  --sky: var(--blueprint);
   --serif: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono: "Geist Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
   --display: "Geist Pixel", "Geist Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
-  --border: 1px solid var(--vpk-rule);
+  --border: 1px solid var(--rule);
   --radius-panel: 0;
   --radius-row: 0;
-  --card-shadow: 4px 4px 0 color-mix(in srgb, var(--vpk-blueprint) 10%, transparent);
+  --card-shadow: 4px 4px 0 color-mix(in srgb, var(--blueprint) 10%, transparent);
 }
 
 html,
 body {
   background:
-    radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--vpk-ink) 8%, transparent) 1px, transparent 0),
-    var(--vpk-surface-raised) !important;
+    radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--ink) 8%, transparent) 1px, transparent 0),
+    var(--surface-raised) !important;
   background-size: 16px 16px !important;
-  color: var(--vpk-ink) !important;
+  color: var(--ink) !important;
   font-family: var(--sans) !important;
   letter-spacing: 0 !important;
 }
@@ -536,7 +540,7 @@ h1,
 .title,
 .hero-title,
 .deck-title {
-  color: var(--vpk-blueprint) !important;
+  color: var(--blueprint) !important;
   font-family: var(--display) !important;
   font-weight: 400 !important;
   letter-spacing: 0.02em !important;
@@ -550,7 +554,7 @@ h4,
 .section-title,
 .card-title,
 .panel-title {
-  color: var(--vpk-ink) !important;
+  color: var(--ink) !important;
   font-family: var(--display) !important;
   font-weight: 400 !important;
   letter-spacing: 0.04em !important;
@@ -591,7 +595,7 @@ select {
 .tag,
 .badge,
 .stat-label {
-  color: var(--vpk-blueprint) !important;
+  color: var(--blueprint) !important;
   text-transform: uppercase !important;
 }
 
@@ -630,14 +634,14 @@ select {
   .option,
   .row-card
 ) {
-  background: color-mix(in srgb, var(--vpk-surface-raised) 94%, transparent) !important;
-  border-color: var(--vpk-rule) !important;
+  background: color-mix(in srgb, var(--surface-raised) 94%, transparent) !important;
+  border-color: var(--rule) !important;
   border-radius: 0 !important;
   box-shadow: var(--card-shadow) !important;
 }
 
 :is(.stage, .browser, .mock, .flow, .matrix, .table, table, .diff, .code, pre) {
-  border-color: var(--vpk-rule) !important;
+  border-color: var(--rule) !important;
   border-radius: 0 !important;
 }
 
@@ -646,8 +650,8 @@ pre,
 .diff,
 .code-block,
 .snippet {
-  background: var(--vpk-ink) !important;
-  color: var(--vpk-code-inverse) !important;
+  background: var(--ink) !important;
+  color: var(--code-inverse) !important;
   font-family: var(--mono) !important;
   max-width: 100% !important;
   overflow-x: auto !important;
@@ -661,8 +665,8 @@ samp {
 
 a,
 a:visited {
-  color: var(--vpk-link-pressed) !important;
-  text-decoration-color: color-mix(in srgb, var(--vpk-blueprint) 45%, transparent) !important;
+  color: var(--link-pressed) !important;
+  text-decoration-color: color-mix(in srgb, var(--blueprint) 45%, transparent) !important;
   text-underline-offset: 0.18em !important;
 }
 
@@ -670,11 +674,11 @@ button,
 .button,
 .btn,
 [role="button"] {
-  background: var(--vpk-blueprint) !important;
-  border: 1px solid var(--vpk-ink) !important;
+  background: var(--blueprint) !important;
+  border: 1px solid var(--ink) !important;
   border-radius: 0 !important;
-  box-shadow: 3px 3px 0 color-mix(in srgb, var(--vpk-ink) 22%, transparent) !important;
-  color: var(--vpk-surface-raised) !important;
+  box-shadow: 3px 3px 0 color-mix(in srgb, var(--ink) 22%, transparent) !important;
+  color: var(--surface-raised) !important;
   font-family: var(--mono) !important;
   letter-spacing: 0.08em !important;
   text-transform: uppercase !important;
@@ -683,23 +687,23 @@ button,
 button.secondary,
 .button.secondary,
 .btn.secondary {
-  background: var(--vpk-surface-raised) !important;
-  color: var(--vpk-link-pressed) !important;
+  background: var(--surface-raised) !important;
+  color: var(--link-pressed) !important;
 }
 
 input,
 textarea,
 select {
-  background: var(--vpk-surface-raised) !important;
-  border: 1px solid var(--vpk-rule) !important;
+  background: var(--surface-raised) !important;
+  border: 1px solid var(--rule) !important;
   border-radius: 0 !important;
-  color: var(--vpk-ink) !important;
+  color: var(--ink) !important;
 }
 
 table,
 th,
 td {
-  border-color: var(--vpk-rule) !important;
+  border-color: var(--rule) !important;
 }
 
 table {
@@ -709,8 +713,8 @@ table {
 th,
 .head,
 .table-head {
-  background: var(--vpk-blueprint-tint) !important;
-  color: var(--vpk-ink) !important;
+  background: var(--blueprint-tint) !important;
+  color: var(--ink) !important;
 }
 
 .hl,
@@ -718,7 +722,7 @@ mark,
 strong,
 .active,
 .selected {
-  color: var(--vpk-link-pressed) !important;
+  color: var(--link-pressed) !important;
 }
 
 mark,
@@ -726,8 +730,8 @@ mark,
 .pill,
 .tag,
 .badge {
-  background: var(--vpk-blueprint-tint) !important;
-  border-color: color-mix(in srgb, var(--vpk-blueprint) 35%, var(--vpk-rule)) !important;
+  background: var(--blueprint-tint) !important;
+  border-color: color-mix(in srgb, var(--blueprint) 35%, var(--rule)) !important;
   border-radius: 0 !important;
 }
 
@@ -735,32 +739,32 @@ svg text {
   font-family: var(--mono) !important;
 }
 
-svg [fill="var(--vpk-danger)"],
-svg [fill="var(--vpk-danger)"],
-svg [fill="var(--vpk-danger)"],
-svg [fill="var(--vpk-danger)"] {
-  fill: var(--vpk-blueprint) !important;
+svg [fill="var(--danger)"],
+svg [fill="var(--danger)"],
+svg [fill="var(--danger)"],
+svg [fill="var(--danger)"] {
+  fill: var(--blueprint) !important;
 }
 
-svg [stroke="var(--vpk-danger)"],
-svg [stroke="var(--vpk-danger)"],
-svg [stroke="var(--vpk-danger)"],
-svg [stroke="var(--vpk-danger)"] {
-  stroke: var(--vpk-blueprint) !important;
+svg [stroke="var(--danger)"],
+svg [stroke="var(--danger)"],
+svg [stroke="var(--danger)"],
+svg [stroke="var(--danger)"] {
+  stroke: var(--blueprint) !important;
 }
 
-svg [fill="var(--vpk-blueprint-tint)"],
-svg [fill="var(--vpk-surface-sunken)"],
-svg [fill="var(--vpk-blueprint-tint)"],
-svg [fill="var(--vpk-surface-sunken)"] {
-  fill: var(--vpk-blueprint-tint) !important;
+svg [fill="var(--blueprint-tint)"],
+svg [fill="var(--surface-sunken)"],
+svg [fill="var(--blueprint-tint)"],
+svg [fill="var(--surface-sunken)"] {
+  fill: var(--blueprint-tint) !important;
 }
 
-svg [stroke="var(--vpk-blueprint-tint)"],
-svg [stroke="var(--vpk-rule)"],
-svg [stroke="var(--vpk-blueprint-tint)"],
-svg [stroke="var(--vpk-rule)"] {
-  stroke: var(--vpk-rule) !important;
+svg [stroke="var(--blueprint-tint)"],
+svg [stroke="var(--rule)"],
+svg [stroke="var(--blueprint-tint)"],
+svg [stroke="var(--rule)"] {
+  stroke: var(--rule) !important;
 }
 
 @media (max-width: 760px) {
@@ -892,12 +896,12 @@ svg [stroke="var(--vpk-rule)"] {
               <rect x="14" y="20" width="72" height="54" rx="8"
                     fill="var(--panel)" stroke="var(--line)" stroke-width="1.5"/>
               <rect x="34" y="10" width="72" height="54" rx="8"
-                    fill="var(--vpk-blueprint-tint)"/>
+                    fill="var(--blueprint-tint)"/>
               <line x1="46" y1="26" x2="92" y2="26"
-                    stroke="var(--vpk-ink)" stroke-width="2" stroke-linecap="round"/>
+                    stroke="var(--ink)" stroke-width="2" stroke-linecap="round"/>
               <line x1="46" y1="38" x2="80" y2="38"
-                    stroke="var(--vpk-ink)" stroke-width="2" stroke-linecap="round" opacity="0.5"/>
-              <circle cx="98" cy="60" r="12" fill="var(--vpk-blueprint)"/>
+                    stroke="var(--ink)" stroke-width="2" stroke-linecap="round" opacity="0.5"/>
+              <circle cx="98" cy="60" r="12" fill="var(--blueprint)"/>
               <path d="M98 55 v10 M93 60 h10"
                     stroke="white" stroke-width="2" stroke-linecap="round"/>
             </svg>

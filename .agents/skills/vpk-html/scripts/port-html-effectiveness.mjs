@@ -10,7 +10,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { buildFontFaceBlock, readStylesCss } from "./shared.mjs";
+import { buildFaviconLinkBlock, buildFontFaceBlock, readStylesCss } from "./shared.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SKILL_ROOT = path.resolve(__dirname, "..");
@@ -357,20 +357,21 @@ catalog. It does not copy upstream HTML, CSS, or prose.
 <meta name="description" content="{{DESCRIPTION}}">
 <meta name="keywords" content="{{KEYWORDS}}">
 <meta name="generator" content="vpk-html">
+${buildFaviconLinkBlock()}
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 ${sharedCss}
 
 :root {
-\t--parchment: var(--vpk-paper);
-\t--ivory: var(--vpk-surface-raised);
-\t--near-black: var(--vpk-ink);
-\t--dark-warm: var(--vpk-ink);
-\t--olive: var(--vpk-muted-text);
-\t--stone: var(--vpk-subtlest-text);
-\t--brand: var(--vpk-blueprint);
-\t--border: var(--vpk-rule);
-\t--tag-bg: var(--vpk-blueprint-tint);
+\t--parchment: var(--paper);
+\t--ivory: var(--surface-raised);
+\t--near-black: var(--ink);
+\t--dark-warm: var(--ink);
+\t--olive: var(--muted-text);
+\t--stone: var(--subtlest-text);
+\t--brand: var(--blueprint);
+\t--border: var(--rule);
+\t--tag-bg: var(--blueprint-tint);
 \t--shadow-hard: 3px 3px 0 var(--near-black);
 \t--serif: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 \t--sans: var(--serif);
@@ -389,7 +390,7 @@ html {
 
 body {
 \tbackground:
-\t\tradial-gradient(circle at 1px 1px, var(--vpk-paper-rule) 1px, transparent 0),
+\t\tradial-gradient(circle at 1px 1px, var(--paper-rule) 1px, transparent 0),
 \t\tvar(--parchment);
 \tbackground-size: 16px 16px;
 \tfont-size: 18px;

@@ -3,62 +3,65 @@
      DIAGRAM · donut chart (vpk-html palette)
      SVG primitive ported from kami's diagram library, restyled with the
      vpk-html identity: Geist Pixel headline, Geist Sans body, semantic paper
-     background, blueprint (var(--vpk-blueprint)) accent. Drop the <svg> block into a
+     background, blueprint (var(--blueprint)) accent. Drop the <svg> block into a
      long-doc, portfolio, or design-system payload via section.trustedHtml.
      ================================================================== -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <title>donut chart · vpk-html diagram</title>
+<link rel="icon" type="image/svg+xml" sizes="any" href="data:image/svg+xml,%3Csvg%20width%3D%2232%22%20height%3D%2232%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%228%22%20fill%3D%22%23121212%22%2F%3E%3Ccircle%20cx%3D%2211%22%20cy%3D%2221%22%20r%3D%225%22%20fill%3D%22white%22%2F%3E%3Ccircle%20cx%3D%2221%22%20cy%3D%2221%22%20r%3D%225%22%20fill%3D%22white%22%2F%3E%3Ccircle%20cx%3D%2211%22%20cy%3D%2211%22%20r%3D%225%22%20fill%3D%22white%22%2F%3E%3Ccircle%20cx%3D%2221%22%20cy%3D%2211%22%20r%3D%225%22%20fill%3D%22white%22%2F%3E%3C%2Fsvg%3E">
+<link rel="icon" type="image/svg+xml" sizes="any" media="(prefers-color-scheme: light)" href="data:image/svg+xml,%3Csvg%20width%3D%2232%22%20height%3D%2232%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Ccircle%20cx%3D%229%22%20cy%3D%2223%22%20r%3D%225%22%20fill%3D%22%23121212%22%2F%3E%3Ccircle%20cx%3D%2223%22%20cy%3D%2223%22%20r%3D%225%22%20fill%3D%22%23121212%22%2F%3E%3Ccircle%20cx%3D%229%22%20cy%3D%229%22%20r%3D%225%22%20fill%3D%22%23121212%22%2F%3E%3Ccircle%20cx%3D%2223%22%20cy%3D%229%22%20r%3D%225%22%20fill%3D%22%23121212%22%2F%3E%3C%2Fsvg%3E">
+<link rel="icon" type="image/svg+xml" sizes="any" media="(prefers-color-scheme: dark)" href="data:image/svg+xml,%3Csvg%20width%3D%2232%22%20height%3D%2232%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Ccircle%20cx%3D%229%22%20cy%3D%2223%22%20r%3D%225%22%20fill%3D%22white%22%20stroke%3D%22%23121212%22%20stroke-width%3D%221.25%22%2F%3E%3Ccircle%20cx%3D%2223%22%20cy%3D%2223%22%20r%3D%225%22%20fill%3D%22white%22%20stroke%3D%22%23121212%22%20stroke-width%3D%221.25%22%2F%3E%3Ccircle%20cx%3D%229%22%20cy%3D%229%22%20r%3D%225%22%20fill%3D%22white%22%20stroke%3D%22%23121212%22%20stroke-width%3D%221.25%22%2F%3E%3Ccircle%20cx%3D%2223%22%20cy%3D%229%22%20r%3D%225%22%20fill%3D%22white%22%20stroke%3D%22%23121212%22%20stroke-width%3D%221.25%22%2F%3E%3C%2Fsvg%3E">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
-    --vpk-paper: var(--ds-surface, #ffffff);
-    --vpk-ink: var(--ds-text, #292a2e);
-    --vpk-muted-text: var(--ds-text-subtle, #505258);
-    --vpk-blueprint: var(--ds-background-brand-bold, #1868db);
-    --vpk-danger: var(--ds-background-danger-bold, #c9372c);
-    --vpk-rule: var(--ds-border, #0b120e24);
+    --paper: var(--ds-surface, #ffffff);
+    --ink: var(--ds-text, #292a2e);
+    --muted-text: var(--ds-text-subtle, #505258);
+    --blueprint: var(--ds-background-accent-lime-subtle, #94c748);
+    --danger: var(--ds-background-danger-bold, #c9372c);
+    --rule: var(--ds-border, #0b120e24);
 
-    --vpk-font-sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-    --vpk-font-mono: "Geist Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
-    --vpk-font-display: "Geist Pixel", "Geist Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+    --font-sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mono: "Geist Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+    --font-display: "Geist Pixel", "Geist Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
   }
 
 [data-theme="dark"] {
-	--vpk-paper: var(--ds-surface, #101214);
-	--vpk-paper-background: var(--ds-surface, #1d2125);
-	--vpk-surface-raised: var(--ds-surface-raised, #22272b);
-	--vpk-surface-overlay: var(--ds-surface-overlay, #282e33);
-	--vpk-surface-sunken: var(--ds-surface-sunken, #161a1d);
-	--vpk-ink: var(--ds-text, #dee4ea);
-	--vpk-muted-text: var(--ds-text-subtle, #9fadbc);
-	--vpk-subtlest-text: var(--ds-text-subtlest, #738496);
-	--vpk-inverse-text: var(--ds-text-inverse, #101214);
-	--vpk-rule: var(--ds-border, #a6c5e229);
-	--vpk-rule-strong: var(--ds-border-bold, #738496);
-	--vpk-blueprint: var(--ds-background-brand-bold, #579dff);
-	--vpk-link: var(--ds-link, #579dff);
-	--vpk-link-pressed: var(--ds-link-pressed, #85b8ff);
-	--vpk-selected: var(--ds-background-selected, #09326c);
-	--vpk-blueprint-tint: var(--ds-background-information, #09326c);
-	--vpk-blueprint-tint-strong: var(--ds-background-information-hovered, #0c418a);
-	--vpk-focus-ring: var(--ds-border-focused, #579dff);
-	--vpk-code-surface: var(--ds-background-neutral-subtle, #161a1d);
-	--vpk-code-ink: var(--ds-text, #dee4ea);
-	--vpk-code-inverse: var(--ds-text-inverse, #101214);
-	--vpk-math-highlight: var(--ds-background-information, #09326c);
-	--vpk-success: var(--ds-background-success-bold, #b3df72);
-	--vpk-success-tint: var(--ds-background-success, #1f4d3a);
-	--vpk-warning: var(--ds-background-warning-bold, #f5cd47);
-	--vpk-warning-tint: var(--ds-background-warning, #533f04);
-	--vpk-danger: var(--ds-background-danger-bold, #f87168);
-	--vpk-danger-tint: var(--ds-background-danger, #5d1f1a);
-	--vpk-info: var(--ds-background-information-bold, #579dff);
-	--vpk-info-tint: var(--ds-background-information, #09326c);
-	--vpk-paper-rule: color-mix(in srgb, var(--vpk-ink) 8%, transparent);
-	--vpk-shadow: var(--ds-shadow-raised, 0 1px 1px rgba(0, 0, 0, 0.32), 0 0 1px rgba(0, 0, 0, 0.42));
+	--paper: var(--ds-surface, #101214);
+	--paper-background: var(--ds-surface, #1d2125);
+	--surface-raised: var(--ds-surface-raised, #22272b);
+	--surface-overlay: var(--ds-surface-overlay, #282e33);
+	--surface-sunken: var(--ds-surface-sunken, #161a1d);
+	--ink: var(--ds-text, #dee4ea);
+	--muted-text: var(--ds-text-subtle, #9fadbc);
+	--subtlest-text: var(--ds-text-subtlest, #738496);
+	--inverse-text: var(--ds-text-inverse, #101214);
+	--rule: var(--ds-border, #a6c5e229);
+	--rule-strong: var(--ds-border-bold, #738496);
+	--blueprint: var(--ds-background-accent-lime-subtle, #4c6b1f);
+	--link: var(--ds-text-accent-lime, #b3df72);
+	--link-pressed: var(--ds-text-accent-lime-bolder, #d3f1a7);
+	--selected: var(--ds-background-accent-lime-subtler, #37471f);
+	--blueprint-tint: var(--ds-background-accent-lime-subtlest, #28311b);
+	--blueprint-tint-strong: var(--ds-background-accent-lime-subtler, #37471f);
+	--focus-ring: var(--ds-border-accent-lime, #82b536);
+	--code-surface: var(--ds-background-neutral-subtle, #161a1d);
+	--code-ink: var(--ds-text, #dee4ea);
+	--code-inverse: var(--ds-text-inverse, #101214);
+	--math-highlight: var(--ds-background-accent-lime-subtlest, #28311b);
+	--success: var(--ds-background-success-bold, #b3df72);
+	--success-tint: var(--ds-background-success, #1f4d3a);
+	--warning: var(--ds-background-warning-bold, #f5cd47);
+	--warning-tint: var(--ds-background-warning, #533f04);
+	--danger: var(--ds-background-danger-bold, #f87168);
+	--danger-tint: var(--ds-background-danger, #5d1f1a);
+	--info: var(--ds-background-information-bold, #579dff);
+	--info-tint: var(--ds-background-information, #09326c);
+	--paper-rule: color-mix(in srgb, var(--ink) 8%, transparent);
+	--shadow: var(--ds-shadow-raised, 0 1px 1px rgba(0, 0, 0, 0.32), 0 0 1px rgba(0, 0, 0, 0.42));
 }
 
 @font-face {
@@ -78,9 +81,9 @@
   }
 
   body {
-    background: var(--vpk-paper);
-    color: var(--vpk-ink);
-    font-family: var(--vpk-font-sans);
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-sans);
     font-size: 16px;
     line-height: 1.8;
     min-height: 100vh;
@@ -94,8 +97,8 @@
   }
 
   .eyebrow {
-    color: var(--vpk-danger);
-    font-family: var(--vpk-font-mono);
+    color: var(--danger);
+    font-family: var(--font-mono);
     font-size: 10px;
     line-height: 14px;
     letter-spacing: 0.18em;
@@ -104,8 +107,8 @@
   }
 
   h1 {
-    color: var(--vpk-blueprint);
-    font-family: var(--vpk-font-display);
+    color: var(--blueprint);
+    font-family: var(--font-display);
     font-size: 16px;
     line-height: 1.8;
     font-weight: 400;
@@ -117,9 +120,9 @@
   svg { display: block; min-width: 860px; width: 100%; }
 
   .caption {
-    border-top: 1px solid var(--vpk-rule);
-    color: var(--vpk-muted-text);
-    font-family: var(--vpk-font-sans);
+    border-top: 1px solid var(--rule);
+    color: var(--muted-text);
+    font-family: var(--font-sans);
     font-size: 14px;
     line-height: 22px;
     margin-top: 24px;
@@ -138,19 +141,19 @@
          viewBox: 0 0 680 420
          Donut center: cx=300 cy=200  R=136 (outer)  r=76 (inner)
          6 segments, clockwise from top (-90°):
-           S1: 32%  -90° to  25.2°  fill=var(--vpk-blueprint)  (focal/largest)
-           S2: 24%  25.2° to 111.6° fill=var(--vpk-muted-text)
-           S3: 18% 111.6° to 176.4° fill=var(--vpk-muted-text)
-           S4: 12% 176.4° to 219.6° fill=var(--vpk-rule)
-           S5:  8% 219.6° to 248.4° fill=var(--vpk-rule)
-           S6:  6% 248.4° to 270°   fill=var(--vpk-blueprint-tint) stroke=var(--vpk-rule)
+           S1: 32%  -90° to  25.2°  fill=var(--blueprint)  (focal/largest)
+           S2: 24%  25.2° to 111.6° fill=var(--muted-text)
+           S3: 18% 111.6° to 176.4° fill=var(--muted-text)
+           S4: 12% 176.4° to 219.6° fill=var(--rule)
+           S5:  8% 219.6° to 248.4° fill=var(--rule)
+           S6:  6% 248.4° to 270°   fill=var(--blueprint-tint) stroke=var(--rule)
          Center text: primary label + secondary label at (300,200)
          Legend: x=476 from y=144 to y=296 step=24
          ============================================================ -->
     <svg viewBox="0 0 680 420" xmlns="http://www.w3.org/2000/svg">
 
       <!-- Canvas -->
-      <rect width="100%" height="100%" fill="var(--vpk-paper)"/>
+      <rect width="100%" height="100%" fill="var(--paper)"/>
 
       <!-- ==================================================
            DONUT SEGMENTS · replace between DATA START / DATA END
@@ -159,78 +162,78 @@
 
       <!-- S1: 32% · -90° to 25.2° · span 115.2° · large-arc=0 -->
       <path d="M 300 64 A 136 136 0 0 1 423.1 257.9 L 368.8 232.4 A 76 76 0 0 0 300 124 Z"
-            fill="var(--vpk-blueprint)"/>
+            fill="var(--blueprint)"/>
 
       <!-- S2: 24% · 25.2° to 111.6° · span 86.4° · large-arc=0 -->
       <path d="M 423.1 257.9 A 136 136 0 0 1 249.1 326.1 L 271.5 270.5 A 76 76 0 0 0 368.8 232.4 Z"
-            fill="var(--vpk-muted-text)"/>
+            fill="var(--muted-text)"/>
 
       <!-- S3: 18% · 111.6° to 176.4° · span 64.8° · large-arc=0 -->
       <path d="M 249.1 326.1 A 136 136 0 0 1 164.3 208.6 L 224.2 204.8 A 76 76 0 0 0 271.5 270.5 Z"
-            fill="var(--vpk-muted-text)"/>
+            fill="var(--muted-text)"/>
 
       <!-- S4: 12% · 176.4° to 219.6° · span 43.2° · large-arc=0 -->
       <path d="M 164.3 208.6 A 136 136 0 0 1 195.2 113.3 L 241.4 151.6 A 76 76 0 0 0 224.2 204.8 Z"
-            fill="var(--vpk-rule)"/>
+            fill="var(--rule)"/>
 
       <!-- S5: 8% · 219.6° to 248.4° · span 28.8° · large-arc=0 -->
       <path d="M 195.2 113.3 A 136 136 0 0 1 249.8 73.6 L 271.9 129.4 A 76 76 0 0 0 241.4 151.6 Z"
-            fill="var(--vpk-rule)"/>
+            fill="var(--rule)"/>
 
       <!-- S6: 6% · 248.4° to 270° · span 21.6° · large-arc=0 -->
       <path d="M 249.8 73.6 A 136 136 0 0 1 300 64 L 300 124 A 76 76 0 0 0 271.9 129.4 Z"
-            fill="var(--vpk-blueprint-tint)" stroke="var(--vpk-rule)" stroke-width="0.8"/>
+            fill="var(--blueprint-tint)" stroke="var(--rule)" stroke-width="0.8"/>
 
       <!-- Thin separator ring over segment joins (visual polish) -->
-      <circle cx="300" cy="200" r="136" fill="none" stroke="var(--vpk-paper)" stroke-width="1.5"/>
-      <circle cx="300" cy="200" r="76"  fill="none" stroke="var(--vpk-paper)" stroke-width="1.5"/>
+      <circle cx="300" cy="200" r="136" fill="none" stroke="var(--paper)" stroke-width="1.5"/>
+      <circle cx="300" cy="200" r="76"  fill="none" stroke="var(--paper)" stroke-width="1.5"/>
 
       <!-- Donut hole background -->
-      <circle cx="300" cy="200" r="75" fill="var(--vpk-paper)"/>
+      <circle cx="300" cy="200" r="75" fill="var(--paper)"/>
 
       <!-- Center label (primary value + secondary text) -->
-      <text x="300" y="193" fill="var(--vpk-blueprint)" font-size="26" font-family="inherit" font-weight="500" text-anchor="middle">32%</text>
-      <text x="300" y="214" fill="var(--vpk-muted-text)" font-size="10" font-family="inherit" text-anchor="middle" letter-spacing="0.1em">{{CENTER LABEL}}</text>
+      <text x="300" y="193" fill="var(--blueprint)" font-size="26" font-family="inherit" font-weight="500" text-anchor="middle">32%</text>
+      <text x="300" y="214" fill="var(--muted-text)" font-size="10" font-family="inherit" text-anchor="middle" letter-spacing="0.1em">{{CENTER LABEL}}</text>
 
       <!-- ================================================== DATA END -->
 
       <!-- Legend (right of donut) -->
-      <line x1="460" y1="120" x2="460" y2="300" stroke="var(--vpk-rule)" stroke-width="0.8"/>
+      <line x1="460" y1="120" x2="460" y2="300" stroke="var(--rule)" stroke-width="0.8"/>
 
       <!-- S1 -->
-      <rect x="472" y="136" width="12" height="12" fill="var(--vpk-blueprint)" rx="2"/>
-      <text x="492" y="147" fill="var(--vpk-ink)" font-size="9.5" font-family="inherit" font-weight="500">32%</text>
-      <text x="532" y="147" fill="var(--vpk-muted-text)" font-size="9" font-family="inherit">{{Category A}}</text>
+      <rect x="472" y="136" width="12" height="12" fill="var(--blueprint)" rx="2"/>
+      <text x="492" y="147" fill="var(--ink)" font-size="9.5" font-family="inherit" font-weight="500">32%</text>
+      <text x="532" y="147" fill="var(--muted-text)" font-size="9" font-family="inherit">{{Category A}}</text>
 
       <!-- S2 -->
-      <rect x="472" y="160" width="12" height="12" fill="var(--vpk-muted-text)" rx="2"/>
-      <text x="492" y="171" fill="var(--vpk-ink)" font-size="9.5" font-family="inherit">24%</text>
-      <text x="532" y="171" fill="var(--vpk-muted-text)" font-size="9" font-family="inherit">{{Category B}}</text>
+      <rect x="472" y="160" width="12" height="12" fill="var(--muted-text)" rx="2"/>
+      <text x="492" y="171" fill="var(--ink)" font-size="9.5" font-family="inherit">24%</text>
+      <text x="532" y="171" fill="var(--muted-text)" font-size="9" font-family="inherit">{{Category B}}</text>
 
       <!-- S3 -->
-      <rect x="472" y="184" width="12" height="12" fill="var(--vpk-muted-text)" rx="2"/>
-      <text x="492" y="195" fill="var(--vpk-ink)" font-size="9.5" font-family="inherit">18%</text>
-      <text x="532" y="195" fill="var(--vpk-muted-text)" font-size="9" font-family="inherit">{{Category C}}</text>
+      <rect x="472" y="184" width="12" height="12" fill="var(--muted-text)" rx="2"/>
+      <text x="492" y="195" fill="var(--ink)" font-size="9.5" font-family="inherit">18%</text>
+      <text x="532" y="195" fill="var(--muted-text)" font-size="9" font-family="inherit">{{Category C}}</text>
 
       <!-- S4 -->
-      <rect x="472" y="208" width="12" height="12" fill="var(--vpk-rule)" rx="2"/>
-      <text x="492" y="219" fill="var(--vpk-ink)" font-size="9.5" font-family="inherit">12%</text>
-      <text x="532" y="219" fill="var(--vpk-muted-text)" font-size="9" font-family="inherit">{{Category D}}</text>
+      <rect x="472" y="208" width="12" height="12" fill="var(--rule)" rx="2"/>
+      <text x="492" y="219" fill="var(--ink)" font-size="9.5" font-family="inherit">12%</text>
+      <text x="532" y="219" fill="var(--muted-text)" font-size="9" font-family="inherit">{{Category D}}</text>
 
       <!-- S5 -->
-      <rect x="472" y="232" width="12" height="12" fill="var(--vpk-rule)" rx="2"/>
-      <text x="492" y="243" fill="var(--vpk-ink)" font-size="9.5" font-family="inherit">8%</text>
-      <text x="532" y="243" fill="var(--vpk-muted-text)" font-size="9" font-family="inherit">{{Category E}}</text>
+      <rect x="472" y="232" width="12" height="12" fill="var(--rule)" rx="2"/>
+      <text x="492" y="243" fill="var(--ink)" font-size="9.5" font-family="inherit">8%</text>
+      <text x="532" y="243" fill="var(--muted-text)" font-size="9" font-family="inherit">{{Category E}}</text>
 
       <!-- S6 -->
-      <rect x="472" y="256" width="12" height="12" fill="var(--vpk-blueprint-tint)" stroke="var(--vpk-rule)" stroke-width="0.8" rx="2"/>
-      <text x="492" y="267" fill="var(--vpk-ink)" font-size="9.5" font-family="inherit">6%</text>
-      <text x="532" y="267" fill="var(--vpk-muted-text)" font-size="9" font-family="inherit">{{Category F}}</text>
+      <rect x="472" y="256" width="12" height="12" fill="var(--blueprint-tint)" stroke="var(--rule)" stroke-width="0.8" rx="2"/>
+      <text x="492" y="267" fill="var(--ink)" font-size="9.5" font-family="inherit">6%</text>
+      <text x="532" y="267" fill="var(--muted-text)" font-size="9" font-family="inherit">{{Category F}}</text>
 
       <!-- Bottom rule -->
-      <line x1="60" y1="380" x2="620" y2="380" stroke="var(--vpk-rule)" stroke-width="0.8"/>
-      <text x="60" y="397" fill="var(--vpk-muted-text)" font-size="9" font-family="'Geist Mono', monospace" letter-spacing="0.15em">TOTAL · 100%</text>
-      <text x="460" y="397" fill="var(--vpk-muted-text)" font-size="9" font-family="inherit">{{Source / period}}</text>
+      <line x1="60" y1="380" x2="620" y2="380" stroke="var(--rule)" stroke-width="0.8"/>
+      <text x="60" y="397" fill="var(--muted-text)" font-size="9" font-family="'Geist Mono', monospace" letter-spacing="0.15em">TOTAL · 100%</text>
+      <text x="460" y="397" fill="var(--muted-text)" font-size="9" font-family="inherit">{{Source / period}}</text>
 
     </svg>
 

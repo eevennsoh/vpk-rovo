@@ -3,62 +3,65 @@
      DIAGRAM · quadrant (vpk-html palette)
      SVG primitive ported from kami's diagram library, restyled with the
      vpk-html identity: Geist Pixel headline, Geist Sans body, semantic paper
-     background, blueprint (var(--vpk-blueprint)) accent. Drop the <svg> block into a
+     background, blueprint (var(--blueprint)) accent. Drop the <svg> block into a
      long-doc, portfolio, or design-system payload via section.trustedHtml.
      ================================================================== -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <title>quadrant · vpk-html diagram</title>
+<link rel="icon" type="image/svg+xml" sizes="any" href="data:image/svg+xml,%3Csvg%20width%3D%2232%22%20height%3D%2232%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%228%22%20fill%3D%22%23121212%22%2F%3E%3Ccircle%20cx%3D%2211%22%20cy%3D%2221%22%20r%3D%225%22%20fill%3D%22white%22%2F%3E%3Ccircle%20cx%3D%2221%22%20cy%3D%2221%22%20r%3D%225%22%20fill%3D%22white%22%2F%3E%3Ccircle%20cx%3D%2211%22%20cy%3D%2211%22%20r%3D%225%22%20fill%3D%22white%22%2F%3E%3Ccircle%20cx%3D%2221%22%20cy%3D%2211%22%20r%3D%225%22%20fill%3D%22white%22%2F%3E%3C%2Fsvg%3E">
+<link rel="icon" type="image/svg+xml" sizes="any" media="(prefers-color-scheme: light)" href="data:image/svg+xml,%3Csvg%20width%3D%2232%22%20height%3D%2232%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Ccircle%20cx%3D%229%22%20cy%3D%2223%22%20r%3D%225%22%20fill%3D%22%23121212%22%2F%3E%3Ccircle%20cx%3D%2223%22%20cy%3D%2223%22%20r%3D%225%22%20fill%3D%22%23121212%22%2F%3E%3Ccircle%20cx%3D%229%22%20cy%3D%229%22%20r%3D%225%22%20fill%3D%22%23121212%22%2F%3E%3Ccircle%20cx%3D%2223%22%20cy%3D%229%22%20r%3D%225%22%20fill%3D%22%23121212%22%2F%3E%3C%2Fsvg%3E">
+<link rel="icon" type="image/svg+xml" sizes="any" media="(prefers-color-scheme: dark)" href="data:image/svg+xml,%3Csvg%20width%3D%2232%22%20height%3D%2232%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Ccircle%20cx%3D%229%22%20cy%3D%2223%22%20r%3D%225%22%20fill%3D%22white%22%20stroke%3D%22%23121212%22%20stroke-width%3D%221.25%22%2F%3E%3Ccircle%20cx%3D%2223%22%20cy%3D%2223%22%20r%3D%225%22%20fill%3D%22white%22%20stroke%3D%22%23121212%22%20stroke-width%3D%221.25%22%2F%3E%3Ccircle%20cx%3D%229%22%20cy%3D%229%22%20r%3D%225%22%20fill%3D%22white%22%20stroke%3D%22%23121212%22%20stroke-width%3D%221.25%22%2F%3E%3Ccircle%20cx%3D%2223%22%20cy%3D%229%22%20r%3D%225%22%20fill%3D%22white%22%20stroke%3D%22%23121212%22%20stroke-width%3D%221.25%22%2F%3E%3C%2Fsvg%3E">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
-    --vpk-paper: var(--ds-surface, #ffffff);
-    --vpk-ink: var(--ds-text, #292a2e);
-    --vpk-muted-text: var(--ds-text-subtle, #505258);
-    --vpk-blueprint: var(--ds-background-brand-bold, #1868db);
-    --vpk-danger: var(--ds-background-danger-bold, #c9372c);
-    --vpk-rule: var(--ds-border, #0b120e24);
+    --paper: var(--ds-surface, #ffffff);
+    --ink: var(--ds-text, #292a2e);
+    --muted-text: var(--ds-text-subtle, #505258);
+    --blueprint: var(--ds-background-accent-lime-subtle, #94c748);
+    --danger: var(--ds-background-danger-bold, #c9372c);
+    --rule: var(--ds-border, #0b120e24);
 
-    --vpk-font-sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-    --vpk-font-mono: "Geist Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
-    --vpk-font-display: "Geist Pixel", "Geist Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+    --font-sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mono: "Geist Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+    --font-display: "Geist Pixel", "Geist Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
   }
 
 [data-theme="dark"] {
-	--vpk-paper: var(--ds-surface, #101214);
-	--vpk-paper-background: var(--ds-surface, #1d2125);
-	--vpk-surface-raised: var(--ds-surface-raised, #22272b);
-	--vpk-surface-overlay: var(--ds-surface-overlay, #282e33);
-	--vpk-surface-sunken: var(--ds-surface-sunken, #161a1d);
-	--vpk-ink: var(--ds-text, #dee4ea);
-	--vpk-muted-text: var(--ds-text-subtle, #9fadbc);
-	--vpk-subtlest-text: var(--ds-text-subtlest, #738496);
-	--vpk-inverse-text: var(--ds-text-inverse, #101214);
-	--vpk-rule: var(--ds-border, #a6c5e229);
-	--vpk-rule-strong: var(--ds-border-bold, #738496);
-	--vpk-blueprint: var(--ds-background-brand-bold, #579dff);
-	--vpk-link: var(--ds-link, #579dff);
-	--vpk-link-pressed: var(--ds-link-pressed, #85b8ff);
-	--vpk-selected: var(--ds-background-selected, #09326c);
-	--vpk-blueprint-tint: var(--ds-background-information, #09326c);
-	--vpk-blueprint-tint-strong: var(--ds-background-information-hovered, #0c418a);
-	--vpk-focus-ring: var(--ds-border-focused, #579dff);
-	--vpk-code-surface: var(--ds-background-neutral-subtle, #161a1d);
-	--vpk-code-ink: var(--ds-text, #dee4ea);
-	--vpk-code-inverse: var(--ds-text-inverse, #101214);
-	--vpk-math-highlight: var(--ds-background-information, #09326c);
-	--vpk-success: var(--ds-background-success-bold, #b3df72);
-	--vpk-success-tint: var(--ds-background-success, #1f4d3a);
-	--vpk-warning: var(--ds-background-warning-bold, #f5cd47);
-	--vpk-warning-tint: var(--ds-background-warning, #533f04);
-	--vpk-danger: var(--ds-background-danger-bold, #f87168);
-	--vpk-danger-tint: var(--ds-background-danger, #5d1f1a);
-	--vpk-info: var(--ds-background-information-bold, #579dff);
-	--vpk-info-tint: var(--ds-background-information, #09326c);
-	--vpk-paper-rule: color-mix(in srgb, var(--vpk-ink) 8%, transparent);
-	--vpk-shadow: var(--ds-shadow-raised, 0 1px 1px rgba(0, 0, 0, 0.32), 0 0 1px rgba(0, 0, 0, 0.42));
+	--paper: var(--ds-surface, #101214);
+	--paper-background: var(--ds-surface, #1d2125);
+	--surface-raised: var(--ds-surface-raised, #22272b);
+	--surface-overlay: var(--ds-surface-overlay, #282e33);
+	--surface-sunken: var(--ds-surface-sunken, #161a1d);
+	--ink: var(--ds-text, #dee4ea);
+	--muted-text: var(--ds-text-subtle, #9fadbc);
+	--subtlest-text: var(--ds-text-subtlest, #738496);
+	--inverse-text: var(--ds-text-inverse, #101214);
+	--rule: var(--ds-border, #a6c5e229);
+	--rule-strong: var(--ds-border-bold, #738496);
+	--blueprint: var(--ds-background-accent-lime-subtle, #4c6b1f);
+	--link: var(--ds-text-accent-lime, #b3df72);
+	--link-pressed: var(--ds-text-accent-lime-bolder, #d3f1a7);
+	--selected: var(--ds-background-accent-lime-subtler, #37471f);
+	--blueprint-tint: var(--ds-background-accent-lime-subtlest, #28311b);
+	--blueprint-tint-strong: var(--ds-background-accent-lime-subtler, #37471f);
+	--focus-ring: var(--ds-border-accent-lime, #82b536);
+	--code-surface: var(--ds-background-neutral-subtle, #161a1d);
+	--code-ink: var(--ds-text, #dee4ea);
+	--code-inverse: var(--ds-text-inverse, #101214);
+	--math-highlight: var(--ds-background-accent-lime-subtlest, #28311b);
+	--success: var(--ds-background-success-bold, #b3df72);
+	--success-tint: var(--ds-background-success, #1f4d3a);
+	--warning: var(--ds-background-warning-bold, #f5cd47);
+	--warning-tint: var(--ds-background-warning, #533f04);
+	--danger: var(--ds-background-danger-bold, #f87168);
+	--danger-tint: var(--ds-background-danger, #5d1f1a);
+	--info: var(--ds-background-information-bold, #579dff);
+	--info-tint: var(--ds-background-information, #09326c);
+	--paper-rule: color-mix(in srgb, var(--ink) 8%, transparent);
+	--shadow: var(--ds-shadow-raised, 0 1px 1px rgba(0, 0, 0, 0.32), 0 0 1px rgba(0, 0, 0, 0.42));
 }
 
 @font-face {
@@ -78,9 +81,9 @@
   }
 
   body {
-    background: var(--vpk-paper);
-    color: var(--vpk-ink);
-    font-family: var(--vpk-font-sans);
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-sans);
     font-size: 16px;
     line-height: 1.8;
     min-height: 100vh;
@@ -94,8 +97,8 @@
   }
 
   .eyebrow {
-    color: var(--vpk-danger);
-    font-family: var(--vpk-font-mono);
+    color: var(--danger);
+    font-family: var(--font-mono);
     font-size: 10px;
     line-height: 14px;
     letter-spacing: 0.18em;
@@ -104,8 +107,8 @@
   }
 
   h1 {
-    color: var(--vpk-blueprint);
-    font-family: var(--vpk-font-display);
+    color: var(--blueprint);
+    font-family: var(--font-display);
     font-size: 16px;
     line-height: 1.8;
     font-weight: 400;
@@ -117,9 +120,9 @@
   svg { display: block; min-width: 860px; width: 100%; }
 
   .caption {
-    border-top: 1px solid var(--vpk-rule);
-    color: var(--vpk-muted-text);
-    font-family: var(--vpk-font-sans);
+    border-top: 1px solid var(--rule);
+    color: var(--muted-text);
+    font-family: var(--font-sans);
     font-size: 14px;
     line-height: 22px;
     margin-top: 24px;
@@ -136,91 +139,91 @@
     <svg viewBox="0 0 820 540" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
-          <polygon points="0 0, 8 3, 0 6" fill="var(--vpk-muted-text)"/>
+          <polygon points="0 0, 8 3, 0 6" fill="var(--muted-text)"/>
         </marker>
       </defs>
 
-      <rect width="100%" height="100%" fill="var(--vpk-paper)"/>
+      <rect width="100%" height="100%" fill="var(--paper)"/>
 
       <!-- Quadrant zones (subtle background tint on the "preferred" quadrant) -->
-      <rect x="80" y="60" width="660" height="380" fill="none" stroke="var(--vpk-rule)" stroke-width="0.8"/>
-      <rect x="410" y="60" width="330" height="190" fill="var(--vpk-surface-raised)"/>
+      <rect x="80" y="60" width="660" height="380" fill="none" stroke="var(--rule)" stroke-width="0.8"/>
+      <rect x="410" y="60" width="330" height="190" fill="var(--surface-raised)"/>
 
       <!-- Cross axes (through midpoint) -->
-      <line x1="80" y1="250" x2="740" y2="250" stroke="var(--vpk-rule)" stroke-width="0.8"/>
-      <line x1="410" y1="60" x2="410" y2="440" stroke="var(--vpk-rule)" stroke-width="0.8"/>
+      <line x1="80" y1="250" x2="740" y2="250" stroke="var(--rule)" stroke-width="0.8"/>
+      <line x1="410" y1="60" x2="410" y2="440" stroke="var(--rule)" stroke-width="0.8"/>
 
       <!-- Axis arrows + labels -->
-      <line x1="80" y1="460" x2="740" y2="460" stroke="var(--vpk-muted-text)" stroke-width="1.2" marker-end="url(#arrow)"/>
-      <line x1="60" y1="440" x2="60" y2="60" stroke="var(--vpk-muted-text)" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <line x1="80" y1="460" x2="740" y2="460" stroke="var(--muted-text)" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <line x1="60" y1="440" x2="60" y2="60" stroke="var(--muted-text)" stroke-width="1.2" marker-end="url(#arrow)"/>
 
-      <text x="410" y="480" fill="var(--vpk-ink)" font-size="11" font-weight="500" font-family="inherit" text-anchor="middle" letter-spacing="0.08em">{{X axis · low to high}}</text>
-      <text x="30" y="250" fill="var(--vpk-ink)" font-size="11" font-weight="500" font-family="inherit" text-anchor="middle" letter-spacing="0.08em" transform="rotate(-90 30 250)">{{Y axis · low to high}}</text>
+      <text x="410" y="480" fill="var(--ink)" font-size="11" font-weight="500" font-family="inherit" text-anchor="middle" letter-spacing="0.08em">{{X axis · low to high}}</text>
+      <text x="30" y="250" fill="var(--ink)" font-size="11" font-weight="500" font-family="inherit" text-anchor="middle" letter-spacing="0.08em" transform="rotate(-90 30 250)">{{Y axis · low to high}}</text>
 
       <!-- Quadrant labels -->
-      <text x="244" y="88" fill="var(--vpk-muted-text)" font-size="8.5" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.22em">HIGH-Y · LOW-X</text>
-      <text x="244" y="102" fill="var(--vpk-muted-text)" font-size="10" font-family="inherit" text-anchor="middle">incubate</text>
+      <text x="244" y="88" fill="var(--muted-text)" font-size="8.5" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.22em">HIGH-Y · LOW-X</text>
+      <text x="244" y="102" fill="var(--muted-text)" font-size="10" font-family="inherit" text-anchor="middle">incubate</text>
 
-      <text x="576" y="88" fill="var(--vpk-blueprint)" font-size="8.5" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.22em">HIGH-Y · HIGH-X</text>
-      <text x="576" y="102" fill="var(--vpk-blueprint)" font-size="10" font-family="inherit" text-anchor="middle" font-weight="500">do first</text>
+      <text x="576" y="88" fill="var(--blueprint)" font-size="8.5" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.22em">HIGH-Y · HIGH-X</text>
+      <text x="576" y="102" fill="var(--blueprint)" font-size="10" font-family="inherit" text-anchor="middle" font-weight="500">do first</text>
 
-      <text x="244" y="428" fill="var(--vpk-muted-text)" font-size="8.5" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.22em">LOW-Y · LOW-X</text>
-      <text x="244" y="420" fill="var(--vpk-muted-text)" font-size="10" font-family="inherit" text-anchor="middle">drop</text>
+      <text x="244" y="428" fill="var(--muted-text)" font-size="8.5" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.22em">LOW-Y · LOW-X</text>
+      <text x="244" y="420" fill="var(--muted-text)" font-size="10" font-family="inherit" text-anchor="middle">drop</text>
 
-      <text x="576" y="428" fill="var(--vpk-muted-text)" font-size="8.5" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.22em">LOW-Y · HIGH-X</text>
-      <text x="576" y="420" fill="var(--vpk-muted-text)" font-size="10" font-family="inherit" text-anchor="middle">delegate</text>
+      <text x="576" y="428" fill="var(--muted-text)" font-size="8.5" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.22em">LOW-Y · HIGH-X</text>
+      <text x="576" y="420" fill="var(--muted-text)" font-size="10" font-family="inherit" text-anchor="middle">delegate</text>
 
       <!-- Plotted points -->
       <!-- 1: Top-left (incubate) -->
-      <circle cx="190" cy="180" r="5" fill="var(--vpk-paper)" stroke="var(--vpk-ink)" stroke-width="1"/>
-      <text x="200" y="184" fill="var(--vpk-ink)" font-size="10" font-family="inherit" font-weight="500">{{Item A}}</text>
+      <circle cx="190" cy="180" r="5" fill="var(--paper)" stroke="var(--ink)" stroke-width="1"/>
+      <text x="200" y="184" fill="var(--ink)" font-size="10" font-family="inherit" font-weight="500">{{Item A}}</text>
 
       <!-- 2: Top-right FOCAL (do first) -->
-      <circle cx="550" cy="140" r="6.5" fill="var(--vpk-blueprint)" stroke="var(--vpk-blueprint)" stroke-width="1"/>
-      <text x="562" y="145" fill="var(--vpk-blueprint)" font-size="11" font-family="inherit" font-weight="500">{{Item B · focal}}</text>
+      <circle cx="550" cy="140" r="6.5" fill="var(--blueprint)" stroke="var(--blueprint)" stroke-width="1"/>
+      <text x="562" y="145" fill="var(--blueprint)" font-size="11" font-family="inherit" font-weight="500">{{Item B · focal}}</text>
 
       <!-- 3: Top-right secondary -->
-      <circle cx="640" cy="200" r="5" fill="var(--vpk-blueprint-tint)" stroke="var(--vpk-blueprint)" stroke-width="1"/>
-      <text x="650" y="204" fill="var(--vpk-ink)" font-size="10" font-family="inherit" font-weight="500">{{Item C}}</text>
+      <circle cx="640" cy="200" r="5" fill="var(--blueprint-tint)" stroke="var(--blueprint)" stroke-width="1"/>
+      <text x="650" y="204" fill="var(--ink)" font-size="10" font-family="inherit" font-weight="500">{{Item C}}</text>
 
       <!-- 4: Top-right -->
-      <circle cx="490" cy="210" r="5" fill="var(--vpk-paper)" stroke="var(--vpk-ink)" stroke-width="1"/>
-      <text x="500" y="214" fill="var(--vpk-ink)" font-size="10" font-family="inherit">{{Item D}}</text>
+      <circle cx="490" cy="210" r="5" fill="var(--paper)" stroke="var(--ink)" stroke-width="1"/>
+      <text x="500" y="214" fill="var(--ink)" font-size="10" font-family="inherit">{{Item D}}</text>
 
       <!-- 5: Bottom-right (delegate) -->
-      <circle cx="580" cy="350" r="4.5" fill="var(--vpk-surface-sunken)" stroke="var(--vpk-muted-text)" stroke-width="1"/>
-      <text x="590" y="354" fill="var(--vpk-muted-text)" font-size="10" font-family="inherit">{{Item E}}</text>
+      <circle cx="580" cy="350" r="4.5" fill="var(--surface-sunken)" stroke="var(--muted-text)" stroke-width="1"/>
+      <text x="590" y="354" fill="var(--muted-text)" font-size="10" font-family="inherit">{{Item E}}</text>
 
       <!-- 6: Bottom-left (drop) -->
-      <circle cx="180" cy="380" r="4" fill="var(--vpk-surface-sunken)" stroke="var(--vpk-rule-strong)" stroke-width="1"/>
-      <text x="190" y="384" fill="var(--vpk-muted-text)" font-size="10" font-family="inherit">{{Item F}}</text>
+      <circle cx="180" cy="380" r="4" fill="var(--surface-sunken)" stroke="var(--rule-strong)" stroke-width="1"/>
+      <text x="190" y="384" fill="var(--muted-text)" font-size="10" font-family="inherit">{{Item F}}</text>
 
       <!-- 7: Bottom-left -->
-      <circle cx="280" cy="340" r="4" fill="var(--vpk-surface-sunken)" stroke="var(--vpk-rule-strong)" stroke-width="1"/>
-      <text x="290" y="344" fill="var(--vpk-muted-text)" font-size="10" font-family="inherit">{{Item G}}</text>
+      <circle cx="280" cy="340" r="4" fill="var(--surface-sunken)" stroke="var(--rule-strong)" stroke-width="1"/>
+      <text x="290" y="344" fill="var(--muted-text)" font-size="10" font-family="inherit">{{Item G}}</text>
 
       <!-- 8: Near center -->
-      <circle cx="380" cy="270" r="4" fill="var(--vpk-paper)" stroke="var(--vpk-ink)" stroke-width="1"/>
-      <text x="390" y="274" fill="var(--vpk-ink)" font-size="10" font-family="inherit">{{Item H}}</text>
+      <circle cx="380" cy="270" r="4" fill="var(--paper)" stroke="var(--ink)" stroke-width="1"/>
+      <text x="390" y="274" fill="var(--ink)" font-size="10" font-family="inherit">{{Item H}}</text>
 
       <!-- Legend -->
-      <line x1="40" y1="502" x2="780" y2="502" stroke="var(--vpk-rule)" stroke-width="0.8"/>
-      <text x="40" y="518" fill="var(--vpk-muted-text)" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.22em">LEGEND</text>
+      <line x1="40" y1="502" x2="780" y2="502" stroke="var(--rule)" stroke-width="0.8"/>
+      <text x="40" y="518" fill="var(--muted-text)" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.22em">LEGEND</text>
 
-      <circle cx="180" cy="514" r="5" fill="var(--vpk-blueprint)" stroke="var(--vpk-blueprint)" stroke-width="1"/>
-      <text x="192" y="518" fill="var(--vpk-muted-text)" font-size="8.5" font-family="inherit">Focal · do first</text>
+      <circle cx="180" cy="514" r="5" fill="var(--blueprint)" stroke="var(--blueprint)" stroke-width="1"/>
+      <text x="192" y="518" fill="var(--muted-text)" font-size="8.5" font-family="inherit">Focal · do first</text>
 
-      <circle cx="328" cy="514" r="5" fill="var(--vpk-blueprint-tint)" stroke="var(--vpk-blueprint)" stroke-width="1"/>
-      <text x="340" y="518" fill="var(--vpk-muted-text)" font-size="8.5" font-family="inherit">Near-focal</text>
+      <circle cx="328" cy="514" r="5" fill="var(--blueprint-tint)" stroke="var(--blueprint)" stroke-width="1"/>
+      <text x="340" y="518" fill="var(--muted-text)" font-size="8.5" font-family="inherit">Near-focal</text>
 
-      <circle cx="450" cy="514" r="5" fill="var(--vpk-paper)" stroke="var(--vpk-ink)" stroke-width="1"/>
-      <text x="462" y="518" fill="var(--vpk-muted-text)" font-size="8.5" font-family="inherit">Standard</text>
+      <circle cx="450" cy="514" r="5" fill="var(--paper)" stroke="var(--ink)" stroke-width="1"/>
+      <text x="462" y="518" fill="var(--muted-text)" font-size="8.5" font-family="inherit">Standard</text>
 
-      <circle cx="555" cy="514" r="5" fill="var(--vpk-surface-sunken)" stroke="var(--vpk-muted-text)" stroke-width="1"/>
-      <text x="567" y="518" fill="var(--vpk-muted-text)" font-size="8.5" font-family="inherit">Secondary</text>
+      <circle cx="555" cy="514" r="5" fill="var(--surface-sunken)" stroke="var(--muted-text)" stroke-width="1"/>
+      <text x="567" y="518" fill="var(--muted-text)" font-size="8.5" font-family="inherit">Secondary</text>
 
-      <circle cx="660" cy="514" r="5" fill="var(--vpk-surface-sunken)" stroke="var(--vpk-rule-strong)" stroke-width="1"/>
-      <text x="672" y="518" fill="var(--vpk-muted-text)" font-size="8.5" font-family="inherit">Drop</text>
+      <circle cx="660" cy="514" r="5" fill="var(--surface-sunken)" stroke="var(--rule-strong)" stroke-width="1"/>
+      <text x="672" y="518" fill="var(--muted-text)" font-size="8.5" font-family="inherit">Drop</text>
     </svg>
 
     <p class="caption">The blueprint point is where the reader's eye lands. The tinted upper-right quadrant is the preferred region. Everything else recedes so the judgment reads instantly.</p>

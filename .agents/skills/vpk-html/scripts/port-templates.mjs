@@ -17,7 +17,7 @@ import os from "node:os";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
-import { buildFontFaceBlock, FONT_STACKS, KAMI_COLOR_MAP, readStylesCss } from "./shared.mjs";
+import { buildFontFaceBlock, ensureFaviconLinks, FONT_STACKS, KAMI_COLOR_MAP, readStylesCss, stripSelfReferentialCustomProperties } from "./shared.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -44,7 +44,7 @@ const VPK_OVERRIDES = `
 
   /* ===== vpk-html identity overrides ===== */
 
-  html, body { background: var(--vpk-paper) !important; }
+  html, body { background: var(--paper) !important; }
 
   /* Strip section chrome unless a component opts into raised-surface treatment. */
   .frame, .page, section, .card, .metric, .metric-card,
@@ -58,14 +58,14 @@ const VPK_OVERRIDES = `
 
   /* Preserve a single hairline border ONLY on tables (they need column rules). */
   table, th, td {
-    border-color: var(--vpk-rule) !important;
+    border-color: var(--rule) !important;
     border-radius: 0 !important;
     box-shadow: none !important;
   }
 
   /* Hairline rule between sections — flat 1px, no inset, no shadow. */
   hr, .rule, .section-rule {
-    background: var(--vpk-rule) !important;
+    background: var(--rule) !important;
     border: 0 !important;
     height: 1px !important;
   }
@@ -76,7 +76,7 @@ const VPK_OVERRIDES = `
     font-family: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif !important;
     font-size: 16px !important;
     line-height: 1.8 !important;
-    color: var(--vpk-ink) !important;
+    color: var(--ink) !important;
   }
   h1, h2, h3, h4, h5, h6,
   .cover-title, .doc-title, .resume-name, .deck-cover .title,
@@ -87,7 +87,7 @@ const VPK_OVERRIDES = `
     line-height: 1.8 !important;
     font-weight: 600 !important;
     letter-spacing: 0 !important;
-    color: var(--vpk-ink) !important;
+    color: var(--ink) !important;
     margin: 0 !important;
   }
 
@@ -96,7 +96,7 @@ const VPK_OVERRIDES = `
   .hero h1:first-child, .doc-title h1:first-child,
   .resume-name {
     font-family: "Geist Pixel", "Geist Mono", ui-monospace, "SFMono-Regular", Consolas, monospace !important;
-    color: var(--vpk-blueprint) !important;
+    color: var(--blueprint) !important;
     font-weight: 400 !important;
     text-transform: uppercase !important;
     letter-spacing: 0.02em !important;
@@ -110,7 +110,7 @@ const VPK_OVERRIDES = `
     line-height: 14px !important;
     letter-spacing: 0.18em !important;
     text-transform: uppercase !important;
-    color: var(--vpk-blueprint) !important;
+    color: var(--blueprint) !important;
     font-weight: 400 !important;
   }
 
@@ -120,12 +120,12 @@ const VPK_OVERRIDES = `
     font-family: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif !important;
     font-size: 14px !important;
     line-height: 22px !important;
-    color: var(--vpk-muted-text) !important;
+    color: var(--muted-text) !important;
   }
 
   /* Links: same semantic blueprint family as the masthead. */
   a, a:visited {
-    color: var(--vpk-link) !important;
+    color: var(--link) !important;
     text-decoration: none !important;
   }
   a:hover {
@@ -135,12 +135,12 @@ const VPK_OVERRIDES = `
   }
 
   /* Emphasis: italic preferred; bold reserved for headings. */
-  .hl, mark, strong { color: var(--vpk-blueprint) !important; background: transparent !important; font-weight: 600 !important; }
-  em, i { font-style: italic !important; color: var(--vpk-ink) !important; }
+  .hl, mark, strong { color: var(--blueprint) !important; background: transparent !important; font-weight: 600 !important; }
+  em, i { font-style: italic !important; color: var(--ink) !important; }
 
   /* Dotted rule utility. */
   .dotted-rule, .vpk-dotted-rule {
-    background-image: radial-gradient(circle, var(--vpk-ink) 1px, transparent 1px) !important;
+    background-image: radial-gradient(circle, var(--ink) 1px, transparent 1px) !important;
     background-size: 8px 8px !important;
     background-repeat: repeat-x !important;
     background-position: 0 50% !important;
@@ -155,7 +155,7 @@ const VPK_OVERRIDES = `
   .lead::first-letter,
   .cover + p::first-letter {
     font-family: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif !important;
-    color: var(--vpk-ink) !important;
+    color: var(--ink) !important;
     float: left !important;
     font-size: 48px !important;
     line-height: 1 !important;
@@ -214,9 +214,9 @@ function rewriteHeader(text, slug) {
 	const headerComment = `<!-- ==================================================================
      TEMPLATE · ${friendly} (vpk-html · Making Software identity)
      Ported from kami's editorial template library, restyled with the
-     vpk-html semantic aliases: paper (var(--vpk-paper)), ink
-     (var(--vpk-ink)), blueprint accent (var(--vpk-blueprint)),
-     status accents, and muted text (var(--vpk-muted-text)).
+     vpk-html semantic aliases: paper (var(--paper)), ink
+     (var(--ink)), blueprint accent (var(--blueprint)),
+     status accents, and muted text (var(--muted-text)).
      Geist Pixel (Square) masthead, Geist Sans body, Geist Mono labels, 16px throughout
      (hierarchy via family + weight + color, not size).
      No section borders. No shadows. No grid. No rounded corners.
@@ -243,7 +243,9 @@ function transform(rawHtml, slug, fontFaceBlock, themeBlock) {
 	out = rewriteFontFaceBlocks(out, fontFaceBlock, themeBlock);
 	out = rewriteFontStacks(out);
 	out = rewriteColors(out);
+	out = stripSelfReferentialCustomProperties(out);
 	out = rewriteHeader(out, slug);
+	out = ensureFaviconLinks(out);
 	out = appendOverrides(out);
 	return out;
 }

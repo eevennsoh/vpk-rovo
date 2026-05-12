@@ -14,7 +14,7 @@ import os from "node:os";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
-import { buildFontFaceBlock, FONT_STACKS, KAMI_COLOR_MAP, readStylesCss } from "./shared.mjs";
+import { buildFontFaceBlock, ensureFaviconLinks, FONT_STACKS, KAMI_COLOR_MAP, readStylesCss } from "./shared.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -49,17 +49,17 @@ function buildHead() {
 ${readStylesCss()}
 
   :root {
-    --vpk-font-sans: ${FONT_STACKS.sans};
-    --vpk-font-mono: ${FONT_STACKS.mono};
-    --vpk-font-display: ${FONT_STACKS.display};
+    --font-sans: ${FONT_STACKS.sans};
+    --font-mono: ${FONT_STACKS.mono};
+    --font-display: ${FONT_STACKS.display};
   }
 
 ${buildFontFaceBlock()}
 
   body {
-    background: var(--vpk-paper);
-    color: var(--vpk-ink);
-    font-family: var(--vpk-font-sans);
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-sans);
     font-size: 16px;
     line-height: 1.8;
     min-height: 100vh;
@@ -73,8 +73,8 @@ ${buildFontFaceBlock()}
   }
 
   .eyebrow {
-    color: var(--vpk-blueprint);
-    font-family: var(--vpk-font-mono);
+    color: var(--blueprint);
+    font-family: var(--font-mono);
     font-size: 10px;
     line-height: 14px;
     letter-spacing: 0.18em;
@@ -83,8 +83,8 @@ ${buildFontFaceBlock()}
   }
 
   h1 {
-    color: var(--vpk-blueprint);
-    font-family: var(--vpk-font-display);
+    color: var(--blueprint);
+    font-family: var(--font-display);
     font-size: 16px;
     line-height: 1.8;
     font-weight: 400;
@@ -96,9 +96,9 @@ ${buildFontFaceBlock()}
   svg { display: block; min-width: 860px; width: 100%; }
 
   .caption {
-    border-top: 1px solid var(--vpk-rule);
-    color: var(--vpk-muted-text);
-    font-family: var(--vpk-font-sans);
+    border-top: 1px solid var(--rule);
+    color: var(--muted-text);
+    font-family: var(--font-sans);
     font-size: 14px;
     line-height: 22px;
     margin-top: 24px;
@@ -139,14 +139,16 @@ function transform(rawHtml, slug, headBlock) {
 		`<title>${slug.replace(/-/g, " ")} · vpk-html diagram</title>`,
 	);
 
+	const faviconed = ensureFaviconLinks(titleReplaced);
+
 	const headerComment = `<!-- ==================================================================
      DIAGRAM · ${slug.replace(/-/g, " ")} (vpk-html palette)
      SVG primitive ported from kami's diagram library, restyled with the
      vpk-html identity: Geist Pixel headline, Geist Sans body, semantic
-     brand-blue accent. Drop the <svg> block into a
+     lime blueprint accent. Drop the <svg> block into a
      long-doc, portfolio, or design-system payload via section.trustedHtml.
      ================================================================== -->`;
-	const commentReplaced = titleReplaced.replace(/<!--[\s\S]*?-->\n?/, `${headerComment}\n`);
+	const commentReplaced = faviconed.replace(/<!--[\s\S]*?-->\n?/, `${headerComment}\n`);
 
 	// Now rewrite colors and fonts everywhere (including SVG).
 	const colored = rewriteColors(commentReplaced);

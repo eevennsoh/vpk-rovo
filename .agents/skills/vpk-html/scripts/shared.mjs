@@ -25,40 +25,109 @@ export const FONT_FILES = [
 	{ family: "Geist Pixel", file: "GeistPixel-Square.woff2" },
 ];
 
+const VPK_FAVICON_SVGS = {
+	fallback: '<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="8" fill="#121212"/><circle cx="11" cy="21" r="5" fill="white"/><circle cx="21" cy="21" r="5" fill="white"/><circle cx="11" cy="11" r="5" fill="white"/><circle cx="21" cy="11" r="5" fill="white"/></svg>',
+	dark: '<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="9" cy="23" r="5" fill="#121212"/><circle cx="23" cy="23" r="5" fill="#121212"/><circle cx="9" cy="9" r="5" fill="#121212"/><circle cx="23" cy="9" r="5" fill="#121212"/></svg>',
+	light: '<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="9" cy="23" r="5" fill="white" stroke="#121212" stroke-width="1.25"/><circle cx="23" cy="23" r="5" fill="white" stroke="#121212" stroke-width="1.25"/><circle cx="9" cy="9" r="5" fill="white" stroke="#121212" stroke-width="1.25"/><circle cx="23" cy="9" r="5" fill="white" stroke="#121212" stroke-width="1.25"/></svg>',
+};
+
+function svgDataUrl(svg) {
+	return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
+
+function escapeRegExp(value) {
+	return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+export const FAVICON_LINKS = [
+	{ variant: "fallback", href: svgDataUrl(VPK_FAVICON_SVGS.fallback) },
+	{ variant: "dark", href: svgDataUrl(VPK_FAVICON_SVGS.dark), media: "(prefers-color-scheme: light)" },
+	{ variant: "light", href: svgDataUrl(VPK_FAVICON_SVGS.light), media: "(prefers-color-scheme: dark)" },
+];
+
+export function buildFaviconLinkBlock() {
+	return FAVICON_LINKS.map(({ href, media }) => {
+		const mediaAttribute = media ? ` media="${media}"` : "";
+		return `<link rel="icon" type="image/svg+xml" sizes="any"${mediaAttribute} href="${href}">`;
+	}).join("\n");
+}
+
+export function stripSelfReferentialCustomProperties(source) {
+	return source.replace(/^[\t ]*(--[\w-]+)\s*:\s*var\(\1\);\s*$/gm, "");
+}
+
+export function hasVpkFaviconLinks(html) {
+	return FAVICON_LINKS.every(({ href, media }) => {
+		const hrefPattern = escapeRegExp(href);
+		const mediaPattern = media ? `(?=[^>]*\\bmedia=["']${escapeRegExp(media)}["'])` : "";
+		const pattern = new RegExp(`<link\\b(?=[^>]*\\brel=["'][^"']*\\bicon\\b[^"']*["'])(?=[^>]*\\bhref=["']${hrefPattern}["'])${mediaPattern}[^>]*>`, "i");
+		return pattern.test(html);
+	});
+}
+
+export function collectFaviconIssues(html) {
+	if (!/<meta\s+name=["']generator["']\s+content=["']vpk-html["']/i.test(html)) {
+		return [];
+	}
+	if (hasVpkFaviconLinks(html)) {
+		return [];
+	}
+	return ["missing vpk-rovo favicon link set"];
+}
+
+export function ensureFaviconLinks(html) {
+	if (hasVpkFaviconLinks(html)) {
+		return html;
+	}
+
+	const faviconBlock = buildFaviconLinkBlock();
+	const generatorMeta = /(<meta\s+name=["']generator["']\s+content=["']vpk-html["']\s*\/?>\s*)/i;
+	if (generatorMeta.test(html)) {
+		return html.replace(generatorMeta, `$1\n${faviconBlock}\n`);
+	}
+
+	const viewportMeta = /(<meta\s+name=["']viewport["'][^>]*>\s*)/i;
+	if (viewportMeta.test(html)) {
+		return html.replace(viewportMeta, `$1\n${faviconBlock}\n`);
+	}
+
+	return html.replace(/(<style\b)/i, `${faviconBlock}\n$1`);
+}
+
 export const KAMI_COLOR_MAP = {
-	"#f5f4ed": "var(--vpk-paper)",
-	"#F5F4ED": "var(--vpk-paper)",
-	"#faf9f5": "var(--vpk-paper)",
-	"#FAF9F5": "var(--vpk-paper)",
-	"#141413": "var(--vpk-ink)",
-	"#3d3d3a": "var(--vpk-ink)",
-	"#3D3D3A": "var(--vpk-ink)",
-	"#4d4c48": "var(--vpk-muted-text)",
-	"#504e49": "var(--vpk-muted-text)",
-	"#6b6a64": "var(--vpk-subtlest-text)",
-	"#1B365D": "var(--vpk-blueprint)",
-	"#1b365d": "var(--vpk-blueprint)",
-	"#2D5A8A": "var(--vpk-focus-ring)",
-	"#EEF2F7": "var(--vpk-blueprint-tint)",
-	"#eef2f7": "var(--vpk-blueprint-tint)",
-	"#E4ECF5": "var(--vpk-blueprint-tint)",
-	"#e4ecf5": "var(--vpk-blueprint-tint)",
-	"#D0DCE9": "var(--vpk-blueprint-tint-strong)",
-	"#D6E1EE": "var(--vpk-blueprint-tint-strong)",
-	"#e8e6dc": "var(--vpk-rule)",
-	"#E8E6DC": "var(--vpk-rule)",
-	"#e5e3d8": "var(--vpk-rule)",
-	"#E5E3D8": "var(--vpk-rule)",
-	"#DEDED7": "var(--vpk-rule)",
-	"#E3E2DC": "var(--vpk-rule)",
-	"#E9E8E1": "var(--vpk-surface-sunken)",
-	"#EEEDE6": "var(--vpk-surface-sunken)",
-	"#EAE9E2": "var(--vpk-surface-sunken)",
-	"#B2B1AC": "var(--vpk-rule-strong)",
-	"#B53333": "var(--vpk-danger)",
-	"#b53333": "var(--vpk-danger)",
-	"#30302E": "var(--vpk-ink)",
-	"#30302e": "var(--vpk-ink)",
+	"#f5f4ed": "var(--paper)",
+	"#F5F4ED": "var(--paper)",
+	"#faf9f5": "var(--paper)",
+	"#FAF9F5": "var(--paper)",
+	"#141413": "var(--ink)",
+	"#3d3d3a": "var(--ink)",
+	"#3D3D3A": "var(--ink)",
+	"#4d4c48": "var(--muted-text)",
+	"#504e49": "var(--muted-text)",
+	"#6b6a64": "var(--subtlest-text)",
+	"#1B365D": "var(--blueprint)",
+	"#1b365d": "var(--blueprint)",
+	"#2D5A8A": "var(--focus-ring)",
+	"#EEF2F7": "var(--blueprint-tint)",
+	"#eef2f7": "var(--blueprint-tint)",
+	"#E4ECF5": "var(--blueprint-tint)",
+	"#e4ecf5": "var(--blueprint-tint)",
+	"#D0DCE9": "var(--blueprint-tint-strong)",
+	"#D6E1EE": "var(--blueprint-tint-strong)",
+	"#e8e6dc": "var(--rule)",
+	"#E8E6DC": "var(--rule)",
+	"#e5e3d8": "var(--rule)",
+	"#E5E3D8": "var(--rule)",
+	"#DEDED7": "var(--rule)",
+	"#E3E2DC": "var(--rule)",
+	"#E9E8E1": "var(--surface-sunken)",
+	"#EEEDE6": "var(--surface-sunken)",
+	"#EAE9E2": "var(--surface-sunken)",
+	"#B2B1AC": "var(--rule-strong)",
+	"#B53333": "var(--danger)",
+	"#b53333": "var(--danger)",
+	"#30302E": "var(--ink)",
+	"#30302e": "var(--ink)",
 };
 
 const TOKEN_ORDER = [
@@ -96,10 +165,10 @@ const TOKEN_ORDER = [
 
 const ROOT_BLOCK = /:root\s*\{([^}]*)\}/s;
 const DARK_BLOCK = /\[data-theme=["']dark["']\]\s*\{([^}]*)\}/s;
-const CSS_VAR = /(--vpk-[\w-]+)\s*:\s*([^;]+);/g;
+const CSS_VAR = /(--[\w-]+)\s*:\s*([^;]+);/g;
 
 function cssVarName(key) {
-	return `--vpk-${key.replace(/[A-Z]/g, match => `-${match.toLowerCase()}`)}`;
+	return `--${key.replace(/[A-Z]/g, match => `-${match.toLowerCase()}`)}`;
 }
 
 function readJson(filePath) {
@@ -129,7 +198,7 @@ function collectBlockVars(source, blockPattern) {
 
 	const vars = new Map();
 	for (const match of block.matchAll(CSS_VAR)) {
-		vars.set(match[1], match[2].trim());
+		if (!vars.has(match[1])) vars.set(match[1], match[2].trim());
 	}
 	return vars;
 }
@@ -170,8 +239,8 @@ export function buildStylesCssFromTokens(tokens = loadTokens()) {
 		if (!tokens.semantic[key]) throw new Error(`Missing semantic token: ${key}`);
 		lines.push(`\t${cssVarName(key)}: ${tokens.semantic[key]};`);
 	}
-	lines.push("\t--vpk-paper-rule: color-mix(in srgb, var(--vpk-ink) 8%, transparent);");
-	lines.push(`\t--vpk-shadow: var(--ds-shadow-raised, ${tokens.light.shadow});`);
+	lines.push("\t--paper-rule: color-mix(in srgb, var(--ink) 8%, transparent);");
+	lines.push(`\t--shadow: var(--ds-shadow-raised, ${tokens.light.shadow});`);
 	lines.push("}", "");
 	lines.push('[data-theme="dark"] {');
 	for (const key of TOKEN_ORDER) {
@@ -179,8 +248,8 @@ export function buildStylesCssFromTokens(tokens = loadTokens()) {
 		if (!tokens.dark[key]) throw new Error(`Missing dark token: ${key}`);
 		lines.push(`\t${cssVarName(key)}: ${semanticWithFallback(tokens.semantic[key], tokens.dark[key])};`);
 	}
-	lines.push("\t--vpk-paper-rule: color-mix(in srgb, var(--vpk-ink) 8%, transparent);");
-	lines.push(`\t--vpk-shadow: var(--ds-shadow-raised, ${tokens.dark.shadow});`);
+	lines.push("\t--paper-rule: color-mix(in srgb, var(--ink) 8%, transparent);");
+	lines.push(`\t--shadow: var(--ds-shadow-raised, ${tokens.dark.shadow});`);
 	lines.push("}", "");
 	lines.push("@media (prefers-reduced-motion: reduce) {");
 	lines.push("\t*,");

@@ -6,8 +6,8 @@
 
 ## Identity
 
-- Surface: semantic paper via `--vpk-paper` with a subtle dotted overlay
-- Accent: `--vpk-blueprint` semantic brand/information blue (the primary chromatic accent, capped at ~5% of page)
+- Surface: semantic paper via `--paper` with a subtle dotted overlay
+- Accent: `--blueprint` semantic lime (`#94C748` in light mode; the primary chromatic accent, capped at ~5% of page)
 - Display: Geist Pixel (Square)
 - Body: Geist Sans
 - Mono: Geist Mono

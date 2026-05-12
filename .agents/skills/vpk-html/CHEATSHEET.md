@@ -127,19 +127,19 @@ faces into each output path by hand.
 
 Editorial / engineering manual — implementation cousin: [aiengineeringfromscratch.com](https://aiengineeringfromscratch.com/) (built in the [makingsoftware.com](https://www.makingsoftware.com/) lineage).
 
-**Light (default):** `--vpk-paper`, `--vpk-ink`, `--vpk-blueprint`, and `--vpk-surface-raised` resolve through VPK/ADS semantic tokens with embedded offline fallbacks.
-**Dark** (`<html data-theme="dark">`): the same `--vpk-*` aliases switch to dark semantic fallbacks without importing runtime CSS.
+**Light (default):** `--paper`, `--ink`, `--blueprint`, and `--surface-raised` resolve through VPK/ADS semantic tokens with embedded offline fallbacks.
+**Dark** (`<html data-theme="dark">`): the same unprefixed aliases switch to dark semantic fallbacks without importing runtime CSS.
 
 - Fonts (Geist family only): **Geist Pixel** for all headings, masthead, margin labels, figure tags; **Geist Sans** body 18px / line-height 1.62; **Geist Mono** code
 - All headings: uppercase, letter-spaced, in `var(--brand)`
-- Body bg: semantic paper + subtle dotted texture via `radial-gradient(var(--vpk-paper-rule) 1px, transparent 1px); background-size: 16px 16px;`
+- Body bg: semantic paper + subtle dotted texture via `radial-gradient(var(--paper-rule) 1px, transparent 1px); background-size: 16px 16px;`
 - Type scale: cover-title 56px / h1 36px / h2 26px / h3 18px / h4-h6 14px / body+p 18px / fig-label 10px
 - Hard shadows opt-in: add `.card / .callout / .takeaway / .surface-raised / .shadow-hard` for `box-shadow: 3px 3px 0 var(--near-black)` + 1px ink border
 - ASCII rule: `<hr class="ascii">` for bright blueprint dotted separator
 - Dotted divider: `<hr>` styled via radial-gradient row of 1px dots
 - `long-doc.html` only: `.spread` two-column primitive (prose left ~42%, figure right ~58%) with vertical `.gutter-tag` for FIG_NN labels
 
-**Bans:** no `border-left/right > 1px` colored side stripes; no raw color literals in authored/generated surfaces — use the `--vpk-*` aliases.
+**Bans:** no `border-left/right > 1px` colored side stripes; no raw color literals in authored/generated surfaces — use the shared unprefixed aliases.
 
 **Activate dark mode in any rendered doc:**
 ```js

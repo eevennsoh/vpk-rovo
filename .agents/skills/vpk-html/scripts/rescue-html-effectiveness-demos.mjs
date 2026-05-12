@@ -12,7 +12,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { buildFontFaceBlock, readStylesCss } from "./shared.mjs";
+import { buildFontFaceBlock, ensureFaviconLinks, readStylesCss } from "./shared.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SKILL_ROOT = path.resolve(__dirname, "..");
@@ -53,30 +53,30 @@ function vpkVisualCss() {
 ${readStylesCss()}
 
 :root {
-  --ivory: var(--vpk-paper);
-  --paper: var(--vpk-surface-raised);
-  --white: var(--vpk-surface-raised);
-  --slate: var(--vpk-ink);
-  --near-black: var(--vpk-ink);
-  --gray-50: var(--vpk-surface-sunken);
-  --gray-100: var(--vpk-surface-sunken);
-  --gray-150: var(--vpk-surface-sunken);
-  --gray-200: var(--vpk-rule);
-  --gray-300: var(--vpk-rule);
-  --gray-500: var(--vpk-muted-text);
-  --gray-700: var(--vpk-ink);
-  --gray-800: var(--vpk-ink);
-  --g100: var(--vpk-surface-sunken);
-  --g200: var(--vpk-rule);
-  --g300: var(--vpk-rule);
-  --g500: var(--vpk-muted-text);
-  --g700: var(--vpk-ink);
-  --clay: var(--vpk-blueprint);
-  --clay-d: var(--vpk-link-pressed);
-  --oat: var(--vpk-blueprint-tint);
-  --olive: var(--vpk-success);
-  --rust: var(--vpk-danger);
-  --sky: var(--vpk-blueprint);
+  --ivory: var(--paper);
+  --paper: var(--surface-raised);
+  --white: var(--surface-raised);
+  --slate: var(--ink);
+  --near-black: var(--ink);
+  --gray-50: var(--surface-sunken);
+  --gray-100: var(--surface-sunken);
+  --gray-150: var(--surface-sunken);
+  --gray-200: var(--rule);
+  --gray-300: var(--rule);
+  --gray-500: var(--muted-text);
+  --gray-700: var(--ink);
+  --gray-800: var(--ink);
+  --g100: var(--surface-sunken);
+  --g200: var(--rule);
+  --g300: var(--rule);
+  --g500: var(--muted-text);
+  --g700: var(--ink);
+  --clay: var(--blueprint);
+  --clay-d: var(--link-pressed);
+  --oat: var(--blueprint-tint);
+  --olive: var(--success);
+  --rust: var(--danger);
+  --sky: var(--blueprint);
   --serif: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono: "Geist Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
@@ -84,13 +84,13 @@ ${readStylesCss()}
   --border: 1px solid var(--gray-300);
   --radius-panel: 0;
   --radius-row: 0;
-  --card-shadow: 4px 4px 0 var(--vpk-blueprint-tint);
+  --card-shadow: 4px 4px 0 var(--blueprint-tint);
 }
 
 html,
 body {
   background:
-    radial-gradient(circle at 1px 1px, var(--vpk-paper-rule) 1px, transparent 0),
+    radial-gradient(circle at 1px 1px, var(--paper-rule) 1px, transparent 0),
     var(--ivory) !important;
   background-size: 16px 16px !important;
   color: var(--slate) !important;
@@ -229,8 +229,8 @@ pre,
 .diff,
 .code-block,
 .snippet {
-  background: var(--vpk-ink) !important;
-  color: var(--vpk-code-inverse) !important;
+  background: var(--ink) !important;
+  color: var(--code-inverse) !important;
   font-family: var(--mono) !important;
   max-width: 100% !important;
   overflow-x: auto !important;
@@ -256,8 +256,8 @@ button,
   background: var(--clay) !important;
   border: 1px solid var(--slate) !important;
   border-radius: 0 !important;
-  box-shadow: 3px 3px 0 color-mix(in srgb, var(--vpk-ink) 22%, transparent) !important;
-  color: var(--vpk-inverse-text) !important;
+  box-shadow: 3px 3px 0 color-mix(in srgb, var(--ink) 22%, transparent) !important;
+  color: var(--inverse-text) !important;
   font-family: var(--mono) !important;
   letter-spacing: 0.08em !important;
   text-transform: uppercase !important;
@@ -474,7 +474,7 @@ function addGeneratedButtonLabels(html) {
 }
 
 function adapt(html, sourceFile) {
-	return addGeneratedButtonLabels(
+	return ensureFaviconLinks(addGeneratedButtonLabels(
 		markDecorativeSvgs(
 			addMainLandmark(
 				addVpkVisualCss(
@@ -488,7 +488,7 @@ function adapt(html, sourceFile) {
 				),
 			),
 		),
-	);
+	));
 }
 
 function main() {

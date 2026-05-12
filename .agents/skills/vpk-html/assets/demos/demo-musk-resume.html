@@ -3,80 +3,83 @@
 <head>
 <meta charset="UTF-8">
 <title>Elon Musk · Resume</title>
+<link rel="icon" type="image/svg+xml" sizes="any" href="data:image/svg+xml,%3Csvg%20width%3D%2232%22%20height%3D%2232%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%228%22%20fill%3D%22%23121212%22%2F%3E%3Ccircle%20cx%3D%2211%22%20cy%3D%2221%22%20r%3D%225%22%20fill%3D%22white%22%2F%3E%3Ccircle%20cx%3D%2221%22%20cy%3D%2221%22%20r%3D%225%22%20fill%3D%22white%22%2F%3E%3Ccircle%20cx%3D%2211%22%20cy%3D%2211%22%20r%3D%225%22%20fill%3D%22white%22%2F%3E%3Ccircle%20cx%3D%2221%22%20cy%3D%2211%22%20r%3D%225%22%20fill%3D%22white%22%2F%3E%3C%2Fsvg%3E">
+<link rel="icon" type="image/svg+xml" sizes="any" media="(prefers-color-scheme: light)" href="data:image/svg+xml,%3Csvg%20width%3D%2232%22%20height%3D%2232%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Ccircle%20cx%3D%229%22%20cy%3D%2223%22%20r%3D%225%22%20fill%3D%22%23121212%22%2F%3E%3Ccircle%20cx%3D%2223%22%20cy%3D%2223%22%20r%3D%225%22%20fill%3D%22%23121212%22%2F%3E%3Ccircle%20cx%3D%229%22%20cy%3D%229%22%20r%3D%225%22%20fill%3D%22%23121212%22%2F%3E%3Ccircle%20cx%3D%2223%22%20cy%3D%229%22%20r%3D%225%22%20fill%3D%22%23121212%22%2F%3E%3C%2Fsvg%3E">
+<link rel="icon" type="image/svg+xml" sizes="any" media="(prefers-color-scheme: dark)" href="data:image/svg+xml,%3Csvg%20width%3D%2232%22%20height%3D%2232%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Ccircle%20cx%3D%229%22%20cy%3D%2223%22%20r%3D%225%22%20fill%3D%22white%22%20stroke%3D%22%23121212%22%20stroke-width%3D%221.25%22%2F%3E%3Ccircle%20cx%3D%2223%22%20cy%3D%2223%22%20r%3D%225%22%20fill%3D%22white%22%20stroke%3D%22%23121212%22%20stroke-width%3D%221.25%22%2F%3E%3Ccircle%20cx%3D%229%22%20cy%3D%229%22%20r%3D%225%22%20fill%3D%22white%22%20stroke%3D%22%23121212%22%20stroke-width%3D%221.25%22%2F%3E%3Ccircle%20cx%3D%2223%22%20cy%3D%229%22%20r%3D%225%22%20fill%3D%22white%22%20stroke%3D%22%23121212%22%20stroke-width%3D%221.25%22%2F%3E%3C%2Fsvg%3E">
 <style>
   :root {
-	--vpk-paper: var(--ds-surface, #ffffff);
-	--vpk-paper-background: var(--ds-surface, #ffffff);
-	--vpk-surface-raised: var(--ds-surface-raised, #ffffff);
-	--vpk-surface-overlay: var(--ds-surface-overlay, #ffffff);
-	--vpk-surface-sunken: var(--ds-surface-sunken, #f0f1f2);
-	--vpk-ink: var(--ds-text, #292a2e);
-	--vpk-muted-text: var(--ds-text-subtle, #505258);
-	--vpk-subtlest-text: var(--ds-text-subtlest, #6b6e76);
-	--vpk-inverse-text: var(--ds-text-inverse, #ffffff);
-	--vpk-rule: var(--ds-border, #0b120e24);
-	--vpk-rule-strong: var(--ds-border-bold, #7d818a);
-	--vpk-blueprint: var(--ds-background-brand-bold, #1868db);
-	--vpk-link: var(--ds-link, #1868db);
-	--vpk-link-pressed: var(--ds-link-pressed, #1558bc);
-	--vpk-selected: var(--ds-background-selected, #e9f2fe);
-	--vpk-blueprint-tint: var(--ds-background-information, #e9f2fe);
-	--vpk-blueprint-tint-strong: var(--ds-background-information-hovered, #cfe1fd);
-	--vpk-focus-ring: var(--ds-border-focused, #4688ec);
-	--vpk-code-surface: var(--ds-background-neutral-subtle, #f0f1f2);
-	--vpk-code-ink: var(--ds-text, #292a2e);
-	--vpk-code-inverse: var(--ds-text-inverse, #ffffff);
-	--vpk-math-highlight: var(--ds-background-information, #e9f2fe);
-	--vpk-success: var(--ds-background-success-bold, #5b7f24);
-	--vpk-success-tint: var(--ds-background-success, #efffd6);
-	--vpk-warning: var(--ds-background-warning-bold, #fbc828);
-	--vpk-warning-tint: var(--ds-background-warning, #fff5db);
-	--vpk-danger: var(--ds-background-danger-bold, #c9372c);
-	--vpk-danger-tint: var(--ds-background-danger, #ffeceb);
-	--vpk-info: var(--ds-background-information-bold, #1868db);
-	--vpk-info-tint: var(--ds-background-information, #e9f2fe);
-	--vpk-paper-rule: color-mix(in srgb, var(--vpk-ink) 8%, transparent);
-	--vpk-shadow: var(--ds-shadow-raised, 0 1px 1px rgba(9, 30, 66, 0.25), 0 0 1px rgba(9, 30, 66, 0.31)); color-scheme: light dark; }
+	--paper: var(--ds-surface, #ffffff);
+	--paper-background: var(--ds-surface, #ffffff);
+	--surface-raised: var(--ds-surface-raised, #ffffff);
+	--surface-overlay: var(--ds-surface-overlay, #ffffff);
+	--surface-sunken: var(--ds-surface-sunken, #f0f1f2);
+	--ink: var(--ds-text, #292a2e);
+	--muted-text: var(--ds-text-subtle, #505258);
+	--subtlest-text: var(--ds-text-subtlest, #6b6e76);
+	--inverse-text: var(--ds-text-inverse, #ffffff);
+	--rule: var(--ds-border, #0b120e24);
+	--rule-strong: var(--ds-border-bold, #7d818a);
+	--blueprint: var(--ds-background-accent-lime-subtle, #94c748);
+	--link: var(--ds-text-accent-lime, #4c6b1f);
+	--link-pressed: var(--ds-text-accent-lime-bolder, #37471f);
+	--selected: var(--ds-background-accent-lime-subtler, #d3f1a7);
+	--blueprint-tint: var(--ds-background-accent-lime-subtlest, #efffd6);
+	--blueprint-tint-strong: var(--ds-background-accent-lime-subtler, #d3f1a7);
+	--focus-ring: var(--ds-border-accent-lime, #6a9a23);
+	--code-surface: var(--ds-background-neutral-subtle, #f0f1f2);
+	--code-ink: var(--ds-text, #292a2e);
+	--code-inverse: var(--ds-text-inverse, #ffffff);
+	--math-highlight: var(--ds-background-accent-lime-subtlest, #efffd6);
+	--success: var(--ds-background-success-bold, #5b7f24);
+	--success-tint: var(--ds-background-success, #efffd6);
+	--warning: var(--ds-background-warning-bold, #fbc828);
+	--warning-tint: var(--ds-background-warning, #fff5db);
+	--danger: var(--ds-background-danger-bold, #c9372c);
+	--danger-tint: var(--ds-background-danger, #ffeceb);
+	--info: var(--ds-background-information-bold, #1868db);
+	--info-tint: var(--ds-background-information, #e9f2fe);
+	--paper-rule: color-mix(in srgb, var(--ink) 8%, transparent);
+	--shadow: var(--ds-shadow-raised, 0 1px 1px rgba(9, 30, 66, 0.25), 0 0 1px rgba(9, 30, 66, 0.31)); color-scheme: light dark; }
   [data-theme="dark"] {
-	--vpk-paper: var(--ds-surface, #101214);
-	--vpk-paper-background: var(--ds-surface, #1d2125);
-	--vpk-surface-raised: var(--ds-surface-raised, #22272b);
-	--vpk-surface-overlay: var(--ds-surface-overlay, #282e33);
-	--vpk-surface-sunken: var(--ds-surface-sunken, #161a1d);
-	--vpk-ink: var(--ds-text, #dee4ea);
-	--vpk-muted-text: var(--ds-text-subtle, #9fadbc);
-	--vpk-subtlest-text: var(--ds-text-subtlest, #738496);
-	--vpk-inverse-text: var(--ds-text-inverse, #101214);
-	--vpk-rule: var(--ds-border, #a6c5e229);
-	--vpk-rule-strong: var(--ds-border-bold, #738496);
-	--vpk-blueprint: var(--ds-background-brand-bold, #579dff);
-	--vpk-link: var(--ds-link, #579dff);
-	--vpk-link-pressed: var(--ds-link-pressed, #85b8ff);
-	--vpk-selected: var(--ds-background-selected, #09326c);
-	--vpk-blueprint-tint: var(--ds-background-information, #09326c);
-	--vpk-blueprint-tint-strong: var(--ds-background-information-hovered, #0c418a);
-	--vpk-focus-ring: var(--ds-border-focused, #579dff);
-	--vpk-code-surface: var(--ds-background-neutral-subtle, #161a1d);
-	--vpk-code-ink: var(--ds-text, #dee4ea);
-	--vpk-code-inverse: var(--ds-text-inverse, #101214);
-	--vpk-math-highlight: var(--ds-background-information, #09326c);
-	--vpk-success: var(--ds-background-success-bold, #b3df72);
-	--vpk-success-tint: var(--ds-background-success, #1f4d3a);
-	--vpk-warning: var(--ds-background-warning-bold, #f5cd47);
-	--vpk-warning-tint: var(--ds-background-warning, #533f04);
-	--vpk-danger: var(--ds-background-danger-bold, #f87168);
-	--vpk-danger-tint: var(--ds-background-danger, #5d1f1a);
-	--vpk-info: var(--ds-background-information-bold, #579dff);
-	--vpk-info-tint: var(--ds-background-information, #09326c);
-	--vpk-paper-rule: color-mix(in srgb, var(--vpk-ink) 8%, transparent);
-	--vpk-shadow: var(--ds-shadow-raised, 0 1px 1px rgba(0, 0, 0, 0.32), 0 0 1px rgba(0, 0, 0, 0.42)); color-scheme: dark; }
+	--paper: var(--ds-surface, #101214);
+	--paper-background: var(--ds-surface, #1d2125);
+	--surface-raised: var(--ds-surface-raised, #22272b);
+	--surface-overlay: var(--ds-surface-overlay, #282e33);
+	--surface-sunken: var(--ds-surface-sunken, #161a1d);
+	--ink: var(--ds-text, #dee4ea);
+	--muted-text: var(--ds-text-subtle, #9fadbc);
+	--subtlest-text: var(--ds-text-subtlest, #738496);
+	--inverse-text: var(--ds-text-inverse, #101214);
+	--rule: var(--ds-border, #a6c5e229);
+	--rule-strong: var(--ds-border-bold, #738496);
+	--blueprint: var(--ds-background-accent-lime-subtle, #4c6b1f);
+	--link: var(--ds-text-accent-lime, #b3df72);
+	--link-pressed: var(--ds-text-accent-lime-bolder, #d3f1a7);
+	--selected: var(--ds-background-accent-lime-subtler, #37471f);
+	--blueprint-tint: var(--ds-background-accent-lime-subtlest, #28311b);
+	--blueprint-tint-strong: var(--ds-background-accent-lime-subtler, #37471f);
+	--focus-ring: var(--ds-border-accent-lime, #82b536);
+	--code-surface: var(--ds-background-neutral-subtle, #161a1d);
+	--code-ink: var(--ds-text, #dee4ea);
+	--code-inverse: var(--ds-text-inverse, #101214);
+	--math-highlight: var(--ds-background-accent-lime-subtlest, #28311b);
+	--success: var(--ds-background-success-bold, #b3df72);
+	--success-tint: var(--ds-background-success, #1f4d3a);
+	--warning: var(--ds-background-warning-bold, #f5cd47);
+	--warning-tint: var(--ds-background-warning, #533f04);
+	--danger: var(--ds-background-danger-bold, #f87168);
+	--danger-tint: var(--ds-background-danger, #5d1f1a);
+	--info: var(--ds-background-information-bold, #579dff);
+	--info-tint: var(--ds-background-information, #09326c);
+	--paper-rule: color-mix(in srgb, var(--ink) 8%, transparent);
+	--shadow: var(--ds-shadow-raised, 0 1px 1px rgba(0, 0, 0, 0.32), 0 0 1px rgba(0, 0, 0, 0.42)); color-scheme: dark; }
 
   /* Palatino is a system font, no @font-face needed */
 
   @page {
     size: A4;
     margin: 11mm 13mm 11mm 13mm;
-    background: var(--vpk-paper);
+    background: var(--paper);
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -98,18 +101,18 @@
   }
 
   :root {
-    --parchment: var(--vpk-paper);
-    --ivory:     var(--vpk-paper);
-    --sand:      var(--vpk-rule);
-    --border:    var(--vpk-rule);
-    --border-soft: var(--vpk-rule);
-    --near-black: var(--vpk-ink);
-    --dark-warm: var(--vpk-ink);
-    --olive:     var(--vpk-muted-text);
-    --stone:     var(--vpk-muted-text);
-    --brand:     var(--vpk-blueprint);
-    --brand-tint: var(--vpk-blueprint-tint);
-    --brand-tint-strong: var(--vpk-blueprint-tint);
+    --parchment: var(--paper);
+    --ivory:     var(--paper);
+    --sand:      var(--rule);
+    --border:    var(--rule);
+    --border-soft: var(--rule);
+    --near-black: var(--ink);
+    --dark-warm: var(--ink);
+    --olive:     var(--muted-text);
+    --stone:     var(--muted-text);
+    --brand:     var(--blueprint);
+    --brand-tint: var(--blueprint-tint);
+    --brand-tint-strong: var(--blueprint-tint);
 
     --serif: Charter, Georgia,
              Palatino, "Times New Roman", serif;
@@ -117,10 +120,10 @@
     --mono:  "Geist Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
   }
 
-  html, body { background: var(--vpk-paper); }
+  html, body { background: var(--paper); }
 
   body {
-    color: var(--vpk-ink);
+    color: var(--ink);
     font-family: var(--serif);
     font-size: 9.4pt;
     line-height: 1.48;
@@ -130,7 +133,7 @@
   .serif { font-family: var(--serif); }
   .mono  { font-family: var(--mono); }
 
-  a { color: var(--vpk-blueprint); text-decoration: none; }
+  a { color: var(--blueprint); text-decoration: none; }
 
   /* HEADER */
   .header {
@@ -138,7 +141,7 @@
     align-items: flex-end;
     justify-content: space-between;
     margin-bottom: 3mm;
-    border-left: 2.5pt solid var(--vpk-blueprint);
+    border-left: 2.5pt solid var(--blueprint);
     border-radius: 1.5pt;
     padding-left: 8pt;
   }
@@ -148,7 +151,7 @@
     font-size: 26pt;
     font-weight: 500;
     letter-spacing: -0.2pt;
-    color: var(--vpk-ink);
+    color: var(--ink);
     line-height: 1;
     display: flex;
     align-items: baseline;
@@ -158,22 +161,22 @@
   .alias {
     font-size: 12.5pt;
     font-weight: 400;
-    color: var(--vpk-muted-text);
+    color: var(--muted-text);
   }
   .contact {
     text-align: right;
     font-size: 9pt;
-    color: var(--vpk-muted-text);
+    color: var(--muted-text);
     line-height: 1.5;
   }
   .contact .role {
-    color: var(--vpk-blueprint);
+    color: var(--blueprint);
     font-size: 10.5pt;
     font-weight: 500;
   }
-  .contact .sep { color: var(--vpk-rule); margin: 0 0.4em; }
-  .contact a { color: var(--vpk-ink); }
-  .contact .loc { color: var(--vpk-success); font-weight: 500; }
+  .contact .sep { color: var(--rule); margin: 0 0.4em; }
+  .contact a { color: var(--ink); }
+  .contact .loc { color: var(--success); font-weight: 500; }
 
   /* METRICS */
   .metrics { display: flex; gap: 7mm; margin-bottom: 6.5mm; }
@@ -189,7 +192,7 @@
     font-family: var(--serif);
     font-size: 14pt;
     font-weight: 500;
-    color: var(--vpk-blueprint);
+    color: var(--blueprint);
     line-height: 1;
     font-variant-numeric: tabular-nums;
   }
@@ -197,17 +200,17 @@
     font-size: 10.5pt;
     margin-left: 0.5mm;
     font-weight: 500;
-    color: var(--vpk-blueprint);
+    color: var(--blueprint);
   }
-  .metric-label { font-size: 9pt; color: var(--vpk-success); line-height: 1.2; }
+  .metric-label { font-size: 9pt; color: var(--success); line-height: 1.2; }
 
   /* SECTION TITLE */
   .section-title {
     font-family: var(--serif);
     font-size: 13pt;
     font-weight: 500;
-    color: var(--vpk-ink);
-    border-bottom: 0.5pt solid var(--vpk-rule);
+    color: var(--ink);
+    border-bottom: 0.5pt solid var(--rule);
     padding: 0 0 3pt 0;
     margin: 7.5mm 0 3mm 0;
     display: flex;
@@ -219,15 +222,15 @@
     font-family: var(--sans);
     font-weight: 400;
     font-size: 9pt;
-    color: var(--vpk-muted-text);
+    color: var(--muted-text);
     letter-spacing: 0.2pt;
   }
   section:first-of-type .section-title { margin-top: 0; }
   .page-break > .section-title { margin-top: 0; }
 
   /* SUMMARY */
-  .summary { font-size: 9.4pt; line-height: 1.50; color: var(--vpk-ink); }
-  .summary .hl { color: var(--vpk-blueprint); }
+  .summary { font-size: 9.4pt; line-height: 1.50; color: var(--ink); }
+  .summary .hl { color: var(--blueprint); }
 
   /* TIMELINE */
   .timeline { display: flex; gap: 7mm; margin-bottom: 6.5mm; }
@@ -239,22 +242,22 @@
   .tl-year {
     font-family: var(--serif);
     font-size: 11pt; font-weight: 500;
-    color: var(--vpk-blueprint); line-height: 1;
+    color: var(--blueprint); line-height: 1;
   }
   .tl-head {
     font-size: 11pt; font-weight: 500;
-    color: var(--vpk-ink);
+    color: var(--ink);
   }
-  .tl-body { font-size: 9pt; color: var(--vpk-success); line-height: 1.45; }
+  .tl-body { font-size: 9pt; color: var(--success); line-height: 1.45; }
 
   /* PROJECTS */
   .project {
     padding: 2.5mm 0;
-    border-top: 0.4pt solid var(--vpk-rule);
+    border-top: 0.4pt solid var(--rule);
     break-inside: avoid;
   }
   .project:first-of-type {
-    border-top: 0.4pt solid var(--vpk-rule);
+    border-top: 0.4pt solid var(--rule);
     padding-top: 2.5mm;
   }
   .proj-head {
@@ -263,12 +266,12 @@
   }
   .proj-name {
     font-family: var(--serif);
-    font-size: 11pt; font-weight: 500; color: var(--vpk-ink);
+    font-size: 11pt; font-weight: 500; color: var(--ink);
   }
-  .proj-kind { font-size: 11pt; color: var(--vpk-success); }
+  .proj-kind { font-size: 11pt; color: var(--success); }
   .proj-role {
-    font-size: 9pt; color: var(--vpk-blueprint); font-weight: 500;
-    margin-left: auto; background: var(--vpk-blueprint-tint);
+    font-size: 9pt; color: var(--blueprint); font-weight: 500;
+    margin-left: auto; background: var(--blueprint-tint);
     padding: 0.4mm 1.6mm; border-radius: 2pt; letter-spacing: 0.3pt;
     text-transform: uppercase;
   }
@@ -276,17 +279,17 @@
   .proj-row { display: table-row; }
   .proj-label {
     display: table-cell; width: 16mm;
-    font-size: 9pt; color: var(--vpk-blueprint);
+    font-size: 9pt; color: var(--blueprint);
     font-weight: 500; letter-spacing: 0.4pt;
     text-transform: uppercase;
     padding: 0.4mm 0 0.4mm 0; vertical-align: top;
   }
   .proj-text {
     display: table-cell; font-size: 9.2pt;
-    color: var(--vpk-ink); line-height: 1.45;
+    color: var(--ink); line-height: 1.45;
     padding: 0 0 0.4mm 1mm;
   }
-  .proj-text .hl { color: var(--vpk-blueprint); }
+  .proj-text .hl { color: var(--blueprint); }
 
   /* PAGE 2 FORCE BREAK */
   .page-break { break-before: page; }
@@ -294,12 +297,12 @@
   /* OPEN SOURCE */
   .os-intro {
     font-size: 9.4pt; line-height: 1.45;
-    color: var(--vpk-ink);
+    color: var(--ink);
     margin: 1.6mm 0 2.4mm 0;
     break-inside: avoid;
   }
-  .os-intro .hl { color: var(--vpk-blueprint); }
-  .os-intro .strong { color: var(--vpk-ink); font-weight: 500; }
+  .os-intro .hl { color: var(--blueprint); }
+  .os-intro .strong { color: var(--ink); font-weight: 500; }
 
   .os-grid {
     display: grid;
@@ -309,7 +312,7 @@
   .os-item {
     display: flex; align-items: baseline;
     gap: 2.5mm; padding: 1.2mm 0;
-    border-bottom: 0.3pt dotted var(--vpk-rule);
+    border-bottom: 0.3pt dotted var(--rule);
     break-inside: avoid;
   }
   .os-name {
@@ -317,30 +320,30 @@
     font-size: 10.5pt; font-weight: 500;
     flex-shrink: 0; min-width: 18mm;
   }
-  .os-name a { color: var(--vpk-blueprint); }
-  .os-desc { font-size: 9pt; color: var(--vpk-success); line-height: 1.4; flex: 1; }
+  .os-name a { color: var(--blueprint); }
+  .os-desc { font-size: 9pt; color: var(--success); line-height: 1.4; flex: 1; }
   .os-star {
-    font-size: 9pt; color: var(--vpk-ink);
+    font-size: 9pt; color: var(--ink);
     font-weight: 500; white-space: nowrap;
     flex-shrink: 0; min-width: 10mm; text-align: right;
     font-variant-numeric: tabular-nums;
   }
-  .os-star.big { color: var(--vpk-blueprint); font-size: 9.2pt; }
+  .os-star.big { color: var(--blueprint); font-size: 9.2pt; }
 
   .os-highlight {
     margin-top: 2.5mm;
     padding: 1.8mm 3mm;
     background: var(--brand-tint);
-    border-left: 1.4pt solid var(--vpk-blueprint);
+    border-left: 1.4pt solid var(--blueprint);
     border-radius: 2pt;
     font-size: 9pt; line-height: 1.45;
-    color: var(--vpk-ink);
+    color: var(--ink);
     break-inside: avoid;
   }
-  .os-highlight .hl { color: var(--vpk-blueprint); }
+  .os-highlight .hl { color: var(--blueprint); }
   .os-highlight .tag {
     display: inline-block;
-    background: var(--vpk-blueprint); color: var(--vpk-surface-raised);
+    background: var(--blueprint); color: var(--surface-raised);
     font-size: 9pt; font-weight: 500;
     padding: 0.2mm 1.6mm; border-radius: 2pt;
     margin-right: 1.5mm; letter-spacing: 0.5pt;
@@ -359,19 +362,19 @@
   .conv-head {
     font-family: var(--serif);
     font-size: 10pt; font-weight: 500;
-    color: var(--vpk-ink); margin-bottom: 1mm;
+    color: var(--ink); margin-bottom: 1mm;
     display: flex; align-items: baseline; gap: 2mm;
   }
   .conv-head .year {
-    color: var(--vpk-blueprint); font-weight: 500;
+    color: var(--blueprint); font-weight: 500;
     font-size: 9pt;
     font-variant-numeric: tabular-nums;
   }
   .conv-body {
-    font-size: 9pt; color: var(--vpk-success);
+    font-size: 9pt; color: var(--success);
     line-height: 1.45;
   }
-  .conv-body .hl { color: var(--vpk-blueprint); }
+  .conv-body .hl { color: var(--blueprint); }
 
   /* IMPACT */
   .handle-strip {
@@ -381,36 +384,36 @@
   }
   .handle-strip .handle {
     font-family: var(--serif);
-    font-size: 10pt; font-weight: 500; color: var(--vpk-blueprint);
+    font-size: 10pt; font-weight: 500; color: var(--blueprint);
     flex-shrink: 0;
   }
-  .handle-strip .follower { font-size: 9pt; color: var(--vpk-muted-text); flex-shrink: 0; font-variant-numeric: tabular-nums; }
-  .handle-strip .desc { font-size: 9pt; color: var(--vpk-success); line-height: 1.45; flex: 1; }
+  .handle-strip .follower { font-size: 9pt; color: var(--muted-text); flex-shrink: 0; font-variant-numeric: tabular-nums; }
+  .handle-strip .desc { font-size: 9pt; color: var(--success); line-height: 1.45; flex: 1; }
 
   .impact-grid { display: grid; grid-template-columns: 1.15fr 1fr; gap: 6mm; }
   .inf-block-title {
     margin-top: 2.5mm;
     font-family: var(--serif);
     font-size: 10pt; font-weight: 500;
-    color: var(--vpk-ink);
+    color: var(--ink);
     margin-bottom: 1.5mm; padding-bottom: 0.5mm;
-    border-bottom: 0.3pt dotted var(--vpk-rule);
+    border-bottom: 0.3pt dotted var(--rule);
     display: flex; align-items: baseline; gap: 2mm;
   }
   .inf-block-title .small {
     font-family: var(--sans);
-    font-size: 9pt; color: var(--vpk-muted-text);
+    font-size: 9pt; color: var(--muted-text);
     font-weight: 400;
   }
   .art-row {
     padding: 1.8mm 0;
-    border-bottom: 0.3pt dotted var(--vpk-rule);
+    border-bottom: 0.3pt dotted var(--rule);
   }
   .talk-row {
     display: flex; justify-content: space-between;
     align-items: flex-start;
     gap: 2mm; padding: 1.8mm 0;
-    border-bottom: 0.3pt dotted var(--vpk-rule);
+    border-bottom: 0.3pt dotted var(--rule);
   }
   .art-row:last-of-type, .talk-row:last-of-type { border-bottom: none; }
   .art-header {
@@ -419,17 +422,17 @@
     gap: 2mm;
   }
   .art-title, .talk-title {
-    font-size: 9.2pt; color: var(--vpk-ink);
+    font-size: 9.2pt; color: var(--ink);
     font-weight: 500; line-height: 1.4;
     flex: 1 1 auto; min-width: 0;
   }
   .art-stats, .talk-venue {
-    font-size: 9pt; color: var(--vpk-muted-text);
+    font-size: 9pt; color: var(--muted-text);
     line-height: 1.4; margin-top: 0.6mm;
   }
-  .art-stats .em-brand { color: var(--vpk-blueprint); }
+  .art-stats .em-brand { color: var(--blueprint); }
   .art-date, .talk-date {
-    font-size: 9pt; color: var(--vpk-muted-text);
+    font-size: 9pt; color: var(--muted-text);
     font-variant-numeric: tabular-nums;
     font-weight: 400;
     white-space: nowrap;
@@ -438,19 +441,19 @@
   /* SKILLS */
   .skill-row {
     display: flex; gap: 3mm; padding: 1.8mm 0;
-    border-bottom: 0.3pt dotted var(--vpk-rule);
+    border-bottom: 0.3pt dotted var(--rule);
     align-items: baseline;
   }
   .skill-row:last-of-type { border-bottom: none; }
   .skill-label {
     font-size: 9pt; font-weight: 500;
-    color: var(--vpk-blueprint); letter-spacing: 0.5pt;
+    color: var(--blueprint); letter-spacing: 0.5pt;
     text-transform: uppercase;
     width: 32mm; flex-shrink: 0;
     line-height: 1.35;
   }
-  .skill-body { font-size: 9.2pt; color: var(--vpk-ink); line-height: 1.45; flex: 1; }
-  .skill-body .em-brand { color: var(--vpk-blueprint); }
+  .skill-body { font-size: 9.2pt; color: var(--ink); line-height: 1.45; flex: 1; }
+  .skill-body .em-brand { color: var(--blueprint); }
 
   /* EDUCATION */
   .edu-row {
@@ -461,23 +464,23 @@
     font-family: var(--serif);
     font-weight: 500; font-size: 11pt;
   }
-  .edu-row .major { color: var(--vpk-success); font-size: 9.4pt; }
-  .edu-row .date { color: var(--vpk-muted-text); font-variant-numeric: tabular-nums; font-size: 9pt; }
+  .edu-row .major { color: var(--success); font-size: 9.4pt; }
+  .edu-row .date { color: var(--muted-text); font-variant-numeric: tabular-nums; font-size: 9pt; }
 
 
   /* vpk-html identity overrides */
-  html { background: var(--vpk-paper); }
+  html { background: var(--paper); }
   body {
     background:
-      linear-gradient(90deg, color-mix(in srgb, var(--vpk-ink) 2%, transparent) 1px, transparent 1px),
-      linear-gradient(0deg, color-mix(in srgb, var(--vpk-ink) 2%, transparent) 1px, transparent 1px),
-      var(--vpk-surface-raised);
+      linear-gradient(90deg, color-mix(in srgb, var(--ink) 2%, transparent) 1px, transparent 1px),
+      linear-gradient(0deg, color-mix(in srgb, var(--ink) 2%, transparent) 1px, transparent 1px),
+      var(--surface-raised);
     background-size: 24px 24px;
   }
   /* Frame the document with vpk-html chrome when a kami .page or .frame exists */
   .page, .frame {
-    border: 2px solid var(--vpk-ink) !important;
-    box-shadow: var(--vpk-shadow) !important;
+    border: 2px solid var(--ink) !important;
+    box-shadow: var(--shadow) !important;
   }
 </style>
 </head>
@@ -488,7 +491,7 @@
      DEMO · musk resume (vpk-html palette)
      Ported from kami's curated demos library and restyled with the
      vpk-html identity: VT323 display headlines, Source Serif body, grid
-     background, blueprint (var(--vpk-blueprint)) accent. Layout, content, and SVG
+     background, blueprint (var(--blueprint)) accent. Layout, content, and SVG
      geometry are preserved verbatim from kami.
      Source: https://github.com/tw93/Kami
      ================================================================== -->
@@ -691,7 +694,7 @@
   <div class="section-title">Public Impact</div>
 
   <div class="handle-strip">
-    <span class="handle serif">X · <a href="https://tesla.com/blog" style="color: var(--vpk-blueprint); border-bottom: none;">@elonmusk</a></span>
+    <span class="handle serif">X · <a href="https://tesla.com/blog" style="color: var(--blueprint); border-bottom: none;">@elonmusk</a></span>
     <span class="follower">214M followers</span>
     <span class="desc">Direct channel to 214M followers. Each engineering post, launch video, or product hint moves markets within hours.</span>
   </div>

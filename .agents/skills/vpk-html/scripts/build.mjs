@@ -17,8 +17,8 @@ import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { collectColorTokenIssues } from "./check-html.mjs";
-import { checkStyleConsumers, checkStyleSource, writeStylesCssFromTokens } from "./shared.mjs";
+import { collectColorTokenIssues, collectSelfReferentialCustomPropertyIssues } from "./check-html.mjs";
+import { checkStyleConsumers, checkStyleSource, collectFaviconIssues, writeStylesCssFromTokens } from "./shared.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -33,9 +33,9 @@ const legacyElectricBlueprint = new RegExp(`#${"3553ff"}`, "i");
 const legacyAccentBlue = new RegExp(`#${"1B3FE5"}`, "i");
 const FORBIDDEN_KAMI_LEAKAGE = [
 	{ pattern: /#1B365D/i, label: "kami brand color #1B365D (should use vpk semantic brand aliases)" },
-	{ pattern: legacyElectricBlueprint, label: "legacy nonsemantic blueprint literal (should use --vpk-blueprint)" },
-	{ pattern: legacyAccentBlue, label: "legacy vpk accent-blue literal (should use --vpk-blueprint)" },
-	{ pattern: /#f5f4ed/i, label: "kami parchment #f5f4ed (should use --vpk-paper)" },
+	{ pattern: legacyElectricBlueprint, label: "legacy nonsemantic blueprint literal (should use --blueprint)" },
+	{ pattern: legacyAccentBlue, label: "legacy vpk accent-blue literal (should use --blueprint)" },
+	{ pattern: /#f5f4ed/i, label: "kami parchment #f5f4ed (should use --paper)" },
 	{ pattern: /TsangerJinKai02/, label: "kami CJK font TsangerJinKai02" },
 	{ pattern: /font-family:\s*Charter\b/, label: "kami Charter serif (should be Geist)" },
 	{ pattern: /cdn\.jsdelivr\.net|cdnjs|fonts\.googleapis|fonts\.gstatic/i, label: "remote font/asset URL (violates offline rule)" },
@@ -123,10 +123,13 @@ function checkTemplate(filePath) {
 	}
 
 	failures.push(...collectColorTokenIssues(content, filePath));
+	failures.push(...collectSelfReferentialCustomPropertyIssues(content));
 
 	if (!/<meta\s+name="generator"\s+content="vpk-html"/i.test(content)) {
 		failures.push("missing or wrong <meta name=\"generator\"> (should be \"vpk-html\")");
 	}
+
+	failures.push(...collectFaviconIssues(content));
 
 	return failures;
 }

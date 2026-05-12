@@ -6,6 +6,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="vpk-html — a single categorized demo catalog for terminal/blueprint offline HTML artifacts.">
 <meta name="generator" content="vpk-html">
+
+<link rel="icon" type="image/svg+xml" sizes="any" href="data:image/svg+xml,%3Csvg%20width%3D%2232%22%20height%3D%2232%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%228%22%20fill%3D%22%23121212%22%2F%3E%3Ccircle%20cx%3D%2211%22%20cy%3D%2221%22%20r%3D%225%22%20fill%3D%22white%22%2F%3E%3Ccircle%20cx%3D%2221%22%20cy%3D%2221%22%20r%3D%225%22%20fill%3D%22white%22%2F%3E%3Ccircle%20cx%3D%2211%22%20cy%3D%2211%22%20r%3D%225%22%20fill%3D%22white%22%2F%3E%3Ccircle%20cx%3D%2221%22%20cy%3D%2211%22%20r%3D%225%22%20fill%3D%22white%22%2F%3E%3C%2Fsvg%3E">
+<link rel="icon" type="image/svg+xml" sizes="any" media="(prefers-color-scheme: light)" href="data:image/svg+xml,%3Csvg%20width%3D%2232%22%20height%3D%2232%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Ccircle%20cx%3D%229%22%20cy%3D%2223%22%20r%3D%225%22%20fill%3D%22%23121212%22%2F%3E%3Ccircle%20cx%3D%2223%22%20cy%3D%2223%22%20r%3D%225%22%20fill%3D%22%23121212%22%2F%3E%3Ccircle%20cx%3D%229%22%20cy%3D%229%22%20r%3D%225%22%20fill%3D%22%23121212%22%2F%3E%3Ccircle%20cx%3D%2223%22%20cy%3D%229%22%20r%3D%225%22%20fill%3D%22%23121212%22%2F%3E%3C%2Fsvg%3E">
+<link rel="icon" type="image/svg+xml" sizes="any" media="(prefers-color-scheme: dark)" href="data:image/svg+xml,%3Csvg%20width%3D%2232%22%20height%3D%2232%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Ccircle%20cx%3D%229%22%20cy%3D%2223%22%20r%3D%225%22%20fill%3D%22white%22%20stroke%3D%22%23121212%22%20stroke-width%3D%221.25%22%2F%3E%3Ccircle%20cx%3D%2223%22%20cy%3D%2223%22%20r%3D%225%22%20fill%3D%22white%22%20stroke%3D%22%23121212%22%20stroke-width%3D%221.25%22%2F%3E%3Ccircle%20cx%3D%229%22%20cy%3D%229%22%20r%3D%225%22%20fill%3D%22white%22%20stroke%3D%22%23121212%22%20stroke-width%3D%221.25%22%2F%3E%3Ccircle%20cx%3D%2223%22%20cy%3D%229%22%20r%3D%225%22%20fill%3D%22white%22%20stroke%3D%22%23121212%22%20stroke-width%3D%221.25%22%2F%3E%3C%2Fsvg%3E">
 <style>
 @font-face {
 	font-family: "Geist";
@@ -30,51 +34,43 @@
 }
 
 :root {
-	--vpk-paper: var(--ds-surface, #ffffff);
-	--vpk-paper-background: var(--ds-surface, #ffffff);
-	--vpk-surface-raised: var(--ds-surface-raised, #ffffff);
-	--vpk-surface-overlay: var(--ds-surface-overlay, #ffffff);
-	--vpk-surface-sunken: var(--ds-surface-sunken, #f0f1f2);
-	--vpk-ink: var(--ds-text, #292a2e);
-	--vpk-muted-text: var(--ds-text-subtle, #505258);
-	--vpk-subtlest-text: var(--ds-text-subtlest, #6b6e76);
-	--vpk-inverse-text: var(--ds-text-inverse, #ffffff);
-	--vpk-rule: var(--ds-border, #0b120e24);
-	--vpk-rule-strong: var(--ds-border-bold, #7d818a);
-	--vpk-blueprint: var(--ds-background-brand-bold, #1868db);
-	--vpk-link: var(--ds-link, #1868db);
-	--vpk-link-pressed: var(--ds-link-pressed, #1558bc);
-	--vpk-selected: var(--ds-background-selected, #e9f2fe);
-	--vpk-blueprint-tint: var(--ds-background-information, #e9f2fe);
-	--vpk-blueprint-tint-strong: var(--ds-background-information-hovered, #cfe1fd);
-	--vpk-focus-ring: var(--ds-border-focused, #4688ec);
-	--vpk-code-surface: var(--ds-background-neutral-subtle, #f0f1f2);
-	--vpk-code-ink: var(--ds-text, #292a2e);
-	--vpk-code-inverse: var(--ds-text-inverse, #ffffff);
-	--vpk-math-highlight: var(--ds-background-information, #e9f2fe);
-	--vpk-success: var(--ds-background-success-bold, #5b7f24);
-	--vpk-success-tint: var(--ds-background-success, #efffd6);
-	--vpk-warning: var(--ds-background-warning-bold, #fbc828);
-	--vpk-warning-tint: var(--ds-background-warning, #fff5db);
-	--vpk-danger: var(--ds-background-danger-bold, #c9372c);
-	--vpk-danger-tint: var(--ds-background-danger, #ffeceb);
-	--vpk-info: var(--ds-background-information-bold, #1868db);
-	--vpk-info-tint: var(--ds-background-information, #e9f2fe);
-	--vpk-paper-rule: color-mix(in srgb, var(--vpk-ink) 8%, transparent);
-	--vpk-shadow: var(--ds-shadow-raised, 0 1px 1px rgba(9, 30, 66, 0.25), 0 0 1px rgba(9, 30, 66, 0.31));
+	--paper: var(--ds-surface, #ffffff);
+	--paper-background: var(--ds-surface, #ffffff);
+	--surface-raised: var(--ds-surface-raised, #ffffff);
+	--surface-overlay: var(--ds-surface-overlay, #ffffff);
+	--surface-sunken: var(--ds-surface-sunken, #f0f1f2);
+	--ink: var(--ds-text, #292a2e);
+	--muted-text: var(--ds-text-subtle, #505258);
+	--subtlest-text: var(--ds-text-subtlest, #6b6e76);
+	--inverse-text: var(--ds-text-inverse, #ffffff);
+	--rule: var(--ds-border, #0b120e24);
+	--rule-strong: var(--ds-border-bold, #7d818a);
+	--blueprint: var(--ds-background-accent-lime-subtle, #94c748);
+	--link: var(--ds-text-accent-lime, #4c6b1f);
+	--link-pressed: var(--ds-text-accent-lime-bolder, #37471f);
+	--selected: var(--ds-background-accent-lime-subtler, #d3f1a7);
+	--blueprint-tint: var(--ds-background-accent-lime-subtlest, #efffd6);
+	--blueprint-tint-strong: var(--ds-background-accent-lime-subtler, #d3f1a7);
+	--focus-ring: var(--ds-border-accent-lime, #6a9a23);
+	--code-surface: var(--ds-background-neutral-subtle, #f0f1f2);
+	--code-ink: var(--ds-text, #292a2e);
+	--code-inverse: var(--ds-text-inverse, #ffffff);
+	--math-highlight: var(--ds-background-accent-lime-subtlest, #efffd6);
+	--success: var(--ds-background-success-bold, #5b7f24);
+	--success-tint: var(--ds-background-success, #efffd6);
+	--warning: var(--ds-background-warning-bold, #fbc828);
+	--warning-tint: var(--ds-background-warning, #fff5db);
+	--danger: var(--ds-background-danger-bold, #c9372c);
+	--danger-tint: var(--ds-background-danger, #ffeceb);
+	--info: var(--ds-background-information-bold, #1868db);
+	--info-tint: var(--ds-background-information, #e9f2fe);
+	--paper-rule: color-mix(in srgb, var(--ink) 8%, transparent);
+	--shadow: var(--ds-shadow-raised, 0 1px 1px rgba(9, 30, 66, 0.25), 0 0 1px rgba(9, 30, 66, 0.31));
 	color-scheme: light dark;
-	--paper: var(--vpk-paper);
-	--paper-solid: var(--vpk-surface-raised);
-	--ink: var(--vpk-ink);
-	--muted: var(--vpk-muted-text);
-	--rule: var(--vpk-rule);
-	--rule-strong: var(--vpk-ink);
-	--blueprint: var(--vpk-blueprint);
-	--link-pressed: var(--vpk-link-pressed);
-	--selected: color-mix(in srgb, var(--vpk-blueprint) 8%, transparent);
-	--code-surface: var(--vpk-code-surface);
-	--success: var(--vpk-success);
-	--danger: var(--vpk-danger);
+	--paper-solid: var(--surface-raised);
+	--muted: var(--muted-text);
+	--rule-strong: var(--ink);
+	--selected: color-mix(in srgb, var(--blueprint) 8%, transparent);
 	--font-display: "Geist Pixel", "Geist Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
 	--font-body: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 	--font-mono: "Geist Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
@@ -82,57 +78,50 @@
 
 /* Dark mode tokens. Activate via <html data-theme="dark">. */
 [data-theme="dark"] {
-	--vpk-paper: var(--ds-surface, #101214);
-	--vpk-paper-background: var(--ds-surface, #1d2125);
-	--vpk-surface-raised: var(--ds-surface-raised, #22272b);
-	--vpk-surface-overlay: var(--ds-surface-overlay, #282e33);
-	--vpk-surface-sunken: var(--ds-surface-sunken, #161a1d);
-	--vpk-ink: var(--ds-text, #dee4ea);
-	--vpk-muted-text: var(--ds-text-subtle, #9fadbc);
-	--vpk-subtlest-text: var(--ds-text-subtlest, #738496);
-	--vpk-inverse-text: var(--ds-text-inverse, #101214);
-	--vpk-rule: var(--ds-border, #a6c5e229);
-	--vpk-rule-strong: var(--ds-border-bold, #738496);
-	--vpk-blueprint: var(--ds-background-brand-bold, #579dff);
-	--vpk-link: var(--ds-link, #579dff);
-	--vpk-link-pressed: var(--ds-link-pressed, #85b8ff);
-	--vpk-selected: var(--ds-background-selected, #09326c);
-	--vpk-blueprint-tint: var(--ds-background-information, #09326c);
-	--vpk-blueprint-tint-strong: var(--ds-background-information-hovered, #0c418a);
-	--vpk-focus-ring: var(--ds-border-focused, #579dff);
-	--vpk-code-surface: var(--ds-background-neutral-subtle, #161a1d);
-	--vpk-code-ink: var(--ds-text, #dee4ea);
-	--vpk-code-inverse: var(--ds-text-inverse, #101214);
-	--vpk-math-highlight: var(--ds-background-information, #09326c);
-	--vpk-success: var(--ds-background-success-bold, #b3df72);
-	--vpk-success-tint: var(--ds-background-success, #1f4d3a);
-	--vpk-warning: var(--ds-background-warning-bold, #f5cd47);
-	--vpk-warning-tint: var(--ds-background-warning, #533f04);
-	--vpk-danger: var(--ds-background-danger-bold, #f87168);
-	--vpk-danger-tint: var(--ds-background-danger, #5d1f1a);
-	--vpk-info: var(--ds-background-information-bold, #579dff);
-	--vpk-info-tint: var(--ds-background-information, #09326c);
-	--vpk-paper-rule: color-mix(in srgb, var(--vpk-ink) 8%, transparent);
-	--vpk-shadow: var(--ds-shadow-raised, 0 1px 1px rgba(0, 0, 0, 0.32), 0 0 1px rgba(0, 0, 0, 0.42));
-	--paper: var(--vpk-paper);
-	--paper-solid: var(--vpk-surface-raised);
-	--ink: var(--vpk-ink);
-	--muted: var(--vpk-muted-text);
-	--rule: color-mix(in srgb, var(--vpk-ink) 18%, transparent);
-	--rule-strong: var(--vpk-ink);
-	--blueprint: var(--vpk-blueprint);
-	--link-pressed: var(--vpk-link-pressed);
-	--selected: color-mix(in srgb, var(--vpk-blueprint) 16%, transparent);
-	--code-surface: var(--vpk-code-surface);
-	--success: var(--vpk-success);
-	--danger: var(--vpk-danger);
+	--paper: var(--ds-surface, #101214);
+	--paper-background: var(--ds-surface, #1d2125);
+	--surface-raised: var(--ds-surface-raised, #22272b);
+	--surface-overlay: var(--ds-surface-overlay, #282e33);
+	--surface-sunken: var(--ds-surface-sunken, #161a1d);
+	--ink: var(--ds-text, #dee4ea);
+	--muted-text: var(--ds-text-subtle, #9fadbc);
+	--subtlest-text: var(--ds-text-subtlest, #738496);
+	--inverse-text: var(--ds-text-inverse, #101214);
+	--rule: var(--ds-border, #a6c5e229);
+	--rule-strong: var(--ds-border-bold, #738496);
+	--blueprint: var(--ds-background-accent-lime-subtle, #4c6b1f);
+	--link: var(--ds-text-accent-lime, #b3df72);
+	--link-pressed: var(--ds-text-accent-lime-bolder, #d3f1a7);
+	--selected: var(--ds-background-accent-lime-subtler, #37471f);
+	--blueprint-tint: var(--ds-background-accent-lime-subtlest, #28311b);
+	--blueprint-tint-strong: var(--ds-background-accent-lime-subtler, #37471f);
+	--focus-ring: var(--ds-border-accent-lime, #82b536);
+	--code-surface: var(--ds-background-neutral-subtle, #161a1d);
+	--code-ink: var(--ds-text, #dee4ea);
+	--code-inverse: var(--ds-text-inverse, #101214);
+	--math-highlight: var(--ds-background-accent-lime-subtlest, #28311b);
+	--success: var(--ds-background-success-bold, #b3df72);
+	--success-tint: var(--ds-background-success, #1f4d3a);
+	--warning: var(--ds-background-warning-bold, #f5cd47);
+	--warning-tint: var(--ds-background-warning, #533f04);
+	--danger: var(--ds-background-danger-bold, #f87168);
+	--danger-tint: var(--ds-background-danger, #5d1f1a);
+	--info: var(--ds-background-information-bold, #579dff);
+	--info-tint: var(--ds-background-information, #09326c);
+	--paper-rule: color-mix(in srgb, var(--ink) 8%, transparent);
+	--shadow: var(--ds-shadow-raised, 0 1px 1px rgba(0, 0, 0, 0.32), 0 0 1px rgba(0, 0, 0, 0.42));
+	--paper-solid: var(--surface-raised);
+	--muted: var(--muted-text);
+	--rule: color-mix(in srgb, var(--ink) 18%, transparent);
+	--rule-strong: var(--ink);
+	--selected: color-mix(in srgb, var(--blueprint) 16%, transparent);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 html {
-	background: var(--vpk-paper);
-	color: var(--vpk-ink);
+	background: var(--paper);
+	color: var(--ink);
 	font-family: var(--font-body);
 	line-height: 1.6;
 	scroll-behavior: auto;
@@ -140,25 +129,25 @@ html {
 
 body {
 	background:
-		radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--vpk-ink) 16%, transparent) 1px, transparent 0),
-		linear-gradient(180deg, color-mix(in srgb, var(--vpk-blueprint) 4%, transparent), transparent 18rem),
-		var(--vpk-paper);
+		radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--ink) 16%, transparent) 1px, transparent 0),
+		linear-gradient(180deg, color-mix(in srgb, var(--blueprint) 4%, transparent), transparent 18rem),
+		var(--paper);
 	background-size: 18px 18px, 100% 100%, auto;
 	min-height: 100vh;
 }
 
 a {
 	color: var(--link-pressed);
-	text-decoration-color: color-mix(in srgb, var(--vpk-blueprint) 45%, transparent);
+	text-decoration-color: color-mix(in srgb, var(--blueprint) 45%, transparent);
 	text-decoration-thickness: 0.08em;
 	text-underline-offset: 0.18em;
 }
 
-a:hover { color: var(--vpk-blueprint); }
+a:hover { color: var(--blueprint); }
 
 code {
 	background: var(--selected);
-	border: 1px solid color-mix(in srgb, var(--vpk-blueprint) 18%, transparent);
+	border: 1px solid color-mix(in srgb, var(--blueprint) 18%, transparent);
 	font-family: var(--font-mono);
 	font-size: 0.92em;
 	padding: 0.04rem 0.28rem;
@@ -172,7 +161,7 @@ code {
 
 /* ============ Manual layout ============ */
 .hero {
-	border-bottom: 2px solid var(--vpk-rule-strong);
+	border-bottom: 2px solid var(--rule-strong);
 	padding: clamp(1.1rem, 3vw, 3rem) 0 clamp(2rem, 6vw, 4.25rem);
 }
 
@@ -180,7 +169,7 @@ code {
 .figure-label,
 .meta-label,
 .eyebrow {
-	color: var(--vpk-muted-text);
+	color: var(--muted-text);
 	font-family: var(--font-mono);
 	font-size: 0.72rem;
 	letter-spacing: 0.18em;
@@ -188,6 +177,7 @@ code {
 }
 
 .hero h1 {
+	color: var(--blueprint);
 	font-family: var(--font-display);
 	font-size: clamp(4.8rem, 15vw, 12.25rem);
 	font-weight: 400;
@@ -198,8 +188,8 @@ code {
 }
 
 .hero-intro {
-	border-bottom: 1px solid var(--vpk-rule);
-	border-top: 1px solid var(--vpk-rule);
+	border-bottom: 1px solid var(--rule);
+	border-top: 1px solid var(--rule);
 	display: grid;
 	gap: clamp(1.4rem, 4vw, 3rem);
 	grid-template-columns: 1fr;
@@ -225,7 +215,7 @@ code {
 }
 
 .intro-copy p:first-child::first-letter {
-	color: var(--vpk-blueprint);
+	color: var(--blueprint);
 	float: left;
 	font-family: var(--font-display);
 	font-size: 5.4rem;
@@ -234,7 +224,7 @@ code {
 }
 
 section {
-	border-bottom: 1px solid var(--vpk-rule-strong);
+	border-bottom: 1px solid var(--rule-strong);
 	display: grid;
 	gap: clamp(1.4rem, 3vw, 2.5rem);
 	grid-template-columns: 1fr;
@@ -262,21 +252,21 @@ section {
 
 .callout {
 	background: var(--selected);
-	border-left: 3px solid var(--vpk-blueprint);
-	color: var(--vpk-muted-text);
+	border-left: 3px solid var(--blueprint);
+	color: var(--muted-text);
 	font-size: 0.92rem;
 	padding: 0.9rem 1rem;
 }
 
 /* ============ Unified demo catalog ============ */
 .demo-contents {
-	border-top: 2px solid var(--vpk-rule-strong);
+	border-top: 2px solid var(--rule-strong);
 	display: grid;
 	gap: 0;
 }
 
 .demo-category {
-	border-bottom: 1px solid var(--vpk-rule-strong);
+	border-bottom: 1px solid var(--rule-strong);
 	display: grid;
 	gap: 1rem;
 	padding: 1.25rem 0 1.35rem;
@@ -302,7 +292,7 @@ section {
 }
 
 .demo-category-index {
-	color: var(--vpk-blueprint);
+	color: var(--blueprint);
 	flex: 0 0 auto;
 	font-family: var(--font-display);
 	font-size: 2.4rem;
@@ -310,7 +300,7 @@ section {
 }
 
 .demo-source {
-	color: var(--vpk-muted-text);
+	color: var(--muted-text);
 	font-family: var(--font-mono);
 	font-size: 0.68rem;
 	letter-spacing: 0.16em;
@@ -329,20 +319,20 @@ section {
 }
 
 .demo-category-head p:last-child {
-	color: var(--vpk-muted-text);
+	color: var(--muted-text);
 	font-size: 0.92rem;
 	line-height: 1.45;
 	margin-top: 0.45rem;
 }
 
 .demo-list {
-	border-top: 1px solid var(--vpk-rule);
+	border-top: 1px solid var(--rule);
 	display: grid;
 }
 
 .demo-row {
 	align-items: baseline;
-	border-bottom: 1px solid var(--vpk-rule);
+	border-bottom: 1px solid var(--rule);
 	color: inherit;
 	display: grid;
 	gap: 0.85rem;
@@ -369,7 +359,7 @@ section {
 }
 
 .demo-num {
-	color: var(--vpk-blueprint);
+	color: var(--blueprint);
 	font-variant-numeric: tabular-nums;
 }
 
@@ -387,7 +377,7 @@ section {
 }
 
 .demo-name {
-	color: var(--vpk-ink);
+	color: var(--ink);
 	font-family: var(--font-display);
 	font-size: clamp(1.15rem, 1.8vw, 1.45rem);
 	font-weight: 400;
@@ -397,7 +387,7 @@ section {
 }
 
 .demo-desc {
-	color: var(--vpk-muted-text);
+	color: var(--muted-text);
 	font-size: 0.9rem;
 	line-height: 1.45;
 	max-width: 78ch;
@@ -411,7 +401,7 @@ section {
 }
 
 footer {
-	color: var(--vpk-muted-text);
+	color: var(--muted-text);
 	font-family: var(--font-mono);
 	font-size: 0.76rem;
 	letter-spacing: 0.04em;
@@ -420,11 +410,11 @@ footer {
 }
 
 footer a {
-	color: var(--vpk-muted-text);
+	color: var(--muted-text);
 	text-decoration: none;
 }
 
-footer a:hover { color: var(--vpk-blueprint); }
+footer a:hover { color: var(--blueprint); }
 
 @media (max-width: 980px) {
 	.demo-category-head {
@@ -471,7 +461,7 @@ footer a:hover { color: var(--vpk-blueprint); }
 		<div class="hero-intro">
 			<div class="intro-copy">
 				<p>Most HTML handoffs start as scattered material: a report shape here, a review surface there, a diagram pattern somewhere else. vpk-html collects those jobs into a local demo catalog so an agent can choose the closest form before drafting the artifact.</p>
-				<p>Each row opens a finished demo, starter document, or inline figure that can be reused as a self-contained HTML file. The point is not a public gallery; it is a working map of document patterns for reviews, reports, explainers, prototypes, decks, and lightweight editor surfaces.</p>
+				<p>Each row opens a finished demo or mock preview that can be reused as a self-contained HTML file. The point is not a public gallery; it is a working map of document patterns for reviews, reports, explainers, prototypes, decks, and lightweight editor surfaces.</p>
 			</div>
 		</div>
 	</div>
@@ -490,14 +480,14 @@ footer a:hover { color: var(--vpk-blueprint); }
 					</div>
 				</header>
 				<div class="demo-list">
-					<a class="demo-row" href="assets/templates/one-pager.html"><span class="demo-num">01.01</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">One-Pager</span></span><span class="demo-desc">Executive summary, proposal, internal brief, or decision memo when the reader needs the answer quickly.</span></span><span class="demo-path">one-pager.html</span></a>
-					<a class="demo-row" href="assets/templates/long-doc.html"><span class="demo-num">01.02</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Long Document</span></span><span class="demo-desc">White paper, chapter, technical narrative, or long-form report with sections and embedded figures.</span></span><span class="demo-path">long-doc.html</span></a>
-					<a class="demo-row" href="assets/templates/letter.html"><span class="demo-num">01.03</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Letter</span></span><span class="demo-desc">Formal letter, memo, cover note, or compact written communication with a clear recipient.</span></span><span class="demo-path">letter.html</span></a>
-					<a class="demo-row" href="assets/demos/demo-kaku.html"><span class="demo-num">01.04</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Portfolio</span></span><span class="demo-desc">A terminal-style Kaku portfolio with case-study structure, project imagery, and multi-page rhythm.</span></span><span class="demo-path">demo-kaku.html</span></a>
+					<a class="demo-row" href="assets/demos/demo-one-pager.html"><span class="demo-num">01.01</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">One-Pager</span></span><span class="demo-desc">Executive summary, proposal, internal brief, or decision memo when the reader needs the answer quickly.</span></span><span class="demo-path">demo-one-pager.html</span></a>
+					<a class="demo-row" href="assets/demos/demo-long-doc.html"><span class="demo-num">01.02</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Long Document</span></span><span class="demo-desc">White paper, chapter, technical narrative, or long-form report with sections and embedded figures.</span></span><span class="demo-path">demo-long-doc.html</span></a>
+					<a class="demo-row" href="assets/demos/demo-letter.html"><span class="demo-num">01.03</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Letter</span></span><span class="demo-desc">Formal letter, memo, cover note, or compact written communication with a clear recipient.</span></span><span class="demo-path">demo-letter.html</span></a>
+					<a class="demo-row" href="assets/demos/demo-kaku.html"><span class="demo-num">01.04</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Portfolio</span></span><span class="demo-desc">A terminal-style Kaku portfolio with case-study structure, inline SVG figures, and multi-page rhythm.</span></span><span class="demo-path">demo-kaku.html</span></a>
 					<a class="demo-row" href="assets/demos/demo-musk-resume.html"><span class="demo-num">01.05</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Resume</span></span><span class="demo-desc">A two-page founder CV with concise project evidence and result-led bullets.</span></span><span class="demo-path">demo-musk-resume.html</span></a>
-					<a class="demo-row" href="assets/templates/slides.html"><span class="demo-num">01.06</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Slides</span></span><span class="demo-desc">HTML deck starter for projection, print, or PDF export with assertion-evidence slide structure.</span></span><span class="demo-path">slides.html</span></a>
+					<a class="demo-row" href="assets/demos/demo-slides.html"><span class="demo-num">01.06</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Slides</span></span><span class="demo-desc">HTML deck starter for projection, print, or PDF export with assertion-evidence slide structure.</span></span><span class="demo-path">demo-slides.html</span></a>
 					<a class="demo-row" href="assets/demos/demo-tesla.html"><span class="demo-num">01.07</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Equity Report</span></span><span class="demo-desc">A Tesla earnings note with thesis, catalysts, risks, and finance-report page rhythm.</span></span><span class="demo-path">demo-tesla.html</span></a>
-					<a class="demo-row" href="assets/templates/changelog.html"><span class="demo-num">01.08</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Changelog</span></span><span class="demo-desc">Versioned release notes for projects that need visible changes, fixes, and upgrade notes.</span></span><span class="demo-path">changelog.html</span></a>
+					<a class="demo-row" href="assets/demos/demo-changelog.html"><span class="demo-num">01.08</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Changelog</span></span><span class="demo-desc">Versioned release notes for projects that need visible changes, fixes, and upgrade notes.</span></span><span class="demo-path">demo-changelog.html</span></a>
 				</div>
 			</article>
 			<article class="demo-category" id="exploration">
@@ -633,20 +623,20 @@ footer a:hover { color: var(--vpk-blueprint); }
 					</div>
 				</header>
 				<div class="demo-list">
-					<a class="demo-row" href="assets/diagrams/architecture.html"><span class="demo-num">11.01</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Architecture</span></span><span class="demo-desc">Components and connections in a system, with one focal node emphasized.</span></span><span class="demo-path">architecture.html</span></a>
-					<a class="demo-row" href="assets/diagrams/flowchart.html"><span class="demo-num">11.02</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Flowchart</span></span><span class="demo-desc">A process with decision branches, clear start/end states, and labeled paths.</span></span><span class="demo-path">flowchart.html</span></a>
-					<a class="demo-row" href="assets/diagrams/swimlane.html"><span class="demo-num">11.03</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Swimlane</span></span><span class="demo-desc">Cross-team or cross-role flow where ownership matters as much as sequence.</span></span><span class="demo-path">swimlane.html</span></a>
-					<a class="demo-row" href="assets/diagrams/state-machine.html"><span class="demo-num">11.04</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">State Machine</span></span><span class="demo-desc">Lifecycle states and transitions, including the exceptional path.</span></span><span class="demo-path">state-machine.html</span></a>
-					<a class="demo-row" href="assets/diagrams/timeline.html"><span class="demo-num">11.05</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Timeline</span></span><span class="demo-desc">Time-ordered events, milestones, roadmap checkpoints, or incident sequence.</span></span><span class="demo-path">timeline.html</span></a>
-					<a class="demo-row" href="assets/diagrams/tree.html"><span class="demo-num">11.06</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Tree</span></span><span class="demo-desc">Hierarchy or org-chart structure with at least two meaningful levels.</span></span><span class="demo-path">tree.html</span></a>
-					<a class="demo-row" href="assets/diagrams/layer-stack.html"><span class="demo-num">11.07</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Layer Stack</span></span><span class="demo-desc">Layered architecture, OSI-style stack, or tiered system where vertical order matters.</span></span><span class="demo-path">layer-stack.html</span></a>
-					<a class="demo-row" href="assets/diagrams/quadrant.html"><span class="demo-num">11.08</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Quadrant</span></span><span class="demo-desc">A two-by-two matrix for priority, positioning, risk, or strategic comparison.</span></span><span class="demo-path">quadrant.html</span></a>
-					<a class="demo-row" href="assets/diagrams/venn.html"><span class="demo-num">11.09</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Venn</span></span><span class="demo-desc">Overlap between two or three sets, with the intersection as the focal claim.</span></span><span class="demo-path">venn.html</span></a>
-					<a class="demo-row" href="assets/diagrams/bar-chart.html"><span class="demo-num">11.10</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Bar Chart</span></span><span class="demo-desc">Category comparison when the x-axis is not time and the contrast is the point.</span></span><span class="demo-path">bar-chart.html</span></a>
-					<a class="demo-row" href="assets/diagrams/line-chart.html"><span class="demo-num">11.11</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Line Chart</span></span><span class="demo-desc">A trend or time series where slope and inflection matter more than individual bars.</span></span><span class="demo-path">line-chart.html</span></a>
-					<a class="demo-row" href="assets/diagrams/donut-chart.html"><span class="demo-num">11.12</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Donut Chart</span></span><span class="demo-desc">Distribution or composition that sums to roughly 100 percent across a small set.</span></span><span class="demo-path">donut-chart.html</span></a>
-					<a class="demo-row" href="assets/diagrams/candlestick.html"><span class="demo-num">11.13</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Candlestick</span></span><span class="demo-desc">OHLC or stock-price history where the open, high, low, and close all matter.</span></span><span class="demo-path">candlestick.html</span></a>
-					<a class="demo-row" href="assets/diagrams/waterfall.html"><span class="demo-num">11.14</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Waterfall</span></span><span class="demo-desc">Positive and negative bridge from a starting value to an ending total.</span></span><span class="demo-path">waterfall.html</span></a>
+					<a class="demo-row" href="assets/demos/demo-diagram-architecture.html"><span class="demo-num">11.01</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Architecture</span></span><span class="demo-desc">Components and connections in a system, with one focal node emphasized.</span></span><span class="demo-path">demo-diagram-architecture.html</span></a>
+					<a class="demo-row" href="assets/demos/demo-diagram-flowchart.html"><span class="demo-num">11.02</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Flowchart</span></span><span class="demo-desc">A process with decision branches, clear start/end states, and labeled paths.</span></span><span class="demo-path">demo-diagram-flowchart.html</span></a>
+					<a class="demo-row" href="assets/demos/demo-diagram-swimlane.html"><span class="demo-num">11.03</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Swimlane</span></span><span class="demo-desc">Cross-team or cross-role flow where ownership matters as much as sequence.</span></span><span class="demo-path">demo-diagram-swimlane.html</span></a>
+					<a class="demo-row" href="assets/demos/demo-diagram-state-machine.html"><span class="demo-num">11.04</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">State Machine</span></span><span class="demo-desc">Lifecycle states and transitions, including the exceptional path.</span></span><span class="demo-path">demo-diagram-state-machine.html</span></a>
+					<a class="demo-row" href="assets/demos/demo-diagram-timeline.html"><span class="demo-num">11.05</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Timeline</span></span><span class="demo-desc">Time-ordered events, milestones, roadmap checkpoints, or incident sequence.</span></span><span class="demo-path">demo-diagram-timeline.html</span></a>
+					<a class="demo-row" href="assets/demos/demo-diagram-tree.html"><span class="demo-num">11.06</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Tree</span></span><span class="demo-desc">Hierarchy or org-chart structure with at least two meaningful levels.</span></span><span class="demo-path">demo-diagram-tree.html</span></a>
+					<a class="demo-row" href="assets/demos/demo-diagram-layer-stack.html"><span class="demo-num">11.07</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Layer Stack</span></span><span class="demo-desc">Layered architecture, OSI-style stack, or tiered system where vertical order matters.</span></span><span class="demo-path">demo-diagram-layer-stack.html</span></a>
+					<a class="demo-row" href="assets/demos/demo-diagram-quadrant.html"><span class="demo-num">11.08</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Quadrant</span></span><span class="demo-desc">A two-by-two matrix for priority, positioning, risk, or strategic comparison.</span></span><span class="demo-path">demo-diagram-quadrant.html</span></a>
+					<a class="demo-row" href="assets/demos/demo-diagram-venn.html"><span class="demo-num">11.09</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Venn</span></span><span class="demo-desc">Overlap between two or three sets, with the intersection as the focal claim.</span></span><span class="demo-path">demo-diagram-venn.html</span></a>
+					<a class="demo-row" href="assets/demos/demo-diagram-bar-chart.html"><span class="demo-num">11.10</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Bar Chart</span></span><span class="demo-desc">Category comparison when the x-axis is not time and the contrast is the point.</span></span><span class="demo-path">demo-diagram-bar-chart.html</span></a>
+					<a class="demo-row" href="assets/demos/demo-diagram-line-chart.html"><span class="demo-num">11.11</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Line Chart</span></span><span class="demo-desc">A trend or time series where slope and inflection matter more than individual bars.</span></span><span class="demo-path">demo-diagram-line-chart.html</span></a>
+					<a class="demo-row" href="assets/demos/demo-diagram-donut-chart.html"><span class="demo-num">11.12</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Donut Chart</span></span><span class="demo-desc">Distribution or composition that sums to roughly 100 percent across a small set.</span></span><span class="demo-path">demo-diagram-donut-chart.html</span></a>
+					<a class="demo-row" href="assets/demos/demo-diagram-candlestick.html"><span class="demo-num">11.13</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Candlestick</span></span><span class="demo-desc">OHLC or stock-price history where the open, high, low, and close all matter.</span></span><span class="demo-path">demo-diagram-candlestick.html</span></a>
+					<a class="demo-row" href="assets/demos/demo-diagram-waterfall.html"><span class="demo-num">11.14</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Waterfall</span></span><span class="demo-desc">Positive and negative bridge from a starting value to an ending total.</span></span><span class="demo-path">demo-diagram-waterfall.html</span></a>
 				</div>
 			</article>
 		</div>

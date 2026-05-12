@@ -3,62 +3,65 @@
      DIAGRAM · line chart (vpk-html palette)
      SVG primitive ported from kami's diagram library, restyled with the
      vpk-html identity: Geist Pixel headline, Geist Sans body, semantic paper
-     background, blueprint (var(--vpk-blueprint)) accent. Drop the <svg> block into a
+     background, blueprint (var(--blueprint)) accent. Drop the <svg> block into a
      long-doc, portfolio, or design-system payload via section.trustedHtml.
      ================================================================== -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <title>line chart · vpk-html diagram</title>
+<link rel="icon" type="image/svg+xml" sizes="any" href="data:image/svg+xml,%3Csvg%20width%3D%2232%22%20height%3D%2232%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%228%22%20fill%3D%22%23121212%22%2F%3E%3Ccircle%20cx%3D%2211%22%20cy%3D%2221%22%20r%3D%225%22%20fill%3D%22white%22%2F%3E%3Ccircle%20cx%3D%2221%22%20cy%3D%2221%22%20r%3D%225%22%20fill%3D%22white%22%2F%3E%3Ccircle%20cx%3D%2211%22%20cy%3D%2211%22%20r%3D%225%22%20fill%3D%22white%22%2F%3E%3Ccircle%20cx%3D%2221%22%20cy%3D%2211%22%20r%3D%225%22%20fill%3D%22white%22%2F%3E%3C%2Fsvg%3E">
+<link rel="icon" type="image/svg+xml" sizes="any" media="(prefers-color-scheme: light)" href="data:image/svg+xml,%3Csvg%20width%3D%2232%22%20height%3D%2232%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Ccircle%20cx%3D%229%22%20cy%3D%2223%22%20r%3D%225%22%20fill%3D%22%23121212%22%2F%3E%3Ccircle%20cx%3D%2223%22%20cy%3D%2223%22%20r%3D%225%22%20fill%3D%22%23121212%22%2F%3E%3Ccircle%20cx%3D%229%22%20cy%3D%229%22%20r%3D%225%22%20fill%3D%22%23121212%22%2F%3E%3Ccircle%20cx%3D%2223%22%20cy%3D%229%22%20r%3D%225%22%20fill%3D%22%23121212%22%2F%3E%3C%2Fsvg%3E">
+<link rel="icon" type="image/svg+xml" sizes="any" media="(prefers-color-scheme: dark)" href="data:image/svg+xml,%3Csvg%20width%3D%2232%22%20height%3D%2232%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Ccircle%20cx%3D%229%22%20cy%3D%2223%22%20r%3D%225%22%20fill%3D%22white%22%20stroke%3D%22%23121212%22%20stroke-width%3D%221.25%22%2F%3E%3Ccircle%20cx%3D%2223%22%20cy%3D%2223%22%20r%3D%225%22%20fill%3D%22white%22%20stroke%3D%22%23121212%22%20stroke-width%3D%221.25%22%2F%3E%3Ccircle%20cx%3D%229%22%20cy%3D%229%22%20r%3D%225%22%20fill%3D%22white%22%20stroke%3D%22%23121212%22%20stroke-width%3D%221.25%22%2F%3E%3Ccircle%20cx%3D%2223%22%20cy%3D%229%22%20r%3D%225%22%20fill%3D%22white%22%20stroke%3D%22%23121212%22%20stroke-width%3D%221.25%22%2F%3E%3C%2Fsvg%3E">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
-    --vpk-paper: var(--ds-surface, #ffffff);
-    --vpk-ink: var(--ds-text, #292a2e);
-    --vpk-muted-text: var(--ds-text-subtle, #505258);
-    --vpk-blueprint: var(--ds-background-brand-bold, #1868db);
-    --vpk-danger: var(--ds-background-danger-bold, #c9372c);
-    --vpk-rule: var(--ds-border, #0b120e24);
+    --paper: var(--ds-surface, #ffffff);
+    --ink: var(--ds-text, #292a2e);
+    --muted-text: var(--ds-text-subtle, #505258);
+    --blueprint: var(--ds-background-accent-lime-subtle, #94c748);
+    --danger: var(--ds-background-danger-bold, #c9372c);
+    --rule: var(--ds-border, #0b120e24);
 
-    --vpk-font-sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-    --vpk-font-mono: "Geist Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
-    --vpk-font-display: "Geist Pixel", "Geist Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+    --font-sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mono: "Geist Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+    --font-display: "Geist Pixel", "Geist Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
   }
 
 [data-theme="dark"] {
-	--vpk-paper: var(--ds-surface, #101214);
-	--vpk-paper-background: var(--ds-surface, #1d2125);
-	--vpk-surface-raised: var(--ds-surface-raised, #22272b);
-	--vpk-surface-overlay: var(--ds-surface-overlay, #282e33);
-	--vpk-surface-sunken: var(--ds-surface-sunken, #161a1d);
-	--vpk-ink: var(--ds-text, #dee4ea);
-	--vpk-muted-text: var(--ds-text-subtle, #9fadbc);
-	--vpk-subtlest-text: var(--ds-text-subtlest, #738496);
-	--vpk-inverse-text: var(--ds-text-inverse, #101214);
-	--vpk-rule: var(--ds-border, #a6c5e229);
-	--vpk-rule-strong: var(--ds-border-bold, #738496);
-	--vpk-blueprint: var(--ds-background-brand-bold, #579dff);
-	--vpk-link: var(--ds-link, #579dff);
-	--vpk-link-pressed: var(--ds-link-pressed, #85b8ff);
-	--vpk-selected: var(--ds-background-selected, #09326c);
-	--vpk-blueprint-tint: var(--ds-background-information, #09326c);
-	--vpk-blueprint-tint-strong: var(--ds-background-information-hovered, #0c418a);
-	--vpk-focus-ring: var(--ds-border-focused, #579dff);
-	--vpk-code-surface: var(--ds-background-neutral-subtle, #161a1d);
-	--vpk-code-ink: var(--ds-text, #dee4ea);
-	--vpk-code-inverse: var(--ds-text-inverse, #101214);
-	--vpk-math-highlight: var(--ds-background-information, #09326c);
-	--vpk-success: var(--ds-background-success-bold, #b3df72);
-	--vpk-success-tint: var(--ds-background-success, #1f4d3a);
-	--vpk-warning: var(--ds-background-warning-bold, #f5cd47);
-	--vpk-warning-tint: var(--ds-background-warning, #533f04);
-	--vpk-danger: var(--ds-background-danger-bold, #f87168);
-	--vpk-danger-tint: var(--ds-background-danger, #5d1f1a);
-	--vpk-info: var(--ds-background-information-bold, #579dff);
-	--vpk-info-tint: var(--ds-background-information, #09326c);
-	--vpk-paper-rule: color-mix(in srgb, var(--vpk-ink) 8%, transparent);
-	--vpk-shadow: var(--ds-shadow-raised, 0 1px 1px rgba(0, 0, 0, 0.32), 0 0 1px rgba(0, 0, 0, 0.42));
+	--paper: var(--ds-surface, #101214);
+	--paper-background: var(--ds-surface, #1d2125);
+	--surface-raised: var(--ds-surface-raised, #22272b);
+	--surface-overlay: var(--ds-surface-overlay, #282e33);
+	--surface-sunken: var(--ds-surface-sunken, #161a1d);
+	--ink: var(--ds-text, #dee4ea);
+	--muted-text: var(--ds-text-subtle, #9fadbc);
+	--subtlest-text: var(--ds-text-subtlest, #738496);
+	--inverse-text: var(--ds-text-inverse, #101214);
+	--rule: var(--ds-border, #a6c5e229);
+	--rule-strong: var(--ds-border-bold, #738496);
+	--blueprint: var(--ds-background-accent-lime-subtle, #4c6b1f);
+	--link: var(--ds-text-accent-lime, #b3df72);
+	--link-pressed: var(--ds-text-accent-lime-bolder, #d3f1a7);
+	--selected: var(--ds-background-accent-lime-subtler, #37471f);
+	--blueprint-tint: var(--ds-background-accent-lime-subtlest, #28311b);
+	--blueprint-tint-strong: var(--ds-background-accent-lime-subtler, #37471f);
+	--focus-ring: var(--ds-border-accent-lime, #82b536);
+	--code-surface: var(--ds-background-neutral-subtle, #161a1d);
+	--code-ink: var(--ds-text, #dee4ea);
+	--code-inverse: var(--ds-text-inverse, #101214);
+	--math-highlight: var(--ds-background-accent-lime-subtlest, #28311b);
+	--success: var(--ds-background-success-bold, #b3df72);
+	--success-tint: var(--ds-background-success, #1f4d3a);
+	--warning: var(--ds-background-warning-bold, #f5cd47);
+	--warning-tint: var(--ds-background-warning, #533f04);
+	--danger: var(--ds-background-danger-bold, #f87168);
+	--danger-tint: var(--ds-background-danger, #5d1f1a);
+	--info: var(--ds-background-information-bold, #579dff);
+	--info-tint: var(--ds-background-information, #09326c);
+	--paper-rule: color-mix(in srgb, var(--ink) 8%, transparent);
+	--shadow: var(--ds-shadow-raised, 0 1px 1px rgba(0, 0, 0, 0.32), 0 0 1px rgba(0, 0, 0, 0.42));
 }
 
 @font-face {
@@ -78,9 +81,9 @@
   }
 
   body {
-    background: var(--vpk-paper);
-    color: var(--vpk-ink);
-    font-family: var(--vpk-font-sans);
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-sans);
     font-size: 16px;
     line-height: 1.8;
     min-height: 100vh;
@@ -94,8 +97,8 @@
   }
 
   .eyebrow {
-    color: var(--vpk-danger);
-    font-family: var(--vpk-font-mono);
+    color: var(--danger);
+    font-family: var(--font-mono);
     font-size: 10px;
     line-height: 14px;
     letter-spacing: 0.18em;
@@ -104,8 +107,8 @@
   }
 
   h1 {
-    color: var(--vpk-blueprint);
-    font-family: var(--vpk-font-display);
+    color: var(--blueprint);
+    font-family: var(--font-display);
     font-size: 16px;
     line-height: 1.8;
     font-weight: 400;
@@ -117,9 +120,9 @@
   svg { display: block; min-width: 860px; width: 100%; }
 
   .caption {
-    border-top: 1px solid var(--vpk-rule);
-    color: var(--vpk-muted-text);
-    font-family: var(--vpk-font-sans);
+    border-top: 1px solid var(--rule);
+    color: var(--muted-text);
+    font-family: var(--font-sans);
     font-size: 14px;
     line-height: 22px;
     margin-top: 24px;
@@ -140,47 +143,47 @@
          Points: 8 · x-spacing=80 · x positions: 60,140,220,300,380,460,540,620
          Scale: max=140 · 1 unit = 2px · y = 320 - value×2
          Y-axis labels: 0/20/40/60/80/100/120/140
-         Line 1 (brand): stroke=var(--vpk-blueprint)  · dot fill=var(--vpk-blueprint)
-         Line 2 (olive): stroke=var(--vpk-muted-text)  · dot fill=white stroke=var(--vpk-muted-text)
+         Line 1 (brand): stroke=var(--blueprint)  · dot fill=var(--blueprint)
+         Line 2 (olive): stroke=var(--muted-text)  · dot fill=white stroke=var(--muted-text)
          ============================================================ -->
     <svg viewBox="0 0 680 420" xmlns="http://www.w3.org/2000/svg">
 
       <!-- Canvas -->
-      <rect width="100%" height="100%" fill="var(--vpk-paper)"/>
+      <rect width="100%" height="100%" fill="var(--paper)"/>
 
       <!-- Horizontal grid lines -->
-      <line x1="60" y1="320" x2="620" y2="320" stroke="var(--vpk-rule)" stroke-width="0.8"/>
-      <line x1="60" y1="280" x2="620" y2="280" stroke="var(--vpk-rule)" stroke-width="0.8"/>
-      <line x1="60" y1="240" x2="620" y2="240" stroke="var(--vpk-rule)" stroke-width="0.8"/>
-      <line x1="60" y1="200" x2="620" y2="200" stroke="var(--vpk-rule)" stroke-width="0.8"/>
-      <line x1="60" y1="160" x2="620" y2="160" stroke="var(--vpk-rule)" stroke-width="0.8"/>
-      <line x1="60" y1="120" x2="620" y2="120" stroke="var(--vpk-rule)" stroke-width="0.8"/>
-      <line x1="60" y1="80"  x2="620" y2="80"  stroke="var(--vpk-rule)" stroke-width="0.8"/>
-      <line x1="60" y1="40"  x2="620" y2="40"  stroke="var(--vpk-rule)" stroke-width="0.8"/>
+      <line x1="60" y1="320" x2="620" y2="320" stroke="var(--rule)" stroke-width="0.8"/>
+      <line x1="60" y1="280" x2="620" y2="280" stroke="var(--rule)" stroke-width="0.8"/>
+      <line x1="60" y1="240" x2="620" y2="240" stroke="var(--rule)" stroke-width="0.8"/>
+      <line x1="60" y1="200" x2="620" y2="200" stroke="var(--rule)" stroke-width="0.8"/>
+      <line x1="60" y1="160" x2="620" y2="160" stroke="var(--rule)" stroke-width="0.8"/>
+      <line x1="60" y1="120" x2="620" y2="120" stroke="var(--rule)" stroke-width="0.8"/>
+      <line x1="60" y1="80"  x2="620" y2="80"  stroke="var(--rule)" stroke-width="0.8"/>
+      <line x1="60" y1="40"  x2="620" y2="40"  stroke="var(--rule)" stroke-width="0.8"/>
 
       <!-- Vertical grid lines (at each data point) -->
-      <line x1="140" y1="40" x2="140" y2="320" stroke="var(--vpk-rule)" stroke-width="0.5" stroke-dasharray="3 4"/>
-      <line x1="220" y1="40" x2="220" y2="320" stroke="var(--vpk-rule)" stroke-width="0.5" stroke-dasharray="3 4"/>
-      <line x1="300" y1="40" x2="300" y2="320" stroke="var(--vpk-rule)" stroke-width="0.5" stroke-dasharray="3 4"/>
-      <line x1="380" y1="40" x2="380" y2="320" stroke="var(--vpk-rule)" stroke-width="0.5" stroke-dasharray="3 4"/>
-      <line x1="460" y1="40" x2="460" y2="320" stroke="var(--vpk-rule)" stroke-width="0.5" stroke-dasharray="3 4"/>
-      <line x1="540" y1="40" x2="540" y2="320" stroke="var(--vpk-rule)" stroke-width="0.5" stroke-dasharray="3 4"/>
+      <line x1="140" y1="40" x2="140" y2="320" stroke="var(--rule)" stroke-width="0.5" stroke-dasharray="3 4"/>
+      <line x1="220" y1="40" x2="220" y2="320" stroke="var(--rule)" stroke-width="0.5" stroke-dasharray="3 4"/>
+      <line x1="300" y1="40" x2="300" y2="320" stroke="var(--rule)" stroke-width="0.5" stroke-dasharray="3 4"/>
+      <line x1="380" y1="40" x2="380" y2="320" stroke="var(--rule)" stroke-width="0.5" stroke-dasharray="3 4"/>
+      <line x1="460" y1="40" x2="460" y2="320" stroke="var(--rule)" stroke-width="0.5" stroke-dasharray="3 4"/>
+      <line x1="540" y1="40" x2="540" y2="320" stroke="var(--rule)" stroke-width="0.5" stroke-dasharray="3 4"/>
 
       <!-- Y-axis labels -->
-      <text x="52" y="324" fill="var(--vpk-muted-text)" font-size="10" font-family="inherit" text-anchor="end">0</text>
-      <text x="52" y="284" fill="var(--vpk-muted-text)" font-size="10" font-family="inherit" text-anchor="end">20</text>
-      <text x="52" y="244" fill="var(--vpk-muted-text)" font-size="10" font-family="inherit" text-anchor="end">40</text>
-      <text x="52" y="204" fill="var(--vpk-muted-text)" font-size="10" font-family="inherit" text-anchor="end">60</text>
-      <text x="52" y="164" fill="var(--vpk-muted-text)" font-size="10" font-family="inherit" text-anchor="end">80</text>
-      <text x="52" y="124" fill="var(--vpk-muted-text)" font-size="10" font-family="inherit" text-anchor="end">100</text>
-      <text x="52" y="84"  fill="var(--vpk-muted-text)" font-size="10" font-family="inherit" text-anchor="end">120</text>
-      <text x="52" y="44"  fill="var(--vpk-muted-text)" font-size="10" font-family="inherit" text-anchor="end">140</text>
+      <text x="52" y="324" fill="var(--muted-text)" font-size="10" font-family="inherit" text-anchor="end">0</text>
+      <text x="52" y="284" fill="var(--muted-text)" font-size="10" font-family="inherit" text-anchor="end">20</text>
+      <text x="52" y="244" fill="var(--muted-text)" font-size="10" font-family="inherit" text-anchor="end">40</text>
+      <text x="52" y="204" fill="var(--muted-text)" font-size="10" font-family="inherit" text-anchor="end">60</text>
+      <text x="52" y="164" fill="var(--muted-text)" font-size="10" font-family="inherit" text-anchor="end">80</text>
+      <text x="52" y="124" fill="var(--muted-text)" font-size="10" font-family="inherit" text-anchor="end">100</text>
+      <text x="52" y="84"  fill="var(--muted-text)" font-size="10" font-family="inherit" text-anchor="end">120</text>
+      <text x="52" y="44"  fill="var(--muted-text)" font-size="10" font-family="inherit" text-anchor="end">140</text>
 
       <!-- Y-axis unit label -->
-      <text x="16" y="184" fill="var(--vpk-muted-text)" font-size="9" font-family="'Geist Mono', monospace" letter-spacing="0.12em" transform="rotate(-90 16 184)" text-anchor="middle">UNIT</text>
+      <text x="16" y="184" fill="var(--muted-text)" font-size="9" font-family="'Geist Mono', monospace" letter-spacing="0.12em" transform="rotate(-90 16 184)" text-anchor="middle">UNIT</text>
 
       <!-- X-axis baseline -->
-      <line x1="60" y1="320" x2="620" y2="320" stroke="var(--vpk-ink)" stroke-width="0.8"/>
+      <line x1="60" y1="320" x2="620" y2="320" stroke="var(--ink)" stroke-width="0.8"/>
 
       <!-- ==================================================
            LINES AND DOTS · replace values between DATA START / DATA END
@@ -194,65 +197,65 @@
              y:            248,232,224,216,200,192,184,168
            ================================================== -->
 
-      <!-- Line 1 (brand var(--vpk-blueprint)) -->
+      <!-- Line 1 (brand var(--blueprint)) -->
       <polyline
         points="60,216 140,200 220,208 300,176 380,160 460,168 540,144 620,128"
-        fill="none" stroke="var(--vpk-blueprint)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+        fill="none" stroke="var(--blueprint)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
 
-      <!-- Line 2 (olive var(--vpk-muted-text)) -->
+      <!-- Line 2 (olive var(--muted-text)) -->
       <polyline
         points="60,248 140,232 220,224 300,216 380,200 460,192 540,184 620,168"
-        fill="none" stroke="var(--vpk-muted-text)" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="5 3"/>
+        fill="none" stroke="var(--muted-text)" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="5 3"/>
 
       <!-- Dots · Line 1 (brand, filled) -->
-      <circle cx="60"  cy="216" r="4" fill="var(--vpk-blueprint)" stroke="var(--vpk-paper)" stroke-width="1.5"/>
-      <circle cx="140" cy="200" r="4" fill="var(--vpk-blueprint)" stroke="var(--vpk-paper)" stroke-width="1.5"/>
-      <circle cx="220" cy="208" r="4" fill="var(--vpk-blueprint)" stroke="var(--vpk-paper)" stroke-width="1.5"/>
-      <circle cx="300" cy="176" r="4" fill="var(--vpk-blueprint)" stroke="var(--vpk-paper)" stroke-width="1.5"/>
-      <circle cx="380" cy="160" r="4" fill="var(--vpk-blueprint)" stroke="var(--vpk-paper)" stroke-width="1.5"/>
-      <circle cx="460" cy="168" r="4" fill="var(--vpk-blueprint)" stroke="var(--vpk-paper)" stroke-width="1.5"/>
-      <circle cx="540" cy="144" r="4" fill="var(--vpk-blueprint)" stroke="var(--vpk-paper)" stroke-width="1.5"/>
+      <circle cx="60"  cy="216" r="4" fill="var(--blueprint)" stroke="var(--paper)" stroke-width="1.5"/>
+      <circle cx="140" cy="200" r="4" fill="var(--blueprint)" stroke="var(--paper)" stroke-width="1.5"/>
+      <circle cx="220" cy="208" r="4" fill="var(--blueprint)" stroke="var(--paper)" stroke-width="1.5"/>
+      <circle cx="300" cy="176" r="4" fill="var(--blueprint)" stroke="var(--paper)" stroke-width="1.5"/>
+      <circle cx="380" cy="160" r="4" fill="var(--blueprint)" stroke="var(--paper)" stroke-width="1.5"/>
+      <circle cx="460" cy="168" r="4" fill="var(--blueprint)" stroke="var(--paper)" stroke-width="1.5"/>
+      <circle cx="540" cy="144" r="4" fill="var(--blueprint)" stroke="var(--paper)" stroke-width="1.5"/>
       <!-- Focal dot (last point) slightly larger -->
-      <circle cx="620" cy="128" r="5.5" fill="var(--vpk-blueprint)" stroke="var(--vpk-paper)" stroke-width="1.5"/>
+      <circle cx="620" cy="128" r="5.5" fill="var(--blueprint)" stroke="var(--paper)" stroke-width="1.5"/>
 
       <!-- Dots · Line 2 (olive, open) -->
-      <circle cx="60"  cy="248" r="3.5" fill="var(--vpk-paper)" stroke="var(--vpk-muted-text)" stroke-width="1.5"/>
-      <circle cx="140" cy="232" r="3.5" fill="var(--vpk-paper)" stroke="var(--vpk-muted-text)" stroke-width="1.5"/>
-      <circle cx="220" cy="224" r="3.5" fill="var(--vpk-paper)" stroke="var(--vpk-muted-text)" stroke-width="1.5"/>
-      <circle cx="300" cy="216" r="3.5" fill="var(--vpk-paper)" stroke="var(--vpk-muted-text)" stroke-width="1.5"/>
-      <circle cx="380" cy="200" r="3.5" fill="var(--vpk-paper)" stroke="var(--vpk-muted-text)" stroke-width="1.5"/>
-      <circle cx="460" cy="192" r="3.5" fill="var(--vpk-paper)" stroke="var(--vpk-muted-text)" stroke-width="1.5"/>
-      <circle cx="540" cy="184" r="3.5" fill="var(--vpk-paper)" stroke="var(--vpk-muted-text)" stroke-width="1.5"/>
-      <circle cx="620" cy="168" r="3.5" fill="var(--vpk-paper)" stroke="var(--vpk-muted-text)" stroke-width="1.5"/>
+      <circle cx="60"  cy="248" r="3.5" fill="var(--paper)" stroke="var(--muted-text)" stroke-width="1.5"/>
+      <circle cx="140" cy="232" r="3.5" fill="var(--paper)" stroke="var(--muted-text)" stroke-width="1.5"/>
+      <circle cx="220" cy="224" r="3.5" fill="var(--paper)" stroke="var(--muted-text)" stroke-width="1.5"/>
+      <circle cx="300" cy="216" r="3.5" fill="var(--paper)" stroke="var(--muted-text)" stroke-width="1.5"/>
+      <circle cx="380" cy="200" r="3.5" fill="var(--paper)" stroke="var(--muted-text)" stroke-width="1.5"/>
+      <circle cx="460" cy="192" r="3.5" fill="var(--paper)" stroke="var(--muted-text)" stroke-width="1.5"/>
+      <circle cx="540" cy="184" r="3.5" fill="var(--paper)" stroke="var(--muted-text)" stroke-width="1.5"/>
+      <circle cx="620" cy="168" r="3.5" fill="var(--paper)" stroke="var(--muted-text)" stroke-width="1.5"/>
 
       <!-- End-of-line value labels -->
-      <text x="628" y="132" fill="var(--vpk-blueprint)" font-size="11" font-family="inherit" font-weight="500">96</text>
-      <text x="628" y="172" fill="var(--vpk-muted-text)" font-size="10" font-family="inherit">76</text>
+      <text x="628" y="132" fill="var(--blueprint)" font-size="11" font-family="inherit" font-weight="500">96</text>
+      <text x="628" y="172" fill="var(--muted-text)" font-size="10" font-family="inherit">76</text>
 
       <!-- X-axis labels -->
-      <text x="60"  y="340" fill="var(--vpk-ink)" font-size="11" font-family="inherit" text-anchor="middle">Jan</text>
-      <text x="140" y="340" fill="var(--vpk-ink)" font-size="11" font-family="inherit" text-anchor="middle">Feb</text>
-      <text x="220" y="340" fill="var(--vpk-ink)" font-size="11" font-family="inherit" text-anchor="middle">Mar</text>
-      <text x="300" y="340" fill="var(--vpk-ink)" font-size="11" font-family="inherit" text-anchor="middle">Apr</text>
-      <text x="380" y="340" fill="var(--vpk-ink)" font-size="11" font-family="inherit" text-anchor="middle">May</text>
-      <text x="460" y="340" fill="var(--vpk-ink)" font-size="11" font-family="inherit" text-anchor="middle">Jun</text>
-      <text x="540" y="340" fill="var(--vpk-ink)" font-size="11" font-family="inherit" text-anchor="middle">Jul</text>
-      <text x="620" y="340" fill="var(--vpk-ink)" font-size="11" font-family="inherit" text-anchor="middle">Aug</text>
+      <text x="60"  y="340" fill="var(--ink)" font-size="11" font-family="inherit" text-anchor="middle">Jan</text>
+      <text x="140" y="340" fill="var(--ink)" font-size="11" font-family="inherit" text-anchor="middle">Feb</text>
+      <text x="220" y="340" fill="var(--ink)" font-size="11" font-family="inherit" text-anchor="middle">Mar</text>
+      <text x="300" y="340" fill="var(--ink)" font-size="11" font-family="inherit" text-anchor="middle">Apr</text>
+      <text x="380" y="340" fill="var(--ink)" font-size="11" font-family="inherit" text-anchor="middle">May</text>
+      <text x="460" y="340" fill="var(--ink)" font-size="11" font-family="inherit" text-anchor="middle">Jun</text>
+      <text x="540" y="340" fill="var(--ink)" font-size="11" font-family="inherit" text-anchor="middle">Jul</text>
+      <text x="620" y="340" fill="var(--ink)" font-size="11" font-family="inherit" text-anchor="middle">Aug</text>
 
       <!-- ================================================== DATA END -->
 
       <!-- Legend -->
-      <line x1="60" y1="368" x2="620" y2="368" stroke="var(--vpk-rule)" stroke-width="0.8"/>
+      <line x1="60" y1="368" x2="620" y2="368" stroke="var(--rule)" stroke-width="0.8"/>
 
       <!-- Line 1 legend: solid segment + dot -->
-      <line x1="60" y1="386" x2="84" y2="386" stroke="var(--vpk-blueprint)" stroke-width="2" stroke-linecap="round"/>
-      <circle cx="72" cy="386" r="3.5" fill="var(--vpk-blueprint)"/>
-      <text x="92" y="390" fill="var(--vpk-muted-text)" font-size="10" font-family="inherit">{{Line 1 label}}</text>
+      <line x1="60" y1="386" x2="84" y2="386" stroke="var(--blueprint)" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="72" cy="386" r="3.5" fill="var(--blueprint)"/>
+      <text x="92" y="390" fill="var(--muted-text)" font-size="10" font-family="inherit">{{Line 1 label}}</text>
 
       <!-- Line 2 legend: dashed segment + open dot -->
-      <line x1="220" y1="386" x2="244" y2="386" stroke="var(--vpk-muted-text)" stroke-width="1.5" stroke-dasharray="5 3" stroke-linecap="round"/>
-      <circle cx="232" cy="386" r="3" fill="var(--vpk-paper)" stroke="var(--vpk-muted-text)" stroke-width="1.5"/>
-      <text x="252" y="390" fill="var(--vpk-muted-text)" font-size="10" font-family="inherit">{{Line 2 label}}</text>
+      <line x1="220" y1="386" x2="244" y2="386" stroke="var(--muted-text)" stroke-width="1.5" stroke-dasharray="5 3" stroke-linecap="round"/>
+      <circle cx="232" cy="386" r="3" fill="var(--paper)" stroke="var(--muted-text)" stroke-width="1.5"/>
+      <text x="252" y="390" fill="var(--muted-text)" font-size="10" font-family="inherit">{{Line 2 label}}</text>
 
     </svg>
 

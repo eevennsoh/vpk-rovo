@@ -283,7 +283,7 @@ template script.
 - Regenerate `styles.css` with `node .agents/skills/vpk-html/scripts/build.mjs --write-styles`.
 - Use `scripts/shared.mjs` for generated CSS: `buildFontFaceBlock()`, `readStylesCss()`, `FONT_STACKS`, `KAMI_COLOR_MAP`, or `buildSharedCssBlock()`.
 - Run `node .agents/skills/vpk-html/scripts/build.mjs --sync` before and after any token/style edit.
-- Individual templates may define layout aliases such as `--brand`, `--paper`, or `--mono`, but those aliases must point back to shared `--vpk-*` variables.
+- Individual templates may define layout aliases such as `--brand`, `--paper`, or `--mono`, but those aliases must point back to the shared unprefixed variables.
 
 This keeps every future demo and template on the same colors, dark-mode
 fallbacks, font families, and reduced-motion rule without editing one inline
@@ -299,21 +299,21 @@ lineage).
 
 **Light mode (default):**
 
-- **Surface:** `--vpk-paper` — VPK/ADS semantic surface with an embedded offline fallback.
-- **Raised surface:** `--vpk-surface-raised` for cards / callouts when they need to lift.
-- **Ink:** `--vpk-ink` for body text and `--vpk-muted-text` / `--vpk-subtlest-text` for metadata.
-- **Accent (brand/info):** `--vpk-blueprint` — masthead, headings, links, and diagram focal strokes.
-- **Margin / figure tags:** `--vpk-blueprint` unless a status meaning requires `--vpk-success`, `--vpk-warning`, or `--vpk-danger`.
-- **Paper-rule background:** `radial-gradient(var(--vpk-paper-rule) 1px, transparent 1px); background-size: 16px 16px;` — subtle dotted paper texture.
-- **Hard shadow:** `var(--vpk-shadow)` — reserved for opt-in `.card / .callout / .takeaway / .surface-raised / .shadow-hard`. Other surfaces are flat.
+- **Surface:** `--paper` — VPK/ADS semantic surface with an embedded offline fallback.
+- **Raised surface:** `--surface-raised` for cards / callouts when they need to lift.
+- **Ink:** `--ink` for body text and `--muted-text` / `--subtlest-text` for metadata.
+- **Accent (lime):** `--blueprint` — masthead, headings, links, and diagram focal strokes.
+- **Margin / figure tags:** `--blueprint` unless a status meaning requires `--success`, `--warning`, or `--danger`.
+- **Paper-rule background:** `radial-gradient(var(--paper-rule) 1px, transparent 1px); background-size: 16px 16px;` — subtle dotted paper texture.
+- **Hard shadow:** `var(--shadow)` — reserved for opt-in `.card / .callout / .takeaway / .surface-raised / .shadow-hard`. Other surfaces are flat.
 
 **Dark mode** (activate via `<html data-theme="dark">`):
 
-- **Surface / raised / ink / accent:** the same `--vpk-*` aliases switch to dark semantic fallbacks under `[data-theme="dark"]`.
+- **Surface / raised / ink / accent:** the same unprefixed aliases switch to dark semantic fallbacks under `[data-theme="dark"]`.
 
 **Fonts** (Geist family only, all self-hosted in `assets/fonts/`):
 
-- **Display / masthead / all headings (h1-h6) / margin labels:** Geist Pixel (Square variant), uppercase, letter-spacing 0.02-0.04em, in `var(--vpk-blueprint)`
+- **Display / masthead / all headings (h1-h6) / margin labels:** Geist Pixel (Square variant), uppercase, letter-spacing 0.02-0.04em, in `var(--blueprint)`
 - **Body:** Geist Sans, 18px screen / 10.5pt print, line-height 1.62
 - **Mono / code:** Geist Mono
 

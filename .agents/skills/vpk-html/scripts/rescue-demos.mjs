@@ -11,6 +11,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { ensureFaviconLinks } from "./shared.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -45,7 +46,7 @@ function readTemplate(slug) {
 }
 
 function writeDemo(slug, html) {
-	fs.writeFileSync(path.join(DEMOS_DIR, `${slug}.html`), html, "utf8");
+	fs.writeFileSync(path.join(DEMOS_DIR, `${slug}.html`), ensureFaviconLinks(html), "utf8");
 }
 
 /* ============ Q2 status — one-pager ============ */
