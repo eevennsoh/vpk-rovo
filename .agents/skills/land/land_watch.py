@@ -287,6 +287,15 @@ def is_codex_review_body(body: str) -> bool:
     return body.startswith("## Codex Review")
 
 
+def is_codex_review_signal_body(body: str) -> bool:
+    stripped = body.strip()
+    return (
+        is_codex_review_body(stripped)
+        or "Codex Review" in stripped
+        or "Useful? React" in stripped
+    )
+
+
 def latest_codex_issue_reply_time(
     comments: list[dict[str, Any]],
 ) -> datetime | None:
@@ -487,6 +496,30 @@ def filter_codex_reviews(
     return filtered
 
 
+def filter_codex_review_signals(
+    comments: list[dict[str, Any]],
+    review_requested_at: datetime | None,
+    head_sha: str,
+) -> list[dict[str, Any]]:
+    filtered: list[dict[str, Any]] = []
+    for comment in comments:
+        if not is_codex_bot_user(comment.get("user", {})):
+            continue
+        body = comment.get("body") or ""
+        if not is_codex_review_signal_body(body):
+            continue
+        created_time = comment_time(comment)
+        if created_time is None:
+            continue
+        if review_requested_at is not None and created_time <= review_requested_at:
+            continue
+        commit_id = comment.get("commit_id")
+        if commit_id and commit_id != head_sha:
+            continue
+        filtered.append(comment)
+    return filtered
+
+
 def is_merge_conflicting(pr: PrInfo) -> bool:
     return pr.mergeable == "CONFLICTING" or pr.merge_state == "DIRTY"
 
@@ -545,6 +578,18 @@ async def wait_for_codex(pr_number: int, head_sha: str) -> None:
         bot_review_comments = filter_codex_comments(review_comments, review_request_at)
         bot_comments = bot_issue_comments + bot_review_comments
         bot_reviews = filter_codex_reviews(reviews, review_request_at, head_sha)
+        bot_review_signals = (
+            filter_codex_review_signals(
+                issue_comments,
+                review_request_at,
+                head_sha,
+            )
+            + filter_codex_review_signals(
+                review_comments,
+                review_request_at,
+                head_sha,
+            )
+        )
         raise_on_human_feedback(
             issue_comments,
             review_comments,
@@ -561,7 +606,7 @@ async def wait_for_codex(pr_number: int, head_sha: str) -> None:
                 print("Codex left comments. Address feedback before merge.")
                 print(body)
                 raise SystemExit(2)
-        if bot_reviews:
+        if bot_reviews or bot_review_signals:
             print("Codex review detected")
             return
         await asyncio.sleep(POLL_SECONDS)
