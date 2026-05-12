@@ -88,6 +88,36 @@ resolve_repo_path() {
 	esac
 }
 
+forwarded_args=()
+logs_root_arg=""
+
+parse_wrapper_args() {
+	while [ "$#" -gt 0 ]; do
+		case "$1" in
+			--logs-root)
+				if [ "$#" -lt 2 ] || [ -z "${2:-}" ]; then
+					echo "--logs-root requires a path." >&2
+					exit 1
+				fi
+				logs_root_arg="$2"
+				shift 2
+				;;
+			--logs-root=*)
+				logs_root_arg="${1#--logs-root=}"
+				if [ -z "$logs_root_arg" ]; then
+					echo "--logs-root requires a path." >&2
+					exit 1
+				fi
+				shift
+				;;
+			*)
+				forwarded_args+=("$1")
+				shift
+				;;
+		esac
+	done
+}
+
 load_env_var LINEAR_API_KEY
 load_env_var LINEAR_ASSIGNEE
 load_env_var SYMPHONY_LINEAR_PROJECT_SLUG
@@ -231,7 +261,8 @@ upstream_ref="${SYMPHONY_UPSTREAM_REF:-main}"
 upstream_dir="$(resolve_repo_path "${SYMPHONY_UPSTREAM_DIR:-${SYMPHONY_DIR:-.tmp/symphony/openai-symphony}}")"
 runtime_dir="$(resolve_repo_path "${SYMPHONY_RUNTIME_DIR:-.tmp/symphony/runtime}")"
 runtime_workflow="$runtime_dir/WORKFLOW.md"
-logs_root="$runtime_dir/log"
+parse_wrapper_args "$@"
+logs_root="$(resolve_repo_path "${logs_root_arg:-$runtime_dir/log}")"
 
 mkdir -p "$(dirname "$upstream_dir")"
 ensure_safe_upstream_dir "$upstream_dir"
@@ -279,4 +310,4 @@ exec mise exec -- ./bin/symphony \
 	"$runtime_workflow" \
 	--i-understand-that-this-will-be-running-without-the-usual-guardrails \
 	--logs-root "$logs_root" \
-	"$@"
+	"${forwarded_args[@]}"
