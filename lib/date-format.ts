@@ -27,7 +27,7 @@ export function formatDateForDisplay(
 	const parsedDate = getParsedDate(dateStr);
 
 	if (parsedDate === null) {
-		return getHydrationSafeDateFallback(dateStr);
+		return dateStr;
 	}
 
 	let formatter = DISPLAY_DATE_FORMATTERS.get(dateStyle);
@@ -43,7 +43,7 @@ export function formatRelativeDateForDisplay(dateStr: string): string {
 	const parsedDate = getParsedDate(dateStr);
 
 	if (parsedDate === null) {
-		return getHydrationSafeDateFallback(dateStr);
+		return dateStr;
 	}
 
 	const now = new Date();
