@@ -20,7 +20,7 @@ Optional configuration:
   SYMPHONY_DIR                    Local clone/cache of openai/symphony
   SYMPHONY_UPSTREAM_REPO          Upstream Symphony git URL
   SYMPHONY_RUNTIME_DIR            Rendered workflow and default logs directory
-  SYMPHONY_MERGE_GUARD            Set to 0 to disable Done/open-PR recovery
+  SYMPHONY_MERGE_GUARD            Set to 1 to enable Done/open-PR recovery
   SYMPHONY_MERGE_GUARD_INTERVAL_MS Polling interval for merge guard
 
 Example:
@@ -157,7 +157,7 @@ cleanup_merge_guard() {
 	fi
 }
 
-if [ "${SYMPHONY_MERGE_GUARD:-1}" != "0" ]; then
+if [ "${SYMPHONY_MERGE_GUARD:-0}" = "1" ]; then
 	merge_guard_interval_ms="${SYMPHONY_MERGE_GUARD_INTERVAL_MS:-10000}"
 	node "$repo_root/scripts/symphony-merge-guard.js" \
 		--watch \

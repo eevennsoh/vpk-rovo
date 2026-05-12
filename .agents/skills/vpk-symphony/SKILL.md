@@ -31,10 +31,14 @@ Rules:
 - Treat a top-level `errors` array as a failed GraphQL operation even if the
   tool call itself completed.
 - Keep queries and mutations narrowly scoped.
-- Prefer exact issue IDs or identifiers over broad searches.
+- Prefer exact issue keys or internal issue IDs over broad searches. If you
+  need identifier-filter semantics, introspect the current Linear schema first;
+  some workspaces reject identifier filter fields that look plausible.
 - Use team workflow state IDs when moving an issue; do not guess state IDs.
 - Prefer `attachmentLinkGitHubPR` over a generic URL attachment when linking a
   GitHub PR.
+- Use targeted introspection before using unfamiliar fields, mutations, or
+  input objects.
 
 ## Common Queries
 
@@ -58,11 +62,65 @@ query IssueByKey($key: String!) {
       id
       name
     }
-    links {
+    attachments {
       nodes {
         id
-        url
         title
+        url
+        sourceType
+      }
+    }
+  }
+}
+```
+
+Targeted introspection for an unfamiliar object field:
+
+```graphql
+query IssueFieldNames {
+  __type(name: "Issue") {
+    fields {
+      name
+    }
+  }
+}
+```
+
+Targeted introspection for an unfamiliar mutation input:
+
+```graphql
+query CommentCreateInputShape {
+  __type(name: "CommentCreateInput") {
+    inputFields {
+      name
+      type {
+        kind
+        name
+        ofType {
+          kind
+          name
+        }
+      }
+    }
+  }
+}
+```
+
+Read recent comments when looking for the live workpad:
+
+```graphql
+query IssueComments($id: String!) {
+  issue(id: $id) {
+    id
+    comments(first: 25) {
+      nodes {
+        id
+        body
+        updatedAt
+        user {
+          name
+          email
+        }
       }
     }
   }
@@ -146,7 +204,8 @@ Use this flow when a Symphony worker needs to attach browser evidence from
 Rules:
 
 - Prefer updating the existing workpad comment over creating a new comment.
-- Upload success and failure artifacts required by `WORKFLOW.md`.
+- Upload only the artifacts required by the issue, touched surface, or reviewer
+  feedback.
 - Keep local artifacts under `output/playwright/<issue-identifier>/`.
 - Use `video/webm` for `.webm`, `image/png` for `.png`, `image/jpeg` for
   `.jpg` or `.jpeg`, and `application/octet-stream` for Playwright traces when
