@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>vpk-html · Static document system for AI agents</title>
+<title>vpk-html · Demos</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="vpk-html — terminal/blueprint document design system for AI agents. 28 templates, 14 diagram primitives, single-file offline HTML artifacts.">
+<meta name="description" content="vpk-html — a single categorized demo catalog for terminal/blueprint offline HTML artifacts.">
 <meta name="generator" content="vpk-html">
 <link rel="icon" type="image/svg+xml" href="assets/images/logo.svg">
 <style>
@@ -171,65 +171,15 @@ code {
 	padding: 0 clamp(1.1rem, 3vw, 3rem) 3rem;
 }
 
-/* ============ Top nav ============ */
-.topnav {
-	align-items: center;
-	backdrop-filter: blur(14px);
-	background: color-mix(in srgb, var(--vpk-paper) 88%, transparent);
-	border-bottom: 1px solid var(--vpk-rule);
-	display: flex;
-	font-family: var(--font-mono);
-	font-size: 0.74rem;
-	gap: 1rem;
-	justify-content: space-between;
-	left: 0;
-	letter-spacing: 0.12em;
-	margin: 0 calc(clamp(1.1rem, 3vw, 3rem) * -1) 0;
-	padding: 0.85rem clamp(1.1rem, 3vw, 3rem);
-	position: sticky;
-	right: 0;
-	text-transform: uppercase;
-	top: 0;
-	z-index: 10;
-}
-
-.brand {
-	align-items: center;
-	color: var(--vpk-ink);
-	display: inline-flex;
-	gap: 0.55rem;
-	text-decoration: none;
-}
-
-.links {
-	align-items: center;
-	display: flex;
-	flex-wrap: wrap;
-	gap: 0.85rem;
-	justify-content: flex-end;
-}
-
-.links a {
-	color: var(--vpk-ink);
-	text-decoration: none;
-}
-
-.links a:hover { color: var(--vpk-blueprint); }
-
 /* ============ Manual layout ============ */
 .hero {
 	border-bottom: 2px solid var(--vpk-rule-strong);
-	display: grid;
-	gap: clamp(1.4rem, 4vw, 3rem);
-	grid-template-columns: minmax(0, 1.15fr) minmax(17rem, 0.55fr);
-	padding: clamp(3rem, 8vw, 6.5rem) 0 clamp(2rem, 6vw, 4.25rem);
+	padding: clamp(1.1rem, 3vw, 3rem) 0 clamp(2rem, 6vw, 4.25rem);
 }
 
 .kicker,
 .figure-label,
-.section-num,
 .meta-label,
-.catalog-kicker,
 .eyebrow {
 	color: var(--vpk-muted-text);
 	font-family: var(--font-mono);
@@ -248,104 +198,50 @@ code {
 	text-wrap: balance;
 }
 
-.tagline {
-	font-size: clamp(1.15rem, 2vw, 1.45rem);
-	line-height: 1.45;
-	max-width: 52ch;
-}
-
-.hero-note {
-	align-self: end;
-	border: 1px solid var(--vpk-rule-strong);
-	background: var(--vpk-surface-raised);
-	display: grid;
-	gap: 1rem;
-	padding: 1rem;
-}
-
-.hero-note p {
-	color: var(--vpk-muted-text);
-	font-size: 0.9rem;
-	line-height: 1.5;
-}
-
-.system-card {
+.hero-intro {
+	border-bottom: 1px solid var(--vpk-rule);
 	border-top: 1px solid var(--vpk-rule);
 	display: grid;
-	gap: 0.45rem;
-	padding-top: 0.85rem;
+	gap: clamp(1.4rem, 4vw, 3rem);
+	grid-template-columns: 1fr;
+	margin-top: clamp(1.5rem, 4vw, 3rem);
+	padding: clamp(1.35rem, 3vw, 2.25rem) 0;
 }
 
-.system-card strong {
-	font-family: var(--font-body);
-	font-size: 1rem;
-	font-weight: 600;
+.intro-copy {
+	column-count: 2;
+	column-gap: clamp(2rem, 5vw, 4.5rem);
+	font-size: clamp(1.12rem, 1.5vw, 1.35rem);
+	line-height: 1.52;
+	max-width: 78rem;
 }
 
-.stat-strip {
-	border-bottom: 1px solid var(--vpk-rule-strong);
-	display: grid;
-	grid-template-columns: repeat(4, minmax(0, 1fr));
-	margin-bottom: clamp(2rem, 5vw, 4rem);
+.intro-copy p {
+	break-inside: avoid;
+	margin: 0 0 1.2rem;
 }
 
-.stat {
-	border-right: 1px solid var(--vpk-rule);
-	padding: 1rem 1rem 1.1rem;
-	text-align: center;
+.intro-copy p:last-child {
+	margin-bottom: 0;
 }
 
-.stat:last-child { border-right: 0; }
-
-.stat strong {
-	display: block;
+.intro-copy p:first-child::first-letter {
+	color: var(--vpk-blueprint);
+	float: left;
 	font-family: var(--font-display);
-	font-size: clamp(2rem, 4.2vw, 3.6rem);
-	font-weight: 400;
-	line-height: 0.9;
-}
-
-.stat span {
-	color: var(--vpk-muted-text);
-	display: block;
-	font-family: var(--font-mono);
-	font-size: 0.72rem;
-	letter-spacing: 0.12em;
-	margin-top: 0.45rem;
-	text-transform: uppercase;
+	font-size: 5.4rem;
+	line-height: 0.72;
+	margin: 0.08rem 0.38rem 0 0;
 }
 
 section {
 	border-bottom: 1px solid var(--vpk-rule-strong);
 	display: grid;
 	gap: clamp(1.4rem, 3vw, 2.5rem);
-	grid-template-columns: minmax(11rem, 0.32fr) minmax(0, 1fr);
+	grid-template-columns: 1fr;
 	margin-bottom: clamp(2.2rem, 5vw, 4rem);
 	padding-bottom: clamp(2.2rem, 5vw, 4rem);
-	scroll-margin-top: 4.5rem;
-}
-
-.section-aside {
-	display: grid;
-	gap: 0.7rem;
-	height: max-content;
-	position: sticky;
-	top: 4.5rem;
-}
-
-.section-title {
-	font-family: var(--font-display);
-	font-size: clamp(1.5rem, 2vw, 2rem);
-	font-weight: 400;
-	letter-spacing: 0;
-	line-height: 1.05;
-	text-wrap: balance;
-}
-
-.section-lede {
-	color: var(--vpk-muted-text);
-	font-size: 1rem;
-	max-width: 66ch;
+	scroll-margin-top: 1rem;
 }
 
 .section-body {
@@ -373,455 +269,147 @@ section {
 	padding: 0.9rem 1rem;
 }
 
-/* ============ Templates catalog ============ */
-.catalog {
+/* ============ Unified demo catalog ============ */
+.demo-contents {
 	border-top: 2px solid var(--vpk-rule-strong);
 	display: grid;
+	gap: 0;
 }
 
-.catalog-group {
+.demo-category {
 	border-bottom: 1px solid var(--vpk-rule-strong);
 	display: grid;
-	grid-template-columns: minmax(0, 0.26fr) minmax(0, 1fr);
+	gap: 1rem;
+	padding: 1.25rem 0 1.35rem;
 }
 
-.catalog-head {
-	background: color-mix(in srgb, var(--selected) 72%, transparent);
-	border-right: 1px solid var(--vpk-rule);
-	min-width: 0;
-	padding: 1rem;
+.demo-category:last-child {
+	border-bottom: 0;
+	padding-bottom: 0;
 }
 
-.catalog-head .catalog-kicker {
-	overflow-wrap: anywhere;
-}
-
-.catalog-head h3 {
-	font-family: var(--font-display);
-	font-size: clamp(1.4rem, 1.4vw + 0.6rem, 1.85rem);
-	font-weight: 400;
-	line-height: 1.05;
-	margin-top: 0.35rem;
-	overflow-wrap: anywhere;
-	text-wrap: balance;
-}
-
-.catalog-rows {
-	display: grid;
-}
-
-.catalog-row {
+.demo-category-head {
 	align-items: start;
-	border-bottom: 1px solid var(--vpk-rule);
-	color: inherit;
 	display: grid;
 	gap: 1rem;
-	grid-template-columns: minmax(9rem, 0.28fr) minmax(0, 1fr) minmax(12rem, 0.34fr);
-	padding: 1rem;
-	text-decoration: none;
+	grid-template-columns: minmax(0, 1fr) auto;
 }
 
-.catalog-row:last-child { border-bottom: 0; }
-
-.catalog-row:hover {
-	background: var(--vpk-surface-raised);
-	color: inherit;
-}
-
-.catalog-row h4 {
-	font-size: 1.02rem;
-	font-weight: 600;
-	line-height: 1.25;
-}
-
-.catalog-row p {
-	color: var(--vpk-muted-text);
-	font-size: 0.92rem;
-	line-height: 1.45;
-}
-
-.path {
-	color: var(--link-pressed);
-	font-family: var(--font-mono);
-	font-size: 0.78rem;
-	line-height: 1.45;
+.demo-title-line {
+	align-items: flex-start;
+	display: flex;
+	gap: 0.8rem;
 	min-width: 0;
-	overflow-wrap: break-word;
 }
 
-/* ============ Demos ============ */
-.demo-wall {
-	display: grid;
-	gap: 1rem;
-	grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.demo-card {
-	background: var(--vpk-surface-raised);
-	border: 1px solid var(--vpk-rule-strong);
-	color: inherit;
-	display: grid;
-	grid-template-rows: auto 1fr;
-	min-width: 0;
-	text-decoration: none;
-	transition: transform 160ms ease, box-shadow 160ms ease;
-}
-
-.demo-card:hover {
-	box-shadow: 6px 6px 0 var(--selected);
-	transform: translate(-2px, -2px);
-}
-
-.demo-card .thumb {
-	aspect-ratio: 16 / 10;
-	background: var(--vpk-code-surface);
-	border-bottom: 1px solid var(--vpk-rule-strong);
-	overflow: hidden;
-}
-
-.demo-card .thumb img {
-	display: block;
-	height: 100%;
-	object-fit: cover;
-	object-position: top left;
-	width: 100%;
-}
-
-.demo-card .body {
-	display: grid;
-	gap: 0.4rem;
-	padding: 0.85rem;
-}
-
-.demo-card h3 {
-	font-size: 0.98rem;
-	font-weight: 600;
-	line-height: 1.25;
-}
-
-.demo-card .caption {
-	color: var(--vpk-muted-text);
-	font-size: 0.86rem;
-	line-height: 1.4;
-}
-
-.phase-demo-index {
-	border-top: 1px solid var(--vpk-rule-strong);
-	display: grid;
-	gap: 1.2rem;
-	margin-top: 2.4rem;
-	padding-top: 2rem;
-}
-
-.phase-demo-index.primary {
-	border-top: 0;
-	margin-top: 0;
-	order: -2;
-	padding-top: 0;
-}
-
-.phase-demo-intro {
-	display: grid;
-	gap: 0.45rem;
-	max-width: 70ch;
-}
-
-.phase-demo-intro h3 {
+.demo-category-index {
 	color: var(--vpk-blueprint);
+	flex: 0 0 auto;
 	font-family: var(--font-display);
-	font-size: clamp(1.7rem, 3.6vw, 2.6rem);
-	font-weight: 400;
-	line-height: 0.92;
-	text-transform: uppercase;
-}
-
-.phase-demo-intro p:last-child {
-	color: var(--vpk-muted-text);
-}
-
-.phase-demo-group {
-	border-top: 1px solid var(--vpk-rule);
-	display: grid;
-	gap: 1rem;
-	grid-template-columns: minmax(12rem, 0.32fr) minmax(0, 1fr);
-	padding-top: 1rem;
-}
-
-.phase-demo-head {
-	align-self: start;
-	display: grid;
-	gap: 0.35rem;
-	position: sticky;
-	top: 5rem;
-}
-
-.phase-demo-head h4 {
-	color: var(--vpk-ink);
-	font-size: 1rem;
-	font-weight: 600;
-	line-height: 1.25;
-}
-
-.phase-demo-head p {
-	color: var(--vpk-muted-text);
-	font-size: 0.86rem;
-	line-height: 1.4;
-}
-
-.phase-demo-count {
-	color: var(--vpk-blueprint);
-	font-family: var(--font-mono);
-	font-size: 0.72rem;
-	letter-spacing: 0.12em;
-	text-transform: uppercase;
-}
-
-.phase-demo-list {
-	display: grid;
-	gap: 0;
-}
-
-.phase-demo-link {
-	border-top: 1px solid var(--vpk-rule);
-	color: inherit;
-	display: grid;
-	gap: 0.75rem;
-	grid-template-columns: minmax(10rem, 0.32fr) minmax(0, 1fr) minmax(12rem, 0.34fr);
-	padding: 0.85rem 0;
-	text-decoration: none;
-}
-
-.phase-demo-link:first-child {
-	border-top: 0;
-}
-
-.phase-demo-link:hover {
-	background: var(--selected);
-}
-
-.phase-demo-link strong {
-	font-size: 0.98rem;
-	line-height: 1.25;
-}
-
-.phase-demo-link span {
-	color: var(--vpk-muted-text);
-	font-size: 0.9rem;
-	line-height: 1.45;
-}
-
-.phase-demo-link code {
-	color: var(--vpk-blueprint);
-	font-family: var(--font-mono);
-	font-size: 0.76rem;
-	line-height: 1.45;
-	overflow-wrap: anywhere;
-}
-
-.demo-gallery-intro {
-	border-top: 1px solid var(--vpk-rule-strong);
-	display: grid;
-	gap: 0.4rem;
-	margin-top: 2rem;
-	order: -1;
-	padding-top: 1.4rem;
-}
-
-.demo-gallery-intro h3 {
-	font-size: 1rem;
-	font-weight: 600;
-	line-height: 1.25;
-}
-
-.demo-gallery-intro p:last-child {
-	color: var(--vpk-muted-text);
-	font-size: 0.92rem;
-	line-height: 1.45;
-	max-width: 68ch;
-}
-
-/* ============ Workflow and references ============ */
-.steps {
-	counter-reset: step;
-	display: grid;
-	gap: 0;
-}
-
-.step {
-	border-top: 1px solid var(--vpk-rule);
-	counter-increment: step;
-	display: grid;
-	gap: 1rem;
-	grid-template-columns: 4.5rem minmax(0, 1fr);
-	padding: 1rem 0;
-}
-
-.step::before {
-	color: var(--vpk-blueprint);
-	content: counter(step, decimal-leading-zero);
-	font-family: var(--font-display);
-	font-size: 2.2rem;
+	font-size: 2.4rem;
 	line-height: 0.9;
 }
 
-.step h3 {
-	font-size: 1rem;
-	font-weight: 600;
-	line-height: 1.25;
-	margin-bottom: 0.3rem;
-}
-
-.step p {
-	color: var(--vpk-muted-text);
-	font-size: 0.92rem;
-	line-height: 1.45;
-}
-
-	pre.code {
-		background: var(--vpk-surface-raised);
-		border: 1px solid var(--vpk-rule-strong);
-		font-family: var(--font-mono);
-		font-size: 0.82rem;
-		line-height: 1.55;
-		overflow-wrap: anywhere;
-		padding: 1rem;
-		white-space: pre-wrap;
-	}
-
-pre.code .c { color: var(--vpk-muted-text); }
-
-.rules {
-	border-top: 2px solid var(--vpk-rule-strong);
-	display: grid;
-	list-style: none;
-}
-
-.rules li {
-	border-bottom: 1px solid var(--vpk-rule);
-	display: grid;
-	font-size: 0.98rem;
-	gap: 1rem;
-	grid-template-columns: 3rem minmax(0, 1fr);
-	padding: 0.85rem 0;
-}
-
-.rules .n {
-	color: var(--vpk-blueprint);
-	font-family: var(--font-display);
-	font-size: 2rem;
-	line-height: 0.85;
-}
-
-.swatches {
-	display: grid;
-	gap: 0.75rem;
-	grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.swatch {
-	background: var(--vpk-surface-raised);
-	border: 1px solid var(--vpk-rule-strong);
-	display: flex;
-	flex-direction: column;
-}
-
-.swatch .chip {
-	aspect-ratio: 5 / 3;
-	border-bottom: 1px solid var(--vpk-rule-strong);
-}
-
-.swatch .info { padding: 0.65rem 0.75rem 0.8rem; }
-
-.swatch .name {
-	font-size: 0.95rem;
-	font-weight: 600;
-	line-height: 1.25;
-}
-
-.swatch .role {
-	color: var(--vpk-muted-text);
-	font-size: 0.82rem;
-	line-height: 1.4;
-	margin: 0.18rem 0 0.45rem;
-}
-
-.swatch .hex {
+.demo-source {
 	color: var(--vpk-muted-text);
 	font-family: var(--font-mono);
-	font-size: 0.76rem;
-	letter-spacing: 0.04em;
-}
-
-.type-grid {
-	border-top: 2px solid var(--vpk-rule-strong);
-	display: grid;
-}
-
-.type-row {
-	align-items: baseline;
-	border-bottom: 1px solid var(--vpk-rule);
-	display: grid;
-	gap: 1rem;
-	grid-template-columns: 7rem minmax(0, 1fr) 10rem;
-	padding: 1rem 0;
-}
-
-.type-row .label {
-	color: var(--vpk-muted-text);
-	font-family: var(--font-mono);
-	font-size: 0.72rem;
+	font-size: 0.68rem;
 	letter-spacing: 0.16em;
+	margin-bottom: 0.35rem;
 	text-transform: uppercase;
 }
 
-.type-row .specs {
+.demo-category-head h3 {
+	font-family: var(--font-display);
+	font-size: clamp(1.5rem, 3.2vw, 2.45rem);
+	font-weight: 400;
+	letter-spacing: 0;
+	line-height: 0.9;
+	text-transform: uppercase;
+	text-wrap: balance;
+}
+
+.demo-category-head p:last-child {
 	color: var(--vpk-muted-text);
-	font-family: var(--font-mono);
-	font-size: 0.76rem;
+	font-size: 0.92rem;
 	line-height: 1.45;
+	margin-top: 0.45rem;
+	max-width: 70ch;
 }
 
-.type-row .display {
-	font-family: var(--font-display);
-	font-size: clamp(2rem, 4vw, 3.2rem);
-	line-height: 0.92;
-}
-
-.type-row .h1 {
-	font-family: var(--font-display);
-	font-size: 1.9rem;
-	line-height: 0.98;
-}
-
-.type-row .h2 {
-	font-size: 1.24rem;
-	font-weight: 600;
-}
-
-.type-row .body { font-size: 1rem; }
-.type-row .mono { font-family: var(--font-mono); font-size: 0.9rem; }
-
-.diagrams-list {
+.demo-list {
+	border-top: 1px solid var(--vpk-rule);
 	display: grid;
-	gap: 0.5rem;
-	grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
-.diagrams-list a {
-	background: var(--vpk-surface-raised);
-	border: 1px solid var(--vpk-rule);
-	color: var(--vpk-ink);
-	font-family: var(--font-mono);
-	font-size: 0.82rem;
-	overflow-wrap: anywhere;
-	padding: 0.55rem 0.65rem;
+.demo-row {
+	align-items: baseline;
+	border-bottom: 1px solid var(--vpk-rule);
+	color: inherit;
+	display: grid;
+	gap: 0.85rem;
+	grid-template-columns: 4.2rem minmax(0, 1fr) minmax(10rem, 0.24fr);
+	padding: 0.82rem 0;
 	text-decoration: none;
+	transition: background 150ms ease, color 150ms ease;
 }
 
-.diagrams-list a:hover {
+.demo-row:last-child {
+	border-bottom: 0;
+}
+
+.demo-row:hover {
 	background: var(--selected);
-	border-color: var(--vpk-blueprint);
+	color: inherit;
+}
+
+.demo-num,
+.demo-path {
+	font-family: var(--font-mono);
+	font-size: 0.74rem;
+	letter-spacing: 0.08em;
+}
+
+.demo-num {
+	color: var(--vpk-blueprint);
+	font-variant-numeric: tabular-nums;
+}
+
+.demo-main {
+	display: grid;
+	gap: 0.22rem;
+	min-width: 0;
+}
+
+.demo-name-line {
+	align-items: center;
+	display: flex;
+	gap: 0.45rem;
+	min-width: 0;
+}
+
+.demo-name {
+	color: var(--vpk-ink);
+	font-family: var(--font-display);
+	font-size: clamp(1.15rem, 1.8vw, 1.45rem);
+	font-weight: 400;
+	letter-spacing: 0;
+	line-height: 0.98;
+	text-transform: uppercase;
+}
+
+.demo-desc {
+	color: var(--vpk-muted-text);
+	font-size: 0.9rem;
+	line-height: 1.45;
+	max-width: 78ch;
+}
+
+.demo-path {
 	color: var(--link-pressed);
+	line-height: 1.35;
+	overflow-wrap: anywhere;
+	text-align: right;
 }
 
 footer {
@@ -841,93 +429,35 @@ footer a {
 footer a:hover { color: var(--vpk-blueprint); }
 
 @media (max-width: 980px) {
-	.hero,
-	section,
-	.manual-copy {
+	.demo-category-head {
 		grid-template-columns: 1fr;
 	}
 
-	.section-aside {
-		position: static;
+	.demo-row {
+		grid-template-columns: 4.2rem minmax(0, 1fr);
 	}
 
-	.demo-wall,
-	.swatches,
-	.diagrams-list {
-		grid-template-columns: repeat(2, minmax(0, 1fr));
-	}
-
-	.phase-demo-group {
-		grid-template-columns: 1fr;
-	}
-
-	.phase-demo-head {
-		position: static;
-	}
-
-	.catalog-group {
-		grid-template-columns: 1fr;
-	}
-
-	.catalog-head {
-		border-bottom: 1px solid var(--vpk-rule);
-		border-right: 0;
-	}
-}
-
-@media (max-width: 1100px) {
-	.catalog-row,
-	.phase-demo-link {
-		grid-template-columns: minmax(0, 0.7fr) minmax(0, 1fr);
-	}
-
-	.catalog-row .path,
-	.phase-demo-link code {
-		grid-column: 1 / -1;
-		margin-top: 0.15rem;
+	.demo-path {
+		grid-column: 2;
+		text-align: left;
 	}
 }
 
 @media (max-width: 720px) {
-	.topnav {
-		align-items: flex-start;
-		flex-direction: column;
-		position: static;
-	}
-
-	.links {
-		justify-content: flex-start;
-	}
-
-	.hero {
-		padding-top: 2.4rem;
-	}
-
-	.stat-strip,
-	.demo-wall,
-	.swatches,
-	.diagrams-list,
-	.catalog-row,
-	.phase-demo-link,
-	.type-row {
+	.hero-intro {
 		grid-template-columns: 1fr;
 	}
 
-	.stat {
-		border-bottom: 1px solid var(--vpk-rule);
-		border-right: 0;
+	.intro-copy {
+		column-count: 1;
 	}
 
-	.stat:last-child {
-		border-bottom: 0;
-	}
-
-	.step {
+	.demo-row {
 		grid-template-columns: 1fr;
 	}
 
-	.type-row .specs {
-		order: 3;
+	.demo-path {
+		grid-column: auto;
 	}
 }
 </style>
@@ -935,665 +465,198 @@ footer a:hover { color: var(--vpk-blueprint); }
 <body>
 <main class="page">
 
-<nav class="topnav" aria-label="Primary">
-	<a class="brand" href="#"><span>vpk-html</span></a>
-	<span class="links">
-		<a href="#templates">Templates</a>
-		<a href="#demos">Demos</a>
-		<a href="#diagrams">Diagrams</a>
-		<a href="#install">Install</a>
-		<a href="README.md">README</a>
-	</span>
-</nav>
-
 <!-- ============ HERO ============ -->
 <header class="hero">
 	<div>
-		<p class="kicker">Document Design System · v0.1.0 · 2026.05</p>
+		<p class="kicker">Document Design System · Demos · 2026.05</p>
 		<h1>vpk-html</h1>
-		<p class="tagline">A terminal × blueprint document system for AI agents. Render structured payloads into single-file, offline HTML artifacts for PR writeups, code reviews, status reports, post-mortems, math handouts, prototypes, and editorial documents.</p>
+		<div class="hero-intro">
+			<div class="intro-copy">
+				<p>Most HTML handoffs start as scattered material: a report shape here, a review surface there, a diagram pattern somewhere else. vpk-html collects those jobs into a local demo catalog so an agent can choose the closest form before drafting the artifact.</p>
+				<p>Each row opens a finished demo, starter document, or inline figure that can be reused as a self-contained HTML file. The point is not a public gallery; it is a working map of document patterns for reviews, reports, explainers, prototypes, decks, and lightweight editor surfaces.</p>
+			</div>
+		</div>
 	</div>
-	<aside class="hero-note" aria-label="Rendering contract">
-		<p class="figure-label">Figure 00 · Contract</p>
-		<div class="system-card">
-			<strong>Pick a template</strong>
-			<p>Start from 28 stable document forms in <code>assets/templates/</code>.</p>
-		</div>
-		<div class="system-card">
-			<strong>Fill real material</strong>
-			<p>Replace placeholders with sourced, specific content. CSS stays inside the template.</p>
-		</div>
-		<div class="system-card">
-			<strong>Ship one file</strong>
-			<p>Validate the artifact, then hand off a standalone offline HTML document.</p>
-		</div>
-	</aside>
 </header>
 
-<div class="stat-strip" aria-label="Library statistics">
-	<div class="stat"><strong>28</strong><span>HTML templates</span></div>
-	<div class="stat"><strong>14</strong><span>SVG primitives</span></div>
-	<div class="stat"><strong>28</strong><span>Demo outputs</span></div>
-	<div class="stat"><strong>1</strong><span>Offline file</span></div>
-</div>
-
-<!-- ============ 01 TEMPLATES ============ -->
-<section id="templates">
-	<aside class="section-aside">
-		<p class="section-num">01 · Templates</p>
-		<h2 class="section-title">Twenty-eight documents, one identity</h2>
-		<p class="section-lede">The catalog reads like a manual: choose the closest document purpose, copy the source file, fill the placeholders, and keep the generated artifact offline.</p>
-	</aside>
+<!-- ============ 01 DEMOS ============ -->
+<section id="contents">
 	<div class="section-body">
-		<div class="manual-copy">
-			<p>The templates cover base document shapes plus Phase 2 engineering workflows: approach exploration, code review, code understanding, design-system specs, prototypes, status and incident reports, research explainers, implementation plans, PR writeups, and editor-style worksheets.</p>
-			<p class="callout">All rows link directly to the source template file. Existing paths and anchors remain stable for local docs, browser bookmarks, and agent prompts.</p>
+		<div class="demo-contents" aria-label="vpk-html demos">
+			<article class="demo-category" id="document-types">
+				<header class="demo-category-head">
+					<div>
+						<p class="demo-source">Document category</p>
+						<div class="demo-title-line"><span class="demo-category-index">01</span><h3>Document Types</h3></div>
+						<p>Eight base document jobs: one-pagers, long documents, letters, portfolios, resumes, slides, equity reports, and changelogs.</p>
+					</div>
+				</header>
+				<div class="demo-list">
+					<a class="demo-row" href="assets/templates/one-pager.html"><span class="demo-num">01.01</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">One-Pager</span></span><span class="demo-desc">Executive summary, proposal, internal brief, or decision memo when the reader needs the answer quickly.</span></span><span class="demo-path">one-pager.html</span></a>
+					<a class="demo-row" href="assets/templates/long-doc.html"><span class="demo-num">01.02</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Long Document</span></span><span class="demo-desc">White paper, chapter, technical narrative, or long-form report with sections and embedded figures.</span></span><span class="demo-path">long-doc.html</span></a>
+					<a class="demo-row" href="assets/templates/letter.html"><span class="demo-num">01.03</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Letter</span></span><span class="demo-desc">Formal letter, memo, cover note, or compact written communication with a clear recipient.</span></span><span class="demo-path">letter.html</span></a>
+					<a class="demo-row" href="assets/demos/demo-kaku.html"><span class="demo-num">01.04</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Portfolio</span></span><span class="demo-desc">A terminal-style Kaku portfolio with case-study structure, project imagery, and multi-page rhythm.</span></span><span class="demo-path">demo-kaku.html</span></a>
+					<a class="demo-row" href="assets/demos/demo-musk-resume.html"><span class="demo-num">01.05</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Resume</span></span><span class="demo-desc">A two-page founder CV with concise project evidence and result-led bullets.</span></span><span class="demo-path">demo-musk-resume.html</span></a>
+					<a class="demo-row" href="assets/templates/slides.html"><span class="demo-num">01.06</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Slides</span></span><span class="demo-desc">HTML deck starter for projection, print, or PDF export with assertion-evidence slide structure.</span></span><span class="demo-path">slides.html</span></a>
+					<a class="demo-row" href="assets/demos/demo-tesla.html"><span class="demo-num">01.07</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Equity Report</span></span><span class="demo-desc">A Tesla earnings note with thesis, catalysts, risks, and finance-report page rhythm.</span></span><span class="demo-path">demo-tesla.html</span></a>
+					<a class="demo-row" href="assets/templates/changelog.html"><span class="demo-num">01.08</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Changelog</span></span><span class="demo-desc">Versioned release notes for projects that need visible changes, fixes, and upgrade notes.</span></span><span class="demo-path">changelog.html</span></a>
+				</div>
+			</article>
+			<article class="demo-category" id="exploration">
+				<header class="demo-category-head">
+					<div>
+						<p class="demo-source">Use-case category</p>
+						<div class="demo-title-line"><span class="demo-category-index">02</span><h3>Exploration &amp; Planning</h3></div>
+						<p>Fan out across approaches, compare choices, then turn the selected direction into an implementation plan.</p>
+					</div>
+				</header>
+				<div class="demo-list">
+					<a class="demo-row" href="assets/demos/demo-exploration-code-approaches.html"><span class="demo-num">02.01</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Code Approaches</span></span><span class="demo-desc">Side-by-side comparison of three implementation paths with tradeoffs and recommendation.</span></span><span class="demo-path">demo-exploration-code-approaches.html</span></a>
+					<a class="demo-row" href="assets/demos/demo-exploration-visual-designs.html"><span class="demo-num">02.02</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Visual Designs</span></span><span class="demo-desc">Layout and palette directions rendered as visible options rather than prose descriptions.</span></span><span class="demo-path">demo-exploration-visual-designs.html</span></a>
+					<a class="demo-row" href="assets/demos/demo-implementation-plan.html"><span class="demo-num">02.03</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Implementation Plan</span></span><span class="demo-desc">Milestones, data-flow sketch, risky code, and risk table in one delivery plan.</span></span><span class="demo-path">demo-implementation-plan.html</span></a>
+				</div>
+			</article>
+			<article class="demo-category" id="code-review">
+				<header class="demo-category-head">
+					<div>
+						<p class="demo-source">Use-case category</p>
+						<div class="demo-title-line"><span class="demo-category-index">03</span><h3>Code Review &amp; Understanding</h3></div>
+						<p>Make diffs, module maps, and reviewer handoffs spatial enough to scan instead of flattening them into terminal output.</p>
+					</div>
+				</header>
+				<div class="demo-list">
+					<a class="demo-row" href="assets/demos/demo-code-review-pr.html"><span class="demo-num">03.01</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Code Review</span></span><span class="demo-desc">A pull request review with margin notes, severity tags, evidence, and jump links.</span></span><span class="demo-path">demo-code-review-pr.html</span></a>
+					<a class="demo-row" href="assets/demos/demo-pr-writeup.html"><span class="demo-num">03.02</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">PR Writeup</span></span><span class="demo-desc">The author's side: motivation, before/after, file tour, validation, and review focus.</span></span><span class="demo-path">demo-pr-writeup.html</span></a>
+					<a class="demo-row" href="assets/demos/demo-code-understanding.html"><span class="demo-num">03.03</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Code Understanding</span></span><span class="demo-desc">An unfamiliar package drawn as entrypoints, hot path, dependencies, and change hazards.</span></span><span class="demo-path">demo-code-understanding.html</span></a>
+					<a class="demo-row" href="assets/demos/demo-postgres-migration.html"><span class="demo-num">03.04</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Postgres Migration</span></span><span class="demo-desc">A production migration PR writeup with logical replication, cutover plan, and rollback window.</span></span><span class="demo-path">demo-postgres-migration.html</span></a>
+				</div>
+			</article>
+			<article class="demo-category" id="design">
+				<header class="demo-category-head">
+					<div>
+						<p class="demo-source">Use-case category</p>
+						<div class="demo-title-line"><span class="demo-category-index">04</span><h3>Design</h3></div>
+						<p>Render tokens, variants, and component contracts as reviewable sheets that can feed directly into implementation prompts.</p>
+					</div>
+				</header>
+				<div class="demo-list">
+					<a class="demo-row" href="assets/demos/demo-design-system.html"><span class="demo-num">04.01</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Design System</span></span><span class="demo-desc">Colors, type scale, and spacing tokens rendered as a compact design-system sheet.</span></span><span class="demo-path">demo-design-system.html</span></a>
+					<a class="demo-row" href="assets/demos/demo-component-variants.html"><span class="demo-num">04.02</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Component Variants</span></span><span class="demo-desc">Every size, state, and intent of one component laid out on a single review sheet.</span></span><span class="demo-path">demo-component-variants.html</span></a>
+				</div>
+			</article>
+			<article class="demo-category" id="prototyping">
+				<header class="demo-category-head">
+					<div>
+						<p class="demo-source">Use-case category</p>
+						<div class="demo-title-line"><span class="demo-category-index">05</span><h3>Prototyping</h3></div>
+						<p>Capture motion and interaction behavior as something a reviewer can feel before the production surface exists.</p>
+					</div>
+				</header>
+				<div class="demo-list">
+					<a class="demo-row" href="assets/demos/demo-prototype-animation.html"><span class="demo-num">05.01</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Animation Prototype</span></span><span class="demo-desc">Transition behavior in isolation with adjustable duration, easing, and reduced-motion notes.</span></span><span class="demo-path">demo-prototype-animation.html</span></a>
+					<a class="demo-row" href="assets/demos/demo-prototype-interaction.html"><span class="demo-num">05.02</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Interaction Prototype</span></span><span class="demo-desc">A small clickable flow with enough fidelity to evaluate the interaction model.</span></span><span class="demo-path">demo-prototype-interaction.html</span></a>
+				</div>
+			</article>
+			<article class="demo-category" id="illustrations">
+				<header class="demo-category-head">
+					<div>
+						<p class="demo-source">Use-case category</p>
+						<div class="demo-title-line"><span class="demo-category-index">06</span><h3>Illustrations &amp; Diagrams</h3></div>
+						<p>Use inline SVG briefs and flowchart plans when a figure teaches the system faster than prose.</p>
+					</div>
+				</header>
+				<div class="demo-list">
+					<a class="demo-row" href="assets/demos/demo-svg-illustrations.html"><span class="demo-num">06.01</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">SVG Illustrations</span></span><span class="demo-desc">A figure sheet for a technical post, drawn inline so each diagram can be copied out.</span></span><span class="demo-path">demo-svg-illustrations.html</span></a>
+					<a class="demo-row" href="assets/demos/demo-flowchart-diagram.html"><span class="demo-num">06.02</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Flowchart Diagram</span></span><span class="demo-desc">A deploy pipeline shown as a flowchart with timings and failure paths.</span></span><span class="demo-path">demo-flowchart-diagram.html</span></a>
+				</div>
+			</article>
+			<article class="demo-category" id="decks">
+				<header class="demo-category-head">
+					<div>
+						<p class="demo-source">Use-case category</p>
+						<div class="demo-title-line"><span class="demo-category-index">07</span><h3>Decks</h3></div>
+						<p>Turn technical source material into assertion-evidence slides before opening a slide tool.</p>
+					</div>
+				</header>
+				<div class="demo-list">
+					<a class="demo-row" href="assets/demos/demo-slide-deck.html"><span class="demo-num">07.01</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Engineering Slide Deck</span></span><span class="demo-desc">A short presentation as one HTML file with arrow-key navigation.</span></span><span class="demo-path">demo-slide-deck.html</span></a>
+					<a class="demo-row" href="assets/demos/demo-agent-slides.html"><span class="demo-num">07.02</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Agent Keynote</span></span><span class="demo-desc">A seven-slide keynote covering loops, harness, context, memory, and agent execution.</span></span><span class="demo-path">demo-agent-slides.html</span></a>
+				</div>
+			</article>
+			<article class="demo-category" id="research">
+				<header class="demo-category-head">
+					<div>
+						<p class="demo-source">Use-case category</p>
+						<div class="demo-title-line"><span class="demo-category-index">08</span><h3>Research &amp; Learning</h3></div>
+						<p>Structure feature and concept explainers with examples, source trails, and misconceptions so the topic stays navigable.</p>
+					</div>
+				</header>
+				<div class="demo-list">
+					<a class="demo-row" href="assets/demos/demo-research-feature-explainer.html"><span class="demo-num">08.01</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Feature Explainer</span></span><span class="demo-desc">A rate-limiting explainer with TL;DR, request-path steps, tabs, and FAQ.</span></span><span class="demo-path">demo-research-feature-explainer.html</span></a>
+					<a class="demo-row" href="assets/demos/demo-research-concept-explainer.html"><span class="demo-num">08.02</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Concept Explainer</span></span><span class="demo-desc">Consistent hashing taught with a live ring, comparison table, and linked glossary.</span></span><span class="demo-path">demo-research-concept-explainer.html</span></a>
+					<a class="demo-row" href="assets/demos/demo-rag-explainer.html"><span class="demo-num">08.03</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">RAG Explainer</span></span><span class="demo-desc">Retrieval-augmented generation explained through architecture, tradeoffs, and use cases.</span></span><span class="demo-path">demo-rag-explainer.html</span></a>
+				</div>
+			</article>
+			<article class="demo-category" id="reports">
+				<header class="demo-category-head">
+					<div>
+						<p class="demo-source">Use-case category</p>
+						<div class="demo-title-line"><span class="demo-category-index">09</span><h3>Reports</h3></div>
+						<p>Give recurring engineering updates and postmortems enough structure that readers can skim without losing the facts.</p>
+					</div>
+				</header>
+				<div class="demo-list">
+					<a class="demo-row" href="assets/demos/demo-status-report.html"><span class="demo-num">09.01</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Weekly Status</span></span><span class="demo-desc">What shipped, what slipped, and a compact chart formatted for a quick team skim.</span></span><span class="demo-path">demo-status-report.html</span></a>
+					<a class="demo-row" href="assets/demos/demo-incident-report.html"><span class="demo-num">09.02</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Incident Timeline</span></span><span class="demo-desc">A postmortem with minute-by-minute timeline, log excerpts, and follow-up checklist.</span></span><span class="demo-path">demo-incident-report.html</span></a>
+					<a class="demo-row" href="assets/demos/demo-q2-status.html"><span class="demo-num">09.03</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Q2 Status Report</span></span><span class="demo-desc">A quarterly platform-team review with shipped work, slips, confidence, and next actions.</span></span><span class="demo-path">demo-q2-status.html</span></a>
+					<a class="demo-row" href="assets/demos/demo-auth-incident.html"><span class="demo-num">09.04</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Auth Incident</span></span><span class="demo-desc">A 47-minute outage report with impact, timeline, root cause, and action items.</span></span><span class="demo-path">demo-auth-incident.html</span></a>
+				</div>
+			</article>
+			<article class="demo-category" id="editors">
+				<header class="demo-category-head">
+					<div>
+						<p class="demo-source">Use-case category</p>
+						<div class="demo-title-line"><span class="demo-category-index">10</span><h3>Custom Editing Interfaces</h3></div>
+						<p>Model throwaway editors as static worksheets that keep the human in the loop and end with a clean exportable decision.</p>
+					</div>
+				</header>
+				<div class="demo-list">
+					<a class="demo-row" href="assets/demos/demo-editor-triage-board.html"><span class="demo-num">10.01</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Ticket Triage Board</span></span><span class="demo-desc">Drag tickets across Now, Next, Later, and Cut, then copy the final ordering as markdown.</span></span><span class="demo-path">demo-editor-triage-board.html</span></a>
+					<a class="demo-row" href="assets/demos/demo-editor-feature-flags.html"><span class="demo-num">10.02</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Feature Flag Editor</span></span><span class="demo-desc">Toggles grouped by area, dependency warnings, and a copy-diff button for changed keys.</span></span><span class="demo-path">demo-editor-feature-flags.html</span></a>
+					<a class="demo-row" href="assets/demos/demo-editor-prompt-tuner.html"><span class="demo-num">10.03</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Prompt Tuner</span></span><span class="demo-desc">Editable prompt template with highlighted slots and live sample re-rendering.</span></span><span class="demo-path">demo-editor-prompt-tuner.html</span></a>
+				</div>
+			</article>
+			<article class="demo-category" id="inline-charts">
+				<header class="demo-category-head">
+					<div>
+						<p class="demo-source">Figure category</p>
+						<div class="demo-title-line"><span class="demo-category-index">11</span><h3>Inline Charts</h3></div>
+						<p>Fourteen inline SVG demos for architecture, process, hierarchy, comparison, trend, distribution, and finance figures.</p>
+					</div>
+				</header>
+				<div class="demo-list">
+					<a class="demo-row" href="assets/diagrams/architecture.html"><span class="demo-num">11.01</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Architecture</span></span><span class="demo-desc">Components and connections in a system, with one focal node emphasized.</span></span><span class="demo-path">architecture.html</span></a>
+					<a class="demo-row" href="assets/diagrams/flowchart.html"><span class="demo-num">11.02</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Flowchart</span></span><span class="demo-desc">A process with decision branches, clear start/end states, and labeled paths.</span></span><span class="demo-path">flowchart.html</span></a>
+					<a class="demo-row" href="assets/diagrams/swimlane.html"><span class="demo-num">11.03</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Swimlane</span></span><span class="demo-desc">Cross-team or cross-role flow where ownership matters as much as sequence.</span></span><span class="demo-path">swimlane.html</span></a>
+					<a class="demo-row" href="assets/diagrams/state-machine.html"><span class="demo-num">11.04</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">State Machine</span></span><span class="demo-desc">Lifecycle states and transitions, including the exceptional path.</span></span><span class="demo-path">state-machine.html</span></a>
+					<a class="demo-row" href="assets/diagrams/timeline.html"><span class="demo-num">11.05</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Timeline</span></span><span class="demo-desc">Time-ordered events, milestones, roadmap checkpoints, or incident sequence.</span></span><span class="demo-path">timeline.html</span></a>
+					<a class="demo-row" href="assets/diagrams/tree.html"><span class="demo-num">11.06</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Tree</span></span><span class="demo-desc">Hierarchy or org-chart structure with at least two meaningful levels.</span></span><span class="demo-path">tree.html</span></a>
+					<a class="demo-row" href="assets/diagrams/layer-stack.html"><span class="demo-num">11.07</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Layer Stack</span></span><span class="demo-desc">Layered architecture, OSI-style stack, or tiered system where vertical order matters.</span></span><span class="demo-path">layer-stack.html</span></a>
+					<a class="demo-row" href="assets/diagrams/quadrant.html"><span class="demo-num">11.08</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Quadrant</span></span><span class="demo-desc">A two-by-two matrix for priority, positioning, risk, or strategic comparison.</span></span><span class="demo-path">quadrant.html</span></a>
+					<a class="demo-row" href="assets/diagrams/venn.html"><span class="demo-num">11.09</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Venn</span></span><span class="demo-desc">Overlap between two or three sets, with the intersection as the focal claim.</span></span><span class="demo-path">venn.html</span></a>
+					<a class="demo-row" href="assets/diagrams/bar-chart.html"><span class="demo-num">11.10</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Bar Chart</span></span><span class="demo-desc">Category comparison when the x-axis is not time and the contrast is the point.</span></span><span class="demo-path">bar-chart.html</span></a>
+					<a class="demo-row" href="assets/diagrams/line-chart.html"><span class="demo-num">11.11</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Line Chart</span></span><span class="demo-desc">A trend or time series where slope and inflection matter more than individual bars.</span></span><span class="demo-path">line-chart.html</span></a>
+					<a class="demo-row" href="assets/diagrams/donut-chart.html"><span class="demo-num">11.12</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Donut Chart</span></span><span class="demo-desc">Distribution or composition that sums to roughly 100 percent across a small set.</span></span><span class="demo-path">donut-chart.html</span></a>
+					<a class="demo-row" href="assets/diagrams/candlestick.html"><span class="demo-num">11.13</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Candlestick</span></span><span class="demo-desc">OHLC or stock-price history where the open, high, low, and close all matter.</span></span><span class="demo-path">candlestick.html</span></a>
+					<a class="demo-row" href="assets/diagrams/waterfall.html"><span class="demo-num">11.14</span><span class="demo-main"><span class="demo-name-line"><span class="demo-name">Waterfall</span></span><span class="demo-desc">Positive and negative bridge from a starting value to an ending total.</span></span><span class="demo-path">waterfall.html</span></a>
+				</div>
+			</article>
 		</div>
-		<div class="catalog">
-			<div class="catalog-group">
-				<div class="catalog-head">
-					<p class="catalog-kicker">Briefing</p>
-					<h3>Alignment docs</h3>
-				</div>
-				<div class="catalog-rows">
-					<a class="catalog-row" href="assets/templates/one-pager.html">
-						<h4>One-Pager</h4>
-						<p>Executive summary, proposal, internal brief, or decision memo when the reader needs the answer quickly.</p>
-						<span class="path">assets/templates/one-pager.html</span>
-					</a>
-					<a class="catalog-row" href="assets/templates/long-doc.html">
-						<h4>Long-Doc</h4>
-						<p>White paper, chapter, technical narrative, or long-form report with sections and diagrams.</p>
-						<span class="path">assets/templates/long-doc.html</span>
-					</a>
-				</div>
-			</div>
-			<div class="catalog-group">
-				<div class="catalog-head">
-					<p class="catalog-kicker">Showcase</p>
-					<h3>People and work</h3>
-				</div>
-				<div class="catalog-rows">
-					<a class="catalog-row" href="assets/templates/letter.html">
-						<h4>Letter</h4>
-						<p>Formal letter, memo, cover letter, or compact written communication with a clear recipient.</p>
-						<span class="path">assets/templates/letter.html</span>
-					</a>
-					<a class="catalog-row" href="assets/templates/portfolio.html">
-						<h4>Portfolio</h4>
-						<p>Case studies, work samples, project gallery, or personal showcase with evidence-led entries.</p>
-						<span class="path">assets/templates/portfolio.html</span>
-					</a>
-					<a class="catalog-row" href="assets/templates/resume.html">
-						<h4>Resume</h4>
-						<p>CV or resume with Action + Scope + Result + Business Outcome bullets.</p>
-						<span class="path">assets/templates/resume.html</span>
-					</a>
-				</div>
-			</div>
-			<div class="catalog-group">
-				<div class="catalog-head">
-					<p class="catalog-kicker">Specialized</p>
-					<h3>Presentation and records</h3>
-				</div>
-				<div class="catalog-rows">
-					<a class="catalog-row" href="assets/templates/slides.html">
-						<h4>Slides</h4>
-						<p>HTML deck for projection, print, or PDF export with assertion-evidence slide structure.</p>
-						<span class="path">assets/templates/slides.html</span>
-					</a>
-					<a class="catalog-row" href="assets/templates/equity-report.html">
-						<h4>Equity Report</h4>
-						<p>Investment memo, valuation note, or research report with thesis, catalysts, and risks.</p>
-						<span class="path">assets/templates/equity-report.html</span>
-					</a>
-					<a class="catalog-row" href="assets/templates/changelog.html">
-						<h4>Changelog</h4>
-						<p>Versioned release notes for projects that need visible changes, fixes, and upgrade notes.</p>
-						<span class="path">assets/templates/changelog.html</span>
-					</a>
-				</div>
-			</div>
-			<div class="catalog-group">
-				<div class="catalog-head">
-					<p class="catalog-kicker">Engineering · Review</p>
-					<h3>Decisions and code</h3>
-				</div>
-				<div class="catalog-rows">
-					<a class="catalog-row" href="assets/templates/exploration-code-approaches.html">
-						<h4>Exploration · Code Approaches</h4>
-						<p>Compare competing implementation approaches with constraints, tradeoffs, recommendation, and fallback.</p>
-						<span class="path">assets/templates/exploration-code-approaches.html</span>
-					</a>
-					<a class="catalog-row" href="assets/templates/code-review-pr.html">
-						<h4>Code Review · Pull Request</h4>
-						<p>Lead with findings, severity, file/line evidence, validation state, and reviewer focus.</p>
-						<span class="path">assets/templates/code-review-pr.html</span>
-					</a>
-					<a class="catalog-row" href="assets/templates/code-understanding.html">
-						<h4>Code Understanding</h4>
-						<p>Explain a code path through entrypoints, flow, dependencies, boundaries, and change hazards.</p>
-						<span class="path">assets/templates/code-understanding.html</span>
-					</a>
-					<a class="catalog-row" href="assets/templates/implementation-plan.html">
-						<h4>Implementation Plan</h4>
-						<p>Turn a target change into ordered steps, scope boundaries, validation, rollout, and rollback notes.</p>
-						<span class="path">assets/templates/implementation-plan.html</span>
-					</a>
-					<a class="catalog-row" href="assets/templates/pr-writeup.html">
-						<h4>Pull Request Writeup</h4>
-						<p>Prepare a high-signal PR description with change summary, implementation detail, validation, and review focus.</p>
-						<span class="path">assets/templates/pr-writeup.html</span>
-					</a>
-				</div>
-			</div>
-			<div class="catalog-group">
-				<div class="catalog-head">
-					<p class="catalog-kicker">Engineering · Design</p>
-					<h3>Systems and prototypes</h3>
-				</div>
-				<div class="catalog-rows">
-					<a class="catalog-row" href="assets/templates/exploration-visual-designs.html">
-						<h4>Exploration · Visual Designs</h4>
-						<p>Compare UI directions with audience, constraints, tradeoffs, selection criteria, and open questions.</p>
-						<span class="path">assets/templates/exploration-visual-designs.html</span>
-					</a>
-					<a class="catalog-row" href="assets/templates/design-system.html">
-						<h4>Design System</h4>
-						<p>Document principles, tokens, component rules, adoption path, and validation checklist.</p>
-						<span class="path">assets/templates/design-system.html</span>
-					</a>
-					<a class="catalog-row" href="assets/templates/component-variants.html">
-						<h4>Component Variants</h4>
-						<p>Specify variants, states, props, slots, accessibility behavior, and visual QA expectations.</p>
-						<span class="path">assets/templates/component-variants.html</span>
-					</a>
-					<a class="catalog-row" href="assets/templates/prototype-animation.html">
-						<h4>Prototype · Animation</h4>
-						<p>Capture motion intent, timing, state changes, reduced-motion behavior, and performance budget.</p>
-						<span class="path">assets/templates/prototype-animation.html</span>
-					</a>
-					<a class="catalog-row" href="assets/templates/prototype-interaction.html">
-						<h4>Prototype · Interaction</h4>
-						<p>Describe user flows, state transitions, controls, non-happy paths, and evaluation criteria.</p>
-						<span class="path">assets/templates/prototype-interaction.html</span>
-					</a>
-				</div>
-			</div>
-			<div class="catalog-group">
-				<div class="catalog-head">
-					<p class="catalog-kicker">Engineering · Delivery</p>
-					<h3>Reports and explainers</h3>
-				</div>
-				<div class="catalog-rows">
-					<a class="catalog-row" href="assets/templates/status-report.html">
-						<h4>Status Report</h4>
-						<p>Summarize progress, confidence, blockers, owners, next actions, and validation milestones.</p>
-						<span class="path">assets/templates/status-report.html</span>
-					</a>
-					<a class="catalog-row" href="assets/templates/incident-report.html">
-						<h4>Incident Report</h4>
-						<p>Capture impact, timeline, root cause, remediation, and follow-up owners for postmortems.</p>
-						<span class="path">assets/templates/incident-report.html</span>
-					</a>
-					<a class="catalog-row" href="assets/templates/research-feature-explainer.html">
-						<h4>Research · Feature Explainer</h4>
-						<p>Explain a feature through context, mechanics, evidence, implications, and source gaps.</p>
-						<span class="path">assets/templates/research-feature-explainer.html</span>
-					</a>
-					<a class="catalog-row" href="assets/templates/research-concept-explainer.html">
-						<h4>Research · Concept Explainer</h4>
-						<p>Teach a technical concept with definition, worked example, misconceptions, and references.</p>
-						<span class="path">assets/templates/research-concept-explainer.html</span>
-					</a>
-					<a class="catalog-row" href="assets/templates/flowchart-diagram.html">
-						<h4>Flowchart Diagram</h4>
-						<p>Plan a process diagram with clear start/end states, branches, labels, and focal path.</p>
-						<span class="path">assets/templates/flowchart-diagram.html</span>
-					</a>
-				</div>
-			</div>
-			<div class="catalog-group">
-				<div class="catalog-head">
-					<p class="catalog-kicker">Engineering · Artifacts</p>
-					<h3>Decks and editors</h3>
-				</div>
-				<div class="catalog-rows">
-					<a class="catalog-row" href="assets/templates/slide-deck.html">
-						<h4>Engineering Slide Deck</h4>
-						<p>Plan assertion-evidence technical slides with narrative arc, inventory, and speaker notes.</p>
-						<span class="path">assets/templates/slide-deck.html</span>
-					</a>
-					<a class="catalog-row" href="assets/templates/svg-illustrations.html">
-						<h4>SVG Illustrations</h4>
-						<p>Specify technical illustrations with visual job, composition, style constraints, and export notes.</p>
-						<span class="path">assets/templates/svg-illustrations.html</span>
-					</a>
-					<a class="catalog-row" href="assets/templates/editor-triage-board.html">
-						<h4>Editor · Triage Board</h4>
-						<p>Create a static triage board with severity, owner, evidence, queues, and decision log.</p>
-						<span class="path">assets/templates/editor-triage-board.html</span>
-					</a>
-					<a class="catalog-row" href="assets/templates/editor-feature-flags.html">
-						<h4>Editor · Feature Flags</h4>
-						<p>Document flag state, audience, rollout controls, monitoring signals, and cleanup plan.</p>
-						<span class="path">assets/templates/editor-feature-flags.html</span>
-					</a>
-					<a class="catalog-row" href="assets/templates/editor-prompt-tuner.html">
-						<h4>Editor · Prompt Tuner</h4>
-						<p>Capture prompt variants, eval cases, failure modes, selected instruction delta, and residual risk.</p>
-						<span class="path">assets/templates/editor-prompt-tuner.html</span>
-					</a>
-				</div>
-			</div>
-		</div>
-	</div>
-</section>
-
-<!-- ============ 02 DEMOS ============ -->
-<section id="demos">
-	<aside class="section-aside">
-		<p class="section-num">02 · See it</p>
-		<h2 class="section-title">Curated demos</h2>
-			<p class="section-lede">Twenty html-effectiveness demo ports now lead the section, grouped like the upstream index and restyled with the vpk-html visual shell. The original eight vpk-html screenshot-backed showcases remain below them.</p>
-	</aside>
-	<div class="section-body">
-		<div class="phase-demo-index primary" aria-label="Phase 2 engineering demos">
-			<div class="phase-demo-intro">
-				<p class="figure-label">Phase 2 · html-effectiveness pattern</p>
-				<h3>Engineering example index</h3>
-				<p>These demos keep the upstream HTML structure, JavaScript, and sample content, then apply the local vpk-html paper, blueprint, and Geist visual system.</p>
-			</div>
-			<article class="phase-demo-group" id="phase-exploration">
-				<div class="phase-demo-head">
-					<p class="phase-demo-count">3 demos</p>
-					<h4>Exploration &amp; Planning</h4>
-					<p>Fan out across approaches, compare the choices, then turn the selected direction into an implementation plan.</p>
-				</div>
-				<div class="phase-demo-list">
-					<a class="phase-demo-link" href="assets/demos/demo-exploration-code-approaches.html">
-						<strong>Three code approaches</strong>
-						<span>Side-by-side comparison of three ways to solve the same problem, with tradeoffs called out inline.</span>
-						<code>demo-exploration-code-approaches.html</code>
-					</a>
-					<a class="phase-demo-link" href="assets/demos/demo-exploration-visual-designs.html">
-						<strong>Visual design directions</strong>
-						<span>A handful of layout and palette options rendered live so you can react to them, not imagine them.</span>
-						<code>demo-exploration-visual-designs.html</code>
-					</a>
-					<a class="phase-demo-link" href="assets/demos/demo-implementation-plan.html">
-						<strong>Implementation plan</strong>
-						<span>Milestones on a timeline, a data-flow diagram, inline mockups, risky code, and a risk table.</span>
-						<code>demo-implementation-plan.html</code>
-					</a>
-				</div>
-			</article>
-			<article class="phase-demo-group" id="phase-review">
-				<div class="phase-demo-head">
-					<p class="phase-demo-count">3 demos</p>
-					<h4>Code Review &amp; Understanding</h4>
-					<p>Make diffs, module maps, and reviewer handoffs spatial enough to scan instead of flattening them into terminal output.</p>
-				</div>
-				<div class="phase-demo-list">
-					<a class="phase-demo-link" href="assets/demos/demo-code-review-pr.html">
-						<strong>Annotated pull request</strong>
-						<span>A diff rendered with margin notes, severity tags, and jump links.</span>
-						<code>demo-code-review-pr.html</code>
-					</a>
-					<a class="phase-demo-link" href="assets/demos/demo-pr-writeup.html">
-						<strong>PR writeup for reviewers</strong>
-						<span>The author's side: motivation, before/after, file-by-file tour, and where to focus review.</span>
-						<code>demo-pr-writeup.html</code>
-					</a>
-					<a class="phase-demo-link" href="assets/demos/demo-code-understanding.html">
-						<strong>Module map</strong>
-						<span>An unfamiliar package drawn as boxes and arrows, with the hot path highlighted and entry points listed.</span>
-						<code>demo-code-understanding.html</code>
-					</a>
-				</div>
-			</article>
-			<article class="phase-demo-group" id="phase-design">
-				<div class="phase-demo-head">
-					<p class="phase-demo-count">2 demos</p>
-					<h4>Design</h4>
-					<p>Render tokens, variants, and component contracts as reviewable sheets that can feed directly into implementation prompts.</p>
-				</div>
-				<div class="phase-demo-list">
-					<a class="phase-demo-link" href="assets/demos/demo-design-system.html">
-						<strong>Living design system</strong>
-						<span>Colors, type scale, and spacing tokens pulled from a repo and rendered as copyable swatches.</span>
-						<code>demo-design-system.html</code>
-					</a>
-					<a class="phase-demo-link" href="assets/demos/demo-component-variants.html">
-						<strong>Component variants</strong>
-						<span>Every size, state, and intent of one component laid out on a single sheet for review.</span>
-						<code>demo-component-variants.html</code>
-					</a>
-				</div>
-			</article>
-			<article class="phase-demo-group" id="phase-prototype">
-				<div class="phase-demo-head">
-					<p class="phase-demo-count">2 demos</p>
-					<h4>Prototyping</h4>
-					<p>Capture motion and interaction behavior as something a reviewer can feel before the production surface exists.</p>
-				</div>
-				<div class="phase-demo-list">
-					<a class="phase-demo-link" href="assets/demos/demo-prototype-animation.html">
-						<strong>Animation sandbox</strong>
-						<span>The transition in isolation with sliders for duration and easing.</span>
-						<code>demo-prototype-animation.html</code>
-					</a>
-					<a class="phase-demo-link" href="assets/demos/demo-prototype-interaction.html">
-						<strong>Clickable flow</strong>
-						<span>Four screens linked together, enough fidelity to feel whether the interaction is right.</span>
-						<code>demo-prototype-interaction.html</code>
-					</a>
-				</div>
-			</article>
-			<article class="phase-demo-group" id="phase-diagrams">
-				<div class="phase-demo-head">
-					<p class="phase-demo-count">2 demos</p>
-					<h4>Illustrations &amp; Diagrams</h4>
-					<p>Use inline SVG briefs and flowchart plans when a figure teaches the system faster than prose.</p>
-				</div>
-				<div class="phase-demo-list">
-					<a class="phase-demo-link" href="assets/demos/demo-svg-illustrations.html">
-						<strong>SVG figure sheet</strong>
-						<span>The diagrams for a blog post, drawn inline so they can be tweaked and copied out one by one.</span>
-						<code>demo-svg-illustrations.html</code>
-					</a>
-					<a class="phase-demo-link" href="assets/demos/demo-flowchart-diagram.html">
-						<strong>Annotated flowchart</strong>
-						<span>A deploy pipeline drawn as a real flowchart with timings and failure paths.</span>
-						<code>demo-flowchart-diagram.html</code>
-					</a>
-				</div>
-			</article>
-			<article class="phase-demo-group" id="phase-decks">
-				<div class="phase-demo-head">
-					<p class="phase-demo-count">1 demo</p>
-					<h4>Decks</h4>
-					<p>Turn technical source material into an assertion-evidence presentation plan before opening a slide tool.</p>
-				</div>
-				<div class="phase-demo-list">
-					<a class="phase-demo-link" href="assets/demos/demo-slide-deck.html">
-						<strong>Arrow-key slide deck</strong>
-						<span>A short presentation as one HTML file. Left and right to navigate, no build step.</span>
-						<code>demo-slide-deck.html</code>
-					</a>
-				</div>
-			</article>
-			<article class="phase-demo-group" id="phase-research">
-				<div class="phase-demo-head">
-					<p class="phase-demo-count">2 demos</p>
-					<h4>Research &amp; Learning</h4>
-					<p>Structure feature and concept explainers with examples, source trails, and misconceptions so the topic stays navigable.</p>
-				</div>
-				<div class="phase-demo-list">
-					<a class="phase-demo-link" href="assets/demos/demo-research-feature-explainer.html">
-						<strong>How a feature works</strong>
-						<span>A rate-limiting explainer with TL;DR, collapsible request-path steps, tabs, and FAQ.</span>
-						<code>demo-research-feature-explainer.html</code>
-					</a>
-					<a class="phase-demo-link" href="assets/demos/demo-research-concept-explainer.html">
-						<strong>Concept explainer</strong>
-						<span>Consistent hashing taught with a live ring, comparison table, and hover-linked glossary.</span>
-						<code>demo-research-concept-explainer.html</code>
-					</a>
-				</div>
-			</article>
-			<article class="phase-demo-group" id="phase-reports">
-				<div class="phase-demo-head">
-					<p class="phase-demo-count">2 demos</p>
-					<h4>Reports</h4>
-					<p>Give recurring engineering updates and postmortems enough structure that readers can skim without losing the facts.</p>
-				</div>
-				<div class="phase-demo-list">
-					<a class="phase-demo-link" href="assets/demos/demo-status-report.html">
-						<strong>Weekly status</strong>
-						<span>What shipped, what slipped, and a small chart formatted for a quick Monday skim.</span>
-						<code>demo-status-report.html</code>
-					</a>
-					<a class="phase-demo-link" href="assets/demos/demo-incident-report.html">
-						<strong>Incident timeline</strong>
-						<span>A postmortem with a minute-by-minute timeline, log excerpts, and follow-up checklist.</span>
-						<code>demo-incident-report.html</code>
-					</a>
-				</div>
-			</article>
-			<article class="phase-demo-group" id="phase-editors">
-				<div class="phase-demo-head">
-					<p class="phase-demo-count">3 demos</p>
-					<h4>Custom Editing Interfaces</h4>
-					<p>Model throwaway editors as static worksheets that keep the human in the loop and end with a clean exportable decision.</p>
-				</div>
-				<div class="phase-demo-list">
-					<a class="phase-demo-link" href="assets/demos/demo-editor-triage-board.html">
-						<strong>Ticket triage board</strong>
-						<span>Drag tickets across Now, Next, Later, and Cut, then copy the final ordering as markdown.</span>
-						<code>demo-editor-triage-board.html</code>
-					</a>
-					<a class="phase-demo-link" href="assets/demos/demo-editor-feature-flags.html">
-						<strong>Feature flag editor</strong>
-						<span>Toggles grouped by area, dependency warnings, and a copy-diff button for changed keys.</span>
-						<code>demo-editor-feature-flags.html</code>
-					</a>
-					<a class="phase-demo-link" href="assets/demos/demo-editor-prompt-tuner.html">
-						<strong>Prompt tuner</strong>
-						<span>Editable prompt template with highlighted slots and live sample re-rendering.</span>
-						<code>demo-editor-prompt-tuner.html</code>
-					</a>
-				</div>
-			</article>
-		</div>		<div class="demo-gallery-intro">
-			<p class="figure-label">Original screenshot set</p>
-			<h3>Eight visual showcases</h3>
-			<p>The original kami-ported demos remain available as screenshot-backed examples after the grouped engineering index.</p>
-		</div>
-		<div class="demo-wall">
-			<a class="demo-card" href="assets/demos/demo-postgres-migration.html">
-				<div class="thumb"><img src="assets/demos/demo-postgres-migration.png" alt="Postgres migration PR writeup" loading="lazy"></div>
-				<div class="body">
-					<p class="figure-label">PR Writeup</p>
-					<h3>Postgres 15 → 16 Migration</h3>
-					<p class="caption">Online cutover with logical replication, 7-day rollback window.</p>
-				</div>
-			</a>
-			<a class="demo-card" href="assets/demos/demo-rag-explainer.html">
-				<div class="thumb"><img src="assets/demos/demo-rag-explainer.png" alt="RAG architecture explainer" loading="lazy"></div>
-				<div class="body">
-					<p class="figure-label">Research Explainer</p>
-					<h3>Retrieval-Augmented Generation</h3>
-					<p class="caption">Why retrieve before generate, and what that buys you.</p>
-				</div>
-			</a>
-			<a class="demo-card" href="assets/demos/demo-q2-status.html">
-				<div class="thumb"><img src="assets/demos/demo-q2-status.png" alt="Quarterly engineering status" loading="lazy"></div>
-				<div class="body">
-					<p class="figure-label">Status Report</p>
-					<h3>Platform Team · Q2 2026</h3>
-					<p class="caption">Quarterly review: what shipped, what slipped, what's next.</p>
-				</div>
-			</a>
-			<a class="demo-card" href="assets/demos/demo-auth-incident.html">
-				<div class="thumb"><img src="assets/demos/demo-auth-incident.png" alt="Auth outage post-mortem" loading="lazy"></div>
-				<div class="body">
-					<p class="figure-label">Incident Report</p>
-					<h3>Auth outage · 2026-05-04</h3>
-					<p class="caption">47-minute outage post-mortem with timeline and action items.</p>
-				</div>
-			</a>
-			<a class="demo-card" href="assets/demos/demo-tesla.html">
-				<div class="thumb"><img src="assets/demos/demo-tesla.png" alt="Tesla equity report" loading="lazy"></div>
-				<div class="body">
-					<p class="figure-label">Equity Report · kami port</p>
-					<h3>Tesla Q1 2026</h3>
-					<p class="caption">Equity research note restyled with vpk identity.</p>
-				</div>
-			</a>
-			<a class="demo-card" href="assets/demos/demo-musk-resume.html">
-				<div class="thumb"><img src="assets/demos/demo-musk-resume.png" alt="Musk resume" loading="lazy"></div>
-				<div class="body">
-					<p class="figure-label">Resume · kami port</p>
-					<h3>Founder CV</h3>
-					<p class="caption">Two-page founder resume with vpk colors and pixel display.</p>
-				</div>
-			</a>
-			<a class="demo-card" href="assets/demos/demo-kaku.html">
-				<div class="thumb"><img src="assets/demos/demo-kaku.png" alt="Kaku portfolio" loading="lazy"></div>
-				<div class="body">
-					<p class="figure-label">Portfolio · kami port</p>
-					<h3>Kaku terminal portfolio</h3>
-					<p class="caption">Multi-page portfolio with embedded product imagery.</p>
-				</div>
-			</a>
-			<a class="demo-card" href="assets/demos/demo-agent-slides.html">
-				<div class="thumb"><img src="assets/demos/demo-agent-slides.png" alt="Agent slides keynote" loading="lazy"></div>
-				<div class="body">
-					<p class="figure-label">Slides · kami port</p>
-					<h3>Agent keynote · 7 slides</h3>
-					<p class="caption">Loops, harness, context, memory, and agent execution.</p>
-				</div>
-			</a>
-		</div>
-
-	</div>
-</section>
-
-<!-- ============ 03 INSTALL ============ -->
-<section id="install">
-	<aside class="section-aside">
-		<p class="section-num">03 · Usage</p>
-		<h2 class="section-title">Invoke and fill</h2>
-		<p class="section-lede">The skill is template editing, not a runtime compiler. Copy a template, replace placeholders with real material, and validate the resulting file.</p>
-	</aside>
-	<div class="section-body">
-		<div class="steps" aria-label="vpk-html usage steps">
-			<div class="step">
-				<div>
-					<h3>Prompt with the skill</h3>
-					<p>In Cursor or Claude Code, prefix your prompt with <code>/vpk-html</code>. The skill selects the closest document form from <a href="CHEATSHEET.md">CHEATSHEET.md</a>.</p>
-				</div>
-			</div>
-			<div class="step">
-				<div>
-					<h3>Copy the source template</h3>
-					<p>Work from <code>assets/templates/</code>. The CSS contract stays inside the template and should not be rebuilt for each document.</p>
-				</div>
-			</div>
-			<div class="step">
-				<div>
-					<h3>Validate the artifact</h3>
-					<p>Run placeholder, render, font, console, and HTML checks before handing off the final offline file.</p>
-				</div>
-			</div>
-		</div>
-<pre class="code"><span class="c"># 1. Copy a template</span>
-cp .agents/skills/vpk-html/assets/templates/one-pager.html docs/html/my-doc.html
-
-<span class="c"># 2. Fill &#123;&#123;placeholders&#125;&#125; with real content (CSS stays untouched)</span>
-
-<span class="c"># 3. Validate placeholders</span>
-node .agents/skills/vpk-html/scripts/build.mjs --check-placeholders docs/html/my-doc.html
-
-<span class="c"># 4. Verify render, fonts, and console output</span>
-node .agents/skills/vpk-html/scripts/build.mjs --verify docs/html/my-doc.html
-
-<span class="c"># Sanity-check the template library</span>
-node .agents/skills/vpk-html/scripts/build.mjs --check-templates</pre>
-	</div>
-</section>
-
-<!-- ============ 04 MANIFESTO ============ -->
-<section>
-	<aside class="section-aside">
-		<p class="section-num">04 · Manifesto</p>
-		<h2 class="section-title">Design principles</h2>
-		<p class="section-lede">The design stays close to engineering source material: paper, ink, blueprint accent, hard rules, and no runtime dependencies.</p>
-	</aside>
-	<div class="section-body">
-		<ol class="rules">
-			<li><span class="n">1</span><p>Surface is warm white paper with a faint dotted grid: engineering notebook, not decorative parchment.</p></li>
-			<li><span class="n">2</span><p>Accent is blueprint blue. It marks links, focal nodes, and useful metadata; it should never take over the page.</p></li>
-			<li><span class="n">3</span><p>Geist Pixel carries headlines. Geist Sans carries body text. Geist Mono carries labels, paths, code, and metadata.</p></li>
-			<li><span class="n">4</span><p>Sections use manual-style rules and figure labels instead of stacked soft cards.</p></li>
-			<li><span class="n">5</span><p>Output remains a single offline HTML file: no remote fonts, remote stylesheets, scripts, or image dependencies.</p></li>
-			<li><span class="n">6</span><p>Escape HTML by default. Use <code>trustedHtml</code> only when the template intentionally allows trusted markup.</p></li>
-			<li><span class="n">7</span><p>External research and copied material must appear in a visible <em>Sources and Credits</em> section.</p></li>
-			<li><span class="n">8</span><p>One template, one payload, one HTML file. No build graphs, asset indirection, or hidden runtime state.</p></li>
-		</ol>
-	</div>
-</section>
-
-<!-- ============ 05 COLOR ============ -->
-<section>
-	<aside class="section-aside">
-		<p class="section-num">05 · Color</p>
-		<h2 class="section-title">Restrained palette</h2>
-		<p class="section-lede">The homepage keeps the current blueprint identity while adopting a denser manual-style page rhythm.</p>
-	</aside>
-	<div class="section-body">
-		<div class="swatches">
-			<div class="swatch"><div class="chip" style="background:var(--vpk-paper);border-bottom:1px solid var(--vpk-rule-strong)"></div><div class="info"><p class="name">Paper</p><p class="role">Page background</p><span class="hex">var(--vpk-paper)</span></div></div>
-			<div class="swatch"><div class="chip" style="background:var(--vpk-ink)"></div><div class="info"><p class="name">Ink</p><p class="role">Body text and hard rules</p><span class="hex">var(--vpk-ink)</span></div></div>
-			<div class="swatch"><div class="chip" style="background:var(--vpk-muted-text)"></div><div class="info"><p class="name">Muted</p><p class="role">Subtle text and labels</p><span class="hex">var(--vpk-muted-text)</span></div></div>
-			<div class="swatch"><div class="chip" style="background:var(--vpk-blueprint)"></div><div class="info"><p class="name">Blueprint</p><p class="role">Links and focal state</p><span class="hex">var(--vpk-blueprint)</span></div></div>
-			<div class="swatch"><div class="chip" style="background:color-mix(in srgb, var(--vpk-blueprint) 8%, transparent)"></div><div class="info"><p class="name">Blueprint Tint</p><p class="role">Callouts and hover state</p><span class="hex">8% Blueprint</span></div></div>
-			<div class="swatch"><div class="chip" style="background:var(--vpk-code-surface)"></div><div class="info"><p class="name">Code Surface</p><p class="role">Code blocks and chips</p><span class="hex">var(--vpk-code-surface)</span></div></div>
-			<div class="swatch"><div class="chip" style="background:var(--vpk-success)"></div><div class="info"><p class="name">Success</p><p class="role">Validation pass</p><span class="hex">var(--vpk-success)</span></div></div>
-			<div class="swatch"><div class="chip" style="background:var(--vpk-danger)"></div><div class="info"><p class="name">Danger</p><p class="role">Error or regression</p><span class="hex">var(--vpk-danger)</span></div></div>
-		</div>
-	</div>
-</section>
-
-<!-- ============ 06 TYPE ============ -->
-<section>
-	<aside class="section-aside">
-		<p class="section-num">06 · Typography</p>
-		<h2 class="section-title">Type system</h2>
-		<p class="section-lede">Three local fonts create the manual texture: pixel for hierarchy, sans for reading, mono for function.</p>
-	</aside>
-	<div class="section-body">
-		<div class="type-grid">
-			<div class="type-row"><div class="label">Display</div><div class="display">Render structured material into one offline file</div><div class="specs">Geist Pixel<br>clamp scale<br>line 0.78-0.92</div></div>
-			<div class="type-row"><div class="label">H1 Section</div><div class="h1">Template catalog</div><div class="specs">Geist Pixel<br>2.2rem+<br>line 0.9</div></div>
-			<div class="type-row"><div class="label">H2 Subsection</div><div class="h2">Alignment docs</div><div class="specs">Geist Sans<br>1.24rem · 600<br>line 1.3</div></div>
-			<div class="type-row"><div class="label">Body</div><div class="body">Blueprint blue marks focal detail. Body copy stays plain, specific, and quiet enough for repeated technical reading.</div><div class="specs">Geist Sans<br>1rem · 400<br>line 1.6</div></div>
-			<div class="type-row"><div class="label">Mono</div><div class="mono">node scripts/build.mjs --verify file.html</div><div class="specs">Geist Mono<br>0.9rem · 400<br>line 1.55</div></div>
-		</div>
-	</div>
-</section>
-
-<!-- ============ 07 DIAGRAMS ============ -->
-<section id="diagrams">
-	<aside class="section-aside">
-		<p class="section-num">07 · Diagrams</p>
-		<h2 class="section-title">14 SVG primitives</h2>
-		<p class="section-lede">Standalone diagram files are ported from <a href="https://github.com/tw93/Kami">kami</a> and restyled with vpk-html's identity.</p>
-	</aside>
-	<div class="section-body">
-		<p>The LLM extracts the <code>&lt;svg&gt;</code> block and embeds it inside a long-doc, portfolio, or design-system payload through <code>section.trustedHtml</code> when a diagram teaches more than prose.</p>
-		<p class="diagrams-list">
-			<a href="assets/diagrams/architecture.html">architecture</a>
-			<a href="assets/diagrams/flowchart.html">flowchart</a>
-			<a href="assets/diagrams/swimlane.html">swimlane</a>
-			<a href="assets/diagrams/state-machine.html">state-machine</a>
-			<a href="assets/diagrams/timeline.html">timeline</a>
-			<a href="assets/diagrams/tree.html">tree</a>
-			<a href="assets/diagrams/layer-stack.html">layer-stack</a>
-			<a href="assets/diagrams/quadrant.html">quadrant</a>
-			<a href="assets/diagrams/venn.html">venn</a>
-			<a href="assets/diagrams/bar-chart.html">bar-chart</a>
-			<a href="assets/diagrams/line-chart.html">line-chart</a>
-			<a href="assets/diagrams/donut-chart.html">donut-chart</a>
-			<a href="assets/diagrams/candlestick.html">candlestick</a>
-			<a href="assets/diagrams/waterfall.html">waterfall</a>
-		</p>
 	</div>
 </section>
 
 <footer>
-	<p>vpk-html · part of the <a href="https://github.com/eevennsoh">VPK-Rovo</a> monorepo · diagrams ported from <a href="https://github.com/tw93/Kami">kami</a> · Phase 2 patterns mapped from <a href="https://github.com/ThariqS/html-effectiveness">html-effectiveness</a></p>
+	<p>vpk-html · local-only demo catalog</p>
 </footer>
 
 </main>
