@@ -74,6 +74,23 @@ test("landing has no footer", async () => {
 	assert.doesNotMatch(landing, /local-only demo catalog/);
 });
 
+test("design-md heuristic lint commands point at repo-owned files", async () => {
+	const { ROOT } = await loadModules();
+	const skill = fs.readFileSync(path.join(ROOT, "design-md", "SKILL.md"), "utf8");
+	const scriptPath = ".agents/skills/vpk-html/design-md/scripts/lint-design-heuristics.ts";
+
+	assert.ok(
+		fs.existsSync(path.join(ROOT, "design-md", "scripts", "lint-design-heuristics.ts")),
+		"missing design-md heuristic lint script",
+	);
+	assert.match(skill, new RegExp(`npx tsx ${scriptPath.replaceAll(".", "\\.")} <file>`));
+	assert.match(
+		skill,
+		new RegExp(`${scriptPath.replaceAll(".", "\\.")} \\.agents/skills/vpk-html/design-md/DESIGN\\.dark\\.md`),
+	);
+	assert.doesNotMatch(skill, /skills\/design-system\/design-md\/skill/);
+});
+
 test("landing backdrop uses dotted grid strokes without interior dots", async () => {
 	const { ROOT } = await loadModules();
 	const styles = fs.readFileSync(path.join(ROOT, "styles.css"), "utf8");

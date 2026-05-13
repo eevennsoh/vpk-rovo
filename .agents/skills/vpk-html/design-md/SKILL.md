@@ -47,17 +47,17 @@ Use **atlassian-design-system** for full token catalogs, component APIs, MCP loo
 
 ## Optional: heuristic lint
 
-`skill/scripts/lint-design-heuristics.ts` is a pattern-based check against the design-md rules (same heuristics for any asset). **Default** — token and style drift (hex, spacing, shadows, title case) for any file. **Validate code** — add stricter checks for real app source (raw HTML elements, non-ADS styling imports). Use when the repo has or is moving toward ADS components. Run it against generated HTML/CSS or against `DESIGN.md` / `DESIGN.dark.md` when validating edits to the manifests.
+`.agents/skills/vpk-html/design-md/scripts/lint-design-heuristics.ts` is a pattern-based check against the design-md rules (same heuristics for any asset). **Default** — token and style drift (hex, spacing, shadows, title case) for any file. **Validate code** — add stricter checks for real app source (raw HTML elements, non-ADS styling imports). Use when the repo has or is moving toward ADS components. Run it against generated HTML/CSS or against `DESIGN.md` / `DESIGN.dark.md` when validating edits to the manifests.
 
 ```bash
 # Default: design drift (no component library assumed)
-npx tsx skills/design-system/design-md/skill/scripts/lint-design-heuristics.ts <file>
+npx tsx .agents/skills/vpk-html/design-md/scripts/lint-design-heuristics.ts <file>
 
 # Same linter applies to the dark manifest
-npx tsx skills/design-system/design-md/skill/scripts/lint-design-heuristics.ts skills/design-system/design-md/skill/DESIGN.dark.md
+npx tsx .agents/skills/vpk-html/design-md/scripts/lint-design-heuristics.ts .agents/skills/vpk-html/design-md/DESIGN.dark.md
 
 # Validate code: includes checks for typical React / Atlaskit-style source (alias: --ads)
-npx tsx skills/design-system/design-md/skill/scripts/lint-design-heuristics.ts --validate-code <file>
+npx tsx .agents/skills/vpk-html/design-md/scripts/lint-design-heuristics.ts --validate-code <file>
 ```
 
 More detail (scope guardrails for contributors): [`../README.md`](../README.md).
