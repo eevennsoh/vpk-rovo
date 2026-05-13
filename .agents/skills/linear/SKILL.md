@@ -334,7 +334,7 @@ query IssueFieldArgs {
 }
 ```
 
-### Upload a video to a comment
+### Upload media to a comment
 
 Do this in three steps:
 
@@ -344,6 +344,15 @@ Do this in three steps:
    headers returned by `fileUpload`.
 3. Call `linear_graphql` again with `commentCreate` (or `commentUpdate`) and
    include the resulting `assetUrl` in the comment body.
+
+Use the actual MIME type and size of the file. Common Symphony evidence types
+are `image/png` for screenshots and `video/webm` for recordings. For screenshots,
+embed the uploaded asset with markdown image syntax (`![alt text](assetUrl)`) so
+Linear shows the image inline. For videos uploaded through `fileUpload`, place
+the `assetUrl` on its own line instead of hiding it behind inline markdown link
+text, so Linear can render a file/video preview when supported. Public uploads
+are for images; if a WebM upload is rejected with `makePublic: true`, retry with
+`makePublic: false`.
 
 Useful mutations:
 

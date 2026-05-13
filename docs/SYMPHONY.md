@@ -27,6 +27,25 @@ LINEAR_API_KEY=lin_api_<your-personal-api-key>
 SYMPHONY_LINEAR_PROJECT_SLUG=<linear-project-slug>
 ```
 
+Required local commands:
+
+```bash
+mise --version
+```
+
+Optional browser evidence command:
+
+```bash
+playwright-cli --version
+```
+
+The repo-local `.agents/skills/playwright-cli/SKILL.md` teaches workers how to
+use the command; it does not install the command. When `playwright-cli` is
+available, UI-visible issues should include the requested screenshot or video
+evidence. When it is unavailable, Symphony still starts and workers should skip
+browser media capture, record that limitation in the workpad, and continue with
+the best non-browser validation available for the issue.
+
 `LINEAR_API_KEY` can live in `.env.local` or the shell environment. The project
 slug comes from the Linear project URL.
 
@@ -116,7 +135,21 @@ customization in the YAML hooks plus the repository contract section.
 
 Workers keep exactly one active `## Codex Workpad` comment. The workpad should
 be concise and current: environment stamp, plan, acceptance criteria,
-validation, decisions, branch, PR, and handoff.
+validation, evidence, decisions, branch, PR, and handoff.
+
+For UI or browser-observable changes, workers use the repo-local
+`playwright-cli` skill during `In Progress` or `Rework` when the command is
+available. Artifacts are kept under `output/playwright/<issue-identifier>/` in
+the issue workspace and only the required screenshots or short WebM recordings
+are uploaded to Linear through the injected `linear_graphql` tool. The uploaded
+links belong in the single `## Codex Workpad` comment, not in separate progress
+comments. A before artifact is only required when it proves the bug or requested
+baseline; an after artifact is expected before moving app-touching work to
+`Human Review` when browser media capture is available. Screenshot uploads
+should use markdown image syntax (`![alt text](<asset-url>)`) in the workpad so
+Linear renders an inline preview. Uploaded WebM recordings should be placed as
+standalone asset URLs rather than hidden behind inline markdown link text, so
+Linear can render a file/video preview when supported.
 
 Upstream Symphony re-dispatches an issue when a Codex turn completes while the
 issue is still in an active state. For that reason, VPK workers should not end a

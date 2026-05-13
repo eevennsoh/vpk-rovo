@@ -12,6 +12,9 @@ Required configuration:
   LINEAR_API_KEY                  Linear personal API key
   SYMPHONY_LINEAR_PROJECT_SLUG    Linear project slug from the project URL
 
+Required local commands:
+  mise                            Builds and runs upstream Symphony Elixir
+
 Optional configuration:
   LINEAR_ASSIGNEE                 Limit polling to a Linear assignee id/email, or "me"
   SYMPHONY_SOURCE_REPO_URL        Repo cloned into each issue workspace

@@ -107,7 +107,8 @@ Work only in the provided repository copy. Do not touch any other path.
 - Use tabs in TS/JS files, `@/` imports when configured, React 19 patterns, and semantic token classes.
 - There is no single `pnpm test`; run targeted `node --test` or Playwright specs for touched code.
 - Run `pnpm run lint` and `pnpm run typecheck` when the issue, touched surface, or PR feedback requires broad repo validation.
-- For UI changes, capture browser evidence with the repo `playwright-cli` skill and keep artifacts under `output/playwright/<issue-identifier>/`.
+- For UI changes, capture browser evidence with the repo `playwright-cli` skill when available and keep artifacts under `output/playwright/<issue-identifier>/`.
+- If `playwright-cli` is unavailable, skip browser media capture, record the limitation in the workpad, and continue with the best non-browser validation available.
 
 ## Prerequisite: Linear MCP or `linear_graphql` tool is available
 
@@ -302,8 +303,7 @@ Use this only when completion is blocked by missing required tools or missing au
     - Revert every temporary proof edit before commit/push.
     - Document these temporary proof steps and outcomes in the workpad `Validation`/`Notes` sections so reviewers can follow the evidence.
     - If app-touching, run the relevant local dev/build path from `AGENTS.md`.
-      For UI behavior, use `playwright-cli` and upload only the required media
-      through `linear_graphql`.
+      For UI behavior, follow `App runtime validation (required)`.
 6.  Re-check all acceptance criteria and close any gaps.
 7.  Before every `git push` attempt, run the required validation for your scope and confirm it passes; if it fails, address issues and rerun until green, then commit and push changes.
 8.  Attach PR URL to the issue (prefer attachment; use the workpad comment only if attachment is unavailable).
@@ -358,7 +358,55 @@ Use this only when completion is blocked by missing required tools or missing au
 - PR feedback sweep is complete and no actionable comments remain.
 - PR checks are green, branch is pushed, and PR is linked on the issue.
 - Required PR metadata is present (`symphony` label).
-- If app-touching, runtime validation/media requirements from `App runtime validation (required)` are complete.
+- If app-touching, runtime validation requirements from `App runtime validation (required)` are complete, including browser media capture only when available.
+
+## App runtime validation (required)
+
+Use this section for issues that touch visible UI, browser-observable behavior,
+or user interaction flows. Run it during `In Progress` or `Rework`, before
+moving the issue to `Human Review`.
+
+1. Check whether `playwright-cli --version` succeeds.
+2. If `playwright-cli` is unavailable, skip browser media capture, record that
+   limitation in `Validation`, and continue with the best non-browser proof
+   available for the issue.
+3. If `playwright-cli` is available, use the repo `playwright-cli` skill for
+   browser validation.
+4. Store artifacts under `output/playwright/{{ issue.identifier }}/`.
+5. Capture one before artifact only when it proves the reported bug or requested
+   visual baseline.
+6. Capture one after artifact for the changed behavior before handoff.
+7. Prefer screenshots for static UI and final state checks.
+8. Use short WebM recordings only for multi-step interactions, animation,
+   timing-sensitive behavior, drag/drop, keyboard flows, or hover/focus states
+   that a screenshot cannot prove.
+9. Before uploading, inspect the artifact for secrets, tokens, local file paths,
+   private data, unrelated browser tabs, terminal panes, and devtools output.
+10. Upload only the required media through `linear_graphql` using `fileUpload`,
+   then update the single `## Codex Workpad` comment with a compact
+   `### Evidence` section. Render screenshot uploads with markdown image syntax
+   (`![alt text](<asset-url>)`) so Linear shows an inline image preview. Put
+   uploaded WebM asset URLs on their own line instead of hiding them behind
+   inline markdown link text, so Linear can render a file/video preview when
+   supported.
+11. Do not create separate "evidence" or "done" comments. Keep progress,
+   validation, and media links in the workpad.
+12. If upload fails, record the local artifact path and exact upload error in
+    `Validation`; do not mark the UI validation complete until the required
+    proof is either uploaded or the blocker is clearly documented.
+
+Recommended workpad evidence format:
+
+```md
+### Evidence
+
+- Before:
+  ![Before screenshot](<asset-url>)
+- After:
+  ![After screenshot](<asset-url>)
+- Video preview:
+  https://uploads.linear.app/...
+```
 
 ## Guardrails
 
@@ -406,6 +454,10 @@ Use this exact structure for the persistent workpad comment and keep it updated 
 ### Validation
 
 - [ ] targeted tests: `<command>`
+
+### Evidence
+
+- <only include for UI/browser-observable changes>
 
 ### Notes
 
