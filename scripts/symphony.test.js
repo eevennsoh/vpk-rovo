@@ -16,6 +16,11 @@ function writeExecutable(filePath, lines) {
 function createFakeBin(tempDir) {
 	const binDir = path.join(tempDir, "bin");
 	fs.mkdirSync(binDir, { recursive: true });
+	writeExecutable(path.join(binDir, "git"), [
+		"#!/usr/bin/env bash",
+		"echo \"unexpected git invocation: $*\" >&2",
+		"exit 1",
+	]);
 	writeExecutable(path.join(binDir, "mise"), ["#!/usr/bin/env bash", "exit 0"]);
 	return binDir;
 }
