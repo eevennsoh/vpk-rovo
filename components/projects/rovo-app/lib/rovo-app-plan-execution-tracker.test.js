@@ -26,18 +26,18 @@ function createPlanWidgetPayload() {
 
 function createVerbosePlanWidgetPayload() {
 	return {
-		title: "Contacts CRM Page",
-		description: "Build the contacts app",
+		title: "Reporting Dashboard",
+		description: "Build the reporting view",
 		markdown: "## Plan",
 		tasks: [
 			{
 				id: "task-1",
-				label: "Create mock contacts data — `app/contacts/data.ts` with ~15 sample contacts.",
+				label: "Create mock report data with status, owner, and date fields.",
 				blockedBy: [],
 			},
 			{
 				id: "task-2",
-				label: "Build contacts table component — `app/contacts/contacts-table.tsx` using existing table primitives.",
+				label: "Build report table component using existing table primitives.",
 				blockedBy: ["task-1"],
 			},
 		],
@@ -279,7 +279,7 @@ test("resolveRovoAppPlanExecutionTracker aliases numeric todo ids to plan tasks 
 					'{"id":3,"content":"Run validation","status":"completed"}',
 					"</todo>",
 				].join("\n"),
-				text: "Contacts app complete.",
+				text: "Run complete.",
 				timestamp: "2026-03-30T10:06:00.000Z",
 			}),
 		],
@@ -312,11 +312,11 @@ test("resolveRovoAppPlanExecutionTracker uses update_todo labels directly (backw
 			createExecutionAssistantMessage({
 				outputPreview: [
 					"<todo>",
-					'{"id":1,"content":"Create mock contacts data and TypeScript interface","status":"completed"}',
-					'{"id":2,"content":"Build contacts table component with sorting/filtering","status":"completed"}',
+					'{"id":1,"content":"Create mock report data and TypeScript interface","status":"completed"}',
+					'{"id":2,"content":"Build report table component with sorting/filtering","status":"completed"}',
 					"</todo>",
 				].join("\n"),
-				text: "Contacts app complete.",
+				text: "Run complete.",
 				timestamp: "2026-03-30T10:07:00.000Z",
 			}),
 		],
@@ -327,8 +327,8 @@ test("resolveRovoAppPlanExecutionTracker uses update_todo labels directly (backw
 	assert.deepEqual(
 		tracker?.taskStatusGroups.done.map((task) => task.label),
 		[
-			"Create mock contacts data and TypeScript interface",
-			"Build contacts table component with sorting/filtering",
+			"Create mock report data and TypeScript interface",
+			"Build report table component with sorting/filtering",
 		],
 	);
 });

@@ -7042,9 +7042,6 @@ const PROJECT_DEMOS: Record<string, ComponentType> = {
   confluence: dynamic(() => import("./demos/projects/confluence-demo"), {
     ssr: false,
   }),
-  contacts: dynamic(() => import("./demos/projects/contacts-demo"), {
-    ssr: false,
-  }),
   jira: dynamic(() => import("./demos/projects/jira-demo"), { ssr: false }),
   "rovo-app": dynamic(() => import("./demos/projects/rovo-app-demo"), {
     ssr: false,
