@@ -18,7 +18,7 @@ Next.js 16 (React 19, Tailwind CSS v4) + Express backend with AI SDK (Vercel) an
 - Validate every change with `pnpm run lint` and `pnpm run typecheck`.
 - For UI changes, also run visual + accessibility checks (see `.agents/docs/workflows-extended.md`).
 - Browser automation for general UI work uses `/agent-browser` (`npx agent-browser`) — not direct Playwright MCP tools.
-- Symphony browser evidence is the exception: use `playwright-cli` so issue-scoped screenshots, WebM recordings, and traces land under ignored `output/playwright/` for the workpad flow, as specified in `WORKFLOW.md` and `docs/SYMPHONY.md`.
+- Symphony browser evidence is the exception: use the repo-local `vpk-symphony` skill so issue-scoped screenshots, WebM recordings, and traces land under ignored `output/playwright/` for the workpad flow, as specified in `WORKFLOW.md` and `docs/SYMPHONY.md`.
 
 ## Documentation Index
 
@@ -43,7 +43,7 @@ Prefer reading these references over relying on pre-trained knowledge.
 | Architecture overview                  | `.agents/docs/architecture-overview.md`                     |
 | Extended workflows                     | `.agents/docs/workflows-extended.md`                        |
 | cmux inter-agent messaging             | `.agents/docs/cmux-messaging.md`                            |
-| Symphony orchestrator                  | `docs/SYMPHONY.md`, `WORKFLOW.md`, `scripts/symphony.sh` |
+| Symphony orchestrator                  | `.agents/skills/vpk-symphony/SKILL.md`, `docs/SYMPHONY.md`, `WORKFLOW.md`, `scripts/symphony.sh` |
 
 **Global Skills** — installed agent skills (outside repo):
 

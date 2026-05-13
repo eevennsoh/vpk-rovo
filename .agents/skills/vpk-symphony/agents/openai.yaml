@@ -1,0 +1,4 @@
+interface:
+  display_name: "VPK Symphony"
+  short_description: "Run VPK-rovo Symphony issue workflow"
+  default_prompt: "Use $vpk-symphony to handle this VPK-rovo Symphony issue from Linear through workpad, validation, PR, and merge."

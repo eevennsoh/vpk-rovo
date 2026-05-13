@@ -1,10 +1,7 @@
----
-name: playwright-cli
-description: Automate browser interactions, test web pages and work with Playwright tests.
-allowed-tools: Bash(playwright-cli:*) Bash(npx:*) Bash(npm:*)
----
+# Playwright CLI Reference
 
-# Browser Automation with playwright-cli
+This is the command reference for Symphony browser evidence. Use it only after
+`references/browser-evidence.md` says browser media capture is needed.
 
 ## Quick start
 

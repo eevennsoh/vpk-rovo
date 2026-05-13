@@ -2,7 +2,7 @@
 
 VPK-rovo runs the upstream OpenAI Symphony Elixir reference implementation
 through `pnpm run symphony`. The local repo owns only the launcher, workflow
-template, and repo-specific Codex skills. The Elixir runtime itself is pulled
+template, and repo-specific Codex skill resources. The Elixir runtime itself is pulled
 from `openai/symphony` at startup.
 
 Upstream reference: <https://github.com/openai/symphony/blob/main/elixir/README.md>
@@ -12,11 +12,9 @@ Repo-owned files:
 - `WORKFLOW.md`: VPK workflow template rendered for upstream Symphony.
 - `scripts/symphony.sh`: prepares a fresh upstream Elixir checkout, builds
   `./bin/symphony`, renders the workflow, and launches the service.
-- `.agents/skills/linear/SKILL.md`: upstream-compatible raw Linear GraphQL
-  helper for the injected `linear_graphql` app-server tool.
-- `.agents/skills/commit`, `.agents/skills/pull`, `.agents/skills/push`,
-  `.agents/skills/land`, and `.agents/skills/debug`: repo-local skills used by
-  the upstream workflow prompt.
+- `.agents/skills/vpk-symphony/SKILL.md`: repo-local Symphony workflow skill
+  covering raw Linear GraphQL, git sync/commit/push/land flow, stuck-run
+  debugging, workpad rules, and Playwright CLI browser evidence.
 
 ## Configuration
 
@@ -39,9 +37,9 @@ Optional browser evidence command:
 playwright-cli --version
 ```
 
-The repo-local `.agents/skills/playwright-cli/SKILL.md` teaches workers how to
-use the command; it does not install the command. When `playwright-cli` is
-available, UI-visible issues should include the requested screenshot or video
+The repo-local `.agents/skills/vpk-symphony/SKILL.md` teaches workers when and
+how to use the command; it does not install the command. When `playwright-cli`
+is available, UI-visible issues should include the requested screenshot or video
 evidence. When it is unavailable, Symphony still starts and workers should skip
 browser media capture, record that limitation in the workpad, and continue with
 the best non-browser validation available for the issue.
@@ -129,27 +127,28 @@ customization in the YAML hooks plus the repository contract section.
 - `Human Review`: waits for human action.
 - `Rework`: worker handles reviewer feedback, validates, and returns to
   `Human Review`.
-- `Merging`: worker follows the `land` skill and moves the issue to `Done`
-  only after GitHub reports the PR merged.
+- `Merging`: worker follows the `vpk-symphony` landing reference and moves the
+  issue to `Done` only after GitHub reports the PR merged.
 - `Done`, `Closed`, `Canceled`, `Cancelled`, `Duplicate`: terminal.
 
 Workers keep exactly one active `## Codex Workpad` comment. The workpad should
 be concise and current: environment stamp, plan, acceptance criteria,
 validation, evidence, decisions, branch, PR, and handoff.
 
-For UI or browser-observable changes, workers use the repo-local
-`playwright-cli` skill during `In Progress` or `Rework` when the command is
-available. Artifacts are kept under `output/playwright/<issue-identifier>/` in
-the issue workspace and only the required screenshots or short WebM recordings
-are uploaded to Linear through the injected `linear_graphql` tool. The uploaded
-links belong in the single `## Codex Workpad` comment, not in separate progress
-comments. A before artifact is only required when it proves the bug or requested
-baseline; an after artifact is expected before moving app-touching work to
-`Human Review` when browser media capture is available. Screenshot uploads
-should use markdown image syntax (`![alt text](<asset-url>)`) in the workpad so
-Linear renders an inline preview. Uploaded WebM recordings should be placed as
-standalone asset URLs rather than hidden behind inline markdown link text, so
-Linear can render a file/video preview when supported.
+For UI or browser-observable changes, workers use the repo-local `vpk-symphony`
+browser evidence reference during `In Progress` or `Rework` when
+`playwright-cli` is available. Artifacts are kept under
+`output/playwright/<issue-identifier>/` in the issue workspace and only the
+required screenshots or short WebM recordings are uploaded to Linear through the
+injected `linear_graphql` tool. The uploaded links belong in the single
+`## Codex Workpad` comment, not in separate progress comments. A before artifact
+is only required when it proves the bug or requested baseline; an after artifact
+is expected before moving app-touching work to `Human Review` when browser media
+capture is available. Screenshot uploads should use markdown image syntax
+(`![alt text](<asset-url>)`) in the workpad so Linear renders an inline preview.
+Uploaded WebM recordings should be placed as standalone asset URLs rather than
+hidden behind inline markdown link text, so Linear can render a file/video
+preview when supported.
 
 Upstream Symphony re-dispatches an issue when a Codex turn completes while the
 issue is still in an active state. For that reason, VPK workers should not end a

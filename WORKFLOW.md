@@ -107,7 +107,7 @@ Work only in the provided repository copy. Do not touch any other path.
 - Use tabs in TS/JS files, `@/` imports when configured, React 19 patterns, and semantic token classes.
 - There is no single `pnpm test`; run targeted `node --test` or Playwright specs for touched code.
 - Run `pnpm run lint` and `pnpm run typecheck` when the issue, touched surface, or PR feedback requires broad repo validation.
-- For UI changes, capture browser evidence with the repo `playwright-cli` skill when available and keep artifacts under `output/playwright/<issue-identifier>/`.
+- For UI changes, capture browser evidence with the repo `vpk-symphony` skill's Playwright CLI guidance when available and keep artifacts under `output/playwright/<issue-identifier>/`.
 - If `playwright-cli` is unavailable, skip browser media capture, record the limitation in the workpad, and continue with the best non-browser validation available.
 
 ## Prerequisite: Linear MCP or `linear_graphql` tool is available
@@ -183,13 +183,11 @@ The agent should be able to talk to Linear, either via a configured Linear MCP s
 - Operate autonomously end-to-end unless blocked by missing requirements, secrets, or permissions.
 - Use the blocked-access escape hatch only for true external blockers (missing required tools/auth) after exhausting documented fallbacks.
 
-## Related skills
+## Related skill
 
-- `linear`: interact with Linear.
-- `commit`: produce clean, logical commits during implementation.
-- `push`: keep remote branch current and publish updates.
-- `pull`: keep branch updated with latest `origin/main` before handoff.
-- `land`: when ticket reaches `Merging`, explicitly open and follow `.codex/skills/land/SKILL.md`, which includes the `land` loop.
+- `vpk-symphony`: follow the repo-local references for Linear GraphQL,
+  workpad updates, git sync/commit/push/land flow, stuck-run debugging, and
+  Playwright CLI browser evidence.
 
 ## Status map
 
@@ -198,7 +196,7 @@ The agent should be able to talk to Linear, either via a configured Linear MCP s
   - Special case: if a PR is already attached, treat as feedback/rework loop (run full PR feedback sweep, address or explicitly push back, revalidate, return to `Human Review`).
 - `In Progress` -> implementation actively underway.
 - `Human Review` -> PR is attached and validated; waiting on human approval.
-- `Merging` -> approved by human; execute the `land` skill flow (do not call `gh pr merge` directly).
+- `Merging` -> approved by human; execute the `vpk-symphony` landing flow (do not call `gh pr merge` directly).
 - `Rework` -> reviewer requested changes; planning + implementation required.
 - `Done` -> terminal state; no further action required.
 
@@ -212,7 +210,7 @@ The agent should be able to talk to Linear, either via a configured Linear MCP s
      - If PR is already attached, start by reviewing all open PR comments and deciding required changes vs explicit pushback responses.
    - `In Progress` -> continue execution flow from current scratchpad comment.
    - `Human Review` -> wait and poll for decision/review updates.
-   - `Merging` -> on entry, open and follow `.codex/skills/land/SKILL.md`; do not call `gh pr merge` directly.
+   - `Merging` -> on entry, open and follow `.agents/skills/vpk-symphony/references/git/land.md`; do not call `gh pr merge` directly.
    - `Rework` -> run rework flow.
    - `Done` -> do nothing and shut down.
 4. Check whether a PR already exists for the current branch and whether it is closed.
@@ -248,8 +246,8 @@ The agent should be able to talk to Linear, either via a configured Linear MCP s
     - If the ticket description/comment context includes `Validation`, `Test Plan`, or `Testing` sections, copy those requirements into the workpad `Acceptance Criteria` and `Validation` sections as required checkboxes (no optional downgrade).
 7.  Run a principal-style self-review of the plan and refine it in the comment.
 8.  Before implementing, capture a concrete reproduction signal and record it in the workpad `Notes` section (command/output, screenshot, or deterministic UI behavior).
-9.  Run the `pull` skill to sync with latest `origin/main` before any code edits, then record the pull/sync result in the workpad `Notes`.
-    - Include a `pull skill evidence` note with:
+9.  Follow the `vpk-symphony` git sync guidance to sync with latest `origin/main` before any code edits, then record the pull/sync result in the workpad `Notes`.
+    - Include a `sync evidence` note with:
       - merge source(s),
       - result (`clean` or `conflicts resolved`),
       - resulting `HEAD` short SHA.
@@ -335,7 +333,7 @@ Use this only when completion is blocked by missing required tools or missing au
 2. Poll for updates as needed, including GitHub PR review comments from humans and bots.
 3. If review feedback requires changes, move the issue to `Rework` and follow the rework flow.
 4. If approved, human moves the issue to `Merging`.
-5. When the issue is in `Merging`, open and follow `.codex/skills/land/SKILL.md`, then run the `land` skill in a loop until the PR is merged. Do not call `gh pr merge` directly.
+5. When the issue is in `Merging`, open and follow `.agents/skills/vpk-symphony/references/git/land.md`, then run the landing loop until the PR is merged. Do not call `gh pr merge` directly.
 6. After merge is complete, move the issue to `Done`.
 
 ## Step 4: Rework handling
@@ -370,8 +368,8 @@ moving the issue to `Human Review`.
 2. If `playwright-cli` is unavailable, skip browser media capture, record that
    limitation in `Validation`, and continue with the best non-browser proof
    available for the issue.
-3. If `playwright-cli` is available, use the repo `playwright-cli` skill for
-   browser validation.
+3. If `playwright-cli` is available, use the repo `vpk-symphony` browser
+   evidence guidance for browser validation.
 4. Store artifacts under `output/playwright/{{ issue.identifier }}/`.
 5. Capture one before artifact only when it proves the reported bug or requested
    visual baseline.
