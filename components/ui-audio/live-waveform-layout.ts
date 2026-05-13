@@ -116,7 +116,7 @@ export function getWaveformSeriesValue({
 	}
 
 	const mappedIndex = Math.round(
-		(index / Math.max(1, totalCount - 1)) * (bars.length - 1)
+		(index / (totalCount - 1)) * (bars.length - 1)
 	);
 	const clampedIndex = Math.max(0, Math.min(bars.length - 1, mappedIndex));
 
