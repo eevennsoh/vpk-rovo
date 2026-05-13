@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import {
 	Table,
@@ -218,14 +218,20 @@ export default function ContactsTable({
 							filteredAndSorted.map((contact) => (
 								<TableRow
 									key={contact.id}
-									className={cn(
-										"cursor-pointer transition-colors",
-										selectedContactId === contact.id && "bg-bg-selected"
-									)}
+									data-state={selectedContactId === contact.id ? "selected" : undefined}
+									className={cn("cursor-pointer transition-colors")}
 									onClick={() => onSelectContact(contact)}
 								>
 									<TableCell>
-										<div className="flex items-center gap-3">
+										<button
+											type="button"
+											aria-label={`Open contact details for ${contact.name}`}
+											className="flex w-full items-center gap-3 rounded-sm text-left focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-border-focused"
+											onClick={(event) => {
+												event.stopPropagation();
+												onSelectContact(contact);
+											}}
+										>
 											<Avatar size="sm">
 												<AvatarImage src={contact.avatarUrl} alt={contact.name} />
 												<AvatarFallback>{getInitials(contact.name)}</AvatarFallback>
@@ -234,7 +240,7 @@ export default function ContactsTable({
 												<span className="font-medium text-text">{contact.name}</span>
 												<span className="text-xs text-text-subtlest">{contact.email}</span>
 											</div>
-										</div>
+										</button>
 									</TableCell>
 									<TableCell className="text-text-subtle">{contact.company}</TableCell>
 									<TableCell className="text-text-subtle">{contact.role}</TableCell>
