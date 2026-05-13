@@ -135,16 +135,6 @@ async def get_reviews(pr_number: int) -> list[dict[str, Any]]:
     return reviews
 
 
-async def get_commit_time(head_sha: str) -> datetime:
-    data = await run_gh(
-        "api",
-        f"repos/{{owner}}/{{repo}}/commits/{head_sha}",
-        "--jq",
-        ".commit.committer.date",
-    )
-    return parse_time(data.strip())
-
-
 async def get_check_runs(head_sha: str) -> list[dict[str, Any]]:
     page = 1
     check_runs: list[dict[str, Any]] = []
@@ -176,21 +166,42 @@ def parse_time(value: str) -> datetime:
     return datetime.fromisoformat(normalized)
 
 
-def latest_time(*values: datetime | None) -> datetime | None:
-    latest: datetime | None = None
-    for value in values:
-        if value is None:
-            continue
-        if latest is None or value > latest:
-            latest = value
-    return latest
-
-
 CONTROL_CHARS_RE = re.compile(r"[\x00-\x08\x0b-\x1f\x7f-\x9f]")
+REVIEWED_COMMIT_RE = re.compile(
+    r"Reviewed commit:\*{0,2}\s*`?([0-9a-fA-F]{7,40})`?",
+    re.IGNORECASE,
+)
 
 
 def sanitize_terminal_output(value: str) -> str:
     return CONTROL_CHARS_RE.sub("", value)
+
+
+def matches_head_sha(value: str | None, head_sha: str) -> bool:
+    if not value:
+        return False
+    candidate = value.strip().lower()
+    target = head_sha.lower()
+    return len(candidate) >= 7 and (
+        target.startswith(candidate) or candidate.startswith(target)
+    )
+
+
+def reviewed_commit_from_body(body: str) -> str | None:
+    match = REVIEWED_COMMIT_RE.search(body)
+    if not match:
+        return None
+    return match.group(1)
+
+
+def comment_matches_head(comment: dict[str, Any], head_sha: str) -> bool:
+    commit_id = comment.get("commit_id")
+    if commit_id:
+        return matches_head_sha(commit_id, head_sha)
+    body_commit = reviewed_commit_from_body(comment.get("body") or "")
+    if body_commit:
+        return matches_head_sha(body_commit, head_sha)
+    return False
 
 
 def check_timestamp(check: dict[str, Any]) -> datetime | None:
@@ -257,6 +268,7 @@ def latest_review_request_at(comments: list[dict[str, Any]]) -> datetime | None:
 def filter_codex_comments(
     comments: list[dict[str, Any]],
     review_requested_at: datetime | None,
+    head_sha: str,
 ) -> list[dict[str, Any]]:
     latest_codex_reply = latest_codex_reply_by_thread(comments)
     latest_issue_ack = latest_codex_issue_reply_time(comments)
@@ -270,6 +282,9 @@ def filter_codex_comments(
         if created_time is None:
             continue
         if review_requested_at is not None and created_time <= review_requested_at:
+            continue
+        commit_id = comment.get("commit_id")
+        if commit_id and not matches_head_sha(commit_id, head_sha):
             continue
         is_threaded = bool(
             comment.get("in_reply_to_id") or comment.get("pull_request_review_id")
@@ -535,8 +550,7 @@ def filter_codex_review_signals(
             continue
         if review_requested_at is not None and created_time <= review_requested_at:
             continue
-        commit_id = comment.get("commit_id")
-        if commit_id and commit_id != head_sha:
+        if not comment_matches_head(comment, head_sha):
             continue
         filtered.append(comment)
     return filtered
@@ -590,7 +604,6 @@ def raise_on_human_feedback(
 async def wait_for_codex(
     pr_number: int,
     head_sha: str,
-    head_created_at: datetime,
 ) -> None:
     print("Waiting for review feedback...", flush=True)
     while True:
@@ -600,9 +613,17 @@ async def wait_for_codex(
             reviews,
             review_request_at,
         ) = await fetch_review_context(pr_number)
-        review_floor = latest_time(review_request_at, head_created_at)
-        bot_issue_comments = filter_codex_comments(issue_comments, review_floor)
-        bot_review_comments = filter_codex_comments(review_comments, review_floor)
+        review_floor = review_request_at
+        bot_issue_comments = filter_codex_comments(
+            issue_comments,
+            review_floor,
+            head_sha,
+        )
+        bot_review_comments = filter_codex_comments(
+            review_comments,
+            review_floor,
+            head_sha,
+        )
         bot_comments = bot_issue_comments + bot_review_comments
         bot_reviews = filter_codex_reviews(reviews, review_floor, head_sha)
         bot_review_signals = (
@@ -676,10 +697,9 @@ async def watch_pr() -> None:
         )
         raise SystemExit(5)
     head_sha = pr.head_sha
-    head_created_at = await get_commit_time(head_sha)
     checks_done = asyncio.Event()
     codex_task = asyncio.create_task(
-        wait_for_codex(pr.number, head_sha, head_created_at),
+        wait_for_codex(pr.number, head_sha),
     )
     checks_task = asyncio.create_task(wait_for_checks(head_sha, checks_done))
 
