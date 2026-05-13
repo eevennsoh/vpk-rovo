@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { execFileSync } = require("node:child_process");
+const { execFileSync, spawnSync } = require("node:child_process");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
@@ -11,6 +11,13 @@ const scriptPath = path.join(repoRoot, "scripts/symphony.sh");
 function writeExecutable(filePath, lines) {
 	fs.writeFileSync(filePath, `${lines.join("\n")}\n`, "utf8");
 	fs.chmodSync(filePath, 0o755);
+}
+
+function createFakeBin(tempDir) {
+	const binDir = path.join(tempDir, "bin");
+	fs.mkdirSync(binDir, { recursive: true });
+	writeExecutable(path.join(binDir, "mise"), ["#!/usr/bin/env bash", "exit 0"]);
+	return binDir;
 }
 
 test("symphony wrapper forwards one resolved custom logs root", () => {
@@ -77,6 +84,47 @@ test("symphony wrapper forwards one resolved custom logs root", () => {
 	);
 	assert.equal(fs.existsSync(customLogsRoot), true);
 	assert.equal(fs.existsSync(path.join(runtimeDir, "log")), false);
+
+	fs.rmSync(tempDir, { recursive: true, force: true });
+});
+
+test("symphony wrapper rejects upstream dir paths that would reset this repo", () => {
+	const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "symphony-wrapper-test-"));
+	const binDir = createFakeBin(tempDir);
+	const baseEnv = {
+		...process.env,
+		LINEAR_API_KEY: "lin_api_test",
+		PATH: `${binDir}:${process.env.PATH}`,
+		SYMPHONY_GITHUB_REPO: "eevennsoh/VPK-rovo",
+		SYMPHONY_LINEAR_PROJECT_SLUG: "test-project",
+		SYMPHONY_SOURCE_REPO_URL: "git@github.com:eevennsoh/VPK-rovo.git",
+		SYMPHONY_UPSTREAM_REPO: "https://github.com/openai/symphony.git",
+	};
+
+	const cases = [
+		{
+			upstreamDir: repoRoot,
+			message: "SYMPHONY_UPSTREAM_DIR cannot point at this repo",
+		},
+		{
+			upstreamDir: path.dirname(repoRoot),
+			message: "SYMPHONY_UPSTREAM_DIR cannot contain this repo",
+		},
+	];
+
+	for (const entry of cases) {
+		const result = spawnSync(scriptPath, ["--version"], {
+			cwd: repoRoot,
+			env: {
+				...baseEnv,
+				SYMPHONY_UPSTREAM_DIR: entry.upstreamDir,
+			},
+			encoding: "utf8",
+		});
+
+		assert.notEqual(result.status, 0);
+		assert.match(result.stderr, new RegExp(entry.message));
+	}
 
 	fs.rmSync(tempDir, { recursive: true, force: true });
 });
