@@ -93,10 +93,33 @@ test("keeps the response gradient visible while audio is still speaking even aft
 test("samples the live waveform signal without cloning it inside the frame loop", () => {
 	assert.match(
 		COMPOSER_RESPONSE_GRADIENT_SOURCE,
-		/bars: signalRef\.current,/,
+		/const liveSignal = signalRef\.current;/,
 	);
 	assert.doesNotMatch(
 		COMPOSER_RESPONSE_GRADIENT_SOURCE,
 		/bars: \[\.\.\.signalRef\.current\],/,
 	);
+});
+
+test("caches live waveform samples once per speaking frame", () => {
+	const smoothingLoopStart = COMPOSER_RESPONSE_GRADIENT_SOURCE.indexOf(
+		"for (\n\t\t\t\t\t\tlet offset = -LIVE_SIGNAL_SMOOTHING_WINDOW_SIZE;",
+	);
+	const smoothingLoopEnd = COMPOSER_RESPONSE_GRADIENT_SOURCE.indexOf(
+		"smoothedSeriesValue /= LIVE_SIGNAL_SMOOTHING_WEIGHT_TOTAL;",
+		smoothingLoopStart,
+	);
+	const smoothingLoopSource = COMPOSER_RESPONSE_GRADIENT_SOURCE.slice(
+		smoothingLoopStart,
+		smoothingLoopEnd,
+	);
+
+	assert.notEqual(smoothingLoopStart, -1);
+	assert.notEqual(smoothingLoopEnd, -1);
+	assert.match(
+		COMPOSER_RESPONSE_GRADIENT_SOURCE,
+		/const liveSignalSamples = new Array<number>\(liveSignalSampleCount\);/,
+	);
+	assert.match(smoothingLoopSource, /liveSignalSamples\[index \+ offset - liveSignalSampleStartIndex\]/);
+	assert.doesNotMatch(smoothingLoopSource, /getWaveformSeriesValue\(/);
 });
