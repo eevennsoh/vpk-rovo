@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type KeyboardEvent } from "react";
+import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import {
 	Table,
@@ -123,12 +123,6 @@ export default function ContactsTable({
 		}
 	}
 
-	function handleRowKeyDown(event: KeyboardEvent<HTMLTableRowElement>, contact: Contact) {
-		if (event.key !== "Enter" && event.key !== " ") return;
-		event.preventDefault();
-		onSelectContact(contact);
-	}
-
 	return (
 		<div className="flex flex-col gap-4">
 			<div className="flex items-center gap-3">
@@ -224,18 +218,20 @@ export default function ContactsTable({
 							filteredAndSorted.map((contact) => (
 								<TableRow
 									key={contact.id}
-									role="button"
-									tabIndex={0}
-									aria-label={`Open contact details for ${contact.name}`}
 									data-state={selectedContactId === contact.id ? "selected" : undefined}
-									className={cn(
-										"cursor-pointer transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-border-focused"
-									)}
+									className={cn("cursor-pointer transition-colors")}
 									onClick={() => onSelectContact(contact)}
-									onKeyDown={(event) => handleRowKeyDown(event, contact)}
 								>
 									<TableCell>
-										<div className="flex items-center gap-3">
+										<button
+											type="button"
+											aria-label={`Open contact details for ${contact.name}`}
+											className="flex w-full items-center gap-3 rounded-sm text-left focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-border-focused"
+											onClick={(event) => {
+												event.stopPropagation();
+												onSelectContact(contact);
+											}}
+										>
 											<Avatar size="sm">
 												<AvatarImage src={contact.avatarUrl} alt={contact.name} />
 												<AvatarFallback>{getInitials(contact.name)}</AvatarFallback>
@@ -244,7 +240,7 @@ export default function ContactsTable({
 												<span className="font-medium text-text">{contact.name}</span>
 												<span className="text-xs text-text-subtlest">{contact.email}</span>
 											</div>
-										</div>
+										</button>
 									</TableCell>
 									<TableCell className="text-text-subtle">{contact.company}</TableCell>
 									<TableCell className="text-text-subtle">{contact.role}</TableCell>
