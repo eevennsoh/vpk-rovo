@@ -10,7 +10,7 @@ async function loadRovoAppShellPaneLayoutHarness() {
 			contents: `
 				import React from "react";
 				import { renderToString } from "react-dom/server";
-				import { RovoAppShellPaneLayout } from "./components/projects/rovo-app/components/rovo-app-shell-pane-layout.tsx";
+				import { RovoAppShellPaneLayout } from "./components/projects/rovo/components/rovo-app-shell-pane-layout.tsx";
 
 				function renderLayout(shouldSplitArtifactPane) {
 					return renderToString(

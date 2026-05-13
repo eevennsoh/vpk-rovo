@@ -22,7 +22,7 @@ export function isRovoAppBackendUnavailableError(error: unknown): boolean {
 }
 
 export function getRovoAppBackendUnavailableUserMessage(): string {
-	return "Rovo App can't reach the local backend. Start `pnpm run dev:backend` or `pnpm run rovodev`, then refresh.";
+	return "Rovo can't reach the local backend. Start `pnpm run dev:backend` or `pnpm run rovodev`, then refresh.";
 }
 
 async function parseJsonResponse<T>(response: Response): Promise<T> {
@@ -144,7 +144,7 @@ export async function createRovoAppThread(input: {
 	const payload = await parseJsonResponse<{ thread?: Partial<RovoAppThread> }>(response);
 	const thread = normalizeRovoAppThread(payload.thread);
 	if (!thread) {
-		throw new Error("Rovo App thread response was missing a thread.");
+		throw new Error("Rovo thread response was missing a thread.");
 	}
 	return thread;
 }
@@ -170,7 +170,7 @@ export async function updateRovoAppThread(
 	const payload = await parseJsonResponse<{ thread?: Partial<RovoAppThread> }>(response);
 	const thread = normalizeRovoAppThread(payload.thread);
 	if (!thread) {
-		throw new Error("Rovo App update response was missing a thread.");
+		throw new Error("Rovo update response was missing a thread.");
 	}
 	return thread;
 }
@@ -214,7 +214,7 @@ export async function saveRovoAppRealtimeMessages(input: {
 	});
 	const payload = await parseJsonResponse<{ messages?: RovoUIMessage[] }>(response);
 	if (!Array.isArray(payload.messages)) {
-		throw new Error("Rovo App realtime message response was missing messages.");
+		throw new Error("Rovo realtime message response was missing messages.");
 	}
 	return payload.messages;
 }
@@ -230,7 +230,7 @@ export async function upsertRovoAppRealtimeMessage(input: {
 	});
 	const payload = await parseJsonResponse<{ messages?: RovoUIMessage[] }>(response);
 	if (!Array.isArray(payload.messages)) {
-		throw new Error("Rovo App realtime upsert response was missing messages.");
+		throw new Error("Rovo realtime upsert response was missing messages.");
 	}
 	return payload.messages;
 }
@@ -287,7 +287,7 @@ export async function setRovoAppVote(input: {
 	});
 	const payload = await parseJsonResponse<{ vote?: RovoAppVote }>(response);
 	if (!payload.vote) {
-		throw new Error("Rovo App vote response was missing a vote.");
+		throw new Error("Rovo vote response was missing a vote.");
 	}
 	return payload.vote;
 }
@@ -331,7 +331,7 @@ export async function saveRovoAppDocument(input: {
 	});
 	const payload = await parseJsonResponse<{ document?: RovoAppDocument }>(response);
 	if (!payload.document) {
-		throw new Error("Rovo App document response was missing a document.");
+		throw new Error("Rovo document response was missing a document.");
 	}
 	return payload.document;
 }

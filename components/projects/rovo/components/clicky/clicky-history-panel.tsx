@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import type { ClickyExchange } from "@/components/projects/rovo-app/hooks/use-clicky";
+import type { ClickyExchange } from "@/components/projects/rovo/hooks/use-clicky";
 import { token } from "@/lib/tokens";
 
 // ---------------------------------------------------------------------------

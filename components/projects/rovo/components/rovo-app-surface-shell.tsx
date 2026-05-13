@@ -13,15 +13,15 @@ import {
 	ROVO_APP_SEPARATOR_LINE_OFFSET_PX,
 	TOP_NAV_PADDING_PX,
 } from "@/components/blocks/top-navigation/layout-constants";
-import { RovoAppSidebar } from "@/components/projects/rovo-app/components/rovo-app-sidebar";
-import { useRovoAppThreadList } from "@/components/projects/rovo-app/hooks/use-rovo-app-thread-list";
-import { buildRovoAppThreadPath } from "@/components/projects/rovo-app/lib/rovo-app-thread-route-sync";
+import { RovoAppSidebar } from "@/components/projects/rovo/components/rovo-app-sidebar";
+import { useRovoAppThreadList } from "@/components/projects/rovo/hooks/use-rovo-app-thread-list";
+import { buildRovoAppThreadPath } from "@/components/projects/rovo/lib/rovo-app-thread-route-sync";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { SidebarProvider, SidebarResizeHandle } from "@/components/ui/sidebar";
 import SearchIcon from "@atlaskit/icon/core/search";
 import { cn } from "@/lib/utils";
 import { token } from "@/lib/tokens";
-import { useSidebarResize } from "@/components/projects/rovo-app/hooks/use-sidebar-resize";
+import { useSidebarResize } from "@/components/projects/rovo/hooks/use-sidebar-resize";
 
 const SIDEBAR_MOTION_DURATION_CSS_VARIABLE = "--duration-medium";
 const SIDEBAR_MOTION_FALLBACK_MS = 200;

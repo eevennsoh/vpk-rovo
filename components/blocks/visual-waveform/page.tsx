@@ -2,15 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FileUIPart } from "ai";
-import { RovoAppComposer } from "@/components/projects/rovo-app/components/rovo-app-composer";
+import { RovoAppComposer } from "@/components/projects/rovo/components/rovo-app-composer";
 import {
 	createRealtimeTextMessage,
 	updateRealtimeTextMessage,
 	upsertRealtimeMessage,
-} from "@/components/projects/rovo-app/lib/rovo-app-realtime-message-state";
+} from "@/components/projects/rovo/lib/rovo-app-realtime-message-state";
 import {
 	useRealtimeVoice,
-} from "@/components/projects/rovo-app/hooks/use-realtime-voice";
+} from "@/components/projects/rovo/hooks/use-realtime-voice";
 import { createId } from "@/lib/utils";
 import type { RovoUIMessage } from "@/lib/rovo-ui-messages";
 import { GUI } from "@/components/utils/gui";

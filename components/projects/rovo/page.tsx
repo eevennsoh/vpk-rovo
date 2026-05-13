@@ -1,17 +1,17 @@
 "use client";
 
 import { RovoAppQueueBoundary } from "@/app/rovo-app/rovo-app-queue-provider";
-import { RovoAppShell } from "@/components/projects/rovo-app/components/rovo-app-shell";
+import { RovoAppShell } from "@/components/projects/rovo/components/rovo-app-shell";
 
-interface RovoAppPageProps {
+interface RovoPageProps {
 	embedded?: boolean;
 	initialThreadId?: string | null;
 }
 
-export default function RovoAppPage({
+export default function RovoPage({
 	embedded = false,
 	initialThreadId = null,
-}: Readonly<RovoAppPageProps>) {
+}: Readonly<RovoPageProps>) {
 	return (
 		<RovoAppQueueBoundary>
 			<RovoAppShell

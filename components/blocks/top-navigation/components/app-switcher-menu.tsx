@@ -10,7 +10,7 @@ interface AppSwitcherMenuProps {
 
 const appSwitcherItems = [
 	{ path: "/", label: "Home", icon: HomeIcon },
-	{ path: "/rovo-app", label: "Rovo App", icon: RovoIcon },
+	{ path: "/rovo-app", label: "Rovo", icon: RovoIcon },
 ] as const;
 
 export function AppSwitcherMenu({ onNavigate }: Readonly<AppSwitcherMenuProps>) {

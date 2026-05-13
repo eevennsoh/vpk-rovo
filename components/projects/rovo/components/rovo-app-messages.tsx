@@ -20,7 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Lozenge } from "@/components/ui/lozenge";
 import { InlineEdit } from "@/components/ui/inline-edit";
 import { getRovoAppInterruptionLabel } from "@/lib/rovo-app-interruptions";
-import { resolveRovoAppMessageArtifactDisplay, resolveRovoAppOrphanArtifactDisplay, type RovoAppPendingArtifactResult } from "@/components/projects/rovo-app/lib/rovo-app-message-artifacts";
+import { resolveRovoAppMessageArtifactDisplay, resolveRovoAppOrphanArtifactDisplay, type RovoAppPendingArtifactResult } from "@/components/projects/rovo/lib/rovo-app-message-artifacts";
 import {
 	sanitizeRovoAppAssistantText,
 	looksLikeBrowserFallbackAssistantText,
@@ -29,10 +29,10 @@ import {
 	shouldRenderRovoAppAssistantMessage,
 	shouldRenderRovoAppVisibleWidget,
 	shouldRenderRovoAppWidget,
-} from "@/components/projects/rovo-app/lib/rovo-app-message-display";
-import { resolveRovoAppPendingAssistantDisplayState, resolveRovoAppStreamingAssistantMessageId } from "@/components/projects/rovo-app/lib/rovo-app-streaming-assistant";
-import { resolveRovoAppThinkingStatusPhase, resolveRovoAppThinkingVisibility } from "@/components/projects/rovo-app/lib/rovo-app-thinking-status-phase";
-import { resolveRovoAppScrollAnchorLayout } from "@/components/projects/rovo-app/lib/rovo-app-scroll-anchor";
+} from "@/components/projects/rovo/lib/rovo-app-message-display";
+import { resolveRovoAppPendingAssistantDisplayState, resolveRovoAppStreamingAssistantMessageId } from "@/components/projects/rovo/lib/rovo-app-streaming-assistant";
+import { resolveRovoAppThinkingStatusPhase, resolveRovoAppThinkingVisibility } from "@/components/projects/rovo/lib/rovo-app-thinking-status-phase";
+import { resolveRovoAppScrollAnchorLayout } from "@/components/projects/rovo/lib/rovo-app-scroll-anchor";
 import { GenerativeWidgetCard } from "@/components/projects/shared/components/generative-widget-card";
 import { AssistantSuggestionsSection } from "@/components/projects/shared/components/assistant-suggestions-section";
 import { PlanWidgetInlineCard } from "@/components/projects/shared/components/plan-widget-inline-card";
@@ -61,16 +61,16 @@ import {
 	type RoutingDecision,
 	type RovoUIMessage,
 } from "@/lib/rovo-ui-messages";
-import { getLatestRovoAppTodoProgress, type RovoAppTodoProgressItem } from "@/components/projects/rovo-app/lib/rovo-app-update-todo-progress";
+import { getLatestRovoAppTodoProgress, type RovoAppTodoProgressItem } from "@/components/projects/rovo/lib/rovo-app-update-todo-progress";
 import { getLatestPendingPlanWidget, getLatestPlanWidgetPayload, parsePlanWidgetPayload, type ParsedPlanWidgetPayload } from "@/components/projects/shared/lib/plan-widget";
 import { hasMatchingClarificationResponse, parseQuestionCardPayload } from "@/components/projects/shared/lib/question-card-widget";
 import { resolvePlanVisualIdentity } from "@/components/projects/shared/lib/plan-identity";
 import type { VisualIdentity } from "@/components/projects/shared/lib/visual-identity";
 import { cn } from "@/lib/utils";
 import { renderResolvedToolIcon, resolveToolIcon } from "@/components/projects/shared/lib/tool-icon-resolver";
-import { BrowserScreenshotPart } from "@/components/projects/rovo-app/components/rovo-app-browser-screenshot";
+import { BrowserScreenshotPart } from "@/components/projects/rovo/components/rovo-app-browser-screenshot";
 import type { RovoAppDocument } from "@/lib/rovo-app-types";
-import type { RovoAppStreamingArtifact } from "@/components/projects/rovo-app/lib/rovo-app-streaming-artifact";
+import type { RovoAppStreamingArtifact } from "@/components/projects/rovo/lib/rovo-app-streaming-artifact";
 import Image from "next/image";
 import { Component, Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnswerCard } from "@/components/blocks/answer-card/components/answer-card";

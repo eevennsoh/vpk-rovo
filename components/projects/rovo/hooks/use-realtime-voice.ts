@@ -6,7 +6,7 @@ import {
 	createRealtimeAssistantTextStreamState,
 	finalizeRealtimeAssistantText,
 	reduceRealtimeAssistantTextDelta,
-} from "@/components/projects/rovo-app/lib/rovo-app-realtime-assistant-state";
+} from "@/components/projects/rovo/lib/rovo-app-realtime-assistant-state";
 import {
 	hasCompletedRovoAppVoiceTurn,
 	isRovoAppVoiceCaptureAvailable,
@@ -15,7 +15,7 @@ import {
 	shouldStartNewRovoAppVoiceTurn,
 	shouldProcessRovoAppVoiceTranscriptionCompletion,
 	shouldProcessRovoAppVoiceTranscriptionDelta,
-} from "@/components/projects/rovo-app/lib/rovo-app-voice-capture";
+} from "@/components/projects/rovo/lib/rovo-app-voice-capture";
 
 // Web Speech API — resolve constructor with vendor prefix fallback (Chrome/Edge)
 function getSpeechRecognitionCtor(): (new () => SpeechRecognition) | null {

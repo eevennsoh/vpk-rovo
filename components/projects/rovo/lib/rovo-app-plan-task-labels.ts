@@ -11,7 +11,7 @@ import type {
 import {
 	getLatestRovoAppTodoProgress,
 	type RovoAppTodoProgressSnapshot,
-} from "@/components/projects/rovo-app/lib/rovo-app-update-todo-progress";
+} from "@/components/projects/rovo/lib/rovo-app-update-todo-progress";
 
 function isVisibleUserMessage(message: RovoUIMessage): boolean {
 	return message.role === "user" && isMessageVisibleInTranscript(message);

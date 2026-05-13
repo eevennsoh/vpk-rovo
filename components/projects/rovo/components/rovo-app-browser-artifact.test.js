@@ -10,7 +10,7 @@ async function loadRovoAppBrowserArtifactHarness() {
 			contents: `
 				import React from "react";
 				import { renderToString } from "react-dom/server";
-				import { RovoAppBrowserArtifact } from "./components/projects/rovo-app/components/rovo-app-browser-artifact.tsx";
+				import { RovoAppBrowserArtifact } from "./components/projects/rovo/components/rovo-app-browser-artifact.tsx";
 
 				export function renderRovoAppBrowserArtifact() {
 					return renderToString(

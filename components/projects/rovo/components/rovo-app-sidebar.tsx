@@ -12,13 +12,13 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { SidebarNavItem, SidebarNavItemAction, SidebarNavItemCount } from "@/components/ui/sidebar-nav-item";
 import { Shimmer } from "@/components/ui-ai/shimmer";
 import { Spinner } from "@/components/ui/spinner";
-import { getRovoAppSidebarSurfacePreview, type RovoAppSidebarSurfacePreview } from "@/components/projects/rovo-app/lib/rovo-app-sidebar-surface-preview";
+import { getRovoAppSidebarSurfacePreview, type RovoAppSidebarSurfacePreview } from "@/components/projects/rovo/lib/rovo-app-sidebar-surface-preview";
 import { token } from "@/lib/tokens";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenuAction, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from "@/components/ui/sidebar";
 import ScorecardIcon from "@atlaskit/icon/core/scorecard";
-import { shouldShowRovoAppSidebarRunIndicator } from "@/components/projects/rovo-app/lib/rovo-app-sidebar-run-indicator";
-import { getRovoAppSidebarThreadSidebarNavItemClassName } from "@/components/projects/rovo-app/lib/rovo-app-sidebar-thread-layout";
+import { shouldShowRovoAppSidebarRunIndicator } from "@/components/projects/rovo/lib/rovo-app-sidebar-run-indicator";
+import { getRovoAppSidebarThreadSidebarNavItemClassName } from "@/components/projects/rovo/lib/rovo-app-sidebar-thread-layout";
 import type { RovoAppRunStatus, RovoAppThread } from "@/lib/rovo-app-types";
 import { cn } from "@/lib/utils";
 import { ChevronDownIcon } from "@/components/ui/vpk-icons";
@@ -469,7 +469,7 @@ export function RovoAppSidebar({
 
 	return (
 		<Sidebar
-			aria-label="Rovo App navigation"
+			aria-label="Rovo navigation"
 			className={cn(
 				// Horizontal padding lives on section wrappers (nav, thread list), not here — avoids doubling with inner `px-3`.
 				"bg-sidebar !px-0 !pb-0",

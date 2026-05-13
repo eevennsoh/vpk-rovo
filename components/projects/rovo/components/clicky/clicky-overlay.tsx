@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion, useMotionValue, useSpring } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { ClickyState, ClickyPointTarget, ClickyExchange, ClickyScreenshotDimensions } from "@/components/projects/rovo-app/hooks/use-clicky";
+import type { ClickyState, ClickyPointTarget, ClickyExchange, ClickyScreenshotDimensions } from "@/components/projects/rovo/hooks/use-clicky";
 import { ClickyCursor } from "./clicky-cursor";
 import { ClickySpeechBubble } from "./clicky-speech-bubble";
 import { ClickyResponseOverlay } from "./clicky-response-overlay";

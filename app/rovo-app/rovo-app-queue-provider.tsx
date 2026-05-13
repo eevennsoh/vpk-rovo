@@ -10,7 +10,7 @@ import {
 	prependRovoAppQueuedAction,
 	removeRovoAppQueuedAction,
 	shiftRovoAppQueuedAction,
-} from "@/components/projects/rovo-app/lib/rovo-app-queue-state";
+} from "@/components/projects/rovo/lib/rovo-app-queue-state";
 
 interface RovoAppQueueContextValue {
 	appendQueuedActionsForThread: (

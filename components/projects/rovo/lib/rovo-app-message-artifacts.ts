@@ -1,4 +1,4 @@
-import type { RovoAppStreamingArtifact } from "@/components/projects/rovo-app/lib/rovo-app-streaming-artifact";
+import type { RovoAppStreamingArtifact } from "@/components/projects/rovo/lib/rovo-app-streaming-artifact";
 import type {
 	RovoAppDocument,
 	RovoAppDocumentKind,
