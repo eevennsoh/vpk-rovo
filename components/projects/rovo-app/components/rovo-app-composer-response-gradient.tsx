@@ -35,6 +35,8 @@ const PALETTE: Palette = {
 };
 
 const RELEASE_DURATION_MS = 640;
+const LIVE_SIGNAL_SMOOTHING_WINDOW_SIZE = 5;
+const LIVE_SIGNAL_SMOOTHING_WEIGHT_TOTAL = LIVE_SIGNAL_SMOOTHING_WINDOW_SIZE + 1;
 
 function parseColor(value: string): RGB | null {
 	const color = value.trim();
@@ -352,20 +354,35 @@ export function RovoAppComposerResponseGradient({
 
 			const targetBars: number[] = [];
 			if (phaseRef.current === "speaking" && signalRef.current.length > 0) {
+				const liveSignal = signalRef.current;
+				const liveSignalSampleStartIndex = -LIVE_SIGNAL_SMOOTHING_WINDOW_SIZE;
+				const liveSignalSampleEndIndex = barCount - 1 + LIVE_SIGNAL_SMOOTHING_WINDOW_SIZE;
+				const liveSignalSampleCount = liveSignalSampleEndIndex - liveSignalSampleStartIndex + 1;
+				const liveSignalSamples = new Array<number>(liveSignalSampleCount);
+
+				for (let sampleOffset = 0; sampleOffset < liveSignalSampleCount; sampleOffset += 1) {
+					const sampleIndex = liveSignalSampleStartIndex + sampleOffset;
+					liveSignalSamples[sampleOffset] = getWaveformSeriesValue({
+						bars: liveSignal,
+						index: sampleIndex,
+						totalCount: barCount,
+					});
+				}
+
 				for (let index = 0; index < barCount; index += 1) {
 					// We calculate a highly smoothed window of the surrounding bars
 					// instead of matching 1:1 with the direct audio index.
 					let smoothedSeriesValue = 0;
-					const windowSize = 5;
-					for (let w = -windowSize; w <= windowSize; w++) {
-						const weight = 1 - (Math.abs(w) / (windowSize + 1));
-						smoothedSeriesValue += getWaveformSeriesValue({
-							bars: signalRef.current,
-							index: index + w,
-							totalCount: barCount,
-						}) * weight;
+					for (
+						let offset = -LIVE_SIGNAL_SMOOTHING_WINDOW_SIZE;
+						offset <= LIVE_SIGNAL_SMOOTHING_WINDOW_SIZE;
+						offset += 1
+					) {
+						const weight = 1 - (Math.abs(offset) / LIVE_SIGNAL_SMOOTHING_WEIGHT_TOTAL);
+						smoothedSeriesValue +=
+							liveSignalSamples[index + offset - liveSignalSampleStartIndex] * weight;
 					}
-					smoothedSeriesValue /= (windowSize + 1); // Normalize weight
+					smoothedSeriesValue /= LIVE_SIGNAL_SMOOTHING_WEIGHT_TOTAL;
 
 					const centerIndex = (barCount - 1) / 2;
 					const normalizedDistance =
