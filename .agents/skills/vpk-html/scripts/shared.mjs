@@ -430,10 +430,10 @@ function pushThemeAliases(lines) {
 	lines.push("\t--collection-accent-product: var(--collection-product);");
 	lines.push("\t--collection-accent-service: var(--collection-service);");
 	lines.push("\t--paper-rule: var(--grid-dot);");
-	lines.push("\t--grid-size: 16px;");
 	lines.push("\t--grid-major-size: 72px;");
-	lines.push("\t--grid-background: radial-gradient(circle at 1px 1px, var(--grid-dot) 1px, transparent 1.25px), linear-gradient(to right, var(--grid-line) 1px, transparent 1px), linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);");
-	lines.push("\t--grid-background-size: var(--grid-size) var(--grid-size), var(--grid-major-size) var(--grid-major-size), var(--grid-major-size) var(--grid-major-size);");
+	lines.push("\t--grid-dot-gap: 12px;");
+	lines.push("\t--grid-background: radial-gradient(circle at 1px 1px, var(--grid-dot) 1.25px, transparent 1.5px), radial-gradient(circle at 1px 1px, var(--grid-dot) 1.25px, transparent 1.5px);");
+	lines.push("\t--grid-background-size: var(--grid-major-size) var(--grid-dot-gap), var(--grid-dot-gap) var(--grid-major-size);");
 }
 
 function listHtmlFiles(directory) {

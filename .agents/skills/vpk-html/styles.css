@@ -57,10 +57,10 @@
 	--collection-accent-product: var(--collection-product);
 	--collection-accent-service: var(--collection-service);
 	--paper-rule: var(--grid-dot);
-	--grid-size: 16px;
 	--grid-major-size: 72px;
-	--grid-background: radial-gradient(circle at 1px 1px, var(--grid-dot) 1px, transparent 1.25px), linear-gradient(to right, var(--grid-line) 1px, transparent 1px), linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
-	--grid-background-size: var(--grid-size) var(--grid-size), var(--grid-major-size) var(--grid-major-size), var(--grid-major-size) var(--grid-major-size);
+	--grid-dot-gap: 12px;
+	--grid-background: radial-gradient(circle at 1px 1px, var(--grid-dot) 1.25px, transparent 1.5px), radial-gradient(circle at 1px 1px, var(--grid-dot) 1.25px, transparent 1.5px);
+	--grid-background-size: var(--grid-major-size) var(--grid-dot-gap), var(--grid-dot-gap) var(--grid-major-size);
 	--shadow: var(--ds-shadow-raised, 0 1px 1px rgba(9, 30, 66, 0.25), 0 0 1px rgba(9, 30, 66, 0.31));
 }
 
@@ -122,10 +122,10 @@
 	--collection-accent-product: var(--collection-product);
 	--collection-accent-service: var(--collection-service);
 	--paper-rule: var(--grid-dot);
-	--grid-size: 16px;
 	--grid-major-size: 72px;
-	--grid-background: radial-gradient(circle at 1px 1px, var(--grid-dot) 1px, transparent 1.25px), linear-gradient(to right, var(--grid-line) 1px, transparent 1px), linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
-	--grid-background-size: var(--grid-size) var(--grid-size), var(--grid-major-size) var(--grid-major-size), var(--grid-major-size) var(--grid-major-size);
+	--grid-dot-gap: 12px;
+	--grid-background: radial-gradient(circle at 1px 1px, var(--grid-dot) 1.25px, transparent 1.5px), radial-gradient(circle at 1px 1px, var(--grid-dot) 1.25px, transparent 1.5px);
+	--grid-background-size: var(--grid-major-size) var(--grid-dot-gap), var(--grid-dot-gap) var(--grid-major-size);
 	--shadow: var(--ds-shadow-raised, 0 1px 1px rgba(0, 0, 0, 0.32), 0 0 1px rgba(0, 0, 0, 0.42));
 }
 

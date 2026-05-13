@@ -155,10 +155,10 @@
 	--collection-accent-product: var(--collection-product);
 	--collection-accent-service: var(--collection-service);
 	--paper-rule: var(--grid-dot);
-	--grid-size: 16px;
 	--grid-major-size: 72px;
-	--grid-background: radial-gradient(circle at 1px 1px, var(--grid-dot) 1px, transparent 1.25px), linear-gradient(to right, var(--grid-line) 1px, transparent 1px), linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
-	--grid-background-size: var(--grid-size) var(--grid-size), var(--grid-major-size) var(--grid-major-size), var(--grid-major-size) var(--grid-major-size);
+	--grid-dot-gap: 12px;
+	--grid-background: radial-gradient(circle at 1px 1px, var(--grid-dot) 1.25px, transparent 1.5px), radial-gradient(circle at 1px 1px, var(--grid-dot) 1.25px, transparent 1.5px);
+	--grid-background-size: var(--grid-major-size) var(--grid-dot-gap), var(--grid-dot-gap) var(--grid-major-size);
 	--shadow: var(--ds-shadow-raised, 0 1px 1px rgba(9, 30, 66, 0.25), 0 0 1px rgba(9, 30, 66, 0.31));
 }
 
@@ -220,10 +220,10 @@
 	--collection-accent-product: var(--collection-product);
 	--collection-accent-service: var(--collection-service);
 	--paper-rule: var(--grid-dot);
-	--grid-size: 16px;
 	--grid-major-size: 72px;
-	--grid-background: radial-gradient(circle at 1px 1px, var(--grid-dot) 1px, transparent 1.25px), linear-gradient(to right, var(--grid-line) 1px, transparent 1px), linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
-	--grid-background-size: var(--grid-size) var(--grid-size), var(--grid-major-size) var(--grid-major-size), var(--grid-major-size) var(--grid-major-size);
+	--grid-dot-gap: 12px;
+	--grid-background: radial-gradient(circle at 1px 1px, var(--grid-dot) 1.25px, transparent 1.5px), radial-gradient(circle at 1px 1px, var(--grid-dot) 1.25px, transparent 1.5px);
+	--grid-background-size: var(--grid-major-size) var(--grid-dot-gap), var(--grid-dot-gap) var(--grid-major-size);
 	--shadow: var(--ds-shadow-raised, 0 1px 1px rgba(0, 0, 0, 0.32), 0 0 1px rgba(0, 0, 0, 0.42));
 }
 
@@ -279,7 +279,6 @@ code {
 
 /* ============ Manual layout ============ */
 .hero {
-	border-bottom: 2px solid var(--rule-strong);
 	padding: clamp(1.1rem, 3vw, 3rem) 0 clamp(2rem, 6vw, 4.25rem);
 }
 
@@ -306,8 +305,6 @@ code {
 }
 
 .hero-intro {
-	border-bottom: 1px solid var(--rule);
-	border-top: 1px solid var(--rule);
 	display: grid;
 	gap: clamp(1.4rem, 4vw, 3rem);
 	grid-template-columns: 1fr;
@@ -378,20 +375,17 @@ section {
 
 /* ============ Unified demo catalog ============ */
 .demo-contents {
-	border-top: 2px solid var(--rule-strong);
 	display: grid;
 	gap: 0;
 }
 
 .demo-category {
-	border-bottom: 1px solid var(--rule-strong);
 	display: grid;
 	gap: 1rem;
 	padding: 1.25rem 0 1.35rem;
 }
 
 .demo-category:last-child {
-	border-bottom: 0;
 	padding-bottom: 0;
 }
 
@@ -517,22 +511,6 @@ section {
 	overflow-wrap: anywhere;
 	text-align: right;
 }
-
-footer {
-	color: var(--muted-text);
-	font-family: var(--font-mono);
-	font-size: 0.76rem;
-	letter-spacing: 0.04em;
-	padding: 0 0 2rem;
-	text-align: center;
-}
-
-footer a {
-	color: var(--muted-text);
-	text-decoration: none;
-}
-
-footer a:hover { color: var(--primary-blue); }
 
 @media (max-width: 980px) {
 	.demo-category-head {
@@ -760,10 +738,6 @@ footer a:hover { color: var(--primary-blue); }
 		</div>
 	</div>
 </section>
-
-<footer>
-	<p>vpk-html · local-only demo catalog</p>
-</footer>
 
 </main>
 </body>
