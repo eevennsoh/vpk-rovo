@@ -1,7 +1,7 @@
 # vpk-html
 
 > Render structured material into offline, single-file HTML documents with the
-> vpk-html terminal/blueprint identity. **[See the index →](index.html)**
+> vpk-html Atlassian deck/editorial identity. **[See the index →](index.html)**
 
 vpk-html is a static-document skill used inside the VPK-Rovo monorepo. It is
 built on [kami's](https://github.com/tw93/Kami) template-edit architecture: the
@@ -11,17 +11,18 @@ stay locked across all documents.
 
 ## Identity
 
-- **Display font:** Geist Pixel (Square variant) for masthead / cover headlines.
-- **Body font:** Geist Sans for prose.
-- **Mono font:** Geist Mono for labels, code, eyebrows, figure tags.
+- **Display font:** Charlie Display for mastheads, slide titles, headline stats, and section heads.
+- **Body font:** Charlie Text for prose, labels, body copy, tables, and ordinary document text.
+- **Mono font:** Atlassian Mono for code, metrics, dates, counters, figure/table numbers, chart labels, and technical identifiers.
+- **Numeric face:** Atlassian Mono Numeric uses `unicode-range: U+0030-0039` so digits inside Charlie text render in Atlassian Mono.
 - **Surface:** `--paper`, backed by VPK/ADS surface semantics with offline fallbacks.
-- **Accent:** `--blueprint`, mapped to the VPK/ADS lime accent (`#94C748` in light mode).
+- **Accent:** `--primary-blue`, with lime, purple, saffron, orange, navy, green, and red semantic accents for collections, charts, diagrams, and status.
 - **Status:** `--success`, `--warning`, `--danger`, and `--info` for meaning-bearing accents.
-- **No section chrome:** no borders, no shadows, no rounded corners, no grid background.
+- **Grid canvas:** light neutral dotted grid inspired by `image.098`, with dark-mode grid counterparts.
 
-The look is deliberately *terminal × engineering notebook*. Not warm and
-editorial (that's kami). Not playful and saturated. Compact, readable, and
-unambiguous.
+The look is deliberately *Atlassian deck × technical editorial*. It is compact,
+readable, and unambiguous while leaving enough structure for strategy decks,
+status readouts, and implementation briefs.
 
 ## What you get
 
@@ -95,14 +96,14 @@ node scripts/rescue-html-effectiveness-demos.mjs  # copy + restyle direct Phase 
 | `assets/diagrams/` | 14 standalone SVG diagram primitives |
 | `assets/html-effectiveness/` | Snapshot of the 20 upstream html-effectiveness HTML demos plus index |
 | `assets/demos/` | Demo HTML outputs plus the embedded media needed by individual demos |
-| `assets/fonts/` | Geist Sans, Geist Mono, Geist Pixel (inlined as base64 at port time) |
+| `assets/fonts/` | Charlie Display, Charlie Text, and Atlassian Mono (inlined as base64 at port time) |
 | `styles.css` | Shared root stylesheet, matching Kami's top-level CSS contract |
 | `references/` | Anti-patterns, diagrams, resume-writing, writing, design, production, source-policy, accessibility, tokens.json |
 | `scripts/` | build (validator), check-html, shared helpers, port-*.mjs, rescue-demos (regenerate vpk demos), ensure-fonts |
 
 ## Rules of the road
 
-- **No remote assets.** Every filled document is self-contained — all 3 fonts
+- **No remote assets.** Every filled document is self-contained — local fonts
   are inlined as base64 data URIs at port time. Move a filled file anywhere
   and it still renders identically.
 - **CSS stays untouched.** Templates ship with their CSS locked. Only the
@@ -127,9 +128,9 @@ The visual identity diverges; the workflow does not.
 | | vpk-html | kami |
 |---|---|---|
 | Surface | Semantic white paper via `--paper` | Warm parchment |
-| Accent | Semantic lime via `--blueprint` | Ink-blue `#1B365D` (deeper) |
-| Display | Geist Pixel · Square (pixel/terminal) | Charter / TsangerJinKai02 (serif) |
-| Body | Geist Sans | Charter / TsangerJinKai02 |
+| Accent | Primary blue plus ADS-style collection accents | Ink-blue `#1B365D` (deeper) |
+| Display | Charlie Display | Charter / TsangerJinKai02 (serif) |
+| Body | Charlie Text with Atlassian Mono numerals | Charter / TsangerJinKai02 |
 | Render pipeline | Template edit (kami-style) | Template edit |
 | Build toolchain | Node ESM | Python (WeasyPrint, python-pptx) |
 | Output | Single offline HTML | HTML + PDF + optional PPTX + PNG |
@@ -161,7 +162,7 @@ Research & Learning, Reports, and Custom Editing Interfaces.
 
 The Phase 2 templates remain original vpk-html template shells. The Phase 2
 demos preserve upstream structure, JavaScript, and sample content, then add the
-local vpk-html overlay: embedded Geist font declarations, blueprint/paper
+local vpk-html overlay: embedded Charlie and Atlassian Mono font declarations, primary-blue/paper
 tokens, source comments, a dark-token stub, and accessibility landmarks where
 the upstream page omitted them.
 
@@ -181,4 +182,4 @@ on the `html-effectiveness` use-case catalog.
   design systems for AI agents.
 - html-effectiveness by [@ThariqS](https://github.com/ThariqS) — engineering
   document use-case catalog that informed the Phase 2 template set.
-- Geist, Geist Mono, and Geist Pixel by [Vercel](https://vercel.com/font) (SIL OFL).
+- Charlie Display, Charlie Text, and Atlassian Mono font assets are committed locally for the offline artifact contract.

@@ -2,7 +2,7 @@
 
 vpk-html ships 14 standalone SVG diagram primitives at `assets/diagrams/*.html`,
 ported from [tw93/kami](https://github.com/tw93/Kami) and restyled with the
-vpk-html identity (semantic white paper, blueprint accent, and flat technical rules).
+vpk-html identity (semantic white paper, primary-blue accent, and flat technical rules).
 
 ## How to use a diagram
 
@@ -18,7 +18,7 @@ template:
 {
 	"type": "figure",
 	"heading": "Production architecture",
-	"trustedHtml": "<figure><svg …>…</svg><figcaption>One blueprint node marks the focal component.</figcaption></figure>"
+	"trustedHtml": "<figure><svg …>…</svg><figcaption>One primary-blue node marks the focal component.</figcaption></figure>"
 }
 ```
 
@@ -75,13 +75,13 @@ If the data shape is ambiguous, pick by what the reader should learn.
 
 ## The focal rule
 
-Every diagram has *one* blueprint element. That's the component, state, or value
+Every diagram has *one* primary-blue element. That's the component, state, or value
 the reader should look at first. Everything else stays in cool neutrals. If you
-catch yourself coloring more than one node blueprint, pick the most important
+catch yourself coloring more than one node primary blue, pick the most important
 and demote the rest.
 
 This single rule is why the accent actually means something. A page with five
-blueprint boxes is decoration; a page with one is direction.
+primary-blue boxes is decoration; a page with one is direction.
 
 ## Token map (inside the diagrams)
 
@@ -92,14 +92,16 @@ The ported SVGs use vpk-html's palette directly:
 | Paper / SVG background | `--paper` |
 | Ink (default text, hard borders, primary stroke) | `--ink` |
 | Muted text, secondary strokes, default arrow heads | `--muted-text` / `--subtlest-text` |
-| Accent / focal node fill | `--blueprint-tint` |
-| Accent / focal node stroke + primary arrow | `--blueprint` |
+| Accent / focal node fill | `--primary-blue-tint` |
+| Accent / focal node stroke + primary arrow | `--primary-blue` |
 | Cool gray surface variants | `--surface-sunken`, `--rule`, `--rule-strong` |
 | Faint grid dot pattern | `--paper-rule` |
 | Error / regression | `--danger` |
 
-Display headlines above each diagram use **Geist Pixel** (Square variant).
-Labels inside the SVG use **Geist Mono**. The caption below uses **Geist Sans**.
+Display headlines above each diagram use **Charlie Display**. Labels, chart
+numbers, figure identifiers, and technical callouts inside the SVG use
+**Atlassian Mono**. The caption below uses **Charlie Text** with the numeric
+face first in the stack so digits remain mono.
 
 ## Anti-patterns to avoid
 
@@ -107,7 +109,7 @@ When generating or selecting a diagram, watch for these failure modes:
 
 | Anti-pattern | Symptom | Fix |
 |---|---|---|
-| **Two accents** | More than one blueprint node | Demote all but one to neutral |
+| **Two accents** | More than one primary-blue node | Demote all but one to neutral |
 | **Decorative chart** | Pie or donut with 8+ slices | Switch to horizontal bar |
 | **Mystery axis** | Y-axis without units, X-axis without time anchor | Label both, or remove the chart |
 | **Bidirectional arrows everywhere** | Every node connected both ways | Pick a primary direction; the diagram is a story, not a map |

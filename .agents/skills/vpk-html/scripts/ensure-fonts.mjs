@@ -1,68 +1,47 @@
 #!/usr/bin/env node
 
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
+import { FONT_FILES } from "./shared.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const SKILL_ROOT = path.resolve(__dirname, "..");
 const FONT_DIR = path.join(SKILL_ROOT, "assets", "fonts");
 
-// Geist trio by Vercel (SIL OFL). Distributed via the official npm package.
-// Files are committed to assets/fonts/; this script re-fetches them only if
-// the local file is missing or empty.
-const FONT_SPECS = [
-	{
-		family: "Geist",
-		file: "Geist-Regular.woff2",
-		url: "https://unpkg.com/geist@latest/dist/fonts/geist-sans/Geist-Regular.woff2",
-		source: "Vercel Geist (SIL OFL) via the official npm package.",
-		license: "SIL Open Font License 1.1.",
-	},
-	{
-		family: "Geist Mono",
-		file: "GeistMono-Regular.woff2",
-		url: "https://unpkg.com/geist@latest/dist/fonts/geist-mono/GeistMono-Regular.woff2",
-		source: "Vercel Geist Mono (SIL OFL) via the official npm package.",
-		license: "SIL Open Font License 1.1.",
-	},
-	{
-		family: "Geist Pixel",
-		file: "GeistPixel-Square.woff2",
-		url: "https://unpkg.com/geist@latest/dist/fonts/geist-pixel/GeistPixel-Square.woff2",
-		source: "Vercel Geist Pixel · Square variant (SIL OFL) via the official npm package.",
-		license: "SIL Open Font License 1.1.",
-	},
-];
+const SOURCE_NOTES = {
+	"Charlie Display": "Atlassian Charlie Display asset committed to the repo.",
+	"Charlie Text": "Atlassian Charlie Text asset committed to the repo.",
+	"Atlassian Mono": "Atlassian Mono asset committed to the repo.",
+	"Atlassian Mono Numeric": "Atlassian Mono regular face reused with unicode-range U+0030-0039.",
+};
 
-async function fetchUrl(url, target) {
-	const response = await fetch(url, { redirect: "follow" });
-	if (!response.ok) {
-		throw new Error(`Fetch failed for ${url}: HTTP ${response.status}`);
-	}
-	const buffer = Buffer.from(await response.arrayBuffer());
-	fs.writeFileSync(target, buffer);
+function hashFile(filePath) {
+	return crypto.createHash("sha256").update(fs.readFileSync(filePath)).digest("hex");
 }
 
-async function ensureFont(spec) {
+function validateFont(spec) {
 	const target = path.join(FONT_DIR, spec.file);
-
-	if (!fs.existsSync(target) || fs.statSync(target).size === 0) {
-		console.log(`fetching ${spec.file} from ${spec.url}`);
-		await fetchUrl(spec.url, target);
-	}
+	if (!fs.existsSync(target)) throw new Error(`Missing font file: ${spec.file}`);
 
 	const stats = fs.statSync(target);
+	if (!stats.isFile()) throw new Error(`Font path is not a file: ${spec.file}`);
 	if (stats.size === 0) throw new Error(`Font file is empty: ${spec.file}`);
 
 	return {
 		family: spec.family,
 		file: spec.file,
 		bytes: stats.size,
-		source: spec.source,
-		license: spec.license,
+		sha256: hashFile(target),
+		weight: spec.weight,
+		style: spec.style,
+		format: spec.format,
+		mime: spec.mime,
+		unicodeRange: spec.unicodeRange ?? "",
+		source: SOURCE_NOTES[spec.family] ?? "Local committed font asset.",
 	};
 }
 
@@ -70,24 +49,23 @@ function writeManifest(entries) {
 	const lines = [
 		"# Font Manifest",
 		"",
-		"These WOFF2 files are embedded as data URIs by the vpk-html renderer so generated HTML works offline.",
+		"These local font files are embedded as data URIs by vpk-html so generated HTML works offline.",
 		"",
-		"| Family | File | Bytes | Source | License note |",
-		"| --- | --- | ---: | --- | --- |",
-		...entries.map(entry => `| ${entry.family} | ${entry.file} | ${entry.bytes} | ${entry.source} | ${entry.license} |`),
+		"| Family | File | Weight | Style | Format | MIME | Unicode range | Bytes | SHA-256 | Source |",
+		"| --- | --- | ---: | --- | --- | --- | --- | ---: | --- | --- |",
+		...entries.map(entry => `| ${entry.family} | ${entry.file} | ${entry.weight} | ${entry.style} | ${entry.format} | ${entry.mime} | ${entry.unicodeRange || "all"} | ${entry.bytes} | ${entry.sha256} | ${entry.source} |`),
 		"",
 	];
 	fs.writeFileSync(path.join(FONT_DIR, "MANIFEST.md"), lines.join("\n"), "utf8");
 }
 
-async function main() {
+function main() {
 	try {
 		fs.mkdirSync(FONT_DIR, { recursive: true });
-		const entries = [];
-		for (const spec of FONT_SPECS) entries.push(await ensureFont(spec));
+		const entries = FONT_FILES.map(validateFont);
 		writeManifest(entries);
 		for (const entry of entries) {
-			console.log(`${entry.file} ${entry.bytes} bytes`);
+			console.log(`${entry.file} ${entry.bytes} bytes ${entry.sha256}`);
 		}
 	} catch (error) {
 		console.error(error.message);
@@ -96,5 +74,5 @@ async function main() {
 }
 
 if (process.argv[1] === __filename) {
-	await main();
+	main();
 }

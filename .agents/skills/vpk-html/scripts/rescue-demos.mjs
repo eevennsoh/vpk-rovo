@@ -45,8 +45,15 @@ function readTemplate(slug) {
 	return fs.readFileSync(path.join(TEMPLATES_DIR, `${slug}.html`), "utf8");
 }
 
+function addMainLandmark(html) {
+	if (/<main\b/i.test(html)) return html;
+	return html
+		.replace(/<body([^>]*)>/i, `<body$1>\n<main aria-label="vpk-html demo">`)
+		.replace(/(\s*)(<\/body>)/i, `\n</main>$1$2`);
+}
+
 function writeDemo(slug, html) {
-	fs.writeFileSync(path.join(DEMOS_DIR, `${slug}.html`), ensureFaviconLinks(html), "utf8");
+	fs.writeFileSync(path.join(DEMOS_DIR, `${slug}.html`), ensureFaviconLinks(addMainLandmark(html)), "utf8");
 }
 
 /* ============ Q2 status — one-pager ============ */

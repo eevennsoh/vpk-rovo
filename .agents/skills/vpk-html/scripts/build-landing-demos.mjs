@@ -11,12 +11,12 @@ const PLACEHOLDER_PATTERN = /\{\{[^}]+\}\}/g;
 
 const inlineDemoSvg = `<svg viewBox="0 0 620 220" aria-label="Landing demo separation flow" xmlns="http://www.w3.org/2000/svg">
 	<rect x="20" y="44" width="160" height="72" rx="6" fill="var(--surface-sunken)" stroke="var(--rule-strong)"/>
-	<rect x="230" y="44" width="160" height="72" rx="6" fill="var(--blueprint-tint)" stroke="var(--blueprint)"/>
+	<rect x="230" y="44" width="160" height="72" rx="6" fill="var(--primary-blue-tint)" stroke="var(--primary-blue)"/>
 	<rect x="440" y="44" width="160" height="72" rx="6" fill="var(--surface-sunken)" stroke="var(--rule-strong)"/>
-	<path d="M180 80h50M390 80h50" fill="none" stroke="var(--blueprint)" stroke-width="2"/>
+	<path d="M180 80h50M390 80h50" fill="none" stroke="var(--primary-blue)" stroke-width="2"/>
 	<text x="100" y="75" fill="var(--ink)" font-size="13" text-anchor="middle">raw sources</text>
 	<text x="100" y="95" fill="var(--muted-text)" font-size="10" text-anchor="middle">templates and diagrams</text>
-	<text x="310" y="75" fill="var(--blueprint)" font-size="13" text-anchor="middle">mock previews</text>
+	<text x="310" y="75" fill="var(--primary-blue)" font-size="13" text-anchor="middle">mock previews</text>
 	<text x="310" y="95" fill="var(--muted-text)" font-size="10" text-anchor="middle">filled landing demos</text>
 	<text x="520" y="75" fill="var(--ink)" font-size="13" text-anchor="middle">authoring flow</text>
 	<text x="520" y="95" fill="var(--muted-text)" font-size="10" text-anchor="middle">copy and fill source</text>
@@ -273,13 +273,13 @@ const diagramDemos = [
 		"{{Chart Title}}": "Landing link targets by type",
 		"{{Series A label}}": "Raw links",
 		"{{Series B label}}": "Demo links",
-		"{{Caption text. The focal series in blueprint carries the primary argument. State the takeaway here, not a description of what is plotted.}}": "After separation, every landing target is a filled demo file.",
+		"{{Caption text. The focal series in primary blue carries the primary argument. State the takeaway here, not a description of what is plotted.}}": "After separation, every landing target is a filled demo file.",
 	}],
 	["line-chart", "Line Chart", {
 		"{{Chart Title}}": "Placeholder leakage over cleanup",
 		"{{Line 1 label}}": "Raw-source exposure",
 		"{{Line 2 label}}": "Demo coverage",
-		"{{Caption text. The blueprint line carries the primary trend argument. State what the trend means, not what was plotted.}}": "Demo coverage rises to full catalog coverage as raw source exposure drops to zero.",
+		"{{Caption text. The primary blue line carries the primary trend argument. State what the trend means, not what was plotted.}}": "Demo coverage rises to full catalog coverage as raw source exposure drops to zero.",
 	}],
 	["donut-chart", "Donut Chart", {
 		"{{Chart Title}}": "Landing catalog makeup",
@@ -291,7 +291,7 @@ const diagramDemos = [
 		"{{Category E}}": "editors",
 		"{{Category F}}": "decks",
 		"{{Source / period}}": "vpk-html landing mock set",
-		"{{Caption text. The blueprint segment is the focal category. Lead with the insight, not the breakdown.}}": "The new mock set covers all previously raw landing targets.",
+		"{{Caption text. The primary blue segment is the focal category. Lead with the insight, not the breakdown.}}": "The new mock set covers all previously raw landing targets.",
 	}],
 	["candlestick", "Candlestick", {
 		"{{Chart Title}}": "Demo coverage check",

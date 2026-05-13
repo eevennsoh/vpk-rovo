@@ -28,16 +28,23 @@ const TEMPLATES_DIR = path.join(SKILL_ROOT, "assets", "templates");
 const PLACEHOLDER_PATTERN = /\{\{[^}]+\}\}/g;
 
 // vpk identity check — required tokens that should appear in templates.
-const REQUIRED_FONT_FACES = ["Geist", "Geist Mono", "Geist Pixel"];
+const REQUIRED_FONT_FACES = ["Charlie Display", "Charlie Text", "Atlassian Mono"];
 const legacyElectricBlueprint = new RegExp(`#${"3553ff"}`, "i");
 const legacyAccentBlue = new RegExp(`#${"1B3FE5"}`, "i");
+const legacyFontFamilyPattern = new RegExp(`\\b${"Ge"}${"ist"}(?:\\s+Mono|\\s+Pixel)?\\b`);
+const legacyFontUrlPattern = new RegExp(`${"vercel"}\\.com/font`, "i");
+const legacyIdentityPattern = new RegExp(`${"terminal"}\\s*(?:/|×|x|\\+|and)\\s*${"blue"}${"print"}`, "i");
 const FORBIDDEN_KAMI_LEAKAGE = [
 	{ pattern: /#1B365D/i, label: "kami brand color #1B365D (should use vpk semantic brand aliases)" },
-	{ pattern: legacyElectricBlueprint, label: "legacy nonsemantic blueprint literal (should use --blueprint)" },
-	{ pattern: legacyAccentBlue, label: "legacy vpk accent-blue literal (should use --blueprint)" },
+	{ pattern: legacyElectricBlueprint, label: "legacy nonsemantic accent literal (should use semantic aliases)" },
+	{ pattern: legacyAccentBlue, label: "legacy vpk accent-blue literal (should use --primary-blue)" },
+	{ pattern: new RegExp(`--${"blue"}${"print"}(?:-tint(?:-strong)?)?\\b`), label: "legacy primary token alias (should use primary-blue tokens)" },
 	{ pattern: /#f5f4ed/i, label: "kami parchment #f5f4ed (should use --paper)" },
 	{ pattern: /TsangerJinKai02/, label: "kami CJK font TsangerJinKai02" },
-	{ pattern: /font-family:\s*Charter\b/, label: "kami Charter serif (should be Geist)" },
+	{ pattern: /font-family:\s*Charter\b/, label: "kami Charter serif (should be Charlie Text)" },
+	{ pattern: legacyFontFamilyPattern, label: "legacy font family" },
+	{ pattern: legacyFontUrlPattern, label: "legacy font URL" },
+	{ pattern: legacyIdentityPattern, label: "legacy identity phrase" },
 	{ pattern: /cdn\.jsdelivr\.net|cdnjs|fonts\.googleapis|fonts\.gstatic/i, label: "remote font/asset URL (violates offline rule)" },
 	{ pattern: /<meta\s+name="generator"\s+content="Kami"/i, label: "kami generator tag (should be vpk-html)" },
 ];
@@ -182,7 +189,7 @@ async function verify(filePath) {
 		await page.waitForTimeout(400);
 		const fontsReady = await page.evaluate(async () => {
 			try { await document.fonts.ready; } catch { /* noop */ }
-			const required = ["Geist", "Geist Mono", "Geist Pixel"];
+			const required = ["Charlie Display", "Charlie Text", "Atlassian Mono", "Atlassian Mono Numeric"];
 			const results = [];
 			for (const family of required) {
 				try {
