@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useMemo, useState, type KeyboardEvent } from "react";
 import { cn } from "@/lib/utils";
 import {
 	Table,
@@ -123,6 +123,12 @@ export default function ContactsTable({
 		}
 	}
 
+	function handleRowKeyDown(event: KeyboardEvent<HTMLTableRowElement>, contact: Contact) {
+		if (event.key !== "Enter" && event.key !== " ") return;
+		event.preventDefault();
+		onSelectContact(contact);
+	}
+
 	return (
 		<div className="flex flex-col gap-4">
 			<div className="flex items-center gap-3">
@@ -218,11 +224,15 @@ export default function ContactsTable({
 							filteredAndSorted.map((contact) => (
 								<TableRow
 									key={contact.id}
+									role="button"
+									tabIndex={0}
+									aria-label={`Open contact details for ${contact.name}`}
+									data-state={selectedContactId === contact.id ? "selected" : undefined}
 									className={cn(
-										"cursor-pointer transition-colors",
-										selectedContactId === contact.id && "bg-bg-selected"
+										"cursor-pointer transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-border-focused"
 									)}
 									onClick={() => onSelectContact(contact)}
+									onKeyDown={(event) => handleRowKeyDown(event, contact)}
 								>
 									<TableCell>
 										<div className="flex items-center gap-3">
