@@ -33,8 +33,6 @@ import type {
 	WikiCompiledContextDocument,
 	WikiMemoryProposalSummary,
 	WikiProposalCounts,
-	WikiSearchResponse,
-	WikiSearchResult,
 	WikiStatus,
 	WikiSyncResponse,
 	WikiStatusFileSummary,
@@ -526,24 +524,6 @@ function normalizeWikiQmdStatus(rawStatus: unknown): WikiQmdStatus {
 	};
 }
 
-function normalizeWikiSearchResult(rawResult: unknown): WikiSearchResult {
-	const result = rawResult && typeof rawResult === "object"
-		? rawResult as Record<string, unknown>
-		: {};
-
-	return {
-		backend: result.backend === "naive" ? "naive" : "qmd",
-		collection: getString(result.collection),
-		path: getString(result.path),
-		score:
-			typeof result.score === "number" && Number.isFinite(result.score)
-				? result.score
-				: 0,
-		snippet: getString(result.snippet) ?? "",
-		title: getString(result.title) ?? "Untitled",
-	};
-}
-
 function normalizeHermesSkillSummary(rawSkill: unknown): HermesSkillSummary {
 	const skill = rawSkill && typeof rawSkill === "object"
 		? rawSkill as Record<string, unknown>
@@ -727,22 +707,6 @@ export async function generateWikiMemoryDeck(input: {
 	);
 
 	return normalizeWikiMemoryGeneratedArtifact(payload.deck);
-}
-
-export async function searchWiki(
-	query: string,
-	limit?: number,
-): Promise<WikiSearchResponse> {
-	const payload = await parseJsonResponse<{ backend?: unknown; results?: unknown[] }>(
-		await fetch(API_ENDPOINTS.wikiSearch(query, limit), {
-			method: "GET",
-		}),
-	);
-
-	return {
-		backend: payload.backend === "naive" ? "naive" : "qmd",
-		results: Array.isArray(payload.results) ? payload.results.map(normalizeWikiSearchResult) : [],
-	};
 }
 
 export async function syncWiki(force = true): Promise<WikiSyncResponse> {

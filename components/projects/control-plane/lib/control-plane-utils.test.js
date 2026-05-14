@@ -10,7 +10,11 @@ const {
 	summarizeJobs,
 } = require("./control-plane-utils.ts");
 
-const { INITIAL_CONTROL_PLANE_JOBS, INITIAL_CONTROL_PLANE_SKILLS } = require("./control-plane-data.ts");
+const {
+	CONTROL_PLANE_SURFACES,
+	INITIAL_CONTROL_PLANE_JOBS,
+	INITIAL_CONTROL_PLANE_SKILLS,
+} = require("./control-plane-data.ts");
 
 test("splitMemoryEntries preserves Hermes-style delimiter boundaries", () => {
 	assert.deepEqual(
@@ -32,6 +36,13 @@ test("findSkillByRouteSegments resolves a skill by category and slug", () => {
 	assert.equal(skill?.name, "bootstrap-automation");
 });
 
+test("control-plane surfaces omit the retired standalone wiki route", () => {
+	assert.equal(
+		CONTROL_PLANE_SURFACES.some((surface) => surface.href === "/rovo/wiki" || surface.label === "Wiki"),
+		false,
+	);
+});
+
 test("summarizeJobs counts each state", () => {
 	assert.deepEqual(summarizeJobs(INITIAL_CONTROL_PLANE_JOBS), {
 		failed: 0,
@@ -48,4 +59,3 @@ test("calculateUsage clamps over-capacity inputs", () => {
 		remaining: 0,
 	});
 });
-
