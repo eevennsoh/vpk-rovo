@@ -429,7 +429,7 @@ export default function TerminalSwitchPanel({
 	const { resetChat } = useRovoChat();
 	const isTerminal = mode === "terminal";
 	const resolvedChatPanelContainerStyle: CSSProperties = {
-		border: "none",
+		borderWidth: 0,
 		borderRadius: 0,
 		...chatPanelContainerStyle,
 	};

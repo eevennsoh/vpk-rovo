@@ -708,9 +708,11 @@ function SidebarMenuSubButton({
 function SidebarResizeHandle({
   className,
   onPointerDown,
+  side = "right",
   ...props
 }: React.ComponentProps<"div"> & {
   onPointerDown?: (event: React.PointerEvent) => void
+  side?: "left" | "right"
 }) {
   return (
     <div
@@ -719,7 +721,8 @@ function SidebarResizeHandle({
       aria-orientation="vertical"
       className={cn(
         // Named group so notch `group-hover/*` does not inherit from the outer Sidebar `group` wrapper.
-        "group/sidebar-resize absolute inset-y-0 right-0 z-20 flex w-px cursor-col-resize items-center justify-center bg-border transition-colors hover:bg-bg-selected-bold data-[active]:bg-bg-selected-bold",
+        "group/sidebar-resize absolute inset-y-0 z-20 flex w-px cursor-col-resize items-center justify-center bg-border transition-colors hover:bg-bg-selected-bold data-[active]:bg-bg-selected-bold",
+        side === "left" ? "left-0" : "right-0",
         "data-[will-collapse]:bg-bg-warning-bold",
         "after:absolute after:inset-y-0 after:left-1/2 after:w-3 after:-translate-x-1/2",
         "group-data-[collapsible=offcanvas]:hidden",

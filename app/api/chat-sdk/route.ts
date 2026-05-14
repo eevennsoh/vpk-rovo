@@ -15,6 +15,40 @@ import { readJsonBody } from "@/app/api/_utils/read-json-body";
  *
  * Returns plain-text errors (not JSON) as expected by the AI SDK transport.
  */
+function isAgentsReferer(request: NextRequest): boolean {
+	const referer = request.headers.get("referer");
+	if (!referer) {
+		return false;
+	}
+
+	try {
+		const pathname = new URL(referer).pathname;
+		return pathname === "/agents" || pathname.startsWith("/agents/");
+	} catch {
+		return false;
+	}
+}
+
+function resolveForwardedBody(
+	request: NextRequest,
+	body: unknown
+): unknown {
+	if (
+		!isAgentsReferer(request) ||
+		!body ||
+		typeof body !== "object" ||
+		Array.isArray(body) ||
+		"backendPreference" in body
+	) {
+		return body;
+	}
+
+	return {
+		...body,
+		backendPreference: "ai-gateway",
+	};
+}
+
 export async function POST(request: NextRequest) {
 	try {
 		const { body, errorResponse } = await readJsonBody(request);
@@ -26,13 +60,14 @@ export async function POST(request: NextRequest) {
 				},
 			});
 		}
+		const forwardedBody = resolveForwardedBody(request, body);
 
 		const { response } = await fetchBackend("/api/chat-sdk", {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
 			},
-			body: JSON.stringify(body),
+			body: JSON.stringify(forwardedBody),
 		});
 
 		if (!response.ok) {

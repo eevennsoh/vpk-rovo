@@ -37,7 +37,7 @@ export function CommentThread() {
 			<div className="p-2">
 				<Comment
 					authorName="Maya Chen"
-					avatarSrc="/avatar-human/andrea-wilson.png"
+					avatarSrc="/avatar-user/andrea-wilson/color/asow-service-yellow.png"
 					timestamp="15 minutes ago"
 					content="I added the procurement portal checklist and marked the security questionnaire as a required exhibit for the first draft."
 				/>
@@ -53,7 +53,7 @@ export function CommentThread() {
 				>
 					<Comment
 						authorName="Priya Shah"
-						avatarSrc="/avatar-human/andrew-park.png"
+						avatarSrc="/avatar-user/andrew-park/color/asow-dev-lime.png"
 						timestamp="10 minutes ago"
 						content="Sales engineering can own the telematics integration answers. Please route pricing assumptions to deal desk before we send the draft."
 					/>

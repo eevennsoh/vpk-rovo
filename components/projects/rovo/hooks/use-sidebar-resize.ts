@@ -10,6 +10,12 @@ interface UseSidebarResizeOptions {
 	maxWidth: number;
 	minWidth: number;
 	onCollapse?: () => void;
+	/**
+	 * Drag direction that grows the panel.
+	 * - "ltr" (default): handle on the right of a left-anchored panel; drag right → grow.
+	 * - "rtl": handle on the left of a right-anchored panel; drag left → grow.
+	 */
+	direction?: "ltr" | "rtl";
 }
 
 interface UseSidebarResizeResult {
@@ -28,7 +34,9 @@ export function useSidebarResize({
 	maxWidth,
 	minWidth,
 	onCollapse,
+	direction = "ltr",
 }: UseSidebarResizeOptions): UseSidebarResizeResult {
+	const deltaSign = direction === "rtl" ? -1 : 1;
 	const [sidebarWidth, setSidebarWidth] = useState(defaultWidth);
 	const [isResizing, setIsResizing] = useState(false);
 	const [isResizeHandleHovered, setIsResizeHandleHovered] = useState(false);
@@ -78,7 +86,7 @@ export function useSidebarResize({
 		}
 
 		const handlePointerMove = (event: PointerEvent) => {
-			const delta = event.clientX - startXRef.current;
+			const delta = (event.clientX - startXRef.current) * deltaSign;
 			const rawWidth = startWidthRef.current + delta;
 			const shouldCollapse = rawWidth < collapseThreshold;
 			willCollapseRef.current = shouldCollapse;
@@ -96,7 +104,7 @@ export function useSidebarResize({
 				setSidebarWidth(lastValidWidthRef.current);
 				onCollapse();
 			} else {
-				const finalDelta = event.clientX - startXRef.current;
+				const finalDelta = (event.clientX - startXRef.current) * deltaSign;
 				const finalWidth = clamp(startWidthRef.current + finalDelta, minWidth, maxWidth);
 				lastValidWidthRef.current = finalWidth;
 				setSidebarWidth(finalWidth);
@@ -112,7 +120,7 @@ export function useSidebarResize({
 			document.removeEventListener("pointermove", handlePointerMove);
 			document.removeEventListener("pointerup", handlePointerUp);
 		};
-	}, [collapseThreshold, isResizing, maxWidth, minWidth, onCollapse]);
+	}, [collapseThreshold, deltaSign, isResizing, maxWidth, minWidth, onCollapse]);
 
 	useEffect(() => {
 		if (!isResizing && sidebarWidth >= minWidth) {

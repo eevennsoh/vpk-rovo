@@ -8,6 +8,8 @@ import Sidebar from "@/components/blocks/product-sidebar/page";
 import FloatingRovoButton from "@/components/projects/shared/components/floating-rovo-button";
 import ChatPanel from "@/components/projects/sidebar-chat/page";
 import RovoFloatingChat from "@/components/projects/rovo-floating-chat/components/rovo-floating-chat";
+import { SidebarResizeHandle } from "@/components/ui/sidebar";
+import { useSidebarResize } from "@/components/projects/rovo/hooks/use-sidebar-resize";
 import { useSidebar } from "@/app/contexts/context-sidebar";
 import { useRovoChat } from "@/app/contexts";
 
@@ -89,7 +91,13 @@ export default function AppLayout({
 	const isEmbedded = useIsEmbedded(embedded);
 	const { isVisible } = useSidebar();
 	const { chatSurface, toggleChat } = useRovoChat();
-	const chatPanelWidth = 400;
+	const chatResize = useSidebarResize({
+		defaultWidth: 400,
+		minWidth: 320,
+		maxWidth: 720,
+		direction: "rtl",
+	});
+	const chatPanelWidth = chatResize.sidebarWidth;
 	const isSidebarChatActive = chatSurface === "sidebar";
 	const isFloatingChatActive = chatSurface === "floating";
 	const showChatPanel = !isEmbedded && !hideRovoAction && isSidebarChatActive;
@@ -122,7 +130,7 @@ export default function AppLayout({
 					style={{
 						marginLeft: sidebarWidth,
 						marginRight: showChatPanel ? `${chatPanelWidth}px` : "0px",
-						transition: isEmbedded
+						transition: isEmbedded || chatResize.isResizing
 							? undefined
 							: "margin-left var(--duration-medium) var(--ease-in-out), margin-right var(--duration-medium) var(--ease-in-out)",
 						flex: 1,
@@ -147,7 +155,7 @@ export default function AppLayout({
 							padding: chatPanelFlush ? 0 : token("space.100"),
 							pointerEvents: isSidebarChatActive ? "auto" : "none",
 							transform: isSidebarChatActive ? "translateX(0)" : `translateX(${chatPanelWidth}px)`,
-							transition: "transform var(--duration-medium) var(--ease-in-out)",
+							transition: chatResize.isResizing ? undefined : "transform var(--duration-medium) var(--ease-in-out)",
 							willChange: "transform",
 							zIndex: 90,
 						}}
@@ -158,11 +166,18 @@ export default function AppLayout({
 								chatPanelFlush
 									? {
 											borderRadius: 0,
-											border: "none",
-											borderLeft: `1px solid ${token("color.border")}`,
+											borderWidth: 0,
 										}
 									: undefined
 							}
+						/>
+						<SidebarResizeHandle
+							side="left"
+							data-active={chatResize.isResizing ? "" : undefined}
+							onDoubleClick={chatResize.onResizeHandleDoubleClick}
+							onPointerDown={chatResize.onResizeHandlePointerDown}
+							onPointerEnter={chatResize.onResizeHandlePointerEnter}
+							onPointerLeave={chatResize.onResizeHandlePointerLeave}
 						/>
 					</div>
 				) : null}

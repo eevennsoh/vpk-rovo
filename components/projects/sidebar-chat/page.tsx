@@ -261,13 +261,10 @@ export default function ChatPanel({
 			)}
 
 			<Conversation className="min-h-0 flex-1" contextRef={conversationContextRef} initial={false} targetScrollTop={getLatestTurnTargetTop}>
-				<ConversationContent className="gap-0 p-0" style={messagesContainerStyle}>
+				<ConversationContent className="gap-0 px-3 py-0" style={messagesContainerStyle}>
 					{messages.length === 0 ? (
 						<div style={chatStyles.emptyState}>
 							<ChatGreeting
-								heading={greeting?.heading}
-								illustrationSrc={greeting?.illustrationSrc}
-								illustrationDarkSrc={greeting?.illustrationDarkSrc}
 								suggestions={greeting?.suggestions}
 								onSuggestionClick={handleGreetingSuggestionClick}
 							/>

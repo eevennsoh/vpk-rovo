@@ -37,7 +37,7 @@ export function DetailsAccordion() {
 						<DetailRow label="Assignee">
 							<div className="flex items-center gap-2">
 								<Avatar size="sm">
-									<AvatarImage src="/avatar-human/andrea-wilson.png" alt="Maya Chen" />
+									<AvatarImage src="/avatar-user/andrea-wilson/color/asow-service-yellow.png" alt="Maya Chen" />
 									<AvatarFallback>MC</AvatarFallback>
 								</Avatar>
 								<span className="text-sm font-medium">Maya Chen</span>
@@ -50,7 +50,7 @@ export function DetailsAccordion() {
 						<DetailRow label="Reporter">
 							<div className="flex items-center gap-2">
 								<Avatar size="sm">
-									<AvatarImage src="/avatar-human/andrew-park.png" alt="Jordan Lee" />
+									<AvatarImage src="/avatar-user/andrew-park/color/asow-dev-lime.png" alt="Jordan Lee" />
 									<AvatarFallback>JL</AvatarFallback>
 								</Avatar>
 								<span className="text-sm font-medium">Jordan Lee</span>

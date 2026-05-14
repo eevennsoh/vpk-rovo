@@ -34,8 +34,8 @@ export default function FloatingRovoButton({
             right: 24px;
             width: 48px;
             height: 48px;
-            border-radius: ${token("radius.xlarge")};
-            background-color: var(--button-bg, ${token("color.background.neutral.bold")});
+            border-radius: ${token("radius.xxlarge")};
+            background-color: ${token("color.background.neutral.bold")};
             border: none;
             display: flex;
             align-items: center;
@@ -57,20 +57,6 @@ export default function FloatingRovoButton({
             width: 24px;
             height: 24px;
             pointer-events: none;
-          }
-
-          [data-theme="dark"] .floating-rovo-button {
-            --button-bg: ${token("elevation.surface")};
-          }
-
-          @media (prefers-color-scheme: dark) {
-            .floating-rovo-button {
-              --button-bg: ${token("elevation.surface")};
-            }
-          }
-
-          [data-theme="light"] .floating-rovo-button {
-            --button-bg: ${token("color.background.neutral.bold")};
           }
         `,
 				}}

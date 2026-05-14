@@ -36,7 +36,7 @@ function AddCommentSection() {
 		<div className="pb-4">
 			<div className="flex items-start gap-2">
 				<Avatar size="sm">
-					<AvatarImage src="/avatar-human/andrea-wilson.png" alt="Maya Chen" />
+					<AvatarImage src="/avatar-user/andrea-wilson/color/asow-service-yellow.png" alt="Maya Chen" />
 					<AvatarFallback>MC</AvatarFallback>
 				</Avatar>
 				<div className="flex flex-col gap-2">

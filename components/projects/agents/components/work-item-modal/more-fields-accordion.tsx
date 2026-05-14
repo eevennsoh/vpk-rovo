@@ -44,7 +44,7 @@ export function MoreFieldsAccordion() {
 							<div style={{ marginTop: "4px" }}>
 								<div className="flex items-center gap-2">
 									<Avatar size="sm">
-										<AvatarImage src="/avatar-human/aoife-burke.png" alt="Elena Ruiz" />
+										<AvatarImage src="/avatar-user/aoife-burke/color/asow-service-yellow.png" alt="Elena Ruiz" />
 										<AvatarFallback>ER</AvatarFallback>
 									</Avatar>
 									<span className="text-sm">Elena Ruiz</span>

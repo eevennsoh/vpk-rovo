@@ -50,7 +50,7 @@ export default function RovoFloatingChat() {
 			animate={{ opacity: 1, y: 0 }}
 			exit={{ opacity: 0, y: 8 }}
 			transition={{ duration: 0.2, ease: [0, 0.4, 0, 1] }}
-			className="fixed bottom-6 right-6 z-[510] flex w-[440px] flex-col overflow-hidden rounded-2xl bg-surface-overlay"
+			className="fixed bottom-6 right-6 z-[510] flex w-[400px] flex-col overflow-hidden rounded-2xl bg-surface-overlay"
 			style={{
 				boxShadow: token("elevation.shadow.overlay"),
 				maxHeight: "calc(100dvh - 96px)",

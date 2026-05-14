@@ -10,7 +10,7 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import ChatSurfaceSwitcher from "@/components/projects/shared/components/chat-surface-switcher";
+import { ChatSurfaceSwitcherItems } from "@/components/projects/shared/components/chat-surface-switcher";
 import AppIcon from "@atlaskit/icon/core/app";
 import BugIcon from "@atlaskit/icon/core/bug";
 import CrossIcon from "@atlaskit/icon/core/cross";
@@ -37,12 +37,11 @@ export default function ChatHeader({ onClose, onNewChat, isStreaming, onStop }: 
 	return (
 		<div className="py-3 px-3">
 			<div className="flex justify-between items-center">
-				{/* Left side: Menu icon and surface switcher */}
+				{/* Left side: Menu icon */}
 				<div className="flex items-center gap-1">
 					<Button aria-label="Menu" size="icon" variant="ghost" onClick={noop}>
 						<MenuIcon label="" />
 					</Button>
-					<ChatSurfaceSwitcher currentSurface="sidebar" />
 				</div>
 
 				{/* Right side: Chat actions */}
@@ -62,7 +61,9 @@ export default function ChatHeader({ onClose, onNewChat, isStreaming, onStop }: 
 						>
 							<ShowMoreHorizontalIcon label="" />
 						</DropdownMenuTrigger>
-						<DropdownMenuContent align="end" sideOffset={4}>
+						<DropdownMenuContent align="end" sideOffset={4} positionerClassName="z-[600]">
+							<ChatSurfaceSwitcherItems currentSurface="sidebar" />
+							<DropdownMenuSeparator />
 							<DropdownMenuGroup>
 								{isStreaming ? (
 									<DropdownMenuItem

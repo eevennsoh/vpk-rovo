@@ -72,6 +72,12 @@ interface DropdownMenuContentProps
     > {
   portalled?: boolean;
   portalContainer?: MenuPrimitive.Portal.Props["container"];
+  /**
+   * Class merged onto the Positioner. Use to override the default `z-50`
+   * when the trigger lives inside an overlay with a higher stacking z-index
+   * (e.g. floating chat at z-[510], sidebar chat panel at z-90).
+   */
+  positionerClassName?: string;
 }
 
 function DropdownMenuContent({
@@ -82,12 +88,13 @@ function DropdownMenuContent({
   portalled = true,
   portalContainer,
   className,
+  positionerClassName,
   ...props
 }: Readonly<DropdownMenuContentProps>) {
   const inlinePortalContainerRef = React.useRef<HTMLSpanElement | null>(null);
   const content = (
     <MenuPrimitive.Positioner
-      className="z-50 outline-none"
+      className={cn("z-50 outline-none", positionerClassName)}
       align={align}
       alignOffset={alignOffset}
       side={side}
