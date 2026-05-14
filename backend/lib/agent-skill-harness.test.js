@@ -31,7 +31,7 @@ test("discovers vpk-html metadata from the repo-local skills root", async () => 
 	const skill = await harness.loadSkillMetadata("vpk-html");
 
 	assert.equal(skill.name, "vpk-html");
-	assert.match(skill.description, /asks to generate, create, or write an HTML document or report/u);
+	assert.match(skill.description, /asks to generate, create, or write an HTML artifact/u);
 	assert.equal(
 		path.relative(process.cwd(), skill.skillRoot).split(path.sep).join("/"),
 		".agents/skills/vpk-html",

@@ -17,7 +17,7 @@ const FLOATING_CHAT_SOURCE = fs.readFileSync(
 	"utf8",
 );
 
-test("shared chat prompt path auto-routes Work Item report intents for sidebar and floating chat", () => {
+test("shared chat prompt path auto-routes Work Item vpk-html artifact intents for sidebar and floating chat", () => {
 	assert.match(
 		ROVO_CHAT_CONTEXT_SOURCE,
 		/resolveWorkItemReportPromptOptions\(\s*trimmedPrompt,\s*mergeSendPromptOptions/u,
@@ -33,7 +33,7 @@ test("shared chat prompt path auto-routes Work Item report intents for sidebar a
 	assert.match(FLOATING_CHAT_SOURCE, /<ChatPanel/u);
 });
 
-test("backend Work Item report route uses the vpk-html runner and emits an html artifact result", () => {
+test("backend Work Item artifact route uses the vpk-html runner and emits an html artifact result", () => {
 	assert.match(
 		SERVER_SOURCE,
 		/const \{\s*generateWorkItemVpkHtmlReport,\s*\} = require\("\.\/lib\/work-item-vpk-html-report-generator"\);/u,
