@@ -27,6 +27,7 @@ export function MoreFieldsAccordion() {
 						aria-expanded={state.isMoreFieldsOpen}
 						size="icon"
 						variant="ghost"
+						className="aria-expanded:bg-transparent aria-expanded:text-text-subtle aria-expanded:border-transparent"
 						onClick={actions.toggleMoreFields}
 					>
 						{state.isMoreFieldsOpen ? <ChevronUpIcon label="" /> : <ChevronDownIcon label="" />}
