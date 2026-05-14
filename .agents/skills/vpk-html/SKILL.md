@@ -1,13 +1,14 @@
 ---
 name: vpk-html
-description: 'Use only when the user explicitly invokes /vpk-html. Render supplied material into an offline, single-file HTML artifact by filling a kami-architected template with the vpk-html Atlassian deck identity.'
+description: 'Render supplied material into an offline, single-file HTML artifact by filling a kami-architected template with the vpk-html Atlassian deck identity. Use when the user asks to generate, create, or write an HTML document or report, including Jira Work Item reports routed by a host agent.'
 ---
 
 # vpk-html
 
-Use this skill only when the user explicitly invokes `/vpk-html`. Opening a
-Markdown file, asking for HTML in natural language, or mentioning documents is
-not enough to activate it.
+Use this skill when the user asks to generate, create, or write an offline HTML
+document or report, or when a host agent has detected that intent and routes
+the turn to this skill. Casual mentions of HTML, documents, or reports are not
+enough; activation still requires a concrete artifact-generation request.
 
 **Architecture:** kami-style template editing. The skill ships 28 HTML
 templates at `assets/templates/`: 8 base document shells plus 20 Phase 2
