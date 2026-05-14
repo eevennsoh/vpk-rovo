@@ -33,6 +33,7 @@ test("symphony wrapper forwards one resolved custom logs root", () => {
 	const runtimeDir = path.join(tempDir, "runtime");
 	const customLogsRoot = path.join(tempDir, "custom-logs");
 	const argsLog = path.join(tempDir, "symphony-args.log");
+	const gitLog = path.join(tempDir, "git-args.log");
 
 	fs.mkdirSync(path.join(upstreamDir, ".git"), { recursive: true });
 	fs.mkdirSync(path.join(elixirDir, "bin"), { recursive: true });
@@ -40,6 +41,7 @@ test("symphony wrapper forwards one resolved custom logs root", () => {
 	writeExecutable(path.join(elixirDir, "bin", "symphony"), ["#!/usr/bin/env bash", "exit 0"]);
 	writeExecutable(path.join(binDir, "git"), [
 		"#!/usr/bin/env bash",
+		"printf '%s\\n' \"$*\" >> \"$SYMPHONY_FAKE_GIT_LOG\"",
 		"if [ \"$1\" = \"-C\" ]; then",
 		"\tshift 2",
 		"fi",
@@ -63,6 +65,7 @@ test("symphony wrapper forwards one resolved custom logs root", () => {
 			...process.env,
 			LINEAR_API_KEY: "lin_api_test",
 			PATH: `${binDir}:${process.env.PATH}`,
+			SYMPHONY_FAKE_GIT_LOG: gitLog,
 			SYMPHONY_FAKE_ARGS_LOG: argsLog,
 			SYMPHONY_GITHUB_REPO: "eevennsoh/VPK-rovo",
 			SYMPHONY_LINEAR_PROJECT_SLUG: "test-project",
@@ -89,6 +92,19 @@ test("symphony wrapper forwards one resolved custom logs root", () => {
 	);
 	assert.equal(fs.existsSync(customLogsRoot), true);
 	assert.equal(fs.existsSync(path.join(runtimeDir, "log")), false);
+
+	const cleanInvocations = fs
+		.readFileSync(gitLog, "utf8")
+		.trim()
+		.split("\n")
+		.filter((line) => line.includes(" clean -fdx "));
+	assert.equal(cleanInvocations.length, 2);
+	for (const invocation of cleanInvocations) {
+		assert.match(invocation, / -- \. /);
+		assert.match(invocation, /:!elixir\/deps/);
+		assert.match(invocation, /:!elixir\/_build/);
+		assert.match(invocation, /:!elixir\/bin/);
+	}
 
 	fs.rmSync(tempDir, { recursive: true, force: true });
 });

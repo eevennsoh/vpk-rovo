@@ -243,10 +243,17 @@ ensure_safe_upstream_dir() {
 		return 0
 	fi
 
-	echo "SYMPHONY_UPSTREAM_DIR already contains a different git repo: $dir" >&2
-	echo "Expected origin: $upstream_repo" >&2
-	echo "Current origin: ${current_origin:-<none>}" >&2
-	exit 1
+echo "SYMPHONY_UPSTREAM_DIR already contains a different git repo: $dir" >&2
+echo "Expected origin: $upstream_repo" >&2
+echo "Current origin: ${current_origin:-<none>}" >&2
+exit 1
+}
+
+clean_upstream_checkout() {
+	git -C "$upstream_dir" clean -fdx -- . \
+		":!elixir/deps" \
+		":!elixir/_build" \
+		":!elixir/bin"
 }
 
 export SYMPHONY_SOURCE_REPO_URL="${SYMPHONY_SOURCE_REPO_URL:-$(git -C "$repo_root" remote get-url origin)}"
@@ -282,11 +289,11 @@ else
 fi
 
 git -C "$upstream_dir" reset --hard
-git -C "$upstream_dir" clean -fdx
+clean_upstream_checkout
 git -C "$upstream_dir" fetch --depth 1 origin "$upstream_ref"
 git -C "$upstream_dir" checkout --detach FETCH_HEAD
 git -C "$upstream_dir" reset --hard FETCH_HEAD
-git -C "$upstream_dir" clean -fdx
+clean_upstream_checkout
 
 export SYMPHONY_ELIXIR_DIR="$upstream_dir/elixir"
 if [ ! -d "$SYMPHONY_ELIXIR_DIR" ]; then

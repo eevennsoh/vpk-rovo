@@ -62,9 +62,13 @@ SYMPHONY_RUNTIME_DIR=.tmp/symphony/runtime
 ```
 
 `SYMPHONY_UPSTREAM_DIR` is reset to the requested upstream ref on every launch
-with `git fetch`, `git checkout --detach FETCH_HEAD`, `git reset --hard`, and
-`git clean -fdx`. This intentionally discards local edits inside the cached
-upstream checkout.
+with `git fetch`, `git checkout --detach FETCH_HEAD`, `git reset --hard`, and a
+scoped `git clean -fdx`. This intentionally discards local edits inside the
+cached upstream checkout while preserving `elixir/deps`, `elixir/_build`, and
+`elixir/bin` so restarts do not re-fetch and recompile Hex dependencies.
+
+If the Elixir cache is already corrupted, remove those preserved directories
+from `SYMPHONY_UPSTREAM_DIR/elixir/` once and restart Symphony.
 
 `SYMPHONY_ENV_LOCAL_SOURCE` is optional. When set, the workspace hook copies it
 to each issue workspace as `.env.local`. The hook does not run `pnpm install`;
