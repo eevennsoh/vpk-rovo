@@ -180,6 +180,7 @@ function AdminSectionButton({
 	return (
 		<button
 			type="button"
+			aria-expanded={isExpanded}
 			className="flex min-h-8 w-full items-center gap-1 rounded-md px-2 py-1 text-left text-sm font-medium text-text-subtle transition-colors hover:bg-bg-neutral-subtle-hovered"
 			onClick={onClick}
 		>
@@ -219,6 +220,7 @@ function AdminNestedSection({
 		<div className="flex flex-col gap-0.5">
 			<button
 				type="button"
+				aria-expanded={isExpanded}
 				className="flex min-h-8 w-full items-center gap-1 rounded-md px-2 py-1 text-left text-sm text-text-subtle transition-colors hover:bg-bg-neutral-subtle-hovered"
 				onClick={() => setIsExpanded((expanded) => !expanded)}
 			>

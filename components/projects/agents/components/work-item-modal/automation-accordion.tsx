@@ -37,7 +37,13 @@ export function AutomationAccordion() {
 						<Heading size="small">Automation</Heading>
 						<span className="text-xs text-text-subtlest">Rule executions</span>
 					</div>
-					<Button aria-label={state.isAutomationOpen ? "Collapse" : "Expand"} size="icon" variant="ghost" onClick={actions.toggleAutomation}>
+					<Button
+						aria-label={state.isAutomationOpen ? "Collapse" : "Expand"}
+						aria-expanded={state.isAutomationOpen}
+						size="icon"
+						variant="ghost"
+						onClick={actions.toggleAutomation}
+					>
 						{state.isAutomationOpen ? <ChevronUpIcon label="" /> : <ChevronDownIcon label="" />}
 					</Button>
 				</div>

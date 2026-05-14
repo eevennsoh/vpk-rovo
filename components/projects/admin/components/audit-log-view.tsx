@@ -131,6 +131,7 @@ export function AuditLogView() {
 											<TableCell>
 												<Button
 													aria-label={isExpanded ? `Collapse ${log.action}` : `Expand ${log.action}`}
+													aria-expanded={isExpanded}
 													size="icon-sm"
 													variant="ghost"
 													onClick={() => toggleRow(log.id)}
