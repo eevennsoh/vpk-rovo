@@ -2,7 +2,7 @@
 
 import { startTransition, useEffect, useMemo, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import {
 	AlertDialog,
@@ -61,10 +61,8 @@ import DownloadIcon from "@atlaskit/icon/core/download";
 import BranchIcon from "@atlaskit/icon/core/branch";
 import PageIcon from "@atlaskit/icon/core/page";
 import RefreshIcon from "@atlaskit/icon/core/refresh";
-import SearchIcon from "@atlaskit/icon/core/search";
 import CopyIcon from "@atlaskit/icon/core/copy";
 import TableIcon from "@atlaskit/icon/core/table";
-import { ExternalLinkIcon } from "@/components/ui/vpk-icons";
 import { cn } from "@/lib/utils";
 
 const MemoryExplorerSigmaGraph = dynamic(
@@ -144,13 +142,6 @@ function formatProposalTone(status: string | null | undefined): "danger" | "neut
 	return "neutral";
 }
 
-function getNodeQuery(node: WikiMemoryExplorerNode): string {
-	if (node.kind === "canonical-memory") {
-		return node.scope === "profile" ? "Self" : "Work Context";
-	}
-	return node.title;
-}
-
 function getScopeDocument(
 	memoryDocuments: WikiCanonicalMemoryDocuments | null,
 	scope: string | null | undefined,
@@ -215,7 +206,6 @@ function createDownload(fileName: string, content: BlobPart, contentType: string
 }
 
 export function MemoriesSurfacePage() {
-	const router = useRouter();
 	const searchParams = useSearchParams();
 	const [explorer, setExplorer] = useState<WikiMemoryExplorerResponse | null>(null);
 	const [memoryDocuments, setMemoryDocuments] = useState<WikiCanonicalMemoryDocuments | null>(null);
@@ -859,13 +849,6 @@ export function MemoriesSurfacePage() {
 									</div>
 
 									<div className="flex flex-wrap gap-2">
-										<Button
-											variant="outline"
-											onClick={() => router.push(`/rovo/wiki?q=${encodeURIComponent(getNodeQuery(selectedNode))}`)}
-										>
-											<SearchIcon label="" />
-											Open in wiki
-										</Button>
 										<Button variant="outline" onClick={() => void refreshGeneratedArtifact("brief")}>
 											<PageIcon label="" />
 											Generate brief
@@ -945,14 +928,6 @@ export function MemoriesSurfacePage() {
 														Delete a block to prune the canonical memory page and regenerate compiled context.
 													</div>
 												</div>
-												<Button
-													variant="outline"
-													size="sm"
-													onClick={() => router.push(`/rovo/wiki?q=${encodeURIComponent(getNodeQuery(selectedNode))}`)}
-												>
-													<ExternalLinkIcon />
-													Open page
-												</Button>
 											</div>
 											{selectedCanonicalDocument.blocks.map((block) => (
 												<div key={block.id} className="rounded-2xl border border-border bg-background px-3 py-3">

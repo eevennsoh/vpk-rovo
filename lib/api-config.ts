@@ -40,7 +40,6 @@ export const API_ENDPOINTS = {
 	WIKI_STATUS: `${API_BASE_URL}/api/wiki/status`,
 	WIKI_MEMORIES: `${API_BASE_URL}/api/wiki/memories`,
 	WIKI_MEMORY_EXPLORER: `${API_BASE_URL}/api/wiki/memory-explorer`,
-	WIKI_SEARCH: `${API_BASE_URL}/api/wiki/search`,
 	WIKI_SYNC: `${API_BASE_URL}/api/wiki/sync`,
 	CHAT_THREADS: `${API_BASE_URL}/api/chat/threads`,
 	ROVO_APP_CHAT: `${API_BASE_URL}/api/rovo/chat`,
@@ -86,13 +85,6 @@ export const API_ENDPOINTS = {
 	},
 	skillsHubInspect: (identifier: string) =>
 		`${API_BASE_URL}/api/skills/hub?identifier=${encodeURIComponent(identifier)}`,
-	wikiSearch: (query: string, limit?: number) => {
-		const params = new URLSearchParams({ q: query });
-		if (typeof limit === "number") {
-			params.set("limit", String(limit));
-		}
-		return `${API_BASE_URL}/api/wiki/search?${params.toString()}`;
-	},
 	wikiMemoryBlock: (scope: string, blockId: string) =>
 		`${API_BASE_URL}/api/wiki/memories/${encodeURIComponent(scope)}/blocks/${encodeURIComponent(blockId)}`,
 	wikiMemoryProposal: (proposalId: string) =>

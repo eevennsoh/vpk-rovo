@@ -23,7 +23,7 @@ interface RovoAppSidebarSurfacePreviewInput {
 	selected: boolean;
 }
 
-type ControlPlaneSurfaceLabel = "Jobs" | "Memories" | "Skills" | "Wiki" | "Settings";
+type ControlPlaneSurfaceLabel = "Jobs" | "Memories" | "Skills" | "Settings";
 
 function getJobsPreview(): Pick<RovoAppSidebarSurfacePreview, "rows" | "footerLabel" | "footerValue"> {
 	const rows = INITIAL_CONTROL_PLANE_JOBS.map((job) => ({
@@ -81,18 +81,6 @@ function getSettingsPreview(): Pick<RovoAppSidebarSurfacePreview, "rows" | "foot
 	};
 }
 
-function getWikiPreview(): Pick<RovoAppSidebarSurfacePreview, "rows" | "footerLabel" | "footerValue"> {
-	return {
-		rows: [
-			{ label: "Search", value: "Hybrid qmd" },
-			{ label: "Corpus", value: "Canonical pages" },
-			{ label: "Sync", value: "Auto + manual" },
-		],
-		footerLabel: "Focus",
-		footerValue: "Wiki knowledge",
-	};
-}
-
 const SURFACE_PREVIEW_BUILDERS: Record<
 	ControlPlaneSurfaceLabel,
 	() => Pick<RovoAppSidebarSurfacePreview, "rows" | "footerLabel" | "footerValue">
@@ -100,7 +88,6 @@ const SURFACE_PREVIEW_BUILDERS: Record<
 	Jobs: getJobsPreview,
 	Memories: getMemoriesPreview,
 	Skills: getSkillsPreview,
-	Wiki: getWikiPreview,
 	Settings: getSettingsPreview,
 };
 
