@@ -15,6 +15,7 @@ interface RightNavigationProps {
 	product: Product;
 	windowWidth: number;
 	hideRovoAction?: boolean;
+	isChatOpen?: boolean;
 	onToggleChat: () => void;
 	onToggleTheme: () => void;
 }
@@ -23,6 +24,7 @@ export function RightNavigation({
 	product,
 	windowWidth,
 	hideRovoAction = false,
+	isChatOpen = false,
 	onToggleChat,
 	onToggleTheme,
 }: Readonly<RightNavigationProps>) {
@@ -41,12 +43,24 @@ export function RightNavigation({
 			{product !== "rovo" && !hideRovoAction ? (
 				<>
 					{windowWidth >= 768 ? (
-						<Button variant="outline" className="text-text-subtle" onClick={onToggleChat}>
+						<Button
+							variant="outline"
+							className="text-text-subtle"
+							aria-pressed={isChatOpen}
+							onClick={onToggleChat}
+						>
 							<Image src="/1p/rovo.svg" alt="" width={16} height={16} data-icon="inline-start" />
 							Ask Rovo
 						</Button>
 					) : (
-						<Button aria-label="Ask Rovo" size="icon" variant="outline" className="text-text-subtle" onClick={onToggleChat}>
+						<Button
+							aria-label="Ask Rovo"
+							size="icon"
+							variant="outline"
+							className="text-text-subtle"
+							aria-pressed={isChatOpen}
+							onClick={onToggleChat}
+						>
 							<Image src="/1p/rovo.svg" alt="" width={16} height={16} />
 						</Button>
 					)}
