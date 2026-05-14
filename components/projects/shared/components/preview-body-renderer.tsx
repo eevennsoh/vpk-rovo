@@ -285,6 +285,53 @@ function AppUrlPreview({
 	);
 }
 
+export function HtmlPreviewFrame({
+	className,
+	html,
+	title,
+}: Readonly<{
+	className?: string;
+	html: string;
+	title: string;
+}>): ReactNode {
+	return (
+		<iframe
+			title={title}
+			className={cn("h-full min-h-[520px] w-full flex-1 border-0 bg-surface", className)}
+			sandbox=""
+			srcDoc={html}
+		/>
+	);
+}
+
+function HtmlPreview({
+	html,
+	summary,
+	surface,
+	title,
+}: Readonly<{
+	html: string;
+	summary?: string;
+	surface: PreviewSurface;
+	title: string;
+}>): ReactNode {
+	if (surface === "card") {
+		return (
+			<div className="rounded-md">
+				<p className="text-left text-sm leading-6 text-text">
+					{summary?.trim() || "HTML report ready to open"}
+				</p>
+			</div>
+		);
+	}
+
+	return (
+		<div className="flex h-full min-h-[520px] w-full flex-col overflow-hidden rounded-md border border-border bg-surface">
+			<HtmlPreviewFrame html={html} title={title} />
+		</div>
+	);
+}
+
 function JsonRenderPreview({
 	body,
 	cardSpecOverride,
@@ -403,6 +450,17 @@ export function PreviewBodyRenderer({
 				summary={body.summary ?? summary}
 				surface={surface}
 				url={body.url}
+			/>
+		);
+	}
+
+	if (body.kind === "html") {
+		return (
+			<HtmlPreview
+				html={body.html}
+				summary={body.summary ?? summary}
+				surface={surface}
+				title={title}
 			/>
 		);
 	}

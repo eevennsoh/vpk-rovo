@@ -42,6 +42,20 @@ test("inferRovoAppArtifactKindFromContent upgrades HTML output to code", () => {
 	);
 });
 
+test("inferRovoAppArtifactKindFromRequest treats HTML reports as html artifacts", () => {
+	assert.equal(
+		inferRovoAppArtifactKindFromRequest("Make an HTML report for this work item"),
+		"html",
+	);
+});
+
+test("inferRovoAppArtifactKindFromContent preserves HTML report artifacts", () => {
+	assert.equal(
+		inferRovoAppArtifactKindFromContent("<!DOCTYPE html><html><head><title>Report</title></head><body></body></html>", "html"),
+		"html",
+	);
+});
+
 test("inferRovoAppArtifactKindFromContent keeps markdown tables as sheets", () => {
 	assert.equal(
 		inferRovoAppArtifactKindFromContent("| Fruit | Color |\n| --- | --- |\n| Apple | Red |", "text"),

@@ -3,7 +3,7 @@ import type { RovoMessageMetadata, RovoUIMessage } from "@/lib/rovo-ui-messages"
 import { createId } from "@/lib/utils";
 
 export type RovoAppVisibility = "private" | "public";
-export type RovoAppDocumentKind = "text" | "code" | "image" | "sheet" | "react" | "excalidraw" | "browser";
+export type RovoAppDocumentKind = "text" | "code" | "html" | "image" | "sheet" | "react" | "excalidraw" | "browser";
 export type ArtifactMode = "preview" | "edit";
 export type VoteValue = "up" | "down";
 export type RovoAppRunStatus = "queued" | "streaming" | "background";

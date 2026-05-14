@@ -120,6 +120,10 @@ test("labels excalidraw artifacts as diagrams", () => {
 	assert.equal(getRovoAppArtifactKindLabel("excalidraw"), "Diagram");
 });
 
+test("labels html artifacts as HTML reports", () => {
+	assert.equal(getRovoAppArtifactKindLabel("html"), "HTML report");
+});
+
 test("labels plan preview documents as plans", () => {
 	assert.equal(
 		getRovoAppArtifactTypeLabel({

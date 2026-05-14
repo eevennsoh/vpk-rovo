@@ -98,3 +98,26 @@ test("buildRovoAppHermesContextDescription merges pinned and auto-selected skill
 	assert.match(description, /<skill id="research\/llm-wiki">/);
 	assert.match(description, /<skill id="research\/arxiv">/);
 });
+
+test("buildRovoAppHermesContextDescription loads one-segment repo-local skill ids", async () => {
+	const description = await buildRovoAppHermesContextDescription({
+		getCompiledContextImpl: async () => ({}),
+		getSkillImpl: async (category, name) => {
+			assert.equal(category, "local");
+			assert.equal(name, "vpk-html");
+			return {
+				content: "# vpk-html\n\nOffline HTML artifact contract.",
+				description: "Render supplied material into an offline HTML artifact.",
+				id: "vpk-html",
+				name: "vpk-html",
+				source: "external",
+				title: "vpk-html",
+			};
+		},
+		listSkillsImpl: async () => [],
+		autoSelectedSkillIds: ["vpk-html"],
+	});
+
+	assert.match(description, /<skill id="vpk-html">/);
+	assert.match(description, /Offline HTML artifact contract\./);
+});

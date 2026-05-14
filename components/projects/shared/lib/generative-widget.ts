@@ -104,6 +104,11 @@ export type PreviewBody =
 		language?: string;
 	}
 	| {
+		kind: "html";
+		html: string;
+		summary?: string;
+	}
+	| {
 		kind: "app-url";
 		url: string;
 		summary?: string;
@@ -1282,6 +1287,20 @@ function parseExplicitPreviewBody(value: unknown): PreviewBody | null {
 		};
 	}
 
+	if (kind === "html") {
+		const html = getNonEmptyString(body.html ?? body.content);
+		if (!html) {
+			return null;
+		}
+
+		const summary = getNonEmptyString(body.summary);
+		return {
+			kind: "html",
+			html,
+			...(summary ? { summary } : {}),
+		};
+	}
+
 	if (kind === "app-url") {
 		const url = getNonEmptyString(body.url);
 		if (!url) {
@@ -1538,6 +1557,10 @@ function resolveGenuiContentType(widget: ParsedGenerativeWidget): GenerativeCont
 
 		if (widget.body.kind === "app-url") {
 			return "ui";
+		}
+
+		if (widget.body.kind === "html") {
+			return "text";
 		}
 
 		return "other";
@@ -1981,6 +2004,10 @@ function resolveTitle(
 		return clipText(widget.body.summary, 72);
 	}
 
+	if (widget.body.kind === "html" && widget.body.summary) {
+		return clipText(widget.body.summary, 72);
+	}
+
 	return CONTENT_TYPE_FALLBACK_TITLES[contentType] ?? "Generated content";
 }
 
@@ -2240,6 +2267,10 @@ function resolveDescription(
 	}
 
 	if (widget.body.kind === "app-url" && widget.body.summary) {
+		return clipText(widget.body.summary, 140);
+	}
+
+	if (widget.body.kind === "html" && widget.body.summary) {
 		return clipText(widget.body.summary, 140);
 	}
 

@@ -19,6 +19,14 @@ import {
 } from "@/lib/rovo-ui-messages";
 import { shouldSendExplicitRovoDevCancel } from "@/lib/rovodev-cancel-strategy";
 import { mergeRovoContextDescriptions } from "@/lib/rovo-context";
+import type { RovoAppHermesContext } from "@/lib/rovo-app-types";
+import {
+	buildWorkItemReportRequestContext,
+	hasActiveWorkItemContext,
+	isWorkItemReportIntent,
+	mergeHermesSkillIds,
+	VPK_HTML_SKILL_ID,
+} from "@/lib/work-item-report-intent";
 import {
 	isRateLimitError,
 	isChatInProgressError,
@@ -37,6 +45,7 @@ import { DefaultChatTransport } from "ai";
 export interface SendPromptOptions {
 	backendPreference?: "rovodev" | "ai-gateway";
 	contextDescription?: string;
+	hermesContext?: RovoAppHermesContext;
 	userName?: string;
 	clientTimeZone?: string;
 	messageMetadata?: RovoMessageMetadata;
@@ -94,6 +103,7 @@ function buildSendMessageBody(
 	return {
 		backendPreference: options?.backendPreference,
 		contextDescription: options?.contextDescription,
+		hermesContext: options?.hermesContext,
 		userName: options?.userName,
 		clientTimeZone: resolveClientTimeZone(options?.clientTimeZone),
 		clarification: options?.clarification,
@@ -120,6 +130,85 @@ function mergePromptOptionObject<T extends object>(
 	} as T;
 }
 
+function mergeHermesContext(
+	defaultValue: RovoAppHermesContext | undefined,
+	value: RovoAppHermesContext | undefined
+): RovoAppHermesContext | undefined {
+	if (!defaultValue && !value) {
+		return undefined;
+	}
+
+	return {
+		selectedSkillIds: Array.from(new Set([
+			...(defaultValue?.selectedSkillIds ?? []),
+			...(value?.selectedSkillIds ?? []),
+		])),
+		...(defaultValue?.autoSelectedSkillIds || value?.autoSelectedSkillIds
+			? {
+					autoSelectedSkillIds: Array.from(new Set([
+						...(defaultValue?.autoSelectedSkillIds ?? []),
+						...(value?.autoSelectedSkillIds ?? []),
+					])),
+				}
+			: {}),
+		...(defaultValue?.pendingDraftIds || value?.pendingDraftIds
+			? {
+					pendingDraftIds: Array.from(new Set([
+						...(defaultValue?.pendingDraftIds ?? []),
+						...(value?.pendingDraftIds ?? []),
+					])),
+				}
+			: {}),
+		...(defaultValue?.recentMemoryProposalIds || value?.recentMemoryProposalIds
+			? {
+					recentMemoryProposalIds: Array.from(new Set([
+						...(defaultValue?.recentMemoryProposalIds ?? []),
+						...(value?.recentMemoryProposalIds ?? []),
+					])),
+				}
+			: {}),
+	};
+}
+
+function resolveWorkItemReportPromptOptions(
+	prompt: string,
+	options?: SendPromptOptions
+): SendPromptOptions | undefined {
+	if (!isWorkItemReportIntent(prompt)) {
+		return options;
+	}
+
+	const reportContextBlock = buildWorkItemReportRequestContext({
+		contextDescription: options?.contextDescription,
+		promptText: prompt,
+		skillId: VPK_HTML_SKILL_ID,
+	});
+	if (!reportContextBlock) {
+		return options;
+	}
+
+	const shouldLoadSkill = hasActiveWorkItemContext(options?.contextDescription);
+
+	return {
+		...(options ?? {}),
+		contextDescription: mergeRovoContextDescriptions(
+			options?.contextDescription,
+			reportContextBlock
+		),
+		...(shouldLoadSkill
+			? {
+					hermesContext: {
+						...(options?.hermesContext ?? {}),
+						selectedSkillIds: mergeHermesSkillIds(
+							options?.hermesContext?.selectedSkillIds,
+							VPK_HTML_SKILL_ID
+						),
+					},
+				}
+			: {}),
+	};
+}
+
 function mergeSendPromptOptions(
 	defaultOptions?: SendPromptOptions,
 	options?: SendPromptOptions
@@ -141,6 +230,10 @@ function mergeSendPromptOptions(
 		smartGeneration: mergePromptOptionObject(
 			defaultOptions.smartGeneration,
 			options.smartGeneration
+		),
+		hermesContext: mergeHermesContext(
+			defaultOptions.hermesContext,
+			options.hermesContext
 		),
 	};
 }
@@ -1183,9 +1276,12 @@ export function RovoChatProvider({
 			if (!trimmedPrompt) {
 				return;
 			}
-			const resolvedOptions = mergeSendPromptOptions(
-				defaultPromptOptions,
-				options
+			const resolvedOptions = resolveWorkItemReportPromptOptions(
+				trimmedPrompt,
+				mergeSendPromptOptions(
+					defaultPromptOptions,
+					options
+				)
 			);
 
 			const shouldStartSubmitPending =

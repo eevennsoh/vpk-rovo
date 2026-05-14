@@ -30,6 +30,7 @@ function normalizeDocumentKind(value, fallbackKind = "text") {
 	return (
 		value === "code" ||
 		value === "excalidraw" ||
+		value === "html" ||
 		value === "image" ||
 		value === "sheet" ||
 		value === "text" ||

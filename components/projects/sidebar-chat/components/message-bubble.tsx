@@ -1,11 +1,15 @@
 "use client";
 
 import type { ReactNode } from "react";
-import type { RovoRenderableUIMessage } from "@/lib/rovo-ui-messages";
+import {
+	getMessageArtifactResult,
+	type RovoRenderableUIMessage,
+} from "@/lib/rovo-ui-messages";
 import { ThreadMessage } from "@/components/projects/shared/thread-message";
 import { GenerativeWidgetCard } from "@/components/projects/shared/components/generative-widget-card";
 import type { GenerativeCardAnimationProps } from "@/components/projects/shared/components/generative-widget-card";
 import type { GenerativeWidgetPrimaryActionPayload } from "@/components/projects/shared/lib/generative-widget";
+import { ArtifactResultCard } from "./artifact-result-card";
 
 interface MessageBubbleProps {
 	message: RovoRenderableUIMessage;
@@ -28,6 +32,7 @@ export default function MessageBubble({
 	generativeCardAnimation,
 	onWidgetPrimaryAction,
 }: Readonly<MessageBubbleProps>): ReactNode {
+	const artifactResult = getMessageArtifactResult(message);
 	const renderWidget = enableSmartWidgets
 		? (widget: { type: string; data: unknown }) => (
 				<GenerativeWidgetCard
@@ -50,6 +55,7 @@ export default function MessageBubble({
 			{showThinkingStatusSection ? <ThreadMessage.ThinkingStatus /> : null}
 			<ThreadMessage.Widget position="before-content" />
 			<ThreadMessage.Content />
+			{artifactResult ? <ArtifactResultCard artifact={artifactResult} /> : null}
 			<ThreadMessage.Feedback />
 			<ThreadMessage.Tools />
 			<ThreadMessage.ToolFirstWarning />

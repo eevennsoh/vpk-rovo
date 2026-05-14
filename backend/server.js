@@ -142,6 +142,12 @@ const {
 	inferRovoAppArtifactKindFromContent,
 } = require("./lib/rovo-app-artifact-kind");
 const {
+	WORK_ITEM_REPORT_REQUEST_START,
+	buildWorkItemReportRequestContext,
+	mergeHermesSkillIds,
+	resolveWorkItemReportRequest,
+} = require("../lib/work-item-report-intent");
+const {
 	resolveRovoAppActiveArtifact,
 } = require("./lib/rovo-app-artifact-routing");
 const {
@@ -2063,6 +2069,12 @@ function buildRovoAppArtifactSystemPrompt({
 
 	const contentRule = normalizedKind === "code"
 		? "Return only the completed code artifact. Do not explain the code before or after it."
+		: normalizedKind === "html"
+			? [
+					"Return only a complete, self-contained HTML document. Do not wrap it in markdown fences or add commentary.",
+					"Follow the loaded /vpk-html skill contract: offline single-file HTML, inline CSS, no remote dependencies, no unfilled placeholders, and no invented facts.",
+					"Use an Atlassian editorial report style suitable for a Jira Work Item status/readout report. Include a compact information-gaps section when facts are missing.",
+				].join(" ")
 		: normalizedKind === "sheet"
 			? "Return only the table or structured sheet content in markdown. Do not add commentary."
 			: "Return only the finished artifact content. Do not add prefatory commentary, assistant framing, or analysis.";
@@ -2076,7 +2088,9 @@ function buildRovoAppArtifactSystemPrompt({
 		mode === "update"
 			? "When the user changes the artifact title, framing, or subject, regenerate the full artifact so the new version fully matches that request. Do not only rename the heading."
 			: null,
-		"If essential details are missing, make the most reasonable default assumptions and continue instead of asking follow-up questions.",
+		normalizedKind === "html"
+			? "If essential details are missing from the Work Item context, mark them as information gaps instead of making assumptions."
+			: "If essential details are missing, make the most reasonable default assumptions and continue instead of asking follow-up questions.",
 		"Be concise when the request is narrow, and fully detailed when the request explicitly asks for a complete draft.",
 	]
 		.filter((value) => typeof value === "string" && value.length > 0)
@@ -2091,6 +2105,7 @@ async function generateRovoAppArtifactText({
 	conversationHistory,
 	contextDescription,
 	provider,
+	backendPreference = "rovodev",
 	signal,
 	onTextDelta,
 }) {
@@ -2112,9 +2127,11 @@ async function generateRovoAppArtifactText({
 	const maxOutputTokens =
 		kind === "code"
 			? 3200
-			: kind === "sheet"
-				? 2200
-				: kind === "excalidraw"
+			: kind === "html"
+				? 6000
+				: kind === "sheet"
+					? 2200
+					: kind === "excalidraw"
 					? 3200
 					: 1800;
 	if (kind === "excalidraw") {
@@ -2146,6 +2163,7 @@ async function generateRovoAppArtifactText({
 			maxOutputTokens,
 			temperature: 0.35,
 			provider,
+			backendPreference,
 			signal,
 			onTextDelta,
 		});
@@ -2157,6 +2175,11 @@ async function generateRovoAppArtifactText({
 			error instanceof Error ? error.message : String(error);
 		if (!/pending deferred tool request/i.test(errorMessage)) {
 			throw error;
+		}
+
+		if (backendPreference === "ai-gateway") {
+			console.warn("[FUTURE-CHAT] AI Gateway artifact generation hit pending deferred tool request; retrying once.");
+			return streamArtifactText();
 		}
 
 		console.warn("[FUTURE-CHAT] Artifact generation hit pending deferred tool request; clearing RovoDev chat state and retrying once.");
@@ -2295,6 +2318,7 @@ async function resolveRovoAppArtifactDecision({
 function streamRovoAppArtifactToolResponse({
 	artifactAction,
 	artifactDocument,
+	artifactBackendPreference,
 	cancelStreaming,
 	changeLabel,
 	contextDescription,
@@ -2371,6 +2395,7 @@ function streamRovoAppArtifactToolResponse({
 						conversationHistory,
 						contextDescription,
 						provider,
+						backendPreference: artifactBackendPreference,
 						signal,
 						onTextDelta: (delta) => {
 							writer.write({
@@ -2452,7 +2477,9 @@ function streamRovoAppArtifactToolResponse({
 
 			const textId = `rovo-app-artifact-summary-${Date.now()}`;
 			const summaryText =
-				artifactAction === "updateDocument"
+				persistedArtifactDocument.kind === "html" && artifactAction !== "updateDocument"
+					? `Created report: ${persistedArtifactDocument.title}.`
+					: artifactAction === "updateDocument"
 					? `Updated artifact "${persistedArtifactDocument.title}".`
 					: `Created artifact "${persistedArtifactDocument.title}".`;
 			writer.write({ type: "text-start", id: textId });
@@ -2502,10 +2529,41 @@ function streamRovoAppArtifactToolResponse({
 	return createUIMessageStreamResponse({ stream });
 }
 
+async function pipeWebResponseToExpressResponse(webResponse, res) {
+	res.status(webResponse.status);
+	webResponse.headers.forEach((value, key) => {
+		if (key.toLowerCase() !== "content-length") {
+			res.setHeader(key, value);
+		}
+	});
+
+	if (!webResponse.body) {
+		res.end();
+		return;
+	}
+
+	const reader = webResponse.body.getReader();
+	try {
+		while (true) {
+			const { done, value } = await reader.read();
+			if (done) {
+				break;
+			}
+			if (value) {
+				res.write(Buffer.from(value));
+			}
+		}
+	} finally {
+		reader.releaseLock();
+		res.end();
+	}
+}
+
 async function handleRovoAppArtifactToolRequest({
 	activeArtifact,
 	activeDocument,
 	artifactSteering,
+	artifactBackendPreference,
 	contextDescription,
 	requestOrigin,
 	requestBody,
@@ -2668,6 +2726,7 @@ async function handleRovoAppArtifactToolRequest({
 	const response = streamRovoAppArtifactToolResponse({
 		artifactAction: decision.action,
 		artifactDocument,
+		artifactBackendPreference,
 		cancelStreaming: decision.cancelStreaming,
 		changeLabel,
 		contextDescription: resolvedContextDescription,
@@ -3112,17 +3171,17 @@ async function executeRovoAppManagedRun(run) {
 	const signal = run.abortController.signal;
 	const delegatedMessageId = getNonEmptyString(requestBody.delegatedMessageId);
 	const conversationSummary = getNonEmptyString(requestBody.conversationSummary);
-		const requestMessages = Array.isArray(requestBody.messages)
-			? [...requestBody.messages]
-			: [];
-		const threadForSession = threadId ? await rovoAppThreadManager.getThread(threadId) : null;
-		const requestHermesContext =
-			requestBody.hermesContext && typeof requestBody.hermesContext === "object"
-				? requestBody.hermesContext
-				: null;
-		if (threadForSession?.sessionId) {
-			requestBody.sessionId = threadForSession.sessionId;
-			requestBody.sessionMode = threadForSession.sessionMode ?? "persistent";
+	const requestMessages = Array.isArray(requestBody.messages)
+		? [...requestBody.messages]
+		: [];
+	const threadForSession = threadId ? await rovoAppThreadManager.getThread(threadId) : null;
+	const requestHermesContext =
+		requestBody.hermesContext && typeof requestBody.hermesContext === "object"
+			? requestBody.hermesContext
+			: null;
+	if (threadForSession?.sessionId) {
+		requestBody.sessionId = threadForSession.sessionId;
+		requestBody.sessionMode = threadForSession.sessionMode ?? "persistent";
 	}
 	const delegatedThread =
 		threadId && delegatedMessageId
@@ -3181,19 +3240,23 @@ async function executeRovoAppManagedRun(run) {
 		typeof requestBody.artifactSteering === "object"
 			? requestBody.artifactSteering
 			: null;
-		const { message: latestUserMessage, conversationHistory: rawConversationHistory } =
-			mapUiMessagesToConversation(requestMessages);
-		const compressedConversation = compressUiConversationHistory(rawConversationHistory, {
-			thresholdChars: 80_000,
-			tailCount: 8,
-		});
-		const conversationHistory = compressedConversation.conversationHistory;
-		if (compressedConversation.compressed) {
-			console.info(
-				`[HERMES] Compressed managed conversation history: ${compressedConversation.originalLength} → ${compressedConversation.length} messages`,
-			);
-		}
-		const baseContextDescription = getNonEmptyString(requestBody.contextDescription);
+	const { message: latestUserMessage, conversationHistory: rawConversationHistory } =
+		mapUiMessagesToConversation(requestMessages);
+	const compressedConversation = compressUiConversationHistory(rawConversationHistory, {
+		thresholdChars: 80_000,
+		tailCount: 8,
+	});
+	const conversationHistory = compressedConversation.conversationHistory;
+	if (compressedConversation.compressed) {
+		console.info(
+			`[HERMES] Compressed managed conversation history: ${compressedConversation.originalLength} → ${compressedConversation.length} messages`,
+		);
+	}
+	const baseContextDescription = getNonEmptyString(requestBody.contextDescription);
+	let workItemReportRequest = resolveWorkItemReportRequest({
+		contextDescription: baseContextDescription,
+		promptText: latestUserMessage,
+	});
 	const selectedHermesSkillIds = Array.isArray(requestHermesContext?.selectedSkillIds)
 		? requestHermesContext.selectedSkillIds
 		: Array.isArray(threadForSession?.hermesContext?.selectedSkillIds)
@@ -3202,6 +3265,11 @@ async function executeRovoAppManagedRun(run) {
 	let autoSelectedHermesSkillIds = [];
 	try {
 		const installedHermesSkills = await listHermesSkills();
+		workItemReportRequest = resolveWorkItemReportRequest({
+			contextDescription: baseContextDescription,
+			promptText: latestUserMessage,
+			skills: installedHermesSkills,
+		});
 		const rankedCandidates = rankHermesSkillCandidates({
 			promptText: latestUserMessage,
 			selectedSkillIds: selectedHermesSkillIds,
@@ -3212,7 +3280,7 @@ async function executeRovoAppManagedRun(run) {
 			selectedSkillIds: selectedHermesSkillIds,
 			skills: installedHermesSkills,
 		});
-		if (shouldDisambiguateRankedCandidates(rankedCandidates)) {
+		if (!workItemReportRequest.isIntent && shouldDisambiguateRankedCandidates(rankedCandidates)) {
 			try {
 				autoSelectedHermesSkillIds = await resolveAmbiguousAutoSelectedSkillIds({
 					promptText: latestUserMessage,
@@ -3223,8 +3291,20 @@ async function executeRovoAppManagedRun(run) {
 				console.warn("[HERMES] Failed to disambiguate auto-selected Hermes skills:", error instanceof Error ? error.message : String(error));
 			}
 		}
+		if (workItemReportRequest.shouldLoadSkill) {
+			autoSelectedHermesSkillIds = mergeHermesSkillIds(
+				autoSelectedHermesSkillIds,
+				workItemReportRequest.skillId,
+			);
+		}
 	} catch (error) {
 		console.warn("[HERMES] Failed to auto-select Hermes skills:", error instanceof Error ? error.message : String(error));
+		if (workItemReportRequest.shouldLoadSkill) {
+			autoSelectedHermesSkillIds = mergeHermesSkillIds(
+				autoSelectedHermesSkillIds,
+				workItemReportRequest.skillId,
+			);
+		}
 	}
 	const delegationContextDescription = conversationSummary
 		? `[Voice delegation summary]\n${conversationSummary}`
@@ -3236,7 +3316,7 @@ async function executeRovoAppManagedRun(run) {
 			selectedSkillIds: selectedHermesSkillIds,
 		});
 	} catch (error) {
-		console.warn("[HERMES] Failed to build Hermes context for RovoDev chat:", error instanceof Error ? error.message : String(error));
+		console.warn("[HERMES] Failed to build Hermes context for Rovo chat:", error instanceof Error ? error.message : String(error));
 	}
 	let wikiQueryContextDescription = null;
 	try {
@@ -3255,6 +3335,12 @@ async function executeRovoAppManagedRun(run) {
 			console.warn("[HERMES] Failed to persist resolved Hermes thread context:", error instanceof Error ? error.message : String(error));
 		});
 	}
+	if (workItemReportRequest.shouldCreateArtifact) {
+		requestBody.futureArtifactMode = "create";
+		requestBody.futureArtifactTitle = workItemReportRequest.title;
+		requestBody.futureArtifactKind = "html";
+	}
+
 	const streamingArtifact =
 		requestBody.streamingArtifact &&
 		typeof requestBody.streamingArtifact === "object" &&
@@ -3267,14 +3353,24 @@ async function executeRovoAppManagedRun(run) {
 			}
 			: null;
 	const resolvedProvider = getNonEmptyString(requestBody.provider);
-		const effectiveBaseContextDescription = [
-			delegationContextDescription,
-			hermesContextDescription,
-			wikiQueryContextDescription,
-			baseContextDescription,
-		]
-			.filter(Boolean)
-			.join("\n\n");
+	const workItemReportContextDescription =
+		workItemReportRequest.contextBlock ||
+		(baseContextDescription?.includes(WORK_ITEM_REPORT_REQUEST_START)
+			? null
+			: buildWorkItemReportRequestContext({
+					contextDescription: baseContextDescription,
+					promptText: latestUserMessage,
+					skillId: workItemReportRequest.skillId,
+				}));
+	const effectiveBaseContextDescription = [
+		delegationContextDescription,
+		hermesContextDescription,
+		wikiQueryContextDescription,
+		baseContextDescription,
+		workItemReportContextDescription,
+	]
+		.filter(Boolean)
+		.join("\n\n");
 
 	delete requestBody.activeDocumentId;
 	delete requestBody.artifactContext;
@@ -3319,7 +3415,35 @@ async function executeRovoAppManagedRun(run) {
 		}
 	}
 
-	if (requestIsPlanMode || autoPlanTriggered) {
+	if (workItemReportRequest.isIntent && !workItemReportRequest.hasContext) {
+		routingDecision = {
+			intent: "chat",
+			presentation: "text",
+			confidence: 1,
+			reason: "work_item_report_missing_context",
+			origin: requestOrigin,
+		};
+		stageTrace.mark("route_decision_resolved", {
+			stageMs: 0,
+			intent: "chat",
+			confidence: 1,
+			reason: "work_item_report_missing_context",
+		});
+	} else if (workItemReportRequest.shouldCreateArtifact) {
+		routingDecision = {
+			intent: "artifact_create",
+			presentation: "artifact_preview",
+			confidence: 1,
+			reason: "work_item_report_intent",
+			origin: requestOrigin,
+		};
+		stageTrace.mark("route_decision_resolved", {
+			stageMs: 0,
+			intent: "artifact_create",
+			confidence: 1,
+			reason: "work_item_report_intent",
+		});
+	} else if (requestIsPlanMode || autoPlanTriggered) {
 		routingDecision = {
 			intent: "chat",
 			presentation: "text",
@@ -3397,6 +3521,7 @@ async function executeRovoAppManagedRun(run) {
 			activeArtifact,
 			activeDocument,
 			artifactSteering,
+			artifactBackendPreference: workItemReportRequest.artifactBackendPreference || undefined,
 			contextDescription: effectiveBaseContextDescription || null,
 			requestOrigin,
 			requestBody,
@@ -5041,6 +5166,7 @@ async function handleChatSdkRequest(req, res) {
 			deferredToolResponse: rawDeferredToolResponse,
 			creationMode,
 			smartGeneration: rawSmartGeneration,
+			hermesContext: rawHermesContext,
 			hasQueuedPrompts: rawHasQueuedPrompts,
 			origin: rawOrigin,
 			genuiHint: rawGenuiHint,
@@ -5257,6 +5383,136 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 
 		if (!latestUserMessage) {
 			return res.status(400).json({ error: "A user message is required" });
+		}
+
+		let workItemReportRequest = resolveWorkItemReportRequest({
+			contextDescription,
+			promptText: latestUserMessage,
+		});
+		if (workItemReportRequest.isIntent) {
+			try {
+				const installedHermesSkills = await listHermesSkills();
+				workItemReportRequest = resolveWorkItemReportRequest({
+					contextDescription,
+					promptText: latestUserMessage,
+					skills: installedHermesSkills,
+				});
+			} catch (error) {
+				console.warn(
+					"[CHAT-SDK] Failed to resolve installed Hermes skills for Work Item report:",
+					error instanceof Error ? error.message : String(error),
+				);
+			}
+		}
+
+		if (workItemReportRequest.isIntent && !workItemReportRequest.hasContext) {
+			const stream = createUIMessageStream({
+				execute: async ({ writer }) => {
+					const textId = `work-item-report-missing-context-${Date.now()}`;
+					writer.write({ type: "text-start", id: textId });
+					writer.write({
+						type: "text-delta",
+						id: textId,
+						delta:
+							"I can create the HTML report once a Jira Work Item is open or included in the chat context. Open the Work Item, then ask me to generate the report again.",
+					});
+					writer.write({ type: "text-end", id: textId });
+					writer.write(createRouteDecisionPart({
+						intent: "chat",
+						origin: requestOrigin,
+						reason: "work_item_report_missing_context",
+					}));
+					writer.write({
+						type: "data-turn-complete",
+						data: { timestamp: new Date().toISOString() },
+					});
+				},
+				onError: (error) =>
+					error instanceof Error
+						? error.message
+						: "Failed to resolve Work Item report context",
+			});
+			pipeUIMessageStreamToResponse({ response: res, stream });
+			return;
+		}
+
+		if (workItemReportRequest.shouldCreateArtifact) {
+			const reportThreadId = threadId || createRovoAppThreadId();
+			const requestHermesContext =
+				rawHermesContext && typeof rawHermesContext === "object"
+					? rawHermesContext
+					: null;
+			const selectedReportSkillIds = workItemReportRequest.shouldLoadSkill
+				? mergeHermesSkillIds(
+						requestHermesContext?.selectedSkillIds,
+						workItemReportRequest.skillId,
+					)
+				: requestHermesContext?.selectedSkillIds;
+			const workItemReportContextDescription =
+				workItemReportRequest.contextBlock ||
+				(contextDescription?.includes(WORK_ITEM_REPORT_REQUEST_START)
+					? null
+					: buildWorkItemReportRequestContext({
+							contextDescription,
+							promptText: latestUserMessage,
+							skillId: workItemReportRequest.skillId,
+						}));
+			let reportHermesContextDescription = null;
+			try {
+				reportHermesContextDescription = await buildRovoAppHermesContextDescription({
+					selectedSkillIds: selectedReportSkillIds,
+				});
+			} catch (error) {
+				console.warn(
+					"[CHAT-SDK] Failed to build Hermes context for Work Item report:",
+					error instanceof Error ? error.message : String(error),
+				);
+			}
+			const reportContextDescription = [
+				reportHermesContextDescription,
+				contextDescription,
+				workItemReportContextDescription,
+			]
+				.filter(Boolean)
+				.join("\n\n");
+			const { abortController, cleanup } = createAbortControllerFromRequest(req, res, {
+				onAbort: () => {
+					console.log("[CHAT-SDK] Client disconnected, aborting Work Item report artifact stream");
+				},
+			});
+			try {
+				const handled = await handleRovoAppArtifactToolRequest({
+					activeArtifact: null,
+					activeDocument: null,
+					artifactSteering: null,
+					artifactBackendPreference: workItemReportRequest.artifactBackendPreference || "ai-gateway",
+					contextDescription: reportContextDescription || null,
+					requestOrigin,
+					requestBody: {
+						...(req.body || {}),
+						id: reportThreadId,
+						messages,
+						provider,
+						futureArtifactMode: "create",
+						futureArtifactTitle: workItemReportRequest.title,
+						futureArtifactKind: "html",
+					},
+					signal: abortController.signal,
+					streamingArtifact: null,
+					threadId: reportThreadId,
+				});
+
+				if (handled?.handled && handled.response) {
+					stageTrace.mark("chat_sdk_report_artifact_route_handled", {
+						threadId: reportThreadId,
+						skillId: workItemReportRequest.skillId,
+					});
+					await pipeWebResponseToExpressResponse(handled.response, res);
+					return;
+				}
+			} finally {
+				cleanup();
+			}
 		}
 
 		const shouldRejectExpiredClarification = shouldRejectExpiredDeferredClarification({

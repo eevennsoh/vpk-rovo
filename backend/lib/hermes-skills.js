@@ -228,11 +228,13 @@ async function walkSkillDirectory(baseDirectory, source, currentDirectory, skill
 async function collectSkills() {
 	const homeDir = getHermesHomeDir();
 	const skillsRoot = path.join(homeDir, "skills");
+	const repoSkillsRoot = path.join(__dirname, "..", "..", ".agents", "skills");
 	const vendoredSkillsRoot = getVendoredHermesSkillsDir();
 	const configText = await readHermesConfigText();
 	const skillConfig = parseHermesSkillsConfig(configText);
 	const allSkillRoots = [
 		{ directory: skillsRoot, source: "local" },
+		{ directory: repoSkillsRoot, source: "external" },
 		...skillConfig.externalDirs.map((directory) => ({
 			directory,
 			source: "external",

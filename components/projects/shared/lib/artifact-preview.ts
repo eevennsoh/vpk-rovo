@@ -3,7 +3,7 @@ import type {
 	PreviewExcalidrawScene,
 } from "@/components/projects/shared/lib/generative-widget";
 
-export type PreviewArtifactKind = "text" | "code" | "image" | "sheet" | "react" | "excalidraw" | "browser";
+export type PreviewArtifactKind = "text" | "code" | "html" | "image" | "sheet" | "react" | "excalidraw" | "browser";
 
 function parseExcalidrawSceneString(content: string) {
 	const trimmedContent = content.trim();
@@ -40,6 +40,14 @@ export function buildArtifactPreviewBody({
 		return {
 			kind: "app-url",
 			url: content,
+			...(summary?.trim() ? { summary: summary.trim() } : {}),
+		};
+	}
+
+	if (kind === "html") {
+		return {
+			kind: "html",
+			html: content,
 			...(summary?.trim() ? { summary: summary.trim() } : {}),
 		};
 	}
