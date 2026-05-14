@@ -19,6 +19,13 @@ interface AppLayoutProps {
 	embedded?: boolean;
 	hideFloatingRovo?: boolean;
 	hideRovoAction?: boolean;
+	/**
+	 * When true, render the sidebar chat flush against the surrounding shell:
+	 * no outer padding, no border radius, and only a single dividing border on
+	 * the left edge. Used by routes where the chat butts up against the top
+	 * nav and viewport edges (e.g. /agents, /jira).
+	 */
+	chatPanelFlush?: boolean;
 }
 
 /**
@@ -77,6 +84,7 @@ export default function AppLayout({
 	embedded = false,
 	hideFloatingRovo,
 	hideRovoAction = false,
+	chatPanelFlush = false,
 }: Readonly<AppLayoutProps>) {
 	const isEmbedded = useIsEmbedded(embedded);
 	const { isVisible } = useSidebar();
@@ -136,7 +144,7 @@ export default function AppLayout({
 							right: 0,
 							bottom: 0,
 							width: `${chatPanelWidth}px`,
-							padding: token("space.100"),
+							padding: chatPanelFlush ? 0 : token("space.100"),
 							pointerEvents: isSidebarChatActive ? "auto" : "none",
 							transform: isSidebarChatActive ? "translateX(0)" : `translateX(${chatPanelWidth}px)`,
 							transition: "transform var(--duration-medium) var(--ease-in-out)",
@@ -144,7 +152,18 @@ export default function AppLayout({
 							zIndex: 90,
 						}}
 					>
-						<ChatPanel onClose={toggleChat} />
+						<ChatPanel
+							onClose={toggleChat}
+							containerStyle={
+								chatPanelFlush
+									? {
+											borderRadius: 0,
+											border: "none",
+											borderLeft: `1px solid ${token("color.border")}`,
+										}
+									: undefined
+							}
+						/>
 					</div>
 				) : null}
 			</div>
