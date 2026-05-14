@@ -5,14 +5,14 @@ alwaysApply: true
 
 # Browser Screenshot Path
 
-When taking screenshots with `/agent-browser` (`npx agent-browser screenshot`), always specify the output path inside `/Users/esoh/Documents/Labs/VPK-rovodev/output/`. Choose a descriptive filename and subfolder structure that fits the context.
+When taking screenshots with `/agent-browser` (`npx agent-browser screenshot`), always specify the output path inside this repo's ignored `output/agent-browser/` directory. Choose a descriptive filename and subfolder structure that fits the context.
 
 **Never** omit the filename — the default may save screenshots into the current working directory, scattering files across the workspace root.
 
 Examples:
 
 ```bash
-npx agent-browser screenshot /Users/esoh/Documents/Labs/VPK-rovodev/output/plan-light.png
-npx agent-browser screenshot /Users/esoh/Documents/Labs/VPK-rovodev/output/dark-mode-check.png
-npx agent-browser screenshot /Users/esoh/Documents/Labs/VPK-rovodev/output/screenshot-2026-02-19T12-00-00.png
+npx agent-browser screenshot output/agent-browser/plan-light.png
+npx agent-browser screenshot output/agent-browser/dark-mode-check.png
+npx agent-browser screenshot output/agent-browser/screenshot-2026-02-19T12-00-00.png
 ```

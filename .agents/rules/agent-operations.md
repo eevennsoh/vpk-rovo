@@ -18,7 +18,7 @@ Primary locations:
 
 Provider mirrors:
 
-- `.cursor/`, `.claude/`, `.codex/`, `.codelassian/` all symlink to `.agents/`
+- `.cursor/`, `.claude/`, `.codex/`, and `.rovodev/` contain provider-specific config plus symlinks back to `.agents/`
 
 Skill types:
 
@@ -28,12 +28,14 @@ Skill types:
 Current VPK skills (see Appendix for details):
 
 - `/vpk-setup`
+- `/vpk-build`
 - `/vpk-deploy`
 - `/vpk-design`
+- `/vpk-html`
 - `/vpk-tidy`
 - `/vpk-component`
 - `/vpk-component-ext`
-- Symphony worker skills: `/linear`, `/commit`, `/pull`, `/push`, `/land`, `/debug`
+- `/vpk-symphony`
 
 > **Note:** Slash commands (e.g., `/vpk-deploy`) are Cursor IDE features. In other environments, reference the skill definitions in `.agents/skills/` directly.
 
