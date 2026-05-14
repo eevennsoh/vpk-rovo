@@ -14,13 +14,14 @@ SPEC.loader.exec_module(land_watch)
 
 HEAD_SHA = "4753d46d6b095d080dcf0390ac24fec095cc61cd"
 STALE_SHA = "d2893daae56167041e76800e4e3336575bf9cbe1"
+HEAD_CREATED_AT = land_watch.parse_time("2026-05-12T11:09:00Z")
 
 
-def codex_comment(body, *, commit_id=None):
+def codex_comment(body, *, commit_id=None, created_at="2026-05-12T11:08:00Z"):
     comment = {
         "user": {"login": "chatgpt-codex-connector[bot]"},
         "body": body,
-        "created_at": "2026-05-12T11:08:00Z",
+        "created_at": created_at,
     }
     if commit_id is not None:
         comment["commit_id"] = commit_id
@@ -70,6 +71,21 @@ class LandWatchReviewFreshnessTests(unittest.TestCase):
         filtered = land_watch.filter_codex_comments(
             [stale, matching],
             None,
+            HEAD_SHA,
+        )
+
+        self.assertEqual([matching], filtered)
+
+    def test_stale_no_commit_codex_comments_before_head_floor_are_ignored(self):
+        stale = codex_comment("Stale no-commit finding")
+        matching = codex_comment(
+            "Current no-commit finding",
+            created_at="2026-05-12T11:10:00Z",
+        )
+
+        filtered = land_watch.filter_codex_comments(
+            [stale, matching],
+            land_watch.latest_time(None, HEAD_CREATED_AT),
             HEAD_SHA,
         )
 
