@@ -21,7 +21,7 @@ Repo-owned files:
 Required:
 
 ```bash
-LINEAR_API_KEY=lin_api_<your-personal-api-key>
+LINEAR_API_KEY=<linear-personal-api-key>
 SYMPHONY_LINEAR_PROJECT_SLUG=<linear-project-slug>
 ```
 
@@ -44,8 +44,9 @@ evidence. When it is unavailable, Symphony still starts and workers should skip
 browser media capture, record that limitation in the workpad, and continue with
 the best non-browser validation available for the issue.
 
-`LINEAR_API_KEY` can live in `.env.local` or the shell environment. The project
-slug comes from the Linear project URL.
+`LINEAR_API_KEY` can live in ignored `.env.local` or the shell environment. Never
+commit a real Linear key to `.env.local.example`, docs, issues, or comments. The
+project slug comes from the Linear project URL.
 
 Optional overrides:
 
