@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useWindowWidth } from "@/components/hooks/use-window-width";
 import { useClickOutside } from "@/components/hooks/use-click-outside";
 import { useSidebar } from "@/app/contexts/context-sidebar";
+import { useRovoChat } from "@/app/contexts";
 import { useTheme } from "@/components/utils/theme-wrapper";
 import { token } from "@/lib/tokens";
 
@@ -15,6 +16,7 @@ export function useTopNavigation() {
 	const [isSearchFocused, setIsSearchFocused] = useState(false);
 	const windowWidth = useWindowWidth();
 	const { isVisible, toggleSidebar, setHovered } = useSidebar();
+	const { toggleChat } = useRovoChat();
 	const { setTheme, actualTheme } = useTheme();
 	const searchContainerRef = useRef<HTMLDivElement>(null);
 	const searchPanelRef = useRef<HTMLDivElement>(null);
@@ -26,10 +28,6 @@ export function useTopNavigation() {
 	const toggleTheme = useCallback(() => {
 		setTheme(actualTheme === "light" ? "dark" : "light");
 	}, [setTheme, actualTheme]);
-
-	const toggleChat = useCallback(() => {
-		router.push("/rovo");
-	}, [router]);
 
 	const handleNavigate = useCallback(
 		(path: string) => {

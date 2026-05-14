@@ -1,8 +1,7 @@
 "use client";
 
-import React from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRovoChat } from "@/app/contexts";
 import { token } from "@/lib/tokens";
 
 type Product = "admin" | "agents" | "home" | "jira" | "confluence" | "rovo" | "search";
@@ -16,9 +15,9 @@ export default function FloatingRovoButton({
 	product,
 	embedded = false,
 }: Readonly<FloatingRovoButtonProps>) {
-	const router = useRouter();
+	const { isOpen, toggleChat } = useRovoChat();
 
-	if (embedded || product === "rovo") {
+	if (embedded || product === "rovo" || isOpen) {
 		return null;
 	}
 
@@ -75,7 +74,7 @@ export default function FloatingRovoButton({
 				}}
 			/>
 
-			<button className="floating-rovo-button" type="button" onClick={() => router.push("/rovo")} aria-label="Open Rovo">
+			<button className="floating-rovo-button" type="button" onClick={toggleChat} aria-label="Open Rovo">
 				<Image src="/1p/rovo.svg" alt="" width={24} height={24} aria-hidden />
 			</button>
 		</>
