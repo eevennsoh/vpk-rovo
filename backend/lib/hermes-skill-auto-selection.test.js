@@ -3,7 +3,9 @@ const test = require("node:test");
 
 const {
 	autoSelectHermesSkillIds,
+	rankHermesSkillCandidates,
 	scoreSkillForPrompt,
+	selectHermesSkillIdsFromRankedCandidates,
 } = require("./hermes-skill-auto-selection");
 
 test("scoreSkillForPrompt strongly prefers exact skill name and title matches", () => {
@@ -81,4 +83,39 @@ test("autoSelectHermesSkillIds returns the highest-scoring enabled skills", () =
 	});
 
 	assert.deepEqual(selected, ["research/arxiv", "research/llm-wiki"]);
+});
+
+test("selectHermesSkillIdsFromRankedCandidates preserves auto-selection ordering without reranking", () => {
+	const input = {
+		promptText: "Please use arxiv and llm wiki research workflows for this paper search.",
+		skills: [
+			{
+				id: "research/llm-wiki",
+				name: "llm-wiki",
+				title: "Karpathy's LLM Wiki",
+				description: "Persistent research wiki.",
+				enabled: true,
+			},
+			{
+				id: "research/arxiv",
+				name: "arxiv",
+				title: "Arxiv Search",
+				description: "Find research papers.",
+				enabled: true,
+			},
+			{
+				id: "creative/p5js",
+				name: "p5js",
+				title: "p5.js Production Pipeline",
+				description: "Creative coding.",
+				enabled: true,
+			},
+		],
+	};
+	const rankedCandidates = rankHermesSkillCandidates(input);
+
+	assert.deepEqual(
+		selectHermesSkillIdsFromRankedCandidates(rankedCandidates),
+		autoSelectHermesSkillIds(input),
+	);
 });

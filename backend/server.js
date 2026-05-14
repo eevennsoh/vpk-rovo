@@ -83,8 +83,8 @@ const { createCheckpointManager } = require("./lib/hermes-checkpoints");
 const { createSkillsHubClient } = require("./lib/hermes-skills-hub");
 const { createHermesSkillDraftManager } = require("./lib/hermes-skill-drafts");
 const {
-	autoSelectHermesSkillIds,
 	rankHermesSkillCandidates,
+	selectHermesSkillIdsFromRankedCandidates,
 	shouldDisambiguateRankedCandidates,
 } = require("./lib/hermes-skill-auto-selection");
 const { registerHermesSkillDraftRoutes } = require("./lib/hermes-skill-draft-routes");
@@ -3275,11 +3275,7 @@ async function executeRovoAppManagedRun(run) {
 			selectedSkillIds: selectedHermesSkillIds,
 			skills: installedHermesSkills,
 		});
-		autoSelectedHermesSkillIds = autoSelectHermesSkillIds({
-			promptText: latestUserMessage,
-			selectedSkillIds: selectedHermesSkillIds,
-			skills: installedHermesSkills,
-		});
+		autoSelectedHermesSkillIds = selectHermesSkillIdsFromRankedCandidates(rankedCandidates);
 		if (!workItemReportRequest.isIntent && shouldDisambiguateRankedCandidates(rankedCandidates)) {
 			try {
 				autoSelectedHermesSkillIds = await resolveAmbiguousAutoSelectedSkillIds({

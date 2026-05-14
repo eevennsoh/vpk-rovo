@@ -69,6 +69,13 @@ function rankHermesSkillCandidates({
 		.sort((left, right) => right.score - left.score || left.skill.id.localeCompare(right.skill.id));
 }
 
+function selectHermesSkillIdsFromRankedCandidates(rankedCandidates, maxSkills = 3) {
+	return (Array.isArray(rankedCandidates) ? rankedCandidates : [])
+		.slice(0, maxSkills)
+		.map((item) => item?.skill?.id)
+		.filter((skillId) => typeof skillId === "string" && skillId.trim().length > 0);
+}
+
 function shouldDisambiguateRankedCandidates(rankedCandidates, maxSkills = 3) {
 	if (!Array.isArray(rankedCandidates) || rankedCandidates.length <= 1) {
 		return false;
@@ -92,19 +99,19 @@ function autoSelectHermesSkillIds({
 	maxSkills = 3,
 	minScore = 2,
 }) {
-	return rankHermesSkillCandidates({
+	const rankedCandidates = rankHermesSkillCandidates({
 		promptText,
 		selectedSkillIds,
 		skills,
 		minScore,
-	})
-		.slice(0, maxSkills)
-		.map((item) => item.skill.id);
+	});
+	return selectHermesSkillIdsFromRankedCandidates(rankedCandidates, maxSkills);
 }
 
 module.exports = {
 	autoSelectHermesSkillIds,
 	rankHermesSkillCandidates,
 	scoreSkillForPrompt,
+	selectHermesSkillIdsFromRankedCandidates,
 	shouldDisambiguateRankedCandidates,
 };
