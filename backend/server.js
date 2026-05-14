@@ -1011,6 +1011,7 @@ console.log("[STARTUP] Middleware configured");
 
 let buildUserMessage;
 let buildQuestionCardSkipNotification;
+let buildAIGatewaySystemPrompt;
 try {
 	let config;
 	try {
@@ -1022,12 +1023,17 @@ try {
 	}
 	buildUserMessage = config.buildUserMessage;
 	buildQuestionCardSkipNotification = config.buildQuestionCardSkipNotification;
+	buildAIGatewaySystemPrompt =
+		typeof config.buildAIGatewaySystemPrompt === "function"
+			? config.buildAIGatewaySystemPrompt
+			: ({ runtimeContext } = {}) => runtimeContext || "";
 	console.log("[STARTUP] rovo config loaded successfully");
 } catch (error) {
 	console.warn("[STARTUP] rovo config failed to load:", error.message);
 	console.warn("[STARTUP] Using fallback functions - config did not load!");
 	buildUserMessage = (message) => message;
 	buildQuestionCardSkipNotification = () => "[Question Card Dismissed]\nThe user skipped the clarification questions.\n[End Question Card Dismissed]";
+	buildAIGatewaySystemPrompt = ({ runtimeContext } = {}) => runtimeContext || "";
 }
 
 /**
@@ -5027,6 +5033,7 @@ async function handleChatSdkRequest(req, res) {
 			backendPreference: rawBackendPreference,
 			contextDescription: rawContextDescription,
 			clientTimeZone: rawClientTimeZone,
+			userName: rawUserName,
 			provider,
 			model: rawModel,
 			clarification: rawClarification,
@@ -7289,7 +7296,11 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 				role: message.type === "assistant" ? "assistant" : "user",
 				content: message.content,
 			}));
-			const gatewaySystem = getNonEmptyString(effectiveContextWithPortBinding);
+			const gatewaySystem = buildAIGatewaySystemPrompt({
+				runtimeContext: getNonEmptyString(effectiveContextWithPortBinding),
+				userName: getNonEmptyString(rawUserName),
+				clientTimeZone,
+			});
 
 			stageTrace.mark("preprocessing_complete", {
 				stageMs: Date.now() - chatSdkEntryStartedAtMs,

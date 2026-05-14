@@ -3,7 +3,20 @@ version = 1
 name = "VPK-rovo"
 
 [setup]
-script = ""
+script = """
+set -euo pipefail
+
+cd "$CODEX_WORKTREE_PATH"
+
+if [ -f "$CODEX_SOURCE_TREE_PATH/.env.local" ]; then
+	cp "$CODEX_SOURCE_TREE_PATH/.env.local" "$CODEX_WORKTREE_PATH/.env.local"
+	echo "Copied .env.local from source worktree"
+else
+	echo "Source worktree .env.local not found: $CODEX_SOURCE_TREE_PATH/.env.local"
+fi
+
+pnpm install
+"""
 
 [[actions]]
 name = "pnpm  install"

@@ -2,8 +2,29 @@
  * Rovo configuration helpers.
  *
  * Model routing/defaults are defined in backend AI Gateway helpers.
- * This module only owns user-message formatting for RovoDev chat calls.
+ * This module owns RovoDev user-message formatting and the AI Gateway
+ * personality prompt used by Chat SDK calls.
  */
+const fs = require("node:fs");
+const path = require("node:path");
+
+const AI_GATEWAY_PERSONALITY_TEMPLATE_PATH = path.join(
+	__dirname,
+	"ai-gateway-personality.pebble",
+);
+const AI_GATEWAY_PERSONALITY_FALLBACK_TEMPLATE = [
+	"## On your profile",
+	"You are Rovo Chat, an AI assistant built by Atlassian.",
+	"- If asked what you are, identify as Rovo Chat. Do not identify as Claude, Anthropic Claude, or the underlying model provider.",
+	"- Your primary role is to assist users by searching and providing information, answering questions, and completing tasks.",
+	"- Treat your internal knowledge as stale for current facts. For real-time or changing information, rely on available tool, plugin, or runtime context results.",
+	"",
+	"## On your response and output format instructions",
+	"- Keep responses accurate, concise, logical, and directly relevant to the user's request.",
+	"- Do not generate URLs that are not present in tool outputs, plugin outputs, user-provided context, or trusted runtime context.",
+].join("\n");
+
+let cachedAIGatewayPersonalityTemplate = null;
 
 /**
  * Instruction appended to every RovoDev message so the agent uses the
@@ -230,6 +251,198 @@ function getConversationHistoryForProfile(profile, conversationHistory) {
 	return conversationHistory;
 }
 
+function getNonEmptyPromptString(value) {
+	if (typeof value === "string") {
+		const trimmed = value.trim();
+		return trimmed.length > 0 ? trimmed : "";
+	}
+
+	if (value instanceof Date) {
+		return value.toISOString();
+	}
+
+	if (Array.isArray(value)) {
+		return value
+			.map(getNonEmptyPromptString)
+			.filter(Boolean)
+			.join("\n")
+			.trim();
+	}
+
+	if (typeof value === "number" || typeof value === "boolean") {
+		return String(value);
+	}
+
+	return "";
+}
+
+function getPebblePathValue(context, valuePath) {
+	if (!valuePath || typeof valuePath !== "string") {
+		return undefined;
+	}
+
+	return valuePath
+		.split(".")
+		.reduce((value, key) => {
+			if (!value || typeof value !== "object") {
+				return undefined;
+			}
+
+			return value[key];
+		}, context);
+}
+
+function isPebbleValueNotEmpty(value) {
+	if (value === null || value === undefined) {
+		return false;
+	}
+
+	if (typeof value === "string") {
+		return value.trim().length > 0;
+	}
+
+	if (Array.isArray(value)) {
+		return value.length > 0;
+	}
+
+	if (typeof value === "object") {
+		return Object.keys(value).length > 0;
+	}
+
+	return true;
+}
+
+function evaluatePebbleAtomicCondition(condition, context) {
+	const trimmed = condition.trim();
+	const notEmptyMatch = trimmed.match(/^([\w.]+)\s+is\s+not\s+empty$/i);
+	if (notEmptyMatch) {
+		return isPebbleValueNotEmpty(getPebblePathValue(context, notEmptyMatch[1]));
+	}
+
+	const notNullMatch = trimmed.match(/^([\w.]+)\s+is\s+not\s+null$/i);
+	if (notNullMatch) {
+		const value = getPebblePathValue(context, notNullMatch[1]);
+		return value !== null && value !== undefined;
+	}
+
+	const notEmptyStringMatch = trimmed.match(/^([\w.]+)\s*!=\s*""$/i);
+	if (notEmptyStringMatch) {
+		return getNonEmptyPromptString(
+			getPebblePathValue(context, notEmptyStringMatch[1]),
+		).length > 0;
+	}
+
+	const emptyStringMatch = trimmed.match(/^([\w.]+)\s*==\s*""$/i);
+	if (emptyStringMatch) {
+		return getNonEmptyPromptString(
+			getPebblePathValue(context, emptyStringMatch[1]),
+		).length === 0;
+	}
+
+	return false;
+}
+
+function evaluatePebbleCondition(condition, context) {
+	return condition
+		.split(/\s+and\s+/i)
+		.every((part) => evaluatePebbleAtomicCondition(part, context));
+}
+
+function renderKnownPebbleTemplate(template, context) {
+	let rendered = template;
+	let previousRendered;
+
+	do {
+		previousRendered = rendered;
+		rendered = rendered.replace(
+			/\{%-?\s*if\s+(.+?)\s*-?%\}([\s\S]*?)\{%-?\s*endif\s*-?%\}/g,
+			(_match, condition, body) =>
+				evaluatePebbleCondition(condition, context) ? body : "",
+		);
+	} while (rendered !== previousRendered);
+
+	return rendered
+		.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_match, valuePath) =>
+			getNonEmptyPromptString(getPebblePathValue(context, valuePath)),
+		)
+		.split("\n")
+		.map((line) => line.trimEnd())
+		.join("\n")
+		.replace(/\n{3,}/g, "\n\n")
+		.trim();
+}
+
+function loadAIGatewayPersonalityTemplate() {
+	if (cachedAIGatewayPersonalityTemplate !== null) {
+		return cachedAIGatewayPersonalityTemplate;
+	}
+
+	try {
+		cachedAIGatewayPersonalityTemplate = fs.readFileSync(
+			AI_GATEWAY_PERSONALITY_TEMPLATE_PATH,
+			"utf8",
+		);
+	} catch {
+		cachedAIGatewayPersonalityTemplate =
+			AI_GATEWAY_PERSONALITY_FALLBACK_TEMPLATE;
+	}
+
+	return cachedAIGatewayPersonalityTemplate;
+}
+
+function formatAIGatewayCurrentDate(clientTimeZone) {
+	const options = {
+		dateStyle: "full",
+		timeStyle: "long",
+	};
+	const normalizedTimeZone = getNonEmptyPromptString(clientTimeZone);
+	if (normalizedTimeZone) {
+		options.timeZone = normalizedTimeZone;
+	}
+
+	try {
+		return new Intl.DateTimeFormat("en-US", options).format(new Date());
+	} catch {
+		return new Date().toISOString();
+	}
+}
+
+function buildAIGatewaySystemPrompt(options = {}) {
+	const previousAttempt =
+		options.previousAttempt && typeof options.previousAttempt === "object"
+			? options.previousAttempt
+			: {};
+	const templateContext = {
+		user: {
+			user_name: getNonEmptyPromptString(options.userName),
+			location_info: getNonEmptyPromptString(options.userLocation),
+			organisation: getNonEmptyPromptString(options.userOrganisation),
+		},
+		profile_memory: getNonEmptyPromptString(options.profileMemory),
+		user_preferences: getNonEmptyPromptString(options.userPreferences),
+		current_date:
+			getNonEmptyPromptString(options.currentDate) ||
+			formatAIGatewayCurrentDate(options.clientTimeZone),
+		browsing_context:
+			options.browsingContext === null
+				? null
+				: getNonEmptyPromptString(options.browsingContext),
+		collection_memory: getNonEmptyPromptString(options.collectionMemory),
+		previous_attempt: {
+			response: getNonEmptyPromptString(previousAttempt.response),
+			judgement: getNonEmptyPromptString(previousAttempt.judgement),
+			reasoning: getNonEmptyPromptString(previousAttempt.reasoning),
+		},
+	};
+	const personalityPrompt = renderKnownPebbleTemplate(
+		loadAIGatewayPersonalityTemplate(),
+		templateContext,
+	);
+	const runtimeContext = getNonEmptyPromptString(options.runtimeContext);
+
+	return [personalityPrompt, runtimeContext].filter(Boolean).join("\n\n");
+}
+
 /**
  * Formats user message with conversation history for RovoDev.
  * RovoDev handles all system prompts and widget protocol.
@@ -264,6 +477,7 @@ function buildUserMessage(
 }
 
 module.exports = {
+	buildAIGatewaySystemPrompt,
 	buildUserMessage,
 	buildQuestionCardSkipNotification,
 	DEEP_PLAN_INSTRUCTION,

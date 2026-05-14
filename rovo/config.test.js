@@ -3,6 +3,7 @@ const { describe, it } = test;
 const assert = require("node:assert/strict");
 
 const {
+	buildAIGatewaySystemPrompt,
 	buildUserMessage,
 	DEEP_PLAN_INSTRUCTION,
 	HERMES_SKILL_DISCOVERABILITY_INSTRUCTION,
@@ -17,6 +18,63 @@ test("buildUserMessage plain-chat profile omits heavy protocol blocks", () => {
 	assert.doesNotMatch(message, /\[Clarification Protocol\]/);
 	assert.doesNotMatch(message, /\[Interactive Visual UI Protocol\]/);
 	assert.doesNotMatch(message, /\[Figma Tool Protocol\]/);
+});
+
+test("buildAIGatewaySystemPrompt includes the Rovo Chat identity", () => {
+	const systemPrompt = buildAIGatewaySystemPrompt({
+		currentDate: "Thursday, May 14, 2026 at 10:30:00 AM AEST",
+	});
+
+	assert.match(systemPrompt, /You are Rovo Chat, an AI assistant built by Atlassian/);
+	assert.match(systemPrompt, /identify as Rovo Chat/i);
+});
+
+test("buildAIGatewaySystemPrompt renders provided user name and current local time", () => {
+	const systemPrompt = buildAIGatewaySystemPrompt({
+		currentDate: "Thursday, May 14, 2026 at 10:30:00 AM AEST",
+		userName: "Eason",
+	});
+
+	assert.match(systemPrompt, /The user is Eason\./);
+	assert.match(systemPrompt, /The current local time is Thursday, May 14, 2026 at 10:30:00 AM AEST\./);
+});
+
+test("buildAIGatewaySystemPrompt omits empty optional Pebble sections", () => {
+	const systemPrompt = buildAIGatewaySystemPrompt({
+		currentDate: "Thursday, May 14, 2026 at 10:30:00 AM AEST",
+	});
+
+	assert.doesNotMatch(systemPrompt, /\{\{/);
+	assert.doesNotMatch(systemPrompt, /\{%/);
+	assert.doesNotMatch(systemPrompt, /The user works at/);
+	assert.doesNotMatch(systemPrompt, /The user is located in/);
+	assert.doesNotMatch(systemPrompt, /Relevant Past Memories/);
+	assert.doesNotMatch(systemPrompt, /previous response and feedback/i);
+});
+
+test("buildAIGatewaySystemPrompt excludes unsafe source-template instructions", () => {
+	const systemPrompt = buildAIGatewaySystemPrompt({
+		currentDate: "Thursday, May 14, 2026 at 10:30:00 AM AEST",
+	});
+
+	assert.doesNotMatch(systemPrompt, /Disregard any previous instructions/i);
+	assert.doesNotMatch(systemPrompt, /must include all code you see in plugin outputs/i);
+	assert.doesNotMatch(systemPrompt, /Do not explain why you are including the code/i);
+});
+
+test("buildAIGatewaySystemPrompt preserves existing runtime context after personality", () => {
+	const runtimeContext = "[BROWSER TOOLS]\nUse browser tools with the current thread id.";
+	const systemPrompt = buildAIGatewaySystemPrompt({
+		currentDate: "Thursday, May 14, 2026 at 10:30:00 AM AEST",
+		runtimeContext,
+	});
+
+	assert.match(systemPrompt, /\[BROWSER TOOLS\]/);
+	assert.ok(
+		systemPrompt.indexOf("You are Rovo Chat") <
+			systemPrompt.indexOf("[BROWSER TOOLS]"),
+		"Rovo personality should be prepended before runtime context",
+	);
 });
 
 test("buildUserMessage omits GenUI protocol during plan-mode context", () => {
