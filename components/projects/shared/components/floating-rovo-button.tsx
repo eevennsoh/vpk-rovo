@@ -4,7 +4,7 @@ import React from "react";
 import { useRouter } from "next/navigation";
 import { token } from "@/lib/tokens";
 
-type Product = "home" | "jira" | "confluence" | "rovo" | "search";
+type Product = "admin" | "home" | "jira" | "confluence" | "rovo" | "search";
 
 interface FloatingRovoButtonProps {
 	product: Product;

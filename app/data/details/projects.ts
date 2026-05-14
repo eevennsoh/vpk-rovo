@@ -1,14 +1,14 @@
 import type { ComponentDetail } from "@/app/data/component-detail-types";
 
 export const PROJECT_DETAILS: Record<string, ComponentDetail> = {
-	"confluence": {
-		description: "A document editing interface inspired by Confluence with rich text editing, bubble menus, and collaboration features.",
+	"admin": {
+		description: "An Atlassian Administration surface with organization settings, users, billing, audit logs, Rovo settings, and security controls.",
 		demoLayout: {
 			previewHeight: "fixed",
 		},
 	},
-	"contacts": {
-		description: "A contacts management surface with searchable, sortable, status-filterable table and a sliding detail sheet for each entry.",
+	"confluence": {
+		description: "A document editing interface inspired by Confluence with rich text editing, bubble menus, and collaboration features.",
 		demoLayout: {
 			previewHeight: "fixed",
 		},

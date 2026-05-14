@@ -7,13 +7,14 @@ import Sidebar from "@/components/blocks/product-sidebar/page";
 import FloatingRovoButton from "@/components/projects/shared/components/floating-rovo-button";
 import { useSidebar } from "@/app/contexts/context-sidebar";
 
-type Product = "home" | "jira" | "confluence" | "rovo" | "search";
+type Product = "admin" | "home" | "jira" | "confluence" | "rovo" | "search";
 
 interface AppLayoutProps {
 	product: Product;
 	children: React.ReactNode;
 	embedded?: boolean;
 	hideFloatingRovo?: boolean;
+	hideRovoAction?: boolean;
 }
 
 /**
@@ -71,6 +72,7 @@ export default function AppLayout({
 	children,
 	embedded = false,
 	hideFloatingRovo,
+	hideRovoAction = false,
 }: Readonly<AppLayoutProps>) {
 	const isEmbedded = useIsEmbedded(embedded);
 	const { isVisible } = useSidebar();
@@ -89,7 +91,7 @@ export default function AppLayout({
 	return (
 		<div style={shellStyle}>
 			<div data-shell-chrome="">
-				{!isEmbedded ? <TopNavigation product={product} /> : null}
+				{!isEmbedded ? <TopNavigation product={product} hideRovoAction={hideRovoAction} /> : null}
 			</div>
 
 			<div style={{ display: "flex", height: shellContentHeight, position: "relative" }}>
@@ -112,7 +114,7 @@ export default function AppLayout({
 
 			{/* Floating Rovo Button */}
 			<div data-shell-chrome="">
-				{!isEmbedded && !hideFloatingRovo ? <FloatingRovoButton product={product} embedded={isEmbedded} /> : null}
+				{!isEmbedded && !hideFloatingRovo && !hideRovoAction ? <FloatingRovoButton product={product} embedded={isEmbedded} /> : null}
 			</div>
 		</div>
 	);
