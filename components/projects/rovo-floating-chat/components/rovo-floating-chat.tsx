@@ -43,6 +43,7 @@ export default function RovoFloatingChat({
 					borderRadius: 0,
 					borderWidth: 0,
 				}}
+				greeting={{ showHero: false }}
 				onSurfaceSwitch={onSurfaceSwitch}
 			/>
 		</motion.div>

@@ -45,7 +45,7 @@ export default function FloatingRovoButton({
             transition:
               transform var(--duration-medium) var(--ease-out),
               background-color var(--duration-medium) var(--ease-out);
-            z-index: 500;
+            z-index: 510;
             box-shadow: ${token("elevation.shadow.overlay")};
           }
 

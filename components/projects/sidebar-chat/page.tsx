@@ -43,6 +43,7 @@ interface ChatPanelGreetingProps {
 	heading?: string;
 	illustrationSrc?: string;
 	illustrationDarkSrc?: string;
+	showHero?: boolean;
 	suggestions?: ReadonlyArray<RovoSuggestion>;
 }
 
@@ -271,6 +272,10 @@ export default function ChatPanel({
 					{messages.length === 0 ? (
 						<div style={chatStyles.emptyState}>
 							<ChatGreeting
+								heading={greeting?.heading}
+								illustrationSrc={greeting?.illustrationSrc}
+								illustrationDarkSrc={greeting?.illustrationDarkSrc}
+								showHero={greeting?.showHero}
 								suggestions={greeting?.suggestions}
 								onSuggestionClick={handleGreetingSuggestionClick}
 							/>

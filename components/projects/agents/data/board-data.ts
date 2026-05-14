@@ -70,49 +70,6 @@ export const BOARD_COLUMNS: readonly BoardColumnData[] = [
 		],
 	},
 	{
-		title: "Scoping",
-		count: 12,
-		cards: [
-			{
-				title: "Map RFP questions to answer library",
-				code: "RFP-121",
-				tags: [
-					{ text: "answer-library", color: "green" },
-					{ text: "matrix", color: "yellow" },
-				],
-				priority: "minor",
-				avatarSrc: "/avatar-user/bradley-phillips/color/asow-product-purple.png",
-			},
-			{
-				title: "Scope demo fleet and implementation timeline",
-				code: "RFP-122",
-				tags: [
-					{ text: "solution", color: "blue" },
-					{ text: "timeline", color: "teal" },
-				],
-				priority: "major",
-				avatarSrc: "/avatar-user/brian-lin/color/asow-teamwork-blue.png",
-			},
-			{
-				title: "Collect security and compliance evidence",
-				code: "RFP-123",
-				tags: [{ text: "security", color: "orange" }],
-				priority: "major",
-				avatarSrc: "/avatar-user/christine-sanchez/color/asow-strategy-orange.png",
-			},
-			{
-				title: "Request customer reference approvals",
-				code: "RFP-124",
-				tags: [
-					{ text: "references", color: "blue" },
-					{ text: "customer-proof", color: "magenta" },
-				],
-				priority: "minor",
-				avatarSrc: "/avatar-user/darius-pavri/color/asow-strategy-orange.png",
-			},
-		],
-	},
-	{
 		title: "Drafting",
 		count: 18,
 		cards: [
@@ -159,7 +116,7 @@ export const BOARD_COLUMNS: readonly BoardColumnData[] = [
 		],
 	},
 	{
-		title: "Deal Desk Review",
+		title: "Review",
 		count: 6,
 		cards: [
 			{
