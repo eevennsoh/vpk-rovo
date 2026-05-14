@@ -157,6 +157,9 @@ const {
 const {
 	generateAndPersistRovoAppArtifact,
 } = require("./lib/rovo-app-artifact-runner");
+const {
+	generateWorkItemVpkHtmlReport,
+} = require("./lib/work-item-vpk-html-report-generator");
 const { genuiChatHandler } = require("./lib/genui-chat-handler");
 const {
 	streamViaRovoDev,
@@ -2386,8 +2389,37 @@ function streamRovoAppArtifactToolResponse({
 				changeLabel,
 				fallbackTitle: artifactDocument.title,
 				latestUserMessage,
-				generateArtifactText: ({ onTextDelta }) =>
-					generateRovoAppArtifactText({
+				generateArtifactText: async ({ onTextDelta }) => {
+					const shouldUseWorkItemVpkHtmlSkill =
+						artifactDocument.kind === "html" &&
+						artifactBackendPreference === "ai-gateway" &&
+						typeof contextDescription === "string" &&
+						contextDescription.includes(WORK_ITEM_REPORT_REQUEST_START);
+					if (shouldUseWorkItemVpkHtmlSkill) {
+						const report = await generateWorkItemVpkHtmlReport({
+							contextDescription,
+							generateText: (options) =>
+								generateTextViaGateway({
+									...options,
+									backendPreference: "ai-gateway",
+									provider: options?.provider || provider,
+									signal: options?.signal || signal,
+								}),
+							provider,
+							signal,
+						});
+						writer.write({
+							type: deltaType,
+							data: report.html,
+							transient: true,
+						});
+						if (typeof onTextDelta === "function") {
+							onTextDelta(report.html);
+						}
+						return report.html;
+					}
+
+					return generateRovoAppArtifactText({
 						mode: artifactAction === "updateDocument" ? "update" : "create",
 						title: artifactDocument.title,
 						kind: artifactDocument.kind,
@@ -2407,7 +2439,8 @@ function streamRovoAppArtifactToolResponse({
 								onTextDelta(delta);
 							}
 						},
-					}),
+					});
+				},
 				inferArtifactKindFromContent: inferRovoAppArtifactKindFromContent,
 				rovoAppDocumentManager,
 				onCreateFailure: async () => {
