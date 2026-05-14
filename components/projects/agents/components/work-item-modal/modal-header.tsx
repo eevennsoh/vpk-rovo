@@ -58,7 +58,7 @@ export function ModalHeader() {
 									borderRadius: token("radius.xsmall"),
 								}}
 							/>
-							<span>VitaFleet Q4 RFP Response</span>
+							<span>{workItem.parent?.title ?? "VitaFleet Q4 RFP Response"}</span>
 						</BreadcrumbLink>
 					</BreadcrumbItem>
 					<BreadcrumbSeparator />

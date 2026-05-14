@@ -26,7 +26,7 @@ export const RFP_101_WORK_ITEM = {
 	dueDate: "Oct 28, 2026",
 	parent: {
 		code: "RFP-100",
-		title: "VitaFleet Q4 RFP Response",
+		title: "Acme Mobility Enterprise RFP",
 	},
 	labels: ["enterprise-rfp", "q4-sales", "migration", "10k-seats"],
 	childItems: [
@@ -240,7 +240,7 @@ export function getAgentsWorkItemForCard(params: {
 }
 
 export function formatActiveJiraWorkItemContext(
-	workItem: WorkItemData | null | undefined
+	workItem: WorkItemData | null | undefined,
 ): string | undefined {
 	if (!workItem || workItem.code !== RFP_101_WORK_ITEM_CODE || !workItem.rfpContext) {
 		return undefined;
@@ -248,10 +248,10 @@ export function formatActiveJiraWorkItemContext(
 
 	const rfp = workItem.rfpContext;
 	const childItems = workItem.childItems?.map(
-		(item) => `- ${item.key}: ${item.summary} (${item.status}, ${item.priority}, owner: ${item.assignee ?? "unassigned"})`
+		(item) => `- ${item.key}: ${item.summary} (${item.status}, ${item.priority}, owner: ${item.assignee ?? "unassigned"})`,
 	);
 	const attachments = workItem.attachments?.map(
-		(file) => `- ${file.name}.${file.ext} (${file.date})`
+		(file) => `- ${file.name}.${file.ext} (${file.date})`,
 	);
 
 	return [
