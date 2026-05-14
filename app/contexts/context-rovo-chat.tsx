@@ -34,6 +34,7 @@ import {
 import { DefaultChatTransport } from "ai";
 
 export interface SendPromptOptions {
+	backendPreference?: "rovodev" | "ai-gateway";
 	contextDescription?: string;
 	userName?: string;
 	clientTimeZone?: string;
@@ -90,6 +91,7 @@ function buildSendMessageBody(
 	hasQueuedPrompts: boolean
 ): Record<string, unknown> {
 	return {
+		backendPreference: options?.backendPreference,
 		contextDescription: options?.contextDescription,
 		userName: options?.userName,
 		clientTimeZone: resolveClientTimeZone(options?.clientTimeZone),
@@ -100,6 +102,33 @@ function buildSendMessageBody(
 		creationMode: options?.creationMode,
 		smartGeneration: options?.smartGeneration,
 		hasQueuedPrompts,
+	};
+}
+
+function mergeSendPromptOptions(
+	defaultOptions?: SendPromptOptions,
+	options?: SendPromptOptions
+): SendPromptOptions | undefined {
+	if (!defaultOptions) return options;
+	if (!options) return defaultOptions;
+
+	return {
+		...defaultOptions,
+		...options,
+		messageMetadata:
+			defaultOptions.messageMetadata || options.messageMetadata
+				? {
+					...(defaultOptions.messageMetadata ?? {}),
+					...(options.messageMetadata ?? {}),
+				}
+				: undefined,
+		smartGeneration:
+			defaultOptions.smartGeneration || options.smartGeneration
+				? {
+					...(defaultOptions.smartGeneration ?? {}),
+					...(options.smartGeneration ?? {}),
+				}
+				: undefined,
 	};
 }
 
@@ -382,11 +411,13 @@ function createQueueItemId(fallbackCounter: number): string {
 
 interface RovoChatProviderProps {
 	children: ReactNode;
+	defaultPromptOptions?: SendPromptOptions;
 	portIndex?: number;
 }
 
 export function RovoChatProvider({
 	children,
+	defaultPromptOptions,
 	portIndex,
 }: Readonly<RovoChatProviderProps>) {
 	const [chatSurface, setChatSurface] = useState<ChatSurface | null>(null);
@@ -1077,6 +1108,10 @@ export function RovoChatProvider({
 			if (!trimmedPrompt) {
 				return;
 			}
+			const resolvedOptions = mergeSendPromptOptions(
+				defaultPromptOptions,
+				options
+			);
 
 			const shouldStartSubmitPending =
 				!isSubmitPendingRef.current &&
@@ -1097,12 +1132,12 @@ export function RovoChatProvider({
 				{
 					id,
 					text: trimmedPrompt,
-					options,
+					options: resolvedOptions,
 					createdAt: Date.now(),
 				},
 			]);
 		},
-		[startSubmitPending]
+		[defaultPromptOptions, startSubmitPending]
 	);
 
 	const removeQueuedPrompt = useCallback((id: string) => {

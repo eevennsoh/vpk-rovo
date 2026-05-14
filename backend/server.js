@@ -5024,6 +5024,7 @@ async function handleChatSdkRequest(req, res) {
 	try {
 		const {
 			messages,
+			backendPreference: rawBackendPreference,
 			contextDescription: rawContextDescription,
 			clientTimeZone: rawClientTimeZone,
 			provider,
@@ -5043,6 +5044,10 @@ async function handleChatSdkRequest(req, res) {
 			sessionId: rawSessionId,
 			sessionMode: rawSessionMode,
 		} = req.body || {};
+		const backendPreference =
+			rawBackendPreference === "ai-gateway" || rawBackendPreference === "rovodev"
+				? rawBackendPreference
+				: "rovodev";
 		const clientTimeZone = normalizeClientTimeZone(rawClientTimeZone);
 		const genuiHint = rawGenuiHint === true;
 		let resolvedPlanModeActive = rawResolvedPlanModeActive === true;
@@ -5070,6 +5075,7 @@ async function handleChatSdkRequest(req, res) {
 		const chatSdkEntryStartedAtMs = Date.now();
 		stageTrace.mark("entry", {
 			messageCount: Array.isArray(messages) ? messages.length : 0,
+			backendPreference,
 			provider: getNonEmptyString(provider) || null,
 			model: getNonEmptyString(rawModel) || null,
 			hasClarification: Boolean(rawClarification),
@@ -7244,6 +7250,95 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 						return error.message;
 					}
 					return "Failed to stream Google AI response";
+				},
+			});
+
+			pipeUIMessageStreamToResponse({
+				response: res,
+				stream,
+			});
+			return;
+		}
+
+		if (backendPreference === "ai-gateway") {
+			const { abortController, cleanup } = createAbortControllerFromRequest(req, res, {
+				onAbort: () => {
+					console.log("[CHAT-SDK] Client disconnected, aborting AI Gateway stream");
+				},
+			});
+			let didCleanupAbortTracking = false;
+			const cleanupAbortTracking = () => {
+				if (didCleanupAbortTracking) {
+					return;
+				}
+
+				didCleanupAbortTracking = true;
+				if (typeof res.off === "function") {
+					res.off("finish", cleanupAbortTracking);
+					res.off("close", cleanupAbortTracking);
+				} else if (typeof res.removeListener === "function") {
+					res.removeListener("finish", cleanupAbortTracking);
+					res.removeListener("close", cleanupAbortTracking);
+				}
+				cleanup();
+			};
+			cleanupChatSdkAbortTracking = cleanupAbortTracking;
+			res.once("finish", cleanupAbortTracking);
+			res.once("close", cleanupAbortTracking);
+			const gatewayMessages = compressedPromptHistory.conversationHistory.map((message) => ({
+				role: message.type === "assistant" ? "assistant" : "user",
+				content: message.content,
+			}));
+			const gatewaySystem = getNonEmptyString(effectiveContextWithPortBinding);
+
+			stageTrace.mark("preprocessing_complete", {
+				stageMs: Date.now() - chatSdkEntryStartedAtMs,
+				backend: "ai-gateway",
+				promptProfile,
+				smartGenerationActive,
+				isStrictToolFirstTurn,
+			});
+
+			const stream = createUIMessageStream({
+				execute: async ({ writer }) => {
+					const textId = `ai-gateway-text-${Date.now()}`;
+					let textStarted = false;
+					const emitTextDelta = (delta) => {
+						if (typeof delta !== "string" || delta.length === 0) {
+							return;
+						}
+						if (!textStarted) {
+							writer.write({ type: "text-start", id: textId });
+							textStarted = true;
+						}
+						writer.write({ type: "text-delta", id: textId, delta });
+					};
+
+					await streamTextViaGateway({
+						system: gatewaySystem || undefined,
+						prompt: latestUserMessage,
+						messages: gatewayMessages,
+						maxOutputTokens: 2000,
+						temperature: 0.4,
+						provider,
+						signal: abortController.signal,
+						backendPreference: "ai-gateway",
+						onTextDelta: emitTextDelta,
+					});
+
+					if (textStarted) {
+						writer.write({ type: "text-end", id: textId });
+					}
+					writer.write({
+						type: "data-turn-complete",
+						data: { timestamp: new Date().toISOString() },
+					});
+				},
+				onError: (error) => {
+					if (error instanceof Error) {
+						return error.message;
+					}
+					return "Failed to stream AI Gateway response";
 				},
 			});
 
