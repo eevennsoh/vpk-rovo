@@ -5,6 +5,31 @@ const test = require("node:test");
 
 const GLOBALS_CSS_FILE = path.join(__dirname, "globals.css");
 const GLOBALS_CSS_SOURCE = fs.readFileSync(GLOBALS_CSS_FILE, "utf8");
+const REPO_ROOT = path.join(__dirname, "..");
+
+function readRepoFile(...segments) {
+	return fs.readFileSync(path.join(REPO_ROOT, ...segments), "utf8");
+}
+
+function collectFiles(dir, extensions) {
+	const entries = fs.readdirSync(dir, { withFileTypes: true });
+	const files = [];
+
+	for (const entry of entries) {
+		const fullPath = path.join(dir, entry.name);
+
+		if (entry.isDirectory()) {
+			files.push(...collectFiles(fullPath, extensions));
+			continue;
+		}
+
+		if (extensions.has(path.extname(entry.name))) {
+			files.push(fullPath);
+		}
+	}
+
+	return files;
+}
 
 function getRuleBlock(selector) {
 	const pattern = new RegExp(`${selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*\\{([^}]*)\\}`);
@@ -15,8 +40,8 @@ function getRuleBlock(selector) {
 }
 
 test("website content clears the fixed sidebar rail before desktop overrides", () => {
-	const baseRuleStart = GLOBALS_CSS_SOURCE.indexOf(".website-main-content {");
-	const desktopRuleStart = GLOBALS_CSS_SOURCE.indexOf("@media (min-width: 768px)");
+	const baseRuleStart = GLOBALS_CSS_SOURCE.indexOf("@utility website-main-content {");
+	const desktopRuleStart = GLOBALS_CSS_SOURCE.indexOf("@media (min-width: 768px)", baseRuleStart);
 
 	assert.ok(baseRuleStart >= 0, "expected base website-main-content rule");
 	assert.ok(desktopRuleStart >= 0, "expected desktop sidebar media query");
@@ -25,7 +50,7 @@ test("website content clears the fixed sidebar rail before desktop overrides", (
 		"expected rail offset to apply before desktop sidebar overrides",
 	);
 	assert.match(
-		getRuleBlock(".website-main-content"),
+		getRuleBlock("@utility website-main-content"),
 		/margin-left:\s*48px;\s*\/\* rail only \*\//,
 	);
 });
@@ -33,6 +58,28 @@ test("website content clears the fixed sidebar rail before desktop overrides", (
 test("desktop sidebar keeps the expanded panel offset", () => {
 	assert.match(
 		GLOBALS_CSS_SOURCE,
-		/body:has\(aside\[data-sidebar-open="true"\]\) \.website-main-content\s*\{\s*margin-left:\s*304px;\s*\/\* 48px rail \+ 256px panel \*\//,
+		/body:has\(aside\[data-sidebar-open="true"\]\) &\s*\{\s*margin-left:\s*304px;\s*\/\* 48px rail \+ 256px panel \*\//,
 	);
+});
+
+test("shared UI surfaces do not reintroduce the old translucent overlay contract", () => {
+	const targetSources = [
+		readRepoFile("components.json"),
+		GLOBALS_CSS_SOURCE,
+		readRepoFile(".agents", "rules", "token-priority.md"),
+		readRepoFile("app", "data", "details", "ui.ts"),
+		readRepoFile("components", "website", "registry.ts"),
+		readRepoFile("components", "website", "demos", "ui", "dropdown-menu-demo.tsx"),
+		...collectFiles(path.join(REPO_ROOT, "components", "ui"), new Set([".ts", ".tsx"])).map((file) => fs.readFileSync(file, "utf8")),
+		...collectFiles(path.join(REPO_ROOT, "components", "ui-ai"), new Set([".ts", ".tsx"])).map((file) => fs.readFileSync(file, "utf8")),
+		...collectFiles(path.join(REPO_ROOT, "components", "ui-audio"), new Set([".ts", ".tsx"])).map((file) => fs.readFileSync(file, "utf8")),
+		...collectFiles(path.join(REPO_ROOT, "components", "blocks"), new Set([".ts", ".tsx"])).map((file) => fs.readFileSync(file, "utf8")),
+	].join("\n");
+
+	assert.doesNotMatch(targetSources, /cn-menu-translucent/);
+	assert.doesNotMatch(targetSources, /translucentMenuSurfaceClass/);
+	assert.doesNotMatch(targetSources, /default-translucent/);
+	assert.doesNotMatch(targetSources, /dropdown-menu-demo-translucent-image/);
+	assert.doesNotMatch(targetSources, /supports-backdrop-filter:backdrop-blur/);
+	assert.doesNotMatch(targetSources, /backdrop-(blur|filter)/);
 });

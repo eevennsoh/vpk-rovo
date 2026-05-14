@@ -3446,12 +3446,6 @@ import { Textarea } from "@/components/ui/textarea";
         demoSlug: "dropdown-menu-demo-appearance",
       },
       {
-        title: "Translucent over image",
-        description:
-          "An always-open menu over an illustration backdrop so the glass treatment is easy to inspect.",
-        demoSlug: "dropdown-menu-demo-translucent-image",
-      },
-      {
         title: "Default",
         description: "Basic dropdown menu.",
         demoSlug: "dropdown-menu-demo-default",

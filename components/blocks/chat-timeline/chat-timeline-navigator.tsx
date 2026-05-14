@@ -109,7 +109,7 @@ export function ChatTimelineNavigator({
 			onMouseLeave={() => setIsNavigatorOpen(false)}
 		>
 			<div
-				className="relative origin-top-right overflow-hidden text-left backdrop-blur-xl"
+					className="relative origin-top-right overflow-hidden text-left"
 				id={navigatorId}
 				style={{
 					boxSizing: "border-box",

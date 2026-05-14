@@ -177,7 +177,7 @@ function VoicePickerItem({
           className="pointer-events-none absolute inset-0"
         />
         {preview && isHovered && (
-          <div className="pointer-events-none absolute inset-0 flex size-8 shrink-0 items-center justify-center rounded-full bg-bg-neutral-bold/70 text-text-inverse backdrop-blur-sm transition-opacity">
+          <div className="pointer-events-none absolute inset-0 flex size-8 shrink-0 items-center justify-center rounded-full bg-bg-neutral-bold text-text-inverse transition-opacity">
             {isPlaying ? (
               <Pause className="size-3" />
             ) : (

@@ -3015,13 +3015,6 @@ const UI_VARIANT_DEMOS: Record<string, ComponentType> = {
       })),
     { ssr: false },
   ),
-  "dropdown-menu-demo-translucent-image": dynamic(
-    () =>
-      import("./demos/ui/dropdown-menu-demo").then((mod) => ({
-        default: mod.DropdownMenuDemoTranslucentImage,
-      })),
-    { ssr: false },
-  ),
   "dropdown-menu-demo-density": dynamic(
     () =>
       import("./demos/ui/dropdown-menu-demo").then((mod) => ({

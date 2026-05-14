@@ -224,7 +224,7 @@ export const VoiceButton = React.forwardRef<
             )}
 
           {isSuccess && showFeedback && (
-            <div className="animate-in fade-in bg-surface/80 absolute inset-0 flex items-center justify-center duration-300">
+            <div className="animate-in fade-in bg-surface absolute inset-0 flex items-center justify-center duration-300">
               <span className="text-icon-success text-[10px] font-medium">
                 <CheckIcon className="size-3.5" />
               </span>
@@ -233,7 +233,7 @@ export const VoiceButton = React.forwardRef<
 
           {/* Error Icon */}
           {isError && showFeedback && (
-            <div className="animate-in fade-in bg-surface/80 absolute inset-0 flex items-center justify-center duration-300">
+            <div className="animate-in fade-in bg-surface absolute inset-0 flex items-center justify-center duration-300">
               <span className="text-icon-danger text-[10px] font-medium">
                 <XIcon className="size-3.5" />
               </span>

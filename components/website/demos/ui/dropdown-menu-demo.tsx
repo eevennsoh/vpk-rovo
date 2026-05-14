@@ -1,7 +1,6 @@
 "use client";
 
 import { type ReactElement, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import AddIcon from "@atlaskit/icon/core/add";
 import ArrowDownIcon from "@atlaskit/icon/core/arrow-down";
@@ -166,73 +165,6 @@ export function DropdownMenuDemoAppearance() {
           </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
-    </div>
-  );
-}
-
-export function DropdownMenuDemoTranslucentImage() {
-  return (
-    <div className="relative w-full max-w-xl overflow-visible">
-      <div className="absolute top-6 right-6 z-20">
-        <DropdownMenu>
-          <DropdownMenuTrigger render={<Button variant="outline" size="sm" />}>
-            Surface actions
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" sideOffset={12} className="w-64">
-            <DropdownMenuGroup>
-              <DropdownMenuLabel>Translucent preview</DropdownMenuLabel>
-              <DropdownMenuItem
-                elemBefore={
-                  <DemoIcon
-                    render={<SearchIcon label="" />}
-                    label="Inspect"
-                  />
-                }
-                description="The illustration remains visible through the menu surface."
-              >
-                Inspect background
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                elemBefore={
-                  <DemoIcon
-                    render={<SettingsIcon label="" />}
-                    label="Adjust"
-                  />
-                }
-                description="Blur and saturation should soften the artwork underneath."
-              >
-                Adjust surface
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                elemBefore={
-                  <DemoIcon
-                    render={<ShareIcon label="" />}
-                    label="Share"
-                  />
-                }
-                description="A fixed-open menu makes the glass effect easier to inspect."
-              >
-                Share snapshot
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-
-      <Image
-        src="/illustration-ai/create/light.svg"
-        alt="Colorful create illustration backdrop"
-        width={720}
-        height={480}
-        className="h-auto w-full dark:hidden"
-      />
-      <Image
-        src="/illustration-ai/create/dark.svg"
-        alt="Colorful create illustration backdrop"
-        width={720}
-        height={480}
-        className="hidden h-auto w-full dark:block"
-      />
     </div>
   );
 }

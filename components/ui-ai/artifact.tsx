@@ -637,7 +637,7 @@ export function ArtifactPanel({
 
 	return (
 		<div className={cn("flex h-full min-h-0 w-full min-w-0 flex-col bg-background", className)}>
-			<div className="flex flex-wrap items-center justify-between gap-3 border-border/80 border-b bg-background/90 p-3 backdrop-blur">
+				<div className="flex flex-wrap items-center justify-between gap-3 border-border border-b bg-background p-3">
 				<div className="flex min-w-0 items-center gap-2">
 					<div className="min-w-0">
 						<p className="truncate font-medium text-sm">{selectedVersionTitle}</p>

@@ -33,10 +33,6 @@ export const dropdownStyles = {
     "pointer-events-none absolute left-2 inline-flex items-center justify-center",
 } as const;
 
-// Mirrors shadcn's current `default-translucent` menu treatment for live menus
-// in this repo, which predate the newer CLI marker classes.
-export const translucentMenuSurfaceClass = "cn-menu-translucent";
-
 type DropdownMenuProps = MenuPrimitive.Root.Props;
 
 function DropdownMenu(props: Readonly<DropdownMenuProps>) {
@@ -97,13 +93,12 @@ function DropdownMenuContent({
       side={side}
       sideOffset={sideOffset}
     >
-      <MenuPrimitive.Popup
-        data-slot="dropdown-menu-content"
-        className={cn(
-          dropdownStyles.popup,
-          translucentMenuSurfaceClass,
-          className,
-        )}
+	      <MenuPrimitive.Popup
+	        data-slot="dropdown-menu-content"
+	        className={cn(
+	          dropdownStyles.popup,
+	          className,
+	        )}
         {...props}
       />
     </MenuPrimitive.Positioner>

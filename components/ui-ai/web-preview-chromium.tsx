@@ -605,14 +605,14 @@ export function ChromiumPreviewBody({
 					</div>
 				)}
 				{isBusy ? (
-					<div className="bg-surface/70 absolute inset-0 flex items-center justify-center backdrop-blur-sm">
+						<div className="bg-surface absolute inset-0 flex items-center justify-center">
 						<Spinner className="size-7" />
 					</div>
 				) : null}
 				{error ? (
 					<div
 						aria-live="polite"
-						className="bg-surface/90 absolute inset-x-4 bottom-4 flex items-start gap-3 rounded-lg border border-border bg-surface p-3 shadow-sm"
+							className="absolute inset-x-4 bottom-4 flex items-start gap-3 rounded-lg border border-border bg-surface p-3 shadow-sm"
 					>
 						<TriangleAlertIcon className="text-text-warning mt-0.5 size-4 shrink-0" />
 						<div className="min-w-0">

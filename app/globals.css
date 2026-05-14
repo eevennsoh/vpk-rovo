@@ -185,55 +185,6 @@
 	}
 }
 
-/* Translucent menu surface — frosted glass popup treatment.
-
-   Defined as @utility per Tailwind v4 idiom. Every descendant rule uses
-   !important because Tailwind sorts @utility blocks by property count, so
-   a multi-property utility sorts earlier than 1-property utilities like
-   `focus:bg-accent` applied by Base UI DropdownMenuItem — without !important,
-   focused items would render solid bg-accent blue instead of translucent grey.
-   !important reverses cascade ordering for these declarations and keeps the
-   intended frosted-glass look stable. */
-@utility cn-menu-translucent {
-	animation: none !important;
-	background-color: color-mix(in oklab, var(--ds-surface-overlay) 55%, transparent) !important;
-	-webkit-backdrop-filter: blur(16px) saturate(1.8);
-	backdrop-filter: blur(16px) saturate(1.8);
-
-	& [data-slot$="-item"]:focus,
-	& [data-slot$="-item"][data-highlighted] {
-		background-color: color-mix(in oklab, var(--ds-text) 10%, transparent) !important;
-	}
-
-	& [data-slot$="-separator"] {
-		background-color: color-mix(in oklab, var(--ds-text) 5%, transparent) !important;
-	}
-
-	& [data-slot$="-trigger"]:focus {
-		background-color: color-mix(in oklab, var(--ds-text) 10%, transparent) !important;
-	}
-
-	& [data-slot$="-trigger"][aria-expanded="true"] {
-		background-color: color-mix(in oklab, var(--ds-text) 10%, transparent) !important;
-	}
-
-	& [data-variant="destructive"]:focus {
-		background-color: color-mix(in oklab, var(--ds-text) 10%, transparent) !important;
-	}
-
-	& [data-variant="destructive"] {
-		color: var(--ds-text-danger) !important;
-	}
-
-	& [data-variant="destructive"] * {
-		color: var(--ds-text-danger) !important;
-	}
-
-	& [data-variant="destructive"] svg {
-		color: var(--ds-icon-danger) !important;
-	}
-}
-
 /* Website sidebar layout — push main content to clear the fixed sidebar.
    Invariant: do not stack ml-* utilities on .website-main-content elements.
    The body:has() rule below has 1 property and would tie with `ml-N` on
