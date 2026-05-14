@@ -303,7 +303,12 @@ function createAssistantThinkingStatusMessage(
 	};
 }
 
+export type ChatSurface = "floating" | "sidebar";
+
 interface RovoChatContextType {
+	chatSurface: ChatSurface | null;
+	openChat: (surface: ChatSurface) => void;
+	switchSurface: (surface: ChatSurface) => void;
 	isOpen: boolean;
 	toggleChat: () => void;
 	closeChat: () => void;
@@ -384,7 +389,8 @@ export function RovoChatProvider({
 	children,
 	portIndex,
 }: Readonly<RovoChatProviderProps>) {
-	const [isOpen, setIsOpen] = useState(false);
+	const [chatSurface, setChatSurface] = useState<ChatSurface | null>(null);
+	const isOpen = chatSurface !== null;
 	const [isSubmitPending, setIsSubmitPending] = useState(false);
 	const [pendingSubmitStartedAt, setPendingSubmitStartedAt] = useState<number | null>(
 		null
@@ -880,8 +886,16 @@ export function RovoChatProvider({
 		return [...rawUiMessages, submissionErrorMessage];
 	}, [rawUiMessages, submissionErrorMessage]);
 
-	const toggleChat = useCallback(() => setIsOpen((prev) => !prev), []);
-	const closeChat = useCallback(() => setIsOpen(false), []);
+	const toggleChat = useCallback(
+		() => setChatSurface((prev) => (prev === null ? "sidebar" : null)),
+		[]
+	);
+	const closeChat = useCallback(() => setChatSurface(null), []);
+	const openChat = useCallback((surface: ChatSurface) => setChatSurface(surface), []);
+	const switchSurface = useCallback(
+		(surface: ChatSurface) => setChatSurface(surface),
+		[]
+	);
 
 	const clearSuggestedQuestions = useCallback(() => {
 		setMessages((prev) =>
@@ -1261,6 +1275,9 @@ export function RovoChatProvider({
 	return (
 		<RovoChatContext
 			value={{
+				chatSurface,
+				openChat,
+				switchSurface,
 				isOpen,
 				toggleChat,
 				closeChat,

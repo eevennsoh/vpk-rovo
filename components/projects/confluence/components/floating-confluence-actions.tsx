@@ -16,14 +16,15 @@ interface FloatingConfluenceActionsProps {
 export default function FloatingConfluenceActions({
 	embedded = false,
 }: Readonly<FloatingConfluenceActionsProps>) {
-	const { isOpen } = useRovoChat();
+	const { chatSurface } = useRovoChat();
+	const isSidebarChatOpen = chatSurface === "sidebar";
 
 	return (
 		<div
 			style={{
 				position: embedded ? "absolute" : "fixed",
-				bottom: isOpen ? "24px" : "80px", // 24px when chat is open, otherwise 80px (24px + 48px button + 8px gap)
-				right: isOpen ? "424px" : "24px", // Move left by 400px (chat panel width) when open
+				bottom: isSidebarChatOpen ? "24px" : "80px", // 24px when sidebar chat is open, otherwise 80px (24px + 48px button + 8px gap)
+				right: isSidebarChatOpen ? "424px" : "24px", // Move left by 400px (chat panel width) when sidebar is open; floating overlays content
 				width: "48px",
 				backgroundColor: token("elevation.surface.raised"),
 				borderRadius: token("radius.xlarge"),

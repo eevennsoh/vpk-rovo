@@ -1,11 +1,13 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { AnimatePresence } from "motion/react";
 import { token } from "@/lib/tokens";
 import TopNavigation from "@/components/blocks/top-navigation/page";
 import Sidebar from "@/components/blocks/product-sidebar/page";
 import FloatingRovoButton from "@/components/projects/shared/components/floating-rovo-button";
 import ChatPanel from "@/components/projects/sidebar-chat/page";
+import RovoFloatingChat from "@/components/projects/rovo-floating-chat/components/rovo-floating-chat";
 import { useSidebar } from "@/app/contexts/context-sidebar";
 import { useRovoChat } from "@/app/contexts";
 
@@ -78,9 +80,12 @@ export default function AppLayout({
 }: Readonly<AppLayoutProps>) {
 	const isEmbedded = useIsEmbedded(embedded);
 	const { isVisible } = useSidebar();
-	const { isOpen: isChatOpen, toggleChat } = useRovoChat();
+	const { chatSurface, toggleChat } = useRovoChat();
 	const chatPanelWidth = 400;
-	const showChatPanel = !isEmbedded && !hideRovoAction && isChatOpen;
+	const isSidebarChatActive = chatSurface === "sidebar";
+	const isFloatingChatActive = chatSurface === "floating";
+	const showChatPanel = !isEmbedded && !hideRovoAction && isSidebarChatActive;
+	const showFloatingChat = !isEmbedded && !hideRovoAction && isFloatingChatActive;
 	const sidebarWidth = isEmbedded || !isVisible ? "0px" : "230px";
 	const shellViewportHeight = isEmbedded ? "100dvh" : "100vh";
 	const shellContentHeight = isEmbedded ? "100dvh" : "calc(100vh - 48px)";
@@ -123,8 +128,8 @@ export default function AppLayout({
 				{!isEmbedded && !hideRovoAction ? (
 					<div
 						data-shell-chrome=""
-						aria-hidden={!isChatOpen}
-						{...(!isChatOpen ? { inert: true } : {})}
+						aria-hidden={!isSidebarChatActive}
+						{...(!isSidebarChatActive ? { inert: true } : {})}
 						style={{
 							position: "absolute",
 							top: 0,
@@ -132,8 +137,8 @@ export default function AppLayout({
 							bottom: 0,
 							width: `${chatPanelWidth}px`,
 							padding: token("space.100"),
-							pointerEvents: isChatOpen ? "auto" : "none",
-							transform: isChatOpen ? "translateX(0)" : `translateX(${chatPanelWidth}px)`,
+							pointerEvents: isSidebarChatActive ? "auto" : "none",
+							transform: isSidebarChatActive ? "translateX(0)" : `translateX(${chatPanelWidth}px)`,
 							transition: "transform var(--duration-medium) var(--ease-in-out)",
 							willChange: "transform",
 							zIndex: 90,
@@ -143,6 +148,11 @@ export default function AppLayout({
 					</div>
 				) : null}
 			</div>
+
+			{/* Floating Rovo Chat (anchored bottom-right) */}
+			<AnimatePresence>
+				{showFloatingChat ? <RovoFloatingChat key="floating-chat" /> : null}
+			</AnimatePresence>
 
 			{/* Floating Rovo Button */}
 			<div data-shell-chrome="">

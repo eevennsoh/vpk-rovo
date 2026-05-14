@@ -7048,6 +7048,9 @@ const PROJECT_DEMOS: Record<string, ComponentType> = {
   rovo: dynamic(() => import("./demos/projects/rovo-demo"), {
     ssr: false,
   }),
+  "rovo-button": dynamic(() => import("./demos/projects/rovo-button-demo"), {
+    ssr: false,
+  }),
   search: dynamic(() => import("./demos/projects/search-demo"), { ssr: false }),
   "sidebar-chat": dynamic(() => import("./demos/projects/sidebar-chat-demo"), {
     ssr: false,

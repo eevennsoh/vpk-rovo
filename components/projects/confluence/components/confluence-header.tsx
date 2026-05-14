@@ -23,10 +23,11 @@ export default function ConfluenceHeader({
 	embedded = false,
 }: Readonly<ConfluenceHeaderProps>) {
 	const { isVisible, isHovered } = useSidebar();
-	const { isOpen: isRovoChatOpen } = useRovoChat();
+	const { chatSurface } = useRovoChat();
+	const isSidebarChatOpen = chatSurface === "sidebar";
 	const isSidebarOpen = isVisible || isHovered;
 	const sidebarWidth = isVisible ? "230px" : "0px";
-	const rovoChatWidth = isRovoChatOpen ? "400px" : "0px";
+	const rovoChatWidth = isSidebarChatOpen ? "400px" : "0px";
 
 	const [isShareDropdownOpen, setIsShareDropdownOpen] = useState(false);
 	const [shareButtonRect, setShareButtonRect] = useState<DOMRect | null>(null);

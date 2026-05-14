@@ -470,6 +470,7 @@ export const PROJECT_COMPONENTS: ComponentManifestEntry[] = sortEntriesByName([
 	projectComponent("confluence", "Confluence"),
 	projectComponent("jira", "Jira"),
 	projectComponent("rovo", "Rovo"),
+	projectComponent("rovo-button", "Rovo Button"),
 	projectComponent("search", "Search"),
 	projectComponent("sidebar-chat", "Sidebar Chat"),
 ]);

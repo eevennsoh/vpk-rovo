@@ -23,6 +23,7 @@ import EditIcon from "@atlaskit/icon/core/edit";
 import RandomizeIcon from "@atlaskit/icon-lab/core/randomize";
 import ShapesIcon from "@atlaskit/icon/core/shapes";
 import ShowMoreHorizontalIcon from "@atlaskit/icon/core/show-more-horizontal";
+import ChatSurfaceSwitcher from "@/components/projects/shared/components/chat-surface-switcher";
 import { CONTROL_PLANE_HEADER_SURFACES } from "@/components/projects/control-plane/lib/control-plane-data";
 import { normalizeRuntimeStatusSnapshot } from "@/lib/rovo-runtime-status";
 import type { RuntimeStatusSnapshot } from "@/lib/rovo-runtime-types";
@@ -115,6 +116,7 @@ export function RovoAppHeader({
 
 	return (
 		<header className={cn("flex items-center gap-3 px-3 py-3", isArtifactOpen && "border-b border-border")}>
+			<ChatSurfaceSwitcher currentSurface="fullscreen" />
 			<Popover open={isChatConfigurationOpen} onOpenChange={setIsChatConfigurationOpen}>
 				<PopoverTrigger render={<Button type="button" variant="ghost" aria-label="Chat configuration" />}>
 					<Icon

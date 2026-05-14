@@ -9,15 +9,17 @@ type Product = "admin" | "agents" | "home" | "jira" | "confluence" | "rovo" | "s
 interface FloatingRovoButtonProps {
 	product: Product;
 	embedded?: boolean;
+	forceVisible?: boolean;
 }
 
 export default function FloatingRovoButton({
 	product,
 	embedded = false,
+	forceVisible = false,
 }: Readonly<FloatingRovoButtonProps>) {
-	const { isOpen, toggleChat } = useRovoChat();
+	const { isOpen, openChat } = useRovoChat();
 
-	if (embedded || product === "rovo" || isOpen) {
+	if (!forceVisible && (embedded || product === "rovo" || isOpen)) {
 		return null;
 	}
 
@@ -74,7 +76,12 @@ export default function FloatingRovoButton({
 				}}
 			/>
 
-			<button className="floating-rovo-button" type="button" onClick={toggleChat} aria-label="Open Rovo">
+			<button
+				className="floating-rovo-button"
+				type="button"
+				onClick={() => openChat("floating")}
+				aria-label="Open Rovo"
+			>
 				<Image src="/1p/rovo.svg" alt="" width={24} height={24} aria-hidden />
 			</button>
 		</>
