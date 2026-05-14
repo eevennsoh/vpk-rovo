@@ -79,7 +79,7 @@ export default function ChatGreeting({
 	const greetingSuggestions = suggestions ?? defaultSuggestions;
 
 	return (
-		<div className="w-[90%] max-w-[400px]">
+		<div className="w-[90%]">
 			<div className="flex flex-col gap-6">
 				{showHero ? (
 					<div className="flex flex-col items-center gap-2">

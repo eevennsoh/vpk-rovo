@@ -23,6 +23,8 @@ import { SpeechInput } from "@/components/ui-ai/speech-input";
 import { Button } from "@/components/ui/button";
 import DeleteIcon from "@atlaskit/icon/core/delete";
 import { Footer } from "@/components/ui/footer";
+import ChatContextBar from "./chat-context-bar";
+import type { ChatContextBarDescriptor } from "../lib/chat-context-bar";
 import AddIcon from "@atlaskit/icon/core/add";
 import ArrowUpIcon from "@atlaskit/icon/core/arrow-up";
 import CustomizeIcon from "@atlaskit/icon/core/customize";
@@ -41,9 +43,10 @@ interface ChatComposerProps {
 	onSubmit: () => void;
 	onStop: () => void;
 	onRemoveQueuedPrompt: (id: string) => void;
+	chatContextBar?: ChatContextBarDescriptor | null;
 }
 
-export default function ChatComposer({ prompt, isStreaming, hasInFlightTurn, queuedPrompts, onPromptChange, onSubmit, onStop, onRemoveQueuedPrompt }: Readonly<ChatComposerProps>): React.ReactElement {
+export default function ChatComposer({ prompt, isStreaming, hasInFlightTurn, queuedPrompts, onPromptChange, onSubmit, onStop, onRemoveQueuedPrompt, chatContextBar }: Readonly<ChatComposerProps>): React.ReactElement {
 	const [selectedReasoning, setSelectedReasoning] = useState("deep-research");
 	const [webResultsEnabled, setWebResultsEnabled] = useState(false);
 	const [companyKnowledgeEnabled, setCompanyKnowledgeEnabled] = useState(true);
@@ -65,6 +68,7 @@ export default function ChatComposer({ prompt, isStreaming, hasInFlightTurn, que
 
 	return (
 		<div className="relative px-3">
+			<ChatContextBar context={chatContextBar} />
 			{hasQueuedPrompts ? (
 				<div className="pointer-events-none absolute bottom-full left-4 right-4 z-0">
 					<Queue className="pointer-events-auto rounded-b-none border-border border-b-0 bg-surface-raised px-2 pt-2 pb-2 shadow-none">

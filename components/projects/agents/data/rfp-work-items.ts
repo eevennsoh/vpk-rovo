@@ -2,8 +2,17 @@ import type {
 	WorkItemData,
 	WorkItemRfpTeamMember,
 } from "@/app/contexts/context-work-item-modal";
+import type { ChatContextBarDescriptor } from "@/components/projects/sidebar-chat/lib/chat-context-bar";
+import { BOARD_COLUMNS } from "./board-data";
 
 export const RFP_101_WORK_ITEM_CODE = "RFP-101";
+export const AGENTS_BOARD_CONTEXT_LABEL = "VitaFleet Q4 RFP Response";
+const AGENTS_BOARD_CONTEXT_SIGNATURE = "agents-board:vitafleet-q4-rfp-response";
+
+export interface AgentsChatScreenContext {
+	chatContextBar: ChatContextBarDescriptor;
+	contextDescription: string;
+}
 
 export const RFP_101_WORK_ITEM = {
 	code: RFP_101_WORK_ITEM_CODE,
@@ -239,11 +248,53 @@ export function getAgentsWorkItemForCard(params: {
 	};
 }
 
+export function formatAgentsBoardContext(): string {
+	const visibleColumns = BOARD_COLUMNS.map((column) => {
+		const sampleCards = column.cards
+			.slice(0, 2)
+			.map((card) => `${card.code}: ${card.title}`)
+			.join("; ");
+		return `- ${column.title}: ${column.count} work items${sampleCards ? ` (visible: ${sampleCards})` : ""}`;
+	});
+
+	return [
+		"[Agents Board Context]",
+		"Source: /agents Jira board.",
+		`Project: ${AGENTS_BOARD_CONTEXT_LABEL}`,
+		"Workflow: RFP response board.",
+		"Visible columns:",
+		...visibleColumns,
+		"[End Agents Board Context]",
+	].join("\n");
+}
+
+function formatLightweightActiveJiraWorkItemContext(workItem: WorkItemData): string {
+	return [
+		"[Active Jira Work Item Context]",
+		"Source: /agents Jira work item.",
+		`Key: ${workItem.code}`,
+		`Title: ${workItem.title}`,
+		workItem.status ? `Status: ${workItem.status}` : null,
+		workItem.priority ? `Priority: ${workItem.priority}` : null,
+		workItem.assignee?.name ? `Assignee: ${workItem.assignee.name}${workItem.assignee.role ? ` (${workItem.assignee.role})` : ""}` : null,
+		workItem.reporter?.name ? `Reporter: ${workItem.reporter.name}${workItem.reporter.role ? ` (${workItem.reporter.role})` : ""}` : null,
+		workItem.labels?.length ? `Labels: ${workItem.labels.join(", ")}` : null,
+		workItem.description ? `Description: ${workItem.description}` : null,
+		"[End Active Jira Work Item Context]",
+	]
+		.filter((line): line is string => typeof line === "string" && line.length > 0)
+		.join("\n");
+}
+
 export function formatActiveJiraWorkItemContext(
 	workItem: WorkItemData | null | undefined,
 ): string | undefined {
-	if (!workItem || workItem.code !== RFP_101_WORK_ITEM_CODE || !workItem.rfpContext) {
+	if (!workItem) {
 		return undefined;
+	}
+
+	if (workItem.code !== RFP_101_WORK_ITEM_CODE || !workItem.rfpContext) {
+		return formatLightweightActiveJiraWorkItemContext(workItem);
 	}
 
 	const rfp = workItem.rfpContext;
@@ -286,4 +337,30 @@ export function formatActiveJiraWorkItemContext(
 	]
 		.filter((line): line is string => typeof line === "string" && line.length > 0)
 		.join("\n");
+}
+
+export function resolveAgentsChatScreenContext(
+	workItem: WorkItemData | null | undefined,
+): AgentsChatScreenContext {
+	const activeContextDescription = formatActiveJiraWorkItemContext(workItem);
+
+	if (workItem && activeContextDescription) {
+		return {
+			chatContextBar: {
+				label: `${workItem.code}: ${workItem.title}`,
+				iconName: "work-item",
+				signature: `agents-work-item:${workItem.code}`,
+			},
+			contextDescription: activeContextDescription,
+		};
+	}
+
+	return {
+		chatContextBar: {
+			label: AGENTS_BOARD_CONTEXT_LABEL,
+			iconName: "board",
+			signature: AGENTS_BOARD_CONTEXT_SIGNATURE,
+		},
+		contextDescription: formatAgentsBoardContext(),
+	};
 }

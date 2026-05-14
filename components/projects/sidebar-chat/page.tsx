@@ -4,6 +4,7 @@ import { useEffect, useMemo, useCallback, useRef, useState, type CSSProperties }
 import { useRovoChat } from "@/app/contexts";
 import { token } from "@/lib/tokens";
 import type { SendPromptOptions } from "@/app/contexts";
+import type { ChatContextBarDescriptor } from "./lib/chat-context-bar";
 import type { ChatSurfaceSwitchHandler } from "@/components/projects/shared/components/chat-surface-switcher";
 import { Conversation, ConversationContent } from "@/components/ui-ai/conversation";
 import { MessageTurns } from "@/components/projects/shared/message-turns";
@@ -59,6 +60,7 @@ interface ChatPanelProps {
 	containerClassName?: string;
 	containerStyle?: CSSProperties;
 	onSurfaceSwitch?: ChatSurfaceSwitchHandler;
+	chatContextBar?: ChatContextBarDescriptor | null;
 }
 
 const COMPACT_CHAT_WIDTH_MAX = 520;
@@ -83,6 +85,7 @@ export default function ChatPanel({
 	containerClassName,
 	containerStyle,
 	onSurfaceSwitch,
+	chatContextBar,
 }: Readonly<ChatPanelProps>): React.ReactElement {
 	const { resetChat, uiMessages: rawUiMessages, sendPrompt } = useRovoChat();
 	const panelRef = useRef<HTMLDivElement | null>(null);
@@ -359,6 +362,7 @@ export default function ChatPanel({
 						onSubmit={handleSubmit}
 						onStop={abort}
 						onRemoveQueuedPrompt={removeQueuedPrompt}
+						chatContextBar={chatContextBar}
 					/>
 				)}
 			</div>

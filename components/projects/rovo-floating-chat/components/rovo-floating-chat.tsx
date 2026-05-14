@@ -3,16 +3,19 @@
 import { motion } from "motion/react";
 import { token } from "@/lib/tokens";
 import { useRovoChat } from "@/app/contexts";
+import type { ChatContextBarDescriptor } from "@/components/projects/sidebar-chat/lib/chat-context-bar";
 import type { ChatSurfaceSwitchHandler } from "@/components/projects/shared/components/chat-surface-switcher";
 import ChatPanel from "@/components/projects/sidebar-chat/page";
 import FloatingChatHeader from "./floating-chat-header";
 
 interface RovoFloatingChatProps {
 	onSurfaceSwitch?: ChatSurfaceSwitchHandler;
+	chatContextBar?: ChatContextBarDescriptor | null;
 }
 
 export default function RovoFloatingChat({
 	onSurfaceSwitch,
+	chatContextBar,
 }: Readonly<RovoFloatingChatProps>) {
 	const { closeChat, resetChat } = useRovoChat();
 
@@ -45,6 +48,7 @@ export default function RovoFloatingChat({
 				}}
 				greeting={{ showHero: false }}
 				onSurfaceSwitch={onSurfaceSwitch}
+				chatContextBar={chatContextBar}
 			/>
 		</motion.div>
 	);

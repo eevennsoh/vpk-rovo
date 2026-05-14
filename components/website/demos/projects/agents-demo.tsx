@@ -6,7 +6,7 @@ import type { SendPromptOptions } from "@/app/contexts";
 import { SidebarProvider } from "@/app/contexts/context-sidebar";
 import AppLayout from "@/components/projects/page";
 import AgentsView from "@/components/projects/agents/page";
-import { formatActiveJiraWorkItemContext } from "@/components/projects/agents/data/rfp-work-items";
+import { resolveAgentsChatScreenContext } from "@/components/projects/agents/data/rfp-work-items";
 import { mergeRovoContextDescriptions } from "@/lib/rovo-context";
 import type { ChatSurfaceSwitchHandler } from "@/components/projects/shared/components/chat-surface-switcher";
 import { useAgentsWorkItemPresentation } from "@/components/projects/agents/hooks/use-agents-work-item-presentation";
@@ -27,18 +27,19 @@ export default function AgentsDemo() {
 		},
 		[promoteModalToInline],
 	);
-	const activeWorkItemContextDescription = formatActiveJiraWorkItemContext(
-		workItemPresentation.state.workItem,
+	const agentsChatScreenContext = useMemo(
+		() => resolveAgentsChatScreenContext(workItemPresentation.state.workItem),
+		[workItemPresentation.state.workItem],
 	);
 	const chatPromptOptions = useMemo(
 		() => ({
 			...AGENTS_CHAT_PROMPT_OPTIONS,
 			contextDescription: mergeRovoContextDescriptions(
 				AGENTS_CHAT_PROMPT_OPTIONS.contextDescription,
-				activeWorkItemContextDescription,
+				agentsChatScreenContext.contextDescription,
 			),
 		}) satisfies SendPromptOptions,
-		[activeWorkItemContextDescription],
+		[agentsChatScreenContext.contextDescription],
 	);
 
 	return (
@@ -49,6 +50,7 @@ export default function AgentsDemo() {
 					embedded={embedded}
 					chatPanelFlush
 					onChatSurfaceSwitch={handleChatSurfaceSwitch}
+					chatContextBar={agentsChatScreenContext.chatContextBar}
 				>
 					<AgentsView workItemPresentation={workItemPresentation} />
 				</AppLayout>

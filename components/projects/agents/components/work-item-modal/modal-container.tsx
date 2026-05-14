@@ -10,6 +10,7 @@ interface ModalContainerProps {
 export function ModalContainer({ children }: Readonly<ModalContainerProps>) {
 	return (
 		<div
+			className="[&_a:visited]:text-link"
 			style={{
 				position: "fixed",
 				top: "50%",

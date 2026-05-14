@@ -20,9 +20,12 @@ async function loadRfpContextHarness() {
 		stdin: {
 			contents: `
 				export {
+					AGENTS_BOARD_CONTEXT_LABEL,
 					RFP_101_WORK_ITEM,
 					formatActiveJiraWorkItemContext,
+					formatAgentsBoardContext,
 					getAgentsWorkItemForCard,
+					resolveAgentsChatScreenContext,
 				} from "./components/projects/agents/data/rfp-work-items";
 				export { mergeRovoContextDescriptions } from "./lib/rovo-context";
 			`,
@@ -54,7 +57,19 @@ test("RFP-101 active work item formats a bounded hidden Jira context block", asy
 	assert.match(context, /Acme-Mobility-enterprise-RFP\.pdf/);
 });
 
-test("non-RFP-101 work items keep the lightweight modal without injected context", async () => {
+test("board fallback formats bounded visible /agents context", async () => {
+	const harness = await loadRfpContextHarness();
+	const context = harness.formatAgentsBoardContext();
+
+	assert.match(context, /^\[Agents Board Context\]/);
+	assert.match(context, /\[End Agents Board Context\]$/);
+	assert.match(context, /VitaFleet Q4 RFP Response/);
+	assert.match(context, /RFP Intake: 9 work items/);
+	assert.match(context, /RFP-101: Qualify inbound Acme Mobility RFP/);
+	assert.ok(context.length < 1_500);
+});
+
+test("non-RFP-101 work items format a lightweight active work item context", async () => {
 	const harness = await loadRfpContextHarness();
 	const workItem = harness.getAgentsWorkItemForCard({
 		code: "RFP-102",
@@ -65,8 +80,37 @@ test("non-RFP-101 work items keep the lightweight modal without injected context
 		code: "RFP-102",
 		title: "Log procurement portal requirements",
 	});
-	assert.equal(harness.formatActiveJiraWorkItemContext(workItem), undefined);
+	assert.equal(
+		harness.formatActiveJiraWorkItemContext(workItem),
+		[
+			"[Active Jira Work Item Context]",
+			"Source: /agents Jira work item.",
+			"Key: RFP-102",
+			"Title: Log procurement portal requirements",
+			"[End Active Jira Work Item Context]",
+		].join("\n"),
+	);
 	assert.equal(harness.formatActiveJiraWorkItemContext(null), undefined);
+});
+
+test("agents chat screen resolver switches from board fallback to active work item", async () => {
+	const harness = await loadRfpContextHarness();
+
+	const boardContext = harness.resolveAgentsChatScreenContext(null);
+	assert.deepEqual(boardContext.chatContextBar, {
+		label: harness.AGENTS_BOARD_CONTEXT_LABEL,
+		iconName: "board",
+		signature: "agents-board:vitafleet-q4-rfp-response",
+	});
+	assert.match(boardContext.contextDescription, /^\[Agents Board Context\]/);
+
+	const workItemContext = harness.resolveAgentsChatScreenContext(harness.RFP_101_WORK_ITEM);
+	assert.deepEqual(workItemContext.chatContextBar, {
+		label: "RFP-101: Qualify inbound Acme Mobility RFP",
+		iconName: "work-item",
+		signature: "agents-work-item:RFP-101",
+	});
+	assert.match(workItemContext.contextDescription, /^\[Active Jira Work Item Context\]/);
 });
 
 test("Rovo context merging preserves active work item context and suggestion context", async () => {
@@ -105,8 +149,10 @@ test("Agents view opens the richer active work item through the presentation con
 test("Agents demo feeds active work item context into RovoChatProvider defaults", () => {
 	assert.match(
 		AGENTS_DEMO_SOURCE,
-		/formatActiveJiraWorkItemContext\(\s*workItemPresentation\.state\.workItem,\s*\)/,
+		/resolveAgentsChatScreenContext\(workItemPresentation\.state\.workItem\)/,
 	);
 	assert.match(AGENTS_DEMO_SOURCE, /contextDescription: mergeRovoContextDescriptions/);
+	assert.match(AGENTS_DEMO_SOURCE, /agentsChatScreenContext\.contextDescription/);
 	assert.match(AGENTS_DEMO_SOURCE, /<RovoChatProvider defaultPromptOptions=\{chatPromptOptions\}>/);
+	assert.match(AGENTS_DEMO_SOURCE, /chatContextBar=\{agentsChatScreenContext\.chatContextBar\}/);
 });

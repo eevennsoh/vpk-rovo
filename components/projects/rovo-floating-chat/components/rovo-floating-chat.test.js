@@ -66,6 +66,8 @@ async function loadRovoFloatingChatHarness() {
 							"data-testid": "shared-chat-panel",
 							"data-hide-header": String(props.hideHeader),
 							"data-abort-on-unmount": String(props.abortOnUnmount),
+							"data-context-label": props.chatContextBar?.label ?? "",
+							"data-context-icon": props.chatContextBar?.iconName ?? "",
 							className: props.containerClassName,
 						},
 						"Shared chat panel",
@@ -97,6 +99,16 @@ async function loadRovoFloatingChatHarness() {
 
 				export function renderFloatingChat() {
 					return renderToStaticMarkup(React.createElement(RovoFloatingChat));
+				}
+
+				export function renderFloatingChatWithContext() {
+					return renderToStaticMarkup(React.createElement(RovoFloatingChat, {
+						chatContextBar: {
+							label: "RFP-101: Qualify inbound Acme Mobility RFP",
+							iconName: "work-item",
+							signature: "agents-work-item:RFP-101",
+						},
+					}));
 				}
 			`,
 			loader: "tsx",
@@ -148,6 +160,14 @@ test("RovoFloatingChat renders the shared chat panel inside the floating shell",
 	assert.match(markup, /data-testid="shared-chat-panel"/);
 	assert.match(markup, /data-hide-header="true"/);
 	assert.match(markup, /data-abort-on-unmount="false"/);
+});
+
+test("RovoFloatingChat forwards context bar descriptor to the shared chat panel", async () => {
+	const harness = await loadRovoFloatingChatHarness();
+	const markup = harness.renderFloatingChatWithContext();
+
+	assert.match(markup, /data-context-label="RFP-101: Qualify inbound Acme Mobility RFP"/);
+	assert.match(markup, /data-context-icon="work-item"/);
 });
 
 test("Floating chat shell uses max-height (not fixed height) so it hugs content", () => {

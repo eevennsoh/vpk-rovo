@@ -51,8 +51,6 @@ export const chatStyles = {
 		flexDirection: "column" as const,
 		alignItems: "center",
 		width: "100%",
-		paddingLeft: token("space.150"),
-		paddingRight: token("space.150"),
 	},
 } as const;
 
