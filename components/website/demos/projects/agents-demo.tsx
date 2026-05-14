@@ -1,14 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import { RovoChatProvider } from "@/app/contexts";
 import type { SendPromptOptions } from "@/app/contexts";
-import type { WorkItemData } from "@/app/contexts/context-work-item-modal";
 import { SidebarProvider } from "@/app/contexts/context-sidebar";
 import AppLayout from "@/components/projects/page";
 import AgentsView from "@/components/projects/agents/page";
 import { formatActiveJiraWorkItemContext } from "@/components/projects/agents/data/rfp-work-items";
 import { mergeRovoContextDescriptions } from "@/lib/rovo-context";
+import type { ChatSurfaceSwitchHandler } from "@/components/projects/shared/components/chat-surface-switcher";
+import { useAgentsWorkItemPresentation } from "@/components/projects/agents/hooks/use-agents-work-item-presentation";
 import { useProjectDemoEmbedded } from "./use-project-demo-embedded";
 
 const AGENTS_CHAT_PROMPT_OPTIONS: SendPromptOptions = {
@@ -17,8 +18,18 @@ const AGENTS_CHAT_PROMPT_OPTIONS: SendPromptOptions = {
 
 export default function AgentsDemo() {
 	const embedded = useProjectDemoEmbedded();
-	const [activeWorkItem, setActiveWorkItem] = useState<WorkItemData | null>(null);
-	const activeWorkItemContextDescription = formatActiveJiraWorkItemContext(activeWorkItem);
+	const workItemPresentation = useAgentsWorkItemPresentation();
+	const { promoteModalToInline } = workItemPresentation;
+	const handleChatSurfaceSwitch = useCallback<ChatSurfaceSwitchHandler>(
+		(surface) => {
+			if (surface !== "sidebar") return;
+			promoteModalToInline();
+		},
+		[promoteModalToInline],
+	);
+	const activeWorkItemContextDescription = formatActiveJiraWorkItemContext(
+		workItemPresentation.state.workItem,
+	);
 	const chatPromptOptions = useMemo(
 		() => ({
 			...AGENTS_CHAT_PROMPT_OPTIONS,
@@ -33,8 +44,13 @@ export default function AgentsDemo() {
 	return (
 		<SidebarProvider>
 			<RovoChatProvider defaultPromptOptions={chatPromptOptions}>
-				<AppLayout product="jira" embedded={embedded} chatPanelFlush>
-					<AgentsView onActiveWorkItemChange={setActiveWorkItem} />
+				<AppLayout
+					product="jira"
+					embedded={embedded}
+					chatPanelFlush
+					onChatSurfaceSwitch={handleChatSurfaceSwitch}
+				>
+					<AgentsView workItemPresentation={workItemPresentation} />
 				</AppLayout>
 			</RovoChatProvider>
 		</SidebarProvider>

@@ -945,7 +945,7 @@ export function RovoChatProvider({
 	}, [rawUiMessages, submissionErrorMessage]);
 
 	const toggleChat = useCallback(
-		() => setChatSurface((prev) => (prev === null ? "sidebar" : null)),
+		() => setChatSurface((prev) => (prev === "sidebar" ? null : "sidebar")),
 		[]
 	);
 	const closeChat = useCallback(() => setChatSurface(null), []);

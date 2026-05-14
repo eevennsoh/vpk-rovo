@@ -2,10 +2,23 @@
 
 import Image from "next/image";
 import { token } from "@/lib/tokens";
+import Heading from "@/components/blocks/shared-ui/heading";
 import { IconTile } from "@/components/ui/icon-tile";
 import { defaultSuggestions, type RovoSuggestion } from "@/lib/rovo-suggestions";
 
 interface ChatGreetingProps {
+	/** Optional custom heading text */
+	heading?: string;
+	/** Optional custom light-mode illustration src */
+	illustrationSrc?: string;
+	/** Optional custom dark-mode illustration src */
+	illustrationDarkSrc?: string;
+	/**
+	 * Render the illustration + heading block above the suggestion list.
+	 * Surfaces with constrained vertical space (e.g. the floating chat) can
+	 * pass `false` to keep just the suggestions.
+	 */
+	showHero?: boolean;
 	/** Optional custom suggestions list */
 	suggestions?: ReadonlyArray<RovoSuggestion>;
 	/** Callback when a suggestion is clicked */
@@ -56,6 +69,10 @@ function SkillListItem({
 }
 
 export default function ChatGreeting({
+	heading = "How can I help?",
+	illustrationSrc = "/illustration-ai/chat/light.svg",
+	illustrationDarkSrc = "/illustration-ai/chat/dark.svg",
+	showHero = true,
 	suggestions,
 	onSuggestionClick,
 }: Readonly<ChatGreetingProps>) {
@@ -64,6 +81,27 @@ export default function ChatGreeting({
 	return (
 		<div className="w-[90%] max-w-[400px]">
 			<div className="flex flex-col gap-6">
+				{showHero ? (
+					<div className="flex flex-col items-center gap-2">
+						<Image
+							src={illustrationSrc}
+							alt=""
+							width={80}
+							height={80}
+							loading="eager"
+							className="h-auto w-auto object-contain dark:hidden"
+						/>
+						<Image
+							src={illustrationDarkSrc}
+							alt=""
+							width={80}
+							height={80}
+							loading="eager"
+							className="hidden h-auto w-auto object-contain dark:block"
+						/>
+						<Heading size="large" className="text-center">{heading}</Heading>
+					</div>
+				) : null}
 				<div className="w-full">
 					<div className="flex flex-col gap-1">
 						{greetingSuggestions.map((suggestion) => (

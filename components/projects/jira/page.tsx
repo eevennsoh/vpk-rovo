@@ -27,8 +27,14 @@ export default function JiraView({
 	workItemPresentation,
 }: Readonly<JiraViewProps>) {
 	const [selectedTab, setSelectedTab] = useState(1);
-	const { isOpen: isChatOpen, pinFloating, unpinFloating } = useRovoChat();
-	const { state: presentationState } = workItemPresentation;
+	const {
+		isOpen: isChatOpen,
+		chatSurface,
+		isFloatingPinned,
+		pinFloating,
+		unpinFloating,
+	} = useRovoChat();
+	const { state: presentationState, promoteModalToInline } = workItemPresentation;
 	const isModalOpen = presentationState.mode === "modal";
 	const selectedWorkItem = presentationState.workItem;
 
@@ -42,6 +48,17 @@ export default function JiraView({
 			unpinFloating(WORK_ITEM_FLOATING_PIN_REASON);
 		};
 	}, [isModalOpen, isChatOpen, pinFloating, unpinFloating]);
+
+	// While the floating-chat pin is held, a flip back to the sidebar surface
+	// means the user explicitly chose to give the chat full-height space. Move
+	// the modal into the inline page so the two don't compete for the viewport.
+	// The pin guard rules out the intermediate render that occurs when a modal
+	// first opens with sidebar chat already active, before pinFloating flips
+	// the surface to "floating".
+	useEffect(() => {
+		if (!isModalOpen || chatSurface !== "sidebar" || !isFloatingPinned) return;
+		promoteModalToInline();
+	}, [isModalOpen, chatSurface, isFloatingPinned, promoteModalToInline]);
 	const [boardColumns, setBoardColumns] = useState<BoardColumnData[]>(() =>
 		BOARD_COLUMNS.map((column) => ({
 			...column,

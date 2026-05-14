@@ -83,6 +83,9 @@ importers:
       '@json-render/yaml':
         specifier: ^0.18.0
         version: 0.18.0(zod@4.4.1)
+      '@modelcontextprotocol/sdk':
+        specifier: 1.29.0
+        version: 1.29.0(zod@4.4.1)
       '@playwright/mcp':
         specifier: ^0.0.72
         version: 0.0.72

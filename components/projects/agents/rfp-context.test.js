@@ -81,14 +81,17 @@ test("Rovo context merging preserves active work item context and suggestion con
 	);
 });
 
-test("Agents view lifts and clears the active work item for Rovo context injection", () => {
-	assert.match(AGENTS_VIEW_SOURCE, /onActiveWorkItemChange\?\.\(workItem\)/);
-	assert.match(AGENTS_VIEW_SOURCE, /onActiveWorkItemChange\?\.\(null\)/);
-	assert.match(AGENTS_VIEW_SOURCE, /return \(\) => onActiveWorkItemChange\?\.\(null\);/);
+test("Agents view opens the richer active work item through the presentation controller", () => {
+	assert.match(AGENTS_VIEW_SOURCE, /const workItem = getAgentsWorkItemForCard\(\{ title, code \}\);/);
+	assert.match(AGENTS_VIEW_SOURCE, /workItemPresentation\.openModal\(workItem\)/);
+	assert.match(AGENTS_VIEW_SOURCE, /workItem=\{selectedWorkItem\}/);
 });
 
 test("Agents demo feeds active work item context into RovoChatProvider defaults", () => {
-	assert.match(AGENTS_DEMO_SOURCE, /formatActiveJiraWorkItemContext\(activeWorkItem\)/);
+	assert.match(
+		AGENTS_DEMO_SOURCE,
+		/formatActiveJiraWorkItemContext\(\s*workItemPresentation\.state\.workItem,\s*\)/,
+	);
 	assert.match(AGENTS_DEMO_SOURCE, /contextDescription: mergeRovoContextDescriptions/);
 	assert.match(AGENTS_DEMO_SOURCE, /<RovoChatProvider defaultPromptOptions=\{chatPromptOptions\}>/);
 });

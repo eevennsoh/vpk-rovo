@@ -163,11 +163,15 @@ async function saveSynthesis({ content, sources, tags, title }) {
 	})
 }
 
-async function getActiveThreadUrl(threadId) {
+function buildRovoThreadBrowserWorkspacePath(threadId) {
 	const resolvedThreadId = requireNonEmptyString(threadId, "A non-empty thread_id is required.")
+	return `/api/rovo/threads/${encodeURIComponent(resolvedThreadId)}/browser-workspace`
+}
+
+async function getActiveThreadUrl(threadId) {
 	const workspaceState = await requestJson(
 		"GET",
-		`/api/rovo-app/threads/${encodeURIComponent(resolvedThreadId)}/browser-workspace`,
+		buildRovoThreadBrowserWorkspacePath(threadId),
 	)
 	const url =
 		typeof workspaceState?.url === "string" && workspaceState.url.trim()
@@ -243,7 +247,14 @@ async function main() {
 	await server.connect(transport)
 }
 
-main().catch((error) => {
-	console.error("[wiki-capture-mcp] Server error:", error)
-	process.exit(1)
-})
+if (require.main === module) {
+	main().catch((error) => {
+		console.error("[wiki-capture-mcp] Server error:", error)
+		process.exit(1)
+	})
+}
+
+module.exports = {
+	buildRovoThreadBrowserWorkspacePath,
+	getActiveThreadUrl,
+}
