@@ -9,10 +9,37 @@ import { useWorkItemModal } from "@/app/contexts/context-work-item-modal";
 import { DetailRow } from "./detail-row";
 import ChevronDownIcon from "@atlaskit/icon/core/chevron-down";
 import ChevronUpIcon from "@atlaskit/icon/core/chevron-up";
+import PriorityHighIcon from "@atlaskit/icon/core/priority-high";
 import PriorityMediumIcon from "@atlaskit/icon/core/priority-medium";
 
+function getFallback(name: string): string {
+	const initials = name
+		.split(" ")
+		.map((part) => part[0])
+		.join("")
+		.slice(0, 2)
+		.toUpperCase();
+	return initials || "U";
+}
+
 export function DetailsAccordion() {
-	const { state, actions } = useWorkItemModal();
+	const { state, actions, meta } = useWorkItemModal();
+	const { workItem } = meta;
+	const assignee = workItem.assignee ?? {
+		name: "Maya Chen",
+		avatarUrl: "/avatar-user/andrea-wilson/color/asow-service-yellow.png",
+	};
+	const reporter = workItem.reporter ?? {
+		name: "Jordan Lee",
+		avatarUrl: "/avatar-user/andrew-park/color/asow-dev-lime.png",
+	};
+	const priority = workItem.priority ?? "Medium";
+	const PriorityIcon = priority === "High" || priority === "Highest"
+		? PriorityHighIcon
+		: PriorityMediumIcon;
+	const priorityColor = priority === "High" || priority === "Highest"
+		? token("color.icon.danger")
+		: token("color.icon.information");
 
 	return (
 		<div style={{ border: `1px solid ${token("color.border")}`, borderRadius: token("radius.medium") }}>
@@ -38,10 +65,10 @@ export function DetailsAccordion() {
 						<DetailRow label="Assignee">
 							<div className="flex items-center gap-2">
 								<Avatar size="sm">
-									<AvatarImage src="/avatar-user/andrea-wilson/color/asow-service-yellow.png" alt="Maya Chen" />
-									<AvatarFallback>MC</AvatarFallback>
+									{assignee.avatarUrl ? <AvatarImage src={assignee.avatarUrl} alt={assignee.name} /> : null}
+									<AvatarFallback>{getFallback(assignee.name)}</AvatarFallback>
 								</Avatar>
-								<span className="text-sm font-medium">Maya Chen</span>
+								<span className="text-sm font-medium">{assignee.name}</span>
 							</div>
 							<div className="pt-0.5 ps-2">
 								<a href="#">Change owner</a>
@@ -51,32 +78,39 @@ export function DetailsAccordion() {
 						<DetailRow label="Reporter">
 							<div className="flex items-center gap-2">
 								<Avatar size="sm">
-									<AvatarImage src="/avatar-user/andrew-park/color/asow-dev-lime.png" alt="Jordan Lee" />
-									<AvatarFallback>JL</AvatarFallback>
+									{reporter.avatarUrl ? <AvatarImage src={reporter.avatarUrl} alt={reporter.name} /> : null}
+									<AvatarFallback>{getFallback(reporter.name)}</AvatarFallback>
 								</Avatar>
-								<span className="text-sm font-medium">Jordan Lee</span>
+								<span className="text-sm font-medium">{reporter.name}</span>
 							</div>
 						</DetailRow>
 
 						<DetailRow label="Priority">
 							<div className="flex items-center gap-2">
-								<PriorityMediumIcon label="Medium priority" color={token("color.icon.information")} />
-								<span className="text-sm font-medium">Medium</span>
+								<PriorityIcon label={`${priority} priority`} color={priorityColor} />
+								<span className="text-sm font-medium">{priority}</span>
 							</div>
 						</DetailRow>
 
 						<DetailRow label="Start date">
-							<span className="text-sm">Oct 7, 2026</span>
+							<span className="text-sm">{workItem.startDate ?? "Oct 7, 2026"}</span>
 						</DetailRow>
 
+						{workItem.dueDate ? (
+							<DetailRow label="Due date">
+								<span className="text-sm">{workItem.dueDate}</span>
+							</DetailRow>
+						) : null}
+
 						<DetailRow label="Parent">
-							<a href="#">RFP-100</a>
+							<a href="#">{workItem.parent?.code ?? "RFP-100"}</a>
 						</DetailRow>
 
 						<DetailRow label="Labels" noPadding>
 							<TagGroup>
-								<Tag>enterprise-rfp</Tag>
-								<Tag>q4-sales</Tag>
+								{(workItem.labels?.length ? workItem.labels : ["enterprise-rfp", "q4-sales"]).map((label) => (
+									<Tag key={label}>{label}</Tag>
+								))}
 							</TagGroup>
 						</DetailRow>
 					</div>

@@ -10,6 +10,7 @@ import JiraWorkItemModal from "./components/jira-work-item-modal";
 import { AgentsWorkItemInlinePage } from "./components/agents-work-item-inline-page";
 import { AVATARS } from "./data/avatars";
 import { BOARD_COLUMNS, type BoardColumnData, type KanbanCardData } from "./data/board-data";
+import { getAgentsWorkItemForCard } from "./data/rfp-work-items";
 import type { AgentsWorkItemPresentationController } from "./hooks/use-agents-work-item-presentation";
 
 const WORK_ITEM_FLOATING_PIN_REASON = "agents-work-item-modal";
@@ -63,7 +64,8 @@ export default function AgentsView({
 	const [draggedCard, setDraggedCard] = useState<DraggedCardState | null>(null);
 
 	const handleCardClick = (title: string, code: string) => {
-		workItemPresentation.openModal({ title, code });
+		const workItem = getAgentsWorkItemForCard({ title, code });
+		workItemPresentation.openModal(workItem);
 	};
 
 	const handleCardDragStart = (card: KanbanCardData, sourceColumnTitle: string) => {
@@ -179,8 +181,7 @@ export default function AgentsView({
 			<JiraWorkItemModal
 				isOpen={isModalOpen}
 				onClose={handleModalClose}
-				workItemTitle={selectedWorkItem?.title}
-				workItemCode={selectedWorkItem?.code}
+				workItem={selectedWorkItem}
 			/>
 		</div>
 	);

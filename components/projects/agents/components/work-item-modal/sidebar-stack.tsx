@@ -2,6 +2,7 @@
 
 import { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
+import { useWorkItemData } from "@/app/contexts/context-work-item-modal";
 import AutomationIcon from "@atlaskit/icon/core/automation";
 import ChevronDownIcon from "@atlaskit/icon/core/chevron-down";
 
@@ -15,6 +16,8 @@ export function SidebarStack({ children }: Readonly<SidebarStackProps>) {
 }
 
 export function StatusHeader() {
+	const workItem = useWorkItemData();
+
 	return (
 		<div className="pt-3 pb-2">
 			<div className="flex items-center gap-2">
@@ -22,7 +25,7 @@ export function StatusHeader() {
 					className="gap-2"
 					variant="secondary"
 				>
-					RFP Intake
+					{workItem.status ?? "RFP Intake"}
 					<ChevronDownIcon label="" size="small" />
 				</Button>
 				<Button aria-label="Automation" size="icon" variant="secondary">

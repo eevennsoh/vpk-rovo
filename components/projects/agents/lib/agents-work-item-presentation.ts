@@ -1,9 +1,8 @@
+import type { WorkItemData } from "@/app/contexts/context-work-item-modal";
+
 export type AgentsWorkItemPresentationMode = "board" | "modal" | "inline";
 
-export interface AgentsPresentedWorkItem {
-	title: string;
-	code: string;
-}
+export type AgentsPresentedWorkItem = WorkItemData;
 
 export interface AgentsWorkItemPresentationState {
 	mode: AgentsWorkItemPresentationMode;

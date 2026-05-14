@@ -4,25 +4,35 @@ import { token } from "@/lib/tokens";
 import { Button } from "@/components/ui/button";
 import Heading from "@/components/blocks/shared-ui/heading";
 import { Badge } from "@/components/ui/badge";
+import { useWorkItemData, type WorkItemAttachment } from "@/app/contexts/context-work-item-modal";
 import AddIcon from "@atlaskit/icon/core/add";
 import ShowMoreHorizontalIcon from "@atlaskit/icon/core/show-more-horizontal";
 
 
-interface AttachmentFile {
-	name: string;
-	ext: string;
-	date: string;
-	color: string;
-}
-
-const ATTACHMENT_FILES: AttachmentFile[] = [
-	{ name: "VitaFleet-enterprise-RFP", ext: "pdf", date: "17 Mar 2025, 09:12 AM", color: token("color.background.success") },
-	{ name: "response-matrix", ext: "xlsx", date: "17 Mar 2025, 09:18 AM", color: token("color.background.warning") },
-	{ name: "pricing-scenarios", ext: "xlsx", date: "17 Mar 2025, 09:24 AM", color: token("color.background.discovery") },
+const ATTACHMENT_FILES: WorkItemAttachment[] = [
+	{ name: "VitaFleet-enterprise-RFP", ext: "pdf", date: "17 Mar 2025, 09:12 AM", thumbnailTone: "success" },
+	{ name: "response-matrix", ext: "xlsx", date: "17 Mar 2025, 09:18 AM", thumbnailTone: "warning" },
+	{ name: "pricing-scenarios", ext: "xlsx", date: "17 Mar 2025, 09:24 AM", thumbnailTone: "discovery" },
 ];
 
 interface AttachmentCardProps {
-	file: AttachmentFile;
+	file: WorkItemAttachment;
+}
+
+function getAttachmentColor(file: WorkItemAttachment): string {
+	if (file.thumbnailColor) return file.thumbnailColor;
+	switch (file.thumbnailTone) {
+		case "success":
+			return token("color.background.success");
+		case "warning":
+			return token("color.background.warning");
+		case "discovery":
+			return token("color.background.discovery");
+		case "information":
+			return token("color.background.information");
+		default:
+			return token("elevation.surface.sunken");
+	}
 }
 
 function AttachmentCard({ file }: Readonly<AttachmentCardProps>) {
@@ -36,7 +46,7 @@ function AttachmentCard({ file }: Readonly<AttachmentCardProps>) {
 				boxShadow: token("elevation.shadow.raised"),
 			}}
 		>
-			<div style={{ height: "88px", backgroundColor: file.color }} />
+			<div style={{ height: "88px", backgroundColor: getAttachmentColor(file) }} />
 			<div style={{ padding: token("space.050"), backgroundColor: token("elevation.surface") }}>
 				<div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
 					<span className="text-xs font-bold">
@@ -54,6 +64,9 @@ function AttachmentCard({ file }: Readonly<AttachmentCardProps>) {
 }
 
 export function AttachmentsSection() {
+	const workItem = useWorkItemData();
+	const attachmentFiles = workItem.attachments?.length ? workItem.attachments : ATTACHMENT_FILES;
+
 	return (
 		<div style={{ marginBottom: token("space.300") }}>
 			<div
@@ -68,7 +81,7 @@ export function AttachmentsSection() {
 					<Heading size="small" as="h3">
 						Attachments
 					</Heading>
-					<Badge>3</Badge>
+					<Badge>{attachmentFiles.length}</Badge>
 				</div>
 				<div style={{ display: "flex", gap: token("space.100") }}>
 					<Button aria-label="Manage" size="icon-sm" variant="ghost">
@@ -88,7 +101,7 @@ export function AttachmentsSection() {
 					padding: token("space.025"),
 				}}
 			>
-				{ATTACHMENT_FILES.map((file, i) => (
+				{attachmentFiles.map((file, i) => (
 					<AttachmentCard key={i} file={file} />
 				))}
 			</div>
