@@ -3,6 +3,7 @@
 import { token } from "@/lib/tokens";
 import { Button } from "@/components/ui/button";
 import Heading from "@/components/blocks/shared-ui/heading";
+import { useWorkItemData, type WorkItemChildItem } from "@/app/contexts/context-work-item-modal";
 
 import { ChildItemRow } from "./child-item-row";
 import { ChildItemsProgressBar } from "./child-items-progress-bar";
@@ -10,7 +11,25 @@ import { ChildItemsTableHeader } from "./child-items-table-header";
 import AddIcon from "@atlaskit/icon/core/add";
 import ShowMoreHorizontalIcon from "@atlaskit/icon/core/show-more-horizontal";
 
+const DEFAULT_CHILD_ITEMS: WorkItemChildItem[] = [
+	{
+		key: "RFP-105",
+		summary: "Validate submission checklist and portal access",
+		priority: "medium",
+		status: "inprogress",
+	},
+	{
+		key: "RFP-106",
+		summary: "Confirm sales engineer owner for technical appendix",
+		priority: "lowest",
+		status: "todo",
+	},
+];
+
 export function ChildItemsSection() {
+	const workItem = useWorkItemData();
+	const childItems = workItem.childItems?.length ? workItem.childItems : DEFAULT_CHILD_ITEMS;
+
 	return (
 		<div className="pb-6">
 			<div className="pb-2">
@@ -29,7 +48,7 @@ export function ChildItemsSection() {
 				</div>
 			</div>
 
-			<ChildItemsProgressBar />
+			<ChildItemsProgressBar items={childItems} />
 
 			<div
 				style={{
@@ -39,8 +58,9 @@ export function ChildItemsSection() {
 				}}
 			>
 				<ChildItemsTableHeader />
-				<ChildItemRow itemKey="RFP-105" summary="Validate submission checklist and portal access" priority="medium" status="inprogress" />
-				<ChildItemRow itemKey="RFP-106" summary="Confirm sales engineer owner for technical appendix" priority="lowest" status="todo" />
+				{childItems.map((item) => (
+					<ChildItemRow key={item.key} item={item} />
+				))}
 			</div>
 		</div>
 	);

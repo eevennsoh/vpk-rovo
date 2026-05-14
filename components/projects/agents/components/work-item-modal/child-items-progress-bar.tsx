@@ -1,8 +1,21 @@
 "use client";
 
 import { token } from "@/lib/tokens";
+import type { WorkItemChildItem } from "@/app/contexts/context-work-item-modal";
 
-export function ChildItemsProgressBar() {
+interface ChildItemsProgressBarProps {
+	items: readonly WorkItemChildItem[];
+}
+
+export function ChildItemsProgressBar({ items }: Readonly<ChildItemsProgressBarProps>) {
+	const total = items.length;
+	const doneCount = items.filter((item) => item.status === "done").length;
+	const inProgressCount = items.filter((item) => item.status === "inprogress").length;
+	const todoCount = Math.max(0, total - doneCount - inProgressCount);
+	const donePercent = total > 0 ? Math.round((doneCount / total) * 100) : 0;
+
+	if (total === 0) return null;
+
 	return (
 		<div
 			style={{
@@ -23,26 +36,26 @@ export function ChildItemsProgressBar() {
 			>
 				<div
 					style={{
-						flex: 1,
+						flex: Math.max(doneCount, 0),
 						backgroundColor: token("color.background.success.bold"),
 						borderRadius: `${token("radius.small")} 0 0 ${token("radius.small")}`,
 					}}
-					title="1 of 3 Done"
+					title={`${doneCount} of ${total} Done`}
 				/>
 				<div
-					style={{ flex: 1, backgroundColor: token("color.background.information.bold") }}
-					title="1 of 3 In progress"
+					style={{ flex: Math.max(inProgressCount, 0), backgroundColor: token("color.background.information.bold") }}
+					title={`${inProgressCount} of ${total} In progress`}
 				/>
 				<div
 					style={{
-						flex: 1,
+						flex: Math.max(todoCount, 0),
 						backgroundColor: token("color.border"),
 						borderRadius: `0 ${token("radius.small")} ${token("radius.small")} 0`,
 					}}
-					title="1 of 3 To do"
+					title={`${todoCount} of ${total} To do`}
 				/>
 			</div>
-			<span className="text-sm">33% Done</span>
+			<span className="text-sm">{donePercent}% Done</span>
 		</div>
 	);
 }

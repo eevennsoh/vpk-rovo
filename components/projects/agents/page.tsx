@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { token } from "@/lib/tokens";
 import JiraHeader from "./components/jira-header";
 import BoardToolbar from "./components/board-toolbar";
@@ -8,16 +8,24 @@ import BoardColumnsContainer from "./components/board-columns-container";
 import JiraWorkItemModal from "./components/jira-work-item-modal";
 import { AVATARS } from "./data/avatars";
 import { BOARD_COLUMNS, type BoardColumnData, type KanbanCardData } from "./data/board-data";
+import { getAgentsWorkItemForCard } from "./data/rfp-work-items";
+import type { WorkItemData } from "@/app/contexts/context-work-item-modal";
+
+interface AgentsViewProps {
+	onActiveWorkItemChange?: (workItem: WorkItemData | null) => void;
+}
 
 interface DraggedCardState {
 	card: KanbanCardData;
 	sourceColumnTitle: string;
 }
 
-export default function AgentsView() {
+export default function AgentsView({
+	onActiveWorkItemChange,
+}: Readonly<AgentsViewProps>) {
 	const [selectedTab, setSelectedTab] = useState(1);
 	const [isModalOpen, setIsModalOpen] = useState(false);
-	const [selectedWorkItem, setSelectedWorkItem] = useState<{ title: string; code: string } | null>(null);
+	const [selectedWorkItem, setSelectedWorkItem] = useState<WorkItemData | null>(null);
 	const [boardColumns, setBoardColumns] = useState<BoardColumnData[]>(() =>
 		BOARD_COLUMNS.map((column) => ({
 			...column,
@@ -30,7 +38,9 @@ export default function AgentsView() {
 	const [draggedCard, setDraggedCard] = useState<DraggedCardState | null>(null);
 
 	const handleCardClick = (title: string, code: string) => {
-		setSelectedWorkItem({ title, code });
+		const workItem = getAgentsWorkItemForCard({ title, code });
+		setSelectedWorkItem(workItem);
+		onActiveWorkItemChange?.(workItem);
 		setIsModalOpen(true);
 	};
 
@@ -93,7 +103,13 @@ export default function AgentsView() {
 
 	const handleModalClose = () => {
 		setIsModalOpen(false);
+		setSelectedWorkItem(null);
+		onActiveWorkItemChange?.(null);
 	};
+
+	useEffect(() => {
+		return () => onActiveWorkItemChange?.(null);
+	}, [onActiveWorkItemChange]);
 
 	return (
 		<div
@@ -130,8 +146,7 @@ export default function AgentsView() {
 			<JiraWorkItemModal
 				isOpen={isModalOpen}
 				onClose={handleModalClose}
-				workItemTitle={selectedWorkItem?.title}
-				workItemCode={selectedWorkItem?.code}
+				workItem={selectedWorkItem}
 			/>
 		</div>
 	);

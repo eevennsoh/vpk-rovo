@@ -24,11 +24,13 @@
  */
 
 import { WorkItemModalProvider } from "@/app/contexts/context-work-item-modal";
+import type { WorkItemData } from "@/app/contexts/context-work-item-modal";
 import WorkItemModal from "./work-item-modal/index";
 
 interface JiraWorkItemModalProps {
 	isOpen: boolean;
 	onClose: () => void;
+	workItem?: WorkItemData | null;
 	workItemTitle?: string;
 	workItemCode?: string;
 }
@@ -36,17 +38,20 @@ interface JiraWorkItemModalProps {
 export default function JiraWorkItemModal({
 	isOpen,
 	onClose,
+	workItem,
 	workItemTitle = "Qualify inbound Acme Mobility RFP",
 	workItemCode = "RFP-101",
 }: Readonly<JiraWorkItemModalProps>) {
+	const resolvedWorkItem = workItem ?? {
+		title: workItemTitle,
+		code: workItemCode,
+	};
+
 	return (
 		<WorkItemModalProvider
 			isOpen={isOpen}
 			onClose={onClose}
-			workItem={{
-				title: workItemTitle,
-				code: workItemCode,
-			}}
+			workItem={resolvedWorkItem}
 		>
 			<WorkItemModal.Backdrop />
 			<WorkItemModal.Container>

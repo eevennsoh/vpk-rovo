@@ -26,58 +26,83 @@ export interface WorkItemModalActions {
 /**
  * Work Item Data
  */
+export interface WorkItemPerson {
+	name: string;
+	avatarUrl?: string;
+	role?: string;
+}
+
+export interface WorkItemChildItem {
+	type?: string;
+	key: string;
+	summary: string;
+	priority: "highest" | "high" | "medium" | "low" | "lowest";
+	assignee?: string;
+	status: "done" | "inprogress" | "todo";
+}
+
+export interface WorkItemAttachment {
+	name: string;
+	ext: string;
+	date: string;
+	thumbnailColor?: string;
+	thumbnailTone?: "success" | "warning" | "discovery" | "information" | "neutral";
+}
+
+export interface WorkItemComment {
+	id: string;
+	author: WorkItemPerson;
+	timestamp: string;
+	content: string;
+	replies?: WorkItemComment[];
+}
+
+export interface WorkItemRfpTeamMember {
+	role: string;
+	owner: string;
+	need: string;
+}
+
+export interface WorkItemRfpContext {
+	customerName: string;
+	opportunityName: string;
+	seatCount: string;
+	competitorProduct: string;
+	salesGoal: string;
+	procurementStage: string;
+	responseDueDate: string;
+	submissionPortal: string;
+	buyerPriorities: string[];
+	evaluationCriteria: string[];
+	winThemes: string[];
+	risks: string[];
+	nextActions: string[];
+	responseTeam: WorkItemRfpTeamMember[];
+}
+
 export interface WorkItemData {
 	title: string;
 	code: string;
 	description?: string;
-	assignee?: {
-		name: string;
-		avatarUrl?: string;
-	};
-	reporter?: {
-		name: string;
-		avatarUrl?: string;
-	};
+	assignee?: WorkItemPerson;
+	reporter?: WorkItemPerson;
 	priority?: "Highest" | "High" | "Medium" | "Low" | "Lowest";
 	status?: string;
 	startDate?: string;
+	dueDate?: string;
 	parent?: {
 		code: string;
 		title?: string;
 	};
 	labels?: string[];
-	childItems?: Array<{
-		type: string;
-		key: string;
-		summary: string;
-		priority: string;
-		assignee?: string;
-		status: string;
-	}>;
-	attachments?: Array<{
-		name: string;
-		ext: string;
-		date: string;
-		thumbnailColor?: string;
-	}>;
-	comments?: Array<{
-		id: string;
-		author: {
-			name: string;
-			avatarUrl?: string;
-		};
-		timestamp: string;
-		content: string;
-		replies?: Array<{
-			id: string;
-			author: {
-				name: string;
-				avatarUrl?: string;
-			};
-			timestamp: string;
-			content: string;
-		}>;
-	}>;
+	childItems?: WorkItemChildItem[];
+	attachments?: WorkItemAttachment[];
+	comments?: WorkItemComment[];
+	approvers?: WorkItemPerson[];
+	effortEstimate?: string;
+	account?: string;
+	dealSize?: string;
+	rfpContext?: WorkItemRfpContext;
 }
 
 /**

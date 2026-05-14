@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import Heading from "@/components/blocks/shared-ui/heading";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
+import { useWorkItemData } from "@/app/contexts/context-work-item-modal";
 
 
 import { CommentThread } from "./comment-thread";
@@ -32,12 +33,24 @@ function ActivityFilters() {
 }
 
 function AddCommentSection() {
+	const workItem = useWorkItemData();
+	const commenter = workItem.assignee ?? {
+		name: "Maya Chen",
+		avatarUrl: "/avatar-user/andrea-wilson/color/asow-service-yellow.png",
+	};
+	const fallback = commenter.name
+		.split(" ")
+		.map((part) => part[0])
+		.join("")
+		.slice(0, 2)
+		.toUpperCase() || "MC";
+
 	return (
 		<div className="pb-4">
 			<div className="flex items-start gap-2">
 				<Avatar size="sm">
-					<AvatarImage src="/avatar-user/andrea-wilson/color/asow-service-yellow.png" alt="Maya Chen" />
-					<AvatarFallback>MC</AvatarFallback>
+					{commenter.avatarUrl ? <AvatarImage src={commenter.avatarUrl} alt={commenter.name} /> : null}
+					<AvatarFallback>{fallback}</AvatarFallback>
 				</Avatar>
 				<div className="flex flex-col gap-2">
 					<Input placeholder="Add a comment" aria-label="Add comment" className="h-8" />

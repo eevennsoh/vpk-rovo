@@ -8,6 +8,7 @@ import type { ChatSurfaceSwitchHandler } from "@/components/projects/shared/comp
 import { Conversation, ConversationContent } from "@/components/ui-ai/conversation";
 import { MessageTurns } from "@/components/projects/shared/message-turns";
 import { isRenderableRovoUIMessage } from "@/lib/rovo-ui-messages";
+import { mergeRovoContextDescriptions } from "@/lib/rovo-context";
 import {
 	buildClarificationMessageMetadata,
 	buildClarificationDismissPrompt,
@@ -225,15 +226,14 @@ export default function ChatPanel({
 
 	const handleGreetingSuggestionClick = useCallback(
 		(suggestion: RovoSuggestion) => {
-			const existingContext = resolvedSendPromptOptions?.contextDescription?.trim();
-			const suggestionContext = suggestion.contextDescription?.trim();
-			const mergedContext = suggestionContext ? [existingContext, suggestionContext].filter(Boolean).join("\n\n") : existingContext;
-
 			const hasSeparatePrompt = suggestion.prompt && suggestion.prompt !== suggestion.label;
 
 			void sendPrompt(suggestion.prompt ?? suggestion.label, {
 				...resolvedSendPromptOptions,
-				contextDescription: mergedContext,
+				contextDescription: mergeRovoContextDescriptions(
+					resolvedSendPromptOptions?.contextDescription,
+					suggestion.contextDescription,
+				),
 				messageMetadata: {
 					...resolvedSendPromptOptions?.messageMetadata,
 					...(hasSeparatePrompt ? { displayLabel: suggestion.label } : {}),
