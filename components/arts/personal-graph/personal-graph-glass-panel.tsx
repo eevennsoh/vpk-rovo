@@ -359,7 +359,6 @@ export function PersonalGraphLiquidGlassIconButton({
 			aria-busy={isLoading || undefined}
 			className={cn(
 				"relative isolate min-w-0 overflow-hidden rounded-full border-0 p-0 shadow-none",
-				"aria-expanded:!bg-transparent aria-expanded:!text-text-subtle aria-expanded:!border-transparent aria-expanded:[&_svg]:!text-icon-subtle",
 				className,
 			)}
 			disabled={isDisabled}

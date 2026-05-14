@@ -7,6 +7,10 @@ const GLASS_PANEL_SOURCE = fs.readFileSync(
 	path.join(__dirname, "personal-graph-glass-panel.tsx"),
 	"utf8",
 );
+const BUTTON_SOURCE = fs.readFileSync(
+	path.join(__dirname, "..", "..", "ui", "button.tsx"),
+	"utf8",
+);
 
 test("Personal Graph glass surfaces use the demo glass values with chromatic RGB offsets", () => {
 	assert.match(
@@ -49,14 +53,18 @@ test("Personal Graph liquid glass icon buttons preserve the previous icon glyph 
 	assert.match(GLASS_PANEL_SOURCE, /className=\{cn\(/);
 });
 
-test("Personal Graph liquid glass icon buttons use shared ghost chrome without selected-state fill", () => {
+test("Personal Graph liquid glass icon buttons inherit shared ghost expanded state", () => {
 	assert.match(GLASS_PANEL_SOURCE, /<Button/);
 	assert.match(GLASS_PANEL_SOURCE, /variant="ghost"/);
 	assert.match(GLASS_PANEL_SOURCE, /size="icon"/);
 	assert.match(
-		GLASS_PANEL_SOURCE,
-		/aria-expanded:!bg-transparent aria-expanded:!text-text-subtle aria-expanded:!border-transparent aria-expanded:\[&_svg\]:!text-icon-subtle/,
+		BUTTON_SOURCE,
+		/ghost:\s+"[^"]*aria-expanded:bg-bg-selected[^"]*aria-expanded:text-text-selected[^"]*aria-expanded:border-border-selected/,
 	);
+	assert.doesNotMatch(GLASS_PANEL_SOURCE, /aria-expanded:!bg-transparent/);
+	assert.doesNotMatch(GLASS_PANEL_SOURCE, /aria-expanded:!text-text-subtle/);
+	assert.doesNotMatch(GLASS_PANEL_SOURCE, /aria-expanded:!border-transparent/);
+	assert.doesNotMatch(GLASS_PANEL_SOURCE, /aria-expanded:\[&_svg\]:!text-icon-subtle/);
 	assert.doesNotMatch(GLASS_PANEL_SOURCE, /<LiquidGlassButton/);
 	assert.doesNotMatch(GLASS_PANEL_SOURCE, /buttonVariants/);
 	assert.doesNotMatch(GLASS_PANEL_SOURCE, /pointerFill=\{false\}/);
