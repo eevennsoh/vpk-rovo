@@ -33,6 +33,7 @@ export default function TopNavigation({
 		isVisible,
 		toggleSidebar,
 		toggleChat,
+		isSidebarChatOpen,
 		toggleTheme,
 		searchContainerRef,
 		searchPanelRef,
@@ -158,6 +159,7 @@ export default function TopNavigation({
 					product={product}
 					windowWidth={windowWidth}
 					hideRovoAction={hideRovoAction}
+					isChatOpen={isSidebarChatOpen}
 					onToggleChat={toggleChat}
 					onToggleTheme={toggleTheme}
 				/>
