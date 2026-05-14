@@ -7,6 +7,7 @@ import "leaflet/dist/leaflet.css";
 import { getSSRAutoScript, getThemeStyles } from "@atlaskit/tokens";
 import { Providers } from "@/app/providers";
 import { DevRootTools } from "@/components/utils/dev-root-tools";
+import { PreHydrationScript } from "@/components/utils/pre-hydration-script";
 import { Geist } from "next/font/google";
 import localFont from "next/font/local";
 import { cn } from "@/lib/utils";
@@ -214,7 +215,6 @@ ${devStylesheetGuardScript}
 			suppressHydrationWarning
 		>
 			<head>
-				<script dangerouslySetInnerHTML={{ __html: preHydrationScript }} />
 				{FAVICON_LINKS.map(({ href, media }) => (
 					<link
 						key={media ?? href}
@@ -242,6 +242,7 @@ ${devStylesheetGuardScript}
 				<link href="https://fonts.googleapis.com/css2?family=BBH+Bartle&family=Bitcount+Grid+Single:wght@100..900&family=DotGothic16&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 			</head>
 			<body suppressHydrationWarning className="antialiased">
+				<PreHydrationScript id="vpk-pre-hydration">{preHydrationScript}</PreHydrationScript>
 				<Providers>{children}</Providers>
 				{process.env.NODE_ENV === "development" ? <DevRootTools /> : null}
 			</body>
