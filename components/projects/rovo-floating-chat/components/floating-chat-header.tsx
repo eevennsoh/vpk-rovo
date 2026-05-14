@@ -14,11 +14,15 @@ import {
 	DropdownMenuContent,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ChatSurfaceSwitcherItems } from "@/components/projects/shared/components/chat-surface-switcher";
+import {
+	ChatSurfaceSwitcherItems,
+	type ChatSurfaceSwitchHandler,
+} from "@/components/projects/shared/components/chat-surface-switcher";
 
 interface FloatingChatHeaderProps {
 	onClose: () => void;
 	onNewChat?: () => void;
+	onSurfaceSwitch?: ChatSurfaceSwitchHandler;
 }
 
 const noop = () => {};
@@ -26,6 +30,7 @@ const noop = () => {};
 export default function FloatingChatHeader({
 	onClose,
 	onNewChat,
+	onSurfaceSwitch,
 }: Readonly<FloatingChatHeaderProps>) {
 	const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
 
@@ -67,7 +72,7 @@ export default function FloatingChatHeader({
 						<ShowMoreHorizontalIcon label="" />
 					</DropdownMenuTrigger>
 					<DropdownMenuContent align="end" sideOffset={4} positionerClassName="z-[600]">
-						<ChatSurfaceSwitcherItems currentSurface="floating" />
+						<ChatSurfaceSwitcherItems currentSurface="floating" onSurfaceSwitch={onSurfaceSwitch} />
 					</DropdownMenuContent>
 				</DropdownMenu>
 				<Button aria-label="Close" size="icon" variant="ghost" onClick={onClose}>

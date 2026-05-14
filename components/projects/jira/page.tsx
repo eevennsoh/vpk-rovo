@@ -7,8 +7,10 @@ import JiraHeader from "./components/jira-header";
 import BoardToolbar from "./components/board-toolbar";
 import BoardColumnsContainer from "./components/board-columns-container";
 import JiraWorkItemModal from "./components/jira-work-item-modal";
+import { JiraWorkItemInlinePage } from "./components/jira-work-item-inline-page";
 import { AVATARS } from "./data/avatars";
 import { BOARD_COLUMNS, type BoardColumnData, type KanbanCardData } from "./data/board-data";
+import type { JiraWorkItemPresentationController } from "./hooks/use-jira-work-item-presentation";
 
 const WORK_ITEM_FLOATING_PIN_REASON = "jira-work-item-modal";
 
@@ -17,11 +19,18 @@ interface DraggedCardState {
 	sourceColumnTitle: string;
 }
 
-export default function JiraView() {
+interface JiraViewProps {
+	workItemPresentation: JiraWorkItemPresentationController;
+}
+
+export default function JiraView({
+	workItemPresentation,
+}: Readonly<JiraViewProps>) {
 	const [selectedTab, setSelectedTab] = useState(1);
-	const [isModalOpen, setIsModalOpen] = useState(false);
-	const [selectedWorkItem, setSelectedWorkItem] = useState<{ title: string; code: string } | null>(null);
 	const { isOpen: isChatOpen, pinFloating, unpinFloating } = useRovoChat();
+	const { state: presentationState } = workItemPresentation;
+	const isModalOpen = presentationState.mode === "modal";
+	const selectedWorkItem = presentationState.workItem;
 
 	// When the work item modal is open and chat is already open, pin the
 	// floating surface so the user can ask AI questions in-context. The pin
@@ -45,8 +54,7 @@ export default function JiraView() {
 	const [draggedCard, setDraggedCard] = useState<DraggedCardState | null>(null);
 
 	const handleCardClick = (title: string, code: string) => {
-		setSelectedWorkItem({ title, code });
-		setIsModalOpen(true);
+		workItemPresentation.openModal({ title, code });
 	};
 
 	const handleCardDragStart = (card: KanbanCardData, sourceColumnTitle: string) => {
@@ -107,8 +115,25 @@ export default function JiraView() {
 	};
 
 	const handleModalClose = () => {
-		setIsModalOpen(false);
+		workItemPresentation.closeModal();
 	};
+
+	if (presentationState.mode === "inline" && selectedWorkItem) {
+		return (
+			<div
+				style={{
+					height: "var(--vpk-project-shell-content-height, calc(100vh - 48px))",
+					display: "flex",
+					flexDirection: "column",
+				}}
+			>
+				<JiraWorkItemInlinePage
+					workItem={selectedWorkItem}
+					onBackToBoard={workItemPresentation.backToBoard}
+				/>
+			</div>
+		);
+	}
 
 	return (
 		<div

@@ -15,9 +15,11 @@ import { useRovoChat } from "@/app/contexts";
 import { cn } from "@/lib/utils";
 
 export type CurrentSurface = "sidebar" | "floating";
+export type ChatSurfaceSwitchHandler = (surface: CurrentSurface) => void;
 
 interface ChatSurfaceSwitcherItemsProps {
 	currentSurface: CurrentSurface;
+	onSurfaceSwitch?: ChatSurfaceSwitchHandler;
 }
 
 const currentItemClass =
@@ -25,9 +27,15 @@ const currentItemClass =
 
 export function ChatSurfaceSwitcherItems({
 	currentSurface,
+	onSurfaceSwitch,
 }: Readonly<ChatSurfaceSwitcherItemsProps>) {
 	const router = useRouter();
 	const { switchSurface, closeChat } = useRovoChat();
+
+	const handleSelectSurface = (surface: CurrentSurface) => {
+		onSurfaceSwitch?.(surface);
+		switchSurface(surface);
+	};
 
 	const handleSelectFullscreen = () => {
 		closeChat();
@@ -40,14 +48,14 @@ export function ChatSurfaceSwitcherItems({
 			<DropdownMenuItem
 				elemBefore={<PanelRightIcon label="" />}
 				className={cn(currentSurface === "sidebar" && currentItemClass)}
-				onClick={() => switchSurface("sidebar")}
+				onClick={() => handleSelectSurface("sidebar")}
 			>
 				Side panel
 			</DropdownMenuItem>
 			<DropdownMenuItem
 				elemBefore={<SmartLinkEmbedIcon label="" />}
 				className={cn(currentSurface === "floating" && currentItemClass)}
-				onClick={() => switchSurface("floating")}
+				onClick={() => handleSelectSurface("floating")}
 			>
 				Floating
 			</DropdownMenuItem>

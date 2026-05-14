@@ -7,10 +7,17 @@ import { useRovoChat } from "@/app/contexts";
 import type { RovoSuggestion } from "@/lib/rovo-suggestions";
 import ChatGreeting from "@/components/projects/sidebar-chat/components/chat-greeting";
 import ChatComposer from "@/components/projects/sidebar-chat/components/chat-composer";
+import type { ChatSurfaceSwitchHandler } from "@/components/projects/shared/components/chat-surface-switcher";
 import { useChatSubmit } from "@/components/projects/sidebar-chat/hooks/use-chat-submit";
 import FloatingChatHeader from "./floating-chat-header";
 
-export default function RovoFloatingChat() {
+interface RovoFloatingChatProps {
+	onSurfaceSwitch?: ChatSurfaceSwitchHandler;
+}
+
+export default function RovoFloatingChat({
+	onSurfaceSwitch,
+}: Readonly<RovoFloatingChatProps>) {
 	const { chatSurface, closeChat, switchSurface, uiMessages, sendPrompt, isFloatingPinned } =
 		useRovoChat();
 	const {
@@ -63,7 +70,7 @@ export default function RovoFloatingChat() {
 				willChange: "transform, opacity",
 			}}
 		>
-			<FloatingChatHeader onClose={closeChat} />
+			<FloatingChatHeader onClose={closeChat} onSurfaceSwitch={onSurfaceSwitch} />
 			<div className="flex flex-col items-center px-4 pt-2 pb-4">
 				<ChatGreeting onSuggestionClick={handleSuggestionClick} />
 			</div>
