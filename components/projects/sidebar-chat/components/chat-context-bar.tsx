@@ -46,8 +46,9 @@ export default function ChatContextBar({
 					elemBefore={
 						<ContextIcon color={token("color.icon.brand")} label="" size="small" />
 					}
-					className="min-w-0 max-w-full shrink"
+					className="min-w-0 max-w-full shrink overflow-hidden"
 					maxWidth="100%"
+					title={context.label}
 				>
 					{context.label}
 				</Tag>

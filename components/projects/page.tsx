@@ -25,6 +25,8 @@ interface AppLayoutProps {
 	hideRovoAction?: boolean;
 	onChatSurfaceSwitch?: ChatSurfaceSwitchHandler;
 	chatContextBar?: ChatContextBarDescriptor | null;
+	onArtifactDialogOpen?: () => void;
+	preserveFloatingSurfaceOnArtifactDialogOpen?: boolean;
 	/**
 	 * When true, render the sidebar chat flush against the surrounding shell:
 	 * no outer padding, no border radius, and only a single dividing border on
@@ -92,6 +94,8 @@ export default function AppLayout({
 	hideRovoAction = false,
 	onChatSurfaceSwitch,
 	chatContextBar,
+	onArtifactDialogOpen,
+	preserveFloatingSurfaceOnArtifactDialogOpen = false,
 	chatPanelFlush = false,
 }: Readonly<AppLayoutProps>) {
 	const isEmbedded = useIsEmbedded(embedded);
@@ -170,6 +174,8 @@ export default function AppLayout({
 							onClose={toggleChat}
 							onSurfaceSwitch={onChatSurfaceSwitch}
 							chatContextBar={chatContextBar}
+							onArtifactDialogOpen={onArtifactDialogOpen}
+							preserveFloatingSurfaceOnArtifactDialogOpen={preserveFloatingSurfaceOnArtifactDialogOpen}
 							containerStyle={
 								chatPanelFlush
 									? {
@@ -198,6 +204,8 @@ export default function AppLayout({
 						key="floating-chat"
 						onSurfaceSwitch={onChatSurfaceSwitch}
 						chatContextBar={chatContextBar}
+						onArtifactDialogOpen={onArtifactDialogOpen}
+						preserveFloatingSurfaceOnArtifactDialogOpen={preserveFloatingSurfaceOnArtifactDialogOpen}
 					/>
 				) : null}
 			</AnimatePresence>

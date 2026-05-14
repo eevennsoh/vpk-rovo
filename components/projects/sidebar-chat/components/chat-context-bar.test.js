@@ -23,6 +23,7 @@ async function loadChatContextBarHarness() {
 							"data-color": props.color,
 							"data-max-width": props.maxWidth,
 							"data-class": props.className,
+							"data-title": props.title,
 						},
 						props.elemBefore,
 						React.createElement("span", { "data-tag-text": true }, props.children),
@@ -143,8 +144,12 @@ test("ChatContextBar renders a non-dismissible truncated context chip", async ()
 	assert.match(markup, /data-color="blue"/);
 	assert.match(markup, /data-max-width="100%"/);
 	assert.match(markup, /data-class="[^"]*min-w-0[^"]*"/);
+	assert.match(markup, /data-class="[^"]*max-w-full[^"]*"/);
 	assert.match(markup, /data-class="[^"]*shrink[^"]*"/);
+	assert.match(markup, /data-class="[^"]*overflow-hidden[^"]*"/);
+	assert.match(markup, /data-title="RFP-101: Qualify inbound Acme Mobility RFP"/);
 	assert.doesNotMatch(markup, /data-class="[^"]*flex-1[^"]*"/);
+	assert.doesNotMatch(markup, /max-w-\[12rem\]/);
 	assert.match(markup, /data-icon="cross"/);
 	assert.match(markup, /data-icon="cross" data-size="small"/);
 	assert.doesNotMatch(markup, /aria-label="Remove context"/);
@@ -156,6 +161,7 @@ test("ChatContextBar does not own local dismissal state", () => {
 		CHAT_CONTEXT_BAR_SOURCE,
 		/className="flex min-w-0 flex-1 items-center gap-1\.5 overflow-hidden"/,
 	);
+	assert.match(CHAT_CONTEXT_BAR_SOURCE, /className="min-w-0 max-w-full shrink overflow-hidden"/);
 	assert.match(CHAT_CONTEXT_BAR_SOURCE, /className="flex size-6 shrink-0/);
 	assert.match(CHAT_CONTEXT_BAR_SOURCE, /<CrossIcon color="currentColor" label="" size="small" \/>/);
 	assert.doesNotMatch(CHAT_CONTEXT_BAR_SOURCE, /removedSignature/);

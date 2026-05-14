@@ -18,7 +18,14 @@ import type { RovoAppDocument } from "@/lib/rovo-app-types";
 import type { RovoDataParts } from "@/lib/rovo-ui-messages";
 import { cn } from "@/lib/utils";
 
-type ArtifactResult = RovoDataParts["artifact-result"];
+export type ArtifactResult = RovoDataParts["artifact-result"];
+
+interface ArtifactResultCardProps {
+	artifact: ArtifactResult;
+	className?: string;
+	onDialogOpen?: (artifact: ArtifactResult) => void;
+	onDialogClose?: (artifact: ArtifactResult) => void;
+}
 
 function getArtifactKindLabel(kind: string): string {
 	if (kind === "html") return "HTML report";
@@ -58,16 +65,28 @@ function normalizePreviewKind(kind: string): PreviewArtifactKind {
 export function ArtifactResultCard({
 	artifact,
 	className,
-}: Readonly<{
-	artifact: ArtifactResult;
-	className?: string;
-}>): ReactNode {
+	onDialogOpen,
+	onDialogClose,
+}: Readonly<ArtifactResultCardProps>): ReactNode {
 	const [isOpen, setIsOpen] = useState(false);
 	const [document, setDocument] = useState<RovoAppDocument | null>(null);
 	const [isLoading, setIsLoading] = useState(false);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 	const kindLabel = getArtifactKindLabel(artifact.kind);
 	const actionLabel = artifact.action === "update" ? "Updated" : "Created";
+	const handleOpenChange = (open: boolean) => {
+		if (open === isOpen) {
+			return;
+		}
+
+		if (open) {
+			onDialogOpen?.(artifact);
+		} else {
+			onDialogClose?.(artifact);
+		}
+
+		setIsOpen(open);
+	};
 
 	useEffect(() => {
 		if (!isOpen) {
@@ -114,11 +133,11 @@ export function ArtifactResultCard({
 
 	return (
 		<div className={cn("pb-2", className)}>
-			<Dialog open={isOpen} onOpenChange={setIsOpen}>
+			<Dialog open={isOpen} onOpenChange={handleOpenChange}>
 				<button
 					type="button"
 					className="group flex w-full items-center gap-3 rounded-md border border-border bg-surface-raised p-3 text-left shadow-sm transition-colors hover:bg-surface-raised-hovered focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-					onClick={() => setIsOpen(true)}
+					onClick={() => handleOpenChange(true)}
 					data-testid="rovo-artifact-result-card"
 				>
 					<span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-surface-accent-blue-subtle text-icon">
@@ -177,7 +196,7 @@ export function ArtifactResultCard({
 						<Button
 							type="button"
 							variant="outline"
-							onClick={() => setIsOpen(false)}
+							onClick={() => handleOpenChange(false)}
 						>
 							Close
 						</Button>

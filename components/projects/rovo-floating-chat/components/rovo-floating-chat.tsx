@@ -11,11 +11,15 @@ import FloatingChatHeader from "./floating-chat-header";
 interface RovoFloatingChatProps {
 	onSurfaceSwitch?: ChatSurfaceSwitchHandler;
 	chatContextBar?: ChatContextBarDescriptor | null;
+	onArtifactDialogOpen?: () => void;
+	preserveFloatingSurfaceOnArtifactDialogOpen?: boolean;
 }
 
 export default function RovoFloatingChat({
 	onSurfaceSwitch,
 	chatContextBar,
+	onArtifactDialogOpen,
+	preserveFloatingSurfaceOnArtifactDialogOpen = false,
 }: Readonly<RovoFloatingChatProps>) {
 	const { closeChat, resetChat } = useRovoChat();
 
@@ -36,12 +40,12 @@ export default function RovoFloatingChat({
 				onNewChat={resetChat}
 				onSurfaceSwitch={onSurfaceSwitch}
 			/>
-			<div className="min-h-0 overflow-hidden">
+			<div className="min-h-0 min-w-0 overflow-hidden">
 				<ChatPanel
 					onClose={closeChat}
 					hideHeader
 					abortOnUnmount={false}
-					containerClassName="min-h-0"
+					containerClassName="min-h-0 min-w-0"
 					containerStyle={{
 						backgroundColor: "transparent",
 						borderRadius: 0,
@@ -54,6 +58,8 @@ export default function RovoFloatingChat({
 					greeting={{ showHero: false }}
 					onSurfaceSwitch={onSurfaceSwitch}
 					chatContextBar={chatContextBar}
+					onArtifactDialogOpen={onArtifactDialogOpen}
+					preserveFloatingSurfaceOnArtifactDialogOpen={preserveFloatingSurfaceOnArtifactDialogOpen}
 				/>
 			</div>
 		</motion.div>

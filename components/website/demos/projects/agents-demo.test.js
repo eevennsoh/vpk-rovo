@@ -30,3 +30,26 @@ test("AgentsDemo promotes the open modal before switching floating chat to the s
 		/<AgentsView workItemPresentation=\{workItemPresentation\} \/>/u,
 	);
 });
+
+test("AgentsDemo closes the work item modal before opening an artifact dialog", () => {
+	assert.match(
+		AGENTS_DEMO_SOURCE,
+		/const\s+\{\s*closeModal,\s*promoteModalToInline\s*\}\s*=\s*workItemPresentation;/u,
+	);
+	assert.match(
+		AGENTS_DEMO_SOURCE,
+		/const isWorkItemModalOpen = workItemPresentation\.state\.mode === "modal";/u,
+	);
+	assert.match(
+		AGENTS_DEMO_SOURCE,
+		/const handleArtifactDialogOpen = useCallback\(\(\) => \{\s*if \(!isWorkItemModalOpen\) return;\s*closeModal\(\);\s*\}, \[closeModal, isWorkItemModalOpen\]\);/u,
+	);
+	assert.match(
+		AGENTS_DEMO_SOURCE,
+		/onArtifactDialogOpen=\{handleArtifactDialogOpen\}/u,
+	);
+	assert.match(
+		AGENTS_DEMO_SOURCE,
+		/preserveFloatingSurfaceOnArtifactDialogOpen=\{isWorkItemModalOpen\}/u,
+	);
+});

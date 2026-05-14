@@ -19,7 +19,8 @@ const AGENTS_CHAT_PROMPT_OPTIONS: SendPromptOptions = {
 export default function AgentsDemo() {
 	const embedded = useProjectDemoEmbedded();
 	const workItemPresentation = useAgentsWorkItemPresentation();
-	const { promoteModalToInline } = workItemPresentation;
+	const { closeModal, promoteModalToInline } = workItemPresentation;
+	const isWorkItemModalOpen = workItemPresentation.state.mode === "modal";
 	const handleChatSurfaceSwitch = useCallback<ChatSurfaceSwitchHandler>(
 		(surface) => {
 			if (surface !== "sidebar") return;
@@ -27,6 +28,10 @@ export default function AgentsDemo() {
 		},
 		[promoteModalToInline],
 	);
+	const handleArtifactDialogOpen = useCallback(() => {
+		if (!isWorkItemModalOpen) return;
+		closeModal();
+	}, [closeModal, isWorkItemModalOpen]);
 	const agentsChatScreenContext = useMemo(
 		() => resolveAgentsChatScreenContext(workItemPresentation.state.workItem),
 		[workItemPresentation.state.workItem],
@@ -51,6 +56,8 @@ export default function AgentsDemo() {
 					chatPanelFlush
 					onChatSurfaceSwitch={handleChatSurfaceSwitch}
 					chatContextBar={agentsChatScreenContext.chatContextBar}
+					onArtifactDialogOpen={handleArtifactDialogOpen}
+					preserveFloatingSurfaceOnArtifactDialogOpen={isWorkItemModalOpen}
 				>
 					<AgentsView workItemPresentation={workItemPresentation} />
 				</AppLayout>

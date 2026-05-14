@@ -70,6 +70,8 @@ async function loadRovoFloatingChatHarness() {
 							"data-abort-on-unmount": String(props.abortOnUnmount),
 							"data-context-label": props.chatContextBar?.label ?? "",
 							"data-context-icon": props.chatContextBar?.iconName ?? "",
+							"data-has-artifact-dialog-open": String(typeof props.onArtifactDialogOpen === "function"),
+							"data-preserve-artifact-dialog": String(props.preserveFloatingSurfaceOnArtifactDialogOpen),
 							className: props.containerClassName,
 						},
 						"Shared chat panel",
@@ -110,6 +112,13 @@ async function loadRovoFloatingChatHarness() {
 							iconName: "work-item",
 							signature: "agents-work-item:RFP-101",
 						},
+					}));
+				}
+
+				export function renderFloatingChatWithArtifactLifecycle() {
+					return renderToStaticMarkup(React.createElement(RovoFloatingChat, {
+						onArtifactDialogOpen() {},
+						preserveFloatingSurfaceOnArtifactDialogOpen: true,
 					}));
 				}
 			`,
@@ -168,8 +177,8 @@ test("RovoFloatingChat bounds the shared chat panel inside an overflow-hidden sc
 	const harness = await loadRovoFloatingChatHarness();
 	const markup = harness.renderFloatingChat();
 
-	assert.match(markup, /class="min-h-0 overflow-hidden"/);
-	assert.match(markup, /data-testid="shared-chat-panel"[^>]+class="min-h-0"/);
+	assert.match(markup, /class="min-h-0 min-w-0 overflow-hidden"/);
+	assert.match(markup, /data-testid="shared-chat-panel"[^>]+class="min-h-0 min-w-0"/);
 });
 
 test("RovoFloatingChat forwards context bar descriptor to the shared chat panel", async () => {
@@ -180,14 +189,22 @@ test("RovoFloatingChat forwards context bar descriptor to the shared chat panel"
 	assert.match(markup, /data-context-icon="work-item"/);
 });
 
+test("RovoFloatingChat forwards artifact dialog lifecycle to the shared chat panel", async () => {
+	const harness = await loadRovoFloatingChatHarness();
+	const markup = harness.renderFloatingChatWithArtifactLifecycle();
+
+	assert.match(markup, /data-has-artifact-dialog-open="true"/);
+	assert.match(markup, /data-preserve-artifact-dialog="true"/);
+});
+
 test("Floating chat shell hugs content until it reaches the viewport-bounded max-height", () => {
 	assert.match(ROVO_FLOATING_CHAT_SOURCE, /max-h-\[min\(720px,calc\(100dvh-96px\)\)\]/);
 	assert.doesNotMatch(ROVO_FLOATING_CHAT_SOURCE, /\sh-\[min\(720px,calc\(100dvh-96px\)\)\]/);
 });
 
 test("Floating chat panel receives a bounded max-height without forcing empty-state height", () => {
-	assert.match(ROVO_FLOATING_CHAT_SOURCE, /<div className="min-h-0 overflow-hidden">[\s\S]*<ChatPanel/);
-	assert.match(ROVO_FLOATING_CHAT_SOURCE, /containerClassName="min-h-0"/);
+	assert.match(ROVO_FLOATING_CHAT_SOURCE, /<div className="min-h-0 min-w-0 overflow-hidden">[\s\S]*<ChatPanel/);
+	assert.match(ROVO_FLOATING_CHAT_SOURCE, /containerClassName="min-h-0 min-w-0"/);
 	assert.match(ROVO_FLOATING_CHAT_SOURCE, /display: "grid"/);
 	assert.match(ROVO_FLOATING_CHAT_SOURCE, /gridTemplateRows: "minmax\(0, 1fr\) auto"/);
 	assert.match(ROVO_FLOATING_CHAT_SOURCE, /height: "auto"/);
@@ -197,15 +214,26 @@ test("Floating chat panel receives a bounded max-height without forcing empty-st
 
 test("Floating chat keeps chrome and composer outside the scrollable message viewport", () => {
 	assert.match(FLOATING_CHAT_HEADER_SOURCE, /className="flex shrink-0 items-center justify-between px-3 py-3"/);
-	assert.match(CHAT_PANEL_SOURCE, /<Conversation className="min-h-0 flex-1"/);
-	assert.match(CHAT_PANEL_SOURCE, /<div className="shrink-0">[\s\S]*<ChatComposer/);
+	assert.match(CHAT_PANEL_SOURCE, /<Conversation className="min-h-0 min-w-0 flex-1"/);
+	assert.match(CHAT_PANEL_SOURCE, /<div className="min-w-0 shrink-0">[\s\S]*<ChatComposer/);
 	assert.match(CHAT_PANEL_SOURCE, /<div className="shrink-0">[\s\S]*<ChatHeader/);
 });
 
 test("Floating chat compact empty greeting does not force a full-height message area", () => {
 	assert.match(CHAT_PANEL_SOURCE, /const shouldHugEmptyGreeting = !hasMessages && greeting\?\.showHero === false/);
+	assert.match(CHAT_PANEL_SOURCE, /const shouldUseAutoMessageTrack = shouldHugEmptyGreeting && containerStyle\?\.display === "grid"/);
+	assert.match(CHAT_PANEL_SOURCE, /gridTemplateRows: "auto auto"/);
 	assert.match(CHAT_PANEL_SOURCE, /justifyContent: hasMessages \|\| shouldHugEmptyGreeting \? "flex-start" : "flex-end"/);
 	assert.match(CHAT_PANEL_SOURCE, /minHeight: shouldHugEmptyGreeting \? "auto" : "100%"/);
+});
+
+test("ChatPanel keeps floating chat mounted while an artifact dialog replaces a work item modal", () => {
+	assert.match(CHAT_PANEL_SOURCE, /const ARTIFACT_DIALOG_FLOATING_PIN_REASON = "sidebar-chat-artifact-dialog"/);
+	assert.match(CHAT_PANEL_SOURCE, /preserveFloatingSurfaceOnArtifactDialogOpen &&\s*chatSurface === "floating"/);
+	assert.match(CHAT_PANEL_SOURCE, /pinFloating\(ARTIFACT_DIALOG_FLOATING_PIN_REASON\)/);
+	assert.match(CHAT_PANEL_SOURCE, /unpinFloating\(ARTIFACT_DIALOG_FLOATING_PIN_REASON\)/);
+	assert.match(CHAT_PANEL_SOURCE, /onArtifactDialogOpen\?\.\(artifact\)/);
+	assert.match(CHAT_PANEL_SOURCE, /onArtifactDialogClose=\{releaseArtifactDialogFloatingPin\}/);
 });
 
 test("RovoFloatingChat does not auto-promote submitted or existing messages to the sidebar", () => {

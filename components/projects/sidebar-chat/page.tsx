@@ -29,6 +29,7 @@ import ChatHeader from "./components/chat-header";
 import ChatGreeting from "./components/chat-greeting";
 import ChatComposer from "./components/chat-composer";
 import MessageBubble from "./components/message-bubble";
+import type { ArtifactResult } from "./components/artifact-result-card";
 import { StreamingThinkingIndicator } from "./components/streaming-thinking-indicator";
 import { PreloadThinkingIndicator } from "@/components/projects/shared/components/preload-thinking-indicator";
 import { chatStyles } from "./data/styles";
@@ -61,10 +62,13 @@ interface ChatPanelProps {
 	containerStyle?: CSSProperties;
 	onSurfaceSwitch?: ChatSurfaceSwitchHandler;
 	chatContextBar?: ChatContextBarDescriptor | null;
+	onArtifactDialogOpen?: (artifact: ArtifactResult) => void;
+	preserveFloatingSurfaceOnArtifactDialogOpen?: boolean;
 }
 
 const COMPACT_CHAT_WIDTH_MAX = 520;
 const REGULAR_CHAT_WIDTH_MAX = 900;
+const ARTIFACT_DIALOG_FLOATING_PIN_REASON = "sidebar-chat-artifact-dialog";
 
 type SmartWidthClass = "compact" | "regular" | "wide";
 
@@ -86,9 +90,19 @@ export default function ChatPanel({
 	containerStyle,
 	onSurfaceSwitch,
 	chatContextBar,
+	onArtifactDialogOpen,
+	preserveFloatingSurfaceOnArtifactDialogOpen = false,
 }: Readonly<ChatPanelProps>): React.ReactElement {
-	const { resetChat, uiMessages: rawUiMessages, sendPrompt } = useRovoChat();
+	const {
+		resetChat,
+		uiMessages: rawUiMessages,
+		sendPrompt,
+		chatSurface,
+		pinFloating,
+		unpinFloating,
+	} = useRovoChat();
 	const panelRef = useRef<HTMLDivElement | null>(null);
+	const artifactDialogFloatingPinRef = useRef(false);
 	const [containerWidthPx, setContainerWidthPx] = useState<number | null>(null);
 	const [viewportWidthPx, setViewportWidthPx] = useState<number | null>(null);
 
@@ -200,8 +214,23 @@ export default function ChatPanel({
 		return () => abort();
 	}, [abort, abortOnUnmount]);
 
+	const releaseArtifactDialogFloatingPin = useCallback(() => {
+		if (!artifactDialogFloatingPinRef.current) {
+			return;
+		}
+
+		artifactDialogFloatingPinRef.current = false;
+		unpinFloating(ARTIFACT_DIALOG_FLOATING_PIN_REASON);
+	}, [unpinFloating]);
+
+	useEffect(() => releaseArtifactDialogFloatingPin, [releaseArtifactDialogFloatingPin]);
+
 	const hasMessages = messages.length > 0;
 	const shouldHugEmptyGreeting = !hasMessages && greeting?.showHero === false;
+	const shouldUseAutoMessageTrack = shouldHugEmptyGreeting && containerStyle?.display === "grid";
+	const resolvedContainerStyle = shouldUseAutoMessageTrack
+		? { ...containerStyle, gridTemplateRows: "auto auto" }
+		: containerStyle;
 
 	const handleClarificationSubmit = useCallback(
 		(answers: ClarificationAnswers) => {
@@ -255,6 +284,27 @@ export default function ChatPanel({
 		[submitPrompt],
 	);
 
+	const handleArtifactDialogOpen = useCallback(
+		(artifact: ArtifactResult) => {
+			if (
+				preserveFloatingSurfaceOnArtifactDialogOpen &&
+				chatSurface === "floating" &&
+				!artifactDialogFloatingPinRef.current
+			) {
+				artifactDialogFloatingPinRef.current = true;
+				pinFloating(ARTIFACT_DIALOG_FLOATING_PIN_REASON);
+			}
+
+			onArtifactDialogOpen?.(artifact);
+		},
+		[
+			chatSurface,
+			onArtifactDialogOpen,
+			pinFloating,
+			preserveFloatingSurfaceOnArtifactDialogOpen,
+		],
+	);
+
 	const messagesContainerStyle = {
 		...chatStyles.messagesContainer,
 		justifyContent: hasMessages || shouldHugEmptyGreeting ? "flex-start" : "flex-end",
@@ -264,14 +314,14 @@ export default function ChatPanel({
 	};
 
 	return (
-		<div ref={panelRef} className={containerClassName} style={{ ...chatStyles.chatPanel, ...containerStyle }}>
+		<div ref={panelRef} className={containerClassName} style={{ ...chatStyles.chatPanel, ...resolvedContainerStyle }}>
 			{!hideHeader && (
 				<div className="shrink-0">
 					<ChatHeader onClose={onClose} onNewChat={resetChat} onSurfaceSwitch={onSurfaceSwitch} />
 				</div>
 			)}
 
-			<Conversation className="min-h-0 flex-1" contextRef={conversationContextRef} initial={false} targetScrollTop={getLatestTurnTargetTop}>
+			<Conversation className="min-h-0 min-w-0 flex-1" contextRef={conversationContextRef} initial={false} targetScrollTop={getLatestTurnTargetTop}>
 				<ConversationContent className="gap-0 px-3 py-0" style={messagesContainerStyle}>
 					{messages.length === 0 ? (
 						<div style={chatStyles.emptyState}>
@@ -309,6 +359,8 @@ export default function ChatPanel({
 									enableSmartWidgets={enableSmartWidgets}
 									generativeCardAnimation={cards?.generativeAnimation}
 									onWidgetPrimaryAction={handleWidgetPrimaryAction}
+									onArtifactDialogOpen={handleArtifactDialogOpen}
+									onArtifactDialogClose={releaseArtifactDialogFloatingPin}
 								/>
 							)}
 						/>
@@ -337,7 +389,7 @@ export default function ChatPanel({
 				</ConversationContent>
 			</Conversation>
 
-			<div className="shrink-0">
+			<div className="min-w-0 shrink-0">
 				{shouldShowQuestionCard && activeQuestionCard ? (
 					<>
 						<div className="px-3">

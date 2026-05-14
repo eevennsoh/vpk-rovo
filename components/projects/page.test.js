@@ -30,3 +30,22 @@ test("project layout forwards chat context bars to sidebar and floating chat", (
 		/<RovoFloatingChat[\s\S]*chatContextBar=\{chatContextBar\}/,
 	);
 });
+
+test("project layout forwards artifact dialog lifecycle to both chat surfaces", () => {
+	assert.match(
+		PROJECT_LAYOUT_SOURCE,
+		/onArtifactDialogOpen\?: \(\) => void;/,
+	);
+	assert.match(
+		PROJECT_LAYOUT_SOURCE,
+		/preserveFloatingSurfaceOnArtifactDialogOpen\?: boolean;/,
+	);
+	assert.match(
+		PROJECT_LAYOUT_SOURCE,
+		/<ChatPanel[\s\S]*onArtifactDialogOpen=\{onArtifactDialogOpen\}[\s\S]*preserveFloatingSurfaceOnArtifactDialogOpen=\{preserveFloatingSurfaceOnArtifactDialogOpen\}/,
+	);
+	assert.match(
+		PROJECT_LAYOUT_SOURCE,
+		/<RovoFloatingChat[\s\S]*onArtifactDialogOpen=\{onArtifactDialogOpen\}[\s\S]*preserveFloatingSurfaceOnArtifactDialogOpen=\{preserveFloatingSurfaceOnArtifactDialogOpen\}/,
+	);
+});
