@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
@@ -13,6 +14,7 @@ import {
 import { ChatSurfaceSwitcherItems } from "@/components/projects/shared/components/chat-surface-switcher";
 import AppIcon from "@atlaskit/icon/core/app";
 import BugIcon from "@atlaskit/icon/core/bug";
+import ChevronDownIcon from "@atlaskit/icon/core/chevron-down";
 import CrossIcon from "@atlaskit/icon/core/cross";
 import DeleteIcon from "@atlaskit/icon/core/delete";
 import EditIcon from "@atlaskit/icon/core/edit";
@@ -37,11 +39,25 @@ export default function ChatHeader({ onClose, onNewChat, isStreaming, onStop }: 
 	return (
 		<div className="py-3 px-3">
 			<div className="flex justify-between items-center">
-				{/* Left side: Menu icon */}
+				{/* Left side: Menu icon and Title */}
 				<div className="flex items-center gap-1">
 					<Button aria-label="Menu" size="icon" variant="ghost" onClick={noop}>
 						<MenuIcon label="" />
 					</Button>
+					<div className="flex items-center gap-2">
+						<Image
+							src="/1p/rovo.svg"
+							alt="Rovo logo"
+							width={16}
+							height={16}
+						/>
+						<div className="flex items-center gap-1">
+							<span className="text-sm font-semibold text-text">
+								Rovo
+							</span>
+							<ChevronDownIcon label="Expand menu" size="small" />
+						</div>
+					</div>
 				</div>
 
 				{/* Right side: Chat actions */}

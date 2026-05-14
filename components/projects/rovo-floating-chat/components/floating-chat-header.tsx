@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
+import ChevronDownIcon from "@atlaskit/icon/core/chevron-down";
 import CrossIcon from "@atlaskit/icon/core/cross";
 import EditIcon from "@atlaskit/icon/core/edit";
 import MenuIcon from "@atlaskit/icon/core/menu";
@@ -33,6 +35,20 @@ export default function FloatingChatHeader({
 				<Button aria-label="Menu" size="icon" variant="ghost" onClick={noop}>
 					<MenuIcon label="" />
 				</Button>
+				<div className="flex items-center gap-2">
+					<Image
+						src="/1p/rovo.svg"
+						alt="Rovo logo"
+						width={16}
+						height={16}
+					/>
+					<div className="flex items-center gap-1">
+						<span className="text-sm font-semibold text-text">
+							Rovo
+						</span>
+						<ChevronDownIcon label="Expand menu" size="small" />
+					</div>
+				</div>
 			</div>
 			<div className="flex items-center gap-1">
 				<Button aria-label="New chat" size="icon" variant="ghost" onClick={onNewChat ?? noop}>

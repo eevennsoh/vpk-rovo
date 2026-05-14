@@ -341,6 +341,25 @@ interface RovoChatContextType {
 	isOpen: boolean;
 	toggleChat: () => void;
 	closeChat: () => void;
+	/**
+	 * Whether at least one caller has pinned the floating surface. When pinned,
+	 * the floating chat stays mounted across message activity (i.e., the
+	 * auto-promote-to-sidebar effect in RovoFloatingChat is disabled). Multiple
+	 * callers can pin with different reasons; the floating surface unpins only
+	 * after all reasons release.
+	 */
+	isFloatingPinned: boolean;
+	/**
+	 * Pin the floating surface for the given reason. If the chat is currently
+	 * on the sidebar surface, switches to floating and remembers the prior
+	 * surface so it can be restored when the pin releases.
+	 */
+	pinFloating: (reason: string) => void;
+	/**
+	 * Release a previously requested floating pin. When the last pin is
+	 * released, restores any surface that was active before the first pin.
+	 */
+	unpinFloating: (reason: string) => void;
 	uiMessages: RovoUIMessage[];
 	sendPrompt: (prompt: string, options?: SendPromptOptions) => Promise<void>;
 	stopStreaming: () => Promise<void>;
@@ -928,6 +947,49 @@ export function RovoChatProvider({
 		[]
 	);
 
+	const [floatingPinReasons, setFloatingPinReasons] = useState<ReadonlySet<string>>(
+		() => new Set()
+	);
+	const isFloatingPinned = floatingPinReasons.size > 0;
+	// Surface to restore once the last pin releases. Captured on first pin only.
+	const surfaceBeforePinRef = useRef<ChatSurface | null>(null);
+
+	const pinFloating = useCallback((reason: string) => {
+		setFloatingPinReasons((prev) => {
+			if (prev.has(reason)) return prev;
+			if (prev.size === 0) {
+				// First pin — capture current surface so we can restore it on release.
+				// Don't auto-open chat that was closed: only switch from "sidebar".
+				setChatSurface((current) => {
+					surfaceBeforePinRef.current = current;
+					return current === "sidebar" ? "floating" : current;
+				});
+			}
+			const next = new Set(prev);
+			next.add(reason);
+			return next;
+		});
+	}, []);
+
+	const unpinFloating = useCallback((reason: string) => {
+		setFloatingPinReasons((prev) => {
+			if (!prev.has(reason)) return prev;
+			const next = new Set(prev);
+			next.delete(reason);
+			if (next.size === 0) {
+				const restored = surfaceBeforePinRef.current;
+				surfaceBeforePinRef.current = null;
+				setChatSurface((current) => {
+					// User closed the chat during the pin — honor that.
+					if (current === null) return current;
+					// Restore only if the original surface before pinning was sidebar.
+					return restored === "sidebar" ? "sidebar" : current;
+				});
+			}
+			return next;
+		});
+	}, []);
+
 	const clearSuggestedQuestions = useCallback(() => {
 		setMessages((prev) =>
 			sanitizeRovoUiMessages(prev).map((message) => {
@@ -1316,6 +1378,9 @@ export function RovoChatProvider({
 				isOpen,
 				toggleChat,
 				closeChat,
+				isFloatingPinned,
+				pinFloating,
+				unpinFloating,
 				uiMessages,
 				sendPrompt,
 				stopStreaming,

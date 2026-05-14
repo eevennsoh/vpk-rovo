@@ -11,7 +11,8 @@ import { useChatSubmit } from "@/components/projects/sidebar-chat/hooks/use-chat
 import FloatingChatHeader from "./floating-chat-header";
 
 export default function RovoFloatingChat() {
-	const { chatSurface, closeChat, switchSurface, uiMessages, sendPrompt } = useRovoChat();
+	const { chatSurface, closeChat, switchSurface, uiMessages, sendPrompt, isFloatingPinned } =
+		useRovoChat();
 	const {
 		prompt,
 		setPrompt,
@@ -27,22 +28,27 @@ export default function RovoFloatingChat() {
 		const trimmed = prompt.trim();
 		if (!trimmed) return;
 		await handleSubmit();
-		switchSurface("sidebar");
-	}, [prompt, handleSubmit, switchSurface]);
+		if (!isFloatingPinned) {
+			switchSurface("sidebar");
+		}
+	}, [prompt, handleSubmit, switchSurface, isFloatingPinned]);
 
 	const handleSuggestionClick = useCallback(
 		(suggestion: RovoSuggestion) => {
 			void sendPrompt(suggestion.prompt ?? suggestion.label);
-			switchSurface("sidebar");
+			if (!isFloatingPinned) {
+				switchSurface("sidebar");
+			}
 		},
-		[sendPrompt, switchSurface]
+		[sendPrompt, switchSurface, isFloatingPinned]
 	);
 
 	useEffect(() => {
+		if (isFloatingPinned) return;
 		if (chatSurface === "floating" && uiMessages.length > 0) {
 			switchSurface("sidebar");
 		}
-	}, [chatSurface, uiMessages.length, switchSurface]);
+	}, [chatSurface, uiMessages.length, switchSurface, isFloatingPinned]);
 
 	return (
 		<motion.div

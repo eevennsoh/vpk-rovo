@@ -1,13 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { token } from "@/lib/tokens";
+import { useRovoChat } from "@/app/contexts";
 import JiraHeader from "./components/jira-header";
 import BoardToolbar from "./components/board-toolbar";
 import BoardColumnsContainer from "./components/board-columns-container";
 import JiraWorkItemModal from "./components/jira-work-item-modal";
 import { AVATARS } from "./data/avatars";
 import { BOARD_COLUMNS, type BoardColumnData, type KanbanCardData } from "./data/board-data";
+
+const WORK_ITEM_FLOATING_PIN_REASON = "jira-work-item-modal";
 
 interface DraggedCardState {
 	card: KanbanCardData;
@@ -18,6 +21,18 @@ export default function JiraView() {
 	const [selectedTab, setSelectedTab] = useState(1);
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [selectedWorkItem, setSelectedWorkItem] = useState<{ title: string; code: string } | null>(null);
+	const { isOpen: isChatOpen, pinFloating, unpinFloating } = useRovoChat();
+
+	// When the work item modal is open and chat is already open, pin the
+	// floating surface so the user can ask AI questions in-context. The pin
+	// captures the prior surface (e.g., sidebar) and restores it on close.
+	useEffect(() => {
+		if (!isModalOpen || !isChatOpen) return;
+		pinFloating(WORK_ITEM_FLOATING_PIN_REASON);
+		return () => {
+			unpinFloating(WORK_ITEM_FLOATING_PIN_REASON);
+		};
+	}, [isModalOpen, isChatOpen, pinFloating, unpinFloating]);
 	const [boardColumns, setBoardColumns] = useState<BoardColumnData[]>(() =>
 		BOARD_COLUMNS.map((column) => ({
 			...column,
