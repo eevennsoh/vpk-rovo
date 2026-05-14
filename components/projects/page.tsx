@@ -104,7 +104,7 @@ export default function AppLayout({
 	const isSidebarChatActive = chatSurface === "sidebar";
 	const isFloatingChatActive = chatSurface === "floating";
 	const showChatPanel = !isEmbedded && !hideRovoAction && isSidebarChatActive;
-	const showFloatingChat = !isEmbedded && !hideRovoAction && isFloatingChatActive;
+	const showFloatingChat = !isEmbedded && !hideFloatingRovo && !hideRovoAction && isFloatingChatActive;
 	const sidebarWidth = isEmbedded || !isVisible ? "0px" : "230px";
 	const shellViewportHeight = isEmbedded ? "100dvh" : "100vh";
 	const shellContentHeight = isEmbedded ? "100dvh" : "calc(100vh - 48px)";
