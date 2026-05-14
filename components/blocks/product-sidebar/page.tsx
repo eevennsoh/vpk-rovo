@@ -8,7 +8,7 @@ import { AdminSidebar } from "./variants/admin";
 import { JiraSidebar } from "./variants/jira";
 import { ConfluenceSidebar } from "./variants/confluence";
 
-type Product = "admin" | "home" | "jira" | "confluence" | "rovo" | "search";
+type Product = "admin" | "agents" | "home" | "jira" | "confluence" | "rovo" | "search";
 
 interface SidebarProps {
 	product: Product;

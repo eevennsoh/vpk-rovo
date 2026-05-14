@@ -2,7 +2,7 @@
 
 import { createContext, use, useCallback, useMemo, useState, type ReactNode } from "react";
 
-type Product = "admin" | "home" | "jira" | "confluence" | "rovo" | "search";
+type Product = "admin" | "agents" | "home" | "jira" | "confluence" | "rovo" | "search";
 
 /**
  * Sidebar State

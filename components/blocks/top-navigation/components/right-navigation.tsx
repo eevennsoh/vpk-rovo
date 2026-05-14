@@ -9,7 +9,7 @@ import QuestionCircleIcon from "@atlaskit/icon/core/question-circle";
 import SettingsIcon from "@atlaskit/icon/core/settings";
 import ThemeIcon from "@atlaskit/icon/core/theme";
 
-type Product = "admin" | "home" | "jira" | "confluence" | "rovo" | "search";
+type Product = "admin" | "agents" | "home" | "jira" | "confluence" | "rovo" | "search";
 
 interface RightNavigationProps {
 	product: Product;

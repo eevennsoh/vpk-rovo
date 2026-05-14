@@ -7,7 +7,7 @@ import Sidebar from "@/components/blocks/product-sidebar/page";
 import FloatingRovoButton from "@/components/projects/shared/components/floating-rovo-button";
 import { useSidebar } from "@/app/contexts/context-sidebar";
 
-type Product = "admin" | "home" | "jira" | "confluence" | "rovo" | "search";
+type Product = "admin" | "agents" | "home" | "jira" | "confluence" | "rovo" | "search";
 
 interface AppLayoutProps {
 	product: Product;
