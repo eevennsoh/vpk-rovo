@@ -1,23 +1,56 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { token } from "@/lib/tokens";
+import { useRovoChat } from "@/app/contexts";
 import JiraHeader from "./components/jira-header";
 import BoardToolbar from "./components/board-toolbar";
 import BoardColumnsContainer from "./components/board-columns-container";
 import JiraWorkItemModal from "./components/jira-work-item-modal";
+import { AgentsWorkItemInlinePage } from "./components/agents-work-item-inline-page";
 import { AVATARS } from "./data/avatars";
 import { BOARD_COLUMNS, type BoardColumnData, type KanbanCardData } from "./data/board-data";
+import type { AgentsWorkItemPresentationController } from "./hooks/use-agents-work-item-presentation";
+
+const WORK_ITEM_FLOATING_PIN_REASON = "agents-work-item-modal";
 
 interface DraggedCardState {
 	card: KanbanCardData;
 	sourceColumnTitle: string;
 }
 
-export default function AgentsView() {
+interface AgentsViewProps {
+	workItemPresentation: AgentsWorkItemPresentationController;
+}
+
+export default function AgentsView({
+	workItemPresentation,
+}: Readonly<AgentsViewProps>) {
 	const [selectedTab, setSelectedTab] = useState(1);
-	const [isModalOpen, setIsModalOpen] = useState(false);
-	const [selectedWorkItem, setSelectedWorkItem] = useState<{ title: string; code: string } | null>(null);
+	const {
+		isOpen: isChatOpen,
+		chatSurface,
+		isFloatingPinned,
+		pinFloating,
+		unpinFloating,
+	} = useRovoChat();
+	const { state: presentationState, promoteModalToInline } = workItemPresentation;
+	const isModalOpen = presentationState.mode === "modal";
+	const selectedWorkItem = presentationState.workItem;
+
+	useEffect(() => {
+		if (!isModalOpen || !isChatOpen) return;
+		pinFloating(WORK_ITEM_FLOATING_PIN_REASON);
+		return () => {
+			unpinFloating(WORK_ITEM_FLOATING_PIN_REASON);
+		};
+	}, [isModalOpen, isChatOpen, pinFloating, unpinFloating]);
+
+	useEffect(() => {
+		if (!isModalOpen || chatSurface !== "sidebar" || !isFloatingPinned) return;
+		promoteModalToInline();
+	}, [isModalOpen, chatSurface, isFloatingPinned, promoteModalToInline]);
+
 	const [boardColumns, setBoardColumns] = useState<BoardColumnData[]>(() =>
 		BOARD_COLUMNS.map((column) => ({
 			...column,
@@ -30,8 +63,7 @@ export default function AgentsView() {
 	const [draggedCard, setDraggedCard] = useState<DraggedCardState | null>(null);
 
 	const handleCardClick = (title: string, code: string) => {
-		setSelectedWorkItem({ title, code });
-		setIsModalOpen(true);
+		workItemPresentation.openModal({ title, code });
 	};
 
 	const handleCardDragStart = (card: KanbanCardData, sourceColumnTitle: string) => {
@@ -92,8 +124,25 @@ export default function AgentsView() {
 	};
 
 	const handleModalClose = () => {
-		setIsModalOpen(false);
+		workItemPresentation.closeModal();
 	};
+
+	if (presentationState.mode === "inline" && selectedWorkItem) {
+		return (
+			<div
+				style={{
+					height: "var(--vpk-project-shell-content-height, calc(100vh - 48px))",
+					display: "flex",
+					flexDirection: "column",
+				}}
+			>
+				<AgentsWorkItemInlinePage
+					workItem={selectedWorkItem}
+					onBackToBoard={workItemPresentation.backToBoard}
+				/>
+			</div>
+		);
+	}
 
 	return (
 		<div
