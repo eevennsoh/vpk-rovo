@@ -53,6 +53,7 @@ interface ChatPanelProps {
 	cards?: ChatPanelCardsProps;
 	greeting?: ChatPanelGreetingProps;
 	hideHeader?: boolean;
+	abortOnUnmount?: boolean;
 	containerClassName?: string;
 	containerStyle?: CSSProperties;
 	onSurfaceSwitch?: ChatSurfaceSwitchHandler;
@@ -76,6 +77,7 @@ export default function ChatPanel({
 	cards,
 	greeting,
 	hideHeader = false,
+	abortOnUnmount = true,
 	containerClassName,
 	containerStyle,
 	onSurfaceSwitch,
@@ -189,8 +191,9 @@ export default function ChatPanel({
 	});
 
 	useEffect(() => {
+		if (!abortOnUnmount) return;
 		return () => abort();
-	}, [abort]);
+	}, [abort, abortOnUnmount]);
 
 	const hasMessages = messages.length > 0;
 
