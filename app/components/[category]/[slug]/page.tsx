@@ -57,6 +57,7 @@ export function generateStaticParams() {
 	for (const comp of PROJECT_COMPONENTS) {
 		params.push({ category: "projects", slug: comp.slug });
 	}
+	params.push({ category: "projects", slug: "rovo-app" });
 
 	for (const comp of ART_COMPONENTS) {
 		params.push({ category: "arts", slug: comp.slug });
