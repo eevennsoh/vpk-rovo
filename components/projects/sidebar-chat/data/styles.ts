@@ -32,10 +32,7 @@ export const chatStyles = {
 		flexDirection: "column" as const,
 	},
 	messagesContainer: {
-		padding: token("space.150"),
 		paddingTop: token("space.150"),
-		paddingLeft: token("space.150"),
-		paddingRight: token("space.150"),
 		paddingBottom: token("space.400"), // 32px gap from ChatComposer
 		display: "flex",
 		flexDirection: "column" as const,
