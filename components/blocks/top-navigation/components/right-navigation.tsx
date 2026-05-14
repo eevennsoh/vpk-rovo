@@ -9,11 +9,12 @@ import QuestionCircleIcon from "@atlaskit/icon/core/question-circle";
 import SettingsIcon from "@atlaskit/icon/core/settings";
 import ThemeIcon from "@atlaskit/icon/core/theme";
 
-type Product = "home" | "jira" | "confluence" | "rovo" | "search";
+type Product = "admin" | "home" | "jira" | "confluence" | "rovo" | "search";
 
 interface RightNavigationProps {
 	product: Product;
 	windowWidth: number;
+	hideRovoAction?: boolean;
 	onToggleChat: () => void;
 	onToggleTheme: () => void;
 }
@@ -21,6 +22,7 @@ interface RightNavigationProps {
 export function RightNavigation({
 	product,
 	windowWidth,
+	hideRovoAction = false,
 	onToggleChat,
 	onToggleTheme,
 }: Readonly<RightNavigationProps>) {
@@ -36,7 +38,7 @@ export function RightNavigation({
 	return (
 		<div style={containerStyle}>
 			{/* Rovo chat button - hidden when on Rovo page */}
-			{product !== "rovo" && (
+			{product !== "rovo" && !hideRovoAction ? (
 				<>
 					{windowWidth >= 768 ? (
 						<Button variant="outline" className="text-text-subtle" onClick={onToggleChat}>
@@ -49,7 +51,7 @@ export function RightNavigation({
 						</Button>
 					)}
 				</>
-			)}
+			) : null}
 
 			{/* Notifications */}
 			<Button aria-label="Notifications" size="icon" variant="ghost">

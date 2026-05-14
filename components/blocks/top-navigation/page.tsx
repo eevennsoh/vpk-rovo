@@ -11,16 +11,18 @@ import { useTopNavigation } from "./hooks/use-top-navigation";
 import { TOP_NAV_LEFT_SECTION_WIDTH_PX, TOP_NAV_PADDING_PX } from "./layout-constants";
 import SearchIcon from "@atlaskit/icon/core/search";
 
-type Product = "home" | "jira" | "confluence" | "rovo" | "search";
+type Product = "admin" | "home" | "jira" | "confluence" | "rovo" | "search";
 
 interface TopNavigationProps {
 	product: Product;
 	showSearch?: boolean;
+	hideRovoAction?: boolean;
 }
 
 export default function TopNavigation({
 	product,
 	showSearch = true,
+	hideRovoAction = false,
 }: Readonly<TopNavigationProps>) {
 	const {
 		searchValue,
@@ -155,6 +157,7 @@ export default function TopNavigation({
 				<RightNavigation
 					product={product}
 					windowWidth={windowWidth}
+					hideRovoAction={hideRovoAction}
 					onToggleChat={toggleChat}
 					onToggleTheme={toggleTheme}
 				/>

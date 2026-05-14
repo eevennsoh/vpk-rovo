@@ -4,10 +4,11 @@ import { useState } from "react";
 import { token } from "@/lib/tokens";
 
 import { useSidebar } from "@/app/contexts/context-sidebar";
+import { AdminSidebar } from "./variants/admin";
 import { JiraSidebar } from "./variants/jira";
 import { ConfluenceSidebar } from "./variants/confluence";
 
-type Product = "home" | "jira" | "confluence" | "rovo" | "search";
+type Product = "admin" | "home" | "jira" | "confluence" | "rovo" | "search";
 
 interface SidebarProps {
 	product: Product;
@@ -22,6 +23,8 @@ export default function Sidebar({ product, embedded = false }: Readonly<SidebarP
 	// Render the appropriate sidebar based on product
 	const renderSidebarContent = () => {
 		switch (product) {
+			case "admin":
+				return <AdminSidebar />;
 			case "jira":
 				return <JiraSidebar selectedItem={selectedItem} onSelectItem={setSelectedItem} />;
 			case "confluence":
