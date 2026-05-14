@@ -4,6 +4,7 @@ import { useEffect, useMemo, useCallback, useRef, useState, type CSSProperties }
 import { useRovoChat } from "@/app/contexts";
 import { token } from "@/lib/tokens";
 import type { SendPromptOptions } from "@/app/contexts";
+import type { ChatSurfaceSwitchHandler } from "@/components/projects/shared/components/chat-surface-switcher";
 import { Conversation, ConversationContent } from "@/components/ui-ai/conversation";
 import { MessageTurns } from "@/components/projects/shared/message-turns";
 import { isRenderableRovoUIMessage } from "@/lib/rovo-ui-messages";
@@ -54,6 +55,7 @@ interface ChatPanelProps {
 	hideHeader?: boolean;
 	containerClassName?: string;
 	containerStyle?: CSSProperties;
+	onSurfaceSwitch?: ChatSurfaceSwitchHandler;
 }
 
 const COMPACT_CHAT_WIDTH_MAX = 520;
@@ -76,6 +78,7 @@ export default function ChatPanel({
 	hideHeader = false,
 	containerClassName,
 	containerStyle,
+	onSurfaceSwitch,
 }: Readonly<ChatPanelProps>): React.ReactElement {
 	const { resetChat, uiMessages: rawUiMessages, sendPrompt } = useRovoChat();
 	const panelRef = useRef<HTMLDivElement | null>(null);
@@ -256,7 +259,7 @@ export default function ChatPanel({
 		<div ref={panelRef} className={containerClassName} style={{ ...chatStyles.chatPanel, ...containerStyle }}>
 			{!hideHeader && (
 				<div>
-					<ChatHeader onClose={onClose} onNewChat={resetChat} />
+					<ChatHeader onClose={onClose} onNewChat={resetChat} onSurfaceSwitch={onSurfaceSwitch} />
 				</div>
 			)}
 

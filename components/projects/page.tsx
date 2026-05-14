@@ -8,6 +8,7 @@ import Sidebar from "@/components/blocks/product-sidebar/page";
 import FloatingRovoButton from "@/components/projects/shared/components/floating-rovo-button";
 import ChatPanel from "@/components/projects/sidebar-chat/page";
 import RovoFloatingChat from "@/components/projects/rovo-floating-chat/components/rovo-floating-chat";
+import type { ChatSurfaceSwitchHandler } from "@/components/projects/shared/components/chat-surface-switcher";
 import { SidebarResizeHandle } from "@/components/ui/sidebar";
 import { useSidebarResize } from "@/components/projects/rovo/hooks/use-sidebar-resize";
 import { useSidebar } from "@/app/contexts/context-sidebar";
@@ -21,6 +22,7 @@ interface AppLayoutProps {
 	embedded?: boolean;
 	hideFloatingRovo?: boolean;
 	hideRovoAction?: boolean;
+	onChatSurfaceSwitch?: ChatSurfaceSwitchHandler;
 	/**
 	 * When true, render the sidebar chat flush against the surrounding shell:
 	 * no outer padding, no border radius, and only a single dividing border on
@@ -86,6 +88,7 @@ export default function AppLayout({
 	embedded = false,
 	hideFloatingRovo,
 	hideRovoAction = false,
+	onChatSurfaceSwitch,
 	chatPanelFlush = false,
 }: Readonly<AppLayoutProps>) {
 	const isEmbedded = useIsEmbedded(embedded);
@@ -162,6 +165,7 @@ export default function AppLayout({
 					>
 						<ChatPanel
 							onClose={toggleChat}
+							onSurfaceSwitch={onChatSurfaceSwitch}
 							containerStyle={
 								chatPanelFlush
 									? {
@@ -185,7 +189,7 @@ export default function AppLayout({
 
 			{/* Floating Rovo Chat (anchored bottom-right) */}
 			<AnimatePresence>
-				{showFloatingChat ? <RovoFloatingChat key="floating-chat" /> : null}
+				{showFloatingChat ? <RovoFloatingChat key="floating-chat" onSurfaceSwitch={onChatSurfaceSwitch} /> : null}
 			</AnimatePresence>
 
 			{/* Floating Rovo Button */}

@@ -11,7 +11,10 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ChatSurfaceSwitcherItems } from "@/components/projects/shared/components/chat-surface-switcher";
+import {
+	ChatSurfaceSwitcherItems,
+	type ChatSurfaceSwitchHandler,
+} from "@/components/projects/shared/components/chat-surface-switcher";
 import AppIcon from "@atlaskit/icon/core/app";
 import BugIcon from "@atlaskit/icon/core/bug";
 import ChevronDownIcon from "@atlaskit/icon/core/chevron-down";
@@ -26,11 +29,18 @@ import ShowMoreHorizontalIcon from "@atlaskit/icon/core/show-more-horizontal";
 interface ChatHeaderProps {
 	onClose?: () => void;
 	onNewChat?: () => void;
+	onSurfaceSwitch?: ChatSurfaceSwitchHandler;
 	isStreaming?: boolean;
 	onStop?: () => void;
 }
 
-export default function ChatHeader({ onClose, onNewChat, isStreaming, onStop }: Readonly<ChatHeaderProps>) {
+export default function ChatHeader({
+	onClose,
+	onNewChat,
+	onSurfaceSwitch,
+	isStreaming,
+	onStop,
+}: Readonly<ChatHeaderProps>) {
 	const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
 
 	// No-op handlers for visual-only buttons
@@ -78,7 +88,7 @@ export default function ChatHeader({ onClose, onNewChat, isStreaming, onStop }: 
 							<ShowMoreHorizontalIcon label="" />
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align="end" sideOffset={4} positionerClassName="z-[600]">
-							<ChatSurfaceSwitcherItems currentSurface="sidebar" />
+							<ChatSurfaceSwitcherItems currentSurface="sidebar" onSurfaceSwitch={onSurfaceSwitch} />
 							<DropdownMenuSeparator />
 							<DropdownMenuGroup>
 								{isStreaming ? (
