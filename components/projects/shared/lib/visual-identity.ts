@@ -2,7 +2,7 @@ import type { AtlassianLogoName } from "@/components/ui/logo";
 import type { IconTileVariant } from "@/components/ui/icon-tile";
 import type { GenerativeContentType } from "@/components/projects/shared/lib/generative-widget";
 
-type ArtifactVisualIdentityKind = "text" | "code" | "image" | "sheet" | "react" | "excalidraw" | "browser";
+type ArtifactVisualIdentityKind = "text" | "code" | "html" | "image" | "sheet" | "react" | "excalidraw" | "browser";
 
 export const VISUAL_IDENTITY_TILE_VARIANTS = [
 	"gray",
@@ -320,6 +320,8 @@ function resolveArtifactFallbackIconName(kind: ArtifactVisualIdentityKind): stri
 			return "angle-brackets";
 		case "excalidraw":
 			return "diagram";
+		case "html":
+			return "page";
 		case "image":
 			return "image";
 		case "sheet":

@@ -196,12 +196,13 @@ export const ArtifactContent = ({
  * Mirrors the design from rovo-app-artifact-card.tsx
  * --------------------------------------------------------------------------- */
 
-export type ArtifactKind = "text" | "code" | "image" | "sheet" | "react" | "excalidraw" | "browser";
+export type ArtifactKind = "text" | "code" | "html" | "image" | "sheet" | "react" | "excalidraw" | "browser";
 
 export const ARTIFACT_KIND_LABELS: Record<ArtifactKind, string> = {
 	browser: "Browser",
 	code: "Code",
 	excalidraw: "Diagram",
+	html: "HTML report",
 	image: "Image",
 	react: "App",
 	sheet: "Sheet",

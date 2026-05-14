@@ -253,14 +253,24 @@ export function formatActiveJiraWorkItemContext(
 	const attachments = workItem.attachments?.map(
 		(file) => `- ${file.name}.${file.ext} (${file.date})`,
 	);
+	const recentActivity = workItem.comments?.flatMap((comment) => [
+		`- ${comment.timestamp}: ${comment.author.name}${comment.author.role ? ` (${comment.author.role})` : ""} - ${comment.content}`,
+		...(comment.replies ?? []).map(
+			(reply) => `  - ${reply.timestamp}: ${reply.author.name}${reply.author.role ? ` (${reply.author.role})` : ""} - ${reply.content}`,
+		),
+	]);
 
 	return [
 		"[Active Jira Work Item Context]",
 		"Source: /agents Jira work item modal.",
 		`Key: ${workItem.code}`,
 		`Title: ${workItem.title}`,
+		workItem.description ? `Description: ${workItem.description}` : null,
 		`Status: ${workItem.status ?? "Unknown"}`,
 		`Priority: ${workItem.priority ?? "Unknown"}`,
+		workItem.startDate ? `Start date: ${workItem.startDate}` : null,
+		workItem.dueDate ? `Due date: ${workItem.dueDate}` : null,
+		workItem.parent ? `Parent: ${workItem.parent.code}${workItem.parent.title ? ` - ${workItem.parent.title}` : ""}` : null,
 		`Customer: ${rfp.customerName}`,
 		`Opportunity: ${rfp.opportunityName}`,
 		`Seat count: ${rfp.seatCount}`,
@@ -282,6 +292,8 @@ export function formatActiveJiraWorkItemContext(
 		...(childItems ?? []),
 		attachments?.length ? "Attachments:" : null,
 		...(attachments ?? []),
+		recentActivity?.length ? "Recent activity:" : null,
+		...(recentActivity ?? []),
 		"[End Active Jira Work Item Context]",
 	]
 		.filter((line): line is string => typeof line === "string" && line.length > 0)

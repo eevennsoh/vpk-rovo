@@ -141,11 +141,13 @@ async function buildRovoAppHermesContextDescription({
 	const selectedSkills = await Promise.all(
 		normalizedSkillIds.map(async (skillId) => {
 			const segments = skillId.split("/").filter(Boolean);
-			if (segments.length < 2) {
+			if (segments.length === 0) {
 				return null;
 			}
 			const name = segments[segments.length - 1];
-			const category = segments.slice(0, -1).join("__");
+			const category = segments.length === 1
+				? "local"
+				: segments.slice(0, -1).join("__");
 			try {
 				return await getSkillImpl(category, name);
 			} catch {

@@ -47,11 +47,15 @@ test("RFP-101 active work item formats a bounded hidden Jira context block", asy
 	assert.match(context, /^\[Active Jira Work Item Context\]/);
 	assert.match(context, /\[End Active Jira Work Item Context\]$/);
 	assert.match(context, /Acme Mobility/);
+	assert.match(context, /Description: Acme Mobility is evaluating a switch/);
+	assert.match(context, /Due date: Oct 28, 2026/);
 	assert.match(context, /10,000 seats/);
 	assert.match(context, /LegacyWorks Enterprise/);
 	assert.match(context, /Response team needs:/);
 	assert.match(context, /RFP-105: Build compliance matrix/);
 	assert.match(context, /Acme-Mobility-enterprise-RFP\.pdf/);
+	assert.match(context, /Recent activity:/);
+	assert.match(context, /Sales engineering can own migration architecture/);
 });
 
 test("non-RFP-101 work items keep the lightweight modal without injected context", async () => {

@@ -4,11 +4,17 @@ const CODE_REQUEST_REGEX =
 	/\b(code|component|tsx|jsx|react|javascript|typescript|python|sql|api|function|script|app|ui|page|web\s?page|website|site|landing\s?page|home\s?page|homepage|html|css|tailwind)\b/i;
 const IMAGE_REQUEST_REGEX = /\b(image|photo|picture|illustration|graphic|logo)\b/i;
 const SHEET_REQUEST_REGEX = /\b(table|spreadsheet|sheet|csv|matrix|grid)\b/i;
+const HTML_REPORT_REQUEST_REGEX =
+	/\bhtml\s+report\b|\breport\s+html\b|\b(html|self-contained)\b.{0,60}\breport\b|\breport\b.{0,60}\bhtml\b/i;
 
 function normalizeRovoAppArtifactKind(value) {
 	const normalizedValue = getNonEmptyString(value)?.toLowerCase();
 	if (normalizedValue === "code") {
 		return "code";
+	}
+
+	if (normalizedValue === "html") {
+		return "html";
 	}
 
 	if (normalizedValue === "sheet" || normalizedValue === "spreadsheet" || normalizedValue === "table") {
@@ -40,6 +46,10 @@ function inferRovoAppArtifactKindFromRequest(latestUserMessage, fallbackKind = "
 		return "sheet";
 	}
 
+	if (HTML_REPORT_REQUEST_REGEX.test(normalizedMessage)) {
+		return "html";
+	}
+
 	if (CODE_REQUEST_REGEX.test(normalizedMessage)) {
 		return "code";
 	}
@@ -62,6 +72,16 @@ function inferRovoAppArtifactKindFromContent(content, fallbackKind = "text") {
 		/"elements"\s*:\s*\[/iu.test(normalizedContent)
 	) {
 		return "excalidraw";
+	}
+
+	if (
+		normalizeRovoAppArtifactKind(fallbackKind) === "html" &&
+		(
+			/<!doctype html>/iu.test(normalizedContent) ||
+			/<html[\s>]/iu.test(normalizedContent)
+		)
+	) {
+		return "html";
 	}
 
 	if (

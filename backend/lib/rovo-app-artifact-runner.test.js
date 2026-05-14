@@ -3,6 +3,7 @@ const assert = require("node:assert/strict");
 
 const {
 	generateAndPersistRovoAppArtifact,
+	normalizeGeneratedArtifactContent,
 	resolvePersistedRovoAppArtifactTitle,
 } = require("./rovo-app-artifact-runner");
 
@@ -134,4 +135,79 @@ test("generateAndPersistRovoAppArtifact does not run create cleanup for update f
 	);
 
 	assert.equal(cleanupCalls, 0);
+});
+
+test("generateAndPersistRovoAppArtifact rejects invalid HTML report output before persisting", async () => {
+	let finalizeCalls = 0;
+
+	await assert.rejects(
+		generateAndPersistRovoAppArtifact({
+			artifactAction: "createDocument",
+			artifactDocument: {
+				id: "doc-html",
+				title: "Report",
+				kind: "html",
+			},
+			changeLabel: "Created",
+			fallbackTitle: "Report",
+			latestUserMessage: "Generate an HTML report",
+			generateArtifactText: async () => "<div>{{TITLE}}</div>",
+			inferArtifactKindFromContent: () => "html",
+			rovoAppDocumentManager: {
+				appendDocumentVersion: async () => null,
+				finalizeDocumentShell: async () => {
+					finalizeCalls += 1;
+					return null;
+				},
+			},
+			onCreateFailure: async () => {},
+		}),
+		/complete HTML document|unresolved placeholders/,
+	);
+
+	assert.equal(finalizeCalls, 0);
+});
+
+test("normalizeGeneratedArtifactContent strips markdown fences from HTML reports", () => {
+	assert.equal(
+		normalizeGeneratedArtifactContent({
+			content: "```html\n<!doctype html><html><body><h1>Report</h1></body></html>\n```",
+			kind: "html",
+		}),
+		"<!doctype html><html><body><h1>Report</h1></body></html>",
+	);
+});
+
+test("generateAndPersistRovoAppArtifact persists fenced HTML after normalization", async () => {
+	const finalized = [];
+
+	const result = await generateAndPersistRovoAppArtifact({
+		artifactAction: "createDocument",
+		artifactDocument: {
+			id: "doc-html-fenced",
+			title: "Report",
+			kind: "html",
+		},
+		changeLabel: "Created",
+		fallbackTitle: "Report",
+		latestUserMessage: "Generate an HTML report",
+		generateArtifactText: async () =>
+			"```html\n<!doctype html><html><head><title>Report</title></head><body><h1>Report</h1></body></html>\n```",
+		inferArtifactKindFromContent: () => "html",
+		rovoAppDocumentManager: {
+			appendDocumentVersion: async () => null,
+			finalizeDocumentShell: async (documentId, version) => {
+				finalized.push({ documentId, version });
+				return {
+					id: documentId,
+					title: "Report",
+					kind: "html",
+				};
+			},
+		},
+		onCreateFailure: async () => {},
+	});
+
+	assert.equal(result.contentToPersist, "<!doctype html><html><head><title>Report</title></head><body><h1>Report</h1></body></html>");
+	assert.equal(finalized[0].version.content, result.contentToPersist);
 });

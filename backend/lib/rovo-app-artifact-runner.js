@@ -49,6 +49,46 @@ async function resolvePersistedRovoAppArtifactTitle({
 	return sanitizeRovoAppArtifactTitle(fallbackTitle) || "Artifact draft";
 }
 
+function validateGeneratedArtifactContent({
+	content,
+	kind,
+}) {
+	if (kind !== "html") {
+		return;
+	}
+
+	if (!/<!doctype html>/iu.test(content) || !/<html[\s>]/iu.test(content)) {
+		throw new Error("HTML report generation returned content that is not a complete HTML document.");
+	}
+
+	if (/\{\{[^}]+\}\}|\[(?:insert|placeholder|tbd)[^\]]*\]|\blorem ipsum\b/iu.test(content)) {
+		throw new Error("HTML report generation left unresolved placeholders.");
+	}
+
+	if (
+		/<script\b[^>]*\bsrc\s*=\s*["']https?:/iu.test(content) ||
+		/<link\b[^>]*\bhref\s*=\s*["']https?:/iu.test(content) ||
+		/<img\b[^>]*\bsrc\s*=\s*["']https?:/iu.test(content)
+	) {
+		throw new Error("HTML report generation included remote dependencies.");
+	}
+}
+
+function normalizeGeneratedArtifactContent({
+	content,
+	kind,
+}) {
+	const normalizedContent = typeof content === "string" ? content.trim() : "";
+	if (kind !== "html") {
+		return normalizedContent;
+	}
+
+	return normalizedContent
+		.replace(/^```(?:html)?\s*\n/iu, "")
+		.replace(/\n```\s*$/u, "")
+		.trim();
+}
+
 async function generateAndPersistRovoAppArtifact({
 	artifactAction,
 	artifactDocument,
@@ -67,13 +107,19 @@ async function generateAndPersistRovoAppArtifact({
 
 	try {
 		const assistantText = await generateArtifactText({ onTextDelta });
-		const normalizedAssistantText =
-			typeof assistantText === "string" ? assistantText.trim() : "";
+		const normalizedAssistantText = normalizeGeneratedArtifactContent({
+			content: assistantText,
+			kind: artifactDocument.kind,
+		});
 		if (!normalizedAssistantText) {
 			throw new Error("Rovo artifact generation returned no content.");
 		}
 
 		const contentToPersist = normalizedAssistantText;
+		validateGeneratedArtifactContent({
+			content: contentToPersist,
+			kind: artifactDocument.kind,
+		});
 		const finalArtifactTitle = await resolvePersistedRovoAppArtifactTitle({
 			artifactAction,
 			content: contentToPersist,
@@ -144,5 +190,6 @@ async function generateAndPersistRovoAppArtifact({
 
 module.exports = {
 	generateAndPersistRovoAppArtifact,
+	normalizeGeneratedArtifactContent,
 	resolvePersistedRovoAppArtifactTitle,
 };

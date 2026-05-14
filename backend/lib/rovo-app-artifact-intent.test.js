@@ -208,6 +208,7 @@ test("normalizeArtifactKind maps spreadsheet aliases", () => {
 	assert.equal(normalizeArtifactKind("spreadsheet"), "sheet");
 	assert.equal(normalizeArtifactKind("table"), "sheet");
 	assert.equal(normalizeArtifactKind("excalidraw"), "excalidraw");
+	assert.equal(normalizeArtifactKind("html"), "html");
 });
 
 test("buildRovoAppArtifactIntentPrompt includes current artifact context", () => {
