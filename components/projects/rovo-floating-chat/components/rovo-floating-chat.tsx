@@ -36,20 +36,26 @@ export default function RovoFloatingChat({
 				onNewChat={resetChat}
 				onSurfaceSwitch={onSurfaceSwitch}
 			/>
-			<ChatPanel
-				onClose={closeChat}
-				hideHeader
-				abortOnUnmount={false}
-				containerClassName="min-h-0 flex-1"
-				containerStyle={{
-					backgroundColor: "transparent",
-					borderRadius: 0,
-					borderWidth: 0,
-				}}
-				greeting={{ showHero: false }}
-				onSurfaceSwitch={onSurfaceSwitch}
-				chatContextBar={chatContextBar}
-			/>
+			<div className="min-h-0 overflow-hidden">
+				<ChatPanel
+					onClose={closeChat}
+					hideHeader
+					abortOnUnmount={false}
+					containerClassName="min-h-0"
+					containerStyle={{
+						backgroundColor: "transparent",
+						borderRadius: 0,
+						borderWidth: 0,
+						display: "grid",
+						gridTemplateRows: "minmax(0, 1fr) auto",
+						height: "auto",
+						maxHeight: "calc(min(720px, calc(100dvh - 96px)) - 56px)",
+					}}
+					greeting={{ showHero: false }}
+					onSurfaceSwitch={onSurfaceSwitch}
+					chatContextBar={chatContextBar}
+				/>
+			</div>
 		</motion.div>
 	);
 }

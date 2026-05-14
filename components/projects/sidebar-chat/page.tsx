@@ -201,6 +201,7 @@ export default function ChatPanel({
 	}, [abort, abortOnUnmount]);
 
 	const hasMessages = messages.length > 0;
+	const shouldHugEmptyGreeting = !hasMessages && greeting?.showHero === false;
 
 	const handleClarificationSubmit = useCallback(
 		(answers: ClarificationAnswers) => {
@@ -256,16 +257,16 @@ export default function ChatPanel({
 
 	const messagesContainerStyle = {
 		...chatStyles.messagesContainer,
-		justifyContent: hasMessages ? "flex-start" : "flex-end",
-		flex: hasMessages ? "0 0 auto" : chatStyles.messagesContainer.flex,
-		minHeight: "100%",
+		justifyContent: hasMessages || shouldHugEmptyGreeting ? "flex-start" : "flex-end",
+		flex: hasMessages || shouldHugEmptyGreeting ? "0 0 auto" : chatStyles.messagesContainer.flex,
+		minHeight: shouldHugEmptyGreeting ? "auto" : "100%",
 		paddingBottom: hasMessages ? chatStyles.messagesContainer.paddingBottom : token("space.400"),
 	};
 
 	return (
 		<div ref={panelRef} className={containerClassName} style={{ ...chatStyles.chatPanel, ...containerStyle }}>
 			{!hideHeader && (
-				<div>
+				<div className="shrink-0">
 					<ChatHeader onClose={onClose} onNewChat={resetChat} onSurfaceSwitch={onSurfaceSwitch} />
 				</div>
 			)}
@@ -336,7 +337,7 @@ export default function ChatPanel({
 				</ConversationContent>
 			</Conversation>
 
-			<div>
+			<div className="shrink-0">
 				{shouldShowQuestionCard && activeQuestionCard ? (
 					<>
 						<div className="px-3">

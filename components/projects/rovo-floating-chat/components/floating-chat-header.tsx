@@ -35,7 +35,7 @@ export default function FloatingChatHeader({
 	const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
 
 	return (
-		<div className="flex items-center justify-between px-3 py-3">
+		<div className="flex shrink-0 items-center justify-between px-3 py-3">
 			<div className="flex items-center gap-1">
 				<Button aria-label="Menu" size="icon" variant="ghost" onClick={noop}>
 					<MenuIcon label="" />

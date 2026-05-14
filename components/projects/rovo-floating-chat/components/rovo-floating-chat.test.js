@@ -7,6 +7,8 @@ const { loadCjsModuleFromText } = require(path.join(process.cwd(), "scripts/lib/
 
 const SOURCE_FILE = path.join(__dirname, "rovo-floating-chat.tsx");
 const ROVO_FLOATING_CHAT_SOURCE = fs.readFileSync(SOURCE_FILE, "utf8");
+const FLOATING_CHAT_HEADER_SOURCE = fs.readFileSync(path.join(__dirname, "floating-chat-header.tsx"), "utf8");
+const CHAT_PANEL_SOURCE = fs.readFileSync(path.join(process.cwd(), "components/projects/sidebar-chat/page.tsx"), "utf8");
 
 async function loadRovoFloatingChatHarness() {
 	const mockModules = new Map([
@@ -162,6 +164,14 @@ test("RovoFloatingChat renders the shared chat panel inside the floating shell",
 	assert.match(markup, /data-abort-on-unmount="false"/);
 });
 
+test("RovoFloatingChat bounds the shared chat panel inside an overflow-hidden scroll frame", async () => {
+	const harness = await loadRovoFloatingChatHarness();
+	const markup = harness.renderFloatingChat();
+
+	assert.match(markup, /class="min-h-0 overflow-hidden"/);
+	assert.match(markup, /data-testid="shared-chat-panel"[^>]+class="min-h-0"/);
+});
+
 test("RovoFloatingChat forwards context bar descriptor to the shared chat panel", async () => {
 	const harness = await loadRovoFloatingChatHarness();
 	const markup = harness.renderFloatingChatWithContext();
@@ -170,9 +180,32 @@ test("RovoFloatingChat forwards context bar descriptor to the shared chat panel"
 	assert.match(markup, /data-context-icon="work-item"/);
 });
 
-test("Floating chat shell uses max-height (not fixed height) so it hugs content", () => {
+test("Floating chat shell hugs content until it reaches the viewport-bounded max-height", () => {
 	assert.match(ROVO_FLOATING_CHAT_SOURCE, /max-h-\[min\(720px,calc\(100dvh-96px\)\)\]/);
 	assert.doesNotMatch(ROVO_FLOATING_CHAT_SOURCE, /\sh-\[min\(720px,calc\(100dvh-96px\)\)\]/);
+});
+
+test("Floating chat panel receives a bounded max-height without forcing empty-state height", () => {
+	assert.match(ROVO_FLOATING_CHAT_SOURCE, /<div className="min-h-0 overflow-hidden">[\s\S]*<ChatPanel/);
+	assert.match(ROVO_FLOATING_CHAT_SOURCE, /containerClassName="min-h-0"/);
+	assert.match(ROVO_FLOATING_CHAT_SOURCE, /display: "grid"/);
+	assert.match(ROVO_FLOATING_CHAT_SOURCE, /gridTemplateRows: "minmax\(0, 1fr\) auto"/);
+	assert.match(ROVO_FLOATING_CHAT_SOURCE, /height: "auto"/);
+	assert.match(ROVO_FLOATING_CHAT_SOURCE, /maxHeight: "calc\(min\(720px, calc\(100dvh - 96px\)\) - 56px\)"/);
+	assert.doesNotMatch(ROVO_FLOATING_CHAT_SOURCE, /containerClassName="h-full min-h-0"/);
+});
+
+test("Floating chat keeps chrome and composer outside the scrollable message viewport", () => {
+	assert.match(FLOATING_CHAT_HEADER_SOURCE, /className="flex shrink-0 items-center justify-between px-3 py-3"/);
+	assert.match(CHAT_PANEL_SOURCE, /<Conversation className="min-h-0 flex-1"/);
+	assert.match(CHAT_PANEL_SOURCE, /<div className="shrink-0">[\s\S]*<ChatComposer/);
+	assert.match(CHAT_PANEL_SOURCE, /<div className="shrink-0">[\s\S]*<ChatHeader/);
+});
+
+test("Floating chat compact empty greeting does not force a full-height message area", () => {
+	assert.match(CHAT_PANEL_SOURCE, /const shouldHugEmptyGreeting = !hasMessages && greeting\?\.showHero === false/);
+	assert.match(CHAT_PANEL_SOURCE, /justifyContent: hasMessages \|\| shouldHugEmptyGreeting \? "flex-start" : "flex-end"/);
+	assert.match(CHAT_PANEL_SOURCE, /minHeight: shouldHugEmptyGreeting \? "auto" : "100%"/);
 });
 
 test("RovoFloatingChat does not auto-promote submitted or existing messages to the sidebar", () => {
