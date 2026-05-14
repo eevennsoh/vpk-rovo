@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef } from "react";
 import type { ClickyState } from "./use-clicky";
-import { captureViewport } from "@/components/projects/rovo-app/lib/clicky-screen-capture";
+import { captureViewport } from "@/components/projects/rovo/lib/clicky-screen-capture";
 
 // ---------------------------------------------------------------------------
 // Clicky system prompt — adapted for the web context.

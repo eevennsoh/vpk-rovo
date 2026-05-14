@@ -1,12 +1,12 @@
 "use client";
 
-import RovoAppPage from "@/components/projects/rovo-app/page";
+import RovoPage from "@/components/projects/rovo/page";
 import { usePathname } from "next/navigation";
 import { useProjectDemoEmbedded } from "./use-project-demo-embedded";
 
-export default function RovoAppDemo() {
+export default function RovoDemo() {
 	const pathname = usePathname() ?? "";
 	const embedded = useProjectDemoEmbedded() && !pathname.startsWith("/components/");
 
-	return <RovoAppPage embedded={embedded} />;
+	return <RovoPage embedded={embedded} />;
 }

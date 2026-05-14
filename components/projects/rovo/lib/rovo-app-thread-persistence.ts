@@ -62,7 +62,7 @@ export function buildRecoverableRovoAppThreadInput(
 } {
 	const threadId = state.threadId?.trim();
 	if (!threadId) {
-		throw new Error("Cannot recover Rovo App thread without an id.");
+		throw new Error("Cannot recover Rovo thread without an id.");
 	}
 
 	return {

@@ -5,7 +5,7 @@ import type { RovoAppThread } from "@/lib/rovo-app-types";
 import {
 	deleteRovoAppThread,
 	listRovoAppThreads,
-} from "@/components/projects/rovo-app/lib/api";
+} from "@/components/projects/rovo/lib/api";
 
 export interface UseRovoAppThreadListResult {
 	deleteThread: (threadId: string) => Promise<void>;

@@ -21,9 +21,9 @@ import {
 	appendRovoAppStreamingArtifactDelta,
 	getRovoAppStreamingArtifactCheckpoint,
 	type RovoAppStreamingArtifact,
-} from "@/components/projects/rovo-app/lib/rovo-app-streaming-artifact";
-import type { RovoAppPendingArtifactResult } from "@/components/projects/rovo-app/lib/rovo-app-message-artifacts";
-import { getLatestDocumentContent } from "@/components/projects/rovo-app/lib/rovo-app-message-artifacts";
+} from "@/components/projects/rovo/lib/rovo-app-streaming-artifact";
+import type { RovoAppPendingArtifactResult } from "@/components/projects/rovo/lib/rovo-app-message-artifacts";
+import { getLatestDocumentContent } from "@/components/projects/rovo/lib/rovo-app-message-artifacts";
 import {
 	buildRovoAppThreadPath,
 	buildRovoAppThreadPersistKey,
@@ -33,58 +33,58 @@ import {
 	shouldSkipRovoAppThreadLoad,
 	shouldReplacePendingRovoAppRoute,
 	shouldReplaceRovoAppRouteAfterPersistence,
-} from "@/components/projects/rovo-app/lib/rovo-app-thread-route-sync";
+} from "@/components/projects/rovo/lib/rovo-app-thread-route-sync";
 import {
 	buildRecoverableRovoAppThreadInput,
 	isRovoAppThreadNotFoundError,
 	shouldPersistResolvedRovoAppTitle,
 	shouldRecoverRovoAppThreadAfterPersistenceFailure,
-} from "@/components/projects/rovo-app/lib/rovo-app-thread-persistence";
-import { waitForChatSendSettled } from "@/components/projects/rovo-app/lib/rovo-app-send-guard";
-import { shouldSuppressRovoAppPlanRetry } from "@/components/projects/rovo-app/lib/rovo-app-plan-retry-guard";
-import { buildRovoAppActiveThreadTransitionPlan } from "@/components/projects/rovo-app/lib/rovo-app-active-thread-transition";
+} from "@/components/projects/rovo/lib/rovo-app-thread-persistence";
+import { waitForChatSendSettled } from "@/components/projects/rovo/lib/rovo-app-send-guard";
+import { shouldSuppressRovoAppPlanRetry } from "@/components/projects/rovo/lib/rovo-app-plan-retry-guard";
+import { buildRovoAppActiveThreadTransitionPlan } from "@/components/projects/rovo/lib/rovo-app-active-thread-transition";
 import {
 	createRealtimeTextMessage,
 	mergeRovoAppMessages,
 	updateRealtimeTextMessage,
 	upsertRealtimeMessage,
-} from "@/components/projects/rovo-app/lib/rovo-app-realtime-message-state";
-import { createRovoAppUserMessage } from "@/components/projects/rovo-app/lib/rovo-app-user-message";
+} from "@/components/projects/rovo/lib/rovo-app-realtime-message-state";
+import { createRovoAppUserMessage } from "@/components/projects/rovo/lib/rovo-app-user-message";
 import {
 	appendSuggestedQuestionsToAssistantMessage,
 	buildSuggestedQuestionsRequest,
-} from "@/components/projects/rovo-app/lib/rovo-app-suggestions";
+} from "@/components/projects/rovo/lib/rovo-app-suggestions";
 import {
 	getRovoAppBackgroundRefreshThreadIds,
 	shouldHydrateCompletedActiveBackgroundThread,
-} from "@/components/projects/rovo-app/lib/rovo-app-background-refresh";
+} from "@/components/projects/rovo/lib/rovo-app-background-refresh";
 import {
 	getLatestRovoAppThinkingStatusLabel,
 	resolveRovoAppComposerSubmitState,
 	type RovoAppDirectDelegationPhase,
-} from "@/components/projects/rovo-app/lib/rovo-app-composer-submit-state";
+} from "@/components/projects/rovo/lib/rovo-app-composer-submit-state";
 import {
 	canDispatchRovoAppQueuedAction,
 	hasQueuedRovoAppFollowUp,
 	isRovoAppThreadBusy,
-} from "@/components/projects/rovo-app/lib/rovo-app-queue-gate";
-import type { RovoAppSmartWidthClass } from "@/components/projects/rovo-app/lib/rovo-app-smart-generation-layout";
+} from "@/components/projects/rovo/lib/rovo-app-queue-gate";
+import type { RovoAppSmartWidthClass } from "@/components/projects/rovo/lib/rovo-app-smart-generation-layout";
 import {
 	isRovoAppDelegationAbortError,
 	readRovoAppDelegationResponseStream,
-} from "@/components/projects/rovo-app/lib/rovo-app-delegation-stream";
-import { shouldHydratePersistedRealtimeMessages } from "@/components/projects/rovo-app/lib/rovo-app-realtime-persistence";
+} from "@/components/projects/rovo/lib/rovo-app-delegation-stream";
+import { shouldHydratePersistedRealtimeMessages } from "@/components/projects/rovo/lib/rovo-app-realtime-persistence";
 import {
 	filterDeletedRovoAppThreads,
 	mergeRovoAppThreadWithLocalTitle,
 	updateRovoAppThreadMessagesRecord,
 	updateRovoAppThreadTitleRecord,
 	upsertRovoAppThreadRecord,
-} from "@/components/projects/rovo-app/lib/rovo-app-thread-state";
+} from "@/components/projects/rovo/lib/rovo-app-thread-state";
 import {
 	getPendingRovoAppTitleRequest,
 	shouldDeferRovoAppTitlePersistence,
-} from "@/components/projects/rovo-app/lib/rovo-app-title-generation";
+} from "@/components/projects/rovo/lib/rovo-app-title-generation";
 import {
 	createRovoAppThread,
 	cancelRovoAppRun,
@@ -107,7 +107,7 @@ import {
 	saveRovoAppDocument,
 	setRovoAppVote,
 	updateRovoAppThread,
-} from "@/components/projects/rovo-app/lib/api";
+} from "@/components/projects/rovo/lib/api";
 import {
 	type ArtifactMode,
 	type RovoAppActiveRun,
@@ -141,17 +141,17 @@ import {
 import {
 	buildRovoAppCancelUrl,
 	syncRovoAppAgentModeForDispatch,
-} from "@/components/projects/rovo-app/lib/rovo-app-agent-mode";
-import { appendTurnCompleteToLastAssistantMessage, markClarificationToolResolved } from "@/components/projects/rovo-app/lib/rovo-app-streaming-assistant";
+} from "@/components/projects/rovo/lib/rovo-app-agent-mode";
+import { appendTurnCompleteToLastAssistantMessage, markClarificationToolResolved } from "@/components/projects/rovo/lib/rovo-app-streaming-assistant";
 import {
 	classifyRovoAppTurnMode,
 	getLatestVisibleRovoAppUserPrompt,
 	hasPendingRovoAppStructuredContinuation,
-} from "@/components/projects/rovo-app/lib/rovo-app-turn-mode";
+} from "@/components/projects/rovo/lib/rovo-app-turn-mode";
 import {
 	getRovoAppPlanningArtifactsSinceBaseline,
 	getLatestRovoAppAssistantMessageId,
-} from "@/components/projects/rovo-app/lib/rovo-app-planning-session";
+} from "@/components/projects/rovo/lib/rovo-app-planning-session";
 import {
 	buildExitPlanModeDeferredToolResponse,
 	fetchEnrichedPlanTitle,
@@ -184,7 +184,7 @@ import {
 	clearRovoAppPlanExecutionDismissalsForThread,
 	resolveRovoAppPlanExecutionTracker,
 	type RovoAppPlanExecutionTrackerViewModel,
-} from "@/components/projects/rovo-app/lib/rovo-app-plan-execution-tracker";
+} from "@/components/projects/rovo/lib/rovo-app-plan-execution-tracker";
 
 function deriveThreadTitle(promptText: string): string {
 	const firstLine = promptText
@@ -2528,7 +2528,7 @@ export function useRovoApp({
 				}
 				if (!response.ok || !response.body) {
 					throw new Error(
-						(await response.text().catch(() => "")) || "Failed to attach Rovo App run.",
+						(await response.text().catch(() => "")) || "Failed to attach Rovo run.",
 					);
 				}
 

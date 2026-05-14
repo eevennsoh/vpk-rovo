@@ -7,7 +7,7 @@ import { RovoChatProvider, useRovoChat } from "@/app/contexts";
 import type { SendPromptOptions } from "@/app/contexts";
 import { ChatMessages } from "@/components/projects/shared/components/chat-messages";
 import { useScrollAnchoring } from "@/components/projects/shared/hooks/use-scroll-anchoring";
-import { getRovoAppShellLayout } from "@/components/projects/rovo-app/lib/rovo-app-shell-layout";
+import { getRovoAppShellLayout } from "@/components/projects/rovo/lib/rovo-app-shell-layout";
 import { useBrowserWorkspace } from "@/components/website/demos/utils/hooks/use-browser-workspace";
 import { BrowserPreviewPanel } from "@/components/website/demos/utils/components/browser-preview-panel";
 import {

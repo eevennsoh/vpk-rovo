@@ -475,7 +475,7 @@ import { SheetIcon } from "@/components/ui/vpk-icons";
 		description: "Comprehensive work item detail view with description, comments, linked items, and activity history.",
 	},
 	"visual-waveform": {
-		description: "Standalone Rovo App live-voice demo using the exact composer, gradient waveform, and GPT Realtime hook without the thread-persistence backend dependency.",
+		description: "Standalone Rovo live-voice demo using the exact composer, gradient waveform, and GPT Realtime hook without the thread-persistence backend dependency.",
 		importStatement: `import VisualWaveform from "@/components/blocks/visual-waveform/page";`,
 		usage: `import VisualWaveform from "@/components/blocks/visual-waveform/page";
 

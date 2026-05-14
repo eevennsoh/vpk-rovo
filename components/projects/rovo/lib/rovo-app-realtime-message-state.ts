@@ -1,6 +1,6 @@
 "use client";
 
-import { getMessageTimestamp } from "@/components/projects/rovo-app/lib/rovo-app-message-artifacts";
+import { getMessageTimestamp } from "@/components/projects/rovo/lib/rovo-app-message-artifacts";
 import type { RovoMessageMetadata, RovoUIMessage } from "@/lib/rovo-ui-messages";
 
 type RealtimeTextState = "done" | "streaming";

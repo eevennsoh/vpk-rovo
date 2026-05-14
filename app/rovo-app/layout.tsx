@@ -3,11 +3,11 @@ import { RovoAppQueueProvider } from "@/app/rovo-app/rovo-app-queue-provider";
 import { getProjectPageTitle } from "@/lib/project-page-title";
 
 export const metadata: Metadata = {
-	title: getProjectPageTitle("rovo-app"),
-	description: "Rovo App interface",
+	title: getProjectPageTitle("rovo"),
+	description: "Rovo interface",
 	openGraph: {
-		title: `${getProjectPageTitle("rovo-app")} — VPK`,
-		description: "Rovo App interface",
+		title: `${getProjectPageTitle("rovo")} — VPK`,
+		description: "Rovo interface",
 	},
 };
 

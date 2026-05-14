@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
-import type { ClickyState } from "@/components/projects/rovo-app/hooks/use-clicky";
+import type { ClickyState } from "@/components/projects/rovo/hooks/use-clicky";
 
 // ---------------------------------------------------------------------------
 // Clicky cursor — matches reference implementation (farzaa/clicky)

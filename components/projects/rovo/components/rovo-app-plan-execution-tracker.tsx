@@ -1,7 +1,7 @@
 "use client";
 
 import TaskProgress from "@/components/blocks/task-progress/page";
-import type { RovoAppPlanExecutionTrackerViewModel } from "@/components/projects/rovo-app/lib/rovo-app-plan-execution-tracker";
+import type { RovoAppPlanExecutionTrackerViewModel } from "@/components/projects/rovo/lib/rovo-app-plan-execution-tracker";
 
 interface RovoAppPlanExecutionTrackerProps {
 	tracker: RovoAppPlanExecutionTrackerViewModel;

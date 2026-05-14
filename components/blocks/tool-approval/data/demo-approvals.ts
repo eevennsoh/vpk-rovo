@@ -25,7 +25,7 @@ export const BATCH_TOOL_APPROVAL_DEMO: ToolApprovalPayload = {
 			toolName: "find_and_replace_code",
 			title: "Edit file",
 			description: "Patch the rovo-app shell so the approval surface can mount above the composer dock.",
-			targetPath: "components/projects/rovo-app/components/rovo-app-shell.tsx",
+			targetPath: "components/projects/rovo/components/rovo-app-shell.tsx",
 			riskLevel: "medium",
 			permissionScenario: "workspace-write",
 		},

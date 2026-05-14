@@ -16,11 +16,11 @@ import {
 	type ParsedPlanTask,
 	type ParsedPlanWidgetPayload,
 } from "@/components/projects/shared/lib/plan-widget";
-import type { RovoAppTodoProgressItem } from "@/components/projects/rovo-app/lib/rovo-app-update-todo-progress";
+import type { RovoAppTodoProgressItem } from "@/components/projects/rovo/lib/rovo-app-update-todo-progress";
 import {
 	rovoAppPlanTaskIdsMatch,
 	getLatestRovoAppTodoProgressFromMessages,
-} from "@/components/projects/rovo-app/lib/rovo-app-plan-task-labels";
+} from "@/components/projects/rovo/lib/rovo-app-plan-task-labels";
 import { toNonEmptyString } from "@/lib/utils";
 
 export interface RovoAppPlanExecutionProgressTask {

@@ -2,7 +2,7 @@
 
 import { useReducedMotion } from "motion/react";
 import { useEffect, useRef } from "react";
-import type { RovoAppComposerResponseGradientPhase } from "@/components/projects/rovo-app/lib/rovo-app-composer-response-gradient-state";
+import type { RovoAppComposerResponseGradientPhase } from "@/components/projects/rovo/lib/rovo-app-composer-response-gradient-state";
 import {
 	STATIC_ACTIVE_HANDOFF_DURATION_MS,
 	getStaticProcessingBarValue,
