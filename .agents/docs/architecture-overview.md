@@ -29,7 +29,7 @@ generation, and Realtime voice routes.
 
 - `app/` - Next.js App Router routes, providers, and dev proxy handlers
 - `backend/` - Express production runtime and API handlers
-- `components/projects/` - ADS-themed feature surfaces (confluence, dashboard, fullscreen-chat, rovo-app, jira, make, search, sidebar-chat, work-items)
+- `components/projects/` - ADS-themed feature surfaces (admin, agents, confluence, control-plane, jira, rovo, rovo-button, rovo-floating-chat, search, sidebar-chat)
 - `components/blocks/` - standalone block surfaces (agent-progress, answer-card, approval-card, board, chat, chat-composer, chatbot, chatgpt, cursor, dashboard, data-table, discovery-gallery, figma-demo, generative, generative-card, kanban-sprint, login, make-artifact, make-gallery, make-grid, make-item, make-page, product-sidebar, prompt-gallery, question-card, settings-dialog, shared-ui, sidebar, sidebar-rail, signup, sprint-board, terminal-switch, time-tracker, top-navigation, visual-waveform, work-item-detail, work-item-widget, workflow)
 - `components/charts/` - chart components (area, bar, data, line, pie, radar, radial, tooltip)
 - `components/ui/` - shared shadcn/Base UI primitives
@@ -38,7 +38,7 @@ generation, and Realtime voice routes.
 - `backend/lib/` - backend utilities (plan run manager, RovoDev gateway/client/pool, generative UI, planning intent, DAG inference, team run lanes, smart routing)
 - `public/` - static assets (illustrations, product logos, third-party logos, avatars)
 - `.agents/` - canonical source for rules, skills, agents, docs, and hooks
-- `.cursor/`, `.claude/`, `.codex/`, `.codelassian/` - provider symlinks to `.agents/`
+- `.cursor/`, `.claude/`, `.codex/`, `.rovodev/` - provider symlinks to `.agents/`
 
 See `## Appendix -> Detailed Directory Structure` for expanded layout.
 
@@ -66,10 +66,12 @@ ThemeWrapper
 Common routes:
 
 - `/` -> `app/page.tsx`
-- `/make` -> `components/projects/make/`
+- `/agents` -> `app/agents/page.tsx` via `components/website/`
+- `/rovo` -> `app/rovo/[[...id]]/page.tsx` via `components/projects/rovo/`
+- `/rovo/jobs` -> `app/rovo/jobs/page.tsx`
+- `/rovo/memories` -> `app/rovo/memories/page.tsx`
+- `/rovo/skills` -> `app/rovo/skills/page.tsx`
 - `/sidebar-chat` -> `components/projects/sidebar-chat/`
-- `/fullscreen-chat` -> `components/projects/fullscreen-chat/`
-- `/rovo-app` -> `components/projects/rovo-app/`
 - `/confluence` -> `components/projects/confluence/`
 - `/jira` -> `components/projects/jira/`
 - `/search` -> `components/projects/search/`
