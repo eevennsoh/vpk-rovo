@@ -12,7 +12,7 @@ export default function JiraDemo() {
 	return (
 		<SidebarProvider>
 			<RovoChatProvider>
-				<AppLayout product="jira" embedded={embedded}>
+				<AppLayout product="jira" embedded={embedded} chatPanelFlush>
 					<JiraView />
 				</AppLayout>
 			</RovoChatProvider>
