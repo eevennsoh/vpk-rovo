@@ -37,6 +37,7 @@ export default function RovoFloatingChat({
 				onClose={closeChat}
 				hideHeader
 				abortOnUnmount={false}
+				emptyStateAlignment="top"
 				containerClassName="min-h-0 flex-1"
 				containerStyle={{
 					backgroundColor: "transparent",

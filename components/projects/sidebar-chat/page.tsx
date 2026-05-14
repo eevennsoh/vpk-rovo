@@ -54,6 +54,7 @@ interface ChatPanelProps {
 	greeting?: ChatPanelGreetingProps;
 	hideHeader?: boolean;
 	abortOnUnmount?: boolean;
+	emptyStateAlignment?: "top" | "bottom";
 	containerClassName?: string;
 	containerStyle?: CSSProperties;
 	onSurfaceSwitch?: ChatSurfaceSwitchHandler;
@@ -78,6 +79,7 @@ export default function ChatPanel({
 	greeting,
 	hideHeader = false,
 	abortOnUnmount = true,
+	emptyStateAlignment = "bottom",
 	containerClassName,
 	containerStyle,
 	onSurfaceSwitch,
@@ -250,9 +252,10 @@ export default function ChatPanel({
 		[submitPrompt],
 	);
 
+	const alignEmptyToTop = !hasMessages && emptyStateAlignment === "top";
 	const messagesContainerStyle = {
 		...chatStyles.messagesContainer,
-		justifyContent: hasMessages ? "flex-start" : "flex-end",
+		justifyContent: hasMessages || alignEmptyToTop ? "flex-start" : "flex-end",
 		flex: hasMessages ? "0 0 auto" : chatStyles.messagesContainer.flex,
 		minHeight: "100%",
 		paddingBottom: hasMessages ? chatStyles.messagesContainer.paddingBottom : token("space.400"),

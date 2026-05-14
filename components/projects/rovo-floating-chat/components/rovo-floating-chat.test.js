@@ -66,6 +66,7 @@ async function loadRovoFloatingChatHarness() {
 							"data-testid": "shared-chat-panel",
 							"data-hide-header": String(props.hideHeader),
 							"data-abort-on-unmount": String(props.abortOnUnmount),
+							"data-empty-state-alignment": String(props.emptyStateAlignment),
 							className: props.containerClassName,
 						},
 						"Shared chat panel",
@@ -148,6 +149,7 @@ test("RovoFloatingChat renders the shared chat panel inside the floating shell",
 	assert.match(markup, /data-testid="shared-chat-panel"/);
 	assert.match(markup, /data-hide-header="true"/);
 	assert.match(markup, /data-abort-on-unmount="false"/);
+	assert.match(markup, /data-empty-state-alignment="top"/);
 });
 
 test("RovoFloatingChat does not auto-promote submitted or existing messages to the sidebar", () => {
