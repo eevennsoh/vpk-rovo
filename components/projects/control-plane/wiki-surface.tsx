@@ -409,7 +409,7 @@ export function WikiSurfacePage() {
 												<Button
 													size="sm"
 													variant="outline"
-													onClick={() => router.push(`/rovo-app/memories`)}
+													onClick={() => router.push(`/rovo/memories`)}
 												>
 													Open memories
 												</Button>

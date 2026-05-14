@@ -4,9 +4,9 @@ import { token } from "@/lib/tokens";
 import { Button } from "@/components/ui/button";
 import Heading from "@/components/blocks/shared-ui/heading";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Tag, TagGroup } from "@/components/ui/tag";
 import { useWorkItemModal } from "@/app/contexts/context-work-item-modal";
 import { DetailRow } from "./detail-row";
-import { LabelTag } from "./label-tag";
 import ChevronDownIcon from "@atlaskit/icon/core/chevron-down";
 import ChevronUpIcon from "@atlaskit/icon/core/chevron-up";
 import PriorityMediumIcon from "@atlaskit/icon/core/priority-medium";
@@ -71,10 +71,10 @@ export function DetailsAccordion() {
 						</DetailRow>
 
 						<DetailRow label="Labels" noPadding>
-							<div className="flex flex-wrap gap-2">
-								<LabelTag>wcag21</LabelTag>
-								<LabelTag>Team25</LabelTag>
-							</div>
+							<TagGroup>
+								<Tag>wcag21</Tag>
+								<Tag>Team25</Tag>
+							</TagGroup>
 						</DetailRow>
 					</div>
 				</div>

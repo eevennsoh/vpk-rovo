@@ -4,39 +4,23 @@ import { useState } from "react";
 import { useIsMounted } from "@/components/hooks/use-is-mounted";
 import { token } from "@/lib/tokens";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Tag, type TagColor } from "@/components/ui/tag";
+import { Tag, TagGroup } from "@/components/ui/tag";
+import type { CardTag } from "../data/board-data";
 import PriorityMajorIcon from "@atlaskit/icon/core/priority-major";
 import PriorityMediumIcon from "@atlaskit/icon/core/priority-medium";
 import PriorityMinorIcon from "@atlaskit/icon/core/priority-minor";
 import TaskIcon from "@atlaskit/icon/core/task";
 
-type LegacyTagColor = TagColor | "lime" | "magenta";
-
-interface TagData {
-	text: string;
-	color?: LegacyTagColor;
-}
-
 interface KanbanCardProps {
 	title: string;
 	code: string;
-	tags?: TagData[];
+	tags?: readonly CardTag[];
 	priority: "major" | "medium" | "minor";
 	avatarSrc?: string;
 	isDragging?: boolean;
 	onClick?: () => void;
 	onDragStart?: () => void;
 	onDragEnd?: () => void;
-}
-
-function normalizeTagColor(color?: LegacyTagColor): TagColor {
-	if (color === "lime") {
-		return "green";
-	}
-	if (color === "magenta") {
-		return "discovery";
-	}
-	return color ?? "standard";
 }
 
 const PRIORITY_ICONS = {
@@ -96,13 +80,13 @@ export default function KanbanCard({
 
 				{/* Tags */}
 				{tags && tags.length > 0 ? (
-					<div className="flex gap-1">
+					<TagGroup className="gap-1">
 						{tags.map((tag, index) => (
-							<Tag key={index} color={normalizeTagColor(tag.color)}>
+							<Tag key={`${tag.text}-${index}`} color={tag.color}>
 								{tag.text}
 							</Tag>
 						))}
-					</div>
+					</TagGroup>
 				) : null}
 
 				{/* Footer */}

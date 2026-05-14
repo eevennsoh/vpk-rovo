@@ -36,8 +36,8 @@ function AddCommentSection() {
 		<div className="pb-4">
 			<div className="flex items-start gap-2">
 				<Avatar size="sm">
-					<AvatarImage src="/avatar-human/andrea-wilson.png" alt="Avatar" />
-					<AvatarFallback>U</AvatarFallback>
+					<AvatarImage src="/avatar-human/andrea-wilson.png" alt="Maya Chen" />
+					<AvatarFallback>MC</AvatarFallback>
 				</Avatar>
 				<div className="flex flex-col gap-2">
 					<Input placeholder="Add a comment" aria-label="Add comment" className="h-8" />

@@ -149,7 +149,7 @@ export interface PreviewVideoBody {
 }
 
 type JsonRenderPreviewBody = Extract<PreviewBody, { kind: "json-render" }>;
-const GENERATED_MEDIA_ROUTE = "/api/rovo-app/generated-media";
+const GENERATED_MEDIA_ROUTE = "/api/rovo/generated-media";
 const GENERATED_VIDEO_PATH_PATTERN =
 	/(?:^|[\s"'`])((?:\.\/)?media\/videos\/[^\s"'`]+?\.(?:mp4|webm|mov|m4v|ogv))(?:$|[\s"'`])/giu;
 const GENERATED_VIDEO_MIME_TYPES: Readonly<Record<string, string>> = {

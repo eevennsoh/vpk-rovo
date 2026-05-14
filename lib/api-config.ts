@@ -43,16 +43,16 @@ export const API_ENDPOINTS = {
 	WIKI_SEARCH: `${API_BASE_URL}/api/wiki/search`,
 	WIKI_SYNC: `${API_BASE_URL}/api/wiki/sync`,
 	CHAT_THREADS: `${API_BASE_URL}/api/chat/threads`,
-	ROVO_APP_CHAT: `${API_BASE_URL}/api/rovo-app/chat`,
-	ROVO_APP_SUGGESTIONS: `${API_BASE_URL}/api/rovo-app/suggestions`,
-	ROVO_APP_MESSAGES: `${API_BASE_URL}/api/rovo-app/messages`,
-	ROVO_APP_THREADS: `${API_BASE_URL}/api/rovo-app/threads`,
-	ROVO_APP_VOTES: `${API_BASE_URL}/api/rovo-app/votes`,
-	ROVO_APP_DOCUMENTS: `${API_BASE_URL}/api/rovo-app/documents`,
-	ROVO_APP_DETACH: `${API_BASE_URL}/api/rovo-app/detach`,
-	ROVO_APP_BACKGROUND_STREAMS: `${API_BASE_URL}/api/rovo-app/background-streams`,
-	ROVO_APP_RUNS: `${API_BASE_URL}/api/rovo-app/runs`,
-	ROVO_APP_FILE_UPLOAD: `${API_BASE_URL}/api/rovo-app/files/upload`,
+	ROVO_APP_CHAT: `${API_BASE_URL}/api/rovo/chat`,
+	ROVO_APP_SUGGESTIONS: `${API_BASE_URL}/api/rovo/suggestions`,
+	ROVO_APP_MESSAGES: `${API_BASE_URL}/api/rovo/messages`,
+	ROVO_APP_THREADS: `${API_BASE_URL}/api/rovo/threads`,
+	ROVO_APP_VOTES: `${API_BASE_URL}/api/rovo/votes`,
+	ROVO_APP_DOCUMENTS: `${API_BASE_URL}/api/rovo/documents`,
+	ROVO_APP_DETACH: `${API_BASE_URL}/api/rovo/detach`,
+	ROVO_APP_BACKGROUND_STREAMS: `${API_BASE_URL}/api/rovo/background-streams`,
+	ROVO_APP_RUNS: `${API_BASE_URL}/api/rovo/runs`,
+	ROVO_APP_FILE_UPLOAD: `${API_BASE_URL}/api/rovo/files/upload`,
 	AGENT_MODE: `${API_BASE_URL}/api/agent-mode`,
 	JOBS: `${API_BASE_URL}/api/jobs`,
 	SKILLS: `${API_BASE_URL}/api/skills`,
@@ -176,21 +176,21 @@ export const API_ENDPOINTS = {
 	chatThread: (threadId: string) =>
 		`${API_BASE_URL}/api/chat/threads/${encodeURIComponent(threadId)}`,
 	rovoAppThreads: (limit?: number) =>
-		`${API_BASE_URL}/api/rovo-app/threads${
+		`${API_BASE_URL}/api/rovo/threads${
 			typeof limit === "number" ? `?limit=${encodeURIComponent(String(limit))}` : ""
 		}`,
 	rovoAppMessages: (threadId: string) =>
-		`${API_BASE_URL}/api/rovo-app/messages?threadId=${encodeURIComponent(threadId)}`,
+		`${API_BASE_URL}/api/rovo/messages?threadId=${encodeURIComponent(threadId)}`,
 	rovoAppThread: (threadId: string) =>
-		`${API_BASE_URL}/api/rovo-app/threads/${encodeURIComponent(threadId)}`,
+		`${API_BASE_URL}/api/rovo/threads/${encodeURIComponent(threadId)}`,
 	rovoAppRunStream: (threadId: string) =>
-		`${API_BASE_URL}/api/rovo-app/runs/${encodeURIComponent(threadId)}/stream`,
+		`${API_BASE_URL}/api/rovo/runs/${encodeURIComponent(threadId)}/stream`,
 	rovoAppRunDetach: (threadId: string) =>
-		`${API_BASE_URL}/api/rovo-app/runs/${encodeURIComponent(threadId)}/detach`,
+		`${API_BASE_URL}/api/rovo/runs/${encodeURIComponent(threadId)}/detach`,
 	rovoAppRunCancel: (threadId: string) =>
-		`${API_BASE_URL}/api/rovo-app/runs/${encodeURIComponent(threadId)}/cancel`,
+		`${API_BASE_URL}/api/rovo/runs/${encodeURIComponent(threadId)}/cancel`,
 	rovoAppFile: (fileId: string) =>
-		`${API_BASE_URL}/api/rovo-app/files/${encodeURIComponent(fileId)}`,
+		`${API_BASE_URL}/api/rovo/files/${encodeURIComponent(fileId)}`,
 	statusRuntime: (runtime: "rovodev" | "hermes") =>
 		`${API_BASE_URL}/api/status/${encodeURIComponent(runtime)}`,
 	job: (jobId: string) =>

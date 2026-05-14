@@ -1019,7 +1019,7 @@ test("parseGenerativeWidget normalizes legacy audio widgets into the shared prev
 
 test("parseGenerativeWidget normalizes direct video widgets into the shared preview envelope", () => {
 	const widget = parseGenerativeWidget("video-preview", {
-		videoUrl: "/api/rovo-app/generated-media?path=media%2Fvideos%2Fdemo.mp4",
+		videoUrl: "/api/rovo/generated-media?path=media%2Fvideos%2Fdemo.mp4",
 		mimeType: "video/mp4",
 		fileName: "demo.mp4",
 		title: "Render result",
@@ -1030,7 +1030,7 @@ test("parseGenerativeWidget normalizes direct video widgets into the shared prev
 	assert.equal(widget.body.kind, "video");
 	assert.equal(
 		widget.body.videoUrl,
-		"/api/rovo-app/generated-media?path=media%2Fvideos%2Fdemo.mp4",
+		"/api/rovo/generated-media?path=media%2Fvideos%2Fdemo.mp4",
 	);
 	assert.equal(widget.body.mimeType, "video/mp4");
 	assert.equal(widget.body.fileName, "demo.mp4");
@@ -1060,7 +1060,7 @@ test("parseGenerativeWidget infers inline video playback from json-render widget
 	assert.equal(widget.body.kind, "video");
 	assert.equal(
 		widget.body.videoUrl,
-		"/api/rovo-app/generated-media?path=media%2Fvideos%2Ftmp%2Fdemo%2FVPKRovoVideo.mp4",
+		"/api/rovo/generated-media?path=media%2Fvideos%2Ftmp%2Fdemo%2FVPKRovoVideo.mp4",
 	);
 	assert.equal(widget.body.fileName, "VPKRovoVideo.mp4");
 	assert.equal(widget.title, "Output file");

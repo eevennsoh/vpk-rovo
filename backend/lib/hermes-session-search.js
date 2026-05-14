@@ -1,11 +1,11 @@
 /**
- * Session search across Rovo App threads.
+ * Session search across Rovo threads.
  *
  * Provides substring/regex search across thread titles and message content.
  * Returns matches with snippets, match counts, and thread metadata.
  *
  * Used by the VPK-Rovo backend to power the /api/sessions/search endpoint
- * and by the frontend to search within the Rovo App sidebar.
+ * and by the frontend to search within the Rovo sidebar.
  */
 
 const SNIPPET_CONTEXT_CHARS = 80;

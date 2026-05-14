@@ -381,7 +381,7 @@ export function SettingsSurfacePage() {
 								))
 							)}
 
-							<Button variant="outline" onClick={() => router.push("/rovo-app/memories")}>
+							<Button variant="outline" onClick={() => router.push("/rovo/memories")}>
 								Open memories
 							</Button>
 						</CardContent>
@@ -526,7 +526,7 @@ export function SettingsSurfacePage() {
 								</div>
 							))}
 
-							<Button variant="outline" onClick={() => router.push("/rovo-app/jobs")}>
+							<Button variant="outline" onClick={() => router.push("/rovo/jobs")}>
 								Open jobs
 							</Button>
 						</CardContent>

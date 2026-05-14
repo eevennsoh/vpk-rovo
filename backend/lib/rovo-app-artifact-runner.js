@@ -70,7 +70,7 @@ async function generateAndPersistRovoAppArtifact({
 		const normalizedAssistantText =
 			typeof assistantText === "string" ? assistantText.trim() : "";
 		if (!normalizedAssistantText) {
-			throw new Error("Rovo App artifact generation returned no content.");
+			throw new Error("Rovo artifact generation returned no content.");
 		}
 
 		const contentToPersist = normalizedAssistantText;
@@ -116,7 +116,7 @@ async function generateAndPersistRovoAppArtifact({
 		}
 
 		if (!persistedDocument) {
-			throw new Error("Rovo App artifact document could not be persisted.");
+			throw new Error("Rovo artifact document could not be persisted.");
 		}
 
 		shouldRunCreateFailureCleanup = false;

@@ -12,7 +12,7 @@ export default function AgentsDemo() {
 	return (
 		<SidebarProvider>
 			<RovoChatProvider>
-				<AppLayout product="agents" embedded={embedded}>
+				<AppLayout product="jira" embedded={embedded}>
 					<AgentsView />
 				</AppLayout>
 			</RovoChatProvider>

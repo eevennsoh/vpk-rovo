@@ -6,9 +6,9 @@ const {
 	isSmartRouteTargetSurface,
 } = require("./smart-generation-surface-gate");
 
-test("isSmartRouteTargetSurface includes rovo app surfaces", () => {
-	assert.equal(isSmartRouteTargetSurface("rovo-app"), true);
-	assert.equal(isSmartRouteTargetSurface("rovo-app-preview"), true);
+test("isSmartRouteTargetSurface includes rovo surfaces", () => {
+	assert.equal(isSmartRouteTargetSurface("rovo"), true);
+	assert.equal(isSmartRouteTargetSurface("rovo-preview"), true);
 });
 
 test("isSmartRouteTargetSurface rejects unsupported surfaces", () => {
@@ -19,7 +19,7 @@ test("isSmartRouteTargetSurface rejects unsupported surfaces", () => {
 		"multiports",
 		"sidebar",
 		"fullscreen",
-		"rovo-app",
-		"rovo-app-preview",
+		"rovo",
+		"rovo-preview",
 	]);
 });

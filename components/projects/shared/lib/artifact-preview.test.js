@@ -5,13 +5,13 @@ const { buildArtifactPreviewBody } = require("./artifact-preview.ts");
 
 test("buildArtifactPreviewBody maps react artifacts to app-url previews", () => {
 	const body = buildArtifactPreviewBody({
-		content: "/rovo-app/demo",
+		content: "/rovo/demo",
 		kind: "react",
 		summary: "Generated app preview ready to open",
 	});
 
 	assert.equal(body.kind, "app-url");
-	assert.equal(body.url, "/rovo-app/demo");
+	assert.equal(body.url, "/rovo/demo");
 	assert.equal(body.summary, "Generated app preview ready to open");
 });
 

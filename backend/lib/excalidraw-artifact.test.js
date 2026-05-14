@@ -43,7 +43,7 @@ test("normalizeExcalidrawArtifactOutput accepts raw scene JSON", () => {
 	const parsed = JSON.parse(normalized);
 	assert.equal(parsed.type, "excalidraw");
 	assert.equal(parsed.version, 2);
-	assert.equal(parsed.source, "rovo-app");
+	assert.equal(parsed.source, "rovo");
 	assert.equal(parsed.appState.viewBackgroundColor, "#ffffff");
 	assert.equal(parsed.elements.length, 1);
 });

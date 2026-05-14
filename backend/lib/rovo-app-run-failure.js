@@ -12,7 +12,7 @@ function createRovoAppRunFailure({
 	details,
 	message,
 } = {}) {
-	const resolvedMessage = getNonEmptyString(message) || "Rovo App run failed";
+	const resolvedMessage = getNonEmptyString(message) || "Rovo run failed";
 	const error = new Error(resolvedMessage);
 	error.code = getNonEmptyString(code) || "future_chat_run_failed";
 	error.details = getNonEmptyString(details) || undefined;
@@ -34,7 +34,7 @@ function getRovoAppRunFailurePayload(error, fallbackMessage) {
 	if (!isRovoAppRunFailure(error)) {
 		return {
 			code: "future_chat_run_failed",
-			message: getNonEmptyString(fallbackMessage) || "Rovo App run failed",
+			message: getNonEmptyString(fallbackMessage) || "Rovo run failed",
 			details: undefined,
 			canRetry: true,
 		};
@@ -42,7 +42,7 @@ function getRovoAppRunFailurePayload(error, fallbackMessage) {
 
 	return {
 		code: getNonEmptyString(error.code) || "future_chat_run_failed",
-		message: getNonEmptyString(error.message) || "Rovo App run failed",
+		message: getNonEmptyString(error.message) || "Rovo run failed",
 		details: getNonEmptyString(error.details) || undefined,
 		canRetry: error.canRetry !== false,
 	};

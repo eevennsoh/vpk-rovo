@@ -1,6 +1,6 @@
 "use client";
 
-import { RovoAppQueueBoundary } from "@/app/rovo-app/rovo-app-queue-provider";
+import { RovoAppQueueBoundary } from "@/app/rovo/rovo-queue-provider";
 import { RovoAppShell } from "@/components/projects/rovo/components/rovo-app-shell";
 
 interface RovoPageProps {

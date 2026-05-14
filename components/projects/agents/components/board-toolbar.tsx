@@ -35,7 +35,7 @@ export default function BoardToolbar({ avatars }: Readonly<BoardToolbarProps>) {
 								<SearchIcon label="" size="small" />
 							</span>
 							<Input
-								placeholder="Search board"
+								placeholder="Search RFPs"
 								className="h-7 pl-7 text-sm placeholder:text-sm"
 							/>
 						</div>
@@ -65,7 +65,7 @@ export default function BoardToolbar({ avatars }: Readonly<BoardToolbarProps>) {
 
 				<div className="flex items-center gap-2">
 					<Button variant="secondary">
-						Group: Status
+						Group: RFP stage
 					</Button>
 					<Button aria-label="Customize" size="icon" variant="ghost">
 						<CustomizeIcon label="" />

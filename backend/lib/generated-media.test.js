@@ -13,7 +13,7 @@ const {
 test("buildGeneratedMediaUrl returns a route for allowed generated video paths", () => {
 	assert.equal(
 		buildGeneratedMediaUrl("media/videos/tmp/demo/VPKRovoVideo.mp4"),
-		"/api/rovo-app/generated-media?path=media%2Fvideos%2Ftmp%2Fdemo%2FVPKRovoVideo.mp4",
+		"/api/rovo/generated-media?path=media%2Fvideos%2Ftmp%2Fdemo%2FVPKRovoVideo.mp4",
 	);
 });
 

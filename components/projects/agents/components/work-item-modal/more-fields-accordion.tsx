@@ -43,19 +43,19 @@ export function MoreFieldsAccordion() {
 							<div style={{ marginTop: "4px" }}>
 								<div className="flex items-center gap-2">
 									<Avatar size="sm">
-										<AvatarImage src="/avatar-human/andrea-wilson.png" alt="John Smith" />
-										<AvatarFallback>JS</AvatarFallback>
+										<AvatarImage src="/avatar-human/aoife-burke.png" alt="Elena Ruiz" />
+										<AvatarFallback>ER</AvatarFallback>
 									</Avatar>
-									<span className="text-sm">John Smith</span>
+									<span className="text-sm">Elena Ruiz</span>
 								</div>
 							</div>
 						</div>
 						<div>
 							<span className="text-sm font-medium text-text-subtlest">
-								Story Points
+								Effort estimate
 							</span>
 							<div style={{ marginTop: "4px" }}>
-								<span className="text-sm">5</span>
+								<span className="text-sm">13 pts</span>
 							</div>
 						</div>
 					</div>

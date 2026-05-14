@@ -38,7 +38,7 @@ export default function JiraHeader({ selectedTab, onTabChange }: Readonly<JiraHe
 										height={20}
 										style={{ width: "20px", height: "20px", borderRadius: token("radius.xsmall") }}
 									/>
-								<Heading size="medium">Vitafleet Q4 launch</Heading>
+								<Heading size="medium">VitaFleet Q4 RFP Response</Heading>
 								<Button aria-label="Teams" size="icon-sm" variant="ghost">
 									<TeamsIcon label="" size="small" />
 								</Button>
@@ -72,14 +72,18 @@ export default function JiraHeader({ selectedTab, onTabChange }: Readonly<JiraHe
 							}
 						}}
 					>
-						<TabsList variant="line">
+						<TabsList variant="line" className="w-full justify-start">
 							{JIRA_TABS.map((tab, index) => {
 								const IconComponent = tab.icon;
 								const isFirst = index === 0;
 								const isSelected = selectedTab === index;
 
-								const tabContent = (
-									<TabsTrigger key={tab.label} value={tab.label}>
+								return (
+									<TabsTrigger
+										key={tab.label}
+										value={tab.label}
+										className={isFirst ? "ml-3 flex-none" : "flex-none"}
+									>
 										<div className="flex items-center gap-1.5">
 											<IconComponent
 												label={tab.label}
@@ -91,26 +95,16 @@ export default function JiraHeader({ selectedTab, onTabChange }: Readonly<JiraHe
 										</div>
 									</TabsTrigger>
 								);
-
-								if (isFirst) {
-									return (
-										<div key={tab.label} style={{ marginLeft: token("space.300") }}>
-											{tabContent}
-										</div>
-									);
-								}
-
-								return tabContent;
 							})}
 						</TabsList>
-							{JIRA_TABS.map((tab) => (
+						{JIRA_TABS.map((tab) => (
 							<TabsContent key={tab.label} value={tab.label}>
 								{tab.hasContent ? (
 									<div />
 								) : (
 									<div style={{ padding: token("space.400") }}>
 										<span className="text-sm font-medium text-text-subtlest">
-											No content here
+											No RFP content here yet
 										</span>
 									</div>
 								)}

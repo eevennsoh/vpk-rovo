@@ -4,9 +4,9 @@ import { token } from "@/lib/tokens";
 import { Button } from "@/components/ui/button";
 import Heading from "@/components/blocks/shared-ui/heading";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Tag, TagGroup } from "@/components/ui/tag";
 import { useWorkItemModal } from "@/app/contexts/context-work-item-modal";
 import { DetailRow } from "./detail-row";
-import { LabelTag } from "./label-tag";
 import ChevronDownIcon from "@atlaskit/icon/core/chevron-down";
 import ChevronUpIcon from "@atlaskit/icon/core/chevron-up";
 import PriorityMediumIcon from "@atlaskit/icon/core/priority-medium";
@@ -36,22 +36,23 @@ export function DetailsAccordion() {
 						<DetailRow label="Assignee">
 							<div className="flex items-center gap-2">
 								<Avatar size="sm">
-									<AvatarFallback>UN</AvatarFallback>
+									<AvatarImage src="/avatar-human/andrea-wilson.png" alt="Maya Chen" />
+									<AvatarFallback>MC</AvatarFallback>
 								</Avatar>
-								<span className="text-sm font-medium">Unassigned</span>
+								<span className="text-sm font-medium">Maya Chen</span>
 							</div>
 							<div className="pt-0.5 ps-2">
-								<a href="#">Assign to me</a>
+								<a href="#">Change owner</a>
 							</div>
 						</DetailRow>
 
 						<DetailRow label="Reporter">
 							<div className="flex items-center gap-2">
 								<Avatar size="sm">
-									<AvatarImage src="/avatar-human/andrea-wilson.png" alt="Giannis Antetokounmpo" />
-									<AvatarFallback>GA</AvatarFallback>
+									<AvatarImage src="/avatar-human/andrew-park.png" alt="Jordan Lee" />
+									<AvatarFallback>JL</AvatarFallback>
 								</Avatar>
-								<span className="text-sm font-medium">Giannis Antetokounmpo</span>
+								<span className="text-sm font-medium">Jordan Lee</span>
 							</div>
 						</DetailRow>
 
@@ -63,18 +64,18 @@ export function DetailsAccordion() {
 						</DetailRow>
 
 						<DetailRow label="Start date">
-							<span className="text-sm">Mar 14, 2025</span>
+							<span className="text-sm">Oct 7, 2026</span>
 						</DetailRow>
 
 						<DetailRow label="Parent">
-							<a href="#">BG-6</a>
+							<a href="#">RFP-100</a>
 						</DetailRow>
 
 						<DetailRow label="Labels" noPadding>
-							<div className="flex flex-wrap gap-2">
-								<LabelTag>wcag21</LabelTag>
-								<LabelTag>Team25</LabelTag>
-							</div>
+							<TagGroup>
+								<Tag>enterprise-rfp</Tag>
+								<Tag>q4-sales</Tag>
+							</TagGroup>
 						</DetailRow>
 					</div>
 				</div>

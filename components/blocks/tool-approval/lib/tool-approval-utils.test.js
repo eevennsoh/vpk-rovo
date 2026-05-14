@@ -12,7 +12,7 @@ const items = [
 		toolCallId: "call-edit-shell",
 		toolName: "find_and_replace_code",
 		title: "Edit file",
-		description: "Patch the rovo-app shell so the approval surface can mount above the composer dock.",
+		description: "Patch the Rovo shell so the approval surface can mount above the composer dock.",
 	},
 	{
 		id: "delete-1",

@@ -4,11 +4,11 @@ export interface AvatarData {
 }
 
 export const AVATARS: readonly AvatarData[] = [
-	{ src: "/avatar-human/andrea-wilson.png", name: "User 1" },
-	{ src: "/avatar-human/andrew-park.png", name: "User 2" },
-	{ src: "/avatar-human/annie-clare.png", name: "User 3" },
-	{ src: "/avatar-human/aoife-burke.png", name: "User 4" },
-	{ src: "/avatar-human/bradley-phillips.png", name: "User 5" },
-	{ src: "/avatar-human/brian-lin.png", name: "User 6" },
-	{ src: "/avatar-human/christine-sanchez.png", name: "User 7" },
+	{ src: "/avatar-human/andrea-wilson.png", name: "Maya Chen, proposal manager" },
+	{ src: "/avatar-human/andrew-park.png", name: "Jordan Lee, account executive" },
+	{ src: "/avatar-human/annie-clare.png", name: "Priya Shah, sales engineer" },
+	{ src: "/avatar-human/aoife-burke.png", name: "Elena Ruiz, deal desk" },
+	{ src: "/avatar-human/bradley-phillips.png", name: "Noah Patel, security lead" },
+	{ src: "/avatar-human/brian-lin.png", name: "Sofia Garcia, legal reviewer" },
+	{ src: "/avatar-human/christine-sanchez.png", name: "Caleb Martin, customer success" },
 ] as const;

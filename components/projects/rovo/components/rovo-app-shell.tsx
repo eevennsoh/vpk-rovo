@@ -372,8 +372,8 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 	const hermesMemoryLabel = useMemo(() => buildHermesMemoryLabel(wikiMemoryStatus), [wikiMemoryStatus]);
 	const hermesMemoryHref = useMemo(() => {
 		return activeThreadRecord?.id && activeThreadMemoryProposals.length > 0
-			? `/rovo-app/memories?threadId=${encodeURIComponent(activeThreadRecord.id)}`
-			: "/rovo-app/memories";
+			? `/rovo/memories?threadId=${encodeURIComponent(activeThreadRecord.id)}`
+			: "/rovo/memories";
 	}, [activeThreadMemoryProposals.length, activeThreadRecord?.id]);
 
 	useEffect(() => {
@@ -700,7 +700,7 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 		}
 	}, []);
 	const handleOpenHermesSkillDraftReview = useCallback(() => {
-		router.push("/rovo-app/skills");
+		router.push("/rovo/skills");
 	}, [router]);
 	const handleOpenPlanPreview = useCallback(
 		(planWidget: ParsedPlanWidgetPayload, sourceMessageId?: string) => {
@@ -2173,7 +2173,7 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 								<div className="mb-3">
 									<RovoAppHermesMemoryBar
 										onDismiss={() => setDismissedMemoryBarThreadId(activeThreadRecord.id)}
-										onOpenMemories={() => router.push(`/rovo-app/memories?threadId=${encodeURIComponent(activeThreadRecord.id)}`)}
+										onOpenMemories={() => router.push(`/rovo/memories?threadId=${encodeURIComponent(activeThreadRecord.id)}`)}
 										proposals={activeThreadMemoryProposals}
 										threadId={activeThreadRecord.id}
 									/>
@@ -2404,7 +2404,7 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 						onToggleSidebar={nav.toggleSidebar}
 						onToggleAppSwitcher={nav.handleToggleAppSwitcher}
 						onCloseAppSwitcher={nav.handleCloseAppSwitcher}
-						onNavigate={(path) => nav.handleNavigate(path === "/" ? "/rovo-app" : path)}
+						onNavigate={(path) => nav.handleNavigate(path === "/" ? "/rovo" : path)}
 						onHoverEnter={handleSidebarHoverEnter}
 						onHoverLeave={handleSidebarHoverLeave}
 					/>

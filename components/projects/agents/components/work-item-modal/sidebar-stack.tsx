@@ -22,7 +22,7 @@ export function StatusHeader() {
 					className="gap-2"
 					variant="secondary"
 				>
-					Backlog
+					RFP Intake
 					<ChevronDownIcon label="" size="small" />
 				</Button>
 				<Button aria-label="Automation" size="icon" variant="secondary">

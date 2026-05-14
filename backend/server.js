@@ -1669,7 +1669,7 @@ const rovoAppRunManager = createRovoAppRunManager({
 });
 
 function buildRovoAppFileUrl(uploadId) {
-	return `/api/rovo-app/files/${encodeURIComponent(uploadId)}`;
+	return `/api/rovo/files/${encodeURIComponent(uploadId)}`;
 }
 
 function createRovoAppThreadId() {
@@ -1681,7 +1681,7 @@ function extractRovoAppUploadIdFromUrl(rawUrl) {
 		return null;
 	}
 
-	const match = rawUrl.match(/\/api\/rovo-app\/files\/([^/?#]+)/u);
+	const match = rawUrl.match(/\/api\/rovo\/files\/([^/?#]+)/u);
 	if (!match?.[1]) {
 		return null;
 	}
@@ -2490,7 +2490,7 @@ function streamRovoAppArtifactToolResponse({
 			}
 		},
 		onError: (error) =>
-			error instanceof Error ? error.message : "Failed to stream Rovo App artifact",
+			error instanceof Error ? error.message : "Failed to stream Rovo artifact",
 	});
 
 	return createUIMessageStreamResponse({ stream });
@@ -2710,7 +2710,7 @@ async function syncRovoAppThreadSession(threadId, rovoPort, { thread: providedTh
 
 	const customTitle =
 		getNonEmptyString(currentThread.title) ||
-		"Rovo App";
+		"Rovo";
 
 	const existingSessionId = getNonEmptyString(currentThread.sessionId);
 	const sessionRecord = await ensureRovoDevSession(rovoPort, {
@@ -2835,7 +2835,7 @@ async function consumeRovoAppManagedResponse({
 }) {
 	const contentType = response.headers.get("content-type") || "";
 	if (!contentType.includes("text/event-stream") || !response.body) {
-		throw new Error("Rovo App expected an event stream response.");
+		throw new Error("Rovo expected an event stream response.");
 	}
 
 	const resolvedPort = getPositiveInteger(response.headers.get("x-vpk-rovo-port"));
@@ -3024,7 +3024,7 @@ async function consumeRovoAppManagedResponse({
 						});
 					});
 
-					console.info("[HERMES] Memory companion reviewed completed Rovo App turn", {
+					console.info("[HERMES] Memory companion reviewed completed Rovo turn", {
 						threadId,
 						responseText: reviewResult.responseText ?? null,
 					});
@@ -3061,7 +3061,7 @@ async function consumeRovoAppManagedResponse({
 					});
 				}
 
-				console.info("[HERMES] Skill companion reviewed completed Rovo App turn", {
+				console.info("[HERMES] Skill companion reviewed completed Rovo turn", {
 					threadId,
 					draftCount: reviewResult.structuredSkillActions.length,
 					responseText: reviewResult.responseText ?? null,
@@ -3090,7 +3090,7 @@ async function executeRovoAppManagedRun(run) {
 		scope: "rovo-app-run",
 		logger: console,
 		baseMeta: {
-			path: "/api/rovo-app/chat",
+			path: "/api/rovo/chat",
 			origin: requestOriginHint,
 			threadId: run.threadId,
 			runId: run.id,
@@ -3474,7 +3474,7 @@ async function executeRovoAppManagedRun(run) {
 		requestBody.genuiHint = true;
 	}
 	requestBody.resolvedPlanModeActive = requestIsPlanMode || autoPlanTriggered;
-	requestBody.chatSdkSource = "rovo-app";
+	requestBody.chatSdkSource = "rovo";
 	requestBody.threadId = threadId;
 
 	const internalProxyStartedAtMs = Date.now();
@@ -3491,7 +3491,7 @@ async function executeRovoAppManagedRun(run) {
 
 	if (!response.ok) {
 		const errorText = await response.text();
-		throw new Error(errorText || "Failed to stream Rovo App response");
+		throw new Error(errorText || "Failed to stream Rovo response");
 	}
 
 	await consumeRovoAppManagedResponse({
@@ -3583,7 +3583,7 @@ async function proxyRovoAppChatRequest(req, res) {
 		streamRovoAppUnavailableResponse(
 			res,
 			"RovoDev Serve is required but not available. Start or restart `pnpm run rovodev` and try again.",
-			"Rovo App could not start because no healthy RovoDev ports were registered.",
+			"Rovo could not start because no healthy RovoDev ports were registered.",
 		);
 		return;
 	}
@@ -3615,7 +3615,7 @@ async function proxyRovoAppChatRequest(req, res) {
 		},
 	});
 	if (!subscriberId) {
-		return res.status(404).json({ error: "No active Rovo App run for threadId" });
+		return res.status(404).json({ error: "No active Rovo run for threadId" });
 	}
 
 	if (!existingRun) {
@@ -4840,7 +4840,7 @@ async function generateSuggestedQuestions({
 	});
 }
 
-app.post("/api/rovo-app/suggestions", async (req, res) => {
+app.post("/api/rovo/suggestions", async (req, res) => {
 	const { abortController, cleanup } = createAbortControllerFromRequest(req, res);
 
 	try {
@@ -4898,7 +4898,7 @@ app.post("/api/rovo-app/suggestions", async (req, res) => {
 			return;
 		}
 
-		console.error("[SUGGESTIONS] Rovo App suggestions request failed:", error);
+		console.error("[SUGGESTIONS] Rovo suggestions request failed:", error);
 		return res.status(200).json({ questions: [] });
 	} finally {
 		cleanup();
@@ -10957,7 +10957,7 @@ app.post("/api/chat-cancel", async (req, res) => {
 	}
 });
 
-app.post("/api/rovo-app/cancel-deferred-tool", async (req, res) => {
+app.post("/api/rovo/cancel-deferred-tool", async (req, res) => {
 	try {
 		const toolCallId = getNonEmptyString(req.body?.toolCallId);
 		if (!toolCallId) {
@@ -11837,7 +11837,7 @@ app.get("/api/browser-workspaces/:workspaceId/:action", async (req, res) => {
 		}
 
 			if (action === "stream") {
-				// Check mirror browsers first (Rovo App browser feature)
+				// Check mirror browsers first (Rovo browser feature)
 				const mirrorBrowser = getMirrorBrowser(workspaceId);
 				if (mirrorBrowser) {
 					return res.json(mirrorBrowser.getStreamConfig(port));
@@ -12491,7 +12491,7 @@ app.get("/api/chromium-preview/screenshot", async (req, res) => {
 	}
 });
 
-app.post("/api/rovo-app/chat", async (req, res) => {
+app.post("/api/rovo/chat", async (req, res) => {
 	try {
 		await proxyRovoAppChatRequest(req, res);
 	} catch (error) {
@@ -12499,12 +12499,12 @@ app.post("/api/rovo-app/chat", async (req, res) => {
 		return sendGatewayErrorResponse(
 			res,
 			error,
-			"Failed to stream Rovo App response"
+			"Failed to stream Rovo response"
 		);
 	}
 });
 
-app.get("/api/rovo-app/messages", async (req, res) => {
+app.get("/api/rovo/messages", async (req, res) => {
 	try {
 		const rawThreadId = Array.isArray(req.query.threadId) ? req.query.threadId[0] : req.query.threadId;
 		const threadId = getNonEmptyString(rawThreadId);
@@ -12518,11 +12518,11 @@ app.get("/api/rovo-app/messages", async (req, res) => {
 		});
 	} catch (error) {
 		console.error("[FUTURE-CHAT] Failed to load realtime messages:", error);
-		return res.status(500).json({ error: "Failed to load Rovo App realtime messages" });
+		return res.status(500).json({ error: "Failed to load Rovo realtime messages" });
 	}
 });
 
-app.post("/api/rovo-app/messages", async (req, res) => {
+app.post("/api/rovo/messages", async (req, res) => {
 	try {
 		const {
 			threadId: rawThreadId,
@@ -12554,11 +12554,11 @@ app.post("/api/rovo-app/messages", async (req, res) => {
 		});
 	} catch (error) {
 		console.error("[FUTURE-CHAT] Failed to persist realtime messages:", error);
-		return res.status(500).json({ error: "Failed to persist Rovo App realtime messages" });
+		return res.status(500).json({ error: "Failed to persist Rovo realtime messages" });
 	}
 });
 
-app.get("/api/rovo-app/threads", async (req, res) => {
+app.get("/api/rovo/threads", async (req, res) => {
 	try {
 		await syncHermesJobsForRovoThreads();
 		const rawLimit = Array.isArray(req.query.limit) ? req.query.limit[0] : req.query.limit;
@@ -12575,7 +12575,7 @@ app.get("/api/rovo-app/threads", async (req, res) => {
 		return res.status(200).json({ threads });
 	} catch (error) {
 		console.error("[FUTURE-CHAT] Failed to list threads:", error);
-		return res.status(500).json({ error: "Failed to list Rovo App threads" });
+		return res.status(500).json({ error: "Failed to list Rovo threads" });
 	}
 });
 
@@ -12663,7 +12663,7 @@ app.delete("/api/checkpoints/:id", async (req, res) => {
 	}
 });
 
-app.post("/api/rovo-app/threads", async (req, res) => {
+app.post("/api/rovo/threads", async (req, res) => {
 	try {
 		const {
 			id: rawThreadId,
@@ -12705,7 +12705,7 @@ app.post("/api/rovo-app/threads", async (req, res) => {
 	}
 });
 
-app.delete("/api/rovo-app/threads", async (req, res) => {
+app.delete("/api/rovo/threads", async (req, res) => {
 	try {
 		const rawAll = Array.isArray(req.query.all) ? req.query.all[0] : req.query.all;
 		if (rawAll !== "true" && rawAll !== "1") {
@@ -12727,11 +12727,11 @@ app.delete("/api/rovo-app/threads", async (req, res) => {
 		return res.status(200).json({ deleted: true });
 	} catch (error) {
 		console.error("[FUTURE-CHAT] Failed to delete all threads:", error);
-		return res.status(500).json({ error: "Failed to delete all Rovo App threads" });
+		return res.status(500).json({ error: "Failed to delete all Rovo threads" });
 	}
 });
 
-app.get("/api/rovo-app/threads/:threadId", async (req, res) => {
+app.get("/api/rovo/threads/:threadId", async (req, res) => {
 	try {
 		await syncHermesJobsForRovoThreads(req.params.threadId);
 		const thread = await maybeMigratePersistedRovoAppThreadBrowserScreenshots(
@@ -12746,11 +12746,11 @@ app.get("/api/rovo-app/threads/:threadId", async (req, res) => {
 		return res.status(200).json({ thread });
 	} catch (error) {
 		console.error("[FUTURE-CHAT] Failed to load thread:", error);
-		return res.status(500).json({ error: "Failed to load Rovo App thread" });
+		return res.status(500).json({ error: "Failed to load Rovo thread" });
 	}
 });
 
-app.put("/api/rovo-app/threads/:threadId", async (req, res) => {
+app.put("/api/rovo/threads/:threadId", async (req, res) => {
 	try {
 		const {
 			title,
@@ -12789,11 +12789,11 @@ app.put("/api/rovo-app/threads/:threadId", async (req, res) => {
 		return res.status(200).json({ thread });
 	} catch (error) {
 		console.error("[FUTURE-CHAT] Failed to update thread:", error);
-		return res.status(500).json({ error: "Failed to update Rovo App thread" });
+		return res.status(500).json({ error: "Failed to update Rovo thread" });
 	}
 });
 
-app.post("/api/rovo-app/detach", async (req, res) => {
+app.post("/api/rovo/detach", async (req, res) => {
 	try {
 		const threadId = getNonEmptyString(req.body?.threadId);
 		if (!threadId) {
@@ -12815,7 +12815,7 @@ app.post("/api/rovo-app/detach", async (req, res) => {
 	}
 });
 
-app.get("/api/rovo-app/background-streams", async (req, res) => {
+app.get("/api/rovo/background-streams", async (req, res) => {
 	try {
 		const streams = rovoAppRunManager.listRuns();
 		return res.status(200).json({ streams });
@@ -12825,7 +12825,7 @@ app.get("/api/rovo-app/background-streams", async (req, res) => {
 	}
 });
 
-app.get("/api/rovo-app/runs/:threadId/stream", async (req, res) => {
+app.get("/api/rovo/runs/:threadId/stream", async (req, res) => {
 	try {
 		const threadId = getNonEmptyString(req.params.threadId);
 		if (!threadId) {
@@ -12847,11 +12847,11 @@ app.get("/api/rovo-app/runs/:threadId/stream", async (req, res) => {
 		await persistRovoAppRunState(threadId, rovoAppRunManager.getRun(threadId));
 	} catch (error) {
 		console.error("[FUTURE-CHAT] Failed to attach run stream:", error);
-		return res.status(500).json({ error: "Failed to attach Rovo App run stream" });
+		return res.status(500).json({ error: "Failed to attach Rovo run stream" });
 	}
 });
 
-app.post("/api/rovo-app/runs/:threadId/detach", async (req, res) => {
+app.post("/api/rovo/runs/:threadId/detach", async (req, res) => {
 	try {
 		const threadId = getNonEmptyString(req.params.threadId);
 		if (!threadId) {
@@ -12871,11 +12871,11 @@ app.post("/api/rovo-app/runs/:threadId/detach", async (req, res) => {
 		return res.status(200).json({ detached: true });
 	} catch (error) {
 		console.error("[FUTURE-CHAT] Failed to detach run:", error);
-		return res.status(500).json({ error: "Failed to detach Rovo App run" });
+		return res.status(500).json({ error: "Failed to detach Rovo run" });
 	}
 });
 
-app.post("/api/rovo-app/runs/:threadId/cancel", async (req, res) => {
+app.post("/api/rovo/runs/:threadId/cancel", async (req, res) => {
 	try {
 		const threadId = getNonEmptyString(req.params.threadId);
 		if (!threadId) {
@@ -12897,11 +12897,11 @@ app.post("/api/rovo-app/runs/:threadId/cancel", async (req, res) => {
 		return res.status(200).json({ cancelled: true });
 	} catch (error) {
 		console.error("[FUTURE-CHAT] Failed to cancel run:", error);
-		return res.status(500).json({ error: "Failed to cancel Rovo App run" });
+		return res.status(500).json({ error: "Failed to cancel Rovo run" });
 	}
 });
 
-app.get("/api/rovo-app/threads/:threadId/browser-workspace", async (req, res) => {
+app.get("/api/rovo/threads/:threadId/browser-workspace", async (req, res) => {
 	try {
 		const threadId = getNonEmptyString(req.params.threadId);
 		if (!threadId) {
@@ -12920,7 +12920,7 @@ app.get("/api/rovo-app/threads/:threadId/browser-workspace", async (req, res) =>
 	}
 });
 
-app.post("/api/rovo-app/threads/:threadId/browser-workspace", async (req, res) => {
+app.post("/api/rovo/threads/:threadId/browser-workspace", async (req, res) => {
 	try {
 		const threadId = getNonEmptyString(req.params.threadId);
 		if (!threadId) {
@@ -12947,7 +12947,7 @@ app.post("/api/rovo-app/threads/:threadId/browser-workspace", async (req, res) =
 	}
 });
 
-app.delete("/api/rovo-app/threads/:threadId/browser-workspace", async (req, res) => {
+app.delete("/api/rovo/threads/:threadId/browser-workspace", async (req, res) => {
 	try {
 		const threadId = getNonEmptyString(req.params.threadId);
 		if (!threadId) {
@@ -12962,7 +12962,7 @@ app.delete("/api/rovo-app/threads/:threadId/browser-workspace", async (req, res)
 	}
 });
 
-app.delete("/api/rovo-app/threads/:threadId", async (req, res) => {
+app.delete("/api/rovo/threads/:threadId", async (req, res) => {
 	try {
 		const threadId = req.params.threadId;
 		const activeRun = rovoAppRunManager.getRun(threadId);
@@ -12991,11 +12991,11 @@ app.delete("/api/rovo-app/threads/:threadId", async (req, res) => {
 		return res.status(200).json({ deleted: true });
 	} catch (error) {
 		console.error("[FUTURE-CHAT] Failed to delete thread:", error);
-		return res.status(500).json({ error: "Failed to delete Rovo App thread" });
+		return res.status(500).json({ error: "Failed to delete Rovo thread" });
 	}
 });
 
-app.get("/api/rovo-app/votes", async (req, res) => {
+app.get("/api/rovo/votes", async (req, res) => {
 	try {
 		const rawThreadId = Array.isArray(req.query.threadId) ? req.query.threadId[0] : req.query.threadId;
 		const threadId = getNonEmptyString(rawThreadId);
@@ -13007,11 +13007,11 @@ app.get("/api/rovo-app/votes", async (req, res) => {
 		return res.status(200).json({ votes });
 	} catch (error) {
 		console.error("[FUTURE-CHAT] Failed to list votes:", error);
-		return res.status(500).json({ error: "Failed to list Rovo App votes" });
+		return res.status(500).json({ error: "Failed to list Rovo votes" });
 	}
 });
 
-app.patch("/api/rovo-app/votes", async (req, res) => {
+app.patch("/api/rovo/votes", async (req, res) => {
 	try {
 		const { threadId: rawThreadId, messageId: rawMessageId, value } = req.body || {};
 		const threadId = getNonEmptyString(rawThreadId);
@@ -13028,11 +13028,11 @@ app.patch("/api/rovo-app/votes", async (req, res) => {
 		return res.status(200).json({ vote });
 	} catch (error) {
 		console.error("[FUTURE-CHAT] Failed to update vote:", error);
-		return res.status(500).json({ error: "Failed to update Rovo App vote" });
+		return res.status(500).json({ error: "Failed to update Rovo vote" });
 	}
 });
 
-app.get("/api/rovo-app/documents", async (req, res) => {
+app.get("/api/rovo/documents", async (req, res) => {
 	try {
 		const rawThreadId = Array.isArray(req.query.threadId) ? req.query.threadId[0] : req.query.threadId;
 		const rawDocumentId = Array.isArray(req.query.documentId) ? req.query.documentId[0] : req.query.documentId;
@@ -13051,11 +13051,11 @@ app.get("/api/rovo-app/documents", async (req, res) => {
 		return res.status(200).json({ documents });
 	} catch (error) {
 		console.error("[FUTURE-CHAT] Failed to list documents:", error);
-		return res.status(500).json({ error: "Failed to load Rovo App documents" });
+		return res.status(500).json({ error: "Failed to load Rovo documents" });
 	}
 });
 
-app.post("/api/rovo-app/documents", async (req, res) => {
+app.post("/api/rovo/documents", async (req, res) => {
 	try {
 		const {
 			changeLabel,
@@ -13104,11 +13104,11 @@ app.post("/api/rovo-app/documents", async (req, res) => {
 		return res.status(201).json({ document });
 	} catch (error) {
 		console.error("[FUTURE-CHAT] Failed to save document:", error);
-		return res.status(500).json({ error: "Failed to save Rovo App document" });
+		return res.status(500).json({ error: "Failed to save Rovo document" });
 	}
 });
 
-app.delete("/api/rovo-app/documents", async (req, res) => {
+app.delete("/api/rovo/documents", async (req, res) => {
 	try {
 		const rawDocumentId = Array.isArray(req.query.documentId) ? req.query.documentId[0] : req.query.documentId;
 		const documentId = getNonEmptyString(rawDocumentId);
@@ -13120,11 +13120,11 @@ app.delete("/api/rovo-app/documents", async (req, res) => {
 		return res.status(200).json({ deleted: true });
 	} catch (error) {
 		console.error("[FUTURE-CHAT] Failed to delete document:", error);
-		return res.status(500).json({ error: "Failed to delete Rovo App document" });
+		return res.status(500).json({ error: "Failed to delete Rovo document" });
 	}
 });
 
-app.post("/api/rovo-app/files/upload", async (req, res) => {
+app.post("/api/rovo/files/upload", async (req, res) => {
 	try {
 		const { name, mediaType, dataUrl, threadId } = req.body || {};
 		if (typeof dataUrl !== "string" || !dataUrl.trim()) {
@@ -13153,7 +13153,7 @@ app.post("/api/rovo-app/files/upload", async (req, res) => {
 	}
 });
 
-app.get("/api/rovo-app/files/:fileId", async (req, res) => {
+app.get("/api/rovo/files/:fileId", async (req, res) => {
 	try {
 		const upload = await rovoAppUploadManager.getUpload(req.params.fileId);
 		if (!upload) {
@@ -13169,11 +13169,11 @@ app.get("/api/rovo-app/files/:fileId", async (req, res) => {
 		return res.status(200).send(upload.buffer);
 	} catch (error) {
 		console.error("[FUTURE-CHAT] Failed to serve file:", error);
-		return res.status(500).json({ error: "Failed to serve Rovo App file" });
+		return res.status(500).json({ error: "Failed to serve Rovo file" });
 	}
 });
 
-app.get("/api/rovo-app/generated-media", async (req, res) => {
+app.get("/api/rovo/generated-media", async (req, res) => {
 	try {
 		const requestedPath = Array.isArray(req.query.path)
 			? req.query.path[0]
@@ -14039,7 +14039,7 @@ realtimeWss.on("connection", (ws) => {
 });
 
 browserPreviewWss.on("connection", (ws, _request, workspaceId) => {
-	// Check if this is a headless mirror browser (used by Rovo App browser feature)
+	// Check if this is a headless mirror browser (used by Rovo browser feature)
 	const mirrorBrowser = getMirrorBrowser(workspaceId);
 	if (mirrorBrowser) {
 		mirrorBrowser.attachClient(ws);

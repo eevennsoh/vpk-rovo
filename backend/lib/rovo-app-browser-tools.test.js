@@ -60,7 +60,7 @@ function createScreenshotStore() {
 			return {
 				contentType,
 				height: 1538,
-				imageUrl: "/api/rovo-app/files/upload-browser-shot",
+				imageUrl: "/api/rovo/files/upload-browser-shot",
 				width: 2400,
 			}
 		},
@@ -179,7 +179,7 @@ test("browser bridge emits a screenshot only for explicit screenshot tool result
 		data: {
 			contentType: "image/png",
 			height: 1538,
-			imageUrl: "/api/rovo-app/files/upload-browser-shot",
+			imageUrl: "/api/rovo/files/upload-browser-shot",
 			timestamp: writes[2].data.timestamp,
 			url: "https://example.com",
 			width: 2400,

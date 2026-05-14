@@ -28,7 +28,7 @@ export function useTopNavigation() {
 	}, [setTheme, actualTheme]);
 
 	const toggleChat = useCallback(() => {
-		router.push("/rovo-app");
+		router.push("/rovo");
 	}, [router]);
 
 	const handleNavigate = useCallback(
@@ -42,7 +42,7 @@ export function useTopNavigation() {
 	const handleSearchKeyDown = useCallback(
 		(event: KeyboardEvent<HTMLInputElement>) => {
 			if (event.key === "Enter") {
-				router.push("/rovo-app");
+				router.push("/rovo");
 				setIsSearchFocused(false);
 			}
 			if (event.key === "Escape") {
@@ -53,7 +53,7 @@ export function useTopNavigation() {
 	);
 
 	const handleSearchAllApps = useCallback(() => {
-		router.push("/rovo-app");
+		router.push("/rovo");
 	}, [router]);
 
 	const handleRecentItemClick = useCallback(() => {
@@ -63,7 +63,7 @@ export function useTopNavigation() {
 	const handleRecentSearchClick = useCallback(
 		(query: string) => {
 			setSearchValue(query);
-			router.push("/rovo-app");
+			router.push("/rovo");
 			setIsSearchFocused(false);
 		},
 		[router]

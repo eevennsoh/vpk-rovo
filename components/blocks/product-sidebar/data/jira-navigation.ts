@@ -18,18 +18,18 @@ export interface ExternalLink {
 
 export const STARRED_PROJECTS: readonly StarredProject[] = [
 	{
-		id: "vitafleet-q4-launch",
-		name: "Vitafleet Q4 Launch",
+		id: "vitafleet-q4-rfp-response",
+		name: "VitaFleet Q4 RFP Response",
 		imageSrc: "/avatar-project/rocket.svg",
 	},
 	{
-		id: "customer-portal",
-		name: "Customer Portal",
+		id: "enterprise-rfp-pipeline",
+		name: "Enterprise RFP Pipeline",
 		imageSrc: "/avatar-project/code.svg",
 	},
 	{
-		id: "vitafleet-research-team",
-		name: "VitaFleet Research Team",
+		id: "vitafleet-sales-team",
+		name: "VitaFleet Sales Team",
 		imageSrc: "/avatar-project/science.svg",
 	},
 ] as const;
