@@ -11,7 +11,7 @@ import { useTopNavigation } from "./hooks/use-top-navigation";
 import { TOP_NAV_LEFT_SECTION_WIDTH_PX, TOP_NAV_PADDING_PX } from "./layout-constants";
 import SearchIcon from "@atlaskit/icon/core/search";
 
-type Product = "admin" | "home" | "jira" | "confluence" | "rovo" | "search";
+type Product = "admin" | "agents" | "home" | "jira" | "confluence" | "rovo" | "search";
 
 interface TopNavigationProps {
 	product: Product;

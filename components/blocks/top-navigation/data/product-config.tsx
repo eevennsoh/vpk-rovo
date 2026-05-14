@@ -4,10 +4,11 @@ import {
 	HomeIcon,
 	JiraIcon,
 	ConfluenceIcon,
+	ProjectsIcon,
 	SearchIcon as SearchLogo,
 } from "@/components/ui/logo";
 
-type Product = "admin" | "home" | "jira" | "confluence" | "rovo" | "search";
+type Product = "admin" | "agents" | "home" | "jira" | "confluence" | "rovo" | "search";
 
 interface ProductConfig {
 	Icon: typeof HomeIcon;
@@ -24,6 +25,7 @@ function VpkRovoIcon() {
 
 export const PRODUCT_CONFIG: Record<Product, ProductConfig> = {
 	admin: { Icon: AdminIcon, name: "Administration" },
+	agents: { Icon: ProjectsIcon, name: "Agents" },
 	search: { Icon: SearchLogo, name: "Search" },
 	jira: { Icon: JiraIcon, name: "Jira" },
 	confluence: { Icon: ConfluenceIcon, name: "Confluence" },
