@@ -105,6 +105,20 @@ function buildSendMessageBody(
 	};
 }
 
+function mergePromptOptionObject<T extends object>(
+	defaultValue: T | undefined,
+	value: T | undefined
+): T | undefined {
+	if (!defaultValue && !value) {
+		return undefined;
+	}
+
+	return {
+		...(defaultValue ?? {}),
+		...(value ?? {}),
+	} as T;
+}
+
 function mergeSendPromptOptions(
 	defaultOptions?: SendPromptOptions,
 	options?: SendPromptOptions
@@ -115,20 +129,14 @@ function mergeSendPromptOptions(
 	return {
 		...defaultOptions,
 		...options,
-		messageMetadata:
-			defaultOptions.messageMetadata || options.messageMetadata
-				? {
-					...(defaultOptions.messageMetadata ?? {}),
-					...(options.messageMetadata ?? {}),
-				}
-				: undefined,
-		smartGeneration:
-			defaultOptions.smartGeneration || options.smartGeneration
-				? {
-					...(defaultOptions.smartGeneration ?? {}),
-					...(options.smartGeneration ?? {}),
-				}
-				: undefined,
+		messageMetadata: mergePromptOptionObject(
+			defaultOptions.messageMetadata,
+			options.messageMetadata
+		),
+		smartGeneration: mergePromptOptionObject(
+			defaultOptions.smartGeneration,
+			options.smartGeneration
+		),
 	};
 }
 
