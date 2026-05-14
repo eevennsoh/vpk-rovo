@@ -18,6 +18,7 @@ import {
 	type RovoUIMessage,
 } from "@/lib/rovo-ui-messages";
 import { shouldSendExplicitRovoDevCancel } from "@/lib/rovodev-cancel-strategy";
+import { mergeRovoContextDescriptions } from "@/lib/rovo-context";
 import {
 	isRateLimitError,
 	isChatInProgressError,
@@ -129,6 +130,10 @@ function mergeSendPromptOptions(
 	return {
 		...defaultOptions,
 		...options,
+		contextDescription: mergeRovoContextDescriptions(
+			defaultOptions.contextDescription,
+			options.contextDescription
+		),
 		messageMetadata: mergePromptOptionObject(
 			defaultOptions.messageMetadata,
 			options.messageMetadata

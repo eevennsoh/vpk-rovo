@@ -10,6 +10,10 @@ const AGENTS_DEMO_SOURCE = fs.readFileSync(
 	path.join(process.cwd(), "components/website/demos/projects/agents-demo.tsx"),
 	"utf8",
 );
+const ROVO_CHAT_CONTEXT_SOURCE = fs.readFileSync(
+	path.join(process.cwd(), "app/contexts/context-rovo-chat.tsx"),
+	"utf8",
+);
 
 async function loadRfpContextHarness() {
 	const result = await esbuild.build({
@@ -78,6 +82,17 @@ test("Rovo context merging preserves active work item context and suggestion con
 			"[Active Jira Work Item Context]\nKey: RFP-101\n[End Active Jira Work Item Context]",
 			"[Work Summary Scope]\nSearch Jira and Confluence.\n[End Work Summary Scope]",
 		].join("\n\n"),
+	);
+});
+
+test("Rovo provider merges default context with per-prompt context", () => {
+	assert.match(
+		ROVO_CHAT_CONTEXT_SOURCE,
+		/import \{ mergeRovoContextDescriptions \} from "@\/lib\/rovo-context";/,
+	);
+	assert.match(
+		ROVO_CHAT_CONTEXT_SOURCE,
+		/contextDescription: mergeRovoContextDescriptions\(\s*defaultOptions\.contextDescription,\s*options\.contextDescription\s*\)/,
 	);
 });
 
