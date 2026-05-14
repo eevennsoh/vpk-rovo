@@ -391,7 +391,7 @@ test("rovo app upload manager writes and reads data-url files", async () => {
 		threadId: "thread-1",
 		filename: "note.txt",
 		mediaType: "text/plain",
-		dataUrl: "data:text/plain;base64,SGVsbG8gRnV0dXJlIENoYXQ=",
+		dataUrl: "data:text/plain;base64,SGVsbG8gUm92bw==",
 	});
 
 	assert.equal(createdUpload.filename.endsWith(".txt"), true);
