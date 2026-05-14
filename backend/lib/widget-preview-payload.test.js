@@ -58,14 +58,14 @@ test("withCanonicalPreviewBody adds body.kind image for image widgets", () => {
 
 test("withCanonicalPreviewBody adds body.kind video for direct video widgets", () => {
 	const payload = withCanonicalPreviewBody("video-preview", {
-		videoUrl: "/api/rovo-app/generated-media?path=media%2Fvideos%2Fdemo.mp4",
+		videoUrl: "/api/rovo/generated-media?path=media%2Fvideos%2Fdemo.mp4",
 		mimeType: "video/mp4",
 		fileName: "demo.mp4",
 	});
 
 	assert.deepEqual(payload.body, {
 		kind: "video",
-		videoUrl: "/api/rovo-app/generated-media?path=media%2Fvideos%2Fdemo.mp4",
+		videoUrl: "/api/rovo/generated-media?path=media%2Fvideos%2Fdemo.mp4",
 		mimeType: "video/mp4",
 		fileName: "demo.mp4",
 	});
@@ -89,7 +89,7 @@ test("withCanonicalPreviewBody infers generated video bodies from genui specs", 
 	assert.deepEqual(payload.body, {
 		kind: "video",
 		videoUrl:
-			"/api/rovo-app/generated-media?path=media%2Fvideos%2Ftmp%2Fdemo%2FVPKRovoVideo.mp4",
+			"/api/rovo/generated-media?path=media%2Fvideos%2Ftmp%2Fdemo%2FVPKRovoVideo.mp4",
 		mimeType: "video/mp4",
 		fileName: "VPKRovoVideo.mp4",
 	});

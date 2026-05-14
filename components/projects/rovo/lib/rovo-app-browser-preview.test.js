@@ -20,7 +20,7 @@ test("browser artifact key is null when no browser state is available", () => {
 test("closing the current browser artifact suppresses auto reopen for the same state", () => {
 	const browserArtifactKey = buildRovoAppBrowserArtifactKey({
 		browserScreenshot: {
-			imageUrl: "/api/rovo-app/files/browser-shot",
+			imageUrl: "/api/rovo/files/browser-shot",
 			timestamp: "2026-04-13T06:00:00.000Z",
 			url: "https://boringbar.app/",
 		},

@@ -187,7 +187,7 @@ function createRovoAppUploadManager({ baseDir }) {
 			const threadFilePath = buildRovoAppThreadPaths(baseDir, entry.name).threadFilePath;
 			try {
 				const rawThread = await fs.readFile(threadFilePath, "utf8");
-				if (rawThread.includes(`/api/rovo-app/files/${uploadId}`)) {
+				if (rawThread.includes(`/api/rovo/files/${uploadId}`)) {
 					return entry.name;
 				}
 			} catch (error) {

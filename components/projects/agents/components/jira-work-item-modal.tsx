@@ -36,8 +36,8 @@ interface JiraWorkItemModalProps {
 export default function JiraWorkItemModal({
 	isOpen,
 	onClose,
-	workItemTitle = "Work item name",
-	workItemCode = "CAID-118",
+	workItemTitle = "Qualify inbound Acme Mobility RFP",
+	workItemCode = "RFP-101",
 }: Readonly<JiraWorkItemModalProps>) {
 	return (
 		<WorkItemModalProvider

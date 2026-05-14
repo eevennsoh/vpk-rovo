@@ -123,7 +123,7 @@ export function RovoAppSurfaceShell({ children }: Readonly<RovoAppSurfaceShellPr
 					});
 				}}
 				onNewChat={() => {
-					router.push("/rovo-app");
+					router.push("/rovo");
 				}}
 				onSelectThread={async (threadId) => {
 					router.push(buildRovoAppThreadPath(threadId));
@@ -174,7 +174,7 @@ export function RovoAppSurfaceShell({ children }: Readonly<RovoAppSurfaceShellPr
 					onToggleSidebar={nav.toggleSidebar}
 					onToggleAppSwitcher={nav.handleToggleAppSwitcher}
 					onCloseAppSwitcher={nav.handleCloseAppSwitcher}
-					onNavigate={(path) => nav.handleNavigate(path === "/" ? "/rovo-app" : path)}
+					onNavigate={(path) => nav.handleNavigate(path === "/" ? "/rovo" : path)}
 					onHoverEnter={handleSidebarHoverEnter}
 					onHoverLeave={handleSidebarHoverLeave}
 				/>

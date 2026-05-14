@@ -19,11 +19,11 @@ function unwrapUiMessageChunk(result) {
 				result.rawValue !== undefined
 					? ` Received: ${JSON.stringify(result.rawValue)}`
 					: "";
-			throw new Error(`Invalid Rovo App UI message chunk.${details}`);
+			throw new Error(`Invalid Rovo UI message chunk.${details}`);
 		}
 	}
 
-	throw new Error("Unexpected Rovo App UI message chunk shape.");
+	throw new Error("Unexpected Rovo UI message chunk shape.");
 }
 
 function toUiMessageChunkStream(stream) {

@@ -399,7 +399,7 @@ test("rovo app upload manager writes and reads data-url files", async () => {
 
 	const loadedUpload = await manager.getUpload(createdUpload.id);
 	assert.ok(loadedUpload);
-	assert.equal(loadedUpload?.buffer.toString("utf8"), "Hello Rovo App");
+	assert.equal(loadedUpload?.buffer.toString("utf8"), "Hello Rovo");
 	await fs.access(
 		path.join(
 			baseDir,

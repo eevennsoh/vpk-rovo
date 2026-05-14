@@ -32,7 +32,7 @@ function createBlankJob(): ControlPlaneJob {
 		postResultToThread: false,
 		schedule: "every 1h",
 		status: "scheduled",
-		surface: "rovo-app",
+		surface: "rovo",
 		target: "",
 		updatedAt: new Date().toISOString(),
 	};
@@ -56,7 +56,7 @@ function toControlPlaneJob(job: HermesJob): ControlPlaneJob {
 		postResultToThread: job.postResultToThread,
 		schedule: job.schedule ?? "manual",
 		status,
-		surface: "rovo-app",
+		surface: "rovo",
 		target:
 			typeof job.raw.prompt === "string" && job.raw.prompt.trim()
 				? job.raw.prompt
@@ -81,7 +81,7 @@ function toHermesJobPayload(job: ControlPlaneJob): Record<string, unknown> {
 		prompt: job.target.trim() || "",
 		schedule: job.schedule.trim() || "manual",
 		deliver: "local",
-		surface: job.surface ?? "rovo-app",
+		surface: job.surface ?? "rovo",
 	};
 }
 
@@ -482,7 +482,7 @@ export function JobsSurfacePage() {
 								<div className="space-y-1.5">
 									<div className="text-sm font-medium">Surface</div>
 									<Input
-										value={draft.surface ?? "rovo-app"}
+										value={draft.surface ?? "rovo"}
 										onChange={(event) =>
 											setDraft((current) => ({
 												...current,

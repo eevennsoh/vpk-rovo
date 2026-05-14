@@ -1,4 +1,4 @@
-export type TagColor = "blue" | "purple" | "discovery" | "teal" | "magenta" | "orange" | "lime" | "green" | "yellow" | "grey" | "red";
+import type { TagColor } from "@/components/ui/tag";
 
 export type Priority = "major" | "medium" | "minor";
 

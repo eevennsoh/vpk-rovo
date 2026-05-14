@@ -7,22 +7,22 @@ export interface ControlPlaneSurfaceLink {
 export const CONTROL_PLANE_SURFACES: readonly ControlPlaneSurfaceLink[] = [
 	{
 		description: "Scheduled work and run history",
-		href: "/rovo-app/jobs",
+		href: "/rovo/jobs",
 		label: "Tasks",
 	},
 	{
 		description: "Compiled wiki-backed memory and proposal status",
-		href: "/rovo-app/memories",
+		href: "/rovo/memories",
 		label: "Memories",
 	},
 	{
 		description: "Installed skills and skill details",
-		href: "/rovo-app/skills",
+		href: "/rovo/skills",
 		label: "Skills",
 	},
 	{
 		description: "Provider routing, compiled memory, and wiki mirror controls",
-		href: "/rovo-app/settings",
+		href: "/rovo/settings",
 		label: "Settings",
 	},
 ] as const;
@@ -55,7 +55,7 @@ export interface ControlPlaneJob {
 	nextRunAt?: string | null;
 	notes?: string;
 	postResultToThread?: boolean;
-	surface?: "rovo-app" | "research" | "system";
+	surface?: "rovo" | "research" | "system";
 	schedule: string;
 	status: ControlPlaneJobStatus;
 	target: string;
@@ -106,16 +106,16 @@ export const CONTROL_PLANE_MEMORY_LIMITS: Record<ControlPlaneMemoryTarget, numbe
 
 export const INITIAL_CONTROL_PLANE_JOBS: readonly ControlPlaneJob[] = [
 	{
-		artifactTarget: "rovo-app/runs",
+		artifactTarget: "rovo/runs",
 		enabled: true,
 		id: "job-nightly-summary",
 		lastRunAt: "2026-04-05T22:30:00.000Z",
-		linkedThreadId: "rovo-app-2041",
+		linkedThreadId: "rovo-2041",
 		name: "Nightly product summary",
 		nextRunAt: "2026-04-06T22:30:00.000Z",
 		notes: "Summarise the latest run outcomes and attach the result to the linked thread.",
 		postResultToThread: true,
-		surface: "rovo-app",
+		surface: "rovo",
 		schedule: "0 22 * * *",
 		status: "scheduled",
 		target: "synthesise a digest of high-signal Rovo runs",

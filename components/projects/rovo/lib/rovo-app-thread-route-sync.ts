@@ -5,7 +5,7 @@ import type {
 } from "@/lib/rovo-app-types";
 import type { RovoUIMessage } from "@/lib/rovo-ui-messages";
 
-export const ROVO_APP_ROOT_PATH = "/rovo-app";
+export const ROVO_APP_ROOT_PATH = "/rovo";
 
 export function buildRovoAppThreadPersistKey(options: {
 	messages: ReadonlyArray<RovoUIMessage>;

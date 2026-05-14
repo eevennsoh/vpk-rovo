@@ -52,7 +52,7 @@ function buildExcalidrawArtifactSystemPrompt({
 		header,
 		"Return ONLY valid Excalidraw scene JSON.",
 		"Do not use markdown fences. Do not add commentary before or after the JSON.",
-		"Return a single JSON object with this top-level shape: {\"type\":\"excalidraw\",\"version\":2,\"source\":\"rovo-app\",\"appState\":{\"viewBackgroundColor\":\"#ffffff\"},\"elements\":[...]}",
+		"Return a single JSON object with this top-level shape: {\"type\":\"excalidraw\",\"version\":2,\"source\":\"rovo\",\"appState\":{\"viewBackgroundColor\":\"#ffffff\"},\"elements\":[...]}",
 		"Use Excalidraw-compatible elements for diagrams. Prefer only these element types: text, rectangle, diamond, ellipse, arrow, and line.",
 		"Each element must include realistic Excalidraw fields needed for import, including id, type, x, y, width, height, angle, strokeColor, backgroundColor, fillStyle, strokeWidth, strokeStyle, roughness, opacity, seed, version, versionNonce, isDeleted, groupIds, boundElements, updated, link, locked, and any text-specific properties when applicable.",
 		"For arrows and lines, include points arrays and arrowhead metadata when needed.",
@@ -70,7 +70,7 @@ function buildExcalidrawWidgetSystemPrompt({ title }) {
 		`You are generating a transient Excalidraw diagram preview titled "${resolvedTitle}".`,
 		"Return ONLY valid Excalidraw scene JSON.",
 		"Do not use markdown fences. Do not add commentary before or after the JSON.",
-		"Return a single JSON object with this top-level shape: {\"type\":\"excalidraw\",\"version\":2,\"source\":\"rovo-app\",\"appState\":{\"viewBackgroundColor\":\"#ffffff\"},\"elements\":[...]}",
+		"Return a single JSON object with this top-level shape: {\"type\":\"excalidraw\",\"version\":2,\"source\":\"rovo\",\"appState\":{\"viewBackgroundColor\":\"#ffffff\"},\"elements\":[...]}",
 		"Use Excalidraw-compatible elements for diagrams. Prefer only these element types: text, rectangle, diamond, ellipse, arrow, and line.",
 		"Each element must include realistic Excalidraw fields needed for import, including id, type, x, y, width, height, angle, strokeColor, backgroundColor, fillStyle, strokeWidth, strokeStyle, roughness, opacity, seed, version, versionNonce, isDeleted, groupIds, boundElements, updated, link, locked, and any text-specific properties when applicable.",
 		"For arrows and lines, include points arrays and arrowhead metadata when needed.",
@@ -199,7 +199,7 @@ function normalizeExcalidrawArtifactOutput(rawText) {
 		version: typeof parsed.version === "number" && Number.isFinite(parsed.version)
 			? parsed.version
 			: 2,
-		source: getNonEmptyString(parsed.source) || "rovo-app",
+		source: getNonEmptyString(parsed.source) || "rovo",
 		appState,
 		elements: normalizedElements,
 		...(isObjectRecord(parsed.files) ? { files: parsed.files } : {}),

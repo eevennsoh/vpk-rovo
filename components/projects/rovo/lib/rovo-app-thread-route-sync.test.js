@@ -137,20 +137,20 @@ test("buildRovoAppThreadPersistKey includes title and active artifact state", ()
 test("buildRovoAppThreadPath encodes the thread id into the route path", () => {
 	assert.equal(
 		buildRovoAppThreadPath("thread/with spaces"),
-		"/rovo-app/thread%2Fwith%20spaces",
+		"/rovo/thread%2Fwith%20spaces",
 	);
 });
 
 test("getRovoAppThreadIdFromPath resolves a thread route id", () => {
 	assert.equal(
-		getRovoAppThreadIdFromPath("/rovo-app/thread%2Fwith%20spaces"),
+		getRovoAppThreadIdFromPath("/rovo/thread%2Fwith%20spaces"),
 		"thread/with spaces",
 	);
 });
 
 test("getRovoAppThreadIdFromPath returns null for the draft route", () => {
-	assert.equal(getRovoAppThreadIdFromPath("/rovo-app"), null);
-	assert.equal(getRovoAppThreadIdFromPath("/rovo-app/"), null);
+	assert.equal(getRovoAppThreadIdFromPath("/rovo"), null);
+	assert.equal(getRovoAppThreadIdFromPath("/rovo/"), null);
 });
 
 test("does not replace the draft route while the first turn is still streaming after voice mode turns off", () => {

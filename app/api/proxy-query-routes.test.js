@@ -76,10 +76,10 @@ const queryRouteCases = [
 		expectedBackendPath: "/api/orchestrator/timeline?portIndex=0&limit=10",
 	},
 	{
-		label: "/api/rovo-app/documents",
-		routePath: "rovo-app/documents/route.ts",
-		requestUrl: "http://localhost/api/rovo-app/documents?documentId=doc%201&threadId=thread%2F7&extra=1",
-		expectedBackendPath: "/api/rovo-app/documents?threadId=thread%2F7&documentId=doc+1",
+		label: "/api/rovo/documents",
+		routePath: "rovo/documents/route.ts",
+		requestUrl: "http://localhost/api/rovo/documents?documentId=doc%201&threadId=thread%2F7&extra=1",
+		expectedBackendPath: "/api/rovo/documents?threadId=thread%2F7&documentId=doc+1",
 	},
 	{
 		label: "/api/sessions/search",

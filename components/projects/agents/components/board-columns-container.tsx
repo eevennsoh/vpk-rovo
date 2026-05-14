@@ -88,7 +88,7 @@ export default function BoardColumnsContainer({
 				ref={scrollRef}
 				role="region"
 				tabIndex={0}
-				aria-label="Agents board columns. Scroll horizontally to review all statuses."
+				aria-label="RFP board columns. Scroll horizontally to review all statuses."
 				className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
 				style={{
 					flex: 1,
@@ -114,7 +114,7 @@ export default function BoardColumnsContainer({
 										key={card.code}
 										title={card.title}
 										code={card.code}
-										tags={card.tags.map((tag) => ({ text: tag.text, color: tag.color }))}
+										tags={card.tags}
 										priority={card.priority}
 										avatarSrc={card.avatarSrc}
 										isDragging={draggedCardCode === card.code}

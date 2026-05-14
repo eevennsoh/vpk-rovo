@@ -36,10 +36,10 @@ export function CommentThread() {
 		<div className="flex flex-col gap-4">
 			<div className="p-2">
 				<Comment
-					authorName="Maia Ma"
+					authorName="Maya Chen"
 					avatarSrc="/avatar-human/andrea-wilson.png"
 					timestamp="15 minutes ago"
-					content="Project comment perspective visual card easy list of lists free. Plan files stickers real time Trello Gold visual organize list of lists."
+					content="I added the procurement portal checklist and marked the security questionnaire as a required exhibit for the first draft."
 				/>
 
 				{/* Reply */}
@@ -52,10 +52,10 @@ export function CommentThread() {
 					}}
 				>
 					<Comment
-						authorName="Priya Hansra"
+						authorName="Priya Shah"
 						avatarSrc="/avatar-human/andrew-park.png"
 						timestamp="10 minutes ago"
-						content="With large teams we have the potential to have a relationship with every traveler who travels with Beyond Gravity."
+						content="Sales engineering can own the telematics integration answers. Please route pricing assumptions to deal desk before we send the draft."
 					/>
 				</div>
 			</div>

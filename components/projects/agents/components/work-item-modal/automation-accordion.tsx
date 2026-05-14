@@ -46,8 +46,8 @@ export function AutomationAccordion() {
 			{state.isAutomationOpen && (
 				<div style={{ padding: "8px 12px 12px" }}>
 					<div className="flex flex-col gap-3">
-						<AutomationRule name="Auto-assign rule" lastExecuted="2 hours ago" />
-						<AutomationRule name="Status transition" lastExecuted="5 days ago" />
+						<AutomationRule name="Route RFP intake by region" lastExecuted="2 hours ago" />
+						<AutomationRule name="Notify deal desk on pricing review" lastExecuted="5 days ago" />
 					</div>
 				</div>
 			)}

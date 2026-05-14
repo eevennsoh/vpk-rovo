@@ -27,7 +27,7 @@ function getPriorityIcon(priority: Priority) {
 function getStatusConfig(status: Status): { variant: LozengeProps["variant"]; label: string } {
 	switch (status) {
 		case "inprogress":
-			return { variant: "information", label: "IN Progress" };
+			return { variant: "information", label: "In progress" };
 		case "done":
 			return { variant: "success", label: "Done" };
 		default:
@@ -79,7 +79,7 @@ export function ChildItemRow({ itemKey, summary, priority, status }: Readonly<Ch
 				}}
 			>
 				<Avatar size="sm">
-					<AvatarFallback>U</AvatarFallback>
+					<AvatarFallback>PM</AvatarFallback>
 				</Avatar>
 			</div>
 			<div style={{ width: "120px", padding: token("space.100"), display: "flex", alignItems: "center" }}>

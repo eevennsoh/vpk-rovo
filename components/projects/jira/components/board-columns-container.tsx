@@ -114,7 +114,7 @@ export default function BoardColumnsContainer({
 										key={card.code}
 										title={card.title}
 										code={card.code}
-										tags={card.tags.map((tag) => ({ text: tag.text, color: tag.color }))}
+										tags={card.tags}
 										priority={card.priority}
 										avatarSrc={card.avatarSrc}
 										isDragging={draggedCardCode === card.code}

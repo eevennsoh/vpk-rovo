@@ -57,7 +57,7 @@ function buildSkillKey(skill: { category: string; name: string }): string {
 }
 
 function buildSkillRoute(skill: { category: string; name: string }): string {
-	return `/rovo-app/skills/${encodeURIComponent(skill.category)}/${encodeURIComponent(skill.name)}`;
+	return `/rovo/skills/${encodeURIComponent(skill.category)}/${encodeURIComponent(skill.name)}`;
 }
 
 function groupSkillsByCategory(skills: ReadonlyArray<HermesSkillSummary>) {

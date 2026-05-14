@@ -59,7 +59,7 @@ function normalizeRepoRelativePath(requestedPath) {
 function buildRovoAppThreadPaths(baseDir, threadId) {
 	const normalizedThreadId = normalizeThreadId(threadId);
 	if (!normalizedThreadId) {
-		throw new Error("A non-empty Rovo App threadId is required.");
+		throw new Error("A non-empty Rovo threadId is required.");
 	}
 
 	const threadsRootDir = getRovoAppThreadsRootDir(baseDir);

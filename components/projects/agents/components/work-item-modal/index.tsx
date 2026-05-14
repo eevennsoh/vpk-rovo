@@ -32,7 +32,6 @@ import { MoreFieldsAccordion } from "./more-fields-accordion";
 import { AutomationAccordion } from "./automation-accordion";
 import { SidebarStack, StatusHeader } from "./sidebar-stack";
 import { DetailRow } from "./detail-row";
-import { LabelTag } from "./label-tag";
 
 const WorkItemModal = {
 	Backdrop: ModalBackdrop,
@@ -52,7 +51,6 @@ const WorkItemModal = {
 	AutomationAccordion,
 	SidebarStack,
 	DetailRow,
-	LabelTag,
 	CommentThread,
 	CommentActions,
 };

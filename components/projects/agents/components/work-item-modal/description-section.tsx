@@ -16,7 +16,7 @@ export function Description() {
 			<div style={{ marginTop: token("space.100") }}>
 				<InlineEdit
 					value={description}
-					placeholder="Edit description"
+					placeholder="Add RFP requirements, buyer priorities, win themes, and response notes"
 					onConfirm={setDescription}
 					className="-ml-2"
 				/>

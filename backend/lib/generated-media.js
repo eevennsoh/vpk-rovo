@@ -2,7 +2,7 @@ const path = require("node:path");
 
 const { normalizeRepoRelativePath } = require("./rovo-app-storage-paths");
 
-const GENERATED_MEDIA_ROUTE = "/api/rovo-app/generated-media";
+const GENERATED_MEDIA_ROUTE = "/api/rovo/generated-media";
 const GENERATED_VIDEO_ROOT = "media/videos";
 const GENERATED_VIDEO_PATH_PATTERN =
 	/(?:^|[\s"'`])((?:\.\/)?media\/videos\/[^\s"'`]+?\.(?:mp4|webm|mov|m4v|ogv))(?:$|[\s"'`])/giu;

@@ -39,8 +39,8 @@ export function ChildItemsSection() {
 				}}
 			>
 				<ChildItemsTableHeader />
-				<ChildItemRow itemKey="BG-1" summary="Update header logo to svg" priority="medium" status="inprogress" />
-				<ChildItemRow itemKey="BG-2" summary="[UI] Toggle to enable/disable Autofix" priority="lowest" status="todo" />
+				<ChildItemRow itemKey="RFP-105" summary="Validate submission checklist and portal access" priority="medium" status="inprogress" />
+				<ChildItemRow itemKey="RFP-106" summary="Confirm sales engineer owner for technical appendix" priority="lowest" status="todo" />
 			</div>
 		</div>
 	);

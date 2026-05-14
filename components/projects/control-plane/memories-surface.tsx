@@ -861,7 +861,7 @@ export function MemoriesSurfacePage() {
 									<div className="flex flex-wrap gap-2">
 										<Button
 											variant="outline"
-											onClick={() => router.push(`/rovo-app/wiki?q=${encodeURIComponent(getNodeQuery(selectedNode))}`)}
+											onClick={() => router.push(`/rovo/wiki?q=${encodeURIComponent(getNodeQuery(selectedNode))}`)}
 										>
 											<SearchIcon label="" />
 											Open in wiki
@@ -948,7 +948,7 @@ export function MemoriesSurfacePage() {
 												<Button
 													variant="outline"
 													size="sm"
-													onClick={() => router.push(`/rovo-app/wiki?q=${encodeURIComponent(getNodeQuery(selectedNode))}`)}
+													onClick={() => router.push(`/rovo/wiki?q=${encodeURIComponent(getNodeQuery(selectedNode))}`)}
 												>
 													<ExternalLinkIcon />
 													Open page

@@ -16,9 +16,9 @@ interface AttachmentFile {
 }
 
 const ATTACHMENT_FILES: AttachmentFile[] = [
-	{ name: "Background001", ext: "png", date: "17 Mar 2025, 09:12 AM", color: token("color.background.success") },
-	{ name: "NewerBackground001", ext: "png", date: "17 Mar 2025, 09:12 AM", color: token("color.background.warning") },
-	{ name: "Background002", ext: "png", date: "17 Mar 2025, 09:12 AM", color: token("color.background.discovery") },
+	{ name: "VitaFleet-enterprise-RFP", ext: "pdf", date: "17 Mar 2025, 09:12 AM", color: token("color.background.success") },
+	{ name: "response-matrix", ext: "xlsx", date: "17 Mar 2025, 09:18 AM", color: token("color.background.warning") },
+	{ name: "pricing-scenarios", ext: "xlsx", date: "17 Mar 2025, 09:24 AM", color: token("color.background.discovery") },
 ];
 
 interface AttachmentCardProps {
@@ -68,7 +68,7 @@ export function AttachmentsSection() {
 					<Heading size="small" as="h3">
 						Attachments
 					</Heading>
-					<Badge>5</Badge>
+					<Badge>3</Badge>
 				</div>
 				<div style={{ display: "flex", gap: token("space.100") }}>
 					<Button aria-label="Manage" size="icon-sm" variant="ghost">

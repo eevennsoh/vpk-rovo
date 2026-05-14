@@ -13,7 +13,7 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { useRovoAppQueue } from "@/app/rovo-app/rovo-app-queue-provider";
+import { useRovoAppQueue } from "@/app/rovo/rovo-queue-provider";
 import { useLatestRef } from "@/lib/use-latest-ref";
 import { shouldSendExplicitRovoDevCancel } from "@/lib/rovodev-cancel-strategy";
 import { toast } from "sonner";
@@ -914,7 +914,7 @@ export function useRovoApp({
 	const smartGenerationRequest = useMemo(() => {
 		return {
 			enabled: true,
-			surface: embedded ? "rovo-app-preview" : "rovo-app",
+			surface: embedded ? "rovo-preview" : "rovo",
 			containerWidthPx: smartGenerationLayout?.containerWidthPx,
 			viewportWidthPx: smartGenerationLayout?.viewportWidthPx,
 			widthClass: smartGenerationLayout?.widthClass,
