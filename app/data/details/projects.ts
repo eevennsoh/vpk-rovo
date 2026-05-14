@@ -7,12 +7,6 @@ export const PROJECT_DETAILS: Record<string, ComponentDetail> = {
 			previewHeight: "fixed",
 		},
 	},
-	"contacts": {
-		description: "A contacts management surface with searchable, sortable, status-filterable table and a sliding detail sheet for each entry.",
-		demoLayout: {
-			previewHeight: "fixed",
-		},
-	},
 	"jira": {
 		description: "A Kanban board interface with draggable cards, column management, and detailed work item modals.",
 		demoLayout: {
