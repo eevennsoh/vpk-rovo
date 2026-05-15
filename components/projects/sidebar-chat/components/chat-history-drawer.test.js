@@ -53,3 +53,31 @@ test("compact chat send lifecycle refreshes thread metadata", () => {
 		/await ensureCompactThread\(promptItem\.text\);[\s\S]*void refreshThreads\(\);[\s\S]*finally \{[\s\S]*void refreshThreads\(\);/u,
 	);
 });
+
+test("compact chat fetches Rovo follow-up suggestions after a completed idle turn", () => {
+	const source = readProjectFile("app/contexts/context-rovo-chat.tsx");
+
+	assert.match(source, /fetchRovoAppSuggestedQuestions/u);
+	assert.match(source, /buildSuggestedQuestionsRequest/u);
+	assert.match(source, /appendSuggestedQuestionsToAssistantMessage/u);
+	assert.match(source, /requestedSuggestionMessageIdsRef/u);
+	assert.match(source, /part\.type === "data-turn-complete"/u);
+	assert.match(source, /"data-suggested-questions"/u);
+	assert.match(source, /activePrompt !== null[\s\S]*queuedPrompts\.length > 0/u);
+});
+
+test("sidebar and floating compact chat show follow-up suggestions only on the latest idle assistant turn", () => {
+	const panelSource = readProjectFile("components/projects/sidebar-chat/page.tsx");
+	const bubbleSource = readProjectFile("components/projects/sidebar-chat/components/message-bubble.tsx");
+
+	assert.match(panelSource, /const hasPendingChatWork = isRequestInFlight \|\| queuedPrompts\.length > 0;/u);
+	assert.match(
+		panelSource,
+		/showFollowUpSuggestions=\{message\.id === lastAssistantMessageId && !hasPendingChatWork\}/u,
+	);
+	assert.match(bubbleSource, /showFollowUpSuggestions = true/u);
+	assert.match(
+		bubbleSource,
+		/showFollowUpSuggestions \? \(\s*<ThreadMessage\.Suggestions onSuggestionClick=\{onSuggestionClick\} \/>/u,
+	);
+});

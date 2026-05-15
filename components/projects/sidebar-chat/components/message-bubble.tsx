@@ -15,6 +15,7 @@ interface MessageBubbleProps {
 	message: RovoRenderableUIMessage;
 	onSuggestionClick?: (question: string) => void;
 	enableSmartWidgets?: boolean;
+	showFollowUpSuggestions?: boolean;
 	showThinkingStatusSection?: boolean;
 	isThinkingLifecycleStreaming?: boolean;
 	generativeCardAnimation?: GenerativeCardAnimationProps;
@@ -29,6 +30,7 @@ export default function MessageBubble({
 	message,
 	onSuggestionClick,
 	enableSmartWidgets = false,
+	showFollowUpSuggestions = true,
 	showThinkingStatusSection = true,
 	isThinkingLifecycleStreaming = false,
 	generativeCardAnimation,
@@ -70,7 +72,9 @@ export default function MessageBubble({
 			<ThreadMessage.Tools />
 			<ThreadMessage.ToolFirstWarning />
 			<ThreadMessage.Sources />
-			<ThreadMessage.Suggestions onSuggestionClick={onSuggestionClick} />
+			{showFollowUpSuggestions ? (
+				<ThreadMessage.Suggestions onSuggestionClick={onSuggestionClick} />
+			) : null}
 			<ThreadMessage.Widget position="after-content" />
 		</ThreadMessage.Root>
 	);

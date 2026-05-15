@@ -170,6 +170,7 @@ export default function ChatPanel({
 	});
 	const isStreamingLifecycleActive = isStreaming || isSubmitPending;
 	const isRequestInFlight = hasInFlightTurn;
+	const hasPendingChatWork = isRequestInFlight || queuedPrompts.length > 0;
 
 	const messages = useMemo(() => uiMessages.filter(isRenderableRovoUIMessage), [uiMessages]);
 	const lastAssistantMessageId = useMemo(() => {
@@ -370,6 +371,7 @@ export default function ChatPanel({
 									message={message}
 									isThinkingLifecycleStreaming={isStreamingLifecycleActive && message.id === lastAssistantMessageId}
 									onSuggestionClick={handleFollowUpSuggestionClick}
+									showFollowUpSuggestions={message.id === lastAssistantMessageId && !hasPendingChatWork}
 									enableSmartWidgets={enableSmartWidgets}
 									generativeCardAnimation={cards?.generativeAnimation}
 									onWidgetPrimaryAction={handleWidgetPrimaryAction}
