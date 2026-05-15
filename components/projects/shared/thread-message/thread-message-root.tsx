@@ -180,6 +180,8 @@ function useThreadMessageDerived(
 	const isResponseInFlight = isStreaming || isThinkingLifecycleStreaming || isWidgetLoading;
 	const isRetryThinkingStatus =
 		getLatestDataPart(message, "data-thinking-status")?.data.label?.includes("Retrying") ?? false;
+	const thinkingToolCallsForStatus =
+		toolParts.length > 0 ? [] : visibleThinkingToolCalls;
 	const thinkingTraceState = useAssistantThinkingTraceState({
 		message,
 		isThinkingLifecycleStreaming,
@@ -187,6 +189,7 @@ function useThreadMessageDerived(
 		isPostToolsGeneration: isPostToolsGenuiGeneration,
 		hasWidgetOutput,
 		isRetryThinkingStatus,
+		thinkingToolCalls: thinkingToolCallsForStatus,
 	});
 	const messageTextBeforeSanitization = baseMessageText;
 	const sanitizedMessageText = sanitizeMarkdownArtifactMarkers(
@@ -199,8 +202,6 @@ function useThreadMessageDerived(
 					messageText: sanitizedMessageText,
 				})
 			: sanitizedMessageText;
-	const thinkingToolCallsForStatus =
-		toolParts.length > 0 ? [] : visibleThinkingToolCalls;
 	const hasTurnComplete = hasTurnCompleteSignal(message);
 	const hasToolFirstWarning =
 		Boolean(toolFirstWarning?.message) && !isStreaming;
@@ -384,8 +385,7 @@ export function ThreadMessageRoot({
 		Boolean(contextValue.reasoning) &&
 		!contextValue.isThinkingStatusActive;
 	const hasRenderableTools =
-		contextValue.toolParts.length > 0 &&
-		!contextValue.isThinkingStatusActive;
+		contextValue.toolParts.length > 0;
 	const hasRenderableSuggestions =
 		!contextValue.isStreaming &&
 		contextValue.suggestedQuestions.length > 0 &&

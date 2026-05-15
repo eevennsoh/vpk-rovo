@@ -75,6 +75,7 @@ interface UseAssistantThinkingTraceStateOptions {
 	isPostToolsGeneration?: boolean;
 	hasWidgetOutput?: boolean;
 	isRetryThinkingStatus?: boolean;
+	thinkingToolCalls?: ThinkingToolCallSummary[];
 	planNarrationText?: string;
 	planNarrationStreaming?: boolean;
 }
@@ -246,10 +247,14 @@ export function useAssistantThinkingTraceState({
 	isPostToolsGeneration = false,
 	hasWidgetOutput = false,
 	isRetryThinkingStatus = false,
+	thinkingToolCalls,
 	planNarrationText = "",
 	planNarrationStreaming = false,
 }: Readonly<UseAssistantThinkingTraceStateOptions>): AssistantThinkingTraceState {
-	const data = useMemo(() => collectAssistantThinkingTraceData(message), [message]);
+	const data = useMemo(
+		() => collectAssistantThinkingTraceData(message, { thinkingToolCalls }),
+		[message, thinkingToolCalls],
+	);
 	const hasTurnComplete = hasTurnCompleteSignal(message);
 	const rawThinkingActive = checkThinkingStatusActive({
 		hasThinkingStatusPart: data.hasThinkingStatusPart,

@@ -109,6 +109,31 @@ test("collectAssistantThinkingTraceData associates narration with tool calls", (
 	]);
 });
 
+test("collectAssistantThinkingTraceData accepts filtered thinking tool calls", () => {
+	const data = collectAssistantThinkingTraceData(
+		{
+			parts: [
+				{
+					type: "data-thinking-event",
+					data: {
+						eventId: "event-1",
+						phase: "start",
+						toolName: "request_user_input",
+						toolCallId: "tool-1",
+					},
+				},
+			],
+		},
+		{
+			thinkingToolCalls: [],
+		},
+	);
+
+	assert.equal(data.hasThinkingToolCalls, false);
+	assert.equal(data.hasAwaitingInputToolCalls, false);
+	assert.deepEqual(data.thinkingToolCalls, []);
+});
+
 test("collectAssistantThinkingTraceData extracts update_todo progress", () => {
 	const data = collectAssistantThinkingTraceData({
 		parts: [

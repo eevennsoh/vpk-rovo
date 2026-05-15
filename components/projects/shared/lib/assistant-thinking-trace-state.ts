@@ -64,6 +64,10 @@ export interface AssistantThinkingTraceData {
 	}>;
 }
 
+interface CollectAssistantThinkingTraceDataOptions {
+	thinkingToolCalls?: ThinkingToolCallSummary[];
+}
+
 export function resolveAssistantThinkingTraceVisibility({
 	isThinkingActive,
 	isResponseInFlight,
@@ -116,11 +120,13 @@ export function resolveAssistantThinkingTracePhase({
 }
 
 export function collectAssistantThinkingTraceData(
-	message: Pick<RovoUIMessage, "parts">
+	message: Pick<RovoUIMessage, "parts">,
+	options: Readonly<CollectAssistantThinkingTraceDataOptions> = {},
 ): AssistantThinkingTraceData {
 	const thinkingStatusParts = getAllDataParts(message, "data-thinking-status");
 	const thinkingEventParts = getAllDataParts(message, "data-thinking-event");
-	const thinkingToolCalls = getThinkingToolCallSummaries(message);
+	const thinkingToolCalls =
+		options.thinkingToolCalls ?? getThinkingToolCallSummaries(message);
 	const thinkingNarrationMap = buildThinkingNarrationMap(message);
 	const latestTodoProgress = getLatestRovoAppTodoProgress(thinkingToolCalls);
 	const todoProgressItems = latestTodoProgress?.items ?? [];
