@@ -56,7 +56,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
-  CornerDownLeftIcon,
+  ArrowUpIcon,
   ImageIcon,
   MicIcon,
   MonitorIcon,
@@ -64,6 +64,7 @@ import {
   XIcon,
 } from "@/components/ui/vpk-icons";
 import { cn } from "@/lib/utils";
+import RandomizeIcon from "@atlaskit/icon-lab/core/randomize";
 import { cva, type VariantProps } from "class-variance-authority";
 import { nanoid } from "nanoid";
 import {
@@ -1217,6 +1218,56 @@ export const PromptInputTools = ({
   />
 );
 
+export type PromptInputAutoButtonProps = PromptInputButtonProps;
+
+export const PromptInputAutoButton = ({
+  children,
+  className,
+  size = "sm",
+  variant = "ghost",
+  ...props
+}: Readonly<PromptInputAutoButtonProps>) => (
+  <PromptInputButton
+    className={cn("min-w-[78px]", className)}
+    size={size}
+    variant={variant}
+    {...props}
+  >
+    {children ?? (
+      <>
+        <RandomizeIcon label="" />
+        <span>Auto</span>
+      </>
+    )}
+  </PromptInputButton>
+);
+
+export type PromptInputSendControlsProps = HTMLAttributes<HTMLDivElement> & {
+  autoButtonProps?: PromptInputAutoButtonProps;
+  submitProps?: PromptInputSubmitProps;
+};
+
+export const PromptInputSendControls = ({
+  autoButtonProps = {},
+  className,
+  submitProps = {},
+  ...props
+}: Readonly<PromptInputSendControlsProps>) => {
+  const { children: autoChildren, ...resolvedAutoButtonProps } = autoButtonProps;
+  const { children: submitChildren, ...resolvedSubmitProps } = submitProps;
+
+  return (
+    <div className={cn("flex shrink-0 items-center gap-1", className)} {...props}>
+      <PromptInputAutoButton {...resolvedAutoButtonProps}>
+        {autoChildren}
+      </PromptInputAutoButton>
+      <PromptInputSubmit {...resolvedSubmitProps}>
+        {submitChildren ?? <ArrowUpIcon className="size-4" />}
+      </PromptInputSubmit>
+    </div>
+  );
+};
+
 export type PromptInputButtonTooltip =
   | string
   | {
@@ -1369,7 +1420,7 @@ export const PromptInputSubmit = ({
     ? "border-border bg-surface-raised text-icon-danger hover:bg-bg-neutral-hovered active:bg-bg-neutral-pressed"
     : undefined;
 
-  let Icon = <CornerDownLeftIcon className="size-4" />;
+  let Icon = <ArrowUpIcon className="size-4" />;
 
   if (status === "submitted" || status === "streaming") {
     Icon = <span aria-hidden className="size-3 rounded-[2px] bg-current" />;
