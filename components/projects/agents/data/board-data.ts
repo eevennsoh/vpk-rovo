@@ -24,57 +24,87 @@ export interface BoardColumnData {
 export const BOARD_COLUMNS: readonly BoardColumnData[] = [
 	{
 		title: "RFP Intake",
-		count: 9,
+		count: 7,
 		cards: [
 			{
-				title: "Qualify global ITSM platform replacement RFP",
+				title: "Qualify enterprise service-management RFP",
 				code: "RFP-101",
 				tags: [
-					{ text: "itsm", color: "blue" },
+					{ text: "qualification", color: "blue" },
 					{ text: "enterprise", color: "discovery" },
 				],
 				priority: "major",
 				avatarSrc: "/avatar-user/andrea-wilson/color/asow-service-yellow.png",
 			},
 			{
-				title: "Extract requirement areas from supplier packet",
+				title: "Parse supplier questionnaire and requested files",
 				code: "RFP-102",
 				tags: [
 					{ text: "requirements", color: "magenta" },
-					{ text: "cmdb", color: "teal" },
+					{ text: "attachments", color: "teal" },
 				],
 				priority: "medium",
 				avatarSrc: "/avatar-user/andrew-park/color/asow-dev-lime.png",
 			},
 			{
-				title: "Map response owners to demo topics",
+				title: "Build DACI and response-owner matrix",
 				code: "RFP-103",
 				tags: [
-					{ text: "ownership", color: "teal" },
-					{ text: "demo-plan", color: "orange" },
+					{ text: "daci", color: "teal" },
+					{ text: "owners", color: "orange" },
 				],
 				priority: "minor",
 				avatarSrc: "/avatar-user/annie-clare/color/asow-strategy-orange.png",
 			},
 			{
-				title: "Confirm bid risks for ITAM and SecOps gaps",
+				title: "Inventory ITSM, asset, portal, and reporting requirements",
 				code: "RFP-104",
 				tags: [
-					{ text: "qualification", color: "teal" },
-					{ text: "itam", color: "discovery" },
-					{ text: "risk", color: "lime" },
+					{ text: "itsm", color: "teal" },
+					{ text: "assets", color: "discovery" },
+					{ text: "reporting", color: "lime" },
 				],
 				priority: "minor",
 				avatarSrc: "/avatar-user/aoife-burke/color/asow-service-yellow.png",
+			},
+			{
+				title: "Confirm bid/no-bid risks and mandatory gaps",
+				code: "RFP-105",
+				tags: [
+					{ text: "risk", color: "red" },
+					{ text: "gaps", color: "yellow" },
+				],
+				priority: "major",
+				avatarSrc: "/avatar-user/bradley-phillips/color/asow-product-purple.png",
+			},
+			{
+				title: "Create RFP timeline with checkpoints and demos",
+				code: "RFP-106",
+				tags: [
+					{ text: "timeline", color: "blue" },
+					{ text: "demo-plan", color: "orange" },
+				],
+				priority: "medium",
+				avatarSrc: "/avatar-user/brian-lin/color/asow-teamwork-blue.png",
+			},
+			{
+				title: "Collect customer context, current tools, and success metrics",
+				code: "RFP-107",
+				tags: [
+					{ text: "discovery", color: "discovery" },
+					{ text: "metrics", color: "green" },
+				],
+				priority: "minor",
+				avatarSrc: "/avatar-user/christine-sanchez/color/asow-strategy-orange.png",
 			},
 		],
 	},
 	{
 		title: "Drafting",
-		count: 18,
+		count: 3,
 		cards: [
 			{
-				title: "Draft Atlassian System of Work narrative",
+				title: "Draft Atlassian System of Work executive narrative",
 				code: "RFP-141",
 				tags: [
 					{ text: "teamwork-graph", color: "discovery" },
@@ -84,31 +114,21 @@ export const BOARD_COLUMNS: readonly BoardColumnData[] = [
 				avatarSrc: "/avatar-user/david-hsieh/color/asow-service-yellow.png",
 			},
 			{
-				title: "Complete pricing and TCO workbook for 7k agents",
+				title: "Write JSM service desk, portal, and knowledge answers",
 				code: "RFP-142",
 				tags: [
-					{ text: "pricing", color: "blue" },
-					{ text: "tco", color: "teal" },
+					{ text: "jsm", color: "teal" },
+					{ text: "knowledge", color: "blue" },
 				],
 				priority: "medium",
 				avatarSrc: "/avatar-user/florence-garcia/color/asow-strategy-orange.png",
 			},
 			{
-				title: "Answer AI, integrations, and CI/CD questions",
+				title: "Prepare pricing, implementation, and TCO response",
 				code: "RFP-143",
 				tags: [
-					{ text: "ai", color: "green" },
-					{ text: "integrations", color: "blue" },
-				],
-				priority: "minor",
-				avatarSrc: "/avatar-user/andrea-wilson/color/asow-service-yellow.png",
-			},
-			{
-				title: "Write service desk, request, and portal response",
-				code: "RFP-144",
-				tags: [
-					{ text: "jsm", color: "teal" },
-					{ text: "portal", color: "orange" },
+					{ text: "pricing", color: "blue" },
+					{ text: "tco", color: "teal" },
 				],
 				priority: "medium",
 				avatarSrc: "/avatar-user/andrew-park/color/asow-dev-lime.png",
@@ -117,20 +137,20 @@ export const BOARD_COLUMNS: readonly BoardColumnData[] = [
 	},
 	{
 		title: "Review",
-		count: 6,
+		count: 4,
 		cards: [
 			{
-				title: "Review Assets, CMDB, HAM, and SAM answer",
+				title: "Review Assets, CMDB, HAM, and SAM positioning",
 				code: "RFP-161",
 				tags: [
 					{ text: "assets", color: "grey" },
-					{ text: "approval", color: "yellow" },
+					{ text: "cmdb", color: "yellow" },
 				],
 				priority: "major",
 				avatarSrc: "/avatar-user/annie-clare/color/asow-strategy-orange.png",
 			},
 			{
-				title: "Legal review for data residency and DPA terms",
+				title: "Legal review for data residency, DPA, and terms",
 				code: "RFP-162",
 				tags: [
 					{ text: "legal", color: "red" },
@@ -141,7 +161,7 @@ export const BOARD_COLUMNS: readonly BoardColumnData[] = [
 				avatarSrc: "/avatar-user/aoife-burke/color/asow-service-yellow.png",
 			},
 			{
-				title: "Security review for Guard, audit, and vulnerability content",
+				title: "Security review for Guard, audit, GRC, and vulnerabilities",
 				code: "RFP-163",
 				tags: [
 					{ text: "security", color: "discovery" },
@@ -151,11 +171,11 @@ export const BOARD_COLUMNS: readonly BoardColumnData[] = [
 				avatarSrc: "/avatar-user/bradley-phillips/color/asow-product-purple.png",
 			},
 			{
-				title: "Executive approval for onsite final pitch",
+				title: "Executive review of win themes and final pitch",
 				code: "RFP-164",
 				tags: [
 					{ text: "executive-review", color: "discovery" },
-					{ text: "final-pitch", color: "orange" },
+					{ text: "win-theme", color: "orange" },
 				],
 				priority: "major",
 				avatarSrc: "/avatar-user/brian-lin/color/asow-teamwork-blue.png",
@@ -164,48 +184,27 @@ export const BOARD_COLUMNS: readonly BoardColumnData[] = [
 	},
 	{
 		title: "Submitted",
-		count: 24,
+		count: 2,
 		cards: [
 			{
-				title: "Submit signed intent-to-bid package",
+				title: "Submit supplier clarification responses",
 				code: "RFP-181",
 				tags: [
 					{ text: "submitted", color: "discovery" },
-					{ text: "intake", color: "blue" },
+					{ text: "clarifications", color: "magenta" },
 				],
 				priority: "minor",
 				avatarSrc: "/avatar-user/christine-sanchez/color/asow-strategy-orange.png",
 			},
 			{
-				title: "Send supplier clarification responses",
+				title: "Archive final response, exhibits, and demo deck",
 				code: "RFP-182",
 				tags: [
-					{ text: "clarifications", color: "magenta" },
-					{ text: "customer", color: "discovery" },
-				],
-				priority: "medium",
-				avatarSrc: "/avatar-user/darius-pavri/color/asow-strategy-orange.png",
-			},
-			{
-				title: "Archive final response, exhibits, and demo deck",
-				code: "RFP-183",
-				tags: [
 					{ text: "archive", color: "blue" },
-					{ text: "proposal", color: "magenta" },
 					{ text: "exhibits", color: "lime" },
 				],
 				priority: "medium",
 				avatarSrc: "/avatar-user/david-hsieh/color/asow-service-yellow.png",
-			},
-			{
-				title: "Capture retro gaps for ITAM and SecOps roadmap",
-				code: "RFP-184",
-				tags: [
-					{ text: "retro", color: "red" },
-					{ text: "roadmap", color: "blue" },
-				],
-				priority: "major",
-				avatarSrc: "/avatar-user/florence-garcia/color/asow-strategy-orange.png",
 			},
 		],
 	},

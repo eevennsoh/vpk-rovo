@@ -15,6 +15,9 @@ import type {
   RefObject,
 } from "react";
 
+import Image from "next/image";
+
+import { Badge } from "@/components/ui/badge";
 import {
   Command,
   CommandEmpty,
@@ -1281,6 +1284,17 @@ export type PromptInputButtonProps = ComponentProps<typeof InputGroupButton> & {
   tooltip?: PromptInputButtonTooltip;
 };
 
+const PROMPT_INPUT_PREFERENCE_SOURCES = [
+  {
+    src: "/3p/google-drive/16-borderless.svg",
+    label: "Google Drive",
+  },
+  {
+    src: "/3p/microsoft-teams/16-borderless.svg",
+    label: "Microsoft Teams",
+  },
+] as const;
+
 export const PromptInputButton = ({
   variant = "ghost",
   className,
@@ -1329,6 +1343,63 @@ export const PromptInputButton = ({
 
   return tooltipElement;
 };
+
+export type PromptInputPreferencesButtonProps = Omit<
+  PromptInputButtonProps,
+  "children" | "size"
+> & {
+  overflowCount?: number;
+};
+
+export const PromptInputPreferencesButton = ({
+  "aria-label": ariaLabel = "Customize",
+  className,
+  overflowCount = 5,
+  variant = "ghost",
+  ...props
+}: Readonly<PromptInputPreferencesButtonProps>) => (
+  <PromptInputButton
+    aria-label={ariaLabel}
+    className={cn(
+      "h-8 w-[110px] min-w-[110px] gap-1 rounded-lg px-3 text-text hover:text-text",
+      className
+    )}
+    size="sm"
+    type="button"
+    variant={variant}
+    {...props}
+  >
+    {PROMPT_INPUT_PREFERENCE_SOURCES.map((source) => (
+      <Image
+        alt=""
+        aria-hidden
+        className="size-4 shrink-0"
+        height={16}
+        key={source.label}
+        src={source.src}
+        width={16}
+      />
+    ))}
+    <span aria-hidden className="inline-flex size-4 shrink-0 items-center justify-center rounded bg-primary">
+      <Image
+        alt=""
+        aria-hidden
+        className="size-3 invert"
+        height={12}
+        src="/brand-icons/teams.svg"
+        width={12}
+      />
+    </span>
+    <Badge
+      aria-hidden
+      className="pointer-events-none h-4 min-w-0 rounded-xs bg-surface-pressed px-1.5 text-xs font-normal leading-4 text-text hover:bg-surface-pressed active:bg-surface-pressed"
+      max={false}
+      variant="neutral"
+    >
+      +{overflowCount}
+    </Badge>
+  </PromptInputButton>
+);
 
 export type PromptInputActionMenuProps = ComponentProps<typeof DropdownMenu>;
 export const PromptInputActionMenu = (props: Readonly<PromptInputActionMenuProps>) => (

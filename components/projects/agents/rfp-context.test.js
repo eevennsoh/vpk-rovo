@@ -19,6 +19,7 @@ async function loadRfpContextHarness() {
 	const result = await esbuild.build({
 		stdin: {
 			contents: `
+				export { BOARD_COLUMNS } from "./components/projects/agents/data/board-data";
 				export {
 					AGENTS_BOARD_CONTEXT_LABEL,
 					RFP_101_WORK_ITEM,
@@ -49,14 +50,14 @@ test("RFP-101 active work item formats a bounded hidden Jira context block", asy
 
 	assert.match(context, /^\[Active Jira Work Item Context\]/);
 	assert.match(context, /\[End Active Jira Work Item Context\]$/);
-	assert.match(context, /Global Automotive Enterprise/);
-	assert.match(context, /Description: A global automotive enterprise is evaluating Atlassian/);
+	assert.match(context, /Enterprise Evaluation Account/);
+	assert.match(context, /Description: A large enterprise customer is evaluating Atlassian/);
 	assert.match(context, /Due date: Sep 8, 2025/);
-	assert.match(context, /7,000 agents/);
-	assert.match(context, /ServiceNow ITSM, ITOM, CMDB/);
+	assert.match(context, /multi-thousand users/);
+	assert.match(context, /incumbent service-management, CMDB/);
 	assert.match(context, /Response team needs:/);
 	assert.match(context, /RFP-105: Build requirement matrix/);
-	assert.match(context, /automotive-itsm-rfp-requirements\.pdf/);
+	assert.match(context, /enterprise-rfp-requirements\.pdf/);
 	assert.match(context, /Recent activity:/);
 	assert.match(context, /Sales engineering can own JSM workflows/);
 });
@@ -68,8 +69,8 @@ test("board fallback formats bounded visible /agents context", async () => {
 	assert.match(context, /^\[Agents Board Context\]/);
 	assert.match(context, /\[End Agents Board Context\]$/);
 	assert.match(context, /Enterprise RFP Response/);
-	assert.match(context, /RFP Intake: 9 work items/);
-	assert.match(context, /RFP-101: Qualify global ITSM platform replacement RFP/);
+	assert.match(context, /RFP Intake: 7 work items/);
+	assert.match(context, /RFP-101: Qualify enterprise service-management RFP/);
 	assert.ok(context.length < 1_500);
 });
 
@@ -77,24 +78,37 @@ test("non-RFP-101 work items format a lightweight active work item context", asy
 	const harness = await loadRfpContextHarness();
 	const workItem = harness.getAgentsWorkItemForCard({
 		code: "RFP-102",
-		title: "Extract requirement areas from supplier packet",
+		title: "Parse supplier questionnaire and requested files",
 	});
 
-	assert.deepEqual(workItem, {
-		code: "RFP-102",
-		title: "Extract requirement areas from supplier packet",
-	});
-	assert.equal(
-		harness.formatActiveJiraWorkItemContext(workItem),
-		[
-			"[Active Jira Work Item Context]",
-			"Source: /agents Jira work item.",
-			"Key: RFP-102",
-			"Title: Extract requirement areas from supplier packet",
-			"[End Active Jira Work Item Context]",
-		].join("\n"),
-	);
+	assert.equal(workItem.code, "RFP-102");
+	assert.equal(workItem.title, "Parse supplier questionnaire and requested files");
+	assert.match(workItem.description, /Review the supplier packet/);
+	assert.ok(workItem.description.length > 250);
+
+	const context = harness.formatActiveJiraWorkItemContext(workItem);
+	assert.match(context, /^\[Active Jira Work Item Context\]/);
+	assert.match(context, /Key: RFP-102/);
+	assert.match(context, /Title: Parse supplier questionnaire and requested files/);
+	assert.match(context, /Description: Review the supplier packet/);
+	assert.match(context, /customer-reference requests/);
+	assert.match(context, /\[End Active Jira Work Item Context\]$/);
 	assert.equal(harness.formatActiveJiraWorkItemContext(null), undefined);
+});
+
+test("every visible agents board card resolves to a substantial work item description", async () => {
+	const harness = await loadRfpContextHarness();
+	const cards = harness.BOARD_COLUMNS.flatMap((column) => column.cards);
+
+	assert.equal(cards.length, 16);
+
+	for (const card of cards) {
+		const workItem = harness.getAgentsWorkItemForCard(card);
+		assert.equal(workItem.code, card.code);
+		assert.equal(workItem.title, card.title);
+		assert.equal(typeof workItem.description, "string", `${card.code} is missing a description`);
+		assert.ok(workItem.description.length > 220, `${card.code} description is too short`);
+	}
 });
 
 test("agents chat screen resolver switches from board fallback to active work item", async () => {
@@ -110,7 +124,7 @@ test("agents chat screen resolver switches from board fallback to active work it
 
 	const workItemContext = harness.resolveAgentsChatScreenContext(harness.RFP_101_WORK_ITEM);
 	assert.deepEqual(workItemContext.chatContextBar, {
-		label: "RFP-101: Qualify global ITSM platform replacement RFP",
+		label: "RFP-101: Qualify enterprise service-management RFP",
 		iconName: "work-item",
 		signature: "agents-work-item:RFP-101",
 	});

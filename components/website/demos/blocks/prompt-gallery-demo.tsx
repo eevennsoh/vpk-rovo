@@ -11,13 +11,13 @@ import {
 	PromptInputActionMenuItem,
 	PromptInputActionMenuTrigger,
 	PromptInputBody,
-	PromptInputButton,
 	PromptInputFooter,
+	PromptInputPreferencesButton,
 	PromptInputSubmit,
 	PromptInputTextarea,
 	PromptInputTools,
 } from "@/components/ui-ai/prompt-input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
 import { composerUpwardShadow, composerPromptInputClassName, composerTextareaClassName, textareaCSS } from "@/components/blocks/shared-ui/composer-styles";
 import { SpeechInput } from "@/components/ui-ai/speech-input";
 import { Footer } from "@/components/ui/footer";
@@ -26,7 +26,6 @@ import Image from "next/image";
 import { token } from "@/lib/tokens";
 import AddIcon from "@atlaskit/icon/core/add";
 import ArrowUpIcon from "@atlaskit/icon/core/arrow-up";
-import CustomizeIcon from "@atlaskit/icon/core/customize";
 import LinkIcon from "@atlaskit/icon/core/link";
 import MentionIcon from "@atlaskit/icon/core/mention";
 import PageIcon from "@atlaskit/icon/core/page";
@@ -117,10 +116,9 @@ export default function PromptGalleryDemo() {
 									</PromptInputActionMenu>
 
 									<Popover open={isCustomizeMenuOpen} onOpenChange={setIsCustomizeMenuOpen}>
-										<PopoverTrigger render={<PromptInputButton aria-label="Customize" size="icon-sm" variant="ghost" />}>
-											<CustomizeIcon label="" />
-										</PopoverTrigger>
+										<PopoverTrigger render={<PromptInputPreferencesButton aria-label="Customize" />} />
 										<PopoverContent side="top" align="start" sideOffset={8} className="w-auto p-2">
+											<PopoverTitle className="sr-only">Customize response</PopoverTitle>
 											<CustomizeMenu
 												selectedReasoning={selectedReasoning}
 												onReasoningChange={setSelectedReasoning}
