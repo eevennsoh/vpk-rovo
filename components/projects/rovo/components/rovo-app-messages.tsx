@@ -766,6 +766,14 @@ export function RovoAppMessages({
 		return computeRovoAppAnchorScrollTop(defaultTargetTop, scrollElement, scrollSpacerRef);
 	}, []);
 
+	useEffect(() => {
+		if (scrollFollowMode !== "bottom" || !scrollSpacerRef.current) {
+			return;
+		}
+
+		scrollSpacerRef.current.style.height = "0px";
+	}, [scrollFollowMode]);
+
 	return (
 		<Conversation className={cn("relative bg-background", shouldShowEmptyConversationState && "!flex-none overflow-visible")} followMode={scrollFollowMode} targetScrollTop={handleTargetScrollTop}>
 			<RovoAppScrollAnchorSync scrollAnchorMessageId={scrollAnchorMessageId} />

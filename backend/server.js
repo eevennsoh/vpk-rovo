@@ -390,8 +390,12 @@ const {
 } = require("./lib/prompt-intent");
 const {
 	looksLikeClarificationResponse,
+	extractQuestionCardDefinitionFromAssistantText,
 	MAX_LABEL_LENGTH: CLARIFICATION_MAX_LABEL_LENGTH,
 } = require("./lib/question-card-extractor");
+const {
+	extractQuestionCardJsonFromAssistantText,
+} = require("./lib/question-card-json-extractor");
 const {
 	sanitizeQuestionCardPayload,
 	buildQuestionCardPayloadFromRequestUserInput,
@@ -4480,6 +4484,7 @@ const _activeDeferredToolCallStore = new Map();
 const _pausedRovoDevToolCallStore = new Map();
 const PAUSED_ROVODEV_TOOL_CALL_TTL_MS = 15 * 60_000;
 
+
 function clearActiveDeferredToolCall(toolCallId) {
 	const normalizedToolCallId = getNonEmptyString(toolCallId);
 	if (!normalizedToolCallId) {
@@ -5526,14 +5531,24 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 			}
 		}
 
-		const shouldRejectExpiredClarification = shouldRejectExpiredDeferredClarification({
-			hasClarificationContinuation:
-				isPostClarificationTurn &&
-				Boolean(clarificationSubmission) &&
-				!rawDeferredToolResponse,
-			hasPausedClarificationToolCall,
-			toolCallId: clarificationToolCallId,
-		});
+		// AI Gateway-minted clarification toolCallIds have no paused-tool-call
+		// counterpart by design (the gateway path doesn't pause-and-resume;
+		// answers are injected as context for the next turn). Skip the
+		// RovoDev-shaped expired gate for these so legitimate submissions
+		// aren't rejected as "expired".
+		const isAIGatewayClarificationToolCallId =
+			typeof clarificationToolCallId === "string" &&
+			clarificationToolCallId.startsWith("ai-gateway-clarification-");
+		const shouldRejectExpiredClarification =
+			!isAIGatewayClarificationToolCallId &&
+			shouldRejectExpiredDeferredClarification({
+				hasClarificationContinuation:
+					isPostClarificationTurn &&
+					Boolean(clarificationSubmission) &&
+					!rawDeferredToolResponse,
+				hasPausedClarificationToolCall,
+				toolCallId: clarificationToolCallId,
+			});
 		if (shouldRejectExpiredClarification) {
 			console.info("[CHAT-SDK] Rejected expired clarification continuation", {
 				toolCallId: clarificationToolCallId,
@@ -6338,11 +6353,15 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 
 		let enrichedContextDescription = contextDescription;
 
-		if (
-			clarificationSubmission &&
-			!hasPausedClarificationToolCall &&
-			!rawDeferredToolResponse
-		) {
+		// Inject the user's clarification answers as a structured
+		// [ask_user_questions Result] block into the system context so the
+		// model can ground its follow-up. Fires for both RovoDev (when no
+		// paused tool call exists for the V3 resume path to handle it) and
+		// AI Gateway (which has no paused-tool-call concept and always
+		// needs the injection). The `submitClarification` client flow
+		// always sends BOTH `clarification` and `deferredToolResponse`, so
+		// we no longer gate on the absence of `rawDeferredToolResponse`.
+		if (clarificationSubmission && !hasPausedClarificationToolCall) {
 			const serialized = JSON.stringify(
 				adaptClarificationAnswersForToolContract(
 					clarificationSubmission.sessionId,
@@ -7559,10 +7578,12 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 			cleanupChatSdkAbortTracking = cleanupAbortTracking;
 			res.once("finish", cleanupAbortTracking);
 			res.once("close", cleanupAbortTracking);
-			const gatewayMessages = compressedPromptHistory.conversationHistory.map((message) => ({
-				role: message.type === "assistant" ? "assistant" : "user",
-				content: message.content,
-			}));
+			const gatewayMessages = compressedPromptHistory.conversationHistory.map(
+				(message) => ({
+					role: message.type === "assistant" ? "assistant" : "user",
+					content: message.content,
+				}),
+			);
 			const gatewaySystem = buildAIGatewaySystemPrompt({
 				runtimeContext: getNonEmptyString(effectiveContextWithPortBinding),
 				userName: getNonEmptyString(rawUserName),
@@ -7580,18 +7601,32 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 			const stream = createUIMessageStream({
 				execute: async ({ writer }) => {
 					const textId = `ai-gateway-text-${Date.now()}`;
-					let textStarted = false;
-					const emitTextDelta = (delta) => {
-						if (typeof delta !== "string" || delta.length === 0) {
-							return;
-						}
-						if (!textStarted) {
-							writer.write({ type: "text-start", id: textId });
-							textStarted = true;
-						}
-						writer.write({ type: "text-delta", id: textId, delta });
-					};
+					let bufferedText = "";
 
+					// Show the thinking trace immediately so the user gets
+					// feedback during the buffering window (the entire gateway
+					// streaming duration — no token-by-token UX on this path).
+					// Uses the same data-thinking-status protocol the RovoDev
+					// branch uses, so the existing thinking-trace renderer
+					// picks it up unchanged.
+					writer.write({
+						type: "data-thinking-status",
+						data: {
+							label: "Thinking",
+							activity: "data",
+							source: "backend",
+						},
+					});
+
+					// Buffer all deltas server-side instead of streaming them.
+					// `context-rovo-chat.tsx` (used by /agents' sidebar-chat) does
+					// not honor `data-clear` for assistant text, so we can't
+					// stream the raw JSON fence and then wipe it. Buffering lets
+					// us inspect the full response, strip the fence, and emit
+					// only the cleaned prose. Trade-off: no streaming UX during
+					// an AI Gateway turn; acceptable for the typical short
+					// clarification response. If/when context-rovo-chat learns
+					// to honor data-clear, we can revert to streamed deltas.
 					await streamTextViaGateway({
 						system: gatewaySystem || undefined,
 						prompt: latestUserMessage,
@@ -7601,12 +7636,63 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 						provider,
 						signal: abortController.signal,
 						backendPreference: "ai-gateway",
-						onTextDelta: emitTextDelta,
+						onTextDelta: (delta) => {
+							if (typeof delta === "string" && delta.length > 0) {
+								bufferedText += delta;
+							}
+						},
 					});
 
-					if (textStarted) {
+					// Post-process: prefer the JSON-fence path (rich options),
+					// fall back to the prose extractor when the model didn't
+					// comply with the JSON instruction.
+					let widgetPayload = null;
+					let visibleText = bufferedText;
+					const jsonResult =
+						extractQuestionCardJsonFromAssistantText(bufferedText);
+					if (jsonResult) {
+						widgetPayload = jsonResult.payload;
+						visibleText = jsonResult.cleanedText;
+					} else {
+						const cardDefinition =
+							extractQuestionCardDefinitionFromAssistantText(bufferedText);
+						if (
+							cardDefinition &&
+							Array.isArray(cardDefinition.questions) &&
+							cardDefinition.questions.length > 0
+						) {
+							widgetPayload = cardDefinition;
+						}
+					}
+
+					if (visibleText && visibleText.length > 0) {
+						writer.write({ type: "text-start", id: textId });
+						writer.write({
+							type: "text-delta",
+							id: textId,
+							delta: visibleText,
+						});
 						writer.write({ type: "text-end", id: textId });
 					}
+
+					if (widgetPayload) {
+						const toolCallId = `ai-gateway-clarification-${Date.now()}`;
+						writer.write({
+							type: "data-widget-data",
+							id: toolCallId,
+							data: {
+								type: "question-card",
+								payload: {
+									...widgetPayload,
+									sessionId: toolCallId,
+									round: 1,
+									toolCallId,
+									deferredToolCallId: toolCallId,
+								},
+							},
+						});
+					}
+
 					writer.write({
 						type: "data-turn-complete",
 						data: { timestamp: new Date().toISOString() },
@@ -11335,6 +11421,18 @@ app.post("/api/rovo/cancel-deferred-tool", async (req, res) => {
 		const toolCallId = getNonEmptyString(req.body?.toolCallId);
 		if (!toolCallId) {
 			return res.status(400).json({ error: "toolCallId is required" });
+		}
+
+		// AI Gateway clarification cards have no backend state to clean —
+		// the gateway request that emitted the card has already completed
+		// and we hold no pending tool-call record. Silently 200-ack so the
+		// client's `cancelDeferredToolCall` succeeds and the card unmounts.
+		if (toolCallId.startsWith("ai-gateway-clarification-")) {
+			return res.status(200).json({
+				cancelled: true,
+				kind: "ai-gateway-clarification",
+				toolCallId,
+			});
 		}
 
 		const activeDeferredToolCall = clearActiveDeferredToolCall(toolCallId);

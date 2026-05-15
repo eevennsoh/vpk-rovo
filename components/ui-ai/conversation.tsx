@@ -110,24 +110,29 @@ export function Conversation({
 	const isFollowPausedRef = useRef(false)
 	const resolvedFollowMode = followMode ?? (targetScrollTop ? "target" : "bottom")
 
+	const hasActiveUserScrollIntent = useCallback(() => {
+		return (
+			isPointerScrollingRef.current ||
+			Date.now() - lastUserScrollIntentAtRef.current <= USER_SCROLL_INTENT_TIMEOUT_MS
+		)
+	}, [])
+
 	const getDefaultTargetTop = useCallback((scrollElement: HTMLElement) => {
 		return Math.max(0, scrollElement.scrollHeight - scrollElement.clientHeight)
 	}, [])
 
 	const getScrollTargetTop = useCallback((scrollElement: HTMLElement) => {
 		const defaultTargetTop = getDefaultTargetTop(scrollElement)
-		return targetScrollTop
-			? targetScrollTop(defaultTargetTop, { scrollElement })
-			: defaultTargetTop
-	}, [getDefaultTargetTop, targetScrollTop])
-
-	const getExpectedFollowTop = useCallback((scrollElement: HTMLElement) => {
 		if (resolvedFollowMode === "target" && targetScrollTop) {
-			return getScrollTargetTop(scrollElement)
+			return targetScrollTop(defaultTargetTop, { scrollElement })
 		}
 
-		return getDefaultTargetTop(scrollElement)
-	}, [getDefaultTargetTop, getScrollTargetTop, resolvedFollowMode, targetScrollTop])
+		return defaultTargetTop
+	}, [getDefaultTargetTop, resolvedFollowMode, targetScrollTop])
+
+	const getExpectedFollowTop = useCallback((scrollElement: HTMLElement) => {
+		return getScrollTargetTop(scrollElement)
+	}, [getScrollTargetTop])
 
 	const updateIsAtBottom = useCallback(() => {
 		const scrollElement = scrollRef.current
@@ -135,12 +140,12 @@ export function Conversation({
 			return true
 		}
 
-		const distanceFromBottom =
-			scrollElement.scrollHeight - scrollElement.clientHeight - scrollElement.scrollTop
-		const nextIsAtBottom = distanceFromBottom <= DEFAULT_SCROLL_THRESHOLD_PX
+		const expectedFollowTop = getExpectedFollowTop(scrollElement)
+		const distanceFromFollowTarget = Math.abs(scrollElement.scrollTop - expectedFollowTop)
+		const nextIsAtBottom = distanceFromFollowTarget <= DEFAULT_SCROLL_THRESHOLD_PX
 		setIsAtBottom(nextIsAtBottom)
 		return nextIsAtBottom
-	}, [])
+	}, [getExpectedFollowTop])
 
 	const scrollToBottom = useCallback(
 		async (options?: ScrollToBottomOptions) => {
@@ -230,9 +235,7 @@ export function Conversation({
 				return
 			}
 
-			const didUserInitiateScroll =
-				isPointerScrollingRef.current ||
-				Date.now() - lastUserScrollIntentAtRef.current <= USER_SCROLL_INTENT_TIMEOUT_MS
+			const didUserInitiateScroll = hasActiveUserScrollIntent()
 			if (!didUserInitiateScroll) {
 				return
 			}
@@ -249,7 +252,7 @@ export function Conversation({
 		return () => {
 			scrollElement.removeEventListener("scroll", handleScroll)
 		}
-	}, [getExpectedFollowTop, updateIsAtBottom])
+	}, [getExpectedFollowTop, hasActiveUserScrollIntent, updateIsAtBottom])
 
 	useEffect(() => {
 		const scrollElement = scrollRef.current
@@ -259,11 +262,15 @@ export function Conversation({
 
 		lastKnownScrollHeightRef.current = scrollElement.scrollHeight
 
-		if (initial === false || hasInitializedScrollRef.current) {
+		if (hasInitializedScrollRef.current) {
 			return
 		}
 
 		hasInitializedScrollRef.current = true
+		if (initial === false) {
+			return
+		}
+
 		const frameId = window.requestAnimationFrame(() => {
 			void scrollToBottom({ animation: initial })
 		})
@@ -283,10 +290,15 @@ export function Conversation({
 		const observer = new ResizeObserver(() => {
 			const previousScrollHeight = lastKnownScrollHeightRef.current
 			const nextScrollHeight = scrollElement.scrollHeight
+			const shouldYieldToUserScroll =
+				hasInitializedScrollRef.current && hasActiveUserScrollIntent()
 			const shouldFollowContent =
-				!isFollowPausedRef.current ||
-				previousScrollHeight === 0 ||
-				!hasInitializedScrollRef.current
+				!shouldYieldToUserScroll &&
+				(
+					!isFollowPausedRef.current ||
+					previousScrollHeight === 0 ||
+					!hasInitializedScrollRef.current
+				)
 
 			lastKnownScrollHeightRef.current = nextScrollHeight
 			updateIsAtBottom()
@@ -306,7 +318,7 @@ export function Conversation({
 		return () => {
 			observer.disconnect()
 		}
-	}, [resize, scrollToBottom, updateIsAtBottom])
+	}, [hasActiveUserScrollIntent, resize, scrollToBottom, updateIsAtBottom])
 
 	return (
 		<ConversationContext value={contextValue}>

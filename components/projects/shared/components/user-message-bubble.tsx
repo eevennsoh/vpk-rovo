@@ -1,13 +1,26 @@
-import { Message as UiMessage, MessageContent } from "@/components/ui-ai/message";
+import {
+	Message as UiMessage,
+	MessageActions,
+	MessageContent,
+	MessageCopyAction,
+	MessageEditAction,
+	MessageResponse,
+} from "@/components/ui-ai/message";
 import { AnswerCard } from "@/components/blocks/answer-card/components/answer-card";
 import { Button } from "@/components/ui/button";
+import { InlineEdit } from "@/components/ui/inline-edit";
 import type { RovoMessageMetadata } from "@/lib/rovo-ui-messages";
 import DeleteIcon from "@atlaskit/icon/core/delete";
 
 interface UserMessageBubbleProps {
 	messageText: string;
 	metadata?: RovoMessageMetadata;
+	isEditing?: boolean;
 	onDelete?: () => void;
+	onEdit?: (nextText: string) => Promise<void> | void;
+	onStartEdit?: () => void;
+	onCancelEdit?: () => void;
+	showPromptActions?: boolean;
 }
 
 function getClarificationSummaryRows(
@@ -34,11 +47,18 @@ function getClarificationSummaryRows(
 export function UserMessageBubble({
 	messageText,
 	metadata,
+	isEditing = false,
 	onDelete,
+	onEdit,
+	onStartEdit,
+	onCancelEdit,
+	showPromptActions = false,
 }: Readonly<UserMessageBubbleProps>): React.ReactElement {
 	const isDismissed = metadata?.clarificationStatus === "dismissed";
 	const clarificationSummaryRows = isDismissed ? [] : getClarificationSummaryRows(metadata);
 	const showClarificationSummary = isDismissed || clarificationSummaryRows.length > 0;
+	const canShowPromptActions = showPromptActions && messageText.trim().length > 0;
+	const canEditPrompt = canShowPromptActions && !showClarificationSummary && Boolean(onEdit && onStartEdit);
 
 	return (
 		<div className="group/user-msg relative w-full">
@@ -55,14 +75,46 @@ export function UserMessageBubble({
 					</Button>
 				</span>
 			) : null}
-			<UiMessage from="user">
-				{showClarificationSummary ? (
-					<AnswerCard
-						label={isDismissed ? "Questions dismissed" : undefined}
-						rows={clarificationSummaryRows}
+			<UiMessage
+				from="user"
+				className={isEditing ? "w-full max-w-full" : undefined}
+				fitContent={!isEditing}
+			>
+				{isEditing && onEdit ? (
+					<InlineEdit
+						value={messageText}
+						multiline
+						startWithEditViewOpen
+						keepEditViewOpenOnBlur
+						onConfirm={(nextValue) => void onEdit(nextValue)}
+						onCancel={() => onCancelEdit?.()}
 					/>
+				) : showClarificationSummary ? (
+					<>
+						<AnswerCard
+							label={isDismissed ? "Questions dismissed" : undefined}
+							rows={clarificationSummaryRows}
+						/>
+						{canShowPromptActions && !isDismissed ? (
+							<MessageActions reveal="hover" className="justify-end text-text-subtle">
+								<MessageCopyAction text={messageText} />
+							</MessageActions>
+						) : null}
+					</>
 				) : (
-					<MessageContent>{messageText}</MessageContent>
+					<>
+						<MessageContent>
+							<MessageResponse className="font-medium text-inherit [&_*]:text-inherit">
+								{messageText}
+							</MessageResponse>
+						</MessageContent>
+						{canShowPromptActions ? (
+							<MessageActions reveal="hover" className="justify-end text-text-subtle">
+								<MessageCopyAction text={messageText} />
+								{canEditPrompt ? <MessageEditAction onClick={onStartEdit} /> : null}
+							</MessageActions>
+						) : null}
+					</>
 				)}
 			</UiMessage>
 		</div>

@@ -12,6 +12,10 @@ import {
 	DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import { useRovoChat } from "@/app/contexts";
+import {
+	buildRovoAppThreadPath,
+	ROVO_APP_ROOT_PATH,
+} from "@/components/projects/rovo/lib/rovo-app-thread-route-sync";
 import { cn } from "@/lib/utils";
 
 export type CurrentSurface = "sidebar" | "floating";
@@ -30,7 +34,7 @@ export function ChatSurfaceSwitcherItems({
 	onSurfaceSwitch,
 }: Readonly<ChatSurfaceSwitcherItemsProps>) {
 	const router = useRouter();
-	const { switchSurface, closeChat } = useRovoChat();
+	const { activeThreadId, switchSurface, closeChat } = useRovoChat();
 
 	const handleSelectSurface = (surface: CurrentSurface) => {
 		onSurfaceSwitch?.(surface);
@@ -39,7 +43,7 @@ export function ChatSurfaceSwitcherItems({
 
 	const handleSelectFullscreen = () => {
 		closeChat();
-		router.push("/rovo");
+		router.push(activeThreadId ? buildRovoAppThreadPath(activeThreadId) : ROVO_APP_ROOT_PATH);
 	};
 
 	return (

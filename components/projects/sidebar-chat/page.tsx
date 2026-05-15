@@ -2,11 +2,14 @@
 
 import { useEffect, useMemo, useCallback, useRef, useState, type CSSProperties } from "react";
 import { useRovoChat } from "@/app/contexts";
-import { token } from "@/lib/tokens";
 import type { SendPromptOptions } from "@/app/contexts";
 import type { ChatContextBarDescriptor } from "./lib/chat-context-bar";
 import type { ChatSurfaceSwitchHandler } from "@/components/projects/shared/components/chat-surface-switcher";
-import { Conversation, ConversationContent } from "@/components/ui-ai/conversation";
+import {
+	Conversation,
+	ConversationContent,
+	ConversationScrollButton,
+} from "@/components/ui-ai/conversation";
 import { MessageTurns } from "@/components/projects/shared/message-turns";
 import { isRenderableRovoUIMessage } from "@/lib/rovo-ui-messages";
 import { mergeRovoContextDescriptions } from "@/lib/rovo-context";
@@ -100,6 +103,9 @@ export default function ChatPanel({
 		resetChat,
 		uiMessages: rawUiMessages,
 		sendPrompt,
+		editMessage,
+		editingMessageId,
+		setEditingMessageId,
 		chatSurface,
 		currentThreadHasRichState,
 		isHistoryOpen,
@@ -210,7 +216,10 @@ export default function ChatPanel({
 	});
 	const shouldShowQuestionCard = !isRequestInFlight && shouldShowQuestionCardRaw;
 
-	const { conversationContextRef, scrollSpacerRef, getLatestTurnTargetTop } = useScrollAnchor({ uiMessages });
+	const { conversationContextRef, scrollSpacerRef, getLatestTurnTargetTop, scrollFollowMode } = useScrollAnchor({
+		isGenerationActive: isStreamingLifecycleActive,
+		uiMessages,
+	});
 
 	const thinking = useThinkingStatus({
 		messages,
@@ -314,11 +323,11 @@ export default function ChatPanel({
 	);
 
 	const messagesContainerStyle = {
-		...chatStyles.messagesContainer,
+		display: chatStyles.messagesContainer.display,
+		flexDirection: chatStyles.messagesContainer.flexDirection,
 		justifyContent: hasMessages || shouldHugEmptyGreeting ? "flex-start" : "flex-end",
 		flex: hasMessages || shouldHugEmptyGreeting ? "0 0 auto" : chatStyles.messagesContainer.flex,
 		minHeight: shouldHugEmptyGreeting ? "auto" : "100%",
-		paddingBottom: hasMessages ? chatStyles.messagesContainer.paddingBottom : token("space.400"),
 	};
 
 	return (
@@ -336,8 +345,11 @@ export default function ChatPanel({
 				</div>
 			)}
 
-			<Conversation className="min-h-0 min-w-0 flex-1" contextRef={conversationContextRef} initial={false} targetScrollTop={getLatestTurnTargetTop}>
-				<ConversationContent className="gap-0 px-3 py-0" style={messagesContainerStyle}>
+			<Conversation className="min-h-0 min-w-0 flex-1" contextRef={conversationContextRef} followMode={scrollFollowMode} initial={false} targetScrollTop={getLatestTurnTargetTop}>
+				<ConversationContent
+					className="mx-auto flex min-w-0 max-w-[800px] flex-col gap-4 px-3 py-6 md:gap-6"
+					style={messagesContainerStyle}
+				>
 					{messages.length === 0 ? (
 						<div style={chatStyles.emptyState}>
 							<ChatGreeting
@@ -352,9 +364,6 @@ export default function ChatPanel({
 					) : (
 						<MessageTurns
 							isUserMessage={(message) => message.role === "user"}
-							getTurnContainerStyle={(_turn, turnIndex) => ({
-								marginTop: turnIndex > 0 ? "24px" : "0",
-							})}
 							getMessageContainerClassName={(message) => (message.role === "assistant" ? "[&:empty]:hidden" : undefined)}
 							getMessageContainerStyle={(message, messageIndex, turn) => {
 								return {
@@ -374,6 +383,11 @@ export default function ChatPanel({
 									showFollowUpSuggestions={message.id === lastAssistantMessageId && !hasPendingChatWork}
 									enableSmartWidgets={enableSmartWidgets}
 									generativeCardAnimation={cards?.generativeAnimation}
+									editingMessageId={editingMessageId}
+									onEditMessage={(messageId, nextText) =>
+										editMessage(messageId, nextText, resolvedSendPromptOptions)
+									}
+									onSetEditingMessageId={setEditingMessageId}
 									onWidgetPrimaryAction={handleWidgetPrimaryAction}
 									onArtifactDialogOpen={handleArtifactDialogOpen}
 									onArtifactDialogClose={releaseArtifactDialogFloatingPin}
@@ -403,6 +417,7 @@ export default function ChatPanel({
 					) : null}
 					{hasMessages ? <div ref={scrollSpacerRef} aria-hidden style={{ height: 0, flexShrink: 0 }} /> : null}
 				</ConversationContent>
+				<ConversationScrollButton className="z-10 transition-all" />
 			</Conversation>
 
 			<div className="min-w-0 shrink-0">
