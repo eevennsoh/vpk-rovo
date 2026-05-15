@@ -23,6 +23,8 @@ interface FloatingChatHeaderProps {
 	onClose: () => void;
 	onNewChat?: () => void;
 	onSurfaceSwitch?: ChatSurfaceSwitchHandler;
+	onHistoryToggle?: () => void;
+	isHistoryOpen?: boolean;
 }
 
 const noop = () => {};
@@ -31,13 +33,21 @@ export default function FloatingChatHeader({
 	onClose,
 	onNewChat,
 	onSurfaceSwitch,
+	onHistoryToggle,
+	isHistoryOpen = false,
 }: Readonly<FloatingChatHeaderProps>) {
 	const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
 
 	return (
 		<div className="flex shrink-0 items-center justify-between px-3 py-3">
 			<div className="flex items-center gap-1">
-				<Button aria-label="Menu" size="icon" variant="ghost" onClick={noop}>
+				<Button
+					aria-label="Chat history"
+					aria-expanded={isHistoryOpen}
+					size="icon"
+					variant={isHistoryOpen ? "secondary" : "ghost"}
+					onClick={onHistoryToggle ?? noop}
+				>
 					<MenuIcon label="" />
 				</Button>
 				<div className="flex items-center gap-2">

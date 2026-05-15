@@ -1022,6 +1022,7 @@ export function useRovoApp({
 			resetObservedTurnComplete();
 			setLocalThreadActiveRun(threadId, {
 				id: `rovo-app-run-local-${threadId}`,
+				backend: "ai-gateway",
 				status,
 				rovoPort: null,
 				startedAt: now,
@@ -2671,6 +2672,7 @@ export function useRovoApp({
 					}
 					: {
 						id: `rovo-app-run-local-${transitionPlan.threadId}`,
+						backend: "ai-gateway",
 						status: "background",
 						rovoPort: null,
 						startedAt: now,

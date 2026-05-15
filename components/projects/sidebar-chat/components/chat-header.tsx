@@ -32,6 +32,8 @@ interface ChatHeaderProps {
 	onSurfaceSwitch?: ChatSurfaceSwitchHandler;
 	isStreaming?: boolean;
 	onStop?: () => void;
+	onHistoryToggle?: () => void;
+	isHistoryOpen?: boolean;
 }
 
 export default function ChatHeader({
@@ -40,6 +42,8 @@ export default function ChatHeader({
 	onSurfaceSwitch,
 	isStreaming,
 	onStop,
+	onHistoryToggle,
+	isHistoryOpen = false,
 }: Readonly<ChatHeaderProps>) {
 	const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
 
@@ -51,7 +55,13 @@ export default function ChatHeader({
 			<div className="flex justify-between items-center">
 				{/* Left side: Menu icon and Title */}
 				<div className="flex items-center gap-1">
-					<Button aria-label="Menu" size="icon" variant="ghost" onClick={noop}>
+					<Button
+						aria-label="Chat history"
+						aria-expanded={isHistoryOpen}
+						size="icon"
+						variant={isHistoryOpen ? "secondary" : "ghost"}
+						onClick={onHistoryToggle ?? noop}
+					>
 						<MenuIcon label="" />
 					</Button>
 					<div className="flex items-center gap-2">

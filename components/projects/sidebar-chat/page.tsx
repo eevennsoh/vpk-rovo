@@ -26,6 +26,7 @@ import { QuestionCardShortcutsFooter } from "@/components/projects/shared/compon
 import { useDismissibleCards } from "@/components/projects/shared/hooks/use-dismissible-cards";
 import type { RovoSuggestion } from "@/lib/rovo-suggestions";
 import ChatHeader from "./components/chat-header";
+import { ChatHistoryDrawer } from "./components/chat-history-drawer";
 import ChatGreeting from "./components/chat-greeting";
 import ChatComposer from "./components/chat-composer";
 import MessageBubble from "./components/message-bubble";
@@ -33,6 +34,8 @@ import type { ArtifactResult } from "./components/artifact-result-card";
 import { StreamingThinkingIndicator } from "./components/streaming-thinking-indicator";
 import { PreloadThinkingIndicator } from "@/components/projects/shared/components/preload-thinking-indicator";
 import { chatStyles } from "./data/styles";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { useChatSubmit } from "./hooks/use-chat-submit";
 import { useScrollAnchor } from "./hooks/use-scroll-anchor";
 import { useThinkingStatus } from "./hooks/use-thinking-status";
@@ -98,7 +101,11 @@ export default function ChatPanel({
 		uiMessages: rawUiMessages,
 		sendPrompt,
 		chatSurface,
+		currentThreadHasRichState,
+		isHistoryOpen,
+		openCurrentThreadFullscreen,
 		pinFloating,
+		toggleHistory,
 		unpinFloating,
 	} = useRovoChat();
 	const panelRef = useRef<HTMLDivElement | null>(null);
@@ -314,10 +321,17 @@ export default function ChatPanel({
 	};
 
 	return (
-		<div ref={panelRef} className={containerClassName} style={{ ...chatStyles.chatPanel, ...resolvedContainerStyle }}>
+		<div ref={panelRef} className={cn("relative overflow-hidden", containerClassName)} style={{ ...chatStyles.chatPanel, ...resolvedContainerStyle }}>
+			<ChatHistoryDrawer />
 			{!hideHeader && (
 				<div className="shrink-0">
-					<ChatHeader onClose={onClose} onNewChat={resetChat} onSurfaceSwitch={onSurfaceSwitch} />
+					<ChatHeader
+						isHistoryOpen={isHistoryOpen}
+						onClose={onClose}
+						onHistoryToggle={toggleHistory}
+						onNewChat={resetChat}
+						onSurfaceSwitch={onSurfaceSwitch}
+					/>
 				</div>
 			)}
 
@@ -406,17 +420,31 @@ export default function ChatPanel({
 						<QuestionCardShortcutsFooter />
 					</>
 				) : (
-					<ChatComposer
-						prompt={prompt}
-						isStreaming={isStreamingLifecycleActive}
-						hasInFlightTurn={hasInFlightTurn}
-						queuedPrompts={queuedPrompts}
-						onPromptChange={setPrompt}
-						onSubmit={handleSubmit}
-						onStop={abort}
-						onRemoveQueuedPrompt={removeQueuedPrompt}
-						chatContextBar={chatContextBar}
-					/>
+					<>
+						{currentThreadHasRichState ? (
+							<div className="border-t border-border px-3 py-2">
+								<div className="flex items-center justify-between gap-3 rounded-md bg-bg-neutral px-3 py-2 text-sm">
+									<span className="min-w-0 text-text-subtle">
+										This thread includes fullscreen-only state.
+									</span>
+									<Button size="sm" variant="ghost" onClick={openCurrentThreadFullscreen}>
+										Open fullscreen
+									</Button>
+								</div>
+							</div>
+						) : null}
+						<ChatComposer
+							prompt={prompt}
+							isStreaming={isStreamingLifecycleActive}
+							hasInFlightTurn={hasInFlightTurn}
+							queuedPrompts={queuedPrompts}
+							onPromptChange={setPrompt}
+							onSubmit={handleSubmit}
+							onStop={abort}
+							onRemoveQueuedPrompt={removeQueuedPrompt}
+							chatContextBar={chatContextBar}
+						/>
+					</>
 				)}
 			</div>
 		</div>

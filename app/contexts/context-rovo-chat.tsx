@@ -19,7 +19,21 @@ import {
 } from "@/lib/rovo-ui-messages";
 import { shouldSendExplicitRovoDevCancel } from "@/lib/rovodev-cancel-strategy";
 import { mergeRovoContextDescriptions } from "@/lib/rovo-context";
-import type { RovoAppHermesContext } from "@/lib/rovo-app-types";
+import {
+	createRovoAppId,
+	type RovoAppHermesContext,
+	type RovoAppThread,
+} from "@/lib/rovo-app-types";
+import {
+	cancelRovoAppRun,
+	createRovoAppThread,
+	deleteRovoAppThread,
+	detachRovoAppRun,
+	fetchRovoAppAITitle,
+	getRovoAppThread,
+	listRovoAppThreads,
+	updateRovoAppThread,
+} from "@/components/projects/rovo/lib/api";
 import {
 	buildWorkItemReportRequestContext,
 	hasActiveWorkItemContext,
@@ -80,6 +94,8 @@ const CHAT_REQUEST_MIN_MESSAGES = 8;
 const EXPLICIT_CANCEL_DEBOUNCE_MS = 2_000;
 const EXPLICIT_CANCEL_GRACE_MS = 1_200;
 const MEDIA_GENERATION_TIMEOUT_MS = 120_000;
+const COMPACT_HISTORY_LIMIT = 40;
+const COMPACT_THREAD_PERSIST_DEBOUNCE_MS = 450;
 
 function resolveClientTimeZone(explicitTimeZone?: string): string | undefined {
 	if (typeof explicitTimeZone === "string" && explicitTimeZone.trim().length > 0) {
@@ -418,6 +434,53 @@ function getPayloadTooLargeUserMessage(): string {
 	return "I couldn't process that request because the chat payload is too large (usually from inline image/file history). I trimmed oversized history data, so you can continue chatting.";
 }
 
+function deriveCompactThreadTitle(prompt: string): string {
+	const normalized = prompt.replace(/\s+/g, " ").trim();
+	if (!normalized) {
+		return "New chat";
+	}
+
+	return normalized.length > 48 ? `${normalized.slice(0, 45).trim()}...` : normalized;
+}
+
+function buildCompactThreadPersistKey(
+	threadId: string | null,
+	messages: ReadonlyArray<RovoUIMessage>
+): string {
+	return JSON.stringify({
+		threadId,
+		messages,
+	});
+}
+
+function hasRichCompactThreadState(thread: RovoAppThread | null): boolean {
+	if (!thread) {
+		return false;
+	}
+
+	if (thread.activeDocumentId || thread.realtimeMessages.length > 0) {
+		return true;
+	}
+
+	return hasRichCompactMessageState(thread.messages);
+}
+
+function hasRichCompactMessageState(messages: ReadonlyArray<RovoUIMessage>): boolean {
+	return messages.some((message) =>
+		message.parts.some((part) => {
+			if (!part.type.startsWith("data-")) {
+				return false;
+			}
+
+			return (
+				part.type.includes("artifact") ||
+				part.type.includes("plan") ||
+				part.type.includes("browser")
+			);
+		})
+	);
+}
+
 function createAssistantThinkingStatusMessage(
 	id: string,
 	label: string,
@@ -471,6 +534,20 @@ interface RovoChatContextType {
 	stopStreaming: () => Promise<void>;
 	clearSuggestedQuestions: () => void;
 	resetChat: () => void;
+	activeThreadId: string | null;
+	currentThread: RovoAppThread | null;
+	threads: ReadonlyArray<RovoAppThread>;
+	threadsLoaded: boolean;
+	isHistoryOpen: boolean;
+	openHistory: () => void;
+	closeHistory: () => void;
+	toggleHistory: () => void;
+	refreshThreads: () => Promise<void>;
+	selectThread: (threadId: string) => Promise<void>;
+	deleteThread: (threadId: string) => Promise<void>;
+	cancelThreadRun: (threadId: string) => Promise<void>;
+	openCurrentThreadFullscreen: () => void;
+	currentThreadHasRichState: boolean;
 	replaceMessages: (messages: ReadonlyArray<RovoUIMessage>) => void;
 	isStreaming: boolean;
 	isMediaGenerating: boolean;
@@ -556,11 +633,18 @@ export function RovoChatProvider({
 		useState<RovoUIMessage | null>(null);
 	const [queuedPrompts, setQueuedPrompts] = useState<QueuedPromptItem[]>([]);
 	const [activePrompt, setActivePrompt] = useState<QueuedPromptItem | null>(null);
+	const [threads, setThreads] = useState<RovoAppThread[]>([]);
+	const [threadsLoaded, setThreadsLoaded] = useState(false);
+	const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
+	const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
 	const errorCounterRef = useRef(0);
 	const queueIdRef = useRef(0);
 	const queuedPromptsRef = useRef<QueuedPromptItem[]>([]);
 	const activePromptRef = useRef<QueuedPromptItem | null>(null);
+	const activeThreadIdRef = useRef<string | null>(null);
+	const pendingThreadCreationRef = useRef<Promise<string> | null>(null);
+	const lastPersistedThreadKeyRef = useRef("");
 	const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const retryCountdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
 		null
@@ -571,6 +655,7 @@ export function RovoChatProvider({
 		options?: SendPromptOptions;
 	} | null>(null);
 	const isStreamingRef = useRef(false);
+	const wasStreamingRef = useRef(false);
 	const isDispatchingPromptRef = useRef(false);
 	const isCancellingRef = useRef(false);
 	const cancelStreamPromiseRef = useRef<Promise<void> | null>(null);
@@ -706,7 +791,7 @@ export function RovoChatProvider({
 	const transport = useMemo(
 		() =>
 			new DefaultChatTransport<RovoUIMessage>({
-				api: API_ENDPOINTS.CHAT_SDK,
+				api: API_ENDPOINTS.ROVO_APP_CHAT,
 				prepareSendMessagesRequest: ({ messages, body }) => {
 					const normalizedMessages = sanitizeRovoUiMessages(messages);
 					const sanitizedMessages = sanitizeMessagesForTransport(normalizedMessages);
@@ -721,6 +806,7 @@ export function RovoChatProvider({
 					return {
 						body: {
 							...sanitizedBody,
+							id: activeThreadIdRef.current,
 							messages: trimmedMessages,
 							payloadTrimmed: trimmed,
 							...(portIndex !== undefined ? { portIndex } : {}),
@@ -1113,6 +1199,169 @@ export function RovoChatProvider({
 		);
 	}, [setMessages]);
 
+	useEffect(() => {
+		activeThreadIdRef.current = activeThreadId;
+	}, [activeThreadId]);
+
+	const currentThread = useMemo(
+		() => threads.find((thread) => thread.id === activeThreadId) ?? null,
+		[activeThreadId, threads]
+	);
+	const currentThreadHasRichState = useMemo(
+		() =>
+			hasRichCompactThreadState(currentThread) ||
+			hasRichCompactMessageState(rawUiMessages),
+		[currentThread, rawUiMessages]
+	);
+
+	const refreshThreads = useCallback(async () => {
+		try {
+			const nextThreads = await listRovoAppThreads(COMPACT_HISTORY_LIMIT);
+			setThreads(nextThreads);
+			setThreadsLoaded(true);
+		} catch (error) {
+			console.warn("[RovoChatProvider] Failed to refresh Rovo thread history:", error);
+			setThreadsLoaded(true);
+		}
+	}, []);
+
+	useEffect(() => {
+		const wasStreaming = wasStreamingRef.current;
+		wasStreamingRef.current = isStreaming;
+
+		if (!activeThreadIdRef.current || wasStreaming === isStreaming) {
+			return;
+		}
+
+		void refreshThreads();
+	}, [isStreaming, refreshThreads]);
+
+	const openHistory = useCallback(() => {
+		setIsHistoryOpen(true);
+		void refreshThreads();
+	}, [refreshThreads]);
+
+	const closeHistory = useCallback(() => setIsHistoryOpen(false), []);
+
+	const toggleHistory = useCallback(() => {
+		setIsHistoryOpen((previousOpen) => {
+			const nextOpen = !previousOpen;
+			if (nextOpen) {
+				void refreshThreads();
+			}
+			return nextOpen;
+		});
+	}, [refreshThreads]);
+
+	useEffect(() => {
+		const handleFocus = () => {
+			if (isHistoryOpen) {
+				void refreshThreads();
+			}
+		};
+
+		window.addEventListener("focus", handleFocus);
+		return () => window.removeEventListener("focus", handleFocus);
+	}, [isHistoryOpen, refreshThreads]);
+
+	const persistGeneratedThreadTitle = useCallback(
+		async (threadId: string, prompt: string) => {
+			const generatedTitle = await fetchRovoAppAITitle(prompt);
+			if (!generatedTitle || activeThreadIdRef.current !== threadId) {
+				return;
+			}
+
+			const updatedThread = await updateRovoAppThread(threadId, {
+				title: generatedTitle,
+			});
+			setThreads((previousThreads) => {
+				const existingIndex = previousThreads.findIndex((thread) => thread.id === updatedThread.id);
+				if (existingIndex === -1) {
+					return [updatedThread, ...previousThreads];
+				}
+
+				const nextThreads = [...previousThreads];
+				nextThreads[existingIndex] = updatedThread;
+				return nextThreads;
+			});
+		},
+		[]
+	);
+
+	const ensureCompactThread = useCallback(
+		async (seedPrompt: string) => {
+			if (activeThreadIdRef.current) {
+				return activeThreadIdRef.current;
+			}
+
+			if (pendingThreadCreationRef.current) {
+				return pendingThreadCreationRef.current;
+			}
+
+			const threadId = createRovoAppId();
+			const threadCreationPromise = createRovoAppThread({
+				id: threadId,
+				title: deriveCompactThreadTitle(seedPrompt),
+				messages: [],
+				realtimeMessages: [],
+				visibility: "private",
+				activeDocumentId: null,
+			})
+				.then((thread) => {
+					activeThreadIdRef.current = thread.id;
+					setActiveThreadId(thread.id);
+					setThreads((previousThreads) => [thread, ...previousThreads.filter((item) => item.id !== thread.id)]);
+					lastPersistedThreadKeyRef.current = buildCompactThreadPersistKey(thread.id, thread.messages);
+					void persistGeneratedThreadTitle(thread.id, seedPrompt).catch((error) => {
+						console.warn("[RovoChatProvider] Failed to generate compact chat title:", error);
+					});
+					return thread.id;
+				})
+				.finally(() => {
+					if (pendingThreadCreationRef.current === threadCreationPromise) {
+						pendingThreadCreationRef.current = null;
+					}
+				});
+
+			pendingThreadCreationRef.current = threadCreationPromise;
+			return threadCreationPromise;
+		},
+		[persistGeneratedThreadTitle]
+	);
+
+	useEffect(() => {
+		if (!activeThreadId || rawUiMessages.length === 0) {
+			return;
+		}
+
+		const sanitizedMessages = sanitizeRovoUiMessages(rawUiMessages);
+		const persistKey = buildCompactThreadPersistKey(activeThreadId, sanitizedMessages);
+		if (persistKey === lastPersistedThreadKeyRef.current) {
+			return;
+		}
+
+		const timeout = window.setTimeout(() => {
+			void updateRovoAppThread(activeThreadId, {
+				messages: sanitizedMessages,
+			})
+				.then((updatedThread) => {
+					lastPersistedThreadKeyRef.current = buildCompactThreadPersistKey(
+						updatedThread.id,
+						updatedThread.messages
+					);
+					setThreads((previousThreads) => {
+						const nextThreads = previousThreads.filter((thread) => thread.id !== updatedThread.id);
+						return [updatedThread, ...nextThreads];
+					});
+				})
+				.catch((error) => {
+					console.warn("[RovoChatProvider] Failed to persist compact chat messages:", error);
+				});
+		}, COMPACT_THREAD_PERSIST_DEBOUNCE_MS);
+
+		return () => window.clearTimeout(timeout);
+	}, [activeThreadId, rawUiMessages]);
+
 	const sendChatMessage = useCallback(
 		async (promptItem: QueuedPromptItem) => {
 			lastPromptRef.current = {
@@ -1125,6 +1374,9 @@ export function RovoChatProvider({
 			if (isStreamingRef.current) {
 				await stop();
 			}
+
+			await ensureCompactThread(promptItem.text);
+			void refreshThreads();
 
 			const messagePayload = {
 				text: promptItem.text,
@@ -1147,9 +1399,11 @@ export function RovoChatProvider({
 				setMessages((prev) => sanitizeRovoUiMessages(prev));
 				await Promise.resolve();
 				await sendMessage(messagePayload, bodyPayload);
+			} finally {
+				void refreshThreads();
 			}
 		},
-		[sendMessage, setMessages, stop]
+		[ensureCompactThread, refreshThreads, sendMessage, setMessages, stop]
 	);
 
 	useEffect(() => {
@@ -1370,8 +1624,10 @@ export function RovoChatProvider({
 			}
 
 			try {
+				const compactThreadId = activeThreadIdRef.current;
 				const cancelKey =
-					typeof portIndex === "number" ? `port:${portIndex}` : "default";
+					compactThreadId ??
+					(typeof portIndex === "number" ? `port:${portIndex}` : "default");
 				const now = Date.now();
 				const recentlyCancelledSameTarget =
 					lastExplicitCancelKeyRef.current === cancelKey &&
@@ -1380,11 +1636,15 @@ export function RovoChatProvider({
 				if (!recentlyCancelledSameTarget) {
 					lastExplicitCancelKeyRef.current = cancelKey;
 					lastExplicitCancelAtRef.current = now;
-					const cancelEndpoint =
-						typeof portIndex === "number"
-							? `${API_ENDPOINTS.CHAT_CANCEL}?portIndex=${encodeURIComponent(String(portIndex))}`
-							: API_ENDPOINTS.CHAT_CANCEL;
-					await fetch(cancelEndpoint, { method: "POST" });
+					if (compactThreadId) {
+						await cancelRovoAppRun(compactThreadId);
+					} else {
+						const cancelEndpoint =
+							typeof portIndex === "number"
+								? `${API_ENDPOINTS.CHAT_CANCEL}?portIndex=${encodeURIComponent(String(portIndex))}`
+								: API_ENDPOINTS.CHAT_CANCEL;
+						await fetch(cancelEndpoint, { method: "POST" });
+					}
 				}
 			} catch {
 				// Ignore cancel endpoint errors — the stream may have already ended.
@@ -1411,9 +1671,95 @@ export function RovoChatProvider({
 			await cancelCurrentStream();
 		} finally {
 			isCancellingRef.current = false;
+			void refreshThreads();
 			queueTick();
 		}
-	}, [cancelCurrentStream, clearMediaGenerating, clearSubmitPending, queueTick]);
+	}, [
+		cancelCurrentStream,
+		clearMediaGenerating,
+		clearSubmitPending,
+		queueTick,
+		refreshThreads,
+	]);
+
+	const detachCurrentThreadForSwitch = useCallback(async () => {
+		const threadId = activeThreadIdRef.current;
+		if (isStreamingRef.current) {
+			try {
+				await stop();
+			} catch (error) {
+				console.warn("[RovoChatProvider] Failed to detach compact stream:", error);
+			}
+			await waitForStreamStop();
+		}
+
+		if (threadId) {
+			await detachRovoAppRun(threadId).catch(() => {});
+		}
+	}, [stop, waitForStreamStop]);
+
+	const selectThread = useCallback(
+		async (threadId: string) => {
+			await detachCurrentThreadForSwitch();
+			const thread = await getRovoAppThread(threadId);
+			if (!thread) {
+				activeThreadIdRef.current = null;
+				setActiveThreadId(null);
+				setMessages([]);
+				await refreshThreads();
+				return;
+			}
+
+			activeThreadIdRef.current = thread.id;
+			setActiveThreadId(thread.id);
+			lastPersistedThreadKeyRef.current = buildCompactThreadPersistKey(thread.id, thread.messages);
+			setThreads((previousThreads) => [thread, ...previousThreads.filter((item) => item.id !== thread.id)]);
+			setSubmissionErrorMessage(null);
+			setMessages(sanitizeRovoUiMessages(thread.messages));
+			setIsHistoryOpen(false);
+		},
+		[detachCurrentThreadForSwitch, refreshThreads, setMessages]
+	);
+
+	const deleteThread = useCallback(
+		async (threadId: string) => {
+			if (threadId === activeThreadIdRef.current) {
+				await detachCurrentThreadForSwitch();
+				activeThreadIdRef.current = null;
+				setActiveThreadId(null);
+				setMessages([]);
+				setSubmissionErrorMessage(null);
+				lastPersistedThreadKeyRef.current = "";
+			}
+
+			await deleteRovoAppThread(threadId);
+			setThreads((previousThreads) => previousThreads.filter((thread) => thread.id !== threadId));
+			await refreshThreads();
+		},
+		[detachCurrentThreadForSwitch, refreshThreads, setMessages]
+	);
+
+	const cancelThreadRun = useCallback(
+		async (threadId: string) => {
+			await cancelRovoAppRun(threadId).catch(() => {});
+			if (threadId === activeThreadIdRef.current) {
+				try {
+					await stop();
+				} catch {}
+			}
+			await refreshThreads();
+		},
+		[refreshThreads, stop]
+	);
+
+	const openCurrentThreadFullscreen = useCallback(() => {
+		const threadId = activeThreadIdRef.current;
+		if (!threadId || typeof window === "undefined") {
+			return;
+		}
+
+		window.location.assign(`/rovo/${encodeURIComponent(threadId)}`);
+	}, []);
 
 	const resetChat = useCallback(() => {
 		isCancellingRef.current = true;
@@ -1432,20 +1778,25 @@ export function RovoChatProvider({
 		setMessages([]);
 		setSubmissionErrorMessage(null);
 
-		void cancelCurrentStream().finally(() => {
+		void detachCurrentThreadForSwitch().finally(() => {
 			// Old stream chunks can still arrive briefly while cancellation settles.
 			// Clear message state one more time so the next session starts clean.
+			activeThreadIdRef.current = null;
+			setActiveThreadId(null);
+			lastPersistedThreadKeyRef.current = "";
 			setMessages([]);
 			setSubmissionErrorMessage(null);
 			isCancellingRef.current = false;
+			void refreshThreads();
 			queueTick();
 		});
 	}, [
-		cancelCurrentStream,
+		detachCurrentThreadForSwitch,
 		cancelRetryTimer,
 		clearMediaGenerating,
 		clearSubmitPending,
 		queueTick,
+		refreshThreads,
 		setMessages,
 	]);
 
@@ -1495,6 +1846,20 @@ export function RovoChatProvider({
 				stopStreaming,
 				clearSuggestedQuestions,
 				resetChat,
+				activeThreadId,
+				currentThread,
+				threads,
+				threadsLoaded,
+				isHistoryOpen,
+				openHistory,
+				closeHistory,
+				toggleHistory,
+				refreshThreads,
+				selectThread,
+				deleteThread,
+				cancelThreadRun,
+				openCurrentThreadFullscreen,
+				currentThreadHasRichState,
 				replaceMessages,
 				isStreaming,
 				isMediaGenerating,

@@ -9,7 +9,7 @@ function createRovoAppRunManager({ logger = console } = {}) {
 	const runs = new Map();
 	const queuedThreadIds = [];
 
-	function createRun({ threadId, requestBody, requestedPortIndex = null }) {
+	function createRun({ backend = "ai-gateway", threadId, requestBody, requestedPortIndex = null }) {
 		const existingRun = runs.get(threadId);
 		if (existingRun) {
 			return existingRun;
@@ -18,6 +18,7 @@ function createRovoAppRunManager({ logger = console } = {}) {
 		const now = toIsoDate();
 		const run = {
 			id: `rovo-app-run-${randomUUID()}`,
+			backend: backend === "rovodev" ? "rovodev" : "ai-gateway",
 			threadId,
 			requestBody,
 			requestedPortIndex:
@@ -53,6 +54,7 @@ function createRovoAppRunManager({ logger = console } = {}) {
 		return Array.from(runs.values()).map((run) => ({
 			threadId: run.threadId,
 			id: run.id,
+			backend: run.backend === "rovodev" ? "rovodev" : "ai-gateway",
 			status: run.status,
 			startedAt: Date.parse(run.startedAt),
 			updatedAt: run.updatedAt,
@@ -80,7 +82,7 @@ function createRovoAppRunManager({ logger = console } = {}) {
 		return false;
 	}
 
-	function markRunStarted(threadId, { portIndex = null, rovoPort = null, status } = {}) {
+	function markRunStarted(threadId, { backend, portIndex = null, rovoPort = null, status } = {}) {
 		const run = runs.get(threadId);
 		if (!run) {
 			return null;
@@ -96,6 +98,9 @@ function createRovoAppRunManager({ logger = console } = {}) {
 			typeof rovoPort === "number" && Number.isInteger(rovoPort) && rovoPort > 0
 				? rovoPort
 				: null;
+		if (backend === "rovodev" || backend === "ai-gateway") {
+			run.backend = backend;
+		}
 		run.startedAt = now;
 		run.updatedAt = now;
 		run.status =
@@ -133,6 +138,25 @@ function createRovoAppRunManager({ logger = console } = {}) {
 		}
 
 		run.error = error instanceof Error ? error.message : String(error);
+		run.updatedAt = toIsoDate();
+		return run;
+	}
+
+	function setRunBackend(threadId, backend) {
+		const run = runs.get(threadId);
+		if (!run) {
+			return null;
+		}
+
+		if (backend !== "rovodev" && backend !== "ai-gateway") {
+			return run;
+		}
+
+		run.backend = backend;
+		if (backend === "ai-gateway") {
+			run.assignedPortIndex = null;
+			run.rovoPort = null;
+		}
 		run.updatedAt = toIsoDate();
 		return run;
 	}
@@ -265,6 +289,7 @@ function createRovoAppRunManager({ logger = console } = {}) {
 		listRuns,
 		markRunStarted,
 		removeQueuedRun,
+		setRunBackend,
 		setRunError,
 		setRunStatus,
 	};
