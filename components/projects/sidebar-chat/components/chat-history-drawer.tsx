@@ -31,6 +31,14 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+	Empty,
+	EmptyContent,
+	EmptyDescription,
+	EmptyHeader,
+	EmptyTitle,
+} from "@/components/ui/empty";
+import { Icon } from "@/components/ui/icon";
+import {
 	Sheet,
 	SheetClose,
 	SheetContent,
@@ -43,6 +51,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { ChevronDownIcon } from "@/components/ui/vpk-icons";
 import { shouldShowRovoAppSidebarRunIndicator } from "@/components/projects/rovo/lib/rovo-app-sidebar-run-indicator";
 import type { RovoAppThread } from "@/lib/rovo-app-types";
+import { token } from "@/lib/tokens";
 import { cn } from "@/lib/utils";
 
 const DRAWER_ID = "rovo-chat-history-drawer";
@@ -337,16 +346,30 @@ function ChatHistoryPanelView({
 				id={CHATS_REGION_ID}
 				role="region"
 				aria-label="Chats"
-				className={cn("min-h-0 flex-1 overflow-y-auto", !isChatsOpen && "hidden")}
+				className={cn(
+					"min-h-0 flex-1 overflow-y-auto",
+					threadsLoaded && threads.length === 0 && "flex items-center justify-center",
+					!isChatsOpen && "hidden",
+				)}
 			>
 				{!threadsLoaded ? (
 					<div className="flex h-24 items-center justify-center text-text-subtle">
 						<Spinner size="sm" aria-label="Loading chat history" />
 					</div>
 				) : threads.length === 0 ? (
-					<div className="rounded-lg border border-border px-3 py-4 text-sm text-text-subtle">
-						No recent chats yet.
-					</div>
+					<Empty width="narrow" className="gap-4 px-3 py-0">
+						<EmptyHeader>
+							<EmptyTitle style={{ font: token("font.heading.small") }}>No recent chats yet</EmptyTitle>
+							<EmptyDescription>
+								Start a new chat to see it here.
+							</EmptyDescription>
+						</EmptyHeader>
+						<EmptyContent>
+							<Button variant="outline" size="sm" onClick={handleNewChat}>
+								New chat
+							</Button>
+						</EmptyContent>
+					</Empty>
 				) : (
 					<div className="flex flex-col">
 						{threads.map((thread) => (
@@ -511,7 +534,7 @@ export function ControlledChatHistoryDrawer({
 									"absolute top-3 left-3 z-10",
 								)}
 							>
-								<CrossIcon label="" size="small" />
+								<Icon aria-hidden label="" render={<CrossIcon label="" />} />
 							</SheetClose>
 							<ChatHistoryPanelView
 								activeThreadId={activeThreadId}

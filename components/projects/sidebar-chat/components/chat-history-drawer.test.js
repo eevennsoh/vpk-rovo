@@ -18,7 +18,11 @@ test("compact chat history drawer wires thread actions to the shared rovo provid
 	assert.match(source, /closeHistory/u);
 	assert.match(source, /resetChat\(\)/u);
 	assert.match(source, /void refreshThreads\(\)/u);
-	assert.match(source, /No recent chats yet\./u);
+	assert.match(source, /<Empty width="narrow" className="gap-4 px-3 py-0">/u);
+	assert.match(source, /<EmptyTitle style=\{\{ font: token\("font\.heading\.small"\) \}\}>No recent chats yet<\/EmptyTitle>/u);
+	assert.match(source, /<EmptyDescription>[\s\S]*Start a new chat to see it here\./u);
+	assert.match(source, /<Button variant="outline" size="sm" onClick=\{handleNewChat\}>[\s\S]*New chat/u);
+	assert.doesNotMatch(source, /rounded-lg border border-border/u);
 });
 
 test("active compact chat surfaces own one contained history drawer", () => {
@@ -92,9 +96,11 @@ test("chat history drawer uses a contained left sheet with a local blanket", () 
 	assert.match(sheetSource, /contained \? "absolute z-20" : "fixed z-50"/u);
 	assert.match(source, /<SheetClose/u);
 	assert.match(source, /buttonVariants\(\{ variant: "ghost", size: "icon", shape: "circle" \}\)/u);
+	assert.match(source, /<Icon aria-hidden label="" render=\{<CrossIcon label="" \/>\} \/>/u);
 	assert.match(source, /"absolute top-3 left-3 z-10"/u);
 	assert.match(source, /p-3 pt-14/u);
-	assert.doesNotMatch(source, /<SheetClose[\s\S]*render=\{/u);
+	assert.doesNotMatch(source, /<SheetClose[^>]*render=\{/u);
+	assert.doesNotMatch(source, /<CrossIcon label="" size="small" \/>/u);
 	assert.doesNotMatch(source, /absolute inset-y-0 left-0/u);
 	assert.doesNotMatch(source, /calc\(100vw-40px\)/u);
 });
@@ -126,7 +132,8 @@ test("chat history drawer can collapse the chats section from the heading", () =
 	assert.match(source, /controlsId=\{CHATS_REGION_ID\}/u);
 	assert.match(source, /id=\{CHATS_REGION_ID\}/u);
 	assert.match(source, /role="region"/u);
-	assert.match(source, /className=\{cn\("min-h-0 flex-1 overflow-y-auto", !isChatsOpen && "hidden"\)\}/u);
+	assert.match(source, /threadsLoaded && threads\.length === 0 && "flex items-center justify-center"/u);
+	assert.match(source, /!isChatsOpen && "hidden"/u);
 });
 
 test("chat history row actions are scoped to the hovered row", () => {
