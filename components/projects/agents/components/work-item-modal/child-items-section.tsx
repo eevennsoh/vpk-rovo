@@ -14,13 +14,13 @@ import ShowMoreHorizontalIcon from "@atlaskit/icon/core/show-more-horizontal";
 const DEFAULT_CHILD_ITEMS: WorkItemChildItem[] = [
 	{
 		key: "RFP-105",
-		summary: "Validate submission checklist and portal access",
+		summary: "Build requirement matrix for ITSM, CMDB, HAM, SAM, AI, GRC, and portal needs",
 		priority: "medium",
 		status: "inprogress",
 	},
 	{
 		key: "RFP-106",
-		summary: "Confirm sales engineer owner for technical appendix",
+		summary: "Confirm JSM, Assets, Rovo, Guard, and platform demo owners",
 		priority: "lowest",
 		status: "todo",
 	},

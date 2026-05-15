@@ -49,16 +49,16 @@ test("RFP-101 active work item formats a bounded hidden Jira context block", asy
 
 	assert.match(context, /^\[Active Jira Work Item Context\]/);
 	assert.match(context, /\[End Active Jira Work Item Context\]$/);
-	assert.match(context, /Acme Mobility/);
-	assert.match(context, /Description: Acme Mobility is evaluating a switch/);
-	assert.match(context, /Due date: Oct 28, 2026/);
-	assert.match(context, /10,000 seats/);
-	assert.match(context, /LegacyWorks Enterprise/);
+	assert.match(context, /Global Automotive Enterprise/);
+	assert.match(context, /Description: A global automotive enterprise is evaluating Atlassian/);
+	assert.match(context, /Due date: Sep 8, 2025/);
+	assert.match(context, /7,000 agents/);
+	assert.match(context, /ServiceNow ITSM, ITOM, CMDB/);
 	assert.match(context, /Response team needs:/);
-	assert.match(context, /RFP-105: Build compliance matrix/);
-	assert.match(context, /Acme-Mobility-enterprise-RFP\.pdf/);
+	assert.match(context, /RFP-105: Build requirement matrix/);
+	assert.match(context, /automotive-itsm-rfp-requirements\.pdf/);
 	assert.match(context, /Recent activity:/);
-	assert.match(context, /Sales engineering can own migration architecture/);
+	assert.match(context, /Sales engineering can own JSM workflows/);
 });
 
 test("board fallback formats bounded visible /agents context", async () => {
@@ -67,9 +67,9 @@ test("board fallback formats bounded visible /agents context", async () => {
 
 	assert.match(context, /^\[Agents Board Context\]/);
 	assert.match(context, /\[End Agents Board Context\]$/);
-	assert.match(context, /VitaFleet Q4 RFP Response/);
+	assert.match(context, /Enterprise RFP Response/);
 	assert.match(context, /RFP Intake: 9 work items/);
-	assert.match(context, /RFP-101: Qualify inbound Acme Mobility RFP/);
+	assert.match(context, /RFP-101: Qualify global ITSM platform replacement RFP/);
 	assert.ok(context.length < 1_500);
 });
 
@@ -77,12 +77,12 @@ test("non-RFP-101 work items format a lightweight active work item context", asy
 	const harness = await loadRfpContextHarness();
 	const workItem = harness.getAgentsWorkItemForCard({
 		code: "RFP-102",
-		title: "Log procurement portal requirements",
+		title: "Extract requirement areas from supplier packet",
 	});
 
 	assert.deepEqual(workItem, {
 		code: "RFP-102",
-		title: "Log procurement portal requirements",
+		title: "Extract requirement areas from supplier packet",
 	});
 	assert.equal(
 		harness.formatActiveJiraWorkItemContext(workItem),
@@ -90,7 +90,7 @@ test("non-RFP-101 work items format a lightweight active work item context", asy
 			"[Active Jira Work Item Context]",
 			"Source: /agents Jira work item.",
 			"Key: RFP-102",
-			"Title: Log procurement portal requirements",
+			"Title: Extract requirement areas from supplier packet",
 			"[End Active Jira Work Item Context]",
 		].join("\n"),
 	);
@@ -104,13 +104,13 @@ test("agents chat screen resolver switches from board fallback to active work it
 	assert.deepEqual(boardContext.chatContextBar, {
 		label: harness.AGENTS_BOARD_CONTEXT_LABEL,
 		iconName: "board",
-		signature: "agents-board:vitafleet-q4-rfp-response",
+		signature: "agents-board:enterprise-rfp-response",
 	});
 	assert.match(boardContext.contextDescription, /^\[Agents Board Context\]/);
 
 	const workItemContext = harness.resolveAgentsChatScreenContext(harness.RFP_101_WORK_ITEM);
 	assert.deepEqual(workItemContext.chatContextBar, {
-		label: "RFP-101: Qualify inbound Acme Mobility RFP",
+		label: "RFP-101: Qualify global ITSM platform replacement RFP",
 		iconName: "work-item",
 		signature: "agents-work-item:RFP-101",
 	});

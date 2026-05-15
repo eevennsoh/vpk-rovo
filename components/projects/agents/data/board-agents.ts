@@ -21,7 +21,7 @@ export const BOARD_AGENTS: readonly BoardAgentData[] = [
 	{
 		id: "readiness-checker",
 		name: "Readiness Checker",
-		byline: "Rovo agent by {agentOwner}",
+		byline: "Rovo agent by Enterprise Solutions",
 		avatarSrc: "/avatar-agent/teamwork-agents/readiness-checker.svg",
 	},
 	{

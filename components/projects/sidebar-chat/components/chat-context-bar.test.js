@@ -131,14 +131,14 @@ async function loadChatContextBarHarness() {
 test("ChatContextBar renders a non-dismissible truncated context chip", async () => {
 	const harness = await loadChatContextBarHarness();
 	const markup = harness.renderContextBar({
-		label: "RFP-101: Qualify inbound Acme Mobility RFP",
+		label: "RFP-101: Qualify global ITSM platform replacement RFP",
 		iconName: "work-item",
 		signature: "agents-work-item:RFP-101",
 	});
 
 	assert.match(markup, /data-chat-context-bar="true"/);
 	assert.match(markup, /Context:/);
-	assert.match(markup, /RFP-101: Qualify inbound Acme Mobility RFP/);
+	assert.match(markup, /RFP-101: Qualify global ITSM platform replacement RFP/);
 	assert.match(markup, /data-icon="location"/);
 	assert.match(markup, /data-icon="work-item"/);
 	assert.match(markup, /data-color="blue"/);
@@ -147,7 +147,7 @@ test("ChatContextBar renders a non-dismissible truncated context chip", async ()
 	assert.match(markup, /data-class="[^"]*max-w-full[^"]*"/);
 	assert.match(markup, /data-class="[^"]*shrink[^"]*"/);
 	assert.match(markup, /data-class="[^"]*overflow-hidden[^"]*"/);
-	assert.match(markup, /data-title="RFP-101: Qualify inbound Acme Mobility RFP"/);
+	assert.match(markup, /data-title="RFP-101: Qualify global ITSM platform replacement RFP"/);
 	assert.doesNotMatch(markup, /data-class="[^"]*flex-1[^"]*"/);
 	assert.doesNotMatch(markup, /max-w-\[12rem\]/);
 	assert.match(markup, /data-icon="cross"/);

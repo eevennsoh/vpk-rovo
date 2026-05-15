@@ -108,7 +108,7 @@ async function loadRovoFloatingChatHarness() {
 				export function renderFloatingChatWithContext() {
 					return renderToStaticMarkup(React.createElement(RovoFloatingChat, {
 						chatContextBar: {
-							label: "RFP-101: Qualify inbound Acme Mobility RFP",
+							label: "RFP-101: Qualify global ITSM platform replacement RFP",
 							iconName: "work-item",
 							signature: "agents-work-item:RFP-101",
 						},
@@ -185,7 +185,7 @@ test("RovoFloatingChat forwards context bar descriptor to the shared chat panel"
 	const harness = await loadRovoFloatingChatHarness();
 	const markup = harness.renderFloatingChatWithContext();
 
-	assert.match(markup, /data-context-label="RFP-101: Qualify inbound Acme Mobility RFP"/);
+	assert.match(markup, /data-context-label="RFP-101: Qualify global ITSM platform replacement RFP"/);
 	assert.match(markup, /data-context-icon="work-item"/);
 });
 

@@ -10,9 +10,9 @@ import ShowMoreHorizontalIcon from "@atlaskit/icon/core/show-more-horizontal";
 
 
 const ATTACHMENT_FILES: WorkItemAttachment[] = [
-	{ name: "VitaFleet-enterprise-RFP", ext: "pdf", date: "17 Mar 2025, 09:12 AM", thumbnailTone: "success" },
-	{ name: "response-matrix", ext: "xlsx", date: "17 Mar 2025, 09:18 AM", thumbnailTone: "warning" },
-	{ name: "pricing-scenarios", ext: "xlsx", date: "17 Mar 2025, 09:24 AM", thumbnailTone: "discovery" },
+	{ name: "automotive-itsm-rfp-requirements", ext: "pdf", date: "12 Aug 2025, 09:12 AM", thumbnailTone: "success" },
+	{ name: "rfp-requirement-compliance-matrix", ext: "xlsx", date: "12 Aug 2025, 09:18 AM", thumbnailTone: "warning" },
+	{ name: "pricing-tco-and-license-model", ext: "xlsx", date: "2 Sep 2025, 04:10 PM", thumbnailTone: "discovery" },
 ];
 
 interface AttachmentCardProps {

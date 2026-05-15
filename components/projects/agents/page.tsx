@@ -153,7 +153,7 @@ export default function AgentsView({
 		const contextDescription = [
 			"[Agents Board Column Context]",
 			"Source: /agents Jira board column.",
-			"Board: VitaFleet Q4 RFP Response.",
+			"Board: Enterprise RFP Response.",
 			`Column: ${columnTitle}.`,
 			typeof column?.count === "number" ? `Work item count: ${column.count}.` : null,
 			visibleWorkItems ? "Visible work items:" : null,
@@ -165,7 +165,7 @@ export default function AgentsView({
 
 		openChat("floating");
 		void sendPrompt(
-			`Create an agent for the ${columnTitle} column on the VitaFleet Q4 RFP Response board.`,
+			`Create an agent for the ${columnTitle} column on the Enterprise RFP Response board.`,
 			{
 				creationMode: "agent",
 				contextDescription,

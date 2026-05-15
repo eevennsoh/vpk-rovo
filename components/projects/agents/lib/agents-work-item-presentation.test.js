@@ -7,7 +7,7 @@ const {
 } = require("./agents-work-item-presentation.ts");
 
 const WORK_ITEM = {
-	title: "Qualify inbound Acme Mobility RFP",
+	title: "Qualify global ITSM platform replacement RFP",
 	code: "RFP-101",
 };
 

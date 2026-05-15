@@ -6,8 +6,8 @@ import type { ChatContextBarDescriptor } from "@/components/projects/sidebar-cha
 import { BOARD_COLUMNS } from "./board-data";
 
 export const RFP_101_WORK_ITEM_CODE = "RFP-101";
-export const AGENTS_BOARD_CONTEXT_LABEL = "VitaFleet Q4 RFP Response";
-const AGENTS_BOARD_CONTEXT_SIGNATURE = "agents-board:vitafleet-q4-rfp-response";
+export const AGENTS_BOARD_CONTEXT_LABEL = "Enterprise RFP Response";
+const AGENTS_BOARD_CONTEXT_SIGNATURE = "agents-board:enterprise-rfp-response";
 
 export interface AgentsChatScreenContext {
 	chatContextBar: ChatContextBarDescriptor;
@@ -16,9 +16,9 @@ export interface AgentsChatScreenContext {
 
 export const RFP_101_WORK_ITEM = {
 	code: RFP_101_WORK_ITEM_CODE,
-	title: "Qualify inbound Acme Mobility RFP",
+	title: "Qualify global ITSM platform replacement RFP",
 	description:
-		"Acme Mobility is evaluating a switch from a legacy competitor work-management platform to Jira for 10,000 users across sales, operations, engineering, support, and implementation teams. Qualify the opportunity, map the RFP requirements to Jira strengths, identify blockers before bid/no-bid, and prepare the sales team to fill the response package with persuasive, evidence-backed answers.",
+		"A global automotive enterprise is evaluating Atlassian as a replacement for its current ServiceNow-based IT support platform. The customer runs multiple regional ServiceNow instances, supports roughly 7,000 licensed agents, and manages a very large CMDB where only a fraction of configuration items are active assets. Qualify the RFP, map each requirement area to Atlassian strengths, identify gaps that need partner or roadmap positioning, and prepare the response team for an onsite executive demo.",
 	assignee: {
 		name: "Maya Chen",
 		avatarUrl: "/avatar-user/andrea-wilson/color/asow-service-yellow.png",
@@ -31,18 +31,18 @@ export const RFP_101_WORK_ITEM = {
 	},
 	priority: "High",
 	status: "RFP Intake",
-	startDate: "Oct 7, 2026",
-	dueDate: "Oct 28, 2026",
+	startDate: "Aug 12, 2025",
+	dueDate: "Sep 8, 2025",
 	parent: {
 		code: "RFP-100",
-		title: "Acme Mobility Enterprise RFP",
+		title: "Enterprise RFP Response",
 	},
-	labels: ["enterprise-rfp", "q4-sales", "migration", "10k-seats"],
+	labels: ["enterprise-rfp", "automotive", "servicenow-replacement", "jsm", "7k-agents"],
 	childItems: [
 		{
 			type: "Sub-task",
 			key: "RFP-105",
-			summary: "Build compliance matrix from Acme portal questionnaire",
+			summary: "Build requirement matrix for ITSM, CMDB, HAM, SAM, AI, GRC, and portal needs",
 			priority: "high",
 			assignee: "Maya Chen",
 			status: "inprogress",
@@ -50,7 +50,7 @@ export const RFP_101_WORK_ITEM = {
 		{
 			type: "Sub-task",
 			key: "RFP-106",
-			summary: "Confirm sales engineer owner for migration and integrations appendix",
+			summary: "Confirm JSM, Assets, Rovo, Guard, and platform demo owners",
 			priority: "medium",
 			assignee: "Priya Shah",
 			status: "todo",
@@ -58,7 +58,7 @@ export const RFP_101_WORK_ITEM = {
 		{
 			type: "Sub-task",
 			key: "RFP-107",
-			summary: "Draft win themes against incumbent competitor weaknesses",
+			summary: "Draft win themes against ServiceNow cost, complexity, and adaptability pain points",
 			priority: "high",
 			assignee: "Jordan Lee",
 			status: "done",
@@ -66,7 +66,7 @@ export const RFP_101_WORK_ITEM = {
 		{
 			type: "Sub-task",
 			key: "RFP-108",
-			summary: "Collect security, compliance, and data residency exhibits",
+			summary: "Collect legal, data residency, audit, and vulnerability-management exhibits",
 			priority: "medium",
 			assignee: "Elena Ruiz",
 			status: "todo",
@@ -74,27 +74,27 @@ export const RFP_101_WORK_ITEM = {
 	],
 	attachments: [
 		{
-			name: "Acme-Mobility-enterprise-RFP",
+			name: "automotive-itsm-rfp-requirements",
 			ext: "pdf",
-			date: "7 Oct 2026, 09:12 AM",
+			date: "12 Aug 2025, 09:12 AM",
 			thumbnailTone: "success",
 		},
 		{
-			name: "response-compliance-matrix",
+			name: "rfp-requirement-compliance-matrix",
 			ext: "xlsx",
-			date: "7 Oct 2026, 09:18 AM",
+			date: "12 Aug 2025, 09:18 AM",
 			thumbnailTone: "warning",
 		},
 		{
-			name: "migration-pricing-scenarios",
-			ext: "xlsx",
-			date: "7 Oct 2026, 09:24 AM",
+			name: "jsm-assets-rovo-demo-plan",
+			ext: "docx",
+			date: "29 Aug 2025, 02:35 PM",
 			thumbnailTone: "discovery",
 		},
 		{
-			name: "customer-proof-library",
-			ext: "docx",
-			date: "7 Oct 2026, 09:31 AM",
+			name: "pricing-tco-and-license-model",
+			ext: "xlsx",
+			date: "2 Sep 2025, 04:10 PM",
 			thumbnailTone: "information",
 		},
 	],
@@ -108,7 +108,7 @@ export const RFP_101_WORK_ITEM = {
 			},
 			timestamp: "15 minutes ago",
 			content:
-				"I added the portal checklist and marked the security questionnaire, migration plan, and enterprise support model as required exhibits for the first draft.",
+				"I added the RFP timeline, supplier-question deadline, response deadline, and onsite demo agenda. The first pass flags ITSM, CMDB, HAM/SAM, knowledge, reporting, portal, AI, data residency, customer service, GRC, and pricing as mandatory sections.",
 			replies: [
 				{
 					id: "comment-1-reply-1",
@@ -119,7 +119,7 @@ export const RFP_101_WORK_ITEM = {
 					},
 					timestamp: "10 minutes ago",
 					content:
-						"Sales engineering can own migration architecture, SSO/SCIM, data import, integrations, and performance at 10,000 seats. Please route pricing assumptions to deal desk before we send the first draft.",
+						"Sales engineering can own JSM workflows, Assets/CMDB, integrations, CI/CD change enablement, incident operations, and the Rovo demo. We should explicitly call out where HAM/SAM or SecOps needs partner coverage or roadmap positioning.",
 				},
 			],
 		},
@@ -132,7 +132,7 @@ export const RFP_101_WORK_ITEM = {
 			},
 			timestamp: "4 minutes ago",
 			content:
-				"Customer pain points are slow admin workflows, weak cross-team visibility, and poor executive reporting in the incumbent tool. Lead with Jira scale, marketplace extensibility, analytics, and enterprise-grade governance.",
+				"Customer pain points are ServiceNow cost, platform rigidity, three regional instances, CMDB quality at scale, and AI readiness. Lead with Atlassian System of Work, JSM request and incident operations, Teamwork Graph, Rovo, Assets, knowledge, reporting, and transparent TCO.",
 		},
 	],
 	approvers: [
@@ -148,74 +148,74 @@ export const RFP_101_WORK_ITEM = {
 		},
 	],
 	effortEstimate: "21 pts",
-	account: "Acme Mobility",
-	dealSize: "10,000 seats",
+	account: "Global Automotive Enterprise",
+	dealSize: "7,000 agents",
 	rfpContext: {
-		customerName: "Acme Mobility",
-		opportunityName: "Acme Mobility Jira enterprise migration",
-		seatCount: "10,000 seats",
-		competitorProduct: "LegacyWorks Enterprise",
+		customerName: "Global Automotive Enterprise",
+		opportunityName: "Global ITSM platform replacement and JSM evaluation",
+		seatCount: "7,000 agents",
+		competitorProduct: "ServiceNow ITSM, ITOM, CMDB, Asset Management, HR, Service Delivery, GRC, and custom workflows",
 		salesGoal:
-			"Help the sales team complete a high-quality RFP response that convinces Acme Mobility to switch from the incumbent competitor to Jira.",
-		procurementStage: "Inbound RFP qualification and response intake",
-		responseDueDate: "Oct 28, 2026",
-		submissionPortal: "Acme Procurement Portal",
+			"Help the sales team complete a persuasive RFP response and onsite demo that positions Atlassian as the lower-friction, AI-ready system of work for global IT operations.",
+		procurementStage: "Shortlisted supplier RFP response and onsite demo preparation",
+		responseDueDate: "Sep 8, 2025",
+		submissionPortal: "Supplier RFP response package",
 		buyerPriorities: [
-			"Prove Jira can scale across 10,000 users with controlled administration and reliable performance.",
-			"Show a credible migration path from the incumbent competitor without disrupting active delivery teams.",
-			"Give executives portfolio visibility while preserving team-level flexibility.",
-			"Demonstrate security, data residency, SSO/SCIM, auditability, and enterprise support readiness.",
+			"Replace multiple ServiceNow instances with a consolidated global IT service management approach.",
+			"Cover incident, problem, change, request, CMDB, asset, knowledge, reporting, portal, customer service, and HR service workflows.",
+			"Improve CMDB maturity for millions of configuration items while focusing operations on active assets.",
+			"Show credible AI capabilities, integrations, data residency, legal compliance, GRC, risk, and vulnerability management.",
 		],
 		evaluationCriteria: [
-			"Functional fit for work tracking, planning, reporting, automation, and cross-functional collaboration.",
-			"Migration approach, timeline, onboarding plan, and change-management support.",
-			"Integration coverage for identity, BI, incident management, CI/CD, documentation, and customer support tools.",
-			"Commercial model for 10,000 seats, discount guardrails, implementation services, and renewal terms.",
-			"Past performance evidence, customer references, uptime posture, security attestations, and support SLAs.",
+			"Functional fit for ITSM, service desk, request management, change enablement, incident operations, and infrastructure operations.",
+			"Depth of Assets and CMDB story across hardware asset management, software asset management, discovery, and data quality.",
+			"Atlassian System of Work narrative across Teamwork Graph, Rovo, Platform, knowledge, metrics, reporting, and portal experiences.",
+			"Commercial model for roughly 7,000 agents, pricing transparency, implementation services, and long-term total cost of ownership.",
+			"Security, legal, data residency, audit logs, Guard, GRC, risk, vulnerability, and enterprise support readiness.",
 		],
 		winThemes: [
-			"Jira gives Acme one shared work graph across teams without forcing every team into one rigid process.",
-			"Atlassian can pair enterprise governance with marketplace breadth and deep ecosystem integrations.",
-			"Migration can be phased by department with executive reporting available from the first wave.",
-			"Security, admin controls, automation, and analytics reduce the operational friction Acme sees in the incumbent tool.",
+			"Atlassian connects IT, software, support, and business teams through one system of work instead of another rigid ITSM silo.",
+			"Jira Service Management can demonstrate end-user request intake, fulfiller workflows, developer change enablement, and incident operations in one demo arc.",
+			"Rovo and Teamwork Graph show how AI can answer questions, summarize knowledge, and connect work across Jira, Confluence, assets, and service operations.",
+			"Transparent pricing, phased migration, and marketplace/partner extensibility address ServiceNow cost and adaptability concerns.",
 		],
 		risks: [
-			"Portal deadline is tight and missing exhibits could disqualify the response.",
-			"Competitor displacement requires credible migration proof and reference customers.",
-			"Pricing needs deal desk approval before any seat-volume commitment is shared.",
-			"Security questionnaire may require current SOC 2, data residency, and audit logging evidence.",
+			"Hardware and software asset management depth may require roadmap, partner, or future-state positioning.",
+			"Out-of-the-box security operations workflows need careful framing against Guard, audit, detection, vulnerability, and integration capabilities.",
+			"CMDB scale and data-quality assumptions need credible discovery, import, governance, and lifecycle examples.",
+			"The onsite agenda is only three hours, so the response team must prioritize the highest-value demo path and park detailed follow-ups.",
 		],
 		nextActions: [
-			"Finish the compliance matrix and identify mandatory no-response gaps.",
-			"Assign section owners across sales, sales engineering, security, legal, deal desk, and customer references.",
-			"Draft executive summary, win themes, migration timeline, and implementation plan.",
-			"Validate final portal checklist before bid/no-bid approval.",
+			"Finish the requirement compliance matrix and mark every mandatory response owner.",
+			"Draft executive summary, Atlassian System of Work story, JSM demo script, pricing/TCO narrative, and final pitch.",
+			"Validate Assets, CMDB, HAM/SAM, GRC, risk, vulnerability, and data residency responses with product and legal owners.",
+			"Prepare a concise onsite demo agenda with clear strengths, known gaps, and follow-up answers for supplier Q&A.",
 		],
 		responseTeam: [
 			{
 				role: "Account executive",
 				owner: "Jordan Lee",
-				need: "Customer strategy, competitor displacement narrative, executive sponsor alignment.",
+				need: "Customer strategy, ServiceNow displacement narrative, executive sponsor alignment, and final pitch.",
 			},
 			{
 				role: "Proposal manager",
 				owner: "Maya Chen",
-				need: "Compliance matrix, response calendar, portal checklist, final submission readiness.",
+				need: "Compliance matrix, response calendar, supplier questions, portal checklist, and submission readiness.",
 			},
 			{
 				role: "Sales engineer",
 				owner: "Priya Shah",
-				need: "Migration architecture, integrations, scale, technical appendix, implementation plan.",
+				need: "JSM workflows, Assets/CMDB, integrations, CI/CD, incident operations, AI demo, and technical appendix.",
 			},
 			{
 				role: "Security and legal",
 				owner: "Elena Ruiz",
-				need: "Security questionnaire, DPA, compliance exhibits, data residency and audit answers.",
+				need: "Data residency, DPA, legal terms, audit logs, Guard, compliance exhibits, and vulnerability answers.",
 			},
 			{
 				role: "Deal desk",
 				owner: "Darius Pavri",
-				need: "Pricing workbook, discount guardrails, approval path, commercial assumptions.",
+				need: "Pricing workbook, license assumptions, TCO positioning, discount guardrails, and approval path.",
 			},
 		],
 	},
