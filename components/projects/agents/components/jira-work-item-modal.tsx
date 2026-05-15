@@ -39,7 +39,7 @@ export default function JiraWorkItemModal({
 	isOpen,
 	onClose,
 	workItem,
-	workItemTitle = "Qualify global ITSM platform replacement RFP",
+	workItemTitle = "Qualify enterprise service-management RFP",
 	workItemCode = "RFP-101",
 }: Readonly<JiraWorkItemModalProps>) {
 	const resolvedWorkItem = workItem ?? {

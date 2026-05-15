@@ -10,7 +10,7 @@ import ShowMoreHorizontalIcon from "@atlaskit/icon/core/show-more-horizontal";
 
 
 const ATTACHMENT_FILES: WorkItemAttachment[] = [
-	{ name: "automotive-itsm-rfp-requirements", ext: "pdf", date: "12 Aug 2025, 09:12 AM", thumbnailTone: "success" },
+	{ name: "enterprise-rfp-requirements", ext: "pdf", date: "12 Aug 2025, 09:12 AM", thumbnailTone: "success" },
 	{ name: "rfp-requirement-compliance-matrix", ext: "xlsx", date: "12 Aug 2025, 09:18 AM", thumbnailTone: "warning" },
 	{ name: "pricing-tco-and-license-model", ext: "xlsx", date: "2 Sep 2025, 04:10 PM", thumbnailTone: "discovery" },
 ];
