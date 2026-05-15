@@ -18,6 +18,8 @@ Frontend pattern:
 - `useChat` hook from `@ai-sdk/react` manages message state, streaming, and submission
 - `DefaultChatTransport` from `ai` points to `/api/chat-sdk`
 - Messages use the `UIMessage` type from `ai`
+- Route-local `contextDescription` values are additive. When a route, demo, or suggestion adds hidden prompt context, merge it with provider defaults via `mergeRovoContextDescriptions()` instead of replacing existing board/work-item/suggestion scope.
+- Keep route-local hidden context bounded with explicit start/end labels and route-owned tests for the formatting and merge path.
 
 Custom data parts sent by the backend (`data-` prefix in SSE, stripped in frontend):
 
