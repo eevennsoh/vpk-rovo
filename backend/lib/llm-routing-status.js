@@ -8,12 +8,19 @@ function buildLlmRoutingStatus({
 	rovoDevAvailable,
 	aiGatewayConfigured,
 } = {}) {
+	const canDelegateRichTurnsToRovoDev = rovoDevAvailable === true
+
 	return {
-		rovoDevAvailable: rovoDevAvailable === true,
+		rovoDevAvailable: canDelegateRichTurnsToRovoDev,
 		aiGatewayConfigured: aiGatewayConfigured === true,
 		chatSdk: {
-			backend: rovoDevAvailable ? "rovodev" : "rovodev-required",
-			requiresRovoDev: true,
+			backend: "ai-gateway",
+			requiresRovoDev: false,
+			aiGatewayConfigured: aiGatewayConfigured === true,
+		},
+		richToolTurns: {
+			backend: canDelegateRichTurnsToRovoDev ? "rovodev" : "ai-gateway",
+			requiresRovoDev: false,
 		},
 		aiGatewayAssistedFeatures: {
 			configured: aiGatewayConfigured === true,
@@ -23,11 +30,13 @@ function buildLlmRoutingStatus({
 }
 
 function describeChatBackend(llmRoutingStatus) {
-	if (llmRoutingStatus?.chatSdk?.backend === "rovodev") {
-		return "RovoDev Serve (agent loop)"
+	if (llmRoutingStatus?.chatSdk?.backend === "ai-gateway") {
+		return llmRoutingStatus.chatSdk.aiGatewayConfigured
+			? "AI Gateway"
+			: "AI Gateway (not configured)"
 	}
 
-	return "RovoDev required"
+	return "Unknown"
 }
 
 module.exports = {

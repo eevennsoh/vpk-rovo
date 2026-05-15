@@ -33,6 +33,7 @@ test("rovo app thread manager persists and lists thread metadata", async () => {
 		},
 		activeRun: {
 			id: "run-1",
+			backend: "rovodev",
 			status: "queued",
 			portIndex: 1,
 			rovoPort: 8001,
@@ -51,6 +52,7 @@ test("rovo app thread manager persists and lists thread metadata", async () => {
 	assert.deepEqual(createdThread.hermesContext?.selectedSkillIds, ["research/llm-wiki"]);
 	assert.deepEqual(createdThread.hermesContext?.autoSelectedSkillIds, ["research/arxiv"]);
 	assert.deepEqual(createdThread.hermesContext?.pendingDraftIds, ["draft-1"]);
+	assert.equal(createdThread.activeRun?.backend, "rovodev");
 	assert.equal(createdThread.activeRun?.status, "queued");
 	assert.equal(createdThread.activeRun?.rovoPort, 8001);
 	assert.equal(createdThread.activeRun?.sessionId, "session-1");
@@ -75,6 +77,26 @@ test("rovo app thread manager persists and lists thread metadata", async () => {
 	const listedThreads = await manager.listThreads();
 	assert.equal(listedThreads.length, 1);
 	assert.equal(listedThreads[0].id, "thread-1");
+});
+
+test("rovo app thread manager preserves existing fields when updates omit them", async () => {
+	const baseDir = await createTempBaseDir();
+	const manager = createRovoAppThreadManager({ baseDir, logger: console });
+
+	await manager.createThread({
+		id: "thread-preserve-fields",
+		title: "Specific title",
+		messages: [],
+		visibility: "private",
+	});
+
+	const updatedThread = await manager.updateThread("thread-preserve-fields", {
+		title: undefined,
+		messages: [{ id: "m1", role: "user", parts: [{ type: "text", text: "hello" }] }],
+	});
+
+	assert.equal(updatedThread?.title, "Specific title");
+	assert.equal(updatedThread?.messages.length, 1);
 });
 
 test("rovo app thread manager hides persisted legacy Hermes realtime widgets", async () => {

@@ -41,7 +41,6 @@ export const API_ENDPOINTS = {
 	WIKI_MEMORIES: `${API_BASE_URL}/api/wiki/memories`,
 	WIKI_MEMORY_EXPLORER: `${API_BASE_URL}/api/wiki/memory-explorer`,
 	WIKI_SYNC: `${API_BASE_URL}/api/wiki/sync`,
-	CHAT_THREADS: `${API_BASE_URL}/api/chat/threads`,
 	ROVO_APP_CHAT: `${API_BASE_URL}/api/rovo/chat`,
 	ROVO_APP_SUGGESTIONS: `${API_BASE_URL}/api/rovo/suggestions`,
 	ROVO_APP_MESSAGES: `${API_BASE_URL}/api/rovo/messages`,
@@ -161,12 +160,6 @@ export const API_ENDPOINTS = {
 		}
 		return `${API_BASE_URL}/api/sessions/search?${params.toString()}`;
 	},
-	chatThreads: (limit?: number) =>
-		`${API_BASE_URL}/api/chat/threads${
-			typeof limit === "number" ? `?limit=${encodeURIComponent(String(limit))}` : ""
-		}`,
-	chatThread: (threadId: string) =>
-		`${API_BASE_URL}/api/chat/threads/${encodeURIComponent(threadId)}`,
 	rovoAppThreads: (limit?: number) =>
 		`${API_BASE_URL}/api/rovo/threads${
 			typeof limit === "number" ? `?limit=${encodeURIComponent(String(limit))}` : ""

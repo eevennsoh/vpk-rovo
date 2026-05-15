@@ -98,8 +98,8 @@ function normalizeRovoAppThread(thread: Partial<RovoAppThread> | null | undefine
 	};
 }
 
-export async function listRovoAppThreads(): Promise<RovoAppThread[]> {
-	const response = await fetch(API_ENDPOINTS.rovoAppThreads(), {
+export async function listRovoAppThreads(limit?: number): Promise<RovoAppThread[]> {
+	const response = await fetch(API_ENDPOINTS.rovoAppThreads(limit), {
 		method: "GET",
 	});
 	const payload = assertRovoAppAvailable(

@@ -106,9 +106,6 @@ const {
 	createUiMessageChunkSseStream,
 } = require("./lib/rovo-app-ui-stream");
 const {
-	waitForRovoAppRovoDevAvailability,
-} = require("./lib/rovo-app-availability");
-const {
 	buildRovoAppArtifactIntentPrompt,
 	normalizeArtifactKind,
 	parseRovoAppArtifactIntent,
@@ -292,7 +289,6 @@ const {
 	shouldRetryInteractiveStuckPortRecovery,
 } = require("./lib/interactive-chat-port-recovery");
 const {
-	hasStructuredContinuationBody,
 	shouldReplaceActiveRunForRequest,
 } = require("./lib/rovo-app-run-continuation");
 const { createRovoDevPool } = require("./lib/rovodev-pool");
@@ -314,7 +310,6 @@ const {
 	DEFAULT_RECOVERY_TIMEOUT_MS: DEFAULT_ROVODEV_PORT_RECOVERY_TIMEOUT_MS,
 } = require("./lib/rovodev-port-recovery");
 const {
-	buildRovoDevDiscoveryCandidatePorts,
 	resolveRovoDevPorts,
 } = require("./lib/rovodev-port-discovery");
 const {
@@ -807,6 +802,60 @@ async function resolvePreferredBackend({ backendPreference = "rovodev" } = {}) {
 		backend: null,
 		rovoDevAvailable,
 	};
+}
+
+async function isRovoDevBackendAvailableForDelegation() {
+	try {
+		return await isRovoDevAvailable();
+	} catch {
+		return false;
+	}
+}
+
+function shouldDelegateRovoAppTurnToRovoDev({
+	isPlanModeActive = false,
+	requestBody,
+	routingDecision,
+}) {
+	if (requestBody?.backendPreference === "rovodev") {
+		return true;
+	}
+
+	if (
+		routingDecision?.intent === "artifact_create" ||
+		routingDecision?.intent === "artifact_update"
+	) {
+		return true;
+	}
+
+	if (isPlanModeActive) {
+		return true;
+	}
+
+	return Boolean(
+		requestBody?.activeArtifact?.id ||
+		requestBody?.artifactContext?.id ||
+		requestBody?.streamingArtifact?.id ||
+		requestBody?.delegatedMessageId ||
+		requestBody?.deferredToolResponse ||
+		requestBody?.approval ||
+		requestBody?.executionMode ||
+		requestBody?.executionTask
+	);
+}
+
+async function resolveRovoAppTurnBackendPreference({
+	isPlanModeActive = false,
+	requestBody,
+	routingDecision,
+}) {
+	if (!shouldDelegateRovoAppTurnToRovoDev({ isPlanModeActive, requestBody, routingDecision })) {
+		return "ai-gateway";
+	}
+
+	return (await isRovoDevBackendAvailableForDelegation())
+		? "rovodev"
+		: "ai-gateway";
 }
 
 function sendGatewayErrorResponse(res, error, fallbackErrorMessage) {
@@ -3546,11 +3595,20 @@ async function executeRovoAppManagedRun(run) {
 	}
 
 	if (routingDecision.intent === "artifact_create" || routingDecision.intent === "artifact_update") {
+		const artifactBackendPreference =
+			workItemReportRequest.artifactBackendPreference ||
+			(await resolveRovoAppTurnBackendPreference({
+				isPlanModeActive: requestIsPlanMode || autoPlanTriggered,
+				requestBody,
+				routingDecision,
+			}));
+		await persistRovoAppRunBackend(threadId, artifactBackendPreference);
+
 		const handled = await handleRovoAppArtifactToolRequest({
 			activeArtifact,
 			activeDocument,
 			artifactSteering,
-			artifactBackendPreference: workItemReportRequest.artifactBackendPreference || undefined,
+			artifactBackendPreference,
 			contextDescription: effectiveBaseContextDescription || null,
 			requestOrigin,
 			requestBody,
@@ -3633,6 +3691,12 @@ async function executeRovoAppManagedRun(run) {
 	if (routingDecision.intent === "genui") {
 		requestBody.genuiHint = true;
 	}
+	requestBody.backendPreference = await resolveRovoAppTurnBackendPreference({
+		isPlanModeActive: requestIsPlanMode || autoPlanTriggered,
+		requestBody,
+		routingDecision,
+	});
+	await persistRovoAppRunBackend(threadId, requestBody.backendPreference);
 	requestBody.resolvedPlanModeActive = requestIsPlanMode || autoPlanTriggered;
 	requestBody.chatSdkSource = "rovo";
 	requestBody.threadId = threadId;
@@ -3667,6 +3731,7 @@ async function executeRovoAppManagedRun(run) {
 
 async function startManagedRovoAppRun(run) {
 	const markedRun = rovoAppRunManager.markRunStarted(run.threadId, {
+		backend: run.backend === "rovodev" ? "rovodev" : "ai-gateway",
 		portIndex: null,
 		rovoPort: null,
 		status: rovoAppRunManager.hasSubscribers(run.threadId) ? "streaming" : "background",
@@ -3721,33 +3786,6 @@ async function proxyRovoAppChatRequest(req, res) {
 		return res.status(400).json({ error: "threadId is required" });
 	}
 
-	const isStructuredContinuation = hasStructuredContinuationBody(requestBody);
-	const rovoDevReady = await waitForRovoAppRovoDevAvailability({
-		getAvailability: refreshRovoDevAvailability,
-		getPorts: () =>
-			buildRovoDevDiscoveryCandidatePorts({
-				envPort: process.env.ROVODEV_PORT,
-				basePort: getRovodevBasePort(),
-				maxTries: ROVODEV_PORT_SEARCH_MAX_TRIES,
-			}),
-	});
-	const poolStatus = _rovoDevPool?.getStatus?.();
-	const poolPorts = Array.isArray(poolStatus?.ports) ? poolStatus.ports : [];
-	if (!rovoDevReady || !_rovoDevPool || poolPorts.length === 0) {
-		console.warn("[FUTURE-CHAT] RovoDev unavailable before starting managed run", {
-			threadId,
-			rovoDevReady,
-			hasPool: Boolean(_rovoDevPool),
-			totalPorts: poolPorts.length,
-		});
-		streamRovoAppUnavailableResponse(
-			res,
-			"RovoDev Serve is required but not available. Start or restart `pnpm run rovodev` and try again.",
-			"Rovo could not start because no healthy RovoDev ports were registered.",
-		);
-		return;
-	}
-
 	let existingRun = rovoAppRunManager.getRun(threadId);
 	if (shouldReplaceActiveRunForRequest({ existingRun, requestBody })) {
 		if (typeof existingRun?.rovoPort === "number" && existingRun.rovoPort > 0) {
@@ -3761,6 +3799,7 @@ async function proxyRovoAppChatRequest(req, res) {
 	const run =
 		existingRun ||
 		rovoAppRunManager.createRun({
+			backend: "ai-gateway",
 			threadId,
 			requestBody,
 			requestedPortIndex: null,
@@ -3779,33 +3818,10 @@ async function proxyRovoAppChatRequest(req, res) {
 	}
 
 	if (!existingRun) {
-		const availableCount = poolPorts.filter((p) => p?.status === "available").length;
-		const busyCount = poolPorts.filter((p) => p?.status === "busy" || p?.status === "in-use").length;
-		console.info("[TIMING][rovo-app] pool-status", {
+		console.info("[TIMING][rovo-app] start-managed-run", {
 			threadId,
-			totalPorts: poolPorts.length,
-			available: availableCount,
-			busy: busyCount,
 		});
-
-		const assignment = resolveRovoAppPortAvailability();
-		if (isStructuredContinuation) {
-			console.info("[TIMING][rovo-app] structured continuation bypassing queue gate", {
-				threadId,
-			});
-			await startManagedRovoAppRun(run);
-		} else if (assignment) {
-			console.info("[TIMING][rovo-app] port-assignment", {
-				threadId,
-			});
-			await startManagedRovoAppRun(run);
-		} else {
-			console.info("[TIMING][rovo-app] port-assignment: null (run will be QUEUED)", {
-				threadId,
-			});
-			rovoAppRunManager.enqueueRun(threadId);
-			await persistRovoAppRunState(threadId, rovoAppRunManager.getRun(threadId));
-		}
+		await startManagedRovoAppRun(run);
 	}
 
 	await persistRovoAppRunState(threadId, rovoAppRunManager.getRun(threadId));
@@ -3900,6 +3916,7 @@ function buildRovoAppActiveRunPayload(run, thread) {
 
 	return {
 		id: run.id,
+		backend: run.backend === "rovodev" ? "rovodev" : "ai-gateway",
 		status: run.status,
 		portIndex: null,
 		rovoPort:
@@ -3926,6 +3943,15 @@ async function persistRovoAppRunState(threadId, run) {
 	return rovoAppThreadManager.updateThread(threadId, {
 		activeRun: buildRovoAppActiveRunPayload(run, thread),
 	});
+}
+
+async function persistRovoAppRunBackend(threadId, backend) {
+	const run = rovoAppRunManager.setRunBackend(threadId, backend);
+	if (!run) {
+		return null;
+	}
+
+	return persistRovoAppRunState(threadId, run);
 }
 
 async function clearRovoAppRunState(threadId) {
@@ -4041,50 +4067,6 @@ function streamExpiredClarificationResponse(res, toolCallId) {
 			error instanceof Error
 				? error.message
 				: "Failed to stream expired clarification response",
-	});
-	pipeUIMessageStreamToResponse({ response: res, stream });
-}
-
-function streamRovoAppUnavailableResponse(res, message, details) {
-	const normalizedMessage =
-		typeof message === "string" && message.trim().length > 0
-			? message.trim()
-			: "RovoDev Serve is required but not available.";
-	const normalizedDetails =
-		typeof details === "string" && details.trim().length > 0
-			? details.trim()
-			: undefined;
-
-	const stream = createUIMessageStream({
-		execute: async ({ writer }) => {
-			const textId = `rovo-app-unavailable-${Date.now()}`;
-			writer.write({ type: "text-start", id: textId });
-			writer.write({
-				type: "text-delta",
-				id: textId,
-				delta: normalizedMessage,
-			});
-			writer.write({ type: "text-end", id: textId });
-			writer.write({
-				type: "data-widget-error",
-				id: `rovo-app-unavailable-widget-${Date.now()}`,
-				data: {
-					type: "question-card",
-					code: "rovodev_unavailable",
-					message: normalizedMessage,
-					details: normalizedDetails,
-					canRetry: true,
-				},
-			});
-			writer.write({
-				type: "data-turn-complete",
-				data: { timestamp: new Date().toISOString() },
-			});
-		},
-		onError: (error) =>
-			error instanceof Error
-				? error.message
-				: "Failed to stream RovoDev unavailable response",
 	});
 	pipeUIMessageStreamToResponse({ response: res, stream });
 }
@@ -5209,7 +5191,7 @@ async function handleChatSdkRequest(req, res) {
 		const backendPreference =
 			rawBackendPreference === "ai-gateway" || rawBackendPreference === "rovodev"
 				? rawBackendPreference
-				: "rovodev";
+				: "ai-gateway";
 		const clientTimeZone = normalizeClientTimeZone(rawClientTimeZone);
 		const genuiHint = rawGenuiHint === true;
 		let resolvedPlanModeActive = rawResolvedPlanModeActive === true;

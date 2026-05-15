@@ -21,7 +21,7 @@ export default function RovoFloatingChat({
 	onArtifactDialogOpen,
 	preserveFloatingSurfaceOnArtifactDialogOpen = false,
 }: Readonly<RovoFloatingChatProps>) {
-	const { closeChat, resetChat } = useRovoChat();
+	const { closeChat, isHistoryOpen, resetChat, toggleHistory } = useRovoChat();
 
 	return (
 		<motion.div
@@ -36,7 +36,9 @@ export default function RovoFloatingChat({
 			}}
 		>
 			<FloatingChatHeader
+				isHistoryOpen={isHistoryOpen}
 				onClose={closeChat}
+				onHistoryToggle={toggleHistory}
 				onNewChat={resetChat}
 				onSurfaceSwitch={onSurfaceSwitch}
 			/>

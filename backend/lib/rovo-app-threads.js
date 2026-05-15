@@ -190,6 +190,18 @@ function normalizeHermesContext(rawHermesContext) {
 	return normalizedContext;
 }
 
+function omitUndefinedFields(fields) {
+	const definedFields = {};
+
+	for (const [key, value] of Object.entries(fields || {})) {
+		if (value !== undefined) {
+			definedFields[key] = value;
+		}
+	}
+
+	return definedFields;
+}
+
 function normalizeActiveRun(rawActiveRun, updatedAtFallback) {
 	if (!rawActiveRun || typeof rawActiveRun !== "object") {
 		return null;
@@ -224,9 +236,22 @@ function normalizeActiveRun(rawActiveRun, updatedAtFallback) {
 	const sessionId = normalizeSessionId(
 		rawActiveRun.sessionId ?? rawActiveRun.session_id,
 	);
+	const rovoPort =
+		typeof rawActiveRun.rovoPort === "number"
+		&& Number.isInteger(rawActiveRun.rovoPort)
+		&& rawActiveRun.rovoPort > 0
+			? rawActiveRun.rovoPort
+			: null;
+	const backend =
+		rawActiveRun.backend === "rovodev" || rawActiveRun.backend === "ai-gateway"
+			? rawActiveRun.backend
+			: rovoPort !== null
+				? "rovodev"
+				: "ai-gateway";
 
 	return {
 		id,
+		backend,
 		status,
 		portIndex:
 			typeof rawActiveRun.portIndex === "number"
@@ -234,12 +259,7 @@ function normalizeActiveRun(rawActiveRun, updatedAtFallback) {
 			&& rawActiveRun.portIndex >= 0
 				? rawActiveRun.portIndex
 				: null,
-		rovoPort:
-			typeof rawActiveRun.rovoPort === "number"
-			&& Number.isInteger(rawActiveRun.rovoPort)
-			&& rawActiveRun.rovoPort > 0
-				? rawActiveRun.rovoPort
-				: null,
+		rovoPort,
 		sessionId,
 		sessionMode: normalizeSessionMode(
 			rawActiveRun.sessionMode ?? rawActiveRun.session_mode,
@@ -421,14 +441,15 @@ function createRovoAppThreadManager({ baseDir, logger }) {
 			return null;
 		}
 
+		const definedFields = omitUndefinedFields(fields);
 		const nextThread = normalizeThreadRecord({
 			...currentThread,
-			...fields,
+			...definedFields,
 			id: currentThread.id,
 			createdAt: currentThread.createdAt,
 			updatedAt:
-				typeof fields.updatedAt === "string" && fields.updatedAt.trim()
-					? fields.updatedAt
+				typeof definedFields.updatedAt === "string" && definedFields.updatedAt.trim()
+					? definedFields.updatedAt
 					: toIsoDate(),
 		});
 		const { threadFilePath } = buildRovoAppThreadPaths(baseDir, threadId);
