@@ -33,10 +33,12 @@ async function loadRovoFloatingChatHarness() {
 				export function useRovoChat() {
 					return {
 						closeChat() {},
+						isHistoryOpen: false,
 						resetChat() {},
 						switchSurface() {
 							throw new Error("RovoFloatingChat should not switch surfaces while rendering.");
 						},
+						toggleHistory() {},
 						uiMessages: [
 							{
 								id: "message-1",
@@ -45,6 +47,18 @@ async function loadRovoFloatingChatHarness() {
 							},
 						],
 					};
+				}
+			`,
+		],
+		[
+			"@/components/projects/sidebar-chat/components/chat-history-drawer",
+			`
+				import React from "react";
+
+				export function ChatHistoryDrawer() {
+					return React.createElement("div", {
+						"data-testid": "floating-history-drawer",
+					});
 				}
 			`,
 		],
@@ -168,6 +182,7 @@ test("RovoFloatingChat renders the shared chat panel inside the floating shell",
 
 	assert.match(markup, /data-testid="floating-chat-header"/);
 	assert.match(markup, /data-has-new-chat="true"/);
+	assert.match(markup, /data-testid="floating-history-drawer"/);
 	assert.match(markup, /data-testid="shared-chat-panel"/);
 	assert.match(markup, /data-hide-header="true"/);
 	assert.match(markup, /data-abort-on-unmount="false"/);
@@ -226,7 +241,7 @@ test("Shared ChatPanel renders the Rovo-style conversation body and scroll butto
 	assert.match(CHAT_PANEL_SOURCE, /followMode=\{scrollFollowMode\}/);
 	assert.match(
 		CHAT_PANEL_SOURCE,
-		/className="mx-auto flex min-w-0 max-w-\[800px\] flex-col gap-4 px-3 py-6 md:gap-6"/,
+		/className="mx-auto flex min-w-0 max-w-\[800px\] flex-col gap-4 px-4 py-6 md:gap-6"/,
 	);
 	assert.match(
 		CHAT_PANEL_SOURCE,

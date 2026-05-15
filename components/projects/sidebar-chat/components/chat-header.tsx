@@ -15,6 +15,7 @@ import {
 	ChatSurfaceSwitcherItems,
 	type ChatSurfaceSwitchHandler,
 } from "@/components/projects/shared/components/chat-surface-switcher";
+import { ChatHistoryButton } from "./chat-history-button";
 import AppIcon from "@atlaskit/icon/core/app";
 import BugIcon from "@atlaskit/icon/core/bug";
 import ChevronDownIcon from "@atlaskit/icon/core/chevron-down";
@@ -22,7 +23,6 @@ import CrossIcon from "@atlaskit/icon/core/cross";
 import DeleteIcon from "@atlaskit/icon/core/delete";
 import EditIcon from "@atlaskit/icon/core/edit";
 import FeedbackIcon from "@atlaskit/icon/core/feedback";
-import MenuIcon from "@atlaskit/icon/core/menu";
 import QuestionCircleIcon from "@atlaskit/icon/core/question-circle";
 import ShowMoreHorizontalIcon from "@atlaskit/icon/core/show-more-horizontal";
 
@@ -55,15 +55,7 @@ export default function ChatHeader({
 			<div className="flex justify-between items-center">
 				{/* Left side: Menu icon and Title */}
 				<div className="flex items-center gap-1">
-					<Button
-						aria-label="Chat history"
-						aria-expanded={isHistoryOpen}
-						size="icon"
-						variant={isHistoryOpen ? "secondary" : "ghost"}
-						onClick={onHistoryToggle ?? noop}
-					>
-						<MenuIcon label="" />
-					</Button>
+					<ChatHistoryButton isHistoryOpen={isHistoryOpen} onToggle={onHistoryToggle} />
 					<div className="flex items-center gap-2">
 						<Image
 							src="/1p/rovo.svg"
