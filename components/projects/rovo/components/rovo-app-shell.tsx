@@ -1101,7 +1101,7 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 
 	const voiceButtonState: VoiceButtonState = voice.state === "speaking" ? "processing" : voice.state;
 
-	// --- Clicky AI cursor companion ---
+	// --- Rovo AI cursor companion ---
 	const clicky = useClicky();
 	const {
 		toggle: toggleClicky,
@@ -1121,17 +1121,17 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 		toggleClicky();
 	}, [toggleClicky]);
 
-	// Keyboard shortcuts for Clicky
+	// Keyboard shortcuts for Rovo
 	useEffect(() => {
 		const handleKeyDown = (e: KeyboardEvent) => {
-			// Cmd+Shift+K (Mac) / Ctrl+Shift+K (other) toggles Clicky
+			// Cmd+Shift+K (Mac) / Ctrl+Shift+K (other) toggles Rovo
 			if (e.key === "K" && e.shiftKey && (e.metaKey || e.ctrlKey)) {
 				e.preventDefault();
 				toggleClicky();
 				return;
 			}
 
-			// Escape deactivates Clicky
+			// Escape deactivates Rovo
 			if (e.key === "Escape" && isClickyActive) {
 				deactivateClicky();
 			}
@@ -1197,7 +1197,7 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 			realtimeUserMessageIdRef.current = null;
 			setVoiceTranscript("");
 
-			// Clicky: transition to listening
+			// Rovo: transition to listening
 			if (isClickyActive) {
 				clickyStartListening();
 			}
@@ -1228,7 +1228,7 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 			async (payload: RealtimeSpeechTranscriptPayload) => {
 				const transcript = typeof payload === "string" ? payload : (payload.transcript ?? payload.text ?? "");
 
-				// Clicky: transition to processing and record user exchange
+				// Rovo: transition to processing and record user exchange
 				if (isClickyActive) {
 					clickyStartProcessing();
 					if (transcript) {
@@ -1296,7 +1296,7 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 					replace: true,
 				});
 
-				// Clicky: parse POINT tag and transition to speaking/pointing
+				// Rovo: parse POINT tag and transition to speaking/pointing
 				if (isClickyActive) {
 					const parsed = parseClickyResponse(text, clickyScreenshotDimensions);
 					clickyAddExchange({ role: "assistant", content: parsed.text || text });
@@ -1315,7 +1315,7 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 
 	const isRealtimeActive = realtime.voiceState !== "idle";
 
-	// --- Clicky voice bridge ---
+	// --- Rovo voice bridge ---
 	useClickyVoice({
 		clickyState: clicky.state,
 		isClickyActive,
@@ -1446,7 +1446,7 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 					queueTypedScrollAnchor("realtime", latestUserMessageIdBeforeSubmit);
 					resetRealtimeAssistantMessageState();
 
-					// Clicky: capture screenshot + transition to processing for text input
+					// Rovo: capture screenshot + transition to processing for text input
 					if (isClickyActive) {
 						clickyAddExchange({ role: "user", content: text });
 						clickyStartProcessing();

@@ -24,35 +24,51 @@
 		},
 		"browser-workspace": {
 			"args": [
-				"/Users/esoh/Documents/Labs/VPK-rovo/scripts/browser-workspace-mcp.js"
+				"/Users/esoh/Documents/Labs/vpk-rovo/scripts/browser-workspace-mcp.js"
 			],
 			"command": "node",
 			"env": {
-				"REPO_ROOT": "/Users/esoh/Documents/Labs/VPK-rovo"
+				"REPO_ROOT": "/Users/esoh/Documents/Labs/vpk-rovo"
 			},
 			"type": "stdio"
 		},
 		"wiki-capture": {
 			"args": [
-				"/Users/esoh/Documents/Labs/VPK-rovo/scripts/wiki-capture-mcp.js"
+				"/Users/esoh/Documents/Labs/vpk-rovo/scripts/wiki-capture-mcp.js"
 			],
 			"command": "node",
 			"env": {
-				"REPO_ROOT": "/Users/esoh/Documents/Labs/VPK-rovo"
+				"REPO_ROOT": "/Users/esoh/Documents/Labs/vpk-rovo"
 			},
 			"type": "stdio"
 		},
-		"qmd": {
+		"Figma MCP": {
+			"command": "npx",
 			"args": [
-				"exec",
-				"qmd",
-				"mcp"
+				"-y",
+				"figma-developer-mcp",
+				"--figma-api-key=YOUR_FIGMA_API_KEY",
+				"--stdio"
 			],
-			"command": "pnpm",
-			"env": {
-				"INDEX_PATH": "/Users/esoh/Documents/Labs/VPK-rovo/.cache/qmd/wiki.sqlite"
-			},
-			"type": "stdio"
+			"disabled": true
+		},
+		"ads": {
+			"command": "npx",
+			"args": [
+				"-y",
+				"@atlaskit/ads-mcp"
+			],
+			"disabled": false
+		},
+		"Framelink Figma MCP": {
+			"command": "npx",
+			"args": [
+				"-y",
+				"figma-developer-mcp",
+				"--figma-api-key=${FIGMA_ACCESS_TOKEN}",
+				"--stdio"
+			],
+			"disabled": false
 		}
 	},
 	"inputs": []

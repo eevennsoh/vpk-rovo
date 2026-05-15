@@ -5,7 +5,7 @@ import type { ClickyExchange } from "@/components/projects/rovo/hooks/use-clicky
 import { token } from "@/lib/tokens";
 
 // ---------------------------------------------------------------------------
-// Clicky conversation history — small scrollable panel in the overlay.
+// Rovo conversation history — small scrollable panel in the overlay.
 // ---------------------------------------------------------------------------
 
 interface ClickyHistoryPanelProps {

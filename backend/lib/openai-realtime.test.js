@@ -178,15 +178,56 @@ test("text_message_from_user creates a user message and requests a response", ()
 	});
 });
 
-test("session updates request audio and text assistant output", () => {
+test("session updates use the GA realtime audio session schema", () => {
 	const { session, openaiMessages } = createReadySession();
 
 	session._sendSessionUpdate({ voice: "alloy" });
 
 	assert.equal(openaiMessages.length, 1);
 	assert.equal(openaiMessages[0].type, "session.update");
-	assert.deepEqual(openaiMessages[0].session?.modalities, ["audio", "text"]);
-	assert.equal(openaiMessages[0].session?.voice, "alloy");
+	assert.deepEqual(openaiMessages[0].session?.output_modalities, ["audio"]);
+	assert.equal(openaiMessages[0].session?.audio?.output?.voice, "alloy");
+	assert.deepEqual(openaiMessages[0].session?.audio?.input?.format, {
+		type: "audio/pcm",
+		rate: 24_000,
+	});
+	assert.deepEqual(openaiMessages[0].session?.audio?.output?.format, {
+		type: "audio/pcm",
+		rate: 24_000,
+	});
+	assert.equal(openaiMessages[0].session?.max_output_tokens, "inf");
+	assert.equal("modalities" in openaiMessages[0].session, false);
+	assert.equal("input_audio_format" in openaiMessages[0].session, false);
+	assert.equal("output_audio_format" in openaiMessages[0].session, false);
+	assert.equal("max_response_output_tokens" in openaiMessages[0].session, false);
+});
+
+test("client session updates preserve configurable realtime voice options", () => {
+	const { session, openaiMessages } = createReadySession();
+
+	session.handleClientMessage(JSON.stringify({
+		type: "session_update",
+		config: {
+			instructions: "Use a quiet voice.",
+			voice: "verse",
+			turn_detection: {
+				type: "semantic_vad",
+				eagerness: "low",
+				create_response: true,
+				interrupt_response: true,
+			},
+		},
+	}));
+
+	assert.equal(openaiMessages.length, 1);
+	assert.equal(openaiMessages[0].type, "session.update");
+	assert.equal(openaiMessages[0].session?.instructions, "Use a quiet voice.");
+	assert.deepEqual(openaiMessages[0].session?.output_modalities, ["audio"]);
+	assert.equal(openaiMessages[0].session?.audio?.output?.voice, "verse");
+	assert.equal(
+		openaiMessages[0].session?.audio?.input?.turn_detection?.eagerness,
+		"low",
+	);
 });
 
 test("text and transcript deltas forward item ids to the client", () => {

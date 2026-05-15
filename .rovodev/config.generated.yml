@@ -9,13 +9,13 @@ agent:
   # Temperature setting for AI model responses (0.0-1.0)
   temperature: 0.3
   # Model ID to use for the agent. See /models command to list available models.
-  modelId: openai-responses-api:gpt-5.5-2026-04-23
+  modelId: anthropic:claude-sonnet-4-6
   # Optional model variant key selected from dynamic configuration.
-  modelVariant: xhigh
+  modelVariant: null
   # Per-model inference parameter overrides keyed by model ID.
   inferenceConfig: null
   # Enable the deep planning tool for complex task planning
-  enableDeepPlanTool: true
+  enableDeepPlanTool: false
   # Efficiency level controlling iteration limits. Options: low, medium
   # (default), high, max.
   efficiencyLevel: medium
@@ -39,6 +39,11 @@ agent:
 sessions:
   # Directory where session data is stored
   persistenceDir: /Users/esoh/.rovodev/sessions
+  # Enable session memory over prior sessions when enabled by dynamic
+  # configuration
+  enableSessionMemory: true
+  # Allow session memory to reference sessions from other workspace locations
+  enableCrossWorkspaceSessionMemory: false
   # (Experimental) When enabled, Rovo Dev may warn and offer to switch your
   # workspace git state (branch/commit) to match the session checkpoint when
   # restoring or switching sessions.
@@ -47,10 +52,7 @@ sessions:
 # Atlassian product integration settings
 atlassianConnections:
   # Global jira projects user is part of
-  jiraProjects:
-  - url: https://asecurityteam.atlassian.net/browse/VULN
-    key: VULN
-    id: '10063'
+  jiraProjects: []
   # Directory where any local overrides are stored
   localOverridePath: .rovodev/atlassian_connections.json
   # Whether atlassian integration is enabled
@@ -120,19 +122,20 @@ logging:
 # Model Context Protocol server configuration
 mcp:
   # Path to the MCP (Model Context Protocol) configuration file
-  mcpConfigPath: /Users/esoh/Documents/Labs/VPK-rovo/.rovodev/mcp.generated.json
+  mcpConfigPath: /Users/esoh/Documents/Labs/vpk-rovo/.rovodev/mcp.generated.json
   # List of allowed MCP server signatures
   allowedMcpServers:
+  - url:http://127.0.0.1:3845/mcp
   - url:https://mcp.atlassian.com/v1/forge/mcp
   - url:https://mcp.atlassian.com/v1/ads/public/mcp
   - stdio:npx:open-websearch@latest
-  - url:http://127.0.0.1:3845/mcp
-  - stdio:pnpm:exec qmd mcp
-  - stdio:node:/Users/esoh/Documents/Labs/VPK-rovo/scripts/browser-workspace-mcp.js
-  - stdio:node:/Users/esoh/Documents/Labs/VPK-rovo/scripts/wiki-capture-mcp.js
+  - stdio:npx:-y figma-developer-mcp --figma-api-key=YOUR_FIGMA_API_KEY --stdio
+  - stdio:npx:-y @atlaskit/ads-mcp
+  - stdio:npx:-y figma-developer-mcp --figma-api-key=${FIGMA_ACCESS_TOKEN} --stdio
+  - stdio:node:/Users/esoh/Documents/Labs/vpk-rovo/scripts/browser-workspace-mcp.js
+  - stdio:node:/Users/esoh/Documents/Labs/vpk-rovo/scripts/wiki-capture-mcp.js
   # List of globally disabled MCP server signatures
-  disabledMcpServers:
-  - stdio:npx:-y chrome-devtools-mcp@latest
+  disabledMcpServers: []
 
 # Tool and command permission settings
 toolPermissions:
@@ -140,24 +143,18 @@ toolPermissions:
   default: ask
   # Permission settings for specific tools
   tools:
-    create_file: allow
-    delete_file: allow
+    create_file: ask
+    delete_file: ask
     move_file: ask
-    find_and_replace_code: allow
+    find_and_replace_code: ask
     open_files: allow
     expand_code_chunks: allow
     expand_folder: allow
     grep: allow
+    bitbucketRepoContent: allow
+    bitbucketRepository: allow
+    atlassian_search: allow
     fetchWebContent: allow
-    search: allow
-    ads_search_icons: allow
-    browser_navigate: allow
-    get_screenshot: allow
-    get_design_context: allow
-    browser_take_screenshot: allow
-    browser_snapshot: allow
-    browser_press_key: allow
-    atlassian_docs_search: allow
   bash:
     # Default permission for bash commands not explicitly listed
     default: ask
@@ -170,32 +167,6 @@ toolPermissions:
     - command: echo(\s.*)?
       permission: allow
     - command: pwd
-      permission: allow
-    - command: pnpm(\s.*)?
-      permission: allow
-    - command: find(\s.*)?
-      permission: allow
-    - command: npx(\s.*)?
-      permission: allow
-    - command: sed(\s.*)?
-      permission: allow
-    - command: awk(\s.*)?
-      permission: allow
-    - command: node(\s.*)?
-      permission: allow
-    - command: git(\s.*)?
-      permission: allow
-    - command: test(\s.*)?
-      permission: allow
-    - command: curl(\s.*)?
-      permission: allow
-    - command: head(\s.*)?
-      permission: allow
-    - command: tail(\s.*)?
-      permission: allow
-    - command: 'tail -10
-
-        pnpm exec tsc --noEmit -p tsconfig.json 2>&1'
       permission: allow
     # Run bash commands in a sandboxed environment - currently available for
     # MacOS and Linux only. Enabling this option for Windows will prevent the
@@ -212,13 +183,12 @@ toolPermissions:
   allowedExternalPaths: []
 
 announcementTracking:
-  announcementViewCounts:
-    908131f43586f75b4fef0df59675176e: 1
+  announcementViewCounts: {}
 
 sessionFeedback:
   permanentlyDisabled: false
   # ISO timestamp of the last provided feedback
-  lastFeedbackAsked: '2026-04-22T15:34:36.046238+00:00'
+  lastFeedbackAsked: null
 
 atlassianBillingSite:
   siteUrl: https://hello.atlassian.net
@@ -234,21 +204,9 @@ smartTasks:
 eventHooks:
   logFile: /Users/esoh/.rovodev/event_hooks.log
   events:
-  - name: on_session_start
-    commands:
-    - command: /Users/esoh/.rovodev/hooks/cmux-hooks.sh on_session_start
-  - name: on_user_prompt
-    commands:
-    - command: /Users/esoh/.rovodev/hooks/cmux-hooks.sh on_user_prompt
   - name: on_tool_start
     commands:
-    - command: /Users/esoh/.rovodev/hooks/cmux-hooks.sh on_tool_start
-  - name: on_complete
+    - command: /Users/esoh/.rovodev/hooks/aloc-managed/post_to_aloc.sh
+  - name: on_tool_end
     commands:
-    - command: /Users/esoh/.rovodev/hooks/cmux-hooks.sh on_complete
-  - name: on_error
-    commands:
-    - command: /Users/esoh/.rovodev/hooks/cmux-hooks.sh on_error
-  - name: on_tool_permission
-    commands:
-    - command: /Users/esoh/.rovodev/hooks/cmux-hooks.sh on_tool_permission
+    - command: /Users/esoh/.rovodev/hooks/aloc-managed/post_to_aloc.sh

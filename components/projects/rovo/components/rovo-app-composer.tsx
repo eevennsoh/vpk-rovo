@@ -667,7 +667,7 @@ function RovoAppComposerInner({
 									size="icon-sm"
 									variant={clickyActive ? "default" : "ghost"}
 									onClick={onToggleClicky}
-									aria-label="Clicky AI cursor"
+									aria-label="Rovo AI cursor"
 									aria-pressed={clickyActive}
 									tooltip={{ content: "AI Cursor ⌘⇧K", delay: 0 }}
 								>

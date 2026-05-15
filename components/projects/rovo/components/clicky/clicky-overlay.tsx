@@ -464,7 +464,7 @@ export function ClickyOverlay({
 									exit={{ opacity: 0 }}
 									transition={{ duration: 0.5, ease: "easeOut" }}
 								>
-									<ClickySpeechBubble text="hey! i'm clicky" />
+									<ClickySpeechBubble text="hey! i'm rovo" />
 								</motion.div>
 							) : null}
 						</AnimatePresence>

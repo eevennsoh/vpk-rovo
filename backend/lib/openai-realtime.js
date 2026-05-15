@@ -149,6 +149,16 @@ const SESSION_STATE = {
 
 const OPENAI_HEARTBEAT_INTERVAL_MS = 20_000;
 const REALTIME_SESSION_REFRESH_MS = 55 * 60 * 1_000;
+const REALTIME_AUDIO_FORMAT = {
+	type: "audio/pcm",
+	rate: 24_000,
+};
+const REALTIME_TURN_DETECTION = {
+	type: "semantic_vad",
+	eagerness: "auto",
+	create_response: true,
+	interrupt_response: true,
+};
 
 // ─── OpenAI Realtime event types ─────────────────────────────────────────────
 
@@ -229,6 +239,33 @@ function normalizeOpenAIEventType(type) {
 	return OPENAI_EVENT_ALIASES.get(type) ?? type;
 }
 
+function buildRealtimeSessionConfig({
+	instructions,
+	turnDetection = REALTIME_TURN_DETECTION,
+	voice,
+}) {
+	return {
+		type: "realtime",
+		instructions,
+		output_modalities: ["audio"],
+		audio: {
+			input: {
+				format: REALTIME_AUDIO_FORMAT,
+				transcription: {
+					model: "gpt-4o-mini-transcribe",
+				},
+				turn_detection: turnDetection,
+			},
+			output: {
+				format: REALTIME_AUDIO_FORMAT,
+				voice,
+			},
+		},
+		max_output_tokens: "inf",
+		tools: SESSION_TOOLS,
+	};
+}
+
 // ─── Session class ───────────────────────────────────────────────────────────
 
 class RealtimeSession {
@@ -249,7 +286,7 @@ class RealtimeSession {
 		this._awaitingOpenAIPong = false;
 		this._sessionRefreshTimer = null;
 		this._plannedCloseReason = null;
-		this._clickyTtsResponseId = null; // suppress text for Clicky TTS responses
+		this._clickyTtsResponseId = null; // suppress text for Rovo TTS responses
 	}
 
 	get state() {
@@ -507,25 +544,10 @@ class RealtimeSession {
 	_sendSessionUpdate(config) {
 		this._sendToOpenAI({
 			type: OPENAI_EVENT.SESSION_UPDATE,
-			session: {
+			session: buildRealtimeSessionConfig({
 				instructions: this._instructions,
-				modalities: ["audio", "text"],
 				voice: config.voice,
-				input_audio_format: "pcm16",
-				output_audio_format: "pcm16",
-				temperature: 0.6,
-				max_response_output_tokens: "inf",
-				tools: SESSION_TOOLS,
-				input_audio_transcription: {
-					model: "gpt-4o-mini-transcribe",
-				},
-				turn_detection: {
-					type: "semantic_vad",
-					eagerness: "auto",
-					create_response: true,
-					interrupt_response: true,
-				},
-			},
+			}),
 		});
 	}
 
@@ -535,25 +557,24 @@ class RealtimeSession {
 		}
 
 		const config = getRealtimeConfig();
-		const session = {
-			instructions: msg.instructions || this._instructions,
-			modalities: msg.modalities || ["audio", "text"],
-			voice: msg.voice || config.voice,
-			input_audio_format: "pcm16",
-			output_audio_format: "pcm16",
-			temperature: typeof msg.temperature === "number" ? msg.temperature : 0.6,
-			max_response_output_tokens: "inf",
-			tools: SESSION_TOOLS,
-			input_audio_transcription: {
-				model: "gpt-4o-mini-transcribe",
-			},
-			turn_detection: msg.turn_detection || {
-				type: "semantic_vad",
-				eagerness: "auto",
-				create_response: true,
-				interrupt_response: true,
-			},
-		};
+		const clientConfig =
+			msg.config && typeof msg.config === "object"
+				? msg.config
+				: msg;
+		const session = buildRealtimeSessionConfig({
+			instructions:
+				typeof clientConfig.instructions === "string" && clientConfig.instructions
+					? clientConfig.instructions
+					: this._instructions,
+			turnDetection:
+				clientConfig.turn_detection && typeof clientConfig.turn_detection === "object"
+					? clientConfig.turn_detection
+					: REALTIME_TURN_DETECTION,
+			voice:
+				typeof clientConfig.voice === "string" && clientConfig.voice
+					? clientConfig.voice
+					: config.voice,
+		});
 
 		this._sendToOpenAI({
 			type: OPENAI_EVENT.SESSION_UPDATE,
@@ -659,7 +680,7 @@ class RealtimeSession {
 			return;
 		}
 
-		// Route Clicky screenshots to Claude via AI Gateway
+		// Route Rovo screenshots to Claude via AI Gateway
 		if (msg.clicky) {
 			this._handleClickyVision(msg);
 			return;
@@ -697,7 +718,7 @@ class RealtimeSession {
 		this._log("REALTIME", `Image message received from user (${image.length} chars, detail: ${msg.detail || "low"})`);
 	}
 
-	// ── Clicky vision (Claude via AI Gateway) ────────────────────────────
+	// ── Rovo vision (Claude via AI Gateway) ────────────────────────────
 
 	async _handleClickyVision(msg) {
 		const envVars = getEnvVars();
@@ -761,7 +782,7 @@ class RealtimeSession {
 			const spokenText = responseText.replace(/\[POINT:[^\]]*\]/g, "").trim();
 
 			if (spokenText && this.isReady && this._openaiWs) {
-				// Mark the next response as a Clicky TTS response (suppress its text output)
+				// Mark the next response as a Rovo TTS response (suppress its text output)
 				this._clickyTtsResponseId = "pending";
 
 				// Inject Claude's response into OpenAI Realtime for TTS generation
@@ -827,7 +848,7 @@ class RealtimeSession {
 				break;
 
 			case OPENAI_EVENT.RESPONSE_CREATED:
-				// Track Clicky TTS responses to suppress their text output
+				// Track Rovo TTS responses to suppress their text output
 				if (this._clickyTtsResponseId === "pending") {
 					this._clickyTtsResponseId = event.response?.id ?? event.response_id ?? null;
 					this._log("CLICKY_VISION", `TTS response created: ${this._clickyTtsResponseId}`);
@@ -843,7 +864,7 @@ class RealtimeSession {
 				break;
 
 			case OPENAI_EVENT.RESPONSE_TEXT_DELTA:
-				// Suppress text from Clicky TTS responses (Claude already sent the text)
+				// Suppress text from Rovo TTS responses (Claude already sent the text)
 				if (this._clickyTtsResponseId && event.response_id === this._clickyTtsResponseId) {
 					break;
 				}
@@ -860,7 +881,7 @@ class RealtimeSession {
 				break;
 
 			case OPENAI_EVENT.RESPONSE_AUDIO_TRANSCRIPT_DELTA:
-				// Suppress transcript from Clicky TTS responses
+				// Suppress transcript from Rovo TTS responses
 				if (this._clickyTtsResponseId && event.response_id === this._clickyTtsResponseId) {
 					break;
 				}
@@ -877,7 +898,7 @@ class RealtimeSession {
 				break;
 
 			case OPENAI_EVENT.RESPONSE_DONE:
-				// Clear Clicky TTS tracking when its response completes
+				// Clear Rovo TTS tracking when its response completes
 				if (this._clickyTtsResponseId && (event.response?.id ?? event.response_id) === this._clickyTtsResponseId) {
 					this._clickyTtsResponseId = null;
 				}
