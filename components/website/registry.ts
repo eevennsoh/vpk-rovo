@@ -6701,6 +6701,10 @@ const BLOCK_DEMOS: Record<string, ComponentType> = {
     () => import("./demos/blocks/prompt-gallery-demo"),
     { ssr: false },
   ),
+  "rovo-canvas": dynamic(
+    () => import("./demos/blocks/rovo-canvas-direct-demo"),
+    { ssr: false },
+  ),
   "chat-configuration": dynamic(() => import("./demos/blocks/shared-ui-demo"), {
     ssr: false,
   }),
