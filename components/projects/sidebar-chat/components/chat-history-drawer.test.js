@@ -19,14 +19,13 @@ test("compact chat history drawer wires thread actions to the shared rovo provid
 	assert.match(source, /No recent chats yet\./u);
 });
 
-test("sidebar compact chat renders the history drawer and rich-thread fullscreen affordance", () => {
+test("sidebar compact chat renders the history drawer without a rich-thread notice", () => {
 	const source = readProjectFile("components/projects/sidebar-chat/page.tsx");
 
 	assert.match(source, /<ChatHistoryDrawer \/>/u);
 	assert.match(source, /onHistoryToggle=\{toggleHistory\}/u);
-	assert.match(source, /currentThreadHasRichState/u);
-	assert.match(source, /This thread includes fullscreen-only state\./u);
-	assert.match(source, /Open fullscreen/u);
+	assert.doesNotMatch(source, /currentThreadHasRichState/u);
+	assert.doesNotMatch(source, /This thread includes fullscreen-only state\./u);
 });
 
 test("compact chat hamburger buttons open the shared history drawer", () => {
@@ -38,6 +37,14 @@ test("compact chat hamburger buttons open the shared history drawer", () => {
 		assert.match(source, /aria-expanded=\{isHistoryOpen\}/u);
 		assert.match(source, /onClick=\{onHistoryToggle \?\? noop\}/u);
 	}
+});
+
+test("sidebar, floating, and fullscreen chat message logs use 16px horizontal padding", () => {
+	const compactSource = readProjectFile("components/projects/sidebar-chat/page.tsx");
+	const fullscreenSource = readProjectFile("components/projects/rovo/components/rovo-app-messages.tsx");
+
+	assert.match(compactSource, /<ConversationContent className="gap-0 px-4 py-0"/u);
+	assert.match(fullscreenSource, /extraHorizontalPaddingWhenCompact && compact \? "px-9" : "px-4"/u);
 });
 
 test("compact chat send lifecycle refreshes thread metadata", () => {

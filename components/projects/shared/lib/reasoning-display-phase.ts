@@ -13,6 +13,43 @@ interface ThinkingIndicatorVisibility {
 	shouldShowAny: boolean;
 }
 
+interface IsCompletedAssistantFromPreviousRequestOptions {
+	activeRequestStartedAt?: number | null;
+	hasTurnComplete: boolean;
+	turnCompletedAt?: string | null;
+}
+
+function parseTimestampMs(value?: string | null): number | null {
+	if (!value) return null;
+
+	const timestampMs = Date.parse(value);
+	return Number.isFinite(timestampMs) ? timestampMs : null;
+}
+
+export function isCompletedAssistantFromPreviousRequest({
+	activeRequestStartedAt,
+	hasTurnComplete,
+	turnCompletedAt,
+}: Readonly<IsCompletedAssistantFromPreviousRequestOptions>): boolean {
+	if (!hasTurnComplete) {
+		return false;
+	}
+
+	if (
+		typeof activeRequestStartedAt !== "number" ||
+		!Number.isFinite(activeRequestStartedAt)
+	) {
+		return false;
+	}
+
+	const turnCompletedAtMs = parseTimestampMs(turnCompletedAt);
+	if (turnCompletedAtMs === null) {
+		return false;
+	}
+
+	return activeRequestStartedAt > turnCompletedAtMs;
+}
+
 export function resolveThinkingIndicatorVisibility({
 	requestActive,
 	hasThinkingStatusInline,

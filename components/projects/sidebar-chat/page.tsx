@@ -37,7 +37,6 @@ import type { ArtifactResult } from "./components/artifact-result-card";
 import { StreamingThinkingIndicator } from "./components/streaming-thinking-indicator";
 import { PreloadThinkingIndicator } from "@/components/projects/shared/components/preload-thinking-indicator";
 import { chatStyles } from "./data/styles";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useChatSubmit } from "./hooks/use-chat-submit";
 import { useScrollAnchor } from "./hooks/use-scroll-anchor";
@@ -107,9 +106,7 @@ export default function ChatPanel({
 		editingMessageId,
 		setEditingMessageId,
 		chatSurface,
-		currentThreadHasRichState,
 		isHistoryOpen,
-		openCurrentThreadFullscreen,
 		pinFloating,
 		toggleHistory,
 		unpinFloating,
@@ -171,7 +168,20 @@ export default function ChatPanel({
 		};
 	}, [containerWidthPx, sendPromptOptions, viewportWidthPx]);
 
-	const { prompt, setPrompt, handleSubmit, submitPrompt, abort, uiMessages, isStreaming, hasInFlightTurn, isSubmitPending, queuedPrompts, removeQueuedPrompt } = useChatSubmit({
+	const {
+		prompt,
+		setPrompt,
+		handleSubmit,
+		submitPrompt,
+		abort,
+		uiMessages,
+		isStreaming,
+		hasInFlightTurn,
+		isSubmitPending,
+		activeRequestStartedAt,
+		queuedPrompts,
+		removeQueuedPrompt,
+	} = useChatSubmit({
 		defaultPromptOptions: resolvedSendPromptOptions,
 	});
 	const isStreamingLifecycleActive = isStreaming || isSubmitPending;
@@ -224,6 +234,7 @@ export default function ChatPanel({
 	const thinking = useThinkingStatus({
 		messages,
 		isRequestInFlight,
+		activeRequestStartedAt,
 	});
 
 	useEffect(() => {
@@ -347,7 +358,7 @@ export default function ChatPanel({
 
 			<Conversation className="min-h-0 min-w-0 flex-1" contextRef={conversationContextRef} followMode={scrollFollowMode} initial={false} targetScrollTop={getLatestTurnTargetTop}>
 				<ConversationContent
-					className="mx-auto flex min-w-0 max-w-[800px] flex-col gap-4 px-3 py-6 md:gap-6"
+					className="mx-auto flex min-w-0 max-w-[800px] flex-col gap-4 px-4 py-6 md:gap-6"
 					style={messagesContainerStyle}
 				>
 					{messages.length === 0 ? (
@@ -438,18 +449,6 @@ export default function ChatPanel({
 					</>
 				) : (
 					<>
-						{currentThreadHasRichState ? (
-							<div className="border-t border-border px-3 py-2">
-								<div className="flex items-center justify-between gap-3 rounded-md bg-bg-neutral px-3 py-2 text-sm">
-									<span className="min-w-0 text-text-subtle">
-										This thread includes fullscreen-only state.
-									</span>
-									<Button size="sm" variant="ghost" onClick={openCurrentThreadFullscreen}>
-										Open fullscreen
-									</Button>
-								</div>
-							</div>
-						) : null}
 						<ChatComposer
 							prompt={prompt}
 							isStreaming={isStreamingLifecycleActive}
