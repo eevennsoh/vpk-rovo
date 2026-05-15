@@ -12,21 +12,19 @@ import {
 	PromptInputBody,
 	PromptInputFooter,
 	PromptInputPreferencesButton,
-	PromptInputSubmit,
+	PromptInputSendControls,
 	PromptInputTextarea,
 	PromptInputTools,
 } from "@/components/ui-ai/prompt-input";
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
 import { composerUpwardShadow, composerPromptInputClassName, composerTextareaClassName, textareaCSS } from "@/components/blocks/shared-ui/composer-styles";
 import { Queue, QueueItem, QueueItemActions, QueueItemContent, QueueItemIndicator, QueueList } from "@/components/ui-ai/queue";
-import { SpeechInput } from "@/components/ui-ai/speech-input";
 import { Button } from "@/components/ui/button";
 import DeleteIcon from "@atlaskit/icon/core/delete";
 import { Footer } from "@/components/ui/footer";
 import ChatContextBar from "./chat-context-bar";
 import type { ChatContextBarDescriptor } from "../lib/chat-context-bar";
 import AddIcon from "@atlaskit/icon/core/add";
-import ArrowUpIcon from "@atlaskit/icon/core/arrow-up";
 
 import LinkIcon from "@atlaskit/icon/core/link";
 import MentionIcon from "@atlaskit/icon/core/mention";
@@ -57,13 +55,6 @@ export default function ChatComposer({ prompt, isStreaming, hasInFlightTurn, que
 		: hasInFlightTurn
 			? "submitted"
 			: "ready";
-
-	const handleSpeechTranscription = (text: string) => {
-		const trimmedTranscription = text.trim();
-		if (!trimmedTranscription) return;
-		const trimmedPrompt = prompt.trimEnd();
-		onPromptChange(trimmedPrompt ? `${trimmedPrompt} ${trimmedTranscription}` : trimmedTranscription);
-	};
 
 	return (
 		<div className="relative min-w-0 px-3">
@@ -165,12 +156,19 @@ export default function ChatComposer({ prompt, isStreaming, hasInFlightTurn, que
 							</Popover>
 						</PromptInputTools>
 
-						<div className="flex items-center gap-1">
-							<SpeechInput aria-label="Voice" onTranscriptionChange={handleSpeechTranscription} size="icon" />
-							<PromptInputSubmit aria-label="Submit" disabled={!hasInFlightTurn && !prompt.trim()} onStop={onStop} size="icon-sm" status={submitStatus}>
-								<ArrowUpIcon label="" />
-							</PromptInputSubmit>
-						</div>
+						<PromptInputSendControls
+							autoButtonProps={{
+								"aria-pressed": selectedReasoning === "let-rovo-decide",
+								onClick: () => setSelectedReasoning("let-rovo-decide"),
+							}}
+							submitProps={{
+								"aria-label": "Submit",
+								disabled: !hasInFlightTurn && !prompt.trim(),
+								onStop,
+								size: "icon-sm",
+								status: submitStatus,
+							}}
+						/>
 					</PromptInputFooter>
 				</PromptInput>
 			</div>
