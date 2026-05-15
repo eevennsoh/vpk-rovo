@@ -36,6 +36,7 @@ Current VPK skills (see Appendix for details):
 - `/vpk-component`
 - `/vpk-component-ext`
 - `/vpk-symphony`
+- `/agent-creator`
 
 > **Note:** Slash commands (e.g., `/vpk-deploy`) are Cursor IDE features. In other environments, reference the skill definitions in `.agents/skills/` directly.
 
