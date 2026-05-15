@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Icon } from "@/components/ui/icon";
 import { DatabaseIcon, SettingsIcon } from "@/components/ui/vpk-icons";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
 import ChevronDownIcon from "@atlaskit/icon/core/chevron-down";
 import EditIcon from "@atlaskit/icon/core/edit";
 import RandomizeIcon from "@atlaskit/icon-lab/core/randomize";
@@ -130,6 +130,7 @@ export function RovoAppHeader({
 					/>
 				</PopoverTrigger>
 				<PopoverContent align="start" side="bottom" sideOffset={8} className="w-auto p-2">
+					<PopoverTitle className="sr-only">Customize response</PopoverTitle>
 					<CustomizeMenu
 						selectedReasoning={selectedReasoning}
 						onReasoningChange={setSelectedReasoning}
