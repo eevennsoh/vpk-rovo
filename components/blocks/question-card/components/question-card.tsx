@@ -121,7 +121,7 @@ function QuestionOptionRow({
 					{index + 1}
 				</span>
 				<span data-slot="question-card-option-content" className="min-w-0 flex-1">
-					<span className={cn("block truncate text-sm leading-5 font-medium", selected ? "text-text-selected" : "text-text")}>{label}</span>
+					<span className={cn("block whitespace-normal break-words text-sm leading-5 font-medium", selected ? "text-text-selected" : "text-text")}>{label}</span>
 					{description ? <span className={cn("block text-sm leading-5 font-normal", selected ? "text-text-selected" : "text-text-subtle")}>{description}</span> : null}
 				</span>
 				{isMultiSelect ? (
@@ -290,45 +290,47 @@ function QuestionCard({
 			{...props}
 		>
 			<header data-slot="question-card-header" className="px-4 py-4">
-				<div className="flex h-8 items-center justify-between gap-2">
-					<h5 className="min-w-0 truncate text-text">{currentQuestion.label}</h5>
-					<div className="flex shrink-0 items-center gap-1">
-						{hasMultipleQuestions ? (
-							<div className="flex items-center gap-2">
-								<Button
-									type="button"
-									aria-label="Previous question"
-									size="icon"
-									variant="ghost"
-									disabled={!canGoToPreviousQuestion || isSubmitting}
-									onClick={goToPreviousQuestion}
-									tabIndex={-1}
-									className="shrink-0"
-								>
-									<ChevronLeftIcon label="" size="small" />
-								</Button>
-								<span className="text-sm text-text-subtlest">{safeQuestionIndex + 1} / {totalQuestions}</span>
-								<Button
-									type="button"
-									aria-label="Next question"
-									size="icon"
-									variant="ghost"
-									disabled={!canGoToNextQuestion || isSubmitting}
-									onClick={goToNextQuestion}
-									tabIndex={-1}
-									className="shrink-0"
-								>
-									<ChevronRightIcon label="" size="small" />
-								</Button>
-							</div>
-						) : null}
+				{hasMultipleQuestions || onDismiss ? (
+					<div className="mb-3 flex h-8 items-center justify-between gap-2">
+						<div className="flex min-w-0 items-center gap-1">
+							{hasMultipleQuestions ? (
+								<div className="flex items-center gap-2">
+									<Button
+										type="button"
+										aria-label="Previous question"
+										size="icon"
+										variant="ghost"
+										disabled={!canGoToPreviousQuestion || isSubmitting}
+										onClick={goToPreviousQuestion}
+										tabIndex={-1}
+										className="shrink-0"
+									>
+										<ChevronLeftIcon label="" size="small" />
+									</Button>
+									<span className="whitespace-nowrap text-sm text-text-subtlest">{safeQuestionIndex + 1} / {totalQuestions}</span>
+									<Button
+										type="button"
+										aria-label="Next question"
+										size="icon"
+										variant="ghost"
+										disabled={!canGoToNextQuestion || isSubmitting}
+										onClick={goToNextQuestion}
+										tabIndex={-1}
+										className="shrink-0"
+									>
+										<ChevronRightIcon label="" size="small" />
+									</Button>
+								</div>
+							) : null}
+						</div>
 						{onDismiss ? (
 							<Button aria-label="Dismiss questions" size="icon" variant="ghost" disabled={isSubmitting} className="-mr-1 shrink-0" onClick={onDismiss} tabIndex={-1}>
 								<CrossIcon label="" size="small" />
 							</Button>
 						) : null}
 					</div>
-				</div>
+				) : null}
+				<h5 className="min-w-0 whitespace-normal break-words text-text">{currentQuestion.label}</h5>
 			</header>
 
 			<AnimatePresence initial={false} custom={direction}>
