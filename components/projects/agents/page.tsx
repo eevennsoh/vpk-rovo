@@ -9,6 +9,7 @@ import BoardColumnsContainer from "./components/board-columns-container";
 import JiraWorkItemModal from "./components/jira-work-item-modal";
 import { AgentsWorkItemInlinePage } from "./components/agents-work-item-inline-page";
 import { AVATARS } from "./data/avatars";
+import { BOARD_AGENTS } from "./data/board-agents";
 import { BOARD_COLUMNS, type BoardColumnData, type KanbanCardData } from "./data/board-data";
 import { getAgentsWorkItemForCard } from "./data/rfp-work-items";
 import type { AgentsWorkItemPresentationController } from "./hooks/use-agents-work-item-presentation";
@@ -32,7 +33,9 @@ export default function AgentsView({
 		isOpen: isChatOpen,
 		chatSurface,
 		isFloatingPinned,
+		openChat,
 		pinFloating,
+		sendPrompt,
 		unpinFloating,
 	} = useRovoChat();
 	const { state: presentationState, promoteModalToInline } = workItemPresentation;
@@ -61,6 +64,7 @@ export default function AgentsView({
 			})),
 		})),
 	);
+	const [columnAgentAssignments, setColumnAgentAssignments] = useState<Record<string, string[]>>({});
 	const [draggedCard, setDraggedCard] = useState<DraggedCardState | null>(null);
 
 	const handleCardClick = (title: string, code: string) => {
@@ -125,6 +129,50 @@ export default function AgentsView({
 		setDraggedCard(null);
 	};
 
+	const handleToggleColumnAgent = (columnTitle: string, agentId: string) => {
+		setColumnAgentAssignments((prevAssignments) => {
+			const assignedAgentIds = prevAssignments[columnTitle] ?? [];
+			const hasAgent = assignedAgentIds.includes(agentId);
+			const nextAgentIds = hasAgent
+				? assignedAgentIds.filter((assignedAgentId) => assignedAgentId !== agentId)
+				: [...assignedAgentIds, agentId];
+
+			return {
+				...prevAssignments,
+				[columnTitle]: nextAgentIds,
+			};
+		});
+	};
+
+	const handleCreateColumnAgent = (columnTitle: string) => {
+		const column = boardColumns.find((boardColumn) => boardColumn.title === columnTitle);
+		const visibleWorkItems = column?.cards
+			.slice(0, 4)
+			.map((card) => `- ${card.code}: ${card.title}`)
+			.join("\n");
+		const contextDescription = [
+			"[Agents Board Column Context]",
+			"Source: /agents Jira board column.",
+			"Board: VitaFleet Q4 RFP Response.",
+			`Column: ${columnTitle}.`,
+			typeof column?.count === "number" ? `Work item count: ${column.count}.` : null,
+			visibleWorkItems ? "Visible work items:" : null,
+			visibleWorkItems,
+			"[End Agents Board Column Context]",
+		]
+			.filter(Boolean)
+			.join("\n");
+
+		openChat("floating");
+		void sendPrompt(
+			`Create an agent for the ${columnTitle} column on the VitaFleet Q4 RFP Response board.`,
+			{
+				creationMode: "agent",
+				contextDescription,
+			},
+		);
+	};
+
 	const handleModalClose = () => {
 		workItemPresentation.closeModal();
 	};
@@ -167,12 +215,16 @@ export default function AgentsView({
 
 					{/* Board columns */}
 					<BoardColumnsContainer
+						agents={BOARD_AGENTS}
+						assignedAgentIdsByColumn={columnAgentAssignments}
 						boardColumns={boardColumns}
 						draggedCardCode={draggedCard?.card.code ?? null}
 						onCardClick={handleCardClick}
+						onCreateAgent={handleCreateColumnAgent}
 						onCardDragStart={handleCardDragStart}
 						onCardDrop={handleCardDrop}
 						onCardDragEnd={handleCardDragEnd}
+						onToggleColumnAgent={handleToggleColumnAgent}
 					/>
 				</div>
 			) : null}
