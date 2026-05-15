@@ -42,7 +42,9 @@ interface ChatComposerProps {
 	onStop: () => void;
 	onToggleRealtimeVoice?: () => void;
 	onRemoveQueuedPrompt: (id: string) => void;
+	onReasoningChange?: (value: string) => void;
 	realtimeVoiceActive?: boolean;
+	selectedReasoning?: string;
 	chatContextBar?: ChatContextBarDescriptor | null;
 }
 
@@ -109,13 +111,14 @@ function ChatComposerSendControls({
 	);
 }
 
-export default function ChatComposer({ prompt, isStreaming, hasInFlightTurn, queuedPrompts, micStream = null, onPromptChange, onSubmit, onStop, onToggleRealtimeVoice, onRemoveQueuedPrompt, realtimeVoiceActive = false, chatContextBar }: Readonly<ChatComposerProps>): React.ReactElement {
-	const [selectedReasoning, setSelectedReasoning] = useState(DEFAULT_REASONING_OPTION_ID);
+export default function ChatComposer({ prompt, isStreaming, hasInFlightTurn, queuedPrompts, micStream = null, onPromptChange, onSubmit, onStop, onToggleRealtimeVoice, onRemoveQueuedPrompt, onReasoningChange, realtimeVoiceActive = false, selectedReasoning: controlledSelectedReasoning, chatContextBar }: Readonly<ChatComposerProps>): React.ReactElement {
+	const [localSelectedReasoning, setLocalSelectedReasoning] = useState(DEFAULT_REASONING_OPTION_ID);
 	const [webResultsEnabled, setWebResultsEnabled] = useState(false);
 	const [companyKnowledgeEnabled, setCompanyKnowledgeEnabled] = useState(true);
 	const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
 	const [isCustomizeMenuOpen, setIsCustomizeMenuOpen] = useState(false);
 	const [isAutoMenuOpen, setIsAutoMenuOpen] = useState(false);
+	const selectedReasoning = controlledSelectedReasoning ?? localSelectedReasoning;
 	const hasQueuedPrompts = queuedPrompts.length > 0;
 	const submitStatus = isStreaming
 		? "streaming"
@@ -134,6 +137,10 @@ export default function ChatComposer({ prompt, isStreaming, hasInFlightTurn, que
 		if (open) {
 			setIsCustomizeMenuOpen(false);
 		}
+	};
+	const handleReasoningChange = (value: string) => {
+		setLocalSelectedReasoning(value);
+		onReasoningChange?.(value);
 	};
 
 	return (
@@ -203,7 +210,7 @@ export default function ChatComposer({ prompt, isStreaming, hasInFlightTurn, que
 									<PopoverTitle className="sr-only">Customize sources</PopoverTitle>
 									<CustomizeMenu
 										selectedReasoning={selectedReasoning}
-										onReasoningChange={setSelectedReasoning}
+										onReasoningChange={handleReasoningChange}
 										showReasoning={false}
 										webResultsEnabled={webResultsEnabled}
 										onWebResultsChange={setWebResultsEnabled}
@@ -222,7 +229,7 @@ export default function ChatComposer({ prompt, isStreaming, hasInFlightTurn, que
 							micStream={micStream}
 							onCompanyKnowledgeChange={setCompanyKnowledgeEnabled}
 							onOpenChange={handleAutoMenuOpenChange}
-							onReasoningChange={setSelectedReasoning}
+							onReasoningChange={handleReasoningChange}
 							onStop={onStop}
 							onToggleRealtimeVoice={onToggleRealtimeVoice}
 							open={isAutoMenuOpen}

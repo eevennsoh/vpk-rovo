@@ -83,6 +83,20 @@ test("Rovo composers default reasoning to Auto", () => {
 	assert.doesNotMatch(rovoComposer, /useState\("deep-research"\)/u);
 });
 
+test("sidebar chat shares Max reasoning with the empty-state greeting", () => {
+	const sidebarPanel = readProjectFile("components/projects/sidebar-chat/page.tsx");
+	const sidebarComposer = readProjectFile("components/projects/sidebar-chat/components/chat-composer.tsx");
+
+	assert.match(sidebarPanel, /useState\(DEFAULT_REASONING_OPTION_ID\)/u);
+	assert.match(sidebarPanel, /isMaxMode=\{selectedReasoning === "max"\}/u);
+	assert.match(sidebarPanel, /onReasoningChange=\{setSelectedReasoning\}/u);
+	assert.match(sidebarPanel, /selectedReasoning=\{selectedReasoning\}/u);
+	assert.match(sidebarComposer, /selectedReasoning: controlledSelectedReasoning/u);
+	assert.match(sidebarComposer, /const selectedReasoning = controlledSelectedReasoning \?\? localSelectedReasoning/u);
+	assert.match(sidebarComposer, /const handleReasoningChange = \(value: string\) => \{/u);
+	assert.match(sidebarComposer, /onReasoningChange\?\.\(value\)/u);
+});
+
 test("sidebar chat and Rovo app composers use the shared Auto plus CTA controls", () => {
 	const sidebarComposer = readProjectFile("components/projects/sidebar-chat/components/chat-composer.tsx");
 	const sidebarPanel = readProjectFile("components/projects/sidebar-chat/page.tsx");

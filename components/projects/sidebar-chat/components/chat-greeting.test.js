@@ -11,6 +11,27 @@ const CHAT_GREETING_SOURCE = fs.readFileSync(SOURCE_FILE, "utf8");
 async function loadChatGreetingHarness() {
 	const mockModules = new Map([
 		[
+			"motion/react",
+			`
+				import React from "react";
+
+				export function AnimatePresence(props) {
+					return React.createElement(React.Fragment, null, props.children);
+				}
+
+				export const motion = {
+					div: function MotionDiv(props) {
+						const { animate, exit, initial, variants, ...rest } = props;
+						return React.createElement("div", rest, props.children);
+					},
+				};
+
+				export function useReducedMotion() {
+					return false;
+				}
+			`,
+		],
+		[
 			"next/image",
 			`
 				import React from "react";
@@ -70,6 +91,13 @@ async function loadChatGreetingHarness() {
 						suggestions: [],
 					}));
 				}
+
+				export function renderMaxGreeting() {
+					return renderToStaticMarkup(React.createElement(ChatGreeting, {
+						isMaxMode: true,
+						suggestions: [],
+					}));
+				}
 			`,
 			loader: "tsx",
 			resolveDir: process.cwd(),
@@ -123,6 +151,25 @@ test("ChatGreeting derives the dark illustration from a custom light SVG", async
 test("ChatGreeting switches theme illustrations for local data-color-mode dark containers", () => {
 	assert.match(CHAT_GREETING_SOURCE, /\[\[data-color-mode=dark\]_&\]:hidden/u);
 	assert.match(CHAT_GREETING_SOURCE, /\[\[data-color-mode=dark\]_&\]:block/u);
+});
+
+test("ChatGreeting switches to Max heading and fixed illustration box", async () => {
+	const harness = await loadChatGreetingHarness();
+	const markup = harness.renderMaxGreeting();
+
+	assert.match(markup, /Let&#x27;s plan your next move/u);
+	assert.match(markup, /src="\/illustration-ai\/max\/light\.gif"/u);
+	assert.match(markup, /src="\/illustration-ai\/max\/dark\.gif"/u);
+	assert.match(markup, /width="74"/u);
+	assert.match(markup, /height="67"/u);
+});
+
+test("ChatGreeting staggers the illustration before the heading", () => {
+	assert.match(CHAT_GREETING_SOURCE, /import \{ AnimatePresence, motion, useReducedMotion \} from "motion\/react";/u);
+	assert.match(CHAT_GREETING_SOURCE, /staggerChildren: 0\.04/u);
+	assert.match(CHAT_GREETING_SOURCE, /transform: "translateY\(6px\)"/u);
+	assert.match(CHAT_GREETING_SOURCE, /transform: "translateY\(-6px\)"/u);
+	assert.match(CHAT_GREETING_SOURCE, /<motion\.div className=\{cn\(CHAT_GREETING_ILLUSTRATION_CLASS_NAME, "relative"\)[\s\S]*<motion\.div style=\{\{ willChange: "transform, opacity" \}\} variants=\{itemVariants\}>[\s\S]*<Heading size="large"/u);
 });
 
 test("ChatGreeting prompt row icons are decorative inside labelled buttons", () => {

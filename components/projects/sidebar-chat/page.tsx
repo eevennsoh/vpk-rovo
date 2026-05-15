@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useCallback, useRef, useState, type CSSProperties } from "react";
+import { DEFAULT_REASONING_OPTION_ID } from "@/components/blocks/shared-ui/data/customize-menu-data";
 import { useRovoChat } from "@/app/contexts";
 import type { SendPromptOptions } from "@/app/contexts";
 import type { ChatContextBarDescriptor } from "./lib/chat-context-bar";
@@ -132,6 +133,7 @@ export default function ChatPanel({
 	const artifactDialogFloatingPinRef = useRef(false);
 	const [containerWidthPx, setContainerWidthPx] = useState<number | null>(null);
 	const [viewportWidthPx, setViewportWidthPx] = useState<number | null>(null);
+	const [selectedReasoning, setSelectedReasoning] = useState(DEFAULT_REASONING_OPTION_ID);
 
 	useEffect(() => {
 		const updateViewportWidth = () => {
@@ -444,6 +446,7 @@ export default function ChatPanel({
 								heading={greeting?.heading}
 								illustrationSrc={greeting?.illustrationSrc}
 								illustrationDarkSrc={greeting?.illustrationDarkSrc}
+								isMaxMode={selectedReasoning === "max"}
 								showHero={greeting?.showHero}
 								suggestions={greeting?.suggestions}
 								onSuggestionClick={handleGreetingSuggestionClick}
@@ -537,7 +540,9 @@ export default function ChatPanel({
 							onStop={abort}
 							onToggleRealtimeVoice={handleToggleRealtimeVoice}
 							onRemoveQueuedPrompt={removeQueuedPrompt}
+							onReasoningChange={setSelectedReasoning}
 							realtimeVoiceActive={isRealtimeVoiceActive}
+							selectedReasoning={selectedReasoning}
 							chatContextBar={chatContextBar}
 						/>
 					</>
