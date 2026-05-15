@@ -36,9 +36,10 @@ test("Conversation resize follow yields while the user is actively scrolling", (
 });
 
 test("Conversation scroll indicator resolves against the configured follow target", () => {
+	assert.doesNotMatch(CONVERSATION_SOURCE, /getExpectedFollowTop/);
 	assert.match(
 		CONVERSATION_SOURCE,
-		/const expectedFollowTop = getExpectedFollowTop\(scrollElement\)/,
+		/const expectedFollowTop = getScrollTargetTop\(scrollElement\)/,
 	);
 	assert.match(
 		CONVERSATION_SOURCE,

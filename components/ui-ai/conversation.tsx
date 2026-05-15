@@ -130,22 +130,18 @@ export function Conversation({
 		return defaultTargetTop
 	}, [getDefaultTargetTop, resolvedFollowMode, targetScrollTop])
 
-	const getExpectedFollowTop = useCallback((scrollElement: HTMLElement) => {
-		return getScrollTargetTop(scrollElement)
-	}, [getScrollTargetTop])
-
 	const updateIsAtBottom = useCallback(() => {
 		const scrollElement = scrollRef.current
 		if (!scrollElement) {
 			return true
 		}
 
-		const expectedFollowTop = getExpectedFollowTop(scrollElement)
+		const expectedFollowTop = getScrollTargetTop(scrollElement)
 		const distanceFromFollowTarget = Math.abs(scrollElement.scrollTop - expectedFollowTop)
 		const nextIsAtBottom = distanceFromFollowTarget <= DEFAULT_SCROLL_THRESHOLD_PX
 		setIsAtBottom(nextIsAtBottom)
 		return nextIsAtBottom
-	}, [getExpectedFollowTop])
+	}, [getScrollTargetTop])
 
 	const scrollToBottom = useCallback(
 		async (options?: ScrollToBottomOptions) => {
@@ -240,7 +236,7 @@ export function Conversation({
 				return
 			}
 
-			const expectedFollowTop = getExpectedFollowTop(scrollElement)
+			const expectedFollowTop = getScrollTargetTop(scrollElement)
 			if (Math.abs(scrollElement.scrollTop - expectedFollowTop) > DEFAULT_SCROLL_THRESHOLD_PX) {
 				isFollowPausedRef.current = true
 			}
@@ -252,7 +248,7 @@ export function Conversation({
 		return () => {
 			scrollElement.removeEventListener("scroll", handleScroll)
 		}
-	}, [getExpectedFollowTop, hasActiveUserScrollIntent, updateIsAtBottom])
+	}, [getScrollTargetTop, hasActiveUserScrollIntent, updateIsAtBottom])
 
 	useEffect(() => {
 		const scrollElement = scrollRef.current
