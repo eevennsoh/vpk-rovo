@@ -48,14 +48,14 @@ export function ChatSurfaceSwitcherItems({
 			<DropdownMenuItem
 				elemBefore={<PanelRightIcon label="" />}
 				className={cn(currentSurface === "sidebar" && currentItemClass)}
-				onClick={() => handleSelectSurface("sidebar")}
+				onSelect={() => handleSelectSurface("sidebar")}
 			>
 				Side panel
 			</DropdownMenuItem>
 			<DropdownMenuItem
 				elemBefore={<SmartLinkEmbedIcon label="" />}
 				className={cn(currentSurface === "floating" && currentItemClass)}
-				onClick={() => handleSelectSurface("floating")}
+				onSelect={() => handleSelectSurface("floating")}
 			>
 				Floating
 			</DropdownMenuItem>
@@ -66,7 +66,7 @@ export function ChatSurfaceSwitcherItems({
 						<LinkExternalIcon label="" />
 					</span>
 				}
-				onClick={handleSelectFullscreen}
+				onSelect={handleSelectFullscreen}
 			>
 				Full screen
 			</DropdownMenuItem>

@@ -15,10 +15,11 @@ test("chat surface switcher calls the surface switch hook before switching to th
 	);
 	assert.match(
 		source,
-		/onClick=\{\(\) => handleSelectSurface\("sidebar"\)\}[\s\S]*>\s*Side panel/u,
+		/onSelect=\{\(\) => handleSelectSurface\("sidebar"\)\}[\s\S]*>\s*Side panel/u,
 	);
 	assert.match(
 		source,
-		/onClick=\{\(\) => handleSelectSurface\("floating"\)\}[\s\S]*>\s*Floating/u,
+		/onSelect=\{\(\) => handleSelectSurface\("floating"\)\}[\s\S]*>\s*Floating/u,
 	);
+	assert.doesNotMatch(source, /<DropdownMenuItem[\s\S]*?onClick=/u);
 });
