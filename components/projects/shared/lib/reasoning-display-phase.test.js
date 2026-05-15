@@ -2,6 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 
 const {
+	isCompletedAssistantFromPreviousRequest,
 	resolveThinkingIndicatorVisibility,
 } = require("./reasoning-display-phase.ts");
 
@@ -68,4 +69,52 @@ test("suppresses floating indicators when inline thinking status is active", () 
 	assert.equal(visibility.shouldShowPreloader, false);
 	assert.equal(visibility.shouldShowThinkingStatus, false);
 	assert.equal(visibility.shouldShowAny, false);
+});
+
+test("treats a completed assistant as the active request until a newer request is proven", () => {
+	const turnCompletedAt = "2026-05-15T06:00:00.000Z";
+
+	assert.equal(
+		isCompletedAssistantFromPreviousRequest({
+			activeRequestStartedAt: Date.parse("2026-05-15T05:59:59.000Z"),
+			hasTurnComplete: true,
+			turnCompletedAt,
+		}),
+		false
+	);
+	assert.equal(
+		isCompletedAssistantFromPreviousRequest({
+			activeRequestStartedAt: Date.parse("2026-05-15T06:00:01.000Z"),
+			hasTurnComplete: true,
+			turnCompletedAt,
+		}),
+		true
+	);
+});
+
+test("keeps completed assistant inline when timestamps are missing or invalid", () => {
+	assert.equal(
+		isCompletedAssistantFromPreviousRequest({
+			activeRequestStartedAt: Date.now(),
+			hasTurnComplete: true,
+			turnCompletedAt: undefined,
+		}),
+		false
+	);
+	assert.equal(
+		isCompletedAssistantFromPreviousRequest({
+			activeRequestStartedAt: Date.now(),
+			hasTurnComplete: true,
+			turnCompletedAt: "not-a-date",
+		}),
+		false
+	);
+	assert.equal(
+		isCompletedAssistantFromPreviousRequest({
+			activeRequestStartedAt: null,
+			hasTurnComplete: true,
+			turnCompletedAt: "2026-05-15T06:00:00.000Z",
+		}),
+		false
+	);
 });

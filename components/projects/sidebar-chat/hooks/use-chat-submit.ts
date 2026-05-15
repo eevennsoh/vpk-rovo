@@ -16,6 +16,7 @@ interface UseChatSubmitReturn {
 	isStreaming: boolean;
 	hasInFlightTurn: boolean;
 	isSubmitPending: boolean;
+	activeRequestStartedAt: number | null;
 	queuedPrompts: ReadonlyArray<QueuedPromptItem>;
 	removeQueuedPrompt: (id: string) => void;
 }
@@ -36,6 +37,8 @@ export function useChatSubmit({
 		isStreaming,
 		hasInFlightTurn,
 		isSubmitPending,
+		pendingSubmitStartedAt,
+		activePrompt,
 		queuedPrompts,
 		removeQueuedPrompt,
 	} = useRovoChat();
@@ -77,6 +80,7 @@ export function useChatSubmit({
 		isStreaming,
 		hasInFlightTurn,
 		isSubmitPending,
+		activeRequestStartedAt: activePrompt?.createdAt ?? pendingSubmitStartedAt,
 		queuedPrompts,
 		removeQueuedPrompt,
 	};

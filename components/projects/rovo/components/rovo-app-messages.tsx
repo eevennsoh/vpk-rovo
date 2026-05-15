@@ -803,7 +803,7 @@ export function RovoAppMessages({
 			<ConversationContent
 				className={cn(
 					"mx-auto flex min-w-0 flex-col gap-4 py-6 md:gap-6",
-					extraHorizontalPaddingWhenCompact && compact ? "px-9" : "px-3",
+					extraHorizontalPaddingWhenCompact && compact ? "px-9" : "px-4",
 					compact ? "max-w-none" : "max-w-[800px]",
 					shouldShowEmptyConversationState && "hidden",
 				)}

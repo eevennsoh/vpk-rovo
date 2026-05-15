@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import {
 	getMessageReasoningTimestamps,
 	getMessageText,
+	getLatestDataPart,
 	hasTurnCompleteSignal,
 	type RovoRenderableUIMessage,
 } from "@/lib/rovo-ui-messages";
@@ -18,12 +19,14 @@ import {
 } from "@/components/projects/shared/lib/thinking-label-policy";
 import { getDefaultThinkingLabel } from "@/components/projects/shared/lib/reasoning-labels";
 import {
+	isCompletedAssistantFromPreviousRequest,
 	resolveThinkingIndicatorVisibility,
 } from "@/components/projects/shared/lib/reasoning-display-phase";
 
 interface UseThinkingStatusOptions {
 	messages: RovoRenderableUIMessage[];
 	isRequestInFlight: boolean;
+	activeRequestStartedAt?: number | null;
 }
 
 interface ThinkingStatusResult {
@@ -49,6 +52,7 @@ interface ThinkingStatusResult {
 export function useThinkingStatus({
 	messages,
 	isRequestInFlight,
+	activeRequestStartedAt,
 }: Readonly<UseThinkingStatusOptions>): ThinkingStatusResult {
 	const hasMessages = messages.length > 0;
 	const lastMessage = messages[messages.length - 1];
@@ -76,20 +80,29 @@ export function useThinkingStatus({
 		thinkingTraceData?.hasBackendThinkingActivity ?? false;
 	const hasTurnComplete =
 		isAssistantMessage ? hasTurnCompleteSignal(lastMessage) : false;
+	const turnCompletedAt = isAssistantMessage
+		? getLatestDataPart(lastMessage, "data-turn-complete")?.data.timestamp
+		: null;
+	const isPreviousCompletedAssistant =
+		isCompletedAssistantFromPreviousRequest({
+			activeRequestStartedAt,
+			hasTurnComplete,
+			turnCompletedAt,
+		});
 
-	// When the last message's turn is complete, its thinking-status is from
-	// a finished turn and should not suppress the external preloader for a
-	// new in-flight request (e.g. after a hidden clarification submit).
+	// Suppress the external placeholder while the visible assistant message
+	// already owns the trace. Only show the placeholder against a completed
+	// assistant when a newer request started after that turn finished.
 	const hasInlineThinkingStatus =
-		isAssistantMessage && hasBackendThinkingStarted && !hasTurnComplete;
-	const hasActiveThinkingSignals = hasBackendThinkingStarted && !hasTurnComplete;
+		isAssistantMessage && hasBackendThinkingStarted && !isPreviousCompletedAssistant;
+	const hasActiveThinkingSignals = hasBackendThinkingStarted && !isPreviousCompletedAssistant;
 	const isThinkingStreaming = isRequestInFlight && hasActiveThinkingSignals;
 
 	// Detect the gap after a hidden message submit (e.g. clarification answer)
 	// where the request is in flight but no new assistant message has appeared
 	// yet. The last visible message is a completed assistant from the prior turn.
 	const isWaitingForNewTurn =
-		isAssistantMessage && hasTurnComplete;
+		isAssistantMessage && hasTurnComplete && isPreviousCompletedAssistant;
 
 	const shouldShowThinking =
 		isRequestInFlight &&
