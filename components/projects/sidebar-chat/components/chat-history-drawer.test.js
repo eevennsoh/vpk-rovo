@@ -39,3 +39,17 @@ test("compact chat hamburger buttons open the shared history drawer", () => {
 		assert.match(source, /onClick=\{onHistoryToggle \?\? noop\}/u);
 	}
 });
+
+test("compact chat send lifecycle refreshes thread metadata", () => {
+	const source = readProjectFile("app/contexts/context-rovo-chat.tsx");
+
+	assert.match(source, /const wasStreamingRef = useRef\(false\);/u);
+	assert.match(
+		source,
+		/wasStreamingRef\.current = isStreaming;[\s\S]*wasStreaming === isStreaming[\s\S]*void refreshThreads\(\);/u,
+	);
+	assert.match(
+		source,
+		/await ensureCompactThread\(promptItem\.text\);[\s\S]*void refreshThreads\(\);[\s\S]*finally \{[\s\S]*void refreshThreads\(\);/u,
+	);
+});

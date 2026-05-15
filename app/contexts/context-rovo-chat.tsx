@@ -655,6 +655,7 @@ export function RovoChatProvider({
 		options?: SendPromptOptions;
 	} | null>(null);
 	const isStreamingRef = useRef(false);
+	const wasStreamingRef = useRef(false);
 	const isDispatchingPromptRef = useRef(false);
 	const isCancellingRef = useRef(false);
 	const cancelStreamPromiseRef = useRef<Promise<void> | null>(null);
@@ -1224,6 +1225,17 @@ export function RovoChatProvider({
 		}
 	}, []);
 
+	useEffect(() => {
+		const wasStreaming = wasStreamingRef.current;
+		wasStreamingRef.current = isStreaming;
+
+		if (!activeThreadIdRef.current || wasStreaming === isStreaming) {
+			return;
+		}
+
+		void refreshThreads();
+	}, [isStreaming, refreshThreads]);
+
 	const openHistory = useCallback(() => {
 		setIsHistoryOpen(true);
 		void refreshThreads();
@@ -1364,6 +1376,7 @@ export function RovoChatProvider({
 			}
 
 			await ensureCompactThread(promptItem.text);
+			void refreshThreads();
 
 			const messagePayload = {
 				text: promptItem.text,
@@ -1386,9 +1399,11 @@ export function RovoChatProvider({
 				setMessages((prev) => sanitizeRovoUiMessages(prev));
 				await Promise.resolve();
 				await sendMessage(messagePayload, bodyPayload);
+			} finally {
+				void refreshThreads();
 			}
 		},
-		[ensureCompactThread, sendMessage, setMessages, stop]
+		[ensureCompactThread, refreshThreads, sendMessage, setMessages, stop]
 	);
 
 	useEffect(() => {
