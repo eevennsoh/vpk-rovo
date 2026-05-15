@@ -322,11 +322,11 @@ function sanitizeRovoUiMessages(
 	let hasChanged = false;
 
 	const nextMessages = messages.map((message) => {
-		const nextParts = Array.isArray(message.parts)
-			? message.parts.filter(isValidRovoUiMessagePart)
-			: [];
+		const hasPartsArray = Array.isArray(message.parts);
+		const messageParts = hasPartsArray ? message.parts : [];
+		const nextParts = messageParts.filter(isValidRovoUiMessagePart);
 
-		if (nextParts.length !== message.parts.length) {
+		if (!hasPartsArray || nextParts.length !== messageParts.length) {
 			hasChanged = true;
 			return { ...message, parts: nextParts };
 		}
@@ -344,8 +344,12 @@ function sanitizeMessagesForTransport(
 
 	const nextMessages = messages.map((message) => {
 		const nextParts: RovoUIMessagePart[] = [];
-		let messageChanged = false;
-		const messageParts = Array.isArray(message.parts) ? message.parts : [];
+		const hasPartsArray = Array.isArray(message.parts);
+		let messageChanged = !hasPartsArray;
+		const messageParts = hasPartsArray ? message.parts : [];
+		if (messageChanged) {
+			hasChanged = true;
+		}
 
 		for (const part of messageParts) {
 			const sanitizedPart = sanitizeMessagePartForTransport(part);
