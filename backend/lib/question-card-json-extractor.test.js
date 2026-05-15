@@ -175,6 +175,25 @@ test("dedupes duplicate question ids and option ids", () => {
 	]);
 });
 
+test("dedupes duplicate option labels even when option ids differ", () => {
+	const text = [
+		"```question-card",
+		'{ "questions": [{ "id": "priority", "label": "Which priority?", "kind": "single-select", "options": [',
+		'  { "id": "p1", "label": "Critical" },',
+		'  { "id": "p2", "label": " critical " },',
+		'  { "id": "p3", "label": "Normal" }',
+		"] }] }",
+		"```",
+	].join("\n");
+
+	const result = extractQuestionCardJsonFromAssistantText(text);
+	assert.ok(result);
+	assert.deepEqual(result.payload.questions[0].options, [
+		{ id: "p1", label: "Critical" },
+		{ id: "p3", label: "Normal" },
+	]);
+});
+
 test("normalizes unknown kind to single-select", () => {
 	const text = [
 		"```question-card",
