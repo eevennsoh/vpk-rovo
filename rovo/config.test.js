@@ -29,15 +29,17 @@ test("buildAIGatewaySystemPrompt includes the Rovo Chat identity", () => {
 	assert.match(systemPrompt, /identify as Rovo Chat/i);
 });
 
-test("buildAIGatewaySystemPrompt includes the Clarification Question Card Protocol", () => {
+test("buildAIGatewaySystemPrompt includes the AI Gateway Deferred Tool Protocol", () => {
 	const systemPrompt = buildAIGatewaySystemPrompt({
 		currentDate: "Thursday, May 14, 2026 at 10:30:00 AM AEST",
 	});
 
-	assert.match(systemPrompt, /\[Clarification Question Card Protocol\]/);
-	assert.match(systemPrompt, /```question-card/);
-	assert.match(systemPrompt, /"single-select"/);
-	assert.match(systemPrompt, /\[End Clarification Question Card Protocol\]/);
+	assert.match(systemPrompt, /\[AI Gateway Deferred Tool Protocol\]/);
+	assert.match(systemPrompt, /```deferred-tool/);
+	assert.match(systemPrompt, /"tool_name": "ask_user_questions"/);
+	assert.match(systemPrompt, /"tool_name": "exit_plan_mode"/);
+	assert.doesNotMatch(systemPrompt, /```question-card/);
+	assert.match(systemPrompt, /\[End AI Gateway Deferred Tool Protocol\]/);
 });
 
 test("buildAIGatewaySystemPrompt renders provided user name and current local time", () => {
