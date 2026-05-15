@@ -1,0 +1,232 @@
+const test = require("node:test");
+const assert = require("node:assert/strict");
+const Module = require("node:module");
+const path = require("node:path");
+const esbuild = require("esbuild");
+
+function loadTsModule(entryPoint) {
+	const build = esbuild.buildSync({
+		entryPoints: [entryPoint],
+		bundle: true,
+		platform: "node",
+		format: "cjs",
+		write: false,
+		logLevel: "silent",
+	});
+	const moduleInstance = new Module(entryPoint);
+	moduleInstance.filename = entryPoint;
+	moduleInstance.paths = Module._nodeModulePaths(path.dirname(entryPoint));
+	moduleInstance._compile(build.outputFiles[0].text, entryPoint);
+	return moduleInstance.exports;
+}
+
+const {
+	collectAssistantThinkingTraceData,
+	resolveAssistantThinkingTracePhase,
+	resolveAssistantThinkingTraceVisibility,
+} = loadTsModule(path.join(__dirname, "assistant-thinking-trace-state.ts"));
+
+test("collectAssistantThinkingTraceData detects event-only traces", () => {
+	const data = collectAssistantThinkingTraceData({
+		parts: [
+			{
+				type: "data-thinking-event",
+				data: {
+					eventId: "event-1",
+					phase: "start",
+					toolName: "search",
+					toolCallId: "tool-1",
+				},
+			},
+		],
+	});
+
+	assert.equal(data.hasThinkingStatusPart, false);
+	assert.equal(data.hasThinkingEvents, true);
+	assert.equal(data.hasTraceDataSignals, true);
+	assert.equal(data.hasBackendThinkingActivity, true);
+	assert.equal(data.thinkingToolCalls[0].state, "running");
+});
+
+test("collectAssistantThinkingTraceData preserves status content", () => {
+	const data = collectAssistantThinkingTraceData({
+		parts: [
+			{
+				type: "data-thinking-status",
+				data: {
+					label: "Inspecting files",
+					content: "Reading the current implementation",
+				},
+			},
+		],
+	});
+
+	assert.equal(data.hasThinkingStatusPart, true);
+	assert.deepEqual(data.thinkingNarrationMap.unassociated, [
+		"Reading the current implementation",
+	]);
+	assert.equal(data.lastThinkingStatusPart.data.label, "Inspecting files");
+});
+
+test("collectAssistantThinkingTraceData associates narration with tool calls", () => {
+	const data = collectAssistantThinkingTraceData({
+		parts: [
+			{
+				type: "data-thinking-status",
+				data: {
+					label: "Searching",
+					content: "Checking the repository",
+				},
+			},
+			{
+				type: "data-thinking-event",
+				data: {
+					eventId: "event-1",
+					phase: "start",
+					toolName: "rg",
+					toolCallId: "tool-1",
+					input: { pattern: "thinking" },
+				},
+			},
+			{
+				type: "data-thinking-event",
+				data: {
+					eventId: "event-2",
+					phase: "result",
+					toolName: "rg",
+					toolCallId: "tool-1",
+					output: "match",
+					outputPreview: "match",
+				},
+			},
+		],
+	});
+
+	assert.equal(data.thinkingToolCalls.length, 1);
+	assert.equal(data.thinkingToolCalls[0].state, "completed");
+	assert.deepEqual(data.thinkingNarrationMap.byToolCallId.get("tool-1"), [
+		"Checking the repository",
+	]);
+});
+
+test("collectAssistantThinkingTraceData accepts filtered thinking tool calls", () => {
+	const data = collectAssistantThinkingTraceData(
+		{
+			parts: [
+				{
+					type: "data-thinking-event",
+					data: {
+						eventId: "event-1",
+						phase: "start",
+						toolName: "request_user_input",
+						toolCallId: "tool-1",
+					},
+				},
+			],
+		},
+		{
+			thinkingToolCalls: [],
+		},
+	);
+
+	assert.equal(data.hasThinkingToolCalls, false);
+	assert.equal(data.hasAwaitingInputToolCalls, false);
+	assert.deepEqual(data.thinkingToolCalls, []);
+});
+
+test("collectAssistantThinkingTraceData extracts update_todo progress", () => {
+	const data = collectAssistantThinkingTraceData({
+		parts: [
+			{
+				type: "data-thinking-event",
+				data: {
+					eventId: "event-1",
+					phase: "result",
+					toolName: "update_todo",
+					toolCallId: "tool-1",
+					output:
+						'<todo>\n{"id":1,"content":"Unify trace","active_form":"Unifying trace","status":"in_progress"}\n</todo>',
+				},
+			},
+		],
+	});
+
+	assert.equal(data.hasTodoProgressItems, true);
+	assert.equal(data.hasLegacyTodoQueueItems, false);
+	assert.equal(data.todoProgressItems[0].label, "Unify trace");
+});
+
+test("collectAssistantThinkingTraceData includes legacy queues and agent executions", () => {
+	const data = collectAssistantThinkingTraceData({
+		parts: [
+			{
+				type: "data-todo-queue",
+				data: {
+					items: [
+						{
+							id: "task-1",
+							text: "Review",
+							blockedBy: [],
+						},
+					],
+				},
+			},
+			{
+				type: "data-agent-execution",
+				data: {
+					agentId: "agent-1",
+					agentName: "Explorer",
+					taskId: "task-1",
+					taskLabel: "Inspect trace",
+					status: "working",
+					content: "Reading files",
+				},
+			},
+		],
+	});
+
+	assert.equal(data.hasLegacyTodoQueueItems, true);
+	assert.equal(data.hasAgentExecutions, true);
+	assert.equal(data.todoQueueItems[0].text, "Review");
+	assert.equal(data.agentExecutions[0].agentName, "Explorer");
+});
+
+test("resolveAssistantThinkingTracePhase handles awaiting and completed turns", () => {
+	assert.equal(
+		resolveAssistantThinkingTracePhase({
+			isThinkingActive: true,
+			hasTurnComplete: false,
+			isThinkingLifecycleStreaming: true,
+			hasBackendThinkingActivity: true,
+			hasAwaitingInputToolCalls: true,
+			lifecyclePhase: "completed",
+		}),
+		"thinking"
+	);
+
+	assert.equal(
+		resolveAssistantThinkingTracePhase({
+			isThinkingActive: true,
+			hasTurnComplete: true,
+			isThinkingLifecycleStreaming: false,
+			hasBackendThinkingActivity: true,
+			hasAwaitingInputToolCalls: false,
+			lifecyclePhase: "idle",
+		}),
+		"completed"
+	);
+});
+
+test("resolveAssistantThinkingTraceVisibility latches during transient empty frames", () => {
+	assert.deepEqual(
+		resolveAssistantThinkingTraceVisibility({
+			isThinkingActive: false,
+			isResponseInFlight: true,
+			wasLatched: true,
+		}),
+		{
+			effectiveIsThinkingActive: true,
+			nextLatched: true,
+		}
+	);
+});

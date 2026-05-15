@@ -4,7 +4,7 @@ const assert = require("node:assert/strict");
 const {
 	getLatestRovoAppTodoProgress,
 	parseRovoAppTodoProgressFromText,
-} = require("./rovo-app-update-todo-progress.ts");
+} = require("../../shared/lib/rovo-todo-progress.ts");
 
 test("parseRovoAppTodoProgressFromText parses update_todo blocks", () => {
 	const result = parseRovoAppTodoProgressFromText(

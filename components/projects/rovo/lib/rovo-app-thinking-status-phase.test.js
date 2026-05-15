@@ -1,10 +1,29 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const Module = require("node:module");
+const path = require("node:path");
+const esbuild = require("esbuild");
+
+function loadTsModule(entryPoint) {
+	const build = esbuild.buildSync({
+		entryPoints: [entryPoint],
+		bundle: true,
+		platform: "node",
+		format: "cjs",
+		write: false,
+		logLevel: "silent",
+	});
+	const moduleInstance = new Module(entryPoint);
+	moduleInstance.filename = entryPoint;
+	moduleInstance.paths = Module._nodeModulePaths(path.dirname(entryPoint));
+	moduleInstance._compile(build.outputFiles[0].text, entryPoint);
+	return moduleInstance.exports;
+}
 
 const {
-	resolveRovoAppThinkingVisibility,
-	resolveRovoAppThinkingStatusPhase,
-} = require("./rovo-app-thinking-status-phase.ts");
+	resolveAssistantThinkingTraceVisibility: resolveRovoAppThinkingVisibility,
+	resolveAssistantThinkingTracePhase: resolveRovoAppThinkingStatusPhase,
+} = loadTsModule(path.join(__dirname, "../../shared/lib/assistant-thinking-trace-state.ts"));
 
 test("keeps thinking visible while an in-flight turn briefly loses thinking parts", () => {
 	assert.deepEqual(

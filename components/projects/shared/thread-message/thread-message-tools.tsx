@@ -7,17 +7,15 @@ import { AssistantToolsSection } from "../components/assistant-tools-section";
 /**
  * Renders standalone tool invocation results.
  *
- * Self-gates: returns null when there are no tool parts or when the
- * thinking-status section is active (which embeds tools internally).
+ * Self-gates: returns null when there are no tool parts.
  */
 export function ThreadMessageTools(): ReactNode {
 	const {
 		message,
 		toolParts,
-		isThinkingStatusActive,
 	} = use(ThreadMessageContext)!;
 
-	if (toolParts.length === 0 || isThinkingStatusActive) {
+	if (toolParts.length === 0) {
 		return null;
 	}
 

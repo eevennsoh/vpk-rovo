@@ -1,12 +1,11 @@
 import { useMemo } from "react";
 import {
 	isRenderableRovoUIMessage,
-	getAllDataParts,
 	getMessageText,
-	getThinkingToolCallSummaries,
 	hasTurnCompleteSignal,
 	type RovoUIMessage,
 } from "@/lib/rovo-ui-messages";
+import { collectAssistantThinkingTraceData } from "@/components/projects/shared/lib/assistant-thinking-trace-state";
 import { useDynamicThinkingLabel } from "@/components/projects/shared/hooks/use-dynamic-thinking-label";
 import {
 	useReasoningPhase,
@@ -42,7 +41,7 @@ export interface StreamingIndicatorState {
 	hasToolCalls: boolean;
 	hasDetails: boolean;
 	allowAutoCollapse: boolean;
-	thinkingToolCalls: ReturnType<typeof getThinkingToolCallSummaries>;
+	thinkingToolCalls: ReturnType<typeof collectAssistantThinkingTraceData>["thinkingToolCalls"];
 	lastSourceMessageId?: string;
 	reasoningPhase: ReasoningPhase;
 	reasoningPhaseProps: ReasoningPhaseProps;
@@ -71,28 +70,28 @@ export function useStreamingIndicatorState(
 	const isAssistantSource = lastSource?.role === "assistant";
 	const isLastAssistantMessage = lastSource?.id === lastAssistantMessageId;
 
-	const thinkingStatusParts = isAssistantSource
-		? getAllDataParts(lastSource, "data-thinking-status")
-		: [];
+	const thinkingTraceData = isAssistantSource
+		? collectAssistantThinkingTraceData(lastSource)
+		: null;
+	const thinkingStatusParts = thinkingTraceData?.thinkingStatusParts ?? [];
 	const thinkingStatusPart =
 		thinkingStatusParts[thinkingStatusParts.length - 1] ?? null;
 	const hasThinkingStatus = thinkingStatusPart !== null;
-	const thinkingEventParts = isAssistantSource
-		? getAllDataParts(lastSource, "data-thinking-event")
-		: [];
+	const thinkingEventParts = thinkingTraceData?.thinkingEventParts ?? [];
 	const lastThinkingEventPart =
 		thinkingEventParts[thinkingEventParts.length - 1] ?? null;
-	const thinkingToolCalls = isAssistantSource
-		? getThinkingToolCallSummaries(lastSource)
-		: [];
+	const thinkingToolCalls = thinkingTraceData?.thinkingToolCalls ?? [];
 	const hasToolCalls = thinkingToolCalls.length > 0;
 	const hasBackendThinkingStarted =
-		hasThinkingStatus || thinkingEventParts.length > 0 || hasToolCalls;
+		thinkingTraceData?.hasBackendThinkingActivity ?? false;
 	const hasTurnComplete =
 		isAssistantSource ? hasTurnCompleteSignal(lastSource) : false;
 
 	const hasInlineThinkingStatus =
-		Boolean(isAssistantSource) && Boolean(isLastAssistantMessage) && hasThinkingStatus;
+		Boolean(isAssistantSource) &&
+		Boolean(isLastAssistantMessage) &&
+		hasBackendThinkingStarted &&
+		!hasTurnComplete;
 
 	const isAwaitingOutput =
 		isStreaming &&

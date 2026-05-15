@@ -1,12 +1,9 @@
 "use client";
 
-import { useMemo, useRef, type ReactNode } from "react";
-import { useDynamicThinkingLabel } from "@/components/projects/shared/hooks/use-dynamic-thinking-label";
+import { useMemo, type ReactNode } from "react";
 import {
-	getAllDataParts,
 	hasCreatePlanSkillSignal,
 	hasTurnCompleteSignal,
-	getMessageReasoningTimestamps,
 	getLatestDataPart,
 	getLatestRouteDecision,
 	getMessageReasoning,
@@ -19,10 +16,6 @@ import {
 	type RovoRenderableUIMessage,
 	type RoutingDecision,
 } from "@/lib/rovo-ui-messages";
-import {
-	useReasoningPhase,
-	type ReasoningPhase,
-} from "@/components/projects/shared/hooks/use-reasoning-phase";
 import {
 	Message as UiMessage,
 } from "@/components/ui-ai/message";
@@ -39,13 +32,8 @@ import {
 } from "./lib/question-card-text-visibility";
 import { parsePlanWidgetPayload } from "../lib/plan-widget";
 import { buildPlanDescriptionFallback } from "./lib/plan-description-fallback";
-import { resolveThinkingLabelForSurface } from "../lib/thinking-label-policy";
-import {
-	getAwaitingUserResponseLabel,
-	getDefaultThinkingLabel,
-	REASONING_LABELS,
-} from "../lib/reasoning-labels";
 import { UserMessageBubble } from "../components/user-message-bubble";
+import { useAssistantThinkingTraceState } from "../components/assistant-thinking-trace";
 import { ThreadMessageContext, type ThreadMessageContextValue } from "./thread-message-context";
 import {
 	getNormalizedWidgetDataParts,
@@ -54,8 +42,6 @@ import {
 import { filterThinkingToolCallsForVisibleWidget } from "./lib/thinking-tool-visibility";
 import {
 	isPostToolsGenuiGeneration as resolvePostToolsGenuiGeneration,
-	isThinkingStatusActive as resolveThinkingStatusActive,
-	isThinkingStatusLifecycleStreaming as resolveThinkingStatusLifecycleStreaming,
 } from "./lib/thinking-status-state";
 
 interface ThreadMessageRootProps {
@@ -93,51 +79,6 @@ function useThreadMessageDerived(
 		widgetDataParts.length > 0
 			? widgetDataParts[widgetDataParts.length - 1]
 			: null;
-
-	// ---------- thinking status ----------
-	const thinkingStatusPart = getLatestDataPart(message, "data-thinking-status");
-	const allThinkingStatusParts = getAllDataParts(message, "data-thinking-status");
-	const thinkingEventParts = getAllDataParts(message, "data-thinking-event");
-	const lastThinkingEventPart =
-		thinkingEventParts[thinkingEventParts.length - 1] ?? null;
-	const thinkingTimestamps = getMessageReasoningTimestamps(message);
-	const thinkingStatusUpdateSignal = [
-		message.id,
-		`status-label:${thinkingStatusPart?.data.label ?? ""}`,
-		`status-content:${thinkingStatusPart?.data.content ?? ""}`,
-		`event-count:${thinkingEventParts.length}`,
-		`event-id:${lastThinkingEventPart?.data.eventId ?? ""}`,
-		`event-phase:${lastThinkingEventPart?.data.phase ?? ""}`,
-	].join("|");
-	const isRetryThinkingStatus =
-		thinkingStatusPart?.data.label?.includes("Retrying") ?? false;
-	const isThinkingStatusActive = resolveThinkingStatusActive({
-		hasThinkingStatusPart: Boolean(thinkingStatusPart),
-		hasThinkingEvents: thinkingEventParts.length > 0,
-		isRetryThinkingStatus,
-		isStreaming,
-	});
-
-	// Latch: prevent thinking-status flicker during streaming.
-	// Once active, hold it active while the response is in-flight.
-	// Parts can transiently disappear when the AI SDK reconstructs the message.
-	const thinkingStatusLatchRef = useRef(false);
-	if (isThinkingStatusActive) {
-		thinkingStatusLatchRef.current = true;
-	}
-	const isResponseInFlight = isStreaming || isThinkingLifecycleStreaming;
-	if (!isResponseInFlight) {
-		thinkingStatusLatchRef.current = false;
-	}
-	const effectiveIsThinkingStatusActive =
-		isThinkingStatusActive ||
-		(thinkingStatusLatchRef.current && isResponseInFlight);
-
-	const { label: dynamicThinkingStatusLabel } = useDynamicThinkingLabel({
-		baseLabel: thinkingStatusPart?.data.label ?? getDefaultThinkingLabel(),
-		isStreaming: isThinkingLifecycleStreaming && effectiveIsThinkingStatusActive,
-		updateSignal: thinkingStatusUpdateSignal,
-	});
 
 	// ---------- widget data (remaining) ----------
 	const widgetErrorPart = getLatestDataPart(message, "data-widget-error");
@@ -230,14 +171,25 @@ function useThreadMessageDerived(
 			toolCall.state === "running" ||
 			toolCall.state === "approval-requested"
 	);
-	const hasAwaitingInputToolCalls = thinkingToolCalls.some(
-		(toolCall) => toolCall.state === "awaiting-input"
-	);
 	const isPostToolsGenuiGeneration = resolvePostToolsGenuiGeneration({
 		widgetType,
 		isWidgetLoading,
 		hasAnyToolCalls: hasAnyThinkingToolCalls,
 		hasRunningToolCalls: hasRunningThinkingToolCalls,
+	});
+	const isResponseInFlight = isStreaming || isThinkingLifecycleStreaming || isWidgetLoading;
+	const isRetryThinkingStatus =
+		getLatestDataPart(message, "data-thinking-status")?.data.label?.includes("Retrying") ?? false;
+	const thinkingToolCallsForStatus =
+		toolParts.length > 0 ? [] : visibleThinkingToolCalls;
+	const thinkingTraceState = useAssistantThinkingTraceState({
+		message,
+		isThinkingLifecycleStreaming,
+		isResponseInFlight,
+		isPostToolsGeneration: isPostToolsGenuiGeneration,
+		hasWidgetOutput,
+		isRetryThinkingStatus,
+		thinkingToolCalls: thinkingToolCallsForStatus,
 	});
 	const messageTextBeforeSanitization = baseMessageText;
 	const sanitizedMessageText = sanitizeMarkdownArtifactMarkers(
@@ -250,31 +202,6 @@ function useThreadMessageDerived(
 					messageText: sanitizedMessageText,
 				})
 			: sanitizedMessageText;
-	const thinkingToolCallsForStatus =
-		toolParts.length > 0 ? [] : visibleThinkingToolCalls;
-	const hasBackendThinkingActivity =
-		Boolean(thinkingStatusPart) ||
-		thinkingEventParts.length > 0 ||
-		thinkingToolCalls.length > 0 ||
-		toolParts.length > 0;
-	const isThinkingStatusStreaming =
-		resolveThinkingStatusLifecycleStreaming({
-			isThinkingLifecycleStreaming,
-			isThinkingStatusActive: effectiveIsThinkingStatusActive,
-			hasBackendThinkingActivity,
-		});
-	const {
-		phase: thinkingStatusLifecyclePhase,
-		duration: thinkingStatusDuration,
-	} = useReasoningPhase({
-		isStreaming: isThinkingStatusStreaming,
-		hasMessageText: hasBackendThinkingActivity,
-		responseKey: `${message.id}:thinking-status`,
-		autoIdle: false,
-		minPreloadMs: 0,
-		persistedStartTime: thinkingTimestamps.startedAt,
-		persistedEndTime: thinkingTimestamps.completedAt,
-	});
 	const hasTurnComplete = hasTurnCompleteSignal(message);
 	const hasToolFirstWarning =
 		Boolean(toolFirstWarning?.message) && !isStreaming;
@@ -290,25 +217,6 @@ function useThreadMessageDerived(
 		Boolean(isPlanWidgetFlow) &&
 		isCreatePlanSkillFlow &&
 		assistantStreamingRenderMode !== "text-first";
-	const thinkingStatusReasoningPhase: ReasoningPhase = (() => {
-		if (!effectiveIsThinkingStatusActive) return "idle";
-		if (hasAwaitingInputToolCalls) return "thinking";
-		if (hasTurnComplete && !isThinkingLifecycleStreaming) return "completed";
-		if (!hasBackendThinkingActivity) return isStreaming ? "preload" : "idle";
-		if (isPostToolsGenuiGeneration) return "thinking";
-		if (hasWidgetOutput) return "completed";
-		return thinkingStatusLifecyclePhase;
-	})();
-	const baseThinkingStatusLabel = hasAwaitingInputToolCalls
-		? getAwaitingUserResponseLabel()
-		: isPostToolsGenuiGeneration
-			? REASONING_LABELS.trigger.generatingResults
-			: dynamicThinkingStatusLabel;
-	const resolvedThinkingStatusLabel = resolveThinkingLabelForSurface({
-		baseLabel: baseThinkingStatusLabel,
-		surface,
-		reasoningPhase: thinkingStatusReasoningPhase,
-	});
 	const parsedPlanWidgetPayload =
 		widgetType === "plan" && widgetDataPart
 			? parsePlanWidgetPayload(widgetDataPart.data.payload)
@@ -397,12 +305,13 @@ function useThreadMessageDerived(
 			rawMessageText,
 			isStreaming,
 			reasoning,
-			thinkingStatusPart,
-			allThinkingStatusParts,
-			resolvedThinkingStatusLabel,
-			isThinkingStatusActive: effectiveIsThinkingStatusActive,
-			thinkingStatusReasoningPhase,
-			thinkingStatusDuration,
+			thinkingTraceState,
+			thinkingStatusPart: thinkingTraceState.data.lastThinkingStatusPart,
+			allThinkingStatusParts: thinkingTraceState.data.thinkingStatusParts,
+			resolvedThinkingStatusLabel: thinkingTraceState.triggerLabel,
+			isThinkingStatusActive: thinkingTraceState.thinkingActive,
+			thinkingStatusReasoningPhase: thinkingTraceState.reasoningPhase,
+			thinkingStatusDuration: thinkingTraceState.reasoningDuration,
 			hasTurnComplete,
 			isPostToolsGenuiGeneration,
 			thinkingToolCallsForStatus,
@@ -429,16 +338,12 @@ function useThreadMessageDerived(
 			questionCardMessageText,
 			widgetType,
 			isWidgetLoading,
-			effectiveIsThinkingStatusActive,
-			thinkingStatusReasoningPhase,
-			thinkingStatusDuration,
+			thinkingTraceState,
 			hasTurnComplete,
 			isPostToolsGenuiGeneration,
 			hasToolFirstWarning,
 			suggestedQuestions.length,
 			routeDecision?.reason,
-			thinkingStatusUpdateSignal,
-			resolvedThinkingStatusLabel,
 			isThinkingLifecycleStreaming,
 		]
 	);
@@ -480,8 +385,7 @@ export function ThreadMessageRoot({
 		Boolean(contextValue.reasoning) &&
 		!contextValue.isThinkingStatusActive;
 	const hasRenderableTools =
-		contextValue.toolParts.length > 0 &&
-		!contextValue.isThinkingStatusActive;
+		contextValue.toolParts.length > 0;
 	const hasRenderableSuggestions =
 		!contextValue.isStreaming &&
 		contextValue.suggestedQuestions.length > 0 &&
