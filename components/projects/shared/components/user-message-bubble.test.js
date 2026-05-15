@@ -75,3 +75,15 @@ test("compact chat edit uses AI SDK message replacement semantics", () => {
 		/setQueuedPrompts\(\[\]\);/,
 	);
 });
+
+test("compact chat message sanitizers tolerate persisted messages without parts arrays", () => {
+	assert.doesNotMatch(ROVO_CHAT_CONTEXT_SOURCE, /message\.parts\.length/u);
+	assert.match(
+		ROVO_CHAT_CONTEXT_SOURCE,
+		/const hasPartsArray = Array\.isArray\(message\.parts\);[\s\S]*const messageParts = hasPartsArray \? message\.parts : \[\];[\s\S]*if \(!hasPartsArray \|\| nextParts\.length !== messageParts\.length\)/u,
+	);
+	assert.match(
+		ROVO_CHAT_CONTEXT_SOURCE,
+		/const hasPartsArray = Array\.isArray\(message\.parts\);[\s\S]*let messageChanged = !hasPartsArray;[\s\S]*const messageParts = hasPartsArray \? message\.parts : \[\];/u,
+	);
+});
