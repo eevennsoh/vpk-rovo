@@ -19,6 +19,9 @@ interface MessageBubbleProps {
 	showThinkingStatusSection?: boolean;
 	isThinkingLifecycleStreaming?: boolean;
 	generativeCardAnimation?: GenerativeCardAnimationProps;
+	editingMessageId?: string | null;
+	onEditMessage?: (messageId: string, nextText: string) => Promise<void> | void;
+	onSetEditingMessageId?: (messageId: string | null) => void;
 	onWidgetPrimaryAction?: (
 		payload: GenerativeWidgetPrimaryActionPayload
 	) => Promise<void> | void;
@@ -34,6 +37,9 @@ export default function MessageBubble({
 	showThinkingStatusSection = true,
 	isThinkingLifecycleStreaming = false,
 	generativeCardAnimation,
+	editingMessageId,
+	onEditMessage,
+	onSetEditingMessageId,
 	onWidgetPrimaryAction,
 	onArtifactDialogOpen,
 	onArtifactDialogClose,
@@ -55,6 +61,10 @@ export default function MessageBubble({
 			message={message}
 			surface="sidebar"
 			isThinkingLifecycleStreaming={isThinkingLifecycleStreaming}
+			editingMessageId={editingMessageId}
+			onEditMessage={onEditMessage}
+			onSetEditingMessageId={onSetEditingMessageId}
+			showUserMessagePromptActions
 			renderWidget={renderWidget}
 		>
 			<ThreadMessage.Reasoning />

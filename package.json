@@ -28,7 +28,6 @@
 		"symphony": "./scripts/symphony.sh"
 	},
 	"dependencies": {
-		"@ai-sdk/openai-compatible": "^2.0.43",
 		"@ai-sdk/react": "^3.0.174",
 		"@atlaskit/icon": "^34.3.0",
 		"@atlaskit/icon-lab": "^6.6.0",

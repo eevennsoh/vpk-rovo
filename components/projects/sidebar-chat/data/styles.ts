@@ -42,7 +42,6 @@ export const chatStyles = {
 		justifyContent: "flex-end",
 	},
 	thinkingContainer: {
-		marginTop: token("space.300"),
 		paddingLeft: token("space.150"),
 		paddingRight: token("space.150"),
 	},

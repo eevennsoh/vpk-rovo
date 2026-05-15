@@ -538,6 +538,9 @@ interface RovoChatContextType {
 	unpinFloating: (reason: string) => void;
 	uiMessages: RovoUIMessage[];
 	sendPrompt: (prompt: string, options?: SendPromptOptions) => Promise<void>;
+	editMessage: (messageId: string, nextText: string, options?: SendPromptOptions) => Promise<void>;
+	editingMessageId: string | null;
+	setEditingMessageId: (messageId: string | null) => void;
 	stopStreaming: () => Promise<void>;
 	clearSuggestedQuestions: () => void;
 	resetChat: () => void;
@@ -640,6 +643,7 @@ export function RovoChatProvider({
 		useState<RovoUIMessage | null>(null);
 	const [queuedPrompts, setQueuedPrompts] = useState<QueuedPromptItem[]>([]);
 	const [activePrompt, setActivePrompt] = useState<QueuedPromptItem | null>(null);
+	const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
 	const [threads, setThreads] = useState<RovoAppThread[]>([]);
 	const [threadsLoaded, setThreadsLoaded] = useState(false);
 	const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
@@ -1715,6 +1719,94 @@ export function RovoChatProvider({
 		return true;
 	}, []);
 
+	const editMessage = useCallback(
+		async (messageId: string, nextText: string, options?: SendPromptOptions) => {
+			const trimmedText = nextText.trim();
+			if (!trimmedText) {
+				return;
+			}
+
+			const message = rawUiMessages.find((item) => item.id === messageId);
+			if (!message || message.role !== "user") {
+				return;
+			}
+
+			const resolvedOptions = resolveWorkItemReportPromptOptions(
+				trimmedText,
+				mergeSendPromptOptions(defaultPromptOptions, options)
+			);
+
+			setEditingMessageId(null);
+			cancelRetryTimer();
+			clearMediaGenerating();
+			clearSubmitPending();
+			setSubmissionErrorMessage(null);
+			setQueuedPrompts([]);
+			queuedPromptsRef.current = [];
+			activePromptRef.current = null;
+			setActivePrompt(null);
+			shouldFinalizeActivePromptRef.current = false;
+			hasTurnCompleteSignalRef.current = false;
+			lastPromptRef.current = {
+				text: trimmedText,
+				options: resolvedOptions,
+			};
+
+			if (!isSubmitPendingRef.current && !isStreamingRef.current) {
+				startSubmitPending(Date.now());
+			}
+
+			if (isStreamingRef.current) {
+				await stop();
+				await waitForStreamStop();
+			}
+
+			await ensureCompactThread(trimmedText);
+			void refreshThreads();
+
+			const messagePayload = {
+				text: trimmedText,
+				metadata: message.metadata,
+				messageId,
+			};
+			const bodyPayload = {
+				body: buildSendMessageBody(resolvedOptions, false),
+			};
+
+			isDispatchingPromptRef.current = true;
+			try {
+				await sendMessage(messagePayload, bodyPayload);
+			} catch (error) {
+				if (!isInvalidPartStateError(error)) {
+					throw error;
+				}
+
+				setMessages((prev) => sanitizeRovoUiMessages(prev));
+				await Promise.resolve();
+				await sendMessage(messagePayload, bodyPayload);
+			} finally {
+				isDispatchingPromptRef.current = false;
+				void refreshThreads();
+				queueTick();
+			}
+		},
+		[
+			cancelRetryTimer,
+			clearMediaGenerating,
+			clearSubmitPending,
+			defaultPromptOptions,
+			ensureCompactThread,
+			queueTick,
+			rawUiMessages,
+			refreshThreads,
+			sendMessage,
+			setMessages,
+			startSubmitPending,
+			stop,
+			waitForStreamStop,
+		]
+	);
+
 	const cancelCurrentStream = useCallback(async () => {
 		if (cancelStreamPromiseRef.current) {
 			await cancelStreamPromiseRef.current;
@@ -1972,6 +2064,9 @@ export function RovoChatProvider({
 				unpinFloating,
 				uiMessages,
 				sendPrompt,
+				editMessage,
+				editingMessageId,
+				setEditingMessageId,
 				stopStreaming,
 				clearSuggestedQuestions,
 				resetChat,

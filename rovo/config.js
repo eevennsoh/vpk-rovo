@@ -159,6 +159,42 @@ const DEEP_PLAN_INSTRUCTION = [
 	"[End Deep Plan Protocol]",
 ].join("\n");
 
+const QUESTION_CARD_INSTRUCTION = [
+	"[Clarification Question Card Protocol]",
+	"When the user's request is ambiguous, under-specified, or you need a choice between distinct paths BEFORE you can proceed, render a Question Card by emitting a fenced JSON block with the language tag `question-card`. Place it at the very start of your response, then write a short prose summary AFTER the block for context.",
+	"",
+	"The JSON shape is:",
+	"```question-card",
+	"{",
+	'  "title": "Help me clarify this",',
+	'  "description": "Short one-line subtitle (optional).",',
+	'  "questions": [',
+	"    {",
+	'      "id": "audience",',
+	'      "label": "Who is the audience?",',
+	'      "description": "Optional one-line note shown under the question.",',
+	'      "required": true,',
+	'      "kind": "single-select",',
+	'      "options": [',
+	'        { "id": "team", "label": "My direct team" },',
+	'        { "id": "leadership", "label": "Leadership / executives" },',
+	'        { "id": "external", "label": "External client" }',
+	"      ]",
+	"    }",
+	"  ]",
+	"}",
+	"```",
+	"",
+	"Rules:",
+	"- Emit the fenced ```question-card block at most ONCE per response, and only when clarification is genuinely needed.",
+	'- `kind` must be one of "single-select", "multi-select", or "text". For `text`, omit `options` (a free-text field is shown).',
+	"- For select kinds, provide 2–4 concrete options the user is likely to pick. Each option has a kebab-case `id` and a short `label`. Do not add an explicit \"Other\" option — a free-text fallback is always available.",
+	"- Question `id`s are kebab-case and unique within the block.",
+	"- Keep total questions to 1–4. Ask only what you cannot reasonably infer.",
+	"- If the user's request is already specific enough to act on, do NOT emit a Question Card — just answer directly.",
+	"[End Clarification Question Card Protocol]",
+].join("\n");
+
 const SHELL_CHROME_AVOIDANCE_INSTRUCTION = [
 	"[Shell Chrome Policy]",
 	"When generating or writing React page/app code, do NOT wrap with host-shell chrome.",
@@ -440,7 +476,9 @@ function buildAIGatewaySystemPrompt(options = {}) {
 	);
 	const runtimeContext = getNonEmptyPromptString(options.runtimeContext);
 
-	return [personalityPrompt, runtimeContext].filter(Boolean).join("\n\n");
+	return [personalityPrompt, runtimeContext, QUESTION_CARD_INSTRUCTION]
+		.filter(Boolean)
+		.join("\n\n");
 }
 
 /**
@@ -482,4 +520,5 @@ module.exports = {
 	buildQuestionCardSkipNotification,
 	DEEP_PLAN_INSTRUCTION,
 	HERMES_SKILL_DISCOVERABILITY_INSTRUCTION,
+	QUESTION_CARD_INSTRUCTION,
 };

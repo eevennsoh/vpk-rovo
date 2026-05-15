@@ -1,16 +1,19 @@
 "use client";
 
-import { useRef, useEffect, useMemo } from "react";
+import { useRef, useEffect, useMemo, useState } from "react";
 import type {
 	ConversationContextValue,
+	ConversationFollowMode,
 	GetTargetScrollTop,
+	ScrollToBottomOptions,
 } from "@/components/ui-ai/conversation";
 import {
 	getLatestUserMessageId,
 } from "@/lib/rovo-ui-messages";
 import type { RovoUIMessage } from "@/lib/rovo-ui-messages";
+import { resolveRovoAppScrollAnchorLayout } from "@/components/projects/rovo/lib/rovo-app-scroll-anchor";
 
-const LATEST_TURN_TOP_INSET_PX = 48;
+const LATEST_TURN_SELECTOR = "[data-chat-latest-turn='true']";
 const FAST_TURN_SCROLL_ANIMATION = {
 	damping: 0.72,
 	stiffness: 0.1,
@@ -19,21 +22,27 @@ const FAST_TURN_SCROLL_ANIMATION = {
 
 interface UseScrollAnchorOptions {
 	uiMessages: RovoUIMessage[];
+	isGenerationActive: boolean;
 }
 
 interface UseScrollAnchorReturn {
 	conversationContextRef: React.RefObject<ConversationContextValue | null>;
 	scrollSpacerRef: React.RefObject<HTMLDivElement | null>;
 	getLatestTurnTargetTop: GetTargetScrollTop;
+	scrollFollowMode: ConversationFollowMode;
 }
 
 export function useScrollAnchor({
+	isGenerationActive,
 	uiMessages,
 }: Readonly<UseScrollAnchorOptions>): UseScrollAnchorReturn {
 	const conversationContextRef = useRef<ConversationContextValue | null>(null);
 	const scrollSpacerRef = useRef<HTMLDivElement>(null);
 	const hasInitializedScrollRef = useRef(false);
 	const previousLatestUserMessageIdRef = useRef<string | null>(null);
+	const pendingAnchorScrollAnimationRef = useRef<ScrollToBottomOptions["animation"]>("instant");
+	const [scrollAnchorMessageId, setScrollAnchorMessageId] = useState<string | null>(null);
+	const [scrollFollowMode, setScrollFollowMode] = useState<ConversationFollowMode>("bottom");
 
 	const latestUserMessageId = useMemo(
 		() => getLatestUserMessageId(uiMessages),
@@ -46,27 +55,76 @@ export function useScrollAnchor({
 			return;
 		}
 
+		const hasLatestUserMessage = latestUserMessageId !== null;
 		const hasNewUserTurn =
 			hasInitializedScrollRef.current &&
-			latestUserMessageId !== null &&
+			hasLatestUserMessage &&
 			latestUserMessageId !== previousLatestUserMessageIdRef.current;
-		const shouldAnchorToLatestTurn = !hasInitializedScrollRef.current || hasNewUserTurn;
+		const shouldActivateTargetFollow =
+			isGenerationActive &&
+			hasLatestUserMessage &&
+			(
+				!hasInitializedScrollRef.current ||
+				hasNewUserTurn ||
+				scrollAnchorMessageId !== latestUserMessageId ||
+				scrollFollowMode !== "target"
+			);
 
-		if (shouldAnchorToLatestTurn) {
+		if (shouldActivateTargetFollow) {
+			pendingAnchorScrollAnimationRef.current = hasInitializedScrollRef.current
+				? FAST_TURN_SCROLL_ANIMATION
+				: "instant";
+			setScrollAnchorMessageId(latestUserMessageId);
+			setScrollFollowMode("target");
+		} else if (!isGenerationActive && scrollFollowMode !== "bottom") {
+			setScrollAnchorMessageId(null);
+			setScrollFollowMode("bottom");
+		}
+
+		if (!hasInitializedScrollRef.current && !shouldActivateTargetFollow) {
 			void conversationContextRef.current?.scrollToBottom({
-				animation: hasNewUserTurn ? FAST_TURN_SCROLL_ANIMATION : "instant",
+				animation: "instant",
 				ignoreEscapes: true,
 			});
 		}
 
 		previousLatestUserMessageIdRef.current = latestUserMessageId;
 		hasInitializedScrollRef.current = true;
-	}, [latestUserMessageId, uiMessages.length]);
+	}, [
+		isGenerationActive,
+		latestUserMessageId,
+		scrollAnchorMessageId,
+		scrollFollowMode,
+		uiMessages.length,
+	]);
+
+	useEffect(() => {
+		if (scrollFollowMode !== "target" || !scrollAnchorMessageId) {
+			return;
+		}
+
+		const frameId = window.requestAnimationFrame(() => {
+			void conversationContextRef.current?.scrollToBottom({
+				animation: pendingAnchorScrollAnimationRef.current,
+				ignoreEscapes: true,
+			});
+		});
+
+		return () => window.cancelAnimationFrame(frameId);
+	}, [scrollAnchorMessageId, scrollFollowMode]);
+
+	useEffect(() => {
+		if (scrollFollowMode !== "bottom" || !scrollSpacerRef.current) {
+			return;
+		}
+
+		scrollSpacerRef.current.style.height = "0px";
+	}, [scrollFollowMode]);
 
 	const getLatestTurnTargetTop = useMemo<GetTargetScrollTop>(
 		() => (defaultTargetTop, { scrollElement }) => {
 			const latestTurnElement = scrollElement.querySelector<HTMLElement>(
-				"[data-chat-latest-turn='true']"
+				LATEST_TURN_SELECTOR
 			);
 			if (!latestTurnElement) {
 				if (scrollSpacerRef.current) {
@@ -77,32 +135,28 @@ export function useScrollAnchor({
 
 			const scrollRect = scrollElement.getBoundingClientRect();
 			const latestTurnRect = latestTurnElement.getBoundingClientRect();
-			const rawTargetTop = scrollElement.scrollTop + (latestTurnRect.top - scrollRect.top);
-			const desiredTargetTop = Math.max(0, rawTargetTop - LATEST_TURN_TOP_INSET_PX);
-			const availableScrollRange = scrollElement.scrollHeight - scrollElement.clientHeight;
-			const currentSpacerHeight = scrollSpacerRef.current?.offsetHeight ?? 0;
-			const availableScrollRangeWithoutSpacer = Math.max(
-				0,
-				availableScrollRange - currentSpacerHeight
-			);
-			const requiredSpacer = Math.max(
-				0,
-				desiredTargetTop - availableScrollRangeWithoutSpacer
-			);
+			const { spacerHeight, targetScrollTop } = resolveRovoAppScrollAnchorLayout({
+				anchorOffsetTop: latestTurnRect.top - scrollRect.top,
+				clientHeight: scrollElement.clientHeight,
+				currentSpacerHeight: scrollSpacerRef.current?.offsetHeight ?? 0,
+				defaultTargetTop,
+				scrollHeight: scrollElement.scrollHeight,
+				scrollTop: scrollElement.scrollTop,
+			});
 
 			if (scrollSpacerRef.current) {
-				scrollSpacerRef.current.style.height = `${requiredSpacer}px`;
+				scrollSpacerRef.current.style.height = `${spacerHeight}px`;
 			}
 
-			const maxScrollTopWithPadding = Math.max(
-				0,
-				scrollElement.scrollHeight - scrollElement.clientHeight
-			);
-
-			return Math.min(maxScrollTopWithPadding, desiredTargetTop);
+			return targetScrollTop;
 		},
 		[]
 	);
 
-	return { conversationContextRef, scrollSpacerRef, getLatestTurnTargetTop };
+	return {
+		conversationContextRef,
+		scrollSpacerRef,
+		getLatestTurnTargetTop,
+		scrollFollowMode,
+	};
 }

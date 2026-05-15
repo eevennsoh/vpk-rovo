@@ -22,3 +22,14 @@ test("chat surface switcher calls the surface switch hook before switching to th
 		/onClick=\{\(\) => handleSelectSurface\("floating"\)\}[\s\S]*>\s*Floating/u,
 	);
 });
+
+test("chat surface switcher opens the active compact thread in fullscreen when available", () => {
+	assert.match(
+		source,
+		/const \{ activeThreadId, switchSurface, closeChat \} = useRovoChat\(\);/u,
+	);
+	assert.match(
+		source,
+		/router\.push\(activeThreadId \? buildRovoAppThreadPath\(activeThreadId\) : ROVO_APP_ROOT_PATH\);/u,
+	);
+});

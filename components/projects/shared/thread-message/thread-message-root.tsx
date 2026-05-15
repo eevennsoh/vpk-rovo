@@ -50,6 +50,10 @@ interface ThreadMessageRootProps {
 	isThinkingLifecycleStreaming?: boolean;
 	assistantStreamingRenderMode?: "rich" | "text-first";
 	onDeleteMessage?: (messageId: string) => void;
+	editingMessageId?: string | null;
+	onEditMessage?: (messageId: string, nextText: string) => Promise<void> | void;
+	onSetEditingMessageId?: (messageId: string | null) => void;
+	showUserMessagePromptActions?: boolean;
 	renderWidget?: (
 		widget: { type: string; data: unknown },
 		message: RovoRenderableUIMessage
@@ -355,6 +359,10 @@ export function ThreadMessageRoot({
 	isThinkingLifecycleStreaming = false,
 	assistantStreamingRenderMode = "rich",
 	onDeleteMessage,
+	editingMessageId,
+	onEditMessage,
+	onSetEditingMessageId,
+	showUserMessagePromptActions = false,
 	renderWidget,
 	children,
 }: Readonly<ThreadMessageRootProps>): ReactNode {
@@ -372,11 +380,28 @@ export function ThreadMessageRoot({
 			<UserMessageBubble
 				messageText={displayLabel || contextValue.rawMessageText}
 				metadata={message.metadata}
+				isEditing={editingMessageId === message.id}
 				onDelete={
 					onDeleteMessage
 						? () => onDeleteMessage(message.id)
 						: undefined
 				}
+				onEdit={
+					onEditMessage
+						? (nextText) => onEditMessage(message.id, nextText)
+						: undefined
+				}
+				onStartEdit={
+					onSetEditingMessageId
+						? () => onSetEditingMessageId(message.id)
+						: undefined
+				}
+				onCancelEdit={
+					onSetEditingMessageId
+						? () => onSetEditingMessageId(null)
+						: undefined
+				}
+				showPromptActions={showUserMessagePromptActions}
 			/>
 		);
 	}

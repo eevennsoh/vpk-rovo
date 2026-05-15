@@ -219,6 +219,21 @@ test("Floating chat keeps chrome and composer outside the scrollable message vie
 	assert.match(CHAT_PANEL_SOURCE, /<div className="shrink-0">[\s\S]*<ChatHeader/);
 });
 
+test("Shared ChatPanel renders the Rovo-style conversation body and scroll button", () => {
+	assert.match(CHAT_PANEL_SOURCE, /ConversationScrollButton/);
+	assert.match(CHAT_PANEL_SOURCE, /scrollFollowMode/);
+	assert.match(CHAT_PANEL_SOURCE, /isGenerationActive: isStreamingLifecycleActive/);
+	assert.match(CHAT_PANEL_SOURCE, /followMode=\{scrollFollowMode\}/);
+	assert.match(
+		CHAT_PANEL_SOURCE,
+		/className="mx-auto flex min-w-0 max-w-\[800px\] flex-col gap-4 px-3 py-6 md:gap-6"/,
+	);
+	assert.match(
+		CHAT_PANEL_SOURCE,
+		/<ConversationScrollButton className="z-10 transition-all" \/>/,
+	);
+});
+
 test("Floating chat compact empty greeting does not force a full-height message area", () => {
 	assert.match(CHAT_PANEL_SOURCE, /const shouldHugEmptyGreeting = !hasMessages && greeting\?\.showHero === false/);
 	assert.match(CHAT_PANEL_SOURCE, /const shouldUseAutoMessageTrack = shouldHugEmptyGreeting && containerStyle\?\.display === "grid"/);
