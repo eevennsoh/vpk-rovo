@@ -237,15 +237,19 @@ function extractUrlsFromString(value) {
 function walkNodes(rootValue, visit, maxNodes = MAX_SCAN_NODES) {
 	const queue = [{ value: rootValue, path: "" }];
 	let visited = 0;
+	let cursor = 0;
 
-	while (queue.length > 0 && visited < maxNodes) {
-		const { value, path } = queue.shift();
+	while (cursor < queue.length && visited < maxNodes) {
+		const { value, path } = queue[cursor];
+		cursor += 1;
 		if (value === undefined || value === null) {
 			continue;
 		}
 
 		visited += 1;
-		visit(value, path);
+		if (visit(value, path) === false) {
+			break;
+		}
 
 		if (Array.isArray(value)) {
 			for (let index = 0; index < value.length; index += 1) {
@@ -309,7 +313,7 @@ function collectDetailLinesFromStructuredPayload(
 
 	walkNodes(payload, (node, path) => {
 		if (lines.length >= maxLines) {
-			return;
+			return false;
 		}
 
 		if (Array.isArray(node)) {
@@ -323,7 +327,7 @@ function collectDetailLinesFromStructuredPayload(
 				lines.push(arraySummary);
 				seenLines.add(arraySummary);
 			}
-			return;
+			return lines.length < maxLines;
 		}
 
 		const leafLine = lineFromLeaf(path, node, maxChars);
@@ -333,6 +337,7 @@ function collectDetailLinesFromStructuredPayload(
 
 		lines.push(leafLine);
 		seenLines.add(leafLine);
+		return lines.length < maxLines;
 	});
 
 	return lines.slice(0, maxLines);
@@ -370,7 +375,7 @@ function collectLinksFromObservation(observation, maxLinks = DEFAULT_MAX_LINKS_P
 
 	walkNodes(rawOutput, (node) => {
 		if (links.length >= maxLinks) {
-			return;
+			return false;
 		}
 		if (typeof node !== "string") {
 			return;
@@ -382,6 +387,7 @@ function collectLinksFromObservation(observation, maxLinks = DEFAULT_MAX_LINKS_P
 			}
 			pushLink(url);
 		}
+		return links.length < maxLinks;
 	});
 
 	return links;

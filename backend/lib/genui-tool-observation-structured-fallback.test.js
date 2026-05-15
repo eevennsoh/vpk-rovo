@@ -147,6 +147,45 @@ test("buildToolObservationStructuredFallback falls back to text lines when paylo
 	assert.match(serializedSpec, /line three/);
 });
 
+test("buildToolObservationStructuredFallback stops scanning once detail and link quotas are full", () => {
+	let lateGetterRead = false;
+	const latePayload = {};
+	Object.defineProperty(latePayload, "shouldNotRead", {
+		enumerable: true,
+		get() {
+			lateGetterRead = true;
+			return "late value";
+		},
+	});
+
+	const result = buildToolObservationStructuredFallback({
+		prompt: "show tool output",
+		observations: [
+			{
+				phase: "result",
+				toolName: "functions.exec_command",
+				rawOutput: {
+					first: "one",
+					second: "two",
+					third: "three",
+					late: latePayload,
+				},
+				text: "structured result",
+			},
+		],
+		maxDetailLinesPerEvent: 3,
+		maxLinksPerEvent: 0,
+	});
+
+	assert.ok(result);
+	assert.equal(lateGetterRead, false);
+	const serializedSpec = JSON.stringify(result.spec);
+	assert.match(serializedSpec, /one/);
+	assert.match(serializedSpec, /two/);
+	assert.match(serializedSpec, /three/);
+	assert.doesNotMatch(serializedSpec, /late value/);
+});
+
 test("buildToolObservationStructuredFallback removes tool-definition/schema noise from Slack create message results", () => {
 	const result = buildToolObservationStructuredFallback({
 		prompt: "Send Slack message",
