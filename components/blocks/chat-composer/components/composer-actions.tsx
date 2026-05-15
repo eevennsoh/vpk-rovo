@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
 import AddMenu from "./add-menu";
 import CustomizeMenu, { type CustomizeMenuProps } from "./customize-menu";
 import { composerStyles } from "../data/styles";
@@ -73,6 +73,7 @@ export default function ComposerActions({
 						</PopoverTrigger>
 						{customizeMenuProps && (
 							<PopoverContent side="top" align="start" sideOffset={8} className="w-auto p-2">
+								<PopoverTitle className="sr-only">Customize response</PopoverTitle>
 								<CustomizeMenu {...customizeMenuProps} onClose={() => setIsCustomizeMenuOpen(false)} />
 							</PopoverContent>
 						)}

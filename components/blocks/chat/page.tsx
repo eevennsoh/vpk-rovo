@@ -13,15 +13,14 @@ import {
 	PromptInputActionMenuItem,
 	PromptInputActionMenuTrigger,
 	PromptInputBody,
-	PromptInputButton,
-
 	PromptInputFooter,
 	PromptInputMicrophone,
+	PromptInputPreferencesButton,
 	PromptInputSubmit,
 	PromptInputTextarea,
 	PromptInputTools,
 } from "@/components/ui-ai/prompt-input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
 import {
 	composerUpwardShadow,
 	composerPromptInputClassName,
@@ -34,7 +33,6 @@ import { useChatSubmit } from "./hooks/use-chat-submit";
 import styles from "./chat.module.css";
 import AddIcon from "@atlaskit/icon/core/add";
 import ArrowUpIcon from "@atlaskit/icon/core/arrow-up";
-import CustomizeIcon from "@atlaskit/icon/core/customize";
 
 import LinkIcon from "@atlaskit/icon/core/link";
 import MentionIcon from "@atlaskit/icon/core/mention";
@@ -248,17 +246,10 @@ export default function ChatPanel({ onClose }: Readonly<ChatPanelProps>): React.
 
 								<Popover open={isCustomizeMenuOpen} onOpenChange={setIsCustomizeMenuOpen}>
 									<PopoverTrigger
-										render={
-											<PromptInputButton
-												aria-label="Customize"
-												size="icon-sm"
-												variant="ghost"
-											/>
-										}
-									>
-										<CustomizeIcon label="" />
-									</PopoverTrigger>
+										render={<PromptInputPreferencesButton aria-label="Customize" />}
+									/>
 									<PopoverContent side="top" align="start" sideOffset={8} className="w-auto p-2">
+										<PopoverTitle className="sr-only">Customize response</PopoverTitle>
 										<CustomizeMenu
 											selectedReasoning={selectedReasoning}
 											onReasoningChange={setSelectedReasoning}

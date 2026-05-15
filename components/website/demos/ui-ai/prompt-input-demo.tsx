@@ -9,7 +9,7 @@ import {
 	composerTextareaClassName,
 	textareaCSS,
 } from "@/components/blocks/shared-ui/composer-styles";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
 import {
 	PromptInput,
 	PromptInputActionAddAttachments,
@@ -34,6 +34,7 @@ import {
 	PromptInputHoverCardContent,
 	PromptInputHoverCardTrigger,
 	PromptInputProvider,
+	PromptInputPreferencesButton,
 	PromptInputSelect,
 	PromptInputSelectContent,
 	PromptInputSelectItem,
@@ -166,17 +167,10 @@ export function PromptInputDemoChatComposer() {
 
 								<Popover open={isCustomizeMenuOpen} onOpenChange={setIsCustomizeMenuOpen}>
 									<PopoverTrigger
-										render={
-											<PromptInputButton
-												aria-label="Customize"
-												size="icon-sm"
-												variant="ghost"
-											/>
-										}
-									>
-										<CustomizeIcon label="" />
-									</PopoverTrigger>
+										render={<PromptInputPreferencesButton aria-label="Customize" />}
+									/>
 									<PopoverContent side="top" align="start" sideOffset={8} className="w-auto p-2">
+										<PopoverTitle className="sr-only">Customize response</PopoverTitle>
 										<CustomizeMenu
 											selectedReasoning={selectedReasoning}
 											onReasoningChange={setSelectedReasoning}

@@ -13,18 +13,18 @@ import {
 	PromptInputBody,
 	PromptInputButton,
 	PromptInputFooter,
+	PromptInputPreferencesButton,
 	PromptInputSubmit,
 	PromptInputTextarea,
 	PromptInputTools,
 } from "@/components/ui-ai/prompt-input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
 import { token } from "@/lib/tokens";
 import { cn } from "@/lib/utils";
 import { composerStyles, textareaCSS } from "./data/styles";
 import AddIcon from "@atlaskit/icon/core/add";
 import ArrowUpIcon from "@atlaskit/icon/core/arrow-up";
 import CrossIcon from "@atlaskit/icon/core/cross";
-import CustomizeIcon from "@atlaskit/icon/core/customize";
 import MicrophoneIcon from "@atlaskit/icon/core/microphone";
 
 /** Configuration for which features to display in the composer */
@@ -159,18 +159,11 @@ export default function ChatComposer({
 							{features.customizeMenu ? (
 								<Popover open={isCustomizeMenuOpen} onOpenChange={setIsCustomizeMenuOpen}>
 									<PopoverTrigger
-										render={
-											<PromptInputButton
-												aria-label="Customize"
-												size="icon-sm"
-												variant="ghost"
-											/>
-										}
-									>
-										<CustomizeIcon label="" />
-									</PopoverTrigger>
+										render={<PromptInputPreferencesButton aria-label="Customize" />}
+									/>
 									{customizeMenuProps ? (
 										<PopoverContent side="top" align="start" sideOffset={8} className="w-auto p-2">
+											<PopoverTitle className="sr-only">Customize response</PopoverTitle>
 											<CustomizeMenu
 												{...customizeMenuProps}
 												onClose={() => setIsCustomizeMenuOpen(false)}
