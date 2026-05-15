@@ -21,7 +21,7 @@ function Tabs({
 				? { "data-horizontal": "" }
 				: { "data-vertical": "" })}
 			className={cn(
-				"gap-2 group/tabs flex data-horizontal:flex-col",
+				"group/tabs flex data-horizontal:flex-col data-vertical:gap-2",
 				className
 			)}
 			{...props}

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { token } from "@/lib/tokens";
 import { useRovoChat } from "@/app/contexts";
 import JiraHeader from "./components/jira-header";
 import BoardToolbar from "./components/board-toolbar";
@@ -208,7 +207,7 @@ export default function AgentsView({
 			{/* Board Tab Content */}
 			{selectedTab === 1 ? (
 				<div
-					style={{ flexGrow: 1, display: "flex", flexDirection: "column", paddingTop: token("space.200") }}
+					style={{ flexGrow: 1, display: "flex", flexDirection: "column" }}
 				>
 					{/* Toolbar */}
 					<BoardToolbar avatars={[...AVATARS]} />

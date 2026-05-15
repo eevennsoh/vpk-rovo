@@ -163,9 +163,12 @@ export default function ChatComposer({
 									/>
 									{customizeMenuProps ? (
 										<PopoverContent side="top" align="start" sideOffset={8} className="w-auto p-2">
-											<PopoverTitle className="sr-only">Customize response</PopoverTitle>
+											<PopoverTitle className="sr-only">
+												{customizeMenuProps.showReasoning === true ? "Customize response" : "Customize sources"}
+											</PopoverTitle>
 											<CustomizeMenu
 												{...customizeMenuProps}
+												showReasoning={customizeMenuProps.showReasoning ?? false}
 												onClose={() => setIsCustomizeMenuOpen(false)}
 											/>
 										</PopoverContent>

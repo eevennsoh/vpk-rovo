@@ -376,8 +376,10 @@ export function ThreadMessageRoot({
 
 	if (message.role === "user") {
 		const displayLabel = message.metadata?.displayLabel;
+		const attachments = message.parts.filter((part) => part.type === "file");
 		return (
 			<UserMessageBubble
+				attachments={attachments}
 				messageText={displayLabel || contextValue.rawMessageText}
 				metadata={message.metadata}
 				isEditing={editingMessageId === message.id}

@@ -40,7 +40,7 @@ export default function BoardColumn({
 			}}
 		>
 			{/* Column header */}
-			<div style={{ paddingBlock: token("space.200"), paddingInline: token("space.150") }}>
+			<div style={{ paddingBlock: token("space.100"), paddingInline: token("space.150") }}>
 				<div className="flex min-w-0 items-center justify-between gap-2">
 					<div className="flex min-w-0 items-center gap-2">
 						<span

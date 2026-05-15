@@ -23,12 +23,12 @@ export function StatusHeader() {
 			<div className="flex items-center gap-2">
 				<Button
 					className="gap-2"
-					variant="secondary"
+					variant="outline"
 				>
 					{workItem.status ?? "RFP Intake"}
 					<ChevronDownIcon label="" size="small" />
 				</Button>
-				<Button aria-label="Automation" size="icon" variant="secondary">
+				<Button aria-label="Automation" size="icon" variant="outline">
 					<AutomationIcon label="" />
 				</Button>
 			</div>

@@ -12,19 +12,19 @@ import ThumbsUpIcon from "@atlaskit/icon/core/thumbs-up";
 export function CommentActions() {
 	return (
 		<div style={{ display: "flex", gap: token("space.100"), marginTop: token("space.100") }}>
-			<Button aria-label="Reply" size="icon-sm" variant="ghost">
+			<Button aria-label="Reply" size="icon-sm" variant="outline">
 				<ReplyLeftIcon label="" color={token("color.icon.subtlest")} size="small" />
 			</Button>
-			<Button aria-label="Thumbs up" size="icon-sm" variant="ghost">
+			<Button aria-label="Thumbs up" size="icon-sm" variant="outline">
 				<ThumbsUpIcon label="" color={token("color.icon.subtlest")} size="small" />
 			</Button>
-			<Button aria-label="Add reaction" size="icon-sm" variant="ghost">
+			<Button aria-label="Add reaction" size="icon-sm" variant="outline">
 				<EmojiAddIcon label="" color={token("color.icon.subtlest")} size="small" />
 			</Button>
-			<Button aria-label="Edit" size="icon-sm" variant="ghost">
+			<Button aria-label="Edit" size="icon-sm" variant="outline">
 				<EditIcon label="" color={token("color.icon.subtlest")} size="small" />
 			</Button>
-			<Button aria-label="More actions" size="icon-sm" variant="ghost">
+			<Button aria-label="More actions" size="icon-sm" variant="outline">
 				<ShowMoreHorizontalIcon label="" color={token("color.icon.subtlest")} size="small" />
 			</Button>
 		</div>

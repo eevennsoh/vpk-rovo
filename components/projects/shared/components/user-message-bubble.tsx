@@ -6,13 +6,20 @@ import {
 	MessageEditAction,
 	MessageResponse,
 } from "@/components/ui-ai/message";
+import {
+	Attachment,
+	AttachmentPreview,
+	Attachments,
+} from "@/components/ui-ai/attachments";
 import { AnswerCard } from "@/components/blocks/answer-card/components/answer-card";
 import { Button } from "@/components/ui/button";
 import { InlineEdit } from "@/components/ui/inline-edit";
 import type { RovoMessageMetadata } from "@/lib/rovo-ui-messages";
+import type { FileUIPart } from "ai";
 import DeleteIcon from "@atlaskit/icon/core/delete";
 
 interface UserMessageBubbleProps {
+	attachments?: ReadonlyArray<FileUIPart>;
 	messageText: string;
 	metadata?: RovoMessageMetadata;
 	isEditing?: boolean;
@@ -45,6 +52,7 @@ function getClarificationSummaryRows(
 }
 
 export function UserMessageBubble({
+	attachments = [],
 	messageText,
 	metadata,
 	isEditing = false,
@@ -80,6 +88,21 @@ export function UserMessageBubble({
 				className={isEditing ? "w-full max-w-full" : undefined}
 				fitContent={!isEditing}
 			>
+				{attachments.length > 0 ? (
+					<Attachments className="justify-end" variant="grid">
+						{attachments.map((attachment) => (
+							<Attachment
+								key={`${attachment.url}-${attachment.filename ?? "attachment"}`}
+								data={{
+									...attachment,
+									id: `${attachment.url}-${attachment.filename ?? "attachment"}`,
+								}}
+							>
+								<AttachmentPreview />
+							</Attachment>
+						))}
+					</Attachments>
+				) : null}
 				{isEditing && onEdit ? (
 					<InlineEdit
 						value={messageText}

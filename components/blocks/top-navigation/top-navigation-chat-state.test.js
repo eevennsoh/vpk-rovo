@@ -21,3 +21,11 @@ test("top navigation derives Ask Rovo pressed state from the sidebar chat surfac
 	assert.match(USE_TOP_NAVIGATION_SOURCE, /isSidebarChatOpen,/);
 	assert.match(TOP_NAVIGATION_SOURCE, /isChatOpen=\{isSidebarChatOpen\}/);
 });
+
+test("top navigation centers search actions between equal side rails", () => {
+	assert.match(USE_TOP_NAVIGATION_SOURCE, /const TOP_NAV_CENTER_SECTION_SIDE_RAIL_WIDTH_PX = 330;/);
+	assert.match(USE_TOP_NAVIGATION_SOURCE, /width: `\$\{centeredWidthPx\}px`/);
+	assert.match(USE_TOP_NAVIGATION_SOURCE, /flex: "0 0 auto"/);
+	assert.match(TOP_NAVIGATION_SOURCE, /flex: "1 1 0", minWidth: 0/);
+	assert.match(TOP_NAVIGATION_SOURCE, /justifyContent: "flex-end"/);
+});

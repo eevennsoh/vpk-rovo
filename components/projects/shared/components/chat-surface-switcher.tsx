@@ -66,8 +66,8 @@ export function ChatSurfaceSwitcherItems({
 			<DropdownMenuItem
 				elemBefore={<FullscreenEnterIcon label="" />}
 				elemAfter={
-					<span className="opacity-0 group-data-[highlighted]/dropdown-menu-item:opacity-100">
-						<LinkExternalIcon label="" />
+					<span className="inline-flex h-5 items-center opacity-0 group-data-[highlighted]/dropdown-menu-item:opacity-100">
+						<LinkExternalIcon label="" size="small" />
 					</span>
 				}
 				onSelect={handleSelectFullscreen}

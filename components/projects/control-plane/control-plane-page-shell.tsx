@@ -12,6 +12,7 @@ interface ControlPlanePageShellProps {
 	children: ReactNode;
 	className?: string;
 	description: string;
+	showHeader?: boolean;
 	title: string;
 }
 
@@ -20,6 +21,7 @@ export function ControlPlanePageShell({
 	children,
 	className,
 	description,
+	showHeader = true,
 	title,
 }: Readonly<ControlPlanePageShellProps>) {
 	return (
@@ -33,13 +35,16 @@ export function ControlPlanePageShell({
 				}}
 			/>
 			<div className="relative mx-auto flex max-w-7xl flex-col gap-6 px-4 py-6 lg:px-6">
-				<div className="space-y-4">
-					<PageHeader description={description} title={title} actions={actions} />
-					<ControlPlaneSurfaceNav />
-				</div>
+				{showHeader ? (
+					<div className="space-y-4">
+						<PageHeader description={description} title={title} actions={actions} />
+						<ControlPlaneSurfaceNav />
+					</div>
+				) : actions ? (
+					<div className="flex justify-end">{actions}</div>
+				) : null}
 				{children}
 			</div>
 		</div>
 	);
 }
-

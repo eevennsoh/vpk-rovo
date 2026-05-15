@@ -20,12 +20,12 @@ interface JiraHeaderProps {
 export default function JiraHeader({ selectedTab, onTabChange }: Readonly<JiraHeaderProps>) {
 	return (
 		<div className="pt-4">
-			<div className="flex flex-col gap-0.5">
+			<div className="flex flex-col gap-1">
 				{/* Top row: Spaces label and heading with buttons */}
 				<div
 					className="flex justify-between items-center gap-2"
 				>
-					<div className="px-6">
+					<div className="px-4">
 						<div className="flex flex-col gap-0.5">
 							<span className="text-sm text-text-subtle font-medium">
 								Spaces
@@ -49,7 +49,7 @@ export default function JiraHeader({ selectedTab, onTabChange }: Readonly<JiraHe
 						</div>
 					</div>
 
-					<div className="px-6">
+					<div className="px-4">
 						<div className="flex gap-2">
 							<Button aria-label="Share" size="icon" variant="ghost">
 								<ShareIcon label="" />
@@ -82,7 +82,7 @@ export default function JiraHeader({ selectedTab, onTabChange }: Readonly<JiraHe
 									<TabsTrigger
 										key={tab.label}
 										value={tab.label}
-										className={isFirst ? "ml-3 flex-none" : "flex-none"}
+										className={isFirst ? "ml-2 flex-none" : "flex-none"}
 									>
 										<div className="flex items-center gap-1.5">
 											<IconComponent

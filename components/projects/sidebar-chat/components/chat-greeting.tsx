@@ -6,6 +6,10 @@ import Heading from "@/components/blocks/shared-ui/heading";
 import { IconTile } from "@/components/ui/icon-tile";
 import { defaultSuggestions, type RovoSuggestion } from "@/lib/rovo-suggestions";
 
+const DEFAULT_ILLUSTRATION_SRC = "/illustration-ai/chat/light.svg";
+const DEFAULT_ILLUSTRATION_DARK_SRC = "/illustration-ai/chat/dark.svg";
+const LIGHT_SVG_SUFFIX = "/light.svg";
+
 interface ChatGreetingProps {
 	/** Optional custom heading text */
 	heading?: string;
@@ -30,6 +34,14 @@ interface SkillListItemProps {
 	onClick?: () => void;
 }
 
+function getPairedDarkIllustrationSrc(illustrationSrc: string): string {
+	if (illustrationSrc.endsWith(LIGHT_SVG_SUFFIX)) {
+		return `${illustrationSrc.slice(0, -LIGHT_SVG_SUFFIX.length)}/dark.svg`;
+	}
+
+	return DEFAULT_ILLUSTRATION_DARK_SRC;
+}
+
 function SkillListItem({
 	suggestion,
 	onClick,
@@ -48,6 +60,7 @@ function SkillListItem({
 			<IconTile
 				size="medium"
 				label={suggestion.label}
+				aria-hidden={true}
 				className="border border-border bg-surface"
 				icon={
 					suggestion.imageSrc ? (
@@ -70,16 +83,17 @@ function SkillListItem({
 
 export default function ChatGreeting({
 	heading = "How can I help?",
-	illustrationSrc = "/illustration-ai/chat/light.svg",
-	illustrationDarkSrc = "/illustration-ai/chat/dark.svg",
+	illustrationSrc = DEFAULT_ILLUSTRATION_SRC,
+	illustrationDarkSrc,
 	showHero = true,
 	suggestions,
 	onSuggestionClick,
 }: Readonly<ChatGreetingProps>) {
 	const greetingSuggestions = suggestions ?? defaultSuggestions;
+	const resolvedIllustrationDarkSrc = illustrationDarkSrc ?? getPairedDarkIllustrationSrc(illustrationSrc);
 
 	return (
-		<div className="w-[90%]">
+		<div className="w-full">
 			<div className="flex flex-col gap-6">
 				{showHero ? (
 					<div className="flex flex-col items-center gap-2">
@@ -89,15 +103,15 @@ export default function ChatGreeting({
 							width={80}
 							height={80}
 							loading="eager"
-							className="h-auto w-auto object-contain dark:hidden"
+							className="h-auto w-auto object-contain dark:hidden [[data-color-mode=dark]_&]:hidden"
 						/>
 						<Image
-							src={illustrationDarkSrc}
+							src={resolvedIllustrationDarkSrc}
 							alt=""
 							width={80}
 							height={80}
 							loading="eager"
-							className="hidden h-auto w-auto object-contain dark:block"
+							className="hidden h-auto w-auto object-contain dark:block [[data-color-mode=dark]_&]:block"
 						/>
 						<Heading size="large" className="text-center">{heading}</Heading>
 					</div>

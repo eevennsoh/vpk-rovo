@@ -9,8 +9,8 @@ import {
 	PromptInputBody,
 	PromptInputButton,
 	PromptInputFooter,
+	PromptInputPreferencesButton,
 	PromptInputProvider,
-	PromptInputSubmit,
 	PromptInputTextarea,
 	PromptInputTools,
 	usePromptInputController,
@@ -24,39 +24,32 @@ import {
 	QueueList,
 } from "@/components/ui-ai/queue";
 import { composerPromptInputClassName, composerTextareaClassName, composerUpwardShadow, textareaCSS } from "@/components/blocks/shared-ui/composer-styles";
+import CustomizeMenu from "@/components/blocks/shared-ui/customize-menu";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
 import { SkillTag, SkillTagGroup } from "@/components/ui/skill-tag";
 import type { VoiceButtonState } from "@/components/ui-audio/voice-button";
-import { LiveWaveform } from "@/components/ui-audio/live-waveform";
-import { resolveRovoAppComposerWaveformState } from "@/components/projects/rovo/lib/rovo-app-composer-waveform-state";
-import { resolveRovoAppComposerIdleAction } from "@/components/projects/rovo/lib/rovo-app-composer-idle-action";
 import { resolveRovoAppComposerResponseGradientState } from "@/components/projects/rovo/lib/rovo-app-composer-response-gradient-state";
 import type { RealtimeGenerationState } from "@/components/projects/rovo/hooks/use-realtime-voice";
-import { ROVO_WAVEFORM_COLOR_CSS_VARS } from "@/lib/rovo-colors";
 import { cn } from "@/lib/utils";
 import { resolveRovoAppComposerPreviewHeight } from "@/components/projects/rovo/lib/rovo-app-composer-preview";
 import type { RovoAppPlanExecutionTrackerViewModel } from "@/components/projects/rovo/lib/rovo-app-plan-execution-tracker";
 import type { RovoAppQueuedAction } from "@/lib/rovo-app-types";
-import ArrowUpIcon from "@atlaskit/icon/core/arrow-up";
 import CrossIcon from "@atlaskit/icon/core/cross";
-import AudioWaveformIcon from "@atlaskit/icon-lab/core/audio-waveform";
 import AddIcon from "@atlaskit/icon/core/add";
-import ScorecardIcon from "@atlaskit/icon/core/scorecard";
 import DeleteIcon from "@atlaskit/icon/core/delete";
 import SkillIcon from "@atlaskit/icon-lab/core/skill";
-import TargetIcon from "@atlaskit/icon/core/target";
+import CursorIcon from "@atlaskit/icon-lab/core/cursor";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { RovoAppComposerAddMenu } from "./rovo-app-composer-add-menu";
 import { RovoAppPlanExecutionTracker } from "./rovo-app-plan-execution-tracker";
 import { RovoAppComposerResponseGradient } from "./rovo-app-composer-response-gradient";
 import { PendingAttachments } from "./pending-attachments";
+import { RovoComposerSendControls } from "@/components/projects/shared/components/rovo-composer-send-controls";
+import { DEFAULT_REASONING_OPTION_ID } from "@/components/blocks/shared-ui/data/customize-menu-data";
 
-const ROVO_APP_WAVEFORM_COLORS = ROVO_WAVEFORM_COLOR_CSS_VARS;
-
-
-const ROVO_APP_WAVEFORM_INTRO_MS = 500;
 const EMPTY_REALTIME_OUTPUT_WAVEFORM_BARS: number[] = [];
 const EMPTY_QUEUED_PROMPTS: ReadonlyArray<RovoAppQueuedAction> = [];
 
@@ -157,43 +150,50 @@ function RovoAppComposerInner({
 	const textInputValueRef = useRef(controller.textInput.value);
 	const galleryExpandedRef = useRef(galleryExpanded);
 	const isPreviewPlaceholderActiveRef = useRef(false);
-	const realtimeWaveformIntroTimeoutRef = useRef<number | null>(null);
 	const [baseComposerHeight, setBaseComposerHeight] = useState(0);
 	const [baseTextareaHeight, setBaseTextareaHeight] = useState(0);
 	const [stableBaseHeight, setStableBaseHeight] = useState(0);
 	const [previewPromptHeight, setPreviewPromptHeight] = useState(0);
 	const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
-	const [isRealtimeWaveformIntroActive, setIsRealtimeWaveformIntroActive] = useState(false);
+	const [isCustomizeMenuOpen, setIsCustomizeMenuOpen] = useState(false);
+	const [isAutoMenuOpen, setIsAutoMenuOpen] = useState(false);
+	const [selectedReasoning, setSelectedReasoning] = useState(DEFAULT_REASONING_OPTION_ID);
+	const [webResultsEnabled, setWebResultsEnabled] = useState(false);
+	const [companyKnowledgeEnabled, setCompanyKnowledgeEnabled] = useState(true);
 	const [highlightedIndex, setHighlightedIndex] = useState(0);
 	const slashMenuRef = useRef<HTMLDivElement | null>(null);
 	const isPreviewPlaceholderActive = Boolean(previewPrompt) && controller.textInput.value.trim().length === 0;
 	const canSubmit = controller.textInput.value.trim().length > 0 || controller.attachments.files.length > 0;
 	const isComposerBusy = composerStatus === "submitted" || composerStatus === "streaming";
-	const idleAction = resolveRovoAppComposerIdleAction({
-		canStartRealtimeVoice: Boolean(onToggleRealtimeVoice),
-		canSubmit,
-		isComposerBusy,
-		realtimeVoiceActive,
-		showBackgroundStop,
-		submitDisabled,
-	});
 	const hasQueuedPrompts = queuedPrompts.length > 0;
-	const realtimeWaveformState = resolveRovoAppComposerWaveformState({
-		hasMicStream: micStream !== null,
-		isIntroActive: isRealtimeWaveformIntroActive,
-		realtimeVoiceActive,
-	});
-	const isRealtimeWaveformProcessing = realtimeWaveformState.processing;
 	const realtimeResponseGradientState = resolveRovoAppComposerResponseGradientState({
 		realtimeGenerationState,
 		realtimeVoiceState,
 	});
-	const handleTogglePlanMode = useCallback(() => {
-		onTogglePlanMode?.();
+	const handleReasoningChange = useCallback((reasoning: string) => {
+		setSelectedReasoning(reasoning);
+		const shouldEnablePlanMode = reasoning === "max";
+
+		if (onTogglePlanMode && shouldEnablePlanMode !== isPlanMode) {
+			onTogglePlanMode();
+		}
+
 		requestAnimationFrame(() => {
 			textareaRef.current?.focus();
 		});
-	}, [onTogglePlanMode]);
+	}, [isPlanMode, onTogglePlanMode]);
+	const handleCustomizeMenuOpenChange = useCallback((open: boolean) => {
+		setIsCustomizeMenuOpen(open);
+		if (open) {
+			setIsAutoMenuOpen(false);
+		}
+	}, []);
+	const handleAutoMenuOpenChange = useCallback((open: boolean) => {
+		setIsAutoMenuOpen(open);
+		if (open) {
+			setIsCustomizeMenuOpen(false);
+		}
+	}, []);
 
 	const handlePromptSubmit = useCallback(
 		(payload: { text: string; files: FileUIPart[] }) => {
@@ -288,52 +288,14 @@ function RovoAppComposerInner({
 		items[highlightedIndex]?.scrollIntoView({ block: "nearest" });
 	}, [highlightedIndex, isSlashMenuOpen]);
 
-	const clearRealtimeWaveformIntro = useCallback(() => {
-		if (realtimeWaveformIntroTimeoutRef.current !== null) {
-			window.clearTimeout(realtimeWaveformIntroTimeoutRef.current);
-			realtimeWaveformIntroTimeoutRef.current = null;
-		}
-	}, []);
-
-	const handleToggleRealtimeVoice = useCallback(() => {
-		if (!onToggleRealtimeVoice) {
+	useEffect(() => {
+		if (isPlanMode) {
+			setSelectedReasoning("max");
 			return;
 		}
 
-		clearRealtimeWaveformIntro();
-
-		if (!realtimeVoiceActive) {
-			setIsRealtimeWaveformIntroActive(true);
-			realtimeWaveformIntroTimeoutRef.current = window.setTimeout(() => {
-				realtimeWaveformIntroTimeoutRef.current = null;
-				setIsRealtimeWaveformIntroActive(false);
-			}, ROVO_APP_WAVEFORM_INTRO_MS);
-		} else {
-			setIsRealtimeWaveformIntroActive(false);
-		}
-
-		onToggleRealtimeVoice();
-	}, [clearRealtimeWaveformIntro, onToggleRealtimeVoice, realtimeVoiceActive]);
-
-	useEffect(() => {
-		return () => {
-			clearRealtimeWaveformIntro();
-		};
-	}, [clearRealtimeWaveformIntro]);
-
-	useEffect(() => {
-		if (!onTogglePlanMode) return;
-
-		const handleKeyDown = (e: KeyboardEvent) => {
-			if (e.altKey && e.key === "Tab") {
-				e.preventDefault();
-				handleTogglePlanMode();
-			}
-		};
-
-		document.addEventListener("keydown", handleKeyDown);
-		return () => document.removeEventListener("keydown", handleKeyDown);
-	}, [handleTogglePlanMode, onTogglePlanMode]);
+		setSelectedReasoning((currentReasoning) => currentReasoning === "max" ? DEFAULT_REASONING_OPTION_ID : currentReasoning);
+	}, [isPlanMode]);
 
 	const measurePreviewPromptHeight = useCallback((nextPreviewPrompt: string | null) => {
 		const textareaElement = textareaRef.current;
@@ -650,29 +612,7 @@ function RovoAppComposerInner({
 						</PromptInputBody>
 
 						<PromptInputFooter className="mt-3 justify-between px-0 pb-0">
-								<PromptInputTools>
-									{onTogglePlanMode ? (
-								<PromptInputButton
-									aria-label="Task mode"
-									aria-pressed={isPlanMode}
-									variant="outline"
-									onClick={handleTogglePlanMode}
-									tooltip={{ content: "⌥ Tab", delay: 0 }}
-								>
-										<ScorecardIcon label="" size="small" />
-										<span>Task</span>
-									</PromptInputButton>
-									) : null}
-								<PromptInputButton
-									size="icon-sm"
-									variant={clickyActive ? "default" : "ghost"}
-									onClick={onToggleClicky}
-									aria-label="Rovo AI cursor"
-									aria-pressed={clickyActive}
-									tooltip={{ content: "AI Cursor ⌘⇧K", delay: 0 }}
-								>
-									<TargetIcon label="" size="small" />
-								</PromptInputButton>
+							<PromptInputTools>
 								<PromptInputActionMenu open={isAddMenuOpen} onOpenChange={setIsAddMenuOpen}>
 									<PromptInputActionMenuTrigger aria-label="Add" size="icon-sm" variant="ghost">
 										<AddIcon label="" />
@@ -683,123 +623,54 @@ function RovoAppComposerInner({
 										/>
 									</PromptInputActionMenuContent>
 								</PromptInputActionMenu>
+								<PromptInputButton
+									size="icon-sm"
+									variant={clickyActive ? "default" : "ghost"}
+									onClick={onToggleClicky}
+									aria-label="Rovo AI cursor"
+									aria-pressed={clickyActive}
+									tooltip={{ content: "AI Cursor ⌘⇧K", delay: 0 }}
+								>
+									<CursorIcon label="" />
+								</PromptInputButton>
+								<Popover open={isCustomizeMenuOpen} onOpenChange={handleCustomizeMenuOpenChange}>
+									<PopoverTrigger render={<PromptInputPreferencesButton aria-label="Customize" />} />
+									<PopoverContent side="top" align="start" sideOffset={8} positionerClassName="z-[600]" className="w-auto p-2">
+										<PopoverTitle className="sr-only">Customize sources</PopoverTitle>
+										<CustomizeMenu
+											selectedReasoning={selectedReasoning}
+											onReasoningChange={handleReasoningChange}
+											showReasoning={false}
+											webResultsEnabled={webResultsEnabled}
+											onWebResultsChange={setWebResultsEnabled}
+											companyKnowledgeEnabled={companyKnowledgeEnabled}
+											onCompanyKnowledgeChange={setCompanyKnowledgeEnabled}
+											onClose={() => setIsCustomizeMenuOpen(false)}
+										/>
+									</PopoverContent>
+								</Popover>
 							</PromptInputTools>
 
-							<div className="flex h-8 min-w-0 flex-1 items-center justify-end gap-1.5">
-								<AnimatePresence mode="popLayout" initial={false}>
-									{realtimeVoiceActive ? (
-										<motion.div
-											key="waveform"
-											initial={{ opacity: 0, transform: "scale(0.8)" }}
-											animate={{ opacity: 1, transform: "scale(1)" }}
-											exit={{ opacity: 0, transform: "scale(0.8)" }}
-											transition={{ type: "spring", bounce: 0, visualDuration: 0.15 }}
-											style={{ willChange: "transform, opacity" }}
-										>
-											<button
-												aria-label="Stop live voice"
-												className="flex h-8 w-20 items-center gap-1.5 overflow-hidden rounded-md border border-border bg-background pl-2 pr-2 text-icon-subtle transition-colors hover:bg-bg-neutral-hovered active:bg-bg-neutral-pressed"
-												onClick={handleToggleRealtimeVoice}
-												type="button"
-											>
-												<span className="flex h-full min-w-0 flex-1 items-center">
-													<LiveWaveform
-														active={realtimeWaveformState.active}
-														barColor="currentColor"
-														barColors={[...ROVO_APP_WAVEFORM_COLORS]}
-														barGap={2}
-														barHeightScale={isRealtimeWaveformProcessing ? 1.15 : 1}
-														barOpacityMax={1}
-														barOpacityMin={1}
-														barWidth={2}
-														barRadius={0}
-														className="min-h-0 min-w-0 flex-1 animate-in fade-in duration-300"
-														entranceAnimation="stagger"
-														entranceDurationMs={180}
-														entranceStaggerMs={14}
-														fadeEdges={false}
-														height="100%"
-														mediaStream={micStream}
-														mode="static"
-														processing={isRealtimeWaveformProcessing}
-													/>
-												</span>
-												<span aria-hidden="true" className="flex shrink-0 items-center justify-center">
-													<CrossIcon label="" size="small" />
-												</span>
-											</button>
-										</motion.div>
-									) : idleAction === "submit" ? (
-										<motion.div
-											key="submit"
-											initial={{ opacity: 0, transform: "scale(0.8)" }}
-											animate={{ opacity: 1, transform: "scale(1)" }}
-											exit={{ opacity: 0, transform: "scale(0.8)" }}
-											transition={{ type: "spring", bounce: 0, visualDuration: 0.15 }}
-											style={{ willChange: "transform, opacity" }}
-										>
-											<PromptInputSubmit aria-label="Submit" className="hover:opacity-90 active:opacity-80" disabled={submitDisabled || !canSubmit} onStop={() => void onStop()} shape="circle" size="icon-sm" status={composerStatus}>
-												<ArrowUpIcon label="" />
-											</PromptInputSubmit>
-										</motion.div>
-									) : idleAction === "background-stop" ? (
-										<motion.div
-											key="background-stop"
-											initial={{ opacity: 0, transform: "scale(0.8)" }}
-											animate={{ opacity: 1, transform: "scale(1)" }}
-											exit={{ opacity: 0, transform: "scale(0.8)" }}
-											transition={{ type: "spring", bounce: 0, visualDuration: 0.15 }}
-											style={{ willChange: "transform, opacity" }}
-										>
-											<PromptInputSubmit
-												aria-label="Stop background work"
-												onStop={() => void onStop()}
-												shape="circle"
-												size="icon-sm"
-												status="streaming"
-											>
-												<ArrowUpIcon label="" />
-											</PromptInputSubmit>
-										</motion.div>
-									) : idleAction === "voice-start" ? (
-										<motion.div
-											key="voice-start"
-											initial={{ opacity: 0, transform: "scale(0.8)" }}
-											animate={{ opacity: 1, transform: "scale(1)" }}
-											exit={{ opacity: 0, transform: "scale(0.8)" }}
-											transition={{ type: "spring", bounce: 0, visualDuration: 0.15 }}
-											style={{ willChange: "transform, opacity" }}
-										>
-											<PromptInputButton
-												variant="default"
-												aria-label="Start live voice"
-												className="size-8 hover:opacity-90 active:opacity-80"
-												onClick={handleToggleRealtimeVoice}
-												shape="circle"
-												tooltip={{ content: "Live chat", delay: 0 }}
-											>
-												<AudioWaveformIcon label="" />
-											</PromptInputButton>
-										</motion.div>
-									) : null}
-								</AnimatePresence>
-								<AnimatePresence initial={false}>
-									{isComposerBusy ? (
-										<motion.div
-											key="stop"
-											initial={{ opacity: 0, transform: "scale(0.8)" }}
-											animate={{ opacity: 1, transform: "scale(1)" }}
-											exit={{ opacity: 0, transform: "scale(0.8)" }}
-											transition={{ type: "spring", bounce: 0, visualDuration: 0.15 }}
-											style={{ willChange: "transform, opacity" }}
-										>
-											<PromptInputSubmit aria-label="Stop" onStop={() => void onStop()} shape="circle" size="icon-sm" status={composerStatus}>
-												<ArrowUpIcon label="" />
-											</PromptInputSubmit>
-										</motion.div>
-									) : null}
-								</AnimatePresence>
-							</div>
+							<RovoComposerSendControls
+								canSubmit={canSubmit}
+								className="flex-1"
+								companyKnowledgeEnabled={companyKnowledgeEnabled}
+								composerStatus={composerStatus}
+								isComposerBusy={isComposerBusy}
+								micStream={micStream}
+								onCompanyKnowledgeChange={setCompanyKnowledgeEnabled}
+								onOpenChange={handleAutoMenuOpenChange}
+								onReasoningChange={handleReasoningChange}
+								onStop={onStop}
+								onToggleRealtimeVoice={onToggleRealtimeVoice}
+								open={isAutoMenuOpen}
+								realtimeVoiceActive={realtimeVoiceActive}
+								selectedReasoning={selectedReasoning}
+								showBackgroundStop={showBackgroundStop}
+								submitDisabled={submitDisabled}
+								webResultsEnabled={webResultsEnabled}
+								onWebResultsChange={setWebResultsEnabled}
+							/>
 						</PromptInputFooter>
 					</PromptInput>
 

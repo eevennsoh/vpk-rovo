@@ -87,7 +87,7 @@ export default function TopNavigation({
 					/>
 				)}
 
-				<div style={{ flex: 1 }}>
+				<div style={{ flex: "1 1 0", minWidth: 0 }}>
 					<LeftNavigation
 						product={product}
 						windowWidth={windowWidth}
@@ -155,14 +155,16 @@ export default function TopNavigation({
 					</div>
 				) : null}
 
-				<RightNavigation
-					product={product}
-					windowWidth={windowWidth}
-					hideRovoAction={hideRovoAction}
-					isChatOpen={isSidebarChatOpen}
-					onToggleChat={toggleChat}
-					onToggleTheme={toggleTheme}
-				/>
+				<div style={{ display: "flex", flex: "1 1 0", justifyContent: "flex-end", minWidth: 0 }}>
+					<RightNavigation
+						product={product}
+						windowWidth={windowWidth}
+						hideRovoAction={hideRovoAction}
+						isChatOpen={isSidebarChatOpen}
+						onToggleChat={toggleChat}
+						onToggleTheme={toggleTheme}
+					/>
+				</div>
 			</div>
 		</div>
 	);

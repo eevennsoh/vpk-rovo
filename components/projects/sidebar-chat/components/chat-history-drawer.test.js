@@ -49,21 +49,49 @@ test("compact chat hamburger buttons open the shared history drawer", () => {
 	assert.match(historyButton, /onClick=\{onToggle \?\? noop\}/u);
 });
 
+test("rovo app sidebar renders the shared chat history panel inline", () => {
+	const sidebarSource = readProjectFile("components/projects/rovo/components/rovo-app-sidebar.tsx");
+	const historySource = readProjectFile("components/projects/sidebar-chat/components/chat-history-drawer.tsx");
+	const rovoAppShellSource = readProjectFile("components/projects/rovo/components/rovo-app-shell.tsx");
+	const surfaceShellSource = readProjectFile("components/projects/rovo/components/rovo-app-surface-shell.tsx");
+
+	assert.match(sidebarSource, /ControlledChatHistoryPanel/u);
+	assert.match(sidebarSource, /cancelThreadRun=\{onCancelThreadRun\}/u);
+	assert.match(sidebarSource, /deleteThread=\{onDeleteThread\}/u);
+	assert.match(sidebarSource, /selectThread=\{onSelectThread\}/u);
+	assert.match(historySource, /label="Tasks"[\s\S]*actions=\{<HoverAddAction label="New task" \/>/u);
+	assert.match(historySource, /label="Agents"[\s\S]*actions=\{<HoverAddAction label="New agent" \/>/u);
+	assert.match(historySource, /label="Chats"[\s\S]*actions=\{<HoverAddAction label="New chat" onClick=\{handleNewChat\} \/>/u);
+	assert.doesNotMatch(sidebarSource, /showNavigation=\{false\}/u);
+	assert.doesNotMatch(sidebarSource, /RovoAppSidebarNavItem/u);
+	assert.doesNotMatch(sidebarSource, /RovoAppSidebarChatsThreadList/u);
+	assert.doesNotMatch(sidebarSource, /ControlledChatHistoryDrawer/u);
+	assert.doesNotMatch(sidebarSource, /CONTROL_PLANE_SIDEBAR_SURFACES/u);
+	assert.doesNotMatch(sidebarSource, /onRefreshThreads/u);
+	assert.doesNotMatch(sidebarSource, /isHistoryOpen/u);
+	assert.doesNotMatch(rovoAppShellSource, /onRefreshThreads=\{chat\.refreshThreads\}/u);
+	assert.doesNotMatch(surfaceShellSource, /onRefreshThreads=\{refreshThreads\}/u);
+});
+
 test("chat history drawer uses a contained left sheet with a local blanket", () => {
 	const source = readProjectFile("components/projects/sidebar-chat/components/chat-history-drawer.tsx");
 	const sheetSource = readProjectFile("components/ui/sheet.tsx");
 
-	assert.match(source, /<Sheet open=\{isHistoryOpen\} onOpenChange=\{handleOpenChange\}>/u);
+	assert.match(source, /const \[shouldRenderSheet, setShouldRenderSheet\] = useState\(isHistoryOpen\);/u);
+	assert.match(source, /setShouldRenderSheet\(true\);/u);
+	assert.match(source, /setShouldRenderSheet\(false\);/u);
+	assert.match(source, /if \(!active \|\| \(!isHistoryOpen && !shouldRenderSheet\)\) \{/u);
+	assert.match(source, /<Sheet[\s\S]*open=\{isHistoryOpen\}[\s\S]*onOpenChange=\{handleOpenChange\}[\s\S]*onOpenChangeComplete=\{handleOpenChangeComplete\}/u);
 	assert.match(source, /side="left"/u);
 	assert.match(source, /contained/u);
 	assert.match(source, /data-chat-history-drawer-layer/u);
 	assert.match(source, /portalContainer=\{portalContainer\}/u);
 	assert.match(source, /overlayClassName="z-20"/u);
-	assert.match(source, /className="z-30[^"]*w-80[^"]*max-w-\[calc\(100%_-_40px\)\][^"]*rounded-r-xl[^"]*bg-surface-overlay/u);
+	assert.match(source, /className="z-30[^"]*w-80[^"]*max-w-\[calc\(100%_-_40px\)\][^"]*bg-surface-overlay/u);
 	assert.match(sheetSource, /portalContainer/u);
 	assert.match(sheetSource, /contained \? "absolute z-20" : "fixed z-50"/u);
 	assert.match(source, /<SheetClose/u);
-	assert.match(source, /buttonVariants\(\{ variant: "ghost", size: "icon" \}\)/u);
+	assert.match(source, /buttonVariants\(\{ variant: "ghost", size: "icon", shape: "circle" \}\)/u);
 	assert.match(source, /"absolute top-3 left-3 z-10"/u);
 	assert.match(source, /p-3 pt-14/u);
 	assert.doesNotMatch(source, /<SheetClose[\s\S]*render=\{/u);
@@ -71,13 +99,57 @@ test("chat history drawer uses a contained left sheet with a local blanket", () 
 	assert.doesNotMatch(source, /calc\(100vw-40px\)/u);
 });
 
-test("chat history drawer matches the Figma conversation-list content structure", () => {
+test("chat history delete-all confirmation escapes the contained sheet layer", () => {
+	const source = readProjectFile("components/projects/sidebar-chat/components/chat-history-drawer.tsx");
+	const headingStart = source.indexOf("function ChatHistorySectionHeading");
+	const dialogStart = source.indexOf("function ChatHistoryDeleteAllDialog");
+	const headingSource = source.slice(headingStart, dialogStart);
+
+	assert.notEqual(headingStart, -1);
+	assert.notEqual(dialogStart, -1);
+	assert.doesNotMatch(headingSource, /<AlertDialog/u);
+	assert.match(source, /onRequestDeleteAll=\{\(\) => panelState\.setIsDeleteAllConfirmOpen\(true\)\}/u);
+	assert.match(source, /<\/Sheet>\s*<ChatHistoryDeleteAllDialog[\s\S]*open=\{panelState\.isDeleteAllConfirmOpen\}/u);
+	assert.match(source, /onConfirm=\{panelState\.handleDeleteAllConfirm\}/u);
+});
+
+test("chat history drawer can collapse the chats section from the heading", () => {
 	const source = readProjectFile("components/projects/sidebar-chat/components/chat-history-drawer.tsx");
 
+	assert.match(source, /const CHATS_REGION_ID = "rovo-chat-history-chats-list";/u);
+	assert.match(source, /const \[isChatsOpen, setIsChatsOpen\] = useState\(true\);/u);
+	assert.match(source, /setIsChatsOpen\(\(open\) => !open\);/u);
+	assert.match(source, /aria-expanded=\{chatsOpen\}/u);
+	assert.match(source, /aria-controls=\{controlsId\}/u);
+	assert.match(source, /<ChevronDownIcon[\s\S]*chatsOpen \? "rotate-0" : "-rotate-90"/u);
+	assert.match(source, /chatsOpen=\{isChatsOpen\}/u);
+	assert.match(source, /controlsId=\{CHATS_REGION_ID\}/u);
+	assert.match(source, /id=\{CHATS_REGION_ID\}/u);
+	assert.match(source, /role="region"/u);
+	assert.match(source, /className=\{cn\("min-h-0 flex-1 overflow-y-auto", !isChatsOpen && "hidden"\)\}/u);
+});
+
+test("chat history row actions are scoped to the hovered row", () => {
+	const source = readProjectFile("components/projects/sidebar-chat/components/chat-history-drawer.tsx");
+
+	assert.match(source, /group\/chat-history-thread relative rounded-lg/u);
+	assert.match(source, /group-hover\/chat-history-thread:opacity-100/u);
+	assert.doesNotMatch(source, /group-hover:opacity-100/u);
+});
+
+test("chat history drawer matches the Figma conversation-list content structure", () => {
+	const source = readProjectFile("components/projects/sidebar-chat/components/chat-history-drawer.tsx");
+	const sidebarNavItemSource = readProjectFile("components/ui/sidebar-nav-item.tsx");
+
 	assert.match(source, /New chat/u);
-	assert.match(source, />Tasks</u);
-	assert.match(source, />Agents</u);
-	assert.match(source, />Chats</u);
+	assert.match(source, /SidebarNavItemCount/u);
+	assert.match(source, /⌘⇧O/u);
+	assert.match(sidebarNavItemSource, /group-data-\[selected=true\]\/sidebar-nav-item:opacity-0/u);
+	assert.match(sidebarNavItemSource, /group-hover\/sidebar-nav-item:!opacity-100/u);
+	assert.doesNotMatch(source, /group-data-\[selected=true\]\/sidebar-nav-item:opacity-100/u);
+	assert.match(source, /label="Tasks"/u);
+	assert.match(source, /label="Agents"/u);
+	assert.match(source, /label="Chats"/u);
 	assert.match(source, /FolderClosedIcon/u);
 	assert.match(source, /AddIcon/u);
 	assert.match(source, /rounded-lg p-1\.5/u);
@@ -102,7 +174,7 @@ test("compact chat send lifecycle refreshes thread metadata", () => {
 	);
 	assert.match(
 		source,
-		/await ensureCompactThread\(promptItem\.text\);[\s\S]*void refreshThreads\(\);[\s\S]*finally \{[\s\S]*void refreshThreads\(\);/u,
+		/await ensureCompactThread\(promptItem\.text \|\| promptItem\.files\[0\]\?\.filename \|\| "New chat"\);[\s\S]*void refreshThreads\(\);[\s\S]*finally \{[\s\S]*void refreshThreads\(\);/u,
 	);
 });
 

@@ -46,7 +46,7 @@ function LinkSafetyDialog({
 	return (
 		<Dialog open={isOpen} onOpenChange={handleOpenChange}>
 			<DialogContent size="lg" className="gap-0 p-0">
-				<DialogHeader className="mx-0 mt-0 px-6 pt-6">
+				<DialogHeader className="border-b px-6 pb-6 pt-6">
 					<DialogTitle>External link</DialogTitle>
 					<DialogDescription className="truncate">
 						{url}
@@ -70,7 +70,7 @@ function LinkSafetyDialog({
 						title="External link"
 					/>
 				</div>
-				<DialogFooter className="mx-0 mb-0">
+				<DialogFooter className="border-t p-6">
 					<Button variant="outline" onClick={() => onClose()}>
 						Close
 					</Button>

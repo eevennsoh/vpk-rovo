@@ -1,4 +1,5 @@
 import type React from "react";
+import AtomIcon from "@atlaskit/icon-lab/core/atom";
 import CheckMarkIcon from "@atlaskit/icon/core/check-mark";
 import AppsIcon from "@atlaskit/icon/core/apps";
 import GlobeIcon from "@atlaskit/icon/core/globe";
@@ -8,12 +9,14 @@ import SettingsIcon from "@atlaskit/icon/core/settings";
 import TelescopeIcon from "@atlaskit/icon-lab/core/telescope";
 import ZoomInIcon from "@atlaskit/icon/core/zoom-in";
 
-interface ReasoningOption {
+export interface ReasoningOption {
 	id: string;
 	label: string;
 	description: string;
-	icon: React.ReactElement;
+	icon: React.ReactElement<{ label: string }>;
 }
+
+export const DEFAULT_REASONING_OPTION_ID = "let-rovo-decide";
 
 export const REASONING_OPTIONS: ReasoningOption[] = [
 	{
@@ -33,6 +36,12 @@ export const REASONING_OPTIONS: ReasoningOption[] = [
 		label: "Deep research",
 		description: "Synthesize insights and create reports",
 		icon: <TelescopeIcon label="Deep research" />,
+	},
+	{
+		id: "max",
+		label: "Max",
+		description: "Tackles complex work across your tools",
+		icon: <AtomIcon label="Max" />,
 	},
 ];
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, useReducedMotion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import type { ErrorInfo, ReactNode, RefObject } from "react";
 import { Attachment, AttachmentPreview, Attachments } from "@/components/ui-ai/attachments";
 import { Conversation, ConversationContent, ConversationScrollButton, type ConversationFollowMode, useConversationContext } from "@/components/ui-ai/conversation";
@@ -58,6 +58,7 @@ interface RovoAppMessagesProps {
 	activeDocumentId: string | null;
 	compact?: boolean;
 	extraHorizontalPaddingWhenCompact?: boolean;
+	isMaxMode?: boolean;
 	documents: ReadonlyArray<RovoAppDocument>;
 	editingMessageId: string | null;
 	isStreaming: boolean;
@@ -85,6 +86,82 @@ interface RovoAppMessagesProps {
 }
 
 const ROVO_APP_SCROLL_ANCHOR_SELECTOR = "[data-rovo-app-scroll-anchor='true']";
+const ROVO_APP_EMPTY_STATE = {
+	default: {
+		alt: "Chat",
+		darkIllustrationSrc: "/illustration-ai/chat/dark.svg",
+		heading: "How can I help?",
+		height: 67,
+		id: "default",
+		illustrationClassName: "h-[67px] w-[74px]",
+		lightIllustrationSrc: "/illustration-ai/chat/light.svg",
+		width: 74,
+	},
+	max: {
+		alt: "Max",
+		darkIllustrationSrc: "/illustration-ai/max/dark.gif",
+		heading: "Let's plan your next move",
+		height: 67,
+		id: "max",
+		illustrationClassName: "h-[67px] w-[74px]",
+		lightIllustrationSrc: "/illustration-ai/max/light.gif",
+		width: 74,
+	},
+} as const;
+const ROVO_APP_EMPTY_STATE_MODE_TRANSITION = {
+	type: "spring",
+	bounce: 0,
+	visualDuration: 0.14,
+} as const;
+const ROVO_APP_EMPTY_STATE_EXIT_TRANSITION = {
+	duration: 0.08,
+} as const;
+const ROVO_APP_EMPTY_STATE_REDUCED_TRANSITION = {
+	duration: 0.08,
+} as const;
+const ROVO_APP_EMPTY_STATE_CONTAINER_VARIANTS = {
+	hidden: {},
+	visible: {
+		transition: {
+			staggerChildren: 0.04,
+		},
+	},
+	exit: {
+		transition: {
+			staggerChildren: 0.02,
+			staggerDirection: -1,
+		},
+	},
+} as const;
+const ROVO_APP_EMPTY_STATE_ITEM_VARIANTS = {
+	hidden: {
+		opacity: 0,
+		transform: "translateY(6px)",
+	},
+	visible: {
+		opacity: 1,
+		transform: "translateY(0px)",
+		transition: ROVO_APP_EMPTY_STATE_MODE_TRANSITION,
+	},
+	exit: {
+		opacity: 0,
+		transform: "translateY(-6px)",
+		transition: ROVO_APP_EMPTY_STATE_EXIT_TRANSITION,
+	},
+} as const;
+const ROVO_APP_EMPTY_STATE_REDUCED_ITEM_VARIANTS = {
+	hidden: {
+		opacity: 0,
+	},
+	visible: {
+		opacity: 1,
+		transition: ROVO_APP_EMPTY_STATE_REDUCED_TRANSITION,
+	},
+	exit: {
+		opacity: 0,
+		transition: ROVO_APP_EMPTY_STATE_REDUCED_TRANSITION,
+	},
+} as const;
 
 function isHermesContextTranscriptMessage(message: Pick<RovoUIMessage, "id" | "role" | "parts">): boolean {
 	if (message.role !== "assistant") {
@@ -701,6 +778,7 @@ export function RovoAppMessages({
 	activeDocumentId,
 	compact = false,
 	extraHorizontalPaddingWhenCompact = false,
+	isMaxMode = false,
 	documents,
 	editingMessageId,
 	isStreaming,
@@ -762,6 +840,8 @@ export function RovoAppMessages({
 	const shouldShowStreamingArtifactPreview = shouldShowPendingAssistantSurface && Boolean(streamingArtifact?.documentId) && streamingArtifactMessageId === null;
 	const shouldShowPreloader = shouldShowPendingAssistantSurface && !shouldShowStreamingArtifactPreview;
 	const shouldShowEmptyConversationState = showEmptyState && visibleMessages.length === 0;
+	const emptyState = isMaxMode ? ROVO_APP_EMPTY_STATE.max : ROVO_APP_EMPTY_STATE.default;
+	const emptyStateItemVariants = shouldReduceMotion ? ROVO_APP_EMPTY_STATE_REDUCED_ITEM_VARIANTS : ROVO_APP_EMPTY_STATE_ITEM_VARIANTS;
 	const handleTargetScrollTop = useCallback((defaultTargetTop: number, { scrollElement }: { scrollElement: HTMLElement }) => {
 		return computeRovoAppAnchorScrollTop(defaultTargetTop, scrollElement, scrollSpacerRef);
 	}, []);
@@ -780,23 +860,24 @@ export function RovoAppMessages({
 			{onScrollActiveUserMessageChange ? <RovoAppScrollActiveTracker onActiveChange={onScrollActiveUserMessageChange} /> : null}
 			{shouldShowEmptyConversationState ? (
 				<div className="flex flex-col items-center gap-2 py-6">
-					<motion.div
-						initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
-						animate={{ opacity: 1, y: 0 }}
-						transition={{ duration: 0.4, ease: [0, 0.4, 0, 1] }}
-						style={{ willChange: "transform, opacity" }}
-					>
-						<Image alt="Chat" className="h-auto w-auto object-contain dark:hidden" height={67} loading="eager" src="/illustration-ai/chat/light.svg" width={74} />
-						<Image alt="Chat" className="hidden h-auto w-auto object-contain dark:block" height={67} loading="eager" src="/illustration-ai/chat/dark.svg" width={74} />
-					</motion.div>
-					<motion.div
-						initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
-						animate={{ opacity: 1, y: 0 }}
-						transition={{ duration: 0.4, ease: [0, 0.4, 0, 1], delay: 0.1 }}
-						style={{ willChange: "transform, opacity" }}
-					>
-						<Heading size="xlarge">How can I help?</Heading>
-					</motion.div>
+					<AnimatePresence mode="wait">
+						<motion.div
+							animate="visible"
+							className="flex flex-col items-center gap-2"
+							exit="exit"
+							initial="hidden"
+							key={emptyState.id}
+							variants={ROVO_APP_EMPTY_STATE_CONTAINER_VARIANTS}
+						>
+							<motion.div className={cn(emptyState.illustrationClassName, "relative")} style={{ willChange: "transform, opacity" }} variants={emptyStateItemVariants}>
+								<Image alt={emptyState.alt} className={cn(emptyState.illustrationClassName, "object-contain dark:hidden [[data-color-mode=dark]_&]:hidden")} height={emptyState.height} loading="eager" src={emptyState.lightIllustrationSrc} width={emptyState.width} />
+								<Image alt={emptyState.alt} className={cn(emptyState.illustrationClassName, "hidden object-contain dark:block [[data-color-mode=dark]_&]:block")} height={emptyState.height} loading="eager" src={emptyState.darkIllustrationSrc} width={emptyState.width} />
+							</motion.div>
+							<motion.div style={{ willChange: "transform, opacity" }} variants={emptyStateItemVariants}>
+								<Heading size="xlarge">{emptyState.heading}</Heading>
+							</motion.div>
+						</motion.div>
+					</AnimatePresence>
 				</div>
 			) : null}
 

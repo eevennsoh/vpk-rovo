@@ -114,7 +114,6 @@ export function RovoAppSurfaceShell({ children }: Readonly<RovoAppSurfaceShellPr
 			<RovoAppSidebar
 				activeThreadId={null}
 				hoverOpen={isHoverOpen}
-				isGeneratingTitle={false}
 				isResizing={sidebarResize.isResizing}
 				onCancelThreadRun={() => Promise.resolve()}
 				onDeleteThread={async (threadId) => {
@@ -130,7 +129,6 @@ export function RovoAppSurfaceShell({ children }: Readonly<RovoAppSurfaceShellPr
 				}}
 				onSidebarMouseEnter={handleSidebarContentMouseEnter}
 				onSidebarMouseLeave={handleSidebarContentMouseLeave}
-				pendingTitleThreadId={null}
 				resizeHandle={
 					<SidebarResizeHandle
 						data-active={sidebarResize.isResizing ? "" : undefined}

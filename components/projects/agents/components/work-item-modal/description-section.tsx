@@ -24,7 +24,7 @@ export function Description() {
 					value={description}
 					placeholder="Add RFP requirements, buyer priorities, win themes, and response notes"
 					onConfirm={setDescription}
-					className="-ml-2"
+					className="-ml-2 [&_[data-slot=inline-edit-read-view]]:border-border"
 					multiline
 				/>
 			</div>

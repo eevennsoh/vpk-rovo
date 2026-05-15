@@ -41,6 +41,7 @@ import { cn } from "@/lib/utils";
 import { useChatSubmit } from "./hooks/use-chat-submit";
 import { useScrollAnchor } from "./hooks/use-scroll-anchor";
 import { useThinkingStatus } from "./hooks/use-thinking-status";
+import { type DelegationRequest, useRealtimeVoice } from "@/components/projects/rovo/hooks/use-realtime-voice";
 import styles from "./chat.module.css";
 
 interface ChatPanelCardsProps {
@@ -77,10 +78,26 @@ const ARTIFACT_DIALOG_FLOATING_PIN_REASON = "sidebar-chat-artifact-dialog";
 
 type SmartWidthClass = "compact" | "regular" | "wide";
 
+type RealtimeTranscriptPayload =
+	| string
+	| {
+			delta?: string;
+			text?: string;
+			transcript?: string;
+	  };
+
 function getSmartWidthClass(widthPx: number): SmartWidthClass {
 	if (widthPx <= COMPACT_CHAT_WIDTH_MAX) return "compact";
 	if (widthPx <= REGULAR_CHAT_WIDTH_MAX) return "regular";
 	return "wide";
+}
+
+function getRealtimeTranscriptText(payload: RealtimeTranscriptPayload): string {
+	if (typeof payload === "string") {
+		return payload;
+	}
+
+	return payload.text ?? payload.transcript ?? payload.delta ?? "";
 }
 
 export default function ChatPanel({
@@ -184,6 +201,66 @@ export default function ChatPanel({
 	} = useChatSubmit({
 		defaultPromptOptions: resolvedSendPromptOptions,
 	});
+	const realtimeTranscriptRef = useRef("");
+	const handleRealtimeSpeechStarted = useCallback(() => {
+		realtimeTranscriptRef.current = "";
+		setPrompt("");
+	}, [setPrompt]);
+	const handleRealtimeTranscript = useCallback((payload: RealtimeTranscriptPayload) => {
+		const transcriptText = getRealtimeTranscriptText(payload);
+		if (!transcriptText.trim()) {
+			return;
+		}
+
+		realtimeTranscriptRef.current = transcriptText;
+		setPrompt(transcriptText);
+	}, [setPrompt]);
+	const handleRealtimeDelegateToRovo = useCallback(
+		(request: DelegationRequest) => {
+			const promptText = request.prompt.trim();
+			if (!promptText) {
+				return;
+			}
+
+			const contextDescription = mergeRovoContextDescriptions(
+				resolvedSendPromptOptions?.contextDescription,
+				request.conversationSummary ? `[Voice context] ${request.conversationSummary}` : undefined,
+			);
+			const promptOptions = contextDescription
+				? {
+						...resolvedSendPromptOptions,
+						contextDescription,
+					}
+				: resolvedSendPromptOptions;
+			realtimeTranscriptRef.current = "";
+			setPrompt("");
+			void sendPrompt(promptText, promptOptions);
+		},
+		[resolvedSendPromptOptions, sendPrompt, setPrompt],
+	);
+	const realtime = useRealtimeVoice({
+		chatMessages: uiMessages,
+		isGenerating: isStreaming,
+		onDelegateToRovo: handleRealtimeDelegateToRovo,
+		onSpeechStarted: handleRealtimeSpeechStarted,
+		onSpeechTranscriptCompleted: handleRealtimeTranscript,
+		onSpeechTranscriptDelta: handleRealtimeTranscript,
+	});
+	const isRealtimeVoiceActive = realtime.voiceState !== "idle";
+	const handleToggleRealtimeVoice = useCallback(() => {
+		if (realtime.voiceState === "idle") {
+			realtimeTranscriptRef.current = "";
+			setPrompt("");
+			realtime.connect();
+			return;
+		}
+
+		const transcriptToPreserve = realtime.currentTranscript || realtimeTranscriptRef.current;
+		realtime.disconnect();
+		if (transcriptToPreserve.trim()) {
+			setPrompt(transcriptToPreserve);
+		}
+	}, [realtime, setPrompt]);
 	const isStreamingLifecycleActive = isStreaming || isSubmitPending;
 	const isRequestInFlight = hasInFlightTurn;
 	const hasPendingChatWork = isRequestInFlight || queuedPrompts.length > 0;
@@ -362,7 +439,7 @@ export default function ChatPanel({
 					style={messagesContainerStyle}
 				>
 					{messages.length === 0 ? (
-						<div style={chatStyles.emptyState}>
+						<div className="w-full" style={chatStyles.emptyState}>
 							<ChatGreeting
 								heading={greeting?.heading}
 								illustrationSrc={greeting?.illustrationSrc}
@@ -454,10 +531,13 @@ export default function ChatPanel({
 							isStreaming={isStreamingLifecycleActive}
 							hasInFlightTurn={hasInFlightTurn}
 							queuedPrompts={queuedPrompts}
+							micStream={realtime.micStream}
 							onPromptChange={setPrompt}
 							onSubmit={handleSubmit}
 							onStop={abort}
+							onToggleRealtimeVoice={handleToggleRealtimeVoice}
 							onRemoveQueuedPrompt={removeQueuedPrompt}
+							realtimeVoiceActive={isRealtimeVoiceActive}
 							chatContextBar={chatContextBar}
 						/>
 					</>

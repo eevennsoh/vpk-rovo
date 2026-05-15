@@ -33,4 +33,29 @@ test("chat surface switcher opens the active compact thread in fullscreen when a
 		source,
 		/router\.push\(activeThreadId \? buildRovoAppThreadPath\(activeThreadId\) : ROVO_APP_ROOT_PATH\);/u,
 	);
+	assert.match(
+		source,
+		/<span className="inline-flex h-5 items-center opacity-0 group-data-\[highlighted\]\/dropdown-menu-item:opacity-100">\s*<LinkExternalIcon label="" size="small" \/>/u,
+	);
+});
+
+test("compact chat Rovo labels do not mount a dropdown menu", () => {
+	const headers = [
+		fs.readFileSync(path.join(__dirname, "../../sidebar-chat/components/chat-header.tsx"), "utf8"),
+		fs.readFileSync(path.join(__dirname, "../../rovo-floating-chat/components/floating-chat-header.tsx"), "utf8"),
+	];
+
+	for (const headerSource of headers) {
+		assert.doesNotMatch(headerSource, /RovoDropdownButton/u);
+		assert.doesNotMatch(
+			headerSource,
+			/<DropdownMenuContent align="start" sideOffset=\{4\} positionerClassName="z-\[600\]">[\s\S]*?<ChatSurfaceSwitcherItems/u,
+		);
+		assert.match(headerSource, /src="\/1p\/rovo\.svg"/u);
+		assert.match(headerSource, /<span className="text-sm font-semibold text-text">Rovo<\/span>/u);
+		assert.match(
+			headerSource,
+			/<DropdownMenuContent align="end" sideOffset=\{4\} positionerClassName="z-\[600\]">[\s\S]*?<ChatSurfaceSwitcherItems/u,
+		);
+	}
 });

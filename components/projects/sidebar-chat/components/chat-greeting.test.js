@@ -1,0 +1,131 @@
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+const test = require("node:test");
+const esbuild = require("esbuild");
+const { loadCjsModuleFromText } = require(path.join(process.cwd(), "scripts/lib/esbuild-cjs-loader.js"));
+
+const SOURCE_FILE = path.join(__dirname, "chat-greeting.tsx");
+const CHAT_GREETING_SOURCE = fs.readFileSync(SOURCE_FILE, "utf8");
+
+async function loadChatGreetingHarness() {
+	const mockModules = new Map([
+		[
+			"next/image",
+			`
+				import React from "react";
+
+				export default function Image(props) {
+					return React.createElement("img", props);
+				}
+			`,
+		],
+		[
+			"@/lib/tokens",
+			`
+				export function token(name) {
+					return name;
+				}
+			`,
+		],
+		[
+			"@/components/blocks/shared-ui/heading",
+			`
+				import React from "react";
+
+				export default function Heading(props) {
+					return React.createElement("h2", props, props.children);
+				}
+			`,
+		],
+		[
+			"@/components/ui/icon-tile",
+			`
+				import React from "react";
+
+				export function IconTile(props) {
+					return React.createElement("span", props, props.icon);
+				}
+			`,
+		],
+		[
+			"@/lib/rovo-suggestions",
+			`
+				export const defaultSuggestions = [];
+			`,
+		],
+	]);
+
+	const result = await esbuild.build({
+		stdin: {
+			contents: `
+				import React from "react";
+				import { renderToStaticMarkup } from "react-dom/server";
+				import ChatGreeting from "./components/projects/sidebar-chat/components/chat-greeting.tsx";
+
+				export function renderCustomLightGreeting() {
+					return renderToStaticMarkup(React.createElement(ChatGreeting, {
+						heading: "What should we change?",
+						illustrationSrc: "/illustration-ai/write/light.svg",
+						suggestions: [],
+					}));
+				}
+			`,
+			loader: "tsx",
+			resolveDir: process.cwd(),
+			sourcefile: "chat-greeting-harness.tsx",
+		},
+		bundle: true,
+		format: "cjs",
+		platform: "node",
+		tsconfig: path.join(process.cwd(), "tsconfig.json"),
+		write: false,
+		plugins: [
+			{
+				name: "chat-greeting-test-mocks",
+				setup(build) {
+					build.onResolve({ filter: /.*/ }, (args) => {
+						if (!mockModules.has(args.path)) {
+							return undefined;
+						}
+
+						return {
+							path: args.path,
+							namespace: "chat-greeting-test-mock",
+						};
+					});
+
+					build.onLoad(
+						{ filter: /.*/, namespace: "chat-greeting-test-mock" },
+						(args) => ({
+							contents: mockModules.get(args.path),
+							loader: "tsx",
+							resolveDir: process.cwd(),
+						}),
+					);
+				},
+			},
+		],
+	});
+
+	return loadCjsModuleFromText(result.outputFiles[0].text);
+}
+
+test("ChatGreeting derives the dark illustration from a custom light SVG", async () => {
+	const harness = await loadChatGreetingHarness();
+	const markup = harness.renderCustomLightGreeting();
+
+	assert.match(markup, /src="\/illustration-ai\/write\/light\.svg"/u);
+	assert.match(markup, /src="\/illustration-ai\/write\/dark\.svg"/u);
+	assert.doesNotMatch(markup, /src="\/illustration-ai\/chat\/dark\.svg"/u);
+});
+
+test("ChatGreeting switches theme illustrations for local data-color-mode dark containers", () => {
+	assert.match(CHAT_GREETING_SOURCE, /\[\[data-color-mode=dark\]_&\]:hidden/u);
+	assert.match(CHAT_GREETING_SOURCE, /\[\[data-color-mode=dark\]_&\]:block/u);
+});
+
+test("ChatGreeting prompt row icons are decorative inside labelled buttons", () => {
+	assert.match(CHAT_GREETING_SOURCE, /<IconTile[\s\S]*aria-hidden=\{true\}/u);
+	assert.match(CHAT_GREETING_SOURCE, /<span className="text-left text-sm text-text-subtle">\{suggestion\.label\}<\/span>/u);
+});

@@ -10,6 +10,8 @@ import OfficeBuildingIcon from "@atlaskit/icon/core/office-building";
 export interface CustomizeMenuProps {
 	selectedReasoning: string;
 	onReasoningChange: (reasoning: string) => void;
+	showReasoning?: boolean;
+	showSources?: boolean;
 	webResultsEnabled: boolean;
 	onWebResultsChange: (enabled: boolean) => void;
 	companyKnowledgeEnabled: boolean;
@@ -20,6 +22,8 @@ export interface CustomizeMenuProps {
 export default function CustomizeMenu({
 	selectedReasoning,
 	onReasoningChange,
+	showReasoning = true,
+	showSources = true,
 	webResultsEnabled,
 	onWebResultsChange,
 	companyKnowledgeEnabled,
@@ -28,14 +32,18 @@ export default function CustomizeMenu({
 }: Readonly<CustomizeMenuProps>) {
 	return (
 		<>
-			<ReasoningSection selectedReasoning={selectedReasoning} onReasoningChange={onReasoningChange} onClose={onClose} />
-			<SourcesSection
-				webResultsEnabled={webResultsEnabled}
-				onWebResultsChange={onWebResultsChange}
-				companyKnowledgeEnabled={companyKnowledgeEnabled}
-				onCompanyKnowledgeChange={onCompanyKnowledgeChange}
-				onClose={onClose}
-			/>
+			{showReasoning ? (
+				<ReasoningSection selectedReasoning={selectedReasoning} onReasoningChange={onReasoningChange} onClose={onClose} />
+			) : null}
+			{showSources ? (
+				<SourcesSection
+					webResultsEnabled={webResultsEnabled}
+					onWebResultsChange={onWebResultsChange}
+					companyKnowledgeEnabled={companyKnowledgeEnabled}
+					onCompanyKnowledgeChange={onCompanyKnowledgeChange}
+					onClose={onClose}
+				/>
+			) : null}
 		</>
 	);
 }
@@ -56,7 +64,6 @@ function ReasoningSection({ selectedReasoning, onReasoningChange, onClose }: Rea
 			</div>
 			<div
 				style={{
-					backgroundColor: token("elevation.surface.sunken"),
 					borderRadius: "12px",
 					marginTop: token("space.100"),
 				}}
@@ -98,7 +105,6 @@ function SourcesSection({ webResultsEnabled, onWebResultsChange, companyKnowledg
 			</div>
 			<div
 				style={{
-					backgroundColor: token("elevation.surface.sunken"),
 					borderRadius: "12px",
 					marginTop: token("space.100"),
 				}}

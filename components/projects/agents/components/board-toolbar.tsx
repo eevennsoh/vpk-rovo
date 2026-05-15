@@ -3,7 +3,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { token } from "@/lib/tokens";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import ChevronDownIcon from "@atlaskit/icon/core/chevron-down";
 import CustomizeIcon from "@atlaskit/icon/core/customize";
 import SearchIcon from "@atlaskit/icon/core/search";
@@ -17,9 +17,9 @@ export default function BoardToolbar({ avatars }: Readonly<BoardToolbarProps>) {
 	return (
 		<div
 			style={{
-				paddingTop: token("space.150"),
-				paddingBottom: token("space.250"),
-				paddingInline: token("space.300"),
+				paddingTop: token("space.200"),
+				paddingBottom: token("space.200"),
+				paddingInline: token("space.200"),
 			}}
 		>
 			<div className="flex justify-between items-center">
@@ -30,15 +30,12 @@ export default function BoardToolbar({ avatars }: Readonly<BoardToolbarProps>) {
 							width: "184px",
 						}}
 					>
-						<div className="relative">
-							<span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-icon">
-								<SearchIcon label="" size="small" />
-							</span>
-							<Input
-								placeholder="Search RFPs"
-								className="h-7 pl-7 text-sm placeholder:text-sm"
-							/>
-						</div>
+						<InputGroup>
+							<InputGroupAddon>
+								<SearchIcon label="" />
+							</InputGroupAddon>
+							<InputGroupInput placeholder="Search RFPs" />
+						</InputGroup>
 					</div>
 					<div style={{ display: "flex", marginLeft: token("space.negative.050") }}>
 						{avatars.slice(0, 4).map((avatar, index) => (
@@ -57,15 +54,16 @@ export default function BoardToolbar({ avatars }: Readonly<BoardToolbarProps>) {
 							</div>
 						)}
 					</div>
-					<Button className="gap-2" variant="secondary">
+					<Button className="gap-2" variant="outline">
 						<span>Filter</span>
 						<ChevronDownIcon label="" size="small" />
 					</Button>
 				</div>
 
 				<div className="flex items-center gap-2">
-					<Button variant="secondary">
-						Group: RFP stage
+					<Button className="gap-2" variant="outline">
+						<span>Group: RFP stage</span>
+						<ChevronDownIcon label="" size="small" />
 					</Button>
 					<Button aria-label="Customize" size="icon" variant="ghost">
 						<CustomizeIcon label="" />

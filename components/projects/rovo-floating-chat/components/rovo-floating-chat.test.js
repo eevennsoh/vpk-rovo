@@ -255,6 +255,8 @@ test("Floating chat compact empty greeting does not force a full-height message 
 	assert.match(CHAT_PANEL_SOURCE, /gridTemplateRows: "auto auto"/);
 	assert.match(CHAT_PANEL_SOURCE, /justifyContent: hasMessages \|\| shouldHugEmptyGreeting \? "flex-start" : "flex-end"/);
 	assert.match(CHAT_PANEL_SOURCE, /minHeight: shouldHugEmptyGreeting \? "auto" : "100%"/);
+	assert.match(CHAT_PANEL_SOURCE, /<div className="w-full" style=\{chatStyles\.emptyState\}>/);
+	assert.doesNotMatch(CHAT_PANEL_SOURCE, /<div className="w-\[90%\]" style=\{chatStyles\.emptyState\}>/);
 });
 
 test("ChatPanel keeps floating chat mounted while an artifact dialog replaces a work item modal", () => {

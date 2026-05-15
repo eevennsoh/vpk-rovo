@@ -5,12 +5,13 @@ import { useRovoChat } from "@/app/contexts";
 import type { QueuedPromptItem } from "@/app/contexts";
 import type { SendPromptOptions } from "@/app/contexts";
 import type { RovoUIMessage } from "@/lib/rovo-ui-messages";
+import type { FileUIPart } from "ai";
 
 interface UseChatSubmitReturn {
 	prompt: string;
 	setPrompt: (prompt: string) => void;
-	handleSubmit: () => Promise<void>;
-	submitPrompt: (prompt: string) => Promise<void>;
+	handleSubmit: (message: { text: string; files: FileUIPart[] }) => Promise<void>;
+	submitPrompt: (prompt: string, files?: ReadonlyArray<FileUIPart>) => Promise<void>;
 	abort: () => void;
 	uiMessages: RovoUIMessage[];
 	isStreaming: boolean;
@@ -44,9 +45,9 @@ export function useChatSubmit({
 	} = useRovoChat();
 
 	const submitPrompt = useCallback(
-		async (nextPrompt: string) => {
+		async (nextPrompt: string, files: ReadonlyArray<FileUIPart> = []) => {
 			const promptText = nextPrompt.trim();
-			if (!promptText || isSubmittingRef.current) {
+			if ((!promptText && files.length === 0) || isSubmittingRef.current) {
 				return;
 			}
 
@@ -54,7 +55,7 @@ export function useChatSubmit({
 			setPrompt("");
 
 			try {
-				await sendPrompt(promptText, defaultPromptOptions);
+				await sendPrompt(promptText, defaultPromptOptions, files);
 			} finally {
 				isSubmittingRef.current = false;
 			}
@@ -62,8 +63,8 @@ export function useChatSubmit({
 		[defaultPromptOptions, sendPrompt]
 	);
 
-	const handleSubmit = useCallback(async () => {
-		await submitPrompt(prompt);
+	const handleSubmit = useCallback(async ({ files, text }: { text: string; files: FileUIPart[] }) => {
+		await submitPrompt(text || prompt, files);
 	}, [prompt, submitPrompt]);
 
 	const abort = useCallback(() => {

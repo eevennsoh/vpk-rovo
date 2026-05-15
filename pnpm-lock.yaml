@@ -328,8 +328,8 @@ importers:
         specifier: ^1.59.1
         version: 1.59.1
       '@react-grab/mcp':
-        specifier: ^0.1.32
-        version: 0.1.32(react@19.2.5)
+        specifier: ^0.1.34
+        version: 0.1.34(react@19.2.5)
       '@tailwindcss/postcss':
         specifier: ^4.2.4
         version: 4.2.4
@@ -364,8 +364,8 @@ importers:
         specifier: 16.2.4
         version: 16.2.4(@typescript-eslint/parser@8.59.1(eslint@10.2.1(jiti@2.6.1))(typescript@6.0.3))(eslint@10.2.1(jiti@2.6.1))(typescript@6.0.3)
       react-grab:
-        specifier: ^0.1.32
-        version: 0.1.32(react@19.2.5)
+        specifier: ^0.1.34
+        version: 0.1.34(react@19.2.5)
       tailwindcss:
         specifier: ^4.2.4
         version: 4.2.4
@@ -422,10 +422,6 @@ packages:
 
   '@antfu/install-pkg@1.1.0':
     resolution: {integrity: sha512-MGQsmw10ZyI+EJo45CdSER4zEb+p31LpDAFp2Z3gkSd1yqVZGi0Ebx++YTEMonJy4oChEMLsxZ64j8FH6sSqtQ==, tarball: https://packages.atlassian.com/api/npm/npm-remote/@antfu/install-pkg/-/install-pkg-1.1.0.tgz}
-
-  '@antfu/ni@0.23.2':
-    resolution: {integrity: sha512-FSEVWXvwroExDXUu8qV6Wqp2X3D1nJ0Li4LFymCyvCVrm7I3lNfG0zZWSWvGU1RE7891eTnFTyh31L3igOwNKQ==, tarball: https://packages.atlassian.com/api/npm/npm-remote/@antfu/ni/-/ni-0.23.2.tgz}
-    hasBin: true
 
   '@anthropic-ai/sdk@0.90.0':
     resolution: {integrity: sha512-MzZtPabJF1b0FTDl6Z6H5ljphPwACLGP13lu8MTiB8jXaW/YXlpOp+Po2cVou3MPM5+f5toyLnul9whKCy7fBg==, tarball: https://packages.atlassian.com/api/npm/npm-remote/@anthropic-ai/sdk/-/sdk-0.90.0.tgz}
@@ -2346,12 +2342,12 @@ packages:
   '@radix-ui/rect@1.1.0':
     resolution: {integrity: sha512-A9+lCBZoaMJlVKcRBz2YByCG+Cp2t6nAnMnNba+XiWxnj6r4JUFqfsgwocMBZU9LPtdxC6wB56ySYpc7LQIoJg==, tarball: https://packages.atlassian.com/api/npm/npm-remote/@radix-ui/rect/-/rect-1.1.0.tgz}
 
-  '@react-grab/cli@0.1.32':
-    resolution: {integrity: sha512-TI4SHATLH2yM1DMRXgH3dt/8b3Rj51BplDOqOQiHQKAMOuKVAR9WE2WGWJRT3LwFpl8BXR9ytAM9vrGDrB7QGw==, tarball: https://packages.atlassian.com/api/npm/npm-remote/@react-grab/cli/-/cli-0.1.32.tgz}
+  '@react-grab/cli@0.1.34':
+    resolution: {integrity: sha512-L2eAxN46Vq2Ss3nDegrH7wQVMeWH03ahawp+OdzUtQWqL3cq6Bt149q9XhY3cWc9fJsxuWjLfCn+3T9uApIlBA==}
     hasBin: true
 
-  '@react-grab/mcp@0.1.32':
-    resolution: {integrity: sha512-E4J0CBN4M5CyfVN8SPRqCp4ngJCensknxabS+t2LnOu1E8TANeY1bACxRsWkEHhAQfwEhsaCWCqxc+XKL28QAQ==, tarball: https://packages.atlassian.com/api/npm/npm-remote/@react-grab/mcp/-/mcp-0.1.32.tgz}
+  '@react-grab/mcp@0.1.34':
+    resolution: {integrity: sha512-Yc2pPd+pEtEahuU1faOQVvoHyIVOVEQ48/PaMizsuC/NCPQggEjvaYZk6ETsCNu3LgwNW9fX/CqfuyFvc+vWyQ==}
     hasBin: true
 
   '@react-leaflet/core@3.0.0':
@@ -3742,10 +3738,6 @@ packages:
       react-dom:
         optional: true
 
-  aggregate-error@5.0.0:
-    resolution: {integrity: sha512-gOsf2YwSlleG6IjRYG2A7k0HmBMEo6qVNk9Bp/EaLgAJT5ngH6PXbqa4ItvnEwCm/velL5jAnQgsHsWnjhGmvw==, tarball: https://packages.atlassian.com/api/npm/npm-remote/aggregate-error/-/aggregate-error-5.0.0.tgz}
-    engines: {node: '>=18'}
-
   ai@6.0.172:
     resolution: {integrity: sha512-o12q2SDlrN4btPU2FkFSVEeZiKfQuSbDFixXH8I7AE/zuCXMbN9ilaPThdoAc8mS9+QnhUGy8cSP0IgT3Q+p0A==, tarball: https://packages.atlassian.com/api/npm/npm-remote/ai/-/ai-6.0.172.tgz}
     engines: {node: '>=18'}
@@ -3934,8 +3926,8 @@ packages:
   bindings@1.5.0:
     resolution: {integrity: sha512-p2q/t/mhvuOj/UeLlV6566GD/guowlr0hHxClI0W9m7MWYkL1F0hLo+0Aexs9HSPCtR1SXQ0TD3MMKrXZajbiQ==, tarball: https://packages.atlassian.com/api/npm/npm-remote/bindings/-/bindings-1.5.0.tgz}
 
-  bippy@0.5.39:
-    resolution: {integrity: sha512-8hE8rKSl8JWyeaY+JjpnmceWAZPpLEyzOZQpWXM5Rc7861c5WotMJHy2aRZKZrGA8nMpvLNF01t4yQQ+HcZG3w==, tarball: https://packages.atlassian.com/api/npm/npm-remote/bippy/-/bippy-0.5.39.tgz}
+  bippy@0.5.40:
+    resolution: {integrity: sha512-3QPSDG5tgd7FCIkcKsUqmbGdlHxBxP7II5drXPNp1I0rpA9+4+/VjQOigDTbzeqTi6Xkaf1Dq7x4E8vbOuwOkA==}
     peerDependencies:
       react: '>=17.0.1'
 
@@ -4100,10 +4092,6 @@ packages:
 
   classcat@5.0.5:
     resolution: {integrity: sha512-JhZUT7JFcQy/EzW605k/ktHtncoo9vnyW/2GspNYwFlN1C/WmjuV/xtS04e9SOkL2sTdw0VAZ2UGCcQ9lR6p6w==, tarball: https://packages.atlassian.com/api/npm/npm-remote/classcat/-/classcat-5.0.5.tgz}
-
-  clean-stack@5.3.0:
-    resolution: {integrity: sha512-9ngPTOhYGQqNVSfeJkYXHmF7AGWp4/nN5D/QqNQs3Dvxd1Kk/WpjHfNujKHYUQ/5CoGyOyFNoWSPk5afzP0QVg==, tarball: https://packages.atlassian.com/api/npm/npm-remote/clean-stack/-/clean-stack-5.3.0.tgz}
-    engines: {node: '>=14.16'}
 
   cli-boxes@4.0.1:
     resolution: {integrity: sha512-5IOn+jcCEHEraYolBPs/sT4BxYCe2nHg374OPiItB1O96KZFseS2gthU4twyYzeDcFew4DaUM/xwc5BQf08JJw==, tarball: https://packages.atlassian.com/api/npm/npm-remote/cli-boxes/-/cli-boxes-4.0.1.tgz}
@@ -4976,12 +4964,8 @@ packages:
     engines: {node: '>=10'}
 
   execa@6.1.0:
-    resolution: {integrity: sha512-QVWlX2e50heYJcCPG0iWtf8r0xjEYfz/OYLGDYH+IyjWezzPNxz63qNFOu0l4YftGWuizFVZHHs8PrLU5p2IDA==, tarball: https://packages.atlassian.com/api/npm/npm-remote/execa/-/execa-6.1.0.tgz}
+    resolution: {integrity: sha512-QVWlX2e50heYJcCPG0iWtf8r0xjEYfz/OYLGDYH+IyjWezzPNxz63qNFOu0l4YftGWuizFVZHHs8PrLU5p2IDA==}
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
-
-  execa@8.0.1:
-    resolution: {integrity: sha512-VyhnebXciFV2DESc+p6B+y0LjSm0krU4OgJN44qFAhBY0TJ+1V61tYD2+wHusZ6F9n5K+vl8k0sTy7PEfV4qpg==, tarball: https://packages.atlassian.com/api/npm/npm-remote/execa/-/execa-8.0.1.tgz}
-    engines: {node: '>=16.17'}
 
   execa@9.6.1:
     resolution: {integrity: sha512-9Be3ZoN4LmYR90tUoVu2te2BsbzHfhJyfEiAVfz7N5/zv+jduIfLrV2xdQXOHbaD6KgpGdO9PRPM1Y4Q9QkPkA==, tarball: https://packages.atlassian.com/api/npm/npm-remote/execa/-/execa-9.6.1.tgz}
@@ -5104,9 +5088,9 @@ packages:
     resolution: {integrity: sha512-78/PXT1wlLLDgTzDs7sjq9hzz0vXD+zn+7wypEe4fXQxCmdmqfGsEPQxmiCSQI3ajFV91bVSsvNtrJRiW6nGng==, tarball: https://packages.atlassian.com/api/npm/npm-remote/find-up/-/find-up-5.0.0.tgz}
     engines: {node: '>=10'}
 
-  fkill@9.0.0:
-    resolution: {integrity: sha512-MdYSsbdCaIRjzo5edthZtWmEZVMfr1qrtYZUHIdO3swCE+CoZA8S5l0s4jDsYlTa9ZiXv0pTgpzE7s4N8NeUOA==, tarball: https://packages.atlassian.com/api/npm/npm-remote/fkill/-/fkill-9.0.0.tgz}
-    engines: {node: '>=18'}
+  fkill@10.0.3:
+    resolution: {integrity: sha512-E0zxFLM/drPziQ8UXxbgD2L1N3oSllgdNJjDOdUNx3g5l9vdouPZiF9up1av27sA9taZmS5VowatuVDNHAUymg==}
+    engines: {node: '>=20'}
 
   flat-cache@4.0.1:
     resolution: {integrity: sha512-f7ccFPK3SXFHpx15UIGyRJ/FJQctuKZ0zVuN3frBo4HnK3cay9VEW0R6yPYFHC0AgqhukPzKjq22t5DmAyqGyw==, tarball: https://packages.atlassian.com/api/npm/npm-remote/flat-cache/-/flat-cache-4.0.1.tgz}
@@ -5232,10 +5216,6 @@ packages:
   get-stream@6.0.1:
     resolution: {integrity: sha512-ts6Wi+2j3jQjqi70w5AlN8DFnkSwC+MqmxEzdEALB2qXZYV3X/b1CTfgPLGJNMeAWxdPfU8FO1ms3NUfaHCPYg==, tarball: https://packages.atlassian.com/api/npm/npm-remote/get-stream/-/get-stream-6.0.1.tgz}
     engines: {node: '>=10'}
-
-  get-stream@8.0.1:
-    resolution: {integrity: sha512-VaUJspBffn/LMCJVoMvSAdmscJyS1auj5Zulnn5UoYcY531UWmdwhRWkcGKnGU93m5HSXP9LP2usOryrBtQowA==, tarball: https://packages.atlassian.com/api/npm/npm-remote/get-stream/-/get-stream-8.0.1.tgz}
-    engines: {node: '>=16'}
 
   get-stream@9.0.1:
     resolution: {integrity: sha512-kVCxPF3vQM/N0B1PmoqVUqgHP+EeVjmZSQn+1oCRPxd2P21P2F19lIgbR3HBosbB1PUhOAoctJnfEn2GbN2eZA==, tarball: https://packages.atlassian.com/api/npm/npm-remote/get-stream/-/get-stream-9.0.1.tgz}
@@ -5463,12 +5443,8 @@ packages:
     engines: {node: '>=10.17.0'}
 
   human-signals@3.0.1:
-    resolution: {integrity: sha512-rQLskxnM/5OCldHo+wNXbpVgDn5A17CUoKX+7Sokwaknlq7CdSnphy0W39GU8dw59XiCXmFXDg4fRuckQRKewQ==, tarball: https://packages.atlassian.com/api/npm/npm-remote/human-signals/-/human-signals-3.0.1.tgz}
+    resolution: {integrity: sha512-rQLskxnM/5OCldHo+wNXbpVgDn5A17CUoKX+7Sokwaknlq7CdSnphy0W39GU8dw59XiCXmFXDg4fRuckQRKewQ==}
     engines: {node: '>=12.20.0'}
-
-  human-signals@5.0.0:
-    resolution: {integrity: sha512-AXcZb6vzzrFAUE61HnN4mpLqd/cSIwNQjtNWR0euPm6y0iqx3G4gOXaIDdtdDwZmhwe82LA6+zinmW4UBWVePQ==, tarball: https://packages.atlassian.com/api/npm/npm-remote/human-signals/-/human-signals-5.0.0.tgz}
-    engines: {node: '>=16.17.0'}
 
   human-signals@8.0.1:
     resolution: {integrity: sha512-eKCa6bwnJhvxj14kZk5NCPc6Hb6BdsU9DZcOnmQKSnO1VKrfV0zCvtttPZUsBvjmNDn8rpcJfpwSYnHBjc95MQ==, tarball: https://packages.atlassian.com/api/npm/npm-remote/human-signals/-/human-signals-8.0.1.tgz}
@@ -5741,7 +5717,7 @@ packages:
     engines: {node: '>=8'}
 
   is-stream@3.0.0:
-    resolution: {integrity: sha512-LnQR4bZ9IADDRSkvpqMGvt/tEJWclzklNgSw48V5EAaAeDd6qGvN8ei6k5p0tvxSR171VmGyHuTiAOfxAbr8kA==, tarball: https://packages.atlassian.com/api/npm/npm-remote/is-stream/-/is-stream-3.0.0.tgz}
+    resolution: {integrity: sha512-LnQR4bZ9IADDRSkvpqMGvt/tEJWclzklNgSw48V5EAaAeDd6qGvN8ei6k5p0tvxSR171VmGyHuTiAOfxAbr8kA==}
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
 
   is-stream@4.0.1:
@@ -6412,7 +6388,7 @@ packages:
     engines: {node: '>=6'}
 
   mimic-fn@4.0.0:
-    resolution: {integrity: sha512-vqiC06CuhBTUdZH+RYl8sFrL096vA45Ok5ISO6sE/Mr1jRbGH4Csnhi8f3wKVl7x8mO4Au7Ir9D3Oyv1VYMFJw==, tarball: https://packages.atlassian.com/api/npm/npm-remote/mimic-fn/-/mimic-fn-4.0.0.tgz}
+    resolution: {integrity: sha512-vqiC06CuhBTUdZH+RYl8sFrL096vA45Ok5ISO6sE/Mr1jRbGH4Csnhi8f3wKVl7x8mO4Au7Ir9D3Oyv1VYMFJw==}
     engines: {node: '>=12'}
 
   mimic-function@5.0.1:
@@ -6636,7 +6612,7 @@ packages:
     engines: {node: '>=8'}
 
   npm-run-path@5.3.0:
-    resolution: {integrity: sha512-ppwTtiJZq0O/ai0z7yfudtBpWIoxM8yE6nHi1X47eFR2EWORqfbu6CnPlNsjeN683eT0qG6H/Pyf9fCcvjnnnQ==, tarball: https://packages.atlassian.com/api/npm/npm-remote/npm-run-path/-/npm-run-path-5.3.0.tgz}
+    resolution: {integrity: sha512-ppwTtiJZq0O/ai0z7yfudtBpWIoxM8yE6nHi1X47eFR2EWORqfbu6CnPlNsjeN683eT0qG6H/Pyf9fCcvjnnnQ==}
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
 
   npm-run-path@6.0.0:
@@ -6694,7 +6670,7 @@ packages:
     engines: {node: '>=6'}
 
   onetime@6.0.0:
-    resolution: {integrity: sha512-1FlR+gjXK7X+AsAHso35MnyN5KqGwJRi/31ft6x0M194ht7S+rWAvd7PHss9xSKMzE0asv1pyIHaJYq+BbacAQ==, tarball: https://packages.atlassian.com/api/npm/npm-remote/onetime/-/onetime-6.0.0.tgz}
+    resolution: {integrity: sha512-1FlR+gjXK7X+AsAHso35MnyN5KqGwJRi/31ft6x0M194ht7S+rWAvd7PHss9xSKMzE0asv1pyIHaJYq+BbacAQ==}
     engines: {node: '>=12'}
 
   onetime@7.0.0:
@@ -6892,9 +6868,9 @@ packages:
     resolution: {integrity: sha512-QP88BAKvMam/3NxH6vj2o21R6MjxZUAd6nlwAS/pnGvN9IVLocLHxGYIzFhg6fUQ+5th6P4dv4eW9jX3DSIj7A==, tarball: https://packages.atlassian.com/api/npm/npm-remote/picomatch/-/picomatch-4.0.4.tgz}
     engines: {node: '>=12'}
 
-  pid-port@1.0.2:
-    resolution: {integrity: sha512-Khqp07zX8IJpmIg56bHrLxS3M0iSL4cq6wnMq8YE7r/hSw3Kn4QxYS6QJg8Bs22Z7CSVj7eSsxFuigYVIFWmjg==, tarball: https://packages.atlassian.com/api/npm/npm-remote/pid-port/-/pid-port-1.0.2.tgz}
-    engines: {node: '>=18'}
+  pid-port@2.1.1:
+    resolution: {integrity: sha512-teosUBzP9q3GMZDp/QlI/HSJHwnIBiCtDWhM/OxSB2PcR20Z0uFrrsAjKbG3e4WlQTVm5oTfmvgXEp+gk/rZ0w==}
+    engines: {node: '>=20'}
 
   pkce-challenge@5.0.1:
     resolution: {integrity: sha512-wQ0b/W4Fr01qtpHlqSqspcj3EhBvimsdh0KlHhH8HRZnMsEa0ea2fTULOXOS9ccQr3om+GcGRk4e+isrZWV8qQ==, tarball: https://packages.atlassian.com/api/npm/npm-remote/pkce-challenge/-/pkce-challenge-5.0.1.tgz}
@@ -7001,7 +6977,7 @@ packages:
     engines: {node: '>=18'}
 
   process-exists@5.0.0:
-    resolution: {integrity: sha512-6QPRh5fyHD8MaXr4GYML8K/YY0Sq5dKHGIOrAKS3cYpHQdmygFCcijIu1dVoNKAZ0TWAMoeh8KDK9dF8auBkJA==, tarball: https://packages.atlassian.com/api/npm/npm-remote/process-exists/-/process-exists-5.0.0.tgz}
+    resolution: {integrity: sha512-6QPRh5fyHD8MaXr4GYML8K/YY0Sq5dKHGIOrAKS3cYpHQdmygFCcijIu1dVoNKAZ0TWAMoeh8KDK9dF8auBkJA==}
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
 
   promise-worker-transferable@1.0.4:
@@ -7072,8 +7048,12 @@ packages:
     resolution: {integrity: sha512-D+zkORCbA9f1tdWRK0RaCR3GPv50cMxcrz4X8k5LTSUD1Dkw47mKJEZQNunItRTkWwgtaUSo1RVFRIG9ZXiFYg==, tarball: https://packages.atlassian.com/api/npm/npm-remote/proxy-from-env/-/proxy-from-env-1.1.0.tgz}
 
   ps-list@8.1.1:
-    resolution: {integrity: sha512-OPS9kEJYVmiO48u/B9qneqhkMvgCxT+Tm28VCEJpheTpl8cJ0ffZRRNgS5mrQRTrX5yRTpaJ+hRDeefXYmmorQ==, tarball: https://packages.atlassian.com/api/npm/npm-remote/ps-list/-/ps-list-8.1.1.tgz}
+    resolution: {integrity: sha512-OPS9kEJYVmiO48u/B9qneqhkMvgCxT+Tm28VCEJpheTpl8cJ0ffZRRNgS5mrQRTrX5yRTpaJ+hRDeefXYmmorQ==}
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
+
+  ps-list@9.0.0:
+    resolution: {integrity: sha512-lxMEoIL/BQlk2KunFzxwUPwMvjFH7x7cmvzSLsSHpyMXl9FFfLUlfKrYwFc4wx/ZaIxxuXC4n8rjQ1CX/tkXVQ==}
+    engines: {node: '>=20'}
 
   pump@3.0.4:
     resolution: {integrity: sha512-VS7sjc6KR7e1ukRFhQSY5LM2uBWAUPiOPa/A3mkKmiMwSmRFUITt0xuj+/lesgnCv+dPIEYlkzrcyXgquIHMcA==, tarball: https://packages.atlassian.com/api/npm/npm-remote/pump/-/pump-3.0.4.tgz}
@@ -7118,8 +7098,8 @@ packages:
     peerDependencies:
       react: ^19.2.5
 
-  react-grab@0.1.32:
-    resolution: {integrity: sha512-ODZkzu4zjwX/5a1VxTdIkagPD6uPnp8IkSN2v5FDgFMZkH5r/YEMq43hIsdpHV5/R2ymqS9zLxp4H7SNSRx5ng==, tarball: https://packages.atlassian.com/api/npm/npm-remote/react-grab/-/react-grab-0.1.32.tgz}
+  react-grab@0.1.34:
+    resolution: {integrity: sha512-jtdOdv0kb90oqL+pMszSh9DOLgVRaX4ZE6XN4GkDEpNNUqveQfZT014+EeJraljpqQfuWKW+96NrrRqUD93D2g==}
     hasBin: true
     peerDependencies:
       react: '>=17.0.0'
@@ -7741,7 +7721,7 @@ packages:
     engines: {node: '>=6'}
 
   strip-final-newline@3.0.0:
-    resolution: {integrity: sha512-dOESqjYr96iWYylGObzd39EuNTa5VJxyvVAEm5Jnh7KGo75V43Hk1odPQkNDyXNmUR6k+gEiDVXnjB8HJ3crXw==, tarball: https://packages.atlassian.com/api/npm/npm-remote/strip-final-newline/-/strip-final-newline-3.0.0.tgz}
+    resolution: {integrity: sha512-dOESqjYr96iWYylGObzd39EuNTa5VJxyvVAEm5Jnh7KGo75V43Hk1odPQkNDyXNmUR6k+gEiDVXnjB8HJ3crXw==}
     engines: {node: '>=12'}
 
   strip-final-newline@4.0.0:
@@ -7843,7 +7823,7 @@ packages:
     engines: {node: '>=18'}
 
   taskkill@5.0.0:
-    resolution: {integrity: sha512-+HRtZ40Vc+6YfCDWCeAsixwxJgMbPY4HHuTgzPYH3JXvqHWUlsCfy+ylXlAKhFNcuLp4xVeWeFBUhDk+7KYUvQ==, tarball: https://packages.atlassian.com/api/npm/npm-remote/taskkill/-/taskkill-5.0.0.tgz}
+    resolution: {integrity: sha512-+HRtZ40Vc+6YfCDWCeAsixwxJgMbPY4HHuTgzPYH3JXvqHWUlsCfy+ylXlAKhFNcuLp4xVeWeFBUhDk+7KYUvQ==}
     engines: {node: '>=14.16'}
 
   temml@0.13.2:
@@ -8456,6 +8436,9 @@ packages:
   zod@4.4.1:
     resolution: {integrity: sha512-a6ENMBBGZBsnlSebQ/eKCguSBeGKSf4O7BPnqVPmYGtpBYI7VSqoVqw+QcB7kPRjbqPwhYTpFbVj/RqNz/CT0Q==, tarball: https://packages.atlassian.com/api/npm/npm-remote/zod/-/zod-4.4.1.tgz}
 
+  zod@4.4.3:
+    resolution: {integrity: sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ==}
+
   zustand@4.5.7:
     resolution: {integrity: sha512-CHOUy7mu3lbD6o6LJLfllpjkzhHXSBlX8B9+qPddUsIfeF5S/UZ5q0kmCsnRqT1UHFQZchNFDDzMbQsuesHWlw==, tarball: https://packages.atlassian.com/api/npm/npm-remote/zustand/-/zustand-4.5.7.tgz}
     engines: {node: '>=12.7.0'}
@@ -8533,8 +8516,6 @@ snapshots:
     dependencies:
       package-manager-detector: 1.6.0
       tinyexec: 1.1.2
-
-  '@antfu/ni@0.23.2': {}
 
   '@anthropic-ai/sdk@0.90.0(zod@4.4.1)':
     dependencies:
@@ -10063,6 +10044,28 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  '@modelcontextprotocol/sdk@1.29.0(zod@4.4.3)':
+    dependencies:
+      '@hono/node-server': 1.19.14(hono@4.12.16)
+      ajv: 8.20.0
+      ajv-formats: 3.0.1(ajv@8.20.0)
+      content-type: 1.0.5
+      cors: 2.8.6
+      cross-spawn: 7.0.6
+      eventsource: 3.0.7
+      eventsource-parser: 3.0.8
+      express: 5.2.1
+      express-rate-limit: 8.4.1(express@5.2.1)
+      hono: 4.12.16
+      jose: 6.2.3
+      json-schema-typed: 8.0.2
+      pkce-challenge: 5.0.1
+      raw-body: 3.0.2
+      zod: 4.4.3
+      zod-to-json-schema: 3.25.2(zod@4.4.3)
+    transitivePeerDependencies:
+      - supports-color
+
   '@monogrid/gainmap-js@3.4.0(three@0.184.0)':
     dependencies:
       promise-worker-transferable: 1.0.4
@@ -10717,23 +10720,24 @@ snapshots:
 
   '@radix-ui/rect@1.1.0': {}
 
-  '@react-grab/cli@0.1.32':
+  '@react-grab/cli@0.1.34':
     dependencies:
-      '@antfu/ni': 0.23.2
       commander: 14.0.3
       ignore: 7.0.5
       jsonc-parser: 3.3.1
-      ora: 8.2.0
+      ora: 9.4.0
+      package-manager-detector: 1.6.0
       picocolors: 1.1.1
       prompts: 2.4.2
       smol-toml: 1.6.1
+      tinyexec: 1.1.2
 
-  '@react-grab/mcp@0.1.32(react@19.2.5)':
+  '@react-grab/mcp@0.1.34(react@19.2.5)':
     dependencies:
-      '@modelcontextprotocol/sdk': 1.29.0(zod@3.25.76)
-      fkill: 9.0.0
-      react-grab: 0.1.32(react@19.2.5)
-      zod: 3.25.76
+      '@modelcontextprotocol/sdk': 1.29.0(zod@4.4.3)
+      fkill: 10.0.3
+      react-grab: 0.1.34(react@19.2.5)
+      zod: 4.4.3
     transitivePeerDependencies:
       - '@cfworker/json-schema'
       - react
@@ -12344,11 +12348,6 @@ snapshots:
       react: 19.2.5
       react-dom: 19.2.5(react@19.2.5)
 
-  aggregate-error@5.0.0:
-    dependencies:
-      clean-stack: 5.3.0
-      indent-string: 5.0.0
-
   ai@6.0.172(zod@4.4.1):
     dependencies:
       '@ai-sdk/gateway': 3.0.107(zod@4.4.1)
@@ -12547,7 +12546,7 @@ snapshots:
     dependencies:
       file-uri-to-path: 1.0.0
 
-  bippy@0.5.39(react@19.2.5):
+  bippy@0.5.40(react@19.2.5):
     dependencies:
       react: 19.2.5
 
@@ -12749,10 +12748,6 @@ snapshots:
       clsx: 2.1.1
 
   classcat@5.0.5: {}
-
-  clean-stack@5.3.0:
-    dependencies:
-      escape-string-regexp: 5.0.0
 
   cli-boxes@4.0.1: {}
 
@@ -13771,18 +13766,6 @@ snapshots:
       signal-exit: 3.0.7
       strip-final-newline: 3.0.0
 
-  execa@8.0.1:
-    dependencies:
-      cross-spawn: 7.0.6
-      get-stream: 8.0.1
-      human-signals: 5.0.0
-      is-stream: 3.0.0
-      merge-stream: 2.0.0
-      npm-run-path: 5.3.0
-      onetime: 6.0.0
-      signal-exit: 4.1.0
-      strip-final-newline: 3.0.0
-
   execa@9.6.1:
     dependencies:
       '@sindresorhus/merge-streams': 4.0.0
@@ -13951,13 +13934,12 @@ snapshots:
       locate-path: 6.0.0
       path-exists: 4.0.0
 
-  fkill@9.0.0:
+  fkill@10.0.3:
     dependencies:
-      aggregate-error: 5.0.0
-      execa: 8.0.1
-      pid-port: 1.0.2
+      execa: 9.6.1
+      pid-port: 2.1.1
       process-exists: 5.0.0
-      ps-list: 8.1.1
+      ps-list: 9.0.0
       taskkill: 5.0.0
 
   flat-cache@4.0.1:
@@ -14082,8 +14064,6 @@ snapshots:
       es-object-atoms: 1.1.1
 
   get-stream@6.0.1: {}
-
-  get-stream@8.0.1: {}
 
   get-stream@9.0.1:
     dependencies:
@@ -14396,8 +14376,6 @@ snapshots:
   human-signals@2.1.0: {}
 
   human-signals@3.0.1: {}
-
-  human-signals@5.0.0: {}
 
   human-signals@8.0.1: {}
 
@@ -16083,9 +16061,9 @@ snapshots:
 
   picomatch@4.0.4: {}
 
-  pid-port@1.0.2:
+  pid-port@2.1.1:
     dependencies:
-      execa: 8.0.1
+      execa: 9.6.1
 
   pkce-challenge@5.0.1: {}
 
@@ -16327,6 +16305,8 @@ snapshots:
 
   ps-list@8.1.1: {}
 
+  ps-list@9.0.0: {}
+
   pump@3.0.4:
     dependencies:
       end-of-stream: 1.4.5
@@ -16375,10 +16355,10 @@ snapshots:
       react: 19.2.5
       scheduler: 0.27.0
 
-  react-grab@0.1.32(react@19.2.5):
+  react-grab@0.1.34(react@19.2.5):
     dependencies:
-      '@react-grab/cli': 0.1.32
-      bippy: 0.5.39(react@19.2.5)
+      '@react-grab/cli': 0.1.34
+      bippy: 0.5.40(react@19.2.5)
     optionalDependencies:
       react: 19.2.5
 
@@ -17948,6 +17928,10 @@ snapshots:
     dependencies:
       zod: 4.4.1
 
+  zod-to-json-schema@3.25.2(zod@4.4.3):
+    dependencies:
+      zod: 4.4.3
+
   zod-validation-error@4.0.2(zod@4.4.1):
     dependencies:
       zod: 4.4.1
@@ -17957,6 +17941,8 @@ snapshots:
   zod@4.2.1: {}
 
   zod@4.4.1: {}
+
+  zod@4.4.3: {}
 
   zustand@4.5.7(@types/react@19.2.14)(immer@11.1.4)(react@19.2.5):
     dependencies:

@@ -16,7 +16,7 @@ import { CONTROL_PLANE_SURFACES } from "./lib/control-plane-data";
 
 function getSurfaceIcon(label: string) {
 	switch (label) {
-		case "Tasks":
+		case "Jobs":
 			return <ScorecardIcon label="" />;
 		case "Memories":
 			return <DatabaseIcon />;

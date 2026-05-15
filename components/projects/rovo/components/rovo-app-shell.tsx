@@ -127,16 +127,6 @@ function mergeContextDescriptions(...parts: Array<string | null | undefined>): s
 	return mergedParts.length > 0 ? mergedParts.join("\n\n") : undefined;
 }
 
-function buildHermesMemoryLabel(wikiStatus: WikiStatus | null): string | null {
-	if (!wikiStatus) {
-		return null;
-	}
-
-	const compiledCount = Object.values(wikiStatus.compiledContexts ?? {}).filter((document) => document?.exists === true).length;
-	const queuedCount = wikiStatus.proposalCounts?.queued ?? 0;
-	return queuedCount > 0 ? `Wiki memory ${queuedCount} queued` : `Wiki memory ${compiledCount} compiled`;
-}
-
 type RealtimeInjectContextPayload = {
 	type: string;
 	content?: string;
@@ -369,12 +359,6 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 			.slice(0, 3);
 	}, [activeThreadRecord?.hermesContext?.recentMemoryProposalIds, activeThreadRecord?.id, wikiMemoryStatus?.recentProposals]);
 	const activePendingSkillDraft = pendingThreadSkillDrafts[activePendingSkillDraftIndex] ?? pendingThreadSkillDrafts[0] ?? null;
-	const hermesMemoryLabel = useMemo(() => buildHermesMemoryLabel(wikiMemoryStatus), [wikiMemoryStatus]);
-	const hermesMemoryHref = useMemo(() => {
-		return activeThreadRecord?.id && activeThreadMemoryProposals.length > 0
-			? `/rovo/memories?threadId=${encodeURIComponent(activeThreadRecord.id)}`
-			: "/rovo/memories";
-	}, [activeThreadMemoryProposals.length, activeThreadRecord?.id]);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -2102,6 +2086,7 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 					activeDocumentId={chat.activeDocument?.id ?? null}
 					compact={isArtifactOpen}
 					extraHorizontalPaddingWhenCompact
+					isMaxMode={chat.isPlanMode}
 					documents={chat.documents}
 					editingMessageId={chat.editingMessageId}
 					isStreaming={chat.isStreaming}
@@ -2332,7 +2317,6 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 			<RovoAppSidebar
 				activeThreadId={chat.activeThreadId}
 				hoverOpen={isHoverOpen}
-				isGeneratingTitle={chat.isGeneratingTitle}
 				isResizing={sidebarResize.isResizing}
 				onCancelThreadRun={async (threadId) => {
 					await chat.cancelThreadRun(threadId);
@@ -2360,7 +2344,6 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 				}}
 				onSidebarMouseEnter={handleSidebarContentMouseEnter}
 				onSidebarMouseLeave={handleSidebarContentMouseLeave}
-				pendingTitleThreadId={chat.pendingTitleThreadId}
 				resizeHandle={
 					<SidebarResizeHandle
 						data-active={sidebarResize.isResizing ? "" : undefined}
@@ -2472,8 +2455,6 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 				) : null}
 				<RovoAppHeader
 					artifactMenuItems={artifactMenuItems}
-					hermesMemoryLabel={hermesMemoryLabel}
-					hermesMemoryHref={hermesMemoryHref}
 					isArtifactOpen={isArtifactOpen}
 					onNewChat={() => {
 						setOptimisticUserMessage(null);

@@ -1,20 +1,22 @@
 "use client";
 
 import { useState } from "react";
+import type { ChatStatus } from "ai";
 import type { QueuedPromptItem } from "@/app/contexts";
 import CustomizeMenu from "@/components/blocks/shared-ui/customize-menu";
+import { DEFAULT_REASONING_OPTION_ID } from "@/components/blocks/shared-ui/data/customize-menu-data";
 import {
 	PromptInput,
 	PromptInputActionMenu,
 	PromptInputActionMenuContent,
-	PromptInputActionMenuItem,
 	PromptInputActionMenuTrigger,
 	PromptInputBody,
 	PromptInputFooter,
 	PromptInputPreferencesButton,
-	PromptInputSendControls,
 	PromptInputTextarea,
 	PromptInputTools,
+	type PromptInputMessage,
+	usePromptInputAttachments,
 } from "@/components/ui-ai/prompt-input";
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
 import { composerUpwardShadow, composerPromptInputClassName, composerTextareaClassName, textareaCSS } from "@/components/blocks/shared-ui/composer-styles";
@@ -25,36 +27,114 @@ import { Footer } from "@/components/ui/footer";
 import ChatContextBar from "./chat-context-bar";
 import type { ChatContextBarDescriptor } from "../lib/chat-context-bar";
 import AddIcon from "@atlaskit/icon/core/add";
-
-import LinkIcon from "@atlaskit/icon/core/link";
-import MentionIcon from "@atlaskit/icon/core/mention";
-import PageIcon from "@atlaskit/icon/core/page";
-import UploadIcon from "@atlaskit/icon/core/upload";
+import { PendingAttachments } from "@/components/projects/rovo/components/pending-attachments";
+import { RovoAppComposerAddMenu } from "@/components/projects/rovo/components/rovo-app-composer-add-menu";
+import { RovoComposerSendControls } from "@/components/projects/shared/components/rovo-composer-send-controls";
 
 interface ChatComposerProps {
 	prompt: string;
 	isStreaming: boolean;
 	hasInFlightTurn: boolean;
 	queuedPrompts: ReadonlyArray<QueuedPromptItem>;
+	micStream?: MediaStream | null;
 	onPromptChange: (value: string) => void;
-	onSubmit: () => void;
+	onSubmit: (message: PromptInputMessage) => Promise<void> | void;
 	onStop: () => void;
+	onToggleRealtimeVoice?: () => void;
 	onRemoveQueuedPrompt: (id: string) => void;
+	realtimeVoiceActive?: boolean;
 	chatContextBar?: ChatContextBarDescriptor | null;
 }
 
-export default function ChatComposer({ prompt, isStreaming, hasInFlightTurn, queuedPrompts, onPromptChange, onSubmit, onStop, onRemoveQueuedPrompt, chatContextBar }: Readonly<ChatComposerProps>): React.ReactElement {
-	const [selectedReasoning, setSelectedReasoning] = useState("deep-research");
+interface ChatComposerSendControlsProps {
+	companyKnowledgeEnabled: boolean;
+	composerStatus: ChatStatus;
+	isComposerBusy: boolean;
+	micStream: MediaStream | null;
+	onCompanyKnowledgeChange: (value: boolean) => void;
+	onOpenChange: (open: boolean) => void;
+	onReasoningChange: (value: string) => void;
+	onStop: () => void;
+	onToggleRealtimeVoice?: () => void;
+	open: boolean;
+	prompt: string;
+	realtimeVoiceActive: boolean;
+	selectedReasoning: string;
+	webResultsEnabled: boolean;
+	onWebResultsChange: (value: boolean) => void;
+}
+
+function getQueuedPromptLabel(queuedPrompt: QueuedPromptItem): string {
+	return queuedPrompt.text || queuedPrompt.files[0]?.filename || "Attachment";
+}
+
+function ChatComposerSendControls({
+	companyKnowledgeEnabled,
+	composerStatus,
+	isComposerBusy,
+	micStream,
+	onCompanyKnowledgeChange,
+	onOpenChange,
+	onReasoningChange,
+	onStop,
+	onToggleRealtimeVoice,
+	open,
+	prompt,
+	realtimeVoiceActive,
+	selectedReasoning,
+	webResultsEnabled,
+	onWebResultsChange,
+}: Readonly<ChatComposerSendControlsProps>) {
+	const attachments = usePromptInputAttachments();
+	const canSubmit = prompt.trim().length > 0 || attachments.files.length > 0;
+
+	return (
+		<RovoComposerSendControls
+			canSubmit={canSubmit}
+			companyKnowledgeEnabled={companyKnowledgeEnabled}
+			composerStatus={composerStatus}
+			isComposerBusy={isComposerBusy}
+			micStream={micStream}
+			onCompanyKnowledgeChange={onCompanyKnowledgeChange}
+			onOpenChange={onOpenChange}
+			onReasoningChange={onReasoningChange}
+			onStop={onStop}
+			onToggleRealtimeVoice={onToggleRealtimeVoice}
+			open={open}
+			realtimeVoiceActive={realtimeVoiceActive}
+			selectedReasoning={selectedReasoning}
+			webResultsEnabled={webResultsEnabled}
+			onWebResultsChange={onWebResultsChange}
+		/>
+	);
+}
+
+export default function ChatComposer({ prompt, isStreaming, hasInFlightTurn, queuedPrompts, micStream = null, onPromptChange, onSubmit, onStop, onToggleRealtimeVoice, onRemoveQueuedPrompt, realtimeVoiceActive = false, chatContextBar }: Readonly<ChatComposerProps>): React.ReactElement {
+	const [selectedReasoning, setSelectedReasoning] = useState(DEFAULT_REASONING_OPTION_ID);
 	const [webResultsEnabled, setWebResultsEnabled] = useState(false);
 	const [companyKnowledgeEnabled, setCompanyKnowledgeEnabled] = useState(true);
 	const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
 	const [isCustomizeMenuOpen, setIsCustomizeMenuOpen] = useState(false);
+	const [isAutoMenuOpen, setIsAutoMenuOpen] = useState(false);
 	const hasQueuedPrompts = queuedPrompts.length > 0;
 	const submitStatus = isStreaming
 		? "streaming"
 		: hasInFlightTurn
 			? "submitted"
 			: "ready";
+	const isComposerBusy = isStreaming || hasInFlightTurn;
+	const handleCustomizeMenuOpenChange = (open: boolean) => {
+		setIsCustomizeMenuOpen(open);
+		if (open) {
+			setIsAutoMenuOpen(false);
+		}
+	};
+	const handleAutoMenuOpenChange = (open: boolean) => {
+		setIsAutoMenuOpen(open);
+		if (open) {
+			setIsCustomizeMenuOpen(false);
+		}
+	};
 
 	return (
 		<div className="relative min-w-0 px-3">
@@ -67,7 +147,7 @@ export default function ChatComposer({ prompt, isStreaming, hasInFlightTurn, que
 								<QueueItem key={queuedPrompt.id} className="w-full bg-surface py-2 hover:bg-surface-hovered">
 									<div className="flex items-center gap-2">
 										<QueueItemIndicator />
-										<QueueItemContent className="text-text-subtle">{queuedPrompt.text}</QueueItemContent>
+										<QueueItemContent className="text-text-subtle">{getQueuedPromptLabel(queuedPrompt)}</QueueItemContent>
 										<QueueItemActions>
 											<Button
 												aria-label="Remove queued message"
@@ -88,6 +168,7 @@ export default function ChatComposer({ prompt, isStreaming, hasInFlightTurn, que
 			) : null}
 			<div className="relative z-10 rounded-xl border border-border bg-surface px-4 pb-3 pt-4" style={{ boxShadow: composerUpwardShadow }}>
 				<PromptInput allowOverflow onSubmit={onSubmit} className={`${composerPromptInputClassName} relative z-10`}>
+					<PendingAttachments />
 					<PromptInputBody>
 						<PromptInputTextarea
 							value={prompt}
@@ -105,47 +186,25 @@ export default function ChatComposer({ prompt, isStreaming, hasInFlightTurn, que
 								<PromptInputActionMenuTrigger aria-label="Add" size="icon-sm" variant="ghost">
 									<AddIcon label="" />
 								</PromptInputActionMenuTrigger>
-								<PromptInputActionMenuContent>
-									<PromptInputActionMenuItem
-										onSelect={() => setIsAddMenuOpen(false)}
-										elemBefore={<UploadIcon label="" />}
-									>
-										Upload file
-									</PromptInputActionMenuItem>
-									<PromptInputActionMenuItem
-										onSelect={() => setIsAddMenuOpen(false)}
-										elemBefore={<LinkIcon label="" />}
-									>
-										Add a link
-									</PromptInputActionMenuItem>
-									<PromptInputActionMenuItem
-										onSelect={() => setIsAddMenuOpen(false)}
-										elemBefore={<MentionIcon label="" />}
-									>
-										Mention someone
-									</PromptInputActionMenuItem>
-									<PromptInputActionMenuItem
-										onSelect={() => setIsAddMenuOpen(false)}
-										elemBefore={<AddIcon label="" />}
-									>
-										More formatting
-									</PromptInputActionMenuItem>
-									<PromptInputActionMenuItem
-										onSelect={() => setIsAddMenuOpen(false)}
-										elemBefore={<PageIcon label="" />}
-									>
-										Add current page as context
-									</PromptInputActionMenuItem>
+								<PromptInputActionMenuContent
+									positionerClassName="z-[600]"
+									side="top"
+									sideOffset={8}
+								>
+									<RovoAppComposerAddMenu
+										onClose={() => setIsAddMenuOpen(false)}
+									/>
 								</PromptInputActionMenuContent>
 							</PromptInputActionMenu>
 
-							<Popover open={isCustomizeMenuOpen} onOpenChange={setIsCustomizeMenuOpen}>
+							<Popover open={isCustomizeMenuOpen} onOpenChange={handleCustomizeMenuOpenChange}>
 								<PopoverTrigger render={<PromptInputPreferencesButton aria-label="Customize" />} />
-								<PopoverContent side="top" align="start" sideOffset={8} className="w-auto p-2">
-									<PopoverTitle className="sr-only">Customize response</PopoverTitle>
+								<PopoverContent side="top" align="start" sideOffset={8} positionerClassName="z-[600]" className="w-auto p-2">
+									<PopoverTitle className="sr-only">Customize sources</PopoverTitle>
 									<CustomizeMenu
 										selectedReasoning={selectedReasoning}
 										onReasoningChange={setSelectedReasoning}
+										showReasoning={false}
 										webResultsEnabled={webResultsEnabled}
 										onWebResultsChange={setWebResultsEnabled}
 										companyKnowledgeEnabled={companyKnowledgeEnabled}
@@ -156,18 +215,22 @@ export default function ChatComposer({ prompt, isStreaming, hasInFlightTurn, que
 							</Popover>
 						</PromptInputTools>
 
-						<PromptInputSendControls
-							autoButtonProps={{
-								"aria-pressed": selectedReasoning === "let-rovo-decide",
-								onClick: () => setSelectedReasoning("let-rovo-decide"),
-							}}
-							submitProps={{
-								"aria-label": "Submit",
-								disabled: !hasInFlightTurn && !prompt.trim(),
-								onStop,
-								size: "icon-sm",
-								status: submitStatus,
-							}}
+						<ChatComposerSendControls
+							companyKnowledgeEnabled={companyKnowledgeEnabled}
+							composerStatus={submitStatus}
+							isComposerBusy={isComposerBusy}
+							micStream={micStream}
+							onCompanyKnowledgeChange={setCompanyKnowledgeEnabled}
+							onOpenChange={handleAutoMenuOpenChange}
+							onReasoningChange={setSelectedReasoning}
+							onStop={onStop}
+							onToggleRealtimeVoice={onToggleRealtimeVoice}
+							open={isAutoMenuOpen}
+							prompt={prompt}
+							realtimeVoiceActive={realtimeVoiceActive}
+							selectedReasoning={selectedReasoning}
+							webResultsEnabled={webResultsEnabled}
+							onWebResultsChange={setWebResultsEnabled}
 						/>
 					</PromptInputFooter>
 				</PromptInput>

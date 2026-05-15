@@ -9,6 +9,7 @@ import {
 
 export interface UseRovoAppThreadListResult {
 	deleteThread: (threadId: string) => Promise<void>;
+	refreshThreads: () => Promise<void>;
 	threads: RovoAppThread[];
 	threadsLoaded: boolean;
 }
@@ -73,5 +74,5 @@ export function useRovoAppThreadList(): UseRovoAppThreadListResult {
 		}
 	}, []);
 
-	return { deleteThread, threads, threadsLoaded };
+	return { deleteThread, refreshThreads, threads, threadsLoaded };
 }

@@ -101,7 +101,8 @@ export default function BoardColumnsContainer({
 				className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
 				style={{
 					flex: 1,
-					paddingBlock: token("space.150"),
+					paddingTop: 0,
+					paddingBottom: token("space.150"),
 					paddingInline: token("space.200"),
 					overflowX: "auto",
 					overflowY: "hidden",

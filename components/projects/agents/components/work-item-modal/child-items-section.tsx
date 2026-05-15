@@ -38,10 +38,10 @@ export function ChildItemsSection() {
 						Child work items
 					</Heading>
 					<div className="flex gap-2">
-						<Button aria-label="Manage" size="icon-sm" variant="ghost">
+						<Button aria-label="Manage" size="icon-sm" variant="outline">
 							<ShowMoreHorizontalIcon label="" size="small" />
 						</Button>
-						<Button aria-label="Add work item" size="icon-sm" variant="ghost">
+						<Button aria-label="Add work item" size="icon-sm" variant="outline">
 							<AddIcon label="" size="small" />
 						</Button>
 					</div>

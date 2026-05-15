@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import ChevronDownIcon from "@atlaskit/icon/core/chevron-down";
 import CrossIcon from "@atlaskit/icon/core/cross";
 import EditIcon from "@atlaskit/icon/core/edit";
 import ShowMoreHorizontalIcon from "@atlaskit/icon/core/show-more-horizontal";
@@ -43,18 +42,8 @@ export default function FloatingChatHeader({
 			<div className="flex items-center gap-1">
 				<ChatHistoryButton isHistoryOpen={isHistoryOpen} onToggle={onHistoryToggle} />
 				<div className="flex items-center gap-2">
-					<Image
-						src="/1p/rovo.svg"
-						alt="Rovo logo"
-						width={16}
-						height={16}
-					/>
-					<div className="flex items-center gap-1">
-						<span className="text-sm font-semibold text-text">
-							Rovo
-						</span>
-						<ChevronDownIcon label="Expand menu" size="small" />
-					</div>
+					<Image src="/1p/rovo.svg" alt="" width={16} height={16} aria-hidden />
+					<span className="text-sm font-semibold text-text">Rovo</span>
 				</div>
 			</div>
 			<div className="flex items-center gap-1">

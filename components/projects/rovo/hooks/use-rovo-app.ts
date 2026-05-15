@@ -585,6 +585,7 @@ export interface RovoAppHookResult {
 	openArtifactFromMessage: (message: RovoUIMessage) => Promise<void>;
 	openNewChat: () => Promise<void>;
 	regenerateLatest: () => void;
+	refreshThreads: () => Promise<void>;
 	removeQueuedPrompt: (id: string) => void;
 	runtimeThreadId: string;
 	saveArtifactDraft: () => Promise<void>;
@@ -5043,6 +5044,7 @@ export function useRovoApp({
 		setPanelState,
 		queuedPrompts,
 		regenerateLatest,
+		refreshThreads,
 		removeQueuedPrompt,
 		runtimeThreadId,
 		saveArtifactDraft,

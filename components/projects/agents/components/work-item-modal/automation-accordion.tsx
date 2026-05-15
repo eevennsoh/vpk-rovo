@@ -41,8 +41,8 @@ export function AutomationAccordion() {
 						aria-label={state.isAutomationOpen ? "Collapse" : "Expand"}
 						aria-expanded={state.isAutomationOpen}
 						size="icon"
-						variant="ghost"
-						className="aria-expanded:bg-transparent aria-expanded:text-text-subtle aria-expanded:border-transparent"
+						variant="outline"
+						className="aria-expanded:bg-bg-neutral-subtle aria-expanded:text-text-subtle aria-expanded:border-border"
 						onClick={actions.toggleAutomation}
 					>
 						{state.isAutomationOpen ? <ChevronUpIcon label="" /> : <ChevronDownIcon label="" />}

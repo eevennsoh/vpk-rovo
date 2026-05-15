@@ -8,7 +8,7 @@ export const CONTROL_PLANE_SURFACES: readonly ControlPlaneSurfaceLink[] = [
 	{
 		description: "Scheduled work and run history",
 		href: "/rovo/jobs",
-		label: "Tasks",
+		label: "Jobs",
 	},
 	{
 		description: "Compiled wiki-backed memory and proposal status",
@@ -28,7 +28,9 @@ export const CONTROL_PLANE_SURFACES: readonly ControlPlaneSurfaceLink[] = [
 ] as const;
 
 const CONTROL_PLANE_HEADER_SURFACE_LABELS = new Set<ControlPlaneSurfaceLink["label"]>([
+	"Jobs",
 	"Memories",
+	"Skills",
 	"Settings",
 ]);
 

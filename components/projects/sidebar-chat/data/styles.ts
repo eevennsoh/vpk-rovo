@@ -49,7 +49,6 @@ export const chatStyles = {
 		display: "flex",
 		flexDirection: "column" as const,
 		alignItems: "center",
-		width: "100%",
 	},
 } as const;
 

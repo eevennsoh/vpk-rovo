@@ -61,7 +61,7 @@ import {
 	getChatInProgressRetryContent,
 	getChatInProgressUserMessage,
 } from "@/lib/chat-error-utils";
-import { DefaultChatTransport } from "ai";
+import { DefaultChatTransport, type FileUIPart } from "ai";
 
 export interface SendPromptOptions {
 	backendPreference?: "rovodev" | "ai-gateway";
@@ -89,6 +89,7 @@ export interface SendPromptOptions {
 
 export interface QueuedPromptItem {
 	id: string;
+	files: FileUIPart[];
 	text: string;
 	options?: SendPromptOptions;
 	createdAt: number;
@@ -541,7 +542,7 @@ interface RovoChatContextType {
 	 */
 	unpinFloating: (reason: string) => void;
 	uiMessages: RovoUIMessage[];
-	sendPrompt: (prompt: string, options?: SendPromptOptions) => Promise<void>;
+	sendPrompt: (prompt: string, options?: SendPromptOptions, files?: ReadonlyArray<FileUIPart>) => Promise<void>;
 	editMessage: (messageId: string, nextText: string, options?: SendPromptOptions) => Promise<void>;
 	editingMessageId: string | null;
 	setEditingMessageId: (messageId: string | null) => void;
@@ -666,6 +667,7 @@ export function RovoChatProvider({
 	);
 	const retryCountRef = useRef(0);
 	const lastPromptRef = useRef<{
+		files: FileUIPart[];
 		text: string;
 		options?: SendPromptOptions;
 	} | null>(null);
@@ -863,6 +865,7 @@ export function RovoChatProvider({
 			};
 
 			const resendSavedPrompt = async (saved: {
+				files: FileUIPart[];
 				text: string;
 				options?: SendPromptOptions;
 			}) => {
@@ -871,6 +874,7 @@ export function RovoChatProvider({
 				}
 
 				const messagePayload = {
+					files: saved.files,
 					text: saved.text,
 					metadata: saved.options?.messageMetadata,
 				};
@@ -897,7 +901,7 @@ export function RovoChatProvider({
 			const scheduleRetry = (params: {
 				delayMs: number;
 				startCountdown: (messageId: string) => void;
-				saved: { text: string; options?: SendPromptOptions };
+				saved: { files: FileUIPart[]; text: string; options?: SendPromptOptions };
 			}) => {
 				params.startCountdown(errorMessageId);
 				retryTimerRef.current = setTimeout(async () => {
@@ -927,6 +931,7 @@ export function RovoChatProvider({
 					activeQueuedPrompt
 				) {
 					const saved = {
+						files: activeQueuedPrompt.files,
 						text: activeQueuedPrompt.text,
 						options: activeQueuedPrompt.options,
 					};
@@ -959,6 +964,7 @@ export function RovoChatProvider({
 				) {
 					startSubmitPending(Date.now());
 					const saved = {
+						files: activeQueuedPrompt.files,
 						text: activeQueuedPrompt.text,
 						options: activeQueuedPrompt.options,
 					};
@@ -1502,6 +1508,7 @@ export function RovoChatProvider({
 	const sendChatMessage = useCallback(
 		async (promptItem: QueuedPromptItem) => {
 			lastPromptRef.current = {
+				files: promptItem.files,
 				text: promptItem.text,
 				options: promptItem.options,
 			};
@@ -1512,10 +1519,11 @@ export function RovoChatProvider({
 				await stop();
 			}
 
-			await ensureCompactThread(promptItem.text);
+			await ensureCompactThread(promptItem.text || promptItem.files[0]?.filename || "New chat");
 			void refreshThreads();
 
 			const messagePayload = {
+				files: promptItem.files,
 				text: promptItem.text,
 				metadata: promptItem.options?.messageMetadata,
 			};
@@ -1662,9 +1670,10 @@ export function RovoChatProvider({
 	}, [activePrompt]);
 
 	const sendPrompt = useCallback(
-		async (prompt: string, options?: SendPromptOptions) => {
+		async (prompt: string, options?: SendPromptOptions, files: ReadonlyArray<FileUIPart> = []) => {
 			const trimmedPrompt = prompt.trim();
-			if (!trimmedPrompt) {
+			const promptFiles = [...files];
+			if (!trimmedPrompt && promptFiles.length === 0) {
 				return;
 			}
 			const resolvedOptions = resolveWorkItemReportPromptOptions(
@@ -1693,6 +1702,7 @@ export function RovoChatProvider({
 				...prev,
 				{
 					id,
+					files: promptFiles,
 					text: trimmedPrompt,
 					options: resolvedOptions,
 					createdAt: Date.now(),
@@ -1751,7 +1761,11 @@ export function RovoChatProvider({
 			setActivePrompt(null);
 			shouldFinalizeActivePromptRef.current = false;
 			hasTurnCompleteSignalRef.current = false;
+			const files = message.parts.filter(
+				(part): part is FileUIPart => part.type === "file"
+			);
 			lastPromptRef.current = {
+				files,
 				text: trimmedText,
 				options: resolvedOptions,
 			};
@@ -1765,10 +1779,11 @@ export function RovoChatProvider({
 				await waitForStreamStop();
 			}
 
-			await ensureCompactThread(trimmedText);
+			await ensureCompactThread(trimmedText || files[0]?.filename || "New chat");
 			void refreshThreads();
 
 			const messagePayload = {
+				files,
 				text: trimmedText,
 				metadata: message.metadata,
 				messageId,

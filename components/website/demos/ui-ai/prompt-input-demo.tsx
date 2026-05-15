@@ -170,10 +170,11 @@ export function PromptInputDemoChatComposer() {
 										render={<PromptInputPreferencesButton aria-label="Customize" />}
 									/>
 									<PopoverContent side="top" align="start" sideOffset={8} className="w-auto p-2">
-										<PopoverTitle className="sr-only">Customize response</PopoverTitle>
+										<PopoverTitle className="sr-only">Customize sources</PopoverTitle>
 										<CustomizeMenu
 											selectedReasoning={selectedReasoning}
 											onReasoningChange={setSelectedReasoning}
+											showReasoning={false}
 											webResultsEnabled={webResultsEnabled}
 											onWebResultsChange={setWebResultsEnabled}
 											companyKnowledgeEnabled={companyKnowledgeEnabled}

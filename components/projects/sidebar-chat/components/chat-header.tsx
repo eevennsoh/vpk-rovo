@@ -18,7 +18,6 @@ import {
 import { ChatHistoryButton } from "./chat-history-button";
 import AppIcon from "@atlaskit/icon/core/app";
 import BugIcon from "@atlaskit/icon/core/bug";
-import ChevronDownIcon from "@atlaskit/icon/core/chevron-down";
 import CrossIcon from "@atlaskit/icon/core/cross";
 import DeleteIcon from "@atlaskit/icon/core/delete";
 import EditIcon from "@atlaskit/icon/core/edit";
@@ -57,18 +56,8 @@ export default function ChatHeader({
 				<div className="flex items-center gap-1">
 					<ChatHistoryButton isHistoryOpen={isHistoryOpen} onToggle={onHistoryToggle} />
 					<div className="flex items-center gap-2">
-						<Image
-							src="/1p/rovo.svg"
-							alt="Rovo logo"
-							width={16}
-							height={16}
-						/>
-						<div className="flex items-center gap-1">
-							<span className="text-sm font-semibold text-text">
-								Rovo
-							</span>
-							<ChevronDownIcon label="Expand menu" size="small" />
-						</div>
+						<Image src="/1p/rovo.svg" alt="" width={16} height={16} aria-hidden />
+						<span className="text-sm font-semibold text-text">Rovo</span>
 					</div>
 				</div>
 

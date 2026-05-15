@@ -166,12 +166,15 @@ function DropdownMenuLabel({
   );
 }
 
-interface DropdownMenuItemProps extends MenuPrimitive.Item.Props {
+type DropdownMenuItemClickHandler = NonNullable<MenuPrimitive.Item.Props["onClick"]>;
+
+interface DropdownMenuItemProps extends Omit<MenuPrimitive.Item.Props, "onSelect"> {
   inset?: boolean;
   variant?: "default" | "destructive";
   elemBefore?: ReactNode;
   elemAfter?: ReactNode;
   description?: string;
+  onSelect?: DropdownMenuItemClickHandler;
 }
 
 function DropdownMenuItem({
@@ -182,17 +185,34 @@ function DropdownMenuItem({
   elemAfter,
   description,
   children,
+  onClick,
+  onSelect,
   ...props
 }: Readonly<DropdownMenuItemProps>) {
+  const handleClick: DropdownMenuItemClickHandler = (event) => {
+    onClick?.(event);
+
+    if (event.baseUIHandlerPrevented) {
+      return;
+    }
+
+    onSelect?.(event);
+
+    if (event.defaultPrevented) {
+      event.preventBaseUIHandler();
+    }
+  };
+
   return (
     <MenuPrimitive.Item
       data-slot="dropdown-menu-item"
       data-inset={inset}
       data-variant={variant}
       className={cn(
-        "group/dropdown-menu-item data-[highlighted]:bg-bg-neutral-subtle-hovered data-[highlighted]:text-text data-[variant=destructive]:text-text-danger data-[variant=destructive]:data-[highlighted]:bg-bg-danger-subtler-hovered data-disabled:pointer-events-none data-disabled:text-text-disabled relative flex w-full cursor-default items-start gap-3 rounded-sm px-3 py-2 text-[13px] leading-5 outline-none select-none active:bg-bg-neutral-subtle-pressed data-[variant=destructive]:active:bg-bg-danger-subtler-pressed data-inset:pl-8 [&_svg]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg]:text-icon-subtle data-[variant=destructive]:[&_svg]:text-icon-danger",
+        "group/dropdown-menu-item data-[highlighted]:bg-bg-neutral-subtle-hovered data-[highlighted]:text-text data-[variant=destructive]:text-text-danger data-[variant=destructive]:data-[highlighted]:bg-bg-danger-subtler-hovered data-disabled:pointer-events-none data-disabled:text-text-disabled relative flex w-full cursor-default items-center gap-3 rounded-sm px-3 py-2 text-[13px] leading-5 outline-none select-none active:bg-bg-neutral-subtle-pressed data-[variant=destructive]:active:bg-bg-danger-subtler-pressed data-inset:pl-8 [&_svg]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg]:text-icon-subtle data-[variant=destructive]:[&_svg]:text-icon-danger",
         className,
       )}
+      onClick={handleClick}
       {...props}
     >
       {elemBefore ? (

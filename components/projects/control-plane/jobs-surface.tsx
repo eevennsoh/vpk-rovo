@@ -308,13 +308,11 @@ export function JobsSurfacePage() {
 		<ControlPlanePageShell
 			description="Manage Hermes-backed jobs and scheduled work through the local VPK backend."
 			title="Jobs"
+			showHeader={false}
 			actions={
-				<div className="flex items-center gap-2">
-					<Badge variant="neutral">{summary.total} jobs</Badge>
-					<Button variant="outline" onClick={handleCreateJob}>
-						New job
-					</Button>
-				</div>
+				<Button variant="outline" onClick={handleCreateJob}>
+					New job
+				</Button>
 			}
 		>
 			<div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">

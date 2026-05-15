@@ -11,6 +11,8 @@ const {
 } = require("./control-plane-utils.ts");
 
 const {
+	CONTROL_PLANE_HEADER_SURFACES,
+	CONTROL_PLANE_SIDEBAR_SURFACES,
 	CONTROL_PLANE_SURFACES,
 	INITIAL_CONTROL_PLANE_JOBS,
 	INITIAL_CONTROL_PLANE_SKILLS,
@@ -39,6 +41,28 @@ test("findSkillByRouteSegments resolves a skill by category and slug", () => {
 test("control-plane surfaces omit the retired standalone wiki route", () => {
 	assert.equal(
 		CONTROL_PLANE_SURFACES.some((surface) => surface.href === "/rovo/wiki" || surface.label === "Wiki"),
+		false,
+	);
+});
+
+test("skills surface lives in the header settings menu instead of the sidebar", () => {
+	assert.equal(
+		CONTROL_PLANE_HEADER_SURFACES.some((surface) => surface.label === "Skills"),
+		true,
+	);
+	assert.equal(
+		CONTROL_PLANE_SIDEBAR_SURFACES.some((surface) => surface.label === "Skills"),
+		false,
+	);
+});
+
+test("jobs surface lives in the header settings menu instead of the synced rovo sidebar", () => {
+	assert.equal(
+		CONTROL_PLANE_HEADER_SURFACES.some((surface) => surface.label === "Jobs" && surface.href === "/rovo/jobs"),
+		true,
+	);
+	assert.equal(
+		CONTROL_PLANE_SIDEBAR_SURFACES.some((surface) => surface.href === "/rovo/jobs"),
 		false,
 	);
 });

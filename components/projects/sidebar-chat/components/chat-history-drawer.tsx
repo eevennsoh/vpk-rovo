@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactElement, type ReactNode } from "react";
+import { useEffect, useState, type ReactElement } from "react";
 import { formatDistanceToNowStrict } from "date-fns";
 import AddIcon from "@atlaskit/icon/core/add";
 import AiAgentIcon from "@atlaskit/icon/core/ai-agent";
@@ -12,6 +12,16 @@ import FolderClosedIcon from "@atlaskit/icon/core/folder-closed";
 import ShowMoreHorizontalIcon from "@atlaskit/icon/core/show-more-horizontal";
 import HistoryIcon from "@atlaskit/icon-lab/core/history";
 import { useRovoChat } from "@/app/contexts";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
 	DropdownMenu,
@@ -28,79 +38,152 @@ import {
 	SheetHeader,
 	SheetTitle,
 } from "@/components/ui/sheet";
+import { SidebarNavItem, SidebarNavItemAction, SidebarNavItemCount } from "@/components/ui/sidebar-nav-item";
 import { Spinner } from "@/components/ui/spinner";
+import { ChevronDownIcon } from "@/components/ui/vpk-icons";
 import { shouldShowRovoAppSidebarRunIndicator } from "@/components/projects/rovo/lib/rovo-app-sidebar-run-indicator";
 import type { RovoAppThread } from "@/lib/rovo-app-types";
 import { cn } from "@/lib/utils";
 
 const DRAWER_ID = "rovo-chat-history-drawer";
+const CHATS_REGION_ID = "rovo-chat-history-chats-list";
 
 interface ChatHistoryDrawerProps {
 	active?: boolean;
 }
 
-function TopNavIconSlot({ children }: Readonly<{ children: ReactNode }>) {
-	return (
-		<span className="flex size-6 shrink-0 items-center justify-center text-icon-subtle">
-			{children}
-		</span>
-	);
+type MaybePromise<T> = T | Promise<T>;
+
+export interface ControlledChatHistoryDrawerProps {
+	active?: boolean;
+	activeThreadId: string | null;
+	cancelThreadRun: (threadId: string) => Promise<void>;
+	closeHistory: () => void;
+	deleteThread: (threadId: string) => Promise<void>;
+	isHistoryOpen: boolean;
+	onNewChat: () => MaybePromise<void>;
+	selectThread: (threadId: string) => Promise<void>;
+	threads: ReadonlyArray<RovoAppThread>;
+	threadsLoaded: boolean;
 }
 
-function TopNavStaticRow({
-	children,
-	icon,
-}: Readonly<{
-	children: ReactNode;
-	icon: ReactNode;
-}>) {
-	return (
-		<div className="flex min-h-8 w-full items-center gap-1 rounded-md p-1 text-text-subtle">
-			<TopNavIconSlot>{icon}</TopNavIconSlot>
-			<span className="min-w-0 truncate pl-0.5 text-sm font-medium leading-5">
-				{children}
-			</span>
-		</div>
-	);
+export interface ControlledChatHistoryPanelProps {
+	activeThreadId: string | null;
+	cancelThreadRun: (threadId: string) => Promise<void>;
+	className?: string;
+	deleteThread: (threadId: string) => Promise<void>;
+	onNewChat: () => MaybePromise<void>;
+	selectThread: (threadId: string) => Promise<void>;
+	showNavigation?: boolean;
+	threads: ReadonlyArray<RovoAppThread>;
+	threadsLoaded: boolean;
 }
 
-function ChatHistoryNewChatRow({
-	onCreate,
-}: Readonly<{
-	onCreate: () => void;
-}>) {
+function HoverAddAction({ label, onClick }: Readonly<{ label: string; onClick?: () => void }>) {
 	return (
-		<button
-			type="button"
-			className="relative flex min-h-8 w-full items-center gap-1 rounded-md bg-bg-selected py-1 pr-9 pl-1 text-left text-text-selected outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-border-focused"
-			onClick={onCreate}
+		<SidebarNavItemAction
+			aria-label={label}
+			onClick={onClick}
+			className="opacity-0 transition-opacity duration-fast ease-out group-hover/sidebar-nav-item:opacity-100 focus-visible:opacity-100"
 		>
-			<TopNavIconSlot>
-				<EditIcon label="" />
-			</TopNavIconSlot>
-			<span className="min-w-0 truncate pl-0.5 text-sm font-medium leading-5">
-				New chat
-			</span>
-			<span aria-hidden className="absolute left-0 top-1/2 h-3 w-0.5 -translate-y-1/2 bg-current" />
-		</button>
+			<AddIcon label="" />
+		</SidebarNavItemAction>
 	);
 }
 
-function ChatHistorySectionHeading() {
+function ChatHistorySectionHeading({
+	chatCount,
+	chatsOpen,
+	controlsId,
+	onCreateFolder,
+	onRequestDeleteAll,
+	onToggle,
+}: Readonly<{
+	chatCount: number;
+	chatsOpen: boolean;
+	controlsId: string;
+	onCreateFolder?: () => void;
+	onRequestDeleteAll?: () => void;
+	onToggle: () => void;
+}>) {
+	const chatLabel = chatCount === 1 ? "chat" : "chats";
+
 	return (
-		<div className="flex h-8 shrink-0 items-center justify-between px-1.5 py-2">
-			<div className="truncate text-xs font-semibold leading-4 text-text-subtlest">
-				Chats
-			</div>
-			<div aria-hidden className="flex shrink-0 items-center gap-1 text-icon-subtle">
-				<span className="flex size-6 items-center justify-center">
+		<div className="group/section-heading flex h-8 shrink-0 items-center justify-between gap-1 py-px">
+			<button
+				type="button"
+				className="group/section-toggle flex h-full min-w-0 flex-1 items-center justify-start rounded-md px-1.5 text-left text-xs font-semibold leading-4 text-text-subtlest outline-hidden hover:bg-bg-neutral-subtle focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-border-focused"
+				aria-expanded={chatsOpen}
+				aria-controls={controlsId}
+				onClick={onToggle}
+			>
+				<span className="inline-flex min-w-0 max-w-full items-center gap-1">
+					<span className="truncate">Chats</span>
+					<span aria-hidden className="inline-flex shrink-0 items-center self-center opacity-0 transition-opacity duration-medium ease-out group-hover/section-toggle:opacity-100 group-focus-visible/section-toggle:opacity-100">
+						<ChevronDownIcon className={cn("size-3 text-icon-subtlest transition-transform duration-medium ease-out", chatsOpen ? "rotate-0" : "-rotate-90")} size={12} />
+					</span>
+				</span>
+			</button>
+			<div className="flex shrink-0 items-center gap-0.5">
+				{chatCount > 0 ? (
+					<button
+						type="button"
+						aria-label={`Delete all ${chatLabel}`}
+						onClick={onRequestDeleteAll}
+						className="inline-flex size-6 shrink-0 items-center justify-center rounded-md text-icon-subtle opacity-0 outline-none transition-[opacity,background-color] duration-fast ease-out group-hover/section-heading:opacity-100 hover:bg-bg-neutral-subtle-hovered active:bg-bg-neutral-subtle-pressed focus-visible:opacity-100 focus-visible:ring-3 focus-visible:ring-ring/50"
+					>
+						<DeleteIcon label="" size="small" />
+					</button>
+				) : null}
+				<button
+					type="button"
+					aria-label="New folder"
+					onClick={onCreateFolder}
+					className="inline-flex size-6 shrink-0 items-center justify-center rounded-md text-icon-subtle outline-none transition-colors duration-fast ease-out hover:bg-bg-neutral-subtle-hovered active:bg-bg-neutral-subtle-pressed focus-visible:ring-3 focus-visible:ring-ring/50"
+				>
 					<FolderClosedIcon label="" size="small" />
-				</span>
-				<span className="flex size-6 items-center justify-center">
-					<AddIcon label="" size="small" />
-				</span>
+				</button>
 			</div>
 		</div>
+	);
+}
+
+function ChatHistoryDeleteAllDialog({
+	chatCount,
+	isDeleting,
+	onConfirm,
+	onOpenChange,
+	open,
+}: Readonly<{
+	chatCount: number;
+	isDeleting: boolean;
+	onConfirm: () => Promise<void>;
+	onOpenChange: (open: boolean) => void;
+	open: boolean;
+}>) {
+	const chatLabel = chatCount === 1 ? "chat" : "chats";
+
+	return (
+		<AlertDialog open={open} onOpenChange={onOpenChange}>
+			<AlertDialogContent>
+				<AlertDialogHeader>
+					<AlertDialogTitle>{`Delete ${chatCount} ${chatLabel}?`}</AlertDialogTitle>
+					<AlertDialogDescription>
+						This will permanently delete all your Rovo chats. This action cannot be undone.
+					</AlertDialogDescription>
+				</AlertDialogHeader>
+				<AlertDialogFooter>
+					<AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+					<AlertDialogAction
+						variant="destructive"
+						onClick={() => void onConfirm()}
+						isLoading={isDeleting}
+					>
+						Delete all
+					</AlertDialogAction>
+				</AlertDialogFooter>
+			</AlertDialogContent>
+		</AlertDialog>
 	);
 }
 
@@ -123,7 +206,7 @@ function ChatHistoryThreadRow({
 	return (
 		<div
 			className={cn(
-				"group relative rounded-lg",
+				"group/chat-history-thread relative rounded-lg",
 				isActive ? "bg-bg-selected text-text-selected" : "text-text hover:bg-bg-neutral",
 			)}
 		>
@@ -149,7 +232,7 @@ function ChatHistoryThreadRow({
 					render={
 						<Button
 							aria-label={`More actions for ${thread.title}`}
-							className="absolute top-1/2 right-1.5 size-6 -translate-y-1/2 opacity-0 transition-opacity duration-normal ease-out group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
+							className="absolute top-1/2 right-1.5 size-6 -translate-y-1/2 opacity-0 transition-opacity duration-normal ease-out group-hover/chat-history-thread:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
 							size="icon"
 							variant="ghost"
 							onClick={(event) => event.stopPropagation()}
@@ -178,10 +261,289 @@ function ChatHistoryThreadRow({
 	);
 }
 
+function ChatHistoryPanelView({
+	activeThreadId,
+	cancelThreadRun,
+	className,
+	deleteThread,
+	isChatsOpen,
+	onNewChat,
+	onRequestDeleteAll,
+	onToggleChats,
+	selectThread,
+	showNavigation = true,
+	threads,
+	threadsLoaded,
+}: Readonly<ControlledChatHistoryPanelProps & {
+	isChatsOpen: boolean;
+	onRequestDeleteAll: () => void;
+	onToggleChats: () => void;
+}>): ReactElement {
+	const handleNewChat = () => {
+		void onNewChat();
+	};
+
+	const handleSelectThread = async (threadId: string) => {
+		await selectThread(threadId);
+	};
+
+	return (
+		<div className={cn("flex min-h-0 flex-1 flex-col overflow-hidden", className)}>
+			{showNavigation ? (
+				<div className="flex shrink-0 flex-col">
+					<SidebarNavItem
+						label="New chat"
+						leading={<EditIcon label="" />}
+						leadingSize="medium"
+						isSelected
+						meta={
+							<SidebarNavItemCount className="pointer-events-auto min-w-0 rounded-xs px-1 font-normal text-text hover:bg-bg-neutral active:bg-bg-neutral group-data-[selected=true]/sidebar-nav-item:bg-transparent">
+								⌘⇧O
+							</SidebarNavItemCount>
+						}
+						onClick={handleNewChat}
+					/>
+					<SidebarNavItem
+						label="Tasks"
+						leading={<CheckCircleIcon label="" />}
+						leadingSize="medium"
+						actions={<HoverAddAction label="New task" />}
+					/>
+					<SidebarNavItem
+						label="Agents"
+						leading={<AiAgentIcon label="" />}
+						leadingSize="medium"
+						actions={<HoverAddAction label="New agent" />}
+					/>
+					<SidebarNavItem
+						label="Chats"
+						leading={<HistoryIcon label="" />}
+						leadingSize="medium"
+						actions={<HoverAddAction label="New chat" onClick={handleNewChat} />}
+					/>
+					<div className="h-3 shrink-0" aria-hidden />
+				</div>
+			) : null}
+			<div className="flex shrink-0 flex-col">
+				<ChatHistorySectionHeading
+					chatCount={threads.length}
+					chatsOpen={isChatsOpen}
+					controlsId={CHATS_REGION_ID}
+					onRequestDeleteAll={onRequestDeleteAll}
+					onToggle={onToggleChats}
+				/>
+			</div>
+			<div
+				id={CHATS_REGION_ID}
+				role="region"
+				aria-label="Chats"
+				className={cn("min-h-0 flex-1 overflow-y-auto", !isChatsOpen && "hidden")}
+			>
+				{!threadsLoaded ? (
+					<div className="flex h-24 items-center justify-center text-text-subtle">
+						<Spinner size="sm" aria-label="Loading chat history" />
+					</div>
+				) : threads.length === 0 ? (
+					<div className="rounded-lg border border-border px-3 py-4 text-sm text-text-subtle">
+						No recent chats yet.
+					</div>
+				) : (
+					<div className="flex flex-col">
+						{threads.map((thread) => (
+							<ChatHistoryThreadRow
+								key={thread.id}
+								activeThreadId={activeThreadId}
+								onCancelThreadRun={cancelThreadRun}
+								onDeleteThread={deleteThread}
+								onSelectThread={handleSelectThread}
+								thread={thread}
+							/>
+						))}
+					</div>
+				)}
+			</div>
+		</div>
+	);
+}
+
+function useChatHistoryPanelState({
+	deleteThread,
+	threads,
+}: Readonly<{
+	deleteThread: (threadId: string) => Promise<void>;
+	threads: ReadonlyArray<RovoAppThread>;
+}>) {
+	const [isDeleteAllConfirmOpen, setIsDeleteAllConfirmOpen] = useState(false);
+	const [isDeletingAll, setIsDeletingAll] = useState(false);
+	const [isChatsOpen, setIsChatsOpen] = useState(true);
+
+	const handleDeleteAllConfirm = async () => {
+		if (threads.length === 0) {
+			setIsDeleteAllConfirmOpen(false);
+			return;
+		}
+		setIsDeletingAll(true);
+		try {
+			await Promise.all(threads.map((thread) => deleteThread(thread.id)));
+		} finally {
+			setIsDeletingAll(false);
+			setIsDeleteAllConfirmOpen(false);
+		}
+	};
+
+	const handleChatsToggle = () => {
+		setIsChatsOpen((open) => !open);
+	};
+
+	return {
+		handleChatsToggle,
+		handleDeleteAllConfirm,
+		isChatsOpen,
+		isDeleteAllConfirmOpen,
+		isDeletingAll,
+		setIsDeleteAllConfirmOpen,
+	};
+}
+
+export function ControlledChatHistoryPanel(props: Readonly<ControlledChatHistoryPanelProps>): ReactElement {
+	const panelState = useChatHistoryPanelState({
+		deleteThread: props.deleteThread,
+		threads: props.threads,
+	});
+
+	return (
+		<>
+			<ChatHistoryPanelView
+				{...props}
+				isChatsOpen={panelState.isChatsOpen}
+				onRequestDeleteAll={() => panelState.setIsDeleteAllConfirmOpen(true)}
+				onToggleChats={panelState.handleChatsToggle}
+			/>
+			<ChatHistoryDeleteAllDialog
+				chatCount={props.threads.length}
+				isDeleting={panelState.isDeletingAll}
+				onConfirm={panelState.handleDeleteAllConfirm}
+				onOpenChange={panelState.setIsDeleteAllConfirmOpen}
+				open={panelState.isDeleteAllConfirmOpen}
+			/>
+		</>
+	);
+}
+
+export function ControlledChatHistoryDrawer({
+	active = true,
+	activeThreadId,
+	cancelThreadRun,
+	closeHistory,
+	deleteThread,
+	isHistoryOpen,
+	onNewChat,
+	selectThread,
+	threads,
+	threadsLoaded,
+}: Readonly<ControlledChatHistoryDrawerProps>): ReactElement | null {
+	const [portalContainer, setPortalContainer] = useState<HTMLDivElement | null>(null);
+	const [shouldRenderSheet, setShouldRenderSheet] = useState(isHistoryOpen);
+	const panelState = useChatHistoryPanelState({ deleteThread, threads });
+
+	useEffect(() => {
+		if (active && isHistoryOpen) {
+			setShouldRenderSheet(true);
+		}
+	}, [active, isHistoryOpen]);
+
+	const handleOpenChange = (open: boolean) => {
+		if (!open || !active) {
+			closeHistory();
+		}
+	};
+
+	const handleOpenChangeComplete = (open: boolean) => {
+		if (!open) {
+			setShouldRenderSheet(false);
+		}
+	};
+
+	const handleNewChat = () => {
+		closeHistory();
+		void onNewChat();
+	};
+
+	const handleSelectThread = async (threadId: string) => {
+		closeHistory();
+		await selectThread(threadId);
+	};
+
+	if (!active || (!isHistoryOpen && !shouldRenderSheet)) {
+		return null;
+	}
+
+	return (
+		<div ref={setPortalContainer} className="absolute inset-0 z-20" data-chat-history-drawer-layer="">
+			{portalContainer ? (
+				<>
+					<Sheet
+						open={isHistoryOpen}
+						onOpenChange={handleOpenChange}
+						onOpenChangeComplete={handleOpenChangeComplete}
+					>
+						<SheetContent
+							id={DRAWER_ID}
+							aria-describedby="rovo-chat-history-description"
+							aria-labelledby="rovo-chat-history-title"
+							className="z-30 !w-80 max-w-[calc(100%_-_40px)] gap-0 overflow-hidden border-r border-border bg-surface-overlay p-0 shadow-xl"
+							contained
+							overlayClassName="z-20"
+							portalContainer={portalContainer}
+							side="left"
+							showCloseButton={false}
+						>
+							<SheetHeader className="sr-only">
+								<SheetTitle id="rovo-chat-history-title">Chat history</SheetTitle>
+								<SheetDescription id="rovo-chat-history-description">
+									Recent Rovo threads
+								</SheetDescription>
+							</SheetHeader>
+							<SheetClose
+								aria-label="Close history"
+								className={cn(
+									buttonVariants({ variant: "ghost", size: "icon", shape: "circle" }),
+									"absolute top-3 left-3 z-10",
+								)}
+							>
+								<CrossIcon label="" size="small" />
+							</SheetClose>
+							<ChatHistoryPanelView
+								activeThreadId={activeThreadId}
+								cancelThreadRun={cancelThreadRun}
+								className="p-3 pt-14"
+								deleteThread={deleteThread}
+								isChatsOpen={panelState.isChatsOpen}
+								onNewChat={handleNewChat}
+								onRequestDeleteAll={() => panelState.setIsDeleteAllConfirmOpen(true)}
+								onToggleChats={panelState.handleChatsToggle}
+								selectThread={handleSelectThread}
+								threads={threads}
+								threadsLoaded={threadsLoaded}
+							/>
+						</SheetContent>
+					</Sheet>
+					<ChatHistoryDeleteAllDialog
+						chatCount={threads.length}
+						isDeleting={panelState.isDeletingAll}
+						onConfirm={panelState.handleDeleteAllConfirm}
+						onOpenChange={panelState.setIsDeleteAllConfirmOpen}
+						open={panelState.isDeleteAllConfirmOpen}
+					/>
+				</>
+			) : null}
+		</div>
+	);
+}
+
 export function ChatHistoryDrawer({
 	active = true,
 }: Readonly<ChatHistoryDrawerProps>): ReactElement | null {
-	const [portalContainer, setPortalContainer] = useState<HTMLDivElement | null>(null);
 	const {
 		activeThreadId,
 		cancelThreadRun,
@@ -195,94 +557,23 @@ export function ChatHistoryDrawer({
 		threadsLoaded,
 	} = useRovoChat();
 
-	const handleOpenChange = (open: boolean) => {
-		if (!open || !active) {
-			closeHistory();
-		}
-	};
-
 	const handleNewChat = () => {
 		resetChat();
-		closeHistory();
 		void refreshThreads();
 	};
 
-	const handleSelectThread = async (threadId: string) => {
-		closeHistory();
-		await selectThread(threadId);
-	};
-
-	if (!active || !isHistoryOpen) {
-		return null;
-	}
-
 	return (
-		<div ref={setPortalContainer} className="absolute inset-0 z-20" data-chat-history-drawer-layer="">
-			{portalContainer ? (
-				<Sheet open={isHistoryOpen} onOpenChange={handleOpenChange}>
-					<SheetContent
-						id={DRAWER_ID}
-						aria-describedby="rovo-chat-history-description"
-						aria-labelledby="rovo-chat-history-title"
-						className="z-30 !w-80 max-w-[calc(100%_-_40px)] gap-0 overflow-hidden rounded-r-xl border-r border-border bg-surface-overlay p-0 shadow-xl"
-						contained
-						overlayClassName="z-20"
-						portalContainer={portalContainer}
-						side="left"
-						showCloseButton={false}
-					>
-						<SheetHeader className="sr-only">
-							<SheetTitle id="rovo-chat-history-title">Chat history</SheetTitle>
-							<SheetDescription id="rovo-chat-history-description">
-								Recent Rovo threads
-							</SheetDescription>
-						</SheetHeader>
-						<SheetClose
-							aria-label="Close history"
-							className={cn(
-								buttonVariants({ variant: "ghost", size: "icon" }),
-								"absolute top-3 left-3 z-10",
-							)}
-						>
-							<CrossIcon label="" size="small" />
-						</SheetClose>
-						<div className="flex min-h-0 flex-1 flex-col overflow-hidden p-3 pt-14">
-							<div className="flex shrink-0 flex-col">
-								<ChatHistoryNewChatRow onCreate={handleNewChat} />
-								<TopNavStaticRow icon={<CheckCircleIcon label="" />}>Tasks</TopNavStaticRow>
-								<TopNavStaticRow icon={<AiAgentIcon label="" />}>Agents</TopNavStaticRow>
-								<TopNavStaticRow icon={<HistoryIcon label="" />}>Chats</TopNavStaticRow>
-								<div className="h-3 shrink-0" aria-hidden />
-								<ChatHistorySectionHeading />
-							</div>
-							<div className="min-h-0 flex-1 overflow-y-auto">
-								{!threadsLoaded ? (
-									<div className="flex h-24 items-center justify-center text-text-subtle">
-										<Spinner size="sm" aria-label="Loading chat history" />
-									</div>
-								) : threads.length === 0 ? (
-									<div className="rounded-lg border border-border px-3 py-4 text-sm text-text-subtle">
-										No recent chats yet.
-									</div>
-								) : (
-									<div className="flex flex-col">
-										{threads.map((thread) => (
-											<ChatHistoryThreadRow
-												key={thread.id}
-												activeThreadId={activeThreadId}
-												onCancelThreadRun={cancelThreadRun}
-												onDeleteThread={deleteThread}
-												onSelectThread={handleSelectThread}
-												thread={thread}
-											/>
-										))}
-									</div>
-								)}
-							</div>
-						</div>
-					</SheetContent>
-				</Sheet>
-			) : null}
-		</div>
+		<ControlledChatHistoryDrawer
+			active={active}
+			activeThreadId={activeThreadId}
+			cancelThreadRun={cancelThreadRun}
+			closeHistory={closeHistory}
+			deleteThread={deleteThread}
+			isHistoryOpen={isHistoryOpen}
+			onNewChat={handleNewChat}
+			selectThread={selectThread}
+			threads={threads}
+			threadsLoaded={threadsLoaded}
+		/>
 	);
 }

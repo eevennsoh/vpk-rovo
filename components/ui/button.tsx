@@ -40,10 +40,15 @@ const buttonVariants = cva(
 					"size-7 rounded-md in-data-[slot=button-group]:rounded-md",
 				"icon-lg": "size-9",
 			},
+			shape: {
+				square: "",
+				circle: "rounded-full!",
+			},
 		},
 		defaultVariants: {
 			variant: "default",
 			size: "default",
+			shape: "square",
 		},
 	}
 )
@@ -58,6 +63,7 @@ function Button({
 	className,
 	variant,
 	size,
+	shape,
 	isLoading = false,
 	children,
 	...props
@@ -67,7 +73,7 @@ function Button({
 			data-slot="button"
 			aria-busy={isLoading || undefined}
 			className={cn(
-				buttonVariants({ variant, size }),
+				buttonVariants({ variant, size, shape }),
 				isLoading && "pointer-events-none opacity-(--opacity-loading)",
 				className
 			)}

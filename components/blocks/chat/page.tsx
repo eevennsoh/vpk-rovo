@@ -6,6 +6,7 @@ import ChatHeader from "./components/chat-header";
 import ChatGreeting from "./components/chat-greeting";
 import MessageBubble from "./components/message-bubble";
 import CustomizeMenu from "@/components/blocks/shared-ui/customize-menu";
+import { DEFAULT_REASONING_OPTION_ID } from "@/components/blocks/shared-ui/data/customize-menu-data";
 import {
 	PromptInput,
 	PromptInputActionMenu,
@@ -49,7 +50,7 @@ export default function ChatPanel({ onClose }: Readonly<ChatPanelProps>): React.
 	const scrollSpacerRef = useRef<HTMLDivElement>(null);
 	const hasInitializedScrollRef = useRef(false);
 	const previousLatestUserMessageIdRef = useRef<string | null>(null);
-	const [selectedReasoning, setSelectedReasoning] = useState("deep-research");
+	const [selectedReasoning, setSelectedReasoning] = useState(DEFAULT_REASONING_OPTION_ID);
 	const [webResultsEnabled, setWebResultsEnabled] = useState(false);
 	const [companyKnowledgeEnabled, setCompanyKnowledgeEnabled] = useState(true);
 	const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
@@ -249,10 +250,11 @@ export default function ChatPanel({ onClose }: Readonly<ChatPanelProps>): React.
 										render={<PromptInputPreferencesButton aria-label="Customize" />}
 									/>
 									<PopoverContent side="top" align="start" sideOffset={8} className="w-auto p-2">
-										<PopoverTitle className="sr-only">Customize response</PopoverTitle>
+									<PopoverTitle className="sr-only">Customize sources</PopoverTitle>
 										<CustomizeMenu
 											selectedReasoning={selectedReasoning}
 											onReasoningChange={setSelectedReasoning}
+											showReasoning={false}
 											webResultsEnabled={webResultsEnabled}
 											onWebResultsChange={setWebResultsEnabled}
 											companyKnowledgeEnabled={companyKnowledgeEnabled}

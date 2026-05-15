@@ -1,10 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import CustomizeMenu from "@/components/blocks/shared-ui/customize-menu";
-import { REASONING_OPTIONS } from "@/components/blocks/shared-ui/data/customize-menu-data";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,15 +14,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Icon } from "@/components/ui/icon";
 import { DatabaseIcon, SettingsIcon } from "@/components/ui/vpk-icons";
-import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
-import ChevronDownIcon from "@atlaskit/icon/core/chevron-down";
 import EditIcon from "@atlaskit/icon/core/edit";
-import RandomizeIcon from "@atlaskit/icon-lab/core/randomize";
+import ScorecardIcon from "@atlaskit/icon/core/scorecard";
+import SkillIcon from "@atlaskit/icon-lab/core/skill";
 import ShapesIcon from "@atlaskit/icon/core/shapes";
 import ShowMoreHorizontalIcon from "@atlaskit/icon/core/show-more-horizontal";
 import { CONTROL_PLANE_HEADER_SURFACES } from "@/components/projects/control-plane/lib/control-plane-data";
-import { normalizeRuntimeStatusSnapshot } from "@/lib/rovo-runtime-status";
-import type { RuntimeStatusSnapshot } from "@/lib/rovo-runtime-types";
 
 interface ArtifactMenuItem {
 	id: string;
@@ -35,133 +29,62 @@ interface ArtifactMenuItem {
 
 interface RovoAppHeaderProps {
 	artifactMenuItems?: ReadonlyArray<ArtifactMenuItem>;
-	hermesMemoryLabel?: string | null;
-	hermesMemoryHref?: string | null;
 	onNewChat?: () => void;
 	onOpenDocument?: (documentId: string) => void;
 	isArtifactOpen?: boolean;
 }
 
+function getControlPlaneHeaderSurfaceIcon(label: string) {
+	if (label === "Jobs") {
+		return <ScorecardIcon label="" size="medium" />;
+	}
+
+	if (label === "Memories") {
+		return <DatabaseIcon size="medium" />;
+	}
+
+	if (label === "Skills") {
+		return <SkillIcon label="" size="medium" />;
+	}
+
+	return <SettingsIcon size="medium" />;
+}
+
+function RovoAppBrand() {
+	return (
+		<div className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2 text-sm font-medium text-text">
+			<span
+				aria-hidden
+				data-icon="inline-start"
+				className="flex size-4 items-center justify-center"
+			>
+				<Image
+					src="/1p/rovo.svg"
+					alt=""
+					width={16}
+					height={16}
+				/>
+			</span>
+			<span className="font-semibold">Rovo</span>
+		</div>
+	);
+}
+
 export function RovoAppHeader({
 	artifactMenuItems,
-	hermesMemoryLabel = null,
-	hermesMemoryHref = null,
 	onNewChat,
 	onOpenDocument,
 	isArtifactOpen,
 }: Readonly<RovoAppHeaderProps>) {
 	const pathname = usePathname() ?? "";
 	const router = useRouter();
-	const [isChatConfigurationOpen, setIsChatConfigurationOpen] = useState(false);
-	const [selectedReasoning, setSelectedReasoning] = useState("let-rovo-decide");
-	const [webResultsEnabled, setWebResultsEnabled] = useState(false);
-	const [companyKnowledgeEnabled, setCompanyKnowledgeEnabled] = useState(true);
-	const [runtimeStatus, setRuntimeStatus] = useState<RuntimeStatusSnapshot | null>(null);
 	const hasArtifacts = artifactMenuItems && artifactMenuItems.length > 0;
-	const activeReasoningOption = REASONING_OPTIONS.find((option) => option.id === selectedReasoning) ?? REASONING_OPTIONS[0];
-	const reasoningLabel = activeReasoningOption.id === "let-rovo-decide" ? "Auto" : activeReasoningOption.label;
-	const reasoningIcon = activeReasoningOption.id === "let-rovo-decide"
-		? <RandomizeIcon label="" />
-		: activeReasoningOption.icon;
-	const normalizedRuntimeStatus = runtimeStatus
-		? normalizeRuntimeStatusSnapshot(runtimeStatus)
-		: null;
-	const memoryBadge = hermesMemoryLabel ? (
-		hermesMemoryHref ? (
-			<button
-				type="button"
-				className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-				onClick={() => router.push(hermesMemoryHref)}
-			>
-				<Badge variant="information">{hermesMemoryLabel}</Badge>
-			</button>
-		) : (
-			<Badge variant="information">{hermesMemoryLabel}</Badge>
-		)
-	) : null;
-
-	function formatSurfaceStatus(value: string) {
-		return value.replace(/-/gu, " ");
-	}
-
-	useEffect(() => {
-		let cancelled = false;
-
-		async function loadRuntimeStatus() {
-			try {
-				const response = await fetch("/api/status", {
-					method: "GET",
-				});
-				if (!response.ok) {
-					return;
-				}
-				const payload = await response.json();
-				if (!cancelled) {
-					setRuntimeStatus(normalizeRuntimeStatusSnapshot(payload));
-				}
-			} catch {
-				// Ignore transient status errors in the chat header.
-			}
-		}
-
-		void loadRuntimeStatus();
-		const intervalId = window.setInterval(loadRuntimeStatus, 30_000);
-
-		return () => {
-			cancelled = true;
-			window.clearInterval(intervalId);
-		};
-	}, []);
 
 	return (
 		<header className={cn("flex items-center gap-3 px-3 py-3", isArtifactOpen && "border-b border-border")}>
-			<Popover open={isChatConfigurationOpen} onOpenChange={setIsChatConfigurationOpen}>
-				<PopoverTrigger render={<Button type="button" variant="ghost" aria-label="Chat configuration" />}>
-					<Icon
-						aria-hidden
-						data-icon="inline-start"
-						render={reasoningIcon}
-					/>
-					{reasoningLabel}
-					<Icon
-						aria-hidden
-						data-icon="inline-end"
-						render={<ChevronDownIcon label="" size="small" />}
-					/>
-				</PopoverTrigger>
-				<PopoverContent align="start" side="bottom" sideOffset={8} className="w-auto p-2">
-					<PopoverTitle className="sr-only">Customize response</PopoverTitle>
-					<CustomizeMenu
-						selectedReasoning={selectedReasoning}
-						onReasoningChange={setSelectedReasoning}
-						webResultsEnabled={webResultsEnabled}
-						onWebResultsChange={setWebResultsEnabled}
-						companyKnowledgeEnabled={companyKnowledgeEnabled}
-						onCompanyKnowledgeChange={setCompanyKnowledgeEnabled}
-						onClose={() => setIsChatConfigurationOpen(false)}
-					/>
-				</PopoverContent>
-			</Popover>
+			<RovoAppBrand />
 
 			<div className="min-h-px min-w-px flex-1" />
-
-			{(normalizedRuntimeStatus || hermesMemoryLabel) ? (
-				<div className="hidden items-center gap-2 text-xs md:flex">
-					{normalizedRuntimeStatus ? (
-						<>
-							{memoryBadge}
-							<Badge variant={normalizedRuntimeStatus.surfaces.rovodev.health === "ok" ? "success" : normalizedRuntimeStatus.surfaces.rovodev.health === "degraded" ? "warning" : "danger"}>
-								RovoDev {formatSurfaceStatus(normalizedRuntimeStatus.surfaces.rovodev.status)}
-							</Badge>
-							<Badge variant={normalizedRuntimeStatus.surfaces.hermes.health === "ok" ? "success" : normalizedRuntimeStatus.surfaces.hermes.health === "degraded" ? "warning" : "danger"}>
-								Hermes {formatSurfaceStatus(normalizedRuntimeStatus.surfaces.hermes.status)}
-							</Badge>
-						</>
-					) : memoryBadge ? (
-						memoryBadge
-					) : null}
-				</div>
-			) : null}
 
 			<div className="flex items-center gap-1">
 				{hasArtifacts ? (
@@ -217,16 +140,11 @@ export function RovoAppHeader({
 					>
 						<Icon aria-hidden render={<ShowMoreHorizontalIcon label="" />} />
 					</DropdownMenuTrigger>
-						<DropdownMenuContent align="end">
-							<DropdownMenuGroup>
-								<DropdownMenuLabel>
-									Settings
-								</DropdownMenuLabel>
+					<DropdownMenuContent align="end">
+						<DropdownMenuGroup>
 							{CONTROL_PLANE_HEADER_SURFACES.map((surface) => {
 								const isSelected = pathname === surface.href || pathname.startsWith(`${surface.href}/`);
-								const icon = surface.label === "Memories"
-									? <DatabaseIcon size="medium" />
-									: <SettingsIcon size="medium" />;
+								const icon = getControlPlaneHeaderSurfaceIcon(surface.label);
 
 								return (
 									<DropdownMenuItem

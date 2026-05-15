@@ -72,20 +72,20 @@ export function ModalHeader() {
 			</Breadcrumb>
 
 			<div className="flex items-center gap-2">
-				<Button aria-label="No restrictions" size="icon" variant="secondary">
+				<Button aria-label="No restrictions" size="icon" variant="outline">
 					<LockUnlockedIcon label="" />
 				</Button>
-				<Button className="gap-2" variant="secondary">
+				<Button className="gap-2" variant="outline">
 					<EyeOpenIcon label="" size="small" />
 					1
 				</Button>
-				<Button aria-label="Share" size="icon" variant="secondary">
+				<Button aria-label="Share" size="icon" variant="outline">
 					<ShareIcon label="" />
 				</Button>
-				<Button aria-label="Actions" size="icon" variant="secondary">
+				<Button aria-label="Actions" size="icon" variant="outline">
 					<ShowMoreHorizontalIcon label="" />
 				</Button>
-				<Button aria-label="Close" size="icon" variant="secondary" onClick={meta.onClose}>
+				<Button aria-label="Close" size="icon" variant="outline" onClick={meta.onClose}>
 					<CrossIcon label="" />
 				</Button>
 			</div>
@@ -100,11 +100,11 @@ export function ModalTitle() {
 		<div className="flex flex-col gap-2">
 			<Heading size="large">{meta.workItem.title}</Heading>
 			<div className="flex gap-2">
-				<Button className="gap-2" variant="secondary">
+				<Button className="gap-2" variant="outline">
 					<AddIcon label="" size="small" />
 					Add
 				</Button>
-				<Button className="gap-2" variant="secondary">
+				<Button className="gap-2" variant="outline">
 					<AppsIcon label="" size="small" />
 					Apps
 				</Button>

@@ -94,20 +94,9 @@ const SURFACE_PREVIEW_BUILDERS: Record<
 export function getRovoAppSidebarSurfacePreview({
 	description,
 	label,
-	selected,
 }: Readonly<RovoAppSidebarSurfacePreviewInput>): RovoAppSidebarSurfacePreview | null {
 	if (label === "New chat") {
-		return {
-			description:
-				"Start a fresh conversation and route the next message into a blank thread.",
-			footerLabel: selected ? "Status" : "Shortcut",
-			footerValue: selected ? "Current view" : "⌘⇧O",
-			rows: [
-				{ label: "Thread", value: "Blank conversation" },
-				{ label: "Context", value: "Wiki memory loaded" },
-			],
-			title: "New chat",
-		};
+		return null;
 	}
 
 	if (!(label in SURFACE_PREVIEW_BUILDERS) || !description) {

@@ -50,8 +50,8 @@ export function DetailsAccordion() {
 						aria-label={state.isDetailsOpen ? "Collapse" : "Expand"}
 						aria-expanded={state.isDetailsOpen}
 						size="icon"
-						variant="ghost"
-						className="aria-expanded:bg-transparent aria-expanded:text-text-subtle aria-expanded:border-transparent"
+						variant="outline"
+						className="aria-expanded:bg-bg-neutral-subtle aria-expanded:text-text-subtle aria-expanded:border-border"
 						onClick={actions.toggleDetails}
 					>
 						{state.isDetailsOpen ? <ChevronUpIcon label="" /> : <ChevronDownIcon label="" />}
