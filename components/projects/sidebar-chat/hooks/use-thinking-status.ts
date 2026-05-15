@@ -1,12 +1,11 @@
 import { useMemo } from "react";
 import {
-	getAllDataParts,
 	getMessageReasoningTimestamps,
 	getMessageText,
-	getThinkingToolCallSummaries,
 	hasTurnCompleteSignal,
 	type RovoRenderableUIMessage,
 } from "@/lib/rovo-ui-messages";
+import { collectAssistantThinkingTraceData } from "@/components/projects/shared/lib/assistant-thinking-trace-state";
 import { useDynamicThinkingLabel } from "@/components/projects/shared/hooks/use-dynamic-thinking-label";
 import {
 	useReasoningPhase,
@@ -37,7 +36,7 @@ interface ThinkingStatusResult {
 	resolvedThinkingLabel: string;
 	trimmedReasoningContent: string;
 	hasReasoningContent: boolean;
-	thinkingToolCalls: ReturnType<typeof getThinkingToolCallSummaries>;
+	thinkingToolCalls: ReturnType<typeof collectAssistantThinkingTraceData>["thinkingToolCalls"];
 	hasThinkingToolCalls: boolean;
 	hasThinkingDetails: boolean;
 	allowAutoCollapse: boolean;
@@ -60,26 +59,21 @@ export function useThinkingStatus({
 		hasMessages &&
 		isAssistantMessage &&
 		getMessageText(lastMessage) === "";
-	const thinkingStatusParts = isAssistantMessage
-		? getAllDataParts(lastMessage, "data-thinking-status")
-		: [];
+	const thinkingTraceData = isAssistantMessage
+		? collectAssistantThinkingTraceData(lastMessage)
+		: null;
+	const thinkingStatusParts = thinkingTraceData?.thinkingStatusParts ?? [];
 	const thinkingStatusPart =
 		thinkingStatusParts[thinkingStatusParts.length - 1] ?? null;
 	const hasAssistantThinkingStatus = thinkingStatusPart !== null;
 
-	const thinkingEventParts = isAssistantMessage
-		? getAllDataParts(lastMessage, "data-thinking-event")
-		: [];
+	const thinkingEventParts = thinkingTraceData?.thinkingEventParts ?? [];
 	const lastThinkingEventPart =
 		thinkingEventParts[thinkingEventParts.length - 1] ?? null;
-	const thinkingToolCalls = isAssistantMessage
-		? getThinkingToolCallSummaries(lastMessage)
-		: [];
+	const thinkingToolCalls = thinkingTraceData?.thinkingToolCalls ?? [];
 	const hasThinkingToolCalls = thinkingToolCalls.length > 0;
 	const hasBackendThinkingStarted =
-		hasAssistantThinkingStatus ||
-		thinkingEventParts.length > 0 ||
-		hasThinkingToolCalls;
+		thinkingTraceData?.hasBackendThinkingActivity ?? false;
 	const hasTurnComplete =
 		isAssistantMessage ? hasTurnCompleteSignal(lastMessage) : false;
 
@@ -87,7 +81,7 @@ export function useThinkingStatus({
 	// a finished turn and should not suppress the external preloader for a
 	// new in-flight request (e.g. after a hidden clarification submit).
 	const hasInlineThinkingStatus =
-		isAssistantMessage && hasAssistantThinkingStatus && !hasTurnComplete;
+		isAssistantMessage && hasBackendThinkingStarted && !hasTurnComplete;
 	const hasActiveThinkingSignals = hasBackendThinkingStarted && !hasTurnComplete;
 	const isThinkingStreaming = isRequestInFlight && hasActiveThinkingSignals;
 

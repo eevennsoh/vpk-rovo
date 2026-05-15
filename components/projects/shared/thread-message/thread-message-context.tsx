@@ -2,6 +2,7 @@
 
 import { createContext, type ReactNode } from "react";
 import type { ReasoningPhase } from "@/components/projects/shared/hooks/use-reasoning-phase";
+import type { AssistantThinkingTraceState } from "@/components/projects/shared/components/assistant-thinking-trace";
 import type {
 	RovoDataPart,
 	RovoRenderableUIMessage,
@@ -33,6 +34,8 @@ export interface ThreadMessageContextValue {
 	// ---------- reasoning ----------
 	/** Extracted reasoning data (null if none). */
 	reasoning: { text: string; isStreaming: boolean } | null;
+	/** Shared ChainOfThought trace state used across Rovo, sidebar, and floating chat. */
+	thinkingTraceState: AssistantThinkingTraceState;
 
 	// ---------- thinking status ----------
 	/** Latest thinking-status data part (null if none). */

@@ -1,12 +1,31 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const Module = require("node:module");
+const path = require("node:path");
+const esbuild = require("esbuild");
+
+function loadTsModule(entryPoint) {
+	const build = esbuild.buildSync({
+		entryPoints: [entryPoint],
+		bundle: true,
+		platform: "node",
+		format: "cjs",
+		write: false,
+		logLevel: "silent",
+	});
+	const moduleInstance = new Module(entryPoint);
+	moduleInstance.filename = entryPoint;
+	moduleInstance.paths = Module._nodeModulePaths(path.dirname(entryPoint));
+	moduleInstance._compile(build.outputFiles[0].text, entryPoint);
+	return moduleInstance.exports;
+}
 
 const {
 	isThinkingStatusActive,
 	isThinkingStatusLifecycleStreaming,
 	isPostToolsGenuiGeneration,
 	resolveThinkingStatusTriggerLabel,
-} = require("./thinking-status-state.ts");
+} = loadTsModule(path.join(__dirname, "thinking-status-state.ts"));
 
 test("keeps thinking status active when thinking events exist without a status part", () => {
 	assert.equal(
