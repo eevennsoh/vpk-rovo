@@ -316,6 +316,7 @@ export const BLOCK_COMPONENTS: ComponentManifestEntry[] = sortEntriesByName([
 	blockComponent("product-sidebar", "Product Sidebar"),
 	blockComponent("prompt-gallery", "Prompt Gallery"),
 	blockComponent("question-card", "Question Card"),
+	blockComponent("rovo-canvas", "Rovo Canvas"),
 	blockComponent("settings-dialog", "Settings Dialog"),
 	blockComponent("visual-waveform", "Visual Waveform"),
 	{

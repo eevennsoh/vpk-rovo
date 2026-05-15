@@ -1,0 +1,721 @@
+"use client";
+
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import CheckMarkIcon from "@atlaskit/icon/core/check-mark";
+import ChevronDownIcon from "@atlaskit/icon/core/chevron-down";
+import ClockIcon from "@atlaskit/icon/core/clock";
+import CopyIcon from "@atlaskit/icon/core/copy";
+import CursorIcon from "@atlaskit/icon-lab/core/cursor";
+import RefreshIcon from "@atlaskit/icon/core/refresh";
+
+import { Button } from "@/components/ui/button";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+} from "@/components/ui/dialog";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuGroup,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Footer } from "@/components/ui/footer";
+import { Icon as VpkIcon } from "@/components/ui/icon";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
+
+import { RovoCanvasHeader } from "./rovo-canvas-header";
+import { RovoCanvasRightRail } from "./rovo-canvas-right-rail";
+import {
+	RovoCanvasViewSwitcher,
+	type RovoCanvasView,
+	type RovoCanvasViewIcon,
+	type RovoCanvasToolbarMode,
+} from "./rovo-canvas-view-switcher";
+
+export type { RovoCanvasToolbarMode, RovoCanvasView, RovoCanvasViewIcon };
+
+export type RovoCanvasArtefactKind =
+	| "dashboard"
+	| "report"
+	| "app"
+	| "integration"
+	| "script"
+	| "script-py"
+	| "script-js"
+	| "agent"
+	| "automation";
+
+export type RovoCanvasStatus =
+	| "idle"
+	| "planning"
+	| "executing"
+	| "ready"
+	| "editing"
+	| "error";
+
+export interface RovoCanvasVersion {
+	id: string;
+	label: string;
+	summary: string;
+	timestamp: string;
+	author?: string;
+	isCurrent?: boolean;
+	group?: string;
+}
+
+export interface RovoCanvasProps {
+	open?: boolean;
+	defaultOpen?: boolean;
+	onOpenChange?: (open: boolean) => void;
+	kind?: RovoCanvasArtefactKind;
+	status?: RovoCanvasStatus;
+	title?: string;
+	lozengeLabel?: string;
+	primaryActionLabel?: string;
+	onPrimaryAction?: () => void;
+	views?: ReadonlyArray<RovoCanvasView>;
+	viewId?: string;
+	defaultViewId?: string;
+	onViewChange?: (viewId: string) => void;
+	artefactLabel?: string;
+	rightRail?: ReactNode;
+	footer?: ReactNode;
+	feedbackBanner?: ReactNode;
+	versionHistory?: ReadonlyArray<RovoCanvasVersion>;
+	onRefresh?: (viewId: string) => void;
+	onCopy?: (view: RovoCanvasView) => void;
+	onSelectModeChange?: (isSelectMode: boolean) => void;
+	className?: string;
+}
+
+const DEFAULT_VERSIONS: ReadonlyArray<RovoCanvasVersion> = [
+	{
+		id: "current",
+		label: "Current draft",
+		summary: "Canvas shell",
+		timestamp: "Now",
+		author: "You",
+		isCurrent: true,
+		group: "Today",
+	},
+	{
+		id: "generated",
+		label: "Initial artefact",
+		summary: "First generated version",
+		timestamp: "2 min ago",
+		author: "Rovo",
+		group: "Today",
+	},
+];
+
+const VIEW_SETS: Record<RovoCanvasArtefactKind, ReadonlyArray<RovoCanvasView>> = {
+	dashboard: [
+		{ id: "plan", label: "Plan", toolbar: "none" },
+		{ id: "preview", label: "Preview", toolbar: "preview" },
+		{ id: "html", label: "HTML", toolbar: "source" },
+	],
+	report: [
+		{ id: "plan", label: "Plan", toolbar: "none" },
+		{ id: "preview", label: "Preview", toolbar: "preview" },
+		{ id: "html", label: "HTML", toolbar: "source" },
+	],
+	app: [
+		{ id: "plan", label: "Plan", toolbar: "none" },
+		{ id: "preview", label: "Preview", toolbar: "preview" },
+		{ id: "html", label: "HTML", toolbar: "source" },
+	],
+	integration: [
+		{ id: "plan", label: "Plan", toolbar: "none" },
+		{ id: "preview", label: "Preview", toolbar: "preview" },
+		{ id: "html", label: "HTML", toolbar: "source" },
+	],
+	script: [
+		{ id: "plan", label: "Plan", toolbar: "none" },
+		{ id: "code", label: "Code", toolbar: "source" },
+	],
+	"script-py": [
+		{ id: "plan", label: "Plan", toolbar: "none" },
+		{ id: "code", label: "Code", toolbar: "source" },
+	],
+	"script-js": [
+		{ id: "plan", label: "Plan", toolbar: "none" },
+		{ id: "code", label: "Code", toolbar: "source" },
+	],
+	agent: [
+		{ id: "agent-details", label: "Details", toolbar: "none" },
+		{ id: "agent-preview", label: "Preview", toolbar: "preview" },
+		{ id: "agent-surfaces", label: "Surfaces", toolbar: "none" },
+	],
+	automation: [
+		{ id: "automation-setup", label: "Setup", toolbar: "none" },
+		{ id: "automation-rule", label: "Rule", toolbar: "none" },
+	],
+};
+
+function isScriptKind(kind: RovoCanvasArtefactKind): boolean {
+	return kind === "script" || kind === "script-py" || kind === "script-js";
+}
+
+function getDefaultViewId(kind: RovoCanvasArtefactKind): string {
+	if (kind === "agent") {
+		return "agent-details";
+	}
+
+	if (kind === "automation") {
+		return "automation-rule";
+	}
+
+	if (isScriptKind(kind)) {
+		return "code";
+	}
+
+	return "preview";
+}
+
+function getArtefactLabel(kind: RovoCanvasArtefactKind): string {
+	if (kind === "agent") {
+		return "Agent artefact";
+	}
+
+	if (kind === "automation") {
+		return "Automation rule";
+	}
+
+	return "Code artefact";
+}
+
+function getToolbarMode(view: RovoCanvasView | undefined): RovoCanvasToolbarMode {
+	if (view?.toolbar !== undefined) {
+		return view.toolbar;
+	}
+
+	if (view?.id === "preview" || view?.id === "agent-preview") {
+		return "preview";
+	}
+
+	if (view?.id === "html" || view?.id === "code") {
+		return "source";
+	}
+
+	return "none";
+}
+
+function isWorkingStatus(status: RovoCanvasStatus): boolean {
+	return status === "planning" || status === "executing";
+}
+
+function getRovoCanvasDefaultCopyText(): string {
+	return "";
+}
+
+function useControllableOpen({
+	open,
+	defaultOpen = false,
+	onOpenChange,
+}: Pick<RovoCanvasProps, "open" | "defaultOpen" | "onOpenChange">) {
+	const [internalOpen, setInternalOpen] = useState(defaultOpen);
+	const isControlled = open !== undefined;
+	const resolvedOpen = isControlled ? open : internalOpen;
+
+	function setOpen(nextOpen: boolean): void {
+		if (!isControlled) {
+			setInternalOpen(nextOpen);
+		}
+
+		onOpenChange?.(nextOpen);
+	}
+
+	return [resolvedOpen, setOpen] as const;
+}
+
+function useControllableView({
+	viewId,
+	defaultViewId,
+	onViewChange,
+}: Pick<RovoCanvasProps, "viewId" | "defaultViewId" | "onViewChange">) {
+	const [internalViewId, setInternalViewId] = useState(defaultViewId);
+	const isControlled = viewId !== undefined;
+	const resolvedViewId = isControlled ? viewId : internalViewId;
+
+	function setViewId(nextViewId: string): void {
+		if (!isControlled) {
+			setInternalViewId(nextViewId);
+		}
+
+		onViewChange?.(nextViewId);
+	}
+
+	return [resolvedViewId, setViewId] as const;
+}
+
+function CanvasToolbarAction({
+	label,
+	children,
+	onClick,
+	isSelected = false,
+}: Readonly<{
+	label: string;
+	children: ReactNode;
+	onClick?: () => void;
+	isSelected?: boolean;
+}>): React.ReactElement {
+	return (
+		<Tooltip>
+			<TooltipTrigger
+				render={
+					<Button
+						aria-label={label}
+						aria-pressed={isSelected ? true : undefined}
+						size="icon-sm"
+						variant="ghost"
+						onClick={onClick}
+					>
+						{children}
+					</Button>
+				}
+			/>
+			<TooltipContent>{label}</TooltipContent>
+		</Tooltip>
+	);
+}
+
+function LoadingScreen(): React.ReactElement {
+	return (
+		<div className="absolute inset-0 z-20 flex items-center justify-center bg-surface/90 backdrop-blur-sm">
+			<div className="flex w-[min(360px,calc(100%-48px))] flex-col items-center gap-4 rounded-lg border border-border bg-surface-raised px-6 py-8 text-center shadow-lg">
+				<div className="grid size-11 place-items-center rounded-full bg-surface-accent-blue-subtle text-icon-information">
+					<span className="text-lg font-semibold">R</span>
+				</div>
+				<div className="space-y-1">
+					<p className="text-sm font-semibold text-text">Creating artefact</p>
+					<p className="text-sm text-text-subtle">Rovo is preparing the canvas.</p>
+				</div>
+			</div>
+		</div>
+	);
+}
+
+function ShimmerOverlay(): React.ReactElement {
+	return (
+		<div className="pointer-events-none absolute inset-0 z-10 p-10">
+			<svg className="size-full animate-pulse" aria-hidden focusable="false">
+				<rect
+					x="10%"
+					y="14%"
+					width="80%"
+					height="64%"
+					rx="12"
+					fill="none"
+					stroke="var(--ds-border-selected)"
+					strokeWidth="2"
+					strokeDasharray="18 14"
+				/>
+				<rect
+					x="10%"
+					y="14%"
+					width="80%"
+					height="64%"
+					rx="12"
+					fill="none"
+					stroke="var(--ds-border-discovery)"
+					strokeWidth="2"
+					strokeDasharray="2 18"
+					strokeDashoffset="10"
+				/>
+				<rect
+					x="10%"
+					y="14%"
+					width="80%"
+					height="64%"
+					rx="12"
+					fill="none"
+					stroke="var(--ds-border-success)"
+					strokeWidth="2"
+					strokeDasharray="12 20"
+					strokeDashoffset="20"
+				/>
+			</svg>
+		</div>
+	);
+}
+
+function SelectModeOverlay(): React.ReactElement {
+	return (
+		<div className="pointer-events-none absolute inset-0 z-10">
+			<div className="absolute top-16 left-16 h-24 w-56 rounded-md border-2 border-border-selected bg-surface-selected/20" />
+			<div className="absolute top-14 left-14 grid size-6 place-items-center rounded-full bg-bg-selected text-xs font-semibold text-text-selected shadow-sm">
+				1
+			</div>
+			<div className="absolute top-44 left-72 w-72 rounded-lg border border-border bg-surface-overlay p-3 shadow-lg">
+				<p className="text-xs font-semibold text-text">Selected element</p>
+				<div className="mt-2 h-9 rounded-md border border-border bg-surface" />
+			</div>
+		</div>
+	);
+}
+
+export function RovoCanvasPlaceholder({
+	isSelectMode = false,
+	isEditing = false,
+}: Readonly<{
+	isSelectMode?: boolean;
+	isEditing?: boolean;
+}>): React.ReactElement {
+	return (
+		<div
+			aria-label="Blank canvas surface"
+			className="relative size-full overflow-auto bg-surface"
+			role="region"
+		>
+			{isSelectMode ? <SelectModeOverlay /> : null}
+			{isEditing ? <ShimmerOverlay /> : null}
+		</div>
+	);
+}
+
+function RovoCanvasDefaultView({
+	view,
+	isSelectMode,
+	status,
+}: Readonly<{
+	view: RovoCanvasView;
+	isSelectMode: boolean;
+	status: RovoCanvasStatus;
+}>): React.ReactElement {
+	return (
+		<RovoCanvasPlaceholder
+			isSelectMode={getToolbarMode(view) === "preview" ? isSelectMode : false}
+			isEditing={status === "editing"}
+		/>
+	);
+}
+
+function VersionHistoryPanel({
+	versions,
+}: Readonly<{
+	versions: ReadonlyArray<RovoCanvasVersion>;
+}>): React.ReactElement {
+	const groupedVersions = useMemo(() => {
+		const groups = new Map<string, RovoCanvasVersion[]>();
+
+		for (const version of versions) {
+			const group = version.group ?? "Earlier";
+			groups.set(group, [...(groups.get(group) ?? []), version]);
+		}
+
+		return Array.from(groups.entries());
+	}, [versions]);
+
+	return (
+		<aside className="flex w-[280px] shrink-0 flex-col border-l border-border bg-surface-raised">
+			<div className="border-b border-border px-4 py-3">
+				<p className="text-sm font-semibold text-text">Version history</p>
+				<p className="mt-1 text-xs text-text-subtle">Draft activity for this artefact.</p>
+			</div>
+			<div className="min-h-0 flex-1 overflow-auto p-3">
+				{groupedVersions.map(([group, groupVersions]) => (
+					<div key={group} className="mb-4">
+						<p className="px-1 pb-2 text-xs font-semibold text-text-subtlest">{group}</p>
+						<div className="space-y-2">
+							{groupVersions.map((version) => (
+								<button
+									key={version.id}
+									type="button"
+									className={cn(
+										"w-full rounded-lg border px-3 py-2 text-left transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
+										version.isCurrent
+											? "border-border-selected bg-bg-selected text-text-selected"
+											: "border-border bg-surface text-text hover:bg-surface-hovered",
+									)}
+								>
+									<span className="flex items-start gap-2">
+										<span className="grid size-7 shrink-0 place-items-center rounded-full bg-bg-neutral text-xs font-semibold text-text-subtle">
+											{version.author?.charAt(0) ?? "R"}
+										</span>
+										<span className="min-w-0">
+											<span className="block truncate text-sm font-medium">{version.label}</span>
+											<span className="mt-0.5 block truncate text-xs text-text-subtle">{version.summary}</span>
+											<span className="mt-1 block text-xs text-text-subtlest">{version.timestamp}</span>
+										</span>
+									</span>
+								</button>
+							))}
+						</div>
+					</div>
+				))}
+			</div>
+			<div className="border-t border-border px-3 py-3">
+				<Button size="sm" variant="outline" className="w-full">
+					Show earlier versions
+				</Button>
+			</div>
+		</aside>
+	);
+}
+
+function CanvasToolbar({
+	activeView,
+	isVersionHistoryOpen,
+	isSelectMode,
+	isCopied,
+	onRefresh,
+	onToggleVersionHistory,
+	onToggleSelectMode,
+	onCopy,
+}: Readonly<{
+	activeView: RovoCanvasView | undefined;
+	isVersionHistoryOpen: boolean;
+	isSelectMode: boolean;
+	isCopied: boolean;
+	onRefresh: () => void;
+	onToggleVersionHistory: () => void;
+	onToggleSelectMode: () => void;
+	onCopy: () => void;
+}>): React.ReactElement {
+	const toolbarMode = getToolbarMode(activeView);
+
+	if (toolbarMode === "none") {
+		return <div className="h-7" />;
+	}
+
+	return (
+		<div className="flex items-center justify-end gap-1">
+			<CanvasToolbarAction label="Refresh" onClick={onRefresh}>
+				<VpkIcon render={<RefreshIcon label="" />} />
+			</CanvasToolbarAction>
+			<CanvasToolbarAction
+				label="Version history"
+				isSelected={isVersionHistoryOpen}
+				onClick={onToggleVersionHistory}
+			>
+				<VpkIcon render={<ClockIcon label="" />} />
+			</CanvasToolbarAction>
+			{toolbarMode === "preview" ? (
+				<CanvasToolbarAction
+					label={isSelectMode ? "Exit select mode" : "Select element"}
+					isSelected={isSelectMode}
+					onClick={onToggleSelectMode}
+				>
+					<VpkIcon render={<CursorIcon label="" />} />
+				</CanvasToolbarAction>
+			) : null}
+			{toolbarMode === "source" ? (
+				<CanvasToolbarAction label={isCopied ? "Copied" : "Copy code"} onClick={onCopy}>
+					<VpkIcon render={isCopied ? <CheckMarkIcon label="" /> : <CopyIcon label="" />} />
+				</CanvasToolbarAction>
+			) : null}
+		</div>
+	);
+}
+
+export function RovoCanvas({
+	open,
+	defaultOpen,
+	onOpenChange,
+	kind = "dashboard",
+	status = "ready",
+	title = "Canvas draft",
+	lozengeLabel = "Draft",
+	primaryActionLabel = "Save",
+	onPrimaryAction,
+	views,
+	viewId,
+	defaultViewId,
+	onViewChange,
+	artefactLabel,
+	rightRail,
+	footer,
+	feedbackBanner,
+	versionHistory = DEFAULT_VERSIONS,
+	onRefresh,
+	onCopy,
+	onSelectModeChange,
+	className,
+}: Readonly<RovoCanvasProps>): React.ReactElement {
+	const resolvedViews = views ?? VIEW_SETS[kind];
+	const defaultViewForKind = defaultViewId ?? getDefaultViewId(kind);
+	const [isOpen, setOpen] = useControllableOpen({ open, defaultOpen, onOpenChange });
+	const [activeViewId, setActiveViewId] = useControllableView({
+		viewId,
+		defaultViewId: defaultViewForKind,
+		onViewChange,
+	});
+	const [isVersionHistoryOpen, setVersionHistoryOpen] = useState(false);
+	const [isSelectMode, setSelectMode] = useState(false);
+	const [isCopied, setCopied] = useState(false);
+	const activeView = useMemo(
+		() => resolvedViews.find((view) => view.id === activeViewId) ?? resolvedViews[0],
+		[activeViewId, resolvedViews],
+	);
+	const resolvedActiveViewId = activeView?.id ?? resolvedViews[0]?.id ?? defaultViewForKind;
+	const resolvedArtefactLabel = artefactLabel ?? getArtefactLabel(kind);
+	const shouldShowVersionHistory = isVersionHistoryOpen && getToolbarMode(activeView) !== "none";
+
+	useEffect(() => {
+		if (resolvedViews.some((view) => view.id === activeViewId)) {
+			return;
+		}
+
+		const fallbackViewId = resolvedViews.some((view) => view.id === defaultViewForKind)
+			? defaultViewForKind
+			: resolvedViews[0]?.id;
+
+		if (fallbackViewId !== undefined) {
+			setActiveViewId(fallbackViewId);
+		}
+	}, [activeViewId, defaultViewForKind, resolvedViews, setActiveViewId]);
+
+	useEffect(() => {
+		if (getToolbarMode(activeView) === "preview") {
+			return;
+		}
+
+		if (!isSelectMode) {
+			return;
+		}
+
+		setSelectMode(false);
+		onSelectModeChange?.(false);
+	}, [activeView, isSelectMode, onSelectModeChange]);
+
+	function handleToggleSelectMode(): void {
+		const nextSelectMode = !isSelectMode;
+		setSelectMode(nextSelectMode);
+		onSelectModeChange?.(nextSelectMode);
+	}
+
+	function handleRefresh(): void {
+		onRefresh?.(resolvedActiveViewId);
+	}
+
+	function handleCopy(): void {
+		if (activeView === undefined) {
+			return;
+		}
+
+		if (onCopy !== undefined) {
+			onCopy(activeView);
+			return;
+		}
+
+		const copyText = activeView.copyText ?? getRovoCanvasDefaultCopyText();
+		try {
+			void navigator.clipboard?.writeText(copyText).catch(() => undefined);
+		} catch {
+			// Clipboard access can be blocked in embedded previews.
+		}
+		setCopied(true);
+		window.setTimeout(() => setCopied(false), 1600);
+	}
+
+	return (
+		<Dialog open={isOpen} onOpenChange={setOpen}>
+			<DialogContent
+				showCloseButton={false}
+				className={cn(
+					"top-4 right-4 bottom-4 left-4 flex h-auto w-auto !max-w-none translate-x-0 translate-y-0 gap-0 overflow-hidden rounded-2xl bg-surface-sunken p-4 sm:!max-w-none",
+					"data-open:zoom-in-100 data-closed:zoom-out-100",
+					className,
+				)}
+			>
+				<DialogDescription className="sr-only">
+					Full-screen Rovo canvas with artefact views and a chat rail.
+				</DialogDescription>
+				<TooltipProvider>
+					<div className="flex size-full min-h-0 flex-col gap-2">
+						<RovoCanvasHeader
+							title={title}
+							lozengeLabel={lozengeLabel}
+							primaryActionLabel={primaryActionLabel}
+							onPrimaryAction={onPrimaryAction}
+							onClose={() => setOpen(false)}
+						/>
+
+						{feedbackBanner !== undefined ? feedbackBanner : null}
+
+						<div className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-y-auto lg:grid-cols-[minmax(0,1fr)_400px] lg:overflow-hidden">
+							<section className="flex min-h-[420px] min-w-0 flex-col overflow-hidden rounded-xl bg-surface shadow-sm lg:min-h-0">
+								<Tabs
+									value={resolvedActiveViewId}
+									onValueChange={setActiveViewId}
+									className="flex size-full min-h-0 gap-0"
+								>
+									<div className="grid h-12 shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center border-b border-border bg-surface px-4">
+										<DropdownMenu>
+											<DropdownMenuTrigger
+												render={
+													<Button
+														aria-label="Choose artefact surface"
+														className="min-w-0 justify-self-start px-2"
+														size="sm"
+														variant="ghost"
+													>
+														<span className="truncate">{resolvedArtefactLabel}</span>
+														<VpkIcon render={<ChevronDownIcon label="" />} className="size-4 shrink-0" />
+													</Button>
+												}
+											/>
+											<DropdownMenuContent align="start" className="w-52">
+												<DropdownMenuGroup>
+													<DropdownMenuItem>Rename</DropdownMenuItem>
+													<DropdownMenuItem>Duplicate</DropdownMenuItem>
+													<DropdownMenuItem>Save as app</DropdownMenuItem>
+												</DropdownMenuGroup>
+												<DropdownMenuSeparator />
+												<DropdownMenuGroup>
+													<DropdownMenuItem>Open version history</DropdownMenuItem>
+												</DropdownMenuGroup>
+											</DropdownMenuContent>
+										</DropdownMenu>
+										<RovoCanvasViewSwitcher views={resolvedViews} />
+										<CanvasToolbar
+											activeView={activeView}
+											isVersionHistoryOpen={shouldShowVersionHistory}
+											isSelectMode={isSelectMode}
+											isCopied={isCopied}
+											onRefresh={handleRefresh}
+											onToggleVersionHistory={() => setVersionHistoryOpen((value) => !value)}
+											onToggleSelectMode={handleToggleSelectMode}
+											onCopy={handleCopy}
+										/>
+									</div>
+
+									<div className="flex min-h-0 flex-1">
+										<div className="relative min-w-0 flex-1">
+											{resolvedViews.map((view) => (
+												<TabsContent key={view.id} value={view.id} className="size-full">
+											{view.content === undefined ? (
+												<RovoCanvasDefaultView
+													view={view}
+													isSelectMode={isSelectMode}
+													status={status}
+												/>
+											) : view.content}
+												</TabsContent>
+											))}
+											{isWorkingStatus(status) ? <LoadingScreen /> : null}
+										</div>
+										{shouldShowVersionHistory ? (
+											<VersionHistoryPanel versions={versionHistory} />
+										) : null}
+									</div>
+								</Tabs>
+							</section>
+
+							<section className="min-h-[520px] min-w-0 overflow-hidden lg:min-h-0">
+								{rightRail ?? <RovoCanvasRightRail onClose={() => setOpen(false)} />}
+							</section>
+						</div>
+
+						{footer === undefined ? <Footer hideIcon className="py-0" /> : footer}
+					</div>
+				</TooltipProvider>
+			</DialogContent>
+		</Dialog>
+	);
+}

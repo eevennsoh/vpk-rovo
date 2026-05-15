@@ -298,6 +298,7 @@ export const BLOCK_COMPONENTS: ComponentEntry[] = sortEntriesByName([
 	blockComponent("product-sidebar", "Product Sidebar"),
 	blockComponent("prompt-gallery", "Prompt Gallery"),
 	blockComponent("question-card", "Question Card"),
+	blockComponent("rovo-canvas", "Rovo Canvas"),
 	blockComponent("settings-dialog", "Settings Dialog"),
 	blockComponent("visual-waveform", "Visual Waveform"),
 	{ name: "Chat Configuration", slug: "chat-configuration", importPath: "@/components/blocks/chat-configuration", category: "blocks", detail: BLOCK_DETAILS["chat-configuration"] },
