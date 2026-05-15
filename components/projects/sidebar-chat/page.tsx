@@ -343,7 +343,7 @@ export default function ChatPanel({
 
 	return (
 		<div ref={panelRef} className={cn("relative overflow-hidden", containerClassName)} style={{ ...chatStyles.chatPanel, ...resolvedContainerStyle }}>
-			<ChatHistoryDrawer />
+			<ChatHistoryDrawer active={!hideHeader && chatSurface === "sidebar"} />
 			{!hideHeader && (
 				<div className="shrink-0">
 					<ChatHeader

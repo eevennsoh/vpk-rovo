@@ -5,7 +5,6 @@ import Image from "next/image";
 import ChevronDownIcon from "@atlaskit/icon/core/chevron-down";
 import CrossIcon from "@atlaskit/icon/core/cross";
 import EditIcon from "@atlaskit/icon/core/edit";
-import MenuIcon from "@atlaskit/icon/core/menu";
 import ShowMoreHorizontalIcon from "@atlaskit/icon/core/show-more-horizontal";
 
 import { Button } from "@/components/ui/button";
@@ -18,6 +17,7 @@ import {
 	ChatSurfaceSwitcherItems,
 	type ChatSurfaceSwitchHandler,
 } from "@/components/projects/shared/components/chat-surface-switcher";
+import { ChatHistoryButton } from "@/components/projects/sidebar-chat/components/chat-history-button";
 
 interface FloatingChatHeaderProps {
 	onClose: () => void;
@@ -41,15 +41,7 @@ export default function FloatingChatHeader({
 	return (
 		<div className="flex shrink-0 items-center justify-between px-3 py-3">
 			<div className="flex items-center gap-1">
-				<Button
-					aria-label="Chat history"
-					aria-expanded={isHistoryOpen}
-					size="icon"
-					variant={isHistoryOpen ? "secondary" : "ghost"}
-					onClick={onHistoryToggle ?? noop}
-				>
-					<MenuIcon label="" />
-				</Button>
+				<ChatHistoryButton isHistoryOpen={isHistoryOpen} onToggle={onHistoryToggle} />
 				<div className="flex items-center gap-2">
 					<Image
 						src="/1p/rovo.svg"

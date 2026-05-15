@@ -6,6 +6,7 @@ import { useRovoChat } from "@/app/contexts";
 import type { ChatContextBarDescriptor } from "@/components/projects/sidebar-chat/lib/chat-context-bar";
 import type { ChatSurfaceSwitchHandler } from "@/components/projects/shared/components/chat-surface-switcher";
 import ChatPanel from "@/components/projects/sidebar-chat/page";
+import { ChatHistoryDrawer } from "@/components/projects/sidebar-chat/components/chat-history-drawer";
 import FloatingChatHeader from "./floating-chat-header";
 
 interface RovoFloatingChatProps {
@@ -64,6 +65,7 @@ export default function RovoFloatingChat({
 					preserveFloatingSurfaceOnArtifactDialogOpen={preserveFloatingSurfaceOnArtifactDialogOpen}
 				/>
 			</div>
+			<ChatHistoryDrawer />
 		</motion.div>
 	);
 }
