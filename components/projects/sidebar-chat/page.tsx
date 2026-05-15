@@ -23,10 +23,19 @@ import {
 	type ClarificationAnswers,
 	type ParsedQuestionCardPayload,
 } from "@/components/projects/shared/lib/question-card-widget";
+import {
+	getLatestPendingPlanWidget,
+	type ParsedPlanWidgetPayload,
+} from "@/components/projects/shared/lib/plan-widget";
+import {
+	getPlanApprovalKeyFromPlanWidget,
+	type PlanApprovalSelection,
+} from "@/components/projects/shared/lib/plan-approval";
 import { buildGenerativeWidgetSubmitPrompt, type GenerativeWidgetPrimaryActionPayload } from "@/components/projects/shared/lib/generative-widget";
 import type { GenerativeCardAnimationProps } from "@/components/projects/shared/components/generative-widget-card";
 import { ClarificationQuestionCard } from "@/components/projects/shared/components/clarification-question-card";
 import { QuestionCardShortcutsFooter } from "@/components/projects/shared/components/question-card-shortcuts-footer";
+import { ApprovalCard } from "@/components/blocks/approval-card/page";
 import { useDismissibleCards } from "@/components/projects/shared/hooks/use-dismissible-cards";
 import type { RovoSuggestion } from "@/lib/rovo-suggestions";
 import ChatHeader from "./components/chat-header";
@@ -120,10 +129,13 @@ export default function ChatPanel({
 		resetChat,
 		uiMessages: rawUiMessages,
 		sendPrompt,
+		acceptPlanReview,
+		submitPlanApproval,
 		editMessage,
 		editingMessageId,
 		setEditingMessageId,
 		chatSurface,
+		activeThreadId,
 		isHistoryOpen,
 		pinFloating,
 		toggleHistory,
@@ -304,6 +316,20 @@ export default function ChatPanel({
 		onDismissQuestionCard: handleClarificationDismiss,
 	});
 	const shouldShowQuestionCard = !isRequestInFlight && shouldShowQuestionCardRaw;
+	const activePendingPlan = useMemo(() => getLatestPendingPlanWidget(rawUiMessages), [rawUiMessages]);
+	const [dismissedApprovalCardKey, setDismissedApprovalCardKey] = useState<string | null>(null);
+	const [isSubmittingPlanApproval, setIsSubmittingPlanApproval] = useState(false);
+	const pendingPlanKey = activePendingPlan?.planWidget.deferredToolCallId ?? null;
+	const shouldShowApprovalCard =
+		activePendingPlan !== null &&
+		pendingPlanKey !== dismissedApprovalCardKey &&
+		!shouldShowQuestionCard &&
+		!isStreamingLifecycleActive;
+
+	useEffect(() => {
+		setDismissedApprovalCardKey(null);
+		setIsSubmittingPlanApproval(false);
+	}, [activeThreadId]);
 
 	const { conversationContextRef, scrollSpacerRef, getLatestTurnTargetTop, scrollFollowMode } = useScrollAnchor({
 		isGenerationActive: isStreamingLifecycleActive,
@@ -361,6 +387,47 @@ export default function ChatPanel({
 			});
 		},
 		[activeQuestionCard, resolvedSendPromptOptions, sendPrompt],
+	);
+	const handleBuildPlan = useCallback(
+		(planWidget: ParsedPlanWidgetPayload) => {
+			return acceptPlanReview(planWidget);
+		},
+		[acceptPlanReview],
+	);
+	const handlePlanApprovalSubmit = useCallback(
+		(selection: PlanApprovalSelection) => {
+			if (!activePendingPlan) return;
+			setIsSubmittingPlanApproval(true);
+			void submitPlanApproval(activePendingPlan.planWidget, selection)
+				.finally(() => setIsSubmittingPlanApproval(false));
+		},
+		[activePendingPlan, submitPlanApproval],
+	);
+	const handleDismissApprovalCard = useCallback(() => {
+		setDismissedApprovalCardKey(pendingPlanKey);
+	}, [pendingPlanKey]);
+	const resolvePlanBuildState = useCallback(
+		(planWidget: ParsedPlanWidgetPayload, message: { id: string }) => {
+			if (!planWidget.deferredToolCallId) {
+				return {};
+			}
+
+			const isActivePendingPlan =
+				activePendingPlan?.sourceMessageId === message.id &&
+				getPlanApprovalKeyFromPlanWidget(activePendingPlan.planWidget) ===
+					getPlanApprovalKeyFromPlanWidget(planWidget);
+			if (isActivePendingPlan) {
+				return {};
+			}
+
+			return {
+				isBuildDisabled: true,
+				buildDisabledReason: activePendingPlan
+					? "A newer reply superseded this plan."
+					: "This plan is no longer awaiting review.",
+			};
+		},
+		[activePendingPlan],
 	);
 
 	const handleFollowUpSuggestionClick = useCallback((question: string) => void submitPrompt(question), [submitPrompt]);
@@ -480,6 +547,8 @@ export default function ChatPanel({
 									}
 									onSetEditingMessageId={setEditingMessageId}
 									onWidgetPrimaryAction={handleWidgetPrimaryAction}
+									onBuildPlan={handleBuildPlan}
+									resolvePlanBuildState={resolvePlanBuildState}
 									onArtifactDialogOpen={handleArtifactDialogOpen}
 									onArtifactDialogClose={releaseArtifactDialogFloatingPin}
 								/>
@@ -526,6 +595,16 @@ export default function ChatPanel({
 							/>
 						</div>
 						<QuestionCardShortcutsFooter />
+					</>
+				) : shouldShowApprovalCard && activePendingPlan ? (
+					<>
+						<ApprovalCard
+							key={pendingPlanKey ?? undefined}
+							onDismiss={handleDismissApprovalCard}
+							onSelect={handlePlanApprovalSubmit}
+							isSubmitting={isSubmittingPlanApproval}
+						/>
+						<QuestionCardShortcutsFooter escLabel="cancel" />
 					</>
 				) : (
 					<>

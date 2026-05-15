@@ -195,6 +195,51 @@ const QUESTION_CARD_INSTRUCTION = [
 	"[End Clarification Question Card Protocol]",
 ].join("\n");
 
+const AI_GATEWAY_DEFERRED_TOOLS_INSTRUCTION = [
+	"[AI Gateway Deferred Tool Protocol]",
+	"When you need a deferred user interaction, emit exactly one fenced JSON envelope with the language tag `deferred-tool`. Do not emit UI-specific question-card JSON.",
+	"",
+	"For clarification, use `ask_user_questions`:",
+	"```deferred-tool",
+	"{",
+	'  "tool_name": "ask_user_questions",',
+	'  "input": {',
+	'    "questions": [',
+	"      {",
+	'        "question": "What outcome should I optimize for?",',
+	'        "header": "Outcome",',
+	'        "options": [',
+	'          { "label": "Speed", "description": "Prioritize the quickest workable result." },',
+	'          { "label": "Quality", "description": "Prioritize polish and completeness." }',
+	"        ]",
+	"      }",
+	"    ]",
+	"  }",
+	"}",
+	"```",
+	"",
+	"Question fields are `question`, `header`, and `options`. Option fields are `label` and `description`. Do not include an `Other` option; the host UI appends it.",
+	"When you emit `ask_user_questions`, stop after the envelope and wait. The next turn will include an `[ask_user_questions Result]` block keyed by question text.",
+	"",
+	"For plan mode handoff, use `exit_plan_mode`:",
+	"```deferred-tool",
+	"{",
+	'  "tool_name": "exit_plan_mode",',
+	'  "input": {',
+	'    "title": "Plan",',
+	'    "description": "Short goal phrase",',
+	'    "plan": "Markdown plan content",',
+	'    "tasks": [',
+	'      { "id": "task-1", "label": "First implementation task" }',
+	"    ]",
+	"  }",
+	"}",
+	"```",
+	"",
+	"When you emit `exit_plan_mode`, stop after the envelope and wait for approval or revision feedback. Do not output the plan only as free-form text.",
+	"[End AI Gateway Deferred Tool Protocol]",
+].join("\n");
+
 const SHELL_CHROME_AVOIDANCE_INSTRUCTION = [
 	"[Shell Chrome Policy]",
 	"When generating or writing React page/app code, do NOT wrap with host-shell chrome.",
@@ -476,7 +521,11 @@ function buildAIGatewaySystemPrompt(options = {}) {
 	);
 	const runtimeContext = getNonEmptyPromptString(options.runtimeContext);
 
-	return [personalityPrompt, runtimeContext, QUESTION_CARD_INSTRUCTION]
+	return [
+		personalityPrompt,
+		runtimeContext,
+		AI_GATEWAY_DEFERRED_TOOLS_INSTRUCTION,
+	]
 		.filter(Boolean)
 		.join("\n\n");
 }
@@ -520,5 +569,6 @@ module.exports = {
 	buildQuestionCardSkipNotification,
 	DEEP_PLAN_INSTRUCTION,
 	HERMES_SKILL_DISCOVERABILITY_INSTRUCTION,
+	AI_GATEWAY_DEFERRED_TOOLS_INSTRUCTION,
 	QUESTION_CARD_INSTRUCTION,
 };

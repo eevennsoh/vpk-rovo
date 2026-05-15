@@ -9,7 +9,17 @@ import { ThreadMessage } from "@/components/projects/shared/thread-message";
 import { GenerativeWidgetCard } from "@/components/projects/shared/components/generative-widget-card";
 import type { GenerativeCardAnimationProps } from "@/components/projects/shared/components/generative-widget-card";
 import type { GenerativeWidgetPrimaryActionPayload } from "@/components/projects/shared/lib/generative-widget";
+import { PlanWidgetInlineCard } from "@/components/projects/shared/components/plan-widget-inline-card";
+import {
+	parsePlanWidgetPayload,
+	type ParsedPlanWidgetPayload,
+} from "@/components/projects/shared/lib/plan-widget";
 import { ArtifactResultCard, type ArtifactResult } from "./artifact-result-card";
+
+interface PlanBuildState {
+	isBuildDisabled?: boolean;
+	buildDisabledReason?: string;
+}
 
 interface MessageBubbleProps {
 	message: RovoRenderableUIMessage;
@@ -25,6 +35,11 @@ interface MessageBubbleProps {
 	onWidgetPrimaryAction?: (
 		payload: GenerativeWidgetPrimaryActionPayload
 	) => Promise<void> | void;
+	onBuildPlan?: (planWidget: ParsedPlanWidgetPayload) => Promise<void> | void;
+	resolvePlanBuildState?: (
+		planWidget: ParsedPlanWidgetPayload,
+		message: RovoRenderableUIMessage
+	) => PlanBuildState;
 	onArtifactDialogOpen?: (artifact: ArtifactResult) => void;
 	onArtifactDialogClose?: (artifact: ArtifactResult) => void;
 }
@@ -41,20 +56,63 @@ export default function MessageBubble({
 	onEditMessage,
 	onSetEditingMessageId,
 	onWidgetPrimaryAction,
+	onBuildPlan,
+	resolvePlanBuildState,
 	onArtifactDialogOpen,
 	onArtifactDialogClose,
 }: Readonly<MessageBubbleProps>): ReactNode {
 	const artifactResult = getMessageArtifactResult(message);
-	const renderWidget = enableSmartWidgets
-		? (widget: { type: string; data: unknown }) => (
-				<GenerativeWidgetCard
-					widgetType={widget.type}
-					widgetData={widget.data}
-					cardAnimation={generativeCardAnimation}
-					onPrimaryAction={onWidgetPrimaryAction}
-				/>
-			)
-		: undefined;
+	const hasPlanWidget = message.parts.some(
+		(part) =>
+			part.type === "data-widget-data" &&
+			part.data?.type === "plan",
+	);
+	const renderWidget =
+		enableSmartWidgets || hasPlanWidget
+			? (widget: { type: string; data: unknown }, widgetMessage: RovoRenderableUIMessage) => {
+					if (widget.type === "plan") {
+						const planWidget = parsePlanWidgetPayload(widget.data);
+						if (!planWidget) {
+							return null;
+						}
+
+						const buildState = resolvePlanBuildState?.(planWidget, widgetMessage) ?? {};
+						const hasDeferredToolCall = Boolean(
+							planWidget.deferredToolCallId ?? planWidget.toolCallId,
+						);
+						return (
+							<PlanWidgetInlineCard
+								title={planWidget.title}
+								description={planWidget.description}
+								shortDescription={planWidget.shortDescription}
+								markdown={planWidget.markdown}
+								tasks={planWidget.tasks}
+								onBuild={
+									onBuildPlan && hasDeferredToolCall
+										? () => onBuildPlan(planWidget)
+										: undefined
+								}
+								isBuildDisabled={buildState.isBuildDisabled}
+								buildDisabledReason={buildState.buildDisabledReason}
+								shouldAutoCollapse={buildState.isBuildDisabled === true}
+							/>
+						);
+					}
+
+					if (!enableSmartWidgets) {
+						return null;
+					}
+
+					return (
+						<GenerativeWidgetCard
+							widgetType={widget.type}
+							widgetData={widget.data}
+							cardAnimation={generativeCardAnimation}
+							onPrimaryAction={onWidgetPrimaryAction}
+						/>
+					);
+				}
+			: undefined;
 
 	return (
 		<ThreadMessage.Root

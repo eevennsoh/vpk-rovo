@@ -42,6 +42,16 @@ import {
 	buildSuggestedQuestionsRequest,
 } from "@/components/projects/rovo/lib/rovo-app-suggestions";
 import {
+	buildExitPlanModeDeferredToolResponse,
+	type ParsedPlanWidgetPayload,
+} from "@/components/projects/shared/lib/plan-widget";
+import {
+	buildPlanApprovalPrompt,
+	createPlanApprovalSubmission,
+	getPlanApprovalKeyFromPlanWidget,
+	type PlanApprovalSelection,
+} from "@/components/projects/shared/lib/plan-approval";
+import {
 	buildWorkItemReportRequestContext,
 	hasActiveWorkItemContext,
 	isWorkItemReportIntent,
@@ -74,7 +84,7 @@ export interface SendPromptOptions {
 	approval?: unknown;
 	deferredToolResponse?: {
 		tool_call_id: string;
-		result: Record<string, string | string[]>;
+		result: unknown;
 	};
 	planRequestId?: string;
 	creationMode?: "skill" | "agent";
@@ -543,6 +553,8 @@ interface RovoChatContextType {
 	unpinFloating: (reason: string) => void;
 	uiMessages: RovoUIMessage[];
 	sendPrompt: (prompt: string, options?: SendPromptOptions, files?: ReadonlyArray<FileUIPart>) => Promise<void>;
+	acceptPlanReview: (planWidget: ParsedPlanWidgetPayload) => Promise<void>;
+	submitPlanApproval: (planWidget: ParsedPlanWidgetPayload, selection: PlanApprovalSelection) => Promise<void>;
 	editMessage: (messageId: string, nextText: string, options?: SendPromptOptions) => Promise<void>;
 	editingMessageId: string | null;
 	setEditingMessageId: (messageId: string | null) => void;
@@ -1712,6 +1724,48 @@ export function RovoChatProvider({
 		[defaultPromptOptions, startSubmitPending]
 	);
 
+	const acceptPlanReview = useCallback(
+		async (planWidget: ParsedPlanWidgetPayload) => {
+			const deferredToolResponse = buildExitPlanModeDeferredToolResponse(
+				planWidget,
+				"Accept.",
+			);
+			if (!deferredToolResponse) {
+				throw new Error("The pending plan review is missing a deferred tool call.");
+			}
+
+			await sendPrompt("Accepted the plan.", {
+				messageMetadata: {
+					source: "plan-approval-submit",
+					planApprovalDecision: "auto-accept",
+					planApprovalPlanKey: getPlanApprovalKeyFromPlanWidget(planWidget) ?? undefined,
+				},
+				deferredToolResponse,
+			});
+		},
+		[sendPrompt],
+	);
+
+	const submitPlanApproval = useCallback(
+		async (planWidget: ParsedPlanWidgetPayload, selection: PlanApprovalSelection) => {
+			if (selection.decision === "auto-accept") {
+				await acceptPlanReview(planWidget);
+				return;
+			}
+
+			const approvalSubmission = createPlanApprovalSubmission(selection, planWidget);
+			await sendPrompt(buildPlanApprovalPrompt(approvalSubmission), {
+				messageMetadata: {
+					source: "plan-approval-submit",
+					planApprovalDecision: selection.decision,
+					planApprovalPlanKey: getPlanApprovalKeyFromPlanWidget(planWidget) ?? undefined,
+				},
+				approval: approvalSubmission,
+			});
+		},
+		[acceptPlanReview, sendPrompt],
+	);
+
 	const removeQueuedPrompt = useCallback((id: string) => {
 		setQueuedPrompts((prev) => prev.filter((prompt) => prompt.id !== id));
 	}, []);
@@ -2083,6 +2137,8 @@ export function RovoChatProvider({
 				unpinFloating,
 				uiMessages,
 				sendPrompt,
+				acceptPlanReview,
+				submitPlanApproval,
 				editMessage,
 				editingMessageId,
 				setEditingMessageId,

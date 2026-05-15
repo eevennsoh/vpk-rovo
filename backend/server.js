@@ -402,6 +402,12 @@ const {
 	findRequestUserInputQuestionContainer,
 } = require("./lib/question-card-payload");
 const {
+	extractAIGatewayDeferredToolFromAssistantText,
+	buildQuestionCardPayloadFromAIGatewayDeferredTool,
+	buildPlanWidgetPayloadFromAIGatewayDeferredTool,
+	buildQuestionMetaFromQuestionCardPayload,
+} = require("./lib/ai-gateway-deferred-tools");
+const {
 	shouldGateToolFirstQuestionCard,
 	buildToolFirstClarificationInstruction,
 } = require("./lib/tool-first-question-gate");
@@ -4367,6 +4373,17 @@ function createClarificationSessionId() {
 	return `clarification-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function createAIGatewayDeferredToolCallId(toolName) {
+	const normalizedToolName =
+		getNonEmptyString(toolName)?.toLowerCase().replace(/[^a-z0-9_]+/g, "_") ||
+		"tool";
+	return `ai-gateway-${normalizedToolName}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function isAIGatewayDeferredToolCallId(toolCallId) {
+	return getNonEmptyString(toolCallId)?.startsWith("ai-gateway-") === true;
+}
+
 function isRequestUserInputTool(toolName) {
 	const normalizedToolName = getNonEmptyString(toolName)?.toLowerCase();
 	if (!normalizedToolName) {
@@ -4861,6 +4878,79 @@ function buildApprovalSummary(approvalSubmission) {
 	}
 
 	return lines.join("\n");
+}
+
+function serializeSyntheticToolResult(value) {
+	if (typeof value === "string") {
+		return value;
+	}
+
+	if (value === undefined) {
+		return "";
+	}
+
+	try {
+		return JSON.stringify(value);
+	} catch {
+		return String(value);
+	}
+}
+
+function buildAIGatewayDeferredToolResultBlock({
+	toolName,
+	toolCallId,
+	result,
+}) {
+	const normalizedToolName = getNonEmptyString(toolName) || "deferred_tool";
+	const serializedResult = serializeSyntheticToolResult(result);
+	return [
+		`[${normalizedToolName} Result]`,
+		`The user responded to your ${normalizedToolName} deferred tool request.`,
+		toolCallId ? `tool_call_id: ${toolCallId}` : null,
+		serializedResult ? `result: ${serializedResult}` : null,
+		`[End ${normalizedToolName} Result]`,
+	]
+		.filter(Boolean)
+		.join("\n");
+}
+
+function buildAIGatewayPlanApprovalResult(approvalSubmission, rawApproval) {
+	if (!approvalSubmission) {
+		return null;
+	}
+
+	const result = {
+		decision: approvalSubmission.decision,
+		customInstruction: approvalSubmission.customInstruction,
+		toolCallId:
+			getNonEmptyString(rawApproval?.toolCallId) ||
+			getNonEmptyString(rawApproval?.deferredToolCallId) ||
+			approvalSubmission.toolCallId ||
+			approvalSubmission.deferredToolCallId ||
+			undefined,
+	};
+
+	if (approvalSubmission.decision === "continue-planning") {
+		result.instructions = [
+			"The user rejected this plan and wants revisions.",
+			"Stay in plan mode and call exit_plan_mode again with the updated plan.",
+			"Do not start implementation.",
+		];
+	} else {
+		result.instructions = [
+			"The user approved this plan.",
+			"Continue from the approved plan without asking clarification questions again unless the user explicitly requests a new plan.",
+		];
+	}
+
+	if (approvalSubmission.planTitle) {
+		result.planTitle = approvalSubmission.planTitle;
+	}
+	if (approvalSubmission.planTasks.length > 0) {
+		result.planTasks = approvalSubmission.planTasks;
+	}
+
+	return result;
 }
 
 function getToolCallIdFromClarificationSubmission(clarificationSubmission) {
@@ -5537,8 +5627,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 		// RovoDev-shaped expired gate for these so legitimate submissions
 		// aren't rejected as "expired".
 		const isAIGatewayClarificationToolCallId =
-			typeof clarificationToolCallId === "string" &&
-			clarificationToolCallId.startsWith("ai-gateway-clarification-");
+			isAIGatewayDeferredToolCallId(clarificationToolCallId);
 		const shouldRejectExpiredClarification =
 			!isAIGatewayClarificationToolCallId &&
 			shouldRejectExpiredDeferredClarification({
@@ -6362,13 +6451,26 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 		// always sends BOTH `clarification` and `deferredToolResponse`, so
 		// we no longer gate on the absence of `rawDeferredToolResponse`.
 		if (clarificationSubmission && !hasPausedClarificationToolCall) {
-			const serialized = JSON.stringify(
-				adaptClarificationAnswersForToolContract(
-					clarificationSubmission.sessionId,
-					clarificationSubmission.answers
-				)
+			const adaptedAnswers = adaptClarificationAnswersForToolContract(
+				clarificationSubmission.sessionId,
+				clarificationSubmission.answers
 			);
-			const answerBlock = `[ask_user_questions Result]\nThe user answered your ask_user_questions tool call. Here are their answers:\n${serialized}\n[End ask_user_questions Result]`;
+			const usesAIGatewaySyntheticResult =
+				backendPreference === "ai-gateway" ||
+				isAIGatewayDeferredToolCallId(clarificationToolCallId);
+			const answerBlock = usesAIGatewaySyntheticResult
+				? buildAIGatewayDeferredToolResultBlock({
+					toolName: "ask_user_questions",
+					toolCallId: clarificationToolCallId,
+					result:
+						clarificationSubmission.status === "dismissed"
+							? buildClarificationResumeDenyMessage(
+								clarificationSubmission,
+								adaptClarificationAnswersForToolContract,
+							)
+							: adaptedAnswers,
+				})
+				: `[ask_user_questions Result]\nThe user answered your ask_user_questions tool call. Here are their answers:\n${JSON.stringify(adaptedAnswers)}\n[End ask_user_questions Result]`;
 			enrichedContextDescription = enrichedContextDescription
 				? `${enrichedContextDescription}\n\n${answerBlock}`
 				: answerBlock;
@@ -6381,7 +6483,15 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 		) {
 			const toolCallId = getNonEmptyString(rawDeferredToolResponse.tool_call_id);
 			const result = rawDeferredToolResponse.result;
-			if (toolCallId && result && typeof result === "object") {
+			const isAIGatewayExitPlanToolResponse =
+				isAIGatewayDeferredToolCallId(toolCallId) &&
+				toolCallId.includes("exit_plan_mode");
+			if (
+				toolCallId &&
+				result &&
+				typeof result === "object" &&
+				!isAIGatewayExitPlanToolResponse
+			) {
 				const deferredSessionId = `request-user-input-${toolCallId}`;
 				const adaptedResult = adaptClarificationAnswersForToolContract(
 					deferredSessionId,
@@ -6397,21 +6507,50 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 					toolCallId,
 					resultKeys: Object.keys(adaptedResult),
 				});
+			} else if (
+				toolCallId &&
+				isAIGatewayDeferredToolCallId(toolCallId) &&
+				result !== undefined
+			) {
+				const resultBlock = buildAIGatewayDeferredToolResultBlock({
+					toolName: "exit_plan_mode",
+					toolCallId,
+					result,
+				});
+				enrichedContextDescription = enrichedContextDescription
+					? `${enrichedContextDescription}\n\n${resultBlock}`
+					: resultBlock;
 			}
 		}
 
 		if (approvalSubmission && !hasPausedApprovalToolCall) {
-			const serialized = JSON.stringify({
+			const approvalToolCallIdForContext =
+				getNonEmptyString(rawApproval?.toolCallId) ||
+				getNonEmptyString(rawApproval?.deferredToolCallId) ||
+				approvalSubmission.toolCallId ||
+				approvalSubmission.deferredToolCallId ||
+				null;
+			const approvalContext = {
 				decision: approvalSubmission.decision,
 				customInstruction: approvalSubmission.customInstruction,
-				toolCallId:
-					getNonEmptyString(rawApproval?.toolCallId) ||
-					getNonEmptyString(rawApproval?.deferredToolCallId) ||
-					undefined,
-			});
+				toolCallId: approvalToolCallIdForContext || undefined,
+			};
+			const serialized = JSON.stringify(approvalContext);
+			const approvalBlock =
+				approvalToolCallIdForContext &&
+				isAIGatewayDeferredToolCallId(approvalToolCallIdForContext)
+					? buildAIGatewayDeferredToolResultBlock({
+						toolName: "exit_plan_mode",
+						toolCallId: approvalToolCallIdForContext,
+						result: buildAIGatewayPlanApprovalResult(
+							approvalSubmission,
+							rawApproval,
+						),
+					})
+					: `Plan approval: ${serialized}`;
 			enrichedContextDescription = enrichedContextDescription
-				? `${enrichedContextDescription}\n\nPlan approval: ${serialized}`
-				: `Plan approval: ${serialized}`;
+				? `${enrichedContextDescription}\n\n${approvalBlock}`
+				: approvalBlock;
 		}
 
 		const pausedContinuationToolCallId = hasPausedClarificationToolCall
@@ -7643,25 +7782,89 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 						},
 					});
 
-					// Post-process: prefer the JSON-fence path (rich options),
-					// fall back to the prose extractor when the model didn't
-					// comply with the JSON instruction.
-					let widgetPayload = null;
+					// Post-process: prefer the model-agnostic deferred-tool
+					// envelope, then keep the legacy question-card/prose
+					// extractors as a compatibility fallback.
+					let questionCardPayload = null;
+					let planWidgetPayload = null;
+					let deferredToolCallId = null;
 					let visibleText = bufferedText;
-					const jsonResult =
-						extractQuestionCardJsonFromAssistantText(bufferedText);
-					if (jsonResult) {
-						widgetPayload = jsonResult.payload;
-						visibleText = jsonResult.cleanedText;
-					} else {
-						const cardDefinition =
-							extractQuestionCardDefinitionFromAssistantText(bufferedText);
-						if (
-							cardDefinition &&
-							Array.isArray(cardDefinition.questions) &&
-							cardDefinition.questions.length > 0
-						) {
-							widgetPayload = cardDefinition;
+					const deferredToolResult =
+						extractAIGatewayDeferredToolFromAssistantText(bufferedText);
+					if (deferredToolResult) {
+						const toolCall = deferredToolResult.toolCall;
+						deferredToolCallId = createAIGatewayDeferredToolCallId(
+							toolCall.toolName,
+						);
+						visibleText = deferredToolResult.cleanedText;
+
+						if (toolCall.toolName === "ask_user_questions") {
+							questionCardPayload =
+								buildQuestionCardPayloadFromAIGatewayDeferredTool(
+									toolCall.input,
+									{
+										sessionId: `request-user-input-${deferredToolCallId}`,
+										round: 1,
+										maxRounds: 1,
+										title: "Answer these questions to continue",
+										description:
+											"Pick the options that best match what you want.",
+										widgetType: CLARIFICATION_WIDGET_TYPE,
+										maxPresetOptions: CLARIFICATION_MAX_PRESET_OPTIONS,
+										customOptionPlaceholder:
+											CLARIFICATION_CUSTOM_OPTION_PLACEHOLDER,
+										maxLabelLength: CLARIFICATION_MAX_LABEL_LENGTH,
+										createSessionId: createClarificationSessionId,
+									},
+								);
+							if (questionCardPayload?.sessionId) {
+								_requestUserInputQuestionMetaStore.set(
+									questionCardPayload.sessionId,
+									buildQuestionMetaFromQuestionCardPayload(
+										questionCardPayload,
+									),
+								);
+							}
+						} else if (toolCall.toolName === "exit_plan_mode") {
+							planWidgetPayload =
+								buildPlanWidgetPayloadFromAIGatewayDeferredTool(
+									toolCall.input,
+									{ toolCallId: deferredToolCallId },
+								);
+							if (planWidgetPayload && threadId) {
+								recordPlanWidgetEmission(threadId, {
+									deferredToolCallId,
+									planCardId: deferredToolCallId,
+								});
+							}
+						}
+
+						if (!questionCardPayload && !planWidgetPayload) {
+							console.warn("[AI-GATEWAY-DEFERRED] Ignored invalid deferred tool envelope", {
+								toolName: toolCall.toolName,
+							});
+							visibleText =
+								visibleText ||
+								"I couldn't render the requested interaction. Please try again.";
+						}
+					}
+
+					if (!deferredToolResult) {
+						const jsonResult =
+							extractQuestionCardJsonFromAssistantText(bufferedText);
+						if (jsonResult) {
+							questionCardPayload = jsonResult.payload;
+							visibleText = jsonResult.cleanedText;
+						} else {
+							const cardDefinition =
+								extractQuestionCardDefinitionFromAssistantText(bufferedText);
+							if (
+								cardDefinition &&
+								Array.isArray(cardDefinition.questions) &&
+								cardDefinition.questions.length > 0
+							) {
+								questionCardPayload = cardDefinition;
+							}
 						}
 					}
 
@@ -7675,20 +7878,51 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 						writer.write({ type: "text-end", id: textId });
 					}
 
-					if (widgetPayload) {
-						const toolCallId = `ai-gateway-clarification-${Date.now()}`;
+					if (questionCardPayload) {
+						const toolCallId =
+							deferredToolCallId ||
+							createAIGatewayDeferredToolCallId("ask_user_questions");
+						const sessionId =
+							questionCardPayload.sessionId ||
+							`request-user-input-${toolCallId}`;
+						_requestUserInputQuestionMetaStore.set(
+							sessionId,
+							buildQuestionMetaFromQuestionCardPayload(
+								questionCardPayload,
+							),
+						);
 						writer.write({
 							type: "data-widget-data",
 							id: toolCallId,
 							data: {
 								type: "question-card",
 								payload: {
-									...widgetPayload,
-									sessionId: toolCallId,
+									...questionCardPayload,
+									sessionId,
 									round: 1,
 									toolCallId,
 									deferredToolCallId: toolCallId,
+									tool_call_id: toolCallId,
 								},
+							},
+						});
+						writer.write(createRouteDecisionPart({
+							intent: "chat",
+							origin: requestOrigin,
+							reason: "intent_clarification",
+						}));
+					}
+
+					if (planWidgetPayload) {
+						const widgetId =
+							deferredToolCallId ||
+							createAIGatewayDeferredToolCallId("exit_plan_mode");
+						writer.write({
+							type: "data-widget-data",
+							id: widgetId,
+							data: {
+								type: "plan",
+								payload: planWidgetPayload,
 							},
 						});
 					}
@@ -8609,9 +8843,7 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 
 					// Store question ID → label mapping for answer format adaptation
 					if (payload.sessionId && Array.isArray(payload.questions)) {
-						const meta = payload.questions
-							.filter((q) => q && typeof q.id === "string" && typeof q.label === "string")
-							.map((q) => ({ id: q.id, label: q.label }));
+						const meta = buildQuestionMetaFromQuestionCardPayload(payload);
 						requestUserInputQuestionMeta.set(payload.sessionId, meta);
 						_requestUserInputQuestionMetaStore.set(payload.sessionId, meta);
 					}
