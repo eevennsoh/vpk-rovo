@@ -4841,13 +4841,6 @@ const UI_VARIANT_DEMOS: Record<string, ComponentType> = {
       })),
     { ssr: false },
   ),
-  "lozenge-demo-bold": dynamic(
-    () =>
-      import("./demos/ui/lozenge-demo").then((mod) => ({
-        default: mod.LozengeDemoBold,
-      })),
-    { ssr: false },
-  ),
   "lozenge-demo-accent-colors": dynamic(
     () =>
       import("./demos/ui/lozenge-demo").then((mod) => ({

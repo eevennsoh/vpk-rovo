@@ -34,29 +34,6 @@ export function LozengeDemoAppearances() {
 	)
 }
 
-export function LozengeDemoBold() {
-	return (
-		<div className="flex flex-wrap items-center gap-2">
-			<Lozenge isBold>Neutral</Lozenge>
-			<Lozenge variant="success" isBold>
-				Success
-			</Lozenge>
-			<Lozenge variant="warning" isBold>
-				Warning
-			</Lozenge>
-			<Lozenge variant="danger" isBold>
-				Danger
-			</Lozenge>
-			<Lozenge variant="information" isBold>
-				Information
-			</Lozenge>
-			<Lozenge variant="discovery" isBold>
-				Discovery
-			</Lozenge>
-		</div>
-	)
-}
-
 export function LozengeDemoAccentColors() {
 	return (
 		<div className="flex flex-wrap items-center gap-2">
