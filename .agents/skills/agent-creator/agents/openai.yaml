@@ -1,0 +1,4 @@
+interface:
+  display_name: "Agent Creator"
+  short_description: "Create repo-local Markdown agents"
+  default_prompt: "Use $agent-creator to plan and create a repo-local Markdown agent."

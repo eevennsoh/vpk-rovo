@@ -127,6 +127,7 @@ Optional environment variables:
 | Tidy         | `/vpk-tidy`         | Utility  | Refactor React components for reusability             |
 | Component    | `/vpk-component`    | Utility  | Map ADS components to VPK equivalents                 |
 | Component Ext | `/vpk-component-ext` | Utility  | Migrate custom AI components to ui-ai                 |
+| Agent Creator | `/agent-creator`   | Workflow | Create or update repo-local Markdown agents           |
 
 Symphony worker skills:
 
