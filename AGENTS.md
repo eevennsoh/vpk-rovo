@@ -211,7 +211,7 @@ Two runtime modes: **dev** (Next.js proxy + Express + RovoDev Serve) and **prod*
 - When fixing a bug, add a regression test that reproduces the original failure.
 - Before marking work complete, verify: root cause addressed (not symptoms), no leftover workarounds, no dead code introduced, lint + typecheck pass.
 
-> Skills, parallel work model, and agent teams reference loads automatically from `.claude/rules/` when editing skill/agent files.
+> Skills, parallel work model, and agent teams reference loads automatically from `.agents/rules/` when editing skill/agent files.
 
 ## cmux Inter-Agent Messaging
 
@@ -219,7 +219,7 @@ Two runtime modes: **dev** (Next.js proxy + Express + RovoDev Serve) and **prod*
 
 ## Appendix
 
-> Directory structure, env vars, provider reference, skills catalog, and validation checklists load automatically from `.claude/rules/` when editing backend, context, or skill files.
+> Directory structure, env vars, provider reference, skills catalog, and validation checklists load automatically from `.agents/rules/` when editing backend, context, or skill files.
 
 ## Contextual Rules
 
