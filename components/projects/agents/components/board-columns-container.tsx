@@ -4,24 +4,33 @@ import { useEffect, useRef, useState } from "react";
 import { token } from "@/lib/tokens";
 import BoardColumn from "./board-column";
 import KanbanCard from "./kanban-card";
+import type { BoardAgentData } from "../data/board-agents";
 import { type BoardColumnData, type KanbanCardData } from "../data/board-data";
 
 interface BoardColumnsContainerProps {
+	agents: readonly BoardAgentData[];
+	assignedAgentIdsByColumn: Readonly<Record<string, readonly string[]>>;
 	boardColumns: BoardColumnData[];
 	draggedCardCode: string | null;
 	onCardClick: (title: string, code: string) => void;
 	onCardDragStart: (card: KanbanCardData, sourceColumnTitle: string) => void;
 	onCardDrop: (targetColumnTitle: string) => void;
 	onCardDragEnd: () => void;
+	onCreateAgent: (columnTitle: string) => void;
+	onToggleColumnAgent: (columnTitle: string, agentId: string) => void;
 }
 
 export default function BoardColumnsContainer({
+	agents,
+	assignedAgentIdsByColumn,
 	boardColumns,
 	draggedCardCode,
 	onCardClick,
 	onCardDragStart,
 	onCardDrop,
 	onCardDragEnd,
+	onCreateAgent,
+	onToggleColumnAgent,
 }: Readonly<BoardColumnsContainerProps>) {
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const [canScrollRight, setCanScrollRight] = useState(false);
@@ -108,7 +117,14 @@ export default function BoardColumnsContainer({
 							onDrop={(event) => handleColumnDrop(event, column.title)}
 							style={{ flex: "1 1 0", minWidth: "168px", borderRadius: token("radius.large") }}
 						>
-							<BoardColumn title={column.title} count={column.count}>
+							<BoardColumn
+								agents={agents}
+								assignedAgentIds={assignedAgentIdsByColumn[column.title] ?? []}
+								count={column.count}
+								onCreateAgent={onCreateAgent}
+								onToggleAgent={(agentId) => onToggleColumnAgent(column.title, agentId)}
+								title={column.title}
+							>
 								{column.cards.map((card) => (
 									<KanbanCard
 										key={card.code}
