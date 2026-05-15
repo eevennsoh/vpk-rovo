@@ -14,6 +14,8 @@ import { useChat } from "@ai-sdk/react";
 import { API_ENDPOINTS } from "@/lib/api-config";
 import {
 	createAssistantTextMessage,
+	getLatestDataPart,
+	getMessageText,
 	type RovoMessageMetadata,
 	type RovoUIMessage,
 } from "@/lib/rovo-ui-messages";
@@ -30,10 +32,15 @@ import {
 	deleteRovoAppThread,
 	detachRovoAppRun,
 	fetchRovoAppAITitle,
+	fetchRovoAppSuggestedQuestions,
 	getRovoAppThread,
 	listRovoAppThreads,
 	updateRovoAppThread,
 } from "@/components/projects/rovo/lib/api";
+import {
+	appendSuggestedQuestionsToAssistantMessage,
+	buildSuggestedQuestionsRequest,
+} from "@/components/projects/rovo/lib/rovo-app-suggestions";
 import {
 	buildWorkItemReportRequestContext,
 	hasActiveWorkItemContext,
@@ -666,6 +673,8 @@ export function RovoChatProvider({
 	const hasTurnCompleteSignalRef = useRef(false);
 	const isMediaGeneratingRef = useRef(false);
 	const mediaGenerationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const suggestionsAbortControllerRef = useRef<AbortController | null>(null);
+	const requestedSuggestionMessageIdsRef = useRef<Set<string>>(new Set());
 	const [isMediaGenerating, setIsMediaGenerating] = useState(false);
 	const maybeFinalizeAndProcessRef = useRef<() => void>(() => {});
 	const processNextPromptRef = useRef<() => Promise<void>>(async () => {});
@@ -1127,6 +1136,126 @@ export function RovoChatProvider({
 
 		return [...rawUiMessages, submissionErrorMessage];
 	}, [rawUiMessages, submissionErrorMessage]);
+
+	useEffect(() => {
+		suggestionsAbortControllerRef.current?.abort();
+		suggestionsAbortControllerRef.current = null;
+		requestedSuggestionMessageIdsRef.current.clear();
+	}, [activeThreadId]);
+
+	useEffect(() => {
+		return () => {
+			suggestionsAbortControllerRef.current?.abort();
+			suggestionsAbortControllerRef.current = null;
+		};
+	}, []);
+
+	useEffect(() => {
+		const shouldSuppressSuggestionFetch =
+			isStreaming ||
+			isSubmitPending ||
+			isMediaGenerating ||
+			activePrompt !== null ||
+			queuedPrompts.length > 0;
+
+		if (shouldSuppressSuggestionFetch) {
+			suggestionsAbortControllerRef.current?.abort();
+			suggestionsAbortControllerRef.current = null;
+			return;
+		}
+
+		let latestAssistantMessage: RovoUIMessage | null = null;
+		for (let i = rawUiMessages.length - 1; i >= 0; i--) {
+			const message = rawUiMessages[i];
+			if (message.role === "assistant") {
+				latestAssistantMessage = message;
+				break;
+			}
+		}
+
+		if (!latestAssistantMessage) {
+			return;
+		}
+
+		const hasTurnCompleteSignal = latestAssistantMessage.parts.some(
+			(part) => part.type === "data-turn-complete"
+		);
+		if (
+			!hasTurnCompleteSignal ||
+			getMessageText(latestAssistantMessage).trim().length === 0 ||
+			getLatestDataPart(latestAssistantMessage, "data-suggested-questions")
+		) {
+			return;
+		}
+
+		const widgetType = getLatestDataPart(latestAssistantMessage, "data-widget-data")?.data?.type;
+		if (widgetType === "question-card" || widgetType === "plan") {
+			return;
+		}
+
+		if (requestedSuggestionMessageIdsRef.current.has(latestAssistantMessage.id)) {
+			return;
+		}
+
+		const suggestionRequest = buildSuggestedQuestionsRequest(
+			rawUiMessages,
+			latestAssistantMessage.id
+		);
+		if (!suggestionRequest) {
+			return;
+		}
+
+		suggestionsAbortControllerRef.current?.abort();
+		const abortController = new AbortController();
+		suggestionsAbortControllerRef.current = abortController;
+		requestedSuggestionMessageIdsRef.current.add(suggestionRequest.assistantMessageId);
+		const threadIdAtRequest = activeThreadIdRef.current;
+
+		void fetchRovoAppSuggestedQuestions({
+			...suggestionRequest,
+			signal: abortController.signal,
+		})
+			.then((questions) => {
+				if (questions.length === 0) {
+					return;
+				}
+
+				if (activeThreadIdRef.current !== threadIdAtRequest) {
+					return;
+				}
+
+				setMessages((currentMessages) =>
+					appendSuggestedQuestionsToAssistantMessage(
+						sanitizeRovoUiMessages(currentMessages),
+						suggestionRequest.assistantMessageId,
+						questions
+					)
+				);
+			})
+			.catch((error) => {
+				requestedSuggestionMessageIdsRef.current.delete(
+					suggestionRequest.assistantMessageId
+				);
+				if (abortController.signal.aborted) {
+					return;
+				}
+				console.warn("[RovoChatProvider] Failed to fetch suggested questions:", error);
+			})
+			.finally(() => {
+				if (suggestionsAbortControllerRef.current === abortController) {
+					suggestionsAbortControllerRef.current = null;
+				}
+			});
+	}, [
+		activePrompt,
+		activeThreadId,
+		isMediaGenerating,
+		isStreaming,
+		isSubmitPending,
+		queuedPrompts.length,
+		rawUiMessages,
+		setMessages,
+	]);
 
 	const toggleChat = useCallback(
 		() => setChatSurface((prev) => (prev === "sidebar" ? null : "sidebar")),
