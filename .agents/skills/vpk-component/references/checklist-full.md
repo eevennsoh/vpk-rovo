@@ -49,7 +49,7 @@
 ## Validation
 - [ ] `pnpm run lint` passes (0 new errors)
 - [ ] If global lint baseline is noisy, changed-file eslint passes (`pnpm exec eslint <changed-files>`)
-- [ ] `pnpm tsc --noEmit` passes (0 new errors)
+- [ ] `pnpm run typecheck` passes (0 new errors)
 - [ ] Validation report includes both global lint status and changed-file lint status
 - [ ] Typography parity verified on affected examples (no visually larger/smaller text than `atlassian.design`)
 - [ ] **API preservation verified** — no consumers of the modified component needed changes (no prop/variant/size renames)
