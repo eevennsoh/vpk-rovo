@@ -5,10 +5,10 @@ import { Button } from "@/components/ui/button";
 import Heading from "@/components/blocks/shared-ui/heading";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tag, TagGroup } from "@/components/ui/tag";
-import { useWorkItemModal } from "@/app/contexts/context-work-item-modal";
+import { useWorkItemModal, type WorkItemLabelTag } from "@/app/contexts/context-work-item-modal";
 import { DetailRow } from "./detail-row";
 import ChevronDownIcon from "@atlaskit/icon/core/chevron-down";
-import ChevronUpIcon from "@atlaskit/icon/core/chevron-up";
+import ChevronRightIcon from "@atlaskit/icon/core/chevron-right";
 import PriorityHighIcon from "@atlaskit/icon/core/priority-high";
 import PriorityMediumIcon from "@atlaskit/icon/core/priority-medium";
 
@@ -40,22 +40,31 @@ export function DetailsAccordion() {
 	const priorityColor = priority === "High" || priority === "Highest"
 		? token("color.icon.danger")
 		: token("color.icon.information");
+	const labelTags: WorkItemLabelTag[] = workItem.labelTags?.length
+		? workItem.labelTags
+		: workItem.labels?.map((label) => ({ text: label })) ?? [];
+	const detailsSummary = "Assignee, Reporter, Priority, Start date, Due date, Parent, Labels";
 
 	return (
-		<div style={{ border: `1px solid ${token("color.border")}`, borderRadius: token("radius.medium") }}>
+		<div className="min-w-0 overflow-hidden" style={{ border: `1px solid ${token("color.border")}`, borderRadius: token("radius.medium") }}>
 			<div className="p-2">
-				<div className="flex justify-between items-center">
-					<Heading size="small">Details</Heading>
+				<div className="flex min-w-0 items-center gap-1">
 					<Button
 						aria-label={state.isDetailsOpen ? "Collapse" : "Expand"}
 						aria-expanded={state.isDetailsOpen}
-						size="icon"
-						variant="outline"
-						className="aria-expanded:bg-bg-neutral-subtle aria-expanded:text-text-subtle aria-expanded:border-border"
+						size="icon-xs"
+						variant="ghost"
+						className="aria-expanded:!border-transparent aria-expanded:!bg-transparent aria-expanded:!text-text-subtle"
 						onClick={actions.toggleDetails}
 					>
-						{state.isDetailsOpen ? <ChevronUpIcon label="" /> : <ChevronDownIcon label="" />}
+						{state.isDetailsOpen ? <ChevronDownIcon label="" size="small" /> : <ChevronRightIcon label="" size="small" />}
 					</Button>
+					<div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
+						<Heading size="small" className="shrink-0 whitespace-nowrap">Details</Heading>
+						{state.isDetailsOpen ? null : (
+							<span className="block min-w-0 flex-1 truncate text-xs text-text-subtlest" title={detailsSummary}>{detailsSummary}</span>
+						)}
+					</div>
 				</div>
 			</div>
 
@@ -71,7 +80,7 @@ export function DetailsAccordion() {
 								<span className="text-sm font-medium">{assignee.name}</span>
 							</div>
 							<div className="pt-0.5 ps-2">
-								<a href="#">Change owner</a>
+								<a href="#">Assign to me</a>
 							</div>
 						</DetailRow>
 
@@ -107,9 +116,11 @@ export function DetailsAccordion() {
 						</DetailRow>
 
 						<DetailRow label="Labels" noPadding>
-							<TagGroup>
-								{(workItem.labels?.length ? workItem.labels : ["enterprise-rfp", "q4-sales"]).map((label) => (
-									<Tag key={label}>{label}</Tag>
+							<TagGroup className="gap-1">
+								{labelTags.map((label) => (
+									<Tag key={label.text} color={label.color}>
+										{label.text}
+									</Tag>
 								))}
 							</TagGroup>
 						</DetailRow>

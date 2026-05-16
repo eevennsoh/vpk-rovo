@@ -3,19 +3,24 @@
 import { useEffect, useState } from "react";
 import { token } from "@/lib/tokens";
 import { useRovoChat } from "@/app/contexts";
+import {
+	KanbanBoard,
+	createKanbanBoardColumns,
+	type KanbanBoardCardData,
+	type KanbanBoardColumnData,
+} from "@/components/blocks/kanban-board";
 import JiraHeader from "./components/jira-header";
 import BoardToolbar from "./components/board-toolbar";
-import BoardColumnsContainer from "./components/board-columns-container";
 import JiraWorkItemModal from "./components/jira-work-item-modal";
 import { JiraWorkItemInlinePage } from "./components/jira-work-item-inline-page";
 import { AVATARS } from "./data/avatars";
-import { BOARD_COLUMNS, type BoardColumnData, type KanbanCardData } from "./data/board-data";
+import { BOARD_COLUMNS } from "./data/board-data";
 import type { JiraWorkItemPresentationController } from "./hooks/use-jira-work-item-presentation";
 
 const WORK_ITEM_FLOATING_PIN_REASON = "jira-work-item-modal";
 
 interface DraggedCardState {
-	card: KanbanCardData;
+	card: KanbanBoardCardData;
 	sourceColumnTitle: string;
 }
 
@@ -59,22 +64,14 @@ export default function JiraView({
 		if (!isModalOpen || chatSurface !== "sidebar" || !isFloatingPinned) return;
 		promoteModalToInline();
 	}, [isModalOpen, chatSurface, isFloatingPinned, promoteModalToInline]);
-	const [boardColumns, setBoardColumns] = useState<BoardColumnData[]>(() =>
-		BOARD_COLUMNS.map((column) => ({
-			...column,
-			cards: column.cards.map((card) => ({
-				...card,
-				tags: card.tags.map((tag) => ({ ...tag })),
-			})),
-		})),
-	);
+	const [boardColumns, setBoardColumns] = useState<KanbanBoardColumnData[]>(() => createKanbanBoardColumns(BOARD_COLUMNS));
 	const [draggedCard, setDraggedCard] = useState<DraggedCardState | null>(null);
 
 	const handleCardClick = (title: string, code: string) => {
 		workItemPresentation.openModal({ title, code });
 	};
 
-	const handleCardDragStart = (card: KanbanCardData, sourceColumnTitle: string) => {
+	const handleCardDragStart = (card: KanbanBoardCardData, sourceColumnTitle: string) => {
 		setDraggedCard({ card, sourceColumnTitle });
 	};
 
@@ -172,8 +169,10 @@ export default function JiraView({
 					<BoardToolbar avatars={[...AVATARS]} />
 
 					{/* Board columns */}
-					<BoardColumnsContainer
+					<KanbanBoard
+						ariaLabel="Jira board columns. Scroll horizontally to review all statuses."
 						boardColumns={boardColumns}
+						columnHeaderPaddingBlock={token("space.200")}
 						draggedCardCode={draggedCard?.card.code ?? null}
 						onCardClick={handleCardClick}
 						onCardDragStart={handleCardDragStart}

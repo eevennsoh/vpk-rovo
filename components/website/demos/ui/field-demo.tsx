@@ -1091,10 +1091,6 @@ export function FieldDemoTextFieldVariants() {
 				<FieldLabel htmlFor="text-field-subtle">Subtle</FieldLabel>
 				<Input id="text-field-subtle" variant="subtle" placeholder="Subtle variant" />
 			</Field>
-			<Field>
-				<FieldLabel htmlFor="text-field-none">None</FieldLabel>
-				<Input id="text-field-none" variant="none" placeholder="None variant" />
-			</Field>
 		</FieldGroup>
 	);
 }

@@ -26,7 +26,7 @@ function Textarea({
 				"disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-(--opacity-disabled)",
 				"read-only:cursor-text",
 				"data-[variant=default]:border-input data-[variant=default]:bg-bg-input data-[variant=default]:hover:bg-bg-input-hovered data-[variant=default]:active:bg-bg-input-pressed data-[variant=default]:read-only:hover:border-input data-[variant=default]:read-only:hover:bg-bg-input",
-				"data-[variant=subtle]:border-transparent data-[variant=subtle]:hover:border-input data-[variant=subtle]:hover:bg-bg-input data-[variant=subtle]:focus-visible:bg-bg-input data-[variant=subtle]:read-only:hover:border-transparent data-[variant=subtle]:read-only:hover:bg-transparent",
+				"data-[variant=subtle]:border-transparent data-[variant=subtle]:hover:bg-bg-input-hovered data-[variant=subtle]:active:bg-bg-input-pressed data-[variant=subtle]:focus-visible:bg-bg-input data-[variant=subtle]:read-only:hover:border-transparent data-[variant=subtle]:read-only:hover:bg-transparent",
 				"data-[variant=none]:border-0 data-[variant=none]:hover:bg-transparent data-[variant=none]:active:bg-transparent",
 				isCompact && "min-h-12 py-1.5",
 				isMonospaced && "font-mono",

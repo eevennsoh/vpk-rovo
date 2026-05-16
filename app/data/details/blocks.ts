@@ -81,6 +81,68 @@ export const BLOCK_DETAILS: Record<string, ComponentDetail> = {
 			{ title: "All states", description: "Running, completed, and failed states side by side.", demoSlug: "agent-progress-demo-all-states" },
 		],
 	},
+	"agent-selector": {
+		description: "Searchable command-list selector for assigning AI agents, with selected agents pinned first and an optional create-agent action.",
+		importStatement: `import { AgentSelector } from "@/components/blocks/agent-selector";`,
+		usage: `import { AgentSelector } from "@/components/blocks/agent-selector";
+import type { AgentSelectorAgent } from "@/components/blocks/agent-selector";
+
+const agents: AgentSelectorAgent[] = [
+  {
+    id: "github-copilot",
+    name: "GitHub Copilot",
+    byline: "Agent by GitHub",
+    avatarSrc: "/3p/github/24.svg",
+  },
+];
+
+<AgentSelector
+  agents={agents}
+  selectedAgentIds={["github-copilot"]}
+  onAgentToggle={(agentId) => console.log(agentId)}
+  onBrowseAgents={() => console.log("browse agents")}
+  onCreateAgent={() => console.log("create agent")}
+/>`,
+		demoLayout: { previewHeight: "fixed" },
+		props: [
+			{
+				name: "agents",
+				type: "readonly AgentSelectorAgent[]",
+				required: true,
+				description: "Agents to render in the selector.",
+			},
+			{
+				name: "selectedAgentIds",
+				type: "readonly string[]",
+				description: "Selected agent ids. Selected agents remain pinned above filtered unselected agents.",
+			},
+			{
+				name: "onAgentToggle",
+				type: "(agentId: string) => void",
+				description: "Called when an agent row is selected.",
+			},
+			{
+				name: "onBrowseAgents",
+				type: "() => void",
+				description: "Shows the footer browse action and runs when Browse agents is selected.",
+			},
+			{
+				name: "onCreateAgent",
+				type: "() => void",
+				description: "Shows the footer action and runs when Create agent is selected.",
+			},
+			{
+				name: "query",
+				type: "string",
+				description: "Controlled search value.",
+			},
+			{
+				name: "onQueryChange",
+				type: "(query: string) => void",
+				description: "Called when the search input changes.",
+			},
+		],
+	},
 	"task-progress": {
 		description: "ADS-style agent progress tracker with expandable task status groups, live elapsed timer, and agent attribution.",
 		usage: `import TaskProgress from "@/components/blocks/task-progress/page";
@@ -798,8 +860,8 @@ const toolApproval: ToolApprovalPayload = {
 	ide: {
 		description: "IDE-style coding agent with file tree, code editor, terminal, and AI chat panel with tool calls.",
 	},
-	"kanban-sprint": {
-		description: "Sprint planning kanban board with drag-and-drop task cards, status columns, sprint metrics, and story point tracking.",
+	"kanban-board": {
+		description: "Enterprise RFP kanban board with drag-and-drop work-item cards, agent assignment controls, tags, priority signals, and avatar ownership.",
 	},
 	generative: {
 		description: "v0-style generative UI with prompt input, artifact container, and preview/code toggle.",

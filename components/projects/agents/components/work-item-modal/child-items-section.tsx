@@ -31,17 +31,22 @@ export function ChildItemsSection() {
 	const childItems = workItem.childItems?.length ? workItem.childItems : DEFAULT_CHILD_ITEMS;
 
 	return (
-		<div className="pb-6">
-			<div className="pb-2">
+		<section
+			style={{
+				display: "grid",
+				rowGap: token("space.100"),
+			}}
+		>
+			<div>
 				<div className="flex justify-between items-center">
 					<Heading size="small" as="h3">
 						Child work items
 					</Heading>
 					<div className="flex gap-2">
-						<Button aria-label="Manage" size="icon-sm" variant="outline">
+						<Button aria-label="Manage" size="icon-sm" variant="ghost">
 							<ShowMoreHorizontalIcon label="" size="small" />
 						</Button>
-						<Button aria-label="Add work item" size="icon-sm" variant="outline">
+						<Button aria-label="Add work item" size="icon-sm" variant="ghost">
 							<AddIcon label="" size="small" />
 						</Button>
 					</div>
@@ -51,6 +56,8 @@ export function ChildItemsSection() {
 			<ChildItemsProgressBar items={childItems} />
 
 			<div
+				role="table"
+				aria-label="Child work items"
 				style={{
 					border: `1px solid ${token("color.border")}`,
 					borderRadius: token("radius.medium"),
@@ -62,6 +69,6 @@ export function ChildItemsSection() {
 					<ChildItemRow key={item.key} item={item} />
 				))}
 			</div>
-		</div>
+		</section>
 	);
 }

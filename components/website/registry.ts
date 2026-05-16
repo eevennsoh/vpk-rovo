@@ -2018,6 +2018,13 @@ const UI_VARIANT_DEMOS: Record<string, ComponentType> = {
       })),
     { ssr: false },
   ),
+  "breadcrumb-demo-with-slots": dynamic(
+    () =>
+      import("./demos/ui/breadcrumb-demo").then((mod) => ({
+        default: mod.BreadcrumbDemoWithSlots,
+      })),
+    { ssr: false },
+  ),
   "breadcrumb-demo-with-dropdown": dynamic(
     () =>
       import("./demos/ui/breadcrumb-demo").then((mod) => ({
@@ -6596,6 +6603,10 @@ const BLOCK_DEMOS: Record<string, ComponentType> = {
     () => import("./demos/blocks/agent-progress-demo"),
     { ssr: false },
   ),
+  "agent-selector": dynamic(
+    () => import("./demos/blocks/agent-selector-demo"),
+    { ssr: false },
+  ),
   "task-progress": dynamic(
     () => import("./demos/blocks/task-progress-demo"),
     { ssr: false },
@@ -6753,7 +6764,7 @@ const BLOCK_DEMOS: Record<string, ComponentType> = {
   generative: dynamic(() => import("./demos/blocks/generative-demo"), {
     ssr: false,
   }),
-  "kanban-sprint": dynamic(() => import("./demos/blocks/kanban-sprint-demo"), {
+  "kanban-board": dynamic(() => import("./demos/blocks/kanban-board-demo"), {
     ssr: false,
   }),
   "visual-waveform": dynamic(

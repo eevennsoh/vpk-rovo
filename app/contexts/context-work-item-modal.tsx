@@ -1,6 +1,8 @@
 "use client";
 
-import { createContext, use, useState, ReactNode } from "react";
+import { createContext, use, useState, type ReactNode } from "react";
+
+import type { TagColor } from "@/components/ui/tag";
 
 /**
  * Work Item Modal State
@@ -38,6 +40,7 @@ export interface WorkItemChildItem {
 	summary: string;
 	priority: "highest" | "high" | "medium" | "low" | "lowest";
 	assignee?: string;
+	assigneeAvatarUrl?: string;
 	status: "done" | "inprogress" | "todo";
 }
 
@@ -61,6 +64,11 @@ export interface WorkItemRfpTeamMember {
 	role: string;
 	owner: string;
 	need: string;
+}
+
+export interface WorkItemLabelTag {
+	text: string;
+	color?: TagColor;
 }
 
 export interface WorkItemRfpContext {
@@ -95,6 +103,7 @@ export interface WorkItemData {
 		title?: string;
 	};
 	labels?: string[];
+	labelTags?: WorkItemLabelTag[];
 	childItems?: WorkItemChildItem[];
 	attachments?: WorkItemAttachment[];
 	comments?: WorkItemComment[];

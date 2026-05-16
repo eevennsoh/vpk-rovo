@@ -33,6 +33,8 @@ export const dropdownStyles = {
     "pointer-events-none absolute left-2 inline-flex items-center justify-center",
 } as const;
 
+const dropdownMenuOverlayShadow = "shadow-2xl";
+
 type DropdownMenuProps = MenuPrimitive.Root.Props;
 
 function DropdownMenu(props: Readonly<DropdownMenuProps>) {
@@ -104,6 +106,7 @@ function DropdownMenuContent({
 	        data-slot="dropdown-menu-content"
 	        className={cn(
 	          dropdownStyles.popup,
+	          dropdownMenuOverlayShadow,
 	          className,
 	        )}
         {...props}

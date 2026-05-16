@@ -275,6 +275,7 @@ export const UI_COMPONENTS: ComponentEntry[] = sortEntriesByName([
 
 export const BLOCK_COMPONENTS: ComponentEntry[] = sortEntriesByName([
 	blockComponent("agent-progress", "Agent Progress"),
+	blockComponent("agent-selector", "Agent Selector"),
 	blockComponent("task-progress", "Task Progress"),
 	blockComponent("answer-card", "Answer Card"),
 	blockComponent("approval-card", "Approval Card"),
@@ -288,7 +289,7 @@ export const BLOCK_COMPONENTS: ComponentEntry[] = sortEntriesByName([
 	blockComponent("data-table", "Data Table"),
 	blockComponent("generative-card", "Generative Card"),
 	blockComponent("generative", "Generative UI"),
-	blockComponent("kanban-sprint", "Kanban Sprint"),
+	blockComponent("kanban-board", "Kanban Board"),
 	blockComponent("mermaid-diagram", "Mermaid Diagram"),
 	{ name: "Login 01", slug: "login-01", importPath: "@/components/blocks/login/login-01", category: "blocks", detail: BLOCK_DETAILS["login-01"] },
 	{ name: "Login 02", slug: "login-02", importPath: "@/components/blocks/login/login-02", category: "blocks", detail: BLOCK_DETAILS["login-02"] },

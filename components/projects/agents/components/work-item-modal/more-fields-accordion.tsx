@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 import { useWorkItemModal } from "@/app/contexts/context-work-item-modal";
 import ChevronDownIcon from "@atlaskit/icon/core/chevron-down";
-import ChevronUpIcon from "@atlaskit/icon/core/chevron-up";
+import ChevronRightIcon from "@atlaskit/icon/core/chevron-right";
 
 export function MoreFieldsAccordion() {
 	const { state, actions, meta } = useWorkItemModal();
@@ -21,27 +21,33 @@ export function MoreFieldsAccordion() {
 				},
 			];
 	const effortEstimate = workItem.effortEstimate ?? "13 pts";
+	const moreFieldsSummary = [
+		"Approvers",
+		"Effort estimate",
+		...(workItem.account ? ["Account"] : []),
+		...(workItem.dealSize ? ["Deal size"] : []),
+	].join(", ");
 
 	return (
-		<div style={{ border: `1px solid ${token("color.border")}`, borderRadius: token("radius.medium") }}>
+		<div className="min-w-0 overflow-hidden" style={{ border: `1px solid ${token("color.border")}`, borderRadius: token("radius.medium") }}>
 			<div style={{ padding: "8px" }}>
-				<div className="flex items-center justify-between gap-2">
-					<div className="flex items-center gap-2">
-						<Heading size="small">More fields</Heading>
-						<span className="text-xs text-text-subtlest">
-							Approvers
-						</span>
-					</div>
+				<div className="flex min-w-0 items-center gap-1">
 					<Button
 						aria-label={state.isMoreFieldsOpen ? "Collapse" : "Expand"}
 						aria-expanded={state.isMoreFieldsOpen}
-						size="icon"
-						variant="outline"
-						className="aria-expanded:bg-bg-neutral-subtle aria-expanded:text-text-subtle aria-expanded:border-border"
+						size="icon-xs"
+						variant="ghost"
+						className="aria-expanded:!border-transparent aria-expanded:!bg-transparent aria-expanded:!text-text-subtle"
 						onClick={actions.toggleMoreFields}
 					>
-						{state.isMoreFieldsOpen ? <ChevronUpIcon label="" /> : <ChevronDownIcon label="" />}
+						{state.isMoreFieldsOpen ? <ChevronDownIcon label="" size="small" /> : <ChevronRightIcon label="" size="small" />}
 					</Button>
+					<div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
+						<Heading size="small" className="shrink-0 whitespace-nowrap">More fields</Heading>
+						{state.isMoreFieldsOpen ? null : (
+							<span className="block min-w-0 flex-1 truncate text-xs text-text-subtlest" title={moreFieldsSummary}>{moreFieldsSummary}</span>
+						)}
+					</div>
 				</div>
 			</div>
 

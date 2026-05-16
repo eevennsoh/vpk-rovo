@@ -1,13 +1,11 @@
 "use client";
 
-import Image from "next/image";
-import AddIcon from "@atlaskit/icon/core/add";
 import AiAgentIcon from "@atlaskit/icon/core/ai-agent";
 import ChevronDownIcon from "@atlaskit/icon/core/chevron-down";
 
+import { AgentSelector } from "@/components/blocks/agent-selector";
 import { Avatar, AvatarFallback, AvatarGroup, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -70,83 +68,6 @@ function AgentStack({ agents }: Readonly<{ agents: readonly BoardAgentData[] }>)
 	);
 }
 
-function AgentLogo({ agent }: Readonly<{ agent: BoardAgentData }>) {
-	return (
-		<span className="flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-sm">
-			<Image alt="" aria-hidden height={20} src={agent.avatarSrc} style={{ height: 20, width: 20 }} width={20} />
-		</span>
-	);
-}
-
-function AddAgentsPanel({
-	agents,
-	assignedAgents,
-	assignedAgentIdSet,
-	filteredUnassignedAgents,
-	onCreateAgent,
-	onQueryChange,
-	onToggleAgent,
-	query,
-}: Readonly<{
-	agents: readonly BoardAgentData[];
-	assignedAgents: readonly BoardAgentData[];
-	assignedAgentIdSet: ReadonlySet<string>;
-	filteredUnassignedAgents: readonly BoardAgentData[];
-	onCreateAgent: () => void;
-	onQueryChange: (query: string) => void;
-	onToggleAgent: (agentId: string) => void;
-	query: string;
-}>) {
-	const visibleAgents = [...assignedAgents, ...filteredUnassignedAgents];
-
-	return (
-		<Command className="min-w-80 flex-1" shouldFilter={false}>
-			<div className="px-4 pb-2 pt-4">
-				<p className="mb-2 text-sm font-semibold text-text">Select agent</p>
-				<CommandInput onValueChange={onQueryChange} placeholder="Search agents" value={query} />
-			</div>
-			<CommandList className="max-h-80 px-1.5 pb-2">
-				{visibleAgents.length === 0 ? <CommandEmpty>No agents found.</CommandEmpty> : null}
-				<CommandGroup>
-					{visibleAgents.map((agent) => {
-						const isSelected = assignedAgentIdSet.has(agent.id);
-						return (
-							<CommandItem
-								aria-checked={isSelected}
-								className="items-center gap-3 px-3 py-2.5"
-								data-checked={isSelected}
-								key={agent.id}
-								keywords={[agent.name, agent.byline]}
-								onSelect={() => onToggleAgent(agent.id)}
-								role="menuitemcheckbox"
-								value={agent.name}
-							>
-								<AgentLogo agent={agent} />
-								<span className="min-w-0 flex-1">
-									<span className="block truncate text-sm font-medium text-text">{agent.name}</span>
-									<span className="block truncate text-xs text-text-subtle">{agent.byline}</span>
-								</span>
-							</CommandItem>
-						);
-					})}
-				</CommandGroup>
-			</CommandList>
-			<div className="border-t border-border p-1.5">
-				<Button
-					className="h-auto w-full justify-start gap-3 px-3 py-2.5 text-left text-sm font-normal"
-					onClick={onCreateAgent}
-					type="button"
-					variant="ghost"
-				>
-					<Icon className="text-icon-subtle" render={<AddIcon label="" size="small" />} />
-					<span>Create agent</span>
-				</Button>
-			</div>
-			<span className="sr-only">{agents.length} agents available</span>
-		</Command>
-	);
-}
-
 export default function ColumnAgentAssignment({
 	agents,
 	assignedAgentIds,
@@ -160,20 +81,6 @@ export default function ColumnAgentAssignment({
 		() => assignedAgentIds.map((id) => agents.find((agent) => agent.id === id)).filter((agent): agent is BoardAgentData => Boolean(agent)),
 		[agents, assignedAgentIds],
 	);
-	const assignedAgentIdSet = useMemo(() => new Set(assignedAgentIds), [assignedAgentIds]);
-	const filteredUnassignedAgents = useMemo(() => {
-		const normalizedQuery = query.trim().toLowerCase();
-		const unassignedAgents = agents.filter((agent) => !assignedAgentIdSet.has(agent.id));
-
-		if (!normalizedQuery) {
-			return unassignedAgents;
-		}
-
-		return unassignedAgents.filter((agent) => {
-			const searchableText = `${agent.name} ${agent.byline}`.toLowerCase();
-			return searchableText.includes(normalizedQuery);
-		});
-	}, [agents, assignedAgentIdSet, query]);
 	const hasAssignedAgents = assignedAgents.length > 0;
 	const triggerLabel = hasAssignedAgents
 		? `Manage agents for ${columnTitle}`
@@ -231,15 +138,13 @@ export default function ColumnAgentAssignment({
 						<TooltipContent>{hasAssignedAgents ? "Manage agents" : "Add agent"}</TooltipContent>
 					</Tooltip>
 				</TooltipProvider>
-				<DropdownMenuContent align="end" className="w-80 p-0" sideOffset={8}>
-					<AddAgentsPanel
+				<DropdownMenuContent align="end" className="w-80 overflow-hidden p-0" sideOffset={8}>
+					<AgentSelector
 						agents={agents}
-						assignedAgents={assignedAgents}
-						assignedAgentIdSet={assignedAgentIdSet}
-						filteredUnassignedAgents={filteredUnassignedAgents}
+						selectedAgentIds={assignedAgentIds}
 						onCreateAgent={handleCreateAgent}
 						onQueryChange={setQuery}
-						onToggleAgent={onToggleAgent}
+						onAgentToggle={onToggleAgent}
 						query={query}
 					/>
 				</DropdownMenuContent>

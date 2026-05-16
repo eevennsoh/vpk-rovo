@@ -1,8 +1,6 @@
-import type { KanbanBoardAgentData } from "@/components/blocks/kanban-board";
+import type { AgentSelectorAgent } from "@/components/blocks/agent-selector";
 
-export type { KanbanBoardAgentData as BoardAgentData } from "@/components/blocks/kanban-board";
-
-export const BOARD_AGENTS: readonly KanbanBoardAgentData[] = [
+export const AGENT_SELECTOR_DEMO_AGENTS: readonly AgentSelectorAgent[] = [
 	{
 		id: "github-copilot",
 		name: "GitHub Copilot",
@@ -81,4 +79,4 @@ export const BOARD_AGENTS: readonly KanbanBoardAgentData[] = [
 		byline: "by Google",
 		avatarSrc: "/3p/google-drive/24.svg",
 	},
-] as const;
+];

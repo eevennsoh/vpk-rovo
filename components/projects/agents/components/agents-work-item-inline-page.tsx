@@ -35,6 +35,7 @@ export function AgentsWorkItemInlinePage({
 							<div className="mt-4">
 								<WorkItemModal.Description />
 								<WorkItemModal.ChildItems />
+								<WorkItemModal.AgentPanel />
 								<WorkItemModal.Attachments />
 								<WorkItemModal.Activity />
 							</div>

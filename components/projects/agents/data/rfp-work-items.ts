@@ -1,13 +1,44 @@
 import type {
 	WorkItemData,
+	WorkItemLabelTag,
 	WorkItemRfpTeamMember,
 } from "@/app/contexts/context-work-item-modal";
+import type { KanbanBoardCardData, KanbanBoardCardTag } from "@/components/blocks/kanban-board";
 import type { ChatContextBarDescriptor } from "@/components/projects/sidebar-chat/lib/chat-context-bar";
 import { BOARD_COLUMNS } from "./board-data";
 
 export const RFP_101_WORK_ITEM_CODE = "RFP-101";
 export const AGENTS_BOARD_CONTEXT_LABEL = "Enterprise RFP Response";
 const AGENTS_BOARD_CONTEXT_SIGNATURE = "agents-board:enterprise-rfp-response";
+
+function findBoardCardByCode(code: string): KanbanBoardCardData | undefined {
+	for (const column of BOARD_COLUMNS) {
+		const card = column.cards.find((boardCard) => boardCard.code === code);
+		if (card) {
+			return card;
+		}
+	}
+
+	return undefined;
+}
+
+function createWorkItemLabelFields(
+	tags: readonly KanbanBoardCardTag[] | undefined,
+): Pick<WorkItemData, "labels" | "labelTags"> {
+	if (!tags || tags.length === 0) {
+		return {};
+	}
+
+	const labelTags: WorkItemLabelTag[] = tags.map((tag) => ({
+		text: tag.text,
+		color: tag.color,
+	}));
+
+	return {
+		labels: labelTags.map((tag) => tag.text),
+		labelTags,
+	};
+}
 
 export interface AgentsChatScreenContext {
 	chatContextBar: ChatContextBarDescriptor;
@@ -37,7 +68,7 @@ export const RFP_101_WORK_ITEM = {
 		code: "RFP-100",
 		title: "Enterprise RFP Response",
 	},
-	labels: ["enterprise-rfp", "service-management", "competitive-replacement", "jsm", "platform-demo"],
+	...createWorkItemLabelFields(findBoardCardByCode(RFP_101_WORK_ITEM_CODE)?.tags),
 	childItems: [
 		{
 			type: "Sub-task",
@@ -45,6 +76,7 @@ export const RFP_101_WORK_ITEM = {
 			summary: "Build requirement matrix for ITSM, CMDB, HAM, SAM, AI, GRC, and portal needs",
 			priority: "high",
 			assignee: "Maya Chen",
+			assigneeAvatarUrl: "/avatar-user/andrea-wilson/color/asow-service-yellow.png",
 			status: "inprogress",
 		},
 		{
@@ -53,6 +85,7 @@ export const RFP_101_WORK_ITEM = {
 			summary: "Confirm JSM, Assets, Rovo, Guard, and platform demo owners",
 			priority: "medium",
 			assignee: "Priya Shah",
+			assigneeAvatarUrl: "/avatar-user/annie-clare/color/asow-strategy-orange.png",
 			status: "todo",
 		},
 		{
@@ -61,6 +94,7 @@ export const RFP_101_WORK_ITEM = {
 			summary: "Draft win themes against incumbent cost, complexity, and adaptability pain points",
 			priority: "high",
 			assignee: "Jordan Lee",
+			assigneeAvatarUrl: "/avatar-user/andrew-park/color/asow-dev-lime.png",
 			status: "done",
 		},
 		{
@@ -69,6 +103,7 @@ export const RFP_101_WORK_ITEM = {
 			summary: "Collect legal, data residency, audit, and vulnerability-management exhibits",
 			priority: "medium",
 			assignee: "Elena Ruiz",
+			assigneeAvatarUrl: "/avatar-user/aoife-burke/color/asow-service-yellow.png",
 			status: "todo",
 		},
 	],
@@ -259,11 +294,19 @@ function formatTeam(team: readonly WorkItemRfpTeamMember[] | undefined): string[
 export function getAgentsWorkItemForCard(params: {
 	code: string;
 	title: string;
+	tags?: readonly KanbanBoardCardTag[];
 }): WorkItemData {
-	return WORK_ITEMS_BY_CODE[params.code] ?? {
+	const boardCard = findBoardCardByCode(params.code);
+	const labelFields = createWorkItemLabelFields(params.tags ?? boardCard?.tags);
+	const baseWorkItem = WORK_ITEMS_BY_CODE[params.code] ?? {
 		code: params.code,
 		title: params.title,
 		description: WORK_ITEM_DESCRIPTIONS_BY_CODE[params.code],
+	};
+
+	return {
+		...baseWorkItem,
+		...labelFields,
 	};
 }
 

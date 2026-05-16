@@ -4,10 +4,24 @@ import { useState } from "react"
 import { InlineEdit } from "@/components/ui/inline-edit"
 
 export default function InlineEditDemo() {
-	const [value, setValue] = useState("Default description value")
+	const [description, setDescription] = useState(
+		"Capture RFP requirements, buyer priorities, win themes, and response notes for the account team."
+	)
+
 	return (
-		<div className="mx-auto w-full max-w-sm">
-			<InlineEdit label="Description" value={value} onConfirm={setValue} />
+		<div className="mx-auto w-full max-w-xl">
+			<InlineEdit
+				label="Description"
+				value={description}
+				placeholder="Add RFP requirements, buyer priorities, win themes, and response notes"
+				onConfirm={setDescription}
+				editButtonLabel="Edit description"
+				inputProps={{ id: "inline-edit-rfp-description" }}
+				textareaProps={{ variant: "subtle", rows: 4 }}
+				readViewClassName="border-transparent bg-transparent hover:bg-bg-input-hovered active:bg-bg-input-pressed"
+				className="min-w-0"
+				multiline
+			/>
 		</div>
 	)
 }

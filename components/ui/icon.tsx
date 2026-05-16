@@ -16,7 +16,10 @@ function Icon({ className, render, label, ...props }: Readonly<IconProps>) {
 			role={isDecorative ? undefined : "img"}
 			aria-hidden={isDecorative ? true : undefined}
 			aria-label={isDecorative ? undefined : label}
-			className={cn("inline-flex items-center justify-center", className)}
+			className={cn(
+				"inline-flex items-center justify-center [&>span]:inline-flex! [&>span]:items-center! [&>span]:justify-center!",
+				className
+			)}
 			{...props}
 		>
 			{render}

@@ -1214,7 +1214,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 <Field>
   <FieldLabel>Username</FieldLabel>
-  <Input placeholder="Enter username" />
+  <Input variant="subtle" placeholder="Enter username" />
   <FieldDescription>Your display name.</FieldDescription>
 </Field>
 
@@ -1287,7 +1287,7 @@ import { Textarea } from "@/components/ui/textarea";
       },
       {
         title: "Text field variants",
-        description: "Default, subtle, and none input variants.",
+        description: "Default and subtle input variants.",
         demoSlug: "field-demo-text-field-variants",
         badge: { label: "ADS", variant: "discovery" },
       },
@@ -2069,7 +2069,7 @@ import { Textarea } from "@/components/ui/textarea";
 
   breadcrumb: {
     description:
-      "A navigation breadcrumb component with semantic HTML, separator icons, and ellipsis support for deep paths.",
+      "A navigation breadcrumb component with semantic HTML, slash separators, label slots, and ellipsis support for deep paths.",
     adsUrl: "https://atlassian.design/components/breadcrumbs",
     usage: `import {
   Breadcrumb, BreadcrumbList, BreadcrumbItem,
@@ -2093,6 +2093,10 @@ import { Textarea } from "@/components/ui/textarea";
         description: "Ordered list container for items.",
       },
       { name: "BreadcrumbItem", description: "Individual breadcrumb entry." },
+      {
+        name: "BreadcrumbLabel",
+        description: "Composable label wrapper with before and after slots.",
+      },
       { name: "BreadcrumbLink", description: "Clickable navigation link." },
       {
         name: "BreadcrumbPage",
@@ -2124,6 +2128,11 @@ import { Textarea } from "@/components/ui/textarea";
         demoSlug: "breadcrumb-demo-custom-separator",
       },
       { title: "Basic", demoSlug: "breadcrumb-demo-basic" },
+      {
+        title: "With label slots",
+        description: "Breadcrumb labels with icons, tiles, and icon tiles.",
+        demoSlug: "breadcrumb-demo-with-slots",
+      },
       {
         title: "With dropdown",
         description: "Breadcrumb with dropdown for hidden items.",
@@ -5404,9 +5413,18 @@ import SearchIcon from "@atlaskit/icon/core/search";
     },
     usage: `import { InlineEdit } from "@/components/ui/inline-edit";
 
-const [value, setValue] = useState("Default description value");
+const [description, setDescription] = useState("");
 
-<InlineEdit label="Description" value={value} onConfirm={setValue} />
+<InlineEdit
+  label="Description"
+  value={description}
+  placeholder="Add RFP requirements..."
+  onConfirm={setDescription}
+  inputProps={{ id: "rfp-description" }}
+  textareaProps={{ variant: "subtle", rows: 4 }}
+  readViewClassName="border-transparent bg-transparent"
+  multiline
+/>
 <InlineEdit
   label="Team name"
   value=""
@@ -5461,6 +5479,28 @@ const [value, setValue] = useState("Default description value");
         type: "boolean",
         default: "false",
         description: "Keeps edit mode open when focus leaves the input.",
+      },
+      {
+        name: "multiline",
+        type: "boolean",
+        default: "false",
+        description: "Uses Textarea for edit mode instead of Input.",
+      },
+      {
+        name: "inputProps",
+        type: "InputProps",
+        description:
+          "Props passed to the single-line input. Also supplies the shared field id.",
+      },
+      {
+        name: "textareaProps",
+        type: "TextareaProps",
+        description: "Props passed to the multiline textarea when multiline is true.",
+      },
+      {
+        name: "readViewClassName",
+        type: "string",
+        description: "Additional CSS classes for the read-view button.",
       },
       {
         name: "hideActionButtons",

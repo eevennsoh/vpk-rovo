@@ -68,13 +68,17 @@ export function AttachmentsSection() {
 	const attachmentFiles = workItem.attachments?.length ? workItem.attachments : ATTACHMENT_FILES;
 
 	return (
-		<div style={{ marginBottom: token("space.300") }}>
+		<section
+			style={{
+				display: "grid",
+				rowGap: token("space.100"),
+			}}
+		>
 			<div
 				style={{
 					display: "flex",
 					alignItems: "center",
 					justifyContent: "space-between",
-					marginBottom: token("space.100"),
 				}}
 			>
 				<div style={{ display: "flex", alignItems: "center", gap: token("space.050") }}>
@@ -84,10 +88,10 @@ export function AttachmentsSection() {
 					<Badge>{attachmentFiles.length}</Badge>
 				</div>
 				<div style={{ display: "flex", gap: token("space.100") }}>
-					<Button aria-label="Manage" size="icon-sm" variant="outline">
+					<Button aria-label="Manage" size="icon-sm" variant="ghost">
 						<ShowMoreHorizontalIcon label="" size="small" />
 					</Button>
-					<Button aria-label="Add attachment" size="icon-sm" variant="outline">
+					<Button aria-label="Add attachment" size="icon-sm" variant="ghost">
 						<AddIcon label="" size="small" />
 					</Button>
 				</div>
@@ -105,6 +109,6 @@ export function AttachmentsSection() {
 					<AttachmentCard key={i} file={file} />
 				))}
 			</div>
-		</div>
+		</section>
 	);
 }

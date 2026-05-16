@@ -23,6 +23,7 @@ import { ModalContainer, TwoColumnLayout, LeftColumn, RightColumn } from "./moda
 import { ModalHeader, ModalTitle } from "./modal-header";
 import { Description } from "./description-section";
 import { ChildItemsSection } from "./child-items-section";
+import { AgentPanel } from "./agent-panel";
 import { AttachmentsSection } from "./attachments-section";
 import { ActivitySection } from "./activity-section";
 import { CommentThread } from "./comment-thread";
@@ -43,6 +44,7 @@ const WorkItemModal = {
 	Title: ModalTitle,
 	Description,
 	ChildItems: ChildItemsSection,
+	AgentPanel,
 	Attachments: AttachmentsSection,
 	Activity: ActivitySection,
 	StatusHeader,

@@ -10,6 +10,10 @@ const AGENTS_DEMO_SOURCE = fs.readFileSync(
 	path.join(process.cwd(), "components/website/demos/projects/agents-demo.tsx"),
 	"utf8",
 );
+const DETAILS_ACCORDION_SOURCE = fs.readFileSync(
+	path.join(process.cwd(), "components/projects/agents/components/work-item-modal/details-accordion.tsx"),
+	"utf8",
+);
 const ROVO_CHAT_CONTEXT_SOURCE = fs.readFileSync(
 	path.join(process.cwd(), "app/contexts/context-rovo-chat.tsx"),
 	"utf8",
@@ -53,6 +57,8 @@ test("RFP-101 active work item formats a bounded hidden Jira context block", asy
 	assert.match(context, /Enterprise Evaluation Account/);
 	assert.match(context, /Description: A large enterprise customer is evaluating Atlassian/);
 	assert.match(context, /Due date: Sep 8, 2025/);
+	assert.match(context, /Labels: qualification, enterprise/);
+	assert.doesNotMatch(context, /competitive-replacement/);
 	assert.match(context, /multi-thousand users/);
 	assert.match(context, /incumbent service-management, CMDB/);
 	assert.match(context, /Response team needs:/);
@@ -111,6 +117,36 @@ test("every visible agents board card resolves to a substantial work item descri
 	}
 });
 
+test("work item labels are derived from visible board card tags", async () => {
+	const harness = await loadRfpContextHarness();
+	const cards = harness.BOARD_COLUMNS.flatMap((column) => column.cards);
+	const rfp101Card = cards.find((card) => card.code === "RFP-101");
+
+	assert.ok(rfp101Card);
+	assert.deepEqual(
+		harness.RFP_101_WORK_ITEM.labels,
+		rfp101Card.tags.map((tag) => tag.text),
+	);
+	assert.deepEqual(harness.RFP_101_WORK_ITEM.labelTags, rfp101Card.tags);
+
+	for (const card of cards) {
+		const workItem = harness.getAgentsWorkItemForCard(card);
+		assert.deepEqual(
+			workItem.labels,
+			card.tags.map((tag) => tag.text),
+			`${card.code} label text should match board`,
+		);
+		assert.deepEqual(workItem.labelTags, card.tags, `${card.code} label colors should match board`);
+	}
+});
+
+test("work item details render the board tag model", () => {
+	assert.match(DETAILS_ACCORDION_SOURCE, /const labelTags: WorkItemLabelTag\[\] = workItem\.labelTags\?\.length/);
+	assert.match(DETAILS_ACCORDION_SOURCE, /<TagGroup className="gap-1">/);
+	assert.match(DETAILS_ACCORDION_SOURCE, /<Tag key=\{label\.text\} color=\{label\.color\}>/);
+	assert.doesNotMatch(DETAILS_ACCORDION_SOURCE, /enterprise-rfp", "q4-sales/);
+});
+
 test("agents chat screen resolver switches from board fallback to active work item", async () => {
 	const harness = await loadRfpContextHarness();
 
@@ -159,7 +195,7 @@ test("Rovo provider merges default context with per-prompt context", () => {
 });
 
 test("Agents view opens the richer active work item through the presentation controller", () => {
-	assert.match(AGENTS_VIEW_SOURCE, /const workItem = getAgentsWorkItemForCard\(\{ title, code \}\);/);
+	assert.match(AGENTS_VIEW_SOURCE, /const workItem = getAgentsWorkItemForCard\(card\);/);
 	assert.match(AGENTS_VIEW_SOURCE, /workItemPresentation\.openModal\(workItem\)/);
 	assert.match(AGENTS_VIEW_SOURCE, /workItem=\{selectedWorkItem\}/);
 });

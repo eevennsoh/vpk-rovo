@@ -25,6 +25,7 @@
 
 import { WorkItemModalProvider } from "@/app/contexts/context-work-item-modal";
 import type { WorkItemData } from "@/app/contexts/context-work-item-modal";
+import { getAgentsWorkItemForCard } from "../data/rfp-work-items";
 import WorkItemModal from "./work-item-modal/index";
 
 interface JiraWorkItemModalProps {
@@ -42,10 +43,10 @@ export default function JiraWorkItemModal({
 	workItemTitle = "Qualify enterprise service-management RFP",
 	workItemCode = "RFP-101",
 }: Readonly<JiraWorkItemModalProps>) {
-	const resolvedWorkItem = workItem ?? {
+	const resolvedWorkItem = workItem ?? getAgentsWorkItemForCard({
 		title: workItemTitle,
 		code: workItemCode,
-	};
+	});
 
 	return (
 		<WorkItemModalProvider
@@ -61,6 +62,7 @@ export default function JiraWorkItemModal({
 						<WorkItemModal.Title />
 						<WorkItemModal.Description />
 						<WorkItemModal.ChildItems />
+						<WorkItemModal.AgentPanel />
 						<WorkItemModal.Attachments />
 						<WorkItemModal.Activity />
 					</WorkItemModal.LeftColumn>

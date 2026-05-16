@@ -2,21 +2,26 @@
 
 import { useEffect, useState } from "react";
 import { useRovoChat } from "@/app/contexts";
+import {
+	KanbanBoard,
+	createKanbanBoardColumns,
+	type KanbanBoardCardData,
+	type KanbanBoardColumnData,
+} from "@/components/blocks/kanban-board";
 import JiraHeader from "./components/jira-header";
 import BoardToolbar from "./components/board-toolbar";
-import BoardColumnsContainer from "./components/board-columns-container";
 import JiraWorkItemModal from "./components/jira-work-item-modal";
 import { AgentsWorkItemInlinePage } from "./components/agents-work-item-inline-page";
 import { AVATARS } from "./data/avatars";
 import { BOARD_AGENTS } from "./data/board-agents";
-import { BOARD_COLUMNS, type BoardColumnData, type KanbanCardData } from "./data/board-data";
+import { BOARD_COLUMNS } from "./data/board-data";
 import { getAgentsWorkItemForCard } from "./data/rfp-work-items";
 import type { AgentsWorkItemPresentationController } from "./hooks/use-agents-work-item-presentation";
 
 const WORK_ITEM_FLOATING_PIN_REASON = "agents-work-item-modal";
 
 interface DraggedCardState {
-	card: KanbanCardData;
+	card: KanbanBoardCardData;
 	sourceColumnTitle: string;
 }
 
@@ -54,24 +59,16 @@ export default function AgentsView({
 		promoteModalToInline();
 	}, [isModalOpen, chatSurface, isFloatingPinned, promoteModalToInline]);
 
-	const [boardColumns, setBoardColumns] = useState<BoardColumnData[]>(() =>
-		BOARD_COLUMNS.map((column) => ({
-			...column,
-			cards: column.cards.map((card) => ({
-				...card,
-				tags: card.tags.map((tag) => ({ ...tag })),
-			})),
-		})),
-	);
+	const [boardColumns, setBoardColumns] = useState<KanbanBoardColumnData[]>(() => createKanbanBoardColumns(BOARD_COLUMNS));
 	const [columnAgentAssignments, setColumnAgentAssignments] = useState<Record<string, string[]>>({});
 	const [draggedCard, setDraggedCard] = useState<DraggedCardState | null>(null);
 
-	const handleCardClick = (title: string, code: string) => {
-		const workItem = getAgentsWorkItemForCard({ title, code });
+	const handleCardClick = (_title: string, _code: string, card: KanbanBoardCardData) => {
+		const workItem = getAgentsWorkItemForCard(card);
 		workItemPresentation.openModal(workItem);
 	};
 
-	const handleCardDragStart = (card: KanbanCardData, sourceColumnTitle: string) => {
+	const handleCardDragStart = (card: KanbanBoardCardData, sourceColumnTitle: string) => {
 		setDraggedCard({ card, sourceColumnTitle });
 	};
 
@@ -213,8 +210,9 @@ export default function AgentsView({
 					<BoardToolbar avatars={[...AVATARS]} />
 
 					{/* Board columns */}
-					<BoardColumnsContainer
+					<KanbanBoard
 						agents={BOARD_AGENTS}
+						ariaLabel="RFP board columns. Scroll horizontally to review all statuses."
 						assignedAgentIdsByColumn={columnAgentAssignments}
 						boardColumns={boardColumns}
 						draggedCardCode={draggedCard?.card.code ?? null}
@@ -224,6 +222,7 @@ export default function AgentsView({
 						onCardDrop={handleCardDrop}
 						onCardDragEnd={handleCardDragEnd}
 						onToggleColumnAgent={handleToggleColumnAgent}
+						paddingTop={0}
 					/>
 				</div>
 			) : null}

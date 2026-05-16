@@ -1,27 +1,13 @@
-import type { TagColor } from "@/components/ui/tag";
+import type { KanbanBoardColumnData } from "@/components/blocks/kanban-board";
 
-export type Priority = "major" | "medium" | "minor";
+export type {
+	KanbanBoardCardData as KanbanCardData,
+	KanbanBoardCardTag as CardTag,
+	KanbanBoardColumnData as BoardColumnData,
+	KanbanBoardPriority as Priority,
+} from "@/components/blocks/kanban-board";
 
-export interface CardTag {
-	text: string;
-	color: TagColor;
-}
-
-export interface KanbanCardData {
-	title: string;
-	code: string;
-	tags: CardTag[];
-	priority: Priority;
-	avatarSrc?: string;
-}
-
-export interface BoardColumnData {
-	title: string;
-	count: number;
-	cards: KanbanCardData[];
-}
-
-export const BOARD_COLUMNS: readonly BoardColumnData[] = [
+export const BOARD_COLUMNS: readonly KanbanBoardColumnData[] = [
 	{
 		title: "Backlog",
 		count: 20,

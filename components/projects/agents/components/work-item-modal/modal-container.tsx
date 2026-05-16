@@ -1,7 +1,20 @@
 "use client";
 
-import { ReactNode } from "react";
+import { type CSSProperties, ReactNode } from "react";
 import { token } from "@/lib/tokens";
+
+const scrollColumnStyle: CSSProperties = {
+	minHeight: 0,
+	minWidth: 0,
+	overflowY: "auto",
+};
+
+const columnStackBaseStyle: CSSProperties = {
+	display: "grid",
+	gridAutoRows: "max-content",
+	alignContent: "start",
+	minWidth: 0,
+};
 
 interface ModalContainerProps {
 	children: ReactNode;
@@ -23,8 +36,8 @@ export function ModalContainer({ children }: Readonly<ModalContainerProps>) {
 				borderRadius: token("radius.xlarge"),
 				boxShadow: token("elevation.shadow.overlay"),
 				zIndex: 501,
-				display: "flex",
-				flexDirection: "column",
+				display: "grid",
+				gridTemplateRows: "auto minmax(0, 1fr)",
 				overflow: "hidden",
 			}}
 		>
@@ -38,7 +51,19 @@ interface TwoColumnLayoutProps {
 }
 
 export function TwoColumnLayout({ children }: Readonly<TwoColumnLayoutProps>) {
-	return <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>{children}</div>;
+	return (
+		<div
+			style={{
+				display: "grid",
+				gridTemplateColumns: "minmax(0, 1fr) clamp(320px, 34vw, 408px)",
+				minHeight: 0,
+				minWidth: 0,
+				overflow: "hidden",
+			}}
+		>
+			{children}
+		</div>
+	);
 }
 
 interface LeftColumnProps {
@@ -47,8 +72,21 @@ interface LeftColumnProps {
 
 export function LeftColumn({ children }: Readonly<LeftColumnProps>) {
 	return (
-		<div style={{ flex: 1, overflowY: "auto", padding: token("space.400") }}>
-			{children}
+		<div
+			style={{
+				...scrollColumnStyle,
+				paddingBlockEnd: token("space.400"),
+				paddingInline: token("space.300"),
+			}}
+		>
+			<div
+				style={{
+					...columnStackBaseStyle,
+					rowGap: token("space.300"),
+				}}
+			>
+				{children}
+			</div>
 		</div>
 	);
 }
@@ -61,17 +99,21 @@ export function RightColumn({ children }: Readonly<RightColumnProps>) {
 	return (
 		<div
 			style={{
-				minWidth: "320px",
-				maxWidth: "450px",
-				width: "408px",
-				overflowY: "auto",
-				display: "flex",
-				flexDirection: "column",
-				paddingLeft: token("space.100"),
-				paddingRight: token("space.300"),
+				...scrollColumnStyle,
+				paddingBlockStart: token("space.050"),
+				paddingBlockEnd: token("space.400"),
+				paddingInlineStart: token("space.100"),
+				paddingInlineEnd: token("space.300"),
 			}}
 		>
-			{children}
+			<div
+				style={{
+					...columnStackBaseStyle,
+					rowGap: token("space.200"),
+				}}
+			>
+				{children}
+			</div>
 		</div>
 	);
 }

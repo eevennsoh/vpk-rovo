@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import ArrowUpIcon from "@atlaskit/icon/core/arrow-up"
 import CheckMarkIcon from "@atlaskit/icon/core/check-mark"
 import CrossIcon from "@atlaskit/icon/core/cross"
 
@@ -25,6 +24,7 @@ export interface InlineEditProps {
 	hideActionButtons?: boolean
 	keepEditViewOpenOnBlur?: boolean
 	readViewFitContainerWidth?: boolean
+	readViewClassName?: string
 	startWithEditViewOpen?: boolean
 	editButtonLabel?: string
 	confirmButtonLabel?: string
@@ -69,6 +69,7 @@ function InlineEdit({
 	hideActionButtons = false,
 	keepEditViewOpenOnBlur = false,
 	readViewFitContainerWidth = true,
+	readViewClassName,
 	startWithEditViewOpen = false,
 	editButtonLabel = "Edit value",
 	confirmButtonLabel = "Confirm changes",
@@ -191,7 +192,8 @@ function InlineEdit({
 						multiline ? "min-h-10 items-start py-2" : "h-10 items-center",
 						readViewFitContainerWidth ? "w-full" : "w-fit max-w-full",
 						"hover:bg-bg-neutral-subtle-hovered active:bg-bg-neutral-subtle-pressed",
-						"disabled:pointer-events-none disabled:bg-bg-disabled disabled:text-text-disabled"
+						"disabled:pointer-events-none disabled:bg-bg-disabled disabled:text-text-disabled",
+						readViewClassName
 					)}
 					onClick={beginEditing}
 				>
@@ -250,6 +252,7 @@ function InlineEdit({
 						aria-describedby={error ? errorId : undefined}
 						aria-labelledby={label ? labelId : undefined}
 						className={cn(
+							"rounded-md px-1.5 py-2 text-sm leading-5",
 							error ? "border-destructive" : null,
 							textareaClassName
 						)}
@@ -297,7 +300,7 @@ function InlineEdit({
 								}}
 							>
 								<Icon
-									render={multiline ? <ArrowUpIcon label="" size="small" /> : <CheckMarkIcon label="" size="small" />}
+									render={<CheckMarkIcon label="" size="small" />}
 									label={confirmButtonLabel}
 								/>
 							</Button>
