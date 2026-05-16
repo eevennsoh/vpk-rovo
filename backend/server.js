@@ -222,6 +222,15 @@ const {
 	createRouteDecisionPart,
 } = require("./lib/route-decision");
 const {
+	RFP_DEMO_QUESTION_TOOL_CALL_ID,
+	buildAgentsRfpDemoAnswerTrace,
+	buildAgentsRfpDemoQualificationIntro,
+	buildAgentsRfpDemoQualificationTrace,
+	buildAgentsRfpDemoQuestionCardPayload,
+	buildAgentsRfpDemoResponsePackageText,
+	resolveAgentsRfpDemoChatTurn,
+} = require("./lib/agents-rfp-demo-chat");
+const {
 	buildSmartGenerationGatewayOptions,
 } = require("./lib/smart-generation-gateway-options");
 const {
@@ -3788,6 +3797,139 @@ async function startNextQueuedRovoAppRun() {
 	}
 }
 
+const AGENTS_RFP_DEMO_TRACE_STEP_DELAY_MS = 160;
+
+function waitForAgentsRfpDemoTraceStep() {
+	return new Promise((resolve) => {
+		setTimeout(resolve, AGENTS_RFP_DEMO_TRACE_STEP_DELAY_MS);
+	});
+}
+
+function createAgentsRfpDemoThinkingEventPart(step, phase) {
+	const timestamp = new Date().toISOString();
+	const part = {
+		type: "data-thinking-event",
+		id: `${step.toolCallId}-${phase}`,
+		data: {
+			eventId: `${step.toolCallId}-${phase}`,
+			phase,
+			toolName: step.toolName,
+			toolCallId: step.toolCallId,
+			timestamp,
+		},
+	};
+
+	if (phase === "start" && step.input !== undefined) {
+		part.data.input = step.input;
+	}
+	if (phase === "result") {
+		part.data.output = step.output ?? step.outputPreview ?? "Completed.";
+		if (step.outputPreview) {
+			part.data.outputPreview = step.outputPreview;
+		}
+	}
+
+	return part;
+}
+
+async function writeAgentsRfpDemoTrace(writer, steps) {
+	for (const step of steps) {
+		writer.write({
+			type: "data-thinking-status",
+			id: `${step.toolCallId}-status`,
+			data: {
+				label: step.label,
+				content: step.content,
+				activity: "data",
+				source: "backend",
+				timestamp: new Date().toISOString(),
+			},
+		});
+		writer.write(createAgentsRfpDemoThinkingEventPart(step, "start"));
+		await waitForAgentsRfpDemoTraceStep();
+		if (step.output !== undefined || step.outputPreview) {
+			writer.write(createAgentsRfpDemoThinkingEventPart(step, "result"));
+			await waitForAgentsRfpDemoTraceStep();
+		}
+	}
+}
+
+function writeAgentsRfpDemoText(writer, id, text) {
+	writer.write({ type: "text-start", id });
+	writer.write({
+		type: "text-delta",
+		id,
+		delta: text,
+	});
+	writer.write({ type: "text-end", id });
+}
+
+function writeAgentsRfpDemoTurnComplete(writer) {
+	writer.write(createRouteDecisionPart({
+		intent: "chat",
+		origin: "text",
+		reason: "agents_rfp_demo",
+	}));
+	writer.write({
+		type: "data-turn-complete",
+		data: { timestamp: new Date().toISOString() },
+	});
+}
+
+function streamAgentsRfpDemoChatTurn(res, turn) {
+	const stream = createUIMessageStream({
+		execute: async ({ writer }) => {
+			if (turn === "qualification-answer") {
+				await writeAgentsRfpDemoTrace(writer, buildAgentsRfpDemoAnswerTrace());
+				writeAgentsRfpDemoText(
+					writer,
+					`agents-rfp-demo-response-${Date.now()}`,
+					buildAgentsRfpDemoResponsePackageText(),
+				);
+				writeAgentsRfpDemoTurnComplete(writer);
+				return;
+			}
+
+			const questionCardPayload = buildAgentsRfpDemoQuestionCardPayload();
+			_requestUserInputQuestionMetaStore.set(
+				questionCardPayload.sessionId,
+				buildQuestionMetaFromQuestionCardPayload(questionCardPayload),
+			);
+			await writeAgentsRfpDemoTrace(writer, buildAgentsRfpDemoQualificationTrace());
+			writeAgentsRfpDemoText(
+				writer,
+				`agents-rfp-demo-qualification-${Date.now()}`,
+				buildAgentsRfpDemoQualificationIntro(),
+			);
+			writer.write({
+				type: "data-widget-data",
+				id: RFP_DEMO_QUESTION_TOOL_CALL_ID,
+				data: {
+					type: "question-card",
+					payload: {
+						...questionCardPayload,
+						toolCallId: RFP_DEMO_QUESTION_TOOL_CALL_ID,
+						deferredToolCallId: RFP_DEMO_QUESTION_TOOL_CALL_ID,
+						tool_call_id: RFP_DEMO_QUESTION_TOOL_CALL_ID,
+					},
+				},
+			});
+			writeAgentsRfpDemoTurnComplete(writer);
+		},
+		onError: (error) => {
+			if (error instanceof Error) {
+				return error.message;
+			}
+			return "Failed to stream RFP demo response";
+		},
+	});
+
+	pipeUIMessageStreamToResponse({
+		response: res,
+		stream,
+	});
+}
+
 async function proxyRovoAppChatRequest(req, res) {
 	const requestBody =
 		req.body && typeof req.body === "object" ? { ...req.body } : {};
@@ -3804,6 +3946,14 @@ async function proxyRovoAppChatRequest(req, res) {
 		rovoAppRunManager.cancelRun(threadId);
 		await clearRovoAppRunState(threadId);
 		existingRun = null;
+	}
+
+	const agentsRfpDemoTurn = !existingRun
+		? resolveAgentsRfpDemoChatTurn(requestBody)
+		: null;
+	if (agentsRfpDemoTurn) {
+		streamAgentsRfpDemoChatTurn(res, agentsRfpDemoTurn);
+		return;
 	}
 
 	const run =
