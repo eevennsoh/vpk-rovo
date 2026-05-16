@@ -109,7 +109,7 @@
 		"motion": "^12.38.0",
 		"motion-plus": "https://api.motion.dev/registry?package=motion-plus&version=2.11.2&token=fc0a8c2295343956b76bd070a01a9863c7a11d012c3983c9a7bf9720642e239f",
 		"nanoid": "^5.1.11",
-		"next": "16.2.4",
+		"next": "16.2.6",
 		"next-themes": "^0.4.6",
 		"react": "19.2.5",
 		"react-day-picker": "^9.14.0",
@@ -147,7 +147,7 @@
 		"dotenv": "^17.4.2",
 		"esbuild": "^0.28.0",
 		"eslint": "^10.2.1",
-		"eslint-config-next": "16.2.4",
+		"eslint-config-next": "16.2.6",
 		"react-grab": "^0.1.34",
 		"tailwindcss": "^4.2.4",
 		"typescript": "^6.0.3"
