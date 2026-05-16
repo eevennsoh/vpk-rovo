@@ -261,7 +261,6 @@ export default function LiquidGlass({
 	const filterId = `liquid-glass-filter-${uniqueId}`;
 	const redGradId = `liquid-glass-red-${uniqueId}`;
 	const blueGradId = `liquid-glass-blue-${uniqueId}`;
-	const blurFilterId = `liquid-glass-inner-blur-${uniqueId}`;
 
 	const containerRef = useRef<HTMLDivElement>(null);
 	const feImageRef = useRef<SVGFEImageElement>(null);
@@ -305,9 +304,8 @@ export default function LiquidGlass({
 			opacity,
 			redGradId,
 			blueGradId,
-			blurFilterId,
 		});
-	}, [blueGradId, blurFilterId, borderRadius, borderWidth, brightness, displace, opacity, redGradId]);
+	}, [blueGradId, borderRadius, borderWidth, brightness, displace, opacity, redGradId]);
 
 	const writePointerState = useCallback((state: LiquidGlassPointerState) => {
 		const el = containerRef.current;
