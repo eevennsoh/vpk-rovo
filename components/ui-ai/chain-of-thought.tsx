@@ -87,15 +87,51 @@ export const ChainOfThought = memo(
 export type ChainOfThoughtHeaderProps = ComponentProps<
 	typeof CollapsibleTrigger
 > & {
+	byline?: ReactNode;
 	showChevron?: boolean;
 	shimmer?: boolean;
 	state?: "preload" | "thinking" | "completed";
 	duration?: number;
 };
 
+function getDefaultHeaderByline(
+	state: ChainOfThoughtHeaderProps["state"],
+	duration?: number,
+): ReactNode {
+	if (state === "preload") {
+		return "Preparing reasoning trace";
+	}
+	if (state === "thinking") {
+		return "Working through the next step";
+	}
+	if (state === "completed") {
+		return duration === undefined ? "Reasoning trace complete" : "Finished reasoning trace";
+	}
+	return null;
+}
+
+function CyclingByline({ children, cycle }: Readonly<{ children: ReactNode; cycle?: boolean }>) {
+	const key = typeof children === "string" ? children : undefined;
+
+	return (
+		<span className="block min-h-4 overflow-hidden text-xs leading-4 text-text-subtle">
+			<span
+				key={key}
+				className={cn(
+					"block truncate",
+					cycle && "motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-medium",
+				)}
+			>
+				{children}
+			</span>
+		</span>
+	);
+}
+
 export const ChainOfThoughtHeader = memo(
 	({
 		className,
+		byline,
 		children,
 		showChevron = true,
 		shimmer = false,
@@ -115,11 +151,12 @@ export const ChainOfThoughtHeader = memo(
 						: "Chain of Thought"
 		);
 		const isCompleted = resolvedState == "completed";
+		const resolvedByline = byline ?? getDefaultHeaderByline(resolvedState, duration);
 
 		return (
 			<CollapsibleTrigger
 				className={cn(
-					"flex w-full items-center gap-2 text-sm text-text-subtle transition-colors",
+					"flex w-full items-start gap-2 text-sm text-text-subtle transition-colors",
 					showChevron && "hover:text-text",
 					className
 				)}
@@ -127,7 +164,7 @@ export const ChainOfThoughtHeader = memo(
 				{...props}
 			>
 				{isCompleted ? (
-					<span className="inline-flex size-4 shrink-0 items-center justify-center">
+					<span className="mt-0.5 inline-flex size-4 shrink-0 items-center justify-center">
 						<RovoIconGlyph
 							color={token("color.icon.subtlest")}
 							label=""
@@ -135,38 +172,43 @@ export const ChainOfThoughtHeader = memo(
 						/>
 					</span>
 				) : (
-					<MorphingRovo.Shape size={16} duration={0.8} blur={1.25} className="shrink-0" />
+					<MorphingRovo.Shape size={16} duration={0.8} blur={1.25} className="mt-0.5 shrink-0" />
 				)}
-				{(shimmer || resolvedState === "preload") && typeof text === "string" ? (
-					<Shimmer
-						as="span"
-						wave
-						baseColor="var(--color-muted-foreground)"
-						baseGradientColor={["#1868db", "#bf63f3", "#fca700"]}
-						duration={1.4}
-						spread={2}
-						xDistance={0}
-						yDistance={0}
-						zDistance={0}
-						scaleDistance={1}
-						rotateYDistance={14}
-						transition={{ ease: "easeInOut", repeatDelay: 0.1 }}
-						className="text-left"
-					>
-						{text}
-					</Shimmer>
-				) : (
-					<span className="text-left">{text}</span>
-				)}
-				{showChevron ? (
-					<Icon
-						render={<ChevronDownIcon label="" size="small" spacing="none" />}
-						className={cn(
-							"size-4 shrink-0 transition-transform",
-							isOpen ? "rotate-0" : "-rotate-90"
+				<span className="grid min-w-0 flex-1 gap-0.5 text-left">
+					<span className="flex min-w-0 items-center gap-1.5">
+						{(shimmer || resolvedState === "preload") && typeof text === "string" ? (
+							<Shimmer
+								as="span"
+								wave
+								baseColor="var(--color-muted-foreground)"
+								baseGradientColor={["#1868db", "#bf63f3", "#fca700"]}
+								duration={1.4}
+								spread={2}
+								xDistance={0}
+								yDistance={0}
+								zDistance={0}
+								scaleDistance={1}
+								rotateYDistance={14}
+								transition={{ ease: "easeInOut", repeatDelay: 0.1 }}
+								className="min-w-0 truncate text-left"
+							>
+								{text}
+							</Shimmer>
+						) : (
+							<span className="min-w-0 truncate text-left">{text}</span>
 						)}
-					/>
-				) : null}
+						{showChevron ? (
+							<Icon
+								render={<ChevronDownIcon label="" size="small" spacing="none" />}
+								className={cn(
+									"size-4 shrink-0 transition-transform",
+									isOpen ? "rotate-0" : "-rotate-90"
+								)}
+							/>
+						) : null}
+					</span>
+					{resolvedByline ? <CyclingByline cycle={!isOpen}>{resolvedByline}</CyclingByline> : null}
+				</span>
 			</CollapsibleTrigger>
 		);
 	}
@@ -190,6 +232,38 @@ const stepStatusStyles = {
 	pending: "text-text-subtlest",
 };
 
+function getDefaultStepDescription(
+	status: NonNullable<ChainOfThoughtStepProps["status"]>,
+): ReactNode {
+	if (status === "active") {
+		return "In progress";
+	}
+	if (status === "pending") {
+		return "Queued";
+	}
+	return "Complete";
+}
+
+function ChainOfThoughtIconSlot({
+	children,
+	shimmer,
+}: Readonly<{
+	children: ReactNode;
+	shimmer: boolean;
+}>): ReactNode {
+	return (
+		<span className="relative isolate inline-flex size-4 shrink-0 items-center justify-center overflow-hidden rounded-[3px]">
+			{children}
+			{shimmer ? (
+				<span
+					aria-hidden="true"
+					className="animate-cot-icon-shimmer pointer-events-none absolute inset-y-[-35%] -left-full w-full rotate-12 bg-[linear-gradient(100deg,transparent_10%,#1868db_32%,#bf63f3_50%,#fca700_68%,transparent_90%)] mix-blend-screen motion-reduce:hidden"
+				/>
+			) : null}
+		</span>
+	);
+}
+
 export const ChainOfThoughtStep = memo(
 	({
 		className,
@@ -209,6 +283,8 @@ export const ChainOfThoughtStep = memo(
 		const isControlled = open !== undefined;
 		const isOpen = isControlled ? open : uncontrolledOpen;
 		const hasExpandableContent = collapsible && children != null;
+		const resolvedDescription = description ?? getDefaultStepDescription(status);
+		const iconNode = iconRender ?? <Icon render={<IconComponent label="" size="small" spacing="none" />} className="size-4" />;
 
 		const handleOpenChange = (nextOpen: boolean) => {
 			if (!isControlled) {
@@ -229,19 +305,25 @@ export const ChainOfThoughtStep = memo(
 				className="group/step flex w-full items-start text-left transition-colors hover:text-text"
 				onClick={() => handleOpenChange(!isOpen)}
 			>
-				<span className="inline-flex items-start gap-1.5">
-					<span>{label}</span>
-					<Icon
-						render={<ChevronDownIcon label="" size="small" spacing="none" />}
-						className={cn(
-							"mt-0.5 size-4 shrink-0 transition-[transform,opacity] duration-200 ease-out opacity-0 group-hover/step:opacity-100 group-focus-visible/step:opacity-100",
-							isOpen ? "rotate-0" : "-rotate-90"
-						)}
-					/>
+				<span className="grid min-w-0 flex-1 gap-0.5">
+					<span className="inline-flex min-w-0 items-start gap-1.5">
+						<span className="min-w-0 truncate">{label}</span>
+						<Icon
+							render={<ChevronDownIcon label="" size="small" spacing="none" />}
+							className={cn(
+								"mt-0.5 size-4 shrink-0 transition-[transform,opacity] duration-200 ease-out opacity-0 group-hover/step:opacity-100 group-focus-visible/step:opacity-100",
+								isOpen ? "rotate-0" : "-rotate-90"
+							)}
+						/>
+					</span>
+					<CyclingByline>{resolvedDescription}</CyclingByline>
 				</span>
 			</button>
 		) : (
-			<div>{label}</div>
+			<div className="grid min-w-0 gap-0.5">
+				<span className="min-w-0 truncate">{label}</span>
+				<CyclingByline>{resolvedDescription}</CyclingByline>
+			</div>
 		);
 
 		return (
@@ -255,7 +337,9 @@ export const ChainOfThoughtStep = memo(
 				{...props}
 			>
 				<div className="relative mt-0.5">
-					{iconRender ?? <Icon render={<IconComponent label="" size="small" spacing="none" />} className="size-4" />}
+					<ChainOfThoughtIconSlot shimmer={status === "active"}>
+						{iconNode}
+					</ChainOfThoughtIconSlot>
 					<div
 						className={cn(
 							"absolute top-5 left-1/2 -mx-px w-px bg-border",
@@ -267,9 +351,6 @@ export const ChainOfThoughtStep = memo(
 				</div>
 				<div className="flex-1 space-y-2 overflow-hidden">
 					{stepHeader}
-					{description ? (
-						<div className="text-text-subtle text-xs">{description}</div>
-					) : null}
 					{hasExpandableContent ? (
 						<Collapsible onOpenChange={handleOpenChange} open={isOpen}>
 							<CollapsibleContent

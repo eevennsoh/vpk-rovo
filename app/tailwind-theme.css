@@ -401,6 +401,7 @@
 	--animate-expect-dot-orbit: expect-dot-orbit 1.5s ease-in-out infinite;
 	--animate-expect-dot-center: expect-dot-center 2.2s ease-in-out 0.5s infinite;
 	--animate-expect-text-shimmer: expect-text-shimmer 4s ease-in-out infinite;
+	--animate-cot-icon-shimmer: cotIconShimmer 1.35s var(--ease-in-out) infinite;
 
 	@keyframes spin {
 		to {
@@ -628,6 +629,23 @@
 		}
 		100% {
 			background-position: 200% 0;
+		}
+	}
+
+	@keyframes cotIconShimmer {
+		0%,
+		18% {
+			opacity: 0;
+			transform: translateX(0) rotate(12deg);
+		}
+		35%,
+		58% {
+			opacity: 0.9;
+		}
+		82%,
+		100% {
+			opacity: 0;
+			transform: translateX(250%) rotate(12deg);
 		}
 	}
 }

@@ -47,7 +47,7 @@ import {
 import {
 	type RovoAppTodoProgressItem,
 } from "@/components/projects/shared/lib/rovo-todo-progress";
-import { renderResolvedToolIcon, resolveToolIcon } from "@/components/projects/shared/lib/tool-icon-resolver";
+import { getToolDisplayInfo, renderResolvedToolIcon, resolveToolIcon } from "@/components/projects/shared/lib/tool-icon-resolver";
 import { cn } from "@/lib/utils";
 
 export interface AssistantThinkingTraceState {
@@ -65,6 +65,7 @@ export interface AssistantThinkingTraceState {
 	reasoningPhase: ReasoningPhase;
 	shouldShowThinkingSection: boolean;
 	thinkingActive: boolean;
+	triggerByline: string;
 	triggerLabel: string;
 }
 
@@ -106,6 +107,113 @@ function toolStateToCoTStatus(state: string): "complete" | "active" | "pending" 
 
 function isToolCallStepOpenByDefault(state: string): boolean {
 	return state === "running" || state === "awaiting-input" || state === "approval-requested" || state === "error" || state === "denied";
+}
+
+function getNonEmptyString(value: unknown): string | null {
+	return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
+}
+
+function formatToolDisplayName(value: string): string {
+	return value.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function getThinkingToolDisplayName(toolCall: ThinkingToolCallSummary): string {
+	const displayInfo = getToolDisplayInfo(toolCall.toolName, toolCall.input, toolCall.mcpServer);
+	const displayName = getNonEmptyString(displayInfo.displayName) ?? toolCall.toolName;
+
+	return formatToolDisplayName(displayName);
+}
+
+function getThinkingToolTitle(toolCall: ThinkingToolCallSummary): string {
+	const displayName = getThinkingToolDisplayName(toolCall);
+
+	if (toolCall.state === "completed") {
+		return `Used ${displayName}`;
+	}
+	if (toolCall.state === "error") {
+		return `Could not use ${displayName}`;
+	}
+	if (toolCall.state === "awaiting-input") {
+		return `Waiting for ${displayName}`;
+	}
+	if (toolCall.state === "approval-requested") {
+		return `Awaiting approval for ${displayName}`;
+	}
+	return `Using ${displayName}`;
+}
+
+function getThinkingToolByline(
+	toolCall: ThinkingToolCallSummary,
+	narration?: readonly string[],
+): string {
+	const latestNarration = (() => {
+		if (!narration) {
+			return null;
+		}
+		for (let index = narration.length - 1; index >= 0; index -= 1) {
+			const text = getNonEmptyString(narration[index]);
+			if (text) {
+				return text;
+			}
+		}
+		return null;
+	})();
+	if (latestNarration) {
+		return latestNarration;
+	}
+
+	const displayName = getThinkingToolDisplayName(toolCall);
+	if (toolCall.state === "completed") {
+		return "Tool finished";
+	}
+	if (toolCall.state === "error") {
+		return toolCall.errorText ?? "Tool returned an error";
+	}
+	if (toolCall.state === "awaiting-input") {
+		return "Waiting for your response";
+	}
+	if (toolCall.state === "approval-requested") {
+		return `Review ${displayName} before it runs`;
+	}
+	return `Running ${displayName}`;
+}
+
+function getActiveThinkingToolCall(toolCalls: readonly ThinkingToolCallSummary[]): ThinkingToolCallSummary | null {
+	return toolCalls.find((toolCall) => toolStateToCoTStatus(toolCall.state) === "active") ?? null;
+}
+
+function getThinkingTraceByline({
+	activeToolCall,
+	data,
+	reasoningPhase,
+}: Readonly<{
+	activeToolCall: ThinkingToolCallSummary | null;
+	data: AssistantThinkingTraceData;
+	reasoningPhase: ReasoningPhase;
+}>): string {
+	const latestStatusContent = getNonEmptyString(data.lastThinkingStatusPart?.data.content);
+	if (latestStatusContent) {
+		return latestStatusContent;
+	}
+
+	if (data.hasAwaitingInputToolCalls) {
+		return "Waiting for your response";
+	}
+
+	if (activeToolCall) {
+		const narration = activeToolCall.toolCallId ? data.thinkingNarrationMap.byToolCallId.get(activeToolCall.toolCallId) : undefined;
+		return getThinkingToolByline(activeToolCall, narration);
+	}
+
+	if (reasoningPhase === "completed") {
+		return "Reasoning trace complete";
+	}
+
+	if (reasoningPhase === "preload") {
+		return "Preparing reasoning trace";
+	}
+
+	return "Working through the next step";
 }
 
 function getAgentExecutionVariant(status: AgentExecutionStatus): ComponentProps<typeof Lozenge>["variant"] {
@@ -358,6 +466,12 @@ export function useAssistantThinkingTraceState({
 				reasoningPhase,
 				duration: reasoningDuration,
 			});
+	const activeToolCall = getActiveThinkingToolCall(data.thinkingToolCalls);
+	const triggerByline = getThinkingTraceByline({
+		activeToolCall,
+		data,
+		reasoningPhase,
+	});
 
 	return {
 		accumulatedThinkingContent,
@@ -374,6 +488,7 @@ export function useAssistantThinkingTraceState({
 		reasoningPhase,
 		shouldShowThinkingSection,
 		thinkingActive,
+		triggerByline,
 		triggerLabel,
 	};
 }
@@ -389,16 +504,25 @@ function ThinkingToolCallStep({
 	toolCall: ThinkingToolCallSummary;
 	index: number;
 }>): ReactNode {
+	const status = toolStateToCoTStatus(toolCall.state);
+	const resolvedToolIcon = resolveToolIcon({
+		toolName: toolCall.toolName,
+		title: toolCall.toolName,
+		input: toolCall.input,
+		mcpServer: toolCall.mcpServer,
+	});
+
 	return (
 		<ChainOfThoughtStep
 			key={`${messageId}-cot-tool-${toolCall.id}-${index}`}
 			collapsible
 			defaultOpen={isToolCallStepOpenByDefault(toolCall.state)}
-			iconRender={renderResolvedToolIcon(resolveToolIcon({ toolName: toolCall.toolName, title: toolCall.toolName, input: toolCall.input, mcpServer: toolCall.mcpServer }), {
+			iconRender={renderResolvedToolIcon(resolvedToolIcon, {
 				className: "size-4",
 			})}
-			label={toolCall.toolName}
-			status={toolStateToCoTStatus(toolCall.state)}
+			label={getThinkingToolTitle(toolCall)}
+			description={getThinkingToolByline(toolCall, narration)}
+			status={status}
 		>
 			{narration && narration.length > 0 ? <div className="whitespace-pre-wrap text-xs text-text-subtle leading-5">{narration.join("\n\n")}</div> : null}
 			{toolCall.input !== undefined ? <ToolInput input={toolCall.input} /> : null}
@@ -428,6 +552,7 @@ export function AssistantThinkingTrace({
 				state={state.reasoningPhase === "completed" ? "completed" : state.reasoningPhase === "thinking" ? "thinking" : "preload"}
 				duration={state.reasoningPhase === "completed" ? state.reasoningDuration : undefined}
 				showChevron={state.hasThinkingDetails}
+				byline={state.triggerByline}
 			>
 				{state.triggerLabel}
 			</ChainOfThoughtHeader>
