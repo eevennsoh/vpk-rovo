@@ -2,12 +2,13 @@
 
 ## Runtime Modes
 
-Local development — single command starts all three processes:
+Local development has a two-process default and an optional RovoDev full stack:
 
 ```text
+pnpm run dev → Express (:8080) + Next.js (:3000)
 pnpm run rovodev (default pool size: 1) → rovodev serve (:8000) + Express (:8080) + Next.js (:3000)
 
-Browser -> Next.js (:3000) -> app/api/* proxy -> Express (:8080) -> rovodev serve (:8000)
+Browser -> Next.js (:3000) -> app/api/* proxy -> Express (:8080) -> AI Gateway and/or rovodev serve (:8000)
 ```
 
 Production with static export (single process, requires `NEXT_OUTPUT=export` during build):
@@ -18,12 +19,11 @@ Browser -> Express (:8080) -> static export + /api/* -> RovoDev Serve
 
 The `rovodev` script starts all three processes concurrently (single-instance by
 default; use `pnpm run rovodev -- 6` for full pool). The `dev` script starts
-only backend + frontend (requires RovoDev Serve already running). The backend
-auto-detects RovoDev Serve via `.dev-rovodev-port` (single) or
-`.dev-rovodev-ports` (pool) files. The main Chat SDK path rejects requests if
-RovoDev is unavailable, while AI Gateway credentials are used only for
-explicit helper/media flows such as image, sound, suggestions, title/metadata
-generation, and Realtime voice routes.
+only backend + frontend. The backend auto-detects RovoDev Serve via
+`.dev-rovodev-port` (single) or `.dev-rovodev-ports` (pool) files. Chat SDK
+requests default to AI Gateway unless a caller selects RovoDev. `/api/rovo/chat`
+starts managed runs on AI Gateway, then delegates artifact, plan, or tool-heavy
+turns to RovoDev when available and otherwise falls back to AI Gateway.
 
 ## Key Directories
 

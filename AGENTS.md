@@ -3,7 +3,7 @@
 > Provider-neutral project context for AI coding assistants (Cursor, Claude Code, Codex, and others).
 > Canonical source: `AGENTS.md`. `CLAUDE.md` symlinks here. Provider dirs (`.cursor/`, `.claude/`, `.codex/`, `.rovodev/`) contain provider-specific config plus symlinks back to `.agents/`.
 
-Next.js 16 (React 19, Tailwind CSS v4) + Express backend with AI SDK (Vercel) and RovoDev Serve integration.
+Next.js 16 (React 19, Tailwind CSS v4) + Express backend with AI SDK (Vercel), AI Gateway, and RovoDev Serve integration.
 
 ## Start Here
 
@@ -11,7 +11,7 @@ Next.js 16 (React 19, Tailwind CSS v4) + Express backend with AI SDK (Vercel) an
 - Quick start:
   - `pnpm install`
   - `pnpm run rovodev`
-- Local runtime uses three processes: RovoDev Serve + Express backend + Next.js frontend proxy.
+- Local development usually starts frontend + backend with `pnpm run dev`; `pnpm run rovodev` adds RovoDev Serve for flows that explicitly select or delegate to RovoDev.
 - Production runtime uses one Express process serving static export plus `/api/*`.
 - Primary frontend edits are in `components/projects/`, `components/blocks/`, `components/arts/`, `components/website/` (component docs and demos), and `app/` route files.
 - Backend/API edits are in `backend/server.js`, `backend/lib/*.js`, and nested `app/api/**/route.ts` handlers (dev proxy and route-local adapters).
@@ -138,7 +138,7 @@ In VPK feature code, use ADS semantic naming (`bg-surface-raised`, `text-text-su
 - Install dependencies: `pnpm install`
 - First-time RovoDev bootstrap: run `pnpm run rovodev` (or `acli rovodev`) once, copy the printed `ROVODEV_SESSION_TOKEN` into `.env.local`, then restart the stack
 - Start everything: `pnpm run rovodev` (starts 1 rovodev serve instance + backend + frontend; use `pnpm run rovodev -- 6` for full pool)
-- Start frontend + backend only: `pnpm run dev` (chat still requires RovoDev Serve already running)
+- Start frontend + backend only: `pnpm run dev` (AI Gateway-backed chat works when credentials are configured; RovoDev-selected flows still need RovoDev Serve)
 - Start RovoDev Serve only: `pnpm run dev:rovodev`
 - Start frontend only: `pnpm run dev:frontend`
 - Start backend only: `pnpm run dev:backend`
@@ -196,7 +196,7 @@ static export used by deployment.
 
 ## Architecture
 
-Two runtime modes: **dev** (Next.js proxy + Express + RovoDev Serve) and **prod** (single Express process serving static export). Key dirs: `app/` (routes), `components/` (UI), `backend/` (API), `rovo/` (AI config). See `.agents/docs/architecture-overview.md` for full details before making architectural changes.
+Two runtime modes: **dev** (Next.js proxy + Express, with optional RovoDev Serve for selected chat/tool flows) and **prod** (single Express process serving static export). Key dirs: `app/` (routes), `components/` (UI), `backend/` (API), `rovo/` (AI config). See `.agents/docs/architecture-overview.md` for full details before making architectural changes.
 
 > API endpoints and chat architecture load as contextual rules when editing backend or chat files.
 > See `.agents/rules/api-surfaces.md` and `.agents/rules/chat-architecture.md`.
@@ -249,7 +249,7 @@ The following `.agents/rules/` files load automatically when editing matching fi
 |---------|---------|-------------|-----------|
 | Next.js Frontend | `pnpm run dev:frontend` | 3000 | Yes |
 | Express Backend | `pnpm run dev:backend` | 8080 | Yes |
-| RovoDev Serve | `pnpm run dev:rovodev` | 8000 | Only for AI chat |
+| RovoDev Serve | `pnpm run dev:rovodev` | 8000 | Only for RovoDev-selected chat/tool flows |
 
 Start frontend + backend together: `pnpm run dev`
 Start all three locally when the RovoDev CLI is available: `pnpm run rovodev`
@@ -263,11 +263,11 @@ Start all three locally when the RovoDev CLI is available: `pnpm run rovodev`
 
 ### Non-obvious caveats
 
-- The `.env.local` file is created from `.env.local.example` on first setup. The dev servers (backend + frontend) start without AI Gateway credentials — the UI renders fully but AI chat features return errors without `ROVODEV_SESSION_TOKEN` and RovoDev Serve running.
+- The `.env.local` file is created from `.env.local.example` on first setup. The dev servers (backend + frontend) start without AI Gateway credentials; the UI renders fully, but AI Gateway-backed chat/media return config errors and RovoDev-selected flows still need `ROVODEV_SESSION_TOKEN` plus RovoDev Serve.
 - Backend port is written to `.dev-backend-port`, frontend to `.dev-frontend-port` at startup — these are useful for verifying which ports are in use.
 - `pnpm run dev` starts both backend and frontend via `concurrently`; do not run `pnpm run rovodev` at the same time or you'll get port conflicts.
 - The `pnpm install` warning about ignored build scripts (better-sqlite3, node-llama-cpp) is expected and does not affect the application — these are transitive deps from optional features.
 - Health endpoint: `curl http://localhost:8080/api/health` — returns JSON with service status and auth config summary.
-- The `rovodev` CLI (RovoDev Serve) is not available in cloud VMs — use `pnpm run dev` instead of `pnpm run rovodev`. AI chat streaming won't work without RovoDev, but all UI, component docs, and non-chat API routes function normally.
-- AI Gateway endpoints require outbound HTTPS to `ai-gateway.us-east-1.staging.atl-paas.net`. If the cloud VM has restricted egress, gateway-backed features (image/sound/suggestions/chat-title) will return null/empty results gracefully.
+- The `rovodev` CLI (RovoDev Serve) is not available in cloud VMs — use `pnpm run dev` instead of `pnpm run rovodev`. RovoDev-selected chat/tool flows won't work without RovoDev, but AI Gateway-backed chat, UI, component docs, and non-chat API routes can still function when credentials and egress are available.
+- AI Gateway endpoints require outbound HTTPS to `ai-gateway.us-east-1.staging.atl-paas.net`. If the cloud VM has restricted egress, gateway-backed chat/helper/media features return config or request errors gracefully.
 - When writing `ASAP_PRIVATE_KEY` to `.env.local`, the value already includes surrounding double quotes and literal `\n` escape sequences — do not add extra quotes around it or you'll get "Maximum call stack size exceeded" from Next.js env parsing.

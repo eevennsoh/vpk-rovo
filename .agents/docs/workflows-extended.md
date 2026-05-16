@@ -4,7 +4,7 @@
 
 - Build: `pnpm run build`
 - Build for production (static export): `NEXT_OUTPUT=export pnpm run build`
-- Start locally (Next.js dev server): `pnpm run start`
+- Start frontend + backend locally: `pnpm run dev`
 
 ## Deployment
 
@@ -31,7 +31,7 @@ No automated test framework is configured. Verification is observational and too
 Run on every change:
 
 1. `pnpm run lint`
-2. `pnpm tsc --noEmit`
+2. `pnpm run typecheck`
 
 Run additionally for UI changes:
 
