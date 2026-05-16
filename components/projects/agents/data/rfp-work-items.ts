@@ -114,7 +114,7 @@ export const RFP_101_WORK_ITEM = {
 			ext: "page",
 			date: "12 Aug 2025, 09:12 AM",
 			thumbnailKind: "document",
-			previewSrc: "/illustration-ai/agents-attachments/rfp-confluence-intake-notes.png",
+			previewSrc: "/generated/rfp-confluence-intake-notes.png",
 			previewAlt: "Flat preview of RFP intake notes",
 			sourceLabel: "Confluence page",
 			sourceProduct: "confluence",
@@ -125,7 +125,7 @@ export const RFP_101_WORK_ITEM = {
 			ext: "xlsx",
 			date: "12 Aug 2025, 09:24 AM",
 			thumbnailKind: "document",
-			previewSrc: "/illustration-ai/agents-attachments/rfp-compliance-matrix.png",
+			previewSrc: "/generated/rfp-compliance-matrix.png",
 			previewAlt: "Flat preview of a spreadsheet compliance matrix",
 		},
 		{
@@ -134,7 +134,7 @@ export const RFP_101_WORK_ITEM = {
 			ext: "docx",
 			date: "14 Aug 2025, 03:42 PM",
 			thumbnailKind: "document",
-			previewSrc: "/illustration-ai/agents-attachments/rfp-response-brief.png",
+			previewSrc: "/generated/rfp-response-brief.png",
 			previewAlt: "Flat preview of a response brief document",
 		},
 		{
@@ -143,7 +143,7 @@ export const RFP_101_WORK_ITEM = {
 			ext: "pdf",
 			date: "15 Aug 2025, 11:05 AM",
 			thumbnailKind: "file",
-			previewSrc: "/illustration-ai/agents-attachments/rfp-pdf-packet.png",
+			previewSrc: "/generated/rfp-pdf-packet.png",
 			previewAlt: "Flat preview of an enterprise RFP PDF packet",
 		},
 		{
@@ -159,7 +159,7 @@ export const RFP_101_WORK_ITEM = {
 			ext: "png",
 			date: "21 Aug 2025, 01:16 PM",
 			thumbnailKind: "image",
-			previewSrc: "/illustration-ai/agents-attachments/rfp-portal-screenshot.png",
+			previewSrc: "/generated/rfp-portal-screenshot.png",
 			previewAlt: "Flat preview of a supplier portal upload screenshot",
 		},
 		{
@@ -168,7 +168,7 @@ export const RFP_101_WORK_ITEM = {
 			ext: "mp4",
 			date: "2 Sep 2025, 04:10 PM",
 			thumbnailKind: "video",
-			previewSrc: "/illustration-ai/agents-attachments/rfp-loom-walkthrough.png",
+			previewSrc: "/generated/rfp-loom-walkthrough.png",
 			previewAlt: "Flat preview of a walkthrough video recording",
 			sourceLabel: "Loom video",
 			sourceProduct: "loom",

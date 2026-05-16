@@ -84,7 +84,7 @@ test("RFP-101 includes the mixed static attachment placeholder set", async () =>
 	assert.ok(
 		attachments
 			.filter((attachment) => attachment.ext !== "mp3")
-			.every((attachment) => attachment.previewSrc?.startsWith("/illustration-ai/agents-attachments/")),
+			.every((attachment) => attachment.previewSrc?.startsWith("/generated/")),
 	);
 	assert.equal(
 		attachments.find((attachment) => attachment.ext === "mp3")?.previewSrc,

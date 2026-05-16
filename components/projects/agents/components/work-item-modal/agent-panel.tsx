@@ -1,6 +1,7 @@
 "use client";
 
 import ChevronDownIcon from "@atlaskit/icon/core/chevron-down";
+import { motion, useReducedMotion, type Variants } from "motion/react";
 import { useState } from "react";
 import { useWorkItemData } from "@/app/contexts/context-work-item-modal";
 import { AgentSelector } from "@/components/blocks/agent-selector";
@@ -15,11 +16,36 @@ import Heading from "@/components/blocks/shared-ui/heading";
 import { token } from "@/lib/tokens";
 import { cn } from "@/lib/utils";
 
+const AGENT_ICON_ROTATION_VARIANTS = {
+	rest: {
+		transform: "rotate(0deg)",
+	},
+	hovered: {
+		transform: "rotate(45deg)",
+	},
+} satisfies Variants;
+
+const AGENT_ICON_ROTATION_REDUCED_VARIANTS = {
+	rest: {
+		transform: "rotate(0deg)",
+	},
+	hovered: {
+		transform: "rotate(0deg)",
+	},
+} satisfies Variants;
+
+const AGENT_ICON_ROTATION_TRANSITION = {
+	duration: 0.42,
+	ease: [0, 0.4, 0, 1],
+} as const;
+
 type AgentPanelIllustrationProps = {
 	isSparkleVisible: boolean;
 };
 
 function AgentPanelIllustration({ isSparkleVisible }: AgentPanelIllustrationProps) {
+	const shouldReduceMotion = useReducedMotion();
+
 	return (
 		<>
 			<div
@@ -39,11 +65,11 @@ function AgentPanelIllustration({ isSparkleVisible }: AgentPanelIllustrationProp
 				aria-hidden="true"
 				style={{ backgroundColor: token("color.background.accent.green.subtle") }}
 			>
-				<svg
-					className={cn(
-						"motion-safe:transition-transform motion-safe:duration-150 motion-safe:ease-out",
-						isSparkleVisible ? "rotate-45" : "rotate-0",
-					)}
+				<motion.svg
+					animate={isSparkleVisible ? "hovered" : "rest"}
+					initial={false}
+					transition={AGENT_ICON_ROTATION_TRANSITION}
+					variants={shouldReduceMotion ? AGENT_ICON_ROTATION_REDUCED_VARIANTS : AGENT_ICON_ROTATION_VARIANTS}
 					width="13"
 					height="13"
 					viewBox="0 0 13 13"
@@ -53,7 +79,7 @@ function AgentPanelIllustration({ isSparkleVisible }: AgentPanelIllustrationProp
 					focusable="false"
 				>
 					<path fillRule="evenodd" clipRule="evenodd" d="M-5.74054e-05 4.61972L1.76402 10.7718L8.02913 12.3043L12.5302 7.68465L10.7661 1.53258L4.50097 0.000111983L-5.74054e-05 4.61972ZM5.63008 3.0053L5.99159 3.47665C6.505 4.14621 6.76165 4.48122 7.11716 4.68671C7.47269 4.8922 7.89108 4.94728 8.72759 5.05798L9.08584 5.10561L9.21182 5.54494L8.93313 5.7748C8.28234 6.31198 7.95688 6.58073 7.76427 6.94343C7.57168 7.3061 7.53153 7.72617 7.45096 8.56608L7.39416 9.15738L6.95483 9.28335L6.59333 8.812C6.07989 8.14242 5.82325 7.80745 5.46775 7.60194C5.11222 7.39644 4.69377 7.341 3.85722 7.23029L3.49907 7.18304L3.3731 6.74372L3.65168 6.51348C4.30236 5.97633 4.62806 5.70787 4.82065 5.34523C5.01324 4.98257 5.05334 4.56249 5.13396 3.72257L5.19076 3.13128L5.63008 3.0053Z" fill="currentColor" />
-				</svg>
+				</motion.svg>
 			</div>
 		</>
 	);
