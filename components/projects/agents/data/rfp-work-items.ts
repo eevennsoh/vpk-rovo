@@ -352,6 +352,10 @@ function formatTeam(team: readonly WorkItemRfpTeamMember[] | undefined): string[
 	];
 }
 
+function formatNameWithRole(name: string, role: string | undefined): string {
+	return role ? `${name} (${role})` : name;
+}
+
 export function getAgentsWorkItemForCard(params: {
 	code: string;
 	title: string;
@@ -399,8 +403,8 @@ function formatLightweightActiveJiraWorkItemContext(workItem: WorkItemData): str
 		`Title: ${workItem.title}`,
 		workItem.status ? `Status: ${workItem.status}` : null,
 		workItem.priority ? `Priority: ${workItem.priority}` : null,
-		workItem.assignee?.name ? `Assignee: ${workItem.assignee.name}${workItem.assignee.role ? ` (${workItem.assignee.role})` : ""}` : null,
-		workItem.reporter?.name ? `Reporter: ${workItem.reporter.name}${workItem.reporter.role ? ` (${workItem.reporter.role})` : ""}` : null,
+		workItem.assignee?.name ? `Assignee: ${formatNameWithRole(workItem.assignee.name, workItem.assignee.role)}` : null,
+		workItem.reporter?.name ? `Reporter: ${formatNameWithRole(workItem.reporter.name, workItem.reporter.role)}` : null,
 		workItem.labels?.length ? `Labels: ${workItem.labels.join(", ")}` : null,
 		workItem.description ? `Description: ${workItem.description}` : null,
 		"[End Active Jira Work Item Context]",
@@ -428,9 +432,9 @@ export function formatActiveJiraWorkItemContext(
 		(file) => `- ${file.name}.${file.ext} (${file.date})`,
 	);
 	const recentActivity = workItem.comments?.flatMap((comment) => [
-		`- ${comment.timestamp}: ${comment.author.name}${comment.author.role ? ` (${comment.author.role})` : ""} - ${comment.content}`,
+		`- ${comment.timestamp}: ${formatNameWithRole(comment.author.name, comment.author.role)} - ${comment.content}`,
 		...(comment.replies ?? []).map(
-			(reply) => `  - ${reply.timestamp}: ${reply.author.name}${reply.author.role ? ` (${reply.author.role})` : ""} - ${reply.content}`,
+			(reply) => `  - ${reply.timestamp}: ${formatNameWithRole(reply.author.name, reply.author.role)} - ${reply.content}`,
 		),
 	]);
 
@@ -453,8 +457,8 @@ export function formatActiveJiraWorkItemContext(
 		`Procurement stage: ${rfp.procurementStage}`,
 		`Submission portal: ${rfp.submissionPortal}`,
 		`Response due date: ${rfp.responseDueDate}`,
-		`Assignee: ${workItem.assignee?.name ?? "Unassigned"}${workItem.assignee?.role ? ` (${workItem.assignee.role})` : ""}`,
-		`Reporter: ${workItem.reporter?.name ?? "Unknown"}${workItem.reporter?.role ? ` (${workItem.reporter.role})` : ""}`,
+		`Assignee: ${workItem.assignee?.name ? formatNameWithRole(workItem.assignee.name, workItem.assignee.role) : "Unassigned"}`,
+		`Reporter: ${workItem.reporter?.name ? formatNameWithRole(workItem.reporter.name, workItem.reporter.role) : "Unknown"}`,
 		workItem.labels?.length ? `Labels: ${workItem.labels.join(", ")}` : null,
 		...formatList("Buyer priorities:", rfp.buyerPriorities),
 		...formatList("Evaluation criteria:", rfp.evaluationCriteria),
