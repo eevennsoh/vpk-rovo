@@ -11,9 +11,6 @@ description: >
   produce a brand-fit review, or generate artwork intended for an Atlassian audience.
   Also use when the user pastes or references DESIGN.md or DESIGN.dark.md. Complements the
   **atlassian-design-system** skill (token catalog and component APIs) by encoding design opinions and taste on top.
-labels:
-  - design-system
-  - front-end
 metadata:
   maintainer: khall2
   version: 0.0.3

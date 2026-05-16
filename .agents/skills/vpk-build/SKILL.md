@@ -1,9 +1,6 @@
 ---
 name: vpk-build
-description: Extract a single VPK-Rovo route into a standalone, minimal Next.js 16 project deployable to Atlassian Micros. Use when the user asks to "build /<route>", "extract /<route>", "carve out /<route>", "standalone prototype from route", "minimal route project", "sibling project from route", "spin out /<route>", "split /<route> into its own project", "make /<route> a separate app", "make /<route> its own repo", "minimal version of /<route>", or points at a localhost route URL (e.g. localhost:3000/<route>) and wants it slimmed down into a separately deployable project. Works for any route at app/<route>/ — arts, projects, or future categories. Produces a Git-initialized sibling directory with only the npm deps the route transitively uses, context providers auto-wrapped in the layout, and a Micros deploy scaffold ready for /vpk-deploy.
-argument-hint: "<route-path> [target-name]"
-prerequisites: {}
-produces: ["../vpk-<route>/"]
+description: Extract a single VPK-Rovo route into a standalone, minimal Next.js 16 project deployable to Atlassian Micros. Use when the user asks to build, extract, carve out, spin out, split, or slim down a slash route, asks for a standalone prototype or minimal route project, wants a route to become a separate app or repo, or points at a localhost route URL and wants it slimmed down into a separately deployable project. Works for any route under app, including arts, projects, or future categories. Produces a Git-initialized sibling directory with only the npm deps the route transitively uses, context providers auto-wrapped in the layout, and a Micros deploy scaffold ready for /vpk-deploy.
 ---
 
 # VPK Build — extract a route into a standalone sibling project
@@ -268,9 +265,9 @@ done
 ## Scripts
 
 - [`scripts/trace-imports.mjs`](scripts/trace-imports.mjs) — TypeScript compiler
-  API import walker. Produces the Phase A plan JSON. This is the deterministic
-  load-bearing piece of the skill; tracing the import graph via LLM would be
-  too lossy.
+  API import walker and VPK catalog dispatcher filter. Produces the Phase A
+  plan JSON. This is the deterministic load-bearing piece of the skill;
+  tracing the import graph via LLM would be too lossy.
 - [`scripts/scaffold-target.mjs`](scripts/scaffold-target.mjs) — Plan-driven
   copy + `git init`.
 - [`scripts/verify-target.sh`](scripts/verify-target.sh) — `pnpm install`
@@ -288,10 +285,6 @@ done
 - [`references/micros/`](references/micros/) — Micros deploy scaffold
   (`service-descriptor.yml`, `backend/Dockerfile`, `backend/server.js`,
   `backend/package.json`).
-- [`references/ui-allowlist.md`](references/ui-allowlist.md) — Notes on which
-  `components/ui/*` primitives are known-standalone-safe vs. known to pull in
-  heavy subgraphs. Consulted during Phase A when the plan flags oversized
-  transitives.
 
 ## Deploy Handoff
 

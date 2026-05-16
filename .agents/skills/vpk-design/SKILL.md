@@ -5,13 +5,9 @@ description: This skill should be used when the user asks to "implement this Fig
   "implement this mockup", "create component from Figma", "build this UI",
   "match this design", "Figma implementation", "code this Figma", "design to code",
   "pixel perfect", "Figma to component", "how do I implement this design",
-  or provides a Figma URL. Uses a 3-agent pipeline for extraction, implementation,
-  and visual validation. In Claude Code, agents are defined in .claude/agents/ and
-  invoked via the Task tool with the appropriate subagent_type.
-argument-hint: "[Figma URL]"
-prerequisites:
-  files: [.agents/skills/vpk-design/references/tokens.md]
-produces: []
+  or provides a Figma URL. Supports direct implementation for small diffs and a
+  provider-neutral 3-agent pipeline for extraction, implementation, and visual
+  validation when agent delegation is available and appropriate.
 ---
 
 # VPK Design
@@ -37,9 +33,9 @@ This skill orchestrates three specialized agents:
 
 | Agent                    | Role                                    | Model  | Runs              |
 | ------------------------ | --------------------------------------- | ------ | ----------------- |
-| `vpk-agent-extractor`   | Extract design specs, map to ADS tokens | haiku  | First             |
-| `vpk-agent-implementer` | Implement component using spec          | sonnet | After extractor   |
-| `vpk-agent-validator`   | Visual comparison against Figma         | haiku  | After implementer |
+| `vpk-agent-extractor`   | Extract design specs, map to ADS tokens | light/fast | First             |
+| `vpk-agent-implementer` | Implement component using spec          | coding     | After extractor   |
+| `vpk-agent-validator`   | Visual comparison against Figma         | light/fast | After implementer |
 
 ### Why Parallel Agents?
 
@@ -86,37 +82,34 @@ Not every Figma design requires the full 3-agent pipeline. Choose the approach b
 - **Only implement what's in the Figma node.** If the Figma node shows a sidebar, implement the sidebar. Do NOT add page-level headers, navigation bars, toolbars, or other structural components unless they are explicitly visible in the provided Figma node. Adding components outside the Figma scope creates extra work to remove them later.
 - **Check the parent node for context** when the Figma node is a sub-component. This reveals the full page layout and prevents adding duplicate elements (e.g., a sidebar header that duplicates a page header).
 
-### Phase 1: Extract Design Spec (Agent 1)
+### Phase 1: Extract Design Spec
 
-Spawn the `vpk-agent-extractor` agent with the Figma URL:
+Use the repo-local `vpk-agent-extractor` prompt from `.agents/agents/` when
+agent delegation is available and the task warrants a separate extraction pass.
+Otherwise, perform the extraction directly with the same requirements:
 
 ```
-Task({
-  subagent_type: "vpk-agent-extractor",
-  prompt: `
-    Extract design specifications from this Figma design:
-    URL: [Figma URL]
+Extract design specifications from this Figma design:
+URL: [Figma URL]
 
-    Output a structured YAML spec with all values mapped to ADS tokens.
-    Include the Figma screenshot reference for validation.
+Output a structured YAML spec with all values mapped to ADS tokens.
+Include the Figma screenshot reference for validation.
 
-    CRITICAL — extract ALL of the following:
-    - EXACT text content: heading copy, placeholder copy, button labels, tooltip text (verbatim from Figma, not from existing code)
-    - Component types: Button vs IconButton, text label vs icon-only, appearance/variant props
-    - element box sizes vs icon glyph sizes
-    - per-side paddings (top/right/bottom/left), not only shorthand
-    - alignment model for each row (edge-pinned, centered cluster, distributed)
-    - center invariants (what must remain mathematically centered)
-    - grouping frames: which elements are grouped in a parent frame and what gap/padding that frame has
+CRITICAL — extract ALL of the following:
+- EXACT text content: heading copy, placeholder copy, button labels, tooltip text (verbatim from Figma, not from existing code)
+- Component types: Button vs IconButton, text label vs icon-only, appearance/variant props
+- element box sizes vs icon glyph sizes
+- per-side paddings (top/right/bottom/left), not only shorthand
+- alignment model for each row (edge-pinned, centered cluster, distributed)
+- center invariants (what must remain mathematically centered)
+- grouping frames: which elements are grouped in a parent frame and what gap/padding that frame has
 
-    ADS MCP rules:
-    - Use `ads_plan` as the primary ADS lookup and provide at least 2 likely search terms for every populated field (`components`, `icons`, `tokens`)
-    - Set `exactName: true` when a Figma layer name makes the target explicit
-    - Use `ads_get_a11y_guidelines` for the most relevant topics and include the applicable rules in the output
-    - Use `ads_get_all_tokens` / `ads_get_all_icons` only as exhaustive fallbacks when token/icon matching is still ambiguous
-    - If ADS mapping remains ambiguous, record the ambiguity instead of guessing
-  `
-})
+ADS MCP rules:
+- Use `ads_plan` as the primary ADS lookup and provide at least 2 likely search terms for every populated field (`components`, `icons`, `tokens`)
+- Set `exactName: true` when a Figma layer name makes the target explicit
+- Use `ads_get_a11y_guidelines` for the most relevant topics and include the applicable rules in the output
+- Use `ads_get_all_tokens` / `ads_get_all_icons` only as exhaustive fallbacks when token/icon matching is still ambiguous
+- If ADS mapping remains ambiguous, record the ambiguity instead of guessing
 ```
 
 **Extractor outputs:**
@@ -131,37 +124,33 @@ Task({
 - Grouping frames: which elements share a parent frame and the frame's gap/padding
 - Relevant ADS accessibility topics and constraints for the identified controls
 
-### Phase 2: Implement Component (Agent 2)
+### Phase 2: Implement Component
 
-Once the spec is ready, spawn the `vpk-agent-implementer` agent:
+Once the spec is ready, use the repo-local `vpk-agent-implementer` prompt when
+agent delegation is available. Otherwise, implement directly:
 
 ```
-Task({
-  subagent_type: "vpk-agent-implementer",
-  prompt: `
-    Implement this component using the extracted design spec:
+Implement this component using the extracted design spec:
 
-    [Paste the YAML spec from extractor]
+[Paste the YAML spec from extractor]
 
-    Target file: [exact file path of existing component]
-    Component name: [ComponentName]
+Target file: [exact file path of existing component]
+Component name: [ComponentName]
 
-    IMPORTANT: Read the current file first and diff it against the spec.
-    Apply ALL differences, not just the ones the user explicitly mentioned.
-    This includes: text copy, placeholder text, button labels, component types,
-    variant/appearance props, spacing/gap structure, and grouping wrappers.
+IMPORTANT: Read the current file first and diff it against the spec.
+Apply ALL differences, not just the ones the user explicitly mentioned.
+This includes: text copy, placeholder text, button labels, component types,
+variant/appearance props, spacing/gap structure, and grouping wrappers.
 
-    Use ONLY the tokens specified in the spec.
-    Use `ads_get_a11y_guidelines` for the relevant control types before finalizing.
-    Run `ads_analyze_a11y`, then use `ads_suggest_a11y_fixes` for any material
-    violation instead of improvising a remediation.
-    If the target file is intl-aware or lint flags literal JSX strings, use
-    `ads_i18n_conversion_guide` before leaving Figma copy hardcoded in code.
-    Preserve layout invariants from spec. If center content must stay centered,
-    implement it so side controls cannot shift it.
-    Run lint and typecheck before completing.
-  `
-})
+Use ONLY the tokens specified in the spec.
+Use `ads_get_a11y_guidelines` for the relevant control types before finalizing.
+Run `ads_analyze_a11y`, then use `ads_suggest_a11y_fixes` for any material
+violation instead of improvising a remediation.
+If the target file is intl-aware or lint flags literal JSX strings, use
+`ads_i18n_conversion_guide` before leaving Figma copy hardcoded in code.
+Preserve layout invariants from spec. If center content must stay centered,
+implement it so side controls cannot shift it.
+Run lint and typecheck before completing.
 ```
 
 **Implementer outputs:**
@@ -172,33 +161,29 @@ Task({
 - Accessibility analysis results
 - Notes on any intentional layout technique used to preserve anchoring intent
 
-### Phase 3: Visual Validation (Agent 3)
+### Phase 3: Visual Validation
 
-After implementation, spawn the `vpk-agent-validator` agent:
+After implementation, use the repo-local `vpk-agent-validator` prompt when agent
+delegation is available. Otherwise, validate directly:
 
 ```
-Task({
-  subagent_type: "vpk-agent-validator",
-  prompt: `
-    Validate this implementation against Figma:
+Validate this implementation against Figma:
 
-    Figma screenshot: [reference from extractor]
-    Component path: [path from implementer]
-    Test route: /[route]
-    Component root selector or data-testid: [selector]
+Figma screenshot: [reference from extractor]
+Component path: [path from implementer]
+Test route: /[route]
+Component root selector or data-testid: [selector]
 
-    Capture screenshots in light and dark mode.
-    When setting dark mode programmatically, update all 3:
-    1) html class, 2) html data-theme, 3) html style.colorScheme.
+Capture screenshots in light and dark mode.
+When setting dark mode programmatically, update all 3:
+1) html class, 2) html data-theme, 3) html style.colorScheme.
 
-    Run `ads_analyze_localhost_a11y` scoped to the component root selector
-    (not only full-page scans). If it reports material issues, use
-    `ads_get_a11y_guidelines` and `ads_suggest_a11y_fixes` to turn them into
-    concrete follow-up actions.
-    Verify geometry parity (sizes/offsets/centering), not just visual similarity.
-    Compare against Figma and report discrepancies.
-  `
-})
+Run `ads_analyze_localhost_a11y` scoped to the component root selector
+(not only full-page scans). If it reports material issues, use
+`ads_get_a11y_guidelines` and `ads_suggest_a11y_fixes` to turn them into
+concrete follow-up actions.
+Verify geometry parity (sizes/offsets/centering), not just visual similarity.
+Compare against Figma and report discrepancies.
 ```
 
 **Validator outputs:**
@@ -213,8 +198,8 @@ Task({
 If validator returns MINOR_FIXES or MAJOR_FIXES:
 
 1. Read the validator's fix recommendations
-2. Spawn `vpk-agent-implementer` again with fix instructions
-3. Re-run `vpk-agent-validator`
+2. Re-run the implementation pass with fix instructions
+3. Re-run the validation pass
 4. Repeat until APPROVE
 
 ---
@@ -226,7 +211,7 @@ If validator returns MINOR_FIXES or MAJOR_FIXES:
 Always run:
 
 1. `pnpm run lint`
-2. `pnpm tsc --noEmit`
+2. `pnpm run typecheck`
 
 If full lint fails because of pre-existing unrelated issues, additionally run scoped lint on touched files:
 
@@ -309,13 +294,13 @@ User: "Implement this design: https://figma.com/design/abc123/File?node-id=1-2"
 
 1. Parse URL → fileKey: abc123, nodeId: 1:2
 
-2. Spawn vpk-agent-extractor:
+2. Run extraction pass:
    "Extract design specifications from Figma file abc123, node 1:2"
 
-3. Wait for spec, then spawn vpk-agent-implementer:
+3. Wait for spec, then run implementation pass:
    "Implement using this spec: [spec]. Target: components/blocks/[feature]/"
 
-4. Wait for implementation, then spawn vpk-agent-validator:
+4. Wait for implementation, then run validation pass:
    "Validate [component path] against Figma at route /[route]"
 
 5. If fixes needed, loop back to step 3
@@ -352,7 +337,8 @@ This codebase uses **Tailwind classes** that map to ADS CSS variables. The expan
 
 ## Agent Files
 
-The agent definitions are in `.claude/agents/`:
+The provider-neutral agent definitions live in `.agents/agents/` and are
+symlinked into provider-specific surfaces such as `.claude/agents/`:
 
 - `vpk-agent-extractor.md` — Design extraction specialist
 - `vpk-agent-implementer.md` — Implementation specialist
@@ -387,7 +373,7 @@ Before presenting to user:
 - [ ] Implementer used VPK primitives (Button, etc.) with style overrides — not raw HTML elements
 - [ ] Implementer used Tailwind classes (not token()) where possible
 - [ ] `ads_i18n_conversion_guide` was used when Figma copy landed in an intl-aware surface
-- [ ] Implementer passed `pnpm tsc --noEmit`
+- [ ] Implementer passed `pnpm run typecheck`
 - [ ] Full lint attempted; scoped lint on changed files reported if baseline lint debt exists
 - [ ] Validator captured light and dark mode screenshots (class + `data-theme` + `colorScheme`)
 - [ ] Validator confirmed geometry parity (sizes, offsets, center invariants, icon button/glyph sizes)

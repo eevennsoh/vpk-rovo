@@ -6,10 +6,6 @@ description: This skill should be used when the user asks to "set up", "get star
   "env setup", "how do I start", "how do I set up the project", "get this working",
   or wants to set up a new VPK project from scratch. Also triggered by errors like
   "ASAP key not working", "credentials not found", "env not configured".
-disable-model-invocation: true
-argument-hint: "[usecase-id] [email]"
-prerequisites: []
-produces: [.env.local, .asap-config]
 ---
 
 # VPK Setup - Initial Repository Setup
@@ -48,7 +44,7 @@ This prevents common issues:
 - `Failed to restore task data (corrupted database or bug)`
 - `ArrayLengthMismatch` Turbopack errors
 
-**Important:** Always ask the user for permission before starting dev servers. Use `AskUserQuestion` to confirm they want to start, then run `pnpm run rovodev`. If the user needs the full pool (6 instances), they can use `pnpm run rovodev -- 6` instead.
+**Important:** Always ask the user for permission before starting dev servers. Ask a concise user-facing question to confirm they want to start, then run `pnpm run rovodev`. If the user needs the full pool (6 instances), they can use `pnpm run rovodev -- 6` instead.
 
 ## Runtime Topology
 

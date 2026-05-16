@@ -8,7 +8,6 @@ description: This skill should be used when the user asks to "deploy", "deploy t
   prototype to Atlassian Micros infrastructure. Also triggered by errors like "deployment
   failed", "deploy error", "build failed on Micros". Auto-detects initial vs redeploy
   workflows.
-disable-model-invocation: true
 ---
 # VPK Deploy - Deploy to Micros
 
@@ -27,7 +26,7 @@ disable-model-invocation: true
 
 ## Interactive Workflow (Default)
 
-When invoked without flags, first auto-detect the deployment type. If detection is ambiguous or the user just wants to check status, use `AskUserQuestion`:
+When invoked without flags, first auto-detect the deployment type. If detection is ambiguous or the user just wants to check status, ask a concise user-facing question:
 
 ```yaml
 header: "Deployment action"
@@ -113,7 +112,7 @@ fi
 
 **Rule:**
 
-- If `.deploy.local` exists → **Fast redeploy** (run `pnpm deploy` directly)
+- If `.deploy.local` exists → **Fast redeploy** (run `pnpm run deploy:micros` directly)
 - If service-descriptor.yml says `YOUR-SERVICE-NAME` → **Initial deploy** (ask for service name + credentials)
 - If service-descriptor.yml has custom name but no `.deploy.local` → **Redeploy without config** (ask for credentials to generate config)
 
@@ -387,7 +386,7 @@ sed -i '' 's/^ENV=.*/ENV="pdev-apse2"/' .deploy.local
 - [ ] Image built & pushed (v1.0.1)
 - [ ] Deployed (10-15 min first time)
 - [ ] Health check shows all "SET" (no "MISSING")
-- [ ] User informed about `pnpm deploy` for future deployments
+- [ ] User informed about `pnpm run deploy:micros` for future deployments
 
 ### Redeploy (via `pnpm run deploy:micros`)
 

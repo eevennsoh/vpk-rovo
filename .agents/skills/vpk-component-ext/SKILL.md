@@ -1,10 +1,6 @@
 ---
 name: vpk-component-ext
 description: Translate custom or third-party AI, voice, and adjacent component libraries into VPK-standardized primitives. Use when the user asks to "migrate to ui-ai", "replace custom chat", "use ui-ai message", "standardize AI components", "replace message bubble", "use conversation component", "migrate prompt input", "use code-block component", "replace custom suggestions", "switch to ui-ai", "adopt ai-elements", "elements.ai-sdk.dev", "port ElevenLabs UI", "use ui-audio", "voice picker", "waveform", "transcript viewer", "audio player", "speech input", "port this third-party component", "translate this library into VPK", or references an existing ui/ui-ai/ui-audio component and wants to migrate code to it.
-argument-hint: "[target file, component path, or component URL]"
-prerequisites:
-  files: [components/ui-ai/message.tsx, components/ui-ai/conversation.tsx, components/ui-audio/audio-player.tsx, components/ui-audio/voice-picker.tsx]
-produces: []
 ---
 
 # VPK Component External Translation
@@ -331,7 +327,7 @@ Create docs artifacts in the correct family.
 
 1. **Run baseline checks (required)**:
    - `pnpm run lint`
-   - `pnpm tsc --noEmit`
+   - `pnpm run typecheck`
 2. **Validation fallback when global baseline is noisy (required)**:
    - `pnpm exec eslint <changed files...>`
    - Report both global baseline status and changed-file status
@@ -469,7 +465,7 @@ Feature surfaces should copy the canonical pattern, not invent their own diverge
 
 - [ ] `pnpm run lint` checked
 - [ ] If global lint is noisy, targeted ESLint on changed files passed
-- [ ] `pnpm tsc --noEmit` checked
+- [ ] `pnpm run typecheck` checked
 - [ ] Accessibility code scan passed
 - [ ] Accessibility live scan passed on scoped selector
 - [ ] Residual import scan passed

@@ -1,5 +1,4 @@
 ---
-
 name: vpk-component
 description: Enrich shadcn components with ADS visual styling (state tokens, interaction feedback,
   semantic colors) while preserving all existing shadcn conventions (prop names, variant values,
@@ -11,10 +10,6 @@ description: Enrich shadcn components with ADS visual styling (state tokens, int
   "migrate from ADS", "how does [X] map to VPK", "what's the shadcn equivalent of [X]",
   "style component with ADS tokens", "which ADS component is [X] based on",
   or references an ADS component name and wants to see how it maps to VPK.
-argument-hint: "[ADS component name]"
-prerequisites:
-  files: [.agents/skills/vpk-design/references/tokens.md]
-produces: []
 ---
 
 # VPK Component Visual Enrichment
@@ -28,7 +23,7 @@ Enrich a shadcn component with ADS visual styling — state tokens, interaction 
 - **Variant values stay as-is:** `default`, `secondary`, `destructive`, `outline`, `ghost`, `link` — never rename to ADS equivalents (`primary`, `subtle`, `danger`)
 - **Size values stay as-is:** `sm`, `md`, `lg`, `icon` — never rename to unabbreviated ADS equivalents (`small`, `medium`, `large`)
 - **Sub-component names stay as-is:** `DialogHeader`, `TabsTrigger`, `SelectItem` — never rename to ADS equivalents (`ModalHeader`, `Tab`, `Option`)
-- **Export patterns stay as-is:** preserve existing named exports, default exports, and `forwardRef` usage
+- **Export patterns stay as-is:** preserve existing named exports and default exports. Do not add new `forwardRef`; this repo uses React 19 `ref` as a regular prop.
 - New variants (e.g., `warning`, `discovery`) may be **added** using names consistent with the existing component's naming pattern
 
 **Gold standard:** `components/ui/button.tsx` — completed enrichment with all states, 8 variants, `isLoading`, and exported Props interface.
@@ -409,13 +404,13 @@ For demo registration, metadata wiring, ADS equivalents setup, and component con
 ### Phase 5 — Validation
 
 1. Run `pnpm run lint` — fix all ESLint errors (0 new errors)
-2. Run `pnpm tsc --noEmit` — fix all TypeScript errors in modified files
+2. Run `pnpm run typecheck` — fix all TypeScript errors in modified files
 3. Verify the page renders at `/components/ui/[slug]` (or `/components/ai/[slug]`)
 4. Verify left-nav ADS indicator behavior for mapped components:
   - Purple `ADS` badge appears next to the component entry in `WebsiteSidebarNav`
   - ADS-only filter still includes the component
 5. Pre-existing errors in unrelated files can be ignored
-6. **API preservation check (required)** — Verify no prop names, variant values, size values, or sub-component names were changed. Search the codebase for all usages of the modified component and confirm they still work without modification. Run `pnpm tsc --noEmit` to catch any breakage. If any consumer needs updating, the enrichment introduced an API change — revert the API change and keep only the visual styling changes.
+6. **API preservation check (required)** — Verify no prop names, variant values, size values, or sub-component names were changed. Search the codebase for all usages of the modified component and confirm they still work without modification. Run `pnpm run typecheck` to catch any breakage. If any consumer needs updating, the enrichment introduced an API change — revert the API change and keep only the visual styling changes.
 7. **Typography parity check (required for text-bearing components)** — Compare local rendering against the `atlassian.design` example and computed typography values (`fontSize`, `lineHeight`, `fontWeight`). If local text appears larger/smaller, adjust classes to match ADS.
 
 #### Migration Safety Gates (only needed if new variants were added)
@@ -425,7 +420,7 @@ For demo registration, metadata wiring, ADS equivalents setup, and component con
   - Run global lint: `pnpm run lint`
   - If global lint fails for unrelated baseline issues, run changed-file lint:
     - `pnpm exec eslint <changed-file-1> <changed-file-2> ...`
-  - Still require `pnpm tsc --noEmit`
+  - Still require `pnpm run typecheck`
 3. **Scoped runtime + a11y checks (required for UI behavior changes)**:
   - Verify affected route(s) in browser snapshots
   - Run `ads_analyze_a11y` on the changed component source
@@ -519,4 +514,4 @@ For the full 35-item checklist, see `references/checklist-full.md`.
 - `adsUrl` and ADS equivalents entry set
 - Material a11y findings validated with `ads_suggest_a11y_fixes` and resolved or explicitly classified as noise
 - `pnpm run lint` passes (0 new errors)
-- `pnpm tsc --noEmit` passes (0 new errors)
+- `pnpm run typecheck` passes (0 new errors)
