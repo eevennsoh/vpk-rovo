@@ -4,6 +4,10 @@ const path = require("node:path");
 const test = require("node:test");
 
 const AGENTS_DEMO_SOURCE = fs.readFileSync(path.join(__dirname, "agents-demo.tsx"), "utf8");
+const PROJECT_DEMO_EMBEDDED_HOOK_SOURCE = fs.readFileSync(
+	path.join(__dirname, "use-project-demo-embedded.ts"),
+	"utf8",
+);
 
 test("AgentsDemo owns work item presentation so layout chat switches can promote modals", () => {
 	assert.match(
@@ -51,5 +55,17 @@ test("AgentsDemo closes the work item modal before opening an artifact dialog", 
 	assert.match(
 		AGENTS_DEMO_SOURCE,
 		/preserveFloatingSurfaceOnArtifactDialogOpen=\{isWorkItemModalOpen\}/u,
+	);
+});
+
+test("project preview demos honor the embedded query contract", () => {
+	assert.match(
+		PROJECT_DEMO_EMBEDDED_HOOK_SOURCE,
+		/import \{ usePathname, useSearchParams \} from "next\/navigation";/u,
+	);
+	assert.match(PROJECT_DEMO_EMBEDDED_HOOK_SOURCE, /const searchParams = useSearchParams\(\);/u);
+	assert.match(
+		PROJECT_DEMO_EMBEDDED_HOOK_SOURCE,
+		/return pathname\.startsWith\("\/components\/"\) \|\| searchParams\.get\("embedded"\) === "1";/u,
 	);
 });
