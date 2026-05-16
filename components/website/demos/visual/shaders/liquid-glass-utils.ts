@@ -22,13 +22,6 @@ interface LiquidGlassDisplacementImageOptions {
 	opacity: number;
 	redGradId: string;
 	blueGradId: string;
-	/**
-	 * Retained for backwards compatibility with callers that previously needed an
-	 * id for an internal `<filter>` element. The current implementation applies
-	 * the inner-rect blur via a raw CSS `filter:blur()` declaration to match the
-	 * Framer reference, so this id is no longer rendered into the SVG.
-	 */
-	blurFilterId?: string;
 }
 
 export function getLiquidGlassDisplacementMetrics(
