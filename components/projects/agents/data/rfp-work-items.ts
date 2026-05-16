@@ -5,6 +5,8 @@ import type {
 } from "@/app/contexts/context-work-item-modal";
 import type { KanbanBoardCardData, KanbanBoardCardTag } from "@/components/blocks/kanban-board";
 import type { ChatContextBarDescriptor } from "@/components/projects/sidebar-chat/lib/chat-context-bar";
+import FileIcon from "@atlaskit/icon/core/file";
+import { defaultSuggestions, type RovoSuggestion } from "@/lib/rovo-suggestions";
 import { BOARD_COLUMNS } from "./board-data";
 
 export const RFP_101_WORK_ITEM_CODE = "RFP-101";
@@ -43,7 +45,25 @@ function createWorkItemLabelFields(
 export interface AgentsChatScreenContext {
 	chatContextBar: ChatContextBarDescriptor;
 	contextDescription: string;
+	greeting?: AgentsChatGreeting;
 }
+
+interface AgentsChatGreeting {
+	suggestions?: ReadonlyArray<RovoSuggestion>;
+}
+
+const ACTIVE_WORK_ITEM_GREETING: AgentsChatGreeting = {
+	suggestions: defaultSuggestions.map((suggestion) => (
+		suggestion.id === "translate-text"
+			? {
+					...suggestion,
+					label: "Review and complete this RFP",
+					prompt: "Review and complete this RFP",
+					icon: FileIcon,
+				}
+			: suggestion
+	)),
+};
 
 export const RFP_101_WORK_ITEM = {
 	code: RFP_101_WORK_ITEM_CODE,
@@ -467,6 +487,7 @@ export function resolveAgentsChatScreenContext(
 				signature: `agents-work-item:${workItem.code}`,
 			},
 			contextDescription: activeContextDescription,
+			greeting: ACTIVE_WORK_ITEM_GREETING,
 		};
 	}
 

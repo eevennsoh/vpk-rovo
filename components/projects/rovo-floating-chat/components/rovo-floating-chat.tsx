@@ -6,12 +6,14 @@ import { useRovoChat } from "@/app/contexts";
 import type { ChatContextBarDescriptor } from "@/components/projects/sidebar-chat/lib/chat-context-bar";
 import type { ChatSurfaceSwitchHandler } from "@/components/projects/shared/components/chat-surface-switcher";
 import ChatPanel from "@/components/projects/sidebar-chat/page";
+import type { ChatPanelGreetingProps } from "@/components/projects/sidebar-chat/page";
 import { ChatHistoryDrawer } from "@/components/projects/sidebar-chat/components/chat-history-drawer";
 import FloatingChatHeader from "./floating-chat-header";
 
 interface RovoFloatingChatProps {
 	onSurfaceSwitch?: ChatSurfaceSwitchHandler;
 	chatContextBar?: ChatContextBarDescriptor | null;
+	greeting?: ChatPanelGreetingProps;
 	onArtifactDialogOpen?: () => void;
 	preserveFloatingSurfaceOnArtifactDialogOpen?: boolean;
 }
@@ -19,6 +21,7 @@ interface RovoFloatingChatProps {
 export default function RovoFloatingChat({
 	onSurfaceSwitch,
 	chatContextBar,
+	greeting,
 	onArtifactDialogOpen,
 	preserveFloatingSurfaceOnArtifactDialogOpen = false,
 }: Readonly<RovoFloatingChatProps>) {
@@ -58,7 +61,10 @@ export default function RovoFloatingChat({
 						height: "auto",
 						maxHeight: "calc(min(720px, calc(100dvh - 96px)) - 56px)",
 					}}
-					greeting={{ showHero: false }}
+					greeting={{
+						...greeting,
+						showHero: false,
+					}}
 					onSurfaceSwitch={onSurfaceSwitch}
 					chatContextBar={chatContextBar}
 					onArtifactDialogOpen={onArtifactDialogOpen}

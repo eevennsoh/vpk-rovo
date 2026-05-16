@@ -7,6 +7,7 @@ import TopNavigation from "@/components/blocks/top-navigation/page";
 import Sidebar from "@/components/blocks/product-sidebar/page";
 import FloatingRovoButton from "@/components/projects/shared/components/floating-rovo-button";
 import ChatPanel from "@/components/projects/sidebar-chat/page";
+import type { ChatPanelGreetingProps } from "@/components/projects/sidebar-chat/page";
 import RovoFloatingChat from "@/components/projects/rovo-floating-chat/components/rovo-floating-chat";
 import type { ChatContextBarDescriptor } from "@/components/projects/sidebar-chat/lib/chat-context-bar";
 import type { ChatSurfaceSwitchHandler } from "@/components/projects/shared/components/chat-surface-switcher";
@@ -25,6 +26,7 @@ interface AppLayoutProps {
 	hideRovoAction?: boolean;
 	onChatSurfaceSwitch?: ChatSurfaceSwitchHandler;
 	chatContextBar?: ChatContextBarDescriptor | null;
+	chatGreeting?: ChatPanelGreetingProps;
 	onArtifactDialogOpen?: () => void;
 	preserveFloatingSurfaceOnArtifactDialogOpen?: boolean;
 	/**
@@ -94,6 +96,7 @@ export default function AppLayout({
 	hideRovoAction = false,
 	onChatSurfaceSwitch,
 	chatContextBar,
+	chatGreeting,
 	onArtifactDialogOpen,
 	preserveFloatingSurfaceOnArtifactDialogOpen = false,
 	chatPanelFlush = false,
@@ -174,6 +177,7 @@ export default function AppLayout({
 							onClose={toggleChat}
 							onSurfaceSwitch={onChatSurfaceSwitch}
 							chatContextBar={chatContextBar}
+							greeting={chatGreeting}
 							onArtifactDialogOpen={onArtifactDialogOpen}
 							preserveFloatingSurfaceOnArtifactDialogOpen={preserveFloatingSurfaceOnArtifactDialogOpen}
 							containerStyle={
@@ -204,6 +208,7 @@ export default function AppLayout({
 						key="floating-chat"
 						onSurfaceSwitch={onChatSurfaceSwitch}
 						chatContextBar={chatContextBar}
+						greeting={chatGreeting}
 						onArtifactDialogOpen={onArtifactDialogOpen}
 						preserveFloatingSurfaceOnArtifactDialogOpen={preserveFloatingSurfaceOnArtifactDialogOpen}
 					/>

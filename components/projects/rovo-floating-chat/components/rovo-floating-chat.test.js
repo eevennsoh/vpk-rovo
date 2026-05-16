@@ -84,6 +84,8 @@ async function loadRovoFloatingChatHarness() {
 							"data-abort-on-unmount": String(props.abortOnUnmount),
 							"data-context-label": props.chatContextBar?.label ?? "",
 							"data-context-icon": props.chatContextBar?.iconName ?? "",
+							"data-greeting-labels": props.greeting?.suggestions?.map((suggestion) => suggestion.label).join("|") ?? "",
+							"data-greeting-hero": String(props.greeting?.showHero),
 							"data-has-artifact-dialog-open": String(typeof props.onArtifactDialogOpen === "function"),
 							"data-preserve-artifact-dialog": String(props.preserveFloatingSurfaceOnArtifactDialogOpen),
 							className: props.containerClassName,
@@ -133,6 +135,21 @@ async function loadRovoFloatingChatHarness() {
 					return renderToStaticMarkup(React.createElement(RovoFloatingChat, {
 						onArtifactDialogOpen() {},
 						preserveFloatingSurfaceOnArtifactDialogOpen: true,
+					}));
+				}
+
+				export function renderFloatingChatWithGreeting() {
+					return renderToStaticMarkup(React.createElement(RovoFloatingChat, {
+						greeting: {
+							showHero: true,
+							suggestions: [
+								{
+									id: "translate-text",
+									label: "Review and complete this RFP",
+									type: "skill",
+								},
+							],
+						},
 					}));
 				}
 			`,
@@ -210,6 +227,14 @@ test("RovoFloatingChat forwards artifact dialog lifecycle to the shared chat pan
 
 	assert.match(markup, /data-has-artifact-dialog-open="true"/);
 	assert.match(markup, /data-preserve-artifact-dialog="true"/);
+});
+
+test("RovoFloatingChat forwards custom suggestions while keeping compact greeting chrome", async () => {
+	const harness = await loadRovoFloatingChatHarness();
+	const markup = harness.renderFloatingChatWithGreeting();
+
+	assert.match(markup, /data-greeting-labels="Review and complete this RFP"/);
+	assert.match(markup, /data-greeting-hero="false"/);
 });
 
 test("Floating chat shell hugs content until it reaches the viewport-bounded max-height", () => {

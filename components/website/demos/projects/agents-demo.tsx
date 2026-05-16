@@ -56,6 +56,7 @@ export default function AgentsDemo() {
 					chatPanelFlush
 					onChatSurfaceSwitch={handleChatSurfaceSwitch}
 					chatContextBar={agentsChatScreenContext.chatContextBar}
+					chatGreeting={agentsChatScreenContext.greeting}
 					onArtifactDialogOpen={handleArtifactDialogOpen}
 					preserveFloatingSurfaceOnArtifactDialogOpen={isWorkItemModalOpen}
 				>

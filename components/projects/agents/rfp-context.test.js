@@ -24,6 +24,39 @@ const ROVO_CHAT_CONTEXT_SOURCE = fs.readFileSync(
 );
 
 async function loadRfpContextHarness() {
+	const mockModules = new Map([
+		[
+			"@atlaskit/icon/core/file",
+			`
+				export default function FileIcon() {
+					return null;
+				}
+			`,
+		],
+		[
+			"@/lib/rovo-suggestions",
+			`
+				export const defaultSuggestions = [
+					{
+						id: "work-last-7-days",
+						label: "Last 7 days of work",
+						type: "skill",
+					},
+					{
+						id: "draft-confluence-page",
+						label: "Draft Confluence page",
+						type: "skill",
+					},
+					{
+						id: "translate-text",
+						label: "Translate this text",
+						type: "skill",
+					},
+				];
+			`,
+		],
+	]);
+
 	const result = await esbuild.build({
 		stdin: {
 			contents: `
@@ -47,6 +80,32 @@ async function loadRfpContextHarness() {
 		platform: "node",
 		tsconfig: path.join(process.cwd(), "tsconfig.json"),
 		write: false,
+		plugins: [
+			{
+				name: "rfp-context-test-mocks",
+				setup(build) {
+					build.onResolve({ filter: /.*/ }, (args) => {
+						if (!mockModules.has(args.path)) {
+							return undefined;
+						}
+
+						return {
+							path: args.path,
+							namespace: "rfp-context-test-mock",
+						};
+					});
+
+					build.onLoad(
+						{ filter: /.*/, namespace: "rfp-context-test-mock" },
+						(args) => ({
+							contents: mockModules.get(args.path),
+							loader: "tsx",
+							resolveDir: process.cwd(),
+						}),
+					);
+				},
+			},
+		],
 	});
 
 	return loadCjsModuleFromText(result.outputFiles[0].text);
@@ -223,6 +282,7 @@ test("agents chat screen resolver switches from board fallback to active work it
 		signature: "agents-board:enterprise-rfp-response",
 	});
 	assert.match(boardContext.contextDescription, /^\[Agents Board Context\]/);
+	assert.equal(boardContext.greeting, undefined);
 
 	const workItemContext = harness.resolveAgentsChatScreenContext(harness.RFP_101_WORK_ITEM);
 	assert.deepEqual(workItemContext.chatContextBar, {
@@ -231,6 +291,12 @@ test("agents chat screen resolver switches from board fallback to active work it
 		signature: "agents-work-item:RFP-101",
 	});
 	assert.match(workItemContext.contextDescription, /^\[Active Jira Work Item Context\]/);
+
+	const translatedPrompt = workItemContext.greeting.suggestions.find(
+		(suggestion) => suggestion.id === "translate-text",
+	);
+	assert.equal(translatedPrompt.label, "Review and complete this RFP");
+	assert.equal(translatedPrompt.prompt, "Review and complete this RFP");
 });
 
 test("Rovo context merging preserves active work item context and suggestion context", async () => {
@@ -275,4 +341,5 @@ test("Agents demo feeds active work item context into RovoChatProvider defaults"
 	assert.match(AGENTS_DEMO_SOURCE, /agentsChatScreenContext\.contextDescription/);
 	assert.match(AGENTS_DEMO_SOURCE, /<RovoChatProvider defaultPromptOptions=\{chatPromptOptions\}>/);
 	assert.match(AGENTS_DEMO_SOURCE, /chatContextBar=\{agentsChatScreenContext\.chatContextBar\}/);
+	assert.match(AGENTS_DEMO_SOURCE, /chatGreeting=\{agentsChatScreenContext\.greeting\}/);
 });

@@ -1,6 +1,8 @@
 const test = require("node:test");
 const { describe, it } = test;
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
 
 const {
 	buildAIGatewaySystemPrompt,
@@ -125,6 +127,35 @@ test("buildUserMessage includes Hermes skill discoverability protocol in default
 	assert.match(message, /proactively load that skill/i);
 	assert.match(message, /prefer loading it directly with the `get_skill` tool/i);
 	assert.match(message, /Treat skill loading as the default response/i);
+});
+
+test("buildUserMessage keeps ask_user_questions options and bylines compact", () => {
+	const message = buildUserMessage("Help me choose an implementation path.", [], undefined);
+
+	assert.match(message, /1–4 predefined options/);
+	assert.match(message, /one free-text option/);
+	assert.match(message, /description\/byline to one short sentence, ideally 12 words or fewer/i);
+	assert.doesNotMatch(message, /1–3 predefined options/);
+});
+
+test("buildAIGatewaySystemPrompt keeps deferred ask_user_questions options and bylines compact", () => {
+	const systemPrompt = buildAIGatewaySystemPrompt({
+		currentDate: "Thursday, May 14, 2026 at 10:30:00 AM AEST",
+	});
+
+	assert.match(systemPrompt, /1–4 concrete preset options per question/);
+	assert.match(systemPrompt, /description\/byline to one short sentence, ideally 12 words or fewer/i);
+	assert.match(systemPrompt, /host UI appends one free-text option/i);
+});
+
+test("ClarificationQuestionCard limits preset options to four", () => {
+	const source = fs.readFileSync(
+		path.join(__dirname, "../components/projects/shared/components/clarification-question-card.tsx"),
+		"utf8",
+	);
+
+	assert.match(source, /const MAX_VISIBLE_CLARIFICATION_OPTIONS = 4;/);
+	assert.doesNotMatch(source, /const MAX_VISIBLE_CLARIFICATION_OPTIONS = 8;/);
 });
 
 test("buildUserMessage no longer injects standup-specific instructions from prompt text", () => {

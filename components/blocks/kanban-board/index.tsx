@@ -167,6 +167,11 @@ function ColumnAgentAssignment({
 		onCreateAgent(columnTitle);
 	};
 
+	const handleBrowseAgents = () => {
+		setOpen(false);
+		setQuery("");
+	};
+
 	const handleOpenChange = (nextOpen: boolean) => {
 		setOpen(nextOpen);
 		if (!nextOpen) {
@@ -213,10 +218,16 @@ function ColumnAgentAssignment({
 						<TooltipContent>{hasAssignedAgents ? "Manage agents" : "Add agent"}</TooltipContent>
 					</Tooltip>
 				</TooltipProvider>
-				<DropdownMenuContent align="end" className="w-80 overflow-hidden p-0" sideOffset={8}>
+				<DropdownMenuContent
+					align="end"
+					className="w-[360px] overflow-hidden p-0"
+					positionerClassName="z-[502]"
+					sideOffset={8}
+				>
 					<AgentSelector
 						agents={agents}
 						selectedAgentIds={assignedAgentIds}
+						onBrowseAgents={handleBrowseAgents}
 						onCreateAgent={handleCreateAgent}
 						onQueryChange={setQuery}
 						onAgentToggle={onToggleAgent}

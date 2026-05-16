@@ -286,7 +286,7 @@ function QuestionCard({
 			aria-modal="true"
 			aria-label={`Question ${safeQuestionIndex + 1} of ${totalQuestions}: ${currentQuestion.label}`}
 			onKeyDown={handleKeyDown}
-			className={cn("mx-auto w-full overflow-hidden rounded-xl border border-border bg-surface shadow-[0_-2px_50px_8px_rgba(30,31,33,0.08)] outline-none", className)}
+			className={cn("mx-auto flex max-h-[min(70vh,32rem)] w-full flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-[0_-2px_50px_8px_rgba(30,31,33,0.08)] outline-none", className)}
 			{...props}
 		>
 			<header data-slot="question-card-header" className="px-4 py-4">
@@ -343,7 +343,10 @@ function QuestionCard({
 					exit="exit"
 					transition={SLIDE_TRANSITION}
 					data-slot="question-card-body"
-					className={visibleOptionCount > 0 ? "px-3 pb-4" : undefined}
+					className={cn(
+						"min-h-0 flex-1 overflow-y-auto overscroll-contain",
+						visibleOptionCount > 0 ? "px-3 pb-4" : undefined,
+					)}
 				>
 					<QuestionInput
 						question={currentQuestion}

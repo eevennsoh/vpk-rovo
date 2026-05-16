@@ -107,13 +107,13 @@ export function AgentSelector({
 			</div>
 			<CommandList aria-label="Agents" className="min-h-0 max-h-none flex-1 p-0">
 				{visibleAgents.length === 0 ? <CommandEmpty>{emptyMessage}</CommandEmpty> : null}
-				<CommandGroup className="!p-0">
+				<CommandGroup className="!px-0 !py-1.5">
 					{visibleAgents.map((agent) => {
 						const isSelected = selectedAgentIdSet.has(agent.id);
 						return (
 							<CommandItem
 								aria-checked={isSelected}
-								className="h-10 min-h-10 items-center gap-3 rounded-[6px] px-3 py-0"
+								className="h-12 min-h-12 items-center gap-3 rounded-[6px] px-3 py-1.5"
 								data-checked={isSelected}
 								key={agent.id}
 								keywords={[agent.name, agent.byline]}

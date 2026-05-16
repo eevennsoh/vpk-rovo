@@ -58,7 +58,7 @@ interface ChatPanelCardsProps {
 	generativeAnimation?: GenerativeCardAnimationProps;
 }
 
-interface ChatPanelGreetingProps {
+export interface ChatPanelGreetingProps {
 	heading?: string;
 	illustrationSrc?: string;
 	illustrationDarkSrc?: string;

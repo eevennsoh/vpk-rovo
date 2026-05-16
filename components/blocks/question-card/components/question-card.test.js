@@ -39,3 +39,24 @@ test("QuestionCard option text wraps instead of truncating", () => {
 	assert.match(optionContent, /whitespace-normal break-words/u);
 	assert.doesNotMatch(optionContent, /\btruncate\b/u);
 });
+
+test("QuestionCard caps card height and scrolls overflowing question content internally", () => {
+	const root = extractSlice(
+		"data-slot=\"question-card\"",
+		"<header data-slot=\"question-card-header\"",
+	);
+	const body = extractSlice(
+		"data-slot=\"question-card-body\"",
+		"<QuestionInput",
+	);
+
+	assert.match(root, /\bflex\b/u);
+	assert.match(root, /\bflex-col\b/u);
+	assert.match(root, /\bmax-h-\[min\(70vh,32rem\)\]/u);
+	assert.match(root, /\boverflow-hidden\b/u);
+
+	assert.match(body, /\bmin-h-0\b/u);
+	assert.match(body, /\bflex-1\b/u);
+	assert.match(body, /\boverflow-y-auto\b/u);
+	assert.match(body, /\boverscroll-contain\b/u);
+});
