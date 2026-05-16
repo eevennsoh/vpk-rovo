@@ -1,5 +1,7 @@
 # AI Gateway Deferred Tools Plan
 
+Status: Implemented by PR #225. Keep this as the design record for the shipped AI Gateway deferred-tool path, not as an active work queue.
+
 ## Summary
 
 Build a RovoDev-compatible deferred interaction layer for AI Gateway, starting with `ask_user_questions` and `exit_plan_mode`. The goal is to remove the current AI Gateway-only `question-card` text/JSON workaround as the product contract, while still using a model-agnostic structured-output shim instead of depending on native tool calling support from any specific Gateway model.
