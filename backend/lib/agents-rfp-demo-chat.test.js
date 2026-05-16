@@ -6,6 +6,7 @@ const {
 	buildAgentsRfpDemoAnswerTrace,
 	buildAgentsRfpDemoQualificationTrace,
 	buildAgentsRfpDemoQuestionCardPayload,
+	getAgentsRfpDemoToolCallDelayMs,
 	getLatestUserMessageText,
 	resolveAgentsRfpDemoChatTurn,
 } = require("./agents-rfp-demo-chat");
@@ -79,7 +80,7 @@ test("builds the shared question-card payload expected by compact chat", () => {
 	assert.equal(payload.type, "question-card");
 	assert.equal(payload.sessionId, RFP_DEMO_QUESTION_SESSION_ID);
 	assert.equal(payload.maxRounds, 1);
-	assert.equal(payload.questions.length, 6);
+	assert.equal(payload.questions.length, 4);
 	assert.deepEqual(
 		payload.questions.map((question) => question.id),
 		[
@@ -87,12 +88,16 @@ test("builds the shared question-card payload expected by compact chat", () => {
 			"incumbent",
 			"audience",
 			"review-posture",
-			"lead-narrative",
-			"reuse-assets",
 		],
 	);
-	assert.ok(payload.questions.some((question) => question.kind === "text"));
+	assert.ok(payload.questions.every((question) => question.options.length > 0));
 	assert.ok(payload.questions.some((question) => question.kind === "multi-select"));
+});
+
+test("RFP demo tool-call delay varies between one and three seconds", () => {
+	assert.equal(getAgentsRfpDemoToolCallDelayMs(() => 0), 1000);
+	assert.equal(getAgentsRfpDemoToolCallDelayMs(() => 0.5), 2000);
+	assert.equal(getAgentsRfpDemoToolCallDelayMs(() => 1), 3000);
 });
 
 test("qualification trace leaves ask_user_questions awaiting a question card", () => {
@@ -102,6 +107,7 @@ test("qualification trace leaves ask_user_questions awaiting a question card", (
 	assert.equal(trace.length, 6);
 	assert.equal(finalStep.toolName, "ask_user_questions");
 	assert.equal(finalStep.toolCallId, RFP_DEMO_QUESTION_TOOL_CALL_ID);
+	assert.equal(finalStep.input.questions, 4);
 	assert.equal(finalStep.outputPreview, undefined);
 });
 

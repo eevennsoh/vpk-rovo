@@ -14,7 +14,7 @@
 // caller invokes extractQuestionCardDefinitionFromAssistantText (prose).
 
 const VALID_KINDS = new Set(["single-select", "multi-select", "text"]);
-const MAX_QUESTIONS = 6;
+const MAX_QUESTIONS = 4;
 const MAX_OPTIONS_PER_QUESTION = 8;
 const MAX_LABEL_LENGTH = 200;
 const MAX_DESCRIPTION_LENGTH = 400;

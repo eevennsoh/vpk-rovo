@@ -34,6 +34,25 @@ test("parseQuestionCardPayload preserves multi-select kind", () => {
 	assert.equal(payload.questions[0].options.length, 2);
 });
 
+test("parseQuestionCardPayload caps each round at four questions", () => {
+	const payload = parseQuestionCardPayload({
+		type: "question-card",
+		sessionId: "widget-four-question-cap",
+		questions: Array.from({ length: 6 }, (_, index) => ({
+			id: `q-${index + 1}`,
+			label: `Question ${index + 1}?`,
+			kind: "single-select",
+			options: [{ label: "Yes" }, { label: "No" }],
+		})),
+	});
+
+	assert.ok(payload);
+	assert.deepEqual(
+		payload.questions.map((question) => question.id),
+		["q-1", "q-2", "q-3", "q-4"],
+	);
+});
+
 test("parseQuestionCardPayload preserves both generic and legacy tool call ids", () => {
 	const payload = parseQuestionCardPayload({
 		type: "question-card",

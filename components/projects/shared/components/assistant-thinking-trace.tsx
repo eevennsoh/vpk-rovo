@@ -1,7 +1,7 @@
 "use client";
 
 import type { ComponentProps, ReactNode } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { NewCoreIconProps } from "@atlaskit/icon/base-new";
 import AiAgentIcon from "@atlaskit/icon/core/ai-agent";
 import AiGenerativeTextSummaryIcon from "@atlaskit/icon/core/ai-generative-text-summary";
@@ -28,8 +28,10 @@ import {
 } from "@/components/projects/shared/lib/reasoning-labels";
 import {
 	collectAssistantThinkingTraceData,
+	getLatestThinkingToolCallId,
 	resolveAssistantThinkingTracePhase,
 	resolveAssistantThinkingTraceVisibility,
+	resolveThinkingToolCallStepOpen,
 	type AssistantThinkingTraceData,
 } from "@/components/projects/shared/lib/assistant-thinking-trace-state";
 import {
@@ -381,19 +383,25 @@ export function useAssistantThinkingTraceState({
 function ThinkingToolCallStep({
 	messageId,
 	narration,
+	open,
 	toolCall,
 	index,
+	onOpenChange,
 }: Readonly<{
 	messageId: string;
 	narration: string[] | undefined;
+	open: boolean;
 	toolCall: ThinkingToolCallSummary;
 	index: number;
+	onOpenChange: (open: boolean) => void;
 }>): ReactNode {
 	return (
 		<ChainOfThoughtStep
 			key={`${messageId}-cot-tool-${toolCall.id}-${index}`}
 			collapsible
 			defaultOpen={isToolCallStepOpenByDefault(toolCall.state)}
+			open={open}
+			onOpenChange={onOpenChange}
 			iconRender={renderResolvedToolIcon(resolveToolIcon({ toolName: toolCall.toolName, title: toolCall.toolName, input: toolCall.input, mcpServer: toolCall.mcpServer }), {
 				className: "size-4",
 			})}
@@ -418,6 +426,71 @@ export function AssistantThinkingTrace({
 	state,
 	className,
 }: Readonly<AssistantThinkingTraceProps>): ReactNode {
+	const [manuallyOpenedToolCallIds, setManuallyOpenedToolCallIds] = useState<Set<string>>(() => new Set());
+	const [manuallyClosedToolCallIds, setManuallyClosedToolCallIds] = useState<Set<string>>(() => new Set());
+	const toolCallIds = useMemo(
+		() => state.data.thinkingToolCalls.map((toolCall) => toolCall.id),
+		[state.data.thinkingToolCalls],
+	);
+	const toolCallIdsKey = toolCallIds.join("|");
+	const autoOpenToolCallId = getLatestThinkingToolCallId(state.data.thinkingToolCalls);
+
+	useEffect(() => {
+		setManuallyOpenedToolCallIds(new Set());
+		setManuallyClosedToolCallIds(new Set());
+	}, [state.message.id]);
+
+	useEffect(() => {
+		const currentToolCallIds = new Set(toolCallIds);
+		setManuallyOpenedToolCallIds((current) => {
+			const next = new Set([...current].filter((toolCallId) => currentToolCallIds.has(toolCallId)));
+			return next.size === current.size ? current : next;
+		});
+		setManuallyClosedToolCallIds((current) => {
+			const next = new Set([...current].filter((toolCallId) => currentToolCallIds.has(toolCallId)));
+			return next.size === current.size ? current : next;
+		});
+	}, [toolCallIds, toolCallIdsKey]);
+
+	const handleToolCallOpenChange = useCallback((toolCallId: string, open: boolean) => {
+		if (open) {
+			setManuallyOpenedToolCallIds((current) => {
+				if (current.has(toolCallId)) {
+					return current;
+				}
+				const next = new Set(current);
+				next.add(toolCallId);
+				return next;
+			});
+			setManuallyClosedToolCallIds((current) => {
+				if (!current.has(toolCallId)) {
+					return current;
+				}
+				const next = new Set(current);
+				next.delete(toolCallId);
+				return next;
+			});
+			return;
+		}
+
+		setManuallyOpenedToolCallIds((current) => {
+			if (!current.has(toolCallId)) {
+				return current;
+			}
+			const next = new Set(current);
+			next.delete(toolCallId);
+			return next;
+		});
+		setManuallyClosedToolCallIds((current) => {
+			if (current.has(toolCallId)) {
+				return current;
+			}
+			const next = new Set(current);
+			next.add(toolCallId);
+			return next;
+		});
+	}, []);
+
 	if (!state.thinkingActive) {
 		return null;
 	}
@@ -455,13 +528,21 @@ export function AssistantThinkingTrace({
 					) : null}
 					{state.data.thinkingToolCalls.map((toolCall, index) => {
 						const narration = toolCall.toolCallId ? state.data.thinkingNarrationMap.byToolCallId.get(toolCall.toolCallId) : undefined;
+						const isOpen = resolveThinkingToolCallStepOpen({
+							toolCallId: toolCall.id,
+							autoOpenToolCallId,
+							manuallyOpenedToolCallIds,
+							manuallyClosedToolCallIds,
+						});
 						return (
 							<ThinkingToolCallStep
 								key={`${state.message.id}-cot-tool-${toolCall.id}-${index}`}
 								messageId={state.message.id}
 								narration={narration}
+								open={isOpen}
 								toolCall={toolCall}
 								index={index}
+								onOpenChange={(open) => handleToolCallOpenChange(toolCall.id, open)}
 							/>
 						);
 					})}

@@ -7,6 +7,8 @@ const RFP_HELP_MARKERS = [
 ];
 const RFP_DEMO_QUESTION_SESSION_ID = "agents-rfp-demo-rfp-101-qualification";
 const RFP_DEMO_QUESTION_TOOL_CALL_ID = "ai-gateway-ask_user_questions-agents-rfp-demo-rfp-101";
+const RFP_DEMO_TOOL_CALL_DELAY_MIN_MS = 1000;
+const RFP_DEMO_TOOL_CALL_DELAY_MAX_MS = 3000;
 
 function getNonEmptyString(value) {
 	if (typeof value !== "string") {
@@ -84,6 +86,19 @@ function resolveAgentsRfpDemoChatTurn(requestBody) {
 	return isRfpHelpPrompt(prompt) ? "qualification-questions" : null;
 }
 
+function getAgentsRfpDemoToolCallDelayMs(random = Math.random) {
+	const rawValue = typeof random === "function" ? random() : Math.random();
+	const boundedValue = Number.isFinite(rawValue)
+		? Math.min(1, Math.max(0, rawValue))
+		: 0;
+
+	return Math.round(
+		RFP_DEMO_TOOL_CALL_DELAY_MIN_MS +
+			boundedValue *
+				(RFP_DEMO_TOOL_CALL_DELAY_MAX_MS - RFP_DEMO_TOOL_CALL_DELAY_MIN_MS),
+	);
+}
+
 function buildAgentsRfpDemoQuestionCardPayload() {
 	return {
 		type: "question-card",
@@ -96,12 +111,16 @@ function buildAgentsRfpDemoQuestionCardPayload() {
 		questions: [
 			{
 				id: "deal-size",
-				label: "What ARR or deal size should I assume?",
-				description: "Used to calibrate the bid/no-bid recommendation.",
+				label: "What opportunity size should I assume?",
+				description: "Used to calibrate bid/no-bid priority and response depth.",
 				required: true,
-				kind: "text",
-				placeholder: "Example: $2.4M ARR",
-				options: [],
+				kind: "single-select",
+				placeholder: "Use a different ARR or deal size",
+				options: [
+					{ id: "strategic-2-4m-arr", label: "$2.4M ARR strategic pursuit", recommended: true },
+					{ id: "enterprise-expansion", label: "$750K enterprise expansion" },
+					{ id: "unknown-strategic", label: "Unknown, assume strategic" },
+				],
 			},
 			{
 				id: "incumbent",
@@ -127,37 +146,14 @@ function buildAgentsRfpDemoQuestionCardPayload() {
 			},
 			{
 				id: "review-posture",
-				label: "How should I handle legal, security, and data residency gaps?",
+				label: "Which review and reuse posture should I apply?",
 				required: true,
 				kind: "multi-select",
 				options: [
 					{ id: "approved-language", label: "Use approved standard language", recommended: true },
 					{ id: "review-required", label: "Mark gaps review-required", recommended: true },
-					{ id: "legal-escalation", label: "Escalate legal review" },
-					{ id: "security-escalation", label: "Escalate security review" },
-				],
-			},
-			{
-				id: "lead-narrative",
-				label: "What should lead the response narrative?",
-				required: true,
-				kind: "single-select",
-				options: [
-					{ id: "itsm-cmdb", label: "Unified ITSM and CMDB", recommended: true },
-					{ id: "rovo-ai", label: "Rovo AI automation" },
-					{ id: "commercial", label: "Commercial value and speed" },
-				],
-			},
-			{
-				id: "reuse-assets",
-				label: "Which reusable assets should I pull forward?",
-				required: false,
-				kind: "multi-select",
-				options: [
-					{ id: "itsm-template", label: "Standard ITSM RFP template", recommended: true },
+					{ id: "itsm-template", label: "Reuse standard ITSM template", recommended: true },
 					{ id: "pilot-notes", label: "Prior JSM pilot notes", recommended: true },
-					{ id: "rovo-demo", label: "Rovo for ITSM demo recording" },
-					{ id: "security-tracker", label: "Security review tracker" },
 				],
 			},
 		],
@@ -221,7 +217,7 @@ function buildAgentsRfpDemoQualificationTrace() {
 			toolCallId: RFP_DEMO_QUESTION_TOOL_CALL_ID,
 			label: "Preparing clarification questions",
 			content: "Asking for the commercial and review posture details needed before drafting.",
-			input: { sessionId: RFP_DEMO_QUESTION_SESSION_ID, round: 1, questions: 6 },
+			input: { sessionId: RFP_DEMO_QUESTION_SESSION_ID, round: 1, questions: 4 },
 		},
 	];
 }
@@ -281,6 +277,7 @@ module.exports = {
 	buildAgentsRfpDemoQuestionCardPayload,
 	buildAgentsRfpDemoResponsePackageText,
 	buildAgentsRfpDemoAnswerTrace,
+	getAgentsRfpDemoToolCallDelayMs,
 	getLatestUserMessageText,
 	resolveAgentsRfpDemoChatTurn,
 };

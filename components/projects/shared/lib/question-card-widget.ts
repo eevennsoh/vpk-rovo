@@ -68,6 +68,7 @@ const DEFAULT_MAX_ROUNDS = Number.MAX_SAFE_INTEGER;
 const DEFAULT_TITLE = "Help me clarify this";
 const DEFAULT_PLACEHOLDER = "Tell Rovo what to do...";
 const MAX_GENERATED_OPTIONS = 8;
+const MAX_QUESTIONS_PER_ROUND = 4;
 const QUESTION_CARD_SKIPPED_VALUE = "Skipped";
 const CLARIFICATION_DISMISS_SUMMARY_QUESTION = "Clarification status";
 const CLARIFICATION_DISMISS_SUMMARY_ANSWER = "User dismissed";
@@ -255,6 +256,10 @@ export function parseQuestionCardPayload(
 	const seenLabels = new Set<string>();
 
 	for (const [index, question] of questionsValue.entries()) {
+		if (questions.length >= MAX_QUESTIONS_PER_ROUND) {
+			break;
+		}
+
 		if (!isStringRecord(question)) continue;
 
 		const questionLabel =

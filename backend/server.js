@@ -228,6 +228,7 @@ const {
 	buildAgentsRfpDemoQualificationTrace,
 	buildAgentsRfpDemoQuestionCardPayload,
 	buildAgentsRfpDemoResponsePackageText,
+	getAgentsRfpDemoToolCallDelayMs,
 	resolveAgentsRfpDemoChatTurn,
 } = require("./lib/agents-rfp-demo-chat");
 const {
@@ -3797,11 +3798,9 @@ async function startNextQueuedRovoAppRun() {
 	}
 }
 
-const AGENTS_RFP_DEMO_TRACE_STEP_DELAY_MS = 160;
-
-function waitForAgentsRfpDemoTraceStep() {
+function waitForAgentsRfpDemoTraceDelay(delayMs) {
 	return new Promise((resolve) => {
-		setTimeout(resolve, AGENTS_RFP_DEMO_TRACE_STEP_DELAY_MS);
+		setTimeout(resolve, delayMs);
 	});
 }
 
@@ -3834,6 +3833,15 @@ function createAgentsRfpDemoThinkingEventPart(step, phase) {
 
 async function writeAgentsRfpDemoTrace(writer, steps) {
 	for (const step of steps) {
+		const toolCallDelayMs = getAgentsRfpDemoToolCallDelayMs();
+		const hasResult = step.output !== undefined || step.outputPreview;
+		const resultDelayMs = hasResult
+			? Math.round(toolCallDelayMs * 0.7)
+			: toolCallDelayMs;
+		const resultHoldDelayMs = hasResult
+			? Math.max(0, toolCallDelayMs - resultDelayMs)
+			: 0;
+
 		writer.write({
 			type: "data-thinking-status",
 			id: `${step.toolCallId}-status`,
@@ -3846,10 +3854,12 @@ async function writeAgentsRfpDemoTrace(writer, steps) {
 			},
 		});
 		writer.write(createAgentsRfpDemoThinkingEventPart(step, "start"));
-		await waitForAgentsRfpDemoTraceStep();
-		if (step.output !== undefined || step.outputPreview) {
+		await waitForAgentsRfpDemoTraceDelay(resultDelayMs);
+		if (hasResult) {
 			writer.write(createAgentsRfpDemoThinkingEventPart(step, "result"));
-			await waitForAgentsRfpDemoTraceStep();
+			if (resultHoldDelayMs > 0) {
+				await waitForAgentsRfpDemoTraceDelay(resultHoldDelayMs);
+			}
 		}
 	}
 }
