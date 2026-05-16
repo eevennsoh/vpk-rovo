@@ -31,7 +31,7 @@ test("AgentsDemo promotes the open modal before switching floating chat to the s
 	);
 	assert.match(
 		AGENTS_DEMO_SOURCE,
-		/<AgentsView workItemPresentation=\{workItemPresentation\} \/>/u,
+		/<AgentsView workItemPresentation=\{workItemPresentation\} rfpDemo=\{rfpDemo\} \/>/u,
 	);
 });
 

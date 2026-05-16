@@ -8,7 +8,7 @@ import Heading from "@/components/blocks/shared-ui/heading";
 import { Badge } from "@/components/ui/badge";
 import { IconTile } from "@/components/ui/icon-tile";
 import { AtlassianLogo } from "@/components/ui/logo";
-import { useWorkItemData, type WorkItemAttachment } from "@/app/contexts/context-work-item-modal";
+import { useWorkItemModal, type WorkItemAttachment } from "@/app/contexts/context-work-item-modal";
 import {
 	FileChartColumnIcon,
 	FileIcon,
@@ -51,6 +51,7 @@ const ATTACHMENT_FILES: WorkItemAttachment[] = [
 
 interface AttachmentCardProps {
 	file: WorkItemAttachment;
+	onOpen?: (file: WorkItemAttachment) => void;
 }
 
 function getAttachmentColor(file: WorkItemAttachment): string {
@@ -130,19 +131,19 @@ function renderAttachmentPreview(file: WorkItemAttachment, title: string) {
 	return null;
 }
 
-function AttachmentCard({ file }: Readonly<AttachmentCardProps>) {
+function AttachmentCard({ file, onOpen }: Readonly<AttachmentCardProps>) {
 	const title = getAttachmentTitle(file);
-
-	return (
-		<div
-			style={{
-				minWidth: 0,
-				borderRadius: token("radius.medium"),
-				overflow: "hidden",
-				boxShadow: token("elevation.shadow.raised"),
-				backgroundColor: token("elevation.surface"),
-			}}
-		>
+	const canOpenPreview = Boolean(file.previewKind && onOpen);
+	const containerStyle = {
+		minWidth: 0,
+		borderRadius: token("radius.medium"),
+		overflow: "hidden",
+		boxShadow: token("elevation.shadow.raised"),
+		backgroundColor: token("elevation.surface"),
+		cursor: canOpenPreview ? "pointer" : undefined,
+	};
+	const cardContent = (
+		<>
 			<div
 				style={{
 					position: "relative",
@@ -164,12 +165,32 @@ function AttachmentCard({ file }: Readonly<AttachmentCardProps>) {
 				</div>
 				{renderAttachmentIcon(file)}
 			</div>
+		</>
+	);
+
+	if (canOpenPreview) {
+		return (
+			<button
+				type="button"
+				onClick={() => onOpen?.(file)}
+				className="w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+				style={containerStyle}
+			>
+				{cardContent}
+			</button>
+		);
+	}
+
+	return (
+		<div style={containerStyle}>
+			{cardContent}
 		</div>
 	);
 }
 
 export function AttachmentsSection() {
-	const workItem = useWorkItemData();
+	const { meta } = useWorkItemModal();
+	const workItem = meta.workItem;
 	const attachmentFiles = workItem.attachments?.length ? workItem.attachments : ATTACHMENT_FILES;
 
 	return (
@@ -211,7 +232,11 @@ export function AttachmentsSection() {
 				}}
 			>
 				{attachmentFiles.map((file, i) => (
-					<AttachmentCard key={i} file={file} />
+					<AttachmentCard
+						key={file.id ?? `${file.name}-${i}`}
+						file={file}
+						onOpen={meta.onAttachmentOpen}
+					/>
 				))}
 			</div>
 		</section>

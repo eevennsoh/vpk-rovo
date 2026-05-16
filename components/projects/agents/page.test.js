@@ -4,6 +4,14 @@ const path = require("node:path");
 const test = require("node:test");
 
 const AGENTS_VIEW_SOURCE = fs.readFileSync(path.join(__dirname, "page.tsx"), "utf8");
+const RFP_REPORT_CANVAS_SOURCE = fs.readFileSync(
+	path.join(__dirname, "components/rfp-report-canvas.tsx"),
+	"utf8",
+);
+const RFP_DEMO_CONTROLS_SOURCE = fs.readFileSync(
+	path.join(__dirname, "components/rfp-demo-controls.tsx"),
+	"utf8",
+);
 
 test("AgentsView reads chat surface pin state from useRovoChat", () => {
 	assert.match(
@@ -40,7 +48,11 @@ test("AgentsView keeps column agent assignment state local to the board", () => 
 	);
 	assert.match(
 		AGENTS_VIEW_SOURCE,
-		/assignedAgentIdsByColumn=\{columnAgentAssignments\}/u,
+		/const assignedAgentIdsByColumn = useMemo/u,
+	);
+	assert.match(
+		AGENTS_VIEW_SOURCE,
+		/assignedAgentIdsByColumn=\{assignedAgentIdsByColumn\}/u,
 	);
 	assert.match(
 		AGENTS_VIEW_SOURCE,
@@ -57,4 +69,39 @@ test("AgentsView create-agent CTA opens Rovo chat in agent creation mode", () =>
 		AGENTS_VIEW_SOURCE,
 		/sendPrompt\([\s\S]*Create an agent for the \$\{columnTitle\} column[\s\S]*creationMode:\s*"agent"[\s\S]*contextDescription/u,
 	);
+	assert.match(
+		AGENTS_VIEW_SOURCE,
+		/RFP_AGENT_CREATION_PROMPT[\s\S]*creationMode:\s*"agent"/u,
+	);
+});
+
+test("RFP report canvas marks refined copy from version history, not terminal report stage", () => {
+	assert.match(
+		RFP_REPORT_CANVAS_SOURCE,
+		/state\.report\.versions\.some\(\(version\) => version\.id === "refined-current-report"\)/u,
+	);
+	assert.doesNotMatch(
+		RFP_REPORT_CANVAS_SOURCE,
+		/state\.report\.stage !== "generated"/u,
+	);
+});
+
+test("RFP reset confirmation closes after resetting demo state", () => {
+	assert.match(
+		RFP_DEMO_CONTROLS_SOURCE,
+		/const \[isResetDialogOpen, setIsResetDialogOpen\] = useState\(false\);/u,
+	);
+	assert.match(
+		RFP_DEMO_CONTROLS_SOURCE,
+		/<AlertDialog open=\{isResetDialogOpen\} onOpenChange=\{setIsResetDialogOpen\}>/u,
+	);
+	assert.match(
+		RFP_DEMO_CONTROLS_SOURCE,
+		/const handleConfirmReset = \(\) => \{[\s\S]*setIsResetDialogOpen\(false\);[\s\S]*onReset\(\);[\s\S]*\};/u,
+	);
+	assert.match(
+		RFP_DEMO_CONTROLS_SOURCE,
+		/<Button onClick=\{handleConfirmReset\}>Reset demo<\/Button>/u,
+	);
+	assert.doesNotMatch(RFP_DEMO_CONTROLS_SOURCE, /AlertDialogAction/u);
 });

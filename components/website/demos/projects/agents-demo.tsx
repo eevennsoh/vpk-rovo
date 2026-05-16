@@ -7,6 +7,8 @@ import { SidebarProvider } from "@/app/contexts/context-sidebar";
 import AppLayout from "@/components/projects/page";
 import AgentsView from "@/components/projects/agents/page";
 import { resolveAgentsChatScreenContext } from "@/components/projects/agents/data/rfp-work-items";
+import { useAgentsRfpDemoState } from "@/components/projects/agents/hooks/use-agents-rfp-demo-state";
+import { formatRfpDemoContext } from "@/components/projects/agents/lib/rfp-demo-state";
 import { mergeRovoContextDescriptions } from "@/lib/rovo-context";
 import type { ChatSurfaceSwitchHandler } from "@/components/projects/shared/components/chat-surface-switcher";
 import { useAgentsWorkItemPresentation } from "@/components/projects/agents/hooks/use-agents-work-item-presentation";
@@ -19,6 +21,7 @@ const AGENTS_CHAT_PROMPT_OPTIONS: SendPromptOptions = {
 export default function AgentsDemo() {
 	const embedded = useProjectDemoEmbedded();
 	const workItemPresentation = useAgentsWorkItemPresentation();
+	const rfpDemo = useAgentsRfpDemoState();
 	const { closeModal, promoteModalToInline } = workItemPresentation;
 	const isWorkItemModalOpen = workItemPresentation.state.mode === "modal";
 	const handleChatSurfaceSwitch = useCallback<ChatSurfaceSwitchHandler>(
@@ -36,15 +39,20 @@ export default function AgentsDemo() {
 		() => resolveAgentsChatScreenContext(workItemPresentation.state.workItem),
 		[workItemPresentation.state.workItem],
 	);
+	const rfpDemoContext = useMemo(
+		() => formatRfpDemoContext(rfpDemo.state),
+		[rfpDemo.state],
+	);
 	const chatPromptOptions = useMemo(
 		() => ({
 			...AGENTS_CHAT_PROMPT_OPTIONS,
 			contextDescription: mergeRovoContextDescriptions(
 				AGENTS_CHAT_PROMPT_OPTIONS.contextDescription,
 				agentsChatScreenContext.contextDescription,
+				rfpDemoContext,
 			),
 		}) satisfies SendPromptOptions,
-		[agentsChatScreenContext.contextDescription],
+		[agentsChatScreenContext.contextDescription, rfpDemoContext],
 	);
 
 	return (
@@ -60,7 +68,7 @@ export default function AgentsDemo() {
 					onArtifactDialogOpen={handleArtifactDialogOpen}
 					preserveFloatingSurfaceOnArtifactDialogOpen={isWorkItemModalOpen}
 				>
-					<AgentsView workItemPresentation={workItemPresentation} />
+					<AgentsView workItemPresentation={workItemPresentation} rfpDemo={rfpDemo} />
 				</AppLayout>
 			</RovoChatProvider>
 		</SidebarProvider>
