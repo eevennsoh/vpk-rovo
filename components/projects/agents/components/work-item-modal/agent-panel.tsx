@@ -50,7 +50,7 @@ function AgentPanelIllustration({ isSparkleVisible }: AgentPanelIllustrationProp
 		<>
 			<div
 				className={cn(
-					"pointer-events-none absolute -left-3 -top-3 z-10 text-text motion-safe:transition-opacity motion-safe:duration-150",
+					"pointer-events-none absolute -left-3 -top-3 z-10 text-text motion-safe:transition-opacity motion-safe:duration-normal",
 					isSparkleVisible ? "opacity-100" : "opacity-0",
 				)}
 				aria-hidden="true"
