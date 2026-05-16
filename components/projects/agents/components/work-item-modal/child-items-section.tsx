@@ -40,7 +40,7 @@ export function ChildItemsSection() {
 			<div>
 				<div className="flex justify-between items-center">
 					<Heading size="small" as="h3">
-						Child work items
+						Subtasks
 					</Heading>
 					<div className="flex gap-2">
 						<Button aria-label="Manage" size="icon-sm" variant="ghost">
@@ -57,7 +57,7 @@ export function ChildItemsSection() {
 
 			<div
 				role="table"
-				aria-label="Child work items"
+				aria-label="Subtasks"
 				style={{
 					border: `1px solid ${token("color.border")}`,
 					borderRadius: token("radius.medium"),

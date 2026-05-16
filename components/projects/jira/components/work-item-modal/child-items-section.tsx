@@ -16,7 +16,7 @@ export function ChildItemsSection() {
 			<div className="pb-2">
 				<div className="flex justify-between items-center">
 					<Heading size="small" as="h3">
-						Child work items
+						Subtasks
 					</Heading>
 					<div className="flex gap-2">
 						<Button aria-label="Manage" size="icon-sm" variant="ghost">

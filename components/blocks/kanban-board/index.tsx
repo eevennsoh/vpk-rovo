@@ -343,6 +343,7 @@ function KanbanCard({
 		<button
 			type="button"
 			draggable
+			className="border-2 border-transparent outline-none focus-visible:border-ring"
 			onClick={onClick}
 			onDragStart={onDragStart}
 			onDragEnd={onDragEnd}
@@ -354,8 +355,7 @@ function KanbanCard({
 				padding: token("space.150"),
 				cursor: isDragging ? "grabbing" : "grab",
 				boxShadow: token("elevation.shadow.raised"),
-				transition: "background-color 0.2s ease",
-				border: "none",
+				transition: "background-color 0.2s ease, border-color 0.2s ease",
 				textAlign: "left",
 				width: "100%",
 				opacity: isDragging ? 0.5 : 1,
@@ -450,16 +450,19 @@ export function KanbanBoard({
 
 	const handleColumnDragOver = (event: React.DragEvent<HTMLDivElement>) => {
 		event.preventDefault();
-		event.currentTarget.classList.add("ring-2", "ring-offset-2", "ring-border-bold");
+		event.currentTarget.classList.add("border-ring");
+		event.currentTarget.classList.remove("border-transparent");
 	};
 
 	const handleColumnDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
-		event.currentTarget.classList.remove("ring-2", "ring-offset-2", "ring-border-bold");
+		event.currentTarget.classList.add("border-transparent");
+		event.currentTarget.classList.remove("border-ring");
 	};
 
 	const handleColumnDrop = (event: React.DragEvent<HTMLDivElement>, targetColumnTitle: string) => {
 		event.preventDefault();
-		event.currentTarget.classList.remove("ring-2", "ring-offset-2", "ring-border-bold");
+		event.currentTarget.classList.add("border-transparent");
+		event.currentTarget.classList.remove("border-ring");
 		onCardDrop?.(targetColumnTitle);
 	};
 
@@ -494,6 +497,7 @@ export function KanbanBoard({
 					{boardColumns.map((column) => (
 						<div
 							key={column.title}
+							className="border-2 border-transparent transition-colors"
 							onDragOver={handleColumnDragOver}
 							onDragLeave={handleColumnDragLeave}
 							onDrop={(event) => handleColumnDrop(event, column.title)}

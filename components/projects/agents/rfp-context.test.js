@@ -14,6 +14,10 @@ const DETAILS_ACCORDION_SOURCE = fs.readFileSync(
 	path.join(process.cwd(), "components/projects/agents/components/work-item-modal/details-accordion.tsx"),
 	"utf8",
 );
+const ATTACHMENTS_SECTION_SOURCE = fs.readFileSync(
+	path.join(process.cwd(), "components/projects/agents/components/work-item-modal/attachments-section.tsx"),
+	"utf8",
+);
 const ROVO_CHAT_CONTEXT_SOURCE = fs.readFileSync(
 	path.join(process.cwd(), "app/contexts/context-rovo-chat.tsx"),
 	"utf8",
@@ -66,6 +70,40 @@ test("RFP-101 active work item formats a bounded hidden Jira context block", asy
 	assert.match(context, /enterprise-rfp-requirements\.pdf/);
 	assert.match(context, /Recent activity:/);
 	assert.match(context, /Sales engineering can own JSM workflows/);
+});
+
+test("RFP-101 includes the mixed static attachment placeholder set", async () => {
+	const harness = await loadRfpContextHarness();
+	const attachments = harness.RFP_101_WORK_ITEM.attachments;
+
+	assert.equal(attachments.length, 7);
+	assert.deepEqual(
+		attachments.map((attachment) => attachment.ext),
+		["page", "xlsx", "docx", "pdf", "mp3", "png", "mp4"],
+	);
+	assert.ok(
+		attachments
+			.filter((attachment) => attachment.ext !== "mp3")
+			.every((attachment) => attachment.previewSrc?.startsWith("/illustration-ai/agents-attachments/")),
+	);
+	assert.equal(
+		attachments.find((attachment) => attachment.ext === "mp3")?.previewSrc,
+		undefined,
+	);
+	assert.ok(
+		attachments.every((attachment) => !("sourceHref" in attachment)),
+	);
+	assert.deepEqual(
+		attachments
+			.filter((attachment) => attachment.sourceProduct)
+			.map((attachment) => attachment.sourceLabel),
+		["Confluence page", "Loom video"],
+	);
+
+	const context = harness.formatActiveJiraWorkItemContext(harness.RFP_101_WORK_ITEM);
+	assert.match(context, /rfp-intake-notes\.page/);
+	assert.match(context, /proposal-audio-briefing\.mp3/);
+	assert.match(context, /proposal-walkthrough\.mp4/);
 });
 
 test("board fallback formats bounded visible /agents context", async () => {
@@ -145,6 +183,34 @@ test("work item details render the board tag model", () => {
 	assert.match(DETAILS_ACCORDION_SOURCE, /<TagGroup className="gap-1">/);
 	assert.match(DETAILS_ACCORDION_SOURCE, /<Tag key=\{label\.text\} color=\{label\.color\}>/);
 	assert.doesNotMatch(DETAILS_ACCORDION_SOURCE, /enterprise-rfp", "q4-sales/);
+});
+
+test("agents attachment grid mixes simple file icons with source product logos", () => {
+	assert.match(ATTACHMENTS_SECTION_SOURCE, /from "@\/components\/ui\/icon-tile";/);
+	assert.match(ATTACHMENTS_SECTION_SOURCE, /from "@\/components\/ui\/logo";/);
+	assert.match(ATTACHMENTS_SECTION_SOURCE, /from "@\/components\/ui\/vpk-icons";/);
+	assert.match(ATTACHMENTS_SECTION_SOURCE, /AtlassianLogo/);
+	assert.match(ATTACHMENTS_SECTION_SOURCE, /ATTACHMENT_SOURCE_LABELS/);
+	assert.match(ATTACHMENTS_SECTION_SOURCE, /name=\{file\.sourceProduct\}/);
+	assert.match(ATTACHMENTS_SECTION_SOURCE, /FileChartColumnIcon/);
+	assert.match(ATTACHMENTS_SECTION_SOURCE, /Music2Icon/);
+	assert.match(ATTACHMENTS_SECTION_SOURCE, /VideoIcon/);
+	assert.match(ATTACHMENTS_SECTION_SOURCE, /<MoreHorizontalIcon size="small" \/>/);
+	assert.match(ATTACHMENTS_SECTION_SOURCE, /<PlusIcon size="small" \/>/);
+	assert.match(ATTACHMENTS_SECTION_SOURCE, /<IconTile[\s\S]*size="medium"/);
+	assert.match(ATTACHMENTS_SECTION_SOURCE, /variant="redBold"/);
+	assert.match(ATTACHMENTS_SECTION_SOURCE, /icon=\{<Music2Icon \/>\}/);
+	assert.match(ATTACHMENTS_SECTION_SOURCE, /size=\{12\}/);
+	assert.match(ATTACHMENTS_SECTION_SOURCE, /\{renderAttachmentIcon\(file\)\}/);
+	assert.doesNotMatch(ATTACHMENTS_SECTION_SOURCE, /icon=\{renderAttachmentIcon\(file\)\}/);
+	assert.doesNotMatch(ATTACHMENTS_SECTION_SOURCE, /\/website\/vpk-logo-dark\.svg/);
+	assert.doesNotMatch(ATTACHMENTS_SECTION_SOURCE, /label="VPK"/);
+	assert.doesNotMatch(ATTACHMENTS_SECTION_SOURCE, /showVpkLogo/);
+	assert.doesNotMatch(ATTACHMENTS_SECTION_SOURCE, /\{file\.date\}/);
+	assert.doesNotMatch(ATTACHMENTS_SECTION_SOURCE, /\{file\.ext\}\s*<\/span>/);
+	assert.doesNotMatch(ATTACHMENTS_SECTION_SOURCE, /uppercase/);
+	assert.doesNotMatch(ATTACHMENTS_SECTION_SOURCE, /@atlaskit\/icon\/core/);
+	assert.doesNotMatch(ATTACHMENTS_SECTION_SOURCE, /ConfluenceIcon|LoomIcon|Google|Microsoft/);
 });
 
 test("agents chat screen resolver switches from board fallback to active work item", async () => {

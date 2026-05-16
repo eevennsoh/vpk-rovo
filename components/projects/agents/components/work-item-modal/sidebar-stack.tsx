@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
+import { AgentSelector } from "@/components/blocks/agent-selector";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -15,6 +16,7 @@ import {
 	type LozengeProps,
 } from "@/components/ui/lozenge";
 import { useWorkItemData } from "@/app/contexts/context-work-item-modal";
+import { BOARD_AGENTS } from "@/components/projects/agents/data/board-agents";
 import { BOARD_COLUMNS } from "@/components/projects/agents/data/board-data";
 import { cn } from "@/lib/utils";
 import AiAgentIcon from "@atlaskit/icon/core/ai-agent";
@@ -65,6 +67,9 @@ export function SidebarStack({ children }: Readonly<SidebarStackProps>) {
 
 export function StatusHeader() {
 	const workItem = useWorkItemData();
+	const [isAgentSelectorOpen, setIsAgentSelectorOpen] = useState(false);
+	const [query, setQuery] = useState("");
+	const [selectedAgentIds, setSelectedAgentIds] = useState<readonly string[]>([]);
 	const [selectedStatuses, setSelectedStatuses] = useState<Record<string, string>>({});
 	const fallbackStatus = STATUS_PHASES[0] ?? "RFP Intake";
 	const selectedStatus = selectedStatuses[workItem.code] ?? workItem.status ?? fallbackStatus;
@@ -79,6 +84,26 @@ export function StatusHeader() {
 			...previousStatuses,
 			[workItem.code]: phaseTitle,
 		}));
+	};
+
+	const handleAgentToggle = (agentId: string) => {
+		setSelectedAgentIds((currentIds) => (
+			currentIds.includes(agentId)
+				? currentIds.filter((currentId) => currentId !== agentId)
+				: [...currentIds, agentId]
+		));
+	};
+
+	const handleAgentSelectorOpenChange = (nextOpen: boolean) => {
+		setIsAgentSelectorOpen(nextOpen);
+		if (!nextOpen) {
+			setQuery("");
+		}
+	};
+
+	const handleAgentSelectorFooterAction = () => {
+		setIsAgentSelectorOpen(false);
+		setQuery("");
 	};
 
 	return (
@@ -126,13 +151,36 @@ export function StatusHeader() {
 						</DropdownMenuGroup>
 					</DropdownMenuContent>
 				</DropdownMenu>
-				<Button
-					className="gap-2"
-					variant="outline"
-				>
-					<AiAgentIcon label="" size="small" />
-					Agents
-				</Button>
+				<DropdownMenu open={isAgentSelectorOpen} onOpenChange={handleAgentSelectorOpenChange}>
+					<DropdownMenuTrigger
+						render={
+							<Button
+								aria-label={`Open agent selector for ${workItem.code}`}
+								className="gap-2"
+								variant="outline"
+							/>
+						}
+					>
+						<AiAgentIcon label="" />
+						Agents
+					</DropdownMenuTrigger>
+					<DropdownMenuContent
+						align="start"
+						className="w-[360px] overflow-hidden p-0"
+						positionerClassName="z-[502]"
+						sideOffset={8}
+					>
+						<AgentSelector
+							agents={BOARD_AGENTS}
+							onAgentToggle={handleAgentToggle}
+							onBrowseAgents={handleAgentSelectorFooterAction}
+							onCreateAgent={handleAgentSelectorFooterAction}
+							onQueryChange={setQuery}
+							query={query}
+							selectedAgentIds={selectedAgentIds}
+						/>
+					</DropdownMenuContent>
+				</DropdownMenu>
 				<Button aria-label="Automation" size="icon" variant="outline">
 					<AutomationIcon label="" />
 				</Button>

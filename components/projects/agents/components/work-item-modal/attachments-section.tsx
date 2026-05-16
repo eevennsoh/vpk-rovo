@@ -1,18 +1,52 @@
 "use client";
 
+import Image from "next/image";
+
 import { token } from "@/lib/tokens";
 import { Button } from "@/components/ui/button";
 import Heading from "@/components/blocks/shared-ui/heading";
 import { Badge } from "@/components/ui/badge";
+import { IconTile } from "@/components/ui/icon-tile";
+import { AtlassianLogo } from "@/components/ui/logo";
 import { useWorkItemData, type WorkItemAttachment } from "@/app/contexts/context-work-item-modal";
-import AddIcon from "@atlaskit/icon/core/add";
-import ShowMoreHorizontalIcon from "@atlaskit/icon/core/show-more-horizontal";
+import {
+	FileChartColumnIcon,
+	FileIcon,
+	ImageIcon,
+	MoreHorizontalIcon,
+	Music2Icon,
+	PlusIcon,
+	VideoIcon,
+} from "@/components/ui/vpk-icons";
 
+const ATTACHMENT_ICON_CLASS_NAME = "size-3 text-icon-subtlest [&_svg]:size-3";
+const ATTACHMENT_SOURCE_LABELS = {
+	confluence: "Confluence",
+	loom: "Loom",
+} as const;
 
 const ATTACHMENT_FILES: WorkItemAttachment[] = [
-	{ name: "enterprise-rfp-requirements", ext: "pdf", date: "12 Aug 2025, 09:12 AM", thumbnailTone: "success" },
-	{ name: "rfp-requirement-compliance-matrix", ext: "xlsx", date: "12 Aug 2025, 09:18 AM", thumbnailTone: "warning" },
-	{ name: "pricing-tco-and-license-model", ext: "xlsx", date: "2 Sep 2025, 04:10 PM", thumbnailTone: "discovery" },
+	{
+		name: "enterprise-rfp-requirements",
+		ext: "pdf",
+		date: "12 Aug 2025, 09:12 AM",
+		thumbnailKind: "file",
+		thumbnailTone: "success",
+	},
+	{
+		name: "rfp-requirement-compliance-matrix",
+		ext: "xlsx",
+		date: "12 Aug 2025, 09:18 AM",
+		thumbnailKind: "document",
+		thumbnailTone: "warning",
+	},
+	{
+		name: "pricing-tco-and-license-model",
+		ext: "xlsx",
+		date: "2 Sep 2025, 04:10 PM",
+		thumbnailKind: "document",
+		thumbnailTone: "discovery",
+	},
 ];
 
 interface AttachmentCardProps {
@@ -35,29 +69,100 @@ function getAttachmentColor(file: WorkItemAttachment): string {
 	}
 }
 
+function getAttachmentTitle(file: WorkItemAttachment): string {
+	return file.displayName ?? `${file.name}.${file.ext}`;
+}
+
+function renderAttachmentIcon(file: WorkItemAttachment) {
+	if (file.sourceProduct) {
+		return (
+			<AtlassianLogo
+				name={file.sourceProduct}
+				label={file.sourceLabel ?? ATTACHMENT_SOURCE_LABELS[file.sourceProduct]}
+				size={"12" as "xxsmall"}
+			/>
+		);
+	}
+
+	if (file.ext === "xlsx" || file.ext === "csv") {
+		return <FileChartColumnIcon className={ATTACHMENT_ICON_CLASS_NAME} size={12} />;
+	}
+
+	switch (file.thumbnailKind) {
+		case "audio":
+			return <Music2Icon className={ATTACHMENT_ICON_CLASS_NAME} size={12} />;
+		case "image":
+			return <ImageIcon className={ATTACHMENT_ICON_CLASS_NAME} size={12} />;
+		case "video":
+			return <VideoIcon className={ATTACHMENT_ICON_CLASS_NAME} size={12} />;
+		default:
+			return <FileIcon className={ATTACHMENT_ICON_CLASS_NAME} size={12} />;
+	}
+}
+
+function renderAttachmentPreview(file: WorkItemAttachment, title: string) {
+	if (file.thumbnailKind === "audio") {
+		return (
+			<div className="flex h-full w-full items-center justify-center bg-surface-sunken">
+				<IconTile
+					aria-hidden={true}
+					icon={<Music2Icon />}
+					label="Audio attachment"
+					variant="redBold"
+					size="medium"
+				/>
+			</div>
+		);
+	}
+
+	if (file.previewSrc) {
+		return (
+			<Image
+				alt={file.previewAlt ?? title}
+				className="object-cover"
+				src={file.previewSrc}
+				fill={true}
+				sizes="(min-width: 768px) 25vw, 50vw"
+			/>
+		);
+	}
+
+	return null;
+}
+
 function AttachmentCard({ file }: Readonly<AttachmentCardProps>) {
+	const title = getAttachmentTitle(file);
+
 	return (
 		<div
 			style={{
-				width: "160px",
-				flexShrink: 0,
+				minWidth: 0,
 				borderRadius: token("radius.medium"),
 				overflow: "hidden",
 				boxShadow: token("elevation.shadow.raised"),
+				backgroundColor: token("elevation.surface"),
 			}}
 		>
-			<div style={{ height: "88px", backgroundColor: getAttachmentColor(file) }} />
-			<div style={{ padding: token("space.050"), backgroundColor: token("elevation.surface") }}>
-				<div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-					<span className="text-xs font-bold">
-						{file.name}.{file.ext}
+			<div
+				style={{
+					position: "relative",
+					height: "104px",
+					backgroundColor: file.previewSrc ? "transparent" : getAttachmentColor(file),
+				}}
+			>
+				{renderAttachmentPreview(file, title)}
+			</div>
+			<div className="flex min-w-0 items-center gap-2" style={{ padding: token("space.075") }}>
+				<div
+					className="min-w-0 flex-1"
+					style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+					title={title}
+				>
+					<span className="text-xs font-normal">
+						{title}
 					</span>
 				</div>
-				<div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-					<span className="text-xs text-text">
-						{file.date}
-					</span>
-				</div>
+				{renderAttachmentIcon(file)}
 			</div>
 		</div>
 	);
@@ -81,7 +186,7 @@ export function AttachmentsSection() {
 					justifyContent: "space-between",
 				}}
 			>
-				<div style={{ display: "flex", alignItems: "center", gap: token("space.050") }}>
+				<div style={{ display: "flex", alignItems: "center", gap: token("space.100") }}>
 					<Heading size="small" as="h3">
 						Attachments
 					</Heading>
@@ -89,19 +194,19 @@ export function AttachmentsSection() {
 				</div>
 				<div style={{ display: "flex", gap: token("space.100") }}>
 					<Button aria-label="Manage" size="icon-sm" variant="ghost">
-						<ShowMoreHorizontalIcon label="" size="small" />
+						<MoreHorizontalIcon size="small" />
 					</Button>
 					<Button aria-label="Add attachment" size="icon-sm" variant="ghost">
-						<AddIcon label="" size="small" />
+						<PlusIcon size="small" />
 					</Button>
 				</div>
 			</div>
 
 			<div
 				style={{
-					display: "flex",
-					gap: token("space.050"),
-					overflowX: "auto",
+					display: "grid",
+					gridTemplateColumns: "repeat(auto-fill, minmax(172px, 1fr))",
+					gap: token("space.100"),
 					padding: token("space.025"),
 				}}
 			>

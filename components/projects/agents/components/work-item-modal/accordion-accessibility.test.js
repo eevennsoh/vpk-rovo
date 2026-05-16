@@ -70,7 +70,7 @@ test("work item modal status header shows the agents action next to status", () 
 	assert.match(source, /<Lozenge variant=\{phaseToneVariants\[tone\]\}>/);
 	assert.match(
 		source,
-		/<Button[\s\S]*<AiAgentIcon label="" size="small" \/>[\s\S]*Agents[\s\S]*<\/Button>[\s\S]*<Button aria-label="Automation"/,
+		/<DropdownMenu open=\{isAgentSelectorOpen\} onOpenChange=\{handleAgentSelectorOpenChange\}>[\s\S]*<DropdownMenuTrigger[\s\S]*<Button[\s\S]*aria-label=\{`Open agent selector for \$\{workItem\.code\}`\}[\s\S]*className="gap-2"[\s\S]*variant="outline"[\s\S]*\/>[\s\S]*<AiAgentIcon label="" \/>[\s\S]*Agents[\s\S]*<\/DropdownMenuTrigger>[\s\S]*<Button aria-label="Automation"/,
 	);
 });
 

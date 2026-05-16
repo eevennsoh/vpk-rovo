@@ -43,8 +43,8 @@ function matchesAgent(agent: AgentSelectorAgent, query: string): boolean {
 
 function AgentSelectorLogo({ agent }: Readonly<{ agent: AgentSelectorAgent }>): ReactElement {
 	return (
-		<span className="flex size-4 shrink-0 items-center justify-center overflow-hidden rounded-sm">
-			<Image alt="" aria-hidden height={16} src={agent.avatarSrc} style={{ height: 16, width: 16 }} width={16} />
+		<span className="flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-sm">
+			<Image alt="" aria-hidden className="max-h-6 max-w-6 object-contain" height={24} src={agent.avatarSrc} width={24} />
 		</span>
 	);
 }
@@ -93,20 +93,27 @@ export function AgentSelector({
 	const hasFooterActions = Boolean(onBrowseAgents || onCreateAgent);
 
 	return (
-		<Command className={cn("h-[26rem] max-h-[min(26rem,var(--available-height))] min-h-0 min-w-80 flex-1", className)} shouldFilter={false}>
-			<div className="shrink-0 px-4 pb-2 pt-4">
+		<Command className={cn("h-[26rem] max-h-[min(26rem,var(--available-height))] min-h-0 min-w-80 flex-1 p-3", className)} shouldFilter={false}>
+			<div className="shrink-0">
 				<p className="mb-2 text-sm font-semibold text-text">{heading}</p>
-				<CommandInput aria-label={searchPlaceholder} onValueChange={handleQueryChange} placeholder={searchPlaceholder} value={resolvedQuery} />
+				<CommandInput
+					aria-label={searchPlaceholder}
+					inputGroupClassName="has-[[data-slot=input-group-control]:focus-visible]:border-input has-[[data-slot=input-group-control]:focus-visible]:ring-0"
+					onValueChange={handleQueryChange}
+					placeholder={searchPlaceholder}
+					value={resolvedQuery}
+					wrapperClassName="p-0"
+				/>
 			</div>
-			<CommandList aria-label="Agents" className="min-h-0 max-h-none flex-1 px-1.5 pb-2">
+			<CommandList aria-label="Agents" className="min-h-0 max-h-none flex-1 p-0">
 				{visibleAgents.length === 0 ? <CommandEmpty>{emptyMessage}</CommandEmpty> : null}
-				<CommandGroup>
+				<CommandGroup className="!p-0">
 					{visibleAgents.map((agent) => {
 						const isSelected = selectedAgentIdSet.has(agent.id);
 						return (
 							<CommandItem
 								aria-checked={isSelected}
-								className="items-center gap-3 px-3 py-2.5"
+								className="h-10 min-h-10 items-center gap-3 rounded-[6px] px-3 py-0"
 								data-checked={isSelected}
 								key={agent.id}
 								keywords={[agent.name, agent.byline]}
@@ -116,8 +123,8 @@ export function AgentSelector({
 							>
 								<AgentSelectorLogo agent={agent} />
 								<span className="min-w-0 flex-1">
-									<span className="block truncate text-sm font-medium text-text">{agent.name}</span>
-									<span className="block truncate text-xs text-text-subtle">{agent.byline}</span>
+									<span className="block truncate text-sm font-normal leading-4 text-text">{agent.name}</span>
+									<span className="block truncate text-xs leading-4 text-text-subtle">{agent.byline}</span>
 								</span>
 							</CommandItem>
 						);
@@ -125,27 +132,31 @@ export function AgentSelector({
 				</CommandGroup>
 			</CommandList>
 			{hasFooterActions ? (
-				<div className="sticky bottom-0 z-10 flex shrink-0 flex-col gap-1 border-t border-border bg-popover p-1.5">
+				<div className="sticky bottom-0 z-10 flex shrink-0 flex-col border-t border-border bg-popover p-0 pt-3">
 					{onBrowseAgents ? (
 						<Button
-							className="h-auto w-full justify-start gap-3 px-3 py-2.5 text-left text-sm font-normal"
+							className="h-8 min-h-8 w-full justify-start gap-3 px-3 py-0 text-left text-sm font-normal"
 							onClick={onBrowseAgents}
 							type="button"
 							variant="ghost"
 						>
-							<Icon className="text-icon-subtle" render={<AiAgentIcon label="" size="small" />} />
-							<span>{browseAgentsLabel}</span>
+							<span className="flex size-6 shrink-0 items-center justify-center text-icon-subtle">
+								<Icon className="size-4" render={<AiAgentIcon label="" />} />
+							</span>
+							<span className="text-text">{browseAgentsLabel}</span>
 						</Button>
 					) : null}
 					{onCreateAgent ? (
 						<Button
-							className="h-auto w-full justify-start gap-3 px-3 py-2.5 text-left text-sm font-normal"
+							className="h-8 min-h-8 w-full justify-start gap-3 px-3 py-0 text-left text-sm font-normal"
 							onClick={onCreateAgent}
 							type="button"
 							variant="ghost"
 						>
-							<Icon className="text-icon-subtle" render={<AddIcon label="" size="small" />} />
-							<span>{createAgentLabel}</span>
+							<span className="flex size-6 shrink-0 items-center justify-center text-icon-subtle">
+								<Icon className="size-4" render={<AddIcon label="" />} />
+							</span>
+							<span className="text-text">{createAgentLabel}</span>
 						</Button>
 					) : null}
 				</div>

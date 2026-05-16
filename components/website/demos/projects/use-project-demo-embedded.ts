@@ -1,10 +1,9 @@
 "use client";
 
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 
 export function useProjectDemoEmbedded(): boolean {
 	const pathname = usePathname();
-	const searchParams = useSearchParams();
 
-	return pathname.startsWith("/components/") || searchParams.get("embedded") === "1";
+	return pathname.startsWith("/components/");
 }

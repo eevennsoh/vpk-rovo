@@ -169,6 +169,8 @@ export default async function RootLayout({
 	// Embedded iframe detection — hide shell chrome before first paint
 	try { if (window.self !== window.top) root.dataset.embedded = ""; }
 	catch (e) { root.dataset.embedded = ""; }
+	try { if (new URLSearchParams(window.location.search).get("embedded") === "1") root.dataset.embedded = ""; }
+	catch (e) {}
 
 	let storedTheme = null;
 

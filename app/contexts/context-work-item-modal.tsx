@@ -48,8 +48,14 @@ export interface WorkItemAttachment {
 	name: string;
 	ext: string;
 	date: string;
+	displayName?: string;
+	previewSrc?: string;
+	previewAlt?: string;
+	thumbnailKind?: "document" | "file" | "audio" | "image" | "video";
 	thumbnailColor?: string;
 	thumbnailTone?: "success" | "warning" | "discovery" | "information" | "neutral";
+	sourceLabel?: string;
+	sourceProduct?: "confluence" | "loom";
 }
 
 export interface WorkItemComment {

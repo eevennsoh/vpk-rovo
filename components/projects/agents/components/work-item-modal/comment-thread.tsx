@@ -152,7 +152,7 @@ export function CommentThread() {
 	const comments = workItem.comments?.length ? workItem.comments : DEFAULT_COMMENTS;
 
 	return (
-		<div className="flex flex-col gap-4">
+		<div className="flex flex-col">
 			{comments.map((comment) => (
 				<div key={comment.id} className="p-2">
 					<Comment comment={comment} />

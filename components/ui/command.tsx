@@ -14,9 +14,16 @@ import {
 import {
   InputGroup,
   InputGroupAddon,
+  InputGroupInput,
 } from "@/components/ui/input-group"
-import SearchIcon from "@atlaskit/icon/core/search"
-import CheckMarkIcon from "@atlaskit/icon/core/check-mark"
+import { CheckIcon, SearchIcon } from "@/components/ui/vpk-icons"
+
+type CommandPrimitiveInputProps = React.ComponentProps<typeof CommandPrimitive.Input> & {
+  asChild?: boolean
+  children?: React.ReactNode
+}
+
+const CommandPrimitiveInput = CommandPrimitive.Input as React.ComponentType<CommandPrimitiveInputProps>
 
 function Command({
   className,
@@ -69,21 +76,26 @@ function CommandDialog({
 
 function CommandInput({
   className,
+  inputGroupClassName,
+  wrapperClassName,
   ...props
-}: React.ComponentProps<typeof CommandPrimitive.Input>) {
+}: React.ComponentProps<typeof CommandPrimitive.Input> & {
+  inputGroupClassName?: string
+  wrapperClassName?: string
+}) {
   return (
-    <div data-slot="command-input-wrapper" className="p-1 pb-0">
-      <InputGroup className="bg-background border-input h-8! rounded-lg! shadow-none! *:data-[slot=input-group-addon]:pl-2!">
-        <CommandPrimitive.Input
-          data-slot="command-input"
-          className={cn(
-            "w-full text-sm outline-hidden disabled:cursor-not-allowed disabled:opacity-50",
-            className
-          )}
+    <div data-slot="command-input-wrapper" className={cn("p-1 pb-0", wrapperClassName)}>
+      <InputGroup className={cn("bg-background border-input h-8! rounded-lg! shadow-none!", inputGroupClassName)}>
+        <CommandPrimitiveInput
+          asChild
           {...props}
-        />
+        >
+          <InputGroupInput
+            className={cn("text-sm", className)}
+          />
+        </CommandPrimitiveInput>
         <InputGroupAddon>
-          <span className="size-4 shrink-0 opacity-50"><SearchIcon label="" spacing="none" /></span>
+          <SearchIcon />
         </InputGroupAddon>
       </InputGroup>
     </div>
@@ -160,7 +172,11 @@ function CommandItem({
       {...props}
     >
       {children}
-      <span className="ml-auto opacity-0 group-has-data-[slot=command-shortcut]/command-item:hidden group-data-[checked=true]/command-item:opacity-100"><CheckMarkIcon label="" spacing="none" /></span>
+      <CheckIcon
+        aria-hidden={true}
+        className="ml-auto self-center text-icon-subtlest opacity-0 group-has-data-[slot=command-shortcut]/command-item:hidden group-data-[checked=true]/command-item:opacity-100 [&_svg]:text-icon-subtlest!"
+        size="small"
+      />
     </CommandPrimitive.Item>
   )
 }

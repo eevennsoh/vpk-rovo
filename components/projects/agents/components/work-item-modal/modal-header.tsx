@@ -92,7 +92,7 @@ export function ModalHeader() {
 					<LockUnlockedIcon label="" />
 				</Button>
 				<Button className="gap-2" variant="outline">
-					<EyeOpenIcon label="" size="small" />
+					<EyeOpenIcon label="" />
 					1
 				</Button>
 				<Button aria-label="Share" size="icon" variant="outline">
