@@ -1,18 +1,58 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const path = require("node:path");
+const esbuild = require("esbuild");
+const { loadCjsModuleFromText } = require(path.join(process.cwd(), "scripts/lib/esbuild-cjs-loader.js"));
+
+function loadPlanWidgetHarness() {
+	const result = esbuild.buildSync({
+		stdin: {
+			contents: `
+				export {
+					buildExitPlanModeDeferredToolResponse,
+					fetchEnrichedPlanTitle,
+					getLatestPlanWidgetPayload,
+					getLatestPendingPlanWidget,
+					parsePlanWidgetPayload,
+					updatePlanWidgetMetadataInMessages,
+				} from "./components/projects/shared/lib/plan-widget";
+			`,
+			loader: "ts",
+			resolveDir: process.cwd(),
+			sourcefile: "plan-widget-harness.ts",
+		},
+		bundle: true,
+		format: "cjs",
+		platform: "node",
+		tsconfig: path.join(process.cwd(), "tsconfig.json"),
+		write: false,
+	});
+
+	return loadCjsModuleFromText(result.outputFiles[0].text);
+}
 
 const {
+	buildExitPlanModeDeferredToolResponse,
 	fetchEnrichedPlanTitle,
 	getLatestPlanWidgetPayload,
+	getLatestPendingPlanWidget,
 	parsePlanWidgetPayload,
 	updatePlanWidgetMetadataInMessages,
-} = require("./plan-widget.ts");
+} = loadPlanWidgetHarness();
 
 function createAssistantMessage(parts) {
 	return {
 		role: "assistant",
 		id: `assistant-${Math.random().toString(36).slice(2, 8)}`,
 		parts,
+	};
+}
+
+function createUserMessage() {
+	return {
+		role: "user",
+		id: `user-${Math.random().toString(36).slice(2, 8)}`,
+		parts: [{ type: "text", text: "Accepted the plan." }],
 	};
 }
 
@@ -83,6 +123,34 @@ test("getLatestPlanWidgetPayload returns null when no valid plan widget exists",
 	assert.equal(getLatestPlanWidgetPayload(messages), null);
 });
 
+test("getLatestPendingPlanWidget returns the latest deferred plan until the user responds", () => {
+	const olderPlan = createAssistantMessage([
+		createPlanWidgetPart({
+			title: "Older plan",
+			deferredToolCallId: "ai-gateway-exit_plan_mode-old",
+		}),
+	]);
+	const latestPlan = createAssistantMessage([
+		createPlanWidgetPart({
+			title: "Current plan",
+			deferredToolCallId: "ai-gateway-exit_plan_mode-current",
+		}),
+	]);
+
+	const pending = getLatestPendingPlanWidget([olderPlan, latestPlan]);
+	assert.ok(pending);
+	assert.equal(pending.sourceMessageId, latestPlan.id);
+	assert.equal(
+		pending.planWidget.deferredToolCallId,
+		"ai-gateway-exit_plan_mode-current",
+	);
+
+	assert.equal(
+		getLatestPendingPlanWidget([olderPlan, latestPlan, createUserMessage()]),
+		null,
+	);
+});
+
 test("parsePlanWidgetPayload preserves both generic and legacy tool call ids", () => {
 	const payload = parsePlanWidgetPayload({
 		type: "plan",
@@ -109,6 +177,38 @@ test("parsePlanWidgetPayload accepts raw markdown plans without tasks", () => {
 	assert.equal(payload.markdown, "# Raw Plan\n\nDo the work in this order.");
 	assert.deepEqual(payload.tasks, []);
 	assert.equal(payload.deferredToolCallId, "tool-call-456");
+});
+
+test("buildExitPlanModeDeferredToolResponse preserves the deferred tool call id", () => {
+	assert.deepEqual(
+		buildExitPlanModeDeferredToolResponse(
+			{
+				title: "Current plan",
+				markdown: "# Current plan",
+				tasks: [{ id: "task-1", label: "Build it", blockedBy: [] }],
+				agents: [],
+				deferredToolCallId: "ai-gateway-exit_plan_mode-current",
+			},
+			"  Accept.  ",
+		),
+		{
+			tool_call_id: "ai-gateway-exit_plan_mode-current",
+			result: "Accept.",
+		},
+	);
+
+	assert.equal(
+		buildExitPlanModeDeferredToolResponse(
+			{
+				title: "Current plan",
+				markdown: "# Current plan",
+				tasks: [],
+				agents: [],
+			},
+			"Accept.",
+		),
+		null,
+	);
 });
 
 test("parsePlanWidgetPayload preserves shortDescription when present", () => {
