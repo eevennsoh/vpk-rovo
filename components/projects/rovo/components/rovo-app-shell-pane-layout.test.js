@@ -71,6 +71,8 @@ test("RovoAppShellPaneLayout keeps the chat pane inside a stable resizable group
 test("RovoAppShellPaneLayout renders the split artifact panel alongside the stable chat pane", async () => {
 	const harness = await loadRovoAppShellPaneLayoutHarness();
 	const markup = harness.renderSplitLayout();
+	const artifactPanelIndex = markup.indexOf('id="artifact-pane-panel"');
+	const chatPanelIndex = markup.indexOf('id="chat-pane-panel"');
 
 	assert.match(markup, /data-slot="resizable-panel-group"/);
 	assert.match(markup, /id="chat-pane-panel"/);
@@ -78,4 +80,7 @@ test("RovoAppShellPaneLayout renders the split artifact panel alongside the stab
 	assert.match(markup, /data-slot="resizable-handle"/);
 	assert.match(markup, /id="artifact-pane-panel"/);
 	assert.match(markup, /<aside id="artifact-pane">artifact<\/aside>/);
+	assert.ok(artifactPanelIndex >= 0);
+	assert.ok(chatPanelIndex >= 0);
+	assert.ok(artifactPanelIndex < chatPanelIndex);
 });

@@ -9,6 +9,8 @@ const RFP_DEMO_QUESTION_SESSION_ID = "agents-rfp-demo-rfp-101-qualification";
 const RFP_DEMO_QUESTION_TOOL_CALL_ID = "ai-gateway-ask_user_questions-agents-rfp-demo-rfp-101";
 const RFP_DEMO_TOOL_CALL_DELAY_MIN_MS = 1000;
 const RFP_DEMO_TOOL_CALL_DELAY_MAX_MS = 3000;
+const RFP_DEMO_REPORT_TITLE = "RFP-101 response strategy report";
+const RFP_DEMO_REPORT_PREVIEW_SUMMARY = "Offline vpk-html report for RFP-101 with bid/no-bid recommendation, response strategy, reusable assets, and review gates.";
 
 function getNonEmptyString(value) {
 	if (typeof value !== "string") {
@@ -248,6 +250,38 @@ function buildAgentsRfpDemoAnswerTrace() {
 			input: { reviewRequired: ["legal", "data residency", "audit", "vulnerability response"] },
 			outputPreview: "Marked the risk language review-required before customer-facing release.",
 		},
+		{
+			toolName: "agent_skill.load",
+			toolCallId: "agents-rfp-demo-load-vpk-html",
+			label: "Loading vpk-html",
+			content: "Selecting the repo-local vpk-html skill because the next step is an offline HTML report artifact.",
+			input: { skill: "vpk-html", template: "assets/templates/status-report.html" },
+			outputPreview: "Loaded the vpk-html report template and offline artifact contract.",
+		},
+		{
+			toolName: "vpk_html.distill_fields",
+			toolCallId: "agents-rfp-demo-vpk-html-distill",
+			label: "Distilling report fields",
+			content: "Converting the RFP context and your answers into structured status report fields without inventing facts.",
+			input: { key: "RFP-101", audience: "deal desk", factPolicy: "mark gaps" },
+			outputPreview: "Prepared summary, recommendation, progress, blockers, next-window, and information-gap fields.",
+		},
+		{
+			toolName: "vpk_html.render_template",
+			toolCallId: "agents-rfp-demo-vpk-html-render",
+			label: "Rendering HTML report",
+			content: "Filling the vpk-html status report template as a single offline HTML artifact.",
+			input: { title: RFP_DEMO_REPORT_TITLE, kind: "html", dependencies: "inline-only" },
+			outputPreview: "Rendered the first report version with embedded styles and no remote runtime dependencies.",
+		},
+		{
+			toolName: "vpk_html.validate_artifact",
+			toolCallId: "agents-rfp-demo-vpk-html-validate",
+			label: "Validating artifact",
+			content: "Checking placeholder coverage and the static HTML contract before sharing the report.",
+			input: { checks: ["placeholders", "html-validity", "offline-dependencies"] },
+			outputPreview: "Validated the report artifact and saved it to the active Rovo thread.",
+		},
 	];
 }
 
@@ -255,27 +289,20 @@ function buildAgentsRfpDemoQualificationIntro() {
 	return "I found enough context in RFP-101 to start the bid/no-bid analysis. Before I draft the response package, I need a few qualification details so I do not overstate commercial, legal, or security posture.";
 }
 
-function buildAgentsRfpDemoResponsePackageText() {
-	return [
-		"**Bid/no-bid recommendation: Bid, with review gates.** The RFP is a strong fit for Jira Service Management, Assets, CMDB-backed service operations, and Rovo AI automation. I would proceed, while keeping legal, data residency, audit, and vulnerability responses marked review-required before anything becomes customer-facing.",
-		"",
-		"**Response strategy.** Lead with unified ITSM and CMDB: service desk, portal, knowledge, change, asset lifecycle, and configuration management form the core platform narrative. Use Rovo and Teamwork Graph as the differentiator for faster intake, reusable response assembly, and AI-assisted service operations.",
-		"",
-		"**Reusable assets.** I would pull forward the Standard ITSM RFP Response Template, prior JSM pilot notes, the Rovo for ITSM demo recording, and the existing security review tracker. Those give the deal desk a stronger first pass than starting from a blank response.",
-		"",
-		"**Open risks.** RFP-106 and RFP-108 still need validation. Legal, data residency, audit, and vulnerability answers should use standard approved language only where available, then stay flagged for owner review.",
-		"",
-		"**Next action.** I can turn this into an offline HTML report for RFP-101, then stage the approved HTML/PDF attachments back on the work item.",
-	].join("\n");
+function buildAgentsRfpDemoReportConfirmationText({ documentId, title = RFP_DEMO_REPORT_TITLE } = {}) {
+	const resolvedDocumentId = getNonEmptyString(documentId) || "report";
+	return `Generated **${title}** with the repo-local /vpk-html skill. [Open it in Rovo Canvas](#rovo-canvas-${encodeURIComponent(resolvedDocumentId)}) to review the embedded HTML report.`;
 }
 
 module.exports = {
+	RFP_DEMO_REPORT_PREVIEW_SUMMARY,
+	RFP_DEMO_REPORT_TITLE,
 	RFP_DEMO_QUESTION_SESSION_ID,
 	RFP_DEMO_QUESTION_TOOL_CALL_ID,
 	buildAgentsRfpDemoQualificationIntro,
 	buildAgentsRfpDemoQualificationTrace,
 	buildAgentsRfpDemoQuestionCardPayload,
-	buildAgentsRfpDemoResponsePackageText,
+	buildAgentsRfpDemoReportConfirmationText,
 	buildAgentsRfpDemoAnswerTrace,
 	getAgentsRfpDemoToolCallDelayMs,
 	getLatestUserMessageText,

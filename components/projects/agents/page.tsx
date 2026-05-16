@@ -109,6 +109,23 @@ export default function AgentsView({
 		promoteModalToInline();
 	}, [isModalOpen, chatSurface, isFloatingPinned, promoteModalToInline]);
 
+	useEffect(() => {
+		const handleOpenRfpCanvas = (event: Event) => {
+			event.preventDefault();
+			setIsStagedTraceVisible(true);
+			if (rfpDemo.state.report.stage === "none") {
+				rfpDemo.actions.generateReport();
+				return;
+			}
+
+			rfpDemo.actions.setCanvasView("preview");
+			rfpDemo.actions.setCanvasOpen(true);
+		};
+
+		window.addEventListener("rovo:open-canvas-artifact", handleOpenRfpCanvas);
+		return () => window.removeEventListener("rovo:open-canvas-artifact", handleOpenRfpCanvas);
+	}, [rfpDemo.actions, rfpDemo.state.report.stage]);
+
 	const [columnAgentAssignments, setColumnAgentAssignments] = useState<Record<string, string[]>>({});
 	const [draggedCard, setDraggedCard] = useState<DraggedCardState | null>(null);
 	const assignedAgentIdsByColumn = useMemo(() => {

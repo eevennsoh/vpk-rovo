@@ -45,7 +45,7 @@ export function getRovoAppShellLayout(shellWidth: number): RovoAppShellLayout {
 
 	return {
 		artifactPaneWidth: safeShellWidth - chatPaneWidth,
-		artifactPaneX: chatPaneWidth,
+		artifactPaneX: 0,
 		chatPaneWidth,
 		mode: "split",
 	};

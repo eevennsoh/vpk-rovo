@@ -55,6 +55,21 @@ export function RovoAppShellPaneLayout({
 				onLayoutChanged={onArtifactSplitLayoutChanged}
 				resizeTargetMinimumSize={{ coarse: 36, fine: 16 }}
 			>
+				{shouldSplitArtifactPane && artifactPane ? (
+					<>
+						<ResizablePanel
+							defaultSize={splitArtifactPaneDefaultSize}
+							id={artifactPanelId}
+							minSize={minArtifactPaneWidth}
+						>
+							<div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-background">
+								{artifactPane}
+							</div>
+						</ResizablePanel>
+						<ResizableHandle className="z-20" withHandle />
+					</>
+				) : null}
+
 				<ResizablePanel
 					defaultSize={shouldSplitArtifactPane ? splitChatPaneDefaultSize : undefined}
 					groupResizeBehavior={
@@ -67,21 +82,6 @@ export function RovoAppShellPaneLayout({
 				>
 					{chatPane}
 				</ResizablePanel>
-
-				{shouldSplitArtifactPane && artifactPane ? (
-					<>
-						<ResizableHandle className="z-20" withHandle />
-						<ResizablePanel
-							defaultSize={splitArtifactPaneDefaultSize}
-							id={artifactPanelId}
-							minSize={minArtifactPaneWidth}
-						>
-							<div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-background">
-								{artifactPane}
-							</div>
-						</ResizablePanel>
-					</>
-				) : null}
 			</ResizablePanelGroup>
 
 			<AnimatePresence>

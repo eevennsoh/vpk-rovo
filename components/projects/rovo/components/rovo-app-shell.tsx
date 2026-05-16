@@ -2313,7 +2313,7 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 	);
 
 	return (
-		<SidebarProvider className="h-svh overflow-hidden" defaultOpen={!embedded} onOpenChange={chat.setSidebarOpen} open={chat.sidebarOpen} style={rovoAppSidebarStyle}>
+			<SidebarProvider className={cn(embedded ? "h-full" : "h-svh", "overflow-hidden")} defaultOpen={!embedded} onOpenChange={chat.setSidebarOpen} open={chat.sidebarOpen} style={rovoAppSidebarStyle}>
 			<RovoAppSidebar
 				activeThreadId={chat.activeThreadId}
 				hoverOpen={isHoverOpen}

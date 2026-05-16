@@ -1,11 +1,14 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
+	RFP_DEMO_REPORT_PREVIEW_SUMMARY,
+	RFP_DEMO_REPORT_TITLE,
 	RFP_DEMO_QUESTION_SESSION_ID,
 	RFP_DEMO_QUESTION_TOOL_CALL_ID,
 	buildAgentsRfpDemoAnswerTrace,
 	buildAgentsRfpDemoQualificationTrace,
 	buildAgentsRfpDemoQuestionCardPayload,
+	buildAgentsRfpDemoReportConfirmationText,
 	getAgentsRfpDemoToolCallDelayMs,
 	getLatestUserMessageText,
 	resolveAgentsRfpDemoChatTurn,
@@ -120,9 +123,25 @@ test("answer trace produces completed response-building steps", () => {
 			"rfp.apply_qualification_answers",
 			"rfp.build_response_strategy",
 			"rfp.flag_reviews",
+			"agent_skill.load",
+			"vpk_html.distill_fields",
+			"vpk_html.render_template",
+			"vpk_html.validate_artifact",
 		],
 	);
 	assert.ok(trace.every((step) => typeof step.outputPreview === "string" && step.outputPreview.length > 0));
+});
+
+test("report confirmation points the user at Rovo Canvas", () => {
+	assert.equal(RFP_DEMO_REPORT_TITLE, "RFP-101 response strategy report");
+	assert.match(RFP_DEMO_REPORT_PREVIEW_SUMMARY, /Offline vpk-html report/u);
+	assert.match(
+		buildAgentsRfpDemoReportConfirmationText({
+			documentId: "doc-123",
+			title: RFP_DEMO_REPORT_TITLE,
+		}),
+		/Generated \*\*RFP-101 response strategy report\*\*[\s\S]*\[Open it in Rovo Canvas\]\(#rovo-canvas-doc-123\)/u,
+	);
 });
 
 test("extracts the latest user message text from AI SDK UI parts", () => {

@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import LinkExternalIcon from "@atlaskit/icon/core/link-external";
 import PageIcon from "@atlaskit/icon/core/page";
+import { useRovoChat } from "@/app/contexts";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -12,6 +13,7 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { getRovoAppDocument } from "@/components/projects/rovo/lib/api";
+import RovoPage from "@/components/projects/rovo/page";
 import { buildArtifactPreviewBody, type PreviewArtifactKind } from "@/components/projects/shared/lib/artifact-preview";
 import { PreviewBodyRenderer } from "@/components/projects/shared/components/preview-body-renderer";
 import type { RovoAppDocument } from "@/lib/rovo-app-types";
@@ -72,9 +74,12 @@ export function ArtifactResultCard({
 	const [document, setDocument] = useState<RovoAppDocument | null>(null);
 	const [isLoading, setIsLoading] = useState(false);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
+	const { activeThreadId } = useRovoChat();
 	const kindLabel = getArtifactKindLabel(artifact.kind);
 	const actionLabel = artifact.action === "update" ? "Updated" : "Created";
-	const handleOpenChange = (open: boolean) => {
+	const shouldOpenInRovoCanvas = artifact.kind === "html";
+	const canvasThreadId = artifact.threadId ?? document?.threadId ?? activeThreadId ?? null;
+	const handleOpenChange = useCallback((open: boolean) => {
 		if (open === isOpen) {
 			return;
 		}
@@ -86,7 +91,46 @@ export function ArtifactResultCard({
 		}
 
 		setIsOpen(open);
+	}, [artifact, isOpen, onDialogClose, onDialogOpen]);
+	const handleOpenArtifact = () => {
+		if (shouldOpenInRovoCanvas) {
+			const openCanvasEvent = new CustomEvent("rovo:open-canvas-artifact", {
+				cancelable: true,
+				detail: {
+					documentId: artifact.documentId,
+					threadId: canvasThreadId,
+				},
+			});
+			window.dispatchEvent(openCanvasEvent);
+			if (openCanvasEvent.defaultPrevented) {
+				return;
+			}
+		}
+
+		handleOpenChange(true);
 	};
+
+	useEffect(() => {
+		if (!shouldOpenInRovoCanvas) {
+			return;
+		}
+
+		const handleCanvasLink = (event: Event) => {
+			if (event.defaultPrevented) {
+				return;
+			}
+
+			const { detail } = event as CustomEvent<{ documentId?: string }>;
+			if (detail?.documentId !== artifact.documentId) {
+				return;
+			}
+
+			handleOpenChange(true);
+		};
+
+		window.addEventListener("rovo:open-canvas-artifact", handleCanvasLink);
+		return () => window.removeEventListener("rovo:open-canvas-artifact", handleCanvasLink);
+	}, [artifact.documentId, handleOpenChange, shouldOpenInRovoCanvas]);
 
 	useEffect(() => {
 		if (!isOpen) {
@@ -137,7 +181,7 @@ export function ArtifactResultCard({
 				<button
 					type="button"
 					className="group flex w-full items-center gap-3 rounded-md border border-border bg-surface-raised p-3 text-left shadow-sm transition-colors hover:bg-surface-raised-hovered focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-					onClick={() => handleOpenChange(true)}
+					onClick={handleOpenArtifact}
 					data-testid="rovo-artifact-result-card"
 				>
 					<span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-surface-accent-blue-subtle text-icon">
@@ -152,56 +196,79 @@ export function ArtifactResultCard({
 						</span>
 					</span>
 					<span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-link group-hover:text-link-pressed">
-						Open
+						{shouldOpenInRovoCanvas ? "Open in Canvas" : "Open"}
 						<LinkExternalIcon label="" />
 					</span>
 				</button>
-				<DialogContent
-					className="max-h-[92vh] gap-0 overflow-hidden p-0 sm:max-w-6xl [grid-template-rows:auto_minmax(0,1fr)]"
-					size="xl"
-				>
-					<DialogHeader className="mx-0 mt-0 px-4 py-4 sm:px-6">
-						<DialogTitle className="pr-10">
+				{shouldOpenInRovoCanvas ? (
+					<DialogContent
+						className="h-[min(920px,calc(100dvh-48px))] max-h-[calc(100dvh-48px)] max-w-[calc(100vw-48px)] gap-0 overflow-hidden p-0 sm:max-w-[calc(100vw-48px)] [grid-template-rows:minmax(0,1fr)]"
+						size="xl"
+					>
+						<DialogTitle className="sr-only">
 							{artifact.title}
 						</DialogTitle>
-						<DialogDescription>
-							{kindLabel} artifact
+						<DialogDescription className="sr-only">
+							Rovo Canvas preview with embedded chat
 						</DialogDescription>
-					</DialogHeader>
-					<div className="min-h-0 overflow-hidden p-4 sm:p-6">
-						{isLoading ? (
-							<div className="flex h-[60vh] items-center justify-center rounded-md border border-border bg-surface text-sm text-text-subtle">
-								Loading report...
-							</div>
-						) : errorMessage ? (
-							<div className="rounded-md border border-border bg-surface p-4 text-sm text-text">
-								{errorMessage}
-							</div>
-						) : previewBody ? (
-							<div className="h-[72vh] min-h-[420px]">
-								<PreviewBodyRenderer
-									body={previewBody}
-									surface="dialog"
-									title={artifact.title}
-									summary={document?.previewSummary}
-								/>
-							</div>
-						) : (
-							<div className="rounded-md border border-border bg-surface p-4 text-sm text-text-subtle">
-								Open the artifact after generation finishes.
-							</div>
-						)}
-					</div>
-					<div className="border-t border-border px-4 py-3 sm:px-6">
-						<Button
-							type="button"
-							variant="outline"
-							onClick={() => handleOpenChange(false)}
-						>
-							Close
-						</Button>
-					</div>
-				</DialogContent>
+						<div className="h-full min-h-0 overflow-hidden">
+							{canvasThreadId ? (
+								<RovoPage key={canvasThreadId} embedded initialThreadId={canvasThreadId} />
+							) : (
+								<div className="flex h-full items-center justify-center bg-background text-sm text-text-subtle">
+									Loading Rovo Canvas...
+								</div>
+							)}
+						</div>
+					</DialogContent>
+				) : (
+					<DialogContent
+						className="max-h-[92vh] gap-0 overflow-hidden p-0 sm:max-w-6xl [grid-template-rows:auto_minmax(0,1fr)]"
+						size="xl"
+					>
+						<DialogHeader className="mx-0 mt-0 px-4 py-4 sm:px-6">
+							<DialogTitle className="pr-10">
+								{artifact.title}
+							</DialogTitle>
+							<DialogDescription>
+								{kindLabel} artifact
+							</DialogDescription>
+						</DialogHeader>
+						<div className="min-h-0 overflow-hidden p-4 sm:p-6">
+							{isLoading ? (
+								<div className="flex h-[60vh] items-center justify-center rounded-md border border-border bg-surface text-sm text-text-subtle">
+									Loading report...
+								</div>
+							) : errorMessage ? (
+								<div className="rounded-md border border-border bg-surface p-4 text-sm text-text">
+									{errorMessage}
+								</div>
+							) : previewBody ? (
+								<div className="h-[72vh] min-h-[420px]">
+									<PreviewBodyRenderer
+										body={previewBody}
+										surface="dialog"
+										title={artifact.title}
+										summary={document?.previewSummary}
+									/>
+								</div>
+							) : (
+								<div className="rounded-md border border-border bg-surface p-4 text-sm text-text-subtle">
+									Open the artifact after generation finishes.
+								</div>
+							)}
+						</div>
+						<div className="border-t border-border px-4 py-3 sm:px-6">
+							<Button
+								type="button"
+								variant="outline"
+								onClick={() => handleOpenChange(false)}
+							>
+								Close
+							</Button>
+						</div>
+					</DialogContent>
+				)}
 			</Dialog>
 		</div>
 	);

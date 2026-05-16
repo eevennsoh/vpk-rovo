@@ -222,12 +222,14 @@ const {
 	createRouteDecisionPart,
 } = require("./lib/route-decision");
 const {
+	RFP_DEMO_REPORT_PREVIEW_SUMMARY,
+	RFP_DEMO_REPORT_TITLE,
 	RFP_DEMO_QUESTION_TOOL_CALL_ID,
 	buildAgentsRfpDemoAnswerTrace,
 	buildAgentsRfpDemoQualificationIntro,
 	buildAgentsRfpDemoQualificationTrace,
 	buildAgentsRfpDemoQuestionCardPayload,
-	buildAgentsRfpDemoResponsePackageText,
+	buildAgentsRfpDemoReportConfirmationText,
 	getAgentsRfpDemoToolCallDelayMs,
 	resolveAgentsRfpDemoChatTurn,
 } = require("./lib/agents-rfp-demo-chat");
@@ -2566,11 +2568,12 @@ function streamRovoAppArtifactToolResponse({
 			});
 			writer.write({
 				type: "data-artifact-result",
-				data: {
-					documentId: persistedArtifactDocument.id,
-					title: persistedArtifactDocument.title,
-					kind: persistedArtifactDocument.kind,
-					action:
+					data: {
+						documentId: persistedArtifactDocument.id,
+						threadId: persistedArtifactDocument.threadId,
+						title: persistedArtifactDocument.title,
+						kind: persistedArtifactDocument.kind,
+						action:
 						artifactAction === "updateDocument"
 							? "update"
 							: "create",
@@ -3874,9 +3877,64 @@ function writeAgentsRfpDemoText(writer, id, text) {
 	writer.write({ type: "text-end", id });
 }
 
-function writeAgentsRfpDemoTurnComplete(writer) {
+async function createAgentsRfpDemoReportArtifact(requestBody) {
+	const threadId = getNonEmptyString(requestBody?.id);
+	if (!threadId) {
+		throw new Error("Cannot create the RFP report artifact without an active Rovo thread.");
+	}
+
+	const report = await generateWorkItemVpkHtmlReport({
+		contextDescription: requestBody.contextDescription,
+		generateText: (options) =>
+			generateTextViaGateway({
+				...options,
+				backendPreference: "ai-gateway",
+				provider: options?.provider || getNonEmptyString(requestBody.provider),
+			}),
+		provider: getNonEmptyString(requestBody.provider),
+		runSkillValidation: true,
+		runVisualVerify: false,
+	});
+	const artifactDocument = await rovoAppDocumentManager.createDocument({
+		threadId,
+		title: RFP_DEMO_REPORT_TITLE,
+		kind: "html",
+		content: report.html,
+		previewSummary: RFP_DEMO_REPORT_PREVIEW_SUMMARY,
+		changeLabel: "Generated with vpk-html",
+		sourceMessageId: null,
+	});
+	const currentThread = await rovoAppThreadManager.getThread(threadId);
+	await rovoAppThreadManager.updateThread(threadId, {
+		activeDocumentId: artifactDocument.id,
+		hermesContext: buildNextHermesThreadContext({
+			currentHermesContext: currentThread?.hermesContext,
+			selectedSkillIds: mergeHermesSkillIds(
+				currentThread?.hermesContext?.selectedSkillIds,
+				"vpk-html",
+			),
+		}),
+	});
+
+	return artifactDocument;
+}
+
+function writeAgentsRfpDemoArtifactResult(writer, artifactDocument) {
+	writer.write({
+		type: "data-artifact-result",
+		data: {
+			documentId: artifactDocument.id,
+			threadId: artifactDocument.threadId,
+			title: artifactDocument.title,
+			kind: artifactDocument.kind,
+			action: "create",
+		},
+	});
+}
+
+function writeAgentsRfpDemoTurnComplete(writer, intent = "chat") {
 	writer.write(createRouteDecisionPart({
-		intent: "chat",
+		intent,
 		origin: "text",
 		reason: "agents_rfp_demo",
 	}));
@@ -3886,17 +3944,22 @@ function writeAgentsRfpDemoTurnComplete(writer) {
 	});
 }
 
-function streamAgentsRfpDemoChatTurn(res, turn) {
+function streamAgentsRfpDemoChatTurn(res, turn, requestBody) {
 	const stream = createUIMessageStream({
 		execute: async ({ writer }) => {
 			if (turn === "qualification-answer") {
 				await writeAgentsRfpDemoTrace(writer, buildAgentsRfpDemoAnswerTrace());
+				const artifactDocument = await createAgentsRfpDemoReportArtifact(requestBody);
+				writeAgentsRfpDemoArtifactResult(writer, artifactDocument);
 				writeAgentsRfpDemoText(
 					writer,
-					`agents-rfp-demo-response-${Date.now()}`,
-					buildAgentsRfpDemoResponsePackageText(),
+					`agents-rfp-demo-report-${Date.now()}`,
+					buildAgentsRfpDemoReportConfirmationText({
+						documentId: artifactDocument.id,
+						title: artifactDocument.title,
+					}),
 				);
-				writeAgentsRfpDemoTurnComplete(writer);
+				writeAgentsRfpDemoTurnComplete(writer, "artifact_create");
 				return;
 			}
 
@@ -3962,7 +4025,7 @@ async function proxyRovoAppChatRequest(req, res) {
 		? resolveAgentsRfpDemoChatTurn(requestBody)
 		: null;
 	if (agentsRfpDemoTurn) {
-		streamAgentsRfpDemoChatTurn(res, agentsRfpDemoTurn);
+		streamAgentsRfpDemoChatTurn(res, agentsRfpDemoTurn, requestBody);
 		return;
 	}
 
@@ -11690,11 +11753,12 @@ Once ready, call POST /api/plan/${creationMode}s to persist it.
 
 									writer.write({
 										type: "data-artifact-result",
-										data: {
-											documentId: artifactDocument.id,
-											title: artifactDocument.title,
-											kind: "react",
-											action: "create",
+											data: {
+												documentId: artifactDocument.id,
+												threadId: artifactDocument.threadId,
+												title: artifactDocument.title,
+												kind: "react",
+												action: "create",
 										},
 									});
 
