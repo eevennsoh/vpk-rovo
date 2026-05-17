@@ -110,9 +110,10 @@ function AssistantThinkingToolItem({
 			/>
 			<ToolContent>
 				{toolCall.input !== undefined ? (
-					<ToolInput input={toolCall.input} />
+					<ToolInput codeBlockSize="sm" input={toolCall.input} />
 				) : null}
 				<ToolOutput
+					codeBlockSize="sm"
 					errorText={toolCall.errorText}
 					output={toolCall.output}
 					outputPreview={toolCall.outputPreview}

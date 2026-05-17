@@ -656,8 +656,9 @@ function ThinkingToolCallStep({
 			status={status}
 		>
 			{narration && narration.length > 0 ? <div className="whitespace-pre-wrap text-xs text-text-subtle leading-5">{narration.join("\n\n")}</div> : null}
-			{toolCall.input !== undefined ? <ToolInput input={toolCall.input} /> : null}
+			{toolCall.input !== undefined ? <ToolInput codeBlockSize="sm" input={toolCall.input} /> : null}
 			<ToolOutput
+				codeBlockSize="sm"
 				errorText={toolCall.errorText}
 				output={toolCall.output}
 				outputPreview={toolCall.outputPreview}

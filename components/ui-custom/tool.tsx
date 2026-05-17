@@ -25,6 +25,7 @@ import {
   CodeBlockCopyButton,
   CodeBlockDownloadButton,
   CodeBlockHeader,
+  type CodeBlockSize,
   CodeBlockTitle,
   CodeBlockFilename,
 } from "./code-block";
@@ -372,10 +373,16 @@ export const ToolContent = ({ className, ...props }: ToolContentProps) => (
 );
 
 export type ToolInputProps = ComponentProps<"div"> & {
+  codeBlockSize?: CodeBlockSize;
   input: ToolPart["input"];
 };
 
-export const ToolInput = ({ className, input, ...props }: ToolInputProps) => {
+export const ToolInput = ({
+  className,
+  codeBlockSize = "default",
+  input,
+  ...props
+}: ToolInputProps) => {
   const inputPreview = toToolValuePreview(input);
   if (!inputPreview.text) return null;
 
@@ -386,9 +393,10 @@ export const ToolInput = ({ className, input, ...props }: ToolInputProps) => {
       </h4>
       <div className="rounded-md bg-muted/50">
         <CodeBlock
-          className="text-[12px] leading-5"
+          className="text-xs leading-5"
           code={inputPreview.text}
           language="json"
+          size={codeBlockSize}
         >
           <CodeBlockHeader>
             <CodeBlockTitle>
@@ -411,6 +419,7 @@ export const ToolInput = ({ className, input, ...props }: ToolInputProps) => {
 };
 
 export type ToolOutputProps = ComponentProps<"div"> & {
+  codeBlockSize?: CodeBlockSize;
   output: ToolPart["output"];
   outputPreview?: string;
   errorText: ToolPart["errorText"];
@@ -421,6 +430,7 @@ export type ToolOutputProps = ComponentProps<"div"> & {
 
 export const ToolOutput = ({
   className,
+  codeBlockSize = "default",
   output,
   outputPreview,
   errorText,
@@ -475,9 +485,10 @@ export const ToolOutput = ({
 
   const Output = (
     <CodeBlock
-      className="text-[12px] leading-5"
+      className="text-xs leading-5"
       code={displayedOutputText}
       language={outputLanguage}
+      size={codeBlockSize}
     >
       <CodeBlockHeader>
         <CodeBlockTitle>
@@ -540,9 +551,10 @@ export const ToolOutput = ({
           </summary>
           <div className="mt-2 overflow-x-auto rounded-md bg-muted/50 text-foreground">
             <CodeBlock
-              className="text-[12px] leading-5"
+              className="text-xs leading-5"
               code={exactRawOutputText}
               language={outputLanguage}
+              size={codeBlockSize}
             >
               <CodeBlockHeader>
                 <CodeBlockTitle>
