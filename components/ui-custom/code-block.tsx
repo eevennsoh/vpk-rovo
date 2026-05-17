@@ -414,7 +414,7 @@ export function CodeBlockActions({
 }: Readonly<HTMLAttributes<HTMLDivElement>>) {
   return (
     <div
-      className={cn("-my-1 -mr-1 flex items-center gap-1", className)}
+      className={cn("-my-1 -mr-1 flex items-center gap-0", className)}
       {...props}
     >
       {children}

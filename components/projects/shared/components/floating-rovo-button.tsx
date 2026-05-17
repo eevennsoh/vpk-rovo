@@ -1,10 +1,10 @@
 "use client";
 
-import { type CSSProperties, useCallback, useEffect, useId, useState } from "react";
+import { type CSSProperties, useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import AiAgentIcon from "@atlaskit/icon/core/ai-agent";
 import CrossIcon from "@atlaskit/icon/core/cross";
-import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useRovoChat } from "@/app/contexts";
 import { token } from "@/lib/tokens";
 import { cn } from "@/lib/utils";
@@ -71,17 +71,6 @@ function resolveFloatingRovoButtonPlacement(placement?: FloatingRovoButtonPlacem
 	};
 }
 
-function getFloatingRovoButtonPlacementStyle(
-	placement?: FloatingRovoButtonPlacement,
-): CSSProperties {
-	const resolvedPlacement = resolveFloatingRovoButtonPlacement(placement);
-
-	return {
-		"--floating-rovo-button-right": resolvedPlacement.right,
-		"--floating-rovo-button-bottom": resolvedPlacement.bottom,
-	} as CSSProperties;
-}
-
 function FloatingRovoButtonNudge({
 	suggestion,
 	placement,
@@ -145,29 +134,41 @@ function FloatingRovoButtonNudge({
 	);
 }
 
-function FloatingRovoButtonOnboardingPanel({
+function FloatingRovoButtonOnboardingPanelInner({
 	onboarding,
 	onOpenChange,
-	placement,
 	shouldReduceMotion,
 }: Readonly<{
 	onboarding: FloatingRovoButtonOnboardingConfig;
 	onOpenChange: (open: boolean) => void;
-	placement?: FloatingRovoButtonPlacement;
 	shouldReduceMotion: boolean;
 }>) {
-	const resolvedPlacement = resolveFloatingRovoButtonPlacement(placement);
 	const titleId = `${onboarding.id}-title`;
 	const descriptionId = `${onboarding.id}-description`;
 	const avatarSrc = onboarding.avatarSrc ?? "/avatar-agent/teamwork-agents/blocker-checker.svg";
 	const coverSrc = onboarding.coverSrc ?? avatarSrc;
 	const closeLabel = onboarding.closeLabel ?? "Dismiss onboarding";
-	const panelTransition = shouldReduceMotion
+	const phaseOneTransition = shouldReduceMotion
 		? { duration: 0 }
-		: { type: "spring" as const, bounce: 0, visualDuration: 0.34 };
-	const fadeTransition = shouldReduceMotion
+		: { type: "spring" as const, bounce: 0.18, visualDuration: 0.26, delay: 0.22 };
+	const phaseTwoContainer = shouldReduceMotion
 		? { duration: 0 }
-		: { duration: 0.16, ease: [0, 0.4, 0, 1] as const };
+		: { delayChildren: 0.36, staggerChildren: 0.05 };
+	const phaseTwoChild = shouldReduceMotion
+		? { duration: 0 }
+		: { duration: 0.22, ease: [0, 0.4, 0, 1] as const };
+	const phaseTwoHeaderTransition = shouldReduceMotion
+		? { duration: 0 }
+		: { duration: 0.22, delay: 0.32, ease: [0, 0.4, 0, 1] as const };
+	const phaseTwoVariants = shouldReduceMotion
+		? ({
+			hidden: { opacity: 1, y: 0, filter: "blur(0px)" },
+			visible: { opacity: 1, y: 0, filter: "blur(0px)", transition: phaseTwoChild },
+		} as const)
+		: ({
+			hidden: { opacity: 0, y: 14, filter: "blur(6px)" },
+			visible: { opacity: 1, y: 0, filter: "blur(0px)", transition: phaseTwoChild },
+		} as const);
 	const statusLabel = onboarding.statusLabel
 		?? (onboarding.status === "creating" ? "Creating..." : onboarding.status === "created" ? "Created" : "");
 
@@ -181,18 +182,17 @@ function FloatingRovoButtonOnboardingPanel({
 
 	return (
 		<motion.section
-			key={`floating-rovo-button-onboarding-${onboarding.id}`}
+			key="floating-rovo-button-panel"
 			aria-describedby={descriptionId}
 			aria-labelledby={titleId}
-			className={cn(
-				"fixed z-[510] flex w-[295px] max-w-[calc(100vw-32px)] origin-bottom-right flex-col overflow-hidden rounded-lg bg-bg-neutral-bold text-text-inverse",
-				placement ? null : "right-4 bottom-4 sm:right-6 sm:bottom-6",
-			)}
+			className="flex w-full flex-col text-text-inverse"
 			data-testid="floating-rovo-button-onboarding"
-			exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.92, y: 8 }}
-			initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.92, y: 8 }}
-			animate={{ opacity: 1, scale: 1, y: 0 }}
-			layoutId="floating-rovo-button-surface"
+			initial={{ opacity: 0 }}
+			animate={{ opacity: 1 }}
+			exit={{ opacity: 0, transition: { duration: 0 } }}
+			transition={shouldReduceMotion
+				? { duration: 0 }
+				: { duration: 0.14, delay: 0.18, ease: [0, 0.4, 0, 1] as const }}
 			onKeyDown={(event) => {
 				if (event.key === "Escape") {
 					event.stopPropagation();
@@ -200,20 +200,16 @@ function FloatingRovoButtonOnboardingPanel({
 				}
 			}}
 			role="dialog"
-			style={{
-				...(placement
-					? {
-							right: resolvedPlacement.right,
-							bottom: resolvedPlacement.bottom,
-						}
-					: {}),
-				boxShadow: token("elevation.shadow.overlay"),
-				willChange: "transform, opacity",
-			}}
 			tabIndex={-1}
-			transition={panelTransition}
 		>
-			<header className="flex h-12 shrink-0 items-center justify-between gap-3 px-4 py-3">
+			<motion.header
+				className="flex h-12 shrink-0 items-center justify-between gap-3 px-4 py-3"
+				variants={phaseTwoVariants}
+				initial="hidden"
+				animate="visible"
+				transition={phaseTwoHeaderTransition}
+				style={{ willChange: "transform, opacity, filter" }}
+			>
 				<h2 id={titleId} className="min-w-0 truncate text-text-inverse" style={{ font: token("font.heading.xsmall") }}>
 					{onboarding.title}
 				</h2>
@@ -226,19 +222,18 @@ function FloatingRovoButtonOnboardingPanel({
 				>
 					<CrossIcon color={token("color.icon.inverse")} label="" size="small" />
 				</button>
-			</header>
-			<motion.div
-				className="flex flex-col"
-				initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 6 }}
-				animate={{ opacity: 1, y: 0 }}
-				transition={fadeTransition}
-			>
+			</motion.header>
+			<div className="flex flex-col">
 				<div className="relative overflow-hidden bg-surface text-text">
-					<div
+					<motion.div
 						aria-hidden="true"
 						className="relative h-12 overflow-hidden"
+						initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, scale: 0.96 }}
+						animate={{ opacity: 1, scale: 1 }}
+						transition={phaseOneTransition}
 						style={{
 							backgroundColor: onboarding.coverBackgroundColor ?? token("color.icon.accent.blue"),
+							willChange: "transform, opacity",
 						}}
 					>
 						<Image
@@ -249,19 +244,42 @@ function FloatingRovoButtonOnboardingPanel({
 							src={coverSrc}
 							width={168}
 						/>
-					</div>
-					<div className="flex flex-col gap-2 bg-surface-raised pt-8">
-						<div className="flex flex-col gap-1 px-4 pt-2">
+					</motion.div>
+					<motion.div
+						className="flex flex-col gap-2 bg-surface-raised pt-8"
+						initial="hidden"
+						animate="visible"
+						variants={{
+							hidden: {},
+							visible: { transition: phaseTwoContainer },
+						}}
+					>
+						<motion.div
+							className="flex flex-col gap-1 px-4 pt-2"
+							variants={phaseTwoVariants}
+							style={{ willChange: "transform, opacity, filter" }}
+						>
 							<h3 className="truncate text-text" style={{ font: token("font.heading.medium") }}>
 								{onboarding.agentName}
 							</h3>
 							<p className="text-xs leading-4 text-text-subtle">{onboarding.byline}</p>
-						</div>
-						<p id={descriptionId} className="px-4 pb-4 text-sm leading-5 text-text">
+						</motion.div>
+						<motion.p
+							id={descriptionId}
+							className="px-4 pb-4 text-sm leading-5 text-text"
+							variants={phaseTwoVariants}
+							style={{ willChange: "transform, opacity, filter" }}
+						>
 							{onboarding.description}
-						</p>
-					</div>
-					<div className="absolute top-6 left-4 size-12">
+						</motion.p>
+					</motion.div>
+					<motion.div
+						className="absolute top-6 left-4 size-12"
+						initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, scale: 0.7 }}
+						animate={{ opacity: 1, scale: 1 }}
+						transition={phaseOneTransition}
+						style={{ willChange: "transform, opacity" }}
+					>
 						<Image
 							alt={onboarding.avatarAlt ?? ""}
 							className="h-12 w-[42px]"
@@ -269,41 +287,174 @@ function FloatingRovoButtonOnboardingPanel({
 							src={avatarSrc}
 							width={42}
 						/>
-					</div>
+					</motion.div>
 				</div>
-				<p className="px-4 pt-3 pb-2 text-sm leading-5 text-text-inverse">
-					{onboarding.prompt}
-				</p>
-				<footer className="flex items-center justify-between gap-3 px-4 pt-2 pb-4">
-					<p
-						aria-live="polite"
-						className={cn(
-							"min-w-0 text-xs leading-4 text-text-inverse",
-							statusLabel ? "opacity-80" : "opacity-0",
-						)}
+				<motion.div
+					className="flex flex-col"
+					initial="hidden"
+					animate="visible"
+					variants={{
+						hidden: {},
+						visible: { transition: { ...phaseTwoContainer, delayChildren: 0.46 } },
+					}}
+				>
+					<motion.p
+						className="px-4 pt-3 pb-2 text-sm leading-5 text-text-inverse"
+						variants={phaseTwoVariants}
+						style={{ willChange: "transform, opacity, filter" }}
 					>
-						{statusLabel || "Idle"}
-					</p>
-					<div className="flex shrink-0 items-center justify-end gap-2">
-						<button
-							className="flex h-6 items-center justify-center rounded px-2 text-sm leading-5 font-medium text-text-inverse transition-colors duration-normal ease-out hover:bg-white/10 focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-3 focus-visible:outline-none active:bg-white/15"
-							onClick={handleSecondaryAction}
-							type="button"
+						{onboarding.prompt}
+					</motion.p>
+					<motion.footer
+						className="flex items-center justify-between gap-3 px-4 pt-2 pb-4"
+						variants={phaseTwoVariants}
+						style={{ willChange: "transform, opacity, filter" }}
+					>
+						<p
+							aria-live="polite"
+							className={cn(
+								"min-w-0 text-xs leading-4 text-text-inverse",
+								statusLabel ? "opacity-80" : "opacity-0",
+							)}
 						>
-							{onboarding.secondaryActionLabel}
-						</button>
-						<button
-							className="flex h-6 items-center justify-center rounded border border-border-inverse/40 bg-bg-neutral-bold px-2 text-sm leading-5 font-medium text-text-inverse transition-colors duration-normal ease-out hover:bg-bg-neutral-bold-hovered focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-3 focus-visible:outline-none active:bg-bg-neutral-bold-pressed disabled:cursor-default disabled:opacity-60"
-							disabled={onboarding.primaryActionDisabled}
-							onClick={onboarding.onPrimaryAction}
-							type="button"
-						>
-							{onboarding.primaryActionLabel}
-						</button>
-					</div>
-				</footer>
-			</motion.div>
+							{statusLabel || "Idle"}
+						</p>
+						<div className="flex shrink-0 items-center justify-end gap-2">
+							<button
+								className="flex h-6 items-center justify-center rounded px-2 text-sm leading-5 font-medium text-text-inverse transition-colors duration-normal ease-out hover:bg-white/10 focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-3 focus-visible:outline-none active:bg-white/15"
+								onClick={handleSecondaryAction}
+								type="button"
+							>
+								{onboarding.secondaryActionLabel}
+							</button>
+							<button
+								className="flex h-6 items-center justify-center rounded border border-border-inverse/40 bg-bg-neutral-bold px-2 text-sm leading-5 font-medium text-text-inverse transition-colors duration-normal ease-out hover:bg-bg-neutral-bold-hovered focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-3 focus-visible:outline-none active:bg-bg-neutral-bold-pressed disabled:cursor-default disabled:opacity-60"
+								disabled={onboarding.primaryActionDisabled}
+								onClick={onboarding.onPrimaryAction}
+								type="button"
+							>
+								{onboarding.primaryActionLabel}
+							</button>
+						</div>
+					</motion.footer>
+				</motion.div>
+			</div>
 		</motion.section>
+	);
+}
+
+function FloatingRovoButtonInner({
+	onClick,
+	ariaLabel,
+	shouldReduceMotion,
+}: Readonly<{
+	onClick: () => void;
+	ariaLabel: string;
+	shouldReduceMotion: boolean;
+}>) {
+	return (
+		<motion.button
+			key="floating-rovo-button-icon"
+			aria-label={ariaLabel}
+			className="flex h-full w-full items-center justify-center"
+			onClick={onClick}
+			type="button"
+			initial={shouldReduceMotion
+				? { opacity: 0 }
+				: { opacity: 0, filter: "blur(6px)" }}
+			animate={shouldReduceMotion
+				? { opacity: 1 }
+				: { opacity: 1, filter: "blur(0px)" }}
+			exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, transition: { duration: 0.08 } }}
+			transition={shouldReduceMotion
+				? { duration: 0 }
+				: { duration: 0.2, delay: 0.24, ease: [0, 0.4, 0, 1] as const }}
+			style={{ willChange: "opacity, filter" }}
+		>
+			<Image src="/1p/rovo.svg" alt="" width={24} height={24} aria-hidden />
+		</motion.button>
+	);
+}
+
+function FloatingRovoButtonSurface({
+	onboardingOpen,
+	onboarding,
+	onOpenChange,
+	placement,
+	ariaLabel,
+	onButtonClick,
+	shouldReduceMotion,
+}: Readonly<{
+	onboardingOpen: boolean;
+	onboarding: FloatingRovoButtonOnboardingConfig | null | undefined;
+	onOpenChange: (open: boolean) => void;
+	placement?: FloatingRovoButtonPlacement;
+	ariaLabel: string;
+	onButtonClick: () => void;
+	shouldReduceMotion: boolean;
+}>) {
+	const resolvedPlacement = resolveFloatingRovoButtonPlacement(placement);
+	const surfaceTransition = shouldReduceMotion
+		? { duration: 0 }
+		: { type: "spring" as const, bounce: 0, visualDuration: 0.28 };
+	const radiusTransition = shouldReduceMotion
+		? { duration: 0 }
+		: { duration: 0.28, ease: "linear" as const };
+	const surfaceStyle: CSSProperties = {
+		right: resolvedPlacement.right,
+		bottom: resolvedPlacement.bottom,
+		boxShadow: token("elevation.shadow.overlay"),
+		transformOrigin: "center",
+		willChange: "transform, opacity",
+	};
+	const hoverScale = !onboardingOpen && !shouldReduceMotion ? { scale: 1.1 } : undefined;
+	const tapScale = !onboardingOpen && !shouldReduceMotion ? { scale: 0.98 } : undefined;
+
+	return (
+		<motion.div
+			key="floating-rovo-button-surface"
+			layout
+			className={cn(
+				"fixed z-[510] overflow-hidden bg-bg-neutral-bold",
+				onboardingOpen
+					? "w-[295px] max-w-[calc(100vw-32px)]"
+					: "size-12",
+			)}
+			initial={shouldReduceMotion
+				? { opacity: 0, borderRadius: onboardingOpen ? 8 : 16 }
+				: { opacity: 0, scale: 0.6, borderRadius: onboardingOpen ? 8 : 16 }}
+			animate={{
+				opacity: 1,
+				scale: 1,
+				borderRadius: onboardingOpen ? 8 : 16,
+			}}
+			exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.85 }}
+			transition={{
+				default: surfaceTransition,
+				borderRadius: radiusTransition,
+			}}
+			style={surfaceStyle}
+			whileHover={hoverScale}
+			whileTap={tapScale}
+		>
+			<AnimatePresence mode="popLayout" initial={false}>
+				{onboardingOpen && onboarding ? (
+					<FloatingRovoButtonOnboardingPanelInner
+						key="panel"
+						onboarding={onboarding}
+						onOpenChange={onOpenChange}
+						shouldReduceMotion={shouldReduceMotion}
+					/>
+				) : (
+					<FloatingRovoButtonInner
+						key="button"
+						onClick={onButtonClick}
+						ariaLabel={ariaLabel}
+						shouldReduceMotion={shouldReduceMotion}
+					/>
+				)}
+			</AnimatePresence>
+		</motion.div>
 	);
 }
 
@@ -319,12 +470,12 @@ export default function FloatingRovoButton({
 }: Readonly<FloatingRovoButtonProps>) {
 	const { isOpen, openChat } = useRovoChat();
 	const shouldReduceMotion = Boolean(useReducedMotion());
-	const generatedLayoutGroupId = useId();
 	const [internalOnboardingOpen, setInternalOnboardingOpen] = useState(onboarding?.defaultOpen ?? false);
 	const shouldShowButton = forceVisible || !isOpen;
 	const onboardingDefaultOpen = onboarding?.defaultOpen ?? false;
 	const onboardingId = onboarding?.id;
 	const onboardingOpen = Boolean(onboarding && (onboarding.open ?? internalOnboardingOpen));
+	const shouldRenderSurface = (shouldShowButton || onboardingOpen) && !(embedded || product === "rovo");
 
 	useEffect(() => {
 		if (onboardingId) {
@@ -359,74 +510,25 @@ export default function FloatingRovoButton({
 
 	return (
 		<>
-			<style
-				dangerouslySetInnerHTML={{
-					__html: `
-          .floating-rovo-button {
-            position: fixed;
-            bottom: var(--floating-rovo-button-bottom, 24px);
-            right: var(--floating-rovo-button-right, 24px);
-            width: 48px;
-            height: 48px;
-            border-radius: ${token("radius.xxlarge")};
-            background-color: ${token("color.background.neutral.bold")};
-            border: none;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transform-origin: center;
-            will-change: transform;
-            transition:
-              background-color var(--duration-medium) var(--ease-out);
-            z-index: 510;
-            box-shadow: ${token("elevation.shadow.overlay")};
-          }
-
-          .floating-rovo-button img {
-            width: 24px;
-            height: 24px;
-            pointer-events: none;
-          }
-        `,
-				}}
-			/>
-
-			<LayoutGroup id={`floating-rovo-button-${onboarding?.id ?? generatedLayoutGroupId}`}>
-				<AnimatePresence>
-					{suggestion && shouldShowButton && !onboardingOpen ? (
-						<FloatingRovoButtonNudge key={suggestion.id} placement={placement} suggestion={suggestion} />
-					) : null}
-				</AnimatePresence>
-				<AnimatePresence mode="popLayout">
-					{onboarding && onboardingOpen ? (
-						<FloatingRovoButtonOnboardingPanel
-							key={`floating-rovo-button-onboarding-${onboarding.id}`}
-							onboarding={onboarding}
-							onOpenChange={setOnboardingOpen}
-							placement={placement}
-							shouldReduceMotion={shouldReduceMotion}
-						/>
-					) : shouldShowButton ? (
-						<motion.button
-							key="floating-rovo-button-control"
-							aria-label={ariaLabel}
-							className="floating-rovo-button"
-							exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.92, y: 8 }}
-							initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.92, y: 8 }}
-							animate={{ opacity: 1, scale: 1, y: 0 }}
-							layoutId="floating-rovo-button-surface"
-							onClick={handleButtonClick}
-							style={getFloatingRovoButtonPlacementStyle(placement)}
-							transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.18, ease: [0, 0.4, 0, 1] }}
-							type="button"
-							whileHover={shouldReduceMotion ? undefined : { scale: 1.1 }}
-							whileTap={shouldReduceMotion ? undefined : { scale: 0.98 }}
-						>
-							<Image src="/1p/rovo.svg" alt="" width={24} height={24} aria-hidden />
-						</motion.button>
-					) : null}
-				</AnimatePresence>
-			</LayoutGroup>
+			<AnimatePresence>
+				{suggestion && shouldShowButton && !onboardingOpen ? (
+					<FloatingRovoButtonNudge key={suggestion.id} placement={placement} suggestion={suggestion} />
+				) : null}
+			</AnimatePresence>
+			<AnimatePresence>
+				{shouldRenderSurface ? (
+					<FloatingRovoButtonSurface
+						key="surface"
+						onboardingOpen={onboardingOpen}
+						onboarding={onboarding}
+						onOpenChange={setOnboardingOpen}
+						placement={placement}
+						ariaLabel={ariaLabel}
+						onButtonClick={handleButtonClick}
+						shouldReduceMotion={shouldReduceMotion}
+					/>
+				) : null}
+			</AnimatePresence>
 		</>
 	);
 }
