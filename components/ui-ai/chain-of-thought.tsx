@@ -11,6 +11,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Shimmer } from "@/components/ui-ai/shimmer";
+import { AnimatedDots } from "@/components/ui-ai/animated-dots";
 import { MorphingRovo } from "@/components/ui-ai/morphing-rovo";
 import RovoIconGlyph from "@atlaskit/icon-lab/core/rovo";
 import { Icon } from "@/components/ui/icon";
@@ -137,6 +138,7 @@ export const ChainOfThoughtHeader = memo(
 			typeof text === "string" &&
 			resolvedState !== "completed" &&
 			(shimmer || resolvedState === "preload" || resolvedState === "thinking");
+		const shouldShowThinkingDots = resolvedState === "thinking";
 
 		return (
 			<CollapsibleTrigger
@@ -161,18 +163,21 @@ export const ChainOfThoughtHeader = memo(
 				)}
 				<span className="grid min-w-0 flex-1 gap-0.5 text-left">
 					<span className="flex min-w-0 items-center gap-1.5">
-						{shouldShimmerLabel ? (
-							<Shimmer
-								as="span"
-								duration={1.4}
-								spread={2}
-								className="min-w-0 truncate text-left"
-							>
-								{text}
-							</Shimmer>
-						) : (
-							<span className="min-w-0 truncate text-left">{text}</span>
-						)}
+						<span className="inline-flex min-w-0 items-baseline">
+							{shouldShimmerLabel ? (
+								<Shimmer
+									as="span"
+									duration={1.4}
+									spread={2}
+									className="min-w-0 truncate text-left"
+								>
+									{text}
+								</Shimmer>
+							) : (
+								<span className="min-w-0 truncate text-left">{text}</span>
+							)}
+							{shouldShowThinkingDots ? <AnimatedDots /> : null}
+						</span>
 						{showChevron ? (
 							<Icon
 								render={<ChevronDownIcon label="" size="small" spacing="none" />}
