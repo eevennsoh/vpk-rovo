@@ -14,6 +14,7 @@ const RFP_AGENT_CREATION_MARKERS = [
 const RFP_DEMO_QUESTION_SESSION_ID = "agents-rfp-demo-rfp-101-qualification";
 const RFP_DEMO_QUESTION_TOOL_CALL_ID = "ai-gateway-ask_user_questions-agents-rfp-demo-rfp-101";
 const RFP_DEMO_AGENT_ID = "rfp-drafting-agent";
+const RFP_DEMO_AGENT_NAME = "RFP Drafting Agent";
 const RFP_DEMO_TOOL_CALL_DELAY_MIN_MS = 1000;
 const RFP_DEMO_TOOL_CALL_DELAY_MAX_MS = 3000;
 const RFP_DEMO_QUALIFICATION_PRELOAD_DELAY_MS = 2000;
@@ -361,10 +362,10 @@ function buildAgentsRfpDemoAgentCreationTrace() {
 		{
 			toolName: "agent.persist_definition",
 			toolCallId: "agents-rfp-demo-agent-persist",
-			label: "Creating RFP Drafting Agent",
+			label: `Creating ${RFP_DEMO_AGENT_NAME}`,
 			content: "Saving the agent definition, selecting it for chat, and assigning it to the Drafting workflow.",
-			input: { agentId: RFP_DEMO_AGENT_ID, name: "RFP Drafting Agent", assignedColumn: "Drafting" },
-			outputPreview: "RFP Drafting Agent is ready for Drafting work items and selected for the current Rovo session.",
+			input: { agentId: RFP_DEMO_AGENT_ID, name: RFP_DEMO_AGENT_NAME, assignedColumn: "Drafting" },
+			outputPreview: `${RFP_DEMO_AGENT_NAME} is ready for Drafting work items and selected for the current Rovo session.`,
 		},
 	];
 }
@@ -372,7 +373,7 @@ function buildAgentsRfpDemoAgentCreationTrace() {
 function buildAgentsRfpDemoAgentResultPayload() {
 	return {
 		agentId: RFP_DEMO_AGENT_ID,
-		name: "RFP Drafting Agent",
+		name: RFP_DEMO_AGENT_NAME,
 		assignedColumn: "Drafting",
 		summary: "Ready to handle similar RFP work items",
 		trigger: "Runs when an RFP work item enters Drafting or receives a new response attachment.",
@@ -387,7 +388,7 @@ function buildAgentsRfpDemoAgentResultPayload() {
 	};
 }
 
-function buildAgentsRfpDemoAgentCreationConfirmationText({ name = "RFP Drafting Agent" } = {}) {
+function buildAgentsRfpDemoAgentCreationConfirmationText({ name = RFP_DEMO_AGENT_NAME } = {}) {
 	return `Created **${name}** for the Drafting workflow. It can inspect RFP work items and attachments, use Teamwork Graph for account memory, draft the response strategy, stage the report export, and ask for approval before attaching anything back to Jira.`;
 }
 
