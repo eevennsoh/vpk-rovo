@@ -62,6 +62,17 @@ test("Rovo Canvas hides the view switcher for single-view artefacts", () => {
 	);
 });
 
+test("Rovo Canvas main artefact frame uses a border without elevation", () => {
+	assert.match(
+		ROVO_CANVAS_SOURCE,
+		/<section className="flex min-h-\[420px\] min-w-0 flex-col overflow-hidden rounded-xl border border-border bg-surface lg:min-h-0">/u,
+	);
+	assert.doesNotMatch(
+		ROVO_CANVAS_SOURCE,
+		/<section className="[^"]*shadow-sm[^"]*">/u,
+	);
+});
+
 test("floating Rovo button has an exit transition for canvas handoff", () => {
 	assert.match(
 		FLOATING_ROVO_BUTTON_SOURCE,

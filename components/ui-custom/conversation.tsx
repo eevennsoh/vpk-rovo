@@ -87,6 +87,7 @@ export interface ConversationProps extends ComponentProps<"div"> {
 	followMode?: ConversationFollowMode
 	initial?: ScrollAnimation
 	resize?: ScrollAnimation
+	resizeTarget?: ScrollToBottomOptions["target"]
 	targetScrollTop?: GetTargetScrollTop
 }
 
@@ -97,6 +98,7 @@ export function Conversation({
 	followMode,
 	initial = "smooth",
 	resize = "smooth",
+	resizeTarget = "follow",
 	role = "log",
 	targetScrollTop,
 	...props
@@ -302,7 +304,7 @@ export function Conversation({
 				return
 			}
 
-			void scrollToBottom({ animation: resize })
+			void scrollToBottom({ animation: resize, target: resizeTarget })
 		})
 
 		observer.observe(scrollElement)
@@ -313,7 +315,7 @@ export function Conversation({
 		return () => {
 			observer.disconnect()
 		}
-	}, [hasActiveUserScrollIntent, resize, scrollToBottom, updateIsAtBottom])
+	}, [hasActiveUserScrollIntent, resize, resizeTarget, scrollToBottom, updateIsAtBottom])
 
 	return (
 		<ConversationContext value={contextValue}>

@@ -91,8 +91,10 @@ test("report stages advance through generated, refined, approved, pdf-exported, 
 	const exported = harness.exportRfpReportPdf(approved);
 	assert.equal(exported.report.stage, "pdf-exported");
 
-	const attached = harness.attachRfpReportToWorkItem(exported);
+	const attached = harness.attachRfpReportToWorkItem(exported, "<!doctype html><html><body>Report</body></html>");
 	assert.equal(attached.report.stage, "attached");
+	assert.equal(attached.report.previewHtml, "<!doctype html><html><body>Report</body></html>");
+	assert.equal(attached.canvas.open, false);
 	assert.equal(attached.canvas.activeViewId, "report");
 	assert.deepEqual(
 		harness.getGeneratedRfpAttachments(attached, "RFP-101").map((attachment) => attachment.previewKind),

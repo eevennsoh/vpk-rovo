@@ -1,7 +1,7 @@
 "use client";
 
 import type { ComponentProps, ReactNode } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { NewCoreIconProps } from "@atlaskit/icon/base-new";
 import AiAgentIcon from "@atlaskit/icon/core/ai-agent";
 import AiGenerativeTextSummaryIcon from "@atlaskit/icon/core/ai-generative-text-summary";
@@ -28,7 +28,6 @@ import {
 } from "@/components/projects/shared/lib/reasoning-labels";
 import {
 	collectAssistantThinkingTraceData,
-	getLatestThinkingToolCallId,
 	resolveAssistantThinkingTracePhase,
 	resolveAssistantThinkingTraceVisibility,
 	resolveThinkingToolCallStepOpen,
@@ -514,25 +513,8 @@ export function useAssistantThinkingTraceState({
 		data.hasAgentExecutions ||
 		data.hasThinkingToolCalls ||
 		hasPlanNarrationText;
-	const shouldAutoOpenThinking =
-		isThinkingStreaming ||
-		data.hasAwaitingInputToolCalls ||
-		data.thinkingToolCalls.some((toolCall) => toolCall.state === "running" || toolCall.state === "approval-requested");
 	const [thinkingUserOverride, setThinkingUserOverride] = useState<boolean | null>(null);
-	const prevAutoOpenRef = useRef(shouldAutoOpenThinking);
-
-	useEffect(() => {
-		if (shouldAutoOpenThinking && !prevAutoOpenRef.current) {
-			const timeoutId = window.setTimeout(() => {
-				setThinkingUserOverride(null);
-			}, 0);
-			prevAutoOpenRef.current = shouldAutoOpenThinking;
-			return () => window.clearTimeout(timeoutId);
-		}
-		prevAutoOpenRef.current = shouldAutoOpenThinking;
-	}, [shouldAutoOpenThinking]);
-
-	const isOpen = thinkingUserOverride ?? (hasThinkingDetails && shouldAutoOpenThinking);
+	const isOpen = thinkingUserOverride ?? false;
 	const thinkingTimestamps = getMessageReasoningTimestamps(message);
 	const { phase: lifecyclePhase, duration: reasoningDuration } = useReasoningPhase({
 		isStreaming: isThinkingStreaming,
@@ -648,26 +630,19 @@ export function AssistantThinkingTrace({
 	className,
 }: Readonly<AssistantThinkingTraceProps>): ReactNode {
 	const [manuallyOpenedToolCallIds, setManuallyOpenedToolCallIds] = useState<Set<string>>(() => new Set());
-	const [manuallyClosedToolCallIds, setManuallyClosedToolCallIds] = useState<Set<string>>(() => new Set());
 	const toolCallIds = useMemo(
 		() => state.data.thinkingToolCalls.map((toolCall) => toolCall.id),
 		[state.data.thinkingToolCalls],
 	);
 	const toolCallIdsKey = toolCallIds.join("|");
-	const autoOpenToolCallId = getLatestThinkingToolCallId(state.data.thinkingToolCalls);
 
 	useEffect(() => {
 		setManuallyOpenedToolCallIds(new Set());
-		setManuallyClosedToolCallIds(new Set());
 	}, [state.message.id]);
 
 	useEffect(() => {
 		const currentToolCallIds = new Set(toolCallIds);
 		setManuallyOpenedToolCallIds((current) => {
-			const next = new Set([...current].filter((toolCallId) => currentToolCallIds.has(toolCallId)));
-			return next.size === current.size ? current : next;
-		});
-		setManuallyClosedToolCallIds((current) => {
 			const next = new Set([...current].filter((toolCallId) => currentToolCallIds.has(toolCallId)));
 			return next.size === current.size ? current : next;
 		});
@@ -683,14 +658,6 @@ export function AssistantThinkingTrace({
 				next.add(toolCallId);
 				return next;
 			});
-			setManuallyClosedToolCallIds((current) => {
-				if (!current.has(toolCallId)) {
-					return current;
-				}
-				const next = new Set(current);
-				next.delete(toolCallId);
-				return next;
-			});
 			return;
 		}
 
@@ -700,14 +667,6 @@ export function AssistantThinkingTrace({
 			}
 			const next = new Set(current);
 			next.delete(toolCallId);
-			return next;
-		});
-		setManuallyClosedToolCallIds((current) => {
-			if (current.has(toolCallId)) {
-				return current;
-			}
-			const next = new Set(current);
-			next.add(toolCallId);
 			return next;
 		});
 	}, []);
@@ -751,9 +710,7 @@ export function AssistantThinkingTrace({
 						const narration = toolCall.toolCallId ? state.data.thinkingNarrationMap.byToolCallId.get(toolCall.toolCallId) : undefined;
 						const isOpen = resolveThinkingToolCallStepOpen({
 							toolCallId: toolCall.id,
-							autoOpenToolCallId,
 							manuallyOpenedToolCallIds,
-							manuallyClosedToolCallIds,
 						});
 						return (
 							<ThinkingToolCallStep

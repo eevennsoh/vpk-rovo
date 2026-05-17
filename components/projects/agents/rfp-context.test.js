@@ -260,6 +260,8 @@ test("agents attachment grid mixes simple file icons with source product logos",
 	assert.match(ATTACHMENTS_SECTION_SOURCE, /variant="redBold"/);
 	assert.match(ATTACHMENTS_SECTION_SOURCE, /icon=\{<Music2Icon \/>\}/);
 	assert.match(ATTACHMENTS_SECTION_SOURCE, /size=\{12\}/);
+	assert.match(ATTACHMENTS_SECTION_SOURCE, /if \(file\.previewHtml\)/);
+	assert.match(ATTACHMENTS_SECTION_SOURCE, /srcDoc=\{file\.previewHtml\}/);
 	assert.match(ATTACHMENTS_SECTION_SOURCE, /\{renderAttachmentIcon\(file\)\}/);
 	assert.doesNotMatch(ATTACHMENTS_SECTION_SOURCE, /icon=\{renderAttachmentIcon\(file\)\}/);
 	assert.doesNotMatch(ATTACHMENTS_SECTION_SOURCE, /\/website\/vpk-logo-dark\.svg/);

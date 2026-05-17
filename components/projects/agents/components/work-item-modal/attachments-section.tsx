@@ -102,6 +102,27 @@ function renderAttachmentIcon(file: WorkItemAttachment) {
 }
 
 function renderAttachmentPreview(file: WorkItemAttachment, title: string) {
+	if (file.previewHtml) {
+		return (
+			<div className="h-full w-full overflow-hidden bg-surface-sunken">
+				<iframe
+					aria-hidden={true}
+					className="pointer-events-none border-0 bg-surface"
+					sandbox=""
+					srcDoc={file.previewHtml}
+					style={{
+						width: 720,
+						height: 520,
+						transform: "scale(0.25)",
+						transformOrigin: "top left",
+					}}
+					tabIndex={-1}
+					title={`${title} thumbnail preview`}
+				/>
+			</div>
+		);
+	}
+
 	if (file.thumbnailKind === "audio") {
 		return (
 			<div className="flex h-full w-full items-center justify-center bg-surface-sunken">
@@ -148,7 +169,7 @@ function AttachmentCard({ file, onOpen }: Readonly<AttachmentCardProps>) {
 				style={{
 					position: "relative",
 					height: "104px",
-					backgroundColor: file.previewSrc ? "transparent" : getAttachmentColor(file),
+					backgroundColor: file.previewSrc || file.previewHtml ? "transparent" : getAttachmentColor(file),
 				}}
 			>
 				{renderAttachmentPreview(file, title)}

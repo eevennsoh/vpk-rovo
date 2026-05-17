@@ -27,7 +27,7 @@ export interface AgentsRfpDemoActions {
 	refineReport: () => void;
 	approveReport: () => void;
 	exportPdf: () => void;
-	attachReport: () => void;
+	attachReport: (reportPreviewHtml?: string) => void;
 	createAgent: () => void;
 	scheduleAgent: () => void;
 	moveCard: (cardCode: string, targetColumnTitle: string) => void;
@@ -77,7 +77,13 @@ export function useAgentsRfpDemoState(): AgentsRfpDemoController {
 	const refineReport = useCallback(() => setState(refineRfpReport), []);
 	const approveReport = useCallback(() => setState(approveRfpReport), []);
 	const exportPdf = useCallback(() => setState(exportRfpReportPdf), []);
-	const attachReport = useCallback(() => setState(attachRfpReportToWorkItem), []);
+	const attachReport = useCallback(
+		(reportPreviewHtml?: string) => setState((currentState) => attachRfpReportToWorkItem(
+			currentState,
+			reportPreviewHtml,
+		)),
+		[],
+	);
 	const createAgent = useCallback(() => setState(createRfpDraftingAgent), []);
 	const scheduleAgent = useCallback(() => setState(scheduleRfpDraftingAgent), []);
 	const moveCard = useCallback(

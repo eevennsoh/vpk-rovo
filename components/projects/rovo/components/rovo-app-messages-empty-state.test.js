@@ -36,6 +36,14 @@ test("Rovo app streaming anchor follows the real bottom", () => {
 	);
 	assert.match(
 		MESSAGES_SOURCE,
+		/resizeTarget=\{isStreaming && scrollAnchorMessageId === latestVisibleUserMessageId \? "bottom" : "follow"\}/u,
+	);
+	assert.match(
+		MESSAGES_SOURCE,
+		/resize=\{isStreaming && scrollAnchorMessageId === latestVisibleUserMessageId \? "instant" : "smooth"\}/u,
+	);
+	assert.match(
+		MESSAGES_SOURCE,
 		/scrollToBottom\(\{\s+animation: target === "bottom" \|\| shouldReduceMotion \? "instant" : "smooth",\s+ignoreEscapes: true,\s+target,\s+\}\)/u,
 	);
 });

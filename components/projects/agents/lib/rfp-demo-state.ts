@@ -92,6 +92,7 @@ export interface AgentsRfpDemoState {
 	report: {
 		stage: AgentsRfpDemoReportStage;
 		currentVersionId?: string;
+		previewHtml?: string;
 		versions: AgentsRfpDemoReportVersion[];
 	};
 	agent: AgentsRfpDemoAgent | null;
@@ -461,7 +462,10 @@ export function exportRfpReportPdf(state: AgentsRfpDemoState): AgentsRfpDemoStat
 	);
 }
 
-export function attachRfpReportToWorkItem(state: AgentsRfpDemoState): AgentsRfpDemoState {
+export function attachRfpReportToWorkItem(
+	state: AgentsRfpDemoState,
+	reportPreviewHtml?: string,
+): AgentsRfpDemoState {
 	const exportedState = state.report.stage === "pdf-exported"
 		? state
 		: exportRfpReportPdf(state);
@@ -484,10 +488,11 @@ export function attachRfpReportToWorkItem(state: AgentsRfpDemoState): AgentsRfpD
 			report: {
 				...attachedState.report,
 				stage: "attached",
+				previewHtml: reportPreviewHtml ?? attachedState.report.previewHtml,
 			},
 			canvas: {
 				...attachedState.canvas,
-				open: true,
+				open: false,
 				activeViewId: "report",
 				mode: "read-only",
 			},

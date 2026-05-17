@@ -112,6 +112,10 @@ function CyclingByline({ children, cycle }: Readonly<{ children: ReactNode; cycl
 	);
 }
 
+function stripTrailingDots(label: string): string {
+	return label.replace(/\s*\.+$/, "");
+}
+
 export const ChainOfThoughtHeader = memo(
 	({
 		className,
@@ -139,6 +143,10 @@ export const ChainOfThoughtHeader = memo(
 			resolvedState !== "completed" &&
 			(shimmer || resolvedState === "preload" || resolvedState === "thinking");
 		const shouldShowThinkingDots = resolvedState === "thinking";
+		const renderedText =
+			shouldShowThinkingDots && typeof text === "string"
+				? stripTrailingDots(text)
+				: text;
 
 		return (
 			<CollapsibleTrigger
@@ -164,17 +172,17 @@ export const ChainOfThoughtHeader = memo(
 				<span className="grid min-w-0 flex-1 gap-0.5 text-left">
 					<span className="flex min-w-0 items-center gap-1.5">
 						<span className="inline-flex min-w-0 items-baseline">
-							{shouldShimmerLabel ? (
+							{shouldShimmerLabel && typeof renderedText === "string" ? (
 								<Shimmer
 									as="span"
 									duration={1.4}
 									spread={2}
 									className="min-w-0 truncate text-left"
 								>
-									{text}
+									{renderedText}
 								</Shimmer>
 							) : (
-								<span className="min-w-0 truncate text-left">{text}</span>
+								<span className="min-w-0 truncate text-left">{renderedText}</span>
 							)}
 							{shouldShowThinkingDots ? <AnimatedDots /> : null}
 						</span>

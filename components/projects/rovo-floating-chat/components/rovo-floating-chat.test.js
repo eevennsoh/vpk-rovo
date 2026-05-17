@@ -9,6 +9,9 @@ const SOURCE_FILE = path.join(__dirname, "rovo-floating-chat.tsx");
 const ROVO_FLOATING_CHAT_SOURCE = fs.readFileSync(SOURCE_FILE, "utf8");
 const FLOATING_CHAT_HEADER_SOURCE = fs.readFileSync(path.join(__dirname, "floating-chat-header.tsx"), "utf8");
 const CHAT_PANEL_SOURCE = fs.readFileSync(path.join(process.cwd(), "components/projects/sidebar-chat/page.tsx"), "utf8");
+const STREAMING_THINKING_INDICATOR_SOURCE = fs.readFileSync(path.join(process.cwd(), "components/projects/shared/components/streaming-thinking-indicator.tsx"), "utf8");
+const CHAIN_OF_THOUGHT_SOURCE = fs.readFileSync(path.join(process.cwd(), "components/ui-custom/chain-of-thought.tsx"), "utf8");
+const REASONING_LABELS_SOURCE = fs.readFileSync(path.join(process.cwd(), "components/projects/shared/lib/reasoning-labels.ts"), "utf8");
 
 async function loadRovoFloatingChatHarness() {
 	const mockModules = new Map([
@@ -270,7 +273,7 @@ test("Floating chat panel receives a bounded max-height without forcing empty-st
 
 test("Floating chat keeps chrome and composer outside the scrollable message viewport", () => {
 	assert.match(FLOATING_CHAT_HEADER_SOURCE, /className="flex shrink-0 items-center justify-between px-3 py-3"/);
-	assert.match(CHAT_PANEL_SOURCE, /<Conversation className="min-h-0 min-w-0 flex-1"/);
+	assert.match(CHAT_PANEL_SOURCE, /<Conversation\s+className="min-h-0 min-w-0 flex-1"/);
 	assert.match(CHAT_PANEL_SOURCE, /<div className="min-w-0 shrink-0">[\s\S]*<ChatComposer/);
 	assert.match(CHAT_PANEL_SOURCE, /<div className="shrink-0">[\s\S]*<ChatHeader/);
 });
@@ -280,6 +283,8 @@ test("Shared ChatPanel renders the Rovo-style conversation body and scroll butto
 	assert.match(CHAT_PANEL_SOURCE, /scrollFollowMode/);
 	assert.match(CHAT_PANEL_SOURCE, /isGenerationActive: isStreamingLifecycleActive/);
 	assert.match(CHAT_PANEL_SOURCE, /followMode=\{scrollFollowMode\}/);
+	assert.match(CHAT_PANEL_SOURCE, /resize=\{isStreamingLifecycleActive \? "instant" : "smooth"\}/);
+	assert.match(CHAT_PANEL_SOURCE, /resizeTarget=\{isStreamingLifecycleActive \? "bottom" : "follow"\}/);
 	assert.match(
 		CHAT_PANEL_SOURCE,
 		/className="mx-auto flex min-w-0 max-w-\[800px\] flex-col gap-4 px-4 py-6 md:gap-6"/,
@@ -288,6 +293,19 @@ test("Shared ChatPanel renders the Rovo-style conversation body and scroll butto
 		CHAT_PANEL_SOURCE,
 		/<ConversationScrollButton className="z-10 transition-all" \/>/,
 	);
+});
+
+test("Floating chat thinking status uses ChainOfThought dots without literal ellipsis labels", () => {
+	assert.match(CHAT_PANEL_SOURCE, /<StreamingThinkingIndicator/);
+	assert.match(STREAMING_THINKING_INDICATOR_SOURCE, /ChainOfThoughtHeader/);
+	assert.match(STREAMING_THINKING_INDICATOR_SOURCE, /ChainOfThoughtStep/);
+	assert.match(STREAMING_THINKING_INDICATOR_SOURCE, /defaultOpen=\{false\}/);
+	assert.doesNotMatch(STREAMING_THINKING_INDICATOR_SOURCE, /phaseProps\.defaultOpen \?\? hasDetails/);
+	assert.doesNotMatch(STREAMING_THINKING_INDICATOR_SOURCE, /AdsReasoningTrigger/);
+	assert.doesNotMatch(STREAMING_THINKING_INDICATOR_SOURCE, /<Reasoning/);
+	assert.match(CHAIN_OF_THOUGHT_SOURCE, /shouldShowThinkingDots && typeof text === "string"[\s\S]*stripTrailingDots\(text\)/);
+	assert.match(REASONING_LABELS_SOURCE, /preloadShimmer: "Rovo is cooking"/);
+	assert.doesNotMatch(REASONING_LABELS_SOURCE, /Rovo is cooking\.\.\./);
 });
 
 test("Floating chat compact empty greeting does not force a full-height message area", () => {

@@ -689,7 +689,7 @@ export function RovoCanvas({
 						{feedbackBanner !== undefined ? feedbackBanner : null}
 
 						<div className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-y-auto lg:grid-cols-[minmax(0,1fr)_400px] lg:overflow-hidden">
-							<section className="flex min-h-[420px] min-w-0 flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-sm lg:min-h-0">
+							<section className="flex min-h-[420px] min-w-0 flex-col overflow-hidden rounded-xl border border-border bg-surface lg:min-h-0">
 								<Tabs
 									value={resolvedActiveViewId}
 									onValueChange={setActiveViewId}

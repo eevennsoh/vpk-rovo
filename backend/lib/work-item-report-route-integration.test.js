@@ -53,6 +53,9 @@ test("backend Work Item artifact route uses the vpk-html runner and emits an htm
 	assert.match(SERVER_SOURCE, /threadId:\s*artifactDocument\.threadId/u);
 	assert.match(SERVER_SOURCE, /documentId:\s*artifactDocument\.id/u);
 	assert.match(SERVER_SOURCE, /buildAgentsRfpDemoReportConfirmationText\(\{[\s\S]*documentId:\s*artifactDocument\.id/u);
+	assert.match(SERVER_SOURCE, /app\.post\("\/api\/agents\/rfp-demo\/vpk-html-report"/u);
+	assert.match(SERVER_SOURCE, /generateAgentsRfpDemoReportPreview\(req\.body \|\| \{\}\)/u);
+	assert.match(SERVER_SOURCE, /runSkillValidation:\s*false/u);
 	assert.match(MESSAGE_SOURCE, /const prefix = "#rovo-canvas-";/u);
 	assert.match(MESSAGE_SOURCE, /window\.dispatchEvent\(new CustomEvent\("rovo:open-canvas-artifact"/u);
 	assert.match(AGENTS_VIEW_SOURCE, /window\.addEventListener\("rovo:open-canvas-artifact", handleOpenRfpCanvas\);/u);
