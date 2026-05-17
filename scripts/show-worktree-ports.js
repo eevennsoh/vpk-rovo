@@ -17,6 +17,7 @@ const { getAllWorktreePortInfo } = require("./lib/worktree-ports");
 
 const SEPARATOR = "━".repeat(70);
 const WATCH_INTERVAL_MS = 1000;
+const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
 function readPortFile(worktreePath, filename) {
 	try {
@@ -138,6 +139,7 @@ function main() {
 }
 
 function runWatch() {
+	let frameIndex = 0;
 	function tick() {
 		let rows;
 		try {
@@ -148,11 +150,13 @@ function runWatch() {
 			return;
 		}
 		const now = new Date().toLocaleTimeString("en-US", { hour12: false });
+		const spinner = SPINNER_FRAMES[frameIndex % SPINNER_FRAMES.length];
 		process.stdout.write("\x1b[2J\x1b[H");
 		renderRows(rows, {
-			headerSuffix: "·  watching (1s)",
+			headerSuffix: `·  ${spinner} watching`,
 			footer: `Last updated ${now} · Ctrl+C to exit`,
 		});
+		frameIndex += 1;
 	}
 
 	tick();
