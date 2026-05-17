@@ -84,12 +84,39 @@ const adsLanguageOptions: ReadonlyArray<{ value: AdsLanguage; label: string }> =
 ];
 
 export default function CodeBlockDemo() {
-	return <CodeBlockDemoAdsBasic />;
+	return (
+		<div className="grid w-full gap-4">
+			<div className="grid gap-2">
+				<span className="text-xs font-medium text-text-subtle">Default</span>
+				<CodeBlockDemoAdsBasic />
+			</div>
+			<div className="grid gap-2">
+				<span className="text-xs font-medium text-text-subtle">Small</span>
+				<CodeBlockDemoAdsSmall />
+			</div>
+		</div>
+	);
 }
 
 export function CodeBlockDemoAdsBasic() {
 	return (
-		<CodeBlock code={adsBasicCode} language="typescript" className="w-full text-xs">
+		<CodeBlock code={adsBasicCode} language="typescript" className="w-full">
+			<CodeBlockHeader>
+				<CodeBlockTitle>
+					<CodeBlockFilename>status.ts</CodeBlockFilename>
+				</CodeBlockTitle>
+				<CodeBlockActions>
+					<CodeBlockDownloadButton />
+					<CodeBlockCopyButton />
+				</CodeBlockActions>
+			</CodeBlockHeader>
+		</CodeBlock>
+	);
+}
+
+export function CodeBlockDemoAdsSmall() {
+	return (
+		<CodeBlock code={adsBasicCode} language="typescript" size="sm" className="w-full">
 			<CodeBlockHeader>
 				<CodeBlockTitle>
 					<CodeBlockFilename>status.ts</CodeBlockFilename>
@@ -105,7 +132,7 @@ export function CodeBlockDemoAdsBasic() {
 
 export function CodeBlockDemoAdsLineNumbers() {
 	return (
-		<CodeBlock code={adsLineNumbersCode} language="typescript" showLineNumbers className="w-full text-xs">
+		<CodeBlock code={adsLineNumbersCode} language="typescript" showLineNumbers className="w-full">
 			<CodeBlockHeader>
 				<CodeBlockTitle>
 					<CodeBlockFilename>surface-card.tsx</CodeBlockFilename>
@@ -121,7 +148,7 @@ export function CodeBlockDemoAdsLineNumbers() {
 
 export function CodeBlockDemoAdsShell() {
 	return (
-		<CodeBlock code={adsShellCode} language="bash" className="w-full text-xs">
+		<CodeBlock code={adsShellCode} language="bash" className="w-full">
 			<CodeBlockHeader>
 				<CodeBlockTitle>
 					<CodeBlockFilename>commands.sh</CodeBlockFilename>
@@ -140,7 +167,7 @@ export function CodeBlockDemoAdsLanguageSelector() {
 	const current = adsLanguageDemos[language];
 
 	return (
-		<CodeBlock code={current.code} language={language as BundledLanguage} className="w-full text-xs">
+		<CodeBlock code={current.code} language={language as BundledLanguage} className="w-full">
 			<CodeBlockHeader>
 				<CodeBlockTitle>
 					<CodeBlockFilename>{current.filename}</CodeBlockFilename>
