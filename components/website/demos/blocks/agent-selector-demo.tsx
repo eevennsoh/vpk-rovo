@@ -12,3 +12,13 @@ export default function AgentSelectorDemo(): ReactElement {
 		</div>
 	);
 }
+
+export function AgentSelectorDemoSelectedAgentActions(): ReactElement {
+	return (
+		<div className="flex min-h-[32rem] items-start justify-center p-6 pt-8">
+			<div className="w-full max-w-80">
+				<AgentSelectorPage variant="selected-agent-actions" />
+			</div>
+		</div>
+	);
+}

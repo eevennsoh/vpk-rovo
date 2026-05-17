@@ -34,9 +34,9 @@ export default function JiraHeader({ selectedTab, onTabChange }: Readonly<JiraHe
 								<Image
 									src="/avatar-project/rocket.svg"
 									alt="Project avatar"
-									width={24}
-									height={24}
-									style={{ width: "24px", height: "24px", borderRadius: token("radius.xsmall") }}
+									width={16}
+									height={16}
+									style={{ width: "16px", height: "16px", borderRadius: token("radius.xsmall") }}
 								/>
 								<Heading size="medium">Enterprise RFP Response</Heading>
 								<Button aria-label="Teams" size="icon-xs" variant="ghost">

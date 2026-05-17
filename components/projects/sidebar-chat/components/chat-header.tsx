@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
@@ -15,6 +14,7 @@ import {
 	ChatSurfaceSwitcherItems,
 	type ChatSurfaceSwitchHandler,
 } from "@/components/projects/shared/components/chat-surface-switcher";
+import { RovoAppBrand } from "@/components/projects/rovo/components/rovo-app-brand";
 import { ChatHistoryButton } from "./chat-history-button";
 import AppIcon from "@atlaskit/icon/core/app";
 import BugIcon from "@atlaskit/icon/core/bug";
@@ -60,10 +60,7 @@ export default function ChatHeader({
 					{showControls ? (
 						<ChatHistoryButton isHistoryOpen={isHistoryOpen} onToggle={onHistoryToggle} />
 					) : null}
-					<div className="flex items-center gap-2">
-						<Image src="/1p/rovo.svg" alt="" width={16} height={16} aria-hidden />
-						<span className="text-sm font-semibold text-text">Rovo</span>
-					</div>
+					<RovoAppBrand />
 				</div>
 
 				{/* Right side: Chat actions */}

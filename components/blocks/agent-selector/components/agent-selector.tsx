@@ -3,7 +3,7 @@
 import AddIcon from "@atlaskit/icon/core/add";
 import AiAgentIcon from "@atlaskit/icon/core/ai-agent";
 import Image from "next/image";
-import { useMemo, useState, type ReactElement } from "react";
+import { useMemo, useState, type ReactElement, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -15,6 +15,13 @@ export interface AgentSelectorAgent {
 	name: string;
 	byline: string;
 	avatarSrc: string;
+}
+
+export interface AgentSelectorAction {
+	id: string;
+	icon: ReactNode;
+	label: string;
+	onSelect?: () => void;
 }
 
 export interface AgentSelectorProps {
@@ -31,10 +38,14 @@ export interface AgentSelectorProps {
 	onQueryChange?: (query: string) => void;
 	query?: string;
 	searchPlaceholder?: string;
+	selectedAgentActions?: readonly AgentSelectorAction[];
 	selectedAgentIds?: readonly string[];
 }
 
 const EMPTY_SELECTED_AGENT_IDS: readonly string[] = [];
+const EMPTY_SELECTED_AGENT_ACTIONS: readonly AgentSelectorAction[] = [];
+const ACTION_BUTTON_CLASS = "h-8 min-h-8 w-full justify-start gap-3 px-3 py-0 text-left text-sm font-normal";
+const ACTION_ICON_CLASS = "grid size-6 shrink-0 place-items-center text-icon-subtle";
 
 function matchesAgent(agent: AgentSelectorAgent, query: string): boolean {
 	const searchableText = `${agent.name} ${agent.byline}`.toLowerCase();
@@ -43,8 +54,8 @@ function matchesAgent(agent: AgentSelectorAgent, query: string): boolean {
 
 function AgentSelectorLogo({ agent }: Readonly<{ agent: AgentSelectorAgent }>): ReactElement {
 	return (
-		<span className="flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-sm">
-			<Image alt="" aria-hidden className="max-h-6 max-w-6 object-contain" height={24} src={agent.avatarSrc} width={24} />
+		<span className="grid size-6 shrink-0 place-items-center overflow-hidden rounded-sm">
+			<Image alt="" aria-hidden className="mx-auto block size-6 object-contain object-center" height={24} src={agent.avatarSrc} width={24} />
 		</span>
 	);
 }
@@ -63,10 +74,12 @@ export function AgentSelector({
 	onQueryChange,
 	query,
 	searchPlaceholder = "Search agents",
+	selectedAgentActions,
 	selectedAgentIds,
 }: Readonly<AgentSelectorProps>): ReactElement {
 	const [internalQuery, setInternalQuery] = useState(defaultQuery);
 	const selectedIds = selectedAgentIds ?? EMPTY_SELECTED_AGENT_IDS;
+	const selectedActions = selectedAgentActions ?? EMPTY_SELECTED_AGENT_ACTIONS;
 	const resolvedQuery = query ?? internalQuery;
 	const normalizedQuery = resolvedQuery.trim().toLowerCase();
 	const selectedAgentIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
@@ -91,11 +104,30 @@ export function AgentSelector({
 	}
 
 	const hasFooterActions = Boolean(onBrowseAgents || onCreateAgent);
+	const hasSelectedAgentActions = selectedActions.length > 0;
 
 	return (
 		<Command className={cn("h-[26rem] max-h-[min(26rem,var(--available-height))] min-h-0 min-w-80 flex-1 p-3", className)} shouldFilter={false}>
-			<div className="shrink-0">
-				<p className="mb-2 text-sm font-semibold text-text">{heading}</p>
+			{hasSelectedAgentActions ? (
+				<div aria-label="Selected agent actions" className="flex shrink-0 flex-col border-b border-border pb-3" role="group">
+					{selectedActions.map((action) => (
+						<Button
+							className={ACTION_BUTTON_CLASS}
+							key={action.id}
+							onClick={action.onSelect}
+							type="button"
+							variant="ghost"
+						>
+							<span className={ACTION_ICON_CLASS}>
+								{action.icon}
+							</span>
+							<span className="text-text">{action.label}</span>
+						</Button>
+					))}
+				</div>
+			) : null}
+			<div className={cn("shrink-0", hasSelectedAgentActions && "pt-3")}>
+				<p className="mb-2 text-xs font-semibold leading-4 text-text-subtlest">{heading}</p>
 				<CommandInput
 					aria-label={searchPlaceholder}
 					inputGroupClassName="has-[[data-slot=input-group-control]:focus-visible]:border-input has-[[data-slot=input-group-control]:focus-visible]:ring-0"
@@ -135,12 +167,12 @@ export function AgentSelector({
 				<div className="sticky bottom-0 z-10 flex shrink-0 flex-col border-t border-border bg-popover p-0 pt-3">
 					{onBrowseAgents ? (
 						<Button
-							className="h-8 min-h-8 w-full justify-start gap-3 px-3 py-0 text-left text-sm font-normal"
+							className={ACTION_BUTTON_CLASS}
 							onClick={onBrowseAgents}
 							type="button"
 							variant="ghost"
 						>
-							<span className="flex size-6 shrink-0 items-center justify-center text-icon-subtle">
+							<span className={ACTION_ICON_CLASS}>
 								<Icon className="size-4" render={<AiAgentIcon label="" />} />
 							</span>
 							<span className="text-text">{browseAgentsLabel}</span>
@@ -148,12 +180,12 @@ export function AgentSelector({
 					) : null}
 					{onCreateAgent ? (
 						<Button
-							className="h-8 min-h-8 w-full justify-start gap-3 px-3 py-0 text-left text-sm font-normal"
+							className={ACTION_BUTTON_CLASS}
 							onClick={onCreateAgent}
 							type="button"
 							variant="ghost"
 						>
-							<span className="flex size-6 shrink-0 items-center justify-center text-icon-subtle">
+							<span className={ACTION_ICON_CLASS}>
 								<Icon className="size-4" render={<AddIcon label="" />} />
 							</span>
 							<span className="text-text">{createAgentLabel}</span>

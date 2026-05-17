@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import CrossIcon from "@atlaskit/icon/core/cross";
 import EditIcon from "@atlaskit/icon/core/edit";
 import ShowMoreHorizontalIcon from "@atlaskit/icon/core/show-more-horizontal";
@@ -16,6 +15,7 @@ import {
 	ChatSurfaceSwitcherItems,
 	type ChatSurfaceSwitchHandler,
 } from "@/components/projects/shared/components/chat-surface-switcher";
+import { RovoAppBrand } from "@/components/projects/rovo/components/rovo-app-brand";
 import { ChatHistoryButton } from "@/components/projects/sidebar-chat/components/chat-history-button";
 
 interface FloatingChatHeaderProps {
@@ -41,10 +41,7 @@ export default function FloatingChatHeader({
 		<div className="flex shrink-0 items-center justify-between px-3 py-3">
 			<div className="flex items-center gap-1">
 				<ChatHistoryButton isHistoryOpen={isHistoryOpen} onToggle={onHistoryToggle} />
-				<div className="flex items-center gap-2">
-					<Image src="/1p/rovo.svg" alt="" width={16} height={16} aria-hidden />
-					<span className="text-sm font-semibold text-text">Rovo</span>
-				</div>
+				<RovoAppBrand />
 			</div>
 			<div className="flex items-center gap-1">
 				<Button aria-label="New chat" size="icon" variant="ghost" onClick={onNewChat ?? noop}>

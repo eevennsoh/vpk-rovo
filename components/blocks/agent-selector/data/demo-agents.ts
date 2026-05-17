@@ -80,3 +80,54 @@ export const AGENT_SELECTOR_DEMO_AGENTS: readonly AgentSelectorAgent[] = [
 		avatarSrc: "/3p/google-drive/24.svg",
 	},
 ];
+
+export const AGENT_SELECTOR_CUSTOM_AGENT_DEMO_AGENTS: readonly AgentSelectorAgent[] = [
+	{
+		id: "ai-insights-agent",
+		name: "AI Insights Agent",
+		byline: "Custom agent by Atlassian",
+		avatarSrc: "/avatar-agent/teamwork-agents/customer-insights.svg",
+	},
+	{
+		id: "untitled-agent",
+		name: "Untitled",
+		byline: "Custom agent",
+		avatarSrc: "/avatar-agent/teamwork-agents/wildcard-1.svg",
+	},
+	{
+		id: "meeting-insights-reporter",
+		name: "Meeting Insights Reporter",
+		byline: "Teamwork agent by Atlassian",
+		avatarSrc: "/avatar-agent/teamwork-agents/meeting-insights-reporter.svg",
+	},
+	{
+		id: "chatgpt-wrapper-app",
+		name: "ChatGPT Wrapper App",
+		byline: "Custom agent",
+		avatarSrc: "/avatar-agent/teamwork-agents/wildcard-4.svg",
+	},
+	{
+		id: "social-media-writer",
+		name: "Social Media Writer",
+		byline: "Teamwork agent by Atlassian",
+		avatarSrc: "/avatar-agent/teamwork-agents/social-media-writer.svg",
+	},
+	{
+		id: "progress-tracker",
+		name: "Progress Tracker",
+		byline: "Teamwork agent by Atlassian",
+		avatarSrc: "/avatar-agent/teamwork-agents/progress-tracker.svg",
+	},
+	{
+		id: "transcript-insights-reporter",
+		name: "Transcript Insights Reporter",
+		byline: "Teamwork agent by Atlassian",
+		avatarSrc: "/avatar-agent/teamwork-agents/transcript-insights-reporter.svg",
+	},
+	{
+		id: "product-requirements-guide",
+		name: "Product Requirements Guide",
+		byline: "Teamwork agent by Atlassian",
+		avatarSrc: "/avatar-agent/teamwork-agents/product-requirements-guide.svg",
+	},
+];

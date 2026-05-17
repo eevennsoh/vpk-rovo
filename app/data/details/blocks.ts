@@ -82,7 +82,7 @@ export const BLOCK_DETAILS: Record<string, ComponentDetail> = {
 		],
 	},
 	"agent-selector": {
-		description: "Searchable command-list selector for assigning AI agents, with selected agents pinned first and an optional create-agent action.",
+		description: "Searchable command-list selector for assigning AI agents, with selected agents pinned first, optional selected-agent actions, and optional browse/create actions.",
 		importStatement: `import { AgentSelector } from "@/components/blocks/agent-selector";`,
 		usage: `import { AgentSelector } from "@/components/blocks/agent-selector";
 import type { AgentSelectorAgent } from "@/components/blocks/agent-selector";
@@ -104,6 +104,9 @@ const agents: AgentSelectorAgent[] = [
   onCreateAgent={() => console.log("create agent")}
 />`,
 		demoLayout: { previewHeight: "fixed" },
+		examples: [
+			{ title: "Selected agent actions", description: "Top actions for a selected custom agent before switching to another agent.", demoSlug: "agent-selector-demo-selected-agent-actions" },
+		],
 		props: [
 			{
 				name: "agents",
@@ -140,6 +143,11 @@ const agents: AgentSelectorAgent[] = [
 				name: "onQueryChange",
 				type: "(query: string) => void",
 				description: "Called when the search input changes.",
+			},
+			{
+				name: "selectedAgentActions",
+				type: "readonly AgentSelectorAction[]",
+				description: "Optional actions rendered above the switch-agent list for the currently selected agent.",
 			},
 		],
 	},
