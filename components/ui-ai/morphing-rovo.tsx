@@ -66,7 +66,7 @@ export interface MorphingRovoShapeProps {
 	size?: number;
 	/** Duration per morph step in seconds. @default 0.6 */
 	duration?: number;
-	/** Easing function for each morph transition. @default "backOut" */
+	/** Easing function for each morph transition. @default "easeInOut" */
 	ease?: string;
 	/** Clockwise rotation in degrees applied during each morph step. @default 180 */
 	rotationPerStep?: number;
@@ -84,7 +84,7 @@ export interface MorphingRovoShapeProps {
 export function MorphingRovoShape({
 	size = 32,
 	duration = 0.6,
-	ease = "backOut",
+	ease = "easeInOut",
 	rotationPerStep = 180,
 	blur = 2,
 	className,
