@@ -109,6 +109,17 @@ test("AgentsView opens generated reports in Rovo Canvas and embeds the active ch
 	assert.doesNotMatch(RFP_REPORT_CANVAS_SOURCE, /RovoChatProvider/u);
 });
 
+test("RFP report canvas keeps first preview fetch visually blank instead of showing preloaders", () => {
+	assert.match(
+		RFP_REPORT_CANVAS_SOURCE,
+		/function resolveRfpReportCanvasStatus\(status: RfpHtmlReportStatus\): RovoCanvasStatus \{[\s\S]*if \(status === "error"\) \{[\s\S]*return "error";[\s\S]*return "ready";[\s\S]*\}/u,
+	);
+	assert.match(RFP_REPORT_CANVAS_SOURCE, /aria-label="Report preview loading"/u);
+	assert.match(RFP_REPORT_CANVAS_SOURCE, /aria-busy="true"/u);
+	assert.doesNotMatch(RFP_REPORT_CANVAS_SOURCE, /return "executing";/u);
+	assert.doesNotMatch(RFP_REPORT_CANVAS_SOURCE, /Rendering vpk-html report/u);
+});
+
 test("AgentsView attaches generated reports through the RFP-101 modal and Sonner notifications", () => {
 	assert.match(AGENTS_VIEW_SOURCE, /import \{ toast \} from "sonner";/u);
 	assert.match(AGENTS_VIEW_SOURCE, /import \{ SONNER_TOAST_AUTO_DISMISS_MS, SonnerToast, Toaster \} from "@\/components\/ui\/sonner";/u);

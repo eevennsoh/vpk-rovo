@@ -231,19 +231,19 @@ export function resolveAssistantThinkingTracePhase({
 		return "thinking";
 	}
 
-	if (hasTurnComplete && !isThinkingLifecycleStreaming) {
-		return "completed";
-	}
-
 	if (!hasBackendThinkingActivity) {
 		return isThinkingLifecycleStreaming ? "preload" : "idle";
+	}
+
+	if (hasWidgetOutput) {
+		return "completed";
 	}
 
 	if (isPostToolsGeneration) {
 		return "thinking";
 	}
 
-	if (hasWidgetOutput) {
+	if (hasTurnComplete && !isThinkingLifecycleStreaming) {
 		return "completed";
 	}
 

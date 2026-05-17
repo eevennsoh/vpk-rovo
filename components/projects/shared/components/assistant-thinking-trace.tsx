@@ -653,7 +653,11 @@ function ThinkingToolCallStep({
 				className: "size-4",
 			})}
 			label={getThinkingToolTitle(toolCall)}
-			description={getThinkingToolByline(toolCall, narration)}
+			description={
+				toolCall.state === "completed"
+					? null
+					: getThinkingToolByline(toolCall, narration)
+			}
 			status={status}
 		>
 			{narration && narration.length > 0 ? <div className="whitespace-pre-wrap text-xs text-text-subtle leading-5">{narration.join("\n\n")}</div> : null}

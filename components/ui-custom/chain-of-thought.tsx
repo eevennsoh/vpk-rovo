@@ -280,7 +280,9 @@ export const ChainOfThoughtStep = memo(
 		const isControlled = open !== undefined;
 		const isOpen = isControlled ? open : uncontrolledOpen;
 		const hasExpandableContent = collapsible && children != null;
-		const resolvedDescription = description ?? getDefaultStepDescription(status);
+		const shouldShowDescription = description !== null;
+		const resolvedDescription =
+			description === undefined ? getDefaultStepDescription(status) : description;
 		const iconNode = iconRender ?? <Icon render={<IconComponent label="" size="small" spacing="none" />} className="size-4" />;
 
 		const handleOpenChange = (nextOpen: boolean) => {
@@ -313,13 +315,13 @@ export const ChainOfThoughtStep = memo(
 							)}
 						/>
 					</span>
-					<CyclingByline>{resolvedDescription}</CyclingByline>
+					{shouldShowDescription ? <CyclingByline>{resolvedDescription}</CyclingByline> : null}
 				</span>
 			</button>
 		) : (
 			<div className="grid min-w-0 gap-0.5">
 				<span className="min-w-0 truncate">{label}</span>
-				<CyclingByline>{resolvedDescription}</CyclingByline>
+				{shouldShowDescription ? <CyclingByline>{resolvedDescription}</CyclingByline> : null}
 			</div>
 		);
 
