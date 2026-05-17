@@ -139,6 +139,7 @@ In VPK feature code, use ADS semantic naming (`bg-surface-raised`, `text-text-su
 - First-time RovoDev bootstrap: run `pnpm run rovodev` (or `acli rovodev`) once, copy the printed `ROVODEV_SESSION_TOKEN` into `.env.local`, then restart the stack
 - Start everything: `pnpm run rovodev` (starts 1 rovodev serve instance + backend + frontend; use `pnpm run rovodev -- 6` for full pool)
 - Start frontend + backend only: `pnpm run dev` (AI Gateway-backed chat works when credentials are configured; RovoDev-selected flows still need RovoDev Serve)
+- Start through explicit Portless routing: `portless run` or `portless run --script rovodev`
 - Start RovoDev Serve only: `pnpm run dev:rovodev`
 - Start frontend only: `pnpm run dev:frontend`
 - Start backend only: `pnpm run dev:backend`
@@ -253,6 +254,7 @@ The following `.agents/rules/` files load automatically when editing matching fi
 
 Start frontend + backend together: `pnpm run dev`
 Start all three locally when the RovoDev CLI is available: `pnpm run rovodev`
+Use `portless run` or `portless run --script rovodev` when you specifically want Portless URLs.
 
 ### Running checks
 

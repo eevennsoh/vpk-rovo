@@ -60,12 +60,6 @@ const bannerGridFadeStyle = {
 		"linear-gradient(90deg, var(--color-surface-raised) 0%, color-mix(in srgb, var(--color-surface-raised) 18%, transparent) 44%)",
 } satisfies CSSProperties;
 
-const statusTextStyles: Record<TwgToolStatus, string> = {
-	active: "text-text-subtle",
-	complete: "text-text-subtle",
-	pending: "text-text-subtlest",
-};
-
 function isThirdPartyProvider(
 	provider: TwgToolSourceProvider
 ): provider is TwgToolThirdPartyProvider {
@@ -245,33 +239,26 @@ export function TwgTool({
 	const hasExpandableContent = children != null && showChevron;
 	const bannerContent = (
 		<>
-			<div className="relative z-10 flex min-w-0 flex-1 flex-col justify-center">
-				<div className="flex min-w-0 items-center gap-1.5">
-					<span className="truncate text-sm font-medium leading-5 text-text-subtle">
-						{title}
-					</span>
+			<span className="relative z-10 grid min-w-0 flex-1 gap-0.5 text-sm text-text-subtle">
+				<span className="inline-flex min-w-0 items-start gap-1.5">
+					<span className="min-w-0 truncate">{title}</span>
 					{showChevron ? (
 						<Icon
 							aria-hidden
 							render={<ChevronRightIcon label="" size="small" spacing="none" />}
 							className={cn(
-								"size-4 shrink-0 text-icon-subtle transition-transform duration-200",
+								"mt-0.5 size-4 shrink-0 text-icon-subtle transition-transform duration-200",
 								hasExpandableContent && "group-data-[open]/twg:rotate-90"
 							)}
 						/>
 					) : null}
-				</div>
+				</span>
 				{description ? (
-					<div
-						className={cn(
-							"flex min-w-0 items-center gap-1 overflow-hidden text-sm leading-5",
-							statusTextStyles[status]
-						)}
-					>
-						<div className="min-w-0 truncate">{description}</div>
-					</div>
+					<span className="block min-h-4 overflow-hidden text-xs leading-4 text-text-subtle">
+						<span className="block truncate">{description}</span>
+					</span>
 				) : null}
-			</div>
+			</span>
 			<TwgToolSourceStack
 				sources={sources}
 				className="relative z-10 max-w-[44%]"
