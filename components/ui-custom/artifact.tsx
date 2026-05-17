@@ -18,13 +18,6 @@ import type { PreviewBody } from "@/components/projects/shared/lib/generative-wi
 import type { VisualIdentity } from "@/components/projects/shared/lib/visual-identity";
 import { resolveArtifactCardIdentity } from "@/components/projects/shared/lib/visual-identity";
 import { Button } from "@/components/ui/button";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
 	Tooltip,
@@ -33,6 +26,7 @@ import {
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
+	ClockIcon,
 	CopyIcon,
 	LoaderCircleIcon,
 	MessageSquarePlusIcon,
@@ -526,6 +520,137 @@ function PendingAnnotationPopover({
 
 const EMPTY_ANNOTATIONS: ArtifactAnnotation[] = [];
 
+type ArtifactVersionHistoryItem = ArtifactDocument["versions"][number];
+
+function isSameLocalDate(a: Date, b: Date): boolean {
+	return a.getFullYear() === b.getFullYear()
+		&& a.getMonth() === b.getMonth()
+		&& a.getDate() === b.getDate();
+}
+
+function getArtifactVersionHistoryGroup(createdAt: string): string {
+	const date = new Date(createdAt);
+
+	if (!Number.isFinite(date.getTime())) {
+		return "Earlier";
+	}
+
+	if (isSameLocalDate(date, new Date())) {
+		return "Today";
+	}
+
+	return new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(date);
+}
+
+function formatArtifactVersionHistoryTimestamp(createdAt: string): string {
+	const date = new Date(createdAt);
+	const timestamp = date.getTime();
+
+	if (!Number.isFinite(timestamp)) {
+		return "Unknown";
+	}
+
+	const diffMs = Date.now() - timestamp;
+	const absoluteDiffMs = Math.abs(diffMs);
+
+	if (absoluteDiffMs < 60_000) {
+		return "Now";
+	}
+
+	if (absoluteDiffMs < 60 * 60_000) {
+		const minutes = Math.max(1, Math.round(absoluteDiffMs / 60_000));
+		return `${minutes} min ago`;
+	}
+
+	if (absoluteDiffMs < 24 * 60 * 60_000) {
+		const hours = Math.max(1, Math.round(absoluteDiffMs / (60 * 60_000)));
+		return `${hours} hr ago`;
+	}
+
+	return new Intl.DateTimeFormat("en-US", {
+		dateStyle: "medium",
+		timeStyle: "short",
+	}).format(date);
+}
+
+function ArtifactVersionHistoryPanel({
+	document,
+	onVersionChange,
+	selectedVersionId,
+}: Readonly<{
+	document: ArtifactDocument;
+	onVersionChange: (versionId: string) => void;
+	selectedVersionId: string | null;
+}>) {
+	const currentVersionId = selectedVersionId ?? document.versions[document.versions.length - 1]?.id ?? null;
+	const groupedVersions = new Map<string, ArtifactVersionHistoryItem[]>();
+
+	for (const version of document.versions.slice().reverse()) {
+		const group = getArtifactVersionHistoryGroup(version.createdAt);
+		groupedVersions.set(group, [...(groupedVersions.get(group) ?? []), version]);
+	}
+
+	return (
+		<aside className="flex w-[280px] shrink-0 flex-col border-border border-l bg-surface-raised">
+			<div className="border-border border-b px-4 py-3">
+				<p className="font-semibold text-sm text-text">Version history</p>
+				<p className="mt-1 text-text-subtle text-xs">Draft activity for this artifact.</p>
+			</div>
+			<div className="min-h-0 flex-1 overflow-auto p-3">
+				{Array.from(groupedVersions.entries()).map(([group, groupVersions]) => (
+					<div key={group} className="mb-4">
+						<p className="px-1 pb-2 font-semibold text-text-subtlest text-xs">{group}</p>
+						<div className="space-y-2">
+							{groupVersions.map((version) => {
+								const isCurrent = version.id === currentVersionId;
+								const versionNumber = getArtifactVersionNumber(document, version.id);
+
+								return (
+									<button
+										key={version.id}
+										type="button"
+										aria-label={formatArtifactVersionLabel({ document, version })}
+										aria-pressed={isCurrent ? true : undefined}
+										onClick={() => onVersionChange(version.id)}
+										className={cn(
+											"w-full rounded-lg border px-3 py-2 text-left transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
+											isCurrent
+												? "border-border-selected bg-bg-selected text-text-selected"
+												: "border-border bg-surface text-text hover:bg-surface-hovered",
+										)}
+									>
+										<span className="flex items-start gap-2">
+											<span className="grid size-7 shrink-0 place-items-center rounded-full bg-bg-neutral font-semibold text-text-subtle text-xs">
+												R
+											</span>
+											<span className="min-w-0">
+												<span className="block truncate font-medium text-sm">
+													{version.changeLabel || `Version ${versionNumber}`}
+												</span>
+												<span className="mt-0.5 block truncate text-text-subtle text-xs">
+													{version.title}
+												</span>
+												<span className="mt-1 block text-text-subtlest text-xs">
+													{formatArtifactVersionHistoryTimestamp(version.createdAt)}
+												</span>
+											</span>
+										</span>
+									</button>
+								);
+							})}
+						</div>
+					</div>
+				))}
+			</div>
+			<div className="border-border border-t px-3 py-3">
+				<Button size="sm" type="button" variant="outline" className="w-full">
+					Show earlier versions
+				</Button>
+			</div>
+		</aside>
+	);
+}
+
 export { type ArtifactDocument } from "@/components/ui-custom/lib/artifact-versions";
 export type { ArtifactAnnotation, PendingArtifactSelection } from "@/components/ui-custom/lib/artifact-annotations";
 
@@ -628,6 +753,9 @@ export function ArtifactPanel({
 		|| mode !== "preview"
 		|| onCursorModeChange === undefined;
 	const outerScrollRef = useRef<HTMLDivElement>(null);
+	const [isVersionHistoryOpen, setVersionHistoryOpen] = useState(false);
+	const hasVersionHistory = !isStreaming && document.versions.length > 0;
+	const shouldShowVersionHistory = hasVersionHistory && isVersionHistoryOpen;
 
 	useEffect(() => {
 		const elements = [outerScrollRef.current, contentRef?.current].filter(Boolean) as HTMLElement[];
@@ -647,9 +775,17 @@ export function ArtifactPanel({
 		};
 	}, [contentRef]);
 
+	useEffect(() => {
+		if (hasVersionHistory) {
+			return;
+		}
+
+		setVersionHistoryOpen(false);
+	}, [hasVersionHistory]);
+
 	return (
 		<div className={cn("flex h-full min-h-0 w-full min-w-0 flex-col bg-background", className)}>
-				<div className="flex flex-wrap items-center justify-between gap-3 border-border border-b bg-background p-3">
+			<div className="flex flex-wrap items-center justify-between gap-3 border-border border-b bg-background p-3">
 				<div className="flex min-w-0 items-center gap-2">
 					<div className="min-w-0">
 						<p className="truncate font-medium text-sm">{selectedVersionTitle}</p>
@@ -658,35 +794,26 @@ export function ArtifactPanel({
 				</div>
 
 				<div className="flex flex-wrap items-center gap-2">
-					{!isStreaming && document.versions.length > 0 ? (
-						<Select
-							onValueChange={(value) => onVersionChange(value)}
-							value={selectedVersion?.id ?? undefined}
-						>
-							<SelectTrigger
-								aria-label="Artifact version"
-								className="h-8 w-auto bg-background"
-							>
-								<SelectValue placeholder="Choose a version">
-									{selectedVersion
-										? `Version ${getArtifactVersionNumber(document, selectedVersion.id)}`
-										: "Choose a version"}
-								</SelectValue>
-							</SelectTrigger>
-							<SelectContent>
-								{document.versions
-									.slice()
-									.reverse()
-									.map((version) => (
-										<SelectItem key={version.id} value={version.id}>
-											{formatArtifactVersionLabel({
-												document,
-												version,
-											})}
-										</SelectItem>
-									))}
-							</SelectContent>
-						</Select>
+					{hasVersionHistory ? (
+						<TooltipProvider>
+							<Tooltip>
+								<TooltipTrigger
+									render={
+										<Button
+											aria-label="Version history"
+											aria-pressed={shouldShowVersionHistory ? true : undefined}
+											onClick={() => setVersionHistoryOpen((value) => !value)}
+											size="icon-sm"
+											type="button"
+											variant="ghost"
+										>
+											<ClockIcon className="size-4" />
+										</Button>
+									}
+								/>
+								<TooltipContent>Version history</TooltipContent>
+							</Tooltip>
+						</TooltipProvider>
 					) : null}
 
 					<Button
@@ -739,9 +866,9 @@ export function ArtifactPanel({
 				</div>
 			</div>
 
-			<div ref={outerScrollRef} className="min-h-0 flex-1 overflow-auto scrollbar-auto-hide bg-background">
+			<div ref={outerScrollRef} className="flex min-h-0 flex-1 overflow-hidden bg-background">
 				{mode === "edit" && !isStreaming ? (
-					<>
+					<div className="flex min-h-0 flex-1 flex-col">
 						<Textarea
 							className="min-h-[50vh] flex-1 resize-none rounded-none border-0 p-4 shadow-none focus-visible:ring-0"
 							onChange={(event) => onDraftChange(event.currentTarget.value)}
@@ -756,11 +883,11 @@ export function ArtifactPanel({
 								Save version
 							</Button>
 						</div>
-					</>
+					</div>
 				) : (
 					<div
 						ref={contentRef}
-						className="relative min-h-0 flex-1 overflow-auto scrollbar-auto-hide py-4 px-6 md:py-6 md:px-6"
+						className="relative flex min-h-0 flex-1 flex-col overflow-auto scrollbar-auto-hide bg-background"
 					>
 						<PreviewBodyRenderer
 							body={resolvedPreviewBody}
@@ -804,6 +931,13 @@ export function ArtifactPanel({
 						) : null}
 					</div>
 				)}
+				{shouldShowVersionHistory ? (
+					<ArtifactVersionHistoryPanel
+						document={document}
+						onVersionChange={onVersionChange}
+						selectedVersionId={selectedVersion?.id ?? null}
+					/>
+				) : null}
 			</div>
 
 			{annotations.length > 0 && onApplyAnnotations ? (

@@ -32,7 +32,11 @@ test("hideFloatingRovo suppresses the layout-owned floating chat surface", () =>
 	);
 	assert.match(
 		PROJECT_LAYOUT_SOURCE,
-		/<AnimatePresence>\s*\{showFloatingRovoButton \? <FloatingRovoButton key="floating-rovo-button" product=\{product\} embedded=\{isEmbedded\} \/> : null\}\s*<\/AnimatePresence>/u,
+		/rovoButtonSuggestion\?: FloatingRovoButtonSuggestion \| null;/u,
+	);
+	assert.match(
+		PROJECT_LAYOUT_SOURCE,
+		/<FloatingRovoButton[\s\S]*key="floating-rovo-button"[\s\S]*product=\{product\}[\s\S]*embedded=\{isEmbedded\}[\s\S]*suggestion=\{rovoButtonSuggestion\}[\s\S]*\/>/u,
 	);
 });
 
@@ -62,6 +66,41 @@ test("Rovo Canvas hides the view switcher for single-view artefacts", () => {
 	);
 });
 
+test("Rovo Canvas renders artefact identity text instead of an artefact dropdown", () => {
+	assert.match(ROVO_CANVAS_SOURCE, /function RovoCanvasArtefactIdentity/u);
+	assert.match(
+		ROVO_CANVAS_SOURCE,
+		/<RovoCanvasArtefactIdentity[\s\S]*label=\{resolvedArtefactLabel\}[\s\S]*metadata=\{artefactMetadata\}/u,
+	);
+	assert.match(
+		ROVO_CANVAS_SOURCE,
+		/<CardDescription className="line-clamp-2 text-xs leading-4">\{metadata\}<\/CardDescription>/u,
+	);
+	assert.match(
+		ROVO_CANVAS_SOURCE,
+		/className="grid min-h-\[60px\] shrink-0 grid-cols-\[minmax\(0,1fr\)_auto_minmax\(0,1fr\)\] items-center border-b border-border bg-surface px-4 py-3"/u,
+	);
+	assert.doesNotMatch(ROVO_CANVAS_SOURCE, /className="grid h-12 shrink-0/u);
+	assert.doesNotMatch(ROVO_CANVAS_SOURCE, /aria-label="Choose artefact surface"/u);
+	assert.doesNotMatch(ROVO_CANVAS_SOURCE, /DropdownMenuTrigger[\s\S]*resolvedArtefactLabel/u);
+});
+
+test("Rovo Canvas version history entries expose selected state and selection callbacks", () => {
+	assert.match(ROVO_CANVAS_SOURCE, /onVersionSelect\?: \(versionId: string\) => void;/u);
+	assert.match(
+		ROVO_CANVAS_SOURCE,
+		/function VersionHistoryPanel\(\{[\s\S]*onVersionSelect,[\s\S]*versions,/u,
+	);
+	assert.match(
+		ROVO_CANVAS_SOURCE,
+		/aria-pressed=\{version\.isCurrent \? true : undefined\}[\s\S]*onClick=\{\(\) => onVersionSelect\?\.\(version\.id\)\}/u,
+	);
+	assert.match(
+		ROVO_CANVAS_SOURCE,
+		/<VersionHistoryPanel[\s\S]*onVersionSelect=\{onVersionSelect\}[\s\S]*versions=\{versionHistory\}/u,
+	);
+});
+
 test("Rovo Canvas main artefact frame uses a border without elevation", () => {
 	assert.match(
 		ROVO_CANVAS_SOURCE,
@@ -76,11 +115,42 @@ test("Rovo Canvas main artefact frame uses a border without elevation", () => {
 test("floating Rovo button has an exit transition for canvas handoff", () => {
 	assert.match(
 		FLOATING_ROVO_BUTTON_SOURCE,
-		/import \{ motion \} from "motion\/react";/u,
+		/import \{ AnimatePresence, motion \} from "motion\/react";/u,
 	);
 	assert.match(
 		FLOATING_ROVO_BUTTON_SOURCE,
 		/<motion\.button[\s\S]*exit=\{\{ opacity: 0, scale: 0\.92, y: 8 \}\}[\s\S]*whileHover=\{\{ scale: 1\.1 \}\}/u,
+	);
+});
+
+test("floating Rovo button can render a collapsed proactive suggestion nudge", () => {
+	assert.match(
+		FLOATING_ROVO_BUTTON_SOURCE,
+		/export interface FloatingRovoButtonSuggestion \{[\s\S]*id: string;[\s\S]*label: string;[\s\S]*onSelect: \(\) => void;[\s\S]*onDismiss\?: \(\) => void;/u,
+	);
+	assert.match(
+		FLOATING_ROVO_BUTTON_SOURCE,
+		/import AiAgentIcon from "@atlaskit\/icon\/core\/ai-agent";/u,
+	);
+	assert.match(
+		FLOATING_ROVO_BUTTON_SOURCE,
+		/import CrossIcon from "@atlaskit\/icon\/core\/cross";/u,
+	);
+	assert.match(
+		FLOATING_ROVO_BUTTON_SOURCE,
+		/className="fixed right-\[84px\] bottom-7 z-\[510\] flex w-\[420px\] max-w-\[calc\(100vw-112px\)\] origin-right items-center justify-between overflow-hidden rounded-lg p-1 text-text-inverse"/u,
+	);
+	assert.match(
+		FLOATING_ROVO_BUTTON_SOURCE,
+		/initial=\{\{ opacity: 0, scaleX: 0\.24, x: 52 \}\}[\s\S]*animate=\{\{ opacity: 1, scaleX: 1, x: 0 \}\}[\s\S]*exit=\{\{ opacity: 0, scaleX: 0\.24, x: 52 \}\}/u,
+	);
+	assert.match(
+		FLOATING_ROVO_BUTTON_SOURCE,
+		/backgroundColor: token\("color\.background\.neutral\.bold"\)[\s\S]*boxShadow: token\("elevation\.shadow\.overlay"\)/u,
+	);
+	assert.match(
+		FLOATING_ROVO_BUTTON_SOURCE,
+		/\{suggestion && shouldShowButton \? \([\s\S]*<FloatingRovoButtonNudge key=\{suggestion\.id\} suggestion=\{suggestion\} \/>[\s\S]*\) : null\}/u,
 	);
 });
 

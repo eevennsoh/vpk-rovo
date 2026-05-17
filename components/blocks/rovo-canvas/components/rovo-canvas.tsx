@@ -2,26 +2,18 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import CheckMarkIcon from "@atlaskit/icon/core/check-mark";
-import ChevronDownIcon from "@atlaskit/icon/core/chevron-down";
 import ClockIcon from "@atlaskit/icon/core/clock";
 import CopyIcon from "@atlaskit/icon/core/copy";
 import CursorIcon from "@atlaskit/icon-lab/core/cursor";
 import RefreshIcon from "@atlaskit/icon/core/refresh";
 
 import { Button } from "@/components/ui/button";
+import { CardDescription } from "@/components/ui/card";
 import {
 	Dialog,
 	DialogContent,
 	DialogDescription,
 } from "@/components/ui/dialog";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuGroup,
-	DropdownMenuItem,
-	DropdownMenuSeparator,
-	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Footer } from "@/components/ui/footer";
 import { Icon as VpkIcon } from "@/components/ui/icon";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
@@ -107,10 +99,12 @@ export interface RovoCanvasProps {
 	defaultViewId?: string;
 	onViewChange?: (viewId: string) => void;
 	artefactLabel?: string;
+	artefactMetadata?: string;
 	rightRail?: ReactNode;
 	footer?: ReactNode;
 	feedbackBanner?: ReactNode;
 	versionHistory?: ReadonlyArray<RovoCanvasVersion>;
+	onVersionSelect?: (versionId: string) => void;
 	onRefresh?: (viewId: string) => void;
 	onCopy?: (view: RovoCanvasView) => void;
 	onSelectModeChange?: (isSelectMode: boolean) => void;
@@ -235,6 +229,23 @@ function isWorkingStatus(status: RovoCanvasStatus): boolean {
 
 function getRovoCanvasDefaultCopyText(): string {
 	return "";
+}
+
+function RovoCanvasArtefactIdentity({
+	label,
+	metadata,
+}: Readonly<{
+	label: string;
+	metadata?: string;
+}>): React.ReactElement {
+	return (
+		<div className="min-w-0">
+			<p className="truncate font-medium text-sm">{label}</p>
+			{metadata ? (
+				<CardDescription className="line-clamp-2 text-xs leading-4">{metadata}</CardDescription>
+			) : null}
+		</div>
+	);
 }
 
 function useControllableOpen({
@@ -420,8 +431,10 @@ function RovoCanvasDefaultView({
 }
 
 function VersionHistoryPanel({
+	onVersionSelect,
 	versions,
 }: Readonly<{
+	onVersionSelect?: (versionId: string) => void;
 	versions: ReadonlyArray<RovoCanvasVersion>;
 }>): React.ReactElement {
 	const groupedVersions = useMemo(() => {
@@ -450,6 +463,9 @@ function VersionHistoryPanel({
 								<button
 									key={version.id}
 									type="button"
+									aria-label={`Select ${version.label}`}
+									aria-pressed={version.isCurrent ? true : undefined}
+									onClick={() => onVersionSelect?.(version.id)}
 									className={cn(
 										"w-full rounded-lg border px-3 py-2 text-left transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
 										version.isCurrent
@@ -551,10 +567,12 @@ export function RovoCanvas({
 	defaultViewId,
 	onViewChange,
 	artefactLabel,
+	artefactMetadata,
 	rightRail,
 	footer,
 	feedbackBanner,
 	versionHistory = DEFAULT_VERSIONS,
+	onVersionSelect,
 	onRefresh,
 	onCopy,
 	onSelectModeChange,
@@ -666,7 +684,7 @@ export function RovoCanvas({
 			<DialogContent
 				showCloseButton={false}
 				className={cn(
-					"top-16 right-4 bottom-4 left-4 flex h-auto w-auto !max-w-none translate-x-0 translate-y-0 gap-0 overflow-hidden rounded-2xl bg-surface-sunken p-4 sm:!max-w-none",
+					"top-16 right-4 bottom-4 left-4 flex h-auto w-auto !max-w-none translate-x-0 translate-y-0 gap-0 overflow-hidden rounded-2xl bg-surface-sunken px-4 pt-2 pb-4 sm:!max-w-none",
 					"data-open:zoom-in-100 data-closed:zoom-out-100",
 					className,
 				)}
@@ -692,33 +710,11 @@ export function RovoCanvas({
 									onValueChange={setActiveViewId}
 									className="flex size-full min-h-0 gap-0"
 								>
-									<div className="grid h-12 shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center border-b border-border bg-surface px-4">
-										<DropdownMenu>
-											<DropdownMenuTrigger
-												render={
-													<Button
-														aria-label="Choose artefact surface"
-														className="min-w-0 justify-self-start px-2"
-														size="sm"
-														variant="ghost"
-													>
-														<span className="truncate">{resolvedArtefactLabel}</span>
-														<VpkIcon render={<ChevronDownIcon label="" />} className="size-4 shrink-0" />
-													</Button>
-												}
-											/>
-											<DropdownMenuContent align="start" className="w-52">
-												<DropdownMenuGroup>
-													<DropdownMenuItem>Rename</DropdownMenuItem>
-													<DropdownMenuItem>Duplicate</DropdownMenuItem>
-													<DropdownMenuItem>Save as app</DropdownMenuItem>
-												</DropdownMenuGroup>
-												<DropdownMenuSeparator />
-												<DropdownMenuGroup>
-													<DropdownMenuItem>Open version history</DropdownMenuItem>
-												</DropdownMenuGroup>
-											</DropdownMenuContent>
-										</DropdownMenu>
+									<div className="grid min-h-[60px] shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center border-b border-border bg-surface px-4 py-3">
+										<RovoCanvasArtefactIdentity
+											label={resolvedArtefactLabel}
+											metadata={artefactMetadata}
+										/>
 										{resolvedViews.length > 1 ? (
 											<RovoCanvasViewSwitcher views={resolvedViews} />
 										) : (
@@ -752,14 +748,22 @@ export function RovoCanvas({
 											{isWorkingStatus(status) ? <LoadingScreen /> : null}
 										</div>
 										{shouldShowVersionHistory ? (
-											<VersionHistoryPanel versions={versionHistory} />
+											<VersionHistoryPanel
+												onVersionSelect={onVersionSelect}
+												versions={versionHistory}
+											/>
 										) : null}
 									</div>
 								</Tabs>
 							</section>
 
 							<section className="min-h-[520px] min-w-0 overflow-hidden lg:min-h-0">
-								{rightRail ?? <RovoCanvasRightRail onClose={() => setOpen(false)} />}
+								{rightRail ?? (
+									<RovoCanvasRightRail
+										artifactTitle={title}
+										onClose={() => setOpen(false)}
+									/>
+								)}
 							</section>
 						</div>
 

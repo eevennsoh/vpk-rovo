@@ -226,6 +226,9 @@ const {
 	RFP_DEMO_REPORT_TITLE,
 	RFP_DEMO_QUESTION_TOOL_CALL_ID,
 	buildAgentsRfpDemoAnswerTrace,
+	buildAgentsRfpDemoAgentCreationConfirmationText,
+	buildAgentsRfpDemoAgentCreationTrace,
+	buildAgentsRfpDemoAgentResultPayload,
 	buildAgentsRfpDemoQualificationIntro,
 	buildAgentsRfpDemoQualificationTrace,
 	buildAgentsRfpDemoQuestionCardPayload,
@@ -3988,6 +3991,13 @@ function writeAgentsRfpDemoArtifactResult(writer, artifactDocument) {
 	});
 }
 
+function writeAgentsRfpDemoAgentResult(writer) {
+	writer.write({
+		type: "data-agent-result",
+		data: buildAgentsRfpDemoAgentResultPayload(),
+	});
+}
+
 function writeAgentsRfpDemoTurnComplete(writer, intent = "chat") {
 	writer.write(createRouteDecisionPart({
 		intent,
@@ -4003,6 +4013,18 @@ function writeAgentsRfpDemoTurnComplete(writer, intent = "chat") {
 function streamAgentsRfpDemoChatTurn(res, turn, requestBody) {
 	const stream = createUIMessageStream({
 		execute: async ({ writer }) => {
+			if (turn === "agent-creation") {
+				await writeAgentsRfpDemoTrace(writer, buildAgentsRfpDemoAgentCreationTrace());
+				writeAgentsRfpDemoAgentResult(writer);
+				writeAgentsRfpDemoText(
+					writer,
+					`agents-rfp-demo-agent-created-${Date.now()}`,
+					buildAgentsRfpDemoAgentCreationConfirmationText(),
+				);
+				writeAgentsRfpDemoTurnComplete(writer);
+				return;
+			}
+
 			if (turn === "qualification-answer") {
 				await writeAgentsRfpDemoTrace(writer, buildAgentsRfpDemoAnswerTrace());
 				const artifactDocument = await createAgentsRfpDemoReportArtifact(requestBody);

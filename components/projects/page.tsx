@@ -6,6 +6,7 @@ import { token } from "@/lib/tokens";
 import TopNavigation from "@/components/blocks/top-navigation/page";
 import Sidebar from "@/components/blocks/product-sidebar/page";
 import FloatingRovoButton from "@/components/projects/shared/components/floating-rovo-button";
+import type { FloatingRovoButtonSuggestion } from "@/components/projects/shared/components/floating-rovo-button";
 import ChatPanel from "@/components/projects/sidebar-chat/page";
 import type { ChatPanelGreetingProps } from "@/components/projects/sidebar-chat/page";
 import RovoFloatingChat from "@/components/projects/rovo-floating-chat/components/rovo-floating-chat";
@@ -27,6 +28,7 @@ interface AppLayoutProps {
 	onChatSurfaceSwitch?: ChatSurfaceSwitchHandler;
 	chatContextBar?: ChatContextBarDescriptor | null;
 	chatGreeting?: ChatPanelGreetingProps;
+	rovoButtonSuggestion?: FloatingRovoButtonSuggestion | null;
 	onArtifactDialogOpen?: () => void;
 	preserveFloatingSurfaceOnArtifactDialogOpen?: boolean;
 	/**
@@ -123,6 +125,7 @@ export default function AppLayout({
 	onChatSurfaceSwitch,
 	chatContextBar,
 	chatGreeting,
+	rovoButtonSuggestion,
 	onArtifactDialogOpen,
 	preserveFloatingSurfaceOnArtifactDialogOpen = false,
 	chatPanelFlush = false,
@@ -248,7 +251,14 @@ export default function AppLayout({
 			{/* Floating Rovo Button */}
 			<div data-shell-chrome="">
 				<AnimatePresence>
-					{showFloatingRovoButton ? <FloatingRovoButton key="floating-rovo-button" product={product} embedded={isEmbedded} /> : null}
+					{showFloatingRovoButton ? (
+						<FloatingRovoButton
+							key="floating-rovo-button"
+							product={product}
+							embedded={isEmbedded}
+							suggestion={rovoButtonSuggestion}
+						/>
+					) : null}
 				</AnimatePresence>
 			</div>
 		</div>

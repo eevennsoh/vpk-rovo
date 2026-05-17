@@ -2119,7 +2119,7 @@ export function RovoAppShell({ embedded = false, initialThreadId = null }: Reado
 				className={cn(
 					"z-10 mx-auto flex min-w-0 w-full flex-col gap-3 overflow-visible",
 					!showHomeState && "sticky bottom-0 bg-background/90 backdrop-blur",
-					isArtifactOpen ? "max-w-none" : "max-w-[800px]",
+					isArtifactOpen ? "max-w-none px-3" : "max-w-[800px]",
 				)}
 			>
 				{realtimeStatusMessage ? <div className="px-1 text-text-subtle text-xs">{realtimeStatusMessage}</div> : null}

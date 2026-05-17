@@ -25,6 +25,7 @@ import { RFP_101_WORK_ITEM, getAgentsWorkItemForCard } from "./data/rfp-work-ite
 import type { AgentsRfpDemoController } from "./hooks/use-agents-rfp-demo-state";
 import type { AgentsWorkItemPresentationController } from "./hooks/use-agents-work-item-presentation";
 import {
+	GENERATED_RFP_REPORT_ATTACHMENT_ID,
 	RFP_DRAFTING_AGENT_ID,
 	formatRfpDemoContext,
 	getGeneratedRfpAttachments,
@@ -47,13 +48,6 @@ template and prior JSM pilot notes.`;
 const RFP_REPORT_PROMPT = "Create an offline HTML report from this work item that I can attach back to the RFP.";
 const RFP_REPORT_REFINE_PROMPT = "Make the executive summary more customer-facing and add a stronger risk note for legal and data residency review.";
 const AGENTS_RFP_DEMO_TOASTER_ID = "agents-rfp-demo-notifications";
-const RFP_AGENT_CREATION_PROMPT = `Create an RFP Drafting Agent for the Drafting column on the Enterprise RFP Response board.
-
-The agent should read each RFP work item, inspect attachments and subtasks,
-use Teamwork Graph to find related account memory and reusable response assets,
-ask missing qualification questions, draft a response strategy, generate an
-HTML report with vpk-html, stage a PDF export, and wait for human approval
-before attaching the report or moving the ticket forward.`;
 
 interface DraggedCardState {
 	card: KanbanBoardCardData;
@@ -63,6 +57,9 @@ interface DraggedCardState {
 interface AgentsViewProps {
 	rfpDemo: AgentsRfpDemoController;
 	workItemPresentation: AgentsWorkItemPresentationController;
+	isAgentDetailsOpen: boolean;
+	onAgentDetailsOpenChange: (open: boolean) => void;
+	onCreateRfpDraftingAgent: () => void;
 	chatContextBar?: ChatContextBarDescriptor | null;
 	chatGreeting?: ChatPanelGreetingProps;
 }
@@ -70,13 +67,17 @@ interface AgentsViewProps {
 export default function AgentsView({
 	rfpDemo,
 	workItemPresentation,
+	isAgentDetailsOpen,
+	onAgentDetailsOpenChange,
+	onCreateRfpDraftingAgent,
 	chatContextBar,
 	chatGreeting,
 }: Readonly<AgentsViewProps>) {
 	const [selectedTab, setSelectedTab] = useState(1);
-	const [isAgentDetailsOpen, setIsAgentDetailsOpen] = useState(false);
 	const [isStagedTraceVisible, setIsStagedTraceVisible] = useState(false);
+	const [attachmentHighlight, setAttachmentHighlight] = useState<{ id: string; key: number } | null>(null);
 	const [previewAttachment, setPreviewAttachment] = useState<WorkItemAttachment | null>(null);
+	const nextAttachmentHighlightKeyRef = useRef(0);
 	const visibleToastIdsRef = useRef<Set<string>>(new Set());
 	const {
 		closeChat,
@@ -246,7 +247,7 @@ export default function AgentsView({
 
 	const handleCreateColumnAgent = (columnTitle: string) => {
 		if (columnTitle === "Drafting") {
-			handleCreateRfpDraftingAgent();
+			onCreateRfpDraftingAgent();
 			return;
 		}
 
@@ -307,23 +308,19 @@ export default function AgentsView({
 		void sendPrompt(RFP_REPORT_REFINE_PROMPT, buildDemoPromptOptions());
 	};
 
-	function handleCreateRfpDraftingAgent(): void {
-		rfpDemo.actions.createAgent();
-		setIsAgentDetailsOpen(true);
-		openChat("floating");
-		void sendPrompt(RFP_AGENT_CREATION_PROMPT, {
-			...buildDemoPromptOptions(),
-			creationMode: "agent",
-		});
-	}
-
 	const handleScheduleAgent = () => {
 		rfpDemo.actions.scheduleAgent();
-		setIsAgentDetailsOpen(true);
+		onAgentDetailsOpenChange(true);
 	};
 
 	const handleAttachReport = (reportPreviewHtml?: string) => {
 		rfpDemo.actions.attachReport(reportPreviewHtml);
+		closeChat();
+		nextAttachmentHighlightKeyRef.current += 1;
+		setAttachmentHighlight({
+			id: GENERATED_RFP_REPORT_ATTACHMENT_ID,
+			key: nextAttachmentHighlightKeyRef.current,
+		});
 		workItemPresentation.openModal(RFP_101_WORK_ITEM);
 	};
 
@@ -352,8 +349,10 @@ export default function AgentsView({
 					flexDirection: "column",
 				}}
 			>
-					<AgentsWorkItemInlinePage
-						workItem={selectedWorkItem}
+				<AgentsWorkItemInlinePage
+					workItem={selectedWorkItem}
+					highlightedAttachmentId={attachmentHighlight?.id}
+					highlightedAttachmentKey={attachmentHighlight?.key}
 					onBackToBoard={workItemPresentation.backToBoard}
 				/>
 			</div>
@@ -388,15 +387,16 @@ export default function AgentsView({
 						onApproveReport={rfpDemo.actions.approveReport}
 						onExportPdf={rfpDemo.actions.exportPdf}
 						onAttachReport={handleAttachReport}
-						onCreateAgent={handleCreateRfpDraftingAgent}
+						onCreateAgent={onCreateRfpDraftingAgent}
 						onScheduleAgent={handleScheduleAgent}
-						onOpenAgentDetails={() => setIsAgentDetailsOpen(true)}
+						onOpenAgentDetails={() => onAgentDetailsOpenChange(true)}
 						onMoveRfp101ToReview={() => rfpDemo.actions.moveCard("RFP-101", "Review")}
 						onMoveRfp102ToDrafting={() => rfpDemo.actions.moveCard("RFP-102", "Drafting")}
 						onReset={() => {
 							rfpDemo.actions.reset();
 							setIsStagedTraceVisible(false);
-							setIsAgentDetailsOpen(false);
+							onAgentDetailsOpenChange(false);
+							setAttachmentHighlight(null);
 							setPreviewAttachment(null);
 						}}
 					/>
@@ -424,12 +424,13 @@ export default function AgentsView({
 				isOpen={isModalOpen}
 				onClose={handleModalClose}
 				onAttachmentOpen={handleAttachmentOpen}
+				highlightedAttachmentId={attachmentHighlight?.id}
+				highlightedAttachmentKey={attachmentHighlight?.key}
 				workItem={selectedWorkItem}
 			/>
 			<RfpReportCanvas
 				state={rfpDemo.state}
 				actions={rfpDemo.actions}
-				onCreateAgent={handleCreateRfpDraftingAgent}
 				onAttachReport={handleAttachReport}
 				chatContextBar={chatContextBar}
 				chatGreeting={chatGreeting}
@@ -437,7 +438,7 @@ export default function AgentsView({
 			<RfpAgentDetailsSheet
 				open={isAgentDetailsOpen}
 				state={rfpDemo.state}
-				onOpenChange={setIsAgentDetailsOpen}
+				onOpenChange={onAgentDetailsOpenChange}
 			/>
 			<RfpAttachmentPreviewDialog
 				attachment={previewAttachment}

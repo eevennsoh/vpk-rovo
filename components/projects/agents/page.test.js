@@ -53,12 +53,33 @@ test("AgentsView opens generated reports in Rovo Canvas and embeds the active ch
 	);
 	assert.match(
 		RFP_REPORT_CANVAS_SOURCE,
-		/<ChatPanel[\s\S]*headerVariant="minimal"[\s\S]*enableSmartWidgets[\s\S]*abortOnUnmount=\{false\}[\s\S]*chatContextBar=\{chatContextBar\}[\s\S]*greeting=\{chatGreeting\}/u,
+		/const editContextBar: ChatContextBarDescriptor = \{[\s\S]*iconName: "artifact"[\s\S]*label: RFP_REPORT_ARTIFACT_TITLE[\s\S]*variant: "edit"[\s\S]*\};/u,
 	);
 	assert.match(
 		RFP_REPORT_CANVAS_SOURCE,
-		/rightRail=\{[\s\S]*<RfpReportCanvasChatRail[\s\S]*onClose=\{\(\) => actions\.setCanvasOpen\(false\)\}/u,
+		/RFP_REPORT_ARTIFACT_METADATA = "HTML report \\u2022 Version 1"/u,
 	);
+	assert.match(
+		RFP_REPORT_CANVAS_SOURCE,
+		/artefactLabel=\{RFP_REPORT_ARTIFACT_TITLE\}[\s\S]*artefactMetadata=\{RFP_REPORT_ARTIFACT_METADATA\}/u,
+	);
+	assert.match(
+		RFP_REPORT_CANVAS_SOURCE,
+		/onVersionSelect=\{actions\.selectReportVersion\}/u,
+	);
+	assert.doesNotMatch(RFP_REPORT_CANVAS_SOURCE, /artefactLabel="Rovo Canvas report"/u);
+	assert.match(
+		RFP_REPORT_CANVAS_SOURCE,
+		/<ChatPanel[\s\S]*hideHeader[\s\S]*enableSmartWidgets[\s\S]*abortOnUnmount=\{false\}[\s\S]*chatContextBar=\{editContextBar\}[\s\S]*greeting=\{chatGreeting\}/u,
+	);
+	assert.match(
+		RFP_REPORT_CANVAS_SOURCE,
+		/rightRail=\{[\s\S]*<RfpReportCanvasChatRail[\s\S]*chatContextBar=\{chatContextBar\}[\s\S]*chatGreeting=\{chatGreeting\}[\s\S]*onClose=\{\(\) => actions\.setCanvasOpen\(false\)\}/u,
+	);
+	assert.doesNotMatch(RFP_REPORT_CANVAS_SOURCE, /RfpAgentProposalBanner/u);
+	assert.doesNotMatch(RFP_REPORT_CANVAS_SOURCE, /feedbackBanner=/u);
+	assert.doesNotMatch(RFP_REPORT_CANVAS_SOURCE, /This RFP workflow looks repeatable/u);
+	assert.doesNotMatch(RFP_REPORT_CANVAS_SOURCE, /headerVariant="minimal"/u);
 	assert.match(
 		RFP_REPORT_CANVAS_SOURCE,
 		/useRfpHtmlReportPreview\(state\)/u,
@@ -91,14 +112,20 @@ test("AgentsView opens generated reports in Rovo Canvas and embeds the active ch
 test("AgentsView attaches generated reports through the RFP-101 modal and Sonner notifications", () => {
 	assert.match(AGENTS_VIEW_SOURCE, /import \{ toast \} from "sonner";/u);
 	assert.match(AGENTS_VIEW_SOURCE, /import \{ SonnerToast, Toaster \} from "@\/components\/ui\/sonner";/u);
+	assert.match(AGENTS_VIEW_SOURCE, /GENERATED_RFP_REPORT_ATTACHMENT_ID/u);
 	assert.match(
 		AGENTS_VIEW_SOURCE,
-		/const handleAttachReport = \(reportPreviewHtml\?: string\) => \{[\s\S]*rfpDemo\.actions\.attachReport\(reportPreviewHtml\);[\s\S]*workItemPresentation\.openModal\(RFP_101_WORK_ITEM\);[\s\S]*\};/u,
+		/const handleAttachReport = \(reportPreviewHtml\?: string\) => \{[\s\S]*rfpDemo\.actions\.attachReport\(reportPreviewHtml\);[\s\S]*closeChat\(\);[\s\S]*setAttachmentHighlight\(\{[\s\S]*id: GENERATED_RFP_REPORT_ATTACHMENT_ID,[\s\S]*workItemPresentation\.openModal\(RFP_101_WORK_ITEM\);[\s\S]*\};/u,
+	);
+	assert.match(
+		AGENTS_VIEW_SOURCE,
+		/<JiraWorkItemModal[\s\S]*highlightedAttachmentId=\{attachmentHighlight\?\.id\}[\s\S]*highlightedAttachmentKey=\{attachmentHighlight\?\.key\}/u,
 	);
 	assert.match(AGENTS_VIEW_SOURCE, /<Toaster id=\{AGENTS_RFP_DEMO_TOASTER_ID\} position="bottom-left" expand=\{true\} \/>/u);
 	assert.match(AGENTS_VIEW_SOURCE, /toast\.custom\([\s\S]*<SonnerToast[\s\S]*dismissible=\{true\}/u);
 	assert.match(AGENTS_VIEW_SOURCE, /previewHtml: generatedReportPreviewHtml/u);
 	assert.doesNotMatch(AGENTS_VIEW_SOURCE, /pointer-events-none fixed right-4 bottom-4/u);
+	assert.match(RFP_REPORT_CANVAS_SOURCE, /primaryActionLabel="Add PDF to RFP-101"/u);
 	assert.match(
 		RFP_REPORT_CANVAS_SOURCE,
 		/onPrimaryAction=\{\(\) => \(onAttachReport \?\? actions\.attachReport\)\(reportPreview\.html \?\? undefined\)\}/u,
@@ -112,7 +139,7 @@ test("AgentsView renders selected work item inline after promotion", () => {
 	);
 	assert.match(
 		AGENTS_VIEW_SOURCE,
-		/if\s*\(\s*presentationState\.mode\s*===\s*"inline"\s*&&\s*selectedWorkItem\s*\)\s*\{[\s\S]*<AgentsWorkItemInlinePage[\s\S]*workItem=\{selectedWorkItem\}[\s\S]*onBackToBoard=\{workItemPresentation\.backToBoard\}/u,
+		/if\s*\(\s*presentationState\.mode\s*===\s*"inline"\s*&&\s*selectedWorkItem\s*\)\s*\{[\s\S]*<AgentsWorkItemInlinePage[\s\S]*workItem=\{selectedWorkItem\}[\s\S]*highlightedAttachmentId=\{attachmentHighlight\?\.id\}[\s\S]*onBackToBoard=\{workItemPresentation\.backToBoard\}/u,
 	);
 });
 
@@ -139,7 +166,27 @@ test("AgentsView keeps column agent assignment state local to the board", () => 
 	);
 });
 
-test("AgentsView create-agent CTA opens Rovo chat in agent creation mode", () => {
+test("AgentsView delegates RFP Drafting agent creation and keeps generic column creation local", () => {
+	assert.match(
+		AGENTS_VIEW_SOURCE,
+		/onCreateRfpDraftingAgent: \(\) => void;/u,
+	);
+	assert.match(
+		AGENTS_VIEW_SOURCE,
+		/if \(columnTitle === "Drafting"\) \{\s*onCreateRfpDraftingAgent\(\);\s*return;\s*\}/u,
+	);
+	assert.match(
+		AGENTS_VIEW_SOURCE,
+		/onCreateAgent=\{onCreateRfpDraftingAgent\}/u,
+	);
+	assert.match(
+		AGENTS_VIEW_SOURCE,
+		/onOpenAgentDetails=\{\(\) => onAgentDetailsOpenChange\(true\)\}/u,
+	);
+	assert.match(
+		AGENTS_VIEW_SOURCE,
+		/<RfpAgentDetailsSheet[\s\S]*open=\{isAgentDetailsOpen\}[\s\S]*onOpenChange=\{onAgentDetailsOpenChange\}/u,
+	);
 	assert.match(
 		AGENTS_VIEW_SOURCE,
 		/\bopenChat\("floating"\);/u,
@@ -148,16 +195,17 @@ test("AgentsView create-agent CTA opens Rovo chat in agent creation mode", () =>
 		AGENTS_VIEW_SOURCE,
 		/sendPrompt\([\s\S]*Create an agent for the \$\{columnTitle\} column[\s\S]*creationMode:\s*"agent"[\s\S]*contextDescription/u,
 	);
-	assert.match(
-		AGENTS_VIEW_SOURCE,
-		/RFP_AGENT_CREATION_PROMPT[\s\S]*creationMode:\s*"agent"/u,
-	);
+	assert.doesNotMatch(AGENTS_VIEW_SOURCE, /RFP_AGENT_CREATION_PROMPT/u);
 });
 
-test("RFP report canvas marks refined copy from version history, not terminal report stage", () => {
+test("RFP report canvas marks refined copy from the selected version, not terminal report stage", () => {
 	assert.match(
 		RFP_REPORT_CANVAS_SOURCE,
-		/state\.report\.versions\.some\(\(version\) => version\.id === "refined-current-report"\)/u,
+		/state\.report\.currentVersionId[\s\S]*state\.report\.versions\[state\.report\.versions\.length - 1\]\?\.id/u,
+	);
+	assert.match(
+		RFP_REPORT_CANVAS_SOURCE,
+		/selectedVersionId === "refined-current-report"/u,
 	);
 	assert.doesNotMatch(
 		RFP_REPORT_CANVAS_SOURCE,

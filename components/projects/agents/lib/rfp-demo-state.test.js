@@ -10,6 +10,7 @@ async function loadRfpDemoStateHarness() {
 			contents: `
 				export {
 					AGENTS_RFP_DEMO_STORAGE_KEY,
+					GENERATED_RFP_REPORT_ATTACHMENT_ID,
 					RFP_DRAFTING_AGENT_ID,
 					attachRfpReportToWorkItem,
 					approveRfpReport,
@@ -24,6 +25,7 @@ async function loadRfpDemoStateHarness() {
 					refineRfpReport,
 					resolveRfpDemoBoardColumns,
 					scheduleRfpDraftingAgent,
+					selectRfpReportVersion,
 				} from "./components/projects/agents/lib/rfp-demo-state";
 			`,
 			loader: "ts",
@@ -66,7 +68,7 @@ test("valid localStorage payload resumes board, report, agent, schedule, and act
 	assert.equal(resumed.customAgentActivity.length, 3);
 	assert.deepEqual(
 		harness.getGeneratedRfpAttachments(resumed, "RFP-101").map((attachment) => attachment.displayName),
-		["RFP response strategy.html", "RFP response strategy.pdf"],
+		["RFP response strategy.pdf"],
 	);
 });
 
@@ -80,6 +82,7 @@ test("report stages advance through generated, refined, approved, pdf-exported, 
 	const refined = harness.refineRfpReport(generated);
 	assert.equal(refined.report.stage, "refined");
 	assert.equal(refined.canvas.activeViewId, "report");
+	assert.equal(refined.report.currentVersionId, "refined-current-report");
 	assert.deepEqual(
 		refined.report.versions.map((version) => version.label),
 		["Initial generated report", "Refined current report"],
@@ -98,8 +101,34 @@ test("report stages advance through generated, refined, approved, pdf-exported, 
 	assert.equal(attached.canvas.activeViewId, "report");
 	assert.deepEqual(
 		harness.getGeneratedRfpAttachments(attached, "RFP-101").map((attachment) => attachment.previewKind),
-		["html-report", "pdf-preview"],
+		["pdf-preview"],
 	);
+	assert.deepEqual(
+		harness.getGeneratedRfpAttachments(attached, "RFP-101").map((attachment) => attachment.id),
+		[harness.GENERATED_RFP_REPORT_ATTACHMENT_ID],
+	);
+	assert.deepEqual(attached.toasts.map((toast) => toast.message), ["Added PDF to RFP-101."]);
+});
+
+test("selecting a report version updates the current version only for known versions", async () => {
+	const harness = await loadRfpDemoStateHarness();
+	const refined = harness.refineRfpReport(harness.createDefaultAgentsRfpDemoState());
+	const initialSelected = harness.selectRfpReportVersion(refined, "initial-generated-report");
+
+	assert.equal(initialSelected.report.currentVersionId, "initial-generated-report");
+	assert.strictEqual(
+		harness.selectRfpReportVersion(initialSelected, "missing-version"),
+		initialSelected,
+	);
+});
+
+test("attaching the report collapses report confirmations to the final PDF toast", async () => {
+	const harness = await loadRfpDemoStateHarness();
+	const approved = harness.approveRfpReport(harness.refineRfpReport(harness.createDefaultAgentsRfpDemoState()));
+	const exported = harness.exportRfpReportPdf(approved);
+	const attached = harness.attachRfpReportToWorkItem(exported);
+
+	assert.deepEqual(attached.toasts.map((toast) => toast.message), ["Added PDF to RFP-101."]);
 });
 
 test("agent creation is idempotent and assigns Drafting without retroactively assigning RFP-101", async () => {

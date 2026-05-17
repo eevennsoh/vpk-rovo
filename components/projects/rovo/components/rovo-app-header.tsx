@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -20,6 +19,7 @@ import SkillIcon from "@atlaskit/icon-lab/core/skill";
 import ShapesIcon from "@atlaskit/icon/core/shapes";
 import ShowMoreHorizontalIcon from "@atlaskit/icon/core/show-more-horizontal";
 import { CONTROL_PLANE_HEADER_SURFACES } from "@/components/projects/control-plane/lib/control-plane-data";
+import { RovoAppBrand } from "./rovo-app-brand";
 
 interface ArtifactMenuItem {
 	id: string;
@@ -48,26 +48,6 @@ function getControlPlaneHeaderSurfaceIcon(label: string) {
 	}
 
 	return <SettingsIcon size="medium" />;
-}
-
-function RovoAppBrand() {
-	return (
-		<div className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2 text-sm font-medium text-text">
-			<span
-				aria-hidden
-				data-icon="inline-start"
-				className="flex size-4 items-center justify-center"
-			>
-				<Image
-					src="/1p/rovo.svg"
-					alt=""
-					width={16}
-					height={16}
-				/>
-			</span>
-			<span className="font-semibold">Rovo</span>
-		</div>
-	);
 }
 
 export function RovoAppHeader({

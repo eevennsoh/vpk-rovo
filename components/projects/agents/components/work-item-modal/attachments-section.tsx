@@ -1,8 +1,10 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import Image from "next/image";
 
 import { token } from "@/lib/tokens";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import Heading from "@/components/blocks/shared-ui/heading";
 import { Badge } from "@/components/ui/badge";
@@ -51,6 +53,7 @@ const ATTACHMENT_FILES: WorkItemAttachment[] = [
 
 interface AttachmentCardProps {
 	file: WorkItemAttachment;
+	isHighlighted?: boolean;
 	onOpen?: (file: WorkItemAttachment) => void;
 }
 
@@ -152,9 +155,10 @@ function renderAttachmentPreview(file: WorkItemAttachment, title: string) {
 	return null;
 }
 
-function AttachmentCard({ file, onOpen }: Readonly<AttachmentCardProps>) {
+function AttachmentCard({ file, isHighlighted = false, onOpen }: Readonly<AttachmentCardProps>) {
 	const title = getAttachmentTitle(file);
 	const canOpenPreview = Boolean(file.previewKind && onOpen);
+	const cardClassName = cn(isHighlighted ? "motion-safe:animate-attachment-added-glow" : null);
 	const containerStyle = {
 		minWidth: 0,
 		borderRadius: token("radius.medium"),
@@ -194,8 +198,9 @@ function AttachmentCard({ file, onOpen }: Readonly<AttachmentCardProps>) {
 			<button
 				type="button"
 				onClick={() => onOpen?.(file)}
-				className="w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+				className={cn("w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/60", cardClassName)}
 				style={containerStyle}
+				data-highlighted-attachment={isHighlighted ? "true" : undefined}
 			>
 				{cardContent}
 			</button>
@@ -203,7 +208,11 @@ function AttachmentCard({ file, onOpen }: Readonly<AttachmentCardProps>) {
 	}
 
 	return (
-		<div style={containerStyle}>
+		<div
+			className={cardClassName}
+			style={containerStyle}
+			data-highlighted-attachment={isHighlighted ? "true" : undefined}
+		>
 			{cardContent}
 		</div>
 	);
@@ -213,9 +222,22 @@ export function AttachmentsSection() {
 	const { meta } = useWorkItemModal();
 	const workItem = meta.workItem;
 	const attachmentFiles = workItem.attachments?.length ? workItem.attachments : ATTACHMENT_FILES;
+	const sectionRef = useRef<HTMLElement | null>(null);
+
+	useEffect(() => {
+		if (!meta.highlightedAttachmentId) {
+			return;
+		}
+
+		sectionRef.current?.scrollIntoView({
+			behavior: "smooth",
+			block: "center",
+		});
+	}, [meta.highlightedAttachmentId, meta.highlightedAttachmentKey]);
 
 	return (
 		<section
+			ref={sectionRef}
 			style={{
 				display: "grid",
 				rowGap: token("space.100"),
@@ -256,6 +278,7 @@ export function AttachmentsSection() {
 					<AttachmentCard
 						key={file.id ?? `${file.name}-${i}`}
 						file={file}
+						isHighlighted={file.id === meta.highlightedAttachmentId}
 						onOpen={meta.onAttachmentOpen}
 					/>
 				))}

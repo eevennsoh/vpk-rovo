@@ -75,6 +75,22 @@ test("ArtifactResultCard opens HTML reports in an embedded Rovo Canvas dialog", 
 	);
 	assert.match(
 		ARTIFACT_RESULT_CARD_SOURCE,
+		/const \[selectedVersionId, setSelectedVersionId\] = useState<string \| null>\(null\);/u,
+	);
+	assert.match(
+		ARTIFACT_RESULT_CARD_SOURCE,
+		/const selectedVersion = getSelectedDocumentVersion\(document, selectedVersionId\);[\s\S]*const selectedContent = selectedVersion\?\.content \?\? latestContent;/u,
+	);
+	assert.match(
+		ARTIFACT_RESULT_CARD_SOURCE,
+		/buildCanvasVersionHistory\(document, selectedVersionId\)/u,
+	);
+	assert.match(
+		ARTIFACT_RESULT_CARD_SOURCE,
+		/onVersionSelect=\{setSelectedVersionId\}[\s\S]*versionHistory=\{canvasVersionHistory\}/u,
+	);
+	assert.match(
+		ARTIFACT_RESULT_CARD_SOURCE,
 		/<ArtifactCard[\s\S]*displayMode="preview"[\s\S]*onOpen=\{handleOpenArtifact\}[\s\S]*previewSummary=\{document\?\.previewSummary \?\? undefined\}[\s\S]*versionNumber=\{document\?\.versions\.length \?\? 1\}/u,
 	);
 	assert.doesNotMatch(

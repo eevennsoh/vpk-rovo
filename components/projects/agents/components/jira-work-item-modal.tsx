@@ -32,6 +32,8 @@ interface JiraWorkItemModalProps {
 	isOpen: boolean;
 	onClose: () => void;
 	onAttachmentOpen?: (attachment: WorkItemAttachment) => void;
+	highlightedAttachmentId?: string | null;
+	highlightedAttachmentKey?: number;
 	workItem?: WorkItemData | null;
 	workItemTitle?: string;
 	workItemCode?: string;
@@ -41,6 +43,8 @@ export default function JiraWorkItemModal({
 	isOpen,
 	onClose,
 	onAttachmentOpen,
+	highlightedAttachmentId,
+	highlightedAttachmentKey,
 	workItem,
 	workItemTitle = "Qualify enterprise service-management RFP",
 	workItemCode = "RFP-101",
@@ -55,6 +59,8 @@ export default function JiraWorkItemModal({
 			isOpen={isOpen}
 			onClose={onClose}
 			onAttachmentOpen={onAttachmentOpen}
+			highlightedAttachmentId={highlightedAttachmentId}
+			highlightedAttachmentKey={highlightedAttachmentKey}
 			workItem={resolvedWorkItem}
 		>
 			<WorkItemModal.Backdrop />

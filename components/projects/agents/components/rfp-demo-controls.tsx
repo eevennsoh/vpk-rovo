@@ -142,7 +142,7 @@ export function RfpDemoControls({
 							Export PDF
 						</Button>
 						<Button size="sm" onClick={onAttachReport} disabled={!canAttach}>
-							Attach to RFP-101
+							Add PDF to RFP-101
 						</Button>
 						<Separator orientation="vertical" className="h-8" />
 						<Button size="sm" variant="outline" onClick={onCreateAgent}>

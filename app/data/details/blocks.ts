@@ -331,7 +331,12 @@ const rows: AnswerCardRow[] = [
 			{
 				name: "artefactLabel",
 				type: "string",
-				description: "Label shown in the left-card artefact dropdown. Defaults to Code artefact, Agent artefact, or Automation rule.",
+				description: "Primary label shown in the left-card artefact identity block. Defaults to Code artefact, Agent artefact, or Automation rule.",
+			},
+			{
+				name: "artefactMetadata",
+				type: "string",
+				description: "Optional secondary metadata shown below the artefact label.",
 			},
 			{
 				name: "rightRail",

@@ -58,11 +58,29 @@ async function loadChatContextBarHarness() {
 			`,
 		],
 		[
+			"@atlaskit/icon/core/edit",
+			`
+				import React from "react";
+				export default function EditIcon() {
+					return React.createElement("svg", { "data-icon": "edit" });
+				}
+			`,
+		],
+		[
 			"@atlaskit/icon/core/location",
 			`
 				import React from "react";
 				export default function LocationIcon() {
 					return React.createElement("svg", { "data-icon": "location" });
+				}
+			`,
+		],
+		[
+			"@atlaskit/icon/core/page",
+			`
+				import React from "react";
+				export default function PageIcon() {
+					return React.createElement("svg", { "data-icon": "page" });
 				}
 			`,
 		],
@@ -84,8 +102,11 @@ async function loadChatContextBarHarness() {
 				import { renderToStaticMarkup } from "react-dom/server";
 				import ChatContextBar from "./components/projects/sidebar-chat/components/chat-context-bar.tsx";
 
-				export function renderContextBar(context) {
-					return renderToStaticMarkup(React.createElement(ChatContextBar, { context }));
+				export function renderContextBar(context, dismissible = false) {
+					return renderToStaticMarkup(React.createElement(ChatContextBar, {
+						context,
+						onDismiss: dismissible ? () => {} : undefined,
+					}));
 				}
 			`,
 			loader: "tsx",
@@ -156,6 +177,26 @@ test("ChatContextBar renders a non-dismissible truncated context chip", async ()
 	assert.doesNotMatch(markup, /<button/);
 });
 
+test("ChatContextBar renders artifact edit context with an active dismiss affordance", async () => {
+	const harness = await loadChatContextBarHarness();
+	const markup = harness.renderContextBar({
+		label: "RFP-101 response strategy report",
+		iconName: "artifact",
+		signature: "rovo-artifact:RFP-101 response strategy report",
+		variant: "edit",
+	}, true);
+
+	assert.match(markup, /data-chat-context-bar="true"/);
+	assert.match(markup, /Edit:/);
+	assert.match(markup, /RFP-101 response strategy report/);
+	assert.match(markup, /data-icon="edit"/);
+	assert.match(markup, /data-icon="page"/);
+	assert.match(markup, /aria-label="Close edit context"/);
+	assert.match(markup, /<button/);
+	assert.doesNotMatch(markup, /Context:/);
+	assert.doesNotMatch(markup, /data-icon="location"/);
+});
+
 test("ChatContextBar does not own local dismissal state", () => {
 	assert.match(
 		CHAT_CONTEXT_BAR_SOURCE,
@@ -168,6 +209,5 @@ test("ChatContextBar does not own local dismissal state", () => {
 	assert.doesNotMatch(CHAT_CONTEXT_BAR_SOURCE, /setRemovedSignature/);
 	assert.doesNotMatch(CHAT_CONTEXT_BAR_SOURCE, /useEffect/);
 	assert.doesNotMatch(CHAT_CONTEXT_BAR_SOURCE, /useState/);
-	assert.doesNotMatch(CHAT_CONTEXT_BAR_SOURCE, /onClick=/);
 	assert.doesNotMatch(CHAT_CONTEXT_BAR_SOURCE, /onRemove=/);
 });

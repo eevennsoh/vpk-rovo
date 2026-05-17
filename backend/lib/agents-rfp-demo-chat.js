@@ -1,12 +1,19 @@
 const RFP_101_CONTEXT_PATTERN = /\[Active Jira Work Item Context\][\s\S]*\bKey:\s*RFP-101\b[\s\S]*\[End Active Jira Work Item Context\]/;
+const RFP_DEMO_AGENT_CREATION_CONTEXT_PATTERN = /\[Agents RFP Demo Local State\][\s\S]*Report stage:\s*attached\.[\s\S]*Custom agent:\s*not created\.[\s\S]*\[End Agents RFP Demo Local State\]/;
 const RFP_HELP_MARKERS = [
 	/\bcomplete this rfp\b/i,
 	/\bbid\/no-bid\b/i,
 	/\bfirst-pass response strategy\b/i,
 	/\battached documents\b/i,
 ];
+const RFP_AGENT_CREATION_MARKERS = [
+	/\brfp drafting agent\b/i,
+	/\bdrafting column\b/i,
+	/\benterprise rfp response board\b/i,
+];
 const RFP_DEMO_QUESTION_SESSION_ID = "agents-rfp-demo-rfp-101-qualification";
 const RFP_DEMO_QUESTION_TOOL_CALL_ID = "ai-gateway-ask_user_questions-agents-rfp-demo-rfp-101";
+const RFP_DEMO_AGENT_ID = "rfp-drafting-agent";
 const RFP_DEMO_TOOL_CALL_DELAY_MIN_MS = 1000;
 const RFP_DEMO_TOOL_CALL_DELAY_MAX_MS = 3000;
 const RFP_DEMO_QUALIFICATION_PRELOAD_DELAY_MS = 2000;
@@ -63,6 +70,12 @@ function hasRfp101Context(requestBody) {
 	return RFP_101_CONTEXT_PATTERN.test(getNonEmptyString(requestBody?.contextDescription) || "");
 }
 
+function hasRfpDemoAgentCreationContext(requestBody) {
+	return RFP_DEMO_AGENT_CREATION_CONTEXT_PATTERN.test(
+		getNonEmptyString(requestBody?.contextDescription) || "",
+	);
+}
+
 function isRfpHelpPrompt(prompt) {
 	if (!getNonEmptyString(prompt)) {
 		return false;
@@ -71,8 +84,28 @@ function isRfpHelpPrompt(prompt) {
 	return RFP_HELP_MARKERS.every((pattern) => pattern.test(prompt));
 }
 
+function isRfpAgentCreationPrompt(prompt, requestBody) {
+	if (requestBody?.creationMode !== "agent" || !getNonEmptyString(prompt)) {
+		return false;
+	}
+
+	return RFP_AGENT_CREATION_MARKERS.every((pattern) => pattern.test(prompt));
+}
+
 function resolveAgentsRfpDemoChatTurn(requestBody) {
-	if (!requestBody || typeof requestBody !== "object" || !hasRfp101Context(requestBody)) {
+	if (!requestBody || typeof requestBody !== "object") {
+		return null;
+	}
+
+	const prompt = getLatestUserMessageText(requestBody.messages);
+	if (
+		hasRfpDemoAgentCreationContext(requestBody) &&
+		isRfpAgentCreationPrompt(prompt, requestBody)
+	) {
+		return "agent-creation";
+	}
+
+	if (!hasRfp101Context(requestBody)) {
 		return null;
 	}
 
@@ -85,7 +118,6 @@ function resolveAgentsRfpDemoChatTurn(requestBody) {
 		return "qualification-answer";
 	}
 
-	const prompt = getLatestUserMessageText(requestBody.messages);
 	return isRfpHelpPrompt(prompt) ? "qualification-questions" : null;
 }
 
@@ -292,6 +324,73 @@ function buildAgentsRfpDemoAnswerTrace() {
 	];
 }
 
+function buildAgentsRfpDemoAgentCreationTrace() {
+	return [
+		{
+			toolName: "jira.inspect_board_column",
+			toolCallId: "agents-rfp-demo-agent-inspect-drafting",
+			label: "Inspecting Drafting workflow",
+			content: "Reading the Drafting column, RFP-101 attachment history, and nearby work items to scope the reusable agent trigger.",
+			input: { board: "Enterprise RFP Response", column: "Drafting", include: ["RFP-101", "RFP-102", "RFP-103"] },
+			outputPreview: "Drafting has repeatable RFP response prep: inspect attachments, qualify gaps, draft strategy, generate report, and wait for approval.",
+		},
+		{
+			toolName: "agent.define_trigger",
+			toolCallId: "agents-rfp-demo-agent-define-trigger",
+			label: "Defining agent trigger",
+			content: "Setting the agent to activate when an RFP work item reaches Drafting or receives a new response attachment.",
+			input: { workflow: "Drafting", signals: ["status-change", "attachment-added"] },
+			outputPreview: "Trigger scoped to Drafting work items so the agent handles similar RFPs without interrupting unrelated tickets.",
+		},
+		{
+			toolName: "agent.configure_tools",
+			toolCallId: "agents-rfp-demo-agent-configure-tools",
+			label: "Configuring tools",
+			content: "Giving the agent access to Jira work items, attachments, Teamwork Graph account memory, vpk-html report generation, and PDF export staging.",
+			input: { tools: ["jira.work_items", "jira.attachments", "teamwork_graph.search", "vpk_html.render_template", "pdf_export.stage"] },
+			outputPreview: "Tool set matches the completed RFP-101 report flow and can reuse account memory plus approved response assets.",
+		},
+		{
+			toolName: "agent.set_guardrails",
+			toolCallId: "agents-rfp-demo-agent-set-guardrails",
+			label: "Adding approval guardrails",
+			content: "Requiring human approval before the agent attaches generated PDFs, changes statuses, or uses customer-facing language.",
+			input: { approvalRequiredFor: ["attach-report", "move-ticket", "customer-facing-response"] },
+			outputPreview: "Agent will stage output and ask for approval before mutating Jira work items.",
+		},
+		{
+			toolName: "agent.persist_definition",
+			toolCallId: "agents-rfp-demo-agent-persist",
+			label: "Creating RFP Drafting Agent",
+			content: "Saving the agent definition, selecting it for chat, and assigning it to the Drafting workflow.",
+			input: { agentId: RFP_DEMO_AGENT_ID, name: "RFP Drafting Agent", assignedColumn: "Drafting" },
+			outputPreview: "RFP Drafting Agent is ready for Drafting work items and selected for the current Rovo session.",
+		},
+	];
+}
+
+function buildAgentsRfpDemoAgentResultPayload() {
+	return {
+		agentId: RFP_DEMO_AGENT_ID,
+		name: "RFP Drafting Agent",
+		assignedColumn: "Drafting",
+		summary: "Ready to handle similar RFP work items",
+		trigger: "Runs when an RFP work item enters Drafting or receives a new response attachment.",
+		tools: [
+			"Jira work items",
+			"Teamwork Graph",
+			"vpk-html reports",
+			"PDF export staging",
+		],
+		guardrail: "Waits for human approval before attaching reports or moving tickets.",
+		action: "create",
+	};
+}
+
+function buildAgentsRfpDemoAgentCreationConfirmationText({ name = "RFP Drafting Agent" } = {}) {
+	return `Created **${name}** for the Drafting workflow. It can inspect RFP work items and attachments, use Teamwork Graph for account memory, draft the response strategy, stage the report export, and ask for approval before attaching anything back to Jira.`;
+}
+
 function buildAgentsRfpDemoQualificationIntro() {
 	return "I found enough context in RFP-101 to start the bid/no-bid analysis. Before I draft the response package, I need a few qualification details so I do not overstate commercial, legal, or security posture.";
 }
@@ -307,6 +406,9 @@ module.exports = {
 	RFP_DEMO_QUESTION_SESSION_ID,
 	RFP_DEMO_QUESTION_TOOL_CALL_ID,
 	buildAgentsRfpDemoQualificationIntro,
+	buildAgentsRfpDemoAgentCreationConfirmationText,
+	buildAgentsRfpDemoAgentCreationTrace,
+	buildAgentsRfpDemoAgentResultPayload,
 	buildAgentsRfpDemoQualificationTrace,
 	buildAgentsRfpDemoQuestionCardPayload,
 	buildAgentsRfpDemoReportConfirmationText,

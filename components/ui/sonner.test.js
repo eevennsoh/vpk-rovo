@@ -16,6 +16,6 @@ test("SonnerToast centers title-only toast content", () => {
 	);
 	assert.match(
 		SONNER_SOURCE,
-		/"shrink-0",\s*hasStackedContent \? "mt-0\.5" : null/u,
+		/"flex h-5 shrink-0 items-center justify-center",\s*hasStackedContent \? "mt-0\.5" : "self-center"/u,
 	);
 });

@@ -31,6 +31,10 @@ test("shared chat prompt path auto-routes Work Item vpk-html artifact intents fo
 		/resolveWorkItemReportPromptOptions\(\s*trimmedPrompt,\s*mergeSendPromptOptions/u,
 	);
 	assert.match(
+		ROVO_CHAT_CONTEXT_SOURCE,
+		/options\?\.creationMode === "agent" \|\| options\?\.creationMode === "skill"[\s\S]*return options;/u,
+	);
+	assert.match(
 		SIDEBAR_SUBMIT_SOURCE,
 		/sendPrompt\(\s*promptText,\s*defaultPromptOptions,\s*files\s*\)/u,
 	);
@@ -60,4 +64,15 @@ test("backend Work Item artifact route uses the vpk-html runner and emits an htm
 	assert.match(MESSAGE_SOURCE, /window\.dispatchEvent\(new CustomEvent\("rovo:open-canvas-artifact"/u);
 	assert.match(AGENTS_VIEW_SOURCE, /window\.addEventListener\("rovo:open-canvas-artifact", handleOpenRfpCanvas\);/u);
 	assert.match(AGENTS_VIEW_SOURCE, /event\.preventDefault\(\);[\s\S]*rfpDemo\.actions\.setCanvasOpen\(true\);/u);
+});
+
+test("RFP demo agent creation emits an agent result instead of an artifact result", () => {
+	assert.match(SERVER_SOURCE, /turn === "agent-creation"/u);
+	assert.match(SERVER_SOURCE, /buildAgentsRfpDemoAgentCreationTrace\(\)/u);
+	assert.match(SERVER_SOURCE, /type:\s*"data-agent-result"/u);
+	assert.match(SERVER_SOURCE, /buildAgentsRfpDemoAgentCreationConfirmationText\(\)/u);
+	assert.match(
+		SERVER_SOURCE,
+		/if \(turn === "agent-creation"\) \{[\s\S]*writeAgentsRfpDemoAgentResult\(writer\);[\s\S]*writeAgentsRfpDemoTurnComplete\(writer\);[\s\S]*return;\s*\}\s*if \(turn === "qualification-answer"\)/u,
+	);
 });

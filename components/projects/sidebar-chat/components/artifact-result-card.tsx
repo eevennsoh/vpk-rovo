@@ -36,6 +36,19 @@ function getLatestDocumentContent(document: RovoAppDocument | null): string {
 	return document.versions[document.versions.length - 1]?.content ?? "";
 }
 
+function getSelectedDocumentVersion(
+	document: RovoAppDocument | null,
+	selectedVersionId: string | null,
+): RovoAppDocument["versions"][number] | null {
+	if (!document || document.versions.length === 0) {
+		return null;
+	}
+
+	return document.versions.find((version) => version.id === selectedVersionId)
+		?? document.versions[document.versions.length - 1]
+		?? null;
+}
+
 function normalizeArtifactKind(kind: string): ArtifactKind {
 	if (
 		kind === "code" ||
@@ -60,7 +73,10 @@ function resolveCanvasStatus(isLoading: boolean, errorMessage: string | null): R
 	return errorMessage ? "error" : "ready";
 }
 
-function buildCanvasVersionHistory(document: RovoAppDocument | null): ReadonlyArray<RovoCanvasVersion> {
+function buildCanvasVersionHistory(
+	document: RovoAppDocument | null,
+	selectedVersionId: string | null,
+): ReadonlyArray<RovoCanvasVersion> {
 	if (!document || document.versions.length === 0) {
 		return [
 			{
@@ -73,6 +89,8 @@ function buildCanvasVersionHistory(document: RovoAppDocument | null): ReadonlyAr
 		];
 	}
 
+	const currentVersionId = selectedVersionId ?? document.versions[document.versions.length - 1]?.id ?? null;
+
 	return document.versions.map((version, index) => ({
 		id: version.id,
 		label: version.title || `Version ${index + 1}`,
@@ -81,7 +99,7 @@ function buildCanvasVersionHistory(document: RovoAppDocument | null): ReadonlyAr
 			dateStyle: "medium",
 			timeStyle: "short",
 		}).format(new Date(version.createdAt)),
-		isCurrent: index === document.versions.length - 1,
+		isCurrent: version.id === currentVersionId,
 		group: "Artifact history",
 	}));
 }
@@ -97,6 +115,7 @@ export function ArtifactResultCard({
 	const [document, setDocument] = useState<RovoAppDocument | null>(null);
 	const [isLoading, setIsLoading] = useState(false);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
+	const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
 	const { activeThreadId } = useRovoChat();
 	const artifactKind = normalizeArtifactKind(artifact.kind);
 	const kindLabel = ARTIFACT_KIND_LABELS[artifactKind];
@@ -191,18 +210,34 @@ export function ArtifactResultCard({
 		};
 	}, [artifact.documentId, isOpen, shouldOpenInRovoCanvas]);
 
+	useEffect(() => {
+		setSelectedVersionId((currentVersionId) => {
+			if (!document || document.versions.length === 0) {
+				return null;
+			}
+
+			if (currentVersionId && document.versions.some((version) => version.id === currentVersionId)) {
+				return currentVersionId;
+			}
+
+			return document.versions[document.versions.length - 1]?.id ?? null;
+		});
+	}, [document]);
+
 	const latestContent = getLatestDocumentContent(document);
+	const selectedVersion = getSelectedDocumentVersion(document, selectedVersionId);
+	const selectedContent = selectedVersion?.content ?? latestContent;
 	const previewBody = useMemo(() => {
-		if (!latestContent) {
+		if (!selectedContent) {
 			return null;
 		}
 
 		return buildArtifactPreviewBody({
-			content: latestContent,
+			content: selectedContent,
 			kind: normalizeArtifactKind(document?.kind ?? artifact.kind),
 			summary: document?.previewSummary,
 		});
-	}, [artifact.kind, document, latestContent]);
+	}, [artifact.kind, document, selectedContent]);
 	const canvasViews = useMemo<ReadonlyArray<RovoCanvasView>>(
 		() => [
 			{
@@ -223,7 +258,7 @@ export function ArtifactResultCard({
 							<PreviewBodyRenderer
 								body={previewBody}
 								surface="dialog"
-								title={artifact.title}
+								title={selectedVersion?.title ?? artifact.title}
 								summary={document?.previewSummary}
 							/>
 						) : (
@@ -238,21 +273,21 @@ export function ArtifactResultCard({
 				id: "html",
 				label: "HTML",
 				toolbar: "source",
-				copyText: latestContent,
+				copyText: selectedContent,
 				content: (
 					<div className="size-full overflow-auto bg-surface p-6">
 						<pre className="min-h-full overflow-auto rounded-lg border border-border bg-surface-raised p-4 text-xs leading-5 text-text-subtle">
-							<code>{latestContent || "Report source is loading..."}</code>
+							<code>{selectedContent || "Report source is loading..."}</code>
 						</pre>
 					</div>
 				),
 			},
 		],
-		[artifact.title, document?.previewSummary, errorMessage, isLoading, latestContent, previewBody],
+		[artifact.title, document?.previewSummary, errorMessage, isLoading, previewBody, selectedContent, selectedVersion?.title],
 	);
 	const canvasVersionHistory = useMemo(
-		() => buildCanvasVersionHistory(document),
-		[document],
+		() => buildCanvasVersionHistory(document, selectedVersionId),
+		[document, selectedVersionId],
 	);
 
 	return (
@@ -281,6 +316,7 @@ export function ArtifactResultCard({
 					views={canvasViews}
 					defaultViewId="preview"
 					artefactLabel={kindLabel}
+					onVersionSelect={setSelectedVersionId}
 					versionHistory={canvasVersionHistory}
 				/>
 			) : (

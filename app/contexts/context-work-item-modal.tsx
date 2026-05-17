@@ -132,6 +132,8 @@ export interface WorkItemModalMeta {
 	isOpen: boolean;
 	onClose: () => void;
 	onAttachmentOpen?: (attachment: WorkItemAttachment) => void;
+	highlightedAttachmentId?: string | null;
+	highlightedAttachmentKey?: number;
 	workItem: WorkItemData;
 }
 
@@ -151,6 +153,8 @@ interface WorkItemModalProviderProps {
 	isOpen: boolean;
 	onClose: () => void;
 	onAttachmentOpen?: (attachment: WorkItemAttachment) => void;
+	highlightedAttachmentId?: string | null;
+	highlightedAttachmentKey?: number;
 	workItem: WorkItemData;
 	/** Initial state for accordions */
 	initialDetailsOpen?: boolean;
@@ -191,6 +195,8 @@ export function WorkItemModalProvider({
 	isOpen,
 	onClose,
 	onAttachmentOpen,
+	highlightedAttachmentId = null,
+	highlightedAttachmentKey,
 	workItem,
 	initialDetailsOpen = true,
 	initialMoreFieldsOpen = false,
@@ -219,6 +225,8 @@ export function WorkItemModalProvider({
 		isOpen,
 		onClose,
 		onAttachmentOpen,
+		highlightedAttachmentId,
+		highlightedAttachmentKey,
 		workItem,
 	};
 

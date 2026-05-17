@@ -14,6 +14,7 @@ import {
 	parseAgentsRfpDemoState,
 	refineRfpReport,
 	scheduleRfpDraftingAgent,
+	selectRfpReportVersion,
 	setRfp101AnswerSummary,
 	setRfpDemoCanvasOpen,
 	setRfpDemoCanvasView,
@@ -25,6 +26,7 @@ export interface AgentsRfpDemoActions {
 	reset: () => void;
 	generateReport: () => void;
 	refineReport: () => void;
+	selectReportVersion: (versionId: string) => void;
 	approveReport: () => void;
 	exportPdf: () => void;
 	attachReport: (reportPreviewHtml?: string) => void;
@@ -75,6 +77,10 @@ export function useAgentsRfpDemoState(): AgentsRfpDemoController {
 	}, []);
 	const generateReport = useCallback(() => setState(generateRfpReport), []);
 	const refineReport = useCallback(() => setState(refineRfpReport), []);
+	const selectReportVersion = useCallback(
+		(versionId: string) => setState((currentState) => selectRfpReportVersion(currentState, versionId)),
+		[],
+	);
 	const approveReport = useCallback(() => setState(approveRfpReport), []);
 	const exportPdf = useCallback(() => setState(exportRfpReportPdf), []);
 	const attachReport = useCallback(
@@ -115,6 +121,7 @@ export function useAgentsRfpDemoState(): AgentsRfpDemoController {
 		reset,
 		generateReport,
 		refineReport,
+		selectReportVersion,
 		approveReport,
 		exportPdf,
 		attachReport,

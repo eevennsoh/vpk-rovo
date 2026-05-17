@@ -8,16 +8,22 @@ import WorkItemModal from "./work-item-modal";
 interface AgentsWorkItemInlinePageProps {
 	workItem: WorkItemData;
 	onBackToBoard: () => void;
+	highlightedAttachmentId?: string | null;
+	highlightedAttachmentKey?: number;
 }
 
 export function AgentsWorkItemInlinePage({
 	workItem,
 	onBackToBoard,
+	highlightedAttachmentId,
+	highlightedAttachmentKey,
 }: Readonly<AgentsWorkItemInlinePageProps>) {
 	return (
 		<WorkItemModalProvider
 			isOpen
 			onClose={onBackToBoard}
+			highlightedAttachmentId={highlightedAttachmentId}
+			highlightedAttachmentKey={highlightedAttachmentKey}
 			workItem={workItem}
 		>
 			<div className="flex h-full min-h-0 flex-col bg-surface">

@@ -263,6 +263,9 @@ test("agents attachment grid mixes simple file icons with source product logos",
 	assert.match(ATTACHMENTS_SECTION_SOURCE, /if \(file\.previewHtml\)/);
 	assert.match(ATTACHMENTS_SECTION_SOURCE, /srcDoc=\{file\.previewHtml\}/);
 	assert.match(ATTACHMENTS_SECTION_SOURCE, /\{renderAttachmentIcon\(file\)\}/);
+	assert.match(ATTACHMENTS_SECTION_SOURCE, /scrollIntoView\(\{[\s\S]*behavior: "smooth"[\s\S]*block: "center"/);
+	assert.match(ATTACHMENTS_SECTION_SOURCE, /motion-safe:animate-attachment-added-glow/);
+	assert.match(ATTACHMENTS_SECTION_SOURCE, /data-highlighted-attachment=\{isHighlighted \? "true" : undefined\}/);
 	assert.doesNotMatch(ATTACHMENTS_SECTION_SOURCE, /icon=\{renderAttachmentIcon\(file\)\}/);
 	assert.doesNotMatch(ATTACHMENTS_SECTION_SOURCE, /\/website\/vpk-logo-dark\.svg/);
 	assert.doesNotMatch(ATTACHMENTS_SECTION_SOURCE, /label="VPK"/);

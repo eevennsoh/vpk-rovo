@@ -76,9 +76,11 @@ test("RovoAppShellPaneLayout renders the split artifact panel alongside the stab
 
 	assert.match(markup, /data-slot="resizable-panel-group"/);
 	assert.match(markup, /id="chat-pane-panel"/);
+	assert.match(markup, /id="chat-pane-panel"[\s\S]*<div class="min-h-0"/);
 	assert.match(markup, /<section id="chat-pane">chat<\/section>/);
 	assert.match(markup, /data-slot="resizable-handle"/);
 	assert.match(markup, /id="artifact-pane-panel"/);
+	assert.match(markup, /id="artifact-pane-panel"[\s\S]*<div class="min-h-0"/);
 	assert.match(markup, /<aside id="artifact-pane">artifact<\/aside>/);
 	assert.ok(artifactPanelIndex >= 0);
 	assert.ok(chatPanelIndex >= 0);

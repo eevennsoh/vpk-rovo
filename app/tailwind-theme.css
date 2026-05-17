@@ -402,6 +402,7 @@
 	--animate-expect-dot-center: expect-dot-center 2.2s ease-in-out 0.5s infinite;
 	--animate-expect-text-shimmer: expect-text-shimmer 4s ease-in-out infinite;
 	--animate-cot-icon-shimmer: cotIconShimmer 1.4s var(--ease-linear) infinite;
+	--animate-attachment-added-glow: attachmentAddedGlow 1.8s ease-in-out 3;
 
 	@keyframes spin {
 		to {
@@ -640,6 +641,21 @@
 		100% {
 			mask-position: 0 -120%;
 			-webkit-mask-position: 0 -120%;
+		}
+	}
+
+	@keyframes attachmentAddedGlow {
+		0%,
+		100% {
+			box-shadow:
+				var(--ds-shadow-raised),
+				0 0 0 0 color-mix(in srgb, var(--ds-border-success) 0%, transparent);
+		}
+		45% {
+			box-shadow:
+				var(--ds-shadow-raised),
+				0 0 0 3px color-mix(in srgb, var(--ds-border-success) 45%, transparent),
+				0 0 22px 4px color-mix(in srgb, var(--ds-border-success) 22%, transparent);
 		}
 	}
 }

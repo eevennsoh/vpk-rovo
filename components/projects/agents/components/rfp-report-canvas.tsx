@@ -9,7 +9,6 @@ import {
 	ChainOfThoughtContent,
 	ChainOfThoughtStep,
 } from "@/components/ui-custom/chain-of-thought";
-import { Button } from "@/components/ui/button";
 import { mergeRovoContextDescriptions } from "@/lib/rovo-context";
 import { RFP_101_WORK_ITEM, formatActiveJiraWorkItemContext } from "../data/rfp-work-items";
 import type { AgentsRfpDemoActions } from "../hooks/use-agents-rfp-demo-state";
@@ -18,7 +17,6 @@ import { formatRfpDemoContext, type AgentsRfpDemoState } from "../lib/rfp-demo-s
 interface RfpReportCanvasProps {
 	state: AgentsRfpDemoState;
 	actions: AgentsRfpDemoActions;
-	onCreateAgent: () => void;
 	onAttachReport?: (reportPreviewHtml?: string) => void;
 	chatContextBar?: ChatContextBarDescriptor | null;
 	chatGreeting?: ChatPanelGreetingProps;
@@ -45,9 +43,15 @@ interface RfpHtmlReportPreviewState {
 }
 
 const RFP_REPORT_PREVIEW_ENDPOINT = "/api/agents/rfp-demo/vpk-html-report";
+const RFP_REPORT_ARTIFACT_TITLE = "RFP-101 response strategy report";
+const RFP_REPORT_ARTIFACT_METADATA = "HTML report \u2022 Version 1";
 
 function resolveRfpReportVariant(state: AgentsRfpDemoState): RfpReportVariant {
-	return state.report.versions.some((version) => version.id === "refined-current-report")
+	const selectedVersionId = state.report.currentVersionId
+		?? state.report.versions[state.report.versions.length - 1]?.id
+		?? null;
+
+	return selectedVersionId === "refined-current-report"
 		? "refined"
 		: "initial";
 }
@@ -235,13 +239,20 @@ function RfpReportCanvasChatRail({
 	chatGreeting?: ChatPanelGreetingProps;
 	onClose: () => void;
 }>): React.ReactElement {
+	const editContextBar: ChatContextBarDescriptor = {
+		iconName: "artifact",
+		label: RFP_REPORT_ARTIFACT_TITLE,
+		signature: chatContextBar ? `rovo-canvas-edit:${chatContextBar.signature}` : "rovo-canvas-edit:rfp-101-response-strategy-report",
+		variant: "edit",
+	};
+
 	return (
 		<ChatPanel
 			onClose={onClose}
-			headerVariant="minimal"
+			hideHeader
 			enableSmartWidgets
 			abortOnUnmount={false}
-			chatContextBar={chatContextBar}
+			chatContextBar={editContextBar}
 			greeting={chatGreeting}
 			sendPromptOptions={{
 				smartGeneration: {
@@ -253,33 +264,9 @@ function RfpReportCanvasChatRail({
 	);
 }
 
-function RfpAgentProposalBanner({
-	state,
-	onCreateAgent,
-}: Readonly<{
-	state: AgentsRfpDemoState;
-	onCreateAgent: () => void;
-}>): React.ReactElement | null {
-	if (state.report.stage !== "attached" || state.agent) {
-		return null;
-	}
-
-	return (
-		<div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-surface px-4 py-3">
-			<p className="text-sm text-text">
-				This RFP workflow looks repeatable. Want me to create an RFP Drafting Agent that can help with future tickets moved into Drafting?
-			</p>
-			<Button size="sm" onClick={onCreateAgent}>
-				Create agent
-			</Button>
-		</div>
-	);
-}
-
 export function RfpReportCanvas({
 	state,
 	actions,
-	onCreateAgent,
 	onAttachReport,
 	chatContextBar,
 	chatGreeting,
@@ -322,14 +309,16 @@ export function RfpReportCanvas({
 			onOpenChange={(open) => actions.setCanvasOpen(open)}
 			kind="report"
 			status={resolveRfpReportCanvasStatus(reportPreview.status)}
-			title="RFP-101 response strategy"
-			primaryActionLabel="Attach to RFP-101"
+			title={RFP_REPORT_ARTIFACT_TITLE}
+			primaryActionLabel="Add PDF to RFP-101"
 			onPrimaryAction={() => (onAttachReport ?? actions.attachReport)(reportPreview.html ?? undefined)}
 			views={views}
 			viewId={state.canvas.activeViewId}
 			onViewChange={() => actions.setCanvasView("report")}
 			onRefresh={reportPreview.reload}
-			artefactLabel="Rovo Canvas report"
+			onVersionSelect={actions.selectReportVersion}
+			artefactLabel={RFP_REPORT_ARTIFACT_TITLE}
+			artefactMetadata={RFP_REPORT_ARTIFACT_METADATA}
 			versionHistory={versions}
 			rightRail={
 				<RfpReportCanvasChatRail
@@ -338,7 +327,6 @@ export function RfpReportCanvas({
 					onClose={() => actions.setCanvasOpen(false)}
 				/>
 			}
-			feedbackBanner={<RfpAgentProposalBanner state={state} onCreateAgent={onCreateAgent} />}
 			footer={null}
 		/>
 	);

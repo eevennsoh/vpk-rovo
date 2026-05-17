@@ -6,6 +6,9 @@ const {
 	RFP_DEMO_QUESTION_SESSION_ID,
 	RFP_DEMO_QUESTION_TOOL_CALL_ID,
 	buildAgentsRfpDemoAnswerTrace,
+	buildAgentsRfpDemoAgentCreationConfirmationText,
+	buildAgentsRfpDemoAgentCreationTrace,
+	buildAgentsRfpDemoAgentResultPayload,
 	buildAgentsRfpDemoQualificationTrace,
 	buildAgentsRfpDemoQuestionCardPayload,
 	buildAgentsRfpDemoReportConfirmationText,
@@ -29,6 +32,20 @@ const RFP_HELP_PROMPT = [
 	"attached documents.",
 ].join("\n");
 
+const RFP_AGENT_CREATION_CONTEXT = [
+	"[Agents RFP Demo Local State]",
+	"Source: browser-local /agents RFP demo state.",
+	"Report stage: attached.",
+	"Generated attachments on RFP-101: RFP response strategy.pdf.",
+	"Custom agent: not created.",
+	"[End Agents RFP Demo Local State]",
+].join("\n");
+
+const RFP_AGENT_CREATION_PROMPT = [
+	"Create an RFP Drafting Agent for the Drafting column on the Enterprise RFP Response board.",
+	"The agent should read each RFP work item and stage reusable report work.",
+].join("\n");
+
 test("detects the real RFP-101 floating-chat help turn from active context", () => {
 	const turn = resolveAgentsRfpDemoChatTurn({
 		contextDescription: RFP_101_CONTEXT,
@@ -41,6 +58,36 @@ test("detects the real RFP-101 floating-chat help turn from active context", () 
 	});
 
 	assert.equal(turn, "qualification-questions");
+});
+
+test("detects the RFP demo agent creation turn from attached report state", () => {
+	const turn = resolveAgentsRfpDemoChatTurn({
+		contextDescription: RFP_AGENT_CREATION_CONTEXT,
+		creationMode: "agent",
+		messages: [
+			{
+				role: "user",
+				parts: [{ type: "text", text: RFP_AGENT_CREATION_PROMPT }],
+			},
+		],
+	});
+
+	assert.equal(turn, "agent-creation");
+});
+
+test("does not treat generic agent creation as the RFP demo agent turn", () => {
+	const turn = resolveAgentsRfpDemoChatTurn({
+		contextDescription: RFP_AGENT_CREATION_CONTEXT,
+		creationMode: "agent",
+		messages: [
+			{
+				role: "user",
+				parts: [{ type: "text", text: "Create an agent for legal review." }],
+			},
+		],
+	});
+
+	assert.equal(turn, null);
 });
 
 test("does not trigger the RFP demo turn from board fallback context alone", () => {
@@ -137,6 +184,34 @@ test("answer trace produces completed response-building steps", () => {
 		],
 	);
 	assert.ok(trace.every((step) => typeof step.outputPreview === "string" && step.outputPreview.length > 0));
+});
+
+test("agent creation trace creates an agent instead of rendering a vpk-html report", () => {
+	const trace = buildAgentsRfpDemoAgentCreationTrace();
+	const result = buildAgentsRfpDemoAgentResultPayload();
+
+	assert.deepEqual(
+		trace.map((step) => step.toolName),
+		[
+			"jira.inspect_board_column",
+			"agent.define_trigger",
+			"agent.configure_tools",
+			"agent.set_guardrails",
+			"agent.persist_definition",
+		],
+	);
+	assert.ok(trace.every((step) => typeof step.outputPreview === "string" && step.outputPreview.length > 0));
+	assert.equal(result.agentId, "rfp-drafting-agent");
+	assert.equal(result.name, "RFP Drafting Agent");
+	assert.equal(result.assignedColumn, "Drafting");
+	assert.equal(result.action, "create");
+	assert.match(result.summary, /similar RFP work items/u);
+	assert.match(result.guardrail, /human approval/u);
+	assert.match(buildAgentsRfpDemoAgentCreationConfirmationText(result), /Created \*\*RFP Drafting Agent\*\*/u);
+	assert.doesNotMatch(
+		trace.map((step) => step.toolName).join("\n"),
+		/vpk_html\.render_template/u,
+	);
 });
 
 test("report confirmation points the user at Rovo Canvas", () => {

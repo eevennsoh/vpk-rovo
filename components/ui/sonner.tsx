@@ -96,7 +96,7 @@ function SonnerToast({
 			{...props}
 		>
 			<div className={cn("flex gap-3", hasStackedContent ? "items-start" : "items-center")}>
-				<div className={cn("shrink-0", hasStackedContent ? "mt-0.5" : null, SONNER_TOAST_ICON_STYLES[appearance])}>
+				<div className={cn("flex h-5 shrink-0 items-center justify-center", hasStackedContent ? "mt-0.5" : "self-center", SONNER_TOAST_ICON_STYLES[appearance])}>
 					{icon ?? (
 						<Icon
 							label={iconLabel ?? SONNER_TOAST_ICON_LABELS[appearance]}

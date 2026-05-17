@@ -153,6 +153,16 @@ export type RovoDataParts = {
 		kind: "text" | "code" | "html" | "image" | "sheet" | "react" | "excalidraw" | "browser";
 		action: "create" | "update";
 	};
+	"agent-result": {
+		agentId: string;
+		name: string;
+		assignedColumn?: string;
+		summary: string;
+		trigger?: string;
+		tools?: string[];
+		guardrail?: string;
+		action: "create" | "update";
+	};
 	clear: null;
 	finish: null;
 	"cancel-streaming": null;
@@ -589,6 +599,12 @@ export function getMessageArtifactResult(
 	message: Pick<RovoUIMessage, "parts">
 ): RovoDataParts["artifact-result"] | null {
 	return getLatestDataPart(message, "data-artifact-result")?.data ?? null;
+}
+
+export function getMessageAgentResult(
+	message: Pick<RovoUIMessage, "parts">
+): RovoDataParts["agent-result"] | null {
+	return getLatestDataPart(message, "data-agent-result")?.data ?? null;
 }
 
 export function getMessageToolParts(

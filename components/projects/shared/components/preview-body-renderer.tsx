@@ -21,6 +21,21 @@ import type { BundledLanguage } from "shiki";
 
 const SUMMARY_STREAM_INTERVAL_MS = 24;
 const SUMMARY_STREAM_STEP_CHARS = 18;
+const VPK_HTML_GENERATOR_META_PATTERN = /<meta\s+name=["']generator["']\s+content=["']vpk-html["'][^>]*>/iu;
+const ARTIFACT_PANE_PREVIEW_ATTR = "data-vpk-artifact-pane-preview";
+const ARTIFACT_PANE_PREVIEW_STYLE = `<style ${ARTIFACT_PANE_PREVIEW_ATTR}>
+@media screen {
+	html[${ARTIFACT_PANE_PREVIEW_ATTR}="true"] body > .page:first-child {
+		margin-left: 0 !important;
+		margin-right: auto !important;
+		padding-top: 0 !important;
+	}
+
+	html[${ARTIFACT_PANE_PREVIEW_ATTR}="true"] body > .page:first-child > .masthead:first-child {
+		padding-top: 0 !important;
+	}
+}
+</style>`;
 
 type PreviewSurface = "card" | "dialog" | "artifact-pane";
 
@@ -112,6 +127,29 @@ function resolveCodeLanguage(language: string | undefined, code: string): Bundle
 	}
 
 	return inferCodeLanguage(code);
+}
+
+function getArtifactPaneHtmlPreview(html: string): string {
+	if (
+		!VPK_HTML_GENERATOR_META_PATTERN.test(html) ||
+		html.includes(ARTIFACT_PANE_PREVIEW_ATTR)
+	) {
+		return html;
+	}
+
+	const htmlWithPreviewAttribute = html.replace(
+		/<html\b([^>]*)>/iu,
+		`<html$1 ${ARTIFACT_PANE_PREVIEW_ATTR}="true">`,
+	);
+
+	if (htmlWithPreviewAttribute === html) {
+		return html;
+	}
+
+	return htmlWithPreviewAttribute.replace(
+		/<\/head>/iu,
+		`${ARTIFACT_PANE_PREVIEW_STYLE}\n</head>`,
+	);
 }
 
 function AudioPreview({
@@ -247,6 +285,7 @@ function CodePreview({
 
 	return (
 		<CodeBlock
+			className={surface === "artifact-pane" ? "border-0" : undefined}
 			code={code}
 			language={resolveCodeLanguage(language, code)}
 			showLineNumbers
@@ -273,11 +312,13 @@ function AppUrlPreview({
 		);
 	}
 
+	const isArtifactPane = surface === "artifact-pane";
+
 	return (
-		<div className="flex h-full min-h-[420px] w-full flex-col overflow-hidden rounded-md border border-border bg-surface">
+		<div className={cn("flex h-full w-full flex-col overflow-hidden bg-surface", isArtifactPane ? "min-h-0" : "min-h-[420px] rounded-md border border-border")}>
 			<iframe
 				title="Generated app preview"
-				className="h-full min-h-[420px] w-full flex-1 border-0 bg-surface"
+				className={cn("h-full w-full flex-1 border-0 bg-surface", isArtifactPane ? "min-h-0" : "min-h-[420px]")}
 				sandbox="allow-forms allow-modals allow-popups allow-same-origin allow-scripts"
 				src={url}
 			/>
@@ -325,9 +366,15 @@ function HtmlPreview({
 		);
 	}
 
+	const isArtifactPane = surface === "artifact-pane";
+
 	return (
-		<div className="flex h-full min-h-[520px] w-full flex-col overflow-hidden rounded-md border border-border bg-surface">
-			<HtmlPreviewFrame html={html} title={title} />
+		<div className={cn("flex h-full w-full flex-col overflow-hidden bg-surface", isArtifactPane ? "min-h-0" : "min-h-[520px] rounded-md border border-border")}>
+			<HtmlPreviewFrame
+				className={isArtifactPane ? "min-h-0" : undefined}
+				html={isArtifactPane ? getArtifactPaneHtmlPreview(html) : html}
+				title={title}
+			/>
 		</div>
 	);
 }

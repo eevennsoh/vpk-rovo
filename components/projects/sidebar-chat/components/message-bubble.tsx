@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import {
+	getMessageAgentResult,
 	getMessageArtifactResult,
 	type RovoRenderableUIMessage,
 } from "@/lib/rovo-ui-messages";
@@ -15,6 +16,7 @@ import {
 	type ParsedPlanWidgetPayload,
 } from "@/components/projects/shared/lib/plan-widget";
 import { ArtifactResultCard, type ArtifactResult } from "./artifact-result-card";
+import { AgentResultCard } from "./agent-result-card";
 
 interface PlanBuildState {
 	isBuildDisabled?: boolean;
@@ -62,6 +64,7 @@ export default function MessageBubble({
 	onArtifactDialogClose,
 }: Readonly<MessageBubbleProps>): ReactNode {
 	const artifactResult = getMessageArtifactResult(message);
+	const agentResult = getMessageAgentResult(message);
 	const hasPlanWidget = message.parts.some(
 		(part) =>
 			part.type === "data-widget-data" &&
@@ -135,6 +138,9 @@ export default function MessageBubble({
 					onDialogOpen={onArtifactDialogOpen}
 					onDialogClose={onArtifactDialogClose}
 				/>
+			) : null}
+			{agentResult ? (
+				<AgentResultCard agent={agentResult} />
 			) : null}
 			<ThreadMessage.Feedback />
 			<ThreadMessage.Tools />

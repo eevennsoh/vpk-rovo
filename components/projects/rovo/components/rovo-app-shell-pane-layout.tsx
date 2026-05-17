@@ -58,6 +58,7 @@ export function RovoAppShellPaneLayout({
 				{shouldSplitArtifactPane && artifactPane ? (
 					<>
 						<ResizablePanel
+							className="min-h-0"
 							defaultSize={splitArtifactPaneDefaultSize}
 							id={artifactPanelId}
 							minSize={minArtifactPaneWidth}
@@ -71,6 +72,7 @@ export function RovoAppShellPaneLayout({
 				) : null}
 
 				<ResizablePanel
+					className="min-h-0"
 					defaultSize={shouldSplitArtifactPane ? splitChatPaneDefaultSize : undefined}
 					groupResizeBehavior={
 						shouldSplitArtifactPane ? "preserve-pixel-size" : undefined

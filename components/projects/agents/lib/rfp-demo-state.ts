@@ -8,6 +8,7 @@ export const AGENTS_RFP_DEMO_STORAGE_KEY = "vpk-rovo:agents-rfp-demo:v1";
 export const AGENTS_RFP_DEMO_VERSION = 1;
 export const RFP_DRAFTING_AGENT_ID = "rfp-drafting-agent";
 export const RFP_DRAFTING_SCHEDULE_ID = "rfp-drafting-weekday-0900";
+export const GENERATED_RFP_REPORT_ATTACHMENT_ID = "generated-rfp-response-strategy-pdf";
 
 export type AgentsRfpDemoReportStage =
 	| "none"
@@ -157,15 +158,7 @@ const RFP_101_FIXTURE_ATTACHMENTS: readonly AgentsRfpDemoAttachment[] = [
 
 const GENERATED_REPORT_ATTACHMENTS: readonly AgentsRfpDemoAttachment[] = [
 	{
-		id: "generated-rfp-response-strategy-html",
-		displayName: "RFP response strategy.html",
-		ext: "html",
-		source: "generated",
-		approved: true,
-		previewKind: "html-report",
-	},
-	{
-		id: "generated-rfp-response-strategy-pdf",
+		id: GENERATED_RFP_REPORT_ATTACHMENT_ID,
 		displayName: "RFP response strategy.pdf",
 		ext: "pdf",
 		source: "generated",
@@ -353,6 +346,15 @@ function appendToast(
 	};
 }
 
+function clearReportAttachmentToasts(state: AgentsRfpDemoState): AgentsRfpDemoState {
+	const reportToastIds = new Set(["report-approved", "report-pdf-exported", "report-attached"]);
+
+	return {
+		...state,
+		toasts: state.toasts.filter((toast) => !reportToastIds.has(toast.id)),
+	};
+}
+
 function appendUniqueActivity(
 	state: AgentsRfpDemoState,
 	item: AgentsRfpDemoActivityItem,
@@ -426,6 +428,23 @@ export function refineRfpReport(state: AgentsRfpDemoState): AgentsRfpDemoState {
 	};
 }
 
+export function selectRfpReportVersion(
+	state: AgentsRfpDemoState,
+	versionId: string,
+): AgentsRfpDemoState {
+	if (!state.report.versions.some((version) => version.id === versionId)) {
+		return state;
+	}
+
+	return {
+		...state,
+		report: {
+			...state.report,
+			currentVersionId: versionId,
+		},
+	};
+}
+
 export function approveRfpReport(state: AgentsRfpDemoState): AgentsRfpDemoState {
 	const reportState = state.report.stage === "none"
 		? generateRfpReport(state)
@@ -466,12 +485,18 @@ export function attachRfpReportToWorkItem(
 	state: AgentsRfpDemoState,
 	reportPreviewHtml?: string,
 ): AgentsRfpDemoState {
-	const exportedState = state.report.stage === "pdf-exported"
-		? state
-		: exportRfpReportPdf(state);
+	const reportState = state.report.stage === "none"
+		? generateRfpReport(state)
+		: state;
+	const exportedState = clearReportAttachmentToasts({
+		...reportState,
+		report: {
+			...reportState.report,
+			stage: reportState.report.stage === "attached" ? "attached" : "pdf-exported",
+		},
+	});
 	const attachedState = updateWorkItem(exportedState, "RFP-101", (workItem) => {
-		const generatedIds = new Set(GENERATED_REPORT_ATTACHMENTS.map((attachment) => attachment.id));
-		const preservedAttachments = workItem.attachments.filter((attachment) => !generatedIds.has(attachment.id));
+		const preservedAttachments = workItem.attachments.filter((attachment) => attachment.source !== "generated");
 
 		return {
 			...workItem,
@@ -497,7 +522,7 @@ export function attachRfpReportToWorkItem(
 				mode: "read-only",
 			},
 		},
-		"Approved HTML and staged PDF are attached to RFP-101.",
+		"Added PDF to RFP-101.",
 		"report-attached",
 	);
 }
@@ -678,7 +703,10 @@ export function getGeneratedRfpAttachments(
 	workItemCode: string,
 ): AgentsRfpDemoAttachment[] {
 	return (state.workItems[workItemCode]?.attachments ?? [])
-		.filter((attachment) => attachment.source === "generated")
+		.filter((attachment) => (
+			attachment.source === "generated" &&
+			attachment.id === GENERATED_RFP_REPORT_ATTACHMENT_ID
+		))
 		.map((attachment) => ({ ...attachment }));
 }
 

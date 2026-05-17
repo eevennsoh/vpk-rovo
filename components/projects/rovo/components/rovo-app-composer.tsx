@@ -30,13 +30,13 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
 import { SkillTag, SkillTagGroup } from "@/components/ui/skill-tag";
 import type { VoiceButtonState } from "@/components/ui-audio/voice-button";
+import ChatContextBar from "@/components/projects/sidebar-chat/components/chat-context-bar";
 import { resolveRovoAppComposerResponseGradientState } from "@/components/projects/rovo/lib/rovo-app-composer-response-gradient-state";
 import type { RealtimeGenerationState } from "@/components/projects/rovo/hooks/use-realtime-voice";
 import { cn } from "@/lib/utils";
 import { resolveRovoAppComposerPreviewHeight } from "@/components/projects/rovo/lib/rovo-app-composer-preview";
 import type { RovoAppPlanExecutionTrackerViewModel } from "@/components/projects/rovo/lib/rovo-app-plan-execution-tracker";
 import type { RovoAppQueuedAction } from "@/lib/rovo-app-types";
-import CrossIcon from "@atlaskit/icon/core/cross";
 import AddIcon from "@atlaskit/icon/core/add";
 import DeleteIcon from "@atlaskit/icon/core/delete";
 import SkillIcon from "@atlaskit/icon-lab/core/skill";
@@ -50,6 +50,7 @@ import { PendingAttachments } from "./pending-attachments";
 import { RovoComposerSendControls } from "@/components/projects/shared/components/rovo-composer-send-controls";
 import { DEFAULT_REASONING_OPTION_ID } from "@/components/blocks/shared-ui/data/customize-menu-data";
 
+const HIDDEN_COMPOSER_SKILL_IDS = new Set(["vpk-html"]);
 const EMPTY_REALTIME_OUTPUT_WAVEFORM_BARS: number[] = [];
 const EMPTY_QUEUED_PROMPTS: ReadonlyArray<RovoAppQueuedAction> = [];
 
@@ -220,6 +221,17 @@ function RovoAppComposerInner({
 			skill.title.toLowerCase().includes(slashQuery.toLowerCase()),
 		)
 		: enabledHermesSkills;
+	const visibleSelectedHermesSkills = selectedHermesSkills.filter(
+		(skill) => !HIDDEN_COMPOSER_SKILL_IDS.has(skill.id),
+	);
+	const artifactContextBar = artifactTitle
+		? {
+				iconName: "artifact" as const,
+				label: artifactTitle,
+				signature: `rovo-artifact:${artifactTitle}`,
+				variant: "edit" as const,
+			}
+		: null;
 
 	const handleSlashSelect = useCallback(
 		(skillId: string) => {
@@ -527,9 +539,11 @@ function RovoAppComposerInner({
 					) : null}
 				</AnimatePresence>
 
+				<ChatContextBar context={artifactContextBar} onDismiss={onDismissArtifactContext} />
+
 				<div
 					ref={composerRef}
-					className={cn("relative z-10 rounded-xl border border-border bg-surface px-3 pb-3 pt-3", composerHeight ? "flex flex-col" : undefined, compact ? "pb-2.5 pt-3.5" : undefined)}
+					className={cn("relative z-10 rounded-xl border border-border bg-surface px-4 pb-3 pt-3", composerHeight ? "flex flex-col" : undefined, compact ? "pb-2.5 pt-3.5" : undefined)}
 					style={{
 						boxShadow: composerUpwardShadow,
 						...(composerHeight
@@ -540,53 +554,21 @@ function RovoAppComposerInner({
 							: {}),
 					}}
 				>
-							{selectedHermesSkills.length > 0 ? (
-								<div className="mb-3 flex flex-wrap items-center gap-2">
-									<SkillTagGroup>
-										{selectedHermesSkills.map((skill) => (
-											<SkillTag
-												key={skill.id}
-												color="platform"
-												icon={<SkillIcon label="" size="small" />}
-												onRemove={onRemoveHermesSkill ? () => onRemoveHermesSkill(skill.id) : undefined}
-												removeButtonLabel={`Remove ${skill.title}`}
-											>
-												{skill.title}
-											</SkillTag>
-										))}
-									</SkillTagGroup>
-								</div>
-							) : null}
-
-						{artifactTitle ? (
-							<div
-								className={cn(
-									"-mx-3 mb-3 overflow-hidden rounded-t-[inherit] bg-bg-neutral/70",
-									compact ? "-mt-3.5" : "-mt-3",
-								)}
-							>
-								<div className="flex items-center gap-3 px-4 py-2">
-								<p className="min-w-0 flex-1 truncate text-sm leading-tight text-text">
-									<span className="font-normal text-text-subtle">
-										Editing:
-									</span>{" "}
-									<span className="font-semibold text-text">
-										{artifactTitle}
-									</span>
-								</p>
-								{onDismissArtifactContext ? (
-									<Button
-										aria-label="Close artifact context"
-										className="-mr-1 rounded-full"
-										onClick={onDismissArtifactContext}
-										size="icon-sm"
-										type="button"
-										variant="ghost"
+					{visibleSelectedHermesSkills.length > 0 ? (
+						<div className="mb-3 flex flex-wrap items-center gap-2">
+							<SkillTagGroup>
+								{visibleSelectedHermesSkills.map((skill) => (
+									<SkillTag
+										key={skill.id}
+										color="platform"
+										icon={<SkillIcon label="" size="small" />}
+										onRemove={onRemoveHermesSkill ? () => onRemoveHermesSkill(skill.id) : undefined}
+										removeButtonLabel={`Remove ${skill.title}`}
 									>
-										<CrossIcon label="" size="small" />
-									</Button>
-								) : null}
-							</div>
+										{skill.title}
+									</SkillTag>
+								))}
+							</SkillTagGroup>
 						</div>
 					) : null}
 
