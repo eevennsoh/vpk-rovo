@@ -13,13 +13,26 @@
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
+const { Worker } = require("node:worker_threads");
 const { getAllWorktreePortInfo } = require("./lib/worktree-ports");
 
 const SEPARATOR = "━".repeat(70);
 const WATCH_INTERVAL_MS = 1000;
 const TICK_INTERVAL_MS = 80;
 const TICKS_PER_DATA_REFRESH = Math.max(1, Math.round(WATCH_INTERVAL_MS / TICK_INTERVAL_MS));
-const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+const SPINNER_FRAMES = ["⠚", "⠓", "⠋", "⠙"];
+
+const SNAPSHOT_WORKER_SCRIPT = `
+const { parentPort } = require("node:worker_threads");
+const { getAllWorktreePortInfo } = require(${JSON.stringify(path.join(__dirname, "lib", "worktree-ports.js"))});
+parentPort.on("message", () => {
+	try {
+		parentPort.postMessage({ ok: true, data: getAllWorktreePortInfo() });
+	} catch (error) {
+		parentPort.postMessage({ ok: false, message: error.message });
+	}
+});
+`;
 
 function readPortFile(worktreePath, filename) {
 	try {
@@ -145,15 +158,40 @@ function runWatch() {
 	let tickCount = 0;
 	let lastRows = [];
 	let lastError = null;
+	let refreshInFlight = false;
+
+	try {
+		lastRows = snapshot();
+	} catch (error) {
+		lastError = error;
+	}
+
+	const worker = new Worker(SNAPSHOT_WORKER_SCRIPT, { eval: true });
+	worker.on("message", (result) => {
+		refreshInFlight = false;
+		if (result.ok) {
+			const routes = loadPortlessRoutes();
+			const rows = collectWorktreeRows(result.data, routes);
+			lastRows = filterRowsForDisplay(rows);
+			lastError = null;
+		} else {
+			lastError = new Error(result.message);
+		}
+	});
+	worker.on("error", (error) => {
+		refreshInFlight = false;
+		lastError = error;
+	});
+
+	function requestRefresh() {
+		if (refreshInFlight) return;
+		refreshInFlight = true;
+		worker.postMessage("refresh");
+	}
 
 	function tick() {
-		if (tickCount % TICKS_PER_DATA_REFRESH === 0) {
-			try {
-				lastRows = snapshot();
-				lastError = null;
-			} catch (error) {
-				lastError = error;
-			}
+		if (tickCount > 0 && tickCount % TICKS_PER_DATA_REFRESH === 0) {
+			requestRefresh();
 		}
 		process.stdout.write("\x1b[2J\x1b[H");
 		if (lastError) {
@@ -175,6 +213,7 @@ function runWatch() {
 
 	process.on("SIGINT", () => {
 		clearInterval(interval);
+		worker.terminate();
 		process.stdout.write("\n");
 		process.exit(0);
 	});
