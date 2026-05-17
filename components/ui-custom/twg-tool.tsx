@@ -247,7 +247,7 @@ export function TwgTool({
 							aria-hidden
 							render={<ChevronRightIcon label="" size="small" spacing="none" />}
 							className={cn(
-								"mt-0.5 size-4 shrink-0 text-icon-subtle transition-transform duration-200",
+								"mt-0.5 size-4 shrink-0 text-icon-subtle transition-transform duration-medium",
 								hasExpandableContent && "group-data-[open]/twg:rotate-90"
 							)}
 						/>
@@ -309,7 +309,7 @@ export function TwgTool({
 				<CollapsibleContent
 					className={cn(
 						"ml-9 mt-2 overflow-hidden text-xs leading-5 text-text-subtle",
-						"h-(--collapsible-panel-height) outline-none transition-[height,opacity] duration-200 ease-out data-starting-style:h-0 data-starting-style:opacity-0 data-ending-style:h-0 data-ending-style:opacity-0"
+						"h-(--collapsible-panel-height) outline-none transition-[height,opacity] duration-medium ease-out data-starting-style:h-0 data-starting-style:opacity-0 data-ending-style:h-0 data-ending-style:opacity-0"
 					)}
 				>
 					{children}

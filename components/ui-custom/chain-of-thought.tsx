@@ -308,7 +308,7 @@ export const ChainOfThoughtStep = memo(
 						<Icon
 							render={<ChevronDownIcon label="" size="small" spacing="none" />}
 							className={cn(
-								"mt-0.5 size-4 shrink-0 transition-[transform,opacity] duration-200 ease-out opacity-0 group-hover/step:opacity-100 group-focus-visible/step:opacity-100",
+								"mt-0.5 size-4 shrink-0 transition-[transform,opacity] duration-medium ease-out opacity-0 group-hover/step:opacity-100 group-focus-visible/step:opacity-100",
 								isOpen ? "rotate-0" : "-rotate-90"
 							)}
 						/>
@@ -351,7 +351,7 @@ export const ChainOfThoughtStep = memo(
 					{hasExpandableContent ? (
 						<Collapsible onOpenChange={handleOpenChange} open={isOpen}>
 							<CollapsibleContent
-								className="space-y-2 overflow-hidden h-(--collapsible-panel-height) transition-[height,opacity] ease-out duration-200 data-starting-style:h-0 data-starting-style:opacity-0 data-ending-style:h-0 data-ending-style:opacity-0"
+								className="space-y-2 overflow-hidden h-(--collapsible-panel-height) transition-[height,opacity] ease-out duration-medium data-starting-style:h-0 data-starting-style:opacity-0 data-ending-style:h-0 data-ending-style:opacity-0"
 							>
 								{children}
 							</CollapsibleContent>
@@ -399,7 +399,7 @@ export const ChainOfThoughtContent = memo(
 		<CollapsibleContent
 			className={cn(
 				"mt-2 space-y-3",
-				"outline-none overflow-hidden h-(--collapsible-panel-height) transition-[height,opacity] ease-out duration-200 data-starting-style:h-0 data-starting-style:opacity-0 data-ending-style:h-0 data-ending-style:opacity-0",
+				"outline-none overflow-hidden h-(--collapsible-panel-height) transition-[height,opacity] ease-out duration-medium data-starting-style:h-0 data-starting-style:opacity-0 data-ending-style:h-0 data-ending-style:opacity-0",
 				className
 			)}
 			{...props}
