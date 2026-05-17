@@ -140,6 +140,7 @@ export const CUSTOM_COMPONENTS: ComponentManifestEntry[] = sortEntriesByName([
 	customComponent("prompt-input", "Prompt Input"),
 	customComponent("queue"),
 	customComponent("reasoning"),
+	customComponent("rovo-generation", "Rovo Generation"),
 	customComponent("sandbox"),
 	customComponent("schema-display", "Schema Display"),
 	customComponent("shimmer"),
