@@ -2986,6 +2986,12 @@ const edgeTypes = {
   TwgToolSourceIcon,
   type TwgToolSource,
 } from "@/components/ui-ai/twg-tool";
+import {
+  ChainOfThoughtSearchResult,
+  ChainOfThoughtSearchResults,
+  ChainOfThoughtStep,
+} from "@/components/ui-ai/chain-of-thought";
+import SearchIcon from "@atlaskit/icon/core/search";
 
 const sources: TwgToolSource[] = [
   { id: "twg", label: "Teamwork Graph", provider: "twg" },
@@ -2996,17 +3002,25 @@ const sources: TwgToolSource[] = [
 <TwgTool
   defaultOpen
   description={
-    <span className="inline-flex items-center gap-1">
+    <div className="flex min-w-0 items-center gap-1">
       Looking into
       <TwgToolSourceIcon source={sources[0]} size="sm" />
       <span className="italic">Upper arm strain repair</span>
-    </span>
+    </div>
   }
   sources={sources}
 >
-  <div className="rounded-md border border-border bg-surface px-3 py-2">
-    Source details render here.
-  </div>
+  <ChainOfThoughtStep
+    icon={SearchIcon}
+    label="Evaluating sources"
+    description="Ranking sources by recency and authority"
+    status="complete"
+  >
+    <ChainOfThoughtSearchResults>
+      <ChainOfThoughtSearchResult>www.atlassian.com</ChainOfThoughtSearchResult>
+      <ChainOfThoughtSearchResult>www.github.com</ChainOfThoughtSearchResult>
+    </ChainOfThoughtSearchResults>
+  </ChainOfThoughtStep>
 </TwgTool>`,
 		demoLayout: {
 			previewContentWidth: "full",
@@ -3028,7 +3042,7 @@ const sources: TwgToolSource[] = [
 			{
 				name: "description",
 				type: "ReactNode",
-				description: "Second-line status text. Can include inline TwgToolSourceIcon elements.",
+				description: "Second-line status content. Can include TwgToolSourceIcon elements.",
 			},
 			{
 				name: "sources",
@@ -3065,7 +3079,7 @@ const sources: TwgToolSource[] = [
 		],
 		subComponents: [
 			{ name: "TwgTool", description: "Root trace row with rail icon, banner, source stack, and optional collapsible content." },
-			{ name: "TwgToolSourceIcon", description: "Single 16px or 24px provider icon using Teamwork Graph, Atlassian product logos, or local third-party assets." },
+			{ name: "TwgToolSourceIcon", description: "Tile-backed 16px or 24px provider icon using Teamwork Graph, Atlassian product logos, or local third-party assets." },
 			{ name: "TwgToolSourceStack", description: "Right-aligned overlapping source icon stack with overflow count support." },
 		],
 		examples: [

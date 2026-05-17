@@ -3,6 +3,12 @@ import {
 	TwgToolSourceIcon,
 	type TwgToolSource,
 } from "@/components/ui-ai/twg-tool";
+import {
+	ChainOfThoughtSearchResult,
+	ChainOfThoughtSearchResults,
+	ChainOfThoughtStep,
+} from "@/components/ui-ai/chain-of-thought";
+import SearchIcon from "@atlaskit/icon/core/search";
 
 const TWG_SOURCE: TwgToolSource = {
 	id: "twg",
@@ -49,6 +55,13 @@ const ALL_SOURCES = [
 	SALESFORCE_SOURCE,
 ] as const;
 
+const SEARCH_RESULT_CHIPS = [
+	"www.atlassian.com",
+	"www.vercel.com",
+	"www.github.com",
+	"www.npmjs.com",
+] as const;
+
 function InlineSource({
 	children,
 	source,
@@ -57,26 +70,33 @@ function InlineSource({
 	source: TwgToolSource;
 }) {
 	return (
-		<span className="inline-flex min-w-0 items-center gap-1">
+		<div className="flex min-w-0 items-center gap-1">
 			<TwgToolSourceIcon source={source} size="sm" />
 			<span className="truncate italic">{children}</span>
-		</span>
+		</div>
 	);
 }
 
-function ExpandedSourceList({ sources }: { sources: ReadonlyArray<TwgToolSource> }) {
+function ExpandedSearchResults({
+	results = SEARCH_RESULT_CHIPS,
+}: {
+	results?: ReadonlyArray<string>;
+}) {
 	return (
-		<div className="rounded-md border border-border bg-surface px-3 py-2">
-			<div className="mb-1 font-medium text-text">Sources read</div>
-			<div className="flex flex-wrap gap-1.5">
-				{sources.map((source) => (
-					<span key={source.id} className="inline-flex items-center gap-1 rounded-md bg-surface-sunken px-2 py-1">
-						<TwgToolSourceIcon source={source} size="sm" />
-						{source.label}
-					</span>
+		<ChainOfThoughtStep
+			icon={SearchIcon}
+			label="Evaluating sources"
+			description="Ranking sources by recency and authority"
+			status="complete"
+		>
+			<ChainOfThoughtSearchResults>
+				{results.map((result) => (
+					<ChainOfThoughtSearchResult key={result}>
+						{result}
+					</ChainOfThoughtSearchResult>
 				))}
-			</div>
-		</div>
+			</ChainOfThoughtSearchResults>
+		</ChainOfThoughtStep>
 	);
 }
 
@@ -88,21 +108,21 @@ export default function TwgToolDemo() {
 				sources={[TWG_SOURCE]}
 				defaultOpen={false}
 			>
-				<ExpandedSourceList sources={[TWG_SOURCE]} />
+				<ExpandedSearchResults />
 			</TwgTool>
 			<TwgTool
 				description={<InlineSource source={CONFLUENCE_SOURCE}>Kerb collision post-incident analysis</InlineSource>}
 				sources={[TWG_SOURCE, CONFLUENCE_SOURCE]}
 				defaultOpen={false}
 			>
-				<ExpandedSourceList sources={[TWG_SOURCE, CONFLUENCE_SOURCE]} />
+				<ExpandedSearchResults />
 			</TwgTool>
 			<TwgTool
 				description={<InlineSource source={DRIVE_SOURCE}>Upper arm faring refinement</InlineSource>}
 				sources={[TWG_SOURCE, CONFLUENCE_SOURCE, DRIVE_SOURCE]}
 				defaultOpen={false}
 			>
-				<ExpandedSourceList sources={[TWG_SOURCE, CONFLUENCE_SOURCE, DRIVE_SOURCE]} />
+				<ExpandedSearchResults />
 			</TwgTool>
 			<TwgTool
 				description="Read through 6 sources"
@@ -110,7 +130,7 @@ export default function TwgToolDemo() {
 				status="complete"
 				defaultOpen
 			>
-				<ExpandedSourceList sources={ALL_SOURCES} />
+				<ExpandedSearchResults />
 			</TwgTool>
 		</div>
 	);
@@ -124,7 +144,7 @@ export function TwgToolDemoSingleSource() {
 			sources={[TWG_SOURCE]}
 			defaultOpen
 		>
-			<ExpandedSourceList sources={[TWG_SOURCE]} />
+			<ExpandedSearchResults />
 		</TwgTool>
 	);
 }
@@ -137,7 +157,7 @@ export function TwgToolDemoMultipleSources() {
 			sources={[TWG_SOURCE, CONFLUENCE_SOURCE, DRIVE_SOURCE, JIRA_SOURCE]}
 			defaultOpen
 		>
-			<ExpandedSourceList sources={[TWG_SOURCE, CONFLUENCE_SOURCE, DRIVE_SOURCE, JIRA_SOURCE]} />
+			<ExpandedSearchResults />
 		</TwgTool>
 	);
 }
@@ -151,7 +171,7 @@ export function TwgToolDemoCompleted() {
 			status="complete"
 			defaultOpen
 		>
-			<ExpandedSourceList sources={ALL_SOURCES} />
+			<ExpandedSearchResults />
 		</TwgTool>
 	);
 }

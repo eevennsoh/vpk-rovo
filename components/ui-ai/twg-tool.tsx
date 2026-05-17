@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/collapsible";
 import { Icon } from "@/components/ui/icon";
 import { AtlassianLogo, type AtlassianLogoName } from "@/components/ui/logo";
+import { Tile } from "@/components/ui/tile";
 import { cn } from "@/lib/utils";
 
 export type TwgToolStatus = "active" | "complete" | "pending";
@@ -38,7 +39,7 @@ export type TwgToolProps = Omit<ComponentProps<typeof Collapsible>, "children"> 
 	children?: ReactNode;
 };
 
-export type TwgToolSourceIconProps = Omit<ComponentProps<"span">, "children"> & {
+export type TwgToolSourceIconProps = Omit<ComponentProps<typeof Tile>, "children" | "label" | "size"> & {
 	source: TwgToolSource;
 	size?: TwgToolSourceIconSize;
 };
@@ -62,15 +63,6 @@ const statusTextStyles: Record<TwgToolStatus, string> = {
 	pending: "text-text-subtlest",
 };
 
-const sourceIconRotations = [
-	"rotate-0",
-	"-rotate-6",
-	"rotate-0",
-	"rotate-6",
-	"rotate-0",
-	"-rotate-6",
-] as const;
-
 function isThirdPartyProvider(
 	provider: TwgToolSourceProvider
 ): provider is TwgToolThirdPartyProvider {
@@ -81,12 +73,12 @@ function getThirdPartyIconPath(provider: TwgToolThirdPartyProvider, size: TwgToo
 	return `/3p/${provider}/${size === "md" ? "24" : "16"}.svg`;
 }
 
-function getSourceIconClasses(size: TwgToolSourceIconSize) {
-	return size === "md" ? "size-6 rounded-md" : "size-4 rounded-[4px]";
+function getSourceTileSize(size: TwgToolSourceIconSize): ComponentProps<typeof Tile>["size"] {
+	return size === "md" ? "small" : "xxsmall";
 }
 
 function getSourceImageSize(size: TwgToolSourceIconSize) {
-	return size === "md" ? 18 : 12;
+	return size === "md" ? 24 : 16;
 }
 
 export function TwgToolSourceIcon({
@@ -96,31 +88,30 @@ export function TwgToolSourceIcon({
 	...props
 }: TwgToolSourceIconProps) {
 	const imageSize = getSourceImageSize(size);
-	const tileClasses = cn(
-		"inline-flex shrink-0 items-center justify-center overflow-hidden shadow-xs",
-		getSourceIconClasses(size),
-		className
-	);
+	const tileSize = getSourceTileSize(size);
 
 	if (source.icon) {
 		return (
-			<span
-				role="img"
-				aria-label={source.label}
-				className={cn("border border-border bg-surface", tileClasses)}
+			<Tile
+				className={cn("shrink-0", className)}
+				isInset={false}
+				label={source.label}
+				size={tileSize}
+				variant="transparent"
 				{...props}
 			>
 				{source.icon}
-			</span>
+			</Tile>
 		);
 	}
 
 	if (source.provider === "twg") {
 		return (
-			<span
-				role="img"
-				aria-label={source.label}
-				className={cn("border border-transparent bg-yellow-400 text-yellow-950", tileClasses)}
+			<Tile
+				className={cn("shrink-0 text-icon-warning", className)}
+				label={source.label}
+				size={tileSize}
+				variant="warning"
 				{...props}
 			>
 				<Icon
@@ -128,16 +119,18 @@ export function TwgToolSourceIcon({
 					render={<TeamworkGraphIcon label="" size="small" spacing="none" />}
 					className={size === "md" ? "size-4" : "size-3"}
 				/>
-			</span>
+			</Tile>
 		);
 	}
 
 	if (isThirdPartyProvider(source.provider)) {
 		return (
-			<span
-				role="img"
-				aria-label={source.label}
-				className={cn("border border-border bg-surface", tileClasses)}
+			<Tile
+				className={cn("shrink-0", className)}
+				isInset={false}
+				label={source.label}
+				size={tileSize}
+				variant="transparent"
 				{...props}
 			>
 				<Image
@@ -147,24 +140,29 @@ export function TwgToolSourceIcon({
 					src={getThirdPartyIconPath(source.provider, size)}
 					width={imageSize}
 				/>
-			</span>
+			</Tile>
 		);
 	}
 
 	return (
-		<span
-			role="img"
-			aria-label={source.label}
-			className={cn("border border-border bg-surface", tileClasses)}
+		<Tile
+			className={cn("shrink-0 text-icon-subtle", className)}
+			hasBorder
+			isInset={false}
+			label={source.label}
+			size={tileSize}
+			variant="transparent"
 			{...props}
 		>
-			<AtlassianLogo
-				name={source.provider}
-				label={source.label}
-				size="xxsmall"
-				themeAware={false}
-			/>
-		</span>
+			<span className="inline-flex size-full items-center justify-center">
+				<AtlassianLogo
+					name={source.provider}
+					label={source.label}
+					size="xxsmall"
+					themeAware={false}
+				/>
+			</span>
+		</Tile>
 	);
 }
 
@@ -191,20 +189,23 @@ export function TwgToolSourceStack({
 					size={iconSize}
 					className={cn(
 						"relative",
-						index > 0 && "-ml-1",
-						sourceIconRotations[index % sourceIconRotations.length]
+						index > 0 && "-ml-1"
 					)}
 				/>
 			))}
 			{hiddenCount > 0 ? (
-				<span
+				<Tile
 					className={cn(
-						"relative -ml-1 inline-flex shrink-0 items-center justify-center border border-border bg-surface text-[10px] font-medium text-text-subtle shadow-xs",
-						getSourceIconClasses(iconSize)
+						"relative -ml-1 shrink-0 text-[10px] font-medium text-text-subtle"
 					)}
+					hasBorder
+					isInset={false}
+					label={`${hiddenCount} more sources`}
+					size={getSourceTileSize(iconSize)}
+					variant="transparent"
 				>
 					+{hiddenCount}
-				</span>
+				</Tile>
 			) : null}
 		</div>
 	);
@@ -246,7 +247,7 @@ export function TwgTool({
 							statusTextStyles[status]
 						)}
 					>
-						<span className="block min-w-0 truncate">{description}</span>
+						<div className="min-w-0 truncate">{description}</div>
 					</div>
 				) : null}
 			</div>
