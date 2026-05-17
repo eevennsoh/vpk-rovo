@@ -393,17 +393,19 @@ function createHermesJobsLocalProvider({
 		});
 	}
 
-	async function runJobInternal(jobId, trigger = "manual") {
+	async function runJobInternal(jobId, trigger = "manual", context = null) {
 		if (activeJobRuns.has(jobId)) {
 			return activeJobRuns.get(jobId);
 		}
 
+		const normalizedContext = context && typeof context === "object" ? cloneJson(context) : null;
 		const job = await updateRecord(jobId, (currentJob) => ({
 			...currentJob,
 			lastError: null,
 			lastRun: {
 				startedAt: now().toISOString(),
 				finishedAt: null,
+				context: normalizedContext,
 				error: null,
 				status: "running",
 				trigger,
@@ -418,6 +420,7 @@ function createHermesJobsLocalProvider({
 				let executionResult = null;
 				if (typeof executeTask === "function") {
 					executionResult = await executeTask({
+						context: normalizedContext,
 						job,
 						prompt: job.prompt,
 						selectedSkillIds: job.skills,
@@ -432,6 +435,7 @@ function createHermesJobsLocalProvider({
 					lastResponseText: getNonEmptyString(executionResult?.text),
 					lastRun: {
 						...(currentJob.lastRun ?? {}),
+						context: normalizedContext,
 						error: null,
 						finishedAt: completedAt.toISOString(),
 						status: "completed",
@@ -463,6 +467,7 @@ function createHermesJobsLocalProvider({
 					lastResponseText: null,
 					lastRun: {
 						...(currentJob.lastRun ?? {}),
+						context: normalizedContext,
 						error: error instanceof Error ? error.message : String(error),
 						finishedAt: failedAt.toISOString(),
 						status: "failed",
@@ -651,6 +656,11 @@ function createHermesJobsLocalProvider({
 			const error = new Error(`Unsupported Hermes job action: ${action}`);
 			error.code = "INVALID_INPUT";
 			throw error;
+		},
+
+		async runHermesJob(jobId, trigger = "manual", context = null) {
+			await runJobInternal(jobId, trigger, context);
+			return this.getHermesJob(jobId);
 		},
 
 		startJobTicker() {

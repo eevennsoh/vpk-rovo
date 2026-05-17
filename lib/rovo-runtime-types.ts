@@ -320,7 +320,37 @@ export interface HermesJob {
 	linkedThreadId: string | null;
 	postResultToThread: boolean;
 	artifactTarget: string | null;
+	trigger: HermesJobTrigger | null;
+	triggerLabel: string | null;
+	runHistory: HermesJobRunSummary[];
 	raw: Record<string, unknown>;
+}
+
+export interface HermesJobTrigger {
+	type: string;
+	board?: string;
+	column?: string;
+	label?: string;
+}
+
+export interface HermesJobThreadLink {
+	ticketCode: string;
+	threadId: string;
+}
+
+export interface HermesJobRunSummary {
+	id: string;
+	jobId: string | null;
+	source: string | null;
+	triggerLabel: string | null;
+	status: string;
+	startedAt: string | null;
+	finishedAt: string | null;
+	processedTicketCodes: string[];
+	skippedTicketCodes: string[];
+	failedTicketCodes: string[];
+	threadLinks: HermesJobThreadLink[];
+	summary: string | null;
 }
 
 export interface SessionSearchResult {

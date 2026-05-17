@@ -25,7 +25,9 @@ import type { AgentsRfpDemoController } from "./hooks/use-agents-rfp-demo-state"
 import type { AgentsWorkItemPresentationController } from "./hooks/use-agents-work-item-presentation";
 import {
 	GENERATED_RFP_REPORT_ATTACHMENT_ID,
+	RFP_DRAFTING_AGENT_AVATAR_SRC,
 	RFP_DRAFTING_AGENT_ID,
+	RFP_DRAFTING_AGENT_NAME,
 	getGeneratedRfpAttachments,
 	getRfpDemoAgents,
 	getRfpDemoColumnAgentAssignments,
@@ -418,13 +420,39 @@ function applyRfpDemoWorkItemState(
 		thumbnailTone: attachment.previewKind === "pdf-preview" ? "information" : "success",
 	}));
 	const baseAttachments = (workItem.attachments ?? []).filter((attachment) => attachment.source !== "generated");
+	const agentComment = workItemState?.agentComment
+		? {
+				id: workItemState.agentComment.id,
+				author: {
+					name: workItemState.agentComment.authorName,
+					avatarUrl: workItemState.agentComment.authorAvatarSrc,
+					role: "Agent",
+				},
+				timestamp: workItemState.agentComment.timestampLabel,
+				content: workItemState.agentComment.content,
+			}
+		: null;
+	const baseComments = (workItem.comments ?? []).filter((comment) => comment.id !== agentComment?.id);
+	const assignee = workItemState?.assignee === RFP_DRAFTING_AGENT_NAME
+		? {
+				name: RFP_DRAFTING_AGENT_NAME,
+				avatarUrl: state.agent?.avatarSrc ?? RFP_DRAFTING_AGENT_AVATAR_SRC,
+				role: workItemState.agentStatus === "completed"
+					? "Completed draft"
+					: workItemState.agentStatus === "failed"
+						? "Retry needed"
+						: "Drafting agent",
+			}
+		: workItem.assignee;
 
 	return {
 		...workItem,
 		status: workItemState?.status ?? workItem.status,
+		assignee,
 		attachments: [
 			...baseAttachments,
 			...generatedAttachments,
 		],
+		comments: agentComment ? [agentComment, ...baseComments] : workItem.comments,
 	};
 }

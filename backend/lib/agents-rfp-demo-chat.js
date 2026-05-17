@@ -1,5 +1,5 @@
 const RFP_101_CONTEXT_PATTERN = /\[Active Jira Work Item Context\][\s\S]*\bKey:\s*RFP-101\b[\s\S]*\[End Active Jira Work Item Context\]/;
-const RFP_DEMO_AGENT_CREATION_CONTEXT_PATTERN = /\[Agents RFP Demo Local State\][\s\S]*Report stage:\s*attached\.[\s\S]*Custom agent:\s*not created\.[\s\S]*\[End Agents RFP Demo Local State\]/;
+const RFP_DEMO_AGENT_CREATION_CONTEXT_PATTERN = /\[Agents RFP Demo Local State\][\s\S]*Report stage:\s*attached\.[\s\S]*Custom agent:\s*not created\.[\s\S]*(?:Trigger:\s*none\.[\s\S]*)?\[End Agents RFP Demo Local State\]/;
 const RFP_HELP_MARKERS = [
 	/\bcomplete this rfp\b/i,
 	/\bbid\/no-bid\b/i,
@@ -333,31 +333,31 @@ function buildAgentsRfpDemoAgentCreationTrace() {
 			label: "Inspecting Drafting workflow",
 			content: "Reading the Drafting column, RFP-101 attachment history, and nearby work items to scope the reusable agent trigger.",
 			input: { board: "Enterprise RFP Response", column: "Drafting", include: ["RFP-101", "RFP-102", "RFP-103"] },
-			outputPreview: "Drafting has repeatable RFP response prep: inspect attachments, qualify gaps, draft strategy, generate report, and wait for approval.",
+			outputPreview: "Drafting has repeatable RFP response prep: inspect attachments, qualify gaps, draft strategy, attach the draft, comment, and move to Review.",
 		},
 		{
 			toolName: "agent.define_trigger",
 			toolCallId: "agents-rfp-demo-agent-define-trigger",
 			label: "Defining agent trigger",
-			content: "Setting the agent to activate when an RFP work item reaches Drafting or receives a new response attachment.",
-			input: { workflow: "Drafting", signals: ["status-change", "attachment-added"] },
+			content: "Setting the agent to activate when an RFP work item enters Drafting on the Enterprise RFP Response board.",
+			input: { board: "Enterprise RFP Response", column: "Drafting", signal: "jira-column-entered" },
 			outputPreview: "Trigger scoped to Drafting work items so the agent handles similar RFPs without interrupting unrelated tickets.",
 		},
 		{
 			toolName: "agent.configure_tools",
 			toolCallId: "agents-rfp-demo-agent-configure-tools",
 			label: "Configuring tools",
-			content: "Giving the agent access to Jira work items, attachments, Teamwork Graph account memory, vpk-html report generation, and PDF export staging.",
-			input: { tools: ["jira.work_items", "jira.attachments", "teamwork_graph.search", "vpk_html.render_template", "pdf_export.stage"] },
-			outputPreview: "Tool set matches the completed RFP-101 report flow and can reuse account memory plus approved response assets.",
+			content: "Giving the agent deterministic demo access to Jira work items, attachments, Teamwork Graph account memory, vpk-html report generation, and PDF draft attachment output.",
+			input: { tools: ["jira.work_items", "jira.attachments", "teamwork_graph.search", "vpk_html.render_template", "pdf_draft.attach"] },
+			outputPreview: "Tool set matches the completed RFP-101 report flow and produces deterministic draft package state.",
 		},
 		{
-			toolName: "agent.set_guardrails",
-			toolCallId: "agents-rfp-demo-agent-set-guardrails",
-			label: "Adding approval guardrails",
-			content: "Requiring human approval before the agent attaches generated PDFs, changes statuses, or uses customer-facing language.",
-			input: { approvalRequiredFor: ["attach-report", "move-ticket", "customer-facing-response"] },
-			outputPreview: "Agent will stage output and ask for approval before mutating Jira work items.",
+			toolName: "agent.define_rerun_policy",
+			toolCallId: "agents-rfp-demo-agent-rerun-policy",
+			label: "Setting rerun policy",
+			content: "Skipping tickets that already have agent-generated draft output and retrying failed Drafting tickets on later event runs.",
+			input: { skipWhen: ["generated-pdf", "agent-comment"], retryWhen: ["agentStatus=failed"] },
+			outputPreview: "Completed tickets are idempotent on rerun, and failed tickets remain retryable without blocking other tickets.",
 		},
 		{
 			toolName: "agent.persist_definition",
@@ -376,20 +376,20 @@ function buildAgentsRfpDemoAgentResultPayload() {
 		name: RFP_DEMO_AGENT_NAME,
 		assignedColumn: "Drafting",
 		summary: "Ready to handle similar RFP work items",
-		trigger: "Runs when an RFP work item enters Drafting or receives a new response attachment.",
+		trigger: "On event: ticket enters Drafting.",
 		tools: [
 			"Jira work items",
 			"Teamwork Graph",
 			"vpk-html reports",
-			"PDF export staging",
+			"PDF draft attachment",
 		],
-		guardrail: "Waits for human approval before attaching reports or moving tickets.",
+		guardrail: "Skips completed tickets on rerun and retries failed tickets later.",
 		action: "create",
 	};
 }
 
 function buildAgentsRfpDemoAgentCreationConfirmationText({ name = RFP_DEMO_AGENT_NAME } = {}) {
-	return `Created **${name}** for the Drafting workflow. It can inspect RFP work items and attachments, use Teamwork Graph for account memory, draft the response strategy, stage the report export, and ask for approval before attaching anything back to Jira.`;
+	return `Created **${name}** for the Drafting workflow. It runs when a ticket enters Drafting, creates a visible Rovo thread, attaches the deterministic draft PDF, comments in Jira, and moves successful tickets to Review.`;
 }
 
 function buildAgentsRfpDemoQualificationIntro() {

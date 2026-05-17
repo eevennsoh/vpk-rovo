@@ -7,8 +7,11 @@ import { BOARD_COLUMNS } from "../data/board-data";
 export const AGENTS_RFP_DEMO_STORAGE_KEY = "vpk-rovo:agents-rfp-demo:v1";
 export const AGENTS_RFP_DEMO_VERSION = 1;
 export const RFP_DRAFTING_AGENT_ID = "rfp-drafting-agent";
+export const RFP_DRAFTING_AGENT_NAME = "RFP Drafting Agent";
 export const RFP_DRAFTING_SCHEDULE_ID = "rfp-drafting-weekday-0900";
+export const RFP_DRAFTING_EVENT_TRIGGER_LABEL = "On event: ticket enters Drafting";
 export const GENERATED_RFP_REPORT_ATTACHMENT_ID = "generated-rfp-response-strategy-pdf";
+export const RFP_DRAFTING_AGENT_AVATAR_SRC = "/avatar-agent/dev-agents/feature-flag-cleaner.svg";
 export const RFP_DRAFTING_AGENT_AVATAR_SRCS = [
 	"/avatar-agent/dev-agents/feature-flag-cleaner.svg",
 	"/avatar-agent/dev-agents/pipeline-troubleshooter.svg",
@@ -79,12 +82,32 @@ export interface AgentsRfpDemoAttachment {
 	source: "fixture" | "generated";
 	approved?: boolean;
 	previewKind?: "html-report" | "pdf-preview";
+	kind?: string | null;
+}
+
+export type AgentsRfpDemoAgentStatus = "idle" | "queued" | "running" | "completed" | "failed";
+
+export interface AgentsRfpDemoAgentComment {
+	id: string;
+	authorName: string;
+	authorAvatarSrc: string;
+	timestampLabel: string;
+	content: string;
 }
 
 export interface AgentsRfpDemoWorkItemState {
 	status: string;
 	attachments: AgentsRfpDemoAttachment[];
 	agentAssignmentIds: string[];
+	assignee?: string | null;
+	previousAssignee?: string | null;
+	agentStatus?: AgentsRfpDemoAgentStatus;
+	agentSessionThreadId?: string | null;
+	agentJobRunId?: string | null;
+	generatedAttachment?: AgentsRfpDemoAttachment | null;
+	agentComment?: AgentsRfpDemoAgentComment | null;
+	completedAt?: string | null;
+	lastError?: string | null;
 }
 
 export interface AgentsRfpDemoReportVersion {
@@ -102,14 +125,44 @@ export interface AgentsRfpDemoAgent {
 	assignedColumn: "Drafting";
 	createdAt: string;
 	avatarSrc?: string;
+	jobId?: string | null;
+	trigger?: AgentsRfpDemoEventTrigger;
+	jobRunSummaries?: AgentsRfpDemoJobRunSummary[];
+}
+
+export interface AgentsRfpDemoEventTrigger {
+	type: "jira-column-entered" | string;
+	board: "Enterprise RFP Response" | string;
+	column: "Drafting" | string;
+	label: string;
+}
+
+export interface AgentsRfpDemoThreadLink {
+	ticketCode: string;
+	threadId: string;
+}
+
+export interface AgentsRfpDemoJobRunSummary {
+	id: string;
+	jobId?: string | null;
+	source: string;
+	triggerLabel: string;
+	status: "completed" | "completed-with-failures" | "failed" | "running" | "skipped";
+	startedAt: string;
+	finishedAt?: string | null;
+	processedTicketCodes: string[];
+	skippedTicketCodes: string[];
+	failedTicketCodes: string[];
+	threadLinks: AgentsRfpDemoThreadLink[];
+	summary: string;
 }
 
 export interface AgentsRfpDemoSchedule {
 	id: typeof RFP_DRAFTING_SCHEDULE_ID;
 	name: "Drafting column RFP response prep";
 	agentId: typeof RFP_DRAFTING_AGENT_ID;
-	scheduleLabel: "Weekdays at 9:00 AM";
-	status: "scheduled";
+	scheduleLabel: string;
+	status: "scheduled" | "connected";
 }
 
 export type AgentsRfpDemoActivityType =
@@ -117,7 +170,9 @@ export type AgentsRfpDemoActivityType =
 	| "workflow-assigned"
 	| "scheduled"
 	| "card-assigned"
-	| "draft-started";
+	| "draft-started"
+	| "draft-completed"
+	| "draft-failed";
 
 export interface AgentsRfpDemoActivityItem {
 	id: string;
@@ -232,15 +287,13 @@ const REFINED_REPORT_VERSION: AgentsRfpDemoReportVersion = {
 
 export const RFP_DRAFTING_AGENT: KanbanBoardAgentData = {
 	id: RFP_DRAFTING_AGENT_ID,
-	name: "RFP Drafting Agent",
+	name: RFP_DRAFTING_AGENT_NAME,
 	byline: "Local demo agent by Rovo",
-	avatarSrc: RFP_DRAFTING_AGENT_AVATAR_SRCS[0],
+	avatarSrc: RFP_DRAFTING_AGENT_AVATAR_SRC,
 };
 
 function getRandomRfpDraftingAgentAvatarSrc(): string {
-	return RFP_DRAFTING_AGENT_AVATAR_SRCS[
-		Math.floor(Math.random() * RFP_DRAFTING_AGENT_AVATAR_SRCS.length)
-	] ?? RFP_DRAFTING_AGENT_AVATAR_SRCS[0];
+	return RFP_DRAFTING_AGENT_AVATAR_SRC;
 }
 
 function getRfpDraftingAgentData(agent: AgentsRfpDemoAgent): KanbanBoardAgentData {
@@ -274,6 +327,15 @@ function createDefaultWorkItems(): Record<string, AgentsRfpDemoWorkItemState> {
 					? RFP_101_FIXTURE_ATTACHMENTS.map((attachment) => ({ ...attachment }))
 					: [],
 				agentAssignmentIds: [],
+				assignee: null,
+				previousAssignee: null,
+				agentStatus: "idle",
+				agentSessionThreadId: null,
+				agentJobRunId: null,
+				generatedAttachment: null,
+				agentComment: null,
+				completedAt: null,
+				lastError: null,
 			};
 		}
 	}
@@ -595,11 +657,19 @@ export function createRfpDraftingAgent(state: AgentsRfpDemoState): AgentsRfpDemo
 			}
 		: {
 				id: RFP_DRAFTING_AGENT_ID,
-				name: "RFP Drafting Agent",
+				name: RFP_DRAFTING_AGENT_NAME,
 				selected: true,
 				assignedColumn: "Drafting",
 				createdAt: "Now",
 				avatarSrc: getRandomRfpDraftingAgentAvatarSrc(),
+				jobId: null,
+				trigger: {
+					type: "jira-column-entered",
+					board: "Enterprise RFP Response",
+					column: "Drafting",
+					label: RFP_DRAFTING_EVENT_TRIGGER_LABEL,
+				},
+				jobRunSummaries: [],
 			};
 	const createdState: AgentsRfpDemoState = {
 		...state,
@@ -629,19 +699,25 @@ export function scheduleRfpDraftingAgent(state: AgentsRfpDemoState): AgentsRfpDe
 	const agentState = createRfpDraftingAgent(state);
 	const scheduledState: AgentsRfpDemoState = {
 		...agentState,
-		schedule: agentState.schedule ?? {
-			id: RFP_DRAFTING_SCHEDULE_ID,
-			name: "Drafting column RFP response prep",
-			agentId: RFP_DRAFTING_AGENT_ID,
-			scheduleLabel: "Weekdays at 9:00 AM",
-			status: "scheduled",
-		},
+		schedule: null,
+		agent: agentState.agent
+			? {
+					...agentState.agent,
+					trigger: {
+						type: "jira-column-entered",
+						board: "Enterprise RFP Response",
+						column: "Drafting",
+						label: RFP_DRAFTING_EVENT_TRIGGER_LABEL,
+					},
+					jobRunSummaries: agentState.agent.jobRunSummaries ?? [],
+				}
+			: agentState.agent,
 	};
 
 	return appendUniqueActivity(scheduledState, {
 		id: "activity-agent-scheduled",
 		timestampLabel: "Now",
-		message: "Maya scheduled RFP Drafting Agent for weekdays at 9:00 AM.",
+		message: "Maya connected RFP Drafting Agent to Drafting column events.",
 		type: "scheduled",
 	});
 }
@@ -675,8 +751,8 @@ function assignRfpDraftingAgentToCard(
 
 	return appendToast(
 		withPrep,
-		"RFP Drafting Agent assigned to RFP-102. Preparing first-pass response package.",
-		"rfp-102-agent-assigned",
+		`RFP Drafting Agent assigned to ${cardCode}. Preparing first-pass response package.`,
+		`${cardCode.toLowerCase()}-agent-assigned`,
 	);
 }
 
@@ -770,10 +846,7 @@ export function getGeneratedRfpAttachments(
 	workItemCode: string,
 ): AgentsRfpDemoAttachment[] {
 	return (state.workItems[workItemCode]?.attachments ?? [])
-		.filter((attachment) => (
-			attachment.source === "generated" &&
-			attachment.id === GENERATED_RFP_REPORT_ATTACHMENT_ID
-		))
+		.filter((attachment) => attachment.source === "generated")
 		.map((attachment) => ({ ...attachment }));
 }
 
@@ -792,18 +865,35 @@ export function resolveRfpDemoBoardColumns(
 					return null;
 				}
 
-				const agentAssignmentIds = state.workItems[cardCode]?.agentAssignmentIds ?? [];
+				const workItem = state.workItems[cardCode];
+				const agentAssignmentIds = workItem?.agentAssignmentIds ?? [];
 				const hasRfpDraftingAgent = agentAssignmentIds.includes(RFP_DRAFTING_AGENT_ID);
+				const agentStatusTag = workItem?.agentStatus === "running" || workItem?.agentStatus === "queued"
+					? { text: "agent running", color: "blue" as const }
+					: workItem?.agentStatus === "completed"
+						? { text: "draft ready", color: "green" as const }
+						: workItem?.agentStatus === "failed"
+							? { text: "agent failed", color: "red" as const }
+							: null;
 
-				return {
+				const resolvedCard = {
 					...card,
 					tags: hasRfpDraftingAgent
 						? [
 								...card.tags,
-								{ text: "agent prep", color: "green" as const },
+								agentStatusTag ?? { text: "agent prep", color: "green" as const },
 							]
 						: card.tags.map((tag) => ({ ...tag })),
 				};
+
+				if (workItem?.assignee === RFP_DRAFTING_AGENT_NAME) {
+					return {
+						...resolvedCard,
+						avatarSrc: state.agent?.avatarSrc ?? RFP_DRAFTING_AGENT_AVATAR_SRC,
+					};
+				}
+
+				return resolvedCard;
 			})
 			.filter((card): card is KanbanBoardColumnData["cards"][number] => card !== null);
 
@@ -847,13 +937,13 @@ export function formatRfpDemoContext(state: AgentsRfpDemoState): string {
 
 	return [
 		"[Agents RFP Demo Local State]",
-		"Source: browser-local /agents RFP demo state.",
+		"Source: backend-persisted /agents RFP demo state.",
 		`Report stage: ${state.report.stage}.`,
 		generatedAttachments ? `Generated attachments on RFP-101: ${generatedAttachments}.` : "Generated attachments on RFP-101: none.",
 		`RFP-101 status: ${rfp101?.status ?? "unknown"}.`,
 		`RFP-102 status: ${rfp102?.status ?? "unknown"}.`,
-		state.agent ? "Custom agent: RFP Drafting Agent assigned to Drafting." : "Custom agent: not created.",
-		state.schedule ? "Schedule: Weekdays at 9:00 AM for Drafting column RFP response prep." : "Schedule: none.",
+		state.agent ? "Custom agent: RFP Drafting Agent assigned to Drafting events." : "Custom agent: not created.",
+		state.agent?.trigger ? `Trigger: ${state.agent.trigger.label}.` : "Trigger: none.",
 		`Selected chat agent: ${state.chat.selectedAgentId === RFP_DRAFTING_AGENT_ID ? "RFP Drafting Agent" : "Rovo"}.`,
 		state.chat.lastRfp101AnswerSummary ? `Latest Maya qualification answer: ${state.chat.lastRfp101AnswerSummary}` : null,
 		"[End Agents RFP Demo Local State]",

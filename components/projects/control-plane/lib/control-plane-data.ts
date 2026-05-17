@@ -45,6 +45,34 @@ export const CONTROL_PLANE_SIDEBAR_SURFACES: readonly ControlPlaneSurfaceLink[] 
 	});
 
 export type ControlPlaneJobStatus = "scheduled" | "running" | "paused" | "failed";
+export type ControlPlaneJobSurface = "rovo" | "research" | "system" | "agents-rfp-demo";
+
+export interface ControlPlaneJobTrigger {
+	type: string;
+	board?: string;
+	column?: string;
+	label?: string;
+}
+
+export interface ControlPlaneJobThreadLink {
+	ticketCode: string;
+	threadId: string;
+}
+
+export interface ControlPlaneJobRunSummary {
+	id: string;
+	jobId: string | null;
+	source: string | null;
+	triggerLabel: string | null;
+	status: string;
+	startedAt: string | null;
+	finishedAt: string | null;
+	processedTicketCodes: string[];
+	skippedTicketCodes: string[];
+	failedTicketCodes: string[];
+	threadLinks: ControlPlaneJobThreadLink[];
+	summary: string | null;
+}
 
 export interface ControlPlaneJob {
 	artifactTarget?: string | null;
@@ -57,10 +85,13 @@ export interface ControlPlaneJob {
 	nextRunAt?: string | null;
 	notes?: string;
 	postResultToThread?: boolean;
-	surface?: "rovo" | "research" | "system";
+	runHistory?: ControlPlaneJobRunSummary[];
+	surface?: ControlPlaneJobSurface;
 	schedule: string;
 	status: ControlPlaneJobStatus;
 	target: string;
+	trigger?: ControlPlaneJobTrigger | null;
+	triggerLabel?: string | null;
 	updatedAt: string;
 }
 

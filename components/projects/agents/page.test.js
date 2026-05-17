@@ -190,6 +190,17 @@ test("AgentsView delegates RFP Drafting agent creation and keeps generic column 
 	assert.doesNotMatch(AGENTS_VIEW_SOURCE, /RFP_AGENT_CREATION_PROMPT/u);
 });
 
+test("AgentsView maps backend RFP agent output onto cards, assignees, comments, and attachments", () => {
+	assert.match(AGENTS_VIEW_SOURCE, /RFP_DRAFTING_AGENT_NAME/u);
+	assert.match(AGENTS_VIEW_SOURCE, /workItemState\?\.assignee === RFP_DRAFTING_AGENT_NAME/u);
+	assert.match(AGENTS_VIEW_SOURCE, /role: workItemState\.agentStatus === "completed"[\s\S]*"Completed draft"/u);
+	assert.match(AGENTS_VIEW_SOURCE, /generatedAttachments = getGeneratedRfpAttachments\(state, workItem\.code\)/u);
+	assert.match(AGENTS_VIEW_SOURCE, /agentComment = workItemState\?\.agentComment/u);
+	assert.match(AGENTS_VIEW_SOURCE, /comments: agentComment \? \[agentComment, \.\.\.baseComments\] : workItem\.comments/u);
+	assert.doesNotMatch(AGENTS_VIEW_SOURCE, /Weekdays at 9:00 AM/u);
+	assert.doesNotMatch(AGENTS_VIEW_SOURCE, /No schedule/u);
+});
+
 test("RFP report canvas marks refined copy from the selected version, not terminal report stage", () => {
 	assert.match(
 		RFP_REPORT_CANVAS_SOURCE,

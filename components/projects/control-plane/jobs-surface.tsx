@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import type { HermesJob } from "@/lib/rovo-runtime-types";
 import { createId, sortByUpdatedAtDesc } from "@/lib/utils";
 
-import type { ControlPlaneJob } from "./lib/control-plane-data";
+import type { ControlPlaneJob, ControlPlaneJobSurface } from "./lib/control-plane-data";
 import { formatControlPlaneDateTime, summarizeJobs } from "./lib/control-plane-utils";
 import { createJob, deleteJob, fetchJobs, runJobAction, updateJob } from "./lib/control-plane-api";
 import { ControlPlanePageShell } from "./control-plane-page-shell";
@@ -30,12 +30,35 @@ function createBlankJob(): ControlPlaneJob {
 		nextRunAt: null,
 		notes: "",
 		postResultToThread: false,
+		runHistory: [],
 		schedule: "every 1h",
 		status: "scheduled",
 		surface: "rovo",
 		target: "",
+		trigger: null,
+		triggerLabel: null,
 		updatedAt: new Date().toISOString(),
 	};
+}
+
+function getRawString(value: unknown): string | null {
+	return typeof value === "string" && value.trim().length > 0
+		? value.trim()
+		: null;
+}
+
+function normalizeJobSurface(value: unknown): ControlPlaneJobSurface {
+	const surface = getRawString(value);
+	if (
+		surface === "rovo" ||
+		surface === "research" ||
+		surface === "system" ||
+		surface === "agents-rfp-demo"
+	) {
+		return surface;
+	}
+
+	return "rovo";
 }
 
 function toControlPlaneJob(job: HermesJob): ControlPlaneJob {
@@ -54,15 +77,18 @@ function toControlPlaneJob(job: HermesJob): ControlPlaneJob {
 		nextRunAt: job.nextRunAt,
 		notes: job.description ?? "",
 		postResultToThread: job.postResultToThread,
+		runHistory: job.runHistory,
 		schedule: job.schedule ?? "manual",
 		status,
-		surface: "rovo",
+		surface: normalizeJobSurface(job.raw.surface),
 		target:
 			typeof job.raw.prompt === "string" && job.raw.prompt.trim()
 				? job.raw.prompt
 				: typeof job.raw.target === "string" && job.raw.target.trim()
 					? job.raw.target
 					: "No target configured",
+		trigger: job.trigger,
+		triggerLabel: job.triggerLabel,
 		updatedAt:
 			typeof job.raw.updatedAt === "string" && job.raw.updatedAt.trim()
 				? job.raw.updatedAt
@@ -79,9 +105,12 @@ function toHermesJobPayload(job: ControlPlaneJob): Record<string, unknown> {
 		name: job.name.trim() || "Untitled job",
 		postResultToThread: Boolean(job.postResultToThread),
 		prompt: job.target.trim() || "",
+		runHistory: job.runHistory ?? [],
 		schedule: job.schedule.trim() || "manual",
 		deliver: "local",
 		surface: job.surface ?? "rovo",
+		trigger: job.trigger ?? null,
+		triggerLabel: job.triggerLabel ?? job.trigger?.label ?? null,
 	};
 }
 
@@ -100,6 +129,22 @@ function getJobStatusTone(status: ControlPlaneJob["status"]): "neutral" | "succe
 
 function formatJobDate(value: string | null | undefined): string {
 	return formatControlPlaneDateTime(value);
+}
+
+function isEventTriggeredJob(job: ControlPlaneJob | null): boolean {
+	return job?.trigger?.type === "jira-column-entered";
+}
+
+function getJobTriggerLabel(job: ControlPlaneJob): string {
+	return job.triggerLabel ?? job.trigger?.label ?? "On event: ticket enters Drafting";
+}
+
+function getJobScheduleSummary(job: ControlPlaneJob): string {
+	return isEventTriggeredJob(job) ? getJobTriggerLabel(job) : job.schedule;
+}
+
+function getJobNextRunSummary(job: ControlPlaneJob): string {
+	return isEventTriggeredJob(job) ? "On event" : formatJobDate(job.nextRunAt);
 }
 
 export function JobsSurfacePage() {
@@ -303,6 +348,7 @@ export function JobsSurfacePage() {
 	}
 
 	const selectedCount = sortedJobs.filter((job) => job.id === selectedJobId).length;
+	const isDraftEventJob = isEventTriggeredJob(draft);
 
 	return (
 		<ControlPlanePageShell
@@ -395,13 +441,16 @@ export function JobsSurfacePage() {
 												</div>
 												<div className="flex items-center gap-2">
 													<Lozenge variant={getJobStatusTone(job.status)}>{job.status}</Lozenge>
+													{isEventTriggeredJob(job) ? (
+														<Badge variant="secondary">event</Badge>
+													) : null}
 													<Badge variant={job.enabled ? "success" : "neutral"}>{job.enabled ? "enabled" : "disabled"}</Badge>
 												</div>
 											</div>
 											<div className="mt-3 grid gap-2 text-xs text-text-subtle sm:grid-cols-3">
-												<span>Schedule: {job.schedule}</span>
+												<span>{isEventTriggeredJob(job) ? "Trigger" : "Schedule"}: {getJobScheduleSummary(job)}</span>
 												<span>Last run: {formatJobDate(job.lastRunAt)}</span>
-												<span>Next run: {formatJobDate(job.nextRunAt)}</span>
+												<span>Next run: {getJobNextRunSummary(job)}</span>
 											</div>
 											<div className="mt-3 flex flex-wrap items-center gap-2">
 												<Button
@@ -475,7 +524,13 @@ export function JobsSurfacePage() {
 									<Input
 										value={draft.schedule}
 										onChange={(event) => setDraft((current) => ({ ...current, schedule: event.target.value }))}
+										disabled={isDraftEventJob}
 									/>
+									{isDraftEventJob ? (
+										<p className="text-xs text-text-subtle">
+											This job is event-triggered; the trigger is displayed below.
+										</p>
+									) : null}
 								</div>
 								<div className="space-y-1.5">
 									<div className="text-sm font-medium">Surface</div>
@@ -526,6 +581,17 @@ export function JobsSurfacePage() {
 							</div>
 						</div>
 
+						{isDraftEventJob ? (
+							<div className="grid gap-2 rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm">
+								<div className="font-medium text-text">Event trigger</div>
+								<div className="text-text-subtle">{getJobTriggerLabel(draft)}</div>
+								<div className="grid gap-2 text-xs text-text-subtlest sm:grid-cols-2">
+									<span>Board: {draft.trigger?.board ?? "Enterprise RFP Response"}</span>
+									<span>Column: {draft.trigger?.column ?? "Drafting"}</span>
+								</div>
+							</div>
+						) : null}
+
 						<Separator />
 
 						<div className="grid gap-3 sm:grid-cols-2">
@@ -556,9 +622,47 @@ export function JobsSurfacePage() {
 							</div>
 							<div className="rounded-lg border border-border bg-surface-raised px-3 py-2">
 								<div className="text-xs uppercase tracking-wide text-text-subtlest">Next run</div>
-								<div className="text-sm">{formatControlPlaneDateTime(draft.nextRunAt)}</div>
+								<div className="text-sm">{getJobNextRunSummary(draft)}</div>
 							</div>
 						</div>
+
+						{isDraftEventJob ? (
+							<div className="grid gap-2 rounded-lg border border-border bg-surface-raised px-3 py-2">
+								<div className="text-sm font-medium">Run history</div>
+								{(draft.runHistory ?? []).length > 0 ? (
+									<ul className="grid gap-2">
+										{(draft.runHistory ?? []).map((run) => (
+											<li key={run.id} className="grid gap-1 text-sm">
+												<div className="flex flex-wrap items-center justify-between gap-2">
+													<span className="font-medium text-text">{run.summary ?? run.id}</span>
+													<Lozenge variant={getJobStatusTone(run.status === "failed" ? "failed" : "scheduled")}>{run.status}</Lozenge>
+												</div>
+												<div className="flex flex-wrap gap-2 text-xs text-text-subtle">
+													<Badge variant="secondary">Processed {run.processedTicketCodes.length}</Badge>
+													<Badge variant="secondary">Skipped {run.skippedTicketCodes.length}</Badge>
+													<Badge variant="secondary">Failed {run.failedTicketCodes.length}</Badge>
+												</div>
+												{run.threadLinks.length > 0 ? (
+													<div className="flex flex-wrap gap-2">
+														{run.threadLinks.map((link) => (
+															<a
+																key={`${run.id}-${link.ticketCode}`}
+																className="text-xs font-medium text-link hover:underline"
+																href={`/rovo/${encodeURIComponent(link.threadId)}`}
+															>
+																{link.ticketCode} thread
+															</a>
+														))}
+													</div>
+												) : null}
+											</li>
+										))}
+									</ul>
+								) : (
+									<p className="text-sm text-text-subtle">No event runs yet.</p>
+								)}
+							</div>
+						) : null}
 
 						{draft.lastError ? (
 							<div className="rounded-lg border border-border-danger bg-bg-danger-subtler px-3 py-2 text-sm text-text-danger-bolder">
