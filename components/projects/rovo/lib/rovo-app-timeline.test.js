@@ -1,9 +1,28 @@
 const assert = require("node:assert/strict");
+const path = require("node:path");
 const test = require("node:test");
+const esbuild = require("esbuild");
+const { loadCjsModuleFromText } = require(path.join(process.cwd(), "scripts/lib/esbuild-cjs-loader.js"));
 
-const {
-	deriveRovoAppTimelineItems,
-} = require("./rovo-app-timeline.ts");
+async function loadRovoAppTimelineHarness() {
+	const result = await esbuild.build({
+		stdin: {
+			contents: `
+				export { deriveRovoAppTimelineItems } from "./components/projects/rovo/lib/rovo-app-timeline";
+			`,
+			loader: "ts",
+			resolveDir: process.cwd(),
+			sourcefile: "rovo-app-timeline-harness.ts",
+		},
+		bundle: true,
+		format: "cjs",
+		platform: "node",
+		tsconfig: path.join(process.cwd(), "tsconfig.json"),
+		write: false,
+	});
+
+	return loadCjsModuleFromText(result.outputFiles[0].text);
+}
 
 function formatExpectedTimestamp(timestamp) {
 	return new Intl.DateTimeFormat("en-US", {
@@ -11,7 +30,8 @@ function formatExpectedTimestamp(timestamp) {
 	}).format(new Date(timestamp));
 }
 
-test("derives newest-first timeline items from visible user prompts only", () => {
+test("derives newest-first timeline items from visible user prompts only", async () => {
+	const { deriveRovoAppTimelineItems } = await loadRovoAppTimelineHarness();
 	const items = deriveRovoAppTimelineItems([
 		{
 			id: "user-1",
@@ -67,7 +87,8 @@ test("derives newest-first timeline items from visible user prompts only", () =>
 	);
 });
 
-test("falls back to updatedAt when createdAt is missing or invalid", () => {
+test("falls back to updatedAt when createdAt is missing or invalid", async () => {
+	const { deriveRovoAppTimelineItems } = await loadRovoAppTimelineHarness();
 	const items = deriveRovoAppTimelineItems([
 		{
 			id: "user-updated",
@@ -88,4 +109,35 @@ test("falls back to updatedAt when createdAt is missing or invalid", () => {
 			timestampLabel: formatExpectedTimestamp("2026-03-31T11:45:00.000Z"),
 		},
 	]);
+});
+
+test("reuses one timestamp formatter across timeline derivations", async () => {
+	let formatterConstructs = 0;
+	const OriginalDateTimeFormat = Intl.DateTimeFormat;
+
+	function PatchedDateTimeFormat(...args) {
+		formatterConstructs += 1;
+		return new OriginalDateTimeFormat(...args);
+	}
+	PatchedDateTimeFormat.prototype = OriginalDateTimeFormat.prototype;
+
+	try {
+		Intl.DateTimeFormat = PatchedDateTimeFormat;
+		const { deriveRovoAppTimelineItems } = await loadRovoAppTimelineHarness();
+		const messages = Array.from({ length: 6 }, (_, index) => ({
+			id: `user-${index}`,
+			role: "user",
+			metadata: {
+				createdAt: new Date(Date.UTC(2026, 2, 31, 9, index)).toISOString(),
+			},
+			parts: [{ type: "text", text: `Prompt ${index}`, state: "done" }],
+		}));
+
+		deriveRovoAppTimelineItems(messages);
+		deriveRovoAppTimelineItems(messages);
+
+		assert.equal(formatterConstructs, 1);
+	} finally {
+		Intl.DateTimeFormat = OriginalDateTimeFormat;
+	}
 });

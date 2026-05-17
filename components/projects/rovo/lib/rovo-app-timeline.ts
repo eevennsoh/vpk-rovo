@@ -7,15 +7,17 @@ export interface RovoAppTimelineItem {
 	timestampLabel?: string;
 }
 
+const ROVO_APP_TIMELINE_TIMESTAMP_FORMATTER = new Intl.DateTimeFormat("en-US", {
+	timeStyle: "short",
+});
+
 function formatRovoAppTimelineTimestamp(timestamp: string): string | null {
 	const parsedTimestamp = Date.parse(timestamp);
 	if (!Number.isFinite(parsedTimestamp)) {
 		return null;
 	}
 
-	return new Intl.DateTimeFormat("en-US", {
-		timeStyle: "short",
-	}).format(new Date(parsedTimestamp));
+	return ROVO_APP_TIMELINE_TIMESTAMP_FORMATTER.format(new Date(parsedTimestamp));
 }
 
 function getRovoAppTimelineTimestampLabel(
