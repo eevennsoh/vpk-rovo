@@ -1,4 +1,4 @@
-import CommentAddIcon from "@atlaskit/icon/core/comment-add";
+import AiChatIcon from "@atlaskit/icon/core/ai-chat";
 
 import type { AgentSelectorAgent } from "@/components/blocks/agent-selector";
 import type { RovoSuggestion } from "@/lib/rovo-suggestions";
@@ -19,7 +19,7 @@ function createStarter(id: string, label: string, prompt = label): RovoSuggestio
 		id,
 		label,
 		prompt,
-		icon: CommentAddIcon,
+		icon: AiChatIcon,
 		type: "skill",
 	};
 }

@@ -70,12 +70,12 @@ async function loadChatGreetingHarness() {
 			`,
 		],
 		[
-			"@atlaskit/icon/core/comment-add",
+			"@atlaskit/icon/core/ai-chat",
 			`
 				import React from "react";
 
-				export default function CommentAddIcon() {
-					return React.createElement("svg", { "data-testid": "comment-add-icon" });
+				export default function AiChatIcon() {
+					return React.createElement("svg", { "data-testid": "ai-chat-icon" });
 				}
 			`,
 		],
@@ -198,10 +198,15 @@ test("ChatGreeting renders selected custom agent profile and three starters", as
 	const harness = await loadChatGreetingHarness();
 	const markup = harness.renderCustomAgentGreeting();
 
+	assert.match(CHAT_GREETING_SOURCE, /function CustomAgentGreeting/u);
+	assert.match(CHAT_GREETING_SOURCE, /itemVariants: ChatGreetingItemVariants;/u);
+	assert.match(CHAT_GREETING_SOURCE, /<motion\.div key=\{suggestion\.id\} variants=\{itemVariants\}>/u);
+	assert.match(CHAT_GREETING_SOURCE, /<AnimatePresence mode="wait">[\s\S]*customAgent \? \(/u);
 	assert.match(markup, /AI Insights Agent/u);
 	assert.match(markup, /Researches and summarizes latest AI trends, breakthroughs, and industry developments for weekly insights\./u);
 	assert.match(markup, /What are the latest AI trends this week\?/u);
 	assert.match(markup, /Summarize recent AI breakthroughs for me/u);
 	assert.match(markup, /Give me AI industry insights and developments/u);
+	assert.equal((markup.match(/data-testid="ai-chat-icon"/g) ?? []).length, 3);
 	assert.equal((markup.match(/<button/g) ?? []).length, 3);
 });

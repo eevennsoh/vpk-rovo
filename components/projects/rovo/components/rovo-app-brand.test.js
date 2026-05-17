@@ -23,12 +23,19 @@ test("RovoAppBrand uses selected-agent actions while a custom agent is active", 
 	assert.match(SOURCE, /heading=\{isCustomAgentSelected \? "Switch to another agent" : undefined\}/u);
 	assert.match(SOURCE, /selectedAgentActions=\{selectedAgentActions\}/u);
 	assert.match(SOURCE, /const triggerLabel = isRovoAgentProfile\(selectedAgent\) \? "Rovo" : selectedAgent\.name;/u);
+	assert.match(SOURCE, /showSelectedIndicator=\{false\}/u);
+	assert.match(SOURCE, /ROVO_APP_BRAND_CONTAINER_VARIANTS/u);
+	assert.match(SOURCE, /<AnimatePresence initial=\{false\} mode="wait">/u);
+	assert.match(SOURCE, /key=\{selectedAgentId\}/u);
+	assert.match(SOURCE, /variants=\{identityItemVariants\}/u);
 });
 
 test("fullscreen Rovo header exposes a custom-agent back button", () => {
 	assert.match(HEADER_SOURCE, /<RovoAgentBackButton \/>/u);
 	assert.match(BACK_BUTTON_SOURCE, /useRovoSelectedAgent/u);
 	assert.match(BACK_BUTTON_SOURCE, /isCustomAgentSelected \? \(/u);
+	assert.match(BACK_BUTTON_SOURCE, /<AnimatePresence initial=\{false\}>/u);
+	assert.match(BACK_BUTTON_SOURCE, /<motion\.div[\s\S]*key="back-to-rovo"[\s\S]*variants=\{buttonVariants\}/u);
 	assert.match(BACK_BUTTON_SOURCE, /aria-label="Back to Rovo"/u);
 	assert.match(BACK_BUTTON_SOURCE, /onClick=\{resetAgentToRovo\}/u);
 });

@@ -165,6 +165,7 @@ const ROVO_APP_EMPTY_STATE_REDUCED_ITEM_VARIANTS = {
 		transition: ROVO_APP_EMPTY_STATE_REDUCED_TRANSITION,
 	},
 } as const;
+type RovoAppEmptyStateItemVariants = typeof ROVO_APP_EMPTY_STATE_ITEM_VARIANTS | typeof ROVO_APP_EMPTY_STATE_REDUCED_ITEM_VARIANTS;
 
 function isHermesContextTranscriptMessage(message: Pick<RovoUIMessage, "id" | "role" | "parts">): boolean {
 	if (message.role !== "assistant") {
@@ -710,49 +711,61 @@ function RovoAppThinkingIndicator() {
 
 function RovoAppCustomAgentEmptyState({
 	agent,
+	itemVariants,
 	onSelectSuggestion,
 }: Readonly<{
 	agent: RovoAgentProfile;
+	itemVariants: RovoAppEmptyStateItemVariants;
 	onSelectSuggestion: (suggestion: string) => Promise<void>;
 }>) {
 	return (
-		<div className="flex flex-col items-center gap-8 py-6 text-center">
+		<motion.div
+			animate="visible"
+			className="flex flex-col items-center gap-8 py-6 text-center"
+			exit="exit"
+			initial="hidden"
+			key={agent.id}
+			variants={ROVO_APP_EMPTY_STATE_CONTAINER_VARIANTS}
+		>
 			<div className="flex max-w-[520px] flex-col items-center gap-3">
-				<Image alt="" aria-hidden className="size-10 object-contain" height={40} loading="eager" src={agent.avatarSrc} width={40} />
-				<div className="flex flex-col items-center gap-2">
+				<motion.div variants={itemVariants}>
+					<Image alt="" aria-hidden className="size-10 object-contain" height={40} loading="eager" src={agent.avatarSrc} width={40} />
+				</motion.div>
+				<motion.div className="flex flex-col items-center gap-2" variants={itemVariants}>
 					<Heading size="xlarge">{agent.name}</Heading>
 					{agent.description ? (
 						<p className="max-w-[460px] text-base leading-6 text-text-subtle">{agent.description}</p>
 					) : null}
-				</div>
+				</motion.div>
 			</div>
-			<div className="flex w-full max-w-[720px] flex-col gap-2">
+			<motion.div className="flex w-full max-w-[720px] flex-col gap-2" variants={ROVO_APP_EMPTY_STATE_CONTAINER_VARIANTS}>
 				{agent.starters.map((starter) => {
 					const IconComponent = starter.icon;
 					const starterPrompt = starter.prompt ?? starter.label;
 
 					return (
-						<button
-							className="flex w-full items-center gap-4 rounded-lg p-2 text-left transition-colors hover:bg-bg-neutral-subtle-hovered"
-							key={starter.id}
-							onClick={() => {
-								void onSelectSuggestion(starterPrompt);
-							}}
-							type="button"
-						>
-							<IconTile
-								aria-hidden={true}
-								className="border border-border bg-surface"
-								icon={IconComponent ? <IconComponent label={starter.label} /> : null}
-								label={starter.label}
-								size="medium"
-							/>
-							<span className="min-w-0 flex-1 text-base font-semibold leading-6 text-text-subtle">{starter.label}</span>
-						</button>
+						<motion.div key={starter.id} variants={itemVariants}>
+							<button
+								className="flex w-full items-center gap-4 rounded-lg p-2 text-left transition-colors hover:bg-bg-neutral-subtle-hovered"
+								onClick={() => {
+									void onSelectSuggestion(starterPrompt);
+								}}
+								type="button"
+							>
+								<IconTile
+									aria-hidden={true}
+									className="border border-border bg-surface"
+									icon={IconComponent ? <IconComponent label={starter.label} /> : null}
+									label={starter.label}
+									size="medium"
+								/>
+								<span className="min-w-0 flex-1 text-base font-semibold leading-6 text-text-subtle">{starter.label}</span>
+							</button>
+						</motion.div>
 					);
 				})}
-			</div>
-		</div>
+			</motion.div>
+		</motion.div>
 	);
 }
 
@@ -933,27 +946,34 @@ export function RovoAppMessages({
 				target={isStreaming && scrollAnchorMessageId === latestVisibleUserMessageId ? "bottom" : "follow"}
 			/>
 			{onScrollActiveUserMessageChange ? <RovoAppScrollActiveTracker onActiveChange={onScrollActiveUserMessageChange} /> : null}
-			{shouldShowEmptyConversationState && customAgent ? (
-				<RovoAppCustomAgentEmptyState agent={customAgent} onSelectSuggestion={onSelectSuggestion} />
-			) : shouldShowEmptyConversationState ? (
+			{shouldShowEmptyConversationState ? (
 				<div className="flex flex-col items-center gap-2 py-6">
 					<AnimatePresence mode="wait">
-						<motion.div
-							animate="visible"
-							className="flex flex-col items-center gap-2"
-							exit="exit"
-							initial="hidden"
-							key={emptyState.id}
-							variants={ROVO_APP_EMPTY_STATE_CONTAINER_VARIANTS}
-						>
-							<motion.div className={cn(emptyState.illustrationClassName, "relative")} style={{ willChange: "transform, opacity" }} variants={emptyStateItemVariants}>
-								<Image alt={emptyState.alt} className={cn(emptyState.illustrationClassName, "object-contain dark:hidden [[data-color-mode=dark]_&]:hidden")} height={emptyState.height} loading="eager" src={emptyState.lightIllustrationSrc} width={emptyState.width} />
-								<Image alt={emptyState.alt} className={cn(emptyState.illustrationClassName, "hidden object-contain dark:block [[data-color-mode=dark]_&]:block")} height={emptyState.height} loading="eager" src={emptyState.darkIllustrationSrc} width={emptyState.width} />
+						{customAgent ? (
+							<RovoAppCustomAgentEmptyState
+								agent={customAgent}
+								itemVariants={emptyStateItemVariants}
+								key={`agent-${customAgent.id}`}
+								onSelectSuggestion={onSelectSuggestion}
+							/>
+						) : (
+							<motion.div
+								animate="visible"
+								className="flex flex-col items-center gap-2"
+								exit="exit"
+								initial="hidden"
+								key={emptyState.id}
+								variants={ROVO_APP_EMPTY_STATE_CONTAINER_VARIANTS}
+							>
+								<motion.div className={cn(emptyState.illustrationClassName, "relative")} style={{ willChange: "transform, opacity" }} variants={emptyStateItemVariants}>
+									<Image alt={emptyState.alt} className={cn(emptyState.illustrationClassName, "object-contain dark:hidden [[data-color-mode=dark]_&]:hidden")} height={emptyState.height} loading="eager" src={emptyState.lightIllustrationSrc} width={emptyState.width} />
+									<Image alt={emptyState.alt} className={cn(emptyState.illustrationClassName, "hidden object-contain dark:block [[data-color-mode=dark]_&]:block")} height={emptyState.height} loading="eager" src={emptyState.darkIllustrationSrc} width={emptyState.width} />
+								</motion.div>
+								<motion.div style={{ willChange: "transform, opacity" }} variants={emptyStateItemVariants}>
+									<Heading size="xlarge">{emptyState.heading}</Heading>
+								</motion.div>
 							</motion.div>
-							<motion.div style={{ willChange: "transform, opacity" }} variants={emptyStateItemVariants}>
-								<Heading size="xlarge">{emptyState.heading}</Heading>
-							</motion.div>
-						</motion.div>
+						)}
 					</AnimatePresence>
 				</div>
 			) : null}

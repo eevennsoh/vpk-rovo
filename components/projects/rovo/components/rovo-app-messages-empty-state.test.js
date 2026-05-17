@@ -31,12 +31,15 @@ test("Rovo app empty state switches greeting and illustrations for Max mode", ()
 test("Rovo app empty state renders selected custom agent profile and starters", () => {
 	assert.match(MESSAGES_SOURCE, /selectedAgent\?: RovoAgentProfile \| null;/u);
 	assert.match(MESSAGES_SOURCE, /function RovoAppCustomAgentEmptyState/u);
+	assert.match(MESSAGES_SOURCE, /itemVariants: RovoAppEmptyStateItemVariants;/u);
 	assert.match(MESSAGES_SOURCE, /agent\.description/u);
 	assert.match(MESSAGES_SOURCE, /agent\.starters\.map/u);
+	assert.match(MESSAGES_SOURCE, /<motion\.div key=\{starter\.id\} variants=\{itemVariants\}>/u);
 	assert.match(MESSAGES_SOURCE, /onSelectSuggestion\(starterPrompt\)/u);
 	assert.match(MESSAGES_SOURCE, /selectedAgent = null/u);
 	assert.match(MESSAGES_SOURCE, /const customAgent = selectedAgent !== null && !isRovoAgentProfile\(selectedAgent\) \? selectedAgent : null;/u);
-	assert.match(MESSAGES_SOURCE, /shouldShowEmptyConversationState && customAgent \? \(/u);
+	assert.match(MESSAGES_SOURCE, /shouldShowEmptyConversationState \? \([\s\S]*<AnimatePresence mode="wait">[\s\S]*customAgent \? \(/u);
+	assert.match(MESSAGES_SOURCE, /itemVariants=\{emptyStateItemVariants\}/u);
 	assert.match(SHELL_SOURCE, /const \{ selectedAgent \} = useRovoSelectedAgent\(\);/u);
 	assert.match(SHELL_SOURCE, /selectedAgent=\{selectedAgent\}/u);
 	assert.match(SHELL_SOURCE, /showHomeState && !isCustomAgentSelected \? \(/u);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import Image from "next/image";
 import ChevronDownIcon from "@atlaskit/icon/core/chevron-down";
 import EditIcon from "@atlaskit/icon/core/edit";
@@ -20,9 +21,64 @@ import {
 	ROVO_CUSTOM_AGENT_SELECTOR_AGENTS,
 } from "@/components/projects/rovo/data/agent-profiles";
 
+const ROVO_APP_BRAND_CONTAINER_VARIANTS = {
+	hidden: {},
+	visible: {
+		transition: {
+			staggerChildren: 0.035,
+		},
+	},
+	exit: {
+		transition: {
+			staggerChildren: 0.02,
+			staggerDirection: -1,
+		},
+	},
+} as const;
+const ROVO_APP_BRAND_ITEM_VARIANTS = {
+	hidden: {
+		opacity: 0,
+		transform: "translateY(4px)",
+	},
+	visible: {
+		opacity: 1,
+		transform: "translateY(0px)",
+		transition: {
+			type: "spring",
+			bounce: 0,
+			visualDuration: 0.16,
+		},
+	},
+	exit: {
+		opacity: 0,
+		transform: "translateY(-4px)",
+		transition: {
+			duration: 0.08,
+		},
+	},
+} as const;
+const ROVO_APP_BRAND_REDUCED_ITEM_VARIANTS = {
+	hidden: {
+		opacity: 0,
+	},
+	visible: {
+		opacity: 1,
+		transition: {
+			duration: 0.08,
+		},
+	},
+	exit: {
+		opacity: 0,
+		transition: {
+			duration: 0.08,
+		},
+	},
+} as const;
+
 export function RovoAppBrand() {
 	const [open, setOpen] = useState(false);
 	const [query, setQuery] = useState("");
+	const shouldReduceMotion = Boolean(useReducedMotion());
 	const {
 		selectedAgent,
 		selectedAgentId,
@@ -77,6 +133,7 @@ export function RovoAppBrand() {
 		? ROVO_CUSTOM_AGENT_SELECTOR_AGENTS
 		: ROVO_AGENT_SELECTOR_AGENTS;
 	const triggerLabel = isRovoAgentProfile(selectedAgent) ? "Rovo" : selectedAgent.name;
+	const identityItemVariants = shouldReduceMotion ? ROVO_APP_BRAND_REDUCED_ITEM_VARIANTS : ROVO_APP_BRAND_ITEM_VARIANTS;
 
 	return (
 		<DropdownMenu open={open} onOpenChange={handleOpenChange}>
@@ -90,20 +147,32 @@ export function RovoAppBrand() {
 					/>
 				}
 			>
-				<span
-					aria-hidden
-					data-icon="inline-start"
-					className="flex size-4 items-center justify-center"
-				>
-					<Image
-						src={selectedAgent.avatarSrc}
-						alt=""
-						className="size-4 object-contain"
-						width={16}
-						height={16}
-					/>
-				</span>
-				<span className="font-semibold">{triggerLabel}</span>
+				<AnimatePresence initial={false} mode="wait">
+					<motion.span
+						animate="visible"
+						className="flex min-w-0 items-center gap-1.5"
+						exit="exit"
+						initial="hidden"
+						key={selectedAgentId}
+						variants={ROVO_APP_BRAND_CONTAINER_VARIANTS}
+					>
+						<motion.span
+							aria-hidden
+							className="flex size-4 items-center justify-center"
+							data-icon="inline-start"
+							variants={identityItemVariants}
+						>
+							<Image
+								src={selectedAgent.avatarSrc}
+								alt=""
+								className="size-4 object-contain"
+								width={16}
+								height={16}
+							/>
+						</motion.span>
+						<motion.span className="truncate font-semibold" variants={identityItemVariants}>{triggerLabel}</motion.span>
+					</motion.span>
+				</AnimatePresence>
 				<Icon
 					aria-hidden
 					className="-ml-0.5 size-4 text-icon-subtle"
@@ -127,6 +196,7 @@ export function RovoAppBrand() {
 					query={query}
 					selectedAgentActions={selectedAgentActions}
 					selectedAgentIds={selectedAgentIds}
+					showSelectedIndicator={false}
 				/>
 			</DropdownMenuContent>
 		</DropdownMenu>

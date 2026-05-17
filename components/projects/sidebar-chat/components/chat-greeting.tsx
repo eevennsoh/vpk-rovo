@@ -70,6 +70,7 @@ const CHAT_GREETING_REDUCED_ITEM_VARIANTS = {
 		transition: CHAT_GREETING_REDUCED_TRANSITION,
 	},
 } as const;
+type ChatGreetingItemVariants = typeof CHAT_GREETING_ITEM_VARIANTS | typeof CHAT_GREETING_REDUCED_ITEM_VARIANTS;
 
 interface ChatGreetingProps {
 	/** Optional custom heading text */
@@ -172,34 +173,46 @@ function CustomAgentStarterItem({
 
 function CustomAgentGreeting({
 	agent,
+	itemVariants,
 	onSuggestionClick,
 }: Readonly<{
 	agent: RovoAgentProfile;
+	itemVariants: ChatGreetingItemVariants;
 	onSuggestionClick?: (suggestion: RovoSuggestion) => void;
 }>) {
 	return (
-		<div className="flex w-full flex-col items-center gap-8 text-center">
+		<motion.div
+			animate="visible"
+			className="flex w-full flex-col items-center gap-8 text-center"
+			exit="exit"
+			initial="hidden"
+			key={agent.id}
+			variants={CHAT_GREETING_CONTAINER_VARIANTS}
+		>
 			<div className="flex max-w-[360px] flex-col items-center gap-3">
-				<Image alt="" aria-hidden className="size-10 object-contain" height={40} loading="eager" src={agent.avatarSrc} width={40} />
-				<div className="flex flex-col items-center gap-2">
+				<motion.div variants={itemVariants}>
+					<Image alt="" aria-hidden className="size-10 object-contain" height={40} loading="eager" src={agent.avatarSrc} width={40} />
+				</motion.div>
+				<motion.div className="flex flex-col items-center gap-2" variants={itemVariants}>
 					<Heading size="large" className="text-center">{agent.name}</Heading>
 					{agent.description ? (
 						<p className="text-sm leading-6 text-text-subtle">{agent.description}</p>
 					) : null}
-				</div>
+				</motion.div>
 			</div>
-			<div className="w-full">
+			<motion.div className="w-full" variants={CHAT_GREETING_CONTAINER_VARIANTS}>
 				<div className="flex flex-col gap-1">
 					{agent.starters.map((suggestion) => (
-						<CustomAgentStarterItem
-							key={suggestion.id}
-							suggestion={suggestion}
-							onClick={() => onSuggestionClick?.(suggestion)}
-						/>
+						<motion.div key={suggestion.id} variants={itemVariants}>
+							<CustomAgentStarterItem
+								suggestion={suggestion}
+								onClick={() => onSuggestionClick?.(suggestion)}
+							/>
+						</motion.div>
 					))}
 				</div>
-			</div>
-		</div>
+			</motion.div>
+		</motion.div>
 	);
 }
 
@@ -224,63 +237,68 @@ export default function ChatGreeting({
 	const heroKey = isMaxMode ? "max" : "default";
 	const itemVariants = shouldReduceMotion ? CHAT_GREETING_REDUCED_ITEM_VARIANTS : CHAT_GREETING_ITEM_VARIANTS;
 
-	if (customAgent) {
-		return (
-			<div className="w-full">
-				<CustomAgentGreeting agent={customAgent} onSuggestionClick={onSuggestionClick} />
-			</div>
-		);
-	}
-
 	return (
 		<div className="w-full">
-			<div className="flex flex-col gap-6">
-				{showHero ? (
-					<AnimatePresence mode="wait">
-						<motion.div
-							animate="visible"
-							className="flex flex-col items-center gap-2"
-							exit="exit"
-							initial="hidden"
-							key={heroKey}
-							variants={CHAT_GREETING_CONTAINER_VARIANTS}
-						>
-							<motion.div className={cn(CHAT_GREETING_ILLUSTRATION_CLASS_NAME, "relative")} style={{ willChange: "transform, opacity" }} variants={itemVariants}>
-								<Image
-									src={resolvedIllustrationSrc}
-									alt=""
-									width={74}
-									height={67}
-									loading="eager"
-									className={cn(CHAT_GREETING_ILLUSTRATION_CLASS_NAME, "object-contain dark:hidden [[data-color-mode=dark]_&]:hidden")}
-								/>
-								<Image
-									src={resolvedIllustrationDarkSrc}
-									alt=""
-									width={74}
-									height={67}
-									loading="eager"
-									className={cn(CHAT_GREETING_ILLUSTRATION_CLASS_NAME, "hidden object-contain dark:block [[data-color-mode=dark]_&]:block")}
-								/>
+			<AnimatePresence mode="wait">
+				{customAgent ? (
+					<CustomAgentGreeting
+						agent={customAgent}
+						itemVariants={itemVariants}
+						key={`agent-${customAgent.id}`}
+						onSuggestionClick={onSuggestionClick}
+					/>
+				) : (
+					<motion.div
+						animate="visible"
+						className="flex flex-col gap-6"
+						exit="exit"
+						initial="hidden"
+						key={`rovo-${heroKey}`}
+						variants={CHAT_GREETING_CONTAINER_VARIANTS}
+					>
+						{showHero ? (
+							<motion.div
+								className="flex flex-col items-center gap-2"
+								variants={CHAT_GREETING_CONTAINER_VARIANTS}
+							>
+								<motion.div className={cn(CHAT_GREETING_ILLUSTRATION_CLASS_NAME, "relative")} style={{ willChange: "transform, opacity" }} variants={itemVariants}>
+									<Image
+										src={resolvedIllustrationSrc}
+										alt=""
+										width={74}
+										height={67}
+										loading="eager"
+										className={cn(CHAT_GREETING_ILLUSTRATION_CLASS_NAME, "object-contain dark:hidden [[data-color-mode=dark]_&]:hidden")}
+									/>
+									<Image
+										src={resolvedIllustrationDarkSrc}
+										alt=""
+										width={74}
+										height={67}
+										loading="eager"
+										className={cn(CHAT_GREETING_ILLUSTRATION_CLASS_NAME, "hidden object-contain dark:block [[data-color-mode=dark]_&]:block")}
+									/>
+								</motion.div>
+								<motion.div style={{ willChange: "transform, opacity" }} variants={itemVariants}>
+									<Heading size="large" className="text-center">{resolvedHeading}</Heading>
+								</motion.div>
 							</motion.div>
-							<motion.div style={{ willChange: "transform, opacity" }} variants={itemVariants}>
-								<Heading size="large" className="text-center">{resolvedHeading}</Heading>
-							</motion.div>
+						) : null}
+						<motion.div className="w-full" variants={CHAT_GREETING_CONTAINER_VARIANTS}>
+							<div className="flex flex-col gap-1">
+								{greetingSuggestions.map((suggestion) => (
+									<motion.div key={suggestion.id} variants={itemVariants}>
+										<SkillListItem
+											suggestion={suggestion}
+											onClick={() => onSuggestionClick?.(suggestion)}
+										/>
+									</motion.div>
+								))}
+							</div>
 						</motion.div>
-					</AnimatePresence>
-				) : null}
-				<div className="w-full">
-					<div className="flex flex-col gap-1">
-						{greetingSuggestions.map((suggestion) => (
-							<SkillListItem
-								key={suggestion.id}
-								suggestion={suggestion}
-								onClick={() => onSuggestionClick?.(suggestion)}
-							/>
-						))}
-					</div>
-				</div>
-			</div>
+					</motion.div>
+				)}
+			</AnimatePresence>
 		</div>
 	);
 }

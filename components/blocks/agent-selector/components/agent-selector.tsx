@@ -40,6 +40,7 @@ export interface AgentSelectorProps {
 	searchPlaceholder?: string;
 	selectedAgentActions?: readonly AgentSelectorAction[];
 	selectedAgentIds?: readonly string[];
+	showSelectedIndicator?: boolean;
 }
 
 const EMPTY_SELECTED_AGENT_IDS: readonly string[] = [];
@@ -76,6 +77,7 @@ export function AgentSelector({
 	searchPlaceholder = "Search agents",
 	selectedAgentActions,
 	selectedAgentIds,
+	showSelectedIndicator = true,
 }: Readonly<AgentSelectorProps>): ReactElement {
 	const [internalQuery, setInternalQuery] = useState(defaultQuery);
 	const selectedIds = selectedAgentIds ?? EMPTY_SELECTED_AGENT_IDS;
@@ -151,6 +153,7 @@ export function AgentSelector({
 								keywords={[agent.name, agent.byline]}
 								onSelect={() => onAgentToggle?.(agent.id)}
 								role="menuitemcheckbox"
+								showCheckIcon={showSelectedIndicator}
 								value={agent.name}
 							>
 								<AgentSelectorLogo agent={agent} />
