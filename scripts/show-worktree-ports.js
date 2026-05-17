@@ -17,7 +17,9 @@ const { getAllWorktreePortInfo } = require("./lib/worktree-ports");
 
 const SEPARATOR = "━".repeat(70);
 const WATCH_INTERVAL_MS = 1000;
-const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+const TICK_INTERVAL_MS = 100;
+const TICKS_PER_DATA_REFRESH = Math.max(1, Math.round(WATCH_INTERVAL_MS / TICK_INTERVAL_MS));
+const SPINNER_FRAMES = ["◐", "◓", "◑", "◒"];
 
 function readPortFile(worktreePath, filename) {
 	try {
@@ -140,27 +142,36 @@ function main() {
 
 function runWatch() {
 	let frameIndex = 0;
+	let tickCount = 0;
+	let lastRows = [];
+	let lastError = null;
+
 	function tick() {
-		let rows;
-		try {
-			rows = snapshot();
-		} catch (error) {
-			process.stdout.write("\x1b[2J\x1b[H");
-			console.error(`Failed to enumerate worktrees: ${error.message}`);
-			return;
+		if (tickCount % TICKS_PER_DATA_REFRESH === 0) {
+			try {
+				lastRows = snapshot();
+				lastError = null;
+			} catch (error) {
+				lastError = error;
+			}
 		}
-		const now = new Date().toLocaleTimeString("en-US", { hour12: false });
-		const spinner = SPINNER_FRAMES[frameIndex % SPINNER_FRAMES.length];
 		process.stdout.write("\x1b[2J\x1b[H");
-		renderRows(rows, {
-			headerSuffix: `·  ${spinner} watching`,
-			footer: `Last updated ${now} · Ctrl+C to exit`,
-		});
+		if (lastError) {
+			console.error(`Failed to enumerate worktrees: ${lastError.message}`);
+		} else {
+			const now = new Date().toLocaleTimeString("en-US", { hour12: false });
+			const spinner = SPINNER_FRAMES[frameIndex % SPINNER_FRAMES.length];
+			renderRows(lastRows, {
+				headerSuffix: `·  ${spinner} watching`,
+				footer: `Last updated ${now} · Ctrl+C to exit`,
+			});
+		}
 		frameIndex += 1;
+		tickCount += 1;
 	}
 
 	tick();
-	const interval = setInterval(tick, WATCH_INTERVAL_MS);
+	const interval = setInterval(tick, TICK_INTERVAL_MS);
 
 	process.on("SIGINT", () => {
 		clearInterval(interval);
