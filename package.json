@@ -27,10 +27,6 @@
 		"dev:stt:install": "python3 -m venv .venv && .venv/bin/pip install -r scripts/stt-requirements.txt",
 		"symphony": "./scripts/symphony.sh"
 	},
-	"portless": {
-		"name": "vpk-rovo",
-		"script": "dev"
-	},
 	"dependencies": {
 		"@ai-sdk/react": "^3.0.174",
 		"@atlaskit/icon": "^34.3.0",
